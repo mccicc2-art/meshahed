@@ -96,6 +96,41 @@ export async function getAllWatchedEpisodes(): Promise<WatchedEpisodeRow[]> {
   return data ?? [];
 }
 
+export interface MovieProgressRow {
+  movie_tmdb_id: number;
+  position_minutes: number;
+  runtime_minutes: number | null;
+  title: string | null;
+  poster_path: string | null;
+}
+
+export async function getMovieProgress(movieTmdbId: number): Promise<MovieProgressRow | null> {
+  try {
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from("movie_progress")
+      .select("movie_tmdb_id, position_minutes, runtime_minutes, title, poster_path")
+      .eq("movie_tmdb_id", movieTmdbId)
+      .maybeSingle();
+    return (data as MovieProgressRow) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export async function getAllMovieProgress(): Promise<MovieProgressRow[]> {
+  try {
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from("movie_progress")
+      .select("movie_tmdb_id, position_minutes, runtime_minutes, title, poster_path")
+      .order("updated_at", { ascending: false });
+    return (data as MovieProgressRow[]) ?? [];
+  } catch {
+    return [];
+  }
+}
+
 export async function getWatchedMovieIds(): Promise<Set<number>> {
   const supabase = await createClient();
   const { data } = await supabase.from("watched_movies").select("movie_tmdb_id");
