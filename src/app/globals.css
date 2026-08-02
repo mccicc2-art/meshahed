@@ -9,6 +9,10 @@
   --accent: #ffb43a;
   --accent-2: #3ddc97;
   --border: #24314e;
+  --on-accent: #1a1200;
+  --on-accent-2: #062015;
+  --glow-a: rgba(255, 180, 58, 0.08);
+  --glow-b: rgba(61, 220, 151, 0.06);
 }
 
 @theme inline {
@@ -20,6 +24,8 @@
   --color-accent: var(--accent);
   --color-accent-2: var(--accent-2);
   --color-border: var(--border);
+  --color-on-accent: var(--on-accent);
+  --color-on-accent-2: var(--on-accent-2);
   --font-sans: "Cairo", system-ui, sans-serif;
 }
 
@@ -29,8 +35,8 @@
 
 body {
   background:
-    radial-gradient(1200px 600px at 80% -10%, rgba(255, 180, 58, 0.08), transparent),
-    radial-gradient(1000px 500px at 0% 0%, rgba(61, 220, 151, 0.06), transparent),
+    radial-gradient(1200px 600px at 80% -10%, var(--glow-a), transparent),
+    radial-gradient(1000px 500px at 0% 0%, var(--glow-b), transparent),
     var(--background);
   color: var(--foreground);
   font-family: "Cairo", system-ui, -apple-system, "Segoe UI", sans-serif;
