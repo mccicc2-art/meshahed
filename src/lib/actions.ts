@@ -308,3 +308,70 @@ export async function toggleMovieWatched(input: {
   revalidatePath("/stats");
   revalidatePath(`/movie/${input.movieTmdbId}`);
 }
+
+// ================= التقييمات والمراجعات =================
+
+export async function saveRating(input: {
+  tmdbId: number;
+  mediaType: MediaType;
+  rating: number;
+  review: string;
+  title: string;
+  posterPath: string | null;
+}) {
+  const { supabase, user } = await requireUser();
+
+  const rating = Math.max(1, Math.min(5, Math.round(input.rating)));
+  const review = input.review.trim().slice(0, 2000);
+
+  const { error } = await supabase.from("ratings").upsert(
+    {
+      user_id: user.id,
+      tmdb_id: input.tmdbId,
+      media_type: input.mediaType,
+      rating,
+      review: review || null,
+      title: input.title,
+      poster_path: input.posterPath,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "user_id,tmdb_id,media_type" },
+  );
+  if (error) throw new Error(error.message);
+
+  revalidatePath(`/${input.mediaType === "tv" ? "show" : "movie"}/${input.tmdbId}`);
+  revalidatePath("/", "layout");
+}
+
+export async function deleteRating(input: { tmdbId: number; mediaType: MediaType }) {
+  const { supabase, user } = await requireUser();
+  const { error } = await supabase.from("ratings").delete().match({
+    user_id: user.id,
+    tmdb_id: input.tmdbId,
+    media_type: input.mediaType,
+  });
+  if (error) throw new Error(error.message);
+  revalidatePath(`/${input.mediaType === "tv" ? "show" : "movie"}/${input.tmdbId}`);
+}
+
+// ================= متابعة المستخدمين =================
+
+export async function followUser(targetId: string) {
+  const { supabase, user } = await requireUser();
+  if (targetId === user.id) throw new Error("لا يمكنك متابعة نفسك / You can't follow yourself");
+  const { error } = await supabase
+    .from("user_follows")
+    .upsert({ follower_id: user.id, following_id: targetId }, { onConflict: "follower_id,following_id" });
+  if (error) throw new Error(error.message);
+  revalidatePath("/", "layout");
+}
+
+export async function unfollowUser(targetId: string) {
+  const { supabase, user } = await requireUser();
+  const { error } = await supabase
+    .from("user_follows")
+    .delete()
+    .match({ follower_id: user.id, following_id: targetId });
+  if (error) throw new Error(error.message);
+  revalidatePath("/", "layout");
+}

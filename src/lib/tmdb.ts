@@ -169,6 +169,17 @@ export async function discoverByGenres(
     .map((r) => ({ ...r, media_type: mediaType }));
 }
 
+// ترشيحات TMDB المبنية على عمل معيّن (تُستخدم كبذور لمحرّك الاقتراحات)
+export async function recommendationsFor(
+  mediaType: MediaType,
+  id: number,
+): Promise<SearchResult[]> {
+  const data = await tmdb<{ results: SearchResult[] }>(`/${mediaType}/${id}/recommendations`);
+  return data.results
+    .filter((r) => r.poster_path)
+    .map((r) => ({ ...r, media_type: mediaType }));
+}
+
 export function getTv(id: number): Promise<TvDetails> {
   return tmdb<TvDetails>(`/tv/${id}`);
 }
