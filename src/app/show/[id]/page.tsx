@@ -1,10 +1,18 @@
 import { redirect, notFound } from "next/navigation";
 import Image from "next/image";
-import { getUser, getFollows, getWatchedForShow } from "@/lib/data";
+import {
+  getUser,
+  getFollows,
+  getWatchedForShow,
+  getMyRating,
+  getCommunityRating,
+} from "@/lib/data";
 import { getTv, getSeason, backdropUrl, posterUrl } from "@/lib/tmdb";
 import { FollowButton } from "@/components/FollowButton";
 import { EpisodeTracker, type TrackerSeason } from "@/components/EpisodeTracker";
 import { getT } from "@/lib/locale";
+import { RatingBox } from "@/components/RatingBox";
+import { CommunityReviews } from "@/components/CommunityReviews";
 
 export default async function ShowPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await getUser();
@@ -41,7 +49,12 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
     })),
   }));
 
-  const [follows, watched] = await Promise.all([getFollows(), getWatchedForShow(tvId)]);
+  const [follows, watched, myRating, community] = await Promise.all([
+    getFollows(),
+    getWatchedForShow(tvId),
+    getMyRating(tvId, "tv"),
+    getCommunityRating(tvId, "tv"),
+  ]);
   const following = follows.some((f) => f.tmdb_id === tvId && f.media_type === "tv");
 
   const backdrop = backdropUrl(tv.backdrop_path);
@@ -105,6 +118,18 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
           </div>
         </div>
       </div>
+
+      <RatingBox
+        tmdbId={tvId}
+        mediaType="tv"
+        title={tv.name}
+        posterPath={tv.poster_path}
+        locale={locale}
+        initialRating={myRating?.rating ?? null}
+        initialReview={myRating?.review ?? null}
+      />
+
+      <CommunityReviews locale={locale} avg={community.avg} count={community.count} reviews={community.reviews} />
 
       <div className="mt-10">
         <h2 className="text-lg font-bold mb-4">{t.episodesHeading}</h2>
