@@ -8,6 +8,7 @@ import {
   backdropUrl,
   type SearchResult,
 } from "@/lib/tmdb";
+import { getT } from "@/lib/locale";
 import { NewsPost, type NewsItem } from "@/components/NewsPost";
 
 function dateOf(r: SearchResult) {
@@ -18,6 +19,8 @@ export default async function NewsPage() {
   const user = await getUser();
   if (!user) redirect("/login");
 
+  const { locale, t } = await getT();
+
   const [movies, tv, follows, reactions] = await Promise.all([
     upcomingMovies().catch(() => [] as SearchResult[]),
     airingTv().catch(() => [] as SearchResult[]),
@@ -26,8 +29,9 @@ export default async function NewsPage() {
   ]);
 
   const followed = new Set(follows.map((f) => `${f.media_type}-${f.tmdb_id}`));
+  const today = new Date().toISOString().slice(0, 10);
 
-  // دمج الأفلام القادمة والمسلسلات الجارية وترتيبها بالأحدث موعداً
+  // دمج الأفلام القادمة والمسلسلات الجارية: الأقرب موعداً أولاً
   const items: NewsItem[] = [...movies, ...tv]
     .filter((r) => r.media_type === "tv" || r.media_type === "movie")
     .map((r) => ({
@@ -42,7 +46,6 @@ export default async function NewsPage() {
       rating: r.vote_average ? Number(r.vote_average.toFixed(1)) : null,
     }))
     .sort((a, b) => {
-      const today = new Date().toISOString().slice(0, 10);
       const aFuture = a.date >= today;
       const bFuture = b.date >= today;
       if (aFuture !== bFuture) return aFuture ? -1 : 1;
@@ -53,16 +56,12 @@ export default async function NewsPage() {
   return (
     <div>
       <header className="mb-6">
-        <h1 className="text-2xl font-bold">📰 الأخبار</h1>
-        <p className="text-muted text-sm mt-1">
-          أحدث الأفلام القادمة والمسلسلات الجارية — تفاعل بـ 🔥 أو أضفها لمفضلتك.
-        </p>
+        <h1 className="text-2xl font-bold">{t.newsTitle}</h1>
+        <p className="text-muted text-sm mt-1">{t.newsSubtitle}</p>
       </header>
 
       {items.length === 0 ? (
-        <p className="text-center text-muted py-20">
-          تعذّر تحميل الأخبار حالياً. حاول مرة أخرى بعد قليل.
-        </p>
+        <p className="text-center text-muted py-20">{t.newsEmpty}</p>
       ) : (
         <div className="grid gap-5 sm:grid-cols-2">
           {items.map((item) => {
@@ -71,6 +70,7 @@ export default async function NewsPage() {
               <NewsPost
                 key={key}
                 item={item}
+                locale={locale}
                 initialCount={reactions.counts[key] ?? 0}
                 initialReacted={reactions.mine.has(key)}
                 initialFollowing={followed.has(key)}
