@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { getUser } from "@/lib/data";
 import { searchMulti, titleOf, yearOf } from "@/lib/tmdb";
@@ -13,15 +14,31 @@ export default async function SearchPage({
   if (!user) redirect("/login");
 
   const { q = "" } = await searchParams;
-  const results = q ? await searchMulti(q) : [];
+  let results: Awaited<ReturnType<typeof searchMulti>> = [];
+  let failed = false;
+  if (q) {
+    try {
+      results = await searchMulti(q);
+    } catch {
+      failed = true;
+    }
+  }
 
   return (
     <div>
       <div className="max-w-xl mx-auto mb-8">
-        <SearchBox big />
+        <Suspense fallback={null}>
+          <SearchBox big />
+        </Suspense>
       </div>
 
-      {q && (
+      {failed && (
+        <p className="text-center text-red-300 bg-red-500/10 border border-red-400/30 rounded-xl px-4 py-3 mb-4">
+          تعذّر الوصول لخدمة البيانات حالياً. حاول مرة أخرى بعد قليل.
+        </p>
+      )}
+
+      {q && !failed && (
         <p className="text-muted text-sm mb-4">
           نتائج البحث عن &laquo;{q}&raquo; — {results.length} نتيجة
         </p>
