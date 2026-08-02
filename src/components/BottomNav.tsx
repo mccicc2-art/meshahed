@@ -46,16 +46,32 @@ function IconLibrary({ active }: { active: boolean }) {
   );
 }
 
-function IconProfile({ active }: { active: boolean }) {
+function IconNews({ active }: { active: boolean }) {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
-      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth={active ? 2.2 : 1.8} />
-      <circle cx="12" cy="10" r="3.2" stroke="currentColor" strokeWidth={active ? 2.2 : 1.8} />
+      <rect
+        x="3"
+        y="5"
+        width="18"
+        height="14"
+        rx="2.5"
+        stroke="currentColor"
+        strokeWidth={active ? 2.2 : 1.8}
+      />
       <path
-        d="M6.5 19a6 6 0 0 1 11 0"
+        d="M6.5 9h5.5M6.5 12.5h5.5M6.5 16h3"
         stroke="currentColor"
         strokeWidth={active ? 2.2 : 1.8}
         strokeLinecap="round"
+      />
+      <rect
+        x="14.5"
+        y="9"
+        width="3.5"
+        height="4"
+        rx="1"
+        stroke="currentColor"
+        strokeWidth={active ? 2.2 : 1.8}
       />
     </svg>
   );
@@ -63,8 +79,8 @@ function IconProfile({ active }: { active: boolean }) {
 
 const TABS = [
   { href: "/", label: "الرئيسية", Icon: IconHome },
+  { href: "/news", label: "أخبار", Icon: IconNews },
   { href: "/library", label: "مكتبتي", Icon: IconLibrary },
-  { href: "/profile", label: "ملفي", Icon: IconProfile },
 ];
 
 export function BottomNav() {

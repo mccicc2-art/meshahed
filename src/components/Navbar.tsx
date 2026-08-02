@@ -31,7 +31,7 @@ export async function Navbar() {
 
               {/* الصورة أولاً في DOM لتظهر يمين زر الخروج في الاتجاه العربي */}
               <Link
-                href="/profile"
+                href="/profile/edit"
                 title={displayName || "الملف الشخصي"}
                 aria-label="الملف الشخصي"
                 className="shrink-0 rounded-full ring-2 ring-transparent hover:ring-accent transition"

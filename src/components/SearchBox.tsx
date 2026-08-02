@@ -24,19 +24,24 @@ export function SearchBox({ big = false }: { big?: boolean }) {
   const [active, setActive] = useState(-1);
   const boxRef = useRef<HTMLDivElement>(null);
 
-  // اقتراحات تبدأ من ٣ أحرف مع تأخير بسيط لتقليل الطلبات
-  useEffect(() => {
-    const term = q.trim();
-    if (term.length < 3) {
+  // تفريغ القائمة يتم عند الكتابة لا داخل التأثير (تفادي إعادة التصيير المتتالية)
+  function changeQ(value: string) {
+    setQ(value);
+    if (value.trim().length < 3) {
       setItems([]);
       setOpen(false);
       setLoading(false);
-      return;
     }
+  }
+
+  // اقتراحات تبدأ من ٣ أحرف مع تأخير بسيط لتقليل الطلبات
+  useEffect(() => {
+    const term = q.trim();
+    if (term.length < 3) return;
 
     const ctrl = new AbortController();
-    setLoading(true);
     const t = setTimeout(async () => {
+      setLoading(true);
       try {
         const res = await fetch(`/api/suggest?q=${encodeURIComponent(term)}`, {
           signal: ctrl.signal,
@@ -106,7 +111,7 @@ export function SearchBox({ big = false }: { big?: boolean }) {
         <div className="relative">
           <input
             value={q}
-            onChange={(e) => setQ(e.target.value)}
+            onChange={(e) => changeQ(e.target.value)}
             onKeyDown={onKeyDown}
             onFocus={() => items.length && setOpen(true)}
             placeholder="ابحث عن مسلسل أو فيلم…"

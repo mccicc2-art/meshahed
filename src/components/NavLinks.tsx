@@ -5,8 +5,8 @@ import { usePathname } from "next/navigation";
 
 const LINKS = [
   { href: "/", label: "الرئيسية" },
+  { href: "/news", label: "أخبار" },
   { href: "/library", label: "مكتبتي" },
-  { href: "/profile", label: "ملفي" },
 ];
 
 export function NavLinks() {
