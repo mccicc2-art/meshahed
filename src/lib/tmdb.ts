@@ -1,15 +1,31 @@
 // TMDB API client (v3). Requires TMDB_API_KEY in the environment.
 // Server-only: never expose the key to the browser.
 
+import { cookies } from "next/headers";
+import { LOCALE_COOKIE } from "@/lib/i18n";
+import type { MediaType } from "@/lib/media";
+
+export {
+  IMG,
+  posterUrl,
+  backdropUrl,
+  titleOf,
+  yearOf,
+  GENRES,
+  genreName,
+} from "@/lib/media";
+export type { MediaType } from "@/lib/media";
+
 const BASE = "https://api.themoviedb.org/3";
-export const IMG = "https://image.tmdb.org/t/p";
 
-export function posterUrl(path: string | null, size: "w185" | "w342" | "w500" = "w342") {
-  return path ? `${IMG}/${size}${path}` : null;
-}
-
-export function backdropUrl(path: string | null, size: "w780" | "w1280" = "w1280") {
-  return path ? `${IMG}/${size}${path}` : null;
+// لغة بيانات TMDB تتبع لغة الواجهة المختارة
+async function tmdbLanguage(): Promise<string> {
+  try {
+    const store = await cookies();
+    return store.get(LOCALE_COOKIE)?.value === "en" ? "en-US" : "ar-SA";
+  } catch {
+    return "ar-SA";
+  }
 }
 
 async function tmdb<T>(path: string, params: Record<string, string> = {}): Promise<T> {
@@ -17,7 +33,7 @@ async function tmdb<T>(path: string, params: Record<string, string> = {}): Promi
   if (!key) throw new Error("TMDB_API_KEY is not set");
   const url = new URL(`${BASE}${path}`);
   url.searchParams.set("api_key", key);
-  url.searchParams.set("language", "ar-SA");
+  url.searchParams.set("language", await tmdbLanguage());
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
 
   const res = await fetch(url.toString(), {
@@ -29,8 +45,6 @@ async function tmdb<T>(path: string, params: Record<string, string> = {}): Promi
   }
   return res.json() as Promise<T>;
 }
-
-export type MediaType = "tv" | "movie";
 
 export interface SearchResult {
   id: number;
@@ -155,22 +169,6 @@ export async function discoverByGenres(
     .map((r) => ({ ...r, media_type: mediaType }));
 }
 
-// الأنواع المتاحة للاختيار في صفحة البروفايل (معرّفات TMDB)
-export const GENRES: { id: number; name: string; emoji: string }[] = [
-  { id: 35, name: "كوميدي", emoji: "😂" },
-  { id: 18, name: "دراما", emoji: "🎭" },
-  { id: 10759, name: "أكشن ومغامرة", emoji: "💥" },
-  { id: 9648, name: "غموض", emoji: "🕵️" },
-  { id: 80, name: "جريمة", emoji: "🚔" },
-  { id: 10765, name: "خيال علمي وفانتازيا", emoji: "🚀" },
-  { id: 16, name: "رسوم متحركة", emoji: "🎨" },
-  { id: 99, name: "وثائقي", emoji: "📚" },
-  { id: 10751, name: "عائلي", emoji: "👨‍👩‍👧" },
-  { id: 10766, name: "دراما يومية", emoji: "📺" },
-  { id: 37, name: "غربي", emoji: "🤠" },
-  { id: 10768, name: "حربي وسياسي", emoji: "⚔️" },
-];
-
 export function getTv(id: number): Promise<TvDetails> {
   return tmdb<TvDetails>(`/tv/${id}`);
 }
@@ -181,13 +179,4 @@ export function getMovie(id: number): Promise<MovieDetails> {
 
 export function getSeason(tvId: number, seasonNumber: number): Promise<SeasonDetails> {
   return tmdb<SeasonDetails>(`/tv/${tvId}/season/${seasonNumber}`);
-}
-
-export function titleOf(r: { title?: string; name?: string }): string {
-  return r.title ?? r.name ?? "بدون عنوان";
-}
-
-export function yearOf(r: { first_air_date?: string | null; release_date?: string | null }): string {
-  const d = r.first_air_date ?? r.release_date;
-  return d ? d.slice(0, 4) : "";
 }

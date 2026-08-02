@@ -1,8 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
-import type { MediaType } from "@/lib/tmdb";
+import { LOCALE_COOKIE, normalizeLocale } from "@/lib/i18n";
+import type { MediaType } from "@/lib/media";
 
 async function requireUser() {
   const supabase = await createClient();
@@ -17,6 +19,8 @@ export async function updateProfile(input: {
   nickname: string;
   username?: string;
   avatarUrl: string | null;
+  coverUrl?: string | null;
+  theme?: string;
   favoriteGenres: number[];
 }) {
   const { supabase, user } = await requireUser();
@@ -36,16 +40,46 @@ export async function updateProfile(input: {
     updated_at: new Date().toISOString(),
   };
   if (input.username !== undefined) payload.username = username || null;
+  if (input.coverUrl !== undefined) payload.cover_url = input.coverUrl;
+  if (input.theme !== undefined) payload.theme = input.theme;
 
   const { error } = await supabase.from("profiles").upsert(payload, { onConflict: "id" });
   if (error) {
     // 23505 = تعارض في فهرس فريد (اسم المستخدم محجوز)
-    if (error.code === "23505") throw new Error("اسم المستخدم محجوز، جرّب غيره.");
+    if (error.code === "23505")
+      throw new Error("اسم المستخدم محجوز، جرّب غيره. / Username is taken, try another.");
     throw new Error(error.message);
   }
 
   revalidatePath("/", "layout");
-  revalidatePath("/profile");
+}
+
+// تبديل لغة الواجهة — تُحفظ في كوكي ليقرأها الخادم وتُخزَّن في الحساب أيضاً
+export async function setLocale(value: string) {
+  const locale = normalizeLocale(value);
+
+  const store = await cookies();
+  store.set(LOCALE_COOKIE, locale, {
+    path: "/",
+    maxAge: 60 * 60 * 24 * 365,
+    sameSite: "lax",
+  });
+
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (user) {
+      await supabase
+        .from("profiles")
+        .upsert({ id: user.id, locale }, { onConflict: "id" });
+    }
+  } catch {
+    // الكوكي كافٍ لعمل التبديل حتى لو تعذّر الحفظ في الحساب
+  }
+
+  revalidatePath("/", "layout");
 }
 
 // تفاعل 🔥 على منشور في صفحة الأخبار

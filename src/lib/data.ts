@@ -36,6 +36,8 @@ export interface Profile {
   nickname: string | null;
   username: string | null;
   avatar_url: string | null;
+  cover_url: string | null;
+  theme: string | null;
   favorite_genres: number[];
 }
 
@@ -47,13 +49,25 @@ export async function getProfile(): Promise<Profile | null> {
     } = await supabase.auth.getUser();
     if (!user) return null;
 
-    const { data } = await supabase
+    let { data } = await supabase
       .from("profiles")
-      .select("id, nickname, username, avatar_url, favorite_genres")
+      .select("id, nickname, username, avatar_url, cover_url, theme, favorite_genres")
       .eq("id", user.id)
       .maybeSingle();
 
-    // احتياط: لو الجدول لسه ما اتنشأ أو الصف ناقص، استخدم بيانات حساب Google
+    // احتياط: لو أعمدة المظهر لسه ما انضافت، اقرأ الأعمدة القديمة فقط
+    if (!data) {
+      const legacy = await supabase
+        .from("profiles")
+        .select("id, nickname, username, avatar_url, favorite_genres")
+        .eq("id", user.id)
+        .maybeSingle();
+      if (legacy.data) {
+        data = { ...legacy.data, cover_url: null, theme: null };
+      }
+    }
+
+    // احتياط أخير: لو الجدول لسه ما اتنشأ أو الصف ناقص، استخدم بيانات حساب Google
     if (!data) {
       return {
         id: user.id,
@@ -63,6 +77,8 @@ export async function getProfile(): Promise<Profile | null> {
           null,
         username: user.email?.split("@")[0] ?? null,
         avatar_url: (user.user_metadata?.avatar_url as string | undefined) ?? null,
+        cover_url: null,
+        theme: null,
         favorite_genres: [],
       };
     }
