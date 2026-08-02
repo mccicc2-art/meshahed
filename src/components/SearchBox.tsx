@@ -23,9 +23,9 @@ export function SearchBox({ big = false }: { big?: boolean }) {
           placeholder="ابحث عن مسلسل أو فيلم…"
           className={`w-full rounded-xl bg-surface border border-border outline-none focus:border-accent transition ${
             big ? "px-5 py-4 text-lg" : "px-4 py-2 text-sm"
-          } pr-10`}
+          } pe-10`}
         />
-        <span className={`absolute top-1/2 -translate-y-1/2 right-3 text-muted ${big ? "text-xl" : ""}`}>
+        <span className={`absolute top-1/2 -translate-y-1/2 end-3 text-muted ${big ? "text-xl" : ""}`}>
           🔍
         </span>
       </div>
