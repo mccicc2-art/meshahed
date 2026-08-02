@@ -1,4 +1,4 @@
-import { redirect } from "next/navigation";
+import { redirect, notFound } from "next/navigation";
 import Image from "next/image";
 import { getUser, getFollows, getWatchedForShow } from "@/lib/data";
 import { getTv, getSeason, backdropUrl, posterUrl } from "@/lib/tmdb";
@@ -11,12 +11,23 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
 
   const { id } = await params;
   const tvId = Number(id);
-  const tv = await getTv(tvId);
+  if (!Number.isFinite(tvId)) notFound();
+
+  const tv = await getTv(tvId).catch(() => null);
+  if (!tv) {
+    return (
+      <p className="text-center text-muted py-24">
+        تعذّر تحميل بيانات هذا المسلسل حالياً. حاول مرة أخرى بعد قليل.
+      </p>
+    );
+  }
 
   const realSeasons = tv.seasons.filter((s) => s.season_number >= 1 && s.episode_count > 0);
-  const seasonDetails = await Promise.all(
-    realSeasons.map((s) => getSeason(tvId, s.season_number)),
-  );
+  const seasonDetails = (
+    await Promise.all(
+      realSeasons.map((s) => getSeason(tvId, s.season_number).catch(() => null)),
+    )
+  ).filter((s): s is NonNullable<typeof s> => s !== null);
 
   const seasons: TrackerSeason[] = seasonDetails.map((s) => ({
     season_number: s.season_number,
