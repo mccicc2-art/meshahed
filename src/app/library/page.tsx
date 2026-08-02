@@ -9,7 +9,7 @@ import {
 import { getTv } from "@/lib/tmdb";
 import { getT } from "@/lib/locale";
 import { num, type Dict } from "@/lib/i18n";
-import { LibraryTabs, type LibraryEntry, type LibraryStat } from "@/components/LibraryTabs";
+import { MediaSection, type LibraryEntry } from "@/components/LibraryTabs";
 
 function fmtWatchTime(minutes: number, t: Dict) {
   const h = Math.round(minutes / 60);
@@ -39,7 +39,7 @@ export default async function LibraryPage() {
   const tvFollows = follows.filter((f) => f.media_type === "tv");
   const movieFollows = follows.filter((f) => f.media_type === "movie");
 
-  // نحتاج إجمالي الحلقات لمعرفة المكتمل من الجاري
+  // إجمالي الحلقات لمعرفة المكتمل من الجاري
   const tvTotals = new Map<number, number>();
   await Promise.all(
     tvFollows.map(async (f) => {
@@ -48,7 +48,8 @@ export default async function LibraryPage() {
     }),
   );
 
-  const saved: LibraryEntry[] = [];
+  const shows: LibraryEntry[] = [];
+  const movies: LibraryEntry[] = [];
   const watching: LibraryEntry[] = [];
   const finished: LibraryEntry[] = [];
 
@@ -65,7 +66,7 @@ export default async function LibraryPage() {
       badge: complete ? t.watchedBadge : done > 0 ? t.episodesBadge(done) : undefined,
       progress: total > 0 ? Math.min(100, Math.round((done / total) * 100)) : undefined,
     };
-    saved.push(entry);
+    shows.push(entry);
     if (complete) finished.push(entry);
     else if (done > 0) watching.push(entry);
   }
@@ -83,14 +84,10 @@ export default async function LibraryPage() {
       title: f.title,
       posterPath: f.poster_path,
       kind: "movie",
-      badge: complete
-        ? t.watchedBadge
-        : prog
-          ? t.minuteBadge(prog.position_minutes)
-          : undefined,
+      badge: complete ? t.watchedBadge : prog ? t.minuteBadge(prog.position_minutes) : undefined,
       progress: complete ? 100 : pct,
     };
-    saved.push(entry);
+    movies.push(entry);
     if (complete) finished.push(entry);
     else if (prog) watching.push(entry);
   }
@@ -117,7 +114,7 @@ export default async function LibraryPage() {
   const totalMinutes = epMinutes + watchedMovieIds.size * 110;
   const distinctShows = new Set(watchedEps.map((e) => e.show_tmdb_id)).size;
 
-  const stats: LibraryStat[] = [
+  const stats = [
     { label: t.statsWatchMinutes, value: fmtWatchTime(totalMinutes, t), icon: "⏱️" },
     { label: t.statsWatchedEpisodes, value: num(watchedEps.length, locale), icon: "✅" },
     { label: t.statsStartedShows, value: num(distinctShows, locale), icon: "📺" },
@@ -127,15 +124,49 @@ export default async function LibraryPage() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-12">
       <h1 className="text-2xl font-bold">{t.libraryTitle}</h1>
-      <LibraryTabs
-        locale={locale}
-        watching={watching}
-        saved={saved}
-        finished={finished}
-        stats={stats}
+
+      <MediaSection
+        title={t.libTabWatching}
+        count={watching.length}
+        items={watching}
+        empty={t.libEmptyWatching}
       />
+
+      <MediaSection
+        title={t.libShowsGroup}
+        count={shows.length}
+        items={shows}
+        empty={t.libEmptyFavorites}
+      />
+
+      <MediaSection
+        title={t.libMoviesGroup}
+        count={movies.length}
+        items={movies}
+        empty={t.libEmptyFavorites}
+      />
+
+      <MediaSection
+        title={t.libTabFinished}
+        count={finished.length}
+        items={finished}
+        empty={t.libEmptyFinished}
+      />
+
+      <section>
+        <h2 className="text-lg font-bold mb-4">{t.statsTitle}</h2>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          {stats.map((s) => (
+            <div key={s.label} className="bg-surface border border-border rounded-2xl p-5">
+              <div className="text-3xl mb-2">{s.icon}</div>
+              <div className="text-2xl font-bold">{s.value}</div>
+              <div className="text-sm text-muted mt-1">{s.label}</div>
+            </div>
+          ))}
+        </div>
+      </section>
     </div>
   );
 }
