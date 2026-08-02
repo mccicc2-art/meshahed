@@ -31,6 +31,45 @@ export async function getUser() {
   }
 }
 
+export interface Profile {
+  id: string;
+  nickname: string | null;
+  avatar_url: string | null;
+  favorite_genres: number[];
+}
+
+export async function getProfile(): Promise<Profile | null> {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return null;
+
+    const { data } = await supabase
+      .from("profiles")
+      .select("id, nickname, avatar_url, favorite_genres")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    // احتياط: لو الجدول لسه ما اتنشأ أو الصف ناقص، استخدم بيانات حساب Google
+    if (!data) {
+      return {
+        id: user.id,
+        nickname:
+          (user.user_metadata?.full_name as string | undefined) ??
+          user.email?.split("@")[0] ??
+          null,
+        avatar_url: (user.user_metadata?.avatar_url as string | undefined) ?? null,
+        favorite_genres: [],
+      };
+    }
+    return { ...data, favorite_genres: data.favorite_genres ?? [] } as Profile;
+  } catch {
+    return null;
+  }
+}
+
 export async function getFollows(): Promise<FollowRow[]> {
   const supabase = await createClient();
   const { data } = await supabase

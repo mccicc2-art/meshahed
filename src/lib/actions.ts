@@ -13,6 +13,30 @@ async function requireUser() {
   return { supabase, user };
 }
 
+export async function updateProfile(input: {
+  nickname: string;
+  avatarUrl: string | null;
+  favoriteGenres: number[];
+}) {
+  const { supabase, user } = await requireUser();
+
+  const nickname = input.nickname.trim().slice(0, 40);
+  const { error } = await supabase.from("profiles").upsert(
+    {
+      id: user.id,
+      nickname: nickname || null,
+      avatar_url: input.avatarUrl,
+      favorite_genres: input.favoriteGenres,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "id" },
+  );
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/", "layout");
+  revalidatePath("/profile");
+}
+
 export async function follow(input: {
   tmdbId: number;
   mediaType: MediaType;

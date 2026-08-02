@@ -124,6 +124,38 @@ export async function trending(): Promise<SearchResult[]> {
   );
 }
 
+// اقتراحات حسب الأنواع المفضّلة في البروفايل
+export async function discoverByGenres(
+  genreIds: number[],
+  mediaType: MediaType = "tv",
+): Promise<SearchResult[]> {
+  if (!genreIds.length) return [];
+  const data = await tmdb<{ results: SearchResult[] }>(`/discover/${mediaType}`, {
+    with_genres: genreIds.join("|"),
+    sort_by: "popularity.desc",
+    include_adult: "false",
+  });
+  return data.results
+    .filter((r) => r.poster_path)
+    .map((r) => ({ ...r, media_type: mediaType }));
+}
+
+// الأنواع المتاحة للاختيار في صفحة البروفايل (معرّفات TMDB)
+export const GENRES: { id: number; name: string; emoji: string }[] = [
+  { id: 35, name: "كوميدي", emoji: "😂" },
+  { id: 18, name: "دراما", emoji: "🎭" },
+  { id: 10759, name: "أكشن ومغامرة", emoji: "💥" },
+  { id: 9648, name: "غموض", emoji: "🕵️" },
+  { id: 80, name: "جريمة", emoji: "🚔" },
+  { id: 10765, name: "خيال علمي وفانتازيا", emoji: "🚀" },
+  { id: 16, name: "رسوم متحركة", emoji: "🎨" },
+  { id: 99, name: "وثائقي", emoji: "📚" },
+  { id: 10751, name: "عائلي", emoji: "👨‍👩‍👧" },
+  { id: 10766, name: "دراما يومية", emoji: "📺" },
+  { id: 37, name: "غربي", emoji: "🤠" },
+  { id: 10768, name: "حربي وسياسي", emoji: "⚔️" },
+];
+
 export function getTv(id: number): Promise<TvDetails> {
   return tmdb<TvDetails>(`/tv/${id}`);
 }
