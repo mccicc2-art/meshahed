@@ -5,7 +5,8 @@
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { toggleReaction, follow, unfollow } from "@/lib/actions";
-import { getDict, type Dict, type Locale } from "@/lib/i18n";
+import { getDict, type Locale } from "@/lib/i18n";
+import { whenLabel } from "@/lib/when";
 import type { MediaType } from "@/lib/media";
 
 export interface NewsItem {
@@ -18,19 +19,6 @@ export interface NewsItem {
   backdrop: string | null;
   date: string;
   rating: number | null;
-}
-
-function whenLabel(date: string, t: Dict) {
-  if (!date) return "";
-  const today = new Date().toISOString().slice(0, 10);
-  if (date === today) return t.whenToday;
-  if (date < today) return t.whenAiring;
-
-  const days = Math.ceil((new Date(date).getTime() - new Date(today).getTime()) / 86400000);
-  if (days <= 1) return t.whenTomorrow;
-  if (days <= 7) return t.whenInDays(days);
-  if (days <= 60) return t.whenInWeeks(Math.round(days / 7));
-  return t.whenOn(date);
 }
 
 export function NewsPost({
