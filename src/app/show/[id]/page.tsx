@@ -4,11 +4,13 @@ import { getUser, getFollows, getWatchedForShow } from "@/lib/data";
 import { getTv, getSeason, backdropUrl, posterUrl } from "@/lib/tmdb";
 import { FollowButton } from "@/components/FollowButton";
 import { EpisodeTracker, type TrackerSeason } from "@/components/EpisodeTracker";
+import { getT } from "@/lib/locale";
 
 export default async function ShowPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await getUser();
   if (!user) redirect("/login");
 
+  const { locale, t } = await getT();
   const { id } = await params;
   const tvId = Number(id);
   if (!Number.isFinite(tvId)) notFound();
@@ -16,9 +18,7 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
   const tv = await getTv(tvId).catch(() => null);
   if (!tv) {
     return (
-      <p className="text-center text-muted py-24">
-        تعذّر تحميل بيانات هذا المسلسل حالياً. حاول مرة أخرى بعد قليل.
-      </p>
+      <p className="text-center text-muted py-24">{t.showLoadFailed}</p>
     );
   }
 
@@ -69,9 +69,9 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
           <div className="flex flex-wrap items-center gap-2 text-sm text-muted mt-2">
             {tv.first_air_date && <span>{tv.first_air_date.slice(0, 4)}</span>}
             <span>·</span>
-            <span>{tv.number_of_seasons} موسم</span>
+            <span>{t.seasonsCount(tv.number_of_seasons)}</span>
             <span>·</span>
-            <span>{tv.number_of_episodes} حلقة</span>
+            <span>{t.episodesCount(tv.number_of_episodes)}</span>
             {tv.vote_average > 0 && (
               <>
                 <span>·</span>
@@ -95,10 +95,11 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
               title={tv.name}
               posterPath={tv.poster_path}
               initialFollowing={following}
+              locale={locale}
             />
             {next && next.air_date && (
               <span className="text-xs text-accent-2 bg-accent-2/10 border border-accent-2/30 px-3 py-2 rounded-lg">
-                الحلقة القادمة {next.air_date}
+                {t.nextEpisodeOn(next.air_date)}
               </span>
             )}
           </div>
@@ -106,11 +107,12 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
       </div>
 
       <div className="mt-10">
-        <h2 className="text-lg font-bold mb-4">الحلقات</h2>
+        <h2 className="text-lg font-bold mb-4">{t.episodesHeading}</h2>
         <EpisodeTracker
           showTmdbId={tvId}
           seasons={seasons}
           initialWatched={[...watched]}
+          locale={locale}
         />
       </div>
     </div>
