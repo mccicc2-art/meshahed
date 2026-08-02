@@ -1,4 +1,4 @@
-import { redirect } from "next/navigation";
+import { redirect, notFound } from "next/navigation";
 import Image from "next/image";
 import { getUser, getFollows, getWatchedMovieIds } from "@/lib/data";
 import { getMovie, backdropUrl, posterUrl } from "@/lib/tmdb";
@@ -11,7 +11,16 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
 
   const { id } = await params;
   const movieId = Number(id);
-  const movie = await getMovie(movieId);
+  if (!Number.isFinite(movieId)) notFound();
+
+  const movie = await getMovie(movieId).catch(() => null);
+  if (!movie) {
+    return (
+      <p className="text-center text-muted py-24">
+        تعذّر تحميل بيانات هذا الفيلم حالياً. حاول مرة أخرى بعد قليل.
+      </p>
+    );
+  }
 
   const [follows, watchedIds] = await Promise.all([getFollows(), getWatchedMovieIds()]);
   const following = follows.some((f) => f.tmdb_id === movieId && f.media_type === "movie");
