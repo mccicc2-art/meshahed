@@ -34,6 +34,7 @@ export async function getUser() {
 export interface Profile {
   id: string;
   nickname: string | null;
+  username: string | null;
   avatar_url: string | null;
   favorite_genres: number[];
 }
@@ -48,7 +49,7 @@ export async function getProfile(): Promise<Profile | null> {
 
     const { data } = await supabase
       .from("profiles")
-      .select("id, nickname, avatar_url, favorite_genres")
+      .select("id, nickname, username, avatar_url, favorite_genres")
       .eq("id", user.id)
       .maybeSingle();
 
@@ -60,6 +61,7 @@ export async function getProfile(): Promise<Profile | null> {
           (user.user_metadata?.full_name as string | undefined) ??
           user.email?.split("@")[0] ??
           null,
+        username: user.email?.split("@")[0] ?? null,
         avatar_url: (user.user_metadata?.avatar_url as string | undefined) ?? null,
         favorite_genres: [],
       };

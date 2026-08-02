@@ -15,23 +15,34 @@ async function requireUser() {
 
 export async function updateProfile(input: {
   nickname: string;
+  username?: string;
   avatarUrl: string | null;
   favoriteGenres: number[];
 }) {
   const { supabase, user } = await requireUser();
 
   const nickname = input.nickname.trim().slice(0, 40);
-  const { error } = await supabase.from("profiles").upsert(
-    {
-      id: user.id,
-      nickname: nickname || null,
-      avatar_url: input.avatarUrl,
-      favorite_genres: input.favoriteGenres,
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: "id" },
-  );
-  if (error) throw new Error(error.message);
+  const username = (input.username ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_]/g, "")
+    .slice(0, 24);
+
+  const payload: Record<string, unknown> = {
+    id: user.id,
+    nickname: nickname || null,
+    avatar_url: input.avatarUrl,
+    favorite_genres: input.favoriteGenres,
+    updated_at: new Date().toISOString(),
+  };
+  if (input.username !== undefined) payload.username = username || null;
+
+  const { error } = await supabase.from("profiles").upsert(payload, { onConflict: "id" });
+  if (error) {
+    // 23505 = تعارض في فهرس فريد (اسم المستخدم محجوز)
+    if (error.code === "23505") throw new Error("اسم المستخدم محجوز، جرّب غيره.");
+    throw new Error(error.message);
+  }
 
   revalidatePath("/", "layout");
   revalidatePath("/profile");
