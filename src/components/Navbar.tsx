@@ -46,12 +46,7 @@ export async function Navbar() {
                 />
               </Link>
 
-              {/* على الجوال يُخفى زر الخروج تفادياً لتزاحم الشريط — وهو متاح داخل الإعدادات */}
-              <form action="/auth/signout" method="post" className="hidden sm:block">
-                <button className="text-sm text-muted hover:text-foreground px-2.5 sm:px-3 py-2 rounded-lg hover:bg-surface transition">
-                  {t.signOut}
-                </button>
-              </form>
+              {/* زر الخروج صار داخل إعدادات الحساب فقط */}
             </>
           ) : (
             <Link

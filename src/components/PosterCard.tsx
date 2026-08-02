@@ -9,6 +9,7 @@ export function PosterCard({
   year,
   badge,
   progress,
+  note,
 }: {
   href: string;
   title: string;
@@ -16,6 +17,7 @@ export function PosterCard({
   year?: string;
   badge?: string;
   progress?: number; // 0..100
+  note?: string;
 }) {
   const url = posterUrl(posterPath, "w342");
   return (
@@ -51,6 +53,7 @@ export function PosterCard({
           {title}
         </p>
         {year && <p className="text-xs text-muted mt-0.5">{year}</p>}
+        {note && <p className="text-[11px] text-accent-2/80 mt-0.5 line-clamp-2">{note}</p>}
       </div>
     </Link>
   );
