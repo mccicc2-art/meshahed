@@ -8,20 +8,24 @@ import {
   getWatchedMovieIds,
   getProfile,
   getAllMovieProgress,
+  getFollowStats,
 } from "@/lib/data";
 import {
   getTv,
   getMovie,
   trending,
   discoverByGenres,
+  recommendationsFor,
   titleOf,
   yearOf,
   type TvDetails,
   type SearchResult,
 } from "@/lib/tmdb";
-import { GENRES, genreName } from "@/lib/media";
+import { GENRES } from "@/lib/media";
 import { getT } from "@/lib/locale";
 import { num, type Dict } from "@/lib/i18n";
+import { blendRecommendations, type Candidate } from "@/lib/recommend";
+import { whenLabel } from "@/lib/when";
 import { PosterCard } from "@/components/PosterCard";
 import { Avatar } from "@/components/Avatar";
 
@@ -39,13 +43,15 @@ export default async function HomePage() {
 
   const { locale, t } = await getT();
 
-  const [follows, watchedEps, watchedMovieIds, profile, movieProgress] = await Promise.all([
-    getFollows(),
-    getAllWatchedEpisodes(),
-    getWatchedMovieIds(),
-    getProfile(),
-    getAllMovieProgress(),
-  ]);
+  const [follows, watchedEps, watchedMovieIds, profile, movieProgress, social] =
+    await Promise.all([
+      getFollows(),
+      getAllWatchedEpisodes(),
+      getWatchedMovieIds(),
+      getProfile(),
+      getAllMovieProgress(),
+      getFollowStats(user.id),
+    ]);
 
   const tvFollows = follows.filter((f) => f.media_type === "tv");
   const movieFollows = follows.filter((f) => f.media_type === "movie");
@@ -92,6 +98,16 @@ export default async function HomePage() {
         date: next.air_date,
         badge: `S${next.season_number} · E${next.episode_number}`,
       });
+    } else if (tv.first_air_date && tv.first_air_date > today) {
+      // مسلسل في المفضلة لم يُعرض بعد
+      upcoming.push({
+        key: `tv-${tv.id}`,
+        href: `/show/${tv.id}`,
+        title: tv.name,
+        posterPath: tv.poster_path,
+        date: tv.first_air_date,
+        badge: t.typeSeries,
+      });
     }
   }
 
@@ -126,20 +142,79 @@ export default async function HomePage() {
   const favGenres = profile?.favorite_genres ?? [];
   const followedIds = new Set(follows.map((f) => f.tmdb_id));
 
-  const [trend, suggestedRaw] = await Promise.all([
+  // ===== الذوق المستنتَج: أكثر الأنواع تكراراً فيما تتابعه فعلاً =====
+  const genreTally = new Map<number, { name: string; count: number }>();
+  for (const d of [...tvDetails, ...movieDetails]) {
+    for (const g of d?.genres ?? []) {
+      const prev = genreTally.get(g.id);
+      genreTally.set(g.id, { name: g.name, count: (prev?.count ?? 0) + 1 });
+    }
+  }
+  // الأنواع المختارة يدوياً تُحسب بوزن إضافي حتى تبقى ظاهرة
+  for (const id of favGenres) {
+    const known = GENRES.find((g) => g.id === id);
+    const prev = genreTally.get(id);
+    genreTally.set(id, {
+      name: prev?.name ?? (locale === "en" ? known?.en : known?.ar) ?? "",
+      count: (prev?.count ?? 0) + 1.5,
+    });
+  }
+  const tasteGenres = [...genreTally.entries()]
+    .filter(([, v]) => v.name)
+    .sort((a, b) => b[1].count - a[1].count)
+    .slice(0, 5)
+    .map(([id, v]) => ({ id, name: v.name, emoji: GENRES.find((g) => g.id === id)?.emoji ?? "🎞️" }));
+
+  // ===== بذور محرّك الاقتراحات =====
+  const titleById = new Map<number, string>(follows.map((f) => [f.tmdb_id, f.title]));
+
+  // آخر ما شاهدته: أحدث الحلقات المؤشَّرة → أحدث المسلسلات
+  const recentShowIds: number[] = [];
+  for (const w of [...watchedEps].sort((a, b) => b.watched_at.localeCompare(a.watched_at))) {
+    if (!recentShowIds.includes(w.show_tmdb_id)) recentShowIds.push(w.show_tmdb_id);
+    if (recentShowIds.length >= 2) break;
+  }
+
+  // ما تتابعه: أحدث ما أضفته ولم يدخل ضمن "آخر ما شاهدت"
+  const followSeeds = follows
+    .filter((f) => !recentShowIds.includes(f.tmdb_id))
+    .slice(0, 3);
+
+  const [trend, genreDiscover, followRecs, recentRecs] = await Promise.all([
     trending().catch(() => [] as SearchResult[]),
     favGenres.length
       ? discoverByGenres(favGenres, "tv").catch(() => [] as SearchResult[])
       : Promise.resolve([] as SearchResult[]),
+    Promise.all(
+      followSeeds.map((f) =>
+        recommendationsFor(f.media_type, f.tmdb_id)
+          .then((rs) => ({ seed: f.title, rs }))
+          .catch(() => ({ seed: f.title, rs: [] as SearchResult[] })),
+      ),
+    ),
+    Promise.all(
+      recentShowIds.map((id) =>
+        recommendationsFor("tv", id)
+          .then((rs) => ({ seed: titleById.get(id) ?? "", rs }))
+          .catch(() => ({ seed: titleById.get(id) ?? "", rs: [] as SearchResult[] })),
+      ),
+    ),
   ]);
 
-  const suggested = suggestedRaw.filter((r) => !followedIds.has(r.id)).slice(0, 12);
+  const candidates: Candidate[] = [];
+  for (const { seed, rs } of followRecs)
+    rs.forEach((r, i) => candidates.push({ result: r, source: "follows", seedTitle: seed, rank: i }));
+  for (const { seed, rs } of recentRecs)
+    rs.forEach((r, i) => candidates.push({ result: r, source: "recent", seedTitle: seed, rank: i }));
+  genreDiscover.forEach((r, i) => candidates.push({ result: r, source: "genres", rank: i }));
+
+  const excluded = new Set<number>([...followedIds, ...watchedMovieIds]);
+  const suggested = blendRecommendations(candidates, { exclude: excluded, limit: 12 });
   const showTrending = empty || (!suggested.length && continueWatching.length === 0);
 
   const displayName = profile?.nickname || user.email?.split("@")[0] || "";
   const epMinutes = watchedEps.reduce((s, e) => s + (e.runtime ?? 40), 0);
   const totalMinutes = epMinutes + watchedMovieIds.size * 110;
-  const favNames = GENRES.filter((g) => favGenres.includes(g.id));
 
   const stats = [
     { label: t.statWatchTime, value: fmtWatchTime(totalMinutes, t), icon: "⏱️" },
@@ -181,20 +256,40 @@ export default async function HomePage() {
           <div className="mt-3">
             <h1 className="text-xl sm:text-2xl font-bold truncate">{displayName}</h1>
             {profile?.username && (
-              <p className="text-muted text-sm mt-0.5" dir="ltr">
+              <Link
+                href={`/u/${profile.username}`}
+                className="text-muted text-sm mt-0.5 hover:text-accent transition inline-block"
+                dir="ltr"
+              >
                 @{profile.username}
-              </p>
+              </Link>
             )}
+
+            <div className="flex items-center gap-5 mt-2 text-sm">
+              <span>
+                <b>{num(social.followers, locale)}</b>{" "}
+                <span className="text-muted">{t.followersLabel}</span>
+              </span>
+              <span>
+                <b>{num(social.following, locale)}</b>{" "}
+                <span className="text-muted">{t.followingLabel}</span>
+              </span>
+              {profile?.username && (
+                <Link href={`/u/${profile.username}`} className="text-accent hover:brightness-110">
+                  {t.publicProfileLink} ›
+                </Link>
+              )}
+            </div>
           </div>
 
-          {favNames.length > 0 && (
+          {tasteGenres.length > 0 && (
             <div className="flex flex-wrap gap-2 mt-4">
-              {favNames.map((g) => (
+              {tasteGenres.map((g) => (
                 <span
                   key={g.id}
                   className="text-xs bg-surface-2 border border-border px-2.5 py-1 rounded-full"
                 >
-                  {g.emoji} {genreName(g, locale)}
+                  {g.emoji} {g.name}
                 </span>
               ))}
             </div>
@@ -262,7 +357,7 @@ export default async function HomePage() {
               href={u.href}
               title={u.title}
               posterPath={u.posterPath}
-              year={u.date}
+              year={whenLabel(u.date, t)}
               badge={u.badge}
             />
           ))}
@@ -270,17 +365,28 @@ export default async function HomePage() {
       )}
 
       {suggested.length > 0 && (
-        <Section title={t.suggestedForYou}>
-          {suggested.map((r) => (
-            <PosterCard
-              key={`sug-${r.id}`}
-              href={`/show/${r.id}`}
-              title={titleOf(r)}
-              posterPath={r.poster_path}
-              year={yearOf(r)}
-            />
-          ))}
-        </Section>
+        <section>
+          <h2 className="text-lg font-bold">{t.suggestedForYou}</h2>
+          <p className="text-xs text-muted mt-1 mb-4">{t.suggestedSubtitle}</p>
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-4">
+            {suggested.map((s) => (
+              <PosterCard
+                key={`sug-${s.result.media_type}-${s.result.id}`}
+                href={`/${s.result.media_type === "movie" ? "movie" : "show"}/${s.result.id}`}
+                title={titleOf(s.result)}
+                posterPath={s.result.poster_path}
+                year={yearOf(s.result)}
+                note={
+                  s.source === "follows" && s.seedTitle
+                    ? t.recoBecauseFollow(s.seedTitle)
+                    : s.source === "recent" && s.seedTitle
+                      ? t.recoBecauseWatched(s.seedTitle)
+                      : t.recoBecauseGenre
+                }
+              />
+            ))}
+          </div>
+        </section>
       )}
 
       {favGenres.length === 0 && !empty && (
@@ -306,12 +412,6 @@ export default async function HomePage() {
           ))}
         </Section>
       )}
-
-      <form action="/auth/signout" method="post" className="sm:hidden">
-        <button className="w-full py-3 rounded-xl border border-border text-muted hover:text-red-300 hover:border-red-400/60 transition">
-          {t.signOutFull}
-        </button>
-      </form>
     </div>
   );
 }
