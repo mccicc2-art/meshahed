@@ -6,16 +6,16 @@ import { usePathname } from "next/navigation";
 const LINKS = [
   { href: "/", label: "الرئيسية" },
   { href: "/library", label: "مكتبتي" },
-  { href: "/stats", label: "الإحصائيات" },
+  { href: "/profile", label: "ملفي" },
 ];
 
 export function NavLinks() {
   const pathname = usePathname();
 
   return (
-    <nav className="flex items-center gap-1 text-sm">
+    <nav className="hidden md:flex items-center gap-1 text-sm">
       {LINKS.map((l) => {
-        const active = pathname === l.href;
+        const active = l.href === "/" ? pathname === "/" : pathname.startsWith(l.href);
         return (
           <Link
             key={l.href}
