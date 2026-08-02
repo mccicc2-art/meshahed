@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
@@ -5,8 +6,18 @@ import {
   getFollows,
   getAllWatchedEpisodes,
   getWatchedMovieIds,
+  getProfile,
 } from "@/lib/data";
-import { getTv, trending, titleOf, yearOf, posterUrl, type TvDetails } from "@/lib/tmdb";
+import {
+  getTv,
+  trending,
+  discoverByGenres,
+  titleOf,
+  yearOf,
+  posterUrl,
+  type TvDetails,
+  type SearchResult,
+} from "@/lib/tmdb";
 import { PosterCard } from "@/components/PosterCard";
 import { SearchBox } from "@/components/SearchBox";
 
@@ -14,10 +25,11 @@ export default async function HomePage() {
   const user = await getUser();
   if (!user) redirect("/login");
 
-  const [follows, watchedEps, watchedMovieIds] = await Promise.all([
+  const [follows, watchedEps, watchedMovieIds, profile] = await Promise.all([
     getFollows(),
     getAllWatchedEpisodes(),
     getWatchedMovieIds(),
+    getProfile(),
   ]);
 
   const tvFollows = follows.filter((f) => f.media_type === "tv");
@@ -54,18 +66,35 @@ export default async function HomePage() {
   upcoming.sort((a, b) => a.date.localeCompare(b.date));
 
   const unwatchedMovies = movieFollows.filter((m) => !watchedMovieIds.has(m.tmdb_id));
-  const trend = follows.length === 0 ? await trending() : [];
   const empty = follows.length === 0;
+
+  // TMDB خارجي — أي خلل فيه يجب ألا يُسقط الصفحة الرئيسية بالكامل
+  const favGenres = profile?.favorite_genres ?? [];
+  const followedIds = new Set(follows.map((f) => f.tmdb_id));
+
+  const [trend, suggestedRaw] = await Promise.all([
+    trending().catch(() => [] as SearchResult[]),
+    favGenres.length
+      ? discoverByGenres(favGenres, "tv").catch(() => [] as SearchResult[])
+      : Promise.resolve([] as SearchResult[]),
+  ]);
+
+  const suggested = suggestedRaw.filter((r) => !followedIds.has(r.id)).slice(0, 12);
+  const showTrending = empty || (!suggested.length && continueWatching.length === 0);
 
   return (
     <div className="space-y-10">
-      <div className="max-w-xl mx-auto sm:hidden">
-        <SearchBox big />
+      <div className="max-w-xl mx-auto md:hidden">
+        <Suspense fallback={null}>
+          <SearchBox big />
+        </Suspense>
       </div>
 
       {empty && (
         <section className="text-center py-6">
-          <h1 className="text-2xl font-bold mb-2">أهلاً بك في مشاهد 👋</h1>
+          <h1 className="text-2xl font-bold mb-2">
+            أهلاً {profile?.nickname ? profile.nickname : "بك"} في مشاهد 👋
+          </h1>
           <p className="text-muted mb-6">ابدأ بمتابعة مسلسل أو فيلم لتظهر هنا.</p>
         </section>
       )}
@@ -137,7 +166,30 @@ export default async function HomePage() {
         </Section>
       )}
 
-      {trend.length > 0 && (
+      {suggested.length > 0 && (
+        <Section title="✨ مقترح لك حسب ذوقك">
+          {suggested.map((r) => (
+            <PosterCard
+              key={`sug-${r.id}`}
+              href={`/show/${r.id}`}
+              title={titleOf(r)}
+              posterPath={r.poster_path}
+              year={yearOf(r)}
+            />
+          ))}
+        </Section>
+      )}
+
+      {favGenres.length === 0 && !empty && (
+        <Link
+          href="/profile"
+          className="block text-center text-sm text-muted hover:text-accent border border-dashed border-border rounded-xl py-4 transition"
+        >
+          حدّد أنواعك المفضّلة في الملف الشخصي لتظهر لك اقتراحات على ذوقك ←
+        </Link>
+      )}
+
+      {showTrending && trend.length > 0 && (
         <Section title="🔥 رائج هذا الأسبوع">
           {trend.slice(0, 12).map((r) => (
             <PosterCard
