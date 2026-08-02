@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { posterUrl } from "@/lib/tmdb";
+import { posterUrl } from "@/lib/media";
 
 export function PosterCard({
   href,

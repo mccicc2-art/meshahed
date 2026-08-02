@@ -5,7 +5,8 @@
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { toggleReaction, follow, unfollow } from "@/lib/actions";
-import type { MediaType } from "@/lib/tmdb";
+import { getDict, type Dict, type Locale } from "@/lib/i18n";
+import type { MediaType } from "@/lib/media";
 
 export interface NewsItem {
   id: number;
@@ -19,30 +20,33 @@ export interface NewsItem {
   rating: number | null;
 }
 
-function whenLabel(date: string) {
+function whenLabel(date: string, t: Dict) {
   if (!date) return "";
   const today = new Date().toISOString().slice(0, 10);
-  if (date === today) return "اليوم";
-  if (date < today) return "يُعرض الآن";
+  if (date === today) return t.whenToday;
+  if (date < today) return t.whenAiring;
 
   const days = Math.ceil((new Date(date).getTime() - new Date(today).getTime()) / 86400000);
-  if (days <= 1) return "غداً";
-  if (days <= 7) return `بعد ${days} أيام`;
-  if (days <= 60) return `بعد ${Math.round(days / 7)} أسابيع`;
-  return `في ${date}`;
+  if (days <= 1) return t.whenTomorrow;
+  if (days <= 7) return t.whenInDays(days);
+  if (days <= 60) return t.whenInWeeks(Math.round(days / 7));
+  return t.whenOn(date);
 }
 
 export function NewsPost({
   item,
+  locale,
   initialCount,
   initialReacted,
   initialFollowing,
 }: {
   item: NewsItem;
+  locale: Locale;
   initialCount: number;
   initialReacted: boolean;
   initialFollowing: boolean;
 }) {
+  const t = getDict(locale);
   const [count, setCount] = useState(initialCount);
   const [reacted, setReacted] = useState(initialReacted);
   const [saved, setSaved] = useState(initialFollowing);
@@ -100,11 +104,11 @@ export function NewsPost({
           <span className="w-full h-full grid place-items-center text-4xl text-muted">🎬</span>
         )}
         <span className="absolute top-3 start-3 text-[11px] font-semibold bg-black/75 text-accent px-2.5 py-1 rounded-full">
-          {item.mediaType === "tv" ? "مسلسل" : "فيلم"}
+          {item.mediaType === "tv" ? t.typeSeries : t.typeMovie}
         </span>
         {item.date && (
           <span className="absolute top-3 end-3 text-[11px] font-semibold bg-black/75 text-accent-2 px-2.5 py-1 rounded-full">
-            {whenLabel(item.date)}
+            {whenLabel(item.date, t)}
           </span>
         )}
       </Link>
@@ -115,9 +119,7 @@ export function NewsPost({
             {item.title}
           </h3>
         </Link>
-        {item.rating ? (
-          <p className="text-xs text-accent mt-1">★ {item.rating}</p>
-        ) : null}
+        {item.rating ? <p className="text-xs text-accent mt-1">★ {item.rating}</p> : null}
         {item.overview && (
           <p className="text-sm text-muted leading-relaxed mt-2 line-clamp-3">{item.overview}</p>
         )}
@@ -145,7 +147,7 @@ export function NewsPost({
                 : "bg-surface-2 border-border text-muted hover:border-accent-2/60"
             }`}
           >
-            {saved ? "★ في المفضلة" : "☆ أضف للمفضلة"}
+            {saved ? t.inFavorites : t.addToFavorites}
           </button>
         </div>
       </div>

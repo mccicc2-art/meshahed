@@ -10,11 +10,13 @@ export function Avatar({
   name,
   size = 36,
   className = "",
+  alt = "Profile photo",
 }: {
   src: string | null | undefined;
   name?: string | null;
   size?: number;
   className?: string;
+  alt?: string;
 }) {
   const style = { width: size, height: size };
 
@@ -22,7 +24,7 @@ export function Avatar({
     return (
       <img
         src={src}
-        alt={name ?? "الصورة الشخصية"}
+        alt={name ?? alt}
         style={style}
         className={`rounded-full object-cover border border-border bg-surface-2 ${className}`}
       />
@@ -32,8 +34,8 @@ export function Avatar({
   return (
     <span
       style={{ ...style, fontSize: Math.max(12, size * 0.42) }}
-      className={`rounded-full grid place-items-center font-bold bg-accent text-[#1a1200] border border-border select-none ${className}`}
-      aria-label={name ?? "الصورة الشخصية"}
+      className={`rounded-full grid place-items-center font-bold bg-accent text-[color:var(--on-accent)] border border-border select-none ${className}`}
+      aria-label={name ?? alt}
     >
       {initialOf(name)}
     </span>

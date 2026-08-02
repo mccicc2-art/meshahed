@@ -3,20 +3,25 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { updateProfile } from "@/lib/actions";
+import { getDict, type Locale } from "@/lib/i18n";
+import { LanguageSwitch } from "./LanguageSwitch";
 
 export function AccountSettings({
   email,
+  locale,
   initialUsername,
   initialNickname,
   avatarUrl,
   genres,
 }: {
   email: string;
+  locale: Locale;
   initialUsername: string;
   initialNickname: string;
   avatarUrl: string | null;
   genres: number[];
 }) {
+  const t = getDict(locale);
   const router = useRouter();
   const [username, setUsername] = useState(initialUsername);
   const [nickname, setNickname] = useState(initialNickname);
@@ -31,7 +36,7 @@ export function AccountSettings({
     setError(null);
     setSaved(false);
     if (usernameInvalid) {
-      setError("اسم المستخدم يجب أن يكون ٣ أحرف على الأقل.");
+      setError(t.usernameShort);
       return;
     }
     start(async () => {
@@ -52,11 +57,16 @@ export function AccountSettings({
 
   return (
     <div className="space-y-6">
+      {/* لغة الواجهة */}
       <section className="bg-surface border border-border rounded-2xl p-6">
-        <h2 className="font-bold mb-1">اسم المستخدم</h2>
-        <p className="text-sm text-muted mb-4">
-          معرّفك الفريد داخل التطبيق. أحرف إنجليزية وأرقام و _ فقط.
-        </p>
+        <h2 className="font-bold mb-1">{t.languageSection}</h2>
+        <p className="text-sm text-muted mb-4">{t.languageHint}</p>
+        <LanguageSwitch locale={locale} />
+      </section>
+
+      <section className="bg-surface border border-border rounded-2xl p-6">
+        <h2 className="font-bold mb-1">{t.usernameSection}</h2>
+        <p className="text-sm text-muted mb-4">{t.usernameHint}</p>
         <div className="relative">
           <span className="absolute top-1/2 -translate-y-1/2 start-4 text-muted">@</span>
           <input
@@ -73,16 +83,14 @@ export function AccountSettings({
         </div>
         {cleaned !== username.trim().toLowerCase() && username.trim() !== "" && (
           <p className="text-xs text-muted mt-2" dir="ltr">
-            سيُحفظ كـ: @{cleaned || "—"}
+            {t.willSaveAs(cleaned || "—")}
           </p>
         )}
       </section>
 
       <section className="bg-surface border border-border rounded-2xl p-6">
-        <h2 className="font-bold mb-1">الاسم الظاهر</h2>
-        <p className="text-sm text-muted mb-4">
-          الاسم الذي يظهر تحت صورتك في الملف الشخصي.
-        </p>
+        <h2 className="font-bold mb-1">{t.displayNameSection}</h2>
+        <p className="text-sm text-muted mb-4">{t.displayNameHint}</p>
         <input
           value={nickname}
           onChange={(e) => {
@@ -90,14 +98,14 @@ export function AccountSettings({
             setSaved(false);
           }}
           maxLength={40}
-          placeholder="مثال: أحمد الحربي"
+          placeholder={t.displayNamePlaceholder}
           className="w-full rounded-xl bg-surface-2 border border-border px-4 py-3 outline-none focus:border-accent transition"
         />
       </section>
 
       <section className="bg-surface border border-border rounded-2xl p-6">
-        <h2 className="font-bold mb-1">البريد الإلكتروني</h2>
-        <p className="text-sm text-muted mb-3">مرتبط بحساب Google ولا يمكن تغييره من هنا.</p>
+        <h2 className="font-bold mb-1">{t.emailSection}</h2>
+        <p className="text-sm text-muted mb-3">{t.emailHint}</p>
         <p className="rounded-xl bg-surface-2 border border-border px-4 py-3 text-muted" dir="ltr">
           {email}
         </p>
@@ -113,16 +121,16 @@ export function AccountSettings({
         <button
           onClick={save}
           disabled={pending}
-          className="px-6 py-3 rounded-xl bg-accent text-[#1a1200] font-semibold hover:brightness-110 transition disabled:opacity-60"
+          className="px-6 py-3 rounded-xl bg-accent text-[color:var(--on-accent)] font-semibold hover:brightness-110 transition disabled:opacity-60"
         >
-          {pending ? "جارٍ الحفظ…" : "حفظ الإعدادات"}
+          {pending ? t.saving : t.saveSettings}
         </button>
-        {saved && <span className="text-sm text-accent-2">✓ تم الحفظ</span>}
+        {saved && <span className="text-sm text-accent-2">{t.savedOk}</span>}
       </div>
 
       <form action="/auth/signout" method="post" className="pt-4 border-t border-border">
         <button className="text-sm text-muted hover:text-red-300 transition">
-          تسجيل الخروج من الحساب
+          {t.signOutAccount}
         </button>
       </form>
     </div>

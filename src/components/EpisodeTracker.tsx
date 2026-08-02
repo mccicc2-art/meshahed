@@ -3,6 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { toggleEpisode, setSeasonWatched, watchUpTo } from "@/lib/actions";
 import { episodeKey } from "@/lib/keys";
+import { getDict, type Locale } from "@/lib/i18n";
 
 export interface TrackerEpisode {
   episode_number: number;
@@ -27,11 +28,14 @@ export function EpisodeTracker({
   showTmdbId,
   seasons,
   initialWatched,
+  locale,
 }: {
   showTmdbId: number;
   seasons: TrackerSeason[];
   initialWatched: string[];
+  locale: Locale;
 }) {
+  const t = getDict(locale);
   const [watched, setWatched] = useState<Set<string>>(new Set(initialWatched));
   const [, start] = useTransition();
 
@@ -151,17 +155,13 @@ export function EpisodeTracker({
     <div>
       <div className="mb-5">
         <div className="flex items-center justify-between text-sm mb-2">
-          <span className="text-muted">
-            شاهدت {watchedAired} من {airedEpisodes.length} حلقة
-          </span>
+          <span className="text-muted">{t.watchedOf(watchedAired, airedEpisodes.length)}</span>
           <span className="font-semibold text-accent-2">{progress}%</span>
         </div>
         <div className="h-2 rounded-full bg-surface-2 overflow-hidden">
           <div className="h-full bg-accent-2 transition-all" style={{ width: `${progress}%` }} />
         </div>
-        <p className="text-xs text-muted mt-2">
-          💡 تأشير أي حلقة يعتبر كل الحلقات السابقة مشاهَدة تلقائياً.
-        </p>
+        <p className="text-xs text-muted mt-2">{t.cascadeHint}</p>
       </div>
 
       <div className="space-y-3">
@@ -174,15 +174,18 @@ export function EpisodeTracker({
           const isOpen = open === s.season_number;
 
           return (
-            <div key={s.season_number} className="rounded-xl border border-border bg-surface overflow-hidden">
+            <div
+              key={s.season_number}
+              className="rounded-xl border border-border bg-surface overflow-hidden"
+            >
               <div className="flex items-center gap-3 p-4">
                 <button
                   onClick={() => setOpen(isOpen ? null : s.season_number)}
-                  className="flex-1 flex items-center gap-3 text-right"
+                  className="flex-1 flex items-center gap-3 text-start"
                 >
                   <span className="text-muted">{isOpen ? "▾" : "▸"}</span>
-                  <span className="font-semibold">{s.name}</span>
-                  <span className="text-xs text-muted">
+                  <span className="font-semibold">{s.name || t.seasonLabel(s.season_number)}</span>
+                  <span className="text-xs text-muted" dir="ltr">
                     {seasonWatched}/{aired.length}
                   </span>
                 </button>
@@ -195,7 +198,7 @@ export function EpisodeTracker({
                         : "border-accent-2/50 text-accent-2 hover:bg-accent-2/10"
                     }`}
                   >
-                    {allWatched ? "إلغاء الموسم" : "الموسم كامل ✓"}
+                    {allWatched ? t.seasonUndo : t.seasonAll}
                   </button>
                 )}
               </div>
@@ -205,21 +208,21 @@ export function EpisodeTracker({
                   {s.episodes.map((e) => {
                     const key = episodeKey(s.season_number, e.episode_number);
                     const isWatched = watched.has(key);
-                    const aired = hasAired(e.air_date);
+                    const epAired = hasAired(e.air_date);
                     return (
                       <li
                         key={e.episode_number}
-                        className={`flex items-center gap-3 px-4 py-3 ${!aired ? "opacity-50" : ""}`}
+                        className={`flex items-center gap-3 px-4 py-3 ${!epAired ? "opacity-50" : ""}`}
                       >
                         <button
-                          disabled={!aired}
+                          disabled={!epAired}
                           onClick={() => toggleOne(s.season_number, e)}
                           className={`shrink-0 w-6 h-6 rounded-md border grid place-items-center transition ${
                             isWatched
-                              ? "bg-accent-2 border-accent-2 text-[#062015]"
+                              ? "bg-accent-2 border-accent-2 text-[color:var(--on-accent-2)]"
                               : "border-border hover:border-accent-2"
-                          } ${!aired ? "cursor-not-allowed" : ""}`}
-                          aria-label="تأشير كمشاهَد"
+                          } ${!epAired ? "cursor-not-allowed" : ""}`}
+                          aria-label={t.markWatchedAria}
                         >
                           {isWatched ? "✓" : ""}
                         </button>
@@ -229,7 +232,7 @@ export function EpisodeTracker({
                           </p>
                           {e.air_date && (
                             <p className="text-xs text-muted">
-                              {aired ? e.air_date : `يُعرض ${e.air_date}`}
+                              {epAired ? e.air_date : t.airsOn(e.air_date)}
                             </p>
                           )}
                         </div>

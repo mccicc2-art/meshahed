@@ -3,11 +3,12 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { saveMovieProgress } from "@/lib/actions";
+import { getDict, type Dict, type Locale } from "@/lib/i18n";
 
-function fmt(min: number) {
+function fmt(min: number, t: Dict) {
   const h = Math.floor(min / 60);
   const m = min % 60;
-  return h > 0 ? `${h}:${String(m).padStart(2, "0")}` : `${m} د`;
+  return h > 0 ? `${h}:${String(m).padStart(2, "0")}` : `${m} ${t.minuteShort}`;
 }
 
 export function MovieProgress({
@@ -17,6 +18,7 @@ export function MovieProgress({
   posterPath,
   initialPosition,
   watched,
+  locale,
 }: {
   movieTmdbId: number;
   runtime: number | null;
@@ -24,7 +26,9 @@ export function MovieProgress({
   posterPath: string | null;
   initialPosition: number;
   watched: boolean;
+  locale: Locale;
 }) {
+  const t = getDict(locale);
   const router = useRouter();
   const max = runtime && runtime > 0 ? runtime : 240;
   const [pos, setPos] = useState(Math.min(initialPosition, max));
@@ -64,15 +68,15 @@ export function MovieProgress({
   return (
     <div className="bg-surface border border-border rounded-2xl p-5 mt-6 max-w-xl">
       <div className="flex items-baseline justify-between mb-3 gap-3 flex-wrap">
-        <h3 className="font-bold">أين توقّفت؟</h3>
+        <h3 className="font-bold">{t.whereStopped}</h3>
         <span className="text-sm text-muted">
           {pos > 0 ? (
             <>
-              الدقيقة <span className="text-accent-2 font-semibold">{fmt(pos)}</span>
-              {runtime ? ` من ${fmt(max)} · باقي ${fmt(remaining)}` : ""}
+              {t.atMinute} <span className="text-accent-2 font-semibold">{fmt(pos, t)}</span>
+              {runtime ? t.outOfRemaining(fmt(max, t), fmt(remaining, t)) : ""}
             </>
           ) : (
-            "لم تبدأ بعد"
+            t.notStartedYet
           )}
         </span>
       </div>
@@ -92,7 +96,7 @@ export function MovieProgress({
           setSaved(false);
         }}
         className="w-full accent-[color:var(--accent-2)] mb-4"
-        aria-label="موضع التوقف بالدقائق"
+        aria-label={t.positionAria}
       />
 
       <div className="flex flex-wrap items-center gap-2 mb-4">
@@ -102,8 +106,9 @@ export function MovieProgress({
             type="button"
             onClick={() => bump(d)}
             className="px-3 py-1.5 rounded-lg bg-surface-2 border border-border text-sm hover:border-accent transition"
+            dir="ltr"
           >
-            {d > 0 ? `+${d}` : d} د
+            {d > 0 ? `+${d}` : d} {t.minuteShort}
           </button>
         ))}
         <div className="flex items-center gap-2 ms-auto">
@@ -118,21 +123,21 @@ export function MovieProgress({
               setSaved(false);
             }}
             className="w-20 rounded-lg bg-surface-2 border border-border px-3 py-1.5 text-sm outline-none focus:border-accent"
-            aria-label="الدقيقة"
+            aria-label={t.minuteWord}
           />
-          <span className="text-sm text-muted">دقيقة</span>
+          <span className="text-sm text-muted">{t.minuteWord}</span>
         </div>
       </div>
 
-      {error && <p className="text-sm text-red-300 mb-3">تعذّر الحفظ: {error}</p>}
+      {error && <p className="text-sm text-red-300 mb-3">{t.errSave + error}</p>}
 
       <div className="flex items-center gap-3 flex-wrap">
         <button
           onClick={save}
           disabled={pending}
-          className="px-5 py-2.5 rounded-xl bg-accent-2 text-[#062015] font-semibold text-sm hover:brightness-110 transition disabled:opacity-60"
+          className="px-5 py-2.5 rounded-xl bg-accent-2 text-[color:var(--on-accent-2)] font-semibold text-sm hover:brightness-110 transition disabled:opacity-60"
         >
-          {pending ? "جارٍ الحفظ…" : "حفظ موضع التوقف"}
+          {pending ? t.saving : t.saveProgress}
         </button>
         {runtime && (
           <button
@@ -143,10 +148,10 @@ export function MovieProgress({
             }}
             className="text-sm text-muted hover:text-foreground px-3 py-2 rounded-lg hover:bg-surface-2 transition"
           >
-            أنهيت الفيلم
+            {t.finishedMovie}
           </button>
         )}
-        {saved && <span className="text-sm text-accent-2">✓ تم الحفظ</span>}
+        {saved && <span className="text-sm text-accent-2">{t.savedOk}</span>}
       </div>
     </div>
   );

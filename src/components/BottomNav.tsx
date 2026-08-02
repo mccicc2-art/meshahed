@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { getDict, type Locale } from "@/lib/i18n";
 
 function IconHome({ active }: { active: boolean }) {
   return (
@@ -77,15 +78,16 @@ function IconNews({ active }: { active: boolean }) {
   );
 }
 
-const TABS = [
-  { href: "/", label: "الرئيسية", Icon: IconHome },
-  { href: "/news", label: "أخبار", Icon: IconNews },
-  { href: "/library", label: "مكتبتي", Icon: IconLibrary },
-];
-
-export function BottomNav() {
+export function BottomNav({ locale }: { locale: Locale }) {
   const pathname = usePathname();
+  const t = getDict(locale);
   if (pathname === "/login") return null;
+
+  const tabs = [
+    { href: "/", label: t.navHome, Icon: IconHome },
+    { href: "/news", label: t.navNews, Icon: IconNews },
+    { href: "/library", label: t.navLibrary, Icon: IconLibrary },
+  ];
 
   const isActive = (href: string) =>
     href === "/" ? pathname === "/" : pathname.startsWith(href);
@@ -95,13 +97,12 @@ export function BottomNav() {
       <div
         className="flex items-center justify-center gap-3 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3"
         style={{
-          background:
-            "linear-gradient(to top, var(--background) 45%, transparent)",
+          background: "linear-gradient(to top, var(--background) 45%, transparent)",
         }}
       >
         {/* كبسولة التبويبات */}
         <nav className="pointer-events-auto flex items-center gap-1 rounded-full border border-border bg-[color:var(--surface)]/95 backdrop-blur px-2 py-1.5 shadow-2xl">
-          {TABS.map(({ href, label, Icon }) => {
+          {tabs.map(({ href, label, Icon }) => {
             const active = isActive(href);
             return (
               <Link
@@ -124,10 +125,10 @@ export function BottomNav() {
         {/* زر البحث الدائري */}
         <Link
           href="/search"
-          aria-label="بحث"
+          aria-label={t.navSearch}
           className={`pointer-events-auto shrink-0 grid place-items-center w-[52px] h-[52px] rounded-full border shadow-2xl transition ${
             pathname.startsWith("/search")
-              ? "bg-accent text-[#1a1200] border-accent"
+              ? "bg-accent text-[color:var(--on-accent)] border-accent"
               : "bg-[color:var(--surface)]/95 backdrop-blur border-border text-foreground active:bg-surface-2"
           }`}
         >

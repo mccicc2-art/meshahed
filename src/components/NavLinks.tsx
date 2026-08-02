@@ -2,19 +2,21 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { getDict, type Locale } from "@/lib/i18n";
 
-const LINKS = [
-  { href: "/", label: "الرئيسية" },
-  { href: "/news", label: "أخبار" },
-  { href: "/library", label: "مكتبتي" },
-];
-
-export function NavLinks() {
+export function NavLinks({ locale }: { locale: Locale }) {
   const pathname = usePathname();
+  const t = getDict(locale);
+
+  const links = [
+    { href: "/", label: t.navHome },
+    { href: "/news", label: t.navNews },
+    { href: "/library", label: t.navLibrary },
+  ];
 
   return (
     <nav className="hidden md:flex items-center gap-1 text-sm">
-      {LINKS.map((l) => {
+      {links.map((l) => {
         const active = l.href === "/" ? pathname === "/" : pathname.startsWith(l.href);
         return (
           <Link

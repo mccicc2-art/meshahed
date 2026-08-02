@@ -4,6 +4,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { getDict, type Locale } from "@/lib/i18n";
 
 interface Suggestion {
   id: number;
@@ -14,7 +15,8 @@ interface Suggestion {
   rating: number | null;
 }
 
-export function SearchBox({ big = false }: { big?: boolean }) {
+export function SearchBox({ big = false, locale }: { big?: boolean; locale: Locale }) {
+  const t = getDict(locale);
   const router = useRouter();
   const params = useSearchParams();
   const [q, setQ] = useState(params.get("q") ?? "");
@@ -40,7 +42,7 @@ export function SearchBox({ big = false }: { big?: boolean }) {
     if (term.length < 3) return;
 
     const ctrl = new AbortController();
-    const t = setTimeout(async () => {
+    const timer = setTimeout(async () => {
       setLoading(true);
       try {
         const res = await fetch(`/api/suggest?q=${encodeURIComponent(term)}`, {
@@ -58,7 +60,7 @@ export function SearchBox({ big = false }: { big?: boolean }) {
     }, 300);
 
     return () => {
-      clearTimeout(t);
+      clearTimeout(timer);
       ctrl.abort();
     };
   }, [q]);
@@ -114,7 +116,7 @@ export function SearchBox({ big = false }: { big?: boolean }) {
             onChange={(e) => changeQ(e.target.value)}
             onKeyDown={onKeyDown}
             onFocus={() => items.length && setOpen(true)}
-            placeholder="ابحث عن مسلسل أو فيلم…"
+            placeholder={t.searchPlaceholder}
             autoComplete="off"
             className={`w-full rounded-xl bg-surface border border-border outline-none focus:border-accent transition ${
               big ? "px-5 py-4 text-lg" : "px-4 py-2 text-sm"
@@ -136,7 +138,7 @@ export function SearchBox({ big = false }: { big?: boolean }) {
                 type="button"
                 onMouseEnter={() => setActive(i)}
                 onClick={() => go(s)}
-                className={`w-full flex items-center gap-3 p-2.5 text-right transition ${
+                className={`w-full flex items-center gap-3 p-2.5 text-start transition ${
                   active === i ? "bg-surface-2" : "hover:bg-surface-2"
                 }`}
               >
@@ -156,7 +158,7 @@ export function SearchBox({ big = false }: { big?: boolean }) {
                 <span className="flex-1 min-w-0">
                   <span className="block text-sm font-medium truncate">{s.title}</span>
                   <span className="block text-xs text-muted">
-                    {s.mediaType === "tv" ? "مسلسل" : "فيلم"}
+                    {s.mediaType === "tv" ? t.typeSeries : t.typeMovie}
                     {s.year ? ` · ${s.year}` : ""}
                     {s.rating ? ` · ★ ${s.rating}` : ""}
                   </span>
@@ -170,7 +172,7 @@ export function SearchBox({ big = false }: { big?: boolean }) {
               onClick={submit}
               className="w-full p-2.5 text-sm text-muted hover:text-accent hover:bg-surface-2 transition"
             >
-              عرض كل النتائج عن «{q.trim()}» ←
+              {t.searchAllResults(q.trim())}
             </button>
           </li>
         </ul>
