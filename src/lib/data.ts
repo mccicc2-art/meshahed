@@ -133,6 +133,37 @@ export async function getAllMovieProgress(): Promise<MovieProgressRow[]> {
   }
 }
 
+export interface ReactionInfo {
+  counts: Record<string, number>; // "tv-1396" → عدد 🔥
+  mine: Set<string>;
+}
+
+export async function getReactions(): Promise<ReactionInfo> {
+  const empty: ReactionInfo = { counts: {}, mine: new Set() };
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    const { data } = await supabase
+      .from("post_reactions")
+      .select("user_id, tmdb_id, media_type");
+    if (!data) return empty;
+
+    const counts: Record<string, number> = {};
+    const mine = new Set<string>();
+    for (const r of data) {
+      const key = `${r.media_type}-${r.tmdb_id}`;
+      counts[key] = (counts[key] ?? 0) + 1;
+      if (user && r.user_id === user.id) mine.add(key);
+    }
+    return { counts, mine };
+  } catch {
+    return empty;
+  }
+}
+
 export async function getWatchedMovieIds(): Promise<Set<number>> {
   const supabase = await createClient();
   const { data } = await supabase.from("watched_movies").select("movie_tmdb_id");

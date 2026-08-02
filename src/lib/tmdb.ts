@@ -124,6 +124,21 @@ export async function trending(): Promise<SearchResult[]> {
   );
 }
 
+// أخبار: أفلام قادمة قريباً + مسلسلات تُعرض حالياً
+export async function upcomingMovies(): Promise<SearchResult[]> {
+  const data = await tmdb<{ results: SearchResult[] }>("/movie/upcoming", { region: "SA" });
+  return data.results
+    .filter((r) => r.poster_path)
+    .map((r) => ({ ...r, media_type: "movie" as const }));
+}
+
+export async function airingTv(): Promise<SearchResult[]> {
+  const data = await tmdb<{ results: SearchResult[] }>("/tv/on_the_air");
+  return data.results
+    .filter((r) => r.poster_path)
+    .map((r) => ({ ...r, media_type: "tv" as const }));
+}
+
 // اقتراحات حسب الأنواع المفضّلة في البروفايل
 export async function discoverByGenres(
   genreIds: number[],

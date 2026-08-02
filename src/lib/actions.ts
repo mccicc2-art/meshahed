@@ -48,6 +48,38 @@ export async function updateProfile(input: {
   revalidatePath("/profile");
 }
 
+// تفاعل 🔥 على منشور في صفحة الأخبار
+export async function toggleReaction(input: {
+  tmdbId: number;
+  mediaType: MediaType;
+  on: boolean;
+}) {
+  const { supabase, user } = await requireUser();
+
+  if (input.on) {
+    const { error } = await supabase.from("post_reactions").upsert(
+      {
+        user_id: user.id,
+        tmdb_id: input.tmdbId,
+        media_type: input.mediaType,
+        reaction: "fire",
+      },
+      { onConflict: "user_id,tmdb_id,media_type,reaction" },
+    );
+    if (error) throw new Error(error.message);
+  } else {
+    const { error } = await supabase.from("post_reactions").delete().match({
+      user_id: user.id,
+      tmdb_id: input.tmdbId,
+      media_type: input.mediaType,
+      reaction: "fire",
+    });
+    if (error) throw new Error(error.message);
+  }
+
+  revalidatePath("/news");
+}
+
 export async function follow(input: {
   tmdbId: number;
   mediaType: MediaType;
