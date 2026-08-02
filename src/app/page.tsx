@@ -1,4 +1,3 @@
-import { Suspense } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
@@ -20,7 +19,6 @@ import {
   type SearchResult,
 } from "@/lib/tmdb";
 import { PosterCard } from "@/components/PosterCard";
-import { SearchBox } from "@/components/SearchBox";
 
 export default async function HomePage() {
   const user = await getUser();
@@ -86,12 +84,6 @@ export default async function HomePage() {
 
   return (
     <div className="space-y-10">
-      <div className="max-w-xl mx-auto md:hidden">
-        <Suspense fallback={null}>
-          <SearchBox big />
-        </Suspense>
-      </div>
-
       {empty && (
         <section className="text-center py-6">
           <h1 className="text-2xl font-bold mb-2">

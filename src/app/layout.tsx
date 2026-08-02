@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Navbar } from "@/components/Navbar";
+import { BottomNav } from "@/components/BottomNav";
 
 export const metadata: Metadata = {
   title: "مشاهد — تابع مسلسلاتك وأفلامك",
@@ -24,10 +25,14 @@ export default function RootLayout({
       </head>
       <body className="min-h-full flex flex-col">
         <Navbar />
-        <main className="flex-1 w-full max-w-6xl mx-auto px-4 py-6">{children}</main>
-        <footer className="text-center text-xs text-muted py-6">
+        {/* مساحة سفلية على الجوال حتى لا يغطي شريط التبويبات المحتوى */}
+        <main className="flex-1 w-full max-w-6xl mx-auto px-4 py-6 pb-28 md:pb-6">
+          {children}
+        </main>
+        <footer className="text-center text-xs text-muted py-6 pb-28 md:pb-6">
           مشاهد · البيانات من TMDB
         </footer>
+        <BottomNav />
       </body>
     </html>
   );
