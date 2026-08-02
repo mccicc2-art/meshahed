@@ -1,6 +1,7 @@
 import { redirect, notFound } from "next/navigation";
 import Image from "next/image";
-import { getUser, getFollows, getWatchedMovieIds } from "@/lib/data";
+import { getUser, getFollows, getWatchedMovieIds, getMovieProgress } from "@/lib/data";
+import { MovieProgress } from "@/components/MovieProgress";
 import { getMovie, backdropUrl, posterUrl } from "@/lib/tmdb";
 import { FollowButton } from "@/components/FollowButton";
 import { MovieWatchedButton } from "@/components/MovieWatchedButton";
@@ -22,7 +23,11 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
     );
   }
 
-  const [follows, watchedIds] = await Promise.all([getFollows(), getWatchedMovieIds()]);
+  const [follows, watchedIds, mProgress] = await Promise.all([
+    getFollows(),
+    getWatchedMovieIds(),
+    getMovieProgress(movieId),
+  ]);
   const following = follows.some((f) => f.tmdb_id === movieId && f.media_type === "movie");
   const watched = watchedIds.has(movieId);
 
@@ -85,6 +90,15 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
               initialFollowing={following}
             />
           </div>
+
+          <MovieProgress
+            movieTmdbId={movieId}
+            runtime={movie.runtime}
+            title={movie.title}
+            posterPath={movie.poster_path}
+            initialPosition={mProgress?.position_minutes ?? 0}
+            watched={watched}
+          />
         </div>
       </div>
     </div>
