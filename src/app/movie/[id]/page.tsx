@@ -1,11 +1,20 @@
 import { redirect, notFound } from "next/navigation";
 import Image from "next/image";
-import { getUser, getFollows, getWatchedMovieIds, getMovieProgress } from "@/lib/data";
+import {
+  getUser,
+  getFollows,
+  getWatchedMovieIds,
+  getMovieProgress,
+  getMyRating,
+  getCommunityRating,
+} from "@/lib/data";
 import { MovieProgress } from "@/components/MovieProgress";
 import { getMovie, backdropUrl, posterUrl } from "@/lib/tmdb";
 import { FollowButton } from "@/components/FollowButton";
 import { MovieWatchedButton } from "@/components/MovieWatchedButton";
 import { getT } from "@/lib/locale";
+import { RatingBox } from "@/components/RatingBox";
+import { CommunityReviews } from "@/components/CommunityReviews";
 
 export default async function MoviePage({ params }: { params: Promise<{ id: string }> }) {
   const user = await getUser();
@@ -23,10 +32,12 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
     );
   }
 
-  const [follows, watchedIds, mProgress] = await Promise.all([
+  const [follows, watchedIds, mProgress, myRating, community] = await Promise.all([
     getFollows(),
     getWatchedMovieIds(),
     getMovieProgress(movieId),
+    getMyRating(movieId, "movie"),
+    getCommunityRating(movieId, "movie"),
   ]);
   const following = follows.some((f) => f.tmdb_id === movieId && f.media_type === "movie");
   const watched = watchedIds.has(movieId);
@@ -101,6 +112,23 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
             initialPosition={mProgress?.position_minutes ?? 0}
             watched={watched}
             locale={locale}
+          />
+
+          <RatingBox
+            tmdbId={movieId}
+            mediaType="movie"
+            title={movie.title}
+            posterPath={movie.poster_path}
+            locale={locale}
+            initialRating={myRating?.rating ?? null}
+            initialReview={myRating?.review ?? null}
+          />
+
+          <CommunityReviews
+            locale={locale}
+            avg={community.avg}
+            count={community.count}
+            reviews={community.reviews}
           />
         </div>
       </div>
