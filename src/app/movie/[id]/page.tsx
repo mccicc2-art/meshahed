@@ -5,11 +5,13 @@ import { MovieProgress } from "@/components/MovieProgress";
 import { getMovie, backdropUrl, posterUrl } from "@/lib/tmdb";
 import { FollowButton } from "@/components/FollowButton";
 import { MovieWatchedButton } from "@/components/MovieWatchedButton";
+import { getT } from "@/lib/locale";
 
 export default async function MoviePage({ params }: { params: Promise<{ id: string }> }) {
   const user = await getUser();
   if (!user) redirect("/login");
 
+  const { locale, t } = await getT();
   const { id } = await params;
   const movieId = Number(id);
   if (!Number.isFinite(movieId)) notFound();
@@ -17,9 +19,7 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
   const movie = await getMovie(movieId).catch(() => null);
   if (!movie) {
     return (
-      <p className="text-center text-muted py-24">
-        تعذّر تحميل بيانات هذا الفيلم حالياً. حاول مرة أخرى بعد قليل.
-      </p>
+      <p className="text-center text-muted py-24">{t.movieLoadFailed}</p>
     );
   }
 
@@ -57,7 +57,7 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
             {movie.runtime ? (
               <>
                 <span>·</span>
-                <span>{movie.runtime} دقيقة</span>
+                <span>{t.minutesCount(movie.runtime)}</span>
               </>
             ) : null}
             {movie.vote_average > 0 && (
@@ -81,6 +81,7 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
               movieTmdbId={movieId}
               runtime={movie.runtime}
               initialWatched={watched}
+              locale={locale}
             />
             <FollowButton
               tmdbId={movieId}
@@ -88,6 +89,7 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
               title={movie.title}
               posterPath={movie.poster_path}
               initialFollowing={following}
+              locale={locale}
             />
           </div>
 
@@ -98,6 +100,7 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
             posterPath={movie.poster_path}
             initialPosition={mProgress?.position_minutes ?? 0}
             watched={watched}
+            locale={locale}
           />
         </div>
       </div>
