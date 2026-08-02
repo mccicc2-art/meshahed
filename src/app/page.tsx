@@ -7,6 +7,7 @@ import {
   getAllWatchedEpisodes,
   getWatchedMovieIds,
   getProfile,
+  getAllMovieProgress,
 } from "@/lib/data";
 import {
   getTv,
@@ -25,11 +26,12 @@ export default async function HomePage() {
   const user = await getUser();
   if (!user) redirect("/login");
 
-  const [follows, watchedEps, watchedMovieIds, profile] = await Promise.all([
+  const [follows, watchedEps, watchedMovieIds, profile, movieProgress] = await Promise.all([
     getFollows(),
     getAllWatchedEpisodes(),
     getWatchedMovieIds(),
     getProfile(),
+    getAllMovieProgress(),
   ]);
 
   const tvFollows = follows.filter((f) => f.media_type === "tv");
@@ -97,6 +99,27 @@ export default async function HomePage() {
           </h1>
           <p className="text-muted mb-6">ابدأ بمتابعة مسلسل أو فيلم لتظهر هنا.</p>
         </section>
+      )}
+
+      {movieProgress.length > 0 && (
+        <Section title="⏸️ أفلام توقّفت عندها">
+          {movieProgress.map((m) => {
+            const pct =
+              m.runtime_minutes && m.runtime_minutes > 0
+                ? Math.round((m.position_minutes / m.runtime_minutes) * 100)
+                : 0;
+            return (
+              <PosterCard
+                key={`mp-${m.movie_tmdb_id}`}
+                href={`/movie/${m.movie_tmdb_id}`}
+                title={m.title ?? "فيلم"}
+                posterPath={m.poster_path}
+                progress={pct}
+                badge={`د ${m.position_minutes}`}
+              />
+            );
+          })}
+        </Section>
       )}
 
       {continueWatching.length > 0 && (
