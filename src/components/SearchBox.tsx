@@ -1,34 +1,175 @@
 "use client";
 
+/* eslint-disable @next/next/no-img-element */
+
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+
+interface Suggestion {
+  id: number;
+  mediaType: "tv" | "movie";
+  title: string;
+  year: string;
+  poster: string | null;
+  rating: number | null;
+}
 
 export function SearchBox({ big = false }: { big?: boolean }) {
   const router = useRouter();
   const params = useSearchParams();
   const [q, setQ] = useState(params.get("q") ?? "");
+  const [items, setItems] = useState<Suggestion[]>([]);
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [active, setActive] = useState(-1);
+  const boxRef = useRef<HTMLDivElement>(null);
+
+  // اقتراحات تبدأ من ٣ أحرف مع تأخير بسيط لتقليل الطلبات
+  useEffect(() => {
+    const term = q.trim();
+    if (term.length < 3) {
+      setItems([]);
+      setOpen(false);
+      setLoading(false);
+      return;
+    }
+
+    const ctrl = new AbortController();
+    setLoading(true);
+    const t = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/suggest?q=${encodeURIComponent(term)}`, {
+          signal: ctrl.signal,
+        });
+        const data = await res.json();
+        setItems(data.results ?? []);
+        setOpen(true);
+        setActive(-1);
+      } catch {
+        /* أُلغي الطلب أو فشل — تُتجاهل بصمت */
+      } finally {
+        setLoading(false);
+      }
+    }, 300);
+
+    return () => {
+      clearTimeout(t);
+      ctrl.abort();
+    };
+  }, [q]);
+
+  // إغلاق القائمة عند النقر خارجها
+  useEffect(() => {
+    function onDocClick(e: MouseEvent) {
+      if (boxRef.current && !boxRef.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, []);
+
+  function go(s: Suggestion) {
+    setOpen(false);
+    setQ("");
+    router.push(`/${s.mediaType === "tv" ? "show" : "movie"}/${s.id}`);
+  }
+
+  function submit() {
+    if (!q.trim()) return;
+    setOpen(false);
+    router.push(`/search?q=${encodeURIComponent(q.trim())}`);
+  }
+
+  function onKeyDown(e: React.KeyboardEvent) {
+    if (!open || !items.length) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActive((i) => (i + 1) % items.length);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActive((i) => (i <= 0 ? items.length - 1 : i - 1));
+    } else if (e.key === "Enter" && active >= 0) {
+      e.preventDefault();
+      go(items[active]);
+    } else if (e.key === "Escape") {
+      setOpen(false);
+    }
+  }
 
   return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        if (q.trim()) router.push(`/search?q=${encodeURIComponent(q.trim())}`);
-      }}
-      className="w-full"
-    >
-      <div className="relative">
-        <input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="ابحث عن مسلسل أو فيلم…"
-          className={`w-full rounded-xl bg-surface border border-border outline-none focus:border-accent transition ${
-            big ? "px-5 py-4 text-lg" : "px-4 py-2 text-sm"
-          } pe-10`}
-        />
-        <span className={`absolute top-1/2 -translate-y-1/2 end-3 text-muted ${big ? "text-xl" : ""}`}>
-          🔍
-        </span>
-      </div>
-    </form>
+    <div ref={boxRef} className="relative w-full">
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          submit();
+        }}
+      >
+        <div className="relative">
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            onKeyDown={onKeyDown}
+            onFocus={() => items.length && setOpen(true)}
+            placeholder="ابحث عن مسلسل أو فيلم…"
+            autoComplete="off"
+            className={`w-full rounded-xl bg-surface border border-border outline-none focus:border-accent transition ${
+              big ? "px-5 py-4 text-lg" : "px-4 py-2 text-sm"
+            } pe-10`}
+          />
+          <span
+            className={`absolute top-1/2 -translate-y-1/2 end-3 text-muted ${big ? "text-xl" : ""}`}
+          >
+            {loading ? "⏳" : "🔍"}
+          </span>
+        </div>
+      </form>
+
+      {open && items.length > 0 && (
+        <ul className="absolute z-50 mt-2 w-full max-h-[22rem] overflow-y-auto rounded-xl border border-border bg-surface shadow-2xl">
+          {items.map((s, i) => (
+            <li key={`${s.mediaType}-${s.id}`}>
+              <button
+                type="button"
+                onMouseEnter={() => setActive(i)}
+                onClick={() => go(s)}
+                className={`w-full flex items-center gap-3 p-2.5 text-right transition ${
+                  active === i ? "bg-surface-2" : "hover:bg-surface-2"
+                }`}
+              >
+                <span className="w-9 shrink-0">
+                  {s.poster ? (
+                    <img
+                      src={s.poster}
+                      alt=""
+                      className="w-9 h-[54px] object-cover rounded-md border border-border"
+                    />
+                  ) : (
+                    <span className="w-9 h-[54px] rounded-md bg-surface-2 grid place-items-center text-muted">
+                      🎬
+                    </span>
+                  )}
+                </span>
+                <span className="flex-1 min-w-0">
+                  <span className="block text-sm font-medium truncate">{s.title}</span>
+                  <span className="block text-xs text-muted">
+                    {s.mediaType === "tv" ? "مسلسل" : "فيلم"}
+                    {s.year ? ` · ${s.year}` : ""}
+                    {s.rating ? ` · ★ ${s.rating}` : ""}
+                  </span>
+                </span>
+              </button>
+            </li>
+          ))}
+          <li className="border-t border-border">
+            <button
+              type="button"
+              onClick={submit}
+              className="w-full p-2.5 text-sm text-muted hover:text-accent hover:bg-surface-2 transition"
+            >
+              عرض كل النتائج عن «{q.trim()}» ←
+            </button>
+          </li>
+        </ul>
+      )}
+    </div>
   );
 }

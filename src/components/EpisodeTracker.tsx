@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { toggleEpisode, setSeasonWatched } from "@/lib/actions";
+import { toggleEpisode, setSeasonWatched, watchUpTo } from "@/lib/actions";
 import { episodeKey } from "@/lib/keys";
 
 export interface TrackerEpisode {
@@ -60,13 +60,56 @@ export function EpisodeTracker({
 
   const [open, setOpen] = useState<number | null>(defaultOpen);
 
+  // كل الحلقات المعروضة مرتّبة زمنياً (موسم ثم رقم حلقة)
+  const orderedAired = useMemo(() => {
+    const list: { season: number; episode: number; runtime: number | null }[] = [];
+    for (const s of [...seasons].sort((a, b) => a.season_number - b.season_number)) {
+      for (const e of [...s.episodes].sort((a, b) => a.episode_number - b.episode_number)) {
+        if (hasAired(e.air_date))
+          list.push({ season: s.season_number, episode: e.episode_number, runtime: e.runtime });
+      }
+    }
+    return list;
+  }, [seasons]);
+
   function toggleOne(season: number, ep: TrackerEpisode) {
     const key = episodeKey(season, ep.episode_number);
     const next = !watched.has(key);
+
+    // عند التأشير: تُعتبر كل الحلقات السابقة مشاهَدة أيضاً
+    if (next) {
+      const idx = orderedAired.findIndex(
+        (o) => o.season === season && o.episode === ep.episode_number,
+      );
+      const upTo = idx >= 0 ? orderedAired.slice(0, idx + 1) : [];
+      const toMark = upTo.filter((o) => !watched.has(episodeKey(o.season, o.episode)));
+
+      setWatched((prev) => {
+        const s = new Set(prev);
+        for (const o of upTo) s.add(episodeKey(o.season, o.episode));
+        return s;
+      });
+
+      start(async () => {
+        if (toMark.length > 1) {
+          await watchUpTo({ showTmdbId, episodes: toMark });
+        } else {
+          await toggleEpisode({
+            showTmdbId,
+            season,
+            episode: ep.episode_number,
+            runtime: ep.runtime,
+            watched: true,
+          });
+        }
+      });
+      return;
+    }
+
+    // عند إلغاء التأشير: تُلغى هذه الحلقة فقط
     setWatched((prev) => {
       const s = new Set(prev);
-      if (next) s.add(key);
-      else s.delete(key);
+      s.delete(key);
       return s;
     });
     start(async () => {
@@ -75,7 +118,7 @@ export function EpisodeTracker({
         season,
         episode: ep.episode_number,
         runtime: ep.runtime,
-        watched: next,
+        watched: false,
       });
     });
   }
@@ -116,6 +159,9 @@ export function EpisodeTracker({
         <div className="h-2 rounded-full bg-surface-2 overflow-hidden">
           <div className="h-full bg-accent-2 transition-all" style={{ width: `${progress}%` }} />
         </div>
+        <p className="text-xs text-muted mt-2">
+          💡 تأشير أي حلقة يعتبر كل الحلقات السابقة مشاهَدة تلقائياً.
+        </p>
       </div>
 
       <div className="space-y-3">
