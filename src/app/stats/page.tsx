@@ -5,17 +5,22 @@ import {
   getAllWatchedEpisodes,
   getWatchedMovieIds,
 } from "@/lib/data";
+import { getT } from "@/lib/locale";
+import { num, type Dict } from "@/lib/i18n";
 
-function fmtHours(minutes: number) {
+function fmtWatchTime(minutes: number, t: Dict) {
   const h = Math.round(minutes / 60);
-  if (h < 24) return `${h} ساعة`;
+  if (h < 24) return t.hours(h);
   const d = Math.floor(h / 24);
-  return `${d} يوم و ${h % 24} ساعة`;
+  const rest = h % 24;
+  return rest === 0 ? t.days(d) : t.daysAndHours(d, rest);
 }
 
 export default async function StatsPage() {
   const user = await getUser();
   if (!user) redirect("/login");
+
+  const { locale, t } = await getT();
 
   const [follows, watchedEps, watchedMovieIds] = await Promise.all([
     getFollows(),
@@ -31,16 +36,16 @@ export default async function StatsPage() {
   const totalMinutes = epMinutes + movieCount * 110;
 
   const stats = [
-    { label: "دقائق المشاهدة", value: fmtHours(totalMinutes), icon: "⏱️" },
-    { label: "حلقات مشاهَدة", value: totalEpisodes.toLocaleString("ar"), icon: "✅" },
-    { label: "مسلسلات بدأتها", value: distinctShows.toLocaleString("ar"), icon: "📺" },
-    { label: "أفلام شاهدتها", value: movieCount.toLocaleString("ar"), icon: "🎬" },
-    { label: "أعمال تتابعها", value: follows.length.toLocaleString("ar"), icon: "⭐" },
+    { label: t.statsWatchMinutes, value: fmtWatchTime(totalMinutes, t), icon: "⏱️" },
+    { label: t.statsWatchedEpisodes, value: num(totalEpisodes, locale), icon: "✅" },
+    { label: t.statsStartedShows, value: num(distinctShows, locale), icon: "📺" },
+    { label: t.statsWatchedMovies, value: num(movieCount, locale), icon: "🎬" },
+    { label: t.statsFollowing, value: num(follows.length, locale), icon: "⭐" },
   ];
 
   return (
     <div className="space-y-8">
-      <h1 className="text-2xl font-bold">الإحصائيات</h1>
+      <h1 className="text-2xl font-bold">{t.statsTitle}</h1>
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         {stats.map((s) => (
@@ -53,9 +58,7 @@ export default async function StatsPage() {
       </div>
 
       {totalEpisodes === 0 && movieCount === 0 && (
-        <p className="text-center text-muted py-10">
-          ابدأ بتأشير الحلقات والأفلام لتظهر إحصائياتك.
-        </p>
+        <p className="text-center text-muted py-10">{t.statsEmpty}</p>
       )}
     </div>
   );
