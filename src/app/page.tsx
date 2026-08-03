@@ -35,6 +35,7 @@ import { PosterRail, RailItem } from "@/components/PosterRail";
 import type { IconName } from "@/components/Icon";
 import { ActionPanel, type PanelItem } from "@/components/ActionPanel";
 import { ProfileHeader } from "@/components/ProfileHeader";
+import { WeekStrip, type WeekEntry } from "@/components/WeekStrip";
 import { ShowStatsSync, type ShowStat } from "@/components/ShowStatsSync";
 
 export default async function HomePage() {
@@ -306,6 +307,32 @@ export default async function HomePage() {
 
   const readyCount = notStartedShows.length + readyMovies.length;
 
+  // ===== الأيام السبعة القادمة =====
+  // نبني التواريخ من كائن زمن واحد: قراءتان منفصلتان للوقت قد تقعان على
+  // جانبي منتصف الليل فينزاح التقويم يوماً
+  const nowTs = new Date();
+  const weekDays = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(nowTs.getTime() + i * 86400000);
+    return {
+      date: d.toISOString().slice(0, 10),
+      weekday: new Intl.DateTimeFormat(locale === "en" ? "en-GB" : "ar", {
+        weekday: "short",
+        timeZone: "UTC",
+      }).format(d),
+      dayNum: new Intl.DateTimeFormat("en-GB", { day: "numeric", timeZone: "UTC" }).format(d),
+    };
+  });
+  const weekEnd = weekDays[6].date;
+
+  const weekEntries: WeekEntry[] = upcoming
+    .filter((u) => u.date >= weekDays[0].date && u.date <= weekEnd && u.key.startsWith("tv-"))
+    .map((u) => ({
+      date: u.date,
+      showTmdbId: Number(u.key.replace("tv-", "")),
+      title: u.title,
+      label: u.badge ?? "",
+    }));
+
   const panel: PanelItem[] = [
     {
       key: "waiting",
@@ -371,6 +398,8 @@ export default async function HomePage() {
           locale={locale}
         />
       )}
+
+      <WeekStrip days={weekDays} entries={weekEntries} locale={locale} />
 
       <span id="waiting" className="block scroll-mt-20" />
 
