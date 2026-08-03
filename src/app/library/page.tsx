@@ -3,6 +3,7 @@ import {
   getUser,
   getFollows,
   getAllWatchedEpisodes,
+  getWatchSummary,
   getWatchedMovieIds,
   getAllMovieProgress,
 } from "@/lib/data";
@@ -27,16 +28,34 @@ export default async function LibraryPage() {
 
   // المكتبة لا تطلب TMDB إطلاقاً: عدد الحلقات المعروضة مخزّن مع صف المتابعة
   // وتحدّثه الرئيسية وصفحة المسلسل. كانت الصفحة تطلب تفاصيل كل مسلسل تتابعه.
-  const [follows, watchedEps, watchedMovieIds, movieProgress] = await Promise.all([
+  //
+  // ولا تسحب صفوف الحلقات: ملخّص مجمّع من Postgres (صف لكل مسلسل)
+  // بدل آلاف الصفوف. `getAllWatchedEpisodes` تبقى احتياطاً لو لم تُشغَّل الدالة.
+  const [follows, summary, watchedMovieIds, movieProgress] = await Promise.all([
     getFollows(),
-    getAllWatchedEpisodes(),
+    getWatchSummary(),
     getWatchedMovieIds(),
     getAllMovieProgress(),
   ]);
 
   const watchedByShow = new Map<number, number>();
-  for (const w of watchedEps)
-    watchedByShow.set(w.show_tmdb_id, (watchedByShow.get(w.show_tmdb_id) ?? 0) + 1);
+  let totalEpisodes = 0;
+  let epMinutes = 0;
+
+  if (summary) {
+    for (const s of summary) {
+      watchedByShow.set(s.show_tmdb_id, s.watched);
+      totalEpisodes += s.watched;
+      epMinutes += s.minutes;
+    }
+  } else {
+    const watchedEps = await getAllWatchedEpisodes();
+    for (const w of watchedEps) {
+      watchedByShow.set(w.show_tmdb_id, (watchedByShow.get(w.show_tmdb_id) ?? 0) + 1);
+      epMinutes += w.runtime ?? 40;
+    }
+    totalEpisodes = watchedEps.length;
+  }
 
   const tvFollows = follows.filter((f) => f.media_type === "tv");
   const movieFollows = follows.filter((f) => f.media_type === "movie");
@@ -104,13 +123,12 @@ export default async function LibraryPage() {
     });
   }
 
-  const epMinutes = watchedEps.reduce((s, e) => s + (e.runtime ?? 40), 0);
   const totalMinutes = epMinutes + watchedMovieIds.size * 110;
-  const distinctShows = new Set(watchedEps.map((e) => e.show_tmdb_id)).size;
+  const distinctShows = watchedByShow.size;
 
   const stats = [
     { label: t.statsWatchMinutes, value: fmtWatchTime(totalMinutes, t), icon: "⏱️" },
-    { label: t.statsWatchedEpisodes, value: num(watchedEps.length, locale), icon: "✅" },
+    { label: t.statsWatchedEpisodes, value: num(totalEpisodes, locale), icon: "✅" },
     { label: t.statsStartedShows, value: num(distinctShows, locale), icon: "📺" },
     { label: t.statsWatchedMovies, value: num(watchedMovieIds.size, locale), icon: "🎬" },
     { label: t.statsFollowing, value: num(follows.length, locale), icon: "⭐" },
