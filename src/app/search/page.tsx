@@ -4,6 +4,7 @@ import { getUser } from "@/lib/data";
 import { searchMulti, titleOf, yearOf } from "@/lib/tmdb";
 import { getT } from "@/lib/locale";
 import { PosterCard } from "@/components/PosterCard";
+import { PosterGrid } from "@/components/PosterGrid";
 import { SearchBox } from "@/components/SearchBox";
 
 export default async function SearchPage({
@@ -46,7 +47,7 @@ export default async function SearchPage({
       )}
 
       {results.length > 0 ? (
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-4">
+        <PosterGrid>
           {results.map((r) => (
             <PosterCard
               key={`${r.media_type}-${r.id}`}
@@ -57,7 +58,7 @@ export default async function SearchPage({
               badge={r.media_type === "tv" ? t.typeSeries : t.typeMovie}
             />
           ))}
-        </div>
+        </PosterGrid>
       ) : q ? (
         <p className="text-center text-muted py-16">{t.searchNoResults}</p>
       ) : (
