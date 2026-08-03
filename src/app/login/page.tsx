@@ -3,6 +3,7 @@ import { getUser } from "@/lib/data";
 import { getT } from "@/lib/locale";
 import { GoogleButton } from "@/components/GoogleButton";
 import { LanguageSwitch } from "@/components/LanguageSwitch";
+import { Logo } from "@/components/Logo";
 
 export default async function LoginPage() {
   const user = await getUser();
@@ -16,9 +17,23 @@ export default async function LoginPage() {
   return (
     <div className="min-h-[70vh] grid place-items-center">
       <div className="w-full max-w-sm text-center">
-        <div className="text-5xl mb-4">📺</div>
-        <h1 className="text-3xl font-bold mb-2">{t.brand}</h1>
-        <p className="text-muted mb-8">{t.tagline}</p>
+        <div className="flex justify-center mb-4">
+          <Logo size={72} gradientId="login-logo" />
+        </div>
+        <h1 className="text-3xl font-extrabold tracking-tight mb-1" dir="ltr">
+          {t.brand}
+        </h1>
+        <p
+          className="text-sm font-semibold mb-3 bg-clip-text text-transparent"
+          style={{
+            backgroundImage:
+              "linear-gradient(90deg, var(--brand-1), var(--brand-2) 55%, var(--brand-3))",
+          }}
+          dir="ltr"
+        >
+          {t.taglineEn}
+        </p>
+        <p className="text-muted text-sm mb-8 leading-relaxed">{t.tagline}</p>
         <div className="bg-surface border border-border rounded-2xl p-6">
           {configured ? (
             <GoogleButton locale={locale} />
