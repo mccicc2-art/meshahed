@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getUser } from "@/lib/data";
 import { getSeason } from "@/lib/tmdb";
+import { allow, retryAfter } from "@/lib/ratelimit";
 
 /**
  * حلقات موسم واحد، تُطلب عند فتح الموسم في صفحة المسلسل.
@@ -11,6 +12,14 @@ import { getSeason } from "@/lib/tmdb";
 export async function GET(request: Request) {
   const user = await getUser();
   if (!user) return NextResponse.json({ episodes: [] }, { status: 401 });
+
+  const key = `season:${user.id}`;
+  if (!allow(key, 60, 60_000)) {
+    return NextResponse.json(
+      { episodes: [] },
+      { status: 429, headers: { "Retry-After": String(retryAfter(key)) } },
+    );
+  }
 
   const params = new URL(request.url).searchParams;
   const tvId = Number(params.get("tv"));
