@@ -56,6 +56,7 @@ export function NextUpCard({
       <div className="bg-surface border border-border rounded-2xl overflow-hidden flex flex-col sm:flex-row">
         <Link
           href={`/show/${showTmdbId}`}
+          prefetch={false}
           className="relative w-full sm:w-56 shrink-0 aspect-[16/9] bg-surface-2 group"
           aria-label={showName}
         >

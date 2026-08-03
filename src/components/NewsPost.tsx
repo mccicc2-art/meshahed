@@ -82,7 +82,11 @@ export function NewsPost({
 
   return (
     <article className="bg-surface border border-border rounded-2xl overflow-hidden">
-      <Link href={href} className="block relative aspect-[16/9] bg-surface-2 group">
+      <Link
+        href={href}
+        prefetch={false}
+        className="block relative aspect-[16/9] bg-surface-2 group"
+      >
         {item.backdrop ? (
           <img
             src={item.backdrop}
@@ -114,7 +118,7 @@ export function NewsPost({
       </Link>
 
       <div className="p-4">
-        <Link href={href}>
+        <Link href={href} prefetch={false}>
           <h3 className="font-bold text-lg leading-tight hover:text-accent transition">
             {item.title}
           </h3>

@@ -21,7 +21,10 @@ export function PosterCard({
 }) {
   const url = posterUrl(posterPath, "w342");
   return (
-    <Link href={href} className="group block">
+    // prefetch={false}: الصفحة الواحدة فيها عشرات البطاقات، والتحميل المسبق
+    // الافتراضي يطلق طلب RSC لكل بطاقة تدخل الشاشة — عشرات الطلبات المتزامنة
+    // كانت ترجع 503 وتُبطئ التنقّل الفعلي. الرابط يُحمَّل عند النقر.
+    <Link href={href} prefetch={false} className="group block">
       <div className="relative aspect-[2/3] rounded-xl overflow-hidden bg-surface-2 border border-border">
         {url ? (
           <Image
