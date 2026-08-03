@@ -406,8 +406,9 @@ export async function saveRating(input: {
   );
   if (error) throw new Error(error.message);
 
+  // التقييم يظهر في صفحة العمل وصفحتي العامة فقط — لا داعي لإبطال التطبيق كاملاً
   revalidatePath(`/${input.mediaType === "tv" ? "show" : "movie"}/${input.tmdbId}`);
-  revalidatePath("/", "layout");
+  revalidatePath("/");
 }
 
 export async function deleteRating(input: { tmdbId: number; mediaType: MediaType }) {
@@ -419,6 +420,7 @@ export async function deleteRating(input: { tmdbId: number; mediaType: MediaType
   });
   if (error) throw new Error(error.message);
   revalidatePath(`/${input.mediaType === "tv" ? "show" : "movie"}/${input.tmdbId}`);
+  revalidatePath("/");
 }
 
 // ================= متابعة المستخدمين =================
@@ -430,7 +432,9 @@ export async function followUser(targetId: string) {
     .from("user_follows")
     .upsert({ follower_id: user.id, following_id: targetId }, { onConflict: "follower_id,following_id" });
   if (error) throw new Error(error.message);
-  revalidatePath("/", "layout");
+  // عدّادات المتابعة تظهر في الرئيسية وصفحات المستخدمين فقط
+  revalidatePath("/");
+  revalidatePath("/u/[username]", "page");
 }
 
 export async function unfollowUser(targetId: string) {
@@ -440,5 +444,6 @@ export async function unfollowUser(targetId: string) {
     .delete()
     .match({ follower_id: user.id, following_id: targetId });
   if (error) throw new Error(error.message);
-  revalidatePath("/", "layout");
+  revalidatePath("/");
+  revalidatePath("/u/[username]", "page");
 }

@@ -1,7 +1,7 @@
-// محرّك الاقتراحات — يمزج ثلاث إشارات بنِسَب ثابتة مع مكافأة للتوافق بين المصادر
+// محرّك الاقتراحات — يمزج أربع إشارات بنِسَب ثابتة مع مكافأة للتوافق بين المصادر
 import type { SearchResult } from "@/lib/tmdb";
 
-export type Source = "follows" | "recent" | "genres";
+export type Source = "rated" | "follows" | "recent" | "genres";
 
 export interface Candidate {
   result: SearchResult;
@@ -21,12 +21,14 @@ export interface Recommendation {
 
 /** النِّسَب المطلوبة لكل مصدر داخل القائمة النهائية */
 export const MIX: Record<Source, number> = {
-  follows: 0.4, // ما تتابعه — أوسع صورة عن ذوقك
-  recent: 0.3, // آخر ما شاهدته — مزاجك الحالي
-  genres: 0.3, // أنواعك المفضّلة — تفضيل صريح
+  rated: 0.25, // ما أعطيته ٤ أو ٥ نجوم — أصدق إشارة، لأنك قلتها صراحةً
+  follows: 0.3, // ما تتابعه — أوسع صورة عن ذوقك
+  recent: 0.25, // آخر ما شاهدته — مزاجك الحالي
+  genres: 0.2, // أنواعك المفضّلة — تفضيل صريح لكنه عام
 };
 
 const SOURCE_WEIGHT: Record<Source, number> = {
+  rated: 1.1, // تقييمك الشخصي أثقل من مجرّد المتابعة
   follows: 1.0,
   recent: 0.95,
   genres: 0.85,
@@ -77,6 +79,7 @@ export function blendRecommendations(
   }));
 
   const buckets: Record<Source, Recommendation[]> = {
+    rated: [],
     follows: [],
     recent: [],
     genres: [],
@@ -90,7 +93,7 @@ export function blendRecommendations(
   const taken = new Set<number>();
 
   // المرحلة الأولى: كل مصدر يأخذ حصته
-  for (const src of ["follows", "recent", "genres"] as Source[]) {
+  for (const src of ["rated", "follows", "recent", "genres"] as Source[]) {
     const quota = Math.round(opts.limit * MIX[src]);
     for (const r of buckets[src]) {
       if (out.filter((o) => o.source === src).length >= quota) break;
@@ -117,10 +120,10 @@ export function blendRecommendations(
 
 /** يوزّع العناصر حتى لا تتجمّع اقتراحات مصدر واحد في أول الصف */
 function interleave(items: Recommendation[]): Recommendation[] {
-  const queues: Record<Source, Recommendation[]> = { follows: [], recent: [], genres: [] };
+  const queues: Record<Source, Recommendation[]> = { rated: [], follows: [], recent: [], genres: [] };
   for (const i of items) queues[i.source].push(i);
 
-  const order: Source[] = ["follows", "recent", "genres"];
+  const order: Source[] = ["rated", "follows", "recent", "genres"];
   const out: Recommendation[] = [];
   let idx = 0;
   while (out.length < items.length) {

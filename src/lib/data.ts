@@ -328,6 +328,25 @@ export async function getMyRating(
   }
 }
 
+/** كل تقييماتي — تُغذّي محرّك الاقتراحات (بذور للمحبوب، استبعاد للمكروه) */
+export async function getMyRatings(): Promise<RatingRow[]> {
+  try {
+    const supabase = await createClient();
+    const user = await getUser();
+    if (!user) return [];
+    const { data } = await supabase
+      .from("ratings")
+      .select("user_id, tmdb_id, media_type, rating, review, title, poster_path, updated_at")
+      .eq("user_id", user.id)
+      .order("rating", { ascending: false })
+      .order("updated_at", { ascending: false })
+      .limit(200);
+    return (data as RatingRow[]) ?? [];
+  } catch {
+    return [];
+  }
+}
+
 /** تقييمات مستخدم معيّن مرتّبة من الأعلى */
 export async function getRatingsOf(userId: string): Promise<RatingRow[]> {
   try {
