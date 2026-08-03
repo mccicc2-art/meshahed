@@ -81,9 +81,12 @@ export function ListManager({ lists, locale }: { lists: UserList[]; locale: Loca
           {lists.map((l) => (
             <li
               key={l.id}
-              className="rounded-2xl border border-border bg-surface overflow-hidden"
+              className="flex items-center gap-1 rounded-2xl border border-border bg-surface p-2"
             >
-              <Link href={`/lists/${l.id}`} className="flex items-center gap-3 p-3 hover:bg-surface-2 transition">
+              <Link
+                href={`/lists/${l.id}`}
+                className="flex items-center gap-3 flex-1 min-w-0 rounded-xl p-1 hover:bg-surface-2 transition"
+              >
                 {/* ثلاثة ملصقات متراكبة كغلاف للقائمة */}
                 <span className="relative w-14 h-14 shrink-0">
                   {(l.posters ?? []).slice(0, 3).map((p, i) => {
@@ -114,32 +117,33 @@ export function ListManager({ lists, locale }: { lists: UserList[]; locale: Loca
                 </span>
               </Link>
 
-              <div className="border-t border-border px-3 py-1.5 flex justify-end">
-                {confirming === l.id ? (
-                  <span className="flex items-center gap-3">
-                    <span className="text-[11px] text-muted">{t.listDeleteConfirm}</span>
-                    <button
-                      onClick={() => remove(l.id)}
-                      className="text-[11px] font-bold text-red-300 hover:brightness-125"
-                    >
-                      {t.listDeleteYes}
-                    </button>
-                    <button
-                      onClick={() => setConfirming(null)}
-                      className="text-[11px] text-muted hover:text-foreground"
-                    >
-                      {t.listDeleteNo}
-                    </button>
-                  </span>
-                ) : (
+              {/* الحذف زرٌّ صغير في الصف نفسه لا شريطاً تحته: الشريط كان
+                  يضيف سطراً لكل قائمة بلا فائدة، والتأكيد يحلّ محلّه عند الحاجة */}
+              {confirming === l.id ? (
+                <span className="flex flex-col items-center gap-0.5 shrink-0 px-1">
                   <button
-                    onClick={() => setConfirming(l.id)}
-                    className="text-[11px] text-muted hover:text-red-300 transition"
+                    onClick={() => remove(l.id)}
+                    className="text-[11px] font-bold text-red-300 hover:brightness-125"
                   >
-                    {t.listDelete}
+                    {t.listDeleteYes}
                   </button>
-                )}
-              </div>
+                  <button
+                    onClick={() => setConfirming(null)}
+                    className="text-[11px] text-muted hover:text-foreground"
+                  >
+                    {t.listDeleteNo}
+                  </button>
+                </span>
+              ) : (
+                <button
+                  onClick={() => setConfirming(l.id)}
+                  aria-label={t.listDelete}
+                  title={t.listDelete}
+                  className="shrink-0 grid place-items-center w-8 h-8 rounded-full text-muted hover:text-red-300 hover:bg-surface-2 transition"
+                >
+                  <span className="text-base leading-none">×</span>
+                </button>
+              )}
             </li>
           ))}
         </ul>

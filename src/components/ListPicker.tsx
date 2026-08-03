@@ -69,8 +69,12 @@ export function ListPicker({
       >
         <Icon name="list" size={16} className="text-muted" />
         <span className="font-medium">{t.listAddTo}</span>
+        {/* عدد القوائم التي فيها هذا العمل — رقم مجرّد لا عبارة: العبارة
+            هنا تُقرأ كعدد الأعمال لا عدد القوائم */}
         {inLists.size > 0 && (
-          <span className="text-[11px] text-accent">{t.listCount(inLists.size)}</span>
+          <span className="text-[11px] font-bold text-accent bg-accent/15 rounded-full px-1.5 py-0.5 leading-none">
+            {inLists.size}
+          </span>
         )}
         <span className="ms-auto text-muted text-xs">{open ? "▴" : "▾"}</span>
       </button>

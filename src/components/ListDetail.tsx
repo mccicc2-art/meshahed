@@ -69,7 +69,7 @@ export function ListDetail({
 
   return (
     <div>
-      <div className="flex items-start justify-between gap-3 mb-1">
+      <div className="flex items-center gap-2 mb-1">
         {editing ? (
           <input
             autoFocus
@@ -163,7 +163,7 @@ export function ListDetail({
                   <button
                     onClick={() => remove(it)}
                     aria-label={t.listRemove}
-                    className="absolute top-1.5 end-1.5 grid place-items-center w-6 h-6 rounded-full bg-black/70 text-white/80 hover:text-white hover:bg-black/90 transition opacity-0 group-hover:opacity-100 focus:opacity-100"
+                    className="absolute top-1.5 end-1.5 grid place-items-center w-6 h-6 rounded-full bg-black/60 text-white/70 hover:text-white hover:bg-black/85 transition"
                   >
                     <span className="text-sm leading-none">×</span>
                   </button>
