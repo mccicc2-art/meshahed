@@ -30,11 +30,13 @@ import { getT } from "@/lib/locale";
 import { num, type Dict } from "@/lib/i18n";
 import { blendRecommendations, type Candidate } from "@/lib/recommend";
 import { whenLabel } from "@/lib/when";
-import { airedEpisodeCount, percentOf, nextUnwatchedEpisode } from "@/lib/progress";
+import { airedEpisodeCount, airedPerSeason, percentOf, nextUnwatchedEpisode } from "@/lib/progress";
+import { episodeKey } from "@/lib/keys";
 import { PosterCard } from "@/components/PosterCard";
 import { PosterGrid } from "@/components/PosterGrid";
 import { Avatar } from "@/components/Avatar";
-import { NextUpCard } from "@/components/NextUpCard";
+import { HeroNextUp, type NextEpisode } from "@/components/HeroNextUp";
+import { PosterRail, RailItem } from "@/components/PosterRail";
 import { ShowStatsSync, type ShowStat } from "@/components/ShowStatsSync";
 
 function fmtWatchTime(minutes: number, t: Dict) {
@@ -191,6 +193,12 @@ export default async function HomePage() {
     });
   upcoming.sort((a, b) => a.date.localeCompare(b.date));
 
+  // «ينتظرك»: بدأته وفيه حلقات معروضة لم تُشاهد — أهم من مجرّد «جارٍ»
+  const waitingForYou = continueWatching
+    .filter((i) => i.watched > 0 && i.aired > i.watched)
+    .map((i) => ({ ...i, pending: i.aired - i.watched }))
+    .sort((a, b) => b.pending - a.pending);
+
   // ===== بطاقة «الحلقة التالية»: آخر مسلسل تابعته وله حلقة معروضة لم تُشاهد =====
   const nextUpCandidates = [...continueWatching].sort((a, b) => {
     const ai = lastWatchedOrder.indexOf(a.tv.id);
@@ -198,38 +206,44 @@ export default async function HomePage() {
     return (ai < 0 ? 9999 : ai) - (bi < 0 ? 9999 : bi);
   });
 
-  let nextUp: {
-    tv: TvDetails;
-    season: number;
-    episode: number;
-    name: string | null;
-    still: string | null;
-    runtime: number | null;
-  } | null = null;
+  let nextUp: { tv: TvDetails; queue: NextEpisode[] } | null = null;
 
   for (const cand of nextUpCandidates.slice(0, 3)) {
     // صفوف الحلقات التفصيلية تُقرأ لهذا المسلسل وحده، لا لكل المكتبة
     const keys = await getWatchedForShow(cand.tv.id);
     const ep = nextUnwatchedEpisode(cand.tv, keys);
     if (!ep) continue;
-    // طلب واحد فقط لجلب اسم الحلقة وصورتها
+
+    // طلب واحد فقط لجلب أسماء الحلقات وصورها — نأخذ الحلقة وما بعدها
+    // في نفس الموسم حتى تتقدّم البطاقة بلا انتظار الخادم.
     const season = await getSeason(cand.tv.id, ep.season).catch(() => null);
-    const detail = season?.episodes.find((e) => e.episode_number === ep.episode) ?? null;
-    nextUp = {
-      tv: cand.tv,
-      season: ep.season,
-      episode: ep.episode,
-      name: detail?.name ?? null,
-      still: backdropUrl(detail?.still_path ?? cand.tv.backdrop_path, "w780"),
-      runtime: detail?.runtime ?? null,
-    };
+    const airedCap = airedPerSeason(cand.tv).get(ep.season) ?? 0;
+
+    const queue: NextEpisode[] = [];
+    for (let n = ep.episode; n <= airedCap && queue.length < 6; n++) {
+      if (keys.has(episodeKey(ep.season, n))) continue;
+      const d = season?.episodes.find((e) => e.episode_number === n) ?? null;
+      queue.push({
+        season: ep.season,
+        episode: n,
+        name: d?.name ?? null,
+        stillUrl: backdropUrl(d?.still_path ?? cand.tv.backdrop_path, "w780"),
+        runtime: d?.runtime ?? cand.tv.episode_run_time?.[0] ?? null,
+      });
+    }
+    if (!queue.length) continue;
+
+    nextUp = { tv: cand.tv, queue };
     break;
   }
 
   // الأفلام المكتملة لا تظهر في الرئيسية
   const pausedMovies = movieProgress.filter((m) => !watchedMovieIds.has(m.movie_tmdb_id));
 
-  const empty = follows.length === 0;
+  // مستخدم بلا مكتبة يذهب لشاشة الانضمام بدل صفحة فارغة
+  if (follows.length === 0) redirect("/welcome");
+
+  const empty = false;
 
   // TMDB خارجي — أي خلل فيه يجب ألا يُسقط الصفحة الرئيسية بالكامل
   const favGenres = profile?.favorite_genres ?? [];
@@ -476,6 +490,22 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {!empty && (
+        <div className="flex gap-2 flex-wrap -mt-2">
+          {waitingForYou.length > 0 && (
+            <span className="text-[11px] font-bold px-3 py-1.5 rounded-full border border-accent/45 bg-accent/10 text-accent">
+              {t.stateWaiting(waitingForYou.length)}
+            </span>
+          )}
+          <span className="text-[11px] font-bold px-3 py-1.5 rounded-full border border-accent-2/40 bg-accent-2/10 text-accent-2">
+            {t.stateWatching(continueWatching.length)}
+          </span>
+          <span className="text-[11px] font-bold px-3 py-1.5 rounded-full border border-border bg-surface text-muted">
+            {t.stateDone(items.filter((i) => i.aired > 0 && i.watched >= i.aired).length)}
+          </span>
+        </div>
+      )}
+
       {empty && (
         <section className="text-center py-4">
           <p className="text-muted">{t.emptyStart}</p>
@@ -483,20 +513,16 @@ export default async function HomePage() {
       )}
 
       {nextUp && (
-        <NextUpCard
+        <HeroNextUp
           showTmdbId={nextUp.tv.id}
           showName={nextUp.tv.name}
-          season={nextUp.season}
-          episode={nextUp.episode}
-          episodeName={nextUp.name}
-          stillUrl={nextUp.still}
-          runtime={nextUp.runtime}
+          queue={nextUp.queue}
           locale={locale}
         />
       )}
 
       {pausedMovies.length > 0 && (
-        <Section title={t.pausedMovies}>
+        <Section title={t.pausedMovies} href="/library" seeAll={t.seeAll}>
           {pausedMovies.map((m) => {
             const pct =
               m.runtime_minutes && m.runtime_minutes > 0
@@ -516,8 +542,24 @@ export default async function HomePage() {
         </Section>
       )}
 
+      {waitingForYou.length > 0 && (
+        <Section title={t.waitingForYou} href="/library" seeAll={t.seeAll}>
+          {waitingForYou.map(({ tv, progress, pending }) => (
+            <PosterCard
+              key={`w-${tv.id}`}
+              href={`/show/${tv.id}`}
+              title={tv.name}
+              posterPath={tv.poster_path}
+              progress={progress}
+              badge={t.episodesBadge(pending)}
+              tone="waiting"
+            />
+          ))}
+        </Section>
+      )}
+
       {continueWatching.length > 0 && (
-        <Section title={t.continueWatching}>
+        <Section title={t.continueWatching} href="/library" seeAll={t.seeAll}>
           {continueWatching.map(({ tv, progress }) => (
             <PosterCard
               key={tv.id}
@@ -532,7 +574,7 @@ export default async function HomePage() {
       )}
 
       {upcoming.length > 0 && (
-        <Section title={t.comingSoon}>
+        <Section title={t.comingSoon} href="/library" seeAll={t.seeAll}>
           {upcoming.map((u) => (
             <PosterCard
               key={u.key}
@@ -547,13 +589,10 @@ export default async function HomePage() {
       )}
 
       {suggested.length > 0 && (
-        <section>
-          <h2 className="text-lg font-bold">{t.suggestedForYou}</h2>
-          <p className="text-xs text-muted mt-1 mb-4">{t.suggestedSubtitle}</p>
-          <PosterGrid>
-            {suggested.map((s) => (
+        <PosterRail title={t.suggestedForYou} subtitle={t.suggestedSubtitle}>
+          {suggested.map((s) => (
+            <RailItem key={`sug-${s.result.media_type}-${s.result.id}`}>
               <PosterCard
-                key={`sug-${s.result.media_type}-${s.result.id}`}
                 href={`/${s.result.media_type === "movie" ? "movie" : "show"}/${s.result.id}`}
                 title={titleOf(s.result)}
                 posterPath={s.result.poster_path}
@@ -568,9 +607,9 @@ export default async function HomePage() {
                       : t.recoBecauseGenre
                 }
               />
-            ))}
-          </PosterGrid>
-        </section>
+            </RailItem>
+          ))}
+        </PosterRail>
       )}
 
       {favGenres.length === 0 && !empty && (
@@ -600,11 +639,32 @@ export default async function HomePage() {
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+/** بطاقات كثيرة → صفّ أفقي. بطاقات قليلة → شبكة عادية أنظف بصرياً. */
+function Section({
+  title,
+  href,
+  seeAll,
+  children,
+}: {
+  title: string;
+  href?: string;
+  seeAll?: string;
+  children: React.ReactNode;
+}) {
+  const items = Array.isArray(children) ? children : [children];
+  if (items.length <= 3) {
+    return (
+      <section>
+        <h2 className="text-base font-bold mb-3">{title}</h2>
+        <PosterGrid>{children}</PosterGrid>
+      </section>
+    );
+  }
   return (
-    <section>
-      <h2 className="text-lg font-bold mb-4">{title}</h2>
-      <PosterGrid>{children}</PosterGrid>
-    </section>
+    <PosterRail title={title} href={href} seeAllLabel={seeAll}>
+      {items.map((child, i) => (
+        <RailItem key={i}>{child}</RailItem>
+      ))}
+    </PosterRail>
   );
 }
