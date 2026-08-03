@@ -16,6 +16,8 @@ import { MovieWatchedButton } from "@/components/MovieWatchedButton";
 import { getT } from "@/lib/locale";
 import { RatingBox } from "@/components/RatingBox";
 import { CommunityReviews } from "@/components/CommunityReviews";
+import { DetailTabs } from "@/components/DetailTabs";
+import { SectionTitle } from "@/components/Icon";
 import { Trailer } from "@/components/Trailer";
 import { WhereToWatch } from "@/components/WhereToWatch";
 
@@ -54,23 +56,25 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
 
   return (
     <div>
-      <div className="relative -mx-4 -mt-6 h-56 sm:h-72 mb-4">
+      {/* الترويسة: الملصق والعنوان والأزرار فقط — القصة والترايلر والآراء
+          انتقلت إلى تبويبات، فالصفحة تبدأ من شاشة واحدة لا من عمود طويل */}
+      <div className="relative -mx-4 -mt-6 h-40 sm:h-64 mb-4">
         {backdrop && (
           <Image src={backdrop} alt="" fill priority className="object-cover opacity-40" />
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-[color:var(--background)] via-[color:var(--background)]/40 to-transparent" />
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-6 -mt-24 relative px-1">
-        <div className="w-32 sm:w-44 shrink-0 mx-auto sm:mx-0">
+      <div className="flex gap-4 -mt-20 sm:-mt-24 relative px-1">
+        <div className="w-24 sm:w-40 shrink-0">
           <div className="relative aspect-[2/3] rounded-xl overflow-hidden border border-border bg-surface-2 shadow-xl">
-            {poster && <Image src={poster} alt={movie.title} fill className="object-cover" />}
+            {poster && <Image src={poster} alt={movie.title} fill sizes="160px" className="object-cover" />}
           </div>
         </div>
 
-        <div className="flex-1 pt-2">
-          <h1 className="text-2xl sm:text-3xl font-bold">{movie.title}</h1>
-          <div className="flex flex-wrap items-center gap-2 text-sm text-muted mt-2">
+        <div className="flex-1 min-w-0 self-end pb-1">
+          <h1 className="text-lg sm:text-2xl font-bold leading-tight">{movie.title}</h1>
+          <div className="flex flex-wrap items-center gap-x-2 text-xs sm:text-sm text-muted mt-1">
             {movie.release_date && <span>{movie.release_date.slice(0, 4)}</span>}
             {movie.runtime ? (
               <>
@@ -85,22 +89,8 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
               </>
             )}
           </div>
-          <div className="flex flex-wrap gap-2 mt-3">
-            {movie.genres.map((g) => (
-              <span key={g.id} className="text-xs bg-surface-2 border border-border px-2.5 py-1 rounded-full">
-                {g.name}
-              </span>
-            ))}
-          </div>
-          <p className="text-sm text-muted leading-relaxed mt-4 max-w-2xl">{movie.overview}</p>
 
-          <div className="mt-5 flex flex-wrap items-center gap-3">
-            <MovieWatchedButton
-              movieTmdbId={movieId}
-              runtime={movie.runtime}
-              initialWatched={watched}
-              locale={locale}
-            />
+          <div className="mt-3">
             <FollowButton
               tmdbId={movieId}
               mediaType="movie"
@@ -110,55 +100,106 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
               locale={locale}
             />
           </div>
-
-          <MovieProgress
-            movieTmdbId={movieId}
-            runtime={movie.runtime}
-            title={movie.title}
-            posterPath={movie.poster_path}
-            initialPosition={mProgress?.position_minutes ?? 0}
-            watched={watched}
-            locale={locale}
-          />
-
-          {(trailer || watchWhere) && (
-            <div className="mt-8 space-y-8">
-              {trailer && (
-                <Trailer
-                  videoKey={trailer.key}
-                  title={movie.title}
-                  thumbnail={backdrop}
-                  locale={locale}
-                />
-              )}
-              {watchWhere && (
-                <WhereToWatch
-                  region={watchWhere.region}
-                  options={watchWhere.options}
-                  locale={locale}
-                />
-              )}
-            </div>
-          )}
-
-          <RatingBox
-            tmdbId={movieId}
-            mediaType="movie"
-            title={movie.title}
-            posterPath={movie.poster_path}
-            locale={locale}
-            initialRating={myRating?.rating ?? null}
-            initialReview={myRating?.review ?? null}
-          />
-
-          <CommunityReviews
-            locale={locale}
-            avg={community.avg}
-            count={community.count}
-            reviews={titleReviews}
-          />
         </div>
       </div>
+
+      <DetailTabs
+        tabs={[
+          {
+            key: "track",
+            label: t.tabTrack,
+            icon: "check",
+            content: (
+              <div className="space-y-4">
+                <MovieWatchedButton
+                  movieTmdbId={movieId}
+                  runtime={movie.runtime}
+                  initialWatched={watched}
+                  locale={locale}
+                />
+                <MovieProgress
+                  movieTmdbId={movieId}
+                  runtime={movie.runtime}
+                  title={movie.title}
+                  posterPath={movie.poster_path}
+                  initialPosition={mProgress?.position_minutes ?? 0}
+                  watched={watched}
+                  locale={locale}
+                />
+                <RatingBox
+                  tmdbId={movieId}
+                  mediaType="movie"
+                  title={movie.title}
+                  posterPath={movie.poster_path}
+                  locale={locale}
+                  initialRating={myRating?.rating ?? null}
+                  initialReview={myRating?.review ?? null}
+                />
+              </div>
+            ),
+          },
+          {
+            key: "info",
+            label: t.tabInfo,
+            icon: "info",
+            content: (
+              <div className="space-y-6">
+                {movie.overview && (
+                  <section>
+                    <SectionTitle icon="info" className="mb-2">
+                      {t.storyTitle}
+                    </SectionTitle>
+                    <p className="text-sm text-muted leading-relaxed">{movie.overview}</p>
+                  </section>
+                )}
+
+                {movie.genres.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {movie.genres.map((g) => (
+                      <span
+                        key={g.id}
+                        className="text-xs bg-surface-2 border border-border px-2.5 py-1 rounded-full"
+                      >
+                        {g.name}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {trailer && (
+                  <Trailer
+                    videoKey={trailer.key}
+                    title={movie.title}
+                    thumbnail={backdrop}
+                    locale={locale}
+                  />
+                )}
+
+                {watchWhere && (
+                  <WhereToWatch
+                    region={watchWhere.region}
+                    options={watchWhere.options}
+                    locale={locale}
+                  />
+                )}
+              </div>
+            ),
+          },
+          {
+            key: "reviews",
+            label: t.tabReviews,
+            icon: "comment",
+            content: (
+              <CommunityReviews
+                locale={locale}
+                avg={community.avg}
+                count={community.count}
+                reviews={titleReviews}
+              />
+            ),
+          },
+        ]}
+      />
     </div>
   );
 }
