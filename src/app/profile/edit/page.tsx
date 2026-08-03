@@ -21,7 +21,7 @@ export default async function EditProfilePage() {
           {t.accountSettings} ›
         </Link>
       </div>
-      <h1 className="text-2xl font-bold mt-3 mb-6">{t.editProfile}</h1>
+      <h1 className="text-xl font-bold mt-2 mb-4">{t.editProfile}</h1>
 
       <ProfileForm
         userId={user.id}
