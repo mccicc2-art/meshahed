@@ -1,0 +1,328 @@
+import { getFollows, getMyRatings, getWatchSummary, getWatchedMovieIds, getAllMovieProgress, getAllWatchedEpisodes } from "@/lib/data";
+import { getTv, getMovie } from "@/lib/tmdb";
+import { getDict, num, type Locale } from "@/lib/i18n";
+import { isComplete } from "@/lib/progress";
+
+function pct(part: number, total: number) {
+  return total > 0 ? Math.round((part / total) * 100) : 0;
+}
+
+function fmtWatchTime(minutes: number, t: ReturnType<typeof getDict>) {
+  const h = Math.round(minutes / 60);
+  if (h < 24) return t.hours(h);
+  const d = Math.floor(h / 24);
+  const rest = h % 24;
+  return rest === 0 ? t.days(d) : t.daysAndHours(d, rest);
+}
+
+/** شريط أفقي بنسبة — يُقرأ أسرع من رقم مجرّد لأن الطول نفسه هو المقارنة */
+function Bar({
+  label,
+  value,
+  total,
+  color = "bg-accent",
+  suffix,
+  locale,
+}: {
+  label: string;
+  value: number;
+  total: number;
+  color?: string;
+  suffix?: string;
+  locale: Locale;
+}) {
+  const p = pct(value, total);
+  return (
+    <div>
+      <div className="flex items-baseline justify-between gap-2 mb-1">
+        <span className="text-xs truncate">{label}</span>
+        <span className="text-[11px] text-muted shrink-0 tabular-nums">
+          {num(value, locale)}
+          {suffix ? ` ${suffix}` : ""} · {p}%
+        </span>
+      </div>
+      <div className="h-2 rounded-full bg-surface-2 overflow-hidden">
+        {/* صفر يعني صفر — الحد الأدنى ٢٪ كان يرسم نقطة تحت تقييم لا وجود له */}
+        <div
+          className={`h-full rounded-full ${color}`}
+          style={{ width: value === 0 ? "0%" : `${Math.max(p, 2)}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
+/** شريط واحد مقسّم — للمقارنات ذات الفئات القليلة */
+function Split({
+  segments,
+  locale,
+}: {
+  segments: { label: string; value: number; color: string }[];
+  locale: Locale;
+}) {
+  const total = segments.reduce((n, s) => n + s.value, 0);
+  if (total === 0) return null;
+  return (
+    <div>
+      <div className="flex h-3 rounded-full overflow-hidden bg-surface-2">
+        {segments.map((s) =>
+          s.value > 0 ? (
+            <div
+              key={s.label}
+              className={s.color}
+              style={{ width: `${pct(s.value, total)}%` }}
+              title={`${s.label}: ${s.value}`}
+            />
+          ) : null,
+        )}
+      </div>
+      <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2">
+        {segments.map((s) => (
+          <span key={s.label} className="flex items-center gap-1.5 text-[11px] text-muted">
+            <span className={`w-2.5 h-2.5 rounded-full ${s.color}`} aria-hidden />
+            {s.label}
+            <b className="text-foreground tabular-nums">{num(s.value, locale)}</b>
+            <span className="tabular-nums">({pct(s.value, total)}%)</span>
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function Card({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
+  return (
+    <section className="bg-surface border border-border rounded-2xl p-4 sm:p-5">
+      <h3 className="text-sm font-bold">{title}</h3>
+      {hint && <p className="text-[11px] text-muted mt-0.5 mb-4 leading-relaxed">{hint}</p>}
+      {!hint && <div className="mb-4" />}
+      {children}
+    </section>
+  );
+}
+
+/**
+ * تحليل المكتبة.
+ *
+ * يطلب تفاصيل TMDB لكل عمل تتابعه — وهو ما تتجنّبه بقية صفحة المكتبة عمداً.
+ * لذلك يُغلَّف بـ Suspense في الصفحة: المكتبة تُرسم فوراً، والتحليل يصل بعدها.
+ * وردود TMDB مخزّنة ساعة، والصفحة الرئيسية تطلب نفس الأعمال، فالغالب أن
+ * الطلبات مخدومة من الذاكرة لا من الشبكة.
+ */
+export async function LibraryAnalysis({ locale }: { locale: Locale }) {
+  const t = getDict(locale);
+
+  const [follows, ratings, summary, watchedMovieIds, movieProgress] = await Promise.all([
+    getFollows(),
+    getMyRatings(),
+    getWatchSummary(),
+    getWatchedMovieIds(),
+    getAllMovieProgress(),
+  ]);
+
+  if (!follows.length) {
+    return <p className="text-sm text-muted text-center py-10">{t.analysisEmpty}</p>;
+  }
+
+  const watchedByShow = new Map<number, number>();
+  let epMinutes = 0;
+  let totalEpisodes = 0;
+
+  if (summary) {
+    for (const s of summary) {
+      watchedByShow.set(s.show_tmdb_id, s.watched);
+      totalEpisodes += s.watched;
+      epMinutes += s.minutes;
+    }
+  } else {
+    for (const w of await getAllWatchedEpisodes()) {
+      watchedByShow.set(w.show_tmdb_id, (watchedByShow.get(w.show_tmdb_id) ?? 0) + 1);
+      epMinutes += w.runtime ?? 40;
+      totalEpisodes++;
+    }
+  }
+
+  const tvFollows = follows.filter((f) => f.media_type === "tv");
+  const movieFollows = follows.filter((f) => f.media_type === "movie");
+  const startedMovieIds = new Set(movieProgress.map((m) => m.movie_tmdb_id));
+
+  // ===== أين وصلت =====
+  let done = 0;
+  let inProgress = 0;
+  let notStarted = 0;
+
+  for (const f of tvFollows) {
+    const w = watchedByShow.get(f.tmdb_id) ?? 0;
+    const aired = f.aired_episodes ?? f.total_episodes ?? 0;
+    if (isComplete(w, aired)) done++;
+    else if (w > 0) inProgress++;
+    else notStarted++;
+  }
+  for (const f of movieFollows) {
+    if (watchedMovieIds.has(f.tmdb_id)) done++;
+    else if (startedMovieIds.has(f.tmdb_id)) inProgress++;
+    else notStarted++;
+  }
+
+  // ===== الأنواع والسنوات من TMDB =====
+  const [tvDetails, movieDetails] = await Promise.all([
+    Promise.all(tvFollows.map((f) => getTv(f.tmdb_id).catch(() => null))),
+    Promise.all(movieFollows.map((f) => getMovie(f.tmdb_id).catch(() => null))),
+  ]);
+
+  const genreTally = new Map<string, number>();
+  const decadeTally = new Map<number, number>();
+  let genreTags = 0;
+
+  for (const d of tvDetails) {
+    for (const g of d?.genres ?? []) {
+      genreTally.set(g.name, (genreTally.get(g.name) ?? 0) + 1);
+      genreTags++;
+    }
+    const y = Number(d?.first_air_date?.slice(0, 4));
+    if (y) decadeTally.set(Math.floor(y / 10) * 10, (decadeTally.get(Math.floor(y / 10) * 10) ?? 0) + 1);
+  }
+  for (const d of movieDetails) {
+    for (const g of d?.genres ?? []) {
+      genreTally.set(g.name, (genreTally.get(g.name) ?? 0) + 1);
+      genreTags++;
+    }
+    const y = Number(d?.release_date?.slice(0, 4));
+    if (y) decadeTally.set(Math.floor(y / 10) * 10, (decadeTally.get(Math.floor(y / 10) * 10) ?? 0) + 1);
+  }
+
+  const topGenres = [...genreTally.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8);
+  const decades = [...decadeTally.entries()].sort((a, b) => b[0] - a[0]);
+  const decadeTotal = decades.reduce((n, [, v]) => n + v, 0);
+
+  // ===== التقييمات =====
+  const buckets = [5, 4, 3, 2, 1].map((star) => ({
+    star,
+    count: ratings.filter((r) => r.rating === star).length,
+  }));
+  const ratedTotal = ratings.length;
+  const avg = ratedTotal ? ratings.reduce((n, r) => n + r.rating, 0) / ratedTotal : 0;
+
+  const totalMinutes = epMinutes + watchedMovieIds.size * 110;
+
+  const headline = [
+    { label: t.statWatchTime, value: fmtWatchTime(totalMinutes, t), icon: "⏱️" },
+    { label: t.statsWatchedEpisodes, value: num(totalEpisodes, locale), icon: "✅" },
+    { label: t.statsWatchedMovies, value: num(watchedMovieIds.size, locale), icon: "🎬" },
+    { label: t.statsFollowing, value: num(follows.length, locale), icon: "⭐" },
+  ];
+
+  return (
+    <div className="space-y-4">
+      {/* الأرقام الإجمالية — انتقلت من الرئيسية إلى هنا، حيث يُنظر إليها بقصد */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        {headline.map((h) => (
+          <div key={h.label} className="bg-surface border border-border rounded-2xl p-3 sm:p-4">
+            <div className="text-base sm:text-lg leading-none" aria-hidden>
+              {h.icon}
+            </div>
+            <div className="text-lg sm:text-2xl font-extrabold mt-1.5 leading-none">{h.value}</div>
+            <div className="text-[11px] text-muted mt-1 leading-tight">{h.label}</div>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card title={t.analysisMix}>
+          <Split
+            locale={locale}
+            segments={[
+              { label: t.libShowsGroup, value: tvFollows.length, color: "bg-accent" },
+              { label: t.libMoviesGroup, value: movieFollows.length, color: "bg-accent-2" },
+            ]}
+          />
+        </Card>
+
+        <Card title={t.analysisStatus}>
+          <Split
+            locale={locale}
+            segments={[
+              { label: t.statusDone, value: done, color: "bg-accent-2" },
+              { label: t.statusWatching, value: inProgress, color: "bg-accent" },
+              { label: t.statusNotStarted, value: notStarted, color: "bg-muted/40" },
+            ]}
+          />
+        </Card>
+      </div>
+
+      {topGenres.length > 0 && (
+        <Card title={t.analysisTaste} hint={t.analysisTasteSub}>
+          <div className="space-y-3">
+            {topGenres.map(([name, count]) => (
+              <Bar
+                key={name}
+                label={name}
+                value={count}
+                total={genreTags}
+                locale={locale}
+                color="bg-accent"
+              />
+            ))}
+          </div>
+        </Card>
+      )}
+
+      <div className="grid gap-4 md:grid-cols-2">
+        {ratedTotal > 0 && (
+          <Card
+            title={t.analysisRatings}
+            hint={`${t.avgRatingLabel(avg.toFixed(1))} · ${t.ratedCount(ratedTotal)}`}
+          >
+            <div className="space-y-3">
+              {buckets.map((b) => (
+                <Bar
+                  key={b.star}
+                  label={"★".repeat(b.star)}
+                  value={b.count}
+                  total={ratedTotal}
+                  locale={locale}
+                  color="bg-accent-2"
+                />
+              ))}
+            </div>
+          </Card>
+        )}
+
+        {decades.length > 0 && (
+          <Card title={t.analysisDecades}>
+            <div className="space-y-3">
+              {decades.map(([decade, count]) => (
+                <Bar
+                  key={decade}
+                  label={`${decade}s`}
+                  value={count}
+                  total={decadeTotal}
+                  locale={locale}
+                  color="bg-accent"
+                />
+              ))}
+            </div>
+          </Card>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** هيكل عظمي بنفس ارتفاع التحليل تقريباً حتى لا تقفز الصفحة عند وصوله */
+export function LibraryAnalysisSkeleton() {
+  return (
+    <div className="space-y-4 animate-pulse">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        {[0, 1, 2, 3].map((i) => (
+          <div key={i} className="h-[86px] bg-surface border border-border rounded-2xl" />
+        ))}
+      </div>
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="h-32 bg-surface border border-border rounded-2xl" />
+        <div className="h-32 bg-surface border border-border rounded-2xl" />
+      </div>
+      <div className="h-72 bg-surface border border-border rounded-2xl" />
+    </div>
+  );
+}
