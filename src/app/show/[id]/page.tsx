@@ -7,6 +7,8 @@ import {
   getMyRating,
   getCommunityRating,
   getTitleReviews,
+  getMyLists,
+  getListsContaining,
 } from "@/lib/data";
 import {
   getTv,
@@ -26,6 +28,7 @@ import { DetailTabs } from "@/components/DetailTabs";
 import { Icon, SectionTitle } from "@/components/Icon";
 import { Trailer } from "@/components/Trailer";
 import { WhereToWatch } from "@/components/WhereToWatch";
+import { ListPicker } from "@/components/ListPicker";
 import { formatDate } from "@/lib/when";
 import { ShowStatsSync } from "@/components/ShowStatsSync";
 import { airedEpisodeCount, airedPerSeason } from "@/lib/progress";
@@ -47,8 +50,17 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
     );
   }
 
-  const [follows, watched, myRating, community, titleReviews, trailer, watchWhere] =
-    await Promise.all([
+  const [
+    follows,
+    watched,
+    myRating,
+    community,
+    titleReviews,
+    trailer,
+    watchWhere,
+    myLists,
+    inLists,
+  ] = await Promise.all([
       getFollows(),
       getWatchedForShow(tvId),
       getMyRating(tvId, "tv"),
@@ -56,6 +68,8 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
       getTitleReviews(tvId, "tv"),
       getTrailer("tv", tvId),
       getWatchProviders("tv", tvId),
+      getMyLists(),
+      getListsContaining(tvId, "tv"),
     ]);
   const following = follows.some((f) => f.tmdb_id === tvId && f.media_type === "tv");
 
@@ -203,6 +217,15 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
                   locale={locale}
                   initialRating={myRating?.rating ?? null}
                   initialReview={myRating?.review ?? null}
+                />
+                <ListPicker
+                  lists={myLists.map((l) => ({ id: l.id, name: l.name }))}
+                  containing={inLists}
+                  tmdbId={tvId}
+                  mediaType="tv"
+                  title={tv.name}
+                  posterPath={tv.poster_path}
+                  locale={locale}
                 />
               </div>
             ),
