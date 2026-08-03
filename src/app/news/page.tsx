@@ -98,6 +98,7 @@ export default async function NewsPage() {
     <div className="space-y-8">
       <header>
         <h1 className="text-xl font-bold">{t.newsTitle}</h1>
+        <p className="text-xs text-muted mt-0.5">{t.discoverSub}</p>
       </header>
 
       {cinemas && (
