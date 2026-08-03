@@ -9,15 +9,12 @@ import {
   getWatchedMovieIds,
   getProfile,
   getAllMovieProgress,
-  getMyRatings,
 } from "@/lib/data";
 import {
   getTv,
   getMovie,
   getSeason,
   trending,
-  discoverByGenres,
-  recommendationsFor,
   titleOf,
   yearOf,
   type TvDetails,
@@ -25,8 +22,6 @@ import {
 } from "@/lib/tmdb";
 import { backdropUrl } from "@/lib/media";
 import { getT } from "@/lib/locale";
-import { blendRecommendations, type Candidate } from "@/lib/recommend";
-import { whenLabel } from "@/lib/when";
 import { airedEpisodeCount, airedPerSeason, percentOf, nextUnwatchedEpisode } from "@/lib/progress";
 import { episodeKey } from "@/lib/keys";
 import { PosterCard } from "@/components/PosterCard";
@@ -46,15 +41,13 @@ export default async function HomePage() {
 
   // ملخّص مجمّع: صف لكل مسلسل بدل صف لكل حلقة (آلاف الصفوف سابقاً).
   // صفوف الحلقات التفصيلية تُقرأ لاحقاً لمسلسل واحد فقط — صاحب «الحلقة التالية».
-  const [follows, summary, watchedMovieIds, profile, movieProgress, myRatings] =
-    await Promise.all([
-      getFollows(),
-      getWatchSummary(),
-      getWatchedMovieIds(),
-      getProfile(),
-      getAllMovieProgress(),
-      getMyRatings(),
-    ]);
+  const [follows, summary, watchedMovieIds, profile, movieProgress] = await Promise.all([
+    getFollows(),
+    getWatchSummary(),
+    getWatchedMovieIds(),
+    getProfile(),
+    getAllMovieProgress(),
+  ]);
 
   const tvFollows = follows.filter((f) => f.media_type === "tv");
   const movieFollows = follows.filter((f) => f.media_type === "movie");
@@ -235,65 +228,12 @@ export default async function HomePage() {
 
   const empty = false;
 
-  // TMDB خارجي — أي خلل فيه يجب ألا يُسقط الصفحة الرئيسية بالكامل
   const favGenres = profile?.favorite_genres ?? [];
-  const followedIds = new Set(follows.map((f) => f.tmdb_id));
 
-  // ===== بذور محرّك الاقتراحات =====
-  const titleById = new Map<number, string>(follows.map((f) => [f.tmdb_id, f.title]));
-  const recentShowIds = lastWatchedOrder.slice(0, 2);
-
-  // ما تتابعه: أحدث ما أضفته ولم يدخل ضمن "آخر ما شاهدت"
-  const followSeeds = follows.filter((f) => !recentShowIds.includes(f.tmdb_id)).slice(0, 3);
-
-  // تقييماتك: ما أعطيته ٤ أو ٥ نجوم يصير بذرة، وما أعطيته نجمة أو نجمتين يُستبعد
-  const lovedSeeds = myRatings
-    .filter((r) => r.rating >= 4)
-    .sort((a, b) => b.rating - a.rating || b.updated_at.localeCompare(a.updated_at))
-    .slice(0, 3);
-  const dislikedIds = myRatings.filter((r) => r.rating <= 2).map((r) => r.tmdb_id);
-
-  const [trend, genreDiscover, followRecs, recentRecs, ratedRecs] = await Promise.all([
-    trending().catch(() => [] as SearchResult[]),
-    favGenres.length
-      ? discoverByGenres(favGenres, "tv").catch(() => [] as SearchResult[])
-      : Promise.resolve([] as SearchResult[]),
-    Promise.all(
-      followSeeds.map((f) =>
-        recommendationsFor(f.media_type, f.tmdb_id)
-          .then((rs) => ({ seed: f.title, rs }))
-          .catch(() => ({ seed: f.title, rs: [] as SearchResult[] })),
-      ),
-    ),
-    Promise.all(
-      recentShowIds.map((id) =>
-        recommendationsFor("tv", id)
-          .then((rs) => ({ seed: titleById.get(id) ?? "", rs }))
-          .catch(() => ({ seed: titleById.get(id) ?? "", rs: [] as SearchResult[] })),
-      ),
-    ),
-    Promise.all(
-      lovedSeeds.map((r) =>
-        recommendationsFor(r.media_type, r.tmdb_id)
-          .then((rs) => ({ seed: r.title ?? "", rs }))
-          .catch(() => ({ seed: r.title ?? "", rs: [] as SearchResult[] })),
-      ),
-    ),
-  ]);
-
-  const candidates: Candidate[] = [];
-  for (const { seed, rs } of ratedRecs)
-    rs.forEach((r, i) => candidates.push({ result: r, source: "rated", seedTitle: seed, rank: i }));
-  for (const { seed, rs } of followRecs)
-    rs.forEach((r, i) => candidates.push({ result: r, source: "follows", seedTitle: seed, rank: i }));
-  for (const { seed, rs } of recentRecs)
-    rs.forEach((r, i) => candidates.push({ result: r, source: "recent", seedTitle: seed, rank: i }));
-  genreDiscover.forEach((r, i) => candidates.push({ result: r, source: "genres", rank: i }));
-
-  // ما قيّمته بنجمة أو نجمتين لا يُقترح عليك مرة أخرى
-  const excluded = new Set<number>([...followedIds, ...watchedMovieIds, ...dislikedIds]);
-  const suggested = blendRecommendations(candidates, { exclude: excluded, limit: 12 });
-  const showTrending = empty || (!suggested.length && continueWatching.length === 0);
+  // «الرائج» احتياطٌ لمن لا شيء في يده الآن — و TMDB خارجي، فخلله لا يُسقط
+  // الصفحة: القائمة ترجع فارغة والقسم لا يُرسم
+  const showTrending = empty || continueWatching.length === 0;
+  const trend = showTrending ? await trending().catch(() => [] as SearchResult[]) : [];
 
   const displayName = profile?.nickname || user.email?.split("@")[0] || "";
 
@@ -336,7 +276,7 @@ export default async function HomePage() {
   const panel: PanelItem[] = [
     {
       key: "waiting",
-      href: "#waiting",
+      href: "/library?filter=watching",
       count: waitingForYou.length,
       label: t.panelWaiting,
       icon: "bell" as const,
@@ -352,7 +292,7 @@ export default async function HomePage() {
     },
     {
       key: "ready",
-      href: "#ready",
+      href: "/library?filter=notStarted",
       count: readyCount,
       label: t.panelReady,
       icon: "bookmark" as const,
@@ -360,8 +300,10 @@ export default async function HomePage() {
     },
     {
       key: "soon",
-      href: "#soon",
-      count: upcoming.length,
+      href: "#week",
+      // العدد عدد ما في شريط الأسبوع لا كل القادم: الضغطة تنزل إلى الشريط،
+      // فرقمٌ أكبر مما يعرضه يوهم أن شيئاً اختفى
+      count: weekEntries.length,
       label: t.panelSoon,
       icon: "calendar" as const,
       tone: "soon",
@@ -399,25 +341,8 @@ export default async function HomePage() {
         />
       )}
 
+      <span id="week" className="block scroll-mt-20" />
       <WeekStrip days={weekDays} entries={weekEntries} locale={locale} />
-
-      <span id="waiting" className="block scroll-mt-20" />
-
-      {waitingForYou.length > 0 && (
-        <Section title={t.waitingForYou} icon="hourglass" href="/library" seeAll={t.seeAll}>
-          {waitingForYou.map(({ tv, progress, pending }) => (
-            <PosterCard
-              key={`w-${tv.id}`}
-              href={`/show/${tv.id}`}
-              title={tv.name}
-              posterPath={tv.poster_path}
-              progress={progress}
-              badge={t.episodesBadge(pending)}
-              tone="waiting"
-            />
-          ))}
-        </Section>
-      )}
 
       <span id="watching" className="block scroll-mt-20" />
 
@@ -455,83 +380,6 @@ export default async function HomePage() {
             );
           })}
         </Section>
-      )}
-
-      {/* ===== جاهز تشوفه =====
-          كل ما في مفضلتك ولم تبدأه — مسلسلات وأفلام معاً. كان الفيلم الذي
-          تحفظه لا يظهر في الرئيسية إطلاقاً حتى تفتحه، فيُنسى في المكتبة. */}
-      <span id="ready" className="block scroll-mt-20" />
-
-      {readyCount > 0 && (
-        <Section
-          title={t.readyToWatch}
-          icon="bookmark"
-          subtitle={t.readyToWatchSub}
-          href="/library"
-          seeAll={t.seeAll}
-        >
-          {[
-            ...notStartedShows.map(({ tv }) => (
-              <PosterCard
-                key={`r-tv-${tv.id}`}
-                href={`/show/${tv.id}`}
-                title={tv.name}
-                posterPath={tv.poster_path}
-                badge={t.notStartedBadge}
-              />
-            )),
-            ...readyMovies.map((f) => (
-              <PosterCard
-                key={`r-mv-${f.tmdb_id}`}
-                href={`/movie/${f.tmdb_id}`}
-                title={f.title}
-                posterPath={f.poster_path}
-                badge={t.typeMovie}
-              />
-            )),
-          ]}
-        </Section>
-      )}
-
-      <span id="soon" className="block scroll-mt-20" />
-
-      {upcoming.length > 0 && (
-        <Section title={t.comingSoon} icon="calendar" href="/library" seeAll={t.seeAll}>
-          {upcoming.map((u) => (
-            <PosterCard
-              key={u.key}
-              href={u.href}
-              title={u.title}
-              posterPath={u.posterPath}
-              year={whenLabel(u.date, t)}
-              badge={u.badge}
-            />
-          ))}
-        </Section>
-      )}
-
-      {suggested.length > 0 && (
-        <PosterRail title={t.suggestedForYou} icon="sparkles" subtitle={t.suggestedSubtitle}>
-          {suggested.map((s) => (
-            <RailItem key={`sug-${s.result.media_type}-${s.result.id}`}>
-              <PosterCard
-                href={`/${s.result.media_type === "movie" ? "movie" : "show"}/${s.result.id}`}
-                title={titleOf(s.result)}
-                posterPath={s.result.poster_path}
-                year={yearOf(s.result)}
-                note={
-                  s.source === "rated" && s.seedTitle
-                    ? t.recoBecauseRated(s.seedTitle)
-                    : s.source === "follows" && s.seedTitle
-                    ? t.recoBecauseFollow(s.seedTitle)
-                    : s.source === "recent" && s.seedTitle
-                      ? t.recoBecauseWatched(s.seedTitle)
-                      : t.recoBecauseGenre
-                }
-              />
-            </RailItem>
-          ))}
-        </PosterRail>
       )}
 
       {favGenres.length === 0 && !empty && (
