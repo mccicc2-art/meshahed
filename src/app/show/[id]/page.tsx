@@ -14,6 +14,8 @@ import { EpisodeTracker, type SeasonSummary } from "@/components/EpisodeTracker"
 import { getT } from "@/lib/locale";
 import { RatingBox } from "@/components/RatingBox";
 import { CommunityReviews } from "@/components/CommunityReviews";
+import { DetailTabs } from "@/components/DetailTabs";
+import { SectionTitle } from "@/components/Icon";
 import { Trailer } from "@/components/Trailer";
 import { WhereToWatch } from "@/components/WhereToWatch";
 import { formatDate } from "@/lib/when";
@@ -112,28 +114,28 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
         />
       )}
 
-      <div className="relative -mx-4 -mt-6 h-56 sm:h-72 mb-4">
+      {/* الترويسة مختصرة: القصة والترايلر والمنصّات والآراء في تبويبات،
+          فلا يمرّ من يريد الحلقات على أربعة أقسام قبلها */}
+      <div className="relative -mx-4 -mt-6 h-40 sm:h-64 mb-4">
         {backdrop && (
           <Image src={backdrop} alt="" fill priority className="object-cover opacity-40" />
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-[color:var(--background)] via-[color:var(--background)]/40 to-transparent" />
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-6 -mt-24 relative px-1">
-        <div className="w-32 sm:w-44 shrink-0 mx-auto sm:mx-0">
+      <div className="flex gap-4 -mt-20 sm:-mt-24 relative px-1">
+        <div className="w-24 sm:w-40 shrink-0">
           <div className="relative aspect-[2/3] rounded-xl overflow-hidden border border-border bg-surface-2 shadow-xl">
-            {poster && <Image src={poster} alt={tv.name} fill className="object-cover" />}
+            {poster && <Image src={poster} alt={tv.name} fill sizes="160px" className="object-cover" />}
           </div>
         </div>
 
-        <div className="flex-1 pt-2">
-          <h1 className="text-2xl sm:text-3xl font-bold">{tv.name}</h1>
-          <div className="flex flex-wrap items-center gap-2 text-sm text-muted mt-2">
+        <div className="flex-1 min-w-0 self-end pb-1">
+          <h1 className="text-lg sm:text-2xl font-bold leading-tight">{tv.name}</h1>
+          <div className="flex flex-wrap items-center gap-x-2 text-xs sm:text-sm text-muted mt-1">
             {tv.first_air_date && <span>{tv.first_air_date.slice(0, 4)}</span>}
             <span>·</span>
             <span>{t.seasonsCount(tv.number_of_seasons)}</span>
-            <span>·</span>
-            <span>{t.episodesCount(tv.number_of_episodes)}</span>
             {tv.vote_average > 0 && (
               <>
                 <span>·</span>
@@ -141,16 +143,8 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
               </>
             )}
           </div>
-          <div className="flex flex-wrap gap-2 mt-3">
-            {tv.genres.map((g) => (
-              <span key={g.id} className="text-xs bg-surface-2 border border-border px-2.5 py-1 rounded-full">
-                {g.name}
-              </span>
-            ))}
-          </div>
-          <p className="text-sm text-muted leading-relaxed mt-4 max-w-2xl">{tv.overview}</p>
 
-          <div className="mt-5 flex items-center gap-3">
+          <div className="mt-3 flex flex-wrap items-center gap-2">
             <FollowButton
               tmdbId={tvId}
               mediaType="tv"
@@ -160,7 +154,7 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
               locale={locale}
             />
             {next && next.air_date && (
-              <span className="text-xs text-accent-2 bg-accent-2/10 border border-accent-2/30 px-3 py-2 rounded-lg">
+              <span className="text-[11px] text-accent-2 bg-accent-2/10 border border-accent-2/30 px-2.5 py-1.5 rounded-lg">
                 {t.nextEpisodeOn(formatDate(next.air_date, t))}
               </span>
             )}
@@ -168,47 +162,100 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
         </div>
       </div>
 
-      {(trailer || watchWhere) && (
-        <div className="mt-8 space-y-8">
-          {trailer && (
-            <Trailer
-              videoKey={trailer.key}
-              title={tv.name}
-              thumbnail={backdrop}
-              locale={locale}
-            />
-          )}
-          {watchWhere && (
-            <WhereToWatch region={watchWhere.region} options={watchWhere.options} locale={locale} />
-          )}
-        </div>
-      )}
+      <DetailTabs
+        tabs={[
+          {
+            key: "episodes",
+            label: t.tabEpisodes,
+            icon: "list",
+            content: (
+              <div className="space-y-4">
+                <EpisodeTracker
+                  showTmdbId={tvId}
+                  summaries={summaries}
+                  initialSeason={openSeason}
+                  initialEpisodes={initialEpisodes}
+                  airedTotal={airedExact}
+                  defaultRuntime={tv.episode_run_time?.[0] ?? null}
+                  initialWatched={[...watched]}
+                  locale={locale}
+                />
+                <RatingBox
+                  tmdbId={tvId}
+                  mediaType="tv"
+                  title={tv.name}
+                  posterPath={tv.poster_path}
+                  locale={locale}
+                  initialRating={myRating?.rating ?? null}
+                  initialReview={myRating?.review ?? null}
+                />
+              </div>
+            ),
+          },
+          {
+            key: "info",
+            label: t.tabInfo,
+            icon: "info",
+            content: (
+              <div className="space-y-6">
+                {tv.overview && (
+                  <section>
+                    <SectionTitle icon="info" className="mb-2">
+                      {t.storyTitle}
+                    </SectionTitle>
+                    <p className="text-sm text-muted leading-relaxed">{tv.overview}</p>
+                  </section>
+                )}
 
-      <RatingBox
-        tmdbId={tvId}
-        mediaType="tv"
-        title={tv.name}
-        posterPath={tv.poster_path}
-        locale={locale}
-        initialRating={myRating?.rating ?? null}
-        initialReview={myRating?.review ?? null}
+                <p className="text-xs text-muted">{t.episodesCount(tv.number_of_episodes)}</p>
+
+                {tv.genres.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {tv.genres.map((g) => (
+                      <span
+                        key={g.id}
+                        className="text-xs bg-surface-2 border border-border px-2.5 py-1 rounded-full"
+                      >
+                        {g.name}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {trailer && (
+                  <Trailer
+                    videoKey={trailer.key}
+                    title={tv.name}
+                    thumbnail={backdrop}
+                    locale={locale}
+                  />
+                )}
+
+                {watchWhere && (
+                  <WhereToWatch
+                    region={watchWhere.region}
+                    options={watchWhere.options}
+                    locale={locale}
+                  />
+                )}
+              </div>
+            ),
+          },
+          {
+            key: "reviews",
+            label: t.tabReviews,
+            icon: "comment",
+            content: (
+              <CommunityReviews
+                locale={locale}
+                avg={community.avg}
+                count={community.count}
+                reviews={titleReviews}
+              />
+            ),
+          },
+        ]}
       />
-
-      <CommunityReviews locale={locale} avg={community.avg} count={community.count} reviews={titleReviews} />
-
-      <div className="mt-10">
-        <h2 className="text-lg font-bold mb-4">{t.episodesHeading}</h2>
-        <EpisodeTracker
-          showTmdbId={tvId}
-          summaries={summaries}
-          initialSeason={openSeason}
-          initialEpisodes={initialEpisodes}
-          airedTotal={airedExact}
-          defaultRuntime={tv.episode_run_time?.[0] ?? null}
-          initialWatched={[...watched]}
-          locale={locale}
-        />
-      </div>
     </div>
   );
 }
