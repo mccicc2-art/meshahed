@@ -41,7 +41,8 @@ export default async function NewsPage() {
       overview: r.overview ?? "",
       poster: posterUrl(r.poster_path, "w342"),
       posterPath: r.poster_path,
-      backdrop: backdropUrl(r.backdrop_path, "w780"),
+      // البطاقة ٤٦٠ بكسل على سطح المكتب — w780 كان يحمّل ضعف ما يُعرض
+      backdrop: backdropUrl(r.backdrop_path, "w500"),
       date: dateOf(r),
       rating: r.vote_average ? Number(r.vote_average.toFixed(1)) : null,
     }))
