@@ -52,6 +52,7 @@ export interface Profile {
   cover_url: string | null;
   theme: string | null;
   favorite_genres: number[];
+  hide_name?: boolean | null;
 }
 
 /** الملف الشخصي — يُقرأ في التخطيط والشريط العلوي والصفحة، فيُخزَّن لكل طلب */
@@ -63,7 +64,7 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
 
     let { data } = await supabase
       .from("profiles")
-      .select("id, nickname, username, avatar_url, cover_url, theme, favorite_genres")
+      .select("id, nickname, username, avatar_url, cover_url, theme, favorite_genres, hide_name")
       .eq("id", user.id)
       .maybeSingle();
 
@@ -75,7 +76,7 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
         .eq("id", user.id)
         .maybeSingle();
       if (legacy.data) {
-        data = { ...legacy.data, cover_url: null, theme: null };
+        data = { ...legacy.data, cover_url: null, theme: null, hide_name: false };
       }
     }
 
@@ -92,6 +93,7 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
         cover_url: null,
         theme: null,
         favorite_genres: [],
+        hide_name: false,
       };
     }
     return { ...data, favorite_genres: data.favorite_genres ?? [] } as Profile;
@@ -397,6 +399,7 @@ export interface PublicProfile {
   avatar_url: string | null;
   cover_url: string | null;
   favorite_genres: number[];
+  hide_name?: boolean | null;
 }
 
 export async function getProfileByUsername(username: string): Promise<PublicProfile | null> {
@@ -408,11 +411,27 @@ export async function getProfileByUsername(username: string): Promise<PublicProf
 
   try {
     const supabase = await createClient();
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("profiles")
-      .select("id, nickname, username, avatar_url, cover_url, favorite_genres")
+      .select("id, nickname, username, avatar_url, cover_url, favorite_genres, hide_name")
       .eq("username", handle)
       .maybeSingle();
+
+    // احتياط لو عمود إخفاء الاسم لم يُضَف بعد
+    if (error) {
+      const legacy = await supabase
+        .from("profiles")
+        .select("id, nickname, username, avatar_url, cover_url, favorite_genres")
+        .eq("username", handle)
+        .maybeSingle();
+      if (!legacy.data) return null;
+      return {
+        ...legacy.data,
+        favorite_genres: legacy.data.favorite_genres ?? [],
+        hide_name: false,
+      } as PublicProfile;
+    }
+
     if (!data) return null;
     return { ...data, favorite_genres: data.favorite_genres ?? [] } as PublicProfile;
   } catch {
@@ -473,7 +492,7 @@ export async function getFollowedPeople(): Promise<PublicProfile[]> {
     if (!list.length) return [];
     const { data } = await supabase
       .from("profiles")
-      .select("id, nickname, username, avatar_url, cover_url, favorite_genres")
+      .select("id, nickname, username, avatar_url, cover_url, favorite_genres, hide_name")
       .in("id", list);
     return ((data ?? []) as PublicProfile[]).map((p) => ({
       ...p,
@@ -481,5 +500,137 @@ export async function getFollowedPeople(): Promise<PublicProfile[]> {
     }));
   } catch {
     return [];
+  }
+}
+
+// ================= الطبقة الاجتماعية =================
+
+export interface PersonLite {
+  id: string;
+  nickname: string | null;
+  username: string | null;
+  avatar_url: string | null;
+  hide_name: boolean;
+}
+
+/** الاسم المعروض مع احترام خيار الإخفاء */
+export function displayNameOf(
+  p: { nickname: string | null; username: string | null; hide_name?: boolean | null },
+  anonymousLabel: string,
+): string {
+  if (p.hide_name) return anonymousLabel;
+  return p.nickname || p.username || anonymousLabel;
+}
+
+/** بحث عن أشخاص بالاسم أو المعرّف — الأحرف البديلة تُهرَّب داخل الدالة */
+export async function searchPeople(q: string): Promise<PersonLite[]> {
+  const term = q.trim();
+  if (term.length < 2) return [];
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("search_people", { q: term });
+    if (error || !data) return [];
+    return data as PersonLite[];
+  } catch {
+    return [];
+  }
+}
+
+export interface ActivityRow extends PersonLite {
+  tmdb_id: number;
+  media_type: "tv" | "movie";
+  rating: number;
+  review: string | null;
+  title: string | null;
+  poster_path: string | null;
+  updated_at: string;
+}
+
+/** آخر تقييمات ومراجعات من تتابعهم */
+export async function getFollowingActivity(): Promise<ActivityRow[]> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("following_activity");
+    if (error || !data) return [];
+    return data as ActivityRow[];
+  } catch {
+    return [];
+  }
+}
+
+export interface TitleReview extends PersonLite {
+  rating: number;
+  review: string | null;
+  updated_at: string;
+}
+
+/** مراجعات عمل معيّن مع أصحابها */
+export async function getTitleReviews(
+  tmdbId: number,
+  mediaType: "tv" | "movie",
+): Promise<TitleReview[]> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("title_reviews", {
+      t_id: tmdbId,
+      m_type: mediaType,
+    });
+    if (error || !data) return [];
+    return data as TitleReview[];
+  } catch {
+    return [];
+  }
+}
+
+/** يسجّل زيارة للملف (يتجاهل زيارة صاحبه ويتجاهل التكرار اليومي) */
+export async function recordProfileView(targetId: string): Promise<void> {
+  try {
+    const supabase = await createClient();
+    await supabase.rpc("record_profile_view", { target: targetId });
+  } catch {
+    // العدّاد تحسين لا أكثر
+  }
+}
+
+export async function getProfileViewCount(targetId: string): Promise<number> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("profile_view_count", { target: targetId });
+    if (error) return 0;
+    return Number(data ?? 0);
+  } catch {
+    return 0;
+  }
+}
+
+/** الأشخاص الذين يتابعون هذا الملف والذين يتابعهم — لعرضهم على الصفحة */
+export async function getFollowLists(
+  userId: string,
+): Promise<{ followers: PersonLite[]; following: PersonLite[] }> {
+  const empty = { followers: [] as PersonLite[], following: [] as PersonLite[] };
+  try {
+    const supabase = await createClient();
+    const [a, b] = await Promise.all([
+      supabase.from("user_follows").select("follower_id").eq("following_id", userId).limit(50),
+      supabase.from("user_follows").select("following_id").eq("follower_id", userId).limit(50),
+    ]);
+    const ids = [
+      ...(a.data ?? []).map((r) => r.follower_id),
+      ...(b.data ?? []).map((r) => r.following_id),
+    ];
+    if (!ids.length) return empty;
+
+    const { data: people } = await supabase
+      .from("profiles")
+      .select("id, nickname, username, avatar_url, hide_name")
+      .in("id", [...new Set(ids)]);
+
+    const byId = new Map((people ?? []).map((p) => [p.id, p as PersonLite]));
+    return {
+      followers: (a.data ?? []).map((r) => byId.get(r.follower_id)).filter(Boolean) as PersonLite[],
+      following: (b.data ?? []).map((r) => byId.get(r.following_id)).filter(Boolean) as PersonLite[],
+    };
+  } catch {
+    return empty;
   }
 }

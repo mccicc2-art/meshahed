@@ -50,6 +50,7 @@ export async function updateProfile(input: {
   coverUrl?: string | null;
   theme?: string;
   favoriteGenres: number[];
+  hideName?: boolean;
 }) {
   const { supabase, user } = await requireUser();
 
@@ -77,6 +78,7 @@ export async function updateProfile(input: {
   if (input.theme !== undefined) {
     payload.theme = THEMES.some((t) => t.id === input.theme) ? input.theme : "amber";
   }
+  if (input.hideName !== undefined) payload.hide_name = !!input.hideName;
 
   const { error } = await supabase.from("profiles").upsert(payload, { onConflict: "id" });
   if (error) {
@@ -446,4 +448,80 @@ export async function unfollowUser(targetId: string) {
   if (error) throw new Error(error.message);
   revalidatePath("/");
   revalidatePath("/u/[username]", "page");
+}
+
+// ================= الأشخاص =================
+
+/** بحث عن أشخاص — يمرّ عبر دالة SQL تُهرِّب أحرف البحث البديلة */
+export async function findPeople(q: string) {
+  await requireUser();
+  const { searchPeople } = await import("@/lib/data");
+  return searchPeople(q);
+}
+
+/**
+ * يطبّق اختيارات شاشة الانضمام.
+ *
+ * «شفته كامل» ليس مجرّد وسم: للفيلم يُسجَّل كمشاهَد، وللمسلسل تُؤشَّر كل
+ * حلقاته المعروضة فعلاً — وإلا كانت الخطوة الثانية زينة بلا أثر.
+ */
+export async function applyOnboardingProgress(
+  items: { tmdbId: number; mediaType: MediaType; progress: "none" | "some" | "done" }[],
+) {
+  const { supabase, user } = await requireUser();
+  const { getTv, getSeason } = await import("@/lib/tmdb");
+  const { airedPerSeason } = await import("@/lib/progress");
+
+  for (const it of items.slice(0, 24)) {
+    if (it.progress !== "done") continue;
+
+    if (it.mediaType === "movie") {
+      await supabase
+        .from("watched_movies")
+        .upsert(
+          { user_id: user.id, movie_tmdb_id: it.tmdbId, runtime: null },
+          { onConflict: "user_id,movie_tmdb_id" },
+        );
+      continue;
+    }
+
+    try {
+      const tv = await getTv(it.tmdbId);
+      const aired = airedPerSeason(tv);
+      const rows: {
+        user_id: string;
+        show_tmdb_id: number;
+        season_number: number;
+        episode_number: number;
+        runtime: number | null;
+      }[] = [];
+
+      for (const [season, count] of aired) {
+        if (count <= 0) continue;
+        const detail = await getSeason(it.tmdbId, season).catch(() => null);
+        for (let e = 1; e <= count; e++) {
+          const ep = detail?.episodes.find((x) => x.episode_number === e);
+          rows.push({
+            user_id: user.id,
+            show_tmdb_id: it.tmdbId,
+            season_number: season,
+            episode_number: e,
+            runtime: ep?.runtime ?? tv.episode_run_time?.[0] ?? null,
+          });
+        }
+      }
+
+      // دفعات حتى لا يُرفض الطلب لضخامته
+      for (let i = 0; i < rows.length; i += 500) {
+        await supabase.from("watched_episodes").upsert(rows.slice(i, i + 500), {
+          onConflict: "user_id,show_tmdb_id,season_number,episode_number",
+        });
+      }
+    } catch {
+      // مسلسل واحد فشل لا يوقف البقية
+    }
+  }
+
+  revalidatePath("/");
+  revalidatePath("/library");
 }
