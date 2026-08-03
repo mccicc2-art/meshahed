@@ -6,9 +6,9 @@ import {
   getWatchedMovieIds,
   getAllMovieProgress,
 } from "@/lib/data";
-import { getTv } from "@/lib/tmdb";
 import { getT } from "@/lib/locale";
 import { num, type Dict } from "@/lib/i18n";
+import { percentOf, isComplete } from "@/lib/progress";
 import { MediaSection, type LibraryEntry } from "@/components/LibraryTabs";
 
 function fmtWatchTime(minutes: number, t: Dict) {
@@ -25,6 +25,8 @@ export default async function LibraryPage() {
 
   const { locale, t } = await getT();
 
+  // المكتبة لا تطلب TMDB إطلاقاً: عدد الحلقات المعروضة مخزّن مع صف المتابعة
+  // وتحدّثه الرئيسية وصفحة المسلسل. كانت الصفحة تطلب تفاصيل كل مسلسل تتابعه.
   const [follows, watchedEps, watchedMovieIds, movieProgress] = await Promise.all([
     getFollows(),
     getAllWatchedEpisodes(),
@@ -39,15 +41,6 @@ export default async function LibraryPage() {
   const tvFollows = follows.filter((f) => f.media_type === "tv");
   const movieFollows = follows.filter((f) => f.media_type === "movie");
 
-  // إجمالي الحلقات لمعرفة المكتمل من الجاري
-  const tvTotals = new Map<number, number>();
-  await Promise.all(
-    tvFollows.map(async (f) => {
-      const tv = await getTv(f.tmdb_id).catch(() => null);
-      if (tv) tvTotals.set(f.tmdb_id, tv.number_of_episodes);
-    }),
-  );
-
   const shows: LibraryEntry[] = [];
   const movies: LibraryEntry[] = [];
   const watching: LibraryEntry[] = [];
@@ -55,8 +48,9 @@ export default async function LibraryPage() {
 
   for (const f of tvFollows) {
     const done = watchedByShow.get(f.tmdb_id) ?? 0;
-    const total = tvTotals.get(f.tmdb_id) ?? 0;
-    const complete = total > 0 && done >= total;
+    // نفس المقام المستخدم في الرئيسية وصفحة المسلسل
+    const aired = f.aired_episodes ?? f.total_episodes ?? 0;
+    const complete = isComplete(done, aired);
     const entry: LibraryEntry = {
       key: `tv-${f.tmdb_id}`,
       href: `/show/${f.tmdb_id}`,
@@ -64,7 +58,7 @@ export default async function LibraryPage() {
       posterPath: f.poster_path,
       kind: "tv",
       badge: complete ? t.watchedBadge : done > 0 ? t.episodesBadge(done) : undefined,
-      progress: total > 0 ? Math.min(100, Math.round((done / total) * 100)) : undefined,
+      progress: aired > 0 ? percentOf(done, aired) : undefined,
     };
     shows.push(entry);
     if (complete) finished.push(entry);
@@ -130,6 +124,7 @@ export default async function LibraryPage() {
       <MediaSection
         title={t.libTabWatching}
         count={watching.length}
+        hint={t.libWatchingHint}
         items={watching}
         empty={t.libEmptyWatching}
       />
@@ -137,6 +132,7 @@ export default async function LibraryPage() {
       <MediaSection
         title={t.libShowsGroup}
         count={shows.length}
+        hint={t.libShowsHint}
         items={shows}
         empty={t.libEmptyFavorites}
       />
@@ -144,6 +140,7 @@ export default async function LibraryPage() {
       <MediaSection
         title={t.libMoviesGroup}
         count={movies.length}
+        hint={t.libMoviesHint}
         items={movies}
         empty={t.libEmptyFavorites}
       />
@@ -151,6 +148,7 @@ export default async function LibraryPage() {
       <MediaSection
         title={t.libTabFinished}
         count={finished.length}
+        hint={t.libFinishedHint}
         items={finished}
         empty={t.libEmptyFinished}
       />
@@ -160,7 +158,9 @@ export default async function LibraryPage() {
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           {stats.map((s) => (
             <div key={s.label} className="bg-surface border border-border rounded-2xl p-5">
-              <div className="text-3xl mb-2">{s.icon}</div>
+              <div className="text-3xl mb-2" aria-hidden>
+                {s.icon}
+              </div>
               <div className="text-2xl font-bold">{s.value}</div>
               <div className="text-sm text-muted mt-1">{s.label}</div>
             </div>
