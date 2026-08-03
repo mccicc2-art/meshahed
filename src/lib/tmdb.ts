@@ -215,3 +215,116 @@ export async function mostPopularThisWeek(): Promise<SearchResult[]> {
   const rows = await trending();
   return [...rows].sort((a, b) => (b.popularity ?? 0) - (a.popularity ?? 0));
 }
+
+// ============================================================
+//  الترايلر وأين تشاهده
+// ============================================================
+
+export interface Video {
+  key: string;
+  site: string;
+  type: string;
+  name: string;
+  official: boolean;
+  size: number;
+}
+
+/**
+ * أفضل ترايلر متاح لعمل معيّن.
+ *
+ * الترتيب: ترايلر رسمي ← ترايلر ← تيزر ← أي مقطع يوتيوب. ويُطلب باللغة
+ * المختارة أولاً، فإن لم يوجد مقطع عربي رجعنا للإنجليزية — أغلب الأعمال
+ * الأجنبية ليس لها ترايلر مرفوع بالعربية.
+ */
+export async function getTrailer(
+  mediaType: MediaType,
+  id: number,
+): Promise<{ key: string; name: string } | null> {
+  const pick = (vids: Video[]) => {
+    const yt = vids.filter((v) => v.site === "YouTube" && v.key);
+    return (
+      yt.find((v) => v.type === "Trailer" && v.official) ??
+      yt.find((v) => v.type === "Trailer") ??
+      yt.find((v) => v.type === "Teaser") ??
+      yt[0] ??
+      null
+    );
+  };
+
+  try {
+    const local = await tmdb<{ results: Video[] }>(`/${mediaType}/${id}/videos`);
+    const found = pick(local.results ?? []);
+    if (found) return { key: found.key, name: found.name };
+  } catch {
+    /* نكمل للإنجليزية */
+  }
+
+  try {
+    const en = await tmdb<{ results: Video[] }>(`/${mediaType}/${id}/videos`, {
+      language: "en-US",
+    });
+    const found = pick(en.results ?? []);
+    return found ? { key: found.key, name: found.name } : null;
+  } catch {
+    return null;
+  }
+}
+
+export interface Provider {
+  provider_id: number;
+  provider_name: string;
+  logo_path: string | null;
+  display_priority?: number;
+}
+
+export interface WatchOptions {
+  /** اشتراك — نتفلكس وشاهد وغيرها */
+  flatrate: Provider[];
+  /** إيجار */
+  rent: Provider[];
+  /** شراء */
+  buy: Provider[];
+  /** مجاني بإعلانات */
+  free: Provider[];
+  /** رابط JustWatch الرسمي — TMDB تشترط عرضه مع البيانات */
+  link: string | null;
+}
+
+/**
+ * منصّات المشاهدة في بلد المستخدم.
+ *
+ * TMDB تُرجع خريطة بكل الدول؛ نأخذ السعودية أولاً ثم الإمارات ثم أمريكا،
+ * لأن كثيراً من الأعمال غير مُدرجة تحت SA فتظهر الصفحة بلا فائدة.
+ */
+export async function getWatchProviders(
+  mediaType: MediaType,
+  id: number,
+  regions: string[] = ["SA", "AE", "EG", "US"],
+): Promise<{ region: string; options: WatchOptions } | null> {
+  try {
+    const data = await tmdb<{
+      results: Record<
+        string,
+        { link?: string; flatrate?: Provider[]; rent?: Provider[]; buy?: Provider[]; free?: Provider[] }
+      >;
+    }>(`/${mediaType}/${id}/watch/providers`);
+
+    for (const region of regions) {
+      const r = data.results?.[region];
+      if (!r) continue;
+      const options: WatchOptions = {
+        flatrate: r.flatrate ?? [],
+        rent: r.rent ?? [],
+        buy: r.buy ?? [],
+        free: r.free ?? [],
+        link: r.link ?? null,
+      };
+      const any =
+        options.flatrate.length || options.rent.length || options.buy.length || options.free.length;
+      if (any) return { region, options };
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
