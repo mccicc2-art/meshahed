@@ -1,4 +1,12 @@
-import { getFollows, getMyRatings, getWatchSummary, getWatchedMovieIds, getAllMovieProgress, getAllWatchedEpisodes } from "@/lib/data";
+import {
+  getFollows,
+  getMyRatings,
+  getWatchSummary,
+  getWatchedMovieIds,
+  getAllMovieProgress,
+  getAllWatchedEpisodes,
+  getWatchHistory,
+} from "@/lib/data";
 import { getTv, getMovie } from "@/lib/tmdb";
 import { getDict, num, type Locale } from "@/lib/i18n";
 import { isComplete } from "@/lib/progress";
@@ -113,12 +121,13 @@ function Card({ title, hint, children }: { title: string; hint?: string; childre
 export async function LibraryAnalysis({ locale }: { locale: Locale }) {
   const t = getDict(locale);
 
-  const [follows, ratings, summary, watchedMovieIds, movieProgress] = await Promise.all([
+  const [follows, ratings, summary, watchedMovieIds, movieProgress, history] = await Promise.all([
     getFollows(),
     getMyRatings(),
     getWatchSummary(),
     getWatchedMovieIds(),
     getAllMovieProgress(),
+    getWatchHistory(1000),
   ]);
 
   if (!follows.length) {
@@ -206,6 +215,29 @@ export async function LibraryAnalysis({ locale }: { locale: Locale }) {
 
   const totalMinutes = epMinutes + watchedMovieIds.size * 110;
 
+  // ===== الملخّص السنوي =====
+  // من بداية السنة الميلادية: السجلّ يحمل الطابع الزمني، فالحساب من
+  // البيانات نفسها لا من عدّاد يُخزَّن ويُنسى تحديثه
+  const yearNow = new Date().getUTCFullYear();
+  const yearRows = history.filter((h) => h.watchedAt.slice(0, 4) === String(yearNow));
+  const yearEpisodes = yearRows.filter((h) => h.kind === "episode").length;
+  const yearMovies = yearRows.filter((h) => h.kind === "movie").length;
+  const yearMinutes = yearRows.reduce((n, h) => n + (h.runtime ?? (h.kind === "movie" ? 110 : 40)), 0);
+
+  const monthTally = new Map<string, number>();
+  for (const h of yearRows) {
+    const m = h.watchedAt.slice(0, 7);
+    monthTally.set(m, (monthTally.get(m) ?? 0) + 1);
+  }
+  const busiest = [...monthTally.entries()].sort((a, b) => b[1] - a[1])[0] ?? null;
+  const busiestName = busiest
+    ? new Intl.DateTimeFormat(locale === "en" ? "en-GB" : "ar", {
+        month: "long",
+        timeZone: "UTC",
+        calendar: "gregory",
+      }).format(new Date(`${busiest[0]}-01T00:00:00Z`))
+    : "";
+
   const headline: { label: string; value: string; icon: IconName }[] = [
     { label: t.statWatchTime, value: fmtWatchTime(totalMinutes, t), icon: "clock" },
     { label: t.statsWatchedEpisodes, value: num(totalEpisodes, locale), icon: "check" },
@@ -225,6 +257,32 @@ export async function LibraryAnalysis({ locale }: { locale: Locale }) {
           </div>
         ))}
       </div>
+
+      {/* الملخّص السنوي أولاً: هو أكثر ما يُفتَح لأجله هذا القسم */}
+      <Card title={t.yearTitle(yearNow)} hint={t.yearSub}>
+        {yearRows.length === 0 ? (
+          <p className="text-xs text-muted">{t.yearNone}</p>
+        ) : (
+          <div className="flex flex-wrap items-end gap-x-6 gap-y-3">
+            <span>
+              <b className="text-2xl font-extrabold">{num(yearEpisodes, locale)}</b>{" "}
+              <span className="text-xs text-muted">{t.yearEpisodes}</span>
+            </span>
+            <span>
+              <b className="text-2xl font-extrabold">{num(yearMovies, locale)}</b>{" "}
+              <span className="text-xs text-muted">{t.yearMovies}</span>
+            </span>
+            <span>
+              <b className="text-2xl font-extrabold">{fmtWatchTime(yearMinutes, t)}</b>
+            </span>
+            {busiest && (
+              <span className="text-xs text-muted">
+                {t.yearBusiest}: <b className="text-foreground">{busiestName}</b>
+              </span>
+            )}
+          </div>
+        )}
+      </Card>
 
       <div className="grid gap-4 md:grid-cols-2">
         <Card title={t.analysisMix}>
