@@ -9,12 +9,14 @@ import {
 } from "@/lib/data";
 import { getTv, getSeason, backdropUrl, posterUrl } from "@/lib/tmdb";
 import { FollowButton } from "@/components/FollowButton";
-import { EpisodeTracker, type TrackerSeason } from "@/components/EpisodeTracker";
+import { EpisodeTracker, type SeasonSummary } from "@/components/EpisodeTracker";
 import { getT } from "@/lib/locale";
 import { RatingBox } from "@/components/RatingBox";
 import { CommunityReviews } from "@/components/CommunityReviews";
 import { formatDate } from "@/lib/when";
 import { ShowStatsSync } from "@/components/ShowStatsSync";
+import { airedEpisodeCount, airedPerSeason } from "@/lib/progress";
+import { episodeKey } from "@/lib/keys";
 
 export default async function ShowPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await getUser();
@@ -32,25 +34,6 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
     );
   }
 
-  const realSeasons = tv.seasons.filter((s) => s.season_number >= 1 && s.episode_count > 0);
-  const seasonDetails = (
-    await Promise.all(
-      realSeasons.map((s) => getSeason(tvId, s.season_number).catch(() => null)),
-    )
-  ).filter((s): s is NonNullable<typeof s> => s !== null);
-
-  const seasons: TrackerSeason[] = seasonDetails.map((s) => ({
-    season_number: s.season_number,
-    name: s.name,
-    episodes: s.episodes.map((e) => ({
-      episode_number: e.episode_number,
-      name: e.name,
-      air_date: e.air_date,
-      runtime: e.runtime,
-      still_path: e.still_path,
-    })),
-  }));
-
   const [follows, watched, myRating, community] = await Promise.all([
     getFollows(),
     getWatchedForShow(tvId),
@@ -59,13 +42,49 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
   ]);
   const following = follows.some((f) => f.tmdb_id === tvId && f.media_type === "tv");
 
-  // العدد الدقيق للحلقات المعروضة، مأخوذ من بيانات المواسم نفسها.
-  // يُخزَّن مع صف المتابعة لتقرأه المكتبة والرئيسية بلا طلب TMDB.
-  const todayIso = new Date().toISOString().slice(0, 10);
-  const airedExact = seasons.reduce(
-    (sum, s) => sum + s.episodes.filter((e) => e.air_date && e.air_date <= todayIso).length,
-    0,
-  );
+  // كانت الصفحة تجلب حلقات كل المواسم دفعة واحدة — مسلسل بثلاثين موسماً يعني
+  // ثلاثين طلب TMDB وآلاف الحلقات تُرسل للمتصفح. الآن: رؤوس المواسم فقط،
+  // وحلقات موسم واحد (الذي فيه أول حلقة غير مشاهَدة)، والباقي عند الفتح.
+  const airedBySeason = airedPerSeason(tv);
+  const summaries: SeasonSummary[] = tv.seasons
+    .filter((s) => s.season_number >= 1 && s.episode_count > 0)
+    .sort((a, b) => a.season_number - b.season_number)
+    .map((s) => ({
+      season_number: s.season_number,
+      name: s.name,
+      episode_count: s.episode_count,
+      aired_count: airedBySeason.get(s.season_number) ?? 0,
+    }));
+
+  // الموسم المفتوح افتراضياً: أول موسم فيه حلقة معروضة لم تُشاهد بعد
+  let openSeason = summaries[0]?.season_number ?? null;
+  for (const s of summaries) {
+    let firstUnwatched = 0;
+    for (let e = 1; e <= s.aired_count; e++) {
+      if (!watched.has(episodeKey(s.season_number, e))) {
+        firstUnwatched = e;
+        break;
+      }
+    }
+    if (firstUnwatched) {
+      openSeason = s.season_number;
+      break;
+    }
+  }
+
+  const initialEpisodes =
+    openSeason != null
+      ? ((await getSeason(tvId, openSeason).catch(() => null))?.episodes ?? []).map((e) => ({
+          episode_number: e.episode_number,
+          name: e.name,
+          air_date: e.air_date,
+          runtime: e.runtime,
+          still_path: e.still_path,
+        }))
+      : [];
+
+  // نفس الرقم الذي تستخدمه الرئيسية والمكتبة، فلا تختلف النسبة بين الشاشات
+  const airedExact = airedEpisodeCount(tv);
 
   const backdrop = backdropUrl(tv.backdrop_path);
   const poster = posterUrl(tv.poster_path, "w342");
@@ -158,7 +177,11 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
         <h2 className="text-lg font-bold mb-4">{t.episodesHeading}</h2>
         <EpisodeTracker
           showTmdbId={tvId}
-          seasons={seasons}
+          summaries={summaries}
+          initialSeason={openSeason}
+          initialEpisodes={initialEpisodes}
+          airedTotal={airedExact}
+          defaultRuntime={tv.episode_run_time?.[0] ?? null}
           initialWatched={[...watched]}
           locale={locale}
         />
