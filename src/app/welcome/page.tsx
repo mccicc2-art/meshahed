@@ -1,0 +1,45 @@
+import { redirect } from "next/navigation";
+import { getUser, getFollows, getProfile } from "@/lib/data";
+import { trending } from "@/lib/tmdb";
+import { getT } from "@/lib/locale";
+import { Onboarding, type SeedTitle } from "@/components/Onboarding";
+
+/**
+ * الانضمام في ٦٠ ثانية.
+ *
+ * كان المستخدم الجديد يواجه صفحة فارغة تطلب منه عملاً قبل أن تعطيه أي قيمة.
+ * هنا يبني مكتبته بضغطات، فيخرج إلى رئيسية مليئة من أول دقيقة.
+ */
+export default async function WelcomePage() {
+  const user = await getUser();
+  if (!user) redirect("/login");
+
+  const { locale, t } = await getT();
+  const [follows, profile] = await Promise.all([getFollows(), getProfile()]);
+
+  // من عنده مكتبة أصلاً لا يحتاج هذه الشاشة
+  if (follows.length > 0) redirect("/");
+
+  const popular = await trending().catch(() => []);
+  const seeds: SeedTitle[] = popular
+    .filter((r) => r.poster_path && (r.media_type === "tv" || r.media_type === "movie"))
+    .slice(0, 24)
+    .map((r) => ({
+      id: r.id,
+      mediaType: r.media_type as "tv" | "movie",
+      title: r.title ?? r.name ?? "—",
+      posterPath: r.poster_path,
+    }));
+
+  return (
+    <Onboarding
+      locale={locale}
+      seeds={seeds}
+      initialGenres={profile?.favorite_genres ?? []}
+      nickname={profile?.nickname ?? ""}
+      avatarUrl={profile?.avatar_url ?? null}
+      username={profile?.username ?? ""}
+      emptyHint={t.emptyStart}
+    />
+  );
+}
