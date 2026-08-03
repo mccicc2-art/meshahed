@@ -150,6 +150,29 @@ export async function upcomingMovies(): Promise<SearchResult[]> {
     .map((r) => ({ ...r, media_type: "movie" as const }));
 }
 
+/**
+ * يُعرض الآن في دور السينما.
+ *
+ * TMDB تحصر النتيجة بمنطقة، والتوفّر يختلف بين البلدان — نبدأ بالسعودية
+ * ثم الإمارات ثم أمريكا حتى لا يعود القسم فارغاً لمن ليس في بلدٍ مغطّى.
+ */
+export async function nowPlayingMovies(
+  regions: string[] = ["SA", "AE", "EG", "US"],
+): Promise<{ region: string; results: SearchResult[] } | null> {
+  for (const region of regions) {
+    try {
+      const data = await tmdb<{ results: SearchResult[] }>("/movie/now_playing", { region });
+      const rows = (data.results ?? [])
+        .filter((r) => r.poster_path)
+        .map((r) => ({ ...r, media_type: "movie" as const }));
+      if (rows.length) return { region, results: rows.slice(0, 15) };
+    } catch {
+      /* نجرّب المنطقة التالية */
+    }
+  }
+  return null;
+}
+
 export async function airingTv(): Promise<SearchResult[]> {
   const data = await tmdb<{ results: SearchResult[] }>("/tv/on_the_air");
   return data.results
