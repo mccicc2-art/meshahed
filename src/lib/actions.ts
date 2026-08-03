@@ -309,6 +309,38 @@ export async function toggleMovieWatched(input: {
   revalidatePath(`/movie/${input.movieTmdbId}`);
 }
 
+// ================= تخزين إحصاءات المسلسلات =================
+
+/**
+ * تحفظ عدد الحلقات المعروضة/الإجمالية مع صف المتابعة.
+ * تُستدعى من الرئيسية وصفحة المسلسل (حيث تُطلب بيانات TMDB أصلاً)،
+ * فتقرأ المكتبة بعدها من قاعدة البيانات مباشرة بلا أي طلب خارجي.
+ */
+export async function cacheShowStats(
+  rows: { tmdbId: number; total: number; aired: number; nextAirDate: string | null }[],
+) {
+  if (!rows.length) return;
+  try {
+    const { supabase, user } = await requireUser();
+    const now = new Date().toISOString();
+    await Promise.all(
+      rows.slice(0, 100).map((r) =>
+        supabase
+          .from("follows")
+          .update({
+            total_episodes: r.total,
+            aired_episodes: r.aired,
+            next_air_date: r.nextAirDate,
+            stats_updated_at: now,
+          })
+          .match({ user_id: user.id, tmdb_id: r.tmdbId, media_type: "tv" }),
+      ),
+    );
+  } catch {
+    // التخزين تحسين أداء فقط — فشله لا يجب أن يكسر الصفحة
+  }
+}
+
 // ================= التقييمات والمراجعات =================
 
 export async function saveRating(input: {

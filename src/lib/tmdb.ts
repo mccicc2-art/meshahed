@@ -95,6 +95,7 @@ export interface TvDetails {
   status: string;
   seasons: Season[];
   next_episode_to_air: Episode | null;
+  last_episode_to_air: Episode | null;
   networks: { id: number; name: string; logo_path: string | null }[];
 }
 

@@ -9,6 +9,10 @@ export interface FollowRow {
   title: string;
   poster_path: string | null;
   added_at: string;
+  // إحصاءات مخزّنة تُغني المكتبة عن طلب TMDB لكل مسلسل
+  total_episodes?: number | null;
+  aired_episodes?: number | null;
+  next_air_date?: string | null;
 }
 
 export interface WatchedEpisodeRow {
@@ -90,10 +94,23 @@ export async function getProfile(): Promise<Profile | null> {
 
 export async function getFollows(): Promise<FollowRow[]> {
   const supabase = await createClient();
-  const { data } = await supabase
+
+  const { data, error } = await supabase
     .from("follows")
-    .select("tmdb_id, media_type, title, poster_path, added_at")
+    .select(
+      "tmdb_id, media_type, title, poster_path, added_at, total_episodes, aired_episodes, next_air_date",
+    )
     .order("added_at", { ascending: false });
+
+  // احتياط: لو أعمدة الإحصاءات لسه ما انضافت، اقرأ الأعمدة الأساسية فقط
+  if (error) {
+    const base = await supabase
+      .from("follows")
+      .select("tmdb_id, media_type, title, poster_path, added_at")
+      .order("added_at", { ascending: false });
+    return base.data ?? [];
+  }
+
   return data ?? [];
 }
 

@@ -14,6 +14,7 @@ export function normalizeLocale(value: string | undefined | null): Locale {
 }
 
 const ar = {
+  code: "ar" as Locale,
   dir: "rtl",
   brand: "مشاهد",
   tagline: "تابع مسلسلاتك وأفلامك، أشّر الحلقات، وشوف القادم قريباً.",
@@ -214,11 +215,47 @@ const ar = {
   loginFailed: "تعذّر تسجيل الدخول: ",
   loginNeedsKeys: "التطبيق يحتاج إعداد المفاتيح أولاً في إعدادات Vercel ثم أعد النشر.",
   avatarAlt: "الصورة الشخصية",
+
+  // بطاقة «الحلقة التالية»
+  nextUpTitle: "▶️ الحلقة التالية",
+  nextUpMark: "شاهدتها ✓",
+  nextUpMarked: "✓ تم التأشير",
+  nextUpMarking: "جارٍ التأشير…",
+  nextUpEpisode: (s: number, e: number) => `الموسم ${s} · الحلقة ${e}`,
+  nextUpOpen: "فتح المسلسل ←",
+  runtimeMin: (n: number) => `${n} د`,
+
+  // الأخبار
+  newsMore: "عرض المزيد",
+  newsShown: (a: number, b: number) => `${a} من ${b}`,
+  reactAria: "تفاعل بـ 🔥",
+  favoriteAria: "أضف للمفضلة",
+
+  // الأخطاء والتحميل
+  errorTitle: "صار خلل غير متوقّع",
+  errorBody: "ما قدرنا نحمّل هذا الجزء الآن. جرّب مرة ثانية، وإذا تكرر الخطأ حدّث الصفحة.",
+  errorRetry: "حاول مجدداً",
+  errorHome: "الرجوع للرئيسية",
+  errorCode: (d: string) => `رمز الخطأ: ${d}`,
+  notFoundTitle: "الصفحة غير موجودة",
+  notFoundBody: "الرابط اللي فتحته ما له صفحة. جرّب البحث أو ارجع للرئيسية.",
+  loadingLabel: "جارٍ التحميل…",
+
+  // المكتبة — عناوين فرعية توضيحية
+  libWatchingHint: "أعمال بدأتها ولم تُنهها بعد.",
+  libShowsHint: "كل المسلسلات التي تتابعها.",
+  libMoviesHint: "كل الأفلام التي تتابعها.",
+  libFinishedHint: "أعمال أنهيتها بالكامل.",
+
+  // ± دقائق في الفيلم
+  bumpAria: (n: number) => (n > 0 ? `تقديم ${n} دقيقة` : `تأخير ${Math.abs(n)} دقيقة`),
+  seasonToggleAria: (n: number) => `فتح أو طي الموسم ${n}`,
 };
 
 export type Dict = typeof ar;
 
 const en: Dict = {
+  code: "en",
   dir: "ltr",
   brand: "Meshahed",
   tagline: "Track your shows and movies, tick episodes, and see what's coming next.",
@@ -407,6 +444,36 @@ const en: Dict = {
   loginFailed: "Sign-in failed: ",
   loginNeedsKeys: "The app needs its keys configured in Vercel settings, then redeploy.",
   avatarAlt: "Profile photo",
+
+  nextUpTitle: "▶️ Next up",
+  nextUpMark: "Watched ✓",
+  nextUpMarked: "✓ Marked",
+  nextUpMarking: "Marking…",
+  nextUpEpisode: (s: number, e: number) => `Season ${s} · Episode ${e}`,
+  nextUpOpen: "Open show →",
+  runtimeMin: (n: number) => `${n} min`,
+
+  newsMore: "Show more",
+  newsShown: (a: number, b: number) => `${a} of ${b}`,
+  reactAria: "React with 🔥",
+  favoriteAria: "Add to favourites",
+
+  errorTitle: "Something went wrong",
+  errorBody: "We couldn't load this part right now. Try again — if it keeps failing, refresh the page.",
+  errorRetry: "Try again",
+  errorHome: "Back to home",
+  errorCode: (d: string) => `Error code: ${d}`,
+  notFoundTitle: "Page not found",
+  notFoundBody: "That link doesn't point anywhere. Try searching or head back home.",
+  loadingLabel: "Loading…",
+
+  libWatchingHint: "Titles you've started but haven't finished.",
+  libShowsHint: "Every series you follow.",
+  libMoviesHint: "Every movie you follow.",
+  libFinishedHint: "Titles you've completed.",
+
+  bumpAria: (n: number) => (n > 0 ? `Forward ${n} minutes` : `Back ${Math.abs(n)} minutes`),
+  seasonToggleAria: (n: number) => `Expand or collapse season ${n}`,
 };
 
 export const dictionaries: Record<Locale, Dict> = { ar, en };
