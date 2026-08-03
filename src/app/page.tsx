@@ -273,6 +273,37 @@ export default async function HomePage() {
       label: u.badge ?? "",
     }));
 
+  // ===== مسلسلاتي: كل ما تتابعه، الأقرب إلى الاستئناف أولاً =====
+  const myShows = [...items].sort((a, b) => {
+    const rank = (i: typeof a) =>
+      i.watched > 0 && (i.aired === 0 || i.watched < i.aired) ? 0 : i.watched === 0 ? 1 : 2;
+    const d = rank(a) - rank(b);
+    return d !== 0 ? d : b.progress - a.progress;
+  });
+
+  // ===== أفلامي: الموضع المحفوظ يصير شريط تقدّم، والمشاهَد يمتلئ =====
+  const progressById = new Map(movieProgress.map((m) => [m.movie_tmdb_id, m]));
+  const myMovies = movieFollows
+    .map((f) => {
+      const prog = progressById.get(f.tmdb_id);
+      const done = watchedMovieIds.has(f.tmdb_id);
+      const pct =
+        done
+          ? 100
+          : prog?.runtime_minutes && prog.runtime_minutes > 0
+            ? Math.round((prog.position_minutes / prog.runtime_minutes) * 100)
+            : 0;
+      return {
+        tmdbId: f.tmdb_id,
+        title: f.title,
+        posterPath: f.poster_path,
+        progress: pct,
+        badge: done ? "✓" : prog ? t.minuteBadge(prog.position_minutes) : t.typeMovie,
+        rank: done ? 2 : prog ? 0 : 1,
+      };
+    })
+    .sort((a, b) => a.rank - b.rank || b.progress - a.progress);
+
   const panel: PanelItem[] = [
     {
       key: "waiting",
@@ -346,39 +377,43 @@ export default async function HomePage() {
 
       <span id="watching" className="block scroll-mt-20" />
 
-      {continueWatching.length > 0 && (
-        <Section title={t.continueWatching} icon="play" href="/library" seeAll={t.seeAll}>
-          {continueWatching.map(({ tv, progress }) => (
+      {/* ===== مسلسلاتي وأفلامي =====
+          صفّان تحت الأسبوع مباشرةً: مكتبتك كلها في متناول اليد من الصفحة
+          الأولى. الترتيب يقدّم ما أنت في وسطه ثم ما لم تبدأه ثم ما أنهيته —
+          فأول ملصق تراه هو غالباً ما ستفتحه. */}
+      {myShows.length > 0 && (
+        <Section title={t.myShows} icon="tv" href="/library?filter=tv" seeAll={t.seeAll}>
+          {myShows.map((i) => (
             <PosterCard
-              key={tv.id}
-              href={`/show/${tv.id}`}
-              title={tv.name}
-              posterPath={tv.poster_path}
-              progress={progress}
-              badge={`${progress}%`}
+              key={`ms-${i.tv.id}`}
+              href={`/show/${i.tv.id}`}
+              title={i.tv.name}
+              posterPath={i.tv.poster_path}
+              progress={i.progress}
+              badge={
+                i.watched === 0
+                  ? t.notStartedBadge
+                  : i.aired > 0 && i.watched >= i.aired
+                    ? "✓"
+                    : `${i.progress}%`
+              }
             />
           ))}
         </Section>
       )}
 
-      {pausedMovies.length > 0 && (
-        <Section title={t.pausedMovies} icon="pause" href="/library" seeAll={t.seeAll}>
-          {pausedMovies.map((m) => {
-            const pct =
-              m.runtime_minutes && m.runtime_minutes > 0
-                ? Math.round((m.position_minutes / m.runtime_minutes) * 100)
-                : 0;
-            return (
-              <PosterCard
-                key={`mp-${m.movie_tmdb_id}`}
-                href={`/movie/${m.movie_tmdb_id}`}
-                title={m.title ?? t.typeMovie}
-                posterPath={m.poster_path}
-                progress={pct}
-                badge={t.minuteBadge(m.position_minutes)}
-              />
-            );
-          })}
+      {myMovies.length > 0 && (
+        <Section title={t.myMovies} icon="film" href="/library?filter=movie" seeAll={t.seeAll}>
+          {myMovies.map((m) => (
+            <PosterCard
+              key={`mm-${m.tmdbId}`}
+              href={`/movie/${m.tmdbId}`}
+              title={m.title}
+              posterPath={m.posterPath}
+              progress={m.progress}
+              badge={m.badge}
+            />
+          ))}
         </Section>
       )}
 
