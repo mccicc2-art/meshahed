@@ -10,12 +10,14 @@ import {
   getTitleReviews,
 } from "@/lib/data";
 import { MovieProgress } from "@/components/MovieProgress";
-import { getMovie, backdropUrl, posterUrl } from "@/lib/tmdb";
+import { getMovie, getTrailer, getWatchProviders, backdropUrl, posterUrl } from "@/lib/tmdb";
 import { FollowButton } from "@/components/FollowButton";
 import { MovieWatchedButton } from "@/components/MovieWatchedButton";
 import { getT } from "@/lib/locale";
 import { RatingBox } from "@/components/RatingBox";
 import { CommunityReviews } from "@/components/CommunityReviews";
+import { Trailer } from "@/components/Trailer";
+import { WhereToWatch } from "@/components/WhereToWatch";
 
 export default async function MoviePage({ params }: { params: Promise<{ id: string }> }) {
   const user = await getUser();
@@ -33,14 +35,17 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
     );
   }
 
-  const [follows, watchedIds, mProgress, myRating, community, titleReviews] = await Promise.all([
-    getFollows(),
-    getWatchedMovieIds(),
-    getMovieProgress(movieId),
-    getMyRating(movieId, "movie"),
-    getCommunityRating(movieId, "movie"),
-    getTitleReviews(movieId, "movie"),
-  ]);
+  const [follows, watchedIds, mProgress, myRating, community, titleReviews, trailer, watchWhere] =
+    await Promise.all([
+      getFollows(),
+      getWatchedMovieIds(),
+      getMovieProgress(movieId),
+      getMyRating(movieId, "movie"),
+      getCommunityRating(movieId, "movie"),
+      getTitleReviews(movieId, "movie"),
+      getTrailer("movie", movieId),
+      getWatchProviders("movie", movieId),
+    ]);
   const following = follows.some((f) => f.tmdb_id === movieId && f.media_type === "movie");
   const watched = watchedIds.has(movieId);
 
@@ -115,6 +120,26 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
             watched={watched}
             locale={locale}
           />
+
+          {(trailer || watchWhere) && (
+            <div className="mt-8 space-y-8">
+              {trailer && (
+                <Trailer
+                  videoKey={trailer.key}
+                  title={movie.title}
+                  thumbnail={backdrop}
+                  locale={locale}
+                />
+              )}
+              {watchWhere && (
+                <WhereToWatch
+                  region={watchWhere.region}
+                  options={watchWhere.options}
+                  locale={locale}
+                />
+              )}
+            </div>
+          )}
 
           <RatingBox
             tmdbId={movieId}
