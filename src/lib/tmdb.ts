@@ -100,6 +100,7 @@ export interface TvDetails {
   next_episode_to_air: Episode | null;
   last_episode_to_air: Episode | null;
   networks: { id: number; name: string; logo_path: string | null }[];
+  origin_country?: string[];
 }
 
 export interface MovieDetails {
@@ -231,6 +232,52 @@ export async function topRatedThisWeek(minVotes = 150): Promise<SearchResult[]> 
   return rows
     .filter((r) => (r.vote_count ?? 0) >= minVotes && r.vote_average > 0)
     .sort((a, b) => b.vote_average - a.vote_average);
+}
+
+/** معرّف كلمة «anime» المفتاحية في TMDB — أدقّ من الاعتماد على نوع الرسوم وحده */
+export const ANIME_KEYWORD = "210024";
+
+/**
+ * هل هذا العمل أنمي؟
+ *
+ * المعيار: رسوم متحركة (النوع ١٦) + بلد المنشأ اليابان. الاكتفاء بنوع
+ * الرسوم كان يصنّف «عائلة سمبسون» أنمي، والاكتفاء باليابان يصنّف كل دراما
+ * يابانية أنمي.
+ */
+export function isAnime(tv: {
+  genres?: { id: number }[];
+  origin_country?: string[];
+}): boolean {
+  const animated = (tv.genres ?? []).some((g) => g.id === 16);
+  const japanese = (tv.origin_country ?? []).includes("JP");
+  return animated && japanese;
+}
+
+/**
+ * أفضل عشرة أنمي هذا الأسبوع.
+ *
+ * لا يوجد «رائج» مقصور على الأنمي في TMDB، فنستخدم الاستكشاف بكلمة الأنمي
+ * المفتاحية مرتّباً بالرواج، ثم نرتّب بالتقييم بنفس منطق القائمتين
+ * الأخريين — لتبقى الصفوف الثلاثة متّسقة في معناها.
+ */
+export async function topTenAnimeThisWeek(limit = 10): Promise<SearchResult[]> {
+  const data = await tmdb<{ results: SearchResult[] }>("/discover/tv", {
+    with_keywords: ANIME_KEYWORD,
+    sort_by: "popularity.desc",
+    include_adult: "false",
+    "vote_count.gte": "50",
+  });
+  const rows = (data.results ?? [])
+    .filter((r) => r.poster_path && r.vote_average > 0)
+    .map((r) => ({ ...r, media_type: "tv" as const }));
+
+  for (const floor of [300, 100, 25, 0]) {
+    const picked = rows
+      .filter((r) => (r.vote_count ?? 0) >= floor)
+      .sort((a, b) => b.vote_average - a.vote_average);
+    if (picked.length >= limit || floor === 0) return picked.slice(0, limit);
+  }
+  return [];
 }
 
 /**
