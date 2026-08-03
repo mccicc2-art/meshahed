@@ -7,6 +7,9 @@ import {
   getRatingsOf,
   getFollowStats,
   amIFollowing,
+  recordProfileView,
+  getProfileViewCount,
+  displayNameOf,
 } from "@/lib/data";
 import { getT } from "@/lib/locale";
 import { num } from "@/lib/i18n";
@@ -32,13 +35,19 @@ export default async function PublicProfilePage({
     return <p className="text-center text-muted py-24">{t.userNotFound}</p>;
   }
 
-  const [ratings, stats, following] = await Promise.all([
+  // تُسجَّل الزيارة أولاً حتى يشمل العدّاد هذه الزيارة نفسها.
+  // الدالة تتجاهل زيارة الشخص لصفحته وتتجاهل التكرار في نفس اليوم.
+  const isMeEarly = profile.id === me.id;
+  if (!isMeEarly) await recordProfileView(profile.id);
+
+  const [ratings, stats, following, visits] = await Promise.all([
     getRatingsOf(profile.id),
     getFollowStats(profile.id),
     amIFollowing(profile.id),
+    getProfileViewCount(profile.id),
   ]);
 
-  const displayName = profile.nickname || profile.username || "—";
+  const displayName = displayNameOf(profile, t.anonymousUser);
   const favNames = GENRES.filter((g) => profile.favorite_genres.includes(g.id));
   const isMe = profile.id === me.id;
 
@@ -95,19 +104,18 @@ export default async function PublicProfilePage({
             )}
           </div>
 
-          <div className="flex items-center gap-5 mt-4 text-sm">
-            <span>
-              <b>{num(stats.followers, locale)}</b>{" "}
-              <span className="text-muted">{t.followersLabel}</span>
-            </span>
-            <span>
-              <b>{num(stats.following, locale)}</b>{" "}
-              <span className="text-muted">{t.followingLabel}</span>
-            </span>
-            <span>
-              <b>{num(ratings.length, locale)}</b>{" "}
-              <span className="text-muted">★</span>
-            </span>
+          <div className="grid grid-cols-4 gap-2 mt-4">
+            {[
+              { v: stats.followers, l: t.followersLabel },
+              { v: stats.following, l: t.followingLabel },
+              { v: ratings.length, l: "★" },
+              { v: visits, l: t.visitsLabel },
+            ].map((s) => (
+              <div key={s.l} className="bg-surface-2 rounded-xl py-2.5 text-center">
+                <div className="text-base font-bold">{num(s.v, locale)}</div>
+                <div className="text-[11px] text-muted">{s.l}</div>
+              </div>
+            ))}
           </div>
 
           {favNames.length > 0 && (
