@@ -31,7 +31,6 @@ import { whenLabel } from "@/lib/when";
 import { airedEpisodeCount, airedPerSeason, percentOf, nextUnwatchedEpisode } from "@/lib/progress";
 import { episodeKey } from "@/lib/keys";
 import { PosterCard } from "@/components/PosterCard";
-import { PosterGrid } from "@/components/PosterGrid";
 import { HeroNextUp, type NextEpisode } from "@/components/HeroNextUp";
 import { PosterRail, RailItem } from "@/components/PosterRail";
 import { ActionPanel, type PanelItem } from "@/components/ActionPanel";
@@ -351,19 +350,20 @@ export default async function HomePage() {
     <div className="space-y-8 sm:space-y-10">
       <ShowStatsSync stats={statsToCache} />
 
-      <ProfileHeader
-        displayName={displayName}
-        username={profile?.username ?? null}
-        avatarUrl={profile?.avatar_url ?? null}
-        coverUrl={profile?.cover_url ?? null}
-        followers={social.followers}
-        following={social.following}
-        locale={locale}
-      />
-
-      {/* لوحة «وش أسوي الحين» — بدل أرقام المشاهدة التي لا يُفعل بها شيء.
-          وقت المشاهدة والحلقات انتقلت لتحليل المكتبة، مكانها الطبيعي. */}
-      <ActionPanel items={panel} />
+      {/* الترويسة وشريط الأعداد كتلة واحدة بفاصل ضيّق — الفاصل الافتراضي
+          بينهما كان يضيف ٣٢ بكسل بلا داعٍ فوق ما يشغلانه أصلاً */}
+      <div className="space-y-3">
+        <ProfileHeader
+          displayName={displayName}
+          username={profile?.username ?? null}
+          avatarUrl={profile?.avatar_url ?? null}
+          coverUrl={profile?.cover_url ?? null}
+          followers={social.followers}
+          following={social.following}
+          locale={locale}
+        />
+        <ActionPanel items={panel} />
+      </div>
 
       {empty && (
         <section className="text-center py-4">
@@ -539,7 +539,13 @@ export default async function HomePage() {
   );
 }
 
-/** بطاقات كثيرة → صفّ أفقي. بطاقات قليلة → شبكة عادية أنظف بصرياً. */
+/**
+ * كل الأقسام صفوف أفقية.
+ *
+ * كانت الأقسام الصغيرة تُرسم شبكةً ببطاقات أكبر — فيختلف حجم البطاقة بين
+ * قسم وقسم في الشاشة نفسها، وقسمٌ بعنصر واحد يترك ثلثي الصفّ فارغاً.
+ * الصفّ الأفقي يوحّد الإيقاع ويقصّر الصفحة.
+ */
 function Section({
   title,
   subtitle,
@@ -553,20 +559,8 @@ function Section({
   seeAll?: string;
   children: React.ReactNode;
 }) {
-  const items = Array.isArray(children) ? children.flat() : [children];
-  if (items.length <= 3) {
-    return (
-      <section>
-        <h2 className="text-base font-bold mb-1">{title}</h2>
-        {subtitle ? (
-          <p className="text-xs text-muted mb-3">{subtitle}</p>
-        ) : (
-          <div className="mb-3" />
-        )}
-        <PosterGrid>{items}</PosterGrid>
-      </section>
-    );
-  }
+  const items = (Array.isArray(children) ? children.flat() : [children]).filter(Boolean);
+  if (!items.length) return null;
   return (
     <PosterRail title={title} subtitle={subtitle} href={href} seeAllLabel={seeAll}>
       {items.map((child, i) => (
