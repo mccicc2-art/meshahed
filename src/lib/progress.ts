@@ -31,6 +31,32 @@ export function airedEpisodeCount(tv: TvDetails): number {
   return Math.max(0, Math.min(count, total || count));
 }
 
+/**
+ * كم حلقة عُرضت من كل موسم — لعرض «٨/١٠» على رأس الموسم دون تحميل حلقاته.
+ * المواسم قبل موسم آخر حلقة مُذاعة مكتملة، والموسم الجاري حتى رقم تلك الحلقة،
+ * وما بعده صفر.
+ */
+export function airedPerSeason(tv: TvDetails): Map<number, number> {
+  const last = tv.last_episode_to_air;
+  const out = new Map<number, number>();
+
+  for (const s of tv.seasons ?? []) {
+    if (s.season_number < 1) continue;
+    const count = s.episode_count ?? 0;
+
+    if (!last?.season_number) {
+      out.set(s.season_number, tv.next_episode_to_air ? 0 : count);
+    } else if (s.season_number < last.season_number) {
+      out.set(s.season_number, count);
+    } else if (s.season_number === last.season_number) {
+      out.set(s.season_number, Math.min(count, last.episode_number ?? count));
+    } else {
+      out.set(s.season_number, 0);
+    }
+  }
+  return out;
+}
+
 /** النسبة المئوية الموحّدة: مشاهَد ÷ معروض */
 export function percentOf(watched: number, aired: number): number {
   if (!aired || aired <= 0) return 0;

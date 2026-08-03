@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { episodeKey } from "@/lib/keys";
 
@@ -23,7 +24,15 @@ export interface WatchedEpisodeRow {
   runtime: number | null;
 }
 
-export async function getUser() {
+/**
+ * المستخدم الحالي.
+ *
+ * `auth.getUser()` ليست قراءة محلية — إنها رحلة شبكة كاملة لخادم Supabase
+ * للتحقق من التوكن. كانت تُستدعى ٥ مرات في رسم الصفحة الواحدة (proxy،
+ * التخطيط، الشريط العلوي مرتين، الصفحة نفسها) فتضيف ~٦٥٠ مللي ثانية لكل
+ * طلب مهما كانت الصفحة. `cache()` تجعلها رحلة واحدة لكل طلب.
+ */
+export const getUser = cache(async () => {
   try {
     const supabase = await createClient();
     const {
@@ -33,7 +42,7 @@ export async function getUser() {
   } catch {
     return null;
   }
-}
+});
 
 export interface Profile {
   id: string;
@@ -45,12 +54,11 @@ export interface Profile {
   favorite_genres: number[];
 }
 
-export async function getProfile(): Promise<Profile | null> {
+/** الملف الشخصي — يُقرأ في التخطيط والشريط العلوي والصفحة، فيُخزَّن لكل طلب */
+export const getProfile = cache(async (): Promise<Profile | null> => {
   try {
     const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const user = await getUser();
     if (!user) return null;
 
     let { data } = await supabase
@@ -90,7 +98,7 @@ export async function getProfile(): Promise<Profile | null> {
   } catch {
     return null;
   }
-}
+});
 
 export async function getFollows(): Promise<FollowRow[]> {
   const supabase = await createClient();
@@ -141,6 +149,35 @@ export async function getWatchedForShow(showTmdbId: number): Promise<Set<string>
       .range(from, to),
   );
   return new Set(rows.map((r) => episodeKey(r.season_number, r.episode_number)));
+}
+
+export interface WatchSummaryRow {
+  show_tmdb_id: number;
+  watched: number;
+  last_watched: string;
+  minutes: number;
+}
+
+/**
+ * ملخّص المشاهدة: صف واحد لكل مسلسل بدل صف لكل حلقة.
+ *
+ * الرئيسية والمكتبة كانتا تسحبان كل صفوف الحلقات المشاهَدة — آلاف الصفوف
+ * لمن يتابع مسلسلات طويلة — لمجرّد حساب العدّادات. الآن يجمع Postgres.
+ * لو لم تُشغَّل دالة SQL بعد، نرجع للطريقة القديمة تلقائياً.
+ */
+export async function getWatchSummary(): Promise<WatchSummaryRow[] | null> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("watch_summary");
+    if (error || !data) return null;
+    return (data as WatchSummaryRow[]).map((r) => ({
+      ...r,
+      watched: Number(r.watched),
+      minutes: Number(r.minutes),
+    }));
+  } catch {
+    return null;
+  }
 }
 
 export async function getAllWatchedEpisodes(): Promise<WatchedEpisodeRow[]> {
@@ -196,26 +233,49 @@ export interface ReactionInfo {
   mine: Set<string>;
 }
 
-export async function getReactions(): Promise<ReactionInfo> {
+/**
+ * عدّادات 🔥 لعناصر محدّدة + تفاعلات المستخدم نفسه.
+ *
+ * كانت تقرأ جدول التفاعلات كاملاً بلا حدّ — ينمو بلا سقف مع المستخدمين،
+ * ويكشف معرّف كل من تفاعل مع أي عمل. الآن: التجميع في Postgres للعناصر
+ * الظاهرة فقط، وصفوف المستخدم وحده تُقرأ لمعرفة ما تفاعل معه.
+ */
+export async function getReactions(ids: number[] = []): Promise<ReactionInfo> {
   const empty: ReactionInfo = { counts: {}, mine: new Set() };
   try {
     const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const user = await getUser();
+    if (!user) return empty;
 
-    const { data } = await supabase
-      .from("post_reactions")
-      .select("user_id, tmdb_id, media_type");
-    if (!data) return empty;
-
+    const unique = [...new Set(ids)].slice(0, 200);
     const counts: Record<string, number> = {};
-    const mine = new Set<string>();
-    for (const r of data) {
-      const key = `${r.media_type}-${r.tmdb_id}`;
-      counts[key] = (counts[key] ?? 0) + 1;
-      if (user && r.user_id === user.id) mine.add(key);
+
+    if (unique.length) {
+      const { data, error } = await supabase.rpc("reaction_counts", { ids: unique });
+      if (!error && data) {
+        for (const r of data as { tmdb_id: number; media_type: string; n: number }[]) {
+          counts[`${r.media_type}-${r.tmdb_id}`] = Number(r.n);
+        }
+      } else {
+        // احتياط قبل تشغيل ملف performance.sql
+        const { data: rows } = await supabase
+          .from("post_reactions")
+          .select("tmdb_id, media_type")
+          .in("tmdb_id", unique);
+        for (const r of rows ?? []) {
+          const key = `${r.media_type}-${r.tmdb_id}`;
+          counts[key] = (counts[key] ?? 0) + 1;
+        }
+      }
     }
+
+    const { data: own } = await supabase
+      .from("post_reactions")
+      .select("tmdb_id, media_type")
+      .eq("user_id", user.id)
+      .limit(1000);
+
+    const mine = new Set<string>((own ?? []).map((r) => `${r.media_type}-${r.tmdb_id}`));
     return { counts, mine };
   } catch {
     return empty;
@@ -253,9 +313,7 @@ export async function getMyRating(
 ): Promise<RatingRow | null> {
   try {
     const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const user = await getUser();
     if (!user) return null;
     const { data } = await supabase
       .from("ratings")
@@ -323,12 +381,18 @@ export interface PublicProfile {
 }
 
 export async function getProfileByUsername(username: string): Promise<PublicProfile | null> {
+  // كان هنا `.ilike` — و ILIKE يعامل % و _ كأحرف بديلة، فرابط مثل /u/%
+  // كان يطابق أي مستخدم ويسمح بتعداد الحسابات بالتخمين. المطابقة الآن تامّة،
+  // وأسماء المستخدمين تُحفظ بحروف صغيرة أصلاً في updateProfile.
+  const handle = username.trim().toLowerCase();
+  if (!/^[a-z0-9_]{1,24}$/.test(handle)) return null;
+
   try {
     const supabase = await createClient();
     const { data } = await supabase
       .from("profiles")
       .select("id, nickname, username, avatar_url, cover_url, favorite_genres")
-      .ilike("username", username)
+      .eq("username", handle)
       .maybeSingle();
     if (!data) return null;
     return { ...data, favorite_genres: data.favorite_genres ?? [] } as PublicProfile;
@@ -361,9 +425,7 @@ export async function getFollowStats(
 export async function amIFollowing(targetId: string): Promise<boolean> {
   try {
     const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const user = await getUser();
     if (!user) return false;
     const { data } = await supabase
       .from("user_follows")
@@ -381,9 +443,7 @@ export async function amIFollowing(targetId: string): Promise<boolean> {
 export async function getFollowedPeople(): Promise<PublicProfile[]> {
   try {
     const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const user = await getUser();
     if (!user) return [];
     const { data: ids } = await supabase
       .from("user_follows")

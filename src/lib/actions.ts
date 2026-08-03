@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { LOCALE_COOKIE, normalizeLocale } from "@/lib/i18n";
-import type { MediaType } from "@/lib/media";
+import { GENRES, type MediaType } from "@/lib/media";
+import { THEMES } from "@/lib/themes";
 
 async function requireUser() {
   const supabase = await createClient();
@@ -13,6 +14,33 @@ async function requireUser() {
   } = await supabase.auth.getUser();
   if (!user) throw new Error("غير مسجّل الدخول");
   return { supabase, user };
+}
+
+/**
+ * لا نقبل إلا روابط صور من مخزن Supabase الخاص بالمشروع.
+ *
+ * بدون هذا يستطيع مستخدم أن يضع رابط صورة على خادم يملكه، وبما أن الملفات
+ * الشخصية عامة فإن كل من يزور صفحته يسرّب عنوان IP ونوع متصفحه لذلك الخادم.
+ */
+function safeImageUrl(value: string | null | undefined): string | null {
+  if (!value) return null;
+  try {
+    const u = new URL(value);
+    if (u.protocol !== "https:") return null;
+
+    // مخزن المشروع نفسه
+    const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    if (base && u.host === new URL(base).host) {
+      return u.pathname.startsWith("/storage/v1/object/public/") ? u.toString() : null;
+    }
+
+    // صورة حساب Google التي تأتي مع تسجيل الدخول
+    if (u.host === "lh3.googleusercontent.com") return u.toString();
+
+    return null;
+  } catch {
+    return null;
+  }
 }
 
 export async function updateProfile(input: {
@@ -32,16 +60,23 @@ export async function updateProfile(input: {
     .replace(/[^a-z0-9_]/g, "")
     .slice(0, 24);
 
+  // الأنواع تُقصر على المعرّفات المعروفة، والصور على مخزن المشروع
+  const genres = [...new Set(input.favoriteGenres)]
+    .filter((g) => Number.isInteger(g) && GENRES.some((k) => k.id === g))
+    .slice(0, 12);
+
   const payload: Record<string, unknown> = {
     id: user.id,
     nickname: nickname || null,
-    avatar_url: input.avatarUrl,
-    favorite_genres: input.favoriteGenres,
+    avatar_url: safeImageUrl(input.avatarUrl),
+    favorite_genres: genres,
     updated_at: new Date().toISOString(),
   };
   if (input.username !== undefined) payload.username = username || null;
-  if (input.coverUrl !== undefined) payload.cover_url = input.coverUrl;
-  if (input.theme !== undefined) payload.theme = input.theme;
+  if (input.coverUrl !== undefined) payload.cover_url = safeImageUrl(input.coverUrl);
+  if (input.theme !== undefined) {
+    payload.theme = THEMES.some((t) => t.id === input.theme) ? input.theme : "amber";
+  }
 
   const { error } = await supabase.from("profiles").upsert(payload, { onConflict: "id" });
   if (error) {
