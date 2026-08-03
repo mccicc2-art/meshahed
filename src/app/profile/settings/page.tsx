@@ -30,6 +30,7 @@ export default async function AccountSettingsPage() {
         initialNickname={profile?.nickname ?? ""}
         avatarUrl={profile?.avatar_url ?? null}
         genres={profile?.favorite_genres ?? []}
+        initialHideName={!!profile?.hide_name}
       />
     </div>
   );
