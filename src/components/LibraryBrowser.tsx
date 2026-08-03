@@ -121,7 +121,7 @@ export function LibraryBrowser({
 
       {/* مدخل التحليل أسفل الشبكة لا فوقها: يراه من فرغ من التصفّح،
           ولا يعترض من جاء ليختار ما يشاهده */}
-      <div className="mt-6 grid grid-cols-2 gap-2">
+      <div className="mt-6 grid grid-cols-3 gap-2">
         <Link
           href="/stats"
           className="flex items-center justify-center gap-2 text-xs text-muted hover:text-accent border border-dashed border-border rounded-xl py-3 transition"
@@ -133,8 +133,15 @@ export function LibraryBrowser({
           href="/diary"
           className="flex items-center justify-center gap-2 text-xs text-muted hover:text-accent border border-dashed border-border rounded-xl py-3 transition"
         >
-          <Icon name="list" size={16} />
+          <Icon name="clock" size={16} />
           {t.diaryTitle}
+        </Link>
+        <Link
+          href="/lists"
+          className="flex items-center justify-center gap-2 text-xs text-muted hover:text-accent border border-dashed border-border rounded-xl py-3 transition"
+        >
+          <Icon name="list" size={16} />
+          {t.listsTitle}
         </Link>
       </div>
     </div>
