@@ -13,6 +13,8 @@ import { EpisodeTracker, type TrackerSeason } from "@/components/EpisodeTracker"
 import { getT } from "@/lib/locale";
 import { RatingBox } from "@/components/RatingBox";
 import { CommunityReviews } from "@/components/CommunityReviews";
+import { formatDate } from "@/lib/when";
+import { ShowStatsSync } from "@/components/ShowStatsSync";
 
 export default async function ShowPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await getUser();
@@ -57,12 +59,33 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
   ]);
   const following = follows.some((f) => f.tmdb_id === tvId && f.media_type === "tv");
 
+  // العدد الدقيق للحلقات المعروضة، مأخوذ من بيانات المواسم نفسها.
+  // يُخزَّن مع صف المتابعة لتقرأه المكتبة والرئيسية بلا طلب TMDB.
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const airedExact = seasons.reduce(
+    (sum, s) => sum + s.episodes.filter((e) => e.air_date && e.air_date <= todayIso).length,
+    0,
+  );
+
   const backdrop = backdropUrl(tv.backdrop_path);
   const poster = posterUrl(tv.poster_path, "w342");
   const next = tv.next_episode_to_air;
 
   return (
     <div>
+      {following && (
+        <ShowStatsSync
+          stats={[
+            {
+              tmdbId: tvId,
+              total: tv.number_of_episodes ?? airedExact,
+              aired: airedExact,
+              nextAirDate: next?.air_date ?? null,
+            },
+          ]}
+        />
+      )}
+
       <div className="relative -mx-4 -mt-6 h-56 sm:h-72 mb-4">
         {backdrop && (
           <Image src={backdrop} alt="" fill priority className="object-cover opacity-40" />
@@ -112,7 +135,7 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
             />
             {next && next.air_date && (
               <span className="text-xs text-accent-2 bg-accent-2/10 border border-accent-2/30 px-3 py-2 rounded-lg">
-                {t.nextEpisodeOn(next.air_date)}
+                {t.nextEpisodeOn(formatDate(next.air_date, t))}
               </span>
             )}
           </div>
