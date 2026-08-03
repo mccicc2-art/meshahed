@@ -7,6 +7,7 @@ import {
   topTenAnimeThisWeek,
   nowPlayingMovies,
   titleOf,
+  yearOf,
   posterUrl,
   backdropUrl,
   type SearchResult,
@@ -17,6 +18,9 @@ import { NewsList } from "@/components/NewsList";
 import { RankedRail } from "@/components/RankedRail";
 import { SectionTitle } from "@/components/Icon";
 import { CountdownRail, type CountdownItem } from "@/components/CountdownRail";
+import { PosterRail, RailItem } from "@/components/PosterRail";
+import { PosterCard } from "@/components/PosterCard";
+import { getSuggestions } from "@/lib/suggest";
 
 const REGIONS: Record<string, string> = {
   SA: "السعودية",
@@ -43,7 +47,8 @@ export default async function NewsPage() {
 
   const { locale, t } = await getT();
 
-  const [topMovies, topSeries, topAnime, cinemas, movies, tv, follows] = await Promise.all([
+  const [topMovies, topSeries, topAnime, cinemas, movies, tv, follows, suggested] =
+    await Promise.all([
     topTenThisWeek("movie").catch(() => [] as SearchResult[]),
     topTenThisWeek("tv").catch(() => [] as SearchResult[]),
     topTenAnimeThisWeek().catch(() => [] as SearchResult[]),
@@ -51,6 +56,7 @@ export default async function NewsPage() {
     upcomingMovies().catch(() => [] as SearchResult[]),
     airingTv().catch(() => [] as SearchResult[]),
     getFollows(),
+    getSuggestions(12).catch(() => []),
   ]);
 
   const followed = follows.map((f) => `${f.media_type}-${f.tmdb_id}`);
@@ -102,6 +108,30 @@ export default async function NewsPage() {
         <h1 className="text-xl font-bold">{t.newsTitle}</h1>
         <p className="text-xs text-muted mt-0.5">{t.discoverSub}</p>
       </header>
+
+      {suggested.length > 0 && (
+        <PosterRail title={t.suggestedForYou} icon="sparkles" subtitle={t.suggestedSubtitle}>
+          {suggested.map((s) => (
+            <RailItem key={`sug-${s.result.media_type}-${s.result.id}`}>
+              <PosterCard
+                href={`/${s.result.media_type === "movie" ? "movie" : "show"}/${s.result.id}`}
+                title={titleOf(s.result)}
+                posterPath={s.result.poster_path}
+                year={yearOf(s.result)}
+                note={
+                  s.source === "rated" && s.seedTitle
+                    ? t.recoBecauseRated(s.seedTitle)
+                    : s.source === "follows" && s.seedTitle
+                      ? t.recoBecauseFollow(s.seedTitle)
+                      : s.source === "recent" && s.seedTitle
+                        ? t.recoBecauseWatched(s.seedTitle)
+                        : t.recoBecauseGenre
+                }
+              />
+            </RailItem>
+          ))}
+        </PosterRail>
+      )}
 
       {cinemas && (
         <RankedRail
