@@ -7,6 +7,7 @@ import {
   getMovieProgress,
   getMyRating,
   getCommunityRating,
+  getTitleReviews,
 } from "@/lib/data";
 import { MovieProgress } from "@/components/MovieProgress";
 import { getMovie, backdropUrl, posterUrl } from "@/lib/tmdb";
@@ -32,12 +33,13 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
     );
   }
 
-  const [follows, watchedIds, mProgress, myRating, community] = await Promise.all([
+  const [follows, watchedIds, mProgress, myRating, community, titleReviews] = await Promise.all([
     getFollows(),
     getWatchedMovieIds(),
     getMovieProgress(movieId),
     getMyRating(movieId, "movie"),
     getCommunityRating(movieId, "movie"),
+    getTitleReviews(movieId, "movie"),
   ]);
   const following = follows.some((f) => f.tmdb_id === movieId && f.media_type === "movie");
   const watched = watchedIds.has(movieId);
@@ -128,7 +130,7 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
             locale={locale}
             avg={community.avg}
             count={community.count}
-            reviews={community.reviews}
+            reviews={titleReviews}
           />
         </div>
       </div>
