@@ -210,6 +210,30 @@ export async function topRatedThisWeek(minVotes = 150): Promise<SearchResult[]> 
     .sort((a, b) => b.vote_average - a.vote_average);
 }
 
+/**
+ * أفضل عشرة من نوع واحد هذا الأسبوع.
+ *
+ * الرائج أسبوعياً مُرشَّحاً بعتبة أصوات ثم مرتَّباً بالتقييم. العتبة تنزل
+ * تدريجياً إن لم تكتمل العشرة، فالقائمة لا تعود ناقصة في أسبوع هادئ.
+ */
+export async function topTenThisWeek(
+  mediaType: MediaType,
+  limit = 10,
+): Promise<SearchResult[]> {
+  const data = await tmdb<{ results: SearchResult[] }>(`/trending/${mediaType}/week`);
+  const rows = (data.results ?? [])
+    .filter((r) => r.poster_path && r.vote_average > 0)
+    .map((r) => ({ ...r, media_type: mediaType }));
+
+  for (const floor of [300, 100, 25, 0]) {
+    const picked = rows
+      .filter((r) => (r.vote_count ?? 0) >= floor)
+      .sort((a, b) => b.vote_average - a.vote_average);
+    if (picked.length >= limit || floor === 0) return picked.slice(0, limit);
+  }
+  return [];
+}
+
 /** الأكثر رواجاً عالمياً هذا الأسبوع — ترتيب TMDB نفسه */
 export async function mostPopularThisWeek(): Promise<SearchResult[]> {
   const rows = await trending();
