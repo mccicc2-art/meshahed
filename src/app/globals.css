@@ -43,6 +43,45 @@ body {
   min-height: 100vh;
 }
 
+/* حلقة تركيز واضحة لكل عنصر تفاعلي — التنقّل بلوحة المفاتيح كان شبه مستحيل بدونها.
+   تُكتب بعد Tailwind حتى تتغلّب على outline-none في الحقول. */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+summary:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+/* هياكل عظمية أثناء التحميل */
+@keyframes meshahed-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+.skeleton {
+  background: var(--surface-2);
+  animation: meshahed-pulse 1.5s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
+  * {
+    transition-duration: 0.01ms !important;
+  }
+}
+
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;

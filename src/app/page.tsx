@@ -13,6 +13,7 @@ import {
 import {
   getTv,
   getMovie,
+  getSeason,
   trending,
   discoverByGenres,
   recommendationsFor,
@@ -21,13 +22,18 @@ import {
   type TvDetails,
   type SearchResult,
 } from "@/lib/tmdb";
-import { GENRES } from "@/lib/media";
+import { GENRES, backdropUrl } from "@/lib/media";
 import { getT } from "@/lib/locale";
 import { num, type Dict } from "@/lib/i18n";
 import { blendRecommendations, type Candidate } from "@/lib/recommend";
 import { whenLabel } from "@/lib/when";
+import { airedEpisodeCount, percentOf, nextUnwatchedEpisode } from "@/lib/progress";
+import { episodeKey } from "@/lib/keys";
 import { PosterCard } from "@/components/PosterCard";
+import { PosterGrid } from "@/components/PosterGrid";
 import { Avatar } from "@/components/Avatar";
+import { NextUpCard } from "@/components/NextUpCard";
+import { ShowStatsSync, type ShowStat } from "@/components/ShowStatsSync";
 
 function fmtWatchTime(minutes: number, t: Dict) {
   const h = Math.round(minutes / 60);
@@ -57,8 +63,15 @@ export default async function HomePage() {
   const movieFollows = follows.filter((f) => f.media_type === "movie");
 
   const watchedByShow = new Map<number, number>();
+  const watchedKeysByShow = new Map<number, Set<string>>();
   for (const w of watchedEps) {
     watchedByShow.set(w.show_tmdb_id, (watchedByShow.get(w.show_tmdb_id) ?? 0) + 1);
+    let set = watchedKeysByShow.get(w.show_tmdb_id);
+    if (!set) {
+      set = new Set<string>();
+      watchedKeysByShow.set(w.show_tmdb_id, set);
+    }
+    set.add(episodeKey(w.season_number, w.episode_number));
   }
 
   const today = new Date().toISOString().slice(0, 10);
@@ -77,26 +90,50 @@ export default async function HomePage() {
     badge?: string;
   }
 
-  type Item = { tv: TvDetails; watched: number; total: number; progress: number };
+  type Item = { tv: TvDetails; watched: number; aired: number; progress: number };
   const items: Item[] = [];
   const upcoming: UpcomingItem[] = [];
+  const statsToCache: ShowStat[] = [];
 
   for (const tv of tvDetails) {
     if (!tv) continue;
-    const watched = watchedByShow.get(tv.id) ?? 0;
-    const total = tv.number_of_episodes;
-    const progress = total ? Math.min(100, Math.round((watched / total) * 100)) : 0;
-    items.push({ tv, watched, total, progress });
+    const row = tvFollows.find((f) => f.tmdb_id === tv.id);
+
+    // المقام موحّد عبر كل الشاشات: الحلقات التي عُرضت فعلاً.
+    // العدد المخزّن أدقّ (محسوب من تواريخ الحلقات نفسها في صفحة المسلسل)،
+    // فيُقدَّم على الاشتقاق من `last_episode_to_air`.
+    const aired = row?.aired_episodes ?? airedEpisodeCount(tv);
+    // لا تتجاوز المشاهَد ما عُرض، وإلا خرجت نسبة فوق ١٠٠٪
+    const watched = Math.min(watchedByShow.get(tv.id) ?? 0, aired || Infinity);
+    items.push({ tv, watched, aired, progress: percentOf(watched, aired) });
 
     const next = tv.next_episode_to_air;
-    if (next?.air_date) {
+    const nextDate = next?.air_date ?? null;
+
+    // تُكتب الإحصاءات في حالتين فقط، فلا كتابة في كل زيارة:
+    // (١) لا يوجد رقم مخزّن بعد — تهيئة أولى،
+    // (٢) تغيّر موعد الحلقة القادمة — أي أن حلقة جديدة نزلت.
+    // خارج هاتين الحالتين لا نلمس القيمة، حتى لا يُستبدل العدد الدقيق
+    // القادم من صفحة المسلسل بالعدد المشتقّ هنا.
+    const needsBootstrap = row && row.aired_episodes == null;
+    const scheduleMoved = row && (row.next_air_date ?? null) !== nextDate;
+    if (row && (needsBootstrap || scheduleMoved)) {
+      statsToCache.push({
+        tmdbId: tv.id,
+        total: tv.number_of_episodes ?? 0,
+        aired: airedEpisodeCount(tv),
+        nextAirDate: nextDate,
+      });
+    }
+
+    if (nextDate) {
       upcoming.push({
         key: `tv-${tv.id}`,
         href: `/show/${tv.id}`,
         title: tv.name,
         posterPath: tv.poster_path,
-        date: next.air_date,
-        badge: `S${next.season_number} · E${next.episode_number}`,
+        date: nextDate,
+        badge: `S${next?.season_number} · E${next?.episode_number}`,
       });
     } else if (tv.first_air_date && tv.first_air_date > today) {
       // مسلسل في المفضلة لم يُعرض بعد
@@ -126,12 +163,50 @@ export default async function HomePage() {
 
   // أي عمل تتابعه ولم تُكمله يظهر في «أكمل المشاهدة» — حتى لو لم تبدأه بعد
   const continueWatching = items
-    .filter((i) => i.total === 0 || i.watched < i.total)
+    .filter((i) => i.aired === 0 || i.watched < i.aired)
     .sort((a, b) => {
       if (a.watched > 0 !== b.watched > 0) return a.watched > 0 ? -1 : 1;
       return b.progress - a.progress;
     });
   upcoming.sort((a, b) => a.date.localeCompare(b.date));
+
+  // ===== بطاقة «الحلقة التالية»: آخر مسلسل تابعته وله حلقة معروضة لم تُشاهد =====
+  const lastWatchedOrder: number[] = [];
+  for (const w of [...watchedEps].sort((a, b) => b.watched_at.localeCompare(a.watched_at))) {
+    if (!lastWatchedOrder.includes(w.show_tmdb_id)) lastWatchedOrder.push(w.show_tmdb_id);
+  }
+
+  const nextUpCandidates = [...continueWatching].sort((a, b) => {
+    const ai = lastWatchedOrder.indexOf(a.tv.id);
+    const bi = lastWatchedOrder.indexOf(b.tv.id);
+    return (ai < 0 ? 9999 : ai) - (bi < 0 ? 9999 : bi);
+  });
+
+  let nextUp: {
+    tv: TvDetails;
+    season: number;
+    episode: number;
+    name: string | null;
+    still: string | null;
+    runtime: number | null;
+  } | null = null;
+
+  for (const cand of nextUpCandidates.slice(0, 3)) {
+    const ep = nextUnwatchedEpisode(cand.tv, watchedKeysByShow.get(cand.tv.id) ?? new Set());
+    if (!ep) continue;
+    // طلب واحد فقط لجلب اسم الحلقة وصورتها
+    const season = await getSeason(cand.tv.id, ep.season).catch(() => null);
+    const detail = season?.episodes.find((e) => e.episode_number === ep.episode) ?? null;
+    nextUp = {
+      tv: cand.tv,
+      season: ep.season,
+      episode: ep.episode,
+      name: detail?.name ?? null,
+      still: backdropUrl(detail?.still_path ?? cand.tv.backdrop_path, "w780"),
+      runtime: detail?.runtime ?? null,
+    };
+    break;
+  }
 
   // الأفلام المكتملة لا تظهر في الرئيسية
   const pausedMovies = movieProgress.filter((m) => !watchedMovieIds.has(m.movie_tmdb_id));
@@ -167,18 +242,10 @@ export default async function HomePage() {
 
   // ===== بذور محرّك الاقتراحات =====
   const titleById = new Map<number, string>(follows.map((f) => [f.tmdb_id, f.title]));
-
-  // آخر ما شاهدته: أحدث الحلقات المؤشَّرة → أحدث المسلسلات
-  const recentShowIds: number[] = [];
-  for (const w of [...watchedEps].sort((a, b) => b.watched_at.localeCompare(a.watched_at))) {
-    if (!recentShowIds.includes(w.show_tmdb_id)) recentShowIds.push(w.show_tmdb_id);
-    if (recentShowIds.length >= 2) break;
-  }
+  const recentShowIds = lastWatchedOrder.slice(0, 2);
 
   // ما تتابعه: أحدث ما أضفته ولم يدخل ضمن "آخر ما شاهدت"
-  const followSeeds = follows
-    .filter((f) => !recentShowIds.includes(f.tmdb_id))
-    .slice(0, 3);
+  const followSeeds = follows.filter((f) => !recentShowIds.includes(f.tmdb_id)).slice(0, 3);
 
   const [trend, genreDiscover, followRecs, recentRecs] = await Promise.all([
     trending().catch(() => [] as SearchResult[]),
@@ -224,10 +291,70 @@ export default async function HomePage() {
   ];
 
   return (
-    <div className="space-y-10">
-      {/* بطاقة الملف الشخصي — الغلاف ثم الصورة والاسم ثم الإحصائيات */}
-      <section className="bg-surface border border-border rounded-2xl overflow-hidden">
-        <div className="relative h-28 sm:h-40 bg-surface-2">
+    <div className="space-y-8 sm:space-y-10">
+      <ShowStatsSync stats={statsToCache} />
+
+      {/* ===== الجوال: صف مضغوط حتى يظهر المحتوى في أول شاشة ===== */}
+      <section className="sm:hidden">
+        <div className="flex items-center gap-3">
+          <Avatar
+            src={profile?.avatar_url}
+            name={displayName}
+            size={48}
+            alt={t.avatarAlt}
+            className="shrink-0 ring-2 ring-[color:var(--border)]"
+          />
+          <div className="min-w-0 flex-1">
+            <h1 className="text-base font-bold truncate leading-tight">{displayName}</h1>
+            <p className="text-xs text-muted mt-0.5">
+              <b className="text-foreground">{num(social.followers, locale)}</b>{" "}
+              {t.followersLabel}
+              <span className="mx-1.5">·</span>
+              <b className="text-foreground">{num(social.following, locale)}</b>{" "}
+              {t.followingLabel}
+            </p>
+          </div>
+          {profile?.username && (
+            <Link
+              href={`/u/${profile.username}`}
+              className="shrink-0 text-xs text-accent border border-border rounded-full px-3 py-1.5"
+            >
+              {t.publicProfileLink}
+            </Link>
+          )}
+        </div>
+
+        {/* شريط إحصائيات أفقي بارتفاع صغير بدل أربع بطاقات مربّعة */}
+        <div className="flex gap-2 mt-3 overflow-x-auto pb-1 -mx-4 px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {stats.map((s) => (
+            <div
+              key={s.label}
+              className="shrink-0 flex items-center gap-2 bg-surface border border-border rounded-full ps-3 pe-4 py-2"
+            >
+              <span aria-hidden>{s.icon}</span>
+              <span className="text-sm font-bold">{s.value}</span>
+              <span className="text-[11px] text-muted">{s.label}</span>
+            </div>
+          ))}
+        </div>
+
+        {tasteGenres.length > 0 && (
+          <div className="flex gap-2 mt-2 overflow-x-auto pb-1 -mx-4 px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {tasteGenres.map((g) => (
+              <span
+                key={g.id}
+                className="shrink-0 text-[11px] bg-surface-2 border border-border px-2.5 py-1 rounded-full"
+              >
+                {g.emoji} {g.name}
+              </span>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* ===== سطح المكتب: البطاقة الكاملة بالغلاف ===== */}
+      <section className="hidden sm:block bg-surface border border-border rounded-2xl overflow-hidden">
+        <div className="relative h-40 bg-surface-2">
           {profile?.cover_url ? (
             <img src={profile.cover_url} alt="" className="w-full h-full object-cover" />
           ) : (
@@ -242,8 +369,8 @@ export default async function HomePage() {
           <div className="absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-[color:var(--surface)] to-transparent" />
         </div>
 
-        <div className="px-5 sm:px-6 pb-5 sm:pb-6">
-          <div className="-mt-12 sm:-mt-14 relative">
+        <div className="px-6 pb-6">
+          <div className="-mt-14 relative">
             <Avatar
               src={profile?.avatar_url}
               name={displayName}
@@ -254,7 +381,7 @@ export default async function HomePage() {
           </div>
 
           <div className="mt-3">
-            <h1 className="text-xl sm:text-2xl font-bold truncate">{displayName}</h1>
+            <h1 className="text-2xl font-bold truncate">{displayName}</h1>
             {profile?.username && (
               <Link
                 href={`/u/${profile.username}`}
@@ -298,7 +425,9 @@ export default async function HomePage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-5 pt-5 border-t border-border">
             {stats.map((s) => (
               <div key={s.label} className="bg-surface-2 rounded-xl p-3 text-center">
-                <div className="text-lg">{s.icon}</div>
+                <div className="text-lg" aria-hidden>
+                  {s.icon}
+                </div>
                 <div className="text-base font-bold mt-0.5">{s.value}</div>
                 <div className="text-[11px] text-muted">{s.label}</div>
               </div>
@@ -311,6 +440,19 @@ export default async function HomePage() {
         <section className="text-center py-4">
           <p className="text-muted">{t.emptyStart}</p>
         </section>
+      )}
+
+      {nextUp && (
+        <NextUpCard
+          showTmdbId={nextUp.tv.id}
+          showName={nextUp.tv.name}
+          season={nextUp.season}
+          episode={nextUp.episode}
+          episodeName={nextUp.name}
+          stillUrl={nextUp.still}
+          runtime={nextUp.runtime}
+          locale={locale}
+        />
       )}
 
       {pausedMovies.length > 0 && (
@@ -368,7 +510,7 @@ export default async function HomePage() {
         <section>
           <h2 className="text-lg font-bold">{t.suggestedForYou}</h2>
           <p className="text-xs text-muted mt-1 mb-4">{t.suggestedSubtitle}</p>
-          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-4">
+          <PosterGrid>
             {suggested.map((s) => (
               <PosterCard
                 key={`sug-${s.result.media_type}-${s.result.id}`}
@@ -385,7 +527,7 @@ export default async function HomePage() {
                 }
               />
             ))}
-          </div>
+          </PosterGrid>
         </section>
       )}
 
@@ -420,7 +562,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   return (
     <section>
       <h2 className="text-lg font-bold mb-4">{title}</h2>
-      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-4">{children}</div>
+      <PosterGrid>{children}</PosterGrid>
     </section>
   );
 }
