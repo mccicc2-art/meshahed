@@ -525,3 +525,93 @@ export async function applyOnboardingProgress(
   revalidatePath("/");
   revalidatePath("/library");
 }
+
+// ============================================================
+//  القوائم الشخصية
+// ============================================================
+
+export async function createList(name: string, isPublic = false): Promise<string | null> {
+  const clean = name.trim().slice(0, 60);
+  if (!clean) throw new Error("empty name");
+  const { supabase, user } = await requireUser();
+
+  // سقف معقول: يمنع إنشاء آلاف القوائم بحلقة برمجية
+  const { count } = await supabase
+    .from("user_lists")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", user.id);
+  if ((count ?? 0) >= 50) throw new Error("too many lists");
+
+  const { data, error } = await supabase
+    .from("user_lists")
+    .insert({ user_id: user.id, name: clean, is_public: isPublic })
+    .select("id")
+    .single();
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/lists");
+  return data?.id ?? null;
+}
+
+export async function renameList(listId: string, name: string, isPublic: boolean) {
+  const clean = name.trim().slice(0, 60);
+  if (!clean) throw new Error("empty name");
+  const { supabase } = await requireUser();
+  const { error } = await supabase
+    .from("user_lists")
+    .update({ name: clean, is_public: isPublic, updated_at: new Date().toISOString() })
+    .eq("id", listId);
+  if (error) throw new Error(error.message);
+  revalidatePath("/lists");
+  revalidatePath(`/lists/${listId}`);
+}
+
+export async function deleteList(listId: string) {
+  const { supabase } = await requireUser();
+  const { error } = await supabase.from("user_lists").delete().eq("id", listId);
+  if (error) throw new Error(error.message);
+  revalidatePath("/lists");
+}
+
+export async function toggleInList(input: {
+  listId: string;
+  tmdbId: number;
+  mediaType: MediaType;
+  title: string;
+  posterPath: string | null;
+  add: boolean;
+}) {
+  const { supabase } = await requireUser();
+
+  if (input.add) {
+    // العنوان والملصق يُخزَّنان مع العنصر حتى تُعرض القائمة بلا طلب TMDB
+    const { error } = await supabase.from("user_list_items").upsert(
+      {
+        list_id: input.listId,
+        tmdb_id: input.tmdbId,
+        media_type: input.mediaType,
+        title: input.title,
+        poster_path: safeImagePath(input.posterPath),
+      },
+      { onConflict: "list_id,tmdb_id,media_type" },
+    );
+    if (error) throw new Error(error.message);
+  } else {
+    const { error } = await supabase
+      .from("user_list_items")
+      .delete()
+      .eq("list_id", input.listId)
+      .eq("tmdb_id", input.tmdbId)
+      .eq("media_type", input.mediaType);
+    if (error) throw new Error(error.message);
+  }
+
+  revalidatePath("/lists");
+  revalidatePath(`/lists/${input.listId}`);
+}
+
+/** مسار ملصق TMDB فقط — لا نقبل عنواناً كاملاً من العميل */
+function safeImagePath(path: string | null): string | null {
+  if (!path) return null;
+  return /^\/[A-Za-z0-9._-]{1,64}$/.test(path) ? path : null;
+}

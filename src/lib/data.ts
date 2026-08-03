@@ -746,3 +746,81 @@ export async function getWatchHistory(limit = 400): Promise<HistoryRow[]> {
     return [];
   }
 }
+
+// ============================================================
+//  القوائم الشخصية
+// ============================================================
+
+export interface UserList {
+  id: string;
+  name: string;
+  is_public: boolean;
+  created_at: string;
+  item_count: number;
+  posters: string[] | null;
+}
+
+export interface ListItem {
+  tmdb_id: number;
+  media_type: "tv" | "movie";
+  title: string | null;
+  poster_path: string | null;
+  added_at: string;
+}
+
+/** قوائمي مع عدد عناصر كل واحدة — استعلام واحد لا استعلام لكل قائمة */
+export async function getMyLists(): Promise<UserList[]> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("my_lists");
+    if (error || !data) return [];
+    return data as UserList[];
+  } catch {
+    return [];
+  }
+}
+
+/** قائمة واحدة بعناصرها — تُرجع null لو لم تكن لك ولا معلنة */
+export async function getList(
+  listId: string,
+): Promise<{ list: { id: string; name: string; is_public: boolean; user_id: string }; items: ListItem[] } | null> {
+  if (!/^[0-9a-f-]{36}$/i.test(listId)) return null;
+  try {
+    const supabase = await createClient();
+    const { data: list } = await supabase
+      .from("user_lists")
+      .select("id, name, is_public, user_id")
+      .eq("id", listId)
+      .maybeSingle();
+    if (!list) return null;
+
+    const { data: items } = await supabase
+      .from("user_list_items")
+      .select("tmdb_id, media_type, title, poster_path, added_at")
+      .eq("list_id", listId)
+      .order("added_at", { ascending: false })
+      .limit(500);
+
+    return { list, items: (items ?? []) as ListItem[] };
+  } catch {
+    return null;
+  }
+}
+
+/** أي قوائمي تحتوي هذا العمل — لتعليم الأزرار في صفحة العمل */
+export async function getListsContaining(
+  tmdbId: number,
+  mediaType: "tv" | "movie",
+): Promise<string[]> {
+  try {
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from("user_list_items")
+      .select("list_id")
+      .eq("tmdb_id", tmdbId)
+      .eq("media_type", mediaType);
+    return (data ?? []).map((r) => r.list_id as string);
+  } catch {
+    return [];
+  }
+}
