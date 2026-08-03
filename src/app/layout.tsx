@@ -46,12 +46,15 @@ export default async function RootLayout({
       suppressHydrationWarning
     >
       <head>
+        {/* preconnect مبكّر يقصّر زمن أول رسم — الخط خارجي مؤقتاً.
+            الأفضل استضافته ذاتياً عبر next/font/google (انظر تقرير الأداء). */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
           href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap"
           rel="stylesheet"
         />
+        {/* ألوان الثيم متغيّرات CSS مبنية من قائمة ثابتة في themes.ts — لا مدخلات مستخدم */}
         <style dangerouslySetInnerHTML={{ __html: themeCss(theme) }} />
       </head>
       <body className="min-h-full flex flex-col">

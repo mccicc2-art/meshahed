@@ -5,6 +5,8 @@ import {
   getUser,
   getFollows,
   getAllWatchedEpisodes,
+  getWatchSummary,
+  getWatchedForShow,
   getWatchedMovieIds,
   getProfile,
   getAllMovieProgress,
@@ -28,7 +30,6 @@ import { num, type Dict } from "@/lib/i18n";
 import { blendRecommendations, type Candidate } from "@/lib/recommend";
 import { whenLabel } from "@/lib/when";
 import { airedEpisodeCount, percentOf, nextUnwatchedEpisode } from "@/lib/progress";
-import { episodeKey } from "@/lib/keys";
 import { PosterCard } from "@/components/PosterCard";
 import { PosterGrid } from "@/components/PosterGrid";
 import { Avatar } from "@/components/Avatar";
@@ -49,10 +50,12 @@ export default async function HomePage() {
 
   const { locale, t } = await getT();
 
-  const [follows, watchedEps, watchedMovieIds, profile, movieProgress, social] =
+  // ملخّص مجمّع: صف لكل مسلسل بدل صف لكل حلقة (آلاف الصفوف سابقاً).
+  // صفوف الحلقات التفصيلية تُقرأ لاحقاً لمسلسل واحد فقط — صاحب «الحلقة التالية».
+  const [follows, summary, watchedMovieIds, profile, movieProgress, social] =
     await Promise.all([
       getFollows(),
-      getAllWatchedEpisodes(),
+      getWatchSummary(),
       getWatchedMovieIds(),
       getProfile(),
       getAllMovieProgress(),
@@ -63,15 +66,31 @@ export default async function HomePage() {
   const movieFollows = follows.filter((f) => f.media_type === "movie");
 
   const watchedByShow = new Map<number, number>();
-  const watchedKeysByShow = new Map<number, Set<string>>();
-  for (const w of watchedEps) {
-    watchedByShow.set(w.show_tmdb_id, (watchedByShow.get(w.show_tmdb_id) ?? 0) + 1);
-    let set = watchedKeysByShow.get(w.show_tmdb_id);
-    if (!set) {
-      set = new Set<string>();
-      watchedKeysByShow.set(w.show_tmdb_id, set);
+  let totalEpisodes = 0;
+  let epMinutes = 0;
+  // المسلسلات مرتّبة من الأحدث مشاهدةً — أساس اختيار «الحلقة التالية» والاقتراحات
+  let lastWatchedOrder: number[] = [];
+
+  if (summary) {
+    for (const s of summary) {
+      watchedByShow.set(s.show_tmdb_id, s.watched);
+      totalEpisodes += s.watched;
+      epMinutes += s.minutes;
     }
-    set.add(episodeKey(w.season_number, w.episode_number));
+    lastWatchedOrder = [...summary]
+      .sort((a, b) => (b.last_watched ?? "").localeCompare(a.last_watched ?? ""))
+      .map((s) => s.show_tmdb_id);
+  } else {
+    // احتياط قبل تشغيل ملف performance.sql
+    const watchedEps = await getAllWatchedEpisodes();
+    for (const w of watchedEps) {
+      watchedByShow.set(w.show_tmdb_id, (watchedByShow.get(w.show_tmdb_id) ?? 0) + 1);
+      epMinutes += w.runtime ?? 40;
+    }
+    totalEpisodes = watchedEps.length;
+    for (const w of [...watchedEps].sort((a, b) => b.watched_at.localeCompare(a.watched_at))) {
+      if (!lastWatchedOrder.includes(w.show_tmdb_id)) lastWatchedOrder.push(w.show_tmdb_id);
+    }
   }
 
   const today = new Date().toISOString().slice(0, 10);
@@ -171,11 +190,6 @@ export default async function HomePage() {
   upcoming.sort((a, b) => a.date.localeCompare(b.date));
 
   // ===== بطاقة «الحلقة التالية»: آخر مسلسل تابعته وله حلقة معروضة لم تُشاهد =====
-  const lastWatchedOrder: number[] = [];
-  for (const w of [...watchedEps].sort((a, b) => b.watched_at.localeCompare(a.watched_at))) {
-    if (!lastWatchedOrder.includes(w.show_tmdb_id)) lastWatchedOrder.push(w.show_tmdb_id);
-  }
-
   const nextUpCandidates = [...continueWatching].sort((a, b) => {
     const ai = lastWatchedOrder.indexOf(a.tv.id);
     const bi = lastWatchedOrder.indexOf(b.tv.id);
@@ -192,7 +206,9 @@ export default async function HomePage() {
   } | null = null;
 
   for (const cand of nextUpCandidates.slice(0, 3)) {
-    const ep = nextUnwatchedEpisode(cand.tv, watchedKeysByShow.get(cand.tv.id) ?? new Set());
+    // صفوف الحلقات التفصيلية تُقرأ لهذا المسلسل وحده، لا لكل المكتبة
+    const keys = await getWatchedForShow(cand.tv.id);
+    const ep = nextUnwatchedEpisode(cand.tv, keys);
     if (!ep) continue;
     // طلب واحد فقط لجلب اسم الحلقة وصورتها
     const season = await getSeason(cand.tv.id, ep.season).catch(() => null);
@@ -280,12 +296,11 @@ export default async function HomePage() {
   const showTrending = empty || (!suggested.length && continueWatching.length === 0);
 
   const displayName = profile?.nickname || user.email?.split("@")[0] || "";
-  const epMinutes = watchedEps.reduce((s, e) => s + (e.runtime ?? 40), 0);
   const totalMinutes = epMinutes + watchedMovieIds.size * 110;
 
   const stats = [
     { label: t.statWatchTime, value: fmtWatchTime(totalMinutes, t), icon: "⏱️" },
-    { label: t.statEpisodes, value: num(watchedEps.length, locale), icon: "✅" },
+    { label: t.statEpisodes, value: num(totalEpisodes, locale), icon: "✅" },
     { label: t.statShows, value: num(tvFollows.length, locale), icon: "📺" },
     { label: t.statMovies, value: num(movieFollows.length, locale), icon: "🎬" },
   ];
