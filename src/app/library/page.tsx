@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 import {
   getUser,
   getFollows,
@@ -8,17 +9,9 @@ import {
   getAllMovieProgress,
 } from "@/lib/data";
 import { getT } from "@/lib/locale";
-import { num, type Dict } from "@/lib/i18n";
 import { percentOf, isComplete } from "@/lib/progress";
 import { MediaSection, type LibraryEntry } from "@/components/LibraryTabs";
-
-function fmtWatchTime(minutes: number, t: Dict) {
-  const h = Math.round(minutes / 60);
-  if (h < 24) return t.hours(h);
-  const d = Math.floor(h / 24);
-  const rest = h % 24;
-  return rest === 0 ? t.days(d) : t.daysAndHours(d, rest);
-}
+import { LibraryAnalysis, LibraryAnalysisSkeleton } from "@/components/LibraryAnalysis";
 
 export default async function LibraryPage() {
   const user = await getUser();
@@ -38,23 +31,16 @@ export default async function LibraryPage() {
     getAllMovieProgress(),
   ]);
 
+  // الأرقام الإجمالية صارت في قسم التحليل — هنا نحتاج عدد الحلقات لكل
+  // مسلسل فقط، لحساب حالة كل بطاقة
   const watchedByShow = new Map<number, number>();
-  let totalEpisodes = 0;
-  let epMinutes = 0;
 
   if (summary) {
-    for (const s of summary) {
-      watchedByShow.set(s.show_tmdb_id, s.watched);
-      totalEpisodes += s.watched;
-      epMinutes += s.minutes;
-    }
+    for (const s of summary) watchedByShow.set(s.show_tmdb_id, s.watched);
   } else {
-    const watchedEps = await getAllWatchedEpisodes();
-    for (const w of watchedEps) {
+    for (const w of await getAllWatchedEpisodes()) {
       watchedByShow.set(w.show_tmdb_id, (watchedByShow.get(w.show_tmdb_id) ?? 0) + 1);
-      epMinutes += w.runtime ?? 40;
     }
-    totalEpisodes = watchedEps.length;
   }
 
   const tvFollows = follows.filter((f) => f.media_type === "tv");
@@ -123,18 +109,6 @@ export default async function LibraryPage() {
     });
   }
 
-  const totalMinutes = epMinutes + watchedMovieIds.size * 110;
-  const distinctShows = watchedByShow.size;
-
-  const stats = [
-    { label: t.statsWatchMinutes, value: fmtWatchTime(totalMinutes, t), icon: "⏱️" },
-    { label: t.statsWatchedEpisodes, value: num(totalEpisodes, locale), icon: "✅" },
-    { label: t.statsStartedShows, value: num(distinctShows, locale), icon: "📺" },
-    { label: t.statsWatchedMovies, value: num(watchedMovieIds.size, locale), icon: "🎬" },
-    { label: t.statsFollowing, value: num(follows.length, locale), icon: "⭐" },
-    { label: t.libTabFinished, value: num(finished.length, locale), icon: "🏁" },
-  ];
-
   return (
     <div className="space-y-12">
       <h1 className="text-2xl font-bold">{t.libraryTitle}</h1>
@@ -171,19 +145,14 @@ export default async function LibraryPage() {
         empty={t.libEmptyFinished}
       />
 
+      {/* التحليل يطلب TMDB لكل عمل، فيُبَثّ بعد الصفحة لا قبلها —
+          المكتبة تظهر فوراً والأرقام تلحق بها. */}
       <section>
-        <h2 className="text-lg font-bold mb-4">{t.statsTitle}</h2>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          {stats.map((s) => (
-            <div key={s.label} className="bg-surface border border-border rounded-2xl p-5">
-              <div className="text-3xl mb-2" aria-hidden>
-                {s.icon}
-              </div>
-              <div className="text-2xl font-bold">{s.value}</div>
-              <div className="text-sm text-muted mt-1">{s.label}</div>
-            </div>
-          ))}
-        </div>
+        <h2 className="text-lg font-bold">{t.analysisTitle}</h2>
+        <p className="text-xs text-muted mt-0.5 mb-4">{t.analysisSub}</p>
+        <Suspense fallback={<LibraryAnalysisSkeleton />}>
+          <LibraryAnalysis locale={locale} />
+        </Suspense>
       </section>
     </div>
   );
