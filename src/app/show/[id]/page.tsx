@@ -8,12 +8,14 @@ import {
   getCommunityRating,
   getTitleReviews,
 } from "@/lib/data";
-import { getTv, getSeason, backdropUrl, posterUrl } from "@/lib/tmdb";
+import { getTv, getSeason, getTrailer, getWatchProviders, backdropUrl, posterUrl } from "@/lib/tmdb";
 import { FollowButton } from "@/components/FollowButton";
 import { EpisodeTracker, type SeasonSummary } from "@/components/EpisodeTracker";
 import { getT } from "@/lib/locale";
 import { RatingBox } from "@/components/RatingBox";
 import { CommunityReviews } from "@/components/CommunityReviews";
+import { Trailer } from "@/components/Trailer";
+import { WhereToWatch } from "@/components/WhereToWatch";
 import { formatDate } from "@/lib/when";
 import { ShowStatsSync } from "@/components/ShowStatsSync";
 import { airedEpisodeCount, airedPerSeason } from "@/lib/progress";
@@ -35,13 +37,16 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
     );
   }
 
-  const [follows, watched, myRating, community, titleReviews] = await Promise.all([
-    getFollows(),
-    getWatchedForShow(tvId),
-    getMyRating(tvId, "tv"),
-    getCommunityRating(tvId, "tv"),
-    getTitleReviews(tvId, "tv"),
-  ]);
+  const [follows, watched, myRating, community, titleReviews, trailer, watchWhere] =
+    await Promise.all([
+      getFollows(),
+      getWatchedForShow(tvId),
+      getMyRating(tvId, "tv"),
+      getCommunityRating(tvId, "tv"),
+      getTitleReviews(tvId, "tv"),
+      getTrailer("tv", tvId),
+      getWatchProviders("tv", tvId),
+    ]);
   const following = follows.some((f) => f.tmdb_id === tvId && f.media_type === "tv");
 
   // كانت الصفحة تجلب حلقات كل المواسم دفعة واحدة — مسلسل بثلاثين موسماً يعني
@@ -162,6 +167,22 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
           </div>
         </div>
       </div>
+
+      {(trailer || watchWhere) && (
+        <div className="mt-8 space-y-8">
+          {trailer && (
+            <Trailer
+              videoKey={trailer.key}
+              title={tv.name}
+              thumbnail={backdrop}
+              locale={locale}
+            />
+          )}
+          {watchWhere && (
+            <WhereToWatch region={watchWhere.region} options={watchWhere.options} locale={locale} />
+          )}
+        </div>
+      )}
 
       <RatingBox
         tmdbId={tvId}
