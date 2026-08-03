@@ -33,6 +33,7 @@ import { episodeKey } from "@/lib/keys";
 import { PosterCard } from "@/components/PosterCard";
 import { HeroNextUp, type NextEpisode } from "@/components/HeroNextUp";
 import { PosterRail, RailItem } from "@/components/PosterRail";
+import type { IconName } from "@/components/Icon";
 import { ActionPanel, type PanelItem } from "@/components/ActionPanel";
 import { ProfileHeader } from "@/components/ProfileHeader";
 import { ShowStatsSync, type ShowStat } from "@/components/ShowStatsSync";
@@ -352,7 +353,7 @@ export default async function HomePage() {
 
       {/* الترويسة وشريط الأعداد كتلة واحدة بفاصل ضيّق — الفاصل الافتراضي
           بينهما كان يضيف ٣٢ بكسل بلا داعٍ فوق ما يشغلانه أصلاً */}
-      <div className="space-y-3">
+      <div className="space-y-2.5">
         <ProfileHeader
           displayName={displayName}
           username={profile?.username ?? null}
@@ -383,7 +384,7 @@ export default async function HomePage() {
       <span id="waiting" className="block scroll-mt-20" />
 
       {waitingForYou.length > 0 && (
-        <Section title={t.waitingForYou} href="/library" seeAll={t.seeAll}>
+        <Section title={t.waitingForYou} icon="hourglass" href="/library" seeAll={t.seeAll}>
           {waitingForYou.map(({ tv, progress, pending }) => (
             <PosterCard
               key={`w-${tv.id}`}
@@ -401,7 +402,7 @@ export default async function HomePage() {
       <span id="watching" className="block scroll-mt-20" />
 
       {continueWatching.length > 0 && (
-        <Section title={t.continueWatching} href="/library" seeAll={t.seeAll}>
+        <Section title={t.continueWatching} icon="play" href="/library" seeAll={t.seeAll}>
           {continueWatching.map(({ tv, progress }) => (
             <PosterCard
               key={tv.id}
@@ -416,7 +417,7 @@ export default async function HomePage() {
       )}
 
       {pausedMovies.length > 0 && (
-        <Section title={t.pausedMovies} href="/library" seeAll={t.seeAll}>
+        <Section title={t.pausedMovies} icon="pause" href="/library" seeAll={t.seeAll}>
           {pausedMovies.map((m) => {
             const pct =
               m.runtime_minutes && m.runtime_minutes > 0
@@ -444,6 +445,7 @@ export default async function HomePage() {
       {readyCount > 0 && (
         <Section
           title={t.readyToWatch}
+          icon="popcorn"
           subtitle={t.readyToWatchSub}
           href="/library"
           seeAll={t.seeAll}
@@ -474,7 +476,7 @@ export default async function HomePage() {
       <span id="soon" className="block scroll-mt-20" />
 
       {upcoming.length > 0 && (
-        <Section title={t.comingSoon} href="/library" seeAll={t.seeAll}>
+        <Section title={t.comingSoon} icon="calendar" href="/library" seeAll={t.seeAll}>
           {upcoming.map((u) => (
             <PosterCard
               key={u.key}
@@ -489,7 +491,7 @@ export default async function HomePage() {
       )}
 
       {suggested.length > 0 && (
-        <PosterRail title={t.suggestedForYou} subtitle={t.suggestedSubtitle}>
+        <PosterRail title={t.suggestedForYou} icon="sparkles" subtitle={t.suggestedSubtitle}>
           {suggested.map((s) => (
             <RailItem key={`sug-${s.result.media_type}-${s.result.id}`}>
               <PosterCard
@@ -522,7 +524,7 @@ export default async function HomePage() {
       )}
 
       {showTrending && trend.length > 0 && (
-        <Section title={t.trendingWeek}>
+        <Section title={t.trendingWeek} icon="trending">
           {trend.slice(0, 12).map((r) => (
             <PosterCard
               key={`${r.media_type}-${r.id}`}
@@ -548,12 +550,14 @@ export default async function HomePage() {
  */
 function Section({
   title,
+  icon,
   subtitle,
   href,
   seeAll,
   children,
 }: {
   title: string;
+  icon?: IconName;
   subtitle?: string;
   href?: string;
   seeAll?: string;
@@ -562,7 +566,7 @@ function Section({
   const items = (Array.isArray(children) ? children.flat() : [children]).filter(Boolean);
   if (!items.length) return null;
   return (
-    <PosterRail title={title} subtitle={subtitle} href={href} seeAllLabel={seeAll}>
+    <PosterRail title={title} icon={icon} subtitle={subtitle} href={href} seeAllLabel={seeAll}>
       {items.map((child, i) => (
         <RailItem key={i}>{child}</RailItem>
       ))}

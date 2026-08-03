@@ -33,11 +33,17 @@
   border-color: var(--border);
 }
 
+/* لون واحد للصفحة كلها.
+   كان الجسم يحمل تدرّجين شعاعيين بمقاسات ثابتة بالبكسل، فيظهر الوهج في
+   أعلى الصفحة ثم ينتهي فجأةً عند حدٍّ أفقي — والصفحة الطويلة تُقرأ وكأن
+   لونها يتبدّل من رمادي إلى كحلي كل بضع شاشات. واللون على html أيضاً حتى
+   لا تكشف حركة السحب الزائدة في iOS خلفيةً أخرى تحت الجسم. */
+html {
+  background-color: var(--background);
+}
+
 body {
-  background:
-    radial-gradient(1200px 600px at 80% -10%, var(--glow-a), transparent),
-    radial-gradient(1000px 500px at 0% 0%, var(--glow-b), transparent),
-    var(--background);
+  background-color: var(--background);
   color: var(--foreground);
   font-family: "Cairo", system-ui, -apple-system, "Segoe UI", sans-serif;
   min-height: 100vh;
