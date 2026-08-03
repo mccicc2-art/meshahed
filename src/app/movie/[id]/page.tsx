@@ -8,6 +8,8 @@ import {
   getMyRating,
   getCommunityRating,
   getTitleReviews,
+  getMyLists,
+  getListsContaining,
 } from "@/lib/data";
 import { MovieProgress } from "@/components/MovieProgress";
 import { getMovie, getTrailer, getWatchProviders, backdropUrl, posterUrl } from "@/lib/tmdb";
@@ -20,6 +22,7 @@ import { DetailTabs } from "@/components/DetailTabs";
 import { SectionTitle } from "@/components/Icon";
 import { Trailer } from "@/components/Trailer";
 import { WhereToWatch } from "@/components/WhereToWatch";
+import { ListPicker } from "@/components/ListPicker";
 
 export default async function MoviePage({ params }: { params: Promise<{ id: string }> }) {
   const user = await getUser();
@@ -37,8 +40,18 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
     );
   }
 
-  const [follows, watchedIds, mProgress, myRating, community, titleReviews, trailer, watchWhere] =
-    await Promise.all([
+  const [
+    follows,
+    watchedIds,
+    mProgress,
+    myRating,
+    community,
+    titleReviews,
+    trailer,
+    watchWhere,
+    myLists,
+    inLists,
+  ] = await Promise.all([
       getFollows(),
       getWatchedMovieIds(),
       getMovieProgress(movieId),
@@ -47,6 +60,8 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
       getTitleReviews(movieId, "movie"),
       getTrailer("movie", movieId),
       getWatchProviders("movie", movieId),
+      getMyLists(),
+      getListsContaining(movieId, "movie"),
     ]);
   const following = follows.some((f) => f.tmdb_id === movieId && f.media_type === "movie");
   const watched = watchedIds.has(movieId);
@@ -134,6 +149,15 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
                   locale={locale}
                   initialRating={myRating?.rating ?? null}
                   initialReview={myRating?.review ?? null}
+                />
+                <ListPicker
+                  lists={myLists.map((l) => ({ id: l.id, name: l.name }))}
+                  containing={inLists}
+                  tmdbId={movieId}
+                  mediaType="movie"
+                  title={movie.title}
+                  posterPath={movie.poster_path}
+                  locale={locale}
                 />
               </div>
             ),
