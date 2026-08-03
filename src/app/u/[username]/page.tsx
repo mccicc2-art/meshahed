@@ -13,6 +13,7 @@ import { num } from "@/lib/i18n";
 import { GENRES } from "@/lib/media";
 import { Avatar } from "@/components/Avatar";
 import { PosterCard } from "@/components/PosterCard";
+import { PosterGrid } from "@/components/PosterGrid";
 import { FollowUserButton } from "@/components/FollowUserButton";
 
 export default async function PublicProfilePage({
@@ -125,7 +126,7 @@ export default async function PublicProfilePage({
             {t.noRatingsYet}
           </p>
         ) : (
-          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-4">
+          <PosterGrid>
             {ratings.map((r) => (
               <PosterCard
                 key={`${r.media_type}-${r.tmdb_id}`}
@@ -135,7 +136,7 @@ export default async function PublicProfilePage({
                 badge={"★".repeat(r.rating)}
               />
             ))}
-          </div>
+          </PosterGrid>
         )}
       </section>
 
