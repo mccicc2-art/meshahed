@@ -31,12 +31,15 @@ type Filter = "all" | "watching" | "notStarted" | "done" | "tv" | "movie";
 export function LibraryBrowser({
   items,
   locale,
+  initialFilter = "all",
 }: {
   items: LibraryItem[];
   locale: Locale;
+  /** الشريحة المفتوحة أولاً — تأتي من رابط مثل /library?filter=notStarted */
+  initialFilter?: Filter;
 }) {
   const t = getDict(locale);
-  const [filter, setFilter] = useState<Filter>("all");
+  const [filter, setFilter] = useState<Filter>(initialFilter);
 
   const counts = useMemo(
     () => ({
