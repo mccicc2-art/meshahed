@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Logo } from "./Logo";
 import Image from "next/image";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -69,7 +70,9 @@ export function NextUpCard({
               className="object-cover group-hover:scale-[1.03] transition duration-300"
             />
           ) : (
-            <span className="w-full h-full grid place-items-center text-3xl text-muted">📺</span>
+            <span className="w-full h-full grid place-items-center text-muted">
+              <Logo size={28} gradientId="nextup-empty" />
+            </span>
           )}
         </Link>
 

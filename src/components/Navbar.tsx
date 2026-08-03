@@ -5,6 +5,7 @@ import { getT } from "@/lib/locale";
 import { SearchBox } from "./SearchBox";
 import { NavLinks } from "./NavLinks";
 import { NavAvatar } from "./NavAvatar";
+import { LogoWordmark } from "./Logo";
 
 export async function Navbar() {
   const { locale, t } = await getT();
@@ -15,9 +16,8 @@ export async function Navbar() {
   return (
     <header className="sticky top-0 z-30 border-b border-border bg-[color:var(--background)]/80 backdrop-blur">
       <div className="max-w-6xl mx-auto px-4 h-16 flex items-center gap-2 sm:gap-3">
-        <Link href="/" className="flex items-center gap-2 shrink-0">
-          <span className="text-2xl">📺</span>
-          <span className="font-bold text-lg tracking-tight hidden sm:inline">{t.brand}</span>
+        <Link href="/" className="shrink-0" aria-label={t.brand}>
+          <LogoWordmark size={28} gradientId="nav-logo" className="[&>span:last-child]:hidden sm:[&>span:last-child]:inline" />
         </Link>
 
         {user && <NavLinks locale={locale} />}

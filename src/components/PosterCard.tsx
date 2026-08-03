@@ -42,18 +42,21 @@ export function PosterCard({
         )}
         {badge && (
           <span
-            className={`absolute top-2 right-2 text-[11px] font-semibold bg-black/75 px-2 py-0.5 rounded-full ${
-              tone === "waiting" ? "text-accent" : "text-accent"
-            }`}
+            className="absolute top-2 start-2 text-[11px] font-semibold bg-black/75 px-2 py-0.5 rounded-full text-accent"
           >
             {badge}
           </span>
         )}
         {typeof progress === "number" && (
           <div className="absolute inset-x-0 bottom-0 h-1.5 bg-black/50">
+            {/* شريط التقدّم بلون الهوية الثالث (الكهرماني): هو لون التقدّم
+                في الهوية، ويفصله بصرياً عن الأزرار البنفسجية والوردية */}
             <div
-              className={tone === "waiting" ? "h-full bg-accent" : "h-full bg-accent-2"}
-              style={{ width: `${Math.max(0, Math.min(100, progress))}%` }}
+              className="h-full"
+              style={{
+                width: `${Math.max(0, Math.min(100, progress))}%`,
+                background: tone === "waiting" ? "var(--accent)" : "var(--brand-3)",
+              }}
             />
           </div>
         )}
