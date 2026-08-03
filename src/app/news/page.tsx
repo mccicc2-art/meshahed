@@ -13,6 +13,7 @@ import { getT } from "@/lib/locale";
 import type { NewsItem } from "@/components/NewsPost";
 import { NewsList } from "@/components/NewsList";
 import { RankedRail } from "@/components/RankedRail";
+import { SectionTitle } from "@/components/Icon";
 import { CountdownRail, type CountdownItem } from "@/components/CountdownRail";
 
 function dateOf(r: SearchResult) {
@@ -90,13 +91,15 @@ export default async function NewsPage() {
         <h1 className="text-xl font-bold">{t.newsTitle}</h1>
       </header>
 
-      <RankedRail title={t.topTenMovies} items={topMovies} locale={locale} />
-      <RankedRail title={t.topTenSeries} items={topSeries} locale={locale} />
-      <CountdownRail title={t.comingSoon} items={soon} locale={locale} />
+      <RankedRail title={t.topTenMovies} icon="film" items={topMovies} locale={locale} />
+      <RankedRail title={t.topTenSeries} icon="tv" items={topSeries} locale={locale} />
+      <CountdownRail title={t.comingSoon} icon="calendar" items={soon} locale={locale} />
 
       {items.length > 0 && (
         <section>
-          <h2 className="text-base font-bold mb-1">{t.newsCoverage}</h2>
+          <SectionTitle icon="newspaper" className="mb-1">
+            {t.newsCoverage}
+          </SectionTitle>
           <p className="text-[11px] text-muted mb-3">{t.newsSubtitle}</p>
           <NewsList
             items={items}
