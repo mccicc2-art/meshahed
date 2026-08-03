@@ -25,27 +25,19 @@ import {
   type TvDetails,
   type SearchResult,
 } from "@/lib/tmdb";
-import { GENRES, backdropUrl } from "@/lib/media";
+import { backdropUrl } from "@/lib/media";
 import { getT } from "@/lib/locale";
-import { num, type Dict } from "@/lib/i18n";
+import { num } from "@/lib/i18n";
 import { blendRecommendations, type Candidate } from "@/lib/recommend";
 import { whenLabel } from "@/lib/when";
 import { airedEpisodeCount, airedPerSeason, percentOf, nextUnwatchedEpisode } from "@/lib/progress";
 import { episodeKey } from "@/lib/keys";
 import { PosterCard } from "@/components/PosterCard";
 import { PosterGrid } from "@/components/PosterGrid";
-import { Avatar } from "@/components/Avatar";
 import { HeroNextUp, type NextEpisode } from "@/components/HeroNextUp";
 import { PosterRail, RailItem } from "@/components/PosterRail";
+import { ActionPanel, type PanelItem } from "@/components/ActionPanel";
 import { ShowStatsSync, type ShowStat } from "@/components/ShowStatsSync";
-
-function fmtWatchTime(minutes: number, t: Dict) {
-  const h = Math.round(minutes / 60);
-  if (h < 24) return t.hours(h);
-  const d = Math.floor(h / 24);
-  const rest = h % 24;
-  return rest === 0 ? t.days(d) : t.daysAndHours(d, rest);
-}
 
 export default async function HomePage() {
   const user = await getUser();
@@ -70,16 +62,12 @@ export default async function HomePage() {
   const movieFollows = follows.filter((f) => f.media_type === "movie");
 
   const watchedByShow = new Map<number, number>();
-  let totalEpisodes = 0;
-  let epMinutes = 0;
   // المسلسلات مرتّبة من الأحدث مشاهدةً — أساس اختيار «الحلقة التالية» والاقتراحات
   let lastWatchedOrder: number[] = [];
 
   if (summary) {
     for (const s of summary) {
       watchedByShow.set(s.show_tmdb_id, s.watched);
-      totalEpisodes += s.watched;
-      epMinutes += s.minutes;
     }
     lastWatchedOrder = [...summary]
       .sort((a, b) => (b.last_watched ?? "").localeCompare(a.last_watched ?? ""))
@@ -89,9 +77,7 @@ export default async function HomePage() {
     const watchedEps = await getAllWatchedEpisodes();
     for (const w of watchedEps) {
       watchedByShow.set(w.show_tmdb_id, (watchedByShow.get(w.show_tmdb_id) ?? 0) + 1);
-      epMinutes += w.runtime ?? 40;
     }
-    totalEpisodes = watchedEps.length;
     for (const w of [...watchedEps].sort((a, b) => b.watched_at.localeCompare(a.watched_at))) {
       if (!lastWatchedOrder.includes(w.show_tmdb_id)) lastWatchedOrder.push(w.show_tmdb_id);
     }
@@ -184,13 +170,19 @@ export default async function HomePage() {
     });
   }
 
-  // أي عمل تتابعه ولم تُكمله يظهر في «أكمل المشاهدة» — حتى لو لم تبدأه بعد
-  const continueWatching = items
+  // كل ما لم يكتمل — يُقسم بعدها إلى «بدأته» و«ما بدأته»
+  const unfinished = items
     .filter((i) => i.aired === 0 || i.watched < i.aired)
     .sort((a, b) => {
       if (a.watched > 0 !== b.watched > 0) return a.watched > 0 ? -1 : 1;
       return b.progress - a.progress;
     });
+
+  // «أكمل المشاهدة» صار للمبدوء فعلاً فقط. ما لم يُبدأ له قسمه الخاص
+  // «جاهز تشوفه» — خلط الاثنين كان يخفي ما اخترته ولم تفتحه بعد وسط
+  // ما أنت في منتصفه.
+  const continueWatching = unfinished.filter((i) => i.watched > 0);
+  const notStartedShows = unfinished.filter((i) => i.watched === 0);
   upcoming.sort((a, b) => a.date.localeCompare(b.date));
 
   // «ينتظرك»: بدأته وفيه حلقات معروضة لم تُشاهد — أهم من مجرّد «جارٍ»
@@ -249,29 +241,6 @@ export default async function HomePage() {
   const favGenres = profile?.favorite_genres ?? [];
   const followedIds = new Set(follows.map((f) => f.tmdb_id));
 
-  // ===== الذوق المستنتَج: أكثر الأنواع تكراراً فيما تتابعه فعلاً =====
-  const genreTally = new Map<number, { name: string; count: number }>();
-  for (const d of [...tvDetails, ...movieDetails]) {
-    for (const g of d?.genres ?? []) {
-      const prev = genreTally.get(g.id);
-      genreTally.set(g.id, { name: g.name, count: (prev?.count ?? 0) + 1 });
-    }
-  }
-  // الأنواع المختارة يدوياً تُحسب بوزن إضافي حتى تبقى ظاهرة
-  for (const id of favGenres) {
-    const known = GENRES.find((g) => g.id === id);
-    const prev = genreTally.get(id);
-    genreTally.set(id, {
-      name: prev?.name ?? (locale === "en" ? known?.en : known?.ar) ?? "",
-      count: (prev?.count ?? 0) + 1.5,
-    });
-  }
-  const tasteGenres = [...genreTally.entries()]
-    .filter(([, v]) => v.name)
-    .sort((a, b) => b[1].count - a[1].count)
-    .slice(0, 5)
-    .map(([id, v]) => ({ id, name: v.name, emoji: GENRES.find((g) => g.id === id)?.emoji ?? "🎞️" }));
-
   // ===== بذور محرّك الاقتراحات =====
   const titleById = new Map<number, string>(follows.map((f) => [f.tmdb_id, f.title]));
   const recentShowIds = lastWatchedOrder.slice(0, 2);
@@ -329,31 +298,86 @@ export default async function HomePage() {
   const showTrending = empty || (!suggested.length && continueWatching.length === 0);
 
   const displayName = profile?.nickname || user.email?.split("@")[0] || "";
-  const totalMinutes = epMinutes + watchedMovieIds.size * 110;
 
-  const stats = [
-    { label: t.statWatchTime, value: fmtWatchTime(totalMinutes, t), icon: "⏱️" },
-    { label: t.statEpisodes, value: num(totalEpisodes, locale), icon: "✅" },
-    { label: t.statShows, value: num(tvFollows.length, locale), icon: "📺" },
-    { label: t.statMovies, value: num(movieFollows.length, locale), icon: "🎬" },
+  // ===== جاهز تشوفه: في المفضلة ولا بعد بدأته =====
+  // الفيلم يخرج من هنا لحظة تأشيره مشاهَداً فيبقى في المكتبة وحدها،
+  // والمسلسل يخرج لحظة تأشير أول حلقة فينتقل إلى «أكمل المشاهدة».
+  const startedMovieIds = new Set(movieProgress.map((m) => m.movie_tmdb_id));
+  const readyMovies = movieFollows.filter(
+    (f) => !watchedMovieIds.has(f.tmdb_id) && !startedMovieIds.has(f.tmdb_id),
+  );
+
+  const readyCount = notStartedShows.length + readyMovies.length;
+
+  const panel: PanelItem[] = [
+    {
+      key: "waiting",
+      href: "#waiting",
+      count: waitingForYou.length,
+      label: t.panelWaiting,
+      sub: t.panelWaitingSub,
+      emoji: "🔔",
+      tone: "waiting",
+    },
+    {
+      key: "watching",
+      href: "#watching",
+      count: continueWatching.length + pausedMovies.length,
+      label: t.panelStarted,
+      sub: t.panelStartedSub,
+      emoji: "▶️",
+      tone: "watching",
+    },
+    {
+      key: "ready",
+      href: "#ready",
+      count: readyCount,
+      label: t.panelReady,
+      sub: t.panelReadySub,
+      emoji: "🍿",
+      tone: "ready",
+    },
+    {
+      key: "soon",
+      href: "#soon",
+      count: upcoming.length,
+      label: t.panelSoon,
+      sub: t.panelSoonSub,
+      emoji: "🗓",
+      tone: "soon",
+    },
   ];
 
   return (
     <div className="space-y-8 sm:space-y-10">
       <ShowStatsSync stats={statsToCache} />
 
-      {/* ===== الجوال: صف مضغوط حتى يظهر المحتوى في أول شاشة ===== */}
-      <section className="sm:hidden">
-        <div className="flex items-center gap-3">
-          <Avatar
-            src={profile?.avatar_url}
-            name={displayName}
-            size={48}
-            alt={t.avatarAlt}
-            className="shrink-0 ring-2 ring-[color:var(--border)]"
-          />
-          <div className="min-w-0 flex-1">
-            <h1 className="text-base font-bold truncate leading-tight">{displayName}</h1>
+      {/* ===== الترويسة =====
+          بلا صورة شخصية: الشريط العلوي يعرضها في كل صفحة، وتكرارها هنا
+          كان يعني وجهين متطابقين في أول شاشة. وبلا شرائح الأنواع: مكانها
+          الملف الشخصي، لا الصفحة التي تجاوب «وش أشوف الحين». */}
+      <section>
+        <div className="hidden sm:block relative h-32 rounded-2xl overflow-hidden border border-border mb-4">
+          {profile?.cover_url ? (
+            <Image src={profile.cover_url} alt="" fill sizes="1152px" className="object-cover" />
+          ) : (
+            <div
+              className="w-full h-full"
+              style={{
+                background:
+                  "linear-gradient(120deg, var(--glow-a), transparent 55%), linear-gradient(300deg, var(--glow-b), transparent 55%), var(--surface-2)",
+              }}
+            />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-[color:var(--background)] via-[color:var(--background)]/30 to-transparent" />
+          <div className="absolute inset-x-0 bottom-0 p-5">
+            <h1 className="text-2xl font-bold drop-shadow">{displayName}</h1>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <h1 className="sm:hidden text-lg font-bold truncate leading-tight">{displayName}</h1>
             <p className="text-xs text-muted mt-0.5">
               <b className="text-foreground">{num(social.followers, locale)}</b>{" "}
               {t.followersLabel}
@@ -365,146 +389,17 @@ export default async function HomePage() {
           {profile?.username && (
             <Link
               href={`/u/${profile.username}`}
-              className="shrink-0 text-xs text-accent border border-border rounded-full px-3 py-1.5"
+              className="shrink-0 text-xs text-accent border border-border rounded-full px-3 py-1.5 hover:border-accent transition"
             >
               {t.publicProfileLink}
             </Link>
           )}
         </div>
-
-        {/* شريط إحصائيات أفقي بارتفاع صغير بدل أربع بطاقات مربّعة */}
-        <div className="flex gap-2 mt-3 overflow-x-auto pb-1 -mx-4 px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {stats.map((s) => (
-            <div
-              key={s.label}
-              className="shrink-0 flex items-center gap-2 bg-surface border border-border rounded-full ps-3 pe-4 py-2"
-            >
-              <span aria-hidden>{s.icon}</span>
-              <span className="text-sm font-bold">{s.value}</span>
-              <span className="text-[11px] text-muted">{s.label}</span>
-            </div>
-          ))}
-        </div>
-
-        {tasteGenres.length > 0 && (
-          <div className="flex gap-2 mt-2 overflow-x-auto pb-1 -mx-4 px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {tasteGenres.map((g) => (
-              <span
-                key={g.id}
-                className="shrink-0 text-[11px] bg-surface-2 border border-border px-2.5 py-1 rounded-full"
-              >
-                {g.emoji} {g.name}
-              </span>
-            ))}
-          </div>
-        )}
       </section>
 
-      {/* ===== سطح المكتب: البطاقة الكاملة بالغلاف ===== */}
-      <section className="hidden sm:block bg-surface border border-border rounded-2xl overflow-hidden">
-        <div className="relative h-40 bg-surface-2">
-          {profile?.cover_url ? (
-            <Image
-              src={profile.cover_url}
-              alt=""
-              fill
-              sizes="1152px"
-              className="object-cover"
-            />
-          ) : (
-            <div
-              className="w-full h-full"
-              style={{
-                background:
-                  "linear-gradient(120deg, var(--glow-a), transparent 55%), linear-gradient(300deg, var(--glow-b), transparent 55%), var(--surface-2)",
-              }}
-            />
-          )}
-          <div className="absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-[color:var(--surface)] to-transparent" />
-        </div>
-
-        <div className="px-6 pb-6">
-          <div className="-mt-14 relative">
-            <Avatar
-              src={profile?.avatar_url}
-              name={displayName}
-              size={88}
-              alt={t.avatarAlt}
-              className="ring-4 ring-[color:var(--surface)]"
-            />
-          </div>
-
-          <div className="mt-3">
-            <h1 className="text-2xl font-bold truncate">{displayName}</h1>
-            {profile?.username && (
-              <Link
-                href={`/u/${profile.username}`}
-                className="text-muted text-sm mt-0.5 hover:text-accent transition inline-block"
-                dir="ltr"
-              >
-                @{profile.username}
-              </Link>
-            )}
-
-            <div className="flex items-center gap-5 mt-2 text-sm">
-              <span>
-                <b>{num(social.followers, locale)}</b>{" "}
-                <span className="text-muted">{t.followersLabel}</span>
-              </span>
-              <span>
-                <b>{num(social.following, locale)}</b>{" "}
-                <span className="text-muted">{t.followingLabel}</span>
-              </span>
-              {profile?.username && (
-                <Link href={`/u/${profile.username}`} className="text-accent hover:brightness-110">
-                  {t.publicProfileLink} ›
-                </Link>
-              )}
-            </div>
-          </div>
-
-          {tasteGenres.length > 0 && (
-            <div className="flex flex-wrap gap-2 mt-4">
-              {tasteGenres.map((g) => (
-                <span
-                  key={g.id}
-                  className="text-xs bg-surface-2 border border-border px-2.5 py-1 rounded-full"
-                >
-                  {g.emoji} {g.name}
-                </span>
-              ))}
-            </div>
-          )}
-
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-5 pt-5 border-t border-border">
-            {stats.map((s) => (
-              <div key={s.label} className="bg-surface-2 rounded-xl p-3 text-center">
-                <div className="text-lg" aria-hidden>
-                  {s.icon}
-                </div>
-                <div className="text-base font-bold mt-0.5">{s.value}</div>
-                <div className="text-[11px] text-muted">{s.label}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {!empty && (
-        <div className="flex gap-2 flex-wrap -mt-2">
-          {waitingForYou.length > 0 && (
-            <span className="text-[11px] font-bold px-3 py-1.5 rounded-full border border-accent/45 bg-accent/10 text-accent">
-              {t.stateWaiting(waitingForYou.length)}
-            </span>
-          )}
-          <span className="text-[11px] font-bold px-3 py-1.5 rounded-full border border-accent-2/40 bg-accent-2/10 text-accent-2">
-            {t.stateWatching(continueWatching.length)}
-          </span>
-          <span className="text-[11px] font-bold px-3 py-1.5 rounded-full border border-border bg-surface text-muted">
-            {t.stateDone(items.filter((i) => i.aired > 0 && i.watched >= i.aired).length)}
-          </span>
-        </div>
-      )}
+      {/* لوحة «وش أسوي الحين» — بدل أرقام المشاهدة التي لا يُفعل بها شيء.
+          وقت المشاهدة والحلقات انتقلت لتحليل المكتبة، مكانها الطبيعي. */}
+      <ActionPanel items={panel} />
 
       {empty && (
         <section className="text-center py-4">
@@ -519,6 +414,41 @@ export default async function HomePage() {
           queue={nextUp.queue}
           locale={locale}
         />
+      )}
+
+      <span id="waiting" className="block scroll-mt-20" />
+
+      {waitingForYou.length > 0 && (
+        <Section title={t.waitingForYou} href="/library" seeAll={t.seeAll}>
+          {waitingForYou.map(({ tv, progress, pending }) => (
+            <PosterCard
+              key={`w-${tv.id}`}
+              href={`/show/${tv.id}`}
+              title={tv.name}
+              posterPath={tv.poster_path}
+              progress={progress}
+              badge={t.episodesBadge(pending)}
+              tone="waiting"
+            />
+          ))}
+        </Section>
+      )}
+
+      <span id="watching" className="block scroll-mt-20" />
+
+      {continueWatching.length > 0 && (
+        <Section title={t.continueWatching} href="/library" seeAll={t.seeAll}>
+          {continueWatching.map(({ tv, progress }) => (
+            <PosterCard
+              key={tv.id}
+              href={`/show/${tv.id}`}
+              title={tv.name}
+              posterPath={tv.poster_path}
+              progress={progress}
+              badge={`${progress}%`}
+            />
+          ))}
+        </Section>
       )}
 
       {pausedMovies.length > 0 && (
@@ -542,36 +472,42 @@ export default async function HomePage() {
         </Section>
       )}
 
-      {waitingForYou.length > 0 && (
-        <Section title={t.waitingForYou} href="/library" seeAll={t.seeAll}>
-          {waitingForYou.map(({ tv, progress, pending }) => (
-            <PosterCard
-              key={`w-${tv.id}`}
-              href={`/show/${tv.id}`}
-              title={tv.name}
-              posterPath={tv.poster_path}
-              progress={progress}
-              badge={t.episodesBadge(pending)}
-              tone="waiting"
-            />
-          ))}
+      {/* ===== جاهز تشوفه =====
+          كل ما في مفضلتك ولم تبدأه — مسلسلات وأفلام معاً. كان الفيلم الذي
+          تحفظه لا يظهر في الرئيسية إطلاقاً حتى تفتحه، فيُنسى في المكتبة. */}
+      <span id="ready" className="block scroll-mt-20" />
+
+      {readyCount > 0 && (
+        <Section
+          title={t.readyToWatch}
+          subtitle={t.readyToWatchSub}
+          href="/library"
+          seeAll={t.seeAll}
+        >
+          {[
+            ...notStartedShows.map(({ tv }) => (
+              <PosterCard
+                key={`r-tv-${tv.id}`}
+                href={`/show/${tv.id}`}
+                title={tv.name}
+                posterPath={tv.poster_path}
+                badge={t.notStartedBadge}
+              />
+            )),
+            ...readyMovies.map((f) => (
+              <PosterCard
+                key={`r-mv-${f.tmdb_id}`}
+                href={`/movie/${f.tmdb_id}`}
+                title={f.title}
+                posterPath={f.poster_path}
+                badge={t.typeMovie}
+              />
+            )),
+          ]}
         </Section>
       )}
 
-      {continueWatching.length > 0 && (
-        <Section title={t.continueWatching} href="/library" seeAll={t.seeAll}>
-          {continueWatching.map(({ tv, progress }) => (
-            <PosterCard
-              key={tv.id}
-              href={`/show/${tv.id}`}
-              title={tv.name}
-              posterPath={tv.poster_path}
-              progress={progress}
-              badge={`${progress}%`}
-            />
-          ))}
-        </Section>
-      )}
+      <span id="soon" className="block scroll-mt-20" />
 
       {upcoming.length > 0 && (
         <Section title={t.comingSoon} href="/library" seeAll={t.seeAll}>
@@ -642,26 +578,33 @@ export default async function HomePage() {
 /** بطاقات كثيرة → صفّ أفقي. بطاقات قليلة → شبكة عادية أنظف بصرياً. */
 function Section({
   title,
+  subtitle,
   href,
   seeAll,
   children,
 }: {
   title: string;
+  subtitle?: string;
   href?: string;
   seeAll?: string;
   children: React.ReactNode;
 }) {
-  const items = Array.isArray(children) ? children : [children];
+  const items = Array.isArray(children) ? children.flat() : [children];
   if (items.length <= 3) {
     return (
       <section>
-        <h2 className="text-base font-bold mb-3">{title}</h2>
-        <PosterGrid>{children}</PosterGrid>
+        <h2 className="text-base font-bold mb-1">{title}</h2>
+        {subtitle ? (
+          <p className="text-xs text-muted mb-3">{subtitle}</p>
+        ) : (
+          <div className="mb-3" />
+        )}
+        <PosterGrid>{items}</PosterGrid>
       </section>
     );
   }
   return (
-    <PosterRail title={title} href={href} seeAllLabel={seeAll}>
+    <PosterRail title={title} subtitle={subtitle} href={href} seeAllLabel={seeAll}>
       {items.map((child, i) => (
         <RailItem key={i}>{child}</RailItem>
       ))}
