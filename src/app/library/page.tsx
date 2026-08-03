@@ -1,5 +1,5 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Suspense } from "react";
 import {
   getUser,
   getFollows,
@@ -10,20 +10,21 @@ import {
 } from "@/lib/data";
 import { getT } from "@/lib/locale";
 import { percentOf, isComplete } from "@/lib/progress";
-import { MediaSection, type LibraryEntry } from "@/components/LibraryTabs";
-import { LibraryAnalysis, LibraryAnalysisSkeleton } from "@/components/LibraryAnalysis";
+import { LibraryBrowser, type LibraryItem } from "@/components/LibraryBrowser";
 
+/**
+ * المكتبة.
+ *
+ * صفحة تصفّح لا لوحة قيادة: شبكة واحدة وشرائح فوقها. التحليل الكامل انتقل
+ * إلى صفحة الإحصائيات — كان خمس بطاقات رسوم بيانية أسفل أربع شبكات، وهذه
+ * صفحة يفتحها المستخدم ليختار ما يشاهده لا ليقرأ تقريراً عن نفسه.
+ */
 export default async function LibraryPage() {
   const user = await getUser();
   if (!user) redirect("/login");
 
   const { locale, t } = await getT();
 
-  // المكتبة لا تطلب TMDB إطلاقاً: عدد الحلقات المعروضة مخزّن مع صف المتابعة
-  // وتحدّثه الرئيسية وصفحة المسلسل. كانت الصفحة تطلب تفاصيل كل مسلسل تتابعه.
-  //
-  // ولا تسحب صفوف الحلقات: ملخّص مجمّع من Postgres (صف لكل مسلسل)
-  // بدل آلاف الصفوف. `getAllWatchedEpisodes` تبقى احتياطاً لو لم تُشغَّل الدالة.
   const [follows, summary, watchedMovieIds, movieProgress] = await Promise.all([
     getFollows(),
     getWatchSummary(),
@@ -31,10 +32,7 @@ export default async function LibraryPage() {
     getAllMovieProgress(),
   ]);
 
-  // الأرقام الإجمالية صارت في قسم التحليل — هنا نحتاج عدد الحلقات لكل
-  // مسلسل فقط، لحساب حالة كل بطاقة
   const watchedByShow = new Map<number, number>();
-
   if (summary) {
     for (const s of summary) watchedByShow.set(s.show_tmdb_id, s.watched);
   } else {
@@ -43,64 +41,54 @@ export default async function LibraryPage() {
     }
   }
 
-  const tvFollows = follows.filter((f) => f.media_type === "tv");
-  const movieFollows = follows.filter((f) => f.media_type === "movie");
+  const items: LibraryItem[] = [];
 
-  const shows: LibraryEntry[] = [];
-  const movies: LibraryEntry[] = [];
-  const watching: LibraryEntry[] = [];
-  const finished: LibraryEntry[] = [];
-
-  for (const f of tvFollows) {
+  for (const f of follows.filter((f) => f.media_type === "tv")) {
     const done = watchedByShow.get(f.tmdb_id) ?? 0;
-    // نفس المقام المستخدم في الرئيسية وصفحة المسلسل
     const aired = f.aired_episodes ?? f.total_episodes ?? 0;
     const complete = isComplete(done, aired);
-    const entry: LibraryEntry = {
+    items.push({
       key: `tv-${f.tmdb_id}`,
       href: `/show/${f.tmdb_id}`,
       title: f.title,
       posterPath: f.poster_path,
       kind: "tv",
+      status: complete ? "done" : done > 0 ? "watching" : "notStarted",
       badge: complete ? t.watchedBadge : done > 0 ? t.episodesBadge(done) : undefined,
       progress: aired > 0 ? percentOf(done, aired) : undefined,
-    };
-    shows.push(entry);
-    if (complete) finished.push(entry);
-    else if (done > 0) watching.push(entry);
+    });
   }
 
-  for (const f of movieFollows) {
+  for (const f of follows.filter((f) => f.media_type === "movie")) {
     const prog = movieProgress.find((p) => p.movie_tmdb_id === f.tmdb_id);
     const complete = watchedMovieIds.has(f.tmdb_id);
     const pct =
       !complete && prog?.runtime_minutes && prog.runtime_minutes > 0
         ? Math.round((prog.position_minutes / prog.runtime_minutes) * 100)
         : undefined;
-    const entry: LibraryEntry = {
+    items.push({
       key: `movie-${f.tmdb_id}`,
       href: `/movie/${f.tmdb_id}`,
       title: f.title,
       posterPath: f.poster_path,
       kind: "movie",
+      status: complete ? "done" : prog ? "watching" : "notStarted",
       badge: complete ? t.watchedBadge : prog ? t.minuteBadge(prog.position_minutes) : undefined,
       progress: complete ? 100 : pct,
-    };
-    movies.push(entry);
-    if (complete) finished.push(entry);
-    else if (prog) watching.push(entry);
+    });
   }
 
   // أفلام لها موضع توقف لكنها ليست ضمن المتابَعة
   for (const p of movieProgress) {
-    if (movieFollows.some((f) => f.tmdb_id === p.movie_tmdb_id)) continue;
+    if (items.some((i) => i.key === `movie-${p.movie_tmdb_id}`)) continue;
     if (watchedMovieIds.has(p.movie_tmdb_id)) continue;
-    watching.push({
+    items.push({
       key: `movie-${p.movie_tmdb_id}`,
       href: `/movie/${p.movie_tmdb_id}`,
       title: p.title ?? t.typeMovie,
       posterPath: p.poster_path,
       kind: "movie",
+      status: "watching",
       badge: t.minuteBadge(p.position_minutes),
       progress:
         p.runtime_minutes && p.runtime_minutes > 0
@@ -110,50 +98,19 @@ export default async function LibraryPage() {
   }
 
   return (
-    <div className="space-y-12">
-      <h1 className="text-2xl font-bold">{t.libraryTitle}</h1>
+    <div>
+      <div className="flex items-baseline justify-between gap-3 mb-4">
+        <h1 className="text-xl font-bold">{t.libraryTitle}</h1>
+        <Link href="/stats" className="text-xs text-accent hover:brightness-110 transition">
+          {t.statsTitle} ›
+        </Link>
+      </div>
 
-      <MediaSection
-        title={t.libTabWatching}
-        count={watching.length}
-        hint={t.libWatchingHint}
-        items={watching}
-        empty={t.libEmptyWatching}
-      />
-
-      <MediaSection
-        title={t.libShowsGroup}
-        count={shows.length}
-        hint={t.libShowsHint}
-        items={shows}
-        empty={t.libEmptyFavorites}
-      />
-
-      <MediaSection
-        title={t.libMoviesGroup}
-        count={movies.length}
-        hint={t.libMoviesHint}
-        items={movies}
-        empty={t.libEmptyFavorites}
-      />
-
-      <MediaSection
-        title={t.libTabFinished}
-        count={finished.length}
-        hint={t.libFinishedHint}
-        items={finished}
-        empty={t.libEmptyFinished}
-      />
-
-      {/* التحليل يطلب TMDB لكل عمل، فيُبَثّ بعد الصفحة لا قبلها —
-          المكتبة تظهر فوراً والأرقام تلحق بها. */}
-      <section>
-        <h2 className="text-lg font-bold">{t.analysisTitle}</h2>
-        <p className="text-xs text-muted mt-0.5 mb-4">{t.analysisSub}</p>
-        <Suspense fallback={<LibraryAnalysisSkeleton />}>
-          <LibraryAnalysis locale={locale} />
-        </Suspense>
-      </section>
+      {items.length === 0 ? (
+        <p className="text-center text-muted py-20">{t.libraryEmpty}</p>
+      ) : (
+        <LibraryBrowser items={items} locale={locale} />
+      )}
     </div>
   );
 }
