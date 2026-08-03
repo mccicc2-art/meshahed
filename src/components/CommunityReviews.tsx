@@ -1,5 +1,7 @@
-import { getDict, num, type Locale } from "@/lib/i18n";
-import type { RatingRow } from "@/lib/data";
+import { getDict, type Locale } from "@/lib/i18n";
+import { formatDate } from "@/lib/when";
+import type { TitleReview } from "@/lib/data";
+import { PersonName } from "./PersonRow";
 
 export function CommunityReviews({
   locale,
@@ -10,12 +12,14 @@ export function CommunityReviews({
   locale: Locale;
   avg: number;
   count: number;
-  reviews: RatingRow[];
+  /** مراجعات مع أصحابها — الاسم يظهر إلا لمن أخفاه من الإعدادات */
+  reviews: TitleReview[];
 }) {
   const t = getDict(locale);
   if (count === 0) return null;
 
   const rounded = Math.round(avg * 10) / 10;
+  const written = reviews.filter((r) => r.review?.trim());
 
   return (
     <section className="mt-6 max-w-xl">
@@ -27,19 +31,20 @@ export function CommunityReviews({
         <span className="text-xs text-muted">{t.communityCount(count)}</span>
       </div>
 
-      {reviews.length === 0 ? (
+      {written.length === 0 ? (
         <p className="text-sm text-muted">{t.noReviews}</p>
       ) : (
         <div className="space-y-3">
-          {reviews.map((r) => (
+          {written.map((r) => (
             <article
-              key={`${r.user_id}-${r.tmdb_id}`}
+              key={`${r.id}-${r.updated_at}`}
               className="bg-surface border border-border rounded-xl p-4"
             >
-              <div className="flex items-center justify-between gap-2 mb-1.5">
-                <span className="text-accent text-sm">{"★".repeat(r.rating)}</span>
-                <span className="text-[11px] text-muted" dir="ltr">
-                  {num(r.rating, locale)}/5
+              <div className="flex items-center justify-between gap-3 mb-2">
+                <PersonName person={r} t={t} size={30} sub={formatDate(r.updated_at, t)} />
+                <span className="text-sm shrink-0" title={t.rateOutOf(r.rating)}>
+                  <span className="text-accent">{"★".repeat(r.rating)}</span>
+                  <span className="text-muted/40">{"★".repeat(5 - r.rating)}</span>
                 </span>
               </div>
               <p className="text-sm text-muted leading-relaxed whitespace-pre-line">{r.review}</p>

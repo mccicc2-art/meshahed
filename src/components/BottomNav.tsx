@@ -47,6 +47,26 @@ function IconLibrary({ active }: { active: boolean }) {
   );
 }
 
+function IconPeople({ active }: { active: boolean }) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <circle cx="9" cy="8" r="3.2" stroke="currentColor" strokeWidth={active ? 2.2 : 1.8} />
+      <path
+        d="M3.5 19c0-3 2.5-5 5.5-5s5.5 2 5.5 5"
+        stroke="currentColor"
+        strokeWidth={active ? 2.2 : 1.8}
+        strokeLinecap="round"
+      />
+      <path
+        d="M16 6.2a3 3 0 0 1 0 5.6M17.5 19c0-2.3-1-4-2.5-5"
+        stroke="currentColor"
+        strokeWidth={active ? 2.2 : 1.8}
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 function IconNews({ active }: { active: boolean }) {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
@@ -81,12 +101,14 @@ function IconNews({ active }: { active: boolean }) {
 export function BottomNav({ locale }: { locale: Locale }) {
   const pathname = usePathname();
   const t = getDict(locale);
-  if (pathname === "/login") return null;
+  // شاشات مركّزة: لا شريط تبويبات يزاحم زر الإجراء
+  if (pathname === "/login" || pathname === "/welcome") return null;
 
   const tabs = [
     { href: "/", label: t.navHome, Icon: IconHome },
     { href: "/news", label: t.navNews, Icon: IconNews },
     { href: "/library", label: t.navLibrary, Icon: IconLibrary },
+    { href: "/people", label: t.navPeople, Icon: IconPeople },
   ];
 
   const isActive = (href: string) =>
@@ -109,7 +131,7 @@ export function BottomNav({ locale }: { locale: Locale }) {
                 key={href}
                 href={href}
                 aria-current={active ? "page" : undefined}
-                className={`flex flex-col items-center justify-center gap-0.5 rounded-full px-4 py-2 transition ${
+                className={`flex flex-col items-center justify-center gap-0.5 rounded-full px-3 py-2 transition ${
                   active ? "bg-surface-2 text-accent" : "text-muted active:bg-surface-2"
                 }`}
               >

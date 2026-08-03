@@ -10,6 +10,7 @@ export function PosterCard({
   badge,
   progress,
   note,
+  tone = "default",
 }: {
   href: string;
   title: string;
@@ -18,6 +19,8 @@ export function PosterCard({
   badge?: string;
   progress?: number; // 0..100
   note?: string;
+  /** waiting = حلقة جديدة تنتظرك (ذهبي) بدل الأخضر المعتاد */
+  tone?: "default" | "waiting";
 }) {
   const url = posterUrl(posterPath, "w342");
   return (
@@ -38,14 +41,18 @@ export function PosterCard({
           <div className="w-full h-full grid place-items-center text-muted text-3xl">🎬</div>
         )}
         {badge && (
-          <span className="absolute top-2 right-2 text-[11px] font-semibold bg-black/70 text-accent px-2 py-0.5 rounded-full">
+          <span
+            className={`absolute top-2 right-2 text-[11px] font-semibold bg-black/75 px-2 py-0.5 rounded-full ${
+              tone === "waiting" ? "text-accent" : "text-accent"
+            }`}
+          >
             {badge}
           </span>
         )}
         {typeof progress === "number" && (
           <div className="absolute inset-x-0 bottom-0 h-1.5 bg-black/50">
             <div
-              className="h-full bg-accent-2"
+              className={tone === "waiting" ? "h-full bg-accent" : "h-full bg-accent-2"}
               style={{ width: `${Math.max(0, Math.min(100, progress))}%` }}
             />
           </div>

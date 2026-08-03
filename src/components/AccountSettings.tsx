@@ -13,6 +13,7 @@ export function AccountSettings({
   initialNickname,
   avatarUrl,
   genres,
+  initialHideName,
 }: {
   email: string;
   locale: Locale;
@@ -20,11 +21,13 @@ export function AccountSettings({
   initialNickname: string;
   avatarUrl: string | null;
   genres: number[];
+  initialHideName: boolean;
 }) {
   const t = getDict(locale);
   const router = useRouter();
   const [username, setUsername] = useState(initialUsername);
   const [nickname, setNickname] = useState(initialNickname);
+  const [hideName, setHideName] = useState(initialHideName);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [pending, start] = useTransition();
@@ -46,6 +49,7 @@ export function AccountSettings({
           username: cleaned,
           avatarUrl,
           favoriteGenres: genres,
+          hideName,
         });
         setSaved(true);
         router.refresh();
@@ -62,6 +66,42 @@ export function AccountSettings({
         <h2 className="font-bold mb-1">{t.languageSection}</h2>
         <p className="text-sm text-muted mb-4">{t.languageHint}</p>
         <LanguageSwitch locale={locale} />
+      </section>
+
+      {/* الخصوصية: إخفاء الاسم في التقييمات والمراجعات */}
+      <section className="bg-surface border border-border rounded-2xl p-6">
+        <h2 className="font-bold mb-1">{t.hideNameSection}</h2>
+        <p className="text-sm text-muted mb-4">{t.hideNameHint}</p>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={hideName}
+          onClick={() => {
+            setHideName((v) => !v);
+            setSaved(false);
+          }}
+          className={`flex items-center gap-3 w-full rounded-xl border px-4 py-3 transition ${
+            hideName
+              ? "border-accent bg-accent/10"
+              : "border-border bg-surface-2 hover:border-accent/50"
+          }`}
+        >
+          <span
+            className={`shrink-0 w-11 h-6 rounded-full p-0.5 transition ${
+              hideName ? "bg-accent" : "bg-border"
+            }`}
+          >
+            <span
+              className={`block w-5 h-5 rounded-full bg-white transition-transform ${
+                hideName ? "translate-x-0" : ""
+              }`}
+              style={{ transform: hideName ? "translateX(-20px)" : "translateX(0)" }}
+            />
+          </span>
+          <span className="text-sm font-semibold">
+            {hideName ? t.hideNameOn : t.hideNameOff}
+          </span>
+        </button>
       </section>
 
       <section className="bg-surface border border-border rounded-2xl p-6">

@@ -12,6 +12,7 @@ export function NavLinks({ locale }: { locale: Locale }) {
     { href: "/", label: t.navHome },
     { href: "/news", label: t.navNews },
     { href: "/library", label: t.navLibrary },
+    { href: "/people", label: t.navPeople },
   ];
 
   return (
