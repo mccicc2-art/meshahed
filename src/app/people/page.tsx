@@ -26,15 +26,18 @@ export default async function PeoplePage() {
   ]);
 
   return (
-    <div className="space-y-10">
-      <h1 className="text-2xl font-bold">{t.peopleTitle}</h1>
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-xl font-bold">{t.peopleTitle}</h1>
+        <p className="text-xs text-muted mt-0.5">{t.communitySub}</p>
+      </div>
 
       <PeopleSearch locale={locale} />
 
       {/* من تتابعهم */}
       <section>
         <div className="flex items-baseline gap-2 mb-3">
-          <h2 className="text-lg font-bold">{t.peopleFollowingTitle}</h2>
+          <h2 className="text-base font-bold">{t.peopleFollowingTitle}</h2>
           {lists.following.length > 0 && (
             <span
               className="text-xs text-muted bg-surface-2 border border-border rounded-full px-2 py-0.5"
@@ -78,7 +81,7 @@ export default async function PeoplePage() {
       {lists.followers.length > 0 && (
         <section>
           <div className="flex items-baseline gap-2 mb-3">
-            <h2 className="text-lg font-bold">{t.peopleFollowersTitle}</h2>
+            <h2 className="text-base font-bold">{t.peopleFollowersTitle}</h2>
             <span
               className="text-xs text-muted bg-surface-2 border border-border rounded-full px-2 py-0.5"
               dir="ltr"
