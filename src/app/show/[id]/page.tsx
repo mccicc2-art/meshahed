@@ -8,14 +8,22 @@ import {
   getCommunityRating,
   getTitleReviews,
 } from "@/lib/data";
-import { getTv, getSeason, getTrailer, getWatchProviders, backdropUrl, posterUrl } from "@/lib/tmdb";
+import {
+  getTv,
+  getSeason,
+  getTrailer,
+  getWatchProviders,
+  isAnime,
+  backdropUrl,
+  posterUrl,
+} from "@/lib/tmdb";
 import { FollowButton } from "@/components/FollowButton";
 import { EpisodeTracker, type SeasonSummary } from "@/components/EpisodeTracker";
 import { getT } from "@/lib/locale";
 import { RatingBox } from "@/components/RatingBox";
 import { CommunityReviews } from "@/components/CommunityReviews";
 import { DetailTabs } from "@/components/DetailTabs";
-import { SectionTitle } from "@/components/Icon";
+import { Icon, SectionTitle } from "@/components/Icon";
 import { Trailer } from "@/components/Trailer";
 import { WhereToWatch } from "@/components/WhereToWatch";
 import { formatDate } from "@/lib/when";
@@ -133,6 +141,13 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
         <div className="flex-1 min-w-0 self-end pb-1">
           <h1 className="text-lg sm:text-2xl font-bold leading-tight">{tv.name}</h1>
           <div className="flex flex-wrap items-center gap-x-2 text-xs sm:text-sm text-muted mt-1">
+            {/* وسم الأنمي: يعرفه المستخدم من الشارة لا من قراءة الأنواع */}
+            {isAnime(tv) && (
+              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-accent bg-accent/12 border border-accent/35 px-2 py-0.5 rounded-full">
+                <Icon name="sparkle-star" size={12} />
+                {t.animeBadge}
+              </span>
+            )}
             {tv.first_air_date && <span>{tv.first_air_date.slice(0, 4)}</span>}
             <span>·</span>
             <span>{t.seasonsCount(tv.number_of_seasons)}</span>
