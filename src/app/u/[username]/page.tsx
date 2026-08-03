@@ -152,6 +152,7 @@ export default async function PublicProfilePage({
                 <div className="flex items-center justify-between gap-3 mb-2 flex-wrap">
                   <Link
                     href={`/${r.media_type === "tv" ? "show" : "movie"}/${r.tmdb_id}`}
+                    prefetch={false}
                     className="font-semibold hover:text-accent transition"
                   >
                     {r.title}
