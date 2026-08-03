@@ -30,6 +30,7 @@ import { PosterRail, RailItem } from "@/components/PosterRail";
 import type { IconName } from "@/components/Icon";
 import { ActionPanel, type PanelItem } from "@/components/ActionPanel";
 import { ProfileHeader } from "@/components/ProfileHeader";
+import { getLevel, levelPoints } from "@/lib/level";
 import { WeekStrip, type WeekEntry } from "@/components/WeekStrip";
 import { ShowStatsSync, type ShowStat } from "@/components/ShowStatsSync";
 
@@ -304,6 +305,10 @@ export default async function HomePage() {
     })
     .sort((a, b) => a.rank - b.rank || b.progress - a.progress);
 
+  // ===== المستوى: يقيس ما شوهد فعلاً — حلقة بنقطة والفيلم بنقطتين =====
+  const watchedEpisodeTotal = [...watchedByShow.values()].reduce((a, n) => a + n, 0);
+  const level = getLevel(levelPoints(watchedEpisodeTotal, watchedMovieIds.size));
+
   const panel: PanelItem[] = [
     {
       key: "waiting",
@@ -350,8 +355,11 @@ export default async function HomePage() {
       <div className="space-y-2.5">
         <ProfileHeader
           displayName={displayName}
+          username={profile?.username ?? null}
           avatarUrl={profile?.avatar_url ?? null}
           coverUrl={profile?.cover_url ?? null}
+          level={level}
+          alerts={waitingForYou.length}
           locale={locale}
         />
         <ActionPanel items={panel} />
