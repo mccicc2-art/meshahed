@@ -24,7 +24,7 @@ const ar = {
 
   // التنقل
   navHome: "الرئيسية",
-  navNews: "أخبار",
+  navNews: "اكتشف",
   navLibrary: "مكتبتي",
   navSearch: "بحث",
   signOut: "خروج",
@@ -63,8 +63,9 @@ const ar = {
   daysAndHours: (d: number, h: number) => `${d} يوم و ${h} س`,
 
   // الأخبار
-  newsTitle: "الأخبار",
+  newsTitle: "اكتشف",
   newsSubtitle: "أحدث الأفلام القادمة والمسلسلات الجارية — تفاعل بـ 🔥 أو أضفها لمفضلتك.",
+  discoverSub: "أفضل ما يُعرض الآن، وأعلى ما قُيّم هذا الأسبوع، وما هو قادم.",
   newsEmpty: "تعذّر تحميل الأخبار حالياً. حاول مرة أخرى بعد قليل.",
   typeSeries: "مسلسل",
   typeMovie: "فيلم",
@@ -357,7 +358,8 @@ const ar = {
 
   // ± دقائق في الفيلم
   // الأشخاص
-  peopleTitle: "الأشخاص",
+  peopleTitle: "المجتمع",
+  communitySub: "ابحث عن أصدقائك، وشوف وش يشاهدون ويقيّمون.",
   peopleSearchPlaceholder: "ابحث باسم المستخدم…",
   peopleSearchHint: "اكتب حرفين على الأقل للبحث عن شخص.",
   peopleNoResults: "ما لقينا أحداً بهذا الاسم.",
@@ -373,7 +375,7 @@ const ar = {
   hideNameHint: "لما تفعّله، تظهر تقييماتك ومراجعاتك بلا اسمك، وما يقدر أحد يفتح صفحتك من التعليق.",
   hideNameOn: "اسمي مخفي",
   hideNameOff: "اسمي ظاهر",
-  navPeople: "أشخاص",
+  navPeople: "المجتمع",
   viewProfileOf: (name: string) => `عرض صفحة ${name}`,
   backToPeople: "→ الأشخاص",
 
@@ -419,7 +421,7 @@ const en: Dict = {
   footer: "Meshahed · Data from TMDB",
 
   navHome: "Home",
-  navNews: "News",
+  navNews: "Discover",
   navLibrary: "Library",
   navSearch: "Search",
   signOut: "Sign out",
@@ -456,8 +458,9 @@ const en: Dict = {
   days: (d: number) => `${d}d`,
   daysAndHours: (d: number, h: number) => `${d}d ${h}h`,
 
-  newsTitle: "News",
+  newsTitle: "Discover",
   newsSubtitle: "Upcoming movies and shows on the air — react with 🔥 or save them.",
+  discoverSub: "What\u2019s on now, what rated highest this week, and what\u2019s coming.",
   newsEmpty: "Couldn't load the news right now. Please try again shortly.",
   typeSeries: "Series",
   typeMovie: "Movie",
@@ -733,7 +736,8 @@ const en: Dict = {
   libMoviesHint: "Every movie you follow.",
   libFinishedHint: "Titles you've completed.",
 
-  peopleTitle: "People",
+  peopleTitle: "Community",
+  communitySub: "Find your friends, and see what they watch and rate.",
   peopleSearchPlaceholder: "Search by username…",
   peopleSearchHint: "Type at least two characters to find someone.",
   peopleNoResults: "No one found with that name.",
@@ -749,7 +753,7 @@ const en: Dict = {
   hideNameHint: "When on, your ratings and reviews appear without your name, and no one can open your page from a review.",
   hideNameOn: "My name is hidden",
   hideNameOff: "My name is visible",
-  navPeople: "People",
+  navPeople: "Community",
   viewProfileOf: (name: string) => `View ${name}'s page`,
   backToPeople: "← People",
 
