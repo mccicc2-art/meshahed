@@ -22,11 +22,10 @@ export default async function NewsPage() {
 
   const { locale, t } = await getT();
 
-  const [movies, tv, follows, reactions] = await Promise.all([
+  const [movies, tv, follows] = await Promise.all([
     upcomingMovies().catch(() => [] as SearchResult[]),
     airingTv().catch(() => [] as SearchResult[]),
     getFollows(),
-    getReactions(),
   ]);
 
   const followed = follows.map((f) => `${f.media_type}-${f.tmdb_id}`);
@@ -53,6 +52,9 @@ export default async function NewsPage() {
       return aFuture ? a.date.localeCompare(b.date) : b.date.localeCompare(a.date);
     })
     .slice(0, 30);
+
+  // عدّادات 🔥 للعناصر الظاهرة فقط بدل قراءة جدول التفاعلات كاملاً
+  const reactions = await getReactions(items.map((i) => i.id));
 
   return (
     <div>
