@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Navbar } from "@/components/Navbar";
@@ -6,6 +7,7 @@ import { getT } from "@/lib/locale";
 import { getProfile } from "@/lib/data";
 import { getDict, isRtl } from "@/lib/i18n";
 import { themeById, themeCss } from "@/lib/themes";
+import { HeaderShell } from "@/components/HeaderShell";
 import { getLocale } from "@/lib/locale";
 
 export const viewport: Viewport = {
@@ -46,14 +48,6 @@ export default async function RootLayout({
       suppressHydrationWarning
     >
       <head>
-        {/* preconnect مبكّر يقصّر زمن أول رسم — الخط خارجي مؤقتاً.
-            الأفضل استضافته ذاتياً عبر next/font/google (انظر تقرير الأداء). */}
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap"
-          rel="stylesheet"
-        />
         {/* ألوان الثيم متغيّرات CSS مبنية من قائمة ثابتة في themes.ts — لا مدخلات مستخدم */}
         <style dangerouslySetInnerHTML={{ __html: themeCss(theme) }} />
       </head>
@@ -65,7 +59,11 @@ export default async function RootLayout({
         >
           {t.navHome}
         </a>
-        <Navbar />
+        <Suspense fallback={null}>
+          <HeaderShell>
+            <Navbar />
+          </HeaderShell>
+        </Suspense>
         {/* مساحة سفلية على الجوال حتى لا يغطي شريط التبويبات المحتوى */}
         <main id="main" className="flex-1 w-full max-w-6xl mx-auto px-4 py-6 pb-28 md:pb-6">
           {children}
