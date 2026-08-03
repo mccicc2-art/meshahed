@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Icon, type IconName } from "./Icon";
 import Image from "next/image";
 import { getDict, type Locale } from "@/lib/i18n";
 import { daysUntil } from "@/lib/when";
@@ -21,10 +22,12 @@ export interface CountdownItem {
  */
 export function CountdownRail({
   title,
+  icon,
   items,
   locale,
 }: {
   title: string;
+  icon?: IconName;
   items: CountdownItem[];
   locale: Locale;
 }) {
@@ -33,7 +36,10 @@ export function CountdownRail({
 
   return (
     <section>
-      <h2 className="text-base font-bold mb-3">{title}</h2>
+      <h2 className="flex items-center gap-2 text-base font-bold mb-3">
+        {icon && <Icon name={icon} size={18} className="text-muted" />}
+        {title}
+      </h2>
 
       <div className="-mx-4 px-4 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <div className="flex gap-3 w-max pb-1">

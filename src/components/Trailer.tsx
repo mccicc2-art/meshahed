@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useState } from "react";
 import { getDict, type Locale } from "@/lib/i18n";
+import { Icon, SectionTitle } from "./Icon";
 
 /**
  * مشغّل الترايلر بواجهة مؤجّلة.
@@ -28,9 +29,9 @@ export function Trailer({
 
   return (
     <section aria-labelledby="trailer-heading">
-      <h2 id="trailer-heading" className="text-lg font-bold mb-3">
-        {t.trailerTitle}
-      </h2>
+      <SectionTitle icon="film" className="mb-3">
+        <span id="trailer-heading">{t.trailerTitle}</span>
+      </SectionTitle>
 
       <div className="relative aspect-video rounded-2xl overflow-hidden border border-border bg-surface-2">
         {playing ? (
@@ -59,8 +60,8 @@ export function Trailer({
             <span className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
 
             <span className="absolute inset-0 grid place-items-center">
-              <span className="w-16 h-16 rounded-full bg-accent text-[color:var(--on-accent)] grid place-items-center text-2xl shadow-lg group-hover:scale-110 transition">
-                ▶
+              <span className="w-16 h-16 rounded-full bg-accent text-[color:var(--on-accent)] grid place-items-center shadow-lg group-hover:scale-110 transition">
+                <Icon name="play" size={30} strokeWidth={1.6} />
               </span>
             </span>
 

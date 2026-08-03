@@ -3,7 +3,9 @@
 import { useMemo, useState } from "react";
 import { PosterCard } from "./PosterCard";
 import { PosterGrid } from "./PosterGrid";
+import Link from "next/link";
 import { getDict, type Locale } from "@/lib/i18n";
+import { Icon } from "./Icon";
 
 export interface LibraryItem {
   key: string;
@@ -58,9 +60,17 @@ export function LibraryBrowser({
   ];
 
   const shown = useMemo(() => {
-    if (filter === "all") return items;
-    if (filter === "tv" || filter === "movie") return items.filter((i) => i.kind === filter);
-    return items.filter((i) => i.status === filter);
+    const list =
+      filter === "all"
+        ? items
+        : filter === "tv" || filter === "movie"
+          ? items.filter((i) => i.kind === filter)
+          : items.filter((i) => i.status === filter);
+    // المسلسلات أولاً ثم الأفلام: الترتيب الافتراضي كان يخلطهما حسب
+    // ترتيب الإضافة، فتتناثر الأفلام بين المسلسلات بلا منطق ظاهر
+    return [...list].sort((a, b) =>
+      a.kind === b.kind ? 0 : a.kind === "tv" ? -1 : 1,
+    );
   }, [items, filter]);
 
   return (
@@ -108,6 +118,16 @@ export function LibraryBrowser({
           ))}
         </PosterGrid>
       )}
+
+      {/* مدخل التحليل أسفل الشبكة لا فوقها: يراه من فرغ من التصفّح،
+          ولا يعترض من جاء ليختار ما يشاهده */}
+      <Link
+        href="/stats"
+        className="mt-6 flex items-center justify-center gap-2 text-xs text-muted hover:text-accent border border-dashed border-border rounded-xl py-3 transition"
+      >
+        <Icon name="chart" size={16} />
+        {t.libAnalysisBtn}
+      </Link>
     </div>
   );
 }

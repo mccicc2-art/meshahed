@@ -2,15 +2,17 @@ import Link from "next/link";
 import Image from "next/image";
 import { Avatar } from "@/components/Avatar";
 import { getDict, num, type Locale } from "@/lib/i18n";
+import { Icon } from "./Icon";
 
 /**
- * ترويسة الرئيسية — مضغوطة.
+ * ترويسة الرئيسية — الصورة في وسط الغلاف.
  *
- * كانت غلافاً ثم صفّ صورة ثم صفّ متابعين ثم دعوة غلاف: أربع طبقات فوق
- * بعضها تلتهم نصف الشاشة قبل أن يظهر عملٌ واحد. الآن طبقة واحدة: كل شيء
- * داخل الغلاف نفسه — الصورة والاسم والمعرّف والمتابعون فوق تعتيم سفلي.
- * الارتفاع ١٢٨ بكسل على الجوال، ومع شريط الأعداد الملتصق به يبقى المجموع
- * نحو ربع الشاشة كما ينبغي لصفحة غرضها عرض الأعمال لا عرض صاحبها.
+ * الصورة في الوسط لا في الطرف: العين تبدأ من منتصف الشاشة فتقرأ الاسم
+ * والأرقام في مسار واحد نازل، بدل أن تقفز من طرف لطرف. والاسم والمتابعون
+ * سطران متلاصقان أسفلها، فلا يصير للترويسة ثلاثة أسطر منفصلة كما كانت.
+ *
+ * الغلاف ٩٦ بكسل والكتلة كلها نحو ٢٠٠ — أي ربع شاشة الجوال، وهو سقفٌ
+ * مقصود: هذه صفحة تعرض الأعمال لا صاحب الحساب.
  */
 export function ProfileHeader({
   displayName,
@@ -32,69 +34,69 @@ export function ProfileHeader({
   const t = getDict(locale);
 
   return (
-    <section className="relative h-32 sm:h-44 -mx-4 -mt-6 sm:mx-0 sm:mt-0 sm:rounded-3xl overflow-hidden">
-      {coverUrl ? (
-        <Image
-          src={coverUrl}
-          alt=""
-          fill
-          priority
-          sizes="(max-width: 640px) 100vw, 1152px"
-          className="object-cover"
-        />
-      ) : (
-        <div
-          className="absolute inset-0"
-          style={{
-            background:
-              "linear-gradient(120deg, var(--glow-a), transparent 55%), linear-gradient(300deg, var(--glow-b), transparent 55%), var(--surface-2)",
-          }}
-        />
-      )}
+    <section>
+      <div className="relative h-24 sm:h-36 -mx-4 -mt-6 sm:mx-0 sm:mt-0 sm:rounded-3xl overflow-hidden">
+        {coverUrl ? (
+          <Image
+            src={coverUrl}
+            alt=""
+            fill
+            priority
+            sizes="(max-width: 640px) 100vw, 1152px"
+            className="object-cover"
+          />
+        ) : (
+          <div
+            className="absolute inset-0"
+            style={{
+              background:
+                "linear-gradient(120deg, var(--glow-a), transparent 55%), linear-gradient(300deg, var(--glow-b), transparent 55%), var(--surface-2)",
+            }}
+          />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-[color:var(--background)] via-transparent to-transparent" />
 
-      {/* تعتيم من الأسفل فقط: يبقي أعلى الغلاف ظاهراً ويضمن قراءة الاسم */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent" />
+        <Link
+          href="/profile/edit"
+          aria-label={t.editHeaderAria}
+          className="absolute top-2.5 end-2.5 w-8 h-8 grid place-items-center bg-black/40 backdrop-blur border border-white/15 text-white/90 rounded-full hover:bg-black/60 transition"
+        >
+          <Icon name="edit" size={15} />
+        </Link>
+      </div>
 
-      <Link
-        href="/profile/edit"
-        aria-label={t.editHeaderAria}
-        className="absolute top-3 end-3 w-8 h-8 grid place-items-center text-sm bg-black/40 backdrop-blur border border-white/15 text-white/90 rounded-full hover:bg-black/60 transition"
-      >
-        ✎
-      </Link>
-
-      <div className="absolute inset-x-0 bottom-0 p-3 sm:p-5 flex items-end gap-3">
-        <Link href="/profile/edit" className="shrink-0">
+      {/* الصورة تتوسّط الغلاف وتتداخل مع حافته السفلى */}
+      <div className="flex flex-col items-center -mt-8 relative">
+        <Link href="/profile/edit">
           <Avatar
             src={avatarUrl}
             name={displayName}
-            size={52}
+            size={62}
             alt={t.avatarAlt}
-            className="ring-2 ring-white/25 sm:!w-16 sm:!h-16"
+            className="ring-4 ring-[color:var(--background)]"
           />
         </Link>
 
-        <div className="min-w-0 flex-1">
-          <h1 className="text-base sm:text-xl font-bold text-white truncate leading-tight drop-shadow">
-            {displayName}
-          </h1>
-          <p className="text-[11px] sm:text-xs text-white/70 truncate">
-            {username && <span dir="ltr">@{username}</span>}
-            {username && <span className="mx-1.5">·</span>}
-            <b className="text-white/90">{num(followers, locale)}</b> {t.followersLabel}
-            <span className="mx-1.5">·</span>
-            <b className="text-white/90">{num(following, locale)}</b> {t.followingLabel}
-          </p>
-        </div>
+        <h1 className="text-[15px] sm:text-lg font-bold mt-1 text-center truncate max-w-full px-4">
+          {displayName}
+        </h1>
 
-        {username && (
-          <Link
-            href={`/u/${username}`}
-            className="hidden sm:inline-block shrink-0 text-[11px] font-semibold text-white/90 bg-white/15 backdrop-blur border border-white/20 rounded-full px-3 py-1.5 hover:bg-white/25 transition"
-          >
-            {t.publicProfileLink}
-          </Link>
-        )}
+        {/* المعرّف والمتابعون في سطر واحد — كانت ثلاثة أسطر منفصلة */}
+        <p className="text-[11px] text-muted mt-0.5 flex items-center gap-1.5 flex-wrap justify-center px-4">
+          {username && (
+            <Link href={`/u/${username}`} dir="ltr" className="hover:text-accent transition">
+              @{username}
+            </Link>
+          )}
+          {username && <span aria-hidden>·</span>}
+          <span>
+            <b className="text-foreground">{num(followers, locale)}</b> {t.followersLabel}
+          </span>
+          <span aria-hidden>·</span>
+          <span>
+            <b className="text-foreground">{num(following, locale)}</b> {t.followingLabel}
+          </span>
+        </p>
       </div>
     </section>
   );

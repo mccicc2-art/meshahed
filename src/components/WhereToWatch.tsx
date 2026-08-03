@@ -1,6 +1,7 @@
 import Image from "next/image";
 import { IMG } from "@/lib/media";
 import { getDict, type Locale } from "@/lib/i18n";
+import { Icon } from "./Icon";
 import type { Provider, WatchOptions } from "@/lib/tmdb";
 
 const REGION_NAMES: Record<string, { ar: string; en: string }> = {
@@ -82,7 +83,8 @@ export function WhereToWatch({
   return (
     <section aria-labelledby="watch-heading">
       <div className="flex items-baseline gap-2 mb-1">
-        <h2 id="watch-heading" className="text-lg font-bold">
+        <h2 id="watch-heading" className="flex items-center gap-2 text-base font-bold">
+          <Icon name="tv" size={18} className="text-muted" />
           {t.whereToWatch}
         </h2>
         <span className="text-[11px] text-muted">{t.watchRegion(regionName)}</span>

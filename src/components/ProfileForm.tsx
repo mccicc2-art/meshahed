@@ -120,11 +120,11 @@ export function ProfileForm({
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-4">
       {/* صورة الغلاف (الهيدر) */}
-      <section className="bg-surface border border-border rounded-2xl p-6">
-        <h2 className="font-bold mb-1">{t.coverSection}</h2>
-        <p className="text-sm text-muted mb-4">{t.coverHint}</p>
+      <section className="bg-surface border border-border rounded-2xl p-3.5 sm:p-5">
+        <h2 className="text-sm font-bold mb-1">{t.coverSection}</h2>
+        <p className="text-xs text-muted leading-relaxed mb-3">{t.coverHint}</p>
 
         <div className="relative h-32 sm:h-40 rounded-xl overflow-hidden border border-border bg-surface-2">
           {coverUrl ? (
@@ -172,10 +172,10 @@ export function ProfileForm({
       </section>
 
       {/* الصورة الشخصية */}
-      <section className="bg-surface border border-border rounded-2xl p-6">
+      <section className="bg-surface border border-border rounded-2xl p-3.5 sm:p-5">
         <h2 className="font-bold mb-4">{t.avatarSection}</h2>
-        <div className="flex items-center gap-5 flex-wrap">
-          <Avatar src={avatarUrl} name={nickname || email} size={88} alt={t.avatarAlt} />
+        <div className="flex items-center gap-4 flex-wrap">
+          <Avatar src={avatarUrl} name={nickname || email} size={72} alt={t.avatarAlt} />
           <div className="flex flex-wrap gap-2">
             <input
               ref={avatarRef}
@@ -214,9 +214,9 @@ export function ProfileForm({
       </section>
 
       {/* ثيم الواجهة */}
-      <section className="bg-surface border border-border rounded-2xl p-6">
-        <h2 className="font-bold mb-1">{t.themeSection}</h2>
-        <p className="text-sm text-muted mb-4">{t.themeHint}</p>
+      <section className="bg-surface border border-border rounded-2xl p-3.5 sm:p-5">
+        <h2 className="text-sm font-bold mb-1">{t.themeSection}</h2>
+        <p className="text-xs text-muted leading-relaxed mb-3">{t.themeHint}</p>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           {THEMES.map((th) => {
             const on = th.id === theme;
@@ -234,7 +234,7 @@ export function ProfileForm({
                 }`}
               >
                 <span
-                  className="block h-12 w-full"
+                  className="block h-10 w-full"
                   style={{
                     background: `linear-gradient(120deg, ${th.vars.accent} 0%, ${th.vars.accent} 38%, ${th.vars["accent-2"]} 38%, ${th.vars["accent-2"]} 62%, ${th.vars.surface} 62%, ${th.vars.background} 100%)`,
                   }}
@@ -250,7 +250,7 @@ export function ProfileForm({
       </section>
 
       {/* الاسم المستعار */}
-      <section className="bg-surface border border-border rounded-2xl p-6">
+      <section className="bg-surface border border-border rounded-2xl p-3.5 sm:p-5">
         <h2 className="font-bold mb-4">{t.nicknameSection}</h2>
         <input
           value={nickname}
@@ -260,7 +260,7 @@ export function ProfileForm({
           }}
           maxLength={40}
           placeholder={t.nicknamePlaceholder}
-          className="w-full rounded-xl bg-surface-2 border border-border px-4 py-3 outline-none focus:border-accent transition"
+          className="w-full rounded-xl bg-surface-2 border border-border px-3 py-2.5 text-sm outline-none focus:border-accent transition"
         />
         <p className="text-xs text-muted mt-2" dir="ltr">
           {email}
@@ -268,9 +268,9 @@ export function ProfileForm({
       </section>
 
       {/* الأنواع المفضلة */}
-      <section className="bg-surface border border-border rounded-2xl p-6">
-        <h2 className="font-bold mb-1">{t.favoriteContent}</h2>
-        <p className="text-sm text-muted mb-4">{t.favoriteHint}</p>
+      <section className="bg-surface border border-border rounded-2xl p-3.5 sm:p-5">
+        <h2 className="text-sm font-bold mb-1">{t.favoriteContent}</h2>
+        <p className="text-xs text-muted leading-relaxed mb-3">{t.favoriteHint}</p>
         <div className="flex flex-wrap gap-2">
           {GENRES.map((g) => {
             const on = genres.includes(g.id);
@@ -295,7 +295,7 @@ export function ProfileForm({
       </section>
 
       {error && (
-        <p className="text-sm text-red-300 bg-red-500/10 border border-red-400/30 rounded-xl px-4 py-3">
+        <p className="text-sm text-red-300 bg-red-500/10 border border-red-400/30 rounded-xl px-3 py-2.5">
           {error}
         </p>
       )}
@@ -304,7 +304,7 @@ export function ProfileForm({
         <button
           onClick={save}
           disabled={pending || uploading !== null}
-          className="px-6 py-3 rounded-xl bg-accent text-[color:var(--on-accent)] font-semibold hover:brightness-110 transition disabled:opacity-60"
+          className="px-5 py-2.5 text-sm rounded-xl bg-accent text-[color:var(--on-accent)] font-semibold hover:brightness-110 transition disabled:opacity-60"
         >
           {pending ? t.saving : t.saveChanges}
         </button>

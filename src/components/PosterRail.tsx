@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Icon, type IconName } from "./Icon";
 
 /**
  * صفّ أفقي قابل للسحب بدل شبكة تلتفّ.
@@ -9,12 +10,14 @@ import Link from "next/link";
  */
 export function PosterRail({
   title,
+  icon,
   href,
   seeAllLabel,
   subtitle,
   children,
 }: {
   title: string;
+  icon?: IconName;
   href?: string;
   seeAllLabel?: string;
   subtitle?: string;
@@ -23,7 +26,10 @@ export function PosterRail({
   return (
     <section>
       <div className="flex items-baseline justify-between gap-3 mb-1">
-        <h2 className="text-base font-bold">{title}</h2>
+        <h2 className="flex items-center gap-2 text-base font-bold">
+          {icon && <Icon name={icon} size={18} className="text-muted" />}
+          {title}
+        </h2>
         {href && seeAllLabel && (
           <Link
             href={href}

@@ -6,6 +6,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toggleEpisode } from "@/lib/actions";
 import { getDict, type Locale } from "@/lib/i18n";
+import { Icon } from "./Icon";
 
 export interface NextEpisode {
   season: number;
@@ -119,7 +120,10 @@ export function HeroNextUp({
         <div className="absolute inset-0 bg-gradient-to-t from-[color:var(--background)] via-[color:var(--background)]/70 to-transparent" />
 
         <div className="relative p-4 sm:p-5 flex flex-col justify-end min-h-[190px] sm:min-h-[230px]">
-          <span className="text-[11px] font-bold text-accent">{t.heroKicker}</span>
+          <span className="flex items-center gap-1.5 text-[11px] font-bold text-accent">
+            <Icon name="play" size={14} />
+            {t.heroKicker}
+          </span>
 
           <Link
             href={`/show/${showTmdbId}`}

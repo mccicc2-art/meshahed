@@ -2,6 +2,7 @@ import { getFollows, getMyRatings, getWatchSummary, getWatchedMovieIds, getAllMo
 import { getTv, getMovie } from "@/lib/tmdb";
 import { getDict, num, type Locale } from "@/lib/i18n";
 import { isComplete } from "@/lib/progress";
+import { Icon, type IconName } from "./Icon";
 
 function pct(part: number, total: number) {
   return total > 0 ? Math.round((part / total) * 100) : 0;
@@ -205,11 +206,11 @@ export async function LibraryAnalysis({ locale }: { locale: Locale }) {
 
   const totalMinutes = epMinutes + watchedMovieIds.size * 110;
 
-  const headline = [
-    { label: t.statWatchTime, value: fmtWatchTime(totalMinutes, t), icon: "⏱️" },
-    { label: t.statsWatchedEpisodes, value: num(totalEpisodes, locale), icon: "✅" },
-    { label: t.statsWatchedMovies, value: num(watchedMovieIds.size, locale), icon: "🎬" },
-    { label: t.statsFollowing, value: num(follows.length, locale), icon: "⭐" },
+  const headline: { label: string; value: string; icon: IconName }[] = [
+    { label: t.statWatchTime, value: fmtWatchTime(totalMinutes, t), icon: "clock" },
+    { label: t.statsWatchedEpisodes, value: num(totalEpisodes, locale), icon: "check" },
+    { label: t.statsWatchedMovies, value: num(watchedMovieIds.size, locale), icon: "film" },
+    { label: t.statsFollowing, value: num(follows.length, locale), icon: "star" },
   ];
 
   return (
@@ -218,9 +219,7 @@ export async function LibraryAnalysis({ locale }: { locale: Locale }) {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         {headline.map((h) => (
           <div key={h.label} className="bg-surface border border-border rounded-2xl p-3 sm:p-4">
-            <div className="text-base sm:text-lg leading-none" aria-hidden>
-              {h.icon}
-            </div>
+            <Icon name={h.icon} size={18} className="text-muted" />
             <div className="text-lg sm:text-2xl font-extrabold mt-1.5 leading-none">{h.value}</div>
             <div className="text-[11px] text-muted mt-1 leading-tight">{h.label}</div>
           </div>

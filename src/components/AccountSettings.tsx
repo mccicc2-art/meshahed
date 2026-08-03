@@ -60,18 +60,18 @@ export function AccountSettings({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* لغة الواجهة */}
-      <section className="bg-surface border border-border rounded-2xl p-6">
-        <h2 className="font-bold mb-1">{t.languageSection}</h2>
-        <p className="text-sm text-muted mb-4">{t.languageHint}</p>
+      <section className="bg-surface border border-border rounded-2xl p-3.5 sm:p-5">
+        <h2 className="text-sm font-bold mb-1">{t.languageSection}</h2>
+        <p className="text-xs text-muted leading-relaxed mb-3">{t.languageHint}</p>
         <LanguageSwitch locale={locale} />
       </section>
 
       {/* الخصوصية: إخفاء الاسم في التقييمات والمراجعات */}
-      <section className="bg-surface border border-border rounded-2xl p-6">
-        <h2 className="font-bold mb-1">{t.hideNameSection}</h2>
-        <p className="text-sm text-muted mb-4">{t.hideNameHint}</p>
+      <section className="bg-surface border border-border rounded-2xl p-3.5 sm:p-5">
+        <h2 className="text-sm font-bold mb-1">{t.hideNameSection}</h2>
+        <p className="text-xs text-muted leading-relaxed mb-3">{t.hideNameHint}</p>
         <button
           type="button"
           role="switch"
@@ -80,7 +80,7 @@ export function AccountSettings({
             setHideName((v) => !v);
             setSaved(false);
           }}
-          className={`flex items-center gap-3 w-full rounded-xl border px-4 py-3 transition ${
+          className={`flex items-center gap-3 w-full rounded-xl border px-3 py-2.5 transition ${
             hideName
               ? "border-accent bg-accent/10"
               : "border-border bg-surface-2 hover:border-accent/50"
@@ -104,11 +104,11 @@ export function AccountSettings({
         </button>
       </section>
 
-      <section className="bg-surface border border-border rounded-2xl p-6">
-        <h2 className="font-bold mb-1">{t.usernameSection}</h2>
-        <p className="text-sm text-muted mb-4">{t.usernameHint}</p>
+      <section className="bg-surface border border-border rounded-2xl p-3.5 sm:p-5">
+        <h2 className="text-sm font-bold mb-1">{t.usernameSection}</h2>
+        <p className="text-xs text-muted leading-relaxed mb-3">{t.usernameHint}</p>
         <div className="relative">
-          <span className="absolute top-1/2 -translate-y-1/2 start-4 text-muted">@</span>
+          <span className="absolute top-1/2 -translate-y-1/2 start-3 text-muted">@</span>
           <input
             value={username}
             onChange={(e) => {
@@ -118,7 +118,7 @@ export function AccountSettings({
             dir="ltr"
             maxLength={24}
             placeholder="ahmed_92"
-            className="w-full rounded-xl bg-surface-2 border border-border ps-9 pe-4 py-3 outline-none focus:border-accent transition text-left"
+            className="w-full rounded-xl bg-surface-2 border border-border ps-8 pe-3 py-2.5 text-sm outline-none focus:border-accent transition text-left"
           />
         </div>
         {cleaned !== username.trim().toLowerCase() && username.trim() !== "" && (
@@ -128,9 +128,9 @@ export function AccountSettings({
         )}
       </section>
 
-      <section className="bg-surface border border-border rounded-2xl p-6">
-        <h2 className="font-bold mb-1">{t.displayNameSection}</h2>
-        <p className="text-sm text-muted mb-4">{t.displayNameHint}</p>
+      <section className="bg-surface border border-border rounded-2xl p-3.5 sm:p-5">
+        <h2 className="text-sm font-bold mb-1">{t.displayNameSection}</h2>
+        <p className="text-xs text-muted leading-relaxed mb-3">{t.displayNameHint}</p>
         <input
           value={nickname}
           onChange={(e) => {
@@ -139,20 +139,20 @@ export function AccountSettings({
           }}
           maxLength={40}
           placeholder={t.displayNamePlaceholder}
-          className="w-full rounded-xl bg-surface-2 border border-border px-4 py-3 outline-none focus:border-accent transition"
+          className="w-full rounded-xl bg-surface-2 border border-border px-3 py-2.5 text-sm outline-none focus:border-accent transition"
         />
       </section>
 
-      <section className="bg-surface border border-border rounded-2xl p-6">
-        <h2 className="font-bold mb-1">{t.emailSection}</h2>
-        <p className="text-sm text-muted mb-3">{t.emailHint}</p>
-        <p className="rounded-xl bg-surface-2 border border-border px-4 py-3 text-muted" dir="ltr">
+      <section className="bg-surface border border-border rounded-2xl p-3.5 sm:p-5">
+        <h2 className="text-sm font-bold mb-1">{t.emailSection}</h2>
+        <p className="text-xs text-muted leading-relaxed mb-3">{t.emailHint}</p>
+        <p className="rounded-xl bg-surface-2 border border-border px-3 py-2.5 text-sm text-muted" dir="ltr">
           {email}
         </p>
       </section>
 
       {error && (
-        <p className="text-sm text-red-300 bg-red-500/10 border border-red-400/30 rounded-xl px-4 py-3">
+        <p className="text-sm text-red-300 bg-red-500/10 border border-red-400/30 rounded-xl px-3 py-2.5">
           {error}
         </p>
       )}
@@ -161,7 +161,7 @@ export function AccountSettings({
         <button
           onClick={save}
           disabled={pending}
-          className="px-6 py-3 rounded-xl bg-accent text-[color:var(--on-accent)] font-semibold hover:brightness-110 transition disabled:opacity-60"
+          className="px-5 py-2.5 text-sm rounded-xl bg-accent text-[color:var(--on-accent)] font-semibold hover:brightness-110 transition disabled:opacity-60"
         >
           {pending ? t.saving : t.saveSettings}
         </button>

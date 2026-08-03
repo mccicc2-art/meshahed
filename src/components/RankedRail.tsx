@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Icon, type IconName } from "./Icon";
 import Image from "next/image";
 import { posterUrl, titleOf, type SearchResult } from "@/lib/tmdb";
 import { getDict, type Locale } from "@/lib/i18n";
@@ -12,10 +13,12 @@ import { getDict, type Locale } from "@/lib/i18n";
  */
 export function RankedRail({
   title,
+  icon,
   items,
   locale,
 }: {
   title: string;
+  icon?: IconName;
   items: SearchResult[];
   locale: Locale;
 }) {
@@ -24,7 +27,10 @@ export function RankedRail({
 
   return (
     <section>
-      <h2 className="text-base font-bold mb-1">{title}</h2>
+      <h2 className="flex items-center gap-2 text-base font-bold mb-1">
+        {icon && <Icon name={icon} size={18} className="text-muted" />}
+        {title}
+      </h2>
       <p className="text-[11px] text-muted mb-3">{t.topTenSource}</p>
 
       <div className="-mx-4 px-4 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
