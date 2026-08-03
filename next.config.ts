@@ -24,9 +24,9 @@ const csp = [
   "frame-ancestors 'none'",
   "object-src 'none'",
   "script-src 'self' 'unsafe-inline'",
-  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https://image.tmdb.org https://lh3.googleusercontent.com https://*.supabase.co",
-  "font-src 'self' data: https://fonts.gstatic.com",
+  "font-src 'self' data:",
   `connect-src 'self' ${supabaseHost} https://*.supabase.co wss://*.supabase.co`,
   "manifest-src 'self'",
   // مشغّل الترايلر لا يُحمَّل إلا بالضغط، ومن نطاق يوتيوب بلا كوكيز
