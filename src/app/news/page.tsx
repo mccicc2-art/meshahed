@@ -9,7 +9,8 @@ import {
   type SearchResult,
 } from "@/lib/tmdb";
 import { getT } from "@/lib/locale";
-import { NewsPost, type NewsItem } from "@/components/NewsPost";
+import type { NewsItem } from "@/components/NewsPost";
+import { NewsList } from "@/components/NewsList";
 
 function dateOf(r: SearchResult) {
   return r.release_date ?? r.first_air_date ?? "";
@@ -28,7 +29,7 @@ export default async function NewsPage() {
     getReactions(),
   ]);
 
-  const followed = new Set(follows.map((f) => `${f.media_type}-${f.tmdb_id}`));
+  const followed = follows.map((f) => `${f.media_type}-${f.tmdb_id}`);
   const today = new Date().toISOString().slice(0, 10);
 
   // دمج الأفلام القادمة والمسلسلات الجارية: الأقرب موعداً أولاً
@@ -63,21 +64,13 @@ export default async function NewsPage() {
       {items.length === 0 ? (
         <p className="text-center text-muted py-20">{t.newsEmpty}</p>
       ) : (
-        <div className="grid gap-5 sm:grid-cols-2">
-          {items.map((item) => {
-            const key = `${item.mediaType}-${item.id}`;
-            return (
-              <NewsPost
-                key={key}
-                item={item}
-                locale={locale}
-                initialCount={reactions.counts[key] ?? 0}
-                initialReacted={reactions.mine.has(key)}
-                initialFollowing={followed.has(key)}
-              />
-            );
-          })}
-        </div>
+        <NewsList
+          items={items}
+          locale={locale}
+          counts={reactions.counts}
+          mine={[...reactions.mine]}
+          followed={followed}
+        />
       )}
     </div>
   );
