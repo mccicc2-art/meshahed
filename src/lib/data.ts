@@ -411,8 +411,10 @@ export async function getProfileByUsername(username: string): Promise<PublicProf
 
   try {
     const supabase = await createClient();
+    // العرض العام لا الجدول: الجدول صار مقصوراً على صاحبه، والعرض يحمل
+    // الأعمدة العامة وحدها (انظر supabase/public_profiles.sql)
     const { data, error } = await supabase
-      .from("profiles")
+      .from("public_profiles")
       .select("id, nickname, username, avatar_url, cover_url, favorite_genres, hide_name")
       .eq("username", handle)
       .maybeSingle();
@@ -420,7 +422,7 @@ export async function getProfileByUsername(username: string): Promise<PublicProf
     // احتياط لو عمود إخفاء الاسم لم يُضَف بعد
     if (error) {
       const legacy = await supabase
-        .from("profiles")
+        .from("public_profiles")
         .select("id, nickname, username, avatar_url, cover_url, favorite_genres")
         .eq("username", handle)
         .maybeSingle();
@@ -491,7 +493,7 @@ export async function getFollowedPeople(): Promise<PublicProfile[]> {
     const list = (ids ?? []).map((r) => r.following_id);
     if (!list.length) return [];
     const { data } = await supabase
-      .from("profiles")
+      .from("public_profiles")
       .select("id, nickname, username, avatar_url, cover_url, favorite_genres, hide_name")
       .in("id", list);
     return ((data ?? []) as PublicProfile[]).map((p) => ({
@@ -621,7 +623,7 @@ export async function getFollowLists(
     if (!ids.length) return empty;
 
     const { data: people } = await supabase
-      .from("profiles")
+      .from("public_profiles")
       .select("id, nickname, username, avatar_url, hide_name")
       .in("id", [...new Set(ids)]);
 
@@ -679,6 +681,67 @@ export async function getMostWatched(days = 7): Promise<LeaderRow[]> {
     const { data, error } = await supabase.rpc("most_watched_period", { days });
     if (error || !data) return [];
     return data as LeaderRow[];
+  } catch {
+    return [];
+  }
+}
+
+// ============================================================
+//  سجلّ المشاهدة
+// ============================================================
+
+export interface HistoryRow {
+  kind: "episode" | "movie";
+  tmdbId: number;
+  /** الموسم والحلقة — للحلقات فقط */
+  season?: number;
+  episode?: number;
+  watchedAt: string;
+  runtime: number | null;
+}
+
+/**
+ * كل ما شاهدته مرتّباً من الأحدث.
+ *
+ * الحلقات والأفلام في قائمة واحدة: السجلّ يُقرأ بالزمن لا بنوع العمل، ومن
+ * يتذكّر «شفت شيئاً ليلة الخميس» لا يتذكّر إن كان فيلماً أم حلقة.
+ */
+export async function getWatchHistory(limit = 400): Promise<HistoryRow[]> {
+  try {
+    const supabase = await createClient();
+    const [eps, movies] = await Promise.all([
+      supabase
+        .from("watched_episodes")
+        .select("show_tmdb_id, season_number, episode_number, watched_at, runtime")
+        .order("watched_at", { ascending: false })
+        .limit(limit),
+      supabase
+        .from("watched_movies")
+        .select("movie_tmdb_id, watched_at, runtime")
+        .order("watched_at", { ascending: false })
+        .limit(limit),
+    ]);
+
+    const rows: HistoryRow[] = [
+      ...((eps.data ?? []) as WatchedEpisodeRow[]).map((e) => ({
+        kind: "episode" as const,
+        tmdbId: e.show_tmdb_id,
+        season: e.season_number,
+        episode: e.episode_number,
+        watchedAt: e.watched_at,
+        runtime: e.runtime,
+      })),
+      ...((movies.data ?? []) as { movie_tmdb_id: number; watched_at: string; runtime: number | null }[]).map(
+        (m) => ({
+          kind: "movie" as const,
+          tmdbId: m.movie_tmdb_id,
+          watchedAt: m.watched_at,
+          runtime: m.runtime,
+        }),
+      ),
+    ];
+
+    return rows.sort((a, b) => b.watchedAt.localeCompare(a.watchedAt)).slice(0, limit);
   } catch {
     return [];
   }
