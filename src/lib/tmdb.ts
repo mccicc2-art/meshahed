@@ -57,6 +57,9 @@ export interface SearchResult {
   first_air_date?: string;
   release_date?: string;
   vote_average: number;
+  /** عدد المصوّتين عالمياً — تُستخدم كعتبة حتى لا يتصدّر عمل بصوتين */
+  vote_count?: number;
+  popularity?: number;
 }
 
 export interface Episode {
@@ -191,4 +194,24 @@ export function getMovie(id: number): Promise<MovieDetails> {
 
 export function getSeason(tvId: number, seasonNumber: number): Promise<SeasonDetails> {
   return tmdb<SeasonDetails>(`/tv/${tvId}/season/${seasonNumber}`);
+}
+
+/**
+ * الأعلى تقييماً عالمياً هذا الأسبوع.
+ *
+ * TMDB لا يوفّر «أعلى تقييماً لهذا الأسبوع» جاهزاً — قائمة top_rated عنده
+ * تاريخية لا أسبوعية. فالمعيار هنا: رائج هذا الأسبوع + تجاوز عتبة أصوات
+ * تمنع عملاً بثلاثة أصوات من التصدّر.
+ */
+export async function topRatedThisWeek(minVotes = 150): Promise<SearchResult[]> {
+  const rows = await trending();
+  return rows
+    .filter((r) => (r.vote_count ?? 0) >= minVotes && r.vote_average > 0)
+    .sort((a, b) => b.vote_average - a.vote_average);
+}
+
+/** الأكثر رواجاً عالمياً هذا الأسبوع — ترتيب TMDB نفسه */
+export async function mostPopularThisWeek(): Promise<SearchResult[]> {
+  const rows = await trending();
+  return [...rows].sort((a, b) => (b.popularity ?? 0) - (a.popularity ?? 0));
 }

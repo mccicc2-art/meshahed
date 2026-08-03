@@ -634,3 +634,52 @@ export async function getFollowLists(
     return empty;
   }
 }
+
+// ============================================================
+//  لوحة الصدارة
+// ============================================================
+
+export interface LeaderRow {
+  tmdb_id: number;
+  media_type: "tv" | "movie";
+  title: string | null;
+  poster_path: string | null;
+  /** متوسط تقييم مجتمع مشاهد (١–٥) — للأعلى تقييماً فقط */
+  avg_rating?: number | null;
+  /** عدد مقيّمي مشاهد */
+  votes?: number | null;
+  /** مَن أضافه لمكتبته في المدة */
+  followers?: number | null;
+  /** مَن شاهد منه شيئاً في المدة */
+  viewers?: number | null;
+  /** مجموع الحلقات المؤشّرة في المدة */
+  episodes?: number | null;
+  score?: number | null;
+}
+
+/**
+ * الأعلى تقييماً في مجتمع مشاهد خلال مدة.
+ * days = 0 تعني «كل الوقت».
+ */
+export async function getTopRated(days = 7): Promise<LeaderRow[]> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("top_rated_period", { days });
+    if (error || !data) return [];
+    return data as LeaderRow[];
+  } catch {
+    return [];
+  }
+}
+
+/** الأكثر مشاهدة في مجتمع مشاهد خلال مدة (متابعات + حلقات مؤشّرة) */
+export async function getMostWatched(days = 7): Promise<LeaderRow[]> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("most_watched_period", { days });
+    if (error || !data) return [];
+    return data as LeaderRow[];
+  } catch {
+    return [];
+  }
+}
