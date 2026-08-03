@@ -1,9 +1,13 @@
 "use client";
 
+/* eslint-disable @next/next/no-img-element */
+
 import { useMemo, useState, useTransition } from "react";
 import { toggleEpisode, setSeasonWatched, watchUpTo } from "@/lib/actions";
 import { episodeKey } from "@/lib/keys";
-import { getDict, type Locale } from "@/lib/i18n";
+import { getDict, type Dict, type Locale } from "@/lib/i18n";
+import { formatDateShort } from "@/lib/when";
+import { IMG } from "@/lib/media";
 
 export interface TrackerEpisode {
   episode_number: number;
@@ -22,6 +26,17 @@ const today = () => new Date().toISOString().slice(0, 10);
 
 function hasAired(air_date: string | null) {
   return !!air_date && air_date <= today();
+}
+
+/** «1 يونيو · 52 د» — سطر البيانات المساعد للحلقة */
+function metaLine(e: TrackerEpisode, aired: boolean, t: Dict): string {
+  const parts: string[] = [];
+  if (e.air_date) {
+    const d = formatDateShort(e.air_date, t);
+    parts.push(aired ? d : t.airsOn(d));
+  }
+  if (e.runtime) parts.push(t.runtimeMin(e.runtime));
+  return parts.join(" · ");
 }
 
 export function EpisodeTracker({
@@ -43,9 +58,10 @@ export function EpisodeTracker({
     () => seasons.flatMap((s) => s.episodes.filter((e) => hasAired(e.air_date))),
     [seasons],
   );
-  const watchedAired = airedEpisodes.filter((e) =>
-    watched.has(episodeKey(seasonOf(seasons, e), e.episode_number)),
-  ).length;
+  // نفس قاعدة الرئيسية والمكتبة بالضبط: عدد ما أشّرته ÷ عدد ما عُرض.
+  // العدّ من مجموع ما أشّرته (لا من تقاطعه مع قائمة المعروض) حتى لا تختلف
+  // النسبة هنا عن النسبة في البطاقة إذا تباينت تواريخ TMDB.
+  const watchedAired = Math.min(watched.size, airedEpisodes.length);
   const progress = airedEpisodes.length
     ? Math.round((watchedAired / airedEpisodes.length) * 100)
     : 0;
@@ -181,9 +197,13 @@ export function EpisodeTracker({
               <div className="flex items-center gap-3 p-4">
                 <button
                   onClick={() => setOpen(isOpen ? null : s.season_number)}
+                  aria-expanded={isOpen}
+                  aria-label={t.seasonToggleAria(s.season_number)}
                   className="flex-1 flex items-center gap-3 text-start"
                 >
-                  <span className="text-muted">{isOpen ? "▾" : "▸"}</span>
+                  <span className="text-muted" aria-hidden>
+                    {isOpen ? "▾" : "▸"}
+                  </span>
                   <span className="font-semibold">{s.name || t.seasonLabel(s.season_number)}</span>
                   <span className="text-xs text-muted" dir="ltr">
                     {seasonWatched}/{aired.length}
@@ -222,20 +242,46 @@ export function EpisodeTracker({
                               ? "bg-accent-2 border-accent-2 text-[color:var(--on-accent-2)]"
                               : "border-border hover:border-accent-2"
                           } ${!epAired ? "cursor-not-allowed" : ""}`}
-                          aria-label={t.markWatchedAria}
+                          aria-pressed={isWatched}
+                          aria-label={`${t.markWatchedAria} — ${e.episode_number}. ${e.name}`}
                         >
                           {isWatched ? "✓" : ""}
                         </button>
+
+                        {/* الصورة المصغّرة تملأ الفراغ الذي كان يتوسّط الصف */}
+                        <span className="shrink-0 w-16 sm:w-[92px] aspect-video rounded-md overflow-hidden bg-surface-2 border border-border">
+                          {e.still_path ? (
+                            <img
+                              src={`${IMG}/w185${e.still_path}`}
+                              alt=""
+                              loading="lazy"
+                              decoding="async"
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <span
+                              className="w-full h-full grid place-items-center text-muted text-sm"
+                              aria-hidden
+                            >
+                              🎬
+                            </span>
+                          )}
+                        </span>
+
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium truncate">
                             <span className="text-muted">{e.episode_number}.</span> {e.name}
                           </p>
-                          {e.air_date && (
-                            <p className="text-xs text-muted">
-                              {epAired ? e.air_date : t.airsOn(e.air_date)}
-                            </p>
-                          )}
+                          {/* على الجوال يبقى التاريخ تحت العنوان؛ على الشاشات الأعرض
+                              ينتقل إلى طرف الصف فلا يبقى فراغ في المنتصف */}
+                          <p className="text-xs text-muted mt-0.5 truncate sm:hidden">
+                            {metaLine(e, epAired, t)}
+                          </p>
                         </div>
+
+                        <span className="hidden sm:block shrink-0 text-xs text-muted text-end tabular-nums">
+                          {metaLine(e, epAired, t)}
+                        </span>
                       </li>
                     );
                   })}
@@ -249,7 +295,3 @@ export function EpisodeTracker({
   );
 }
 
-function seasonOf(seasons: TrackerSeason[], ep: TrackerEpisode): number {
-  for (const s of seasons) if (s.episodes.includes(ep)) return s.season_number;
-  return 1;
-}

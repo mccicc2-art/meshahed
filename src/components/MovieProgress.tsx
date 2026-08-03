@@ -105,6 +105,7 @@ export function MovieProgress({
             key={d}
             type="button"
             onClick={() => bump(d)}
+            aria-label={t.bumpAria(d)}
             className="px-3 py-1.5 rounded-lg bg-surface-2 border border-border text-sm hover:border-accent transition"
             dir="ltr"
           >

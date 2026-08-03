@@ -27,12 +27,15 @@ export function NewsPost({
   initialCount,
   initialReacted,
   initialFollowing,
+  priority = false,
 }: {
   item: NewsItem;
   locale: Locale;
   initialCount: number;
   initialReacted: boolean;
   initialFollowing: boolean;
+  /** أول منشورين فقط يُحمّلان فوراً — الباقي كسول */
+  priority?: boolean;
 }) {
   const t = getDict(locale);
   const [count, setCount] = useState(initialCount);
@@ -84,10 +87,19 @@ export function NewsPost({
           <img
             src={item.backdrop}
             alt=""
+            loading={priority ? "eager" : "lazy"}
+            decoding="async"
+            fetchPriority={priority ? "high" : "low"}
             className="w-full h-full object-cover group-hover:scale-[1.02] transition duration-300"
           />
         ) : item.poster ? (
-          <img src={item.poster} alt="" className="w-full h-full object-cover" />
+          <img
+            src={item.poster}
+            alt=""
+            loading={priority ? "eager" : "lazy"}
+            decoding="async"
+            className="w-full h-full object-cover"
+          />
         ) : (
           <span className="w-full h-full grid place-items-center text-4xl text-muted">🎬</span>
         )}
@@ -116,6 +128,8 @@ export function NewsPost({
           <button
             onClick={fire}
             aria-pressed={reacted}
+            aria-label={t.reactAria}
+            title={t.reactAria}
             className={`flex items-center gap-1.5 px-4 py-2 rounded-full border text-sm transition ${
               reacted
                 ? "bg-accent/15 border-accent text-accent font-semibold"

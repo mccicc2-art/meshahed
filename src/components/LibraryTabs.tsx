@@ -1,4 +1,5 @@
 import { PosterCard } from "./PosterCard";
+import { PosterGrid } from "./PosterGrid";
 
 export interface LibraryEntry {
   key: string;
@@ -42,7 +43,7 @@ export function MediaSection({
           {empty}
         </p>
       ) : (
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-4">
+        <PosterGrid>
           {items.map((i) => (
             <PosterCard
               key={i.key}
@@ -53,7 +54,7 @@ export function MediaSection({
               progress={i.progress}
             />
           ))}
-        </div>
+        </PosterGrid>
       )}
     </section>
   );
