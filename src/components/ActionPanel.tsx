@@ -10,82 +10,46 @@ export interface PanelItem {
   tone: "waiting" | "watching" | "ready" | "soon";
 }
 
-const TONES: Record<PanelItem["tone"], { ring: string; text: string; bar: string }> = {
-  waiting: {
-    ring: "border-accent/45 bg-accent/[0.07] hover:border-accent",
-    text: "text-accent",
-    bar: "bg-accent",
-  },
-  watching: {
-    ring: "border-accent-2/40 bg-accent-2/[0.07] hover:border-accent-2",
-    text: "text-accent-2",
-    bar: "bg-accent-2",
-  },
-  ready: {
-    ring: "border-border bg-surface hover:border-accent/50",
-    text: "text-foreground",
-    bar: "bg-foreground/40",
-  },
-  soon: {
-    ring: "border-border bg-surface hover:border-accent/50",
-    text: "text-muted",
-    bar: "bg-muted/50",
-  },
+const TONES: Record<PanelItem["tone"], string> = {
+  waiting: "text-accent",
+  watching: "text-accent-2",
+  ready: "text-foreground",
+  soon: "text-muted",
 };
 
 /**
- * لوحة «وش أسوي الحين» أعلى الرئيسية.
+ * شريط الأعداد — سطر واحد.
  *
- * حلّت محل شريط «وقت المشاهدة / حلقة / مسلسل / فيلم». الفرق ليس شكلياً:
- * تلك أرقام تُقرأ ولا يُفعل بها شيء، وهذه أعداد قابلة للنقر تقود كل واحدة
- * إلى القائمة التي تخصّها. والشبكة ثابتة الأعمدة تتّسع لعرض الشاشة، بدل
- * صفّ أفقي كان يخفي نصف البطاقات خلف سحب لا يظهر أنه موجود.
+ * كان أربع بطاقات بأيقونة ورقم وعنوان وشرح، بارتفاع ١١٠ بكسل. مع الترويسة
+ * كان الاثنان يلتهمان نصف الشاشة قبل أي عمل. الآن شريط مقسّم بارتفاع ٥٦
+ * بكسل: رقم وكلمة واحدة. الشرح حُذف لا اختُصر — كلمة مثل «ينتظرك» تشرح
+ * نفسها، والسطر تحتها كان يشرح ما لا يحتاج شرحاً.
  */
 export function ActionPanel({ items }: { items: PanelItem[] }) {
   if (!items.some((i) => i.count > 0)) return null;
 
   return (
-    // البطاقات الأربع تُعرض دائماً — إخفاء الأصفار كان يترك بطاقة وحيدة
-    // في نصف صفّ والنصف الآخر فراغاً. الصفر خبر أيضاً: «ما فيه شيء ينتظرك».
-    <nav className="grid grid-cols-4 gap-2">
+    <nav className="grid grid-cols-4 rounded-2xl border border-border bg-surface overflow-hidden divide-x divide-x-reverse divide-border">
       {items.map((item) => {
-        const tone = TONES[item.tone];
         const dim = item.count === 0;
         return (
           <Link
             key={item.key}
             href={dim ? "/library" : item.href}
             scroll={item.href.startsWith("#") ? true : undefined}
-            aria-disabled={dim}
-            className={`relative overflow-hidden rounded-2xl border p-2.5 sm:p-4 transition ${
-              dim ? "border-border bg-surface/60 opacity-55 hover:opacity-80" : tone.ring
+            className={`py-2.5 px-1 text-center transition hover:bg-surface-2 ${
+              dim ? "opacity-45" : ""
             }`}
           >
             <span
-              className={`absolute inset-x-0 top-0 h-0.5 ${dim ? "bg-border" : tone.bar}`}
-            />
-
-            <span className="block text-base sm:text-lg leading-none" aria-hidden>
-              {item.emoji}
-            </span>
-
-            {/* بلا dir="ltr": ضبطها LTR كان يدفع الرقم لحافة البطاقة اليسرى
-                بينما الأيقونة والعنوان على اليمين، فتنفصل أجزاء البطاقة */}
-            <span
-              className={`block text-xl sm:text-3xl font-extrabold leading-none mt-1.5 tabular-nums ${
-                dim ? "text-muted" : tone.text
+              className={`block text-xl sm:text-2xl font-extrabold leading-none tabular-nums ${
+                dim ? "text-muted" : TONES[item.tone]
               }`}
             >
               {item.count}
             </span>
-
-            <span className="block text-[11px] sm:text-xs font-bold mt-1 leading-tight">
+            <span className="block text-[11px] text-muted mt-1 leading-tight truncate">
               {item.label}
-            </span>
-
-            {/* الشرح يظهر على الشاشات الواسعة فقط — على الجوال يزحم البطاقة */}
-            <span className="hidden sm:block text-[11px] text-muted mt-0.5 leading-tight">
-              {item.sub}
             </span>
           </Link>
         );

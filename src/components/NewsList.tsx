@@ -4,11 +4,12 @@ import { useState } from "react";
 import { NewsPost, type NewsItem } from "./NewsPost";
 import { getDict, type Locale } from "@/lib/i18n";
 
-const PAGE = 12;
+const PAGE = 4;
 
 /**
- * كانت الصفحة تحمّل ٣٠ منشوراً بصور عريضة دفعة واحدة.
- * الآن ١٢ منشوراً أولاً، والباقي بطلب المستخدم.
+ * كانت الصفحة تحمّل ٣٠ منشوراً بصور عريضة دفعة واحدة، ثم اثني عشر.
+ * الآن أربعة: الصفوف الأفقية فوقها هي وجه الصفحة، وهذه تغطية لمن نزل
+ * يقرأ — واثنا عشر منشوراً بصور عريضة كانت تجعل الصفحة خمس شاشات.
  */
 export function NewsList({
   items,

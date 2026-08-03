@@ -46,5 +46,5 @@ export function PosterRail({
 
 /** عنصر داخل الصفّ — عرض ثابت حتى لا تتمدّد البطاقات */
 export function RailItem({ children }: { children: React.ReactNode }) {
-  return <div className="w-[104px] sm:w-[132px] shrink-0">{children}</div>;
+  return <div className="w-[112px] sm:w-[132px] shrink-0">{children}</div>;
 }
