@@ -1,5 +1,4 @@
 import Link from "next/link";
-import Image from "next/image";
 import { redirect } from "next/navigation";
 import {
   getUser,
@@ -27,7 +26,6 @@ import {
 } from "@/lib/tmdb";
 import { backdropUrl } from "@/lib/media";
 import { getT } from "@/lib/locale";
-import { num } from "@/lib/i18n";
 import { blendRecommendations, type Candidate } from "@/lib/recommend";
 import { whenLabel } from "@/lib/when";
 import { airedEpisodeCount, airedPerSeason, percentOf, nextUnwatchedEpisode } from "@/lib/progress";
@@ -37,6 +35,7 @@ import { PosterGrid } from "@/components/PosterGrid";
 import { HeroNextUp, type NextEpisode } from "@/components/HeroNextUp";
 import { PosterRail, RailItem } from "@/components/PosterRail";
 import { ActionPanel, type PanelItem } from "@/components/ActionPanel";
+import { ProfileHeader } from "@/components/ProfileHeader";
 import { ShowStatsSync, type ShowStat } from "@/components/ShowStatsSync";
 
 export default async function HomePage() {
@@ -352,50 +351,15 @@ export default async function HomePage() {
     <div className="space-y-8 sm:space-y-10">
       <ShowStatsSync stats={statsToCache} />
 
-      {/* ===== الترويسة =====
-          بلا صورة شخصية: الشريط العلوي يعرضها في كل صفحة، وتكرارها هنا
-          كان يعني وجهين متطابقين في أول شاشة. وبلا شرائح الأنواع: مكانها
-          الملف الشخصي، لا الصفحة التي تجاوب «وش أشوف الحين». */}
-      <section>
-        <div className="hidden sm:block relative h-32 rounded-2xl overflow-hidden border border-border mb-4">
-          {profile?.cover_url ? (
-            <Image src={profile.cover_url} alt="" fill sizes="1152px" className="object-cover" />
-          ) : (
-            <div
-              className="w-full h-full"
-              style={{
-                background:
-                  "linear-gradient(120deg, var(--glow-a), transparent 55%), linear-gradient(300deg, var(--glow-b), transparent 55%), var(--surface-2)",
-              }}
-            />
-          )}
-          <div className="absolute inset-0 bg-gradient-to-t from-[color:var(--background)] via-[color:var(--background)]/30 to-transparent" />
-          <div className="absolute inset-x-0 bottom-0 p-5">
-            <h1 className="text-2xl font-bold drop-shadow">{displayName}</h1>
-          </div>
-        </div>
-
-        <div className="flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <h1 className="sm:hidden text-lg font-bold truncate leading-tight">{displayName}</h1>
-            <p className="text-xs text-muted mt-0.5">
-              <b className="text-foreground">{num(social.followers, locale)}</b>{" "}
-              {t.followersLabel}
-              <span className="mx-1.5">·</span>
-              <b className="text-foreground">{num(social.following, locale)}</b>{" "}
-              {t.followingLabel}
-            </p>
-          </div>
-          {profile?.username && (
-            <Link
-              href={`/u/${profile.username}`}
-              className="shrink-0 text-xs text-accent border border-border rounded-full px-3 py-1.5 hover:border-accent transition"
-            >
-              {t.publicProfileLink}
-            </Link>
-          )}
-        </div>
-      </section>
+      <ProfileHeader
+        displayName={displayName}
+        username={profile?.username ?? null}
+        avatarUrl={profile?.avatar_url ?? null}
+        coverUrl={profile?.cover_url ?? null}
+        followers={social.followers}
+        following={social.following}
+        locale={locale}
+      />
 
       {/* لوحة «وش أسوي الحين» — بدل أرقام المشاهدة التي لا يُفعل بها شيء.
           وقت المشاهدة والحلقات انتقلت لتحليل المكتبة، مكانها الطبيعي. */}
