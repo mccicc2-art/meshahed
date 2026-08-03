@@ -28,11 +28,22 @@ function fmtWatchTime(minutes: number, t: Dict) {
   return rest === 0 ? t.days(d) : t.daysAndHours(d, rest);
 }
 
-export default async function LibraryPage() {
+export default async function LibraryPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ filter?: string }>;
+}) {
   const user = await getUser();
   if (!user) redirect("/login");
 
   const { locale, t } = await getT();
+
+  // شريط الأعداد في الرئيسية يفتح المكتبة على الشريحة المقصودة مباشرةً
+  const { filter } = await searchParams;
+  const initialFilter =
+    filter === "watching" || filter === "notStarted" || filter === "done" || filter === "tv" || filter === "movie"
+      ? filter
+      : "all";
 
   const [follows, summary, watchedMovieIds, movieProgress] = await Promise.all([
     getFollows(),
@@ -137,7 +148,7 @@ export default async function LibraryPage() {
       {items.length === 0 ? (
         <p className="text-center text-muted py-20">{t.libraryEmpty}</p>
       ) : (
-        <LibraryBrowser items={items} locale={locale} />
+        <LibraryBrowser items={items} locale={locale} initialFilter={initialFilter} />
       )}
     </div>
   );
