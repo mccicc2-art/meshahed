@@ -21,7 +21,7 @@ export default async function AccountSettingsPage() {
           {t.editProfile} ›
         </Link>
       </div>
-      <h1 className="text-2xl font-bold mt-3 mb-6">{t.settingsTitle}</h1>
+      <h1 className="text-xl font-bold mt-2 mb-4">{t.settingsTitle}</h1>
 
       <AccountSettings
         email={user.email ?? ""}
