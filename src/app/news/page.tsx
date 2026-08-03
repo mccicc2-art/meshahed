@@ -4,6 +4,7 @@ import {
   upcomingMovies,
   airingTv,
   topTenThisWeek,
+  topTenAnimeThisWeek,
   nowPlayingMovies,
   titleOf,
   posterUrl,
@@ -42,9 +43,10 @@ export default async function NewsPage() {
 
   const { locale, t } = await getT();
 
-  const [topMovies, topSeries, cinemas, movies, tv, follows] = await Promise.all([
+  const [topMovies, topSeries, topAnime, cinemas, movies, tv, follows] = await Promise.all([
     topTenThisWeek("movie").catch(() => [] as SearchResult[]),
     topTenThisWeek("tv").catch(() => [] as SearchResult[]),
+    topTenAnimeThisWeek().catch(() => [] as SearchResult[]),
     nowPlayingMovies().catch(() => null),
     upcomingMovies().catch(() => [] as SearchResult[]),
     airingTv().catch(() => [] as SearchResult[]),
@@ -114,6 +116,7 @@ export default async function NewsPage() {
 
       <RankedRail title={t.topTenMovies} icon="film" items={topMovies} locale={locale} />
       <RankedRail title={t.topTenSeries} icon="tv" items={topSeries} locale={locale} />
+      <RankedRail title={t.topTenAnime} icon="sparkle-star" items={topAnime} locale={locale} />
       <CountdownRail title={t.comingSoon} icon="calendar" items={soon} locale={locale} />
 
       {items.length > 0 && (
