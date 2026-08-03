@@ -1,34 +1,28 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Avatar } from "@/components/Avatar";
-import { getDict, num, type Locale } from "@/lib/i18n";
+import { getDict, type Locale } from "@/lib/i18n";
 import { Icon } from "./Icon";
 
 /**
  * ترويسة الرئيسية — الصورة في وسط الغلاف.
  *
- * الصورة في الوسط لا في الطرف: العين تبدأ من منتصف الشاشة فتقرأ الاسم
- * والأرقام في مسار واحد نازل، بدل أن تقفز من طرف لطرف. والاسم والمتابعون
- * سطران متلاصقان أسفلها، فلا يصير للترويسة ثلاثة أسطر منفصلة كما كانت.
+ * الصورة في الوسط لا في الطرف: العين تبدأ من منتصف الشاشة فتنزل إلى
+ * الاسم في مسار واحد، بدل أن تقفز من طرف لطرف. والاسم وحده تحتها —
+ * لا معرّف ولا عدّادات — فالترويسة سطرٌ واحد لا ثلاثة.
  *
  * الغلاف ٩٦ بكسل والكتلة كلها نحو ٢٠٠ — أي ربع شاشة الجوال، وهو سقفٌ
  * مقصود: هذه صفحة تعرض الأعمال لا صاحب الحساب.
  */
 export function ProfileHeader({
   displayName,
-  username,
   avatarUrl,
   coverUrl,
-  followers,
-  following,
   locale,
 }: {
   displayName: string;
-  username: string | null;
   avatarUrl: string | null;
   coverUrl: string | null;
-  followers: number;
-  following: number;
   locale: Locale;
 }) {
   const t = getDict(locale);
@@ -77,26 +71,12 @@ export function ProfileHeader({
           />
         </Link>
 
-        <h1 className="text-[15px] sm:text-lg font-bold mt-1 text-center truncate max-w-full px-4">
+        {/* الاسم وحده. المعرّف وعدّادا المتابعين حُذفا: صفرٌ ثم صفرٌ ثم
+            معرّفٌ يعرفه صاحبه أصلاً — ثلاث معلومات لا تخبره بشيء، وتزيد
+            الترويسة سطراً وتُشتّت العين عن الاسم. مكانها الصفحة العامة. */}
+        <h1 className="text-base sm:text-lg font-bold mt-1.5 text-center truncate max-w-full px-4">
           {displayName}
         </h1>
-
-        {/* المعرّف والمتابعون في سطر واحد — كانت ثلاثة أسطر منفصلة */}
-        <p className="text-[11px] text-muted mt-0.5 flex items-center gap-1.5 flex-wrap justify-center px-4">
-          {username && (
-            <Link href={`/u/${username}`} dir="ltr" className="hover:text-accent transition">
-              @{username}
-            </Link>
-          )}
-          {username && <span aria-hidden>·</span>}
-          <span>
-            <b className="text-foreground">{num(followers, locale)}</b> {t.followersLabel}
-          </span>
-          <span aria-hidden>·</span>
-          <span>
-            <b className="text-foreground">{num(following, locale)}</b> {t.followingLabel}
-          </span>
-        </p>
       </div>
     </section>
   );

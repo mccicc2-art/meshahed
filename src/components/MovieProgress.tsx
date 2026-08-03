@@ -39,11 +39,6 @@ export function MovieProgress({
   const pct = max ? Math.round((pos / max) * 100) : 0;
   const remaining = Math.max(0, max - pos);
 
-  function bump(delta: number) {
-    setSaved(false);
-    setPos((p) => Math.max(0, Math.min(p + delta, max)));
-  }
-
   function save() {
     setError(null);
     start(async () => {
@@ -66,10 +61,10 @@ export function MovieProgress({
   if (watched) return null;
 
   return (
-    <div className="bg-surface border border-border rounded-2xl p-5 mt-6 max-w-xl">
+    <div className="bg-surface border border-border rounded-2xl p-4 sm:p-5 max-w-xl">
       <div className="flex items-baseline justify-between mb-3 gap-3 flex-wrap">
-        <h3 className="font-bold">{t.whereStopped}</h3>
-        <span className="text-sm text-muted">
+        <h3 className="text-sm font-bold">{t.whereStopped}</h3>
+        <span className="text-xs text-muted">
           {pos > 0 ? (
             <>
               {t.atMinute} <span className="text-accent-2 font-semibold">{fmt(pos, t)}</span>
@@ -81,10 +76,9 @@ export function MovieProgress({
         </span>
       </div>
 
-      <div className="h-2 rounded-full bg-surface-2 overflow-hidden mb-4">
-        <div className="h-full bg-accent-2 transition-all" style={{ width: `${pct}%` }} />
-      </div>
-
+      {/* شريط واحد لا شريطان: كان فوق المنزلق شريطُ تقدّم يعرض الرقم نفسه،
+          فيرى المستخدم مؤشّرين متطابقين ويحسب أن أحدهما شيء آخر. المنزلق
+          وحده يكفي — تعبئته الملوّنة هي شريط التقدّم. */}
       <input
         type="range"
         min={0}
@@ -95,24 +89,18 @@ export function MovieProgress({
           setPos(Number(e.target.value));
           setSaved(false);
         }}
-        className="w-full accent-[color:var(--accent-2)] mb-4"
+        className="w-full h-2 appearance-none rounded-full outline-none cursor-pointer mb-4 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[color:var(--accent-2)] [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-[color:var(--background)] [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-[color:var(--accent-2)] [&::-moz-range-thumb]:border-0"
+        style={{
+          background: `linear-gradient(to left, var(--accent-2) ${pct}%, var(--surface-2) ${pct}%)`,
+        }}
         aria-label={t.positionAria}
       />
 
+      {/* الأزرار الأربعة (-١٠ -٥ +٥ +١٠) حُذفت: المنزلق يصل لأي دقيقة
+          بحركة واحدة، وحقل الرقم يضبطها بدقّة — والأزرار كانت صفّاً كاملاً
+          لعملٍ يؤدّيه الاثنان أصلاً. */}
       <div className="flex flex-wrap items-center gap-2 mb-4">
-        {[-10, -5, +5, +10].map((d) => (
-          <button
-            key={d}
-            type="button"
-            onClick={() => bump(d)}
-            aria-label={t.bumpAria(d)}
-            className="px-3 py-1.5 rounded-lg bg-surface-2 border border-border text-sm hover:border-accent transition"
-            dir="ltr"
-          >
-            {d > 0 ? `+${d}` : d} {t.minuteShort}
-          </button>
-        ))}
-        <div className="flex items-center gap-2 ms-auto">
+        <div className="flex items-center gap-2">
           <input
             type="number"
             min={0}
@@ -126,7 +114,7 @@ export function MovieProgress({
             className="w-20 rounded-lg bg-surface-2 border border-border px-3 py-1.5 text-sm outline-none focus:border-accent"
             aria-label={t.minuteWord}
           />
-          <span className="text-sm text-muted">{t.minuteWord}</span>
+          <span className="text-xs text-muted">{t.minuteWord}</span>
         </div>
       </div>
 

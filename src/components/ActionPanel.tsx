@@ -1,12 +1,12 @@
 import Link from "next/link";
+import { Icon, type IconName } from "./Icon";
 
 export interface PanelItem {
   key: string;
   href: string;
   count: number;
   label: string;
-  sub: string;
-  emoji: string;
+  icon: IconName;
   tone: "waiting" | "watching" | "ready" | "soon";
 }
 
@@ -18,12 +18,11 @@ const TONES: Record<PanelItem["tone"], string> = {
 };
 
 /**
- * شريط الأعداد — سطر واحد.
+ * شريط الأعداد — سطران.
  *
- * كان أربع بطاقات بأيقونة ورقم وعنوان وشرح، بارتفاع ١١٠ بكسل. مع الترويسة
- * كان الاثنان يلتهمان نصف الشاشة قبل أي عمل. الآن شريط مقسّم بارتفاع ٥٦
- * بكسل: رقم وكلمة واحدة. الشرح حُذف لا اختُصر — كلمة مثل «ينتظرك» تشرح
- * نفسها، والسطر تحتها كان يشرح ما لا يحتاج شرحاً.
+ * الأيقونة والرقم في سطر، والكلمة في سطر تحته. ثلاثة أسطر (أيقونة، رقم،
+ * كلمة) كانت تجعل البطاقة مربّعاً طويلاً بلا داعٍ؛ والأيقونة بجانب الرقم
+ * تقرأ نفسها معه: 🔔 ٣ = ثلاثةٌ تنتظرك.
  */
 export function ActionPanel({ items }: { items: PanelItem[] }) {
   if (!items.some((i) => i.count > 0)) return null;
@@ -32,23 +31,21 @@ export function ActionPanel({ items }: { items: PanelItem[] }) {
     <nav className="grid grid-cols-4 rounded-2xl border border-border bg-surface overflow-hidden divide-x divide-x-reverse divide-border">
       {items.map((item) => {
         const dim = item.count === 0;
+        const tone = dim ? "text-muted" : TONES[item.tone];
         return (
           <Link
             key={item.key}
             href={dim ? "/library" : item.href}
             scroll={item.href.startsWith("#") ? true : undefined}
-            className={`py-2.5 px-1 text-center transition hover:bg-surface-2 ${
-              dim ? "opacity-45" : ""
-            }`}
+            className={`py-2.5 px-1 transition hover:bg-surface-2 ${dim ? "opacity-45" : ""}`}
           >
-            <span
-              className={`block text-xl sm:text-2xl font-extrabold leading-none tabular-nums ${
-                dim ? "text-muted" : TONES[item.tone]
-              }`}
-            >
-              {item.count}
+            <span className={`flex items-center justify-center gap-1.5 ${tone}`}>
+              <Icon name={item.icon} size={16} />
+              <span className="text-xl sm:text-2xl font-extrabold leading-none tabular-nums">
+                {item.count}
+              </span>
             </span>
-            <span className="block text-[11px] text-muted mt-1 leading-tight truncate">
+            <span className="block text-[11px] text-muted mt-1 leading-tight text-center truncate">
               {item.label}
             </span>
           </Link>

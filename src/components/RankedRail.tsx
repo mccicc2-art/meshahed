@@ -16,11 +16,17 @@ export function RankedRail({
   icon,
   items,
   locale,
+  note,
+  ranked = true,
 }: {
   title: string;
   icon?: IconName;
   items: SearchResult[];
   locale: Locale;
+  /** نصّ صغير تحت العنوان — يشرح مصدر الترتيب أو نطاقه */
+  note?: string;
+  /** إخفاء الأرقام: بعض الصفوف قائمة لا ترتيب */
+  ranked?: boolean;
 }) {
   const t = getDict(locale);
   if (!items.length) return null;
@@ -31,7 +37,7 @@ export function RankedRail({
         {icon && <Icon name={icon} size={18} className="text-muted" />}
         {title}
       </h2>
-      <p className="text-[11px] text-muted mb-3">{t.topTenSource}</p>
+      <p className="text-[11px] text-muted mb-3">{note ?? t.topTenSource}</p>
 
       <div className="-mx-4 px-4 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <div className="flex gap-3 w-max pb-1">
@@ -62,13 +68,15 @@ export function RankedRail({
                   <div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-black/90 to-transparent" />
                   {/* الاتجاه على العنصر الداخلي لا الخارجي: وضعه على الخارجي
                       يقلب معنى start/end فينتقل الرقم للطرف المعاكس */}
-                  <span
-                    className={`absolute bottom-1 start-1.5 font-extrabold leading-none drop-shadow ${
-                      i < 3 ? "text-accent text-3xl" : "text-white/85 text-2xl"
-                    }`}
-                  >
-                    <span dir="ltr">{i + 1}</span>
-                  </span>
+                  {ranked && (
+                    <span
+                      className={`absolute bottom-1 start-1.5 font-extrabold leading-none drop-shadow ${
+                        i < 3 ? "text-accent text-3xl" : "text-white/85 text-2xl"
+                      }`}
+                    >
+                      <span dir="ltr">{i + 1}</span>
+                    </span>
+                  )}
 
                   <span className="absolute bottom-1.5 end-1.5 text-[11px] font-bold text-white bg-black/55 backdrop-blur rounded-md px-1.5 py-0.5">
                     <span dir="ltr">★ {r.vote_average.toFixed(1)}</span>

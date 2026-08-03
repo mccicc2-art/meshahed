@@ -13,6 +13,7 @@ export type IconName =
   | "bell"
   | "play"
   | "popcorn"
+  | "bookmark"
   | "calendar"
   | "film"
   | "tv"
@@ -51,6 +52,9 @@ const PATHS: Record<IconName, React.ReactNode> = {
       <path d="M10 12v5M14 12v5" />
     </>
   ),
+  // علامة مرجعية بدل الفُشار في الأحجام الصغيرة: تفاصيل كيس الفُشار
+  // تنهار عند ١٦ بكسل فيُقرأ سلّةَ مهملات
+  bookmark: <path d="M6.5 4.5h11v15l-5.5-4-5.5 4v-15Z" />,
   calendar: (
     <>
       <rect x="3.5" y="5.5" width="17" height="15" rx="2.5" />
@@ -59,8 +63,9 @@ const PATHS: Record<IconName, React.ReactNode> = {
   ),
   film: (
     <>
-      <rect x="3.5" y="4.5" width="17" height="15" rx="2.5" />
-      <path d="M8 4.5v15M16 4.5v15M3.5 12h17" />
+      <rect x="3" y="5" width="18" height="14" rx="2.5" />
+      <path d="M7.6 5v14M16.4 5v14" />
+      <path d="M3 9.6h4.6M3 14.4h4.6M16.4 9.6H21M16.4 14.4H21" />
     </>
   ),
   tv: (
@@ -69,7 +74,9 @@ const PATHS: Record<IconName, React.ReactNode> = {
       <path d="M8 3.5 12 7l4-3.5" />
     </>
   ),
-  star: <path d="m12 4.5 2.3 4.9 5.2.7-3.8 3.7 1 5.2-4.7-2.6-4.7 2.6 1-5.2L4.5 10l5.2-.7L12 4.5Z" />,
+  star: (
+    <path d="m12 4.2 2.4 4.9 5.4.8-3.9 3.8.9 5.4-4.8-2.5-4.8 2.5.9-5.4-3.9-3.8 5.4-.8L12 4.2Z" />
+  ),
   chart: (
     <>
       <path d="M4 20h16" />
