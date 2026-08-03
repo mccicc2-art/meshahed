@@ -1,4 +1,4 @@
-/* eslint-disable @next/next/no-img-element */
+import Image from "next/image";
 
 function initialOf(name: string | null | undefined) {
   const n = (name ?? "").trim();
@@ -21,12 +21,16 @@ export function Avatar({
   const style = { width: size, height: size };
 
   if (src) {
+    // next/image يقلّص الصورة لحجم العرض ويحوّلها WebP — كانت تُحمَّل بحجمها الأصلي
     return (
-      <img
+      <Image
         src={src}
         alt={name ?? alt}
-        style={style}
+        width={size}
+        height={size}
+        sizes={`${size}px`}
         className={`rounded-full object-cover border border-border bg-surface-2 ${className}`}
+        style={style}
       />
     );
   }

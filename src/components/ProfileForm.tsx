@@ -44,6 +44,16 @@ export function ProfileForm({
   const avatarRef = useRef<HTMLInputElement>(null);
   const coverRef = useRef<HTMLInputElement>(null);
 
+  /** يستخرج مسار الملف داخل المخزن من رابطه العام، ويرفض ما لا يخصّ هذا المستخدم */
+  function storagePathOf(url: string | null, uid: string): string | null {
+    if (!url) return null;
+    const marker = "/storage/v1/object/public/avatars/";
+    const at = url.indexOf(marker);
+    if (at < 0) return null;
+    const path = decodeURIComponent(url.slice(at + marker.length).split("?")[0]);
+    return path.startsWith(`${uid}/`) ? path : null;
+  }
+
   function toggleGenre(id: number) {
     setSaved(false);
     setGenres((prev) => (prev.includes(id) ? prev.filter((g) => g !== id) : [...prev, id]));
@@ -76,6 +86,13 @@ export function ProfileForm({
       const { data } = supabase.storage.from("avatars").getPublicUrl(path);
       if (kind === "avatar") setAvatarUrl(data.publicUrl);
       else setCoverUrl(data.publicUrl);
+
+      // احذف الملف السابق — كل تغيير كان يترك نسخة في المخزن للأبد
+      const previous = kind === "avatar" ? avatarUrl : coverUrl;
+      const oldPath = storagePathOf(previous, userId);
+      if (oldPath && oldPath !== path) {
+        await supabase.storage.from("avatars").remove([oldPath]);
+      }
     } catch (e) {
       setError(t.errUpload + (e as Error).message);
     } finally {
