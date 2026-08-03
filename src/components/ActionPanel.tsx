@@ -42,25 +42,28 @@ const TONES: Record<PanelItem["tone"], { ring: string; text: string; bar: string
  * صفّ أفقي كان يخفي نصف البطاقات خلف سحب لا يظهر أنه موجود.
  */
 export function ActionPanel({ items }: { items: PanelItem[] }) {
-  const visible = items.filter((i) => i.count > 0);
-  if (!visible.length) return null;
+  if (!items.some((i) => i.count > 0)) return null;
 
   return (
-    <nav
-      className={`grid gap-2 ${
-        visible.length <= 2 ? "grid-cols-2" : visible.length === 3 ? "grid-cols-3" : "grid-cols-4"
-      }`}
-    >
-      {visible.map((item) => {
+    // البطاقات الأربع تُعرض دائماً — إخفاء الأصفار كان يترك بطاقة وحيدة
+    // في نصف صفّ والنصف الآخر فراغاً. الصفر خبر أيضاً: «ما فيه شيء ينتظرك».
+    <nav className="grid grid-cols-4 gap-2">
+      {items.map((item) => {
         const tone = TONES[item.tone];
+        const dim = item.count === 0;
         return (
           <Link
             key={item.key}
-            href={item.href}
+            href={dim ? "/library" : item.href}
             scroll={item.href.startsWith("#") ? true : undefined}
-            className={`relative overflow-hidden rounded-2xl border p-2.5 sm:p-4 transition ${tone.ring}`}
+            aria-disabled={dim}
+            className={`relative overflow-hidden rounded-2xl border p-2.5 sm:p-4 transition ${
+              dim ? "border-border bg-surface/60 opacity-55 hover:opacity-80" : tone.ring
+            }`}
           >
-            <span className={`absolute inset-x-0 top-0 h-0.5 ${tone.bar}`} />
+            <span
+              className={`absolute inset-x-0 top-0 h-0.5 ${dim ? "bg-border" : tone.bar}`}
+            />
 
             <span className="block text-base sm:text-lg leading-none" aria-hidden>
               {item.emoji}
@@ -69,7 +72,9 @@ export function ActionPanel({ items }: { items: PanelItem[] }) {
             {/* بلا dir="ltr": ضبطها LTR كان يدفع الرقم لحافة البطاقة اليسرى
                 بينما الأيقونة والعنوان على اليمين، فتنفصل أجزاء البطاقة */}
             <span
-              className={`block text-xl sm:text-3xl font-extrabold leading-none mt-1.5 tabular-nums ${tone.text}`}
+              className={`block text-xl sm:text-3xl font-extrabold leading-none mt-1.5 tabular-nums ${
+                dim ? "text-muted" : tone.text
+              }`}
             >
               {item.count}
             </span>

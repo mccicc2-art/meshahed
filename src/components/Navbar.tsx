@@ -4,7 +4,7 @@ import { getUser, getProfile } from "@/lib/data";
 import { getT } from "@/lib/locale";
 import { SearchBox } from "./SearchBox";
 import { NavLinks } from "./NavLinks";
-import { Avatar } from "./Avatar";
+import { NavAvatar } from "./NavAvatar";
 
 export async function Navbar() {
   const { locale, t } = await getT();
@@ -31,20 +31,16 @@ export async function Navbar() {
                 </Suspense>
               </div>
 
-              {/* الصورة أولاً في DOM لتظهر يمين زر الخروج في الاتجاه العربي */}
-              <Link
-                href="/profile/edit"
-                title={displayName || t.profile}
-                aria-label={t.profile}
-                className="shrink-0 rounded-full ring-2 ring-transparent hover:ring-accent transition"
-              >
-                <Avatar
+              {/* تختفي في الرئيسية وحدها — ترويسة الرئيسية تعرضها كبيرة */}
+              <Suspense fallback={null}>
+                <NavAvatar
                   src={profile?.avatar_url}
                   name={displayName}
-                  size={36}
+                  title={displayName || t.profile}
                   alt={t.avatarAlt}
+                  ariaLabel={t.profile}
                 />
-              </Link>
+              </Suspense>
 
               {/* زر الخروج صار داخل إعدادات الحساب فقط */}
             </>
