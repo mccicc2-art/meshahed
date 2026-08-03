@@ -240,7 +240,7 @@ export function EpisodeTracker({
               key={s.season_number}
               className="rounded-xl border border-border bg-surface overflow-hidden"
             >
-              <div className="flex items-center gap-3 p-4">
+              <div className="flex items-center gap-3 px-3 py-2.5">
                 <button
                   onClick={() => toggleOpen(s.season_number)}
                   aria-expanded={isOpen}
@@ -277,9 +277,9 @@ export function EpisodeTracker({
                   {!episodes ? (
                     <ul className="divide-y divide-border border-t border-border">
                       {Array.from({ length: Math.min(s.episode_count, 6) }, (_, i) => (
-                        <li key={i} className="flex items-center gap-3 px-4 py-3">
+                        <li key={i} className="flex items-center gap-2.5 px-3 py-2">
                           <span className="skeleton shrink-0 w-6 h-6 rounded-md" />
-                          <span className="skeleton shrink-0 w-16 sm:w-[92px] aspect-video rounded-md" />
+                          <span className="skeleton shrink-0 w-12 sm:w-[72px] aspect-video rounded-md" />
                           <span className="skeleton h-3 flex-1 rounded" />
                         </li>
                       ))}
@@ -293,12 +293,12 @@ export function EpisodeTracker({
                         return (
                           <li
                             key={e.episode_number}
-                            className={`flex items-center gap-3 px-4 py-3 ${!epAired ? "opacity-50" : ""}`}
+                            className={`flex items-center gap-2.5 px-3 py-2 ${!epAired ? "opacity-50" : ""}`}
                           >
                             <button
                               disabled={!epAired}
                               onClick={() => toggleOne(s.season_number, e)}
-                              className={`shrink-0 w-6 h-6 rounded-md border grid place-items-center transition ${
+                              className={`shrink-0 w-5 h-5 rounded-md border grid place-items-center text-xs transition ${
                                 isWatched
                                   ? "bg-accent-2 border-accent-2 text-[color:var(--on-accent-2)]"
                                   : "border-border hover:border-accent-2"
@@ -309,8 +309,10 @@ export function EpisodeTracker({
                               {isWatched ? "✓" : ""}
                             </button>
 
-                            {/* الصورة المصغّرة تملأ الفراغ الذي كان يتوسّط الصف */}
-                            <span className="shrink-0 w-16 sm:w-[92px] aspect-video rounded-md overflow-hidden bg-surface-2 border border-border">
+                            {/* صورة أصغر: كانت ٦٤ بكسلاً عرضاً فيصير الصف ١٢٦ بكسلاً،
+                                واثنتا عشرة حلقة = ألف ونصف بكسل من التمرير.
+                                المصغّرة هنا للتعرّف لا للمشاهدة. */}
+                            <span className="shrink-0 w-12 sm:w-[72px] aspect-video rounded-md overflow-hidden bg-surface-2 border border-border">
                               {e.still_path ? (
                                 <img
                                   src={`${IMG}/w185${e.still_path}`}
@@ -330,10 +332,10 @@ export function EpisodeTracker({
                             </span>
 
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium truncate">
+                              <p className="text-[13px] font-medium truncate leading-tight">
                                 <span className="text-muted">{e.episode_number}.</span> {e.name}
                               </p>
-                              <p className="text-xs text-muted mt-0.5 truncate sm:hidden">
+                              <p className="text-[11px] text-muted mt-0.5 truncate sm:hidden">
                                 {metaLine(e, epAired, t)}
                               </p>
                             </div>
