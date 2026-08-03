@@ -1,5 +1,5 @@
-/* eslint-disable @next/next/no-img-element */
 import Link from "next/link";
+import Image from "next/image";
 import { redirect } from "next/navigation";
 import {
   getUser,
@@ -49,7 +49,13 @@ export default async function PublicProfilePage({
       <section className="bg-surface border border-border rounded-2xl overflow-hidden">
         <div className="relative h-28 sm:h-40 bg-surface-2">
           {profile.cover_url ? (
-            <img src={profile.cover_url} alt="" className="w-full h-full object-cover" />
+            <Image
+              src={profile.cover_url}
+              alt=""
+              fill
+              sizes="(max-width: 768px) 100vw, 1152px"
+              className="object-cover"
+            />
           ) : (
             <div
               className="w-full h-full"
