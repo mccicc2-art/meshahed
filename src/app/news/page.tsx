@@ -4,6 +4,7 @@ import {
   upcomingMovies,
   airingTv,
   topTenThisWeek,
+  nowPlayingMovies,
   titleOf,
   posterUrl,
   backdropUrl,
@@ -15,6 +16,13 @@ import { NewsList } from "@/components/NewsList";
 import { RankedRail } from "@/components/RankedRail";
 import { SectionTitle } from "@/components/Icon";
 import { CountdownRail, type CountdownItem } from "@/components/CountdownRail";
+
+const REGIONS: Record<string, string> = {
+  SA: "السعودية",
+  AE: "الإمارات",
+  EG: "مصر",
+  US: "أمريكا",
+};
 
 function dateOf(r: SearchResult) {
   return r.release_date ?? r.first_air_date ?? "";
@@ -34,9 +42,10 @@ export default async function NewsPage() {
 
   const { locale, t } = await getT();
 
-  const [topMovies, topSeries, movies, tv, follows] = await Promise.all([
+  const [topMovies, topSeries, cinemas, movies, tv, follows] = await Promise.all([
     topTenThisWeek("movie").catch(() => [] as SearchResult[]),
     topTenThisWeek("tv").catch(() => [] as SearchResult[]),
+    nowPlayingMovies().catch(() => null),
     upcomingMovies().catch(() => [] as SearchResult[]),
     airingTv().catch(() => [] as SearchResult[]),
     getFollows(),
@@ -90,6 +99,17 @@ export default async function NewsPage() {
       <header>
         <h1 className="text-xl font-bold">{t.newsTitle}</h1>
       </header>
+
+      {cinemas && (
+        <RankedRail
+          title={t.inCinemas}
+          icon="film"
+          items={cinemas.results}
+          locale={locale}
+          note={t.inCinemasRegion(REGIONS[cinemas.region] ?? cinemas.region)}
+          ranked={false}
+        />
+      )}
 
       <RankedRail title={t.topTenMovies} icon="film" items={topMovies} locale={locale} />
       <RankedRail title={t.topTenSeries} icon="tv" items={topSeries} locale={locale} />
