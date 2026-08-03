@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
   getUser,
@@ -99,12 +98,7 @@ export default async function LibraryPage() {
 
   return (
     <div>
-      <div className="flex items-baseline justify-between gap-3 mb-4">
-        <h1 className="text-xl font-bold">{t.libraryTitle}</h1>
-        <Link href="/stats" className="text-xs text-accent hover:brightness-110 transition">
-          {t.statsTitle} ›
-        </Link>
-      </div>
+      <h1 className="text-xl font-bold mb-4">{t.libraryTitle}</h1>
 
       {items.length === 0 ? (
         <p className="text-center text-muted py-20">{t.libraryEmpty}</p>
