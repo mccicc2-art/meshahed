@@ -8,6 +8,8 @@ import {
   getAllMovieProgress,
 } from "@/lib/data";
 import { getT } from "@/lib/locale";
+import { num, type Dict } from "@/lib/i18n";
+import { LibraryStats, type LibraryStat } from "@/components/LibraryStats";
 import { percentOf, isComplete } from "@/lib/progress";
 import { LibraryBrowser, type LibraryItem } from "@/components/LibraryBrowser";
 
@@ -18,6 +20,14 @@ import { LibraryBrowser, type LibraryItem } from "@/components/LibraryBrowser";
  * إلى صفحة الإحصائيات — كان خمس بطاقات رسوم بيانية أسفل أربع شبكات، وهذه
  * صفحة يفتحها المستخدم ليختار ما يشاهده لا ليقرأ تقريراً عن نفسه.
  */
+function fmtWatchTime(minutes: number, t: Dict) {
+  const h = Math.round(minutes / 60);
+  if (h < 24) return t.hours(h);
+  const d = Math.floor(h / 24);
+  const rest = h % 24;
+  return rest === 0 ? t.days(d) : t.daysAndHours(d, rest);
+}
+
 export default async function LibraryPage() {
   const user = await getUser();
   if (!user) redirect("/login");
@@ -32,11 +42,20 @@ export default async function LibraryPage() {
   ]);
 
   const watchedByShow = new Map<number, number>();
+  let totalEpisodes = 0;
+  let epMinutes = 0;
+
   if (summary) {
-    for (const s of summary) watchedByShow.set(s.show_tmdb_id, s.watched);
+    for (const s of summary) {
+      watchedByShow.set(s.show_tmdb_id, s.watched);
+      totalEpisodes += s.watched;
+      epMinutes += s.minutes;
+    }
   } else {
     for (const w of await getAllWatchedEpisodes()) {
       watchedByShow.set(w.show_tmdb_id, (watchedByShow.get(w.show_tmdb_id) ?? 0) + 1);
+      totalEpisodes++;
+      epMinutes += w.runtime ?? 40;
     }
   }
 
@@ -96,9 +115,24 @@ export default async function LibraryPage() {
     });
   }
 
+  // متوسط الفيلم ١١٠ دقائق حين لا تتوفّر المدة الفعلية
+  const totalMinutes = epMinutes + watchedMovieIds.size * 110;
+
+  const stats: LibraryStat[] = [
+    { label: t.statWatchTime, value: fmtWatchTime(totalMinutes, t), icon: "clock" },
+    { label: t.statsWatchedEpisodes, value: num(totalEpisodes, locale), icon: "check" },
+    { label: t.statsWatchedMovies, value: num(watchedMovieIds.size, locale), icon: "film" },
+    { label: t.statsFollowing, value: num(follows.length, locale), icon: "star" },
+  ];
+
   return (
     <div>
-      <h1 className="text-xl font-bold mb-4">{t.libraryTitle}</h1>
+      <h1 className="text-xl font-bold mb-3">{t.libraryTitle}</h1>
+
+      {/* الأرقام أولاً: هي أول ما يريد صاحب المكتبة أن يراه عنها */}
+      <div className="mb-5">
+        <LibraryStats stats={stats} locale={locale} href="/stats" />
+      </div>
 
       {items.length === 0 ? (
         <p className="text-center text-muted py-20">{t.libraryEmpty}</p>
