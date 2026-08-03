@@ -1,5 +1,5 @@
-/* eslint-disable @next/next/no-img-element */
 import Link from "next/link";
+import Image from "next/image";
 import { redirect } from "next/navigation";
 import {
   getUser,
@@ -11,6 +11,7 @@ import {
   getProfile,
   getAllMovieProgress,
   getFollowStats,
+  getMyRatings,
 } from "@/lib/data";
 import {
   getTv,
@@ -52,7 +53,7 @@ export default async function HomePage() {
 
   // ملخّص مجمّع: صف لكل مسلسل بدل صف لكل حلقة (آلاف الصفوف سابقاً).
   // صفوف الحلقات التفصيلية تُقرأ لاحقاً لمسلسل واحد فقط — صاحب «الحلقة التالية».
-  const [follows, summary, watchedMovieIds, profile, movieProgress, social] =
+  const [follows, summary, watchedMovieIds, profile, movieProgress, social, myRatings] =
     await Promise.all([
       getFollows(),
       getWatchSummary(),
@@ -60,6 +61,7 @@ export default async function HomePage() {
       getProfile(),
       getAllMovieProgress(),
       getFollowStats(user.id),
+      getMyRatings(),
     ]);
 
   const tvFollows = follows.filter((f) => f.media_type === "tv");
@@ -263,7 +265,14 @@ export default async function HomePage() {
   // ما تتابعه: أحدث ما أضفته ولم يدخل ضمن "آخر ما شاهدت"
   const followSeeds = follows.filter((f) => !recentShowIds.includes(f.tmdb_id)).slice(0, 3);
 
-  const [trend, genreDiscover, followRecs, recentRecs] = await Promise.all([
+  // تقييماتك: ما أعطيته ٤ أو ٥ نجوم يصير بذرة، وما أعطيته نجمة أو نجمتين يُستبعد
+  const lovedSeeds = myRatings
+    .filter((r) => r.rating >= 4)
+    .sort((a, b) => b.rating - a.rating || b.updated_at.localeCompare(a.updated_at))
+    .slice(0, 3);
+  const dislikedIds = myRatings.filter((r) => r.rating <= 2).map((r) => r.tmdb_id);
+
+  const [trend, genreDiscover, followRecs, recentRecs, ratedRecs] = await Promise.all([
     trending().catch(() => [] as SearchResult[]),
     favGenres.length
       ? discoverByGenres(favGenres, "tv").catch(() => [] as SearchResult[])
@@ -282,16 +291,26 @@ export default async function HomePage() {
           .catch(() => ({ seed: titleById.get(id) ?? "", rs: [] as SearchResult[] })),
       ),
     ),
+    Promise.all(
+      lovedSeeds.map((r) =>
+        recommendationsFor(r.media_type, r.tmdb_id)
+          .then((rs) => ({ seed: r.title ?? "", rs }))
+          .catch(() => ({ seed: r.title ?? "", rs: [] as SearchResult[] })),
+      ),
+    ),
   ]);
 
   const candidates: Candidate[] = [];
+  for (const { seed, rs } of ratedRecs)
+    rs.forEach((r, i) => candidates.push({ result: r, source: "rated", seedTitle: seed, rank: i }));
   for (const { seed, rs } of followRecs)
     rs.forEach((r, i) => candidates.push({ result: r, source: "follows", seedTitle: seed, rank: i }));
   for (const { seed, rs } of recentRecs)
     rs.forEach((r, i) => candidates.push({ result: r, source: "recent", seedTitle: seed, rank: i }));
   genreDiscover.forEach((r, i) => candidates.push({ result: r, source: "genres", rank: i }));
 
-  const excluded = new Set<number>([...followedIds, ...watchedMovieIds]);
+  // ما قيّمته بنجمة أو نجمتين لا يُقترح عليك مرة أخرى
+  const excluded = new Set<number>([...followedIds, ...watchedMovieIds, ...dislikedIds]);
   const suggested = blendRecommendations(candidates, { exclude: excluded, limit: 12 });
   const showTrending = empty || (!suggested.length && continueWatching.length === 0);
 
@@ -371,7 +390,13 @@ export default async function HomePage() {
       <section className="hidden sm:block bg-surface border border-border rounded-2xl overflow-hidden">
         <div className="relative h-40 bg-surface-2">
           {profile?.cover_url ? (
-            <img src={profile.cover_url} alt="" className="w-full h-full object-cover" />
+            <Image
+              src={profile.cover_url}
+              alt=""
+              fill
+              sizes="1152px"
+              className="object-cover"
+            />
           ) : (
             <div
               className="w-full h-full"
@@ -534,7 +559,9 @@ export default async function HomePage() {
                 posterPath={s.result.poster_path}
                 year={yearOf(s.result)}
                 note={
-                  s.source === "follows" && s.seedTitle
+                  s.source === "rated" && s.seedTitle
+                    ? t.recoBecauseRated(s.seedTitle)
+                    : s.source === "follows" && s.seedTitle
                     ? t.recoBecauseFollow(s.seedTitle)
                     : s.source === "recent" && s.seedTitle
                       ? t.recoBecauseWatched(s.seedTitle)
