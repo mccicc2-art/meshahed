@@ -29,6 +29,8 @@ const csp = [
   "font-src 'self' data: https://fonts.gstatic.com",
   `connect-src 'self' ${supabaseHost} https://*.supabase.co wss://*.supabase.co`,
   "manifest-src 'self'",
+  // مشغّل الترايلر لا يُحمَّل إلا بالضغط، ومن نطاق يوتيوب بلا كوكيز
+  "frame-src https://www.youtube-nocookie.com",
   "upgrade-insecure-requests",
 ].join("; ");
 
