@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { getUser } from "@/lib/data";
 import { getT } from "@/lib/locale";
 import { LibraryAnalysis, LibraryAnalysisSkeleton } from "@/components/LibraryAnalysis";
+import { ShareCard } from "@/components/ShareCard";
 
 /**
  * الإحصائيات.
@@ -26,6 +27,12 @@ export default async function StatsPage() {
         </Link>
       </div>
       <p className="text-xs text-muted mb-5">{t.analysisSub}</p>
+
+      {/* المشاركة قبل التحليل لا بعده: التحليل طويل، ومن يريد المشاركة
+          لا يجب أن يمرّ عليه كلّه ليجد الزرّ */}
+      <div className="mb-5">
+        <ShareCard locale={locale} />
+      </div>
 
       <Suspense fallback={<LibraryAnalysisSkeleton />}>
         <LibraryAnalysis locale={locale} />
