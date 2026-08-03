@@ -6,6 +6,7 @@ import {
   getWatchedForShow,
   getMyRating,
   getCommunityRating,
+  getTitleReviews,
 } from "@/lib/data";
 import { getTv, getSeason, backdropUrl, posterUrl } from "@/lib/tmdb";
 import { FollowButton } from "@/components/FollowButton";
@@ -34,11 +35,12 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
     );
   }
 
-  const [follows, watched, myRating, community] = await Promise.all([
+  const [follows, watched, myRating, community, titleReviews] = await Promise.all([
     getFollows(),
     getWatchedForShow(tvId),
     getMyRating(tvId, "tv"),
     getCommunityRating(tvId, "tv"),
+    getTitleReviews(tvId, "tv"),
   ]);
   const following = follows.some((f) => f.tmdb_id === tvId && f.media_type === "tv");
 
@@ -171,7 +173,7 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
         initialReview={myRating?.review ?? null}
       />
 
-      <CommunityReviews locale={locale} avg={community.avg} count={community.count} reviews={community.reviews} />
+      <CommunityReviews locale={locale} avg={community.avg} count={community.count} reviews={titleReviews} />
 
       <div className="mt-10">
         <h2 className="text-lg font-bold mb-4">{t.episodesHeading}</h2>
