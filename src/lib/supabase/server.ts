@@ -1,7 +1,14 @@
+import { cache } from "react";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
-export async function createClient() {
+/**
+ * عميل Supabase للخادم.
+ *
+ * ملفوف بـ `cache()` من React: كل استدعاء داخل نفس الطلب يرجع نفس العميل
+ * بدل إنشاء واحد جديد في كل دالة. شرط أساسي لكي ينفع تخزين `getUser`.
+ */
+export const createClient = cache(async () => {
   const cookieStore = await cookies();
 
   return createServerClient(
@@ -24,4 +31,4 @@ export async function createClient() {
       },
     },
   );
-}
+});
