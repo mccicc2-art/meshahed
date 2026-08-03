@@ -2,6 +2,7 @@
 
 // حدود الأخطاء يجب أن تكون مكوّن عميل.
 import Link from "next/link";
+import { Logo } from "@/components/Logo";
 import { useEffect } from "react";
 import { useUiLocale } from "@/lib/useUiLocale";
 
@@ -21,7 +22,7 @@ export default function Error({
   return (
     <div className="max-w-md mx-auto text-center py-20">
       <div className="text-5xl mb-4" aria-hidden>
-        📺
+        <Logo size={44} gradientId="error-logo" />
       </div>
       <h1 className="text-xl font-bold">{t.errorTitle}</h1>
       <p className="text-sm text-muted leading-relaxed mt-2">{t.errorBody}</p>

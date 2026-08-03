@@ -17,19 +17,33 @@
 @import "@fontsource/cairo/latin-700.css";
 @import "@fontsource/cairo/latin-800.css";
 
+/* Poppins خطّ الهوية للاتيني — والعربية تبقى على Cairo لأن Poppins بلا
+   حروف عربية. ترتيب العائلة يجعل كل حرف يأخذ خطّه: اللاتيني من Poppins
+   والعربي من Cairo، في السطر الواحد. */
+@import "@fontsource/poppins/latin-400.css";
+@import "@fontsource/poppins/latin-500.css";
+@import "@fontsource/poppins/latin-600.css";
+@import "@fontsource/poppins/latin-700.css";
+@import "@fontsource/poppins/latin-800.css";
+
 :root {
-  --background: #0b1220;
-  --surface: #131c2e;
-  --surface-2: #1b2740;
-  --foreground: #e8edf7;
-  --muted: #93a1bd;
-  --accent: #ffb43a;
-  --accent-2: #3ddc97;
-  --border: #24314e;
-  --on-accent: #1a1200;
-  --on-accent-2: #062015;
-  --glow-a: rgba(255, 180, 58, 0.08);
-  --glow-b: rgba(61, 220, 151, 0.06);
+  /* هوية Loopz — القيم نفسها في themes.ts، وهذه لأول رسم قبل حقن الثيم */
+  --background: #1b1f2a;
+  --surface: #232838;
+  --surface-2: #2e3442;
+  --foreground: #f5f6fa;
+  --muted: #9aa3b8;
+  --accent: #7c4dff;
+  --accent-2: #ff4d8d;
+  --border: #343b4d;
+  --on-accent: #ffffff;
+  --on-accent-2: #2b0716;
+  --glow-a: rgba(124, 77, 255, 0.14);
+  --glow-b: rgba(255, 77, 141, 0.08);
+  /* تدرّج الشعار */
+  --brand-1: #7c4dff;
+  --brand-2: #ff4d8d;
+  --brand-3: #ffb02e;
 }
 
 @theme inline {
@@ -43,7 +57,7 @@
   --color-border: var(--border);
   --color-on-accent: var(--on-accent);
   --color-on-accent-2: var(--on-accent-2);
-  --font-sans: "Cairo", system-ui, sans-serif;
+  --font-sans: "Poppins", "Cairo", system-ui, sans-serif;
 }
 
 * {
@@ -62,7 +76,7 @@ html {
 body {
   background-color: var(--background);
   color: var(--foreground);
-  font-family: "Cairo", system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-family: "Poppins", "Cairo", system-ui, -apple-system, "Segoe UI", sans-serif;
   min-height: 100vh;
 }
 

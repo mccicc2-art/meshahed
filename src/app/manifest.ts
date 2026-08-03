@@ -5,15 +5,15 @@ import type { MetadataRoute } from "next";
 // لذلك الاسم يجمع اللغتين بدل أن يُخمّن واحدة.
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "مشاهد — Meshahed",
-    short_name: "مشاهد",
-    description: "تابع مسلسلاتك وأفلامك، أشّر الحلقات، وشوف القادم قريباً.",
+    name: "Loopz — لوبز",
+    short_name: "Loopz",
+    description: "منصة ذكية لتتبع الأفلام والمسلسلات والأنمي — كل ما تشاهده، في مكان واحد.",
     start_url: "/",
     scope: "/",
     display: "standalone",
     orientation: "portrait",
-    background_color: "#0b1220",
-    theme_color: "#0b1220",
+    background_color: "#1b1f2a",
+    theme_color: "#1b1f2a",
     categories: ["entertainment", "lifestyle"],
     icons: [
       { src: "/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
