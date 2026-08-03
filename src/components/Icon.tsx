@@ -14,6 +14,7 @@ export type IconName =
   | "play"
   | "popcorn"
   | "bookmark"
+  | "sparkle-star"
   | "calendar"
   | "film"
   | "tv"
@@ -55,6 +56,10 @@ const PATHS: Record<IconName, React.ReactNode> = {
   // علامة مرجعية بدل الفُشار في الأحجام الصغيرة: تفاصيل كيس الفُشار
   // تنهار عند ١٦ بكسل فيُقرأ سلّةَ مهملات
   bookmark: <path d="M6.5 4.5h11v15l-5.5-4-5.5 4v-15Z" />,
+  // نجمة رباعية — وسم الأنمي: مميّزة عن نجمة التقييم الخماسية فلا تختلطان
+  "sparkle-star": (
+    <path d="M12 3.5c.6 4.4 4.1 7.9 8.5 8.5-4.4.6-7.9 4.1-8.5 8.5-.6-4.4-4.1-7.9-8.5-8.5 4.4-.6 7.9-4.1 8.5-8.5Z" />
+  ),
   calendar: (
     <>
       <rect x="3.5" y="5.5" width="17" height="15" rx="2.5" />
