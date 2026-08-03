@@ -52,8 +52,8 @@ const ar = {
   recoBecauseGenre: "يناسب أنواعك المفضّلة",
   trendingWeek: "🔥 رائج هذا الأسبوع",
   pickGenresHint: "حدّد أنواعك المفضّلة في الملف الشخصي لتظهر لك اقتراحات على ذوقك ←",
-  myShows: "المسلسلات",
-  myMovies: "الأفلام",
+  myShows: "مسلسلاتي",
+  myMovies: "أفلامي",
   epSeasonLine: (ep: number | undefined, season: number | undefined) =>
     `الحلقة ${ep} · الموسم ${season}`,
   episodesBadge: (n: number) => `${n} حلقة`,
@@ -504,8 +504,8 @@ const en: Dict = {
   recoBecauseGenre: "Matches your favourite genres",
   trendingWeek: "🔥 Trending this week",
   pickGenresHint: "Pick your favourite genres in your profile to get suggestions you'll like →",
-  myShows: "Shows",
-  myMovies: "Movies",
+  myShows: "My shows",
+  myMovies: "My movies",
   epSeasonLine: (ep: number | undefined, season: number | undefined) =>
     `Episode ${ep} · Season ${season}`,
   episodesBadge: (n: number) => `${n} ep`,
