@@ -18,13 +18,35 @@ export interface Theme {
   };
   glowA: string;
   glowB: string;
+  /** ألوان تدرّج الشعار — ثابتة عبر الثيمات لأنها الهوية لا الواجهة */
+  brand?: [string, string, string];
 }
 
 export const THEMES: Theme[] = [
   {
+    id: "loopz",
+    ar: "لوبز (الهوية)",
+    en: "Loopz (brand)",
+    vars: {
+      background: "#1B1F2A",
+      surface: "#232838",
+      "surface-2": "#2E3442",
+      foreground: "#F5F6FA",
+      muted: "#9AA3B8",
+      accent: "#7C4DFF",
+      "accent-2": "#FF4D8D",
+      border: "#343B4D",
+      "on-accent": "#FFFFFF",
+      "on-accent-2": "#2B0716",
+    },
+    glowA: "rgba(124, 77, 255, 0.14)",
+    glowB: "rgba(255, 77, 141, 0.08)",
+    brand: ["#7C4DFF", "#FF4D8D", "#FFB02E"],
+  },
+  {
     id: "amber",
-    ar: "العنبر (الافتراضي)",
-    en: "Amber (default)",
+    ar: "العنبر",
+    en: "Amber",
     vars: {
       background: "#0b1220",
       surface: "#131c2e",
@@ -137,6 +159,8 @@ export const THEMES: Theme[] = [
   },
 ];
 
+export const DEFAULT_BRAND: [string, string, string] = ["#7C4DFF", "#FF4D8D", "#FFB02E"];
+
 export const DEFAULT_THEME = THEMES[0];
 
 export function themeById(id: string | null | undefined): Theme {
@@ -150,5 +174,8 @@ export function themeName(t: Theme, locale: "ar" | "en") {
 // نبني CSS بسيط يُحقن في <head> لتجاوز القيم الافتراضية
 export function themeCss(t: Theme) {
   const v = t.vars;
-  return `:root{--background:${v.background};--surface:${v.surface};--surface-2:${v["surface-2"]};--foreground:${v.foreground};--muted:${v.muted};--accent:${v.accent};--accent-2:${v["accent-2"]};--border:${v.border};--on-accent:${v["on-accent"]};--on-accent-2:${v["on-accent-2"]};--glow-a:${t.glowA};--glow-b:${t.glowB};}`;
+  // تدرّج الشعار يتبع الهوية لا الثيم: الثيمات تغيّر لون الواجهة، أما
+  // العلامة فتبقى كما هي في كل مكان تُرى فيه
+  const b = t.brand ?? DEFAULT_BRAND;
+  return `:root{--background:${v.background};--surface:${v.surface};--surface-2:${v["surface-2"]};--foreground:${v.foreground};--muted:${v.muted};--accent:${v.accent};--accent-2:${v["accent-2"]};--border:${v.border};--on-accent:${v["on-accent"]};--on-accent-2:${v["on-accent-2"]};--glow-a:${t.glowA};--glow-b:${t.glowB};--brand-1:${b[0]};--brand-2:${b[1]};--brand-3:${b[2]};}`;
 }

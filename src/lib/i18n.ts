@@ -16,11 +16,12 @@ export function normalizeLocale(value: string | undefined | null): Locale {
 const ar = {
   code: "ar" as Locale,
   dir: "rtl",
-  brand: "مشاهد",
-  tagline: "تابع مسلسلاتك وأفلامك، أشّر الحلقات، وشوف القادم قريباً.",
-  metaTitle: "مشاهد — تابع مسلسلاتك وأفلامك",
-  metaDescription: "تطبيق لمتابعة المسلسلات والأفلام وتتبّع الحلقات المشاهَدة.",
-  footer: "مشاهد · البيانات من TMDB",
+  brand: "Loopz",
+  tagline: "منصة ذكية لتتبع الأفلام والمسلسلات والأنمي — كل ما تشاهده، في مكان واحد.",
+  taglineEn: "Track it. Watch it. Never lose track.",
+  metaTitle: "Loopz — تتبّع أفلامك ومسلسلاتك",
+  metaDescription: "منصة ذكية لتتبع الأفلام والمسلسلات والأنمي — كل ما تشاهده، في مكان واحد.",
+  footer: "Loopz · البيانات من TMDB",
 
   // التنقل
   navHome: "الرئيسية",
@@ -414,11 +415,12 @@ export type Dict = typeof ar;
 const en: Dict = {
   code: "en",
   dir: "ltr",
-  brand: "Meshahed",
-  tagline: "Track your shows and movies, tick episodes, and see what's coming next.",
-  metaTitle: "Meshahed — track your shows & movies",
-  metaDescription: "An app to follow TV shows and movies and track watched episodes.",
-  footer: "Meshahed · Data from TMDB",
+  brand: "Loopz",
+  tagline: "A smart home for the shows, movies and anime you watch \u2014 all in one place.",
+  taglineEn: "Track it. Watch it. Never lose track.",
+  metaTitle: "Loopz \u2014 track your shows & movies",
+  metaDescription: "A smart home for the shows, movies and anime you watch \u2014 all in one place.",
+  footer: "Loopz \u00b7 Data from TMDB",
 
   navHome: "Home",
   navNews: "Discover",
