@@ -9,7 +9,6 @@ import {
   getWatchedMovieIds,
   getProfile,
   getAllMovieProgress,
-  getFollowStats,
   getMyRatings,
 } from "@/lib/data";
 import {
@@ -46,14 +45,13 @@ export default async function HomePage() {
 
   // ملخّص مجمّع: صف لكل مسلسل بدل صف لكل حلقة (آلاف الصفوف سابقاً).
   // صفوف الحلقات التفصيلية تُقرأ لاحقاً لمسلسل واحد فقط — صاحب «الحلقة التالية».
-  const [follows, summary, watchedMovieIds, profile, movieProgress, social, myRatings] =
+  const [follows, summary, watchedMovieIds, profile, movieProgress, myRatings] =
     await Promise.all([
       getFollows(),
       getWatchSummary(),
       getWatchedMovieIds(),
       getProfile(),
       getAllMovieProgress(),
-      getFollowStats(user.id),
       getMyRatings(),
     ]);
 
@@ -314,8 +312,7 @@ export default async function HomePage() {
       href: "#waiting",
       count: waitingForYou.length,
       label: t.panelWaiting,
-      sub: t.panelWaitingSub,
-      emoji: "🔔",
+      icon: "bell" as const,
       tone: "waiting",
     },
     {
@@ -323,8 +320,7 @@ export default async function HomePage() {
       href: "#watching",
       count: continueWatching.length + pausedMovies.length,
       label: t.panelStarted,
-      sub: t.panelStartedSub,
-      emoji: "▶️",
+      icon: "play" as const,
       tone: "watching",
     },
     {
@@ -332,8 +328,7 @@ export default async function HomePage() {
       href: "#ready",
       count: readyCount,
       label: t.panelReady,
-      sub: t.panelReadySub,
-      emoji: "🍿",
+      icon: "bookmark" as const,
       tone: "ready",
     },
     {
@@ -341,8 +336,7 @@ export default async function HomePage() {
       href: "#soon",
       count: upcoming.length,
       label: t.panelSoon,
-      sub: t.panelSoonSub,
-      emoji: "🗓",
+      icon: "calendar" as const,
       tone: "soon",
     },
   ];
@@ -356,11 +350,8 @@ export default async function HomePage() {
       <div className="space-y-2.5">
         <ProfileHeader
           displayName={displayName}
-          username={profile?.username ?? null}
           avatarUrl={profile?.avatar_url ?? null}
           coverUrl={profile?.cover_url ?? null}
-          followers={social.followers}
-          following={social.following}
           locale={locale}
         />
         <ActionPanel items={panel} />
@@ -445,7 +436,7 @@ export default async function HomePage() {
       {readyCount > 0 && (
         <Section
           title={t.readyToWatch}
-          icon="popcorn"
+          icon="bookmark"
           subtitle={t.readyToWatchSub}
           href="/library"
           seeAll={t.seeAll}
