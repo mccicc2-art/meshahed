@@ -47,16 +47,24 @@ export default async function LibraryPage({
       const watched = Math.min(watchedByShow.get(f.tmdb_id) ?? 0, aired || Infinity);
       const done = aired > 0 && watched >= aired && watched > 0;
       const progress = aired > 0 ? Math.round((watched / aired) * 100) : 0;
+      const dropped = !!f.dropped;
       return {
         key: `tv-${f.tmdb_id}`,
         href: `/show/${f.tmdb_id}`,
         title: f.title,
         posterPath: f.poster_path,
         progress,
-        badge: watched === 0 ? t.notStartedBadge : done ? t.watchedBadge : undefined,
-        badgeTone: (done ? "watched" : "neutral") as GridItem["badgeTone"],
-        count: watched > 0 && aired > watched ? aired - watched : undefined,
-        rank: watched > 0 && !done ? 0 : watched === 0 ? 1 : 2,
+        badge: dropped
+          ? t.droppedBadge
+          : watched === 0
+            ? t.notStartedBadge
+            : done
+              ? t.watchedBadge
+              : undefined,
+        badgeTone: (dropped ? "dropped" : done ? "watched" : "neutral") as GridItem["badgeTone"],
+        count: !dropped && watched > 0 && aired > watched ? aired - watched : undefined,
+        dropped,
+        rank: dropped ? 3 : watched > 0 && !done ? 0 : watched === 0 ? 1 : 2,
         progressSort: progress,
       };
     })
@@ -66,15 +74,17 @@ export default async function LibraryPage({
     .filter((f) => f.media_type === "movie")
     .map((f) => {
       const done = watchedMovieIds.has(f.tmdb_id);
+      const dropped = !!f.dropped;
       return {
         key: `mv-${f.tmdb_id}`,
         href: `/movie/${f.tmdb_id}`,
         title: f.title,
         posterPath: f.poster_path,
         progress: done ? 100 : undefined,
-        badge: done ? t.watchedBadge : t.typeMovie,
-        badgeTone: (done ? "watched" : "neutral") as GridItem["badgeTone"],
-        rank: done ? 1 : 0,
+        badge: dropped ? t.droppedBadge : done ? t.watchedBadge : t.typeMovie,
+        badgeTone: (dropped ? "dropped" : done ? "watched" : "neutral") as GridItem["badgeTone"],
+        dropped,
+        rank: dropped ? 2 : done ? 1 : 0,
       };
     })
     .sort((a, b) => a.rank - b.rank);
