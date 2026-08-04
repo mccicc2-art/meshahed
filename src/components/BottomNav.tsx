@@ -40,8 +40,15 @@ export function BottomNav({ locale }: { locale: Locale }) {
     people: t.navPeople,
   };
 
+  /* صفحات التفاصيل والسجلّ تُنسب إلى المكتبة: المستخدم في عمق التطبيق
+     يحتاج مرساةً — تبويبٌ لا يضيء يقرأ وكأن الشريط تعطّل */
+  const LIBRARY_PREFIXES = ["/library", "/show/", "/movie/", "/stats", "/diary", "/lists", "/ratings"];
   const isActive = (href: string) =>
-    href === "/" ? pathname === "/" : pathname.startsWith(href);
+    href === "/"
+      ? pathname === "/"
+      : href === "/library"
+        ? LIBRARY_PREFIXES.some((p) => pathname.startsWith(p))
+        : pathname.startsWith(href);
 
   return (
     <div className="md:hidden fixed bottom-0 inset-x-0 z-40 pointer-events-none">

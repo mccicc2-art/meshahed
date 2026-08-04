@@ -206,7 +206,7 @@ export async function LibraryAnalysis({ locale }: { locale: Locale }) {
   const decadeTotal = decades.reduce((n, [, v]) => n + v, 0);
 
   // ===== التقييمات =====
-  const buckets = [5, 4, 3, 2, 1].map((star) => ({
+  const buckets = [10, 9, 8, 7, 6, 5, 4, 3, 2, 1].map((star) => ({
     star,
     count: ratings.filter((r) => r.rating === star).length,
   }));

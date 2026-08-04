@@ -121,7 +121,7 @@ export function RatingBox({
           className="w-full rounded-xl bg-surface-2 border border-border px-4 py-3 outline-none focus:border-accent transition text-sm leading-relaxed resize-y"
         />
 
-        {error && <p className="text-sm text-red-300 mt-3">{error}</p>}
+        {error && <p className="text-sm text-red-300 mt-3" role="alert">{error}</p>}
 
         <div className="flex items-center gap-3 flex-wrap mt-3">
           <button
@@ -143,7 +143,7 @@ export function RatingBox({
 
       <div className="mb-1">{stars}</div>
 
-      {error && <p className="text-sm text-red-300 mt-3">{error}</p>}
+      {error && <p className="text-sm text-red-300 mt-3" role="alert">{error}</p>}
 
       <div className="flex items-center gap-3 flex-wrap mt-4">
         <button

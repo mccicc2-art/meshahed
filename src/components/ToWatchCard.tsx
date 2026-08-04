@@ -18,11 +18,14 @@ import { getDict, type Locale } from "@/lib/i18n";
 export function ToWatchCard({
   tmdbId,
   mediaType,
+  runtime = null,
   locale,
   children,
 }: {
   tmdbId: number;
   mediaType: "tv" | "movie";
+  /** مدّة الفيلم إن عُرفت — تُحفظ مع علامة المشاهدة ليصحّ حساب السجلّ */
+  runtime?: number | null;
   locale: Locale;
   children: React.ReactNode;
 }) {
@@ -58,7 +61,7 @@ export function ToWatchCard({
             run(() =>
               mediaType === "tv"
                 ? markShowWatched(tmdbId)
-                : toggleMovieWatched({ movieTmdbId: tmdbId, runtime: null, watched: true }),
+                : toggleMovieWatched({ movieTmdbId: tmdbId, runtime, watched: true }),
             )
           }
           className="grid place-items-center w-8 h-8 rounded-full bg-black/60 backdrop-blur border border-white/20 text-[color:var(--success)] hover:bg-[color:var(--success)] hover:text-white transition"
