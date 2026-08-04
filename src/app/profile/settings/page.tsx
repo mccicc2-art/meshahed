@@ -57,6 +57,7 @@ export default async function SettingsPage({
         theme={profile?.theme ?? "amber"}
         genres={profile?.favorite_genres ?? []}
         hideName={!!profile?.hide_name}
+        homePrefs={profile?.home_prefs}
         initial={initial}
       />
     </div>
