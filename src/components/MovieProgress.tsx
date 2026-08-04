@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { saveMovieProgress } from "@/lib/actions";
+import { saveMovieProgress, toggleMovieWatched } from "@/lib/actions";
 import { getDict, type Locale } from "@/lib/i18n";
 
 /**
@@ -64,7 +64,39 @@ export function MovieProgress({
     });
   }
 
-  if (watched) return null;
+  /** زرٌّ واحد ينهي الفيلم: كان «شاهدته» فوق البطاقة و«أنهيته» داخلها،
+   *  اثنان يؤدّيان العمل نفسه في شاشة واحدة. */
+  function finish(next: boolean) {
+    setError(null);
+    start(async () => {
+      try {
+        await toggleMovieWatched({ movieTmdbId, runtime, watched: next });
+        router.refresh();
+      } catch (e) {
+        setError((e as Error).message);
+      }
+    });
+  }
+
+  // بعد التأشير تبقى بطاقة صغيرة فيها التراجع — لولاها لاختفى الفيلم من
+  // الصفحة بلا طريقة لإلغاء التأشير
+  if (watched) {
+    return (
+      <div className="bg-surface border border-border rounded-2xl p-4 flex items-center gap-3 max-w-xl">
+        <span className="grid place-items-center w-9 h-9 rounded-full bg-accent-2 text-[color:var(--on-accent-2)] shrink-0">
+          ✓
+        </span>
+        <span className="flex-1 text-sm font-bold">{t.watchedMovie}</span>
+        <button
+          onClick={() => finish(false)}
+          disabled={pending}
+          className="text-sm text-muted hover:text-foreground px-3 py-2 rounded-lg hover:bg-surface-2 transition disabled:opacity-60"
+        >
+          {t.undoWatched}
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-surface border border-border rounded-2xl p-4 sm:p-5 max-w-xl">
@@ -138,18 +170,14 @@ export function MovieProgress({
         >
           {pending ? t.saving : t.saveProgress}
         </button>
-        {runtime && (
-          <button
-            type="button"
-            onClick={() => {
-              setPos(max);
-              setSaved(false);
-            }}
-            className="text-sm text-muted hover:text-foreground px-3 py-2 rounded-lg hover:bg-surface-2 transition"
-          >
-            {t.finishedMovie}
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={() => finish(true)}
+          disabled={pending}
+          className="px-4 py-2.5 rounded-xl border border-border text-sm font-semibold hover:border-accent-2/60 hover:text-accent-2 transition disabled:opacity-60"
+        >
+          {t.markAsWatched}
+        </button>
         {saved && <span className="text-sm text-accent-2">{t.savedOk}</span>}
       </div>
     </div>
