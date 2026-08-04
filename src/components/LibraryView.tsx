@@ -126,39 +126,22 @@ export function LibraryView({
 
   return (
     <div>
-      {/* تبويبان فوق تبويبين: النوع أولاً لأنه يقسم المكتبة قسمين لا يلتقيان */}
-      <div className="grid grid-cols-2 border-b border-border mb-3">
-        {kinds.map((k) => (
-          <button
-            key={k.key}
-            onClick={() => setKind(k.key)}
-            aria-pressed={kind === k.key}
-            className={`py-2.5 text-sm font-bold transition border-b-2 -mb-px ${
-              kind === k.key
-                ? "text-accent border-accent"
-                : "text-muted border-transparent hover:text-foreground"
-            }`}
-          >
-            {k.label}
-          </button>
-        ))}
-      </div>
+      {/* شريطان مقسّمان: الحبّة الممتلئة تقول أين أنت بلا حاجة لخطّ سفليّ
+          أو لون نصّ وحده — وهي أوضح على الجوال من التبويب الخطّي */}
+      <Segmented
+        options={kinds}
+        value={kind}
+        onChange={(v) => setKind(v as "shows" | "movies")}
+        size="lg"
+      />
 
-      <div className="flex gap-1.5 mb-4">
-        {whens.map((w) => (
-          <button
-            key={w.key}
-            onClick={() => setWhen(w.key)}
-            aria-pressed={when === w.key}
-            className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition ${
-              when === w.key
-                ? "bg-accent text-[color:var(--on-accent)] border-accent"
-                : "bg-surface text-muted border-border hover:text-foreground hover:border-accent/50"
-            }`}
-          >
-            {w.label}
-          </button>
-        ))}
+      <div className="mt-2 mb-4">
+        <Segmented
+          options={whens}
+          value={when}
+          onChange={(v) => setWhen(v as "toWatch" | "upcoming")}
+          size="sm"
+        />
       </div>
 
       {kind === "shows" && when === "toWatch" && (
@@ -272,6 +255,43 @@ export function LibraryView({
   );
 }
 
+/** شريط مقسّم: وعاء دائريّ وحبّة ممتلئة تتحرّك بين الخيارات */
+function Segmented({
+  options,
+  value,
+  onChange,
+  size = "lg",
+}: {
+  options: { key: string; label: string }[];
+  value: string;
+  onChange: (v: string) => void;
+  size?: "lg" | "sm";
+}) {
+  return (
+    <div className="flex rounded-full bg-surface border border-border p-1">
+      {options.map((o) => {
+        const on = o.key === value;
+        return (
+          <button
+            key={o.key}
+            onClick={() => onChange(o.key)}
+            aria-pressed={on}
+            className={`flex-1 rounded-full font-bold transition ${
+              size === "lg" ? "py-2.5 text-sm" : "py-1.5 text-xs"
+            } ${
+              on
+                ? "bg-accent text-[color:var(--on-accent)] shadow-lg shadow-black/20"
+                : "text-muted hover:text-foreground"
+            }`}
+          >
+            {o.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 function groupBy<T>(rows: T[], key: (r: T) => string) {
   const map = new Map<string, T[]>();
   for (const r of rows) {
@@ -294,11 +314,15 @@ function Groups<T>({
   const shown = groups.filter((g) => g.rows.length > 0);
   if (!shown.length) return <p className="text-sm text-muted text-center py-16">{empty}</p>;
 
+  // شارة المجموعة تظهر حين تكون هناك مجموعتان فأكثر: مجموعة واحدة اسمها
+  // اسم التبويب الذي فوقها، فتكرارها سطرٌ لا يضيف شيئاً
+  const showLabels = shown.length > 1;
+
   return (
     <div className="space-y-5">
       {shown.map((g) => (
         <section key={g.label}>
-          <div className="flex justify-center mb-2">
+          <div className={`flex justify-center mb-2 ${showLabels ? "" : "hidden"}`}>
             <span className="px-3 py-1 rounded-full bg-surface-2 text-[11px] font-bold tracking-wide text-muted">
               {g.label}
             </span>
