@@ -28,6 +28,7 @@ import { localizeFollows } from "@/lib/localize";
 import { airedEpisodeCount, percentOf } from "@/lib/progress";
 import { PosterCard } from "@/components/PosterCard";
 import { ContinueCard } from "@/components/ContinueCard";
+import { ToWatchCard } from "@/components/ToWatchCard";
 import { PosterRail, RailItem } from "@/components/PosterRail";
 import type { IconName } from "@/components/Icon";
 import { ProfileHeader, type HeaderStat } from "@/components/ProfileHeader";
@@ -72,8 +73,10 @@ export default async function HomePage() {
   // أسماء المكتبة وملصقاتها بلغة الواجهة لا بلغة يوم المتابعة
   const follows = await localizeFollows(followRows, locale);
 
-  const tvFollows = follows.filter((f) => f.media_type === "tv");
-  const movieFollows = follows.filter((f) => f.media_type === "movie");
+  // الموقوف ببطاقةٍ حمراء لا مكان له في الرئيسية — مكانه المكتبة وحدها
+  const active = follows.filter((f) => !f.dropped);
+  const tvFollows = active.filter((f) => f.media_type === "tv");
+  const movieFollows = active.filter((f) => f.media_type === "movie");
 
   const watchedByShow = new Map<number, number>();
   // المسلسلات مرتّبة من الأحدث مشاهدةً — أساس اختيار «الحلقة التالية» والاقتراحات
@@ -295,6 +298,8 @@ export default async function HomePage() {
   // المشاهَدة — بترتيب الأقرب إلى الاستئناف. القادم: ما له موعدٌ آتٍ.
   type MixedItem = {
     key: string;
+    mediaType?: "tv" | "movie";
+    tmdbId?: number;
     href: string;
     title: string;
     posterPath: string | null;
@@ -308,6 +313,8 @@ export default async function HomePage() {
       .filter((i) => i.aired === 0 || i.watched < i.aired)
       .map((i) => ({
         key: `tw-tv-${i.id}`,
+        mediaType: "tv" as const,
+        tmdbId: i.id,
         href: `/show/${i.id}`,
         title: i.name,
         posterPath: i.posterPath,
@@ -318,6 +325,8 @@ export default async function HomePage() {
       .filter((m) => m.progress < 100)
       .map((m) => ({
         key: `tw-mv-${m.tmdbId}`,
+        mediaType: "movie" as const,
+        tmdbId: m.tmdbId,
         href: `/movie/${m.tmdbId}`,
         title: m.title,
         posterPath: m.posterPath,
@@ -514,14 +523,20 @@ export default async function HomePage() {
                 seeAll={t.seeAll}
               >
                 {toWatchRow.map((x) => (
-                  <PosterCard
+                  <ToWatchCard
                     key={x.key}
-                    href={x.href}
-                    title={x.title}
-                    posterPath={x.posterPath}
-                    progress={x.progress}
-                    badge={x.badge}
-                  />
+                    tmdbId={x.tmdbId!}
+                    mediaType={x.mediaType!}
+                    locale={locale}
+                  >
+                    <PosterCard
+                      href={x.href}
+                      title={x.title}
+                      posterPath={x.posterPath}
+                      progress={x.progress}
+                      badge={x.badge}
+                    />
+                  </ToWatchCard>
                 ))}
               </Section>
             ) : null,
