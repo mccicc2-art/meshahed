@@ -394,7 +394,7 @@ export async function saveRating(input: {
 }) {
   const { supabase, user } = await requireUser();
 
-  const rating = Math.max(1, Math.min(5, Math.round(input.rating)));
+  const rating = Math.max(1, Math.min(10, Math.round(input.rating)));
   const review = input.review.trim().slice(0, 2000);
 
   const { error } = await supabase.from("ratings").upsert(
@@ -647,4 +647,58 @@ export async function toggleReviewLike(
   if (error) throw new Error(error.message);
   revalidatePath("/");
   revalidatePath(`/${mediaType === "tv" ? "show" : "movie"}/${tmdbId}`);
+}
+
+/**
+ * «شفته كله»: يعلّم كل الحلقات المعروضة دفعةً واحدة.
+ *
+ * الصفوف تُبنى من عدّة المواسم في TMDB وتُدرج بدفعةٍ واحدة —
+ * `upsert` على المفتاح الفريد فلا يتكرّر ما سبق تعليمه.
+ */
+export async function markShowWatched(tmdbId: number) {
+  const { supabase, user } = await requireUser();
+  const { getTv } = await import("@/lib/tmdb");
+  const { airedPerSeason } = await import("@/lib/progress");
+
+  const tv = await getTv(tmdbId);
+  const per = airedPerSeason(tv);
+  const runtime = tv.episode_run_time?.[0] ?? null;
+  const rows: Record<string, unknown>[] = [];
+  for (const [season, count] of per) {
+    for (let ep = 1; ep <= count; ep++) {
+      rows.push({
+        user_id: user.id,
+        show_tmdb_id: tmdbId,
+        season_number: season,
+        episode_number: ep,
+        runtime,
+      });
+    }
+  }
+  if (rows.length) {
+    const { error } = await supabase
+      .from("watched_episodes")
+      .upsert(rows, { onConflict: "user_id,show_tmdb_id,season_number,episode_number" });
+    if (error) throw new Error(error.message);
+  }
+  revalidatePath("/");
+  revalidatePath("/library");
+  revalidatePath(`/show/${tmdbId}`);
+}
+
+/**
+ * البطاقة الحمراء: إيقاف عملٍ اكتفيتَ منه.
+ *
+ * لا يُحذف ولا يُعلَّم مشاهداً — يبقى في المكتبة بشريطٍ أحمر ويختفي من
+ * صفوف الرئيسية. علامةٌ على صفّ المتابعة نفسه لا جدول جديد.
+ */
+export async function setDropped(tmdbId: number, mediaType: MediaType, dropped: boolean) {
+  const { supabase, user } = await requireUser();
+  const { error } = await supabase
+    .from("follows")
+    .update({ dropped })
+    .match({ user_id: user.id, tmdb_id: tmdbId, media_type: mediaType });
+  if (error) throw new Error(error.message);
+  revalidatePath("/");
+  revalidatePath("/library");
 }

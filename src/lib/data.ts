@@ -14,6 +14,8 @@ export interface FollowRow {
   total_episodes?: number | null;
   aired_episodes?: number | null;
   next_air_date?: string | null;
+  /** بطاقة حمراء: موقوفٌ عند صاحبه — يبقى بالمكتبة ويغيب عن الرئيسية */
+  dropped?: boolean | null;
 }
 
 export interface WatchedEpisodeRow {
@@ -138,7 +140,7 @@ export const getFollows = cache(async (): Promise<FollowRow[]> => {
   const { data, error } = await supabase
     .from("follows")
     .select(
-      "tmdb_id, media_type, title, poster_path, added_at, total_episodes, aired_episodes, next_air_date",
+      "tmdb_id, media_type, title, poster_path, added_at, total_episodes, aired_episodes, next_air_date, dropped",
     )
     .order("added_at", { ascending: false });
 
@@ -543,6 +545,150 @@ export async function getProfileByUsername(username: string): Promise<PublicProf
  * رقماً لا قائمة. والجدول قد لا يكون منشأً بعد (`supabase/likes.sql`)،
  * فالفشل يُرجع صفراً ولا يُسقط الصفحة.
  */
+/** مكتبة مستخدمٍ آخر — القراءة العامة أُذن بها في سياسات الجداول */
+export async function getFollowsOf(userId: string): Promise<FollowRow[]> {
+  try {
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from("follows")
+      .select(
+        "tmdb_id, media_type, title, poster_path, added_at, total_episodes, aired_episodes, next_air_date, dropped",
+      )
+      .eq("user_id", userId)
+      .order("added_at", { ascending: false })
+      .limit(60);
+    return (data as FollowRow[]) ?? [];
+  } catch {
+    return [];
+  }
+}
+
+/** مشاهدات مستخدمٍ آخر مجمّعةً: عددٌ لكل مسلسل، ومجموعة أفلامه */
+export async function getWatchedOf(
+  userId: string,
+): Promise<{ byShow: Map<number, number>; episodes: number; movies: Set<number> }> {
+  const empty = { byShow: new Map<number, number>(), episodes: 0, movies: new Set<number>() };
+  try {
+    const supabase = await createClient();
+    const [eps, mvs] = await Promise.all([
+      supabase
+        .from("watched_episodes")
+        .select("show_tmdb_id")
+        .eq("user_id", userId)
+        .limit(5000),
+      supabase.from("watched_movies").select("movie_tmdb_id").eq("user_id", userId).limit(1000),
+    ]);
+    const byShow = new Map<number, number>();
+    for (const r of (eps.data ?? []) as { show_tmdb_id: number }[]) {
+      byShow.set(r.show_tmdb_id, (byShow.get(r.show_tmdb_id) ?? 0) + 1);
+    }
+    return {
+      byShow,
+      episodes: (eps.data ?? []).length,
+      movies: new Set(
+        ((mvs.data ?? []) as { movie_tmdb_id: number }[]).map((m) => m.movie_tmdb_id),
+      ),
+    };
+  } catch {
+    return empty;
+  }
+}
+
+/** رأيٌ في خطّ المجتمع: صاحبه وعمله ونصّه وإعجاباته */
+export interface FeedItem {
+  person: PersonLite;
+  tmdb_id: number;
+  media_type: "tv" | "movie";
+  rating: number;
+  review: string;
+  title: string | null;
+  poster_path: string | null;
+  updated_at: string;
+  likes: number;
+  likedByMe: boolean;
+}
+
+/**
+ * خطّ الآراء: مراجعات من تتابعهم وحدهم، والأكثر إعجاباً أولاً.
+ *
+ * ثلاث قراءات متوازية بعد جلب قائمة المتابَعين — المراجعات والإعجابات
+ * والملفات — ثم يُجمَّع كل شيء في الذاكرة: الخط يُبنى من ستين مراجعة
+ * على الأكثر، والفرز بالإعجاب يحتاج العدّ كاملاً قبل الترتيب فلا ينفع
+ * فيه ترقيم الخادم.
+ */
+export async function getCommunityFeed(): Promise<FeedItem[]> {
+  try {
+    const supabase = await createClient();
+    const me = await getUser();
+    if (!me) return [];
+
+    const { data: fRows } = await supabase
+      .from("user_follows")
+      .select("following_id")
+      .eq("follower_id", me.id)
+      .limit(200);
+    const ids = (fRows ?? []).map((r: { following_id: string }) => r.following_id);
+    if (!ids.length) return [];
+
+    const [ratingsQ, likesQ, profilesQ] = await Promise.all([
+      supabase
+        .from("ratings")
+        .select("user_id, tmdb_id, media_type, rating, review, title, poster_path, updated_at")
+        .in("user_id", ids)
+        .not("review", "is", null)
+        .order("updated_at", { ascending: false })
+        .limit(60),
+      supabase
+        .from("review_likes")
+        .select("review_user_id, tmdb_id, media_type, liker_id")
+        .in("review_user_id", ids)
+        .limit(2000),
+      supabase
+        .from("public_profiles")
+        .select("id, nickname, username, avatar_url, hide_name")
+        .in("id", ids),
+    ]);
+
+    const people = new Map<string, PersonLite>();
+    for (const pr of (profilesQ.data ?? []) as PersonLite[]) people.set(pr.id, pr);
+
+    const likeKey = (u: string, t2: number, m: string) => `${u}|${t2}|${m}`;
+    const counts = new Map<string, number>();
+    const mine = new Set<string>();
+    for (const l of (likesQ.data ?? []) as {
+      review_user_id: string;
+      tmdb_id: number;
+      media_type: string;
+      liker_id: string;
+    }[]) {
+      const k = likeKey(l.review_user_id, l.tmdb_id, l.media_type);
+      counts.set(k, (counts.get(k) ?? 0) + 1);
+      if (l.liker_id === me.id) mine.add(k);
+    }
+
+    return ((ratingsQ.data ?? []) as RatingRow[])
+      .filter((r) => r.review?.trim() && people.has(r.user_id))
+      .map((r) => {
+        const k = likeKey(r.user_id, r.tmdb_id, r.media_type);
+        return {
+          person: people.get(r.user_id)!,
+          tmdb_id: r.tmdb_id,
+          media_type: r.media_type,
+          rating: r.rating,
+          review: r.review!.trim(),
+          title: r.title,
+          poster_path: r.poster_path,
+          updated_at: r.updated_at,
+          likes: counts.get(k) ?? 0,
+          likedByMe: mine.has(k),
+        };
+      })
+      .sort((a, b) => b.likes - a.likes || b.updated_at.localeCompare(a.updated_at));
+  } catch {
+    return [];
+  }
+}
+
 export async function getReceivedLikes(userId: string): Promise<number> {
   try {
     const supabase = await createClient();
