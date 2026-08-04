@@ -16,6 +16,48 @@ export interface HeaderStat {
 }
 
 /**
+ * ختم التوثيق.
+ *
+ * مربّعان مستديران أحدهما مائل ٤٥ درجة — فيخرج ختمٌ ثمانيّ الأطراف كخاتم
+ * الشمع، وهو شكل شارات التوثيق المعروفة. رُسم بمربّعين لا بمسار محفوظ:
+ * الشكل نفسه بلا نسخ. والتدرّج ذهبيّ ثابت لا يتبع الثيم — الشارة علامة
+ * لا عنصر واجهة، فلونها واحد على كل الخلفيات.
+ */
+function VerifiedMark({ size = 17, title }: { size?: number; title: string }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      role="img"
+      aria-label={title}
+      className="shrink-0 drop-shadow-[0_1px_2px_rgba(0,0,0,0.35)]"
+    >
+      <title>{title}</title>
+      <defs>
+        <linearGradient id="verified-gold" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#FBE38A" />
+          <stop offset="45%" stopColor="#E3AE2B" />
+          <stop offset="100%" stopColor="#A9750F" />
+        </linearGradient>
+      </defs>
+      <g fill="url(#verified-gold)">
+        <rect x="4.2" y="4.2" width="15.6" height="15.6" rx="5.2" />
+        <rect x="4.2" y="4.2" width="15.6" height="15.6" rx="5.2" transform="rotate(45 12 12)" />
+      </g>
+      <path
+        d="m8.4 12.3 2.5 2.5 4.7-5"
+        fill="none"
+        stroke="#fff"
+        strokeWidth="2.1"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+/**
  * ترويسة الحساب.
  *
  * الغلاف صورة ممتدّة إلى حواف الشاشة، وأدواته أزرارٌ دائرية تطفو عليه —
@@ -36,6 +78,9 @@ export function ProfileHeader({
   level,
   alerts,
   stats,
+  followers,
+  following,
+  verified = false,
   locale,
 }: {
   displayName: string;
@@ -46,6 +91,9 @@ export function ProfileHeader({
   /** عدد ما ينتظرك — نقطة على الجرس لا رقم */
   alerts: number;
   stats: HeaderStat[];
+  followers: number;
+  following: number;
+  verified?: boolean;
   locale: Locale;
 }) {
   const t = getDict(locale);
@@ -119,13 +167,31 @@ export function ProfileHeader({
           />
         </Link>
 
-        <div className="min-w-0 flex-1 pb-3">
-          <h1 className="text-lg sm:text-2xl font-bold truncate">{displayName}</h1>
-          {username && (
-            <p className="text-xs sm:text-sm text-muted truncate leading-tight">
-              <span dir="ltr">@{username}</span>
-            </p>
-          )}
+        <div className="min-w-0 flex-1 pb-6">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <h1 className="text-lg sm:text-2xl font-bold truncate">{displayName}</h1>
+            {verified && <VerifiedMark title={t.verifiedTitle} />}
+          </div>
+
+          {/* سطر المُعرّف: المعرّف والمتابعون والمتابَعون في سطر واحد —
+              الرقم بلون النصّ والكلمة باهتة، فتُقرأ الأرقام أولاً */}
+          <div className="flex items-center gap-1.5 text-[11px] sm:text-sm text-muted leading-tight mt-0.5 min-w-0">
+            {username && (
+              <span className="truncate min-w-0">
+                <span dir="ltr">@{username}</span>
+              </span>
+            )}
+            {username && <span className="opacity-40 shrink-0">·</span>}
+            <Link href="/people" className="shrink-0 hover:text-foreground transition">
+              <span className="font-bold text-foreground tabular-nums">{followers}</span>{" "}
+              {t.followersLabel}
+            </Link>
+            <span className="opacity-40 shrink-0">·</span>
+            <Link href="/people" className="shrink-0 hover:text-foreground transition">
+              <span className="font-bold text-foreground tabular-nums">{following}</span>{" "}
+              {t.followingLabel}
+            </Link>
+          </div>
         </div>
 
         <Link
@@ -147,7 +213,7 @@ export function ProfileHeader({
           {stats.map((s, i) => {
             const cell = (
               <>
-                <Icon name={s.icon} size={16} className="text-muted shrink-0" />
+                <Icon name={s.icon} size={18} className="text-muted shrink-0" />
                 <span className="min-w-0">
                   <span className="block text-[13px] font-bold leading-none tabular-nums">
                     {s.value}
@@ -159,7 +225,7 @@ export function ProfileHeader({
             const edges = `${i % 3 !== 2 ? "border-e border-border/70" : ""} ${
               i < 3 ? "border-b border-border/70" : ""
             }`;
-            const box = "flex items-center gap-2 px-2.5 py-2.5";
+            const box = "flex items-center gap-2.5 px-3 py-3";
             return s.href ? (
               <Link key={s.key} href={s.href} className={`${box} ${edges} hover:bg-surface-2 transition`}>
                 {cell}
@@ -172,25 +238,27 @@ export function ProfileHeader({
           })}
         </div>
 
-        {/* المستوى سطرٌ رفيع في ذيل البطاقة */}
-        <div className="flex items-center gap-2 px-3 py-2 border-t border-border/70">
-          <p className="text-[11px] font-bold truncate shrink-0">
-            {t.levelLabel(level.level)} ·{" "}
-            <span className="text-accent">{levelName(level.level, t)}</span>
-          </p>
-          <div className="flex-1 h-1.5 rounded-full bg-surface-2 overflow-hidden">
-            <div
-              className="h-full rounded-full"
-              style={{
-                width: `${level.percent}%`,
-                background: "linear-gradient(90deg, var(--brand-3), var(--accent-2))",
-              }}
-            />
-          </div>
-          <span className="text-[10px] text-muted shrink-0 tabular-nums">
-            <span dir="ltr">{level.percent}%</span>
-          </span>
+      </div>
+
+      {/* المستوى سطرٌ عارٍ تحت البطاقة: البطاقة نفسها ستّ خانات لا سابع
+          لها، كما في المرجع */}
+      <div className="flex items-center gap-2 mt-2 px-1">
+        <p className="text-[11px] font-bold truncate shrink-0">
+          {t.levelLabel(level.level)} ·{" "}
+          <span className="text-accent">{levelName(level.level, t)}</span>
+        </p>
+        <div className="flex-1 h-1.5 rounded-full bg-surface-2 overflow-hidden">
+          <div
+            className="h-full rounded-full"
+            style={{
+              width: `${level.percent}%`,
+              background: "linear-gradient(90deg, var(--brand-3), var(--accent-2))",
+            }}
+          />
         </div>
+        <span className="text-[10px] text-muted shrink-0 tabular-nums">
+          <span dir="ltr">{level.percent}%</span>
+        </span>
       </div>
     </section>
   );
