@@ -1,7 +1,15 @@
 // تفضيلات الصفحة الرئيسية — ماذا يظهر وبأي ترتيب
 
 /** أقسام الرئيسية القابلة للترتيب */
-export const HOME_SECTIONS = ["continue", "week", "shows", "movies", "trending"] as const;
+export const HOME_SECTIONS = [
+  "continue",
+  "week",
+  "towatch",
+  "upcoming",
+  "shows",
+  "movies",
+  "trending",
+] as const;
 export type HomeSection = (typeof HOME_SECTIONS)[number];
 
 export interface HomePrefs {
@@ -22,7 +30,9 @@ export const DEFAULT_HOME_PREFS: HomePrefs = {
   stats: true,
   followers: true,
   social: true,
-  order: ["continue", "week", "shows", "movies", "trending"],
+  // «مسلسلاتي» و«أفلامي» انتقلا إلى المكتبة، فليسا في الافتراضي —
+  // لكنهما باقيان في قائمة الأقسام لمن يحبّ إرجاعهما من التخصيص
+  order: ["continue", "week", "towatch", "upcoming", "trending"],
 };
 
 /**
