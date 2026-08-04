@@ -60,6 +60,9 @@ export interface SearchResult {
   /** عدد المصوّتين عالمياً — تُستخدم كعتبة حتى لا يتصدّر عمل بصوتين */
   vote_count?: number;
   popularity?: number;
+  /** أرقام أنواع TMDB — تُستخدم لاستبعاد الرسوم من قوائم المسلسلات */
+  genre_ids?: number[];
+  origin_country?: string[];
 }
 
 export interface Episode {
@@ -286,6 +289,9 @@ export async function topTenAnimeThisWeek(limit = 10): Promise<SearchResult[]> {
  * الرائج أسبوعياً مُرشَّحاً بعتبة أصوات ثم مرتَّباً بالتقييم. العتبة تنزل
  * تدريجياً إن لم تكتمل العشرة، فالقائمة لا تعود ناقصة في أسبوع هادئ.
  */
+/** رقم نوع «رسوم متحركة» في TMDB — واحد للأفلام والمسلسلات معاً */
+const ANIMATION_GENRE = 16;
+
 export async function topTenThisWeek(
   mediaType: MediaType,
   limit = 10,
@@ -293,6 +299,10 @@ export async function topTenThisWeek(
   const data = await tmdb<{ results: SearchResult[] }>(`/trending/${mediaType}/week`);
   const rows = (data.results ?? [])
     .filter((r) => r.poster_path && r.vote_average > 0)
+    // المسلسلات وحدها تُصفّى من الرسوم: للأنمي صفّه الخاص تحتها مباشرةً،
+    // وكان «أفضل ١٠ مسلسلات» يتصدّره ون بيس وريك آند مورتي فيتكرّر الصفّان.
+    // الأفلام تبقى كما هي — فيلم الرسوم فيلمٌ ولا صفَّ بديلاً له.
+    .filter((r) => mediaType !== "tv" || !(r.genre_ids ?? []).includes(ANIMATION_GENRE))
     .map((r) => ({ ...r, media_type: mediaType }));
 
   for (const floor of [300, 100, 25, 0]) {
