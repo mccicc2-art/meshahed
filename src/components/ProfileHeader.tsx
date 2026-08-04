@@ -108,7 +108,7 @@ export function ProfileHeader({
       </div>
 
       {/* ===== صفّ الهوية ===== */}
-      <div className="flex items-end gap-3 -mt-9 relative">
+      <div className="flex items-end gap-3 -mt-9 relative z-10">
         <Link href="/profile/edit" className="shrink-0">
           <Avatar
             src={avatarUrl}
@@ -119,7 +119,7 @@ export function ProfileHeader({
           />
         </Link>
 
-        <div className="min-w-0 flex-1 pb-1">
+        <div className="min-w-0 flex-1 pb-3">
           <h1 className="text-lg sm:text-2xl font-bold truncate">{displayName}</h1>
           {username && (
             <p className="text-xs sm:text-sm text-muted truncate leading-tight">
@@ -138,53 +138,47 @@ export function ProfileHeader({
         </Link>
       </div>
 
-      {/* ===== بطاقة الأرقام ===== */}
-      <div className="mt-4 rounded-2xl border border-border bg-surface overflow-hidden">
-        <div className="grid grid-cols-3">
+      {/* ===== بطاقة الأرقام =====
+          تُسحب لأعلى فتنزلق تحت الصورة الشخصية: الصورة تطفو على زاويتها
+          فتربط الكتلتين بدل أن تقفا منفصلتين بفراغ بينهما. والخانة صفٌّ
+          أفقيّ — أيقونة ثم رقم وتحته كلمته — فارتفاع الصفّ ٤٤ بكسلاً لا ٧٠. */}
+      <div className="-mt-3 rounded-2xl border border-border bg-surface overflow-hidden">
+        <div className="grid grid-cols-3 pt-1">
           {stats.map((s, i) => {
             const cell = (
               <>
-                <span className="grid place-items-center text-muted mb-1.5">
-                  <Icon name={s.icon} size={17} />
+                <Icon name={s.icon} size={16} className="text-muted shrink-0" />
+                <span className="min-w-0">
+                  <span className="block text-[13px] font-bold leading-none tabular-nums">
+                    {s.value}
+                  </span>
+                  <span className="block text-[10px] text-muted mt-1 truncate">{s.label}</span>
                 </span>
-                <span className="block text-base font-extrabold leading-none tabular-nums">
-                  {s.value}
-                </span>
-                <span className="block text-[11px] text-muted mt-1 truncate">{s.label}</span>
               </>
             );
-            // خطوط فاصلة رفيعة بدل حدود لكل خانة: الشبكة تبقى كتلةً واحدة
-            const edges = `${i % 3 !== 2 ? "border-e border-border" : ""} ${
-              i < 3 ? "border-b border-border" : ""
+            const edges = `${i % 3 !== 2 ? "border-e border-border/70" : ""} ${
+              i < 3 ? "border-b border-border/70" : ""
             }`;
+            const box = "flex items-center gap-2 px-2.5 py-2.5";
             return s.href ? (
-              <Link
-                key={s.key}
-                href={s.href}
-                className={`py-3 px-1 text-center hover:bg-surface-2 transition ${edges}`}
-              >
+              <Link key={s.key} href={s.href} className={`${box} ${edges} hover:bg-surface-2 transition`}>
                 {cell}
               </Link>
             ) : (
-              <div key={s.key} className={`py-3 px-1 text-center ${edges}`}>
+              <div key={s.key} className={`${box} ${edges}`}>
                 {cell}
               </div>
             );
           })}
         </div>
 
-        {/* المستوى سطرٌ في ذيل البطاقة */}
-        <div className="border-t border-border px-3 py-2.5">
-          <div className="flex items-baseline justify-between gap-2 mb-1.5">
-            <p className="text-[12px] font-bold truncate">
-              {t.levelLabel(level.level)} ·{" "}
-              <span className="text-accent">{levelName(level.level, t)}</span>
-            </p>
-            <span className="text-[11px] text-muted shrink-0 tabular-nums">
-              <span dir="ltr">{level.percent}%</span>
-            </span>
-          </div>
-          <div className="h-1.5 rounded-full bg-surface-2 overflow-hidden">
+        {/* المستوى سطرٌ رفيع في ذيل البطاقة */}
+        <div className="flex items-center gap-2 px-3 py-2 border-t border-border/70">
+          <p className="text-[11px] font-bold truncate shrink-0">
+            {t.levelLabel(level.level)} ·{" "}
+            <span className="text-accent">{levelName(level.level, t)}</span>
+          </p>
+          <div className="flex-1 h-1.5 rounded-full bg-surface-2 overflow-hidden">
             <div
               className="h-full rounded-full"
               style={{
@@ -193,6 +187,9 @@ export function ProfileHeader({
               }}
             />
           </div>
+          <span className="text-[10px] text-muted shrink-0 tabular-nums">
+            <span dir="ltr">{level.percent}%</span>
+          </span>
         </div>
       </div>
     </section>
