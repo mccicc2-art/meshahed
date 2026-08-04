@@ -41,7 +41,9 @@ export type IconName =
   | "card"
   | "compass"
   | "home"
-  | "people";
+  | "people"
+  | "heart"
+  | "heart-filled";
 
 const PATHS: Record<IconName, React.ReactNode> = {
   bell: (
@@ -194,6 +196,15 @@ const PATHS: Record<IconName, React.ReactNode> = {
       <rect x="3" y="5.5" width="18" height="13" rx="2.5" />
       <path d="M3 10h18M6.5 14.5h3" />
     </>
+  ),
+  heart: (
+    <path d="M12 20s-7.2-4.4-7.2-9.2A3.9 3.9 0 0 1 12 8.3a3.9 3.9 0 0 1 7.2 2.5C19.2 15.6 12 20 12 20Z" />
+  ),
+  "heart-filled": (
+    <path
+      d="M12 20s-7.2-4.4-7.2-9.2A3.9 3.9 0 0 1 12 8.3a3.9 3.9 0 0 1 7.2 2.5C19.2 15.6 12 20 12 20Z"
+      fill="currentColor"
+    />
   ),
   people: (
     <>

@@ -72,32 +72,38 @@ export function PosterCard({
             {count}
           </span>
         )}
+        {/* الاسم داخل الملصق على حجابٍ متدرّج: البطاقة مستطيلٌ واحد،
+            والعين تقرأ الصورة والاسم في حركةٍ واحدة */}
+        <div className="absolute inset-x-0 bottom-0 p-2 pt-7 bg-gradient-to-t from-black/90 via-black/60 to-transparent">
+          <p className="text-[12px] font-semibold leading-tight text-white line-clamp-2 drop-shadow">
+            {title}
+          </p>
+          {year && <p className="text-[10px] text-white/60 mt-0.5">{year}</p>}
+          {note && (
+            <p className="text-[10px] text-accent-2/90 mt-0.5 line-clamp-1">{note}</p>
+          )}
+        </div>
+
         {typeof progress === "number" && (
           <div className="absolute inset-x-0 bottom-0 h-1.5 bg-black/50">
-            {/* شريط التقدّم بلون الهوية الثالث (الكهرماني): هو لون التقدّم
-                في الهوية، ويفصله بصرياً عن الأزرار البنفسجية والوردية */}
+            {/* المكتمل أخضر — لون الإنجاز الدلاليّ الثابت — وغير المكتمل
+                يتدرّج كتدرّج المستوى: كهرمانيّ فورديّ فبنفسجي */}
             <div
               className="h-full"
               style={{
                 width: `${Math.max(0, Math.min(100, progress))}%`,
                 background:
-                  tone === "waiting" ? "var(--accent)" : "var(--brand-3)",
+                  progress >= 100
+                    ? "var(--success)"
+                    : tone === "waiting"
+                      ? "var(--accent)"
+                      : "linear-gradient(90deg, var(--brand-3) 0%, var(--accent-2) 55%, var(--accent) 100%)",
               }}
             />
           </div>
         )}
       </div>
-      <div className="mt-2 px-0.5">
-        <p className="text-[13px] font-medium leading-tight line-clamp-2 group-hover:text-accent transition">
-          {title}
-        </p>
-        {year && <p className="text-xs text-muted mt-0.5">{year}</p>}
-        {note && (
-          <p className="text-[11px] text-accent-2/80 mt-0.5 line-clamp-2">
-            {note}
-          </p>
-        )}
-      </div>
+
     </Link>
   );
 }

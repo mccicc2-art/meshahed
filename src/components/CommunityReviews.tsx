@@ -2,16 +2,21 @@ import { getDict, type Locale } from "@/lib/i18n";
 import { formatDate } from "@/lib/when";
 import type { TitleReview } from "@/lib/data";
 import { PersonName } from "./PersonRow";
+import { LikeButton } from "./LikeButton";
 
 export function CommunityReviews({
   locale,
   avg,
   count,
   reviews,
+  tmdbId,
+  mediaType,
 }: {
   locale: Locale;
   avg: number;
   count: number;
+  tmdbId: number;
+  mediaType: "tv" | "movie";
   /** مراجعات مع أصحابها — الاسم يظهر إلا لمن أخفاه من الإعدادات */
   reviews: TitleReview[];
 }) {
@@ -48,6 +53,17 @@ export function CommunityReviews({
                 </span>
               </div>
               <p className="text-sm text-muted leading-relaxed whitespace-pre-line">{r.review}</p>
+              <div className="mt-3 pt-2.5 border-t border-border/60">
+                <LikeButton
+                  reviewUserId={r.id}
+                  tmdbId={tmdbId}
+                  mediaType={mediaType}
+                  likes={r.likes}
+                  likedByMe={r.likedByMe}
+                  isMine={r.isMine}
+                  locale={locale}
+                />
+              </div>
             </article>
           ))}
         </div>

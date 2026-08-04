@@ -88,9 +88,10 @@ export function ProfileHeader({
   alerts,
   stats,
   followers,
-  following,
   comments,
   ratings,
+  likes,
+  show,
   verified = false,
   locale,
 }: {
@@ -103,9 +104,12 @@ export function ProfileHeader({
   alerts: number;
   stats: HeaderStat[];
   followers: number;
-  following: number;
   comments: number;
   ratings: number;
+  /** إعجابات تلقّتها مراجعاته */
+  likes: number;
+  /** ماذا يظهر — من تفضيلات التخصيص */
+  show: { level: boolean; stats: boolean; followers: boolean; social: boolean };
   verified?: boolean;
   locale: Locale;
 }) {
@@ -190,124 +194,147 @@ export function ProfileHeader({
             </p>
           )}
 
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[13px] text-white/75 leading-tight mt-1 drop-shadow">
-            <Link
-              href="/people"
-              className="shrink-0 hover:text-white transition"
-            >
-              <span className="font-bold text-white tabular-nums">
-                {followers}
-              </span>{" "}
-              {t.followersLabel}
-            </Link>
-            <span className="opacity-40 shrink-0">•</span>
-            <Link
-              href="/people"
-              className="shrink-0 hover:text-white transition"
-            >
-              <span className="font-bold text-white tabular-nums">
-                {following}
-              </span>{" "}
-              {t.followingLabel}
-            </Link>
-          </div>
+          {(show.followers || show.social) && (
+            <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[13px] text-white/75 leading-tight mt-1 drop-shadow">
+              {show.followers && (
+                <Link
+                  href="/people"
+                  className="shrink-0 hover:text-white transition"
+                >
+                  <span className="font-bold text-white tabular-nums">
+                    {followers}
+                  </span>{" "}
+                  {t.followersLabel}
+                </Link>
+              )}
+              {show.followers && show.social && (
+                <span className="opacity-40 shrink-0">•</span>
+              )}
+
+              {/* التعليقات والتقييمات والإعجابات: أيقونة ورقم بلا كلمة —
+                  الأيقونة تكفي لتعريفها فتدخل السطر دون أن تزحمه */}
+              {show.social && (
+                <>
+                  <Link
+                    href="/ratings?with=comments"
+                    title={t.panelComments}
+                    aria-label={`${comments} ${t.panelComments}`}
+                    className="shrink-0 flex items-center gap-1 hover:text-white transition"
+                  >
+                    <Icon name="comment" size={14} />
+                    <span className="font-bold text-white tabular-nums">
+                      {comments}
+                    </span>
+                  </Link>
+                  <Link
+                    href="/ratings"
+                    title={t.panelRatings}
+                    aria-label={`${ratings} ${t.panelRatings}`}
+                    className="shrink-0 flex items-center gap-1 hover:text-white transition"
+                  >
+                    <Icon name="star" size={14} />
+                    <span className="font-bold text-white tabular-nums">
+                      {ratings}
+                    </span>
+                  </Link>
+                  <span
+                    title={t.likesLabel}
+                    aria-label={`${likes} ${t.likesLabel}`}
+                    className="shrink-0 flex items-center gap-1"
+                  >
+                    <Icon name="heart" size={14} />
+                    <span className="font-bold text-white tabular-nums">
+                      {likes}
+                    </span>
+                  </span>
+                </>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
       {/* ===== بطاقة الأرقام =====
-          الأيقونة فوق الرقم وتحته كلمته، والخانة موسّطة — كتلة تُقرأ من
-          أعلى لأسفل. والفواصل خطوطٌ محشورة لا حدودَ خانة: تبتعد عن إطار
+          الأيقونة إلى جانب الرقم لا فوقه — بمحاذاة كتلة الرقم والكلمة
+          معاً. والفواصل خطوطٌ محشورة لا حدودَ خانة: تبتعد عن إطار
           البطاقة فلا تلمس الحافّة. */}
-      <div className="relative z-10 mt-5 rounded-[22px] border border-border/70 bg-[color:var(--surface)]/85 backdrop-blur-xl shadow-[0_8px_28px_rgba(0,0,0,0.45)] overflow-hidden">
-        <div className="grid grid-cols-4">
-          {stats.map((s, i) => {
-            const cell = (
-              <>
-                <Icon
-                  name={s.icon}
-                  size={24}
-                  strokeWidth={1.8}
-                  style={s.color ? { color: s.color } : undefined}
-                  className={s.color ? "" : "text-muted"}
+      {show.stats && (
+        <div className="relative z-10 mt-5 rounded-[22px] border border-border/70 bg-[color:var(--surface)]/85 backdrop-blur-xl shadow-[0_8px_28px_rgba(0,0,0,0.45)] overflow-hidden">
+          <div className="grid grid-cols-4">
+            {stats.map((s, i) => {
+              const cell = (
+                <>
+                  <Icon
+                    name={s.icon}
+                    size={22}
+                    strokeWidth={1.8}
+                    style={s.color ? { color: s.color } : undefined}
+                    className={`shrink-0 ${s.color ? "" : "text-muted"}`}
+                  />
+                  <span className="min-w-0 text-start">
+                    <span className="block text-[17px] font-bold leading-none tabular-nums">
+                      {s.value}
+                    </span>
+                    <span className="block text-[11px] text-muted mt-1 leading-[1.25] min-h-[2.5em]">
+                      {s.label}
+                    </span>
+                  </span>
+                </>
+              );
+              const rule = i < stats.length - 1 && (
+                <span
+                  className="absolute inset-y-4 end-0 w-px bg-white/10"
+                  aria-hidden
                 />
-                <span className="block text-[19px] font-bold leading-none tabular-nums mt-2">
-                  {s.value}
-                </span>
-                <span className="block text-[11px] text-muted mt-1.5 leading-[1.25] min-h-[2.5em] px-0.5">
-                  {s.label}
-                </span>
-              </>
-            );
-            const rule = i < stats.length - 1 && (
-              <span
-                className="absolute inset-y-4 end-0 w-px bg-white/10"
-                aria-hidden
-              />
-            );
-            const box =
-              "relative flex flex-col items-center justify-start text-center px-1 py-4";
-            return s.href ? (
-              <Link
-                key={s.key}
-                href={s.href}
-                className={`${box} hover:bg-white/5 transition`}
-              >
-                {rule}
-                {cell}
-              </Link>
-            ) : (
-              <div key={s.key} className={box}>
-                {rule}
-                {cell}
-              </div>
-            );
-          })}
+              );
+              const box =
+                "relative flex flex-col sm:flex-row items-center justify-center gap-1.5 sm:gap-2 px-1 sm:px-2 py-4";
+              return s.href ? (
+                <Link
+                  key={s.key}
+                  href={s.href}
+                  className={`${box} hover:bg-white/5 transition`}
+                >
+                  {rule}
+                  {cell}
+                </Link>
+              ) : (
+                <div key={s.key} className={box}>
+                  {rule}
+                  {cell}
+                </div>
+              );
+            })}
+          </div>
         </div>
-      </div>
-      {/* ===== المراجعات والتقييمات =====
-          سطر نصّ لا بطاقة: رقمان لا يصفان ميزةً بل يصفان الحساب، فمكانهما
-          بين بيانات الملف لا في صندوقٍ يزاحم بطاقة الأرقام فوقه. */}
-      <div className="relative z-10 mt-4 px-0.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px]">
-        <Link
-          href="/ratings?with=comments"
-          className="hover:brightness-125 transition"
-        >
-          <span className="font-semibold tabular-nums">{comments}</span>{" "}
-          <span className="font-medium text-muted">{t.reviewsLabel}</span>
-        </Link>
-        <span className="text-[color:var(--disabled)]" aria-hidden>
-          •
-        </span>
-        <Link href="/ratings" className="hover:brightness-125 transition">
-          <span className="font-semibold tabular-nums">{ratings}</span>{" "}
-          <span className="font-medium text-muted">{t.ratingLabel}</span>
-        </Link>
-      </div>
+      )}
       {/* ===== المستوى =====
           `z-10` ليس زينة: الغلاف عنصرٌ `relative`، والعناصر الموضوعة
           تُرسم فوق ما بعدها من عناصر التدفّق العادي — فكان سطر المستوى
           يختفي تحت حافّة الصورة على الشاشة العريضة. */}
-      <div className="relative z-10 mt-5 px-0.5">
-        <p className="text-[13px] font-bold">
-          {t.levelLabel(level.level)} ·{" "}
-          <span className="text-accent">{levelName(level.level, t)}</span>
-        </p>
-        <div className="flex items-center gap-3 mt-1.5">
-          <div className="flex-1 h-[5px] rounded-full bg-surface-2 overflow-hidden">
-            <div
-              className="h-full rounded-full"
-              style={{
-                width: `${level.percent}%`,
-                background:
-                  "linear-gradient(90deg, var(--brand-3), var(--accent-2))",
-              }}
-            />
+      {show.level && (
+        <div className="relative z-10 mt-5 px-0.5">
+          <p className="text-[13px] font-bold">
+            {t.levelLabel(level.level)} ·{" "}
+            <span className="text-accent">{levelName(level.level, t)}</span>
+          </p>
+          <div className="flex items-center gap-3 mt-1.5">
+            <div className="flex-1 h-[5px] rounded-full bg-surface-2 overflow-hidden">
+              <div
+                className="h-full rounded-full"
+                style={{
+                  width: `${level.percent}%`,
+                  background:
+                    "linear-gradient(90deg, var(--brand-3), var(--accent-2))",
+                }}
+              />
+            </div>
+            <span className="text-[12px] text-muted shrink-0 tabular-nums">
+              <span dir="ltr">{level.percent}%</span>
+            </span>
           </div>
-          <span className="text-[12px] text-muted shrink-0 tabular-nums">
-            <span dir="ltr">{level.percent}%</span>
-          </span>
         </div>
-      </div>
+      )}
     </section>
   );
 }

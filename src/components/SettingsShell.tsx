@@ -6,6 +6,7 @@ import { Icon, type IconName } from "./Icon";
 import { LanguageSwitch } from "./LanguageSwitch";
 import { ProfileForm } from "./ProfileForm";
 import { AccountSettings } from "./AccountSettings";
+import { HomeCustomize } from "./HomeCustomize";
 
 type SectionKey =
   | "profile"
@@ -42,6 +43,7 @@ export function SettingsShell({
   theme,
   genres,
   hideName,
+  homePrefs,
   initial = "profile",
 }: {
   userId: string;
@@ -54,6 +56,7 @@ export function SettingsShell({
   theme: string;
   genres: number[];
   hideName: boolean;
+  homePrefs?: unknown;
   initial?: SectionKey;
 }) {
   const t = getDict(locale);
@@ -114,7 +117,18 @@ export function SettingsShell({
           </div>
         );
       case "customize":
-        return <ProfileForm {...profileProps} only={["genres"]} />;
+        return (
+          <div className="space-y-4">
+            <HomeCustomize
+              locale={locale}
+              nickname={nickname}
+              avatarUrl={avatarUrl}
+              genres={genres}
+              initial={homePrefs}
+            />
+            <ProfileForm {...profileProps} only={["genres"]} />
+          </div>
+        );
       case "widgets":
         return <Soon title={t.settingsSoonTitle} body={t.settingsWidgetsHint} icon="grid" />;
       case "billing":
