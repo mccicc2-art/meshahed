@@ -10,6 +10,7 @@ import {
 import { getTv, getMovie, getSeason } from "@/lib/tmdb";
 import { posterUrl } from "@/lib/media";
 import { getT } from "@/lib/locale";
+import { localizeFollows } from "@/lib/localize";
 import { nextUnwatchedEpisode, airedEpisodeCount } from "@/lib/progress";
 import { episodeKey } from "@/lib/keys";
 import { whenLabel, formatDate } from "@/lib/when";
@@ -45,12 +46,15 @@ export default async function LibraryPage({
   const { filter } = await searchParams;
   const initialTab = filter === "movie" ? "movies" : "shows";
 
-  const [follows, watchedEpisodes, watchedMovieIds, movieProgress] = await Promise.all([
+  const [followRows, watchedEpisodes, watchedMovieIds, movieProgress] = await Promise.all([
     getFollows(),
     getAllWatchedEpisodes(),
     getWatchedMovieIds(),
     getAllMovieProgress(),
   ]);
+
+  // أسماء المكتبة وملصقاتها بلغة الواجهة لا بلغة يوم المتابعة
+  const follows = await localizeFollows(followRows, locale);
 
   // مفاتيح الحلقات المشاهَدة لكل مسلسل — تُبنى من قراءة واحدة لا من قراءة
   // لكل مسلسل، ومنها يُشتقّ العدد والحلقة التالية معاً
