@@ -72,7 +72,6 @@ function VerifiedMark({ size = 17, title }: { size?: number; title: string }) {
  */
 export function ProfileHeader({
   displayName,
-  username,
   avatarUrl,
   coverUrl,
   level,
@@ -86,7 +85,6 @@ export function ProfileHeader({
   locale,
 }: {
   displayName: string;
-  username: string | null;
   avatarUrl: string | null;
   coverUrl: string | null;
   level: LevelInfo;
@@ -182,49 +180,46 @@ export function ProfileHeader({
 
         <div className="min-w-0 flex-1 pb-4">
           <div className="flex items-center gap-1.5 min-w-0">
-            <h1 className="text-lg sm:text-2xl font-bold truncate">{displayName}</h1>
+            <h1 className="text-lg sm:text-2xl font-bold truncate drop-shadow-[0_2px_6px_rgba(0,0,0,0.7)]">
+              {displayName}
+            </h1>
             {verified && <VerifiedMark title={t.verifiedTitle} />}
           </div>
 
-          {/* سطر المُعرّف: المعرّف والمتابعون والمتابَعون في سطر واحد —
-              الرقم بلون النصّ والكلمة باهتة، فتُقرأ الأرقام أولاً */}
-          <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] sm:text-sm text-muted leading-tight mt-1 min-w-0">
-            {username && (
-              <span className="max-w-full truncate">
-                <span dir="ltr">@{username}</span>
-              </span>
-            )}
-            {username && <span className="opacity-40 shrink-0">·</span>}
-            <Link href="/people" className="shrink-0 hover:text-foreground transition">
-              <span className="font-bold text-foreground tabular-nums">{followers}</span>{" "}
+          {/* سطر الأرقام على لوحٍ ضبابيّ داكن: كان يقف عارياً على الغلاف،
+              فصورةٌ فاتحة تبتلعه. واللوح يضبّب ما خلفه فيفصل النصّ عن
+              الصورة دون أن يحجبها. والمُعرّف حُذف منه — يتكرّر تحت الاسم
+              بلا فائدة ويزحم السطر حتى ينكسر. */}
+          <div className="w-fit max-w-full flex flex-wrap items-center gap-x-2 gap-y-1 rounded-xl bg-black/35 backdrop-blur-md px-2.5 py-1.5 text-[11px] sm:text-sm text-white/70 leading-tight mt-1.5">
+            <Link href="/people" className="shrink-0 hover:text-white transition">
+              <span className="font-bold text-white tabular-nums">{followers}</span>{" "}
               {t.followersLabel}
             </Link>
             <span className="opacity-40 shrink-0">·</span>
-            <Link href="/people" className="shrink-0 hover:text-foreground transition">
-              <span className="font-bold text-foreground tabular-nums">{following}</span>{" "}
+            <Link href="/people" className="shrink-0 hover:text-white transition">
+              <span className="font-bold text-white tabular-nums">{following}</span>{" "}
               {t.followingLabel}
             </Link>
 
             {/* التعليقات والتقييمات: أيقونة ورقم بلا كلمة — الأيقونة تكفي
-                لتعريفهما، فيدخلان السطر دون أن يزحماه */}
-            <span className="opacity-40 shrink-0">·</span>
+                لتعريفهما، فيدخلان السطر دون أن يزحماه ودون فاصلٍ قبلهما */}
             <Link
               href="/ratings?with=comments"
               title={t.panelComments}
               aria-label={`${comments} ${t.panelComments}`}
-              className="shrink-0 flex items-center gap-1 hover:text-foreground transition"
+              className="shrink-0 flex items-center gap-1 hover:text-white transition"
             >
               <Icon name="comment" size={13} />
-              <span className="font-bold text-foreground tabular-nums">{comments}</span>
+              <span className="font-bold text-white tabular-nums">{comments}</span>
             </Link>
             <Link
               href="/ratings"
               title={t.panelRatings}
               aria-label={`${ratings} ${t.panelRatings}`}
-              className="shrink-0 flex items-center gap-1 hover:text-foreground transition"
+              className="shrink-0 flex items-center gap-1 hover:text-white transition"
             >
               <Icon name="star" size={13} />
-              <span className="font-bold text-foreground tabular-nums">{ratings}</span>
+              <span className="font-bold text-white tabular-nums">{ratings}</span>
             </Link>
           </div>
         </div>
@@ -238,10 +233,11 @@ export function ProfileHeader({
           التعليقات والتقييمات انتقلت إلى سطر المُعرّف أيقونةً ورقماً، وعدد
           الحلقات حُذف — فبقيت في البطاقة الأرقام التي تصف المكتبة نفسها.
 
-          صفٌّ واحد بأربع خانات، والكلمة تنكسر سطرين بدل أن تُبتر: الخانة
-          على الجوال ٩٠ بكسلاً لا تسع «وقت المشاهدة» في سطر، وقصّها يخفي
-          معناها. والسطران محجوزان في كل خانة ولو كانت كلمتها سطراً واحداً،
-          فتقف الأرقام على خطٍّ واحد ولا يتعرّج الصفّ. */}
+          صفٌّ واحد بأربع خانات، والخانة أيقونةٌ إلى جانبها الرقم وتحته
+          كلمته: الأيقونة سطرٌ واحد بمحاذاة السطرين معاً. والكلمة تنكسر
+          سطرين بدل أن تُبتر — الخانة على الجوال ٩٠ بكسلاً لا تسع «وقت
+          المشاهدة» في سطر، وقصّها يخفي معناها. والسطران محجوزان في كل
+          خانة ولو كانت كلمتها سطراً واحداً، فتقف الأرقام على خطٍّ واحد. */}
       <div className="-mt-3 rounded-2xl border border-white/10 bg-[color:var(--surface)]/45 backdrop-blur-xl overflow-hidden">
         <div className="grid grid-cols-4">
           {stats.map((s, i) => {
@@ -250,13 +246,13 @@ export function ProfileHeader({
                 <Icon
                   name={s.icon}
                   size={22}
-                  className="text-muted shrink-0 w-[22px] h-[22px] sm:w-6 sm:h-6"
+                  className="text-muted shrink-0 w-5 h-5 sm:w-6 sm:h-6"
                 />
-                <span className="min-w-0 max-w-full text-center sm:text-start">
-                  <span className="block text-[15px] sm:text-[14px] font-bold leading-none tabular-nums">
+                <span className="min-w-0 text-start">
+                  <span className="block text-[14px] font-bold leading-none tabular-nums">
                     {s.value}
                   </span>
-                  <span className="block text-[10px] sm:text-[10px] text-muted mt-1 leading-[1.25] min-h-[2.5em] line-clamp-2">
+                  <span className="block text-[10px] text-muted mt-1 leading-[1.25] min-h-[2.5em] line-clamp-2">
                     {s.label}
                   </span>
                 </span>
@@ -268,7 +264,7 @@ export function ProfileHeader({
               <span className="absolute inset-y-3 end-0 w-px bg-white/10" aria-hidden />
             );
             const box =
-              "relative flex flex-col sm:flex-row items-center justify-center gap-1.5 sm:gap-2.5 px-1 sm:px-2 py-3.5 sm:py-3";
+              "relative flex items-center justify-center gap-1.5 sm:gap-2.5 px-1 sm:px-2 py-3";
             return s.href ? (
               <Link key={s.key} href={s.href} className={`${box} hover:bg-white/5 transition`}>
                 {rules}
