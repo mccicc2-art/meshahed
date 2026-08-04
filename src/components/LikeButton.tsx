@@ -40,7 +40,7 @@ export function LikeButton({
   if (isMine) {
     return (
       <span className="flex items-center gap-1.5 text-[12px] text-muted" title={t.likesLabel}>
-        <Icon name="heart" size={15} />
+        <Icon name="like" size={15} />
         <span className="tabular-nums">{count}</span>
       </span>
     );
@@ -69,10 +69,10 @@ export function LikeButton({
       aria-label={t.likesLabel}
       title={t.likesLabel}
       className={`flex items-center gap-1.5 text-[12px] transition ${
-        liked ? "text-accent-2" : "text-muted hover:text-foreground"
+        liked ? "text-accent" : "text-muted hover:text-foreground"
       }`}
     >
-      <Icon name={liked ? "heart-filled" : "heart"} size={15} />
+      <Icon name={liked ? "like-filled" : "like"} size={15} />
       <span className="tabular-nums">{count}</span>
     </button>
   );

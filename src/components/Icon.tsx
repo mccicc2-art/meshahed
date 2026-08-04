@@ -43,7 +43,9 @@ export type IconName =
   | "home"
   | "people"
   | "heart"
-  | "heart-filled";
+  | "heart-filled"
+  | "like"
+  | "like-filled";
 
 const PATHS: Record<IconName, React.ReactNode> = {
   bell: (
@@ -196,6 +198,19 @@ const PATHS: Record<IconName, React.ReactNode> = {
       <rect x="3" y="5.5" width="18" height="13" rx="2.5" />
       <path d="M3 10h18M6.5 14.5h3" />
     </>
+  ),
+  like: (
+    <>
+      <path d="M7 10.5v9.5" />
+      <path d="M7 20h9.2a2.4 2.4 0 0 0 2.36-1.96l1.1-6A2.4 2.4 0 0 0 17.3 9.2h-4.1l.9-3.6A1.9 1.9 0 0 0 12.25 3.3a1.9 1.9 0 0 0-1.7 1.05L7 10.5H3.8V20H7Z" />
+    </>
+  ),
+  "like-filled": (
+    <path
+      d="M7 10.5 10.55 4.35a1.9 1.9 0 0 1 1.7-1.05 1.9 1.9 0 0 1 1.85 2.3l-.9 3.6h4.1a2.4 2.4 0 0 1 2.36 2.84l-1.1 6A2.4 2.4 0 0 1 16.2 20H3.8v-9.5H7Z"
+      fill="currentColor"
+      stroke="none"
+    />
   ),
   heart: (
     <path d="M12 20s-7.2-4.4-7.2-9.2A3.9 3.9 0 0 1 12 8.3a3.9 3.9 0 0 1 7.2 2.5C19.2 15.6 12 20 12 20Z" />

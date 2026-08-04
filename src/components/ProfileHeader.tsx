@@ -242,7 +242,7 @@ export function ProfileHeader({
                     aria-label={`${likes} ${t.likesLabel}`}
                     className="shrink-0 flex items-center gap-1"
                   >
-                    <Icon name="heart" size={14} />
+                    <Icon name="like" size={14} />
                     <span className="font-bold text-white tabular-nums">
                       {likes}
                     </span>

@@ -95,7 +95,7 @@ export function SettingsShell({
   function pane() {
     switch (active) {
       case "profile":
-        return <ProfileForm {...profileProps} only={["cover", "avatar", "nickname"]} />;
+        return <ProfileForm {...profileProps} only={["cover", "avatar", "nickname", "genres"]} />;
       case "account":
         return <AccountSettings {...accountProps} only={["username", "displayName", "email", "signout"]} />;
       case "privacy":
@@ -118,16 +118,13 @@ export function SettingsShell({
         );
       case "customize":
         return (
-          <div className="space-y-4">
-            <HomeCustomize
-              locale={locale}
-              nickname={nickname}
-              avatarUrl={avatarUrl}
-              genres={genres}
-              initial={homePrefs}
-            />
-            <ProfileForm {...profileProps} only={["genres"]} />
-          </div>
+          <HomeCustomize
+            locale={locale}
+            nickname={nickname}
+            avatarUrl={avatarUrl}
+            genres={genres}
+            initial={homePrefs}
+          />
         );
       case "widgets":
         return <Soon title={t.settingsSoonTitle} body={t.settingsWidgetsHint} icon="grid" />;
