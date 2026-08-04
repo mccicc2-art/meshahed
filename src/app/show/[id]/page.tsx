@@ -302,12 +302,25 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
             label: t.tabReviews,
             icon: "comment",
             content: (
-              <CommunityReviews
-                locale={locale}
-                avg={community.avg}
-                count={community.count}
-                reviews={titleReviews}
-              />
+              <div className="space-y-4">
+                <RatingBox
+                  variant="review"
+                  tmdbId={tvId}
+                  mediaType="tv"
+                  title={tv.name}
+                  posterPath={tv.poster_path}
+                  locale={locale}
+                  initialRating={myRating?.rating ?? null}
+                  initialReview={myRating?.review ?? null}
+                />
+
+                <CommunityReviews
+                  locale={locale}
+                  avg={community.avg}
+                  count={community.count}
+                  reviews={titleReviews}
+                />
+              </div>
             ),
           },
         ]}
