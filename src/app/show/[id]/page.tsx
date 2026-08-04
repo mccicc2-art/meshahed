@@ -315,6 +315,8 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
                 />
 
                 <CommunityReviews
+            tmdbId={tvId}
+            mediaType="tv"
                   locale={locale}
                   avg={community.avg}
                   count={community.count}
