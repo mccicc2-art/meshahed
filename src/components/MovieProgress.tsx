@@ -3,12 +3,18 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { saveMovieProgress } from "@/lib/actions";
-import { getDict, type Dict, type Locale } from "@/lib/i18n";
+import { getDict, type Locale } from "@/lib/i18n";
 
-function fmt(min: number, t: Dict) {
+/**
+ * الزمن دائماً بصيغة ساعة:دقيقة.
+ *
+ * كان ما دون الساعة يُكتب «٢١ د»، فيخرج السطر «الدقيقة ٢١ د من ١:٤٩» —
+ * وحدةٌ مكرّرة وصيغتان في جملة واحدة. الآن «٠:٢١ من ١:٤٩».
+ */
+function fmt(min: number) {
   const h = Math.floor(min / 60);
   const m = min % 60;
-  return h > 0 ? `${h}:${String(m).padStart(2, "0")}` : `${m} ${t.minuteShort}`;
+  return `${h}:${String(m).padStart(2, "0")}`;
 }
 
 export function MovieProgress({
@@ -67,8 +73,11 @@ export function MovieProgress({
         <span className="text-xs text-muted">
           {pos > 0 ? (
             <>
-              {t.atMinute} <span className="text-accent-2 font-semibold">{fmt(pos, t)}</span>
-              {runtime ? t.outOfRemaining(fmt(max, t), fmt(remaining, t)) : ""}
+              {t.atMinute}{" "}
+              <span className="text-accent-2 font-semibold" dir="ltr">
+                {fmt(pos)}
+              </span>
+              {runtime ? t.outOfRemaining(fmt(max), fmt(remaining)) : ""}
             </>
           ) : (
             t.notStartedYet
@@ -89,9 +98,10 @@ export function MovieProgress({
           setPos(Number(e.target.value));
           setSaved(false);
         }}
+        dir="ltr"
         className="w-full h-2 appearance-none rounded-full outline-none cursor-pointer mb-4 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[color:var(--accent-2)] [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-[color:var(--background)] [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-[color:var(--accent-2)] [&::-moz-range-thumb]:border-0"
         style={{
-          background: `linear-gradient(to left, var(--accent-2) ${pct}%, var(--surface-2) ${pct}%)`,
+          background: `linear-gradient(to right, var(--accent-2) ${pct}%, var(--surface-2) ${pct}%)`,
         }}
         aria-label={t.positionAria}
       />

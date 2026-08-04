@@ -14,6 +14,7 @@ export function RatingBox({
   locale,
   initialRating,
   initialReview,
+  variant = "stars",
 }: {
   tmdbId: number;
   mediaType: MediaType;
@@ -22,6 +23,13 @@ export function RatingBox({
   locale: Locale;
   initialRating: number | null;
   initialReview: string | null;
+  /**
+   * `stars` في تبويب التتبّع، و`review` في تبويب التعليقات.
+   *
+   * التقييم فعلٌ سريع يقع مع التأشير، والتعليق كتابةٌ تحتاج مساحة وسياقاً
+   * — وضعهما في صندوق واحد كان يجعل تبويب التتبّع طويلاً ويدفن التعليقات.
+   */
+  variant?: "stars" | "review";
 }) {
   const t = getDict(locale);
   const router = useRouter();
@@ -66,46 +74,74 @@ export function RatingBox({
     });
   }
 
+  const stars = (
+    <div className="flex items-center gap-2" onMouseLeave={() => setHover(0)}>
+      {[1, 2, 3, 4, 5].map((n) => (
+        <button
+          key={n}
+          type="button"
+          onMouseEnter={() => setHover(n)}
+          onFocus={() => setHover(n)}
+          onClick={() => {
+            setRating(n);
+            setSaved(false);
+          }}
+          aria-label={t.rateStars(n)}
+          aria-pressed={rating === n}
+          className={`text-3xl leading-none p-1.5 -m-1 transition ${
+            n <= shown ? "text-accent scale-110" : "text-muted/40 hover:text-muted"
+          }`}
+        >
+          ★
+        </button>
+      ))}
+      {rating > 0 && <span className="text-sm text-muted ms-2">{t.rateOutOf(rating)}</span>}
+    </div>
+  );
+
+  if (variant === "review") {
+    return (
+      <div className="bg-surface border border-border rounded-2xl p-4 sm:p-5">
+        <h3 className="font-bold mb-1">{t.reviewSectionTitle}</h3>
+        <p className="text-[11px] text-muted mb-3">{t.reviewSectionSub}</p>
+
+        {/* النجوم هنا أيضاً: الحفظ يحتاج تقييماً، ومن يكتب تعليقه أولاً
+            لا يجب أن يُرسل إلى تبويب آخر ليُكمل */}
+        <div className="mb-3">{stars}</div>
+
+        <textarea
+          value={review}
+          onChange={(e) => {
+            setReview(e.target.value);
+            setSaved(false);
+          }}
+          maxLength={2000}
+          rows={5}
+          placeholder={t.reviewPlaceholder}
+          className="w-full rounded-xl bg-surface-2 border border-border px-4 py-3 outline-none focus:border-accent transition text-sm leading-relaxed resize-y"
+        />
+
+        {error && <p className="text-sm text-red-300 mt-3">{error}</p>}
+
+        <div className="flex items-center gap-3 flex-wrap mt-3">
+          <button
+            onClick={save}
+            disabled={pending}
+            className="px-5 py-2.5 rounded-xl bg-accent text-[color:var(--on-accent)] font-semibold text-sm hover:brightness-110 transition disabled:opacity-60"
+          >
+            {pending ? t.saving : t.saveReview}
+          </button>
+          {saved && <span className="text-sm text-accent-2">{t.savedOk}</span>}
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="bg-surface border border-border rounded-2xl p-5 mt-6 max-w-xl">
+    <div className="bg-surface border border-border rounded-2xl p-4 sm:p-5">
       <h3 className="font-bold mb-3">{t.rateTitle}</h3>
 
-      <div className="flex items-center gap-2 mb-4" onMouseLeave={() => setHover(0)}>
-        {[1, 2, 3, 4, 5].map((n) => (
-          <button
-            key={n}
-            type="button"
-            onMouseEnter={() => setHover(n)}
-            onFocus={() => setHover(n)}
-            onClick={() => {
-              setRating(n);
-              setSaved(false);
-            }}
-            aria-label={t.rateStars(n)}
-            aria-pressed={rating === n}
-            className={`text-3xl leading-none p-1.5 -m-1 transition ${
-              n <= shown ? "text-accent scale-110" : "text-muted/40 hover:text-muted"
-            }`}
-          >
-            ★
-          </button>
-        ))}
-        {rating > 0 && (
-          <span className="text-sm text-muted ms-2">{t.rateOutOf(rating)}</span>
-        )}
-      </div>
-
-      <textarea
-        value={review}
-        onChange={(e) => {
-          setReview(e.target.value);
-          setSaved(false);
-        }}
-        maxLength={2000}
-        rows={4}
-        placeholder={t.reviewPlaceholder}
-        className="w-full rounded-xl bg-surface-2 border border-border px-4 py-3 outline-none focus:border-accent transition text-sm leading-relaxed resize-y"
-      />
+      <div className="mb-1">{stars}</div>
 
       {error && <p className="text-sm text-red-300 mt-3">{error}</p>}
 
@@ -128,6 +164,8 @@ export function RatingBox({
           </button>
         )}
         {saved && <span className="text-sm text-accent-2">{t.savedOk}</span>}
+        {/* التعليق انتقل إلى تبويب التعليقات — إشارة صغيرة تدلّ عليه */}
+        <span className="text-[11px] text-muted">{t.reviewMovedHint}</span>
       </div>
     </div>
   );
