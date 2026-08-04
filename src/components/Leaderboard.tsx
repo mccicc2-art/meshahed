@@ -32,11 +32,9 @@ function Rank({ n }: { n: number }) {
 }
 
 function Stars({ avg }: { avg: number }) {
-  const full = Math.round(avg);
   return (
-    <span className="text-accent text-xs tracking-tight" dir="ltr" aria-hidden>
-      {"★".repeat(full)}
-      <span className="text-muted/50">{"★".repeat(Math.max(0, 5 - full))}</span>
+    <span className="text-accent text-xs font-bold tabular-nums" dir="ltr" aria-hidden>
+      ★ {Math.round(avg * 10) / 10}/10
     </span>
   );
 }

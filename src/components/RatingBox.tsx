@@ -75,8 +75,8 @@ export function RatingBox({
   }
 
   const stars = (
-    <div className="flex items-center gap-2" onMouseLeave={() => setHover(0)}>
-      {[1, 2, 3, 4, 5].map((n) => (
+    <div className="flex items-center gap-0.5 flex-wrap" onMouseLeave={() => setHover(0)}>
+      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
         <button
           key={n}
           type="button"
@@ -88,7 +88,7 @@ export function RatingBox({
           }}
           aria-label={t.rateStars(n)}
           aria-pressed={rating === n}
-          className={`text-3xl leading-none p-1.5 -m-1 transition ${
+          className={`text-2xl leading-none px-0.5 py-1.5 transition ${
             n <= shown ? "text-accent scale-110" : "text-muted/40 hover:text-muted"
           }`}
         >

@@ -3,7 +3,7 @@ import Image from "next/image";
 import { posterUrl } from "@/lib/media";
 import { Icon } from "./Icon";
 
-type BadgeTone = "neutral" | "progress" | "watched" | "rating";
+type BadgeTone = "neutral" | "progress" | "watched" | "rating" | "dropped";
 
 /** لون الشارة يحمل معناها: لا يحتاج القارئ أن يقرأ ليعرف نوعها */
 const BADGE_BG: Record<BadgeTone, string> = {
@@ -11,6 +11,7 @@ const BADGE_BG: Record<BadgeTone, string> = {
   progress: "var(--accent)",
   watched: "var(--brand-3)",
   rating: "var(--verified)",
+  dropped: "var(--error)",
 };
 
 export function PosterCard({
@@ -24,6 +25,7 @@ export function PosterCard({
   note,
   tone = "default",
   badgeTone = "neutral",
+  dropped = false,
 }: {
   href: string;
   title: string;
@@ -38,6 +40,8 @@ export function PosterCard({
   tone?: "default" | "waiting";
   /** لون الشارة: التقدّم بنفسجي، المُشاهَد برتقالي، التقييم أصفر */
   badgeTone?: BadgeTone;
+  /** موقوف ببطاقة حمراء: الشريط كله أحمر مهما كان التقدّم */
+  dropped?: boolean;
 }) {
   const url = posterUrl(posterPath, "w342");
   return (
@@ -80,20 +84,25 @@ export function PosterCard({
           </p>
           {year && <p className="text-[10px] text-white/60 mt-0.5">{year}</p>}
           {note && (
-            <p className="text-[10px] text-accent-2/90 mt-0.5 line-clamp-1">{note}</p>
+            <p className="text-[10px] text-accent-2/90 mt-0.5 line-clamp-1">
+              {note}
+            </p>
           )}
         </div>
 
-        {typeof progress === "number" && (
+        {(typeof progress === "number" || dropped) && (
           <div className="absolute inset-x-0 bottom-0 h-1.5 bg-black/50">
             {/* المكتمل أخضر — لون الإنجاز الدلاليّ الثابت — وغير المكتمل
                 يتدرّج كتدرّج المستوى: كهرمانيّ فورديّ فبنفسجي */}
             <div
               className="h-full"
               style={{
-                width: `${Math.max(0, Math.min(100, progress))}%`,
-                background:
-                  progress >= 100
+                width: dropped
+                  ? "100%"
+                  : `${Math.max(0, Math.min(100, progress ?? 0))}%`,
+                background: dropped
+                  ? "var(--error)"
+                  : (progress ?? 0) >= 100
                     ? "var(--success)"
                     : tone === "waiting"
                       ? "var(--accent)"
@@ -103,7 +112,6 @@ export function PosterCard({
           </div>
         )}
       </div>
-
     </Link>
   );
 }

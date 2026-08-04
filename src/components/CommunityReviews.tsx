@@ -31,7 +31,7 @@ export function CommunityReviews({
       <div className="flex items-baseline gap-3 flex-wrap mb-3">
         <h3 className="font-bold">{t.communityRating}</h3>
         <span className="text-accent text-sm">
-          ★ {rounded} <span className="text-muted">/ 5</span>
+          ★ {rounded} <span className="text-muted">/ 10</span>
         </span>
         <span className="text-xs text-muted">{t.communityCount(count)}</span>
       </div>
@@ -47,9 +47,11 @@ export function CommunityReviews({
             >
               <div className="flex items-center justify-between gap-3 mb-2">
                 <PersonName person={r} t={t} size={30} sub={formatDate(r.updated_at, t)} />
-                <span className="text-sm shrink-0" title={t.rateOutOf(r.rating)}>
-                  <span className="text-accent">{"★".repeat(r.rating)}</span>
-                  <span className="text-muted/40">{"★".repeat(5 - r.rating)}</span>
+                <span
+                  className="text-sm shrink-0 font-bold text-accent tabular-nums"
+                  title={t.rateOutOf(r.rating)}
+                >
+                  ★ <span dir="ltr">{r.rating}/10</span>
                 </span>
               </div>
               <p className="text-sm text-muted leading-relaxed whitespace-pre-line">{r.review}</p>
