@@ -5,6 +5,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { getDict, type Locale } from "@/lib/i18n";
+import { Icon } from "./Icon";
 
 interface Suggestion {
   id: number;
@@ -125,7 +126,7 @@ export function SearchBox({ big = false, locale }: { big?: boolean; locale: Loca
           <span
             className={`absolute top-1/2 -translate-y-1/2 end-3 text-muted ${big ? "text-xl" : ""}`}
           >
-            {loading ? "⏳" : "🔍"}
+            <Icon name={loading ? "hourglass" : "search"} size={18} />
           </span>
         </div>
       </form>

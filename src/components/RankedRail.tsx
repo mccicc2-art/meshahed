@@ -60,7 +60,7 @@ export function RankedRail({
                       className="object-cover group-hover:scale-105 transition duration-300"
                     />
                   ) : (
-                    <div className="w-full h-full grid place-items-center text-2xl">🎬</div>
+                    <div className="w-full h-full grid place-items-center text-muted"><Icon name="film" size={22} /></div>
                   )}
 
                   {/* الرقم على تعتيم سفلي حتى يُقرأ فوق أي ملصق */}

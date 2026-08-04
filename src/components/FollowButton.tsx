@@ -29,12 +29,15 @@ export function FollowButton({
       disabled={pending}
       onClick={() =>
         start(async () => {
-          if (following) {
-            setFollowing(false);
-            await unfollow({ tmdbId, mediaType });
-          } else {
-            setFollowing(true);
-            await follow({ tmdbId, mediaType, title, posterPath });
+          // التبديل تفاؤليّ ثم يُثبَّت؛ وإن فشل الحفظ رجع الزرّ لحاله —
+          // زرٌّ يقول «أتابعه» وقاعدة البيانات تقول غير ذلك أسوأ من خطأ ظاهر
+          const was = following;
+          setFollowing(!was);
+          try {
+            if (was) await unfollow({ tmdbId, mediaType });
+            else await follow({ tmdbId, mediaType, title, posterPath });
+          } catch {
+            setFollowing(was);
           }
         })
       }

@@ -6,6 +6,7 @@ import Image from "next/image";
 import { follow, updateProfile, applyOnboardingProgress } from "@/lib/actions";
 import { getDict, type Locale } from "@/lib/i18n";
 import { GENRES, posterUrl } from "@/lib/media";
+import { Icon } from "./Icon";
 
 export interface SeedTitle {
   id: number;
@@ -136,7 +137,7 @@ export function Onboarding({
                     />
                   ) : (
                     <span className="w-full h-full grid place-items-center text-2xl text-muted">
-                      🎬
+                      <Icon name="film" size={22} />
                     </span>
                   )}
                   {on && (
@@ -219,7 +220,7 @@ export function Onboarding({
                     : "border-border bg-surface text-muted hover:text-foreground"
                 }`}
               >
-                {g.emoji} {locale === "en" ? g.en : g.ar}
+                {locale === "en" ? g.en : g.ar}
               </button>
             );
           })}

@@ -8,6 +8,7 @@ import { episodeKey } from "@/lib/keys";
 import { getDict, type Dict, type Locale } from "@/lib/i18n";
 import { formatDateShort } from "@/lib/when";
 import { IMG } from "@/lib/media";
+import { Icon } from "./Icon";
 
 export interface TrackerEpisode {
   episode_number: number;
@@ -298,15 +299,24 @@ export function EpisodeTracker({
                             <button
                               disabled={!epAired}
                               onClick={() => toggleOne(s.season_number, e)}
-                              className={`shrink-0 w-5 h-5 rounded-md border grid place-items-center text-xs transition ${
-                                isWatched
-                                  ? "bg-accent-2 border-accent-2 text-[color:var(--on-accent-2)]"
-                                  : "border-border hover:border-accent-2"
-                              } ${!epAired ? "cursor-not-allowed" : ""}`}
+              /* مساحة اللمس ٤٤ بكسلاً والمربّع المرئي ٢٠: الإصبع لا يصيب
+                 مربّعاً بعرض ٢٠ بكسلاً في صفٍّ مزدحم، والهامش السالب يمنع
+                 الحشوة من إزاحة الصف */
+                              className={`shrink-0 w-11 h-11 -my-2.5 -ms-2.5 grid place-items-center transition ${
+                                !epAired ? "cursor-not-allowed" : ""
+                              }`}
                               aria-pressed={isWatched}
                               aria-label={`${t.markWatchedAria} — ${e.episode_number}. ${e.name}`}
                             >
-                              {isWatched ? "✓" : ""}
+                              <span
+                                className={`w-5 h-5 rounded-md border grid place-items-center text-xs ${
+                                  isWatched
+                                    ? "bg-accent-2 border-accent-2 text-[color:var(--on-accent-2)]"
+                                    : "border-border"
+                                }`}
+                              >
+                                {isWatched ? "✓" : ""}
+                              </span>
                             </button>
 
                             {/* صورة أصغر: كانت ٦٤ بكسلاً عرضاً فيصير الصف ١٢٦ بكسلاً،
@@ -326,7 +336,7 @@ export function EpisodeTracker({
                                   className="w-full h-full grid place-items-center text-muted text-sm"
                                   aria-hidden
                                 >
-                                  🎬
+                                  <Icon name="film" size={14} />
                                 </span>
                               )}
                             </span>

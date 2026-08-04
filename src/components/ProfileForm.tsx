@@ -278,6 +278,7 @@ export function ProfileForm({
               <button
                 key={g.id}
                 type="button"
+                aria-pressed={on}
                 onClick={() => toggleGenre(g.id)}
                 className={`px-3.5 py-2 rounded-full text-sm border transition ${
                   on
@@ -285,7 +286,6 @@ export function ProfileForm({
                     : "bg-surface-2 border-border text-muted hover:text-foreground hover:border-accent/50"
                 }`}
               >
-                <span className="me-1">{g.emoji}</span>
                 {genreName(g, locale)}
               </button>
             );

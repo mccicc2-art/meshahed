@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { posterUrl } from "@/lib/media";
+import { Icon } from "./Icon";
 
 export function PosterCard({
   href,
@@ -38,7 +39,7 @@ export function PosterCard({
             className="object-cover group-hover:scale-105 transition duration-300"
           />
         ) : (
-          <div className="w-full h-full grid place-items-center text-muted text-3xl">🎬</div>
+          <div className="w-full h-full grid place-items-center text-muted"><Icon name="film" size={26} /></div>
         )}
         {badge && (
           <span

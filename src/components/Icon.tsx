@@ -33,7 +33,8 @@ export type IconName =
   | "list"
   | "edit"
   | "share"
-  | "settings";
+  | "settings"
+  | "search";
 
 const PATHS: Record<IconName, React.ReactNode> = {
   bell: (
@@ -153,6 +154,12 @@ const PATHS: Record<IconName, React.ReactNode> = {
   ),
   list: <path d="M8 6.5h12M8 12h12M8 17.5h12M4 6.5h.01M4 12h.01M4 17.5h.01" />,
   edit: <path d="M4 20h4l10-10-4-4L4 16v4ZM14 6l4 4" />,
+  search: (
+    <>
+      <circle cx="11" cy="11" r="6.5" />
+      <path d="m16 16 4 4" />
+    </>
+  ),
   share: (
     <>
       <path d="M12 15V3.5" />

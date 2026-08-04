@@ -63,7 +63,7 @@ export function CountdownRail({
                       className="object-cover group-hover:scale-105 transition duration-300"
                     />
                   ) : (
-                    <div className="w-full h-full grid place-items-center text-2xl">🎬</div>
+                    <div className="w-full h-full grid place-items-center text-muted"><Icon name="film" size={22} /></div>
                   )}
                   {item.badge && (
                     <span className="absolute top-1.5 end-1.5 text-[10px] font-bold text-white bg-black/60 backdrop-blur rounded-md px-1.5 py-0.5">

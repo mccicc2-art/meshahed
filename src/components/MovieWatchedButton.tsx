@@ -26,7 +26,12 @@ export function MovieWatchedButton({
         start(async () => {
           const next = !watched;
           setWatched(next);
-          await toggleMovieWatched({ movieTmdbId, runtime, watched: next });
+          try {
+            await toggleMovieWatched({ movieTmdbId, runtime, watched: next });
+          } catch {
+            // فشل الحفظ يرجّع الزرّ لحاله بدل أن يبقى معلَّماً كذباً
+            setWatched(!next);
+          }
         })
       }
       className={`px-5 py-2.5 rounded-xl font-semibold text-sm transition disabled:opacity-60 ${

@@ -8,6 +8,7 @@ import { toggleReaction, follow, unfollow } from "@/lib/actions";
 import { getDict, type Locale } from "@/lib/i18n";
 import { whenLabel } from "@/lib/when";
 import type { MediaType } from "@/lib/media";
+import { Icon } from "./Icon";
 
 export interface NewsItem {
   id: number;
@@ -105,7 +106,7 @@ export function NewsPost({
             className="w-full h-full object-cover"
           />
         ) : (
-          <span className="w-full h-full grid place-items-center text-4xl text-muted">🎬</span>
+          <span className="w-full h-full grid place-items-center text-muted"><Icon name="film" size={34} /></span>
         )}
         <span className="absolute top-3 start-3 text-[11px] font-semibold bg-black/75 text-accent px-2.5 py-1 rounded-full">
           {item.mediaType === "tv" ? t.typeSeries : t.typeMovie}

@@ -83,7 +83,7 @@ export function RatingBox({
             }}
             aria-label={t.rateStars(n)}
             aria-pressed={rating === n}
-            className={`text-3xl leading-none transition ${
+            className={`text-3xl leading-none p-1.5 -m-1 transition ${
               n <= shown ? "text-accent scale-110" : "text-muted/40 hover:text-muted"
             }`}
           >

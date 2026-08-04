@@ -107,7 +107,7 @@ export function AccountSettings({
       <section className="bg-surface border border-border rounded-2xl p-3.5 sm:p-5">
         <h2 className="text-sm font-bold mb-1">{t.usernameSection}</h2>
         <p className="text-xs text-muted leading-relaxed mb-3">{t.usernameHint}</p>
-        <div className="relative">
+        <div className="relative" dir="ltr">
           <span className="absolute top-1/2 -translate-y-1/2 start-3 text-muted">@</span>
           <input
             value={username}
@@ -115,7 +115,6 @@ export function AccountSettings({
               setUsername(e.target.value);
               setSaved(false);
             }}
-            dir="ltr"
             maxLength={24}
             placeholder="ahmed_92"
             className="w-full rounded-xl bg-surface-2 border border-border ps-8 pe-3 py-2.5 text-sm outline-none focus:border-accent transition text-left"

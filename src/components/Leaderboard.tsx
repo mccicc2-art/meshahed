@@ -3,14 +3,20 @@ import Image from "next/image";
 import { posterUrl } from "@/lib/media";
 import { getDict, type Locale } from "@/lib/i18n";
 import type { LeaderEntry } from "@/lib/leaderboard";
+import { Icon } from "./Icon";
 
 /** ذهبي/فضّي/برونزي للمراكز الثلاثة الأولى، ورقم باهت لما بعدها */
 function Rank({ n }: { n: number }) {
-  const medal = n === 1 ? "🥇" : n === 2 ? "🥈" : n === 3 ? "🥉" : null;
-  if (medal) {
+  // المراكز الثلاثة الأولى برقمٍ ملوّن لا بميدالية: الميداليات إيموجي
+  // ملوّن يختلف شكله بين الأنظمة ويخرج عن خطّ الأيقونات في بقية الموقع
+  if (n <= 3) {
+    const tone = n === 1 ? "text-accent" : n === 2 ? "text-accent-2" : "text-[color:var(--brand-3)]";
     return (
-      <span className="w-8 shrink-0 text-center text-xl leading-none" aria-label={`#${n}`}>
-        {medal}
+      <span
+        className={`w-8 shrink-0 text-center text-lg font-extrabold leading-none tabular-nums ${tone}`}
+        aria-label={`#${n}`}
+      >
+        <span dir="ltr">{n}</span>
       </span>
     );
   }
@@ -76,7 +82,7 @@ export function Leaderboard({
                 {img ? (
                   <Image src={img} alt="" fill sizes="44px" className="object-cover" />
                 ) : (
-                  <span className="absolute inset-0 grid place-items-center text-lg">🎬</span>
+                  <span className="absolute inset-0 grid place-items-center text-muted"><Icon name="film" size={18} /></span>
                 )}
               </div>
 
