@@ -2,7 +2,6 @@ import Link from "next/link";
 import { Icon, type IconName } from "./Icon";
 import Image from "next/image";
 import { posterUrl, titleOf, type SearchResult } from "@/lib/tmdb";
-import { getDict, type Locale } from "@/lib/i18n";
 
 /**
  * صفّ أفقي مرقّم — قائمة «أفضل ١٠».
@@ -15,20 +14,17 @@ export function RankedRail({
   title,
   icon,
   items,
-  locale,
   note,
   ranked = true,
 }: {
   title: string;
   icon?: IconName;
   items: SearchResult[];
-  locale: Locale;
   /** نصّ صغير تحت العنوان — يشرح مصدر الترتيب أو نطاقه */
   note?: string;
   /** إخفاء الأرقام: بعض الصفوف قائمة لا ترتيب */
   ranked?: boolean;
 }) {
-  const t = getDict(locale);
   if (!items.length) return null;
 
   return (
@@ -37,7 +33,10 @@ export function RankedRail({
         {icon && <Icon name={icon} size={18} className="text-muted" />}
         {title}
       </h2>
-      <p className="text-[11px] text-muted mb-3">{note ?? t.topTenSource}</p>
+      {/* السطر الفرعي اختياري: مصدر التقييمات كان يتكرّر فوق كل صفّ فيزحم
+          الصفحة بسطر يعرفه القارئ من أول مرة. يبقى حيث يضيف معلومة —
+          كالمنطقة فوق «يعرض الآن في السينما». */}
+      {note ? <p className="text-[11px] text-muted mb-3">{note}</p> : <div className="mb-3" />}
 
       <div className="-mx-4 px-4 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <div className="flex gap-3 w-max pb-1">
