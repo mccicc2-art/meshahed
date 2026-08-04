@@ -381,6 +381,15 @@ const ar = {
   watchNone: "ما لقينا منصّة تعرضه في منطقتك حالياً.",
 
   // لوحة الرئيسية العملية
+  panelShows: "مسلسلاتي",
+  panelMovies: "أفلامي",
+  panelComments: "تعليقاتي",
+  panelRatings: "تقييماتي",
+  ratingsTitle: "تقييماتي",
+  ratingsSub: "كل ما قيّمته، والأحدث أولاً.",
+  ratingsEmpty: "ما قيّمت شيئاً بعد — افتح أي عمل وأعطه نجوماً.",
+  ratingsAll: "الكل",
+  ratingsWithComment: "مع تعليق",
   panelWaiting: "ينتظرك",
   panelWaitingSub: "حلقات نزلت وما شفتها",
   panelStarted: "بدأتها",
@@ -834,6 +843,15 @@ const en: Dict = {
   watchNone: "No provider carries it in your region right now.",
 
   // Home action panel
+  panelShows: "My shows",
+  panelMovies: "My movies",
+  panelComments: "My comments",
+  panelRatings: "My ratings",
+  ratingsTitle: "My ratings",
+  ratingsSub: "Everything you rated, newest first.",
+  ratingsEmpty: "Nothing rated yet \u2014 open any title and give it stars.",
+  ratingsAll: "All",
+  ratingsWithComment: "With a comment",
   panelWaiting: "Waiting",
   panelWaitingSub: "New episodes you haven't seen",
   panelStarted: "Started",
