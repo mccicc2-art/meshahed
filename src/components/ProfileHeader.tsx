@@ -165,8 +165,11 @@ export function ProfileHeader({
           يُرفع فوق حافّة الغلاف لا تحتها: الكتلة كلها — الصورة والاسم
           وبطاقة الأرقام — تأخذ الثلث الأسفل من الصورة، فتقرأها العين
           طبقةً واحدة على الغلاف بدل شريطٍ يبدأ بعد انتهائه. والتدرّج
-          الأسود في أسفل الغلاف يضمن أن يبقى النصّ مقروءاً على أي صورة. */}
-      <div className="flex items-end gap-3 -mt-[7.25rem] sm:-mt-[8.5rem] relative z-10">
+          الأسود في أسفل الغلاف يضمن أن يبقى النصّ مقروءاً على أي صورة.
+
+          و`pe-14` تحجز طرف الصفّ لعمود الأدوات فوقه: بعد الرفع صار سطر
+          المُعرّف يمرّ تحت زرّ المشاركة فيختفي آخره. */}
+      <div className="flex items-end gap-3 pe-14 sm:pe-16 -mt-[7.25rem] sm:-mt-[8.5rem] relative z-10">
         <Link href="/profile/edit" className="shrink-0">
           <Avatar
             src={avatarUrl}
@@ -235,12 +238,12 @@ export function ProfileHeader({
           التعليقات والتقييمات انتقلت إلى سطر المُعرّف أيقونةً ورقماً، وعدد
           الحلقات حُذف — فبقيت في البطاقة الأرقام التي تصف المكتبة نفسها.
 
-          صفّان على الجوال وصفٌّ واحد على الشاشة العريضة: أربع خانات في ٣٩٠
-          بكسلاً تترك ٧٥ بكسلاً للخانة، فالكلمة تُبتر والأيقونة تصغر حتى لا
-          تُرى. خانتان في الصفّ تعطيان ضعف العرض، فتكبر الأيقونة ويظهر
-          الاسم كاملاً. */}
+          صفٌّ واحد بأربع خانات، والكلمة تنكسر سطرين بدل أن تُبتر: الخانة
+          على الجوال ٩٠ بكسلاً لا تسع «وقت المشاهدة» في سطر، وقصّها يخفي
+          معناها. والسطران محجوزان في كل خانة ولو كانت كلمتها سطراً واحداً،
+          فتقف الأرقام على خطٍّ واحد ولا يتعرّج الصفّ. */}
       <div className="-mt-3 rounded-2xl border border-white/10 bg-[color:var(--surface)]/45 backdrop-blur-xl overflow-hidden">
-        <div className="grid grid-cols-2 sm:grid-cols-4">
+        <div className="grid grid-cols-4">
           {stats.map((s, i) => {
             const cell = (
               <>
@@ -253,32 +256,19 @@ export function ProfileHeader({
                   <span className="block text-[15px] sm:text-[14px] font-bold leading-none tabular-nums">
                     {s.value}
                   </span>
-                  <span className="block text-[11px] sm:text-[10px] text-muted mt-1 truncate">
+                  <span className="block text-[10px] sm:text-[10px] text-muted mt-1 leading-[1.25] min-h-[2.5em] line-clamp-2">
                     {s.label}
                   </span>
                 </span>
               </>
             );
-            /* الفواصل خطوطٌ محشورة لا حدودَ خانة: تبتعد عن إطار البطاقة
-               بمسافة فلا تلمس الحافّة. وشبكتان تعنيان فاصلين مختلفين —
-               عمودياً بعد الفردية على الجوال وبعد الثلاث الأولى على
-               العريضة، وأفقياً تحت الصفّ الأول على الجوال وحده. */
-            const vRule = `${i % 2 === 0 ? "block" : "hidden"} ${i < 3 ? "sm:block" : "sm:hidden"}`;
-            const hRule = i < 2 ? "block" : "hidden";
-            const rules = (
-              <>
-                <span
-                  className={`${vRule} absolute inset-y-3 end-0 w-px bg-white/10`}
-                  aria-hidden
-                />
-                <span
-                  className={`${hRule} sm:hidden absolute inset-x-4 bottom-0 h-px bg-white/10`}
-                  aria-hidden
-                />
-              </>
+            /* الفاصل خطٌّ محشور لا حدُّ خانة: يبتعد عن إطار البطاقة بمسافة،
+               فيفصل بين المحتويات ولا يلمس الحافّة — كما في المرجع */
+            const rules = i < stats.length - 1 && (
+              <span className="absolute inset-y-3 end-0 w-px bg-white/10" aria-hidden />
             );
             const box =
-              "relative flex flex-col sm:flex-row items-center justify-center gap-1.5 sm:gap-2.5 px-2 py-3.5 sm:py-3";
+              "relative flex flex-col sm:flex-row items-center justify-center gap-1.5 sm:gap-2.5 px-1 sm:px-2 py-3.5 sm:py-3";
             return s.href ? (
               <Link key={s.key} href={s.href} className={`${box} hover:bg-white/5 transition`}>
                 {rules}
