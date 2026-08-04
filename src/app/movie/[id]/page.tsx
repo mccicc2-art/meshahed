@@ -221,12 +221,25 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
             label: t.tabReviews,
             icon: "comment",
             content: (
-              <CommunityReviews
-                locale={locale}
-                avg={community.avg}
-                count={community.count}
-                reviews={titleReviews}
-              />
+              <div className="space-y-4">
+                <RatingBox
+                  variant="review"
+                  tmdbId={movieId}
+                  mediaType="movie"
+                  title={movie.title}
+                  posterPath={movie.poster_path}
+                  locale={locale}
+                  initialRating={myRating?.rating ?? null}
+                  initialReview={myRating?.review ?? null}
+                />
+
+                <CommunityReviews
+                  locale={locale}
+                  avg={community.avg}
+                  count={community.count}
+                  reviews={titleReviews}
+                />
+              </div>
             ),
           },
         ]}
