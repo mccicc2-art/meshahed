@@ -14,6 +14,7 @@ import {
 } from "@/lib/data";
 import {
   getTv,
+  getMovie,
   trending,
   titleOf,
   yearOf,
@@ -22,6 +23,7 @@ import {
 import { getWatchedForShow } from "@/lib/data";
 import { nextUnwatchedEpisode } from "@/lib/progress";
 import { getT } from "@/lib/locale";
+import { whenLabel } from "@/lib/when";
 import { localizeFollows } from "@/lib/localize";
 import { airedEpisodeCount, percentOf } from "@/lib/progress";
 import { PosterCard } from "@/components/PosterCard";
@@ -288,6 +290,74 @@ export default async function HomePage() {
     })
     .sort((a, b) => a.rank - b.rank || b.progress - a.progress);
 
+  // ===== «للمشاهدة» و«القادم» في الرئيسية: مسلسلات وأفلام معاً =====
+  // للمشاهدة: كل ما لم يكتمل — المسلسلات غير المنتهية والأفلام غير
+  // المشاهَدة — بترتيب الأقرب إلى الاستئناف. القادم: ما له موعدٌ آتٍ.
+  type MixedItem = {
+    key: string;
+    href: string;
+    title: string;
+    posterPath: string | null;
+    progress?: number;
+    badge?: string;
+    badgeTone?: "neutral" | "progress" | "watched" | "rating";
+  };
+
+  const toWatchRow: MixedItem[] = [
+    ...myShows
+      .filter((i) => i.aired === 0 || i.watched < i.aired)
+      .map((i) => ({
+        key: `tw-tv-${i.id}`,
+        href: `/show/${i.id}`,
+        title: i.name,
+        posterPath: i.posterPath,
+        progress: i.progress,
+        badge: i.watched === 0 ? t.notStartedBadge : undefined,
+      })),
+    ...myMovies
+      .filter((m) => m.progress < 100)
+      .map((m) => ({
+        key: `tw-mv-${m.tmdbId}`,
+        href: `/movie/${m.tmdbId}`,
+        title: m.title,
+        posterPath: m.posterPath,
+        progress: m.progress,
+        badge: m.progress === 0 ? t.typeMovie : m.badge,
+      })),
+  ].slice(0, 16);
+
+  // مواعيد الأفلام ليست في صفّ المتابعة، فتُطلب من TMDB لغير المشاهَد
+  // منها فقط — مخبّأةً ساعة، ولعشرة أفلام كحدّ
+  const upcomingMovieCandidates = movieFollows
+    .filter((f) => !watchedMovieIds.has(f.tmdb_id))
+    .slice(0, 10);
+  const upcomingMovieDetails = await Promise.all(
+    upcomingMovieCandidates.map((f) => getMovie(f.tmdb_id).catch(() => null)),
+  );
+  const upcomingRow: MixedItem[] = [
+    ...upcoming.map((u) => ({
+      key: `up-${u.key}`,
+      href: u.href,
+      title: u.title,
+      posterPath: u.posterPath,
+      badge: whenLabel(u.date, t),
+      date: u.date,
+    })),
+    ...upcomingMovieCandidates
+      .map((f, n) => ({ f, d: upcomingMovieDetails[n] }))
+      .filter(({ d }) => d?.release_date && d.release_date >= today)
+      .map(({ f, d }) => ({
+        key: `up-mv-${f.tmdb_id}`,
+        href: `/movie/${f.tmdb_id}`,
+        title: f.title,
+        posterPath: f.poster_path,
+        badge: whenLabel(d!.release_date!, t),
+        date: d!.release_date!,
+      })),
+  ]
+    .sort((a, b) => (a as { date: string }).date.localeCompare((b as { date: string }).date))
+    .slice(0, 16);
+
   // ===== المستوى: يقيس ما شوهد فعلاً — حلقة بنقطة والفيلم بنقطتين =====
   const watchedEpisodeTotal = [...watchedByShow.values()].reduce(
     (a, n) => a + n,
@@ -318,7 +388,7 @@ export default async function HomePage() {
       key: "shows",
       icon: "tv",
       value: String(tvFollows.length),
-      label: t.panelShows,
+      label: t.shortShows,
       href: "/library?filter=tv",
       color: "var(--accent)",
     },
@@ -326,7 +396,7 @@ export default async function HomePage() {
       key: "movies",
       icon: "film",
       value: String(movieFollows.length),
-      label: t.panelMovies,
+      label: t.shortMovies,
       href: "/library?filter=movie",
       color: "var(--accent-2)",
     },
@@ -432,6 +502,49 @@ export default async function HomePage() {
                 <span id="week" className="block scroll-mt-20" />
                 <WeekStrip days={weekDays} entries={weekEntries} locale={locale} />
               </div>
+            ) : null,
+          towatch:
+            toWatchRow.length > 0 ? (
+              <Section
+                key="towatch"
+                title={t.libToWatch}
+                icon="bookmark"
+                iconColor="var(--brand-3)"
+                href="/library"
+                seeAll={t.seeAll}
+              >
+                {toWatchRow.map((x) => (
+                  <PosterCard
+                    key={x.key}
+                    href={x.href}
+                    title={x.title}
+                    posterPath={x.posterPath}
+                    progress={x.progress}
+                    badge={x.badge}
+                  />
+                ))}
+              </Section>
+            ) : null,
+          upcoming:
+            upcomingRow.length > 0 ? (
+              <Section
+                key="upcoming"
+                title={t.libUpcoming}
+                icon="hourglass"
+                iconColor="var(--accent)"
+                href="/library"
+                seeAll={t.seeAll}
+              >
+                {upcomingRow.map((x) => (
+                  <PosterCard
+                    key={x.key}
+                    href={x.href}
+                    title={x.title}
+                    posterPath={x.posterPath}
+                    badge={x.badge}
+                  />
+                ))}
+              </Section>
             ) : null,
           shows:
             myShows.length > 0 ? (
