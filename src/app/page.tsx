@@ -10,6 +10,7 @@ import {
   getAllMovieProgress,
   getMyRatings,
   getFollowStats,
+  getReceivedLikes,
 } from "@/lib/data";
 import {
   getTv,
@@ -29,6 +30,8 @@ import { PosterRail, RailItem } from "@/components/PosterRail";
 import type { IconName } from "@/components/Icon";
 import { ProfileHeader, type HeaderStat } from "@/components/ProfileHeader";
 import { getLevel, levelPoints } from "@/lib/level";
+import { sanitizeHomePrefs, type HomeSection } from "@/lib/homePrefs";
+import { WeekStrip, type WeekEntry } from "@/components/WeekStrip";
 import { ShowStatsSync, type ShowStat } from "@/components/ShowStatsSync";
 
 export default async function HomePage() {
@@ -47,6 +50,7 @@ export default async function HomePage() {
     movieProgress,
     myRatings,
     followStats,
+    receivedLikes,
   ] = await Promise.all([
     getFollows(),
     getWatchSummary(),
@@ -55,7 +59,10 @@ export default async function HomePage() {
     getAllMovieProgress(),
     getMyRatings(),
     getFollowStats(user.id),
+    getReceivedLikes(user.id),
   ]);
+
+  const prefs = sanitizeHomePrefs(profile?.home_prefs);
 
   const myRatingsCount = myRatings.length;
   const myComments = myRatings.filter((r) => r.review?.trim()).length;
@@ -341,6 +348,29 @@ export default async function HomePage() {
     },
   ];
 
+  // ===== الأيام السبعة القادمة — لشريط التقويم إن كان ظاهراً =====
+  const nowTs = new Date();
+  const weekDays = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(nowTs.getTime() + i * 86400000);
+    return {
+      date: d.toISOString().slice(0, 10),
+      weekday: new Intl.DateTimeFormat(locale === "en" ? "en-GB" : "ar", {
+        weekday: "short",
+        timeZone: "UTC",
+      }).format(d),
+      dayNum: new Intl.DateTimeFormat("en-GB", { day: "numeric", timeZone: "UTC" }).format(d),
+    };
+  });
+  const weekEnd = weekDays[6].date;
+  const weekEntries: WeekEntry[] = upcoming
+    .filter((u) => u.date >= weekDays[0].date && u.date <= weekEnd && u.key.startsWith("tv-"))
+    .map((u) => ({
+      date: u.date,
+      showTmdbId: Number(u.key.replace("tv-", "")),
+      title: u.title,
+      label: "",
+    }));
+
   return (
     <div className="space-y-8 sm:space-y-10">
       <ShowStatsSync stats={statsToCache} />
@@ -354,9 +384,10 @@ export default async function HomePage() {
         alerts={waitingForYou.length}
         stats={headerStats}
         followers={followStats.followers}
-        following={followStats.following}
         comments={myComments}
         ratings={myRatingsCount}
+        likes={receivedLikes}
+        show={prefs}
         verified
         locale={locale}
       />
@@ -367,92 +398,115 @@ export default async function HomePage() {
         </section>
       )}
 
-      {continueTop.length > 0 && (
-        <Section
-          title={t.continueWatching}
-          icon="play"
-          iconColor="var(--accent)"
-          href="/library"
-          seeAll={t.seeAll}
-          wide
-        >
-          {continueTop.map((i, n) => (
-            <ContinueCard
-              key={`c-${i.id}`}
-              href={`/show/${i.id}`}
-              title={i.name}
-              backdropPath={continueExtra[n]?.backdropPath ?? null}
-              posterPath={i.posterPath}
-              progress={i.progress}
-              episodeLabel={continueExtra[n]?.episodeLabel}
-            />
-          ))}
-        </Section>
-      )}
+      {(() => {
+        /* أقسام المحتوى تُرسم بترتيب التفضيلات: قائمة أسماء من التخصيص
+           تُترجم إلى قوالب هنا، والغائب عن القائمة لا يُرسم أصلاً */
+        const sections: Record<HomeSection, React.ReactNode> = {
+          continue:
+            continueTop.length > 0 ? (
+              <Section
+                key="continue"
+                title={t.continueWatching}
+                icon="play"
+                iconColor="var(--accent)"
+                href="/library"
+                seeAll={t.seeAll}
+                wide
+              >
+                {continueTop.map((i, n) => (
+                  <ContinueCard
+                    key={`c-${i.id}`}
+                    href={`/show/${i.id}`}
+                    title={i.name}
+                    backdropPath={continueExtra[n]?.backdropPath ?? null}
+                    posterPath={i.posterPath}
+                    progress={i.progress}
+                    episodeLabel={continueExtra[n]?.episodeLabel}
+                  />
+                ))}
+              </Section>
+            ) : null,
+          week:
+            weekEntries.length > 0 || true ? (
+              <div key="week">
+                <span id="week" className="block scroll-mt-20" />
+                <WeekStrip days={weekDays} entries={weekEntries} locale={locale} />
+              </div>
+            ) : null,
+          shows:
+            myShows.length > 0 ? (
+              <Section
+                key="shows"
+                title={t.myShows}
+                icon="tv"
+                iconColor="var(--accent)"
+                href="/library?filter=tv"
+                seeAll={t.seeAll}
+              >
+                {myShows.map((i) => (
+                  <PosterCard
+                    key={`ms-${i.id}`}
+                    href={`/show/${i.id}`}
+                    title={i.name}
+                    posterPath={i.posterPath}
+                    progress={i.progress}
+                    count={i.watched > 0 && i.aired > i.watched ? i.aired - i.watched : undefined}
+                    badge={
+                      i.watched === 0
+                        ? t.notStartedBadge
+                        : i.aired > 0 && i.watched >= i.aired
+                          ? t.watchedBadge
+                          : undefined
+                    }
+                    badgeTone={
+                      i.aired > 0 && i.watched >= i.aired && i.watched > 0 ? "watched" : "neutral"
+                    }
+                  />
+                ))}
+              </Section>
+            ) : null,
+          movies:
+            myMovies.length > 0 ? (
+              <Section
+                key="movies"
+                title={t.myMovies}
+                icon="film"
+                iconColor="var(--accent-2)"
+                href="/library?filter=movie"
+                seeAll={t.seeAll}
+              >
+                {myMovies.map((m) => (
+                  <PosterCard
+                    key={`mm-${m.tmdbId}`}
+                    href={`/movie/${m.tmdbId}`}
+                    title={m.title}
+                    posterPath={m.posterPath}
+                    progress={m.progress}
+                    badge={m.badge}
+                  />
+                ))}
+              </Section>
+            ) : null,
+          trending:
+            showTrending && trend.length > 0 ? (
+              <Section key="trending" title={t.trendingWeek} icon="trending">
+                {trend.slice(0, 12).map((r) => (
+                  <PosterCard
+                    key={`${r.media_type}-${r.id}`}
+                    href={`/${r.media_type === "tv" ? "show" : "movie"}/${r.id}`}
+                    title={titleOf(r)}
+                    posterPath={r.poster_path}
+                    year={yearOf(r)}
+                    badge={r.media_type === "tv" ? t.typeSeries : t.typeMovie}
+                  />
+                ))}
+              </Section>
+            ) : null,
+        };
+        return prefs.order.map((k) => sections[k]);
+      })()}
 
       <span id="watching" className="block scroll-mt-20" />
-
-      {/* ===== مسلسلاتي وأفلامي =====
-          صفّان تحت الأسبوع مباشرةً: مكتبتك كلها في متناول اليد من الصفحة
-          الأولى. الترتيب يقدّم ما أنت في وسطه ثم ما لم تبدأه ثم ما أنهيته —
-          فأول ملصق تراه هو غالباً ما ستفتحه. */}
-      {myShows.length > 0 && (
-        <Section
-          title={t.myShows}
-          icon="tv"
-          iconColor="var(--accent)"
-          href="/library?filter=tv"
-          seeAll={t.seeAll}
-        >
-          {myShows.map((i) => (
-            <PosterCard
-              key={`ms-${i.id}`}
-              href={`/show/${i.id}`}
-              title={i.name}
-              posterPath={i.posterPath}
-              progress={i.progress}
-              count={
-                i.watched > 0 && i.aired > i.watched
-                  ? i.aired - i.watched
-                  : undefined
-              }
-              badge={
-                i.watched === 0
-                  ? t.notStartedBadge
-                  : i.aired > 0 && i.watched >= i.aired
-                    ? t.watchedBadge
-                    : undefined
-              }
-              badgeTone={
-                i.aired > 0 && i.watched >= i.aired && i.watched > 0
-                  ? "watched"
-                  : "neutral"
-              }
-            />
-          ))}
-        </Section>
-      )}
-
-      {myMovies.length > 0 && (
-        <Section
-          title={t.myMovies}
-          icon="film"
-          iconColor="var(--accent-2)"
-          href="/library?filter=movie"
-          seeAll={t.seeAll}
-        >
-          {myMovies.map((m) => (
-            <PosterCard
-              key={`mm-${m.tmdbId}`}
-              href={`/movie/${m.tmdbId}`}
-              title={m.title}
-              posterPath={m.posterPath}
-              progress={m.progress}
-              badge={m.badge}
-            />
-          ))}
-        </Section>
-      )}
 
       {favGenres.length === 0 && !empty && (
         <Link
@@ -463,20 +517,6 @@ export default async function HomePage() {
         </Link>
       )}
 
-      {showTrending && trend.length > 0 && (
-        <Section title={t.trendingWeek} icon="trending">
-          {trend.slice(0, 12).map((r) => (
-            <PosterCard
-              key={`${r.media_type}-${r.id}`}
-              href={`/${r.media_type === "tv" ? "show" : "movie"}/${r.id}`}
-              title={titleOf(r)}
-              posterPath={r.poster_path}
-              year={yearOf(r)}
-              badge={r.media_type === "tv" ? t.typeSeries : t.typeMovie}
-            />
-          ))}
-        </Section>
-      )}
     </div>
   );
 }
