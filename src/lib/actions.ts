@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { LOCALE_COOKIE, normalizeLocale } from "@/lib/i18n";
 import { GENRES, type MediaType } from "@/lib/media";
 import { THEMES } from "@/lib/themes";
+import { sanitizeHomePrefs, type HomePrefs } from "@/lib/homePrefs";
 
 async function requireUser() {
   const supabase = await createClient();
@@ -51,6 +52,7 @@ export async function updateProfile(input: {
   theme?: string;
   favoriteGenres: number[];
   hideName?: boolean;
+  homePrefs?: HomePrefs;
 }) {
   const { supabase, user } = await requireUser();
 
@@ -79,6 +81,8 @@ export async function updateProfile(input: {
     payload.theme = THEMES.some((t) => t.id === input.theme) ? input.theme : "amber";
   }
   if (input.hideName !== undefined) payload.hide_name = !!input.hideName;
+  // تُنقّى قبل الكتابة كما تُنقّى بعد القراءة: القيمة تمرّ عبر الشبكة
+  if (input.homePrefs !== undefined) payload.home_prefs = sanitizeHomePrefs(input.homePrefs);
 
   const { error } = await supabase.from("profiles").upsert(payload, { onConflict: "id" });
   if (error) {
@@ -614,4 +618,33 @@ export async function toggleInList(input: {
 function safeImagePath(path: string | null): string | null {
   if (!path) return null;
   return /^\/[A-Za-z0-9._-]{1,64}$/.test(path) ? path : null;
+}
+
+/**
+ * إعجابٌ بمراجعة، أو سحبه.
+ *
+ * المفتاح الأساسي يمنع التكرار، وسياسة الإدراج تمنع الإعجاب بمراجعة
+ * النفس — فلا يحتاج هذا الفعل فحصاً قبل الكتابة، والقاعدة هي الحارس.
+ */
+export async function toggleReviewLike(
+  reviewUserId: string,
+  tmdbId: number,
+  mediaType: "tv" | "movie",
+  liked: boolean,
+) {
+  const { supabase, user } = await requireUser();
+  const key = {
+    review_user_id: reviewUserId,
+    tmdb_id: tmdbId,
+    media_type: mediaType,
+    liker_id: user.id,
+  };
+
+  const { error } = liked
+    ? await supabase.from("review_likes").delete().match(key)
+    : await supabase.from("review_likes").insert(key);
+
+  if (error) throw new Error(error.message);
+  revalidatePath("/");
+  revalidatePath(`/${mediaType === "tv" ? "show" : "movie"}/${tmdbId}`);
 }

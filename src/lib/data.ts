@@ -53,6 +53,7 @@ export interface Profile {
   theme: string | null;
   favorite_genres: number[];
   hide_name?: boolean | null;
+  home_prefs?: unknown;
 }
 
 /** الملف الشخصي — يُقرأ في التخطيط والشريط العلوي والصفحة، فيُخزَّن لكل طلب */
@@ -65,7 +66,9 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
     // eslint-disable-next-line prefer-const
     let { data, error } = await supabase
       .from("profiles")
-      .select("id, nickname, username, avatar_url, cover_url, theme, favorite_genres, hide_name")
+      .select(
+        "id, nickname, username, avatar_url, cover_url, theme, favorite_genres, hide_name, home_prefs",
+      )
       .eq("id", user.id)
       .maybeSingle();
 
@@ -78,7 +81,7 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
         .eq("id", user.id)
         .maybeSingle();
       if (legacy.data) {
-        data = { ...legacy.data, cover_url: null, theme: null, hide_name: false };
+        data = { ...legacy.data, cover_url: null, theme: null, hide_name: false, home_prefs: null };
       }
     }
 
@@ -96,6 +99,7 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
         theme: null,
         favorite_genres: [],
         hide_name: false,
+        home_prefs: null,
       };
     }
     return { ...data, favorite_genres: data.favorite_genres ?? [] } as Profile;
@@ -407,13 +411,21 @@ export async function getRatingsOf(userId: string): Promise<RatingRow[]> {
 }
 
 /** متوسط تقييمات كل المستخدمين لعمل معيّن */
+/** مراجعةٌ كما تُعرض للمجتمع: التقييم ونصّه، ومعه حال الإعجاب */
+export interface ReviewRow extends RatingRow {
+  likes: number;
+  likedByMe: boolean;
+  isMine: boolean;
+}
+
 export async function getCommunityRating(
   tmdbId: number,
   mediaType: "tv" | "movie",
-): Promise<{ avg: number; count: number; reviews: RatingRow[] }> {
-  const empty = { avg: 0, count: 0, reviews: [] as RatingRow[] };
+): Promise<{ avg: number; count: number; reviews: ReviewRow[] }> {
+  const empty = { avg: 0, count: 0, reviews: [] as ReviewRow[] };
   try {
     const supabase = await createClient();
+    const me = await getUser();
     const { data } = await supabase
       .from("ratings")
       .select("user_id, tmdb_id, media_type, rating, review, title, poster_path, updated_at")
@@ -424,7 +436,32 @@ export async function getCommunityRating(
     const rows = (data as RatingRow[]) ?? [];
     if (!rows.length) return empty;
     const avg = rows.reduce((s, r) => s + r.rating, 0) / rows.length;
-    return { avg, count: rows.length, reviews: rows.filter((r) => r.review?.trim()).slice(0, 10) };
+    const withText = rows.filter((r) => r.review?.trim()).slice(0, 10);
+
+    // إعجابات هذا العمل كلها في استعلامٍ واحد ثم تُجمَّع في الذاكرة:
+    // استعلامٌ لكل مراجعة يعني عشرة استعلامات لصفحةٍ واحدة
+    const likes = new Map<string, number>();
+    const mine = new Set<string>();
+    const { data: likeRows } = await supabase
+      .from("review_likes")
+      .select("review_user_id, liker_id")
+      .eq("tmdb_id", tmdbId)
+      .eq("media_type", mediaType);
+    for (const l of (likeRows ?? []) as { review_user_id: string; liker_id: string }[]) {
+      likes.set(l.review_user_id, (likes.get(l.review_user_id) ?? 0) + 1);
+      if (me && l.liker_id === me.id) mine.add(l.review_user_id);
+    }
+
+    return {
+      avg,
+      count: rows.length,
+      reviews: withText.map((r) => ({
+        ...r,
+        likes: likes.get(r.user_id) ?? 0,
+        likedByMe: mine.has(r.user_id),
+        isMine: me?.id === r.user_id,
+      })),
+    };
   } catch {
     return empty;
   }
@@ -478,6 +515,27 @@ export async function getProfileByUsername(username: string): Promise<PublicProf
     return { ...data, favorite_genres: data.favorite_genres ?? [] } as PublicProfile;
   } catch {
     return null;
+  }
+}
+
+/**
+ * عدد الإعجابات التي تلقّاها المستخدم على مراجعاته.
+ *
+ * `head: true` مع `count: "exact"` تُرجع العدد بلا صفوف: الترويسة تحتاج
+ * رقماً لا قائمة. والجدول قد لا يكون منشأً بعد (`supabase/likes.sql`)،
+ * فالفشل يُرجع صفراً ولا يُسقط الصفحة.
+ */
+export async function getReceivedLikes(userId: string): Promise<number> {
+  try {
+    const supabase = await createClient();
+    const { count, error } = await supabase
+      .from("review_likes")
+      .select("liker_id", { count: "exact", head: true })
+      .eq("review_user_id", userId);
+    if (error) return 0;
+    return count ?? 0;
+  } catch {
+    return 0;
   }
 }
 
@@ -604,6 +662,10 @@ export interface TitleReview extends PersonLite {
   rating: number;
   review: string | null;
   updated_at: string;
+  /** عدد الإعجابات، وهل أعجبتُ بها، وهل هي مراجعتي */
+  likes: number;
+  likedByMe: boolean;
+  isMine: boolean;
 }
 
 /** مراجعات عمل معيّن مع أصحابها */
@@ -613,12 +675,34 @@ export async function getTitleReviews(
 ): Promise<TitleReview[]> {
   try {
     const supabase = await createClient();
-    const { data, error } = await supabase.rpc("title_reviews", {
-      t_id: tmdbId,
-      m_type: mediaType,
-    });
+    const [{ data, error }, me] = await Promise.all([
+      supabase.rpc("title_reviews", { t_id: tmdbId, m_type: mediaType }),
+      getUser(),
+    ]);
     if (error || !data) return [];
-    return data as TitleReview[];
+    const rows = data as Omit<TitleReview, "likes" | "likedByMe" | "isMine">[];
+    if (!rows.length) return [];
+
+    // إعجابات العمل كلها في استعلامٍ واحد ثم تُجمَّع في الذاكرة:
+    // استعلامٌ لكل مراجعة يعني عشرة استعلامات لصفحةٍ واحدة
+    const counts = new Map<string, number>();
+    const mine = new Set<string>();
+    const { data: likeRows } = await supabase
+      .from("review_likes")
+      .select("review_user_id, liker_id")
+      .eq("tmdb_id", tmdbId)
+      .eq("media_type", mediaType);
+    for (const l of (likeRows ?? []) as { review_user_id: string; liker_id: string }[]) {
+      counts.set(l.review_user_id, (counts.get(l.review_user_id) ?? 0) + 1);
+      if (me && l.liker_id === me.id) mine.add(l.review_user_id);
+    }
+
+    return rows.map((r) => ({
+      ...r,
+      likes: counts.get(r.id) ?? 0,
+      likedByMe: mine.has(r.id),
+      isMine: me?.id === r.id,
+    }));
   } catch {
     return [];
   }
