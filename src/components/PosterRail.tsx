@@ -11,6 +11,7 @@ import { Icon, type IconName } from "./Icon";
 export function PosterRail({
   title,
   icon,
+  iconColor,
   href,
   seeAllLabel,
   subtitle,
@@ -18,6 +19,8 @@ export function PosterRail({
 }: {
   title: string;
   icon?: IconName;
+  /** لون أيقونة العنوان — ثابت لا يتبع الثيم، فالقسم يُعرف بلونه */
+  iconColor?: string;
   href?: string;
   seeAllLabel?: string;
   subtitle?: string;
@@ -25,15 +28,23 @@ export function PosterRail({
 }) {
   return (
     <section>
-      <div className="flex items-baseline justify-between gap-3 mb-1">
-        <h2 className="flex items-center gap-2 text-base font-bold">
-          {icon && <Icon name={icon} size={18} className="text-muted" />}
+      <div className="flex items-center justify-between gap-3 mb-1">
+        <h2 className="flex items-center gap-2.5 text-[19px] font-bold">
+          {icon && (
+            <Icon
+              name={icon}
+              size={22}
+              strokeWidth={1.9}
+              style={iconColor ? { color: iconColor } : undefined}
+              className={iconColor ? "" : "text-muted"}
+            />
+          )}
           {title}
         </h2>
         {href && seeAllLabel && (
           <Link
             href={href}
-            className="text-xs text-muted hover:text-accent transition shrink-0"
+            className="text-[13px] text-muted hover:text-accent transition shrink-0"
           >
             {seeAllLabel}
           </Link>
@@ -51,6 +62,6 @@ export function PosterRail({
 }
 
 /** عنصر داخل الصفّ — عرض ثابت حتى لا تتمدّد البطاقات */
-export function RailItem({ children }: { children: React.ReactNode }) {
-  return <div className="w-[112px] sm:w-[132px] shrink-0">{children}</div>;
+export function RailItem({ children, wide = false }: { children: React.ReactNode; wide?: boolean }) {
+  return <div className={`shrink-0 ${wide ? "w-[268px] sm:w-[320px]" : "w-[118px] sm:w-[138px]"}`}>{children}</div>;
 }

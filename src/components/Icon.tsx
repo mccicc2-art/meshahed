@@ -38,7 +38,10 @@ export type IconName =
   | "shield"
   | "palette"
   | "grid"
-  | "card";
+  | "card"
+  | "compass"
+  | "home"
+  | "people";
 
 const PATHS: Record<IconName, React.ReactNode> = {
   bell: (
@@ -192,6 +195,25 @@ const PATHS: Record<IconName, React.ReactNode> = {
       <path d="M3 10h18M6.5 14.5h3" />
     </>
   ),
+  people: (
+    <>
+      <circle cx="9.2" cy="8.4" r="3.1" />
+      <path d="M3.6 19c0-2.9 2.5-4.8 5.6-4.8s5.6 1.9 5.6 4.8" />
+      <path d="M16.2 6.6a2.9 2.9 0 0 1 0 5.5M17.6 19c0-2.2-.9-3.8-2.4-4.7" />
+    </>
+  ),
+  compass: (
+    <>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="m15.2 8.8-1.9 4.5-4.5 1.9 1.9-4.5 4.5-1.9Z" />
+    </>
+  ),
+  home: (
+    <>
+      <path d="M3.5 10.4 12 3.6l8.5 6.8" />
+      <path d="M6 9.6V20h12V9.6" />
+    </>
+  ),
   share: (
     <>
       <path d="M12 15V3.5" />
@@ -212,11 +234,14 @@ export function Icon({
   size = 20,
   className = "",
   strokeWidth = 1.7,
+  style,
 }: {
   name: IconName;
   size?: number;
   className?: string;
   strokeWidth?: number;
+  /** لونٌ ثابت لا يتبع `currentColor` — للشريط السفلي ولوحة الأرقام */
+  style?: React.CSSProperties;
 }) {
   return (
     <svg
@@ -229,6 +254,7 @@ export function Icon({
       strokeLinecap="round"
       strokeLinejoin="round"
       className={`shrink-0 ${className}`}
+      style={style}
       aria-hidden
     >
       {PATHS[name]}

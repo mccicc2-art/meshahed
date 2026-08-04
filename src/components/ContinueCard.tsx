@@ -1,74 +1,83 @@
 import Link from "next/link";
 import Image from "next/image";
-import { posterUrl } from "@/lib/media";
+import { posterUrl, backdropUrl } from "@/lib/media";
 import { Icon } from "./Icon";
 
 /**
  * بطاقة «أكمل المشاهدة».
  *
- * الاسم وشريط التقدّم ونسبته كلها داخل الملصق، على حجابٍ متدرّج في
- * أسفله: البطاقة صارت مستطيلاً واحداً لا ملصقاً وسطرين تحته، فالصفّ
- * يعرض أعمالاً أكثر في الارتفاع نفسه، والاسم والنسبة يُقرآن مع الصورة
- * في حركة عين واحدة.
+ * بطاقة عريضة بصورة المشهد لا بالملصق: القسم يجيب عن «أين توقّفت»، وصورة
+ * المشهد تعيدك إلى الحلقة أسرع من غلافٍ دعائي. وكل ما تحتاجه فوق الصورة —
+ * النسبة في زاويةٍ، والاسم ورقم الحلقة في أسفلها، والشريط على الحافّة —
+ * فالبطاقة مستطيلٌ واحد لا صورةٌ وسطران تحتها.
  *
- * حلّت محلّ بطاقة الحلقة التالية العريضة: تلك تعرض عملاً واحداً وتأخذ
- * ثلث الشاشة، وهذه تعرض كل ما أنت في وسطه في صفٍّ واحد.
+ * وإن غاب المشهد رجعت إلى الملصق: أفضل من فراغ.
  */
 export function ContinueCard({
   href,
   title,
+  backdropPath,
   posterPath,
   progress,
+  episodeLabel,
 }: {
   href: string;
   title: string;
+  backdropPath: string | null;
   posterPath: string | null;
   /** ٠–١٠٠ */
   progress: number;
+  /** مثل S2 E15 — يُحذف السطر إن لم يُعرف */
+  episodeLabel?: string | null;
 }) {
-  const url = posterUrl(posterPath, "w342");
+  const url = backdropPath ? backdropUrl(backdropPath, "w780") : posterUrl(posterPath, "w342");
   const pct = Math.max(0, Math.min(100, Math.round(progress)));
 
   return (
     <Link href={href} prefetch={false} className="group block">
-      <div className="relative aspect-[2/3] rounded-xl overflow-hidden bg-surface-2 border border-border">
+      <div className="relative aspect-[16/10] rounded-2xl overflow-hidden bg-surface-2 border border-white/10">
         {url ? (
           <Image
             src={url}
             alt={title}
             fill
-            sizes="(max-width: 640px) 33vw, 160px"
+            sizes="(max-width: 640px) 70vw, 320px"
             className="object-cover group-hover:scale-105 transition duration-300"
           />
         ) : (
           <span className="absolute inset-0 grid place-items-center text-muted">
-            <Icon name="film" size={22} />
+            <Icon name="film" size={26} />
           </span>
         )}
 
-        {/* حجابٌ متدرّج يحمل الاسم والنسبة: الملصق نفسه هو البطاقة، فلا
-            يحتاج سطراً تحته. والتدرّج لا اللون المصمت — يبقي أسفل الصورة
-            مرئياً ويضمن أن يُقرأ النصّ على ملصقٍ فاتح */}
-        <div className="absolute inset-x-0 bottom-0 p-2 pt-8 bg-gradient-to-t from-black/90 via-black/65 to-transparent">
-          <p className="text-[11px] font-semibold leading-tight text-white line-clamp-2 drop-shadow">
+        {/* حجاب سفليّ يحمل النصّ: يبقي الصورة مرئية ويضمن قراءة الاسم */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-black/20" />
+
+        <span className="absolute top-2.5 start-2.5 rounded-full bg-black/70 backdrop-blur px-2.5 py-1 text-[12px] font-bold text-accent">
+          <span dir="ltr">{pct}%</span>
+        </span>
+
+        <div className="absolute inset-x-0 bottom-0 p-3 pb-3.5 flex items-end justify-between gap-2">
+          <p className="text-[15px] font-bold leading-tight text-white line-clamp-2 drop-shadow">
             {title}
           </p>
-
-          <div className="mt-1.5 flex items-center gap-1.5">
-            <span className="flex-1 h-1 rounded-full bg-white/25 overflow-hidden">
-              <span
-                className="block h-full rounded-full"
-                style={{
-                  width: `${pct}%`,
-                  background: "linear-gradient(90deg, var(--brand-3), var(--accent-2))",
-                }}
-              />
+          {episodeLabel && (
+            <span className="shrink-0 text-[12px] font-semibold text-white/70">
+              <span dir="ltr">{episodeLabel}</span>
             </span>
-            <span className="text-[10px] font-bold text-white/85 tabular-nums shrink-0">
-              <span dir="ltr">{pct}%</span>
-            </span>
-          </div>
+          )}
         </div>
+
+        {/* شريط التقدّم على حافّة البطاقة نفسها */}
+        <span className="absolute inset-x-0 bottom-0 h-1 bg-white/15">
+          <span
+            className="block h-full"
+            style={{
+              width: `${pct}%`,
+              background: "linear-gradient(90deg, var(--brand-3), var(--accent-2))",
+            }}
+          />
+        </span>
       </div>
     </Link>
   );

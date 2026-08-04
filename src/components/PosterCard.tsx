@@ -9,6 +9,7 @@ export function PosterCard({
   posterPath,
   year,
   badge,
+  count,
   progress,
   note,
   tone = "default",
@@ -18,6 +19,8 @@ export function PosterCard({
   posterPath: string | null;
   year?: string;
   badge?: string;
+  /** رقمٌ في دائرة على الزاوية المقابلة — ما بقي من الحلقات */
+  count?: number;
   progress?: number; // 0..100
   note?: string;
   /** waiting = حلقة جديدة تنتظرك (ذهبي) بدل الأخضر المعتاد */
@@ -42,10 +45,13 @@ export function PosterCard({
           <div className="w-full h-full grid place-items-center text-muted"><Icon name="film" size={26} /></div>
         )}
         {badge && (
-          <span
-            className="absolute top-2 start-2 text-[11px] font-semibold bg-black/75 px-2 py-0.5 rounded-full text-accent"
-          >
+          <span className="absolute top-2 start-2 text-[11px] font-semibold bg-black/75 backdrop-blur px-2.5 py-1 rounded-full text-white">
             {badge}
+          </span>
+        )}
+        {typeof count === "number" && count > 0 && (
+          <span className="absolute top-2 end-2 grid place-items-center min-w-6 h-6 px-1.5 rounded-full bg-accent text-[color:var(--on-accent)] text-[11px] font-bold tabular-nums">
+            {count}
           </span>
         )}
         {typeof progress === "number" && (
@@ -63,7 +69,7 @@ export function PosterCard({
         )}
       </div>
       <div className="mt-2 px-0.5">
-        <p className="text-sm font-medium leading-tight line-clamp-2 group-hover:text-accent transition">
+        <p className="text-[13px] font-medium leading-tight line-clamp-2 group-hover:text-accent transition">
           {title}
         </p>
         {year && <p className="text-xs text-muted mt-0.5">{year}</p>}

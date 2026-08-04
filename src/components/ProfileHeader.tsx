@@ -13,6 +13,8 @@ export interface HeaderStat {
   value: string;
   label: string;
   href?: string;
+  /** لون الأيقونة — ثابت لا يتبع الثيم، فالخانة تُعرف بلونها قبل كلمتها */
+  color?: string;
 }
 
 /**
@@ -23,7 +25,7 @@ export interface HeaderStat {
  * الشكل نفسه بلا نسخ. والتدرّج ذهبيّ ثابت لا يتبع الثيم — الشارة علامة
  * لا عنصر واجهة، فلونها واحد على كل الخلفيات.
  */
-function VerifiedMark({ size = 17, title }: { size?: number; title: string }) {
+function VerifiedMark({ size = 18, title }: { size?: number; title: string }) {
   return (
     <svg
       width={size}
@@ -60,18 +62,18 @@ function VerifiedMark({ size = 17, title }: { size?: number; title: string }) {
 /**
  * ترويسة الحساب.
  *
- * الغلاف صورة ممتدّة إلى حواف الشاشة، وأدواته أزرارٌ دائرية تطفو عليه —
- * لا شريط ولا صندوق يزاحم الصورة. والصورة الشخصية تنزل تحت حافة الغلاف
- * لا فوقها: كانت تتقاطع مع كتلة الاسم وشريط الأرقام، فصار الإطار يقطع
- * الإطار. الآن الغلاف يغلق على نفسه، ثم صفّ الهوية، ثم بطاقة الأرقام —
- * ثلاث كتل متتابعة بلا تداخل.
+ * الغلاف صورة ممتدّة إلى حواف الشاشة، وأدواته كبسولةٌ واحدة تطفو على
+ * زاويته العليا — الإشعارات ثم الإعدادات ثم المشاركة، الأكثر استعمالاً
+ * أعلى. وكتلة الهوية ترتفع على الثلث الأسفل من الصورة فتُقرأ معها طبقةً
+ * واحدة، لا شريطاً يبدأ بعد انتهائها.
  *
- * الأرقام ستّ خانات في بطاقة واحدة بدل شريط منفصل: الخانة رقمٌ وكلمة
- * وأيقونة، والفواصل الرفيعة تفصل بينها بلا حدود ثقيلة. والمستوى سطرٌ في
- * أسفل البطاقة نفسها لا بطاقة ثانية.
+ * ثم المستوى سطراً عريضاً، ثم بطاقة الأرقام: أربع خانات، لكلٍّ أيقونتها
+ * ولونها فوق رقمها. اللون يسبق القراءة — تُعرف خانة الأفلام من ورديّتها
+ * قبل أن تُقرأ كلمتها.
  */
 export function ProfileHeader({
   displayName,
+  username,
   avatarUrl,
   coverUrl,
   level,
@@ -85,6 +87,7 @@ export function ProfileHeader({
   locale,
 }: {
   displayName: string;
+  username: string | null;
   avatarUrl: string | null;
   coverUrl: string | null;
   level: LevelInfo;
@@ -103,7 +106,7 @@ export function ProfileHeader({
   return (
     <section>
       {/* ===== الغلاف ===== */}
-      <div className="relative h-52 sm:h-64 -mx-4 -mt-6 sm:mx-0 sm:mt-0 sm:rounded-3xl overflow-hidden">
+      <div className="relative h-56 sm:h-72 -mx-4 -mt-6 sm:mx-0 sm:mt-0 sm:rounded-3xl overflow-hidden">
         {coverUrl ? (
           <Image
             src={coverUrl}
@@ -124,181 +127,178 @@ export function ProfileHeader({
         )}
 
         {/* تدرّج سفليّ يذوّب الصورة في خلفية الصفحة بدل حافّة حادّة */}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/45 via-transparent to-[color:var(--background)]" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-[color:var(--background)]" />
 
         <span className="absolute top-4 start-4 drop-shadow-[0_2px_6px_rgba(0,0,0,0.6)]">
-          <Logo size={28} gradientId="header-mark" />
+          <Logo size={30} gradientId="header-mark" />
         </span>
 
-        {/* أدوات الغلاف عمودٌ واحد في الزاوية العليا: الإشعارات ثم
-            الإعدادات ثم المشاركة — الأكثر استعمالاً أعلى. وقلم التعديل
-            حُذف لأن الصورة الشخصية نفسها تفتح صفحة التعديل. */}
-        <div className="absolute top-3 end-3 flex flex-col items-center gap-2">
+        {/* أدوات الغلاف كبسولةٌ واحدة لا ثلاث دوائر: كتلة واحدة أهدأ على
+            الصورة، والفواصل الرفيعة تكفي لتمييز الأزرار */}
+        <div className="absolute top-3 end-3 flex flex-col items-center rounded-[22px] bg-black/45 backdrop-blur border border-white/10 overflow-hidden">
           <Link
-            href="/library?filter=watching"
+            href="/library"
             aria-label={t.headerAlerts}
             title={t.headerAlerts}
-            className="relative grid place-items-center w-10 h-10 rounded-full bg-black/40 backdrop-blur border border-white/15 text-white/90 hover:bg-black/60 transition"
+            className="relative grid place-items-center w-12 h-12 text-white/90 hover:bg-white/10 transition"
           >
-            <Icon name="bell" size={17} />
+            <Icon name="bell" size={19} />
             {alerts > 0 && (
-              <span className="absolute top-1.5 end-1.5 w-2 h-2 rounded-full bg-accent-2 ring-2 ring-black/50" />
+              <span className="absolute top-2.5 end-2.5 w-2 h-2 rounded-full bg-accent-2 ring-2 ring-black/50" />
             )}
           </Link>
+          <span className="w-7 h-px bg-white/15" aria-hidden />
           <Link
             href="/profile/settings"
             aria-label={t.headerSettings}
             title={t.headerSettings}
-            className="grid place-items-center w-10 h-10 rounded-full bg-black/40 backdrop-blur border border-white/15 text-white/90 hover:bg-black/60 transition"
+            className="grid place-items-center w-12 h-12 text-white/90 hover:bg-white/10 transition"
           >
-            <Icon name="settings" size={17} />
+            <Icon name="settings" size={19} />
           </Link>
-          <span className="grid place-items-center w-10 h-10 rounded-full bg-black/40 backdrop-blur border border-white/15">
+          <span className="w-7 h-px bg-white/15" aria-hidden />
+          <span className="grid place-items-center w-12 h-12 text-white/90">
             <ShareButton locale={locale} />
           </span>
         </div>
       </div>
 
-      {/* ===== صفّ الهوية =====
-          يُرفع فوق حافّة الغلاف لا تحتها: الكتلة كلها — الصورة والاسم
-          وبطاقة الأرقام — تأخذ الثلث الأسفل من الصورة، فتقرأها العين
-          طبقةً واحدة على الغلاف بدل شريطٍ يبدأ بعد انتهائه. والتدرّج
-          الأسود في أسفل الغلاف يضمن أن يبقى النصّ مقروءاً على أي صورة.
-
-          و`pe-14` تحجز طرف الصفّ لعمود الأدوات فوقه: بعد الرفع صار سطر
-          المُعرّف يمرّ تحت زرّ المشاركة فيختفي آخره. */}
-      <div className="flex items-end gap-3 pe-14 sm:pe-16 -mt-[7.25rem] sm:-mt-[8.5rem] relative z-10">
-        <Link href="/profile/edit" className="shrink-0">
-          <Avatar
-            src={avatarUrl}
-            name={displayName}
-            size={80}
-            alt={t.avatarAlt}
-            className="ring-4 ring-[color:var(--background)]"
-          />
+      {/* ===== كتلة الهوية ===== */}
+      <div className="flex items-end gap-3.5 pe-16 -mt-[7.5rem] sm:-mt-[9rem] relative z-10">
+        {/* حلقة متدرّجة حول الصورة: تفصلها عن الغلاف وتعطيها ثقل المرجع */}
+        <Link href="/profile/settings?s=profile" className="shrink-0">
+          <span
+            className="block rounded-full p-[3px]"
+            style={{
+              background:
+                "linear-gradient(135deg, var(--brand-3), var(--accent-2) 55%, var(--accent))",
+            }}
+          >
+            <Avatar
+              src={avatarUrl}
+              name={displayName}
+              size={90}
+              alt={t.avatarAlt}
+              className="ring-[3px] ring-[color:var(--background)]"
+            />
+          </span>
         </Link>
 
-        <div className="min-w-0 flex-1 pb-4">
-          <div className="flex items-center gap-1.5 min-w-0">
-            <h1 className="text-lg sm:text-2xl font-bold truncate drop-shadow-[0_2px_6px_rgba(0,0,0,0.7)]">
+        <div className="min-w-0 flex-1 pb-1">
+          <div className="flex items-center gap-2 min-w-0">
+            <h1 className="text-xl sm:text-2xl font-bold truncate drop-shadow-[0_2px_6px_rgba(0,0,0,0.7)]">
               {displayName}
             </h1>
             {verified && <VerifiedMark title={t.verifiedTitle} />}
           </div>
 
-          {/* سطر الأرقام على لوحٍ ضبابيّ داكن: كان يقف عارياً على الغلاف،
-              فصورةٌ فاتحة تبتلعه. واللوح يضبّب ما خلفه فيفصل النصّ عن
-              الصورة دون أن يحجبها. والمُعرّف حُذف منه — يتكرّر تحت الاسم
-              بلا فائدة ويزحم السطر حتى ينكسر. */}
-          <div className="w-fit max-w-full flex flex-wrap items-center gap-x-2 gap-y-1 rounded-xl bg-black/35 backdrop-blur-md px-2.5 py-1.5 text-[11px] sm:text-sm text-white/70 leading-tight mt-1.5">
+          {username && (
+            <p className="text-[13px] text-white/55 truncate leading-tight mt-0.5 drop-shadow">
+              <span dir="ltr">@{username}</span>
+            </p>
+          )}
+
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[13px] text-white/75 leading-tight mt-1 drop-shadow">
             <Link href="/people" className="shrink-0 hover:text-white transition">
               <span className="font-bold text-white tabular-nums">{followers}</span>{" "}
               {t.followersLabel}
             </Link>
-            <span className="opacity-40 shrink-0">·</span>
+            <span className="opacity-40 shrink-0">•</span>
             <Link href="/people" className="shrink-0 hover:text-white transition">
               <span className="font-bold text-white tabular-nums">{following}</span>{" "}
               {t.followingLabel}
             </Link>
+          </div>
 
-            {/* التعليقات والتقييمات: أيقونة ورقم بلا كلمة — الأيقونة تكفي
-                لتعريفهما، فيدخلان السطر دون أن يزحماه ودون فاصلٍ قبلهما */}
+          {/* التعليقات والتقييمات كبسولةٌ محدودة: رقمان صغيران لا يستحقّان
+              كلمتين، والإطار يفصلهما عن سطر المتابعات فوقهما */}
+          <div className="inline-flex items-center rounded-full border border-white/20 bg-black/30 backdrop-blur mt-2">
             <Link
               href="/ratings?with=comments"
               title={t.panelComments}
               aria-label={`${comments} ${t.panelComments}`}
-              className="shrink-0 flex items-center gap-1 hover:text-white transition"
+              className="flex items-center gap-1.5 ps-3.5 pe-3 py-1.5 text-[13px] text-white/85 hover:text-white transition"
             >
-              <Icon name="comment" size={13} />
-              <span className="font-bold text-white tabular-nums">{comments}</span>
+              <Icon name="comment" size={15} />
+              <span className="font-bold tabular-nums">{comments}</span>
             </Link>
+            <span className="w-px h-4 bg-white/20" aria-hidden />
             <Link
               href="/ratings"
               title={t.panelRatings}
               aria-label={`${ratings} ${t.panelRatings}`}
-              className="shrink-0 flex items-center gap-1 hover:text-white transition"
+              className="flex items-center gap-1.5 ps-3 pe-3.5 py-1.5 text-[13px] text-white/85 hover:text-white transition"
             >
-              <Icon name="star" size={13} />
-              <span className="font-bold text-white tabular-nums">{ratings}</span>
+              <Icon name="star" size={15} />
+              <span className="font-bold tabular-nums">{ratings}</span>
             </Link>
           </div>
         </div>
+      </div>
 
+      {/* ===== المستوى ===== */}
+      <div className="mt-4 px-0.5">
+        <p className="text-[13px] font-bold">
+          {t.levelLabel(level.level)} ·{" "}
+          <span className="text-accent">{levelName(level.level, t)}</span>
+        </p>
+        <div className="flex items-center gap-3 mt-1.5">
+          <div className="flex-1 h-[5px] rounded-full bg-surface-2 overflow-hidden">
+            <div
+              className="h-full rounded-full"
+              style={{
+                width: `${level.percent}%`,
+                background: "linear-gradient(90deg, var(--brand-3), var(--accent-2))",
+              }}
+            />
+          </div>
+          <span className="text-[12px] text-muted shrink-0 tabular-nums">
+            <span dir="ltr">{level.percent}%</span>
+          </span>
+        </div>
       </div>
 
       {/* ===== بطاقة الأرقام =====
-          تُسحب لأعلى فتنزلق تحت الصورة الشخصية: الصورة تطفو على زاويتها
-          فتربط الكتلتين بدل أن تقفا منفصلتين بفراغ بينهما.
-
-          التعليقات والتقييمات انتقلت إلى سطر المُعرّف أيقونةً ورقماً، وعدد
-          الحلقات حُذف — فبقيت في البطاقة الأرقام التي تصف المكتبة نفسها.
-
-          صفٌّ واحد بأربع خانات، والخانة أيقونةٌ إلى جانبها الرقم وتحته
-          كلمته: الأيقونة سطرٌ واحد بمحاذاة السطرين معاً. والكلمة تنكسر
-          سطرين بدل أن تُبتر — الخانة على الجوال ٩٠ بكسلاً لا تسع «وقت
-          المشاهدة» في سطر، وقصّها يخفي معناها. والسطران محجوزان في كل
-          خانة ولو كانت كلمتها سطراً واحداً، فتقف الأرقام على خطٍّ واحد. */}
-      <div className="-mt-3 rounded-2xl border border-white/10 bg-[color:var(--surface)]/45 backdrop-blur-xl overflow-hidden">
+          الأيقونة فوق الرقم وتحته كلمته، والخانة موسّطة — كتلة تُقرأ من
+          أعلى لأسفل. والفواصل خطوطٌ محشورة لا حدودَ خانة: تبتعد عن إطار
+          البطاقة فلا تلمس الحافّة. */}
+      <div className="mt-4 rounded-2xl border border-white/10 bg-[color:var(--surface)]/60 backdrop-blur-xl overflow-hidden">
         <div className="grid grid-cols-4">
           {stats.map((s, i) => {
             const cell = (
               <>
                 <Icon
                   name={s.icon}
-                  size={22}
-                  className="text-muted shrink-0 w-5 h-5 sm:w-6 sm:h-6"
+                  size={24}
+                  strokeWidth={1.8}
+                  style={s.color ? { color: s.color } : undefined}
+                  className={s.color ? "" : "text-muted"}
                 />
-                <span className="min-w-0 text-start">
-                  <span className="block text-[14px] font-bold leading-none tabular-nums">
-                    {s.value}
-                  </span>
-                  <span className="block text-[10px] text-muted mt-1 leading-[1.25] min-h-[2.5em] line-clamp-2">
-                    {s.label}
-                  </span>
+                <span className="block text-[19px] font-bold leading-none tabular-nums mt-2">
+                  {s.value}
+                </span>
+                <span className="block text-[11px] text-muted mt-1.5 leading-[1.25] min-h-[2.5em] px-0.5">
+                  {s.label}
                 </span>
               </>
             );
-            /* الفاصل خطٌّ محشور لا حدُّ خانة: يبتعد عن إطار البطاقة بمسافة،
-               فيفصل بين المحتويات ولا يلمس الحافّة — كما في المرجع */
-            const rules = i < stats.length - 1 && (
-              <span className="absolute inset-y-3 end-0 w-px bg-white/10" aria-hidden />
+            const rule = i < stats.length - 1 && (
+              <span className="absolute inset-y-4 end-0 w-px bg-white/10" aria-hidden />
             );
-            const box =
-              "relative flex items-center justify-center gap-1.5 sm:gap-2.5 px-1 sm:px-2 py-3";
+            const box = "relative flex flex-col items-center justify-start text-center px-1 py-4";
             return s.href ? (
               <Link key={s.key} href={s.href} className={`${box} hover:bg-white/5 transition`}>
-                {rules}
+                {rule}
                 {cell}
               </Link>
             ) : (
               <div key={s.key} className={box}>
-                {rules}
+                {rule}
                 {cell}
               </div>
             );
           })}
         </div>
-      </div>
-
-      {/* المستوى سطرٌ عارٍ تحت البطاقة: البطاقة نفسها ستّ خانات لا سابع
-          لها، كما في المرجع */}
-      <div className="flex items-center gap-2 mt-2 px-1">
-        <p className="text-[11px] font-bold truncate shrink-0">
-          {t.levelLabel(level.level)} ·{" "}
-          <span className="text-accent">{levelName(level.level, t)}</span>
-        </p>
-        <div className="flex-1 h-1.5 rounded-full bg-surface-2 overflow-hidden">
-          <div
-            className="h-full rounded-full"
-            style={{
-              width: `${level.percent}%`,
-              background: "linear-gradient(90deg, var(--brand-3), var(--accent-2))",
-            }}
-          />
-        </div>
-        <span className="text-[10px] text-muted shrink-0 tabular-nums">
-          <span dir="ltr">{level.percent}%</span>
-        </span>
       </div>
     </section>
   );
