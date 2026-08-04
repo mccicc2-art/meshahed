@@ -18,11 +18,12 @@ import { PosterRail, RailItem } from "@/components/PosterRail";
 import { PosterCard } from "@/components/PosterCard";
 import { getSuggestions } from "@/lib/suggest";
 
-const REGIONS: Record<string, string> = {
-  SA: "السعودية",
-  AE: "الإمارات",
-  EG: "مصر",
-  US: "أمريكا",
+// اسم المنطقة باللغتين — كانت عربيةً وحدها فتتسرّب إلى الواجهة الإنجليزية
+const REGIONS: Record<string, { ar: string; en: string }> = {
+  SA: { ar: "السعودية", en: "Saudi Arabia" },
+  AE: { ar: "الإمارات", en: "UAE" },
+  EG: { ar: "مصر", en: "Egypt" },
+  US: { ar: "أمريكا", en: "the US" },
 };
 
 function dateOf(r: SearchResult) {
@@ -105,7 +106,9 @@ export default async function NewsPage() {
           title={t.inCinemas}
           icon="film"
           items={cinemas.results}
-          note={t.inCinemasRegion(REGIONS[cinemas.region] ?? cinemas.region)}
+          note={t.inCinemasRegion(
+            REGIONS[cinemas.region]?.[locale === "en" ? "en" : "ar"] ?? cinemas.region,
+          )}
           ranked={false}
         />
       )}
