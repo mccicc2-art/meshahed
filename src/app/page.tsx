@@ -39,16 +39,23 @@ export default async function HomePage() {
 
   // ملخّص مجمّع: صف لكل مسلسل بدل صف لكل حلقة (آلاف الصفوف سابقاً).
   // صفوف الحلقات التفصيلية تُقرأ لاحقاً لمسلسل واحد فقط — صاحب «الحلقة التالية».
-  const [followRows, summary, watchedMovieIds, profile, movieProgress, myRatings, followStats] =
-    await Promise.all([
-      getFollows(),
-      getWatchSummary(),
-      getWatchedMovieIds(),
-      getProfile(),
-      getAllMovieProgress(),
-      getMyRatings(),
-      getFollowStats(user.id),
-    ]);
+  const [
+    followRows,
+    summary,
+    watchedMovieIds,
+    profile,
+    movieProgress,
+    myRatings,
+    followStats,
+  ] = await Promise.all([
+    getFollows(),
+    getWatchSummary(),
+    getWatchedMovieIds(),
+    getProfile(),
+    getAllMovieProgress(),
+    getMyRatings(),
+    getFollowStats(user.id),
+  ]);
 
   const myRatingsCount = myRatings.length;
   const myComments = myRatings.filter((r) => r.review?.trim()).length;
@@ -68,16 +75,24 @@ export default async function HomePage() {
       watchedByShow.set(s.show_tmdb_id, s.watched);
     }
     lastWatchedOrder = [...summary]
-      .sort((a, b) => (b.last_watched ?? "").localeCompare(a.last_watched ?? ""))
+      .sort((a, b) =>
+        (b.last_watched ?? "").localeCompare(a.last_watched ?? ""),
+      )
       .map((s) => s.show_tmdb_id);
   } else {
     // احتياط قبل تشغيل ملف performance.sql
     const watchedEps = await getAllWatchedEpisodes();
     for (const w of watchedEps) {
-      watchedByShow.set(w.show_tmdb_id, (watchedByShow.get(w.show_tmdb_id) ?? 0) + 1);
+      watchedByShow.set(
+        w.show_tmdb_id,
+        (watchedByShow.get(w.show_tmdb_id) ?? 0) + 1,
+      );
     }
-    for (const w of [...watchedEps].sort((a, b) => b.watched_at.localeCompare(a.watched_at))) {
-      if (!lastWatchedOrder.includes(w.show_tmdb_id)) lastWatchedOrder.push(w.show_tmdb_id);
+    for (const w of [...watchedEps].sort((a, b) =>
+      b.watched_at.localeCompare(a.watched_at),
+    )) {
+      if (!lastWatchedOrder.includes(w.show_tmdb_id))
+        lastWatchedOrder.push(w.show_tmdb_id);
     }
   }
 
@@ -116,7 +131,10 @@ export default async function HomePage() {
   for (const row of tvFollows) {
     const aired = row.aired_episodes ?? row.total_episodes ?? 0;
     // لا تتجاوز المشاهَد ما عُرض، وإلا خرجت نسبة فوق ١٠٠٪
-    const watched = Math.min(watchedByShow.get(row.tmdb_id) ?? 0, aired || Infinity);
+    const watched = Math.min(
+      watchedByShow.get(row.tmdb_id) ?? 0,
+      aired || Infinity,
+    );
     items.push({
       id: row.tmdb_id,
       name: row.title,
@@ -219,14 +237,20 @@ export default async function HomePage() {
   // «الرائج» احتياطٌ لمن لا شيء في يده الآن — و TMDB خارجي، فخلله لا يُسقط
   // الصفحة: القائمة ترجع فارغة والقسم لا يُرسم
   const showTrending = empty || continueWatching.length === 0;
-  const trend = showTrending ? await trending().catch(() => [] as SearchResult[]) : [];
+  const trend = showTrending
+    ? await trending().catch(() => [] as SearchResult[])
+    : [];
 
   const displayName = profile?.nickname || user.email?.split("@")[0] || "";
 
   // ===== مسلسلاتي: كل ما تتابعه، الأقرب إلى الاستئناف أولاً =====
   const myShows = [...items].sort((a, b) => {
     const rank = (i: typeof a) =>
-      i.watched > 0 && (i.aired === 0 || i.watched < i.aired) ? 0 : i.watched === 0 ? 1 : 2;
+      i.watched > 0 && (i.aired === 0 || i.watched < i.aired)
+        ? 0
+        : i.watched === 0
+          ? 1
+          : 2;
     const d = rank(a) - rank(b);
     return d !== 0 ? d : b.progress - a.progress;
   });
@@ -237,37 +261,50 @@ export default async function HomePage() {
     .map((f) => {
       const prog = progressById.get(f.tmdb_id);
       const done = watchedMovieIds.has(f.tmdb_id);
-      const pct =
-        done
-          ? 100
-          : prog?.runtime_minutes && prog.runtime_minutes > 0
-            ? Math.round((prog.position_minutes / prog.runtime_minutes) * 100)
-            : 0;
+      const pct = done
+        ? 100
+        : prog?.runtime_minutes && prog.runtime_minutes > 0
+          ? Math.round((prog.position_minutes / prog.runtime_minutes) * 100)
+          : 0;
       return {
         tmdbId: f.tmdb_id,
         title: f.title,
         posterPath: f.poster_path,
         progress: pct,
-        badge: done ? "✓" : prog ? t.minuteBadge(prog.position_minutes) : t.typeMovie,
+        badge: done
+          ? "✓"
+          : prog
+            ? t.minuteBadge(prog.position_minutes)
+            : t.typeMovie,
         rank: done ? 2 : prog ? 0 : 1,
       };
     })
     .sort((a, b) => a.rank - b.rank || b.progress - a.progress);
 
   // ===== المستوى: يقيس ما شوهد فعلاً — حلقة بنقطة والفيلم بنقطتين =====
-  const watchedEpisodeTotal = [...watchedByShow.values()].reduce((a, n) => a + n, 0);
-  const level = getLevel(levelPoints(watchedEpisodeTotal, watchedMovieIds.size));
+  const watchedEpisodeTotal = [...watchedByShow.values()].reduce(
+    (a, n) => a + n,
+    0,
+  );
+  const level = getLevel(
+    levelPoints(watchedEpisodeTotal, watchedMovieIds.size),
+  );
 
   // ===== أرقام الترويسة =====
   // كلها مشتقّة مما قرأناه أصلاً لهذه الصفحة: لا استعلام إضافي لعرضها
-  const totalMinutes = (summary ?? []).reduce((a, r) => a + (r.minutes ?? 0), 0);
+  const totalMinutes = (summary ?? []).reduce(
+    (a, r) => a + (r.minutes ?? 0),
+    0,
+  );
   const hours = Math.round(totalMinutes / 60);
-  const watchTime = hours < 24 ? t.hours(hours) : t.days(Math.floor(hours / 24));
+  const watchTime =
+    hours < 24 ? t.hours(hours) : t.days(Math.floor(hours / 24));
 
   // «للمشاهدة»: ما لم يكتمل من المسلسلات وما لم يُشاهَد من الأفلام —
   // العدد نفسه الذي تعرضه المكتبة في تبويبها
   const toWatchCount =
-    unfinished.length + movieFollows.filter((f) => !watchedMovieIds.has(f.tmdb_id)).length;
+    unfinished.length +
+    movieFollows.filter((f) => !watchedMovieIds.has(f.tmdb_id)).length;
 
   const headerStats: HeaderStat[] = [
     {
@@ -374,13 +411,22 @@ export default async function HomePage() {
               title={i.name}
               posterPath={i.posterPath}
               progress={i.progress}
-              count={i.watched > 0 && i.aired > i.watched ? i.aired - i.watched : undefined}
+              count={
+                i.watched > 0 && i.aired > i.watched
+                  ? i.aired - i.watched
+                  : undefined
+              }
               badge={
                 i.watched === 0
                   ? t.notStartedBadge
                   : i.aired > 0 && i.watched >= i.aired
                     ? t.watchedBadge
                     : undefined
+              }
+              badgeTone={
+                i.aired > 0 && i.watched >= i.aired && i.watched > 0
+                  ? "watched"
+                  : "neutral"
               }
             />
           ))}
@@ -462,7 +508,9 @@ function Section({
   wide?: boolean;
   children: React.ReactNode;
 }) {
-  const items = (Array.isArray(children) ? children.flat() : [children]).filter(Boolean);
+  const items = (Array.isArray(children) ? children.flat() : [children]).filter(
+    Boolean,
+  );
   if (!items.length) return null;
   return (
     <PosterRail
