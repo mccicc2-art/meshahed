@@ -199,12 +199,14 @@ export function ProfileHeader({
               {show.followers && (
                 <Link
                   href="/people"
-                  className="shrink-0 hover:text-white transition"
+                  title={t.followersLabel}
+                  aria-label={`${followers} ${t.followersLabel}`}
+                  className="shrink-0 flex items-center gap-1.5 hover:text-white transition"
                 >
+                  <Icon name="people-filled" size={15} />
                   <span className="font-bold text-white tabular-nums">
                     {followers}
-                  </span>{" "}
-                  {t.followersLabel}
+                  </span>
                 </Link>
               )}
               {show.followers && show.social && (
