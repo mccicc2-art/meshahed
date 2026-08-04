@@ -38,9 +38,9 @@ function VerifiedMark({ size = 18, title }: { size?: number; title: string }) {
       <title>{title}</title>
       <defs>
         <linearGradient id="verified-gold" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#FBE38A" />
-          <stop offset="45%" stopColor="#E3AE2B" />
-          <stop offset="100%" stopColor="#A9750F" />
+          <stop offset="0%" stopColor="#FDE68A" />
+          <stop offset="45%" stopColor="#FACC15" />
+          <stop offset="100%" stopColor="#CA9A04" />
         </linearGradient>
       </defs>
       <g fill="url(#verified-gold)">
@@ -113,15 +113,19 @@ export function ProfileHeader({
   return (
     <section>
       {/* ===== الغلاف ===== */}
-      <div className="relative h-56 sm:h-72 -mx-4 -mt-6 sm:mx-0 sm:mt-0 sm:rounded-3xl overflow-hidden">
+      <div className="relative h-[17.5rem] sm:h-[22.5rem] -mx-4 -mt-[calc(1.5rem+env(safe-area-inset-top))] sm:mx-0 sm:mt-0 sm:rounded-3xl overflow-hidden">
         {coverUrl ? (
           <Image
             src={coverUrl}
             alt=""
             fill
             priority
+            quality={90}
             sizes="(max-width: 640px) 100vw, 1152px"
-            className="object-cover"
+            /* `object-cover` يملأ العرض بلا تشويه، و`35%` رأسياً يرفع
+               الإطار فيظهر أعلى الصورة — السماء والغيم — بدل أن يقتصّه
+               التوسيط في غلافٍ عريض */
+            className="object-cover object-[50%_35%]"
           />
         ) : (
           <div
@@ -134,9 +138,13 @@ export function ProfileHeader({
         )}
 
         {/* تدرّج سفليّ يذوّب الصورة في خلفية الصفحة بدل حافّة حادّة */}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-[color:var(--background)]" />
+        {/* حجابٌ متدرّج لا لونٌ مصمت: ١٠٪ في الأعلى فتبقى السماء مضيئة،
+            و٤٠٪ في الأسفل حيث يقف النصّ. ثم تلاشٍ إلى لون الصفحة يذوّب
+            الحافّة بدل أن يقطعها. */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/25 to-black/40" />
+        <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-b from-transparent to-[color:var(--background)]" />
 
-        <span className="absolute top-4 start-4 drop-shadow-[0_2px_6px_rgba(0,0,0,0.6)]">
+        <span className="absolute top-[calc(1rem+env(safe-area-inset-top))] start-4 drop-shadow-[0_2px_6px_rgba(0,0,0,0.6)]">
           <Logo size={30} gradientId="header-mark" />
         </span>
 
@@ -208,7 +216,7 @@ export function ProfileHeader({
           الأيقونة فوق الرقم وتحته كلمته، والخانة موسّطة — كتلة تُقرأ من
           أعلى لأسفل. والفواصل خطوطٌ محشورة لا حدودَ خانة: تبتعد عن إطار
           البطاقة فلا تلمس الحافّة. */}
-      <div className="relative z-10 mt-5 rounded-2xl border border-white/10 bg-[color:var(--surface)]/60 backdrop-blur-xl overflow-hidden">
+      <div className="relative z-10 mt-5 rounded-[22px] border border-border/70 bg-[color:var(--surface)]/85 backdrop-blur-xl shadow-[0_8px_28px_rgba(0,0,0,0.45)] overflow-hidden">
         <div className="grid grid-cols-4">
           {stats.map((s, i) => {
             const cell = (
@@ -291,7 +299,7 @@ export function ProfileHeader({
           <span className="font-semibold tabular-nums">{comments}</span>{" "}
           <span className="font-medium text-muted">{t.reviewsLabel}</span>
         </Link>
-        <span className="text-muted/50" aria-hidden>
+        <span className="text-[color:var(--disabled)]" aria-hidden>
           •
         </span>
         <Link href="/ratings" className="hover:brightness-125 transition">

@@ -11,16 +11,20 @@ import { Icon, type IconName } from "./Icon";
  * كبسولة واحدة تحمل التبويبات الأربعة، وإلى جانبها زرّ بحث دائري منفصل —
  * البحث فعلٌ لا وجهة، فلا يقف في صفٍّ مع الأقسام.
  *
- * لكل تبويب لونه الثابت: الأيقونة تُعرف بلونها قبل أن تُقرأ كلمتها،
- * والتبويب النشط وحده يُلوَّن اسمه وتظهر تحته نقطة. اللون هنا لا يتبع
- * `currentColor` كبقية أيقونات التطبيق — الشريط لوحة ألوان مقصودة.
+ * لونان لا أربعة: النشط بنفسجيّ الهوية واسمه أبيض، والخامل رماديّ
+ * `#707070`. تلوين كل تبويب بلونه كان يجعل الأربعة متساوية في الصياح،
+ * فلا يُعرف موضعك إلا بقراءة الكلمات.
  */
 
-const TABS: { href: string; key: "home" | "library" | "news" | "people"; icon: IconName; color: string }[] = [
-  { href: "/", key: "home", icon: "home", color: "var(--accent)" },
-  { href: "/library", key: "library", icon: "film", color: "var(--accent-2)" },
-  { href: "/news", key: "news", icon: "compass", color: "var(--accent)" },
-  { href: "/people", key: "people", icon: "people", color: "var(--accent)" },
+const TABS: {
+  href: string;
+  key: "home" | "library" | "news" | "people";
+  icon: IconName;
+}[] = [
+  { href: "/", key: "home", icon: "home" },
+  { href: "/library", key: "library", icon: "film" },
+  { href: "/news", key: "news", icon: "compass" },
+  { href: "/people", key: "people", icon: "people" },
 ];
 
 export function BottomNav({ locale }: { locale: Locale }) {
@@ -44,26 +48,34 @@ export function BottomNav({ locale }: { locale: Locale }) {
       <div
         className="flex items-center justify-center gap-3 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3"
         style={{
-          background: "linear-gradient(to top, var(--background) 45%, transparent)",
+          background:
+            "linear-gradient(to top, var(--background) 45%, transparent)",
         }}
       >
         {/* كبسولة التبويبات */}
-        <nav className="pointer-events-auto flex items-center gap-0.5 rounded-[26px] border border-white/10 bg-[color:var(--surface)]/95 backdrop-blur px-1.5 py-2 shadow-2xl">
-          {TABS.map(({ href, key, icon, color }) => {
+        <nav className="pointer-events-auto flex items-center gap-0.5 rounded-[26px] border border-border bg-[color:var(--surface)] px-1.5 py-2 shadow-[0_10px_30px_rgba(0,0,0,0.6)]">
+          {TABS.map(({ href, key, icon }) => {
             const active = isActive(href);
             return (
               <Link
                 key={href}
                 href={href}
                 aria-current={active ? "page" : undefined}
-                className="relative flex flex-col items-center justify-center gap-1 rounded-2xl px-3 pt-1 pb-2 transition active:bg-white/5"
+                className="relative flex flex-col items-center justify-center gap-1 rounded-2xl px-3 pt-1 pb-2 transition active:bg-white/[0.06]"
               >
-                <Icon name={icon} size={23} strokeWidth={1.9} style={{ color }} />
+                <Icon
+                  name={icon}
+                  size={23}
+                  strokeWidth={active ? 2.1 : 1.9}
+                  style={{
+                    color: active ? "var(--accent)" : "var(--disabled)",
+                  }}
+                />
                 <span
-                  className={`text-[11px] leading-none ${
-                    active ? "font-semibold" : "text-muted"
-                  }`}
-                  style={active ? { color } : undefined}
+                  className={`text-[11px] leading-none ${active ? "font-semibold" : ""}`}
+                  style={{
+                    color: active ? "var(--foreground)" : "var(--disabled)",
+                  }}
                 >
                   {label[key]}
                 </span>
@@ -72,7 +84,7 @@ export function BottomNav({ locale }: { locale: Locale }) {
                   className={`absolute bottom-0.5 w-1 h-1 rounded-full transition-opacity ${
                     active ? "opacity-100" : "opacity-0"
                   }`}
-                  style={{ background: color }}
+                  style={{ background: "var(--accent)" }}
                   aria-hidden
                 />
               </Link>
@@ -84,10 +96,10 @@ export function BottomNav({ locale }: { locale: Locale }) {
         <Link
           href="/search"
           aria-label={t.navSearch}
-          className={`pointer-events-auto shrink-0 grid place-items-center w-[54px] h-[54px] rounded-full border shadow-2xl transition ${
+          className={`pointer-events-auto shrink-0 grid place-items-center w-[54px] h-[54px] rounded-full border shadow-[0_10px_30px_rgba(0,0,0,0.6)] transition ${
             pathname.startsWith("/search")
               ? "bg-accent text-[color:var(--on-accent)] border-accent"
-              : "bg-[color:var(--surface)]/95 backdrop-blur border-white/10 text-foreground active:bg-white/5"
+              : "bg-[color:var(--surface)] border-border text-foreground active:bg-white/[0.06]"
           }`}
         >
           <Icon name="search" size={23} strokeWidth={2} />

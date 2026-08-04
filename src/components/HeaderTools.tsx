@@ -49,18 +49,18 @@ export function HeaderTools({
 
   /** ٤٨ بكسل ناقص ٨٪ */
   const W = "w-[44.16px]";
-  const item = `grid place-items-center ${W} h-12 text-white/90 hover:bg-white/10 transition`;
+  const item = `grid place-items-center ${W} h-12 text-foreground hover:bg-white/[0.06] transition`;
 
   return (
     <div
       ref={box}
-      className="absolute top-3 end-3 rounded-[22px] border border-white/10 overflow-hidden"
+      className="absolute top-[calc(0.75rem+env(safe-area-inset-top))] end-3 rounded-[22px] border border-border overflow-hidden shadow-[0_10px_30px_rgba(0,0,0,0.55)]"
     >
       {/* الخلفية طبقةٌ واحدة خلف الجميع لا خلفيةٌ على كل زرّ: القسم
           المنسدل يُرقّى إلى طبقة رسمٍ مستقلّة أثناء الحركة، فيعيد
           `backdrop-blur` أخذ عيّنته داخلها ويظهر خطُّ وصلٍ عند الحدّ. */}
       <span
-        className="absolute inset-0 bg-black/45 backdrop-blur"
+        className="absolute inset-0 bg-[color:var(--elevated)]/95 backdrop-blur-xl"
         aria-hidden
       />
 
@@ -75,7 +75,7 @@ export function HeaderTools({
         >
           <Icon name="bell" size={19} />
           {alerts > 0 && (
-            <span className="absolute top-2.5 end-2 w-2 h-2 rounded-full bg-accent-2 ring-2 ring-black/50" />
+            <span className="absolute top-2.5 end-2 w-2 h-2 rounded-full bg-accent-2 ring-2 ring-[color:var(--elevated)]" />
           )}
         </button>
 
@@ -87,7 +87,7 @@ export function HeaderTools({
           }`}
         >
           <div className="overflow-hidden flex flex-col items-center">
-            <span className="w-6 h-px bg-white/15" aria-hidden />
+            <span className="w-6 h-px bg-[color:var(--divider)]" aria-hidden />
             <Link
               href="/profile/settings"
               aria-label={t.headerSettings}
@@ -98,7 +98,7 @@ export function HeaderTools({
             >
               <Icon name="settings" size={19} />
             </Link>
-            <span className="w-6 h-px bg-white/15" aria-hidden />
+            <span className="w-6 h-px bg-[color:var(--divider)]" aria-hidden />
             <span className={`${item} hover:bg-transparent`}>
               <ShareButton locale={locale} />
             </span>

@@ -30,12 +30,14 @@ export function ContinueCard({
   /** مثل S2 E15 — يُحذف السطر إن لم يُعرف */
   episodeLabel?: string | null;
 }) {
-  const url = backdropPath ? backdropUrl(backdropPath, "w780") : posterUrl(posterPath, "w342");
+  const url = backdropPath
+    ? backdropUrl(backdropPath, "w780")
+    : posterUrl(posterPath, "w342");
   const pct = Math.max(0, Math.min(100, Math.round(progress)));
 
   return (
     <Link href={href} prefetch={false} className="group block">
-      <div className="relative aspect-[16/10] rounded-2xl overflow-hidden bg-surface-2 border border-white/10">
+      <div className="relative aspect-[16/10] rounded-[18px] overflow-hidden bg-surface border border-border">
         {url ? (
           <Image
             src={url}
@@ -53,7 +55,7 @@ export function ContinueCard({
         {/* حجاب سفليّ يحمل النصّ: يبقي الصورة مرئية ويضمن قراءة الاسم */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-black/20" />
 
-        <span className="absolute top-2.5 start-2.5 rounded-full bg-black/70 backdrop-blur px-2.5 py-1 text-[12px] font-bold text-accent">
+        <span className="absolute top-2.5 start-2.5 rounded-full bg-accent px-2.5 py-1 text-[12px] font-bold text-[color:var(--on-accent)]">
           <span dir="ltr">{pct}%</span>
         </span>
 
@@ -69,12 +71,13 @@ export function ContinueCard({
         </div>
 
         {/* شريط التقدّم على حافّة البطاقة نفسها */}
-        <span className="absolute inset-x-0 bottom-0 h-1 bg-white/15">
+        <span className="absolute inset-x-0 bottom-0 h-1 bg-[color:var(--divider)]">
           <span
             className="block h-full"
             style={{
               width: `${pct}%`,
-              background: "linear-gradient(90deg, var(--brand-3), var(--accent-2))",
+              background:
+                "linear-gradient(90deg, var(--brand-3) 0%, var(--accent-2) 55%, var(--accent) 100%)",
             }}
           />
         </span>
