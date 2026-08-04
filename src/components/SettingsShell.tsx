@@ -1,0 +1,177 @@
+"use client";
+
+import { useState } from "react";
+import { getDict, type Locale } from "@/lib/i18n";
+import { Icon, type IconName } from "./Icon";
+import { LanguageSwitch } from "./LanguageSwitch";
+import { ProfileForm } from "./ProfileForm";
+import { AccountSettings } from "./AccountSettings";
+
+type SectionKey =
+  | "profile"
+  | "account"
+  | "privacy"
+  | "appearance"
+  | "customize"
+  | "widgets"
+  | "billing";
+
+/**
+ * صفحة الإعدادات.
+ *
+ * كانت الإعدادات مبعثرة على صفحتين — «تعديل الملف» و«إعدادات الحساب» —
+ * وما بينهما رابطٌ صغير في الزاوية. صارت صفحةً واحدة: قائمةٌ جانبية
+ * تعدّ الأقسام كلها، ولوحٌ يعرض القسم المختار.
+ *
+ * القسم الواحد يحمل نموذجاً واحداً لا اثنين: `ProfileForm` و
+ * `AccountSettings` كلاهما يكتب في جدول `profiles` عبر `updateProfile`،
+ * فلو ظهرا معاً لكتب حفظُ أحدهما قيمَ الآخر الابتدائية فوق تعديلٍ لم
+ * يُحفظ. فالتقسيم هنا يتبع حدود النموذج لا الذوق وحده.
+ *
+ * وعلى الجوال تصير القائمة صفّاً أفقياً يُمرَّر: العمود الجانبي يأكل
+ * نصف الشاشة الضيّقة.
+ */
+export function SettingsShell({
+  userId,
+  email,
+  locale,
+  nickname,
+  username,
+  avatarUrl,
+  coverUrl,
+  theme,
+  genres,
+  hideName,
+  initial = "profile",
+}: {
+  userId: string;
+  email: string;
+  locale: Locale;
+  nickname: string;
+  username: string;
+  avatarUrl: string | null;
+  coverUrl: string | null;
+  theme: string;
+  genres: number[];
+  hideName: boolean;
+  initial?: SectionKey;
+}) {
+  const t = getDict(locale);
+  const [active, setActive] = useState<SectionKey>(initial);
+
+  const nav: { key: SectionKey; icon: IconName; label: string }[] = [
+    { key: "profile", icon: "edit", label: t.settingsNavProfile },
+    { key: "account", icon: "settings", label: t.settingsNavAccount },
+    { key: "privacy", icon: "shield", label: t.settingsNavPrivacy },
+    { key: "appearance", icon: "palette", label: t.settingsNavAppearance },
+    { key: "customize", icon: "sparkles", label: t.settingsNavCustomize },
+    { key: "widgets", icon: "grid", label: t.settingsNavWidgets },
+    { key: "billing", icon: "card", label: t.settingsNavBilling },
+  ];
+
+  const profileProps = {
+    userId,
+    email,
+    locale,
+    initialNickname: nickname,
+    initialAvatarUrl: avatarUrl,
+    initialCoverUrl: coverUrl,
+    initialTheme: theme,
+    initialGenres: genres,
+  };
+  const accountProps = {
+    email,
+    locale,
+    initialUsername: username,
+    initialNickname: nickname,
+    avatarUrl,
+    genres,
+    initialHideName: hideName,
+  };
+
+  function pane() {
+    switch (active) {
+      case "profile":
+        return <ProfileForm {...profileProps} only={["cover", "avatar", "nickname"]} />;
+      case "account":
+        return <AccountSettings {...accountProps} only={["username", "displayName", "email", "signout"]} />;
+      case "privacy":
+        return (
+          <div className="space-y-4">
+            <p className="text-xs text-muted leading-relaxed">{t.settingsPrivacyHint}</p>
+            <AccountSettings {...accountProps} only={["hideName"]} />
+          </div>
+        );
+      case "appearance":
+        return (
+          <div className="space-y-4">
+            <section className="bg-surface border border-border rounded-2xl p-3.5 sm:p-5">
+              <h2 className="text-sm font-bold mb-1">{t.languageSection}</h2>
+              <p className="text-xs text-muted leading-relaxed mb-3">{t.languageHint}</p>
+              <LanguageSwitch locale={locale} />
+            </section>
+            <ProfileForm {...profileProps} only={["theme"]} />
+          </div>
+        );
+      case "customize":
+        return <ProfileForm {...profileProps} only={["genres"]} />;
+      case "widgets":
+        return <Soon title={t.settingsSoonTitle} body={t.settingsWidgetsHint} icon="grid" />;
+      case "billing":
+        return <Soon title={t.settingsSoonTitle} body={t.settingsBillingHint} icon="card" />;
+    }
+  }
+
+  return (
+    <div className="grid md:grid-cols-[13rem_minmax(0,1fr)] gap-4 md:gap-6">
+      {/* ===== القائمة ===== */}
+      {/* `min-w-0` شرطٌ لا زينة: خانة الشبكة تتّسع لمحتواها افتراضياً،
+          فكان الصفّ الأفقي يمدّ الصفحة ٩٠٠ بكسل بدل أن يُمرَّر داخل نفسه */}
+      <nav
+        aria-label={t.settingsNavHeading}
+        className="min-w-0 md:sticky md:top-20 md:self-start"
+      >
+        <p className="hidden md:block text-[10px] uppercase tracking-wide text-muted px-2 mb-2">
+          {t.settingsNavHeading}
+        </p>
+        <ul className="flex md:flex-col gap-1.5 overflow-x-auto md:overflow-visible pb-1 md:pb-0 -mx-4 px-4 md:mx-0 md:px-0">
+          {nav.map((n) => {
+            const on = n.key === active;
+            return (
+              <li key={n.key} className="shrink-0 md:shrink">
+                <button
+                  type="button"
+                  onClick={() => setActive(n.key)}
+                  aria-current={on ? "page" : undefined}
+                  className={`w-full flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-[13px] whitespace-nowrap transition ${
+                    on
+                      ? "bg-accent/15 text-accent font-semibold border border-accent/30"
+                      : "text-muted hover:text-foreground hover:bg-surface border border-transparent"
+                  }`}
+                >
+                  <Icon name={n.icon} size={16} className="shrink-0" />
+                  <span className="truncate">{n.label}</span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      </nav>
+
+      {/* ===== اللوح ===== */}
+      <div className="min-w-0">{pane()}</div>
+    </div>
+  );
+}
+
+function Soon({ title, body, icon }: { title: string; body: string; icon: IconName }) {
+  return (
+    <section className="bg-surface border border-dashed border-border rounded-2xl p-8 text-center">
+      <span className="inline-grid place-items-center w-12 h-12 rounded-2xl bg-surface-2 text-muted mb-3">
+        <Icon name={icon} size={22} />
+      </span>
+      <h2 className="text-sm font-bold">{title}</h2>
+      <p className="text-xs text-muted leading-relaxed mt-1.5 max-w-sm mx-auto">{body}</p>
+    </section>
+  );
+}

@@ -34,7 +34,11 @@ export type IconName =
   | "edit"
   | "share"
   | "settings"
-  | "search";
+  | "search"
+  | "shield"
+  | "palette"
+  | "grid"
+  | "card";
 
 const PATHS: Record<IconName, React.ReactNode> = {
   bell: (
@@ -158,6 +162,34 @@ const PATHS: Record<IconName, React.ReactNode> = {
     <>
       <circle cx="11" cy="11" r="6.5" />
       <path d="m16 16 4 4" />
+    </>
+  ),
+  shield: (
+    <>
+      <path d="M12 3.5 5.5 6v6c0 4 2.8 6.8 6.5 8.5 3.7-1.7 6.5-4.5 6.5-8.5V6L12 3.5Z" />
+      <path d="m9.3 12.1 1.9 1.9 3.6-3.9" />
+    </>
+  ),
+  palette: (
+    <>
+      <path d="M12 3.5a8.5 8.5 0 0 0 0 17c1.2 0 1.8-.8 1.8-1.6 0-.9-.7-1.4-.7-2.2 0-.8.6-1.4 1.5-1.4h1.7A4.2 4.2 0 0 0 20.5 11c0-4.2-3.8-7.5-8.5-7.5Z" />
+      <circle cx="8.2" cy="10.4" r="1.1" />
+      <circle cx="12" cy="7.8" r="1.1" />
+      <circle cx="15.8" cy="10.2" r="1.1" />
+    </>
+  ),
+  grid: (
+    <>
+      <rect x="4" y="4" width="7" height="7" rx="1.8" />
+      <rect x="13" y="4" width="7" height="7" rx="1.8" />
+      <rect x="4" y="13" width="7" height="7" rx="1.8" />
+      <rect x="13" y="13" width="7" height="7" rx="1.8" />
+    </>
+  ),
+  card: (
+    <>
+      <rect x="3" y="5.5" width="18" height="13" rx="2.5" />
+      <path d="M3 10h18M6.5 14.5h3" />
     </>
   ),
   share: (

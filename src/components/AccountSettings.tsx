@@ -6,6 +6,14 @@ import { updateProfile } from "@/lib/actions";
 import { getDict, type Locale } from "@/lib/i18n";
 import { LanguageSwitch } from "./LanguageSwitch";
 
+export type AccountSection =
+  | "language"
+  | "hideName"
+  | "username"
+  | "displayName"
+  | "email"
+  | "signout";
+
 export function AccountSettings({
   email,
   locale,
@@ -14,6 +22,7 @@ export function AccountSettings({
   avatarUrl,
   genres,
   initialHideName,
+  only,
 }: {
   email: string;
   locale: Locale;
@@ -22,8 +31,11 @@ export function AccountSettings({
   avatarUrl: string | null;
   genres: number[];
   initialHideName: boolean;
+  /** الأقسام المعروضة — الحذف يعني عرض الجميع */
+  only?: AccountSection[];
 }) {
   const t = getDict(locale);
+  const show = (k: AccountSection) => !only || only.includes(k);
   const router = useRouter();
   const [username, setUsername] = useState(initialUsername);
   const [nickname, setNickname] = useState(initialNickname);
@@ -62,93 +74,103 @@ export function AccountSettings({
   return (
     <div className="space-y-4">
       {/* لغة الواجهة */}
-      <section className="bg-surface border border-border rounded-2xl p-3.5 sm:p-5">
-        <h2 className="text-sm font-bold mb-1">{t.languageSection}</h2>
-        <p className="text-xs text-muted leading-relaxed mb-3">{t.languageHint}</p>
-        <LanguageSwitch locale={locale} />
-      </section>
+      {show("language") && (
+  <section className="bg-surface border border-border rounded-2xl p-3.5 sm:p-5">
+          <h2 className="text-sm font-bold mb-1">{t.languageSection}</h2>
+          <p className="text-xs text-muted leading-relaxed mb-3">{t.languageHint}</p>
+          <LanguageSwitch locale={locale} />
+        </section>
+        )}
 
       {/* الخصوصية: إخفاء الاسم في التقييمات والمراجعات */}
-      <section className="bg-surface border border-border rounded-2xl p-3.5 sm:p-5">
-        <h2 className="text-sm font-bold mb-1">{t.hideNameSection}</h2>
-        <p className="text-xs text-muted leading-relaxed mb-3">{t.hideNameHint}</p>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={hideName}
-          onClick={() => {
-            setHideName((v) => !v);
-            setSaved(false);
-          }}
-          className={`flex items-center gap-3 w-full rounded-xl border px-3 py-2.5 transition ${
-            hideName
-              ? "border-accent bg-accent/10"
-              : "border-border bg-surface-2 hover:border-accent/50"
-          }`}
-        >
-          <span
-            className={`shrink-0 w-11 h-6 rounded-full p-0.5 transition ${
-              hideName ? "bg-accent" : "bg-border"
+      {show("hideName") && (
+  <section className="bg-surface border border-border rounded-2xl p-3.5 sm:p-5">
+          <h2 className="text-sm font-bold mb-1">{t.hideNameSection}</h2>
+          <p className="text-xs text-muted leading-relaxed mb-3">{t.hideNameHint}</p>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={hideName}
+            onClick={() => {
+              setHideName((v) => !v);
+              setSaved(false);
+            }}
+            className={`flex items-center gap-3 w-full rounded-xl border px-3 py-2.5 transition ${
+              hideName
+                ? "border-accent bg-accent/10"
+                : "border-border bg-surface-2 hover:border-accent/50"
             }`}
           >
             <span
-              className={`block w-5 h-5 rounded-full bg-white transition-transform ${
-                hideName ? "translate-x-0" : ""
+              className={`shrink-0 w-11 h-6 rounded-full p-0.5 transition ${
+                hideName ? "bg-accent" : "bg-border"
               }`}
-              style={{ transform: hideName ? "translateX(-20px)" : "translateX(0)" }}
-            />
-          </span>
-          <span className="text-sm font-semibold">
-            {hideName ? t.hideNameOn : t.hideNameOff}
-          </span>
-        </button>
-      </section>
+            >
+              <span
+                className={`block w-5 h-5 rounded-full bg-white transition-transform ${
+                  hideName ? "translate-x-0" : ""
+                }`}
+                style={{ transform: hideName ? "translateX(-20px)" : "translateX(0)" }}
+              />
+            </span>
+            <span className="text-sm font-semibold">
+              {hideName ? t.hideNameOn : t.hideNameOff}
+            </span>
+          </button>
+        </section>
+        )}
 
-      <section className="bg-surface border border-border rounded-2xl p-3.5 sm:p-5">
-        <h2 className="text-sm font-bold mb-1">{t.usernameSection}</h2>
-        <p className="text-xs text-muted leading-relaxed mb-3">{t.usernameHint}</p>
-        <div className="relative" dir="ltr">
-          <span className="absolute top-1/2 -translate-y-1/2 start-3 text-muted">@</span>
+      {show("username") && (
+  <section className="bg-surface border border-border rounded-2xl p-3.5 sm:p-5">
+          <h2 className="text-sm font-bold mb-1">{t.usernameSection}</h2>
+          <p className="text-xs text-muted leading-relaxed mb-3">{t.usernameHint}</p>
+          <div className="relative" dir="ltr">
+            <span className="absolute top-1/2 -translate-y-1/2 start-3 text-muted">@</span>
+            <input
+              value={username}
+              onChange={(e) => {
+                setUsername(e.target.value);
+                setSaved(false);
+              }}
+              maxLength={24}
+              placeholder="ahmed_92"
+              className="w-full rounded-xl bg-surface-2 border border-border ps-8 pe-3 py-2.5 text-sm outline-none focus:border-accent transition text-left"
+            />
+          </div>
+          {cleaned !== username.trim().toLowerCase() && username.trim() !== "" && (
+            <p className="text-xs text-muted mt-2" dir="ltr">
+              {t.willSaveAs(cleaned || "—")}
+            </p>
+          )}
+        </section>
+        )}
+
+      {show("displayName") && (
+  <section className="bg-surface border border-border rounded-2xl p-3.5 sm:p-5">
+          <h2 className="text-sm font-bold mb-1">{t.displayNameSection}</h2>
+          <p className="text-xs text-muted leading-relaxed mb-3">{t.displayNameHint}</p>
           <input
-            value={username}
+            value={nickname}
             onChange={(e) => {
-              setUsername(e.target.value);
+              setNickname(e.target.value);
               setSaved(false);
             }}
-            maxLength={24}
-            placeholder="ahmed_92"
-            className="w-full rounded-xl bg-surface-2 border border-border ps-8 pe-3 py-2.5 text-sm outline-none focus:border-accent transition text-left"
+            maxLength={40}
+            placeholder={t.displayNamePlaceholder}
+            className="w-full rounded-xl bg-surface-2 border border-border px-3 py-2.5 text-sm outline-none focus:border-accent transition"
           />
-        </div>
-        {cleaned !== username.trim().toLowerCase() && username.trim() !== "" && (
-          <p className="text-xs text-muted mt-2" dir="ltr">
-            {t.willSaveAs(cleaned || "—")}
-          </p>
+        </section>
         )}
-      </section>
 
-      <section className="bg-surface border border-border rounded-2xl p-3.5 sm:p-5">
-        <h2 className="text-sm font-bold mb-1">{t.displayNameSection}</h2>
-        <p className="text-xs text-muted leading-relaxed mb-3">{t.displayNameHint}</p>
-        <input
-          value={nickname}
-          onChange={(e) => {
-            setNickname(e.target.value);
-            setSaved(false);
-          }}
-          maxLength={40}
-          placeholder={t.displayNamePlaceholder}
-          className="w-full rounded-xl bg-surface-2 border border-border px-3 py-2.5 text-sm outline-none focus:border-accent transition"
-        />
-      </section>
-
-      <section className="bg-surface border border-border rounded-2xl p-3.5 sm:p-5">
-        <h2 className="text-sm font-bold mb-1">{t.emailSection}</h2>
-        <p className="text-xs text-muted leading-relaxed mb-3">{t.emailHint}</p>
-        <p className="rounded-xl bg-surface-2 border border-border px-3 py-2.5 text-sm text-muted" dir="ltr">
-          {email}
-        </p>
-      </section>
+      {show("email") && (
+  <section className="bg-surface border border-border rounded-2xl p-3.5 sm:p-5">
+          <h2 className="text-sm font-bold mb-1">{t.emailSection}</h2>
+          <p className="text-xs text-muted leading-relaxed mb-3">{t.emailHint}</p>
+          <p className="rounded-xl bg-surface-2 border border-border px-3 py-2.5 text-sm text-muted" dir="ltr">
+            {email}
+          </p>
+        </section>
+        )}
 
       {error && (
         <p className="text-sm text-red-300 bg-red-500/10 border border-red-400/30 rounded-xl px-3 py-2.5">
@@ -167,11 +189,13 @@ export function AccountSettings({
         {saved && <span className="text-sm text-accent-2">{t.savedOk}</span>}
       </div>
 
-      <form action="/auth/signout" method="post" className="pt-4 border-t border-border">
-        <button className="text-sm text-muted hover:text-red-300 transition">
-          {t.signOutAccount}
-        </button>
-      </form>
+      {show("signout") && (
+        <form action="/auth/signout" method="post" className="pt-4 border-t border-border">
+          <button className="text-sm text-muted hover:text-red-300 transition">
+            {t.signOutAccount}
+          </button>
+        </form>
+      )}
     </div>
   );
 }

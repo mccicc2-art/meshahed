@@ -6,7 +6,6 @@ import { levelName, type LevelInfo } from "@/lib/level";
 import { Icon, type IconName } from "./Icon";
 import { Logo } from "./Logo";
 import { ShareButton } from "./ShareButton";
-import { HeaderMenu } from "./HeaderMenu";
 
 export interface HeaderStat {
   key: string;
@@ -133,7 +132,14 @@ export function ProfileHeader({
           <span className="grid place-items-center w-10 h-10 rounded-full bg-black/40 backdrop-blur border border-white/15">
             <ShareButton locale={locale} />
           </span>
-          <HeaderMenu locale={locale} />
+          <Link
+            href="/profile/settings"
+            aria-label={t.headerSettings}
+            title={t.headerSettings}
+            className="grid place-items-center w-10 h-10 rounded-full bg-black/40 backdrop-blur border border-white/15 text-white/90 hover:bg-black/60 transition"
+          >
+            <Icon name="settings" size={17} />
+          </Link>
         </div>
 
         <Link
@@ -203,12 +209,12 @@ export function ProfileHeader({
           فتربط الكتلتين بدل أن تقفا منفصلتين بفراغ بينهما. والخانة صفٌّ
           أفقيّ — أيقونة ثم رقم وتحته كلمته — فارتفاع الصفّ ٤٤ بكسلاً لا ٧٠. */}
       <div className="-mt-3 rounded-2xl border border-white/10 bg-[color:var(--surface)]/45 backdrop-blur-xl overflow-hidden">
-        <div className="grid grid-cols-3 pt-1">
+        <div className="grid grid-cols-3">
           {stats.map((s, i) => {
             const cell = (
               <>
                 <Icon name={s.icon} size={18} className="text-muted shrink-0" />
-                <span className="min-w-0">
+                <span className="min-w-0 text-start">
                   <span className="block text-[13px] font-bold leading-none tabular-nums">
                     {s.value}
                   </span>
@@ -216,22 +222,32 @@ export function ProfileHeader({
                 </span>
               </>
             );
-            const edges = `${i % 3 !== 2 ? "border-e border-white/10" : ""} ${
-              i < 3 ? "border-b border-white/10" : ""
-            }`;
-            const box = "flex items-center gap-2.5 px-3 py-3";
+            /* الفواصل خطوطٌ محشورة لا حدودَ خانة: تبتعد عن إطار البطاقة
+               بمسافة، فتفصل بين المحتويات ولا تلمس الحافّة — كما في المرجع */
+            const rules = (
+              <>
+                {i % 3 !== 2 && (
+                  <span className="absolute inset-y-3 end-0 w-px bg-white/10" aria-hidden />
+                )}
+                {i < 3 && (
+                  <span className="absolute inset-x-4 bottom-0 h-px bg-white/10" aria-hidden />
+                )}
+              </>
+            );
+            const box = "relative flex items-center justify-center gap-2.5 px-2 py-3.5";
             return s.href ? (
-              <Link key={s.key} href={s.href} className={`${box} ${edges} hover:bg-white/5 transition`}>
+              <Link key={s.key} href={s.href} className={`${box} hover:bg-white/5 transition`}>
+                {rules}
                 {cell}
               </Link>
             ) : (
-              <div key={s.key} className={`${box} ${edges}`}>
+              <div key={s.key} className={box}>
+                {rules}
                 {cell}
               </div>
             );
           })}
         </div>
-
       </div>
 
       {/* المستوى سطرٌ عارٍ تحت البطاقة: البطاقة نفسها ستّ خانات لا سابع
