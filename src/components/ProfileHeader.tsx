@@ -80,6 +80,8 @@ export function ProfileHeader({
   stats,
   followers,
   following,
+  comments,
+  ratings,
   verified = false,
   locale,
 }: {
@@ -93,6 +95,8 @@ export function ProfileHeader({
   stats: HeaderStat[];
   followers: number;
   following: number;
+  comments: number;
+  ratings: number;
   verified?: boolean;
   locale: Locale;
 }) {
@@ -142,21 +146,14 @@ export function ProfileHeader({
           </Link>
         </div>
 
-        <Link
-          href="/library?filter=watching"
-          aria-label={t.headerAlerts}
-          title={t.headerAlerts}
-          className="absolute bottom-4 end-4 grid place-items-center w-10 h-10 rounded-full bg-black/40 backdrop-blur border border-white/15 text-white/90 hover:bg-black/60 transition"
-        >
-          <Icon name="bell" size={17} />
-          {alerts > 0 && (
-            <span className="absolute top-1.5 end-1.5 w-2 h-2 rounded-full bg-accent-2 ring-2 ring-black/50" />
-          )}
-        </Link>
       </div>
 
-      {/* ===== صفّ الهوية ===== */}
-      <div className="flex items-end gap-3 -mt-9 relative z-10">
+      {/* ===== صفّ الهوية =====
+          يُرفع فوق حافّة الغلاف لا تحتها: الكتلة كلها — الصورة والاسم
+          وبطاقة الأرقام — تأخذ الثلث الأسفل من الصورة، فتقرأها العين
+          طبقةً واحدة على الغلاف بدل شريطٍ يبدأ بعد انتهائه. والتدرّج
+          الأسود في أسفل الغلاف يضمن أن يبقى النصّ مقروءاً على أي صورة. */}
+      <div className="flex items-end gap-3 -mt-24 sm:-mt-28 relative z-10">
         <Link href="/profile/edit" className="shrink-0">
           <Avatar
             src={avatarUrl}
@@ -167,7 +164,7 @@ export function ProfileHeader({
           />
         </Link>
 
-        <div className="min-w-0 flex-1 pb-6">
+        <div className="min-w-0 flex-1 pb-4">
           <div className="flex items-center gap-1.5 min-w-0">
             <h1 className="text-lg sm:text-2xl font-bold truncate">{displayName}</h1>
             {verified && <VerifiedMark title={t.verifiedTitle} />}
@@ -175,9 +172,9 @@ export function ProfileHeader({
 
           {/* سطر المُعرّف: المعرّف والمتابعون والمتابَعون في سطر واحد —
               الرقم بلون النصّ والكلمة باهتة، فتُقرأ الأرقام أولاً */}
-          <div className="flex items-center gap-1.5 text-[11px] sm:text-sm text-muted leading-tight mt-0.5 min-w-0">
+          <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] sm:text-sm text-muted leading-tight mt-1 min-w-0">
             {username && (
-              <span className="truncate min-w-0">
+              <span className="max-w-full truncate">
                 <span dir="ltr">@{username}</span>
               </span>
             )}
@@ -191,30 +188,73 @@ export function ProfileHeader({
               <span className="font-bold text-foreground tabular-nums">{following}</span>{" "}
               {t.followingLabel}
             </Link>
+
+            {/* التعليقات والتقييمات: أيقونة ورقم بلا كلمة — الأيقونة تكفي
+                لتعريفهما، فيدخلان السطر دون أن يزحماه */}
+            <span className="opacity-40 shrink-0">·</span>
+            <Link
+              href="/ratings?with=comments"
+              title={t.panelComments}
+              aria-label={`${comments} ${t.panelComments}`}
+              className="shrink-0 flex items-center gap-1 hover:text-foreground transition"
+            >
+              <Icon name="comment" size={13} />
+              <span className="font-bold text-foreground tabular-nums">{comments}</span>
+            </Link>
+            <Link
+              href="/ratings"
+              title={t.panelRatings}
+              aria-label={`${ratings} ${t.panelRatings}`}
+              className="shrink-0 flex items-center gap-1 hover:text-foreground transition"
+            >
+              <Icon name="star" size={13} />
+              <span className="font-bold text-foreground tabular-nums">{ratings}</span>
+            </Link>
           </div>
         </div>
 
-        <Link
-          href="/profile/edit"
-          aria-label={t.editProfile}
-          title={t.editProfile}
-          className="shrink-0 mb-1 grid place-items-center w-9 h-9 rounded-full border border-border bg-surface text-muted hover:text-foreground hover:border-accent/50 transition"
-        >
-          <Icon name="edit" size={15} />
-        </Link>
+        {/* الجرس فوق القلم في عمود واحد: زاوية الغلاف السفلى صارت للهوية،
+            فأدوات الصفّ تقف في طرفه لا على الصورة خلفه */}
+        <div className="shrink-0 flex flex-col items-center gap-2 pb-4">
+          <Link
+            href="/library?filter=watching"
+            aria-label={t.headerAlerts}
+            title={t.headerAlerts}
+            className="relative grid place-items-center w-9 h-9 rounded-full bg-black/40 backdrop-blur border border-white/20 text-white/90 hover:bg-black/60 transition"
+          >
+            <Icon name="bell" size={16} />
+            {alerts > 0 && (
+              <span className="absolute top-1 end-1 w-2 h-2 rounded-full bg-accent-2 ring-2 ring-black/50" />
+            )}
+          </Link>
+          <Link
+            href="/profile/edit"
+            aria-label={t.editProfile}
+            title={t.editProfile}
+            className="grid place-items-center w-9 h-9 rounded-full bg-black/40 backdrop-blur border border-white/20 text-white/90 hover:bg-black/60 transition"
+          >
+            <Icon name="edit" size={15} />
+          </Link>
+        </div>
       </div>
 
       {/* ===== بطاقة الأرقام =====
           تُسحب لأعلى فتنزلق تحت الصورة الشخصية: الصورة تطفو على زاويتها
-          فتربط الكتلتين بدل أن تقفا منفصلتين بفراغ بينهما. والخانة صفٌّ
-          أفقيّ — أيقونة ثم رقم وتحته كلمته — فارتفاع الصفّ ٤٤ بكسلاً لا ٧٠. */}
+          فتربط الكتلتين بدل أن تقفا منفصلتين بفراغ بينهما.
+
+          صفٌّ واحد لا صفّان: التعليقات والتقييمات انتقلت إلى سطر المُعرّف
+          أيقونةً ورقماً، وعدد الحلقات حُذف — فبقيت في البطاقة الأرقام التي
+          تصف المكتبة نفسها. وعددها يحدّد الأعمدة، فلا رقم مكتوب في الصنف. */}
       <div className="-mt-3 rounded-2xl border border-white/10 bg-[color:var(--surface)]/45 backdrop-blur-xl overflow-hidden">
-        <div className="grid grid-cols-3">
+        <div
+          className="grid"
+          style={{ gridTemplateColumns: `repeat(${stats.length}, minmax(0, 1fr))` }}
+        >
           {stats.map((s, i) => {
             const cell = (
               <>
-                <Icon name={s.icon} size={18} className="text-muted shrink-0" />
-                <span className="min-w-0 text-start">
+                <Icon name={s.icon} size={17} className="text-muted shrink-0" />
+                <span className="min-w-0 max-w-full text-center sm:text-start">
                   <span className="block text-[13px] font-bold leading-none tabular-nums">
                     {s.value}
                   </span>
@@ -222,19 +262,15 @@ export function ProfileHeader({
                 </span>
               </>
             );
-            /* الفواصل خطوطٌ محشورة لا حدودَ خانة: تبتعد عن إطار البطاقة
-               بمسافة، فتفصل بين المحتويات ولا تلمس الحافّة — كما في المرجع */
-            const rules = (
-              <>
-                {i % 3 !== 2 && (
-                  <span className="absolute inset-y-3 end-0 w-px bg-white/10" aria-hidden />
-                )}
-                {i < 3 && (
-                  <span className="absolute inset-x-4 bottom-0 h-px bg-white/10" aria-hidden />
-                )}
-              </>
+            /* الفاصل خطٌّ محشور لا حدُّ خانة: يبتعد عن إطار البطاقة بمسافة،
+               فيفصل بين المحتويات ولا يلمس الحافّة — كما في المرجع */
+            const rules = i < stats.length - 1 && (
+              <span className="absolute inset-y-3 end-0 w-px bg-white/10" aria-hidden />
             );
-            const box = "relative flex items-center justify-center gap-2.5 px-2 py-3.5";
+            /* على الجوال تُكدَّس الأيقونة فوق الرقم: أربع خانات في ٣٩٠
+               بكسلاً تترك ٧٥ بكسلاً للخانة، فالصفّ الأفقي يبتر الكلمة */
+            const box =
+              "relative flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2.5 px-1 sm:px-2 py-3";
             return s.href ? (
               <Link key={s.key} href={s.href} className={`${box} hover:bg-white/5 transition`}>
                 {rules}
