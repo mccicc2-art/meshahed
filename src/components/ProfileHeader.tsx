@@ -5,7 +5,7 @@ import { getDict, type Locale } from "@/lib/i18n";
 import { levelName, type LevelInfo } from "@/lib/level";
 import { Icon, type IconName } from "./Icon";
 import { Logo } from "./Logo";
-import { ShareButton } from "./ShareButton";
+import { HeaderTools } from "./HeaderTools";
 
 export interface HeaderStat {
   key: string;
@@ -133,38 +133,13 @@ export function ProfileHeader({
           <Logo size={30} gradientId="header-mark" />
         </span>
 
-        {/* أدوات الغلاف كبسولةٌ واحدة لا ثلاث دوائر: كتلة واحدة أهدأ على
-            الصورة، والفواصل الرفيعة تكفي لتمييز الأزرار */}
-        <div className="absolute top-3 end-3 flex flex-col items-center rounded-[22px] bg-black/45 backdrop-blur border border-white/10 overflow-hidden">
-          <Link
-            href="/library"
-            aria-label={t.headerAlerts}
-            title={t.headerAlerts}
-            className="relative grid place-items-center w-12 h-12 text-white/90 hover:bg-white/10 transition"
-          >
-            <Icon name="bell" size={19} />
-            {alerts > 0 && (
-              <span className="absolute top-2.5 end-2.5 w-2 h-2 rounded-full bg-accent-2 ring-2 ring-black/50" />
-            )}
-          </Link>
-          <span className="w-7 h-px bg-white/15" aria-hidden />
-          <Link
-            href="/profile/settings"
-            aria-label={t.headerSettings}
-            title={t.headerSettings}
-            className="grid place-items-center w-12 h-12 text-white/90 hover:bg-white/10 transition"
-          >
-            <Icon name="settings" size={19} />
-          </Link>
-          <span className="w-7 h-px bg-white/15" aria-hidden />
-          <span className="grid place-items-center w-12 h-12 text-white/90">
-            <ShareButton locale={locale} />
-          </span>
-        </div>
+        {/* أدوات الغلاف كبسولةٌ واحدة تنسدل: الجرس ظاهر دائماً — وهو
+            الوحيد الذي يحمل خبراً — والباقي تحته عند اللمس */}
+        <HeaderTools alerts={alerts} locale={locale} />
       </div>
 
       {/* ===== كتلة الهوية ===== */}
-      <div className="flex items-end gap-3.5 pe-16 -mt-[7.5rem] sm:-mt-[9rem] relative z-10">
+      <div className="flex items-end gap-3.5 pe-16 -mt-[6.5rem] sm:-mt-[7rem] relative z-10">
         {/* حلقة متدرّجة حول الصورة: تفصلها عن الغلاف وتعطيها ثقل المرجع */}
         <Link href="/profile/settings?s=profile" className="shrink-0">
           <span
@@ -236,8 +211,11 @@ export function ProfileHeader({
         </div>
       </div>
 
-      {/* ===== المستوى ===== */}
-      <div className="mt-4 px-0.5">
+      {/* ===== المستوى =====
+          `z-10` ليس زينة: الغلاف عنصرٌ `relative`، والعناصر الموضوعة
+          تُرسم فوق ما بعدها من عناصر التدفّق العادي — فكان سطر المستوى
+          يختفي تحت حافّة الصورة على الشاشة العريضة. */}
+      <div className="relative z-10 mt-4 px-0.5">
         <p className="text-[13px] font-bold">
           {t.levelLabel(level.level)} ·{" "}
           <span className="text-accent">{levelName(level.level, t)}</span>
@@ -262,7 +240,7 @@ export function ProfileHeader({
           الأيقونة فوق الرقم وتحته كلمته، والخانة موسّطة — كتلة تُقرأ من
           أعلى لأسفل. والفواصل خطوطٌ محشورة لا حدودَ خانة: تبتعد عن إطار
           البطاقة فلا تلمس الحافّة. */}
-      <div className="mt-4 rounded-2xl border border-white/10 bg-[color:var(--surface)]/60 backdrop-blur-xl overflow-hidden">
+      <div className="relative z-10 mt-4 rounded-2xl border border-white/10 bg-[color:var(--surface)]/60 backdrop-blur-xl overflow-hidden">
         <div className="grid grid-cols-4">
           {stats.map((s, i) => {
             const cell = (
