@@ -227,6 +227,8 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
                 />
 
                 <CommunityReviews
+            tmdbId={movieId}
+            mediaType="movie"
                   locale={locale}
                   avg={community.avg}
                   count={community.count}
