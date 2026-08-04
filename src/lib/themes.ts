@@ -25,23 +25,26 @@ export interface Theme {
 export const THEMES: Theme[] = [
   {
     id: "loopz",
-    ar: "لوبز (الهوية)",
-    en: "Loopz (brand)",
+    // أسودٌ عميق لا رماديّ مزرقّ: على شاشة OLED البكسل الأسود مطفأ، فالحدّ
+    // بين الخلفية والبطاقة يُرى بفارق الإضاءة لا بفارق اللون — وهذا ما
+    // يعطي الإحساس بالعمق دون ظلالٍ ثقيلة
+    ar: "لوبز (OLED)",
+    en: "Loopz (OLED)",
     vars: {
-      background: "#1B1F2A",
-      surface: "#232838",
-      "surface-2": "#2E3442",
-      foreground: "#F5F6FA",
-      muted: "#9AA3B8",
-      accent: "#7C4DFF",
-      "accent-2": "#FF4D8D",
-      border: "#343B4D",
+      background: "#090909",
+      surface: "#141414",
+      "surface-2": "#1A1A1A",
+      foreground: "#FFFFFF",
+      muted: "#A6A6A6",
+      accent: "#7C3AED",
+      "accent-2": "#EC4899",
+      border: "#2A2A2A",
       "on-accent": "#FFFFFF",
-      "on-accent-2": "#2B0716",
+      "on-accent-2": "#FFFFFF",
     },
-    glowA: "rgba(124, 77, 255, 0.14)",
-    glowB: "rgba(255, 77, 141, 0.08)",
-    brand: ["#7C4DFF", "#FF4D8D", "#FFB02E"],
+    glowA: "rgba(124, 58, 237, 0.12)",
+    glowB: "rgba(236, 72, 153, 0.07)",
+    brand: ["#7C3AED", "#EC4899", "#F59E0B"],
   },
   {
     id: "amber",
@@ -159,7 +162,7 @@ export const THEMES: Theme[] = [
   },
 ];
 
-export const DEFAULT_BRAND: [string, string, string] = ["#7C4DFF", "#FF4D8D", "#FFB02E"];
+export const DEFAULT_BRAND: [string, string, string] = ["#7C3AED", "#EC4899", "#F59E0B"];
 
 export const DEFAULT_THEME = THEMES[0];
 
