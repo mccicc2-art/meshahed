@@ -6,6 +6,7 @@ import { levelName, type LevelInfo } from "@/lib/level";
 import { Icon, type IconName } from "./Icon";
 import { Logo } from "./Logo";
 import { ShareButton } from "./ShareButton";
+import { HeaderMenu } from "./HeaderMenu";
 
 export interface HeaderStat {
   key: string;
@@ -132,14 +133,7 @@ export function ProfileHeader({
           <span className="grid place-items-center w-10 h-10 rounded-full bg-black/40 backdrop-blur border border-white/15">
             <ShareButton locale={locale} />
           </span>
-          <Link
-            href="/profile/settings"
-            aria-label={t.headerSettings}
-            title={t.headerSettings}
-            className="grid place-items-center w-10 h-10 rounded-full bg-black/40 backdrop-blur border border-white/15 text-white/90 hover:bg-black/60 transition"
-          >
-            <Icon name="settings" size={17} />
-          </Link>
+          <HeaderMenu locale={locale} />
         </div>
 
         <Link
@@ -208,7 +202,7 @@ export function ProfileHeader({
           تُسحب لأعلى فتنزلق تحت الصورة الشخصية: الصورة تطفو على زاويتها
           فتربط الكتلتين بدل أن تقفا منفصلتين بفراغ بينهما. والخانة صفٌّ
           أفقيّ — أيقونة ثم رقم وتحته كلمته — فارتفاع الصفّ ٤٤ بكسلاً لا ٧٠. */}
-      <div className="-mt-3 rounded-2xl border border-border bg-surface overflow-hidden">
+      <div className="-mt-3 rounded-2xl border border-white/10 bg-[color:var(--surface)]/45 backdrop-blur-xl overflow-hidden">
         <div className="grid grid-cols-3 pt-1">
           {stats.map((s, i) => {
             const cell = (
@@ -222,12 +216,12 @@ export function ProfileHeader({
                 </span>
               </>
             );
-            const edges = `${i % 3 !== 2 ? "border-e border-border/70" : ""} ${
-              i < 3 ? "border-b border-border/70" : ""
+            const edges = `${i % 3 !== 2 ? "border-e border-white/10" : ""} ${
+              i < 3 ? "border-b border-white/10" : ""
             }`;
             const box = "flex items-center gap-2.5 px-3 py-3";
             return s.href ? (
-              <Link key={s.key} href={s.href} className={`${box} ${edges} hover:bg-surface-2 transition`}>
+              <Link key={s.key} href={s.href} className={`${box} ${edges} hover:bg-white/5 transition`}>
                 {cell}
               </Link>
             ) : (
