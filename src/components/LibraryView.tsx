@@ -115,33 +115,82 @@ export function LibraryView({
     });
   }
 
-  const kinds: { key: "shows" | "movies"; label: string }[] = [
-    { key: "shows", label: t.libShows },
-    { key: "movies", label: t.libMovies },
-  ];
-  const whens: { key: "toWatch" | "upcoming"; label: string }[] = [
-    { key: "toWatch", label: t.libToWatch },
-    { key: "upcoming", label: t.libUpcoming },
-  ];
+  // الأعداد تُحسب هنا لتظهر داخل الشريط: الرقم بجانب الخيار يغني عن فتحه
+  // لمعرفة إن كان فيه شيء تحته
+  const counts = {
+    shows: { toWatch: shows.length, upcoming: showsUpcoming.length },
+    movies: { toWatch: movies.length, upcoming: moviesUpcoming.length },
+  } as const;
 
   return (
     <div>
-      {/* شريطان مقسّمان: الحبّة الممتلئة تقول أين أنت بلا حاجة لخطّ سفليّ
-          أو لون نصّ وحده — وهي أوضح على الجوال من التبويب الخطّي */}
-      <Segmented
-        options={kinds}
-        value={kind}
-        onChange={(v) => setKind(v as "shows" | "movies")}
-        size="lg"
-      />
+      {/*
+        شريط واحد لا شريطان.
+        كان أربعة أزرار في صفّين متطابقين لوناً وحجماً، فيقرأهما الطرف
+        كأربعة أشياء متساوية بينما هما بُعدان مختلفان: «ماذا» و«متى».
+        الآن النوع أيقونتان صامتتان على اليمين — أيقونة الشاشة والفيلم
+        تُعرَفان بلا كلمة — و«متى» نصّان يتمدّدان مع عدد كلٍّ منهما.
+        صفٌّ واحد بارتفاع ٤٤ بكسلاً بدل صفَّين بارتفاع ٩٦.
+      */}
+      <div className="flex items-center gap-2 mb-4">
+        <div className="flex shrink-0 rounded-2xl bg-surface border border-border p-1">
+          {(
+            [
+              { key: "shows", icon: "tv", label: t.libShows },
+              { key: "movies", icon: "film", label: t.libMovies },
+            ] as const
+          ).map((k) => {
+            const on = kind === k.key;
+            return (
+              <button
+                key={k.key}
+                onClick={() => setKind(k.key)}
+                aria-pressed={on}
+                aria-label={k.label}
+                title={k.label}
+                className={`w-11 h-9 grid place-items-center rounded-xl transition ${
+                  on
+                    ? "bg-accent text-[color:var(--on-accent)]"
+                    : "text-muted hover:text-foreground"
+                }`}
+              >
+                <Icon name={k.icon} size={17} />
+              </button>
+            );
+          })}
+        </div>
 
-      <div className="mt-2 mb-4">
-        <Segmented
-          options={whens}
-          value={when}
-          onChange={(v) => setWhen(v as "toWatch" | "upcoming")}
-          size="sm"
-        />
+        <div className="flex-1 min-w-0 flex rounded-2xl bg-surface border border-border p-1">
+          {(
+            [
+              { key: "toWatch", label: t.libToWatch },
+              { key: "upcoming", label: t.libUpcoming },
+            ] as const
+          ).map((w) => {
+            const on = when === w.key;
+            const n = counts[kind][w.key];
+            return (
+              <button
+                key={w.key}
+                onClick={() => setWhen(w.key)}
+                aria-pressed={on}
+                className={`flex-1 h-9 rounded-xl text-[13px] font-bold transition flex items-center justify-center gap-1.5 ${
+                  on
+                    ? "bg-accent text-[color:var(--on-accent)]"
+                    : "text-muted hover:text-foreground"
+                }`}
+              >
+                <span className="truncate">{w.label}</span>
+                <span
+                  className={`text-[11px] tabular-nums ${on ? "opacity-80" : "opacity-60"}`}
+                  dir="ltr"
+                >
+                  {n}
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {kind === "shows" && when === "toWatch" && (
@@ -251,43 +300,6 @@ export function LibraryView({
           )}
         />
       )}
-    </div>
-  );
-}
-
-/** شريط مقسّم: وعاء دائريّ وحبّة ممتلئة تتحرّك بين الخيارات */
-function Segmented({
-  options,
-  value,
-  onChange,
-  size = "lg",
-}: {
-  options: { key: string; label: string }[];
-  value: string;
-  onChange: (v: string) => void;
-  size?: "lg" | "sm";
-}) {
-  return (
-    <div className="flex rounded-full bg-surface border border-border p-1">
-      {options.map((o) => {
-        const on = o.key === value;
-        return (
-          <button
-            key={o.key}
-            onClick={() => onChange(o.key)}
-            aria-pressed={on}
-            className={`flex-1 rounded-full font-bold transition ${
-              size === "lg" ? "py-2.5 text-sm" : "py-1.5 text-xs"
-            } ${
-              on
-                ? "bg-accent text-[color:var(--on-accent)] shadow-lg shadow-black/20"
-                : "text-muted hover:text-foreground"
-            }`}
-          >
-            {o.label}
-          </button>
-        );
-      })}
     </div>
   );
 }
