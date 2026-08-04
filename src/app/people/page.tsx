@@ -13,6 +13,7 @@ import { PeopleSearch } from "@/components/PeopleSearch";
 import { PersonName } from "@/components/PersonRow";
 import { Avatar } from "@/components/Avatar";
 import { posterUrl } from "@/lib/media";
+import { Icon } from "@/components/Icon";
 
 export default async function PeoplePage() {
   const user = await getUser();
@@ -160,7 +161,7 @@ export default async function PeoplePage() {
                         />
                       ) : (
                         <span className="w-full h-full grid place-items-center text-muted" aria-hidden>
-                          🎬
+                          <Icon name="film" size={18} />
                         </span>
                       )}
                     </span>
