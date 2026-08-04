@@ -132,10 +132,21 @@ export function ProfileHeader({
           <Logo size={28} gradientId="header-mark" />
         </span>
 
-        <div className="absolute top-3 end-3 flex items-center gap-2">
-          <span className="grid place-items-center w-10 h-10 rounded-full bg-black/40 backdrop-blur border border-white/15">
-            <ShareButton locale={locale} />
-          </span>
+        {/* أدوات الغلاف عمودٌ واحد في الزاوية العليا: الإشعارات ثم
+            الإعدادات ثم المشاركة — الأكثر استعمالاً أعلى. وقلم التعديل
+            حُذف لأن الصورة الشخصية نفسها تفتح صفحة التعديل. */}
+        <div className="absolute top-3 end-3 flex flex-col items-center gap-2">
+          <Link
+            href="/library?filter=watching"
+            aria-label={t.headerAlerts}
+            title={t.headerAlerts}
+            className="relative grid place-items-center w-10 h-10 rounded-full bg-black/40 backdrop-blur border border-white/15 text-white/90 hover:bg-black/60 transition"
+          >
+            <Icon name="bell" size={17} />
+            {alerts > 0 && (
+              <span className="absolute top-1.5 end-1.5 w-2 h-2 rounded-full bg-accent-2 ring-2 ring-black/50" />
+            )}
+          </Link>
           <Link
             href="/profile/settings"
             aria-label={t.headerSettings}
@@ -144,8 +155,10 @@ export function ProfileHeader({
           >
             <Icon name="settings" size={17} />
           </Link>
+          <span className="grid place-items-center w-10 h-10 rounded-full bg-black/40 backdrop-blur border border-white/15">
+            <ShareButton locale={locale} />
+          </span>
         </div>
-
       </div>
 
       {/* ===== صفّ الهوية =====
@@ -213,29 +226,6 @@ export function ProfileHeader({
           </div>
         </div>
 
-        {/* الجرس فوق القلم في عمود واحد: زاوية الغلاف السفلى صارت للهوية،
-            فأدوات الصفّ تقف في طرفه لا على الصورة خلفه */}
-        <div className="shrink-0 flex flex-col items-center gap-2 pb-4">
-          <Link
-            href="/library?filter=watching"
-            aria-label={t.headerAlerts}
-            title={t.headerAlerts}
-            className="relative grid place-items-center w-9 h-9 rounded-full bg-black/40 backdrop-blur border border-white/20 text-white/90 hover:bg-black/60 transition"
-          >
-            <Icon name="bell" size={16} />
-            {alerts > 0 && (
-              <span className="absolute top-1 end-1 w-2 h-2 rounded-full bg-accent-2 ring-2 ring-black/50" />
-            )}
-          </Link>
-          <Link
-            href="/profile/edit"
-            aria-label={t.editProfile}
-            title={t.editProfile}
-            className="grid place-items-center w-9 h-9 rounded-full bg-black/40 backdrop-blur border border-white/20 text-white/90 hover:bg-black/60 transition"
-          >
-            <Icon name="edit" size={15} />
-          </Link>
-        </div>
       </div>
 
       {/* ===== بطاقة الأرقام =====
