@@ -4,6 +4,7 @@ import { Avatar } from "@/components/Avatar";
 import { getDict, type Locale } from "@/lib/i18n";
 import { levelName, type LevelInfo } from "@/lib/level";
 import { Icon } from "./Icon";
+import { Logo } from "./Logo";
 import { ShareButton } from "./ShareButton";
 
 /**
@@ -66,17 +67,11 @@ export function ProfileHeader({
             قد يقع فوق سماء بيضاء ويختفي */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-black/20" />
 
-        <Link
-          href="/library?filter=watching"
-          aria-label={t.headerAlerts}
-          title={t.headerAlerts}
-          className="absolute top-3 start-3 w-9 h-9 grid place-items-center rounded-full bg-black/35 backdrop-blur border border-white/20 text-white/90 hover:bg-black/55 transition"
-        >
-          <Icon name="bell" size={17} />
-          {alerts > 0 && (
-            <span className="absolute top-1.5 end-1.5 w-2 h-2 rounded-full bg-accent-2 ring-2 ring-black/40" />
-          )}
-        </Link>
+        {/* الشعار في زاوية الغلاف العليا: الترويسة أول ما تُرى في التطبيق،
+            فهي مكان العلامة لا مكان إشعارٍ عابر */}
+        <span className="absolute top-3 start-3 grid place-items-center w-10 h-10 rounded-full bg-black/35 backdrop-blur border border-white/20">
+          <Logo size={24} gradientId="header-mark" />
+        </span>
 
         <div className="absolute top-3 end-3 flex items-center rounded-full bg-black/35 backdrop-blur border border-white/20 px-0.5">
           <ShareButton locale={locale} />
@@ -91,10 +86,24 @@ export function ProfileHeader({
           </Link>
         </div>
 
+        {/* الجرس في الزاوية السفلى المقابلة: الصورة والاسم يشغلان الجهة
+            الأخرى، فلا يزاحمهما — ونقطة وردية حين ينتظرك شيء */}
+        <Link
+          href="/library?filter=watching"
+          aria-label={t.headerAlerts}
+          title={t.headerAlerts}
+          className="absolute bottom-3 end-3 w-10 h-10 grid place-items-center rounded-full bg-black/35 backdrop-blur border border-white/20 text-white/90 hover:bg-black/55 transition"
+        >
+          <Icon name="bell" size={17} />
+          {alerts > 0 && (
+            <span className="absolute top-1.5 end-1.5 w-2 h-2 rounded-full bg-accent-2 ring-2 ring-black/40" />
+          )}
+        </Link>
+
         {/* كتلة الهوية على حافة الغلاف السفلى.
             زرّ التعديل تحت الاسم لا بجانبه: بجانبه كان يقتطع من عرض الاسم
             فيُبتر اسمٌ متوسّط الطول بثلاث نقاط. */}
-        <div className="absolute inset-x-0 bottom-0 p-3 sm:p-4 flex items-end gap-3">
+        <div className="absolute inset-x-0 bottom-0 p-3 sm:p-4 pe-16 flex items-end gap-3">
           <Link href="/profile/edit" className="shrink-0">
             <Avatar
               src={avatarUrl}
