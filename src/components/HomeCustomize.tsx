@@ -56,6 +56,8 @@ export function HomeCustomize({
   const sectionMeta: Record<HomeSection, { icon: IconName; label: string }> = {
     continue: { icon: "play", label: t.continueWatching },
     week: { icon: "calendar", label: t.custWeekStrip },
+    towatch: { icon: "bookmark", label: t.libToWatch },
+    upcoming: { icon: "hourglass", label: t.libUpcoming },
     shows: { icon: "tv", label: t.myShows },
     movies: { icon: "film", label: t.myMovies },
     trending: { icon: "trending", label: t.trendingWeek },

@@ -256,41 +256,40 @@ export function ProfileHeader({
         </div>
       </div>
 
-      {/* ===== بطاقة الأرقام =====
-          الأيقونة إلى جانب الرقم لا فوقه — بمحاذاة كتلة الرقم والكلمة
-          معاً. والفواصل خطوطٌ محشورة لا حدودَ خانة: تبتعد عن إطار
-          البطاقة فلا تلمس الحافّة. */}
+      {/* ===== صفّ الأرقام =====
+          بلا إطارٍ ولا بطاقة: الأيقونة يسار الرقم في سطرٍ واحد وتحتهما
+          الكلمة، والفواصل الرأسية الرفيعة وحدها تفصل الخانات. */}
       {show.stats && (
-        <div className="relative z-10 mt-5 rounded-[22px] border border-border/70 bg-[color:var(--surface)]/85 backdrop-blur-xl shadow-[0_8px_28px_rgba(0,0,0,0.45)] overflow-hidden">
+        <div className="relative z-10 mt-5">
           <div className="grid grid-cols-4">
             {stats.map((s, i) => {
               const cell = (
                 <>
-                  <Icon
-                    name={s.icon}
-                    size={22}
-                    strokeWidth={1.8}
-                    style={s.color ? { color: s.color } : undefined}
-                    className={`shrink-0 ${s.color ? "" : "text-muted"}`}
-                  />
-                  <span className="min-w-0 text-start">
-                    <span className="block text-[17px] font-bold leading-none tabular-nums">
+                  <span className="flex items-center gap-2">
+                    <Icon
+                      name={s.icon}
+                      size={20}
+                      strokeWidth={1.8}
+                      style={s.color ? { color: s.color } : undefined}
+                      className={`shrink-0 ${s.color ? "" : "text-muted"}`}
+                    />
+                    <span className="text-[17px] font-bold leading-none tabular-nums">
                       {s.value}
                     </span>
-                    <span className="block text-[11px] text-muted mt-1 leading-[1.25] min-h-[2.5em]">
-                      {s.label}
-                    </span>
+                  </span>
+                  <span className="block text-[11px] text-muted mt-1.5 leading-[1.25]">
+                    {s.label}
                   </span>
                 </>
               );
               const rule = i < stats.length - 1 && (
                 <span
-                  className="absolute inset-y-4 end-0 w-px bg-white/10"
+                  className="absolute inset-y-1 end-0 w-px bg-white/10"
                   aria-hidden
                 />
               );
               const box =
-                "relative flex flex-col sm:flex-row items-center justify-center gap-1.5 sm:gap-2 px-1 sm:px-2 py-4";
+                "relative flex flex-col items-center justify-center px-1 py-2.5";
               return s.href ? (
                 <Link
                   key={s.key}
