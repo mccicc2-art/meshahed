@@ -125,7 +125,7 @@ export default async function PublicProfilePage({
                   key={g.id}
                   className="text-xs bg-surface-2 border border-border px-2.5 py-1 rounded-full"
                 >
-                  {g.emoji} {locale === "en" ? g.en : g.ar}
+                  {locale === "en" ? g.en : g.ar}
                 </span>
               ))}
             </div>
