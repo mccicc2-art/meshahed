@@ -1,8 +1,9 @@
+import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
 import Image from "next/image";
 import {
   getUser,
-  getFollows,
+  isFollowing,
   getWatchedForShow,
   getMyRating,
   getCommunityRating,
@@ -43,15 +44,10 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
   const tvId = Number(id);
   if (!Number.isFinite(tvId)) notFound();
 
-  const tv = await getTv(tvId).catch(() => null);
-  if (!tv) {
-    return (
-      <p className="text-center text-muted py-24">{t.showLoadFailed}</p>
-    );
-  }
-
+  // بيانات TMDB وبيانات المستخدم في موجة واحدة — لا شيء منها ينتظر الآخر
   const [
-    follows,
+    tv,
+    following,
     watched,
     myRating,
     community,
@@ -61,7 +57,8 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
     myLists,
     inLists,
   ] = await Promise.all([
-      getFollows(),
+      getTv(tvId).catch(() => null),
+      isFollowing(tvId, "tv"),
       getWatchedForShow(tvId),
       getMyRating(tvId, "tv"),
       getCommunityRating(tvId, "tv"),
@@ -71,7 +68,28 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
       getMyLists(),
       getListsContaining(tvId, "tv"),
     ]);
-  const following = follows.some((f) => f.tmdb_id === tvId && f.media_type === "tv");
+
+  if (!tv) {
+    return (
+      <div className="text-center py-24">
+        <p className="text-muted mb-4">{t.showLoadFailed}</p>
+        <div className="flex items-center justify-center gap-2">
+          <Link
+            href="/"
+            className="px-4 py-2 rounded-xl bg-accent text-[color:var(--on-accent)] text-sm font-semibold"
+          >
+            {t.navHome}
+          </Link>
+          <Link
+            href="/search"
+            className="px-4 py-2 rounded-xl border border-border text-sm text-muted hover:text-foreground transition"
+          >
+            {t.navSearch}
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   // كانت الصفحة تجلب حلقات كل المواسم دفعة واحدة — مسلسل بثلاثين موسماً يعني
   // ثلاثين طلب TMDB وآلاف الحلقات تُرسل للمتصفح. الآن: رؤوس المواسم فقط،
