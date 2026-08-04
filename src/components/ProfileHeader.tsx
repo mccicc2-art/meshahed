@@ -69,8 +69,8 @@ export function ProfileHeader({
 
         {/* الشعار في زاوية الغلاف العليا: الترويسة أول ما تُرى في التطبيق،
             فهي مكان العلامة لا مكان إشعارٍ عابر */}
-        <span className="absolute top-3 start-3 grid place-items-center w-10 h-10 rounded-full bg-black/35 backdrop-blur border border-white/20">
-          <Logo size={24} gradientId="header-mark" />
+        <span className="absolute top-3 start-4 drop-shadow-[0_2px_6px_rgba(0,0,0,0.55)]">
+          <Logo size={30} gradientId="header-mark" />
         </span>
 
         <div className="absolute top-3 end-3 flex items-center rounded-full bg-black/35 backdrop-blur border border-white/20 px-0.5">
