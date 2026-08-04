@@ -19,6 +19,7 @@ import {
   type SearchResult,
 } from "@/lib/tmdb";
 import { getT } from "@/lib/locale";
+import { localizeFollows } from "@/lib/localize";
 import { airedEpisodeCount, percentOf } from "@/lib/progress";
 import { PosterCard } from "@/components/PosterCard";
 import { ContinueCard } from "@/components/ContinueCard";
@@ -37,7 +38,7 @@ export default async function HomePage() {
 
   // ملخّص مجمّع: صف لكل مسلسل بدل صف لكل حلقة (آلاف الصفوف سابقاً).
   // صفوف الحلقات التفصيلية تُقرأ لاحقاً لمسلسل واحد فقط — صاحب «الحلقة التالية».
-  const [follows, summary, watchedMovieIds, profile, movieProgress, myRatings, followStats] =
+  const [followRows, summary, watchedMovieIds, profile, movieProgress, myRatings, followStats] =
     await Promise.all([
       getFollows(),
       getWatchSummary(),
@@ -50,6 +51,9 @@ export default async function HomePage() {
 
   const myRatingsCount = myRatings.length;
   const myComments = myRatings.filter((r) => r.review?.trim()).length;
+
+  // أسماء المكتبة وملصقاتها بلغة الواجهة لا بلغة يوم المتابعة
+  const follows = await localizeFollows(followRows, locale);
 
   const tvFollows = follows.filter((f) => f.media_type === "tv");
   const movieFollows = follows.filter((f) => f.media_type === "movie");
