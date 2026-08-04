@@ -15,7 +15,6 @@ import {
 import { MovieProgress } from "@/components/MovieProgress";
 import { getMovie, getTrailer, getWatchProviders, backdropUrl, posterUrl } from "@/lib/tmdb";
 import { FollowButton } from "@/components/FollowButton";
-import { MovieWatchedButton } from "@/components/MovieWatchedButton";
 import { getT } from "@/lib/locale";
 import { RatingBox } from "@/components/RatingBox";
 import { CommunityReviews } from "@/components/CommunityReviews";
@@ -133,12 +132,6 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
             icon: "check",
             content: (
               <div className="space-y-4">
-                <MovieWatchedButton
-                  movieTmdbId={movieId}
-                  runtime={movie.runtime}
-                  initialWatched={watched}
-                  locale={locale}
-                />
                 <MovieProgress
                   movieTmdbId={movieId}
                   runtime={movie.runtime}
