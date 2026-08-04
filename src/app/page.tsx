@@ -300,6 +300,7 @@ export default async function HomePage() {
     key: string;
     mediaType?: "tv" | "movie";
     tmdbId?: number;
+    runtime?: number | null;
     href: string;
     title: string;
     posterPath: string | null;
@@ -327,6 +328,7 @@ export default async function HomePage() {
         key: `tw-mv-${m.tmdbId}`,
         mediaType: "movie" as const,
         tmdbId: m.tmdbId,
+        runtime: progressById.get(m.tmdbId)?.runtime_minutes ?? null,
         href: `/movie/${m.tmdbId}`,
         title: m.title,
         posterPath: m.posterPath,
@@ -505,13 +507,12 @@ export default async function HomePage() {
                 ))}
               </Section>
             ) : null,
-          week:
-            weekEntries.length > 0 || true ? (
-              <div key="week">
-                <span id="week" className="block scroll-mt-20" />
-                <WeekStrip days={weekDays} entries={weekEntries} locale={locale} />
-              </div>
-            ) : null,
+          week: (
+            <div key="week">
+              <span id="week" className="block scroll-mt-20" />
+              <WeekStrip days={weekDays} entries={weekEntries} locale={locale} />
+            </div>
+          ),
           towatch:
             toWatchRow.length > 0 ? (
               <Section
@@ -527,6 +528,7 @@ export default async function HomePage() {
                     key={x.key}
                     tmdbId={x.tmdbId!}
                     mediaType={x.mediaType!}
+                    runtime={x.runtime ?? null}
                     locale={locale}
                   >
                     <PosterCard
