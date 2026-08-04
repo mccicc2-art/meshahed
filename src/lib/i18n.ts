@@ -73,7 +73,7 @@ const ar = {
   epSeasonLine: (ep: number | undefined, season: number | undefined) =>
     `الحلقة ${ep} · الموسم ${season}`,
   episodesBadge: (n: number) => `${n} حلقة`,
-  minuteBadge: (n: number) => `د ${n}`,
+  minuteBadge: (n: number) => `${n} د`,
   watchedBadge: "✓ شوهد",
   hours: (h: number) => `${h} ساعة`,
   days: (d: number) => `${d} يوم`,

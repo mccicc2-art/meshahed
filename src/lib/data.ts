@@ -62,14 +62,16 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
     const user = await getUser();
     if (!user) return null;
 
-    let { data } = await supabase
+    // eslint-disable-next-line prefer-const
+    let { data, error } = await supabase
       .from("profiles")
       .select("id, nickname, username, avatar_url, cover_url, theme, favorite_genres, hide_name")
       .eq("id", user.id)
       .maybeSingle();
 
-    // احتياط: لو أعمدة المظهر لسه ما انضافت، اقرأ الأعمدة القديمة فقط
-    if (!data) {
+    // الاحتياط لعمودٍ ناقص لا لصفٍّ غير موجود: الحساب الجديد بلا صفّ يُرجع
+    // null بلا خطأ، وكان يدفع استعلاماً ثانياً ضائعاً في كل طلب
+    if (error) {
       const legacy = await supabase
         .from("profiles")
         .select("id, nickname, username, avatar_url, favorite_genres")
@@ -102,7 +104,13 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
   }
 });
 
-export async function getFollows(): Promise<FollowRow[]> {
+/**
+ * المتابعات — مخزّنة لكل طلب.
+ *
+ * تُقرأ من الصفحة ومن محرّك الاقتراحات ومن صفحة العمل في الطلب نفسه، وبلا
+ * `cache()` كان كلٌّ منها يفتح استعلاماً جديداً على الجدول ذاته.
+ */
+export const getFollows = cache(async (): Promise<FollowRow[]> => {
   const supabase = await createClient();
 
   const { data, error } = await supabase
@@ -122,7 +130,7 @@ export async function getFollows(): Promise<FollowRow[]> {
   }
 
   return data ?? [];
-}
+});
 
 // PostgREST يرجّع 1000 صف كحد أقصى للطلب الواحد — نقرأ على صفحات حتى لا تضيع حلقات
 async function pageAll<T>(
@@ -151,6 +159,38 @@ export async function getWatchedForShow(showTmdbId: number): Promise<Set<string>
       .range(from, to),
   );
   return new Set(rows.map((r) => episodeKey(r.season_number, r.episode_number)));
+}
+
+
+/** هل أتابع هذا العمل؟ صفٌّ واحد بدل قراءة كل المتابعات لسؤال بنعم أو لا */
+export async function isFollowing(tmdbId: number, mediaType: "tv" | "movie"): Promise<boolean> {
+  try {
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from("follows")
+      .select("tmdb_id")
+      .eq("tmdb_id", tmdbId)
+      .eq("media_type", mediaType)
+      .maybeSingle();
+    return !!data;
+  } catch {
+    return false;
+  }
+}
+
+/** هل شاهدت هذا الفيلم؟ صفٌّ واحد بدل ترقيم كل الأفلام المشاهَدة */
+export async function isMovieWatched(movieTmdbId: number): Promise<boolean> {
+  try {
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from("watched_movies")
+      .select("movie_tmdb_id")
+      .eq("movie_tmdb_id", movieTmdbId)
+      .maybeSingle();
+    return !!data;
+  } catch {
+    return false;
+  }
 }
 
 export interface WatchSummaryRow {
