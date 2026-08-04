@@ -305,7 +305,6 @@ export default async function HomePage() {
 
       <ProfileHeader
         displayName={displayName}
-        username={profile?.username ?? null}
         avatarUrl={profile?.avatar_url ?? null}
         coverUrl={profile?.cover_url ?? null}
         level={level}
