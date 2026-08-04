@@ -9,6 +9,7 @@ import {
   getWatchedMovieIds,
   getProfile,
   getAllMovieProgress,
+  getMyRatings,
 } from "@/lib/data";
 import {
   getTv,
@@ -42,13 +43,18 @@ export default async function HomePage() {
 
   // ملخّص مجمّع: صف لكل مسلسل بدل صف لكل حلقة (آلاف الصفوف سابقاً).
   // صفوف الحلقات التفصيلية تُقرأ لاحقاً لمسلسل واحد فقط — صاحب «الحلقة التالية».
-  const [follows, summary, watchedMovieIds, profile, movieProgress] = await Promise.all([
-    getFollows(),
-    getWatchSummary(),
-    getWatchedMovieIds(),
-    getProfile(),
-    getAllMovieProgress(),
-  ]);
+  const [follows, summary, watchedMovieIds, profile, movieProgress, myRatings] =
+    await Promise.all([
+      getFollows(),
+      getWatchSummary(),
+      getWatchedMovieIds(),
+      getProfile(),
+      getAllMovieProgress(),
+      getMyRatings(),
+    ]);
+
+  const myRatingsCount = myRatings.length;
+  const myComments = myRatings.filter((r) => r.review?.trim()).length;
 
   const tvFollows = follows.filter((f) => f.media_type === "tv");
   const movieFollows = follows.filter((f) => f.media_type === "movie");
@@ -170,11 +176,9 @@ export default async function HomePage() {
       return b.progress - a.progress;
     });
 
-  // «أكمل المشاهدة» صار للمبدوء فعلاً فقط. ما لم يُبدأ له قسمه الخاص
-  // «جاهز تشوفه» — خلط الاثنين كان يخفي ما اخترته ولم تفتحه بعد وسط
-  // ما أنت في منتصفه.
+  // ما بدأته فعلاً — يُستخدم في اختيار بطاقة «الحلقة التالية» وفي ترتيب
+  // صفّ مسلسلاتي
   const continueWatching = unfinished.filter((i) => i.watched > 0);
-  const notStartedShows = unfinished.filter((i) => i.watched === 0);
   upcoming.sort((a, b) => a.date.localeCompare(b.date));
 
   // «ينتظرك»: بدأته وفيه حلقات معروضة لم تُشاهد — أهم من مجرّد «جارٍ»
@@ -221,9 +225,6 @@ export default async function HomePage() {
     break;
   }
 
-  // الأفلام المكتملة لا تظهر في الرئيسية
-  const pausedMovies = movieProgress.filter((m) => !watchedMovieIds.has(m.movie_tmdb_id));
-
   // مستخدم بلا مكتبة يذهب لشاشة الانضمام بدل صفحة فارغة
   if (follows.length === 0) redirect("/welcome");
 
@@ -237,16 +238,6 @@ export default async function HomePage() {
   const trend = showTrending ? await trending().catch(() => [] as SearchResult[]) : [];
 
   const displayName = profile?.nickname || user.email?.split("@")[0] || "";
-
-  // ===== جاهز تشوفه: في المفضلة ولا بعد بدأته =====
-  // الفيلم يخرج من هنا لحظة تأشيره مشاهَداً فيبقى في المكتبة وحدها،
-  // والمسلسل يخرج لحظة تأشير أول حلقة فينتقل إلى «أكمل المشاهدة».
-  const startedMovieIds = new Set(movieProgress.map((m) => m.movie_tmdb_id));
-  const readyMovies = movieFollows.filter(
-    (f) => !watchedMovieIds.has(f.tmdb_id) && !startedMovieIds.has(f.tmdb_id),
-  );
-
-  const readyCount = notStartedShows.length + readyMovies.length;
 
   // ===== الأيام السبعة القادمة =====
   // نبني التواريخ من كائن زمن واحد: قراءتان منفصلتان للوقت قد تقعان على
@@ -311,38 +302,32 @@ export default async function HomePage() {
 
   const panel: PanelItem[] = [
     {
-      key: "waiting",
-      href: "/library?filter=watching",
-      count: waitingForYou.length,
-      label: t.panelWaiting,
-      icon: "bell" as const,
-      tone: "waiting",
+      key: "shows",
+      href: "/library?filter=tv",
+      count: tvFollows.length,
+      label: t.panelShows,
+      icon: "tv" as const,
     },
     {
-      key: "watching",
-      href: "#watching",
-      count: continueWatching.length + pausedMovies.length,
-      label: t.panelStarted,
-      icon: "play" as const,
-      tone: "watching",
+      key: "movies",
+      href: "/library?filter=movie",
+      count: movieFollows.length,
+      label: t.panelMovies,
+      icon: "film" as const,
     },
     {
-      key: "ready",
-      href: "/library?filter=notStarted",
-      count: readyCount,
-      label: t.panelReady,
-      icon: "bookmark" as const,
-      tone: "ready",
+      key: "comments",
+      href: "/ratings?with=comments",
+      count: myComments,
+      label: t.panelComments,
+      icon: "comment" as const,
     },
     {
-      key: "soon",
-      href: "#week",
-      // العدد عدد ما في شريط الأسبوع لا كل القادم: الضغطة تنزل إلى الشريط،
-      // فرقمٌ أكبر مما يعرضه يوهم أن شيئاً اختفى
-      count: weekEntries.length,
-      label: t.panelSoon,
-      icon: "calendar" as const,
-      tone: "soon",
+      key: "ratings",
+      href: "/ratings",
+      count: myRatingsCount,
+      label: t.panelRatings,
+      icon: "star" as const,
     },
   ];
 
