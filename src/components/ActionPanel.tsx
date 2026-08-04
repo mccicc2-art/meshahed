@@ -7,15 +7,7 @@ export interface PanelItem {
   count: number;
   label: string;
   icon: IconName;
-  tone: "waiting" | "watching" | "ready" | "soon";
 }
-
-const TONES: Record<PanelItem["tone"], string> = {
-  waiting: "text-accent",
-  watching: "text-accent-2",
-  ready: "text-foreground",
-  soon: "text-muted",
-};
 
 /**
  * شريط الأعداد — سطران.
@@ -30,8 +22,10 @@ export function ActionPanel({ items }: { items: PanelItem[] }) {
   return (
     <nav className="grid grid-cols-4 rounded-2xl border border-border bg-surface overflow-hidden divide-x divide-x-reverse divide-border">
       {items.map((item) => {
+        // كلها بلون واحد أبيض: أربعة ألوان مختلفة كانت توحي بأولويّة بين
+        // المربّعات لا وجود لها — كلها عدّادات متساوية
         const dim = item.count === 0;
-        const tone = dim ? "text-muted" : TONES[item.tone];
+        const tone = dim ? "text-muted" : "text-foreground";
         return (
           <Link
             key={item.key}
