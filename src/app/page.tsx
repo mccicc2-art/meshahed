@@ -28,8 +28,7 @@ import { PosterCard } from "@/components/PosterCard";
 import { HeroNextUp, type NextEpisode } from "@/components/HeroNextUp";
 import { PosterRail, RailItem } from "@/components/PosterRail";
 import type { IconName } from "@/components/Icon";
-import { ActionPanel, type PanelItem } from "@/components/ActionPanel";
-import { ProfileHeader } from "@/components/ProfileHeader";
+import { ProfileHeader, type HeaderStat } from "@/components/ProfileHeader";
 import { getLevel, levelPoints } from "@/lib/level";
 import { WeekStrip, type WeekEntry } from "@/components/WeekStrip";
 import { ShowStatsSync, type ShowStat } from "@/components/ShowStatsSync";
@@ -302,34 +301,48 @@ export default async function HomePage() {
   const watchedEpisodeTotal = [...watchedByShow.values()].reduce((a, n) => a + n, 0);
   const level = getLevel(levelPoints(watchedEpisodeTotal, watchedMovieIds.size));
 
-  const panel: PanelItem[] = [
+  // ===== أرقام الترويسة =====
+  // كلها مشتقّة مما قرأناه أصلاً لهذه الصفحة: لا استعلام إضافي لعرضها
+  const totalMinutes = (summary ?? []).reduce((a, r) => a + (r.minutes ?? 0), 0);
+  const hours = Math.round(totalMinutes / 60);
+  const watchTime = hours < 24 ? t.hours(hours) : t.days(Math.floor(hours / 24));
+
+  const headerStats: HeaderStat[] = [
     {
       key: "shows",
-      href: "/library?filter=tv",
-      count: tvFollows.length,
+      icon: "tv",
+      value: String(tvFollows.length),
       label: t.panelShows,
-      icon: "tv" as const,
+      href: "/library?filter=tv",
     },
     {
       key: "movies",
-      href: "/library?filter=movie",
-      count: movieFollows.length,
+      icon: "film",
+      value: String(movieFollows.length),
       label: t.panelMovies,
-      icon: "film" as const,
+      href: "/library?filter=movie",
+    },
+    { key: "time", icon: "clock", value: watchTime, label: t.statWatchTime, href: "/stats" },
+    {
+      key: "episodes",
+      icon: "check",
+      value: String(watchedEpisodeTotal),
+      label: t.statsWatchedEpisodes,
+      href: "/diary",
     },
     {
       key: "comments",
-      href: "/ratings?with=comments",
-      count: myComments,
+      icon: "comment",
+      value: String(myComments),
       label: t.panelComments,
-      icon: "comment" as const,
+      href: "/ratings?with=comments",
     },
     {
       key: "ratings",
-      href: "/ratings",
-      count: myRatingsCount,
+      icon: "star",
+      value: String(myRatingsCount),
       label: t.panelRatings,
-      icon: "star" as const,
+      href: "/ratings",
     },
   ];
 
@@ -337,20 +350,16 @@ export default async function HomePage() {
     <div className="space-y-8 sm:space-y-10">
       <ShowStatsSync stats={statsToCache} />
 
-      {/* الترويسة وشريط الأعداد كتلة واحدة بفاصل ضيّق — الفاصل الافتراضي
-          بينهما كان يضيف ٣٢ بكسل بلا داعٍ فوق ما يشغلانه أصلاً */}
-      <div className="space-y-2.5">
-        <ProfileHeader
-          displayName={displayName}
-          username={profile?.username ?? null}
-          avatarUrl={profile?.avatar_url ?? null}
-          coverUrl={profile?.cover_url ?? null}
-          level={level}
-          alerts={waitingForYou.length}
-          locale={locale}
-        />
-        <ActionPanel items={panel} />
-      </div>
+      <ProfileHeader
+        displayName={displayName}
+        username={profile?.username ?? null}
+        avatarUrl={profile?.avatar_url ?? null}
+        coverUrl={profile?.cover_url ?? null}
+        level={level}
+        alerts={waitingForYou.length}
+        stats={headerStats}
+        locale={locale}
+      />
 
       {empty && (
         <section className="text-center py-4">
