@@ -1,11 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import {
-  getUser,
-  getFollowingActivity,
-  getFollowLists,
-  displayNameOf,
-} from "@/lib/data";
+import { getUser, getCommunityFeed, getFollowLists, displayNameOf } from "@/lib/data";
 import { getT } from "@/lib/locale";
 import { num } from "@/lib/i18n";
 import { formatDateShort } from "@/lib/when";
@@ -14,6 +9,7 @@ import { PersonName } from "@/components/PersonRow";
 import { Avatar } from "@/components/Avatar";
 import { posterUrl } from "@/lib/media";
 import { Icon } from "@/components/Icon";
+import { LikeButton } from "@/components/LikeButton";
 
 export default async function PeoplePage() {
   const user = await getUser();
@@ -21,10 +17,7 @@ export default async function PeoplePage() {
 
   const { locale, t } = await getT();
 
-  const [activity, lists] = await Promise.all([
-    getFollowingActivity(),
-    getFollowLists(user.id),
-  ]);
+  const [feed, lists] = await Promise.all([getCommunityFeed(), getFollowLists(user.id)]);
 
   return (
     <div className="space-y-8">
@@ -114,42 +107,50 @@ export default async function PeoplePage() {
         </section>
       )}
 
-      {/* النشاط: من قيّم أو علّق */}
+      {/* ===== خطّ الآراء =====
+          كخطّ X: رأيٌ فوق رأي، الأكثر إعجاباً أعلى — الإعجاب هو صوت
+          المجتمع لا ساعة النشر. والإعجاب من الخط نفسه بلا فتح صفحة. */}
       <section>
-        <h2 className="text-lg font-bold mb-4">{t.activityTitle}</h2>
+        <h2 className="text-lg font-bold mb-4">{t.feedTitle}</h2>
 
-        {activity.length === 0 ? (
+        {feed.length === 0 ? (
           <p className="text-sm text-muted bg-surface border border-dashed border-border rounded-xl py-8 text-center">
-            {t.activityEmpty}
+            {t.feedEmpty}
           </p>
         ) : (
           <div className="space-y-3">
-            {activity.map((a) => {
+            {feed.map((a) => {
               const poster = posterUrl(a.poster_path, "w185");
               return (
                 <article
-                  key={`${a.id}-${a.media_type}-${a.tmdb_id}`}
-                  className="bg-surface border border-border rounded-xl p-4"
+                  key={`${a.person.id}-${a.media_type}-${a.tmdb_id}`}
+                  className="bg-surface border border-border rounded-[18px] p-4"
                 >
                   <div className="flex items-center justify-between gap-3">
                     <PersonName
-                      person={a}
+                      person={a.person}
                       t={t}
-                      size={32}
+                      size={34}
                       sub={formatDateShort(a.updated_at, t)}
                     />
-                    <span className="text-sm shrink-0">
-                      <span className="text-accent">{"★".repeat(a.rating)}</span>
-                      <span className="text-muted/40">{"★".repeat(5 - a.rating)}</span>
+                    <span
+                      className="text-sm shrink-0 font-bold text-accent tabular-nums"
+                      title={t.rateOutOf(a.rating)}
+                    >
+                      ★ <span dir="ltr">{a.rating}/10</span>
                     </span>
                   </div>
+
+                  <p className="text-[15px] leading-relaxed whitespace-pre-line mt-3">
+                    {a.review}
+                  </p>
 
                   <Link
                     href={`/${a.media_type === "tv" ? "show" : "movie"}/${a.tmdb_id}`}
                     prefetch={false}
-                    className="flex items-center gap-3 mt-3 group"
+                    className="flex items-center gap-3 mt-3 rounded-xl border border-border bg-surface-2/50 p-2 group"
                   >
-                    <span className="w-11 shrink-0 aspect-[2/3] rounded-md overflow-hidden bg-surface-2 border border-border block">
+                    <span className="w-9 shrink-0 aspect-[2/3] rounded-md overflow-hidden bg-surface-2 block">
                       {poster ? (
                         /* eslint-disable-next-line @next/next/no-img-element */
                         <img
@@ -160,13 +161,16 @@ export default async function PeoplePage() {
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        <span className="w-full h-full grid place-items-center text-muted" aria-hidden>
-                          <Icon name="film" size={18} />
+                        <span
+                          className="w-full h-full grid place-items-center text-muted"
+                          aria-hidden
+                        >
+                          <Icon name="film" size={15} />
                         </span>
                       )}
                     </span>
                     <span className="min-w-0">
-                      <span className="block text-sm font-semibold truncate group-hover:text-accent transition">
+                      <span className="block text-[13px] font-semibold truncate group-hover:text-accent transition">
                         {a.title ?? "—"}
                       </span>
                       <span className="block text-[11px] text-muted">
@@ -175,11 +179,17 @@ export default async function PeoplePage() {
                     </span>
                   </Link>
 
-                  {a.review?.trim() && (
-                    <p className="text-sm text-muted leading-relaxed whitespace-pre-line mt-3 border-t border-border pt-3">
-                      {a.review}
-                    </p>
-                  )}
+                  <div className="mt-3 pt-2.5 border-t border-[color:var(--divider)]">
+                    <LikeButton
+                      reviewUserId={a.person.id}
+                      tmdbId={a.tmdb_id}
+                      mediaType={a.media_type}
+                      likes={a.likes}
+                      likedByMe={a.likedByMe}
+                      isMine={false}
+                      locale={locale}
+                    />
+                  </div>
                 </article>
               );
             })}
