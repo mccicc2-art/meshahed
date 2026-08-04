@@ -13,7 +13,6 @@ import {
 } from "@/lib/data";
 import {
   getTv,
-  getMovie,
   getSeason,
   trending,
   titleOf,
@@ -83,92 +82,63 @@ export default async function HomePage() {
 
   const today = new Date().toISOString().slice(0, 10);
 
-  const [tvDetails, movieDetails] = await Promise.all([
-    Promise.all(tvFollows.map((f) => getTv(f.tmdb_id).catch(() => null))),
-    Promise.all(movieFollows.map((f) => getMovie(f.tmdb_id).catch(() => null))),
-  ]);
-
   interface UpcomingItem {
     key: string;
     href: string;
     title: string;
     posterPath: string | null;
     date: string;
-    badge?: string;
   }
 
-  type Item = { tv: TvDetails; watched: number; aired: number; progress: number };
+  /**
+   * المسلسل كما تحتاجه هذه الصفحة.
+   *
+   * كانت الصفحة تطلب من TMDB تفاصيل كل مسلسل في المكتبة — أربعون متابعة
+   * تعني أربعين طلباً خارجياً قبل أن يظهر شيء. وكل ما نعرضه هنا (الاسم،
+   * الملصق، الحلقات المعروضة، موعد القادمة) مخزّنٌ عندنا في صفّ المتابعة
+   * نفسه، يُحدَّث من صفحة المسلسل ومن `ShowStatsSync`. فالطلبات الخارجية
+   * بقيت للحالتين اللتين تحتاجانها فعلاً: بطاقة «الحلقة التالية»، وصفٌّ
+   * جديد لم يُحسب له عدد بعد.
+   */
+  type Item = {
+    id: number;
+    name: string;
+    posterPath: string | null;
+    watched: number;
+    aired: number;
+    progress: number;
+  };
+
   const items: Item[] = [];
   const upcoming: UpcomingItem[] = [];
-  const statsToCache: ShowStat[] = [];
 
-  for (const tv of tvDetails) {
-    if (!tv) continue;
-    const row = tvFollows.find((f) => f.tmdb_id === tv.id);
-
-    // المقام موحّد عبر كل الشاشات: الحلقات التي عُرضت فعلاً.
-    // العدد المخزّن أدقّ (محسوب من تواريخ الحلقات نفسها في صفحة المسلسل)،
-    // فيُقدَّم على الاشتقاق من `last_episode_to_air`.
-    const aired = row?.aired_episodes ?? airedEpisodeCount(tv);
+  for (const row of tvFollows) {
+    const aired = row.aired_episodes ?? row.total_episodes ?? 0;
     // لا تتجاوز المشاهَد ما عُرض، وإلا خرجت نسبة فوق ١٠٠٪
-    const watched = Math.min(watchedByShow.get(tv.id) ?? 0, aired || Infinity);
-    items.push({ tv, watched, aired, progress: percentOf(watched, aired) });
-
-    const next = tv.next_episode_to_air;
-    const nextDate = next?.air_date ?? null;
-
-    // تُكتب الإحصاءات في حالتين فقط، فلا كتابة في كل زيارة:
-    // (١) لا يوجد رقم مخزّن بعد — تهيئة أولى،
-    // (٢) تغيّر موعد الحلقة القادمة — أي أن حلقة جديدة نزلت.
-    // خارج هاتين الحالتين لا نلمس القيمة، حتى لا يُستبدل العدد الدقيق
-    // القادم من صفحة المسلسل بالعدد المشتقّ هنا.
-    const needsBootstrap = row && row.aired_episodes == null;
-    const scheduleMoved = row && (row.next_air_date ?? null) !== nextDate;
-    if (row && (needsBootstrap || scheduleMoved)) {
-      statsToCache.push({
-        tmdbId: tv.id,
-        total: tv.number_of_episodes ?? 0,
-        aired: airedEpisodeCount(tv),
-        nextAirDate: nextDate,
-      });
-    }
-
-    if (nextDate) {
-      upcoming.push({
-        key: `tv-${tv.id}`,
-        href: `/show/${tv.id}`,
-        title: tv.name,
-        posterPath: tv.poster_path,
-        date: nextDate,
-        badge: `S${next?.season_number} · E${next?.episode_number}`,
-      });
-    } else if (tv.first_air_date && tv.first_air_date > today) {
-      // مسلسل في المفضلة لم يُعرض بعد
-      upcoming.push({
-        key: `tv-${tv.id}`,
-        href: `/show/${tv.id}`,
-        title: tv.name,
-        posterPath: tv.poster_path,
-        date: tv.first_air_date,
-        badge: t.typeSeries,
-      });
-    }
-  }
-
-  // الأفلام التي تتابعها ولم تُطرح بعد تظهر أيضاً في «القادم قريباً»
-  for (const m of movieDetails) {
-    if (!m?.release_date || m.release_date < today) continue;
-    upcoming.push({
-      key: `movie-${m.id}`,
-      href: `/movie/${m.id}`,
-      title: m.title,
-      posterPath: m.poster_path,
-      date: m.release_date,
-      badge: t.typeMovie,
+    const watched = Math.min(watchedByShow.get(row.tmdb_id) ?? 0, aired || Infinity);
+    items.push({
+      id: row.tmdb_id,
+      name: row.title,
+      posterPath: row.poster_path,
+      watched,
+      aired,
+      progress: percentOf(watched, aired),
     });
+
+    if (row.next_air_date && row.next_air_date >= today) {
+      upcoming.push({
+        key: `tv-${row.tmdb_id}`,
+        href: `/show/${row.tmdb_id}`,
+        title: row.title,
+        posterPath: row.poster_path,
+        date: row.next_air_date,
+      });
+    }
   }
 
-  // كل ما لم يكتمل — يُقسم بعدها إلى «بدأته» و«ما بدأته»
+  upcoming.sort((a, b) => a.date.localeCompare(b.date));
+
+  // كل ما لم يكتمل — ثم ما بدأته فعلاً
   const unfinished = items
     .filter((i) => i.aired === 0 || i.watched < i.aired)
     .sort((a, b) => {
@@ -176,52 +146,84 @@ export default async function HomePage() {
       return b.progress - a.progress;
     });
 
-  // ما بدأته فعلاً — يُستخدم في اختيار بطاقة «الحلقة التالية» وفي ترتيب
-  // صفّ مسلسلاتي
   const continueWatching = unfinished.filter((i) => i.watched > 0);
-  upcoming.sort((a, b) => a.date.localeCompare(b.date));
 
-  // «ينتظرك»: بدأته وفيه حلقات معروضة لم تُشاهد — أهم من مجرّد «جارٍ»
-  const waitingForYou = continueWatching
-    .filter((i) => i.watched > 0 && i.aired > i.watched)
-    .map((i) => ({ ...i, pending: i.aired - i.watched }))
-    .sort((a, b) => b.pending - a.pending);
+  // «ينتظرك»: بدأته وفيه حلقات معروضة لم تُشاهد
+  const waitingForYou = continueWatching.filter((i) => i.aired > i.watched);
 
-  // ===== بطاقة «الحلقة التالية»: آخر مسلسل تابعته وله حلقة معروضة لم تُشاهد =====
-  const nextUpCandidates = [...continueWatching].sort((a, b) => {
-    const ai = lastWatchedOrder.indexOf(a.tv.id);
-    const bi = lastWatchedOrder.indexOf(b.tv.id);
-    return (ai < 0 ? 9999 : ai) - (bi < 0 ? 9999 : bi);
-  });
+  // ===== بطاقة «الحلقة التالية» =====
+  // ثلاثة مرشّحين على الأكثر، وتفاصيلهم وحلقاتهم المشاهَدة تُطلب دفعةً
+  // واحدة: كان كل مرشّح ينتظر الذي قبله، فست رحلات متتابعة قبل أن تُرسم
+  // البطاقة. الآن رحلتان: موجة متوازية ثم طلب موسمٍ واحد.
+  const candidateIds = [...continueWatching]
+    .sort((a, b) => {
+      const ai = lastWatchedOrder.indexOf(a.id);
+      const bi = lastWatchedOrder.indexOf(b.id);
+      return (ai < 0 ? 9999 : ai) - (bi < 0 ? 9999 : bi);
+    })
+    .slice(0, 3)
+    .map((i) => i.id);
+
+  // الصفوف التي لم يُحسب لها عدد حلقات بعد تحتاج TMDB مرة واحدة لتهيئتها
+  const bootstrapIds = tvFollows
+    .filter((f) => f.aired_episodes == null && !candidateIds.includes(f.tmdb_id))
+    .slice(0, 12)
+    .map((f) => f.tmdb_id);
+
+  const [candidateDetails, candidateWatched, bootstrapDetails] = await Promise.all([
+    Promise.all(candidateIds.map((id) => getTv(id).catch(() => null))),
+    Promise.all(candidateIds.map((id) => getWatchedForShow(id))),
+    Promise.all(bootstrapIds.map((id) => getTv(id).catch(() => null))),
+  ]);
+
+  const statsToCache: ShowStat[] = [];
+  for (const tv of [...candidateDetails, ...bootstrapDetails]) {
+    if (!tv) continue;
+    const row = tvFollows.find((f) => f.tmdb_id === tv.id);
+    if (!row) continue;
+    const nextDate = tv.next_episode_to_air?.air_date ?? null;
+    // تُكتب الإحصاءات عند التهيئة الأولى أو حين يتغيّر موعد الحلقة القادمة
+    const needsBootstrap = row.aired_episodes == null;
+    const scheduleMoved = (row.next_air_date ?? null) !== nextDate;
+    if (needsBootstrap || scheduleMoved) {
+      statsToCache.push({
+        tmdbId: tv.id,
+        total: tv.number_of_episodes ?? 0,
+        aired: airedEpisodeCount(tv),
+        nextAirDate: nextDate,
+      });
+    }
+  }
 
   let nextUp: { tv: TvDetails; queue: NextEpisode[] } | null = null;
 
-  for (const cand of nextUpCandidates.slice(0, 3)) {
-    // صفوف الحلقات التفصيلية تُقرأ لهذا المسلسل وحده، لا لكل المكتبة
-    const keys = await getWatchedForShow(cand.tv.id);
-    const ep = nextUnwatchedEpisode(cand.tv, keys);
+  for (let n = 0; n < candidateIds.length; n++) {
+    const tv = candidateDetails[n];
+    if (!tv) continue;
+    const keys = candidateWatched[n];
+    const ep = nextUnwatchedEpisode(tv, keys);
     if (!ep) continue;
 
-    // طلب واحد فقط لجلب أسماء الحلقات وصورها — نأخذ الحلقة وما بعدها
-    // في نفس الموسم حتى تتقدّم البطاقة بلا انتظار الخادم.
-    const season = await getSeason(cand.tv.id, ep.season).catch(() => null);
-    const airedCap = airedPerSeason(cand.tv).get(ep.season) ?? 0;
+    // طلب واحد لأسماء الحلقات وصورها — الحلقة وما بعدها في الموسم نفسه،
+    // حتى تتقدّم البطاقة بلا انتظار الخادم
+    const season = await getSeason(tv.id, ep.season).catch(() => null);
+    const airedCap = airedPerSeason(tv).get(ep.season) ?? 0;
 
     const queue: NextEpisode[] = [];
-    for (let n = ep.episode; n <= airedCap && queue.length < 6; n++) {
-      if (keys.has(episodeKey(ep.season, n))) continue;
-      const d = season?.episodes.find((e) => e.episode_number === n) ?? null;
+    for (let k = ep.episode; k <= airedCap && queue.length < 6; k++) {
+      if (keys.has(episodeKey(ep.season, k))) continue;
+      const d = season?.episodes.find((e) => e.episode_number === k) ?? null;
       queue.push({
         season: ep.season,
-        episode: n,
+        episode: k,
         name: d?.name ?? null,
-        stillUrl: backdropUrl(d?.still_path ?? cand.tv.backdrop_path, "w780"),
-        runtime: d?.runtime ?? cand.tv.episode_run_time?.[0] ?? null,
+        stillUrl: backdropUrl(d?.still_path ?? tv.backdrop_path, "w780"),
+        runtime: d?.runtime ?? tv.episode_run_time?.[0] ?? null,
       });
     }
     if (!queue.length) continue;
 
-    nextUp = { tv: cand.tv, queue };
+    nextUp = { tv, queue };
     break;
   }
 
@@ -262,7 +264,7 @@ export default async function HomePage() {
       date: u.date,
       showTmdbId: Number(u.key.replace("tv-", "")),
       title: u.title,
-      label: u.badge ?? "",
+      label: "",
     }));
 
   // ===== مسلسلاتي: كل ما تتابعه، الأقرب إلى الاستئناف أولاً =====
@@ -378,10 +380,10 @@ export default async function HomePage() {
         <Section title={t.myShows} icon="tv" href="/library?filter=tv" seeAll={t.seeAll}>
           {myShows.map((i) => (
             <PosterCard
-              key={`ms-${i.tv.id}`}
-              href={`/show/${i.tv.id}`}
-              title={i.tv.name}
-              posterPath={i.tv.poster_path}
+              key={`ms-${i.id}`}
+              href={`/show/${i.id}`}
+              title={i.name}
+              posterPath={i.posterPath}
               progress={i.progress}
               badge={
                 i.watched === 0

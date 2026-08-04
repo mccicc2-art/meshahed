@@ -1,13 +1,14 @@
 import Link from "next/link";
 import { getT } from "@/lib/locale";
+import { Icon } from "@/components/Icon";
 
 export default async function NotFound() {
   const { t } = await getT();
 
   return (
     <div className="max-w-md mx-auto text-center py-20">
-      <div className="text-5xl mb-4" aria-hidden>
-        🔍
+      <div className="grid place-items-center mb-4 text-muted" aria-hidden>
+        <Icon name="search" size={44} />
       </div>
       <h1 className="text-xl font-bold">{t.notFoundTitle}</h1>
       <p className="text-sm text-muted leading-relaxed mt-2">{t.notFoundBody}</p>

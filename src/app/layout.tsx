@@ -65,7 +65,7 @@ export default async function RootLayout({
           </HeaderShell>
         </Suspense>
         {/* مساحة سفلية على الجوال حتى لا يغطي شريط التبويبات المحتوى */}
-        <main id="main" className="flex-1 w-full max-w-6xl mx-auto px-4 py-6 pb-28 md:pb-6">
+        <main id="main" className="flex-1 w-full max-w-6xl mx-auto px-4 py-6">
           {children}
         </main>
         <footer className="text-center text-xs text-muted py-6 pb-28 md:pb-6">{t.footer}</footer>
