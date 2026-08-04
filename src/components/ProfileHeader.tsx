@@ -45,7 +45,14 @@ function VerifiedMark({ size = 18, title }: { size?: number; title: string }) {
       </defs>
       <g fill="url(#verified-gold)">
         <rect x="4.2" y="4.2" width="15.6" height="15.6" rx="5.2" />
-        <rect x="4.2" y="4.2" width="15.6" height="15.6" rx="5.2" transform="rotate(45 12 12)" />
+        <rect
+          x="4.2"
+          y="4.2"
+          width="15.6"
+          height="15.6"
+          rx="5.2"
+          transform="rotate(45 12 12)"
+        />
       </g>
       <path
         d="m8.4 12.3 2.5 2.5 4.7-5"
@@ -139,7 +146,7 @@ export function ProfileHeader({
       </div>
 
       {/* ===== كتلة الهوية ===== */}
-      <div className="flex items-end gap-3.5 pe-16 -mt-[6.5rem] sm:-mt-[7rem] relative z-10">
+      <div className="flex items-end gap-3 pe-16 -mt-[5.25rem] sm:-mt-[5.75rem] relative z-10">
         {/* حلقة متدرّجة حول الصورة: تفصلها عن الغلاف وتعطيها ثقل المرجع */}
         <Link href="/profile/settings?s=profile" className="shrink-0">
           <span
@@ -152,7 +159,7 @@ export function ProfileHeader({
             <Avatar
               src={avatarUrl}
               name={displayName}
-              size={90}
+              size={74}
               alt={t.avatarAlt}
               className="ring-[3px] ring-[color:var(--background)]"
             />
@@ -161,10 +168,10 @@ export function ProfileHeader({
 
         <div className="min-w-0 flex-1 pb-1">
           <div className="flex items-center gap-2 min-w-0">
-            <h1 className="text-xl sm:text-2xl font-bold truncate drop-shadow-[0_2px_6px_rgba(0,0,0,0.7)]">
+            <h1 className="text-lg sm:text-xl font-bold truncate drop-shadow-[0_2px_6px_rgba(0,0,0,0.7)]">
               {displayName}
             </h1>
-            {verified && <VerifiedMark title={t.verifiedTitle} />}
+            {verified && <VerifiedMark size={17} title={t.verifiedTitle} />}
           </div>
 
           {username && (
@@ -174,65 +181,26 @@ export function ProfileHeader({
           )}
 
           <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[13px] text-white/75 leading-tight mt-1 drop-shadow">
-            <Link href="/people" className="shrink-0 hover:text-white transition">
-              <span className="font-bold text-white tabular-nums">{followers}</span>{" "}
+            <Link
+              href="/people"
+              className="shrink-0 hover:text-white transition"
+            >
+              <span className="font-bold text-white tabular-nums">
+                {followers}
+              </span>{" "}
               {t.followersLabel}
             </Link>
             <span className="opacity-40 shrink-0">•</span>
-            <Link href="/people" className="shrink-0 hover:text-white transition">
-              <span className="font-bold text-white tabular-nums">{following}</span>{" "}
+            <Link
+              href="/people"
+              className="shrink-0 hover:text-white transition"
+            >
+              <span className="font-bold text-white tabular-nums">
+                {following}
+              </span>{" "}
               {t.followingLabel}
             </Link>
           </div>
-
-          {/* التعليقات والتقييمات كبسولةٌ محدودة: رقمان صغيران لا يستحقّان
-              كلمتين، والإطار يفصلهما عن سطر المتابعات فوقهما */}
-          <div className="inline-flex items-center rounded-full border border-white/20 bg-black/30 backdrop-blur mt-2">
-            <Link
-              href="/ratings?with=comments"
-              title={t.panelComments}
-              aria-label={`${comments} ${t.panelComments}`}
-              className="flex items-center gap-1.5 ps-3.5 pe-3 py-1.5 text-[13px] text-white/85 hover:text-white transition"
-            >
-              <Icon name="comment" size={15} />
-              <span className="font-bold tabular-nums">{comments}</span>
-            </Link>
-            <span className="w-px h-4 bg-white/20" aria-hidden />
-            <Link
-              href="/ratings"
-              title={t.panelRatings}
-              aria-label={`${ratings} ${t.panelRatings}`}
-              className="flex items-center gap-1.5 ps-3 pe-3.5 py-1.5 text-[13px] text-white/85 hover:text-white transition"
-            >
-              <Icon name="star" size={15} />
-              <span className="font-bold tabular-nums">{ratings}</span>
-            </Link>
-          </div>
-        </div>
-      </div>
-
-      {/* ===== المستوى =====
-          `z-10` ليس زينة: الغلاف عنصرٌ `relative`، والعناصر الموضوعة
-          تُرسم فوق ما بعدها من عناصر التدفّق العادي — فكان سطر المستوى
-          يختفي تحت حافّة الصورة على الشاشة العريضة. */}
-      <div className="relative z-10 mt-4 px-0.5">
-        <p className="text-[13px] font-bold">
-          {t.levelLabel(level.level)} ·{" "}
-          <span className="text-accent">{levelName(level.level, t)}</span>
-        </p>
-        <div className="flex items-center gap-3 mt-1.5">
-          <div className="flex-1 h-[5px] rounded-full bg-surface-2 overflow-hidden">
-            <div
-              className="h-full rounded-full"
-              style={{
-                width: `${level.percent}%`,
-                background: "linear-gradient(90deg, var(--brand-3), var(--accent-2))",
-              }}
-            />
-          </div>
-          <span className="text-[12px] text-muted shrink-0 tabular-nums">
-            <span dir="ltr">{level.percent}%</span>
-          </span>
         </div>
       </div>
 
@@ -240,7 +208,7 @@ export function ProfileHeader({
           الأيقونة فوق الرقم وتحته كلمته، والخانة موسّطة — كتلة تُقرأ من
           أعلى لأسفل. والفواصل خطوطٌ محشورة لا حدودَ خانة: تبتعد عن إطار
           البطاقة فلا تلمس الحافّة. */}
-      <div className="relative z-10 mt-4 rounded-2xl border border-white/10 bg-[color:var(--surface)]/60 backdrop-blur-xl overflow-hidden">
+      <div className="relative z-10 mt-5 rounded-2xl border border-white/10 bg-[color:var(--surface)]/60 backdrop-blur-xl overflow-hidden">
         <div className="grid grid-cols-4">
           {stats.map((s, i) => {
             const cell = (
@@ -261,11 +229,19 @@ export function ProfileHeader({
               </>
             );
             const rule = i < stats.length - 1 && (
-              <span className="absolute inset-y-4 end-0 w-px bg-white/10" aria-hidden />
+              <span
+                className="absolute inset-y-4 end-0 w-px bg-white/10"
+                aria-hidden
+              />
             );
-            const box = "relative flex flex-col items-center justify-start text-center px-1 py-4";
+            const box =
+              "relative flex flex-col items-center justify-start text-center px-1 py-4";
             return s.href ? (
-              <Link key={s.key} href={s.href} className={`${box} hover:bg-white/5 transition`}>
+              <Link
+                key={s.key}
+                href={s.href}
+                className={`${box} hover:bg-white/5 transition`}
+              >
                 {rule}
                 {cell}
               </Link>
@@ -277,6 +253,51 @@ export function ProfileHeader({
             );
           })}
         </div>
+      </div>
+      {/* ===== المستوى =====
+          `z-10` ليس زينة: الغلاف عنصرٌ `relative`، والعناصر الموضوعة
+          تُرسم فوق ما بعدها من عناصر التدفّق العادي — فكان سطر المستوى
+          يختفي تحت حافّة الصورة على الشاشة العريضة. */}
+      <div className="relative z-10 mt-6 px-0.5">
+        <p className="text-[13px] font-bold">
+          {t.levelLabel(level.level)} ·{" "}
+          <span className="text-accent">{levelName(level.level, t)}</span>
+        </p>
+        <div className="flex items-center gap-3 mt-1.5">
+          <div className="flex-1 h-[5px] rounded-full bg-surface-2 overflow-hidden">
+            <div
+              className="h-full rounded-full"
+              style={{
+                width: `${level.percent}%`,
+                background:
+                  "linear-gradient(90deg, var(--brand-3), var(--accent-2))",
+              }}
+            />
+          </div>
+          <span className="text-[12px] text-muted shrink-0 tabular-nums">
+            <span dir="ltr">{level.percent}%</span>
+          </span>
+        </div>
+      </div>
+
+      {/* ===== المراجعات والتقييمات =====
+          سطر نصّ لا بطاقة: رقمان لا يصفان ميزةً بل يصفان الحساب، فمكانهما
+          بين بيانات الملف لا في صندوقٍ يزاحم بطاقة الأرقام فوقه. */}
+      <div className="relative z-10 mt-5 px-0.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px]">
+        <Link
+          href="/ratings?with=comments"
+          className="hover:brightness-125 transition"
+        >
+          <span className="font-semibold tabular-nums">{comments}</span>{" "}
+          <span className="font-medium text-muted">{t.reviewsLabel}</span>
+        </Link>
+        <span className="text-muted/50" aria-hidden>
+          •
+        </span>
+        <Link href="/ratings" className="hover:brightness-125 transition">
+          <span className="font-semibold tabular-nums">{ratings}</span>{" "}
+          <span className="font-medium text-muted">{t.ratingLabel}</span>
+        </Link>
       </div>
     </section>
   );
