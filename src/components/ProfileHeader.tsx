@@ -74,9 +74,10 @@ function VerifiedMark({ size = 18, title }: { size?: number; title: string }) {
  * أعلى. وكتلة الهوية ترتفع على الثلث الأسفل من الصورة فتُقرأ معها طبقةً
  * واحدة، لا شريطاً يبدأ بعد انتهائها.
  *
- * ثم المستوى سطراً عريضاً، ثم بطاقة الأرقام: أربع خانات، لكلٍّ أيقونتها
- * ولونها فوق رقمها. اللون يسبق القراءة — تُعرف خانة الأفلام من ورديّتها
- * قبل أن تُقرأ كلمتها.
+ * ثم بطاقة الأرقام: أربع خانات، لكلٍّ أيقونتها ولونها فوق رقمها. اللون
+ * يسبق القراءة — تُعرف خانة الأفلام من ورديّتها قبل أن تُقرأ كلمتها. ثم
+ * سطر المراجعات والتقييمات ملتصقاً بها — رقمان يكمّلان أرقام البطاقة
+ * فمكانهما تحتها لا بعد المستوى — ثم المستوى آخراً.
  */
 export function ProfileHeader({
   displayName,
@@ -113,7 +114,7 @@ export function ProfileHeader({
   return (
     <section>
       {/* ===== الغلاف ===== */}
-      <div className="relative h-[17.5rem] sm:h-[22.5rem] -mx-4 -mt-[calc(1.5rem+env(safe-area-inset-top))] sm:mx-0 sm:mt-0 sm:rounded-3xl overflow-hidden">
+      <div className="relative h-[15.75rem] sm:h-[20.25rem] -mx-4 -mt-[calc(1.5rem+env(safe-area-inset-top))] sm:mx-0 sm:mt-0 sm:rounded-3xl overflow-hidden">
         {coverUrl ? (
           <Image
             src={coverUrl}
@@ -124,8 +125,9 @@ export function ProfileHeader({
             sizes="(max-width: 640px) 100vw, 1152px"
             /* `object-cover` يملأ العرض بلا تشويه، و`35%` رأسياً يرفع
                الإطار فيظهر أعلى الصورة — السماء والغيم — بدل أن يقتصّه
-               التوسيط في غلافٍ عريض */
-            className="object-cover object-[50%_35%]"
+               التوسيط في غلافٍ عريض. و٣٠٪ بعد تقصير الغلاف تُبقي القدر
+               نفسه من السماء في ارتفاعٍ أقلّ. */
+            className="object-cover object-[50%_30%]"
           />
         ) : (
           <div
@@ -262,11 +264,30 @@ export function ProfileHeader({
           })}
         </div>
       </div>
+      {/* ===== المراجعات والتقييمات =====
+          سطر نصّ لا بطاقة: رقمان لا يصفان ميزةً بل يصفان الحساب، فمكانهما
+          بين بيانات الملف لا في صندوقٍ يزاحم بطاقة الأرقام فوقه. */}
+      <div className="relative z-10 mt-4 px-0.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px]">
+        <Link
+          href="/ratings?with=comments"
+          className="hover:brightness-125 transition"
+        >
+          <span className="font-semibold tabular-nums">{comments}</span>{" "}
+          <span className="font-medium text-muted">{t.reviewsLabel}</span>
+        </Link>
+        <span className="text-[color:var(--disabled)]" aria-hidden>
+          •
+        </span>
+        <Link href="/ratings" className="hover:brightness-125 transition">
+          <span className="font-semibold tabular-nums">{ratings}</span>{" "}
+          <span className="font-medium text-muted">{t.ratingLabel}</span>
+        </Link>
+      </div>
       {/* ===== المستوى =====
           `z-10` ليس زينة: الغلاف عنصرٌ `relative`، والعناصر الموضوعة
           تُرسم فوق ما بعدها من عناصر التدفّق العادي — فكان سطر المستوى
           يختفي تحت حافّة الصورة على الشاشة العريضة. */}
-      <div className="relative z-10 mt-6 px-0.5">
+      <div className="relative z-10 mt-5 px-0.5">
         <p className="text-[13px] font-bold">
           {t.levelLabel(level.level)} ·{" "}
           <span className="text-accent">{levelName(level.level, t)}</span>
@@ -286,26 +307,6 @@ export function ProfileHeader({
             <span dir="ltr">{level.percent}%</span>
           </span>
         </div>
-      </div>
-
-      {/* ===== المراجعات والتقييمات =====
-          سطر نصّ لا بطاقة: رقمان لا يصفان ميزةً بل يصفان الحساب، فمكانهما
-          بين بيانات الملف لا في صندوقٍ يزاحم بطاقة الأرقام فوقه. */}
-      <div className="relative z-10 mt-5 px-0.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px]">
-        <Link
-          href="/ratings?with=comments"
-          className="hover:brightness-125 transition"
-        >
-          <span className="font-semibold tabular-nums">{comments}</span>{" "}
-          <span className="font-medium text-muted">{t.reviewsLabel}</span>
-        </Link>
-        <span className="text-[color:var(--disabled)]" aria-hidden>
-          •
-        </span>
-        <Link href="/ratings" className="hover:brightness-125 transition">
-          <span className="font-semibold tabular-nums">{ratings}</span>{" "}
-          <span className="font-medium text-muted">{t.ratingLabel}</span>
-        </Link>
       </div>
     </section>
   );
