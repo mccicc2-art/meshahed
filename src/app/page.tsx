@@ -269,6 +269,11 @@ export default async function HomePage() {
   const hours = Math.round(totalMinutes / 60);
   const watchTime = hours < 24 ? t.hours(hours) : t.days(Math.floor(hours / 24));
 
+  // «للمشاهدة»: ما لم يكتمل من المسلسلات وما لم يُشاهَد من الأفلام —
+  // العدد نفسه الذي تعرضه المكتبة في تبويبها
+  const toWatchCount =
+    unfinished.length + movieFollows.filter((f) => !watchedMovieIds.has(f.tmdb_id)).length;
+
   const headerStats: HeaderStat[] = [
     {
       key: "shows",
@@ -284,28 +289,14 @@ export default async function HomePage() {
       label: t.panelMovies,
       href: "/library?filter=movie",
     },
+    {
+      key: "towatch",
+      icon: "bookmark",
+      value: String(toWatchCount),
+      label: t.libToWatch,
+      href: "/library",
+    },
     { key: "time", icon: "clock", value: watchTime, label: t.statWatchTime, href: "/stats" },
-    {
-      key: "episodes",
-      icon: "check",
-      value: String(watchedEpisodeTotal),
-      label: t.statsWatchedEpisodes,
-      href: "/diary",
-    },
-    {
-      key: "comments",
-      icon: "comment",
-      value: String(myComments),
-      label: t.panelComments,
-      href: "/ratings?with=comments",
-    },
-    {
-      key: "ratings",
-      icon: "star",
-      value: String(myRatingsCount),
-      label: t.panelRatings,
-      href: "/ratings",
-    },
   ];
 
   return (
@@ -322,6 +313,8 @@ export default async function HomePage() {
         stats={headerStats}
         followers={followStats.followers}
         following={followStats.following}
+        comments={myComments}
+        ratings={myRatingsCount}
         verified
         locale={locale}
       />
