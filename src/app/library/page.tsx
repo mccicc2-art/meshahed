@@ -1,38 +1,18 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import {
-  getUser,
-  getFollows,
-  getAllWatchedEpisodes,
-  getWatchedMovieIds,
-  getAllMovieProgress,
-} from "@/lib/data";
-import { getTv, getMovie, getSeason } from "@/lib/tmdb";
-import { posterUrl } from "@/lib/media";
+import { getUser, getFollows, getAllWatchedEpisodes, getWatchedMovieIds } from "@/lib/data";
 import { getT } from "@/lib/locale";
 import { localizeFollows } from "@/lib/localize";
-import { nextUnwatchedEpisode, airedEpisodeCount } from "@/lib/progress";
-import { episodeKey } from "@/lib/keys";
-import { whenLabel, formatDate } from "@/lib/when";
 import { Icon } from "@/components/Icon";
-import {
-  LibraryView,
-  type ShowRow,
-  type ShowUpcomingRow,
-  type MovieRow,
-} from "@/components/LibraryView";
-
-/** سقف الطلبات الخارجية: مكتبة ضخمة لا تفتح مئة اتصال */
-const TV_LIMIT = 24;
-const MOVIE_LIMIT = 24;
-const SEASON_LIMIT = 8;
+import { LibraryGrid, type GridItem } from "@/components/LibraryGrid";
 
 /**
  * المكتبة.
  *
- * تبويبان: مسلسلات وأفلام، وتحت كلٍّ منهما «للمشاهدة» و«القادم». الصفّ
- * يجيب عن سؤال الصفحة مباشرةً — الحلقة التالية بالضبط وكم باقٍ بعدها —
- * وزرّ التأشير في طرفه يغني عن فتح صفحة العمل لحلقة واحدة.
+ * تبويبان — مسلسلات وأفلام — وكلٌّ شبكةُ ملصقات. كل ما تعرضه مخزّنٌ
+ * عندنا في صفوف المتابعة والمشاهدة، فالصفحة لا تفتح اتصالاً واحداً مع
+ * TMDB: كانت النسخة السابقة تطلب تفاصيل كل عملٍ لتعرض «الحلقة التالية»،
+ * وذلك السؤال صار للرئيسية في قسمَي «للمشاهدة» و«القادم».
  */
 export default async function LibraryPage({
   searchParams,
@@ -46,151 +26,66 @@ export default async function LibraryPage({
   const { filter } = await searchParams;
   const initialTab = filter === "movie" ? "movies" : "shows";
 
-  const [followRows, watchedEpisodes, watchedMovieIds, movieProgress] = await Promise.all([
+  const [followRows, watchedEpisodes, watchedMovieIds] = await Promise.all([
     getFollows(),
     getAllWatchedEpisodes(),
     getWatchedMovieIds(),
-    getAllMovieProgress(),
   ]);
-
-  // أسماء المكتبة وملصقاتها بلغة الواجهة لا بلغة يوم المتابعة
   const follows = await localizeFollows(followRows, locale);
 
-  // مفاتيح الحلقات المشاهَدة لكل مسلسل — تُبنى من قراءة واحدة لا من قراءة
-  // لكل مسلسل، ومنها يُشتقّ العدد والحلقة التالية معاً
-  const keysByShow = new Map<number, Set<string>>();
+  // عدد المشاهَد لكل مسلسل من قراءةٍ واحدة
+  const watchedByShow = new Map<number, number>();
   for (const w of watchedEpisodes) {
-    if (!keysByShow.has(w.show_tmdb_id)) keysByShow.set(w.show_tmdb_id, new Set());
-    keysByShow.get(w.show_tmdb_id)!.add(episodeKey(w.season_number, w.episode_number));
+    watchedByShow.set(w.show_tmdb_id, (watchedByShow.get(w.show_tmdb_id) ?? 0) + 1);
   }
 
-  const tvFollows = follows.filter((f) => f.media_type === "tv").slice(0, TV_LIMIT);
-  const movieFollows = follows.filter((f) => f.media_type === "movie").slice(0, MOVIE_LIMIT);
-
-  const [tvDetails, movieDetails] = await Promise.all([
-    Promise.all(tvFollows.map((f) => getTv(f.tmdb_id).catch(() => null))),
-    Promise.all(movieFollows.map((f) => getMovie(f.tmdb_id).catch(() => null))),
-  ]);
-
-  const today = new Date().toISOString().slice(0, 10);
-  const weekday = new Intl.DateTimeFormat(locale === "en" ? "en-GB" : "ar", {
-    weekday: "long",
-    timeZone: "UTC",
-  });
-
-  const shows: ShowRow[] = [];
-  const showsUpcoming: ShowUpcomingRow[] = [];
-
-  tvFollows.forEach((f, i) => {
-    const tv = tvDetails[i];
-    const keys = keysByShow.get(f.tmdb_id) ?? new Set<string>();
-    const aired = f.aired_episodes ?? (tv ? airedEpisodeCount(tv) : (f.total_episodes ?? 0));
-    const watchedCount = keys.size;
-
-    const next = tv ? nextUnwatchedEpisode(tv, keys) : null;
-    if (next) {
-      shows.push({
-        tmdbId: f.tmdb_id,
+  // الترتيب داخل كل تبويب: ما أنت في وسطه، ثم ما لم تبدأه، ثم المكتمل
+  const shows: (GridItem & { rank: number; progressSort: number })[] = follows
+    .filter((f) => f.media_type === "tv")
+    .map((f) => {
+      const aired = f.aired_episodes ?? f.total_episodes ?? 0;
+      const watched = Math.min(watchedByShow.get(f.tmdb_id) ?? 0, aired || Infinity);
+      const done = aired > 0 && watched >= aired && watched > 0;
+      const progress = aired > 0 ? Math.round((watched / aired) * 100) : 0;
+      return {
+        key: `tv-${f.tmdb_id}`,
+        href: `/show/${f.tmdb_id}`,
         title: f.title,
-        posterUrl: posterUrl(f.poster_path, "w185"),
-        season: next.season,
-        episode: next.episode,
-        episodeName: null,
-        // الباقي بعد هذه الحلقة
-        remaining: Math.max(0, aired - watchedCount - 1),
-        runtime: tv?.episode_run_time?.[0] ?? null,
-        started: watchedCount > 0,
-      });
-    }
+        posterPath: f.poster_path,
+        progress,
+        badge: watched === 0 ? t.notStartedBadge : done ? t.watchedBadge : undefined,
+        badgeTone: (done ? "watched" : "neutral") as GridItem["badgeTone"],
+        count: watched > 0 && aired > watched ? aired - watched : undefined,
+        rank: watched > 0 && !done ? 0 : watched === 0 ? 1 : 2,
+        progressSort: progress,
+      };
+    })
+    .sort((a, b) => a.rank - b.rank || b.progressSort - a.progressSort);
 
-    const up = tv?.next_episode_to_air;
-    const date = up?.air_date ?? f.next_air_date ?? null;
-    if (date && date >= today) {
-      showsUpcoming.push({
-        tmdbId: f.tmdb_id,
+  const movies: (GridItem & { rank: number })[] = follows
+    .filter((f) => f.media_type === "movie")
+    .map((f) => {
+      const done = watchedMovieIds.has(f.tmdb_id);
+      return {
+        key: `mv-${f.tmdb_id}`,
+        href: `/movie/${f.tmdb_id}`,
         title: f.title,
-        posterUrl: posterUrl(f.poster_path, "w185"),
-        season: up?.season_number ?? 0,
-        episode: up?.episode_number ?? 0,
-        episodeName: up?.name ?? null,
-        date,
-        dayLabel: weekday.format(new Date(`${date}T12:00:00Z`)),
-        whenLabel: whenLabel(date, t),
-      });
-    }
-  });
-
-  showsUpcoming.sort((a, b) => a.date.localeCompare(b.date));
-
-  // أسماء الحلقات لأوّل صفوف «للمشاهدة» فقط: الاسم زينة مفيدة لا شرطٌ
-  // لقراءة الصفّ، ولا يستحقّ طلباً لكل مسلسل في المكتبة
-  const named = shows.slice(0, SEASON_LIMIT);
-  const seasons = await Promise.all(
-    named.map((r) => getSeason(r.tmdbId, r.season).catch(() => null)),
-  );
-  named.forEach((r, i) => {
-    r.episodeName = seasons[i]?.episodes.find((e) => e.episode_number === r.episode)?.name ?? null;
-  });
-
-  const movies: MovieRow[] = [];
-  const moviesUpcoming: MovieRow[] = [];
-  const monthFmt = new Intl.DateTimeFormat(locale === "en" ? "en-GB" : "ar", {
-    month: "long",
-    year: "numeric",
-    timeZone: "UTC",
-  });
-
-  movieFollows.forEach((f, i) => {
-    if (watchedMovieIds.has(f.tmdb_id)) return;
-    const m = movieDetails[i];
-    const release = m?.release_date ?? null;
-    const prog = movieProgress.find((p) => p.movie_tmdb_id === f.tmdb_id);
-
-    if (release && release >= today) {
-      moviesUpcoming.push({
-        tmdbId: f.tmdb_id,
-        title: f.title,
-        posterUrl: posterUrl(f.poster_path, "w185"),
-        meta: formatDate(release, t),
-        when: whenLabel(release, t),
-        groupLabel: monthFmt.format(new Date(`${release}T12:00:00Z`)),
-        runtime: m?.runtime ?? null,
-      });
-      return;
-    }
-
-    movies.push({
-      tmdbId: f.tmdb_id,
-      title: f.title,
-      posterUrl: posterUrl(f.poster_path, "w185"),
-      meta: prog
-        ? t.minuteBadge(prog.position_minutes)
-        : release
-          ? release.slice(0, 4)
-          : t.typeMovie,
-      groupLabel: t.libToWatch,
-      runtime: m?.runtime ?? prog?.runtime_minutes ?? null,
-    });
-  });
+        posterPath: f.poster_path,
+        progress: done ? 100 : undefined,
+        badge: done ? t.watchedBadge : t.typeMovie,
+        badgeTone: (done ? "watched" : "neutral") as GridItem["badgeTone"],
+        rank: done ? 1 : 0,
+      };
+    })
+    .sort((a, b) => a.rank - b.rank);
 
   return (
     <div>
-      <h1 className="text-xl font-bold mb-3">{t.libraryTitle}</h1>
+      <h1 className="text-xl font-bold mb-4">{t.libraryTitle}</h1>
 
-      {follows.length === 0 ? (
-        <p className="text-center text-muted py-20">{t.libraryEmpty}</p>
-      ) : (
-        <LibraryView
-          shows={shows}
-          showsUpcoming={showsUpcoming}
-          movies={movies}
-          moviesUpcoming={moviesUpcoming}
-          locale={locale}
-          initialTab={initialTab}
-        />
-      )}
+      <LibraryGrid shows={shows} movies={movies} locale={locale} initialTab={initialTab} />
 
-      <div className="mt-6 grid grid-cols-3 gap-2">
+      <div className="mt-8 grid grid-cols-3 gap-2">
         <Link
           href="/stats"
           className="flex items-center justify-center gap-2 text-xs text-muted hover:text-accent border border-dashed border-border rounded-xl py-3 transition"
