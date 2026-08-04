@@ -36,12 +36,12 @@ export async function getSuggestions(limit = 12): Promise<Recommendation[]> {
   const recentShowIds = lastWatchedOrder.slice(0, 2);
   const followSeeds = follows.filter((f) => !recentShowIds.includes(f.tmdb_id)).slice(0, 3);
 
-  // أربع نجوم فأكثر بذرة، ونجمتان فأقل استبعاد — التقييم إشارة في اتجاهين
+  // ثماني درجات فأكثر بذرة، وأربع فأقل استبعاد — السلّم من عشرة
   const lovedSeeds = myRatings
-    .filter((r) => r.rating >= 4)
+    .filter((r) => r.rating >= 8)
     .sort((a, b) => b.rating - a.rating || b.updated_at.localeCompare(a.updated_at))
     .slice(0, 3);
-  const dislikedIds = myRatings.filter((r) => r.rating <= 2).map((r) => r.tmdb_id);
+  const dislikedIds = myRatings.filter((r) => r.rating <= 4).map((r) => r.tmdb_id);
 
   const favGenres = profile?.favorite_genres ?? [];
 

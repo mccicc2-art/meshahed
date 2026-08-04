@@ -44,6 +44,18 @@ function safeImageUrl(value: string | null | undefined): string | null {
   }
 }
 
+
+/**
+ * رسالة فشلٍ واحدة للمستخدم مهما كان الخطأ.
+ *
+ * نصّ خطأ Postgres يكشف أسماء الجداول والقيود ولا يفيد مستخدماً — يُسجَّل
+ * للخادم ويُستبدل برسالةٍ مفهومة.
+ */
+function fail(error: unknown): never {
+  console.error("[action]", error);
+  throw new Error("تعذّر إتمام العملية، جرّب مرة أخرى / Something went wrong, try again.");
+}
+
 export async function updateProfile(input: {
   nickname: string;
   username?: string;
@@ -89,7 +101,7 @@ export async function updateProfile(input: {
     // 23505 = تعارض في فهرس فريد (اسم المستخدم محجوز)
     if (error.code === "23505")
       throw new Error("اسم المستخدم محجوز، جرّب غيره. / Username is taken, try another.");
-    throw new Error(error.message);
+    fail(error);
   }
 
   revalidatePath("/", "layout");
@@ -141,7 +153,7 @@ export async function toggleReaction(input: {
       },
       { onConflict: "user_id,tmdb_id,media_type,reaction" },
     );
-    if (error) throw new Error(error.message);
+    if (error) fail(error);
   } else {
     const { error } = await supabase.from("post_reactions").delete().match({
       user_id: user.id,
@@ -149,7 +161,7 @@ export async function toggleReaction(input: {
       media_type: input.mediaType,
       reaction: "fire",
     });
-    if (error) throw new Error(error.message);
+    if (error) fail(error);
   }
 
   revalidatePath("/news");
@@ -239,7 +251,7 @@ export async function watchUpTo(input: {
   const { error } = await supabase
     .from("watched_episodes")
     .upsert(rows, { onConflict: "user_id,show_tmdb_id,season_number,episode_number" });
-  if (error) throw new Error(error.message);
+  if (error) fail(error);
 
   revalidatePath("/");
   revalidatePath("/stats");
@@ -289,7 +301,7 @@ export async function saveMovieProgress(input: {
       },
       { onConflict: "user_id,movie_tmdb_id" },
     );
-    if (error) throw new Error(error.message);
+    if (error) fail(error);
   }
 
   revalidatePath("/");
@@ -410,7 +422,7 @@ export async function saveRating(input: {
     },
     { onConflict: "user_id,tmdb_id,media_type" },
   );
-  if (error) throw new Error(error.message);
+  if (error) fail(error);
 
   // التقييم يظهر في صفحة العمل وصفحتي العامة فقط — لا داعي لإبطال التطبيق كاملاً
   revalidatePath(`/${input.mediaType === "tv" ? "show" : "movie"}/${input.tmdbId}`);
@@ -424,7 +436,7 @@ export async function deleteRating(input: { tmdbId: number; mediaType: MediaType
     tmdb_id: input.tmdbId,
     media_type: input.mediaType,
   });
-  if (error) throw new Error(error.message);
+  if (error) fail(error);
   revalidatePath(`/${input.mediaType === "tv" ? "show" : "movie"}/${input.tmdbId}`);
   revalidatePath("/");
 }
@@ -437,7 +449,7 @@ export async function followUser(targetId: string) {
   const { error } = await supabase
     .from("user_follows")
     .upsert({ follower_id: user.id, following_id: targetId }, { onConflict: "follower_id,following_id" });
-  if (error) throw new Error(error.message);
+  if (error) fail(error);
   // عدّادات المتابعة تظهر في الرئيسية وصفحات المستخدمين فقط
   revalidatePath("/");
   revalidatePath("/u/[username]", "page");
@@ -449,7 +461,7 @@ export async function unfollowUser(targetId: string) {
     .from("user_follows")
     .delete()
     .match({ follower_id: user.id, following_id: targetId });
-  if (error) throw new Error(error.message);
+  if (error) fail(error);
   revalidatePath("/");
   revalidatePath("/u/[username]", "page");
 }
@@ -551,7 +563,7 @@ export async function createList(name: string, isPublic = false): Promise<string
     .insert({ user_id: user.id, name: clean, is_public: isPublic })
     .select("id")
     .single();
-  if (error) throw new Error(error.message);
+  if (error) fail(error);
 
   revalidatePath("/lists");
   return data?.id ?? null;
@@ -565,7 +577,7 @@ export async function renameList(listId: string, name: string, isPublic: boolean
     .from("user_lists")
     .update({ name: clean, is_public: isPublic, updated_at: new Date().toISOString() })
     .eq("id", listId);
-  if (error) throw new Error(error.message);
+  if (error) fail(error);
   revalidatePath("/lists");
   revalidatePath(`/lists/${listId}`);
 }
@@ -573,7 +585,7 @@ export async function renameList(listId: string, name: string, isPublic: boolean
 export async function deleteList(listId: string) {
   const { supabase } = await requireUser();
   const { error } = await supabase.from("user_lists").delete().eq("id", listId);
-  if (error) throw new Error(error.message);
+  if (error) fail(error);
   revalidatePath("/lists");
 }
 
@@ -599,7 +611,7 @@ export async function toggleInList(input: {
       },
       { onConflict: "list_id,tmdb_id,media_type" },
     );
-    if (error) throw new Error(error.message);
+    if (error) fail(error);
   } else {
     const { error } = await supabase
       .from("user_list_items")
@@ -607,7 +619,7 @@ export async function toggleInList(input: {
       .eq("list_id", input.listId)
       .eq("tmdb_id", input.tmdbId)
       .eq("media_type", input.mediaType);
-    if (error) throw new Error(error.message);
+    if (error) fail(error);
   }
 
   revalidatePath("/lists");
@@ -644,7 +656,7 @@ export async function toggleReviewLike(
     ? await supabase.from("review_likes").delete().match(key)
     : await supabase.from("review_likes").insert(key);
 
-  if (error) throw new Error(error.message);
+  if (error) fail(error);
   revalidatePath("/");
   revalidatePath(`/${mediaType === "tv" ? "show" : "movie"}/${tmdbId}`);
 }
@@ -679,7 +691,7 @@ export async function markShowWatched(tmdbId: number) {
     const { error } = await supabase
       .from("watched_episodes")
       .upsert(rows, { onConflict: "user_id,show_tmdb_id,season_number,episode_number" });
-    if (error) throw new Error(error.message);
+    if (error) fail(error);
   }
   revalidatePath("/");
   revalidatePath("/library");
@@ -698,7 +710,7 @@ export async function setDropped(tmdbId: number, mediaType: MediaType, dropped: 
     .from("follows")
     .update({ dropped })
     .match({ user_id: user.id, tmdb_id: tmdbId, media_type: mediaType });
-  if (error) throw new Error(error.message);
+  if (error) fail(error);
   revalidatePath("/");
   revalidatePath("/library");
 }
