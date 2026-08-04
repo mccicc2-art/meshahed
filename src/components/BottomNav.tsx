@@ -106,8 +106,8 @@ export function BottomNav({ locale }: { locale: Locale }) {
 
   const tabs = [
     { href: "/", label: t.navHome, Icon: IconHome },
-    { href: "/news", label: t.navNews, Icon: IconNews },
     { href: "/library", label: t.navLibrary, Icon: IconLibrary },
+    { href: "/news", label: t.navNews, Icon: IconNews },
     { href: "/people", label: t.navPeople, Icon: IconPeople },
   ];
 
