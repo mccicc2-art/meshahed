@@ -18,6 +18,8 @@ import {
   yearOf,
   type SearchResult,
 } from "@/lib/tmdb";
+import { getWatchedForShow } from "@/lib/data";
+import { nextUnwatchedEpisode } from "@/lib/progress";
 import { getT } from "@/lib/locale";
 import { localizeFollows } from "@/lib/localize";
 import { airedEpisodeCount, percentOf } from "@/lib/progress";
@@ -27,7 +29,6 @@ import { PosterRail, RailItem } from "@/components/PosterRail";
 import type { IconName } from "@/components/Icon";
 import { ProfileHeader, type HeaderStat } from "@/components/ProfileHeader";
 import { getLevel, levelPoints } from "@/lib/level";
-import { WeekStrip, type WeekEntry } from "@/components/WeekStrip";
 import { ShowStatsSync, type ShowStat } from "@/components/ShowStatsSync";
 
 export default async function HomePage() {
@@ -188,6 +189,26 @@ export default async function HomePage() {
     return (ai < 0 ? 9999 : ai) - (bi < 0 ? 9999 : bi);
   });
 
+  /* بطاقات «أكمل المشاهدة» عريضة بصورة المشهد ورقم الحلقة، وكلاهما ليس في
+     صفّ المتابعة. فتُطلب تفاصيلها من TMDB وحلقاتها المشاهَدة من قاعدتنا —
+     لأربع بطاقات فقط، وهي أوّل ما تراه العين في الصفحة. الطلب مخبّأ ساعةً،
+     فالكلفة تُدفع مرّةً لا مرّةً لكل فتح. */
+  const CONTINUE_CARDS = 4;
+  const continueTop = continueRow.slice(0, CONTINUE_CARDS);
+  const continueExtra = await Promise.all(
+    continueTop.map(async (i) => {
+      const [tv, keys] = await Promise.all([
+        getTv(i.id).catch(() => null),
+        getWatchedForShow(i.id).catch(() => new Set<string>()),
+      ]);
+      const next = tv ? nextUnwatchedEpisode(tv, keys) : null;
+      return {
+        backdropPath: tv?.backdrop_path ?? null,
+        episodeLabel: next ? `S${next.season} E${next.episode}` : null,
+      };
+    }),
+  );
+
   // مستخدم بلا مكتبة يذهب لشاشة الانضمام بدل صفحة فارغة
   if (follows.length === 0) redirect("/welcome");
 
@@ -201,32 +222,6 @@ export default async function HomePage() {
   const trend = showTrending ? await trending().catch(() => [] as SearchResult[]) : [];
 
   const displayName = profile?.nickname || user.email?.split("@")[0] || "";
-
-  // ===== الأيام السبعة القادمة =====
-  // نبني التواريخ من كائن زمن واحد: قراءتان منفصلتان للوقت قد تقعان على
-  // جانبي منتصف الليل فينزاح التقويم يوماً
-  const nowTs = new Date();
-  const weekDays = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(nowTs.getTime() + i * 86400000);
-    return {
-      date: d.toISOString().slice(0, 10),
-      weekday: new Intl.DateTimeFormat(locale === "en" ? "en-GB" : "ar", {
-        weekday: "short",
-        timeZone: "UTC",
-      }).format(d),
-      dayNum: new Intl.DateTimeFormat("en-GB", { day: "numeric", timeZone: "UTC" }).format(d),
-    };
-  });
-  const weekEnd = weekDays[6].date;
-
-  const weekEntries: WeekEntry[] = upcoming
-    .filter((u) => u.date >= weekDays[0].date && u.date <= weekEnd && u.key.startsWith("tv-"))
-    .map((u) => ({
-      date: u.date,
-      showTmdbId: Number(u.key.replace("tv-", "")),
-      title: u.title,
-      label: "",
-    }));
 
   // ===== مسلسلاتي: كل ما تتابعه، الأقرب إلى الاستئناف أولاً =====
   const myShows = [...items].sort((a, b) => {
@@ -281,6 +276,7 @@ export default async function HomePage() {
       value: String(tvFollows.length),
       label: t.panelShows,
       href: "/library?filter=tv",
+      color: "var(--accent)",
     },
     {
       key: "movies",
@@ -288,6 +284,7 @@ export default async function HomePage() {
       value: String(movieFollows.length),
       label: t.panelMovies,
       href: "/library?filter=movie",
+      color: "var(--accent-2)",
     },
     {
       key: "towatch",
@@ -295,8 +292,16 @@ export default async function HomePage() {
       value: String(toWatchCount),
       label: t.libToWatch,
       href: "/library",
+      color: "var(--brand-3)",
     },
-    { key: "time", icon: "clock", value: watchTime, label: t.statWatchTime, href: "/stats" },
+    {
+      key: "time",
+      icon: "clock",
+      value: watchTime,
+      label: t.statWatchTime,
+      href: "/stats",
+      color: "var(--accent)",
+    },
   ];
 
   return (
@@ -305,6 +310,7 @@ export default async function HomePage() {
 
       <ProfileHeader
         displayName={displayName}
+        username={profile?.username ?? null}
         avatarUrl={profile?.avatar_url ?? null}
         coverUrl={profile?.cover_url ?? null}
         level={level}
@@ -324,22 +330,28 @@ export default async function HomePage() {
         </section>
       )}
 
-      {continueRow.length > 0 && (
-        <Section title={t.continueWatching} icon="play" href="/library" seeAll={t.seeAll}>
-          {continueRow.map((i) => (
+      {continueTop.length > 0 && (
+        <Section
+          title={t.continueWatching}
+          icon="play"
+          iconColor="var(--accent)"
+          href="/library"
+          seeAll={t.seeAll}
+          wide
+        >
+          {continueTop.map((i, n) => (
             <ContinueCard
               key={`c-${i.id}`}
               href={`/show/${i.id}`}
               title={i.name}
+              backdropPath={continueExtra[n]?.backdropPath ?? null}
               posterPath={i.posterPath}
               progress={i.progress}
+              episodeLabel={continueExtra[n]?.episodeLabel}
             />
           ))}
         </Section>
       )}
-
-      <span id="week" className="block scroll-mt-20" />
-      <WeekStrip days={weekDays} entries={weekEntries} locale={locale} />
 
       <span id="watching" className="block scroll-mt-20" />
 
@@ -348,7 +360,13 @@ export default async function HomePage() {
           الأولى. الترتيب يقدّم ما أنت في وسطه ثم ما لم تبدأه ثم ما أنهيته —
           فأول ملصق تراه هو غالباً ما ستفتحه. */}
       {myShows.length > 0 && (
-        <Section title={t.myShows} icon="tv" href="/library?filter=tv" seeAll={t.seeAll}>
+        <Section
+          title={t.myShows}
+          icon="tv"
+          iconColor="var(--accent)"
+          href="/library?filter=tv"
+          seeAll={t.seeAll}
+        >
           {myShows.map((i) => (
             <PosterCard
               key={`ms-${i.id}`}
@@ -356,12 +374,13 @@ export default async function HomePage() {
               title={i.name}
               posterPath={i.posterPath}
               progress={i.progress}
+              count={i.watched > 0 && i.aired > i.watched ? i.aired - i.watched : undefined}
               badge={
                 i.watched === 0
                   ? t.notStartedBadge
                   : i.aired > 0 && i.watched >= i.aired
-                    ? "✓"
-                    : `${i.progress}%`
+                    ? t.watchedBadge
+                    : undefined
               }
             />
           ))}
@@ -369,7 +388,13 @@ export default async function HomePage() {
       )}
 
       {myMovies.length > 0 && (
-        <Section title={t.myMovies} icon="film" href="/library?filter=movie" seeAll={t.seeAll}>
+        <Section
+          title={t.myMovies}
+          icon="film"
+          iconColor="var(--accent-2)"
+          href="/library?filter=movie"
+          seeAll={t.seeAll}
+        >
           {myMovies.map((m) => (
             <PosterCard
               key={`mm-${m.tmdbId}`}
@@ -420,24 +445,38 @@ export default async function HomePage() {
 function Section({
   title,
   icon,
+  iconColor,
   subtitle,
   href,
   seeAll,
+  wide = false,
   children,
 }: {
   title: string;
   icon?: IconName;
+  iconColor?: string;
   subtitle?: string;
   href?: string;
   seeAll?: string;
+  /** بطاقات عريضة بصورة المشهد بدل الملصق */
+  wide?: boolean;
   children: React.ReactNode;
 }) {
   const items = (Array.isArray(children) ? children.flat() : [children]).filter(Boolean);
   if (!items.length) return null;
   return (
-    <PosterRail title={title} icon={icon} subtitle={subtitle} href={href} seeAllLabel={seeAll}>
+    <PosterRail
+      title={title}
+      icon={icon}
+      iconColor={iconColor}
+      subtitle={subtitle}
+      href={href}
+      seeAllLabel={seeAll}
+    >
       {items.map((child, i) => (
-        <RailItem key={i}>{child}</RailItem>
+        <RailItem key={i} wide={wide}>
+          {child}
+        </RailItem>
       ))}
     </PosterRail>
   );
