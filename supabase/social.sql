@@ -8,7 +8,7 @@ create table if not exists public.ratings (
   user_id     uuid not null references auth.users (id) on delete cascade,
   tmdb_id     integer not null,
   media_type  text not null check (media_type in ('tv', 'movie')),
-  rating      smallint not null check (rating between 1 and 5),
+  rating      smallint not null check (rating between 1 and 10),
   review      text,
   title       text,
   poster_path text,
