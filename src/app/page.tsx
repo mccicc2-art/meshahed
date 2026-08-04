@@ -5,27 +5,23 @@ import {
   getFollows,
   getAllWatchedEpisodes,
   getWatchSummary,
-  getWatchedForShow,
   getWatchedMovieIds,
   getProfile,
   getAllMovieProgress,
   getMyRatings,
+  getFollowStats,
 } from "@/lib/data";
 import {
   getTv,
-  getSeason,
   trending,
   titleOf,
   yearOf,
-  type TvDetails,
   type SearchResult,
 } from "@/lib/tmdb";
-import { backdropUrl } from "@/lib/media";
 import { getT } from "@/lib/locale";
-import { airedEpisodeCount, airedPerSeason, percentOf, nextUnwatchedEpisode } from "@/lib/progress";
-import { episodeKey } from "@/lib/keys";
+import { airedEpisodeCount, percentOf } from "@/lib/progress";
 import { PosterCard } from "@/components/PosterCard";
-import { HeroNextUp, type NextEpisode } from "@/components/HeroNextUp";
+import { ContinueCard } from "@/components/ContinueCard";
 import { PosterRail, RailItem } from "@/components/PosterRail";
 import type { IconName } from "@/components/Icon";
 import { ProfileHeader, type HeaderStat } from "@/components/ProfileHeader";
@@ -41,7 +37,7 @@ export default async function HomePage() {
 
   // ملخّص مجمّع: صف لكل مسلسل بدل صف لكل حلقة (آلاف الصفوف سابقاً).
   // صفوف الحلقات التفصيلية تُقرأ لاحقاً لمسلسل واحد فقط — صاحب «الحلقة التالية».
-  const [follows, summary, watchedMovieIds, profile, movieProgress, myRatings] =
+  const [follows, summary, watchedMovieIds, profile, movieProgress, myRatings, followStats] =
     await Promise.all([
       getFollows(),
       getWatchSummary(),
@@ -49,6 +45,7 @@ export default async function HomePage() {
       getProfile(),
       getAllMovieProgress(),
       getMyRatings(),
+      getFollowStats(user.id),
     ]);
 
   const myRatingsCount = myRatings.length;
@@ -154,77 +151,38 @@ export default async function HomePage() {
   // ثلاثة مرشّحين على الأكثر، وتفاصيلهم وحلقاتهم المشاهَدة تُطلب دفعةً
   // واحدة: كان كل مرشّح ينتظر الذي قبله، فست رحلات متتابعة قبل أن تُرسم
   // البطاقة. الآن رحلتان: موجة متوازية ثم طلب موسمٍ واحد.
-  const candidateIds = [...continueWatching]
-    .sort((a, b) => {
-      const ai = lastWatchedOrder.indexOf(a.id);
-      const bi = lastWatchedOrder.indexOf(b.id);
-      return (ai < 0 ? 9999 : ai) - (bi < 0 ? 9999 : bi);
-    })
-    .slice(0, 3)
-    .map((i) => i.id);
-
   // الصفوف التي لم يُحسب لها عدد حلقات بعد تحتاج TMDB مرة واحدة لتهيئتها
   const bootstrapIds = tvFollows
-    .filter((f) => f.aired_episodes == null && !candidateIds.includes(f.tmdb_id))
+    .filter((f) => f.aired_episodes == null)
     .slice(0, 12)
     .map((f) => f.tmdb_id);
 
-  const [candidateDetails, candidateWatched, bootstrapDetails] = await Promise.all([
-    Promise.all(candidateIds.map((id) => getTv(id).catch(() => null))),
-    Promise.all(candidateIds.map((id) => getWatchedForShow(id))),
-    Promise.all(bootstrapIds.map((id) => getTv(id).catch(() => null))),
-  ]);
+  const bootstrapDetails = await Promise.all(
+    bootstrapIds.map((id) => getTv(id).catch(() => null)),
+  );
 
   const statsToCache: ShowStat[] = [];
-  for (const tv of [...candidateDetails, ...bootstrapDetails]) {
+  for (const tv of bootstrapDetails) {
     if (!tv) continue;
     const row = tvFollows.find((f) => f.tmdb_id === tv.id);
     if (!row) continue;
     const nextDate = tv.next_episode_to_air?.air_date ?? null;
-    // تُكتب الإحصاءات عند التهيئة الأولى أو حين يتغيّر موعد الحلقة القادمة
-    const needsBootstrap = row.aired_episodes == null;
-    const scheduleMoved = (row.next_air_date ?? null) !== nextDate;
-    if (needsBootstrap || scheduleMoved) {
-      statsToCache.push({
-        tmdbId: tv.id,
-        total: tv.number_of_episodes ?? 0,
-        aired: airedEpisodeCount(tv),
-        nextAirDate: nextDate,
-      });
-    }
+    statsToCache.push({
+      tmdbId: tv.id,
+      total: tv.number_of_episodes ?? 0,
+      aired: airedEpisodeCount(tv),
+      nextAirDate: nextDate,
+    });
   }
 
-  let nextUp: { tv: TvDetails; queue: NextEpisode[] } | null = null;
-
-  for (let n = 0; n < candidateIds.length; n++) {
-    const tv = candidateDetails[n];
-    if (!tv) continue;
-    const keys = candidateWatched[n];
-    const ep = nextUnwatchedEpisode(tv, keys);
-    if (!ep) continue;
-
-    // طلب واحد لأسماء الحلقات وصورها — الحلقة وما بعدها في الموسم نفسه،
-    // حتى تتقدّم البطاقة بلا انتظار الخادم
-    const season = await getSeason(tv.id, ep.season).catch(() => null);
-    const airedCap = airedPerSeason(tv).get(ep.season) ?? 0;
-
-    const queue: NextEpisode[] = [];
-    for (let k = ep.episode; k <= airedCap && queue.length < 6; k++) {
-      if (keys.has(episodeKey(ep.season, k))) continue;
-      const d = season?.episodes.find((e) => e.episode_number === k) ?? null;
-      queue.push({
-        season: ep.season,
-        episode: k,
-        name: d?.name ?? null,
-        stillUrl: backdropUrl(d?.still_path ?? tv.backdrop_path, "w780"),
-        runtime: d?.runtime ?? tv.episode_run_time?.[0] ?? null,
-      });
-    }
-    if (!queue.length) continue;
-
-    nextUp = { tv, queue };
-    break;
-  }
+  // ===== أكمل المشاهدة =====
+  // ما أنت في وسطه، الأحدث مشاهدةً أولاً — صفٌّ واحد حلّ محلّ البطاقة
+  // العريضة التي كانت تعرض عملاً واحداً وتأخذ ثلث الشاشة
+  const continueRow = [...continueWatching].sort((a, b) => {
+    const ai = lastWatchedOrder.indexOf(a.id);
+    const bi = lastWatchedOrder.indexOf(b.id);
+    return (ai < 0 ? 9999 : ai) - (bi < 0 ? 9999 : bi);
+  });
 
   // مستخدم بلا مكتبة يذهب لشاشة الانضمام بدل صفحة فارغة
   if (follows.length === 0) redirect("/welcome");
@@ -358,6 +316,9 @@ export default async function HomePage() {
         level={level}
         alerts={waitingForYou.length}
         stats={headerStats}
+        followers={followStats.followers}
+        following={followStats.following}
+        verified
         locale={locale}
       />
 
@@ -367,13 +328,18 @@ export default async function HomePage() {
         </section>
       )}
 
-      {nextUp && (
-        <HeroNextUp
-          showTmdbId={nextUp.tv.id}
-          showName={nextUp.tv.name}
-          queue={nextUp.queue}
-          locale={locale}
-        />
+      {continueRow.length > 0 && (
+        <Section title={t.continueWatching} icon="play" href="/library" seeAll={t.seeAll}>
+          {continueRow.map((i) => (
+            <ContinueCard
+              key={`c-${i.id}`}
+              href={`/show/${i.id}`}
+              title={i.name}
+              posterPath={i.posterPath}
+              progress={i.progress}
+            />
+          ))}
+        </Section>
       )}
 
       <span id="week" className="block scroll-mt-20" />
