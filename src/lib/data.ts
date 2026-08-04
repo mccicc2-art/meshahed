@@ -75,13 +75,31 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
     // الاحتياط لعمودٍ ناقص لا لصفٍّ غير موجود: الحساب الجديد بلا صفّ يُرجع
     // null بلا خطأ، وكان يدفع استعلاماً ثانياً ضائعاً في كل طلب
     if (error) {
-      const legacy = await supabase
+      // درجتان من التراجع لا واحدة: العمود الأحدث وحده هو الغائب غالباً،
+      // والسقوط مباشرةً إلى أقدم قائمة أعمدة كان يُفقد الغلاف والثيم —
+      // ظهر ذلك عياناً حين نُشر الكود قبل تشغيل ملف SQL الخاص بعموده
+      const mid = await supabase
         .from("profiles")
-        .select("id, nickname, username, avatar_url, favorite_genres")
+        .select("id, nickname, username, avatar_url, cover_url, theme, favorite_genres, hide_name")
         .eq("id", user.id)
         .maybeSingle();
-      if (legacy.data) {
-        data = { ...legacy.data, cover_url: null, theme: null, hide_name: false, home_prefs: null };
+      if (mid.data) {
+        data = { ...mid.data, home_prefs: null };
+      } else {
+        const legacy = await supabase
+          .from("profiles")
+          .select("id, nickname, username, avatar_url, favorite_genres")
+          .eq("id", user.id)
+          .maybeSingle();
+        if (legacy.data) {
+          data = {
+            ...legacy.data,
+            cover_url: null,
+            theme: null,
+            hide_name: false,
+            home_prefs: null,
+          };
+        }
       }
     }
 
