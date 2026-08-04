@@ -1,9 +1,10 @@
+import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
 import Image from "next/image";
 import {
   getUser,
-  getFollows,
-  getWatchedMovieIds,
+  isFollowing,
+  isMovieWatched,
   getMovieProgress,
   getMyRating,
   getCommunityRating,
@@ -33,27 +34,13 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
   const movieId = Number(id);
   if (!Number.isFinite(movieId)) notFound();
 
-  const movie = await getMovie(movieId).catch(() => null);
-  if (!movie) {
-    return (
-      <p className="text-center text-muted py-24">{t.movieLoadFailed}</p>
-    );
-  }
-
-  const [
-    follows,
-    watchedIds,
-    mProgress,
-    myRating,
-    community,
-    titleReviews,
-    trailer,
-    watchWhere,
-    myLists,
-    inLists,
-  ] = await Promise.all([
-      getFollows(),
-      getWatchedMovieIds(),
+  // بيانات TMDB وبيانات المستخدم تُطلب معاً: لا شيء منها يعتمد على الآخر،
+  // وانتظار الأولى قبل الثانية كان يضيف رحلة كاملة إلى الخادم
+  const [movie, following, watched, mProgress, myRating, community, titleReviews, trailer, watchWhere, myLists, inLists] =
+    await Promise.all([
+      getMovie(movieId).catch(() => null),
+      isFollowing(movieId, "movie"),
+      isMovieWatched(movieId),
       getMovieProgress(movieId),
       getMyRating(movieId, "movie"),
       getCommunityRating(movieId, "movie"),
@@ -63,8 +50,28 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
       getMyLists(),
       getListsContaining(movieId, "movie"),
     ]);
-  const following = follows.some((f) => f.tmdb_id === movieId && f.media_type === "movie");
-  const watched = watchedIds.has(movieId);
+
+  if (!movie) {
+    return (
+      <div className="text-center py-24">
+        <p className="text-muted mb-4">{t.movieLoadFailed}</p>
+        <div className="flex items-center justify-center gap-2">
+          <Link
+            href="/"
+            className="px-4 py-2 rounded-xl bg-accent text-[color:var(--on-accent)] text-sm font-semibold"
+          >
+            {t.navHome}
+          </Link>
+          <Link
+            href="/search"
+            className="px-4 py-2 rounded-xl border border-border text-sm text-muted hover:text-foreground transition"
+          >
+            {t.navSearch}
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   const backdrop = backdropUrl(movie.backdrop_path);
   const poster = posterUrl(movie.poster_path, "w342");
