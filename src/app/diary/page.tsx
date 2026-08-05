@@ -1,25 +1,24 @@
 import Link from "next/link";
-import Image from "next/image";
 import { redirect } from "next/navigation";
 import { getUser, getWatchHistory, getFollows, getAllMovieProgress } from "@/lib/data";
 import { getT } from "@/lib/locale";
 import { posterUrl } from "@/lib/media";
 import { formatDate } from "@/lib/when";
-import { Icon } from "@/components/Icon";
+import { DiaryList, type DiaryDay, type DiaryEntry } from "@/components/DiaryList";
 
 /**
  * سجلّ المشاهدة.
  *
- * مجموعٌ باليوم لا مسرودٌ صفّاً صفّاً: من يفتح سجلّه يسأل «وش سويت أمس»
- * لا «ما رقم الحلقة الرابعة والعشرين». وأسماء الأعمال وملصقاتها من صفوف
- * المتابعة المخزّنة عندنا — لا طلب TMDB واحد، فالصفحة تفتح فوراً مهما طال
- * السجلّ.
+ * أيامٌ مطويّة تُفتح بالضغط، وحلقات المسلسل الواحد في اليوم الواحد
+ * صفٌّ واحد باسمه وعدد حلقاته ومداها — «S2 · E3–E7» — لا سطرٌ لكل
+ * حلقة. التجميع كلّه هنا على الخادم من بياناتٍ مخزّنة عندنا، والعميل
+ * لا يحمل إلا الطيّ والفتح.
  */
 export default async function DiaryPage() {
   const user = await getUser();
   if (!user) redirect("/login");
 
-  const { t } = await getT();
+  const { locale, t } = await getT();
 
   const [history, follows, movieProgress] = await Promise.all([
     getWatchHistory(),
@@ -37,25 +36,97 @@ export default async function DiaryPage() {
     if (!meta.has(key) && m.title) meta.set(key, { title: m.title, poster: m.poster_path });
   }
 
-  // تجميع باليوم مع الحفاظ على ترتيب الأحدث
-  const days = new Map<string, typeof history>();
-  for (const row of history) {
-    const day = row.watchedAt.slice(0, 10);
-    if (!days.has(day)) days.set(day, []);
-    days.get(day)!.push(row);
+  // ===== تجميع باليوم، وداخل اليوم بالعمل =====
+  interface Group {
+    kind: "tv" | "movie";
+    tmdbId: number;
+    count: number;
+    minutes: number;
+    minS: number;
+    maxS: number;
+    minE: number;
+    maxE: number;
   }
 
-  // التسميات تُحسب مرة واحدة خارج الرسم: «اليوم» و«أمس» تُقارَن بتاريخ
-  // الطلب لا بتاريخ كل صفّ، فلا يختلف الجواب بين سطرٍ وآخر
+  const dayGroups = new Map<string, Map<string, Group>>();
+  for (const row of history) {
+    const day = row.watchedAt.slice(0, 10);
+    const kind = row.kind === "movie" ? "movie" : "tv";
+    const key = `${kind}-${row.tmdbId}`;
+    if (!dayGroups.has(day)) dayGroups.set(day, new Map());
+    const groups = dayGroups.get(day)!;
+    const g = groups.get(key);
+    const s = row.season ?? 0;
+    const e = row.episode ?? 0;
+    if (!g) {
+      groups.set(key, {
+        kind,
+        tmdbId: row.tmdbId,
+        count: 1,
+        minutes: row.runtime ?? (kind === "movie" ? 110 : 40),
+        minS: s,
+        maxS: s,
+        minE: e,
+        maxE: e,
+      });
+    } else {
+      g.count++;
+      g.minutes += row.runtime ?? (kind === "movie" ? 110 : 40);
+      // أول حلقة في المدى: موسمٌ أصغر يستبدل، وموسمٌ مساوٍ يقارن الحلقة
+      if (s < g.minS) {
+        g.minS = s;
+        g.minE = e;
+      } else if (s === g.minS) {
+        g.minE = Math.min(g.minE, e);
+      }
+      // آخر حلقة في المدى بنفس المنطق معكوساً
+      if (s > g.maxS) {
+        g.maxS = s;
+        g.maxE = e;
+      } else if (s === g.maxS) {
+        g.maxE = Math.max(g.maxE, e);
+      }
+    }
+  }
+
+  // التسميات تُحسب مرة واحدة: «اليوم» و«أمس» تُقارَن بتاريخ الطلب
   const now = new Date();
   const today = now.toISOString().slice(0, 10);
   const yesterday = new Date(now.getTime() - 86400000).toISOString().slice(0, 10);
-  const labels = new Map<string, string>(
-    [...days.keys()].map((day) => [
+
+  const days: DiaryDay[] = [...dayGroups.entries()].map(([day, groups]) => {
+    const entries: DiaryEntry[] = [...groups.entries()].map(([key, g]) => {
+      const info = meta.get(key);
+      let label: string;
+      if (g.kind === "movie") {
+        label = t.typeMovie;
+      } else if (g.count === 1) {
+        label = t.diaryEpisode(g.minS, g.minE);
+      } else if (g.minS === g.maxS) {
+        // مدى داخل موسمٍ واحد — أدقّ وصفٍ وأقصره
+        label = `${t.diaryEpsGrouped(g.count)} · S${g.minS} · E${g.minE}–E${g.maxE}`;
+      } else {
+        label = `${t.diaryEpsGrouped(g.count)} · S${g.minS}–S${g.maxS}`;
+      }
+      return {
+        key: `${day}-${key}`,
+        href: g.kind === "movie" ? `/movie/${g.tmdbId}` : `/show/${g.tmdbId}`,
+        title: info?.title ?? `#${g.tmdbId}`,
+        poster: posterUrl(info?.poster ?? null, "w185"),
+        kind: g.kind,
+        label,
+        minutes: g.minutes,
+      };
+    });
+
+    return {
       day,
-      day === today ? t.diaryToday : day === yesterday ? t.diaryYesterday : formatDate(day, t),
-    ]),
-  );
+      label:
+        day === today ? t.diaryToday : day === yesterday ? t.diaryYesterday : formatDate(day, t),
+      countLabel: t.diaryDayCount(entries.length),
+      entries,
+    };
+  });
 
   return (
     <div>
@@ -67,62 +138,10 @@ export default async function DiaryPage() {
       </div>
       <p className="text-xs text-muted mb-5">{t.diarySub}</p>
 
-      {days.size === 0 ? (
+      {days.length === 0 ? (
         <p className="text-center text-muted py-20 text-sm">{t.diaryEmpty}</p>
       ) : (
-        <div className="space-y-6">
-          {[...days.entries()].map(([day, rows]) => (
-            <section key={day}>
-              <div className="flex items-baseline gap-2 mb-2">
-                <h2 className="text-sm font-bold">{labels.get(day)}</h2>
-                <span className="text-[11px] text-muted">{t.diaryDayCount(rows.length)}</span>
-              </div>
-
-              <ul className="rounded-2xl border border-border bg-surface overflow-hidden divide-y divide-border">
-                {rows.map((r, i) => {
-                  const key = `${r.kind === "movie" ? "movie" : "tv"}-${r.tmdbId}`;
-                  const info = meta.get(key);
-                  const href =
-                    r.kind === "movie" ? `/movie/${r.tmdbId}` : `/show/${r.tmdbId}`;
-                  const img = posterUrl(info?.poster ?? null, "w185");
-                  return (
-                    <li key={`${key}-${r.season ?? 0}-${r.episode ?? 0}-${i}`}>
-                      <Link
-                        href={href}
-                        prefetch={false}
-                        className="flex items-center gap-2.5 px-3 py-2 hover:bg-surface-2 transition"
-                      >
-                        <span className="relative w-8 h-12 shrink-0 rounded-md overflow-hidden bg-surface-2 border border-border">
-                          {img && (
-                            <Image src={img} alt="" fill sizes="32px" className="object-cover" />
-                          )}
-                        </span>
-
-                        <span className="min-w-0 flex-1">
-                          <span className="block text-[13px] font-medium truncate leading-tight">
-                            {info?.title ?? `#${r.tmdbId}`}
-                          </span>
-                          <span className="block text-[11px] text-muted mt-0.5">
-                            {r.kind === "episode" && r.season != null && r.episode != null
-                              ? t.diaryEpisode(r.season, r.episode)
-                              : t.typeMovie}
-                            {r.runtime ? ` · ${t.runtimeMin(r.runtime)}` : ""}
-                          </span>
-                        </span>
-
-                        <Icon
-                          name={r.kind === "movie" ? "film" : "tv"}
-                          size={15}
-                          className="text-muted/70"
-                        />
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-            </section>
-          ))}
-        </div>
+        <DiaryList days={days} locale={locale} />
       )}
     </div>
   );
