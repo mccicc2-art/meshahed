@@ -20,7 +20,6 @@ import {
   backdropUrl,
   posterUrl,
 } from "@/lib/tmdb";
-import { FollowButton } from "@/components/FollowButton";
 import { EpisodeTracker, type SeasonSummary } from "@/components/EpisodeTracker";
 import { getT } from "@/lib/locale";
 import { RatingBox } from "@/components/RatingBox";
@@ -29,7 +28,9 @@ import { DetailTabs } from "@/components/DetailTabs";
 import { Icon, SectionTitle } from "@/components/Icon";
 import { Trailer } from "@/components/Trailer";
 import { WhereToWatch } from "@/components/WhereToWatch";
-import { ListPicker } from "@/components/ListPicker";
+import { TitleActions } from "@/components/TitleActions";
+import { DetailTopBar } from "@/components/DetailTopBar";
+import { ReadMore } from "@/components/ReadMore";
 import { formatDate } from "@/lib/when";
 import { ShowStatsSync } from "@/components/ShowStatsSync";
 import { airedEpisodeCount, airedPerSeason } from "@/lib/progress";
@@ -156,23 +157,26 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
 
       {/* الترويسة مختصرة: القصة والترايلر والمنصّات والآراء في تبويبات،
           فلا يمرّ من يريد الحلقات على أربعة أقسام قبلها */}
-      <div className="relative -mx-4 -mt-6 h-40 sm:h-64 mb-4">
+      <div className="relative -mx-4 -mt-6 h-44 sm:h-72 mb-4">
         {backdrop && (
-          <Image src={backdrop} alt="" fill priority className="object-cover opacity-40" />
+          <Image src={backdrop} alt="" fill priority className="object-cover opacity-45" />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-[color:var(--background)] via-[color:var(--background)]/40 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[color:var(--background)] via-[color:var(--background)]/35 to-transparent" />
+        <DetailTopBar title={tv.name} locale={locale} />
       </div>
 
-      <div className="flex gap-4 -mt-20 sm:-mt-24 relative px-1">
-        <div className="w-24 sm:w-40 shrink-0">
-          <div className="relative aspect-[2/3] rounded-xl overflow-hidden border border-border bg-surface-2 shadow-xl">
+      <div className="flex gap-4 -mt-24 sm:-mt-28 relative px-1">
+        <div className="w-28 sm:w-40 shrink-0">
+          <div className="relative aspect-[2/3] rounded-2xl overflow-hidden ring-1 ring-white/10 bg-surface-2 shadow-[0_18px_44px_rgba(0,0,0,0.55)]">
             {poster && <Image src={poster} alt={tv.name} fill sizes="160px" className="object-cover" />}
           </div>
         </div>
 
         <div className="flex-1 min-w-0 self-end pb-1">
-          <h1 className="text-lg sm:text-2xl font-bold leading-tight">{tv.name}</h1>
-          <div className="flex flex-wrap items-center gap-x-2 text-xs sm:text-sm text-muted mt-1">
+          <h1 className="text-xl sm:text-3xl font-extrabold leading-tight tracking-tight">
+            {tv.name}
+          </h1>
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs sm:text-sm text-muted mt-1.5">
             {/* وسم الأنمي: يعرفه المستخدم من الشارة لا من قراءة الأنواع */}
             {isAnime(tv) && (
               <span className="inline-flex items-center gap-1 text-[11px] font-bold text-accent bg-accent/12 border border-accent/35 px-2 py-0.5 rounded-full">
@@ -181,32 +185,44 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
               </span>
             )}
             {tv.first_air_date && <span>{tv.first_air_date.slice(0, 4)}</span>}
-            <span>·</span>
+            <span aria-hidden>·</span>
             <span>{t.seasonsCount(tv.number_of_seasons)}</span>
             {tv.vote_average > 0 && (
               <>
-                <span>·</span>
-                <span className="text-accent">★ {tv.vote_average.toFixed(1)}</span>
+                <span aria-hidden>·</span>
+                <span className="text-accent font-semibold tabular-nums">
+                  ★ {tv.vote_average.toFixed(1)}
+                </span>
               </>
             )}
           </div>
 
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <FollowButton
-              tmdbId={tvId}
-              mediaType="tv"
-              title={tv.name}
-              posterPath={tv.poster_path}
-              initialFollowing={following}
-              locale={locale}
-            />
-            {next && next.air_date && (
-              <span className="text-[11px] text-accent-2 bg-accent-2/10 border border-accent-2/30 px-2.5 py-1.5 rounded-lg">
+          {next && next.air_date && (
+            <div className="mt-2.5">
+              <span className="inline-block text-[11px] text-accent-2 bg-accent-2/10 border border-accent-2/30 px-2.5 py-1.5 rounded-lg">
                 {t.nextEpisodeOn(formatDate(next.air_date, t))}
               </span>
-            )}
-          </div>
+            </div>
+          )}
         </div>
+      </div>
+
+      {/* الإجراء الرئيسي: أضف لقائمة + دائرة «شاهدتُه كله» — زرّ المتابعة
+          الكبير حُذف، فالمتابعة صارت أول صفٍّ داخل ورقة القوائم */}
+      <div className="mt-5 px-1">
+        <TitleActions
+          tmdbId={tvId}
+          mediaType="tv"
+          title={tv.name}
+          posterPath={tv.poster_path}
+          locale={locale}
+          initialFollowing={following}
+          lists={myLists.map((l) => ({ id: l.id, name: l.name }))}
+          containing={inLists}
+          episodesTotal={airedExact}
+          runtime={null}
+          initialDone={airedExact > 0 && watched.size >= airedExact}
+        />
       </div>
 
       <DetailTabs
@@ -216,36 +232,21 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
             label: t.tabEpisodes,
             icon: "list",
             content: (
-              <div className="space-y-4">
-                <EpisodeTracker
-                  showTmdbId={tvId}
-                  summaries={summaries}
-                  initialSeason={openSeason}
-                  initialEpisodes={initialEpisodes}
-                  airedTotal={airedExact}
-                  defaultRuntime={tv.episode_run_time?.[0] ?? null}
-                  initialWatched={[...watched]}
-                  locale={locale}
-                />
-                <RatingBox
-                  tmdbId={tvId}
-                  mediaType="tv"
-                  title={tv.name}
-                  posterPath={tv.poster_path}
-                  locale={locale}
-                  initialRating={myRating?.rating ?? null}
-                  initialReview={myRating?.review ?? null}
-                />
-                <ListPicker
-                  lists={myLists.map((l) => ({ id: l.id, name: l.name }))}
-                  containing={inLists}
-                  tmdbId={tvId}
-                  mediaType="tv"
-                  title={tv.name}
-                  posterPath={tv.poster_path}
-                  locale={locale}
-                />
-              </div>
+              /* التقييم صار في تبويب التعليقات والقوائم في زرّ الترويسة —
+                 لا شيء يتكرّر مرتين في الصفحة.
+                 والمفتاح على عدد المشاهَد: «شفته كله» من الأعلى يعيد بناء
+                 المتتبّع بالحالة الجديدة بعد تحديث الخادم. */
+              <EpisodeTracker
+                key={`w${watched.size}`}
+                showTmdbId={tvId}
+                summaries={summaries}
+                initialSeason={openSeason}
+                initialEpisodes={initialEpisodes}
+                airedTotal={airedExact}
+                defaultRuntime={tv.episode_run_time?.[0] ?? null}
+                initialWatched={[...watched]}
+                locale={locale}
+              />
             ),
           },
           {
@@ -253,24 +254,27 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
             label: t.tabInfo,
             icon: "info",
             content: (
-              <div className="space-y-6">
+              <div className="space-y-7">
                 {tv.overview && (
                   <section>
-                    <SectionTitle icon="info" className="mb-2">
+                    <SectionTitle icon="info" className="mb-2.5">
                       {t.storyTitle}
                     </SectionTitle>
-                    <p className="text-sm text-muted leading-relaxed">{tv.overview}</p>
+                    <ReadMore text={tv.overview} locale={locale} />
                   </section>
                 )}
 
-                <p className="text-xs text-muted">{t.episodesCount(tv.number_of_episodes)}</p>
-
-                {tv.genres.length > 0 && (
-                  <div className="flex flex-wrap gap-2">
+                {(tv.genres.length > 0 || tv.number_of_episodes > 0) && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    {tv.number_of_episodes > 0 && (
+                      <span className="text-xs font-medium text-muted bg-white/[0.04] border border-white/10 px-3 py-1.5 rounded-full tabular-nums">
+                        {t.episodesCount(tv.number_of_episodes)}
+                      </span>
+                    )}
                     {tv.genres.map((g) => (
                       <span
                         key={g.id}
-                        className="text-xs bg-surface-2 border border-border px-2.5 py-1 rounded-full"
+                        className="text-xs font-medium bg-white/[0.06] border border-white/10 px-3 py-1.5 rounded-full"
                       >
                         {g.name}
                       </span>
