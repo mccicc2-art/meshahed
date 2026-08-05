@@ -4,6 +4,7 @@
 import { cookies } from "next/headers";
 import { LOCALE_COOKIE } from "@/lib/i18n";
 import type { MediaType } from "@/lib/media";
+import type { BrowseGenre, BrowseSort, BrowseType } from "@/lib/browse";
 
 export {
   IMG,
@@ -198,6 +199,103 @@ export async function discoverByGenres(
   return data.results
     .filter((r) => r.poster_path)
     .map((r) => ({ ...r, media_type: mediaType }));
+}
+
+/**
+ * تصفّح مفتوح: نوع المحتوى + نوعٌ درامي + ترتيب.
+ *
+ * TMDB لا يملك مساراً واحداً يخلط الأفلام والمسلسلات في `discover` — لكلٍّ
+ * مساره ومعرّفات أنواعه. فحين يختار المستخدم «الكل» نطلب الجهتين معاً
+ * ونمزجهما بالتناوب لا بالترتيب: قيمة `popularity` عند TMDB ليست على سلّم
+ * واحد بين الأفلام والمسلسلات، فترتيبٌ مشترك عليها يُغرق إحدى الجهتين.
+ * التناوب يعطي صفّاً متوازناً بصرياً ويبقى وفيّاً لترتيب كل جهة داخلياً.
+ *
+ * وعتبة الأصوات ليست تجميلاً: `vote_average.desc` بلا عتبة يصدّر أعمالاً
+ * بصوتٍ واحد بعلامة ١٠، و«الأحدث» بلا عتبة يمتلئ بإصداراتٍ مجهولة تُضاف
+ * إلى قاعدة TMDB يومياً.
+ */
+export interface DiscoverPage {
+  results: SearchResult[];
+  /** هل بعد هذه الصفحة صفحة؟ (TMDB يقف عند ٥٠٠) */
+  hasMore: boolean;
+  /** تقدير عدد النتائج الكلي — لعنوان النتائج لا للحساب */
+  total: number;
+}
+
+export async function discoverTitles(
+  q: { type: BrowseType; genre: BrowseGenre | null; sort: BrowseSort },
+  page = 1,
+): Promise<DiscoverPage> {
+  const medias: MediaType[] = q.type === "all" ? ["movie", "tv"] : [q.type];
+  // نوعٌ بلا مقابلٍ في جهة (رعب في المسلسلات) لا يُطلب منها أصلاً
+  const wanted = medias.filter((m) => !q.genre || q.genre[m].length > 0);
+  if (!wanted.length) return { results: [], hasMore: false, total: 0 };
+
+  const safePage = Math.min(Math.max(1, Math.floor(page)), 500);
+  const today = new Date().toISOString().slice(0, 10);
+
+  const parts = await Promise.all(
+    wanted.map(async (media) => {
+      const params: Record<string, string> = {
+        include_adult: "false",
+        page: String(safePage),
+      };
+      // «|» لا «,»: المعرّفات بديلة لا مجتمعة — أكشن أو مغامرة
+      if (q.genre) params.with_genres = q.genre[media].join("|");
+      if (media === "tv") params.include_null_first_air_dates = "false";
+
+      if (q.sort === "top") {
+        params.sort_by = "vote_average.desc";
+        params["vote_count.gte"] = media === "movie" ? "300" : "150";
+      } else if (q.sort === "new") {
+        params.sort_by = media === "movie" ? "primary_release_date.desc" : "first_air_date.desc";
+        params[media === "movie" ? "primary_release_date.lte" : "first_air_date.lte"] = today;
+        params["vote_count.gte"] = media === "movie" ? "20" : "10";
+      } else {
+        params.sort_by = "popularity.desc";
+        params["vote_count.gte"] = media === "movie" ? "50" : "20";
+      }
+
+      try {
+        const data = await tmdb<{
+          results: SearchResult[];
+          page: number;
+          total_pages: number;
+          total_results: number;
+        }>(`/discover/${media}`, params);
+        return {
+          rows: (data.results ?? [])
+            .filter((r) => r.poster_path)
+            .map((r) => ({ ...r, media_type: media })),
+          hasMore: (data.page ?? 1) < Math.min(data.total_pages ?? 1, 500),
+          total: data.total_results ?? 0,
+        };
+      } catch {
+        // جهةٌ تعثّرت لا تُسقط الأخرى
+        return { rows: [] as SearchResult[], hasMore: false, total: 0 };
+      }
+    }),
+  );
+
+  const results: SearchResult[] = [];
+  const seen = new Set<string>();
+  const longest = Math.max(...parts.map((p) => p.rows.length), 0);
+  for (let i = 0; i < longest; i++) {
+    for (const part of parts) {
+      const row = part.rows[i];
+      if (!row) continue;
+      const key = `${row.media_type}-${row.id}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      results.push(row);
+    }
+  }
+
+  return {
+    results,
+    hasMore: parts.some((p) => p.hasMore),
+    total: parts.reduce((sum, p) => sum + p.total, 0),
+  };
 }
 
 // ترشيحات TMDB المبنية على عمل معيّن (تُستخدم كبذور لمحرّك الاقتراحات)
