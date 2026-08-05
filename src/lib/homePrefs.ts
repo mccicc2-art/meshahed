@@ -12,6 +12,22 @@ export const HOME_SECTIONS = [
 ] as const;
 export type HomeSection = (typeof HOME_SECTIONS)[number];
 
+/** خانات بطاقة الأرقام — ثمانية خيارات يعرض المستخدم منها ٢ إلى ٤ */
+export const HEADER_STATS = [
+  "shows",
+  "movies",
+  "towatch",
+  "time",
+  "episodes",
+  "upcoming",
+  "completed",
+  "dropped",
+] as const;
+export type HeaderStatKey = (typeof HEADER_STATS)[number];
+
+export const STATS_PICK_MIN = 2;
+export const STATS_PICK_MAX = 4;
+
 export interface HomePrefs {
   /** شريط المستوى */
   level: boolean;
@@ -23,6 +39,8 @@ export interface HomePrefs {
   social: boolean;
   /** ترتيب أقسام المحتوى، والغائب عن القائمة مخفيّ */
   order: HomeSection[];
+  /** خانات بطاقة الأرقام بترتيب عرضها — من ٢ إلى ٤ */
+  statsPick: HeaderStatKey[];
 }
 
 export const DEFAULT_HOME_PREFS: HomePrefs = {
@@ -33,6 +51,7 @@ export const DEFAULT_HOME_PREFS: HomePrefs = {
   // «مسلسلاتي» و«أفلامي» انتقلا إلى المكتبة، فليسا في الافتراضي —
   // لكنهما باقيان في قائمة الأقسام لمن يحبّ إرجاعهما من التخصيص
   order: ["continue", "week", "towatch", "upcoming", "trending"],
+  statsPick: ["shows", "movies", "towatch", "time"],
 };
 
 /**
@@ -62,11 +81,26 @@ export function sanitizeHomePrefs(raw: unknown): HomePrefs {
     if (clean.length) order = clean;
   }
 
+  // خانات البطاقة: المفاتيح المعروفة فقط، بلا تكرار، وبين ٢ و٤
+  let statsPick: HeaderStatKey[] = d.statsPick;
+  if (Array.isArray(o.statsPick)) {
+    const seen = new Set<string>();
+    const clean = o.statsPick.filter(
+      (s): s is HeaderStatKey =>
+        typeof s === "string" &&
+        (HEADER_STATS as readonly string[]).includes(s) &&
+        !seen.has(s) &&
+        !!seen.add(s),
+    );
+    if (clean.length >= STATS_PICK_MIN) statsPick = clean.slice(0, STATS_PICK_MAX);
+  }
+
   return {
     level: bool("level") as boolean,
     stats: bool("stats") as boolean,
     followers: bool("followers") as boolean,
     social: bool("social") as boolean,
     order,
+    statsPick,
   };
 }
