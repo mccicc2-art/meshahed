@@ -240,6 +240,8 @@ const ar = {
   finishedShowSub: (n: number) => `رحلة ${n} حلقة اكتملت — تستاهل!`,
   rateItBtn: "⭐ قيّمه",
   closeBtn: "إغلاق",
+  rateQuestion: "وش تقييمك له؟",
+  ratedThanks: "انحفظ تقييمك ✓",
   statsTopShows: "الأكثر مشاهدة",
   statsTopShowsSub: "مسلسلاتك مرتّبة بعدد الحلقات التي شاهدتها.",
   diaryEpsGrouped: (n: number) =>
@@ -784,6 +786,8 @@ const en: Dict = {
   finishedShowSub: (n: number) => `A ${n}-episode journey, complete. Well done!`,
   rateItBtn: "⭐ Rate it",
   closeBtn: "Close",
+  rateQuestion: "How would you rate it?",
+  ratedThanks: "Rating saved ✓",
   statsTopShows: "Most watched",
   statsTopShowsSub: "Your shows ranked by episodes watched.",
   diaryEpsGrouped: (n: number) => `${n} episode${n === 1 ? "" : "s"}`,
