@@ -62,3 +62,6 @@ src/
   proxy.ts        تحديث جلسة Supabase (كان اسمه middleware في إصدارات أقدم)
 supabase/schema.sql
 ```
+
+
+<!-- redeploy: re-trigger Vercel production build for latest main (cf61c30) -->
