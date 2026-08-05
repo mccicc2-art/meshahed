@@ -185,6 +185,57 @@ summary:focus-visible,
   animation-direction: reverse;
 }
 
+/* علامة «شاهدتُه»: تقفز من الصغر بارتدادٍ خفيف عند التأشير */
+@keyframes check-pop {
+  0% {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.18);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.check-pop {
+  animation: check-pop 0.28s cubic-bezier(0.2, 0.9, 0.35, 1.2) both;
+}
+
+/* محتوى الأكورديون والتبويبات: دخولٌ ناعم بدل الظهور الفجائي */
+@keyframes soft-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.acc-in {
+  animation: soft-in 0.22s ease-out both;
+}
+
+@keyframes tab-fade {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.tab-fade {
+  animation: tab-fade 0.2s ease-out both;
+}
+
 /* طراطيع: قصاصات بألوان الهوية تنهمر وتدور ثم تتلاشى */
 @keyframes confetti-fall {
   0% {
@@ -213,7 +264,10 @@ summary:focus-visible,
   .sheet-pop,
   .glow-celebrate,
   .confetti-piece,
-  .marquee-track {
+  .marquee-track,
+  .check-pop,
+  .acc-in,
+  .tab-fade {
     animation: none;
   }
   .confetti-piece {
