@@ -48,7 +48,7 @@ export default async function PeoplePage() {
               return (
                 <article
                   key={`${a.person.id}-${a.media_type}-${a.tmdb_id}`}
-                  className="bg-surface border border-border rounded-[18px] p-4"
+                  className="bg-surface border border-border rounded-poster p-4"
                 >
                   <div className="flex items-center justify-between gap-3">
                     <PersonName
@@ -89,7 +89,7 @@ export default async function PeoplePage() {
                           className="w-full h-full grid place-items-center text-muted"
                           aria-hidden
                         >
-                          <Icon name="film" size={15} />
+                          <Icon name="film" size={16} />
                         </span>
                       )}
                     </span>
