@@ -11,6 +11,7 @@ import { getT } from "@/lib/locale";
 import { localizeFollows } from "@/lib/localize";
 import { Icon } from "@/components/Icon";
 import { LibraryGrid, type GridItem } from "@/components/LibraryGrid";
+import { FollowMetaSync } from "@/components/MetaSync";
 
 /**
  * المكتبة.
@@ -40,6 +41,18 @@ export default async function LibraryPage({
     getWatchedMovieIds(),
   ]);
   const follows = await localizeFollows(followRows, locale);
+
+  // ما تغيّر اسمه بالترجمة يُكتب مرة واحدة — كانت الرئيسية وحدها تكتب،
+  // فمن مدخله تبويب المكتبة يعيد دفع كلفة TMDB في كل زيارة
+  const metaToCache = follows
+    .filter((f, n) => f.title !== followRows[n]?.title)
+    .slice(0, 24)
+    .map((f) => ({
+      tmdbId: f.tmdb_id,
+      mediaType: f.media_type,
+      title: f.title,
+      posterPath: f.poster_path,
+    }));
 
   const watchedByShow = new Map<number, number>();
   if (summary) {
@@ -115,6 +128,7 @@ export default async function LibraryPage({
 
   return (
     <div>
+      <FollowMetaSync rows={metaToCache} />
       <h1 className="text-xl font-bold">{t.libraryTitle}</h1>
       {/* سطر الملخّص: نبض المكتبة بنظرة — كم عندك، كم أنهيت، كم بقي */}
       <p className="text-xs text-muted mt-1 mb-5" dir="auto">
