@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Navbar } from "@/components/Navbar";
 import { BottomNav } from "@/components/BottomNav";
+import { OfflineSync } from "@/components/OfflineSync";
 import { getT } from "@/lib/locale";
 import { getProfile } from "@/lib/data";
 import { getDict, isRtl } from "@/lib/i18n";
@@ -70,6 +71,7 @@ export default async function RootLayout({
         </main>
         <footer className="text-center text-xs text-muted py-6 pb-28 md:pb-6">{t.footer}</footer>
         <BottomNav locale={locale} />
+        <OfflineSync />
       </body>
     </html>
   );

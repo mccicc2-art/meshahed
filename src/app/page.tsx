@@ -98,9 +98,15 @@ export default async function HomePage() {
       )
       .map((s) => s.show_tmdb_id);
   } else {
-    // احتياط قبل تشغيل ملف performance.sql
+    // احتياط قبل تشغيل ملف performance.sql — مع احترام دورات الإعادة
+    const rewatchSince = new Map<number, string>();
+    for (const f of tvFollows) {
+      if (f.rewatch_started_at) rewatchSince.set(f.tmdb_id, f.rewatch_started_at);
+    }
     const watchedEps = await getAllWatchedEpisodes();
     for (const w of watchedEps) {
+      const since = rewatchSince.get(w.show_tmdb_id);
+      if (since && w.watched_at < since) continue;
       watchedByShow.set(
         w.show_tmdb_id,
         (watchedByShow.get(w.show_tmdb_id) ?? 0) + 1,
