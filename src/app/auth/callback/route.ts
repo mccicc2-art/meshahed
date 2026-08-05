@@ -24,15 +24,11 @@ export async function GET(request: Request) {
     const supabase = await createClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
-      const forwardedHost = request.headers.get("x-forwarded-host");
-      const isLocal = process.env.NODE_ENV === "development";
-      if (isLocal) {
-        return NextResponse.redirect(`${origin}${next}`);
-      } else if (forwardedHost) {
-        return NextResponse.redirect(`https://${forwardedHost}${next}`);
-      } else {
-        return NextResponse.redirect(`${origin}${next}`);
-      }
+      // الوجهة من متغيّر بيئةٍ نتحكّم به لا من ترويسة x-forwarded-host:
+      // الترويسات يكتبها العميل، وبناء إعادة التوجيه عليها يفتح باب
+      // التوجيه لمضيفٍ يختاره المهاجم بعد نجاح الدخول مباشرةً
+      const base = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ?? origin;
+      return NextResponse.redirect(`${base}${next}`);
     }
   }
 
