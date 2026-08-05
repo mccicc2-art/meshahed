@@ -16,6 +16,9 @@ export interface FollowRow {
   next_air_date?: string | null;
   /** بطاقة حمراء: موقوفٌ عند صاحبه — يبقى بالمكتبة ويغيب عن الرئيسية */
   dropped?: boolean | null;
+  /** إعادة المشاهدة: عدد الدورات، ولحظة بدء الدورة الحالية */
+  rewatch_count?: number | null;
+  rewatch_started_at?: string | null;
 }
 
 export interface WatchedEpisodeRow {
@@ -144,7 +147,7 @@ export const getFollows = cache(async (): Promise<FollowRow[]> => {
   const { data, error } = await supabase
     .from("follows")
     .select(
-      "tmdb_id, media_type, title, poster_path, added_at, total_episodes, aired_episodes, next_air_date, dropped",
+      "tmdb_id, media_type, title, poster_path, added_at, total_episodes, aired_episodes, next_air_date, dropped, rewatch_count, rewatch_started_at",
     )
     .eq("user_id", user.id)
     .order("added_at", { ascending: false });
@@ -181,16 +184,34 @@ export async function getWatchedForShow(showTmdbId: number): Promise<Set<string>
   const supabase = await createClient();
   const user = await getUser();
   if (!user) return new Set();
-  const rows = await pageAll<{ season_number: number; episode_number: number }>((from, to) =>
-    supabase
+
+  // إعادة المشاهدة: ما أُشِّر قبل لحظة البدء لا يُحسب تقدّماً في الدورة الحالية
+  let since: string | null = null;
+  try {
+    const { data: fr } = await supabase
+      .from("follows")
+      .select("rewatch_started_at")
+      .eq("user_id", user.id)
+      .eq("tmdb_id", showTmdbId)
+      .eq("media_type", "tv")
+      .maybeSingle();
+    since = (fr as { rewatch_started_at?: string | null } | null)?.rewatch_started_at ?? null;
+  } catch {
+    since = null;
+  }
+
+  const rows = await pageAll<{ season_number: number; episode_number: number }>((from, to) => {
+    let q = supabase
       .from("watched_episodes")
       .select("season_number, episode_number")
       .eq("user_id", user.id)
-      .eq("show_tmdb_id", showTmdbId)
+      .eq("show_tmdb_id", showTmdbId);
+    if (since) q = q.gte("watched_at", since);
+    return q
       .order("season_number", { ascending: true })
       .order("episode_number", { ascending: true })
-      .range(from, to),
-  );
+      .range(from, to);
+  });
   return new Set(rows.map((r) => episodeKey(r.season_number, r.episode_number)));
 }
 

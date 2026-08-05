@@ -242,6 +242,8 @@ const ar = {
   closeBtn: "إغلاق",
   rateQuestion: "وش تقييمك له؟",
   ratedThanks: "انحفظ تقييمك ✓",
+  rewatchBtn: "أشاهده من جديد",
+  rewatchBadge: (n: number) => `🔁 ×${n}`,
   statsTopShows: "الأكثر مشاهدة",
   statsTopShowsSub: "مسلسلاتك مرتّبة بعدد الحلقات التي شاهدتها.",
   diaryEpsGrouped: (n: number) =>
@@ -788,6 +790,8 @@ const en: Dict = {
   closeBtn: "Close",
   rateQuestion: "How would you rate it?",
   ratedThanks: "Rating saved ✓",
+  rewatchBtn: "Watch it again",
+  rewatchBadge: (n: number) => `🔁 ×${n}`,
   statsTopShows: "Most watched",
   statsTopShowsSub: "Your shows ranked by episodes watched.",
   diaryEpsGrouped: (n: number) => `${n} episode${n === 1 ? "" : "s"}`,

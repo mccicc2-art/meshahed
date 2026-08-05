@@ -216,6 +216,8 @@ export async function toggleEpisode(input: {
         season_number: input.season,
         episode_number: input.episode,
         runtime: input.runtime,
+        // طابعٌ جديد مع كل تأشير: إعادة تأشير حلقةٍ في دورة إعادةٍ تحسبها للدورة
+        watched_at: new Date().toISOString(),
       },
       { onConflict: "user_id,show_tmdb_id,season_number,episode_number" },
     );
@@ -240,12 +242,14 @@ export async function watchUpTo(input: {
   const { supabase, user } = await requireUser();
   if (!input.episodes.length) return;
 
+  const now = new Date().toISOString();
   const rows = input.episodes.map((e) => ({
     user_id: user.id,
     show_tmdb_id: input.showTmdbId,
     season_number: e.season,
     episode_number: e.episode,
     runtime: e.runtime,
+    watched_at: now,
   }));
 
   const { error } = await supabase
@@ -316,12 +320,14 @@ export async function setSeasonWatched(input: {
 }) {
   const { supabase, user } = await requireUser();
   if (input.watched) {
+    const now = new Date().toISOString();
     const rows = input.episodes.map((e) => ({
       user_id: user.id,
       show_tmdb_id: input.showTmdbId,
       season_number: e.season,
       episode_number: e.episode,
       runtime: e.runtime,
+      watched_at: now,
     }));
     await supabase
       .from("watched_episodes")
@@ -675,6 +681,7 @@ export async function markShowWatched(tmdbId: number) {
   const tv = await getTv(tmdbId);
   const per = airedPerSeason(tv);
   const runtime = tv.episode_run_time?.[0] ?? null;
+  const now = new Date().toISOString();
   const rows: Record<string, unknown>[] = [];
   for (const [season, count] of per) {
     for (let ep = 1; ep <= count; ep++) {
@@ -684,6 +691,7 @@ export async function markShowWatched(tmdbId: number) {
         season_number: season,
         episode_number: ep,
         runtime,
+        watched_at: now,
       });
     }
   }
@@ -713,6 +721,34 @@ export async function setDropped(tmdbId: number, mediaType: MediaType, dropped: 
   if (error) fail(error);
   revalidatePath("/");
   revalidatePath("/library");
+}
+
+/**
+ * 🔁 إعادة المشاهدة: دورةٌ جديدة تُختم بلحظة بدئها.
+ *
+ * لا صفَّ يُحذف — اليوميات مقدّسة. التقدّم فقط يُحسب من هذه اللحظة
+ * فصاعداً، فيرجع المسلسل إلى «أكمل المشاهدة» من الصفر بشارة ×٢.
+ */
+export async function startRewatch(tmdbId: number) {
+  const { supabase, user } = await requireUser();
+  const { data: cur, error: readErr } = await supabase
+    .from("follows")
+    .select("rewatch_count")
+    .match({ user_id: user.id, tmdb_id: tmdbId, media_type: "tv" })
+    .maybeSingle();
+  if (readErr) fail(readErr);
+  const { error } = await supabase
+    .from("follows")
+    .update({
+      rewatch_count: ((cur as { rewatch_count?: number | null } | null)?.rewatch_count ?? 0) + 1,
+      rewatch_started_at: new Date().toISOString(),
+      dropped: false,
+    })
+    .match({ user_id: user.id, tmdb_id: tmdbId, media_type: "tv" });
+  if (error) fail(error);
+  revalidatePath("/");
+  revalidatePath("/library");
+  revalidatePath(`/show/${tmdbId}`);
 }
 
 /**
@@ -752,6 +788,7 @@ export async function markNextEpisode(
           season_number: season,
           episode_number: ep,
           runtime: tv.episode_run_time?.[0] ?? null,
+          watched_at: new Date().toISOString(),
         },
         { onConflict: "user_id,show_tmdb_id,season_number,episode_number" },
       );
