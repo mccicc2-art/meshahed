@@ -19,10 +19,9 @@ export async function Navbar() {
   if (!user) {
     return (
       <header className="sticky top-0 z-30 bg-[color:var(--background)]/80 backdrop-blur">
-        <div className="max-w-6xl mx-auto px-5 h-16 flex items-center justify-between">
-          <span className="font-extrabold text-[22px] tracking-tight" dir="ltr">
-            {t.brand}
-          </span>
+        {/* dir=ltr: الاسم يساراً والعلم يميناً بثبات، مهما كانت لغة الصفحة */}
+        <div className="max-w-6xl mx-auto px-5 h-16 flex items-center justify-between" dir="ltr">
+          <span className="font-extrabold text-[22px] tracking-tight">{t.brand}</span>
           <LangFlagMenu locale={locale} />
         </div>
       </header>

@@ -11,8 +11,14 @@ import { getDict, type Locale } from "@/lib/i18n";
  * بديل شريط «العربية | English» في وسط صفحة الهبوط: اللغة إعدادٌ يُلمس
  * مرةً واحدة، فلا يستحق مكاناً في قلب الصفحة — علمٌ صغير في الزاوية
  * يفهمه الزائر بلا قراءة، والقائمة تكبر مع كل لغة نضيفها لاحقاً.
+ *
+ * صورُ أعلام لا إيموجي: ويندوز يرسم إيموجي الأعلام حرفَين («SA») فتنكسر
+ * الفكرة — الصور تُرسم متطابقةً على كل الأنظمة.
  */
-const FLAGS: Record<Locale, string> = { ar: "🇸🇦", en: "🇺🇸" };
+const FLAGS: Record<Locale, string> = {
+  ar: "https://flagcdn.com/w80/sa.png",
+  en: "https://flagcdn.com/w80/us.png",
+};
 
 export function LangFlagMenu({ locale }: { locale: Locale }) {
   const t = getDict(locale);
@@ -24,6 +30,8 @@ export function LangFlagMenu({ locale }: { locale: Locale }) {
     { id: "ar", flag: FLAGS.ar, label: t.arabicLang },
     { id: "en", flag: FLAGS.en, label: t.englishLang },
   ];
+
+  /* eslint-disable @next/next/no-img-element -- أعلامٌ خارجية صغيرة ثابتة */
 
   function pick(next: Locale) {
     setOpen(false);
@@ -41,11 +49,18 @@ export function LangFlagMenu({ locale }: { locale: Locale }) {
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-label={t.languageSection}
-        className={`w-10 h-10 rounded-full grid place-items-center text-[20px] leading-none border border-white/12 bg-white/[0.04] hover:bg-white/[0.09] active:scale-95 transition ${
+        className={`w-10 h-10 rounded-full grid place-items-center border border-white/12 bg-white/[0.04] hover:bg-white/[0.09] active:scale-95 transition ${
           pending ? "opacity-60" : ""
         }`}
       >
-        <span aria-hidden>{FLAGS[locale]}</span>
+        <img
+          src={FLAGS[locale]}
+          alt=""
+          width={22}
+          height={22}
+          className="w-[22px] h-[22px] rounded-full object-cover shrink-0"
+          aria-hidden
+        />
       </button>
 
       {open && (
@@ -74,9 +89,14 @@ export function LangFlagMenu({ locale }: { locale: Locale }) {
                         : "text-muted hover:text-foreground hover:bg-white/[0.05]"
                     }`}
                   >
-                    <span className="text-[18px] leading-none" aria-hidden>
-                      {o.flag}
-                    </span>
+                    <img
+                      src={o.flag}
+                      alt=""
+                      width={20}
+                      height={20}
+                      className="w-5 h-5 rounded-full object-cover shrink-0"
+                      aria-hidden
+                    />
                     {o.label}
                     {active && <span className="ms-auto text-accent">✓</span>}
                   </button>
