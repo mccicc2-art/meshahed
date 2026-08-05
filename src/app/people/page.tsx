@@ -1,12 +1,10 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { getUser, getCommunityFeed, getFollowLists, displayNameOf } from "@/lib/data";
+import { getUser, getCommunityFeed, getFollowLists } from "@/lib/data";
 import { getT } from "@/lib/locale";
-import { num } from "@/lib/i18n";
 import { formatDateShort } from "@/lib/when";
-import { PeopleSearch } from "@/components/PeopleSearch";
+import { CommunityBar } from "@/components/CommunityBar";
 import { PersonName } from "@/components/PersonRow";
-import { Avatar } from "@/components/Avatar";
 import { posterUrl } from "@/lib/media";
 import { Icon } from "@/components/Icon";
 import { LikeButton } from "@/components/LikeButton";
@@ -26,86 +24,12 @@ export default async function PeoplePage() {
         <p className="text-xs text-muted mt-0.5">{t.communitySub}</p>
       </div>
 
-      <PeopleSearch locale={locale} />
-
-      {/* من تتابعهم */}
-      <section>
-        <div className="flex items-baseline gap-2 mb-3">
-          <h2 className="text-base font-bold">{t.peopleFollowingTitle}</h2>
-          {lists.following.length > 0 && (
-            <span
-              className="text-xs text-muted bg-surface-2 border border-border rounded-full px-2 py-0.5"
-              dir="ltr"
-            >
-              {num(lists.following.length, locale)}
-            </span>
-          )}
-        </div>
-
-        {lists.following.length === 0 ? (
-          <p className="text-sm text-muted bg-surface border border-dashed border-border rounded-xl py-6 text-center">
-            {t.peopleNoFollowing}
-          </p>
-        ) : (
-          <div className="flex gap-3 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {lists.following.map((p) => (
-              <Link
-                key={p.id}
-                href={p.username ? `/u/${p.username}` : "/people"}
-                prefetch={false}
-                className="shrink-0 w-20 text-center"
-              >
-                <Avatar
-                  src={p.hide_name ? null : p.avatar_url}
-                  name={displayNameOf(p, t.anonymousUser)}
-                  size={56}
-                  alt={t.avatarAlt}
-                  className="mx-auto"
-                />
-                <span className="block text-[11px] mt-1.5 truncate">
-                  {displayNameOf(p, t.anonymousUser)}
-                </span>
-              </Link>
-            ))}
-          </div>
-        )}
-      </section>
-
-      {/* من يتابعونك */}
-      {lists.followers.length > 0 && (
-        <section>
-          <div className="flex items-baseline gap-2 mb-3">
-            <h2 className="text-base font-bold">{t.peopleFollowersTitle}</h2>
-            <span
-              className="text-xs text-muted bg-surface-2 border border-border rounded-full px-2 py-0.5"
-              dir="ltr"
-            >
-              {num(lists.followers.length, locale)}
-            </span>
-          </div>
-          <div className="flex gap-3 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {lists.followers.map((p) => (
-              <Link
-                key={p.id}
-                href={p.username ? `/u/${p.username}` : "/people"}
-                prefetch={false}
-                className="shrink-0 w-20 text-center"
-              >
-                <Avatar
-                  src={p.hide_name ? null : p.avatar_url}
-                  name={displayNameOf(p, t.anonymousUser)}
-                  size={56}
-                  alt={t.avatarAlt}
-                  className="mx-auto"
-                />
-                <span className="block text-[11px] mt-1.5 truncate">
-                  {displayNameOf(p, t.anonymousUser)}
-                </span>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
+      {/* سطرٌ واحد: عدّادا المتابعة وزرّ الإضافة — والقوائم والبحث نوافذ منبثقة */}
+      <CommunityBar
+        following={lists.following}
+        followers={lists.followers}
+        locale={locale}
+      />
 
       {/* ===== خطّ الآراء =====
           كخطّ X: رأيٌ فوق رأي، الأكثر إعجاباً أعلى — الإعجاب هو صوت
