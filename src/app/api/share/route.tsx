@@ -77,8 +77,8 @@ export async function GET() {
           flexDirection: "column",
           justifyContent: "space-between",
           padding: 64,
-          background: "#1B1F2A",
-          color: "#F5F6FA",
+          background: "#0A0A0A",
+          color: "#F5F5F5",
           fontFamily: "Cairo, CairoLatin",
           direction: rtl ? "rtl" : "ltr",
         }}
@@ -89,14 +89,14 @@ export async function GET() {
               width: 22,
               height: 22,
               borderRadius: 11,
-              background: "linear-gradient(135deg, #7C4DFF, #FF4D8D)",
+              background: "linear-gradient(135deg, #7C3AED, #EC4899 55%, #F59E0B)",
             }}
           />
           <div style={{ fontSize: 34, letterSpacing: -1 }}>Loopz</div>
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <div style={{ fontSize: 30, color: "#9AA3B8" }}>{t.shareHeadline}</div>
+          <div style={{ fontSize: 30, color: "#A3A3A3" }}>{t.shareHeadline}</div>
           <div style={{ fontSize: 68 }}>{name}</div>
         </div>
 
@@ -111,19 +111,19 @@ export async function GET() {
                 flex: 1,
                 padding: "26px 28px",
                 borderRadius: 26,
-                background: "#232838",
-                border: "1px solid #343B4D",
+                background: "#161616",
+                border: "1px solid #2A2A2A",
               }}
             >
-              <div style={{ fontSize: 46, color: "#F5F6FA" }}>{value}</div>
-              <div style={{ fontSize: 24, color: "#9AA3B8" }}>{label}</div>
+              <div style={{ fontSize: 46, color: "#F5F5F5" }}>{value}</div>
+              <div style={{ fontSize: 24, color: "#A3A3A3" }}>{label}</div>
             </div>
           ))}
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 14, fontSize: 26, color: "#9AA3B8" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 14, fontSize: 26, color: "#A3A3A3" }}>
           {/* النجمة مرسومة لا محرفاً: محرف ★ ليس في خطّ القاهرة فيخرج مربّعاً */}
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="#FF4D8D">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="#F59E0B">
             <path d="M12 2l2.9 6.3 6.8.8-5 4.7 1.3 6.8L12 17.3 5.9 20.6 7.2 13.8 2.2 9.1l6.8-.8z" />
           </svg>
           <div>
