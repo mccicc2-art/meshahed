@@ -81,6 +81,9 @@ export function EpisodeTracker({
   );
   const [loading, setLoading] = useState<number | null>(null);
   const [open, setOpen] = useState<number | null>(initialSeason);
+  // خطأ الكتابة يُعرض سطراً داخلياً — لا يُترك يهرب إلى error boundary
+  // فيستبدل الصفحة كلها بشاشة خطأ في منتصف جلسة تأشير
+  const [err, setErr] = useState<string | null>(null);
 
   // نفس قاعدة الرئيسية والمكتبة: ما أشّرته ÷ ما عُرض
   const watchedAired = Math.min(watched.size, airedTotal || watched.size);
@@ -93,11 +96,15 @@ export function EpisodeTracker({
       setLoading(n);
       try {
         const res = await fetch(`/api/season?tv=${showTmdbId}&s=${n}`);
+        // فشل الطلب (429 أو 502) لا يُخزَّن قائمةً فارغة — التخزين كان
+        // يجعل الموسم يبدو «بلا حلقات» إلى أن يُعاد تحميل الصفحة
+        if (!res.ok) throw new Error(`season ${res.status}`);
         const json = (await res.json()) as { episodes: TrackerEpisode[] };
         const eps = json.episodes ?? [];
         setEpisodesBySeason((prev) => ({ ...prev, [n]: eps }));
         return eps;
       } catch {
+        setErr(t.showLoadFailed);
         return [];
       } finally {
         setLoading(null);
@@ -151,10 +158,13 @@ export function EpisodeTracker({
     const next = !watched.has(key);
     if (navigator.vibrate) navigator.vibrate(10);
 
+    setErr(null);
+
     // عند التأشير: تُعتبر كل الحلقات السابقة مشاهَدة أيضاً
     if (next) {
       const upTo = airedUpTo(season, ep.episode_number);
       const toMark = upTo.filter((o) => !watched.has(episodeKey(o.season, o.episode)));
+      const before = watched;
 
       setWatched((prev) => {
         const s = new Set(prev);
@@ -162,43 +172,60 @@ export function EpisodeTracker({
         return s;
       });
 
+      // فشل الكتابة (حدّ المعدّل مثلاً) يعيد العلامات لحالها ويقول لماذا —
+      // كان الاستثناء يهرب من startTransition إلى error boundary فتُستبدل
+      // الصفحة كلها بشاشة خطأ، والعلامة المتفائلة تبقى كاذبة للجلسة كلها
       start(async () => {
-        if (toMark.length > 1) {
-          await watchUpTo({ showTmdbId, episodes: toMark });
-        } else {
-          await toggleEpisode({
-            showTmdbId,
-            season,
-            episode: ep.episode_number,
-            runtime: ep.runtime,
-            watched: true,
-          });
+        try {
+          if (toMark.length > 1) {
+            await watchUpTo({ showTmdbId, episodes: toMark });
+          } else {
+            await toggleEpisode({
+              showTmdbId,
+              season,
+              episode: ep.episode_number,
+              runtime: ep.runtime,
+              watched: true,
+            });
+          }
+        } catch (e) {
+          setWatched(before);
+          setErr((e as Error).message);
         }
       });
       return;
     }
 
     // عند إلغاء التأشير: تُلغى هذه الحلقة فقط
+    const beforeUnmark = watched;
     setWatched((prev) => {
       const s = new Set(prev);
       s.delete(key);
       return s;
     });
     start(async () => {
-      await toggleEpisode({
-        showTmdbId,
-        season,
-        episode: ep.episode_number,
-        runtime: ep.runtime,
-        watched: false,
-      });
+      try {
+        await toggleEpisode({
+          showTmdbId,
+          season,
+          episode: ep.episode_number,
+          runtime: ep.runtime,
+          watched: false,
+        });
+      } catch (e) {
+        setWatched(beforeUnmark);
+        setErr((e as Error).message);
+      }
     });
   }
 
   function toggleSeason(s: SeasonSummary, mark: boolean) {
+    setErr(null);
     start(async () => {
       const eps = await loadSeason(s.season_number);
       const aired = eps.filter((e) => hasAired(e.air_date));
+      if (!aired.length) return;
+      const before = watched;
       setWatched((prev) => {
         const set = new Set(prev);
         for (const e of aired) {
@@ -208,15 +235,20 @@ export function EpisodeTracker({
         }
         return set;
       });
-      await setSeasonWatched({
-        showTmdbId,
-        episodes: aired.map((e) => ({
-          season: s.season_number,
-          episode: e.episode_number,
-          runtime: e.runtime,
-        })),
-        watched: mark,
-      });
+      try {
+        await setSeasonWatched({
+          showTmdbId,
+          episodes: aired.map((e) => ({
+            season: s.season_number,
+            episode: e.episode_number,
+            runtime: e.runtime,
+          })),
+          watched: mark,
+        });
+      } catch (e) {
+        setWatched(before);
+        setErr((e as Error).message);
+      }
     });
   }
 
@@ -243,6 +275,11 @@ export function EpisodeTracker({
           />
         </div>
         <p className="text-xs text-muted mt-2">{t.cascadeHint}</p>
+        {err && (
+          <p className="text-sm text-red-300 mt-2.5" role="alert">
+            {err}
+          </p>
+        )}
       </div>
 
       <div className="space-y-3">

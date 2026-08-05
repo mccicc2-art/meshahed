@@ -191,8 +191,14 @@ export function ContinueCard({
           runtime: runtime ?? null,
           watched: false,
         });
-      } finally {
         router.refresh();
+      } catch {
+        // فشل التراجع (حدّ المعدّل مثلاً): تُعاد الحالة المتقدمة ويظهر
+        // شريط الخطأ — كان الاستثناء يهرب حتى error boundary الصفحة
+        setBump((b) => b + 1);
+        setEp({ s: back.s, e: back.e + 1 });
+        setErr(true);
+        setTimeout(() => setErr(false), 3000);
       }
     });
   }
