@@ -23,6 +23,7 @@ import { WatchChip } from "@/components/WatchChip";
 import { TitleActions } from "@/components/TitleActions";
 import { DetailTopBar } from "@/components/DetailTopBar";
 import { ReadMore } from "@/components/ReadMore";
+import { buttonClass } from "@/components/ui/Button";
 
 export default async function MoviePage({ params }: { params: Promise<{ id: string }> }) {
   const user = await getUser();
@@ -52,7 +53,7 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
         <div className="flex items-center justify-center gap-2">
           <Link
             href="/"
-            className="px-4 py-2 rounded-xl bg-accent text-[color:var(--on-accent)] text-sm font-semibold"
+            className={buttonClass({ size: "sm" })}
           >
             {t.navHome}
           </Link>
@@ -91,7 +92,7 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
 
       <div className="flex gap-4 -mt-24 sm:-mt-28 relative px-1">
         <div className="w-28 sm:w-40 shrink-0">
-          <div className="relative aspect-[2/3] rounded-2xl overflow-hidden ring-1 ring-white/10 bg-surface-2 shadow-[0_18px_44px_rgba(0,0,0,0.55)]">
+          <div className="relative aspect-[2/3] rounded-poster overflow-hidden ring-1 ring-white/10 bg-surface-2 shadow-[0_18px_44px_rgba(0,0,0,0.55)]">
             {poster && <Image src={poster} alt={movie.title} fill sizes="160px" className="object-cover" />}
           </div>
         </div>
@@ -168,7 +169,7 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
                     {movie.genres.map((g) => (
                       <span
                         key={g.id}
-                        className="text-xs font-medium bg-white/[0.06] border border-white/10 px-3 py-1.5 rounded-full"
+                        className="text-xs font-medium bg-surface-2 border border-border px-3 py-1.5 rounded-full"
                       >
                         {g.name}
                       </span>
