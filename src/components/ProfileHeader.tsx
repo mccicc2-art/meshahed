@@ -261,7 +261,15 @@ export function ProfileHeader({
           الكلمة، والفواصل الرأسية الرفيعة وحدها تفصل الخانات. */}
       {show.stats && (
         <div className="relative z-10 mt-5">
-          <div className="grid grid-cols-4">
+          <div
+            className={`grid ${
+              stats.length === 2
+                ? "grid-cols-2"
+                : stats.length === 3
+                  ? "grid-cols-3"
+                  : "grid-cols-4"
+            }`}
+          >
             {stats.map((s, i) => {
               const cell = (
                 <>
