@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { posterUrl, backdropUrl } from "@/lib/media";
-import { toggleEpisode } from "@/lib/actions";
+import { toggleEpisode, saveRating } from "@/lib/actions";
 import { getDict, type Locale } from "@/lib/i18n";
 import { Icon } from "./Icon";
 
@@ -62,7 +62,35 @@ export function ContinueCard({
   const [phase, setPhase] = useState<"idle" | "marked" | "leaving">("idle");
   const [toast, setToast] = useState<{ s: number; e: number } | null>(null);
   const [celebrate, setCelebrate] = useState(false);
+  const [stars, setStars] = useState(0);
+  const [rated, setRated] = useState(false);
   const [err, setErr] = useState(false);
+
+  function rate(n: number) {
+    if (rated) return;
+    setStars(n);
+    try {
+      navigator.vibrate?.(8);
+    } catch {
+      /* لا شيء */
+    }
+    start(async () => {
+      try {
+        await saveRating({
+          tmdbId,
+          mediaType: "tv",
+          rating: n,
+          review: "",
+          title,
+          posterPath,
+        });
+        setRated(true);
+        setTimeout(() => setCelebrate(false), 1100);
+      } catch {
+        setStars(0);
+      }
+    });
+  }
 
   const w = watched + bump;
   const pct = Math.max(
@@ -242,15 +270,11 @@ export function ContinueCard({
         </div>
       )}
 
-      {/* ورقة الإنجاز: وسط الشاشة، طراطيع بألوان الهوية، وتوهّج ثلاث نبضات */}
+      {/* ورقة الإنجاز: وسط الشاشة، طراطيع بألوان الهوية — ولا تُغلق إلا
+          بالتقييم: الخلفية ليست زرّاً، فاللحظة تنتهي برأيك لا بتجاهلها */}
       {celebrate && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-8">
-          <button
-            type="button"
-            aria-label=""
-            onClick={() => setCelebrate(false)}
-            className="absolute inset-0 bg-black/65 backdrop-blur-sm"
-          />
+          <div className="absolute inset-0 bg-black/65 backdrop-blur-sm" aria-hidden />
 
           {/* الطراطيع: ٢٨ قصاصة بمواضع وسرعات محسوبة من رقمها — لا عشوائية تكسر الرسم */}
           <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden>
@@ -288,21 +312,42 @@ export function ContinueCard({
                 {t.finishedShowTitle(title)}
               </p>
               <p className="text-xs text-muted mt-1.5">{t.finishedShowSub(aired)}</p>
-              <div className="flex gap-2 mt-5">
-                <Link
-                  href={href}
-                  className="flex-1 py-2.5 rounded-xl bg-accent text-[color:var(--on-accent)] text-[13px] font-bold hover:brightness-110 active:scale-[0.98] transition"
-                >
-                  {t.rateItBtn}
-                </Link>
-                <button
-                  type="button"
-                  onClick={() => setCelebrate(false)}
-                  className="flex-1 py-2.5 rounded-xl border border-border bg-surface text-[13px] font-bold hover:bg-surface-2 active:scale-[0.98] transition"
-                >
-                  {t.closeBtn}
-                </button>
+
+              {/* التقييم داخل الورقة: عشر نجوم، لمسة واحدة تحفظ وتُغلق */}
+              <p
+                className={`text-[13px] font-bold mt-5 transition ${
+                  rated ? "text-[color:var(--success)]" : ""
+                }`}
+                role="status"
+              >
+                {rated ? t.ratedThanks : t.rateQuestion}
+              </p>
+              <div className="flex justify-center gap-0.5 mt-2.5" dir="ltr">
+                {Array.from({ length: 10 }, (_, i) => {
+                  const n = i + 1;
+                  const on = n <= stars;
+                  return (
+                    <button
+                      key={n}
+                      type="button"
+                      disabled={rated}
+                      onClick={() => rate(n)}
+                      aria-label={`${n}/10`}
+                      className={`text-[21px] leading-none px-0.5 transition active:scale-125 ${
+                        on ? "" : "opacity-30"
+                      }`}
+                      style={{ color: on ? "var(--verified)" : "var(--muted, #A3A3A3)" }}
+                    >
+                      ★
+                    </button>
+                  );
+                })}
               </div>
+              {stars > 0 && (
+                <p className="text-[11px] text-muted mt-1.5 tabular-nums" dir="ltr">
+                  {stars}/10
+                </p>
+              )}
             </div>
           </div>
         </div>
