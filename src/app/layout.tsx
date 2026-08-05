@@ -5,6 +5,7 @@ import { Navbar } from "@/components/Navbar";
 import { BottomNav } from "@/components/BottomNav";
 import { OfflineSync } from "@/components/OfflineSync";
 import { ErrorFlash } from "@/components/ErrorFlash";
+import { SwRegister } from "@/components/SwRegister";
 import { cookies } from "next/headers";
 import { getT } from "@/lib/locale";
 import { getDict, isRtl } from "@/lib/i18n";
@@ -76,6 +77,7 @@ export default async function RootLayout({
         <BottomNav locale={locale} />
         <OfflineSync />
         <ErrorFlash />
+        <SwRegister />
       </body>
     </html>
   );
