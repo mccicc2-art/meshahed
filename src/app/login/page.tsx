@@ -25,10 +25,12 @@ export default async function LoginPage() {
 
   // اثنا عشر ملصقاً رائجاً لصفّي الجدار — بصورٍ موجودة فقط
   const trend = await trending().catch(() => [] as SearchResult[]);
+  // w185 تكفي: الملصق يُعرض بأقل من ١١٠ بكسل — كانت w342 تُحمِّل ضعف اللازم
+  // على أهم شاشة انطباعٍ أول
   const posters = trend
     .filter((r) => r.poster_path)
     .slice(0, 12)
-    .map((r) => posterUrl(r.poster_path, "w342"))
+    .map((r) => posterUrl(r.poster_path, "w185"))
     .filter((p): p is string => !!p);
   const rowA = posters.slice(0, 6);
   const rowB = posters.slice(6, 12);
@@ -108,7 +110,8 @@ export default async function LoginPage() {
                       <img
                         src={p}
                         alt=""
-                        loading="lazy"
+                        loading={ri === 0 ? "eager" : "lazy"}
+                        fetchPriority={ri === 0 && i < 6 ? "high" : "auto"}
                         className="w-full h-full object-cover"
                       />
                     </div>
