@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { redirect, notFound } from "next/navigation";
 import Image from "next/image";
 import {
@@ -45,30 +46,16 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
   const tvId = Number(id);
   if (!Number.isFinite(tvId)) notFound();
 
-  // بيانات TMDB وبيانات المستخدم في موجة واحدة — لا شيء منها ينتظر الآخر
-  const [
-    tv,
-    following,
-    watched,
-    myRating,
-    community,
-    titleReviews,
-    trailer,
-    watchWhere,
-    myLists,
-    inLists,
-  ] = await Promise.all([
-      getTv(tvId).catch(() => null),
-      isFollowing(tvId, "tv"),
-      getWatchedForShow(tvId),
-      getMyRating(tvId, "tv"),
-      getCommunityRating(tvId, "tv"),
-      getTitleReviews(tvId, "tv"),
-      getTrailer("tv", tvId),
-      getWatchProviders("tv", tvId),
-      getMyLists(),
-      getListsContaining(tvId, "tv"),
-    ]);
+  // بيانات أول رسمة فقط في الموجة الحاسمة — الترايلر والتعليقات تُبثّ
+  // لاحقاً عبر Suspense فلا تؤخّر ترويسة الصفحة وتبويب الحلقات
+  const [tv, following, watched, watchWhere, myLists, inLists] = await Promise.all([
+    getTv(tvId).catch(() => null),
+    isFollowing(tvId, "tv"),
+    getWatchedForShow(tvId),
+    getWatchProviders("tv", tvId),
+    getMyLists(),
+    getListsContaining(tvId, "tv"),
+  ]);
 
   if (!tv) {
     return (
@@ -237,11 +224,9 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
             icon: "list",
             content: (
               /* التقييم صار في تبويب التعليقات والقوائم في زرّ الترويسة —
-                 لا شيء يتكرّر مرتين في الصفحة.
-                 والمفتاح على عدد المشاهَد: «شفته كله» من الأعلى يعيد بناء
-                 المتتبّع بالحالة الجديدة بعد تحديث الخادم. */
+                 لا شيء يتكرّر مرتين. المتتبّع يعتمد لقطة الخادم داخلياً
+                 بلا key: إعادة التركيب كانت تُغلق الموسم المفتوح. */
               <EpisodeTracker
-                key={`w${watched.size}`}
                 showTmdbId={tvId}
                 summaries={summaries}
                 initialSeason={openSeason}
@@ -286,14 +271,11 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
                   </div>
                 )}
 
-                {trailer && (
-                  <Trailer
-                    videoKey={trailer.key}
-                    title={tv.name}
-                    thumbnail={backdrop}
-                    locale={locale}
-                  />
-                )}
+                <Suspense
+                  fallback={<div className="skeleton aspect-video rounded-2xl" aria-hidden />}
+                >
+                  <TrailerSection tvId={tvId} name={tv.name} backdrop={backdrop} locale={locale} />
+                </Suspense>
               </div>
             ),
           },
@@ -302,30 +284,82 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
             label: t.tabReviews,
             icon: "comment",
             content: (
-              <div className="space-y-4">
-                <RatingBox
-                  variant="review"
-                  tmdbId={tvId}
-                  mediaType="tv"
-                  title={tv.name}
+              <Suspense
+                fallback={
+                  <div className="space-y-4" aria-hidden>
+                    <div className="skeleton h-44 rounded-2xl" />
+                    <div className="skeleton h-24 rounded-2xl" />
+                  </div>
+                }
+              >
+                <ReviewsTab
+                  tvId={tvId}
+                  name={tv.name}
                   posterPath={tv.poster_path}
                   locale={locale}
-                  initialRating={myRating?.rating ?? null}
-                  initialReview={myRating?.review ?? null}
                 />
-
-                <CommunityReviews
-            tmdbId={tvId}
-            mediaType="tv"
-                  locale={locale}
-                  avg={community.avg}
-                  count={community.count}
-                  reviews={titleReviews}
-                />
-              </div>
+              </Suspense>
             ),
           },
         ]}
+      />
+    </div>
+  );
+}
+
+/** الترايلر يُبثّ بعد أول رسمة — طلبا TMDB المتسلسلان له لا يؤخّران الصفحة */
+async function TrailerSection({
+  tvId,
+  name,
+  backdrop,
+  locale,
+}: {
+  tvId: number;
+  name: string;
+  backdrop: string | null;
+  locale: Awaited<ReturnType<typeof getT>>["locale"];
+}) {
+  const trailer = await getTrailer("tv", tvId);
+  if (!trailer) return null;
+  return <Trailer videoKey={trailer.key} title={name} thumbnail={backdrop} locale={locale} />;
+}
+
+/** تبويب التعليقات: تقييمي وتقييم المجتمع والمراجعات — كلها تُبثّ لاحقاً */
+async function ReviewsTab({
+  tvId,
+  name,
+  posterPath,
+  locale,
+}: {
+  tvId: number;
+  name: string;
+  posterPath: string | null;
+  locale: Awaited<ReturnType<typeof getT>>["locale"];
+}) {
+  const [myRating, community, titleReviews] = await Promise.all([
+    getMyRating(tvId, "tv"),
+    getCommunityRating(tvId, "tv"),
+    getTitleReviews(tvId, "tv"),
+  ]);
+  return (
+    <div className="space-y-4">
+      <RatingBox
+        variant="review"
+        tmdbId={tvId}
+        mediaType="tv"
+        title={name}
+        posterPath={posterPath}
+        locale={locale}
+        initialRating={myRating?.rating ?? null}
+        initialReview={myRating?.review ?? null}
+      />
+      <CommunityReviews
+        tmdbId={tvId}
+        mediaType="tv"
+        locale={locale}
+        avg={community.avg}
+        count={community.count}
+        reviews={titleReviews}
       />
     </div>
   );
