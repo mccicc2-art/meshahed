@@ -4,6 +4,7 @@ import "./globals.css";
 import { Navbar } from "@/components/Navbar";
 import { BottomNav } from "@/components/BottomNav";
 import { OfflineSync } from "@/components/OfflineSync";
+import { ErrorFlash } from "@/components/ErrorFlash";
 import { cookies } from "next/headers";
 import { getT } from "@/lib/locale";
 import { getDict, isRtl } from "@/lib/i18n";
@@ -74,6 +75,7 @@ export default async function RootLayout({
         <footer className="text-center text-xs text-muted py-6 pb-28 md:pb-6">{t.footer}</footer>
         <BottomNav locale={locale} />
         <OfflineSync />
+        <ErrorFlash />
       </body>
     </html>
   );
