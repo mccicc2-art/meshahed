@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { getUser } from "@/lib/data";
 import { getT } from "@/lib/locale";
@@ -23,16 +24,6 @@ export default async function LoginPage() {
   const configured =
     !!process.env.NEXT_PUBLIC_SUPABASE_URL && !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-  // اثنا عشر ملصقاً رائجاً لصفّي الجدار — بصورٍ موجودة فقط
-  const trend = await trending().catch(() => [] as SearchResult[]);
-  const posters = trend
-    .filter((r) => r.poster_path)
-    .slice(0, 12)
-    .map((r) => posterUrl(r.poster_path, "w342"))
-    .filter((p): p is string => !!p);
-  const rowA = posters.slice(0, 6);
-  const rowB = posters.slice(6, 12);
-
   return (
     /* الصفحة كلها شاشةٌ واحدة لا تُمرَّر: مثبَّتة من أسفل الترويسة إلى أسفل
        الشاشة، والمقاسات بـ clamp تتكيّف مع أي ارتفاع — البطل يتوسّط
@@ -44,7 +35,7 @@ export default async function LoginPage() {
           <span
             className="w-2 h-2 rounded-full shrink-0"
             style={{
-              background: "linear-gradient(135deg, var(--brand-2), var(--brand-3))",
+              background: "var(--gradient-brand)",
             }}
             aria-hidden
           />
@@ -61,7 +52,7 @@ export default async function LoginPage() {
             className="bg-clip-text text-transparent"
             style={{
               backgroundImage:
-                "linear-gradient(90deg, var(--brand-1), var(--brand-2) 55%, var(--brand-3))",
+                "var(--gradient-brand-x)",
             }}
           >
             {t.landingH1b}
@@ -82,6 +73,31 @@ export default async function LoginPage() {
         </div>
       </div>
 
+      {/* الجدار زينةٌ خالصة فلا يحقّ له حجبُ البطل: كان طلب TMDB يؤخّر
+          رسم العنوان وزرّ الدخول على أهم شاشة انطباع — الآن خلف Suspense
+          يظهر متأخراً بلا أي هيكل، والبطل يرسم فوراً */}
+      <Suspense fallback={null}>
+        <PosterWall />
+      </Suspense>
+    </div>
+  );
+}
+
+/** جدار الرائج — يجلب ملصقاته بنفسه بعد رسم البطل */
+async function PosterWall() {
+  // اثنا عشر ملصقاً رائجاً لصفّي الجدار — بصورٍ موجودة فقط
+  const trend = await trending().catch(() => [] as SearchResult[]);
+  // w185 تكفي: الملصق يُعرض بأقل من ١١٠ بكسل — كانت w342 تُحمِّل ضعف اللازم
+  const posters = trend
+    .filter((r) => r.poster_path)
+    .slice(0, 12)
+    .map((r) => posterUrl(r.poster_path, "w185"))
+    .filter((p): p is string => !!p);
+  const rowA = posters.slice(0, 6);
+  const rowB = posters.slice(6, 12);
+
+  return (
+    <>
       {/* جدار الرائج: صفّان يزحفان باتجاهين متعاكسين بميلٍ خفيف.
           محبوسٌ في صندوقه: ارتفاع أقصى واقتصاصٌ صريح وبلا أي تكبير —
           فلا يزحف فوق زرّ الدخول مهما ضاقت الشاشة */}
@@ -102,13 +118,14 @@ export default async function LoginPage() {
                   {[...row, ...row].map((p, i) => (
                     <div
                       key={i}
-                      className="w-[clamp(60px,min(6.5vw,9.5vh),108px)] aspect-[2/3] rounded-xl overflow-hidden border border-white/10 bg-surface-2 shadow-[0_10px_30px_rgba(0,0,0,0.6)] shrink-0 me-2.5"
+                      className="w-[clamp(60px,min(6.5vw,9.5vh),108px)] aspect-[2/3] rounded-poster overflow-hidden border border-white/10 bg-surface-2 shadow-[0_10px_30px_rgba(0,0,0,0.6)] shrink-0 me-2.5"
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={p}
                         alt=""
-                        loading="lazy"
+                        loading={ri === 0 ? "eager" : "lazy"}
+                        fetchPriority={ri === 0 && i < 6 ? "high" : "auto"}
                         className="w-full h-full object-cover"
                       />
                     </div>
@@ -133,6 +150,6 @@ export default async function LoginPage() {
           />
         </div>
       )}
-    </div>
+    </>
   );
 }
