@@ -115,7 +115,7 @@ export default async function LibraryPage({
         {(
           [
             { href: "/stats", icon: "chart", label: t.libAnalysisBtn },
-            { href: "/diary", icon: "clock", label: t.diaryTitle },
+            { href: "/diary", icon: "book", label: t.diaryTitle },
             { href: "/lists", icon: "list", label: t.listsTitle },
           ] as const
         ).map(({ href, icon, label }, i) => (
