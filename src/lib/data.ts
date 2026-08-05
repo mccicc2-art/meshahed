@@ -19,6 +19,8 @@ export interface FollowRow {
   /** إعادة المشاهدة: عدد الدورات، ولحظة بدء الدورة الحالية */
   rewatch_count?: number | null;
   rewatch_started_at?: string | null;
+  /** آخر تخزين للإحصاءات — غيابه يعني أن تاريخ الفيلم لم يُخبَّأ بعد */
+  stats_updated_at?: string | null;
 }
 
 export interface WatchedEpisodeRow {
@@ -147,7 +149,7 @@ export const getFollows = cache(async (): Promise<FollowRow[]> => {
   const { data, error } = await supabase
     .from("follows")
     .select(
-      "tmdb_id, media_type, title, poster_path, added_at, total_episodes, aired_episodes, next_air_date, dropped, rewatch_count, rewatch_started_at",
+      "tmdb_id, media_type, title, poster_path, added_at, total_episodes, aired_episodes, next_air_date, dropped, rewatch_count, rewatch_started_at, stats_updated_at",
     )
     .eq("user_id", user.id)
     .order("added_at", { ascending: false });
@@ -180,24 +182,30 @@ async function pageAll<T>(
   return out;
 }
 
-export async function getWatchedForShow(showTmdbId: number): Promise<Set<string>> {
+export async function getWatchedForShow(
+  showTmdbId: number,
+  /** لحظة بدء الإعادة إن كانت بيد المستدعي — تمريرها يوفّر استعلام المتابعة */
+  rewatchSince?: string | null,
+): Promise<Set<string>> {
   const supabase = await createClient();
   const user = await getUser();
   if (!user) return new Set();
 
   // إعادة المشاهدة: ما أُشِّر قبل لحظة البدء لا يُحسب تقدّماً في الدورة الحالية
-  let since: string | null = null;
-  try {
-    const { data: fr } = await supabase
-      .from("follows")
-      .select("rewatch_started_at")
-      .eq("user_id", user.id)
-      .eq("tmdb_id", showTmdbId)
-      .eq("media_type", "tv")
-      .maybeSingle();
-    since = (fr as { rewatch_started_at?: string | null } | null)?.rewatch_started_at ?? null;
-  } catch {
-    since = null;
+  let since: string | null = rewatchSince ?? null;
+  if (rewatchSince === undefined) {
+    try {
+      const { data: fr } = await supabase
+        .from("follows")
+        .select("rewatch_started_at")
+        .eq("user_id", user.id)
+        .eq("tmdb_id", showTmdbId)
+        .eq("media_type", "tv")
+        .maybeSingle();
+      since = (fr as { rewatch_started_at?: string | null } | null)?.rewatch_started_at ?? null;
+    } catch {
+      since = null;
+    }
   }
 
   const rows = await pageAll<{ season_number: number; episode_number: number }>((from, to) => {

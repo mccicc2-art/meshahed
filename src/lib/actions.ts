@@ -104,7 +104,30 @@ export async function updateProfile(input: {
     fail(error);
   }
 
+  // الثيم في كوكي أيضاً: الـ layout يقرأه فورياً بلا رحلة قاعدة بيانات
+  if (typeof payload.theme === "string") {
+    const store = await cookies();
+    store.set("theme", payload.theme, {
+      path: "/",
+      maxAge: 60 * 60 * 24 * 365,
+      sameSite: "lax",
+      secure: true,
+    });
+  }
+
   revalidatePath("/", "layout");
+}
+
+/** مزامنة كوكي الثيم لمن اختار ثيمه قبل اعتماد الكوكي — تُستدعى مرة من العميل */
+export async function syncThemeCookie(value: string) {
+  const theme = THEMES.some((t) => t.id === value) ? value : "amber";
+  const store = await cookies();
+  store.set("theme", theme, {
+    path: "/",
+    maxAge: 60 * 60 * 24 * 365,
+    sameSite: "lax",
+    secure: true,
+  });
 }
 
 // تبديل لغة الواجهة — تُحفظ في كوكي ليقرأها الخادم وتُخزَّن في الحساب أيضاً
@@ -229,9 +252,10 @@ export async function toggleEpisode(input: {
       episode_number: input.episode,
     });
   }
+  // لا revalidate لصفحة المسلسل: الواجهة تفاؤلية أصلاً، وكل ضغطة ✓ كانت
+  // تعيد بناء الصفحة كاملة على الخادم (~15 استعلاماً وطلباً) بلا داعٍ
   revalidatePath("/");
   revalidatePath("/stats");
-  revalidatePath(`/show/${input.showTmdbId}`);
 }
 
 // تأشير حلقة وكل ما قبلها كمشاهَد (اختيار الحلقة ٥٠ يعني مشاهدة ١..٥٠)
@@ -257,9 +281,9 @@ export async function watchUpTo(input: {
     .upsert(rows, { onConflict: "user_id,show_tmdb_id,season_number,episode_number" });
   if (error) fail(error);
 
+  // نفس منطق toggleEpisode: التتابع السريع لا يعيد بناء صفحة المسلسل
   revalidatePath("/");
   revalidatePath("/stats");
-  revalidatePath(`/show/${input.showTmdbId}`);
 }
 
 // حفظ موضع التوقف في فيلم لاستئنافه لاحقاً
@@ -397,6 +421,45 @@ export async function cacheShowStats(
     );
   } catch {
     // التخزين تحسين أداء فقط — فشله لا يجب أن يكسر الصفحة
+  }
+}
+
+/** تاريخ عرض الفيلم يُخزَّن في صفّ المتابعة — فلا يُسأل TMDB عنه كل فتح */
+export async function cacheMovieStats(rows: { tmdbId: number; releaseDate: string | null }[]) {
+  if (!rows.length) return;
+  try {
+    const { supabase, user } = await requireUser();
+    const now = new Date().toISOString();
+    await Promise.all(
+      rows.slice(0, 100).map((r) =>
+        supabase
+          .from("follows")
+          .update({ next_air_date: r.releaseDate, stats_updated_at: now })
+          .match({ user_id: user.id, tmdb_id: r.tmdbId, media_type: "movie" }),
+      ),
+    );
+  } catch {
+    // تحسين أداء فقط
+  }
+}
+
+/** الاسم المترجَم يُكتب مرة واحدة بدل ترجمته بطلبات TMDB في كل فتح */
+export async function cacheFollowMeta(
+  rows: { tmdbId: number; mediaType: MediaType; title: string; posterPath: string | null }[],
+) {
+  if (!rows.length) return;
+  try {
+    const { supabase, user } = await requireUser();
+    await Promise.all(
+      rows.slice(0, 50).map((r) =>
+        supabase
+          .from("follows")
+          .update({ title: r.title, poster_path: r.posterPath })
+          .match({ user_id: user.id, tmdb_id: r.tmdbId, media_type: r.mediaType }),
+      ),
+    );
+  } catch {
+    // تحسين أداء فقط
   }
 }
 
