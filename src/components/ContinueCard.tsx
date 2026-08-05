@@ -242,38 +242,62 @@ export function ContinueCard({
         </div>
       )}
 
-      {/* ورقة الإنجاز: نبضتا توهّج بألوان الهوية ثم سكون — احتفالٌ بالغ */}
+      {/* ورقة الإنجاز: وسط الشاشة، طراطيع بألوان الهوية، وتوهّج ثلاث نبضات */}
       {celebrate && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-8">
           <button
             type="button"
             aria-label=""
             onClick={() => setCelebrate(false)}
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/65 backdrop-blur-sm"
           />
+
+          {/* الطراطيع: ٢٨ قصاصة بمواضع وسرعات محسوبة من رقمها — لا عشوائية تكسر الرسم */}
+          <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden>
+            {Array.from({ length: 28 }, (_, i) => {
+              const colors = ["#7C3AED", "#EC4899", "#F59E0B", "#22C55E", "#3B82F6"];
+              return (
+                <span
+                  key={i}
+                  className="confetti-piece"
+                  style={{
+                    left: `${(i * 37 + 11) % 100}%`,
+                    background: colors[i % colors.length],
+                    animationDuration: `${1.7 + (i % 5) * 0.28}s`,
+                    animationDelay: `${(i % 7) * 0.13}s`,
+                    transform: `scale(${0.7 + (i % 3) * 0.3})`,
+                  }}
+                />
+              );
+            })}
+          </div>
+
           <div
-            className="sheet-pop glow-celebrate relative w-full sm:max-w-sm rounded-t-3xl sm:rounded-3xl p-[1.5px] mb-0"
+            className="sheet-pop glow-celebrate relative w-full max-w-[300px] rounded-3xl p-[1.5px]"
             style={{
               background:
                 "linear-gradient(135deg, var(--accent), var(--accent-2) 55%, var(--brand-3))",
             }}
           >
-            <div className="rounded-t-[calc(1.5rem-1.5px)] sm:rounded-[calc(1.5rem-1.5px)] bg-[color:var(--background)] px-6 pt-7 pb-[max(1.75rem,env(safe-area-inset-bottom))] text-center">
-              <p className="text-lg font-extrabold leading-snug">
+            <div className="rounded-[calc(1.5rem-1.5px)] bg-[color:var(--background)] px-5 pt-6 pb-5 text-center">
+              <p className="text-3xl mb-2" aria-hidden>
+                🎉
+              </p>
+              <p className="text-base font-extrabold leading-snug">
                 {t.finishedShowTitle(title)}
               </p>
-              <p className="text-sm text-muted mt-1.5">{t.finishedShowSub(aired)}</p>
-              <div className="flex gap-2.5 mt-6">
+              <p className="text-xs text-muted mt-1.5">{t.finishedShowSub(aired)}</p>
+              <div className="flex gap-2 mt-5">
                 <Link
                   href={href}
-                  className="flex-1 py-3 rounded-xl bg-accent text-[color:var(--on-accent)] text-sm font-bold hover:brightness-110 active:scale-[0.98] transition"
+                  className="flex-1 py-2.5 rounded-xl bg-accent text-[color:var(--on-accent)] text-[13px] font-bold hover:brightness-110 active:scale-[0.98] transition"
                 >
                   {t.rateItBtn}
                 </Link>
                 <button
                   type="button"
                   onClick={() => setCelebrate(false)}
-                  className="flex-1 py-3 rounded-xl border border-border bg-surface text-sm font-bold hover:bg-surface-2 active:scale-[0.98] transition"
+                  className="flex-1 py-2.5 rounded-xl border border-border bg-surface text-[13px] font-bold hover:bg-surface-2 active:scale-[0.98] transition"
                 >
                   {t.closeBtn}
                 </button>
