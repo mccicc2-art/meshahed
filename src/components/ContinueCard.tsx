@@ -5,7 +5,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { posterUrl, backdropUrl } from "@/lib/media";
-import { toggleEpisode, saveRating } from "@/lib/actions";
+import { saveRating } from "@/lib/actions";
+import { runOrQueue } from "@/lib/offline";
 import { getDict, type Locale } from "@/lib/i18n";
 import { Icon } from "./Icon";
 
@@ -117,7 +118,8 @@ export function ContinueCard({
     }
     start(async () => {
       try {
-        await toggleEpisode({
+        // انقطاع الشبكة لا يفقد التأشيرة: تدخل الطابور وتُزامن عند العودة
+        await runOrQueue("toggleEpisode", {
           showTmdbId: tmdbId,
           season,
           episode,
@@ -154,7 +156,7 @@ export function ContinueCard({
     setPhase("idle");
     start(async () => {
       try {
-        await toggleEpisode({
+        await runOrQueue("toggleEpisode", {
           showTmdbId: tmdbId,
           season,
           episode,

@@ -7,6 +7,7 @@ import {
   markNextEpisode,
   markShowWatched,
   setDropped,
+  startRewatch,
   toggleMovieWatched,
 } from "@/lib/actions";
 import { PosterCard } from "./PosterCard";
@@ -22,6 +23,8 @@ export interface GridItem {
   badgeTone?: "neutral" | "progress" | "watched" | "rating" | "dropped";
   count?: number;
   dropped?: boolean;
+  /** مكتملٌ — يفتح خيار «أشاهده من جديد» */
+  completed?: boolean;
   /** للإجراءات السريعة بالضغطة المطوّلة */
   tmdbId?: number;
   mediaType?: "tv" | "movie";
@@ -339,7 +342,7 @@ function QuickActions({
           </button>
         ) : (
           <>
-            {isTv && (
+            {isTv && !item.completed && (
               <button
                 type="button"
                 disabled={pending}
@@ -353,6 +356,26 @@ function QuickActions({
               >
                 <Icon name="play" size={19} className="text-accent shrink-0" />
                 {t.markNextEp}
+              </button>
+            )}
+
+            {/* عملٌ مكتمل: بابه «أشاهده من جديد» — دورةٌ جديدة واليوميات سليمة */}
+            {isTv && item.completed && (
+              <button
+                type="button"
+                disabled={pending}
+                onClick={() =>
+                  run(async () => {
+                    await startRewatch(item.tmdbId!);
+                    return "🔁 ✓";
+                  })
+                }
+                className={btn}
+              >
+                <span className="text-[17px] shrink-0" aria-hidden>
+                  🔁
+                </span>
+                {t.rewatchBtn}
               </button>
             )}
 
