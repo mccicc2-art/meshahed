@@ -265,7 +265,8 @@ export function ContinueCard({
                     background: colors[i % colors.length],
                     animationDuration: `${1.7 + (i % 5) * 0.28}s`,
                     animationDelay: `${(i % 7) * 0.13}s`,
-                    transform: `scale(${0.7 + (i % 3) * 0.3})`,
+                    width: `${7 + (i % 3) * 3}px`,
+                    height: `${11 + (i % 3) * 4}px`,
                   }}
                 />
               );
