@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { redirect, notFound } from "next/navigation";
 import Image from "next/image";
 import {
@@ -34,19 +35,15 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
 
   // بيانات TMDB وبيانات المستخدم تُطلب معاً: لا شيء منها يعتمد على الآخر،
   // وانتظار الأولى قبل الثانية كان يضيف رحلة كاملة إلى الخادم
-  const [movie, following, watched, myRating, community, titleReviews, trailer, watchWhere, myLists, inLists] =
-    await Promise.all([
-      getMovie(movieId).catch(() => null),
-      isFollowing(movieId, "movie"),
-      isMovieWatched(movieId),
-      getMyRating(movieId, "movie"),
-      getCommunityRating(movieId, "movie"),
-      getTitleReviews(movieId, "movie"),
-      getTrailer("movie", movieId),
-      getWatchProviders("movie", movieId),
-      getMyLists(),
-      getListsContaining(movieId, "movie"),
-    ]);
+  // بيانات أول رسمة فقط — الترايلر والتعليقات تُبثّ لاحقاً عبر Suspense
+  const [movie, following, watched, watchWhere, myLists, inLists] = await Promise.all([
+    getMovie(movieId).catch(() => null),
+    isFollowing(movieId, "movie"),
+    isMovieWatched(movieId),
+    getWatchProviders("movie", movieId),
+    getMyLists(),
+    getListsContaining(movieId, "movie"),
+  ]);
 
   if (!movie) {
     return (
@@ -172,14 +169,16 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
                   </div>
                 )}
 
-                {trailer && (
-                  <Trailer
-                    videoKey={trailer.key}
+                <Suspense
+                  fallback={<div className="skeleton aspect-video rounded-2xl" aria-hidden />}
+                >
+                  <MovieTrailerSection
+                    movieId={movieId}
                     title={movie.title}
-                    thumbnail={backdrop}
+                    backdrop={backdrop}
                     locale={locale}
                   />
-                )}
+                </Suspense>
               </div>
             ),
           },
@@ -188,30 +187,82 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
             label: t.tabReviews,
             icon: "comment",
             content: (
-              <div className="space-y-4">
-                <RatingBox
-                  variant="review"
-                  tmdbId={movieId}
-                  mediaType="movie"
+              <Suspense
+                fallback={
+                  <div className="space-y-4" aria-hidden>
+                    <div className="skeleton h-44 rounded-2xl" />
+                    <div className="skeleton h-24 rounded-2xl" />
+                  </div>
+                }
+              >
+                <MovieReviewsTab
+                  movieId={movieId}
                   title={movie.title}
                   posterPath={movie.poster_path}
                   locale={locale}
-                  initialRating={myRating?.rating ?? null}
-                  initialReview={myRating?.review ?? null}
                 />
-
-                <CommunityReviews
-            tmdbId={movieId}
-            mediaType="movie"
-                  locale={locale}
-                  avg={community.avg}
-                  count={community.count}
-                  reviews={titleReviews}
-                />
-              </div>
+              </Suspense>
             ),
           },
         ]}
+      />
+    </div>
+  );
+}
+
+/** الترايلر يُبثّ بعد أول رسمة */
+async function MovieTrailerSection({
+  movieId,
+  title,
+  backdrop,
+  locale,
+}: {
+  movieId: number;
+  title: string;
+  backdrop: string | null;
+  locale: Awaited<ReturnType<typeof getT>>["locale"];
+}) {
+  const trailer = await getTrailer("movie", movieId);
+  if (!trailer) return null;
+  return <Trailer videoKey={trailer.key} title={title} thumbnail={backdrop} locale={locale} />;
+}
+
+/** تبويب التعليقات يُبثّ لاحقاً — لا يؤخّر الترويسة */
+async function MovieReviewsTab({
+  movieId,
+  title,
+  posterPath,
+  locale,
+}: {
+  movieId: number;
+  title: string;
+  posterPath: string | null;
+  locale: Awaited<ReturnType<typeof getT>>["locale"];
+}) {
+  const [myRating, community, titleReviews] = await Promise.all([
+    getMyRating(movieId, "movie"),
+    getCommunityRating(movieId, "movie"),
+    getTitleReviews(movieId, "movie"),
+  ]);
+  return (
+    <div className="space-y-4">
+      <RatingBox
+        variant="review"
+        tmdbId={movieId}
+        mediaType="movie"
+        title={title}
+        posterPath={posterPath}
+        locale={locale}
+        initialRating={myRating?.rating ?? null}
+        initialReview={myRating?.review ?? null}
+      />
+      <CommunityReviews
+        tmdbId={movieId}
+        mediaType="movie"
+        locale={locale}
+        avg={community.avg}
+        count={community.count}
+        reviews={titleReviews}
       />
     </div>
   );
