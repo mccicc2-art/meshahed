@@ -39,6 +39,9 @@ export default async function LibraryPage({
     watchedByShow.set(w.show_tmdb_id, (watchedByShow.get(w.show_tmdb_id) ?? 0) + 1);
   }
 
+  // حلقاتٌ متبقية عبر المكتبة كلها — لسطر الملخّص تحت العنوان
+  let remainingEps = 0;
+
   // الترتيب داخل كل تبويب: ما أنت في وسطه، ثم ما لم تبدأه، ثم المكتمل
   const shows: (GridItem & { rank: number; progressSort: number })[] = follows
     .filter((f) => f.media_type === "tv")
@@ -48,8 +51,11 @@ export default async function LibraryPage({
       const done = aired > 0 && watched >= aired && watched > 0;
       const progress = aired > 0 ? Math.round((watched / aired) * 100) : 0;
       const dropped = !!f.dropped;
+      if (!dropped && aired > watched) remainingEps += aired - watched;
       return {
         key: `tv-${f.tmdb_id}`,
+        tmdbId: f.tmdb_id,
+        mediaType: "tv" as const,
         href: `/show/${f.tmdb_id}`,
         title: f.title,
         posterPath: f.poster_path,
@@ -77,6 +83,8 @@ export default async function LibraryPage({
       const dropped = !!f.dropped;
       return {
         key: `mv-${f.tmdb_id}`,
+        tmdbId: f.tmdb_id,
+        mediaType: "movie" as const,
         href: `/movie/${f.tmdb_id}`,
         title: f.title,
         posterPath: f.poster_path,
@@ -89,34 +97,40 @@ export default async function LibraryPage({
     })
     .sort((a, b) => a.rank - b.rank);
 
+  const doneCount =
+    shows.filter((s) => s.rank === 2).length + movies.filter((m) => m.rank === 1).length;
+
   return (
     <div>
-      <h1 className="text-xl font-bold mb-4">{t.libraryTitle}</h1>
+      <h1 className="text-xl font-bold">{t.libraryTitle}</h1>
+      {/* سطر الملخّص: نبض المكتبة بنظرة — كم عندك، كم أنهيت، كم بقي */}
+      <p className="text-xs text-muted mt-1 mb-5" dir="auto">
+        {t.librarySummary(shows.length + movies.length, doneCount, remainingEps)}
+      </p>
 
       <LibraryGrid shows={shows} movies={movies} locale={locale} initialTab={initialTab} />
 
-      <div className="mt-8 grid grid-cols-3 gap-2">
-        <Link
-          href="/stats"
-          className="flex items-center justify-center gap-2 text-xs text-muted hover:text-accent border border-dashed border-border rounded-xl py-3 transition"
-        >
-          <Icon name="chart" size={16} />
-          {t.libAnalysisBtn}
-        </Link>
-        <Link
-          href="/diary"
-          className="flex items-center justify-center gap-2 text-xs text-muted hover:text-accent border border-dashed border-border rounded-xl py-3 transition"
-        >
-          <Icon name="clock" size={16} />
-          {t.diaryTitle}
-        </Link>
-        <Link
-          href="/lists"
-          className="flex items-center justify-center gap-2 text-xs text-muted hover:text-accent border border-dashed border-border rounded-xl py-3 transition"
-        >
-          <Icon name="list" size={16} />
-          {t.listsTitle}
-        </Link>
+      {/* روابط الأدوات — بلا إطار، على نمط صفوف الرئيسية: فواصل رأسية فقط */}
+      <div className="mt-8 grid grid-cols-3 border-t border-[color:var(--divider)] pt-1">
+        {(
+          [
+            { href: "/stats", icon: "chart", label: t.libAnalysisBtn },
+            { href: "/diary", icon: "clock", label: t.diaryTitle },
+            { href: "/lists", icon: "list", label: t.listsTitle },
+          ] as const
+        ).map(({ href, icon, label }, i) => (
+          <Link
+            key={href}
+            href={href}
+            className="relative flex flex-col items-center gap-1.5 py-3.5 text-muted hover:text-foreground active:bg-white/[0.04] transition"
+          >
+            <Icon name={icon} size={18} />
+            <span className="text-[11px] leading-tight text-center">{label}</span>
+            {i < 2 && (
+              <span className="absolute inset-y-2 end-0 w-px bg-white/10" aria-hidden />
+            )}
+          </Link>
+        ))}
       </div>
     </div>
   );
