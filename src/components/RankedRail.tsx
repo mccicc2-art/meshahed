@@ -50,7 +50,7 @@ export function RankedRail({
                 prefetch={false}
                 className="group w-[112px] sm:w-[132px] shrink-0"
               >
-                <div className="relative aspect-[2/3] rounded-xl overflow-hidden bg-surface-2 border border-border">
+                <div className="relative aspect-[2/3] rounded-poster overflow-hidden bg-surface-2 border border-border">
                   {img ? (
                     <Image
                       src={img}
@@ -70,7 +70,7 @@ export function RankedRail({
                   {ranked && (
                     <span
                       className={`absolute bottom-1 start-1.5 font-extrabold leading-none drop-shadow ${
-                        i < 3 ? "text-accent text-3xl" : "text-white/85 text-2xl"
+                        i < 3 ? "text-accent text-3xl" : "text-foreground/85 text-2xl"
                       }`}
                     >
                       <span dir="ltr">{i + 1}</span>

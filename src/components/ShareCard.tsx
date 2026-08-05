@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { getDict, type Locale } from "@/lib/i18n";
 import { Icon } from "./Icon";
+import { buttonClass } from "./ui/Button";
 
 /**
  * زرّ مشاركة بطاقة الإحصاءات.
@@ -51,7 +52,7 @@ export function ShareCard({ locale }: { locale: Locale }) {
       className="rounded-3xl p-[1.5px]"
       style={{
         background:
-          "linear-gradient(135deg, var(--accent), var(--accent-2) 55%, var(--brand-3))",
+          "var(--gradient-brand)",
       }}
     >
       <div className="rounded-[calc(1.5rem-1.5px)] bg-[color:var(--background)] p-3 sm:p-4">
@@ -75,9 +76,9 @@ export function ShareCard({ locale }: { locale: Locale }) {
           <button
             onClick={share}
             disabled={busy}
-            className="shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-xl bg-accent text-[color:var(--on-accent)] text-xs font-bold hover:brightness-110 active:scale-95 transition disabled:opacity-50"
+            className={buttonClass({ size: "sm", className: "shrink-0" })}
           >
-            <Icon name="share" size={15} />
+            <Icon name="share" size={16} />
             {t.shareBtn}
           </button>
         </div>

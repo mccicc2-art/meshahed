@@ -61,7 +61,7 @@ export function Trailer({
 
             <span className="absolute inset-0 grid place-items-center">
               <span className="w-16 h-16 rounded-full bg-accent text-[color:var(--on-accent)] grid place-items-center shadow-lg group-hover:scale-110 transition">
-                <Icon name="play" size={30} strokeWidth={1.6} />
+                <Icon name="play" size={30}  />
               </span>
             </span>
 

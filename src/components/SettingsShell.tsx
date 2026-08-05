@@ -8,6 +8,7 @@ import { ProfileForm } from "./ProfileForm";
 import { AccountSettings } from "./AccountSettings";
 import { HomeCustomize } from "./HomeCustomize";
 import { PrivacyData } from "./PrivacyData";
+import { chipClass } from "./ui/controls";
 
 type SectionKey =
   | "profile"
@@ -156,11 +157,7 @@ export function SettingsShell({
                   type="button"
                   onClick={() => setActive(n.key)}
                   aria-current={on ? "page" : undefined}
-                  className={`w-full flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-[13px] whitespace-nowrap transition ${
-                    on
-                      ? "bg-accent/15 text-accent font-semibold border border-accent/30"
-                      : "text-muted hover:text-foreground hover:bg-surface border border-transparent"
-                  }`}
+                  className={chipClass(on, "md", "w-full flex items-center gap-2.5 !rounded-xl !text-[13px] !px-3 !py-2.5")}
                 >
                   <Icon name={n.icon} size={16} className="shrink-0" />
                   <span className="truncate">{n.label}</span>

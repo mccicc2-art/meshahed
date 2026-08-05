@@ -9,7 +9,7 @@ type BadgeTone = "neutral" | "progress" | "watched" | "rating" | "dropped";
 const BADGE_BG: Record<BadgeTone, string> = {
   neutral: "rgba(0,0,0,0.75)",
   progress: "var(--accent)",
-  watched: "var(--brand-3)",
+  watched: "var(--success)",
   rating: "var(--verified)",
   dropped: "var(--error)",
 };
@@ -48,7 +48,7 @@ export function PosterCard({
     // الافتراضي يطلق طلب RSC لكل بطاقة تدخل الشاشة — عشرات الطلبات المتزامنة
     // كانت ترجع 503 وتُبطئ التنقّل الفعلي. الرابط يُحمَّل عند النقر.
     <Link href={href} prefetch={false} className="group block">
-      <div className="relative aspect-[2/3] rounded-[18px] overflow-hidden bg-surface border border-border">
+      <div className="relative aspect-[2/3] rounded-poster overflow-hidden bg-surface border border-border">
         {url ? (
           <Image
             src={url}

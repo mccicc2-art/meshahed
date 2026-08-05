@@ -5,6 +5,8 @@ import { saveRating, deleteRating } from "@/lib/actions";
 import { getDict, type Locale } from "@/lib/i18n";
 import type { MediaType } from "@/lib/media";
 import { tap } from "@/lib/haptics";
+import { Alert } from "./ui/Alert";
+import { buttonClass } from "./ui/Button";
 
 export function RatingBox({
   tmdbId,
@@ -114,7 +116,11 @@ export function RatingBox({
       <div className="bg-surface border border-border rounded-2xl p-4">
         <div className="flex items-baseline justify-between gap-3 mb-2.5">
           <h3 className="font-bold text-[15px]">{t.reviewSectionTitle}</h3>
-          {saved && <span className="text-xs text-accent-2">{t.savedOk}</span>}
+          {saved && (
+            <span role="status" className="text-xs text-[color:var(--success)]">
+              {t.savedOk}
+            </span>
+          )}
         </div>
 
         {/* النجوم هنا أيضاً: الحفظ يحتاج تقييماً، ومن يكتب تعليقه أولاً
@@ -133,13 +139,17 @@ export function RatingBox({
           className="w-full rounded-xl bg-surface-2 border border-border px-3.5 py-2.5 outline-none focus:border-accent transition text-sm leading-relaxed resize-y"
         />
 
-        {error && <p className="text-sm text-red-300 mt-2.5" role="alert">{error}</p>}
+        {error && (
+          <Alert inline className="mt-2.5">
+            {error}
+          </Alert>
+        )}
 
         <div className="flex items-center gap-2 flex-wrap mt-2.5">
           <button
             onClick={save}
             disabled={pending}
-            className="px-4 py-2 rounded-xl bg-accent text-[color:var(--on-accent)] font-bold text-[13px] hover:brightness-110 active:scale-[0.98] transition disabled:opacity-60"
+            className={buttonClass({ size: "sm" })}
           >
             {pending ? t.saving : t.saveReview}
           </button>
@@ -164,13 +174,17 @@ export function RatingBox({
 
       <div className="mb-1">{stars}</div>
 
-      {error && <p className="text-sm text-red-300 mt-3" role="alert">{error}</p>}
+      {error && (
+        <Alert inline className="mt-3">
+          {error}
+        </Alert>
+      )}
 
       <div className="flex items-center gap-3 flex-wrap mt-4">
         <button
           onClick={save}
           disabled={pending}
-          className="px-5 py-2.5 rounded-xl bg-accent text-[color:var(--on-accent)] font-semibold text-sm hover:brightness-110 transition disabled:opacity-60"
+          className={buttonClass()}
         >
           {pending ? t.saving : t.saveRating}
         </button>
@@ -184,7 +198,11 @@ export function RatingBox({
             {t.deleteRating}
           </button>
         )}
-        {saved && <span className="text-sm text-accent-2">{t.savedOk}</span>}
+        {saved && (
+          <span role="status" className="text-sm text-[color:var(--success)]">
+            {t.savedOk}
+          </span>
+        )}
         {/* التعليق انتقل إلى تبويب التعليقات — إشارة صغيرة تدلّ عليه */}
         <span className="text-[11px] text-muted">{t.reviewMovedHint}</span>
       </div>

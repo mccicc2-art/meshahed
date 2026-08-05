@@ -34,7 +34,6 @@ export function PosterRail({
             <Icon
               name={icon}
               size={22}
-              strokeWidth={1.9}
               style={iconColor ? { color: iconColor } : undefined}
               className={iconColor ? "" : "text-muted"}
             />

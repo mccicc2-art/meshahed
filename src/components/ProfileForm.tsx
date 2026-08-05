@@ -10,6 +10,9 @@ import { GENRES, genreName } from "@/lib/media";
 import { THEMES, themeName } from "@/lib/themes";
 import { getDict, type Locale } from "@/lib/i18n";
 import { Avatar } from "./Avatar";
+import { Alert } from "./ui/Alert";
+import { buttonClass } from "./ui/Button";
+import { chipClass } from "./ui/controls";
 
 export type ProfileSection = "cover" | "avatar" | "theme" | "nickname" | "genres";
 
@@ -295,11 +298,7 @@ export function ProfileForm({
                   type="button"
                   aria-pressed={on}
                   onClick={() => toggleGenre(g.id)}
-                  className={`px-3.5 py-2 rounded-full text-sm border transition ${
-                    on
-                      ? "bg-accent text-[color:var(--on-accent)] border-accent font-semibold"
-                      : "bg-surface-2 border-border text-muted hover:text-foreground hover:border-accent/50"
-                  }`}
+                  className={chipClass(on)}
                 >
                   {genreName(g, locale)}
                 </button>
@@ -311,20 +310,22 @@ export function ProfileForm({
         )}
 
       {error && (
-        <p className="text-sm text-red-300 bg-red-500/10 border border-red-400/30 rounded-xl px-3 py-2.5">
-          {error}
-        </p>
+        <Alert>{error}</Alert>
       )}
 
       <div className="flex items-center gap-3">
         <button
           onClick={save}
           disabled={pending || uploading !== null}
-          className="px-5 py-2.5 text-sm rounded-xl bg-accent text-[color:var(--on-accent)] font-semibold hover:brightness-110 transition disabled:opacity-60"
+          className={buttonClass()}
         >
           {pending ? t.saving : t.saveChanges}
         </button>
-        {saved && <span className="text-sm text-accent-2">{t.savedOk}</span>}
+        {saved && (
+          <span role="status" className="text-sm text-[color:var(--success)]">
+            {t.savedOk}
+          </span>
+        )}
       </div>
     </div>
   );

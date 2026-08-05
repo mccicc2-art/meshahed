@@ -9,6 +9,7 @@ import { posterUrl } from "@/lib/media";
 import { getDict, type Locale } from "@/lib/i18n";
 import { Icon } from "./Icon";
 import type { ListItem } from "@/lib/data";
+import { buttonClass } from "./ui/Button";
 
 /**
  * صفحة القائمة الواحدة.
@@ -94,7 +95,7 @@ export function ListDetail({
             <button
               onClick={() => save()}
               disabled={pending}
-              className="shrink-0 px-3 py-1.5 rounded-xl bg-accent text-[color:var(--on-accent)] text-xs font-bold disabled:opacity-50"
+              className={buttonClass({ size: "sm", className: "shrink-0" })}
             >
               {t.listSave}
             </button>
@@ -104,7 +105,7 @@ export function ListDetail({
               aria-label={t.listRename}
               className="shrink-0 grid place-items-center w-8 h-8 rounded-full border border-border bg-surface hover:border-accent transition"
             >
-              <Icon name="edit" size={15} className="text-muted" />
+              <Icon name="edit" size={16} className="text-muted" />
             </button>
           ))}
       </div>
@@ -141,7 +142,7 @@ export function ListDetail({
             return (
               <div key={`${it.media_type}-${it.tmdb_id}`} className="relative group">
                 <Link href={href} prefetch={false} className="block">
-                  <div className="relative aspect-[2/3] rounded-xl overflow-hidden bg-surface-2 border border-border">
+                  <div className="relative aspect-[2/3] rounded-poster overflow-hidden bg-surface-2 border border-border">
                     {url ? (
                       <Image
                         src={url}

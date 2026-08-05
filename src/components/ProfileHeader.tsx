@@ -163,7 +163,7 @@ export function ProfileHeader({
             className="block rounded-full p-[3px]"
             style={{
               background:
-                "linear-gradient(135deg, var(--brand-3), var(--accent-2) 55%, var(--accent))",
+                "var(--gradient-brand)",
             }}
           >
             <Avatar
@@ -199,7 +199,7 @@ export function ProfileHeader({
                   aria-label={`${followers} ${t.followersLabel}`}
                   className="shrink-0 flex items-center gap-1.5 hover:text-white transition"
                 >
-                  <Icon name="people-filled" size={15} />
+                  <Icon name="people-filled" size={16} />
                   <span className="font-bold text-white tabular-nums">
                     {followers}
                   </span>
@@ -273,7 +273,6 @@ export function ProfileHeader({
                     <Icon
                       name={s.icon}
                       size={20}
-                      strokeWidth={1.8}
                       style={s.color ? { color: s.color } : undefined}
                       className={`shrink-0 ${s.color ? "" : "text-muted"}`}
                     />
@@ -330,7 +329,7 @@ export function ProfileHeader({
                 style={{
                   width: `${level.percent}%`,
                   background:
-                    "linear-gradient(90deg, var(--brand-3), var(--accent-2))",
+                    "var(--gradient-brand-x)",
                 }}
               />
             </div>

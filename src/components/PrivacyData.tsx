@@ -4,6 +4,8 @@ import { useRef, useState, useTransition } from "react";
 import { exportMyData, deleteMyAccount } from "@/lib/actions";
 import { getDict, type Locale } from "@/lib/i18n";
 import { Icon } from "./Icon";
+import { Alert } from "./ui/Alert";
+import { buttonClass } from "./ui/Button";
 
 /**
  * قسم «بياناتك» في الخصوصية: تصديرٌ وحذف.
@@ -68,7 +70,7 @@ export function PrivacyData({ locale }: { locale: Locale }) {
         <button
           onClick={download}
           disabled={busy}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-surface-2 border border-border text-sm font-bold hover:border-accent transition disabled:opacity-60"
+          className={buttonClass({ variant: "surface" })}
         >
           <Icon name="download" size={16} />
           {busy ? t.dataExportBusy : t.dataExportBtn}
@@ -84,18 +86,19 @@ export function PrivacyData({ locale }: { locale: Locale }) {
         <button
           onClick={onDelete}
           disabled={deleting}
-          className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition disabled:opacity-60 ${
-            armed
-              ? "bg-[color:var(--error)] text-white"
-              : "bg-surface-2 border border-[color:var(--error)]/40 text-[color:var(--error)] hover:bg-[color:var(--error)]/10"
-          }`}
+          className={buttonClass({
+            variant: armed ? "danger" : "surface",
+            className: armed
+              ? ""
+              : "border-[color:var(--error)]/40 text-[color:var(--error)] hover:border-[color:var(--error)] hover:bg-[color:var(--error)]/10",
+          })}
         >
           <Icon name="trash" size={16} />
           {deleting ? t.deleteAccountBusy : armed ? t.deleteAccountConfirm : t.deleteAccountBtn}
         </button>
       </section>
 
-      {error && <p className="text-xs text-[color:var(--error)]">{error}</p>}
+      {error && <Alert inline>{error}</Alert>}
     </div>
   );
 }

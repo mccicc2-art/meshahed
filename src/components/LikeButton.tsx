@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { flashError } from "@/lib/flash";
+import { flashError } from "@/lib/toast";
 import { toggleReviewLike } from "@/lib/actions";
 import { getDict, type Locale } from "@/lib/i18n";
 import { tap } from "@/lib/haptics";
@@ -42,7 +42,7 @@ export function LikeButton({
   if (isMine) {
     return (
       <span className="flex items-center gap-1.5 text-[12px] text-muted" title={t.likesLabel}>
-        <Icon name="like" size={15} />
+        <Icon name="like" size={16} />
         <span className="tabular-nums">{count}</span>
       </span>
     );
@@ -76,7 +76,7 @@ export function LikeButton({
         liked ? "text-accent" : "text-muted hover:text-foreground"
       }`}
     >
-      <Icon name={liked ? "like-filled" : "like"} size={15} />
+      <Icon name={liked ? "like-filled" : "like"} size={16} />
       <span className="tabular-nums">{count}</span>
     </button>
   );

@@ -9,6 +9,8 @@ import { posterUrl } from "@/lib/media";
 import { getDict, type Locale } from "@/lib/i18n";
 import { Icon } from "./Icon";
 import type { UserList } from "@/lib/data";
+import { Alert } from "./ui/Alert";
+import { buttonClass } from "./ui/Button";
 
 /**
  * إدارة القوائم.
@@ -66,13 +68,17 @@ export function ListManager({ lists, locale }: { lists: UserList[]; locale: Loca
         <button
           onClick={add}
           disabled={pending || !name.trim()}
-          className="shrink-0 px-4 py-2.5 rounded-xl bg-accent text-[color:var(--on-accent)] font-bold text-sm hover:brightness-110 transition disabled:opacity-50"
+          className={buttonClass({ className: "shrink-0" })}
         >
           {t.listCreate}
         </button>
       </div>
 
-      {error && <p className="text-xs text-red-300 mb-4">{error}</p>}
+      {error && (
+        <Alert inline className="mb-4">
+          {error}
+        </Alert>
+      )}
 
       {lists.length === 0 ? (
         <p className="text-sm text-muted text-center py-16">{t.listsEmpty}</p>

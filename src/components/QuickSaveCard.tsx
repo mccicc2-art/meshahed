@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { flashError } from "@/lib/flash";
+import { flashError } from "@/lib/toast";
 import { follow } from "@/lib/actions";
 import { tap } from "@/lib/haptics";
 import { getDict, type Locale } from "@/lib/i18n";
+import { Icon } from "./Icon";
 
 /**
  * زرّ الحفظ السريع على بطاقات «الرائج».
@@ -66,15 +67,12 @@ export function QuickSaveCard({
         /* شفته: مؤشّر لا زرّ — المعلومة هي الفائدة */
         <span className={wrap} title={t.watchedBadge} aria-label={t.watchedBadge}>
           <span className={`${base} bg-black/45 border border-white/20`}>
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden>
-            <path
-              d="m5 12.5 4.5 4.5L19 7.5"
-              stroke="var(--success)"
-              strokeWidth="2.6"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
+          <Icon
+            name="check-line"
+            size={18}
+            strokeWidth={2.2}
+            className="text-[color:var(--success)]"
+          />
           </span>
         </span>
       ) : (
@@ -93,15 +91,15 @@ export function QuickSaveCard({
                 : "bg-black/45 border border-white/25 hover:bg-black/60"
             }`}
           >
-          <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden>
-            <path
-              d="M6.5 4.5h11v15l-5.5-4-5.5 4v-15Z"
-              fill={state === "saved" ? "var(--brand-3)" : "none"}
-              stroke={state === "saved" ? "var(--brand-3)" : "rgba(255,255,255,0.9)"}
-              strokeWidth="1.9"
-              strokeLinejoin="round"
-            />
-          </svg>
+          <Icon
+            name="bookmark"
+            size={16}
+            style={
+              state === "saved"
+                ? { color: "var(--brand-3)", fill: "currentColor" }
+                : { color: "rgba(255,255,255,0.9)" }
+            }
+          />
           </span>
         </button>
       )}

@@ -4,7 +4,7 @@ import { PosterGrid } from "./PosterGrid";
 export function PosterCardSkeleton() {
   return (
     <div>
-      <div className="skeleton aspect-[2/3] rounded-xl border border-border" />
+      <div className="skeleton aspect-[2/3] rounded-poster border border-border" />
       <div className="skeleton h-3 rounded mt-2 w-11/12" />
       <div className="skeleton h-2.5 rounded mt-1.5 w-1/2" />
     </div>
@@ -57,7 +57,7 @@ export function RailSkeleton({ count = 6 }: { count?: number }) {
       <div className="flex gap-3 overflow-hidden -mx-4 px-4">
         {Array.from({ length: count }, (_, i) => (
           <div key={i} className="w-[118px] shrink-0">
-            <div className="skeleton aspect-[2/3] rounded-[18px] border border-border" />
+            <div className="skeleton aspect-[2/3] rounded-poster border border-border" />
           </div>
         ))}
       </div>
@@ -112,7 +112,7 @@ export function DetailSkeleton() {
       <div className="skeleton -mx-4 -mt-6 h-44 sm:h-72 mb-4" />
       <div className="flex gap-4 -mt-24 sm:-mt-28 relative px-1">
         <div className="w-28 sm:w-40 shrink-0">
-          <div className="skeleton aspect-[2/3] rounded-2xl border border-border" />
+          <div className="skeleton aspect-[2/3] rounded-poster border border-border" />
         </div>
         <div className="flex-1 pt-2 space-y-3">
           <div className="skeleton h-8 w-2/3 rounded" />

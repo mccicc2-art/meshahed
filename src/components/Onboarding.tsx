@@ -7,6 +7,8 @@ import { follow, updateProfile, applyOnboardingProgress } from "@/lib/actions";
 import { getDict, type Locale } from "@/lib/i18n";
 import { GENRES, posterUrl } from "@/lib/media";
 import { Icon } from "./Icon";
+import { buttonClass } from "./ui/Button";
+import { chipClass } from "./ui/controls";
 
 export interface SeedTitle {
   id: number;
@@ -123,8 +125,8 @@ export function Onboarding({
                 className="text-start group"
               >
                 <span
-                  className={`relative block aspect-[2/3] rounded-xl overflow-hidden border bg-surface-2 transition ${
-                    on ? "border-accent-2 ring-2 ring-accent-2" : "border-border"
+                  className={`relative block aspect-[2/3] rounded-poster overflow-hidden border bg-surface-2 transition ${
+                    on ? "border-accent ring-2 ring-accent" : "border-border"
                   }`}
                 >
                   {url ? (
@@ -141,8 +143,8 @@ export function Onboarding({
                     </span>
                   )}
                   {on && (
-                    <span className="absolute top-1.5 start-1.5 w-6 h-6 rounded-full bg-accent-2 text-[color:var(--on-accent-2)] grid place-items-center text-sm font-extrabold">
-                      ✓
+                    <span className="absolute top-1.5 start-1.5 w-6 h-6 rounded-full bg-[color:var(--success)] text-white grid place-items-center">
+                      <Icon name="check-line" size={14} strokeWidth={2.2} />
                     </span>
                   )}
                 </span>
@@ -183,11 +185,7 @@ export function Onboarding({
                         key={key}
                         onClick={() => setProgress((p) => ({ ...p, [s.id]: key }))}
                         aria-pressed={cur === key}
-                        className={`text-[11px] px-2.5 py-1 rounded-full border transition ${
-                          cur === key
-                            ? "border-accent-2 bg-accent-2/15 text-accent-2 font-bold"
-                            : "border-border text-muted hover:text-foreground"
-                        }`}
+                        className={chipClass(cur === key, "sm")}
                       >
                         {label}
                       </button>
@@ -214,11 +212,7 @@ export function Onboarding({
                   )
                 }
                 aria-pressed={on}
-                className={`text-sm px-4 py-2.5 rounded-full border transition ${
-                  on
-                    ? "border-accent bg-accent/15 text-accent font-bold"
-                    : "border-border bg-surface text-muted hover:text-foreground"
-                }`}
+                className={chipClass(on)}
               >
                 {locale === "en" ? g.en : g.ar}
               </button>
@@ -237,7 +231,7 @@ export function Onboarding({
           <button
             disabled={pending || (step === 1 && picked.size === 0)}
             onClick={() => (step < 3 ? setStep(step + 1) : finish())}
-            className="w-full py-3.5 rounded-xl bg-accent-2 text-[color:var(--on-accent-2)] font-extrabold text-sm hover:brightness-110 transition disabled:opacity-50"
+            className={buttonClass({ size: "lg", full: true })}
           >
             {pending
               ? t.obSaving

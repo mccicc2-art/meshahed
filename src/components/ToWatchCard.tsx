@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { flashError } from "@/lib/flash";
+import { flashError } from "@/lib/toast";
 import { useRouter } from "next/navigation";
 import { markShowWatched, toggleMovieWatched, setDropped } from "@/lib/actions";
 import { getDict, type Locale } from "@/lib/i18n";
 import { tap } from "@/lib/haptics";
 import { coalescedRefresh } from "@/lib/refresh";
+import { Icon } from "./Icon";
 
 /**
  * أدوات بطاقة «للمشاهدة»: زرّان يطفوان على الملصق.
@@ -74,9 +75,7 @@ export function ToWatchCard({
           className="grid place-items-center w-11 h-11 group/w"
         >
           <span className="grid place-items-center w-8 h-8 rounded-full bg-black/60 backdrop-blur border border-white/20 text-[color:var(--success)] group-hover/w:bg-[color:var(--success)] group-hover/w:text-white transition">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-            <path d="m4.5 12.5 5 5 10-11" />
-          </svg>
+          <Icon name="check-line" size={16} strokeWidth={2.2} />
           </span>
         </button>
 

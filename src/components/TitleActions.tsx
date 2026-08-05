@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { flashError } from "@/lib/flash";
+import { flashError } from "@/lib/toast";
 import { coalescedRefresh } from "@/lib/refresh";
 import { tap } from "@/lib/haptics";
 import { useState, useTransition } from "react";
@@ -10,6 +10,8 @@ import { follow, unfollow, toggleInList, markShowWatched, toggleMovieWatched } f
 import { getDict, type Locale } from "@/lib/i18n";
 import type { MediaType } from "@/lib/media";
 import { Icon } from "./Icon";
+import { Sheet } from "./ui/Sheet";
+import { buttonClass } from "./ui/Button";
 
 /**
  * صفّ الإجراء الرئيسي في صفحة العمل: «أضف لقائمة» + دائرة «شاهدتُه».
@@ -121,10 +123,9 @@ export function TitleActions({
     });
   }
 
-  const sheetShell =
-    "w-full max-w-[300px] rounded-3xl border border-white/10 bg-[color:var(--elevated)]/95 backdrop-blur-xl shadow-2xl sheet-pop";
-  const sheetBtn =
-    "w-full py-3 rounded-2xl text-[15px] font-bold bg-white/[0.07] hover:bg-white/[0.12] active:scale-[0.98] transition";
+  // زرّ داخل الورقة: سطحٌ ثانوي يملأ العرض — الرتبة الثانية بعد الفعل
+  // الأول في الشاشة نفسها، فلا يزاحمه بلون الهوية
+  const sheetBtn = buttonClass({ variant: "surface", size: "lg", full: true });
 
   return (
     <>
@@ -137,13 +138,13 @@ export function TitleActions({
           className={`flex-1 h-12 rounded-full font-bold text-[15px] flex items-center justify-center gap-2.5 active:scale-[0.98] transition ${
             badge > 0
               ? "bg-accent text-[color:var(--on-accent)] shadow-[0_10px_28px_rgba(124,58,237,0.35)] hover:brightness-110"
-              : "bg-white text-[#111] shadow-[0_10px_28px_rgba(255,255,255,0.08)] hover:bg-gray-100"
+              : "bg-[color:var(--surface-inverse)] text-[color:var(--on-surface-inverse)] shadow-[0_10px_28px_rgba(0,0,0,0.28)] hover:brightness-95"
           }`}
         >
           <Icon
             name="bookmark"
             size={18}
-            strokeWidth={2}
+            strokeWidth={2.2}
             style={badge > 0 ? { fill: "currentColor" } : undefined}
           />
           {t.listAddTo}
@@ -159,45 +160,47 @@ export function TitleActions({
           className={`w-12 h-12 shrink-0 rounded-full grid place-items-center border-[1.5px] active:scale-95 transition ${
             done
               ? "border-transparent bg-[color:var(--success)]/15 text-[color:var(--success)]"
-              : "border-white/25 text-white/85 hover:border-white/50"
+              : "border-border text-foreground/85 hover:border-accent/60"
           }`}
         >
-          <Icon name="check-line" size={20} strokeWidth={2} className={done ? "check-pop" : ""} />
+          <Icon name="check-line" size={20} strokeWidth={2.2} className={done ? "check-pop" : ""} />
         </button>
       </div>
 
       {/* ورقة القوائم */}
-      {sheet === "lists" && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-8">
-          <button
-            aria-label={t.closeLabel}
-            onClick={() => setSheet(null)}
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-          />
-          <div className={`relative ${sheetShell}`}>
-            <p className="text-center font-bold text-[15px] pt-5 pb-3">{t.listAddTo}</p>
+      <Sheet
+        open={sheet === "lists"}
+        onClose={() => setSheet(null)}
+        closeLabel={t.closeLabel}
+        variant="center"
+        labelledBy="lists-sheet-title"
+      >
+        <>
+          <p id="lists-sheet-title" className="text-center font-bold text-[15px] pt-5 pb-3">
+            {t.listAddTo}
+          </p>
 
             {/* «للمشاهدة» — المتابعة بثوب القائمة المثبّتة */}
             <button
               onClick={toggleFollow}
-              className="w-full flex items-center gap-3 px-5 py-3 text-start hover:bg-white/[0.05] transition"
+              className="w-full flex items-center gap-3 px-5 py-3 text-start hover:bg-surface-2 transition"
             >
               <span
                 className={`grid place-items-center w-[22px] h-[22px] rounded-full border-[1.5px] shrink-0 transition ${
                   following
                     ? "bg-accent border-accent text-[color:var(--on-accent)]"
-                    : "border-white/25 text-transparent"
+                    : "border-border text-transparent"
                 }`}
               >
-                <Icon name="check-line" size={13} strokeWidth={2.2} />
+                <Icon name="check-line" size={14} strokeWidth={2.2} />
               </span>
               <span className="text-[14px] font-semibold flex items-center gap-2">
-                <Icon name="bookmark" size={15} className="text-muted" />
+                <Icon name="bookmark" size={16} className="text-muted" />
                 {t.libToWatch}
               </span>
             </button>
 
-            <div className="h-px bg-white/[0.07] mx-5 my-1" />
+            <div className="h-px bg-[color:var(--divider)] mx-5 my-1" />
 
             {lists.length === 0 ? (
               <p className="px-5 py-3 text-xs text-muted">
@@ -214,16 +217,16 @@ export function TitleActions({
                     <li key={l.id}>
                       <button
                         onClick={() => toggleList(l.id)}
-                        className="w-full flex items-center gap-3 px-5 py-2.5 text-start hover:bg-white/[0.05] transition"
+                        className="w-full flex items-center gap-3 px-5 py-2.5 text-start hover:bg-surface-2 transition"
                       >
                         <span
                           className={`grid place-items-center w-[22px] h-[22px] rounded-full border-[1.5px] shrink-0 transition ${
                             on
                               ? "bg-accent border-accent text-[color:var(--on-accent)]"
-                              : "border-white/25 text-transparent"
+                              : "border-border text-transparent"
                           }`}
                         >
-                          <Icon name="check-line" size={13} strokeWidth={2.2} />
+                          <Icon name="check-line" size={14} strokeWidth={2.2} />
                         </span>
                         <span className="text-[14px] truncate">{l.name}</span>
                       </button>
@@ -233,27 +236,27 @@ export function TitleActions({
               </ul>
             )}
 
-            <div className="p-4 pt-2">
-              <button onClick={() => setSheet(null)} className={sheetBtn}>
-                {t.doneLabel}
-              </button>
-            </div>
+          <div className="p-4 pt-2">
+            <button onClick={() => setSheet(null)} className={sheetBtn}>
+              {t.doneLabel}
+            </button>
           </div>
-        </div>
-      )}
+        </>
+      </Sheet>
 
       {/* ورقة التأشير الكامل */}
-      {sheet === "watch" && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-8">
-          <button
-            aria-label={t.closeLabel}
-            onClick={() => setSheet(null)}
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-          />
-          <div className={`relative ${sheetShell} p-4`}>
-            <p className="text-center font-bold text-[15px] pt-1.5 pb-4">
-              {done ? t.allWatchedShort : t.markAllTitle}
-            </p>
+      <Sheet
+        open={sheet === "watch"}
+        onClose={() => setSheet(null)}
+        closeLabel={t.closeLabel}
+        variant="center"
+        labelledBy="watch-sheet-title"
+        className="p-4"
+      >
+        <>
+          <p id="watch-sheet-title" className="text-center font-bold text-[15px] pt-1.5 pb-4">
+            {done ? t.allWatchedShort : t.markAllTitle}
+          </p>
             <div className="space-y-2.5">
               {done ? (
                 mediaType === "movie" ? (
@@ -270,14 +273,13 @@ export function TitleActions({
               )}
               <button
                 onClick={() => setSheet(null)}
-                className="w-full py-3 rounded-2xl text-[15px] font-semibold text-muted hover:text-foreground hover:bg-white/[0.05] transition"
+                className={buttonClass({ variant: "ghost", size: "lg", full: true })}
               >
                 {t.cancelLabel}
               </button>
-            </div>
           </div>
-        </div>
-      )}
+        </>
+      </Sheet>
     </>
   );
 }

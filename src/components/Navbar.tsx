@@ -8,6 +8,7 @@ import { NavAvatar } from "./NavAvatar";
 import { LogoWordmark } from "./Logo";
 import { LangFlagMenu } from "./LangFlagMenu";
 import { ThemeCookieSync } from "./ThemeCookieSync";
+import { buttonClass } from "./ui/Button";
 
 export async function Navbar() {
   const { locale, t } = await getT();
@@ -65,7 +66,7 @@ export async function Navbar() {
           ) : (
             <Link
               href="/login"
-              className="text-sm font-medium bg-accent text-[color:var(--on-accent)] px-4 py-2 rounded-lg hover:brightness-110"
+              className={buttonClass({ size: "sm" })}
             >
               {t.login}
             </Link>
