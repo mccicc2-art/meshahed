@@ -235,6 +235,10 @@ const ar = {
   shortShows: "مسلسلات",
   markAllWatched: "شفته كله",
   dropTitle: "بطاقة حمراء — أوقفه",
+  statsTopShows: "الأكثر مشاهدة",
+  statsTopShowsSub: "مسلسلاتك مرتّبة بعدد الحلقات التي شاهدتها.",
+  diaryEpsGrouped: (n: number) =>
+    n === 1 ? "حلقة واحدة" : n === 2 ? "حلقتان" : n <= 10 ? `${n} حلقات` : `${n} حلقة`,
   markNextEp: "شفت الحلقة التالية +١",
   markedEp: (s: number, e: number) => `تمّ تأشير S${s} E${e} ✓`,
   librarySummary: (n: number, done: number, left: number) =>
@@ -767,6 +771,9 @@ const en: Dict = {
   shortShows: "Shows",
   markAllWatched: "Watched it all",
   dropTitle: "Red card — drop it",
+  statsTopShows: "Most watched",
+  statsTopShowsSub: "Your shows ranked by episodes watched.",
+  diaryEpsGrouped: (n: number) => `${n} episode${n === 1 ? "" : "s"}`,
   markNextEp: "Watched the next episode +1",
   markedEp: (s: number, e: number) => `Marked S${s} E${e} ✓`,
   librarySummary: (n: number, done: number, left: number) =>
