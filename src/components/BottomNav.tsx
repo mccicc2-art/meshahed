@@ -8,8 +8,8 @@ import { Icon, type IconName } from "./Icon";
 /**
  * شريط التبويبات السفلي.
  *
- * كبسولة واحدة تحمل التبويبات الأربعة، وإلى جانبها زرّ بحث دائري منفصل —
- * البحث فعلٌ لا وجهة، فلا يقف في صفٍّ مع الأقسام.
+ * كبسولة واحدة تحمل التبويبات الأربعة. زرّ البحث الدائري حُذف —
+ * البحث صار مدخلاً داخل «اكتشف»، فالشريط أنظف والكبسولة في المنتصف.
  *
  * لونان لا أربعة: النشط بنفسجيّ الهوية واسمه أبيض، والخامل رماديّ
  * `#707070`. تلوين كل تبويب بلونه كان يجعل الأربعة متساوية في الصياح،
@@ -43,12 +43,16 @@ export function BottomNav({ locale }: { locale: Locale }) {
   /* صفحات التفاصيل والسجلّ تُنسب إلى المكتبة: المستخدم في عمق التطبيق
      يحتاج مرساةً — تبويبٌ لا يضيء يقرأ وكأن الشريط تعطّل */
   const LIBRARY_PREFIXES = ["/library", "/show/", "/movie/", "/stats", "/diary", "/lists", "/ratings"];
+  // البحث بابه «اكتشف»، فصفحته تُنسب إليه
+  const NEWS_PREFIXES = ["/news", "/search"];
   const isActive = (href: string) =>
     href === "/"
       ? pathname === "/"
       : href === "/library"
         ? LIBRARY_PREFIXES.some((p) => pathname.startsWith(p))
-        : pathname.startsWith(href);
+        : href === "/news"
+          ? NEWS_PREFIXES.some((p) => pathname.startsWith(p))
+          : pathname.startsWith(href);
 
   return (
     <div className="md:hidden fixed bottom-0 inset-x-0 z-40 pointer-events-none">
@@ -98,19 +102,6 @@ export function BottomNav({ locale }: { locale: Locale }) {
             );
           })}
         </nav>
-
-        {/* زر البحث الدائري */}
-        <Link
-          href="/search"
-          aria-label={t.navSearch}
-          className={`pointer-events-auto shrink-0 grid place-items-center w-[54px] h-[54px] rounded-full border shadow-[0_10px_30px_rgba(0,0,0,0.6)] transition ${
-            pathname.startsWith("/search")
-              ? "bg-accent text-[color:var(--on-accent)] border-accent"
-              : "bg-[color:var(--surface)] border-border text-foreground active:bg-white/[0.06]"
-          }`}
-        >
-          <Icon name="search" size={23} strokeWidth={2} />
-        </Link>
       </div>
     </div>
   );
