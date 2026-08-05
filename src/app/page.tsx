@@ -29,6 +29,7 @@ import { airedEpisodeCount, percentOf } from "@/lib/progress";
 import { PosterCard } from "@/components/PosterCard";
 import { ContinueCard } from "@/components/ContinueCard";
 import { ToWatchCard } from "@/components/ToWatchCard";
+import { QuickSaveCard } from "@/components/QuickSaveCard";
 import { PosterRail, RailItem } from "@/components/PosterRail";
 import { Icon, type IconName } from "@/components/Icon";
 import { posterUrl } from "@/lib/media";
@@ -270,6 +271,12 @@ export default async function HomePage() {
     : [];
 
   const displayName = profile?.nickname || user.email?.split("@")[0] || "";
+
+  // لزرّ الحفظ السريع على «الرائج»: ما تتابعه، وما أنهيته فعلاً
+  const followedKeys = new Set(follows.map((f) => `${f.media_type}-${f.tmdb_id}`));
+  const doneShowIds = new Set(
+    items.filter((i) => i.aired > 0 && i.watched >= i.aired).map((i) => i.id),
+  );
 
   // ===== مسلسلاتي: كل ما تتابعه، الأقرب إلى الاستئناف أولاً =====
   const myShows = [...items].sort((a, b) => {
@@ -772,16 +779,38 @@ export default async function HomePage() {
           trending:
             showTrending && trend.length > 0 ? (
               <Section key="trending" title={t.trendingWeek} icon="trending">
-                {trend.slice(0, 12).map((r) => (
-                  <PosterCard
-                    key={`${r.media_type}-${r.id}`}
-                    href={`/${r.media_type === "tv" ? "show" : "movie"}/${r.id}`}
-                    title={titleOf(r)}
-                    posterPath={r.poster_path}
-                    year={yearOf(r)}
-                    badge={r.media_type === "tv" ? t.typeSeries : t.typeMovie}
-                  />
-                ))}
+                {trend.slice(0, 12).map((r) => {
+                  const mt = r.media_type === "tv" ? "tv" : "movie";
+                  const seen =
+                    mt === "movie"
+                      ? watchedMovieIds.has(r.id)
+                      : doneShowIds.has(r.id);
+                  return (
+                    <QuickSaveCard
+                      key={`${r.media_type}-${r.id}`}
+                      tmdbId={r.id}
+                      mediaType={mt}
+                      title={titleOf(r)}
+                      posterPath={r.poster_path}
+                      state={
+                        seen
+                          ? "watched"
+                          : followedKeys.has(`${mt}-${r.id}`)
+                            ? "saved"
+                            : "none"
+                      }
+                      locale={locale}
+                    >
+                      <PosterCard
+                        href={`/${mt === "tv" ? "show" : "movie"}/${r.id}`}
+                        title={titleOf(r)}
+                        posterPath={r.poster_path}
+                        year={yearOf(r)}
+                        badge={mt === "tv" ? t.typeSeries : t.typeMovie}
+                      />
+                    </QuickSaveCard>
+                  );
+                })}
               </Section>
             ) : null,
         };
