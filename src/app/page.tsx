@@ -33,7 +33,11 @@ import { PosterRail, RailItem } from "@/components/PosterRail";
 import type { IconName } from "@/components/Icon";
 import { ProfileHeader, type HeaderStat } from "@/components/ProfileHeader";
 import { getLevel, levelPoints } from "@/lib/level";
-import { sanitizeHomePrefs, type HomeSection } from "@/lib/homePrefs";
+import {
+  sanitizeHomePrefs,
+  type HomeSection,
+  type HeaderStatKey,
+} from "@/lib/homePrefs";
 import { WeekStrip, type WeekEntry } from "@/components/WeekStrip";
 import { ShowStatsSync, type ShowStat } from "@/components/ShowStatsSync";
 
@@ -394,8 +398,18 @@ export default async function HomePage() {
     unfinished.length +
     movieFollows.filter((f) => !watchedMovieIds.has(f.tmdb_id)).length;
 
-  const headerStats: HeaderStat[] = [
-    {
+  // ثمانية أرقام محسوبة كلها مما قرأناه أصلاً، والمستخدم يختار من التخصيص
+  // أيّها يظهر (من ٢ إلى ٤) وبأي ترتيب
+  const finishedShowsCount = items.filter(
+    (i) => i.aired > 0 && i.watched >= i.aired,
+  ).length;
+  const finishedMoviesCount = movieFollows.filter((f) =>
+    watchedMovieIds.has(f.tmdb_id),
+  ).length;
+  const droppedCount = follows.filter((f) => f.dropped).length;
+
+  const allHeaderStats: Record<HeaderStatKey, HeaderStat> = {
+    shows: {
       key: "shows",
       icon: "tv",
       value: String(tvFollows.length),
@@ -403,7 +417,7 @@ export default async function HomePage() {
       href: "/library?filter=tv",
       color: "var(--accent)",
     },
-    {
+    movies: {
       key: "movies",
       icon: "film",
       value: String(movieFollows.length),
@@ -411,7 +425,7 @@ export default async function HomePage() {
       href: "/library?filter=movie",
       color: "var(--accent-2)",
     },
-    {
+    towatch: {
       key: "towatch",
       icon: "bookmark",
       value: String(toWatchCount),
@@ -419,7 +433,7 @@ export default async function HomePage() {
       href: "/library",
       color: "var(--brand-3)",
     },
-    {
+    time: {
       key: "time",
       icon: "clock",
       value: watchTime,
@@ -427,7 +441,43 @@ export default async function HomePage() {
       href: "/stats",
       color: "var(--accent)",
     },
-  ];
+    episodes: {
+      key: "episodes",
+      icon: "play",
+      value: String(watchedEpisodeTotal),
+      label: t.shortEpisodes,
+      href: "/stats",
+      color: "var(--info)",
+    },
+    upcoming: {
+      key: "upcoming",
+      icon: "hourglass",
+      value: String(upcomingRow.length),
+      label: t.libUpcoming,
+      href: "/library",
+      color: "var(--brand-3)",
+    },
+    completed: {
+      key: "completed",
+      icon: "check",
+      value: String(finishedShowsCount + finishedMoviesCount),
+      label: t.libTabFinished,
+      href: "/library",
+      color: "var(--success)",
+    },
+    dropped: {
+      key: "dropped",
+      icon: "card",
+      value: String(droppedCount),
+      label: t.droppedBadge,
+      href: "/library",
+      color: "var(--error)",
+    },
+  };
+
+  const headerStats: HeaderStat[] = prefs.statsPick.map(
+    (k) => allHeaderStats[k],
+  );
 
   // ===== الأيام السبعة القادمة — لشريط التقويم إن كان ظاهراً =====
   const nowTs = new Date();
