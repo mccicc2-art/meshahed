@@ -47,23 +47,41 @@ export function ShareCard({ locale }: { locale: Locale }) {
   }
 
   return (
-    <div className="rounded-2xl border border-border bg-surface p-3 flex items-center gap-3">
-      <span className="grid place-items-center w-9 h-9 rounded-xl bg-surface-2 text-muted shrink-0">
-        <Icon name="image" size={18} />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block text-sm font-bold">{t.shareTitle}</span>
-        <span className="block text-[11px] text-muted mt-0.5">
-          {error ?? t.shareSub}
-        </span>
-      </span>
-      <button
-        onClick={share}
-        disabled={busy}
-        className="shrink-0 px-3 py-2 rounded-xl bg-accent text-[color:var(--on-accent)] text-xs font-bold hover:brightness-110 transition disabled:opacity-50"
-      >
-        {t.shareBtn}
-      </button>
+    <div
+      className="rounded-3xl p-[1.5px]"
+      style={{
+        background:
+          "linear-gradient(135deg, var(--accent), var(--accent-2) 55%, var(--brand-3))",
+      }}
+    >
+      <div className="rounded-[calc(1.5rem-1.5px)] bg-[color:var(--background)] p-3 sm:p-4">
+        {/* معاينة حيّة: الصورة نفسها التي ستُشارَك، مولّدةً من الخادم */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/api/share"
+          alt={t.shareTitle}
+          loading="lazy"
+          className="w-full rounded-xl border border-border bg-surface-2"
+          style={{ aspectRatio: "1200 / 630" }}
+        />
+
+        <div className="flex items-center gap-3 mt-3">
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-bold">{t.shareTitle}</span>
+            <span className="block text-[11px] text-muted mt-0.5">
+              {error ?? t.shareSub}
+            </span>
+          </span>
+          <button
+            onClick={share}
+            disabled={busy}
+            className="shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-xl bg-accent text-[color:var(--on-accent)] text-xs font-bold hover:brightness-110 active:scale-95 transition disabled:opacity-50"
+          >
+            <Icon name="share" size={15} />
+            {t.shareBtn}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

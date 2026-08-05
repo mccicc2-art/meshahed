@@ -238,12 +238,40 @@ export async function LibraryAnalysis({ locale }: { locale: Locale }) {
       }).format(new Date(`${busiest[0]}-01T00:00:00Z`))
     : "";
 
-  const headline: { label: string; value: string; icon: IconName }[] = [
-    { label: t.statWatchTime, value: fmtWatchTime(totalMinutes, t), icon: "clock" },
-    { label: t.statsWatchedEpisodes, value: num(totalEpisodes, locale), icon: "check" },
-    { label: t.statsWatchedMovies, value: num(watchedMovieIds.size, locale), icon: "film" },
-    { label: t.statsFollowing, value: num(follows.length, locale), icon: "star" },
+  const headline: { label: string; value: string; icon: IconName; color: string }[] = [
+    {
+      label: t.statWatchTime,
+      value: fmtWatchTime(totalMinutes, t),
+      icon: "clock",
+      color: "var(--accent)",
+    },
+    {
+      label: t.statsWatchedEpisodes,
+      value: num(totalEpisodes, locale),
+      icon: "check",
+      color: "var(--info)",
+    },
+    {
+      label: t.statsWatchedMovies,
+      value: num(watchedMovieIds.size, locale),
+      icon: "film",
+      color: "var(--accent-2)",
+    },
+    {
+      label: t.statsFollowing,
+      value: num(follows.length, locale),
+      icon: "star",
+      color: "var(--brand-3)",
+    },
   ];
+
+  // ===== الأكثر مشاهدة: خمسة مسلسلات بعدد حلقاتها =====
+  const titleByShow = new Map(tvFollows.map((f) => [f.tmdb_id, f.title]));
+  const topWatched = [...watchedByShow.entries()]
+    .filter(([id, n]) => n > 0 && titleByShow.has(id))
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5);
+  const topMax = topWatched[0]?.[1] ?? 0;
 
   return (
     <div className="space-y-4">
@@ -251,8 +279,10 @@ export async function LibraryAnalysis({ locale }: { locale: Locale }) {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         {headline.map((h) => (
           <div key={h.label} className="bg-surface border border-border rounded-2xl p-3 sm:p-4">
-            <Icon name={h.icon} size={18} className="text-muted" />
-            <div className="text-lg sm:text-2xl font-extrabold mt-1.5 leading-none">{h.value}</div>
+            <Icon name={h.icon} size={18} style={{ color: h.color }} />
+            <div className="text-lg sm:text-2xl font-extrabold mt-1.5 leading-none tabular-nums">
+              {h.value}
+            </div>
             <div className="text-[11px] text-muted mt-1 leading-tight">{h.label}</div>
           </div>
         ))}
@@ -283,6 +313,39 @@ export async function LibraryAnalysis({ locale }: { locale: Locale }) {
           </div>
         )}
       </Card>
+
+      {/* الأكثر مشاهدة: الطول هو المقارنة — أطول شريط = أكثر حلقات */}
+      {topWatched.length > 0 && (
+        <Card title={t.statsTopShows} hint={t.statsTopShowsSub}>
+          <div className="space-y-3.5">
+            {topWatched.map(([id, n], i) => (
+              <div key={id}>
+                <div className="flex items-baseline justify-between gap-2 mb-1">
+                  <span className="text-xs truncate">
+                    <span className="text-muted tabular-nums me-1.5" dir="ltr">
+                      {i + 1}.
+                    </span>
+                    {titleByShow.get(id)}
+                  </span>
+                  <span className="text-[11px] text-muted shrink-0 tabular-nums">
+                    {t.diaryEpsGrouped(n)}
+                  </span>
+                </div>
+                <div className="h-2 rounded-full bg-surface-2 overflow-hidden">
+                  <div
+                    className="h-full rounded-full"
+                    style={{
+                      width: `${Math.max(Math.round((n / topMax) * 100), 4)}%`,
+                      background:
+                        "linear-gradient(90deg, var(--accent), var(--accent-2))",
+                    }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
 
       <div className="grid gap-4 md:grid-cols-2">
         <Card title={t.analysisMix}>
@@ -334,7 +397,7 @@ export async function LibraryAnalysis({ locale }: { locale: Locale }) {
               {buckets.map((b) => (
                 <Bar
                   key={b.star}
-                  label={"★".repeat(b.star)}
+                  label={`★ ${b.star}/10`}
                   value={b.count}
                   total={ratedTotal}
                   locale={locale}

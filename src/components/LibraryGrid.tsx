@@ -237,6 +237,12 @@ function LongPressable({
         origin.current = { x: e.clientX, y: e.clientY };
         timer.current = setTimeout(() => {
           fired.current = true;
+          // اهتزازة خفيفة تؤكّد أن الضغطة «مسكت» — حيث يدعمها الجهاز
+          try {
+            navigator.vibrate?.(12);
+          } catch {
+            /* لا شيء */
+          }
           onLongPress();
         }, 450);
       }}
@@ -305,7 +311,7 @@ function QuickActions({
         onClick={onClose}
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
       />
-      <div className="relative w-full sm:max-w-sm rounded-t-3xl sm:rounded-3xl border border-border bg-[color:var(--surface)] shadow-2xl overflow-hidden pb-[env(safe-area-inset-bottom)]">
+      <div className="sheet-pop relative w-full sm:max-w-sm rounded-t-3xl sm:rounded-3xl border border-border bg-[color:var(--surface)] shadow-2xl overflow-hidden pb-[env(safe-area-inset-bottom)]">
         <div className="px-5 pt-4 pb-3 border-b border-[color:var(--divider)]">
           <p className="text-sm font-bold truncate">{item.title}</p>
           {msg && (
