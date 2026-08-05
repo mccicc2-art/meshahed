@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Icon, type IconName } from "./Icon";
+import { segmentedItem } from "./ui/controls";
 
 export interface DetailTab {
   key: string;
@@ -62,13 +63,13 @@ export function DetailTabs({ tabs }: { tabs: DetailTab[] }) {
                 aria-controls={`panel-${tab.key}`}
                 tabIndex={on ? 0 : -1}
                 onClick={() => setActive(tab.key)}
-                className={`flex items-center justify-center gap-1.5 px-2 py-2.5 rounded-[13px] text-[13px] font-bold transition-colors ${
-                  on
-                    ? "bg-accent text-[color:var(--on-accent)] shadow-lg shadow-accent/25"
-                    : "text-muted hover:text-foreground"
-                }`}
+                className={segmentedItem(
+                  on,
+                  "flex items-center justify-center gap-1.5 px-2 py-2.5 text-[13px]",
+                  false,
+                )}
               >
-                <Icon name={tab.icon} size={15} />
+                <Icon name={tab.icon} size={16} />
                 <span className="truncate">{tab.label}</span>
               </button>
             );

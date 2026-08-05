@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -8,7 +8,9 @@ import { posterUrl, backdropUrl } from "@/lib/media";
 import { saveRating } from "@/lib/actions";
 import { runOrQueue } from "@/lib/offline";
 import { tap } from "@/lib/haptics";
+import { flashError, toast as showToast } from "@/lib/toast";
 import { coalescedRefresh } from "@/lib/refresh";
+import { Sheet } from "./ui/Sheet";
 import { getDict, type Locale } from "@/lib/i18n";
 import { Icon } from "./Icon";
 
@@ -67,11 +69,11 @@ export function ContinueCard({
   const [ep, setEp] = useState<{ s: number; e: number } | null>(
     season != null && episode != null ? { s: season, e: episode } : null,
   );
-  const [toast, setToast] = useState<{ s: number; e: number } | null>(null);
+  /** آخر حلقةٍ أُشّرت — هدف التراجع الذي يحمله زرّ الرسالة العابرة */
+  const undoRef = useRef<{ s: number; e: number } | null>(null);
   const [celebrate, setCelebrate] = useState(false);
   const [stars, setStars] = useState(0);
   const [rated, setRated] = useState(false);
-  const [err, setErr] = useState(false);
 
   // وصلت بيانات الخادم الجديدة؟ تُصفّر المحلّية — هي الحقيقة، ومعها
   // يصحّ حتى الانتقال بين المواسم الذي لا تعرفه البطاقة
@@ -125,7 +127,6 @@ export function ContinueCard({
   function mark() {
     if (!ep || slide !== "idle") return;
     const cur = { ...ep };
-    setErr(false);
     try {
       tap(12);
     } catch {
@@ -138,7 +139,11 @@ export function ContinueCard({
     if (finishedAll) {
       setCelebrate(true);
     } else {
-      setToast(cur);
+      undoRef.current = cur;
+      showToast(`S${cur.s} E${cur.e} ✓`, {
+        tone: "success",
+        action: { label: t.undoWatched, run: undo },
+      });
       // البطاقة تبقى: القديمة تنزلق يساراً، والتالية تدخل من اليمين فوراً
       setSlide("out");
       setTimeout(() => {
@@ -148,7 +153,6 @@ export function ContinueCard({
           requestAnimationFrame(() => setSlide("idle")),
         );
       }, 200);
-      setTimeout(() => setToast(null), 5000);
     }
 
     start(async () => {
@@ -164,22 +168,23 @@ export function ContinueCard({
         // تجديدٌ هادئ مُجمَّع: تأشيراتٌ متتالية = تجديدٌ واحد لا أربعة
         if (finishedAll) router.refresh();
         else coalescedRefresh(router, 900);
-      } catch {
+      } catch (e) {
         setBump((b) => Math.max(0, b - 1));
         setEp(cur);
         setSlide("idle");
         setCelebrate(false);
-        setToast(null);
-        setErr(true);
-        setTimeout(() => setErr(false), 3000);
+        undoRef.current = null;
+        // `errSave` بادئةٌ تنتهي بنقطتين — تُتبع بالسبب لا تُعرض وحدها
+        flashError(t.errSave + (e as Error).message);
       }
     });
   }
 
   function undo() {
-    if (!toast) return;
-    const back = { ...toast };
-    setToast(null);
+    const target = undoRef.current;
+    if (!target) return;
+    const back = { ...target };
+    undoRef.current = null;
     setBump((b) => Math.max(0, b - 1));
     setEp(back);
     setSlide("idle");
@@ -193,13 +198,12 @@ export function ContinueCard({
           watched: false,
         });
         router.refresh();
-      } catch {
-        // فشل التراجع (حدّ المعدّل مثلاً): تُعاد الحالة المتقدمة ويظهر
-        // شريط الخطأ — كان الاستثناء يهرب حتى error boundary الصفحة
+      } catch (e) {
+        // فشل التراجع (حدّ المعدّل مثلاً): تُعاد الحالة المتقدمة وتظهر
+        // رسالة الخطأ — كان الاستثناء يهرب حتى error boundary الصفحة
         setBump((b) => b + 1);
         setEp({ s: back.s, e: back.e + 1 });
-        setErr(true);
-        setTimeout(() => setErr(false), 3000);
+        flashError(t.errSave + (e as Error).message);
       }
     });
   }
@@ -217,7 +221,7 @@ export function ContinueCard({
     <div className="relative">
       <div className={`relative ${slideCls}`}>
       <Link href={href} prefetch={false} className="group block active:scale-[0.98] transition">
-        <div className="relative aspect-[16/10] rounded-[18px] overflow-hidden bg-surface border border-border">
+        <div className="relative aspect-[16/10] rounded-poster overflow-hidden bg-surface border border-border">
           {url ? (
             <Image
               src={url}
@@ -263,7 +267,7 @@ export function ContinueCard({
               style={{
                 transform: `scaleX(${pct / 100})`,
                 background:
-                  "linear-gradient(90deg, var(--brand-3) 0%, var(--accent-2) 55%, var(--accent) 100%)",
+                  "var(--gradient-brand-x)",
               }}
             />
           </span>
@@ -293,40 +297,18 @@ export function ContinueCard({
               : undefined
           }
         >
-          <Icon name="check" size={19} strokeWidth={2.4} />
+          <Icon name="check" size={20} strokeWidth={2.2} />
         </button>
       )}
       </div>
 
-      {/* توست التراجع: الخطأ يُصلح حيث وقع، خلال خمس ثوانٍ */}
-      {toast && (
-        <div className="fixed inset-x-4 bottom-[calc(6rem+env(safe-area-inset-bottom))] z-50 flex justify-center pointer-events-none">
-          <div className="sheet-pop pointer-events-auto flex items-center gap-3 rounded-full border border-border bg-[color:var(--elevated,#1A1A1A)] px-4 py-2.5 shadow-2xl">
-            <span className="text-[13px] font-semibold">
-              <span dir="ltr">
-                S{toast.s} E{toast.e}
-              </span>{" "}
-              ✓
-            </span>
-            <button
-              type="button"
-              onClick={undo}
-              className="text-[13px] font-bold text-accent hover:brightness-110 transition"
-            >
-              {t.undoWatched}
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* ورقة الإنجاز: وسط الشاشة، طراطيع بألوان الهوية — ولا تُغلق إلا
           بالتقييم: الخلفية ليست زرّاً، فاللحظة تنتهي برأيك لا بتجاهلها */}
-      {celebrate && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-8">
-          <div className="absolute inset-0 bg-black/65 backdrop-blur-sm" aria-hidden />
+      <Sheet open={celebrate} closeLabel={t.closeLabel} variant="bare" dismissible={false}>
+        <>
 
           {/* الطراطيع: ٢٨ قصاصة بمواضع وسرعات محسوبة من رقمها — لا عشوائية تكسر الرسم */}
-          <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden>
+          <div className="fixed inset-0 overflow-hidden pointer-events-none" aria-hidden>
             {Array.from({ length: 28 }, (_, i) => {
               const colors = ["#7C3AED", "#EC4899", "#F59E0B", "#22C55E", "#3B82F6"];
               return (
@@ -350,7 +332,7 @@ export function ContinueCard({
             className="sheet-pop glow-celebrate relative w-full max-w-[300px] rounded-3xl p-[1.5px]"
             style={{
               background:
-                "linear-gradient(135deg, var(--accent), var(--accent-2) 55%, var(--brand-3))",
+                "var(--gradient-brand)",
             }}
           >
             <div className="rounded-[calc(1.5rem-1.5px)] bg-[color:var(--background)] px-5 pt-6 pb-5 text-center">
@@ -399,16 +381,8 @@ export function ContinueCard({
               )}
             </div>
           </div>
-        </div>
-      )}
-
-      {err && (
-        <div className="fixed inset-x-4 bottom-[calc(6rem+env(safe-area-inset-bottom))] z-50 flex justify-center pointer-events-none">
-          <div className="sheet-pop flex items-center rounded-full border border-red-400/30 bg-red-500/15 px-4 py-2.5 shadow-2xl">
-            <span className="text-[13px] text-red-300">{t.errSave}✗</span>
-          </div>
-        </div>
-      )}
+        </>
+      </Sheet>
     </div>
   );
 }

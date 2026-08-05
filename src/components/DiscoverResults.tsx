@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PosterGrid } from "./PosterGrid";
 import { PosterCard } from "./PosterCard";
-import { flashError } from "@/lib/flash";
+import { flashError } from "@/lib/toast";
 import type { BrowseItem, BrowseSort, BrowseType } from "@/lib/browse";
 
 /**
@@ -45,8 +45,12 @@ export function DiscoverResults({
   /** سقف الصفحات التلقائية — بعده يقرّر المستخدم بنفسه */
   const autoLoads = useRef(0);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (auto = false) => {
     if (busy || !more) return;
+    // العدّ هنا لا في المراقب: المراقب يُعاد إنشاؤه مع كل تغيّر حالة
+    // فيطلق نداءً أوّلياً يردّه حارس busy — لو عددناه هناك لنفد السقف
+    // بعد نصف الصفحات
+    if (auto) autoLoads.current += 1;
     setBusy(true);
     try {
       const params = new URLSearchParams({ page: String(page + 1) });
@@ -86,8 +90,7 @@ export function DiscoverResults({
           setAutoOff(true);
           return;
         }
-        autoLoads.current += 1;
-        load();
+        load(true);
       },
       { rootMargin: "600px 0px" },
     );
@@ -112,7 +115,7 @@ export function DiscoverResults({
           Array.from({ length: 5 }, (_, i) => (
             <div
               key={`sk-${i}`}
-              className="skeleton aspect-[2/3] rounded-[18px] border border-border"
+              className="skeleton aspect-[2/3] rounded-poster border border-border"
               aria-hidden
             />
           ))}
@@ -122,7 +125,7 @@ export function DiscoverResults({
         {more ? (
           <button
             type="button"
-            onClick={load}
+            onClick={() => load()}
             disabled={busy}
             className="px-5 py-2.5 rounded-full text-sm font-semibold bg-surface border border-border text-muted hover:text-foreground hover:border-accent/50 disabled:opacity-60 transition"
           >

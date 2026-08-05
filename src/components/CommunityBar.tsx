@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { Avatar } from "./Avatar";
 import { Icon } from "./Icon";
+import { Sheet, SheetHeader } from "./ui/Sheet";
 import { findPeople } from "@/lib/actions";
 import { getDict, num, type Locale } from "@/lib/i18n";
 import type { PersonLite } from "@/lib/data";
@@ -30,16 +31,6 @@ export function CommunityBar({
   const t = getDict(locale);
   const [open, setOpen] = useState<"add" | "following" | "followers" | null>(null);
 
-  // إغلاق بمفتاح الهروب
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(null);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open]);
-
   const pill =
     "flex items-center gap-2 rounded-full border border-border bg-surface px-4 py-2.5 hover:bg-surface-2 active:scale-[0.97] transition";
 
@@ -48,7 +39,7 @@ export function CommunityBar({
       {/* ===== السطر الواحد ===== */}
       <div className="flex items-center gap-2.5">
         <button type="button" onClick={() => setOpen("following")} className={pill}>
-          <Icon name="person-check" size={19} className="text-accent shrink-0" />
+          <Icon name="person-check" size={20} className="text-accent shrink-0" />
           <span className="text-[15px] font-bold tabular-nums" dir="ltr">
             {num(following.length, locale)}
           </span>
@@ -56,7 +47,7 @@ export function CommunityBar({
         </button>
 
         <button type="button" onClick={() => setOpen("followers")} className={pill}>
-          <Icon name="people" size={19} className="text-accent-2 shrink-0" />
+          <Icon name="people" size={20} className="text-accent-2 shrink-0" />
           <span className="text-[15px] font-bold tabular-nums" dir="ltr">
             {num(followers.length, locale)}
           </span>
@@ -70,7 +61,7 @@ export function CommunityBar({
           title={t.peopleAdd}
           className="ms-auto grid place-items-center w-11 h-11 rounded-full bg-accent text-[color:var(--on-accent)] shadow-lg shadow-accent/25 hover:brightness-110 active:scale-95 transition"
         >
-          <Icon name="plus" size={20} strokeWidth={2.4} />
+          <Icon name="plus" size={20} strokeWidth={2.2} />
         </button>
       </div>
 
@@ -99,49 +90,6 @@ export function CommunityBar({
 }
 
 type Dict = ReturnType<typeof getDict>;
-
-/** غلاف النافذة: خلفية معتمة تُغلق باللمس، ولوح سفلي على الجوال */
-function Sheet({
-  onClose,
-  closeLabel,
-  children,
-}: {
-  onClose: () => void;
-  closeLabel: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-      <button
-        type="button"
-        aria-label={closeLabel}
-        onClick={onClose}
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-      />
-      <div className="relative w-full sm:max-w-md max-h-[78vh] flex flex-col rounded-t-3xl sm:rounded-3xl border border-border bg-[color:var(--surface)] shadow-2xl overflow-hidden">
-        {children}
-      </div>
-    </div>
-  );
-}
-
-function SheetHeader({ title, t, onClose }: { title: string; t: Dict; onClose: () => void }) {
-  return (
-    <div className="flex items-center justify-between gap-3 px-5 pt-4 pb-3 border-b border-[color:var(--divider)]">
-      <h3 className="text-base font-bold">{title}</h3>
-      <button
-        type="button"
-        onClick={onClose}
-        aria-label={t.closeLabel}
-        className="grid place-items-center w-9 h-9 rounded-full text-muted hover:text-foreground hover:bg-surface-2 transition"
-      >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden>
-          <path d="m6 6 12 12M18 6 6 18" />
-        </svg>
-      </button>
-    </div>
-  );
-}
 
 function PersonRowLink({ p, t }: { p: PersonLite; t: Dict }) {
   const name = p.hide_name ? t.anonymousUser : p.nickname || p.username || "—";
@@ -180,8 +128,13 @@ function PeopleSheet({
   onClose: () => void;
 }) {
   return (
-    <Sheet onClose={onClose} closeLabel={t.closeLabel}>
-      <SheetHeader title={title} t={t} onClose={onClose} />
+    <Sheet open onClose={onClose} closeLabel={t.closeLabel} labelledBy="people-sheet-title">
+      <SheetHeader
+        id="people-sheet-title"
+        title={title}
+        closeLabel={t.closeLabel}
+        onClose={onClose}
+      />
       <div className="overflow-y-auto overscroll-contain divide-y divide-[color:var(--divider)] pb-[env(safe-area-inset-bottom)]">
         {people.length === 0 ? (
           <p className="text-sm text-muted text-center py-10 px-5">{empty}</p>
@@ -225,13 +178,18 @@ function SearchSheet({ t, onClose }: { t: Dict; onClose: () => void }) {
   }
 
   return (
-    <Sheet onClose={onClose} closeLabel={t.closeLabel}>
-      <SheetHeader title={t.peopleAdd} t={t} onClose={onClose} />
+    <Sheet open onClose={onClose} closeLabel={t.closeLabel} labelledBy="people-search-title">
+      <SheetHeader
+        id="people-search-title"
+        title={t.peopleAdd}
+        closeLabel={t.closeLabel}
+        onClose={onClose}
+      />
 
       <div className="px-5 pt-4 pb-3">
         <div className="relative">
           <span className="absolute inset-y-0 start-3.5 grid place-items-center text-muted pointer-events-none">
-            <Icon name="search" size={17} />
+            <Icon name="search" size={18} />
           </span>
           <input
             ref={inputRef}

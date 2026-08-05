@@ -72,12 +72,12 @@ export function BottomNav({ locale }: { locale: Locale }) {
                 key={href}
                 href={href}
                 aria-current={active ? "page" : undefined}
-                className="relative flex flex-col items-center justify-center gap-1 rounded-2xl px-3 pt-1 pb-2 transition active:bg-white/[0.06]"
+                className="relative flex flex-col items-center justify-center gap-1 rounded-2xl px-3 pt-1 pb-2 transition active:bg-surface-2"
               >
                 <Icon
                   name={icon}
-                  size={23}
-                  strokeWidth={active ? 2.1 : 1.9}
+                  size={22}
+                  strokeWidth={active ? 2.2 : 1.7}
                   style={{
                     color: active ? "var(--accent)" : "var(--disabled)",
                   }}

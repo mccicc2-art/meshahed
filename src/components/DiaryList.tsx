@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { getDict, type Locale } from "@/lib/i18n";
 import { Icon } from "./Icon";
+import { chipClass } from "./ui/controls";
 
 export interface DiaryEntry {
   key: string;
@@ -79,11 +80,7 @@ export function DiaryList({
                 key={m.key}
                 type="button"
                 onClick={() => jump(m)}
-                className={`shrink-0 px-3.5 py-1.5 rounded-full text-[12px] font-semibold border transition ${
-                  activeMonth === m.key
-                    ? "bg-accent/15 text-accent border-accent/40"
-                    : "bg-surface text-muted border-border hover:text-foreground"
-                }`}
+                className={chipClass(activeMonth === m.key, "sm", "shrink-0")}
               >
                 {m.label}
               </button>
@@ -103,29 +100,21 @@ export function DiaryList({
               type="button"
               onClick={() => toggle(day)}
               aria-expanded={expanded}
-              className="flex items-center gap-3 w-full px-4 py-3.5 text-start transition active:bg-white/[0.04]"
+              className="flex items-center gap-3 w-full px-4 py-3.5 text-start transition active:bg-surface-2"
             >
               <span className="min-w-0 flex-1">
                 <span className="block text-sm font-bold">{label}</span>
                 <span className="block text-[11px] text-muted mt-0.5">{countLabel}</span>
               </span>
               {/* السهم يدور عند الفتح — إشارة الحالة الوحيدة اللازمة */}
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden
-                className={`shrink-0 text-muted transition-transform duration-200 ${
+              <Icon
+                name="chevron-down"
+                size={16}
+                strokeWidth={2.2}
+                className={`text-muted transition-transform duration-200 ${
                   expanded ? "rotate-180" : ""
                 }`}
-              >
-                <path d="m5 10 7 7 7-7" />
-              </svg>
+              />
             </button>
 
             {/* طيّ ناعم بحيلة grid-rows: من 0fr إلى 1fr */}
@@ -167,7 +156,7 @@ export function DiaryList({
 
                         <Icon
                           name={e.kind === "movie" ? "film" : "tv"}
-                          size={15}
+                          size={16}
                           className="text-muted/70 shrink-0"
                         />
                       </Link>

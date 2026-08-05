@@ -10,6 +10,7 @@ import { getDict, type Dict, type Locale } from "@/lib/i18n";
 import { formatDateShort } from "@/lib/when";
 import { IMG } from "@/lib/media";
 import { Icon } from "./Icon";
+import { Alert } from "./ui/Alert";
 
 export interface TrackerEpisode {
   episode_number: number;
@@ -286,15 +287,15 @@ export function EpisodeTracker({
           {/* scaleX لا width: تحريك width يعيد التخطيط كل إطار — التحويل
               يجري على المركّب. نقطة الأصل من جهة البداية في الاتجاهين */}
           <div
-            className="h-full w-full rounded-full bg-accent-2 origin-left rtl:origin-right transition-transform duration-500"
+            className="h-full w-full rounded-full bg-accent origin-left rtl:origin-right transition-transform duration-500"
             style={{ transform: `scaleX(${progress / 100})` }}
           />
         </div>
         <p className="text-xs text-muted mt-2">{t.cascadeHint}</p>
         {err && (
-          <p className="text-sm text-red-300 mt-2.5" role="alert">
+          <Alert inline className="mt-2.5">
             {err}
-          </p>
+          </Alert>
         )}
       </div>
 
@@ -339,7 +340,7 @@ export function EpisodeTracker({
                     <Icon
                       name="check-line"
                       size={16}
-                      strokeWidth={2}
+                      strokeWidth={2.2}
                       className="ms-auto text-[color:var(--success)]"
                     />
                   )}
@@ -362,7 +363,7 @@ export function EpisodeTracker({
               {s.aired_count > 0 && (
                 <div className="h-[3px] bg-surface-2">
                   <div
-                    className="h-full w-full bg-accent-2/80 origin-left rtl:origin-right transition-transform duration-500"
+                    className="h-full w-full bg-accent/80 origin-left rtl:origin-right transition-transform duration-500"
                     style={{
                       transform: `scaleX(${Math.min(1, seasonWatched / s.aired_count)})`,
                     }}
@@ -395,7 +396,7 @@ export function EpisodeTracker({
                           <li
                             key={e.episode_number}
                             className={`flex items-center gap-3 px-3.5 py-2.5 transition-colors ${
-                              !epAired ? "opacity-50" : "active:bg-white/[0.03]"
+                              !epAired ? "opacity-50" : "active:bg-surface-2"
                             }`}
                           >
                             <button
@@ -415,14 +416,14 @@ export function EpisodeTracker({
                               <span
                                 className={`w-[22px] h-[22px] rounded-full border-[1.5px] grid place-items-center transition-colors ${
                                   isWatched
-                                    ? "border-transparent text-accent-2"
-                                    : "border-white/20 text-transparent hover:border-white/45"
+                                    ? "border-transparent text-[color:var(--success)]"
+                                    : "border-border text-transparent hover:border-accent/50"
                                 }`}
                               >
                                 {isWatched && (
                                   <Icon
                                     name="check-line"
-                                    size={15}
+                                    size={16}
                                     strokeWidth={2.2}
                                     className="check-pop"
                                   />
@@ -476,7 +477,7 @@ export function EpisodeTracker({
                             onClick={() =>
                               setShownAll((prev) => new Set(prev).add(s.season_number))
                             }
-                            className="w-full py-3 text-[13px] font-bold text-accent hover:bg-white/[0.04] transition"
+                            className="w-full py-3 text-[13px] font-bold text-accent hover:bg-surface-2 transition"
                           >
                             {t.showRestEps(episodes.length - CHUNK)}
                           </button>

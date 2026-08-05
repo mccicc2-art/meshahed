@@ -356,7 +356,7 @@ export async function LibraryAnalysis({ locale }: { locale: Locale }) {
             locale={locale}
             segments={[
               { label: t.libShowsGroup, value: tvFollows.length, color: "bg-accent" },
-              { label: t.libMoviesGroup, value: movieFollows.length, color: "bg-accent-2" },
+              { label: t.libMoviesGroup, value: movieFollows.length, color: "bg-[color:var(--success)]" },
             ]}
           />
         </Card>
@@ -365,7 +365,7 @@ export async function LibraryAnalysis({ locale }: { locale: Locale }) {
           <Split
             locale={locale}
             segments={[
-              { label: t.statusDone, value: done, color: "bg-accent-2" },
+              { label: t.statusDone, value: done, color: "bg-[color:var(--success)]" },
               { label: t.statusWatching, value: inProgress, color: "bg-accent" },
               { label: t.statusNotStarted, value: notStarted, color: "bg-muted/40" },
             ]}

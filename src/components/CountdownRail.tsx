@@ -53,7 +53,7 @@ export function CountdownRail({
                 prefetch={false}
                 className="group w-[112px] sm:w-[132px] shrink-0"
               >
-                <div className="relative aspect-[2/3] rounded-xl overflow-hidden bg-surface-2 border border-border">
+                <div className="relative aspect-[2/3] rounded-poster overflow-hidden bg-surface-2 border border-border">
                   {item.poster ? (
                     <Image
                       src={item.poster}

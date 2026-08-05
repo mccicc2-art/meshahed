@@ -54,6 +54,11 @@ export type IconName =
   | "book"
   | "check-line"
   | "chevron-down"
+  | "chevron-up"
+  | "repeat"
+  | "close"
+  | "eye"
+  | "eye-off"
   | "dots";
 
 const PATHS: Record<IconName, React.ReactNode> = {
@@ -80,6 +85,30 @@ const PATHS: Record<IconName, React.ReactNode> = {
   /* علامة صح رفيعة بلا دائرة — لحالات «مُشاهَد» الحديثة */
   "check-line": <path d="M4.5 12.5l5 5.5L19.5 6.5" />,
   "chevron-down": <path d="M6 9.5l6 6 6-6" />,
+  "chevron-up": <path d="M6 14.5l6-6 6 6" />,
+  // إعادة مشاهدة — دورةٌ بسهمين، بديل الإيموجي 🔁
+  repeat: (
+    <>
+      <path d="M4 9.5A4.5 4.5 0 0 1 8.5 5H19" />
+      <path d="m16 2 3.5 3-3.5 3" />
+      <path d="M20 14.5A4.5 4.5 0 0 1 15.5 19H5" />
+      <path d="m8 22-3.5-3L8 16" />
+    </>
+  ),
+  // إغلاق — كانت مرسومةً يدوياً في ثلاثة ملفات بثلاث سماكات
+  close: <path d="m6 6 12 12M18 6 6 18" />,
+  eye: (
+    <>
+      <path d="M2.5 12s3.5-6.5 9.5-6.5S21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z" />
+      <circle cx="12" cy="12" r="2.8" />
+    </>
+  ),
+  "eye-off": (
+    <>
+      <path d="M2.5 12s3.5-6.5 9.5-6.5S21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z" />
+      <path d="m4 20 16-16" />
+    </>
+  ),
   dots: (
     <>
       <circle cx="5" cy="12" r="1.15" fill="currentColor" stroke="none" />

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState, useTransition } from "react";
-import { flashError } from "@/lib/flash";
+import { flashError } from "@/lib/toast";
 import { runOrQueue } from "@/lib/offline";
 import { tap } from "@/lib/haptics";
 import { coalescedRefresh } from "@/lib/refresh";
@@ -10,6 +10,8 @@ import { getDict, type Locale } from "@/lib/i18n";
 import { startRewatch } from "@/lib/actions";
 import { PosterCard } from "./PosterCard";
 import { Icon } from "./Icon";
+import { Sheet, SheetHeader } from "./ui/Sheet";
+import { chipClass, segmentedItem, segmentedTrackFull } from "./ui/controls";
 
 export interface GridItem {
   key: string;
@@ -80,13 +82,10 @@ export function LibraryGrid({
 
   return (
     <div>
-      {/* تبويبان بلا إطار — على نمط صفّ أرقام الرئيسية: فاصلٌ رأسيّ رفيع
-          بينهما، وخطٌّ سفليّ بلون التمييز تحت المختار وحده */}
-      <div
-        className="grid grid-cols-2 mb-5 border-b border-[color:var(--divider)]"
-        role="tablist"
-      >
-        {tabs.map(({ id, icon, label, n }, i) => {
+      {/* تبويبان في مقسّمٍ واحد — نفس عائلة تبويبات صفحة العمل ومقسّم
+          «اكتشف»، بدل خطٍّ سفليّ كان لغةَ اختيارٍ ثالثة في التطبيق */}
+      <div className={`${segmentedTrackFull} mb-5`} role="tablist">
+        {tabs.map(({ id, icon, label, n }) => {
           const active = tab === id;
           return (
             <button
@@ -95,37 +94,17 @@ export function LibraryGrid({
               role="tab"
               aria-selected={active}
               onClick={() => setTab(id)}
-              className="relative flex items-center justify-center gap-2 px-3 pt-1.5 pb-3 text-sm font-semibold transition"
+              className={segmentedItem(
+                active,
+                "flex-1 flex items-center justify-center gap-2 px-2 py-2 text-[13px]",
+                false,
+              )}
             >
-              <Icon
-                name={icon}
-                size={17}
-                className={`shrink-0 transition ${active ? "text-accent" : "text-muted"}`}
-              />
-              <span className={`transition ${active ? "text-foreground" : "text-muted"}`}>
-                {label}
-              </span>
-              <span
-                className={`text-[11px] tabular-nums transition ${
-                  active ? "text-accent" : "text-muted"
-                }`}
-                dir="ltr"
-              >
+              <Icon name={icon} size={16} className="shrink-0" />
+              {label}
+              <span className="text-[11px] tabular-nums opacity-80" dir="ltr">
                 {n}
               </span>
-
-              {/* الفاصل الرأسي بين التبويبين */}
-              {i === 0 && (
-                <span className="absolute inset-y-1 end-0 w-px bg-white/10" aria-hidden />
-              )}
-
-              {/* مؤشّر الاختيار: خطّ يجلس على حدّ الصفّ السفلي */}
-              <span
-                aria-hidden
-                className={`absolute -bottom-px inset-x-8 h-[3px] rounded-full transition-all duration-200 ${
-                  active ? "bg-accent opacity-100" : "opacity-0"
-                }`}
-              />
             </button>
           );
         })}
@@ -135,7 +114,7 @@ export function LibraryGrid({
       <div className="flex items-center gap-2 mb-2">
         <div className="relative flex-1">
           <span className="absolute inset-y-0 start-3 grid place-items-center text-muted pointer-events-none">
-            <Icon name="search" size={15} />
+            <Icon name="search" size={16} />
           </span>
           <input
             type="search"
@@ -158,11 +137,7 @@ export function LibraryGrid({
               type="button"
               aria-pressed={sort === id}
               onClick={() => setSort(id)}
-              className={`px-2.5 py-2 rounded-lg text-[11px] font-semibold transition ${
-                sort === id
-                  ? "bg-accent/15 text-accent"
-                  : "text-muted hover:text-foreground"
-              }`}
+              className={chipClass(sort === id, "sm")}
             >
               {label}
             </button>
@@ -305,25 +280,17 @@ function QuickActions({
 
   const isTv = item.mediaType === "tv";
   const btn =
-    "flex items-center gap-3 w-full text-start px-5 py-3.5 text-sm font-semibold transition active:bg-white/[0.06] disabled:opacity-40";
+    "flex items-center gap-3 w-full text-start px-5 py-3.5 text-sm font-semibold transition active:bg-surface-2 disabled:opacity-40";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-      <button
-        type="button"
-        aria-label={t.closeLabel}
-        onClick={onClose}
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-      />
-      <div className="sheet-pop relative w-full sm:max-w-sm rounded-t-3xl sm:rounded-3xl border border-border bg-[color:var(--surface)] shadow-2xl overflow-hidden pb-[env(safe-area-inset-bottom)]">
-        <div className="px-5 pt-4 pb-3 border-b border-[color:var(--divider)]">
-          <p className="text-sm font-bold truncate">{item.title}</p>
-          {msg && (
-            <p role="status" className="text-xs text-[color:var(--success)] mt-1">
-              {msg}
-            </p>
-          )}
-        </div>
+    <Sheet open onClose={onClose} closeLabel={t.closeLabel} labelledBy="quick-actions-title">
+      <SheetHeader id="quick-actions-title" title={item.title} closeLabel={t.closeLabel} onClose={onClose}>
+        {msg && (
+          <p role="status" className="text-xs text-[color:var(--success)] mt-1">
+            {msg}
+          </p>
+        )}
+      </SheetHeader>
 
         {item.dropped ? (
           /* عملٌ موقوف: الإجراء الوحيد المنطقي هو التراجع عن الإيقاف */
@@ -335,7 +302,7 @@ function QuickActions({
             }
             className={btn}
           >
-            <Icon name="play" size={19} className="text-accent shrink-0" />
+            <Icon name="play" size={20} className="text-accent shrink-0" />
             {t.undoWatched}
           </button>
         ) : (
@@ -345,11 +312,11 @@ function QuickActions({
                 type="button"
                 disabled={pending}
                 onClick={() =>
-                  run("+1 ✓", () => runOrQueue("markNextEpisode", item.tmdbId!))
+                  run("✓", () => runOrQueue("markNextEpisode", item.tmdbId!))
                 }
                 className={btn}
               >
-                <Icon name="play" size={19} className="text-accent shrink-0" />
+                <Icon name="play" size={20} className="text-accent shrink-0" />
                 {t.markNextEp}
               </button>
             )}
@@ -360,13 +327,11 @@ function QuickActions({
                 type="button"
                 disabled={pending}
                 onClick={() =>
-                  run("🔁 ✓", () => startRewatch(item.tmdbId!))
+                  run("✓", () => startRewatch(item.tmdbId!))
                 }
                 className={btn}
               >
-                <span className="text-[17px] shrink-0" aria-hidden>
-                  🔁
-                </span>
+                <Icon name="repeat" size={20} className="text-accent shrink-0" />
                 {t.rewatchBtn}
               </button>
             )}
@@ -375,7 +340,7 @@ function QuickActions({
               type="button"
               disabled={pending}
               onClick={() =>
-                run("🏁 ✓", () =>
+                run("✓", () =>
                   isTv
                     ? runOrQueue("markShowWatched", item.tmdbId!)
                     : runOrQueue("toggleMovieWatched", {
@@ -387,7 +352,7 @@ function QuickActions({
               }
               className={`${btn} border-t border-[color:var(--divider)]`}
             >
-              <Icon name="check" size={19} className="text-[color:var(--success)] shrink-0" />
+              <Icon name="check" size={20} className="text-[color:var(--success)] shrink-0" />
               {t.markAllWatched}
             </button>
 
@@ -399,12 +364,11 @@ function QuickActions({
               }
               className={`${btn} border-t border-[color:var(--divider)]`}
             >
-              <Icon name="card" size={19} className="text-[color:var(--error)] shrink-0" />
+              <Icon name="card" size={20} className="text-[color:var(--error)] shrink-0" />
               {t.dropTitle}
             </button>
           </>
         )}
-      </div>
-    </div>
+    </Sheet>
   );
 }

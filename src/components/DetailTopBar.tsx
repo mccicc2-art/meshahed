@@ -1,21 +1,20 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { getDict, type Locale } from "@/lib/i18n";
 import { Icon } from "./Icon";
+import { toast as showToast } from "@/lib/toast";
 
 /**
  * زرّان عائمان فوق خلفية صفحة العمل: رجوع وقائمة «المزيد».
  *
  * زجاجيان ودائريان كي يُقرآ فوق أي صورة مهما كان لونها، وبقطر لمس ٤٠
  * بكسلاً. «المزيد» يحمل المشاركة: مشاركة النظام إن وُجدت، وإلا نسخ
- * الرابط مع توست صغير — لا نافذة ولا نموذج.
+ * الرابط مع رسالةٍ عابرة من مضيف الرسائل العام — لا نافذة ولا نموذج.
  */
 export function DetailTopBar({ title, locale }: { title: string; locale: Locale }) {
   const t = getDict(locale);
   const router = useRouter();
-  const [toast, setToast] = useState(false);
 
   async function share() {
     const url = window.location.href;
@@ -29,9 +28,10 @@ export function DetailTopBar({ title, locale }: { title: string; locale: Locale 
     }
     try {
       await navigator.clipboard.writeText(url);
-      setToast(true);
-      setTimeout(() => setToast(false), 2200);
-    } catch {}
+      showToast(t.linkCopied);
+    } catch {
+      /* متصفّح بلا حافظة — لا رسالة تفيد هنا */
+    }
   }
 
   // ٤٤ بكسلاً — الحدّ الأدنى المريح لهدف لمسٍ في زاوية الشاشة
@@ -49,13 +49,6 @@ export function DetailTopBar({ title, locale }: { title: string; locale: Locale 
         <Icon name="dots" size={18} />
       </button>
 
-      {toast && (
-        <div className="fixed bottom-[calc(6rem+env(safe-area-inset-bottom))] inset-x-0 z-50 flex justify-center pointer-events-none">
-          <span className="sheet-pop bg-[color:var(--elevated)] border border-white/10 text-sm px-4 py-2.5 rounded-full shadow-xl">
-            {t.linkCopied} ✓
-          </span>
-        </div>
-      )}
     </div>
   );
 }

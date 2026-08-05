@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { updateProfile } from "@/lib/actions";
 import { getDict, type Locale } from "@/lib/i18n";
 import { LanguageSwitch } from "./LanguageSwitch";
+import { Alert } from "./ui/Alert";
+import { buttonClass } from "./ui/Button";
 
 export type AccountSection =
   | "language"
@@ -174,20 +176,22 @@ export function AccountSettings({
         )}
 
       {error && (
-        <p className="text-sm text-red-300 bg-red-500/10 border border-red-400/30 rounded-xl px-3 py-2.5">
-          {error}
-        </p>
+        <Alert>{error}</Alert>
       )}
 
       <div className="flex items-center gap-3">
         <button
           onClick={save}
           disabled={pending}
-          className="px-5 py-2.5 text-sm rounded-xl bg-accent text-[color:var(--on-accent)] font-semibold hover:brightness-110 transition disabled:opacity-60"
+          className={buttonClass()}
         >
           {pending ? t.saving : t.saveSettings}
         </button>
-        {saved && <span className="text-sm text-accent-2">{t.savedOk}</span>}
+        {saved && (
+          <span role="status" className="text-sm text-[color:var(--success)]">
+            {t.savedOk}
+          </span>
+        )}
       </div>
 
       {show("signout") && (

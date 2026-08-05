@@ -16,6 +16,8 @@ import {
   type HeaderStatKey,
 } from "@/lib/homePrefs";
 import { Icon, type IconName } from "./Icon";
+import { Alert } from "./ui/Alert";
+import { buttonClass } from "./ui/Button";
 
 /**
  * تخصيص الرئيسية.
@@ -187,7 +189,7 @@ export function HomeCustomize({
           {prefs.statsPick.map((k, i) => (
             <div key={k} className={rowCls}>
               <span className="flex items-center gap-2.5 min-w-0 text-sm">
-                <Icon name={statMeta[k].icon} size={17} className="text-muted shrink-0" />
+                <Icon name={statMeta[k].icon} size={18} className="text-muted shrink-0" />
                 <span className="truncate">{statMeta[k].label}</span>
               </span>
               <span className="flex items-center gap-1 shrink-0">
@@ -199,9 +201,7 @@ export function HomeCustomize({
                   title={t.custMoveUp}
                   className="grid place-items-center w-9 h-9 rounded-lg text-muted hover:text-foreground hover:bg-surface-2 disabled:opacity-30 disabled:pointer-events-none transition"
                 >
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                    <path d="m5 14 7-7 7 7" />
-                  </svg>
+                  <Icon name="chevron-up" size={16} strokeWidth={2.2} />
                 </button>
                 <button
                   type="button"
@@ -211,9 +211,7 @@ export function HomeCustomize({
                   title={t.custMoveDown}
                   className="grid place-items-center w-9 h-9 rounded-lg text-muted hover:text-foreground hover:bg-surface-2 disabled:opacity-30 disabled:pointer-events-none transition"
                 >
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                    <path d="m5 10 7 7 7-7" />
-                  </svg>
+                  <Icon name="chevron-down" size={16} strokeWidth={2.2} />
                 </button>
                 <button
                   type="button"
@@ -223,10 +221,7 @@ export function HomeCustomize({
                   title={t.custHide}
                   className="grid place-items-center w-9 h-9 rounded-lg text-muted hover:text-foreground hover:bg-surface-2 disabled:opacity-30 disabled:pointer-events-none transition"
                 >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                    <path d="M2.5 12s3.5-6.5 9.5-6.5S21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z" />
-                    <circle cx="12" cy="12" r="2.8" />
-                  </svg>
+                  <Icon name="eye" size={16} />
                 </button>
               </span>
             </div>
@@ -235,7 +230,7 @@ export function HomeCustomize({
           {hiddenStats.map((k) => (
             <div key={k} className={`${rowCls} opacity-50`}>
               <span className="flex items-center gap-2.5 min-w-0 text-sm">
-                <Icon name={statMeta[k].icon} size={17} className="text-muted shrink-0" />
+                <Icon name={statMeta[k].icon} size={18} className="text-muted shrink-0" />
                 <span className="truncate line-through">{statMeta[k].label}</span>
               </span>
               <button
@@ -246,10 +241,7 @@ export function HomeCustomize({
                 title={t.custShow}
                 className="grid place-items-center w-9 h-9 rounded-lg text-muted hover:text-foreground hover:bg-surface-2 disabled:opacity-30 disabled:pointer-events-none transition shrink-0"
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                  <path d="M2.5 12s3.5-6.5 9.5-6.5S21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z" />
-                  <path d="m4 20 16-16" />
-                </svg>
+                <Icon name="eye-off" size={16} />
               </button>
             </div>
           ))}
@@ -265,7 +257,7 @@ export function HomeCustomize({
           {prefs.order.map((sec, i) => (
             <div key={sec} className={rowCls}>
               <span className="flex items-center gap-2.5 min-w-0 text-sm">
-                <Icon name={sectionMeta[sec].icon} size={17} className="text-muted shrink-0" />
+                <Icon name={sectionMeta[sec].icon} size={18} className="text-muted shrink-0" />
                 <span className="truncate">{sectionMeta[sec].label}</span>
               </span>
               <span className="flex items-center gap-1 shrink-0">
@@ -277,9 +269,7 @@ export function HomeCustomize({
                   title={t.custMoveUp}
                   className="grid place-items-center w-9 h-9 rounded-lg text-muted hover:text-foreground hover:bg-surface-2 disabled:opacity-30 disabled:pointer-events-none transition"
                 >
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                    <path d="m5 14 7-7 7 7" />
-                  </svg>
+                  <Icon name="chevron-up" size={16} strokeWidth={2.2} />
                 </button>
                 <button
                   type="button"
@@ -289,9 +279,7 @@ export function HomeCustomize({
                   title={t.custMoveDown}
                   className="grid place-items-center w-9 h-9 rounded-lg text-muted hover:text-foreground hover:bg-surface-2 disabled:opacity-30 disabled:pointer-events-none transition"
                 >
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                    <path d="m5 10 7 7 7-7" />
-                  </svg>
+                  <Icon name="chevron-down" size={16} strokeWidth={2.2} />
                 </button>
                 <button
                   type="button"
@@ -300,10 +288,7 @@ export function HomeCustomize({
                   title={t.custHide}
                   className="grid place-items-center w-9 h-9 rounded-lg text-muted hover:text-foreground hover:bg-surface-2 transition"
                 >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                    <path d="M2.5 12s3.5-6.5 9.5-6.5S21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z" />
-                    <circle cx="12" cy="12" r="2.8" />
-                  </svg>
+                  <Icon name="eye" size={16} />
                 </button>
               </span>
             </div>
@@ -312,7 +297,7 @@ export function HomeCustomize({
           {hidden.map((sec) => (
             <div key={sec} className={`${rowCls} opacity-50`}>
               <span className="flex items-center gap-2.5 min-w-0 text-sm">
-                <Icon name={sectionMeta[sec].icon} size={17} className="text-muted shrink-0" />
+                <Icon name={sectionMeta[sec].icon} size={18} className="text-muted shrink-0" />
                 <span className="truncate line-through">{sectionMeta[sec].label}</span>
               </span>
               <button
@@ -322,10 +307,7 @@ export function HomeCustomize({
                 title={t.custShow}
                 className="grid place-items-center w-9 h-9 rounded-lg text-muted hover:text-foreground hover:bg-surface-2 transition shrink-0"
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                  <path d="M2.5 12s3.5-6.5 9.5-6.5S21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z" />
-                  <path d="m4 20 16-16" />
-                </svg>
+                <Icon name="eye-off" size={16} />
               </button>
             </div>
           ))}
@@ -341,16 +323,14 @@ export function HomeCustomize({
       </section>
 
       {error && (
-        <p role="alert" className="text-sm text-red-300 bg-red-500/10 border border-red-400/30 rounded-xl px-3 py-2.5">
-          {error}
-        </p>
+        <Alert>{error}</Alert>
       )}
 
       <div className="flex items-center gap-3">
         <button
           onClick={save}
           disabled={pending}
-          className="px-5 py-2.5 text-sm rounded-xl bg-accent text-[color:var(--on-accent)] font-semibold hover:brightness-110 transition disabled:opacity-60"
+          className={buttonClass()}
         >
           {pending ? t.saving : t.saveChanges}
         </button>

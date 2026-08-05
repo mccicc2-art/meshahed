@@ -29,7 +29,7 @@ export function HeaderTools({ locale }: { locale: Locale }) {
         className="absolute inset-0 bg-[color:var(--elevated)]/95 backdrop-blur-xl"
         aria-hidden
       />
-      <Icon name="settings" size={19} className="relative" />
+      <Icon name="settings" size={20} className="relative" />
     </Link>
   );
 }

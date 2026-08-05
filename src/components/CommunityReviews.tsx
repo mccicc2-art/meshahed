@@ -39,7 +39,7 @@ export function CommunityReviews({
 
       {written.length === 0 ? (
         /* حالة فارغة مرئية بدل الاختفاء الصامت — دعوة لا فراغ */
-        <div className="rounded-2xl border border-dashed border-white/12 px-5 py-8 text-center">
+        <div className="rounded-2xl border border-dashed border-border px-5 py-8 text-center">
           <p className="text-2xl mb-2" aria-hidden>
             💬
           </p>

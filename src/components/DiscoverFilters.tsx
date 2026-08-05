@@ -12,6 +12,7 @@ import {
   type BrowseType,
 } from "@/lib/browse";
 import { tap } from "@/lib/haptics";
+import { chipClass, chipRow, segmentedItem, segmentedTrack } from "./ui/controls";
 
 /**
  * فلاتر التصفّح في «اكتشف».
@@ -77,13 +78,6 @@ export function DiscoverFilters({
     start(() => router.replace(qs ? `/news?${qs}` : "/news", { scroll: false }));
   }
 
-  const chip = (on: boolean) =>
-    `px-3.5 py-2 rounded-full text-sm border whitespace-nowrap transition ${
-      on
-        ? "bg-accent text-[color:var(--on-accent)] border-accent font-semibold"
-        : "bg-surface text-muted border-border hover:text-foreground hover:border-accent/50"
-    }`;
-
   const genres = BROWSE_GENRES.filter((g) => genreFitsType(g, type));
 
   return (
@@ -95,7 +89,7 @@ export function DiscoverFilters({
         <div
           role="group"
           aria-label={t.browseTypeGroup}
-          className="inline-flex items-center gap-1 p-1 rounded-full bg-surface border border-border"
+          className={segmentedTrack}
         >
           {TYPES.map((o) => {
             const on = type === o.value;
@@ -105,11 +99,7 @@ export function DiscoverFilters({
                 type="button"
                 aria-pressed={on}
                 onClick={() => go({ type: o.value })}
-                className={`px-4 py-1.5 rounded-full text-[13px] font-semibold transition ${
-                  on
-                    ? "bg-accent text-[color:var(--on-accent)] shadow-[0_4px_14px_rgba(0,0,0,0.35)]"
-                    : "text-muted hover:text-foreground"
-                }`}
+                className={segmentedItem(on)}
               >
                 {o.label}
               </button>
@@ -134,14 +124,14 @@ export function DiscoverFilters({
       <div
         role="group"
         aria-label={t.browseGenreGroup}
-        className="-mx-4 px-4 overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className={chipRow}
       >
         <div className="flex gap-2 w-max pb-0.5">
           <button
             type="button"
             aria-pressed={!genre}
             onClick={() => go({ g: null })}
-            className={chip(!genre)}
+            className={chipClass(!genre)}
           >
             {t.browseAllGenres}
           </button>
@@ -153,7 +143,7 @@ export function DiscoverFilters({
                 type="button"
                 aria-pressed={on}
                 onClick={() => go({ g: on ? null : g.slug })}
-                className={chip(on)}
+                className={chipClass(on)}
               >
                 {browseGenreName(g, locale === "en" ? "en" : "ar")}
               </button>
@@ -178,11 +168,7 @@ export function DiscoverFilters({
                 type="button"
                 aria-pressed={on}
                 onClick={() => go({ sort: s })}
-                className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border transition ${
-                  on
-                    ? "bg-accent/15 text-accent border-accent/50"
-                    : "bg-transparent text-muted border-border hover:text-foreground"
-                }`}
+                className={chipClass(on, "sm")}
               >
                 {SORTS[s]}
               </button>
