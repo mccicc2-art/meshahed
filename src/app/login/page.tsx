@@ -4,7 +4,6 @@ import { getT } from "@/lib/locale";
 import { trending, type SearchResult } from "@/lib/tmdb";
 import { posterUrl } from "@/lib/media";
 import { GoogleButton } from "@/components/GoogleButton";
-import { LanguageSwitch } from "@/components/LanguageSwitch";
 
 /**
  * صفحة الهبوط — أهم شاشة في التجربة.
@@ -35,8 +34,11 @@ export default async function LoginPage() {
   const rowB = posters.slice(6, 12);
 
   return (
-    <div className="flex flex-col overflow-hidden">
-      <div className="flex flex-col items-center text-center pt-8 sm:pt-14">
+    /* الصفحة كلها شاشةٌ واحدة لا تُمرَّر: مثبَّتة من أسفل الترويسة إلى أسفل
+       الشاشة، والمقاسات بـ clamp تتكيّف مع أي ارتفاع — البطل يتوسّط
+       المساحة الحرّة وجدار الملصقات يلتصق بالقاع ويُقصّ ما فاض */
+    <div className="fixed inset-x-0 top-16 bottom-0 overflow-hidden flex flex-col">
+      <div className="flex-1 min-h-0 flex flex-col items-center justify-center text-center px-4">
         {/* شارة الوعد: نقطة نابضة + السطر الإنجليزي — بلا أيقونات */}
         <div className="flex items-center gap-2.5 rounded-full border border-border bg-surface px-4 py-2">
           <span
@@ -51,8 +53,8 @@ export default async function LoginPage() {
           </span>
         </div>
 
-        {/* الوعد — بخطٍّ ضخم يقرأه العابر قبل أن يقرّر */}
-        <h1 className="mt-7 text-4xl sm:text-6xl font-extrabold leading-[1.18] tracking-tight px-4">
+        {/* الوعد — يكبر ويصغر مع الشاشة لا مع نقاط قطعٍ ثابتة */}
+        <h1 className="mt-[clamp(14px,2.6vh,28px)] text-[clamp(27px,3.2vw,56px)] font-extrabold leading-[1.16] tracking-tight px-4">
           {t.landingH1a}
           <br />
           <span
@@ -66,29 +68,24 @@ export default async function LoginPage() {
           </span>
         </h1>
 
-        <p className="mt-5 max-w-md text-[15px] sm:text-base text-muted leading-relaxed px-6">
+        <p className="mt-[clamp(10px,1.8vh,20px)] max-w-md text-[clamp(13px,1.1vw,16px)] text-muted leading-relaxed px-6">
           {t.tagline}
         </p>
 
         {/* الدخول: زرٌّ أبيض واحد لا نموذج — أقل قرارٍ ممكن قبل البدء */}
-        <div className="mt-9 w-full max-w-sm px-6">
+        <div className="mt-[clamp(16px,3.2vh,34px)] w-full max-w-sm px-6">
           {configured ? (
             <GoogleButton locale={locale} />
           ) : (
             <p className="text-sm text-accent leading-relaxed">{t.loginNeedsKeys}</p>
           )}
-          <p className="text-xs text-muted mt-3.5">{t.loginConsent}</p>
-        </div>
-
-        <div className="mt-6">
-          <LanguageSwitch locale={locale} compact />
         </div>
       </div>
 
       {/* جدار الرائج: صفّان يزحفان باتجاهين متعاكسين بميلٍ خفيف */}
       {posters.length >= 8 && (
-        <div className="relative mt-14 sm:mt-16 pb-4" dir="ltr" aria-hidden>
-          <div className="rotate-[-3deg] scale-110 space-y-3">
+        <div className="relative shrink-0" dir="ltr" aria-hidden>
+          <div className="rotate-[-3deg] scale-110 space-y-2.5">
             {[
               { row: rowA, cls: "marquee-track", dur: "60s" },
               { row: rowB, cls: "marquee-track marquee-rev", dur: "75s" },
@@ -99,7 +96,7 @@ export default async function LoginPage() {
                   {[...row, ...row].map((p, i) => (
                     <div
                       key={i}
-                      className="w-28 sm:w-36 aspect-[2/3] rounded-xl overflow-hidden border border-white/10 bg-surface-2 shadow-[0_10px_30px_rgba(0,0,0,0.6)] shrink-0 me-3"
+                      className="w-[clamp(68px,7.5vw,130px)] aspect-[2/3] rounded-xl overflow-hidden border border-white/10 bg-surface-2 shadow-[0_10px_30px_rgba(0,0,0,0.6)] shrink-0 me-2.5"
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
