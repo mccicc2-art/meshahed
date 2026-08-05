@@ -6,6 +6,7 @@ import { getT } from "@/lib/locale";
 import { PosterCard } from "@/components/PosterCard";
 import { PosterGrid } from "@/components/PosterGrid";
 import { SearchBox } from "@/components/SearchBox";
+import { Alert } from "@/components/ui/Alert";
 
 export default async function SearchPage({
   searchParams,
@@ -35,7 +36,7 @@ export default async function SearchPage({
           q ? (
             <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4" aria-hidden>
               {Array.from({ length: 10 }, (_, i) => (
-                <div key={i} className="skeleton aspect-[2/3] rounded-[18px] border border-border" />
+                <div key={i} className="skeleton aspect-[2/3] rounded-poster border border-border" />
               ))}
             </div>
           ) : null
@@ -62,9 +63,9 @@ async function SearchResults({ q, t }: { q: string; t: Awaited<ReturnType<typeof
   return (
     <>
       {failed && (
-        <p className="text-center text-red-300 bg-red-500/10 border border-red-400/30 rounded-xl px-4 py-3 mb-4">
+        <Alert center className="mb-4">
           {t.searchFailed}
-        </p>
+        </Alert>
       )}
 
       {q && !failed && (
