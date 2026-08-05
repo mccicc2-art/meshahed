@@ -23,7 +23,6 @@ export function PosterCard({
   count,
   progress,
   note,
-  tone = "default",
   badgeTone = "neutral",
   dropped = false,
 }: {
@@ -90,10 +89,10 @@ export function PosterCard({
           )}
         </div>
 
-        {(typeof progress === "number" || dropped) && (
+        {/* الحالة كلها في خيط اللون: أخضر مكتمل، بنفسجي قيد المشاهدة،
+            أحمر موقوف — وما لم يبدأ لا خيط له إطلاقاً */}
+        {(dropped || (progress ?? 0) > 0) && (
           <div className="absolute inset-x-0 bottom-0 h-1.5 bg-black/50">
-            {/* المكتمل أخضر — لون الإنجاز الدلاليّ الثابت — وغير المكتمل
-                يتدرّج كتدرّج المستوى: كهرمانيّ فورديّ فبنفسجي */}
             <div
               className="h-full"
               style={{
@@ -104,9 +103,7 @@ export function PosterCard({
                   ? "var(--error)"
                   : (progress ?? 0) >= 100
                     ? "var(--success)"
-                    : tone === "waiting"
-                      ? "var(--accent)"
-                      : "linear-gradient(90deg, var(--brand-3) 0%, var(--accent-2) 55%, var(--accent) 100%)",
+                    : "var(--accent)",
               }}
             />
           </div>
