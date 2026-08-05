@@ -49,7 +49,10 @@ export type IconName =
   | "people-filled"
   | "person-check"
   | "plus"
-  | "book";
+  | "book"
+  | "check-line"
+  | "chevron-down"
+  | "dots";
 
 const PATHS: Record<IconName, React.ReactNode> = {
   bell: (
@@ -70,6 +73,16 @@ const PATHS: Record<IconName, React.ReactNode> = {
     <>
       <path d="M12 6C10.2 4.6 7.8 4 4.8 4v14.5c3 0 5.4.6 7.2 2 1.8-1.4 4.2-2 7.2-2V4c-3 0-5.4.6-7.2 2Z" />
       <path d="M12 6v14.5" />
+    </>
+  ),
+  /* علامة صح رفيعة بلا دائرة — لحالات «مُشاهَد» الحديثة */
+  "check-line": <path d="M4.5 12.5l5 5.5L19.5 6.5" />,
+  "chevron-down": <path d="M6 9.5l6 6 6-6" />,
+  dots: (
+    <>
+      <circle cx="5" cy="12" r="1.15" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="12" r="1.15" fill="currentColor" stroke="none" />
+      <circle cx="19" cy="12" r="1.15" fill="currentColor" stroke="none" />
     </>
   ),
   play: (

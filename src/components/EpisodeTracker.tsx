@@ -134,6 +134,7 @@ export function EpisodeTracker({
   function toggleOne(season: number, ep: TrackerEpisode) {
     const key = episodeKey(season, ep.episode_number);
     const next = !watched.has(key);
+    if (navigator.vibrate) navigator.vibrate(10);
 
     // عند التأشير: تُعتبر كل الحلقات السابقة مشاهَدة أيضاً
     if (next) {
@@ -220,8 +221,11 @@ export function EpisodeTracker({
           <span className="text-muted">{t.watchedOf(watchedAired, airedTotal)}</span>
           <span className="font-semibold text-accent-2">{progress}%</span>
         </div>
-        <div className="h-2 rounded-full bg-surface-2 overflow-hidden">
-          <div className="h-full bg-accent-2 transition-all" style={{ width: `${progress}%` }} />
+        <div className="h-1.5 rounded-full bg-surface-2 overflow-hidden">
+          <div
+            className="h-full rounded-full bg-accent-2 transition-[width] duration-500"
+            style={{ width: `${progress}%` }}
+          />
         </div>
         <p className="text-xs text-muted mt-2">{t.cascadeHint}</p>
       </div>
@@ -239,33 +243,46 @@ export function EpisodeTracker({
           return (
             <div
               key={s.season_number}
-              className="rounded-xl border border-border bg-surface overflow-hidden"
+              className="rounded-2xl border border-border bg-surface overflow-hidden"
             >
-              <div className="flex items-center gap-3 px-3 py-2.5">
+              <div className="flex items-center gap-2 px-3.5 py-1">
                 <button
                   onClick={() => toggleOpen(s.season_number)}
                   aria-expanded={isOpen}
                   aria-label={t.seasonToggleAria(s.season_number)}
-                  className="flex-1 flex items-center gap-3 text-start"
+                  className="flex-1 flex items-center gap-2.5 text-start py-2.5 -my-1"
                 >
-                  <span className="text-muted" aria-hidden>
-                    {isOpen ? "▾" : "▸"}
+                  <Icon
+                    name="chevron-down"
+                    size={16}
+                    className={`text-muted transition-transform duration-300 ${isOpen ? "" : "-rotate-90 rtl:rotate-90"}`}
+                  />
+                  <span className="font-semibold text-[15px]">
+                    {s.name || t.seasonLabel(s.season_number)}
                   </span>
-                  <span className="font-semibold">{s.name || t.seasonLabel(s.season_number)}</span>
-                  <span className="text-xs text-muted" dir="ltr">
+                  <span className="text-xs text-muted tabular-nums" dir="ltr">
                     {seasonWatched}/{s.aired_count}
                   </span>
                   {loading === s.season_number && (
                     <span className="text-xs text-muted">{t.loadingLabel}</span>
                   )}
+                  {/* الموسم المكتمل يحمل صحّاً رفيعاً هادئاً في طرفه */}
+                  {allWatched && (
+                    <Icon
+                      name="check-line"
+                      size={16}
+                      strokeWidth={2}
+                      className="ms-auto text-[color:var(--success)]"
+                    />
+                  )}
                 </button>
                 {s.aired_count > 0 && (
                   <button
                     onClick={() => toggleSeason(s, !allWatched)}
-                    className={`text-xs px-3 py-1.5 rounded-lg border transition ${
+                    className={`shrink-0 text-xs font-semibold px-2.5 py-2 rounded-lg transition ${
                       allWatched
-                        ? "border-border text-muted hover:text-foreground"
-                        : "border-accent-2/50 text-accent-2 hover:bg-accent-2/10"
+                        ? "text-muted hover:text-foreground hover:bg-surface-2"
+                        : "text-accent-2 hover:bg-accent-2/10"
                     }`}
                   >
                     {allWatched ? t.seasonUndo : t.seasonAll}
@@ -273,20 +290,32 @@ export function EpisodeTracker({
                 )}
               </div>
 
+              {/* شريط تقدّم الموسم: خيط بثلاث بكسلات يغني عن قراءة الأرقام */}
+              {s.aired_count > 0 && (
+                <div className="h-[3px] bg-surface-2">
+                  <div
+                    className="h-full bg-accent-2/80 transition-[width] duration-500"
+                    style={{
+                      width: `${Math.min(100, Math.round((seasonWatched / s.aired_count) * 100))}%`,
+                    }}
+                  />
+                </div>
+              )}
+
               {isOpen && (
-                <>
+                <div className="acc-in">
                   {!episodes ? (
-                    <ul className="divide-y divide-border border-t border-border">
+                    <ul className="divide-y divide-[color:var(--divider)] border-t border-border">
                       {Array.from({ length: Math.min(s.episode_count, 6) }, (_, i) => (
-                        <li key={i} className="flex items-center gap-2.5 px-3 py-2">
-                          <span className="skeleton shrink-0 w-6 h-6 rounded-md" />
-                          <span className="skeleton shrink-0 w-12 sm:w-[72px] aspect-video rounded-md" />
+                        <li key={i} className="flex items-center gap-3 px-3.5 py-2.5">
+                          <span className="skeleton shrink-0 w-[22px] h-[22px] rounded-full" />
+                          <span className="skeleton shrink-0 w-14 sm:w-20 aspect-video rounded-lg" />
                           <span className="skeleton h-3 flex-1 rounded" />
                         </li>
                       ))}
                     </ul>
                   ) : (
-                    <ul className="divide-y divide-border border-t border-border">
+                    <ul className="divide-y divide-[color:var(--divider)] border-t border-border">
                       {episodes.map((e) => {
                         const key = episodeKey(s.season_number, e.episode_number);
                         const isWatched = watched.has(key);
@@ -294,7 +323,9 @@ export function EpisodeTracker({
                         return (
                           <li
                             key={e.episode_number}
-                            className={`flex items-center gap-2.5 px-3 py-2 ${!epAired ? "opacity-50" : ""}`}
+                            className={`flex items-center gap-3 px-3.5 py-2.5 transition-colors ${
+                              !epAired ? "opacity-50" : "active:bg-white/[0.03]"
+                            }`}
                           >
                             <button
                               disabled={!epAired}
@@ -302,27 +333,36 @@ export function EpisodeTracker({
               /* مساحة اللمس ٤٤ بكسلاً والمربّع المرئي ٢٠: الإصبع لا يصيب
                  مربّعاً بعرض ٢٠ بكسلاً في صفٍّ مزدحم، والهامش السالب يمنع
                  الحشوة من إزاحة الصف */
-                              className={`shrink-0 w-11 h-11 -my-2.5 -ms-2.5 grid place-items-center transition ${
+                              className={`shrink-0 w-11 h-11 -my-2.5 -ms-2.5 grid place-items-center ${
                                 !epAired ? "cursor-not-allowed" : ""
                               }`}
                               aria-pressed={isWatched}
                               aria-label={`${t.markWatchedAria} — ${e.episode_number}. ${e.name}`}
                             >
+                              {/* صحٌّ رفيع داخل دائرة تختفي عند التأشير — أخفّ
+                                  بصرياً من مربّع مملوء يتكرّر مئات المرّات */}
                               <span
-                                className={`w-5 h-5 rounded-md border grid place-items-center text-xs ${
+                                className={`w-[22px] h-[22px] rounded-full border-[1.5px] grid place-items-center transition-colors ${
                                   isWatched
-                                    ? "bg-accent-2 border-accent-2 text-[color:var(--on-accent-2)]"
-                                    : "border-border"
+                                    ? "border-transparent text-accent-2"
+                                    : "border-white/20 text-transparent hover:border-white/45"
                                 }`}
                               >
-                                {isWatched ? "✓" : ""}
+                                {isWatched && (
+                                  <Icon
+                                    name="check-line"
+                                    size={15}
+                                    strokeWidth={2.2}
+                                    className="check-pop"
+                                  />
+                                )}
                               </span>
                             </button>
 
                             {/* صورة أصغر: كانت ٦٤ بكسلاً عرضاً فيصير الصف ١٢٦ بكسلاً،
                                 واثنتا عشرة حلقة = ألف ونصف بكسل من التمرير.
                                 المصغّرة هنا للتعرّف لا للمشاهدة. */}
-                            <span className="shrink-0 w-12 sm:w-[72px] aspect-video rounded-md overflow-hidden bg-surface-2 border border-border">
+                            <span className="shrink-0 w-14 sm:w-20 aspect-video rounded-lg overflow-hidden bg-surface-2 border border-white/[0.06]">
                               {e.still_path ? (
                                 <img
                                   src={`${IMG}/w185${e.still_path}`}
@@ -342,10 +382,13 @@ export function EpisodeTracker({
                             </span>
 
                             <div className="flex-1 min-w-0">
-                              <p className="text-[13px] font-medium truncate leading-tight">
-                                <span className="text-muted">{e.episode_number}.</span> {e.name}
+                              <p className="text-[13px] font-semibold truncate leading-tight">
+                                <span className="text-muted font-medium tabular-nums">
+                                  {e.episode_number}.
+                                </span>{" "}
+                                {e.name}
                               </p>
-                              <p className="text-[11px] text-muted mt-0.5 truncate sm:hidden">
+                              <p className="text-[11px] text-muted mt-1 truncate sm:hidden">
                                 {metaLine(e, epAired, t)}
                               </p>
                             </div>
@@ -358,7 +401,7 @@ export function EpisodeTracker({
                       })}
                     </ul>
                   )}
-                </>
+                </div>
               )}
             </div>
           );

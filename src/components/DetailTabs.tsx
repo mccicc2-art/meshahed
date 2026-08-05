@@ -27,34 +27,43 @@ export function DetailTabs({ tabs }: { tabs: DetailTab[] }) {
 
   return (
     <div className="mt-6">
-      <div
-        role="tablist"
-        className="grid gap-1.5 sticky top-16 z-10 bg-[color:var(--background)] py-2"
-        style={{ gridTemplateColumns: `repeat(${available.length}, minmax(0, 1fr))` }}
-      >
-        {available.map((tab) => {
-          const on = tab.key === active;
-          return (
-            <button
-              key={tab.key}
-              role="tab"
-              aria-selected={on}
-              onClick={() => setActive(tab.key)}
-              className={`flex items-center justify-center gap-1.5 px-2 py-2.5 rounded-xl text-[13px] font-bold border transition ${
-                on
-                  ? "bg-accent text-[color:var(--on-accent)] border-accent"
-                  : "bg-surface text-muted border-border hover:text-foreground hover:border-accent/50"
-              }`}
-            >
-              <Icon name={tab.icon} size={16} />
-              <span className="truncate">{tab.label}</span>
-            </button>
-          );
-        })}
+      {/* شريط مقسّم واحد: خانات متساوية داخل كبسولة، والمختار حبّة بارزة —
+          أهدأ من ثلاثة أزرار متجاورة بحدود */}
+      <div className="sticky top-16 z-10 bg-[color:var(--background)] py-2">
+        <div
+          role="tablist"
+          className="grid gap-1 p-1 rounded-2xl bg-surface border border-border"
+          style={{ gridTemplateColumns: `repeat(${available.length}, minmax(0, 1fr))` }}
+        >
+          {available.map((tab) => {
+            const on = tab.key === active;
+            return (
+              <button
+                key={tab.key}
+                role="tab"
+                aria-selected={on}
+                onClick={() => setActive(tab.key)}
+                className={`flex items-center justify-center gap-1.5 px-2 py-2.5 rounded-[13px] text-[13px] font-bold transition-colors ${
+                  on
+                    ? "bg-accent text-[color:var(--on-accent)] shadow-lg shadow-accent/25"
+                    : "text-muted hover:text-foreground"
+                }`}
+              >
+                <Icon name={tab.icon} size={15} />
+                <span className="truncate">{tab.label}</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {available.map((tab) => (
-        <div key={tab.key} role="tabpanel" hidden={tab.key !== active} className="pt-4">
+        <div
+          key={tab.key}
+          role="tabpanel"
+          hidden={tab.key !== active}
+          className={`pt-4 ${tab.key === active ? "tab-fade" : ""}`}
+        >
           {tab.content}
         </div>
       ))}
