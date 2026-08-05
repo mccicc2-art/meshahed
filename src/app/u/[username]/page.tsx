@@ -132,7 +132,7 @@ export default async function PublicProfilePage({
             className="block rounded-full p-[3px] shrink-0"
             style={{
               background:
-                "linear-gradient(135deg, var(--brand-3), var(--accent-2) 55%, var(--accent))",
+                "var(--gradient-brand)",
             }}
           >
             <Avatar
@@ -155,7 +155,7 @@ export default async function PublicProfilePage({
             )}
             <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[13px] text-white/75 leading-tight mt-1 drop-shadow">
               <span className="shrink-0 flex items-center gap-1">
-                <Icon name="people-filled" size={15} />
+                <Icon name="people-filled" size={16} />
                 <span className="font-bold text-white tabular-nums">{stats.followers}</span>
               </span>
               <span className="shrink-0 flex items-center gap-1">
@@ -183,7 +183,7 @@ export default async function PublicProfilePage({
                   <span className="absolute inset-y-1 end-0 w-px bg-white/10" aria-hidden />
                 )}
                 <span className="flex items-center gap-2">
-                  <Icon name={s.icon} size={20} strokeWidth={1.8} style={{ color: s.color }} className="shrink-0" />
+                  <Icon name={s.icon} size={20}  style={{ color: s.color }} className="shrink-0" />
                   <span className="text-[17px] font-bold leading-none tabular-nums">{s.value}</span>
                 </span>
                 <span className="block text-[11px] text-muted mt-1.5 leading-[1.25]">{s.label}</span>
@@ -276,7 +276,7 @@ export default async function PublicProfilePage({
             {withReview.slice(0, 20).map((r) => (
               <article
                 key={`rv-${r.media_type}-${r.tmdb_id}`}
-                className="bg-surface border border-border rounded-[18px] p-4"
+                className="bg-surface border border-border rounded-poster p-4"
               >
                 <div className="flex items-center justify-between gap-3 mb-2 flex-wrap">
                   <Link
