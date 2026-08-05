@@ -7,6 +7,7 @@ import { LanguageSwitch } from "./LanguageSwitch";
 import { ProfileForm } from "./ProfileForm";
 import { AccountSettings } from "./AccountSettings";
 import { HomeCustomize } from "./HomeCustomize";
+import { PrivacyData } from "./PrivacyData";
 
 type SectionKey =
   | "profile"
@@ -103,6 +104,7 @@ export function SettingsShell({
           <div className="space-y-4">
             <p className="text-xs text-muted leading-relaxed">{t.settingsPrivacyHint}</p>
             <AccountSettings {...accountProps} only={["hideName"]} />
+            <PrivacyData locale={locale} />
           </div>
         );
       case "appearance":

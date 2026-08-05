@@ -2,7 +2,8 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { flushQueue } from "@/lib/offline";
+import { flushQueue, setOfflineUser } from "@/lib/offline";
+import { createClient } from "@/lib/supabase/client";
 
 /**
  * حارس المزامنة — لا يرسم شيئاً.
@@ -26,7 +27,20 @@ export function OfflineSync() {
       }
     }
 
-    flush();
+    // الطابور مُقسَّم على صاحبه: نعرف من هو أولاً (من الجلسة المحلية،
+    // بلا رحلة شبكة) ثم نشغّل ما علِق له وحده
+    async function bind() {
+      try {
+        const { data } = await createClient().auth.getSession();
+        if (!alive) return;
+        setOfflineUser(data.session?.user?.id ?? null);
+      } catch {
+        setOfflineUser(null);
+      }
+      flush();
+    }
+
+    bind();
     window.addEventListener("online", flush);
     return () => {
       alive = false;

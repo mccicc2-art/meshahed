@@ -33,6 +33,8 @@ export type IconName =
   | "list"
   | "edit"
   | "share"
+  | "download"
+  | "trash"
   | "settings"
   | "search"
   | "shield"
@@ -284,6 +286,21 @@ const PATHS: Record<IconName, React.ReactNode> = {
       <path d="M12 15V3.5" />
       <path d="M8 7.5 12 3.5l4 4" />
       <path d="M5 13v6.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V13" />
+    </>
+  ),
+  download: (
+    <>
+      <path d="M12 3.5V15" />
+      <path d="M8 11.5l4 4 4-4" />
+      <path d="M5 17v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V17" />
+    </>
+  ),
+  trash: (
+    <>
+      <path d="M4 6.5h16" />
+      <path d="M9 6.5V4.8a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1.7" />
+      <path d="M6.2 6.5 7 19.6a1.5 1.5 0 0 0 1.5 1.4h7a1.5 1.5 0 0 0 1.5-1.4l.8-13.1" />
+      <path d="M10 10.5v6M14 10.5v6" />
     </>
   ),
   settings: (
