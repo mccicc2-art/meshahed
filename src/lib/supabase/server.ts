@@ -15,6 +15,9 @@ export const createClient = cache(async () => {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      // كوكيز الجلسة بخيارات صريحة لا افتراضات المكتبة:
+      // lax يمنع إرسالها مع طلبات مواقع أخرى، وsecure يمنعها عن HTTP
+      cookieOptions: { sameSite: "lax", secure: true, path: "/" },
       cookies: {
         getAll() {
           return cookieStore.getAll();
