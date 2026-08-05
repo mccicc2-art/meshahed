@@ -32,6 +32,7 @@ import { RailSkeleton } from "@/components/Skeletons";
 import { DiscoverFilters } from "@/components/DiscoverFilters";
 import { DiscoverResults } from "@/components/DiscoverResults";
 import { getSuggestions } from "@/lib/suggest";
+import { Alert } from "@/components/ui/Alert";
 
 type T = Awaited<ReturnType<typeof getT>>["t"];
 
@@ -84,7 +85,7 @@ export default async function NewsPage({
           href="/search"
           className="flex items-center gap-2.5 bg-surface border border-border rounded-2xl px-4 py-3.5 text-sm text-muted hover:border-accent/60 active:bg-surface-2 transition"
         >
-          <Icon name="search" size={17} className="shrink-0" />
+          <Icon name="search" size={18} className="shrink-0" />
           {t.searchPlaceholder}
         </Link>
 
@@ -167,9 +168,7 @@ async function BrowseSection({
       </div>
 
       {!page ? (
-        <p className="text-center text-red-300 bg-red-500/10 border border-red-400/30 rounded-xl px-4 py-3">
-          {t.browseFailed}
-        </p>
+        <Alert center>{t.browseFailed}</Alert>
       ) : items.length > 0 ? (
         <DiscoverResults
           initial={items}
@@ -198,7 +197,7 @@ function BrowseSkeleton() {
       <div className="skeleton h-6 w-40 rounded" />
       <div className="grid gap-4 grid-cols-[repeat(auto-fill,minmax(96px,1fr))] sm:grid-cols-[repeat(auto-fill,minmax(130px,1fr))] md:grid-cols-[repeat(auto-fill,minmax(150px,1fr))]">
         {Array.from({ length: 12 }, (_, i) => (
-          <div key={i} className="skeleton aspect-[2/3] rounded-[18px] border border-border" />
+          <div key={i} className="skeleton aspect-[2/3] rounded-poster border border-border" />
         ))}
       </div>
     </div>
