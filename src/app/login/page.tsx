@@ -38,7 +38,7 @@ export default async function LoginPage() {
        الشاشة، والمقاسات بـ clamp تتكيّف مع أي ارتفاع — البطل يتوسّط
        المساحة الحرّة وجدار الملصقات يلتصق بالقاع ويُقصّ ما فاض */
     <div className="fixed inset-x-0 top-16 bottom-0 overflow-hidden flex flex-col">
-      <div className="flex-1 min-h-0 flex flex-col items-center justify-center text-center px-4">
+      <div className="relative z-10 flex-1 min-h-0 flex flex-col items-center justify-center text-center px-4">
         {/* شارة الوعد: نقطة نابضة + السطر الإنجليزي — بلا أيقونات */}
         <div className="flex items-center gap-2.5 rounded-full border border-border bg-surface px-4 py-2">
           <span
@@ -54,7 +54,7 @@ export default async function LoginPage() {
         </div>
 
         {/* الوعد — يكبر ويصغر مع الشاشة لا مع نقاط قطعٍ ثابتة */}
-        <h1 className="mt-[clamp(14px,2.6vh,28px)] text-[clamp(27px,3.2vw,56px)] font-extrabold leading-[1.16] tracking-tight px-4">
+        <h1 className="mt-[clamp(14px,2.6vh,30px)] text-[clamp(28px,min(3.4vw,5.4vh),62px)] font-extrabold leading-[1.16] tracking-tight px-4">
           {t.landingH1a}
           <br />
           <span
@@ -68,12 +68,12 @@ export default async function LoginPage() {
           </span>
         </h1>
 
-        <p className="mt-[clamp(10px,1.8vh,20px)] max-w-md text-[clamp(13px,1.1vw,16px)] text-muted leading-relaxed px-6">
+        <p className="mt-[clamp(10px,1.8vh,20px)] max-w-lg text-[clamp(13px,1.05vw,17px)] text-muted leading-relaxed px-6">
           {t.tagline}
         </p>
 
         {/* الدخول: زرٌّ أبيض واحد لا نموذج — أقل قرارٍ ممكن قبل البدء */}
-        <div className="mt-[clamp(16px,3.2vh,34px)] w-full max-w-sm px-6">
+        <div className="mt-[clamp(16px,3.2vh,36px)] w-full max-w-[360px] px-6">
           {configured ? (
             <GoogleButton locale={locale} />
           ) : (
@@ -82,10 +82,16 @@ export default async function LoginPage() {
         </div>
       </div>
 
-      {/* جدار الرائج: صفّان يزحفان باتجاهين متعاكسين بميلٍ خفيف */}
+      {/* جدار الرائج: صفّان يزحفان باتجاهين متعاكسين بميلٍ خفيف.
+          محبوسٌ في صندوقه: ارتفاع أقصى واقتصاصٌ صريح وبلا أي تكبير —
+          فلا يزحف فوق زرّ الدخول مهما ضاقت الشاشة */}
       {posters.length >= 8 && (
-        <div className="relative shrink-0" dir="ltr" aria-hidden>
-          <div className="rotate-[-3deg] scale-110 space-y-2.5">
+        <div
+          className="relative shrink-0 max-h-[34vh] overflow-hidden pt-6 pb-1"
+          dir="ltr"
+          aria-hidden
+        >
+          <div className="rotate-[-2deg] -mx-10 space-y-2.5">
             {[
               { row: rowA, cls: "marquee-track", dur: "60s" },
               { row: rowB, cls: "marquee-track marquee-rev", dur: "75s" },
@@ -96,7 +102,7 @@ export default async function LoginPage() {
                   {[...row, ...row].map((p, i) => (
                     <div
                       key={i}
-                      className="w-[clamp(68px,7.5vw,130px)] aspect-[2/3] rounded-xl overflow-hidden border border-white/10 bg-surface-2 shadow-[0_10px_30px_rgba(0,0,0,0.6)] shrink-0 me-2.5"
+                      className="w-[clamp(60px,min(6.5vw,9.5vh),108px)] aspect-[2/3] rounded-xl overflow-hidden border border-white/10 bg-surface-2 shadow-[0_10px_30px_rgba(0,0,0,0.6)] shrink-0 me-2.5"
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
