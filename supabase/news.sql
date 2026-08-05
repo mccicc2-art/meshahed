@@ -1,6 +1,9 @@
 -- ============================================================
 --  Meshahed — تفاعلات صفحة الأخبار (🔥)
---  شغّله في Supabase → SQL Editor
+--  شغّله في Supabase → SQL Editor (الترتيب الكامل في README.md)
+--
+--  ملاحظة أمنية: سياسة القراءة المفتوحة القديمة حُذفت — القراءة الآن
+--  «صفوف المالك» وسياسة UPDATE والعدّاد المجمّع كلها في security.sql.
 -- ============================================================
 
 create table if not exists public.post_reactions (
@@ -13,11 +16,6 @@ create table if not exists public.post_reactions (
 );
 
 alter table public.post_reactions enable row level security;
-
--- العدّاد ظاهر للجميع، لكن كل مستخدم يضيف/يحذف تفاعله هو فقط
-drop policy if exists "read all reactions" on public.post_reactions;
-create policy "read all reactions" on public.post_reactions
-  for select to authenticated using (true);
 
 drop policy if exists "insert own reaction" on public.post_reactions;
 create policy "insert own reaction" on public.post_reactions

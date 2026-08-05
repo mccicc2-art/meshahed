@@ -10,11 +10,9 @@ create unique index if not exists profiles_username_key
   on public.profiles (lower(username))
   where username is not null;
 
--- توليد اسم مستخدم مبدئي لمن لا يملك واحداً
+-- توليد اسم مستخدم مبدئي لمن لا يملك واحداً.
+-- عشوائي لا مشتقّ من الإيميل: بداية الإيميل كانت تُنشر وتُبحث كمعرّف —
+-- تسريبُ هويةٍ لمن لم يخترها.
 update public.profiles p
-set username = regexp_replace(
-      lower(coalesce(split_part(u.email, '@', 1), 'user')) || '_' || substr(p.id::text, 1, 4),
-      '[^a-z0-9_]', '', 'g'
-    )
-from auth.users u
-where u.id = p.id and p.username is null;
+set username = 'user_' || substr(md5(p.id::text || random()::text), 1, 8)
+where p.username is null;

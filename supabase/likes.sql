@@ -1,11 +1,12 @@
 -- ============================================================
 --  Loopz — إعجابات المراجعات
---  شغّله في Supabase → SQL Editor مرّةً واحدة
+--  شغّله في Supabase → SQL Editor (الترتيب الكامل في README.md)
+--
+--  ملاحظة أمنية: سياسة القراءة المفتوحة القديمة (من أعجب بماذا لكل
+--  الموقع) حُذفت — القراءة الآن «صفوفك أنت» والأعداد من دوال definer،
+--  وكلها في security.sql.
 -- ============================================================
 
--- المفتاح يشير إلى مراجعةٍ بعينها: صاحبها والعمل ونوعه — وهو مفتاح
--- جدول `ratings` نفسه. و`liker_id` جزءٌ من المفتاح الأساسي، فلا يُعجَب
--- بالمراجعة مرّتين ولا يحتاج التطبيق فحصاً قبل الإدراج.
 create table if not exists public.review_likes (
   review_user_id uuid not null references auth.users (id) on delete cascade,
   tmdb_id        integer not null,
@@ -20,11 +21,6 @@ create table if not exists public.review_likes (
 
 alter table public.review_likes enable row level security;
 
--- القراءة عامّة: العدد يظهر لكل من يرى المراجعة
-drop policy if exists "read all review likes" on public.review_likes;
-create policy "read all review likes" on public.review_likes
-  for select to authenticated using (true);
-
 -- لا يُعجب أحدٌ نيابةً عن غيره، ولا يُعجب المرء بمراجعة نفسه
 drop policy if exists "insert own review like" on public.review_likes;
 create policy "insert own review like" on public.review_likes
@@ -35,7 +31,6 @@ drop policy if exists "delete own review like" on public.review_likes;
 create policy "delete own review like" on public.review_likes
   for delete to authenticated using (auth.uid() = liker_id);
 
--- الفهرس على صاحب المراجعة: سؤال الترويسة هو «كم إعجاباً تلقّيتُ؟»
 create index if not exists review_likes_received_idx
   on public.review_likes (review_user_id);
 

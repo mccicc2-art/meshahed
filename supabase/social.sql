@@ -1,6 +1,10 @@
 -- ============================================================
 --  Meshahed — التقييمات والتعليقات + متابعة المستخدمين
---  شغّله في Supabase → SQL Editor
+--  شغّله في Supabase → SQL Editor (الترتيب الكامل في README.md)
+--
+--  ملاحظة أمنية: سياسات «القراءة» لجدول التقييمات تعيش في security.sql
+--  حصراً — كانت هنا نسخة قديمة مفتوحة (using true) وحُذفت عمداً حتى
+--  لا يعيد تشغيلُ هذا الملف فتحَ ما أُغلق هناك.
 -- ============================================================
 
 -- ---------- التقييمات والمراجعات ----------
@@ -19,11 +23,7 @@ create table if not exists public.ratings (
 
 alter table public.ratings enable row level security;
 
--- التقييمات عامة للقراءة (حتى يراها من يتابعك)، والكتابة لصاحبها فقط
-drop policy if exists "read all ratings" on public.ratings;
-create policy "read all ratings" on public.ratings
-  for select to authenticated using (true);
-
+-- الكتابة لصاحبها فقط — القراءة عبر security.sql (صفوف المالك + دوال definer)
 drop policy if exists "insert own rating" on public.ratings;
 create policy "insert own rating" on public.ratings
   for insert to authenticated with check (auth.uid() = user_id);
@@ -50,6 +50,7 @@ create table if not exists public.user_follows (
 
 alter table public.user_follows enable row level security;
 
+-- القراءة عامّة عمداً: قوائم المتابِعين/المتابَعين ميزة معلنة في الواجهة
 drop policy if exists "read all user follows" on public.user_follows;
 create policy "read all user follows" on public.user_follows
   for select to authenticated using (true);
@@ -64,9 +65,3 @@ create policy "unfollow as self" on public.user_follows
 
 create index if not exists user_follows_following_idx
   on public.user_follows (following_id);
-
--- ---------- الملفات الشخصية تصبح قابلة للقراءة للجميع ----------
--- (مطلوب حتى تظهر صفحة أي مستخدم لمن يتابعه)
-drop policy if exists "read all profiles" on public.profiles;
-create policy "read all profiles" on public.profiles
-  for select to authenticated using (true);
