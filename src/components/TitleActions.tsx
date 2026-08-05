@@ -123,18 +123,24 @@ export function TitleActions({
   return (
     <>
       <div className="flex items-center gap-3">
-        {/* أضف لقائمة: أبيض ثقيل الحضور — الإجراء الأول في الصفحة */}
+        {/* أضف لقائمة: أبيض قبل الإضافة، وبلون الهوية بعدها — اللون هو
+            الإشارة لا رقمٌ يحتاج تفسيراً، والعلامة تمتلئ معه */}
         <button
           onClick={() => setSheet("lists")}
-          className="flex-1 h-12 rounded-full bg-white text-[#111] font-bold text-[15px] flex items-center justify-center gap-2.5 shadow-[0_10px_28px_rgba(255,255,255,0.08)] hover:bg-gray-100 active:scale-[0.98] transition"
+          aria-pressed={badge > 0}
+          className={`flex-1 h-12 rounded-full font-bold text-[15px] flex items-center justify-center gap-2.5 active:scale-[0.98] transition ${
+            badge > 0
+              ? "bg-accent text-[color:var(--on-accent)] shadow-[0_10px_28px_rgba(124,58,237,0.35)] hover:brightness-110"
+              : "bg-white text-[#111] shadow-[0_10px_28px_rgba(255,255,255,0.08)] hover:bg-gray-100"
+          }`}
         >
-          <Icon name="bookmark" size={18} strokeWidth={2} />
+          <Icon
+            name="bookmark"
+            size={18}
+            strokeWidth={2}
+            style={badge > 0 ? { fill: "currentColor" } : undefined}
+          />
           {t.listAddTo}
-          {badge > 0 && (
-            <span className="min-w-5 h-5 px-1 grid place-items-center rounded-full bg-[#111] text-white text-[11px] font-bold tabular-nums">
-              {badge}
-            </span>
-          )}
         </button>
 
         {/* دائرة «شاهدتُه كله» */}
