@@ -59,7 +59,6 @@ export default async function LibraryPage({
       const progress = aired > 0 ? Math.round((watched / aired) * 100) : 0;
       const dropped = !!f.dropped;
       if (!dropped && aired > watched) remainingEps += aired - watched;
-      const rewatching = (f.rewatch_count ?? 0) > 0;
       return {
         key: `tv-${f.tmdb_id}`,
         tmdbId: f.tmdb_id,
@@ -69,16 +68,8 @@ export default async function LibraryPage({
         posterPath: f.poster_path,
         progress,
         completed: done,
-        badge: dropped
-          ? t.droppedBadge
-          : rewatching && !done
-            ? t.rewatchBadge((f.rewatch_count ?? 0) + 1)
-            : watched === 0
-              ? t.notStartedBadge
-              : done
-                ? t.watchedBadge
-                : undefined,
-        badgeTone: (dropped ? "dropped" : done ? "watched" : "neutral") as GridItem["badgeTone"],
+        /* لا كتابة فوق الملصق: الحالة كلها في شريط اللون الأسفل —
+           أخضر مكتمل، بنفسجي قيد المشاهدة، أحمر موقوف، ولا شيء لِما لم يبدأ */
         count: !dropped && watched > 0 && aired > watched ? aired - watched : undefined,
         dropped,
         rank: dropped ? 3 : watched > 0 && !done ? 0 : watched === 0 ? 1 : 2,
@@ -100,8 +91,6 @@ export default async function LibraryPage({
         title: f.title,
         posterPath: f.poster_path,
         progress: done ? 100 : undefined,
-        badge: dropped ? t.droppedBadge : done ? t.watchedBadge : t.typeMovie,
-        badgeTone: (dropped ? "dropped" : done ? "watched" : "neutral") as GridItem["badgeTone"],
         dropped,
         rank: dropped ? 2 : done ? 1 : 0,
       };
