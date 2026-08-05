@@ -158,7 +158,7 @@ export async function setLocale(value: string) {
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (user) {
+    if (user && allow(`${user.id}:pref`, 20, 60_000)) {
       await supabase
         .from("profiles")
         .upsert({ id: user.id, locale }, { onConflict: "id" });
@@ -257,7 +257,9 @@ export async function toggleEpisode(input: {
     episode: intIn(input.episode, 1, 20_000),
     runtime: input.runtime == null ? null : intIn(input.runtime, 0, 10_000),
   };
-  const { supabase, user } = await requireUser();
+  // دلو خاص بتأشير الحلقات: أعلى فعلٍ تكراراً في التطبيق — إلغاء تأشير
+  // عشرين حلقة بنقرات سريعة نمطٌ مشروع، والدلو الافتراضي كان يخنقه
+  const { supabase, user } = await requireUser("ep", 120, 60_000);
   if (input.watched) {
     await supabase.from("watched_episodes").upsert(
       {
@@ -298,7 +300,7 @@ export async function watchUpTo(input: {
       runtime: e.runtime == null ? null : intIn(e.runtime, 0, 10_000),
     })),
   };
-  const { supabase, user } = await requireUser();
+  const { supabase, user } = await requireUser("ep", 120, 60_000);
   if (!input.episodes.length) return;
 
   const now = new Date().toISOString();
@@ -332,6 +334,7 @@ export async function saveMovieProgress(input: {
   input = {
     ...input,
     movieTmdbId: intId(input.movieTmdbId),
+    positionMinutes: intIn(input.positionMinutes, 0, 10_000),
     runtimeMinutes: input.runtimeMinutes == null ? null : intIn(input.runtimeMinutes, 1, 10_000),
     title: String(input.title ?? "").slice(0, 300),
     posterPath: safeImagePath(input.posterPath),
@@ -393,7 +396,7 @@ export async function setSeasonWatched(input: {
       runtime: e.runtime == null ? null : intIn(e.runtime, 0, 10_000),
     })),
   };
-  const { supabase, user } = await requireUser();
+  const { supabase, user } = await requireUser("ep", 120, 60_000);
   if (input.watched) {
     const now = new Date().toISOString();
     const rows = input.episodes.map((e) => ({
@@ -716,7 +719,7 @@ export async function createList(name: string, isPublic = false): Promise<string
 
   const { data, error } = await supabase
     .from("user_lists")
-    .insert({ user_id: user.id, name: clean, is_public: isPublic })
+    .insert({ user_id: user.id, name: clean, is_public: !!isPublic })
     .select("id")
     .single();
   if (error) fail(error);
@@ -892,7 +895,7 @@ export async function setDropped(tmdbId: number, mediaType: MediaType, dropped: 
   const { supabase, user } = await requireUser();
   const { error } = await supabase
     .from("follows")
-    .update({ dropped })
+    .update({ dropped: !!dropped })
     .match({ user_id: user.id, tmdb_id: tmdbId, media_type: mediaType });
   if (error) fail(error);
   revalidatePath("/");
