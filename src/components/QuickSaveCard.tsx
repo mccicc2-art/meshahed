@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { flashError } from "@/lib/flash";
 import { follow } from "@/lib/actions";
+import { tap } from "@/lib/haptics";
 import { getDict, type Locale } from "@/lib/i18n";
 
 /**
@@ -37,14 +39,15 @@ export function QuickSaveCard({
     if (state !== "none") return;
     setState("saved"); // تفاؤل: اللون يتغير قبل ردّ الخادم
     try {
-      navigator.vibrate?.(10);
+      tap(10);
     } catch {
       /* لا شيء */
     }
     start(async () => {
       try {
         await follow({ tmdbId, mediaType, title, posterPath });
-      } catch {
+      } catch (e) {
+        flashError((e as Error).message);
         setState("none");
       }
     });

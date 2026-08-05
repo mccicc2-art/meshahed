@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { flashError } from "@/lib/flash";
 import { toggleReviewLike } from "@/lib/actions";
 import { getDict, type Locale } from "@/lib/i18n";
 import { tap } from "@/lib/haptics";
@@ -56,7 +57,8 @@ export function LikeButton({
     start(async () => {
       try {
         await toggleReviewLike(reviewUserId, tmdbId, mediaType, was);
-      } catch {
+      } catch (e) {
+        flashError((e as Error).message);
         setLiked(was);
         setCount((c) => c + (was ? 1 : -1));
       }

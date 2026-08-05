@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { flashError } from "@/lib/flash";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toggleInList } from "@/lib/actions";
@@ -49,7 +50,8 @@ export function ListPicker({
       try {
         await toggleInList({ listId, tmdbId, mediaType, title, posterPath, add });
         router.refresh();
-      } catch {
+      } catch (e) {
+        flashError((e as Error).message);
         // فشل الحفظ: نرجّع العلامة لحالتها الحقيقية بدل إيهام المستخدم
         setInLists((prev) => {
           const next = new Set(prev);

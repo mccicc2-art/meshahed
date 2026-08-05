@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { flashError } from "@/lib/flash";
 import { Logo } from "./Logo";
 import Image from "next/image";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { toggleEpisode } from "@/lib/actions";
+import { runOrQueue } from "@/lib/offline";
 import { getDict, type Locale } from "@/lib/i18n";
 
 /**
@@ -40,9 +41,10 @@ export function NextUpCard({
     setDone(true);
     start(async () => {
       try {
-        await toggleEpisode({ showTmdbId, season, episode, runtime, watched: true });
+        await runOrQueue("toggleEpisode", { showTmdbId, season, episode, runtime, watched: true });
         router.refresh();
-      } catch {
+      } catch (e) {
+        flashError((e as Error).message);
         setDone(false);
       }
     });

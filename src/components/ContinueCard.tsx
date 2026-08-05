@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { posterUrl, backdropUrl } from "@/lib/media";
 import { saveRating } from "@/lib/actions";
 import { runOrQueue } from "@/lib/offline";
+import { tap } from "@/lib/haptics";
 import { coalescedRefresh } from "@/lib/refresh";
 import { getDict, type Locale } from "@/lib/i18n";
 import { Icon } from "./Icon";
@@ -86,7 +87,7 @@ export function ContinueCard({
     if (rated) return;
     setStars(n);
     try {
-      navigator.vibrate?.(8);
+      tap(8);
     } catch {
       /* لا شيء */
     }
@@ -126,7 +127,7 @@ export function ContinueCard({
     const cur = { ...ep };
     setErr(false);
     try {
-      navigator.vibrate?.(12);
+      tap(12);
     } catch {
       /* لا شيء */
     }

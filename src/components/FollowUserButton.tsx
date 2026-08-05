@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { flashError } from "@/lib/flash";
 import { useRouter } from "next/navigation";
 import { followUser, unfollowUser } from "@/lib/actions";
 import { getDict, type Locale } from "@/lib/i18n";
@@ -32,7 +33,8 @@ export function FollowUserButton({
             if (next) await followUser(targetId);
             else await unfollowUser(targetId);
             router.refresh();
-          } catch {
+          } catch (e) {
+            flashError((e as Error).message);
             setOn(!next);
           }
         });

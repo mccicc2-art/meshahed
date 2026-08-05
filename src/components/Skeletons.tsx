@@ -69,7 +69,13 @@ export function RailSkeleton({ count = 6 }: { count?: number }) {
 export function HomeHeaderSkeleton() {
   return (
     <section aria-hidden>
-      <div className="skeleton -mx-4 -mt-6 h-[14.2rem] sm:h-[18.2rem]" />
+      <div className="skeleton -mx-4 -mt-[calc(1.5rem+env(safe-area-inset-top))] sm:mx-0 sm:mt-0 sm:rounded-3xl h-[14.2rem] sm:h-[18.2rem]" />
+      {/* كتلة الهوية الحقيقية تعتلي الغلاف بهذا القدر — الهيكل يطابقها
+          حتى لا يقفز صفّ الأرقام ~84px عند وصول المحتوى */}
+      <div className="relative -mt-[5.25rem] px-1">
+        <div className="skeleton w-24 h-24 rounded-full border-4 border-[color:var(--background)]" />
+        <div className="skeleton h-6 w-40 rounded mt-3" />
+      </div>
       <div className="grid grid-cols-3 gap-2 mt-4">
         {Array.from({ length: 3 }, (_, i) => (
           <div key={i} className="skeleton h-14 rounded-xl" />
@@ -103,10 +109,10 @@ export function NextUpSkeleton() {
 export function DetailSkeleton() {
   return (
     <div aria-hidden>
-      <div className="skeleton -mx-4 -mt-6 h-56 sm:h-72 mb-4" />
-      <div className="flex flex-col sm:flex-row gap-6 -mt-24 relative px-1">
-        <div className="w-32 sm:w-44 shrink-0 mx-auto sm:mx-0">
-          <div className="skeleton aspect-[2/3] rounded-xl border border-border" />
+      <div className="skeleton -mx-4 -mt-6 h-44 sm:h-72 mb-4" />
+      <div className="flex gap-4 -mt-24 sm:-mt-28 relative px-1">
+        <div className="w-28 sm:w-40 shrink-0">
+          <div className="skeleton aspect-[2/3] rounded-2xl border border-border" />
         </div>
         <div className="flex-1 pt-2 space-y-3">
           <div className="skeleton h-8 w-2/3 rounded" />

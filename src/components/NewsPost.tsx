@@ -3,6 +3,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import Link from "next/link";
+import { flashError } from "@/lib/flash";
 import { useState, useTransition } from "react";
 import { toggleReaction, follow, unfollow } from "@/lib/actions";
 import { getDict, type Locale } from "@/lib/i18n";
@@ -53,7 +54,8 @@ export function NewsPost({
     start(async () => {
       try {
         await toggleReaction({ tmdbId: item.id, mediaType: item.mediaType, on: next });
-      } catch {
+      } catch (e) {
+        flashError((e as Error).message);
         setReacted(!next);
         setCount((c) => Math.max(0, c + (next ? -1 : 1)));
       }
@@ -75,7 +77,8 @@ export function NewsPost({
         } else {
           await unfollow({ tmdbId: item.id, mediaType: item.mediaType });
         }
-      } catch {
+      } catch (e) {
+        flashError((e as Error).message);
         setSaved(!next);
       }
     });

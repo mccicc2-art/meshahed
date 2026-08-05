@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { flashError } from "@/lib/flash";
 import { follow, unfollow } from "@/lib/actions";
 import { getDict, type Locale } from "@/lib/i18n";
 import type { MediaType } from "@/lib/media";
@@ -36,7 +37,8 @@ export function FollowButton({
           try {
             if (was) await unfollow({ tmdbId, mediaType });
             else await follow({ tmdbId, mediaType, title, posterPath });
-          } catch {
+          } catch (e) {
+            flashError((e as Error).message);
             setFollowing(was);
           }
         })

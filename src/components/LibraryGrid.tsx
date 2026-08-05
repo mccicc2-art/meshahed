@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState, useTransition } from "react";
+import { flashError } from "@/lib/flash";
 import { useRouter } from "next/navigation";
 import { getDict, type Locale } from "@/lib/i18n";
 import {
@@ -295,7 +296,8 @@ function QuickActions({
         setMsg(label ?? "✓");
         onDone();
         setTimeout(onClose, 900);
-      } catch {
+      } catch (e) {
+        flashError((e as Error).message);
         setMsg("✗");
         setTimeout(onClose, 900);
       }
@@ -310,7 +312,7 @@ function QuickActions({
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
       <button
         type="button"
-        aria-label=""
+        aria-label={t.closeLabel}
         onClick={onClose}
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
       />

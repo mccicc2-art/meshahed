@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { flashError } from "@/lib/flash";
 import { useRouter } from "next/navigation";
 import { markShowWatched, toggleMovieWatched, setDropped } from "@/lib/actions";
 import { getDict, type Locale } from "@/lib/i18n";
@@ -46,7 +47,8 @@ export function ToWatchCard({
         await fn();
         // تجميع التحديثات: أربع بطاقات متتالية = تجديد واحد لا أربعة
         coalescedRefresh(router);
-      } catch {
+      } catch (e) {
+        flashError((e as Error).message);
         setGone(false);
       }
     });

@@ -3,7 +3,8 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { useCallback, useMemo, useState, useTransition } from "react";
-import { toggleEpisode, setSeasonWatched, watchUpTo } from "@/lib/actions";
+import { runOrQueue } from "@/lib/offline";
+import { tap } from "@/lib/haptics";
 import { episodeKey } from "@/lib/keys";
 import { getDict, type Dict, type Locale } from "@/lib/i18n";
 import { formatDateShort } from "@/lib/when";
@@ -156,7 +157,7 @@ export function EpisodeTracker({
   function toggleOne(season: number, ep: TrackerEpisode) {
     const key = episodeKey(season, ep.episode_number);
     const next = !watched.has(key);
-    if (navigator.vibrate) navigator.vibrate(10);
+    tap(10);
 
     setErr(null);
 
@@ -178,9 +179,9 @@ export function EpisodeTracker({
       start(async () => {
         try {
           if (toMark.length > 1) {
-            await watchUpTo({ showTmdbId, episodes: toMark });
+            await runOrQueue("watchUpTo", { showTmdbId, episodes: toMark });
           } else {
-            await toggleEpisode({
+            await runOrQueue("toggleEpisode", {
               showTmdbId,
               season,
               episode: ep.episode_number,
@@ -205,7 +206,7 @@ export function EpisodeTracker({
     });
     start(async () => {
       try {
-        await toggleEpisode({
+        await runOrQueue("toggleEpisode", {
           showTmdbId,
           season,
           episode: ep.episode_number,
@@ -236,7 +237,7 @@ export function EpisodeTracker({
         return set;
       });
       try {
-        await setSeasonWatched({
+        await runOrQueue("setSeasonWatched", {
           showTmdbId,
           episodes: aired.map((e) => ({
             season: s.season_number,

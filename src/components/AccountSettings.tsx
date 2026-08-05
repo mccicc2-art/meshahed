@@ -134,6 +134,7 @@ export function AccountSettings({
               }}
               maxLength={24}
               placeholder="ahmed_92"
+              dir="ltr"
               className="w-full rounded-xl bg-surface-2 border border-border ps-8 pe-3 py-2.5 text-sm outline-none focus:border-accent transition text-left"
             />
           </div>

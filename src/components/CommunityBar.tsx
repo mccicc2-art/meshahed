@@ -101,12 +101,20 @@ export function CommunityBar({
 type Dict = ReturnType<typeof getDict>;
 
 /** غلاف النافذة: خلفية معتمة تُغلق باللمس، ولوح سفلي على الجوال */
-function Sheet({ onClose, children }: { onClose: () => void; children: React.ReactNode }) {
+function Sheet({
+  onClose,
+  closeLabel,
+  children,
+}: {
+  onClose: () => void;
+  closeLabel: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
       <button
         type="button"
-        aria-label=""
+        aria-label={closeLabel}
         onClick={onClose}
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
       />
@@ -172,7 +180,7 @@ function PeopleSheet({
   onClose: () => void;
 }) {
   return (
-    <Sheet onClose={onClose}>
+    <Sheet onClose={onClose} closeLabel={t.closeLabel}>
       <SheetHeader title={title} t={t} onClose={onClose} />
       <div className="overflow-y-auto overscroll-contain divide-y divide-[color:var(--divider)] pb-[env(safe-area-inset-bottom)]">
         {people.length === 0 ? (
@@ -217,7 +225,7 @@ function SearchSheet({ t, onClose }: { t: Dict; onClose: () => void }) {
   }
 
   return (
-    <Sheet onClose={onClose}>
+    <Sheet onClose={onClose} closeLabel={t.closeLabel}>
       <SheetHeader title={t.peopleAdd} t={t} onClose={onClose} />
 
       <div className="px-5 pt-4 pb-3">

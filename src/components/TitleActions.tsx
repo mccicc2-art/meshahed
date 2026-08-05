@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { flashError } from "@/lib/flash";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { follow, unfollow, toggleInList, markShowWatched, toggleMovieWatched } from "@/lib/actions";
@@ -63,7 +64,8 @@ export function TitleActions({
         if (was) await unfollow({ tmdbId, mediaType });
         else await follow({ tmdbId, mediaType, title, posterPath });
         router.refresh();
-      } catch {
+      } catch (e) {
+        flashError((e as Error).message);
         setFollowing(was);
       }
     });
@@ -81,7 +83,8 @@ export function TitleActions({
       try {
         await toggleInList({ listId, tmdbId, mediaType, title, posterPath, add });
         router.refresh();
-      } catch {
+      } catch (e) {
+        flashError((e as Error).message);
         setInLists((prev) => {
           const next = new Set(prev);
           if (add) next.delete(listId);
@@ -109,7 +112,8 @@ export function TitleActions({
           await toggleMovieWatched({ movieTmdbId: tmdbId, runtime, watched: mark });
         }
         router.refresh();
-      } catch {
+      } catch (e) {
+        flashError((e as Error).message);
         setDone(!mark);
       }
     });

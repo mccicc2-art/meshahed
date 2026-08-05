@@ -175,9 +175,12 @@ export async function LibraryAnalysis({ locale }: { locale: Locale }) {
   }
 
   // ===== الأنواع والسنوات من TMDB =====
+  // سقف ٤٠ لكل نوع (كسقف localizeFollows): مكتبة من ٣٠٠ عمل كانت تطلق
+  // ٣٠٠ طلب متزامن فتصطدم بحدود TMDB ويعلق الهيكل — عيّنة الأحدث تكفي
+  // لرسم توزيع الأنواع والعقود
   const [tvDetails, movieDetails] = await Promise.all([
-    Promise.all(tvFollows.map((f) => getTv(f.tmdb_id).catch(() => null))),
-    Promise.all(movieFollows.map((f) => getMovie(f.tmdb_id).catch(() => null))),
+    Promise.all(tvFollows.slice(0, 40).map((f) => getTv(f.tmdb_id).catch(() => null))),
+    Promise.all(movieFollows.slice(0, 40).map((f) => getMovie(f.tmdb_id).catch(() => null))),
   ]);
 
   const genreTally = new Map<string, number>();
