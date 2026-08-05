@@ -118,7 +118,7 @@ export function ProfileHeader({
   return (
     <section>
       {/* ===== الغلاف ===== */}
-      <div className="relative h-[15.75rem] sm:h-[20.25rem] -mx-4 -mt-[calc(1.5rem+env(safe-area-inset-top))] sm:mx-0 sm:mt-0 sm:rounded-3xl overflow-hidden">
+      <div className="relative h-[14.2rem] sm:h-[18.2rem] -mx-4 -mt-[calc(1.5rem+env(safe-area-inset-top))] sm:mx-0 sm:mt-0 sm:rounded-3xl overflow-hidden">
         {coverUrl ? (
           <Image
             src={coverUrl}
