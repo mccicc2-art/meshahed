@@ -370,20 +370,12 @@ export async function getReactions(ids: number[] = []): Promise<ReactionInfo> {
     const counts: Record<string, number> = {};
 
     if (unique.length) {
+      // العدّ من دالة definer حصراً: القراءة المباشرة صارت مقصورة على
+      // صفوف المستخدم نفسه، فأي عدٍّ محلي سيكون ناقصاً بصمت
       const { data, error } = await supabase.rpc("reaction_counts", { ids: unique });
       if (!error && data) {
         for (const r of data as { tmdb_id: number; media_type: string; n: number }[]) {
           counts[`${r.media_type}-${r.tmdb_id}`] = Number(r.n);
-        }
-      } else {
-        // احتياط قبل تشغيل ملف performance.sql
-        const { data: rows } = await supabase
-          .from("post_reactions")
-          .select("tmdb_id, media_type")
-          .in("tmdb_id", unique);
-        for (const r of rows ?? []) {
-          const key = `${r.media_type}-${r.tmdb_id}`;
-          counts[key] = (counts[key] ?? 0) + 1;
         }
       }
     }
@@ -469,75 +461,37 @@ export async function getMyRatings(): Promise<RatingRow[]> {
   }
 }
 
-/** تقييمات مستخدم معيّن مرتّبة من الأعلى */
+/** تقييمات مستخدم معيّن مرتّبة من الأعلى — عبر دالة definer محدودة
+ *  الأعمدة والعدد، لأن جدول التقييمات لم يعد مفتوح القراءة */
 export async function getRatingsOf(userId: string): Promise<RatingRow[]> {
   try {
     const supabase = await createClient();
-    const { data } = await supabase
-      .from("ratings")
-      .select("user_id, tmdb_id, media_type, rating, review, title, poster_path, updated_at")
-      .eq("user_id", userId)
-      .order("rating", { ascending: false })
-      .order("updated_at", { ascending: false })
-      .limit(200);
+    const { data, error } = await supabase.rpc("user_ratings", { target: userId });
+    if (error) return [];
     return (data as RatingRow[]) ?? [];
   } catch {
     return [];
   }
 }
 
-/** متوسط تقييمات كل المستخدمين لعمل معيّن */
-/** مراجعةٌ كما تُعرض للمجتمع: التقييم ونصّه، ومعه حال الإعجاب */
-export interface ReviewRow extends RatingRow {
-  likes: number;
-  likedByMe: boolean;
-  isMine: boolean;
-}
-
+/** متوسط تقييمات كل المستخدمين لعمل معيّن — رقمان مجمّعان من دالة
+ *  definer، بلا أي صفّ خام (جدول التقييمات لم يعد مفتوح القراءة).
+ *  المراجعات نفسها تأتي من getTitleReviews. */
 export async function getCommunityRating(
   tmdbId: number,
   mediaType: "tv" | "movie",
-): Promise<{ avg: number; count: number; reviews: ReviewRow[] }> {
-  const empty = { avg: 0, count: 0, reviews: [] as ReviewRow[] };
+): Promise<{ avg: number; count: number }> {
+  const empty = { avg: 0, count: 0 };
   try {
     const supabase = await createClient();
-    const me = await getUser();
-    const { data } = await supabase
-      .from("ratings")
-      .select("user_id, tmdb_id, media_type, rating, review, title, poster_path, updated_at")
-      .eq("tmdb_id", tmdbId)
-      .eq("media_type", mediaType)
-      .order("updated_at", { ascending: false })
-      .limit(100);
-    const rows = (data as RatingRow[]) ?? [];
-    if (!rows.length) return empty;
-    const avg = rows.reduce((s, r) => s + r.rating, 0) / rows.length;
-    const withText = rows.filter((r) => r.review?.trim()).slice(0, 10);
-
-    // إعجابات هذا العمل كلها في استعلامٍ واحد ثم تُجمَّع في الذاكرة:
-    // استعلامٌ لكل مراجعة يعني عشرة استعلامات لصفحةٍ واحدة
-    const likes = new Map<string, number>();
-    const mine = new Set<string>();
-    const { data: likeRows } = await supabase
-      .from("review_likes")
-      .select("review_user_id, liker_id")
-      .eq("tmdb_id", tmdbId)
-      .eq("media_type", mediaType);
-    for (const l of (likeRows ?? []) as { review_user_id: string; liker_id: string }[]) {
-      likes.set(l.review_user_id, (likes.get(l.review_user_id) ?? 0) + 1);
-      if (me && l.liker_id === me.id) mine.add(l.review_user_id);
-    }
-
-    return {
-      avg,
-      count: rows.length,
-      reviews: withText.map((r) => ({
-        ...r,
-        likes: likes.get(r.user_id) ?? 0,
-        likedByMe: mine.has(r.user_id),
-        isMine: me?.id === r.user_id,
-      })),
-    };
+    const { data, error } = await supabase.rpc("community_rating", {
+      t_id: tmdbId,
+      m_type: mediaType,
+    });
+    if (error || !data) return empty;
+    const row = (data as { avg_rating: number; votes: number }[])[0];
+    if (!row) return empty;
+    return { avg: Number(row.avg_rating), count: Number(row.votes) };
   } catch {
     return empty;
   }
@@ -678,56 +632,59 @@ export async function getCommunityFeed(): Promise<FeedItem[]> {
     const me = await getUser();
     if (!me) return [];
 
-    const { data: fRows } = await supabase
-      .from("user_follows")
-      .select("following_id")
-      .eq("follower_id", me.id)
-      .limit(200);
-    const ids = (fRows ?? []).map((r: { following_id: string }) => r.following_id);
-    if (!ids.length) return [];
+    // نشاط المتابَعين من دالة definer — جدول التقييمات لم يعد مفتوح
+    // القراءة، والدالة تُرجع الأعمدة العامة وحدها مع إخفاء الاسم منفَّذاً
+    // في SQL (انظر supabase/security.sql)
+    const { data: actRows, error } = await supabase.rpc("following_activity");
+    if (error || !actRows) return [];
 
-    const [ratingsQ, likesQ, profilesQ] = await Promise.all([
-      supabase
-        .from("ratings")
-        .select("user_id, tmdb_id, media_type, rating, review, title, poster_path, updated_at")
-        .in("user_id", ids)
-        .not("review", "is", null)
-        .order("updated_at", { ascending: false })
-        .limit(60),
-      supabase
-        .from("review_likes")
-        .select("review_user_id, tmdb_id, media_type, liker_id")
-        .in("review_user_id", ids)
-        .limit(2000),
-      supabase
-        .from("public_profiles")
-        .select("id, nickname, username, avatar_url, hide_name")
-        .in("id", ids),
-    ]);
+    type ActivityRow = {
+      id: string;
+      nickname: string | null;
+      username: string | null;
+      avatar_url: string | null;
+      hide_name: boolean;
+      tmdb_id: number;
+      media_type: "tv" | "movie";
+      rating: number;
+      review: string | null;
+      title: string | null;
+      poster_path: string | null;
+      updated_at: string;
+    };
+    const reviews = (actRows as ActivityRow[]).filter((r) => r.review?.trim());
+    if (!reviews.length) return [];
 
-    const people = new Map<string, PersonLite>();
-    for (const pr of (profilesQ.data ?? []) as PersonLite[]) people.set(pr.id, pr);
-
+    // إعجابات كل هذه المراجعات في نداء واحد — أعدادٌ و«هل أعجبتُ به»،
+    // بلا أي معرّف مُعجِب
+    const uids = [...new Set(reviews.map((r) => r.id))];
     const likeKey = (u: string, t2: number, m: string) => `${u}|${t2}|${m}`;
     const counts = new Map<string, number>();
     const mine = new Set<string>();
-    for (const l of (likesQ.data ?? []) as {
+    const { data: likeRows } = await supabase.rpc("feed_review_likes", { uids });
+    for (const l of (likeRows ?? []) as {
       review_user_id: string;
       tmdb_id: number;
       media_type: string;
-      liker_id: string;
+      likes: number;
+      liked_by_me: boolean;
     }[]) {
       const k = likeKey(l.review_user_id, l.tmdb_id, l.media_type);
-      counts.set(k, (counts.get(k) ?? 0) + 1);
-      if (l.liker_id === me.id) mine.add(k);
+      counts.set(k, Number(l.likes));
+      if (l.liked_by_me) mine.add(k);
     }
 
-    return ((ratingsQ.data ?? []) as RatingRow[])
-      .filter((r) => r.review?.trim() && people.has(r.user_id))
+    return reviews
       .map((r) => {
-        const k = likeKey(r.user_id, r.tmdb_id, r.media_type);
+        const k = likeKey(r.id, r.tmdb_id, r.media_type);
         return {
-          person: people.get(r.user_id)!,
+          person: {
+            id: r.id,
+            nickname: r.nickname,
+            username: r.username,
+            avatar_url: r.avatar_url,
+            hide_name: r.hide_name,
+          } as PersonLite,
           tmdb_id: r.tmdb_id,
           media_type: r.media_type,
           rating: r.rating,
@@ -748,12 +705,9 @@ export async function getCommunityFeed(): Promise<FeedItem[]> {
 export async function getReceivedLikes(userId: string): Promise<number> {
   try {
     const supabase = await createClient();
-    const { count, error } = await supabase
-      .from("review_likes")
-      .select("liker_id", { count: "exact", head: true })
-      .eq("review_user_id", userId);
+    const { data, error } = await supabase.rpc("received_likes", { target: userId });
     if (error) return 0;
-    return count ?? 0;
+    return Number(data ?? 0);
   } catch {
     return 0;
   }
@@ -903,18 +857,21 @@ export async function getTitleReviews(
     const rows = data as Omit<TitleReview, "likes" | "likedByMe" | "isMine">[];
     if (!rows.length) return [];
 
-    // إعجابات العمل كلها في استعلامٍ واحد ثم تُجمَّع في الذاكرة:
-    // استعلامٌ لكل مراجعة يعني عشرة استعلامات لصفحةٍ واحدة
+    // إعجابات العمل كلها في نداءٍ واحد على دالة definer تُرجع الأعداد
+    // و«هل أعجبتُ به أنا» فقط — من أعجب بماذا لم يعد يُقرأ
     const counts = new Map<string, number>();
     const mine = new Set<string>();
-    const { data: likeRows } = await supabase
-      .from("review_likes")
-      .select("review_user_id, liker_id")
-      .eq("tmdb_id", tmdbId)
-      .eq("media_type", mediaType);
-    for (const l of (likeRows ?? []) as { review_user_id: string; liker_id: string }[]) {
-      counts.set(l.review_user_id, (counts.get(l.review_user_id) ?? 0) + 1);
-      if (me && l.liker_id === me.id) mine.add(l.review_user_id);
+    const { data: likeRows } = await supabase.rpc("title_review_likes", {
+      t_id: tmdbId,
+      m_type: mediaType,
+    });
+    for (const l of (likeRows ?? []) as {
+      review_user_id: string;
+      likes: number;
+      liked_by_me: boolean;
+    }[]) {
+      counts.set(l.review_user_id, Number(l.likes));
+      if (l.liked_by_me) mine.add(l.review_user_id);
     }
 
     return rows.map((r) => ({
@@ -1053,15 +1010,22 @@ export interface HistoryRow {
 export async function getWatchHistory(limit = 400): Promise<HistoryRow[]> {
   try {
     const supabase = await createClient();
+    const user = await getUser();
+    if (!user) return [];
+    // شرط المستخدم صريح في الاستعلام: RLS يحمي فعلاً، لكن الاستعلام الذي
+    // «يقرأ الجدول كله ويثق أن السياسة سترشّح» ينكسر بصمتٍ كارثي لو
+    // تبدّلت سياسة يوماً — الدفاع طبقتان لا واحدة
     const [eps, movies] = await Promise.all([
       supabase
         .from("watched_episodes")
         .select("show_tmdb_id, season_number, episode_number, watched_at, runtime")
+        .eq("user_id", user.id)
         .order("watched_at", { ascending: false })
         .limit(limit),
       supabase
         .from("watched_movies")
         .select("movie_tmdb_id, watched_at, runtime")
+        .eq("user_id", user.id)
         .order("watched_at", { ascending: false })
         .limit(limit),
     ]);
@@ -1158,11 +1122,17 @@ export async function getListsContaining(
 ): Promise<string[]> {
   try {
     const supabase = await createClient();
+    const user = await getUser();
+    if (!user) return [];
+    // القيد على قوائم المستخدم نفسه: RLS تسمح أيضاً بقراءة عناصر القوائم
+    // المُعلنة، فبدون هذا الشرط كانت مؤشرات «موجود في قائمة» تلتقط قوائم
+    // الآخرين العامة التي تصادف احتواءها العمل
     const { data } = await supabase
       .from("user_list_items")
-      .select("list_id")
+      .select("list_id, user_lists!inner(user_id)")
       .eq("tmdb_id", tmdbId)
-      .eq("media_type", mediaType);
+      .eq("media_type", mediaType)
+      .eq("user_lists.user_id", user.id);
     return (data ?? []).map((r) => r.list_id as string);
   } catch {
     return [];

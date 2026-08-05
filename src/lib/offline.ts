@@ -19,7 +19,36 @@ import {
  * آمنة مهما تكررت، وآخر كتابة تكسب عبر الأجهزة.
  */
 
-const KEY = "loopz-offline-queue-v1";
+/**
+ * المفتاح مُقسَّم على معرّف المستخدم — localStorage مشترك بين حسابات
+ * الجهاز الواحد، والمفتاح الموحّد القديم كان يعني أن من يسجّل دخوله
+ * بعدك على نفس المتصفح: يقرأ ما شاهدتَه من الطابور المعلّق، بل ويدفعه
+ * إلى حسابه هو عند عودة الاتصال.
+ */
+const LEGACY_KEY = "loopz-offline-queue-v1";
+const PREFIX = "loopz-offline-queue-v2:";
+
+let uid: string | null = null;
+
+/** يضبط صاحب الطابور، ويطهّر المفتاح القديم وطوابير الحسابات الأخرى */
+export function setOfflineUser(id: string | null) {
+  uid = id;
+  try {
+    localStorage.removeItem(LEGACY_KEY);
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith(PREFIX) && k !== PREFIX + (id ?? "")) {
+        localStorage.removeItem(k);
+      }
+    }
+  } catch {
+    /* لا شيء */
+  }
+}
+
+function storageKey(): string | null {
+  return uid ? PREFIX + uid : null;
+}
 
 const FNS = {
   toggleEpisode,
@@ -37,16 +66,20 @@ interface QItem {
 }
 
 function read(): QItem[] {
+  const key = storageKey();
+  if (!key) return [];
   try {
-    return JSON.parse(localStorage.getItem(KEY) ?? "[]") as QItem[];
+    return JSON.parse(localStorage.getItem(key) ?? "[]") as QItem[];
   } catch {
     return [];
   }
 }
 
 function write(q: QItem[]) {
+  const key = storageKey();
+  if (!key) return;
   try {
-    localStorage.setItem(KEY, JSON.stringify(q.slice(-100)));
+    localStorage.setItem(key, JSON.stringify(q.slice(-100)));
   } catch {
     /* التخزين ممتلئ أو محجوب — الطابور تحسين لا التزام */
   }
@@ -73,7 +106,8 @@ export async function runOrQueue<N extends FnName>(
     await (FNS[fn] as (...a: unknown[]) => Promise<unknown>)(...args);
     return "done";
   } catch (e) {
-    if (isNetworkError(e)) {
+    // بلا صاحبٍ معروف لا طابور: لا نخاطر بدفع أفعال حسابٍ لحساب آخر
+    if (isNetworkError(e) && storageKey()) {
       write([...read(), { fn, args, ts: Date.now() }]);
       return "queued";
     }

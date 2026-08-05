@@ -7,13 +7,25 @@ import { LOCALE_COOKIE, normalizeLocale } from "@/lib/i18n";
 import { GENRES, type MediaType } from "@/lib/media";
 import { THEMES } from "@/lib/themes";
 import { sanitizeHomePrefs, type HomePrefs } from "@/lib/homePrefs";
+import { allow } from "@/lib/ratelimit";
+import { intId, intIn, asMediaType, uuid, dateOrNull } from "@/lib/validate";
 
-async function requireUser() {
+/**
+ * بوابة كل فعل: هوية المستخدم ثم حدّ معدّل الطلبات.
+ *
+ * الحدّ لكل مستخدم لا لكل عنوان IP، ولكل «دلو» من الأفعال ميزانيته:
+ * الافتراضي يتّسع لأسرع نقرٍ بشري ويقطع الحلقات البرمجية، والأفعال
+ * الثقيلة (تلك التي تولّد طلبات TMDB أو آلاف الصفوف) دلوها أضيق.
+ */
+async function requireUser(bucket = "act", limit = 30, windowMs = 10_000) {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) throw new Error("غير مسجّل الدخول");
+  if (!allow(`${user.id}:${bucket}`, limit, windowMs)) {
+    throw new Error("طلبات كثيرة متتالية — تمهّل لحظات / Too many requests, slow down.");
+  }
   return { supabase, user };
 }
 
@@ -66,7 +78,7 @@ export async function updateProfile(input: {
   hideName?: boolean;
   homePrefs?: HomePrefs;
 }) {
-  const { supabase, user } = await requireUser();
+  const { supabase, user } = await requireUser("profile", 10, 60_000);
 
   const nickname = input.nickname.trim().slice(0, 40);
   const username = (input.username ?? "")
@@ -164,6 +176,7 @@ export async function toggleReaction(input: {
   mediaType: MediaType;
   on: boolean;
 }) {
+  input = { ...input, tmdbId: intId(input.tmdbId), mediaType: asMediaType(input.mediaType) };
   const { supabase, user } = await requireUser();
 
   if (input.on) {
@@ -196,6 +209,12 @@ export async function follow(input: {
   title: string;
   posterPath: string | null;
 }) {
+  input = {
+    tmdbId: intId(input.tmdbId),
+    mediaType: asMediaType(input.mediaType),
+    title: String(input.title ?? "").slice(0, 300),
+    posterPath: safeImagePath(input.posterPath),
+  };
   const { supabase, user } = await requireUser();
   await supabase.from("follows").upsert(
     {
@@ -213,6 +232,7 @@ export async function follow(input: {
 }
 
 export async function unfollow(input: { tmdbId: number; mediaType: MediaType }) {
+  input = { tmdbId: intId(input.tmdbId), mediaType: asMediaType(input.mediaType) };
   const { supabase, user } = await requireUser();
   await supabase
     .from("follows")
@@ -230,6 +250,13 @@ export async function toggleEpisode(input: {
   runtime: number | null;
   watched: boolean;
 }) {
+  input = {
+    ...input,
+    showTmdbId: intId(input.showTmdbId),
+    season: intIn(input.season, 0, 1000),
+    episode: intIn(input.episode, 1, 20_000),
+    runtime: input.runtime == null ? null : intIn(input.runtime, 0, 10_000),
+  };
   const { supabase, user } = await requireUser();
   if (input.watched) {
     await supabase.from("watched_episodes").upsert(
@@ -263,6 +290,14 @@ export async function watchUpTo(input: {
   showTmdbId: number;
   episodes: { season: number; episode: number; runtime: number | null }[];
 }) {
+  input = {
+    showTmdbId: intId(input.showTmdbId),
+    episodes: (input.episodes ?? []).slice(0, 5000).map((e) => ({
+      season: intIn(e.season, 0, 1000),
+      episode: intIn(e.episode, 1, 20_000),
+      runtime: e.runtime == null ? null : intIn(e.runtime, 0, 10_000),
+    })),
+  };
   const { supabase, user } = await requireUser();
   if (!input.episodes.length) return;
 
@@ -294,6 +329,13 @@ export async function saveMovieProgress(input: {
   title: string;
   posterPath: string | null;
 }) {
+  input = {
+    ...input,
+    movieTmdbId: intId(input.movieTmdbId),
+    runtimeMinutes: input.runtimeMinutes == null ? null : intIn(input.runtimeMinutes, 1, 10_000),
+    title: String(input.title ?? "").slice(0, 300),
+    posterPath: safeImagePath(input.posterPath),
+  };
   const { supabase, user } = await requireUser();
 
   const max = input.runtimeMinutes ?? 600;
@@ -342,6 +384,15 @@ export async function setSeasonWatched(input: {
   episodes: { season: number; episode: number; runtime: number | null }[];
   watched: boolean;
 }) {
+  input = {
+    ...input,
+    showTmdbId: intId(input.showTmdbId),
+    episodes: (input.episodes ?? []).slice(0, 5000).map((e) => ({
+      season: intIn(e.season, 0, 1000),
+      episode: intIn(e.episode, 1, 20_000),
+      runtime: e.runtime == null ? null : intIn(e.runtime, 0, 10_000),
+    })),
+  };
   const { supabase, user } = await requireUser();
   if (input.watched) {
     const now = new Date().toISOString();
@@ -375,6 +426,11 @@ export async function toggleMovieWatched(input: {
   runtime: number | null;
   watched: boolean;
 }) {
+  input = {
+    ...input,
+    movieTmdbId: intId(input.movieTmdbId),
+    runtime: input.runtime == null ? null : intIn(input.runtime, 0, 10_000),
+  };
   const { supabase, user } = await requireUser();
   if (input.watched) {
     await supabase.from("watched_movies").upsert(
@@ -404,6 +460,12 @@ export async function cacheShowStats(
 ) {
   if (!rows.length) return;
   try {
+    rows = rows.slice(0, 100).map((r) => ({
+      tmdbId: intId(r.tmdbId),
+      total: intIn(r.total, 0, 100_000),
+      aired: intIn(r.aired, 0, 100_000),
+      nextAirDate: dateOrNull(r.nextAirDate),
+    }));
     const { supabase, user } = await requireUser();
     const now = new Date().toISOString();
     await Promise.all(
@@ -428,6 +490,10 @@ export async function cacheShowStats(
 export async function cacheMovieStats(rows: { tmdbId: number; releaseDate: string | null }[]) {
   if (!rows.length) return;
   try {
+    rows = rows.slice(0, 100).map((r) => ({
+      tmdbId: intId(r.tmdbId),
+      releaseDate: dateOrNull(r.releaseDate),
+    }));
     const { supabase, user } = await requireUser();
     const now = new Date().toISOString();
     await Promise.all(
@@ -449,6 +515,12 @@ export async function cacheFollowMeta(
 ) {
   if (!rows.length) return;
   try {
+    rows = rows.slice(0, 50).map((r) => ({
+      tmdbId: intId(r.tmdbId),
+      mediaType: asMediaType(r.mediaType),
+      title: String(r.title ?? "").slice(0, 300),
+      posterPath: safeImagePath(r.posterPath),
+    }));
     const { supabase, user } = await requireUser();
     await Promise.all(
       rows.slice(0, 50).map((r) =>
@@ -473,9 +545,16 @@ export async function saveRating(input: {
   title: string;
   posterPath: string | null;
 }) {
-  const { supabase, user } = await requireUser();
+  input = {
+    ...input,
+    tmdbId: intId(input.tmdbId),
+    mediaType: asMediaType(input.mediaType),
+    title: String(input.title ?? "").slice(0, 300),
+    posterPath: safeImagePath(input.posterPath),
+  };
+  const { supabase, user } = await requireUser("rate", 20, 60_000);
 
-  const rating = Math.max(1, Math.min(10, Math.round(input.rating)));
+  const rating = Math.max(1, Math.min(10, Math.round(Number(input.rating) || 1)));
   const review = input.review.trim().slice(0, 2000);
 
   const { error } = await supabase.from("ratings").upsert(
@@ -499,6 +578,7 @@ export async function saveRating(input: {
 }
 
 export async function deleteRating(input: { tmdbId: number; mediaType: MediaType }) {
+  input = { tmdbId: intId(input.tmdbId), mediaType: asMediaType(input.mediaType) };
   const { supabase, user } = await requireUser();
   const { error } = await supabase.from("ratings").delete().match({
     user_id: user.id,
@@ -513,6 +593,7 @@ export async function deleteRating(input: { tmdbId: number; mediaType: MediaType
 // ================= متابعة المستخدمين =================
 
 export async function followUser(targetId: string) {
+  targetId = uuid(targetId);
   const { supabase, user } = await requireUser();
   if (targetId === user.id) throw new Error("لا يمكنك متابعة نفسك / You can't follow yourself");
   const { error } = await supabase
@@ -525,6 +606,7 @@ export async function followUser(targetId: string) {
 }
 
 export async function unfollowUser(targetId: string) {
+  targetId = uuid(targetId);
   const { supabase, user } = await requireUser();
   const { error } = await supabase
     .from("user_follows")
@@ -539,9 +621,9 @@ export async function unfollowUser(targetId: string) {
 
 /** بحث عن أشخاص — يمرّ عبر دالة SQL تُهرِّب أحرف البحث البديلة */
 export async function findPeople(q: string) {
-  await requireUser();
+  await requireUser("search", 15, 10_000);
   const { searchPeople } = await import("@/lib/data");
-  return searchPeople(q);
+  return searchPeople(String(q ?? "").slice(0, 50));
 }
 
 /**
@@ -553,7 +635,12 @@ export async function findPeople(q: string) {
 export async function applyOnboardingProgress(
   items: { tmdbId: number; mediaType: MediaType; progress: "none" | "some" | "done" }[],
 ) {
-  const { supabase, user } = await requireUser();
+  items = (items ?? []).slice(0, 24).map((it) => ({
+    tmdbId: intId(it.tmdbId),
+    mediaType: asMediaType(it.mediaType),
+    progress: it.progress === "done" ? "done" : it.progress === "some" ? "some" : "none",
+  }));
+  const { supabase, user } = await requireUser("bulk", 8, 60_000);
   const { getTv, getSeason } = await import("@/lib/tmdb");
   const { airedPerSeason } = await import("@/lib/progress");
 
@@ -616,9 +703,9 @@ export async function applyOnboardingProgress(
 // ============================================================
 
 export async function createList(name: string, isPublic = false): Promise<string | null> {
-  const clean = name.trim().slice(0, 60);
+  const clean = String(name ?? "").trim().slice(0, 60);
   if (!clean) throw new Error("empty name");
-  const { supabase, user } = await requireUser();
+  const { supabase, user } = await requireUser("list", 10, 60_000);
 
   // سقف معقول: يمنع إنشاء آلاف القوائم بحلقة برمجية
   const { count } = await supabase
@@ -639,22 +726,35 @@ export async function createList(name: string, isPublic = false): Promise<string
 }
 
 export async function renameList(listId: string, name: string, isPublic: boolean) {
-  const clean = name.trim().slice(0, 60);
+  listId = uuid(listId);
+  const clean = String(name ?? "").trim().slice(0, 60);
   if (!clean) throw new Error("empty name");
-  const { supabase } = await requireUser();
-  const { error } = await supabase
+  const { supabase, user } = await requireUser();
+  // شرط الملكية صريحٌ في الاستعلام لا في RLS وحدها، والصفوف المتأثرة
+  // تُفحص: تعديلٌ لم يصب شيئاً (قائمة ليست لك) يفشل بصوت لا بصمت
+  const { data, error } = await supabase
     .from("user_lists")
-    .update({ name: clean, is_public: isPublic, updated_at: new Date().toISOString() })
-    .eq("id", listId);
+    .update({ name: clean, is_public: !!isPublic, updated_at: new Date().toISOString() })
+    .eq("id", listId)
+    .eq("user_id", user.id)
+    .select("id");
   if (error) fail(error);
+  if (!data?.length) throw new Error("القائمة غير موجودة / List not found");
   revalidatePath("/lists");
   revalidatePath(`/lists/${listId}`);
 }
 
 export async function deleteList(listId: string) {
-  const { supabase } = await requireUser();
-  const { error } = await supabase.from("user_lists").delete().eq("id", listId);
+  listId = uuid(listId);
+  const { supabase, user } = await requireUser();
+  const { data, error } = await supabase
+    .from("user_lists")
+    .delete()
+    .eq("id", listId)
+    .eq("user_id", user.id)
+    .select("id");
   if (error) fail(error);
+  if (!data?.length) throw new Error("القائمة غير موجودة / List not found");
   revalidatePath("/lists");
 }
 
@@ -666,6 +766,13 @@ export async function toggleInList(input: {
   posterPath: string | null;
   add: boolean;
 }) {
+  input = {
+    ...input,
+    listId: uuid(input.listId),
+    tmdbId: intId(input.tmdbId),
+    mediaType: asMediaType(input.mediaType),
+    title: String(input.title ?? "").slice(0, 300),
+  };
   const { supabase } = await requireUser();
 
   if (input.add) {
@@ -713,6 +820,9 @@ export async function toggleReviewLike(
   mediaType: "tv" | "movie",
   liked: boolean,
 ) {
+  reviewUserId = uuid(reviewUserId);
+  tmdbId = intId(tmdbId);
+  mediaType = asMediaType(mediaType);
   const { supabase, user } = await requireUser();
   const key = {
     review_user_id: reviewUserId,
@@ -737,7 +847,8 @@ export async function toggleReviewLike(
  * `upsert` على المفتاح الفريد فلا يتكرّر ما سبق تعليمه.
  */
 export async function markShowWatched(tmdbId: number) {
-  const { supabase, user } = await requireUser();
+  tmdbId = intId(tmdbId);
+  const { supabase, user } = await requireUser("bulk", 8, 60_000);
   const { getTv } = await import("@/lib/tmdb");
   const { airedPerSeason } = await import("@/lib/progress");
 
@@ -776,6 +887,8 @@ export async function markShowWatched(tmdbId: number) {
  * صفوف الرئيسية. علامةٌ على صفّ المتابعة نفسه لا جدول جديد.
  */
 export async function setDropped(tmdbId: number, mediaType: MediaType, dropped: boolean) {
+  tmdbId = intId(tmdbId);
+  mediaType = asMediaType(mediaType);
   const { supabase, user } = await requireUser();
   const { error } = await supabase
     .from("follows")
@@ -793,6 +906,7 @@ export async function setDropped(tmdbId: number, mediaType: MediaType, dropped: 
  * فصاعداً، فيرجع المسلسل إلى «أكمل المشاهدة» من الصفر بشارة ×٢.
  */
 export async function startRewatch(tmdbId: number) {
+  tmdbId = intId(tmdbId);
   const { supabase, user } = await requireUser();
   const { data: cur, error: readErr } = await supabase
     .from("follows")
@@ -824,7 +938,8 @@ export async function startRewatch(tmdbId: number) {
 export async function markNextEpisode(
   tmdbId: number,
 ): Promise<{ season: number; episode: number } | null> {
-  const { supabase, user } = await requireUser();
+  tmdbId = intId(tmdbId);
+  const { supabase, user } = await requireUser("next", 20, 60_000);
   const { getTv } = await import("@/lib/tmdb");
   const { airedPerSeason } = await import("@/lib/progress");
 
@@ -863,4 +978,69 @@ export async function markNextEpisode(
     }
   }
   return null;
+}
+
+// ============================================================
+//  الخصوصية: بياناتك ملكك — تصديرها وحذفها
+// ============================================================
+
+/**
+ * تصدير كل بيانات الحساب ملفَّ JSON واحداً.
+ *
+ * كل جدولٍ يخصّ المستخدم يُقرأ بصفوفه (تحت سياسات RLS نفسها) ويُعاد
+ * نصاً — الواجهة تنزّله ملفاً. لا يمرّ شيء بخادمٍ ثالث.
+ */
+export async function exportMyData(): Promise<string> {
+  const { supabase, user } = await requireUser("export", 3, 60_000);
+
+  const [profile, follows, eps, movies, ratings, myLists, progress, reactions, likes, uFollows] =
+    await Promise.all([
+      supabase.from("profiles").select("*").eq("id", user.id).maybeSingle(),
+      supabase.from("follows").select("*").eq("user_id", user.id),
+      supabase.from("watched_episodes").select("*").eq("user_id", user.id).limit(50_000),
+      supabase.from("watched_movies").select("*").eq("user_id", user.id),
+      supabase.from("ratings").select("*").eq("user_id", user.id),
+      supabase.from("user_lists").select("*").eq("user_id", user.id),
+      supabase.from("movie_progress").select("*").eq("user_id", user.id),
+      supabase.from("post_reactions").select("*").eq("user_id", user.id),
+      supabase.from("review_likes").select("*").eq("liker_id", user.id),
+      supabase.from("user_follows").select("*").or(`follower_id.eq.${user.id},following_id.eq.${user.id}`),
+    ]);
+
+  const listIds = (myLists.data ?? []).map((l: { id: string }) => l.id);
+  const items = listIds.length
+    ? await supabase.from("user_list_items").select("*").in("list_id", listIds)
+    : { data: [] };
+
+  return JSON.stringify(
+    {
+      exported_at: new Date().toISOString(),
+      user_id: user.id,
+      email: user.email ?? null,
+      profile: profile.data ?? null,
+      follows: follows.data ?? [],
+      watched_episodes: eps.data ?? [],
+      watched_movies: movies.data ?? [],
+      ratings: ratings.data ?? [],
+      lists: myLists.data ?? [],
+      list_items: items.data ?? [],
+      movie_progress: progress.data ?? [],
+      reactions: reactions.data ?? [],
+      review_likes_given: likes.data ?? [],
+      user_follows: uFollows.data ?? [],
+    },
+    null,
+    2,
+  );
+}
+
+/**
+ * حذف الحساب: كل الصفوف والصور تُمحى في نداءٍ واحد على دالة SQL
+ * definer (انظر supabase/security.sql) ثم تُنهى الجلسة.
+ */
+export async function deleteMyAccount(): Promise<void> {
+  const { supabase } = await requireUser("delete", 3, 60_000);
+  const { error } = await supabase.rpc("delete_my_account");
+  if (error) fail(error);
+  await supabase.auth.signOut();
 }
