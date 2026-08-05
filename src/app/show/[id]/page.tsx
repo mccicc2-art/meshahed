@@ -146,7 +146,14 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
           فلا يمرّ من يريد الحلقات على أربعة أقسام قبلها */}
       <div className="relative -mx-4 -mt-6 h-44 sm:h-72 mb-4">
         {backdrop && (
-          <Image src={backdrop} alt="" fill priority className="object-cover opacity-45" />
+          <Image
+            src={backdrop}
+            alt=""
+            fill
+            priority
+            sizes="(max-width: 640px) 100vw, 1152px"
+            className="object-cover opacity-45"
+          />
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-[color:var(--background)] via-[color:var(--background)]/35 to-transparent" />
         <DetailTopBar title={tv.name} locale={locale} />
