@@ -29,8 +29,9 @@ import { FollowUserButton } from "@/components/FollowUserButton";
  * والهوية فوقه، ثم صفّ الأرقام والمستوى، ثم صفوف أعماله. الفرق الوحيد
  * أن أدوات المالك (الإعدادات والجرس) يحلّ محلّها زرّ المتابعة.
  *
- * القراءة أُذن بها في سياسات الجداول: المتابعات والمشاهدات صارت عامّةً
- * للقراءة عمداً — هذا تطبيقٌ اجتماعي، ومكتبتك هي ملفّك.
+ * القراءة عبر دوال definer محدودة (supabase/security2.sql) لا بفتح
+ * الجداول: هذا تطبيقٌ اجتماعي ومكتبتك ملفّك، لكن الأعداد والملصقات فقط
+ * هي ما يخرج — لا صفوف الحلقات ولا أوقات المشاهدة.
  */
 export default async function PublicProfilePage({
   params,
@@ -49,8 +50,9 @@ export default async function PublicProfilePage({
   }
 
   const isMe = profile.id === me.id;
-  if (!isMe) await recordProfileView(profile.id);
 
+  // تسجيل الزيارة كتابةُ تحليلاتٍ لا غير — يجري بالتوازي مع القراءات
+  // بدل أن يضيف رحلة كتابةٍ كاملة قبل أول بايت من الصفحة
   const [ratings, stats, following, visits, likes, follows, watched] = await Promise.all([
     getRatingsOf(profile.id),
     getFollowStats(profile.id),
@@ -59,6 +61,7 @@ export default async function PublicProfilePage({
     getReceivedLikes(profile.id),
     getFollowsOf(profile.id),
     getWatchedOf(profile.id),
+    isMe ? Promise.resolve() : recordProfileView(profile.id),
   ]);
 
   const displayName = displayNameOf(profile, t.anonymousUser);
