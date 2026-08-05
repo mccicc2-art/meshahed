@@ -1,6 +1,12 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getUser, getFollows, getAllWatchedEpisodes, getWatchedMovieIds } from "@/lib/data";
+import {
+  getUser,
+  getFollows,
+  getAllWatchedEpisodes,
+  getWatchSummary,
+  getWatchedMovieIds,
+} from "@/lib/data";
 import { getT } from "@/lib/locale";
 import { localizeFollows } from "@/lib/localize";
 import { Icon } from "@/components/Icon";
@@ -26,24 +32,31 @@ export default async function LibraryPage({
   const { filter } = await searchParams;
   const initialTab = filter === "movie" ? "movies" : "shows";
 
-  const [followRows, watchedEpisodes, watchedMovieIds] = await Promise.all([
+  // الملخّص المجمّع (صف لكل مسلسل، والإعادة محسوبة داخله) بدل قراءة كل
+  // صفوف الحلقات — نفس الترقية التي أخذتها الرئيسية. الترجمة في نفس الموجة.
+  const [followRows, summary, watchedMovieIds] = await Promise.all([
     getFollows(),
-    getAllWatchedEpisodes(),
+    getWatchSummary(),
     getWatchedMovieIds(),
   ]);
   const follows = await localizeFollows(followRows, locale);
 
-  // عدد المشاهَد لكل مسلسل من قراءةٍ واحدة — والإعادة تُحسب من لحظة بدئها
-  const rewatchSince = new Map<number, string>();
-  for (const f of follows) {
-    if (f.media_type === "tv" && f.rewatch_started_at)
-      rewatchSince.set(f.tmdb_id, f.rewatch_started_at);
-  }
   const watchedByShow = new Map<number, number>();
-  for (const w of watchedEpisodes) {
-    const since = rewatchSince.get(w.show_tmdb_id);
-    if (since && w.watched_at < since) continue;
-    watchedByShow.set(w.show_tmdb_id, (watchedByShow.get(w.show_tmdb_id) ?? 0) + 1);
+  if (summary) {
+    for (const s of summary) watchedByShow.set(s.show_tmdb_id, s.watched);
+  } else {
+    // احتياط قبل performance.sql — مع احترام دورات الإعادة
+    const rewatchSince = new Map<number, string>();
+    for (const f of follows) {
+      if (f.media_type === "tv" && f.rewatch_started_at)
+        rewatchSince.set(f.tmdb_id, f.rewatch_started_at);
+    }
+    const watchedEpisodes = await getAllWatchedEpisodes();
+    for (const w of watchedEpisodes) {
+      const since = rewatchSince.get(w.show_tmdb_id);
+      if (since && w.watched_at < since) continue;
+      watchedByShow.set(w.show_tmdb_id, (watchedByShow.get(w.show_tmdb_id) ?? 0) + 1);
+    }
   }
 
   // حلقاتٌ متبقية عبر المكتبة كلها — لسطر الملخّص تحت العنوان
