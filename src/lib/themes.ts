@@ -15,6 +15,13 @@ export interface Theme {
     border: string;
     "on-accent": string;
     "on-accent-2": string;
+    /** سطح الأوراق المنبثقة والقوائم — أعلى من `surface` بدرجة */
+    elevated: string;
+    /** خطّ الفصل الشعري داخل البطاقات والقوائم */
+    divider: string;
+    /** سطحٌ معاكس للخلفية: زرّ الفعل الأول والزرّ الاجتماعي */
+    "surface-inverse": string;
+    "on-surface-inverse": string;
   };
   glowA: string;
   glowB: string;
@@ -41,6 +48,10 @@ export const THEMES: Theme[] = [
       border: "#2A2A2A",
       "on-accent": "#FFFFFF",
       "on-accent-2": "#FFFFFF",
+      elevated: "#1A1A1A",
+      divider: "rgba(255, 255, 255, 0.08)",
+      "surface-inverse": "#FFFFFF",
+      "on-surface-inverse": "#111111",
     },
     glowA: "rgba(124, 58, 237, 0.12)",
     glowB: "rgba(236, 72, 153, 0.07)",
@@ -61,6 +72,10 @@ export const THEMES: Theme[] = [
       border: "#24314e",
       "on-accent": "#1a1200",
       "on-accent-2": "#062015",
+      elevated: "#1B2740",
+      divider: "rgba(255, 255, 255, 0.08)",
+      "surface-inverse": "#FFFFFF",
+      "on-surface-inverse": "#0B1220",
     },
     glowA: "rgba(255, 180, 58, 0.08)",
     glowB: "rgba(61, 220, 151, 0.06)",
@@ -80,6 +95,10 @@ export const THEMES: Theme[] = [
       border: "#1d3355",
       "on-accent": "#04202e",
       "on-accent-2": "#04241d",
+      elevated: "#152744",
+      divider: "rgba(255, 255, 255, 0.08)",
+      "surface-inverse": "#FFFFFF",
+      "on-surface-inverse": "#081221",
     },
     glowA: "rgba(76, 195, 255, 0.10)",
     glowB: "rgba(110, 231, 200, 0.06)",
@@ -99,6 +118,10 @@ export const THEMES: Theme[] = [
       border: "#2f2258",
       "on-accent": "#1a0b33",
       "on-accent-2": "#33091f",
+      elevated: "#231945",
+      divider: "rgba(255, 255, 255, 0.09)",
+      "surface-inverse": "#FFFFFF",
+      "on-surface-inverse": "#0E0A1C",
     },
     glowA: "rgba(177, 139, 255, 0.12)",
     glowB: "rgba(255, 158, 205, 0.07)",
@@ -118,6 +141,10 @@ export const THEMES: Theme[] = [
       border: "#48212f",
       "on-accent": "#33060e",
       "on-accent-2": "#331d05",
+      elevated: "#2F1824",
+      divider: "rgba(255, 255, 255, 0.08)",
+      "surface-inverse": "#FFFFFF",
+      "on-surface-inverse": "#140A0E",
     },
     glowA: "rgba(255, 93, 115, 0.10)",
     glowB: "rgba(255, 184, 107, 0.06)",
@@ -137,6 +164,10 @@ export const THEMES: Theme[] = [
       border: "#1f3b2e",
       "on-accent": "#04220e",
       "on-accent-2": "#2a1f02",
+      elevated: "#172D23",
+      divider: "rgba(255, 255, 255, 0.08)",
+      "surface-inverse": "#FFFFFF",
+      "on-surface-inverse": "#08130F",
     },
     glowA: "rgba(110, 231, 135, 0.09)",
     glowB: "rgba(255, 209, 102, 0.05)",
@@ -156,6 +187,10 @@ export const THEMES: Theme[] = [
       border: "#d9e0ee",
       "on-accent": "#241500",
       "on-accent-2": "#ffffff",
+      elevated: "#FFFFFF",
+      divider: "rgba(19, 26, 41, 0.10)",
+      "surface-inverse": "#131A29",
+      "on-surface-inverse": "#FFFFFF",
     },
     glowA: "rgba(245, 158, 11, 0.10)",
     glowB: "rgba(14, 163, 113, 0.07)",
@@ -174,11 +209,19 @@ export function themeName(t: Theme, locale: "ar" | "en") {
   return locale === "en" ? t.en : t.ar;
 }
 
-// نبني CSS بسيط يُحقن في <head> لتجاوز القيم الافتراضية
+/**
+ * CSS يُحقن في <head> فيتجاوز قيم :root الافتراضية.
+ *
+ * `elevated` و`divider` و`surface-inverse` تُكتب هنا الآن بعد أن كانت
+ * ثابتةً في globals.css: قيمها الداكنة كانت تُطبَّق على الثيم الفاتح أيضاً،
+ * فكل ورقةٍ منبثقة تخرج سوداء على صفحةٍ بيضاء، وزرُّ الفعل الأول الأبيض
+ * يختفي على سطحٍ أبيض. اللون الدلاليّ (نجاح/خطأ/توثيق) وحده يبقى ثابتاً —
+ * معناه لا يتبدّل بتبدّل اللوحة.
+ */
 export function themeCss(t: Theme) {
   const v = t.vars;
   // تدرّج الشعار يتبع الهوية لا الثيم: الثيمات تغيّر لون الواجهة، أما
   // العلامة فتبقى كما هي في كل مكان تُرى فيه
   const b = t.brand ?? DEFAULT_BRAND;
-  return `:root{--background:${v.background};--surface:${v.surface};--surface-2:${v["surface-2"]};--foreground:${v.foreground};--muted:${v.muted};--accent:${v.accent};--accent-2:${v["accent-2"]};--border:${v.border};--on-accent:${v["on-accent"]};--on-accent-2:${v["on-accent-2"]};--glow-a:${t.glowA};--glow-b:${t.glowB};--brand-1:${b[0]};--brand-2:${b[1]};--brand-3:${b[2]};}`;
+  return `:root{--background:${v.background};--surface:${v.surface};--surface-2:${v["surface-2"]};--foreground:${v.foreground};--muted:${v.muted};--accent:${v.accent};--accent-2:${v["accent-2"]};--border:${v.border};--on-accent:${v["on-accent"]};--on-accent-2:${v["on-accent-2"]};--glow-a:${t.glowA};--glow-b:${t.glowB};--brand-1:${b[0]};--brand-2:${b[1]};--brand-3:${b[2]};--elevated:${v.elevated};--divider:${v.divider};--surface-inverse:${v["surface-inverse"]};--on-surface-inverse:${v["on-surface-inverse"]};}`;
 }
