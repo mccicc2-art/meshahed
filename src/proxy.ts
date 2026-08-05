@@ -59,6 +59,10 @@ export async function proxy(request: NextRequest) {
   if (!needsRefresh(parts.map((c) => c.value).join(""))) return response;
 
   const supabase = createServerClient(url, anonKey, {
+    // نفس خيارات العميلين الآخرين: هذا هو المكان الذي يعيد كتابة كوكي
+    // الجلسة فعلياً عند التجديد، وبدون secure هنا كانت الكوكي المجدَّدة
+    // تخرج بلا الحماية التي يفرضها server.ts و client.ts
+    cookieOptions: { sameSite: "lax", secure: true, path: "/" },
     cookies: {
       getAll() {
         return request.cookies.getAll();
