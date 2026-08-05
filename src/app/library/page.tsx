@@ -149,7 +149,7 @@ export default async function LibraryPage({
           <Link
             key={href}
             href={href}
-            className="relative flex flex-col items-center gap-1.5 py-3.5 text-muted hover:text-foreground active:bg-white/[0.04] transition"
+            className="relative flex flex-col items-center gap-1.5 py-3.5 text-muted hover:text-foreground active:bg-surface-2 transition"
           >
             <Icon name={icon} size={18} />
             <span className="text-[11px] leading-tight text-center">{label}</span>
