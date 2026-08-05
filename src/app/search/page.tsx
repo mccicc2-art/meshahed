@@ -18,6 +18,37 @@ export default async function SearchPage({
   const { locale, t } = await getT();
   const { q = "" } = await searchParams;
 
+  // النتائج خلف Suspense: كان طلب TMDB يحجب الصفحة كلها بما فيها صندوق
+  // البحث نفسه — فيختفي الصندوق الذي كتب المستخدم فيه للتو طوال الاستعلام.
+  // الآن الصندوق يرسم فوراً والنتائج تلحق بهيكل شبكة.
+  return (
+    <div>
+      <div className="max-w-xl mx-auto mb-8">
+        <Suspense fallback={null}>
+          <SearchBox big locale={locale} />
+        </Suspense>
+      </div>
+
+      <Suspense
+        key={q}
+        fallback={
+          q ? (
+            <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4" aria-hidden>
+              {Array.from({ length: 10 }, (_, i) => (
+                <div key={i} className="skeleton aspect-[2/3] rounded-[18px] border border-border" />
+              ))}
+            </div>
+          ) : null
+        }
+      >
+        <SearchResults q={q} t={t} />
+      </Suspense>
+    </div>
+  );
+}
+
+/** نتائج البحث — تجلب بياناتها بنفسها فلا تحجب رسم الصندوق */
+async function SearchResults({ q, t }: { q: string; t: Awaited<ReturnType<typeof getT>>["t"] }) {
   let results: Awaited<ReturnType<typeof searchMulti>> = [];
   let failed = false;
   if (q) {
@@ -29,13 +60,7 @@ export default async function SearchPage({
   }
 
   return (
-    <div>
-      <div className="max-w-xl mx-auto mb-8">
-        <Suspense fallback={null}>
-          <SearchBox big locale={locale} />
-        </Suspense>
-      </div>
-
+    <>
       {failed && (
         <p className="text-center text-red-300 bg-red-500/10 border border-red-400/30 rounded-xl px-4 py-3 mb-4">
           {t.searchFailed}
@@ -64,6 +89,6 @@ export default async function SearchPage({
       ) : (
         <p className="text-center text-muted py-16">{t.searchStart}</p>
       )}
-    </div>
+    </>
   );
 }
