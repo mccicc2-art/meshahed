@@ -4,8 +4,8 @@ import "./globals.css";
 import { Navbar } from "@/components/Navbar";
 import { BottomNav } from "@/components/BottomNav";
 import { OfflineSync } from "@/components/OfflineSync";
+import { cookies } from "next/headers";
 import { getT } from "@/lib/locale";
-import { getProfile } from "@/lib/data";
 import { getDict, isRtl } from "@/lib/i18n";
 import { themeById, themeCss } from "@/lib/themes";
 import { HeaderShell } from "@/components/HeaderShell";
@@ -38,8 +38,10 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const { locale, t } = await getT();
-  const profile = await getProfile();
-  const theme = themeById(profile?.theme);
+  // الثيم من كوكي لا من قاعدة البيانات: انتظارُ الجلسة والبروفايل هنا كان
+  // يؤخّر أول بايت للصفحة كلها ~نصف ثانية. ThemeCookieSync يهاجر القدامى.
+  const cookieStore = await cookies();
+  const theme = themeById(cookieStore.get("theme")?.value);
 
   return (
     <html

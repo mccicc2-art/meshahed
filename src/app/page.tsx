@@ -43,6 +43,7 @@ import {
 } from "@/lib/homePrefs";
 import { WeekStrip, type WeekEntry } from "@/components/WeekStrip";
 import { ShowStatsSync, type ShowStat } from "@/components/ShowStatsSync";
+import { FollowMetaSync, MovieStatsSync } from "@/components/MetaSync";
 
 export default async function HomePage() {
   const user = await getUser();
@@ -77,51 +78,146 @@ export default async function HomePage() {
   const myRatingsCount = myRatings.length;
   const myComments = myRatings.filter((r) => r.review?.trim()).length;
 
-  // أسماء المكتبة وملصقاتها بلغة الواجهة لا بلغة يوم المتابعة
-  const follows = await localizeFollows(followRows, locale);
+  const today = new Date().toISOString().slice(0, 10);
+
+  /* ===== الموجة الثانية: كل ما تبقّى من قراءاتٍ خارجية دفعةً واحدة =====
+     كانت الصفحة سبع موجات انتظارٍ متسلسلة (ترجمة ← تهيئة ← بطاقات ←
+     رائج ← أفلام ← ملخّص) رغم أن أغلبها مستقل. المعرّفات والأعداد كلها
+     تُحسب من الصفوف الخام قبل الترجمة — الترجمة تغيّر النص لا الهوية —
+     فتنطلق الطلبات كلها معاً وتبقى موجتان لا سبع. */
+
+  const rawActive = followRows.filter((f) => !f.dropped);
+  const rawTv = rawActive.filter((f) => f.media_type === "tv");
+  const rawMovies = rawActive.filter((f) => f.media_type === "movie");
+
+  const watchedByShow = new Map<number, number>();
+  // المسلسلات مرتّبة من الأحدث مشاهدةً — أساس اختيار «الحلقة التالية» والاقتراحات
+  let lastWatchedOrder: number[] = [];
+  if (summary) {
+    for (const s of summary) watchedByShow.set(s.show_tmdb_id, s.watched);
+    lastWatchedOrder = [...summary]
+      .sort((a, b) => (b.last_watched ?? "").localeCompare(a.last_watched ?? ""))
+      .map((s) => s.show_tmdb_id);
+  }
+
+  // لحظات بدء الإعادة بيدنا هنا — تُمرَّر فلا يستعلم عنها أحد مرة ثانية
+  const rewatchSinceMap = new Map<number, string>();
+  for (const f of rawTv) {
+    if (f.rewatch_started_at) rewatchSinceMap.set(f.tmdb_id, f.rewatch_started_at);
+  }
+
+  // الصفوف التي لم يُحسب لها عدد حلقات بعد تحتاج TMDB مرة واحدة لتهيئتها
+  const bootstrapIds = rawTv
+    .filter((f) => f.aired_episodes == null)
+    .slice(0, 12)
+    .map((f) => f.tmdb_id);
+
+  // مرشّحو «أكمل المشاهدة» يُعرفون من الملخّص قبل الترجمة — فتنضم
+  // تفاصيلهم إلى نفس الموجة بدل موجةٍ خاصة بهم
+  const CONTINUE_CARDS = 4;
+  const earlyContinueIds: number[] = summary
+    ? rawTv
+        .map((row) => {
+          const aired = row.aired_episodes ?? row.total_episodes ?? 0;
+          const watched = Math.min(watchedByShow.get(row.tmdb_id) ?? 0, aired || Infinity);
+          return { id: row.tmdb_id, watched, aired };
+        })
+        .filter((i) => i.watched > 0 && (i.aired === 0 || i.watched < i.aired))
+        .sort((a, b) => {
+          const ai = lastWatchedOrder.indexOf(a.id);
+          const bi = lastWatchedOrder.indexOf(b.id);
+          return (ai < 0 ? 9999 : ai) - (bi < 0 ? 9999 : bi);
+        })
+        .slice(0, CONTINUE_CARDS)
+        .map((i) => i.id)
+    : [];
+
+  // «الرائج» يظهر فقط لمن لا يشاهد شيئاً الآن — معروفٌ مسبقاً مع الملخّص
+  const earlyShowTrending = summary ? earlyContinueIds.length === 0 : false;
+
+  // مواعيد الأفلام: المخزّن في صفّ المتابعة يغني عن TMDB، والناقص يُطلب
+  // مرة واحدة ثم يُخزَّن عبر MovieStatsSync
+  const upcomingMovieCandidates = rawMovies
+    .filter((f) => !watchedMovieIds.has(f.tmdb_id))
+    .slice(0, 10);
+  const movieIdsNeedingDate = upcomingMovieCandidates
+    .filter((f) => f.stats_updated_at == null)
+    .map((f) => f.tmdb_id);
+
+  const [
+    follows,
+    fallbackEps,
+    bootstrapDetails,
+    fetchedMovieDetails,
+    recapHist,
+    earlyExtra,
+    earlyTrend,
+  ] = await Promise.all([
+    // أسماء المكتبة وملصقاتها بلغة الواجهة لا بلغة يوم المتابعة
+    localizeFollows(followRows, locale),
+    summary ? Promise.resolve(null) : getAllWatchedEpisodes(),
+    Promise.all(bootstrapIds.map((id) => getTv(id).catch(() => null))),
+    Promise.all(movieIdsNeedingDate.map((id) => getMovie(id).catch(() => null))),
+    prefs.order.includes("recap")
+      ? getWatchHistory(300).catch(() => [])
+      : Promise.resolve(null),
+    Promise.all(
+      earlyContinueIds.map(async (id) => {
+        const [tv, keys] = await Promise.all([
+          getTv(id).catch(() => null),
+          getWatchedForShow(id, rewatchSinceMap.get(id) ?? null).catch(
+            () => new Set<string>(),
+          ),
+        ]);
+        const next = tv ? nextUnwatchedEpisode(tv, keys) : null;
+        return {
+          id,
+          backdropPath: tv?.backdrop_path ?? null,
+          episodeLabel: next ? `S${next.season} E${next.episode}` : null,
+          season: next?.season ?? null,
+          episode: next?.episode ?? null,
+          runtime: tv?.episode_run_time?.[0] ?? null,
+        };
+      }),
+    ),
+    earlyShowTrending
+      ? trending().catch(() => [] as SearchResult[])
+      : Promise.resolve(null),
+  ]);
+
+  // ما تغيّر اسمه بالترجمة يُكتب مرة واحدة في قاعدة البيانات
+  const metaToCache = follows
+    .filter((f, n) => f.title !== followRows[n]?.title)
+    .slice(0, 24)
+    .map((f) => ({
+      tmdbId: f.tmdb_id,
+      mediaType: f.media_type,
+      title: f.title,
+      posterPath: f.poster_path,
+    }));
 
   // الموقوف ببطاقةٍ حمراء لا مكان له في الرئيسية — مكانه المكتبة وحدها
   const active = follows.filter((f) => !f.dropped);
   const tvFollows = active.filter((f) => f.media_type === "tv");
   const movieFollows = active.filter((f) => f.media_type === "movie");
 
-  const watchedByShow = new Map<number, number>();
-  // المسلسلات مرتّبة من الأحدث مشاهدةً — أساس اختيار «الحلقة التالية» والاقتراحات
-  let lastWatchedOrder: number[] = [];
-
-  if (summary) {
-    for (const s of summary) {
-      watchedByShow.set(s.show_tmdb_id, s.watched);
-    }
-    lastWatchedOrder = [...summary]
-      .sort((a, b) =>
-        (b.last_watched ?? "").localeCompare(a.last_watched ?? ""),
-      )
-      .map((s) => s.show_tmdb_id);
-  } else {
+  if (!summary && fallbackEps) {
     // احتياط قبل تشغيل ملف performance.sql — مع احترام دورات الإعادة
-    const rewatchSince = new Map<number, string>();
-    for (const f of tvFollows) {
-      if (f.rewatch_started_at) rewatchSince.set(f.tmdb_id, f.rewatch_started_at);
-    }
-    const watchedEps = await getAllWatchedEpisodes();
-    for (const w of watchedEps) {
-      const since = rewatchSince.get(w.show_tmdb_id);
+    for (const w of fallbackEps) {
+      const since = rewatchSinceMap.get(w.show_tmdb_id);
       if (since && w.watched_at < since) continue;
       watchedByShow.set(
         w.show_tmdb_id,
         (watchedByShow.get(w.show_tmdb_id) ?? 0) + 1,
       );
     }
-    for (const w of [...watchedEps].sort((a, b) =>
+    for (const w of [...fallbackEps].sort((a, b) =>
       b.watched_at.localeCompare(a.watched_at),
     )) {
       if (!lastWatchedOrder.includes(w.show_tmdb_id))
         lastWatchedOrder.push(w.show_tmdb_id);
     }
   }
-
-  const today = new Date().toISOString().slice(0, 10);
 
   interface UpcomingItem {
     key: string;
@@ -195,20 +291,6 @@ export default async function HomePage() {
   // «ينتظرك»: بدأته وفيه حلقات معروضة لم تُشاهد
   const waitingForYou = continueWatching.filter((i) => i.aired > i.watched);
 
-  // ===== بطاقة «الحلقة التالية» =====
-  // ثلاثة مرشّحين على الأكثر، وتفاصيلهم وحلقاتهم المشاهَدة تُطلب دفعةً
-  // واحدة: كان كل مرشّح ينتظر الذي قبله، فست رحلات متتابعة قبل أن تُرسم
-  // البطاقة. الآن رحلتان: موجة متوازية ثم طلب موسمٍ واحد.
-  // الصفوف التي لم يُحسب لها عدد حلقات بعد تحتاج TMDB مرة واحدة لتهيئتها
-  const bootstrapIds = tvFollows
-    .filter((f) => f.aired_episodes == null)
-    .slice(0, 12)
-    .map((f) => f.tmdb_id);
-
-  const bootstrapDetails = await Promise.all(
-    bootstrapIds.map((id) => getTv(id).catch(() => null)),
-  );
-
   const statsToCache: ShowStat[] = [];
   for (const tv of bootstrapDetails) {
     if (!tv) continue;
@@ -232,29 +314,41 @@ export default async function HomePage() {
     return (ai < 0 ? 9999 : ai) - (bi < 0 ? 9999 : bi);
   });
 
-  /* بطاقات «أكمل المشاهدة» عريضة بصورة المشهد ورقم الحلقة، وكلاهما ليس في
-     صفّ المتابعة. فتُطلب تفاصيلها من TMDB وحلقاتها المشاهَدة من قاعدتنا —
-     لأربع بطاقات فقط، وهي أوّل ما تراه العين في الصفحة. الطلب مخبّأ ساعةً،
-     فالكلفة تُدفع مرّةً لا مرّةً لكل فتح. */
-  const CONTINUE_CARDS = 4;
+  /* بطاقات «أكمل المشاهدة»: تفاصيلها جاءت مع الموجة الثانية أصلاً في
+     المسار الطبيعي؛ الاحتياط (قبل performance.sql) وحده يطلبها هنا */
   const continueTop = continueRow.slice(0, CONTINUE_CARDS);
-  const continueExtra = await Promise.all(
-    continueTop.map(async (i) => {
-      const [tv, keys] = await Promise.all([
-        getTv(i.id).catch(() => null),
-        getWatchedForShow(i.id).catch(() => new Set<string>()),
-      ]);
-      const next = tv ? nextUnwatchedEpisode(tv, keys) : null;
-      return {
-        backdropPath: tv?.backdrop_path ?? null,
-        episodeLabel: next ? `S${next.season} E${next.episode}` : null,
-        // زرّ ✓ على البطاقة يحتاج رقمَي الموسم والحلقة ومدّتها ليؤشّر من مكانه
-        season: next?.season ?? null,
-        episode: next?.episode ?? null,
-        runtime: tv?.episode_run_time?.[0] ?? null,
-      };
-    }),
-  );
+  const extraById = new Map(earlyExtra.map((e) => [e.id, e]));
+  const continueExtra = summary
+    ? continueTop.map(
+        (i) =>
+          extraById.get(i.id) ?? {
+            id: i.id,
+            backdropPath: null,
+            episodeLabel: null,
+            season: null,
+            episode: null,
+            runtime: null,
+          },
+      )
+    : await Promise.all(
+        continueTop.map(async (i) => {
+          const [tv, keys] = await Promise.all([
+            getTv(i.id).catch(() => null),
+            getWatchedForShow(i.id, rewatchSinceMap.get(i.id) ?? null).catch(
+              () => new Set<string>(),
+            ),
+          ]);
+          const next = tv ? nextUnwatchedEpisode(tv, keys) : null;
+          return {
+            id: i.id,
+            backdropPath: tv?.backdrop_path ?? null,
+            episodeLabel: next ? `S${next.season} E${next.episode}` : null,
+            season: next?.season ?? null,
+            episode: next?.episode ?? null,
+            runtime: tv?.episode_run_time?.[0] ?? null,
+          };
+        }),
+      );
 
   // مستخدم بلا مكتبة يذهب لشاشة الانضمام بدل صفحة فارغة
   if (follows.length === 0) redirect("/welcome");
@@ -263,12 +357,12 @@ export default async function HomePage() {
 
   const favGenres = profile?.favorite_genres ?? [];
 
-  // «الرائج» احتياطٌ لمن لا شيء في يده الآن — و TMDB خارجي، فخلله لا يُسقط
-  // الصفحة: القائمة ترجع فارغة والقسم لا يُرسم
+  // «الرائج» احتياطٌ لمن لا شيء في يده الآن — جاء مع الموجة الثانية في
+  // المسار الطبيعي، والاحتياط وحده يطلبه هنا
   const showTrending = empty || continueWatching.length === 0;
-  const trend = showTrending
-    ? await trending().catch(() => [] as SearchResult[])
-    : [];
+  const trend: SearchResult[] =
+    earlyTrend ??
+    (showTrending ? await trending().catch(() => [] as SearchResult[]) : []);
 
   const displayName = profile?.nickname || user.email?.split("@")[0] || "";
 
@@ -360,14 +454,18 @@ export default async function HomePage() {
       })),
   ].slice(0, 16);
 
-  // مواعيد الأفلام ليست في صفّ المتابعة، فتُطلب من TMDB لغير المشاهَد
-  // منها فقط — مخبّأةً ساعة، ولعشرة أفلام كحدّ
-  const upcomingMovieCandidates = movieFollows
-    .filter((f) => !watchedMovieIds.has(f.tmdb_id))
-    .slice(0, 10);
-  const upcomingMovieDetails = await Promise.all(
-    upcomingMovieCandidates.map((f) => getMovie(f.tmdb_id).catch(() => null)),
+  // مواعيد الأفلام: المخزّن يُقرأ من صفّ المتابعة، والمجلوب حديثاً يُكتب
+  // عبر MovieStatsSync فلا يُطلب مرتين
+  const fetchedDateById = new Map(
+    movieIdsNeedingDate.map((id, n) => [id, fetchedMovieDetails[n]?.release_date ?? null]),
   );
+  const movieDatesToCache = movieIdsNeedingDate.map((id) => ({
+    tmdbId: id,
+    releaseDate: fetchedDateById.get(id) ?? null,
+  }));
+  const movieDateOf = (f: (typeof upcomingMovieCandidates)[number]) =>
+    f.stats_updated_at != null ? (f.next_air_date ?? null) : (fetchedDateById.get(f.tmdb_id) ?? null);
+
   const upcomingRow: MixedItem[] = [
     ...upcoming.map((u) => ({
       key: `up-${u.key}`,
@@ -378,15 +476,15 @@ export default async function HomePage() {
       date: u.date,
     })),
     ...upcomingMovieCandidates
-      .map((f, n) => ({ f, d: upcomingMovieDetails[n] }))
-      .filter(({ d }) => d?.release_date && d.release_date >= today)
+      .map((f) => ({ f, d: movieDateOf(f) }))
+      .filter(({ d }) => d && d >= today)
       .map(({ f, d }) => ({
         key: `up-mv-${f.tmdb_id}`,
         href: `/movie/${f.tmdb_id}`,
         title: f.title,
         posterPath: f.poster_path,
-        badge: whenLabel(d!.release_date!, t),
-        date: d!.release_date!,
+        badge: whenLabel(d!, t),
+        date: d!,
       })),
   ]
     .sort((a, b) => (a as { date: string }).date.localeCompare((b as { date: string }).date))
@@ -501,8 +599,8 @@ export default async function HomePage() {
   // ===== ملخّص أسبوعك — قسمٌ اختياري يطيع نظام التخصيص كأي قسم =====
   // لا يُقرأ السجلّ إلا لمن فعّله، ولا يُرسم إن كان الأسبوع صفراً
   let recap: { line: string; posters: (string | null)[] } | null = null;
-  if (prefs.order.includes("recap")) {
-    const hist = await getWatchHistory(300).catch(() => []);
+  if (prefs.order.includes("recap") && recapHist) {
+    const hist = recapHist;
     const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString();
     const rows = hist.filter((h) => h.watchedAt >= weekAgo);
     if (rows.length > 0) {
@@ -560,6 +658,8 @@ export default async function HomePage() {
   return (
     <div className="space-y-8 sm:space-y-10">
       <ShowStatsSync stats={statsToCache} />
+      <FollowMetaSync rows={metaToCache} />
+      <MovieStatsSync rows={movieDatesToCache} />
 
       <ProfileHeader
         displayName={displayName}
