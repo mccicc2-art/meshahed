@@ -35,6 +35,7 @@ import { formatDate } from "@/lib/when";
 import { ShowStatsSync } from "@/components/ShowStatsSync";
 import { airedEpisodeCount, airedPerSeason } from "@/lib/progress";
 import { episodeKey } from "@/lib/keys";
+import { buttonClass } from "@/components/ui/Button";
 
 export default async function ShowPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await getUser();
@@ -63,7 +64,7 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
         <div className="flex items-center justify-center gap-2">
           <Link
             href="/"
-            className="px-4 py-2 rounded-xl bg-accent text-[color:var(--on-accent)] text-sm font-semibold"
+            className={buttonClass({ size: "sm" })}
           >
             {t.navHome}
           </Link>
@@ -153,7 +154,7 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
 
       <div className="flex gap-4 -mt-24 sm:-mt-28 relative px-1">
         <div className="w-28 sm:w-40 shrink-0">
-          <div className="relative aspect-[2/3] rounded-2xl overflow-hidden ring-1 ring-white/10 bg-surface-2 shadow-[0_18px_44px_rgba(0,0,0,0.55)]">
+          <div className="relative aspect-[2/3] rounded-poster overflow-hidden ring-1 ring-white/10 bg-surface-2 shadow-[0_18px_44px_rgba(0,0,0,0.55)]">
             {poster && <Image src={poster} alt={tv.name} fill sizes="160px" className="object-cover" />}
           </div>
         </div>
@@ -254,14 +255,14 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
                 {(tv.genres.length > 0 || tv.number_of_episodes > 0) && (
                   <div className="flex flex-wrap items-center gap-2">
                     {tv.number_of_episodes > 0 && (
-                      <span className="text-xs font-medium text-muted bg-white/[0.04] border border-white/10 px-3 py-1.5 rounded-full tabular-nums">
+                      <span className="text-xs font-medium text-muted bg-surface-2 border border-border px-3 py-1.5 rounded-full tabular-nums">
                         {t.episodesCount(tv.number_of_episodes)}
                       </span>
                     )}
                     {tv.genres.map((g) => (
                       <span
                         key={g.id}
-                        className="text-xs font-medium bg-white/[0.06] border border-white/10 px-3 py-1.5 rounded-full"
+                        className="text-xs font-medium bg-surface-2 border border-border px-3 py-1.5 rounded-full"
                       >
                         {g.name}
                       </span>
