@@ -27,7 +27,7 @@ import { CommunityReviews } from "@/components/CommunityReviews";
 import { DetailTabs } from "@/components/DetailTabs";
 import { Icon, SectionTitle } from "@/components/Icon";
 import { Trailer } from "@/components/Trailer";
-import { WhereToWatch } from "@/components/WhereToWatch";
+import { WatchChip } from "@/components/WatchChip";
 import { TitleActions } from "@/components/TitleActions";
 import { DetailTopBar } from "@/components/DetailTopBar";
 import { ReadMore } from "@/components/ReadMore";
@@ -197,11 +197,15 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
             )}
           </div>
 
-          {next && next.air_date && (
-            <div className="mt-2.5">
-              <span className="inline-block text-[11px] text-accent-2 bg-accent-2/10 border border-accent-2/30 px-2.5 py-1.5 rounded-lg">
-                {t.nextEpisodeOn(formatDate(next.air_date, t))}
-              </span>
+          {(next?.air_date || watchWhere) && (
+            <div className="mt-2.5 flex flex-wrap items-center gap-2">
+              {next && next.air_date && (
+                <span className="inline-block text-[11px] text-accent-2 bg-accent-2/10 border border-accent-2/30 px-2.5 py-1 rounded-lg">
+                  {t.nextEpisodeOn(formatDate(next.air_date, t))}
+                </span>
+              )}
+              {/* أين يُبثّ — هنا في الترويسة، وقسم المنصّات في «معلومات» حُذف */}
+              {watchWhere && <WatchChip options={watchWhere.options} />}
             </div>
           )}
         </div>
@@ -287,14 +291,6 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
                     videoKey={trailer.key}
                     title={tv.name}
                     thumbnail={backdrop}
-                    locale={locale}
-                  />
-                )}
-
-                {watchWhere && (
-                  <WhereToWatch
-                    region={watchWhere.region}
-                    options={watchWhere.options}
                     locale={locale}
                   />
                 )}
