@@ -58,14 +58,28 @@ export function ContinueCard({
   const router = useRouter();
   const [, start] = useTransition();
 
-  // التفاؤل محلّي: العدّاد والشريط يتقدّمان قبل ردّ الخادم
+  // التفاؤل محلّي: العدّاد والشريط والحلقة نفسها تتقدّم قبل ردّ الخادم —
+  // البطاقة لا تغادر مكانها: تنزلق يساراً وتدخل الحلقة التالية من اليمين
   const [bump, setBump] = useState(0);
-  const [phase, setPhase] = useState<"idle" | "marked" | "leaving">("idle");
+  const [slide, setSlide] = useState<"idle" | "out" | "in">("idle");
+  const [ep, setEp] = useState<{ s: number; e: number } | null>(
+    season != null && episode != null ? { s: season, e: episode } : null,
+  );
   const [toast, setToast] = useState<{ s: number; e: number } | null>(null);
   const [celebrate, setCelebrate] = useState(false);
   const [stars, setStars] = useState(0);
   const [rated, setRated] = useState(false);
   const [err, setErr] = useState(false);
+
+  // وصلت بيانات الخادم الجديدة؟ تُصفّر المحلّية — هي الحقيقة، ومعها
+  // يصحّ حتى الانتقال بين المواسم الذي لا تعرفه البطاقة
+  const [srv, setSrv] = useState({ watched, season, episode });
+  if (srv.watched !== watched || srv.season !== season || srv.episode !== episode) {
+    setSrv({ watched, season, episode });
+    setBump(0);
+    setEp(season != null && episode != null ? { s: season, e: episode } : null);
+    setSlide("idle");
+  }
 
   function rate(n: number) {
     if (rated) return;
@@ -104,45 +118,55 @@ export function ContinueCard({
     ? backdropUrl(backdropPath, "w780")
     : posterUrl(posterPath, "w342");
 
-  const canMark = season != null && episode != null && phase === "idle";
+  const canMark = ep != null && slide === "idle" && !celebrate;
 
   function mark() {
-    if (season == null || episode == null) return;
+    if (!ep || slide !== "idle") return;
+    const cur = { ...ep };
     setErr(false);
-    setBump(1);
-    setPhase("marked");
     try {
       navigator.vibrate?.(12);
     } catch {
       /* لا شيء */
     }
+
+    const finishedAll = aired > 0 && w + 1 >= aired;
+    setBump((b) => b + 1);
+
+    if (finishedAll) {
+      setCelebrate(true);
+    } else {
+      setToast(cur);
+      // البطاقة تبقى: القديمة تنزلق يساراً، والتالية تدخل من اليمين فوراً
+      setSlide("out");
+      setTimeout(() => {
+        setEp({ s: cur.s, e: cur.e + 1 });
+        setSlide("in");
+        requestAnimationFrame(() =>
+          requestAnimationFrame(() => setSlide("idle")),
+        );
+      }, 200);
+      setTimeout(() => setToast(null), 5000);
+    }
+
     start(async () => {
       try {
         // انقطاع الشبكة لا يفقد التأشيرة: تدخل الطابور وتُزامن عند العودة
         await runOrQueue("toggleEpisode", {
           showTmdbId: tmdbId,
-          season,
-          episode,
+          season: cur.s,
+          episode: cur.e,
           runtime: runtime ?? null,
           watched: true,
         });
-        // آخر حلقة معروضة؟ هذه لحظة إنجازٍ لا توست عابر
-        const finishedAll = aired > 0 && watched + 1 >= aired;
-        if (finishedAll) {
-          setCelebrate(true);
-          router.refresh();
-        } else {
-          setToast({ s: season, e: episode });
-          // انزلاق الوداع ثم تجديد البيانات: الحلقة التالية تحلّ في نفس المكان
-          setTimeout(() => setPhase("leaving"), 350);
-          setTimeout(() => {
-            router.refresh();
-          }, 600);
-          setTimeout(() => setToast(null), 5000);
-        }
+        // تجديدٌ هادئ في الخلفية يصحّح حدود المواسم وصورة المشهد
+        setTimeout(() => router.refresh(), finishedAll ? 0 : 900);
       } catch {
-        setBump(0);
-        setPhase("idle");
+        setBump((b) => Math.max(0, b - 1));
+        setEp(cur);
+        setSlide("idle");
+        setCelebrate(false);
+        setToast(null);
         setErr(true);
         setTimeout(() => setErr(false), 3000);
       }
@@ -150,16 +174,18 @@ export function ContinueCard({
   }
 
   function undo() {
-    if (season == null || episode == null) return;
+    if (!toast) return;
+    const back = { ...toast };
     setToast(null);
-    setBump(0);
-    setPhase("idle");
+    setBump((b) => Math.max(0, b - 1));
+    setEp(back);
+    setSlide("idle");
     start(async () => {
       try {
         await runOrQueue("toggleEpisode", {
           showTmdbId: tmdbId,
-          season,
-          episode,
+          season: back.s,
+          episode: back.e,
           runtime: runtime ?? null,
           watched: false,
         });
@@ -169,12 +195,18 @@ export function ContinueCard({
     });
   }
 
+  // انزلاق التبديل: الخروج يساراً بانتقالٍ ناعم، والدخول يقفز إلى اليمين
+  // بلا انتقالٍ ثم ينساب إلى مكانه — فتُقرأ حركةً واحدة من اليمين لليسار
+  const slideCls =
+    slide === "out"
+      ? "transition-all duration-200 ease-in -translate-x-8 opacity-0"
+      : slide === "in"
+        ? "transition-none translate-x-8 opacity-0"
+        : "transition-all duration-200 ease-out translate-x-0 opacity-100";
+
   return (
-    <div
-      className={`relative transition-all duration-300 ${
-        phase === "leaving" ? "opacity-0 scale-95 translate-x-3 rtl:-translate-x-3" : ""
-      }`}
-    >
+    <div className="relative">
+      <div className={`relative ${slideCls}`}>
       <Link href={href} prefetch={false} className="group block active:scale-[0.98] transition">
         <div className="relative aspect-[16/10] rounded-[18px] overflow-hidden bg-surface border border-border">
           {url ? (
@@ -201,8 +233,12 @@ export function ContinueCard({
             {/* سطر المعلومات: الحلقة · الباقي — والنسبة في طرفه لا فوق الصورة */}
             <div className="flex items-baseline justify-between gap-2 mt-1">
               <span className="text-[12px] font-semibold text-white/75 truncate">
-                {episodeLabel && <span dir="ltr">{episodeLabel}</span>}
-                {episodeLabel && left > 0 && <span className="text-white/45"> · </span>}
+                {ep ? (
+                  <span dir="ltr">{`S${ep.s} E${ep.e}`}</span>
+                ) : (
+                  episodeLabel && <span dir="ltr">{episodeLabel}</span>
+                )}
+                {(ep || episodeLabel) && left > 0 && <span className="text-white/45"> · </span>}
                 {left > 0 && t.leftEps(left)}
               </span>
               <span className="shrink-0 text-[11px] font-bold text-white/70 tabular-nums" dir="ltr">
@@ -225,8 +261,9 @@ export function ContinueCard({
         </div>
       </Link>
 
-      {/* دائرة ✓ الزجاجية — شقيقة الرابط لا ابنته، فلا ضغطة تفتح الصفحة خطأً */}
-      {season != null && episode != null && (
+      {/* دائرة ✓ الزجاجية — شقيقة الرابط لا ابنته، فلا ضغطة تفتح الصفحة خطأً.
+          تمتلئ لحظة التأشير ثم تعود زجاجيةً للحلقة التالية */}
+      {ep != null && (
         <button
           type="button"
           onClick={mark}
@@ -234,12 +271,12 @@ export function ContinueCard({
           aria-label={t.markWatchedAria}
           title={t.markWatchedAria}
           className={`absolute top-2.5 end-2.5 z-10 grid place-items-center w-11 h-11 rounded-full border transition-all duration-200 active:scale-90 ${
-            phase !== "idle"
+            slide !== "idle" || celebrate
               ? "border-transparent text-white scale-105"
               : "bg-black/40 backdrop-blur-md border-white/25 text-white/90 hover:bg-black/55"
           }`}
           style={
-            phase !== "idle"
+            slide !== "idle" || celebrate
               ? {
                   background:
                     "linear-gradient(135deg, var(--accent), var(--accent-2))",
@@ -250,6 +287,7 @@ export function ContinueCard({
           <Icon name="check" size={19} strokeWidth={2.4} />
         </button>
       )}
+      </div>
 
       {/* توست التراجع: الخطأ يُصلح حيث وقع، خلال خمس ثوانٍ */}
       {toast && (
