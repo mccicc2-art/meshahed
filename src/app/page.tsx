@@ -288,9 +288,6 @@ export default async function HomePage() {
 
   const continueWatching = unfinished.filter((i) => i.watched > 0);
 
-  // «ينتظرك»: بدأته وفيه حلقات معروضة لم تُشاهد
-  const waitingForYou = continueWatching.filter((i) => i.aired > i.watched);
-
   const statsToCache: ShowStat[] = [];
   for (const tv of bootstrapDetails) {
     if (!tv) continue;
@@ -667,7 +664,6 @@ export default async function HomePage() {
         avatarUrl={profile?.avatar_url ?? null}
         coverUrl={profile?.cover_url ?? null}
         level={level}
-        alerts={waitingForYou.length}
         stats={headerStats}
         followers={followStats.followers}
         comments={myComments}
