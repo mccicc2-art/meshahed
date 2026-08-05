@@ -165,6 +165,26 @@ summary:focus-visible,
   animation: glow-pulse 1.6s ease-in-out 3;
 }
 
+/* جدار الملصقات المتحرّك في صفحة الهبوط: صفّان يزحفان باتجاهين متعاكسين */
+@keyframes marquee-x {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.marquee-track {
+  display: flex;
+  width: max-content;
+  animation: marquee-x var(--marquee-dur, 55s) linear infinite;
+}
+
+.marquee-rev {
+  animation-direction: reverse;
+}
+
 /* طراطيع: قصاصات بألوان الهوية تنهمر وتدور ثم تتلاشى */
 @keyframes confetti-fall {
   0% {
@@ -192,7 +212,8 @@ summary:focus-visible,
 @media (prefers-reduced-motion: reduce) {
   .sheet-pop,
   .glow-celebrate,
-  .confetti-piece {
+  .confetti-piece,
+  .marquee-track {
     animation: none;
   }
   .confetti-piece {
