@@ -25,6 +25,13 @@ export interface DiaryDay {
   entries: DiaryEntry[];
 }
 
+export interface DiaryMonth {
+  key: string;
+  label: string;
+  /** أول يوم في هذا الشهر داخل السجلّ — هدف القفزة */
+  firstDay: string;
+}
+
 /**
  * سجلّ المشاهدة — أيامٌ مطويّة.
  *
@@ -32,9 +39,18 @@ export interface DiaryDay {
  * صفٍّ واحد باسمه وعددها. من يفتح سجلّه يمسح الأيام بعينه أولاً ثم
  * يغوص في اليوم الذي يريده — لا قائمة طويلة تُفرض عليه كلها.
  */
-export function DiaryList({ days, locale }: { days: DiaryDay[]; locale: Locale }) {
+export function DiaryList({
+  days,
+  months = [],
+  locale,
+}: {
+  days: DiaryDay[];
+  months?: DiaryMonth[];
+  locale: Locale;
+}) {
   const t = getDict(locale);
   const [open, setOpen] = useState<Set<string>>(() => new Set());
+  const [activeMonth, setActiveMonth] = useState<string | null>(null);
 
   function toggle(day: string) {
     setOpen((prev) => {
@@ -45,14 +61,43 @@ export function DiaryList({ days, locale }: { days: DiaryDay[]; locale: Locale }
     });
   }
 
+  function jump(m: DiaryMonth) {
+    setActiveMonth(m.key);
+    document
+      .getElementById(`diary-${m.firstDay}`)
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
   return (
     <div className="space-y-2.5">
+      {/* شرائح الأشهر — الذاكرة تُتصفَّح بالزمن لا بالبحث */}
+      {months.length > 1 && (
+        <div className="sticky top-0 z-20 -mx-4 px-4 py-2 bg-[color:var(--background)]/90 backdrop-blur-md">
+          <div className="flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {months.map((m) => (
+              <button
+                key={m.key}
+                type="button"
+                onClick={() => jump(m)}
+                className={`shrink-0 px-3.5 py-1.5 rounded-full text-[12px] font-semibold border transition ${
+                  activeMonth === m.key
+                    ? "bg-accent/15 text-accent border-accent/40"
+                    : "bg-surface text-muted border-border hover:text-foreground"
+                }`}
+              >
+                {m.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       {days.map(({ day, label, countLabel, entries }) => {
         const expanded = open.has(day);
         return (
           <section
             key={day}
-            className="rounded-2xl border border-border bg-surface overflow-hidden"
+            id={`diary-${day}`}
+            className="scroll-mt-16 rounded-2xl border border-border bg-surface overflow-hidden"
           >
             <button
               type="button"

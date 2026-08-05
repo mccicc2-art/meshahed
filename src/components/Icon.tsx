@@ -48,7 +48,8 @@ export type IconName =
   | "like-filled"
   | "people-filled"
   | "person-check"
-  | "plus";
+  | "plus"
+  | "book";
 
 const PATHS: Record<IconName, React.ReactNode> = {
   bell: (
@@ -65,6 +66,12 @@ const PATHS: Record<IconName, React.ReactNode> = {
     </>
   ),
   plus: <path d="M12 5v14M5 12h14" />,
+  book: (
+    <>
+      <path d="M12 6C10.2 4.6 7.8 4 4.8 4v14.5c3 0 5.4.6 7.2 2 1.8-1.4 4.2-2 7.2-2V4c-3 0-5.4.6-7.2 2Z" />
+      <path d="M12 6v14.5" />
+    </>
+  ),
   play: (
     <>
       <circle cx="12" cy="12" r="8.5" />

@@ -62,6 +62,7 @@ export function HomeCustomize({
     week: { icon: "calendar", label: t.custWeekStrip },
     towatch: { icon: "bookmark", label: t.libToWatch },
     upcoming: { icon: "hourglass", label: t.libUpcoming },
+    recap: { icon: "book", label: t.recapTitle },
     shows: { icon: "tv", label: t.myShows },
     movies: { icon: "film", label: t.myMovies },
     trending: { icon: "trending", label: t.trendingWeek },
