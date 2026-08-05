@@ -14,6 +14,8 @@ export interface FollowRow {
   total_episodes?: number | null;
   aired_episodes?: number | null;
   next_air_date?: string | null;
+  /** بطاقة حمراء: موقوفٌ عند صاحبه — يبقى بالمكتبة ويغيب عن الرئيسية */
+  dropped?: boolean | null;
 }
 
 export interface WatchedEpisodeRow {
@@ -52,6 +54,8 @@ export interface Profile {
   cover_url: string | null;
   theme: string | null;
   favorite_genres: number[];
+  hide_name?: boolean | null;
+  home_prefs?: unknown;
 }
 
 /** الملف الشخصي — يُقرأ في التخطيط والشريط العلوي والصفحة، فيُخزَّن لكل طلب */
@@ -61,21 +65,43 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
     const user = await getUser();
     if (!user) return null;
 
-    let { data } = await supabase
+    // eslint-disable-next-line prefer-const
+    let { data, error } = await supabase
       .from("profiles")
-      .select("id, nickname, username, avatar_url, cover_url, theme, favorite_genres")
+      .select(
+        "id, nickname, username, avatar_url, cover_url, theme, favorite_genres, hide_name, home_prefs",
+      )
       .eq("id", user.id)
       .maybeSingle();
 
-    // احتياط: لو أعمدة المظهر لسه ما انضافت، اقرأ الأعمدة القديمة فقط
-    if (!data) {
-      const legacy = await supabase
+    // الاحتياط لعمودٍ ناقص لا لصفٍّ غير موجود: الحساب الجديد بلا صفّ يُرجع
+    // null بلا خطأ، وكان يدفع استعلاماً ثانياً ضائعاً في كل طلب
+    if (error) {
+      // درجتان من التراجع لا واحدة: العمود الأحدث وحده هو الغائب غالباً،
+      // والسقوط مباشرةً إلى أقدم قائمة أعمدة كان يُفقد الغلاف والثيم —
+      // ظهر ذلك عياناً حين نُشر الكود قبل تشغيل ملف SQL الخاص بعموده
+      const mid = await supabase
         .from("profiles")
-        .select("id, nickname, username, avatar_url, favorite_genres")
+        .select("id, nickname, username, avatar_url, cover_url, theme, favorite_genres, hide_name")
         .eq("id", user.id)
         .maybeSingle();
-      if (legacy.data) {
-        data = { ...legacy.data, cover_url: null, theme: null };
+      if (mid.data) {
+        data = { ...mid.data, home_prefs: null };
+      } else {
+        const legacy = await supabase
+          .from("profiles")
+          .select("id, nickname, username, avatar_url, favorite_genres")
+          .eq("id", user.id)
+          .maybeSingle();
+        if (legacy.data) {
+          data = {
+            ...legacy.data,
+            cover_url: null,
+            theme: null,
+            hide_name: false,
+            home_prefs: null,
+          };
+        }
       }
     }
 
@@ -92,6 +118,8 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
         cover_url: null,
         theme: null,
         favorite_genres: [],
+        hide_name: false,
+        home_prefs: null,
       };
     }
     return { ...data, favorite_genres: data.favorite_genres ?? [] } as Profile;
@@ -100,14 +128,25 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
   }
 });
 
-export async function getFollows(): Promise<FollowRow[]> {
+/**
+ * المتابعات — مخزّنة لكل طلب.
+ *
+ * تُقرأ من الصفحة ومن محرّك الاقتراحات ومن صفحة العمل في الطلب نفسه، وبلا
+ * `cache()` كان كلٌّ منها يفتح استعلاماً جديداً على الجدول ذاته.
+ */
+export const getFollows = cache(async (): Promise<FollowRow[]> => {
   const supabase = await createClient();
+  const user = await getUser();
+  if (!user) return [];
 
+  // فلترة صريحة بالمستخدم: سياسات القراءة العامة على الجدول (لصفحات البروفايل)
+  // تعني أن الاستعلام غير المفلتر يرجع صفوف الجميع، لا صفوف صاحب الحساب فقط.
   const { data, error } = await supabase
     .from("follows")
     .select(
-      "tmdb_id, media_type, title, poster_path, added_at, total_episodes, aired_episodes, next_air_date",
+      "tmdb_id, media_type, title, poster_path, added_at, total_episodes, aired_episodes, next_air_date, dropped",
     )
+    .eq("user_id", user.id)
     .order("added_at", { ascending: false });
 
   // احتياط: لو أعمدة الإحصاءات لسه ما انضافت، اقرأ الأعمدة الأساسية فقط
@@ -115,12 +154,13 @@ export async function getFollows(): Promise<FollowRow[]> {
     const base = await supabase
       .from("follows")
       .select("tmdb_id, media_type, title, poster_path, added_at")
+      .eq("user_id", user.id)
       .order("added_at", { ascending: false });
     return base.data ?? [];
   }
 
   return data ?? [];
-}
+});
 
 // PostgREST يرجّع 1000 صف كحد أقصى للطلب الواحد — نقرأ على صفحات حتى لا تضيع حلقات
 async function pageAll<T>(
@@ -139,16 +179,57 @@ async function pageAll<T>(
 
 export async function getWatchedForShow(showTmdbId: number): Promise<Set<string>> {
   const supabase = await createClient();
+  const user = await getUser();
+  if (!user) return new Set();
   const rows = await pageAll<{ season_number: number; episode_number: number }>((from, to) =>
     supabase
       .from("watched_episodes")
       .select("season_number, episode_number")
+      .eq("user_id", user.id)
       .eq("show_tmdb_id", showTmdbId)
       .order("season_number", { ascending: true })
       .order("episode_number", { ascending: true })
       .range(from, to),
   );
   return new Set(rows.map((r) => episodeKey(r.season_number, r.episode_number)));
+}
+
+
+/** هل أتابع هذا العمل؟ صفٌّ واحد بدل قراءة كل المتابعات لسؤال بنعم أو لا */
+export async function isFollowing(tmdbId: number, mediaType: "tv" | "movie"): Promise<boolean> {
+  try {
+    const supabase = await createClient();
+    const user = await getUser();
+    if (!user) return false;
+    const { data } = await supabase
+      .from("follows")
+      .select("tmdb_id")
+      .eq("user_id", user.id)
+      .eq("tmdb_id", tmdbId)
+      .eq("media_type", mediaType)
+      .maybeSingle();
+    return !!data;
+  } catch {
+    return false;
+  }
+}
+
+/** هل شاهدت هذا الفيلم؟ صفٌّ واحد بدل ترقيم كل الأفلام المشاهَدة */
+export async function isMovieWatched(movieTmdbId: number): Promise<boolean> {
+  try {
+    const supabase = await createClient();
+    const user = await getUser();
+    if (!user) return false;
+    const { data } = await supabase
+      .from("watched_movies")
+      .select("movie_tmdb_id")
+      .eq("user_id", user.id)
+      .eq("movie_tmdb_id", movieTmdbId)
+      .maybeSingle();
+    return !!data;
+  } catch {
+    return false;
+  }
 }
 
 export interface WatchSummaryRow {
@@ -182,10 +263,13 @@ export async function getWatchSummary(): Promise<WatchSummaryRow[] | null> {
 
 export async function getAllWatchedEpisodes(): Promise<WatchedEpisodeRow[]> {
   const supabase = await createClient();
+  const user = await getUser();
+  if (!user) return [];
   return pageAll<WatchedEpisodeRow>((from, to) =>
     supabase
       .from("watched_episodes")
       .select("show_tmdb_id, season_number, episode_number, watched_at, runtime")
+      .eq("user_id", user.id)
       .order("show_tmdb_id", { ascending: true })
       .order("season_number", { ascending: true })
       .order("episode_number", { ascending: true })
@@ -204,9 +288,12 @@ export interface MovieProgressRow {
 export async function getMovieProgress(movieTmdbId: number): Promise<MovieProgressRow | null> {
   try {
     const supabase = await createClient();
+    const user = await getUser();
+    if (!user) return null;
     const { data } = await supabase
       .from("movie_progress")
       .select("movie_tmdb_id, position_minutes, runtime_minutes, title, poster_path")
+      .eq("user_id", user.id)
       .eq("movie_tmdb_id", movieTmdbId)
       .maybeSingle();
     return (data as MovieProgressRow) ?? null;
@@ -218,9 +305,12 @@ export async function getMovieProgress(movieTmdbId: number): Promise<MovieProgre
 export async function getAllMovieProgress(): Promise<MovieProgressRow[]> {
   try {
     const supabase = await createClient();
+    const user = await getUser();
+    if (!user) return [];
     const { data } = await supabase
       .from("movie_progress")
       .select("movie_tmdb_id, position_minutes, runtime_minutes, title, poster_path")
+      .eq("user_id", user.id)
       .order("updated_at", { ascending: false });
     return (data as MovieProgressRow[]) ?? [];
   } catch {
@@ -284,10 +374,13 @@ export async function getReactions(ids: number[] = []): Promise<ReactionInfo> {
 
 export async function getWatchedMovieIds(): Promise<Set<number>> {
   const supabase = await createClient();
+  const user = await getUser();
+  if (!user) return new Set();
   const rows = await pageAll<{ movie_tmdb_id: number }>((from, to) =>
     supabase
       .from("watched_movies")
       .select("movie_tmdb_id")
+      .eq("user_id", user.id)
       .order("movie_tmdb_id", { ascending: true })
       .range(from, to),
   );
@@ -365,13 +458,21 @@ export async function getRatingsOf(userId: string): Promise<RatingRow[]> {
 }
 
 /** متوسط تقييمات كل المستخدمين لعمل معيّن */
+/** مراجعةٌ كما تُعرض للمجتمع: التقييم ونصّه، ومعه حال الإعجاب */
+export interface ReviewRow extends RatingRow {
+  likes: number;
+  likedByMe: boolean;
+  isMine: boolean;
+}
+
 export async function getCommunityRating(
   tmdbId: number,
   mediaType: "tv" | "movie",
-): Promise<{ avg: number; count: number; reviews: RatingRow[] }> {
-  const empty = { avg: 0, count: 0, reviews: [] as RatingRow[] };
+): Promise<{ avg: number; count: number; reviews: ReviewRow[] }> {
+  const empty = { avg: 0, count: 0, reviews: [] as ReviewRow[] };
   try {
     const supabase = await createClient();
+    const me = await getUser();
     const { data } = await supabase
       .from("ratings")
       .select("user_id, tmdb_id, media_type, rating, review, title, poster_path, updated_at")
@@ -382,7 +483,32 @@ export async function getCommunityRating(
     const rows = (data as RatingRow[]) ?? [];
     if (!rows.length) return empty;
     const avg = rows.reduce((s, r) => s + r.rating, 0) / rows.length;
-    return { avg, count: rows.length, reviews: rows.filter((r) => r.review?.trim()).slice(0, 10) };
+    const withText = rows.filter((r) => r.review?.trim()).slice(0, 10);
+
+    // إعجابات هذا العمل كلها في استعلامٍ واحد ثم تُجمَّع في الذاكرة:
+    // استعلامٌ لكل مراجعة يعني عشرة استعلامات لصفحةٍ واحدة
+    const likes = new Map<string, number>();
+    const mine = new Set<string>();
+    const { data: likeRows } = await supabase
+      .from("review_likes")
+      .select("review_user_id, liker_id")
+      .eq("tmdb_id", tmdbId)
+      .eq("media_type", mediaType);
+    for (const l of (likeRows ?? []) as { review_user_id: string; liker_id: string }[]) {
+      likes.set(l.review_user_id, (likes.get(l.review_user_id) ?? 0) + 1);
+      if (me && l.liker_id === me.id) mine.add(l.review_user_id);
+    }
+
+    return {
+      avg,
+      count: rows.length,
+      reviews: withText.map((r) => ({
+        ...r,
+        likes: likes.get(r.user_id) ?? 0,
+        likedByMe: mine.has(r.user_id),
+        isMine: me?.id === r.user_id,
+      })),
+    };
   } catch {
     return empty;
   }
@@ -397,6 +523,7 @@ export interface PublicProfile {
   avatar_url: string | null;
   cover_url: string | null;
   favorite_genres: number[];
+  hide_name?: boolean | null;
 }
 
 export async function getProfileByUsername(username: string): Promise<PublicProfile | null> {
@@ -408,15 +535,198 @@ export async function getProfileByUsername(username: string): Promise<PublicProf
 
   try {
     const supabase = await createClient();
-    const { data } = await supabase
-      .from("profiles")
-      .select("id, nickname, username, avatar_url, cover_url, favorite_genres")
+    // العرض العام لا الجدول: الجدول صار مقصوراً على صاحبه، والعرض يحمل
+    // الأعمدة العامة وحدها (انظر supabase/public_profiles.sql)
+    const { data, error } = await supabase
+      .from("public_profiles")
+      .select("id, nickname, username, avatar_url, cover_url, favorite_genres, hide_name")
       .eq("username", handle)
       .maybeSingle();
+
+    // احتياط لو عمود إخفاء الاسم لم يُضَف بعد
+    if (error) {
+      const legacy = await supabase
+        .from("public_profiles")
+        .select("id, nickname, username, avatar_url, cover_url, favorite_genres")
+        .eq("username", handle)
+        .maybeSingle();
+      if (!legacy.data) return null;
+      return {
+        ...legacy.data,
+        favorite_genres: legacy.data.favorite_genres ?? [],
+        hide_name: false,
+      } as PublicProfile;
+    }
+
     if (!data) return null;
     return { ...data, favorite_genres: data.favorite_genres ?? [] } as PublicProfile;
   } catch {
     return null;
+  }
+}
+
+/**
+ * عدد الإعجابات التي تلقّاها المستخدم على مراجعاته.
+ *
+ * `head: true` مع `count: "exact"` تُرجع العدد بلا صفوف: الترويسة تحتاج
+ * رقماً لا قائمة. والجدول قد لا يكون منشأً بعد (`supabase/likes.sql`)،
+ * فالفشل يُرجع صفراً ولا يُسقط الصفحة.
+ */
+/** مكتبة مستخدمٍ آخر — القراءة العامة أُذن بها في سياسات الجداول */
+export async function getFollowsOf(userId: string): Promise<FollowRow[]> {
+  try {
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from("follows")
+      .select(
+        "tmdb_id, media_type, title, poster_path, added_at, total_episodes, aired_episodes, next_air_date, dropped",
+      )
+      .eq("user_id", userId)
+      .order("added_at", { ascending: false })
+      .limit(60);
+    return (data as FollowRow[]) ?? [];
+  } catch {
+    return [];
+  }
+}
+
+/** مشاهدات مستخدمٍ آخر مجمّعةً: عددٌ لكل مسلسل، ومجموعة أفلامه */
+export async function getWatchedOf(
+  userId: string,
+): Promise<{ byShow: Map<number, number>; episodes: number; movies: Set<number> }> {
+  const empty = { byShow: new Map<number, number>(), episodes: 0, movies: new Set<number>() };
+  try {
+    const supabase = await createClient();
+    const [eps, mvs] = await Promise.all([
+      supabase
+        .from("watched_episodes")
+        .select("show_tmdb_id")
+        .eq("user_id", userId)
+        .limit(5000),
+      supabase.from("watched_movies").select("movie_tmdb_id").eq("user_id", userId).limit(1000),
+    ]);
+    const byShow = new Map<number, number>();
+    for (const r of (eps.data ?? []) as { show_tmdb_id: number }[]) {
+      byShow.set(r.show_tmdb_id, (byShow.get(r.show_tmdb_id) ?? 0) + 1);
+    }
+    return {
+      byShow,
+      episodes: (eps.data ?? []).length,
+      movies: new Set(
+        ((mvs.data ?? []) as { movie_tmdb_id: number }[]).map((m) => m.movie_tmdb_id),
+      ),
+    };
+  } catch {
+    return empty;
+  }
+}
+
+/** رأيٌ في خطّ المجتمع: صاحبه وعمله ونصّه وإعجاباته */
+export interface FeedItem {
+  person: PersonLite;
+  tmdb_id: number;
+  media_type: "tv" | "movie";
+  rating: number;
+  review: string;
+  title: string | null;
+  poster_path: string | null;
+  updated_at: string;
+  likes: number;
+  likedByMe: boolean;
+}
+
+/**
+ * خطّ الآراء: مراجعات من تتابعهم وحدهم، والأكثر إعجاباً أولاً.
+ *
+ * ثلاث قراءات متوازية بعد جلب قائمة المتابَعين — المراجعات والإعجابات
+ * والملفات — ثم يُجمَّع كل شيء في الذاكرة: الخط يُبنى من ستين مراجعة
+ * على الأكثر، والفرز بالإعجاب يحتاج العدّ كاملاً قبل الترتيب فلا ينفع
+ * فيه ترقيم الخادم.
+ */
+export async function getCommunityFeed(): Promise<FeedItem[]> {
+  try {
+    const supabase = await createClient();
+    const me = await getUser();
+    if (!me) return [];
+
+    const { data: fRows } = await supabase
+      .from("user_follows")
+      .select("following_id")
+      .eq("follower_id", me.id)
+      .limit(200);
+    const ids = (fRows ?? []).map((r: { following_id: string }) => r.following_id);
+    if (!ids.length) return [];
+
+    const [ratingsQ, likesQ, profilesQ] = await Promise.all([
+      supabase
+        .from("ratings")
+        .select("user_id, tmdb_id, media_type, rating, review, title, poster_path, updated_at")
+        .in("user_id", ids)
+        .not("review", "is", null)
+        .order("updated_at", { ascending: false })
+        .limit(60),
+      supabase
+        .from("review_likes")
+        .select("review_user_id, tmdb_id, media_type, liker_id")
+        .in("review_user_id", ids)
+        .limit(2000),
+      supabase
+        .from("public_profiles")
+        .select("id, nickname, username, avatar_url, hide_name")
+        .in("id", ids),
+    ]);
+
+    const people = new Map<string, PersonLite>();
+    for (const pr of (profilesQ.data ?? []) as PersonLite[]) people.set(pr.id, pr);
+
+    const likeKey = (u: string, t2: number, m: string) => `${u}|${t2}|${m}`;
+    const counts = new Map<string, number>();
+    const mine = new Set<string>();
+    for (const l of (likesQ.data ?? []) as {
+      review_user_id: string;
+      tmdb_id: number;
+      media_type: string;
+      liker_id: string;
+    }[]) {
+      const k = likeKey(l.review_user_id, l.tmdb_id, l.media_type);
+      counts.set(k, (counts.get(k) ?? 0) + 1);
+      if (l.liker_id === me.id) mine.add(k);
+    }
+
+    return ((ratingsQ.data ?? []) as RatingRow[])
+      .filter((r) => r.review?.trim() && people.has(r.user_id))
+      .map((r) => {
+        const k = likeKey(r.user_id, r.tmdb_id, r.media_type);
+        return {
+          person: people.get(r.user_id)!,
+          tmdb_id: r.tmdb_id,
+          media_type: r.media_type,
+          rating: r.rating,
+          review: r.review!.trim(),
+          title: r.title,
+          poster_path: r.poster_path,
+          updated_at: r.updated_at,
+          likes: counts.get(k) ?? 0,
+          likedByMe: mine.has(k),
+        };
+      })
+      .sort((a, b) => b.likes - a.likes || b.updated_at.localeCompare(a.updated_at));
+  } catch {
+    return [];
+  }
+}
+
+export async function getReceivedLikes(userId: string): Promise<number> {
+  try {
+    const supabase = await createClient();
+    const { count, error } = await supabase
+      .from("review_likes")
+      .select("liker_id", { count: "exact", head: true })
+      .eq("review_user_id", userId);
+    if (error) return 0;
+    return count ?? 0;
+  } catch {
+    return 0;
   }
 }
 
@@ -472,13 +782,359 @@ export async function getFollowedPeople(): Promise<PublicProfile[]> {
     const list = (ids ?? []).map((r) => r.following_id);
     if (!list.length) return [];
     const { data } = await supabase
-      .from("profiles")
-      .select("id, nickname, username, avatar_url, cover_url, favorite_genres")
+      .from("public_profiles")
+      .select("id, nickname, username, avatar_url, cover_url, favorite_genres, hide_name")
       .in("id", list);
     return ((data ?? []) as PublicProfile[]).map((p) => ({
       ...p,
       favorite_genres: p.favorite_genres ?? [],
     }));
+  } catch {
+    return [];
+  }
+}
+
+// ================= الطبقة الاجتماعية =================
+
+export interface PersonLite {
+  id: string;
+  nickname: string | null;
+  username: string | null;
+  avatar_url: string | null;
+  hide_name: boolean;
+}
+
+/** الاسم المعروض مع احترام خيار الإخفاء */
+export function displayNameOf(
+  p: { nickname: string | null; username: string | null; hide_name?: boolean | null },
+  anonymousLabel: string,
+): string {
+  if (p.hide_name) return anonymousLabel;
+  return p.nickname || p.username || anonymousLabel;
+}
+
+/** بحث عن أشخاص بالاسم أو المعرّف — الأحرف البديلة تُهرَّب داخل الدالة */
+export async function searchPeople(q: string): Promise<PersonLite[]> {
+  const term = q.trim();
+  if (term.length < 2) return [];
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("search_people", { q: term });
+    if (error || !data) return [];
+    return data as PersonLite[];
+  } catch {
+    return [];
+  }
+}
+
+export interface ActivityRow extends PersonLite {
+  tmdb_id: number;
+  media_type: "tv" | "movie";
+  rating: number;
+  review: string | null;
+  title: string | null;
+  poster_path: string | null;
+  updated_at: string;
+}
+
+/** آخر تقييمات ومراجعات من تتابعهم */
+export async function getFollowingActivity(): Promise<ActivityRow[]> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("following_activity");
+    if (error || !data) return [];
+    return data as ActivityRow[];
+  } catch {
+    return [];
+  }
+}
+
+export interface TitleReview extends PersonLite {
+  rating: number;
+  review: string | null;
+  updated_at: string;
+  /** عدد الإعجابات، وهل أعجبتُ بها، وهل هي مراجعتي */
+  likes: number;
+  likedByMe: boolean;
+  isMine: boolean;
+}
+
+/** مراجعات عمل معيّن مع أصحابها */
+export async function getTitleReviews(
+  tmdbId: number,
+  mediaType: "tv" | "movie",
+): Promise<TitleReview[]> {
+  try {
+    const supabase = await createClient();
+    const [{ data, error }, me] = await Promise.all([
+      supabase.rpc("title_reviews", { t_id: tmdbId, m_type: mediaType }),
+      getUser(),
+    ]);
+    if (error || !data) return [];
+    const rows = data as Omit<TitleReview, "likes" | "likedByMe" | "isMine">[];
+    if (!rows.length) return [];
+
+    // إعجابات العمل كلها في استعلامٍ واحد ثم تُجمَّع في الذاكرة:
+    // استعلامٌ لكل مراجعة يعني عشرة استعلامات لصفحةٍ واحدة
+    const counts = new Map<string, number>();
+    const mine = new Set<string>();
+    const { data: likeRows } = await supabase
+      .from("review_likes")
+      .select("review_user_id, liker_id")
+      .eq("tmdb_id", tmdbId)
+      .eq("media_type", mediaType);
+    for (const l of (likeRows ?? []) as { review_user_id: string; liker_id: string }[]) {
+      counts.set(l.review_user_id, (counts.get(l.review_user_id) ?? 0) + 1);
+      if (me && l.liker_id === me.id) mine.add(l.review_user_id);
+    }
+
+    return rows.map((r) => ({
+      ...r,
+      likes: counts.get(r.id) ?? 0,
+      likedByMe: mine.has(r.id),
+      isMine: me?.id === r.id,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+/** يسجّل زيارة للملف (يتجاهل زيارة صاحبه ويتجاهل التكرار اليومي) */
+export async function recordProfileView(targetId: string): Promise<void> {
+  try {
+    const supabase = await createClient();
+    await supabase.rpc("record_profile_view", { target: targetId });
+  } catch {
+    // العدّاد تحسين لا أكثر
+  }
+}
+
+export async function getProfileViewCount(targetId: string): Promise<number> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("profile_view_count", { target: targetId });
+    if (error) return 0;
+    return Number(data ?? 0);
+  } catch {
+    return 0;
+  }
+}
+
+/** الأشخاص الذين يتابعون هذا الملف والذين يتابعهم — لعرضهم على الصفحة */
+export async function getFollowLists(
+  userId: string,
+): Promise<{ followers: PersonLite[]; following: PersonLite[] }> {
+  const empty = { followers: [] as PersonLite[], following: [] as PersonLite[] };
+  try {
+    const supabase = await createClient();
+    const [a, b] = await Promise.all([
+      supabase.from("user_follows").select("follower_id").eq("following_id", userId).limit(50),
+      supabase.from("user_follows").select("following_id").eq("follower_id", userId).limit(50),
+    ]);
+    const ids = [
+      ...(a.data ?? []).map((r) => r.follower_id),
+      ...(b.data ?? []).map((r) => r.following_id),
+    ];
+    if (!ids.length) return empty;
+
+    const { data: people } = await supabase
+      .from("public_profiles")
+      .select("id, nickname, username, avatar_url, hide_name")
+      .in("id", [...new Set(ids)]);
+
+    const byId = new Map((people ?? []).map((p) => [p.id, p as PersonLite]));
+    return {
+      followers: (a.data ?? []).map((r) => byId.get(r.follower_id)).filter(Boolean) as PersonLite[],
+      following: (b.data ?? []).map((r) => byId.get(r.following_id)).filter(Boolean) as PersonLite[],
+    };
+  } catch {
+    return empty;
+  }
+}
+
+// ============================================================
+//  لوحة الصدارة
+// ============================================================
+
+export interface LeaderRow {
+  tmdb_id: number;
+  media_type: "tv" | "movie";
+  title: string | null;
+  poster_path: string | null;
+  /** متوسط تقييم مجتمع مشاهد (١–٥) — للأعلى تقييماً فقط */
+  avg_rating?: number | null;
+  /** عدد مقيّمي مشاهد */
+  votes?: number | null;
+  /** مَن أضافه لمكتبته في المدة */
+  followers?: number | null;
+  /** مَن شاهد منه شيئاً في المدة */
+  viewers?: number | null;
+  /** مجموع الحلقات المؤشّرة في المدة */
+  episodes?: number | null;
+  score?: number | null;
+}
+
+/**
+ * الأعلى تقييماً في مجتمع مشاهد خلال مدة.
+ * days = 0 تعني «كل الوقت».
+ */
+export async function getTopRated(days = 7): Promise<LeaderRow[]> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("top_rated_period", { days });
+    if (error || !data) return [];
+    return data as LeaderRow[];
+  } catch {
+    return [];
+  }
+}
+
+/** الأكثر مشاهدة في مجتمع مشاهد خلال مدة (متابعات + حلقات مؤشّرة) */
+export async function getMostWatched(days = 7): Promise<LeaderRow[]> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("most_watched_period", { days });
+    if (error || !data) return [];
+    return data as LeaderRow[];
+  } catch {
+    return [];
+  }
+}
+
+// ============================================================
+//  سجلّ المشاهدة
+// ============================================================
+
+export interface HistoryRow {
+  kind: "episode" | "movie";
+  tmdbId: number;
+  /** الموسم والحلقة — للحلقات فقط */
+  season?: number;
+  episode?: number;
+  watchedAt: string;
+  runtime: number | null;
+}
+
+/**
+ * كل ما شاهدته مرتّباً من الأحدث.
+ *
+ * الحلقات والأفلام في قائمة واحدة: السجلّ يُقرأ بالزمن لا بنوع العمل، ومن
+ * يتذكّر «شفت شيئاً ليلة الخميس» لا يتذكّر إن كان فيلماً أم حلقة.
+ */
+export async function getWatchHistory(limit = 400): Promise<HistoryRow[]> {
+  try {
+    const supabase = await createClient();
+    const [eps, movies] = await Promise.all([
+      supabase
+        .from("watched_episodes")
+        .select("show_tmdb_id, season_number, episode_number, watched_at, runtime")
+        .order("watched_at", { ascending: false })
+        .limit(limit),
+      supabase
+        .from("watched_movies")
+        .select("movie_tmdb_id, watched_at, runtime")
+        .order("watched_at", { ascending: false })
+        .limit(limit),
+    ]);
+
+    const rows: HistoryRow[] = [
+      ...((eps.data ?? []) as WatchedEpisodeRow[]).map((e) => ({
+        kind: "episode" as const,
+        tmdbId: e.show_tmdb_id,
+        season: e.season_number,
+        episode: e.episode_number,
+        watchedAt: e.watched_at,
+        runtime: e.runtime,
+      })),
+      ...((movies.data ?? []) as { movie_tmdb_id: number; watched_at: string; runtime: number | null }[]).map(
+        (m) => ({
+          kind: "movie" as const,
+          tmdbId: m.movie_tmdb_id,
+          watchedAt: m.watched_at,
+          runtime: m.runtime,
+        }),
+      ),
+    ];
+
+    return rows.sort((a, b) => b.watchedAt.localeCompare(a.watchedAt)).slice(0, limit);
+  } catch {
+    return [];
+  }
+}
+
+// ============================================================
+//  القوائم الشخصية
+// ============================================================
+
+export interface UserList {
+  id: string;
+  name: string;
+  is_public: boolean;
+  created_at: string;
+  item_count: number;
+  posters: string[] | null;
+}
+
+export interface ListItem {
+  tmdb_id: number;
+  media_type: "tv" | "movie";
+  title: string | null;
+  poster_path: string | null;
+  added_at: string;
+}
+
+/** قوائمي مع عدد عناصر كل واحدة — استعلام واحد لا استعلام لكل قائمة */
+export async function getMyLists(): Promise<UserList[]> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("my_lists");
+    if (error || !data) return [];
+    return data as UserList[];
+  } catch {
+    return [];
+  }
+}
+
+/** قائمة واحدة بعناصرها — تُرجع null لو لم تكن لك ولا معلنة */
+export async function getList(
+  listId: string,
+): Promise<{ list: { id: string; name: string; is_public: boolean; user_id: string }; items: ListItem[] } | null> {
+  if (!/^[0-9a-f-]{36}$/i.test(listId)) return null;
+  try {
+    const supabase = await createClient();
+    const { data: list } = await supabase
+      .from("user_lists")
+      .select("id, name, is_public, user_id")
+      .eq("id", listId)
+      .maybeSingle();
+    if (!list) return null;
+
+    const { data: items } = await supabase
+      .from("user_list_items")
+      .select("tmdb_id, media_type, title, poster_path, added_at")
+      .eq("list_id", listId)
+      .order("added_at", { ascending: false })
+      .limit(500);
+
+    return { list, items: (items ?? []) as ListItem[] };
+  } catch {
+    return null;
+  }
+}
+
+/** أي قوائمي تحتوي هذا العمل — لتعليم الأزرار في صفحة العمل */
+export async function getListsContaining(
+  tmdbId: number,
+  mediaType: "tv" | "movie",
+): Promise<string[]> {
+  try {
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from("user_list_items")
+      .select("list_id")
+      .eq("tmdb_id", tmdbId)
+      .eq("media_type", mediaType);
+    return (data ?? []).map((r) => r.list_id as string);
   } catch {
     return [];
   }
