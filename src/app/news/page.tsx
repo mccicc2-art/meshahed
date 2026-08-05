@@ -1,5 +1,7 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getUser } from "@/lib/data";
+import { Icon } from "@/components/Icon";
 import {
   upcomingMovies,
   airingTv,
@@ -76,6 +78,16 @@ export default async function NewsPage() {
       <header>
         <h1 className="text-xl font-bold">{t.newsTitle}</h1>
       </header>
+
+      {/* مدخل البحث — انتقل من الشريط السفلي إلى هنا: حقلٌ شكليّ يفتح
+          صفحة البحث، على عادة تبويبات «اكتشف» في التطبيقات الكبيرة */}
+      <Link
+        href="/search"
+        className="flex items-center gap-2.5 bg-surface border border-border rounded-2xl px-4 py-3.5 text-sm text-muted hover:border-accent/60 active:bg-surface-2 transition"
+      >
+        <Icon name="search" size={17} className="shrink-0" />
+        {t.searchPlaceholder}
+      </Link>
 
       {suggested.length > 0 && (
         <PosterRail title={t.suggestedForYou} icon="sparkles">
