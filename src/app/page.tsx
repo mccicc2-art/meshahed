@@ -30,7 +30,9 @@ import { PosterCard } from "@/components/PosterCard";
 import { ContinueCard } from "@/components/ContinueCard";
 import { ToWatchCard } from "@/components/ToWatchCard";
 import { PosterRail, RailItem } from "@/components/PosterRail";
-import type { IconName } from "@/components/Icon";
+import { Icon, type IconName } from "@/components/Icon";
+import { posterUrl } from "@/lib/media";
+import { getWatchHistory } from "@/lib/data";
 import { ProfileHeader, type HeaderStat } from "@/components/ProfileHeader";
 import { getLevel, levelPoints } from "@/lib/level";
 import {
@@ -239,6 +241,10 @@ export default async function HomePage() {
       return {
         backdropPath: tv?.backdrop_path ?? null,
         episodeLabel: next ? `S${next.season} E${next.episode}` : null,
+        // زرّ ✓ على البطاقة يحتاج رقمَي الموسم والحلقة ومدّتها ليؤشّر من مكانه
+        season: next?.season ?? null,
+        episode: next?.episode ?? null,
+        runtime: tv?.episode_run_time?.[0] ?? null,
       };
     }),
   );
@@ -479,6 +485,42 @@ export default async function HomePage() {
     (k) => allHeaderStats[k],
   );
 
+  // ===== ملخّص أسبوعك — قسمٌ اختياري يطيع نظام التخصيص كأي قسم =====
+  // لا يُقرأ السجلّ إلا لمن فعّله، ولا يُرسم إن كان الأسبوع صفراً
+  let recap: { line: string; posters: (string | null)[] } | null = null;
+  if (prefs.order.includes("recap")) {
+    const hist = await getWatchHistory(300).catch(() => []);
+    const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString();
+    const rows = hist.filter((h) => h.watchedAt >= weekAgo);
+    if (rows.length > 0) {
+      const eps = rows.filter((h) => h.kind === "episode").length;
+      const mv = rows.filter((h) => h.kind === "movie").length;
+      const mins = rows.reduce(
+        (n, h) => n + (h.runtime ?? (h.kind === "movie" ? 110 : 40)),
+        0,
+      );
+      const hrs = Math.round(mins / 60);
+      const seen = new Set<string>();
+      const posters: (string | null)[] = [];
+      for (const h of rows) {
+        const key = `${h.kind === "movie" ? "movie" : "tv"}-${h.tmdbId}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        const f = follows.find(
+          (x) => `${x.media_type}-${x.tmdb_id}` === key,
+        );
+        posters.push(f?.poster_path ?? null);
+        if (posters.length === 3) break;
+      }
+      const parts: string[] = [];
+      if (eps > 0) parts.push(t.diaryEpsGrouped(eps));
+      if (mv > 0) parts.push(t.moviesGrouped(mv));
+      if (hrs > 0)
+        parts.push(hrs < 24 ? t.hours(hrs) : t.days(Math.floor(hrs / 24)));
+      recap = { line: parts.join(" · "), posters };
+    }
+  }
+
   // ===== الأيام السبعة القادمة — لشريط التقويم إن كان ظاهراً =====
   const nowTs = new Date();
   const weekDays = Array.from({ length: 7 }, (_, i) => {
@@ -547,12 +589,19 @@ export default async function HomePage() {
                 {continueTop.map((i, n) => (
                   <ContinueCard
                     key={`c-${i.id}`}
+                    tmdbId={i.id}
                     href={`/show/${i.id}`}
                     title={i.name}
                     backdropPath={continueExtra[n]?.backdropPath ?? null}
                     posterPath={i.posterPath}
                     progress={i.progress}
+                    watched={i.watched}
+                    aired={i.aired}
                     episodeLabel={continueExtra[n]?.episodeLabel}
+                    season={continueExtra[n]?.season ?? null}
+                    episode={continueExtra[n]?.episode ?? null}
+                    runtime={continueExtra[n]?.runtime ?? null}
+                    locale={locale}
                   />
                 ))}
               </Section>
@@ -667,6 +716,53 @@ export default async function HomePage() {
                 ))}
               </Section>
             ) : null,
+          recap: recap ? (
+            <div key="recap">
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <h2 className="flex items-center gap-2 text-lg font-bold">
+                  <Icon name="book" size={19} style={{ color: "var(--accent)" }} />
+                  {t.recapTitle}
+                </h2>
+                <Link
+                  href="/diary"
+                  className="text-xs text-accent hover:brightness-110 transition"
+                >
+                  {t.seeAll}
+                </Link>
+              </div>
+              <Link
+                href="/diary"
+                prefetch={false}
+                className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-surface p-4 hover:border-accent/50 active:scale-[0.99] transition"
+              >
+                <span className="text-[15px] font-bold leading-snug">
+                  {recap.line}
+                </span>
+                <span className="flex shrink-0 -space-x-3 rtl:space-x-reverse">
+                  {recap.posters.map((p, i) => {
+                    const u = posterUrl(p, "w185");
+                    return (
+                      <span
+                        key={i}
+                        className="relative w-9 h-[54px] rounded-md overflow-hidden border-2 border-[color:var(--surface)] bg-surface-2"
+                        style={{ zIndex: 3 - i }}
+                      >
+                        {u && (
+                          /* eslint-disable-next-line @next/next/no-img-element */
+                          <img
+                            src={u}
+                            alt=""
+                            loading="lazy"
+                            className="w-full h-full object-cover"
+                          />
+                        )}
+                      </span>
+                    );
+                  })}
+                </span>
+              </Link>
+            </div>
+          ) : null,
           trending:
             showTrending && trend.length > 0 ? (
               <Section key="trending" title={t.trendingWeek} icon="trending">
