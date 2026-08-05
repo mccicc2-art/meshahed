@@ -4,7 +4,12 @@ import { getUser, getWatchHistory, getFollows, getAllMovieProgress } from "@/lib
 import { getT } from "@/lib/locale";
 import { posterUrl } from "@/lib/media";
 import { formatDate } from "@/lib/when";
-import { DiaryList, type DiaryDay, type DiaryEntry } from "@/components/DiaryList";
+import {
+  DiaryList,
+  type DiaryDay,
+  type DiaryEntry,
+  type DiaryMonth,
+} from "@/components/DiaryList";
 
 /**
  * سجلّ المشاهدة.
@@ -20,8 +25,9 @@ export default async function DiaryPage() {
 
   const { locale, t } = await getT();
 
+  // نافذة أوسع: صفوف اليوميات خفيفة، وألف صفٍّ تغطي شهوراً من المشاهدة
   const [history, follows, movieProgress] = await Promise.all([
-    getWatchHistory(),
+    getWatchHistory(1000),
     getFollows(),
     getAllMovieProgress(),
   ]);
@@ -128,6 +134,25 @@ export default async function DiaryPage() {
     };
   });
 
+  // شرائح الأشهر: شهرٌ لكل شريحة، والقفزة إلى أول أيامه في السجلّ
+  const monthFmt = new Intl.DateTimeFormat(locale === "en" ? "en-GB" : "ar", {
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+    calendar: "gregory",
+  });
+  const months: DiaryMonth[] = [];
+  for (const d of days) {
+    const key = d.day.slice(0, 7);
+    if (!months.some((m) => m.key === key)) {
+      months.push({
+        key,
+        label: monthFmt.format(new Date(`${d.day}T00:00:00Z`)),
+        firstDay: d.day,
+      });
+    }
+  }
+
   return (
     <div>
       <div className="flex items-baseline justify-between gap-3 mb-1">
@@ -141,7 +166,7 @@ export default async function DiaryPage() {
       {days.length === 0 ? (
         <p className="text-center text-muted py-20 text-sm">{t.diaryEmpty}</p>
       ) : (
-        <DiaryList days={days} locale={locale} />
+        <DiaryList days={days} months={months} locale={locale} />
       )}
     </div>
   );
