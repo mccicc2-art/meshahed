@@ -6,6 +6,8 @@ import {
   setDropped,
   markShowWatched,
   markNextEpisode,
+  watchUpTo,
+  setSeasonWatched,
 } from "@/lib/actions";
 
 /**
@@ -56,6 +58,8 @@ const FNS = {
   setDropped,
   markShowWatched,
   markNextEpisode,
+  watchUpTo,
+  setSeasonWatched,
 } as const;
 
 type FnName = keyof typeof FNS;

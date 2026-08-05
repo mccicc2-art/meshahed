@@ -314,7 +314,7 @@ const ar = {
   dataExportBusy: "يجهّز الملف…",
   deleteAccountTitle: "حذف الحساب",
   deleteAccountDesc:
-    "يمحو كل بياناتك نهائياً: المتابعات والمشاهدات والتقييمات والقوائم والصور. لا رجوع بعدها.",
+    "يمحو كل بياناتك نهائياً: المتابعات والمشاهدات والتقييمات والقوائم والصور. لا رجوع بعدها. (الدخول بحساب Google يبقى ممكناً تقنياً — لكنه يفتح حساباً فارغاً بلا أي أثر لبياناتك.)",
   deleteAccountBtn: "حذف الحساب نهائياً",
   deleteAccountConfirm: "متأكد؟ اضغط مرة أخرى — لا رجوع بعدها",
   deleteAccountBusy: "يحذف…",
@@ -887,7 +887,7 @@ const en: Dict = {
   dataExportBusy: "Preparing the file…",
   deleteAccountTitle: "Delete account",
   deleteAccountDesc:
-    "Permanently erases all your data: follows, watch history, ratings, lists and images. There is no undo.",
+    "Permanently erases all your data: follows, watch history, ratings, lists and images. There is no undo. (Signing in with Google again is still technically possible — it opens an empty account with no trace of your data.)",
   deleteAccountBtn: "Delete account permanently",
   deleteAccountConfirm: "Sure? Tap again — this cannot be undone",
   deleteAccountBusy: "Deleting…",

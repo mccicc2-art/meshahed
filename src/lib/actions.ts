@@ -839,7 +839,8 @@ export async function toggleReviewLike(
     : await supabase.from("review_likes").insert(key);
 
   if (error) fail(error);
-  revalidatePath("/");
+  // لا تجديد للرئيسية: الإعجاب يُنقر من صفحات العمل والناس، وكلاهما لا
+  // يرسم بيانات الرئيسية — تجديدُ أغلى صفحةٍ مع كل قلب كان هدراً صافياً
   revalidatePath(`/${mediaType === "tv" ? "show" : "movie"}/${tmdbId}`);
 }
 

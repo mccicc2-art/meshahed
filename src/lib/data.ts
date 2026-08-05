@@ -114,11 +114,10 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
     if (!data) {
       return {
         id: user.id,
-        nickname:
-          (user.user_metadata?.full_name as string | undefined) ??
-          user.email?.split("@")[0] ??
-          null,
-        username: user.email?.split("@")[0] ?? null,
+        nickname: (user.user_metadata?.full_name as string | undefined) ?? null,
+        // معرّف عشوائي لا بداية الإيميل: المعرّف يُنشر ويُبحث، وبداية
+        // الإيميل هوية لم يخترها صاحبها
+        username: `user_${user.id.replace(/-/g, "").slice(0, 8)}`,
         avatar_url: (user.user_metadata?.avatar_url as string | undefined) ?? null,
         cover_url: null,
         theme: null,
@@ -558,22 +557,20 @@ export async function getProfileByUsername(username: string): Promise<PublicProf
 /** مكتبة مستخدمٍ آخر — القراءة العامة أُذن بها في سياسات الجداول */
 export async function getFollowsOf(userId: string): Promise<FollowRow[]> {
   try {
+    // جداول المكتبة مقصورة على صاحبها بالسياسات — القراءة المباشرة كانت
+    // ترجع صفراً بصمت. المكتبة عامة بحكم المنتج، فتخرج من دالة definer
+    // محدودة الأعمدة والعدد (انظر supabase/security2.sql)
     const supabase = await createClient();
-    const { data } = await supabase
-      .from("follows")
-      .select(
-        "tmdb_id, media_type, title, poster_path, added_at, total_episodes, aired_episodes, next_air_date, dropped",
-      )
-      .eq("user_id", userId)
-      .order("added_at", { ascending: false })
-      .limit(60);
+    const { data, error } = await supabase.rpc("user_public_follows", { target: userId });
+    if (error) return [];
     return (data as FollowRow[]) ?? [];
   } catch {
     return [];
   }
 }
 
-/** مشاهدات مستخدمٍ آخر مجمّعةً: عددٌ لكل مسلسل، ومجموعة أفلامه */
+/** مشاهدات مستخدمٍ آخر مجمّعةً: عددٌ لكل مسلسل ومعرّفات أفلامه — من
+ *  دوال definer، لا صفوف حلقات ولا أوقات مشاهدة */
 export async function getWatchedOf(
   userId: string,
 ): Promise<{ byShow: Map<number, number>; episodes: number; movies: Set<number> }> {
@@ -581,20 +578,18 @@ export async function getWatchedOf(
   try {
     const supabase = await createClient();
     const [eps, mvs] = await Promise.all([
-      supabase
-        .from("watched_episodes")
-        .select("show_tmdb_id")
-        .eq("user_id", userId)
-        .limit(5000),
-      supabase.from("watched_movies").select("movie_tmdb_id").eq("user_id", userId).limit(1000),
+      supabase.rpc("user_watch_overview", { target: userId }),
+      supabase.rpc("user_watched_movie_ids", { target: userId }),
     ]);
     const byShow = new Map<number, number>();
-    for (const r of (eps.data ?? []) as { show_tmdb_id: number }[]) {
-      byShow.set(r.show_tmdb_id, (byShow.get(r.show_tmdb_id) ?? 0) + 1);
+    let episodes = 0;
+    for (const r of (eps.data ?? []) as { show_tmdb_id: number; watched: number }[]) {
+      byShow.set(r.show_tmdb_id, Number(r.watched));
+      episodes += Number(r.watched);
     }
     return {
       byShow,
-      episodes: (eps.data ?? []).length,
+      episodes,
       movies: new Set(
         ((mvs.data ?? []) as { movie_tmdb_id: number }[]).map((m) => m.movie_tmdb_id),
       ),
