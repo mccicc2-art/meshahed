@@ -223,7 +223,7 @@ export function TitleActions({
 
             <div className="p-4 pt-2">
               <button onClick={() => setSheet(null)} className={sheetBtn}>
-                {t.closeLabel}
+                {t.doneLabel}
               </button>
             </div>
           </div>
