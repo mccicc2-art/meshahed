@@ -14,7 +14,6 @@ import {
 } from "@/lib/data";
 import {
   getTv,
-  getSeason,
   getTrailer,
   getWatchProviders,
   isAnime,
@@ -109,16 +108,9 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
     }
   }
 
-  const initialEpisodes =
-    openSeason != null
-      ? ((await getSeason(tvId, openSeason).catch(() => null))?.episodes ?? []).map((e) => ({
-          episode_number: e.episode_number,
-          name: e.name,
-          air_date: e.air_date,
-          runtime: e.runtime,
-          still_path: e.still_path,
-        }))
-      : [];
+  // لا انتظار لحلقات الموسم هنا: كانت رحلة TMDB تسلسلية ثانية تؤخّر أول
+  // بايت من أسخن صفحة (~150–400ms عند فوات الكاش). المتتبّع يحمّلها بنفسه
+  // عبر /api/season ويعرض هيكلاً في أثنائها — الترويسة والتبويبات ترسم فوراً
 
   // نفس الرقم الذي تستخدمه الرئيسية والمكتبة، فلا تختلف النسبة بين الشاشات
   const airedExact = airedEpisodeCount(tv);
@@ -237,7 +229,6 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
                 showTmdbId={tvId}
                 summaries={summaries}
                 initialSeason={openSeason}
-                initialEpisodes={initialEpisodes}
                 airedTotal={airedExact}
                 defaultRuntime={tv.episode_run_time?.[0] ?? null}
                 initialWatched={[...watched]}
