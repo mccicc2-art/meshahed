@@ -368,7 +368,7 @@ function QuickActions({
                       runtime: null,
                       watched: true,
                     });
-                  return "✓";
+                  return "🏁 ✓";
                 })
               }
               className={`${btn} border-t border-[color:var(--divider)]`}

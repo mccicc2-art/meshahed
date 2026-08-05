@@ -61,6 +61,7 @@ export function ContinueCard({
   const [bump, setBump] = useState(0);
   const [phase, setPhase] = useState<"idle" | "marked" | "leaving">("idle");
   const [toast, setToast] = useState<{ s: number; e: number } | null>(null);
+  const [celebrate, setCelebrate] = useState(false);
   const [err, setErr] = useState(false);
 
   const w = watched + bump;
@@ -95,13 +96,20 @@ export function ContinueCard({
           runtime: runtime ?? null,
           watched: true,
         });
-        setToast({ s: season, e: episode });
-        // انزلاق الوداع ثم تجديد البيانات: الحلقة التالية تحلّ في نفس المكان
-        setTimeout(() => setPhase("leaving"), 350);
-        setTimeout(() => {
+        // آخر حلقة معروضة؟ هذه لحظة إنجازٍ لا توست عابر
+        const finishedAll = aired > 0 && watched + 1 >= aired;
+        if (finishedAll) {
+          setCelebrate(true);
           router.refresh();
-        }, 600);
-        setTimeout(() => setToast(null), 5000);
+        } else {
+          setToast({ s: season, e: episode });
+          // انزلاق الوداع ثم تجديد البيانات: الحلقة التالية تحلّ في نفس المكان
+          setTimeout(() => setPhase("leaving"), 350);
+          setTimeout(() => {
+            router.refresh();
+          }, 600);
+          setTimeout(() => setToast(null), 5000);
+        }
       } catch {
         setBump(0);
         setPhase("idle");
@@ -230,6 +238,47 @@ export function ContinueCard({
             >
               {t.undoWatched}
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* ورقة الإنجاز: نبضتا توهّج بألوان الهوية ثم سكون — احتفالٌ بالغ */}
+      {celebrate && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+          <button
+            type="button"
+            aria-label=""
+            onClick={() => setCelebrate(false)}
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+          />
+          <div
+            className="sheet-pop glow-celebrate relative w-full sm:max-w-sm rounded-t-3xl sm:rounded-3xl p-[1.5px] mb-0"
+            style={{
+              background:
+                "linear-gradient(135deg, var(--accent), var(--accent-2) 55%, var(--brand-3))",
+            }}
+          >
+            <div className="rounded-t-[calc(1.5rem-1.5px)] sm:rounded-[calc(1.5rem-1.5px)] bg-[color:var(--background)] px-6 pt-7 pb-[max(1.75rem,env(safe-area-inset-bottom))] text-center">
+              <p className="text-lg font-extrabold leading-snug">
+                {t.finishedShowTitle(title)}
+              </p>
+              <p className="text-sm text-muted mt-1.5">{t.finishedShowSub(aired)}</p>
+              <div className="flex gap-2.5 mt-6">
+                <Link
+                  href={href}
+                  className="flex-1 py-3 rounded-xl bg-accent text-[color:var(--on-accent)] text-sm font-bold hover:brightness-110 active:scale-[0.98] transition"
+                >
+                  {t.rateItBtn}
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => setCelebrate(false)}
+                  className="flex-1 py-3 rounded-xl border border-border bg-surface text-sm font-bold hover:bg-surface-2 active:scale-[0.98] transition"
+                >
+                  {t.closeBtn}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
