@@ -5,14 +5,12 @@ import {
   getUser,
   isFollowing,
   isMovieWatched,
-  getMovieProgress,
   getMyRating,
   getCommunityRating,
   getTitleReviews,
   getMyLists,
   getListsContaining,
 } from "@/lib/data";
-import { MovieProgress } from "@/components/MovieProgress";
 import { getMovie, getTrailer, getWatchProviders, backdropUrl, posterUrl } from "@/lib/tmdb";
 import { getT } from "@/lib/locale";
 import { RatingBox } from "@/components/RatingBox";
@@ -36,12 +34,11 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
 
   // بيانات TMDB وبيانات المستخدم تُطلب معاً: لا شيء منها يعتمد على الآخر،
   // وانتظار الأولى قبل الثانية كان يضيف رحلة كاملة إلى الخادم
-  const [movie, following, watched, mProgress, myRating, community, titleReviews, trailer, watchWhere, myLists, inLists] =
+  const [movie, following, watched, myRating, community, titleReviews, trailer, watchWhere, myLists, inLists] =
     await Promise.all([
       getMovie(movieId).catch(() => null),
       isFollowing(movieId, "movie"),
       isMovieWatched(movieId),
-      getMovieProgress(movieId),
       getMyRating(movieId, "movie"),
       getCommunityRating(movieId, "movie"),
       getTitleReviews(movieId, "movie"),
@@ -136,28 +133,10 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
         />
       </div>
 
+      {/* تبويب «تتبّع» حُذف من الأفلام: الفيلم إمّا شوهد أو لم يُشاهَد،
+          ودائرة ✓ في الترويسة تقول ذلك وتقلبه — لا يحتاج تبويباً كاملاً */}
       <DetailTabs
         tabs={[
-          {
-            key: "track",
-            label: t.tabTrack,
-            icon: "check",
-            content: (
-              /* التقييم في تبويب التعليقات والقوائم في زرّ الترويسة — لا تكرار.
-                 والمفتاح على حالة المشاهدة: تأشيرها من الأعلى يعيد بناء
-                 المتتبّع بالحالة الجديدة بعد تحديث الخادم. */
-              <MovieProgress
-                key={`w${watched ? 1 : 0}`}
-                movieTmdbId={movieId}
-                runtime={movie.runtime}
-                title={movie.title}
-                posterPath={movie.poster_path}
-                initialPosition={mProgress?.position_minutes ?? 0}
-                watched={watched}
-                locale={locale}
-              />
-            ),
-          },
           {
             key: "info",
             label: t.tabInfo,
