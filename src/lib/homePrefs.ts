@@ -6,6 +6,7 @@ export const HOME_SECTIONS = [
   "week",
   "towatch",
   "upcoming",
+  "recap",
   "shows",
   "movies",
   "trending",
