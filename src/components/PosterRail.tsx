@@ -53,8 +53,10 @@ export function PosterRail({
       {subtitle && <p className="text-xs text-muted mb-3">{subtitle}</p>}
       {!subtitle && <div className="mb-3" />}
 
-      {/* الهوامش السالبة تجعل الصفّ يلامس حافة الشاشة فيبدو أنه يكمل خلفها */}
-      <div className="-mx-4 px-4 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      {/* الهوامش السالبة تجعل الصفّ يلامس حافة الشاشة فيبدو أنه يكمل خلفها.
+          overscroll-x-contain: التمرير الزائد على iOS كان يفعّل «رجوع»
+          المتصفح خطأً؛ وsnap يجعل التوقّف على حدود البطاقات */}
+      <div className="-mx-4 px-4 overflow-x-auto overscroll-x-contain snap-x snap-proximity [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <div className="flex gap-3 w-max pb-1">{children}</div>
       </div>
     </section>
@@ -63,5 +65,11 @@ export function PosterRail({
 
 /** عنصر داخل الصفّ — عرض ثابت حتى لا تتمدّد البطاقات */
 export function RailItem({ children, wide = false }: { children: React.ReactNode; wide?: boolean }) {
-  return <div className={`shrink-0 ${wide ? "w-[268px] sm:w-[320px]" : "w-[118px] sm:w-[138px]"}`}>{children}</div>;
+  return (
+    <div
+      className={`shrink-0 snap-start ${wide ? "w-[268px] sm:w-[320px]" : "w-[118px] sm:w-[138px]"}`}
+    >
+      {children}
+    </div>
+  );
 }

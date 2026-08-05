@@ -46,6 +46,54 @@ export function ProfileCardSkeleton() {
   );
 }
 
+/** صفٌّ أفقي بنفس مقاس RailItem الحقيقي (118px) — لا إعادة تخطيط عند الوصول */
+export function RailSkeleton({ count = 6 }: { count?: number }) {
+  return (
+    <section aria-hidden>
+      <div className="flex items-center gap-2 mb-3">
+        <div className="skeleton w-[22px] h-[22px] rounded-lg" />
+        <div className="skeleton h-5 w-36 rounded" />
+      </div>
+      <div className="flex gap-3 overflow-hidden -mx-4 px-4">
+        {Array.from({ length: count }, (_, i) => (
+          <div key={i} className="w-[118px] shrink-0">
+            <div className="skeleton aspect-[2/3] rounded-[18px] border border-border" />
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/** ترويسة الرئيسية: غلافٌ عريض وصفّ أرقام — بنفس ارتفاع ProfileHeader */
+export function HomeHeaderSkeleton() {
+  return (
+    <section aria-hidden>
+      <div className="skeleton -mx-4 -mt-6 h-[14.2rem] sm:h-[18.2rem]" />
+      <div className="grid grid-cols-3 gap-2 mt-4">
+        {Array.from({ length: 3 }, (_, i) => (
+          <div key={i} className="skeleton h-14 rounded-xl" />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/** صفحة قوائم/سجلّ عامة: عنوان وصفوف — لليوميات والقوائم والتقييمات والإعدادات */
+export function ListPageSkeleton({ rows = 6 }: { rows?: number }) {
+  return (
+    <div aria-hidden>
+      <div className="skeleton h-8 w-44 rounded" />
+      <div className="skeleton h-3 w-64 max-w-full rounded mt-2 mb-6" />
+      <div className="space-y-3">
+        {Array.from({ length: rows }, (_, i) => (
+          <div key={i} className="skeleton h-16 rounded-2xl border border-border" />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function NextUpSkeleton() {
   return (
     <div aria-hidden className="skeleton h-28 sm:h-32 rounded-2xl border border-border" />

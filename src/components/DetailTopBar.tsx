@@ -34,8 +34,9 @@ export function DetailTopBar({ title, locale }: { title: string; locale: Locale 
     } catch {}
   }
 
+  // ٤٤ بكسلاً — الحدّ الأدنى المريح لهدف لمسٍ في زاوية الشاشة
   const btn =
-    "w-10 h-10 rounded-full bg-black/35 backdrop-blur-md border border-white/15 " +
+    "w-11 h-11 rounded-full bg-black/35 backdrop-blur-md border border-white/15 " +
     "grid place-items-center text-white/90 active:scale-95 transition";
 
   return (
@@ -49,7 +50,7 @@ export function DetailTopBar({ title, locale }: { title: string; locale: Locale 
       </button>
 
       {toast && (
-        <div className="fixed bottom-24 inset-x-0 z-50 flex justify-center pointer-events-none">
+        <div className="fixed bottom-[calc(6rem+env(safe-area-inset-bottom))] inset-x-0 z-50 flex justify-center pointer-events-none">
           <span className="sheet-pop bg-[color:var(--elevated)] border border-white/10 text-sm px-4 py-2.5 rounded-full shadow-xl">
             {t.linkCopied} ✓
           </span>

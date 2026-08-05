@@ -7,6 +7,7 @@ import { NavLinks } from "./NavLinks";
 import { NavAvatar } from "./NavAvatar";
 import { LogoWordmark } from "./Logo";
 import { LangFlagMenu } from "./LangFlagMenu";
+import { ThemeCookieSync } from "./ThemeCookieSync";
 
 export async function Navbar() {
   const { locale, t } = await getT();
@@ -30,6 +31,8 @@ export async function Navbar() {
 
   return (
     <header className="sticky top-0 z-30 border-b border-border bg-[color:var(--background)]/80 backdrop-blur">
+      {/* يهاجر ثيم الحساب إلى الكوكي مرة واحدة — ثم لا يفعل شيئاً */}
+      {profile?.theme && <ThemeCookieSync theme={profile.theme} />}
       <div className="max-w-6xl mx-auto px-4 h-16 flex items-center gap-2 sm:gap-3">
         <Link href="/" className="shrink-0" aria-label={t.brand}>
           <LogoWordmark size={28} gradientId="nav-logo" className="[&>span:last-child]:hidden sm:[&>span:last-child]:inline" />

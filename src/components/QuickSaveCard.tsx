@@ -50,8 +50,10 @@ export function QuickSaveCard({
     });
   }
 
+  // هدف اللمس ٤٤ بكسلاً والدائرة المرئية ٣٦ — الغلاف شفاف يوسّع الإصابة
+  const wrap = "absolute top-0.5 end-0.5 z-10 grid place-items-center w-11 h-11";
   const base =
-    "absolute top-2 end-2 z-10 grid place-items-center w-9 h-9 rounded-full backdrop-blur-md transition-all duration-200";
+    "grid place-items-center w-9 h-9 rounded-full backdrop-blur-md transition-all duration-200";
 
   return (
     <div className="relative">
@@ -59,11 +61,8 @@ export function QuickSaveCard({
 
       {state === "watched" ? (
         /* شفته: مؤشّر لا زرّ — المعلومة هي الفائدة */
-        <span
-          className={`${base} bg-black/45 border border-white/20`}
-          title={t.watchedBadge}
-          aria-label={t.watchedBadge}
-        >
+        <span className={wrap} title={t.watchedBadge} aria-label={t.watchedBadge}>
+          <span className={`${base} bg-black/45 border border-white/20`}>
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden>
             <path
               d="m5 12.5 4.5 4.5L19 7.5"
@@ -73,6 +72,7 @@ export function QuickSaveCard({
               strokeLinejoin="round"
             />
           </svg>
+          </span>
         </span>
       ) : (
         <button
@@ -81,12 +81,15 @@ export function QuickSaveCard({
           disabled={state === "saved"}
           aria-label={state === "saved" ? t.libToWatch : t.follow}
           title={state === "saved" ? t.libToWatch : t.follow}
-          className={`${base} active:scale-90 ${
-            state === "saved"
-              ? "bg-black/55 border border-transparent scale-105"
-              : "bg-black/45 border border-white/25 hover:bg-black/60"
-          }`}
+          className={`${wrap} active:scale-90`}
         >
+          <span
+            className={`${base} ${
+              state === "saved"
+                ? "bg-black/55 border border-transparent scale-105"
+                : "bg-black/45 border border-white/25 hover:bg-black/60"
+            }`}
+          >
           <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden>
             <path
               d="M6.5 4.5h11v15l-5.5-4-5.5 4v-15Z"
@@ -96,6 +99,7 @@ export function QuickSaveCard({
               strokeLinejoin="round"
             />
           </svg>
+          </span>
         </button>
       )}
     </div>

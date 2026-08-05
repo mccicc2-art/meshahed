@@ -28,20 +28,39 @@ export function DetailTabs({ tabs }: { tabs: DetailTab[] }) {
   return (
     <div className="mt-6">
       {/* شريط مقسّم واحد: خانات متساوية داخل كبسولة، والمختار حبّة بارزة —
-          أهدأ من ثلاثة أزرار متجاورة بحدود */}
-      <div className="sticky top-16 z-10 bg-[color:var(--background)] py-2">
+          أهدأ من ثلاثة أزرار متجاورة بحدود. والأسهم تنقل بين التبويبات
+          (مقلوبةً في RTL) كما يتوقّع مستخدم لوحة المفاتيح وقارئ الشاشة */}
+      <div className="sticky top-[var(--header-h)] z-10 bg-[color:var(--background)] py-2">
         <div
           role="tablist"
           className="grid gap-1 p-1 rounded-2xl bg-surface border border-border"
           style={{ gridTemplateColumns: `repeat(${available.length}, minmax(0, 1fr))` }}
+          onKeyDown={(e) => {
+            if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+            e.preventDefault();
+            const rtl = document.documentElement.dir === "rtl";
+            const fwd = e.key === (rtl ? "ArrowLeft" : "ArrowRight");
+            const idx = available.findIndex((x) => x.key === active);
+            const next =
+              available[(idx + (fwd ? 1 : -1) + available.length) % available.length];
+            setActive(next.key);
+            (
+              e.currentTarget.querySelector(
+                `#tab-${next.key}`,
+              ) as HTMLButtonElement | null
+            )?.focus();
+          }}
         >
           {available.map((tab) => {
             const on = tab.key === active;
             return (
               <button
                 key={tab.key}
+                id={`tab-${tab.key}`}
                 role="tab"
                 aria-selected={on}
+                aria-controls={`panel-${tab.key}`}
+                tabIndex={on ? 0 : -1}
                 onClick={() => setActive(tab.key)}
                 className={`flex items-center justify-center gap-1.5 px-2 py-2.5 rounded-[13px] text-[13px] font-bold transition-colors ${
                   on
@@ -60,7 +79,9 @@ export function DetailTabs({ tabs }: { tabs: DetailTab[] }) {
       {available.map((tab) => (
         <div
           key={tab.key}
+          id={`panel-${tab.key}`}
           role="tabpanel"
+          aria-labelledby={`tab-${tab.key}`}
           hidden={tab.key !== active}
           className={`pt-4 ${tab.key === active ? "tab-fade" : ""}`}
         >

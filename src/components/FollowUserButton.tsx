@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { followUser, unfollowUser } from "@/lib/actions";
 import { getDict, type Locale } from "@/lib/i18n";
+import { tap } from "@/lib/haptics";
 
 export function FollowUserButton({
   targetId,
@@ -23,6 +24,7 @@ export function FollowUserButton({
     <button
       disabled={pending}
       onClick={() => {
+        tap(10);
         const next = !on;
         setOn(next);
         start(async () => {

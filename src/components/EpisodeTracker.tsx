@@ -68,6 +68,14 @@ export function EpisodeTracker({
   const [watched, setWatched] = useState<Set<string>>(new Set(initialWatched));
   const [, start] = useTransition();
 
+  // وصلت لقطة خادمٍ جديدة (مثلاً بعد «شفته كله» من الترويسة)؟ تُعتمد هي —
+  // بلا إعادة تركيبٍ تُغلق الموسم المفتوح وتضيّع موضع التمرير
+  const [srvCount, setSrvCount] = useState(initialWatched.length);
+  if (initialWatched.length !== srvCount) {
+    setSrvCount(initialWatched.length);
+    setWatched(new Set(initialWatched));
+  }
+
   const [episodesBySeason, setEpisodesBySeason] = useState<Record<number, TrackerEpisode[]>>(
     initialSeason != null ? { [initialSeason]: initialEpisodes } : {},
   );
@@ -118,10 +126,13 @@ export function EpisodeTracker({
       for (const s of summaries) {
         if (s.season_number > season) break;
         const loaded = episodesBySeason[s.season_number];
+        // فهرسة الحلقات المحمّلة مرة واحدة بدل بحثٍ خطّي داخل حلقة —
+        // كانت O(n²) على مواسم الأنمي الطويلة
+        const byNum = loaded ? new Map(loaded.map((x) => [x.episode_number, x])) : null;
         const limit =
           s.season_number === season ? episode : Math.min(s.aired_count, s.episode_count);
         for (let e = 1; e <= limit; e++) {
-          const ep = loaded?.find((x) => x.episode_number === e);
+          const ep = byNum?.get(e);
           if (s.season_number === season && ep && !hasAired(ep.air_date)) continue;
           list.push({ season: s.season_number, episode: e, runtime: ep?.runtime ?? defaultRuntime });
         }
@@ -130,6 +141,10 @@ export function EpisodeTracker({
     },
     [summaries, episodesBySeason, defaultRuntime],
   );
+
+  // مواسم بمئات الحلقات لا تُرسم دفعة واحدة: ١٥٠ صفاً ثم زرّ للبقية
+  const CHUNK = 150;
+  const [shownAll, setShownAll] = useState<Set<number>>(new Set());
 
   function toggleOne(season: number, ep: TrackerEpisode) {
     const key = episodeKey(season, ep.episode_number);
@@ -316,7 +331,10 @@ export function EpisodeTracker({
                     </ul>
                   ) : (
                     <ul className="divide-y divide-[color:var(--divider)] border-t border-border">
-                      {episodes.map((e) => {
+                      {(shownAll.has(s.season_number)
+                        ? episodes
+                        : episodes.slice(0, CHUNK)
+                      ).map((e) => {
                         const key = episodeKey(s.season_number, e.episode_number);
                         const isWatched = watched.has(key);
                         const epAired = hasAired(e.air_date);
@@ -399,6 +417,18 @@ export function EpisodeTracker({
                           </li>
                         );
                       })}
+                      {!shownAll.has(s.season_number) && episodes.length > CHUNK && (
+                        <li>
+                          <button
+                            onClick={() =>
+                              setShownAll((prev) => new Set(prev).add(s.season_number))
+                            }
+                            className="w-full py-3 text-[13px] font-bold text-accent hover:bg-white/[0.04] transition"
+                          >
+                            {t.showRestEps(episodes.length - CHUNK)}
+                          </button>
+                        </li>
+                      )}
                     </ul>
                   )}
                 </div>

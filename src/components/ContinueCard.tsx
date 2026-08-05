@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { posterUrl, backdropUrl } from "@/lib/media";
 import { saveRating } from "@/lib/actions";
 import { runOrQueue } from "@/lib/offline";
+import { coalescedRefresh } from "@/lib/refresh";
 import { getDict, type Locale } from "@/lib/i18n";
 import { Icon } from "./Icon";
 
@@ -159,8 +160,9 @@ export function ContinueCard({
           runtime: runtime ?? null,
           watched: true,
         });
-        // تجديدٌ هادئ في الخلفية يصحّح حدود المواسم وصورة المشهد
-        setTimeout(() => router.refresh(), finishedAll ? 0 : 900);
+        // تجديدٌ هادئ مُجمَّع: تأشيراتٌ متتالية = تجديدٌ واحد لا أربعة
+        if (finishedAll) router.refresh();
+        else coalescedRefresh(router, 900);
       } catch {
         setBump((b) => Math.max(0, b - 1));
         setEp(cur);
@@ -291,7 +293,7 @@ export function ContinueCard({
 
       {/* توست التراجع: الخطأ يُصلح حيث وقع، خلال خمس ثوانٍ */}
       {toast && (
-        <div className="fixed inset-x-4 bottom-24 z-50 flex justify-center pointer-events-none">
+        <div className="fixed inset-x-4 bottom-[calc(6rem+env(safe-area-inset-bottom))] z-50 flex justify-center pointer-events-none">
           <div className="sheet-pop pointer-events-auto flex items-center gap-3 rounded-full border border-border bg-[color:var(--elevated,#1A1A1A)] px-4 py-2.5 shadow-2xl">
             <span className="text-[13px] font-semibold">
               <span dir="ltr">
@@ -394,7 +396,7 @@ export function ContinueCard({
       )}
 
       {err && (
-        <div className="fixed inset-x-4 bottom-24 z-50 flex justify-center pointer-events-none">
+        <div className="fixed inset-x-4 bottom-[calc(6rem+env(safe-area-inset-bottom))] z-50 flex justify-center pointer-events-none">
           <div className="sheet-pop flex items-center rounded-full border border-red-400/30 bg-red-500/15 px-4 py-2.5 shadow-2xl">
             <span className="text-[13px] text-red-300">{t.errSave}✗</span>
           </div>

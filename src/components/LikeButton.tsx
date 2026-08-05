@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { toggleReviewLike } from "@/lib/actions";
 import { getDict, type Locale } from "@/lib/i18n";
+import { tap } from "@/lib/haptics";
 import { Icon } from "./Icon";
 
 /**
@@ -48,6 +49,7 @@ export function LikeButton({
 
   function toggle() {
     if (pending) return;
+    tap(8);
     const was = liked;
     setLiked(!was);
     setCount((c) => c + (was ? -1 : 1));

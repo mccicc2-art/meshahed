@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { saveRating, deleteRating } from "@/lib/actions";
 import { getDict, type Locale } from "@/lib/i18n";
 import type { MediaType } from "@/lib/media";
+import { tap } from "@/lib/haptics";
 
 export function RatingBox({
   tmdbId,
@@ -32,7 +32,6 @@ export function RatingBox({
   variant?: "stars" | "review";
 }) {
   const t = getDict(locale);
-  const router = useRouter();
   const [rating, setRating] = useState(initialRating ?? 0);
   const [hover, setHover] = useState(0);
   const [review, setReview] = useState(initialReview ?? "");
@@ -42,33 +41,40 @@ export function RatingBox({
 
   const shown = hover || rating;
 
+  // الحفظ تفاؤلي كبقية الأفعال: «تم» يظهر فوراً ويتراجع إن فشلت الكتابة —
+  // كان التقييم الفعل الرئيسي الوحيد الذي ينتظر الخادم ثم يجدّد الصفحة كلها
   function save() {
     if (rating < 1) {
       setError(t.ratePickFirst);
       return;
     }
+    tap(10);
     setError(null);
+    setSaved(true);
     start(async () => {
       try {
         await saveRating({ tmdbId, mediaType, rating, review, title, posterPath });
-        setSaved(true);
-        router.refresh();
       } catch (e) {
+        setSaved(false);
         setError((e as Error).message);
       }
     });
   }
 
   function remove() {
+    tap(10);
     setError(null);
+    const prev = { rating, review, saved };
+    setRating(0);
+    setReview("");
+    setSaved(false);
     start(async () => {
       try {
         await deleteRating({ tmdbId, mediaType });
-        setRating(0);
-        setReview("");
-        setSaved(false);
-        router.refresh();
       } catch (e) {
+        setRating(prev.rating);
+        setReview(prev.review);
+        setSaved(prev.saved);
         setError((e as Error).message);
       }
     });
