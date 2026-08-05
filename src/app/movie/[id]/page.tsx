@@ -14,7 +14,6 @@ import {
 } from "@/lib/data";
 import { MovieProgress } from "@/components/MovieProgress";
 import { getMovie, getTrailer, getWatchProviders, backdropUrl, posterUrl } from "@/lib/tmdb";
-import { FollowButton } from "@/components/FollowButton";
 import { getT } from "@/lib/locale";
 import { RatingBox } from "@/components/RatingBox";
 import { CommunityReviews } from "@/components/CommunityReviews";
@@ -22,7 +21,9 @@ import { DetailTabs } from "@/components/DetailTabs";
 import { SectionTitle } from "@/components/Icon";
 import { Trailer } from "@/components/Trailer";
 import { WhereToWatch } from "@/components/WhereToWatch";
-import { ListPicker } from "@/components/ListPicker";
+import { TitleActions } from "@/components/TitleActions";
+import { DetailTopBar } from "@/components/DetailTopBar";
+import { ReadMore } from "@/components/ReadMore";
 
 export default async function MoviePage({ params }: { params: Promise<{ id: string }> }) {
   const user = await getUser();
@@ -79,49 +80,60 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
     <div>
       {/* الترويسة: الملصق والعنوان والأزرار فقط — القصة والترايلر والآراء
           انتقلت إلى تبويبات، فالصفحة تبدأ من شاشة واحدة لا من عمود طويل */}
-      <div className="relative -mx-4 -mt-6 h-40 sm:h-64 mb-4">
+      <div className="relative -mx-4 -mt-6 h-44 sm:h-72 mb-4">
         {backdrop && (
-          <Image src={backdrop} alt="" fill priority className="object-cover opacity-40" />
+          <Image src={backdrop} alt="" fill priority className="object-cover opacity-45" />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-[color:var(--background)] via-[color:var(--background)]/40 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[color:var(--background)] via-[color:var(--background)]/35 to-transparent" />
+        <DetailTopBar title={movie.title} locale={locale} />
       </div>
 
-      <div className="flex gap-4 -mt-20 sm:-mt-24 relative px-1">
-        <div className="w-24 sm:w-40 shrink-0">
-          <div className="relative aspect-[2/3] rounded-xl overflow-hidden border border-border bg-surface-2 shadow-xl">
+      <div className="flex gap-4 -mt-24 sm:-mt-28 relative px-1">
+        <div className="w-28 sm:w-40 shrink-0">
+          <div className="relative aspect-[2/3] rounded-2xl overflow-hidden ring-1 ring-white/10 bg-surface-2 shadow-[0_18px_44px_rgba(0,0,0,0.55)]">
             {poster && <Image src={poster} alt={movie.title} fill sizes="160px" className="object-cover" />}
           </div>
         </div>
 
         <div className="flex-1 min-w-0 self-end pb-1">
-          <h1 className="text-lg sm:text-2xl font-bold leading-tight">{movie.title}</h1>
-          <div className="flex flex-wrap items-center gap-x-2 text-xs sm:text-sm text-muted mt-1">
+          <h1 className="text-xl sm:text-3xl font-extrabold leading-tight tracking-tight">
+            {movie.title}
+          </h1>
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs sm:text-sm text-muted mt-1.5">
             {movie.release_date && <span>{movie.release_date.slice(0, 4)}</span>}
             {movie.runtime ? (
               <>
-                <span>·</span>
+                <span aria-hidden>·</span>
                 <span>{t.minutesCount(movie.runtime)}</span>
               </>
             ) : null}
             {movie.vote_average > 0 && (
               <>
-                <span>·</span>
-                <span className="text-accent">★ {movie.vote_average.toFixed(1)}</span>
+                <span aria-hidden>·</span>
+                <span className="text-accent font-semibold tabular-nums">
+                  ★ {movie.vote_average.toFixed(1)}
+                </span>
               </>
             )}
           </div>
-
-          <div className="mt-3">
-            <FollowButton
-              tmdbId={movieId}
-              mediaType="movie"
-              title={movie.title}
-              posterPath={movie.poster_path}
-              initialFollowing={following}
-              locale={locale}
-            />
-          </div>
         </div>
+      </div>
+
+      {/* الإجراء الرئيسي: أضف لقائمة + دائرة «شاهدتُه» — نفس لغة صفحة المسلسل */}
+      <div className="mt-5 px-1">
+        <TitleActions
+          tmdbId={movieId}
+          mediaType="movie"
+          title={movie.title}
+          posterPath={movie.poster_path}
+          locale={locale}
+          initialFollowing={following}
+          lists={myLists.map((l) => ({ id: l.id, name: l.name }))}
+          containing={inLists}
+          episodesTotal={null}
+          runtime={movie.runtime ?? null}
+          initialDone={watched}
+        />
       </div>
 
       <DetailTabs
@@ -131,35 +143,19 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
             label: t.tabTrack,
             icon: "check",
             content: (
-              <div className="space-y-4">
-                <MovieProgress
-                  movieTmdbId={movieId}
-                  runtime={movie.runtime}
-                  title={movie.title}
-                  posterPath={movie.poster_path}
-                  initialPosition={mProgress?.position_minutes ?? 0}
-                  watched={watched}
-                  locale={locale}
-                />
-                <RatingBox
-                  tmdbId={movieId}
-                  mediaType="movie"
-                  title={movie.title}
-                  posterPath={movie.poster_path}
-                  locale={locale}
-                  initialRating={myRating?.rating ?? null}
-                  initialReview={myRating?.review ?? null}
-                />
-                <ListPicker
-                  lists={myLists.map((l) => ({ id: l.id, name: l.name }))}
-                  containing={inLists}
-                  tmdbId={movieId}
-                  mediaType="movie"
-                  title={movie.title}
-                  posterPath={movie.poster_path}
-                  locale={locale}
-                />
-              </div>
+              /* التقييم في تبويب التعليقات والقوائم في زرّ الترويسة — لا تكرار.
+                 والمفتاح على حالة المشاهدة: تأشيرها من الأعلى يعيد بناء
+                 المتتبّع بالحالة الجديدة بعد تحديث الخادم. */
+              <MovieProgress
+                key={`w${watched ? 1 : 0}`}
+                movieTmdbId={movieId}
+                runtime={movie.runtime}
+                title={movie.title}
+                posterPath={movie.poster_path}
+                initialPosition={mProgress?.position_minutes ?? 0}
+                watched={watched}
+                locale={locale}
+              />
             ),
           },
           {
@@ -167,13 +163,13 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
             label: t.tabInfo,
             icon: "info",
             content: (
-              <div className="space-y-6">
+              <div className="space-y-7">
                 {movie.overview && (
                   <section>
-                    <SectionTitle icon="info" className="mb-2">
+                    <SectionTitle icon="info" className="mb-2.5">
                       {t.storyTitle}
                     </SectionTitle>
-                    <p className="text-sm text-muted leading-relaxed">{movie.overview}</p>
+                    <ReadMore text={movie.overview} locale={locale} />
                   </section>
                 )}
 
@@ -182,7 +178,7 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
                     {movie.genres.map((g) => (
                       <span
                         key={g.id}
-                        className="text-xs bg-surface-2 border border-border px-2.5 py-1 rounded-full"
+                        className="text-xs font-medium bg-white/[0.06] border border-white/10 px-3 py-1.5 rounded-full"
                       >
                         {g.name}
                       </span>
