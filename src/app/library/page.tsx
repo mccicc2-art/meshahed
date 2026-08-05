@@ -33,9 +33,16 @@ export default async function LibraryPage({
   ]);
   const follows = await localizeFollows(followRows, locale);
 
-  // عدد المشاهَد لكل مسلسل من قراءةٍ واحدة
+  // عدد المشاهَد لكل مسلسل من قراءةٍ واحدة — والإعادة تُحسب من لحظة بدئها
+  const rewatchSince = new Map<number, string>();
+  for (const f of follows) {
+    if (f.media_type === "tv" && f.rewatch_started_at)
+      rewatchSince.set(f.tmdb_id, f.rewatch_started_at);
+  }
   const watchedByShow = new Map<number, number>();
   for (const w of watchedEpisodes) {
+    const since = rewatchSince.get(w.show_tmdb_id);
+    if (since && w.watched_at < since) continue;
     watchedByShow.set(w.show_tmdb_id, (watchedByShow.get(w.show_tmdb_id) ?? 0) + 1);
   }
 
@@ -52,6 +59,7 @@ export default async function LibraryPage({
       const progress = aired > 0 ? Math.round((watched / aired) * 100) : 0;
       const dropped = !!f.dropped;
       if (!dropped && aired > watched) remainingEps += aired - watched;
+      const rewatching = (f.rewatch_count ?? 0) > 0;
       return {
         key: `tv-${f.tmdb_id}`,
         tmdbId: f.tmdb_id,
@@ -60,13 +68,16 @@ export default async function LibraryPage({
         title: f.title,
         posterPath: f.poster_path,
         progress,
+        completed: done,
         badge: dropped
           ? t.droppedBadge
-          : watched === 0
-            ? t.notStartedBadge
-            : done
-              ? t.watchedBadge
-              : undefined,
+          : rewatching && !done
+            ? t.rewatchBadge((f.rewatch_count ?? 0) + 1)
+            : watched === 0
+              ? t.notStartedBadge
+              : done
+                ? t.watchedBadge
+                : undefined,
         badgeTone: (dropped ? "dropped" : done ? "watched" : "neutral") as GridItem["badgeTone"],
         count: !dropped && watched > 0 && aired > watched ? aired - watched : undefined,
         dropped,
