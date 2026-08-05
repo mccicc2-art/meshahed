@@ -42,11 +42,16 @@
   --brand-2: #ec4899;
   --brand-3: #f59e0b;
 
-  /* ألوانٌ دلاليّة لا تتبدّل مع الثيم: الحالة والتوثيق معانٍ ثابتة، ولو
-     تبدّلت بتبدّل لوحة الألوان لتغيّر معناها. `themeCss` لا يكتب هذه،
-     فتنفذ من هنا إلى كل ثيم. */
+  /* أسطحٌ مشتقّة من اللوحة — `themeCss` يكتبها لكل ثيم، وهذه قيم أول
+     رسمٍ قبل حقن الثيم. كانت ثابتةً هنا وحدها، فيرث الثيمُ الفاتح سطحاً
+     أسود لكل ورقةٍ منبثقة وزرَّ فعلٍ أبيض يختفي على صفحةٍ بيضاء. */
   --elevated: #1a1a1a;
   --divider: rgba(255, 255, 255, 0.08);
+  --surface-inverse: #ffffff;
+  --on-surface-inverse: #111111;
+
+  /* ألوانٌ دلاليّة لا تتبدّل مع الثيم: الحالة والتوثيق معانٍ ثابتة، ولو
+     تبدّلت بتبدّل لوحة الألوان لتغيّر معناها. */
   --disabled: #707070;
   --verified: #facc15;
   --success: #22c55e;
@@ -55,6 +60,21 @@
 
   /* ارتفاع الترويسة العلوية — كل ما يلتصق تحتها يشتقّ منه فلا ينفكّان */
   --header-h: 4rem;
+
+  /* تدرّج الهوية — تعريفٌ واحد بدل ست نسخ تجري باتجاهاتٍ متعاكسة وتخلط
+     ألوان العلامة بألوان الثيم. الأفقيّ لأشرطة التقدّم والعناوين. */
+  --gradient-brand: linear-gradient(135deg, var(--brand-1), var(--brand-2) 55%, var(--brand-3));
+  --gradient-brand-x: linear-gradient(90deg, var(--brand-1), var(--brand-2) 55%, var(--brand-3));
+}
+
+/* سُلَّم الحواف — ثلاث درجات لا ثلاث عشرة قيمة مرتجلة: البطاقة والحقل
+   والورقة المنبثقة. الهياكل العظمية تستعمل نفس التوكن فلا يقفز الشكل
+   عند وصول المحتوى. (`rounded-card` و`rounded-control` و`rounded-sheet`) */
+@theme {
+  --radius-card: 1rem;
+  --radius-control: 0.75rem;
+  --radius-sheet: 1.5rem;
+  --radius-poster: 18px;
 }
 
 @theme inline {
@@ -70,6 +90,8 @@
   --color-on-accent-2: var(--on-accent-2);
   --color-elevated: var(--elevated);
   --color-divider: var(--divider);
+  --color-surface-inverse: var(--surface-inverse);
+  --color-on-surface-inverse: var(--on-surface-inverse);
   --color-disabled: var(--disabled);
   --color-verified: var(--verified);
   --color-success: var(--success);

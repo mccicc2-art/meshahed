@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Logo } from "@/components/Logo";
 import { useEffect } from "react";
 import { useUiLocale } from "@/lib/useUiLocale";
+import { buttonClass } from "@/components/ui/Button";
 
 export default function Error({
   error,
@@ -30,7 +31,7 @@ export default function Error({
       <div className="flex items-center justify-center gap-3 mt-6 flex-wrap">
         <button
           onClick={() => unstable_retry()}
-          className="px-5 py-2.5 rounded-xl bg-accent text-[color:var(--on-accent)] font-semibold text-sm hover:brightness-110 transition"
+          className={buttonClass()}
         >
           {t.errorRetry}
         </button>

@@ -829,7 +829,7 @@ export default async function HomePage() {
             <div key="recap">
               <div className="flex items-center justify-between gap-3 mb-3">
                 <h2 className="flex items-center gap-2 text-lg font-bold">
-                  <Icon name="book" size={19} style={{ color: "var(--accent)" }} />
+                  <Icon name="book" size={20} style={{ color: "var(--accent)" }} />
                   {t.recapTitle}
                 </h2>
                 <Link

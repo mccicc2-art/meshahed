@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getT } from "@/lib/locale";
 import { Icon } from "@/components/Icon";
+import { buttonClass } from "@/components/ui/Button";
 
 export default async function NotFound() {
   const { t } = await getT();
@@ -16,7 +17,7 @@ export default async function NotFound() {
       <div className="flex items-center justify-center gap-3 mt-6 flex-wrap">
         <Link
           href="/"
-          className="px-5 py-2.5 rounded-xl bg-accent text-[color:var(--on-accent)] font-semibold text-sm hover:brightness-110 transition"
+          className={buttonClass()}
         >
           {t.errorHome}
         </Link>
