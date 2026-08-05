@@ -5,6 +5,7 @@ import { getUser, getMyRatings } from "@/lib/data";
 import { getT } from "@/lib/locale";
 import { posterUrl } from "@/lib/media";
 import { Icon } from "@/components/Icon";
+import { chipClass } from "@/components/ui/controls";
 
 /**
  * تقييماتي وتعليقاتي.
@@ -51,11 +52,7 @@ export default async function RatingsPage({
           <Link
             key={c.key}
             href={c.href}
-            className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition ${
-              c.on
-                ? "bg-accent text-[color:var(--on-accent)] border-accent"
-                : "bg-surface text-muted border-border hover:text-foreground hover:border-accent/50"
-            }`}
+            className={chipClass(c.on, "sm")}
           >
             {c.label} <span className="opacity-70 tabular-nums"><span dir="ltr">{c.count}</span></span>
           </Link>
