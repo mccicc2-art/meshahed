@@ -259,9 +259,9 @@ export function ContinueCard({
           {/* شريط التقدّم على حافّة البطاقة نفسها — يزحف مع التأشير المتفائل */}
           <span className="absolute inset-x-0 bottom-0 h-1 bg-[color:var(--divider)]">
             <span
-              className="block h-full transition-[width] duration-500"
+              className="block h-full w-full origin-left rtl:origin-right transition-transform duration-500"
               style={{
-                width: `${pct}%`,
+                transform: `scaleX(${pct / 100})`,
                 background:
                   "linear-gradient(90deg, var(--brand-3) 0%, var(--accent-2) 55%, var(--accent) 100%)",
               }}

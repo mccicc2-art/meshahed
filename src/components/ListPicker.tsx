@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { flashError } from "@/lib/flash";
+import { coalescedRefresh } from "@/lib/refresh";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toggleInList } from "@/lib/actions";
@@ -49,7 +50,7 @@ export function ListPicker({
     start(async () => {
       try {
         await toggleInList({ listId, tmdbId, mediaType, title, posterPath, add });
-        router.refresh();
+        coalescedRefresh(router);
       } catch (e) {
         flashError((e as Error).message);
         // فشل الحفظ: نرجّع العلامة لحالتها الحقيقية بدل إيهام المستخدم

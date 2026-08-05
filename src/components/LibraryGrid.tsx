@@ -2,15 +2,12 @@
 
 import { useMemo, useRef, useState, useTransition } from "react";
 import { flashError } from "@/lib/flash";
+import { runOrQueue } from "@/lib/offline";
+import { tap } from "@/lib/haptics";
+import { coalescedRefresh } from "@/lib/refresh";
 import { useRouter } from "next/navigation";
 import { getDict, type Locale } from "@/lib/i18n";
-import {
-  markNextEpisode,
-  markShowWatched,
-  setDropped,
-  startRewatch,
-  toggleMovieWatched,
-} from "@/lib/actions";
+import { startRewatch } from "@/lib/actions";
 import { PosterCard } from "./PosterCard";
 import { Icon } from "./Icon";
 
@@ -178,7 +175,9 @@ export function LibraryGrid({
       {items.length === 0 ? (
         <p className="text-center text-muted py-16">{t.libraryEmpty}</p>
       ) : (
-        <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
+        /* content-visibility: مكتبة من ٣٠٠ عمل كانت ٣٠٠ بطاقة مركّبة تُنسَّق
+           كلها عند أول تمرير — الآن ما خرج عن الشاشة يُتخطّى رسمُه */
+        <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4 [&>*]:[content-visibility:auto] [&>*]:[contain-intrinsic-size:auto_240px]">
           {items.map((x) => (
             <LongPressable key={x.key} onLongPress={() => setSheet(x)}>
               <PosterCard
@@ -201,7 +200,7 @@ export function LibraryGrid({
           item={sheet}
           t={t}
           onClose={() => setSheet(null)}
-          onDone={() => router.refresh()}
+          onDone={() => coalescedRefresh(router)}
         />
       )}
     </div>
@@ -242,11 +241,7 @@ function LongPressable({
         timer.current = setTimeout(() => {
           fired.current = true;
           // اهتزازة خفيفة تؤكّد أن الضغطة «مسكت» — حيث يدعمها الجهاز
-          try {
-            navigator.vibrate?.(12);
-          } catch {
-            /* لا شيء */
-          }
+          tap(12);
           onLongPress();
         }, 450);
       }}
@@ -289,17 +284,21 @@ function QuickActions({
   const [pending, start] = useTransition();
   const [msg, setMsg] = useState<string | null>(null);
 
-  function run(fn: () => Promise<string | null>) {
+  /**
+   * تفاؤلي بالكامل: العلامة تظهر في نفس اللحظة واللوح يُغلق، والخادم
+   * يلحق في الخلفية — كانت هذه الواجهة الوحيدة التي تُبقي المستخدم
+   * يحدّق في زرٍّ معتم ٤٠٠–١٢٠٠ مللي ثانية، وهي أميز تفاعلٍ في التطبيق.
+   * الفشل يظهر توستاً، والتجديد المُجمَّع يصحّح أي تفاؤلٍ كاذب.
+   */
+  function run(label: string, fn: () => Promise<unknown>) {
+    setMsg(label);
+    onDone();
+    setTimeout(onClose, 650);
     start(async () => {
       try {
-        const label = await fn();
-        setMsg(label ?? "✓");
-        onDone();
-        setTimeout(onClose, 900);
+        await fn();
       } catch (e) {
         flashError((e as Error).message);
-        setMsg("✗");
-        setTimeout(onClose, 900);
       }
     });
   }
@@ -332,10 +331,7 @@ function QuickActions({
             type="button"
             disabled={pending}
             onClick={() =>
-              run(async () => {
-                await setDropped(item.tmdbId!, item.mediaType!, false);
-                return "✓";
-              })
+              run("✓", () => runOrQueue("setDropped", item.tmdbId!, item.mediaType!, false))
             }
             className={btn}
           >
@@ -349,10 +345,7 @@ function QuickActions({
                 type="button"
                 disabled={pending}
                 onClick={() =>
-                  run(async () => {
-                    const r = await markNextEpisode(item.tmdbId!);
-                    return r ? t.markedEp(r.season, r.episode) : t.watchedBadge;
-                  })
+                  run("+1 ✓", () => runOrQueue("markNextEpisode", item.tmdbId!))
                 }
                 className={btn}
               >
@@ -367,10 +360,7 @@ function QuickActions({
                 type="button"
                 disabled={pending}
                 onClick={() =>
-                  run(async () => {
-                    await startRewatch(item.tmdbId!);
-                    return "🔁 ✓";
-                  })
+                  run("🔁 ✓", () => startRewatch(item.tmdbId!))
                 }
                 className={btn}
               >
@@ -385,16 +375,15 @@ function QuickActions({
               type="button"
               disabled={pending}
               onClick={() =>
-                run(async () => {
-                  if (isTv) await markShowWatched(item.tmdbId!);
-                  else
-                    await toggleMovieWatched({
-                      movieTmdbId: item.tmdbId!,
-                      runtime: null,
-                      watched: true,
-                    });
-                  return "🏁 ✓";
-                })
+                run("🏁 ✓", () =>
+                  isTv
+                    ? runOrQueue("markShowWatched", item.tmdbId!)
+                    : runOrQueue("toggleMovieWatched", {
+                        movieTmdbId: item.tmdbId!,
+                        runtime: null,
+                        watched: true,
+                      }),
+                )
               }
               className={`${btn} border-t border-[color:var(--divider)]`}
             >
@@ -406,10 +395,7 @@ function QuickActions({
               type="button"
               disabled={pending}
               onClick={() =>
-                run(async () => {
-                  await setDropped(item.tmdbId!, item.mediaType!, true);
-                  return "✓";
-                })
+                run("✓", () => runOrQueue("setDropped", item.tmdbId!, item.mediaType!, true))
               }
               className={`${btn} border-t border-[color:var(--divider)]`}
             >

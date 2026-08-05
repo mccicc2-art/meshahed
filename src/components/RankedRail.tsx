@@ -38,7 +38,7 @@ export function RankedRail({
           كالمنطقة فوق «يعرض الآن في السينما». */}
       {note ? <p className="text-[11px] text-muted mb-3">{note}</p> : <div className="mb-3" />}
 
-      <div className="-mx-4 px-4 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="-mx-4 px-4 overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <div className="flex gap-3 w-max pb-1">
           {items.map((r, i) => {
             const img = posterUrl(r.poster_path, "w342");

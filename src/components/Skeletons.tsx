@@ -70,11 +70,11 @@ export function HomeHeaderSkeleton() {
   return (
     <section aria-hidden>
       <div className="skeleton -mx-4 -mt-[calc(1.5rem+env(safe-area-inset-top))] sm:mx-0 sm:mt-0 sm:rounded-3xl h-[14.2rem] sm:h-[18.2rem]" />
-      {/* كتلة الهوية الحقيقية تعتلي الغلاف بهذا القدر — الهيكل يطابقها
-          حتى لا يقفز صفّ الأرقام ~84px عند وصول المحتوى */}
-      <div className="relative -mt-[5.25rem] px-1">
-        <div className="skeleton w-24 h-24 rounded-full border-4 border-[color:var(--background)]" />
-        <div className="skeleton h-6 w-40 rounded mt-3" />
+      {/* كتلة الهوية الحقيقية تعتلي الغلاف بهذا القدر وبنفس التراصف —
+          صورة بجانب الاسم لا فوقه، وإلا قفز صفّ الأرقام عند وصول المحتوى */}
+      <div className="flex items-end gap-3 pe-16 -mt-[5.25rem] sm:-mt-[5.75rem] relative">
+        <div className="skeleton w-[86px] h-[86px] rounded-full shrink-0" />
+        <div className="skeleton h-6 w-40 rounded mb-2" />
       </div>
       <div className="grid grid-cols-3 gap-2 mt-4">
         {Array.from({ length: 3 }, (_, i) => (

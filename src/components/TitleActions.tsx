@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { flashError } from "@/lib/flash";
+import { coalescedRefresh } from "@/lib/refresh";
+import { tap } from "@/lib/haptics";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { follow, unfollow, toggleInList, markShowWatched, toggleMovieWatched } from "@/lib/actions";
@@ -58,12 +60,12 @@ export function TitleActions({
   function toggleFollow() {
     const was = following;
     setFollowing(!was);
-    if (navigator.vibrate) navigator.vibrate(10);
+    tap(10);
     start(async () => {
       try {
         if (was) await unfollow({ tmdbId, mediaType });
         else await follow({ tmdbId, mediaType, title, posterPath });
-        router.refresh();
+        coalescedRefresh(router);
       } catch (e) {
         flashError((e as Error).message);
         setFollowing(was);
@@ -82,7 +84,7 @@ export function TitleActions({
     start(async () => {
       try {
         await toggleInList({ listId, tmdbId, mediaType, title, posterPath, add });
-        router.refresh();
+        coalescedRefresh(router);
       } catch (e) {
         flashError((e as Error).message);
         setInLists((prev) => {
@@ -99,7 +101,7 @@ export function TitleActions({
   function confirmWatch(mark: boolean) {
     setSheet(null);
     setDone(mark);
-    if (navigator.vibrate) navigator.vibrate(mark ? [12, 40, 12] : 10);
+    tap(mark ? [12, 40, 12] : 10);
     start(async () => {
       try {
         if (mark && !following) {
@@ -111,7 +113,7 @@ export function TitleActions({
         } else {
           await toggleMovieWatched({ movieTmdbId: tmdbId, runtime, watched: mark });
         }
-        router.refresh();
+        coalescedRefresh(router);
       } catch (e) {
         flashError((e as Error).message);
         setDone(!mark);

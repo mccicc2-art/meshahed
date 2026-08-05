@@ -147,7 +147,7 @@ export function SettingsShell({
         <p className="hidden md:block text-[10px] uppercase tracking-wide text-muted px-2 mb-2">
           {t.settingsNavHeading}
         </p>
-        <ul className="flex md:flex-col gap-1.5 overflow-x-auto md:overflow-visible pb-1 md:pb-0 -mx-4 px-4 md:mx-0 md:px-0">
+        <ul className="flex md:flex-col gap-1.5 overflow-x-auto overscroll-x-contain md:overflow-visible pb-1 md:pb-0 -mx-4 px-4 md:mx-0 md:px-0">
           {nav.map((n) => {
             const on = n.key === active;
             return (

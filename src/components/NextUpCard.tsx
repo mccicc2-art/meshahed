@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { flashError } from "@/lib/flash";
+import { coalescedRefresh } from "@/lib/refresh";
 import { Logo } from "./Logo";
 import Image from "next/image";
 import { useState, useTransition } from "react";
@@ -42,7 +43,7 @@ export function NextUpCard({
     start(async () => {
       try {
         await runOrQueue("toggleEpisode", { showTmdbId, season, episode, runtime, watched: true });
-        router.refresh();
+        coalescedRefresh(router);
       } catch (e) {
         flashError((e as Error).message);
         setDone(false);

@@ -65,7 +65,7 @@ export function FilterBar({
       {groups.map((g) => (
         <div key={g.param} className="flex items-center gap-2">
           <span className="text-[11px] text-muted w-12 shrink-0">{g.label}</span>
-          <div className="-mx-1 px-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="-mx-1 px-1 overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <div className="flex gap-1.5 w-max">
               {g.options.map((o) => {
                 const active = valueOf(g) === o.value;

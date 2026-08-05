@@ -2,7 +2,7 @@
 
 /* eslint-disable @next/next/no-img-element */
 
-import { useCallback, useMemo, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { runOrQueue } from "@/lib/offline";
 import { tap } from "@/lib/haptics";
 import { episodeKey } from "@/lib/keys";
@@ -48,7 +48,7 @@ export function EpisodeTracker({
   showTmdbId,
   summaries,
   initialSeason,
-  initialEpisodes,
+  initialEpisodes = [],
   airedTotal,
   defaultRuntime,
   initialWatched,
@@ -58,7 +58,7 @@ export function EpisodeTracker({
   summaries: SeasonSummary[];
   /** الموسم الذي جاء محمّلاً مع الصفحة (فيه أول حلقة غير مشاهَدة) */
   initialSeason: number | null;
-  initialEpisodes: TrackerEpisode[];
+  initialEpisodes?: TrackerEpisode[];
   /** إجمالي الحلقات المعروضة — نفس الرقم المستخدم في الرئيسية والمكتبة */
   airedTotal: number;
   defaultRuntime: number | null;
@@ -78,7 +78,9 @@ export function EpisodeTracker({
   }
 
   const [episodesBySeason, setEpisodesBySeason] = useState<Record<number, TrackerEpisode[]>>(
-    initialSeason != null ? { [initialSeason]: initialEpisodes } : {},
+    initialSeason != null && initialEpisodes.length > 0
+      ? { [initialSeason]: initialEpisodes }
+      : {},
   );
   const [loading, setLoading] = useState<number | null>(null);
   const [open, setOpen] = useState<number | null>(initialSeason);
@@ -113,6 +115,17 @@ export function EpisodeTracker({
     },
     [episodesBySeason, showTmdbId],
   );
+
+  // الموسم المفتوح افتراضياً يُحمَّل من هنا لا من الخادم: الصفحة كانت
+  // تنتظر رحلة TMDB تسلسلية له قبل أول بايت — الآن الترويسة ترسم فوراً
+  // وهيكل الحلقات يظهر ريثما يصل الموسم
+  const bootRef = useRef(false);
+  useEffect(() => {
+    if (bootRef.current) return;
+    bootRef.current = true;
+    if (open != null && !episodesBySeason[open]) void loadSeason(open);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function toggleOpen(n: number) {
     if (open === n) {
@@ -270,9 +283,11 @@ export function EpisodeTracker({
           <span className="font-semibold text-accent-2">{progress}%</span>
         </div>
         <div className="h-1.5 rounded-full bg-surface-2 overflow-hidden">
+          {/* scaleX لا width: تحريك width يعيد التخطيط كل إطار — التحويل
+              يجري على المركّب. نقطة الأصل من جهة البداية في الاتجاهين */}
           <div
-            className="h-full rounded-full bg-accent-2 transition-[width] duration-500"
-            style={{ width: `${progress}%` }}
+            className="h-full w-full rounded-full bg-accent-2 origin-left rtl:origin-right transition-transform duration-500"
+            style={{ transform: `scaleX(${progress / 100})` }}
           />
         </div>
         <p className="text-xs text-muted mt-2">{t.cascadeHint}</p>
@@ -347,9 +362,9 @@ export function EpisodeTracker({
               {s.aired_count > 0 && (
                 <div className="h-[3px] bg-surface-2">
                   <div
-                    className="h-full bg-accent-2/80 transition-[width] duration-500"
+                    className="h-full w-full bg-accent-2/80 origin-left rtl:origin-right transition-transform duration-500"
                     style={{
-                      width: `${Math.min(100, Math.round((seasonWatched / s.aired_count) * 100))}%`,
+                      transform: `scaleX(${Math.min(1, seasonWatched / s.aired_count)})`,
                     }}
                   />
                 </div>

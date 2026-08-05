@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { coalescedRefresh } from "@/lib/refresh";
 import { useRouter } from "next/navigation";
 import { saveMovieProgress, toggleMovieWatched } from "@/lib/actions";
 import { getDict, type Locale } from "@/lib/i18n";
@@ -42,6 +43,14 @@ export function MovieProgress({
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // حالة «شاهدته» محلية تفاؤلية، ولقطة الخادم تُعتمد متى وصلت
+  const [srvDone, setSrvDone] = useState(watched);
+  const [done, setDone] = useState(watched);
+  if (srvDone !== watched) {
+    setSrvDone(watched);
+    setDone(watched);
+  }
+
   const pct = max ? Math.round((pos / max) * 100) : 0;
   const remaining = Math.max(0, max - pos);
 
@@ -57,7 +66,7 @@ export function MovieProgress({
           posterPath,
         });
         setSaved(true);
-        router.refresh();
+        coalescedRefresh(router);
       } catch (e) {
         setError((e as Error).message);
       }
@@ -68,11 +77,15 @@ export function MovieProgress({
    *  اثنان يؤدّيان العمل نفسه في شاشة واحدة. */
   function finish(next: boolean) {
     setError(null);
+    // تفاؤلي: البطاقة تنقلب فوراً كما ينقلب زرّ الترويسة في نفس الشاشة —
+    // كانت هذه تنتظر رحلة الخادم كاملة بينما جارتها فورية
+    setDone(next);
     start(async () => {
       try {
         await toggleMovieWatched({ movieTmdbId, runtime, watched: next });
-        router.refresh();
+        coalescedRefresh(router);
       } catch (e) {
+        setDone(!next);
         setError((e as Error).message);
       }
     });
@@ -80,7 +93,7 @@ export function MovieProgress({
 
   // بعد التأشير تبقى بطاقة صغيرة فيها التراجع — لولاها لاختفى الفيلم من
   // الصفحة بلا طريقة لإلغاء التأشير
-  if (watched) {
+  if (done) {
     return (
       <div className="bg-surface border border-border rounded-2xl p-4 flex items-center gap-3 max-w-xl">
         <span className="grid place-items-center w-9 h-9 rounded-full bg-accent-2 text-[color:var(--on-accent-2)] shrink-0">

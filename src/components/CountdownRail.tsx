@@ -41,7 +41,7 @@ export function CountdownRail({
         {title}
       </h2>
 
-      <div className="-mx-4 px-4 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="-mx-4 px-4 overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <div className="flex gap-3 w-max pb-1">
           {items.map((item) => {
             const days = daysUntil(item.date);

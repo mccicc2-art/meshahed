@@ -73,7 +73,7 @@ export function DiaryList({
       {/* شرائح الأشهر — الذاكرة تُتصفَّح بالزمن لا بالبحث */}
       {months.length > 1 && (
         <div className="sticky top-0 z-20 -mx-4 px-4 py-2 bg-[color:var(--background)]/90 backdrop-blur-md">
-          <div className="flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="flex gap-2 overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {months.map((m) => (
               <button
                 key={m.key}
