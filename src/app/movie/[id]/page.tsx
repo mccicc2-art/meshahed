@@ -18,7 +18,7 @@ import { CommunityReviews } from "@/components/CommunityReviews";
 import { DetailTabs } from "@/components/DetailTabs";
 import { SectionTitle } from "@/components/Icon";
 import { Trailer } from "@/components/Trailer";
-import { WhereToWatch } from "@/components/WhereToWatch";
+import { WatchChip } from "@/components/WatchChip";
 import { TitleActions } from "@/components/TitleActions";
 import { DetailTopBar } from "@/components/DetailTopBar";
 import { ReadMore } from "@/components/ReadMore";
@@ -113,6 +113,13 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
               </>
             )}
           </div>
+
+          {/* أين يُبثّ — في الترويسة، وقسم المنصّات في «معلومات» حُذف */}
+          {watchWhere && (
+            <div className="mt-2.5">
+              <WatchChip options={watchWhere.options} />
+            </div>
+          )}
         </div>
       </div>
 
@@ -170,14 +177,6 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
                     videoKey={trailer.key}
                     title={movie.title}
                     thumbnail={backdrop}
-                    locale={locale}
-                  />
-                )}
-
-                {watchWhere && (
-                  <WhereToWatch
-                    region={watchWhere.region}
-                    options={watchWhere.options}
                     locale={locale}
                   />
                 )}
