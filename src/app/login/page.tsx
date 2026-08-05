@@ -1,4 +1,3 @@
-import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { getUser } from "@/lib/data";
 import { getT } from "@/lib/locale";
@@ -23,6 +22,16 @@ export default async function LoginPage() {
 
   const configured =
     !!process.env.NEXT_PUBLIC_SUPABASE_URL && !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  // اثنا عشر ملصقاً رائجاً لصفّي الجدار — بصورٍ موجودة فقط
+  const trend = await trending().catch(() => [] as SearchResult[]);
+  const posters = trend
+    .filter((r) => r.poster_path)
+    .slice(0, 12)
+    .map((r) => posterUrl(r.poster_path, "w342"))
+    .filter((p): p is string => !!p);
+  const rowA = posters.slice(0, 6);
+  const rowB = posters.slice(6, 12);
 
   return (
     /* الصفحة كلها شاشةٌ واحدة لا تُمرَّر: مثبَّتة من أسفل الترويسة إلى أسفل
@@ -73,31 +82,6 @@ export default async function LoginPage() {
         </div>
       </div>
 
-      {/* الجدار زينةٌ خالصة فلا يحقّ له حجبُ البطل: كان طلب TMDB يؤخّر
-          رسم العنوان وزرّ الدخول على أهم شاشة انطباع — الآن خلف Suspense
-          يظهر متأخراً بلا أي هيكل، والبطل يرسم فوراً */}
-      <Suspense fallback={null}>
-        <PosterWall />
-      </Suspense>
-    </div>
-  );
-}
-
-/** جدار الرائج — يجلب ملصقاته بنفسه بعد رسم البطل */
-async function PosterWall() {
-  // اثنا عشر ملصقاً رائجاً لصفّي الجدار — بصورٍ موجودة فقط
-  const trend = await trending().catch(() => [] as SearchResult[]);
-  // w185 تكفي: الملصق يُعرض بأقل من ١١٠ بكسل — كانت w342 تُحمِّل ضعف اللازم
-  const posters = trend
-    .filter((r) => r.poster_path)
-    .slice(0, 12)
-    .map((r) => posterUrl(r.poster_path, "w185"))
-    .filter((p): p is string => !!p);
-  const rowA = posters.slice(0, 6);
-  const rowB = posters.slice(6, 12);
-
-  return (
-    <>
       {/* جدار الرائج: صفّان يزحفان باتجاهين متعاكسين بميلٍ خفيف.
           محبوسٌ في صندوقه: ارتفاع أقصى واقتصاصٌ صريح وبلا أي تكبير —
           فلا يزحف فوق زرّ الدخول مهما ضاقت الشاشة */}
@@ -124,8 +108,7 @@ async function PosterWall() {
                       <img
                         src={p}
                         alt=""
-                        loading={ri === 0 ? "eager" : "lazy"}
-                        fetchPriority={ri === 0 && i < 6 ? "high" : "auto"}
+                        loading="lazy"
                         className="w-full h-full object-cover"
                       />
                     </div>
@@ -150,6 +133,6 @@ async function PosterWall() {
           />
         </div>
       )}
-    </>
+    </div>
   );
 }
