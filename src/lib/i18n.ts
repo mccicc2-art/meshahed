@@ -235,6 +235,11 @@ const ar = {
   shortShows: "مسلسلات",
   markAllWatched: "شفته كله",
   dropTitle: "بطاقة حمراء — أوقفه",
+  markNextEp: "شفت الحلقة التالية +١",
+  markedEp: (s: number, e: number) => `تمّ تأشير S${s} E${e} ✓`,
+  librarySummary: (n: number, done: number, left: number) =>
+    `${n} عمل · ${done} أكملتها · ${left} حلقة متبقية`,
+  longPressHint: "اضغط مطوّلاً على أي بطاقة لإجراءات سريعة",
   droppedBadge: "موقوف",
   feedTitle: "آراء من تتابعهم",
   feedEmpty: "تابع أشخاصاً لتظهر آراؤهم هنا — الأكثر إعجاباً في الأعلى.",
@@ -762,6 +767,11 @@ const en: Dict = {
   shortShows: "Shows",
   markAllWatched: "Watched it all",
   dropTitle: "Red card — drop it",
+  markNextEp: "Watched the next episode +1",
+  markedEp: (s: number, e: number) => `Marked S${s} E${e} ✓`,
+  librarySummary: (n: number, done: number, left: number) =>
+    `${n} titles · ${done} finished · ${left} episodes left`,
+  longPressHint: "Long-press any card for quick actions",
   droppedBadge: "Dropped",
   feedTitle: "From people you follow",
   feedEmpty: "Follow people and their takes show up here — most liked first.",

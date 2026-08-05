@@ -714,3 +714,53 @@ export async function setDropped(tmdbId: number, mediaType: MediaType, dropped: 
   revalidatePath("/");
   revalidatePath("/library");
 }
+
+/**
+ * «+١»: تأشير الحلقة التالية غير المشاهَدة من ضغطةٍ مطوّلة في المكتبة.
+ *
+ * تجلب مواسم العمل من TMDB وقائمة ما شوهد من قاعدتنا، وتؤشّر أول حلقةٍ
+ * معروضة لم تُشاهد بعد — بلا فتح صفحة المسلسل. ترجع رقمها للواجهة،
+ * أو null إن لم يبقَ شيء.
+ */
+export async function markNextEpisode(
+  tmdbId: number,
+): Promise<{ season: number; episode: number } | null> {
+  const { supabase, user } = await requireUser();
+  const { getTv } = await import("@/lib/tmdb");
+  const { airedPerSeason } = await import("@/lib/progress");
+
+  const tv = await getTv(tmdbId);
+  const per = airedPerSeason(tv);
+
+  const { data: watched, error: readErr } = await supabase
+    .from("watched_episodes")
+    .select("season_number, episode_number")
+    .eq("user_id", user.id)
+    .eq("show_tmdb_id", tmdbId)
+    .limit(5000);
+  if (readErr) fail(readErr);
+
+  const seen = new Set((watched ?? []).map((w) => `${w.season_number}-${w.episode_number}`));
+
+  for (const [season, count] of per) {
+    for (let ep = 1; ep <= count; ep++) {
+      if (seen.has(`${season}-${ep}`)) continue;
+      const { error } = await supabase.from("watched_episodes").upsert(
+        {
+          user_id: user.id,
+          show_tmdb_id: tmdbId,
+          season_number: season,
+          episode_number: ep,
+          runtime: tv.episode_run_time?.[0] ?? null,
+        },
+        { onConflict: "user_id,show_tmdb_id,season_number,episode_number" },
+      );
+      if (error) fail(error);
+      revalidatePath("/");
+      revalidatePath("/library");
+      revalidatePath(`/show/${tmdbId}`);
+      return { season, episode: ep };
+    }
+  }
+  return null;
+}
