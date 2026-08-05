@@ -85,7 +85,6 @@ export function ProfileHeader({
   avatarUrl,
   coverUrl,
   level,
-  alerts,
   stats,
   followers,
   comments,
@@ -100,8 +99,6 @@ export function ProfileHeader({
   avatarUrl: string | null;
   coverUrl: string | null;
   level: LevelInfo;
-  /** عدد ما ينتظرك — نقطة على الجرس لا رقم */
-  alerts: number;
   stats: HeaderStat[];
   followers: number;
   comments: number;
@@ -154,9 +151,8 @@ export function ProfileHeader({
           <Logo size={30} gradientId="header-mark" />
         </span>
 
-        {/* أدوات الغلاف كبسولةٌ واحدة تنسدل: الجرس ظاهر دائماً — وهو
-            الوحيد الذي يحمل خبراً — والباقي تحته عند اللمس */}
-        <HeaderTools alerts={alerts} locale={locale} />
+        {/* أداة الغلاف الوحيدة: الإعدادات */}
+        <HeaderTools locale={locale} />
       </div>
 
       {/* ===== كتلة الهوية ===== */}
