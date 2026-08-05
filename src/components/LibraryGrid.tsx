@@ -63,9 +63,13 @@ export function LibraryGrid({
 
   return (
     <div>
-      {/* تبويبان بعرض الصفحة: كل زرّ نصف المساحة، فالإبهام لا يخطئه */}
-      <div className="grid grid-cols-2 gap-2 mb-5" role="tablist">
-        {tabs.map(({ id, icon, label, n }) => {
+      {/* تبويبان بلا إطار — على نمط صفّ أرقام الرئيسية: فاصلٌ رأسيّ رفيع
+          بينهما، وخطٌّ سفليّ بلون التمييز تحت المختار وحده */}
+      <div
+        className="grid grid-cols-2 mb-5 border-b border-[color:var(--divider)]"
+        role="tablist"
+      >
+        {tabs.map(({ id, icon, label, n }, i) => {
           const active = tab === id;
           return (
             <button
@@ -74,21 +78,37 @@ export function LibraryGrid({
               role="tab"
               aria-selected={active}
               onClick={() => setTab(id)}
-              className={`flex items-center justify-center gap-2 rounded-2xl px-3 py-3 text-sm font-semibold transition border ${
-                active
-                  ? "bg-accent text-[color:var(--on-accent)] border-accent"
-                  : "bg-surface text-muted border-border hover:text-foreground"
-              }`}
+              className="relative flex items-center justify-center gap-2 px-3 pt-1.5 pb-3 text-sm font-semibold transition"
             >
-              <Icon name={icon} size={17} />
-              {label}
+              <Icon
+                name={icon}
+                size={17}
+                className={`shrink-0 transition ${active ? "text-accent" : "text-muted"}`}
+              />
+              <span className={`transition ${active ? "text-foreground" : "text-muted"}`}>
+                {label}
+              </span>
               <span
-                className={`text-[11px] tabular-nums rounded-full px-1.5 py-0.5 ${
-                  active ? "bg-black/20" : "bg-surface-2"
+                className={`text-[11px] tabular-nums transition ${
+                  active ? "text-accent" : "text-muted"
                 }`}
+                dir="ltr"
               >
                 {n}
               </span>
+
+              {/* الفاصل الرأسي بين التبويبين */}
+              {i === 0 && (
+                <span className="absolute inset-y-1 end-0 w-px bg-white/10" aria-hidden />
+              )}
+
+              {/* مؤشّر الاختيار: خطّ يجلس على حدّ الصفّ السفلي */}
+              <span
+                aria-hidden
+                className={`absolute -bottom-px inset-x-8 h-[3px] rounded-full transition-all duration-200 ${
+                  active ? "bg-accent opacity-100" : "opacity-0"
+                }`}
+              />
             </button>
           );
         })}
@@ -122,7 +142,9 @@ export function LibraryGrid({
               aria-pressed={sort === id}
               onClick={() => setSort(id)}
               className={`px-2.5 py-2 rounded-lg text-[11px] font-semibold transition ${
-                sort === id ? "bg-surface-2 text-foreground" : "text-muted hover:text-foreground"
+                sort === id
+                  ? "bg-accent/15 text-accent"
+                  : "text-muted hover:text-foreground"
               }`}
             >
               {label}
