@@ -6,6 +6,7 @@ import { SearchBox } from "./SearchBox";
 import { NavLinks } from "./NavLinks";
 import { NavAvatar } from "./NavAvatar";
 import { LogoWordmark } from "./Logo";
+import { LangFlagMenu } from "./LangFlagMenu";
 
 export async function Navbar() {
   const { locale, t } = await getT();
@@ -13,15 +14,16 @@ export async function Navbar() {
   const profile = user ? await getProfile() : null;
   const displayName = profile?.nickname || user?.email?.split("@")[0] || "";
 
-  // زائرٌ غير مسجّل: اسمُ المنتج مكتوباً وحده — لا شعار ولا زرّ دخول،
-  // فالصفحة نفسها هي الدخول، والاسم أهدأ وأثقل حضوراً من أيقونة
+  // زائرٌ غير مسجّل: اسمُ المنتج وحده وعلمُ اللغة في الطرف — لا شعار
+  // ولا زرّ دخول، فالصفحة نفسها هي الدخول
   if (!user) {
     return (
       <header className="sticky top-0 z-30 bg-[color:var(--background)]/80 backdrop-blur">
-        <div className="max-w-6xl mx-auto px-5 h-16 flex items-center">
+        <div className="max-w-6xl mx-auto px-5 h-16 flex items-center justify-between">
           <span className="font-extrabold text-[22px] tracking-tight" dir="ltr">
             {t.brand}
           </span>
+          <LangFlagMenu locale={locale} />
         </div>
       </header>
     );
