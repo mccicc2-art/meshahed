@@ -310,7 +310,8 @@ export function ContinueCard({
           {/* الطراطيع: ٢٨ قصاصة بمواضع وسرعات محسوبة من رقمها — لا عشوائية تكسر الرسم */}
           <div className="fixed inset-0 overflow-hidden pointer-events-none" aria-hidden>
             {Array.from({ length: 28 }, (_, i) => {
-              const colors = ["#7C3AED", "#EC4899", "#F59E0B", "#22C55E", "#3B82F6"];
+              // ألوان الاحتفال من الهوية: أصفر العلامة ودرجاته وأبيض — لا قوس قزح
+                  const colors = ["#FFD200", "#FBBF24", "#F59E0B", "#FFFFFF", "#22C55E"];
               return (
                 <span
                   key={i}

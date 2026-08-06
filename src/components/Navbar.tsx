@@ -36,7 +36,9 @@ export async function Navbar() {
       {profile?.theme && <ThemeCookieSync theme={profile.theme} />}
       <div className="max-w-6xl mx-auto px-4 h-16 flex items-center gap-2 sm:gap-3">
         <Link href="/" className="shrink-0" aria-label={t.brand}>
-          <LogoWordmark size={28} gradientId="nav-logo" className="[&>span:last-child]:hidden sm:[&>span:last-child]:inline" />
+          {/* الكلمة تظهر كاملةً في كل المقاسات: كانت تُخفى على الجوال ويبقى
+              الرمز — والرمز سقط من الهوية فالكلمة هي الشعار */}
+          <LogoWordmark size={28} />
         </Link>
 
         {user && <NavLinks locale={locale} />}

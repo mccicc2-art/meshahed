@@ -161,7 +161,7 @@ export function ProfileHeader({
         <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-b from-transparent to-[color:var(--background)]" />
 
         <span className="absolute top-[calc(1rem+env(safe-area-inset-top))] start-4 drop-shadow-[0_2px_6px_rgba(0,0,0,0.6)]">
-          <Logo size={30} gradientId="header-mark" />
+          <Logo size={30} className="text-white" />
         </span>
 
         {/* أداة الغلاف الوحيدة: الإعدادات */}
