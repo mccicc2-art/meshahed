@@ -122,7 +122,7 @@ export function ProfileHeader({
       {/* ===== الغلاف =====
           الارتفاع ثابتٌ هنا عمداً — وهو ما يحجز المساحة قبل وصول الصورة
           فلا يقفز التخطيط عند تحميلها؛ لا حاجة لنسبة أبعادٍ فوقه. */}
-      <div className="relative h-[14.2rem] sm:h-[18.2rem] -mx-4 -mt-[calc(1.5rem+env(safe-area-inset-top))] sm:mx-0 sm:mt-0 sm:rounded-3xl overflow-hidden">
+      <div className="relative h-[calc(14.2rem+var(--safe-top))] sm:h-[18.2rem] -mx-4 -mt-[calc(1.5rem+var(--safe-top))] sm:mx-0 sm:mt-0 sm:rounded-3xl overflow-hidden">
         {coverUrl ? (
           <Image
             src={coverUrl}
@@ -158,10 +158,20 @@ export function ProfileHeader({
             و٤٠٪ في الأسفل حيث يقف النصّ. ثم تلاشٍ إلى لون الصفحة يذوّب
             الحافّة بدل أن يقطعها. */}
         <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/25 to-black/40" />
+        {/* مسحةُ شريط الحالة — على الجوال وحده: الغلاف يمتدّ تحت ساعة
+            النظام وبطاريته، وصورةٌ فاتحة كانت تُغرقهما. تظليلٌ يغطّي
+            ارتفاع الشريط وزيادةً يسيرة ثم يذوب، فتُقرأ الساعة على أي
+            صورة. قرارُ المالك بعد تثبيت التطبيق على الشاشة الرئيسية. */}
+        <div
+          className="absolute inset-x-0 top-0 sm:hidden bg-gradient-to-b from-black/60 via-black/30 to-transparent pointer-events-none"
+          style={{ height: "calc(var(--safe-top) + 3rem)" }}
+          aria-hidden
+        />
         <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-b from-transparent to-[color:var(--background)]" />
 
-        <span className="absolute top-[calc(1rem+env(safe-area-inset-top))] start-4 drop-shadow-[0_2px_6px_rgba(0,0,0,0.6)]">
-          <Logo size={30} className="text-white" />
+        {/* تحت شريط الحالة دائماً لا فوقه — و`--safe-top` يضمن ذلك مثبَّتاً */}
+        <span className="absolute top-[calc(0.9rem+var(--safe-top))] start-4 drop-shadow-[0_2px_6px_rgba(0,0,0,0.6)]">
+          <Logo size={24} className="text-white" />
         </span>
 
         {/* أداة الغلاف الوحيدة: الإعدادات */}
