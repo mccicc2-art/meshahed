@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { redirect } from "next/navigation";
 import {
   getUser,
@@ -879,12 +880,14 @@ export default async function HomePage() {
                         style={{ zIndex: 3 - i }}
                       >
                         {u && (
-                          /* eslint-disable-next-line @next/next/no-img-element */
-                          <img
+                          /* `next/image` لا وسمَ خام: الخام يطلب TMDB
+                             مباشرةً وكان لا يظهر عند المستخدم */
+                          <Image
                             src={u}
                             alt=""
-                            loading="lazy"
-                            className="w-full h-full object-cover"
+                            fill
+                            sizes="36px"
+                            className="object-cover"
                           />
                         )}
                       </span>
