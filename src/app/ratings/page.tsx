@@ -44,8 +44,8 @@ export default async function RatingsPage({
 
   return (
     <div>
-      <h1 className="text-xl font-bold mb-1">{t.ratingsTitle}</h1>
-      <p className="text-xs text-muted mb-4">{t.ratingsSub}</p>
+      {/* العنوان مخفيٌّ بصريًّا وباقٍ لقارئ الشاشة — أُزيلت الترويسة والوصف */}
+      <h1 className="sr-only">{t.ratingsTitle}</h1>
 
       <div className="flex gap-1.5 mb-4">
         {chips.map((c) => (
