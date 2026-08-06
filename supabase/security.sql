@@ -30,7 +30,11 @@ as
          then null else p.avatar_url end as avatar_url,
     p.cover_url,
     p.favorite_genres,
-    coalesce(p.hide_name, false) as hide_name
+    coalesce(p.hide_name, false) as hide_name,
+    -- تموضع الصورتين (٠–١٠٠ رأسياً) في الذيل عمداً: create or replace
+    -- لا يقبل عموداً جديداً في وسط عرضٍ قائم — أُضيفا في image_positions.sql
+    p.cover_pos,
+    p.avatar_pos
   from public.profiles p;
 
 revoke all on public.public_profiles from public, anon;
