@@ -53,6 +53,9 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "image.tmdb.org", pathname: "/t/p/**" },
       { protocol: "https", hostname: "lh3.googleusercontent.com" },
       { protocol: "https", hostname: "*.supabase.co", pathname: "/storage/v1/object/public/**" },
+      // أعلام اللغات — تُجلب على الخادم وتُقدَّم من نطاقنا، فلا يُوسَّع
+      // `img-src` في سياسة الأمان لنطاقٍ خارجيّ جديد
+      { protocol: "https", hostname: "flagcdn.com", pathname: "/**" },
     ],
   },
 
