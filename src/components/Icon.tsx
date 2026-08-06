@@ -31,6 +31,7 @@ export type IconName =
   | "info"
   | "comment"
   | "list"
+  | "grip"
   | "edit"
   | "share"
   | "download"
@@ -236,6 +237,8 @@ const PATHS: Record<IconName, React.ReactNode> = {
     </>
   ),
   list: <path d="M8 6.5h12M8 12h12M8 17.5h12M4 6.5h.01M4 12h.01M4 17.5h.01" />,
+  /* مقبض السحب — ثلاثة خطوطٍ متساوية، إشارة «اسحبني» المتعارف عليها */
+  grip: <path d="M5 8.5h14M5 12h14M5 15.5h14" />,
   edit: <path d="M4 20h4l10-10-4-4L4 16v4ZM14 6l4 4" />,
   search: (
     <>
