@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { getUser, getCommunityFeed, getFollowLists } from "@/lib/data";
 import { getT } from "@/lib/locale";
 import { formatDateShort } from "@/lib/when";
@@ -82,16 +83,36 @@ export default async function PeoplePage() {
                   key={`${a.person.id}-${a.media_type}-${a.tmdb_id}`}
                   className="py-4 first:pt-0"
                 >
-                  {/* صاحب الرأي وتقييمه، والعمل على الطرف المقابل: العنوان
-                      لا يستحقّ صفّاً كامل العرض بإطار، ومكانه إلى جانب
-                      الترويسة يجعل السطر الواحد يقول: مَن، وكم، وفي ماذا */}
-                  <div className="flex items-start justify-between gap-3">
-                    <PersonName
-                      person={a.person}
-                      t={t}
-                      size={34}
-                      sub={formatDateShort(a.updated_at, t)}
-                    />
+                  {/* عمودان لا ثلاثة صفوف: كلّ ما يخصّ الرأي — صاحبه ونصّه
+                      وإعجابه — في عمودٍ واحد يبدأ من أعلى، والعمل وتقييمه
+                      في عمودٍ مقابل. لو وُضع العمل في صفٍّ علويّ وحده لدفع
+                      ارتفاعُ صورته النصَّ إلى أسفل وتركَ فراغاً بعرض
+                      الشاشة إلى جانبه. */}
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0 flex-1">
+                      <PersonName
+                        person={a.person}
+                        t={t}
+                        size={34}
+                        sub={formatDateShort(a.updated_at, t)}
+                      />
+
+                      <p className="text-[15px] leading-relaxed whitespace-pre-line mt-3">
+                        {a.review}
+                      </p>
+
+                      <div className="mt-2">
+                        <LikeButton
+                          reviewUserId={a.person.id}
+                          tmdbId={a.tmdb_id}
+                          mediaType={a.media_type}
+                          likes={a.likes}
+                          likedByMe={a.likedByMe}
+                          isMine={false}
+                          locale={locale}
+                        />
+                      </div>
+                    </div>
 
                     <div className="flex items-center gap-3 shrink-0">
                       <Link
@@ -107,15 +128,17 @@ export default async function PeoplePage() {
                             {a.media_type === "tv" ? t.typeSeries : t.typeMovie}
                           </span>
                         </span>
-                        <span className="w-28 sm:w-40 shrink-0 aspect-video rounded-lg overflow-hidden bg-surface-2 block">
+                        {/* `next/image` لا وسمَ صورةٍ خام: بقيةُ صور التطبيق
+                            تمرّ به فتُقدَّم من نطاقنا نفسه بحجمٍ مناسب،
+                            وكان هذا الموضع وحده يطلب TMDB مباشرةً */}
+                        <span className="relative w-28 sm:w-40 shrink-0 aspect-video rounded-lg overflow-hidden bg-surface-2 block">
                           {art ? (
-                            /* eslint-disable-next-line @next/next/no-img-element */
-                            <img
+                            <Image
                               src={art}
                               alt=""
-                              loading="lazy"
-                              decoding="async"
-                              className="w-full h-full object-cover"
+                              fill
+                              sizes="(max-width: 640px) 112px, 160px"
+                              className="object-cover"
                             />
                           ) : (
                             <span
@@ -135,22 +158,6 @@ export default async function PeoplePage() {
                         ★ <span dir="ltr">{a.rating}/10</span>
                       </span>
                     </div>
-                  </div>
-
-                  <p className="text-[15px] leading-relaxed whitespace-pre-line mt-3">
-                    {a.review}
-                  </p>
-
-                  <div className="mt-2">
-                    <LikeButton
-                      reviewUserId={a.person.id}
-                      tmdbId={a.tmdb_id}
-                      mediaType={a.media_type}
-                      likes={a.likes}
-                      likedByMe={a.likedByMe}
-                      isMine={false}
-                      locale={locale}
-                    />
                   </div>
                 </article>
               );
