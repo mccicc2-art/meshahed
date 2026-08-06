@@ -1088,6 +1088,9 @@ export async function getWatchHistory(limit = 400): Promise<HistoryRow[]> {
 export interface UserList {
   id: string;
   name: string;
+  /** سطرٌ واحد يشرح غرض القائمة — ملكُ القائمة لا القارئ (lists3.sql) */
+  subtitle: string | null;
+  kind: ListKind;
   is_public: boolean;
   created_at: string;
   item_count: number;
@@ -1130,7 +1133,14 @@ export async function getMyLists(): Promise<UserList[]> {
  * لكل عملٍ في صفحةٍ بُنيت عمداً على ألّا تطلب TMDB إطلاقاً.
  */
 export async function getList(listId: string): Promise<{
-  list: { id: string; name: string; is_public: boolean; user_id: string; kind: ListKind };
+  list: {
+    id: string;
+    name: string;
+    subtitle: string | null;
+    is_public: boolean;
+    user_id: string;
+    kind: ListKind;
+  };
   items: ListItem[];
   ratings: Record<string, number>;
 } | null> {
@@ -1139,7 +1149,7 @@ export async function getList(listId: string): Promise<{
     const supabase = await createClient();
     const { data: list } = await supabase
       .from("user_lists")
-      .select("id, name, is_public, user_id, kind")
+      .select("id, name, subtitle, is_public, user_id, kind")
       .eq("id", listId)
       .maybeSingle();
     if (!list) return null;

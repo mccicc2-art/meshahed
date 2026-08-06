@@ -715,7 +715,17 @@ export async function applyOnboardingProgress(
 //  القوائم الشخصية
 // ============================================================
 
-export async function createList(name: string, isPublic = false): Promise<string | null> {
+/** وصفٌ قصير: سطرٌ واحد بلا أسطر جديدة، ١٢٠ حرفاً سقفاً في الكود وفي SQL */
+function subtitleOf(v: unknown): string | null {
+  const clean = String(v ?? "").replace(/\s+/g, " ").trim().slice(0, 120);
+  return clean || null;
+}
+
+export async function createList(
+  name: string,
+  isPublic = false,
+  subtitle?: string | null,
+): Promise<string | null> {
   const clean = String(name ?? "").trim().slice(0, 60);
   if (!clean) throw new Error("empty name");
   const { supabase, user } = await requireUser("list", 10, 60_000);
@@ -729,7 +739,7 @@ export async function createList(name: string, isPublic = false): Promise<string
 
   const { data, error } = await supabase
     .from("user_lists")
-    .insert({ user_id: user.id, name: clean, is_public: !!isPublic })
+    .insert({ user_id: user.id, name: clean, is_public: !!isPublic, subtitle: subtitleOf(subtitle) })
     .select("id")
     .single();
   if (error) fail(error);
@@ -738,7 +748,19 @@ export async function createList(name: string, isPublic = false): Promise<string
   return data?.id ?? null;
 }
 
-export async function renameList(listId: string, name: string, isPublic: boolean) {
+/**
+ * تعديل هويّة القائمة: الاسم والإعلان والوصف.
+ *
+ * `subtitle` غير مُمرَّرة تعني «لا تلمسه» لا «امحه»: زرّ معلنة/خاصة يستدعي
+ * هذه الدالّة بثلاث وسائط فقط، ولو كان الغياب محواً لضاع وصف القائمة مع كل
+ * تبديلٍ للإعلان. التمرير الصريح بسلسلةٍ فارغة هو المحو.
+ */
+export async function renameList(
+  listId: string,
+  name: string,
+  isPublic: boolean,
+  subtitle?: string | null,
+) {
   listId = uuid(listId);
   const clean = String(name ?? "").trim().slice(0, 60);
   if (!clean) throw new Error("empty name");
@@ -747,7 +769,12 @@ export async function renameList(listId: string, name: string, isPublic: boolean
   // تُفحص: تعديلٌ لم يصب شيئاً (قائمة ليست لك) يفشل بصوت لا بصمت
   const { data, error } = await supabase
     .from("user_lists")
-    .update({ name: clean, is_public: !!isPublic, updated_at: new Date().toISOString() })
+    .update({
+      name: clean,
+      is_public: !!isPublic,
+      ...(subtitle === undefined ? {} : { subtitle: subtitleOf(subtitle) }),
+      updated_at: new Date().toISOString(),
+    })
     .eq("id", listId)
     .eq("user_id", user.id)
     .select("id");
