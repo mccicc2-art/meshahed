@@ -8,15 +8,24 @@ import {
   topTenAnimeThisWeek,
   topTenGenreThisWeek,
   upcomingByGenre,
+  topByFilter,
+  upcomingByFilter,
   nowPlayingMovies,
   titleOf,
   yearOf,
   posterUrl,
   type SearchResult,
+  type DiscoverFilter,
 } from "@/lib/tmdb";
 import { getT } from "@/lib/locale";
 import { type Locale } from "@/lib/i18n";
-import { parseBrowse, browseKey, type BrowseQuery } from "@/lib/browse";
+import {
+  parseBrowse,
+  browseKey,
+  browseCount,
+  needsDiscover,
+  type BrowseQuery,
+} from "@/lib/browse";
 import { RankedRail } from "@/components/RankedRail";
 import { CountdownRail, type CountdownItem } from "@/components/CountdownRail";
 import { PosterRail, RailItem } from "@/components/PosterRail";
@@ -54,7 +63,14 @@ function dateOf(r: SearchResult) {
 export default async function NewsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ type?: string; g?: string; sort?: string }>;
+  searchParams: Promise<{
+    type?: string;
+    g?: string;
+    sort?: string;
+    lang?: string;
+    era?: string;
+    rate?: string;
+  }>;
 }) {
   const user = await getUser();
   if (!user) redirect("/login");
@@ -72,7 +88,10 @@ export default async function NewsPage({
         locale={locale}
         type={browse.type}
         genre={browse.genre?.slug ?? null}
-        active={browse.active}
+        lang={browse.lang?.code ?? null}
+        era={browse.era?.slug ?? null}
+        rate={browse.rate}
+        count={browseCount(browse)}
       />
 
       {/* المفتاح يتغيّر بتغيّر الفلتر: React يُظهر الهيكل فوراً بدل أن
@@ -97,9 +116,18 @@ export default async function NewsPage({
  * صفوف اكتشف — مقصورةً على الفلتر إن وُجد.
  *
  * الطلبات تُبنى على قدر الفلتر: جهة «أفلام» لا تطلب المسلسلات أصلاً،
- * والنوع الدرامي يحوّل كل صفٍّ إلى نظيره المُصفّى. وصفّ الأنمي وصفّ
- * «مقترح لك» يظهران في السكون وحده: الأول تصنيفٌ قائم بذاته لا يُقصّ
- * بنوعٍ درامي، والثاني بُني على ذوق المستخدم لا على اختياره اللحظي.
+ * والتصنيف يحوّل كل صفٍّ إلى نظيره المُصفّى. وصفّ الأنمي وصفّ «مقترح لك»
+ * يظهران في السكون وحده: الأول تصنيفٌ قائم بذاته لا يُقصّ بتصنيفٍ آخر،
+ * والثاني بُني على ذوق المستخدم لا على اختياره اللحظي.
+ *
+ * ومصدرُ الصفوف يتبدّل بحسب عمق الفلتر — وهذا جوهر التصميم هنا:
+ *  - **بلا لغةٍ ولا حقبةٍ ولا تقييم** يبقى المصدر `/trending` الأسبوعي: هو
+ *    الأصدق تحريرياً، يعرف ما يشاهده الناس هذا الأسبوع لا ما جمع أعلى
+ *    متوسّطٍ منذ ١٩٩٤.
+ *  - **مع أيٍّ منها** ننتقل إلى `/discover`: القوائم الجاهزة لا تقبل هذه
+ *    المعاملات أصلاً، وتصفيتُها عندنا تُخرج صفّاً من عملين لأن الرائج
+ *    عشرون عملاً لا أكثر. نخسر جِدّة الترتيب ونكسب أن يصل من طلب «تركي
+ *    ٢٠٢٠ فأعلى» إلى تركيٍّ ٢٠٢٠ فأعلى — وهو ما طلبه.
  */
 async function CuratedRails({
   locale,
@@ -110,50 +138,78 @@ async function CuratedRails({
   t: T;
   browse: BrowseQuery;
 }) {
-  const { type, genre, active } = browse;
+  const { type, genre, lang, era, rate, active } = browse;
   const wantMovies = type !== "tv";
   const wantSeries = type !== "movie";
+  const deep = needsDiscover(browse);
+
+  /* الفلتر بلا تصنيف — لكل جهةٍ معرّفاتها فيُضاف عند الطلب */
+  const base: DiscoverFilter = {
+    lang: lang?.code ?? null,
+    from: era?.from ?? null,
+    to: era?.to ?? null,
+    minRate: rate,
+  };
 
   const [topMovies, topSeries, topAnime, cinemas, soonMovies, soonSeries, suggested] =
     await Promise.all([
       wantMovies
-        ? genre
-          ? topTenGenreThisWeek("movie", genre.movie).catch(() => [] as SearchResult[])
-          : topTenThisWeek("movie").catch(() => [] as SearchResult[])
+        ? deep
+          ? topByFilter("movie", { ...base, genreIds: genre?.movie })
+          : genre
+            ? topTenGenreThisWeek("movie", genre.movie).catch(() => [] as SearchResult[])
+            : topTenThisWeek("movie").catch(() => [] as SearchResult[])
         : Promise.resolve([] as SearchResult[]),
       wantSeries
-        ? genre
-          ? topTenGenreThisWeek("tv", genre.tv).catch(() => [] as SearchResult[])
-          : topTenThisWeek("tv").catch(() => [] as SearchResult[])
+        ? deep
+          ? topByFilter("tv", { ...base, genreIds: genre?.tv })
+          : genre
+            ? topTenGenreThisWeek("tv", genre.tv).catch(() => [] as SearchResult[])
+            : topTenThisWeek("tv").catch(() => [] as SearchResult[])
         : Promise.resolve([] as SearchResult[]),
       !active && wantSeries
         ? topTenAnimeThisWeek().catch(() => [] as SearchResult[])
         : Promise.resolve([] as SearchResult[]),
       wantMovies ? nowPlayingMovies().catch(() => null) : Promise.resolve(null),
       wantMovies
-        ? genre
-          ? upcomingByGenre(genre.movie, "movie")
-          : upcomingMovies().catch(() => [] as SearchResult[])
+        ? deep
+          ? upcomingByFilter("movie", { ...base, genreIds: genre?.movie })
+          : genre
+            ? upcomingByGenre(genre.movie, "movie")
+            : upcomingMovies().catch(() => [] as SearchResult[])
         : Promise.resolve([] as SearchResult[]),
       wantSeries
-        ? genre
-          ? upcomingByGenre(genre.tv, "tv")
-          : airingTv().catch(() => [] as SearchResult[])
+        ? deep
+          ? upcomingByFilter("tv", { ...base, genreIds: genre?.tv })
+          : genre
+            ? upcomingByGenre(genre.tv, "tv")
+            : airingTv().catch(() => [] as SearchResult[])
         : Promise.resolve([] as SearchResult[]),
       !active ? getSuggestions(12).catch(() => []) : Promise.resolve([]),
     ]);
 
   const today = new Date().toISOString().slice(0, 10);
 
-  // «في السينما» لا يقبل نوعاً درامياً من TMDB، فيُصفّى هنا بمعرّفاته
+  /* «في السينما» لا يقبل من TMDB تصنيفاً ولا لغةً ولا تقييماً — يقبل
+     المنطقة وحدها. فيُصفّى هنا على النتائج نفسها: أرخص من طلبٍ ثانٍ،
+     والصفّ خمسة عشر عملاً لا أكثر. والحقبة تُطبَّق أيضاً وإن كانت تُفرغه
+     غالباً — من اختار التسعينات لا ينتظر أن يجدها في دور العرض اليوم،
+     وصفٌّ فارغ أصدق من صفٍّ يتجاهل ما اختاره. */
+  const fitsCinema = (r: SearchResult) => {
+    if (genre && !(r.genre_ids ?? []).some((id) => genre.movie.includes(id))) return false;
+    if (lang && r.original_language !== lang.code) return false;
+    if (rate && r.vote_average < rate) return false;
+    if (era) {
+      const d = dateOf(r);
+      if (d && era.from && d < era.from) return false;
+      if (d && era.to && d > era.to) return false;
+    }
+    return true;
+  };
+
   const inCinemas =
-    cinemas && genre
-      ? {
-          region: cinemas.region,
-          results: cinemas.results.filter((r) =>
-            (r.genre_ids ?? []).some((id) => genre.movie.includes(id)),
-          ),
-        }
+    cinemas && active
+      ? { region: cinemas.region, results: cinemas.results.filter(fitsCinema) }
       : cinemas;
 
   // القادم فقط في صفّ العدّ التنازلي — ما صدر أمس ليس «قادماً»
