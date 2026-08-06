@@ -22,17 +22,22 @@ export default async function ListPage({ params }: { params: Promise<{ id: strin
 
   return (
     <div>
+      {/* الرجوع إلى تبويب «القوائم» في المكتبة لا إلى المسار المنفصل:
+          هو المكان الذي جاء منه المستخدم فعلاً بعد نقل القوائم إليه (D-042) */}
       <Link
-        href="/lists"
-        className="inline-block text-xs text-muted hover:text-foreground transition mb-3"
+        href="/library?filter=list"
+        className="inline-flex items-center gap-1 text-xs text-muted hover:text-foreground transition mb-3 -ms-1 px-1 py-1"
       >
-        ‹ {t.listsTitle}
+        <span aria-hidden>‹</span>
+        {t.listsTitle}
       </Link>
       <ListDetail
         listId={data.list.id}
         name={data.list.name}
         isPublic={data.list.is_public}
+        kind={data.list.kind}
         items={data.items}
+        ratings={data.ratings}
         isOwner={data.list.user_id === user.id}
         locale={locale}
       />
