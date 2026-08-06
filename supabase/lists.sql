@@ -65,10 +65,17 @@ create policy "read public list items" on public.user_list_items
 
 -- ---------- عدّاد العناصر ----------
 -- استعلام واحد يرجّع القوائم مع أعدادها، بدل استعلام لكل قائمة
-create or replace function public.my_lists()
+-- ملاحظة: تعريف هذه الدالّة يُحدَّث في `lists3.sql` (أُضيف الوصف والنوع).
+-- النسخة هنا هي النسخة الحالية نفسها كي يُنتج التشغيل النظيف الشيءَ ذاته،
+-- و`drop` قبلها لأن تغيّر أعمدة الإرجاع يمنع `create or replace`.
+drop function if exists public.my_lists();
+
+create function public.my_lists()
 returns table (
   id         uuid,
   name       text,
+  subtitle   text,
+  kind       text,
   is_public  boolean,
   created_at timestamptz,
   item_count integer,
@@ -83,6 +90,8 @@ as $$
   select
     l.id,
     l.name,
+    l.subtitle,
+    l.kind,
     l.is_public,
     l.created_at,
     (select count(*)::integer from public.user_list_items i where i.list_id = l.id),
