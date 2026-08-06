@@ -7,7 +7,11 @@
  * الآن عائلتان لا أكثر:
  *
  *  - **segmented**: خياراتٌ يستبعد بعضها بعضاً وعددها قليل ومعروف
- *    (تبويب، جهة محتوى، لغة). قرصٌ ممتلئ داخل مسارٍ محدود.
+ *    (تبويب، جهة محتوى، لغة). خطٌّ فاصلٌ رفيع أسفل الصفّ، وخطٌّ بلون
+ *    التمييز يجلس عليه تحت المختار وحده. اخترنا الخطّ السفليّ على القرص
+ *    الممتلئ لأنه أخفّ بصرياً ولا يزاحم المحتوى — قرارُ المالك بعد
+ *    مراجعة الشكل (يُنقض به اختيار القرص في تمريرة توحيد النظام، ويُحدَّث
+ *    D-016). القرصُ الممتلئ بقي للرقائق وحدها.
  *  - **chip**: فلترٌ من قائمةٍ مفتوحة قد تُمرَّر أفقياً (الأنواع، الفرز،
  *    شرائح المكتبة). حدٌّ رفيع يمتلئ بلون الهوية عند الاختيار.
  *
@@ -16,27 +20,27 @@
  * دون أن تُفرض دلالةٌ واحدة على الجميع.
  */
 
-/** مسار المقسّم — الأزرار تُوضع داخله مباشرةً */
+/** مسار المقسّم — صفٌّ يلامس محتواه فوق خطٍّ فاصلٍ سفليّ */
 export const segmentedTrack =
-  "inline-flex items-center gap-1 p-1 rounded-full bg-surface border border-border";
+  "inline-flex items-stretch border-b border-[color:var(--divider)]";
 
-/** مسارٌ يملأ العرض ويقسّمه بالتساوي — أبناؤه يأخذون `flex-1`.
-    لا يُبنى فوق `segmentedTrack`: ذاك `inline-flex`، وترتيب أصناف
-    Tailwind يجعل `inline-flex` يغلب `flex` مهما كان ترتيب النصّ. */
+/** مسارٌ يملأ العرض ويقسّمه بالتساوي — أبناؤه يأخذون `flex-1` */
 export const segmentedTrackFull =
-  "flex w-full items-center gap-1 p-1 rounded-full bg-surface border border-border";
+  "flex w-full items-stretch border-b border-[color:var(--divider)]";
 
 /**
- * قرص المقسّم.
+ * خانة المقسّم — نصٌّ شفّاف يعلوه خطُّ تمييزٍ سفليّ عند الاختيار.
+ *
+ * الخطّ عنصرٌ زائفٌ (`after`) يجلس على حدّ المسار السفليّ ويتوسّط الخانة
+ * بعرضٍ ثابت، فيبدو متّسقاً مهما اختلف عرض الخانات. متماثلٌ في RTL/LTR.
  *
  * `pad=false` لمن يحتاج حشواً خاصاً: تمرير `px-2` في `className` لا يكفي —
- * الغلبة في CSS لترتيب التوليد لا لترتيب النصّ، و`px-4` المكتوب هنا يهزم
- * `px-2` المكتوب هناك. فمن يريد حشوه يُلغي الحشو الأساسي أولاً.
+ * الغلبة في CSS لترتيب التوليد لا لترتيب النصّ. فمن يريد حشوه يمرّر `false`.
  */
 export function segmentedItem(active: boolean, className = "", pad = true) {
-  return `${pad ? "px-4 py-1.5 text-[13px] " : ""}rounded-full font-semibold transition whitespace-nowrap ${
+  return `${pad ? "px-4 pt-2 pb-3 text-[13px] " : ""}relative font-semibold whitespace-nowrap transition-colors ${
     active
-      ? "bg-accent text-[color:var(--on-accent)] shadow-lg shadow-accent/25"
+      ? "text-foreground after:pointer-events-none after:absolute after:-bottom-px after:left-1/2 after:h-[3px] after:w-7 after:-translate-x-1/2 after:rounded-full after:bg-accent"
       : "text-muted hover:text-foreground"
   }${className ? ` ${className}` : ""}`;
 }
