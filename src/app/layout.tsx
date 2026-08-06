@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import type { Metadata, Viewport } from "next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 import { Navbar } from "@/components/Navbar";
 import { BottomNav } from "@/components/BottomNav";
@@ -85,6 +86,10 @@ export default async function RootLayout({
         <OfflineSync />
         <ToastHost />
         <SwRegister />
+        {/* قياس Web Vitals من أجهزة المستخدمين الحقيقية — لا يرسم شيئاً،
+            ويرسل لنطاقنا نفسه (/_vercel/speed-insights) فلا يوسّع CSP.
+            به تُلتقط أي نكسة أداءٍ قادمة بالأرقام لا بالشكوى. */}
+        <SpeedInsights />
       </body>
     </html>
   );
