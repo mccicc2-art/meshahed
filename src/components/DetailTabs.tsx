@@ -28,13 +28,14 @@ export function DetailTabs({ tabs }: { tabs: DetailTab[] }) {
 
   return (
     <div className="mt-6">
-      {/* شريط مقسّم واحد: خانات متساوية داخل كبسولة، والمختار حبّة بارزة —
-          أهدأ من ثلاثة أزرار متجاورة بحدود. والأسهم تنقل بين التبويبات
-          (مقلوبةً في RTL) كما يتوقّع مستخدم لوحة المفاتيح وقارئ الشاشة */}
+      {/* شريط مقسّم واحد: خانات متساوية فوق خطٍّ فاصلٍ سفليّ، والمختار
+          عليه خطٌّ بلون التمييز — أخفّ من كبسولةٍ بحدّ. والأسهم تنقل بين
+          التبويبات (مقلوبةً في RTL) كما يتوقّع مستخدم لوحة المفاتيح وقارئ
+          الشاشة */}
       <div className="sticky top-[var(--header-h)] z-10 bg-[color:var(--background)] py-2">
         <div
           role="tablist"
-          className="grid gap-1 p-1 rounded-2xl bg-surface border border-border"
+          className="grid border-b border-[color:var(--divider)]"
           style={{ gridTemplateColumns: `repeat(${available.length}, minmax(0, 1fr))` }}
           onKeyDown={(e) => {
             if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
@@ -65,11 +66,15 @@ export function DetailTabs({ tabs }: { tabs: DetailTab[] }) {
                 onClick={() => setActive(tab.key)}
                 className={segmentedItem(
                   on,
-                  "flex items-center justify-center gap-1.5 px-2 py-2.5 text-[13px]",
+                  "flex items-center justify-center gap-1.5 px-2 pt-2 pb-3 text-[13px]",
                   false,
                 )}
               >
-                <Icon name={tab.icon} size={16} />
+                <Icon
+                  name={tab.icon}
+                  size={16}
+                  className={`transition-colors ${on ? "text-accent" : ""}`}
+                />
                 <span className="truncate">{tab.label}</span>
               </button>
             );
