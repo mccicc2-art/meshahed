@@ -72,7 +72,7 @@ export function PosterRail({
 export function RailItem({ children, wide = false }: { children: React.ReactNode; wide?: boolean }) {
   return (
     <div
-      className={`shrink-0 snap-start ${wide ? "w-[268px] sm:w-[320px]" : "w-[118px] sm:w-[138px]"}`}
+      className={`shrink-0 snap-start ${wide ? "w-[236px] sm:w-[280px]" : "w-[118px] sm:w-[138px]"}`}
     >
       {children}
     </div>

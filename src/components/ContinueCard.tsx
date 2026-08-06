@@ -221,7 +221,8 @@ export function ContinueCard({
     <div className="relative">
       <div className={`relative ${slideCls}`}>
       <Link href={href} prefetch={false} className="group block active:scale-[0.98] transition">
-        <div className="relative aspect-[16/10] rounded-poster overflow-hidden bg-surface border border-border">
+        {/* نسبة 7/5 بدل 16/10: العرض نقص ~١٢٪ (بطاقات أخفّ وأكثر ظهوراً) والارتفاع بقي مريحاً كما هو */}
+        <div className="relative aspect-[7/5] rounded-poster overflow-hidden bg-surface border border-border">
           {url ? (
             <Image
               src={url}
