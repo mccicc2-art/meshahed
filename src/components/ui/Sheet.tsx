@@ -30,7 +30,7 @@ const PANEL: Record<SheetVariant, string> = {
      فوقها وتختفي نتائجها خلفها؛ وأعلى الشاشة يبقى ظاهراً دائماً فالحقل
      ونتائجه فوق الإبهام لا تحته. و`svh` لا `vh`: الوحدة الصغيرة تقيس
      الشاشة بعد ظهور شريط المتصفّح ولوحة المفاتيح في iOS. */
-  top: "sheet-pop relative w-full sm:max-w-md max-h-[62svh] flex flex-col rounded-b-sheet sm:rounded-sheet border border-border bg-[color:var(--elevated)] shadow-2xl overflow-hidden",
+  top: "sheet-pop relative w-full sm:max-w-md max-h-[62svh] flex flex-col rounded-sheet border border-border bg-[color:var(--elevated)] shadow-2xl overflow-hidden",
   center:
     "sheet-pop relative w-full max-w-[320px] rounded-sheet border border-border bg-[color:var(--elevated)] shadow-2xl overflow-hidden",
   bare: "relative",
@@ -38,7 +38,11 @@ const PANEL: Record<SheetVariant, string> = {
 
 const WRAP: Record<SheetVariant, string> = {
   bottom: "fixed inset-0 z-50 flex items-end sm:items-center justify-center",
-  top: "fixed inset-0 z-50 flex items-start justify-center pt-[env(safe-area-inset-top)] sm:pt-10",
+  /* فجوةٌ فوق الورقة العلوية لا التصاقٌ بالحافّة: في متصفّح الجوال يقع
+     شريط العنوان فوق أعلى نقطة من الصفحة مباشرةً، و`safe-area-inset-top`
+     يساوي صفراً هناك — فيجلس زرّ الإغلاق في شريطٍ يبتلع اللمسة، ويبدو
+     الزرّ معطّلاً. الفجوة تُنزل الورقة إلى حيث تصل الإصبع. */
+  top: "fixed inset-0 z-50 flex items-start justify-center pt-[calc(env(safe-area-inset-top)+0.75rem)] px-2 sm:px-0 sm:pt-10",
   center: "fixed inset-0 z-50 flex items-center justify-center px-8",
   bare: "fixed inset-0 z-50 flex items-center justify-center px-8",
 };
