@@ -178,7 +178,16 @@ function SearchSheet({ t, onClose }: { t: Dict; onClose: () => void }) {
   }
 
   return (
-    <Sheet open onClose={onClose} closeLabel={t.closeLabel} labelledBy="people-search-title">
+    /* ورقةٌ علوية لا سفلية: لوحة المفاتيح تدفع الورقة السفلية فوقها
+       فيبقى الحقل ظاهراً ويختفي المقترحون خلفها — يكتب المستخدم على غير
+       هدى. أعلى الشاشة يبقى مرئياً مهما ارتفعت اللوحة */
+    <Sheet
+      open
+      variant="top"
+      onClose={onClose}
+      closeLabel={t.closeLabel}
+      labelledBy="people-search-title"
+    >
       <SheetHeader
         id="people-search-title"
         title={t.peopleAdd}

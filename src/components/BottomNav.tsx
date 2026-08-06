@@ -30,8 +30,9 @@ const TABS: {
   { href: "/", key: "home", icon: "home" },
   { href: "/library", key: "library", icon: "film" },
   { href: "/news", key: "news", icon: "compass" },
-  { href: "/search", key: "search", icon: "search" },
   { href: "/people", key: "people", icon: "people" },
+  /* البحث في الطرف: فعلٌ لا وجهةَ تصفّح، والأطراف أسهل ما تصله الإبهام */
+  { href: "/search", key: "search", icon: "search" },
 ];
 
 export function BottomNav({ locale }: { locale: Locale }) {
