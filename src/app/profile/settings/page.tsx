@@ -54,6 +54,8 @@ export default async function SettingsPage({
         username={profile?.username ?? ""}
         avatarUrl={profile?.avatar_url ?? null}
         coverUrl={profile?.cover_url ?? null}
+        coverPos={profile?.cover_pos ?? 30}
+        avatarPos={profile?.avatar_pos ?? 50}
         theme={profile?.theme ?? "amber"}
         genres={profile?.favorite_genres ?? []}
         hideName={!!profile?.hide_name}
