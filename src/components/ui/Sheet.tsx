@@ -12,19 +12,25 @@ import { Icon } from "../Icon";
  * ولا واحدة منها تقفل تمرير الصفحة خلفها أو تحصر التركيز داخلها — فمن
  * يتنقّل بلوحة المفاتيح كان يخرج بـTab إلى صفحةٍ لا يراها.
  *
- * ثلاثة أنواع لا أربعة تطبيقات: `bottom` لقوائم الأفعال (تلامس الإبهام على
- * الجوال وتتوسّط على الشاشة الواسعة)، و`center` لتأكيدٍ قصير، و`bare` لمن
- * يرسم لوحه بنفسه (بطاقة الاحتفال بحلقتها المتدرّجة) فيأخذ الحجاب
- * وإمكانية الوصول ويترك الشكل.
+ * أربعة أنواع لا أربعة تطبيقات: `bottom` لقوائم الأفعال (تلامس الإبهام على
+ * الجوال وتتوسّط على الشاشة الواسعة)، و`top` لِما يُكتب فيه، و`center`
+ * لتأكيدٍ قصير، و`bare` لمن يرسم لوحه بنفسه (بطاقة الاحتفال بحلقتها
+ * المتدرّجة) فيأخذ الحجاب وإمكانية الوصول ويترك الشكل.
  *
  * قفل التمرير على `<html>` لا على `<body>`: سفاري iOS يتجاهل الثاني.
  */
 
-export type SheetVariant = "bottom" | "center" | "bare";
+export type SheetVariant = "bottom" | "top" | "center" | "bare";
 
 const PANEL: Record<SheetVariant, string> = {
   bottom:
     "sheet-pop relative w-full sm:max-w-md max-h-[85vh] flex flex-col rounded-t-sheet sm:rounded-sheet border border-border bg-[color:var(--elevated)] shadow-2xl overflow-hidden pb-[env(safe-area-inset-bottom)]",
+  /* الورقة العلوية — لِما يُكتب فيه لا لِما يُضغط.
+     لوحة المفاتيح تأكل نصف الشاشة السفلي، فورقةٌ ملتصقة بالأسفل تُدفَع
+     فوقها وتختفي نتائجها خلفها؛ وأعلى الشاشة يبقى ظاهراً دائماً فالحقل
+     ونتائجه فوق الإبهام لا تحته. و`svh` لا `vh`: الوحدة الصغيرة تقيس
+     الشاشة بعد ظهور شريط المتصفّح ولوحة المفاتيح في iOS. */
+  top: "sheet-pop relative w-full sm:max-w-md max-h-[62svh] flex flex-col rounded-b-sheet sm:rounded-sheet border border-border bg-[color:var(--elevated)] shadow-2xl overflow-hidden",
   center:
     "sheet-pop relative w-full max-w-[320px] rounded-sheet border border-border bg-[color:var(--elevated)] shadow-2xl overflow-hidden",
   bare: "relative",
@@ -32,6 +38,7 @@ const PANEL: Record<SheetVariant, string> = {
 
 const WRAP: Record<SheetVariant, string> = {
   bottom: "fixed inset-0 z-50 flex items-end sm:items-center justify-center",
+  top: "fixed inset-0 z-50 flex items-start justify-center pt-[env(safe-area-inset-top)] sm:pt-10",
   center: "fixed inset-0 z-50 flex items-center justify-center px-8",
   bare: "fixed inset-0 z-50 flex items-center justify-center px-8",
 };
