@@ -74,9 +74,8 @@ export default async function NewsPage({
 
   return (
     <div className="space-y-8">
-      <header>
-        <h1 className="text-xl font-bold">{t.newsTitle}</h1>
-      </header>
+      {/* العنوان مخفيٌّ بصريًّا وباقٍ لقارئ الشاشة — أُزيلت الترويسة */}
+      <h1 className="sr-only">{t.newsTitle}</h1>
 
       <div className="space-y-4">
         {/* مدخل البحث — حقلٌ شكليّ يفتح صفحة البحث، على عادة تبويبات
