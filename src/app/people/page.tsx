@@ -114,50 +114,56 @@ export default async function PeoplePage() {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3 shrink-0">
-                      <Link
-                        href={`/${a.media_type === "tv" ? "show" : "movie"}/${a.tmdb_id}`}
-                        prefetch={false}
-                        className="flex items-center gap-2.5 group max-w-[18rem]"
-                      >
-                        <span className="min-w-0 text-end">
-                          <span className="block text-[13px] font-semibold truncate group-hover:text-accent transition">
-                            {a.title ?? "—"}
+                    {/* العمل بطاقةٌ واحدة لا ثلاثة عناصر متجاورة: صورةٌ
+                        فوق، واسمٌ تحتها، والنوع والتقييم سطراً هادئاً
+                        أسفلهما. كانت الصورة والاسم والتقييم ثلاث محطّاتٍ
+                        بصرية متساوية الصوت إلى جانب صاحب الرأي، فأربع
+                        بؤرٍ في صفٍّ واحد لا يعرف معها أين يبدأ. الرأي هو
+                        المحتوى، والعمل مرجعه — فليُقرأ مرجعاً. */}
+                    <Link
+                      href={`/${a.media_type === "tv" ? "show" : "movie"}/${a.tmdb_id}`}
+                      prefetch={false}
+                      className="shrink-0 w-28 sm:w-40 group"
+                    >
+                      {/* `next/image` لا وسمَ صورةٍ خام: بقيةُ صور التطبيق
+                          تمرّ به فتُقدَّم من نطاقنا نفسه بحجمٍ مناسب،
+                          وكان هذا الموضع وحده يطلب TMDB مباشرةً */}
+                      <span className="relative block w-full aspect-video rounded-lg overflow-hidden bg-surface-2">
+                        {art ? (
+                          <Image
+                            src={art}
+                            alt=""
+                            fill
+                            sizes="(max-width: 640px) 112px, 160px"
+                            className="object-cover"
+                          />
+                        ) : (
+                          <span
+                            className="w-full h-full grid place-items-center text-muted"
+                            aria-hidden
+                          >
+                            <Icon name="film" size={16} />
                           </span>
-                          <span className="block text-[11px] text-muted">
-                            {a.media_type === "tv" ? t.typeSeries : t.typeMovie}
-                          </span>
-                        </span>
-                        {/* `next/image` لا وسمَ صورةٍ خام: بقيةُ صور التطبيق
-                            تمرّ به فتُقدَّم من نطاقنا نفسه بحجمٍ مناسب،
-                            وكان هذا الموضع وحده يطلب TMDB مباشرةً */}
-                        <span className="relative w-28 sm:w-40 shrink-0 aspect-video rounded-lg overflow-hidden bg-surface-2 block">
-                          {art ? (
-                            <Image
-                              src={art}
-                              alt=""
-                              fill
-                              sizes="(max-width: 640px) 112px, 160px"
-                              className="object-cover"
-                            />
-                          ) : (
-                            <span
-                              className="w-full h-full grid place-items-center text-muted"
-                              aria-hidden
-                            >
-                              <Icon name="film" size={14} />
-                            </span>
-                          )}
-                        </span>
-                      </Link>
-
-                      <span
-                        className="text-sm font-bold text-accent tabular-nums"
-                        title={t.rateOutOf(a.rating)}
-                      >
-                        ★ <span dir="ltr">{a.rating}/10</span>
+                        )}
                       </span>
-                    </div>
+
+                      <span className="mt-1.5 block text-[13px] font-semibold leading-snug truncate group-hover:text-accent transition">
+                        {a.title ?? "—"}
+                      </span>
+
+                      <span className="mt-0.5 flex items-center gap-1.5 text-[11px] text-muted">
+                        <span className="truncate">
+                          {a.media_type === "tv" ? t.typeSeries : t.typeMovie}
+                        </span>
+                        <span aria-hidden>·</span>
+                        <span
+                          className="shrink-0 font-semibold text-accent tabular-nums"
+                          title={t.rateOutOf(a.rating)}
+                        >
+                          ★ <span dir="ltr">{a.rating}/10</span>
+                        </span>
+                      </span>
+                    </Link>
                   </div>
                 </article>
               );
