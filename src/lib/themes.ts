@@ -180,26 +180,30 @@ export const THEMES: Theme[] = [
   },
   {
     id: "daylight",
+    // النسخة النهارية من الهوية: رماديّاتٌ محايدة لا مزرقّة (الكتيّب بلا
+    // أزرق أصلاً)، والأصفر يُعتَّم إلى ذهبيٍّ داكن #8A6D00 لأن #FFD200
+    // على الأبيض لا يُقرأ نصّاً (تباين ~1.5 — والذهبي ~4.9). لون الهوية
+    // في النهار درجةٌ أعمق من نفسه، لا لونٌ آخر.
     ar: "النهاري (فاتح)",
     en: "Daylight (light)",
     vars: {
-      background: "#f4f6fb",
+      background: "#f5f5f3",
       surface: "#ffffff",
-      "surface-2": "#eaeef7",
-      foreground: "#131a29",
-      muted: "#5d6b85",
-      accent: "#f59e0b",
-      "accent-2": "#0ea371",
-      border: "#d9e0ee",
-      "on-accent": "#241500",
+      "surface-2": "#ececea",
+      foreground: "#0d0d0d",
+      muted: "#5f5f5a",
+      accent: "#8a6d00",
+      "accent-2": "#b45309",
+      border: "#dbdbd8",
+      "on-accent": "#ffffff",
       "on-accent-2": "#ffffff",
       elevated: "#FFFFFF",
-      divider: "rgba(19, 26, 41, 0.10)",
-      "surface-inverse": "#131A29",
+      divider: "rgba(13, 13, 13, 0.10)",
+      "surface-inverse": "#0D0D0D",
       "on-surface-inverse": "#FFFFFF",
     },
-    glowA: "rgba(245, 158, 11, 0.10)",
-    glowB: "rgba(14, 163, 113, 0.07)",
+    glowA: "rgba(255, 210, 0, 0.14)",
+    glowB: "rgba(245, 158, 11, 0.07)",
   },
 ];
 
