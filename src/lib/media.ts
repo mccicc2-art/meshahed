@@ -4,12 +4,30 @@ export const IMG = "https://image.tmdb.org/t/p";
 
 export type MediaType = "tv" | "movie";
 
+/**
+ * بناء رابط صورة TMDB من مسارٍ مخزَّن.
+ *
+ * المسار يصلنا من مصدرين: TMDB مباشرةً — ويأتي دائماً بشرطةٍ بادئة
+ * (`/abc.jpg`) — وصفوفٌ في قاعدتنا كُتبت على مرّ نسخٍ مختلفة، فبعضها بلا
+ * شرطة وبعضها رابطٌ كامل. الوصل الساذج `${IMG}/${size}${path}` يعطي
+ * `.../w185abc.jpg` في الحالة الثانية ورابطاً مضاعفاً في الثالثة، وكلاهما
+ * يظهر للمستخدم أيقونة صورةٍ مكسورة. فالتطبيع هنا مرّةً واحدة بدل أن
+ * يُصلح كل موضعٍ على حدة.
+ */
+function tmdbImage(path: string | null | undefined, size: string): string | null {
+  if (!path) return null;
+  const p = path.trim();
+  if (!p) return null;
+  if (p.startsWith("http://") || p.startsWith("https://")) return p;
+  return `${IMG}/${size}/${p.replace(/^\/+/, "")}`;
+}
+
 export function posterUrl(path: string | null, size: "w185" | "w342" | "w500" = "w342") {
-  return path ? `${IMG}/${size}${path}` : null;
+  return tmdbImage(path, size);
 }
 
 export function backdropUrl(path: string | null, size: "w300" | "w500" | "w780" | "w1280" = "w1280") {
-  return path ? `${IMG}/${size}${path}` : null;
+  return tmdbImage(path, size);
 }
 
 export function titleOf(r: { title?: string; name?: string }): string {
