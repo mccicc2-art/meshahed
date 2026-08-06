@@ -1,7 +1,6 @@
 "use client";
 
-/* eslint-disable @next/next/no-img-element */
-
+import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { runOrQueue } from "@/lib/offline";
 import { tap } from "@/lib/haptics";
@@ -434,14 +433,17 @@ export function EpisodeTracker({
                             {/* صورة أصغر: كانت ٦٤ بكسلاً عرضاً فيصير الصف ١٢٦ بكسلاً،
                                 واثنتا عشرة حلقة = ألف ونصف بكسل من التمرير.
                                 المصغّرة هنا للتعرّف لا للمشاهدة. */}
-                            <span className="shrink-0 w-14 sm:w-20 aspect-video rounded-lg overflow-hidden bg-surface-2 border border-white/[0.06]">
+                            {/* `next/image` لا وسمَ صورةٍ خام: الخام يطلب TMDB
+                                من المتصفّح مباشرةً وكان لا يظهر عند المستخدم،
+                                بينما بقيّةُ صور التطبيق تمرّ به من نطاقنا */}
+                            <span className="relative shrink-0 w-14 sm:w-20 aspect-video rounded-lg overflow-hidden bg-surface-2 border border-white/[0.06]">
                               {e.still_path ? (
-                                <img
+                                <Image
                                   src={`${IMG}/w185${e.still_path}`}
                                   alt=""
-                                  loading="lazy"
-                                  decoding="async"
-                                  className="w-full h-full object-cover"
+                                  fill
+                                  sizes="(max-width: 640px) 56px, 80px"
+                                  className="object-cover"
                                 />
                               ) : (
                                 <span

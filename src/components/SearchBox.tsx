@@ -1,7 +1,6 @@
 "use client";
 
-/* eslint-disable @next/next/no-img-element */
-
+import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { getDict, type Locale } from "@/lib/i18n";
@@ -145,9 +144,13 @@ export function SearchBox({ big = false, locale }: { big?: boolean; locale: Loca
               >
                 <span className="w-9 shrink-0">
                   {s.poster ? (
-                    <img
+                    /* `next/image` لا وسمَ خام: الخام يطلب TMDB مباشرةً
+                       من المتصفّح وكان لا يظهر عند المستخدم */
+                    <Image
                       src={s.poster}
                       alt=""
+                      width={36}
+                      height={54}
                       className="w-9 h-[54px] object-cover rounded-md border border-border"
                     />
                   ) : (
