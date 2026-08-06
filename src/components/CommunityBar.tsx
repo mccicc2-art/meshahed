@@ -41,8 +41,9 @@ export function CommunityBar({
 
   return (
     <>
-      {/* ===== السطر الواحد ===== */}
-      <div className="flex items-center gap-2">
+      {/* مجموعةٌ مضمومة لا صفٌّ يملأ العرض: صارت تجلس في طرف سطر عنوان
+          الخطّ، فلو تمدّدت لدفعت العنوان وقصّته */}
+      <div className="flex items-center gap-2 shrink-0">
         <button
           type="button"
           onClick={() => setOpen("following")}
@@ -74,7 +75,7 @@ export function CommunityBar({
           onClick={() => setOpen("add")}
           aria-label={t.peopleAdd}
           title={t.peopleAdd}
-          className="ms-auto grid place-items-center w-10 h-10 rounded-full bg-accent text-[color:var(--on-accent)] shadow-lg shadow-accent/25 hover:brightness-110 active:scale-95 transition"
+          className="grid place-items-center w-10 h-10 rounded-full bg-accent text-[color:var(--on-accent)] shadow-lg shadow-accent/25 hover:brightness-110 active:scale-95 transition"
         >
           <Icon name="plus" size={19} strokeWidth={2.2} />
         </button>
