@@ -8,6 +8,7 @@ import { ProfileForm } from "./ProfileForm";
 import { AccountSettings } from "./AccountSettings";
 import { HomeCustomize } from "./HomeCustomize";
 import { PrivacyData } from "./PrivacyData";
+import { ImportPanel } from "./ImportPanel";
 import { chipClass } from "./ui/controls";
 
 type SectionKey =
@@ -16,6 +17,7 @@ type SectionKey =
   | "privacy"
   | "appearance"
   | "customize"
+  | "import"
   | "widgets"
   | "billing";
 
@@ -48,6 +50,7 @@ export function SettingsShell({
   genres,
   hideName,
   homePrefs,
+  traktReady,
   initial = "profile",
 }: {
   userId: string;
@@ -63,6 +66,8 @@ export function SettingsShell({
   genres: number[];
   hideName: boolean;
   homePrefs?: unknown;
+  /** هل مفاتيح Trakt مضبوطة على الخادم؟ الزرّ لا يُعرض بلا ذلك */
+  traktReady: boolean;
   initial?: SectionKey;
 }) {
   const t = getDict(locale);
@@ -74,6 +79,7 @@ export function SettingsShell({
     { key: "privacy", icon: "shield", label: t.settingsNavPrivacy },
     { key: "appearance", icon: "palette", label: t.settingsNavAppearance },
     { key: "customize", icon: "sparkles", label: t.settingsNavCustomize },
+    { key: "import", icon: "download", label: t.importSection },
     { key: "widgets", icon: "grid", label: t.settingsNavWidgets },
     { key: "billing", icon: "card", label: t.settingsNavBilling },
   ];
@@ -104,6 +110,8 @@ export function SettingsShell({
     switch (active) {
       case "profile":
         return <ProfileForm {...profileProps} only={["cover", "avatar", "nickname", "genres"]} />;
+      case "import":
+        return <ImportPanel locale={locale} traktReady={traktReady} />;
       case "account":
         return <AccountSettings {...accountProps} only={["username", "displayName", "email", "signout"]} />;
       case "privacy":

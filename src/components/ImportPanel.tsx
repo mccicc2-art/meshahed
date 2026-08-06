@@ -1,0 +1,344 @@
+"use client";
+
+import { useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { getDict, num, type Locale } from "@/lib/i18n";
+import { parseTvTimeFiles, groupForResolve, type RawRecord } from "@/lib/tvtime";
+import {
+  IMPORT_CAPS,
+  type ImportMovie,
+  type ImportShow,
+  type ResolveResult,
+} from "@/lib/importer";
+import { resolveImportItems, applyImportChunk, finishImport } from "@/lib/actions";
+import { Alert } from "./ui/Alert";
+import { buttonClass } from "./ui/Button";
+import { Icon } from "./Icon";
+
+type Phase = "idle" | "reading" | "matching" | "writing" | "done";
+
+/**
+ * استيراد المكتبة من خدمةٍ أخرى.
+ *
+ * ثلاث مراحل، وكلٌّ منها في مكانها الصحيح: **القراءة** في المتصفّح (ملفُ
+ * المستخدم لا يغادر جهازه)، و**المطابقة** على الخادم (مفتاح TMDB لا
+ * يغادره)، و**الكتابة** دفعاتٍ صغيرة متتابعة (طلبٌ واحد بعشرين ألف حلقة
+ * ينهار بلا أثر، وبالدفعات يتقدّم الشريط وما كُتب يبقى).
+ *
+ * ومقياس التقدّم بالنسبة لا بالعدّاد: من عنده أربعون مسلسلاً ومن عنده
+ * أربعمئة يريان الشريط نفسه يمتلئ، والرقم الخام لا يعني شيئاً لمن لا
+ * يعرف مقامه.
+ */
+export function ImportPanel({
+  locale,
+  traktReady,
+}: {
+  locale: Locale;
+  traktReady: boolean;
+}) {
+  const t = getDict(locale);
+  const router = useRouter();
+  const params = useSearchParams();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const stop = useRef(false);
+
+  const [phase, setPhase] = useState<Phase>("idle");
+  const [pct, setPct] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<{
+    shows: number;
+    episodes: number;
+    movies: number;
+    unmatched: string[];
+  } | null>(null);
+
+  // رسالة العودة من Trakt — تُقرأ من الرابط الذي أعاده مسار الاستدعاء
+  const trakt = params.get("trakt");
+  const traktMsg =
+    trakt === "ok"
+      ? t.importDoneBody(
+          num(Number(params.get("sh") ?? 0), locale),
+          num(Number(params.get("ep") ?? 0), locale),
+          num(Number(params.get("mv") ?? 0), locale),
+        )
+      : trakt === "off"
+        ? t.importTraktOff
+        : trakt === "denied"
+          ? t.importTraktDenied
+          : trakt === "failed"
+            ? t.importTraktFailed
+            : null;
+
+  async function run(files: FileList) {
+    stop.current = false;
+    setError(null);
+    setResult(null);
+    setPct(0);
+    setPhase("reading");
+
+    try {
+      const bufs = await Promise.all(
+        [...files].map(async (f) => ({ name: f.name, buf: await f.arrayBuffer() })),
+      );
+      const { records } = await parseTvTimeFiles(bufs);
+      if (!records.length) {
+        setPhase("idle");
+        setError(t.importNothing);
+        return;
+      }
+
+      // ===== المطابقة =====
+      setPhase("matching");
+      const { requests, keys } = groupForResolve(records);
+      const resolved = new Map<string, ResolveResult>();
+
+      for (let i = 0; i < requests.length; i += 40) {
+        if (stop.current) return void setPhase("idle");
+        const slice = requests.slice(i, i + 40);
+        const out = await resolveImportItems(slice);
+        out.forEach((r, n) => resolved.set(keys[i + n], r));
+        setPct(Math.round(((i + slice.length) / requests.length) * 100));
+      }
+
+      // ===== التجميع: من سجلاتٍ متفرّقة إلى أعمالٍ بحلقاتها =====
+      const showMap = new Map<number, ImportShow>();
+      const movieMap = new Map<number, ImportMovie>();
+      const unmatched = new Set<string>();
+
+      const keyOf = (r: RawRecord): string =>
+        r.kind === "ep-name"
+          ? `tv:${r.show.toLowerCase()}:${r.year ?? ""}`
+          : r.kind === "rating-show"
+            ? `tv:${r.show.toLowerCase()}:`
+            : r.kind === "movie-name"
+              ? `mv:${r.name.toLowerCase()}:${r.year ?? ""}`
+              : r.kind === "show-tvdb"
+                ? `tvdb:${r.tvdbId}`
+                : `tvdbe:${r.episodeTvdbId}`;
+
+      const addShow = (hit: NonNullable<ResolveResult>) => {
+        let sh = showMap.get(hit.tmdbId);
+        if (!sh) {
+          sh = { tmdbId: hit.tmdbId, title: hit.title, posterPath: hit.posterPath, episodes: [] };
+          showMap.set(hit.tmdbId, sh);
+        }
+        return sh;
+      };
+
+      for (const r of records) {
+        const hit = resolved.get(keyOf(r));
+        if (!hit) {
+          const label =
+            r.kind === "ep-name" || r.kind === "rating-show"
+              ? r.show
+              : r.kind === "movie-name"
+                ? r.name
+                : "";
+          if (label) unmatched.add(label);
+          continue;
+        }
+
+        if (r.kind === "ep-name") {
+          addShow(hit).episodes.push({ s: r.s, e: r.e, at: r.at });
+        } else if (r.kind === "ep-tvdb") {
+          // المطابقة أعادت المسلسل والموسم والحلقة معاً
+          if (hit.season != null && hit.episode != null) {
+            addShow(hit).episodes.push({ s: hit.season, e: hit.episode, at: r.at });
+          }
+        } else if (r.kind === "show-tvdb") {
+          addShow(hit);
+        } else if (r.kind === "rating-show") {
+          addShow(hit).rating = r.rating;
+        } else if (r.kind === "movie-name") {
+          const prev = movieMap.get(hit.tmdbId);
+          movieMap.set(hit.tmdbId, {
+            tmdbId: hit.tmdbId,
+            title: hit.title,
+            posterPath: hit.posterPath,
+            watched: true,
+            at: prev?.at ?? r.at,
+            rating: r.rating ?? prev?.rating,
+          });
+        }
+      }
+
+      // حلقةٌ واحدة مهما تكرّرت في التصدير (إعادة مشاهدةٍ أو خطأ تصدير)
+      for (const sh of showMap.values()) {
+        const seen = new Set<string>();
+        sh.episodes = sh.episodes.filter((ep) => {
+          const k = `${ep.s}-${ep.e}`;
+          if (seen.has(k)) return false;
+          seen.add(k);
+          return true;
+        });
+      }
+
+      const shows = [...showMap.values()].slice(0, IMPORT_CAPS.shows);
+      const movies = [...movieMap.values()].slice(0, IMPORT_CAPS.movies);
+
+      // ===== الكتابة =====
+      setPhase("writing");
+      setPct(0);
+      let sC = 0;
+      let eC = 0;
+      let mC = 0;
+      const steps = Math.ceil(shows.length / 5) + Math.ceil(movies.length / 60) || 1;
+      let step = 0;
+
+      for (let i = 0; i < shows.length; i += 5) {
+        if (stop.current) break;
+        const r = await applyImportChunk({ shows: shows.slice(i, i + 5), movies: [] });
+        sC += r.shows;
+        eC += r.episodes;
+        setPct(Math.round((++step / steps) * 100));
+      }
+      for (let i = 0; i < movies.length; i += 60) {
+        if (stop.current) break;
+        const r = await applyImportChunk({ shows: [], movies: movies.slice(i, i + 60) });
+        mC += r.movies;
+        setPct(Math.round((++step / steps) * 100));
+      }
+
+      await finishImport();
+      setResult({ shows: sC, episodes: eC, movies: mC, unmatched: [...unmatched].slice(0, 60) });
+      setPhase("done");
+      router.refresh();
+    } catch (e) {
+      setPhase("idle");
+      setError((e as Error).message);
+    }
+  }
+
+  const busy = phase === "reading" || phase === "matching" || phase === "writing";
+  const phaseLabel =
+    phase === "reading"
+      ? t.importReading
+      : phase === "matching"
+        ? t.importMatching
+        : phase === "writing"
+          ? t.importWriting
+          : "";
+
+  return (
+    <div className="space-y-4">
+      <section className="bg-surface border border-border rounded-2xl p-3.5 sm:p-5">
+        <h2 className="text-sm font-bold mb-1">{t.importSection}</h2>
+        <p className="text-xs text-muted leading-relaxed">{t.importHint}</p>
+      </section>
+
+      {/* ===== TV Time ===== */}
+      <section className="bg-surface border border-border rounded-2xl p-3.5 sm:p-5">
+        <h3 className="text-sm font-bold mb-1" dir="ltr">
+          {t.importTvTimeTitle}
+        </h3>
+        <p className="text-xs text-muted leading-relaxed mb-3">{t.importTvTimeHint}</p>
+
+        <input
+          ref={fileRef}
+          type="file"
+          multiple
+          accept=".zip,.csv,.json"
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files;
+            if (f && f.length) run(f);
+            e.target.value = "";
+          }}
+        />
+
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => fileRef.current?.click()}
+            className={buttonClass({ variant: "surface", size: "md" })}
+          >
+            <Icon name="download" size={16} />
+            {t.importPickFile}
+          </button>
+          {busy && (
+            <button
+              type="button"
+              onClick={() => {
+                stop.current = true;
+              }}
+              className={buttonClass({ variant: "ghost", size: "md" })}
+            >
+              {t.importCancel}
+            </button>
+          )}
+        </div>
+        <p className="text-[11px] text-muted mt-2">{t.importFileHint}</p>
+
+        {busy && (
+          <div className="mt-4">
+            <p className="text-xs text-muted mb-1.5">{phaseLabel}</p>
+            {/* `scaleX` لا `width` — انظر D-022 */}
+            <div className="h-1.5 rounded-full bg-surface-2 overflow-hidden">
+              <div
+                className="h-full bg-accent origin-left rtl:origin-right transition-transform duration-300"
+                style={{ transform: `scaleX(${Math.max(0.02, pct / 100)})` }}
+              />
+            </div>
+          </div>
+        )}
+
+        {error && (
+          <div className="mt-3">
+            <Alert tone="error">{error}</Alert>
+          </div>
+        )}
+
+        {phase === "done" && result && (
+          <div className="mt-4 space-y-3">
+            <Alert tone="success">
+              <b className="block">{t.importDone}</b>
+              {t.importDoneBody(
+                num(result.shows, locale),
+                num(result.episodes, locale),
+                num(result.movies, locale),
+              )}
+            </Alert>
+
+            {result.unmatched.length > 0 && (
+              <div className="rounded-xl border border-border bg-surface-2 p-3">
+                <p className="text-xs font-bold mb-1">
+                  {t.importUnmatchedTitle(num(result.unmatched.length, locale))}
+                </p>
+                <p className="text-[11px] text-muted mb-2">{t.importUnmatchedHint}</p>
+                <p className="text-[11px] text-muted leading-relaxed break-words">
+                  {result.unmatched.join(" · ")}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+      </section>
+
+      {/* ===== Trakt ===== */}
+      <section className="bg-surface border border-border rounded-2xl p-3.5 sm:p-5">
+        <h3 className="text-sm font-bold mb-1" dir="ltr">
+          {t.importTraktTitle}
+        </h3>
+        <p className="text-xs text-muted leading-relaxed mb-3">{t.importTraktHint}</p>
+
+        {traktReady ? (
+          /* رابطٌ لا زرّ فعل: الوجهة خارجية ويجب أن تُرى في شريط العنوان
+             ويقبل الفتح في تبويبٍ جديد كأي رابط */
+          <a href="/api/trakt/start" className={buttonClass({ variant: "surface", size: "md" })}>
+            <Icon name="share" size={16} />
+            {t.importTraktConnect}
+          </a>
+        ) : (
+          <Alert tone="info">{t.importTraktOff}</Alert>
+        )}
+
+        {traktMsg && (
+          <div className="mt-3">
+            <Alert tone={trakt === "ok" ? "success" : "error"}>{traktMsg}</Alert>
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}
