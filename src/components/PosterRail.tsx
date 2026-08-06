@@ -54,8 +54,14 @@ export function PosterRail({
 
       {/* الهوامش السالبة تجعل الصفّ يلامس حافة الشاشة فيبدو أنه يكمل خلفها.
           overscroll-x-contain: التمرير الزائد على iOS كان يفعّل «رجوع»
-          المتصفح خطأً؛ وsnap يجعل التوقّف على حدود البطاقات */}
-      <div className="-mx-4 px-4 overflow-x-auto overscroll-x-contain snap-x snap-proximity [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          المتصفح خطأً؛ وsnap يجعل التوقّف على حدود البطاقات.
+
+          و`scroll-px-4` ليست زينة: نقطةُ الالتقاط تُحاذي البطاقة بحافّة
+          مجال التمرير لا بحافّة المحتوى، فيبتلع المتصفّح الحشوة الجانبية
+          ويبدأ هذا الصفّ من حافّة الشاشة بينما عنوانه وبقيّةُ الصفوف
+          (التي لا التقاط فيها) على الهامش — خطّان مختلفان في الشاشة
+          الواحدة. تعليم الحشوة للالتقاط يعيد الجميع إلى خطٍّ واحد. */}
+      <div className="-mx-4 px-4 scroll-px-4 overflow-x-auto overscroll-x-contain snap-x snap-proximity [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <div className="flex gap-3 w-max pb-1">{children}</div>
       </div>
     </section>
