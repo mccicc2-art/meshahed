@@ -49,18 +49,26 @@ export default async function PeoplePage() {
       {/* العنوان مخفيٌّ بصريًّا وباقٍ لقارئ الشاشة — أُزيلت الترويسة والوصف */}
       <h1 className="sr-only">{t.peopleTitle}</h1>
 
-      {/* سطرٌ واحد: عدّادا المتابعة وزرّ الإضافة — والقوائم والبحث نوافذ منبثقة */}
-      <CommunityBar
-        following={lists.following}
-        followers={lists.followers}
-        locale={locale}
-      />
-
       {/* ===== خطّ الآراء =====
           كخطّ X: رأيٌ فوق رأي، الأكثر إعجاباً أعلى — الإعجاب هو صوت
           المجتمع لا ساعة النشر. والإعجاب من الخط نفسه بلا فتح صفحة. */}
       <section>
-        <h2 className="text-lg font-bold mb-4">{t.feedTitle}</h2>
+        {/* سطرٌ واحد يجمع عنوان الخطّ وعدّادَي المتابعة وزرّ الإضافة:
+            كانا سطرين متتاليين، والعدّادان وحدهما يتركان نصف السطر
+            فارغاً — فيبدو الفراغ مقصوداً وليس كذلك. العنوان يملأ البداية
+            والأدوات تجلس في الطرف، فيُقرأ رأسُ الصفحة سطراً واحداً. */}
+        <div className="flex items-center justify-between gap-3 mb-4">
+          {/* أصغر قليلاً على الشاشات الضيّقة: العنوان الإنجليزي أطول من
+              العربي، وبحجم `lg` يُقصّ عند ٣٩٠ بكسلاً */}
+          <h2 className="text-base sm:text-lg font-bold min-w-0 truncate">
+            {t.feedTitle}
+          </h2>
+          <CommunityBar
+            following={lists.following}
+            followers={lists.followers}
+            locale={locale}
+          />
+        </div>
 
         {feed.length === 0 ? (
           <p className="text-sm text-muted bg-surface border border-dashed border-border rounded-xl py-8 text-center">
