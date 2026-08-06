@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getUser, getProfile } from "@/lib/data";
 import { getT } from "@/lib/locale";
 import { SettingsShell } from "@/components/SettingsShell";
+import { traktConfigured } from "@/lib/trakt";
 
 /**
  * الإعدادات — صفحة واحدة بقائمة جانبية.
@@ -17,6 +18,7 @@ const SECTIONS = [
   "privacy",
   "appearance",
   "customize",
+  "import",
   "widgets",
   "billing",
 ] as const;
@@ -60,6 +62,7 @@ export default async function SettingsPage({
         genres={profile?.favorite_genres ?? []}
         hideName={!!profile?.hide_name}
         homePrefs={profile?.home_prefs}
+        traktReady={traktConfigured()}
         initial={initial}
       />
     </div>
