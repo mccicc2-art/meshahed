@@ -49,6 +49,14 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   images: {
+    /* AVIF قبل WebP: أصغر بنحو الربع بجودةٍ مساوية، وغلاف الرئيسية هو
+       عنصر LCP — فربعُ حجمه ربعُ انتظاره. WebP يبقى احتياطاً للمتصفحات
+       الأقدم، والاختيار تفاوضٌ عبر ترويسة Accept لا شيء نديره بأيدينا. */
+    formats: ["image/avif", "image/webp"],
+    /* شهرٌ لا أربع ساعات (الافتراضي): كانت الصور المحسَّنة تُعاد معالجتها
+       كل ٤ ساعات مع أن ملصق العمل لا يتغيّر. روابط TMDB وSupabase مجزّأة
+       بالمحتوى أصلاً، فطول العمر آمن — تغيّر الصورة يغيّر رابطها. */
+    minimumCacheTTL: 2678400,
     remotePatterns: [
       { protocol: "https", hostname: "image.tmdb.org", pathname: "/t/p/**" },
       { protocol: "https", hostname: "lh3.googleusercontent.com" },
