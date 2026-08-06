@@ -234,7 +234,9 @@ function SearchSheet({ t, onClose }: { t: Dict; onClose: () => void }) {
             onChange={(e) => onChange(e.target.value)}
             placeholder={t.peopleSearchPlaceholder}
             aria-label={t.peopleSearchPlaceholder}
-            className="w-full rounded-xl bg-surface-2 border border-border ps-10 pe-4 py-3 text-sm outline-none focus:border-accent transition"
+            /* ١٦ بكسلاً لا ١٤: سفاري iOS يكبّر الصفحة عند التركيز على
+               حقلٍ خطُّه أصغر من ١٦ فتقفز الشاشة عند فتح البحث */
+            className="w-full rounded-xl bg-surface-2 border border-border ps-10 pe-4 py-3 text-base outline-none focus:border-accent transition"
             dir="ltr"
             autoComplete="off"
           />

@@ -36,6 +36,7 @@ export type IconName =
   | "download"
   | "trash"
   | "settings"
+  | "sliders"
   | "search"
   | "shield"
   | "palette"
@@ -76,6 +77,15 @@ const PATHS: Record<IconName, React.ReactNode> = {
     </>
   ),
   plus: <path d="M12 5v14M5 12h14" />,
+  /* مقابضُ ضبطٍ لا قُمعاً: القمع شكلٌ مائل يقرؤه كثيرون «تنزيل»، والمقابض
+     متماثلةٌ أفقياً فتُقرأ كما هي في RTL وLTR بلا انقلاب معنى */
+  sliders: (
+    <>
+      <path d="M4 8h5M15 8h5M4 16h9M19 16h1" />
+      <circle cx="12" cy="8" r="2.4" />
+      <circle cx="16" cy="16" r="2.4" />
+    </>
+  ),
   book: (
     <>
       <path d="M12 6C10.2 4.6 7.8 4 4.8 4v14.5c3 0 5.4.6 7.2 2 1.8-1.4 4.2-2 7.2-2V4c-3 0-5.4.6-7.2 2Z" />

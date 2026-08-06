@@ -126,7 +126,11 @@ export function TitleSearchSheet({
               onChange={(e) => changeQ(e.target.value)}
               placeholder={t.searchPlaceholder}
               aria-label={t.searchPlaceholder}
-              className="w-full rounded-xl bg-surface-2 border border-border ps-10 pe-4 py-3 text-sm outline-none focus:border-accent transition"
+              /* ١٦ بكسلاً لا ١٤: سفاري iOS يكبّر الصفحة تلقائياً عند
+                 التركيز على أي حقلٍ خطُّه أصغر من ١٦، فتقفز الشاشة عند
+                 فتح البحث. الحجم هنا يمنع القفزة من أصلها بلا
+                 `maximum-scale` الذي يمنع تكبير المستخدم أيضاً */
+              className="w-full rounded-xl bg-surface-2 border border-border ps-10 pe-4 py-3 text-base outline-none focus:border-accent transition"
               type="search"
               enterKeyHint="search"
               autoComplete="off"
