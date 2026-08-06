@@ -71,6 +71,12 @@ export default async function LoginPage() {
           ) : (
             <p className="text-sm text-accent leading-relaxed">{t.loginNeedsKeys}</p>
           )}
+          {/* الشعار ملتصقٌ بالزرّ لا في قاع الصفحة: التذييل العام كان
+              يهبط تحت جدار الملصقات فيبتعد — والموضع هنا قرارُ المالك.
+              (التذييل العام يُخفي نفسه في هذه الصفحة كي لا يتكرّر السطر.) */}
+          <p className="mt-3.5 text-[13px] tracking-wide text-muted/70" dir="ltr">
+            {t.footer}
+          </p>
         </div>
       </div>
 
