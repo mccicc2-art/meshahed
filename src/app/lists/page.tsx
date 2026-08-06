@@ -18,8 +18,8 @@ export default async function ListsPage() {
 
   return (
     <div>
-      <h1 className="text-xl font-bold mb-1">{t.listsTitle}</h1>
-      <p className="text-xs text-muted mb-5">{t.listsSub}</p>
+      {/* العنوان مخفيٌّ بصريًّا وباقٍ لقارئ الشاشة — أُزيلت الترويسة والوصف */}
+      <h1 className="sr-only">{t.listsTitle}</h1>
       <ListManager lists={lists} locale={locale} />
     </div>
   );
