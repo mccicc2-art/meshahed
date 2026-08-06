@@ -693,3 +693,67 @@ export async function upcomingByFilter(
     return [];
   }
 }
+
+// ============================================================
+//  المطابقة الخارجية — للاستيراد من TV Time و Trakt
+// ============================================================
+
+interface FindResponse {
+  tv_results?: SearchResult[];
+  movie_results?: SearchResult[];
+  tv_episode_results?: {
+    id: number;
+    show_id: number;
+    season_number: number;
+    episode_number: number;
+    name?: string;
+  }[];
+}
+
+/**
+ * مطابقة معرّفٍ خارجي (TVDB/IMDb) بمعرّف TMDB.
+ *
+ * `/find` مسارٌ رخيص ودقيق: لا يخمّن بالاسم بل يعبر الجسر الذي بنته
+ * TMDB بين قواعد المعرّفات. تصديرُ TV Time القديم يحمل معرّفات TVDB
+ * وحدها، و Trakt يحمل الثلاثة — فما وُجد له معرّف لا يُبحث باسمه.
+ */
+export async function findByExternalId(
+  id: string,
+  source: "tvdb_id" | "imdb_id",
+): Promise<FindResponse | null> {
+  try {
+    return await tmdb<FindResponse>(`/find/${encodeURIComponent(id)}`, {
+      external_source: source,
+    });
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * البحث بالاسم — آخر ما يُلجأ إليه.
+ *
+ * السنة تُمرَّر حين تُعرف: «The Office» ثلاثة مسلسلات، والسنة تفصل.
+ * والاختيار أوّلُ نتيجةٍ لها ملصق: ترتيب TMDB للبحث بالاسم مبنيٌّ على
+ * الشعبية، وهي في الاستيراد الترجيح الأصدق — من شاهد «Friends» شاهد
+ * المشهور لا وثائقياً بالاسم نفسه.
+ */
+export async function searchByName(
+  name: string,
+  media: "tv" | "movie",
+  year?: number,
+): Promise<SearchResult | null> {
+  const q = name.trim();
+  if (!q) return null;
+  const params: Record<string, string> = { query: q, include_adult: "false" };
+  if (year && year > 1870 && year < 2200) {
+    params[media === "tv" ? "first_air_date_year" : "year"] = String(year);
+  }
+  try {
+    const data = await tmdb<{ results: SearchResult[] }>(`/search/${media}`, params);
+    const rows = (data.results ?? []).map((r) => ({ ...r, media_type: media }));
+    return rows.find((r) => r.poster_path) ?? rows[0] ?? null;
+  } catch {
+    return null;
+  }
+}

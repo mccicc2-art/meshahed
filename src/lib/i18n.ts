@@ -168,6 +168,34 @@ const ar = {
   errUpload: "تعذّر رفع الصورة: ",
   errSave: "تعذّر الحفظ: ",
 
+  // الاستيراد من الخدمات الأخرى
+  importSection: "استيراد مكتبتك",
+  importHint: "انقل ما شاهدته من TV Time أو Trakt — بلا أن تبدأ من الصفر.",
+  importTvTimeTitle: "TV Time",
+  importTvTimeHint:
+    "اطلب نسخة بياناتك من TV Time ثم ارفع الملف المضغوط هنا كما نزّلته. يُقرأ الملف في جهازك ولا يُرفع إلى أي خادم — تُرسل أسماء الأعمال فقط لمطابقتها.",
+  importPickFile: "اختر ملف التصدير",
+  importReading: "جارٍ قراءة الملف…",
+  importMatching: "جارٍ المطابقة…",
+  importWriting: "جارٍ الإضافة إلى مكتبتك…",
+  importFound: (shows: string, eps: string, movies: string) =>
+    `${shows} مسلسل · ${eps} حلقة · ${movies} فيلم`,
+  importDone: "تمّ الاستيراد",
+  importDoneBody: (shows: string, eps: string, movies: string) =>
+    `أُضيف ${shows} مسلسلاً و${eps} حلقة و${movies} فيلماً إلى مكتبتك.`,
+  importNothing: "لم نتعرّف على أي بيانات في هذا الملف.",
+  importUnmatchedTitle: (n: string) => `${n} عملاً لم نجده`,
+  importUnmatchedHint: "ابحث عنها يدوياً وأضفها — الأسماء هنا كما وردت في التصدير.",
+  importStart: "ابدأ الاستيراد",
+  importCancel: "إيقاف",
+  importTraktTitle: "Trakt",
+  importTraktHint: "اربط حسابك في Trakt ونجلب مشاهداتك وتقييماتك مباشرةً.",
+  importTraktConnect: "الربط مع Trakt",
+  importTraktOff: "ربط Trakt غير مُهيّأ بعد على هذا الموقع.",
+  importTraktDenied: "أُلغي الربط.",
+  importTraktFailed: "تعذّر الاتصال بـTrakt. حاول مرة أخرى.",
+  importFileHint: "صيغ مقبولة: zip أو csv أو json.",
+
   usernameSection: "اسم المستخدم",
   usernameHint: "معرّفك الفريد داخل التطبيق. أحرف إنجليزية وأرقام و _ فقط.",
   usernameShort: "اسم المستخدم يجب أن يكون ٣ أحرف على الأقل.",
@@ -576,6 +604,33 @@ const en: Dict = {
   errTooLarge: "Image too large — 2 MB maximum.",
   errUpload: "Couldn't upload the image: ",
   errSave: "Couldn't save: ",
+
+  importSection: "Import your library",
+  importHint: "Bring what you have watched over from TV Time or Trakt — no starting from scratch.",
+  importTvTimeTitle: "TV Time",
+  importTvTimeHint:
+    "Request your data copy from TV Time, then upload the zip here exactly as you downloaded it. The file is read on your device and never uploaded — only title names are sent, to match them.",
+  importPickFile: "Choose the export file",
+  importReading: "Reading the file\u2026",
+  importMatching: "Matching titles\u2026",
+  importWriting: "Adding to your library\u2026",
+  importFound: (shows: string, eps: string, movies: string) =>
+    `${shows} shows \u00b7 ${eps} episodes \u00b7 ${movies} movies`,
+  importDone: "Import complete",
+  importDoneBody: (shows: string, eps: string, movies: string) =>
+    `Added ${shows} shows, ${eps} episodes and ${movies} movies to your library.`,
+  importNothing: "We couldn't recognise any data in this file.",
+  importUnmatchedTitle: (n: string) => `${n} titles we couldn't find`,
+  importUnmatchedHint: "Search for them manually and add them — these names are as they appeared in the export.",
+  importStart: "Start import",
+  importCancel: "Stop",
+  importTraktTitle: "Trakt",
+  importTraktHint: "Connect your Trakt account and we'll pull your history and ratings directly.",
+  importTraktConnect: "Connect Trakt",
+  importTraktOff: "Trakt linking isn't set up on this site yet.",
+  importTraktDenied: "Linking was cancelled.",
+  importTraktFailed: "Couldn't reach Trakt. Please try again.",
+  importFileHint: "Accepted: zip, csv or json.",
 
   usernameSection: "Username",
   usernameHint: "Your unique handle in the app. Latin letters, digits and _ only.",

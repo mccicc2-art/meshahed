@@ -9,6 +9,7 @@ import { THEMES } from "@/lib/themes";
 import { sanitizeHomePrefs, type HomePrefs } from "@/lib/homePrefs";
 import { allow } from "@/lib/ratelimit";
 import { intId, intIn, asMediaType, uuid, dateOrNull } from "@/lib/validate";
+import { IMPORT_CAPS, type ImportPayload, type ResolveRequest, type ResolveResult } from "@/lib/importer";
 
 /**
  * بوابة كل فعل: هوية المستخدم ثم حدّ معدّل الطلبات.
@@ -1056,4 +1057,223 @@ export async function deleteMyAccount(): Promise<void> {
   const { error } = await supabase.rpc("delete_my_account");
   if (error) fail(error);
   await supabase.auth.signOut();
+}
+
+// ============================================================
+//  الاستيراد من الخدمات الأخرى (TV Time · Trakt)
+// ============================================================
+
+/**
+ * مطابقة دفعةٍ من الأعمال بمعرّفات TMDB.
+ *
+ * لماذا على الخادم: مفتاح TMDB لا يغادره (قاعدةٌ ثابتة في المشروع)،
+ * والمتصفّح يرسل الأسماء والمعرّفات الخارجية وحدها — ملفُّ التصدير نفسه
+ * لا يُرفع إلى أي خادم، يُقرأ في جهاز صاحبه ويبقى فيه.
+ *
+ * الدفعة أربعون طلباً بحدٍّ أقصى، وتُنفَّذ عشرةً عشرة: مكتبةٌ فيها أربعمئة
+ * مسلسل تعني أربعمئة طلبٍ خارجي، ولو انطلقت كلها معاً لخنقت حصّة TMDB
+ * وعادت بأخطاء ٤٢٩ بدل نتائج.
+ */
+export async function resolveImportItems(
+  requests: ResolveRequest[],
+): Promise<ResolveResult[]> {
+  await requireUser("import-resolve", 90, 60_000);
+  const list = (requests ?? []).slice(0, 40);
+  const { findByExternalId, searchByName, titleOf } = await import("@/lib/tmdb");
+
+  const one = async (req: ResolveRequest): Promise<ResolveResult> => {
+    try {
+      if (req.kind === "tvdb-tv") {
+        const found = await findByExternalId(String(intId(req.id)), "tvdb_id");
+        const tv = found?.tv_results?.[0];
+        if (!tv) return null;
+        return {
+          tmdbId: tv.id,
+          mediaType: "tv",
+          title: titleOf(tv),
+          posterPath: safeImagePath(tv.poster_path),
+        };
+      }
+
+      if (req.kind === "tvdb-episode") {
+        // معرّف حلقةٍ في TVDB يعطينا المسلسل ورقم الموسم والحلقة معاً —
+        // وهذا كل ما يلزم صفَّ المشاهدة، بلا بحثٍ بالاسم أصلاً
+        const found = await findByExternalId(String(intId(req.id)), "tvdb_id");
+        const ep = found?.tv_episode_results?.[0];
+        if (!ep) return null;
+        return {
+          tmdbId: ep.show_id,
+          mediaType: "tv",
+          title: ep.name ?? "",
+          posterPath: null,
+          season: ep.season_number,
+          episode: ep.episode_number,
+        };
+      }
+
+      if (req.kind === "imdb") {
+        const found = await findByExternalId(String(req.id).slice(0, 20), "imdb_id");
+        const hit =
+          req.media === "tv" ? found?.tv_results?.[0] : found?.movie_results?.[0];
+        if (!hit) return null;
+        return {
+          tmdbId: hit.id,
+          mediaType: req.media,
+          title: titleOf(hit),
+          posterPath: safeImagePath(hit.poster_path),
+        };
+      }
+
+      const media = req.kind === "name-tv" ? "tv" : "movie";
+      const hit = await searchByName(String(req.name ?? "").slice(0, 200), media, req.year);
+      if (!hit) return null;
+      return {
+        tmdbId: hit.id,
+        mediaType: media,
+        title: titleOf(hit),
+        posterPath: safeImagePath(hit.poster_path),
+      };
+    } catch {
+      return null;
+    }
+  };
+
+  const out: ResolveResult[] = [];
+  for (let i = 0; i < list.length; i += 10) {
+    out.push(...(await Promise.all(list.slice(i, i + 10).map(one))));
+  }
+  return out;
+}
+
+/**
+ * كتابة دفعةٍ مستوردة في المكتبة.
+ *
+ * الدفعة صغيرة عمداً (خمسة أعمال) والعميل يكرّرها: الاستيراد قد يحمل
+ * عشرين ألف حلقة، وطلبٌ واحد بهذا الحجم يتجاوز حدّ جسم Server Action
+ * وينهار في منتصفه بلا أثر. بالدفعات يتقدّم شريط الحالة، وما نجح قبل
+ * الانقطاع يبقى مكتوباً.
+ *
+ * وكلّ كتابةٍ `upsert` لا `insert`: من استورد مرّتين — أو استورد ثم
+ * استوردت خدمةٌ أخرى نفس العمل — لا يُنشئ صفوفاً مكرّرة ولا يفقد ما
+ * أشّره بيده. والتاريخ الأصلي يُكتب في `watched_at` فتُقرأ يوميّاته
+ * كما عاشها لا كما استوردها.
+ */
+export async function applyImportChunk(payload: ImportPayload): Promise<{
+  shows: number;
+  episodes: number;
+  movies: number;
+}> {
+  const { supabase, user } = await requireUser("import-apply", 90, 60_000);
+
+  /* ختمٌ واحد لكل دفعة يحلّ محلّ التاريخ الغائب — لسببين: PostgREST يرفض
+     مصفوفةً تختلف مفاتيح كائناتها (بعضها بتاريخٍ وبعضها بلا)، فالمفتاح
+     يجب أن يُكتب دائماً؛ وحلقاتٌ بلا تاريخٍ تتناثر في اليوميات لو أخذت
+     كلٌّ منها لحظتها. */
+  const stamp = new Date().toISOString();
+
+  const shows = (payload?.shows ?? []).slice(0, 5);
+  const movies = (payload?.movies ?? []).slice(0, 60);
+  let epCount = 0;
+
+  for (const sh of shows) {
+    const tmdbId = intId(sh.tmdbId);
+    const title = String(sh.title ?? "").slice(0, 300);
+
+    await supabase.from("follows").upsert(
+      {
+        user_id: user.id,
+        tmdb_id: tmdbId,
+        media_type: "tv",
+        title,
+        poster_path: safeImagePath(sh.posterPath),
+      },
+      { onConflict: "user_id,tmdb_id,media_type" },
+    );
+
+    const rows = (sh.episodes ?? [])
+      .slice(0, IMPORT_CAPS.episodesPerShow)
+      .map((ep) => ({
+        user_id: user.id,
+        show_tmdb_id: tmdbId,
+        season_number: intIn(ep.s, 0, 100),
+        episode_number: intIn(ep.e, 0, 20_000),
+        runtime: null as number | null,
+        watched_at: ep.at ?? stamp,
+      }));
+
+    for (let i = 0; i < rows.length; i += 500) {
+      const { error } = await supabase
+        .from("watched_episodes")
+        .upsert(rows.slice(i, i + 500), {
+          onConflict: "user_id,show_tmdb_id,season_number,episode_number",
+        });
+      if (!error) epCount += rows.slice(i, i + 500).length;
+    }
+
+    if (sh.rating != null) {
+      await supabase.from("ratings").upsert(
+        {
+          user_id: user.id,
+          tmdb_id: tmdbId,
+          media_type: "tv",
+          rating: intIn(Math.round(sh.rating), 1, 10),
+          review: null,
+          title,
+          poster_path: safeImagePath(sh.posterPath),
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "user_id,tmdb_id,media_type" },
+      );
+    }
+  }
+
+  for (const mv of movies) {
+    const tmdbId = intId(mv.tmdbId);
+    const title = String(mv.title ?? "").slice(0, 300);
+    const poster = safeImagePath(mv.posterPath);
+
+    await supabase.from("follows").upsert(
+      { user_id: user.id, tmdb_id: tmdbId, media_type: "movie", title, poster_path: poster },
+      { onConflict: "user_id,tmdb_id,media_type" },
+    );
+
+    if (mv.watched) {
+      await supabase.from("watched_movies").upsert(
+        {
+          user_id: user.id,
+          movie_tmdb_id: tmdbId,
+          runtime: null,
+          watched_at: mv.at ?? stamp,
+        },
+        { onConflict: "user_id,movie_tmdb_id" },
+      );
+    }
+
+    if (mv.rating != null) {
+      await supabase.from("ratings").upsert(
+        {
+          user_id: user.id,
+          tmdb_id: tmdbId,
+          media_type: "movie",
+          rating: intIn(Math.round(mv.rating), 1, 10),
+          review: null,
+          title,
+          poster_path: poster,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "user_id,tmdb_id,media_type" },
+      );
+    }
+  }
+
+  return { shows: shows.length, episodes: epCount, movies: movies.length };
+}
+
+/** يُستدعى مرّة عند نهاية الاستيراد — لا مع كل دفعة */
+export async function finishImport() {
+  await requireUser("import-apply", 90, 60_000);
+  revalidatePath("/");
+  revalidatePath("/library");
+  revalidatePath("/stats");
+  revalidatePath("/diary");
 }
