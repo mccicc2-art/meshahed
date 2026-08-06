@@ -84,6 +84,8 @@ export function ProfileHeader({
   username,
   avatarUrl,
   coverUrl,
+  coverPos = null,
+  avatarPos = null,
   level,
   stats,
   followers,
@@ -97,6 +99,10 @@ export function ProfileHeader({
   username: string | null;
   avatarUrl: string | null;
   coverUrl: string | null;
+  /** التموضع الرأسي (٠–١٠٠) الذي اختاره المستخدم بالسحب في الإعدادات —
+      غيابه يُبقي القيم القديمة (٣٠٪ للغلاف، الوسط للصورة) كما كانت */
+  coverPos?: number | null;
+  avatarPos?: number | null;
   level: LevelInfo;
   stats: HeaderStat[];
   followers: number;
@@ -131,11 +137,11 @@ export function ProfileHeader({
             placeholder="blur"
             blurDataURL="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGNQVlIDAADXAGyeIPIkAAAAAElFTkSuQmCC"
             sizes="(max-width: 640px) 100vw, 1152px"
-            /* `object-cover` يملأ العرض بلا تشويه، و`35%` رأسياً يرفع
-               الإطار فيظهر أعلى الصورة — السماء والغيم — بدل أن يقتصّه
-               التوسيط في غلافٍ عريض. و٣٠٪ بعد تقصير الغلاف تُبقي القدر
-               نفسه من السماء في ارتفاعٍ أقلّ. */
-            className="object-cover object-[50%_30%]"
+            /* `object-cover` يملأ العرض بلا تشويه. والنسبة الرأسية صارت
+               بيد صاحب الصورة — يضبطها سحباً من الإعدادات — و٣٠٪ عند
+               الغياب هي القيمة التي كانت مكتوبةً هنا فلا يتغيّر أحد. */
+            className="object-cover"
+            style={{ objectPosition: `50% ${coverPos ?? 30}%` }}
           />
         ) : (
           <div
@@ -178,6 +184,7 @@ export function ProfileHeader({
               name={displayName}
               size={74}
               alt={t.avatarAlt}
+              posY={avatarPos}
               className="ring-[3px] ring-[color:var(--background)]"
             />
           </span>

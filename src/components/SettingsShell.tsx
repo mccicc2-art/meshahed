@@ -42,6 +42,8 @@ export function SettingsShell({
   username,
   avatarUrl,
   coverUrl,
+  coverPos,
+  avatarPos,
   theme,
   genres,
   hideName,
@@ -55,6 +57,8 @@ export function SettingsShell({
   username: string;
   avatarUrl: string | null;
   coverUrl: string | null;
+  coverPos: number;
+  avatarPos: number;
   theme: string;
   genres: number[];
   hideName: boolean;
@@ -81,6 +85,8 @@ export function SettingsShell({
     initialNickname: nickname,
     initialAvatarUrl: avatarUrl,
     initialCoverUrl: coverUrl,
+    initialCoverPos: coverPos,
+    initialAvatarPos: avatarPos,
     initialTheme: theme,
     initialGenres: genres,
   };

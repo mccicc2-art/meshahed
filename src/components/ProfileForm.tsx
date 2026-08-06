@@ -23,6 +23,8 @@ export function ProfileForm({
   initialNickname,
   initialAvatarUrl,
   initialCoverUrl,
+  initialCoverPos,
+  initialAvatarPos,
   initialTheme,
   initialGenres,
   only,
@@ -33,6 +35,9 @@ export function ProfileForm({
   initialNickname: string;
   initialAvatarUrl: string | null;
   initialCoverUrl: string | null;
+  /** التموضع الرأسي المحفوظ للصورتين (٠–١٠٠) */
+  initialCoverPos: number;
+  initialAvatarPos: number;
   initialTheme: string;
   initialGenres: number[];
   /** الأقسام المعروضة — الحذف يعني عرض الجميع */
@@ -44,6 +49,8 @@ export function ProfileForm({
   const [nickname, setNickname] = useState(initialNickname);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(initialAvatarUrl);
   const [coverUrl, setCoverUrl] = useState<string | null>(initialCoverUrl);
+  const [coverPos, setCoverPos] = useState(initialCoverPos);
+  const [avatarPos, setAvatarPos] = useState(initialAvatarPos);
   const [theme, setTheme] = useState(initialTheme);
   const [genres, setGenres] = useState<number[]>(initialGenres);
   const [uploading, setUploading] = useState<"avatar" | "cover" | null>(null);
@@ -61,6 +68,47 @@ export function ProfileForm({
     if (at < 0) return null;
     const path = decodeURIComponent(url.slice(at + marker.length).split("?")[0]);
     return path.startsWith(`${uid}/`) ? path : null;
+  }
+
+  /* ===== إعادة تموضع الصورة بالسحب =====
+     سحبٌ مباشر على المعاينة لا مؤشّرٌ منزلق: تحريك الصورة نفسها هو
+     الفعل الذي يقصده المستخدم، ولا يضيف عائلة تحكّمٍ ثالثة للنظام.
+     المحور الرأسي وحده: الغلاف يملأ العرض دائماً فلا معنى للأفقي،
+     والدائرة الشخصية شكواها المتكرّرة وجهٌ مقصوص من أعلى أو أسفل.
+     والحساب نسبةٌ من ارتفاع المعاينة: سحبُ كامل الارتفاع يقطع المدى
+     كله (٠–١٠٠)، فيبقى الإحساس واحداً مهما اختلف حجم الإطار. */
+  const drag = useRef<{
+    kind: "avatar" | "cover";
+    startY: number;
+    startPos: number;
+    h: number;
+  } | null>(null);
+
+  function dragStart(e: React.PointerEvent, kind: "avatar" | "cover") {
+    const el = e.currentTarget as HTMLElement;
+    el.setPointerCapture(e.pointerId);
+    drag.current = {
+      kind,
+      startY: e.clientY,
+      startPos: kind === "cover" ? coverPos : avatarPos,
+      h: el.clientHeight || 1,
+    };
+  }
+
+  function dragMove(e: React.PointerEvent) {
+    const d = drag.current;
+    if (!d) return;
+    /* سحب الصورة للأسفل يكشف أعلاها — أي يُنقص النسبة — فالإشارة سالبة:
+       هكذا تتبع الصورة الإصبعَ لا عكسه */
+    const delta = ((e.clientY - d.startY) / d.h) * 100;
+    const next = Math.round(Math.min(100, Math.max(0, d.startPos - delta)));
+    if (d.kind === "cover") setCoverPos(next);
+    else setAvatarPos(next);
+    setSaved(false);
+  }
+
+  function dragEnd() {
+    drag.current = null;
   }
 
   function toggleGenre(id: number) {
@@ -118,6 +166,8 @@ export function ProfileForm({
           nickname,
           avatarUrl,
           coverUrl,
+          coverPos,
+          avatarPos,
           theme,
           favoriteGenres: genres,
         });
@@ -137,15 +187,37 @@ export function ProfileForm({
           <h2 className="text-sm font-bold mb-1">{t.coverSection}</h2>
           <p className="text-xs text-muted leading-relaxed mb-3">{t.coverHint}</p>
 
-          <div className="relative h-32 sm:h-40 rounded-xl overflow-hidden border border-border bg-surface-2">
+          <div
+            className={`relative h-32 sm:h-40 rounded-xl overflow-hidden border border-border bg-surface-2 ${
+              coverUrl ? "cursor-grab active:cursor-grabbing touch-none select-none" : ""
+            }`}
+            role={coverUrl ? "slider" : undefined}
+            aria-label={coverUrl ? t.repositionAria : undefined}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={coverUrl ? coverPos : undefined}
+            onPointerDown={coverUrl ? (e) => dragStart(e, "cover") : undefined}
+            onPointerMove={coverUrl ? dragMove : undefined}
+            onPointerUp={dragEnd}
+            onPointerCancel={dragEnd}
+          >
             {coverUrl ? (
-              <img src={coverUrl} alt="" className="w-full h-full object-cover" />
+              <img
+                src={coverUrl}
+                alt=""
+                draggable={false}
+                className="w-full h-full object-cover pointer-events-none"
+                style={{ objectPosition: `50% ${coverPos}%` }}
+              />
             ) : (
               <div className="w-full h-full grid place-items-center text-sm text-muted">
                 {t.noCover}
               </div>
             )}
           </div>
+          {coverUrl && (
+            <p className="text-[11px] text-muted mt-1.5">{t.repositionHint}</p>
+          )}
 
           <input
             ref={coverRef}
@@ -188,7 +260,33 @@ export function ProfileForm({
   <section className="bg-surface border border-border rounded-2xl p-3.5 sm:p-5">
           <h2 className="font-bold mb-4">{t.avatarSection}</h2>
           <div className="flex items-center gap-4 flex-wrap">
-            <Avatar src={avatarUrl} name={nickname || email} size={72} alt={t.avatarAlt} />
+            {/* دائرةٌ أكبر من دوائر العرض قليلاً: هي هنا سطحُ ضبطٍ يُسحب
+                بالإبهام لا صورةً تُرى فحسب */}
+            <span
+              className={
+                avatarUrl
+                  ? "inline-block cursor-grab active:cursor-grabbing touch-none select-none"
+                  : "inline-block"
+              }
+              role={avatarUrl ? "slider" : undefined}
+              aria-label={avatarUrl ? t.repositionAria : undefined}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={avatarUrl ? avatarPos : undefined}
+              onPointerDown={avatarUrl ? (e) => dragStart(e, "avatar") : undefined}
+              onPointerMove={avatarUrl ? dragMove : undefined}
+              onPointerUp={dragEnd}
+              onPointerCancel={dragEnd}
+            >
+              <Avatar
+                src={avatarUrl}
+                name={nickname || email}
+                size={72}
+                alt={t.avatarAlt}
+                posY={avatarPos}
+                className="pointer-events-none"
+              />
+            </span>
             <div className="flex flex-wrap gap-2">
               <input
                 ref={avatarRef}
@@ -223,7 +321,10 @@ export function ProfileForm({
               )}
             </div>
           </div>
-          <p className="text-xs text-muted mt-3">{t.imageHint}</p>
+          <p className="text-xs text-muted mt-3">
+            {t.imageHint}
+            {avatarUrl ? ` ${t.repositionHint}` : ""}
+          </p>
         </section>
         )}
 
