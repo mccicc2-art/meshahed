@@ -5,9 +5,13 @@ import { getT } from "@/lib/locale";
 import { formatDateShort } from "@/lib/when";
 import { CommunityBar } from "@/components/CommunityBar";
 import { PersonName } from "@/components/PersonRow";
-import { posterUrl } from "@/lib/media";
+import { backdropUrl, posterUrl } from "@/lib/media";
+import { getTv, getMovie } from "@/lib/tmdb";
 import { Icon } from "@/components/Icon";
 import { LikeButton } from "@/components/LikeButton";
+
+/** كم عملاً نطلب له صورةً عرضية — سقفٌ يمنع موجة طلباتٍ بحجم الخط */
+const BACKDROP_LIMIT = 12;
 
 export default async function PeoplePage() {
   const user = await getUser();
@@ -16,6 +20,24 @@ export default async function PeoplePage() {
   const { locale, t } = await getT();
 
   const [feed, lists] = await Promise.all([getCommunityFeed(), getFollowLists(user.id)]);
+
+  /* الصورة العرضية ليست في صفّ التقييم — الجدول يحفظ الملصق وحده —
+     فتُطلب من TMDB لأوائل الخط فقط، متوازيةً ومخزَّنة ساعةً في طبقة
+     fetch. وما تعذّر منها يسقط إلى الملصق ثم إلى الأيقونة، فلا يبقى
+     مربّعٌ فارغ. الحلّ الأرخص لاحقاً: عمود `backdrop_path` في الجدول. */
+  const backdropTargets = feed.slice(0, BACKDROP_LIMIT);
+  const backdropPairs = await Promise.all(
+    backdropTargets.map(async (a) => {
+      try {
+        const d =
+          a.media_type === "tv" ? await getTv(a.tmdb_id) : await getMovie(a.tmdb_id);
+        return [`${a.media_type}-${a.tmdb_id}`, d.backdrop_path] as const;
+      } catch {
+        return [`${a.media_type}-${a.tmdb_id}`, null] as const;
+      }
+    }),
+  );
+  const backdropById = new Map(backdropPairs);
 
   return (
     <div className="space-y-8">
@@ -45,7 +67,11 @@ export default async function PeoplePage() {
              كل رأيٍ جزيرةً، والقراءة المتتابعة تريد نهراً. قرارُ المالك. */
           <div className="divide-y divide-[color:var(--divider)]">
             {feed.map((a) => {
-              const poster = posterUrl(a.poster_path, "w185");
+              /* صورةٌ عرضية كصورة «أكمل المشاهدة» لا ملصقاً رأسياً:
+                 الصفّ أفقيّ، والعرضيّة تجلس فيه بلا أن ترفع ارتفاعه */
+              const art =
+                backdropUrl(backdropById.get(`${a.media_type}-${a.tmdb_id}`) ?? null, "w300") ??
+                posterUrl(a.poster_path, "w185");
               return (
                 <article
                   key={`${a.person.id}-${a.media_type}-${a.tmdb_id}`}
@@ -76,11 +102,11 @@ export default async function PeoplePage() {
                             {a.media_type === "tv" ? t.typeSeries : t.typeMovie}
                           </span>
                         </span>
-                        <span className="w-8 shrink-0 aspect-[2/3] rounded-md overflow-hidden bg-surface-2 block">
-                          {poster ? (
+                        <span className="w-[4.5rem] shrink-0 aspect-video rounded-md overflow-hidden bg-surface-2 block">
+                          {art ? (
                             /* eslint-disable-next-line @next/next/no-img-element */
                             <img
-                              src={poster}
+                              src={art}
                               alt=""
                               loading="lazy"
                               decoding="async"
