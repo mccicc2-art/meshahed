@@ -19,10 +19,8 @@ export default async function PeoplePage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-xl font-bold">{t.peopleTitle}</h1>
-        <p className="text-xs text-muted mt-0.5">{t.communitySub}</p>
-      </div>
+      {/* العنوان مخفيٌّ بصريًّا وباقٍ لقارئ الشاشة — أُزيلت الترويسة والوصف */}
+      <h1 className="sr-only">{t.peopleTitle}</h1>
 
       {/* سطرٌ واحد: عدّادا المتابعة وزرّ الإضافة — والقوائم والبحث نوافذ منبثقة */}
       <CommunityBar
