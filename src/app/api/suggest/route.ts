@@ -17,12 +17,14 @@ export async function GET(request: Request) {
     );
   }
 
+  /* حرفان لا ثلاثة — كبحث الأشخاص: الحدّ الثلاثيّ كان يجعل «٢٤» و«IT»
+     و«لو» غير قابلة للإيجاد أصلاً، لا بطيئةً بل مستحيلة. */
   const q = new URL(request.url).searchParams.get("q")?.trim() ?? "";
-  if (q.length < 3) return NextResponse.json({ results: [] });
+  if (q.length < 2) return NextResponse.json({ results: [] });
 
   try {
     const found = await searchMulti(q);
-    const results = found.slice(0, 8).map((r) => ({
+    const results = found.slice(0, 10).map((r) => ({
       id: r.id,
       mediaType: r.media_type,
       title: titleOf(r),
