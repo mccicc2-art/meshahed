@@ -72,9 +72,6 @@ export default async function LibraryPage({
     }
   }
 
-  // حلقاتٌ متبقية عبر المكتبة كلها — لسطر الملخّص تحت العنوان
-  let remainingEps = 0;
-
   // الترتيب داخل كل تبويب: ما أنت في وسطه، ثم ما لم تبدأه، ثم المكتمل
   const shows: (GridItem & { rank: number; progressSort: number })[] = follows
     .filter((f) => f.media_type === "tv")
@@ -84,7 +81,6 @@ export default async function LibraryPage({
       const done = aired > 0 && watched >= aired && watched > 0;
       const progress = aired > 0 ? Math.round((watched / aired) * 100) : 0;
       const dropped = !!f.dropped;
-      if (!dropped && aired > watched) remainingEps += aired - watched;
       return {
         key: `tv-${f.tmdb_id}`,
         tmdbId: f.tmdb_id,
@@ -123,17 +119,11 @@ export default async function LibraryPage({
     })
     .sort((a, b) => a.rank - b.rank);
 
-  const doneCount =
-    shows.filter((s) => s.rank === 2).length + movies.filter((m) => m.rank === 1).length;
-
   return (
     <div>
       <FollowMetaSync rows={metaToCache} />
-      <h1 className="text-xl font-bold">{t.libraryTitle}</h1>
-      {/* سطر الملخّص: نبض المكتبة بنظرة — كم عندك، كم أنهيت، كم بقي */}
-      <p className="text-xs text-muted mt-1 mb-5" dir="auto">
-        {t.librarySummary(shows.length + movies.length, doneCount, remainingEps)}
-      </p>
+      {/* العنوان مخفيٌّ بصريًّا وباقٍ لقارئ الشاشة — أُزيلت الترويسة وسطر الملخّص */}
+      <h1 className="sr-only">{t.libraryTitle}</h1>
 
       <LibraryGrid shows={shows} movies={movies} locale={locale} initialTab={initialTab} />
 
