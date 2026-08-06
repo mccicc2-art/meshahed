@@ -508,12 +508,31 @@ export interface PublicProfile {
   hide_name?: boolean | null;
 }
 
-export async function getProfileByUsername(username: string): Promise<PublicProfile | null> {
+/** معرّف UUID كما يكتبه Postgres — يميّز رابط الهوية عن رابط المعرّف */
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * الملف العام بالمعرّف أو بالهوية.
+ *
+ * المعرّف (`username`) اختياريّ ولا يملكه كل حساب: من يدخل بحساب Google
+ * ولا يمرّ على شاشة التهيئة يبقى بلا معرّف، فكان صفّه في «المتابِعون»
+ * وفي البحث لا يُفتح — لا صفحةَ له تُقصد. فتُقبل الهوية بديلاً: من له
+ * معرّف يبقى رابطه بالمعرّف (أنظف وأقبل للمشاركة)، ومن لا معرّف له
+ * يُفتح بهويته بدل أن يكون اسماً لا يُنقر.
+ */
+export async function getProfileByUsername(
+  handleOrId: string,
+): Promise<PublicProfile | null> {
   // كان هنا `.ilike` — و ILIKE يعامل % و _ كأحرف بديلة، فرابط مثل /u/%
   // كان يطابق أي مستخدم ويسمح بتعداد الحسابات بالتخمين. المطابقة الآن تامّة،
   // وأسماء المستخدمين تُحفظ بحروف صغيرة أصلاً في updateProfile.
-  const handle = username.trim().toLowerCase();
-  if (!/^[a-z0-9_]{1,24}$/.test(handle)) return null;
+  const raw = handleOrId.trim();
+  const byId = UUID_RE.test(raw);
+  const handle = raw.toLowerCase();
+  if (!byId && !/^[a-z0-9_]{1,24}$/.test(handle)) return null;
+
+  const column = byId ? "id" : "username";
+  const value = byId ? raw : handle;
 
   try {
     const supabase = await createClient();
@@ -522,7 +541,7 @@ export async function getProfileByUsername(username: string): Promise<PublicProf
     const { data, error } = await supabase
       .from("public_profiles")
       .select("id, nickname, username, avatar_url, cover_url, favorite_genres, hide_name")
-      .eq("username", handle)
+      .eq(column, value)
       .maybeSingle();
 
     // احتياط لو عمود إخفاء الاسم لم يُضَف بعد
@@ -530,7 +549,7 @@ export async function getProfileByUsername(username: string): Promise<PublicProf
       const legacy = await supabase
         .from("public_profiles")
         .select("id, nickname, username, avatar_url, cover_url, favorite_genres")
-        .eq("username", handle)
+        .eq(column, value)
         .maybeSingle();
       if (!legacy.data) return null;
       return {
