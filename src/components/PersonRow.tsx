@@ -19,7 +19,10 @@ export function PersonName({
   sub?: string;
 }) {
   const name = displayNameOf(person, t.anonymousUser);
-  const linkable = !person.hide_name && !!person.username;
+  /* من أخفى اسمه لا يُفتح ملفه؛ ومن لم يختر معرّفاً يُفتح بهويته —
+     المعرّف اختياريّ، وغيابه كان يجعل الاسم نصّاً ميتاً لا يُنقر */
+  const linkable = !person.hide_name;
+  const handle = person.username ?? person.id;
 
   const inner = (
     <>
@@ -43,7 +46,7 @@ export function PersonName({
 
   return (
     <Link
-      href={`/u/${person.username}`}
+      href={`/u/${handle}`}
       prefetch={false}
       title={t.viewProfileOf(name)}
       className="flex items-center gap-2 min-w-0 hover:text-accent transition"

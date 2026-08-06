@@ -95,7 +95,9 @@ function PersonRowLink({ p, t }: { p: PersonLite; t: Dict }) {
   const name = p.hide_name ? t.anonymousUser : p.nickname || p.username || "—";
   return (
     <Link
-      href={p.username ? `/u/${p.username}` : "/people"}
+      /* من لا معرّف له يُفتح بهويته: كان صفّه يعيد إلى صفحة المجتمع
+         نفسها، فيبدو الاسم معطّلاً بلا سبب ظاهر */
+      href={`/u/${p.username ?? p.id}`}
       prefetch={false}
       className="flex items-center gap-3 px-5 py-3 hover:bg-surface-2 transition"
     >
@@ -128,7 +130,17 @@ function PeopleSheet({
   onClose: () => void;
 }) {
   return (
-    <Sheet open onClose={onClose} closeLabel={t.closeLabel} labelledBy="people-sheet-title">
+    /* علوية كورقة البحث: قوائم الناس تُقرأ ويُنقر فيها اسمٌ بعينه، وهذه
+       قراءةٌ لا فعلٌ سريع — فتُفتح من أعلى الشاشة حيث تبدأ العين، ولا
+       تُدفَع نصفَ الشاشة عند ظهور أي لوحة. ووحدةُ الموضع بين ورقتَي
+       المجتمع تجعل الانتقال بينهما بلا قفزة */
+    <Sheet
+      open
+      variant="top"
+      onClose={onClose}
+      closeLabel={t.closeLabel}
+      labelledBy="people-sheet-title"
+    >
       <SheetHeader
         id="people-sheet-title"
         title={title}
