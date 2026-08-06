@@ -15,7 +15,7 @@ import { HeaderShell } from "@/components/HeaderShell";
 import { getLocale } from "@/lib/locale";
 
 export const viewport: Viewport = {
-  themeColor: "#090909",
+  themeColor: "#0D0D0D",
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",

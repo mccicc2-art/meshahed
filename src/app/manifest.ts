@@ -12,8 +12,9 @@ export default function manifest(): MetadataRoute.Manifest {
     scope: "/",
     display: "standalone",
     orientation: "portrait",
-    background_color: "#1b1f2a",
-    theme_color: "#1b1f2a",
+    // أسود الهوية لا الرمادي المزرق القديم — شاشة الإقلاع المثبّتة تطلع منه
+    background_color: "#0D0D0D",
+    theme_color: "#0D0D0D",
     categories: ["entertainment", "lifestyle"],
     icons: [
       { src: "/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },

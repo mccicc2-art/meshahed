@@ -24,22 +24,24 @@
 @import "@fontsource/poppins/latin-800.css";
 
 :root {
-  /* هوية Loopz — القيم نفسها في themes.ts، وهذه لأول رسم قبل حقن الثيم */
-  --background: #090909;
+  /* هوية Loopz الرسمية — أصفر #FFD200 على أسود #0D0D0D (كتيّب العلامة).
+     القيم نفسها في themes.ts، وهذه لأول رسم قبل حقن الثيم */
+  --background: #0d0d0d;
   --surface: #141414;
   --surface-2: #1a1a1a;
   --foreground: #ffffff;
-  --muted: #a6a6a6;
-  --accent: #7c3aed;
-  --accent-2: #ec4899;
+  --muted: #bdbdbd;
+  --accent: #ffd200;
+  --accent-2: #f59e0b;
   --border: #2a2a2a;
-  --on-accent: #ffffff;
-  --on-accent-2: #ffffff;
-  --glow-a: rgba(124, 58, 237, 0.12);
-  --glow-b: rgba(236, 72, 153, 0.07);
-  /* تدرّج الشعار */
-  --brand-1: #7c3aed;
-  --brand-2: #ec4899;
+  /* أسود على الأصفر لا أبيض — الأبيض على #FFD200 لا يُقرأ (تباين ~1.6) */
+  --on-accent: #0d0d0d;
+  --on-accent-2: #0d0d0d;
+  --glow-a: rgba(255, 210, 0, 0.1);
+  --glow-b: rgba(245, 158, 11, 0.05);
+  /* سُلَّم الهوية — درجات الأصفر نفسه، فالكتيّب لونان لا غير */
+  --brand-1: #ffd200;
+  --brand-2: #fbbf24;
   --brand-3: #f59e0b;
 
   /* أسطحٌ مشتقّة من اللوحة — `themeCss` يكتبها لكل ثيم، وهذه قيم أول
@@ -48,12 +50,14 @@
   --elevated: #1a1a1a;
   --divider: rgba(255, 255, 255, 0.08);
   --surface-inverse: #ffffff;
-  --on-surface-inverse: #111111;
+  --on-surface-inverse: #0d0d0d;
 
   /* ألوانٌ دلاليّة لا تتبدّل مع الثيم: الحالة والتوثيق معانٍ ثابتة، ولو
      تبدّلت بتبدّل لوحة الألوان لتغيّر معناها. */
   --disabled: #707070;
-  --verified: #facc15;
+  /* التوثيق والتقييم على أصفر الهوية نفسه: كان #facc15 — درجة قربها من
+     أصفر العلامة الجديد كانت ستُقرأ خطأَ طباعةٍ لا لوناً ثانياً */
+  --verified: #ffd200;
   --success: #22c55e;
   --error: #ef4444;
   --info: #3b82f6;
