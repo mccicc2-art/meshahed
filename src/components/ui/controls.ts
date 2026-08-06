@@ -20,15 +20,21 @@
  * دون أن تُفرض دلالةٌ واحدة على الجميع.
  */
 
-/** مسار المقسّم — صفٌّ يلامس محتواه فوق خطٍّ فاصلٍ سفليّ، وفاصلٌ رأسيّ
-    رفيع بين الخانات */
+/**
+ * مسار المقسّم — صفٌّ يلامس محتواه فوق خطٍّ فاصلٍ سفليّ، وفاصلٌ رأسيّ
+ * رفيع بين الخانات.
+ *
+ * الفاصل الرأسيّ عنصرٌ زائفٌ (`before`) على كل خانةٍ عدا الأولى، لا
+ * `divide-x`: ذاك يمدّ الخطّ بكامل ارتفاع الخانة فيلتقي بالخطّ الأفقيّ
+ * السفليّ ويصنع زاويةً مقفلة. هنا يُقصّ من أعلى وأسفل (`inset-y-2`)
+ * فتبقى فجوةٌ قبل الأفقيّ — قرارُ المالك بعد مراجعة الشكل.
+ */
 export const segmentedTrack =
-  "inline-flex items-stretch border-b border-[color:var(--divider)] divide-x divide-[color:var(--divider)]";
+  "inline-flex items-stretch border-b border-[color:var(--divider)]";
 
-/** مسارٌ يملأ العرض ويقسّمه بالتساوي — أبناؤه يأخذون `flex-1`، وفاصلٌ
-    رأسيّ رفيع بينها */
+/** مسارٌ يملأ العرض ويقسّمه بالتساوي — أبناؤه يأخذون `flex-1` */
 export const segmentedTrackFull =
-  "flex w-full items-stretch border-b border-[color:var(--divider)] divide-x divide-[color:var(--divider)]";
+  "flex w-full items-stretch border-b border-[color:var(--divider)]";
 
 /**
  * خانة المقسّم — نصٌّ شفّاف يعلوه خطُّ تمييزٍ سفليّ عريض عند الاختيار.
@@ -36,11 +42,17 @@ export const segmentedTrackFull =
  * الخطّ عنصرٌ زائفٌ (`after`) يجلس على حدّ المسار السفليّ ويمتدّ بعرض
  * الخانة نفسها إلا هامشاً يسيراً على الطرفين. متماثلٌ في RTL/LTR.
  *
+ * والفاصل الرأسيّ عنصرٌ زائفٌ (`before`) على كل خانةٍ عدا الأولى، مقصوصٌ
+ * من أعلى وأسفل فلا يلمس الخطّ الأفقيّ السفليّ. يُوضع على الحافة البادئة
+ * (`start`) فينقلب تلقائياً في RTL.
+ *
  * `pad=false` لمن يحتاج حشواً خاصاً: تمرير `px-2` في `className` لا يكفي —
  * الغلبة في CSS لترتيب التوليد لا لترتيب النصّ. فمن يريد حشوه يمرّر `false`.
  */
 export function segmentedItem(active: boolean, className = "", pad = true) {
-  return `${pad ? "px-4 pt-2 pb-3 text-[13px] " : ""}relative font-semibold whitespace-nowrap transition-colors ${
+  const rule =
+    "before:pointer-events-none before:absolute before:inset-y-2 before:start-0 before:w-px before:bg-[color:var(--divider)] first:before:hidden";
+  return `${pad ? "px-4 pt-2 pb-3 text-[13px] " : ""}relative font-semibold whitespace-nowrap transition-colors ${rule} ${
     active
       ? "text-foreground after:pointer-events-none after:absolute after:-bottom-px after:inset-x-4 after:h-[3px] after:rounded-full after:bg-accent"
       : "text-muted hover:text-foreground"
