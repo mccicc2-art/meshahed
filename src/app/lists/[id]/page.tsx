@@ -34,6 +34,7 @@ export default async function ListPage({ params }: { params: Promise<{ id: strin
       <ListDetail
         listId={data.list.id}
         name={data.list.name}
+        subtitle={data.list.subtitle}
         isPublic={data.list.is_public}
         kind={data.list.kind}
         items={data.items}
