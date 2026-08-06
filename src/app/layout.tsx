@@ -4,6 +4,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 import { Navbar } from "@/components/Navbar";
 import { BottomNav } from "@/components/BottomNav";
+import { Footer } from "@/components/Footer";
 import { OfflineSync } from "@/components/OfflineSync";
 import { ToastHost } from "@/components/ToastHost";
 import { SwRegister } from "@/components/SwRegister";
@@ -74,14 +75,7 @@ export default async function RootLayout({
         <main id="main" className="flex-1 w-full max-w-6xl mx-auto px-4 py-6">
           {children}
         </main>
-        {/* `dir="ltr"` لأن السطر إنجليزيّ في اللغتين: شعارٌ واحد لا يُترجم،
-            ولو ورث اتجاه الصفحة العربية لانقلب ترتيب كلماته عند أي علامة */}
-        <footer
-          dir="ltr"
-          className="text-center text-[13px] tracking-wide text-muted/70 py-6 pb-28 md:pb-6"
-        >
-          {t.footer}
-        </footer>
+        <Footer text={t.footer} />
         <BottomNav locale={locale} />
         <OfflineSync />
         <ToastHost />
