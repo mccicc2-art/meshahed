@@ -115,6 +115,11 @@ export default async function HomePage() {
   // مرشّحو «أكمل المشاهدة» يُعرفون من الملخّص قبل الترجمة — فتنضم
   // تفاصيلهم إلى نفس الموجة بدل موجةٍ خاصة بهم
   const CONTINUE_CARDS = 4;
+  /* نستطلع أكثر مما نعرض: البطاقات أربع، لكن معرفة «الحلقة التالية»
+     تلزم لكل عملٍ قيد المشاهدة لا للبطاقات وحدها — بها نعرف مَن ينتظره
+     موسمٌ جديد فيبقى في «للمشاهدة». عشرةٌ سقفٌ يكفي ولا يفتح موجة
+     طلباتٍ بحجم المكتبة. */
+  const CONTINUE_PROBE = 10;
   const earlyContinueIds: number[] = summary
     ? rawTv
         .map((row) => {
@@ -128,7 +133,7 @@ export default async function HomePage() {
           const bi = lastWatchedOrder.indexOf(b.id);
           return (ai < 0 ? 9999 : ai) - (bi < 0 ? 9999 : bi);
         })
-        .slice(0, CONTINUE_CARDS)
+        .slice(0, CONTINUE_PROBE)
         .map((i) => i.id)
     : [];
 
@@ -315,6 +320,15 @@ export default async function HomePage() {
      المسار الطبيعي؛ الاحتياط (قبل performance.sql) وحده يطلبها هنا */
   const continueTop = continueRow.slice(0, CONTINUE_CARDS);
   const extraById = new Map(earlyExtra.map((e) => [e.id, e]));
+
+  /* موسمٌ جديد ينتظر: أنهيت كل ما سبق، وأوّل حلقةٍ لم تُشاهَد هي حلقة
+     موسمٍ جديد. هذا العمل «لم يبدأ» من جهة المستخدم وإن كان في وسط
+     المسلسل، فيبقى في «للمشاهدة» ولا يُطوى في «أكمل المشاهدة» وحدها. */
+  const newSeasonWaiting = new Set(
+    earlyExtra
+      .filter((e) => e.episode === 1 && (e.season ?? 0) > 1)
+      .map((e) => e.id),
+  );
   const continueExtra = summary
     ? continueTop.map(
         (i) =>
@@ -425,7 +439,15 @@ export default async function HomePage() {
 
   const toWatchRow: MixedItem[] = [
     ...myShows
-      .filter((i) => i.aired === 0 || i.watched < i.aired)
+      /* لا تكرار بين الصفّين: ما بدأته مكانه «أكمل المشاهدة» وحدها،
+         و«للمشاهدة» لِما لم يبدأ — عملٌ جديد، أو موسمٌ جديد ينتظر أوّل
+         حلقةٍ منه. كان الصفّان يعرضان الشيء نفسه فيقرأ المستخدم مكتبته
+         مرّتين ويظنّ أن أحدهما معطّل. قرارُ المالك. */
+      .filter(
+        (i) =>
+          (i.aired === 0 || i.watched < i.aired) &&
+          (i.watched === 0 || newSeasonWaiting.has(i.id)),
+      )
       .map((i) => ({
         key: `tw-tv-${i.id}`,
         mediaType: "tv" as const,
