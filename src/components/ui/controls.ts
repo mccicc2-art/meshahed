@@ -20,19 +20,21 @@
  * دون أن تُفرض دلالةٌ واحدة على الجميع.
  */
 
-/** مسار المقسّم — صفٌّ يلامس محتواه فوق خطٍّ فاصلٍ سفليّ */
+/** مسار المقسّم — صفٌّ يلامس محتواه فوق خطٍّ فاصلٍ سفليّ، وفاصلٌ رأسيّ
+    رفيع بين الخانات */
 export const segmentedTrack =
-  "inline-flex items-stretch border-b border-[color:var(--divider)]";
+  "inline-flex items-stretch border-b border-[color:var(--divider)] divide-x divide-[color:var(--divider)]";
 
-/** مسارٌ يملأ العرض ويقسّمه بالتساوي — أبناؤه يأخذون `flex-1` */
+/** مسارٌ يملأ العرض ويقسّمه بالتساوي — أبناؤه يأخذون `flex-1`، وفاصلٌ
+    رأسيّ رفيع بينها */
 export const segmentedTrackFull =
-  "flex w-full items-stretch border-b border-[color:var(--divider)]";
+  "flex w-full items-stretch border-b border-[color:var(--divider)] divide-x divide-[color:var(--divider)]";
 
 /**
- * خانة المقسّم — نصٌّ شفّاف يعلوه خطُّ تمييزٍ سفليّ عند الاختيار.
+ * خانة المقسّم — نصٌّ شفّاف يعلوه خطُّ تمييزٍ سفليّ عريض عند الاختيار.
  *
- * الخطّ عنصرٌ زائفٌ (`after`) يجلس على حدّ المسار السفليّ ويتوسّط الخانة
- * بعرضٍ ثابت، فيبدو متّسقاً مهما اختلف عرض الخانات. متماثلٌ في RTL/LTR.
+ * الخطّ عنصرٌ زائفٌ (`after`) يجلس على حدّ المسار السفليّ ويمتدّ بعرض
+ * الخانة نفسها إلا هامشاً يسيراً على الطرفين. متماثلٌ في RTL/LTR.
  *
  * `pad=false` لمن يحتاج حشواً خاصاً: تمرير `px-2` في `className` لا يكفي —
  * الغلبة في CSS لترتيب التوليد لا لترتيب النصّ. فمن يريد حشوه يمرّر `false`.
@@ -40,7 +42,7 @@ export const segmentedTrackFull =
 export function segmentedItem(active: boolean, className = "", pad = true) {
   return `${pad ? "px-4 pt-2 pb-3 text-[13px] " : ""}relative font-semibold whitespace-nowrap transition-colors ${
     active
-      ? "text-foreground after:pointer-events-none after:absolute after:-bottom-px after:left-1/2 after:h-[3px] after:w-7 after:-translate-x-1/2 after:rounded-full after:bg-accent"
+      ? "text-foreground after:pointer-events-none after:absolute after:-bottom-px after:inset-x-4 after:h-[3px] after:rounded-full after:bg-accent"
       : "text-muted hover:text-foreground"
   }${className ? ` ${className}` : ""}`;
 }
