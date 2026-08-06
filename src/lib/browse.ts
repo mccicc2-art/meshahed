@@ -11,7 +11,6 @@
 // عند اختيار تلك الجهة بدل أن يعطي نتيجةً فارغة.
 
 export type BrowseType = "all" | "movie" | "tv";
-export type BrowseSort = "trending" | "top" | "new";
 
 export interface BrowseGenre {
   /** المعرّف في الرابط — ثابتٌ لا يتغيّر بتغيّر اللغة */
@@ -42,8 +41,6 @@ export const BROWSE_GENRES: BrowseGenre[] = [
   { slug: "reality", ar: "تلفزيون الواقع", en: "Reality", movie: [], tv: [10764] },
   { slug: "western", ar: "غربي", en: "Western", movie: [37], tv: [37] },
 ];
-
-export const BROWSE_SORTS: BrowseSort[] = ["trending", "top", "new"];
 
 export function browseGenreName(g: BrowseGenre, locale: "ar" | "en") {
   return locale === "en" ? g.en : g.ar;
@@ -125,7 +122,6 @@ export interface BrowseItem {
 export interface BrowseQuery {
   type: BrowseType;
   genre: BrowseGenre | null;
-  sort: BrowseSort;
   /** لغة العمل الأصلية */
   lang: BrowseLang | null;
   /** حقبة الإصدار */
@@ -157,10 +153,6 @@ export function parseBrowse(params: {
   const found = BROWSE_GENRES.find((g) => g.slug === params.g) ?? null;
   const genre = found && genreFitsType(found, type) ? found : null;
 
-  const sort: BrowseSort = BROWSE_SORTS.includes(params.sort as BrowseSort)
-    ? (params.sort as BrowseSort)
-    : "trending";
-
   const lang = BROWSE_LANGS.find((l) => l.code === params.lang) ?? null;
   const era = BROWSE_ERAS.find((e) => e.slug === params.era) ?? null;
   const rateNum = Number(params.rate);
@@ -171,7 +163,6 @@ export function parseBrowse(params: {
   return {
     type,
     genre,
-    sort,
     lang,
     era,
     rate,
