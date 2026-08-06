@@ -35,7 +35,7 @@ export function DetailTabs({ tabs }: { tabs: DetailTab[] }) {
       <div className="sticky top-[var(--header-h)] z-10 bg-[color:var(--background)] py-2">
         <div
           role="tablist"
-          className="grid border-b border-[color:var(--divider)]"
+          className="grid border-b border-[color:var(--divider)] divide-x divide-[color:var(--divider)]"
           style={{ gridTemplateColumns: `repeat(${available.length}, minmax(0, 1fr))` }}
           onKeyDown={(e) => {
             if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
