@@ -39,7 +39,7 @@ const ar = {
 
   statWatchTime: "وقت المشاهدة",
   emptyStart: "ابدأ بمتابعة مسلسل أو فيلم لتظهر هنا.",
-  continueWatching: "أكمل",
+  continueWatching: "أكمل المشاهدة",
   comingSoon: "القادم قريباً",
   suggestedForYou: "مقترح لك",
   recoBecauseFollow: (title: string) => `لأنك تتابع «${title}»`,
@@ -502,7 +502,7 @@ const en: Dict = {
 
   statWatchTime: "Watch time",
   emptyStart: "Follow a show or a movie and it will show up here.",
-  continueWatching: "Continue",
+  continueWatching: "Continue Watching",
   comingSoon: "Coming soon",
   suggestedForYou: "Picked for you",
   recoBecauseFollow: (title: string) => `Because you follow “${title}”`,
