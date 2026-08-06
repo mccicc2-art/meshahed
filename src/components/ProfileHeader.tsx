@@ -89,7 +89,6 @@ export function ProfileHeader({
   followers,
   comments,
   ratings,
-  likes,
   show,
   verified = false,
   locale,
@@ -209,8 +208,9 @@ export function ProfileHeader({
                 <span className="opacity-40 shrink-0">•</span>
               )}
 
-              {/* التعليقات والتقييمات والإعجابات: أيقونة ورقم بلا كلمة —
-                  الأيقونة تكفي لتعريفها فتدخل السطر دون أن تزحمه */}
+              {/* التعليقات والتقييمات: أيقونة ورقم بلا كلمة — الأيقونة
+                  تكفي لتعريفها فتدخل السطر دون أن تزحمه. حُذف الإعجاب من
+                  الشريط بطلب المالك */}
               {show.social && (
                 <>
                   <Link
@@ -235,16 +235,6 @@ export function ProfileHeader({
                       {ratings}
                     </span>
                   </Link>
-                  <span
-                    title={t.likesLabel}
-                    aria-label={`${likes} ${t.likesLabel}`}
-                    className="shrink-0 flex items-center gap-1"
-                  >
-                    <Icon name="like" size={14} />
-                    <span className="font-bold text-white tabular-nums">
-                      {likes}
-                    </span>
-                  </span>
                 </>
               )}
             </div>
