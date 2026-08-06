@@ -162,12 +162,17 @@ export function SheetHeader({
   closeLabel,
   onClose,
   id,
+  action,
   children,
 }: {
   title: string;
   closeLabel: string;
   onClose: () => void;
   id?: string;
+  /** بديلُ زرّ الإغلاق حين يكون للورقة فعلٌ ختاميّ («تمّ» في وضع الترتيب).
+      ليست ترويسةً ثانية بل الترويسة نفسها وقد استُبدل زرّها: ورقةٌ تنتهي
+      بحفظٍ لا يجوز أن يكون مخرجها الوحيد علامة × تُقرأ إلغاءً. */
+  action?: React.ReactNode;
   /** سطرٌ تحت العنوان (حالة، عدّاد) */
   children?: React.ReactNode;
 }) {
@@ -179,14 +184,16 @@ export function SheetHeader({
         </h3>
         {children}
       </div>
-      <button
-        type="button"
-        onClick={onClose}
-        aria-label={closeLabel}
-        className="shrink-0 grid place-items-center w-9 h-9 rounded-full text-muted hover:text-foreground hover:bg-surface-2 transition"
-      >
-        <Icon name="close" size={16} strokeWidth={2.2} />
-      </button>
+      {action ?? (
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label={closeLabel}
+          className="shrink-0 grid place-items-center w-9 h-9 rounded-full text-muted hover:text-foreground hover:bg-surface-2 transition"
+        >
+          <Icon name="close" size={16} strokeWidth={2.2} />
+        </button>
+      )}
     </div>
   );
 }
