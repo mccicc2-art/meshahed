@@ -89,7 +89,7 @@ export async function GET() {
               width: 22,
               height: 22,
               borderRadius: 11,
-              background: "linear-gradient(135deg, #7C3AED, #EC4899 55%, #F59E0B)",
+              background: "linear-gradient(135deg, #FFD200, #FBBF24 55%, #F59E0B)",
             }}
           />
           <div style={{ fontSize: 34, letterSpacing: -1 }}>Loopz</div>
