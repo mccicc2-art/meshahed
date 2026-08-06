@@ -40,68 +40,77 @@ export default async function PeoplePage() {
             {t.feedEmpty}
           </p>
         ) : (
-          <div className="space-y-3">
+          /* بلا بطاقاتٍ ولا إطارات: الآراء خطٌّ متّصل كخطوط التواصل، يفصل
+             بين الرأي والرأي خطٌّ رفيع لا فجوةٌ وحدّان. البطاقة كانت تجعل
+             كل رأيٍ جزيرةً، والقراءة المتتابعة تريد نهراً. قرارُ المالك. */
+          <div className="divide-y divide-[color:var(--divider)]">
             {feed.map((a) => {
               const poster = posterUrl(a.poster_path, "w185");
               return (
                 <article
                   key={`${a.person.id}-${a.media_type}-${a.tmdb_id}`}
-                  className="bg-surface border border-border rounded-poster p-4"
+                  className="py-4 first:pt-0"
                 >
-                  <div className="flex items-center justify-between gap-3">
+                  {/* صاحب الرأي وتقييمه، والعمل على الطرف المقابل: العنوان
+                      لا يستحقّ صفّاً كامل العرض بإطار، ومكانه إلى جانب
+                      الترويسة يجعل السطر الواحد يقول: مَن، وكم، وفي ماذا */}
+                  <div className="flex items-start justify-between gap-3">
                     <PersonName
                       person={a.person}
                       t={t}
                       size={34}
                       sub={formatDateShort(a.updated_at, t)}
                     />
-                    <span
-                      className="text-sm shrink-0 font-bold text-accent tabular-nums"
-                      title={t.rateOutOf(a.rating)}
-                    >
-                      ★ <span dir="ltr">{a.rating}/10</span>
-                    </span>
+
+                    <div className="flex items-center gap-3 shrink-0">
+                      <Link
+                        href={`/${a.media_type === "tv" ? "show" : "movie"}/${a.tmdb_id}`}
+                        prefetch={false}
+                        className="flex items-center gap-2 group max-w-[11rem]"
+                      >
+                        <span className="min-w-0 text-end">
+                          <span className="block text-[13px] font-semibold truncate group-hover:text-accent transition">
+                            {a.title ?? "—"}
+                          </span>
+                          <span className="block text-[11px] text-muted">
+                            {a.media_type === "tv" ? t.typeSeries : t.typeMovie}
+                          </span>
+                        </span>
+                        <span className="w-8 shrink-0 aspect-[2/3] rounded-md overflow-hidden bg-surface-2 block">
+                          {poster ? (
+                            /* eslint-disable-next-line @next/next/no-img-element */
+                            <img
+                              src={poster}
+                              alt=""
+                              loading="lazy"
+                              decoding="async"
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <span
+                              className="w-full h-full grid place-items-center text-muted"
+                              aria-hidden
+                            >
+                              <Icon name="film" size={14} />
+                            </span>
+                          )}
+                        </span>
+                      </Link>
+
+                      <span
+                        className="text-sm font-bold text-accent tabular-nums"
+                        title={t.rateOutOf(a.rating)}
+                      >
+                        ★ <span dir="ltr">{a.rating}/10</span>
+                      </span>
+                    </div>
                   </div>
 
                   <p className="text-[15px] leading-relaxed whitespace-pre-line mt-3">
                     {a.review}
                   </p>
 
-                  <Link
-                    href={`/${a.media_type === "tv" ? "show" : "movie"}/${a.tmdb_id}`}
-                    prefetch={false}
-                    className="flex items-center gap-3 mt-3 rounded-xl border border-border bg-surface-2/50 p-2 group"
-                  >
-                    <span className="w-9 shrink-0 aspect-[2/3] rounded-md overflow-hidden bg-surface-2 block">
-                      {poster ? (
-                        /* eslint-disable-next-line @next/next/no-img-element */
-                        <img
-                          src={poster}
-                          alt=""
-                          loading="lazy"
-                          decoding="async"
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <span
-                          className="w-full h-full grid place-items-center text-muted"
-                          aria-hidden
-                        >
-                          <Icon name="film" size={16} />
-                        </span>
-                      )}
-                    </span>
-                    <span className="min-w-0">
-                      <span className="block text-[13px] font-semibold truncate group-hover:text-accent transition">
-                        {a.title ?? "—"}
-                      </span>
-                      <span className="block text-[11px] text-muted">
-                        {a.media_type === "tv" ? t.typeSeries : t.typeMovie}
-                      </span>
-                    </span>
-                  </Link>
-
-                  <div className="mt-3 pt-2.5 border-t border-[color:var(--divider)]">
+                  <div className="mt-2">
                     <LikeButton
                       reviewUserId={a.person.id}
                       tmdbId={a.tmdb_id}
