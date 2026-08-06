@@ -23,6 +23,7 @@ export function ListManager({ lists, locale }: { lists: UserList[]; locale: Loca
   const t = getDict(locale);
   const router = useRouter();
   const [name, setName] = useState("");
+  const [subtitle, setSubtitle] = useState("");
   const [confirming, setConfirming] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -33,8 +34,9 @@ export function ListManager({ lists, locale }: { lists: UserList[]; locale: Loca
     setError(null);
     start(async () => {
       try {
-        await createList(clean);
+        await createList(clean, false, subtitle);
         setName("");
+        setSubtitle("");
         router.refresh();
       } catch (e) {
         setError((e as Error).message);
@@ -56,22 +58,39 @@ export function ListManager({ lists, locale }: { lists: UserList[]; locale: Loca
 
   return (
     <div>
-      <div className="flex gap-2 mb-5">
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && add()}
-          maxLength={60}
-          placeholder={t.listNamePlaceholder}
-          className="flex-1 min-w-0 rounded-xl bg-surface-2 border border-border px-3 py-2.5 text-sm outline-none focus:border-accent transition"
-        />
-        <button
-          onClick={add}
-          disabled={pending || !name.trim()}
-          className={buttonClass({ className: "shrink-0" })}
-        >
-          {t.listCreate}
-        </button>
+      <div className="mb-5">
+        <div className="flex gap-2">
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && add()}
+            maxLength={60}
+            placeholder={t.listNamePlaceholder}
+            className="flex-1 min-w-0 rounded-control bg-surface-2 border border-border px-3 py-2.5 text-base outline-none focus:border-accent transition"
+          />
+          <button
+            onClick={add}
+            disabled={pending || !name.trim()}
+            className={buttonClass({ className: "shrink-0" })}
+          >
+            {t.listCreate}
+          </button>
+        </div>
+
+        {/* الوصف يظهر بعد أن يبدأ الاسم لا قبله: حقلان فارغان لكل قائمةٍ
+            سريعة ضريبةٌ على الحالة الشائعة، وإظهاره عند أول حرفٍ يجعله
+            متاحاً لحظة الإنشاء لمن يريده بلا أن يعترض طريق من لا يريده */}
+        {name.trim() && (
+          <input
+            value={subtitle}
+            onChange={(e) => setSubtitle(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && add()}
+            maxLength={120}
+            placeholder={t.listSubtitlePlaceholder}
+            aria-label={t.listSubtitleLabel}
+            className="acc-in mt-2 w-full rounded-control bg-surface-2 border border-border px-3 py-2.5 text-base font-normal text-muted outline-none focus:border-accent focus:text-foreground transition"
+          />
+        )}
       </div>
 
       {error && (
@@ -116,8 +135,20 @@ export function ListManager({ lists, locale }: { lists: UserList[]; locale: Loca
 
                 <span className="min-w-0 flex-1">
                   <span className="block text-sm font-bold truncate">{l.name}</span>
+                  {/* الوصف سطرٌ واحدٌ مقصوص هنا لا سطران: البطاقة صفٌّ في
+                      شبكةٍ لا صفحة، وارتفاعٌ متفاوت بين البطاقات يكسر الشبكة */}
+                  {l.subtitle && (
+                    <span className="block text-[12px] font-normal text-muted/90 truncate mt-0.5">
+                      {l.subtitle}
+                    </span>
+                  )}
                   <span className="block text-[11px] text-muted mt-0.5">
                     {t.listCount(l.item_count)}
+                    {l.kind === "ranked"
+                      ? ` · ${t.listTypeRanked}`
+                      : l.kind === "watch_order"
+                        ? ` · ${t.listTypeWatch}`
+                        : ""}
                     {l.is_public ? ` · ${t.listPublic}` : ""}
                   </span>
                 </span>

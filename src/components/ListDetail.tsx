@@ -38,6 +38,7 @@ const NUMBERED: ListKind[] = ["ranked", "watch_order"];
 export function ListDetail({
   listId,
   name,
+  subtitle,
   isPublic,
   kind,
   items,
@@ -47,6 +48,7 @@ export function ListDetail({
 }: {
   listId: string;
   name: string;
+  subtitle: string | null;
   isPublic: boolean;
   kind: ListKind;
   items: ListItem[];
@@ -119,7 +121,15 @@ export function ListDetail({
         )}
       </div>
 
-      <div className="flex items-center flex-wrap gap-2 mb-5">
+      {/* الوصف امتدادٌ للاسم لا منافسٌ له: نصف وزنه ولونٌ خافت وسطران على
+          الأكثر ثم قصّ. وحين لا وصف لا يبقى فراغه — لا هامش ولا عنصر أصلاً */}
+      {subtitle && (
+        <p className="mt-2 text-[14px] font-normal leading-snug text-muted line-clamp-2 max-w-[46ch]">
+          {subtitle}
+        </p>
+      )}
+
+      <div className="flex items-center flex-wrap gap-2 mt-3.5 mb-5">
         <span className="text-xs text-muted">{t.listCount(visible.length)}</span>
         {numbered && (
           <span className="text-[11px] px-2 py-0.5 rounded-full border border-accent/40 text-accent">
@@ -184,7 +194,10 @@ export function ListDetail({
           >
             <p className="text-xs text-muted mt-0.5">{t.listCount(visible.length)}</p>
           </SheetHeader>
-          <MenuRow icon="edit" label={t.listRename} onClick={() => setSheet("rename")} />
+          {/* «عدّل القائمة» لا «غيّر الاسم»: الورقة تحمل الاسم والوصف معاً،
+              فهما هويّة القائمة الواحدة — وصفٌّ لكلٍّ منهما بابان إلى ورقةٍ
+              واحدة */}
+          <MenuRow icon="edit" label={t.listEditTitle} onClick={() => setSheet("rename")} />
           <MenuRow
             icon="list"
             label={t.listType}
@@ -210,6 +223,7 @@ export function ListDetail({
         <RenameSheet
           listId={listId}
           name={name}
+          subtitle={subtitle}
           isPublic={isPublic}
           t={t}
           onClose={() => setSheet(null)}
@@ -375,6 +389,7 @@ function MenuRow({
 function RenameSheet({
   listId,
   name,
+  subtitle,
   isPublic,
   t,
   onClose,
@@ -382,20 +397,25 @@ function RenameSheet({
 }: {
   listId: string;
   name: string;
+  subtitle: string | null;
   isPublic: boolean;
   t: Dict;
   onClose: () => void;
   onSaved: () => void;
 }) {
   const [draft, setDraft] = useState(name);
+  const [sub, setSub] = useState(subtitle ?? "");
   const [pending, start] = useTransition();
+
+  const dirty = draft.trim() !== name || sub.trim() !== (subtitle ?? "");
 
   function save() {
     const clean = draft.trim();
-    if (!clean || clean === name) return onClose();
+    if (!clean) return;
+    if (!dirty) return onClose();
     start(async () => {
       try {
-        await renameList(listId, clean, isPublic);
+        await renameList(listId, clean, isPublic, sub);
         onSaved();
       } catch (e) {
         flashError((e as Error).message);
@@ -403,27 +423,60 @@ function RenameSheet({
     });
   }
 
+  const field =
+    "w-full rounded-control bg-surface-2 border border-border px-3 py-2.5 text-base outline-none focus:border-accent transition";
+
   return (
     <Sheet open variant="top" onClose={onClose} closeLabel={t.closeLabel} labelledBy="list-rn-title">
-      <SheetHeader id="list-rn-title" title={t.listRename} closeLabel={t.closeLabel} onClose={onClose} />
-      <div className="p-5 flex gap-2">
-        {/* ١٦ بكسل لا أصغر: سفاري iOS يكبّر الصفحة عند التركيز على أي حقلٍ
-            أصغر ولا يتراجع عن التكبير (D-033) */}
-        <input
-          autoFocus
-          value={draft}
-          maxLength={60}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") save();
-          }}
-          className="flex-1 min-w-0 rounded-control bg-surface-2 border border-border px-3 py-2.5 text-base outline-none focus:border-accent transition"
-        />
+      <SheetHeader
+        id="list-rn-title"
+        title={t.listEditTitle}
+        closeLabel={t.closeLabel}
+        onClose={onClose}
+      />
+      <div className="p-5 space-y-3">
+        {/* ١٦ بكسل لا أصغر في كل حقل: سفاري iOS يكبّر الصفحة عند التركيز
+            على أي حقلٍ أصغر ولا يتراجع عن التكبير (D-033) */}
+        <label className="block">
+          <span className="block text-[11px] font-semibold text-muted mb-1.5">{t.listNameLabel}</span>
+          <input
+            autoFocus
+            value={draft}
+            maxLength={60}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") save();
+            }}
+            className={field}
+          />
+        </label>
+
+        <label className="block">
+          <span className="block text-[11px] font-semibold text-muted mb-1.5">
+            {t.listSubtitleLabel}
+          </span>
+          {/* سطرٌ واحد لا منطقة نصّ: السقف ١٢٠ حرفاً وجملةٌ واحدة، ومنطقة
+              النصّ تدعو إلى فقرة ثم تُقصّ عند العرض */}
+          <input
+            value={sub}
+            maxLength={120}
+            placeholder={t.listSubtitlePlaceholder}
+            onChange={(e) => setSub(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") save();
+            }}
+            className={field}
+          />
+          <span className="block text-[11px] text-muted/70 mt-1 tabular-nums" dir="ltr">
+            {sub.length}/120
+          </span>
+        </label>
+
         <button
           type="button"
           onClick={save}
           disabled={pending || !draft.trim()}
-          className={buttonClass({ size: "sm", className: "shrink-0" })}
+          className={buttonClass({ size: "sm", full: true })}
         >
           {t.listSave}
         </button>
@@ -738,10 +791,13 @@ function PosterTile({
           aria-label={t.listRemove}
           /* ظاهرٌ دائماً لا عند التمرير: الجوال لا يعرف hover، وإخفاؤه
              خلفه كان سيمحو الإزالة من الجهاز الذي تُستعمل فيه أكثر */
-          className="absolute top-1 end-1 grid place-items-center w-8 h-8 text-white/75 transition active:scale-90 hover:text-white"
+          /* ظاهرٌ دائماً (الجوال لا يعرف hover) لكن خافتٌ عمداً: ستّ بطاقات
+             بستّ علاماتٍ صارخة تنافس أرقام الترتيب على أول ما تقع عليه
+             العين. الهدف ٣٢ بكسلاً واللمس عليه، والدائرة ٢٠ */
+          className="absolute top-1 end-1 grid place-items-center w-8 h-8 text-white/60 transition active:scale-90 hover:text-white"
         >
-          <span className="grid place-items-center w-6 h-6 rounded-full bg-black/65 backdrop-blur-sm">
-            <Icon name="close" size={12} strokeWidth={2.4} />
+          <span className="grid place-items-center w-5 h-5 rounded-full bg-black/55 backdrop-blur-sm">
+            <Icon name="close" size={11} strokeWidth={2.2} />
           </span>
         </button>
       )}
