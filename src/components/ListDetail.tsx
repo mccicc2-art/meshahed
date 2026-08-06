@@ -568,7 +568,10 @@ function ReorderSheet({
         <p className="text-[11px] text-muted mt-0.5">{t.listReorderHint}</p>
       </SheetHeader>
 
-      <div ref={body} className="overflow-y-auto overscroll-contain px-2 py-2">
+      {/* `min-h-0` ليست زينة: ابنُ الفليكس لا ينكمش تحت ارتفاع محتواه بلا
+          هذه، فقائمةٌ من ثلاثين عملاً كانت تتجاوز سقف الورقة (85vh) وتُقصّ
+          بلا إمكانية تمرير — أي لا يمكن الوصول إلى آخرها أصلاً */}
+      <div ref={body} className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-2 py-2">
         <ul className="relative" style={{ height: order.length * ROW }}>
           {order.map((it, i) => {
             const dragging = from === i;
