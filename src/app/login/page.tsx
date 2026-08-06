@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import Image from "next/image";
 import { redirect } from "next/navigation";
 import { getUser } from "@/lib/data";
 import { getT } from "@/lib/locale";
@@ -118,15 +119,21 @@ async function PosterWall() {
                   {[...row, ...row].map((p, i) => (
                     <div
                       key={i}
-                      className="w-[clamp(60px,min(6.5vw,9.5vh),108px)] aspect-[2/3] rounded-poster overflow-hidden border border-white/10 bg-surface-2 shadow-[0_10px_30px_rgba(0,0,0,0.6)] shrink-0 me-2.5"
+                      className="relative w-[clamp(60px,min(6.5vw,9.5vh),108px)] aspect-[2/3] rounded-poster overflow-hidden border border-white/10 bg-surface-2 shadow-[0_10px_30px_rgba(0,0,0,0.6)] shrink-0 me-2.5"
                     >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
+                      {/* `next/image` لا وسمَ صورةٍ خام: الوسم الخام يطلب
+                          image.tmdb.org مباشرةً، وهو نطاقٌ لا يصل من كل
+                          شبكة — فيظهر الجدار مربّعاتٍ فارغة في أول شاشة
+                          يراها الزائر. `next/image` يقدّمها من نطاقنا
+                          (`/_next/image`) فتصل حيثما وصل الموقع. نفس
+                          العلّة أُصلحت في المجتمع والاقتراحات واللقطات. */}
+                      <Image
                         src={p}
                         alt=""
-                        loading={ri === 0 ? "eager" : "lazy"}
-                        fetchPriority={ri === 0 && i < 6 ? "high" : "auto"}
-                        className="w-full h-full object-cover"
+                        fill
+                        sizes="108px"
+                        priority={ri === 0 && i < 6}
+                        className="object-cover"
                       />
                     </div>
                   ))}
