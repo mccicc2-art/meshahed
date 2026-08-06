@@ -8,22 +8,29 @@ import { Icon, type IconName } from "./Icon";
 /**
  * شريط التبويبات السفلي.
  *
- * كبسولة واحدة تحمل التبويبات الأربعة. زرّ البحث الدائري حُذف —
- * البحث صار مدخلاً داخل «اكتشف»، فالشريط أنظف والكبسولة في المنتصف.
+ * كبسولة واحدة تحمل خمس وجهات: الرئيسية، المكتبة، اكتشف، البحث،
+ * المجتمع. الخامسة — البحث — أُضيفت بقرار المالك ويُسجَّل بها D-024:
+ * البحث كان مدخلاً داخل «اكتشف» وحده، فمن أراده دفع ضغطتين ومرّ على
+ * صفحةٍ لا يريدها. وهو أكثر أفعال التطبيق تكراراً بعد التأشير.
  *
- * لونان لا أربعة: النشط بنفسجيّ الهوية واسمه أبيض، والخامل رماديّ
- * `#707070`. تلوين كل تبويب بلونه كان يجعل الأربعة متساوية في الصياح،
+ * والخانات متساوية العرض بشبكةٍ من خمسة أعمدة لا بحشوٍ لكل خانة:
+ * «المجتمع» أعرض من «بحث» بضعف، فالحشو المتساوي يعطي خاناتٍ متفاوتة
+ * والعين تقرأ التفاوت اضطراباً. العرض واحد والنصّ يُقصّ إن طال.
+ *
+ * لونان لا خمسة: النشط بنفسجيّ الهوية واسمه أبيض، والخامل رماديّ
+ * `--disabled`. تلوين كل تبويب بلونه كان يجعلها متساوية في الصياح،
  * فلا يُعرف موضعك إلا بقراءة الكلمات.
  */
 
 const TABS: {
   href: string;
-  key: "home" | "library" | "news" | "people";
+  key: "home" | "library" | "news" | "search" | "people";
   icon: IconName;
 }[] = [
   { href: "/", key: "home", icon: "home" },
   { href: "/library", key: "library", icon: "film" },
   { href: "/news", key: "news", icon: "compass" },
+  { href: "/search", key: "search", icon: "search" },
   { href: "/people", key: "people", icon: "people" },
 ];
 
@@ -37,22 +44,20 @@ export function BottomNav({ locale }: { locale: Locale }) {
     home: t.navHome,
     library: t.navLibrary,
     news: t.navNews,
+    search: t.navSearch,
     people: t.navPeople,
   };
 
   /* صفحات التفاصيل والسجلّ تُنسب إلى المكتبة: المستخدم في عمق التطبيق
      يحتاج مرساةً — تبويبٌ لا يضيء يقرأ وكأن الشريط تعطّل */
   const LIBRARY_PREFIXES = ["/library", "/show/", "/movie/", "/stats", "/diary", "/lists", "/ratings"];
-  // البحث بابه «اكتشف»، فصفحته تُنسب إليه
-  const NEWS_PREFIXES = ["/news", "/search"];
+  // للبحث تبويبه الآن، فصفحته لم تعد تُنسب إلى «اكتشف»
   const isActive = (href: string) =>
     href === "/"
       ? pathname === "/"
       : href === "/library"
         ? LIBRARY_PREFIXES.some((p) => pathname.startsWith(p))
-        : href === "/news"
-          ? NEWS_PREFIXES.some((p) => pathname.startsWith(p))
-          : pathname.startsWith(href);
+        : pathname.startsWith(href);
 
   return (
     <div className="md:hidden fixed bottom-0 inset-x-0 z-40 pointer-events-none">
@@ -63,8 +68,8 @@ export function BottomNav({ locale }: { locale: Locale }) {
             "linear-gradient(to top, var(--background) 45%, transparent)",
         }}
       >
-        {/* كبسولة التبويبات */}
-        <nav className="pointer-events-auto flex items-center gap-0.5 rounded-[26px] border border-border bg-[color:var(--surface)] px-1.5 py-2 shadow-[0_10px_30px_rgba(0,0,0,0.6)]">
+        {/* كبسولة التبويبات — خمسة أعمدة متساوية لا خانات بحشوٍ متساوٍ */}
+        <nav className="pointer-events-auto grid grid-cols-5 w-full max-w-[26rem] rounded-[26px] border border-border bg-[color:var(--surface)] px-1.5 py-2 shadow-[0_10px_30px_rgba(0,0,0,0.6)]">
           {TABS.map(({ href, key, icon }) => {
             const active = isActive(href);
             return (
@@ -72,7 +77,7 @@ export function BottomNav({ locale }: { locale: Locale }) {
                 key={href}
                 href={href}
                 aria-current={active ? "page" : undefined}
-                className="relative flex flex-col items-center justify-center gap-1 rounded-2xl px-3 pt-1 pb-2 transition active:bg-surface-2"
+                className="relative flex min-w-0 flex-col items-center justify-center gap-1 rounded-2xl px-1 pt-1 pb-2 transition active:bg-surface-2"
               >
                 <Icon
                   name={icon}
@@ -83,7 +88,9 @@ export function BottomNav({ locale }: { locale: Locale }) {
                   }}
                 />
                 <span
-                  className={`text-[11px] leading-none ${active ? "font-semibold" : ""}`}
+                  className={`max-w-full truncate text-[11px] leading-none ${
+                    active ? "font-semibold" : ""
+                  }`}
                   style={{
                     color: active ? "var(--foreground)" : "var(--disabled)",
                   }}
