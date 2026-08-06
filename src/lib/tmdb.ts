@@ -530,3 +530,85 @@ export async function getWatchProviders(
     return null;
   }
 }
+
+/**
+ * أفضل عشرة من نوعٍ درامي محدّد هذا الأسبوع.
+ *
+ * الرائج أسبوعياً صفحةٌ واحدة (عشرون عملاً)، وتصفيتها بنوعٍ ضيّق كالغربيّ
+ * قد تُخرج صفّاً من عملين. فإن لم تكتمل العشرة أكملناها من `discover`
+ * بالنوع نفسه مرتّباً بالشعبية: الصفّ يبقى ممتلئاً، وصدارته تبقى لِما
+ * يروج فعلاً هذا الأسبوع لأن الرائج يُوضع أوّلاً.
+ */
+export async function topTenGenreThisWeek(
+  mediaType: MediaType,
+  genreIds: number[],
+  limit = 10,
+): Promise<SearchResult[]> {
+  if (!genreIds.length) return [];
+
+  let picked: SearchResult[] = [];
+  try {
+    const data = await tmdb<{ results: SearchResult[] }>(`/trending/${mediaType}/week`);
+    picked = (data.results ?? [])
+      .filter((r) => r.poster_path && r.vote_average > 0)
+      .filter((r) => (r.genre_ids ?? []).some((id) => genreIds.includes(id)))
+      .map((r) => ({ ...r, media_type: mediaType }))
+      .sort((a, b) => b.vote_average - a.vote_average);
+  } catch {
+    /* تعذّر الرائج — نكمل من discover وحده */
+  }
+  if (picked.length >= limit) return picked.slice(0, limit);
+
+  try {
+    const data = await tmdb<{ results: SearchResult[] }>(`/discover/${mediaType}`, {
+      with_genres: genreIds.join("|"),
+      sort_by: "popularity.desc",
+      include_adult: "false",
+      "vote_count.gte": mediaType === "movie" ? "50" : "20",
+    });
+    const seen = new Set(picked.map((r) => r.id));
+    const extra = (data.results ?? [])
+      .filter((r) => r.poster_path && !seen.has(r.id))
+      .map((r) => ({ ...r, media_type: mediaType }));
+    return [...picked, ...extra].slice(0, limit);
+  } catch {
+    return picked.slice(0, limit);
+  }
+}
+
+/**
+ * القادم قريباً من نوعٍ درامي محدّد.
+ *
+ * `upcoming` و`on_the_air` لا يقبلان نوعاً درامياً، فنطلب `discover`
+ * بتاريخٍ مستقبليّ مرتّباً تصاعدياً — الأقرب صدوراً أوّلاً، كما يُقرأ صفّ
+ * العدّ التنازلي.
+ */
+export async function upcomingByGenre(
+  genreIds: number[],
+  mediaType: MediaType,
+): Promise<SearchResult[]> {
+  if (!genreIds.length) return [];
+  const today = new Date().toISOString().slice(0, 10);
+
+  const params: Record<string, string> = {
+    with_genres: genreIds.join("|"),
+    include_adult: "false",
+  };
+  if (mediaType === "movie") {
+    params.sort_by = "primary_release_date.asc";
+    params["primary_release_date.gte"] = today;
+  } else {
+    params.sort_by = "first_air_date.asc";
+    params["first_air_date.gte"] = today;
+    params.include_null_first_air_dates = "false";
+  }
+
+  try {
+    const data = await tmdb<{ results: SearchResult[] }>(`/discover/${mediaType}`, params);
+    return (data.results ?? [])
+      .filter((r) => r.poster_path)
+      .map((r) => ({ ...r, media_type: mediaType }));
+  } catch {
+    return [];
+  }
+}
