@@ -686,6 +686,8 @@ export default async function HomePage() {
         username={profile?.username ?? null}
         avatarUrl={profile?.avatar_url ?? null}
         coverUrl={profile?.cover_url ?? null}
+        coverPos={profile?.cover_pos ?? null}
+        avatarPos={profile?.avatar_pos ?? null}
         level={level}
         stats={headerStats}
         followers={followStats.followers}
