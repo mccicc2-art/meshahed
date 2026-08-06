@@ -170,7 +170,8 @@ export function ProfileHeader({
         <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-b from-transparent to-[color:var(--background)]" />
 
         {/* تحت شريط الحالة دائماً لا فوقه — و`--safe-top` يضمن ذلك مثبَّتاً */}
-        <span className="absolute top-[calc(0.9rem+var(--safe-top))] start-4 drop-shadow-[0_2px_6px_rgba(0,0,0,0.6)]">
+        {/* «Loopz» علامةٌ مائية خفيفة (عتامة ٧٪) لا شعارٌ بارز: تبقى صورةُ الغلاف هي البطل البصري. العتامة على العنصر تُخفت الظلّ الموجود تلقائياً. */}
+        <span className="absolute top-[calc(0.9rem+var(--safe-top))] start-4 opacity-[0.07] drop-shadow-[0_2px_6px_rgba(0,0,0,0.6)]">
           <Logo size={24} className="text-white" />
         </span>
 
