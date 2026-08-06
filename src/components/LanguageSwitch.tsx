@@ -46,7 +46,7 @@ export function LanguageSwitch({
             aria-pressed={active}
             className={segmentedItem(
               active,
-              compact ? "px-3.5 py-1.5 text-xs" : "px-5 py-2 text-sm",
+              compact ? "px-3.5 pt-1.5 pb-3 text-xs" : "px-5 pt-2 pb-3 text-sm",
               false,
             )}
           >
