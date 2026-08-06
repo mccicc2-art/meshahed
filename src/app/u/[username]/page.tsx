@@ -101,7 +101,10 @@ export default async function PublicProfilePage({
               fill
               priority
               sizes="(max-width: 640px) 100vw, 1152px"
-              className="object-cover object-[50%_30%]"
+              className="object-cover"
+              /* التموضع الذي اختاره صاحب الملف — و٣٠٪ عند الغياب هي
+                 القيمة القديمة نفسها */
+              style={{ objectPosition: `50% ${profile.cover_pos ?? 30}%` }}
             />
           ) : (
             <div
@@ -139,6 +142,7 @@ export default async function PublicProfilePage({
               src={profile.avatar_url}
               name={displayName}
               size={74}
+              posY={profile.avatar_pos ?? null}
               alt={t.avatarAlt}
               className="ring-[3px] ring-[color:var(--background)]"
             />
