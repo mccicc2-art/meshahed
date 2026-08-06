@@ -757,6 +757,47 @@ export async function renameList(listId: string, name: string, isPublic: boolean
   revalidatePath(`/lists/${listId}`);
 }
 
+/**
+ * نوع القائمة: عادية / مرتّبة / ترتيب مشاهدة.
+ *
+ * العودة إلى «عادية» لا تمحو `sort_order` عمداً — من غيّر رأيه ثم عاد يجد
+ * ترتيبه كما تركه بدل أن يعيد سحب خمسين عملاً.
+ */
+export async function setListKind(listId: string, kind: string) {
+  listId = uuid(listId);
+  const clean = ["regular", "ranked", "watch_order"].includes(kind) ? kind : "regular";
+  const { supabase, user } = await requireUser();
+  const { data, error } = await supabase
+    .from("user_lists")
+    .update({ kind: clean, updated_at: new Date().toISOString() })
+    .eq("id", listId)
+    .eq("user_id", user.id)
+    .select("id");
+  if (error) fail(error);
+  if (!data?.length) throw new Error("القائمة غير موجودة / List not found");
+  revalidatePath("/lists");
+  revalidatePath(`/lists/${listId}`);
+}
+
+/**
+ * حفظ الترتيب اليدوي — استدعاءٌ واحد لا تحديثٌ لكل عنصر.
+ *
+ * المفاتيح تُنخَّل قبل إرسالها: الدالّة في SQL تركّب مفتاح كل صفٍّ من
+ * عموديه وتبحث عنه في المصفوفة، فالمفتاح المشوَّه لا يطابق شيئاً — والنخل
+ * يمنع وصوله أصلاً. والملكية تحرسها RLS داخل الدالّة لا شرطٌ هنا.
+ */
+export async function reorderList(listId: string, keys: string[]) {
+  listId = uuid(listId);
+  const clean = (Array.isArray(keys) ? keys : [])
+    .slice(0, 500)
+    .map((k) => String(k ?? ""))
+    .filter((k) => /^(tv|movie)-\d{1,9}$/.test(k));
+  const { supabase } = await requireUser("list", 30, 60_000);
+  const { error } = await supabase.rpc("reorder_list", { p_list: listId, p_keys: clean });
+  if (error) fail(error);
+  revalidatePath(`/lists/${listId}`);
+}
+
 export async function deleteList(listId: string) {
   listId = uuid(listId);
   const { supabase, user } = await requireUser();

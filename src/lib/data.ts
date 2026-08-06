@@ -1094,12 +1094,16 @@ export interface UserList {
   posters: string[] | null;
 }
 
+/** نوع القائمة — هو ما يقرّر هل للترتيب اليدوي وأرقامه معنى (lists2.sql) */
+export type ListKind = "regular" | "ranked" | "watch_order";
+
 export interface ListItem {
   tmdb_id: number;
   media_type: "tv" | "movie";
   title: string | null;
   poster_path: string | null;
   added_at: string;
+  sort_order: number | null;
 }
 
 /** قوائمي مع عدد عناصر كل واحدة — استعلام واحد لا استعلام لكل قائمة */
@@ -1114,28 +1118,56 @@ export async function getMyLists(): Promise<UserList[]> {
   }
 }
 
-/** قائمة واحدة بعناصرها — تُرجع null لو لم تكن لك ولا معلنة */
-export async function getList(
-  listId: string,
-): Promise<{ list: { id: string; name: string; is_public: boolean; user_id: string }; items: ListItem[] } | null> {
+/**
+ * قائمة واحدة بعناصرها — تُرجع null لو لم تكن لك ولا معلنة.
+ *
+ * الترتيب: `sort_order` أولاً والفارغ آخراً، ثم `added_at` تنازلياً. فالقائمة
+ * التي لم تُرتَّب يدوياً تظهر كما كانت تماماً — لا هجرة بيانات ولا تغيّر سلوك.
+ *
+ * والتقييمات تُقرأ في استعلامٍ ثانٍ من جدول `ratings` (مفتاحه
+ * user_id+tmdb_id+media_type فالقراءة فهرسية): تقييمُ القارئ نفسه لا تقييمُ
+ * TMDB — الأول نملكه ولا يكلّف طلباً خارجياً، والثاني كان سيعني طلب TMDB
+ * لكل عملٍ في صفحةٍ بُنيت عمداً على ألّا تطلب TMDB إطلاقاً.
+ */
+export async function getList(listId: string): Promise<{
+  list: { id: string; name: string; is_public: boolean; user_id: string; kind: ListKind };
+  items: ListItem[];
+  ratings: Record<string, number>;
+} | null> {
   if (!/^[0-9a-f-]{36}$/i.test(listId)) return null;
   try {
     const supabase = await createClient();
     const { data: list } = await supabase
       .from("user_lists")
-      .select("id, name, is_public, user_id")
+      .select("id, name, is_public, user_id, kind")
       .eq("id", listId)
       .maybeSingle();
     if (!list) return null;
 
     const { data: items } = await supabase
       .from("user_list_items")
-      .select("tmdb_id, media_type, title, poster_path, added_at")
+      .select("tmdb_id, media_type, title, poster_path, added_at, sort_order")
       .eq("list_id", listId)
+      .order("sort_order", { ascending: true, nullsFirst: false })
       .order("added_at", { ascending: false })
       .limit(500);
 
-    return { list, items: (items ?? []) as ListItem[] };
+    const rows = (items ?? []) as ListItem[];
+
+    const ratings: Record<string, number> = {};
+    const user = await getUser();
+    if (user && rows.length) {
+      const { data: rated } = await supabase
+        .from("ratings")
+        .select("tmdb_id, media_type, rating")
+        .eq("user_id", user.id)
+        .in("tmdb_id", [...new Set(rows.map((r) => r.tmdb_id))]);
+      for (const r of rated ?? []) {
+        ratings[`${r.media_type}-${r.tmdb_id}`] = r.rating as number;
+      }
+    }
+
+    return { list: { ...list, kind: (list.kind ?? "regular") as ListKind }, items: rows, ratings };
   } catch {
     return null;
   }
