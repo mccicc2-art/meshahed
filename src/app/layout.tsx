@@ -73,7 +73,14 @@ export default async function RootLayout({
         <main id="main" className="flex-1 w-full max-w-6xl mx-auto px-4 py-6">
           {children}
         </main>
-        <footer className="text-center text-xs text-muted py-6 pb-28 md:pb-6">{t.footer}</footer>
+        {/* `dir="ltr"` لأن السطر إنجليزيّ في اللغتين: شعارٌ واحد لا يُترجم،
+            ولو ورث اتجاه الصفحة العربية لانقلب ترتيب كلماته عند أي علامة */}
+        <footer
+          dir="ltr"
+          className="text-center text-[13px] tracking-wide text-muted/70 py-6 pb-28 md:pb-6"
+        >
+          {t.footer}
+        </footer>
         <BottomNav locale={locale} />
         <OfflineSync />
         <ToastHost />
