@@ -155,13 +155,14 @@ export default async function DiaryPage() {
 
   return (
     <div>
-      <div className="flex items-baseline justify-between gap-3 mb-1">
-        <h1 className="text-xl font-bold">{t.diaryTitle}</h1>
+      {/* العنوان مخفيٌّ بصريًّا وباقٍ لقارئ الشاشة — أُزيلت الترويسة والوصف،
+          وأُبقي اختصار «المكتبة» في أعلى الصفحة */}
+      <div className="flex items-baseline justify-end mb-1">
+        <h1 className="sr-only">{t.diaryTitle}</h1>
         <Link href="/library" className="text-xs text-accent hover:brightness-110 transition">
           {t.libraryTitle} ›
         </Link>
       </div>
-      <p className="text-xs text-muted mb-5">{t.diarySub}</p>
 
       {days.length === 0 ? (
         <p className="text-center text-muted py-20 text-sm">{t.diaryEmpty}</p>
