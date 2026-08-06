@@ -68,6 +68,7 @@ export function BottomNav({ locale }: { locale: Locale }) {
         : pathname.startsWith(href);
 
   return (
+    <>
     <div className="md:hidden fixed bottom-0 inset-x-0 z-40 pointer-events-none">
       <div
         className="flex items-center justify-center gap-3 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3"
@@ -140,9 +141,15 @@ export function BottomNav({ locale }: { locale: Locale }) {
         </nav>
       </div>
 
-      {searchOpen && (
-        <TitleSearchSheet onClose={() => setSearchOpen(false)} locale={locale} />
-      )}
     </div>
+
+    {/* الورقة خارج غلاف الشريط عمداً: الغلاف يحمل `pointer-events-none`
+        (ليمرّ اللمس من حول الكبسولة إلى الصفحة) وهو `z-40` يصنع سياق
+        تكديسٍ يحبس ما بداخله. فورقةٌ بداخله لا تستقبل لمسةً أصلاً —
+        تُضغط الصفحة من خلفها — ولا تعلو غيرها مهما رُفع رقمها. */}
+    {searchOpen && (
+      <TitleSearchSheet onClose={() => setSearchOpen(false)} locale={locale} />
+    )}
+    </>
   );
 }
