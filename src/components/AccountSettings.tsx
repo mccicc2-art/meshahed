@@ -81,6 +81,13 @@ export function AccountSettings({
           <h2 className="text-sm font-bold mb-1">{t.languageSection}</h2>
           <p className="text-xs text-muted leading-relaxed mb-3">{t.languageHint}</p>
           <LanguageSwitch locale={locale} />
+          {/* نسبة البيانات إلى TMDB — انتقلت من تذييل كل صفحة إلى هنا.
+              شروط استخدام TMDB تُلزم بذكرها في مكانٍ ظاهر من المنتج، ولا
+              تُلزم بأن تكون تحت كل شاشة. وموضعها هنا مقصود: هذا القسم
+              نفسه يشرح أن لغة الواجهة تُغيّر لغة بيانات TMDB. */}
+          <p className="text-[11px] text-muted/70 mt-4 pt-3 border-t border-[color:var(--divider)] leading-relaxed">
+            {t.tmdbAttribution}
+          </p>
         </section>
         )}
 

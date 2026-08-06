@@ -7,6 +7,9 @@ import { getDict, type Locale } from "@/lib/i18n";
 import { Icon } from "./Icon";
 import { Sheet, SheetHeader } from "./ui/Sheet";
 
+/** أدنى عدد أحرف يُطلق البحث — مطابقٌ لحدّ `/api/suggest` وبحث الأشخاص */
+const MIN = 2;
+
 interface Suggestion {
   id: number;
   mediaType: "tv" | "movie";
@@ -54,17 +57,17 @@ export function TitleSearchSheet({
      داخل جسم المؤثّر يُطلق تصييراً متتالياً */
   function changeQ(value: string) {
     setQ(value);
-    if (value.trim().length < 3) {
+    if (value.trim().length < MIN) {
       setItems([]);
       setTouched(false);
       setLoading(false);
     }
   }
 
-  // اقتراحات من ثلاثة أحرف مع تأخيرٍ يسير — نفس حدّ `/api/suggest`
+  // اقتراحات من حرفين مع تأخيرٍ يسير — نفس حدّ `/api/suggest`
   useEffect(() => {
     const term = q.trim();
-    if (term.length < 3) return;
+    if (term.length < MIN) return;
     const ctrl = new AbortController();
     const timer = setTimeout(async () => {
       setLoading(true);
@@ -142,7 +145,7 @@ export function TitleSearchSheet({
       <div className="overflow-y-auto overscroll-contain divide-y divide-[color:var(--divider)] min-h-[6rem]">
         {loading ? (
           <p className="text-sm text-muted text-center py-8">{t.peopleSearching}</p>
-        ) : term.length < 3 ? (
+        ) : term.length < MIN ? (
           <p className="text-xs text-muted text-center py-8 px-5">{t.searchStart}</p>
         ) : items.length === 0 && touched ? (
           <p className="text-sm text-muted text-center py-8 px-5">{t.searchNoResults}</p>

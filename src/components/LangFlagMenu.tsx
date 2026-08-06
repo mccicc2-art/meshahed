@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { setLocale } from "@/lib/actions";
 import { getDict, type Locale } from "@/lib/i18n";
@@ -15,6 +16,11 @@ import { Icon } from "./Icon";
  *
  * صورُ أعلام لا إيموجي: ويندوز يرسم إيموجي الأعلام حرفَين («SA») فتنكسر
  * الفكرة — الصور تُرسم متطابقةً على كل الأنظمة.
+ *
+ * وتمرّ بـ`next/image` لا بوسمٍ خام: سياسة أمان المحتوى تحصر `img-src`
+ * في نطاقاتٍ معدودة، و`flagcdn.com` ليس منها — فكان المتصفّح يمنع العلم
+ * ويترك الزاوية فارغة. `next/image` يجلبها على الخادم ويقدّمها من نطاقنا،
+ * فتصل بلا توسيع السياسة لنطاقٍ خارجيّ جديد.
  */
 const FLAGS: Record<Locale, string> = {
   ar: "https://flagcdn.com/w80/sa.png",
@@ -31,8 +37,6 @@ export function LangFlagMenu({ locale }: { locale: Locale }) {
     { id: "ar", flag: FLAGS.ar, label: t.arabicLang },
     { id: "en", flag: FLAGS.en, label: t.englishLang },
   ];
-
-  /* eslint-disable @next/next/no-img-element -- أعلامٌ خارجية صغيرة ثابتة */
 
   function pick(next: Locale) {
     setOpen(false);
@@ -54,7 +58,7 @@ export function LangFlagMenu({ locale }: { locale: Locale }) {
           pending ? "opacity-60" : ""
         }`}
       >
-        <img
+        <Image
           src={FLAGS[locale]}
           alt=""
           width={22}
@@ -90,7 +94,7 @@ export function LangFlagMenu({ locale }: { locale: Locale }) {
                         : "text-muted hover:text-foreground hover:bg-surface-2"
                     }`}
                   >
-                    <img
+                    <Image
                       src={o.flag}
                       alt=""
                       width={20}

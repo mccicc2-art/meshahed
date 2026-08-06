@@ -29,7 +29,7 @@ export function SearchBox({ big = false, locale }: { big?: boolean; locale: Loca
   // تفريغ القائمة يتم عند الكتابة لا داخل التأثير (تفادي إعادة التصيير المتتالية)
   function changeQ(value: string) {
     setQ(value);
-    if (value.trim().length < 3) {
+    if (value.trim().length < 2) {
       setItems([]);
       setOpen(false);
       setLoading(false);
@@ -39,7 +39,7 @@ export function SearchBox({ big = false, locale }: { big?: boolean; locale: Loca
   // اقتراحات تبدأ من ٣ أحرف مع تأخير بسيط لتقليل الطلبات
   useEffect(() => {
     const term = q.trim();
-    if (term.length < 3) return;
+    if (term.length < 2) return;
 
     const ctrl = new AbortController();
     const timer = setTimeout(async () => {
