@@ -21,7 +21,12 @@ const ar = {
   taglineEn: "Track it. Watch it. Never lose track.",
   metaTitle: "Loopz — تتبّع أفلامك ومسلسلاتك",
   metaDescription: "منصة ذكية لتتبع الأفلام والمسلسلات والأنمي — كل ما تشاهده، في مكان واحد.",
-  footer: "Loopz · البيانات من TMDB",
+  /* شعارٌ لا نسبةُ بيانات: التذييل يظهر تحت كل شاشة في التطبيق، وسطرٌ
+     تقنيّ في ذلك الموضع يُهدر آخر ما تقع عليه العين. النسبة إلى TMDB
+     انتقلت إلى قسم اللغة في الإعدادات. قرارُ المالك. */
+  footer: "Every story matters",
+  tmdbAttribution:
+    "يستخدم هذا المنتج واجهة TMDB البرمجية، وهو غير معتمَد ولا موثَّق من TMDB.",
 
   // التنقل
   navHome: "الرئيسية",
@@ -432,7 +437,9 @@ const en: Dict = {
   taglineEn: "Track it. Watch it. Never lose track.",
   metaTitle: "Loopz \u2014 track your shows & movies",
   metaDescription: "A smart home for the shows, movies and anime you watch \u2014 all in one place.",
-  footer: "Loopz \u00b7 Data from TMDB",
+  footer: "Every story matters",
+  tmdbAttribution:
+    "This product uses the TMDB API but is not endorsed or certified by TMDB.",
 
   navHome: "Home",
   navNews: "Discover",

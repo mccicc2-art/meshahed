@@ -65,6 +65,9 @@ export interface SearchResult {
   origin_country?: string[];
   /** لغة العمل الأصلية (ISO 639-1) — تُصفّى بها القوائم الجاهزة محلياً */
   original_language?: string;
+  /** العنوان بلغته الأصلية — يُطابَق في البحث إلى جانب المعروض */
+  original_title?: string;
+  original_name?: string;
 }
 
 export interface Episode {
@@ -130,15 +133,79 @@ export interface SeasonDetails {
   episodes: Episode[];
 }
 
+/**
+ * تطبيع نصّ البحث للمقارنة.
+ *
+ * العربية تُكتب بأكثر من صورة للحرف نفسه: «أ إ آ» و«ا»، و«ة» و«ه»،
+ * و«ى» و«ي» — ومن يكتب «الحفره» لا يقصد شيئاً غير «الحفرة». والتشكيل
+ * يَرِد أحياناً في عناوين TMDB. فلو قارنّا الحروف كما وردت لسقطت
+ * مطابقاتٌ صحيحة. والإنجليزية تُخفَّض حالتها فقط.
+ */
+function normalizeTerm(s: string) {
+  return s
+    .toLowerCase()
+    .replace(/[ً-ْٰ]/g, "") // تشكيل
+    .replace(/[آأإٱ]/g, "ا") // آ أ إ ٱ ← ا
+    .replace(/ة/g, "ه") // ة ← ه
+    .replace(/ى/g, "ي") // ى ← ي
+    .replace(/[^\p{L}\p{N}]+/gu, " ") // الترقيم فاصل
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * ترتيب النتائج بجودة المطابقة لا بترتيب TMDB.
+ *
+ * ترتيب TMDB خليطٌ من التطابق والشعبية، فيتصدّر أحياناً عملٌ مغمور يحمل
+ * الكلمة داخل عنوانه الطويل على عملٍ عنوانه هو الكلمة نفسها. السلّم هنا:
+ * تطابقٌ تامّ، فبدايةٌ بالكلمة، فاحتواءٌ لها — والشعبية تفصل داخل الدرجة
+ * الواحدة فقط لا فوقها. ويُقارَن العنوان المعروض والعنوان الأصلي معاً:
+ * من يكتب «Breaking Bad» في واجهةٍ عربية يجب أن يجده وإن عُرض باسمٍ
+ * عربي، والعكس.
+ */
+function matchScore(names: string[], term: string) {
+  let best = 0;
+  for (const n of names) {
+    if (n === term) return 3;
+    if (n.startsWith(term)) best = Math.max(best, 2);
+    else if (n.includes(term)) best = Math.max(best, 1);
+  }
+  return best;
+}
+
 export async function searchMulti(query: string): Promise<SearchResult[]> {
-  if (!query.trim()) return [];
+  const raw = query.trim();
+  if (!raw) return [];
   const data = await tmdb<{ results: SearchResult[] }>("/search/multi", {
-    query,
+    query: raw,
     include_adult: "false",
   });
-  return data.results.filter(
+  const rows = (data.results ?? []).filter(
     (r) => (r.media_type === "tv" || r.media_type === "movie") && r.poster_path,
   );
+
+  const term = normalizeTerm(raw);
+  if (!term) return rows;
+
+  return rows
+    .map((r, i) => ({
+      r,
+      i,
+      score: matchScore(
+        [r.title, r.name, r.original_title, r.original_name]
+          .filter((n): n is string => !!n)
+          .map(normalizeTerm),
+        term,
+      ),
+    }))
+    .sort(
+      (a, b) =>
+        b.score - a.score ||
+        (b.r.popularity ?? 0) - (a.r.popularity ?? 0) ||
+        // ترتيب TMDB يفصل عند تساوي كل شيء — لا ترتيبٌ عشوائي
+        a.i - b.i,
+    )
+    .map((x) => x.r);
 }
 
 export async function trending(): Promise<SearchResult[]> {
