@@ -41,7 +41,7 @@ const ar = {
   recoBecauseWatched: (title: string) => `لأنك شاهدت «${title}»`,
   recoBecauseRated: (title: string) => `لأنك قيّمت «${title}» عالياً`,
   recoBecauseGenre: "يناسب أنواعك المفضّلة",
-  trendingWeek: "🔥 رائج هذا الأسبوع",
+  trendingWeek: "رائج هذا الأسبوع",
   pickGenresHint: "حدّد أنواعك المفضّلة في الملف الشخصي لتظهر لك اقتراحات على ذوقك ←",
   levelLabel: (n: number) => `المستوى ${n}`,
   levelNames: [
@@ -446,7 +446,7 @@ const en: Dict = {
   recoBecauseWatched: (title: string) => `Because you watched “${title}”`,
   recoBecauseRated: (title: string) => `Because you rated “${title}” highly`,
   recoBecauseGenre: "Matches your favourite genres",
-  trendingWeek: "🔥 Trending this week",
+  trendingWeek: "Trending this week",
   pickGenresHint: "Pick your favourite genres in your profile to get suggestions you'll like →",
   levelLabel: (n: number) => `Level ${n}`,
   levelNames: [
