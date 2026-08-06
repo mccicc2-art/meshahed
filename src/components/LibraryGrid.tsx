@@ -83,7 +83,8 @@ export function LibraryGrid({
   return (
     <div>
       {/* تبويبان في مقسّمٍ واحد — نفس عائلة تبويبات صفحة العمل ومقسّم
-          «اكتشف»، بدل خطٍّ سفليّ كان لغةَ اختيارٍ ثالثة في التطبيق */}
+          «اكتشف»: خطٌّ سفليّ بلون التمييز تحت المختار، والأيقونة والعدّاد
+          يأخذان اللون نفسه */}
       <div className={`${segmentedTrackFull} mb-5`} role="tablist">
         {tabs.map(({ id, icon, label, n }) => {
           const active = tab === id;
@@ -96,13 +97,22 @@ export function LibraryGrid({
               onClick={() => setTab(id)}
               className={segmentedItem(
                 active,
-                "flex-1 flex items-center justify-center gap-2 px-2 py-2 text-[13px]",
+                "flex-1 flex items-center justify-center gap-2 px-2 pt-1.5 pb-3 text-[13px]",
                 false,
               )}
             >
-              <Icon name={icon} size={16} className="shrink-0" />
+              <Icon
+                name={icon}
+                size={16}
+                className={`shrink-0 transition-colors ${active ? "text-accent" : ""}`}
+              />
               {label}
-              <span className="text-[11px] tabular-nums opacity-80" dir="ltr">
+              <span
+                className={`text-[11px] tabular-nums transition-colors ${
+                  active ? "text-accent" : "opacity-80"
+                }`}
+                dir="ltr"
+              >
                 {n}
               </span>
             </button>
