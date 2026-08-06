@@ -20,13 +20,14 @@ export default async function StatsPage() {
 
   return (
     <div>
-      <div className="flex items-baseline justify-between gap-3 mb-1">
-        <h1 className="text-xl font-bold">{t.analysisTitle}</h1>
+      {/* العنوان مخفيٌّ بصريًّا وباقٍ لقارئ الشاشة — أُزيلت الترويسة والوصف،
+          وأُبقي اختصار «المكتبة» في أعلى الصفحة */}
+      <div className="flex items-baseline justify-end mb-1">
+        <h1 className="sr-only">{t.analysisTitle}</h1>
         <Link href="/library" className="text-xs text-accent hover:brightness-110 transition">
           {t.libraryTitle} ›
         </Link>
       </div>
-      <p className="text-xs text-muted mb-5">{t.analysisSub}</p>
 
       {/* المشاركة قبل التحليل لا بعده: التحليل طويل، ومن يريد المشاركة
           لا يجب أن يمرّ عليه كلّه ليجد الزرّ */}
