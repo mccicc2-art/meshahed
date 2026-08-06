@@ -31,27 +31,42 @@ export function CommunityBar({
   const t = getDict(locale);
   const [open, setOpen] = useState<"add" | "following" | "followers" | null>(null);
 
+  /* الأيقونة والرقم وحدهما: الكلمتان كانتا تضاعفان عرض الكبسولة لتقولا
+     ما تقوله الأيقونة — وأيقونتان مختلفتان في صفٍّ واحد تُقرآن بالتضادّ
+     لا بالقراءة. الاسم يبقى في `aria-label` و`title` لمن يحتاجه ولقارئ
+     الشاشة، فلا وضوحَ فُقد. والارتفاع موحَّد بين الثلاثة (٤٠ بكسلاً)
+     فيستوي السطر بدل كبسولتين ضخمتين إلى جانب قرصٍ أضخم. */
   const pill =
-    "flex items-center gap-2 rounded-full border border-border bg-surface px-4 py-2.5 hover:bg-surface-2 active:scale-[0.97] transition";
+    "flex items-center gap-1.5 h-10 rounded-full border border-border bg-surface px-3.5 hover:bg-surface-2 active:scale-[0.97] transition";
 
   return (
     <>
       {/* ===== السطر الواحد ===== */}
-      <div className="flex items-center gap-2.5">
-        <button type="button" onClick={() => setOpen("following")} className={pill}>
-          <Icon name="person-check" size={20} className="text-accent shrink-0" />
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setOpen("following")}
+          aria-label={t.peopleFollowingTitle}
+          title={t.peopleFollowingTitle}
+          className={pill}
+        >
+          <Icon name="person-check" size={18} className="text-accent shrink-0" />
           <span className="text-[15px] font-bold tabular-nums" dir="ltr">
             {num(following.length, locale)}
           </span>
-          <span className="text-xs text-muted">{t.peopleFollowingTitle}</span>
         </button>
 
-        <button type="button" onClick={() => setOpen("followers")} className={pill}>
-          <Icon name="people" size={20} className="text-accent-2 shrink-0" />
+        <button
+          type="button"
+          onClick={() => setOpen("followers")}
+          aria-label={t.peopleFollowersTitle}
+          title={t.peopleFollowersTitle}
+          className={pill}
+        >
+          <Icon name="people" size={18} className="text-accent-2 shrink-0" />
           <span className="text-[15px] font-bold tabular-nums" dir="ltr">
             {num(followers.length, locale)}
           </span>
-          <span className="text-xs text-muted">{t.peopleFollowersTitle}</span>
         </button>
 
         <button
@@ -59,9 +74,9 @@ export function CommunityBar({
           onClick={() => setOpen("add")}
           aria-label={t.peopleAdd}
           title={t.peopleAdd}
-          className="ms-auto grid place-items-center w-11 h-11 rounded-full bg-accent text-[color:var(--on-accent)] shadow-lg shadow-accent/25 hover:brightness-110 active:scale-95 transition"
+          className="ms-auto grid place-items-center w-10 h-10 rounded-full bg-accent text-[color:var(--on-accent)] shadow-lg shadow-accent/25 hover:brightness-110 active:scale-95 transition"
         >
-          <Icon name="plus" size={20} strokeWidth={2.2} />
+          <Icon name="plus" size={19} strokeWidth={2.2} />
         </button>
       </div>
 
