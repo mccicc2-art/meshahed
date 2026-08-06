@@ -5,11 +5,12 @@ import { flashError } from "@/lib/toast";
 import { runOrQueue } from "@/lib/offline";
 import { tap } from "@/lib/haptics";
 import { coalescedRefresh } from "@/lib/refresh";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getDict, type Locale } from "@/lib/i18n";
 import { startRewatch } from "@/lib/actions";
+import type { UserList } from "@/lib/data";
 import { PosterCard } from "./PosterCard";
+import { ListManager } from "./ListManager";
 import { Icon } from "./Icon";
 import { Sheet, SheetHeader } from "./ui/Sheet";
 import { chipClass, segmentedItem, segmentedTrackFull } from "./ui/controls";
@@ -44,20 +45,24 @@ export interface GridItem {
  * التالية» و«شفته كله» والبطاقة الحمراء — أقوى عادات TV Time، بلا فتح
  * صفحة العمل.
  */
+export type LibraryTab = "shows" | "movies" | "lists";
+
 export function LibraryGrid({
   shows,
   movies,
+  lists,
   locale,
   initialTab = "shows",
 }: {
   shows: GridItem[];
   movies: GridItem[];
+  lists: UserList[];
   locale: Locale;
-  initialTab?: "shows" | "movies";
+  initialTab?: LibraryTab;
 }) {
   const t = getDict(locale);
   const router = useRouter();
-  const [tab, setTab] = useState<"shows" | "movies">(initialTab);
+  const [tab, setTab] = useState<LibraryTab>(initialTab);
   const [q, setQ] = useState("");
   const [sort, setSort] = useState<"smart" | "title" | "progress">("smart");
   const [sheet, setSheet] = useState<GridItem | null>(null);
@@ -65,7 +70,7 @@ export function LibraryGrid({
   /* البحث والفرز في الذاكرة: القائمة وصلت كاملةً من الخادم، فالحرف
      الواحد يصفّي فوراً بلا رحلة شبكة */
   const items = useMemo(() => {
-    const base = tab === "shows" ? shows : movies;
+    const base = tab === "movies" ? movies : shows;
     const needle = q.trim().toLowerCase();
     const filtered = needle
       ? base.filter((x) => x.title.toLowerCase().includes(needle))
@@ -79,20 +84,22 @@ export function LibraryGrid({
   const tabs = [
     { id: "shows" as const, icon: "tv" as const, label: t.shortShows, n: shows.length },
     { id: "movies" as const, icon: "film" as const, label: t.shortMovies, n: movies.length },
+    { id: "lists" as const, icon: "list" as const, label: t.listsTitle, n: lists.length },
   ];
 
   return (
     <div>
-      {/* تبويبان في مقسّمٍ واحد — نفس عائلة تبويبات صفحة العمل ومقسّم
-          «اكتشف»: خطٌّ سفليّ بلون التمييز تحت المختار، والأيقونة والعدّاد
-          يأخذان اللون نفسه */}
-      {/* الصفّ يحمل الخطّ السفليّ لا المسار: «القوائم» رابطٌ لا تبويب،
-          فلا يجوز أن يسكن داخل `role="tablist"` — التبويب يبدّل لوحاً في
-          الشاشة نفسها، والرابط يغادرها، ومن يتنقّل بلوحة المفاتيح يستحقّ
-          أن يعرف الفرق قبل أن يضغط. المسار الأول يبقى `tablist` للتبويبين
-          وحدهما، والرابط بجانبه في الصفّ نفسه. */}
-      <div className="flex items-stretch border-b border-[color:var(--divider)] mb-5">
-      <div className="flex flex-1 items-stretch" role="tablist">
+      {/* ثلاثة تبويبات في مقسّمٍ واحد — نفس عائلة تبويبات صفحة العمل
+          ومقسّم «اكتشف»: خطٌّ سفليّ بلون التمييز تحت المختار، والأيقونة
+          والعدّاد يأخذان اللون نفسه.
+
+          «القوائم» تبويبٌ حقيقيّ لا رابط: تبدّل اللوح في مكانه ولا تغادر
+          الصفحة، فيبقى التبويبان الآخران ظاهرين ويظلّ التنقّل الثلاثيّ
+          بنفس سلاسة التنقّل بين المسلسلات والأفلام — بلا تحميل مسارٍ جديد
+          ولا وميض. وبما أن القوائم تُقرأ مع الصفحة صار عدّادُها مجّانيّاً،
+          فاستوت الخانات الثلاث شكلاً ووزناً: `segmentedTrackFull` يقسّم
+          العرض بالتساوي و`flex-1 basis-0` يمنع النصّ الأطول من توسيع خانته. */}
+      <div className={`${segmentedTrackFull} mb-5`} role="tablist" aria-label={t.libraryTitle}>
         {tabs.map(({ id, icon, label, n }) => {
           const active = tab === id;
           return (
@@ -100,11 +107,13 @@ export function LibraryGrid({
               key={id}
               type="button"
               role="tab"
+              id={`lib-tab-${id}`}
               aria-selected={active}
+              aria-controls="lib-panel"
               onClick={() => setTab(id)}
               className={segmentedItem(
                 active,
-                "flex-1 flex items-center justify-center gap-2 px-2 pt-1.5 pb-3 text-[13px]",
+                "flex-1 basis-0 min-w-0 flex items-center justify-center gap-2 px-2 pt-1.5 pb-3 text-[13px]",
                 false,
               )}
             >
@@ -113,7 +122,7 @@ export function LibraryGrid({
                 size={16}
                 className={`shrink-0 transition-colors ${active ? "text-accent" : ""}`}
               />
-              {label}
+              <span className="truncate">{label}</span>
               <span
                 className={`text-[11px] tabular-nums transition-colors ${
                   active ? "text-accent" : "opacity-80"
@@ -127,23 +136,13 @@ export function LibraryGrid({
         })}
       </div>
 
-        {/* القوائم — وجهةٌ في الصفّ لا تبويبٌ فيه. بلا عدّاد وبلا خطّ
-            تمييزٍ أبداً: العدّاد كان سيكلّف استعلاماً إضافياً في كل فتحةٍ
-            للمكتبة، وغيابُه مع غياب حالة «مختار» هو ما يميّز الوجهة عن
-            التبويب قبل الضغط. قرارُ المالك في الموضع والاسم. */}
-        <Link
-          href="/lists"
-          className={segmentedItem(
-            false,
-            "flex-1 flex items-center justify-center gap-2 px-2 pt-1.5 pb-3 text-[13px]",
-            false,
-          )}
-        >
-          <Icon name="list" size={16} className="shrink-0" />
-          {t.listsTitle}
-        </Link>
-      </div>
-
+      <div id="lib-panel" role="tabpanel" aria-labelledby={`lib-tab-${tab}`}>
+      {tab === "lists" ? (
+        /* نفس مكوّن صفحة `/lists` حرفياً — لا نسخة ثانية منه: المسار
+           يبقى قائماً للروابط المباشرة، وهذا اللوح يعرض المكوّن نفسه */
+        <ListManager lists={lists} locale={locale} />
+      ) : (
+      <>
       {/* بحثٌ وفرز: سطرٌ واحد تحت التبويبين */}
       <div className="flex items-center gap-2 mb-2">
         <div className="relative flex-1">
@@ -203,6 +202,9 @@ export function LibraryGrid({
           ))}
         </div>
       )}
+      </>
+      )}
+      </div>
 
       {sheet && (
         <QuickActions
