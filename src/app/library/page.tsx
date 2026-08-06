@@ -128,12 +128,12 @@ export default async function LibraryPage({
       <LibraryGrid shows={shows} movies={movies} locale={locale} initialTab={initialTab} />
 
       {/* روابط الأدوات — بلا إطار، على نمط صفوف الرئيسية: فواصل رأسية فقط */}
-      <div className="mt-8 grid grid-cols-3 border-t border-[color:var(--divider)] pt-1">
+      {/* عمودان لا ثلاثة: «القوائم» صعدت إلى صفّ التبويبات — قرارُ المالك */}
+      <div className="mt-8 grid grid-cols-2 border-t border-[color:var(--divider)] pt-1">
         {(
           [
             { href: "/stats", icon: "chart", label: t.libAnalysisBtn },
             { href: "/diary", icon: "book", label: t.diaryTitle },
-            { href: "/lists", icon: "list", label: t.listsTitle },
           ] as const
         ).map(({ href, icon, label }, i) => (
           <Link
@@ -143,7 +143,7 @@ export default async function LibraryPage({
           >
             <Icon name={icon} size={18} />
             <span className="text-[11px] leading-tight text-center">{label}</span>
-            {i < 2 && (
+            {i < 1 && (
               <span className="absolute inset-y-2 end-0 w-px bg-white/10" aria-hidden />
             )}
           </Link>
