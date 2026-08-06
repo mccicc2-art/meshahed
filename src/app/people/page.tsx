@@ -23,21 +23,25 @@ export default async function PeoplePage() {
 
   /* الصورة العرضية ليست في صفّ التقييم — الجدول يحفظ الملصق وحده —
      فتُطلب من TMDB لأوائل الخط فقط، متوازيةً ومخزَّنة ساعةً في طبقة
-     fetch. وما تعذّر منها يسقط إلى الملصق ثم إلى الأيقونة، فلا يبقى
-     مربّعٌ فارغ. الحلّ الأرخص لاحقاً: عمود `backdrop_path` في الجدول. */
-  const backdropTargets = feed.slice(0, BACKDROP_LIMIT);
-  const backdropPairs = await Promise.all(
-    backdropTargets.map(async (a) => {
+     fetch. ونأخذ الملصق من الطلب نفسه أيضاً: `safeImagePath` يكتب `null`
+     متى وصل المسار بصيغةٍ لا تطابق نمطه، فصفوفٌ قديمة ملصقها فارغ
+     وكانت تظهر خانةً بلا صورة. الأولوية: عرضيّة TMDB، ثم ملصقها، ثم
+     الملصق المخزَّن، ثم الأيقونة. الحلّ الأرخص لاحقاً: عمود
+     `backdrop_path` في الجدول يُكتب وقت التقييم فتسقط هذه الطلبات. */
+  const artTargets = feed.slice(0, BACKDROP_LIMIT);
+  const artPairs = await Promise.all(
+    artTargets.map(async (a) => {
+      const key = `${a.media_type}-${a.tmdb_id}`;
       try {
         const d =
           a.media_type === "tv" ? await getTv(a.tmdb_id) : await getMovie(a.tmdb_id);
-        return [`${a.media_type}-${a.tmdb_id}`, d.backdrop_path] as const;
+        return [key, { backdrop: d.backdrop_path, poster: d.poster_path }] as const;
       } catch {
-        return [`${a.media_type}-${a.tmdb_id}`, null] as const;
+        return [key, { backdrop: null, poster: null }] as const;
       }
     }),
   );
-  const backdropById = new Map(backdropPairs);
+  const artById = new Map(artPairs);
 
   return (
     <div className="space-y-8">
@@ -68,10 +72,11 @@ export default async function PeoplePage() {
           <div className="divide-y divide-[color:var(--divider)]">
             {feed.map((a) => {
               /* صورةٌ عرضية كصورة «أكمل المشاهدة» لا ملصقاً رأسياً:
-                 الصفّ أفقيّ، والعرضيّة تجلس فيه بلا أن ترفع ارتفاعه */
+                 الصفّ أفقيّ، والعرضيّة تملأ فراغه بدل مربّعٍ صغير */
+              const found = artById.get(`${a.media_type}-${a.tmdb_id}`);
               const art =
-                backdropUrl(backdropById.get(`${a.media_type}-${a.tmdb_id}`) ?? null, "w300") ??
-                posterUrl(a.poster_path, "w185");
+                backdropUrl(found?.backdrop ?? null, "w500") ??
+                posterUrl(found?.poster ?? a.poster_path, "w342");
               return (
                 <article
                   key={`${a.person.id}-${a.media_type}-${a.tmdb_id}`}
@@ -92,7 +97,7 @@ export default async function PeoplePage() {
                       <Link
                         href={`/${a.media_type === "tv" ? "show" : "movie"}/${a.tmdb_id}`}
                         prefetch={false}
-                        className="flex items-center gap-2 group max-w-[11rem]"
+                        className="flex items-center gap-2.5 group max-w-[18rem]"
                       >
                         <span className="min-w-0 text-end">
                           <span className="block text-[13px] font-semibold truncate group-hover:text-accent transition">
@@ -102,7 +107,7 @@ export default async function PeoplePage() {
                             {a.media_type === "tv" ? t.typeSeries : t.typeMovie}
                           </span>
                         </span>
-                        <span className="w-[4.5rem] shrink-0 aspect-video rounded-md overflow-hidden bg-surface-2 block">
+                        <span className="w-28 sm:w-40 shrink-0 aspect-video rounded-lg overflow-hidden bg-surface-2 block">
                           {art ? (
                             /* eslint-disable-next-line @next/next/no-img-element */
                             <img
