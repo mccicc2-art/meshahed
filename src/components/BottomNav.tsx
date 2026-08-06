@@ -2,8 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
 import { getDict, type Locale } from "@/lib/i18n";
 import { Icon, type IconName } from "./Icon";
+import { TitleSearchSheet } from "./TitleSearchSheet";
 
 /**
  * شريط التبويبات السفلي.
@@ -31,13 +33,18 @@ const TABS: {
   { href: "/library", key: "library", icon: "film" },
   { href: "/news", key: "news", icon: "compass" },
   { href: "/people", key: "people", icon: "people" },
-  /* البحث في الطرف: فعلٌ لا وجهةَ تصفّح، والأطراف أسهل ما تصله الإبهام */
+  /* البحث في الطرف: فعلٌ لا وجهةَ تصفّح، والأطراف أسهل ما تصله الإبهام.
+     ولأنه فعل، لا يُنقل المستخدم إلى صفحة: ضغطُه يفتح ورقةً بحقلٍ مركَّز
+     فتظهر لوحة المفاتيح فوراً. الرابط يبقى مكتوباً لمن فتح `/search`
+     برابطٍ مباشر أو بلا جافاسكربت. */
   { href: "/search", key: "search", icon: "search" },
 ];
 
 export function BottomNav({ locale }: { locale: Locale }) {
   const pathname = usePathname();
   const t = getDict(locale);
+  // الحالة قبل أي خروجٍ مبكّر: ترتيب الخطّافات لا يتغيّر بين تصييرين
+  const [searchOpen, setSearchOpen] = useState(false);
   // شاشات مركّزة: لا شريط تبويبات يزاحم زر الإجراء
   if (pathname === "/login" || pathname === "/welcome") return null;
 
@@ -72,14 +79,10 @@ export function BottomNav({ locale }: { locale: Locale }) {
         {/* كبسولة التبويبات — خمسة أعمدة متساوية لا خانات بحشوٍ متساوٍ */}
         <nav className="pointer-events-auto grid grid-cols-5 w-full max-w-[26rem] rounded-[26px] border border-border bg-[color:var(--surface)] px-1.5 py-2 shadow-[0_10px_30px_rgba(0,0,0,0.6)]">
           {TABS.map(({ href, key, icon }) => {
-            const active = isActive(href);
-            return (
-              <Link
-                key={href}
-                href={href}
-                aria-current={active ? "page" : undefined}
-                className="relative flex min-w-0 flex-col items-center justify-center gap-1 rounded-2xl px-1 pt-1 pb-2 transition active:bg-surface-2"
-              >
+            const isSearch = key === "search";
+            const active = isSearch ? searchOpen : isActive(href);
+            const face = (
+              <>
                 <Icon
                   name={icon}
                   size={22}
@@ -106,11 +109,40 @@ export function BottomNav({ locale }: { locale: Locale }) {
                   style={{ background: "var(--accent)" }}
                   aria-hidden
                 />
+              </>
+            );
+            const face_cls =
+              "relative flex min-w-0 flex-col items-center justify-center gap-1 rounded-2xl px-1 pt-1 pb-2 transition active:bg-surface-2";
+
+            // البحث يفتح ورقةً في مكانه؛ وبقية التبويبات وجهاتٌ تُزار
+            return isSearch ? (
+              <button
+                key={href}
+                type="button"
+                onClick={() => setSearchOpen(true)}
+                aria-expanded={searchOpen}
+                aria-haspopup="dialog"
+                className={face_cls}
+              >
+                {face}
+              </button>
+            ) : (
+              <Link
+                key={href}
+                href={href}
+                aria-current={active ? "page" : undefined}
+                className={face_cls}
+              >
+                {face}
               </Link>
             );
           })}
         </nav>
       </div>
+
+      {searchOpen && (
+        <TitleSearchSheet onClose={() => setSearchOpen(false)} locale={locale} />
+      )}
     </div>
   );
 }
