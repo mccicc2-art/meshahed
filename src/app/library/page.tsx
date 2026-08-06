@@ -6,11 +6,12 @@ import {
   getAllWatchedEpisodes,
   getWatchSummary,
   getWatchedMovieIds,
+  getMyLists,
 } from "@/lib/data";
 import { getT } from "@/lib/locale";
 import { localizeFollows } from "@/lib/localize";
 import { Icon } from "@/components/Icon";
-import { LibraryGrid, type GridItem } from "@/components/LibraryGrid";
+import { LibraryGrid, type GridItem, type LibraryTab } from "@/components/LibraryGrid";
 import { FollowMetaSync } from "@/components/MetaSync";
 
 /**
@@ -31,14 +32,19 @@ export default async function LibraryPage({
 
   const { locale, t } = await getT();
   const { filter } = await searchParams;
-  const initialTab = filter === "movie" ? "movies" : "shows";
+  const initialTab: LibraryTab =
+    filter === "movie" ? "movies" : filter === "list" ? "lists" : "shows";
 
   // الملخّص المجمّع (صف لكل مسلسل، والإعادة محسوبة داخله) بدل قراءة كل
   // صفوف الحلقات — نفس الترقية التي أخذتها الرئيسية. الترجمة في نفس الموجة.
-  const [followRows, summary, watchedMovieIds] = await Promise.all([
+  // والقوائم في الموجة نفسها: استدعاءٌ واحد (`my_lists`) يرجع الاسم والعدد
+  // وثلاثة ملصقات، ويجري بالتوازي فلا يزيد زمن الصفحة إلا بأبطأ استدعاء —
+  // وهذا ثمن أن يفتح تبويب «القوائم» فوراً بلا دوّارة ولا رحلة شبكة.
+  const [followRows, summary, watchedMovieIds, lists] = await Promise.all([
     getFollows(),
     getWatchSummary(),
     getWatchedMovieIds(),
+    getMyLists(),
   ]);
   const follows = await localizeFollows(followRows, locale);
 
@@ -125,7 +131,13 @@ export default async function LibraryPage({
       {/* العنوان مخفيٌّ بصريًّا وباقٍ لقارئ الشاشة — أُزيلت الترويسة وسطر الملخّص */}
       <h1 className="sr-only">{t.libraryTitle}</h1>
 
-      <LibraryGrid shows={shows} movies={movies} locale={locale} initialTab={initialTab} />
+      <LibraryGrid
+        shows={shows}
+        movies={movies}
+        lists={lists}
+        locale={locale}
+        initialTab={initialTab}
+      />
 
       {/* روابط الأدوات — بلا إطار، على نمط صفوف الرئيسية: فواصل رأسية فقط */}
       {/* عمودان لا ثلاثة: «القوائم» صعدت إلى صفّ التبويبات — قرارُ المالك */}
