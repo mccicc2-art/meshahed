@@ -35,27 +35,33 @@ export const THEMES: Theme[] = [
     // أسودٌ عميق لا رماديّ مزرقّ: على شاشة OLED البكسل الأسود مطفأ، فالحدّ
     // بين الخلفية والبطاقة يُرى بفارق الإضاءة لا بفارق اللون — وهذا ما
     // يعطي الإحساس بالعمق دون ظلالٍ ثقيلة
-    ar: "لوبز (OLED)",
-    en: "Loopz (OLED)",
+    // الهوية الرسمية: أصفر #FFD200 على أسود #0D0D0D (كتيّب العلامة).
+    // سُلَّم العمق ثلاث درجات كما كان (D-001): الخلفية فالسطح فالمرتفع —
+    // والرمادي الداكن #1A1A1A وحدُّ #2A2A2A والفاتح #BDBDBD كلها من
+    // ألوان الكتيّب الثانوية حرفياً.
+    ar: "لوبز (الرسمي)",
+    en: "Loopz (Official)",
     vars: {
-      background: "#090909",
+      background: "#0D0D0D",
       surface: "#141414",
       "surface-2": "#1A1A1A",
       foreground: "#FFFFFF",
-      muted: "#A6A6A6",
-      accent: "#7C3AED",
-      "accent-2": "#EC4899",
+      muted: "#BDBDBD",
+      // نصٌّ أسود على الأصفر لا أبيض: الأبيض على #FFD200 لا يُقرأ أصلاً
+      // (تباين ~1.6)، والأسود عليه ~14 — لهذا وُجد رمز on-accent
+      accent: "#FFD200",
+      "accent-2": "#F59E0B",
       border: "#2A2A2A",
-      "on-accent": "#FFFFFF",
-      "on-accent-2": "#FFFFFF",
+      "on-accent": "#0D0D0D",
+      "on-accent-2": "#0D0D0D",
       elevated: "#1A1A1A",
       divider: "rgba(255, 255, 255, 0.08)",
       "surface-inverse": "#FFFFFF",
-      "on-surface-inverse": "#111111",
+      "on-surface-inverse": "#0D0D0D",
     },
-    glowA: "rgba(124, 58, 237, 0.12)",
-    glowB: "rgba(236, 72, 153, 0.07)",
-    brand: ["#7C3AED", "#EC4899", "#F59E0B"],
+    glowA: "rgba(255, 210, 0, 0.10)",
+    glowB: "rgba(245, 158, 11, 0.05)",
+    brand: ["#FFD200", "#FBBF24", "#F59E0B"],
   },
   {
     id: "amber",
@@ -197,7 +203,9 @@ export const THEMES: Theme[] = [
   },
 ];
 
-export const DEFAULT_BRAND: [string, string, string] = ["#7C3AED", "#EC4899", "#F59E0B"];
+// تدرّج الهوية صار سُلَّماً أصفرَ واحداً لا ثلاثةَ ألوان: الكتيّب الرسمي
+// لونان لا غير — أصفر وأسود — فالتدرّج درجات الأصفر نفسه
+export const DEFAULT_BRAND: [string, string, string] = ["#FFD200", "#FBBF24", "#F59E0B"];
 
 export const DEFAULT_THEME = THEMES[0];
 

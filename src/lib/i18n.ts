@@ -18,7 +18,7 @@ const ar = {
   dir: "rtl",
   brand: "Loopz",
   tagline: "منصة ذكية لتتبع الأفلام والمسلسلات والأنمي — كل ما تشاهده، في مكان واحد.",
-  taglineEn: "Track it. Watch it. Never lose track.",
+  taglineEn: "Track. Watch. Remember.",
   metaTitle: "Loopz — تتبّع أفلامك ومسلسلاتك",
   metaDescription: "منصة ذكية لتتبع الأفلام والمسلسلات والأنمي — كل ما تشاهده، في مكان واحد.",
   /* شعارٌ لا نسبةُ بيانات: التذييل يظهر تحت كل شاشة في التطبيق، وسطرٌ
@@ -436,7 +436,7 @@ const en: Dict = {
   dir: "ltr",
   brand: "Loopz",
   tagline: "A smart home for the shows, movies and anime you watch \u2014 all in one place.",
-  taglineEn: "Track it. Watch it. Never lose track.",
+  taglineEn: "Track. Watch. Remember.",
   metaTitle: "Loopz \u2014 track your shows & movies",
   metaDescription: "A smart home for the shows, movies and anime you watch \u2014 all in one place.",
   footer: "Every story matters",
