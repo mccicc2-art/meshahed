@@ -10,7 +10,8 @@ export function GoogleButton({ locale }: { locale: Locale }) {
 
   async function signIn() {
     setLoading(true);
-    const supabase = createClient();
+    // العميل يُجلب عند الضغطة — انظر لماذا في supabase/client.ts
+    const supabase = await createClient();
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? window.location.origin;
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",

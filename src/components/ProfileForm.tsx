@@ -83,7 +83,8 @@ export function ProfileForm({
 
     setUploading(kind);
     try {
-      const supabase = createClient();
+      // العميل يُجلب عند أول رفعٍ لا مع الصفحة — انظر supabase/client.ts
+      const supabase = await createClient();
       const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
       const path = `${userId}/${kind}-${Date.now()}.${ext}`;
 

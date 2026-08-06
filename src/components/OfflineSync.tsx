@@ -31,7 +31,8 @@ export function OfflineSync() {
     // بلا رحلة شبكة) ثم نشغّل ما علِق له وحده
     async function bind() {
       try {
-        const { data } = await createClient().auth.getSession();
+        // العميل يُجلب هنا بعد الرسم لا مع الصفحة — انظر supabase/client.ts
+        const { data } = await (await createClient()).auth.getSession();
         if (!alive) return;
         setOfflineUser(data.session?.user?.id ?? null);
       } catch {

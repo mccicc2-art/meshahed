@@ -113,7 +113,9 @@ export function ProfileHeader({
 
   return (
     <section>
-      {/* ===== الغلاف ===== */}
+      {/* ===== الغلاف =====
+          الارتفاع ثابتٌ هنا عمداً — وهو ما يحجز المساحة قبل وصول الصورة
+          فلا يقفز التخطيط عند تحميلها؛ لا حاجة لنسبة أبعادٍ فوقه. */}
       <div className="relative h-[14.2rem] sm:h-[18.2rem] -mx-4 -mt-[calc(1.5rem+env(safe-area-inset-top))] sm:mx-0 sm:mt-0 sm:rounded-3xl overflow-hidden">
         {coverUrl ? (
           <Image
@@ -122,6 +124,12 @@ export function ProfileHeader({
             fill
             priority
             quality={90}
+            /* لطخةٌ داكنة تملأ الإطار حتى تصل الصورة: الغلاف صورةٌ يرفعها
+               المستخدم فلا LQIP مبنيٌّ لها مسبقاً، وبكسلٌ واحد محايد أرخص
+               بديلٍ عن فراغٍ شفّاف يومض ثم يمتلئ. لونه بين السطحين في
+               الثيمين، والحجاب المتدرّج فوقه يبتلع الفرق. */
+            placeholder="blur"
+            blurDataURL="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGNQVlIDAADXAGyeIPIkAAAAAElFTkSuQmCC"
             sizes="(max-width: 640px) 100vw, 1152px"
             /* `object-cover` يملأ العرض بلا تشويه، و`35%` رأسياً يرفع
                الإطار فيظهر أعلى الصورة — السماء والغيم — بدل أن يقتصّه
@@ -183,11 +191,11 @@ export function ProfileHeader({
             {verified && <VerifiedMark size={17} title={t.verifiedTitle} />}
           </div>
 
-          {username && (
-            <p className="text-[13px] text-white/55 truncate leading-tight mt-0.5 drop-shadow">
-              <span dir="ltr">@{username}</span>
-            </p>
-          )}
+          {/* لا سطرَ @معرّف تحت الاسم: الاسم الظاهر يكفي هنا، والمعرّفُ
+              تقنيّةُ روابطَ لا هويةُ عرضٍ — مكانُه صفحات المجتمع حيث يفرّق
+              بين متشابهَي الاسم. كان يكرّر الاسم نفسه بصيغةٍ ثانية ويزاحم
+              سطرَ الأرقام. قرارُ المالك. (الخاصية باقية في التوقيع
+              فلا يتكسّر مستدعٍ، والعرضُ وحده سقط.) */}
 
           {(show.followers || show.social) && (
             <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[13px] text-white/75 leading-tight mt-1 drop-shadow">
