@@ -64,6 +64,8 @@ export interface SearchResult {
   /** أرقام أنواع TMDB — تُستخدم لاستبعاد الرسوم من قوائم المسلسلات */
   genre_ids?: number[];
   origin_country?: string[];
+  /** لغة العمل الأصلية (ISO 639-1) — تُصفّى بها القوائم الجاهزة محلياً */
+  original_language?: string;
 }
 
 export interface Episode {
@@ -602,6 +604,115 @@ export async function upcomingByGenre(
     params["first_air_date.gte"] = today;
     params.include_null_first_air_dates = "false";
   }
+
+  try {
+    const data = await tmdb<{ results: SearchResult[] }>(`/discover/${mediaType}`, params);
+    return (data.results ?? [])
+      .filter((r) => r.poster_path)
+      .map((r) => ({ ...r, media_type: mediaType }));
+  } catch {
+    return [];
+  }
+}
+
+// ============================================================
+//  التصفّح بالفلتر الكامل — لغة، حقبة، تقييم
+// ============================================================
+
+/**
+ * فلترُ تصفّحٍ كما يفهمه TMDB.
+ *
+ * حقولٌ خام لا كائنات `browse.ts`: هذه الطبقة لا تعرف الرقائق ولا الروابط،
+ * تعرف معاملات `/discover` وحدها — فتبقى قابلةً للاستعمال من أي شاشة.
+ */
+export interface DiscoverFilter {
+  /** معرّفات النوع الدرامي — تُجمع بـ«أو» */
+  genreIds?: number[];
+  /** لغة العمل الأصلية (ISO 639-1) */
+  lang?: string | null;
+  /** أوّل تاريخ إصدارٍ مقبول (شامل) */
+  from?: string | null;
+  /** آخر تاريخ إصدارٍ مقبول (شامل) */
+  to?: string | null;
+  /** أدنى متوسّط تقييم */
+  minRate?: number | null;
+}
+
+/** أسماء حقول التاريخ تختلف بين الأفلام والمسلسلات في `/discover` */
+function dateKeys(mediaType: MediaType) {
+  return mediaType === "movie"
+    ? { gte: "primary_release_date.gte", lte: "primary_release_date.lte" }
+    : { gte: "first_air_date.gte", lte: "first_air_date.lte" };
+}
+
+function discoverParams(mediaType: MediaType, f: DiscoverFilter) {
+  const p: Record<string, string> = { include_adult: "false" };
+  if (f.genreIds?.length) p.with_genres = f.genreIds.join("|");
+  if (f.lang) p.with_original_language = f.lang;
+  const k = dateKeys(mediaType);
+  if (f.from) p[k.gte] = f.from;
+  if (f.to) p[k.lte] = f.to;
+  if (f.minRate) p["vote_average.gte"] = String(f.minRate);
+  return p;
+}
+
+/**
+ * أفضل ما يطابق الفلتر.
+ *
+ * `vote_average.desc` وحده يُصعّد أعمالاً بصوتين إلى القمّة، فتُقرن دائماً
+ * بعتبة أصوات. والعتبة تنزل درجةً درجة: «عربي، تسعينات، ٨ فما فوق» لا يجد
+ * عشرة أعمالٍ بمئتَي صوت، وصفٌّ من ثلاثة أصدق من صفٍّ فارغ. ونتوقّف عند
+ * أوّل عتبةٍ تكفي فلا نطلب ما لا نحتاج.
+ */
+export async function topByFilter(
+  mediaType: MediaType,
+  f: DiscoverFilter,
+  limit = 10,
+): Promise<SearchResult[]> {
+  let best: SearchResult[] = [];
+  for (const floor of [200, 50, 10]) {
+    try {
+      const data = await tmdb<{ results: SearchResult[] }>(`/discover/${mediaType}`, {
+        ...discoverParams(mediaType, f),
+        sort_by: "vote_average.desc",
+        "vote_count.gte": String(floor),
+      });
+      const rows = (data.results ?? [])
+        .filter((r) => r.poster_path)
+        .map((r) => ({ ...r, media_type: mediaType }));
+      if (rows.length > best.length) best = rows;
+      if (rows.length >= limit) break;
+    } catch {
+      /* عتبةٌ فشلت — نجرّب الأدنى منها */
+    }
+  }
+  return best.slice(0, limit);
+}
+
+/**
+ * القادم قريباً ضمن الفلتر.
+ *
+ * الحقبة تُقصّ بـ«اليوم» لا تُلغيه: من اختار «٢٠٢٠ فما بعد» يريد قادمها،
+ * ومن اختار حقبةً منتهية لا قادمَ فيها أصلاً — فيُترك الصفّ فارغاً بلا
+ * طلبٍ يُهدر. والتقييم يُتجاهل هنا عمداً: العمل الذي لم يصدر لا أصوات له،
+ * فعتبةُ ٨ تُفرغ الصفّ لا تُجوّده.
+ */
+export async function upcomingByFilter(
+  mediaType: MediaType,
+  f: DiscoverFilter,
+): Promise<SearchResult[]> {
+  const today = new Date().toISOString().slice(0, 10);
+  if (f.to && f.to < today) return [];
+
+  const from = f.from && f.from > today ? f.from : today;
+  const k = dateKeys(mediaType);
+  const params: Record<string, string> = {
+    ...discoverParams(mediaType, { ...f, from, minRate: null }),
+    sort_by: mediaType === "movie" ? "primary_release_date.asc" : "first_air_date.asc",
+  };
+  delete params["vote_average.gte"];
+  params[k.gte] = from;
+  if (mediaType === "tv") params.include_null_first_air_dates = "false";
 
   try {
     const data = await tmdb<{ results: SearchResult[] }>(`/discover/${mediaType}`, params);
