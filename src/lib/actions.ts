@@ -73,6 +73,9 @@ export async function updateProfile(input: {
   username?: string;
   avatarUrl: string | null;
   coverUrl?: string | null;
+  /** التموضع الرأسي للصورتين (٠–١٠٠) — انظر image_positions.sql */
+  coverPos?: number;
+  avatarPos?: number;
   theme?: string;
   favoriteGenres: number[];
   hideName?: boolean;
@@ -101,6 +104,12 @@ export async function updateProfile(input: {
   };
   if (input.username !== undefined) payload.username = username || null;
   if (input.coverUrl !== undefined) payload.cover_url = safeImageUrl(input.coverUrl);
+  // نسبةٌ مقصوصة على مداها لا قيمة حرّة: الرقم يدخل style مباشرةً عند الرسم
+  const clampPos = (n: number) => Math.min(100, Math.max(0, Math.round(n)));
+  if (input.coverPos !== undefined && Number.isFinite(input.coverPos))
+    payload.cover_pos = clampPos(input.coverPos);
+  if (input.avatarPos !== undefined && Number.isFinite(input.avatarPos))
+    payload.avatar_pos = clampPos(input.avatarPos);
   if (input.theme !== undefined) {
     payload.theme = THEMES.some((t) => t.id === input.theme) ? input.theme : "amber";
   }

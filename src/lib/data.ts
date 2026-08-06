@@ -57,6 +57,9 @@ export interface Profile {
   username: string | null;
   avatar_url: string | null;
   cover_url: string | null;
+  /** التموضع الرأسي للصورتين (٠ أعلى — ١٠٠ أسفل) — انظر image_positions.sql */
+  cover_pos?: number | null;
+  avatar_pos?: number | null;
   theme: string | null;
   favorite_genres: number[];
   hide_name?: boolean | null;
@@ -74,7 +77,7 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
     let { data, error } = await supabase
       .from("profiles")
       .select(
-        "id, nickname, username, avatar_url, cover_url, theme, favorite_genres, hide_name, home_prefs",
+        "id, nickname, username, avatar_url, cover_url, cover_pos, avatar_pos, theme, favorite_genres, hide_name, home_prefs",
       )
       .eq("id", user.id)
       .maybeSingle();
@@ -91,7 +94,8 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
         .eq("id", user.id)
         .maybeSingle();
       if (mid.data) {
-        data = { ...mid.data, home_prefs: null };
+        // عمودا التموضع أحدث من هذه الدرجة — يسقطان إلى سلوكهما القديم
+        data = { ...mid.data, cover_pos: null, avatar_pos: null, home_prefs: null };
       } else {
         const legacy = await supabase
           .from("profiles")
@@ -102,6 +106,8 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
           data = {
             ...legacy.data,
             cover_url: null,
+            cover_pos: null,
+            avatar_pos: null,
             theme: null,
             hide_name: false,
             home_prefs: null,
@@ -120,6 +126,8 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
         username: `user_${user.id.replace(/-/g, "").slice(0, 8)}`,
         avatar_url: (user.user_metadata?.avatar_url as string | undefined) ?? null,
         cover_url: null,
+        cover_pos: null,
+        avatar_pos: null,
         theme: null,
         favorite_genres: [],
         hide_name: false,
@@ -504,6 +512,8 @@ export interface PublicProfile {
   username: string | null;
   avatar_url: string | null;
   cover_url: string | null;
+  cover_pos?: number | null;
+  avatar_pos?: number | null;
   favorite_genres: number[];
   hide_name?: boolean | null;
 }
@@ -540,7 +550,7 @@ export async function getProfileByUsername(
     // الأعمدة العامة وحدها (انظر supabase/public_profiles.sql)
     const { data, error } = await supabase
       .from("public_profiles")
-      .select("id, nickname, username, avatar_url, cover_url, favorite_genres, hide_name")
+      .select("id, nickname, username, avatar_url, cover_url, cover_pos, avatar_pos, favorite_genres, hide_name")
       .eq(column, value)
       .maybeSingle();
 
@@ -555,6 +565,8 @@ export async function getProfileByUsername(
       return {
         ...legacy.data,
         favorite_genres: legacy.data.favorite_genres ?? [],
+        cover_pos: null,
+        avatar_pos: null,
         hide_name: false,
       } as PublicProfile;
     }
