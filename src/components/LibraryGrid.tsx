@@ -5,6 +5,7 @@ import { flashError } from "@/lib/toast";
 import { runOrQueue } from "@/lib/offline";
 import { tap } from "@/lib/haptics";
 import { coalescedRefresh } from "@/lib/refresh";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getDict, type Locale } from "@/lib/i18n";
 import { startRewatch } from "@/lib/actions";
@@ -85,7 +86,13 @@ export function LibraryGrid({
       {/* تبويبان في مقسّمٍ واحد — نفس عائلة تبويبات صفحة العمل ومقسّم
           «اكتشف»: خطٌّ سفليّ بلون التمييز تحت المختار، والأيقونة والعدّاد
           يأخذان اللون نفسه */}
-      <div className={`${segmentedTrackFull} mb-5`} role="tablist">
+      {/* الصفّ يحمل الخطّ السفليّ لا المسار: «القوائم» رابطٌ لا تبويب،
+          فلا يجوز أن يسكن داخل `role="tablist"` — التبويب يبدّل لوحاً في
+          الشاشة نفسها، والرابط يغادرها، ومن يتنقّل بلوحة المفاتيح يستحقّ
+          أن يعرف الفرق قبل أن يضغط. المسار الأول يبقى `tablist` للتبويبين
+          وحدهما، والرابط بجانبه في الصفّ نفسه. */}
+      <div className="flex items-stretch border-b border-[color:var(--divider)] mb-5">
+      <div className="flex flex-1 items-stretch" role="tablist">
         {tabs.map(({ id, icon, label, n }) => {
           const active = tab === id;
           return (
@@ -118,6 +125,23 @@ export function LibraryGrid({
             </button>
           );
         })}
+      </div>
+
+        {/* القوائم — وجهةٌ في الصفّ لا تبويبٌ فيه. بلا عدّاد وبلا خطّ
+            تمييزٍ أبداً: العدّاد كان سيكلّف استعلاماً إضافياً في كل فتحةٍ
+            للمكتبة، وغيابُه مع غياب حالة «مختار» هو ما يميّز الوجهة عن
+            التبويب قبل الضغط. قرارُ المالك في الموضع والاسم. */}
+        <Link
+          href="/lists"
+          className={segmentedItem(
+            false,
+            "flex-1 flex items-center justify-center gap-2 px-2 pt-1.5 pb-3 text-[13px]",
+            false,
+          )}
+        >
+          <Icon name="list" size={16} className="shrink-0" />
+          {t.listsTitle}
+        </Link>
       </div>
 
       {/* بحثٌ وفرز: سطرٌ واحد تحت التبويبين */}
