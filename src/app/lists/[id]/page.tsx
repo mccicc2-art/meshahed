@@ -4,13 +4,16 @@ import { notFound } from "next/navigation";
 import { getUser, getList, getPublicList } from "@/lib/data";
 import { getT } from "@/lib/locale";
 import { ListDetail } from "@/components/ListDetail";
+import { localizeRows } from "@/lib/localize";
 import { buttonClass } from "@/components/ui/Button";
 
 /**
  * قائمة واحدة.
  *
- * العناوين والملصقات مخزّنة مع عناصر القائمة، فلا طلب TMDB هنا إطلاقاً —
- * قائمة فيها مئة عمل تُعرض بسرعة قائمة فيها ثلاثة.
+ * العناوين والملصقات مخزّنة مع عناصر القائمة، فالقراءة استعلامٌ واحد مهما
+ * طالت القائمة. ويُطلب TMDB **فقط** لما خالف خطُّ اسمه لغة الواجهة (D-048)،
+ * بسقف أربعةٍ وعشرين عملاً متمايزاً وبتخبئة ساعة — أي أن القائمة المكتوبة
+ * بلغة الواجهة تبقى بلا طلبٍ واحد كما كانت.
  *
  * وللزائر بلا حساب: القائمة المعلنة تُفتح كما هي بلا تسجيل دخول. كانت
  * الصفحة تحوّل كل زائرٍ إلى `/login`، فرابطُ القائمة «المعلنة» لم يكن
@@ -62,6 +65,8 @@ export default async function ListPage({ params }: { params: Promise<{ id: strin
     const pub = await getPublicList(id);
     if (!pub) notFound();
 
+    const items = await localizeRows(pub.items, locale);
+
     return (
       <div>
         <ListDetail
@@ -70,7 +75,7 @@ export default async function ListPage({ params }: { params: Promise<{ id: strin
           subtitle={pub.subtitle}
           isPublic
           kind={pub.kind}
-          items={pub.items}
+          items={items}
           ratings={{}}
           isOwner={false}
           owner={{
@@ -104,6 +109,10 @@ export default async function ListPage({ params }: { params: Promise<{ id: strin
   // صاحب القائمة يُقرأ من الباب العامّ نفسه — لا استعلام ثانٍ على الملفات
   const pub = isOwner ? null : await getPublicList(id);
 
+  /* العناوين مخزّنة بلغة يوم الإضافة — تُترجَم عند العرض وحده (D-048)،
+     فلا تظهر قائمةٌ عربية داخل واجهةٍ إنجليزية */
+  const items = await localizeRows(data.items, locale);
+
   return (
     <div>
       {/* الرجوع إلى تبويب «القوائم» في المكتبة لا إلى المسار المنفصل:
@@ -121,7 +130,7 @@ export default async function ListPage({ params }: { params: Promise<{ id: strin
         subtitle={data.list.subtitle}
         isPublic={data.list.is_public}
         kind={data.list.kind}
-        items={data.items}
+        items={items}
         ratings={data.ratings}
         isOwner={isOwner}
         owner={
