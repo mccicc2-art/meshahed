@@ -13,6 +13,7 @@ import { tap } from "@/lib/haptics";
 import { flashError } from "@/lib/toast";
 import { coalescedRefresh } from "@/lib/refresh";
 import { replyToShare, markConversationRead, hideConversation } from "@/lib/actions";
+import { StartConversationSheet } from "./StartConversationSheet";
 import type { Conversation, ConvEvent, PersonLite } from "@/lib/data";
 
 /**
@@ -26,15 +27,19 @@ import type { Conversation, ConvEvent, PersonLite } from "@/lib/data";
  */
 export function Inbox({
   conversations,
+  startable,
   openWith,
   locale,
 }: {
   conversations: Conversation[];
+  /** متابَعون متبادلون لا محادثة معهم بعد — لبدء محادثةٍ من البحث */
+  startable: PersonLite[];
   openWith: string | null;
   locale: Locale;
 }) {
   const t = getDict(locale);
   const [query, setQuery] = useState("");
+  const [startWith, setStartWith] = useState<PersonLite | null>(null);
 
   const nameOf = (p: PersonLite | null) =>
     !p || p.hide_name ? t.anonymousUser : p.nickname || p.username || "—";
@@ -44,7 +49,8 @@ export function Inbox({
     return <ConversationView conv={open} name={nameOf(open.person)} locale={locale} />;
   }
 
-  if (conversations.length === 0) {
+  // لا محادثاتٍ ولا من نبدأ معه: الفراغ وحده، بلا حقل بحثٍ لا معنى له
+  if (conversations.length === 0 && startable.length === 0) {
     return (
       <p className="text-sm text-muted bg-surface border border-dashed border-border rounded-xl py-8 px-5 text-center">
         {t.inboxEmpty}
@@ -52,12 +58,17 @@ export function Inbox({
     );
   }
 
-  // ترشيحٌ بالاسم — يكمل المستخدم محادثةً قائمة دون تمرير قائمةٍ طويلة.
-  // بحثٌ محلّيّ فوق المحمّل: لا طلبَ شبكةٍ لكل حرف، والقائمة كلّها بين يديه.
+  // ترشيحٌ بالاسم — يكمل محادثةً قائمة، أو **يبدأ** مع متابَعٍ متبادلٍ لم
+  // تراسله. بحثٌ محلّيّ فوق المحمّل: لا طلبَ شبكةٍ لكل حرف. المحادثات تظهر
+  // دائماً؛ ومن نبدأ معهم لا يظهرون إلا عند الكتابة كي لا تُغرق القائمةَ.
   const q = query.trim().toLowerCase();
   const shown = q
     ? conversations.filter((c) => nameOf(c.person).toLowerCase().includes(q))
     : conversations;
+  const startShown = q
+    ? startable.filter((p) => nameOf(p).toLowerCase().includes(q))
+    : [];
+  const nothing = q !== "" && shown.length === 0 && startShown.length === 0;
 
   return (
     <div>
@@ -86,11 +97,13 @@ export function Inbox({
         )}
       </div>
 
-      {shown.length === 0 ? (
+      {nothing && (
         <p className="text-sm text-muted bg-surface border border-dashed border-border rounded-xl py-8 px-5 text-center">
           {t.convNoMatch}
         </p>
-      ) : (
+      )}
+
+      {shown.length > 0 && (
         <ul className="divide-y divide-[color:var(--divider)]">
           {shown.map((c) => {
         const name = nameOf(c.person);
@@ -138,6 +151,58 @@ export function Inbox({
         );
           })}
         </ul>
+      )}
+
+      {/* ابدأ محادثة — متابَعون متبادلون طابق اسمُهم البحثَ ولا خيط معهم بعد.
+          الضغط يفتح ورقةَ اختيار عمل، فتبدأ المحادثة بمشاركةٍ (D-051 قائمة) */}
+      {startShown.length > 0 && (
+        <section className="mt-5">
+          <p className="text-[11px] font-semibold text-muted uppercase tracking-wide px-1 mb-1.5">
+            {t.convStartSection}
+          </p>
+          <ul className="divide-y divide-[color:var(--divider)]">
+            {startShown.map((p) => {
+              const name = nameOf(p);
+              return (
+                <li key={p.id}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      tap(6);
+                      setStartWith(p);
+                    }}
+                    aria-label={t.convStartRowAria(name)}
+                    className="w-full flex items-center gap-3 py-3 hover:bg-surface-2 -mx-2 px-2 rounded-xl transition text-start"
+                  >
+                    <Avatar
+                      src={p.hide_name ? null : p.avatar_url}
+                      name={name}
+                      size={44}
+                      alt={t.avatarAlt}
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-semibold truncate">{name}</span>
+                      <span className="block text-[13px] text-muted truncate">
+                        {t.convStartRowHint}
+                      </span>
+                    </span>
+                    <span className="shrink-0 grid place-items-center w-8 h-8 rounded-full text-muted" aria-hidden>
+                      <Icon name="share" size={16} />
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
+
+      {startWith && (
+        <StartConversationSheet
+          person={startWith}
+          locale={locale}
+          onClose={() => setStartWith(null)}
+        />
       )}
     </div>
   );
