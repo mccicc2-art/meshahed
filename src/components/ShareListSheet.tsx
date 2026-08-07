@@ -4,6 +4,7 @@ import { useTransition } from "react";
 import { Sheet } from "./ui/Sheet";
 import { buttonClass } from "./ui/Button";
 import { getDict, type Locale } from "@/lib/i18n";
+import { siteUrl } from "@/lib/site";
 import { tap } from "@/lib/haptics";
 import { toast, flashError } from "@/lib/toast";
 import { renameList } from "@/lib/actions";
@@ -37,8 +38,9 @@ export function ShareListSheet({
 }) {
   const t = getDict(locale);
   const [pending, start] = useTransition();
-  const url = () =>
-    typeof window !== "undefined" ? `${window.location.origin}/lists/${listId}` : "";
+  /* الرابط من الثابت الرسمي لا من النافذة: المثبِّت القديم على
+     meshahed.vercel.app كان يوزّع نطاق النشرة لا نطاق العلامة */
+  const url = () => siteUrl(`/lists/${listId}`);
 
   async function copy() {
     try {

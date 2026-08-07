@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { getDict, type Locale } from "@/lib/i18n";
+import { siteUrl } from "@/lib/site";
 import type { MediaType } from "@/lib/media";
 import { Icon } from "./Icon";
 import { Sheet } from "./ui/Sheet";
@@ -66,7 +67,8 @@ export function DetailTopBar({
 
   async function shareLink() {
     setMenu(false);
-    const url = window.location.href;
+    // المسار من النافذة والنطاق من الثابت الرسمي (src/lib/site.ts)
+    const url = siteUrl(window.location.pathname);
     try {
       if (navigator.share) {
         await navigator.share({ title, url });

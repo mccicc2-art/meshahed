@@ -44,20 +44,34 @@ export function PickedForYou({
   locale: Locale;
 }) {
   const t = getDict(locale);
-  const [page, setPage] = useState(0);
   const [hidden, setHidden] = useState<ReadonlySet<string>>(new Set());
+  /* عيّنة عشوائية لا صفحات متتابعة: التقليب المتسلسل أعاد الوجوه نفسها
+     بترتيبها («الريفرش يظهر نفس الأشياء») — الآن كل ضغطة تسحب عشراً
+     عشوائيةً من البِركة كلّها وتستبعد المعروضة حالياً ما دامت البِركة
+     تسمح، فلا تتكرّر دفعتان متتاليتان أبداً (D-064). null الابتدائية =
+     أول عشرٍ كما رتّبها المحرّك، فلا يختلف رسم الخادم عن العميل */
+  const [picked, setPicked] = useState<ReadonlySet<string> | null>(null);
 
   const keyOf = (i: PickedItem) => `${i.mediaType}-${i.tmdbId}`;
   const pool = items.filter((i) => !hidden.has(keyOf(i)));
   if (pool.length === 0) return null;
 
-  const pages = Math.max(1, Math.ceil(pool.length / PAGE));
-  const current = page % pages;
-  const visible = pool.slice(current * PAGE, current * PAGE + PAGE);
+  const visible =
+    picked === null
+      ? pool.slice(0, PAGE)
+      : pool.filter((i) => picked.has(keyOf(i))).slice(0, PAGE);
 
   function refresh() {
     tap(8);
-    setPage((p) => p + 1);
+    const currentKeys = new Set(visible.map(keyOf));
+    // استبعاد المعروض الآن إن بقي ما يكفي — ثم سحبٌ عشوائي (Fisher–Yates)
+    const source = pool.length > PAGE * 2 ? pool.filter((i) => !currentKeys.has(keyOf(i))) : pool;
+    const arr = [...source];
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    setPicked(new Set(arr.slice(0, PAGE).map(keyOf)));
   }
 
   function dismiss(item: PickedItem) {
