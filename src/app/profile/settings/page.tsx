@@ -64,6 +64,7 @@ export default async function SettingsPage({
         theme={profile?.theme ?? "amber"}
         genres={profile?.favorite_genres ?? []}
         hideName={!!profile?.hide_name}
+        isPrivate={!!profile?.is_private}
         homePrefs={profile?.home_prefs}
         traktReady={traktConfigured()}
         initial={initial}
