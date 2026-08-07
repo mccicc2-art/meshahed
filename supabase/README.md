@@ -41,6 +41,10 @@
 | 28 | `person_follows.sql` | متابعة الفنانين | لم تُبنَ بعد |
 | 29 | `profile_visibility.sql` | `activity_visibility` — عام أو المتابِعون | **لم تُشغَّل** — توقّفت لوحة Supabase عن التحميل، أعِد المحاولة |
 | 30 | `security3.sql` | إغلاق قراءة `follows` و`watched_*` | لا واجهة لها |
+| 31 | `blocks.sql` | جدول الحظر + `is_blocked` مطويّة داخل `are_mutual` + `block_user` + `my_blocks` | لم تُبنَ بعد |
+| 32 | `follow_requests.sql` | `profiles.is_private` + طلبات المتابعة + `request_or_follow` وقبولٌ وإزالةُ متابِع | لم تُبنَ بعد |
+| 33 | `dismissed_titles.sql` | جدول «غير مهتم» لاستبعاد أعمالٍ من «مقترح لك» | لم تُبنَ بعد |
+| 34 | `communities.sql` | المجتمعات: غرفٌ بعضويةٍ ودردشة — دليلها مقروءٌ للجميع عمداً | لم تُبنَ بعد |
 
 كلها تحقَّقت بالاستعلام المكتوب في ذيل ملفّها. **الاستثناء الوحيد
 `profile_visibility.sql` (٢٩)** — مرفوعٌ في المستودع ولم يُشغَّل بعد؛ شغّله
@@ -50,7 +54,7 @@
 ```sql
 select tablename, policyname from pg_policies
 where schemaname = 'public' and qual = 'true';
--- المتوقَّع: user_follows و "read public lists/list items" فقط.
+-- المتوقَّع: user_follows و "read public lists/list items" و communities (دليل المجتمعات، مقصود منذ ٣٤).
 -- ⚠️ شغّله فعلاً ولا تكتفِ بوجوده: في ٨ أغسطس ٢٠٢٦ كشف أوّلُ تشغيلٍ له
 -- ثلاث سياسات مفتوحة على المكتبة وسجلّ المشاهدة، عمرها أشهر — انظر
 -- security3.sql.
