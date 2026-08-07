@@ -167,17 +167,34 @@ export function ProfileHeader({
             صورة. قرارُ المالك بعد تثبيت التطبيق على الشاشة الرئيسية. */}
         <div
           className="absolute inset-x-0 top-0 sm:hidden bg-gradient-to-b from-black/60 via-black/30 to-transparent pointer-events-none"
-          style={{ height: "calc(var(--safe-top) + 3rem)" }}
+          /* `2×--safe-top` للسبب نفسه المشروح تحت: المسحة تبدأ من حافّة
+             الغلاف عند `-safe-top`، فارتفاعٌ قدره `safe-top+3rem` ينتهي
+             عند `3rem` من أعلى الشاشة — أي عند قاع شريط الحالة تقريباً،
+             فتقع العلامة وزرّ الإعدادات تحتها بلا حماية على غلافٍ فاتح */
+          style={{ height: "calc(2 * var(--safe-top) + 3rem)" }}
           aria-hidden
         />
         <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-b from-transparent to-[color:var(--background)]" />
 
         {/* تحت شريط الحالة دائماً لا فوقه — و`--safe-top` يضمن ذلك مثبَّتاً */}
         {/* «Loopz» علامةٌ مائية خفيفة (عتامة ٧٪) لا شعارٌ بارز: تبقى صورةُ الغلاف هي البطل البصري. العتامة على العنصر تُخفت الظلّ الموجود تلقائياً. */}
-        {/* ١٫٤rem لا ٠٫٩: على شاشةٍ ذات جزيرة، `--safe-top` يقيس الجزيرة
-            نفسها ولا يترك بعدها فراغاً — فتلامس العلامةُ الساعةَ بلا أن
-            تغطّيها. الفرق نصفُ سنتيمتر يفصل «تحت الساعة» عن «ملتصقٌ بها» */}
-        <span className="absolute top-[calc(1.4rem+var(--safe-top))] start-4 opacity-[0.07] drop-shadow-[0_2px_6px_rgba(0,0,0,0.6)]">
+        {/* ===== لماذا `2×--safe-top` =====
+            الغلاف مسحوبٌ لأعلى بمقدار `--safe-top` كاملاً
+            (`-mt-[calc(1.5rem+var(--safe-top))]` أعلاه) كي تمتدّ الصورة
+            خلف شريط الحالة. فحافّته العليا تقع عند `-safe-top` من أعلى
+            الشاشة، وأي ابنٍ يقول `top: safe-top + س` ينتهي عند
+            `-safe-top + safe-top + س` = **س** — أي أن `--safe-top` يُلغي
+            نفسه ولا يزحزح شيئاً.
+
+            وهذا بالضبط سبب «نزلت في كل الصفحات إلا الرئيسية»: بقيّة
+            الصفحات تحمل `Navbar` وهو يبدأ من الصفر فيدفعه `--safe-top`
+            فعلاً؛ والرئيسية وحدها تلغيه.
+
+            وقاع شريط الحالة عند `+safe-top`، فالمسافة من حافّة الغلاف
+            إليه هي `2×safe-top`. ثم يُضاف الهامش المطلوب فوقه. وفي
+            المتصفّح وعلى الشاشات الواسعة `--safe-top` صفرٌ فيعود الرقم
+            إلى ما كان — لا شيء يتغيّر هناك. */}
+        <span className="absolute top-[calc(2*var(--safe-top)+0.9rem)] start-4 opacity-[0.07] drop-shadow-[0_2px_6px_rgba(0,0,0,0.6)]">
           <Logo size={24} className="text-white" />
         </span>
 
