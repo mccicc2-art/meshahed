@@ -150,6 +150,7 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
           episodesTotal={null}
           runtime={movie.runtime ?? null}
           initialDone={watched}
+          collectionId={movie.belongs_to_collection?.id ?? null}
         />
       </div>
 
@@ -185,6 +186,13 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
                   </div>
                 )}
 
+                {/* الطاقم فوق الترايلر: أسماء الممثلين تُقرأ قبل مشاهدة
+                    المقطع لا بعده — قرارُ المالك. وهو داخل «معلومات» لا في
+                    تبويبٍ خاص: تبويبٌ رابع يزيد عرض الشريط ويقصّ عناوينه */}
+                <Suspense fallback={null}>
+                  <CastRail mediaType="movie" tmdbId={movieId} locale={locale} />
+                </Suspense>
+
                 <Suspense
                   fallback={<div className="skeleton aspect-video rounded-2xl" aria-hidden />}
                 >
@@ -194,12 +202,6 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
                     backdrop={backdrop}
                     locale={locale}
                   />
-                </Suspense>
-
-                {/* الطاقم داخل «معلومات» لا في تبويبٍ خاص: هو معلومةٌ عن
-                    العمل، وتبويبٌ رابع يزيد عرض الشريط ويقصّ عناوينه */}
-                <Suspense fallback={null}>
-                  <CastRail mediaType="movie" tmdbId={movieId} locale={locale} />
                 </Suspense>
               </div>
             ),
