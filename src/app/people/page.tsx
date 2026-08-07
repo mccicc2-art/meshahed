@@ -8,7 +8,9 @@ import {
   getConversations,
   getUnreadShares,
   type ConvShareEvent,
+  type PersonLite,
 } from "@/lib/data";
+import { myMutualFollows } from "@/lib/actions";
 import { getT } from "@/lib/locale";
 import { localizeRows } from "@/lib/localize";
 import { formatDateShort } from "@/lib/when";
@@ -73,6 +75,15 @@ export default async function PeoplePage({
       ...c,
       events: c.events.map((e) => (e.kind === "share" ? byId.get(e.id) ?? e : e)),
     }));
+  }
+
+  // من نبدأ معه: المتابَعون المتبادلون ممّن لا خيط معهم بعد (طلب المالك —
+  // «ابدأ محادثة مع شخص جديد» مع بقاء قاعدة «لا محادثة من فراغ»، D-051).
+  // يُطلب للوارد وحده، ويُطرح منه أصحاب المحادثات القائمة كي لا يتكرّروا.
+  let startable: PersonLite[] = [];
+  if (tab === "inbox") {
+    const withConv = new Set(conversations.map((c) => c.personId));
+    startable = (await myMutualFollows()).filter((p) => !withConv.has(p.id));
   }
 
   // ===== خطّ الآراء للنشِط (مجتمعي/المجتمع) =====
@@ -189,7 +200,12 @@ export default async function PeoplePage({
 
       {/* ===== محتوى التبويب ===== */}
       {tab === "inbox" ? (
-        <Inbox conversations={conversations} openWith={openWith} locale={locale} />
+        <Inbox
+          conversations={conversations}
+          startable={startable}
+          openWith={openWith}
+          locale={locale}
+        />
       ) : (
         <section>
           {feed.length === 0 ? (
