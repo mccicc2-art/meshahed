@@ -14,13 +14,14 @@ import { Alert } from "./ui/Alert";
 import { buttonClass } from "./ui/Button";
 import { chipClass } from "./ui/controls";
 
-export type ProfileSection = "cover" | "avatar" | "theme" | "nickname" | "genres";
+export type ProfileSection = "cover" | "avatar" | "theme" | "nickname" | "bio" | "genres";
 
 export function ProfileForm({
   userId,
   email,
   locale,
   initialNickname,
+  initialBio,
   initialAvatarUrl,
   initialCoverUrl,
   initialCoverPos,
@@ -33,6 +34,8 @@ export function ProfileForm({
   email: string;
   locale: Locale;
   initialNickname: string;
+  /** النبذة الحالية — فارغةٌ قبل تشغيل profile_bio.sql */
+  initialBio?: string | null;
   initialAvatarUrl: string | null;
   initialCoverUrl: string | null;
   /** التموضع الرأسي المحفوظ للصورتين (٠–١٠٠) */
@@ -47,6 +50,7 @@ export function ProfileForm({
   const show = (k: ProfileSection) => !only || only.includes(k);
   const router = useRouter();
   const [nickname, setNickname] = useState(initialNickname);
+  const [bio, setBio] = useState(initialBio ?? "");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(initialAvatarUrl);
   const [coverUrl, setCoverUrl] = useState<string | null>(initialCoverUrl);
   const [coverPos, setCoverPos] = useState(initialCoverPos);
@@ -164,6 +168,7 @@ export function ProfileForm({
       try {
         await updateProfile({
           nickname,
+          bio,
           avatarUrl,
           coverUrl,
           coverPos,
@@ -380,7 +385,37 @@ export function ProfileForm({
             placeholder={t.nicknamePlaceholder}
             className="w-full rounded-xl bg-surface-2 border border-border px-3 py-2.5 text-sm outline-none focus:border-accent transition"
           />
-          <p className="text-xs text-muted mt-2" dir="ltr">
+          {/* النبذة تحت الاسم لا في قسمٍ خاص: الاسم والنبذة هويةٌ واحدة،
+              وقسمٌ مستقلٌّ لسطرٍ واحد يضاعف عدد البطاقات بلا معنى */}
+          <label htmlFor="profile-bio" className="block text-xs font-bold text-muted mt-4 mb-1.5">
+            {t.bioSection}
+          </label>
+          <textarea
+            id="profile-bio"
+            value={bio}
+            onChange={(e) => {
+              setBio(e.target.value.slice(0, 160));
+              setSaved(false);
+            }}
+            maxLength={160}
+            rows={2}
+            placeholder={t.bioPlaceholder}
+            /* ١٦ بكسلاً (D-033): سفاري iOS يكبّر الصفحة عند التركيز على حقلٍ
+               أصغر، ولا يعود عن التكبير */
+            className="w-full resize-none rounded-xl bg-surface-2 border border-border px-3 py-2.5 text-base outline-none focus:border-accent transition"
+          />
+          <div className="flex items-center justify-between gap-3 mt-1.5">
+            <p className="text-xs text-muted">{t.bioHint}</p>
+            {/* العدّاد يظهر عند الاقتراب من الحدّ فقط: رقمٌ دائمٌ تحت حقلٍ
+                يكتب فيه المرء سطراً واحداً ضجيجٌ لا إرشاد */}
+            {bio.length >= 130 && (
+              <span className="text-[11px] text-muted tabular-nums shrink-0" dir="ltr">
+                {bio.length}/160
+              </span>
+            )}
+          </div>
+
+          <p className="text-xs text-muted mt-3" dir="ltr">
             {email}
           </p>
         </section>

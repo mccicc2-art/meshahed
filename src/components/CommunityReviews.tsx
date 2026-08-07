@@ -3,6 +3,7 @@ import { formatDate } from "@/lib/when";
 import type { TitleReview } from "@/lib/data";
 import { PersonName } from "./PersonRow";
 import { LikeButton } from "./LikeButton";
+import { ReportButton } from "./ReportButton";
 
 export function CommunityReviews({
   locale,
@@ -62,7 +63,10 @@ export function CommunityReviews({
                 </span>
               </div>
               <p className="text-sm text-muted leading-relaxed whitespace-pre-line">{r.review}</p>
-              <div className="mt-3 pt-2.5 border-t border-[color:var(--divider)]">
+              {/* الإعجاب يملأ البداية والإبلاغ في الطرف: فعلٌ يوميّ وفعلُ
+                  ضرورة، ولا يجوز أن يتساويا في الصوت. ولا يظهر الإبلاغ على
+                  رأيك أنت — لا يُبلِغ المرء عن نفسه */}
+              <div className="mt-3 pt-2.5 border-t border-[color:var(--divider)] flex items-center justify-between gap-2">
                 <LikeButton
                   reviewUserId={r.id}
                   tmdbId={tmdbId}
@@ -72,6 +76,14 @@ export function CommunityReviews({
                   isMine={r.isMine}
                   locale={locale}
                 />
+                {!r.isMine && (
+                  <ReportButton
+                    reviewUserId={r.id}
+                    tmdbId={tmdbId}
+                    mediaType={mediaType}
+                    locale={locale}
+                  />
+                )}
               </div>
             </article>
           ))}

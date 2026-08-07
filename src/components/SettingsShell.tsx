@@ -43,6 +43,7 @@ export function SettingsShell({
   locale,
   region,
   nickname,
+  bio,
   username,
   avatarUrl,
   coverUrl,
@@ -60,6 +61,8 @@ export function SettingsShell({
   locale: Locale;
   /** بلد المشاهدة الحالي — كوكي يقرأه الخادم، لا عمود في الحساب */
   region: string;
+  /** نبذة الملف */
+  bio: string | null;
   nickname: string;
   username: string;
   avatarUrl: string | null;
@@ -99,6 +102,7 @@ export function SettingsShell({
     initialAvatarPos: avatarPos,
     initialTheme: theme,
     initialGenres: genres,
+    initialBio: bio,
   };
   const accountProps = {
     email,

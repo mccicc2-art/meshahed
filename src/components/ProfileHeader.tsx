@@ -80,6 +80,7 @@ function VerifiedMark({ size = 18, title }: { size?: number; title: string }) {
  * فمكانهما تحتها لا بعد المستوى — ثم المستوى آخراً.
  */
 export function ProfileHeader({
+  bioText,
   displayName,
   username,
   avatarUrl,
@@ -95,6 +96,8 @@ export function ProfileHeader({
   verified = false,
   locale,
 }: {
+  /** نبذة صاحب الصفحة — تُمرَّر جاهزةً، والإخفاء محسومٌ قبلها */
+  bioText?: string | null;
   displayName: string;
   username: string | null;
   avatarUrl: string | null;
@@ -328,6 +331,16 @@ export function ProfileHeader({
           </div>
         </div>
       )}
+      {/* ===== النبذة =====
+          تحت الهوية وفوق الأرقام: هي تعريفُ صاحب الصفحة بنفسه، وموضعها
+          بعد اسمه وقبل إحصاءاته. وتغيب كلّها حين لا توجد — لا صندوق
+          فارغ ولا هامشٌ محجوز (D-044) */}
+      {bioText && (
+        <p className="relative z-10 mt-3 px-0.5 text-[13px] text-muted leading-snug max-w-[46ch]">
+          {bioText}
+        </p>
+      )}
+
       {/* ===== المستوى =====
           `z-10` ليس زينة: الغلاف عنصرٌ `relative`، والعناصر الموضوعة
           تُرسم فوق ما بعدها من عناصر التدفّق العادي — فكان سطر المستوى
