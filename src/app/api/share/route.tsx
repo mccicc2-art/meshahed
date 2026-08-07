@@ -7,7 +7,8 @@ import {
   getFollows,
   getWatchSummary,
   getAllWatchedEpisodes,
-  getWatchedMovieIds,
+  getWatchedMovies,
+  watchedMovieMinutes,
   getMyRatings,
 } from "@/lib/data";
 import { getT } from "@/lib/locale";
@@ -34,18 +35,20 @@ export async function GET() {
     getFollows(),
     getWatchSummary(),
     getAllWatchedEpisodes(),
-    getWatchedMovieIds(),
+    getWatchedMovies(),
     getMyRatings(),
   ]);
 
   const shows = follows.filter((f) => f.media_type === "tv").length;
-  const movies = watchedMovies.size;
+  const movies = watchedMovies.length;
   const episodeCount = episodes.length;
 
-  // الدقائق من الملخّص إن وُجد، وإلا من زمن كل حلقة — والافتراضي ٤٥ دقيقة
-  const minutes =
+  // دقائق الحلقات من الملخّص إن وُجد وإلا من زمن كل حلقة (افتراضي ٤٥)، ثم
+  // **نضيف دقائق الأفلام الفعلية** — كانت البطاقة تُسقط الأفلام من الوقت
+  const episodeMinutes =
     summary?.reduce((a, r) => a + (r.minutes ?? 0), 0) ??
     episodes.reduce((a, e) => a + (e.runtime ?? 45), 0);
+  const minutes = episodeMinutes + watchedMovieMinutes(watchedMovies);
   const hours = Math.round(minutes / 60);
   const days = Math.floor(hours / 24);
 
