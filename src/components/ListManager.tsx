@@ -106,7 +106,7 @@ export function ListManager({ lists, locale }: { lists: UserList[]; locale: Loca
           {lists.map((l) => (
             <li
               key={l.id}
-              className="flex items-center gap-1 rounded-2xl border border-border bg-surface p-2"
+              className="flex items-center gap-1 rounded-2xl border border-[color:var(--background)] bg-surface p-2.5"
             >
               <Link
                 href={`/lists/${l.id}`}
@@ -119,7 +119,7 @@ export function ListManager({ lists, locale }: { lists: UserList[]; locale: Loca
                     return url ? (
                       <span
                         key={p}
-                        className="absolute top-0 w-9 h-14 rounded-md overflow-hidden border border-border bg-surface-2"
+                        className="absolute top-0 w-9 h-14 rounded-md overflow-hidden border border-[color:var(--background)] bg-surface-2"
                         style={{ insetInlineStart: i * 10, zIndex: 3 - i }}
                       >
                         <Image src={url} alt="" fill sizes="36px" className="object-cover" />
