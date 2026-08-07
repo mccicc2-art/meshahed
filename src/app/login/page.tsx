@@ -118,6 +118,14 @@ async function PosterWall() {
   const rowA = posters.slice(0, 6);
   const rowB = posters.slice(6, 12);
 
+  /* أربع نسخٍ من الصفّ لا واحدة.
+     الحلقة تعمل بإزاحة نصف المسار، فشرطُ ألّا يظهر فراغ أن يكون النصف
+     الواحد أعرضَ من الشاشة. ستّة ملصقات ≈ ٩٠٠ بكسل: تكفي جوالاً ولا تكفي
+     شاشة مكتبٍ عريضة — فكان الصفّ ينتهي عند ثلث العرض ويترك يمينه أسود،
+     وهو ما ظهر في لقطة الحاسوب. والملصقات هنا ستّ صورٍ مكرّرة لا أكثر،
+     فالتكرار يكلّف عقداً في الصفحة ولا يكلّف طلب شبكةٍ واحداً. */
+  const tile = (row: string[]) => [...row, ...row, ...row, ...row];
+
   return (
     <>
       {/* جدار الرائج: صفّان يزحفان باتجاهين متعاكسين بميلٍ خفيف.
@@ -125,7 +133,7 @@ async function PosterWall() {
           فلا يزحف فوق زرّ الدخول مهما ضاقت الشاشة */}
       {posters.length >= 8 && (
         <div
-          className="relative shrink-0 max-h-[34vh] overflow-hidden pt-6 pb-1"
+          className="relative shrink-0 max-h-[34vh] md:max-h-[46vh] overflow-hidden pt-6 pb-1"
           dir="ltr"
           aria-hidden
         >
@@ -136,11 +144,11 @@ async function PosterWall() {
             ].map(({ row, cls, dur }, ri) => (
               <div key={ri} className="overflow-hidden">
                 <div className={cls} style={{ "--marquee-dur": dur } as React.CSSProperties}>
-                  {/* نسختان متتاليتان من الصف = حلقة لا نهائية بلا قفزة */}
-                  {[...row, ...row].map((p, i) => (
+                  {/* نصفان متطابقان = حلقة لا نهائية بلا قفزة */}
+                  {[...tile(row), ...tile(row)].map((p, i) => (
                     <div
                       key={i}
-                      className="relative w-[clamp(60px,min(6.5vw,9.5vh),108px)] aspect-[2/3] rounded-poster overflow-hidden border border-white/10 bg-surface-2 shadow-[0_10px_30px_rgba(0,0,0,0.6)] shrink-0 me-2.5"
+                      className="relative w-[clamp(60px,min(6.5vw,12vh),132px)] aspect-[2/3] rounded-poster overflow-hidden border border-white/10 bg-surface-2 shadow-[0_10px_30px_rgba(0,0,0,0.6)] shrink-0 me-2.5"
                     >
                       {/* `next/image` لا وسمَ صورةٍ خام: الوسم الخام يطلب
                           image.tmdb.org مباشرةً، وهو نطاقٌ لا يصل من كل
@@ -152,7 +160,7 @@ async function PosterWall() {
                         src={p}
                         alt=""
                         fill
-                        sizes="108px"
+                        sizes="132px"
                         priority={ri === 0 && i < 6}
                         className="object-cover"
                       />
