@@ -910,6 +910,146 @@ export async function toggleInList(input: {
   revalidatePath(`/lists/${input.listId}`);
 }
 
+// ============================================================
+//  إنشاء قائمة من مجموعة أعمال — أعمال فنان، أو أجزاء سلسلة
+//
+//  محرّكٌ واحد لزرَّين: صفحة الفنان تمرّر أعماله، وصفحة الفيلم تمرّر أجزاء
+//  سلسلته. القرار: **إن وُجدت قائمةٌ بنفس الاسم عندي أُضيف إليها الناقص**
+//  بدل إنشاء مكرّرة — أرحم بمن ضغط الزرّ مرّتين، ويحترم ترتيبه اليدوي لأن
+//  الإدراج يتجاهل المكرّر (`ignoreDuplicates`) فلا يمسّ صفّاً موجوداً.
+// ============================================================
+
+type NewItem = { tmdbId: number; mediaType: MediaType; title: string; posterPath: string | null };
+
+/**
+ * يُنشئ القائمة أو يجدها بالاسم، ثم يُدرج ما ينقص.
+ *
+ * القائمة الجديدة وحدها تأخذ نوعها و`sort_order` (ترتيب مشاهدةٍ للأجزاء)؛
+ * الدمج في قائمةٍ قائمة لا يفرض عليها نوعاً ولا يعيد ترتيبها.
+ */
+async function upsertListWithItems(
+  name: string,
+  rawItems: NewItem[],
+  kind: "regular" | "watch_order",
+): Promise<{ listId: string; name: string; added: number; created: boolean }> {
+  const clean = String(name ?? "").trim().slice(0, 60);
+  if (!clean) throw new Error("مدخل غير صالح / Invalid input");
+
+  // تنقية وإزالة التكرار داخل الدفعة نفسها
+  const seen = new Set<string>();
+  const items = rawItems
+    .map((r) => ({
+      tmdbId: intId(r.tmdbId),
+      mediaType: asMediaType(r.mediaType),
+      title: String(r.title ?? "").slice(0, 300),
+      posterPath: safeImagePath(r.posterPath),
+    }))
+    .filter((r) => {
+      const k = `${r.mediaType}-${r.tmdbId}`;
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    })
+    .slice(0, 100);
+  if (items.length === 0) {
+    throw new Error("لا أعمال لإضافتها / Nothing to add");
+  }
+
+  const { supabase, user } = await requireUser("list", 10, 60_000);
+
+  // قائمةٌ بنفس الاسم عندي؟ نُضيف إليها بدل التكرار
+  const { data: existing } = await supabase
+    .from("user_lists")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("name", clean)
+    .order("created_at", { ascending: true })
+    .limit(1);
+
+  let listId = existing?.[0]?.id as string | undefined;
+  const created = !listId;
+
+  if (!listId) {
+    const { count } = await supabase
+      .from("user_lists")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id);
+    if ((count ?? 0) >= 50) throw new Error("too many lists");
+
+    const { data, error } = await supabase
+      .from("user_lists")
+      .insert({ user_id: user.id, name: clean, kind })
+      .select("id")
+      .single();
+    if (error) fail(error);
+    listId = data!.id as string;
+  }
+
+  // القائمة الجديدة من نوع «ترتيب مشاهدة» تحمل ترتيب الدفعة؛ الدمج لا
+  const rows = items.map((it, i) => ({
+    list_id: listId!,
+    tmdb_id: it.tmdbId,
+    media_type: it.mediaType,
+    title: it.title,
+    poster_path: it.posterPath,
+    ...(created && kind === "watch_order" ? { sort_order: i } : {}),
+  }));
+
+  // `ignoreDuplicates` يُبقي الصفوف الموجودة كما هي، ويعيد المُدرَج وحده
+  const { data: inserted, error } = await supabase
+    .from("user_list_items")
+    .upsert(rows, { onConflict: "list_id,tmdb_id,media_type", ignoreDuplicates: true })
+    .select("tmdb_id");
+  if (error) fail(error);
+
+  revalidatePath("/lists");
+  revalidatePath(`/lists/${listId}`);
+  return { listId: listId!, name: clean, added: inserted?.length ?? 0, created };
+}
+
+/** زرّ صفحة الفنان: قائمة بأشهر ٢٠ عملاً له */
+export async function createListFromPerson(personId: number) {
+  personId = intId(personId);
+  const { getPerson, getPersonCredits, titleOf } = await import("@/lib/tmdb");
+  const [person, works] = await Promise.all([
+    getPerson(personId),
+    getPersonCredits(personId),
+  ]);
+  const name = person?.name?.trim();
+  if (!name) throw new Error("تعذّر تحميل الفنان / Could not load this person");
+
+  const items: NewItem[] = works.slice(0, 20).map((w) => ({
+    tmdbId: w.id,
+    mediaType: w.media_type as MediaType,
+    title: titleOf(w),
+    posterPath: w.poster_path,
+  }));
+  return upsertListWithItems(name, items, "regular");
+}
+
+/** زرّ صفحة الفيلم: قائمة «ترتيب مشاهدة» بكل أجزاء السلسلة */
+export async function createListFromCollection(collectionId: number) {
+  collectionId = intId(collectionId);
+  const { getCollection, titleOf } = await import("@/lib/tmdb");
+  const collection = await getCollection(collectionId);
+  const name = collection?.name?.trim();
+  if (!name || !collection?.parts?.length) {
+    throw new Error("لا أجزاء لهذه السلسلة / No parts found");
+  }
+
+  // ترتيب الأجزاء بتاريخ العرض — قائمةٌ بترتيب المشاهدة تبدأ من الأقدم
+  const parts = [...collection.parts].sort((a, b) =>
+    (a.release_date ?? "9999").localeCompare(b.release_date ?? "9999"),
+  );
+  const items: NewItem[] = parts.map((p) => ({
+    tmdbId: p.id,
+    mediaType: "movie" as MediaType,
+    title: titleOf(p),
+    posterPath: p.poster_path,
+  }));
+  return upsertListWithItems(name, items, "watch_order");
+}
+
 /** مسار ملصق TMDB فقط — لا نقبل عنواناً كاملاً من العميل */
 function safeImagePath(path: string | null): string | null {
   if (!path) return null;
