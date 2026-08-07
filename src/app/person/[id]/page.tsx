@@ -12,6 +12,7 @@ import { PosterCard } from "@/components/PosterCard";
 import { PosterGrid } from "@/components/PosterGrid";
 import { ReadMore } from "@/components/ReadMore";
 import { Alert } from "@/components/ui/Alert";
+import { AddWorksToList } from "@/components/AddWorksToList";
 import { buttonClass } from "@/components/ui/Button";
 
 /**
@@ -125,9 +126,12 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
       )}
 
       <section className="mt-8">
-        <SectionTitle icon="film" className="mb-3">
-          {t.personWorksTitle}
-        </SectionTitle>
+        {/* عنوان القسم وزرّ «أضِف أعماله إلى قائمة» في سطرٍ واحد — الزرّ
+            خارج Suspense فيظهر فوراً، والفعل يجلب الأعمال بنفسه على الخادم */}
+        <div className="flex items-center justify-between gap-3 mb-3">
+          <SectionTitle icon="film">{t.personWorksTitle}</SectionTitle>
+          <AddWorksToList source="person" id={personId} locale={locale} />
+        </div>
         <Suspense
           fallback={
             <div
