@@ -5,6 +5,7 @@ import {
   getUser,
   getCommunityFeed,
   getFollowLists,
+  getIncomingFollowRequests,
   getConversations,
   getUnreadShares,
   type ConvShareEvent,
@@ -51,11 +52,12 @@ export default async function PeoplePage({
   /* الخطّان يُبنيان معاً كي يحمل التبويبان عدّادَيهما دائماً — كصفّ شرائح
      المكتبة (١٨ مسلسلاً · ١٨ فيلماً). كلٌّ نداءا definer خفيفان؛ والترجمة
      والصور العرضية للنشِط وحده. والرسائل تُقرأ عند الحاجة فقط. */
-  const [followingFeed, allFeed, unread, lists] = await Promise.all([
+  const [followingFeed, allFeed, unread, lists, followRequests] = await Promise.all([
     getCommunityFeed("following"),
     getCommunityFeed("all"),
     getUnreadShares(),
     getFollowLists(user.id),
+    getIncomingFollowRequests(),
   ]);
 
   const mineCount = followingFeed.length;
@@ -194,7 +196,7 @@ export default async function PeoplePage({
               </div>
             )}
           </div>
-          <CommunityBar following={lists.following} followers={lists.followers} locale={locale} />
+          <CommunityBar following={lists.following} followers={lists.followers} requests={followRequests} locale={locale} />
         </div>
       )}
 
