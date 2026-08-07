@@ -44,6 +44,7 @@ export function ListDetail({
   items,
   ratings,
   isOwner,
+  owner,
   locale,
 }: {
   listId: string;
@@ -54,6 +55,9 @@ export function ListDetail({
   items: ListItem[];
   ratings: Record<string, number>;
   isOwner: boolean;
+  /** صاحب القائمة — يُمرَّر حين يفتحها غيرُه. قائمةٌ بلا صاحبٍ ظاهرٍ
+      مجهولةُ المصدر، ومن أخفى اسمه يصل هنا فارغاً فلا يُنسب شيء */
+  owner?: { nickname: string | null; username: string | null; avatar: string | null } | null;
   locale: Locale;
 }) {
   const t = getDict(locale);
@@ -127,6 +131,33 @@ export function ListDetail({
         <p className="mt-2 text-[14px] font-normal leading-snug text-muted line-clamp-2 max-w-[46ch]">
           {subtitle}
         </p>
+      )}
+
+      {/* نسبة القائمة إلى صاحبها: صفٌّ واحدٌ تحت الوصف يظهر لغير المالك
+          وحده. من أخفى اسمه لا اسم له هنا ولا رابط — القرار محفوظٌ في
+          SQL لا في هذا السطر (D-011) */}
+      {!isOwner && owner && (owner.nickname || owner.username) && (
+        <div className="flex items-center gap-2 mt-3.5">
+          <span className="relative w-6 h-6 rounded-full overflow-hidden bg-surface-2 border border-border shrink-0">
+            {owner.avatar ? (
+              <Image src={owner.avatar} alt="" fill sizes="24px" className="object-cover" />
+            ) : (
+              <span className="absolute inset-0 grid place-items-center text-muted">
+                <Icon name="people" size={12} />
+              </span>
+            )}
+          </span>
+          {owner.username ? (
+            <Link
+              href={`/u/${owner.username}`}
+              className="text-[13px] text-muted hover:text-foreground transition min-w-0 truncate"
+            >
+              {owner.nickname || `@${owner.username}`}
+            </Link>
+          ) : (
+            <span className="text-[13px] text-muted min-w-0 truncate">{owner.nickname}</span>
+          )}
+        </div>
       )}
 
       <div className="flex items-center flex-wrap gap-2 mt-3.5 mb-5">
