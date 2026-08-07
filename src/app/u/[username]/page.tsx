@@ -22,6 +22,7 @@ import { Icon } from "@/components/Icon";
 import { PosterCard } from "@/components/PosterCard";
 import { PosterRail, RailItem } from "@/components/PosterRail";
 import { FollowUserButton } from "@/components/FollowUserButton";
+import { ProfileMenu } from "@/components/ProfileMenu";
 
 /**
  * صفحة المستخدم العامة — بهيئة الرئيسية نفسها.
@@ -129,10 +130,23 @@ export default async function PublicProfilePage({
           <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/25 to-black/40" />
           <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-b from-transparent to-[color:var(--background)]" />
 
-          {/* مكان أدوات المالك: زرّ المتابعة والزيارات */}
+          {/* مكان أدوات المالك: زرّ المتابعة، وبجانبه نقاط القائمة —
+              رسالة / بلاغ / حظر (ProfileMenu). «إضافة» ليست في القائمة
+              عمداً: هي الزرّ الظاهر نفسه، وتكرارها حالتان تتعارضان */}
           {!isMe && (
-            <div className="absolute top-[calc(0.75rem+env(safe-area-inset-top))] end-3">
+            <div className="absolute top-[calc(0.75rem+env(safe-area-inset-top))] end-3 flex items-center gap-2">
               <FollowUserButton targetId={profile.id} locale={locale} initialFollowing={relation.following} initialRequested={relation.requested} />
+              <ProfileMenu
+                person={{
+                  id: profile.id,
+                  nickname: profile.nickname,
+                  username: profile.username,
+                  avatar_url: profile.avatar_url,
+                  hide_name: profile.hide_name ?? false,
+                }}
+                mutual={relation.following && relation.followsMe}
+                locale={locale}
+              />
             </div>
           )}
           <span className="absolute top-[calc(1rem+env(safe-area-inset-top))] start-4 text-[11px] text-white/75 bg-black/40 backdrop-blur rounded-full px-2.5 py-1">
