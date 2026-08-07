@@ -4,10 +4,10 @@ import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { deleteList, renameList, reorderList, setListKind, toggleInList } from "@/lib/actions";
+import { deleteList, renameList, reorderList, setListKind, toggleInList, saveList } from "@/lib/actions";
 import { posterUrl } from "@/lib/media";
 import { tap } from "@/lib/haptics";
-import { flashError } from "@/lib/toast";
+import { toast, flashError } from "@/lib/toast";
 import { getDict, type Locale } from "@/lib/i18n";
 import { Icon, type IconName } from "./Icon";
 import type { ListItem, ListKind } from "@/lib/data";
@@ -47,6 +47,7 @@ export function ListDetail({
   isOwner,
   owner,
   locale,
+  initialSaved,
 }: {
   listId: string;
   name: string;
@@ -60,10 +61,27 @@ export function ListDetail({
       مجهولةُ المصدر، ومن أخفى اسمه يصل هنا فارغاً فلا يُنسب شيء */
   owner?: { nickname: string | null; username: string | null; avatar: string | null } | null;
   locale: Locale;
+  /** حالة الحفظ لغير المالك (D-068) — الغياب يعني زائراً بلا حساب فلا زرّ */
+  initialSaved?: boolean | null;
 }) {
   const t = getDict(locale);
   const router = useRouter();
   const [pending, start] = useTransition();
+  /* حفظ القائمة مرجعاً حيّاً — متفائلٌ مع تراجُع (D-007) */
+  const [saved, setSaved] = useState(initialSaved ?? false);
+  const canSave = !isOwner && initialSaved !== undefined && initialSaved !== null;
+
+  function toggleSave() {
+    const next = !saved;
+    tap(next ? [12, 30] : 8);
+    setSaved(next);
+    saveList(listId, next)
+      .then(() => toast(next ? t.listSavedToast : t.listUnsavedToast, next ? { tone: "success" } : undefined))
+      .catch((e) => {
+        setSaved(!next);
+        flashError((e as Error).message);
+      });
+  }
   const [removed, setRemoved] = useState<Set<string>>(new Set());
   const [sheet, setSheet] = useState<
     "menu" | "rename" | "type" | "reorder" | "delete" | "share" | null
@@ -108,6 +126,23 @@ export function ListDetail({
           القلم يزاحم الاسم على شاشةٍ ضيّقة فيقصّه بلا داعٍ */}
       <div className="flex items-start gap-3 mb-1.5">
         <h1 className="flex-1 min-w-0 text-[22px] leading-tight font-bold break-words">{name}</h1>
+        {/* «أضِفها إلى قوائمي» مكانَ نقاط المالك: مرجعٌ حيٌّ إلى قائمة
+            صاحبها — تعديلاتُه تنعكس عندك لأنها القائمة نفسها (D-068) */}
+        {canSave && (
+          <button
+            type="button"
+            onClick={toggleSave}
+            aria-pressed={saved}
+            className={`shrink-0 flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[13px] font-semibold transition active:scale-95 ${
+              saved
+                ? "border-accent/50 bg-accent/10 text-accent"
+                : "border-accent bg-accent text-[color:var(--on-accent)] hover:brightness-110"
+            }`}
+          >
+            <Icon name={saved ? "check-line" : "plus"} size={14} strokeWidth={2.2} />
+            {saved ? t.listSavedBtn : t.listSaveBtn}
+          </button>
+        )}
         {isOwner && (
           /* هدف لمسٍ ٤٤×٤٤ كاملاً وإن بدت الدائرة ٣٦: أصغر من ذلك يُخطئه
              الإبهام — وهو المقاس الذي توصي به آبل ولا نجادل فيه */

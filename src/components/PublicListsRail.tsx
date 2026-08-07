@@ -15,19 +15,26 @@ import type { PublicListCard } from "@/lib/data";
  * فسطر الصاحب، وتحتها شريط أربعة ملصقات — لا نظام بصريّ جديد.
  * قائمة مخفي الاسم تظهر بلا سطر صاحبٍ أصلاً (D-011): سطرٌ باسمٍ بديل
  * يوحي بأن «مستخدم» شخصٌ يُقصَد، والغياب أصدق.
+ *
+ * D-068: البطاقة نفسها صارت تخدم ثلاثة أبواب — اكتشف، والمحفوظة في
+ * قوائمي، وقوائم الشخص في ملفّه — فالعنوان صار معاملاً بدل أن تُنسخ
+ * البطاقة ثلاث مرات. الافتراضي يبقى عنوان اكتشف.
  */
 export function PublicListsRail({
   lists,
   locale,
+  title,
 }: {
   lists: PublicListCard[];
   locale: Locale;
+  /** عنوان الصفّ — يغيب فيحلّ عنوان «قوائم من المجتمع» */
+  title?: string;
 }) {
   const t = getDict(locale);
   if (!lists.length) return null;
 
   return (
-    <PosterRail title={t.publicListsRail} icon="list" iconColor="var(--accent-2)">
+    <PosterRail title={title ?? t.publicListsRail} icon="list" iconColor="var(--accent-2)">
       {lists.map((l) => {
         const posters = l.posters.map((p) => posterUrl(p, "w185")).filter(Boolean) as string[];
         return (
