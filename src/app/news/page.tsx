@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
-import { getUser, getFollowedArtists } from "@/lib/data";
+import { getUser, getFollowedArtists, getPublicListsFeed } from "@/lib/data";
+import { PublicListsRail } from "@/components/PublicListsRail";
 import {
   upcomingMovies,
   airingTv,
@@ -196,7 +197,7 @@ async function CuratedRails({
         : topTenThisWeek(mt).catch(() => [] as SearchResult[]);
   };
 
-  const [topMovies, topSeries, topAnime, cinemas, soonMovies, soonSeries, suggested, artistWorks, top50Movies, top50Series] =
+  const [topMovies, topSeries, topAnime, cinemas, soonMovies, soonSeries, suggested, artistWorks, publicLists, top50Movies, top50Series] =
     await Promise.all([
       wantMovies ? topFor("movie", genre?.movie) : Promise.resolve([] as SearchResult[]),
       wantSeries ? topFor("tv", genre?.tv) : Promise.resolve([] as SearchResult[]),
@@ -230,6 +231,9 @@ async function CuratedRails({
             .then((a) => (a.length ? worksByPeople(a.map((x) => x.person_id), 20) : []))
             .catch(() => [] as SearchResult[])
         : Promise.resolve([] as SearchResult[]),
+      // «قوائم من المجتمع» — أحدث القوائم المعلنة؛ كذيل الخمسين: بلا نافذة
+      // (القوائم بلا زمن) وتغيب مع الفلتر (لا تُصفّى بمعاييره فتكذب عليه)
+      !active ? getPublicListsFeed(15).catch(() => []) : Promise.resolve([]),
       // أعلى ٥٠ على الإطلاق — ذيلٌ ثابت في الحالة غير المُصفّاة (طلب المالك)
       !active && wantMovies ? top50("movie").catch(() => [] as SearchResult[]) : Promise.resolve([] as SearchResult[]),
       !active && wantSeries ? top50("tv").catch(() => [] as SearchResult[]) : Promise.resolve([] as SearchResult[]),
@@ -344,6 +348,9 @@ async function CuratedRails({
       {soon.length > 0 && (
         <CountdownRail title={t.comingSoon} icon="calendar" items={soon} locale={locale} />
       )}
+
+      {/* «قوائم من المجتمع» قبل ذيل الخمسين: صنعُ الناس قبل المرجع الثابت */}
+      <PublicListsRail lists={publicLists} locale={locale} />
 
       {/* ذيل «أعلى ٥٠ على الإطلاق» — مرجعٌ ثابت في الحالة غير المُصفّاة */}
       {top50Movies.length > 0 && (
