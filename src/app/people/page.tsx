@@ -1,57 +1,79 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { getUser, getCommunityFeed, getFollowLists } from "@/lib/data";
+import {
+  getUser,
+  getCommunityFeed,
+  getFollowLists,
+  getShares,
+  getUnreadShares,
+} from "@/lib/data";
 import { getT } from "@/lib/locale";
 import { localizeRows } from "@/lib/localize";
 import { formatDateShort } from "@/lib/when";
+import { num } from "@/lib/i18n";
 import { CommunityBar } from "@/components/CommunityBar";
+import { Inbox } from "@/components/Inbox";
 import { PersonName } from "@/components/PersonRow";
 import { backdropUrl, posterUrl } from "@/lib/media";
 import { getTv, getMovie } from "@/lib/tmdb";
 import { Icon } from "@/components/Icon";
 import { LikeButton } from "@/components/LikeButton";
 import { ReportButton } from "@/components/ReportButton";
-import { segmentedItem, segmentedTrack } from "@/components/ui/controls";
+import { segmentedItem, segmentedTrack, segmentedTrackFull } from "@/components/ui/controls";
 
 /** كم عملاً نطلب له صورةً عرضية — سقفٌ يمنع موجة طلباتٍ بحجم الخط */
 const BACKDROP_LIMIT = 12;
 
+type Tab = "mine" | "all" | "inbox";
+function asTab(v: string | undefined): Tab {
+  return v === "all" || v === "inbox" ? v : "mine";
+}
+
 export default async function PeoplePage({
   searchParams,
 }: {
-  searchParams: Promise<{ sort?: string }>;
+  searchParams: Promise<{ tab?: string; sort?: string }>;
 }) {
   const user = await getUser();
   if (!user) redirect("/login");
 
   const { locale, t } = await getT();
 
-  /* الترتيب في الرابط لا في الذاكرة — كبقيّة التطبيق (اكتشف، التقييمات):
-     قابلٌ للمشاركة وللرجوع، ويُرسم على الخادم فلا وميض ترتيبٍ قديم ولا
-     جافاسكربت إضافية على صفحةٍ ثقيلة الصور أصلاً */
-  const { sort } = await searchParams;
+  const { tab: tabParam, sort } = await searchParams;
+  const tab = asTab(tabParam);
   const newest = sort === "new";
 
-  const [rawFeed, lists] = await Promise.all([getCommunityFeed(), getFollowLists(user.id)]);
+  /* الخطّان يُبنيان معاً كي يحمل التبويبان عدّادَيهما دائماً — كصفّ شرائح
+     المكتبة (١٨ مسلسلاً · ١٨ فيلماً). كلٌّ نداءا definer خفيفان؛ والترجمة
+     والصور العرضية للنشِط وحده. والرسائل تُقرأ عند الحاجة فقط. */
+  const [followingFeed, allFeed, unread, lists] = await Promise.all([
+    getCommunityFeed("following"),
+    getCommunityFeed("all"),
+    getUnreadShares(),
+    getFollowLists(user.id),
+  ]);
 
-  /* عناوين الأعمال محفوظة مع التقييم بلغة يوم كتابته — وخطّ الآراء يجمع
-     آراء أشخاص كتبوا بلغاتٍ مختلفة، فكان الخطّ الواحد يخلط الخطّين.
-     الترجمة عند العرض (D-048)، وطلباتها هي نفسها المخبَّأة التي يطلبها
-     صفّ الصور العرضية أسفله — فلا تكلفة مضاعفة */
-  const feed = (await localizeRows(rawFeed, locale)).sort((a, b) =>
-    newest
-      ? b.updated_at.localeCompare(a.updated_at)
-      : b.likes - a.likes || b.updated_at.localeCompare(a.updated_at),
-  );
+  const mineCount = followingFeed.length;
+  const allCount = allFeed.length;
 
-  /* الصورة العرضية ليست في صفّ التقييم — الجدول يحفظ الملصق وحده —
-     فتُطلب من TMDB لأوائل الخط فقط، متوازيةً ومخزَّنة ساعةً في طبقة
-     fetch. ونأخذ الملصق من الطلب نفسه أيضاً: `safeImagePath` يكتب `null`
-     متى وصل المسار بصيغةٍ لا تطابق نمطه، فصفوفٌ قديمة ملصقها فارغ
-     وكانت تظهر خانةً بلا صورة. الأولوية: عرضيّة TMDB، ثم ملصقها، ثم
-     الملصق المخزَّن، ثم الأيقونة. الحلّ الأرخص لاحقاً: عمود
-     `backdrop_path` في الجدول يُكتب وقت التقييم فتسقط هذه الطلبات. */
+  // ===== الرسائل =====
+  const threads = tab === "inbox" ? await localizeRows(await getShares(), locale) : [];
+
+  // ===== خطّ الآراء للنشِط (مجتمعي/المجتمع) =====
+  const rawFeed = tab === "all" ? allFeed : followingFeed;
+  const feed =
+    tab === "inbox"
+      ? []
+      : (await localizeRows(rawFeed, locale)).sort((a, b) =>
+          newest
+            ? b.updated_at.localeCompare(a.updated_at)
+            : b.likes - a.likes || b.updated_at.localeCompare(a.updated_at),
+        );
+
+  /* الصورة العرضية ليست في صفّ التقييم — تُطلب من TMDB لأوائل الخط فقط،
+     متوازيةً ومخزَّنة ساعةً في طبقة fetch. الأولوية: عرضيّة TMDB، ثم
+     ملصقها، ثم الملصق المخزَّن، ثم الأيقونة. */
   const artTargets = feed.slice(0, BACKDROP_LIMIT);
   const artPairs = await Promise.all(
     artTargets.map(async (a) => {
@@ -67,174 +89,186 @@ export default async function PeoplePage({
   );
   const artById = new Map(artPairs);
 
+  // روابط التبويبات — الحالة في الرابط كبقيّة التطبيق: قابلةٌ للمشاركة
+  // وللرجوع، وتُرسم على الخادم فلا وميض
+  const tabs: { key: Tab; href: string; label: string; count?: number; badge?: number }[] = [
+    { key: "mine", href: "/people", label: t.communityTabMine, count: mineCount },
+    { key: "all", href: "/people?tab=all", label: t.communityTabAll, count: allCount },
+    { key: "inbox", href: "/people?tab=inbox", label: t.communityTabInbox, badge: unread },
+  ];
+
+  // روابط الفرز تحفظ التبويب الحالي — الفرز لا معنى له في الوارد
+  const sortBase = tab === "all" ? "/people?tab=all" : "/people";
+  const sortNewHref = tab === "all" ? "/people?tab=all&sort=new" : "/people?sort=new";
+
   return (
-    <div className="space-y-8">
-      {/* العنوان مخفيٌّ بصريًّا وباقٍ لقارئ الشاشة — أُزيلت الترويسة والوصف */}
+    <div className="space-y-6">
       <h1 className="sr-only">{t.peopleTitle}</h1>
 
-      {/* ===== خطّ الآراء =====
-          كخطّ X: رأيٌ فوق رأي. والافتراض «الأكثر إعجاباً» لا «الأحدث» —
-          الإعجاب صوتُ المجتمع، وساعةُ النشر تُصعّد آخر من كتب لا أفضل من
-          كتب. ومن أراد الجديد فله المقسّم فوق الخطّ. والإعجاب من الخطّ
-          نفسه بلا فتح صفحة. */}
-      <section>
-        {/* سطرٌ واحد يجمع عنوان الخطّ وعدّادَي المتابعة وزرّ الإضافة:
-            كانا سطرين متتاليين، والعدّادان وحدهما يتركان نصف السطر
-            فارغاً — فيبدو الفراغ مقصوداً وليس كذلك. العنوان يملأ البداية
-            والأدوات تجلس في الطرف، فيُقرأ رأسُ الصفحة سطراً واحداً. */}
-        <div className="flex items-center justify-between gap-3 mb-4">
-          {/* أصغر قليلاً على الشاشات الضيّقة: العنوان الإنجليزي أطول من
-              العربي، وبحجم `lg` يُقصّ عند ٣٩٠ بكسلاً */}
-          <h2 className="text-base sm:text-lg font-bold min-w-0 truncate">
-            {t.feedTitle}
-          </h2>
-          <CommunityBar
-            following={lists.following}
-            followers={lists.followers}
-            locale={locale}
-          />
-        </div>
+      {/* سطرٌ واحد: عنوان الخطّ وعدّادَا المتابعة وزرّ الإضافة */}
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="text-base sm:text-lg font-bold min-w-0 truncate">{t.peopleTitle}</h2>
+        <CommunityBar following={lists.following} followers={lists.followers} locale={locale} />
+      </div>
 
-        {/* ===== ترتيب الخطّ =====
-            خياران يستبعد أحدهما الآخر وعددهما معروف — فالمقسّم لا الرقائق.
-            ورابطان لا زرّان: الحالة في الرابط، والصفحة تُرسم على الخادم.
-            ولا يظهر الصفّ على خطٍّ فارغ: أداةٌ فوق لا شيء زينة */}
-        {feed.length > 0 && (
-          <div className="mb-4">
-            <div role="group" aria-label={t.feedSortGroup} className={segmentedTrack}>
-              <Link
-                href="/people"
-                aria-current={!newest ? "true" : undefined}
-                className={segmentedItem(!newest)}
-              >
-                {t.feedSortTop}
-              </Link>
-              <Link
-                href="/people?sort=new"
-                aria-current={newest ? "true" : undefined}
-                className={segmentedItem(newest)}
-              >
-                {t.feedSortNew}
-              </Link>
-            </div>
-          </div>
-        )}
-
-        {feed.length === 0 ? (
-          <p className="text-sm text-muted bg-surface border border-dashed border-border rounded-xl py-8 text-center">
-            {t.feedEmpty}
-          </p>
-        ) : (
-          /* بلا بطاقاتٍ ولا إطارات: الآراء خطٌّ متّصل كخطوط التواصل، يفصل
-             بين الرأي والرأي خطٌّ رفيع لا فجوةٌ وحدّان. البطاقة كانت تجعل
-             كل رأيٍ جزيرةً، والقراءة المتتابعة تريد نهراً. قرارُ المالك. */
-          <div className="divide-y divide-[color:var(--divider)]">
-            {feed.map((a) => {
-              /* صورةٌ عرضية كصورة «أكمل المشاهدة» لا ملصقاً رأسياً:
-                 الصفّ أفقيّ، والعرضيّة تملأ فراغه بدل مربّعٍ صغير */
-              const found = artById.get(`${a.media_type}-${a.tmdb_id}`);
-              const art =
-                backdropUrl(found?.backdrop ?? null, "w500") ??
-                posterUrl(found?.poster ?? a.poster_path, "w342");
-              return (
-                <article
-                  key={`${a.person.id}-${a.media_type}-${a.tmdb_id}`}
-                  className="py-4 first:pt-0"
+      {/* ===== صفّ التبويبات =====
+          مقسّمٌ يملأ العرض ويقسّمه بالتساوي (segmentedTrackFull) — نفس
+          صفّ شرائح المكتبة (D-016، D-042). عدّادٌ على «مجتمعي» و«المجتمع»،
+          وشارة غير المقروء على «الرسائل» تختفي عند الصفر. */}
+      <nav aria-label={t.communityTabsGroup} className={segmentedTrackFull}>
+        {tabs.map((tb) => {
+          const active = tb.key === tab;
+          return (
+            <Link
+              key={tb.key}
+              href={tb.href}
+              aria-current={active ? "page" : undefined}
+              className={segmentedItem(active, "flex items-center justify-center gap-1.5")}
+            >
+              <span>{tb.label}</span>
+              {typeof tb.count === "number" && (
+                <span className={`tabular-nums text-[12px] ${active ? "text-muted" : "text-muted/70"}`} dir="ltr">
+                  {num(tb.count, locale)}
+                </span>
+              )}
+              {typeof tb.badge === "number" && tb.badge > 0 && (
+                <span
+                  aria-label={t.communityUnreadAria(tb.badge)}
+                  className="grid place-items-center min-w-[18px] h-[18px] px-1 rounded-full bg-accent text-[color:var(--on-accent)] text-[11px] font-bold tabular-nums"
+                  dir="ltr"
                 >
-                  {/* عمودان لا ثلاثة صفوف: كلّ ما يخصّ الرأي — صاحبه ونصّه
-                      وإعجابه — في عمودٍ واحد يبدأ من أعلى، والعمل وتقييمه
-                      في عمودٍ مقابل. لو وُضع العمل في صفٍّ علويّ وحده لدفع
-                      ارتفاعُ صورته النصَّ إلى أسفل وتركَ فراغاً بعرض
-                      الشاشة إلى جانبه. */}
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0 flex-1">
-                      <PersonName
-                        person={a.person}
-                        t={t}
-                        size={34}
-                        sub={formatDateShort(a.updated_at, t)}
-                      />
+                  {num(tb.badge, locale)}
+                </span>
+              )}
+            </Link>
+          );
+        })}
+      </nav>
 
-                      <p className="text-[15px] leading-relaxed whitespace-pre-line mt-3">
-                        {a.review}
-                      </p>
+      {/* ===== محتوى التبويب ===== */}
+      {tab === "inbox" ? (
+        <Inbox threads={threads} locale={locale} />
+      ) : (
+        <section>
+          {/* ترتيب الخطّ — على «مجتمعي» و«المجتمع» فقط، ولا يظهر على خطٍّ فارغ */}
+          {feed.length > 0 && (
+            <div className="mb-4">
+              <div role="group" aria-label={t.feedSortGroup} className={segmentedTrack}>
+                <Link
+                  href={sortBase}
+                  aria-current={!newest ? "true" : undefined}
+                  className={segmentedItem(!newest)}
+                >
+                  {t.feedSortTop}
+                </Link>
+                <Link
+                  href={sortNewHref}
+                  aria-current={newest ? "true" : undefined}
+                  className={segmentedItem(newest)}
+                >
+                  {t.feedSortNew}
+                </Link>
+              </div>
+            </div>
+          )}
 
-                      <div className="mt-2 flex items-center gap-1">
-                        <LikeButton
-                          reviewUserId={a.person.id}
-                          tmdbId={a.tmdb_id}
-                          mediaType={a.media_type}
-                          likes={a.likes}
-                          likedByMe={a.likedByMe}
-                          isMine={false}
-                          locale={locale}
+          {feed.length === 0 ? (
+            <p className="text-sm text-muted bg-surface border border-dashed border-border rounded-xl py-8 text-center">
+              {tab === "all" ? t.communityAllEmpty : t.feedEmpty}
+            </p>
+          ) : (
+            <div className="divide-y divide-[color:var(--divider)]">
+              {feed.map((a) => {
+                const found = artById.get(`${a.media_type}-${a.tmdb_id}`);
+                const art =
+                  backdropUrl(found?.backdrop ?? null, "w500") ??
+                  posterUrl(found?.poster ?? a.poster_path, "w342");
+                return (
+                  <article
+                    key={`${a.person.id}-${a.media_type}-${a.tmdb_id}`}
+                    className="py-4 first:pt-0"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0 flex-1">
+                        <PersonName
+                          person={a.person}
+                          t={t}
+                          size={34}
+                          sub={formatDateShort(a.updated_at, t)}
                         />
-                        <ReportButton
-                          reviewUserId={a.person.id}
-                          tmdbId={a.tmdb_id}
-                          mediaType={a.media_type}
-                          locale={locale}
-                        />
-                      </div>
-                    </div>
 
-                    {/* العمل بطاقةٌ واحدة لا ثلاثة عناصر متجاورة: صورةٌ
-                        فوق، واسمٌ تحتها، والنوع والتقييم سطراً هادئاً
-                        أسفلهما. كانت الصورة والاسم والتقييم ثلاث محطّاتٍ
-                        بصرية متساوية الصوت إلى جانب صاحب الرأي، فأربع
-                        بؤرٍ في صفٍّ واحد لا يعرف معها أين يبدأ. الرأي هو
-                        المحتوى، والعمل مرجعه — فليُقرأ مرجعاً. */}
-                    <Link
-                      href={`/${a.media_type === "tv" ? "show" : "movie"}/${a.tmdb_id}`}
-                      prefetch={false}
-                      className="shrink-0 w-28 sm:w-40 group"
-                    >
-                      {/* `next/image` لا وسمَ صورةٍ خام: بقيةُ صور التطبيق
-                          تمرّ به فتُقدَّم من نطاقنا نفسه بحجمٍ مناسب،
-                          وكان هذا الموضع وحده يطلب TMDB مباشرةً */}
-                      <span className="relative block w-full aspect-video rounded-lg overflow-hidden bg-surface-2">
-                        {art ? (
-                          <Image
-                            src={art}
-                            alt=""
-                            fill
-                            sizes="(max-width: 640px) 112px, 160px"
-                            className="object-cover"
+                        <p className="text-[15px] leading-relaxed whitespace-pre-line mt-3">
+                          {a.review}
+                        </p>
+
+                        <div className="mt-2 flex items-center gap-1">
+                          <LikeButton
+                            reviewUserId={a.person.id}
+                            tmdbId={a.tmdb_id}
+                            mediaType={a.media_type}
+                            likes={a.likes}
+                            likedByMe={a.likedByMe}
+                            isMine={false}
+                            locale={locale}
                           />
-                        ) : (
-                          <span
-                            className="w-full h-full grid place-items-center text-muted"
-                            aria-hidden
-                          >
-                            <Icon name="film" size={16} />
+                          <ReportButton
+                            reviewUserId={a.person.id}
+                            tmdbId={a.tmdb_id}
+                            mediaType={a.media_type}
+                            locale={locale}
+                          />
+                        </div>
+                      </div>
+
+                      <Link
+                        href={`/${a.media_type === "tv" ? "show" : "movie"}/${a.tmdb_id}`}
+                        prefetch={false}
+                        className="shrink-0 w-28 sm:w-40 group"
+                      >
+                        <span className="relative block w-full aspect-video rounded-lg overflow-hidden bg-surface-2">
+                          {art ? (
+                            <Image
+                              src={art}
+                              alt=""
+                              fill
+                              sizes="(max-width: 640px) 112px, 160px"
+                              className="object-cover"
+                            />
+                          ) : (
+                            <span
+                              className="w-full h-full grid place-items-center text-muted"
+                              aria-hidden
+                            >
+                              <Icon name="film" size={16} />
+                            </span>
+                          )}
+                        </span>
+
+                        <span className="mt-1.5 block text-[13px] font-semibold leading-snug truncate group-hover:text-accent transition">
+                          {a.title ?? "—"}
+                        </span>
+
+                        <span className="mt-0.5 flex items-center gap-1.5 text-[11px] text-muted">
+                          <span className="truncate">
+                            {a.media_type === "tv" ? t.typeSeries : t.typeMovie}
                           </span>
-                        )}
-                      </span>
-
-                      <span className="mt-1.5 block text-[13px] font-semibold leading-snug truncate group-hover:text-accent transition">
-                        {a.title ?? "—"}
-                      </span>
-
-                      <span className="mt-0.5 flex items-center gap-1.5 text-[11px] text-muted">
-                        <span className="truncate">
-                          {a.media_type === "tv" ? t.typeSeries : t.typeMovie}
+                          <span aria-hidden>·</span>
+                          <span
+                            className="shrink-0 font-semibold text-accent tabular-nums"
+                            title={t.rateOutOf(a.rating)}
+                          >
+                            ★ <span dir="ltr">{a.rating}/10</span>
+                          </span>
                         </span>
-                        <span aria-hidden>·</span>
-                        <span
-                          className="shrink-0 font-semibold text-accent tabular-nums"
-                          title={t.rateOutOf(a.rating)}
-                        >
-                          ★ <span dir="ltr">{a.rating}/10</span>
-                        </span>
-                      </span>
-                    </Link>
-                  </div>
-                </article>
-              );
-            })}
-          </div>
-        )}
-      </section>
+                      </Link>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
+        </section>
+      )}
     </div>
   );
 }
