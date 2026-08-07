@@ -138,21 +138,48 @@ export interface BrowseEra {
   slug: string;
   ar: string;
   en: string;
-  /** أوّل تاريخٍ مقبول (شامل) */
+  /** أوّل تاريخٍ مقبول (شامل) — «القادم» يتركه فارغاً ويُحسب في `eraRange` */
   from: string | null;
   /** آخر تاريخٍ مقبول (شامل) */
   to: string | null;
+  /** حقبة المستقبل: مداها يتحرّك مع اليوم فيُحسب عند الطلب لا يُكتب هنا */
+  upcoming?: boolean;
 }
 
+/**
+ * الترتيب زمنيٌّ تنازلي: القادم (المستقبل) أوّلاً ثم العقود من الأحدث.
+ * التسعينات والسبعينات عقدان مطلوبان بالاسم (طلب المالك) لا سلسلة عقودٍ
+ * كاملة — و«أقدم» يبقى سلّة ما قبل ٢٠٠٠ كلّها كي لا يضيع عقدٌ بلا رقاقة
+ * (الثمانينات مثلاً)؛ تداخُله مع العقدين لا يضرّ لأن الاختيار واحدٌ دائماً.
+ */
 export const BROWSE_ERAS: BrowseEra[] = [
+  { slug: "upcoming", ar: "القادم", en: "Upcoming", from: null, to: null, upcoming: true },
   { slug: "2020s", ar: "٢٠٢٠ فما بعد", en: "2020s", from: "2020-01-01", to: null },
   { slug: "2010s", ar: "٢٠١٠–٢٠١٩", en: "2010s", from: "2010-01-01", to: "2019-12-31" },
   { slug: "2000s", ar: "٢٠٠٠–٢٠٠٩", en: "2000s", from: "2000-01-01", to: "2009-12-31" },
+  { slug: "90s", ar: "التسعينات", en: "1990s", from: "1990-01-01", to: "1999-12-31" },
+  { slug: "70s", ar: "السبعينات", en: "1970s", from: "1970-01-01", to: "1979-12-31" },
   { slug: "older", ar: "أقدم", en: "Older", from: null, to: "1999-12-31" },
 ];
 
 export function browseEraName(e: BrowseEra, locale: "ar" | "en") {
   return locale === "en" ? e.en : e.ar;
+}
+
+/**
+ * المدى الفعليّ للحقبة.
+ *
+ * لماذا دالةٌ لا حقلان: «القادم» مداه اليوم حتى بعد ستة أشهر، واليوم
+ * يتغيّر كل يوم — فلو كُتب في المصفوفة لتجمّد على لحظة تحميل الوحدة في
+ * الخادم وصار «القادم» يعرض ما صدر أمس. الحقب الثابتة تمرّ كما هي.
+ */
+export function eraRange(e: BrowseEra | null): { from: string | null; to: string | null } {
+  if (!e) return { from: null, to: null };
+  if (!e.upcoming) return { from: e.from, to: e.to };
+  const now = new Date();
+  const end = new Date(now);
+  end.setUTCMonth(end.getUTCMonth() + 6);
+  return { from: now.toISOString().slice(0, 10), to: end.toISOString().slice(0, 10) };
 }
 
 /** أدنى تقييم — ثلاث عتباتٍ تكفي، وعشرُ خاناتٍ تُشلّ الاختيار */
