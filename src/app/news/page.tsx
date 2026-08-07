@@ -9,6 +9,7 @@ import {
   topTenGenreThisWeek,
   upcomingByGenre,
   topByFilter,
+  top50,
   upcomingByFilter,
   nowPlayingMovies,
   listWatchProviders,
@@ -59,6 +60,7 @@ export default async function NewsPage({
 }: {
   searchParams: Promise<{
     type?: string;
+    win?: string;
     g?: string;
     sort?: string;
     lang?: string;
@@ -91,6 +93,7 @@ export default async function NewsPage({
       <DiscoverFilters
         locale={locale}
         type={browse.type}
+        win={browse.win}
         genre={browse.genre?.slug ?? null}
         lang={browse.lang?.code ?? null}
         country={browse.country?.code ?? null}
@@ -149,10 +152,11 @@ async function CuratedRails({
   /** بلد المشاهدة — يُقاس عليه فلتر المنصّات */
   region: string;
 }) {
-  const { type, genre, lang, country, provider, era, rate, active } = browse;
+  const { type, win, genre, lang, country, provider, era, rate, active } = browse;
   const wantMovies = type !== "tv";
   const wantSeries = type !== "movie";
   const deep = needsDiscover(browse);
+  const isWeek = win === "week";
 
   /* الفلتر بلا تصنيف — لكل جهةٍ معرّفاتها فيُضاف عند الطلب */
   const base: DiscoverFilter = {
@@ -165,41 +169,61 @@ async function CuratedRails({
     minRate: rate,
   };
 
-  const [topMovies, topSeries, topAnime, cinemas, soonMovies, soonSeries, suggested] =
+  /* أعلى ١٠ حسب النافذة: أسبوعي = الرائج (أو discover المُصفّى)، سنوي =
+     discover لهذه السنة مرتّباً بالشعبية، كل الأوقات = الأكثر أصواتاً.
+     السنة تفرض مداها الزمني فوق الحقبة، وكلّ الأوقات يبقي مدى الحقبة إن
+     اختير. */
+  const y = new Date().getUTCFullYear();
+  const topFor = (mt: "movie" | "tv", genreIds: number[] | undefined) => {
+    if (win === "year") {
+      return topByFilter(
+        mt,
+        { ...base, from: `${y}-01-01`, to: `${y}-12-31`, genreIds },
+        10,
+        "popularity.desc",
+      ).catch(() => [] as SearchResult[]);
+    }
+    if (win === "all") {
+      return topByFilter(mt, { ...base, genreIds }, 10, "vote_count.desc").catch(
+        () => [] as SearchResult[],
+      );
+    }
+    // أسبوعي
+    return deep
+      ? topByFilter(mt, { ...base, genreIds }).catch(() => [] as SearchResult[])
+      : genreIds
+        ? topTenGenreThisWeek(mt, genreIds).catch(() => [] as SearchResult[])
+        : topTenThisWeek(mt).catch(() => [] as SearchResult[]);
+  };
+
+  const [topMovies, topSeries, topAnime, cinemas, soonMovies, soonSeries, suggested, top50Movies, top50Series] =
     await Promise.all([
-      wantMovies
-        ? deep
-          ? topByFilter("movie", { ...base, genreIds: genre?.movie })
-          : genre
-            ? topTenGenreThisWeek("movie", genre.movie).catch(() => [] as SearchResult[])
-            : topTenThisWeek("movie").catch(() => [] as SearchResult[])
-        : Promise.resolve([] as SearchResult[]),
-      wantSeries
-        ? deep
-          ? topByFilter("tv", { ...base, genreIds: genre?.tv })
-          : genre
-            ? topTenGenreThisWeek("tv", genre.tv).catch(() => [] as SearchResult[])
-            : topTenThisWeek("tv").catch(() => [] as SearchResult[])
-        : Promise.resolve([] as SearchResult[]),
-      !active && wantSeries
+      wantMovies ? topFor("movie", genre?.movie) : Promise.resolve([] as SearchResult[]),
+      wantSeries ? topFor("tv", genre?.tv) : Promise.resolve([] as SearchResult[]),
+      // صفوف أسبوعية بطبعها: الأنمي «هذا الأسبوع»، ودور العرض «الآن»،
+      // والقادم «مستقبلاً» — لا معنى لها في نافذتَي السنة وكل الأوقات
+      isWeek && !active && wantSeries
         ? topTenAnimeThisWeek().catch(() => [] as SearchResult[])
         : Promise.resolve([] as SearchResult[]),
-      wantMovies ? nowPlayingMovies().catch(() => null) : Promise.resolve(null),
-      wantMovies
+      isWeek && wantMovies ? nowPlayingMovies().catch(() => null) : Promise.resolve(null),
+      isWeek && wantMovies
         ? deep
           ? upcomingByFilter("movie", { ...base, genreIds: genre?.movie })
           : genre
             ? upcomingByGenre(genre.movie, "movie")
             : upcomingMovies().catch(() => [] as SearchResult[])
         : Promise.resolve([] as SearchResult[]),
-      wantSeries
+      isWeek && wantSeries
         ? deep
           ? upcomingByFilter("tv", { ...base, genreIds: genre?.tv })
           : genre
             ? upcomingByGenre(genre.tv, "tv")
             : airingTv().catch(() => [] as SearchResult[])
         : Promise.resolve([] as SearchResult[]),
-      !active ? getSuggestions(12, locale).catch(() => []) : Promise.resolve([]),
+      isWeek && !active ? getSuggestions(12, locale).catch(() => []) : Promise.resolve([]),
+      // أعلى ٥٠ على الإطلاق — ذيلٌ ثابت في الحالة غير المُصفّاة (طلب المالك)
+      !active && wantMovies ? top50("movie").catch(() => [] as SearchResult[]) : Promise.resolve([] as SearchResult[]),
+      !active && wantSeries ? top50("tv").catch(() => [] as SearchResult[]) : Promise.resolve([] as SearchResult[]),
     ]);
 
   const today = new Date().toISOString().slice(0, 10);
@@ -251,6 +275,8 @@ async function CuratedRails({
     topSeries.length === 0 &&
     topAnime.length === 0 &&
     soon.length === 0 &&
+    top50Movies.length === 0 &&
+    top50Series.length === 0 &&
     !inCinemas?.results.length;
 
   return (
@@ -293,16 +319,24 @@ async function CuratedRails({
       )}
 
       {topMovies.length > 0 && (
-        <RankedRail title={t.topTenMovies} icon="film" items={topMovies} />
+        <RankedRail title={t.topMoviesWin(win)} icon="film" items={topMovies} />
       )}
       {topSeries.length > 0 && (
-        <RankedRail title={t.topTenSeries} icon="tv" items={topSeries} />
+        <RankedRail title={t.topSeriesWin(win)} icon="tv" items={topSeries} />
       )}
       {topAnime.length > 0 && (
         <RankedRail title={t.topTenAnime} icon="sparkle-star" items={topAnime} />
       )}
       {soon.length > 0 && (
         <CountdownRail title={t.comingSoon} icon="calendar" items={soon} locale={locale} />
+      )}
+
+      {/* ذيل «أعلى ٥٠ على الإطلاق» — مرجعٌ ثابت في الحالة غير المُصفّاة */}
+      {top50Movies.length > 0 && (
+        <RankedRail title={t.top50Movies} icon="film" items={top50Movies} />
+      )}
+      {top50Series.length > 0 && (
+        <RankedRail title={t.top50Series} icon="tv" items={top50Series} />
       )}
 
       {empty && (
