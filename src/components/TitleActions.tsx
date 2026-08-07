@@ -6,11 +6,19 @@ import { coalescedRefresh } from "@/lib/refresh";
 import { tap } from "@/lib/haptics";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { follow, unfollow, toggleInList, markShowWatched, toggleMovieWatched } from "@/lib/actions";
+import {
+  follow,
+  unfollow,
+  toggleInList,
+  markShowWatched,
+  unmarkEpisodes,
+  toggleMovieWatched,
+} from "@/lib/actions";
 import { getDict, type Locale } from "@/lib/i18n";
 import type { MediaType } from "@/lib/media";
 import { Icon } from "./Icon";
 import { Sheet } from "./ui/Sheet";
+import { FranchisePanel } from "./FranchisePanel";
 import { buttonClass } from "./ui/Button";
 
 /**
@@ -20,14 +28,12 @@ import { buttonClass } from "./ui/Button";
  * كل رسمة، فتُفقد حالة أبنائه ويُلغى تذكيرُ React — وهو ما ينبّه إليه
  * `react-hooks/static-components`.
  */
-function CheckBox({ on, success = false }: { on: boolean; success?: boolean }) {
+function CheckBox({ on }: { on: boolean }) {
   return (
     <span
       className={`grid place-items-center w-[22px] h-[22px] rounded-full border-[1.5px] shrink-0 transition ${
         on
-          ? success
-            ? "bg-[color:var(--success)] border-[color:var(--success)] text-white"
-            : "bg-accent border-accent text-[color:var(--on-accent)]"
+          ? "bg-accent border-accent text-[color:var(--on-accent)]"
           : "border-border text-transparent"
       }`}
     >
@@ -37,22 +43,27 @@ function CheckBox({ on, success = false }: { on: boolean; success?: boolean }) {
 }
 
 /**
- * صفّ الإجراء الرئيسي في صفحة العمل: «أضف لقائمة» + دائرة «للمشاهدة».
+ * صفّ الإجراء الرئيسي في صفحة العمل: «أضف لقائمة» + دائرة «شاهدتُه».
  *
- * الدائرة كانت تعني «شاهدتُ العمل كله» وتفتح ورقة تأكيد. تغيّر معناها إلى
- * «للمشاهدة» (D-047) لسببين: هو الفعل الأكثر تكراراً في التطبيق وكان
- * مدفوناً خلف زرٍّ وورقة، ولأن ✓ الممتلئ يعني داخل ورقة القوائم «هذا العمل
- * في هذه القائمة» — فالدائرة تقول الشيء نفسه عن القائمة المثبّتة، لا معنىً
- * مستحدثاً.
+ * **الدائرة تعني «شاهدتُه»، وورقة التأكيد لا تعود** (D-047، بصيغته
+ * النهائية). جُرّب أن تعني «للمشاهدة» فتبيّن أنها تكرار: الزرّ الكبير
+ * بجانبها يفتح ورقةً أوّلُ صفٍّ فيها «للمشاهدة» — فمعنيان لفعلٍ واحد في
+ * شبرٍ واحد. قرار المالك، وهو الصواب: الزرّ الكبير للحفظ، والدائرة
+ * للحالة.
  *
- * وورقة التأكيد سقطت كلها: الحماية انتقلت من «تأكيد قبل» إلى «تراجع بعد».
- * التأكيد يعاقب كل من أصاب ليحمي من أخطأ؛ والتراجع يحمي من أخطأ بلا أن
- * يشعر به من أصاب. ومضيف الرسائل العام يدعم زرّ فعلٍ داخل الرسالة أصلاً،
- * فلا مكوّن جديد ولا لغة بصرية ثانية.
+ * والذي بقي من التجربة هو الأهمّ: **الحماية انتقلت من «تأكيد قبل» إلى
+ * «تراجع بعد».** التأكيد يعاقب كل من أصاب ليحمي من أخطأ؛ والتراجع يحمي
+ * من أخطأ بلا أن يشعر به من أصاب. ومضيف الرسائل يدعم زرّ فعلٍ أصلاً
+ * (D-019)، فلا مكوّن جديد ولا ورقة ثانية.
  *
- * و«شاهدتُه كله» انتقل إلى ذيل الورقة نفسها — سطرٌ مفصولٌ بخطّ تحت القوائم:
- * الفعل لم يُدفن (ضغطتان)، ولم تُفتح له ورقةٌ ثانية، وبقيت الحالة كلها في
- * مكوّنٍ واحد فلا تتناقض دائرةٌ مع سطر.
+ * وتراجع المسلسل صادقٌ لا شكليّ: `markShowWatched` تُرجع ما أضافته هي
+ * وحدها، و`unmarkEpisodes` تحذف ذلك القدر بعينه — فلا يُمحى ما أشّره
+ * المستخدم بيده قبل الضغطة. والعدد يُقال بعد الفعل («أُشّرت ٢٥٦ حلقة»)
+ * لا قبله: هو نفسه الرقم الذي كانت ورقة التأكيد تعرضه، منقولاً إلى
+ * الموضع الذي لا يكلّف أحداً ضغطة.
+ *
+ * ومسلسلٌ اكتمل لا تُلغيه الدائرة: حذف كل حلقاته بضغطة إتلافٌ لا تراجع،
+ * فتقول الرسالة أين يُلغى الموسم. الفيلم يُقلَب لأنه حالةٌ واحدة.
  */
 export function TitleActions({
   tmdbId,
@@ -66,6 +77,7 @@ export function TitleActions({
   episodesTotal,
   runtime,
   initialDone,
+  collectionId,
 }: {
   tmdbId: number;
   mediaType: MediaType;
@@ -75,12 +87,14 @@ export function TitleActions({
   initialFollowing: boolean;
   lists: { id: string; name: string }[];
   containing: string[];
-  /** عدد الحلقات المعروضة — للمسلسلات فقط، يظهر في سطر «شاهدتُه كله» */
+  /** عدد الحلقات المعروضة — للمسلسلات فقط، يظهر في اسم الزرّ قبل الضغط */
   episodesTotal: number | null;
   /** مدّة الفيلم — تُسجَّل مع «شاهدتُه» */
   runtime: number | null;
   /** مُشاهَد بالكامل عند فتح الصفحة */
   initialDone: boolean;
+  /** معرّف سلسلة الفيلم — تُعرض أجزاؤها تحت الصفّ بعد ضغطة ✓ */
+  collectionId?: number | null;
 }) {
   const t = getDict(locale);
   const router = useRouter();
@@ -88,52 +102,28 @@ export function TitleActions({
   const [inLists, setInLists] = useState<Set<string>>(new Set(containing));
   const [done, setDone] = useState(initialDone);
   const [sheetOpen, setSheetOpen] = useState(false);
+  /* لوحة الأجزاء تُفتح بضغطة ✓ وتبقى مفتوحة: من أشّر جزءاً يريد التالي،
+     وإغلاقها تلقائياً يسحب الجواب من تحت يده */
+  const [showParts, setShowParts] = useState(false);
   const [pending, start] = useTransition();
 
   const badge = inLists.size + (following ? 1 : 0);
 
   /**
-   * الانزلاق إلى صفّ «الأجزاء والأعمال المرتبطة» بعد الإضافة.
+   * «للمشاهدة» — صفُّ ورقة القوائم وحده.
    *
-   * الحفظ لحظةُ نيّة: من حفظ عملاً هو أقرب الناس إلى أن يريد بقيّة أجزائه.
-   * والصفّ موجودٌ دائماً أسفل الصفحة — الانزلاق يكشفه لا ينشئه، فلا يفوت
-   * من لم يضغط.
-   *
-   * وشرطان يمنعانه من أن يصير خطفاً للشاشة: احترام `prefers-reduced-motion`،
-   * وسقفُ مسافةٍ بأربع شاشات — تبويب الحلقات في مسلسلٍ طويل يجعل الصفّ على
-   * بُعد آلاف البكسلات، وانزلاقةٌ بهذا الطول تُقرأ هروباً لا كشفاً.
+   * بلا رسالةٍ عابرة: المربّع يمتلئ أمام العين داخل الورقة، ورسالةٌ خلفها
+   * لا تُقرأ. والحالة المطلوبة صريحةٌ لا مقلوبةٌ عن الحالية، فلا تُقرأ حالةٌ
+   * تغيّرت تحت الدالّة.
    */
-  function revealRelated() {
-    if (typeof window === "undefined") return;
-    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
-    requestAnimationFrame(() => {
-      const el = document.getElementById("related");
-      if (!el) return;
-      const top = el.getBoundingClientRect().top;
-      if (top < 0 || top > window.innerHeight * 4) return;
-      el.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
-  }
-
-  /**
-   * «للمشاهدة» — الحالة المطلوبة صريحةٌ لا مقلوبةٌ عن الحالية، كي يستطيع
-   * زرّ التراجع أن يستدعي الدالة نفسها بلا أن يقرأ حالةً تغيّرت تحته.
-   */
-  function setToWatch(next: boolean, silent = false) {
+  function setToWatch(next: boolean) {
     setFollowing(next);
     tap(next ? [12, 30] : 10);
-    if (next) revealRelated();
     start(async () => {
       try {
         if (next) await follow({ tmdbId, mediaType, title, posterPath });
         else await unfollow({ tmdbId, mediaType });
         coalescedRefresh(router);
-        if (!silent) {
-          toast(next ? t.toWatchAdded : t.toWatchRemoved, {
-            // التراجع صامت: رسالةٌ تلد رسالةً تجعل الشاشة تتكلّم مرّتين لفعلٍ واحد
-            action: { label: t.undoWatched, run: () => setToWatch(!next, true) },
-          });
-        }
       } catch (e) {
         flashError((e as Error).message);
         setFollowing(!next);
@@ -165,38 +155,95 @@ export function TitleActions({
     });
   }
 
-  /** التأشير الكامل — وإن لم يكن في «للمشاهدة» أضفناه أولاً كي يظهر في مكتبته */
-  function setWatched(mark: boolean, silent = false) {
-    setDone(mark);
-    tap(mark ? [12, 40, 12] : 10);
+  /**
+   * التأشير الكامل. `followedNow` يُمرَّر إلى التراجع كي يعيد الحالة كما
+   * كانت: من لم يكن في المكتبة قبل الضغطة لا يجوز أن يبقى فيها بعد إلغائها.
+   */
+  function markWatched() {
+    if (done) {
+      if (mediaType === "movie") {
+        undoWatch({ movie: true, unfollow: false });
+        return;
+      }
+      toast(t.seriesWatchedHint, { tone: "info" });
+      return;
+    }
+
+    setDone(true);
+    tap([12, 40, 12]);
+    if (collectionId) setShowParts(true);
     start(async () => {
+      let followedNow = false;
       try {
-        if (mark && !following) {
+        if (!following) {
           await follow({ tmdbId, mediaType, title, posterPath });
           setFollowing(true);
+          followedNow = true;
         }
+
         if (mediaType === "tv") {
-          if (mark) await markShowWatched(tmdbId);
+          const res = await markShowWatched(tmdbId);
+          const added = res?.added ?? [];
+          coalescedRefresh(router);
+          toast(added.length ? t.watchedMarkedCount(added.length) : t.watchedMarked, {
+            action: {
+              label: t.undoWatched,
+              run: () => undoWatch({ episodes: added, unfollow: followedNow }),
+            },
+          });
         } else {
-          await toggleMovieWatched({ movieTmdbId: tmdbId, runtime, watched: mark });
-        }
-        coalescedRefresh(router);
-        if (!silent) {
-          toast(mark ? t.watchedMarked : t.watchedUnmarked, {
-            /* المسلسل لا تراجع له: `markShowWatched` تكتب مئات الحلقات ولا
-               دالةَ عكسٍ لها اليوم — فلا نَعِد بزرٍّ لا يفي. الفيلم يتراجع */
-            action:
-              mediaType === "movie"
-                ? { label: t.undoWatched, run: () => setWatched(!mark, true) }
-                : undefined,
+          await toggleMovieWatched({ movieTmdbId: tmdbId, runtime, watched: true });
+          coalescedRefresh(router);
+          toast(t.watchedMarked, {
+            action: {
+              label: t.undoWatched,
+              run: () => undoWatch({ movie: true, unfollow: followedNow }),
+            },
           });
         }
       } catch (e) {
         flashError((e as Error).message);
-        setDone(!mark);
+        setDone(false);
+        if (followedNow) setFollowing(false);
       }
     });
   }
+
+  /** التراجع — صامتٌ دائماً: رسالةٌ تلد رسالةً تجعل الشاشة تتكلّم مرّتين لفعلٍ واحد */
+  function undoWatch(opts: {
+    episodes?: { s: number; e: number }[];
+    movie?: boolean;
+    unfollow: boolean;
+  }) {
+    setDone(false);
+    tap(10);
+    start(async () => {
+      try {
+        if (opts.movie) {
+          await toggleMovieWatched({ movieTmdbId: tmdbId, runtime, watched: false });
+        } else if (opts.episodes?.length) {
+          await unmarkEpisodes({ showTmdbId: tmdbId, episodes: opts.episodes });
+        }
+        if (opts.unfollow) {
+          await unfollow({ tmdbId, mediaType });
+          setFollowing(false);
+        }
+        coalescedRefresh(router);
+      } catch (e) {
+        flashError((e as Error).message);
+        setDone(true);
+      }
+    });
+  }
+
+  /* اسم الزرّ يحمل العدد للمسلسل: هو الرقم الذي كانت ورقة التأكيد تعرضه،
+     منقولاً إلى `title` و`aria-label` — يصل إلى قارئ الشاشة وإلى من يتحوّم
+     بالفأرة، ولا يعترض طريق أحد */
+  const watchLabel = done
+    ? t.allWatchedShort
+    : mediaType === "tv" && episodesTotal
+      ? `${t.markAllTitle} · ${t.markAllCount(episodesTotal)}`
+      : t.markAllTitle;
 
   // زرّ داخل الورقة: سطحٌ ثانوي يملأ العرض — الرتبة الثانية بعد الفعل
   // الأول في الشاشة نفسها، فلا يزاحمه بلون الهوية
@@ -225,27 +272,27 @@ export function TitleActions({
           {t.listAddTo}
         </button>
 
-        {/* دائرة «للمشاهدة» — ضغطةٌ واحدة، بلا ورقة، والتراجع في الرسالة */}
+        {/* دائرة «شاهدتُه» — ضغطةٌ واحدة، بلا ورقة، والتراجع في الرسالة */}
         <button
-          onClick={() => setToWatch(!following)}
+          onClick={markWatched}
           disabled={pending}
-          aria-pressed={following}
-          aria-label={t.libToWatch}
-          title={t.libToWatch}
+          aria-pressed={done}
+          aria-label={watchLabel}
+          title={watchLabel}
           className={`w-12 h-12 shrink-0 rounded-full grid place-items-center border-[1.5px] active:scale-95 transition ${
-            following
-              ? "border-transparent bg-accent/15 text-accent"
+            done
+              ? "border-transparent bg-[color:var(--success)]/15 text-[color:var(--success)]"
               : "border-border text-foreground/85 hover:border-accent/60"
           }`}
         >
-          <Icon
-            name="check-line"
-            size={20}
-            strokeWidth={2.2}
-            className={following ? "check-pop" : ""}
-          />
+          <Icon name="check-line" size={20} strokeWidth={2.2} className={done ? "check-pop" : ""} />
         </button>
       </div>
+
+      {/* أجزاء السلسلة — تحت الصفّ مباشرةً، حيث وقعت الضغطة */}
+      {showParts && collectionId ? (
+        <FranchisePanel collectionId={collectionId} excludeId={tmdbId} locale={locale} />
+      ) : null}
 
       {/* ورقة القوائم */}
       <Sheet
@@ -263,7 +310,7 @@ export function TitleActions({
           {/* «للمشاهدة» — المتابعة بثوب القائمة المثبّتة. صامتة هنا: المربّع
               يمتلئ أمام العين، ورسالةٌ خلف الورقة لا تُقرأ */}
           <button
-            onClick={() => setToWatch(!following, true)}
+            onClick={() => setToWatch(!following)}
             className="w-full flex items-center gap-3 px-5 py-3 text-start hover:bg-surface-2 transition"
           >
             <CheckBox on={following} />
@@ -300,33 +347,6 @@ export function TitleActions({
               })}
             </ul>
           )}
-
-          {/* ===== شاهدتُه كله =====
-              مفصولٌ بخطٍّ عن القوائم لأنه ليس قائمة: هو حالةُ العمل لا
-              مكانه. ولونه لون النجاح وحده في التطبيق — لا لون ثانٍ له.
-              والمسلسل يعرض عدد حلقاته في السطر نفسه: من يضغط يعرف كم
-              يؤشّر قبل أن يؤشّر، وهو ما كانت ورقة التأكيد تقوله */}
-          <div className="h-px bg-[color:var(--divider)] mx-5 mt-2" />
-          <button
-            /* المسلسل المُشاهَد بالكامل يبقى ظاهراً ومعطَّلاً لا مخفيّاً:
-               إخفاؤه يجعل الحالة غير مقروءة، ولا دالةَ عكسٍ للمسلسل اليوم
-               فلا يجوز أن يبدو الصفّ قابلاً للنقر */
-            onClick={() => setWatched(!done)}
-            disabled={mediaType === "tv" && done}
-            className="w-full flex items-center gap-3 px-5 py-3 text-start hover:bg-surface-2 transition disabled:hover:bg-transparent disabled:opacity-70 disabled:cursor-default"
-          >
-            <CheckBox on={done} success />
-            <span className="min-w-0">
-              <span className="block text-[14px] font-semibold">
-                {done ? t.allWatchedShort : t.markAllTitle}
-              </span>
-              {!done && mediaType === "tv" && episodesTotal ? (
-                <span className="block text-[11px] text-muted mt-0.5">
-                  {t.markAllCount(episodesTotal)}
-                </span>
-              ) : null}
-            </span>
-          </button>
 
           <div className="p-4 pt-2">
             <button onClick={() => setSheetOpen(false)} className={sheetBtn}>
