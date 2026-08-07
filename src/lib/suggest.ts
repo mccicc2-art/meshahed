@@ -55,14 +55,16 @@ export async function getSuggestions(
     .map((s) => s.show_tmdb_id);
 
   const titleById = new Map<number, string>(follows.map((f) => [f.tmdb_id, f.title]));
-  const recentShowIds = lastWatchedOrder.slice(0, 2);
-  const followSeeds = follows.filter((f) => !recentShowIds.includes(f.tmdb_id)).slice(0, 3);
+  const recentShowIds = lastWatchedOrder.slice(0, 4);
+  /* بذورٌ أكثر وصفحتان لكلٍّ منها: بِركةٌ بمئات الأعمال حسب ذوقه —
+     طلب المالك تحديثاً عشوائياً «كل مرة القائمة تتغير» (D-064) */
+  const followSeeds = follows.filter((f) => !recentShowIds.includes(f.tmdb_id)).slice(0, 8);
 
   // ثماني درجات فأكثر بذرة، وأربع فأقل استبعاد — السلّم من عشرة
   const lovedSeeds = myRatings
     .filter((r) => r.rating >= 8)
     .sort((a, b) => b.rating - a.rating || b.updated_at.localeCompare(a.updated_at))
-    .slice(0, 3);
+    .slice(0, 8);
   const dislikedIds = myRatings.filter((r) => r.rating <= 4).map((r) => r.tmdb_id);
 
   const favGenres = profile?.favorite_genres ?? [];
@@ -73,21 +75,21 @@ export async function getSuggestions(
       : Promise.resolve([] as SearchResult[]),
     Promise.all(
       followSeeds.map((f) =>
-        recommendationsFor(f.media_type, f.tmdb_id)
+        recommendationsFor(f.media_type, f.tmdb_id, 2)
           .then((rs) => ({ seed: f.title, rs }))
           .catch(() => ({ seed: f.title, rs: [] as SearchResult[] })),
       ),
     ),
     Promise.all(
       recentShowIds.map((id) =>
-        recommendationsFor("tv", id)
+        recommendationsFor("tv", id, 2)
           .then((rs) => ({ seed: titleById.get(id) ?? "", rs }))
           .catch(() => ({ seed: titleById.get(id) ?? "", rs: [] as SearchResult[] })),
       ),
     ),
     Promise.all(
       lovedSeeds.map((r) =>
-        recommendationsFor(r.media_type, r.tmdb_id)
+        recommendationsFor(r.media_type, r.tmdb_id, 2)
           .then((rs) => ({ seed: r.title ?? "", rs }))
           .catch(() => ({ seed: r.title ?? "", rs: [] as SearchResult[] })),
       ),

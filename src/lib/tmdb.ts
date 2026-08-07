@@ -266,14 +266,26 @@ export async function discoverByGenres(
   mediaType: MediaType = "tv",
 ): Promise<SearchResult[]> {
   if (!genreIds.length) return [];
-  const data = await tmdb<{ results: SearchResult[] }>(`/discover/${mediaType}`, {
-    with_genres: genreIds.join("|"),
-    sort_by: "popularity.desc",
-    include_adult: "false",
-  });
-  return data.results
-    .filter((r) => r.poster_path)
-    .map((r) => ({ ...r, media_type: mediaType }));
+  /* ثلاث صفحات (~٦٠) — الرافد العريض لبِركة الاقتراحات (D-064) */
+  const fetched = await Promise.all(
+    [1, 2, 3].map((page) =>
+      tmdb<{ results: SearchResult[] }>(`/discover/${mediaType}`, {
+        with_genres: genreIds.join("|"),
+        sort_by: "popularity.desc",
+        include_adult: "false",
+        page: String(page),
+      }).catch(() => ({ results: [] as SearchResult[] })),
+    ),
+  );
+  const seen = new Set<number>();
+  const rows: SearchResult[] = [];
+  for (const d of fetched)
+    for (const r of d.results ?? []) {
+      if (!r.poster_path || seen.has(r.id)) continue;
+      seen.add(r.id);
+      rows.push({ ...r, media_type: mediaType });
+    }
+  return rows;
 }
 
 
@@ -281,11 +293,26 @@ export async function discoverByGenres(
 export async function recommendationsFor(
   mediaType: MediaType,
   id: number,
+  /* صفحتان للبذرة الواحدة: ~٤٠ مرشّحاً بدل ٢٠ — طلبُ المالك بِركةً كبيرة
+     تكفي تحديثاً عشوائياً لا يكرّر نفسه (D-064) */
+  pages = 1,
 ): Promise<SearchResult[]> {
-  const data = await tmdb<{ results: SearchResult[] }>(`/${mediaType}/${id}/recommendations`);
-  return data.results
-    .filter((r) => r.poster_path)
-    .map((r) => ({ ...r, media_type: mediaType }));
+  const fetched = await Promise.all(
+    Array.from({ length: Math.min(pages, 3) }, (_, i) =>
+      tmdb<{ results: SearchResult[] }>(`/${mediaType}/${id}/recommendations`, {
+        page: String(i + 1),
+      }).catch(() => ({ results: [] as SearchResult[] })),
+    ),
+  );
+  const seen = new Set<number>();
+  const rows: SearchResult[] = [];
+  for (const d of fetched)
+    for (const r of d.results ?? []) {
+      if (!r.poster_path || seen.has(r.id)) continue;
+      seen.add(r.id);
+      rows.push({ ...r, media_type: mediaType });
+    }
+  return rows;
 }
 
 // ============================================================
