@@ -12,6 +12,15 @@
 
 export type BrowseType = "all" | "movie" | "tv";
 
+/**
+ * نافذة الترتيب — المحور الأعلى في «اكتشف» بعد نقل الأنواع إلى الفلتر
+ * (طلب المالك). ليست فلتر تاريخٍ بل معنى «الأفضل»: أسبوعي = الرائج هذا
+ * الأسبوع، سنوي = أعلى هذه السنة، كل الأوقات = الأعلى تاريخياً. تُعيد ضبط
+ * كل الرفوف دفعةً واحدة، فيضغط الشخص «سنوي» فتتحوّل «أفضل هذا الأسبوع»
+ * كلّها إلى «هذه السنة».
+ */
+export type BrowseWin = "week" | "year" | "all";
+
 export interface BrowseGenre {
   /** المعرّف في الرابط — ثابتٌ لا يتغيّر بتغيّر اللغة */
   slug: string;
@@ -168,6 +177,8 @@ export interface BrowseItem {
 
 export interface BrowseQuery {
   type: BrowseType;
+  /** نافذة الترتيب — أسبوعي/سنوي/كل الأوقات، المحور الأعلى */
+  win: BrowseWin;
   genre: BrowseGenre | null;
   /** لغة العمل الأصلية */
   lang: BrowseLang | null;
@@ -192,6 +203,7 @@ export interface BrowseQuery {
  */
 export function parseBrowse(params: {
   type?: string;
+  win?: string;
   g?: string;
   sort?: string;
   lang?: string;
@@ -202,6 +214,9 @@ export function parseBrowse(params: {
 }): BrowseQuery {
   const type: BrowseType =
     params.type === "movie" || params.type === "tv" ? params.type : "all";
+
+  // النافذة: أسبوعي هو الافتراضي فيُحذف من الرابط، وغيرُه يُثبَّت
+  const win: BrowseWin = params.win === "year" || params.win === "all" ? params.win : "week";
 
   const found = BROWSE_GENRES.find((g) => g.slug === params.g) ?? null;
   const genre = found && genreFitsType(found, type) ? found : null;
@@ -223,12 +238,15 @@ export function parseBrowse(params: {
 
   return {
     type,
+    win,
     genre,
     lang,
     country,
     provider,
     era,
     rate,
+    // النافذة لا تجعل التصفّح «نشطاً»: هي المحور الافتراضي كالتبويبات
+    // سابقاً، وتغييرها يُعيد ضبط الرفوف لا يستبدلها بشبكة نتائج
     active:
       type !== "all" ||
       genre !== null ||
@@ -243,13 +261,14 @@ export function parseBrowse(params: {
 /**
  * عدد الفلاتر المخفيّة خلف الورقة — للعدّاد على زرّ الفلاتر.
  *
- * النوع الدرامي لا يُحسب: تبويبه ظاهرٌ في الصفّ ومضاءٌ بخطّه، فعدّه في
- * الزرّ يجعل الزرّ يقول «١» بينما لا شيء داخل الورقة مختار — والعدّاد
- * وعدٌ بما وراء الزرّ لا إحصاءٌ للشاشة كلّها.
+ * النوع الدرامي **يُحسب الآن**: انتقل إلى داخل الورقة (طلب المالك) بعد أن
+ * حلّت نافذةُ الترتيب محلّ صفّ تبويباته، فصار كبقيّة الفلاتر المخفيّة.
+ * النافذة نفسها لا تُحسب: هي المحور الظاهر، لا شيءٌ وراء الزرّ.
  */
 export function browseCount(q: BrowseQuery) {
   return (
     (q.type !== "all" ? 1 : 0) +
+    (q.genre ? 1 : 0) +
     (q.lang ? 1 : 0) +
     (q.country ? 1 : 0) +
     (q.provider ? 1 : 0) +
@@ -279,6 +298,7 @@ export function needsDiscover(q: BrowseQuery) {
 /** بناء رابط «اكتشف» من فلترٍ — القيم الافتراضية تُحذف فيبقى نظيفاً */
 export function browseHref(q: {
   type?: BrowseType;
+  win?: BrowseWin;
   g?: string | null;
   lang?: string | null;
   co?: string | null;
@@ -288,6 +308,7 @@ export function browseHref(q: {
 }) {
   const p = new URLSearchParams();
   if (q.type && q.type !== "all") p.set("type", q.type);
+  if (q.win && q.win !== "week") p.set("win", q.win);
   if (q.g) p.set("g", q.g);
   if (q.lang) p.set("lang", q.lang);
   if (q.co) p.set("co", q.co);
@@ -302,6 +323,7 @@ export function browseHref(q: {
 export function browseKey(q: BrowseQuery, page = 1) {
   return [
     q.type,
+    q.win,
     q.genre?.slug ?? "all",
     q.lang?.code ?? "any",
     q.country?.code ?? "any",

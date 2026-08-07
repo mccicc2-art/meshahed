@@ -431,6 +431,17 @@ const ar = {
   topTenMovies: "أفضل ١٠ أفلام هذا الأسبوع",
   topTenSeries: "أفضل ١٠ مسلسلات هذا الأسبوع",
   topTenAnime: "أفضل ١٠ أنمي هذا الأسبوع",
+  // نافذة الترتيب ورفوفها المتغيّرة بها
+  winGroup: "نافذة الترتيب",
+  winWeek: "أسبوعي",
+  winYear: "سنوي",
+  winAll: "كل الأوقات",
+  topMoviesWin: (w: "week" | "year" | "all"): string =>
+    w === "year" ? "أفضل ١٠ أفلام هذه السنة" : w === "all" ? "أفضل ١٠ أفلام على الإطلاق" : "أفضل ١٠ أفلام هذا الأسبوع",
+  topSeriesWin: (w: "week" | "year" | "all"): string =>
+    w === "year" ? "أفضل ١٠ مسلسلات هذه السنة" : w === "all" ? "أفضل ١٠ مسلسلات على الإطلاق" : "أفضل ١٠ مسلسلات هذا الأسبوع",
+  top50Movies: "أفضل ٥٠ فيلماً على الإطلاق",
+  top50Series: "أفضل ٥٠ مسلسلاً على الإطلاق",
   animeBadge: "أنمي",
   countdownDays: (n: number) => `باقي ${n} يوم`,
   tabInfo: "معلومات",
@@ -1004,6 +1015,16 @@ const en: Dict = {
   topTenMovies: "Top 10 movies this week",
   topTenSeries: "Top 10 shows this week",
   topTenAnime: "Top 10 anime this week",
+  winGroup: "Ranking window",
+  winWeek: "This week",
+  winYear: "This year",
+  winAll: "All time",
+  topMoviesWin: (w: "week" | "year" | "all") =>
+    w === "year" ? "Top 10 movies this year" : w === "all" ? "Top 10 movies of all time" : "Top 10 movies this week",
+  topSeriesWin: (w: "week" | "year" | "all") =>
+    w === "year" ? "Top 10 shows this year" : w === "all" ? "Top 10 shows of all time" : "Top 10 shows this week",
+  top50Movies: "Top 50 movies of all time",
+  top50Series: "Top 50 shows of all time",
   animeBadge: "Anime",
   countdownDays: (n: number) => `${n} days to go`,
   tabInfo: "About",

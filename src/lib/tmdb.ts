@@ -966,13 +966,18 @@ export async function topByFilter(
   mediaType: MediaType,
   f: DiscoverFilter,
   limit = 10,
+  /* الترتيب حسب نافذة «اكتشف»: `vote_average.desc` للأفضل تقييماً (أسبوعي
+     المُصفّى)، `popularity.desc` لأعلى سنةٍ، `vote_count.desc` للأعلى
+     تاريخياً (الأكثر أصواتاً = الأكثر مشاهدةً). العتبةُ تبقى شرطاً في
+     الأحوال كي لا يتصدّر عملٌ بصوتين. */
+  sort: "vote_average.desc" | "popularity.desc" | "vote_count.desc" = "vote_average.desc",
 ): Promise<SearchResult[]> {
   let best: SearchResult[] = [];
   for (const floor of [200, 50, 10]) {
     try {
       const data = await tmdb<{ results: SearchResult[] }>(`/discover/${mediaType}`, {
         ...discoverParams(mediaType, f),
-        sort_by: "vote_average.desc",
+        sort_by: sort,
         "vote_count.gte": String(floor),
       });
       const rows = (data.results ?? [])
@@ -985,6 +990,40 @@ export async function topByFilter(
     }
   }
   return best.slice(0, limit);
+}
+
+/**
+ * أعلى ٥٠ عملاً على الإطلاق — لصفّ ذيل «اكتشف» (طلب المالك).
+ *
+ * «كل الأوقات» = الأكثر أصواتاً (`vote_count.desc`): أعلى متوسّطٍ يُصعّد
+ * أعمالاً محدودة الجمهور، وعدد الأصوات أصدق دلالةً على «ما شاهده الجميع».
+ * صفحة TMDB عشرون، فنطلب ثلاثاً لبلوغ الخمسين، ونحترم الفلتر لو وُجد.
+ */
+export async function top50(
+  mediaType: MediaType,
+  f: DiscoverFilter = {},
+  limit = 50,
+): Promise<SearchResult[]> {
+  const pages = await Promise.all(
+    [1, 2, 3].map((page) =>
+      tmdb<{ results: SearchResult[] }>(`/discover/${mediaType}`, {
+        ...discoverParams(mediaType, f),
+        sort_by: "vote_count.desc",
+        "vote_count.gte": "500",
+        page: String(page),
+      }).catch(() => ({ results: [] as SearchResult[] })),
+    ),
+  );
+  const seen = new Set<number>();
+  const rows: SearchResult[] = [];
+  for (const p of pages) {
+    for (const r of p.results ?? []) {
+      if (!r.poster_path || seen.has(r.id)) continue;
+      seen.add(r.id);
+      rows.push({ ...r, media_type: mediaType });
+    }
+  }
+  return rows.slice(0, limit);
 }
 
 /**
