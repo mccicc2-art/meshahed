@@ -365,7 +365,7 @@ export function CommunityRoom({
   /* شبهُ فورية (م٥): الاستطلاع للعضو وحده — غير العضو يرى غلافاً ثابتاً
      لا يستحق طلباً كل ست ثوانٍ. رسائل الخادم تحلّ محلّ الحالة (المتفائلةُ
      صارت حقيقيةً هناك)، وطلباتُ الانضمام كذلك فيراها المالك دون تحديث يدوي */
-  useChatPoll(status === "member");
+  useChatPoll(status === "member", ["community_messages"]);
   useEffect(() => {
     setMessages(room.messages);
   }, [room.messages]);

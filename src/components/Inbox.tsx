@@ -235,9 +235,10 @@ function ConversationView({
   const [events, setEvents] = useState<ConvEvent[]>(conv.events);
   const idRef = useRef(0);
 
-  /* شبهُ فورية (م٥): الاستطلاع يعمل ما دام الخيط مفتوحاً، وأحداث الخادم
-     الجديدة تحلّ محلّ الحالة — بما فيها المتفائلة، وقد صارت حقيقيةً هناك */
-  useChatPoll(true);
+  /* فورية (م٥/D-069): Realtime على جداول الخيط يوقظ التجديد لحظةَ وصول
+     رسالة، والاستطلاع كل ٦ ثوانٍ شبكةُ أمانٍ تحته. أحداث الخادم الجديدة
+     تحلّ محلّ الحالة — بما فيها المتفائلة، وقد صارت حقيقيةً هناك */
+  useChatPoll(true, ["title_shares", "list_shares", "share_replies"]);
   useEffect(() => {
     setEvents(conv.events);
   }, [conv.events]);
