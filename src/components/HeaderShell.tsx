@@ -9,10 +9,27 @@ import { usePathname } from "next/navigation";
  * التطبيق — الروابط في الشريط السفلي، والبحث مخفيّ على الجوال، والصورة
  * انتقلت إلى ترويسة الصفحة. أربعة وستون بكسلاً لأيقونةٍ واحدة، والغلاف
  * تحتها ينتظر. على الشاشات الواسعة يبقى كما هو لأنه يحمل الروابط والبحث.
+ *
+ * ⚠️ **`contents` لا `block` — وهذا ليس تفصيلاً في الشكل.**
+ *
+ * العنصر `sticky` يلتصق داخل صندوق **أبيه** لا داخل الشاشة. وكان هذا الغلاف
+ * `div` عادياً ارتفاعه ارتفاع الشريط نفسه (٦٥ بكسلاً)، فما إن يمرّر
+ * المستخدم ٦٥ بكسلاً حتى يخرج الأب من الشاشة ويخرج الشريط معه — أي أن
+ * `sticky top-0` في `Navbar` كان معطَّلاً في **كل** صفحة، ويُلحَظ في
+ * الطويلة منها وحدها (صفحة العمل، اكتشف، المكتبة).
+ *
+ * و`display: contents` يُلغي صندوق الغلاف ولا يُلغي أبناءه، فيعود أبو
+ * الشريط هو `body` ويعود الالتصاق يعمل. الإخفاء على الجوال يبقى كما هو:
+ * `display: none` يعمل فوق `contents` بلا تعارض.
+ *
+ * القاعدة العامة: **أي غلاف يُوضع حول عنصر `sticky` يجب أن يكون
+ * `contents`، وإلا صار سقفاً لالتصاقه.**
  */
 export function HeaderShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const hideOnMobile = pathname === "/";
 
-  return <div className={hideOnMobile ? "hidden md:block" : ""}>{children}</div>;
+  return (
+    <div className={hideOnMobile ? "hidden md:contents" : "contents"}>{children}</div>
+  );
 }
