@@ -2,7 +2,8 @@ import {
   getFollows,
   getMyRatings,
   getWatchSummary,
-  getWatchedMovieIds,
+  getWatchedMovies,
+  watchedMovieMinutes,
   getAllMovieProgress,
   getAllWatchedEpisodes,
   getWatchHistory,
@@ -121,14 +122,18 @@ function Card({ title, hint, children }: { title: string; hint?: string; childre
 export async function LibraryAnalysis({ locale }: { locale: Locale }) {
   const t = getDict(locale);
 
-  const [follows, ratings, summary, watchedMovieIds, movieProgress, history] = await Promise.all([
+  const [follows, ratings, summary, watchedMovies, movieProgress, history] = await Promise.all([
     getFollows(),
     getMyRatings(),
     getWatchSummary(),
-    getWatchedMovieIds(),
+    getWatchedMovies(),
     getAllMovieProgress(),
     getWatchHistory(1000),
   ]);
+
+  // مجموعة المعرّفات للحالة (شوهد؟)، والدقائق الفعلية للوقت — من الصفوف نفسها
+  const watchedMovieIds = new Set(watchedMovies.map((m) => m.id));
+  const movieMinutes = watchedMovieMinutes(watchedMovies);
 
   if (!follows.length) {
     return <p className="text-sm text-muted text-center py-10">{t.analysisEmpty}</p>;
@@ -216,7 +221,8 @@ export async function LibraryAnalysis({ locale }: { locale: Locale }) {
   const ratedTotal = ratings.length;
   const avg = ratedTotal ? ratings.reduce((n, r) => n + r.rating, 0) / ratedTotal : 0;
 
-  const totalMinutes = epMinutes + watchedMovieIds.size * 110;
+  // الوقت الكلّي = دقائق الحلقات + دقائق الأفلام الفعلية (لا تقدير ١١٠ الثابت)
+  const totalMinutes = epMinutes + movieMinutes;
 
   // ===== الملخّص السنوي =====
   // من بداية السنة الميلادية: السجلّ يحمل الطابع الزمني، فالحساب من
