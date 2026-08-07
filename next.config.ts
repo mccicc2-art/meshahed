@@ -23,14 +23,17 @@ const csp = [
   "form-action 'self'",
   "frame-ancestors 'none'",
   "object-src 'none'",
-  "script-src 'self' 'unsafe-inline'",
-  "style-src 'self' 'unsafe-inline'",
+  // accounts.google.com: مكتبة الدخول داخل الموقع (GIS). بلا هذا يُحجب
+  // السكربت وتسقط الطريقة إلى التحويل القديم بصمت
+  "script-src 'self' 'unsafe-inline' https://accounts.google.com",
+  "style-src 'self' 'unsafe-inline' https://accounts.google.com",
   "img-src 'self' data: blob: https://image.tmdb.org https://lh3.googleusercontent.com https://*.supabase.co",
   "font-src 'self' data:",
-  `connect-src 'self' ${supabaseHost} https://*.supabase.co wss://*.supabase.co`,
+  `connect-src 'self' ${supabaseHost} https://*.supabase.co wss://*.supabase.co https://accounts.google.com`,
   "manifest-src 'self'",
   // مشغّل الترايلر لا يُحمَّل إلا بالضغط، ومن نطاق يوتيوب بلا كوكيز
-  "frame-src https://www.youtube-nocookie.com",
+  // نافذة Google تُرسم في إطارٍ من نطاقها — والترايلر من يوتيوب بلا كوكيز
+  "frame-src https://www.youtube-nocookie.com https://accounts.google.com",
   "upgrade-insecure-requests",
 ].join("; ");
 
