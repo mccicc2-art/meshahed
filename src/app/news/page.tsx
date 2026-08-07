@@ -221,9 +221,9 @@ async function CuratedRails({
             ? upcomingByGenre(genre.tv, "tv")
             : airingTv().catch(() => [] as SearchResult[])
         : Promise.resolve([] as SearchResult[]),
-      // بِركةٌ تصل المئة لا اثنا عشر: العميل يعرض عشراً ويقلّبها بزرّ
-      // التحديث محلياً (شكوى «ثابتة من الصباح») — طلبات TMDB نفسها تقريباً
-      isWeek && !active ? getSuggestions(100, locale).catch(() => []) : Promise.resolve([]),
+      // بِركةٌ بمئات الأعمال: بذورٌ أكثر وصفحتان لكلٍّ منها (D-064)، والعميل
+      // يعرض عشراً ويسحب عيّنةً عشوائية جديدة عند كل تحديث
+      isWeek && !active ? getSuggestions(300, locale).catch(() => []) : Promise.resolve([]),
       // «من فنّانيك» — أحدث أفلام من تتابعهم (with_people)؛ صفٌّ شخصيّ
       // كصفّ المقترحات فيغيب مع الفلتر ونافذتَي السنة وكل الأوقات
       isWeek && !active
