@@ -268,6 +268,9 @@ const ar = {
   // متابعة الفنانين
   artistsRail: "من فنّانيك",
   followArtistAria: "تابِع هذا الفنان",
+  // اكتشاف القوائم العامة
+  publicListsRail: "قوائم من المجتمع",
+  listByOwner: (name: string): string => `من ${name}`,
   // المجتمعات
   commDirTitle: "المجتمعات",
   commMineSection: "مجتمعاتي",
@@ -932,6 +935,8 @@ const en: Dict = {
   privateCoverHint: "Follow them — once they accept, you'll see their library and ratings.",
   artistsRail: "From your artists",
   followArtistAria: "Follow this artist",
+  publicListsRail: "Lists from the community",
+  listByOwner: (name: string): string => `by ${name}`,
   commDirTitle: "Communities",
   commMineSection: "My communities",
   commCreate: "Create a community",

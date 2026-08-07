@@ -1764,3 +1764,85 @@ export async function getListsContaining(
     return [];
   }
 }
+
+/**
+ * أحدث القوائم المعلنة — لصفّ «قوائم من المجتمع» في اكتشف.
+ *
+ * لا SQL جديد: سياستا القراءة العامة على `user_lists` و`user_list_items`
+ * (المسموحتان عمداً في فحص qual='true' الصحّي) هما المصدر، وأسماء أصحابها
+ * من `public_profiles` الذي يُخفي الاسم بنفسه (D-011) — فقائمة مخفي الاسم
+ * تظهر بلا صاحب كما في صفحة القائمة نفسها.
+ *
+ * الأعداد تُحسب من جلبة العناصر المسقوفة بألف صفّ لخمس عشرة قائمة —
+ * دقيقة عملياً (القوائم المولَّدة عشرون عنصراً)، ولو فاضت قائمةٌ عملاقة
+ * نقص عدُّها لا الصفّ كلّه.
+ */
+export interface PublicListCard {
+  id: string;
+  name: string;
+  kind: string | null;
+  owner: string | null;
+  item_count: number;
+  posters: string[];
+}
+
+export async function getPublicListsFeed(limit = 15): Promise<PublicListCard[]> {
+  try {
+    const supabase = await createClient();
+    const user = await getUser();
+    if (!user) return [];
+    const { data: lists } = await supabase
+      .from("user_lists")
+      .select("id, user_id, name, kind, updated_at")
+      .eq("is_public", true)
+      .neq("user_id", user.id)
+      .order("updated_at", { ascending: false })
+      .limit(limit);
+    if (!lists?.length) return [];
+
+    const ids = lists.map((l) => l.id);
+    const [items, owners] = await Promise.all([
+      supabase
+        .from("user_list_items")
+        .select("list_id, poster_path, added_at")
+        .in("list_id", ids)
+        .order("added_at", { ascending: false })
+        .limit(1000),
+      supabase
+        .from("public_profiles")
+        .select("id, nickname, username, hide_name")
+        .in("id", [...new Set(lists.map((l) => l.user_id))]),
+    ]);
+
+    const byList = new Map<string, { count: number; posters: string[] }>();
+    for (const r of items.data ?? []) {
+      const e = byList.get(r.list_id) ?? { count: 0, posters: [] };
+      e.count += 1;
+      if (r.poster_path && e.posters.length < 4) e.posters.push(r.poster_path);
+      byList.set(r.list_id, e);
+    }
+    const nameOf = new Map(
+      (owners.data ?? []).map((p) => [
+        p.id,
+        p.hide_name ? null : (p.nickname || p.username || null),
+      ]),
+    );
+
+    return lists
+      .map((l) => {
+        const e = byList.get(l.id) ?? { count: 0, posters: [] };
+        return {
+          id: l.id,
+          name: l.name,
+          kind: l.kind ?? null,
+          owner: nameOf.get(l.user_id) ?? null,
+          item_count: e.count,
+          posters: e.posters,
+        };
+      })
+      /* قائمةٌ فارغة لا تُكتشف — لا تعرض شيئاً ولا تدعو لشيء */
+      .filter((c) => c.item_count > 0);
+  } catch {
+    return [];
+  }
+}
