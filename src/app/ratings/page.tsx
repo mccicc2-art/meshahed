@@ -3,6 +3,7 @@ import Image from "next/image";
 import { redirect } from "next/navigation";
 import { getUser, getMyRatings } from "@/lib/data";
 import { getT } from "@/lib/locale";
+import { localizeRows } from "@/lib/localize";
 import { posterUrl } from "@/lib/media";
 import { Icon } from "@/components/Icon";
 import { chipClass } from "@/components/ui/controls";
@@ -13,7 +14,8 @@ import { chipClass } from "@/components/ui/controls";
  * صفحة واحدة لا صفحتان: التعليق عندنا نصٌّ داخل التقييم لا كيانٌ مستقل،
  * فتقسيمه صفحةً ثانية يكرّر نفس الصفوف. الشريحتان فوق تفصلان بينهما.
  *
- * العناوين والملصقات مخزّنة مع التقييم، فلا طلب TMDB واحد هنا.
+ * العناوين والملصقات مخزّنة مع التقييم، ولا يُطلب TMDB إلا لما خالف خطُّ
+ * اسمه لغة الواجهة (D-048).
  */
 export default async function RatingsPage({
   searchParams,
@@ -23,11 +25,11 @@ export default async function RatingsPage({
   const user = await getUser();
   if (!user) redirect("/login");
 
-  const { t } = await getT();
+  const { locale, t } = await getT();
   const { with: withParam } = await searchParams;
   const onlyComments = withParam === "comments";
 
-  const all = await getMyRatings();
+  const all = await localizeRows(await getMyRatings(), locale);
   const rows = onlyComments ? all.filter((r) => r.review?.trim()) : all;
   const commentCount = all.filter((r) => r.review?.trim()).length;
 
