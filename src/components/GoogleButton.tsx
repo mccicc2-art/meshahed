@@ -134,15 +134,20 @@ export function GoogleButton({ locale }: { locale: Locale }) {
         },
       });
 
+      /* `outline` لا `filled_blue`: الزرّ الأبيض هو هويّة هذه الشاشة منذ
+         البداية (`--surface-inverse`)، والأزرق يقحم لوناً ثالثاً في واجهةٍ
+         لونها أصفر على أسود. وهذه الخيارات هي كلّ ما تسمح Google بتغييره —
+         الزرّ يرسمه محرّكها لا نحن، وشرطُ هذه الطريقة أن يكون زرَّها. */
+      const width = Math.min(400, Math.max(200, holder.current.clientWidth || 320));
       window.google.accounts.id.renderButton(holder.current, {
         type: "standard",
-        theme: "filled_blue",
+        theme: "outline",
         size: "large",
-        shape: "pill",
+        shape: "rectangular",
         text: "continue_with",
         logo_alignment: "center",
         locale,
-        width: 320,
+        width,
       });
 
       if (!cancelled) setGsiReady(true);
@@ -161,14 +166,22 @@ export function GoogleButton({ locale }: { locale: Locale }) {
   return (
     <div className="w-full">
       {/* زرّ Google نفسه — يرسمه محرّكها داخل هذا الصندوق */}
+      {/* غلافٌ يعيد للزرّ حوافّه وظلّه: محرّك Google يرسم زرّه بحوافّ
+          صغيرة، والقصّ هنا يعيده إلى سُلَّم الحواف نفسه (D-020) بلا أن
+          نمسّ الزرّ نفسه */}
       <div
         ref={holder}
-        className={`flex justify-center ${gsiReady ? "" : "hidden"}`}
+        className={`flex justify-center overflow-hidden rounded-2xl shadow-[0_12px_36px_rgba(0,0,0,0.25)] ${
+          gsiReady ? "" : "hidden"
+        }`}
         aria-busy={loading}
       />
 
-      {/* الزرّ القديم: وحده حين لا تعمل الطريقة الأولى، وسطرٌ صغير تحتها
-          حين تعمل — فمن حجب حاجبُه نافذة Google يجد باباً ثانياً */}
+      {/* الزرّ القديم يظهر وحده حين لا تعمل الطريقة الأولى. لا سطر «طريقة
+          أخرى» تحتها حين تعمل: السقوط إلى هذا الزرّ آليٌّ أصلاً (لو لم
+          تُحمَّل مكتبة Google بقي `gsiReady` خاطئاً وظهر هذا وحده)، فالسطر
+          كان يعرض بابين لمن ليس عنده مشكلة — وضجيجٌ تحت أهمّ زرٍّ في
+          التطبيق ثمنٌ أغلى ممّا يشتريه. */}
       {!gsiReady ? (
         <button
           onClick={redirectSignIn}
@@ -183,15 +196,7 @@ export function GoogleButton({ locale }: { locale: Locale }) {
           </svg>
           {loading ? t.loginRedirecting : t.loginContinueGoogle}
         </button>
-      ) : (
-        <button
-          onClick={redirectSignIn}
-          disabled={loading}
-          className="mt-3 w-full text-[12px] text-muted/70 hover:text-muted transition disabled:opacity-50"
-        >
-          {t.loginOtherWay}
-        </button>
-      )}
+      ) : null}
     </div>
   );
 }
