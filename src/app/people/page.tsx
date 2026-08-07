@@ -5,8 +5,9 @@ import {
   getUser,
   getCommunityFeed,
   getFollowLists,
-  getShares,
+  getConversations,
   getUnreadShares,
+  type ConvShareEvent,
 } from "@/lib/data";
 import { getT } from "@/lib/locale";
 import { localizeRows } from "@/lib/localize";
@@ -33,16 +34,17 @@ function asTab(v: string | undefined): Tab {
 export default async function PeoplePage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string; sort?: string }>;
+  searchParams: Promise<{ tab?: string; sort?: string; with?: string }>;
 }) {
   const user = await getUser();
   if (!user) redirect("/login");
 
   const { locale, t } = await getT();
 
-  const { tab: tabParam, sort } = await searchParams;
+  const { tab: tabParam, sort, with: withParam } = await searchParams;
   const tab = asTab(tabParam);
   const newest = sort === "new";
+  const openWith = tab === "inbox" && withParam ? withParam : null;
 
   /* الخطّان يُبنيان معاً كي يحمل التبويبان عدّادَيهما دائماً — كصفّ شرائح
      المكتبة (١٨ مسلسلاً · ١٨ فيلماً). كلٌّ نداءا definer خفيفان؛ والترجمة
@@ -57,8 +59,21 @@ export default async function PeoplePage({
   const mineCount = followingFeed.length;
   const allCount = allFeed.length;
 
-  // ===== الرسائل =====
-  const threads = tab === "inbox" ? await localizeRows(await getShares(), locale) : [];
+  // ===== الرسائل — محادثةٌ لكل شخص =====
+  // ترجمة عناوين الأعمال المُشارَكة عند العرض (D-048): نجمع أحداث المشاركة
+  // من كل المحادثات، نترجمها دفعةً، ثم نعيدها إلى مواضعها بمعرّفاتها
+  let conversations = tab === "inbox" ? await getConversations() : [];
+  if (conversations.length) {
+    const shareEvents = conversations.flatMap((c) =>
+      c.events.filter((e): e is ConvShareEvent => e.kind === "share"),
+    );
+    const localized = await localizeRows(shareEvents, locale);
+    const byId = new Map(localized.map((s) => [s.id, s]));
+    conversations = conversations.map((c) => ({
+      ...c,
+      events: c.events.map((e) => (e.kind === "share" ? byId.get(e.id) ?? e : e)),
+    }));
+  }
 
   // ===== خطّ الآراء للنشِط (مجتمعي/المجتمع) =====
   const rawFeed = tab === "all" ? allFeed : followingFeed;
@@ -145,34 +160,36 @@ export default async function PeoplePage({
 
       {/* صفٌّ واحد تحت التبويبات: ترتيب الخطّ على البداية (لتبويبَي الخطّ
           فقط)، وعدّادا المتابعة وزرّ الإضافة على الطرف — نُقلا إلى هنا من
-          أعلى الصفحة بطلب المالك */}
-      <div className="flex items-center justify-between gap-2">
-        <div className="min-w-0">
-          {tab !== "inbox" && feed.length > 0 && (
-            <div role="group" aria-label={t.feedSortGroup} className={segmentedTrack}>
-              <Link
-                href={sortBase}
-                aria-current={!newest ? "true" : undefined}
-                className={segmentedItem(!newest)}
-              >
-                {t.feedSortTop}
-              </Link>
-              <Link
-                href={sortNewHref}
-                aria-current={newest ? "true" : undefined}
-                className={segmentedItem(newest)}
-              >
-                {t.feedSortNew}
-              </Link>
-            </div>
-          )}
+          أعلى الصفحة بطلب المالك. يختفي داخل محادثةٍ مفتوحة لتصفو الدردشة */}
+      {!openWith && (
+        <div className="flex items-center justify-between gap-2">
+          <div className="min-w-0">
+            {tab !== "inbox" && feed.length > 0 && (
+              <div role="group" aria-label={t.feedSortGroup} className={segmentedTrack}>
+                <Link
+                  href={sortBase}
+                  aria-current={!newest ? "true" : undefined}
+                  className={segmentedItem(!newest)}
+                >
+                  {t.feedSortTop}
+                </Link>
+                <Link
+                  href={sortNewHref}
+                  aria-current={newest ? "true" : undefined}
+                  className={segmentedItem(newest)}
+                >
+                  {t.feedSortNew}
+                </Link>
+              </div>
+            )}
+          </div>
+          <CommunityBar following={lists.following} followers={lists.followers} locale={locale} />
         </div>
-        <CommunityBar following={lists.following} followers={lists.followers} locale={locale} />
-      </div>
+      )}
 
       {/* ===== محتوى التبويب ===== */}
       {tab === "inbox" ? (
-        <Inbox threads={threads} locale={locale} />
+        <Inbox conversations={conversations} openWith={openWith} locale={locale} />
       ) : (
         <section>
           {feed.length === 0 ? (
