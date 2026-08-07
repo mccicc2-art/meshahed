@@ -551,6 +551,8 @@ export interface PublicProfile {
   favorite_genres: number[];
   hide_name?: boolean | null;
   bio?: string | null;
+  /** حسابٌ خاص — القفل حالةٌ معلنة (profile_visibility.sql) */
+  is_private?: boolean | null;
 }
 
 /** معرّف UUID كما يكتبه Postgres — يميّز رابط الهوية عن رابط المعرّف */
@@ -585,7 +587,7 @@ export async function getProfileByUsername(
     // الأعمدة العامة وحدها (انظر supabase/public_profiles.sql)
     const { data, error } = await supabase
       .from("public_profiles")
-      .select("id, nickname, username, avatar_url, cover_url, cover_pos, avatar_pos, favorite_genres, hide_name, bio")
+      .select("id, nickname, username, avatar_url, cover_url, cover_pos, avatar_pos, favorite_genres, hide_name, bio, is_private")
       .eq(column, value)
       .maybeSingle();
 
@@ -603,6 +605,7 @@ export async function getProfileByUsername(
         cover_pos: null,
         avatar_pos: null,
         hide_name: false,
+        is_private: null,
       } as PublicProfile;
     }
 

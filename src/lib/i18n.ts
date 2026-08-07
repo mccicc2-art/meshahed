@@ -263,6 +263,8 @@ const ar = {
   blockedEmpty: "لم تحظر أحداً",
   unblockButton: "رفع الحظر",
   unblockedToast: "رُفع الحظر",
+  privateCoverTitle: "حساب خاص",
+  privateCoverHint: "تابِعه ليقبل طلبك وترى مكتبته وتقييماته.",
   // المجتمعات
   commDirTitle: "المجتمعات",
   commMineSection: "مجتمعاتي",
@@ -923,6 +925,8 @@ const en: Dict = {
   blockedEmpty: "You haven't blocked anyone",
   unblockButton: "Unblock",
   unblockedToast: "Unblocked",
+  privateCoverTitle: "Private account",
+  privateCoverHint: "Follow them — once they accept, you'll see their library and ratings.",
   commDirTitle: "Communities",
   commMineSection: "My communities",
   commCreate: "Create a community",
