@@ -11,13 +11,15 @@ import {
   topByFilter,
   upcomingByFilter,
   nowPlayingMovies,
+  listWatchProviders,
   titleOf,
   yearOf,
   posterUrl,
   type SearchResult,
   type DiscoverFilter,
 } from "@/lib/tmdb";
-import { getT } from "@/lib/locale";
+import { getT, getWatchRegion } from "@/lib/locale";
+import { regionName } from "@/lib/region";
 import { type Locale } from "@/lib/i18n";
 import {
   parseBrowse,
@@ -35,14 +37,6 @@ import { DiscoverFilters } from "@/components/DiscoverFilters";
 import { getSuggestions } from "@/lib/suggest";
 
 type T = Awaited<ReturnType<typeof getT>>["t"];
-
-// اسم المنطقة باللغتين — كانت عربيةً وحدها فتتسرّب إلى الواجهة الإنجليزية
-const REGIONS: Record<string, { ar: string; en: string }> = {
-  SA: { ar: "السعودية", en: "Saudi Arabia" },
-  AE: { ar: "الإمارات", en: "UAE" },
-  EG: { ar: "مصر", en: "Egypt" },
-  US: { ar: "أمريكا", en: "the US" },
-};
 
 function dateOf(r: SearchResult) {
   return r.release_date ?? r.first_air_date ?? "";
@@ -68,6 +62,8 @@ export default async function NewsPage({
     g?: string;
     sort?: string;
     lang?: string;
+    co?: string;
+    p?: string;
     era?: string;
     rate?: string;
   }>;
@@ -79,6 +75,14 @@ export default async function NewsPage({
   const sp = await searchParams;
   const browse = parseBrowse(sp);
 
+  /* قائمة المنصّات تُجلب على الخادم وتُمرَّر للورقة: طلبٌ واحد مخبَّأ ساعةً
+     في طبقة fetch، ورأس الصفحة يبقى يرسم فوراً لأن الصفوف وحدها خلف
+     Suspense. وفشلُ الجلب يُخفي المحور بدل أن يعرض خانةً فارغة */
+  const [providers, region] = await Promise.all([
+    listWatchProviders(browse.type === "tv" ? "tv" : "movie"),
+    getWatchRegion(),
+  ]);
+
   return (
     <div className="space-y-8">
       {/* العنوان مخفيٌّ بصريًّا وباقٍ لقارئ الشاشة — أُزيلت الترويسة */}
@@ -89,6 +93,10 @@ export default async function NewsPage({
         type={browse.type}
         genre={browse.genre?.slug ?? null}
         lang={browse.lang?.code ?? null}
+        country={browse.country?.code ?? null}
+        provider={browse.provider}
+        providers={providers}
+        region={region}
         era={browse.era?.slug ?? null}
         rate={browse.rate}
         count={browseCount(browse)}
@@ -106,7 +114,7 @@ export default async function NewsPage({
           </div>
         }
       >
-        <CuratedRails locale={locale} t={t} browse={browse} />
+        <CuratedRails locale={locale} t={t} browse={browse} region={region} />
       </Suspense>
     </div>
   );
@@ -133,12 +141,15 @@ async function CuratedRails({
   locale,
   t,
   browse,
+  region,
 }: {
   locale: Locale;
   t: T;
   browse: BrowseQuery;
+  /** بلد المشاهدة — يُقاس عليه فلتر المنصّات */
+  region: string;
 }) {
-  const { type, genre, lang, era, rate, active } = browse;
+  const { type, genre, lang, country, provider, era, rate, active } = browse;
   const wantMovies = type !== "tv";
   const wantSeries = type !== "movie";
   const deep = needsDiscover(browse);
@@ -146,6 +157,9 @@ async function CuratedRails({
   /* الفلتر بلا تصنيف — لكل جهةٍ معرّفاتها فيُضاف عند الطلب */
   const base: DiscoverFilter = {
     lang: lang?.code ?? null,
+    country: country?.code ?? null,
+    provider,
+    watchRegion: region,
     from: era?.from ?? null,
     to: era?.to ?? null,
     minRate: rate,
@@ -198,6 +212,7 @@ async function CuratedRails({
   const fitsCinema = (r: SearchResult) => {
     if (genre && !(r.genre_ids ?? []).some((id) => genre.movie.includes(id))) return false;
     if (lang && r.original_language !== lang.code) return false;
+    if (country && !(r.origin_country ?? []).includes(country.code)) return false;
     if (rate && r.vote_average < rate) return false;
     if (era) {
       const d = dateOf(r);
@@ -207,8 +222,12 @@ async function CuratedRails({
     return true;
   };
 
-  const inCinemas =
-    cinemas && active
+  /* «في السينما» يسقط كلّه عند اختيار منصّة: الصفّ عن دور العرض، والسؤال
+     «ما المتاح على اشتراكي» نقيضه — وصفٌّ لا يمكن تصفيته بما اختير يكذب
+     على الفلتر */
+  const inCinemas = provider
+    ? null
+    : cinemas && active
       ? { region: cinemas.region, results: cinemas.results.filter(fitsCinema) }
       : cinemas;
 
@@ -265,9 +284,10 @@ async function CuratedRails({
           title={t.inCinemas}
           icon="film"
           items={inCinemas.results}
-          note={t.inCinemasRegion(
-            REGIONS[inCinemas.region]?.[locale === "en" ? "en" : "ar"] ?? inCinemas.region,
-          )}
+          /* اسم البلد من `region.ts` لا من خريطةٍ محلية: صفّ السينما
+             صار يبدأ من بلد المستخدم، وخريطةٌ من أربعة بلدان كانت
+             ستطبع «MA» لمن اختار المغرب */
+          note={t.inCinemasRegion(regionName(inCinemas.region, locale === "en" ? "en" : "ar"))}
           ranked={false}
         />
       )}
