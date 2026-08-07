@@ -4,7 +4,7 @@ import { redirect, notFound } from "next/navigation";
 import Image from "next/image";
 import {
   getUser,
-  isFollowing,
+  getFollowState,
   getWatchedForShow,
   getMyRating,
   getCommunityRating,
@@ -51,14 +51,15 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
   // بيانات أول رسمة فقط في الموجة الحاسمة — الترايلر والتعليقات تُبثّ
   // لاحقاً عبر Suspense فلا تؤخّر ترويسة الصفحة وتبويب الحلقات
   const userRegion = await getWatchRegion();
-  const [tv, following, watched, watchWhere, myLists, inLists] = await Promise.all([
+  const [tv, followState, watched, watchWhere, myLists, inLists] = await Promise.all([
     getTv(tvId).catch(() => null),
-    isFollowing(tvId, "tv"),
+    getFollowState(tvId, "tv"),
     getWatchedForShow(tvId),
     getWatchProviders("tv", tvId),
     getMyLists(),
     getListsContaining(tvId, "tv"),
   ]);
+  const following = followState.following;
 
   if (!tv) {
     return (
@@ -158,6 +159,7 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
           tmdbId={tvId}
           mediaType="tv"
           posterPath={tv.poster_path}
+          initialDropped={followState.dropped}
         />
       </div>
 
