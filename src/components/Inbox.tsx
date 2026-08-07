@@ -12,6 +12,7 @@ import { formatDateShort } from "@/lib/when";
 import { tap } from "@/lib/haptics";
 import { flashError } from "@/lib/toast";
 import { coalescedRefresh } from "@/lib/refresh";
+import { useChatPoll } from "@/lib/usePoll";
 import { replyToShare, markConversationRead, hideConversation } from "@/lib/actions";
 import { StartConversationSheet } from "./StartConversationSheet";
 import type { Conversation, ConvEvent, PersonLite } from "@/lib/data";
@@ -234,7 +235,14 @@ function ConversationView({
   const [events, setEvents] = useState<ConvEvent[]>(conv.events);
   const idRef = useRef(0);
 
-  // فتح المحادثة يُعلّم واردها مقروءاً مرّةً — ثم يُحدَّث ليخفت العدّاد
+  /* شبهُ فورية (م٥): الاستطلاع يعمل ما دام الخيط مفتوحاً، وأحداث الخادم
+     الجديدة تحلّ محلّ الحالة — بما فيها المتفائلة، وقد صارت حقيقيةً هناك */
+  useChatPoll(true);
+  useEffect(() => {
+    setEvents(conv.events);
+  }, [conv.events]);
+
+  // الوارد يُعلَّم مقروءاً عند الفتح — وكلّما وصل جديدٌ والخيط مفتوح
   useEffect(() => {
     if (conv.unread > 0) {
       markConversationRead(conv.personId)
@@ -242,7 +250,7 @@ function ConversationView({
         .catch(() => {});
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [conv.unread]);
 
   return (
     <div className="flex flex-col">

@@ -11,6 +11,7 @@ import { getDict, num, type Locale } from "@/lib/i18n";
 import { tap } from "@/lib/haptics";
 import { toast, flashError } from "@/lib/toast";
 import { coalescedRefresh } from "@/lib/refresh";
+import { useChatPoll } from "@/lib/usePoll";
 import {
   createCommunity,
   joinCommunity,
@@ -360,6 +361,17 @@ export function CommunityRoom({
   const [confirmDelete, setConfirmDelete] = useState(false);
   const idRef = useRef(0);
   const endRef = useRef<HTMLDivElement>(null);
+
+  /* شبهُ فورية (م٥): الاستطلاع للعضو وحده — غير العضو يرى غلافاً ثابتاً
+     لا يستحق طلباً كل ست ثوانٍ. رسائل الخادم تحلّ محلّ الحالة (المتفائلةُ
+     صارت حقيقيةً هناك)، وطلباتُ الانضمام كذلك فيراها المالك دون تحديث يدوي */
+  useChatPoll(status === "member");
+  useEffect(() => {
+    setMessages(room.messages);
+  }, [room.messages]);
+  useEffect(() => {
+    setReqs(room.joinRequests);
+  }, [room.joinRequests]);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: "end" });
