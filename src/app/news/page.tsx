@@ -206,7 +206,7 @@ async function CuratedRails({
         : topTenThisWeek(mt).catch(() => [] as SearchResult[]);
   };
 
-  const [topMovies, topSeries, topAnime, cinemas, soonMovies, soonSeries, suggested, artistWorks, publicLists, top50Movies, top50Series] =
+  const [topMovies, topSeries, topAnime, cinemas, soonMovies, soonSeries, publicLists, top50Movies, top50Series] =
     await Promise.all([
       wantMovies && !upcoming ? topFor("movie", genre?.movie) : Promise.resolve([] as SearchResult[]),
       wantSeries && !upcoming ? topFor("tv", genre?.tv) : Promise.resolve([] as SearchResult[]),
@@ -230,16 +230,6 @@ async function CuratedRails({
           : genre
             ? upcomingByGenre(genre.tv, "tv")
             : airingTv().catch(() => [] as SearchResult[])
-        : Promise.resolve([] as SearchResult[]),
-      // بِركةٌ بمئات الأعمال: بذورٌ أكثر وصفحتان لكلٍّ منها (D-064)، والعميل
-      // يعرض عشراً ويسحب عيّنةً عشوائية جديدة عند كل تحديث
-      isWeek && !active ? getSuggestions(300, locale).catch(() => []) : Promise.resolve([]),
-      // «من فنّانيك» — أحدث أفلام من تتابعهم (with_people)؛ صفٌّ شخصيّ
-      // كصفّ المقترحات فيغيب مع الفلتر ونافذتَي السنة وكل الأوقات
-      isWeek && !active
-        ? getFollowedArtists(20)
-            .then((a) => (a.length ? worksByPeople(a.map((x) => x.person_id), 20) : []))
-            .catch(() => [] as SearchResult[])
         : Promise.resolve([] as SearchResult[]),
       // «قوائم من المجتمع» — أحدث القوائم المعلنة؛ كذيل الخمسين: بلا نافذة
       // (القوائم بلا زمن) وتغيب مع الفلتر (لا تُصفّى بمعاييره فتكذب عليه)
@@ -306,33 +296,15 @@ async function CuratedRails({
 
   return (
     <div className="space-y-8">
-      {suggested.length > 0 && (
-        /* السبب يُحسب هنا (يحتاج القاموس) والبطاقات تُسلسَل خفيفةً للعميل */
-        <PickedForYou
-          title={t.suggestedForYou}
-          locale={locale}
-          items={suggested.map((s) => ({
-            tmdbId: s.result.id,
-            mediaType: s.result.media_type === "movie" ? ("movie" as const) : ("tv" as const),
-            title: titleOf(s.result),
-            posterPath: s.result.poster_path,
-            year: yearOf(s.result),
-            note:
-              s.source === "rated" && s.seedTitle
-                ? t.recoBecauseRated(s.seedTitle)
-                : s.source === "follows" && s.seedTitle
-                  ? t.recoBecauseFollow(s.seedTitle)
-                  : s.source === "recent" && s.seedTitle
-                    ? t.recoBecauseWatched(s.seedTitle)
-                    : t.recoBecauseGenre,
-          }))}
-        />
-      )}
-
-      {/* «من فنّانيك» بعد المقترحات مباشرة: كلاهما صفٌّ شخصيّ، والشخصيّ
-          يسبق العامّ. غير مرقّم — هذه أحدث أعمال فنّانيك لا ترتيبها */}
-      {artistWorks.length > 0 && (
-        <RankedRail title={t.artistsRail} icon="people" items={artistWorks} ranked={false} />
+      {/* ===== الصفّان الشخصيّان — Suspense مستقلّ (م٧/D-071) =====
+          المقترحات وحدها ~٤٠ طلب TMDB في أول تحميل، وكانت داخل
+          Promise.all الصفوف كلّها فيرهن أبطأُ طلبٍ رسمَ الصفحة بأكملها.
+          فصلُهما يجعل «أفضل ١٠» ودور العرض تظهر فور جاهزيتها، ويلحق
+          الشخصيّ حين يكتمل — والهيكل يحجز ارتفاعه (D-046) */}
+      {isWeek && !active && (
+        <Suspense fallback={<RailSkeleton count={6} />}>
+          <PersonalRails locale={locale} t={t} />
+        </Suspense>
       )}
 
       {inCinemas && inCinemas.results.length > 0 && (
@@ -376,6 +348,57 @@ async function CuratedRails({
         <p className="text-center text-muted py-20">
           {active ? t.browseEmpty : t.newsEmpty}
         </p>
+      )}
+    </div>
+  );
+}
+
+/**
+ * الصفّان الشخصيّان — «مقترح لك» و«من فنّانيك» (م٧/D-071).
+ *
+ * مكوّن خادمٍ مستقلٌّ خلف Suspense خاصّ: هذان أثقل ما في اكتشف (بِركة
+ * الثلاثمئة D-064 + with_people) وأكثره خصوصيةً فأقلّه استفادةً من خبيئة
+ * fetch المشتركة — ففُصلا عن المسار الحرج بدل أن يرهنا رسم الصفحة كلّها.
+ */
+async function PersonalRails({ locale, t }: { locale: Locale; t: T }) {
+  const [suggested, artistWorks] = await Promise.all([
+    getSuggestions(300, locale).catch(() => []),
+    getFollowedArtists(20)
+      .then((a) => (a.length ? worksByPeople(a.map((x) => x.person_id), 20) : []))
+      .catch(() => [] as SearchResult[]),
+  ]);
+
+  if (suggested.length === 0 && artistWorks.length === 0) return null;
+
+  return (
+    <div className="space-y-8">
+      {suggested.length > 0 && (
+        /* السبب يُحسب هنا (يحتاج القاموس) والبطاقات تُسلسَل خفيفةً للعميل */
+        <PickedForYou
+          title={t.suggestedForYou}
+          locale={locale}
+          items={suggested.map((s) => ({
+            tmdbId: s.result.id,
+            mediaType: s.result.media_type === "movie" ? ("movie" as const) : ("tv" as const),
+            title: titleOf(s.result),
+            posterPath: s.result.poster_path,
+            year: yearOf(s.result),
+            note:
+              s.source === "rated" && s.seedTitle
+                ? t.recoBecauseRated(s.seedTitle)
+                : s.source === "follows" && s.seedTitle
+                  ? t.recoBecauseFollow(s.seedTitle)
+                  : s.source === "recent" && s.seedTitle
+                    ? t.recoBecauseWatched(s.seedTitle)
+                    : t.recoBecauseGenre,
+          }))}
+        />
+      )}
+
+      {/* «من فنّانيك» بعد المقترحات مباشرة: كلاهما صفٌّ شخصيّ، والشخصيّ
+          يسبق العامّ. غير مرقّم — هذه أحدث أعمال فنّانيك لا ترتيبها */}
+      {artistWorks.length > 0 && (
+        <RankedRail title={t.artistsRail} icon="people" items={artistWorks} ranked={false} />
       )}
     </div>
   );
