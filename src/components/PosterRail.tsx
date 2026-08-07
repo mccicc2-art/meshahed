@@ -15,6 +15,7 @@ export function PosterRail({
   href,
   seeAllLabel,
   subtitle,
+  action,
   children,
 }: {
   title: string;
@@ -24,6 +25,8 @@ export function PosterRail({
   href?: string;
   seeAllLabel?: string;
   subtitle?: string;
+  /** عنصرٌ في طرف العنوان (زرّ إجراء) — بديلٌ عن رابط «الكل» في هذا الصفّ */
+  action?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
@@ -40,14 +43,16 @@ export function PosterRail({
           )}
           {title}
         </h2>
-        {href && seeAllLabel && (
-          <Link
-            href={href}
-            className="text-[13px] text-muted hover:text-accent transition shrink-0"
-          >
-            {seeAllLabel}
-          </Link>
-        )}
+        {action
+          ? action
+          : href && seeAllLabel && (
+              <Link
+                href={href}
+                className="text-[13px] text-muted hover:text-accent transition shrink-0"
+              >
+                {seeAllLabel}
+              </Link>
+            )}
       </div>
       {subtitle && <p className="text-xs text-muted mb-3">{subtitle}</p>}
       {!subtitle && <div className="mb-3" />}

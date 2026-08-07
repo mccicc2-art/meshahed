@@ -3,6 +3,7 @@ import type { MediaType } from "@/lib/media";
 import { getDict, type Locale } from "@/lib/i18n";
 import { PosterRail, RailItem } from "./PosterRail";
 import { PosterCard } from "./PosterCard";
+import { AddWorksToList } from "./AddWorksToList";
 
 /**
  * ذيل صفحة العمل: الأجزاء ثم الأعمال المرتبطة.
@@ -49,7 +50,16 @@ export async function RelatedTitles({
       className="mt-10 space-y-8 scroll-mt-[calc(var(--header-h)+1rem)]"
     >
       {collection && (
-        <PosterRail title={t.relatedPartsTitle} icon="film" subtitle={collection.name}>
+        <PosterRail
+          title={t.relatedPartsTitle}
+          icon="film"
+          subtitle={collection.name}
+          action={
+            collectionId ? (
+              <AddWorksToList source="collection" id={collectionId} locale={locale} />
+            ) : undefined
+          }
+        >
           {collection.parts.map((p) => (
             <RailItem key={p.id}>
               <PosterCard
