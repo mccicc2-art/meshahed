@@ -57,6 +57,18 @@ export default async function RootLayout({
       <head>
         {/* ألوان الثيم متغيّرات CSS مبنية من قائمة ثابتة في themes.ts — لا مدخلات مستخدم */}
         <style dangerouslySetInnerHTML={{ __html: themeCss(theme) }} />
+        {/* هل نحن داخل تطبيقٍ مثبّت؟ سطرٌ واحد قبل أول رسمة.
+            يجري هنا لا في تأثيرٍ بعد التركيب: لو تأخّر لرُسمت الترويسة
+            مرّةً فوق الساعة ثم قفزت — والقفزة أسوأ من التراكب.
+            ثابتٌ حرفياً بلا أي مدخلٍ من المستخدم. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "try{var m=function(q){return window.matchMedia&&window.matchMedia(q).matches};" +
+              "if(navigator.standalone||m('(display-mode: standalone)')||m('(display-mode: fullscreen)')||m('(display-mode: minimal-ui)'))" +
+              "document.documentElement.setAttribute('data-standalone','1')}catch(e){}",
+          }}
+        />
       </head>
       <body className="min-h-full flex flex-col">
         {/* رابط تخطّي للتنقّل بلوحة المفاتيح — يظهر عند التركيز فقط */}
