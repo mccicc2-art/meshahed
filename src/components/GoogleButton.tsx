@@ -62,6 +62,10 @@ export function GoogleButton({ locale }: { locale: Locale }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [gsiReady, setGsiReady] = useState(false);
+  /* بابٌ ثانٍ لا يظهر إلا لمن احتاجه: السطر تحت الزرّ كان يعرض خياراً
+     ثانياً على كل زائرٍ بلا سبب، وحذفُه بالكامل كان سيحبس من تعطّلت عنده
+     النافذة. فصار يظهر بعد أول فشلٍ فقط — نظيفٌ للناجح، ومنجاةٌ للمتعثّر. */
+  const [failed, setFailed] = useState(false);
   const holder = useRef<HTMLDivElement>(null);
   const done = useRef(false);
 
@@ -129,6 +133,7 @@ export function GoogleButton({ locale }: { locale: Locale }) {
             router.replace("/");
           } catch (e) {
             setLoading(false);
+            setFailed(true);
             alert(t.loginFailed + (e as Error).message);
           }
         },
@@ -177,12 +182,7 @@ export function GoogleButton({ locale }: { locale: Locale }) {
         aria-busy={loading}
       />
 
-      {/* الزرّ القديم يظهر وحده حين لا تُحمَّل مكتبة Google.
-          والسطر تحته **مؤقّت**: حُذف بطلب المالك ثم أُعيد في اليوم نفسه.
-          السبب: السقوط الآليّ يغطّي «المكتبة لم تصل» ولا يغطّي «النافذة
-          فتحت بيضاء» — وهي الحالة التي وقعت فعلاً بينما ينتشر تسجيل
-          النطاق عند Google. وباب دخولٍ بلا مخرجٍ ثانٍ في تلك الحالة يعني
-          مستخدماً محبوساً خارج حسابه. يُحذف حين تُثبت النافذة أنها تعمل. */}
+      {/* الزرّ القديم يظهر وحده حين لا تُحمَّل مكتبة Google أصلاً */}
       {!gsiReady ? (
         <button
           onClick={redirectSignIn}
@@ -197,7 +197,7 @@ export function GoogleButton({ locale }: { locale: Locale }) {
           </svg>
           {loading ? t.loginRedirecting : t.loginContinueGoogle}
         </button>
-      ) : (
+      ) : failed ? (
         <button
           onClick={redirectSignIn}
           disabled={loading}
@@ -205,7 +205,7 @@ export function GoogleButton({ locale }: { locale: Locale }) {
         >
           {t.loginOtherWay}
         </button>
-      )}
+      ) : null}
     </div>
   );
 }
