@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
-import { getUser } from "@/lib/data";
+import { getUser, getFollowedArtists } from "@/lib/data";
 import {
   upcomingMovies,
   airingTv,
@@ -10,6 +10,7 @@ import {
   upcomingByGenre,
   topByFilter,
   top50,
+  worksByPeople,
   upcomingByFilter,
   nowPlayingMovies,
   listWatchProviders,
@@ -195,7 +196,7 @@ async function CuratedRails({
         : topTenThisWeek(mt).catch(() => [] as SearchResult[]);
   };
 
-  const [topMovies, topSeries, topAnime, cinemas, soonMovies, soonSeries, suggested, top50Movies, top50Series] =
+  const [topMovies, topSeries, topAnime, cinemas, soonMovies, soonSeries, suggested, artistWorks, top50Movies, top50Series] =
     await Promise.all([
       wantMovies ? topFor("movie", genre?.movie) : Promise.resolve([] as SearchResult[]),
       wantSeries ? topFor("tv", genre?.tv) : Promise.resolve([] as SearchResult[]),
@@ -222,6 +223,13 @@ async function CuratedRails({
       // بِركةٌ تصل المئة لا اثنا عشر: العميل يعرض عشراً ويقلّبها بزرّ
       // التحديث محلياً (شكوى «ثابتة من الصباح») — طلبات TMDB نفسها تقريباً
       isWeek && !active ? getSuggestions(100, locale).catch(() => []) : Promise.resolve([]),
+      // «من فنّانيك» — أحدث أفلام من تتابعهم (with_people)؛ صفٌّ شخصيّ
+      // كصفّ المقترحات فيغيب مع الفلتر ونافذتَي السنة وكل الأوقات
+      isWeek && !active
+        ? getFollowedArtists(20)
+            .then((a) => (a.length ? worksByPeople(a.map((x) => x.person_id), 20) : []))
+            .catch(() => [] as SearchResult[])
+        : Promise.resolve([] as SearchResult[]),
       // أعلى ٥٠ على الإطلاق — ذيلٌ ثابت في الحالة غير المُصفّاة (طلب المالك)
       !active && wantMovies ? top50("movie").catch(() => [] as SearchResult[]) : Promise.resolve([] as SearchResult[]),
       !active && wantSeries ? top50("tv").catch(() => [] as SearchResult[]) : Promise.resolve([] as SearchResult[]),
@@ -303,6 +311,12 @@ async function CuratedRails({
                     : t.recoBecauseGenre,
           }))}
         />
+      )}
+
+      {/* «من فنّانيك» بعد المقترحات مباشرة: كلاهما صفٌّ شخصيّ، والشخصيّ
+          يسبق العامّ. غير مرقّم — هذه أحدث أعمال فنّانيك لا ترتيبها */}
+      {artistWorks.length > 0 && (
+        <RankedRail title={t.artistsRail} icon="people" items={artistWorks} ranked={false} />
       )}
 
       {inCinemas && inCinemas.results.length > 0 && (
