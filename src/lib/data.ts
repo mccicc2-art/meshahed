@@ -1186,6 +1186,44 @@ export async function getList(listId: string): Promise<{
   }
 }
 
+/**
+ * قائمة معلنة، لزائرٍ بلا حساب.
+ *
+ * بابٌ واحد (`public_list`) لا قراءةٌ من ثلاثة جداول: سياسات القراءة العامّة
+ * مقصورة على المسجَّلين، فالرابط المُشارَك كان يطلب تسجيل دخولٍ ممّن أُرسل
+ * إليه — أي أنّ «المعلنة» لم تكن معلنة. الدالّة تُرجع القائمة وصاحبها
+ * وعناصرها، وتُرجع لا شيء لو كانت خاصّة (انظر security2.sql).
+ */
+export interface PublicList {
+  id: string;
+  name: string;
+  subtitle: string | null;
+  kind: ListKind;
+  created_at: string;
+  owner_id: string;
+  owner_nickname: string | null;
+  owner_username: string | null;
+  owner_avatar: string | null;
+  items: ListItem[];
+}
+
+export async function getPublicList(listId: string): Promise<PublicList | null> {
+  if (!/^[0-9a-f-]{36}$/i.test(listId)) return null;
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("public_list", { p_id: listId });
+    if (error || !data?.length) return null;
+    const row = data[0] as PublicList;
+    return {
+      ...row,
+      kind: (row.kind ?? "regular") as ListKind,
+      items: Array.isArray(row.items) ? (row.items as ListItem[]) : [],
+    };
+  } catch {
+    return null;
+  }
+}
+
 /** أي قوائمي تحتوي هذا العمل — لتعليم الأزرار في صفحة العمل */
 export async function getListsContaining(
   tmdbId: number,
