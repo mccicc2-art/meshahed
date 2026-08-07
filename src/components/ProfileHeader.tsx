@@ -174,7 +174,10 @@ export function ProfileHeader({
 
         {/* تحت شريط الحالة دائماً لا فوقه — و`--safe-top` يضمن ذلك مثبَّتاً */}
         {/* «Loopz» علامةٌ مائية خفيفة (عتامة ٧٪) لا شعارٌ بارز: تبقى صورةُ الغلاف هي البطل البصري. العتامة على العنصر تُخفت الظلّ الموجود تلقائياً. */}
-        <span className="absolute top-[calc(0.9rem+var(--safe-top))] start-4 opacity-[0.07] drop-shadow-[0_2px_6px_rgba(0,0,0,0.6)]">
+        {/* ١٫٤rem لا ٠٫٩: على شاشةٍ ذات جزيرة، `--safe-top` يقيس الجزيرة
+            نفسها ولا يترك بعدها فراغاً — فتلامس العلامةُ الساعةَ بلا أن
+            تغطّيها. الفرق نصفُ سنتيمتر يفصل «تحت الساعة» عن «ملتصقٌ بها» */}
+        <span className="absolute top-[calc(1.4rem+var(--safe-top))] start-4 opacity-[0.07] drop-shadow-[0_2px_6px_rgba(0,0,0,0.6)]">
           <Logo size={24} className="text-white" />
         </span>
 
@@ -183,7 +186,10 @@ export function ProfileHeader({
       </div>
 
       {/* ===== كتلة الهوية ===== */}
-      <div className="flex items-end gap-3 pe-16 -mt-[5.25rem] sm:-mt-[5.75rem] relative z-10">
+      {/* `items-center` لا `items-end`: الاسم كان يجلس على قاع الصورة
+          فيُقرأ ذيلاً لها لا قريناً؛ وتوسيطُه على ارتفاعها يجعل الكتلتين
+          سطراً واحداً. قرارُ المالك، وهو ما تفعله كل شبكة تواصل. */}
+      <div className="flex items-center gap-3 pe-16 -mt-[5.25rem] sm:-mt-[5.75rem] relative z-10">
         {/* حلقة متدرّجة حول الصورة: تفصلها عن الغلاف وتعطيها ثقل المرجع */}
         <Link href="/profile/settings?s=profile" className="shrink-0">
           <span
@@ -204,13 +210,24 @@ export function ProfileHeader({
           </span>
         </Link>
 
-        <div className="min-w-0 flex-1 pb-1">
+        <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 min-w-0">
             <h1 className="text-lg sm:text-xl font-bold truncate drop-shadow-[0_2px_6px_rgba(0,0,0,0.7)]">
               {displayName}
             </h1>
             {verified && <VerifiedMark size={17} title={t.verifiedTitle} />}
           </div>
+
+          {/* النبذة تحت الاسم مباشرةً لا تحت الكتلة: هي تتمّةُ التعريف
+              بالنفس، وفصلُها عن الاسم بصفٍّ من الأرقام يقطع الجملة.
+              سطران بحدّ أقصى فوق صورة الغلاف، وظلٌّ خفيف كظلّ الاسم كي
+              تُقرأ على أي لون. وتغيب كلّها حين لا توجد — لا صندوق فارغ
+              ولا هامشٌ محجوز (D-044) */}
+          {bioText && (
+            <p className="mt-1 text-[12.5px] leading-snug text-white/75 line-clamp-2 max-w-[42ch] drop-shadow-[0_2px_6px_rgba(0,0,0,0.7)]">
+              {bioText}
+            </p>
+          )}
 
           {/* لا سطرَ @معرّف تحت الاسم: الاسم الظاهر يكفي هنا، والمعرّفُ
               تقنيّةُ روابطَ لا هويةُ عرضٍ — مكانُه صفحات المجتمع حيث يفرّق
@@ -331,16 +348,6 @@ export function ProfileHeader({
           </div>
         </div>
       )}
-      {/* ===== النبذة =====
-          تحت الهوية وفوق الأرقام: هي تعريفُ صاحب الصفحة بنفسه، وموضعها
-          بعد اسمه وقبل إحصاءاته. وتغيب كلّها حين لا توجد — لا صندوق
-          فارغ ولا هامشٌ محجوز (D-044) */}
-      {bioText && (
-        <p className="relative z-10 mt-3 px-0.5 text-[13px] text-muted leading-snug max-w-[46ch]">
-          {bioText}
-        </p>
-      )}
-
       {/* ===== المستوى =====
           `z-10` ليس زينة: الغلاف عنصرٌ `relative`، والعناصر الموضوعة
           تُرسم فوق ما بعدها من عناصر التدفّق العادي — فكان سطر المستوى
