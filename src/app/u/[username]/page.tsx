@@ -73,6 +73,9 @@ export default async function PublicProfilePage({
   ]);
 
   const displayName = displayNameOf(profile, t.anonymousUser);
+  /* النبذة تتبع الاسم في الإخفاء — والقطع منفَّذٌ في `public_profiles`
+     نفسه لا هنا (profile_bio.sql)؛ هذا السطر حارسٌ ثانٍ لا أوّل */
+  const bioText = profile.hide_name ? null : (profile.bio ?? null);
   const withReview = ratings.filter((r) => r.review?.trim());
 
   const tvFollows = follows.filter((f) => f.media_type === "tv" && !f.dropped);
@@ -203,6 +206,16 @@ export default async function PublicProfilePage({
             ))}
           </div>
         </div>
+
+        {/* ===== النبذة =====
+            تحت الهوية وفوق الأرقام: هي تعريفُ صاحب الصفحة بنفسه، وموضعها
+            بعد اسمه وقبل إحصاءاته. وتغيب كلّها حين لا توجد — لا صندوق
+            فارغ ولا هامشٌ محجوز (D-044) */}
+        {bioText && (
+          <p className="relative z-10 mt-3 px-0.5 text-[13px] text-muted leading-snug max-w-[46ch]">
+            {bioText}
+          </p>
+        )}
 
         {/* ===== المستوى ===== */}
         <div className="relative z-10 mt-5 px-0.5">
