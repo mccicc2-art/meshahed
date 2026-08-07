@@ -23,6 +23,37 @@
 @import "@fontsource/poppins/latin-700.css";
 @import "@fontsource/poppins/latin-800.css";
 
+/* خطّا احتياطٍ بمقاسات الخطّ الحقيقي.
+   المشكلة المرصودة: تُفتح الصفحة فيظهر الخطّ كبيراً ثم يصغر. سببها أن
+   المتصفّح يرسم بخطّ النظام ريثما يصل الخطّ المستضاف (`font-display: swap`
+   في حزم fontsource)، وخطّ النظام أعرض وأطول سطراً — فحين يصل الخطّ
+   الحقيقي يُعاد تخطيط النصّ كلّه أمام عين القارئ.
+
+   العلاج ليس منع التبديل بل جعله غير مرئي: عائلتا احتياطٍ مبنيّتان على
+   خطوط النظام مع تعديلاتٍ محسوبة من ملفّي الخطّ نفسيهما (fontTools) حتى
+   يشغل النصّ المؤقّت المساحة ذاتها بالضبط. الأرقام:
+     Poppins  — ارتفاع س ٥٤٨/١٠٠٠، صعود ١٠٥٪، هبوط ٣٥٪، فجوة ١٠٪
+     Cairo    — ارتفاع س ٥٠٠/١٠٠٠، صعود ١٣٠٫٣٪، هبوط ٥٧٫١٪، فجوة ٠
+   و`size-adjust` نسبةُ ارتفاع السين بين الخطّ وبديله، والبقيّة مقسومةٌ
+   عليها لأن التعديلات تُقاس على الحجم بعد الضبط. */
+@font-face {
+  font-family: "Poppins Fallback";
+  src: local("Arial"), local("Helvetica"), local("Liberation Sans");
+  size-adjust: 105.7%;
+  ascent-override: 99.3%;
+  descent-override: 33.1%;
+  line-gap-override: 9.5%;
+}
+
+@font-face {
+  font-family: "Cairo Fallback";
+  src: local("Tahoma"), local("Segoe UI"), local("Arial");
+  size-adjust: 91.7%;
+  ascent-override: 142.1%;
+  descent-override: 62.3%;
+  line-gap-override: 0%;
+}
+
 :root {
   /* هوية Loopz الرسمية — أصفر #FFD200 على أسود #0D0D0D (كتيّب العلامة).
      القيم نفسها في themes.ts، وهذه لأول رسم قبل حقن الثيم */
@@ -126,7 +157,7 @@
   --color-success: var(--success);
   --color-error: var(--error);
   --color-info: var(--info);
-  --font-sans: "Poppins", "Cairo", system-ui, sans-serif;
+  --font-sans: "Poppins", "Cairo", "Poppins Fallback", "Cairo Fallback", system-ui, sans-serif;
 }
 
 * {
@@ -145,7 +176,8 @@ html {
 body {
   background-color: var(--background);
   color: var(--foreground);
-  font-family: "Poppins", "Cairo", system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-family: "Poppins", "Cairo", "Poppins Fallback", "Cairo Fallback", system-ui,
+    -apple-system, "Segoe UI", sans-serif;
   min-height: 100vh;
 }
 
