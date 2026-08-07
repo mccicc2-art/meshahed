@@ -1,13 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { getDict, type Locale } from "@/lib/i18n";
 import type { MediaType } from "@/lib/media";
 import { Icon } from "./Icon";
 import { Sheet } from "./ui/Sheet";
 import { SendShareSheet } from "./SendShareSheet";
-import { toast as showToast } from "@/lib/toast";
+import { stopWatching } from "@/lib/actions";
+import { coalescedRefresh } from "@/lib/refresh";
+import { tap } from "@/lib/haptics";
+import { toast as showToast, flashError } from "@/lib/toast";
 
 /**
  * زرّان عائمان فوق خلفية صفحة العمل: رجوع وقائمة «المزيد».
@@ -24,17 +27,42 @@ export function DetailTopBar({
   tmdbId,
   mediaType,
   posterPath,
+  initialDropped = false,
 }: {
   title: string;
   locale: Locale;
   tmdbId: number;
   mediaType: MediaType;
   posterPath: string | null;
+  /** موقوفٌ مسبقاً — لعرض «تابع من جديد» بدل «أوقف المتابعة» */
+  initialDropped?: boolean;
 }) {
   const t = getDict(locale);
   const router = useRouter();
   const [menu, setMenu] = useState(false);
   const [send, setSend] = useState(false);
+  const [dropped, setDropped] = useState(initialDropped);
+  const [pending, start] = useTransition();
+
+  /* «أوقف المتابعة» — نفس فعل البطاقة الحمراء: علامةٌ لا حذف. تفاؤليّة،
+     وإن فشلت رجعت الحالة. الإيقاف يضيف العمل للمكتبة موقوفاً إن لم يكن فيها */
+  function toggleStop() {
+    if (pending) return;
+    const next = !dropped;
+    setMenu(false);
+    setDropped(next);
+    tap(next ? [12, 40] : 10);
+    start(async () => {
+      try {
+        await stopWatching({ tmdbId, mediaType, stop: next, title, posterPath });
+        showToast(next ? t.stoppedToast : t.resumedToast, { tone: "info" });
+        coalescedRefresh(router);
+      } catch (e) {
+        flashError((e as Error).message);
+        setDropped(!next);
+      }
+    });
+  }
 
   async function shareLink() {
     setMenu(false);
@@ -105,6 +133,19 @@ export function DetailTopBar({
           <button onClick={shareLink} className={menuItem}>
             <Icon name="share" size={18} className="text-muted" />
             {t.shareCopyLink}
+          </button>
+
+          {/* فاصلٌ ثم «أوقف المتابعة» — نفس فعل البطاقة الحمراء (setDropped) */}
+          <div className="h-px bg-[color:var(--divider)] mx-5 my-1" />
+          <button onClick={toggleStop} disabled={pending} className={menuItem}>
+            <Icon
+              name="card"
+              size={18}
+              className={dropped ? "text-muted" : "text-[color:var(--error)]"}
+            />
+            <span className={dropped ? "" : "text-[color:var(--error)]"}>
+              {dropped ? t.resumeWatching : t.stopWatching}
+            </span>
           </button>
         </div>
       </Sheet>

@@ -11,6 +11,7 @@ import { Icon } from "./Icon";
 import type { UserList } from "@/lib/data";
 import { Alert } from "./ui/Alert";
 import { buttonClass } from "./ui/Button";
+import { ShareListSheet } from "./ShareListSheet";
 
 /**
  * إدارة القوائم.
@@ -31,6 +32,9 @@ export function ListManager({ lists, locale }: { lists: UserList[]; locale: Loca
   const [subtitle, setSubtitle] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  /* المشاركة من صفحة القوائم نفسها (طلب المالك): زرٌّ على البطاقة يفتح
+     نفس ورقة مشاركة صفحة القائمة — مكوّنٌ واحد لا نسختان */
+  const [shareFor, setShareFor] = useState<UserList | null>(null);
 
   function add() {
     const clean = name.trim();
@@ -106,30 +110,46 @@ export function ListManager({ lists, locale }: { lists: UserList[]; locale: Loca
               ? t.listContentCount(l.shows_count ?? 0, l.movies_count ?? 0)
               : t.listCount(l.item_count);
             return (
-              <li key={l.id}>
-                <Link
-                  href={`/lists/${l.id}`}
-                  className="group block max-w-full rounded-2xl border border-[color:var(--background)] bg-surface p-2.5 hover:bg-surface-2 transition"
-                >
-                  {/* ترويسةٌ: الاسم + عدّاد المحتوى الديناميكي ··· سهم الدخول */}
-                  <div className="flex items-center gap-2">
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-[15px] font-bold truncate">{l.name}</span>
-                      {countLine && (
-                        <span className="block text-[12px] text-muted truncate mt-0.5">
-                          {countLine}
-                        </span>
-                      )}
-                    </span>
+              <li
+                key={l.id}
+                className="group max-w-full rounded-2xl border border-[color:var(--background)] bg-surface p-2.5 hover:bg-surface-2 transition"
+              >
+                {/* ترويسةٌ: الاسم رابطٌ + زرّ مشاركة (زرٌّ حقيقيّ خارج الرابط،
+                    فلا عنصرٌ تفاعليّ داخل آخر) + سهم الدخول */}
+                <div className="flex items-center gap-1">
+                  <Link href={`/lists/${l.id}`} className="min-w-0 flex-1 py-0.5">
+                    <span className="block text-[15px] font-bold truncate">{l.name}</span>
+                    {countLine && (
+                      <span className="block text-[12px] text-muted truncate mt-0.5">
+                        {countLine}
+                      </span>
+                    )}
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => setShareFor(l)}
+                    aria-label={t.listShare}
+                    title={t.listShare}
+                    className="shrink-0 grid place-items-center w-9 h-9 rounded-full text-muted hover:text-accent hover:bg-surface-2 active:scale-95 transition"
+                  >
+                    <Icon name="share" size={16} />
+                  </button>
+                  <Link
+                    href={`/lists/${l.id}`}
+                    aria-label={l.name}
+                    className="shrink-0 grid place-items-center w-7 h-7"
+                  >
                     {/* سهمٌ أفقيٌّ من chevron الموجود: ينقلب تلقائياً في RTL */}
                     <Icon
                       name="chevron-down"
                       size={16}
-                      className="shrink-0 text-muted -rotate-90 rtl:rotate-90"
+                      className="text-muted -rotate-90 rtl:rotate-90"
                     />
-                  </div>
+                  </Link>
+                </div>
 
-                  {/* صفُّ الملصقات: يمرّر أفقياً وتُطلّ البطاقة التالية عند الفيض */}
+                {/* صفُّ الملصقات: رابطٌ إلى القائمة، يمرّر أفقياً عند الفيض */}
+                <Link href={`/lists/${l.id}`} className="block">
                   {posters.length > 0 ? (
                     <div className="mt-2 -mx-2.5 px-2.5 scroll-px-2.5 overflow-x-auto overscroll-x-contain snap-x snap-proximity [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                       <div className="flex gap-2 w-max pb-0.5">
@@ -155,6 +175,22 @@ export function ListManager({ lists, locale }: { lists: UserList[]; locale: Loca
             );
           })}
         </ul>
+      )}
+
+      {shareFor && (
+        <ShareListSheet
+          listId={shareFor.id}
+          name={shareFor.name}
+          isPublic={shareFor.is_public}
+          locale={locale}
+          onClose={() => setShareFor(null)}
+          onChanged={() => {
+            // بعد جعلها معلنة: حدّث البطاقة محلياً كي تعرض الورقة أزرار
+            // المشاركة، وأنعش الصفحة لتتبدّل الشارة
+            setShareFor((s) => (s ? { ...s, is_public: true } : s));
+            router.refresh();
+          }}
+        />
       )}
     </div>
   );
