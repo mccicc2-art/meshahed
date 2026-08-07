@@ -55,6 +55,7 @@ export default async function SettingsPage({
         locale={locale}
         region={region}
         nickname={profile?.nickname ?? ""}
+        bio={profile?.bio ?? null}
         username={profile?.username ?? ""}
         avatarUrl={profile?.avatar_url ?? null}
         coverUrl={profile?.cover_url ?? null}
