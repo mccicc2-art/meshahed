@@ -31,8 +31,7 @@ import {
 } from "@/lib/browse";
 import { RankedRail } from "@/components/RankedRail";
 import { CountdownRail, type CountdownItem } from "@/components/CountdownRail";
-import { PosterRail, RailItem } from "@/components/PosterRail";
-import { PosterCard } from "@/components/PosterCard";
+import { PickedForYou } from "@/components/PickedForYou";
 import { RailSkeleton } from "@/components/Skeletons";
 import { DiscoverFilters } from "@/components/DiscoverFilters";
 import { getSuggestions } from "@/lib/suggest";
@@ -220,7 +219,9 @@ async function CuratedRails({
             ? upcomingByGenre(genre.tv, "tv")
             : airingTv().catch(() => [] as SearchResult[])
         : Promise.resolve([] as SearchResult[]),
-      isWeek && !active ? getSuggestions(12, locale).catch(() => []) : Promise.resolve([]),
+      // بِركةٌ تصل المئة لا اثنا عشر: العميل يعرض عشراً ويقلّبها بزرّ
+      // التحديث محلياً (شكوى «ثابتة من الصباح») — طلبات TMDB نفسها تقريباً
+      isWeek && !active ? getSuggestions(100, locale).catch(() => []) : Promise.resolve([]),
       // أعلى ٥٠ على الإطلاق — ذيلٌ ثابت في الحالة غير المُصفّاة (طلب المالك)
       !active && wantMovies ? top50("movie").catch(() => [] as SearchResult[]) : Promise.resolve([] as SearchResult[]),
       !active && wantSeries ? top50("tv").catch(() => [] as SearchResult[]) : Promise.resolve([] as SearchResult[]),
@@ -282,27 +283,26 @@ async function CuratedRails({
   return (
     <div className="space-y-8">
       {suggested.length > 0 && (
-        <PosterRail title={t.suggestedForYou} icon="sparkles">
-          {suggested.map((s) => (
-            <RailItem key={`sug-${s.result.media_type}-${s.result.id}`}>
-              <PosterCard
-                href={`/${s.result.media_type === "movie" ? "movie" : "show"}/${s.result.id}`}
-                title={titleOf(s.result)}
-                posterPath={s.result.poster_path}
-                year={yearOf(s.result)}
-                note={
-                  s.source === "rated" && s.seedTitle
-                    ? t.recoBecauseRated(s.seedTitle)
-                    : s.source === "follows" && s.seedTitle
-                      ? t.recoBecauseFollow(s.seedTitle)
-                      : s.source === "recent" && s.seedTitle
-                        ? t.recoBecauseWatched(s.seedTitle)
-                        : t.recoBecauseGenre
-                }
-              />
-            </RailItem>
-          ))}
-        </PosterRail>
+        /* السبب يُحسب هنا (يحتاج القاموس) والبطاقات تُسلسَل خفيفةً للعميل */
+        <PickedForYou
+          title={t.suggestedForYou}
+          locale={locale}
+          items={suggested.map((s) => ({
+            tmdbId: s.result.id,
+            mediaType: s.result.media_type === "movie" ? ("movie" as const) : ("tv" as const),
+            title: titleOf(s.result),
+            posterPath: s.result.poster_path,
+            year: yearOf(s.result),
+            note:
+              s.source === "rated" && s.seedTitle
+                ? t.recoBecauseRated(s.seedTitle)
+                : s.source === "follows" && s.seedTitle
+                  ? t.recoBecauseFollow(s.seedTitle)
+                  : s.source === "recent" && s.seedTitle
+                    ? t.recoBecauseWatched(s.seedTitle)
+                    : t.recoBecauseGenre,
+          }))}
+        />
       )}
 
       {inCinemas && inCinemas.results.length > 0 && (
