@@ -1089,6 +1089,11 @@ export async function worksByPeople(personIds: number[], limit = 20): Promise<Se
  * ومن اختار حقبةً منتهية لا قادمَ فيها أصلاً — فيُترك الصفّ فارغاً بلا
  * طلبٍ يُهدر. والتقييم يُتجاهل هنا عمداً: العمل الذي لم يصدر لا أصوات له،
  * فعتبةُ ٨ تُفرغ الصفّ لا تُجوّده.
+ *
+ * والانتقاء بالترقّب لا بقُرب الموعد: الترتيب الزمني التصاعدي يملأ
+ * الصفّ بإصدارات اليوم المغمورة (لا جمهور لها فلا بديل عن الشعبية
+ * مقياساً)، والصفحة تعيد ترتيب ما انتُقي بالتاريخ قبل العرض — فيبقى
+ * العدّ التنازلي زمنياً والوجوه فيه معروفة.
  */
 export async function upcomingByFilter(
   mediaType: MediaType,
@@ -1101,7 +1106,7 @@ export async function upcomingByFilter(
   const k = dateKeys(mediaType);
   const params: Record<string, string> = {
     ...discoverParams(mediaType, { ...f, from, minRate: null }),
-    sort_by: mediaType === "movie" ? "primary_release_date.asc" : "first_air_date.asc",
+    sort_by: "popularity.desc",
   };
   delete params["vote_average.gte"];
   params[k.gte] = from;
