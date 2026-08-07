@@ -24,7 +24,13 @@ export const viewport: Viewport = {
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = getDict(await getLocale());
+  /* صورة المشاركة = شعار Loopz صراحةً. بلا `og:image` كانت منصّات
+     المشاركة تكشط الصفحة وتلتقط أول صورةٍ مناسبة — وهي علم بلد المشاهدة
+     (السعودية عبر flagcdn)، فيظهر العلمُ لا الشعار. تحديدُها هنا يحسم ذلك،
+     ويحتاج `metadataBase` كي يصير المسار مطلقاً للكاشطات. */
+  const share = { url: "/icon-512.png", width: 512, height: 512, alt: t.brand };
   return {
+    metadataBase: new URL("https://loopztv.com"),
     title: t.metaTitle,
     description: t.metaDescription,
     applicationName: t.brand,
@@ -32,6 +38,20 @@ export async function generateMetadata(): Promise<Metadata> {
     icons: {
       icon: [{ url: "/icon-192.png", sizes: "192x192", type: "image/png" }],
       apple: [{ url: "/apple-icon.png", sizes: "180x180", type: "image/png" }],
+    },
+    openGraph: {
+      type: "website",
+      siteName: t.brand,
+      title: t.metaTitle,
+      description: t.metaDescription,
+      url: "/",
+      images: [share],
+    },
+    twitter: {
+      card: "summary",
+      title: t.metaTitle,
+      description: t.metaDescription,
+      images: [share],
     },
   };
 }
