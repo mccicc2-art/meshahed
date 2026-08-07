@@ -1,10 +1,16 @@
 import { Suspense } from "react";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getUser } from "@/lib/data";
-import { searchMulti, titleOf, yearOf } from "@/lib/tmdb";
+import { searchMulti, searchPeople, titleOf, yearOf } from "@/lib/tmdb";
 import { getT } from "@/lib/locale";
 import { PosterCard } from "@/components/PosterCard";
 import { PosterGrid } from "@/components/PosterGrid";
+import { PosterRail, RailItem } from "@/components/PosterRail";
+import { Icon } from "@/components/Icon";
+import { matchNationality } from "@/lib/nationality";
+import { browseHref } from "@/lib/browse";
+import type { Locale } from "@/lib/i18n";
 import { SearchBox } from "@/components/SearchBox";
 import { Alert } from "@/components/ui/Alert";
 
@@ -42,19 +48,32 @@ export default async function SearchPage({
           ) : null
         }
       >
-        <SearchResults q={q} t={t} />
+        <SearchResults q={q} t={t} locale={locale} />
       </Suspense>
     </div>
   );
 }
 
 /** نتائج البحث — تجلب بياناتها بنفسها فلا تحجب رسم الصندوق */
-async function SearchResults({ q, t }: { q: string; t: Awaited<ReturnType<typeof getT>>["t"] }) {
+async function SearchResults({
+  q,
+  t,
+  locale,
+}: {
+  q: string;
+  t: Awaited<ReturnType<typeof getT>>["t"];
+  locale: Locale;
+}) {
+  const nationality = q ? matchNationality(q) : null;
   let results: Awaited<ReturnType<typeof searchMulti>> = [];
+  let people: Awaited<ReturnType<typeof searchPeople>> = [];
   let failed = false;
   if (q) {
     try {
-      results = await searchMulti(q);
+      // الأشخاص والأعمال معاً: `/search/multi` يُرجع الاثنين لكن الترتيب
+      // بينهما ترتيبُ شعبيةٍ مختلط، فيضيع الممثل بين عشرين ملصقاً.
+      // طلبان متوازيان وصفّان منفصلان أوضح، وتكلفتهما واحدة
+      [results, people] = await Promise.all([searchMulti(q), searchPeople(q, 12)]);
     } catch {
       failed = true;
     }
@@ -70,6 +89,51 @@ async function SearchResults({ q, t }: { q: string; t: Awaited<ReturnType<typeof
 
       {q && !failed && (
         <p className="text-muted text-sm mb-4">{t.searchResultsFor(q, results.length)}</p>
+      )}
+
+      {/* ===== رقاقة الجنسية =====
+          TMDB لا يفهم «مسلسلات سعودية» — مسار البحث عنده يطابق العناوين
+          وحدها. فبدل نتائجَ لا علاقة لها، يُقترح الطريق الصحيح: فلتر
+          «اكتشف» ببلد الإنتاج. اقتراحٌ واحد فوق النتائج، لا شاشةٌ تتبدّل
+          حسب الكلمة — يُؤخذ أو يُتجاهل بلا ثمن */}
+      {nationality && (
+        <Link
+          href={browseHref({ lang: nationality.lang, co: nationality.country })}
+          className="mb-5 flex items-center gap-2.5 rounded-2xl border border-accent/35 bg-accent/10 px-4 py-3 text-accent hover:bg-accent/20 transition"
+        >
+          <Icon name="compass" size={18} className="shrink-0" />
+          <span className="text-sm font-semibold">
+            {t.searchBrowseFrom(locale === "en" ? nationality.en : nationality.ar)}
+          </span>
+          <span className="ms-auto shrink-0" aria-hidden>
+            <Icon name="chevron-down" size={16} className="-rotate-90 rtl:rotate-90" />
+          </span>
+        </Link>
+      )}
+
+      {/* الأشخاص فوق الأعمال: من كتب اسم ممثل يريده هو، ومن كتب اسم عملٍ
+          لن يجد أشخاصاً فلا يزاحمه الصفّ. وصفٌّ يُمرَّر لا شبكة — الأشخاص
+          سؤالٌ جانبي في صفحة بحثٍ عن أعمال */}
+      {people.length > 0 && (
+        <div className="mb-7">
+          <PosterRail title={t.searchPeopleTitle} icon="people">
+            {people.map((p) => (
+              <RailItem key={p.id}>
+                <PosterCard
+                  href={`/person/${p.id}`}
+                  title={p.name}
+                  posterPath={p.profile_path}
+                  posterSize="w185"
+                  fallbackIcon="people"
+                  note={(p.known_for ?? [])
+                    .slice(0, 2)
+                    .map((k) => titleOf(k))
+                    .join(" · ")}
+                />
+              </RailItem>
+            ))}
+          </PosterRail>
+        </div>
       )}
 
       {results.length > 0 ? (
