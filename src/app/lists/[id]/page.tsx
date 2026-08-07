@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getUser, getList, getPublicList } from "@/lib/data";
+import { getUser, getList, getPublicList, isListSaved } from "@/lib/data";
 import { getT } from "@/lib/locale";
 import { ListDetail } from "@/components/ListDetail";
 import { localizeRows } from "@/lib/localize";
@@ -106,8 +106,12 @@ export default async function ListPage({ params }: { params: Promise<{ id: strin
   if (!data) notFound();
 
   const isOwner = data.list.user_id === user.id;
-  // صاحب القائمة يُقرأ من الباب العامّ نفسه — لا استعلام ثانٍ على الملفات
-  const pub = isOwner ? null : await getPublicList(id);
+  // صاحب القائمة يُقرأ من الباب العامّ نفسه — لا استعلام ثانٍ على الملفات؛
+  // وحالة الحفظ لغير المالك وحده (D-068)
+  const [pub, saved] = await Promise.all([
+    isOwner ? Promise.resolve(null) : getPublicList(id),
+    isOwner ? Promise.resolve(false) : isListSaved(id),
+  ]);
 
   /* العناوين مخزّنة بلغة يوم الإضافة — تُترجَم عند العرض وحده (D-048)،
      فلا تظهر قائمةٌ عربية داخل واجهةٍ إنجليزية */
@@ -143,6 +147,7 @@ export default async function ListPage({ params }: { params: Promise<{ id: strin
             : null
         }
         locale={locale}
+        initialSaved={isOwner ? null : saved}
       />
     </div>
   );
