@@ -11,6 +11,7 @@ import { backdropUrl, posterUrl } from "@/lib/media";
 import { getTv, getMovie } from "@/lib/tmdb";
 import { Icon } from "@/components/Icon";
 import { LikeButton } from "@/components/LikeButton";
+import { ReportButton } from "@/components/ReportButton";
 import { segmentedItem, segmentedTrack } from "@/components/ui/controls";
 
 /** كم عملاً نطلب له صورةً عرضية — سقفٌ يمنع موجة طلباتٍ بحجم الخط */
@@ -158,7 +159,7 @@ export default async function PeoplePage({
                         {a.review}
                       </p>
 
-                      <div className="mt-2">
+                      <div className="mt-2 flex items-center gap-1">
                         <LikeButton
                           reviewUserId={a.person.id}
                           tmdbId={a.tmdb_id}
@@ -166,6 +167,12 @@ export default async function PeoplePage({
                           likes={a.likes}
                           likedByMe={a.likedByMe}
                           isMine={false}
+                          locale={locale}
+                        />
+                        <ReportButton
+                          reviewUserId={a.person.id}
+                          tmdbId={a.tmdb_id}
+                          mediaType={a.media_type}
                           locale={locale}
                         />
                       </div>
