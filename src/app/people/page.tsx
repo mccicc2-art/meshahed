@@ -3,6 +3,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { getUser, getCommunityFeed, getFollowLists } from "@/lib/data";
 import { getT } from "@/lib/locale";
+import { localizeRows } from "@/lib/localize";
 import { formatDateShort } from "@/lib/when";
 import { CommunityBar } from "@/components/CommunityBar";
 import { PersonName } from "@/components/PersonRow";
@@ -10,17 +11,38 @@ import { backdropUrl, posterUrl } from "@/lib/media";
 import { getTv, getMovie } from "@/lib/tmdb";
 import { Icon } from "@/components/Icon";
 import { LikeButton } from "@/components/LikeButton";
+import { segmentedItem, segmentedTrack } from "@/components/ui/controls";
 
 /** كم عملاً نطلب له صورةً عرضية — سقفٌ يمنع موجة طلباتٍ بحجم الخط */
 const BACKDROP_LIMIT = 12;
 
-export default async function PeoplePage() {
+export default async function PeoplePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ sort?: string }>;
+}) {
   const user = await getUser();
   if (!user) redirect("/login");
 
   const { locale, t } = await getT();
 
-  const [feed, lists] = await Promise.all([getCommunityFeed(), getFollowLists(user.id)]);
+  /* الترتيب في الرابط لا في الذاكرة — كبقيّة التطبيق (اكتشف، التقييمات):
+     قابلٌ للمشاركة وللرجوع، ويُرسم على الخادم فلا وميض ترتيبٍ قديم ولا
+     جافاسكربت إضافية على صفحةٍ ثقيلة الصور أصلاً */
+  const { sort } = await searchParams;
+  const newest = sort === "new";
+
+  const [rawFeed, lists] = await Promise.all([getCommunityFeed(), getFollowLists(user.id)]);
+
+  /* عناوين الأعمال محفوظة مع التقييم بلغة يوم كتابته — وخطّ الآراء يجمع
+     آراء أشخاص كتبوا بلغاتٍ مختلفة، فكان الخطّ الواحد يخلط الخطّين.
+     الترجمة عند العرض (D-048)، وطلباتها هي نفسها المخبَّأة التي يطلبها
+     صفّ الصور العرضية أسفله — فلا تكلفة مضاعفة */
+  const feed = (await localizeRows(rawFeed, locale)).sort((a, b) =>
+    newest
+      ? b.updated_at.localeCompare(a.updated_at)
+      : b.likes - a.likes || b.updated_at.localeCompare(a.updated_at),
+  );
 
   /* الصورة العرضية ليست في صفّ التقييم — الجدول يحفظ الملصق وحده —
      فتُطلب من TMDB لأوائل الخط فقط، متوازيةً ومخزَّنة ساعةً في طبقة
@@ -50,8 +72,10 @@ export default async function PeoplePage() {
       <h1 className="sr-only">{t.peopleTitle}</h1>
 
       {/* ===== خطّ الآراء =====
-          كخطّ X: رأيٌ فوق رأي، الأكثر إعجاباً أعلى — الإعجاب هو صوت
-          المجتمع لا ساعة النشر. والإعجاب من الخط نفسه بلا فتح صفحة. */}
+          كخطّ X: رأيٌ فوق رأي. والافتراض «الأكثر إعجاباً» لا «الأحدث» —
+          الإعجاب صوتُ المجتمع، وساعةُ النشر تُصعّد آخر من كتب لا أفضل من
+          كتب. ومن أراد الجديد فله المقسّم فوق الخطّ. والإعجاب من الخطّ
+          نفسه بلا فتح صفحة. */}
       <section>
         {/* سطرٌ واحد يجمع عنوان الخطّ وعدّادَي المتابعة وزرّ الإضافة:
             كانا سطرين متتاليين، والعدّادان وحدهما يتركان نصف السطر
@@ -69,6 +93,31 @@ export default async function PeoplePage() {
             locale={locale}
           />
         </div>
+
+        {/* ===== ترتيب الخطّ =====
+            خياران يستبعد أحدهما الآخر وعددهما معروف — فالمقسّم لا الرقائق.
+            ورابطان لا زرّان: الحالة في الرابط، والصفحة تُرسم على الخادم.
+            ولا يظهر الصفّ على خطٍّ فارغ: أداةٌ فوق لا شيء زينة */}
+        {feed.length > 0 && (
+          <div className="mb-4">
+            <div role="group" aria-label={t.feedSortGroup} className={segmentedTrack}>
+              <Link
+                href="/people"
+                aria-current={!newest ? "true" : undefined}
+                className={segmentedItem(!newest)}
+              >
+                {t.feedSortTop}
+              </Link>
+              <Link
+                href="/people?sort=new"
+                aria-current={newest ? "true" : undefined}
+                className={segmentedItem(newest)}
+              >
+                {t.feedSortNew}
+              </Link>
+            </div>
+          </div>
+        )}
 
         {feed.length === 0 ? (
           <p className="text-sm text-muted bg-surface border border-dashed border-border rounded-xl py-8 text-center">
