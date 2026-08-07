@@ -278,15 +278,15 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
                   </div>
                 )}
 
+                {/* الطاقم فوق الترايلر — كصفحة الفيلم */}
+                <Suspense fallback={null}>
+                  <CastRail mediaType="tv" tmdbId={tvId} locale={locale} />
+                </Suspense>
+
                 <Suspense
                   fallback={<div className="skeleton aspect-video rounded-2xl" aria-hidden />}
                 >
                   <TrailerSection tvId={tvId} name={tv.name} backdrop={backdrop} locale={locale} />
-                </Suspense>
-
-                {/* الطاقم داخل «معلومات» — كصفحة الفيلم، وبلا تبويبٍ رابع */}
-                <Suspense fallback={null}>
-                  <CastRail mediaType="tv" tmdbId={tvId} locale={locale} />
                 </Suspense>
               </div>
             ),
