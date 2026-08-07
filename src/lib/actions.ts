@@ -11,6 +11,7 @@ import { sanitizeHomePrefs, type HomePrefs } from "@/lib/homePrefs";
 import { allow } from "@/lib/ratelimit";
 import { intId, intIn, asMediaType, uuid, dateOrNull } from "@/lib/validate";
 import { IMPORT_CAPS, type ImportPayload, type ResolveRequest, type ResolveResult } from "@/lib/importer";
+import type { PersonLite } from "@/lib/data";
 
 /**
  * بوابة كل فعل: هوية المستخدم ثم حدّ معدّل الطلبات.
@@ -1091,6 +1092,116 @@ export async function reportReview(input: {
     { onConflict: "review_user_id,tmdb_id,media_type,reporter_id", ignoreDuplicates: true },
   );
   if (error) fail(error);
+}
+
+// ============================================================
+//  الرسائل — مشاركة عملٍ مع صديق، وردٌّ عليه
+//
+//  الحارس في SQL لا هنا: الإدراج يشترط متابعةً متبادلة (are_mutual)
+//  والقراءة لطرفَي الخيط وحدهما (shares.sql). فمنتقي الأشخاص لا يعرض
+//  إلا المتابَعين المتبادلين، والقاعدة تردّ ما سواهم.
+// ============================================================
+
+/** المتابَعون المتبادلون — من أتابعه ويتابعني — لمنتقي «أرسِله لـ…» */
+export async function myMutualFollows(): Promise<PersonLite[]> {
+  const { supabase, user } = await requireUser();
+  const [out, inc] = await Promise.all([
+    supabase.from("user_follows").select("following_id").eq("follower_id", user.id).limit(200),
+    supabase.from("user_follows").select("follower_id").eq("following_id", user.id).limit(200),
+  ]);
+  const following = new Set((out.data ?? []).map((r) => r.following_id));
+  const mutual = [
+    ...new Set((inc.data ?? []).map((r) => r.follower_id)),
+  ].filter((id) => following.has(id));
+  if (!mutual.length) return [];
+  const { data: people } = await supabase
+    .from("public_profiles")
+    .select("id, nickname, username, avatar_url, hide_name")
+    .in("id", mutual);
+  return (people ?? []) as PersonLite[];
+}
+
+/** إرسال عملٍ إلى صديق مع سطرٍ اختياري — القاعدة تشترط المتابعة المتبادلة */
+export async function sendShare(input: {
+  recipientId: string;
+  tmdbId: number;
+  mediaType: MediaType;
+  title: string | null;
+  posterPath: string | null;
+  note?: string | null;
+}) {
+  const recipientId = uuid(input.recipientId);
+  const tmdbId = intId(input.tmdbId);
+  const mediaType = asMediaType(input.mediaType);
+  const title = input.title ? String(input.title).slice(0, 300) : null;
+  const posterPath = safeImagePath(input.posterPath);
+  const note = (input.note ?? "").replace(/\s+/g, " ").trim().slice(0, 280) || null;
+
+  const { supabase, user } = await requireUser("share", 20, 60_000);
+  if (user.id === recipientId) {
+    throw new Error("لا يمكنك إرسال عملٍ إلى نفسك / You can't send this to yourself");
+  }
+
+  const { error } = await supabase.from("title_shares").insert({
+    sender_id: user.id,
+    recipient_id: recipientId,
+    tmdb_id: tmdbId,
+    media_type: mediaType,
+    title,
+    poster_path: posterPath,
+    note,
+  });
+  if (error) fail(error);
+  revalidatePath("/people");
+}
+
+/** ردٌّ قصير على خيط مشاركة — القاعدة تشترط بقاء المتابعة المتبادلة */
+export async function replyToShare(shareId: string, body: string) {
+  shareId = uuid(shareId);
+  const clean = String(body ?? "").trim();
+  if (clean.length < 1 || clean.length > 500) {
+    throw new Error("مدخل غير صالح / Invalid input");
+  }
+  const { supabase, user } = await requireUser("share", 30, 60_000);
+  const { error } = await supabase.from("share_replies").insert({
+    share_id: shareId,
+    author_id: user.id,
+    body: clean,
+  });
+  if (error) fail(error);
+  revalidatePath("/people");
+}
+
+/** تعليم كل الوارد مقروءاً — يُستدعى عند فتح تبويب الرسائل لا لكل صفّ */
+export async function markSharesRead() {
+  const { supabase, user } = await requireUser("share", 30, 60_000);
+  const { error } = await supabase
+    .from("title_shares")
+    .update({ read_at: new Date().toISOString() })
+    .eq("recipient_id", user.id)
+    .is("read_at", null);
+  if (error) fail(error);
+  revalidatePath("/people");
+}
+
+/**
+ * إخفاء خيطٍ من جهتي وحدها — لا حذف للصفّ.
+ *
+ * الطرف الآخر يبقى خيطه كما هو (shares.sql): حذف الصفّ كان سيمحو نصف
+ * محادثةٍ لا أملكها وحدي. تحديثان يطابق أحدهما جهتي فقط.
+ */
+export async function hideShare(shareId: string) {
+  shareId = uuid(shareId);
+  const { supabase, user } = await requireUser("share", 30, 60_000);
+  await supabase
+    .from("title_shares")
+    .update({ sender_hid: true })
+    .match({ id: shareId, sender_id: user.id });
+  await supabase
+    .from("title_shares")
+    .update({ recipient_hid: true })
+    .match({ id: shareId, recipient_id: user.id });
+  revalidatePath("/people");
 }
 
 /**
