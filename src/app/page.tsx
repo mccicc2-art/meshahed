@@ -6,7 +6,8 @@ import {
   getFollows,
   getAllWatchedEpisodes,
   getWatchSummary,
-  getWatchedMovieIds,
+  getWatchedMovies,
+  watchedMovieMinutes,
   getProfile,
   getAllMovieProgress,
   getMyRatings,
@@ -57,7 +58,7 @@ export default async function HomePage() {
   const [
     followRows,
     summary,
-    watchedMovieIds,
+    watchedMovies,
     profile,
     movieProgress,
     myRatings,
@@ -66,13 +67,17 @@ export default async function HomePage() {
   ] = await Promise.all([
     getFollows(),
     getWatchSummary(),
-    getWatchedMovieIds(),
+    getWatchedMovies(),
     getProfile(),
     getAllMovieProgress(),
     getMyRatings(),
     getFollowStats(user.id),
     getReceivedLikes(user.id),
   ]);
+
+  // مجموعة المعرّفات للحالة، والدقائق الفعلية للوقت — من الصفوف نفسها
+  const watchedMovieIds = new Set(watchedMovies.map((m) => m.id));
+  const movieMinutes = watchedMovieMinutes(watchedMovies);
 
   const prefs = sanitizeHomePrefs(profile?.home_prefs);
 
@@ -521,10 +526,8 @@ export default async function HomePage() {
 
   // ===== أرقام الترويسة =====
   // كلها مشتقّة مما قرأناه أصلاً لهذه الصفحة: لا استعلام إضافي لعرضها
-  const totalMinutes = (summary ?? []).reduce(
-    (a, r) => a + (r.minutes ?? 0),
-    0,
-  );
+  const totalMinutes =
+    (summary ?? []).reduce((a, r) => a + (r.minutes ?? 0), 0) + movieMinutes;
   const hours = Math.round(totalMinutes / 60);
   const watchTime =
     hours < 24 ? t.hours(hours) : t.days(Math.floor(hours / 24));
