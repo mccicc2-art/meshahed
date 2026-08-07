@@ -43,7 +43,14 @@ const securityHeaders = [
   { key: "X-Frame-Options", value: "DENY" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=(), usb=()" },
-  { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
+  /* `same-origin-allow-popups` لا `same-origin`.
+     الفرق سطرٌ واحد وأثره أن الدخول يعمل أو لا يعمل: `same-origin` تقطع
+     `window.opener` عن أي نافذةٍ منبثقة، فنافذة Google تفتح ويسجّل
+     المستخدم دخوله ويوافق… ثم تعجز عن تسليم الرمز للصفحة التي فتحتها
+     فتبقى بيضاء عند `accounts.google.com/gsi/transform`. وهذا ما وقع
+     حرفياً. والصيغة المسموحة تُبقي الحماية الأهمّ — لا نافذةَ غريبةٍ
+     تحمل مرجعاً إلينا — وتسمح فقط لما نفتحه نحن بأن يردّ علينا. */
+  { key: "Cross-Origin-Opener-Policy", value: "same-origin-allow-popups" },
   {
     key: "Strict-Transport-Security",
     value: "max-age=63072000; includeSubDomains; preload",
