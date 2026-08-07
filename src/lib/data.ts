@@ -1041,12 +1041,14 @@ export async function amIFollowing(targetId: string): Promise<boolean> {
  */
 export async function getFollowRelation(
   targetId: string,
-): Promise<{ following: boolean; requested: boolean }> {
+): Promise<{ following: boolean; requested: boolean; followsMe: boolean }> {
   try {
     const supabase = await createClient();
     const user = await getUser();
-    if (!user) return { following: false, requested: false };
-    const [f, r] = await Promise.all([
+    if (!user) return { following: false, requested: false, followsMe: false };
+    // الاتجاه الثالث — «هل يتابعني؟» — تحتاجه قائمة الملف: خيار «رسالة»
+    // لا يُفتح إلا للمتبادلَين (D-051)، والحكم يحتاج الاتجاهين معاً
+    const [f, r, b] = await Promise.all([
       supabase
         .from("user_follows")
         .select("following_id")
@@ -1059,10 +1061,16 @@ export async function getFollowRelation(
         .eq("requester_id", user.id)
         .eq("target_id", targetId)
         .maybeSingle(),
+      supabase
+        .from("user_follows")
+        .select("follower_id")
+        .eq("follower_id", targetId)
+        .eq("following_id", user.id)
+        .maybeSingle(),
     ]);
-    return { following: !!f.data, requested: !!r.data };
+    return { following: !!f.data, requested: !!r.data, followsMe: !!b.data };
   } catch {
-    return { following: false, requested: false };
+    return { following: false, requested: false, followsMe: false };
   }
 }
 

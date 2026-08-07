@@ -700,6 +700,64 @@ export async function removeFollowerUser(followerId: string) {
 }
 
 // ============================================================
+//  الحظر والإبلاغ عن حساب (blocks.sql / user_reports.sql)
+//
+//  الفعلان جاران في قائمة الملف لكنّهما مختلفان: الحظر يحميك أنت —
+//  definer واحد يقطع الرسائل من الطرفين ويفكّ المتابعة في الاتجاهين؛
+//  والبلاغ يحمي غيرَك — صفٌّ يصل لصاحب التطبيق وحده ولا يعلم به أحد.
+// ============================================================
+
+/** حظرُ حساب — block_user يفكّ المتابعة في الاتجاهين ويغلق الرسائل */
+export async function blockUser(targetId: string) {
+  targetId = uuid(targetId);
+  const { supabase, user } = await requireUser("block", 10, 60_000);
+  if (user.id === targetId) return;
+  const { error } = await supabase.rpc("block_user", { target: targetId });
+  if (error) fail(error);
+  revalidatePath("/people");
+  revalidatePath("/");
+}
+
+/** رفعُ الحظر — حذفُ صفّك؛ لا تعود المتابعة تلقائياً (قرار blocks.sql) */
+export async function unblockUser(targetId: string) {
+  targetId = uuid(targetId);
+  const { supabase, user } = await requireUser();
+  const { error } = await supabase
+    .from("blocks")
+    .delete()
+    .match({ blocker_id: user.id, blocked_id: targetId });
+  if (error) fail(error);
+  revalidatePath("/people");
+}
+
+/** قائمة من حظرتُهم — لقسم «المحظورون» في الإعدادات */
+export async function myBlocksList(): Promise<PersonLite[]> {
+  const { supabase } = await requireUser();
+  const { data, error } = await supabase.rpc("my_blocks");
+  if (error) fail(error);
+  return ((data ?? []) as { user_id: string; username: string | null; nickname: string | null; avatar_url: string | null; hide_name: boolean | null }[]).map((r) => ({
+    id: r.user_id,
+    username: r.username,
+    nickname: r.nickname,
+    avatar_url: r.avatar_url,
+    hide_name: r.hide_name,
+  })) as PersonLite[];
+}
+
+/** الإبلاغ عن حساب — كإبلاغ المراجعة: صامتٌ، مرّةٌ واحدة، سببٌ اختياريّ */
+export async function reportUser(input: { targetId: string; reason?: string }) {
+  const targetId = uuid(input.targetId);
+  const { supabase, user } = await requireUser("report", 10, 60_000);
+  if (user.id === targetId) return;
+  const reason = (input.reason ?? "").replace(/\s+/g, " ").trim().slice(0, 300);
+  const { error } = await supabase.from("user_reports").upsert(
+    { target_id: targetId, reporter_id: user.id, reason: reason || null },
+    { onConflict: "target_id,reporter_id", ignoreDuplicates: true },
+  );
+  if (error) fail(error);
+}
+
+// ============================================================
 //  المجتمعات (communities.sql)
 // ============================================================
 
