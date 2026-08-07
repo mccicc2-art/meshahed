@@ -99,20 +99,34 @@ export function ListManager({ lists, locale }: { lists: UserList[]; locale: Loca
             const posters = (l.posters ?? [])
               .map((p) => posterUrl(p, "w185"))
               .filter(Boolean) as string[];
+            // عدّاد ديناميكي حسب المحتوى الفعلي؛ وقبل تشغيل SQL يسقط إلى العدّ الكلّي
+            const hasBreakdown =
+              typeof l.shows_count === "number" || typeof l.movies_count === "number";
+            const countLine = hasBreakdown
+              ? t.listContentCount(l.shows_count ?? 0, l.movies_count ?? 0)
+              : t.listCount(l.item_count);
             return (
               <li key={l.id}>
                 <Link
                   href={`/lists/${l.id}`}
                   className="group block max-w-full rounded-2xl border border-[color:var(--background)] bg-surface p-2.5 hover:bg-surface-2 transition"
                 >
-                  {/* ترويسةٌ منحّفة: الاسم ··· العدد + سهم الدخول (بلا أيقونة ولا وصف) */}
+                  {/* ترويسةٌ: الاسم + عدّاد المحتوى الديناميكي ··· سهم الدخول */}
                   <div className="flex items-center gap-2">
-                    <span className="min-w-0 flex-1 text-[15px] font-bold truncate">{l.name}</span>
-                    <span className="shrink-0 flex items-center gap-1 text-muted ps-1">
-                      <span className="text-[15px] font-semibold tabular-nums">{l.item_count}</span>
-                      {/* سهمٌ أفقيٌّ من chevron الموجود: ينقلب تلقائياً في RTL */}
-                      <Icon name="chevron-down" size={16} className="-rotate-90 rtl:rotate-90" />
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[15px] font-bold truncate">{l.name}</span>
+                      {countLine && (
+                        <span className="block text-[12px] text-muted truncate mt-0.5">
+                          {countLine}
+                        </span>
+                      )}
                     </span>
+                    {/* سهمٌ أفقيٌّ من chevron الموجود: ينقلب تلقائياً في RTL */}
+                    <Icon
+                      name="chevron-down"
+                      size={16}
+                      className="shrink-0 text-muted -rotate-90 rtl:rotate-90"
+                    />
                   </div>
 
                   {/* صفُّ الملصقات: يمرّر أفقياً وتُطلّ البطاقة التالية عند الفيض */}
