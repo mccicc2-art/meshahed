@@ -3,7 +3,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { getUser } from "@/lib/data";
+import { getUser, isFollowingArtist } from "@/lib/data";
+import { FollowArtistButton } from "@/components/FollowArtistButton";
 import { getPerson, getPersonCredits, profileUrl, titleOf, yearOf } from "@/lib/tmdb";
 import { getT } from "@/lib/locale";
 import { formatDate } from "@/lib/when";
@@ -50,7 +51,11 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
   const personId = Number(id);
   if (!Number.isFinite(personId)) notFound();
 
-  const person = await getPerson(personId);
+  /* بالتوازي: صفّ المتابعة من القاعدة وبيانات الشخص من TMDB */
+  const [person, following] = await Promise.all([
+    getPerson(personId),
+    isFollowingArtist(personId),
+  ]);
   if (!person) {
     return (
       <div className="text-center py-24">
@@ -106,13 +111,21 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
             ))}
           </div>
 
-          {/* زرّ «أضِف أعماله إلى قائمة» في ترويسة الفنان لا في ذيل قسم
-              الأعمال (طلب المالك): أوضح وأقرب للعين، يملأ عمود البيانات */}
+          {/* زرّ المتابعة أولاً (الفعل اليوميّ)، ثم «أضِف أعماله إلى قائمة»
+              (فعل العمر) — كلاهما في ترويسة الفنان يملآن عمود البيانات */}
+          <FollowArtistButton
+            personId={personId}
+            name={person.name}
+            profilePath={person.profile_path}
+            initialFollowing={following}
+            locale={locale}
+            className="w-full justify-center mt-4"
+          />
           <AddWorksToList
             source="person"
             id={personId}
             locale={locale}
-            className="w-full justify-center mt-4"
+            className="w-full justify-center mt-2"
           />
         </div>
       </div>
