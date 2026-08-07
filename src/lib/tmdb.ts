@@ -706,7 +706,10 @@ export interface Provider {
   provider_id: number;
   provider_name: string;
   logo_path: string | null;
+  /** أولوية العرض العالمية — تقريبيةٌ ولا تصلح وحدها لترتيب قائمة بلد */
   display_priority?: number;
+  /** أولوية العرض داخل كل بلد — هي الصحيحة عند ترتيب قائمة بلدٍ بعينه */
+  display_priorities?: Record<string, number>;
 }
 
 export interface WatchOptions {
@@ -891,24 +894,35 @@ export interface ProviderOption {
 }
 
 /**
- * منصّات الاشتراك المتاحة في المنطقة، مرتّبةً بأولوية العرض عند TMDB.
+ * منصّات الاشتراك المتاحة في المنطقة، **كاملةً** ومرتّبةً بأولوية البلد.
  *
  * القائمة تُجلب من TMDB ولا تُكتب عندنا: معرّفات المنصّات تتغيّر وتُدمَج
  * (شاهد و OSN غيّرا هويّتهما مرّتين)، وقائمةٌ مكتوبةٌ بخطّ اليد تصمت يوم
  * تتغيّر بدل أن تُخطئ بصوتٍ مسموع.
+ *
+ * **الترتيب بأولوية البلد لا بالعالمية.** `display_priority` رقمٌ عالميّ،
+ * وترتيبُ قائمة السعودية به كان يرفع FlixOlé الإسبانية و iWant الفلبينية
+ * و Sun Nxt الهندية فوق ما يشترك فيه الناس هنا فعلاً. TMDB يعطي
+ * `display_priorities` مفهرسةً بالبلد، وهي الرقم الصحيح لهذا السؤال.
+ *
+ * **وبلا سقف.** كان اثنَي عشر، فكانت القائمة تقصّ نصف السوق بلا أن تقول.
+ * الاثنا عشر كانا حدّاً لعرضٍ برقائق تلتفّ في جدار؛ وبعد أن صارت قائمةً
+ * منسدلة لم يعد للحدّ سبب — والقائمة الكاملة هي الجواب الصادق عن «ما
+ * المتاح في بلدي».
  */
 export async function listWatchProviders(
   mediaType: MediaType = "movie",
-  limit = 12,
 ): Promise<ProviderOption[]> {
   try {
+    const region = await watchRegion();
     const data = await tmdb<{ results?: Provider[] }>(`/watch/providers/${mediaType}`, {
-      watch_region: await watchRegion(),
+      watch_region: region,
     });
+    const rank = (p: Provider) =>
+      p.display_priorities?.[region] ?? p.display_priority ?? 9999;
     return (data.results ?? [])
       .slice()
-      .sort((a, b) => (a.display_priority ?? 999) - (b.display_priority ?? 999))
-      .slice(0, limit)
+      .sort((a, b) => rank(a) - rank(b) || a.provider_name.localeCompare(b.provider_name))
       .map((p) => ({ id: p.provider_id, name: p.provider_name, logo_path: p.logo_path }));
   } catch {
     return [];
