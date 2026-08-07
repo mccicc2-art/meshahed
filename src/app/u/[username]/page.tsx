@@ -12,6 +12,7 @@ import {
   getReceivedLikes,
   getFollowsOf,
   getWatchedOf,
+  getPublicListsOf,
   displayNameOf,
 } from "@/lib/data";
 import { getT } from "@/lib/locale";
@@ -23,6 +24,7 @@ import { PosterCard } from "@/components/PosterCard";
 import { PosterRail, RailItem } from "@/components/PosterRail";
 import { FollowUserButton } from "@/components/FollowUserButton";
 import { ProfileMenu } from "@/components/ProfileMenu";
+import { PublicListsRail } from "@/components/PublicListsRail";
 
 /**
  * صفحة المستخدم العامة — بهيئة الرئيسية نفسها.
@@ -55,7 +57,7 @@ export default async function PublicProfilePage({
 
   // تسجيل الزيارة كتابةُ تحليلاتٍ لا غير — يجري بالتوازي مع القراءات
   // بدل أن يضيف رحلة كتابةٍ كاملة قبل أول بايت من الصفحة
-  const [rawRatings, stats, relation, visits, likes, rawFollows, watched] = await Promise.all([
+  const [rawRatings, stats, relation, visits, likes, rawFollows, watched, publicLists] = await Promise.all([
     getRatingsOf(profile.id),
     getFollowStats(profile.id),
     getFollowRelation(profile.id),
@@ -63,6 +65,7 @@ export default async function PublicProfilePage({
     getReceivedLikes(profile.id),
     getFollowsOf(profile.id),
     getWatchedOf(profile.id),
+    getPublicListsOf(profile.id),
     isMe ? Promise.resolve() : recordProfileView(profile.id),
   ]);
 
@@ -311,6 +314,15 @@ export default async function PublicProfilePage({
             </RailItem>
           ))}
         </PosterRail>
+      )}
+
+      {/* ===== قوائمه المعلنة (D-068) — صنعُه بعد متابعاته وقبل أحكامه.
+          بطاقة اكتشف نفسها بلا سطر صاحبٍ (الصفحة كلّها صفحته)، والرابط
+          إلى /lists/[id] حيث زرّ «أضِفها إلى قوائمي». تتبع القفل: قوائم
+          حسابٍ خاصّ لا تُعرض لغير متابِعيه وإن بقيت سياسة SQL عامة —
+          الصفحة الموصدة لا تفتح نافذةً جانبية ===== */}
+      {canView && (
+        <PublicListsRail lists={publicLists} locale={locale} title={t.profileListsRail} />
       )}
 
       {/* ===== تقييماته ومراجعاته ===== */}
