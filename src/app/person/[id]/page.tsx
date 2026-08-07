@@ -105,6 +105,15 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
               </p>
             ))}
           </div>
+
+          {/* زرّ «أضِف أعماله إلى قائمة» في ترويسة الفنان لا في ذيل قسم
+              الأعمال (طلب المالك): أوضح وأقرب للعين، يملأ عمود البيانات */}
+          <AddWorksToList
+            source="person"
+            id={personId}
+            locale={locale}
+            className="w-full justify-center mt-4"
+          />
         </div>
       </div>
 
@@ -126,12 +135,10 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
       )}
 
       <section className="mt-8">
-        {/* عنوان القسم وزرّ «أضِف أعماله إلى قائمة» في سطرٍ واحد — الزرّ
-            خارج Suspense فيظهر فوراً، والفعل يجلب الأعمال بنفسه على الخادم */}
-        <div className="flex items-center justify-between gap-3 mb-3">
-          <SectionTitle icon="film">{t.personWorksTitle}</SectionTitle>
-          <AddWorksToList source="person" id={personId} locale={locale} />
-        </div>
+        {/* الزرّ انتقل إلى ترويسة الفنان (D-052)؛ هنا العنوان وحده */}
+        <SectionTitle icon="film" className="mb-3">
+          {t.personWorksTitle}
+        </SectionTitle>
         <Suspense
           fallback={
             <div
