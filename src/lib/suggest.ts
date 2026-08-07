@@ -6,6 +6,8 @@ import {
   getWatchSummary,
 } from "@/lib/data";
 import { discoverByGenres, recommendationsFor, type SearchResult } from "@/lib/tmdb";
+import { localizeRows } from "@/lib/localize";
+import type { Locale } from "@/lib/i18n";
 import { blendRecommendations, type Candidate, type Recommendation } from "@/lib/recommend";
 
 /**
@@ -15,9 +17,19 @@ import { blendRecommendations, type Candidate, type Recommendation } from "@/lib
  * اكتشف: المكان الذي يُستكشف فيه الجديد. والبذور ثلاث — ما قيّمته عالياً،
  * وما تتابعه، وما شاهدته أخيراً — لأن بذرة واحدة تُنتج صفّاً كلّه من عائلة
  * عمل واحد.
+ *
+ * **والبذور تُترجَم قبل أن تُقتبس (D-048).** سطرُ السبب تحت كل ملصق يقتبس
+ * اسم البذرة حرفياً — «لأنك تتابع «الحفرة»» — والاسم مأخوذٌ من صفٍّ مخزَّن
+ * بلغة يوم الإضافة. فكان صفُّ «مقترح لك» يكتب أسماءً عربية داخل واجهةٍ
+ * إنجليزية بينما كل ما حوله مترجَم: العنوان مترجَم، والملصق من TMDB
+ * باللغة الصحيحة، والسبب وحده عربيّ. وهو أظهر موضعٍ يقع فيه التسرّب لأن
+ * الاسم يُقرأ داخل جملة لا وحده.
  */
-export async function getSuggestions(limit = 12): Promise<Recommendation[]> {
-  const [follows, profile, myRatings, watchedMovieIds, summary] = await Promise.all([
+export async function getSuggestions(
+  limit = 12,
+  locale: Locale = "ar",
+): Promise<Recommendation[]> {
+  const [rawFollows, profile, rawRatings, watchedMovieIds, summary] = await Promise.all([
     getFollows(),
     getProfile(),
     getMyRatings(),
@@ -25,7 +37,14 @@ export async function getSuggestions(limit = 12): Promise<Recommendation[]> {
     getWatchSummary(),
   ]);
 
-  if (!follows.length) return [];
+  if (!rawFollows.length) return [];
+
+  /* تُترجَم البذور وحدها لا كل المكتبة: البذور ثلاثٌ من المتابعات وثلاثٌ من
+     التقييمات، والسقف في `localizeRows` يحمي الباقي على كل حال */
+  const [follows, myRatings] = await Promise.all([
+    localizeRows(rawFollows, locale),
+    localizeRows(rawRatings, locale),
+  ]);
 
   const lastWatchedOrder = (summary ?? [])
     .slice()
