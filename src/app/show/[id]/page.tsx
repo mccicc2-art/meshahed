@@ -21,10 +21,12 @@ import {
   posterUrl,
 } from "@/lib/tmdb";
 import { EpisodeTracker, type SeasonSummary } from "@/components/EpisodeTracker";
-import { getT } from "@/lib/locale";
+import { getT, getWatchRegion } from "@/lib/locale";
 import { RatingBox } from "@/components/RatingBox";
 import { CommunityReviews } from "@/components/CommunityReviews";
 import { DetailTabs } from "@/components/DetailTabs";
+import { RelatedTitles } from "@/components/RelatedTitles";
+import { CastRail } from "@/components/CastRail";
 import { Icon, SectionTitle } from "@/components/Icon";
 import { Trailer } from "@/components/Trailer";
 import { WatchChip } from "@/components/WatchChip";
@@ -48,6 +50,7 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
 
   // بيانات أول رسمة فقط في الموجة الحاسمة — الترايلر والتعليقات تُبثّ
   // لاحقاً عبر Suspense فلا تؤخّر ترويسة الصفحة وتبويب الحلقات
+  const userRegion = await getWatchRegion();
   const [tv, following, watched, watchWhere, myLists, inLists] = await Promise.all([
     getTv(tvId).catch(() => null),
     isFollowing(tvId, "tv"),
@@ -192,7 +195,12 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
                 </span>
               )}
               {/* أين يُبثّ — هنا في الترويسة، وقسم المنصّات في «معلومات» حُذف */}
-              {watchWhere && <WatchChip options={watchWhere.options} />}
+              {watchWhere && <WatchChip
+                options={watchWhere.options}
+                region={watchWhere.region}
+                userRegion={userRegion}
+                locale={locale}
+              />}
             </div>
           )}
         </div>
@@ -275,6 +283,11 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
                 >
                   <TrailerSection tvId={tvId} name={tv.name} backdrop={backdrop} locale={locale} />
                 </Suspense>
+
+                {/* الطاقم داخل «معلومات» — كصفحة الفيلم، وبلا تبويبٍ رابع */}
+                <Suspense fallback={null}>
+                  <CastRail mediaType="tv" tmdbId={tvId} locale={locale} />
+                </Suspense>
               </div>
             ),
           },
@@ -302,6 +315,12 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
           },
         ]}
       />
+
+      {/* الأعمال المرتبطة خارج التبويبات — كصفحة الفيلم. ولا «أجزاء»
+          للمسلسلات: `belongs_to_collection` حقلُ أفلامٍ عند TMDB وحدها */}
+      <Suspense fallback={null}>
+        <RelatedTitles mediaType="tv" tmdbId={tvId} locale={locale} />
+      </Suspense>
     </div>
   );
 }
