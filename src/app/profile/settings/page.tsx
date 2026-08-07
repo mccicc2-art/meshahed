@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getUser, getProfile } from "@/lib/data";
-import { getT } from "@/lib/locale";
+import { getT, getWatchRegion } from "@/lib/locale";
 import { SettingsShell } from "@/components/SettingsShell";
 import { traktConfigured } from "@/lib/trakt";
 
@@ -34,6 +34,7 @@ export default async function SettingsPage({
   if (!user) redirect("/login");
 
   const { locale, t } = await getT();
+  const region = await getWatchRegion();
   const profile = await getProfile();
   const { s } = await searchParams;
 
@@ -52,6 +53,7 @@ export default async function SettingsPage({
         userId={user.id}
         email={user.email ?? ""}
         locale={locale}
+        region={region}
         nickname={profile?.nickname ?? ""}
         username={profile?.username ?? ""}
         avatarUrl={profile?.avatar_url ?? null}
