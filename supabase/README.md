@@ -49,9 +49,14 @@
 بعد تشغيل كلٍّ منها، تحقّق بالاستعلام المكتوب في ذيل الملف نفسه، ثم أخبِر
 الجلسة لتنشر الواجهة المقابلة له.
 
+| 28 | `security3.sql` | **أمن:** إغلاق قراءة `follows` و`watched_episodes` و`watched_movies` — كانت مفتوحة لكل مسجَّل دخول | — |
+
 للتأكد أن قاعدة الإنتاج مطابقة:
 ```sql
 select tablename, policyname from pg_policies
 where schemaname = 'public' and qual = 'true';
--- المتوقَّع: user_follows و "read public lists/list items" فقط
+-- المتوقَّع: user_follows و "read public lists/list items" فقط.
+-- ⚠️ شغّله فعلاً ولا تكتفِ بوجوده: في ٨ أغسطس ٢٠٢٦ كشف أوّلُ تشغيلٍ له
+-- ثلاث سياسات مفتوحة على المكتبة وسجلّ المشاهدة، عمرها أشهر — انظر
+-- security3.sql.
 ```
