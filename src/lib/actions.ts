@@ -82,6 +82,8 @@ export async function updateProfile(input: {
   favoriteGenres: number[];
   hideName?: boolean;
   homePrefs?: HomePrefs;
+  /** نبذةٌ قصيرة — غيابها يعني «اتركها كما هي» لا «امحُها» */
+  bio?: string;
 }) {
   const { supabase, user } = await requireUser("profile", 10, 60_000);
 
@@ -116,6 +118,13 @@ export async function updateProfile(input: {
     payload.theme = THEMES.some((t) => t.id === input.theme) ? input.theme : "amber";
   }
   if (input.hideName !== undefined) payload.hide_name = !!input.hideName;
+  /* النبذة تُنظَّف كما يُنظَّف سطر القائمة (D-044): المسافات تُطوى فلا تصير
+     فقرةً، والحدّ ١٦٠ حرفاً مطابقٌ لقيد SQL — لا نتّكل على القيد وحده
+     لأن رسالة خطأ قاعدة البيانات ليست رسالةً للمستخدم */
+  if (input.bio !== undefined) {
+    const bio = input.bio.replace(/\s+/g, " ").trim().slice(0, 160);
+    payload.bio = bio || null;
+  }
   // تُنقّى قبل الكتابة كما تُنقّى بعد القراءة: القيمة تمرّ عبر الشبكة
   if (input.homePrefs !== undefined) payload.home_prefs = sanitizeHomePrefs(input.homePrefs);
 
@@ -1039,6 +1048,49 @@ export async function unmarkEpisodes(input: {
   revalidatePath("/");
   revalidatePath("/library");
   revalidatePath(`/show/${showTmdbId}`);
+}
+
+/**
+ * الإبلاغ عن مراجعة.
+ *
+ * بديلٌ عن «عدم الإعجاب» لا مكمّلٌ له (review_reports.sql): الديسلايك يقع
+ * على رأي شخصٍ لا على عمل، والحكم على العمل موجودٌ أدقّ منه — تقييمٌ من
+ * ١ إلى ١٠.
+ *
+ * ولا يعود عدّاداً: الدالّة لا تُرجع كم بلاغاً على المراجعة، ولا تكشف من
+ * أبلغ. البلاغ فعلٌ صامتٌ يصل إلى صاحب التطبيق، وعدّادٌ ظاهر يحوّله إلى
+ * وسام عار. والإخفاء عند العاشر يجري في مُشغِّل SQL لا هنا — كي يصحّ مهما
+ * كان الباب الذي دخل منه البلاغ.
+ *
+ * وتكرارُه بلا أثر: المفتاح الأساسي يمنع بلاغين من شخصٍ واحد على مراجعة
+ * واحدة، فالضغطة الثانية `ignoreDuplicates` لا خطأً في وجه المستخدم.
+ */
+export async function reportReview(input: {
+  reviewUserId: string;
+  tmdbId: number;
+  mediaType: MediaType;
+  reason?: string;
+}) {
+  const reviewUserId = uuid(input.reviewUserId);
+  const tmdbId = intId(input.tmdbId);
+  const mediaType = asMediaType(input.mediaType);
+
+  const { supabase, user } = await requireUser("report", 10, 60_000);
+  if (user.id === reviewUserId) return;
+
+  const reason = (input.reason ?? "").replace(/\s+/g, " ").trim().slice(0, 300);
+
+  const { error } = await supabase.from("review_reports").upsert(
+    {
+      review_user_id: reviewUserId,
+      tmdb_id: tmdbId,
+      media_type: mediaType,
+      reporter_id: user.id,
+      reason: reason || null,
+    },
+    { onConflict: "review_user_id,tmdb_id,media_type,reporter_id", ignoreDuplicates: true },
+  );
+  if (error) fail(error);
 }
 
 /**

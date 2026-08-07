@@ -64,6 +64,8 @@ export interface Profile {
   favorite_genres: number[];
   hide_name?: boolean | null;
   home_prefs?: unknown;
+  /** نبذةٌ قصيرة — اختيارية، وتغيب قبل تشغيل profile_bio.sql */
+  bio?: string | null;
 }
 
 /** الملف الشخصي — يُقرأ في التخطيط والشريط العلوي والصفحة، فيُخزَّن لكل طلب */
@@ -77,7 +79,7 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
     let { data, error } = await supabase
       .from("profiles")
       .select(
-        "id, nickname, username, avatar_url, cover_url, cover_pos, avatar_pos, theme, favorite_genres, hide_name, home_prefs",
+        "id, nickname, username, avatar_url, cover_url, cover_pos, avatar_pos, theme, favorite_genres, hide_name, home_prefs, bio",
       )
       .eq("id", user.id)
       .maybeSingle();
@@ -95,7 +97,7 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
         .maybeSingle();
       if (mid.data) {
         // عمودا التموضع أحدث من هذه الدرجة — يسقطان إلى سلوكهما القديم
-        data = { ...mid.data, cover_pos: null, avatar_pos: null, home_prefs: null };
+        data = { ...mid.data, cover_pos: null, avatar_pos: null, home_prefs: null, bio: null };
       } else {
         const legacy = await supabase
           .from("profiles")
@@ -111,6 +113,7 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
             theme: null,
             hide_name: false,
             home_prefs: null,
+            bio: null,
           };
         }
       }
@@ -516,6 +519,7 @@ export interface PublicProfile {
   avatar_pos?: number | null;
   favorite_genres: number[];
   hide_name?: boolean | null;
+  bio?: string | null;
 }
 
 /** معرّف UUID كما يكتبه Postgres — يميّز رابط الهوية عن رابط المعرّف */
@@ -550,7 +554,7 @@ export async function getProfileByUsername(
     // الأعمدة العامة وحدها (انظر supabase/public_profiles.sql)
     const { data, error } = await supabase
       .from("public_profiles")
-      .select("id, nickname, username, avatar_url, cover_url, cover_pos, avatar_pos, favorite_genres, hide_name")
+      .select("id, nickname, username, avatar_url, cover_url, cover_pos, avatar_pos, favorite_genres, hide_name, bio")
       .eq(column, value)
       .maybeSingle();
 
