@@ -366,12 +366,18 @@ export function CommunityRoom({
      لا يستحق طلباً كل ست ثوانٍ. رسائل الخادم تحلّ محلّ الحالة (المتفائلةُ
      صارت حقيقيةً هناك)، وطلباتُ الانضمام كذلك فيراها المالك دون تحديث يدوي */
   useChatPoll(status === "member", ["community_messages"]);
-  useEffect(() => {
+  /* مزامنةٌ أثناء الرسم لا داخل effect (توصية React): نسخة الخادم الأحدث
+     تستبدل الحالة في نفس الجولة — المتفائلةُ صارت حقيقيةً هناك */
+  const [prevMsgs, setPrevMsgs] = useState(room.messages);
+  if (room.messages !== prevMsgs) {
+    setPrevMsgs(room.messages);
     setMessages(room.messages);
-  }, [room.messages]);
-  useEffect(() => {
+  }
+  const [prevReqs, setPrevReqs] = useState(room.joinRequests);
+  if (room.joinRequests !== prevReqs) {
+    setPrevReqs(room.joinRequests);
     setReqs(room.joinRequests);
-  }, [room.joinRequests]);
+  }
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: "end" });

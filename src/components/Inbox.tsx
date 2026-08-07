@@ -239,9 +239,13 @@ function ConversationView({
      رسالة، والاستطلاع كل ٦ ثوانٍ شبكةُ أمانٍ تحته. أحداث الخادم الجديدة
      تحلّ محلّ الحالة — بما فيها المتفائلة، وقد صارت حقيقيةً هناك */
   useChatPoll(true, ["title_shares", "list_shares", "share_replies"]);
-  useEffect(() => {
+  /* مزامنةٌ أثناء الرسم لا داخل effect (توصية React نفسها): وصولُ نسخة
+     خادمٍ أحدث يستبدل الحالة في نفس الجولة بلا رسمٍ متتالٍ */
+  const [prevServerEvents, setPrevServerEvents] = useState(conv.events);
+  if (conv.events !== prevServerEvents) {
+    setPrevServerEvents(conv.events);
     setEvents(conv.events);
-  }, [conv.events]);
+  }
 
   // الوارد يُعلَّم مقروءاً عند الفتح — وكلّما وصل جديدٌ والخيط مفتوح
   useEffect(() => {
