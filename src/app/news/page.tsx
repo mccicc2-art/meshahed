@@ -199,7 +199,7 @@ async function CuratedRails({
             ? upcomingByGenre(genre.tv, "tv")
             : airingTv().catch(() => [] as SearchResult[])
         : Promise.resolve([] as SearchResult[]),
-      !active ? getSuggestions(12).catch(() => []) : Promise.resolve([]),
+      !active ? getSuggestions(12, locale).catch(() => []) : Promise.resolve([]),
     ]);
 
   const today = new Date().toISOString().slice(0, 10);
