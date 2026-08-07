@@ -6,7 +6,7 @@ import {
   getProfileByUsername,
   getRatingsOf,
   getFollowStats,
-  amIFollowing,
+  getFollowRelation,
   recordProfileView,
   getProfileViewCount,
   getReceivedLikes,
@@ -54,10 +54,10 @@ export default async function PublicProfilePage({
 
   // تسجيل الزيارة كتابةُ تحليلاتٍ لا غير — يجري بالتوازي مع القراءات
   // بدل أن يضيف رحلة كتابةٍ كاملة قبل أول بايت من الصفحة
-  const [rawRatings, stats, following, visits, likes, rawFollows, watched] = await Promise.all([
+  const [rawRatings, stats, relation, visits, likes, rawFollows, watched] = await Promise.all([
     getRatingsOf(profile.id),
     getFollowStats(profile.id),
-    amIFollowing(profile.id),
+    getFollowRelation(profile.id),
     getProfileViewCount(profile.id),
     getReceivedLikes(profile.id),
     getFollowsOf(profile.id),
@@ -132,7 +132,7 @@ export default async function PublicProfilePage({
           {/* مكان أدوات المالك: زرّ المتابعة والزيارات */}
           {!isMe && (
             <div className="absolute top-[calc(0.75rem+env(safe-area-inset-top))] end-3">
-              <FollowUserButton targetId={profile.id} locale={locale} initialFollowing={following} />
+              <FollowUserButton targetId={profile.id} locale={locale} initialFollowing={relation.following} initialRequested={relation.requested} />
             </div>
           )}
           <span className="absolute top-[calc(1rem+env(safe-area-inset-top))] start-4 text-[11px] text-white/75 bg-black/40 backdrop-blur rounded-full px-2.5 py-1">
