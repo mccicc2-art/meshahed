@@ -883,6 +883,185 @@ export async function getUnreadShares(): Promise<number> {
   }
 }
 
+// ============================================================
+//  المحادثات — رسالة واحدة لكل شخص (لا خيطٌ لكل مشاركة)
+//
+//  الجداول نفسها (title_shares + share_replies) بلا تغيير في SQL؛ التجميع
+//  هنا: كل مشاركاتِ عملٍ مع شخصٍ وردودُها تُدمَج في محادثةٍ واحدة مرتّبة
+//  زمنياً — كالرسائل الخاصة. والردّ الجديد يُعلَّق بآخر عملٍ شورك في
+//  المحادثة، فيبقى شرط «الردّ معلَّقٌ بعمل» قائماً (D-051).
+// ============================================================
+
+export interface ConvShareEvent {
+  kind: "share";
+  id: string;
+  /** أنا المُرسِل */
+  mine: boolean;
+  tmdb_id: number;
+  media_type: "tv" | "movie";
+  title: string | null;
+  poster_path: string | null;
+  note: string | null;
+  created_at: string;
+}
+export interface ConvReplyEvent {
+  kind: "reply";
+  id: string;
+  mine: boolean;
+  body: string;
+  created_at: string;
+}
+export type ConvEvent = ConvShareEvent | ConvReplyEvent;
+
+export interface Conversation {
+  personId: string;
+  person: PersonLite | null;
+  /** الأحداث مرتّبةً تصاعدياً — مشاركاتٌ وردود */
+  events: ConvEvent[];
+  lastAt: string;
+  unread: number;
+  /** آخر عملٍ شورك — وجهةُ الردّ الجديد */
+  latestShareId: string;
+}
+
+export async function getConversations(): Promise<Conversation[]> {
+  try {
+    const supabase = await createClient();
+    const me = await getUser();
+    if (!me) return [];
+
+    const { data: rows, error } = await supabase
+      .from("title_shares")
+      .select(
+        "id, sender_id, recipient_id, tmdb_id, media_type, title, poster_path, note, created_at, read_at",
+      )
+      .order("created_at", { ascending: true })
+      .limit(300);
+    if (error || !rows?.length) return [];
+
+    type ShareRow = {
+      id: string;
+      sender_id: string;
+      recipient_id: string;
+      tmdb_id: number;
+      media_type: "tv" | "movie";
+      title: string | null;
+      poster_path: string | null;
+      note: string | null;
+      created_at: string;
+      read_at: string | null;
+    };
+    const shareRows = rows as ShareRow[];
+
+    // معرّف المشاركة → الطرف الآخر، لنسب ردودها إلى محادثة الشخص نفسه
+    const otherOf = new Map<string, string>();
+    for (const s of shareRows) {
+      otherOf.set(s.id, s.sender_id === me.id ? s.recipient_id : s.sender_id);
+    }
+
+    const shareIds = shareRows.map((s) => s.id);
+    const { data: replyRows } = await supabase
+      .from("share_replies")
+      .select("id, share_id, author_id, body, created_at")
+      .in("share_id", shareIds)
+      .order("created_at", { ascending: true })
+      .limit(2000);
+    type ReplyRow = {
+      id: string;
+      share_id: string;
+      author_id: string;
+      body: string;
+      created_at: string;
+    };
+    const replies = (replyRows ?? []) as ReplyRow[];
+
+    const ids = new Set<string>();
+    for (const s of shareRows) ids.add(otherOf.get(s.id)!);
+    const { data: people } = await supabase
+      .from("public_profiles")
+      .select("id, nickname, username, avatar_url, hide_name")
+      .in("id", [...ids]);
+    const byId = new Map((people ?? []).map((p) => [p.id, p as PersonLite]));
+
+    const convs = new Map<string, Conversation>();
+    const ensure = (personId: string): Conversation => {
+      let c = convs.get(personId);
+      if (!c) {
+        c = {
+          personId,
+          person: byId.get(personId) ?? null,
+          events: [],
+          lastAt: "",
+          unread: 0,
+          latestShareId: "",
+        };
+        convs.set(personId, c);
+      }
+      return c;
+    };
+
+    for (const s of shareRows) {
+      const c = ensure(otherOf.get(s.id)!);
+      c.events.push({
+        kind: "share",
+        id: s.id,
+        mine: s.sender_id === me.id,
+        tmdb_id: s.tmdb_id,
+        media_type: s.media_type,
+        title: s.title,
+        poster_path: s.poster_path,
+        note: s.note,
+        created_at: s.created_at,
+      });
+      c.latestShareId = s.id; // الصفوف تصاعدية، فالأخير هو الأحدث
+      if (s.recipient_id === me.id && !s.read_at) c.unread++;
+    }
+    for (const r of replies) {
+      const other = otherOf.get(r.share_id);
+      if (!other) continue;
+      ensure(other).events.push({
+        kind: "reply",
+        id: r.id,
+        mine: r.author_id === me.id,
+        body: r.body,
+        created_at: r.created_at,
+      });
+    }
+
+    const list = [...convs.values()];
+    for (const c of list) {
+      c.events.sort((a, b) => a.created_at.localeCompare(b.created_at));
+      c.lastAt = c.events.length ? c.events[c.events.length - 1].created_at : "";
+    }
+    list.sort((a, b) => b.lastAt.localeCompare(a.lastAt));
+    return list;
+  } catch {
+    return [];
+  }
+}
+
+/** حالة المتابعة والإيقاف لعملٍ واحد — لقائمة «المزيد» في صفحته */
+export async function getFollowState(
+  tmdbId: number,
+  mediaType: "tv" | "movie",
+): Promise<{ following: boolean; dropped: boolean }> {
+  try {
+    const supabase = await createClient();
+    const user = await getUser();
+    if (!user) return { following: false, dropped: false };
+    const { data } = await supabase
+      .from("follows")
+      .select("dropped")
+      .eq("user_id", user.id)
+      .eq("tmdb_id", tmdbId)
+      .eq("media_type", mediaType)
+      .maybeSingle();
+    return { following: !!data, dropped: !!data?.dropped };
+  } catch {
+    return { following: false, dropped: false };
+  }
+}
+
 export async function getReceivedLikes(userId: string): Promise<number> {
   try {
     const supabase = await createClient();

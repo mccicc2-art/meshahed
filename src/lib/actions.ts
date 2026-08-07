@@ -1344,6 +1344,35 @@ export async function hideShare(shareId: string) {
   revalidatePath("/people");
 }
 
+/** تعليم كل الوارد من شخصٍ بعينه مقروءاً — عند فتح محادثته */
+export async function markConversationRead(personId: string) {
+  personId = uuid(personId);
+  const { supabase, user } = await requireUser("share", 30, 60_000);
+  const { error } = await supabase
+    .from("title_shares")
+    .update({ read_at: new Date().toISOString() })
+    .eq("recipient_id", user.id)
+    .eq("sender_id", personId)
+    .is("read_at", null);
+  if (error) fail(error);
+  revalidatePath("/people");
+}
+
+/** إخفاء محادثةٍ كاملة من جهتي — كل مشاركاتها، والطرف الآخر يحتفظ بنسخته */
+export async function hideConversation(personId: string) {
+  personId = uuid(personId);
+  const { supabase, user } = await requireUser("share", 30, 60_000);
+  await supabase
+    .from("title_shares")
+    .update({ sender_hid: true })
+    .match({ sender_id: user.id, recipient_id: personId });
+  await supabase
+    .from("title_shares")
+    .update({ recipient_hid: true })
+    .match({ recipient_id: user.id, sender_id: personId });
+  revalidatePath("/people");
+}
+
 /**
  * البطاقة الحمراء: إيقاف عملٍ اكتفيتَ منه.
  *
@@ -1361,6 +1390,49 @@ export async function setDropped(tmdbId: number, mediaType: MediaType, dropped: 
   if (error) fail(error);
   revalidatePath("/");
   revalidatePath("/library");
+}
+
+/**
+ * «أوقف المتابعة» من قائمة «المزيد» في صفحة العمل — نفس فعل البطاقة الحمراء.
+ *
+ * الإيقاف علامةٌ على صفّ المتابعة، فإن لم يكن العمل في المكتبة أُضيف أوّلاً
+ * ثم أُوقف (`upsert` بعلامة الإيقاف) كي تُوقفه من صفحته مباشرةً بلا خطوة
+ * إضافة. والاستئناف يرفع العلامة ويُبقيه في المكتبة.
+ */
+export async function stopWatching(input: {
+  tmdbId: number;
+  mediaType: MediaType;
+  stop: boolean;
+  title?: string | null;
+  posterPath?: string | null;
+}) {
+  const tmdbId = intId(input.tmdbId);
+  const mediaType = asMediaType(input.mediaType);
+  const { supabase, user } = await requireUser();
+
+  if (input.stop) {
+    const { error } = await supabase.from("follows").upsert(
+      {
+        user_id: user.id,
+        tmdb_id: tmdbId,
+        media_type: mediaType,
+        title: String(input.title ?? "").slice(0, 300),
+        poster_path: safeImagePath(input.posterPath ?? null),
+        dropped: true,
+      },
+      { onConflict: "user_id,tmdb_id,media_type" },
+    );
+    if (error) fail(error);
+  } else {
+    const { error } = await supabase
+      .from("follows")
+      .update({ dropped: false })
+      .match({ user_id: user.id, tmdb_id: tmdbId, media_type: mediaType });
+    if (error) fail(error);
+  }
+  revalidatePath("/");
+  revalidatePath("/library");
+  revalidatePath(`/${mediaType === "tv" ? "show" : "movie"}/${tmdbId}`);
 }
 
 /**
