@@ -102,19 +102,17 @@ export default async function PeoplePage({
   const sortNewHref = tab === "all" ? "/people?tab=all&sort=new" : "/people?sort=new";
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
+      {/* العنوان مخفيٌّ بصريّاً وباقٍ لقارئ الشاشة — أُزيلت كلمة «المجتمع»
+          المرئية، وانتقل عدّادا المتابعة وزرّ الإضافة إلى صفّ الترتيب أسفل
+          التبويبات (طلب المالك) */}
       <h1 className="sr-only">{t.peopleTitle}</h1>
 
-      {/* سطرٌ واحد: عنوان الخطّ وعدّادَا المتابعة وزرّ الإضافة */}
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="text-base sm:text-lg font-bold min-w-0 truncate">{t.peopleTitle}</h2>
-        <CommunityBar following={lists.following} followers={lists.followers} locale={locale} />
-      </div>
-
       {/* ===== صفّ التبويبات =====
-          مقسّمٌ يملأ العرض ويقسّمه بالتساوي (segmentedTrackFull) — نفس
-          صفّ شرائح المكتبة (D-016، D-042). عدّادٌ على «مجتمعي» و«المجتمع»،
-          وشارة غير المقروء على «الرسائل» تختفي عند الصفر. */}
+          مقسّمٌ يملأ العرض ويقسّمه بالتساوي بأثلاثٍ متطابقة العرض
+          (segmentedTrackFull + flex-1 basis-0 min-w-0) — نفس صفّ شرائح
+          المكتبة (D-016، D-042). عدّادٌ على «مجتمعي» و«المجتمع»، وشارة غير
+          المقروء على «الرسائل» تختفي عند الصفر. */}
       <nav aria-label={t.communityTabsGroup} className={segmentedTrackFull}>
         {tabs.map((tb) => {
           const active = tb.key === tab;
@@ -123,9 +121,9 @@ export default async function PeoplePage({
               key={tb.key}
               href={tb.href}
               aria-current={active ? "page" : undefined}
-              className={segmentedItem(active, "flex items-center justify-center gap-1.5")}
+              className={segmentedItem(active, "flex-1 basis-0 min-w-0 flex items-center justify-center gap-1.5")}
             >
-              <span>{tb.label}</span>
+              <span className="truncate">{tb.label}</span>
               {typeof tb.count === "number" && (
                 <span className={`tabular-nums text-[12px] ${active ? "text-muted" : "text-muted/70"}`} dir="ltr">
                   {num(tb.count, locale)}
@@ -145,33 +143,38 @@ export default async function PeoplePage({
         })}
       </nav>
 
+      {/* صفٌّ واحد تحت التبويبات: ترتيب الخطّ على البداية (لتبويبَي الخطّ
+          فقط)، وعدّادا المتابعة وزرّ الإضافة على الطرف — نُقلا إلى هنا من
+          أعلى الصفحة بطلب المالك */}
+      <div className="flex items-center justify-between gap-2">
+        <div className="min-w-0">
+          {tab !== "inbox" && feed.length > 0 && (
+            <div role="group" aria-label={t.feedSortGroup} className={segmentedTrack}>
+              <Link
+                href={sortBase}
+                aria-current={!newest ? "true" : undefined}
+                className={segmentedItem(!newest)}
+              >
+                {t.feedSortTop}
+              </Link>
+              <Link
+                href={sortNewHref}
+                aria-current={newest ? "true" : undefined}
+                className={segmentedItem(newest)}
+              >
+                {t.feedSortNew}
+              </Link>
+            </div>
+          )}
+        </div>
+        <CommunityBar following={lists.following} followers={lists.followers} locale={locale} />
+      </div>
+
       {/* ===== محتوى التبويب ===== */}
       {tab === "inbox" ? (
         <Inbox threads={threads} locale={locale} />
       ) : (
         <section>
-          {/* ترتيب الخطّ — على «مجتمعي» و«المجتمع» فقط، ولا يظهر على خطٍّ فارغ */}
-          {feed.length > 0 && (
-            <div className="mb-4">
-              <div role="group" aria-label={t.feedSortGroup} className={segmentedTrack}>
-                <Link
-                  href={sortBase}
-                  aria-current={!newest ? "true" : undefined}
-                  className={segmentedItem(!newest)}
-                >
-                  {t.feedSortTop}
-                </Link>
-                <Link
-                  href={sortNewHref}
-                  aria-current={newest ? "true" : undefined}
-                  className={segmentedItem(newest)}
-                >
-                  {t.feedSortNew}
-                </Link>
-              </div>
-            </div>
-          )}
-
           {feed.length === 0 ? (
             <p className="text-sm text-muted bg-surface border border-dashed border-border rounded-xl py-8 text-center">
               {tab === "all" ? t.communityAllEmpty : t.feedEmpty}
