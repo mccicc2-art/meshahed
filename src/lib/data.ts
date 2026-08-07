@@ -770,132 +770,25 @@ export async function getCommunityFeed(
 
 // ================= الرسائل: مشاركة عملٍ وخيط ردّ =================
 
-/** ردٌّ واحد على مشاركة — نصّه وصاحبه */
-export interface ShareReply {
-  id: string;
-  author_id: string;
-  author: PersonLite | null;
-  body: string;
-  created_at: string;
-}
-
 /**
- * خيط مشاركةٍ واحد: عملٌ أُرسل بين طرفين، وسطرٌ اختياري، وخيط ردود.
+ * الأعمال المرفوضة بـ«غير مهتم» — يستبعدها محرّك «مقترح لك».
  *
- * يحمل حقول `LocalizableRow` الأربعة (tmdb_id · media_type · title ·
- * poster_path) كي يُترجَم عنوانه عند العرض مثل بقية الخطوط (D-048).
+ * معرّفات فقط: `blendRecommendations` يستبعد بالمعرّف، والجدول صغير.
+ * (حلّت محلّ `getShares`/`ShareThread` الميّتتين — أزيلتا هنا كما وعد D-054.)
  */
-export interface ShareThread {
-  id: string;
-  sender: PersonLite | null;
-  recipient: PersonLite | null;
-  /** المُتلقّي أنا — واردٌ لا صادر */
-  isIncoming: boolean;
-  tmdb_id: number;
-  media_type: "tv" | "movie";
-  title: string | null;
-  poster_path: string | null;
-  note: string | null;
-  created_at: string;
-  read_at: string | null;
-  replies: ShareReply[];
-}
-
-/**
- * صندوق الرسائل: خيوط المشاركة المرئية لي، الأحدث أولاً.
- *
- * سياسة القراءة في SQL تُرجع خيوطي غير المخفيّة من جهتي وحدها، فلا حاجة
- * إلى تصفيةٍ هنا. الردود والملفّات تُقرأ في نداءين إضافيّين ثم تُدمَج —
- * لا نداء لكل خيط.
- */
-export async function getShares(): Promise<ShareThread[]> {
+export async function getDismissedTitles(): Promise<Set<number>> {
   try {
     const supabase = await createClient();
-    const me = await getUser();
-    if (!me) return [];
-
-    const { data: rows, error } = await supabase
-      .from("title_shares")
-      .select(
-        "id, sender_id, recipient_id, tmdb_id, media_type, title, poster_path, note, created_at, read_at",
-      )
-      .order("created_at", { ascending: false })
-      .limit(80);
-    if (error || !rows?.length) return [];
-
-    type ShareRow = {
-      id: string;
-      sender_id: string;
-      recipient_id: string;
-      tmdb_id: number;
-      media_type: "tv" | "movie";
-      title: string | null;
-      poster_path: string | null;
-      note: string | null;
-      created_at: string;
-      read_at: string | null;
-    };
-    const shareRows = rows as ShareRow[];
-
-    // الردود لكل الخيوط في نداءٍ واحد — الأقدم أولاً كي يُقرأ الخيط تنازلياً
-    const shareIds = shareRows.map((r) => r.id);
-    const { data: replyRows } = await supabase
-      .from("share_replies")
-      .select("id, share_id, author_id, body, created_at")
-      .in("share_id", shareIds)
-      .order("created_at", { ascending: true })
-      .limit(500);
-    type ReplyRow = {
-      id: string;
-      share_id: string;
-      author_id: string;
-      body: string;
-      created_at: string;
-    };
-    const replies = (replyRows ?? []) as ReplyRow[];
-
-    // ملفّات كل طرفٍ ومؤلّف ردّ — نداءٌ واحد، بلا تكرار
-    const ids = new Set<string>();
-    for (const r of shareRows) {
-      ids.add(r.sender_id);
-      ids.add(r.recipient_id);
-    }
-    for (const rp of replies) ids.add(rp.author_id);
-    const { data: people } = await supabase
-      .from("public_profiles")
-      .select("id, nickname, username, avatar_url, hide_name")
-      .in("id", [...ids]);
-    const byId = new Map((people ?? []).map((p) => [p.id, p as PersonLite]));
-
-    const repliesByShare = new Map<string, ShareReply[]>();
-    for (const rp of replies) {
-      const list = repliesByShare.get(rp.share_id) ?? [];
-      list.push({
-        id: rp.id,
-        author_id: rp.author_id,
-        author: byId.get(rp.author_id) ?? null,
-        body: rp.body,
-        created_at: rp.created_at,
-      });
-      repliesByShare.set(rp.share_id, list);
-    }
-
-    return shareRows.map((r) => ({
-      id: r.id,
-      sender: byId.get(r.sender_id) ?? null,
-      recipient: byId.get(r.recipient_id) ?? null,
-      isIncoming: r.recipient_id === me.id,
-      tmdb_id: r.tmdb_id,
-      media_type: r.media_type,
-      title: r.title,
-      poster_path: r.poster_path,
-      note: r.note,
-      created_at: r.created_at,
-      read_at: r.read_at,
-      replies: repliesByShare.get(r.id) ?? [],
-    }));
+    const user = await getUser();
+    if (!user) return new Set();
+    const { data } = await supabase
+      .from("dismissed_titles")
+      .select("tmdb_id")
+      .eq("user_id", user.id)
+      .limit(1000);
+    return new Set((data ?? []).map((r) => r.tmdb_id as number));
   } catch {
-    return [];
+    return new Set();
   }
 }
 

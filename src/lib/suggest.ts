@@ -4,6 +4,7 @@ import {
   getMyRatings,
   getWatchedMovieIds,
   getWatchSummary,
+  getDismissedTitles,
 } from "@/lib/data";
 import { discoverByGenres, recommendationsFor, type SearchResult } from "@/lib/tmdb";
 import { localizeRows } from "@/lib/localize";
@@ -29,13 +30,15 @@ export async function getSuggestions(
   limit = 12,
   locale: Locale = "ar",
 ): Promise<Recommendation[]> {
-  const [rawFollows, profile, rawRatings, watchedMovieIds, summary] = await Promise.all([
-    getFollows(),
-    getProfile(),
-    getMyRatings(),
-    getWatchedMovieIds(),
-    getWatchSummary(),
-  ]);
+  const [rawFollows, profile, rawRatings, watchedMovieIds, summary, dismissed] =
+    await Promise.all([
+      getFollows(),
+      getProfile(),
+      getMyRatings(),
+      getWatchedMovieIds(),
+      getWatchSummary(),
+      getDismissedTitles(),
+    ]);
 
   if (!rawFollows.length) return [];
 
@@ -100,10 +103,12 @@ export async function getSuggestions(
     rs.forEach((r, i) => candidates.push({ result: r, source: "recent", seedTitle: seed, rank: i }));
   genreDiscover.forEach((r, i) => candidates.push({ result: r, source: "genres", rank: i }));
 
+  // «غير مهتم» يُستبعد ككل ما شوهد أو رُفض بتقييمٍ منخفض — قال «لا» صراحةً
   const excluded = new Set<number>([
     ...follows.map((f) => f.tmdb_id),
     ...watchedMovieIds,
     ...dislikedIds,
+    ...dismissed,
   ]);
 
   return blendRecommendations(candidates, { exclude: excluded, limit });

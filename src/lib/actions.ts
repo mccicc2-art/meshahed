@@ -1399,6 +1399,38 @@ export async function setDropped(tmdbId: number, mediaType: MediaType, dropped: 
  * ثم أُوقف (`upsert` بعلامة الإيقاف) كي تُوقفه من صفحته مباشرةً بلا خطوة
  * إضافة. والاستئناف يرفع العلامة ويُبقيه في المكتبة.
  */
+/**
+ * «غير مهتم» — العمل لا يعود يظهر في «مقترح لك» (dismissed_titles.sql).
+ *
+ * upsert لا insert: الضغط مرّتين (أو من جهازين) لا يرفع خطأ تكرار.
+ * والتراجع حذفٌ بسيط — صفوفك تحرسها سياسة `own dismissed`.
+ */
+export async function dismissTitle(input: { tmdbId: number; mediaType: MediaType }) {
+  const tmdbId = intId(input.tmdbId);
+  const mediaType = asMediaType(input.mediaType);
+  const { supabase, user } = await requireUser("dismiss", 30, 60_000);
+  const { error } = await supabase
+    .from("dismissed_titles")
+    .upsert(
+      { user_id: user.id, tmdb_id: tmdbId, media_type: mediaType },
+      { onConflict: "user_id,tmdb_id,media_type" },
+    );
+  if (error) fail(error);
+  revalidatePath("/news");
+}
+
+export async function undoDismissTitle(input: { tmdbId: number; mediaType: MediaType }) {
+  const tmdbId = intId(input.tmdbId);
+  const mediaType = asMediaType(input.mediaType);
+  const { supabase, user } = await requireUser("dismiss", 30, 60_000);
+  const { error } = await supabase
+    .from("dismissed_titles")
+    .delete()
+    .match({ user_id: user.id, tmdb_id: tmdbId, media_type: mediaType });
+  if (error) fail(error);
+  revalidatePath("/news");
+}
+
 export async function stopWatching(input: {
   tmdbId: number;
   mediaType: MediaType;
