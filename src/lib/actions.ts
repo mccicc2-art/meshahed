@@ -1644,6 +1644,29 @@ export async function sendListShare(input: {
   revalidatePath("/people");
 }
 
+/**
+ * حفظ قائمة غيرك أو إلغاء حفظها — مرجعٌ حيّ لا نسخة (D-068).
+ * الحارس في SQL: القائمة معلنةٌ وليست لي (list_saves.sql).
+ */
+export async function saveList(listId: string, save: boolean) {
+  listId = uuid(listId);
+  const { supabase, user } = await requireUser("share", 30, 60_000);
+  if (save) {
+    const { error } = await supabase
+      .from("list_saves")
+      .upsert({ user_id: user.id, list_id: listId }, { onConflict: "user_id,list_id" });
+    if (error) fail(error);
+  } else {
+    const { error } = await supabase
+      .from("list_saves")
+      .delete()
+      .match({ user_id: user.id, list_id: listId });
+    if (error) fail(error);
+  }
+  revalidatePath("/lists");
+  revalidatePath(`/lists/${listId}`);
+}
+
 /** مجتمعاتي — غلاف فعلٍ لورقة «انشرها في مجتمعي» (rpc القائمة نفسها) */
 export async function myCommunitiesList(): Promise<CommunityLite[]> {
   const { supabase } = await requireUser();
