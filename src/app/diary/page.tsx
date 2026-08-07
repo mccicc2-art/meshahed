@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getUser, getWatchHistory, getFollows, getAllMovieProgress } from "@/lib/data";
 import { getT } from "@/lib/locale";
+import { localizeFollows } from "@/lib/localize";
 import { posterUrl } from "@/lib/media";
 import { formatDate } from "@/lib/when";
 import {
@@ -26,11 +27,15 @@ export default async function DiaryPage() {
   const { locale, t } = await getT();
 
   // نافذة أوسع: صفوف اليوميات خفيفة، وألف صفٍّ تغطي شهوراً من المشاهدة
-  const [history, follows, movieProgress] = await Promise.all([
+  const [history, rawFollows, movieProgress] = await Promise.all([
     getWatchHistory(1000),
     getFollows(),
     getAllMovieProgress(),
   ]);
+
+  /* أسماء اليوميات تأتي من المتابعات، فترجمتها هنا تُصلح السجلّ كله
+     دفعةً واحدة (D-048) */
+  const follows = await localizeFollows(rawFollows, locale);
 
   // خريطة العنوان والملصق: المتابعات أولاً ثم مواضع الأفلام المتوقّفة
   const meta = new Map<string, { title: string; poster: string | null }>();
