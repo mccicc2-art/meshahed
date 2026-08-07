@@ -6,6 +6,8 @@ import {
   getCommunityFeed,
   getFollowLists,
   getIncomingFollowRequests,
+  getMyCommunities,
+  getCommunityRoom,
   getConversations,
   getUnreadShares,
   type ConvShareEvent,
@@ -18,6 +20,7 @@ import { formatDateShort } from "@/lib/when";
 import { num } from "@/lib/i18n";
 import { CommunityBar } from "@/components/CommunityBar";
 import { Inbox } from "@/components/Inbox";
+import { CommunityDirectory, CommunityRoom } from "@/components/Communities";
 import { PersonName } from "@/components/PersonRow";
 import { backdropUrl, posterUrl } from "@/lib/media";
 import { getTv, getMovie } from "@/lib/tmdb";
@@ -37,14 +40,14 @@ function asTab(v: string | undefined): Tab {
 export default async function PeoplePage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string; sort?: string; with?: string }>;
+  searchParams: Promise<{ tab?: string; sort?: string; with?: string; c?: string }>;
 }) {
   const user = await getUser();
   if (!user) redirect("/login");
 
   const { locale, t } = await getT();
 
-  const { tab: tabParam, sort, with: withParam } = await searchParams;
+  const { tab: tabParam, sort, with: withParam, c: cParam } = await searchParams;
   const tab = asTab(tabParam);
   const newest = sort === "new";
   const openWith = tab === "inbox" && withParam ? withParam : null;
@@ -52,16 +55,23 @@ export default async function PeoplePage({
   /* الخطّان يُبنيان معاً كي يحمل التبويبان عدّادَيهما دائماً — كصفّ شرائح
      المكتبة (١٨ مسلسلاً · ١٨ فيلماً). كلٌّ نداءا definer خفيفان؛ والترجمة
      والصور العرضية للنشِط وحده. والرسائل تُقرأ عند الحاجة فقط. */
-  const [followingFeed, allFeed, unread, lists, followRequests] = await Promise.all([
+  /* «المجتمع» صار دليلَ مجتمعاتٍ لا خطَّ تفاعلات (قرار المالك): خطُّ
+     الجميع أُسقط — «مجتمعي» يكفي لدائرتك والتقييمات في صفحة كل عمل —
+     فسقط طلبُه أيضاً، وحلّ محلّه نداءُ مجتمعاتي الخفيف لعدّاد التبويب. */
+  const [followingFeed, myCommunities, unread, lists, followRequests] = await Promise.all([
     getCommunityFeed("following"),
-    getCommunityFeed("all"),
+    getMyCommunities(),
     getUnreadShares(),
     getFollowLists(user.id),
     getIncomingFollowRequests(),
   ]);
 
   const mineCount = followingFeed.length;
-  const allCount = allFeed.length;
+  const allCount = myCommunities.length;
+
+  // غرفةٌ مفتوحة؟ («‎?tab=all&c=<id>‎» — الحالة في الرابط كالوارد، D-051/D-054)
+  const openCommunity =
+    tab === "all" && cParam ? await getCommunityRoom(cParam) : null;
 
   // ===== الرسائل — محادثةٌ لكل شخص =====
   // ترجمة عناوين الأعمال المُشارَكة عند العرض (D-048): نجمع أحداث المشاركة
@@ -88,12 +98,11 @@ export default async function PeoplePage({
     startable = (await myMutualFollows()).filter((p) => !withConv.has(p.id));
   }
 
-  // ===== خطّ الآراء للنشِط (مجتمعي/المجتمع) =====
-  const rawFeed = tab === "all" ? allFeed : followingFeed;
+  // ===== خطّ الآراء — لتبويب «مجتمعي» وحده الآن =====
   const feed =
-    tab === "inbox"
+    tab !== "mine"
       ? []
-      : (await localizeRows(rawFeed, locale)).sort((a, b) =>
+      : (await localizeRows(followingFeed, locale)).sort((a, b) =>
           newest
             ? b.updated_at.localeCompare(a.updated_at)
             : b.likes - a.likes || b.updated_at.localeCompare(a.updated_at),
@@ -174,10 +183,10 @@ export default async function PeoplePage({
       {/* صفٌّ واحد تحت التبويبات: ترتيب الخطّ على البداية (لتبويبَي الخطّ
           فقط)، وعدّادا المتابعة وزرّ الإضافة على الطرف — نُقلا إلى هنا من
           أعلى الصفحة بطلب المالك. يختفي داخل محادثةٍ مفتوحة لتصفو الدردشة */}
-      {!openWith && (
+      {!openWith && !openCommunity && (
         <div className="flex items-center justify-between gap-2">
           <div className="min-w-0">
-            {tab !== "inbox" && feed.length > 0 && (
+            {tab === "mine" && feed.length > 0 && (
               <div role="group" aria-label={t.feedSortGroup} className={segmentedTrack}>
                 <Link
                   href={sortBase}
@@ -208,11 +217,17 @@ export default async function PeoplePage({
           openWith={openWith}
           locale={locale}
         />
+      ) : tab === "all" ? (
+        openCommunity ? (
+          <CommunityRoom room={openCommunity} locale={locale} />
+        ) : (
+          <CommunityDirectory mine={myCommunities} locale={locale} />
+        )
       ) : (
         <section>
           {feed.length === 0 ? (
             <p className="text-sm text-muted bg-surface border border-dashed border-border rounded-xl py-8 text-center">
-              {tab === "all" ? t.communityAllEmpty : t.feedEmpty}
+              {t.feedEmpty}
             </p>
           ) : (
             <div className="divide-y divide-[color:var(--divider)]">
