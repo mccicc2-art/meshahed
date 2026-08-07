@@ -42,10 +42,13 @@ as
     p.cover_url,
     p.favorite_genres,
     coalesce(p.hide_name, false) as hide_name,
-    -- تموضع الصورتين (٠–١٠٠ رأسياً) في الذيل عمداً: create or replace
-    -- لا يقبل عموداً جديداً في وسط عرضٍ قائم — أُضيفا في image_positions.sql
+    -- الأعمدة الجديدة في الذيل عمداً: create or replace لا يقبل عموداً
+    -- في وسط عرضٍ قائم (image_positions ثم profile_bio ثم profile_visibility)
     p.cover_pos,
-    p.avatar_pos
+    p.avatar_pos,
+    case when coalesce(p.hide_name, false) and p.id is distinct from auth.uid()
+         then null else p.bio end        as bio,
+    coalesce(p.is_private, false)        as is_private
   from public.profiles p;
 
 revoke all on public.public_profiles from public, anon;

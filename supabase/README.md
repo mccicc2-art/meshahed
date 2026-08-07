@@ -39,7 +39,7 @@
 | 26 | `shares.sql` | `title_shares` + `share_replies` + `are_mutual` + `unread_shares` | لم تُبنَ بعد |
 | 27 | `community_feed.sql` | `community_activity()` — خطّ آراء الجميع | لم تُبنَ بعد |
 | 28 | `person_follows.sql` | متابعة الفنانين | لم تُبنَ بعد |
-| 29 | `profile_visibility.sql` | `activity_visibility` — عام أو المتابِعون | **لم تُشغَّل** — توقّفت لوحة Supabase عن التحميل، أعِد المحاولة |
+| 29 | `profile_visibility.sql` | **أُعيد كتابته ٩ أغسطس:** الحساب الخاص يخفي محتواه — `can_view_profile` + بوّابة دوال الملف الخمس + `is_private` في العرض. ⚠️ يُشغَّل **بعد** ٢٤ و٣٢ رغم رقمه | **مشحونة** |
 | 30 | `security3.sql` | إغلاق قراءة `follows` و`watched_*` | لا واجهة لها |
 | 31 | `blocks.sql` | جدول الحظر + `is_blocked` مطويّة داخل `are_mutual` + `block_user` + `my_blocks` | **مشحونة** |
 | 32 | `follow_requests.sql` | `profiles.is_private` + طلبات المتابعة + `request_or_follow` وقبولٌ وإزالةُ متابِع | **مشحونة** |
@@ -48,9 +48,8 @@
 | 35 | `communities2.sql` | إصلاح تكرار RLS: فحص العضوية عبر `is_community_member` (definer) | **مشحونة** |
 | 36 | `user_reports.sql` | الإبلاغ عن حساب — شقيق `review_reports` بلا إخفاءٍ تلقائيّ | **مشحونة** |
 
-كلها تحقَّقت بالاستعلام المكتوب في ذيل ملفّها. **الاستثناء الوحيد
-`profile_visibility.sql` (٢٩)** — مرفوعٌ في المستودع ولم يُشغَّل بعد؛ شغّله
-قبل بناء خيار الخصوصية في الإعدادات.
+كلها تحقَّقت بالاستعلام المكتوب في ذيل ملفّها — **لا استثناءات: كل ملفات
+الجدول شُغِّلت** (آخرها ٢٩ المعاد كتابته و٣٦، في ٩ أغسطس).
 
 للتأكد أن قاعدة الإنتاج مطابقة:
 ```sql
