@@ -418,6 +418,34 @@ export async function getWatchedMovieIds(): Promise<Set<number>> {
   return new Set(rows.map((r) => r.movie_tmdb_id));
 }
 
+/**
+ * الأفلام المُشاهَدة بمدّة كلٍّ منها — لحساب ساعات المشاهدة بدقّة.
+ *
+ * الثغرة التي تسدّها: الإحصائيات كانت تعدّ كل فيلمٍ **١١٠ دقيقة** ثابتة
+ * (`watchedMovieIds.size * 110`)، فالفيلم الطويل والقصير سواء، وبطاقة
+ * المشاركة كانت تُسقط الأفلام من الوقت أصلاً. المدّة مخزّنة عند وضع علامة
+ * المشاهدة (`toggleMovieWatched`)، فنقرأها ونجمعها فعلاً بدل التقدير.
+ */
+export async function getWatchedMovies(): Promise<{ id: number; runtime: number | null }[]> {
+  const supabase = await createClient();
+  const user = await getUser();
+  if (!user) return [];
+  const rows = await pageAll<{ movie_tmdb_id: number; runtime: number | null }>((from, to) =>
+    supabase
+      .from("watched_movies")
+      .select("movie_tmdb_id, runtime")
+      .eq("user_id", user.id)
+      .order("movie_tmdb_id", { ascending: true })
+      .range(from, to),
+  );
+  return rows.map((r) => ({ id: r.movie_tmdb_id, runtime: r.runtime }));
+}
+
+/** إجمالي دقائق الأفلام — المدّة الفعلية، وبديلٌ ١١٠ لِما لا مدّةَ له فقط */
+export function watchedMovieMinutes(rows: { runtime: number | null }[]): number {
+  return rows.reduce((n, r) => n + (r.runtime ?? 110), 0);
+}
+
 // ================= التقييمات والمراجعات =================
 
 export interface RatingRow {
