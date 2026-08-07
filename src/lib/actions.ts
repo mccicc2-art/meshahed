@@ -1644,6 +1644,68 @@ export async function sendListShare(input: {
   revalidatePath("/people");
 }
 
+/** متابِعيّ — لمنتقي «من يرى مكتبتي» (D-070): من يتابعني، لا من أتابعه */
+export async function myFollowersList(): Promise<PersonLite[]> {
+  const { supabase, user } = await requireUser();
+  const { data } = await supabase
+    .from("user_follows")
+    .select("follower_id")
+    .eq("following_id", user.id)
+    .limit(200);
+  const ids = [...new Set((data ?? []).map((r) => r.follower_id))];
+  if (!ids.length) return [];
+  const { data: people } = await supabase
+    .from("public_profiles")
+    .select("id, nickname, username, avatar_url, hide_name")
+    .in("id", ids);
+  return (people ?? []) as PersonLite[];
+}
+
+/** من منحتُهم رؤية مكتبتي — لقسم الإعدادات (D-070) */
+export async function myLibraryGrants(): Promise<PersonLite[]> {
+  const { supabase, user } = await requireUser();
+  const { data } = await supabase
+    .from("library_grants")
+    .select("grantee_id, created_at")
+    .eq("owner_id", user.id)
+    .order("created_at", { ascending: false })
+    .limit(200);
+  const ids = (data ?? []).map((r) => r.grantee_id);
+  if (!ids.length) return [];
+  const { data: people } = await supabase
+    .from("public_profiles")
+    .select("id, nickname, username, avatar_url, hide_name")
+    .in("id", ids);
+  const rank = new Map(ids.map((id, i) => [id, i]));
+  return ((people ?? []) as PersonLite[]).sort(
+    (a, b) => (rank.get(a.id) ?? 1e9) - (rank.get(b.id) ?? 1e9),
+  );
+}
+
+/**
+ * منحُ رؤية مكتبتي لشخصٍ أو سحبُها (D-070) — تُطوى في can_view_profile
+ * فتفتح دوال الملف الخمس نفسها بلا بابٍ جديد (library_grants.sql).
+ */
+export async function setLibraryGrant(granteeId: string, grant: boolean) {
+  granteeId = uuid(granteeId);
+  const { supabase, user } = await requireUser("share", 30, 60_000);
+  if (granteeId === user.id) {
+    throw new Error("مكتبتك مرئيةٌ لك دائماً / Your library is always visible to you");
+  }
+  if (grant) {
+    const { error } = await supabase
+      .from("library_grants")
+      .upsert({ owner_id: user.id, grantee_id: granteeId }, { onConflict: "owner_id,grantee_id" });
+    if (error) fail(error);
+  } else {
+    const { error } = await supabase
+      .from("library_grants")
+      .delete()
+      .match({ owner_id: user.id, grantee_id: granteeId });
+    if (error) fail(error);
+  }
+}
+
 /**
  * حفظ قائمة غيرك أو إلغاء حفظها — مرجعٌ حيّ لا نسخة (D-068).
  * الحارس في SQL: القائمة معلنةٌ وليست لي (list_saves.sql).
