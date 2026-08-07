@@ -1027,6 +1027,35 @@ export async function top50(
 }
 
 /**
+ * أعمال فنّانيك — لصفّ «من فنّانيك» في اكتشف (person_follows.sql).
+ *
+ * `/discover/movie` بـ`with_people` (الشرطة العمودية = «أو»). أفلامٌ فقط:
+ * TMDB لا يدعم `with_people` في `/discover/tv` — قيدُ المصدر لا اختيارنا.
+ * الأحدث إصداراً أولاً (السؤال «ما جديد فنّاني؟» لا «ما أشهر أعمالهم؟» —
+ * الأشهر يعرفه المتابع أصلاً)، مع عتبة أصواتٍ صغيرة تُسقط مشاريعَ لم
+ * تُعرض بعد، وقصٌّ بتاريخ اليوم للسبب نفسه. عشرون فنّاناً حدّاً أعلى:
+ * رابط أطول من ذلك يعود خطأً من TMDB.
+ */
+export async function worksByPeople(personIds: number[], limit = 20): Promise<SearchResult[]> {
+  if (!personIds.length) return [];
+  const today = new Date().toISOString().slice(0, 10);
+  try {
+    const data = await tmdb<{ results: SearchResult[] }>("/discover/movie", {
+      with_people: personIds.slice(0, 20).join("|"),
+      sort_by: "primary_release_date.desc",
+      "vote_count.gte": "20",
+      "primary_release_date.lte": today,
+    });
+    return (data.results ?? [])
+      .filter((r) => r.poster_path)
+      .map((r) => ({ ...r, media_type: "movie" as const }))
+      .slice(0, limit);
+  } catch {
+    return [];
+  }
+}
+
+/**
  * القادم قريباً ضمن الفلتر.
  *
  * الحقبة تُقصّ بـ«اليوم» لا تُلغيه: من اختار «٢٠٢٠ فما بعد» يريد قادمها،

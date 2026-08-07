@@ -700,6 +700,45 @@ export async function removeFollowerUser(followerId: string) {
 }
 
 // ============================================================
+//  متابعة الفنانين (person_follows.sql)
+//
+//  upsert لا insert: ضغطتان متسارعتان على الزرّ المتفائل لا تصنعان خطأ
+//  مفتاحٍ مكرّر. والاسم والصورة يُحفظان مع الصفّ (D-048) كي يبقى مقروءاً
+//  حين يسقط TMDB.
+// ============================================================
+
+export async function followArtist(input: {
+  personId: number;
+  name?: string | null;
+  profilePath?: string | null;
+}) {
+  const personId = intId(input.personId);
+  const { supabase, user } = await requireUser("follow-artist", 30, 60_000);
+  const { error } = await supabase.from("person_follows").upsert(
+    {
+      user_id: user.id,
+      person_id: personId,
+      name: input.name ? String(input.name).slice(0, 200) : null,
+      profile_path: safeImagePath(input.profilePath ?? null),
+    },
+    { onConflict: "user_id,person_id" },
+  );
+  if (error) fail(error);
+  revalidatePath("/news");
+}
+
+export async function unfollowArtist(personId: number) {
+  personId = intId(personId);
+  const { supabase, user } = await requireUser();
+  const { error } = await supabase
+    .from("person_follows")
+    .delete()
+    .match({ user_id: user.id, person_id: personId });
+  if (error) fail(error);
+  revalidatePath("/news");
+}
+
+// ============================================================
 //  الحظر والإبلاغ عن حساب (blocks.sql / user_reports.sql)
 //
 //  الفعلان جاران في قائمة الملف لكنّهما مختلفان: الحظر يحميك أنت —

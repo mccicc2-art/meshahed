@@ -1127,6 +1127,54 @@ export async function getFollowedPeople(): Promise<PublicProfile[]> {
   }
 }
 
+// ============================================================
+//  متابعة الفنانين (person_follows.sql) — «فنان» تمييزاً عن متابعة
+//  المستخدمين أعلاه: getFollowedPeople تعيد أشخاص التطبيق، وهذه تعيد
+//  أشخاص TMDB. الاسم والصورة محفوظان مع الصفّ (D-048).
+// ============================================================
+
+export interface ArtistLite {
+  person_id: number;
+  name: string | null;
+  profile_path: string | null;
+}
+
+/** هل أتابع هذا الفنان؟ — للحالة الأولى لزرّ صفحته */
+export async function isFollowingArtist(personId: number): Promise<boolean> {
+  try {
+    const supabase = await createClient();
+    const user = await getUser();
+    if (!user) return false;
+    const { data } = await supabase
+      .from("person_follows")
+      .select("person_id")
+      .eq("user_id", user.id)
+      .eq("person_id", personId)
+      .maybeSingle();
+    return !!data;
+  } catch {
+    return false;
+  }
+}
+
+/** فنّانوك بالأحدث متابعةً — يغذّي صفّ «من فنّانيك» في اكتشف */
+export async function getFollowedArtists(limit = 20): Promise<ArtistLite[]> {
+  try {
+    const supabase = await createClient();
+    const user = await getUser();
+    if (!user) return [];
+    const { data } = await supabase
+      .from("person_follows")
+      .select("person_id, name, profile_path")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(limit);
+    return (data ?? []) as ArtistLite[];
+  } catch {
+    return [];
+  }
+}
+
 // ================= الطبقة الاجتماعية =================
 
 export interface PersonLite {

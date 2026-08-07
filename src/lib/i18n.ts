@@ -265,6 +265,9 @@ const ar = {
   unblockedToast: "رُفع الحظر",
   privateCoverTitle: "حساب خاص",
   privateCoverHint: "تابِعه ليقبل طلبك وترى مكتبته وتقييماته.",
+  // متابعة الفنانين
+  artistsRail: "من فنّانيك",
+  followArtistAria: "تابِع هذا الفنان",
   // المجتمعات
   commDirTitle: "المجتمعات",
   commMineSection: "مجتمعاتي",
@@ -927,6 +930,8 @@ const en: Dict = {
   unblockedToast: "Unblocked",
   privateCoverTitle: "Private account",
   privateCoverHint: "Follow them — once they accept, you'll see their library and ratings.",
+  artistsRail: "From your artists",
+  followArtistAria: "Follow this artist",
   commDirTitle: "Communities",
   commMineSection: "My communities",
   commCreate: "Create a community",
