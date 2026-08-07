@@ -73,6 +73,11 @@ export default async function PublicProfilePage({
     localizeRows(rawFollows, locale),
   ]);
 
+  /* غلاف «حساب خاص»: الحارس الحقيقي في SQL (can_view_profile يفرغ الدوال
+     لغير المتابِع — profile_visibility.sql)، وهذا الشرط للعرض فقط: نرسم
+     قفلاً صريحاً بدل أصفارٍ تبدو عطلاً. طلبُ متابعةٍ معلّق لا يفتح شيئاً. */
+  const canView = isMe || !profile.is_private || relation.following;
+
   const displayName = displayNameOf(profile, t.anonymousUser);
   /* النبذة تتبع الاسم في الإخفاء — والقطع منفَّذٌ في `public_profiles`
      نفسه لا هنا (profile_bio.sql)؛ هذا السطر حارسٌ ثانٍ لا أوّل */
@@ -187,23 +192,40 @@ export default async function PublicProfilePage({
                 <Icon name="people-filled" size={16} />
                 <span className="font-bold text-white tabular-nums">{stats.followers}</span>
               </span>
-              <span className="shrink-0 flex items-center gap-1">
-                <Icon name="comment" size={14} />
-                <span className="font-bold text-white tabular-nums">{withReview.length}</span>
-              </span>
-              <span className="shrink-0 flex items-center gap-1">
-                <Icon name="star" size={14} />
-                <span className="font-bold text-white tabular-nums">{ratings.length}</span>
-              </span>
-              <span className="shrink-0 flex items-center gap-1">
-                <Icon name="like" size={14} />
-                <span className="font-bold text-white tabular-nums">{likes}</span>
-              </span>
+              {/* أعداد المحتوى تغيب مع القفل: صفرٌ من دالةٍ حجبت بياناتها كذبة */}
+              {canView && (
+                <>
+                  <span className="shrink-0 flex items-center gap-1">
+                    <Icon name="comment" size={14} />
+                    <span className="font-bold text-white tabular-nums">{withReview.length}</span>
+                  </span>
+                  <span className="shrink-0 flex items-center gap-1">
+                    <Icon name="star" size={14} />
+                    <span className="font-bold text-white tabular-nums">{ratings.length}</span>
+                  </span>
+                  <span className="shrink-0 flex items-center gap-1">
+                    <Icon name="like" size={14} />
+                    <span className="font-bold text-white tabular-nums">{likes}</span>
+                  </span>
+                </>
+              )}
             </div>
           </div>
         </div>
 
+        {/* ===== غلاف «حساب خاص» — بدل الأرقام والمستوى والصفوف ===== */}
+        {!canView && (
+          <div className="relative z-10 mt-6 bg-surface border border-border rounded-2xl px-6 py-10 text-center">
+            <Icon name="eye-off" size={28} className="mx-auto text-muted" />
+            <p className="font-bold text-[15px] mt-3">{t.privateCoverTitle}</p>
+            <p className="text-[13px] text-muted leading-relaxed mt-1 max-w-[36ch] mx-auto">
+              {t.privateCoverHint}
+            </p>
+          </div>
+        )}
+
         {/* ===== صفّ الأرقام — بلا إطار كما في الرئيسية ===== */}
+        {canView && (
         <div className="relative z-10 mt-5">
           <div className="grid grid-cols-4">
             {headerStats.map((s, i) => (
@@ -220,6 +242,7 @@ export default async function PublicProfilePage({
             ))}
           </div>
         </div>
+        )}
 
         {/* ===== النبذة =====
             تحت الهوية وفوق الأرقام: هي تعريفُ صاحب الصفحة بنفسه، وموضعها
@@ -231,7 +254,8 @@ export default async function PublicProfilePage({
           </p>
         )}
 
-        {/* ===== المستوى ===== */}
+        {/* ===== المستوى — يتبع المحتوى في الحجب ===== */}
+        {canView && (
         <div className="relative z-10 mt-5 px-0.5">
           <p className="text-[13px] font-bold">
             {t.levelLabel(level.level)} ·{" "}
@@ -253,6 +277,7 @@ export default async function PublicProfilePage({
             </span>
           </div>
         </div>
+        )}
       </section>
 
       {/* ===== صفوف أعماله ===== */}
