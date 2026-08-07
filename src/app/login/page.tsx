@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import Link from "next/link";
 import Image from "next/image";
 import { redirect } from "next/navigation";
 import { getUser } from "@/lib/data";
@@ -76,6 +77,20 @@ export default async function LoginPage() {
               (التذييل العام يُخفي نفسه في هذه الصفحة كي لا يتكرّر السطر.) */}
           <p className="mt-3.5 text-[13px] tracking-wide text-muted/70" dir="ltr">
             {t.footer}
+          </p>
+
+          {/* الوثيقتان تحت زرّ الدخول لا في الإعدادات: هذا هو الموضع الذي
+              يبحث فيه من لم يسجّل بعد، وهو الرابط الذي تطلبه شاشة موافقة
+              Google ويفتحه المراجع بلا حساب. صغيرتان عمداً — الوعد فوقهما
+              هو البطل، وهما إتاحةٌ لا دعوة. */}
+          <p className="mt-2.5 text-[11px] text-muted/50 flex items-center justify-center gap-2">
+            <Link href="/privacy" className="hover:text-muted transition">
+              {locale === "ar" ? "الخصوصية" : "Privacy"}
+            </Link>
+            <span aria-hidden>·</span>
+            <Link href="/terms" className="hover:text-muted transition">
+              {locale === "ar" ? "الشروط" : "Terms"}
+            </Link>
           </p>
         </div>
       </div>
