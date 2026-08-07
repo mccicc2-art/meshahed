@@ -838,7 +838,19 @@ export interface ConvReplyEvent {
   body: string;
   created_at: string;
 }
-export type ConvEvent = ConvShareEvent | ConvReplyEvent;
+/** قائمةٌ مُشارَكة — مرفقٌ منظَّم كمشاركة العمل، لا رابطٌ في نصٍّ حر (D-051) */
+export interface ConvListShareEvent {
+  kind: "list";
+  id: string;
+  mine: boolean;
+  list_id: string;
+  /** الاسم والعدّة لحظة الإرسال — البطاقة تُرسم بلا join والرابط يحمل الحيّ */
+  list_name: string | null;
+  item_count: number | null;
+  note: string | null;
+  created_at: string;
+}
+export type ConvEvent = ConvShareEvent | ConvReplyEvent | ConvListShareEvent;
 
 export interface Conversation {
   personId: string;
@@ -857,14 +869,23 @@ export async function getConversations(): Promise<Conversation[]> {
     const me = await getUser();
     if (!me) return [];
 
-    const { data: rows, error } = await supabase
-      .from("title_shares")
-      .select(
-        "id, sender_id, recipient_id, tmdb_id, media_type, title, poster_path, note, created_at, read_at",
-      )
-      .order("created_at", { ascending: true })
-      .limit(300);
-    if (error || !rows?.length) return [];
+    /* الجدولان معاً: مشاركات الأعمال ومشاركات القوائم خيطٌ واحد مع الشخص */
+    const [{ data: rows, error }, { data: listRows }] = await Promise.all([
+      supabase
+        .from("title_shares")
+        .select(
+          "id, sender_id, recipient_id, tmdb_id, media_type, title, poster_path, note, created_at, read_at",
+        )
+        .order("created_at", { ascending: true })
+        .limit(300),
+      supabase
+        .from("list_shares")
+        .select("id, sender_id, recipient_id, list_id, list_name, item_count, note, created_at, read_at")
+        .order("created_at", { ascending: true })
+        .limit(300),
+    ]);
+    if (error && !listRows?.length) return [];
+    if (!rows?.length && !listRows?.length) return [];
 
     type ShareRow = {
       id: string;
@@ -878,7 +899,19 @@ export async function getConversations(): Promise<Conversation[]> {
       created_at: string;
       read_at: string | null;
     };
-    const shareRows = rows as ShareRow[];
+    const shareRows = (rows ?? []) as ShareRow[];
+    type ListShareRow = {
+      id: string;
+      sender_id: string;
+      recipient_id: string;
+      list_id: string;
+      list_name: string | null;
+      item_count: number | null;
+      note: string | null;
+      created_at: string;
+      read_at: string | null;
+    };
+    const listShareRows = (listRows ?? []) as ListShareRow[];
 
     // معرّف المشاركة → الطرف الآخر، لنسب ردودها إلى محادثة الشخص نفسه
     const otherOf = new Map<string, string>();
@@ -887,12 +920,14 @@ export async function getConversations(): Promise<Conversation[]> {
     }
 
     const shareIds = shareRows.map((s) => s.id);
-    const { data: replyRows } = await supabase
-      .from("share_replies")
-      .select("id, share_id, author_id, body, created_at")
-      .in("share_id", shareIds)
-      .order("created_at", { ascending: true })
-      .limit(2000);
+    const { data: replyRows } = shareIds.length
+      ? await supabase
+          .from("share_replies")
+          .select("id, share_id, author_id, body, created_at")
+          .in("share_id", shareIds)
+          .order("created_at", { ascending: true })
+          .limit(2000)
+      : { data: [] };
     type ReplyRow = {
       id: string;
       share_id: string;
@@ -904,6 +939,7 @@ export async function getConversations(): Promise<Conversation[]> {
 
     const ids = new Set<string>();
     for (const s of shareRows) ids.add(otherOf.get(s.id)!);
+    for (const s of listShareRows) ids.add(s.sender_id === me.id ? s.recipient_id : s.sender_id);
     const { data: people } = await supabase
       .from("public_profiles")
       .select("id, nickname, username, avatar_url, hide_name")
@@ -953,6 +989,22 @@ export async function getConversations(): Promise<Conversation[]> {
         body: r.body,
         created_at: r.created_at,
       });
+    }
+    /* مشاركات القوائم — أحداثٌ في الخيط نفسه؛ الردود تبقى معلَّقةً
+       بالأعمال وحدها (D-051) فلا otherOf لها */
+    for (const s of listShareRows) {
+      const c = ensure(s.sender_id === me.id ? s.recipient_id : s.sender_id);
+      c.events.push({
+        kind: "list",
+        id: s.id,
+        mine: s.sender_id === me.id,
+        list_id: s.list_id,
+        list_name: s.list_name,
+        item_count: s.item_count,
+        note: s.note,
+        created_at: s.created_at,
+      });
+      if (s.recipient_id === me.id && !s.read_at) c.unread++;
     }
 
     const list = [...convs.values()];

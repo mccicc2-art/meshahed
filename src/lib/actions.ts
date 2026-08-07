@@ -11,7 +11,7 @@ import { sanitizeHomePrefs, type HomePrefs } from "@/lib/homePrefs";
 import { allow } from "@/lib/ratelimit";
 import { intId, intIn, asMediaType, uuid, dateOrNull } from "@/lib/validate";
 import { IMPORT_CAPS, type ImportPayload, type ResolveRequest, type ResolveResult } from "@/lib/importer";
-import type { PersonLite } from "@/lib/data";
+import type { PersonLite, CommunityLite } from "@/lib/data";
 
 /**
  * بوابة كل فعل: هوية المستخدم ثم حدّ معدّل الطلبات.
@@ -1595,6 +1595,66 @@ export async function sendShare(input: {
   revalidatePath("/people");
 }
 
+/**
+ * مشاركة قائمةٍ لصديق — صفٌّ منظَّم لا رابطٌ في نصٍّ حر (D-051/D-066).
+ *
+ * الاسم والعدّة يُقرآن هنا لا يُستلمان من العميل (روح D-052: الزرّ لا يحمل
+ * البيانات)؛ والقاعدة تشترط المتابعة المتبادلة وأن تكون القائمة معلنةً
+ * ولي — الخاصّة لا يفتحها المستلم أصلاً فمشاركتها وعدٌ كاذب.
+ */
+export async function sendListShare(input: {
+  recipientId: string;
+  listId: string;
+  note?: string | null;
+}) {
+  const recipientId = uuid(input.recipientId);
+  const listId = uuid(input.listId);
+  const note = (input.note ?? "").replace(/\s+/g, " ").trim().slice(0, 280) || null;
+
+  const { supabase, user } = await requireUser("share", 20, 60_000);
+  if (user.id === recipientId) {
+    throw new Error("لا يمكنك إرسال القائمة إلى نفسك / You can't send this to yourself");
+  }
+
+  const [{ data: list }, { count }] = await Promise.all([
+    supabase
+      .from("user_lists")
+      .select("id, name, is_public")
+      .match({ id: listId, user_id: user.id })
+      .maybeSingle(),
+    supabase
+      .from("user_list_items")
+      .select("*", { count: "exact", head: true })
+      .eq("list_id", listId),
+  ]);
+  if (!list) throw new Error("القائمة غير موجودة / List not found");
+  if (!list.is_public) {
+    throw new Error("اجعل القائمة معلنةً أولاً / Make the list public first");
+  }
+
+  const { error } = await supabase.from("list_shares").insert({
+    sender_id: user.id,
+    recipient_id: recipientId,
+    list_id: listId,
+    list_name: String(list.name ?? "").slice(0, 300) || null,
+    item_count: count ?? null,
+    note,
+  });
+  if (error) fail(error);
+  revalidatePath("/people");
+}
+
+/** مجتمعاتي — غلاف فعلٍ لورقة «انشرها في مجتمعي» (rpc القائمة نفسها) */
+export async function myCommunitiesList(): Promise<CommunityLite[]> {
+  const { supabase } = await requireUser();
+  const { data, error } = await supabase.rpc("my_communities");
+  if (error) fail(error);
+  return ((data ?? []) as CommunityLite[]).map((c) => ({
+    ...c,
+    member_count: Number(c.member_count),
+  }));
+}
+
 /** ردٌّ قصير على خيط مشاركة — القاعدة تشترط بقاء المتابعة المتبادلة */
 export async function replyToShare(shareId: string, body: string) {
   shareId = uuid(shareId);
@@ -1615,9 +1675,16 @@ export async function replyToShare(shareId: string, body: string) {
 /** تعليم كل الوارد مقروءاً — يُستدعى عند فتح تبويب الرسائل لا لكل صفّ */
 export async function markSharesRead() {
   const { supabase, user } = await requireUser("share", 30, 60_000);
+  const now = new Date().toISOString();
   const { error } = await supabase
     .from("title_shares")
-    .update({ read_at: new Date().toISOString() })
+    .update({ read_at: now })
+    .eq("recipient_id", user.id)
+    .is("read_at", null);
+  // مشاركات القوائم جزءٌ من الوارد نفسه — تُقرأ معه (D-066)
+  await supabase
+    .from("list_shares")
+    .update({ read_at: now })
     .eq("recipient_id", user.id)
     .is("read_at", null);
   if (error) fail(error);
@@ -1648,9 +1715,17 @@ export async function hideShare(shareId: string) {
 export async function markConversationRead(personId: string) {
   personId = uuid(personId);
   const { supabase, user } = await requireUser("share", 30, 60_000);
+  const now = new Date().toISOString();
   const { error } = await supabase
     .from("title_shares")
-    .update({ read_at: new Date().toISOString() })
+    .update({ read_at: now })
+    .eq("recipient_id", user.id)
+    .eq("sender_id", personId)
+    .is("read_at", null);
+  // وقوائم الشخص نفسه — الخيط واحد (D-066)
+  await supabase
+    .from("list_shares")
+    .update({ read_at: now })
     .eq("recipient_id", user.id)
     .eq("sender_id", personId)
     .is("read_at", null);
@@ -1668,6 +1743,15 @@ export async function hideConversation(personId: string) {
     .match({ sender_id: user.id, recipient_id: personId });
   await supabase
     .from("title_shares")
+    .update({ recipient_hid: true })
+    .match({ recipient_id: user.id, sender_id: personId });
+  // ومشاركات القوائم في الخيط نفسه — تُخفى معه من جهتي وحدها (D-066)
+  await supabase
+    .from("list_shares")
+    .update({ sender_hid: true })
+    .match({ sender_id: user.id, recipient_id: personId });
+  await supabase
+    .from("list_shares")
     .update({ recipient_hid: true })
     .match({ recipient_id: user.id, sender_id: personId });
   revalidatePath("/people");
