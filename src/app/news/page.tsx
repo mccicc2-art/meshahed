@@ -29,6 +29,7 @@ import {
   browseKey,
   browseCount,
   needsDiscover,
+  eraRange,
   type BrowseQuery,
 } from "@/lib/browse";
 import { RankedRail } from "@/components/RankedRail";
@@ -159,14 +160,22 @@ async function CuratedRails({
   const deep = needsDiscover(browse);
   const isWeek = win === "week";
 
+  /* «القادم» نمطٌ لا مدى: ما لم يصدر لا أصوات له، فصفّا «أفضل ١٠»
+     يكذبان أو يفرغان — يسقطان، ويحمل صفُّ العدّ التنازلي وحده النتيجة
+     مرتّبةً بتاريخ الصدور وبلا عتبة تقييم (upcomingByFilter يفعل ذلك
+     أصلاً). ونافذة الترتيب تفقد معناها في المستقبل فتُتجاهل بصمت. */
+  const upcoming = era?.upcoming === true;
+  /* مدى الحقبة محسوباً: «القادم» = اليوم حتى بعد ستة أشهر، يتحرّك مع اليوم */
+  const eraR = eraRange(era);
+
   /* الفلتر بلا تصنيف — لكل جهةٍ معرّفاتها فيُضاف عند الطلب */
   const base: DiscoverFilter = {
     lang: lang?.code ?? null,
     country: country?.code ?? null,
     provider,
     watchRegion: region,
-    from: era?.from ?? null,
-    to: era?.to ?? null,
+    from: eraR.from,
+    to: eraR.to,
     minRate: rate,
   };
 
@@ -199,22 +208,23 @@ async function CuratedRails({
 
   const [topMovies, topSeries, topAnime, cinemas, soonMovies, soonSeries, suggested, artistWorks, publicLists, top50Movies, top50Series] =
     await Promise.all([
-      wantMovies ? topFor("movie", genre?.movie) : Promise.resolve([] as SearchResult[]),
-      wantSeries ? topFor("tv", genre?.tv) : Promise.resolve([] as SearchResult[]),
+      wantMovies && !upcoming ? topFor("movie", genre?.movie) : Promise.resolve([] as SearchResult[]),
+      wantSeries && !upcoming ? topFor("tv", genre?.tv) : Promise.resolve([] as SearchResult[]),
       // صفوف أسبوعية بطبعها: الأنمي «هذا الأسبوع»، ودور العرض «الآن»،
       // والقادم «مستقبلاً» — لا معنى لها في نافذتَي السنة وكل الأوقات
       isWeek && !active && wantSeries
         ? topTenAnimeThisWeek().catch(() => [] as SearchResult[])
         : Promise.resolve([] as SearchResult[]),
       isWeek && wantMovies ? nowPlayingMovies().catch(() => null) : Promise.resolve(null),
-      isWeek && wantMovies
+      // «القادم» يفتح صفّ العدّ التنازلي في كل النوافذ — هو النتيجة كلّها هناك
+      (isWeek || upcoming) && wantMovies
         ? deep
           ? upcomingByFilter("movie", { ...base, genreIds: genre?.movie })
           : genre
             ? upcomingByGenre(genre.movie, "movie")
             : upcomingMovies().catch(() => [] as SearchResult[])
         : Promise.resolve([] as SearchResult[]),
-      isWeek && wantSeries
+      (isWeek || upcoming) && wantSeries
         ? deep
           ? upcomingByFilter("tv", { ...base, genreIds: genre?.tv })
           : genre
@@ -253,8 +263,10 @@ async function CuratedRails({
     if (rate && r.vote_average < rate) return false;
     if (era) {
       const d = dateOf(r);
-      if (d && era.from && d < era.from) return false;
-      if (d && era.to && d > era.to) return false;
+      // المدى المحسوب لا الخام: «القادم» يُفرغ صفّ دور العرض بحقّ —
+      // ما يُعرض اليوم ليس قادماً
+      if (d && eraR.from && d < eraR.from) return false;
+      if (d && eraR.to && d > eraR.to) return false;
     }
     return true;
   };
