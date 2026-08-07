@@ -186,22 +186,55 @@ export function DiscoverFilterSheet({
             البيانات موجودة عندنا أصلاً (تظهر في صفحة كل عمل) وكانت غائبة
             عن التصفّح. والقائمة تُجلب من TMDB لا تُكتب هنا — معرّفات
             المنصّات تتغيّر وتُدمَج، وقائمةٌ يدوية تصمت يوم تتغيّر.
-            وتختفي المجموعة كلها إن تعذّر الجلب: خانةٌ فارغة أسوأ من لا خانة */}
+            وتختفي المجموعة كلها إن تعذّر الجلب: خانةٌ فارغة أسوأ من لا خانة.
+
+            **قائمةٌ منسدلة لا رقائق — وهذا ليس خروجاً على العائلتين.**
+            الرقيقة لقائمةٍ تُقرأ بلمحة؛ ومنصّات بلدٍ واحد تبلغ عشرات، وهي
+            بالرقائق جدارٌ يملأ الورقة ويدفن ما تحته (نفس الحجّة التي
+            أبقت قائمة اللغات سبعاً). فالحدّ: ما دون عشرة خياراتٍ رقائق،
+            وما فوقها قائمة.
+
+            وقائمةٌ أصليّة `<select>` لا منسدلةٌ مصنوعة: هذه ورقةٌ تحبس
+            التمرير وتحبس التركيز، والمنسدلة المصنوعة داخلها هي بالضبط
+            حيث تسكن العلل. والأصليّة تفتح مُنتقي النظام على الجوال، وتُقرأ
+            بقارئ الشاشة، وتُبحث بالكتابة. وخطّها ١٦ بكسلاً (D-033) وإلا
+            كبّر سفاري الصفحة عند فتحها. */}
         {providers.length > 0 && (
-          <FilterGroup title={t.browseProviderGroup(regionName(region, lang))}>
-            <Chip on={!draft.provider} onClick={() => set({ provider: null })}>
-              {t.browseAnyProvider}
-            </Chip>
-            {providers.map((pr) => (
-              <Chip
-                key={pr.id}
-                on={draft.provider === pr.id}
-                onClick={() => set({ provider: draft.provider === pr.id ? null : pr.id })}
+          <section>
+            <label
+              htmlFor="browse-provider"
+              className="block text-xs font-bold text-muted mb-2"
+            >
+              {t.browseProviderGroup(regionName(region, lang))}
+            </label>
+            <div className="relative">
+              <select
+                id="browse-provider"
+                value={draft.provider ?? ""}
+                onChange={(e) => {
+                  tap(6);
+                  const v = e.target.value;
+                  setDraft((d) => ({ ...d, provider: v ? Number(v) : null }));
+                }}
+                className={`w-full appearance-none rounded-control border bg-surface-2 ps-3.5 pe-10 py-3 text-base font-semibold outline-none transition focus:border-accent ${
+                  draft.provider ? "border-accent text-accent" : "border-border text-foreground"
+                }`}
               >
-                {pr.name}
-              </Chip>
-            ))}
-          </FilterGroup>
+                <option value="">{t.browseAnyProvider}</option>
+                {providers.map((pr) => (
+                  <option key={pr.id} value={pr.id}>
+                    {pr.name}
+                  </option>
+                ))}
+              </select>
+              <span
+                className="pointer-events-none absolute inset-y-0 end-3.5 grid place-items-center text-muted"
+                aria-hidden
+              >
+                <Icon name="chevron-down" size={16} strokeWidth={2.2} />
+              </span>
+            </div>
+          </section>
         )}
 
         {/* ===== سنة الإصدار ===== */}
