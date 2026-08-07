@@ -4,7 +4,7 @@ import { redirect, notFound } from "next/navigation";
 import Image from "next/image";
 import {
   getUser,
-  isFollowing,
+  getFollowState,
   isMovieWatched,
   getMyRating,
   getCommunityRating,
@@ -40,9 +40,9 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
   // وانتظار الأولى قبل الثانية كان يضيف رحلة كاملة إلى الخادم
   // بيانات أول رسمة فقط — الترايلر والتعليقات تُبثّ لاحقاً عبر Suspense
   const userRegion = await getWatchRegion();
-  const [movie, following, watched, watchWhere, myLists, inLists] = await Promise.all([
+  const [movie, followState, watched, watchWhere, myLists, inLists] = await Promise.all([
     getMovie(movieId).catch(() => null),
-    isFollowing(movieId, "movie"),
+    getFollowState(movieId, "movie"),
     isMovieWatched(movieId),
     getWatchProviders("movie", movieId),
     getMyLists(),
@@ -96,6 +96,7 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
           tmdbId={movieId}
           mediaType="movie"
           posterPath={movie.poster_path}
+          initialDropped={followState.dropped}
         />
       </div>
 
@@ -150,7 +151,7 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
           title={movie.title}
           posterPath={movie.poster_path}
           locale={locale}
-          initialFollowing={following}
+          initialFollowing={followState.following}
           lists={myLists.map((l) => ({ id: l.id, name: l.name }))}
           containing={inLists}
           episodesTotal={null}
