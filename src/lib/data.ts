@@ -1278,6 +1278,151 @@ export async function getFollowLists(
 }
 
 // ============================================================
+//  المجتمعات (communities.sql)
+// ============================================================
+
+/** مجتمعٌ كما يظهر في الدليل والبحث */
+export interface CommunityLite {
+  id: string;
+  name: string;
+  is_private: boolean;
+  owner_id: string;
+  member_count: number;
+  /** علاقتي به — يأتي من search_communities فقط */
+  my_status?: "member" | "requested" | "none";
+}
+
+/** رسالةٌ في غرفة مجتمع */
+export interface CommunityMessage {
+  id: string;
+  author_id: string;
+  author: PersonLite | null;
+  mine: boolean;
+  body: string;
+  created_at: string;
+}
+
+/** غرفة مجتمعٍ كاملة — ما تحتاجه صفحتها في قراءةٍ واحدة مجمَّعة */
+export interface CommunityRoomData {
+  id: string;
+  name: string;
+  is_private: boolean;
+  owner_id: string;
+  isOwner: boolean;
+  isMember: boolean;
+  /** طلبتُ الانضمام وما زال معلّقاً (الخاصّ) */
+  requested: boolean;
+  member_count: number;
+  members: PersonLite[];
+  messages: CommunityMessage[];
+  /** طلبات الانضمام المعلّقة — للمالك وحده، وإلا فارغة */
+  joinRequests: PersonLite[];
+}
+
+/** مجتمعاتي — ما أنا عضوٌ فيه، لصدر الدليل */
+export async function getMyCommunities(): Promise<CommunityLite[]> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("my_communities");
+    if (error || !data) return [];
+    return (data as CommunityLite[]).map((c) => ({ ...c, member_count: Number(c.member_count) }));
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * غرفة مجتمع. الصفّ نفسه مقروءٌ للجميع (الدليل عامّ)؛ الأعضاء والرسائل
+ * تحرسهما سياسات العضوية فتعودان فارغتين لغير العضو — فتعرض الصفحة
+ * غلافَ «انضمّ» بدل الدردشة. طلبات الانضمام تُقرأ للمالك وحده.
+ */
+export async function getCommunityRoom(id: string): Promise<CommunityRoomData | null> {
+  try {
+    if (!UUID_RE.test(id)) return null;
+    const supabase = await createClient();
+    const me = await getUser();
+    if (!me) return null;
+
+    const { data: c } = await supabase
+      .from("communities")
+      .select("id, name, is_private, owner_id")
+      .eq("id", id)
+      .maybeSingle();
+    if (!c) return null;
+    const isOwner = c.owner_id === me.id;
+
+    const [memberRows, msgRows, reqRows, myReq] = await Promise.all([
+      supabase
+        .from("community_members")
+        .select("user_id")
+        .eq("community_id", id)
+        .order("joined_at", { ascending: true })
+        .limit(100),
+      supabase
+        .from("community_messages")
+        .select("id, author_id, body, created_at")
+        .eq("community_id", id)
+        .order("created_at", { ascending: true })
+        .limit(200),
+      isOwner
+        ? supabase
+            .from("community_join_requests")
+            .select("user_id")
+            .eq("community_id", id)
+            .order("created_at", { ascending: false })
+            .limit(50)
+        : Promise.resolve({ data: [] as { user_id: string }[] }),
+      supabase
+        .from("community_join_requests")
+        .select("community_id")
+        .eq("community_id", id)
+        .eq("user_id", me.id)
+        .maybeSingle(),
+    ]);
+
+    const members = (memberRows.data ?? []).map((r) => r.user_id);
+    const isMember = members.includes(me.id);
+
+    // ملفّات كل من يظهر — الأعضاء ومؤلّفو الرسائل والطالبون — نداءٌ واحد
+    const ids = new Set<string>(members);
+    for (const m of msgRows.data ?? []) ids.add(m.author_id);
+    for (const r of reqRows.data ?? []) ids.add(r.user_id);
+    const { data: people } = ids.size
+      ? await supabase
+          .from("public_profiles")
+          .select("id, nickname, username, avatar_url, hide_name")
+          .in("id", [...ids])
+      : { data: [] as PersonLite[] };
+    const byId = new Map((people ?? []).map((p) => [p.id, p as PersonLite]));
+
+    return {
+      id: c.id,
+      name: c.name,
+      is_private: c.is_private,
+      owner_id: c.owner_id,
+      isOwner,
+      isMember,
+      requested: !!myReq.data,
+      member_count: members.length,
+      members: members.map((uid) => byId.get(uid)).filter(Boolean) as PersonLite[],
+      messages: (msgRows.data ?? []).map((m) => ({
+        id: m.id,
+        author_id: m.author_id,
+        author: byId.get(m.author_id) ?? null,
+        mine: m.author_id === me.id,
+        body: m.body,
+        created_at: m.created_at,
+      })),
+      joinRequests: (reqRows.data ?? [])
+        .map((r) => byId.get(r.user_id))
+        .filter(Boolean) as PersonLite[],
+    };
+  } catch {
+    return null;
+  }
+}
+
+// ============================================================
 //  لوحة الصدارة
 // ============================================================
 

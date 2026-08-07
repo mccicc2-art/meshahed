@@ -699,6 +699,142 @@ export async function removeFollowerUser(followerId: string) {
   revalidatePath("/");
 }
 
+// ============================================================
+//  المجتمعات (communities.sql)
+// ============================================================
+
+/**
+ * إنشاء مجتمعي — واحدٌ لكل شخص (unique owner_id).
+ *
+ * الدالّة في القاعدة تُنشئ الصفّ وتُدخل المالك عضواً في نقلةٍ واحدة.
+ * تعارضُ الفريد (23505) يعني «لديك مجتمعٌ بالفعل» — رسالةٌ للمستخدم لا
+ * خطأُ قاعدةٍ خام.
+ */
+export async function createCommunity(input: {
+  name: string;
+  isPrivate: boolean;
+}): Promise<string> {
+  const name = String(input.name ?? "").replace(/\s+/g, " ").trim().slice(0, 50);
+  if (name.length < 2) throw new Error("اسمٌ أقصر من حرفين / Name too short");
+  const { supabase } = await requireUser("community", 5, 60_000);
+  const { data, error } = await supabase.rpc("create_community", {
+    p_name: name,
+    p_private: !!input.isPrivate,
+  });
+  if (error) {
+    if (error.code === "23505")
+      throw new Error("لديك مجتمعٌ بالفعل — لكل شخصٍ مجتمعٌ واحد / You already have a community");
+    fail(error);
+  }
+  revalidatePath("/people");
+  return data as string;
+}
+
+/** الانضمام: مباشرةً للعامّ، وطلبٌ للخاصّ — تُرجع أيّهما وقع */
+export async function joinCommunity(id: string): Promise<"joined" | "requested" | "noop"> {
+  id = uuid(id);
+  const { supabase } = await requireUser("community", 20, 60_000);
+  const { data, error } = await supabase.rpc("join_community", { p_community: id });
+  if (error) fail(error);
+  revalidatePath("/people");
+  return (data as "joined" | "requested" | "noop") ?? "noop";
+}
+
+/** المغادرة — حذف عضويتي (المالك لا يغادر؛ يحذف مجتمعه) */
+export async function leaveCommunity(id: string) {
+  id = uuid(id);
+  const { supabase, user } = await requireUser("community", 20, 60_000);
+  const { error } = await supabase
+    .from("community_members")
+    .delete()
+    .match({ community_id: id, user_id: user.id });
+  if (error) fail(error);
+  revalidatePath("/people");
+}
+
+/** سحبُ طلب انضمامي المعلّق لمجتمعٍ خاص */
+export async function cancelCommunityRequest(id: string) {
+  id = uuid(id);
+  const { supabase, user } = await requireUser("community", 20, 60_000);
+  const { error } = await supabase
+    .from("community_join_requests")
+    .delete()
+    .match({ community_id: id, user_id: user.id });
+  if (error) fail(error);
+  revalidatePath("/people");
+}
+
+/** قبول طلب انضمام — المالك وحده (definer يتحقّق) */
+export async function acceptCommunityRequest(communityId: string, userId: string) {
+  communityId = uuid(communityId);
+  userId = uuid(userId);
+  const { supabase } = await requireUser("community", 30, 60_000);
+  const { error } = await supabase.rpc("accept_join_request", {
+    p_community: communityId,
+    p_user: userId,
+  });
+  if (error) fail(error);
+  revalidatePath("/people");
+}
+
+/** رفض طلب انضمام — سياسة الحذف تسمح للمالك */
+export async function rejectCommunityRequest(communityId: string, userId: string) {
+  communityId = uuid(communityId);
+  userId = uuid(userId);
+  const { supabase } = await requireUser("community", 30, 60_000);
+  const { error } = await supabase
+    .from("community_join_requests")
+    .delete()
+    .match({ community_id: communityId, user_id: userId });
+  if (error) fail(error);
+  revalidatePath("/people");
+}
+
+/** حذف مجتمعي — يفكّ العضويات والرسائل معه (on delete cascade) */
+export async function deleteCommunity(id: string) {
+  id = uuid(id);
+  const { supabase, user } = await requireUser("community", 5, 60_000);
+  const { error } = await supabase
+    .from("communities")
+    .delete()
+    .match({ id, owner_id: user.id });
+  if (error) fail(error);
+  revalidatePath("/people");
+}
+
+/** رسالة في غرفة مجتمع — سياسة الإدراج تشترط العضوية */
+export async function postCommunityMessage(communityId: string, body: string) {
+  communityId = uuid(communityId);
+  const clean = String(body ?? "").trim();
+  if (clean.length < 1 || clean.length > 2000) {
+    throw new Error("مدخل غير صالح / Invalid input");
+  }
+  const { supabase, user } = await requireUser("community-msg", 30, 60_000);
+  const { error } = await supabase.from("community_messages").insert({
+    community_id: communityId,
+    author_id: user.id,
+    body: clean,
+  });
+  if (error) fail(error);
+  revalidatePath("/people");
+}
+
+/** بحث المجتمعات بالاسم — يمرّ عبر أكشن لأن العميل لا يستدعي data.ts */
+export async function searchCommunities(q: string) {
+  const term = String(q ?? "").trim().slice(0, 50);
+  const { supabase } = await requireUser("community", 30, 60_000);
+  const { data, error } = await supabase.rpc("search_communities", { q: term });
+  if (error) fail(error);
+  return (data ?? []) as {
+    id: string;
+    name: string;
+    is_private: boolean;
+    owner_id: string;
+    member_count: number;
+    my_status: "member" | "requested" | "none";
+  }[];
+}
+
 export async function followUser(targetId: string) {
   targetId = uuid(targetId);
   const { supabase, user } = await requireUser();
