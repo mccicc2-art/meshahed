@@ -17,7 +17,10 @@ const ar = {
   code: "ar" as Locale,
   dir: "rtl",
   brand: "Loopz",
-  tagline: "منصة ذكية لتتبع الأفلام والمسلسلات والأنمي — كل ما تشاهده، في مكان واحد.",
+  /* سطرُ الهبوط قصيرٌ عمداً — يُقرأ تحت عنوانٍ عريض لا في نتيجة بحث.
+     ولهذا `metaDescription` بقي وصفياً بكلماته المفتاحية: هو ما يقرؤه
+     محرّك البحث ومعاينة الرابط، وهما يحتاجان «أفلام ومسلسلات وأنمي». */
+  tagline: "كل ما تشاهده، مرتّباً كما يليق.",
   taglineEn: "Track. Watch. Remember.",
   metaTitle: "Loopz — تتبّع أفلامك ومسلسلاتك",
   metaDescription: "منصة ذكية لتتبع الأفلام والمسلسلات والأنمي — كل ما تشاهده، في مكان واحد.",
@@ -252,8 +255,8 @@ const ar = {
   rateQuestion: "ما تقييمك له؟",
   ratedThanks: "انحفظ تقييمك ✓",
   rewatchBtn: "أشاهده من جديد",
-  landingH1a: "تابع مسلسلاتك وأفلامك",
-  landingH1b: "ولا تضيّع حلقتك القادمة",
+  landingH1a: "تابع كل ما تشاهده",
+  landingH1b: "ولا تفوتك الحلقة القادمة",
   statsTopShows: "الأكثر مشاهدة",
   statsTopShowsSub: "مسلسلاتك مرتّبة بعدد الحلقات التي شاهدتها.",
   diaryEpsGrouped: (n: number) =>
@@ -494,7 +497,7 @@ const en: Dict = {
   code: "en",
   dir: "ltr",
   brand: "Loopz",
-  tagline: "A smart home for the shows, movies and anime you watch \u2014 all in one place.",
+  tagline: "Everything you watch. Organized beautifully.",
   taglineEn: "Track. Watch. Remember.",
   metaTitle: "Loopz \u2014 track your shows & movies",
   metaDescription: "A smart home for the shows, movies and anime you watch \u2014 all in one place.",
@@ -718,8 +721,8 @@ const en: Dict = {
   rateQuestion: "How would you rate it?",
   ratedThanks: "Rating saved ✓",
   rewatchBtn: "Watch it again",
-  landingH1a: "Track your shows and movies",
-  landingH1b: "Never lose your next episode",
+  landingH1a: "Track what you watch.",
+  landingH1b: "Never miss what's next.",
   statsTopShows: "Most watched",
   statsTopShowsSub: "Your shows ranked by episodes watched.",
   diaryEpsGrouped: (n: number) => `${n} episode${n === 1 ? "" : "s"}`,
