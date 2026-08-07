@@ -11,12 +11,14 @@ import { Sheet, SheetHeader } from "./ui/Sheet";
 const MIN = 2;
 
 interface Suggestion {
+  kind: "tv" | "movie" | "person";
   id: number;
-  mediaType: "tv" | "movie";
   title: string;
-  year: string;
+  year?: string;
   poster: string | null;
-  rating: number | null;
+  rating?: number | null;
+  /** أشهر أعمال الشخص — سطرٌ ثانٍ تحت الاسم */
+  subtitle?: string;
 }
 
 /**
@@ -150,46 +152,50 @@ export function TitleSearchSheet({
         ) : items.length === 0 && touched ? (
           <p className="text-sm text-muted text-center py-8 px-5">{t.searchNoResults}</p>
         ) : (
-          items.map((s) => (
-            <button
-              key={`${s.mediaType}-${s.id}`}
-              type="button"
-              onClick={() =>
-                go(`/${s.mediaType === "tv" ? "show" : "movie"}/${s.id}`)
-              }
-              className="w-full flex items-center gap-3 px-5 py-2.5 text-start hover:bg-surface-2 transition"
-            >
-              <span className="relative w-9 shrink-0 aspect-[2/3] rounded-md overflow-hidden bg-surface-2 block">
-                {s.poster ? (
-                  <Image
-                    src={s.poster}
-                    alt=""
-                    fill
-                    sizes="36px"
-                    className="object-cover"
-                  />
-                ) : (
-                  <span className="w-full h-full grid place-items-center text-muted" aria-hidden>
-                    <Icon name={s.mediaType === "tv" ? "tv" : "film"} size={14} />
+          items.map((s) => {
+            const person = s.kind === "person";
+            const href = person
+              ? `/person/${s.id}`
+              : `/${s.kind === "tv" ? "show" : "movie"}/${s.id}`;
+            return (
+              <button
+                key={`${s.kind}-${s.id}`}
+                type="button"
+                onClick={() => go(href)}
+                className="w-full flex items-center gap-3 px-5 py-2.5 text-start hover:bg-surface-2 transition"
+              >
+                {/* الشخص صورةٌ دائرية والعمل ملصقٌ رأسيّ — الشكل يقول النوع */}
+                <span
+                  className={`relative shrink-0 overflow-hidden bg-surface-2 block ${
+                    person ? "w-9 h-9 rounded-full" : "w-9 aspect-[2/3] rounded-md"
+                  }`}
+                >
+                  {s.poster ? (
+                    <Image src={s.poster} alt="" fill sizes="36px" className="object-cover" />
+                  ) : (
+                    <span className="w-full h-full grid place-items-center text-muted" aria-hidden>
+                      <Icon name={person ? "people" : s.kind === "tv" ? "tv" : "film"} size={14} />
+                    </span>
+                  )}
+                </span>
+
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-semibold truncate">{s.title}</span>
+                  <span className="block text-[11px] text-muted truncate">
+                    {person
+                      ? s.subtitle || t.searchPeopleTitle
+                      : `${s.kind === "tv" ? t.typeSeries : t.typeMovie}${s.year ? ` · ${s.year}` : ""}`}
+                  </span>
+                </span>
+
+                {!person && s.rating != null && s.rating > 0 && (
+                  <span className="text-[11px] font-bold text-accent tabular-nums shrink-0" dir="ltr">
+                    ★ {s.rating}
                   </span>
                 )}
-              </span>
-
-              <span className="min-w-0 flex-1">
-                <span className="block text-sm font-semibold truncate">{s.title}</span>
-                <span className="block text-[11px] text-muted">
-                  {s.mediaType === "tv" ? t.typeSeries : t.typeMovie}
-                  {s.year ? ` · ${s.year}` : ""}
-                </span>
-              </span>
-
-              {s.rating != null && s.rating > 0 && (
-                <span className="text-[11px] font-bold text-accent tabular-nums shrink-0" dir="ltr">
-                  ★ {s.rating}
-                </span>
-              )}
-            </button>
-          ))
+              </button>
+            );
+          })
         )}
       </div>
     </Sheet>

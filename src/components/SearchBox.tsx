@@ -7,12 +7,13 @@ import { getDict, type Locale } from "@/lib/i18n";
 import { Icon } from "./Icon";
 
 interface Suggestion {
+  kind: "tv" | "movie" | "person";
   id: number;
-  mediaType: "tv" | "movie";
   title: string;
-  year: string;
+  year?: string;
   poster: string | null;
-  rating: number | null;
+  rating?: number | null;
+  subtitle?: string;
 }
 
 export function SearchBox({ big = false, locale }: { big?: boolean; locale: Locale }) {
@@ -77,7 +78,11 @@ export function SearchBox({ big = false, locale }: { big?: boolean; locale: Loca
   function go(s: Suggestion) {
     setOpen(false);
     setQ("");
-    router.push(`/${s.mediaType === "tv" ? "show" : "movie"}/${s.id}`);
+    router.push(
+      s.kind === "person"
+        ? `/person/${s.id}`
+        : `/${s.kind === "tv" ? "show" : "movie"}/${s.id}`,
+    );
   }
 
   function submit() {
@@ -133,7 +138,7 @@ export function SearchBox({ big = false, locale }: { big?: boolean; locale: Loca
       {open && items.length > 0 && (
         <ul className="absolute z-50 mt-2 w-full max-h-[22rem] overflow-y-auto rounded-xl border border-border bg-surface shadow-2xl">
           {items.map((s, i) => (
-            <li key={`${s.mediaType}-${s.id}`}>
+            <li key={`${s.kind}-${s.id}`}>
               <button
                 type="button"
                 onMouseEnter={() => setActive(i)}
@@ -161,10 +166,10 @@ export function SearchBox({ big = false, locale }: { big?: boolean; locale: Loca
                 </span>
                 <span className="flex-1 min-w-0">
                   <span className="block text-sm font-medium truncate">{s.title}</span>
-                  <span className="block text-xs text-muted">
-                    {s.mediaType === "tv" ? t.typeSeries : t.typeMovie}
-                    {s.year ? ` · ${s.year}` : ""}
-                    {s.rating ? ` · ★ ${s.rating}` : ""}
+                  <span className="block text-xs text-muted truncate">
+                    {s.kind === "person"
+                      ? s.subtitle || t.searchPeopleTitle
+                      : `${s.kind === "tv" ? t.typeSeries : t.typeMovie}${s.year ? ` · ${s.year}` : ""}${s.rating ? ` · ★ ${s.rating}` : ""}`}
                   </span>
                 </span>
               </button>
