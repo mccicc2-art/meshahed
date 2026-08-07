@@ -15,6 +15,7 @@ import {
   displayNameOf,
 } from "@/lib/data";
 import { getT } from "@/lib/locale";
+import { localizeRows } from "@/lib/localize";
 import { getLevel, levelPoints, levelName } from "@/lib/level";
 import { Avatar } from "@/components/Avatar";
 import { Icon } from "@/components/Icon";
@@ -53,7 +54,7 @@ export default async function PublicProfilePage({
 
   // تسجيل الزيارة كتابةُ تحليلاتٍ لا غير — يجري بالتوازي مع القراءات
   // بدل أن يضيف رحلة كتابةٍ كاملة قبل أول بايت من الصفحة
-  const [ratings, stats, following, visits, likes, follows, watched] = await Promise.all([
+  const [rawRatings, stats, following, visits, likes, rawFollows, watched] = await Promise.all([
     getRatingsOf(profile.id),
     getFollowStats(profile.id),
     amIFollowing(profile.id),
@@ -62,6 +63,13 @@ export default async function PublicProfilePage({
     getFollowsOf(profile.id),
     getWatchedOf(profile.id),
     isMe ? Promise.resolve() : recordProfileView(profile.id),
+  ]);
+
+  /* ملفّ غيرك قد يكون كُتب بلغةٍ غير لغتك — العناوين تُترجَم عند العرض
+     (D-048) فلا تُقرأ صفحةٌ نصفها عربي ونصفها إنجليزي */
+  const [ratings, follows] = await Promise.all([
+    localizeRows(rawRatings, locale),
+    localizeRows(rawFollows, locale),
   ]);
 
   const displayName = displayNameOf(profile, t.anonymousUser);
