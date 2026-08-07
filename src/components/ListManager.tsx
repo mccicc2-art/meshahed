@@ -15,7 +15,7 @@ import { buttonClass } from "./ui/Button";
 /**
  * إدارة القوائم.
  *
- * كل قائمة بطاقةٌ كاملة: ترويسةٌ (أيقونة + الاسم + العدد + سهمُ الدخول) ثم
+ * كل قائمة بطاقةٌ كاملة: ترويسةٌ (الاسم + العدد + سهمُ الدخول) ثم
  * صفُّ ملصقاتٍ أفقيٌّ يُظهر محتواها لمحةً واحدة — البطاقة كلها رابطٌ إلى
  * صفحة القائمة، فالضغط في أي مكانٍ يفتحها. لا زرَّ حذفٍ هنا: التسمية
  * والنوع والترتيب والحذف بابُها الوحيد قائمةُ خيارات صفحة القائمة —
@@ -103,25 +103,13 @@ export function ListManager({ lists, locale }: { lists: UserList[]; locale: Loca
               <li key={l.id}>
                 <Link
                   href={`/lists/${l.id}`}
-                  className="group block rounded-2xl border border-[color:var(--background)] bg-surface p-3 hover:bg-surface-2 transition"
+                  className="group block max-w-full rounded-2xl border border-[color:var(--background)] bg-surface p-2.5 hover:bg-surface-2 transition"
                 >
-                  {/* الترويسة: أيقونة + الاسم (والوصف) ··· العدد + سهم الدخول */}
-                  <div className="flex items-center gap-2.5">
-                    <span className="grid place-items-center w-8 h-8 rounded-lg bg-surface-2 text-accent shrink-0">
-                      <Icon name="list" size={16} />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-[15px] font-bold truncate">{l.name}</span>
-                      {l.subtitle && (
-                        <span className="block text-[12.5px] text-muted truncate mt-0.5">
-                          {l.subtitle}
-                        </span>
-                      )}
-                    </span>
+                  {/* ترويسةٌ منحّفة: الاسم ··· العدد + سهم الدخول (بلا أيقونة ولا وصف) */}
+                  <div className="flex items-center gap-2">
+                    <span className="min-w-0 flex-1 text-[15px] font-bold truncate">{l.name}</span>
                     <span className="shrink-0 flex items-center gap-1 text-muted ps-1">
-                      <span className="text-[15px] font-semibold tabular-nums">
-                        {l.item_count}
-                      </span>
+                      <span className="text-[15px] font-semibold tabular-nums">{l.item_count}</span>
                       {/* سهمٌ أفقيٌّ من chevron الموجود: ينقلب تلقائياً في RTL */}
                       <Icon name="chevron-down" size={16} className="-rotate-90 rtl:rotate-90" />
                     </span>
@@ -129,22 +117,22 @@ export function ListManager({ lists, locale }: { lists: UserList[]; locale: Loca
 
                   {/* صفُّ الملصقات: يمرّر أفقياً وتُطلّ البطاقة التالية عند الفيض */}
                   {posters.length > 0 ? (
-                    <div className="mt-2.5 -mx-3 px-3 scroll-px-3 overflow-x-auto overscroll-x-contain snap-x snap-proximity [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                    <div className="mt-2 -mx-2.5 px-2.5 scroll-px-2.5 overflow-x-auto overscroll-x-contain snap-x snap-proximity [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                       <div className="flex gap-2 w-max pb-0.5">
                         {posters.map((url, i) => (
                           <span
                             key={i}
-                            className="relative shrink-0 snap-start w-[72px] sm:w-[84px] aspect-[2/3] rounded-poster overflow-hidden bg-surface-2 border border-[color:var(--background)]"
+                            className="relative shrink-0 snap-start w-16 h-24 rounded-lg overflow-hidden bg-surface-2 border border-[color:var(--background)]"
                           >
-                            <Image src={url} alt="" fill sizes="100px" className="object-cover" />
+                            <Image src={url} alt="" fill sizes="64px" className="object-cover" />
                           </span>
                         ))}
                       </div>
                     </div>
                   ) : (
-                    <div className="mt-2.5">
-                      <span className="grid place-items-center w-[72px] sm:w-[84px] aspect-[2/3] rounded-poster border border-dashed border-[color:var(--background)] text-muted">
-                        <Icon name="list" size={18} />
+                    <div className="mt-2">
+                      <span className="grid place-items-center w-16 h-24 rounded-lg border border-dashed border-[color:var(--background)] text-muted">
+                        <Icon name="list" size={16} />
                       </span>
                     </div>
                   )}
