@@ -77,6 +77,53 @@ export function browseLangName(l: BrowseLang, locale: "ar" | "en") {
   return locale === "en" ? l.en : l.ar;
 }
 
+/**
+ * بلد الإنتاج — محورٌ يظهر مع العربية وحدها.
+ *
+ * اللغة تفصل التركيّ عن الكوريّ فصلاً تامّاً، لكنها **لا تفصل السعوديّ عن
+ * المصريّ عن الكويتيّ**: ثلاثتها `ar`. ومن يكتب «مسلسلات سعودية» يقصد
+ * البلد لا اللغة. فالبلد هنا ليس بديلاً عن اللغة بل تفريعٌ لها عند اللغة
+ * الوحيدة التي تحتاجه.
+ *
+ * ولماذا لا يظهر مع بقيّة اللغات: يصير محورين يقولان الشيء نفسه —
+ * «تركي» في اللغة و«تركيا» في البلد — واختلافُهما في الحواف (مسلسل تركيّ
+ * تنتجه نتفلكس) يعطي نتيجتين مختلفتين لسؤالٍ واحد، وهو أسوأ من غياب
+ * الخيار. `with_origin_country` مدعومٌ في `/discover` للأفلام والمسلسلات
+ * معاً.
+ *
+ * والقائمة بلدان الإنتاج العربية التي لها إنتاجٌ فعليّ مسجَّل في TMDB —
+ * لا كل الدول: خانةٌ تعود فارغةً دائماً خيارٌ كاذب.
+ */
+export interface BrowseCountry {
+  code: string;
+  ar: string;
+  en: string;
+}
+
+export const BROWSE_COUNTRIES: BrowseCountry[] = [
+  { code: "SA", ar: "السعودية", en: "Saudi Arabia" },
+  { code: "EG", ar: "مصر", en: "Egypt" },
+  { code: "KW", ar: "الكويت", en: "Kuwait" },
+  { code: "AE", ar: "الإمارات", en: "UAE" },
+  { code: "LB", ar: "لبنان", en: "Lebanon" },
+  { code: "SY", ar: "سوريا", en: "Syria" },
+  { code: "JO", ar: "الأردن", en: "Jordan" },
+  { code: "IQ", ar: "العراق", en: "Iraq" },
+  { code: "MA", ar: "المغرب", en: "Morocco" },
+  { code: "TN", ar: "تونس", en: "Tunisia" },
+  { code: "QA", ar: "قطر", en: "Qatar" },
+  { code: "BH", ar: "البحرين", en: "Bahrain" },
+];
+
+export function browseCountryName(c: BrowseCountry, locale: "ar" | "en") {
+  return locale === "en" ? c.en : c.ar;
+}
+
+/** محور البلد لا معنى له إلا مع العربية — انظر التعليق أعلاه */
+export function countryApplies(lang: BrowseLang | null): boolean {
+  return lang?.code === "ar";
+}
+
 /** حقبة الإصدار — مدىً لا سنةً مفردة: السنة الواحدة تُفرغ الصفّ */
 export interface BrowseEra {
   slug: string;
@@ -124,6 +171,10 @@ export interface BrowseQuery {
   genre: BrowseGenre | null;
   /** لغة العمل الأصلية */
   lang: BrowseLang | null;
+  /** بلد الإنتاج — مع العربية وحدها */
+  country: BrowseCountry | null;
+  /** معرّف منصّة الاشتراك عند TMDB — القائمة تُجلب من TMDB لا تُكتب هنا */
+  provider: number | null;
   /** حقبة الإصدار */
   era: BrowseEra | null;
   /** أدنى تقييم */
@@ -144,6 +195,8 @@ export function parseBrowse(params: {
   g?: string;
   sort?: string;
   lang?: string;
+  co?: string;
+  p?: string;
   era?: string;
   rate?: string;
 }): BrowseQuery {
@@ -154,6 +207,14 @@ export function parseBrowse(params: {
   const genre = found && genreFitsType(found, type) ? found : null;
 
   const lang = BROWSE_LANGS.find((l) => l.code === params.lang) ?? null;
+  /* البلد يسقط تلقائياً متى لم تكن اللغة عربية: الرابط قد يُكتب باليد أو
+     يُشارَك ثم تُبدَّل لغته، وخيارٌ مطبَّقٌ لا يظهر في الواجهة أسوأ من
+     خيارٍ ضائع */
+  const country = countryApplies(lang)
+    ? (BROWSE_COUNTRIES.find((c) => c.code === params.co) ?? null)
+    : null;
+  const providerNum = Number(params.p);
+  const provider = Number.isInteger(providerNum) && providerNum > 0 ? providerNum : null;
   const era = BROWSE_ERAS.find((e) => e.slug === params.era) ?? null;
   const rateNum = Number(params.rate);
   const rate = (BROWSE_RATES as readonly number[]).includes(rateNum)
@@ -164,9 +225,18 @@ export function parseBrowse(params: {
     type,
     genre,
     lang,
+    country,
+    provider,
     era,
     rate,
-    active: type !== "all" || genre !== null || lang !== null || era !== null || rate !== null,
+    active:
+      type !== "all" ||
+      genre !== null ||
+      lang !== null ||
+      country !== null ||
+      provider !== null ||
+      era !== null ||
+      rate !== null,
   };
 }
 
@@ -179,7 +249,12 @@ export function parseBrowse(params: {
  */
 export function browseCount(q: BrowseQuery) {
   return (
-    (q.type !== "all" ? 1 : 0) + (q.lang ? 1 : 0) + (q.era ? 1 : 0) + (q.rate ? 1 : 0)
+    (q.type !== "all" ? 1 : 0) +
+    (q.lang ? 1 : 0) +
+    (q.country ? 1 : 0) +
+    (q.provider ? 1 : 0) +
+    (q.era ? 1 : 0) +
+    (q.rate ? 1 : 0)
   );
 }
 
@@ -192,7 +267,13 @@ export function browseCount(q: BrowseQuery) {
  * وضحّينا بجودة الانتقاء التحريري مقابل أن يصل المستخدم إلى ما طلبه.
  */
 export function needsDiscover(q: BrowseQuery) {
-  return q.lang !== null || q.era !== null || q.rate !== null;
+  return (
+    q.lang !== null ||
+    q.country !== null ||
+    q.provider !== null ||
+    q.era !== null ||
+    q.rate !== null
+  );
 }
 
 /** بناء رابط «اكتشف» من فلترٍ — القيم الافتراضية تُحذف فيبقى نظيفاً */
@@ -200,6 +281,8 @@ export function browseHref(q: {
   type?: BrowseType;
   g?: string | null;
   lang?: string | null;
+  co?: string | null;
+  p?: number | null;
   era?: string | null;
   rate?: number | null;
 }) {
@@ -207,6 +290,8 @@ export function browseHref(q: {
   if (q.type && q.type !== "all") p.set("type", q.type);
   if (q.g) p.set("g", q.g);
   if (q.lang) p.set("lang", q.lang);
+  if (q.co) p.set("co", q.co);
+  if (q.p) p.set("p", String(q.p));
   if (q.era) p.set("era", q.era);
   if (q.rate) p.set("rate", String(q.rate));
   const qs = p.toString();
@@ -219,6 +304,8 @@ export function browseKey(q: BrowseQuery, page = 1) {
     q.type,
     q.genre?.slug ?? "all",
     q.lang?.code ?? "any",
+    q.country?.code ?? "any",
+    q.provider ?? "any",
     q.era?.slug ?? "any",
     q.rate ?? "any",
     page,

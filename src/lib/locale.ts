@@ -1,5 +1,6 @@
 import { cookies, headers } from "next/headers";
 import { LOCALE_COOKIE, normalizeLocale, getDict, type Locale, type Dict } from "@/lib/i18n";
+import { REGION_COOKIE, DEFAULT_REGION, normalizeRegion } from "@/lib/region";
 
 export async function getLocale(): Promise<Locale> {
   try {
@@ -20,4 +21,24 @@ export async function getLocale(): Promise<Locale> {
 export async function getT(): Promise<{ locale: Locale; t: Dict }> {
   const locale = await getLocale();
   return { locale, t: getDict(locale) };
+}
+
+/**
+ * بلد المشاهدة — من الكوكي، فإن لم يوجد فمن رأس `x-vercel-ip-country`.
+ *
+ * التخمين من عنوان الشبكة يُستعمل مرّةً كافتراضٍ أوّلي لا أكثر: الرأس يأتي
+ * مجّاناً من Vercel، ويُخطئ مع VPN — ولذلك لا يُكتب في الكوكي ولا يَغلب
+ * اختياراً صريحاً. من اختار بلده مرّة بقي اختياره.
+ */
+export async function getWatchRegion(): Promise<string> {
+  try {
+    const store = await cookies();
+    const saved = store.get(REGION_COOKIE)?.value;
+    if (saved) return normalizeRegion(saved);
+
+    const guess = (await headers()).get("x-vercel-ip-country");
+    return normalizeRegion(guess);
+  } catch {
+    return DEFAULT_REGION;
+  }
 }

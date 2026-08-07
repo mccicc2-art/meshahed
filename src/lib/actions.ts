@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { LOCALE_COOKIE, normalizeLocale } from "@/lib/i18n";
+import { REGION_COOKIE, normalizeRegion } from "@/lib/region";
 import { GENRES, type MediaType } from "@/lib/media";
 import { THEMES } from "@/lib/themes";
 import { sanitizeHomePrefs, type HomePrefs } from "@/lib/homePrefs";
@@ -149,6 +150,22 @@ export async function syncThemeCookie(value: string) {
     maxAge: 60 * 60 * 24 * 365,
     sameSite: "lax",
     secure: true,
+  });
+}
+
+/**
+ * تبديل بلد المشاهدة.
+ *
+ * كوكي فقط، بلا عمودٍ في قاعدة البيانات: هذا تفضيل عرضٍ كالثيم واللغة
+ * (D-014)، يقرؤه الخادم قبل أوّل رسمة، ولا يستحقّ هجرةً ولا صفّاً.
+ */
+export async function setWatchRegion(value: string) {
+  const region = normalizeRegion(value);
+  const store = await cookies();
+  store.set(REGION_COOKIE, region, {
+    path: "/",
+    maxAge: 60 * 60 * 24 * 365,
+    sameSite: "lax",
   });
 }
 

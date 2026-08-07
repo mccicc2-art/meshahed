@@ -30,6 +30,34 @@ export function backdropUrl(path: string | null, size: "w300" | "w500" | "w780" 
   return tmdbImage(path, size);
 }
 
+/** صورة شخص — مقاسات TMDB للأشخاص غير مقاسات الملصقات */
+export function profileUrl(path: string | null, size: "w185" | "h632" = "w185") {
+  return tmdbImage(path, size);
+}
+
+/**
+ * تطبيع نصّ عربي/إنجليزي للمقارنة.
+ *
+ * العربية تُكتب بأكثر من صورة للحرف نفسه: «أ إ آ» و«ا»، و«ة» و«ه»، و«ى»
+ * و«ي» — ومن يكتب «الحفره» لا يقصد شيئاً غير «الحفرة». والتشكيل يَرِد
+ * أحياناً في عناوين TMDB. فلو قارنّا الحروف كما وردت لسقطت مطابقاتٌ
+ * صحيحة. والإنجليزية تُخفَّض حالتها فقط.
+ *
+ * موضعها هنا لا في `tmdb.ts`: يستعملها ترتيبُ البحث وقاموسُ الجنسيات معاً،
+ * ونسختان منها تفترقان أوّل يوم يُضاف فيه حرف.
+ */
+export function normalizeTerm(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/[ً-ْٰ]/g, "") // تشكيل
+    .replace(/[آأإٱ]/g, "ا") // آ أ إ ٱ ← ا
+    .replace(/ة/g, "ه") // ة ← ه
+    .replace(/ى/g, "ي") // ى ← ي
+    .replace(/[^\p{L}\p{N}]+/gu, " ") // الترقيم فاصل
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export function titleOf(r: { title?: string; name?: string }): string {
   return r.title ?? r.name ?? "—";
 }

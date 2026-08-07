@@ -3,12 +3,14 @@
 
 import { cookies } from "next/headers";
 import { LOCALE_COOKIE } from "@/lib/i18n";
-import type { MediaType } from "@/lib/media";
+import { normalizeTerm, type MediaType } from "@/lib/media";
+import { REGION_COOKIE, DEFAULT_REGION, normalizeRegion, regionChain } from "@/lib/region";
 
 export {
   IMG,
   posterUrl,
   backdropUrl,
+  profileUrl,
   titleOf,
   yearOf,
   GENRES,
@@ -25,6 +27,21 @@ async function tmdbLanguage(): Promise<string> {
     return store.get(LOCALE_COOKIE)?.value === "en" ? "en-US" : "ar-SA";
   } catch {
     return "ar-SA";
+  }
+}
+
+/**
+ * بلد المشاهدة من الكوكي — يُقرأ هنا مباشرةً كما تُقرأ اللغة أعلاه.
+ *
+ * كل دالّةٍ تسأل TMDB عن التوفّر تبدأ من بلد المستخدم لا من ثابتٍ مكتوب،
+ * لأن جواب «أين أشاهده» بلا بلدٍ ليس جواباً.
+ */
+async function watchRegion(): Promise<string> {
+  try {
+    const store = await cookies();
+    return normalizeRegion(store.get(REGION_COOKIE)?.value);
+  } catch {
+    return DEFAULT_REGION;
   }
 }
 
@@ -122,6 +139,12 @@ export interface MovieDetails {
   genres: { id: number; name: string }[];
   vote_average: number;
   status: string;
+  /** السلسلة التي ينتمي إليها الفيلم — مصدر «الأجزاء»، ويأتي في الاستجابة افتراضياً */
+  belongs_to_collection?: {
+    id: number;
+    name: string;
+    poster_path: string | null;
+  } | null;
 }
 
 export interface SeasonDetails {
@@ -131,26 +154,6 @@ export interface SeasonDetails {
   overview: string;
   poster_path: string | null;
   episodes: Episode[];
-}
-
-/**
- * تطبيع نصّ البحث للمقارنة.
- *
- * العربية تُكتب بأكثر من صورة للحرف نفسه: «أ إ آ» و«ا»، و«ة» و«ه»،
- * و«ى» و«ي» — ومن يكتب «الحفره» لا يقصد شيئاً غير «الحفرة». والتشكيل
- * يَرِد أحياناً في عناوين TMDB. فلو قارنّا الحروف كما وردت لسقطت
- * مطابقاتٌ صحيحة. والإنجليزية تُخفَّض حالتها فقط.
- */
-function normalizeTerm(s: string) {
-  return s
-    .toLowerCase()
-    .replace(/[ً-ْٰ]/g, "") // تشكيل
-    .replace(/[آأإٱ]/g, "ا") // آ أ إ ٱ ← ا
-    .replace(/ة/g, "ه") // ة ← ه
-    .replace(/ى/g, "ي") // ى ← ي
-    .replace(/[^\p{L}\p{N}]+/gu, " ") // الترقيم فاصل
-    .replace(/\s+/g, " ")
-    .trim();
 }
 
 /**
@@ -217,7 +220,9 @@ export async function trending(): Promise<SearchResult[]> {
 
 // أخبار: أفلام قادمة قريباً + مسلسلات تُعرض حالياً
 export async function upcomingMovies(): Promise<SearchResult[]> {
-  const data = await tmdb<{ results: SearchResult[] }>("/movie/upcoming", { region: "SA" });
+  const data = await tmdb<{ results: SearchResult[] }>("/movie/upcoming", {
+    region: await watchRegion(),
+  });
   return data.results
     .filter((r) => r.poster_path)
     .map((r) => ({ ...r, media_type: "movie" as const }));
@@ -226,13 +231,15 @@ export async function upcomingMovies(): Promise<SearchResult[]> {
 /**
  * يُعرض الآن في دور السينما.
  *
- * TMDB تحصر النتيجة بمنطقة، والتوفّر يختلف بين البلدان — نبدأ بالسعودية
- * ثم الإمارات ثم أمريكا حتى لا يعود القسم فارغاً لمن ليس في بلدٍ مغطّى.
+ * TMDB تحصر النتيجة بمنطقة، والتوفّر يختلف بين البلدان — نبدأ ببلد
+ * المستخدم ثم جيرانه ثم أمريكا حتى لا يعود القسم فارغاً لمن ليس في بلدٍ
+ * مغطّى، والصفّ يسمّي البلد الذي أجاب عنه.
  */
 export async function nowPlayingMovies(
-  regions: string[] = ["SA", "AE", "EG", "US"],
+  regions?: string[],
 ): Promise<{ region: string; results: SearchResult[] } | null> {
-  for (const region of regions) {
+  const chain = regions ?? regionChain(await watchRegion());
+  for (const region of chain) {
     try {
       const data = await tmdb<{ results: SearchResult[] }>("/movie/now_playing", { region });
       const rows = (data.results ?? [])
@@ -279,6 +286,257 @@ export async function recommendationsFor(
   return data.results
     .filter((r) => r.poster_path)
     .map((r) => ({ ...r, media_type: mediaType }));
+}
+
+// ============================================================
+//  الأشخاص — ممثلون ومخرجون
+// ============================================================
+
+export interface PersonResult {
+  id: number;
+  name: string;
+  profile_path: string | null;
+  /** «Acting» أو «Directing» … — يُترجَم عندنا لا عند TMDB */
+  known_for_department?: string | null;
+  popularity?: number;
+  /** أشهر أعماله — تأتي مع نتيجة البحث بلا طلبٍ إضافي */
+  known_for?: SearchResult[];
+}
+
+export interface PersonDetails {
+  id: number;
+  name: string;
+  biography: string;
+  birthday: string | null;
+  deathday: string | null;
+  place_of_birth: string | null;
+  profile_path: string | null;
+  known_for_department: string | null;
+  /**
+   * هل النبذة المعروضة إنجليزية رغم أن الواجهة عربية؟
+   *
+   * TMDB قاعدةٌ يحرّرها متطوّعون، والنبذ العربية شحيحة جداً خارج الأعمال
+   * العربية. فبدل صفحةٍ نصفها فارغ، نسقط إلى الإنجليزية ونقولها للقارئ
+   * صراحةً — لا نترجم ولا ندّعي.
+   */
+  biographyIsFallback: boolean;
+}
+
+/** البحث عن الأشخاص وحدهم — لصفّ «أشخاص» فوق نتائج البحث */
+export async function searchPeople(query: string, limit = 12): Promise<PersonResult[]> {
+  const q = query.trim();
+  if (!q) return [];
+  try {
+    const data = await tmdb<{ results: PersonResult[] }>("/search/person", {
+      query: q,
+      include_adult: "false",
+    });
+    return (data.results ?? [])
+      .filter((p) => p.profile_path)
+      .slice(0, limit);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * تفاصيل شخص، مع سقوطٍ للنبذة الإنجليزية عند فراغ العربية.
+ *
+ * الطلب الثاني لا يُرسَل إلا عند الحاجة، وهو مخبّأ ساعةً كغيره.
+ */
+export async function getPerson(id: number): Promise<PersonDetails | null> {
+  try {
+    const d = await tmdb<Omit<PersonDetails, "biographyIsFallback">>(`/person/${id}`);
+    let biography = (d.biography ?? "").trim();
+    let biographyIsFallback = false;
+
+    if (!biography) {
+      try {
+        const en = await tmdb<{ biography?: string }>(`/person/${id}`, { language: "en-US" });
+        const fallback = (en.biography ?? "").trim();
+        if (fallback) {
+          biography = fallback;
+          biographyIsFallback = true;
+        }
+      } catch {
+        /* بلا نبذة — الصفحة تبقى صالحة بأعماله */
+      }
+    }
+
+    return { ...d, biography, biographyIsFallback };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * كل أعمال الشخص، تمثيلاً وإخراجاً، أفلاماً ومسلسلات.
+ *
+ * `combined_credits` تُرجع كل ظهورٍ مسجَّل — بما فيه حلقةُ برنامجٍ حواري
+ * ودورٌ بلا اسم. فيُصفّى ما لا ملصق له، وتُدمج الأدوار المتكرّرة لنفس
+ * العمل (الممثل الذي أخرج فيلمه يظهر في `cast` و`crew` معاً)، ويُرتَّب
+ * بالشعبية: صفحة الممثل سيرةٌ تبدأ بما يُعرف به، لا أرشيفٌ بترتيب TMDB.
+ */
+export async function getPersonCredits(id: number): Promise<SearchResult[]> {
+  try {
+    const data = await tmdb<{
+      cast?: (SearchResult & { media_type?: string })[];
+      crew?: (SearchResult & { media_type?: string; job?: string })[];
+    }>(`/person/${id}/combined_credits`);
+
+    const seen = new Set<string>();
+    const out: SearchResult[] = [];
+    for (const r of [...(data.cast ?? []), ...(data.crew ?? [])]) {
+      if (!r.poster_path) continue;
+      if (r.media_type !== "tv" && r.media_type !== "movie") continue;
+      const key = `${r.media_type}-${r.id}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push({ ...r, media_type: r.media_type });
+    }
+    return out.sort((a, b) => (b.popularity ?? 0) - (a.popularity ?? 0));
+  } catch {
+    return [];
+  }
+}
+
+export interface CastMember {
+  id: number;
+  name: string;
+  character: string | null;
+  profile_path: string | null;
+}
+
+export interface CrewMember {
+  id: number;
+  name: string;
+  job: string;
+  profile_path: string | null;
+}
+
+/**
+ * طاقم العمل — الممثلون وأهمّ من خلف الكاميرا.
+ *
+ * هذا الصفّ هو الباب الوحيد العملي إلى صفحات الأشخاص: بلا اسمٍ قابلٍ
+ * للنقر تحت العمل، لن يصل أحدٌ إلى صفحة ممثل إلا بالبحث عنه بالاسم —
+ * وهو ما لا يفعله إلا من يعرفه أصلاً.
+ *
+ * ومن خلف الكاميرا نأخذ المخرج والكاتب والمنتج المنفّذ وحدهم: قائمة
+ * `crew` الكاملة تبلغ مئتَي اسمٍ فيها منسّق الأزياء ومساعد المونتاج،
+ * وهي أرشيفٌ لا معلومة.
+ */
+const KEY_JOBS = ["Director", "Creator", "Writer", "Screenplay", "Executive Producer"];
+
+export async function getCredits(
+  mediaType: MediaType,
+  id: number,
+): Promise<{ cast: CastMember[]; crew: CrewMember[] }> {
+  try {
+    const data = await tmdb<{
+      cast?: (CastMember & { order?: number })[];
+      crew?: CrewMember[];
+    }>(`/${mediaType}/${id}/credits`);
+
+    const cast = (data.cast ?? [])
+      .slice()
+      .sort((a, b) => (a.order ?? 999) - (b.order ?? 999))
+      .slice(0, 20);
+
+    const seen = new Set<number>();
+    const crew: CrewMember[] = [];
+    for (const job of KEY_JOBS) {
+      for (const c of data.crew ?? []) {
+        if (c.job !== job || seen.has(c.id)) continue;
+        seen.add(c.id);
+        crew.push(c);
+        if (crew.length >= 6) break;
+      }
+      if (crew.length >= 6) break;
+    }
+
+    return { cast, crew };
+  } catch {
+    return { cast: [], crew: [] };
+  }
+}
+
+// ============================================================
+//  الأجزاء والأعمال المرتبطة
+// ============================================================
+
+export interface Collection {
+  id: number;
+  name: string;
+  poster_path: string | null;
+  /** أجزاء السلسلة مرتّبةً بتاريخ الصدور — لا بشعبيتها */
+  parts: SearchResult[];
+}
+
+/**
+ * أجزاء السلسلة التي ينتمي إليها فيلم.
+ *
+ * هذه العلاقة الوحيدة التي يمثّلها TMDB تمثيلاً صريحاً: `belongs_to_collection`
+ * في تفاصيل الفيلم يعطي معرّف السلسلة، و`/collection/{id}` يعطي أجزاءها.
+ * فالصفّ هنا دقيقٌ لا تخمين فيه — ولذلك يُعرض وحده فوق «أعمال مرتبطة».
+ *
+ * والترتيب بتاريخ الصدور تصاعدياً: من يفتح الجزء الثالث يريد أن يرى أين
+ * موقعه من السلسلة، والشعبية تُقدّم الجزء الأشهر فتُخفي الترتيب الذي جاء
+ * يبحث عنه.
+ */
+export async function getCollection(id: number): Promise<Collection | null> {
+  try {
+    const data = await tmdb<{
+      id: number;
+      name: string;
+      poster_path: string | null;
+      parts?: (SearchResult & { release_date?: string })[];
+    }>(`/collection/${id}`);
+
+    const parts = (data.parts ?? [])
+      .filter((p) => p.poster_path)
+      .map((p) => ({ ...p, media_type: "movie" as const }))
+      .sort((a, b) => (a.release_date ?? "9999").localeCompare(b.release_date ?? "9999"));
+
+    if (!parts.length) return null;
+    return { id: data.id, name: data.name, poster_path: data.poster_path, parts };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * أعمال مرتبطة.
+ *
+ * TMDB لا يمثّل «العمل المشتقّ» علاقةً — لا حقل له ولا مسار. فأقرب ما يُنال
+ * مصدران: `/recommendations` (مبنيّ على سلوك المستخدمين، وهو الأدقّ) ثم
+ * `/similar` (مبنيّ على الأنواع والكلمات المفتاحية، وهو الأوسع). نبدأ
+ * بالأول ونُكمل بالثاني عند القصور، فلا يعود الصفّ فارغاً لعملٍ قليل
+ * المشاهدة — ولذلك يُسمّى الصفّ «أعمال مرتبطة» لا «مشتقّة»: العنوان لا
+ * يَعِد بما لا نملكه.
+ */
+export async function relatedTitles(
+  mediaType: MediaType,
+  id: number,
+  limit = 20,
+): Promise<SearchResult[]> {
+  const seen = new Set<number>([id]);
+  const out: SearchResult[] = [];
+
+  for (const path of ["recommendations", "similar"] as const) {
+    if (out.length >= limit) break;
+    try {
+      const data = await tmdb<{ results: SearchResult[] }>(`/${mediaType}/${id}/${path}`);
+      for (const r of data.results ?? []) {
+        if (!r.poster_path || seen.has(r.id)) continue;
+        seen.add(r.id);
+        out.push({ ...r, media_type: mediaType });
+        if (out.length >= limit) break;
+      }
+    } catch {
+      /* المصدر التالي */
+    }
+  }
+  return out;
 }
 
 export function getTv(id: number): Promise<TvDetails> {
@@ -467,14 +725,17 @@ export interface WatchOptions {
 /**
  * منصّات المشاهدة في بلد المستخدم.
  *
- * TMDB تُرجع خريطة بكل الدول؛ نأخذ السعودية أولاً ثم الإمارات ثم أمريكا،
- * لأن كثيراً من الأعمال غير مُدرجة تحت SA فتظهر الصفحة بلا فائدة.
+ * TMDB تُرجع خريطة بكل الدول؛ نأخذ بلد المستخدم أولاً ثم جيرانه ثم
+ * أمريكا، لأن كثيراً من الأعمال غير مُدرجة تحت بلدٍ بعينه فتظهر الصفحة
+ * بلا فائدة. والبلد المُجيب يعود مع النتيجة كي تسمّيه الواجهة حين يختلف
+ * عن بلد المستخدم — إجابةٌ عن الجوار مقبولة، وإجابةٌ صامتة عنه ليست.
  */
 export async function getWatchProviders(
   mediaType: MediaType,
   id: number,
-  regions: string[] = ["SA", "AE", "EG", "US"],
+  regions?: string[],
 ): Promise<{ region: string; options: WatchOptions } | null> {
+  const chain = regions ?? regionChain(await watchRegion());
   try {
     const data = await tmdb<{
       results: Record<
@@ -483,7 +744,7 @@ export async function getWatchProviders(
       >;
     }>(`/${mediaType}/${id}/watch/providers`);
 
-    for (const region of regions) {
+    for (const region of chain) {
       const r = data.results?.[region];
       if (!r) continue;
       const options: WatchOptions = {
@@ -600,12 +861,58 @@ export interface DiscoverFilter {
   genreIds?: number[];
   /** لغة العمل الأصلية (ISO 639-1) */
   lang?: string | null;
+  /** بلد الإنتاج (ISO 3166-1) — هو وحده ما يفصل السعوديّ عن المصريّ */
+  country?: string | null;
+  /** معرّف منصّة اشتراك عند TMDB — يلزمه `watch_region` */
+  provider?: number | null;
+  /** بلد المشاهدة الذي يُقاس عليه توفّر المنصّة */
+  watchRegion?: string | null;
   /** أوّل تاريخ إصدارٍ مقبول (شامل) */
   from?: string | null;
   /** آخر تاريخ إصدارٍ مقبول (شامل) */
   to?: string | null;
   /** أدنى متوسّط تقييم */
   minRate?: number | null;
+}
+
+/**
+ * فلتر المنصّات: منطقةٌ واحدة لا تسلسل.
+ *
+ * `with_watch_providers` لا يعمل بلا `watch_region`. وهنا — بخلاف صفحة
+ * العمل — لا سقوطَ إلى بلدٍ آخر: الفلتر يجيب «ما الذي أستطيع مشاهدته
+ * باشتراكي؟»، وقائمةٌ من نتفلكس الأمريكية جوابٌ لا يستطيع صاحب السؤال
+ * فتحه. البلد بلدُ المستخدم، ويُكتب في عنوان المجموعة كي لا تُقرأ
+ * القائمة عالمية.
+ */
+export interface ProviderOption {
+  id: number;
+  name: string;
+  logo_path: string | null;
+}
+
+/**
+ * منصّات الاشتراك المتاحة في المنطقة، مرتّبةً بأولوية العرض عند TMDB.
+ *
+ * القائمة تُجلب من TMDB ولا تُكتب عندنا: معرّفات المنصّات تتغيّر وتُدمَج
+ * (شاهد و OSN غيّرا هويّتهما مرّتين)، وقائمةٌ مكتوبةٌ بخطّ اليد تصمت يوم
+ * تتغيّر بدل أن تُخطئ بصوتٍ مسموع.
+ */
+export async function listWatchProviders(
+  mediaType: MediaType = "movie",
+  limit = 12,
+): Promise<ProviderOption[]> {
+  try {
+    const data = await tmdb<{ results?: Provider[] }>(`/watch/providers/${mediaType}`, {
+      watch_region: await watchRegion(),
+    });
+    return (data.results ?? [])
+      .slice()
+      .sort((a, b) => (a.display_priority ?? 999) - (b.display_priority ?? 999))
+      .slice(0, limit)
+      .map((p) => ({ id: p.provider_id, name: p.provider_name, logo_path: p.logo_path }));
+  } catch {
+    return [];
+  }
 }
 
 /** أسماء حقول التاريخ تختلف بين الأفلام والمسلسلات في `/discover` */
@@ -619,6 +926,13 @@ function discoverParams(mediaType: MediaType, f: DiscoverFilter) {
   const p: Record<string, string> = { include_adult: "false" };
   if (f.genreIds?.length) p.with_genres = f.genreIds.join("|");
   if (f.lang) p.with_original_language = f.lang;
+  if (f.country) p.with_origin_country = f.country;
+  if (f.provider) {
+    p.with_watch_providers = String(f.provider);
+    p.watch_region = f.watchRegion ?? DEFAULT_REGION;
+    // الاشتراك وحده: الإيجار والشراء متاحان للجميع، فإدراجهما يُفرغ الفلتر من معناه
+    p.with_watch_monetization_types = "flatrate";
+  }
   const k = dateKeys(mediaType);
   if (f.from) p[k.gte] = f.from;
   if (f.to) p[k.lte] = f.to;
