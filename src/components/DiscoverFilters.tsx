@@ -15,11 +15,12 @@ import {
   genreFitsType,
   type BrowseRate,
   type BrowseType,
+  type BrowseWin,
 } from "@/lib/browse";
 import { tap } from "@/lib/haptics";
 import { Icon } from "./Icon";
 import { DiscoverFilterSheet, type FilterDraft } from "./DiscoverFilterSheet";
-import { segmentedItem, segmentedTrackBare } from "./ui/controls";
+import { segmentedItem } from "./ui/controls";
 
 /**
  * رأس «اكتشف».
@@ -48,6 +49,7 @@ import { segmentedItem, segmentedTrackBare } from "./ui/controls";
 export function DiscoverFilters({
   locale,
   type,
+  win,
   genre,
   lang,
   country,
@@ -60,7 +62,9 @@ export function DiscoverFilters({
 }: {
   locale: Locale;
   type: BrowseType;
-  /** slug التصنيف المختار */
+  /** نافذة الترتيب — المحور الأعلى الظاهر (حلّ محلّ صفّ الأنواع) */
+  win: BrowseWin;
+  /** slug التصنيف المختار — صار داخل الورقة */
   genre: string | null;
   /** رمز اللغة المختارة */
   lang: string | null;
@@ -86,6 +90,7 @@ export function DiscoverFilters({
 
   function go(next: {
     type?: BrowseType;
+    win?: BrowseWin;
     g?: string | null;
     lang?: string | null;
     co?: string | null;
@@ -101,8 +106,11 @@ export function DiscoverFilters({
     const found = BROWSE_GENRES.find((g) => g.slug === nextGenre);
     if (!found || !genreFitsType(found, nextType)) nextGenre = null;
 
+    const nextWin = next.win ?? win;
+
     const p = new URLSearchParams();
     if (nextType !== "all") p.set("type", nextType);
+    if (nextWin !== "week") p.set("win", nextWin);
     if (nextGenre) p.set("g", nextGenre);
     const nextLang = next.lang === undefined ? lang : next.lang;
     // البلد تابعٌ للعربية: مغادرتها تُسقطه، وإلا بقي مطبَّقاً بلا رقاقة تدلّ عليه
@@ -121,7 +129,11 @@ export function DiscoverFilters({
     start(() => router.replace(qs ? `/news?${qs}` : "/news", { scroll: false }));
   }
 
-  const genres = BROWSE_GENRES.filter((g) => genreFitsType(g, type));
+  const windows: { value: BrowseWin; label: string }[] = [
+    { value: "week", label: t.winWeek },
+    { value: "year", label: t.winYear },
+    { value: "all", label: t.winAll },
+  ];
 
   /* ما اختير، مكتوباً: كل رقاقةٍ تحمل اسم الخيار لا اسم المحور — «تركي»
      أوضح من «اللغة: تركي» في مساحةٍ ضيّقة، والمحور يُفهم من القيمة */
@@ -131,6 +143,14 @@ export function DiscoverFilters({
       key: "type",
       label: type === "movie" ? t.browseMovies : t.browseSeries,
       clear: () => go({ type: "all" }),
+    });
+  }
+  const genreObj = BROWSE_GENRES.find((g) => g.slug === genre);
+  if (genreObj) {
+    chips.push({
+      key: "genre",
+      label: browseGenreName(genreObj, loc),
+      clear: () => go({ g: null }),
     });
   }
   const langObj = BROWSE_LANGS.find((l) => l.code === lang);
@@ -173,7 +193,7 @@ export function DiscoverFilters({
     });
   }
 
-  const draft: FilterDraft = { type, lang, country, provider, era, rate };
+  const draft: FilterDraft = { type, genre, lang, country, provider, era, rate };
 
   return (
     <div className={`space-y-3 transition-opacity ${pending ? "opacity-60" : "opacity-100"}`}>
@@ -182,40 +202,36 @@ export function DiscoverFilters({
           الشريط لانقطع عند آخر تبويبٍ وترك الزرّ معلّقاً فوق فراغ. والهوامش
           السالبة تمدّ الخطّ إلى حافّتَي الشاشة فيُقرأ حدّاً لرأس الصفحة. */}
       <div className="-mx-4 px-4 flex items-stretch gap-2 border-b border-[color:var(--divider)]">
+        {/* ===== نافذة الترتيب =====
+            حلّت محلّ صفّ الأنواع (طلب المالك): ثلاثة أقسامٍ متساوية العرض
+            (segmentedTrackFull + flex-1، D-016) — أسبوعي/سنوي/كل الأوقات.
+            ضغطُها يُعيد ضبط كل الرفوف: «أفضل هذا الأسبوع» تصير «هذه السنة»
+            أو «كل الأوقات». والأنواع انتقلت إلى داخل ورقة الفلاتر. */}
         <div
           role="group"
-          aria-label={t.browseGenreGroup}
-          /* overscroll-x-contain يمنع التمرير الزائد من تفعيل «رجوع» iOS */
-          className="min-w-0 flex-1 overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          aria-label={t.winGroup}
+          /* بلا خطٍّ سفليّ: الصفّ نفسه يحمله (segmentedTrackBare منطقُه)،
+             فيمتدّ تحت النافذة وزرّ الفلاتر معاً؛ وخطُّ القسم النشِط
+             (after:-bottom-px) يلتقي خطَّ الصفّ فلا يطفو */
+          className="min-w-0 flex-1 flex items-stretch"
         >
-          <div className={`${segmentedTrackBare} w-max`}>
-            <button
-              type="button"
-              aria-pressed={!genre}
-              onClick={() => go({ g: null })}
-              className={segmentedItem(!genre)}
-            >
-              {t.browseAllGenres}
-            </button>
-            {genres.map((g) => {
-              const on = genre === g.slug;
-              return (
-                <button
-                  key={g.slug}
-                  type="button"
-                  aria-pressed={on}
-                  onClick={() => go({ g: on ? null : g.slug })}
-                  className={segmentedItem(on)}
-                >
-                  {browseGenreName(g, loc)}
-                </button>
-              );
-            })}
-          </div>
+          {windows.map((w) => {
+            const on = win === w.value;
+            return (
+              <button
+                key={w.value}
+                type="button"
+                aria-pressed={on}
+                onClick={() => go({ win: w.value })}
+                className={segmentedItem(on, "flex-1 basis-0 min-w-0 justify-center flex")}
+              >
+                {w.label}
+              </button>
+            );
+          })}
         </div>
 
-        {/* الزرّ خارج منطقة التمرير: لو دخلها لاختفى مع التبويبات عند
-            السحب، وهو المخرج الوحيد إلى بقيّة الفلاتر */}
+        {/* الزرّ إلى جانب النافذة: المخرج الوحيد إلى بقيّة الفلاتر (والأنواع) */}
         <button
           type="button"
           onClick={() => {
@@ -273,7 +289,7 @@ export function DiscoverFilters({
             <button
               type="button"
               onClick={() =>
-              go({ type: "all", lang: null, co: null, p: null, era: null, rate: null })
+              go({ type: "all", g: null, lang: null, co: null, p: null, era: null, rate: null })
             }
               className="rounded-full border border-border text-muted hover:text-foreground hover:border-accent/50 px-3 py-1.5 text-[13px] font-semibold transition"
             >
@@ -294,6 +310,7 @@ export function DiscoverFilters({
             setSheet(false);
             go({
               type: next.type,
+              g: next.genre,
               lang: next.lang,
               co: next.country,
               p: next.provider,

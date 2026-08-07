@@ -5,11 +5,14 @@ import { getDict, num, type Locale } from "@/lib/i18n";
 import {
   BROWSE_COUNTRIES,
   BROWSE_ERAS,
+  BROWSE_GENRES,
   BROWSE_LANGS,
   BROWSE_RATES,
   browseCountryName,
   browseEraName,
+  browseGenreName,
   browseLangName,
+  genreFitsType,
   type BrowseRate,
   type BrowseType,
 } from "@/lib/browse";
@@ -22,6 +25,8 @@ import { chipClass, segmentedItem, segmentedTrackFull } from "./ui/controls";
 
 export interface FilterDraft {
   type: BrowseType;
+  /** slug النوع الدرامي — انتقل من صفّ التبويبات إلى قائمةٍ هنا (طلب المالك) */
+  genre: string | null;
   lang: string | null;
   /** بلد الإنتاج — تابعٌ للعربية، ويسقط معها */
   country: string | null;
@@ -80,8 +85,23 @@ export function DiscoverFilterSheet({
     setDraft((d) => ({ ...d, ...patch }));
   }
 
+  // تغيير الجهة قد يُسقط النوع المختار: «رعب» لا مقابل له في المسلسلات،
+  // فبدل قائمةٍ لا تجد شيئاً يعود النوع إلى «كل الأنواع» بصمت
+  function setType(next: BrowseType) {
+    tap(6);
+    setDraft((d) => {
+      const g = BROWSE_GENRES.find((x) => x.slug === d.genre);
+      const keepGenre = g && genreFitsType(g, next) ? d.genre : null;
+      return { ...d, type: next, genre: keepGenre };
+    });
+  }
+
+  // الأنواع المتاحة للجهة الحالية — «رعب/رومانسي» للأفلام، «واقع» للمسلسلات
+  const genres = BROWSE_GENRES.filter((g) => genreFitsType(g, draft.type));
+
   const cleared: FilterDraft = {
     type: "all",
+    genre: null,
     lang: null,
     country: null,
     provider: null,
@@ -90,6 +110,7 @@ export function DiscoverFilterSheet({
   };
   const dirty =
     draft.type !== "all" ||
+    draft.genre !== null ||
     draft.lang !== null ||
     draft.country !== null ||
     draft.provider !== null ||
@@ -129,12 +150,50 @@ export function DiscoverFilterSheet({
                 key={o.value}
                 type="button"
                 aria-pressed={draft.type === o.value}
-                onClick={() => set({ type: o.value })}
+                onClick={() => setType(o.value)}
                 className={segmentedItem(draft.type === o.value, "flex-1")}
               >
                 {o.label}
               </button>
             ))}
+          </div>
+        </section>
+
+        {/* ===== التصنيف =====
+            انتقل من صفّ تبويباتٍ في الرأس إلى قائمةٍ هنا (طلب المالك): مكانه
+            صار لنافذة الترتيب أعلى الصفحة. وقائمةٌ لا رقائق — خمسة عشر نوعاً
+            بالرقائق جدارٌ يملأ الورقة (نفس حجّة منصّات البث): ما فوق العشرة
+            قائمة. أصليّةٌ `<select>` لا مصنوعة (D-018/D-033، خطّها ١٦). */}
+        <section>
+          <label htmlFor="browse-genre" className="block text-xs font-bold text-muted mb-2">
+            {t.browseGenreGroup}
+          </label>
+          <div className="relative">
+            <select
+              id="browse-genre"
+              value={draft.genre ?? ""}
+              onChange={(e) => {
+                tap(6);
+                const v = e.target.value;
+                setDraft((d) => ({ ...d, genre: v || null }));
+              }}
+              className={`w-full appearance-none rounded-control border bg-surface-2 ps-3.5 pe-10 py-3 text-base font-semibold outline-none transition focus:border-accent ${
+                draft.genre ? "border-accent text-accent" : "border-border text-foreground"
+              }`}
+            >
+              <option value="">{t.browseAllGenres}</option>
+              {genres.map((g) => (
+                <option key={g.slug} value={g.slug}>
+                  {browseGenreName(g, lang)}
+                </option>
+              ))}
+            </select>
+            <span
+              className="pointer-events-none absolute inset-y-0 end-3.5 grid place-items-center text-muted"
+              aria-hidden
+            >
+              <Icon name="chevron-down" size={16} strokeWidth={2.2} />
+            </span>
           </div>
         </section>
 
