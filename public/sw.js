@@ -17,7 +17,7 @@
 
 // رقم النسخة يُرفع مع أي تغييرٍ في قشرة التطبيق: مُعالج `activate` يمسح
 // كل كاشٍ لا يبدأ به، فالتطبيق المثبّت لا يبقى على قشرةٍ قديمة.
-const VER = "loopz-v2";
+const VER = "loopz-v3";
 const STATIC_CACHE = `${VER}-static`;
 const PAGE_CACHE = `${VER}-pages`;
 const IMG_CACHE = `${VER}-img`;
