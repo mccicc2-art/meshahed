@@ -152,7 +152,13 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
           />
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-[color:var(--background)] via-[color:var(--background)]/35 to-transparent" />
-        <DetailTopBar title={tv.name} locale={locale} />
+        <DetailTopBar
+          title={tv.name}
+          locale={locale}
+          tmdbId={tvId}
+          mediaType="tv"
+          posterPath={tv.poster_path}
+        />
       </div>
 
       <div className="flex gap-4 -mt-24 sm:-mt-28 relative px-1">
