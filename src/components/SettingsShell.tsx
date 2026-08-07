@@ -52,6 +52,7 @@ export function SettingsShell({
   theme,
   genres,
   hideName,
+  isPrivate,
   homePrefs,
   traktReady,
   initial = "profile",
@@ -72,6 +73,8 @@ export function SettingsShell({
   theme: string;
   genres: number[];
   hideName: boolean;
+  /** حسابٌ خاص — المتابعة بطلب (follow_requests.sql) */
+  isPrivate: boolean;
   homePrefs?: unknown;
   /** هل مفاتيح Trakt مضبوطة على الخادم؟ الزرّ لا يُعرض بلا ذلك */
   traktReady: boolean;
@@ -112,6 +115,7 @@ export function SettingsShell({
     avatarUrl,
     genres,
     initialHideName: hideName,
+    initialIsPrivate: isPrivate,
   };
 
   function pane() {
@@ -126,7 +130,7 @@ export function SettingsShell({
         return (
           <div className="space-y-4">
             <p className="text-xs text-muted leading-relaxed">{t.settingsPrivacyHint}</p>
-            <AccountSettings {...accountProps} only={["hideName"]} />
+            <AccountSettings {...accountProps} only={["hideName", "privateAccount"]} />
             <PrivacyData locale={locale} />
           </div>
         );

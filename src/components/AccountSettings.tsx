@@ -11,6 +11,7 @@ import { buttonClass } from "./ui/Button";
 export type AccountSection =
   | "language"
   | "hideName"
+  | "privateAccount"
   | "username"
   | "displayName"
   | "email"
@@ -24,6 +25,7 @@ export function AccountSettings({
   avatarUrl,
   genres,
   initialHideName,
+  initialIsPrivate = false,
   only,
 }: {
   email: string;
@@ -33,6 +35,8 @@ export function AccountSettings({
   avatarUrl: string | null;
   genres: number[];
   initialHideName: boolean;
+  /** حسابٌ خاص — المتابعة بطلبٍ يُقبل */
+  initialIsPrivate?: boolean;
   /** الأقسام المعروضة — الحذف يعني عرض الجميع */
   only?: AccountSection[];
 }) {
@@ -42,6 +46,7 @@ export function AccountSettings({
   const [username, setUsername] = useState(initialUsername);
   const [nickname, setNickname] = useState(initialNickname);
   const [hideName, setHideName] = useState(initialHideName);
+  const [isPrivate, setIsPrivate] = useState(initialIsPrivate);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [pending, start] = useTransition();
@@ -64,6 +69,7 @@ export function AccountSettings({
           avatarUrl,
           favoriteGenres: genres,
           hideName,
+          isPrivate,
         });
         setSaved(true);
         router.refresh();
@@ -124,6 +130,43 @@ export function AccountSettings({
             </span>
             <span className="text-sm font-semibold">
               {hideName ? t.hideNameOn : t.hideNameOff}
+            </span>
+          </button>
+        </section>
+        )}
+
+      {/* الحساب الخاص: المتابعة بطلبٍ يُقبل (follow_requests.sql) —
+          نفس مفتاح إخفاء الاسم شكلاً، والحفظ بزرّ الحفظ نفسه */}
+      {show("privateAccount") && (
+  <section className="bg-surface border border-border rounded-2xl p-3.5 sm:p-5">
+          <h2 className="text-sm font-bold mb-1">{t.privateSection}</h2>
+          <p className="text-xs text-muted leading-relaxed mb-3">{t.privateHint}</p>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={isPrivate}
+            onClick={() => {
+              setIsPrivate((v) => !v);
+              setSaved(false);
+            }}
+            className={`flex items-center gap-3 w-full rounded-xl border px-3 py-2.5 transition ${
+              isPrivate
+                ? "border-accent bg-accent/10"
+                : "border-border bg-surface-2 hover:border-accent/50"
+            }`}
+          >
+            <span
+              className={`shrink-0 w-11 h-6 rounded-full p-0.5 transition ${
+                isPrivate ? "bg-accent" : "bg-border"
+              }`}
+            >
+              <span
+                className="block w-5 h-5 rounded-full bg-white transition-transform"
+                style={{ transform: isPrivate ? "translateX(-20px)" : "translateX(0)" }}
+              />
+            </span>
+            <span className="text-sm font-semibold">
+              {isPrivate ? t.privateOn : t.privateOff}
             </span>
           </button>
         </section>

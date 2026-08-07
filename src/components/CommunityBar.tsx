@@ -5,7 +5,15 @@ import Link from "next/link";
 import { Avatar } from "./Avatar";
 import { Icon } from "./Icon";
 import { Sheet, SheetHeader } from "./ui/Sheet";
-import { findPeople } from "@/lib/actions";
+import {
+  findPeople,
+  acceptFollowRequest,
+  rejectFollowRequest,
+  removeFollowerUser,
+} from "@/lib/actions";
+import { useRouter } from "next/navigation";
+import { tap } from "@/lib/haptics";
+import { toast, flashError } from "@/lib/toast";
 import { getDict, num, type Locale } from "@/lib/i18n";
 import type { PersonLite } from "@/lib/data";
 
@@ -22,10 +30,13 @@ import type { PersonLite } from "@/lib/data";
 export function CommunityBar({
   following,
   followers,
+  requests = [],
   locale,
 }: {
   following: PersonLite[];
   followers: PersonLite[];
+  /** طلبات المتابعة الواردة (الحساب الخاص) — تُعرض أعلى ورقة المتابِعين */
+  requests?: PersonLite[];
   locale: Locale;
 }) {
   const t = getDict(locale);
@@ -62,12 +73,22 @@ export function CommunityBar({
           onClick={() => setOpen("followers")}
           aria-label={t.peopleFollowersTitle}
           title={t.peopleFollowersTitle}
-          className={pill}
+          className={`relative ${pill}`}
         >
           <Icon name="people" size={18} className="text-accent-2 shrink-0" />
           <span className="text-[15px] font-bold tabular-nums" dir="ltr">
             {num(followers.length, locale)}
           </span>
+          {/* شارة الطلبات المعلّقة — تختفي عند الصفر كشارة الرسائل */}
+          {requests.length > 0 && (
+            <span
+              aria-label={t.followRequestsTitle}
+              className="absolute -top-1 -end-1 grid place-items-center min-w-[18px] h-[18px] px-1 rounded-full bg-accent text-[color:var(--on-accent)] text-[11px] font-bold tabular-nums"
+              dir="ltr"
+            >
+              {num(requests.length, locale)}
+            </span>
+          )}
         </button>
 
         <button
@@ -93,11 +114,10 @@ export function CommunityBar({
         />
       )}
       {open === "followers" && (
-        <PeopleSheet
+        <FollowersSheet
           t={t}
-          title={t.peopleFollowersTitle}
-          people={followers}
-          empty={t.peopleNoResults}
+          followers={followers}
+          requests={requests}
           onClose={() => setOpen(null)}
         />
       )}
@@ -169,6 +189,148 @@ function PeopleSheet({
         ) : (
           people.map((p) => <PersonRowLink key={p.id} p={p} t={t} />)
         )}
+      </div>
+    </Sheet>
+  );
+}
+
+/**
+ * ورقة المتابِعين — طلباتُ المتابعة أولاً ثم القائمة، مع «إزالة».
+ *
+ * الطلبات فوق القائمة لا في شاشةٍ مستقلّة: العددان صغيران، والقبول فعلٌ
+ * سريعٌ لا يستحقّ وجهة. القبول/الرفض/الإزالة تفاؤليّان — الصفّ يختفي
+ * فوراً ويُسترجَع عند الخطأ (D-007).
+ */
+function FollowersSheet({
+  t,
+  followers,
+  requests,
+  onClose,
+}: {
+  t: Dict;
+  followers: PersonLite[];
+  requests: PersonLite[];
+  onClose: () => void;
+}) {
+  const router = useRouter();
+  const [reqs, setReqs] = useState(requests);
+  const [list, setList] = useState(followers);
+
+  const nameOf = (p: PersonLite) =>
+    p.hide_name ? t.anonymousUser : p.nickname || p.username || "—";
+
+  function decide(p: PersonLite, accept: boolean) {
+    tap(8);
+    setReqs((prev) => prev.filter((x) => x.id !== p.id));
+    if (accept) setList((prev) => [p, ...prev]);
+    (accept ? acceptFollowRequest(p.id) : rejectFollowRequest(p.id))
+      .then(() => router.refresh())
+      .catch((e) => {
+        flashError((e as Error).message);
+        setReqs((prev) => [p, ...prev]);
+        if (accept) setList((prev) => prev.filter((x) => x.id !== p.id));
+      });
+  }
+
+  function remove(p: PersonLite) {
+    tap([10, 20]);
+    setList((prev) => prev.filter((x) => x.id !== p.id));
+    removeFollowerUser(p.id)
+      .then(() => {
+        toast(t.removedFollowerToast, { tone: "info" });
+        router.refresh();
+      })
+      .catch((e) => {
+        flashError((e as Error).message);
+        setList((prev) => [p, ...prev]);
+      });
+  }
+
+  return (
+    <Sheet open variant="top" onClose={onClose} closeLabel={t.closeLabel} labelledBy="followers-sheet-title">
+      <SheetHeader
+        id="followers-sheet-title"
+        title={t.peopleFollowersTitle}
+        closeLabel={t.closeLabel}
+        onClose={onClose}
+      />
+      <div className="overflow-y-auto overscroll-contain pb-[env(safe-area-inset-bottom)]">
+        {reqs.length > 0 && (
+          <section className="border-b border-[color:var(--divider)]">
+            <p className="text-[11px] font-semibold text-muted uppercase tracking-wide px-5 pt-3 pb-1">
+              {t.followRequestsTitle}
+            </p>
+            {reqs.map((p) => {
+              const name = nameOf(p);
+              return (
+                <div key={p.id} className="flex items-center gap-3 px-5 py-3">
+                  <Avatar src={p.hide_name ? null : p.avatar_url} name={name} size={40} alt={t.avatarAlt} />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-semibold truncate">{name}</span>
+                    {p.username && (
+                      <span className="block text-xs text-muted truncate" dir="ltr">
+                        @{p.username}
+                      </span>
+                    )}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => decide(p, true)}
+                    className="shrink-0 px-3.5 h-9 rounded-full bg-accent text-[color:var(--on-accent)] text-[13px] font-bold hover:brightness-110 active:scale-95 transition"
+                  >
+                    {t.requestAccept}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => decide(p, false)}
+                    className="shrink-0 px-3.5 h-9 rounded-full border border-border text-[13px] font-semibold text-muted hover:text-foreground hover:border-accent/50 active:scale-95 transition"
+                  >
+                    {t.requestReject}
+                  </button>
+                </div>
+              );
+            })}
+          </section>
+        )}
+
+        <div className="divide-y divide-[color:var(--divider)]">
+          {list.length === 0 && reqs.length === 0 ? (
+            <p className="text-sm text-muted text-center py-10 px-5">{t.peopleNoResults}</p>
+          ) : (
+            list.map((p) => {
+              const name = nameOf(p);
+              return (
+                <div key={p.id} className="flex items-center gap-3 px-5 py-3 hover:bg-surface-2 transition">
+                  <Link
+                    href={`/u/${p.username ?? p.id}`}
+                    prefetch={false}
+                    className="flex items-center gap-3 min-w-0 flex-1"
+                  >
+                    <Avatar src={p.hide_name ? null : p.avatar_url} name={name} size={40} alt={t.avatarAlt} />
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-semibold truncate">{name}</span>
+                      {p.username && (
+                        <span className="block text-xs text-muted truncate" dir="ltr">
+                          @{p.username}
+                        </span>
+                      )}
+                    </span>
+                  </Link>
+                  {/* إزالة متابِع — زرٌّ حقيقي خارج الرابط، هادئٌ حتى المرور */}
+                  <button
+                    type="button"
+                    onClick={() => remove(p)}
+                    aria-label={t.removeFollowerAria(name)}
+                    title={t.removeFollower}
+                    className="shrink-0 grid place-items-center w-9 h-9 rounded-full text-muted hover:text-[color:var(--error)] hover:bg-surface transition"
+                  >
+                    <Icon name="close" size={16} strokeWidth={2.2} />
+                  </button>
+                </div>
+              );
+            })
+          )}
+        </div>
       </div>
     </Sheet>
   );
