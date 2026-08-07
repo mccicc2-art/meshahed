@@ -9,6 +9,7 @@ import { AccountSettings } from "./AccountSettings";
 import { RegionSwitch } from "./RegionSwitch";
 import { HomeCustomize } from "./HomeCustomize";
 import { PrivacyData } from "./PrivacyData";
+import { BlockedList } from "./BlockedList";
 import { ImportPanel } from "./ImportPanel";
 import { chipClass } from "./ui/controls";
 
@@ -131,6 +132,8 @@ export function SettingsShell({
           <div className="space-y-4">
             <p className="text-xs text-muted leading-relaxed">{t.settingsPrivacyHint}</p>
             <AccountSettings {...accountProps} only={["hideName", "privateAccount"]} />
+            {/* باب الرجوع الوحيد عن الحظر — الملفّ المحظور لم يعد يُفتح من دائرتك */}
+            <BlockedList locale={locale} />
             <PrivacyData locale={locale} />
           </div>
         );
