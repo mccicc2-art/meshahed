@@ -13,10 +13,12 @@ import {
   getListsContaining,
 } from "@/lib/data";
 import { getMovie, getTrailer, getWatchProviders, backdropUrl, posterUrl } from "@/lib/tmdb";
-import { getT } from "@/lib/locale";
+import { getT, getWatchRegion } from "@/lib/locale";
 import { RatingBox } from "@/components/RatingBox";
 import { CommunityReviews } from "@/components/CommunityReviews";
 import { DetailTabs } from "@/components/DetailTabs";
+import { RelatedTitles } from "@/components/RelatedTitles";
+import { CastRail } from "@/components/CastRail";
 import { SectionTitle } from "@/components/Icon";
 import { Trailer } from "@/components/Trailer";
 import { WatchChip } from "@/components/WatchChip";
@@ -37,6 +39,7 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
   // بيانات TMDB وبيانات المستخدم تُطلب معاً: لا شيء منها يعتمد على الآخر،
   // وانتظار الأولى قبل الثانية كان يضيف رحلة كاملة إلى الخادم
   // بيانات أول رسمة فقط — الترايلر والتعليقات تُبثّ لاحقاً عبر Suspense
+  const userRegion = await getWatchRegion();
   const [movie, following, watched, watchWhere, myLists, inLists] = await Promise.all([
     getMovie(movieId).catch(() => null),
     isFollowing(movieId, "movie"),
@@ -122,7 +125,12 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
           {/* أين يُبثّ — في الترويسة، وقسم المنصّات في «معلومات» حُذف */}
           {watchWhere && (
             <div className="mt-2.5">
-              <WatchChip options={watchWhere.options} />
+              <WatchChip
+                options={watchWhere.options}
+                region={watchWhere.region}
+                userRegion={userRegion}
+                locale={locale}
+              />
             </div>
           )}
         </div>
@@ -187,6 +195,12 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
                     locale={locale}
                   />
                 </Suspense>
+
+                {/* الطاقم داخل «معلومات» لا في تبويبٍ خاص: هو معلومةٌ عن
+                    العمل، وتبويبٌ رابع يزيد عرض الشريط ويقصّ عناوينه */}
+                <Suspense fallback={null}>
+                  <CastRail mediaType="movie" tmdbId={movieId} locale={locale} />
+                </Suspense>
               </div>
             ),
           },
@@ -214,6 +228,18 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
           },
         ]}
       />
+
+      {/* الأجزاء والمرتبط خارج التبويبات: جوابٌ على «وبعد؟» يُقرأ بعد
+          الصفحة كلها، ويبقى ظاهراً مهما كان التبويب المفتوح. ويُبثّ
+          لاحقاً فلا يؤخّر الترويسة، وفراغُه لا يترك هيكلاً كاذباً */}
+      <Suspense fallback={null}>
+        <RelatedTitles
+          mediaType="movie"
+          tmdbId={movieId}
+          collectionId={movie.belongs_to_collection?.id ?? null}
+          locale={locale}
+        />
+      </Suspense>
     </div>
   );
 }
