@@ -38,7 +38,7 @@
 | 25 | `referrals.sql` | رموز الدعوة والدعوات المحقَّقة + أربع دوال definer | لم تُبنَ بعد |
 | 26 | `shares.sql` | `title_shares` + `share_replies` + `are_mutual` + `unread_shares` | لم تُبنَ بعد |
 | 27 | `community_feed.sql` | `community_activity()` — خطّ آراء الجميع | لم تُبنَ بعد |
-| 28 | `person_follows.sql` | متابعة الفنانين | لم تُبنَ بعد |
+| 28 | `person_follows.sql` | متابعة الفنانين | **مشحونة** |
 | 29 | `profile_visibility.sql` | **أُعيد كتابته ٩ أغسطس:** الحساب الخاص يخفي محتواه — `can_view_profile` + بوّابة دوال الملف الخمس + `is_private` في العرض. ⚠️ يُشغَّل **بعد** ٢٤ و٣٢ رغم رقمه | **مشحونة** |
 | 30 | `security3.sql` | إغلاق قراءة `follows` و`watched_*` | لا واجهة لها |
 | 31 | `blocks.sql` | جدول الحظر + `is_blocked` مطويّة داخل `are_mutual` + `block_user` + `my_blocks` | **مشحونة** |
