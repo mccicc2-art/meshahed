@@ -1094,6 +1094,9 @@ export interface UserList {
   is_public: boolean;
   created_at: string;
   item_count: number;
+  /** عدّ المسلسلات/الأفلام داخل القائمة (my_lists) — اختياريان قبل تشغيل SQL */
+  shows_count?: number;
+  movies_count?: number;
   posters: string[] | null;
 }
 

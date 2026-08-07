@@ -339,6 +339,15 @@ const ar = {
   listsEmpty: "لا قوائم لديك بعد — اكتب اسماً في الأعلى وابدأ.",
   listCount: (n: number) =>
     n === 0 ? "فاضية" : n === 1 ? "عمل واحد" : n === 2 ? "عملان" : `${n} أعمال`,
+  // عدّاد محتوى القائمة: يُسقط الطرف الصفري فلا تظهر «٠ مسلسل»
+  listContentCount: (shows: number, movies: number) =>
+    shows > 0 && movies > 0
+      ? `${shows} مسلسل · ${movies} فيلم`
+      : movies > 0
+        ? `${movies} فيلم`
+        : shows > 0
+          ? `${shows} مسلسل`
+          : "لا عناصر",
   listPublic: "معلنة",
   listPrivate: "خاصة",
   listDelete: "حذف",
@@ -792,6 +801,14 @@ const en: Dict = {
   listCreate: "Create",
   listsEmpty: "No lists yet \u2014 type a name above to start.",
   listCount: (n: number) => (n === 0 ? "Empty" : `${n} title${n === 1 ? "" : "s"}`),
+  listContentCount: (shows: number, movies: number) =>
+    shows > 0 && movies > 0
+      ? `${shows} show${shows === 1 ? "" : "s"} · ${movies} movie${movies === 1 ? "" : "s"}`
+      : movies > 0
+        ? `${movies} movie${movies === 1 ? "" : "s"}`
+        : shows > 0
+          ? `${shows} show${shows === 1 ? "" : "s"}`
+          : "0 items",
   listPublic: "Public",
   listPrivate: "Private",
   listDelete: "Delete",
