@@ -247,6 +247,9 @@ const ar = {
   toWatchRemoved: "أُزيل من «للمشاهدة»",
   watchedMarked: "أُشّر كمُشاهَد",
   watchedUnmarked: "أُلغي التأشير",
+  watchedMarkedCount: (n: number) => `أُشّرت ${n} حلقة كمُشاهَدة`,
+  // مسلسلٌ اكتمل: الدائرة لا تمحو سجلّه — تدلّ على مكان الإلغاء
+  seriesWatchedHint: "مُشاهَد بالكامل — ألغِ أي موسم من تبويب الحلقات",
   // الأجزاء والأعمال المرتبطة
   relatedPartsTitle: "أجزاء السلسلة",
   relatedTitlesTitle: "أعمال مرتبطة",
@@ -757,6 +760,8 @@ const en: Dict = {
   toWatchRemoved: "Removed from To watch",
   watchedMarked: "Marked as watched",
   watchedUnmarked: "Watched removed",
+  watchedMarkedCount: (n: number) => `Marked ${n} episodes watched`,
+  seriesWatchedHint: "All watched — clear a season from the episodes tab",
   relatedPartsTitle: "The series",
   relatedTitlesTitle: "Related titles",
   relatedTitlesHint: "Based on what people watch alongside this",

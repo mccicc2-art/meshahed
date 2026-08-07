@@ -942,10 +942,18 @@ export async function toggleReviewLike(
 /**
  * «شفته كله»: يعلّم كل الحلقات المعروضة دفعةً واحدة.
  *
- * الصفوف تُبنى من عدّة المواسم في TMDB وتُدرج بدفعةٍ واحدة —
- * `upsert` على المفتاح الفريد فلا يتكرّر ما سبق تعليمه.
+ * **وتُرجع ما أضافته هي وحدها.** ضغطة ✓ صارت فوريّة بلا ورقة تأكيد
+ * (D-047 المعدَّل)، والحماية انتقلت إلى زرّ تراجعٍ في الرسالة العابرة —
+ * والتراجع لا يكون صادقاً إلا إذا حذف ما أُضيف في تلك الضغطة **دون** ما
+ * كان المستخدم قد أشّره بنفسه قبلها. فتُقرأ الحلقات الموجودة أولاً،
+ * ويُدرَج الناقص وحده، ويعود الناقص إلى الواجهة كي يعرف التراجع ما يحذف.
+ *
+ * والقراءة المسبقة ليست تكلفةً صافية: هي أيضاً تُقلّص الكتابة من «كل
+ * الحلقات» إلى «ما ينقص».
  */
-export async function markShowWatched(tmdbId: number) {
+export async function markShowWatched(
+  tmdbId: number,
+): Promise<{ added: { s: number; e: number }[] }> {
   tmdbId = intId(tmdbId);
   const { supabase, user } = await requireUser("bulk", 8, 60_000);
   const { getTv } = await import("@/lib/tmdb");
@@ -955,9 +963,21 @@ export async function markShowWatched(tmdbId: number) {
   const per = airedPerSeason(tv);
   const runtime = tv.episode_run_time?.[0] ?? null;
   const now = new Date().toISOString();
+
+  const { data: seen } = await supabase
+    .from("watched_episodes")
+    .select("season_number, episode_number")
+    .match({ user_id: user.id, show_tmdb_id: tmdbId })
+    .limit(20_000);
+  const have = new Set(
+    (seen ?? []).map((r) => `${r.season_number}-${r.episode_number}`),
+  );
+
   const rows: Record<string, unknown>[] = [];
+  const added: { s: number; e: number }[] = [];
   for (const [season, count] of per) {
     for (let ep = 1; ep <= count; ep++) {
+      if (have.has(`${season}-${ep}`)) continue;
       rows.push({
         user_id: user.id,
         show_tmdb_id: tmdbId,
@@ -966,6 +986,7 @@ export async function markShowWatched(tmdbId: number) {
         runtime,
         watched_at: now,
       });
+      added.push({ s: season, e: ep });
     }
   }
   if (rows.length) {
@@ -977,6 +998,47 @@ export async function markShowWatched(tmdbId: number) {
   revalidatePath("/");
   revalidatePath("/library");
   revalidatePath(`/show/${tmdbId}`);
+  return { added };
+}
+
+/**
+ * التراجع عن «شاهدتُه كله» — يحذف ما أضافته تلك الضغطة لا أكثر.
+ *
+ * ولذلك لا يُسمّى «إلغاء المشاهدة»: حذف كل حلقات مسلسلٍ بضغطةٍ واحدة
+ * يمحو سجلّاً بناه صاحبه على سنوات، وهذا ليس تراجعاً بل إتلاف. الحذف
+ * مُجمَّعٌ بالمواسم — صفٌّ لكل حلقة يعني مئتَي رحلة إلى قاعدة البيانات.
+ */
+export async function unmarkEpisodes(input: {
+  showTmdbId: number;
+  episodes: { s: number; e: number }[];
+}) {
+  const showTmdbId = intId(input.showTmdbId);
+  const eps = (input.episodes ?? [])
+    .slice(0, 5000)
+    .map((x) => ({ s: intIn(x.s, 0, 1000), e: intIn(x.e, 1, 20_000) }));
+  if (!eps.length) return;
+
+  const { supabase, user } = await requireUser("ep", 120, 60_000);
+
+  const bySeason = new Map<number, number[]>();
+  for (const x of eps) {
+    const list = bySeason.get(x.s);
+    if (list) list.push(x.e);
+    else bySeason.set(x.s, [x.e]);
+  }
+
+  for (const [season, numbers] of bySeason) {
+    const { error } = await supabase
+      .from("watched_episodes")
+      .delete()
+      .match({ user_id: user.id, show_tmdb_id: showTmdbId, season_number: season })
+      .in("episode_number", numbers);
+    if (error) fail(error);
+  }
+
+  revalidatePath("/");
+  revalidatePath("/library");
+  revalidatePath(`/show/${showTmdbId}`);
 }
 
 /**
