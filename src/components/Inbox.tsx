@@ -215,6 +215,7 @@ function previewOf(last: ConvEvent | undefined, t: Dict): string {
   if (!last) return "";
   const mine = last.mine ? `${t.convYou}: ` : "";
   if (last.kind === "reply") return `${mine}${last.body}`;
+  if (last.kind === "list") return `${mine}${t.convSharedListPreview(last.list_name ?? "—")}`;
   return `${mine}${t.convSharedPreview(last.title ?? "—")}`;
 }
 
@@ -284,22 +285,30 @@ function ConversationView({
         ))}
       </div>
 
-      <ReplyBox
-        shareId={conv.latestShareId}
-        locale={locale}
-        onReplied={(body) =>
-          setEvents((prev) => [
-            ...prev,
-            {
-              kind: "reply",
-              id: `tmp-${idRef.current++}`,
-              mine: true,
-              body,
-              created_at: new Date().toISOString(),
-            },
-          ])
-        }
-      />
+      {/* الردّ معلَّقٌ بآخر عملٍ شورك (D-051) — محادثةٌ بدأت بقائمةٍ وحدها
+          لا وجهة لردّها بعد، فبدل حقلٍ يفشل بصمت: سطرٌ يشرح الطريق */}
+      {conv.latestShareId ? (
+        <ReplyBox
+          shareId={conv.latestShareId}
+          locale={locale}
+          onReplied={(body) =>
+            setEvents((prev) => [
+              ...prev,
+              {
+                kind: "reply",
+                id: `tmp-${idRef.current++}`,
+                mine: true,
+                body,
+                created_at: new Date().toISOString(),
+              },
+            ])
+          }
+        />
+      ) : (
+        <p className="pt-3 border-t border-[color:var(--divider)] text-xs text-muted text-center">
+          {t.convReplyNeedsTitle}
+        </p>
+      )}
     </div>
   );
 }
@@ -321,6 +330,46 @@ function ConvBubble({ event, locale }: { event: ConvEvent; locale: Locale }) {
         >
           {event.body}
         </span>
+      </div>
+    );
+  }
+
+  // قائمةٌ مُشارَكة — بطاقةٌ كبطاقة العمل: أيقونةٌ مكان الملصق، والرابط
+  // إلى صفحة القائمة الحيّة (الاسم والعدّة لحظة الإرسال، D-048 روحاً)
+  if (event.kind === "list") {
+    return (
+      <div className={`flex flex-col max-w-[80%] ${side}`}>
+        <Link
+          href={`/lists/${event.list_id}`}
+          prefetch={false}
+          className="flex items-center gap-2.5 rounded-2xl border border-border bg-surface p-2 hover:bg-surface-2 transition group w-full"
+        >
+          <span
+            className="grid place-items-center w-10 shrink-0 aspect-[2/3] rounded-md bg-surface-2 text-muted"
+            aria-hidden
+          >
+            <Icon name="list" size={15} />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[13px] font-semibold truncate group-hover:text-accent transition">
+              {event.list_name ?? "—"}
+            </span>
+            <span className="block text-[11px] text-muted">
+              {event.item_count
+                ? `${t.convListBadge} · ${t.personWorksCount(event.item_count)}`
+                : t.convListBadge}
+            </span>
+          </span>
+        </Link>
+        {event.note && (
+          <span
+            className={`mt-1 rounded-2xl px-3.5 py-2 text-[14px] leading-relaxed whitespace-pre-line break-words ${
+              event.mine ? "bg-accent text-[color:var(--on-accent)]" : "bg-surface-2 text-foreground"
+            }`}
+          >
+            {event.note}
+          </span>
+        )}
       </div>
     );
   }

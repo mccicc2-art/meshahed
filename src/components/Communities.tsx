@@ -517,7 +517,7 @@ export function CommunityRoom({
                         : "bg-surface-2 text-foreground"
                     }`}
                   >
-                    {m.body}
+                    <MessageBody body={m.body} label={t.commListLink} />
                   </span>
                 </div>
               ))
@@ -641,4 +641,38 @@ function MessageBox({ t, onSend }: { t: Dict; onSend: (body: string) => void }) 
       </button>
     </div>
   );
+}
+
+/**
+ * نصّ الفقاعة — روابط قوائم loopztv **وحدها** تصير روابط داخلية (D-066).
+ *
+ * لماذا هذا النمط بالذات لا «أي رابط»: تحويل كل URL إلى رابطٍ قابلٍ للنقر
+ * في نصٍّ يكتبه الغرباء بابُ تصيّدٍ مفتوح. النمط هنا حرفيٌّ ومقيّد —
+ * النطاق الرسمي، مسار `/lists/`، ومعرّف UUID — وكل ما سواه يبقى نصّاً
+ * يعرضه React مُهرَّباً كعادته (لا innerHTML في أي حال).
+ */
+function MessageBody({ body, label }: { body: string; label: string }) {
+  const re =
+    /https:\/\/loopztv\.com\/lists\/([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})/g;
+  const parts: React.ReactNode[] = [];
+  let last = 0;
+  let m: RegExpExecArray | null;
+  let i = 0;
+  while ((m = re.exec(body))) {
+    if (m.index > last) parts.push(body.slice(last, m.index));
+    parts.push(
+      <Link
+        key={`lst-${i++}`}
+        href={`/lists/${m[1].toLowerCase()}`}
+        className="inline-flex items-center gap-1 underline font-semibold hover:opacity-80"
+      >
+        <Icon name="list" size={13} />
+        {label}
+      </Link>,
+    );
+    last = m.index + m[0].length;
+  }
+  if (parts.length === 0) return <>{body}</>;
+  if (last < body.length) parts.push(body.slice(last));
+  return <>{parts}</>;
 }
