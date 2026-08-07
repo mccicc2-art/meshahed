@@ -177,11 +177,12 @@ export function GoogleButton({ locale }: { locale: Locale }) {
         aria-busy={loading}
       />
 
-      {/* الزرّ القديم يظهر وحده حين لا تعمل الطريقة الأولى. لا سطر «طريقة
-          أخرى» تحتها حين تعمل: السقوط إلى هذا الزرّ آليٌّ أصلاً (لو لم
-          تُحمَّل مكتبة Google بقي `gsiReady` خاطئاً وظهر هذا وحده)، فالسطر
-          كان يعرض بابين لمن ليس عنده مشكلة — وضجيجٌ تحت أهمّ زرٍّ في
-          التطبيق ثمنٌ أغلى ممّا يشتريه. */}
+      {/* الزرّ القديم يظهر وحده حين لا تُحمَّل مكتبة Google.
+          والسطر تحته **مؤقّت**: حُذف بطلب المالك ثم أُعيد في اليوم نفسه.
+          السبب: السقوط الآليّ يغطّي «المكتبة لم تصل» ولا يغطّي «النافذة
+          فتحت بيضاء» — وهي الحالة التي وقعت فعلاً بينما ينتشر تسجيل
+          النطاق عند Google. وباب دخولٍ بلا مخرجٍ ثانٍ في تلك الحالة يعني
+          مستخدماً محبوساً خارج حسابه. يُحذف حين تُثبت النافذة أنها تعمل. */}
       {!gsiReady ? (
         <button
           onClick={redirectSignIn}
@@ -196,7 +197,15 @@ export function GoogleButton({ locale }: { locale: Locale }) {
           </svg>
           {loading ? t.loginRedirecting : t.loginContinueGoogle}
         </button>
-      ) : null}
+      ) : (
+        <button
+          onClick={redirectSignIn}
+          disabled={loading}
+          className="mt-3 w-full text-[12px] text-muted/60 hover:text-muted transition disabled:opacity-50"
+        >
+          {t.loginOtherWay}
+        </button>
+      )}
     </div>
   );
 }
