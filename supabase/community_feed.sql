@@ -63,6 +63,9 @@ as $$
   where auth.uid() is not null
     and r.user_id <> auth.uid()
     and length(btrim(coalesce(r.review, ''))) > 0
+    -- المخفيّ بعشرة بلاغات لا يظهر هنا (review_reports.sql). العمود يُنشأ
+    -- هناك، فشغّل ٢٤ قبل ٢٧ — والترتيب في README يضمن ذلك
+    and coalesce(r.hidden, false) = false
   order by r.updated_at desc
   limit 60;
 $$;
