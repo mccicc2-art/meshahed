@@ -6,6 +6,7 @@ import { Icon, type IconName } from "./Icon";
 import { LanguageSwitch } from "./LanguageSwitch";
 import { ProfileForm } from "./ProfileForm";
 import { AccountSettings } from "./AccountSettings";
+import { RegionSwitch } from "./RegionSwitch";
 import { HomeCustomize } from "./HomeCustomize";
 import { PrivacyData } from "./PrivacyData";
 import { ImportPanel } from "./ImportPanel";
@@ -40,6 +41,7 @@ export function SettingsShell({
   userId,
   email,
   locale,
+  region,
   nickname,
   username,
   avatarUrl,
@@ -56,6 +58,8 @@ export function SettingsShell({
   userId: string;
   email: string;
   locale: Locale;
+  /** بلد المشاهدة الحالي — كوكي يقرأه الخادم، لا عمود في الحساب */
+  region: string;
   nickname: string;
   username: string;
   avatarUrl: string | null;
@@ -130,6 +134,27 @@ export function SettingsShell({
               <p className="text-xs text-muted leading-relaxed mb-3">{t.languageHint}</p>
               <LanguageSwitch locale={locale} />
             </section>
+
+            {/* بلد المشاهدة — التوفّر على المنصّات يختلف بين بلدٍ وبلد،
+                وكان التطبيق يجيب عن السعودية للجميع */}
+            <section className="bg-surface border border-border rounded-2xl p-3.5 sm:p-5">
+              <h2 className="text-sm font-bold mb-1">{t.regionSection}</h2>
+              <p className="text-xs text-muted leading-relaxed mb-3">{t.regionHint}</p>
+              <RegionSwitch locale={locale} region={region} />
+
+              {/* النسبة إلى المصدرين.
+                  شروط TMDB تُلزم بذكرها في مكانٍ ظاهر، وشروط بيانات
+                  المنصّات تُلزم بنسبتها إلى JustWatch صراحةً. وكانت
+                  الفقرة الأولى مكتوبةً في `AccountSettings` داخل قسمٍ
+                  لا يُمرَّر إليه `language` أبداً — أي أنها لم تكن
+                  تُعرض لأحد. موضعها هنا: القسم الذي يشرح فعلاً من أين
+                  تأتي هذه البيانات. */}
+              <div className="text-[11px] text-muted/70 mt-4 pt-3 border-t border-[color:var(--divider)] leading-relaxed space-y-1.5">
+                <p>{t.tmdbAttribution}</p>
+                <p>{t.justwatchAttribution}</p>
+              </div>
+            </section>
+
             <ProfileForm {...profileProps} only={["theme"]} />
           </div>
         );

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { posterUrl } from "@/lib/media";
-import { Icon } from "./Icon";
+import { Icon, type IconName } from "./Icon";
 
 type BadgeTone = "neutral" | "progress" | "watched" | "rating" | "dropped";
 
@@ -25,6 +25,8 @@ export function PosterCard({
   note,
   badgeTone = "neutral",
   dropped = false,
+  posterSize = "w342",
+  fallbackIcon = "film",
 }: {
   href: string;
   title: string;
@@ -41,8 +43,15 @@ export function PosterCard({
   badgeTone?: BadgeTone;
   /** موقوف ببطاقة حمراء: الشريط كله أحمر مهما كان التقدّم */
   dropped?: boolean;
+  /**
+   * مقاس صورة TMDB. الأشخاص لهم دِلاء مقاساتٍ غير دِلاء الملصقات — و`w342`
+   * ليس منها، فصورة الممثل تعود مكسورة. `w185` صالحٌ للنوعين.
+   */
+  posterSize?: "w185" | "w342";
+  /** أيقونة الفراغ: فيلمٌ للأعمال، وشخصٌ للأشخاص */
+  fallbackIcon?: IconName;
 }) {
-  const url = posterUrl(posterPath, "w342");
+  const url = posterUrl(posterPath, posterSize);
   return (
     // prefetch={false}: الصفحة الواحدة فيها عشرات البطاقات، والتحميل المسبق
     // الافتراضي يطلق طلب RSC لكل بطاقة تدخل الشاشة — عشرات الطلبات المتزامنة
@@ -59,7 +68,7 @@ export function PosterCard({
           />
         ) : (
           <div className="w-full h-full grid place-items-center text-muted">
-            <Icon name="film" size={26} />
+            <Icon name={fallbackIcon} size={26} />
           </div>
         )}
         {badge && (

@@ -4,9 +4,11 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { getDict, num, type Locale } from "@/lib/i18n";
 import {
+  BROWSE_COUNTRIES,
   BROWSE_ERAS,
   BROWSE_GENRES,
   BROWSE_LANGS,
+  browseCountryName,
   browseEraName,
   browseGenreName,
   browseLangName,
@@ -48,6 +50,10 @@ export function DiscoverFilters({
   type,
   genre,
   lang,
+  country,
+  provider,
+  providers,
+  region,
   era,
   rate,
   count,
@@ -58,6 +64,14 @@ export function DiscoverFilters({
   genre: string | null;
   /** رمز اللغة المختارة */
   lang: string | null;
+  /** رمز بلد الإنتاج المختار — مع العربية وحدها */
+  country: string | null;
+  /** معرّف المنصّة المختارة */
+  provider: number | null;
+  /** منصّات المنطقة — تُجلب على الخادم وتُمرَّر للورقة */
+  providers: { id: number; name: string }[];
+  /** بلد المشاهدة المختار */
+  region: string;
   /** slug الحقبة المختارة */
   era: string | null;
   rate: BrowseRate | null;
@@ -74,6 +88,8 @@ export function DiscoverFilters({
     type?: BrowseType;
     g?: string | null;
     lang?: string | null;
+    co?: string | null;
+    p?: number | null;
     era?: string | null;
     rate?: BrowseRate | null;
   }) {
@@ -89,9 +105,14 @@ export function DiscoverFilters({
     if (nextType !== "all") p.set("type", nextType);
     if (nextGenre) p.set("g", nextGenre);
     const nextLang = next.lang === undefined ? lang : next.lang;
+    // البلد تابعٌ للعربية: مغادرتها تُسقطه، وإلا بقي مطبَّقاً بلا رقاقة تدلّ عليه
+    const nextCountry = nextLang === "ar" ? (next.co === undefined ? country : next.co) : null;
     const nextEra = next.era === undefined ? era : next.era;
     const nextRate = next.rate === undefined ? rate : next.rate;
     if (nextLang) p.set("lang", nextLang);
+    if (nextCountry) p.set("co", nextCountry);
+    const nextProvider = next.p === undefined ? provider : next.p;
+    if (nextProvider) p.set("p", String(nextProvider));
     if (nextEra) p.set("era", nextEra);
     if (nextRate) p.set("rate", String(nextRate));
 
@@ -120,6 +141,22 @@ export function DiscoverFilters({
       clear: () => go({ lang: null }),
     });
   }
+  const countryObj = BROWSE_COUNTRIES.find((c) => c.code === country);
+  if (countryObj) {
+    chips.push({
+      key: "country",
+      label: browseCountryName(countryObj, loc),
+      clear: () => go({ co: null }),
+    });
+  }
+  const providerObj = providers.find((x) => x.id === provider);
+  if (providerObj) {
+    chips.push({
+      key: "provider",
+      label: providerObj.name,
+      clear: () => go({ p: null }),
+    });
+  }
   const eraObj = BROWSE_ERAS.find((e) => e.slug === era);
   if (eraObj) {
     chips.push({
@@ -136,7 +173,7 @@ export function DiscoverFilters({
     });
   }
 
-  const draft: FilterDraft = { type, lang, era, rate };
+  const draft: FilterDraft = { type, lang, country, provider, era, rate };
 
   return (
     <div className={`space-y-3 transition-opacity ${pending ? "opacity-60" : "opacity-100"}`}>
@@ -235,7 +272,9 @@ export function DiscoverFilters({
                دون الرقائق في الصوت */
             <button
               type="button"
-              onClick={() => go({ type: "all", lang: null, era: null, rate: null })}
+              onClick={() =>
+              go({ type: "all", lang: null, co: null, p: null, era: null, rate: null })
+            }
               className="rounded-full border border-border text-muted hover:text-foreground hover:border-accent/50 px-3 py-1.5 text-[13px] font-semibold transition"
             >
               {t.browseClearAll}
@@ -248,10 +287,19 @@ export function DiscoverFilters({
         <DiscoverFilterSheet
           locale={locale}
           initial={draft}
+          providers={providers}
+          region={region}
           onClose={() => setSheet(false)}
           onApply={(next) => {
             setSheet(false);
-            go({ type: next.type, lang: next.lang, era: next.era, rate: next.rate });
+            go({
+              type: next.type,
+              lang: next.lang,
+              co: next.country,
+              p: next.provider,
+              era: next.era,
+              rate: next.rate,
+            });
           }}
         />
       )}

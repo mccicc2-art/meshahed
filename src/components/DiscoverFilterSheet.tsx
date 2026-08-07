@@ -3,14 +3,17 @@
 import { useState } from "react";
 import { getDict, num, type Locale } from "@/lib/i18n";
 import {
+  BROWSE_COUNTRIES,
   BROWSE_ERAS,
   BROWSE_LANGS,
   BROWSE_RATES,
+  browseCountryName,
   browseEraName,
   browseLangName,
   type BrowseRate,
   type BrowseType,
 } from "@/lib/browse";
+import { regionName } from "@/lib/region";
 import { tap } from "@/lib/haptics";
 import { Icon } from "./Icon";
 import { Sheet, SheetHeader } from "./ui/Sheet";
@@ -20,6 +23,10 @@ import { chipClass, segmentedItem, segmentedTrackFull } from "./ui/controls";
 export interface FilterDraft {
   type: BrowseType;
   lang: string | null;
+  /** بلد الإنتاج — تابعٌ للعربية، ويسقط معها */
+  country: string | null;
+  /** معرّف منصّة الاشتراك عند TMDB */
+  provider: number | null;
   era: string | null;
   rate: BrowseRate | null;
 }
@@ -44,11 +51,17 @@ export interface FilterDraft {
 export function DiscoverFilterSheet({
   locale,
   initial,
+  providers,
+  region,
   onApply,
   onClose,
 }: {
   locale: Locale;
   initial: FilterDraft;
+  /** منصّات المنطقة كما جاءت من TMDB — فارغةً حين يتعذّر جلبها */
+  providers: { id: number; name: string }[];
+  /** بلد المشاهدة — يُكتب في عنوان المجموعة فلا تُقرأ القائمة عالمية */
+  region: string;
   onApply: (next: FilterDraft) => void;
   onClose: () => void;
 }) {
@@ -67,9 +80,25 @@ export function DiscoverFilterSheet({
     setDraft((d) => ({ ...d, ...patch }));
   }
 
-  const cleared: FilterDraft = { type: "all", lang: null, era: null, rate: null };
+  const cleared: FilterDraft = {
+    type: "all",
+    lang: null,
+    country: null,
+    provider: null,
+    era: null,
+    rate: null,
+  };
   const dirty =
-    draft.type !== "all" || draft.lang !== null || draft.era !== null || draft.rate !== null;
+    draft.type !== "all" ||
+    draft.lang !== null ||
+    draft.country !== null ||
+    draft.provider !== null ||
+    draft.era !== null ||
+    draft.rate !== null;
+
+  /* البلد يظهر تحت اللغة العربية وحدها، ويُمسح متى غادرتها: خيارٌ مطبَّقٌ
+     لا يراه المستخدم يجعل النتائج تكذب على الواجهة */
+  const showCountry = draft.lang === "ar";
 
   return (
     /* سفليّةٌ لا علويّة: هذه ورقةُ لمسٍ لا كتابة — لا لوحة مفاتيح تدفعها،
@@ -111,19 +140,69 @@ export function DiscoverFilterSheet({
 
         {/* ===== لغة العمل ===== */}
         <FilterGroup title={t.browseLangGroup}>
-          <Chip on={!draft.lang} onClick={() => set({ lang: null })}>
+          <Chip on={!draft.lang} onClick={() => set({ lang: null, country: null })}>
             {t.browseAnyLang}
           </Chip>
           {BROWSE_LANGS.map((l) => (
             <Chip
               key={l.code}
               on={draft.lang === l.code}
-              onClick={() => set({ lang: draft.lang === l.code ? null : l.code })}
+              onClick={() =>
+                set(
+                  draft.lang === l.code
+                    ? { lang: null, country: null }
+                    : { lang: l.code, country: null },
+                )
+              }
             >
               {browseLangName(l, lang)}
             </Chip>
           ))}
         </FilterGroup>
+
+        {/* ===== بلد الإنتاج — مع العربية وحدها =====
+            اللغة تفصل التركيّ عن الكوريّ ولا تفصل السعوديّ عن المصريّ:
+            ثلاثتها `ar`. فهذا المحور تفريعٌ للعربية لا محورٌ موازٍ، ولذلك
+            يظهر تحتها ويختفي بغيرها بدل أن يجلس دائماً فارغ المعنى */}
+        {showCountry && (
+          <FilterGroup title={t.browseCountryGroup}>
+            <Chip on={!draft.country} onClick={() => set({ country: null })}>
+              {t.browseAnyCountry}
+            </Chip>
+            {BROWSE_COUNTRIES.map((c) => (
+              <Chip
+                key={c.code}
+                on={draft.country === c.code}
+                onClick={() => set({ country: draft.country === c.code ? null : c.code })}
+              >
+                {browseCountryName(c, lang)}
+              </Chip>
+            ))}
+          </FilterGroup>
+        )}
+
+        {/* ===== متاح على =====
+            أكثر سؤالٍ عمليّ عند من يدفع اشتراكاً: «وش أشوف على شاهد؟».
+            البيانات موجودة عندنا أصلاً (تظهر في صفحة كل عمل) وكانت غائبة
+            عن التصفّح. والقائمة تُجلب من TMDB لا تُكتب هنا — معرّفات
+            المنصّات تتغيّر وتُدمَج، وقائمةٌ يدوية تصمت يوم تتغيّر.
+            وتختفي المجموعة كلها إن تعذّر الجلب: خانةٌ فارغة أسوأ من لا خانة */}
+        {providers.length > 0 && (
+          <FilterGroup title={t.browseProviderGroup(regionName(region, lang))}>
+            <Chip on={!draft.provider} onClick={() => set({ provider: null })}>
+              {t.browseAnyProvider}
+            </Chip>
+            {providers.map((pr) => (
+              <Chip
+                key={pr.id}
+                on={draft.provider === pr.id}
+                onClick={() => set({ provider: draft.provider === pr.id ? null : pr.id })}
+              >
+                {pr.name}
+              </Chip>
+            ))}
+          </FilterGroup>
+        )}
 
         {/* ===== سنة الإصدار ===== */}
         <FilterGroup title={t.browseEraGroup}>

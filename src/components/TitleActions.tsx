@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { flashError } from "@/lib/toast";
+import { flashError, toast } from "@/lib/toast";
 import { coalescedRefresh } from "@/lib/refresh";
 import { tap } from "@/lib/haptics";
 import { useState, useTransition } from "react";
@@ -14,12 +14,45 @@ import { Sheet } from "./ui/Sheet";
 import { buttonClass } from "./ui/Button";
 
 /**
- * صفّ الإجراء الرئيسي في صفحة العمل: «أضف لقائمة» + دائرة «شاهدتُه».
+ * مربّع ✓ الموحّد داخل ورقة القوائم — شكلٌ واحد لكل صفوفها.
  *
- * زرّ المتابعة الكبير حُذف: المتابعة صارت أول صفٍّ داخل ورقة القوائم
- * («للمشاهدة» قائمةٌ مثبّتة فوق قوائم المستخدم)، فالنموذج الذهني واحد —
- * كل شيء إضافة إلى قائمة. والدائرة تؤشّر العمل كله مُشاهَداً بعد ورقة
- * تأكيد زجاجية تعرض العدد، فلا يقع ٢٥٦ حلقة بضغطة خاطئة.
+ * خارج المكوّن لا داخله: المكوّن المعرَّف أثناء التصيير يُنشأ من جديد مع
+ * كل رسمة، فتُفقد حالة أبنائه ويُلغى تذكيرُ React — وهو ما ينبّه إليه
+ * `react-hooks/static-components`.
+ */
+function CheckBox({ on, success = false }: { on: boolean; success?: boolean }) {
+  return (
+    <span
+      className={`grid place-items-center w-[22px] h-[22px] rounded-full border-[1.5px] shrink-0 transition ${
+        on
+          ? success
+            ? "bg-[color:var(--success)] border-[color:var(--success)] text-white"
+            : "bg-accent border-accent text-[color:var(--on-accent)]"
+          : "border-border text-transparent"
+      }`}
+    >
+      <Icon name="check-line" size={14} strokeWidth={2.2} />
+    </span>
+  );
+}
+
+/**
+ * صفّ الإجراء الرئيسي في صفحة العمل: «أضف لقائمة» + دائرة «للمشاهدة».
+ *
+ * الدائرة كانت تعني «شاهدتُ العمل كله» وتفتح ورقة تأكيد. تغيّر معناها إلى
+ * «للمشاهدة» (D-047) لسببين: هو الفعل الأكثر تكراراً في التطبيق وكان
+ * مدفوناً خلف زرٍّ وورقة، ولأن ✓ الممتلئ يعني داخل ورقة القوائم «هذا العمل
+ * في هذه القائمة» — فالدائرة تقول الشيء نفسه عن القائمة المثبّتة، لا معنىً
+ * مستحدثاً.
+ *
+ * وورقة التأكيد سقطت كلها: الحماية انتقلت من «تأكيد قبل» إلى «تراجع بعد».
+ * التأكيد يعاقب كل من أصاب ليحمي من أخطأ؛ والتراجع يحمي من أخطأ بلا أن
+ * يشعر به من أصاب. ومضيف الرسائل العام يدعم زرّ فعلٍ داخل الرسالة أصلاً،
+ * فلا مكوّن جديد ولا لغة بصرية ثانية.
+ *
+ * و«شاهدتُه كله» انتقل إلى ذيل الورقة نفسها — سطرٌ مفصولٌ بخطّ تحت القوائم:
+ * الفعل لم يُدفن (ضغطتان)، ولم تُفتح له ورقةٌ ثانية، وبقيت الحالة كلها في
+ * مكوّنٍ واحد فلا تتناقض دائرةٌ مع سطر.
  */
 export function TitleActions({
   tmdbId,
@@ -42,7 +75,7 @@ export function TitleActions({
   initialFollowing: boolean;
   lists: { id: string; name: string }[];
   containing: string[];
-  /** عدد الحلقات المعروضة — للمسلسلات فقط، يظهر في زرّ التأكيد */
+  /** عدد الحلقات المعروضة — للمسلسلات فقط، يظهر في سطر «شاهدتُه كله» */
   episodesTotal: number | null;
   /** مدّة الفيلم — تُسجَّل مع «شاهدتُه» */
   runtime: number | null;
@@ -54,23 +87,56 @@ export function TitleActions({
   const [following, setFollowing] = useState(initialFollowing);
   const [inLists, setInLists] = useState<Set<string>>(new Set(containing));
   const [done, setDone] = useState(initialDone);
-  const [sheet, setSheet] = useState<null | "lists" | "watch">(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
   const [pending, start] = useTransition();
 
   const badge = inLists.size + (following ? 1 : 0);
 
-  function toggleFollow() {
-    const was = following;
-    setFollowing(!was);
-    tap(10);
+  /**
+   * الانزلاق إلى صفّ «الأجزاء والأعمال المرتبطة» بعد الإضافة.
+   *
+   * الحفظ لحظةُ نيّة: من حفظ عملاً هو أقرب الناس إلى أن يريد بقيّة أجزائه.
+   * والصفّ موجودٌ دائماً أسفل الصفحة — الانزلاق يكشفه لا ينشئه، فلا يفوت
+   * من لم يضغط.
+   *
+   * وشرطان يمنعانه من أن يصير خطفاً للشاشة: احترام `prefers-reduced-motion`،
+   * وسقفُ مسافةٍ بأربع شاشات — تبويب الحلقات في مسلسلٍ طويل يجعل الصفّ على
+   * بُعد آلاف البكسلات، وانزلاقةٌ بهذا الطول تُقرأ هروباً لا كشفاً.
+   */
+  function revealRelated() {
+    if (typeof window === "undefined") return;
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+    requestAnimationFrame(() => {
+      const el = document.getElementById("related");
+      if (!el) return;
+      const top = el.getBoundingClientRect().top;
+      if (top < 0 || top > window.innerHeight * 4) return;
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
+
+  /**
+   * «للمشاهدة» — الحالة المطلوبة صريحةٌ لا مقلوبةٌ عن الحالية، كي يستطيع
+   * زرّ التراجع أن يستدعي الدالة نفسها بلا أن يقرأ حالةً تغيّرت تحته.
+   */
+  function setToWatch(next: boolean, silent = false) {
+    setFollowing(next);
+    tap(next ? [12, 30] : 10);
+    if (next) revealRelated();
     start(async () => {
       try {
-        if (was) await unfollow({ tmdbId, mediaType });
-        else await follow({ tmdbId, mediaType, title, posterPath });
+        if (next) await follow({ tmdbId, mediaType, title, posterPath });
+        else await unfollow({ tmdbId, mediaType });
         coalescedRefresh(router);
+        if (!silent) {
+          toast(next ? t.toWatchAdded : t.toWatchRemoved, {
+            // التراجع صامت: رسالةٌ تلد رسالةً تجعل الشاشة تتكلّم مرّتين لفعلٍ واحد
+            action: { label: t.undoWatched, run: () => setToWatch(!next, true) },
+          });
+        }
       } catch (e) {
         flashError((e as Error).message);
-        setFollowing(was);
+        setFollowing(!next);
       }
     });
   }
@@ -99,9 +165,8 @@ export function TitleActions({
     });
   }
 
-  /** التأشير الكامل — وإن لم يكن متابِعاً تابَعناه أولاً كي يظهر في مكتبته */
-  function confirmWatch(mark: boolean) {
-    setSheet(null);
+  /** التأشير الكامل — وإن لم يكن في «للمشاهدة» أضفناه أولاً كي يظهر في مكتبته */
+  function setWatched(mark: boolean, silent = false) {
     setDone(mark);
     tap(mark ? [12, 40, 12] : 10);
     start(async () => {
@@ -116,6 +181,16 @@ export function TitleActions({
           await toggleMovieWatched({ movieTmdbId: tmdbId, runtime, watched: mark });
         }
         coalescedRefresh(router);
+        if (!silent) {
+          toast(mark ? t.watchedMarked : t.watchedUnmarked, {
+            /* المسلسل لا تراجع له: `markShowWatched` تكتب مئات الحلقات ولا
+               دالةَ عكسٍ لها اليوم — فلا نَعِد بزرٍّ لا يفي. الفيلم يتراجع */
+            action:
+              mediaType === "movie"
+                ? { label: t.undoWatched, run: () => setWatched(!mark, true) }
+                : undefined,
+          });
+        }
       } catch (e) {
         flashError((e as Error).message);
         setDone(!mark);
@@ -133,7 +208,7 @@ export function TitleActions({
         {/* أضف لقائمة: أبيض قبل الإضافة، وبلون الهوية بعدها — اللون هو
             الإشارة لا رقمٌ يحتاج تفسيراً، والعلامة تمتلئ معه */}
         <button
-          onClick={() => setSheet("lists")}
+          onClick={() => setSheetOpen(true)}
           aria-pressed={badge > 0}
           className={`flex-1 h-12 rounded-full font-bold text-[15px] flex items-center justify-center gap-2.5 active:scale-[0.98] transition ${
             badge > 0
@@ -150,27 +225,32 @@ export function TitleActions({
           {t.listAddTo}
         </button>
 
-        {/* دائرة «شاهدتُه كله» */}
+        {/* دائرة «للمشاهدة» — ضغطةٌ واحدة، بلا ورقة، والتراجع في الرسالة */}
         <button
-          onClick={() => setSheet("watch")}
+          onClick={() => setToWatch(!following)}
           disabled={pending}
-          aria-pressed={done}
-          aria-label={done ? t.allWatchedShort : t.markAllTitle}
-          title={done ? t.allWatchedShort : t.markAllTitle}
+          aria-pressed={following}
+          aria-label={t.libToWatch}
+          title={t.libToWatch}
           className={`w-12 h-12 shrink-0 rounded-full grid place-items-center border-[1.5px] active:scale-95 transition ${
-            done
-              ? "border-transparent bg-[color:var(--success)]/15 text-[color:var(--success)]"
+            following
+              ? "border-transparent bg-accent/15 text-accent"
               : "border-border text-foreground/85 hover:border-accent/60"
           }`}
         >
-          <Icon name="check-line" size={20} strokeWidth={2.2} className={done ? "check-pop" : ""} />
+          <Icon
+            name="check-line"
+            size={20}
+            strokeWidth={2.2}
+            className={following ? "check-pop" : ""}
+          />
         </button>
       </div>
 
       {/* ورقة القوائم */}
       <Sheet
-        open={sheet === "lists"}
-        onClose={() => setSheet(null)}
+        open={sheetOpen}
+        onClose={() => setSheetOpen(false)}
         closeLabel={t.closeLabel}
         variant="center"
         labelledBy="lists-sheet-title"
@@ -180,103 +260,78 @@ export function TitleActions({
             {t.listAddTo}
           </p>
 
-            {/* «للمشاهدة» — المتابعة بثوب القائمة المثبّتة */}
-            <button
-              onClick={toggleFollow}
-              className="w-full flex items-center gap-3 px-5 py-3 text-start hover:bg-surface-2 transition"
-            >
-              <span
-                className={`grid place-items-center w-[22px] h-[22px] rounded-full border-[1.5px] shrink-0 transition ${
-                  following
-                    ? "bg-accent border-accent text-[color:var(--on-accent)]"
-                    : "border-border text-transparent"
-                }`}
-              >
-                <Icon name="check-line" size={14} strokeWidth={2.2} />
-              </span>
-              <span className="text-[14px] font-semibold flex items-center gap-2">
-                <Icon name="bookmark" size={16} className="text-muted" />
-                {t.libToWatch}
-              </span>
-            </button>
+          {/* «للمشاهدة» — المتابعة بثوب القائمة المثبّتة. صامتة هنا: المربّع
+              يمتلئ أمام العين، ورسالةٌ خلف الورقة لا تُقرأ */}
+          <button
+            onClick={() => setToWatch(!following, true)}
+            className="w-full flex items-center gap-3 px-5 py-3 text-start hover:bg-surface-2 transition"
+          >
+            <CheckBox on={following} />
+            <span className="text-[14px] font-semibold flex items-center gap-2">
+              <Icon name="bookmark" size={16} className="text-muted" />
+              {t.libToWatch}
+            </span>
+          </button>
 
-            <div className="h-px bg-[color:var(--divider)] mx-5 my-1" />
+          <div className="h-px bg-[color:var(--divider)] mx-5 my-1" />
 
-            {lists.length === 0 ? (
-              <p className="px-5 py-3 text-xs text-muted">
-                {t.listNoLists}{" "}
-                <Link href="/lists" className="text-accent hover:brightness-110">
-                  {t.listsTitle}
-                </Link>
-              </p>
-            ) : (
-              <ul className="max-h-52 overflow-y-auto">
-                {lists.map((l) => {
-                  const on = inLists.has(l.id);
-                  return (
-                    <li key={l.id}>
-                      <button
-                        onClick={() => toggleList(l.id)}
-                        className="w-full flex items-center gap-3 px-5 py-2.5 text-start hover:bg-surface-2 transition"
-                      >
-                        <span
-                          className={`grid place-items-center w-[22px] h-[22px] rounded-full border-[1.5px] shrink-0 transition ${
-                            on
-                              ? "bg-accent border-accent text-[color:var(--on-accent)]"
-                              : "border-border text-transparent"
-                          }`}
-                        >
-                          <Icon name="check-line" size={14} strokeWidth={2.2} />
-                        </span>
-                        <span className="text-[14px] truncate">{l.name}</span>
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
+          {lists.length === 0 ? (
+            <p className="px-5 py-3 text-xs text-muted">
+              {t.listNoLists}{" "}
+              <Link href="/lists" className="text-accent hover:brightness-110">
+                {t.listsTitle}
+              </Link>
+            </p>
+          ) : (
+            <ul className="max-h-52 overflow-y-auto">
+              {lists.map((l) => {
+                const on = inLists.has(l.id);
+                return (
+                  <li key={l.id}>
+                    <button
+                      onClick={() => toggleList(l.id)}
+                      className="w-full flex items-center gap-3 px-5 py-2.5 text-start hover:bg-surface-2 transition"
+                    >
+                      <CheckBox on={on} />
+                      <span className="text-[14px] truncate">{l.name}</span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+
+          {/* ===== شاهدتُه كله =====
+              مفصولٌ بخطٍّ عن القوائم لأنه ليس قائمة: هو حالةُ العمل لا
+              مكانه. ولونه لون النجاح وحده في التطبيق — لا لون ثانٍ له.
+              والمسلسل يعرض عدد حلقاته في السطر نفسه: من يضغط يعرف كم
+              يؤشّر قبل أن يؤشّر، وهو ما كانت ورقة التأكيد تقوله */}
+          <div className="h-px bg-[color:var(--divider)] mx-5 mt-2" />
+          <button
+            /* المسلسل المُشاهَد بالكامل يبقى ظاهراً ومعطَّلاً لا مخفيّاً:
+               إخفاؤه يجعل الحالة غير مقروءة، ولا دالةَ عكسٍ للمسلسل اليوم
+               فلا يجوز أن يبدو الصفّ قابلاً للنقر */
+            onClick={() => setWatched(!done)}
+            disabled={mediaType === "tv" && done}
+            className="w-full flex items-center gap-3 px-5 py-3 text-start hover:bg-surface-2 transition disabled:hover:bg-transparent disabled:opacity-70 disabled:cursor-default"
+          >
+            <CheckBox on={done} success />
+            <span className="min-w-0">
+              <span className="block text-[14px] font-semibold">
+                {done ? t.allWatchedShort : t.markAllTitle}
+              </span>
+              {!done && mediaType === "tv" && episodesTotal ? (
+                <span className="block text-[11px] text-muted mt-0.5">
+                  {t.markAllCount(episodesTotal)}
+                </span>
+              ) : null}
+            </span>
+          </button>
 
           <div className="p-4 pt-2">
-            <button onClick={() => setSheet(null)} className={sheetBtn}>
+            <button onClick={() => setSheetOpen(false)} className={sheetBtn}>
               {t.doneLabel}
             </button>
-          </div>
-        </>
-      </Sheet>
-
-      {/* ورقة التأشير الكامل */}
-      <Sheet
-        open={sheet === "watch"}
-        onClose={() => setSheet(null)}
-        closeLabel={t.closeLabel}
-        variant="center"
-        labelledBy="watch-sheet-title"
-        className="p-4"
-      >
-        <>
-          <p id="watch-sheet-title" className="text-center font-bold text-[15px] pt-1.5 pb-4">
-            {done ? t.allWatchedShort : t.markAllTitle}
-          </p>
-            <div className="space-y-2.5">
-              {done ? (
-                mediaType === "movie" ? (
-                  <button onClick={() => confirmWatch(false)} className={sheetBtn}>
-                    {t.unmarkWatchedBtn}
-                  </button>
-                ) : null
-              ) : (
-                <button onClick={() => confirmWatch(true)} className={sheetBtn}>
-                  {mediaType === "tv" && episodesTotal
-                    ? t.markAllCount(episodesTotal)
-                    : t.markWatchedBtn}
-                </button>
-              )}
-              <button
-                onClick={() => setSheet(null)}
-                className={buttonClass({ variant: "ghost", size: "lg", full: true })}
-              >
-                {t.cancelLabel}
-              </button>
           </div>
         </>
       </Sheet>
