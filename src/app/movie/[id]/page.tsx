@@ -90,7 +90,13 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
           />
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-[color:var(--background)] via-[color:var(--background)]/35 to-transparent" />
-        <DetailTopBar title={movie.title} locale={locale} />
+        <DetailTopBar
+          title={movie.title}
+          locale={locale}
+          tmdbId={movieId}
+          mediaType="movie"
+          posterPath={movie.poster_path}
+        />
       </div>
 
       <div className="flex gap-4 -mt-24 sm:-mt-28 relative px-1">
