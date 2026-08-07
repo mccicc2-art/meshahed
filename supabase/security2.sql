@@ -226,3 +226,65 @@ $$;
 
 revoke all on function public.user_watched_movie_ids(uuid) from public;
 grant execute on function public.user_watched_movie_ids(uuid) to authenticated;
+
+-- ============================================================
+-- القائمة المعلنة لزائرٍ بلا حساب
+--
+-- سياسات القراءة العامّة على `user_lists` و`user_list_items` مقصورة على
+-- `authenticated`، و`public_profiles` كذلك. فرابط قائمةٍ «معلنة» كان لا
+-- يُفتح إلا بتسجيل دخول — أي أنّه لم يكن معلناً أصلاً، وهذا ما يجعل
+-- المشاركة بلا معنى.
+--
+-- والعلاج بابٌ واحدٌ ضيّق لا توسيعُ ثلاثة أبواب: منح `anon` قراءةَ
+-- `public_profiles` كان سيفتح تعداد كل الملفات لأي روبوت، ومنحه قراءة
+-- الجدولين كان سيكشف أعمدةً لا تلزم الصفحة. هذه الدالّة تُرجع ما تحتاجه
+-- صفحة القائمة المعلنة ولا حرفاً زيادة، وتفشل صامتةً على القائمة الخاصة.
+--
+-- `hide_name` محفوظٌ هنا كما هو محفوظٌ في `public_profiles`: من أخفى اسمه
+-- تظهر قائمته بلا صاحب، لا باسمه.
+-- ============================================================
+
+create or replace function public.public_list(p_id uuid)
+returns table (
+  id             uuid,
+  name           text,
+  subtitle       text,
+  kind           text,
+  created_at     timestamptz,
+  owner_id       uuid,
+  owner_nickname text,
+  owner_username text,
+  owner_avatar   text,
+  items          jsonb
+)
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select
+    l.id,
+    l.name,
+    l.subtitle,
+    l.kind,
+    l.created_at,
+    l.user_id,
+    case when coalesce(p.hide_name, false) then null else p.nickname end,
+    case when coalesce(p.hide_name, false) then null else p.username end,
+    case when coalesce(p.hide_name, false) then null else p.avatar_url end,
+    coalesce(
+      (select jsonb_agg(x order by x.sort_order nulls last, x.added_at desc)
+         from (select i.tmdb_id, i.media_type, i.title, i.poster_path,
+                      i.added_at, i.sort_order
+                 from public.user_list_items i
+                where i.list_id = l.id
+                order by i.sort_order nulls last, i.added_at desc
+                limit 500) x),
+      '[]'::jsonb)
+  from public.user_lists l
+  join public.profiles p on p.id = l.user_id
+  where l.id = p_id and l.is_public;
+$$;
+
+revoke all on function public.public_list(uuid) from public;
+grant execute on function public.public_list(uuid) to anon, authenticated;
