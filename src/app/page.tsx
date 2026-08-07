@@ -683,6 +683,7 @@ export default async function HomePage() {
 
       <ProfileHeader
         displayName={displayName}
+        bioText={profile?.bio ?? null}
         username={profile?.username ?? null}
         avatarUrl={profile?.avatar_url ?? null}
         coverUrl={profile?.cover_url ?? null}
