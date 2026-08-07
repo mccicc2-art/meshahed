@@ -34,6 +34,7 @@ export function Inbox({
   locale: Locale;
 }) {
   const t = getDict(locale);
+  const [query, setQuery] = useState("");
 
   const nameOf = (p: PersonLite | null) =>
     !p || p.hide_name ? t.anonymousUser : p.nickname || p.username || "—";
@@ -51,9 +52,47 @@ export function Inbox({
     );
   }
 
+  // ترشيحٌ بالاسم — يكمل المستخدم محادثةً قائمة دون تمرير قائمةٍ طويلة.
+  // بحثٌ محلّيّ فوق المحمّل: لا طلبَ شبكةٍ لكل حرف، والقائمة كلّها بين يديه.
+  const q = query.trim().toLowerCase();
+  const shown = q
+    ? conversations.filter((c) => nameOf(c.person).toLowerCase().includes(q))
+    : conversations;
+
   return (
-    <ul className="divide-y divide-[color:var(--divider)]">
-      {conversations.map((c) => {
+    <div>
+      {/* حقلُ بحثٍ يتصدّر القائمة: أيقونةٌ ثابتة داخل الحقل، وزرُّ مسحٍ
+          يظهر عند الكتابة فقط — نفس هيكل بحث التطبيق، بلا عائلةِ تحكّمٍ جديدة */}
+      <div className="relative mb-3">
+        <span className="pointer-events-none absolute inset-y-0 start-3 grid place-items-center text-muted">
+          <Icon name="search" size={16} />
+        </span>
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder={t.convSearchPlaceholder}
+          aria-label={t.convSearchPlaceholder}
+          className="w-full rounded-full bg-surface-2 border border-border ps-9 pe-9 py-2 text-base outline-none focus:border-accent transition"
+        />
+        {query && (
+          <button
+            type="button"
+            onClick={() => setQuery("")}
+            aria-label={t.closeLabel}
+            className="absolute inset-y-0 end-2 my-auto grid place-items-center w-7 h-7 rounded-full text-muted hover:text-foreground hover:bg-surface transition"
+          >
+            <Icon name="close" size={15} />
+          </button>
+        )}
+      </div>
+
+      {shown.length === 0 ? (
+        <p className="text-sm text-muted bg-surface border border-dashed border-border rounded-xl py-8 px-5 text-center">
+          {t.convNoMatch}
+        </p>
+      ) : (
+        <ul className="divide-y divide-[color:var(--divider)]">
+          {shown.map((c) => {
         const name = nameOf(c.person);
         const last = c.events[c.events.length - 1];
         const preview = previewOf(last, t);
@@ -97,8 +136,10 @@ export function Inbox({
             </Link>
           </li>
         );
-      })}
-    </ul>
+          })}
+        </ul>
+      )}
+    </div>
   );
 }
 
