@@ -85,6 +85,8 @@ export async function updateProfile(input: {
   homePrefs?: HomePrefs;
   /** نبذةٌ قصيرة — غيابها يعني «اتركها كما هي» لا «امحُها» */
   bio?: string;
+  /** حسابٌ خاص: المتابعة بطلب (follow_requests.sql) — غيابه يترك الحال */
+  isPrivate?: boolean;
 }) {
   const { supabase, user } = await requireUser("profile", 10, 60_000);
 
@@ -119,6 +121,7 @@ export async function updateProfile(input: {
     payload.theme = THEMES.some((t) => t.id === input.theme) ? input.theme : "amber";
   }
   if (input.hideName !== undefined) payload.hide_name = !!input.hideName;
+  if (input.isPrivate !== undefined) payload.is_private = !!input.isPrivate;
   /* النبذة تُنظَّف كما يُنظَّف سطر القائمة (D-044): المسافات تُطوى فلا تصير
      فقرةً، والحدّ ١٦٠ حرفاً مطابقٌ لقيد SQL — لا نتّكل على القيد وحده
      لأن رسالة خطأ قاعدة البيانات ليست رسالةً للمستخدم */
@@ -631,6 +634,70 @@ export async function deleteRating(input: { tmdbId: number; mediaType: MediaType
 }
 
 // ================= متابعة المستخدمين =================
+
+/**
+ * المتابعة مع احترام الحساب الخاص (follow_requests.sql).
+ *
+ * الدالّة في القاعدة تقرأ `is_private` الهدف وتقرّر: الخاصّ طلبٌ معلّق،
+ * والعامّ متابعةٌ فورية — وتُرجع أيّهما وقع فيعرف الزرّ حالته بلا قراءةٍ
+ * ثانية. `followUser` القديمة تبقى للمسارات الداخلية التي لا تمرّ بالخاصّ.
+ */
+export async function requestOrFollowUser(
+  targetId: string,
+): Promise<"requested" | "following" | "noop"> {
+  targetId = uuid(targetId);
+  const { supabase, user } = await requireUser();
+  if (targetId === user.id) throw new Error("لا يمكنك متابعة نفسك / You can't follow yourself");
+  const { data, error } = await supabase.rpc("request_or_follow", { target: targetId });
+  if (error) fail(error);
+  revalidatePath("/");
+  revalidatePath("/u/[username]", "page");
+  return (data as "requested" | "following" | "noop") ?? "noop";
+}
+
+/** سحبُ طلبي قبل قبوله — حذفُ صفٍّ أملكه (سياسة cancel or reject) */
+export async function cancelFollowRequest(targetId: string) {
+  targetId = uuid(targetId);
+  const { supabase, user } = await requireUser();
+  const { error } = await supabase
+    .from("follow_requests")
+    .delete()
+    .match({ requester_id: user.id, target_id: targetId });
+  if (error) fail(error);
+  revalidatePath("/u/[username]", "page");
+}
+
+/** قبول طلبٍ وارد — definer يُنشئ صفَّ متابعة الطالب لي */
+export async function acceptFollowRequest(requesterId: string) {
+  requesterId = uuid(requesterId);
+  const { supabase } = await requireUser();
+  const { error } = await supabase.rpc("accept_follow_request", { requester: requesterId });
+  if (error) fail(error);
+  revalidatePath("/people");
+  revalidatePath("/");
+}
+
+/** رفضُ طلبٍ وارد — حذفُ صفٍّ هدفُه أنا */
+export async function rejectFollowRequest(requesterId: string) {
+  requesterId = uuid(requesterId);
+  const { supabase, user } = await requireUser();
+  const { error } = await supabase
+    .from("follow_requests")
+    .delete()
+    .match({ requester_id: requesterId, target_id: user.id });
+  if (error) fail(error);
+  revalidatePath("/people");
+}
+
+/** إزالةُ متابِعٍ لي — definer يحذف صفّاً لا أملكه (طلب المالك) */
+export async function removeFollowerUser(followerId: string) {
+  followerId = uuid(followerId);
+  const { supabase } = await requireUser();
+  const { error } = await supabase.rpc("remove_follower", { follower: followerId });
+  if (error) fail(error);
+  revalidatePath("/people");
+  revalidatePath("/");
+}
 
 export async function followUser(targetId: string) {
   targetId = uuid(targetId);

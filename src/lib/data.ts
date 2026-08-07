@@ -66,6 +66,8 @@ export interface Profile {
   home_prefs?: unknown;
   /** نبذةٌ قصيرة — اختيارية، وتغيب قبل تشغيل profile_bio.sql */
   bio?: string | null;
+  /** حسابٌ خاص: المتابعة بطلبٍ يُقبل (follow_requests.sql) */
+  is_private?: boolean | null;
 }
 
 /** الملف الشخصي — يُقرأ في التخطيط والشريط العلوي والصفحة، فيُخزَّن لكل طلب */
@@ -79,7 +81,7 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
     let { data, error } = await supabase
       .from("profiles")
       .select(
-        "id, nickname, username, avatar_url, cover_url, cover_pos, avatar_pos, theme, favorite_genres, hide_name, home_prefs, bio",
+        "id, nickname, username, avatar_url, cover_url, cover_pos, avatar_pos, theme, favorite_genres, hide_name, home_prefs, bio, is_private",
       )
       .eq("id", user.id)
       .maybeSingle();
@@ -97,7 +99,7 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
         .maybeSingle();
       if (mid.data) {
         // عمودا التموضع أحدث من هذه الدرجة — يسقطان إلى سلوكهما القديم
-        data = { ...mid.data, cover_pos: null, avatar_pos: null, home_prefs: null, bio: null };
+        data = { ...mid.data, cover_pos: null, avatar_pos: null, home_prefs: null, bio: null, is_private: null };
       } else {
         const legacy = await supabase
           .from("profiles")
@@ -114,6 +116,7 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
             hide_name: false,
             home_prefs: null,
             bio: null,
+            is_private: null,
           };
         }
       }
@@ -1029,6 +1032,61 @@ export async function amIFollowing(targetId: string): Promise<boolean> {
     return !!data;
   } catch {
     return false;
+  }
+}
+
+/**
+ * علاقتي بشخصٍ: أتابعه، أو **طلبت** متابعته (حسابه خاص) وما زال الطلب
+ * معلّقاً — لزرّ المتابعة ثلاثيّ الحالة على الملف العام.
+ */
+export async function getFollowRelation(
+  targetId: string,
+): Promise<{ following: boolean; requested: boolean }> {
+  try {
+    const supabase = await createClient();
+    const user = await getUser();
+    if (!user) return { following: false, requested: false };
+    const [f, r] = await Promise.all([
+      supabase
+        .from("user_follows")
+        .select("following_id")
+        .eq("follower_id", user.id)
+        .eq("following_id", targetId)
+        .maybeSingle(),
+      supabase
+        .from("follow_requests")
+        .select("target_id")
+        .eq("requester_id", user.id)
+        .eq("target_id", targetId)
+        .maybeSingle(),
+    ]);
+    return { following: !!f.data, requested: !!r.data };
+  } catch {
+    return { following: false, requested: false };
+  }
+}
+
+/** طلبات المتابعة الواردة إليّ — أصحابها بالأقدميّة، لصندوق القبول/الرفض */
+export async function getIncomingFollowRequests(): Promise<PersonLite[]> {
+  try {
+    const supabase = await createClient();
+    const user = await getUser();
+    if (!user) return [];
+    const { data: rows } = await supabase
+      .from("follow_requests")
+      .select("requester_id, created_at")
+      .eq("target_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(50);
+    if (!rows?.length) return [];
+    const { data: people } = await supabase
+      .from("public_profiles")
+      .select("id, nickname, username, avatar_url, hide_name")
+      .in("id", rows.map((r) => r.requester_id));
+    const byId = new Map((people ?? []).map((p) => [p.id, p as PersonLite]));
+    return rows.map((r) => byId.get(r.requester_id)).filter(Boolean) as PersonLite[];
+  } catch {
+    return [];
   }
 }
 
