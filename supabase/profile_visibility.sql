@@ -70,6 +70,12 @@ as $$
       or exists (
         select 1 from public.user_follows uf
         where uf.follower_id = auth.uid() and uf.following_id = target
+      )
+      -- منحة المكتبة (library_grants, 40): استثناءٌ فرديّ يمنحه المالك —
+      -- النسخة المشغَّلة في الإنتاج هي نسخة الهجرة 40 نفسها
+      or exists (
+        select 1 from public.library_grants g
+        where g.owner_id = target and g.grantee_id = auth.uid()
       );
 $$;
 revoke all on function public.can_view_profile(uuid) from public;
