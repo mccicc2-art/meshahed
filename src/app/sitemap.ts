@@ -14,6 +14,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const pages: { path: string; priority: number; freq: "daily" | "weekly" }[] = [
     { path: "/", priority: 1, freq: "daily" },
     { path: "/welcome", priority: 0.8, freq: "weekly" },
+    // صفحة المميزات (D-096): عامّة بلا حارس وتُعرّف بالمنتج — مكانها
+    // الطبيعي في الخريطة، بأولوية تسويقية عالية كـ/welcome
+    { path: "/features", priority: 0.8, freq: "weekly" },
     { path: "/news", priority: 0.7, freq: "daily" },
     { path: "/search", priority: 0.5, freq: "weekly" },
     { path: "/login", priority: 0.4, freq: "weekly" },
