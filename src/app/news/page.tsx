@@ -35,6 +35,7 @@ import {
   type SearchResult,
   type DiscoverFilter,
 } from "@/lib/tmdb";
+import { ScrollMemory } from "@/components/ScrollMemory";
 import { withImdbRatings } from "@/lib/omdb";
 import { getT, getWatchRegion } from "@/lib/locale";
 import { regionName } from "@/lib/region";
@@ -113,6 +114,8 @@ export default async function NewsPage({
 
   return (
     <div className="space-y-8">
+      {/* ذاكرة موضع التمرير — العائد من عملٍ يهبط حيث كان (تدقيق 8 Aug م٢) */}
+      <ScrollMemory />
       {/* العنوان مخفيٌّ بصريًّا وباقٍ لقارئ الشاشة — أُزيلت الترويسة */}
       <h1 className="sr-only">{t.newsTitle}</h1>
 
