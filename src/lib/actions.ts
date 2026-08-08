@@ -1350,6 +1350,38 @@ export async function createListFromCollection(collectionId: number) {
   return upsertListWithItems(name, items, "watch_order");
 }
 
+/**
+ * زرّ صفحة الفيلم: قائمة «ترتيب مشاهدة» بعالمٍ كامل (D-074).
+ *
+ * العالم قاموسٌ منسَّق (universes.ts) لأن TMDB لا يعرفه، وترتيبُ معرّفاته
+ * هو ترتيب الأحداث — قرار أحمد: من يفتح القائمة يعرف من أين يبدأ ويلحق
+ * ما فاته. الزرّ لا يحمل بيانات؛ الفعل يجلبها (D-052)، والمحرك واحد.
+ */
+export async function createListFromUniverse(slug: string) {
+  const clean = String(slug ?? "").trim().toLowerCase();
+  const { universeBySlug, universeName } = await import("@/lib/universes");
+  const universe = universeBySlug(clean);
+  if (!universe) throw new Error("عالمٌ غير معروف / Unknown universe");
+
+  const [{ moviesByIds }, { getLocale }] = await Promise.all([
+    import("@/lib/tmdb"),
+    import("@/lib/locale"),
+  ]);
+  const [movies, locale] = await Promise.all([
+    moviesByIds(universe.movieIds),
+    getLocale(),
+  ]);
+  if (!movies.length) throw new Error("تعذّر تحميل أفلام العالم / Could not load this universe");
+
+  const items: NewItem[] = movies.map((m) => ({
+    tmdbId: m.id,
+    mediaType: "movie" as MediaType,
+    title: m.title,
+    posterPath: m.poster_path,
+  }));
+  return upsertListWithItems(universeName(universe, locale), items, "watch_order");
+}
+
 /** مسار ملصق TMDB فقط — لا نقبل عنواناً كاملاً من العميل */
 function safeImagePath(path: string | null): string | null {
   if (!path) return null;

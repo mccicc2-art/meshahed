@@ -390,6 +390,8 @@ const ar = {
   // قائمة من أعمال فنان أو أجزاء سلسلة
   worksToListBtn: "أضِف أعماله إلى قائمة",
   partsToListBtn: "احفظ الأجزاء في قائمة",
+  universeToListBtn: "احفظ العالم كاملاً في قائمة",
+  universeHint: "كل أفلام العالم بترتيب الأحداث — تعرف من أين تبدأ، وتلحق ما فاتك قبل أي فيلمٍ جديد.",
   listMadeToast: (name: string) => `أُنشئت قائمة «${name}» ✓`,
   listGrewToast: (n: number) => `أُضيف ${n} إلى القائمة ✓`,
   listHadAllToast: "كل الأعمال موجودة في القائمة مسبقاً",
@@ -1070,6 +1072,8 @@ const en: Dict = {
   // A list from a person's filmography or a franchise's parts
   worksToListBtn: "Add filmography to a list",
   partsToListBtn: "Save all parts as a list",
+  universeToListBtn: "Save the whole universe as a list",
+  universeHint: "Every film in the universe, in story order — know where to start and catch up before any new release.",
   listMadeToast: (name: string) => `Created “${name}” ✓`,
   listGrewToast: (n: number) => `Added ${n} to the list ✓`,
   listHadAllToast: "Everything is already in the list",

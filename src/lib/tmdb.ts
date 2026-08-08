@@ -2,7 +2,6 @@
 // Server-only: never expose the key to the browser.
 
 import { cookies } from "next/headers";
-import { LOCALE_COOKIE } from "@/lib/i18n";
 import { normalizeTerm, type MediaType } from "@/lib/media";
 import { REGION_COOKIE, DEFAULT_REGION, normalizeRegion, regionChain } from "@/lib/region";
 
@@ -20,11 +19,15 @@ export type { MediaType } from "@/lib/media";
 
 const BASE = "https://api.themoviedb.org/3";
 
-// لغة بيانات TMDB تتبع لغة الواجهة المختارة
+// لغة بيانات TMDB تتبع لغة الواجهة **من مصدرها نفسه** (getLocale):
+// الكوكي ثم لغة الجهاز. كانت هذه الدالة تسقط عند غياب الكوكي إلى العربية
+// مباشرةً بينما تسقط الواجهة إلى Accept-Language — فمن جهازُه إنجليزيٌّ
+// ولم يحفظ اختياراً صريحاً كان يرى واجهةً إنجليزية بعناوين عربية
+// (بلاغ أحمد بلقطة الشاشة، D-072). حقيقةٌ واحدة للّغة لا اثنتان.
 async function tmdbLanguage(): Promise<string> {
   try {
-    const store = await cookies();
-    return store.get(LOCALE_COOKIE)?.value === "en" ? "en-US" : "ar-SA";
+    const { getLocale } = await import("@/lib/locale");
+    return (await getLocale()) === "en" ? "en-US" : "ar-SA";
   } catch {
     return "ar-SA";
   }
@@ -529,6 +532,27 @@ export async function getCollection(id: number): Promise<Collection | null> {
   } catch {
     return null;
   }
+}
+
+/**
+ * أفلامٌ بمعرّفاتها، بترتيب المعرّفات نفسه — لقوائم العوالم (D-074).
+ *
+ * العالم قاموسُ معرّفاتٍ مرتّبةٍ عندنا (universes.ts)، وTMDB لا يجمعه في
+ * طلبٍ واحد — فتُجلب التفاصيل بالتوازي (مخبّأةً ساعةً ككل طلبات tmdb)،
+ * والمعرّفُ الفاشل يسقط بصمت بدل أن يُفشل القائمة كلّها: قائمةُ ٣٦ فيلماً
+ * أصدق من لا قائمة لأن فيلماً واحداً تعثّر.
+ */
+export async function moviesByIds(
+  ids: number[],
+): Promise<{ id: number; title: string; poster_path: string | null }[]> {
+  const rows = await Promise.all(
+    ids.map((id) =>
+      tmdb<{ id: number; title: string; poster_path: string | null }>(`/movie/${id}`)
+        .then((m) => ({ id: m.id, title: m.title, poster_path: m.poster_path }))
+        .catch(() => null),
+    ),
+  );
+  return rows.filter((r): r is NonNullable<typeof r> => r !== null);
 }
 
 /**
