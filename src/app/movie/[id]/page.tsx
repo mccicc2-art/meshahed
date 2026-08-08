@@ -19,6 +19,7 @@ import { getT, getWatchRegion } from "@/lib/locale";
 import { type Locale } from "@/lib/i18n";
 import { AddWorksToList } from "@/components/AddWorksToList";
 import { PublicListsRail } from "@/components/PublicListsRail";
+import { HeroRatings, TmdbStar } from "@/components/HeroRatings";
 import { RatingBox } from "@/components/RatingBox";
 import { CommunityReviews } from "@/components/CommunityReviews";
 import { DetailTabs } from "@/components/DetailTabs";
@@ -131,14 +132,11 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
                 <span>{t.minutesCount(movie.runtime)}</span>
               </>
             ) : null}
-            {movie.vote_average > 0 && (
-              <>
-                <span aria-hidden>·</span>
-                <span className="text-accent font-semibold tabular-nums">
-                  ★ {movie.vote_average.toFixed(1)}
-                </span>
-              </>
-            )}
+            {/* IMDb وطماطم بدل نجمة TMDB (طلب أحمد — ينقض D-027)؛
+                النجمة القديمة هيكلُ الانتظار واحتياطُ غياب المفتاح */}
+            <Suspense fallback={<TmdbStar vote={movie.vote_average} />}>
+              <HeroRatings imdbId={movie.imdb_id} tmdbVote={movie.vote_average} />
+            </Suspense>
           </div>
 
           {/* الأنواع صعدت من تبويب «معلومات» إلى جنب الملصق (طلب المالك):
