@@ -170,8 +170,10 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
           </div>
         </div>
 
-        <div className="flex-1 min-w-0 self-end pb-1">
-          <h1 className="text-xl sm:text-3xl font-extrabold leading-tight tracking-tight">
+        {/* العنوان من قمّة الملصق لا من قاعه — نفس نقلة صفحة الفيلم
+            (طلب المالك)، والأنواع صعدت إلى المساحة تحته */}
+        <div className="flex-1 min-w-0 self-start pt-0.5">
+          <h1 className="text-xl sm:text-3xl font-extrabold leading-tight tracking-tight drop-shadow-[0_2px_10px_rgba(0,0,0,0.65)]">
             {tv.name}
           </h1>
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs sm:text-sm text-muted mt-1.5">
@@ -194,6 +196,20 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
               </>
             )}
           </div>
+
+          {/* الأنواع صعدت من «معلومات» إلى جنب الملصق — كصفحة الفيلم */}
+          {tv.genres.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              {tv.genres.slice(0, 4).map((g) => (
+                <span
+                  key={g.id}
+                  className="text-[11px] font-medium bg-surface-2 border border-border px-2.5 py-1 rounded-full"
+                >
+                  {g.name}
+                </span>
+              ))}
+            </div>
+          )}
 
           {(next?.air_date || watchWhere) && (
             <div className="mt-2.5 flex flex-wrap items-center gap-2">
@@ -268,21 +284,12 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
                   </section>
                 )}
 
-                {(tv.genres.length > 0 || tv.number_of_episodes > 0) && (
+                {/* الأنواع صعدت إلى الترويسة جنب الملصق — بقي عدّ الحلقات */}
+                {tv.number_of_episodes > 0 && (
                   <div className="flex flex-wrap items-center gap-2">
-                    {tv.number_of_episodes > 0 && (
-                      <span className="text-xs font-medium text-muted bg-surface-2 border border-border px-3 py-1.5 rounded-full tabular-nums">
-                        {t.episodesCount(tv.number_of_episodes)}
-                      </span>
-                    )}
-                    {tv.genres.map((g) => (
-                      <span
-                        key={g.id}
-                        className="text-xs font-medium bg-surface-2 border border-border px-3 py-1.5 rounded-full"
-                      >
-                        {g.name}
-                      </span>
-                    ))}
+                    <span className="text-xs font-medium text-muted bg-surface-2 border border-border px-3 py-1.5 rounded-full tabular-nums">
+                      {t.episodesCount(tv.number_of_episodes)}
+                    </span>
                   </div>
                 )}
 
