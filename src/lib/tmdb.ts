@@ -88,6 +88,9 @@ export interface SearchResult {
   /** العنوان بلغته الأصلية — يُطابَق في البحث إلى جانب المعروض */
   original_title?: string;
   original_name?: string;
+  /** تقييم IMDb عبر OMDb — يُلحقه `withImdbRatings` بعد الجلب؛
+      null = بحثنا فلم نجد، undefined = لم نبحث (لا شارة في الحالتين) */
+  imdb_rating?: number | null;
 }
 
 export interface Episode {
@@ -635,6 +638,17 @@ export function getMovie(id: number): Promise<MovieDetails> {
 export async function tvImdbId(id: number): Promise<string | null> {
   try {
     const data = await tmdb<{ imdb_id?: string | null }>(`/tv/${id}/external_ids`);
+    return data.imdb_id ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** معرّف IMDb لفيلم — نتائج /discover لا تحمله فنسأل /external_ids؛
+    نظير tvImdbId حرفياً حتى تبقى صفوف ديسكفري المرتّبة بمصدر واحد */
+export async function movieImdbId(id: number): Promise<string | null> {
+  try {
+    const data = await tmdb<{ imdb_id?: string | null }>(`/movie/${id}/external_ids`);
     return data.imdb_id ?? null;
   } catch {
     return null;

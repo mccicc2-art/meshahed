@@ -4,13 +4,16 @@
  *
  * TMDB لا يوزّع هذه الأرقام (حقوق)، وOMDb يوزّعها بمفتاح مجاني
  * (‏1000 طلب/يوم). المفتاح بالاسم (قاعدة المشروع): `OMDB_API_KEY`
- * يضعه أحمد في Vercel؛ غيابه يُرجع null فتسقط الواجهة إلى نجمة TMDB
- * بدل فراغٍ يوحي بعطل — نمط Gemini/Trakt نفسه (D-077).
+ * يضعه أحمد في Vercel؛ غيابه يُرجع null فتختفي الشارة كلها — قرار
+ * أحمد اللاحق: «التقييم فقط من IMDb أو طماطم»، فلا احتياط TMDB
+ * (نجمة TMDB كانت تعرض 9.3 لعملٍ تقييمه الحقيقي 7.8).
  *
  * الجسر معرّف IMDb (tt…): يأتي مع تفاصيل الفيلم من TMDB مباشرةً،
  * وللمسلسل عبر /external_ids. والردّ مخبّأ يوماً كاملاً: التقييم يتغير
  * ببطء، والحصّة اليومية تُصان.
  */
+
+import { movieImdbId, tvImdbId, type SearchResult } from "./tmdb";
 
 export interface ExternalRatings {
   /** «8.1» — من IMDb */
@@ -41,4 +44,38 @@ export async function externalRatings(imdbId: string | null | undefined): Promis
   } catch {
     return null;
   }
+}
+
+/**
+ * يُلحق تقييم IMDb بصفٍّ من النتائج ويعيد ترتيبه به تنازلياً (طلب أحمد:
+ * «الترتيب في ديسكفري بأعلى تقييم حسب IMDb» — يُتمّ نقض D-027).
+ *
+ * رحلتان لكل عمل: /external_ids ثم OMDb — كلتاهما مخبّأتان (ساعة/يوم)،
+ * فالكلفة الحقيقية أول عرضٍ بعد انتهاء الخبيئة فقط. والدفعات من ٢٥
+ * تُبقي التوازي مريحاً بدل ١٢٠ طلباً دفعةً واحدة.
+ *
+ * بلا مفتاح OMDb يعود الصفّ كما جاء: ترتيب TMDB القديم بلا شارات —
+ * تدهورٌ صريح لا عطلٌ صامت. ومن لا تقييم له ينزل إلى الذيل مرتّباً
+ * بعدد الأصوات، ولا يحمل شارةً أبداً.
+ */
+export async function withImdbRatings<T extends SearchResult>(rows: T[]): Promise<T[]> {
+  if (!process.env.OMDB_API_KEY || rows.length === 0) return rows;
+  const out = rows.map((r) => ({ ...r }));
+  const CHUNK = 25;
+  for (let i = 0; i < out.length; i += CHUNK) {
+    await Promise.all(
+      out.slice(i, i + CHUNK).map(async (r) => {
+        const iid =
+          r.media_type === "tv" ? await tvImdbId(r.id) : await movieImdbId(r.id);
+        const ext = await externalRatings(iid);
+        const n = ext?.imdb ? Number(ext.imdb) : NaN;
+        r.imdb_rating = Number.isFinite(n) ? n : null;
+      }),
+    );
+  }
+  return out.sort(
+    (a, b) =>
+      (b.imdb_rating ?? -1) - (a.imdb_rating ?? -1) ||
+      (b.vote_count ?? 0) - (a.vote_count ?? 0),
+  );
 }
