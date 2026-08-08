@@ -11,11 +11,14 @@ import {
   getTitleReviews,
   getMyLists,
   getListsContaining,
+  getPublicListsContaining,
 } from "@/lib/data";
 import { getMovie, getTrailer, getWatchProviders, backdropUrl, posterUrl } from "@/lib/tmdb";
 import { universeOf } from "@/lib/universes";
 import { getT, getWatchRegion } from "@/lib/locale";
+import { type Locale } from "@/lib/i18n";
 import { AddWorksToList } from "@/components/AddWorksToList";
+import { PublicListsRail } from "@/components/PublicListsRail";
 import { RatingBox } from "@/components/RatingBox";
 import { CommunityReviews } from "@/components/CommunityReviews";
 import { DetailTabs } from "@/components/DetailTabs";
@@ -105,9 +108,9 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
       </div>
 
       <div className="flex gap-4 -mt-24 sm:-mt-28 relative px-1">
-        <div className="w-28 sm:w-40 shrink-0">
+        <div className="w-32 sm:w-44 shrink-0">
           <div className="relative aspect-[2/3] rounded-poster overflow-hidden ring-1 ring-white/10 bg-surface-2 shadow-[0_18px_44px_rgba(0,0,0,0.55)]">
-            {poster && <Image src={poster} alt={movie.title} fill sizes="160px" className="object-cover" />}
+            {poster && <Image src={poster} alt={movie.title} fill sizes="176px" className="object-cover" />}
           </div>
         </div>
 
@@ -120,7 +123,7 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
           <h1 className="text-xl sm:text-3xl font-extrabold leading-tight tracking-tight drop-shadow-[0_2px_10px_rgba(0,0,0,0.65)]">
             {movie.title}
           </h1>
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs sm:text-sm text-muted mt-1.5">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs sm:text-sm text-muted mt-1">
             {movie.release_date && <span>{movie.release_date.slice(0, 4)}</span>}
             {movie.runtime ? (
               <>
@@ -141,8 +144,8 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
           {/* الأنواع صعدت من تبويب «معلومات» إلى جنب الملصق (طلب المالك):
               هوية الفيلم تُقرأ قبل قصّته لا بعدها */}
           {movie.genres.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 mt-2">
-              {movie.genres.slice(0, 4).map((g) => (
+            <div className="flex flex-wrap gap-1.5 mt-1.5">
+              {movie.genres.slice(0, 3).map((g) => (
                 <span
                   key={g.id}
                   className="text-[11px] font-medium bg-surface-2 border border-border px-2.5 py-1 rounded-full"
@@ -155,7 +158,7 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
 
           {/* أين يُبثّ — في الترويسة، وقسم المنصّات في «معلومات» حُذف */}
           {watchWhere && (
-            <div className="mt-2.5">
+            <div className="mt-2">
               <WatchChip
                 options={watchWhere.options}
                 region={watchWhere.region}
@@ -224,13 +227,6 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
 
                 {/* الأنواع صعدت إلى الترويسة جنب الملصق — لا نسخة ثانية هنا */}
 
-                {/* الطاقم فوق الترايلر: أسماء الممثلين تُقرأ قبل مشاهدة
-                    المقطع لا بعده — قرارُ المالك. وهو داخل «معلومات» لا في
-                    تبويبٍ خاص: تبويبٌ رابع يزيد عرض الشريط ويقصّ عناوينه */}
-                <Suspense fallback={null}>
-                  <CastRail mediaType="movie" tmdbId={movieId} locale={locale} />
-                </Suspense>
-
                 <Suspense
                   fallback={<div className="skeleton aspect-video rounded-2xl" aria-hidden />}
                 >
@@ -240,6 +236,39 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
                     backdrop={backdrop}
                     locale={locale}
                   />
+                </Suspense>
+              </div>
+            ),
+          },
+          {
+            key: "cast",
+            label: t.tabCast,
+            icon: "people",
+            /* الطاقم صار تبويبه (طلب أحمد بعد أن طالت «معلومات») — كان
+               داخلها منذ D-080؛ المحتوى نفسه، بابه وحده تغيّر */
+            content: (
+              <Suspense fallback={null}>
+                <CastRail mediaType="movie" tmdbId={movieId} locale={locale} />
+              </Suspense>
+            ),
+          },
+          {
+            key: "similar",
+            label: t.tabSimilar,
+            icon: "grid",
+            content: (
+              <div className="space-y-7">
+                <Suspense fallback={null}>
+                  <RelatedTitles
+                    mediaType="movie"
+                    tmdbId={movieId}
+                    collectionId={movie.belongs_to_collection?.id ?? null}
+                    locale={locale}
+                  />
+                </Suspense>
+                {/* القوائم التي تضمّ هذا الفيلم — طريقُ «أعجبك؟ خذ عشرته» */}
+                <Suspense fallback={null}>
+                  <ListsWithMovie movieId={movieId} locale={locale} />
                 </Suspense>
               </div>
             ),
@@ -269,19 +298,15 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
         ]}
       />
 
-      {/* الأجزاء والمرتبط خارج التبويبات: جوابٌ على «وبعد؟» يُقرأ بعد
-          الصفحة كلها، ويبقى ظاهراً مهما كان التبويب المفتوح. ويُبثّ
-          لاحقاً فلا يؤخّر الترويسة، وفراغُه لا يترك هيكلاً كاذباً */}
-      <Suspense fallback={null}>
-        <RelatedTitles
-          mediaType="movie"
-          tmdbId={movieId}
-          collectionId={movie.belongs_to_collection?.id ?? null}
-          locale={locale}
-        />
-      </Suspense>
     </div>
   );
+}
+
+/** القوائم العامة التي تضمّ هذا الفيلم — داخل تبويب «مشابه» */
+async function ListsWithMovie({ movieId, locale }: { movieId: number; locale: Locale }) {
+  const lists = await getPublicListsContaining(movieId, "movie", 10);
+  if (!lists.length) return null;
+  return <PublicListsRail lists={lists} locale={locale} />;
 }
 
 /** الترايلر يُبثّ بعد أول رسمة */
