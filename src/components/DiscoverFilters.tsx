@@ -16,6 +16,7 @@ import {
   type BrowseRate,
   type BrowseType,
   type BrowseWin,
+  type DiscoverTab,
 } from "@/lib/browse";
 import { tap } from "@/lib/haptics";
 import { Icon } from "./Icon";
@@ -34,11 +35,13 @@ import { segmentedItem } from "./ui/controls";
  * جرّبها ونسيها بدل أن يخرجه من التصفّح.
  *
  * ثلاث طبقاتٍ لا صفٌّ واحد يجمعها كلّها — والترتيب مقصود:
- *  1. **التصنيف** تبويباتٌ بخطٍّ سفليّ: المحور الذي يُلمس في كل زيارة
- *     تقريباً، فيبقى ظاهراً بلا ضغطة. وأخذ شكل المقسّم الذي كان يحمل
- *     «الكل/أفلام/مسلسلات» — قرارُ المالك، وهو أخفّ من القرص الممتلئ.
- *  2. **زرّ الفلاتر** بعدّاده: جهةُ المحتوى واللغة والحقبة والتقييم كلّها
- *     خلفه. أربعة محاورَ مفروشةً كانت تأكل الشاشة الأولى قبل أن يظهر عمل.
+ *  1. **التبويبان «أفلام ومسلسلات / القوائم»** بخطٍّ سفليّ (طلب المالك):
+ *     أعلى الرأس صار مفترقَ صنفَي الصفحة لا محورَ فلترة — والقوائم صنفٌ
+ *     كامل له بحثه، لا فلتر يُقصّ به المعروض. نافذة الترتيب التي كانت
+ *     هنا انتقلت إلى داخل الورقة مع أخواتها.
+ *  2. **زرّ الفلاتر** بعدّاده: النافذة وجهةُ المحتوى واللغة والحقبة
+ *     والتقييم كلّها خلفه. خمسة محاورَ مفروشةً تأكل الشاشة الأولى قبل أن
+ *     يظهر عمل.
  *  3. **رقائق ما اختير**: الفلتر المخفيّ خلف ورقةٍ يُنسى — فما اختير يبقى
  *     مكتوباً تحت التبويبات ويُلغى بلمسةٍ على ×، بلا فتح الورقة ثانيةً.
  *
@@ -48,6 +51,7 @@ import { segmentedItem } from "./ui/controls";
  */
 export function DiscoverFilters({
   locale,
+  tab = "titles",
   type,
   win,
   genre,
@@ -61,8 +65,12 @@ export function DiscoverFilters({
   count,
 }: {
   locale: Locale;
+  /** التبويب المفتوح — أعمالٌ أو قوائم؛ الفلاتر كلّها لتبويب الأعمال وحده.
+      اختياريٌّ بافتراض الأعمال: يُبقي المكوّن مُصرَّفاً بين لقطة المكوّنات
+      ولقطة الصفحة أثناء الرفع المرتّب (صفر ERROR وسيط) */
+  tab?: DiscoverTab;
   type: BrowseType;
-  /** نافذة الترتيب — المحور الأعلى الظاهر (حلّ محلّ صفّ الأنواع) */
+  /** نافذة الترتيب — صارت داخل ورقة الفلاتر بعد أن أخذ التبويبان مكانها */
   win: BrowseWin;
   /** slug التصنيف المختار — صار داخل الورقة */
   genre: string | null;
@@ -129,15 +137,32 @@ export function DiscoverFilters({
     start(() => router.replace(qs ? `/news?${qs}` : "/news", { scroll: false }));
   }
 
-  const windows: { value: BrowseWin; label: string }[] = [
-    { value: "week", label: t.winWeek },
-    { value: "year", label: t.winYear },
-    { value: "all", label: t.winAll },
+  /* تبديل التبويب يمسح فلاتر الآخر من الرابط: `?tab=lists` لا يحمل
+     `lang=tr` معه — فلترُ أعمالٍ في رابط قوائم حالةٌ ميتة تعود يوم يعود
+     التبويب وقد نسيها صاحبها */
+  function goTab(next: DiscoverTab) {
+    if (next === tab) return;
+    tap(8);
+    start(() => router.replace(next === "lists" ? "/news?tab=lists" : "/news", { scroll: false }));
+  }
+
+  const tabs: { value: DiscoverTab; label: string }[] = [
+    { value: "titles", label: t.discoverTabTitles },
+    { value: "lists", label: t.discoverTabLists },
   ];
 
   /* ما اختير، مكتوباً: كل رقاقةٍ تحمل اسم الخيار لا اسم المحور — «تركي»
      أوضح من «اللغة: تركي» في مساحةٍ ضيّقة، والمحور يُفهم من القيمة */
   const chips: { key: string; label: string; clear: () => void }[] = [];
+  /* النافذة صارت خلف الورقة، فتحتاج رقاقةً كسائر المخفيّ: ما لا يُرى
+     ولا رقاقة له فلترٌ سرّيّ يجعل «أفضل الأفلام» تكذب بلا تفسير */
+  if (win !== "week") {
+    chips.push({
+      key: "win",
+      label: win === "year" ? t.winYear : t.winAll,
+      clear: () => go({ win: "week" }),
+    });
+  }
   if (type !== "all") {
     chips.push({
       key: "type",
@@ -193,7 +218,7 @@ export function DiscoverFilters({
     });
   }
 
-  const draft: FilterDraft = { type, genre, lang, country, provider, era, rate };
+  const draft: FilterDraft = { win, type, genre, lang, country, provider, era, rate };
 
   return (
     <div className={`space-y-3 transition-opacity ${pending ? "opacity-60" : "opacity-100"}`}>
@@ -202,65 +227,69 @@ export function DiscoverFilters({
           الشريط لانقطع عند آخر تبويبٍ وترك الزرّ معلّقاً فوق فراغ. والهوامش
           السالبة تمدّ الخطّ إلى حافّتَي الشاشة فيُقرأ حدّاً لرأس الصفحة. */}
       <div className="-mx-4 px-4 flex items-stretch gap-2 border-b border-[color:var(--divider)]">
-        {/* ===== نافذة الترتيب =====
-            حلّت محلّ صفّ الأنواع (طلب المالك): ثلاثة أقسامٍ متساوية العرض
-            (segmentedTrackFull + flex-1، D-016) — أسبوعي/سنوي/كل الأوقات.
-            ضغطُها يُعيد ضبط كل الرفوف: «أفضل هذا الأسبوع» تصير «هذه السنة»
-            أو «كل الأوقات». والأنواع انتقلت إلى داخل ورقة الفلاتر. */}
+        {/* ===== التبويبان: أعمالٌ / قوائم (طلب المالك) =====
+            أخذا مكان نافذة الترتيب: قسمان متساويا العرض من نفس عائلة
+            المقسّم (segmentedItem، D-016) — والنافذة انتقلت إلى الورقة.
+            ضغطُ «القوائم» يُبدّل الصفحة كلّها: بحثٌ في قوائم المجتمع
+            وتصفّحها بدل رفوف الأعمال. */}
         <div
           role="group"
-          aria-label={t.winGroup}
+          aria-label={t.discoverTabsGroup}
           /* بلا خطٍّ سفليّ: الصفّ نفسه يحمله (segmentedTrackBare منطقُه)،
-             فيمتدّ تحت النافذة وزرّ الفلاتر معاً؛ وخطُّ القسم النشِط
+             فيمتدّ تحت التبويبين وزرّ الفلاتر معاً؛ وخطُّ القسم النشِط
              (after:-bottom-px) يلتقي خطَّ الصفّ فلا يطفو */
           className="min-w-0 flex-1 flex items-stretch"
         >
-          {windows.map((w) => {
-            const on = win === w.value;
+          {tabs.map((x) => {
+            const on = tab === x.value;
             return (
               <button
-                key={w.value}
+                key={x.value}
                 type="button"
                 aria-pressed={on}
-                onClick={() => go({ win: w.value })}
+                onClick={() => goTab(x.value)}
                 className={segmentedItem(on, "flex-1 basis-0 min-w-0 justify-center flex")}
               >
-                {w.label}
+                {x.label}
               </button>
             );
           })}
         </div>
 
-        {/* الزرّ إلى جانب النافذة: المخرج الوحيد إلى بقيّة الفلاتر (والأنواع) */}
-        <button
-          type="button"
-          onClick={() => {
-            tap(8);
-            setSheet(true);
-          }}
-          aria-haspopup="dialog"
-          aria-expanded={sheet}
-          className={`shrink-0 self-center mb-1 flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[13px] font-semibold transition ${
-            count > 0
-              ? "border-accent text-accent bg-accent/10"
-              : "border-border text-muted hover:text-foreground"
-          }`}
-        >
-          <Icon name="sliders" size={16} strokeWidth={1.9} />
-          <span>{t.browseFilters}</span>
-          {count > 0 && (
-            <span
-              className="grid place-items-center min-w-[18px] h-[18px] px-1 rounded-full bg-accent text-[color:var(--on-accent)] text-[11px] font-bold tabular-nums"
-              dir="ltr"
-            >
-              {num(count, locale)}
-            </span>
-          )}
-        </button>
+        {/* الزرّ إلى جانب التبويبين: المخرج الوحيد إلى الفلاتر كلّها —
+            ولتبويب الأعمال وحده؛ القوائم لا نافذة لها ولا حقبة، وزرٌّ
+            يفتح ورقةً لا تنطبق على المعروض كذبةُ واجهة */}
+        {tab === "titles" && (
+          <button
+            type="button"
+            onClick={() => {
+              tap(8);
+              setSheet(true);
+            }}
+            aria-haspopup="dialog"
+            aria-expanded={sheet}
+            className={`shrink-0 self-center mb-1 flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[13px] font-semibold transition ${
+              count > 0
+                ? "border-accent text-accent bg-accent/10"
+                : "border-border text-muted hover:text-foreground"
+            }`}
+          >
+            <Icon name="sliders" size={16} strokeWidth={1.9} />
+            <span>{t.browseFilters}</span>
+            {count > 0 && (
+              <span
+                className="grid place-items-center min-w-[18px] h-[18px] px-1 rounded-full bg-accent text-[color:var(--on-accent)] text-[11px] font-bold tabular-nums"
+                dir="ltr"
+              >
+                {num(count, locale)}
+              </span>
+            )}
+          </button>
+        )}
       </div>
 
       {/* ===== ما اختير ===== */}
-      {chips.length > 0 && (
+      {tab === "titles" && chips.length > 0 && (
         <div
           role="group"
           aria-label={t.browseActiveFilters}
@@ -289,7 +318,7 @@ export function DiscoverFilters({
             <button
               type="button"
               onClick={() =>
-              go({ type: "all", g: null, lang: null, co: null, p: null, era: null, rate: null })
+              go({ win: "week", type: "all", g: null, lang: null, co: null, p: null, era: null, rate: null })
             }
               className="rounded-full border border-border text-muted hover:text-foreground hover:border-accent/50 px-3 py-1.5 text-[13px] font-semibold transition"
             >
@@ -309,6 +338,7 @@ export function DiscoverFilters({
           onApply={(next) => {
             setSheet(false);
             go({
+              win: next.win,
               type: next.type,
               g: next.genre,
               lang: next.lang,

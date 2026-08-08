@@ -15,6 +15,7 @@ import {
   genreFitsType,
   type BrowseRate,
   type BrowseType,
+  type BrowseWin,
 } from "@/lib/browse";
 import { regionName } from "@/lib/region";
 import { tap } from "@/lib/haptics";
@@ -24,6 +25,8 @@ import { buttonClass } from "./ui/Button";
 import { chipClass, segmentedItem, segmentedTrackFull } from "./ui/controls";
 
 export interface FilterDraft {
+  /** نافذة الترتيب — انتقلت من الرأس إلى هنا لمّا أخذ التبويبان مكانها */
+  win: BrowseWin;
   type: BrowseType;
   /** slug النوع الدرامي — انتقل من صفّ التبويبات إلى قائمةٍ هنا (طلب المالك) */
   genre: string | null;
@@ -80,6 +83,12 @@ export function DiscoverFilterSheet({
     { value: "tv", label: t.browseSeries },
   ];
 
+  const WINS: { value: BrowseWin; label: string }[] = [
+    { value: "week", label: t.winWeek },
+    { value: "year", label: t.winYear },
+    { value: "all", label: t.winAll },
+  ];
+
   function set(patch: Partial<FilterDraft>) {
     tap(6);
     setDraft((d) => ({ ...d, ...patch }));
@@ -100,6 +109,7 @@ export function DiscoverFilterSheet({
   const genres = BROWSE_GENRES.filter((g) => genreFitsType(g, draft.type));
 
   const cleared: FilterDraft = {
+    win: "week",
     type: "all",
     genre: null,
     lang: null,
@@ -109,6 +119,7 @@ export function DiscoverFilterSheet({
     rate: null,
   };
   const dirty =
+    draft.win !== "week" ||
     draft.type !== "all" ||
     draft.genre !== null ||
     draft.lang !== null ||
@@ -141,6 +152,27 @@ export function DiscoverFilterSheet({
       </SheetHeader>
 
       <div className="overflow-y-auto overscroll-contain px-5 py-4 space-y-5">
+        {/* ===== نافذة الترتيب =====
+            انتقلت من رأس الصفحة إلى هنا لمّا أخذ تبويبا «أفلام ومسلسلات /
+            القوائم» مكانها (طلب المالك). أوّلَ الورقة لا وسطها: هي تُغيّر
+            معنى «الأفضل» في الرفوف كلّها، وبقيّة المحاور تقصّ داخله. */}
+        <section>
+          <h4 className="text-xs font-bold text-muted mb-2">{t.winGroup}</h4>
+          <div role="group" aria-label={t.winGroup} className={segmentedTrackFull}>
+            {WINS.map((w) => (
+              <button
+                key={w.value}
+                type="button"
+                aria-pressed={draft.win === w.value}
+                onClick={() => set({ win: w.value })}
+                className={segmentedItem(draft.win === w.value, "flex-1")}
+              >
+                {w.label}
+              </button>
+            ))}
+          </div>
+        </section>
+
         {/* ===== جهة المحتوى ===== */}
         <section>
           <h4 className="text-xs font-bold text-muted mb-2">{t.browseTypeGroup}</h4>
