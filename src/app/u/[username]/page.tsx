@@ -22,6 +22,7 @@ import { PosterCard } from "@/components/PosterCard";
 import { PosterRail, RailItem } from "@/components/PosterRail";
 import { FollowUserButton } from "@/components/FollowUserButton";
 import { ProfileMenu } from "@/components/ProfileMenu";
+import { BackButton } from "@/components/BackButton";
 import { PublicListsRail } from "@/components/PublicListsRail";
 import { FollowCountButton, ToWatchStat } from "@/components/ProfilePeeks";
 import { posterUrl } from "@/lib/media";
@@ -184,7 +185,14 @@ export default async function PublicProfilePage({
               />
             </div>
           )}
-          <span className="absolute top-[calc(1rem+env(safe-area-inset-top))] start-4 text-[11px] text-white/75 bg-black/40 backdrop-blur rounded-full px-2.5 py-1">
+          {/* زر الرجوع — كان في صفحات الأعمال وغائباً هنا (تدقيق 8 Aug م٣):
+              من فتح ملفاً من قائمة الأصدقاء يرجع إليها من داخل الصفحة.
+              شارة الزيارات زحفت بعده (start-16) لتفسح لعرضه 44px */}
+          <BackButton
+            locale={locale}
+            className="absolute top-[calc(0.75rem+env(safe-area-inset-top))] start-3"
+          />
+          <span className="absolute top-[calc(1rem+env(safe-area-inset-top))] start-16 text-[11px] text-white/75 bg-black/40 backdrop-blur rounded-full px-2.5 py-1">
             {t.visitsLabel} <span className="font-bold text-white tabular-nums">{visits}</span>
           </span>
         </div>
