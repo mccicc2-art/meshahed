@@ -7,12 +7,14 @@ import {
   getWatchSummary,
   getWatchedMovieIds,
   getMyLists,
+  getSavedLists,
 } from "@/lib/data";
 import { getT } from "@/lib/locale";
 import { localizeFollows } from "@/lib/localize";
 import { Icon } from "@/components/Icon";
 import { LibraryGrid, type GridItem, type LibraryTab } from "@/components/LibraryGrid";
 import { FollowMetaSync } from "@/components/MetaSync";
+import { PublicListsRail } from "@/components/PublicListsRail";
 import { ScrollMemory } from "@/components/ScrollMemory";
 
 /**
@@ -41,11 +43,14 @@ export default async function LibraryPage({
   // والقوائم في الموجة نفسها: استدعاءٌ واحد (`my_lists`) يرجع الاسم والعدد
   // وثلاثة ملصقات، ويجري بالتوازي فلا يزيد زمن الصفحة إلا بأبطأ استدعاء —
   // وهذا ثمن أن يفتح تبويب «القوائم» فوراً بلا دوّارة ولا رحلة شبكة.
-  const [followRows, summary, watchedMovieIds, lists] = await Promise.all([
+  const [followRows, summary, watchedMovieIds, lists, saved] = await Promise.all([
     getFollows(),
     getWatchSummary(),
     getWatchedMovieIds(),
     getMyLists(),
+    // القوائم المحفوظة تسكن تبويب «الليستات» هنا (طلب أحمد: بيتها
+    // المكتبة لا صفحة منفصلة) — نفس الموجة فلا تبطئ الصفحة
+    getSavedLists(),
   ]);
   const follows = await localizeFollows(followRows, locale);
 
@@ -155,6 +160,17 @@ export default async function LibraryPage({
         lists={lists}
         locale={locale}
         initialTab={initialTab}
+        listsExtra={
+          <PublicListsRail
+            lists={saved}
+            locale={locale}
+            title={
+              saved.length > 0
+                ? `${t.savedListsSection} · ${saved.length}`
+                : t.savedListsSection
+            }
+          />
+        }
       />
 
       {/* روابط الأدوات — بلا إطار، على نمط صفوف الرئيسية: فواصل رأسية فقط */}
