@@ -35,6 +35,7 @@ import {
   type SearchResult,
   type DiscoverFilter,
 } from "@/lib/tmdb";
+import { withImdbRatings } from "@/lib/omdb";
 import { getT, getWatchRegion } from "@/lib/locale";
 import { regionName } from "@/lib/region";
 import { type Locale } from "@/lib/i18n";
@@ -434,12 +435,19 @@ async function CuratedRails({
 
   const [topMovies, topSeries, topAnime, cinemas, soonMovies, soonSeries, top50Movies, top50Series] =
     await Promise.all([
-      wantMovies && !upcoming ? topFor("movie", genre?.movie) : Promise.resolve([] as SearchResult[]),
-      wantSeries && !upcoming ? topFor("tv", genre?.tv) : Promise.resolve([] as SearchResult[]),
+      /* الصفوف المرتّبة كلّها تُعاد بترتيب IMDb وتحمل تقييمه (قرار أحمد:
+         «الترتيب بأعلى تقييم حسب IMDb والتقييم فقط من IMDb») — TMDB يبقى
+         مصدر التجميع (من يدخل الصفّ)، وIMDb مصدر الترتيب والرقم */
+      wantMovies && !upcoming
+        ? topFor("movie", genre?.movie).then(withImdbRatings).catch(() => [] as SearchResult[])
+        : Promise.resolve([] as SearchResult[]),
+      wantSeries && !upcoming
+        ? topFor("tv", genre?.tv).then(withImdbRatings).catch(() => [] as SearchResult[])
+        : Promise.resolve([] as SearchResult[]),
       // صفوف أسبوعية بطبعها: الأنمي «هذا الأسبوع»، ودور العرض «الآن»،
       // والقادم «مستقبلاً» — لا معنى لها في نافذتَي السنة وكل الأوقات
       isWeek && !active && wantSeries
-        ? topTenAnimeThisWeek().catch(() => [] as SearchResult[])
+        ? topTenAnimeThisWeek().then(withImdbRatings).catch(() => [] as SearchResult[])
         : Promise.resolve([] as SearchResult[]),
       isWeek && wantMovies ? nowPlayingMovies().catch(() => null) : Promise.resolve(null),
       // «القادم» يفتح صفّ العدّ التنازلي في كل النوافذ — هو النتيجة كلّها هناك
@@ -457,9 +465,21 @@ async function CuratedRails({
             ? upcomingByGenre(genre.tv, "tv")
             : airingTv().catch(() => [] as SearchResult[])
         : Promise.resolve([] as SearchResult[]),
-      // أعلى ٥٠ على الإطلاق — ذيلٌ ثابت في الحالة غير المُصفّاة (طلب المالك)
-      !active && wantMovies ? top50("movie").catch(() => [] as SearchResult[]) : Promise.resolve([] as SearchResult[]),
-      !active && wantSeries ? top50("tv").catch(() => [] as SearchResult[]) : Promise.resolve([] as SearchResult[]),
+      // أعلى ٥٠ على الإطلاق — ذيلٌ ثابت في الحالة غير المُصفّاة (طلب المالك).
+      // نجمع ٦٠ مرشّحاً ثم نقتطع ٥٠ بعد ترتيب IMDb: من بلا تقييمٍ يسقط
+      // من الذيل بدل أن يحتلّ مركزاً بلا شارة
+      !active && wantMovies
+        ? top50("movie", {}, 60)
+            .then(withImdbRatings)
+            .then((r) => r.slice(0, 50))
+            .catch(() => [] as SearchResult[])
+        : Promise.resolve([] as SearchResult[]),
+      !active && wantSeries
+        ? top50("tv", {}, 60)
+            .then(withImdbRatings)
+            .then((r) => r.slice(0, 50))
+            .catch(() => [] as SearchResult[])
+        : Promise.resolve([] as SearchResult[]),
     ]);
 
   const today = new Date().toISOString().slice(0, 10);
