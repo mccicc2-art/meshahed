@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Icon, type IconName } from "./Icon";
 import Image from "next/image";
 import { posterUrl, titleOf, type SearchResult } from "@/lib/tmdb";
+import { ImdbMark } from "./HeroRatings";
 
 /**
  * صفّ أفقي مرقّم — قائمة «أفضل ١٠».
@@ -77,9 +78,15 @@ export function RankedRail({
                     </span>
                   )}
 
-                  <span className="absolute bottom-1.5 end-1.5 text-[11px] font-bold text-white bg-black/55 backdrop-blur rounded-md px-1.5 py-0.5">
-                    <span dir="ltr">★ {r.vote_average.toFixed(1)}</span>
-                  </span>
+                  {/* الشارة من IMDb وحده وبشعاره (قرار أحمد — لا نجمة TMDB):
+                      من لا تقييم له لا يحمل شارةً، فالصمت أصدق من رقمٍ
+                      من مصدرٍ آخر بمقياسٍ آخر */}
+                  {typeof r.imdb_rating === "number" && (
+                    <span className="absolute bottom-1.5 end-1.5 flex items-center gap-1 text-[11px] font-bold text-white bg-black/55 backdrop-blur rounded-md px-1.5 py-0.5">
+                      <ImdbMark className="text-[8px]" />
+                      <span dir="ltr">{r.imdb_rating.toFixed(1)}</span>
+                    </span>
+                  )}
                 </div>
 
                 <p className="text-xs font-medium leading-tight line-clamp-2 mt-1.5 group-hover:text-accent transition">
