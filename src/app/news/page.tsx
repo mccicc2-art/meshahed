@@ -7,6 +7,8 @@ import {
   getFollowedPublicLists,
 } from "@/lib/data";
 import { PublicListsRail } from "@/components/PublicListsRail";
+import { ListPeekTrigger } from "@/components/ListPeek";
+import { ListsFilters } from "@/components/ListsFilters";
 import { AddWorksToList } from "@/components/AddWorksToList";
 import { PosterRail, RailItem } from "@/components/PosterRail";
 import { FRANCHISES, franchiseName, universeName, type Universe } from "@/lib/universes";
@@ -26,6 +28,7 @@ import {
   nowPlayingMovies,
   listWatchProviders,
   moviesByIds,
+  resolveSetIds,
   titleOf,
   yearOf,
   posterUrl,
@@ -85,6 +88,8 @@ export default async function NewsPage({
     p?: string;
     era?: string;
     rate?: string;
+    fr?: string;
+    lsrc?: string;
   }>;
 }) {
   const user = await getUser();
@@ -132,6 +137,7 @@ export default async function NewsPage({
             التبويب صفوفٌ تُقرأ بالتمرير كتبويب الأعمال تماماً — عالمٌ
             فعالم، ثم من تتابعهم، ثم المجتمع. لا حالة في الرابط فلا مفتاح */
         <Suspense
+          key={`${sp.fr ?? ""}|${sp.lsrc ?? ""}`}
           fallback={
             <div className="space-y-8" aria-hidden>
               <RailSkeleton count={6} />
@@ -139,7 +145,12 @@ export default async function NewsPage({
             </div>
           }
         >
-          <ListsDiscovery locale={locale} t={t} />
+          <ListsDiscovery
+            locale={locale}
+            t={t}
+            fr={FRANCHISES.some((f) => f.slug === sp.fr) ? sp.fr! : null}
+            lsrc={["curated", "friends", "community"].includes(sp.lsrc ?? "") ? (sp.lsrc as "curated" | "friends" | "community") : "all"}
+          />
         </Suspense>
       ) : (
         /* المفتاح يتغيّر بتغيّر الفلتر: React يُظهر الهيكل فوراً بدل أن
@@ -168,32 +179,80 @@ export default async function NewsPage({
  * كل عالمٍ صفٌّ باسمه: بطاقته الأولى القائمة الكاملة مرتّبةً، وبعدها
  * الفرعيات (سبايدر-مان، آيرون مان…) — ثم صفّا من تتابعهم والمجتمع.
  */
-async function ListsDiscovery({ locale, t }: { locale: Locale; t: T }) {
-  const [friends, community] = await Promise.all([
+async function ListsDiscovery({
+  locale,
+  t,
+  fr,
+  lsrc,
+}: {
+  locale: Locale;
+  t: T;
+  /** فلتر العالم من الرابط (?fr=slug) — دفعة أحمد الثالثة */
+  fr: string | null;
+  /** فلتر المصدر (?lsrc=) */
+  lsrc: "all" | "curated" | "friends" | "community";
+}) {
+  const [friends, communityRaw] = await Promise.all([
     getFollowedPublicLists(15),
-    getPublicListsFeed(15).catch(() => []),
+    getPublicListsFeed(25).catch(() => []),
   ]);
+  /* لا تكرار (طلب أحمد): قائمة صديقٍ لها صفّها — صفُّ المجتمع للبقية */
+  const friendIds = new Set(friends.map((l) => l.id));
+  const community = communityRaw.filter((l) => !friendIds.has(l.id)).slice(0, 15);
+
   const loc = locale === "en" ? ("en" as const) : ("ar" as const);
+  const rows = fr ? FRANCHISES.filter((f) => f.slug === fr) : FRANCHISES;
+
+  const peekLabels = {
+    close: t.closeLabel,
+    openList: t.listPeekOpen,
+    failed: t.showLoadFailed,
+    watchedMark: t.watchedBadge,
+  };
 
   return (
     <div className="space-y-8">
-      {FRANCHISES.map((f) => (
-        <PosterRail key={f.slug} title={franchiseName(f, loc)} icon="sparkle-star">
-          {f.sets.map((u) => (
-            /* wide لا الافتراضي: بطاقة القائمة أعرض من بطاقة الملصق،
-               وخانةٌ ضيّقة كانت تجعل البطاقات تتراكب (لقطة المالك) */
-            <RailItem key={u.slug} wide>
-              <CuratedCard u={u} locale={locale} t={t} className="w-full" />
-            </RailItem>
-          ))}
-        </PosterRail>
-      ))}
+      <ListsFilters
+        fr={fr}
+        lsrc={lsrc}
+        franchises={FRANCHISES.map((f) => ({ slug: f.slug, label: franchiseName(f, loc) }))}
+        labels={{
+          button: t.browseFilters,
+          title: t.browseFiltersTitle,
+          world: t.listsFilterWorld,
+          source: t.listsFilterSource,
+          all: t.browseAll,
+          curated: t.listsCurated,
+          friends: t.listsFriendsRail,
+          community: t.publicListsRail,
+          apply: t.browseApply,
+          close: t.closeLabel,
+        }}
+      />
 
-      {friends.length > 0 && (
-        <PublicListsRail lists={friends} locale={locale} title={t.listsFriendsRail} />
+      {(lsrc === "all" || lsrc === "curated") &&
+        rows.map((f) => (
+          <PosterRail key={f.slug} title={franchiseName(f, loc)} icon="sparkle-star">
+            {f.sets.map((u) => (
+              /* wide لا الافتراضي: بطاقة القائمة أعرض من بطاقة الملصق،
+                 وخانةٌ ضيّقة كانت تجعل البطاقات تتراكب (لقطة المالك) */
+              <RailItem key={u.slug} wide>
+                {/* ضغطة جسد البطاقة تفتح المعاينة الكاملة؛ زرّ الحفظ يمرّ لصاحبه */}
+                <ListPeekTrigger kind="set" refId={u.slug} title={universeName(u, loc)} labels={peekLabels}>
+                  <CuratedCard u={u} locale={locale} t={t} className="w-full" />
+                </ListPeekTrigger>
+              </RailItem>
+            ))}
+          </PosterRail>
+        ))}
+
+      {(lsrc === "all" || lsrc === "friends") && !fr && friends.length > 0 && (
+        <PublicListsRail lists={friends} locale={locale} title={t.listsFriendsRail} peekLabels={peekLabels} />
       )}
 
-      <PublicListsRail lists={community} locale={locale} />
+      {(lsrc === "all" || lsrc === "community") && !fr && community.length > 0 && (
+        <PublicListsRail lists={community} locale={locale} peekLabels={peekLabels} />
+      )}
     </div>
   );
 }
@@ -217,7 +276,9 @@ async function CuratedCard({
   className?: string;
 }) {
   const loc = locale === "en" ? ("en" as const) : ("ar" as const);
-  const four = await moviesByIds(u.movieIds.slice(0, 4)).catch(() => []);
+  // مجموعات collectionId تُحلّ من سلسلة TMDB — العدد والملصقات من الحلّ
+  const ids = await resolveSetIds(u).catch(() => [] as number[]);
+  const four = await moviesByIds(ids.slice(0, 4)).catch(() => []);
   const posters = four
     .map((m) => posterUrl(m.poster_path, "w185"))
     .filter(Boolean) as string[];
@@ -229,7 +290,7 @@ async function CuratedCard({
         <span className="truncate">{universeName(u, loc)}</span>
       </span>
       <span className="block text-[12px] text-muted truncate mt-0.5">
-        {t.listCount(u.movieIds.length)}
+        {t.listCount(ids.length)}
         {u.storyOrder ? ` · ${t.listsStoryOrder}` : ""}
       </span>
       <span className="mt-2 flex gap-1.5">
@@ -340,7 +401,7 @@ async function CuratedRails({
         : topTenThisWeek(mt).catch(() => [] as SearchResult[]);
   };
 
-  const [topMovies, topSeries, topAnime, cinemas, soonMovies, soonSeries, publicLists, top50Movies, top50Series] =
+  const [topMovies, topSeries, topAnime, cinemas, soonMovies, soonSeries, top50Movies, top50Series] =
     await Promise.all([
       wantMovies && !upcoming ? topFor("movie", genre?.movie) : Promise.resolve([] as SearchResult[]),
       wantSeries && !upcoming ? topFor("tv", genre?.tv) : Promise.resolve([] as SearchResult[]),
@@ -365,9 +426,6 @@ async function CuratedRails({
             ? upcomingByGenre(genre.tv, "tv")
             : airingTv().catch(() => [] as SearchResult[])
         : Promise.resolve([] as SearchResult[]),
-      // «قوائم من المجتمع» — أحدث القوائم المعلنة؛ كذيل الخمسين: بلا نافذة
-      // (القوائم بلا زمن) وتغيب مع الفلتر (لا تُصفّى بمعاييره فتكذب عليه)
-      !active ? getPublicListsFeed(15).catch(() => []) : Promise.resolve([]),
       // أعلى ٥٠ على الإطلاق — ذيلٌ ثابت في الحالة غير المُصفّاة (طلب المالك)
       !active && wantMovies ? top50("movie").catch(() => [] as SearchResult[]) : Promise.resolve([] as SearchResult[]),
       !active && wantSeries ? top50("tv").catch(() => [] as SearchResult[]) : Promise.resolve([] as SearchResult[]),
@@ -466,9 +524,6 @@ async function CuratedRails({
       {soon.length > 0 && (
         <CountdownRail title={t.comingSoon} icon="calendar" items={soon} locale={locale} />
       )}
-
-      {/* «قوائم من المجتمع» قبل ذيل الخمسين: صنعُ الناس قبل المرجع الثابت */}
-      <PublicListsRail lists={publicLists} locale={locale} />
 
       {/* ذيل «أعلى ٥٠ على الإطلاق» — مرجعٌ ثابت في الحالة غير المُصفّاة */}
       {top50Movies.length > 0 && (
