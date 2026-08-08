@@ -26,7 +26,13 @@ export default async function ListsPage() {
       {/* العنوان مخفيٌّ بصريًّا وباقٍ لقارئ الشاشة — أُزيلت الترويسة والوصف */}
       <h1 className="sr-only">{t.listsTitle}</h1>
       <ListManager lists={lists} locale={locale} />
-      <PublicListsRail lists={saved} locale={locale} title={t.savedListsSection} />
+      {/* العدّاد في العنوان (تدقيق 8 Aug م٣-١): القسم يسكن تحت قوائمك
+          وخلف طيّة الجوال — الرقم يقول «عندك محفوظات» قبل أن تصل إليه */}
+      <PublicListsRail
+        lists={saved}
+        locale={locale}
+        title={saved.length > 0 ? `${t.savedListsSection} · ${saved.length}` : t.savedListsSection}
+      />
     </div>
   );
 }
