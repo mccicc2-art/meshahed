@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { HeroRatings, TmdbStar } from "@/components/HeroRatings";
 import { Suspense } from "react";
 import { redirect, notFound } from "next/navigation";
 import Image from "next/image";
@@ -187,14 +188,10 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
             {tv.first_air_date && <span>{tv.first_air_date.slice(0, 4)}</span>}
             <span aria-hidden>·</span>
             <span>{t.seasonsCount(tv.number_of_seasons)}</span>
-            {tv.vote_average > 0 && (
-              <>
-                <span aria-hidden>·</span>
-                <span className="text-accent font-semibold tabular-nums">
-                  ★ {tv.vote_average.toFixed(1)}
-                </span>
-              </>
-            )}
+            {/* IMDb وطماطم بدل نجمة TMDB (طلب أحمد — ينقض D-027) */}
+            <Suspense fallback={<TmdbStar vote={tv.vote_average} />}>
+              <HeroRatings tvId={tvId} tmdbVote={tv.vote_average} />
+            </Suspense>
           </div>
 
           {/* الأنواع صعدت من «معلومات» إلى جنب الملصق — كصفحة الفيلم */}
