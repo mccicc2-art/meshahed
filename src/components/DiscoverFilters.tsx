@@ -144,11 +144,15 @@ export function DiscoverFilters({
 
   /* تبديل التبويب يمسح فلاتر الآخر من الرابط: `?tab=lists` لا يحمل
      `lang=tr` معه — فلترُ أعمالٍ في رابط قوائم حالةٌ ميتة تعود يوم يعود
-     التبويب وقد نسيها صاحبها */
+     التبويب وقد نسيها صاحبها.
+     وهو `push` لا `replace` (ذاكرة التنقل — تدقيق 8 Aug م١): التبويب
+     تبديلُ نوعِ صفحةٍ لا لمسةُ فلتر، وزرّ الرجوع يجب أن يرجع للتبويب
+     السابق لا خارج اكتشف كلياً. الفلاتر الدقيقة أعلاه باقية `replace`
+     — قصد D-023 (عشرات اللمسات لا تتكدس في التاريخ) محفوظ. */
   function goTab(next: DiscoverTab) {
     if (next === tab) return;
     tap(8);
-    start(() => router.replace(next === "lists" ? "/news?tab=lists" : "/news", { scroll: false }));
+    start(() => router.push(next === "lists" ? "/news?tab=lists" : "/news", { scroll: false }));
   }
 
   const tabs: { value: DiscoverTab; label: string }[] = [

@@ -67,7 +67,28 @@ export function LibraryGrid({
 }) {
   const t = getDict(locale);
   const router = useRouter();
-  const [tab, setTab] = useState<LibraryTab>(initialTab);
+  /* التبويب يسكن الرابط لا الحالة وحدها (ذاكرة التنقل — تدقيق 8 Aug م١):
+     useState وحده كان ينسى التبويب عند الرجوع من عملٍ مفتوح، فيهبط
+     العائد على تبويبٍ غير الذي غادر منه. الآن: تفاؤلٌ محليّ فوريّ +
+     push يكتب `?filter=` في التاريخ — فالرجوع يرجع للتبويب نفسه،
+     والرابط يُشارك فيفتح على حالته. */
+  const [pendingTab, setPendingTab] = useState<LibraryTab | null>(null);
+  /* تصفير التفاؤل أثناء الرسم لا في effect (نمط React الموثّق لضبط
+     الحالة عند تغيّر prop) — الرابط وصل فصار هو الحقيقة */
+  const [lastInitial, setLastInitial] = useState(initialTab);
+  if (lastInitial !== initialTab) {
+    setLastInitial(initialTab);
+    setPendingTab(null);
+  }
+  const tab = pendingTab ?? initialTab;
+  function goTab(id: LibraryTab) {
+    if (id === tab) return;
+    setPendingTab(id);
+    router.push(
+      id === "shows" ? "/library" : `/library?filter=${id === "movies" ? "movie" : "list"}`,
+      { scroll: false },
+    );
+  }
   const [q, setQ] = useState("");
   const [sort, setSort] = useState<"smart" | "title" | "progress">("smart");
   /* رقاقة الحالة (طلب المالك): «الكل» افتراضاً، والترشيح محليّ كالبحث */
@@ -122,7 +143,7 @@ export function LibraryGrid({
               id={`lib-tab-${id}`}
               aria-selected={active}
               aria-controls="lib-panel"
-              onClick={() => setTab(id)}
+              onClick={() => goTab(id)}
               className={segmentedItem(
                 active,
                 "flex-1 basis-0 min-w-0 flex items-center justify-center gap-2 px-2 pt-1.5 pb-3 text-[13px]",
