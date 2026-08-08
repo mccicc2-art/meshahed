@@ -82,7 +82,6 @@ function VerifiedMark({ size = 18, title }: { size?: number; title: string }) {
 export function ProfileHeader({
   bioText,
   displayName,
-  username,
   avatarUrl,
   coverUrl,
   coverPos = null,
@@ -99,7 +98,8 @@ export function ProfileHeader({
   /** نبذة صاحب الصفحة — تُمرَّر جاهزةً، والإخفاء محسومٌ قبلها */
   bioText?: string | null;
   displayName: string;
-  username: string | null;
+  /** يظلّ في العقد لأن المنادين يمرّرونه — العرض الحالي يكتفي بالاسم الظاهر */
+  username?: string | null;
   avatarUrl: string | null;
   coverUrl: string | null;
   /** التموضع الرأسي (٠–١٠٠) الذي اختاره المستخدم بالسحب في الإعدادات —

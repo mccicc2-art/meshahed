@@ -113,7 +113,7 @@ export function EpisodeTracker({
         setLoading(null);
       }
     },
-    [episodesBySeason, showTmdbId],
+    [episodesBySeason, showTmdbId, t.showLoadFailed],
   );
 
   // الموسم المفتوح افتراضياً يُحمَّل من هنا لا من الخادم: الصفحة كانت
@@ -123,7 +123,11 @@ export function EpisodeTracker({
   useEffect(() => {
     if (bootRef.current) return;
     bootRef.current = true;
-    if (open != null && !episodesBySeason[open]) void loadSeason(open);
+    if (open != null && !episodesBySeason[open]) {
+      // تأجيلُ microtask واحد: تغيير الحالة لا يقع متزامناً داخل جسد
+      // الـeffect فلا يفتح سلسلة رسمٍ متتابعة — والجلب يبدأ في نفس اللحظة
+      void Promise.resolve().then(() => loadSeason(open));
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
