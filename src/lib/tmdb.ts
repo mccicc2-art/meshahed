@@ -399,6 +399,19 @@ export async function getPerson(id: number): Promise<PersonDetails | null> {
   }
 }
 
+
+/** أنواع «البرامج» عند TMDB: أخبار، واقع، توك شو — ليست دراما تُتابع */
+const PROGRAM_TV_GENRES = new Set([10763, 10764, 10767]);
+
+/**
+ * هل هذا الظهور برنامجٌ تلفزيوني لا عملاً درامياً؟ (دفعة أحمد الثالثة)
+ * ظهورات الممثلين في التوك شو تُغرق سيرتهم وقوائمهم (قائمة توم هانكس
+ * كانت أغلبها برامج) — التصنيف بأنواع TMDB الثابتة لا بالاسم.
+ */
+export function isTvProgram(r: { media_type?: string; genre_ids?: number[] }): boolean {
+  return r.media_type === "tv" && (r.genre_ids ?? []).some((g) => PROGRAM_TV_GENRES.has(g));
+}
+
 /**
  * كل أعمال الشخص، تمثيلاً وإخراجاً، أفلاماً ومسلسلات.
  *
@@ -535,6 +548,23 @@ export async function getCollection(id: number): Promise<Collection | null> {
 }
 
 /**
+ * معرّفات مجموعةٍ منسّقة (دفعة القوائم الثالثة).
+ *
+ * المكتوبة يدوياً (movieIds — ترتيب أحداث) تُعاد كما هي؛ ومجموعةُ
+ * collectionId تُحلّ من سلسلة TMDB بترتيب الإصدار — فتتحدّث بالأجزاء
+ * الجديدة وحدها بلا صيانة قاموسٍ يدوي.
+ */
+export async function resolveSetIds(u: {
+  movieIds?: number[];
+  collectionId?: number;
+}): Promise<number[]> {
+  if (u.movieIds?.length) return u.movieIds;
+  if (!u.collectionId) return [];
+  const c = await getCollection(u.collectionId).catch(() => null);
+  return (c?.parts ?? []).map((p) => p.id);
+}
+
+/**
  * أفلامٌ بمعرّفاتها، بترتيب المعرّفات نفسه — لقوائم العوالم (D-074).
  *
  * العالم قاموسُ معرّفاتٍ مرتّبةٍ عندنا (universes.ts)، وTMDB لا يجمعه في
@@ -544,11 +574,11 @@ export async function getCollection(id: number): Promise<Collection | null> {
  */
 export async function moviesByIds(
   ids: number[],
-): Promise<{ id: number; title: string; poster_path: string | null }[]> {
+): Promise<{ id: number; title: string; poster_path: string | null; release_date?: string | null }[]> {
   const rows = await Promise.all(
     ids.map((id) =>
-      tmdb<{ id: number; title: string; poster_path: string | null }>(`/movie/${id}`)
-        .then((m) => ({ id: m.id, title: m.title, poster_path: m.poster_path }))
+      tmdb<{ id: number; title: string; poster_path: string | null; release_date?: string | null }>(`/movie/${id}`)
+        .then((m) => ({ id: m.id, title: m.title, poster_path: m.poster_path, release_date: m.release_date ?? null }))
         .catch(() => null),
     ),
   );

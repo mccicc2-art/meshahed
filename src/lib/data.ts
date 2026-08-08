@@ -68,6 +68,8 @@ export interface Profile {
   bio?: string | null;
   /** حسابٌ خاص: المتابعة بطلبٍ يُقبل (follow_requests.sql) */
   is_private?: boolean | null;
+  /** قفل قائمتَي المتابعة (هجرة 43) */
+  hide_follow_lists?: boolean | null;
 }
 
 /** الملف الشخصي — يُقرأ في التخطيط والشريط العلوي والصفحة، فيُخزَّن لكل طلب */
@@ -81,7 +83,7 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
     let { data, error } = await supabase
       .from("profiles")
       .select(
-        "id, nickname, username, avatar_url, cover_url, cover_pos, avatar_pos, theme, favorite_genres, hide_name, home_prefs, bio, is_private",
+        "id, nickname, username, avatar_url, cover_url, cover_pos, avatar_pos, theme, favorite_genres, hide_name, home_prefs, bio, is_private, hide_follow_lists",
       )
       .eq("id", user.id)
       .maybeSingle();
@@ -99,7 +101,7 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
         .maybeSingle();
       if (mid.data) {
         // عمودا التموضع أحدث من هذه الدرجة — يسقطان إلى سلوكهما القديم
-        data = { ...mid.data, cover_pos: null, avatar_pos: null, home_prefs: null, bio: null, is_private: null };
+        data = { ...mid.data, cover_pos: null, avatar_pos: null, home_prefs: null, bio: null, is_private: null, hide_follow_lists: null };
       } else {
         const legacy = await supabase
           .from("profiles")
@@ -117,6 +119,7 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
             home_prefs: null,
             bio: null,
             is_private: null,
+            hide_follow_lists: null,
           };
         }
       }
@@ -553,6 +556,8 @@ export interface PublicProfile {
   bio?: string | null;
   /** حسابٌ خاص — القفل حالةٌ معلنة (profile_visibility.sql) */
   is_private?: boolean | null;
+  /** قفل قائمتَي المتابعة (هجرة 43) — غيابه قبل تشغيلها = false */
+  hide_follow_lists?: boolean | null;
 }
 
 /** معرّف UUID كما يكتبه Postgres — يميّز رابط الهوية عن رابط المعرّف */
@@ -1974,6 +1979,43 @@ export async function getFollowedPublicLists(limit = 15): Promise<PublicListCard
       .select("id, user_id, name, kind, updated_at")
       .eq("is_public", true)
       .in("user_id", ids)
+      .order("updated_at", { ascending: false })
+      .limit(limit);
+    if (!lists?.length) return [];
+    return await shapeListCards(lists, true);
+  } catch {
+    return [];
+  }
+}
+
+
+/**
+ * القوائم العامة التي يظهر فيها هذا العمل — لتبويب «مشابه» في صفحته
+ * (دفعة أحمد الثالثة: «تبويب للأعمال المشابهة والليستات»).
+ *
+ * لا SQL جديد: عناصر القوائم المعلنة مقروءة عالمياً بسياسة `is_public`
+ * نفسها (باب D-063) — نسأل العناصر عن معرّف العمل ثم نجلب قوائمها.
+ */
+export async function getPublicListsContaining(
+  tmdbId: number,
+  mediaType: "tv" | "movie",
+  limit = 10,
+): Promise<PublicListCard[]> {
+  try {
+    const supabase = await createClient();
+    const { data: rows } = await supabase
+      .from("user_list_items")
+      .select("list_id")
+      .eq("tmdb_id", tmdbId)
+      .eq("media_type", mediaType)
+      .limit(60);
+    const ids = [...new Set((rows ?? []).map((r) => r.list_id as string))].slice(0, limit * 2);
+    if (!ids.length) return [];
+    const { data: lists } = await supabase
+      .from("user_lists")
+      .select("id, user_id, name, kind, updated_at")
+      .in("id", ids)
+      .eq("is_public", true)
       .order("updated_at", { ascending: false })
       .limit(limit);
     if (!lists?.length) return [];

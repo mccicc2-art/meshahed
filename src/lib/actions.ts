@@ -87,6 +87,8 @@ export async function updateProfile(input: {
   bio?: string;
   /** حسابٌ خاص: المتابعة بطلب (follow_requests.sql) — غيابه يترك الحال */
   isPrivate?: boolean;
+  /** قفل قائمتَي المتابعة في الملف العام (هجرة 43) */
+  hideFollowLists?: boolean;
 }) {
   const { supabase, user } = await requireUser("profile", 10, 60_000);
 
@@ -122,6 +124,7 @@ export async function updateProfile(input: {
   }
   if (input.hideName !== undefined) payload.hide_name = !!input.hideName;
   if (input.isPrivate !== undefined) payload.is_private = !!input.isPrivate;
+  if (input.hideFollowLists !== undefined) payload.hide_follow_lists = !!input.hideFollowLists;
   /* النبذة تُنظَّف كما يُنظَّف سطر القائمة (D-044): المسافات تُطوى فلا تصير
      فقرةً، والحدّ ١٦٠ حرفاً مطابقٌ لقيد SQL — لا نتّكل على القيد وحده
      لأن رسالة خطأ قاعدة البيانات ليست رسالةً للمستخدم */
@@ -1330,7 +1333,7 @@ async function upsertListWithItems(
 /** زرّ صفحة الفنان: قائمة بأشهر ٢٠ عملاً له */
 export async function createListFromPerson(personId: number) {
   personId = intId(personId);
-  const { getPerson, getPersonCredits, titleOf } = await import("@/lib/tmdb");
+  const { getPerson, getPersonCredits, isTvProgram, titleOf } = await import("@/lib/tmdb");
   const [person, works] = await Promise.all([
     getPerson(personId),
     getPersonCredits(personId),
@@ -1338,7 +1341,9 @@ export async function createListFromPerson(personId: number) {
   const name = person?.name?.trim();
   if (!name) throw new Error("تعذّر تحميل الفنان / Could not load this person");
 
-  const items: NewItem[] = works.slice(0, 20).map((w) => ({
+  /* البرامج خارج القائمة (طلب أحمد): ظهور توك شو ليس «عملاً» يُقتنى —
+     قائمة توم هانكس كانت أغلبها برامج قبل هذا الفلتر */
+  const items: NewItem[] = works.filter((w) => !isTvProgram(w)).slice(0, 20).map((w) => ({
     tmdbId: w.id,
     mediaType: w.media_type as MediaType,
     title: titleOf(w),
@@ -1383,12 +1388,14 @@ export async function createListFromUniverse(slug: string) {
   const universe = universeBySlug(clean);
   if (!universe) throw new Error("عالمٌ غير معروف / Unknown universe");
 
-  const [{ moviesByIds }, { getLocale }] = await Promise.all([
+  const [{ moviesByIds, resolveSetIds }, { getLocale }] = await Promise.all([
     import("@/lib/tmdb"),
     import("@/lib/locale"),
   ]);
+  // مجموعات collectionId تُحلّ من سلسلة TMDB بترتيب الإصدار
+  const ids = await resolveSetIds(universe);
   const [movies, locale] = await Promise.all([
-    moviesByIds(universe.movieIds),
+    moviesByIds(ids),
     getLocale(),
   ]);
   if (!movies.length) throw new Error("تعذّر تحميل أفلام العالم / Could not load this universe");
@@ -1697,6 +1704,50 @@ export async function sendListShare(input: {
 }
 
 /** متابِعيّ — لمنتقي «من يرى مكتبتي» (D-070): من يتابعني، لا من أتابعه */
+
+/**
+ * أسماء متابعة شخصٍ ما — لورقتَي «متابِعون/متابَعون» في ملفه العام
+ * (دفعة أحمد الثالثة). الصفوف عالمية القراءة (D-013) والأسماء من
+ * public_profiles (إخفاء الاسم مقطوعٌ في العرض نفسه — D-011)؛ والقفل
+ * (هجرة 43) يُفرغ الجواب لغير صاحب الحساب.
+ */
+export async function peopleFollowsOf(
+  targetId: string,
+  dir: "followers" | "following",
+): Promise<PersonLite[]> {
+  const { supabase, user } = await requireUser();
+  if (!/^[0-9a-f-]{36}$/i.test(targetId)) return [];
+
+  if (user.id !== targetId) {
+    try {
+      const { data: prof } = await supabase
+        .from("public_profiles")
+        .select("hide_follow_lists")
+        .eq("id", targetId)
+        .maybeSingle();
+      if ((prof as { hide_follow_lists?: boolean } | null)?.hide_follow_lists) return [];
+    } catch {
+      /* قبل تشغيل الهجرة 43 العمود غائب — الافتراض مفتوح كما كان دائماً */
+    }
+  }
+
+  const edge = dir === "followers" ? "follower_id" : "following_id";
+  const where = dir === "followers" ? "following_id" : "follower_id";
+  const { data } = await supabase
+    .from("user_follows")
+    .select(edge)
+    .eq(where, targetId)
+    .order("created_at", { ascending: false })
+    .limit(200);
+  const ids = [...new Set((data ?? []).map((r) => (r as Record<string, string>)[edge]))];
+  if (!ids.length) return [];
+  const { data: people } = await supabase
+    .from("public_profiles")
+    .select("id, nickname, username, avatar_url, hide_name")
+    .in("id", ids);
+  return ((people ?? []) as PersonLite[]);
+}
+
 export async function myFollowersList(): Promise<PersonLite[]> {
   const { supabase, user } = await requireUser();
   const { data } = await supabase

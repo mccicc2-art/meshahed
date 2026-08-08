@@ -15,8 +15,13 @@ export interface Universe {
   slug: string;
   ar: string;
   en: string;
-  /** معرّفات TMDB للأفلام **بترتيب الأحداث** — القاموس هو الترتيب */
-  movieIds: number[];
+  /** معرّفات TMDB للأفلام **بترتيب الأحداث** — القاموس هو الترتيب.
+      غيابها يعني أن المجموعة سلسلة TMDB جاهزة: انظر collectionId */
+  movieIds?: number[];
+  /** سلسلة TMDB تُحلّ عند الطلب (ترتيب الإصدار) — لما لا يحتاج تنسيقاً
+      يدوياً: كتابة معرّفات ٢٧ فيلم كونان باليد دعوةٌ للخطأ، والسلسلة
+      عند TMDB تتحدّث بالجديد وحدها. تُحلّ عبر resolveSetIds في tmdb.ts */
+  collectionId?: number;
   /** ترتيب أحداثٍ منسّق (العوالم) أم ترتيب إصدار (المجموعات كديزني)؟
       يقرّر سطر الوعد على البطاقة: «بترتيب الأحداث» لا يُقال لما ليس كذلك */
   storyOrder?: boolean;
@@ -324,6 +329,49 @@ export const SUBLISTS: Universe[] = [
  * الفرعيات (طلب أحمد: «مكان الأزرق عالم مارفل، والقوائم: مارفل كامل
  * مرتّب ثم سبايدر-مان ثم آيرون مان وهكذا»).
  */
+
+/**
+ * دفعة أحمد الثالثة: «كل القوائم المفروض تكون موجودة ومرتبة».
+ * كل مجموعةٍ هنا سلسلة TMDB جاهزة (collectionId) — تتحدّث بالجديد
+ * تلقائياً ولا تحتاج صيانة معرّفاتٍ يدوية. الاستثناء ملحمة الخواتم:
+ * ترتيب الأحداث (الهوبيت قبل السيّد) منسّق يدوياً كالعوالم.
+ */
+export const SUBLISTS2: Universe[] = [
+  // ===== عالم الأنمي =====
+  { slug: "conan-movies", ar: "أفلام المحقق كونان", en: "Detective Conan Movies", collectionId: 39199 },
+  { slug: "onepiece-movies", ar: "أفلام ون بيس", en: "One Piece Movies", collectionId: 23456 },
+  // ===== مينيونز =====
+  { slug: "despicable", ar: "كل أفلام دسبيكابل مي", en: "Despicable Me — All Films", collectionId: 86066 },
+  { slug: "minions", ar: "مينيونز", en: "Minions", collectionId: 544669 },
+  // ===== عوالم الأكشن =====
+  { slug: "bond", ar: "جيمس بوند", en: "James Bond", collectionId: 645 },
+  { slug: "mission-impossible", ar: "المهمة المستحيلة", en: "Mission: Impossible", collectionId: 87359 },
+  { slug: "fast", ar: "سريع وغاضب", en: "Fast & Furious", collectionId: 9485 },
+  { slug: "john-wick", ar: "جون ويك", en: "John Wick", collectionId: 404609 },
+  { slug: "matrix", ar: "ماتريكس", en: "The Matrix", collectionId: 2344 },
+  // ===== عوالم المغامرة =====
+  { slug: "jurassic", ar: "حديقة الديناصورات", en: "Jurassic Park & World", collectionId: 328 },
+  { slug: "hunger-games", ar: "ألعاب الجوع", en: "The Hunger Games", collectionId: 131635 },
+  {
+    storyOrder: true,
+    slug: "rings-saga",
+    ar: "ملحمة الخواتم بترتيب الأحداث",
+    en: "The Rings Saga in Story Order",
+    movieIds: [
+      49051,  // The Hobbit: An Unexpected Journey
+      57158,  // The Hobbit: The Desolation of Smaug
+      122917, // The Hobbit: The Battle of the Five Armies
+      120,    // The Fellowship of the Ring
+      121,    // The Two Towers
+      122,    // The Return of the King
+    ],
+  },
+  // ===== أنيميشن عائلي =====
+  { slug: "shrek", ar: "شريك", en: "Shrek", collectionId: 2150 },
+  { slug: "toy-story", ar: "توي ستوري", en: "Toy Story", collectionId: 10194 },
+];
+
+
 export interface Franchise {
   slug: string;
   ar: string;
@@ -332,7 +380,7 @@ export interface Franchise {
 }
 
 const bySlug = (slug: string): Universe =>
-  [...UNIVERSES, ...CURATED, ...SUBLISTS].find((u) => u.slug === slug)!;
+  [...UNIVERSES, ...CURATED, ...SUBLISTS, ...SUBLISTS2].find((u) => u.slug === slug)!;
 
 export const FRANCHISES: Franchise[] = [
   {
@@ -365,6 +413,31 @@ export const FRANCHISES: Franchise[] = [
     en: "Disney & Pixar",
     sets: ["disney", "pixar"].map(bySlug),
   },
+  {
+    slug: "anime",
+    ar: "عالم الأنمي",
+    en: "Anime",
+    sets: ["conan-movies", "onepiece-movies"].map(bySlug),
+  },
+  {
+    slug: "minionsworld",
+    ar: "مينيونز",
+    en: "Minions",
+    sets: ["despicable", "minions"].map(bySlug),
+  },
+  {
+    slug: "actionworlds",
+    ar: "عوالم الأكشن",
+    en: "Action Worlds",
+    sets: ["bond", "mission-impossible", "fast", "john-wick", "matrix"].map(bySlug),
+  },
+  {
+    slug: "adventure",
+    ar: "عوالم المغامرة",
+    en: "Adventure Worlds",
+    sets: ["rings-saga", "jurassic", "hunger-games", "shrek", "toy-story"].map(bySlug),
+  },
+
 ];
 
 export function franchiseName(f: Franchise, locale: "ar" | "en") {
@@ -373,12 +446,12 @@ export function franchiseName(f: Franchise, locale: "ar" | "en") {
 
 /** كل المجموعات المنسّقة معاً — قاموس `universeBySlug` (محرّك حفظٍ واحد) */
 export function allCuratedSets(): Universe[] {
-  return [...UNIVERSES, ...CURATED, ...SUBLISTS];
+  return [...UNIVERSES, ...CURATED, ...SUBLISTS, ...SUBLISTS2];
 }
 
 /** أي عالمٍ ينتمي إليه هذا الفيلم؟ — فحصٌ محليّ بلا طلب شبكة (العوالم وحدها) */
 export function universeOf(movieId: number): Universe | null {
-  return UNIVERSES.find((u) => u.movieIds.includes(movieId)) ?? null;
+  return UNIVERSES.find((u) => u.movieIds?.includes(movieId)) ?? null;
 }
 
 /** البحث بالـslug يشمل المنسّقات — زرّ الحفظ واحدٌ للجميع (محرّك D-052) */
