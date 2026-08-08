@@ -624,6 +624,9 @@ export default async function HomePage() {
   let recap: { line: string; posters: (string | null)[] } | null = null;
   if (prefs.order.includes("recap") && recapHist) {
     const hist = recapHist;
+    // مكوّن خادمي ديناميكي: لحظة الطلب جزء من مدخلات الرسم لا كسرٌ لنقائه —
+    // «أسبوعك» يُحسب من الآن، وقاعدة النقاء كُتبت لإعادة رسم العميل لا لهذا
+    // eslint-disable-next-line react-hooks/purity
     const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString();
     const rows = hist.filter((h) => h.watchedAt >= weekAgo);
     if (rows.length > 0) {
