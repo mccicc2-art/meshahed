@@ -2332,3 +2332,69 @@ export async function finishImport() {
   revalidatePath("/stats");
   revalidatePath("/diary");
 }
+
+/* ============================== بحث الذكاء ============================== */
+
+export interface AiSearchResult {
+  kind: "movie" | "tv";
+  id: number;
+  title: string;
+  year?: string;
+  poster: string | null;
+  rating?: number | null;
+}
+
+/**
+ * بحث الذكاء: وصفٌ حرّ → مرشّحون من Gemini → **تثبيتٌ عبر TMDB** (D-076).
+ *
+ * النموذج يقترح أسماءً والحقيقة عند TMDB: كل مرشّحٍ يمرّ على `searchByName`
+ * (نفس دالّة الاستيراد — بالاسم والسنة والجهة)، وما لا يثبت يسقط بصمت.
+ * فالنتيجة المعروضة دائماً عملٌ حقيقي بملصقه ورابطه، بعنوانه بلغة
+ * الواجهة (D-072 — searchByName يطلب بلغة `getLocale`).
+ *
+ * الدلو ضيّق (٦ في الدقيقة): كل نداءٍ يكلّف طلب نموذجٍ وعشرة طلبات TMDB.
+ * و`ok: false` بأسبابٍ مميّزة بدل الرمي: غياب المفتاح حالةُ منتجٍ تُشرح
+ * («غير مفعّل») لا خطأُ برمجةٍ يُلوّح بأحمر.
+ */
+export async function aiStorySearch(
+  description: string,
+): Promise<
+  | { ok: true; results: AiSearchResult[] }
+  | { ok: false; reason: "unconfigured" | "empty" | "short" }
+> {
+  await requireUser("aisearch", 6, 60_000);
+
+  const desc = String(description ?? "").trim().slice(0, 600);
+  if (desc.length < 8) return { ok: false, reason: "short" };
+
+  const { aiSuggestTitles } = await import("@/lib/ai");
+  const candidates = await aiSuggestTitles(desc);
+  if (candidates === null) return { ok: false, reason: "unconfigured" };
+  if (candidates.length === 0) return { ok: false, reason: "empty" };
+
+  const { searchByName, titleOf, yearOf, posterUrl } = await import("@/lib/tmdb");
+  const grounded = await Promise.all(
+    candidates.map((c) => searchByName(c.title, c.type, c.year).catch(() => null)),
+  );
+
+  const seen = new Set<string>();
+  const results: AiSearchResult[] = [];
+  for (const r of grounded) {
+    if (!r) continue;
+    const kind = r.media_type === "tv" ? ("tv" as const) : ("movie" as const);
+    const key = `${kind}-${r.id}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    results.push({
+      kind,
+      id: r.id,
+      title: titleOf(r),
+      year: yearOf(r) || undefined,
+      poster: posterUrl(r.poster_path, "w185"),
+      rating: r.vote_average ? Math.round(r.vote_average * 10) / 10 : null,
+    });
+  }
+
+  if (results.length === 0) return { ok: false, reason: "empty" };
+  return { ok: true, results };
+}

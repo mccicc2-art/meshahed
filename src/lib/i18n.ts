@@ -120,6 +120,14 @@ const ar = {
   searchNoResults: "لا توجد نتائج.",
   searchStart: "ابحث عن مسلسل أو فيلم للبدء.",
   searchFailed: "تعذّر الوصول لخدمة البيانات حالياً. حاول مرة أخرى بعد قليل.",
+  // بحث الذكاء (D-076)
+  aiSearchBtn: "اوصف قصةً وسيجدها الذكاء",
+  aiSearchBack: "البحث بالاسم",
+  aiSearchPlaceholder: "اكتب القصة أو ما تتذكره من العمل — بالعربي أو الإنجليزي…",
+  aiSearchRun: "ابحث بالذكاء",
+  aiSearchHint: "اوصف حبكةً أو مشهداً أو فيلماً نسيت اسمه، وسيرشّح لك الذكاء أعمالاً حقيقية تشبهه.",
+  aiSearchEmpty: "لم أجد أعمالاً مطابقة — جرّب وصفاً أوسع أو أضف تفاصيل.",
+  aiSearchMissing: "بحث الذكاء غير مفعّل بعد.",
 
   // صفحة المسلسل
   showLoadFailed: "تعذّر تحميل بيانات هذا المسلسل حالياً. حاول مرة أخرى بعد قليل.",
@@ -826,6 +834,13 @@ const en: Dict = {
   searchNoResults: "No results.",
   searchStart: "Search for a show or a movie to get started.",
   searchFailed: "Couldn't reach the data service right now. Try again shortly.",
+  aiSearchBtn: "Describe a story, AI will find it",
+  aiSearchBack: "Search by name",
+  aiSearchPlaceholder: "Describe the plot or what you remember — Arabic or English…",
+  aiSearchRun: "Search with AI",
+  aiSearchHint: "Describe a plot, a scene, or a film you forgot the name of — AI suggests real matches.",
+  aiSearchEmpty: "No matches found — try a broader description or add details.",
+  aiSearchMissing: "AI search isn't set up yet.",
 
   showLoadFailed: "Couldn't load this show right now. Please try again shortly.",
   seasonsCount: (n: number) => `${n} seasons`,
