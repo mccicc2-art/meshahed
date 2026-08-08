@@ -13,7 +13,9 @@ import {
   getListsContaining,
 } from "@/lib/data";
 import { getMovie, getTrailer, getWatchProviders, backdropUrl, posterUrl } from "@/lib/tmdb";
+import { universeOf } from "@/lib/universes";
 import { getT, getWatchRegion } from "@/lib/locale";
+import { AddWorksToList } from "@/components/AddWorksToList";
 import { RatingBox } from "@/components/RatingBox";
 import { CommunityReviews } from "@/components/CommunityReviews";
 import { DetailTabs } from "@/components/DetailTabs";
@@ -73,6 +75,8 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
 
   const backdrop = backdropUrl(movie.backdrop_path);
   const poster = posterUrl(movie.poster_path, "w342");
+  /* العالم فحصٌ محليّ في القاموس — زرّه صعد إلى الترويسة (طلب المالك) */
+  const universe = universeOf(movieId);
 
   return (
     <div>
@@ -107,8 +111,13 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
           </div>
         </div>
 
-        <div className="flex-1 min-w-0 self-end pb-1">
-          <h1 className="text-xl sm:text-3xl font-extrabold leading-tight tracking-tight">
+        {/* ===== عمود البيانات — من قمّة الملصق لا من قاعه (طلب المالك) =====
+            كان `self-end` يلصق العنوان بأسفل الملصق ويترك المساحة جنبه
+            فارغة. الآن العنوان يوازي بداية الملصق، والمساحة تحته تحمل
+            البيانات كلّها: السنة والمدّة والتقييم، فالأنواع، فالمنصّة،
+            فأزرار السلسلة والعالم — التي كانت تسكن ذيل الصفحة. */}
+        <div className="flex-1 min-w-0 self-start pt-0.5">
+          <h1 className="text-xl sm:text-3xl font-extrabold leading-tight tracking-tight drop-shadow-[0_2px_10px_rgba(0,0,0,0.65)]">
             {movie.title}
           </h1>
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs sm:text-sm text-muted mt-1.5">
@@ -129,6 +138,21 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
             )}
           </div>
 
+          {/* الأنواع صعدت من تبويب «معلومات» إلى جنب الملصق (طلب المالك):
+              هوية الفيلم تُقرأ قبل قصّته لا بعدها */}
+          {movie.genres.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              {movie.genres.slice(0, 4).map((g) => (
+                <span
+                  key={g.id}
+                  className="text-[11px] font-medium bg-surface-2 border border-border px-2.5 py-1 rounded-full"
+                >
+                  {g.name}
+                </span>
+              ))}
+            </div>
+          )}
+
           {/* أين يُبثّ — في الترويسة، وقسم المنصّات في «معلومات» حُذف */}
           {watchWhere && (
             <div className="mt-2.5">
@@ -138,6 +162,24 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
                 userRegion={userRegion}
                 locale={locale}
               />
+            </div>
+          )}
+
+          {/* زرّا السلسلة والعالم (D-052/D-074) — هنا لا في ذيل الصفحة
+              (طلب المالك): المساحة جنب الملصق هي بيت «الإضافات»، والصفّان
+              في الأسفل بقيا للتصفّح بلا أزرارٍ مكرّرة (بابٌ واحد لكل فعل) */}
+          {(movie.belongs_to_collection || universe) && (
+            <div className="mt-2.5 flex flex-wrap gap-2">
+              {movie.belongs_to_collection && (
+                <AddWorksToList
+                  source="collection"
+                  id={movie.belongs_to_collection.id}
+                  locale={locale}
+                />
+              )}
+              {universe && (
+                <AddWorksToList source="universe" id={universe.slug} locale={locale} />
+              )}
             </div>
           )}
         </div>
@@ -180,18 +222,7 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
                   </section>
                 )}
 
-                {movie.genres.length > 0 && (
-                  <div className="flex flex-wrap gap-2">
-                    {movie.genres.map((g) => (
-                      <span
-                        key={g.id}
-                        className="text-xs font-medium bg-surface-2 border border-border px-3 py-1.5 rounded-full"
-                      >
-                        {g.name}
-                      </span>
-                    ))}
-                  </div>
-                )}
+                {/* الأنواع صعدت إلى الترويسة جنب الملصق — لا نسخة ثانية هنا */}
 
                 {/* الطاقم فوق الترايلر: أسماء الممثلين تُقرأ قبل مشاهدة
                     المقطع لا بعده — قرارُ المالك. وهو داخل «معلومات» لا في
