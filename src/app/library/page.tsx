@@ -100,6 +100,15 @@ export default async function LibraryPage({
            أخضر مكتمل، بنفسجي قيد المشاهدة، أحمر موقوف، ولا شيء لِما لم يبدأ */
         count: !dropped && watched > 0 && aired > watched ? aired - watched : undefined,
         dropped,
+        /* الحالة اسمَ رقاقةٍ لا رقماً: الترتيب الذكي كان يحسبها أصلاً
+           (rank)، ورقائق التقسيم (طلب المالك) تحتاجها بالاسم */
+        status: dropped
+          ? ("dropped" as const)
+          : done
+            ? ("completed" as const)
+            : watched > 0
+              ? ("watching" as const)
+              : ("unstarted" as const),
         rank: dropped ? 3 : watched > 0 && !done ? 0 : watched === 0 ? 1 : 2,
         progressSort: progress,
       };
@@ -120,6 +129,12 @@ export default async function LibraryPage({
         posterPath: f.poster_path,
         progress: done ? 100 : undefined,
         dropped,
+        // الفيلم بلا «أشاهده»: شاهدتُه أو لم أشاهده أو أوقفته
+        status: dropped
+          ? ("dropped" as const)
+          : done
+            ? ("completed" as const)
+            : ("unstarted" as const),
         rank: dropped ? 2 : done ? 1 : 0,
       };
     })
