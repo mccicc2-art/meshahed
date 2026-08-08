@@ -4,10 +4,17 @@ import {
   getUser,
   getFollowedArtists,
   getPublicListsFeed,
+  getFollowedPublicLists,
   searchPublicLists,
 } from "@/lib/data";
 import { PublicListsRail, CommunityListCard } from "@/components/PublicListsRail";
 import { ListsSearchField } from "@/components/ListsSearchField";
+import { ListsSourceChips, type ListsSource } from "@/components/ListsSourceChips";
+import { AddWorksToList } from "@/components/AddWorksToList";
+import { PosterRail, RailItem } from "@/components/PosterRail";
+import { allCuratedSets, universeName, type Universe } from "@/lib/universes";
+import { Icon } from "@/components/Icon";
+import Image from "next/image";
 import {
   upcomingMovies,
   airingTv,
@@ -21,6 +28,7 @@ import {
   upcomingByFilter,
   nowPlayingMovies,
   listWatchProviders,
+  moviesByIds,
   titleOf,
   yearOf,
   posterUrl,
@@ -70,6 +78,7 @@ export default async function NewsPage({
   searchParams: Promise<{
     tab?: string;
     q?: string;
+    src?: string;
     type?: string;
     win?: string;
     g?: string;
@@ -91,6 +100,11 @@ export default async function NewsPage({
   /* نصّ البحث يُقصّ هنا أيضاً لا في `searchPublicLists` وحدها: القيمة
      تُرَدّ إلى حقل البحث كما هي، ورابطٌ بألف حرفٍ لا يرسم حقلاً بألف حرف */
   const listsQ = (sp.q ?? "").slice(0, 60);
+  /* مصدر القوائم — كل قيمةٍ غير معروفة تسقط إلى «الكل» (عقيدة parseBrowse) */
+  const listsSrc: ListsSource =
+    sp.src === "curated" || sp.src === "friends" || sp.src === "community"
+      ? sp.src
+      : "all";
 
   /* قائمة المنصّات تُجلب على الخادم وتُمرَّر للورقة: طلبٌ واحد مخبَّأ ساعةً
      في طبقة fetch، ورأس الصفحة يبقى يرسم فوراً لأن الصفوف وحدها خلف
@@ -125,14 +139,22 @@ export default async function NewsPage({
       />
 
       {tab === "lists" ? (
-        /* ===== تبويب «القوائم» (طلب المالك) =====
-            الحقل خارج Suspense فيرسم فوراً ويحفظ تركيزه بين الجولات؛
-            والشبكة وحدها تتبدّل — مفتاحها نصّ البحث فيظهر الهيكل مع كل
-            بحثٍ جديد بدل نتائج البحث السابق معلّقة */
+        /* ===== تبويب «القوائم» — ديسكفري قوائم كامل (D-075 ثم D-082) =====
+            الحقل والرقائق خارج Suspense فيرسمان فوراً ويحفظ الحقل تركيزه؛
+            والأقسام وحدها تتبدّل — مفتاحها البحث والمصدر معاً */
         <div className="space-y-4">
           <ListsSearchField locale={locale} initial={listsQ} />
-          <Suspense key={listsQ} fallback={<RailSkeleton count={6} />}>
-            <CommunityLists locale={locale} t={t} q={listsQ} />
+          <ListsSourceChips locale={locale} src={listsSrc} />
+          <Suspense
+            key={`${listsQ}:${listsSrc}`}
+            fallback={
+              <div className="space-y-8" aria-hidden>
+                <RailSkeleton count={6} />
+                <RailSkeleton count={6} />
+              </div>
+            }
+          >
+            <ListsDiscovery locale={locale} t={t} q={listsQ} src={listsSrc} />
           </Suspense>
         </div>
       ) : (
@@ -156,33 +178,159 @@ export default async function NewsPage({
 }
 
 /**
- * شبكة قوائم المجتمع — جسد تبويب «القوائم».
+ * ديسكفري القوائم (D-082، طلب المالك): «يشبه الأفلام والمسلسلات».
  *
- * شبكةٌ لا صفٌّ ممرَّر: الصفّ للذيل حين تكون القوائم توابل صفحةٍ أخرى،
- * وهنا هي الصفحة نفسها — فتُفرش عموديّاً كصفحة `/lists`. والبطاقة بطاقةُ
- * «قوائم من المجتمع» ذاتها (`CommunityListCard`) بعرضٍ كامل، لا نسخة.
- *
- * بلا بحثٍ تعرض أحدث المعلَن (أربعون: شاشتان أو ثلاث — تصفّحٌ لا أرشيف)،
- * ومع البحث نتيجتَه من الخادم.
+ * ثلاثة مصادر بصفوفٍ مسمّاة كصفوف تبويب الأعمال — المنسّقة (قوائمنا:
+ * العوالم + ديزني)، فمن تتابعهم، فالمجتمع — والرقاقة تفرد مصدراً واحداً
+ * شبكةً كاملة. البحث يبحث في قوائم المجتمع كلّها ويتجاهل المصدر: من يكتب
+ * اسماً يريد النتيجة أينما كانت.
  */
-async function CommunityLists({ locale, t, q }: { locale: Locale; t: T; q: string }) {
-  const cards = q.trim()
-    ? await searchPublicLists(q, 40)
-    : await getPublicListsFeed(40).catch(() => []);
-
-  if (cards.length === 0) {
+async function ListsDiscovery({
+  locale,
+  t,
+  q,
+  src,
+}: {
+  locale: Locale;
+  t: T;
+  q: string;
+  src: ListsSource;
+}) {
+  /* ===== البحث — فوق كل المصادر ===== */
+  if (q.trim()) {
+    const cards = await searchPublicLists(q, 40);
+    if (cards.length === 0)
+      return <p className="text-center text-muted py-20">{t.listsSearchEmpty}</p>;
     return (
-      <p className="text-center text-muted py-20">
-        {q.trim() ? t.listsSearchEmpty : t.listsBrowseEmpty}
-      </p>
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        {cards.map((l) => (
+          <CommunityListCard key={l.id} list={l} locale={locale} />
+        ))}
+      </div>
     );
   }
 
+  /* ===== مصدرٌ مُفرَد — شبكة ===== */
+  if (src === "curated") {
+    return (
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {allCuratedSets().map((u) => (
+          <CuratedCard key={u.slug} u={u} locale={locale} t={t} />
+        ))}
+      </div>
+    );
+  }
+  if (src === "friends") {
+    const cards = await getFollowedPublicLists(40);
+    if (cards.length === 0)
+      return <p className="text-center text-muted py-20">{t.listsFriendsEmpty}</p>;
+    return (
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        {cards.map((l) => (
+          <CommunityListCard key={l.id} list={l} locale={locale} />
+        ))}
+      </div>
+    );
+  }
+  if (src === "community") {
+    const cards = await getPublicListsFeed(40).catch(() => []);
+    if (cards.length === 0)
+      return <p className="text-center text-muted py-20">{t.listsBrowseEmpty}</p>;
+    return (
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        {cards.map((l) => (
+          <CommunityListCard key={l.id} list={l} locale={locale} />
+        ))}
+      </div>
+    );
+  }
+
+  /* ===== «الكل» — صفوفٌ كصفوف الأعمال ===== */
+  const [friends, community] = await Promise.all([
+    getFollowedPublicLists(15),
+    getPublicListsFeed(15).catch(() => []),
+  ]);
+
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-      {cards.map((l) => (
-        <CommunityListCard key={l.id} list={l} locale={locale} />
-      ))}
+    <div className="space-y-8">
+      <PosterRail title={t.listsCurated} icon="sparkle-star">
+        {allCuratedSets().map((u) => (
+          <RailItem key={u.slug}>
+            <CuratedCard u={u} locale={locale} t={t} className="w-64" />
+          </RailItem>
+        ))}
+      </PosterRail>
+
+      {friends.length > 0 && (
+        <PublicListsRail lists={friends} locale={locale} title={t.listsFriendsRail} />
+      )}
+
+      <PublicListsRail lists={community} locale={locale} />
+
+      {friends.length === 0 && community.length === 0 && (
+        <p className="text-center text-muted py-10">{t.listsBrowseEmpty}</p>
+      )}
+    </div>
+  );
+}
+
+/**
+ * بطاقة قائمةٍ منسّقة — هندسة `CommunityListCard` نفسها مع فارقين:
+ * لا رابط (القائمة تولد عند الضغط لا قبله — محرّك D-052/D-074)، والسطر
+ * الثاني وعدُ الترتيب: «بترتيب الأحداث» للعوالم وحدها (storyOrder).
+ * الملصقات الأربعة من `moviesByIds` — أربعة طلباتٍ مخبّأة ساعةً لكل
+ * مجموعة، داخل Suspense فلا ترهن الرأس.
+ */
+async function CuratedCard({
+  u,
+  locale,
+  t,
+  className = "w-full",
+}: {
+  u: Universe;
+  locale: Locale;
+  t: T;
+  className?: string;
+}) {
+  const loc = locale === "en" ? ("en" as const) : ("ar" as const);
+  const four = await moviesByIds(u.movieIds.slice(0, 4)).catch(() => []);
+  const posters = four
+    .map((m) => posterUrl(m.poster_path, "w185"))
+    .filter(Boolean) as string[];
+
+  return (
+    <div className={`rounded-2xl border border-border bg-surface p-2.5 ${className}`}>
+      <span className="flex items-center gap-1.5 text-[14px] font-bold truncate">
+        <Icon name="sparkle-star" size={14} className="text-accent shrink-0" />
+        <span className="truncate">{universeName(u, loc)}</span>
+      </span>
+      <span className="block text-[12px] text-muted truncate mt-0.5">
+        {t.listCount(u.movieIds.length)}
+        {u.storyOrder ? ` · ${t.listsStoryOrder}` : ""}
+      </span>
+      <span className="mt-2 flex gap-1.5">
+        {posters.length > 0 ? (
+          posters.map((url, i) => (
+            <span
+              key={i}
+              className="relative w-[calc(25%-4.5px)] aspect-[2/3] rounded-lg overflow-hidden bg-surface-2 border border-[color:var(--background)]"
+            >
+              <Image src={url} alt="" fill sizes="64px" className="object-cover" />
+            </span>
+          ))
+        ) : (
+          <span className="grid place-items-center w-14 aspect-[2/3] rounded-lg border border-dashed border-border text-muted">
+            <Icon name="list" size={16} />
+          </span>
+        )}
+      </span>
+      <AddWorksToList
+        source="universe"
+        id={u.slug}
+        locale={locale}
+        label={t.curatedSaveBtn}
+        className="mt-2.5 w-full justify-center"
+      />
     </div>
   );
 }
