@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { Sheet, SheetHeader } from "./ui/Sheet";
 import { Icon } from "./Icon";
@@ -21,28 +22,38 @@ import { tap } from "@/lib/haptics";
 
 export type ListsSource = "all" | "curated" | "friends" | "community";
 
+export type ListsFiltersProps = {
+  fr: string | null;
+  lsrc: ListsSource;
+  franchises: { slug: string; label: string }[];
+  labels: ListsFiltersLabels;
+};
+
+type ListsFiltersLabels = {
+  button: string;
+  title: string;
+  world: string;
+  source: string;
+  all: string;
+  curated: string;
+  friends: string;
+  community: string;
+  apply: string;
+  close: string;
+};
+
 export function ListsFilters({
   fr,
   lsrc,
   franchises,
   labels,
-}: {
-  fr: string | null;
-  lsrc: ListsSource;
-  franchises: { slug: string; label: string }[];
-  labels: {
-    button: string;
-    title: string;
-    world: string;
-    source: string;
-    all: string;
-    curated: string;
-    friends: string;
-    community: string;
-    apply: string;
-    close: string;
-  };
+  variant = "full",
+}: ListsFiltersProps & {
+  /** button: الزرّ وورقته في سطر التبويبات (طلب أحمد: مكان زرّ الأفلام
+      نفسه) · chips: المختار وحده فوق الصفوف · full: الاثنان معاً */
+  variant?: "full" | "button" | "chips";
 }) {
+
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [draftFr, setDraftFr] = useState(fr ?? "");
@@ -64,64 +75,70 @@ export function ListsFilters({
     community: labels.community,
   };
 
-  return (
-    <div className="mb-2">
-      <div className="flex items-center gap-2 flex-wrap">
+  const filterButton = (
+    <button
+      type="button"
+      onClick={() => {
+        tap(8);
+        setDraftFr(fr ?? "");
+        setDraftSrc(lsrc);
+        setOpen(true);
+      }}
+      aria-haspopup="dialog"
+      aria-expanded={open}
+      /* self-center mb-1: موضع زرّ تبويب الأفلام حرفياً في سطر التبويبات */
+      className={`shrink-0 self-center mb-1 flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[13px] font-semibold transition ${
+        count > 0
+          ? "border-accent text-accent bg-accent/10"
+          : "border-border text-muted hover:text-foreground"
+      }`}
+    >
+      <Icon name="sliders" size={16} strokeWidth={1.9} />
+      <span>{labels.button}</span>
+      {count > 0 && (
+        <span
+          className="grid place-items-center min-w-[18px] h-[18px] px-1 rounded-full bg-accent text-[color:var(--on-accent)] text-[11px] font-bold tabular-nums"
+          dir="ltr"
+        >
+          {count}
+        </span>
+      )}
+    </button>
+  );
+
+  {/* المختار يظهر ويُزال من مكانه — كصفّ رقائق تبويب الأفلام */}
+  const chips = count > 0 && (
+    <div className="flex items-center gap-2 flex-wrap mb-2">
+      {fr && (
         <button
           type="button"
-          onClick={() => {
-            tap(8);
-            setDraftFr(fr ?? "");
-            setDraftSrc(lsrc);
-            setOpen(true);
-          }}
-          aria-haspopup="dialog"
-          aria-expanded={open}
-          className={`shrink-0 flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[13px] font-semibold transition ${
-            count > 0
-              ? "border-accent text-accent bg-accent/10"
-              : "border-border text-muted hover:text-foreground"
-          }`}
+          className={chipClass(true, "sm")}
+          onClick={() => push("", lsrc)}
         >
-          <Icon name="sliders" size={16} strokeWidth={1.9} />
-          <span>{labels.button}</span>
-          {count > 0 && (
-            <span
-              className="grid place-items-center min-w-[18px] h-[18px] px-1 rounded-full bg-accent text-[color:var(--on-accent)] text-[11px] font-bold tabular-nums"
-              dir="ltr"
-            >
-              {count}
-            </span>
-          )}
+          <span className="inline-flex items-center gap-1">
+            {franchises.find((f) => f.slug === fr)?.label ?? fr}
+            <Icon name="close" size={12} />
+          </span>
         </button>
+      )}
+      {lsrc !== "all" && (
+        <button
+          type="button"
+          className={chipClass(true, "sm")}
+          onClick={() => push(fr ?? "", "all")}
+        >
+          <span className="inline-flex items-center gap-1">
+            {srcLabel[lsrc]}
+            <Icon name="close" size={12} />
+          </span>
+        </button>
+      )}
+    </div>
+  );
 
-        {/* ما اختير يظهر ويُزال من مكانه */}
-        {fr && (
-          <button
-            type="button"
-            className={chipClass(true, "sm")}
-            onClick={() => push("", lsrc)}
-          >
-            <span className="inline-flex items-center gap-1">
-              {franchises.find((f) => f.slug === fr)?.label ?? fr}
-              <Icon name="close" size={12} />
-            </span>
-          </button>
-        )}
-        {lsrc !== "all" && (
-          <button
-            type="button"
-            className={chipClass(true, "sm")}
-            onClick={() => push(fr ?? "", "all")}
-          >
-            <span className="inline-flex items-center gap-1">
-              {srcLabel[lsrc]}
-              <Icon name="close" size={12} />
-            </span>
-          </button>
-        )}
-      </div>
+  if (variant === "chips") return chips || null;
 
+  const sheet = open && typeof document !== "undefined" ? createPortal(
       <Sheet
         open={open}
         onClose={() => setOpen(false)}
@@ -165,7 +182,24 @@ export function ListsFilters({
             {labels.apply}
           </Button>
         </div>
-      </Sheet>
+      </Sheet>,
+      document.body,
+  ) : null;
+
+  if (variant === "button") {
+    return (
+      <>
+        {filterButton}
+        {sheet}
+      </>
+    );
+  }
+
+  return (
+    <div className="mb-2">
+      <div className="flex items-center gap-2 flex-wrap">{filterButton}</div>
+      {chips}
+      {sheet}
     </div>
   );
 }

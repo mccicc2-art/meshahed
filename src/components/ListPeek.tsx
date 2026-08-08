@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import Image from "next/image";
 import { Sheet, SheetHeader } from "./ui/Sheet";
@@ -98,6 +99,7 @@ export function ListPeekTrigger({
         {children}
       </div>
 
+      {open && typeof document !== "undefined" && createPortal(
       <Sheet
         open={open}
         onClose={() => setOpen(false)}
@@ -168,7 +170,8 @@ export function ListPeekTrigger({
             </Link>
           )}
         </div>
-      </Sheet>
+      </Sheet>,
+      document.body)}
     </>
   );
 }

@@ -20,6 +20,7 @@ import {
 } from "@/lib/browse";
 import { tap } from "@/lib/haptics";
 import { Icon } from "./Icon";
+import { ListsFilters, type ListsFiltersProps } from "./ListsFilters";
 import { DiscoverFilterSheet, type FilterDraft } from "./DiscoverFilterSheet";
 import { segmentedItem } from "./ui/controls";
 
@@ -63,8 +64,12 @@ export function DiscoverFilters({
   era,
   rate,
   count,
+  listsFilters,
 }: {
   locale: Locale;
+  /** فلاتر تبويب القوائم — يرسم زرّها في خانة زرّ الأعمال نفسها
+      (طلب أحمد: «مكان الفلتر مثل الأفلام والمسلسلات») */
+  listsFilters?: ListsFiltersProps;
   /** التبويب المفتوح — أعمالٌ أو قوائم؛ الفلاتر كلّها لتبويب الأعمال وحده.
       اختياريٌّ بافتراض الأعمال: يُبقي المكوّن مُصرَّفاً بين لقطة المكوّنات
       ولقطة الصفحة أثناء الرفع المرتّب (صفر ERROR وسيط) */
@@ -256,9 +261,12 @@ export function DiscoverFilters({
           })}
         </div>
 
-        {/* الزرّ إلى جانب التبويبين: المخرج الوحيد إلى الفلاتر كلّها —
-            ولتبويب الأعمال وحده؛ القوائم لا نافذة لها ولا حقبة، وزرٌّ
-            يفتح ورقةً لا تنطبق على المعروض كذبةُ واجهة */}
+        {/* الزرّ إلى جانب التبويبين: المخرج الوحيد إلى الفلاتر —
+            زرّ الأعمال لتبويبها، وزرّ القوائم (بورقته الخاصة) في نفس
+            الخانة حين يكون تبويبها هو المفتوح */}
+        {tab === "lists" && listsFilters && (
+          <ListsFilters {...listsFilters} variant="button" />
+        )}
         {tab === "titles" && (
           <button
             type="button"

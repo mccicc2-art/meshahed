@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Icon, type IconName } from "./Icon";
+import { RailScroll } from "./RailScroll";
 
 /**
  * صفّ أفقي قابل للسحب بدل شبكة تلتفّ.
@@ -41,7 +42,14 @@ export function PosterRail({
               className={iconColor ? "" : "text-muted"}
             />
           )}
-          {title}
+          {/* العنوان نفسه بابٌ حين توجد وجهة (طلب أحمد: «أقدر أضغط على الاسم») */}
+          {href ? (
+            <Link href={href} className="hover:text-accent transition">
+              {title}
+            </Link>
+          ) : (
+            title
+          )}
         </h2>
         {action
           ? action
@@ -66,9 +74,11 @@ export function PosterRail({
           ويبدأ هذا الصفّ من حافّة الشاشة بينما عنوانه وبقيّةُ الصفوف
           (التي لا التقاط فيها) على الهامش — خطّان مختلفان في الشاشة
           الواحدة. تعليم الحشوة للالتقاط يعيد الجميع إلى خطٍّ واحد. */}
-      <div className="-mx-4 px-4 scroll-px-4 overflow-x-auto overscroll-x-contain snap-x snap-proximity [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        <div className="flex gap-3 w-max pb-1">{children}</div>
-      </div>
+      {/* أسهم سطح المكتب داخل RailScroll — التعليق التاريخي عن الهوامش
+          والالتقاط انتقل معه إلى المكوّن نفسه */}
+      <RailScroll prevLabel="السابق / Previous" nextLabel="التالي / Next">
+        {children}
+      </RailScroll>
     </section>
   );
 }
@@ -77,7 +87,7 @@ export function PosterRail({
 export function RailItem({ children, wide = false }: { children: React.ReactNode; wide?: boolean }) {
   return (
     <div
-      className={`shrink-0 snap-start ${wide ? "w-[236px] sm:w-[280px]" : "w-[118px] sm:w-[138px]"}`}
+      className={`shrink-0 snap-start ${wide ? "w-[260px] sm:w-[320px]" : "w-[118px] sm:w-[138px]"}`}
     >
       {children}
     </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import Image from "next/image";
 import { Sheet, SheetHeader } from "./ui/Sheet";
@@ -65,6 +66,7 @@ export function FollowCountButton({
         {body}
       </button>
 
+      {open && typeof document !== "undefined" && createPortal(
       <Sheet open={open} onClose={() => setOpen(false)} closeLabel={labels.close} labelledBy={`fp-${dir}`}>
         <SheetHeader id={`fp-${dir}`} title={label} closeLabel={labels.close} onClose={() => setOpen(false)} />
         <div className="flex-1 min-h-0 overflow-y-auto pb-2">
@@ -112,7 +114,8 @@ export function FollowCountButton({
             </ul>
           )}
         </div>
-      </Sheet>
+      </Sheet>,
+      document.body)}
     </>
   );
 }
@@ -160,6 +163,7 @@ export function ToWatchStat({
         <span className="block text-[11px] text-muted mt-1.5 leading-[1.25]">{label}</span>
       </button>
 
+      {open && typeof document !== "undefined" && createPortal(
       <Sheet open={open} onClose={() => setOpen(false)} closeLabel={labels.close} labelledBy="towatch-peek">
         <SheetHeader id="towatch-peek" title={label} closeLabel={labels.close} onClose={() => setOpen(false)} />
         <div className="flex-1 min-h-0 overflow-y-auto pb-2">
@@ -190,7 +194,8 @@ export function ToWatchStat({
             </ul>
           )}
         </div>
-      </Sheet>
+      </Sheet>,
+      document.body)}
     </>
   );
 }
