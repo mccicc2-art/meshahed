@@ -36,8 +36,10 @@ export function PublicListsRail({
   return (
     <PosterRail title={title ?? t.publicListsRail} icon="list" iconColor="var(--accent-2)">
       {lists.map((l) => (
-        <RailItem key={l.id}>
-          <CommunityListCard list={l} locale={locale} className="w-56" />
+        /* wide لا الافتراضي: خانة الملصق (118px) لبطاقةٍ أعرض منها كانت
+           تجعل البطاقات تتراكب فوق بعضها (لقطة المالك — D-084) */
+        <RailItem key={l.id} wide>
+          <CommunityListCard list={l} locale={locale} className="w-full" />
         </RailItem>
       ))}
     </PosterRail>

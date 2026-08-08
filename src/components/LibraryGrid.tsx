@@ -269,6 +269,9 @@ export function LibraryGrid({
                     style={{ contentVisibility: "visible", containIntrinsicSize: "auto" }}
                     role="separator"
                   >
+                    {/* الكلمة في منتصف السطر لا في أوّله (طلب المالك):
+                        خيطان متساويان حولها فتتوسّط بعرض الشبكة كلّه */}
+                    <span className="flex-1 h-px bg-[color:var(--divider)]" aria-hidden />
                     <span className="shrink-0 text-[11px] font-bold text-muted">
                       {statusLabel(x.status, t)}
                     </span>
