@@ -65,6 +65,7 @@ export default async function SettingsPage({
         genres={profile?.favorite_genres ?? []}
         hideName={!!profile?.hide_name}
         isPrivate={!!profile?.is_private}
+        hideFollowLists={!!(profile as { hide_follow_lists?: boolean } | null)?.hide_follow_lists}
         homePrefs={profile?.home_prefs}
         traktReady={traktConfigured()}
         initial={initial}
