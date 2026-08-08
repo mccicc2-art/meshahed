@@ -29,6 +29,7 @@ import { Icon } from "@/components/Icon";
 import { LikeButton } from "@/components/LikeButton";
 import { ReportButton } from "@/components/ReportButton";
 import { segmentedItem, segmentedTrack, segmentedTrackFull } from "@/components/ui/controls";
+import { ScrollMemory } from "@/components/ScrollMemory";
 
 /** كم عملاً نطلب له صورةً عرضية — سقفٌ يمنع موجة طلباتٍ بحجم الخط */
 const BACKDROP_LIMIT = 12;
@@ -143,6 +144,8 @@ export default async function PeoplePage({
 
   return (
     <div className="space-y-5">
+      {/* ذاكرة موضع التمرير — العائد من ملف صديقٍ يهبط حيث كان (تدقيق 8 Aug م٢) */}
+      <ScrollMemory />
       {/* العنوان مخفيٌّ بصريّاً وباقٍ لقارئ الشاشة — أُزيلت كلمة «المجتمع»
           المرئية، وانتقل عدّادا المتابعة وزرّ الإضافة إلى صفّ الترتيب أسفل
           التبويبات (طلب المالك) */}
