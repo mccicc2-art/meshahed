@@ -129,6 +129,18 @@ export default async function NewsPage({
         era={browse.era?.slug ?? null}
         rate={browse.rate}
         count={browseCount(browse)}
+        listsFilters={
+          tab === "lists"
+            ? listsFiltersProps(
+                FRANCHISES.some((f) => f.slug === sp.fr) ? sp.fr! : null,
+                ["curated", "friends", "community"].includes(sp.lsrc ?? "")
+                  ? (sp.lsrc as "curated" | "friends" | "community")
+                  : "all",
+                locale === "en" ? "en" : "ar",
+                t,
+              )
+            : undefined
+        }
       />
 
       {tab === "lists" ? (
@@ -179,6 +191,33 @@ export default async function NewsPage({
  * كل عالمٍ صفٌّ باسمه: بطاقته الأولى القائمة الكاملة مرتّبةً، وبعدها
  * الفرعيات (سبايدر-مان، آيرون مان…) — ثم صفّا من تتابعهم والمجتمع.
  */
+
+/** خصائص فلاتر القوائم — يبنيها الخادم مرةً للزرّ (في سطر التبويبات) والرقائق */
+function listsFiltersProps(
+  fr: string | null,
+  lsrc: "all" | "curated" | "friends" | "community",
+  loc: "ar" | "en",
+  t: T,
+) {
+  return {
+    fr,
+    lsrc,
+    franchises: FRANCHISES.map((f) => ({ slug: f.slug, label: franchiseName(f, loc) })),
+    labels: {
+      button: t.browseFilters,
+      title: t.browseFiltersTitle,
+      world: t.listsFilterWorld,
+      source: t.listsFilterSource,
+      all: t.browseAll,
+      curated: t.listsCurated,
+      friends: t.listsFriendsRail,
+      community: t.publicListsRail,
+      apply: t.browseApply,
+      close: t.closeLabel,
+    },
+  };
+}
+
 async function ListsDiscovery({
   locale,
   t,
@@ -212,27 +251,19 @@ async function ListsDiscovery({
 
   return (
     <div className="space-y-8">
-      <ListsFilters
-        fr={fr}
-        lsrc={lsrc}
-        franchises={FRANCHISES.map((f) => ({ slug: f.slug, label: franchiseName(f, loc) }))}
-        labels={{
-          button: t.browseFilters,
-          title: t.browseFiltersTitle,
-          world: t.listsFilterWorld,
-          source: t.listsFilterSource,
-          all: t.browseAll,
-          curated: t.listsCurated,
-          friends: t.listsFriendsRail,
-          community: t.publicListsRail,
-          apply: t.browseApply,
-          close: t.closeLabel,
-        }}
-      />
+      {/* الزرّ صعد إلى سطر التبويبات (داخل DiscoverFilters) — هنا
+          رقائق المختار وحدها، كصفّ رقائق تبويب الأعمال (طلب أحمد) */}
+      <ListsFilters variant="chips" {...listsFiltersProps(fr, lsrc, loc, t)} />
 
       {(lsrc === "all" || lsrc === "curated") &&
         rows.map((f) => (
-          <PosterRail key={f.slug} title={franchiseName(f, loc)} icon="sparkle-star">
+          <PosterRail
+            key={f.slug}
+            title={franchiseName(f, loc)}
+            icon="sparkle-star"
+            /* اسم العالم بابه: ضغطة «مارفل» تعرض عالمه وحده (فلتر fr) */
+            href={`/news?tab=lists&fr=${f.slug}`}
+          >
             {f.sets.map((u) => (
               /* wide لا الافتراضي: بطاقة القائمة أعرض من بطاقة الملصق،
                  وخانةٌ ضيّقة كانت تجعل البطاقات تتراكب (لقطة المالك) */
