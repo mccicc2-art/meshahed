@@ -22,7 +22,9 @@ import {
   deleteCommunity,
   postCommunityMessage,
   searchCommunities,
+  setCommunityPhoto,
 } from "@/lib/actions";
+import { createClient } from "@/lib/supabase/client";
 import type { CommunityLite, CommunityRoomData, PersonLite } from "@/lib/data";
 
 type Dict = ReturnType<typeof getDict>;
@@ -135,7 +137,7 @@ export function CommunityDirectory({
                     href={`/people?tab=all&c=${c.id}`}
                     className="flex items-center gap-3 py-3 hover:bg-surface-2 -mx-2 px-2 rounded-xl transition"
                   >
-                    <CommunityBadge name={c.name} />
+                    <CommunityBadge name={c.name} photo={c.photo_url} />
                     <span className="min-w-0 flex-1">
                       <span className="flex items-center gap-1.5 text-sm font-semibold truncate">
                         <span className="truncate">{c.name}</span>
@@ -197,7 +199,7 @@ function CommunityRow({ c, t, locale }: { c: CommunityLite; t: Dict; locale: Loc
 
   return (
     <li className="flex items-center gap-3 py-3">
-      <CommunityBadge name={c.name} />
+      <CommunityBadge name={c.name} photo={c.photo_url} />
       <Link href={`/people?tab=all&c=${c.id}`} className="min-w-0 flex-1">
         <span className="flex items-center gap-1.5 text-sm font-semibold truncate">
           <span className="truncate">{c.name}</span>
@@ -230,8 +232,9 @@ function CommunityRow({ c, t, locale }: { c: CommunityLite; t: Dict; locale: Loc
   );
 }
 
-/** قرصُ حرفٍ باسم المجتمع — كالصورة الرمزية، بلا صورةٍ تُدار */
-function CommunityBadge({ name }: { name: string }) {
+/** قرص المجتمع: صورته إن رفعها المالك (هجرة 41)، وإلا حرفُ اسمه */
+function CommunityBadge({ name, photo }: { name: string; photo?: string | null }) {
+  if (photo) return <Avatar src={photo} name={name} size={44} className="shrink-0" alt="" />;
   return (
     <span className="shrink-0 grid place-items-center w-11 h-11 rounded-full bg-accent/15 text-accent font-extrabold text-lg">
       {name.trim().charAt(0)}
@@ -423,7 +426,11 @@ export function CommunityRoom({
         >
           <Icon name="chevron-down" size={18} className="rotate-90 rtl:-rotate-90" />
         </Link>
-        <CommunityBadge name={room.name} />
+        {room.isOwner ? (
+          <RoomPhotoButton room={room} t={t} />
+        ) : (
+          <CommunityBadge name={room.name} photo={room.photo_url} />
+        )}
         <span className="min-w-0 flex-1">
           <span className="flex items-center gap-1.5 text-sm font-bold truncate">
             <span className="truncate">{room.name}</span>
@@ -617,6 +624,101 @@ export function CommunityRoom({
         </Sheet>
       )}
     </div>
+  );
+}
+
+/**
+ * قرص الغرفة عند المالك: زرُّ رفع صورةٍ لا قرصاً صامتاً (طلب المالك).
+ *
+ * نفس مسار صورة الملف الشخصي حرفياً: مخزن `avatars` تحت مجلد المستخدم
+ * (سياسة المخزن تشترطه)، ملفٌّ باسمٍ يحمل معرّف المجتمع، حدُّ ٢م.ب
+ * والفحص الحقيقي في المخزن نفسه (storage_limits.sql)، وحذفُ السابق كي
+ * لا يتراكم. الرابط يُثبت عبر `setCommunityPhoto` — والفعل يتحقق منه
+ * بـ`safeImageUrl` قبل الكتابة.
+ */
+function RoomPhotoButton({ room, t }: { room: CommunityRoomData; t: Dict }) {
+  const router = useRouter();
+  const [photo, setPhoto] = useState(room.photo_url);
+  const [busy, setBusy] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  async function onPick(file: File) {
+    if (!file.type.startsWith("image/")) {
+      flashError(t.errPickImage);
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      flashError(t.errTooLarge);
+      return;
+    }
+    setBusy(true);
+    try {
+      const supabase = await createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) throw new Error(t.errUpload);
+      const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
+      const path = `${user.id}/community-${room.id}-${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from("avatars")
+        .upload(path, file, { upsert: true, contentType: file.type });
+      if (upErr) throw new Error(upErr.message);
+      const { data } = supabase.storage.from("avatars").getPublicUrl(path);
+
+      await setCommunityPhoto(room.id, data.publicUrl);
+
+      // احذف السابق — كل تغييرٍ كان سيترك نسخةً في المخزن للأبد
+      const marker = "/storage/v1/object/public/avatars/";
+      const at = photo?.indexOf(marker) ?? -1;
+      if (photo && at >= 0) {
+        const old = decodeURIComponent(photo.slice(at + marker.length).split("?")[0]);
+        if (old.startsWith(`${user.id}/`) && old !== path) {
+          await supabase.storage.from("avatars").remove([old]);
+        }
+      }
+
+      setPhoto(data.publicUrl);
+      coalescedRefresh(router);
+    } catch (e) {
+      flashError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        tap(8);
+        fileRef.current?.click();
+      }}
+      disabled={busy}
+      aria-label={t.commPhotoChange}
+      title={t.commPhotoChange}
+      className={`relative shrink-0 transition ${busy ? "opacity-50" : "hover:opacity-85"}`}
+    >
+      <CommunityBadge name={room.name} photo={photo} />
+      {/* شارة قلمٍ صغيرة: القرص القابل للتغيير يقول ذلك بنفسه */}
+      <span
+        className="absolute -bottom-0.5 -end-0.5 grid place-items-center w-[18px] h-[18px] rounded-full bg-surface-2 border border-border text-muted"
+        aria-hidden
+      >
+        <Icon name="edit" size={10} strokeWidth={2.4} />
+      </span>
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          e.target.value = "";
+          if (f) onPick(f);
+        }}
+      />
+    </button>
   );
 }
 

@@ -1,11 +1,8 @@
 import { getCollection, relatedTitles, titleOf, yearOf } from "@/lib/tmdb";
 import type { MediaType } from "@/lib/media";
 import { getDict, type Locale } from "@/lib/i18n";
-import { universeOf, universeName } from "@/lib/universes";
 import { PosterRail, RailItem } from "./PosterRail";
 import { PosterCard } from "./PosterCard";
-import { AddWorksToList } from "./AddWorksToList";
-import { Icon } from "./Icon";
 
 /**
  * ذيل صفحة العمل: الأجزاء ثم الأعمال المرتبطة.
@@ -19,6 +16,10 @@ import { Icon } from "./Icon";
  * (`belongs_to_collection`)، و«المرتبط» ترجيحٌ مبنيّ على السلوك. خلطهما في
  * صفٍّ واحد يجعل الجزء الرابع من السلسلة والعملَ الشبيه في مرتبةٍ واحدة —
  * وهما ليسا كذلك عند من يبحث عن تسلسل قصّة.
+ *
+ * **بلا أزرارٍ هنا منذ نقلة الترويسة (طلب المالك):** زرّا «احفظ الأجزاء»
+ * و«احفظ العالم» صعدا إلى جنب الملصق أعلى الصفحة، وبقي هذا الذيل للتصفّح
+ * وحده — بابٌ واحد لكل فعل، وزرٌّ مكرّر في مكانين حالتان تفترقان.
  */
 export async function RelatedTitles({
   mediaType,
@@ -33,17 +34,13 @@ export async function RelatedTitles({
   locale: Locale;
 }) {
   const t = getDict(locale);
-  const loc = locale === "en" ? "en" : "ar";
-
-  /* العالم فحصٌ محليّ في القاموس — لا طلب شبكة (universes.ts, D-074) */
-  const universe = mediaType === "movie" ? universeOf(tmdbId) : null;
 
   const [collection, related] = await Promise.all([
     collectionId ? getCollection(collectionId) : Promise.resolve(null),
     relatedTitles(mediaType, tmdbId),
   ]);
 
-  if (!collection && related.length === 0 && !universe) return null;
+  if (!collection && related.length === 0) return null;
 
   const href = (r: { id: number; media_type: MediaType | "person" }) =>
     `/${r.media_type === "tv" ? "show" : "movie"}/${r.id}`;
@@ -60,11 +57,6 @@ export async function RelatedTitles({
           title={t.relatedPartsTitle}
           icon="film"
           subtitle={collection.name}
-          action={
-            collectionId ? (
-              <AddWorksToList source="collection" id={collectionId} locale={locale} />
-            ) : undefined
-          }
         >
           {collection.parts.map((p) => (
             <RailItem key={p.id}>
@@ -77,30 +69,6 @@ export async function RelatedTitles({
             </RailItem>
           ))}
         </PosterRail>
-      )}
-
-      {/* ===== العالم الكامل (D-074) =====
-          بطاقةٌ لا صفُّ ملصقات: رسمُ عالمٍ من ٣٧ فيلماً يكلّف ٣٧ طلباً في
-          كل فتح صفحة، والزرّ لا يحمل بيانات أصلاً (D-052) — فالبطاقة تحمل
-          الاسم والوعد («بترتيب الأحداث») والزرّ، والقائمة الناتجة هي العرض */}
-      {universe && (
-        <section className="flex flex-wrap items-center gap-3 rounded-2xl border border-border bg-surface p-4">
-          <span
-            className="grid place-items-center w-10 h-10 rounded-full bg-accent/10 text-accent shrink-0"
-            aria-hidden
-          >
-            <Icon name="sparkle-star" size={18} />
-          </span>
-          <span className="min-w-0 flex-1 basis-52">
-            <span className="block text-[14px] font-bold truncate">
-              {universeName(universe, loc)}
-            </span>
-            <span className="block text-[12px] text-muted leading-snug mt-0.5">
-              {t.universeHint}
-            </span>
-          </span>
-          <AddWorksToList source="universe" id={universe.slug} locale={locale} />
-        </section>
       )}
 
       {related.length > 0 && (

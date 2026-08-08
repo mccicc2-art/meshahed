@@ -22,7 +22,7 @@ import { tap } from "@/lib/haptics";
 import { Icon } from "./Icon";
 import { Sheet, SheetHeader } from "./ui/Sheet";
 import { buttonClass } from "./ui/Button";
-import { chipClass, segmentedItem, segmentedTrackFull } from "./ui/controls";
+import { segmentedItem, segmentedTrackFull } from "./ui/controls";
 
 export interface FilterDraft {
   /** نافذة الترتيب — انتقلت من الرأس إلى هنا لمّا أخذ التبويبان مكانها */
@@ -42,19 +42,21 @@ export interface FilterDraft {
 /**
  * ورقة فلاتر «اكتشف».
  *
- * لماذا ورقةٌ لا صفوفُ رقائقٍ في الصفحة: الفلاتر أربعة محاور وستّة عشر
- * خياراً؛ لو فُرشت كلّها لأكلت الشاشة الأولى كاملةً وصار المحتوى — وهو
- * سبب الزيارة — تحت الطيّة. الشائع في التصفّح اختيارُ تصنيفٍ ثم تمرير،
- * فالتصنيف وحده يبقى ظاهراً والبقية خلف زرٍّ يحمل عدّاده.
+ * لماذا ورقةٌ لا صفوفُ رقائقٍ في الصفحة: الفلاتر ستة محاور؛ لو فُرشت
+ * كلّها لأكلت الشاشة الأولى كاملةً وصار المحتوى — وهو سبب الزيارة — تحت
+ * الطيّة. والتطبيق دفعةً واحدة لا عند كل لمسة: كل تغييرٍ يعيد رسم الصفحة
+ * على الخادم ويطلب TMDB، ومن يريد «تركي + ٢٠٢٠ + ٨ فأعلى» كان سيدفع
+ * ثلاث جولاتٍ يرى في اثنتين منها نتائج لا يريدها. المسوّدة محليّة،
+ * و«عرض النتائج» وحده يمسّ الرابط.
  *
- * والتطبيق دفعةً واحدة لا عند كل لمسة: كل تغييرٍ يعيد رسم الصفحة على
- * الخادم ويطلب TMDB، ومن يريد «تركي + ٢٠٢٠ + ٨ فأعلى» كان سيدفع ثلاث
- * جولاتٍ يرى في اثنتين منها نتائج لا يريدها. المسوّدة محليّة، و«عرض
- * النتائج» وحده يمسّ الرابط.
- *
- * ثلاثُ عائلاتٍ لا واحدة كان يمكن أن تُستعمل هنا — استُعملت الموجودتان
- * فقط: المقسّم لجهة المحتوى (خيارٌ واحدٌ من ثلاثة معروفة)، والرقائق لبقية
- * المحاور (قوائم مفتوحة تُمرَّر). لا شكل ثالث.
+ * **الشكل شبكةُ منسدلاتٍ بعمودين — قرار المالك (لقطة TMDB مرجعاً):**
+ * كل محاور القوائم صارت `<select>` أصلية متراصّةً بعمودين، فقصُرت الورقة
+ * من شاشات تمريرٍ عدّة إلى شاشةٍ واحدة. والأصلية لا المصنوعة للأسباب
+ * القائمة (D-016/D-018/D-033: مُنتقي النظام على الجوال، قارئ الشاشة،
+ * وخط ١٦ حتى لا يكبّر سفاري). **واستُبقي المقسّمان** — نافذة الترتيب
+ * وجهة المحتوى — لأن ثلاثة خياراتٍ ظاهرةً تُلمس لمسةً واحدة، ومنسدلةٌ
+ * لثلاثة خيارات ضغطةٌ إضافية بلا مقابل (نفس منطق لقطة TMDB التي أبقت
+ * Simple/Advanced مقسّماً).
  */
 export function DiscoverFilterSheet({
   locale,
@@ -191,179 +193,115 @@ export function DiscoverFilterSheet({
           </div>
         </section>
 
-        {/* ===== التصنيف =====
-            انتقل من صفّ تبويباتٍ في الرأس إلى قائمةٍ هنا (طلب المالك): مكانه
-            صار لنافذة الترتيب أعلى الصفحة. وقائمةٌ لا رقائق — خمسة عشر نوعاً
-            بالرقائق جدارٌ يملأ الورقة (نفس حجّة منصّات البث): ما فوق العشرة
-            قائمة. أصليّةٌ `<select>` لا مصنوعة (D-018/D-033، خطّها ١٦). */}
-        <section>
-          <label htmlFor="browse-genre" className="block text-xs font-bold text-muted mb-2">
-            {t.browseGenreGroup}
-          </label>
-          <div className="relative">
-            <select
-              id="browse-genre"
-              value={draft.genre ?? ""}
-              onChange={(e) => {
-                tap(6);
-                const v = e.target.value;
-                setDraft((d) => ({ ...d, genre: v || null }));
-              }}
-              className={`w-full appearance-none rounded-control border bg-surface-2 ps-3.5 pe-10 py-3 text-base font-semibold outline-none transition focus:border-accent ${
-                draft.genre ? "border-accent text-accent" : "border-border text-foreground"
-              }`}
+        {/* ===== شبكة المنسدلات — عمودان (طلب المالك، لقطة TMDB) =====
+            الرقائق سقطت كلّها: قوائمُ تُختار منها قيمةٌ واحدة، والمنسدلة
+            الأصلية تختصر كل قائمةٍ إلى سطرٍ مهما طالت. البلد يظهر خليةً
+            تحت العربية وحدها، والمنصّات تغيب خليتها إن تعذّر جلبها. */}
+        <div className="grid grid-cols-2 gap-x-3 gap-y-4">
+          <SelectField
+            id="browse-genre"
+            label={t.browseGenreGroup}
+            active={!!draft.genre}
+            value={draft.genre ?? ""}
+            onChange={(v) => set({ genre: v || null })}
+          >
+            <option value="">{t.browseAllGenres}</option>
+            {genres.map((g) => (
+              <option key={g.slug} value={g.slug}>
+                {browseGenreName(g, lang)}
+              </option>
+            ))}
+          </SelectField>
+
+          <SelectField
+            id="browse-lang"
+            label={t.browseLangGroup}
+            active={!!draft.lang}
+            value={draft.lang ?? ""}
+            /* مغادرة العربية تُسقط البلد معها — انظر showCountry */
+            onChange={(v) => set({ lang: v || null, country: null })}
+          >
+            <option value="">{t.browseAnyLang}</option>
+            {BROWSE_LANGS.map((l) => (
+              <option key={l.code} value={l.code}>
+                {browseLangName(l, lang)}
+              </option>
+            ))}
+          </SelectField>
+
+          {showCountry && (
+            <SelectField
+              id="browse-country"
+              label={t.browseCountryGroup}
+              active={!!draft.country}
+              value={draft.country ?? ""}
+              onChange={(v) => set({ country: v || null })}
             >
-              <option value="">{t.browseAllGenres}</option>
-              {genres.map((g) => (
-                <option key={g.slug} value={g.slug}>
-                  {browseGenreName(g, lang)}
+              <option value="">{t.browseAnyCountry}</option>
+              {BROWSE_COUNTRIES.map((c) => (
+                <option key={c.code} value={c.code}>
+                  {browseCountryName(c, lang)}
                 </option>
               ))}
-            </select>
-            <span
-              className="pointer-events-none absolute inset-y-0 end-3.5 grid place-items-center text-muted"
-              aria-hidden
-            >
-              <Icon name="chevron-down" size={16} strokeWidth={2.2} />
-            </span>
-          </div>
-        </section>
+            </SelectField>
+          )}
 
-        {/* ===== لغة العمل ===== */}
-        <FilterGroup title={t.browseLangGroup}>
-          <Chip on={!draft.lang} onClick={() => set({ lang: null, country: null })}>
-            {t.browseAnyLang}
-          </Chip>
-          {BROWSE_LANGS.map((l) => (
-            <Chip
-              key={l.code}
-              on={draft.lang === l.code}
-              onClick={() =>
-                set(
-                  draft.lang === l.code
-                    ? { lang: null, country: null }
-                    : { lang: l.code, country: null },
-                )
-              }
+          {providers.length > 0 && (
+            <SelectField
+              id="browse-provider"
+              label={t.browseProviderGroup(regionName(region, lang))}
+              active={!!draft.provider}
+              value={draft.provider ? String(draft.provider) : ""}
+              onChange={(v) => set({ provider: v ? Number(v) : null })}
             >
-              {browseLangName(l, lang)}
-            </Chip>
-          ))}
-        </FilterGroup>
+              <option value="">{t.browseAnyProvider}</option>
+              {providers.map((pr) => (
+                <option key={pr.id} value={pr.id}>
+                  {pr.name}
+                </option>
+              ))}
+            </SelectField>
+          )}
 
-        {/* ===== بلد الإنتاج — مع العربية وحدها =====
-            اللغة تفصل التركيّ عن الكوريّ ولا تفصل السعوديّ عن المصريّ:
-            ثلاثتها `ar`. فهذا المحور تفريعٌ للعربية لا محورٌ موازٍ، ولذلك
-            يظهر تحتها ويختفي بغيرها بدل أن يجلس دائماً فارغ المعنى */}
-        {showCountry && (
-          <FilterGroup title={t.browseCountryGroup}>
-            <Chip on={!draft.country} onClick={() => set({ country: null })}>
-              {t.browseAnyCountry}
-            </Chip>
-            {BROWSE_COUNTRIES.map((c) => (
-              <Chip
-                key={c.code}
-                on={draft.country === c.code}
-                onClick={() => set({ country: draft.country === c.code ? null : c.code })}
-              >
-                {browseCountryName(c, lang)}
-              </Chip>
+          <SelectField
+            id="browse-era"
+            label={t.browseEraGroup}
+            active={!!draft.era}
+            value={draft.era ?? ""}
+            onChange={(v) => set({ era: v || null })}
+          >
+            <option value="">{t.browseAnyEra}</option>
+            {BROWSE_ERAS.map((e) => (
+              <option key={e.slug} value={e.slug}>
+                {browseEraName(e, lang)}
+              </option>
             ))}
-          </FilterGroup>
-        )}
+          </SelectField>
 
-        {/* ===== متاح على =====
-            أكثر سؤالٍ عمليّ عند من يدفع اشتراكاً: «وش أشوف على شاهد؟».
-            البيانات موجودة عندنا أصلاً (تظهر في صفحة كل عمل) وكانت غائبة
-            عن التصفّح. والقائمة تُجلب من TMDB لا تُكتب هنا — معرّفات
-            المنصّات تتغيّر وتُدمَج، وقائمةٌ يدوية تصمت يوم تتغيّر.
-            وتختفي المجموعة كلها إن تعذّر الجلب: خانةٌ فارغة أسوأ من لا خانة.
-
-            **قائمةٌ منسدلة لا رقائق — وهذا ليس خروجاً على العائلتين.**
-            الرقيقة لقائمةٍ تُقرأ بلمحة؛ ومنصّات بلدٍ واحد تبلغ عشرات، وهي
-            بالرقائق جدارٌ يملأ الورقة ويدفن ما تحته (نفس الحجّة التي
-            أبقت قائمة اللغات سبعاً). فالحدّ: ما دون عشرة خياراتٍ رقائق،
-            وما فوقها قائمة.
-
-            وقائمةٌ أصليّة `<select>` لا منسدلةٌ مصنوعة: هذه ورقةٌ تحبس
-            التمرير وتحبس التركيز، والمنسدلة المصنوعة داخلها هي بالضبط
-            حيث تسكن العلل. والأصليّة تفتح مُنتقي النظام على الجوال، وتُقرأ
-            بقارئ الشاشة، وتُبحث بالكتابة. وخطّها ١٦ بكسلاً (D-033) وإلا
-            كبّر سفاري الصفحة عند فتحها. */}
-        {providers.length > 0 && (
-          <section>
-            <label
-              htmlFor="browse-provider"
-              className="block text-xs font-bold text-muted mb-2"
-            >
-              {t.browseProviderGroup(regionName(region, lang))}
-            </label>
-            <div className="relative">
-              <select
-                id="browse-provider"
-                value={draft.provider ?? ""}
-                onChange={(e) => {
-                  tap(6);
-                  const v = e.target.value;
-                  setDraft((d) => ({ ...d, provider: v ? Number(v) : null }));
-                }}
-                className={`w-full appearance-none rounded-control border bg-surface-2 ps-3.5 pe-10 py-3 text-base font-semibold outline-none transition focus:border-accent ${
-                  draft.provider ? "border-accent text-accent" : "border-border text-foreground"
-                }`}
-              >
-                <option value="">{t.browseAnyProvider}</option>
-                {providers.map((pr) => (
-                  <option key={pr.id} value={pr.id}>
-                    {pr.name}
-                  </option>
-                ))}
-              </select>
-              <span
-                className="pointer-events-none absolute inset-y-0 end-3.5 grid place-items-center text-muted"
-                aria-hidden
-              >
-                <Icon name="chevron-down" size={16} strokeWidth={2.2} />
-              </span>
-            </div>
-          </section>
-        )}
-
-        {/* ===== سنة الإصدار ===== */}
-        <FilterGroup title={t.browseEraGroup}>
-          <Chip on={!draft.era} onClick={() => set({ era: null })}>
-            {t.browseAnyEra}
-          </Chip>
-          {BROWSE_ERAS.map((e) => (
-            <Chip
-              key={e.slug}
-              on={draft.era === e.slug}
-              onClick={() => set({ era: draft.era === e.slug ? null : e.slug })}
-            >
-              {browseEraName(e, lang)}
-            </Chip>
-          ))}
-        </FilterGroup>
-
-        {/* ===== أدنى تقييم ===== */}
-        <FilterGroup title={t.browseRateGroup}>
-          <Chip on={!draft.rate} onClick={() => set({ rate: null })}>
-            {t.browseAnyRate}
-          </Chip>
-          {BROWSE_RATES.map((r) => (
-            <Chip
-              key={r}
-              on={draft.rate === r}
-              onClick={() => set({ rate: draft.rate === r ? null : r })}
-            >
-              {/* النجمة قبل الرقم في الجهتين: الرقم `dir="ltr"` وحده فلا
-                  ينقلب «٨ فأعلى» إلى «فأعلى ٨» في الواجهة العربية */}
-              <span className="inline-flex items-center gap-1">
-                <Icon name="star" size={13} strokeWidth={2} />
+          <SelectField
+            id="browse-rate"
+            label={t.browseRateGroup}
+            active={!!draft.rate}
+            value={draft.rate ? String(draft.rate) : ""}
+            onChange={(v) => {
+              const n = Number(v);
+              set({
+                rate: (BROWSE_RATES as readonly number[]).includes(n)
+                  ? (n as BrowseRate)
+                  : null,
+              });
+            }}
+          >
+            <option value="">{t.browseAnyRate}</option>
+            {BROWSE_RATES.map((r) => (
+              /* بلا نجمة داخل الخيار: `<option>` نصٌّ خام لا يحمل أيقونة،
+                 والمحرف ★ خطُّ نظامٍ يتقلّب شكله (D-002) — العنوان يكفي */
+              <option key={r} value={r}>
                 {t.browseRateFrom(num(r, locale))}
-              </span>
-            </Chip>
-          ))}
-        </FilterGroup>
+              </option>
+            ))}
+          </SelectField>
+        </div>
       </div>
 
       {/* ===== الأفعال =====
@@ -396,31 +334,52 @@ export function DiscoverFilterSheet({
   );
 }
 
-function FilterGroup({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section>
-      <h4 className="text-xs font-bold text-muted mb-2">{title}</h4>
-      {/* تلتفّ ولا تُمرَّر: داخل الورقة العرضُ مضمونٌ والالتفاف يُظهر كل
-          الخيارات دفعةً واحدة — الصفّ الممرَّر يُخفي نصفها خلف حافّة */}
-      <div role="group" aria-label={title} className="flex flex-wrap gap-2">
-        {children}
-      </div>
-    </section>
-  );
-}
-
-function Chip({
-  on,
-  onClick,
+/**
+ * خليّة منسدلةٍ واحدة: عنوانٌ فوق `<select>` أصلية بسهمٍ مرسوم.
+ *
+ * مساعدٌ محليّ لا مكوّنُ نظامٍ جديد: يجمع الهندسة التي كانت مكرّرةً
+ * لمنسدلتَي النوع والمنصّات ويعمّمها على الشبكة كلّها. الخط ١٦ (D-033)،
+ * واللون يشتدّ حين تحمل المنسدلة اختياراً — نفس لغة الرقائق السابقة.
+ */
+function SelectField({
+  id,
+  label,
+  active,
+  value,
+  onChange,
   children,
 }: {
-  on: boolean;
-  onClick: () => void;
+  id: string;
+  label: string;
+  /** هل تحمل قيمةً غير الافتراضي؟ — يشدّ الحدّ واللون */
+  active: boolean;
+  value: string;
+  onChange: (value: string) => void;
   children: React.ReactNode;
 }) {
   return (
-    <button type="button" aria-pressed={on} onClick={onClick} className={chipClass(on)}>
-      {children}
-    </button>
+    <div className="min-w-0">
+      <label htmlFor={id} className="block text-xs font-bold text-muted mb-2 truncate">
+        {label}
+      </label>
+      <div className="relative">
+        <select
+          id={id}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className={`w-full appearance-none rounded-control border bg-surface-2 ps-3.5 pe-9 py-3 text-base font-semibold outline-none transition focus:border-accent truncate ${
+            active ? "border-accent text-accent" : "border-border text-foreground"
+          }`}
+        >
+          {children}
+        </select>
+        <span
+          className="pointer-events-none absolute inset-y-0 end-3 grid place-items-center text-muted"
+          aria-hidden
+        >
+          <Icon name="chevron-down" size={16} strokeWidth={2.2} />
+        </span>
+      </div>
+    </div>
   );
 }

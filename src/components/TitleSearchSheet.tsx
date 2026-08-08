@@ -2,10 +2,14 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { getDict, type Locale } from "@/lib/i18n";
+import { aiStorySearch } from "@/lib/actions";
+import { flashError } from "@/lib/toast";
+import { tap } from "@/lib/haptics";
 import { Icon } from "./Icon";
 import { Sheet, SheetHeader } from "./ui/Sheet";
+import { buttonClass } from "./ui/Button";
 
 /** أدنى عدد أحرف يُطلق البحث — مطابقٌ لحدّ `/api/suggest` وبحث الأشخاص */
 const MIN = 2;
@@ -45,6 +49,35 @@ export function TitleSearchSheet({
   const [loading, setLoading] = useState(false);
   const [touched, setTouched] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  /* ===== وضع الذكاء (D-076) =====
+     وضعان في ورقةٍ واحدة لا ورقتان: البحث فعلٌ واحد عند المستخدم سواء
+     كتب اسماً أو وصف قصةً — والتبديل يحفظ مصيدة التركيز (منطق D-066).
+     نتائج الذكاء تُطلب بزرٍّ لا مع الكتابة: النداء يكلّف نموذجاً وعشرة
+     طلبات TMDB، ووصفُ قصةٍ يُكتب كاملاً ثم يُسأل عنه. */
+  const [ai, setAi] = useState(false);
+  const [aiText, setAiText] = useState("");
+  const [aiItems, setAiItems] = useState<Suggestion[] | null>(null);
+  const [aiPending, startAi] = useTransition();
+
+  function runAi() {
+    const desc = aiText.trim();
+    if (desc.length < 8 || aiPending) return;
+    tap([12, 30]);
+    startAi(async () => {
+      try {
+        const res = await aiStorySearch(desc);
+        if (!res.ok) {
+          if (res.reason === "unconfigured") flashError(t.aiSearchMissing);
+          else setAiItems([]);
+          return;
+        }
+        setAiItems(res.results);
+      } catch (e) {
+        flashError((e as Error).message);
+      }
+    });
+  }
 
   /* التركيز بعد إطارٍ واحد: الورقة تنقل التركيز إلى لوحها عند الفتح،
      فالتركيز الفوري يُسلب منه قبل أن تظهر لوحة المفاتيح.
@@ -114,90 +147,149 @@ export function TitleSearchSheet({
         onClose={onClose}
       />
 
-      <div className="px-5 pt-4 pb-3">
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (term) go(`/search?q=${encodeURIComponent(term)}`);
-          }}
-        >
-          <div className="relative">
-            <span className="absolute inset-y-0 start-3.5 grid place-items-center text-muted pointer-events-none">
-              <Icon name="search" size={18} />
-            </span>
-            <input
-              ref={inputRef}
-              value={q}
-              onChange={(e) => changeQ(e.target.value)}
-              placeholder={t.searchPlaceholder}
-              aria-label={t.searchPlaceholder}
-              /* ١٦ بكسلاً لا ١٤: سفاري iOS يكبّر الصفحة تلقائياً عند
-                 التركيز على أي حقلٍ خطُّه أصغر من ١٦، فتقفز الشاشة عند
-                 فتح البحث. الحجم هنا يمنع القفزة من أصلها بلا
-                 `maximum-scale` الذي يمنع تكبير المستخدم أيضاً */
-              className="w-full rounded-xl bg-surface-2 border border-border ps-10 pe-4 py-3 text-base outline-none focus:border-accent transition"
-              type="search"
-              enterKeyHint="search"
-              autoComplete="off"
+      <div className="px-5 pt-4 pb-3 space-y-3">
+        {!ai ? (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (term) go(`/search?q=${encodeURIComponent(term)}`);
+            }}
+          >
+            <div className="relative">
+              <span className="absolute inset-y-0 start-3.5 grid place-items-center text-muted pointer-events-none">
+                <Icon name="search" size={18} />
+              </span>
+              <input
+                ref={inputRef}
+                value={q}
+                onChange={(e) => changeQ(e.target.value)}
+                placeholder={t.searchPlaceholder}
+                aria-label={t.searchPlaceholder}
+                /* ١٦ بكسلاً لا ١٤: سفاري iOS يكبّر الصفحة تلقائياً عند
+                   التركيز على أي حقلٍ خطُّه أصغر من ١٦، فتقفز الشاشة عند
+                   فتح البحث. الحجم هنا يمنع القفزة من أصلها بلا
+                   `maximum-scale` الذي يمنع تكبير المستخدم أيضاً */
+                className="w-full rounded-xl bg-surface-2 border border-border ps-10 pe-4 py-3 text-base outline-none focus:border-accent transition"
+                type="search"
+                enterKeyHint="search"
+                autoComplete="off"
+              />
+            </div>
+          </form>
+        ) : (
+          <div className="space-y-2">
+            <textarea
+              value={aiText}
+              onChange={(e) => setAiText(e.target.value.slice(0, 600))}
+              placeholder={t.aiSearchPlaceholder}
+              aria-label={t.aiSearchPlaceholder}
+              rows={3}
+              /* نفس قاعدة الـ١٦ بكسلاً — الحقل حقلُ كتابةٍ كسائرها */
+              className="w-full rounded-xl bg-surface-2 border border-border px-4 py-3 text-base outline-none focus:border-accent transition resize-none"
             />
+            <button
+              type="button"
+              onClick={runAi}
+              disabled={aiPending || aiText.trim().length < 8}
+              className={buttonClass({ variant: "primary", size: "md", className: "w-full" })}
+            >
+              {aiPending ? t.peopleSearching : t.aiSearchRun}
+            </button>
           </div>
-        </form>
+        )}
+
+        {/* التبديل بين الوضعين — سطرٌ واحد لا عائلة تحكّمٍ جديدة */}
+        <button
+          type="button"
+          onClick={() => {
+            tap(8);
+            setAi((v) => !v);
+          }}
+          className="w-full flex items-center justify-center gap-1.5 text-[13px] font-semibold text-muted hover:text-accent transition py-1"
+        >
+          <Icon name={ai ? "search" : "sparkles"} size={15} strokeWidth={2} />
+          {ai ? t.aiSearchBack : t.aiSearchBtn}
+        </button>
       </div>
 
       <div className="overflow-y-auto overscroll-contain divide-y divide-[color:var(--divider)] min-h-[6rem]">
-        {loading ? (
+        {ai ? (
+          aiPending ? (
+            <p className="text-sm text-muted text-center py-8">{t.peopleSearching}</p>
+          ) : aiItems === null ? (
+            <p className="text-xs text-muted text-center py-8 px-5">{t.aiSearchHint}</p>
+          ) : aiItems.length === 0 ? (
+            <p className="text-sm text-muted text-center py-8 px-5">{t.aiSearchEmpty}</p>
+          ) : (
+            aiItems.map((s) => <ResultRow key={`${s.kind}-${s.id}`} s={s} t={t} onGo={go} />)
+          )
+        ) : loading ? (
           <p className="text-sm text-muted text-center py-8">{t.peopleSearching}</p>
         ) : term.length < MIN ? (
           <p className="text-xs text-muted text-center py-8 px-5">{t.searchStart}</p>
         ) : items.length === 0 && touched ? (
           <p className="text-sm text-muted text-center py-8 px-5">{t.searchNoResults}</p>
         ) : (
-          items.map((s) => {
-            const person = s.kind === "person";
-            const href = person
-              ? `/person/${s.id}`
-              : `/${s.kind === "tv" ? "show" : "movie"}/${s.id}`;
-            return (
-              <button
-                key={`${s.kind}-${s.id}`}
-                type="button"
-                onClick={() => go(href)}
-                className="w-full flex items-center gap-3 px-5 py-2.5 text-start hover:bg-surface-2 transition"
-              >
-                {/* الشخص صورةٌ دائرية والعمل ملصقٌ رأسيّ — الشكل يقول النوع */}
-                <span
-                  className={`relative shrink-0 overflow-hidden bg-surface-2 block ${
-                    person ? "w-9 h-9 rounded-full" : "w-9 aspect-[2/3] rounded-md"
-                  }`}
-                >
-                  {s.poster ? (
-                    <Image src={s.poster} alt="" fill sizes="36px" className="object-cover" />
-                  ) : (
-                    <span className="w-full h-full grid place-items-center text-muted" aria-hidden>
-                      <Icon name={person ? "people" : s.kind === "tv" ? "tv" : "film"} size={14} />
-                    </span>
-                  )}
-                </span>
-
-                <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-semibold truncate">{s.title}</span>
-                  <span className="block text-[11px] text-muted truncate">
-                    {person
-                      ? s.subtitle || t.searchPeopleTitle
-                      : `${s.kind === "tv" ? t.typeSeries : t.typeMovie}${s.year ? ` · ${s.year}` : ""}`}
-                  </span>
-                </span>
-
-                {!person && s.rating != null && s.rating > 0 && (
-                  <span className="text-[11px] font-bold text-accent tabular-nums shrink-0" dir="ltr">
-                    ★ {s.rating}
-                  </span>
-                )}
-              </button>
-            );
-          })
+          items.map((s) => <ResultRow key={`${s.kind}-${s.id}`} s={s} t={t} onGo={go} />)
         )}
       </div>
     </Sheet>
+  );
+}
+
+/**
+ * صفّ نتيجةٍ واحد — يخدم بحث الاسم وبحث الذكاء معاً (D-076).
+ * استُخرج من جسم القائمة لمّا صار للورقة مصدران للنتائج: صفٌّ واحد يعني
+ * هندسةً واحدة مهما اختلف الطريق إليها.
+ */
+function ResultRow({
+  s,
+  t,
+  onGo,
+}: {
+  s: Suggestion;
+  t: ReturnType<typeof getDict>;
+  onGo: (href: string) => void;
+}) {
+  const person = s.kind === "person";
+  const href = person
+    ? `/person/${s.id}`
+    : `/${s.kind === "tv" ? "show" : "movie"}/${s.id}`;
+  return (
+    <button
+      type="button"
+      onClick={() => onGo(href)}
+      className="w-full flex items-center gap-3 px-5 py-2.5 text-start hover:bg-surface-2 transition"
+    >
+      {/* الشخص صورةٌ دائرية والعمل ملصقٌ رأسيّ — الشكل يقول النوع */}
+      <span
+        className={`relative shrink-0 overflow-hidden bg-surface-2 block ${
+          person ? "w-9 h-9 rounded-full" : "w-9 aspect-[2/3] rounded-md"
+        }`}
+      >
+        {s.poster ? (
+          <Image src={s.poster} alt="" fill sizes="36px" className="object-cover" />
+        ) : (
+          <span className="w-full h-full grid place-items-center text-muted" aria-hidden>
+            <Icon name={person ? "people" : s.kind === "tv" ? "tv" : "film"} size={14} />
+          </span>
+        )}
+      </span>
+
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-semibold truncate">{s.title}</span>
+        <span className="block text-[11px] text-muted truncate">
+          {person
+            ? s.subtitle || t.searchPeopleTitle
+            : `${s.kind === "tv" ? t.typeSeries : t.typeMovie}${s.year ? ` · ${s.year}` : ""}`}
+        </span>
+      </span>
+
+      {!person && s.rating != null && s.rating > 0 && (
+        <span className="text-[11px] font-bold text-accent tabular-nums shrink-0" dir="ltr">
+          ★ {s.rating}
+        </span>
+      )}
+    </button>
   );
 }

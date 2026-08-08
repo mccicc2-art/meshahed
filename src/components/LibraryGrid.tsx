@@ -27,6 +27,8 @@ export interface GridItem {
   dropped?: boolean;
   /** مكتملٌ — يفتح خيار «أشاهده من جديد» */
   completed?: boolean;
+  /** حالة المشاهدة — تغذّي رقائق التقسيم (طلب المالك)؛ الصفحة تحسبها */
+  status?: LibraryStatus;
   /** للإجراءات السريعة بالضغطة المطوّلة */
   tmdbId?: number;
   mediaType?: "tv" | "movie";
@@ -47,6 +49,9 @@ export interface GridItem {
  */
 export type LibraryTab = "shows" | "movies" | "lists";
 
+/** حالات التقسيم — «أشاهدها» للمسلسلات وحدها؛ الفيلم يُشاهد أو لا */
+export type LibraryStatus = "watching" | "unstarted" | "completed" | "dropped";
+
 export function LibraryGrid({
   shows,
   movies,
@@ -65,21 +70,42 @@ export function LibraryGrid({
   const [tab, setTab] = useState<LibraryTab>(initialTab);
   const [q, setQ] = useState("");
   const [sort, setSort] = useState<"smart" | "title" | "progress">("smart");
+  /* رقاقة الحالة (طلب المالك): «الكل» افتراضاً، والترشيح محليّ كالبحث */
+  const [status, setStatus] = useState<"all" | LibraryStatus>("all");
   const [sheet, setSheet] = useState<GridItem | null>(null);
 
   /* البحث والفرز في الذاكرة: القائمة وصلت كاملةً من الخادم، فالحرف
      الواحد يصفّي فوراً بلا رحلة شبكة */
   const items = useMemo(() => {
     const base = tab === "movies" ? movies : shows;
+    const byStatus = status === "all" ? base : base.filter((x) => x.status === status);
     const needle = q.trim().toLowerCase();
     const filtered = needle
-      ? base.filter((x) => x.title.toLowerCase().includes(needle))
-      : base;
+      ? byStatus.filter((x) => x.title.toLowerCase().includes(needle))
+      : byStatus;
     if (sort === "title") return [...filtered].sort((a, b) => a.title.localeCompare(b.title));
     if (sort === "progress")
       return [...filtered].sort((a, b) => (b.progress ?? 0) - (a.progress ?? 0));
     return filtered;
-  }, [tab, shows, movies, q, sort]);
+  }, [tab, shows, movies, q, sort, status]);
+
+  /* عدّاد كل رقاقةٍ من التبويب الحاليّ — الرقم يجيب «كم عندي؟» قبل الضغط */
+  const statusCounts = useMemo(() => {
+    const base = tab === "movies" ? movies : shows;
+    const n = { watching: 0, unstarted: 0, completed: 0, dropped: 0 };
+    for (const x of base) if (x.status) n[x.status]++;
+    return n;
+  }, [tab, shows, movies]);
+
+  /* «أشاهدها» رقاقة مسلسلاتٍ فقط: الفيلم لا وسطَ له — تظهر الرقائق
+     ذوات المعنى في التبويب الحالي وحدها، ورقاقةٌ صفريّةُ العدّ تبقى
+     ظاهرةً (إخفاؤها يجعل الصفّ يقفز بين التبويبات، D-046 روحاً) */
+  const statusChips: { id: LibraryStatus; label: string }[] = [
+    ...(tab === "shows" ? [{ id: "watching" as const, label: t.libStatusWatching }] : []),
+    { id: "completed" as const, label: t.libStatusCompleted },
+    { id: "unstarted" as const, label: t.libStatusUnstarted },
+    { id: "dropped" as const, label: t.libStatusDropped },
+  ];
 
   const tabs = [
     { id: "shows" as const, icon: "tv" as const, label: t.shortShows, n: shows.length },
@@ -110,7 +136,12 @@ export function LibraryGrid({
               id={`lib-tab-${id}`}
               aria-selected={active}
               aria-controls="lib-panel"
-              onClick={() => setTab(id)}
+              onClick={() => {
+                setTab(id);
+                /* «أشاهدها» المختارة في المسلسلات لا معنى لها في الأفلام —
+                   تبديل التبويب يعيد «الكل» بدل شبكةٍ فارغةٍ بلا سبب ظاهر */
+                setStatus("all");
+              }}
               className={segmentedItem(
                 active,
                 "flex-1 basis-0 min-w-0 flex items-center justify-center gap-2 px-2 pt-1.5 pb-3 text-[13px]",
@@ -176,6 +207,40 @@ export function LibraryGrid({
             </button>
           ))}
         </div>
+      </div>
+
+      {/* ===== رقائق الحالة (طلب المالك): تقسيمٌ خفيف فوق الشبكة =====
+          صفٌّ يُمرَّر أفقياً لا يلتفّ: خمس رقائق بعدّاداتها تلتهم سطرين
+          على الجوال لو التفّت، والشبكة هي الصفحة */}
+      <div
+        role="group"
+        aria-label={t.libStatusGroup}
+        className="flex items-center gap-1.5 overflow-x-auto -mx-4 px-4 mb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
+        <button
+          type="button"
+          aria-pressed={status === "all"}
+          onClick={() => setStatus("all")}
+          className={`${chipClass(status === "all", "sm")} shrink-0`}
+        >
+          {t.browseAll}
+        </button>
+        {statusChips.map(({ id, label }) => (
+          <button
+            key={id}
+            type="button"
+            aria-pressed={status === id}
+            onClick={() => setStatus(status === id ? "all" : id)}
+            className={`${chipClass(status === id, "sm")} shrink-0`}
+          >
+            <span className="inline-flex items-center gap-1">
+              {label}
+              <span className="text-[10px] tabular-nums opacity-75" dir="ltr">
+                {statusCounts[id]}
+              </span>
+            </span>
+          </button>
+        ))}
       </div>
 
       <p className="text-[10px] text-muted/80 mb-4">{t.longPressHint}</p>
