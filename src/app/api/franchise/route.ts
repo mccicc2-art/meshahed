@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getUser, getWatchedMovieIds, getFollows } from "@/lib/data";
-import { getCollection, posterUrl, titleOf, yearOf } from "@/lib/tmdb";
+import { getCollection, moviesByIds, posterUrl, resolveSetIds, titleOf, yearOf } from "@/lib/tmdb";
+import { universeBySlug, universeName } from "@/lib/universes";
+import { getLocale } from "@/lib/locale";
 import { allow, retryAfter } from "@/lib/ratelimit";
 
 /**
@@ -30,6 +32,37 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const id = Number(url.searchParams.get("id"));
   const exclude = Number(url.searchParams.get("exclude"));
+  const slug = url.searchParams.get("slug");
+
+  /* slug = مجموعة منسّقة من universes.ts (معاينة بطاقات القوائم —
+     دفعة أحمد الثالثة): تُحلّ معرّفاتها ثم تُلبس نفس شكل ردّ السلسلة،
+     فورقة المعاينة الواحدة تخدم المصدرين بلا فرع في العميل */
+  if (slug) {
+    const u = universeBySlug(slug.trim().toLowerCase());
+    if (!u) return NextResponse.json({ parts: [] });
+    const [ids, watchedIds, follows, locale] = await Promise.all([
+      resolveSetIds(u),
+      getWatchedMovieIds(),
+      getFollows(),
+      getLocale(),
+    ]);
+    const movies = await moviesByIds(ids).catch(() => []);
+    const savedSet = new Set(
+      follows.filter((f) => f.media_type === "movie").map((f) => f.tmdb_id),
+    );
+    return NextResponse.json({
+      name: universeName(u, locale === "en" ? "en" : "ar"),
+      parts: movies.map((m) => ({
+        id: m.id,
+        title: m.title,
+        year: (m.release_date ?? "").slice(0, 4) || null,
+        poster: posterUrl(m.poster_path, "w342"),
+        watched: watchedIds.has(m.id),
+        saved: savedSet.has(m.id),
+      })),
+    });
+  }
+
   if (!Number.isInteger(id) || id <= 0) return NextResponse.json({ parts: [] });
 
   const [collection, watchedIds, follows] = await Promise.all([
