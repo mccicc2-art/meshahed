@@ -19,7 +19,6 @@ const SECTIONS = [
   "appearance",
   "customize",
   "import",
-  "widgets",
   "billing",
 ] as const;
 
