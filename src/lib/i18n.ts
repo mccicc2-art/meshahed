@@ -271,6 +271,13 @@ const ar = {
   // اكتشاف القوائم العامة
   publicListsRail: "قوائم من المجتمع",
   listByOwner: (name: string): string => `من ${name}`,
+  // تبويبا اكتشف + تبويب القوائم
+  discoverTabsGroup: "أقسام اكتشف",
+  discoverTabTitles: "أفلام ومسلسلات",
+  discoverTabLists: "القوائم",
+  listsSearchPlaceholder: "ابحث في قوائم المجتمع",
+  listsSearchEmpty: "لا قوائم بهذا الاسم.",
+  listsBrowseEmpty: "لا قوائم معلنة بعد.",
   // المجتمعات
   commDirTitle: "المجتمعات",
   commMineSection: "مجتمعاتي",
@@ -963,6 +970,12 @@ const en: Dict = {
   followArtistAria: "Follow this artist",
   publicListsRail: "Lists from the community",
   listByOwner: (name: string): string => `by ${name}`,
+  discoverTabsGroup: "Discover sections",
+  discoverTabTitles: "Movies & Shows",
+  discoverTabLists: "Lists",
+  listsSearchPlaceholder: "Search community lists",
+  listsSearchEmpty: "No lists match that name.",
+  listsBrowseEmpty: "No public lists yet.",
   commDirTitle: "Communities",
   commMineSection: "My communities",
   commCreate: "Create a community",

@@ -1895,6 +1895,36 @@ async function shapeListCards(
     .filter((c) => c.item_count > 0);
 }
 
+/**
+ * البحث في قوائم المجتمع المعلنة بالاسم — لتبويب «القوائم» في اكتشف.
+ *
+ * بحثُ خادمٍ لا ترشيحٌ محليّ: القوائم العامة كلّها لا تُحمَّل للمتصفّح
+ * أصلاً (بخلاف بحث الرسائل الذي يرشّح ما حُمِّل). و`ilike` يكفي هنا —
+ * الاسم قصير والبحث «يحتوي» لا لغويّ، ومحارف النمط تُنزع من المدخل كي
+ * لا يكتب أحدهم `%` فيطابق كلَّ شيء.
+ */
+export async function searchPublicLists(q: string, limit = 40): Promise<PublicListCard[]> {
+  try {
+    const needle = q.trim().replace(/[%_\\]/g, "").slice(0, 60);
+    if (!needle) return [];
+    const supabase = await createClient();
+    const user = await getUser();
+    if (!user) return [];
+    const { data: lists } = await supabase
+      .from("user_lists")
+      .select("id, user_id, name, kind, updated_at")
+      .eq("is_public", true)
+      .neq("user_id", user.id)
+      .ilike("name", `%${needle}%`)
+      .order("updated_at", { ascending: false })
+      .limit(limit);
+    if (!lists?.length) return [];
+    return await shapeListCards(lists, true);
+  } catch {
+    return [];
+  }
+}
+
 export async function getPublicListsFeed(limit = 15): Promise<PublicListCard[]> {
   try {
     const supabase = await createClient();
