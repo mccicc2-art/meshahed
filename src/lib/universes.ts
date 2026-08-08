@@ -172,9 +172,208 @@ export const CURATED: Universe[] = [
   },
 ];
 
-/** كل المجموعات المنسّقة معاً — لصفّ «قوائم منسّقة» في ديسكفري القوائم */
+/**
+ * قوائم فرعية داخل كل عالم — «مارفل كاملة ثم سبايدر-مان ثم آيرون مان»
+ * (طلب أحمد لديسكفري القوائم). خارج `universeOf` كالمنسّقات: بطاقة
+ * العالم في الترويسة للعوالم الكاملة وحدها. المعرّفات خارج قواميس
+ * العوالم (ريمي، نولان، بيكسار…) مكتوبة يداً بنفس عقيدة D-050 —
+ * والخاطئ منها يسقط بصمتٍ من moviesByIds.
+ */
+export const SUBLISTS: Universe[] = [
+  // ---- مارفل ----
+  {
+    slug: "spiderman",
+    ar: "أفلام سبايدر-مان",
+    en: "Spider-Man Movies",
+    movieIds: [
+      557,    // Spider-Man (2002)
+      558,    // Spider-Man 2
+      559,    // Spider-Man 3
+      1930,   // The Amazing Spider-Man
+      102382, // The Amazing Spider-Man 2
+      315635, // Homecoming
+      429617, // Far From Home
+      634649, // No Way Home
+      324857, // Into the Spider-Verse
+      569094, // Across the Spider-Verse
+    ],
+  },
+  {
+    storyOrder: true,
+    slug: "ironman",
+    ar: "آيرون مان",
+    en: "Iron Man",
+    movieIds: [1726, 10138, 68721],
+  },
+  {
+    storyOrder: true,
+    slug: "avengers",
+    ar: "الأفنجرز",
+    en: "The Avengers",
+    movieIds: [24428, 99861, 299536, 299534],
+  },
+  {
+    storyOrder: true,
+    slug: "captainamerica",
+    ar: "كابتن أمريكا",
+    en: "Captain America",
+    movieIds: [1771, 100402, 271110, 822119],
+  },
+  {
+    storyOrder: true,
+    slug: "thor",
+    ar: "ثور",
+    en: "Thor",
+    movieIds: [10195, 76338, 284053, 616037],
+  },
+  {
+    storyOrder: true,
+    slug: "gotg",
+    ar: "حراس المجرة",
+    en: "Guardians of the Galaxy",
+    movieIds: [118340, 283995, 447365],
+  },
+  // ---- DC ----
+  {
+    slug: "batman",
+    ar: "أفلام باتمان",
+    en: "Batman Movies",
+    movieIds: [
+      268,    // Batman (1989)
+      364,    // Batman Returns
+      414,    // Batman Forever
+      415,    // Batman & Robin
+      272,    // Batman Begins
+      155,    // The Dark Knight
+      49026,  // The Dark Knight Rises
+      414906, // The Batman
+    ],
+  },
+  {
+    slug: "superman",
+    ar: "أفلام سوبرمان",
+    en: "Superman Movies",
+    movieIds: [
+      1924,    // Superman (1978)
+      49521,   // Man of Steel
+      209112,  // Batman v Superman
+      1061474, // Superman (2025)
+    ],
+  },
+  {
+    storyOrder: true,
+    slug: "joker",
+    ar: "جوكر",
+    en: "Joker",
+    movieIds: [475557, 889737],
+  },
+  // ---- هاري بوتر ----
+  {
+    storyOrder: true,
+    slug: "harrypotter",
+    ar: "أفلام هاري بوتر الثمانية",
+    en: "The Harry Potter Films",
+    movieIds: [671, 672, 673, 674, 675, 767, 12444, 12445],
+  },
+  {
+    storyOrder: true,
+    slug: "fantasticbeasts",
+    ar: "الوحوش المذهلة",
+    en: "Fantastic Beasts",
+    movieIds: [259316, 338952, 338953],
+  },
+  // ---- حرب النجوم ----
+  {
+    storyOrder: true,
+    slug: "skywalker",
+    ar: "ملحمة سكاي ووكر",
+    en: "The Skywalker Saga",
+    movieIds: [1893, 1894, 1895, 11, 1891, 1892, 140607, 181808, 181812],
+  },
+  {
+    storyOrder: true,
+    slug: "swstories",
+    ar: "حكايات حرب النجوم",
+    en: "A Star Wars Story",
+    movieIds: [348350, 330459],
+  },
+  // ---- ديزني ----
+  {
+    slug: "pixar",
+    ar: "أفلام بيكسار",
+    en: "Pixar",
+    movieIds: [
+      862,     // Toy Story
+      863,     // Toy Story 2
+      585,     // Monsters, Inc.
+      12,      // Finding Nemo
+      9806,    // The Incredibles
+      2062,    // Ratatouille
+      10681,   // WALL·E
+      14160,   // Up
+      10193,   // Toy Story 3
+      150540,  // Inside Out
+      354912,  // Coco
+      1022789, // Inside Out 2
+    ],
+  },
+];
+
+/**
+ * صفوف ديسكفري القوائم: عنوانُ عالمٍ ثم بطاقاته — الكاملة أولاً ثم
+ * الفرعيات (طلب أحمد: «مكان الأزرق عالم مارفل، والقوائم: مارفل كامل
+ * مرتّب ثم سبايدر-مان ثم آيرون مان وهكذا»).
+ */
+export interface Franchise {
+  slug: string;
+  ar: string;
+  en: string;
+  sets: Universe[];
+}
+
+const bySlug = (slug: string): Universe =>
+  [...UNIVERSES, ...CURATED, ...SUBLISTS].find((u) => u.slug === slug)!;
+
+export const FRANCHISES: Franchise[] = [
+  {
+    slug: "marvel",
+    ar: "عالم مارفل",
+    en: "Marvel",
+    sets: ["mcu", "spiderman", "ironman", "avengers", "captainamerica", "thor", "gotg"].map(bySlug),
+  },
+  {
+    slug: "dcworld",
+    ar: "عالم DC",
+    en: "DC",
+    sets: ["dc", "batman", "superman", "joker"].map(bySlug),
+  },
+  {
+    slug: "wizardingworld",
+    ar: "عالم هاري بوتر",
+    en: "Wizarding World",
+    sets: ["wizarding", "harrypotter", "fantasticbeasts"].map(bySlug),
+  },
+  {
+    slug: "starwarsworld",
+    ar: "عالم حرب النجوم",
+    en: "Star Wars",
+    sets: ["starwars", "skywalker", "swstories"].map(bySlug),
+  },
+  {
+    slug: "disneyworld",
+    ar: "ديزني وبيكسار",
+    en: "Disney & Pixar",
+    sets: ["disney", "pixar"].map(bySlug),
+  },
+];
+
+export function franchiseName(f: Franchise, locale: "ar" | "en") {
+  return locale === "en" ? f.en : f.ar;
+}
+
+/** كل المجموعات المنسّقة معاً — قاموس `universeBySlug` (محرّك حفظٍ واحد) */
 export function allCuratedSets(): Universe[] {
-  return [...UNIVERSES, ...CURATED];
+  return [...UNIVERSES, ...CURATED, ...SUBLISTS];
 }
 
 /** أي عالمٍ ينتمي إليه هذا الفيلم؟ — فحصٌ محليّ بلا طلب شبكة (العوالم وحدها) */
