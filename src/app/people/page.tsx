@@ -7,6 +7,7 @@ import {
   getFollowLists,
   getIncomingFollowRequests,
   getMyCommunities,
+  getMyCommunityInvites,
   getCommunityRoom,
   getConversations,
   getUnreadShares,
@@ -58,9 +59,11 @@ export default async function PeoplePage({
   /* «المجتمع» صار دليلَ مجتمعاتٍ لا خطَّ تفاعلات (قرار المالك): خطُّ
      الجميع أُسقط — «مجتمعي» يكفي لدائرتك والتقييمات في صفحة كل عمل —
      فسقط طلبُه أيضاً، وحلّ محلّه نداءُ مجتمعاتي الخفيف لعدّاد التبويب. */
-  const [followingFeed, myCommunities, unread, lists, followRequests] = await Promise.all([
+  const [followingFeed, myCommunities, myInvites, unread, lists, followRequests] = await Promise.all([
     getCommunityFeed("following"),
     getMyCommunities(),
+    // دعواتي المعلّقة (هجرة 42) — قسم «دعوات» فوق مجتمعاتي في الدليل
+    getMyCommunityInvites(),
     getUnreadShares(),
     getFollowLists(user.id),
     getIncomingFollowRequests(),
@@ -221,7 +224,7 @@ export default async function PeoplePage({
         openCommunity ? (
           <CommunityRoom room={openCommunity} locale={locale} />
         ) : (
-          <CommunityDirectory mine={myCommunities} locale={locale} />
+          <CommunityDirectory mine={myCommunities} invites={myInvites} locale={locale} />
         )
       ) : (
         <section>
