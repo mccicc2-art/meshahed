@@ -1,20 +1,12 @@
-# مشاهد 📺
+# Loopz 📺
 
-تطبيق ويب لمتابعة المسلسلات والأفلام (شبيه بـ TV Time): بحث ومتابعة، تأشير الحلقات المشاهَدة مع شريط تقدّم، قسم "القادم قريباً" للتذكير بالحلقات الجديدة، وإحصائيات مشاهدة. تسجيل الدخول عبر Google.
+منصة عربية (RTL أولاً) لتتبع المسلسلات والأفلام والأنمي: بحث ومتابعة، تأشير الحلقات المشاهَدة مع شريط تقدّم، اكتشاف وقوائم وعوالم، مجتمعات ورسائل فورية، وإحصائيات مشاهدة. تسجيل الدخول عبر Google.
 
-**التقنيات:** Next.js 16 · TypeScript · Tailwind CSS 4 · Supabase (Auth + Postgres) · TMDB API · جاهز للنشر على Vercel.
+**الموقع الرسمي:** https://loopztv.com
 
----
+**التقنيات:** Next.js 16 · React 19 · TypeScript · Tailwind CSS 4 · Supabase (Auth + Postgres + Realtime) · TMDB API · منشور على Vercel.
 
-## المتطلبات قبل التشغيل
-
-تحتاج ثلاثة أشياء مجانية:
-
-1. **مفتاح TMDB** — لبيانات المسلسلات والأفلام.
-2. **مشروع Supabase** — لتسجيل الدخول وحفظ البيانات.
-3. **بيانات Google OAuth** — لزر "الدخول عبر Google".
-
-راجع ملف `SETUP.md` لخطوات الحصول عليها بالتفصيل.
+> ملاحظة تسمية: اسم المستودع `meshahed` هو الاسم القديم للمشروع؛ اسم المنتج هو **Loopz**.
 
 ---
 
@@ -26,7 +18,7 @@ cp .env.example .env.local   # ثم عبّئ القيم
 npm run dev
 ```
 
-افتح http://localhost:3000
+افتح http://localhost:3000 — وراجع `SETUP.md` لخطوات الحصول على المفاتيح.
 
 ---
 
@@ -37,14 +29,15 @@ npm run dev
 | `NEXT_PUBLIC_SUPABASE_URL` | رابط مشروع Supabase |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | مفتاح anon العام من Supabase |
 | `TMDB_API_KEY` | مفتاح TMDB (v3) |
-| `NEXT_PUBLIC_SITE_URL` | رابط الموقع (محلياً `http://localhost:3000`) |
+| `NEXT_PUBLIC_SITE_URL` | رابط الموقع (محلياً `http://localhost:3000`، إنتاجاً `https://loopztv.com`) |
+| `GEMINI_API_KEY` | اختياري — يفعّل بحث الوصف الحرّ (وضع الذكاء) |
+| `TRAKT_CLIENT_ID` / `TRAKT_CLIENT_SECRET` | اختياري — استيراد المكتبة من Trakt |
 
 ---
 
 ## قاعدة البيانات
 
-شغّل محتوى `supabase/schema.sql` في: Supabase Dashboard → SQL Editor.
-يُنشئ الجداول (`follows`, `watched_episodes`, `watched_movies`) مع سياسات RLS بحيث لا يرى أي مستخدم إلا بياناته.
+ملفات `supabase/*.sql` تُشغَّل في Supabase → SQL Editor **بالترتيب المرقّم في `supabase/README.md`**. سياسات القراءة ودوال العرض مصدرها الوحيد `security.sql` و`security2.sql`.
 
 ---
 
@@ -52,16 +45,15 @@ npm run dev
 
 ```
 src/
-  app/            الصفحات (الرئيسية، البحث، المكتبة، الإحصائيات، تفاصيل العمل، الدخول)
-  components/      مكوّنات الواجهة (تتبّع الحلقات، أزرار المتابعة، إلخ)
+  app/            الصفحات (الرئيسية، اكتشف، البحث، المكتبة، القوائم، المجتمع، تفاصيل العمل…)
+  components/     مكوّنات الواجهة (تتبّع الحلقات، البطاقات، الأوراق، المجتمعات…)
   lib/
     tmdb.ts       عميل TMDB
     supabase/     عملاء Supabase (متصفح/خادم)
-    actions.ts    Server Actions للمتابعة والتأشير
+    actions.ts    Server Actions
     data.ts       جلب بيانات المستخدم
-  proxy.ts        تحديث جلسة Supabase (كان اسمه middleware في إصدارات أقدم)
-supabase/schema.sql
+    site.ts       النطاق الرسمي — كل رابط يخرج من التطبيق يُبنى منه
+  proxy.ts        تجديد جلسة Supabase (Middleware سابقاً في Next الأقدم)
+supabase/         ملفات SQL المرقّمة + README بترتيب التشغيل
+public/sw.js      Service Worker — قشرة تطبيق للفتح الفوري (PWA)
 ```
-
-
-<!-- redeploy: re-trigger Vercel production build for latest main (cf61c30) -->

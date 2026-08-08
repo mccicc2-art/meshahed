@@ -1,4 +1,4 @@
-# دليل الإعداد والنشر — مشاهد
+# دليل الإعداد والنشر — Loopz
 
 اتبع الخطوات بالترتيب. كلها مجانية. الوقت المتوقّع: ١٥–٢٥ دقيقة.
 
@@ -51,7 +51,7 @@
 
 ### ج. روابط إعادة التوجيه في Supabase
 **Authentication → URL Configuration**:
-- **Site URL**: رابط موقعك على Vercel (بعد النشر) مثل `https://meshahed.vercel.app`
+- **Site URL**: رابط موقعك على Vercel (بعد النشر) مثل `https://loopztv.com` (أو رابط Vercel قبل ربط الدومين)
 - **Redirect URLs**: أضف
   ```
   http://localhost:3000/**
@@ -79,7 +79,7 @@ npm run dev
    ```bash
    git init
    git add .
-   git commit -m "مشاهد: النسخة الأولى"
+   git commit -m "Loopz: النسخة الأولى"
    git branch -M main
    git remote add origin https://github.com/<حسابك>/<المستودع>.git
    git push -u origin main
