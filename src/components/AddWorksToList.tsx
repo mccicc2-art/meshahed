@@ -5,16 +5,16 @@ import { useRouter } from "next/navigation";
 import { getDict, type Locale } from "@/lib/i18n";
 import { toast, flashError } from "@/lib/toast";
 import { tap } from "@/lib/haptics";
-import { createListFromPerson, createListFromCollection } from "@/lib/actions";
+import { createListFromPerson, createListFromCollection, createListFromUniverse } from "@/lib/actions";
 import { Icon } from "./Icon";
 
 /**
- * زرٌّ واحد لمصدرين: أعمال فنان، أو أجزاء سلسلة.
+ * زرٌّ واحد لثلاثة مصادر: أعمال فنان، أو أجزاء سلسلة، أو عالمٌ كامل (D-074).
  *
  * لا يحمل الأعمال معه: الفعل على الخادم يجلبها بنفسه (`getPersonCredits` /
- * `getCollection`)، فلا نمرّر مصفوفةً كبيرة إلى المتصفّح ولا نطلبها مرّتين —
- * وطلب TMDB مخبّأ ساعةً أصلاً. والرسالة تحمل زرّ «افتح» لأن من أنشأ قائمةً
- * يريد رؤيتها، لا البحث عنها في `/lists`.
+ * `getCollection` / `moviesByIds`)، فلا نمرّر مصفوفةً كبيرة إلى المتصفّح ولا
+ * نطلبها مرّتين — وطلب TMDB مخبّأ ساعةً أصلاً. والرسالة تحمل زرّ «افتح» لأن
+ * من أنشأ قائمةً يريد رؤيتها، لا البحث عنها في `/lists`.
  */
 export function AddWorksToList({
   source,
@@ -23,8 +23,9 @@ export function AddWorksToList({
   label,
   className = "",
 }: {
-  source: "person" | "collection";
-  id: number;
+  source: "person" | "collection" | "universe";
+  /** معرّف TMDB رقميّ للفنان/السلسلة، وslug نصيّ للعالم */
+  id: number | string;
   locale: Locale;
   label?: string;
   className?: string;
@@ -32,7 +33,13 @@ export function AddWorksToList({
   const t = getDict(locale);
   const router = useRouter();
   const [pending, start] = useTransition();
-  const text = label ?? (source === "person" ? t.worksToListBtn : t.partsToListBtn);
+  const text =
+    label ??
+    (source === "person"
+      ? t.worksToListBtn
+      : source === "universe"
+        ? t.universeToListBtn
+        : t.partsToListBtn);
 
   function run() {
     if (pending) return;
@@ -41,8 +48,10 @@ export function AddWorksToList({
       try {
         const res =
           source === "person"
-            ? await createListFromPerson(id)
-            : await createListFromCollection(id);
+            ? await createListFromPerson(Number(id))
+            : source === "universe"
+              ? await createListFromUniverse(String(id))
+              : await createListFromCollection(Number(id));
         if (!res) return;
         const open = { label: t.openListAction, run: () => router.push(`/lists/${res.listId}`) };
         if (res.created) toast(t.listMadeToast(res.name), { action: open });
