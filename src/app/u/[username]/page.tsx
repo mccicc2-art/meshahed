@@ -121,7 +121,7 @@ export default async function PublicProfilePage({
   const headerStats = [
     { key: "shows", icon: "tv" as const, color: "var(--accent)", value: tvFollows.length, label: t.shortShows },
     { key: "movies", icon: "film" as const, color: "var(--accent-2)", value: movieFollows.length, label: t.shortMovies },
-    { key: "towatch", icon: "bookmark" as const, color: "var(--brand-3)", value: toWatchItems.length, label: t.libToWatch },
+    { key: "towatch", icon: "bookmark" as const, color: "var(--brand-3)", value: toWatchItems.length, label: t.profileWatchlist },
     { key: "ratings", icon: "star" as const, color: "var(--accent)", value: ratings.length, label: t.panelRatings },
   ];
 
