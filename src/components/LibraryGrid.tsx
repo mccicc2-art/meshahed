@@ -58,12 +58,17 @@ export function LibraryGrid({
   lists,
   locale,
   initialTab = "shows",
+  listsExtra,
 }: {
   shows: GridItem[];
   movies: GridItem[];
   lists: UserList[];
   locale: Locale;
   initialTab?: LibraryTab;
+  /** ما يلي قوائمي في اللوح (القوائم المحفوظة — طلب أحمد: بيتها
+      المكتبة لا صفحة منفصلة): يُرسم على الخادم ويُمرَّر عقدةً جاهزة،
+      فيبقى PublicListsRail مكوّن خادمٍ بلا JS كما وُلد (D-063) */
+  listsExtra?: React.ReactNode;
 }) {
   const t = getDict(locale);
   const router = useRouter();
@@ -171,9 +176,13 @@ export function LibraryGrid({
 
       <div id="lib-panel" role="tabpanel" aria-labelledby={`lib-tab-${tab}`}>
       {tab === "lists" ? (
-        /* نفس مكوّن صفحة `/lists` حرفياً — لا نسخة ثانية منه: المسار
-           يبقى قائماً للروابط المباشرة، وهذا اللوح يعرض المكوّن نفسه */
-        <ListManager lists={lists} locale={locale} />
+        /* نفس تركيبة صفحة `/lists` حرفياً — لا نسخة ثانية منها: المسار
+           يبقى قائماً للروابط المباشرة، وهذا اللوح يعرض المكوّنين
+           نفسيهما (قوائمي ثم القوائم المحفوظة) */
+        <div className="space-y-8">
+          <ListManager lists={lists} locale={locale} />
+          {listsExtra}
+        </div>
       ) : (
       <>
       {/* بحثٌ وفرز: سطرٌ واحد تحت التبويبين */}

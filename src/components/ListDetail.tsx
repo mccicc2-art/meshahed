@@ -85,7 +85,9 @@ export function ListDetail({
           next
             ? {
                 tone: "success",
-                action: { label: t.openMyLists, run: () => router.push("/lists") },
+                /* الوجهة تبويب الليستات في المكتبة — بيت القوائم المحفوظة
+                   (طلب أحمد: المكتبة لا صفحة منفصلة) */
+                action: { label: t.openMyLists, run: () => router.push("/library?filter=list") },
               }
             : undefined,
         ),
