@@ -111,7 +111,9 @@ export default async function RootLayout({
         <BottomNav locale={locale} />
         <OfflineSync />
         <ToastHost />
-        <SwRegister />
+        {/* بصمة البناء تُخبز في الصفحة: بها يعرف التبويب المُستأنَف أنه
+            عتيق فيُبدّل نفسه فوراً (علاج وميض «تسجيل الدخول القديم») */}
+        <SwRegister build={process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"} />
         {/* قياس Web Vitals من أجهزة المستخدمين الحقيقية — لا يرسم شيئاً،
             ويرسل لنطاقنا نفسه (/_vercel/speed-insights) فلا يوسّع CSP.
             به تُلتقط أي نكسة أداءٍ قادمة بالأرقام لا بالشكوى. */}
