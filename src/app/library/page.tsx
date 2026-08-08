@@ -13,6 +13,7 @@ import { localizeFollows } from "@/lib/localize";
 import { Icon } from "@/components/Icon";
 import { LibraryGrid, type GridItem, type LibraryTab } from "@/components/LibraryGrid";
 import { FollowMetaSync } from "@/components/MetaSync";
+import { ScrollMemory } from "@/components/ScrollMemory";
 
 /**
  * المكتبة.
@@ -142,6 +143,8 @@ export default async function LibraryPage({
 
   return (
     <div>
+      {/* ذاكرة موضع التمرير — العائد من عملٍ يهبط حيث كان (تدقيق 8 Aug م٢) */}
+      <ScrollMemory />
       <FollowMetaSync rows={metaToCache} />
       {/* العنوان مخفيٌّ بصريًّا وباقٍ لقارئ الشاشة — أُزيلت الترويسة وسطر الملخّص */}
       <h1 className="sr-only">{t.libraryTitle}</h1>
