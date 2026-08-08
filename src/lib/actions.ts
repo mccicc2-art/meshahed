@@ -899,6 +899,26 @@ export async function deleteCommunity(id: string) {
   revalidatePath("/people");
 }
 
+/**
+ * صورة المجتمع (هجرة 41) — يضعها المالك أو يمسحها.
+ *
+ * الرابط يمرّ على `safeImageUrl` كصورة الملف الشخصي تماماً: مخزننا وحده،
+ * وإلا صار الملف العام منارةَ تسريب IP لخادمٍ غريب. والملكية تحرسها
+ * سياسة «owner edits community» في SQL — الـmatch هنا صدقٌ مبكر لا حارس.
+ */
+export async function setCommunityPhoto(communityId: string, url: string | null) {
+  communityId = uuid(communityId);
+  const { supabase, user } = await requireUser("community", 10, 60_000);
+  const clean = url === null ? null : safeImageUrl(url);
+  if (url !== null && clean === null) throw new Error("رابط صورةٍ غير مقبول");
+  const { error } = await supabase
+    .from("communities")
+    .update({ photo_url: clean })
+    .match({ id: communityId, owner_id: user.id });
+  if (error) fail(error);
+  revalidatePath("/people");
+}
+
 /** رسالة في غرفة مجتمع — سياسة الإدراج تشترط العضوية */
 export async function postCommunityMessage(communityId: string, body: string) {
   communityId = uuid(communityId);
