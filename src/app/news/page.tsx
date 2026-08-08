@@ -361,12 +361,23 @@ async function CuratedRails({
  * fetch المشتركة — ففُصلا عن المسار الحرج بدل أن يرهنا رسم الصفحة كلّها.
  */
 async function PersonalRails({ locale, t }: { locale: Locale; t: T }) {
-  const [suggested, artistWorks] = await Promise.all([
+  const [pool, artistWorks] = await Promise.all([
     getSuggestions(300, locale).catch(() => []),
     getFollowedArtists(20)
       .then((a) => (a.length ? worksByPeople(a.map((x) => x.person_id), 20) : []))
       .catch(() => [] as SearchResult[]),
   ]);
+
+  /* قرعةُ خادمٍ عند كل طلب (D-073): البِركة مخبّأة ساعةً فكانت العشرة
+     الأولى تتجمّد معها — فتح «اكتشف» مرتين يعرض الوجوه نفسها. الخلطُ هنا
+     يجعل كل فتحٍ عيّنةً مختلفة، وزرّ التحديث يبقى للسحب داخل الزيارة */
+  const suggested = [...pool];
+  for (let i = suggested.length - 1; i > 0; i--) {
+    // eslint-disable-next-line react-hooks/purity -- العشوائية مقصودة: قرعةٌ
+    // لكل طلبٍ في مكوّن خادمٍ لا-متزامن يُنفَّذ مرةً واحدة، لا دالة عرضٍ تُعاد
+    const j = Math.floor(Math.random() * (i + 1));
+    [suggested[i], suggested[j]] = [suggested[j], suggested[i]];
+  }
 
   if (suggested.length === 0 && artistWorks.length === 0) return null;
 
