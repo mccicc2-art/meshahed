@@ -21,7 +21,6 @@ type SectionKey =
   | "appearance"
   | "customize"
   | "import"
-  | "widgets"
   | "billing";
 
 /**
@@ -94,7 +93,6 @@ export function SettingsShell({
     { key: "appearance", icon: "palette", label: t.settingsNavAppearance },
     { key: "customize", icon: "sparkles", label: t.settingsNavCustomize },
     { key: "import", icon: "download", label: t.importSection },
-    { key: "widgets", icon: "grid", label: t.settingsNavWidgets },
     { key: "billing", icon: "card", label: t.settingsNavBilling },
   ];
 
@@ -185,8 +183,6 @@ export function SettingsShell({
             initial={homePrefs}
           />
         );
-      case "widgets":
-        return <Soon title={t.settingsSoonTitle} body={t.settingsWidgetsHint} icon="grid" />;
       case "billing":
         return (
           <div className="space-y-4">
