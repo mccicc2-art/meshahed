@@ -148,6 +148,8 @@ export interface MovieDetails {
     name: string;
     poster_path: string | null;
   } | null;
+  /** معرّف IMDb (tt…) — جسر تقييمات OMDb (طلب أحمد: IMDb/طماطم) */
+  imdb_id?: string | null;
 }
 
 export interface SeasonDetails {
@@ -626,6 +628,17 @@ export function getTv(id: number): Promise<TvDetails> {
 
 export function getMovie(id: number): Promise<MovieDetails> {
   return tmdb<MovieDetails>(`/movie/${id}`);
+}
+
+
+/** معرّف IMDb لمسلسل — من /external_ids؛ جسر تقييمات OMDb (مخبّأ ساعةً) */
+export async function tvImdbId(id: number): Promise<string | null> {
+  try {
+    const data = await tmdb<{ imdb_id?: string | null }>(`/tv/${id}/external_ids`);
+    return data.imdb_id ?? null;
+  } catch {
+    return null;
+  }
 }
 
 export function getSeason(tvId: number, seasonNumber: number): Promise<SeasonDetails> {
