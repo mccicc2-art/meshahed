@@ -1,6 +1,9 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { redirect } from "next/navigation";
+import { type Locale } from "@/lib/i18n";
+import { RailSkeleton } from "@/components/Skeletons";
 import {
   getUser,
   getFollows,
@@ -75,6 +78,14 @@ export default async function HomePage() {
     getReceivedLikes(user.id),
   ]);
 
+  // مستخدم بلا مكتبة يذهب لشاشة الانضمام — قبل أي رسمٍ أو جلبٍ آخر
+  if (followRows.length === 0) redirect("/welcome");
+
+  /* احتياط ما قبل performance.sql — كان في الموجة الثانية وصعد هنا:
+     أرقام الترويسة تُبنى من عدّاد المشاهدات، والترويسة (منذ D-087) تُرسم
+     قبل الموجة الثانية. من شغّل performance.sql لا يدفع هذا الطلب أصلاً */
+  const fallbackEps = summary ? null : await getAllWatchedEpisodes();
+
   // مجموعة المعرّفات للحالة، والدقائق الفعلية للوقت — من الصفوف نفسها
   const watchedMovieIds = new Set(watchedMovies.map((m) => m.id));
   const movieMinutes = watchedMovieMinutes(watchedMovies);
@@ -111,6 +122,239 @@ export default async function HomePage() {
   for (const f of rawTv) {
     if (f.rewatch_started_at) rewatchSinceMap.set(f.tmdb_id, f.rewatch_started_at);
   }
+
+  if (!summary && fallbackEps) {
+    // مسار ما قبل performance.sql — مع احترام دورات الإعادة
+    for (const w of fallbackEps) {
+      const since = rewatchSinceMap.get(w.show_tmdb_id);
+      if (since && w.watched_at < since) continue;
+      watchedByShow.set(
+        w.show_tmdb_id,
+        (watchedByShow.get(w.show_tmdb_id) ?? 0) + 1,
+      );
+    }
+    for (const w of [...fallbackEps].sort((a, b) =>
+      b.watched_at.localeCompare(a.watched_at),
+    )) {
+      if (!lastWatchedOrder.includes(w.show_tmdb_id))
+        lastWatchedOrder.push(w.show_tmdb_id);
+    }
+  }
+
+  /* ===== أرقام الترويسة — من الموجة الأولى وحدها (D-087) =====
+     الترجمة تغيّر الأسماء لا الأعداد، وتفاصيل TMDB تُجمّل البطاقات لا
+     العدّادات — فالترويسة تُرسم من الصفوف الخام فوراً ولا تنتظر الموجة
+     الثانية. استثناء واحد مقصود: عدّاد «القادم» يقرأ تواريخ الأفلام
+     المخزّنة فقط؛ فيلمٌ توبِع للتوّ ينضم للعدّاد بعد أول مزامنةٍ لبياناته
+     (MovieStatsSync تكتبها من أول رسمة) — نقصٌ نادر يشفى ذاتياً. */
+  let unfinishedCount = 0;
+  let finishedShowsCount = 0;
+  for (const row of rawTv) {
+    const aired = row.aired_episodes ?? row.total_episodes ?? 0;
+    const watched = Math.min(
+      watchedByShow.get(row.tmdb_id) ?? 0,
+      aired || Infinity,
+    );
+    if (aired === 0 || watched < aired) unfinishedCount++;
+    if (aired > 0 && watched >= aired) finishedShowsCount++;
+  }
+  const finishedMoviesCount = rawMovies.filter((f) =>
+    watchedMovieIds.has(f.tmdb_id),
+  ).length;
+  const toWatchCount =
+    unfinishedCount +
+    rawMovies.filter((f) => !watchedMovieIds.has(f.tmdb_id)).length;
+  const droppedCount = followRows.filter((f) => f.dropped).length;
+
+  const watchedEpisodeTotal = [...watchedByShow.values()].reduce(
+    (a, n) => a + n,
+    0,
+  );
+  const level = getLevel(
+    levelPoints(watchedEpisodeTotal, watchedMovieIds.size),
+  );
+
+  const totalMinutes =
+    (summary ?? []).reduce((a, r) => a + (r.minutes ?? 0), 0) + movieMinutes;
+  const hours = Math.round(totalMinutes / 60);
+  const watchTime =
+    hours < 24 ? t.hours(hours) : t.days(Math.floor(hours / 24));
+
+  const upcomingCount = Math.min(
+    16,
+    rawTv.filter((r) => r.next_air_date && r.next_air_date >= today).length +
+      rawMovies.filter(
+        (f) =>
+          !watchedMovieIds.has(f.tmdb_id) &&
+          f.stats_updated_at != null &&
+          f.next_air_date &&
+          f.next_air_date >= today,
+      ).length,
+  );
+
+  const allHeaderStats: Record<HeaderStatKey, HeaderStat> = {
+    shows: {
+      key: "shows",
+      icon: "tv",
+      value: String(rawTv.length),
+      label: t.shortShows,
+      href: "/library?filter=tv",
+      color: "var(--accent)",
+    },
+    movies: {
+      key: "movies",
+      icon: "film",
+      value: String(rawMovies.length),
+      label: t.shortMovies,
+      href: "/library?filter=movie",
+      color: "var(--accent-2)",
+    },
+    towatch: {
+      key: "towatch",
+      icon: "bookmark",
+      value: String(toWatchCount),
+      label: t.libToWatch,
+      href: "/library",
+      color: "var(--brand-3)",
+    },
+    time: {
+      key: "time",
+      icon: "clock",
+      value: watchTime,
+      label: t.statWatchTime,
+      href: "/stats",
+      color: "var(--accent)",
+    },
+    episodes: {
+      key: "episodes",
+      icon: "play",
+      value: String(watchedEpisodeTotal),
+      label: t.shortEpisodes,
+      href: "/stats",
+      color: "var(--info)",
+    },
+    upcoming: {
+      key: "upcoming",
+      icon: "hourglass",
+      value: String(upcomingCount),
+      label: t.libUpcoming,
+      href: "/library",
+      color: "var(--brand-3)",
+    },
+    completed: {
+      key: "completed",
+      icon: "check",
+      value: String(finishedShowsCount + finishedMoviesCount),
+      label: t.libTabFinished,
+      href: "/library",
+      color: "var(--success)",
+    },
+    dropped: {
+      key: "dropped",
+      icon: "card",
+      value: String(droppedCount),
+      label: t.droppedBadge,
+      href: "/library",
+      color: "var(--error)",
+    },
+  };
+  const headerStats: HeaderStat[] = prefs.statsPick.map(
+    (k) => allHeaderStats[k],
+  );
+
+  const displayName = profile?.nickname || user.email?.split("@")[0] || "";
+
+  /* ===== D-087: الترويسة فوراً والجسدُ يتدفق =====
+     كانت الصفحة تنتظر موجتي جلبٍ كاملتين قبل أول بايت (~1.2s باردةً).
+     الآن الترويسة تخرج من الموجة الأولى وحدها، والجسد الثقيل — ترجمة
+     المكتبة وتفاصيل TMDB وكل الصفوف — خلف Suspense يصل حين يجهز.
+     الهيكل يحجز ارتفاع صفّين (D-046). نمطُ /news نفسه (D-071). */
+  return (
+    <div className="space-y-8 sm:space-y-10">
+      <ProfileHeader
+        displayName={displayName}
+        bioText={profile?.bio ?? null}
+        username={profile?.username ?? null}
+        avatarUrl={profile?.avatar_url ?? null}
+        coverUrl={profile?.cover_url ?? null}
+        coverPos={profile?.cover_pos ?? null}
+        avatarPos={profile?.avatar_pos ?? null}
+        level={level}
+        stats={headerStats}
+        followers={followStats.followers}
+        comments={myComments}
+        ratings={myRatingsCount}
+        likes={receivedLikes}
+        show={prefs}
+        verified
+        locale={locale}
+      />
+      <Suspense
+        fallback={
+          <div className="space-y-8" aria-hidden>
+            <RailSkeleton count={6} />
+            <RailSkeleton count={6} />
+          </div>
+        }
+      >
+        <HomeBody
+          followRows={followRows}
+          summary={summary}
+          watchedMovieIds={watchedMovieIds}
+          profile={profile}
+          movieProgress={movieProgress}
+          prefs={prefs}
+          watchedByShow={watchedByShow}
+          lastWatchedOrder={lastWatchedOrder}
+          rewatchSinceMap={rewatchSinceMap}
+          locale={locale}
+          t={t}
+          today={today}
+        />
+      </Suspense>
+    </div>
+  );
+}
+
+type T = Awaited<ReturnType<typeof getT>>["t"];
+
+/**
+ * جسد الرئيسية — كل ما تحت الترويسة (D-087).
+ *
+ * مكوّن خادمٍ مستقل خلف Suspense: يحمل الموجة الثانية كاملة (ترجمة
+ * المكتبة، تفاصيل TMDB، بطاقات «أكمل المشاهدة»…) بعيداً عن المسار الحرج،
+ * فأول بايت للصفحة لم يعد رهينة أبطأ طلبٍ خارجي.
+ */
+async function HomeBody({
+  followRows,
+  summary,
+  watchedMovieIds,
+  profile,
+  movieProgress,
+  prefs,
+  watchedByShow,
+  lastWatchedOrder,
+  rewatchSinceMap,
+  locale,
+  t,
+  today,
+}: {
+  followRows: Awaited<ReturnType<typeof getFollows>>;
+  summary: Awaited<ReturnType<typeof getWatchSummary>>;
+  watchedMovieIds: Set<number>;
+  profile: Awaited<ReturnType<typeof getProfile>>;
+  movieProgress: Awaited<ReturnType<typeof getAllMovieProgress>>;
+  prefs: ReturnType<typeof sanitizeHomePrefs>;
+  watchedByShow: Map<number, number>;
+  lastWatchedOrder: number[];
+  rewatchSinceMap: Map<number, string>;
+  locale: Locale;
+  t: T;
+  today: string;
+}) {
+  const rawActive = followRows.filter((f) => !f.dropped);
+  const rawTv = rawActive.filter((f) => f.media_type === "tv");
+  const rawMovies = rawActive.filter((f) => f.media_type === "movie");
 
   // الصفوف التي لم يُحسب لها عدد حلقات بعد تحتاج TMDB مرة واحدة لتهيئتها
   const bootstrapIds = rawTv
@@ -157,7 +401,6 @@ export default async function HomePage() {
 
   const [
     follows,
-    fallbackEps,
     bootstrapDetails,
     fetchedMovieDetails,
     recapHist,
@@ -166,7 +409,6 @@ export default async function HomePage() {
   ] = await Promise.all([
     // أسماء المكتبة وملصقاتها بلغة الواجهة لا بلغة يوم المتابعة
     localizeFollows(followRows, locale),
-    summary ? Promise.resolve(null) : getAllWatchedEpisodes(),
     Promise.all(bootstrapIds.map((id) => getTv(id).catch(() => null))),
     Promise.all(movieIdsNeedingDate.map((id) => getMovie(id).catch(() => null))),
     prefs.order.includes("recap")
@@ -211,24 +453,6 @@ export default async function HomePage() {
   const active = follows.filter((f) => !f.dropped);
   const tvFollows = active.filter((f) => f.media_type === "tv");
   const movieFollows = active.filter((f) => f.media_type === "movie");
-
-  if (!summary && fallbackEps) {
-    // احتياط قبل تشغيل ملف performance.sql — مع احترام دورات الإعادة
-    for (const w of fallbackEps) {
-      const since = rewatchSinceMap.get(w.show_tmdb_id);
-      if (since && w.watched_at < since) continue;
-      watchedByShow.set(
-        w.show_tmdb_id,
-        (watchedByShow.get(w.show_tmdb_id) ?? 0) + 1,
-      );
-    }
-    for (const w of [...fallbackEps].sort((a, b) =>
-      b.watched_at.localeCompare(a.watched_at),
-    )) {
-      if (!lastWatchedOrder.includes(w.show_tmdb_id))
-        lastWatchedOrder.push(w.show_tmdb_id);
-    }
-  }
 
   interface UpcomingItem {
     key: string;
@@ -367,9 +591,6 @@ export default async function HomePage() {
         }),
       );
 
-  // مستخدم بلا مكتبة يذهب لشاشة الانضمام بدل صفحة فارغة
-  if (follows.length === 0) redirect("/welcome");
-
   const empty = false;
 
   const favGenres = profile?.favorite_genres ?? [];
@@ -381,7 +602,6 @@ export default async function HomePage() {
     earlyTrend ??
     (showTrending ? await trending().catch(() => [] as SearchResult[]) : []);
 
-  const displayName = profile?.nickname || user.email?.split("@")[0] || "";
 
   // لزرّ الحفظ السريع على «الرائج»: ما تتابعه، وما أنهيته فعلاً
   const followedKeys = new Set(follows.map((f) => `${f.media_type}-${f.tmdb_id}`));
@@ -515,110 +735,6 @@ export default async function HomePage() {
     .sort((a, b) => (a as { date: string }).date.localeCompare((b as { date: string }).date))
     .slice(0, 16);
 
-  // ===== المستوى: يقيس ما شوهد فعلاً — حلقة بنقطة والفيلم بنقطتين =====
-  const watchedEpisodeTotal = [...watchedByShow.values()].reduce(
-    (a, n) => a + n,
-    0,
-  );
-  const level = getLevel(
-    levelPoints(watchedEpisodeTotal, watchedMovieIds.size),
-  );
-
-  // ===== أرقام الترويسة =====
-  // كلها مشتقّة مما قرأناه أصلاً لهذه الصفحة: لا استعلام إضافي لعرضها
-  const totalMinutes =
-    (summary ?? []).reduce((a, r) => a + (r.minutes ?? 0), 0) + movieMinutes;
-  const hours = Math.round(totalMinutes / 60);
-  const watchTime =
-    hours < 24 ? t.hours(hours) : t.days(Math.floor(hours / 24));
-
-  // «للمشاهدة»: ما لم يكتمل من المسلسلات وما لم يُشاهَد من الأفلام —
-  // العدد نفسه الذي تعرضه المكتبة في تبويبها
-  const toWatchCount =
-    unfinished.length +
-    movieFollows.filter((f) => !watchedMovieIds.has(f.tmdb_id)).length;
-
-  // ثمانية أرقام محسوبة كلها مما قرأناه أصلاً، والمستخدم يختار من التخصيص
-  // أيّها يظهر (من ٢ إلى ٤) وبأي ترتيب
-  const finishedShowsCount = items.filter(
-    (i) => i.aired > 0 && i.watched >= i.aired,
-  ).length;
-  const finishedMoviesCount = movieFollows.filter((f) =>
-    watchedMovieIds.has(f.tmdb_id),
-  ).length;
-  const droppedCount = follows.filter((f) => f.dropped).length;
-
-  const allHeaderStats: Record<HeaderStatKey, HeaderStat> = {
-    shows: {
-      key: "shows",
-      icon: "tv",
-      value: String(tvFollows.length),
-      label: t.shortShows,
-      href: "/library?filter=tv",
-      color: "var(--accent)",
-    },
-    movies: {
-      key: "movies",
-      icon: "film",
-      value: String(movieFollows.length),
-      label: t.shortMovies,
-      href: "/library?filter=movie",
-      color: "var(--accent-2)",
-    },
-    towatch: {
-      key: "towatch",
-      icon: "bookmark",
-      value: String(toWatchCount),
-      label: t.libToWatch,
-      href: "/library",
-      color: "var(--brand-3)",
-    },
-    time: {
-      key: "time",
-      icon: "clock",
-      value: watchTime,
-      label: t.statWatchTime,
-      href: "/stats",
-      color: "var(--accent)",
-    },
-    episodes: {
-      key: "episodes",
-      icon: "play",
-      value: String(watchedEpisodeTotal),
-      label: t.shortEpisodes,
-      href: "/stats",
-      color: "var(--info)",
-    },
-    upcoming: {
-      key: "upcoming",
-      icon: "hourglass",
-      value: String(upcomingRow.length),
-      label: t.libUpcoming,
-      href: "/library",
-      color: "var(--brand-3)",
-    },
-    completed: {
-      key: "completed",
-      icon: "check",
-      value: String(finishedShowsCount + finishedMoviesCount),
-      label: t.libTabFinished,
-      href: "/library",
-      color: "var(--success)",
-    },
-    dropped: {
-      key: "dropped",
-      icon: "card",
-      value: String(droppedCount),
-      label: t.droppedBadge,
-      href: "/library",
-      color: "var(--error)",
-    },
-  };
-
-  const headerStats: HeaderStat[] = prefs.statsPick.map(
-    (k) => allHeaderStats[k],
-  );
-
   // ===== ملخّص أسبوعك — قسمٌ اختياري يطيع نظام التخصيص كأي قسم =====
   // لا يُقرأ السجلّ إلا لمن فعّله، ولا يُرسم إن كان الأسبوع صفراً
   let recap: { line: string; posters: (string | null)[] } | null = null;
@@ -682,29 +798,10 @@ export default async function HomePage() {
     }));
 
   return (
-    <div className="space-y-8 sm:space-y-10">
+    <>
       <ShowStatsSync stats={statsToCache} />
       <FollowMetaSync rows={metaToCache} />
       <MovieStatsSync rows={movieDatesToCache} />
-
-      <ProfileHeader
-        displayName={displayName}
-        bioText={profile?.bio ?? null}
-        username={profile?.username ?? null}
-        avatarUrl={profile?.avatar_url ?? null}
-        coverUrl={profile?.cover_url ?? null}
-        coverPos={profile?.cover_pos ?? null}
-        avatarPos={profile?.avatar_pos ?? null}
-        level={level}
-        stats={headerStats}
-        followers={followStats.followers}
-        comments={myComments}
-        ratings={myRatingsCount}
-        likes={receivedLikes}
-        show={prefs}
-        verified
-        locale={locale}
-      />
 
       {empty && (
         <section className="text-center py-4">
@@ -958,7 +1055,7 @@ export default async function HomePage() {
         </Link>
       )}
 
-    </div>
+    </>
   );
 }
 
