@@ -76,7 +76,20 @@ export function ListDetail({
     tap(next ? [12, 30] : 8);
     setSaved(next);
     saveList(listId, next)
-      .then(() => toast(next ? t.listSavedToast : t.listUnsavedToast, next ? { tone: "success" } : undefined))
+      /* رسالة الحفظ تحمل باب الوجهة (تدقيق 8 Aug م٣-١): «حفظت وما
+         حصلتها» كان قابلية اكتشاف لا عطلاً — القسم يسكن أسفل /lists.
+         الزر يأخذك إليه فلا تبحث (نمط زرّ «افتح» في D-074) */
+      .then(() =>
+        toast(
+          next ? t.listSavedToast : t.listUnsavedToast,
+          next
+            ? {
+                tone: "success",
+                action: { label: t.openMyLists, run: () => router.push("/lists") },
+              }
+            : undefined,
+        ),
+      )
       .catch((e) => {
         setSaved(!next);
         flashError((e as Error).message);

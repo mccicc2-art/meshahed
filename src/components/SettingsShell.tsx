@@ -188,7 +188,20 @@ export function SettingsShell({
       case "widgets":
         return <Soon title={t.settingsSoonTitle} body={t.settingsWidgetsHint} icon="grid" />;
       case "billing":
-        return <Soon title={t.settingsSoonTitle} body={t.settingsBillingHint} icon="card" />;
+        return (
+          <div className="space-y-4">
+            <Soon title={t.settingsSoonTitle} body={t.settingsBillingHint} icon="card" />
+            {/* مدخل صفحة المميزات (تدقيق 8 Aug، القسم ٢): بيت السؤال
+                «وش المجاني ووش المدفوع؟» هو قسم الاشتراك نفسه */}
+            <a
+              href="/features"
+              className="inline-flex items-center gap-2 text-sm font-medium text-accent hover:underline"
+            >
+              <Icon name="sparkle-star" size={16} />
+              {t.featuresLink}
+            </a>
+          </div>
+        );
     }
   }
 
