@@ -1,4 +1,3 @@
-import Link from "next/link";
 import Image from "next/image";
 import { redirect } from "next/navigation";
 import {
@@ -9,7 +8,6 @@ import {
   getFollowRelation,
   recordProfileView,
   getProfileViewCount,
-  getReceivedLikes,
   getFollowsOf,
   getWatchedOf,
   getPublicListsOf,
@@ -25,6 +23,8 @@ import { PosterRail, RailItem } from "@/components/PosterRail";
 import { FollowUserButton } from "@/components/FollowUserButton";
 import { ProfileMenu } from "@/components/ProfileMenu";
 import { PublicListsRail } from "@/components/PublicListsRail";
+import { FollowCountButton, ToWatchStat } from "@/components/ProfilePeeks";
+import { posterUrl } from "@/lib/media";
 
 /**
  * صفحة المستخدم العامة — بهيئة الرئيسية نفسها.
@@ -57,12 +57,11 @@ export default async function PublicProfilePage({
 
   // تسجيل الزيارة كتابةُ تحليلاتٍ لا غير — يجري بالتوازي مع القراءات
   // بدل أن يضيف رحلة كتابةٍ كاملة قبل أول بايت من الصفحة
-  const [rawRatings, stats, relation, visits, likes, rawFollows, watched, publicLists] = await Promise.all([
+  const [rawRatings, stats, relation, visits, rawFollows, watched, publicLists] = await Promise.all([
     getRatingsOf(profile.id),
     getFollowStats(profile.id),
     getFollowRelation(profile.id),
     getProfileViewCount(profile.id),
-    getReceivedLikes(profile.id),
     getFollowsOf(profile.id),
     getWatchedOf(profile.id),
     getPublicListsOf(profile.id),
@@ -91,10 +90,38 @@ export default async function PublicProfilePage({
   const movieFollows = follows.filter((f) => f.media_type === "movie" && !f.dropped);
   const level = getLevel(levelPoints(watched.episodes, watched.movies.size));
 
+  /* «للمشاهدة» بدل عدّاد الحلقات (طلب أحمد) — ونفس عناصره تُمرَّر لورقة
+     «وش باقي يتفرج»: محسوبة من صفوفه المقروءة أصلاً، فلا طلب إضافي */
+  const toWatchItems = [
+    ...tvFollows
+      .map((f) => {
+        const aired = f.aired_episodes ?? f.total_episodes ?? 0;
+        const w = Math.min(watched.byShow.get(f.tmdb_id) ?? 0, aired || Infinity);
+        return { f, aired, w };
+      })
+      .filter(({ aired, w }) => aired === 0 || w < aired)
+      .map(({ f, aired, w }) => ({
+        key: `tw-tv-${f.tmdb_id}`,
+        href: `/show/${f.tmdb_id}`,
+        title: f.title,
+        poster: posterUrl(f.poster_path, "w185"),
+        remainingLabel: aired > 0 ? t.remainingEps(aired - w) : null,
+      })),
+    ...movieFollows
+      .filter((f) => !watched.movies.has(f.tmdb_id))
+      .map((f) => ({
+        key: `tw-mv-${f.tmdb_id}`,
+        href: `/movie/${f.tmdb_id}`,
+        title: f.title,
+        poster: posterUrl(f.poster_path, "w185"),
+        remainingLabel: null,
+      })),
+  ].slice(0, 60);
+
   const headerStats = [
     { key: "shows", icon: "tv" as const, color: "var(--accent)", value: tvFollows.length, label: t.shortShows },
     { key: "movies", icon: "film" as const, color: "var(--accent-2)", value: movieFollows.length, label: t.shortMovies },
-    { key: "eps", icon: "check" as const, color: "var(--brand-3)", value: watched.episodes, label: t.statsWatchedEpisodes },
+    { key: "towatch", icon: "bookmark" as const, color: "var(--brand-3)", value: toWatchItems.length, label: t.libToWatch },
     { key: "ratings", icon: "star" as const, color: "var(--accent)", value: ratings.length, label: t.panelRatings },
   ];
 
@@ -113,7 +140,7 @@ export default async function PublicProfilePage({
     <div className="space-y-8">
       {/* ===== الغلاف — كما في الرئيسية ===== */}
       <section>
-        <div className="relative h-[15.75rem] sm:h-[20.25rem] -mx-4 -mt-6 sm:mx-0 sm:mt-0 sm:rounded-3xl overflow-hidden">
+        <div className="relative h-[12.5rem] sm:h-[17rem] -mx-4 -mt-6 sm:mx-0 sm:mt-0 sm:rounded-3xl overflow-hidden">
           {profile.cover_url ? (
             <Image
               src={profile.cover_url}
@@ -185,32 +212,37 @@ export default async function PublicProfilePage({
             <h1 className="text-lg sm:text-xl font-bold truncate drop-shadow-[0_2px_6px_rgba(0,0,0,0.7)]">
               {displayName}
             </h1>
-            {profile.username && (
-              <p className="text-[13px] text-white/55 truncate leading-tight mt-0.5 drop-shadow">
-                <span dir="ltr">@{profile.username}</span>
+            {/* المعرّف @ حُذف (طلب أحمد) والنبذة صعدت تحت الاسم — كالرئيسية */}
+            {bioText && (
+              <p className="text-[12.5px] text-white/70 leading-snug mt-0.5 drop-shadow line-clamp-2 max-w-[46ch]">
+                {bioText}
               </p>
             )}
-            <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[13px] text-white/75 leading-tight mt-1 drop-shadow">
-              <span className="shrink-0 flex items-center gap-1">
-                <Icon name="people-filled" size={16} />
-                <span className="font-bold text-white tabular-nums">{stats.followers}</span>
-              </span>
-              {/* أعداد المحتوى تغيب مع القفل: صفرٌ من دالةٍ حجبت بياناتها كذبة */}
-              {canView && (
-                <>
-                  <span className="shrink-0 flex items-center gap-1">
-                    <Icon name="comment" size={14} />
-                    <span className="font-bold text-white tabular-nums">{withReview.length}</span>
-                  </span>
-                  <span className="shrink-0 flex items-center gap-1">
-                    <Icon name="star" size={14} />
-                    <span className="font-bold text-white tabular-nums">{ratings.length}</span>
-                  </span>
-                  <span className="shrink-0 flex items-center gap-1">
-                    <Icon name="like" size={14} />
-                    <span className="font-bold text-white tabular-nums">{likes}</span>
-                  </span>
-                </>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] leading-tight mt-1.5 drop-shadow">
+              {/* العدّادان بابان (طلب أحمد): الضغط يفتح ورقة الأسماء —
+                  والقفل (هجرة 43) يترك العدد ويطفئ الباب. النجمة واللايك
+                  حُذفا: النجمة مكررة في البطاقة واللايك ضجيج */}
+              <FollowCountButton
+                targetId={profile.id}
+                dir="followers"
+                count={stats.followers}
+                label={t.followersLabel}
+                locked={!isMe && !!profile.hide_follow_lists}
+                labels={{ close: t.closeLabel, empty: t.followListEmpty, anonymous: t.anonymousUser }}
+              />
+              <FollowCountButton
+                targetId={profile.id}
+                dir="following"
+                count={stats.following}
+                label={t.followingLabel}
+                locked={!isMe && !!profile.hide_follow_lists}
+                labels={{ close: t.closeLabel, empty: t.followListEmpty, anonymous: t.anonymousUser }}
+              />
+              {canView && withReview.length > 0 && (
+                <span className="shrink-0 flex items-center gap-1 text-white/75">
+                  <Icon name="comment" size={14} />
+                  <span className="font-bold text-white tabular-nums">{withReview.length}</span>
+                </span>
               )}
             </div>
           </div>
@@ -231,30 +263,34 @@ export default async function PublicProfilePage({
         {canView && (
         <div className="relative z-10 mt-5">
           <div className="grid grid-cols-4">
-            {headerStats.map((s, i) => (
-              <div key={s.key} className="relative flex flex-col items-center justify-center px-1 py-2.5">
-                {i < headerStats.length - 1 && (
-                  <span className="absolute inset-y-1 end-0 w-px bg-white/10" aria-hidden />
-                )}
-                <span className="flex items-center gap-2">
-                  <Icon name={s.icon} size={20}  style={{ color: s.color }} className="shrink-0" />
-                  <span className="text-[17px] font-bold leading-none tabular-nums">{s.value}</span>
-                </span>
-                <span className="block text-[11px] text-muted mt-1.5 leading-[1.25]">{s.label}</span>
-              </div>
-            ))}
+            {headerStats.map((s, i) =>
+              s.key === "towatch" ? (
+                /* الخانة باب (طلب أحمد): «وش باقي يتفرج» ورقةً من نفس البيانات */
+                <ToWatchStat
+                  key={s.key}
+                  value={s.value}
+                  label={s.label}
+                  icon={s.icon}
+                  color={s.color}
+                  items={toWatchItems}
+                  divider={i < headerStats.length - 1}
+                  labels={{ close: t.closeLabel, empty: t.toWatchEmpty }}
+                />
+              ) : (
+                <div key={s.key} className="relative flex flex-col items-center justify-center px-1 py-2.5">
+                  {i < headerStats.length - 1 && (
+                    <span className="absolute inset-y-1 end-0 w-px bg-white/10" aria-hidden />
+                  )}
+                  <span className="flex items-center gap-2">
+                    <Icon name={s.icon} size={20}  style={{ color: s.color }} className="shrink-0" />
+                    <span className="text-[17px] font-bold leading-none tabular-nums">{s.value}</span>
+                  </span>
+                  <span className="block text-[11px] text-muted mt-1.5 leading-[1.25]">{s.label}</span>
+                </div>
+              ),
+            )}
           </div>
         </div>
-        )}
-
-        {/* ===== النبذة =====
-            تحت الهوية وفوق الأرقام: هي تعريفُ صاحب الصفحة بنفسه، وموضعها
-            بعد اسمه وقبل إحصاءاته. وتغيب كلّها حين لا توجد — لا صندوق
-            فارغ ولا هامشٌ محجوز (D-044) */}
-        {bioText && (
-          <p className="relative z-10 mt-3 px-0.5 text-[13px] text-muted leading-snug max-w-[46ch]">
-            {bioText}
-          </p>
         )}
 
         {/* ===== المستوى — يتبع المحتوى في الحجب ===== */}
@@ -303,13 +339,12 @@ export default async function PublicProfilePage({
         <PosterRail title={t.shortMovies} icon="film" iconColor="var(--accent-2)">
           {movieFollows.map((f) => (
             <RailItem key={`m-${f.tmdb_id}`}>
+              {/* بلا شارة «شوهد» وبلا خيط التقدم الأخضر (طلب أحمد) —
+                  الملصق وحده؛ حالته عند صاحبه شأنه */}
               <PosterCard
                 href={`/movie/${f.tmdb_id}`}
                 title={f.title}
                 posterPath={f.poster_path}
-                progress={watched.movies.has(f.tmdb_id) ? 100 : undefined}
-                badge={watched.movies.has(f.tmdb_id) ? t.watchedBadge : undefined}
-                badgeTone={watched.movies.has(f.tmdb_id) ? "watched" : "neutral"}
               />
             </RailItem>
           ))}
@@ -342,36 +377,6 @@ export default async function PublicProfilePage({
         </PosterRail>
       )}
 
-      {withReview.length > 0 && (
-        <section>
-          <h2 className="text-[19px] font-bold mb-4 flex items-center gap-2.5">
-            <Icon name="comment" size={22} className="text-muted" />
-            {t.reviewsTitle}
-          </h2>
-          <div className="space-y-3">
-            {withReview.slice(0, 20).map((r) => (
-              <article
-                key={`rv-${r.media_type}-${r.tmdb_id}`}
-                className="bg-surface border border-border rounded-poster p-4"
-              >
-                <div className="flex items-center justify-between gap-3 mb-2 flex-wrap">
-                  <Link
-                    href={`/${r.media_type === "tv" ? "show" : "movie"}/${r.tmdb_id}`}
-                    prefetch={false}
-                    className="font-semibold hover:text-accent transition"
-                  >
-                    {r.title}
-                  </Link>
-                  <span className="text-accent text-sm font-bold tabular-nums">
-                    ★ <span dir="ltr">{r.rating}/10</span>
-                  </span>
-                </div>
-                <p className="text-sm text-muted leading-relaxed whitespace-pre-line">{r.review}</p>
-              </article>
-            ))}
-          </div>
-        </section>
-      )}
     </div>
   );
 }
