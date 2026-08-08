@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState, useTransition } from "react";
+import { Fragment, useMemo, useRef, useState, useTransition } from "react";
 import { flashError } from "@/lib/toast";
 import { runOrQueue } from "@/lib/offline";
 import { tap } from "@/lib/haptics";
@@ -251,19 +251,43 @@ export function LibraryGrid({
         /* content-visibility: مكتبة من ٣٠٠ عمل كانت ٣٠٠ بطاقة مركّبة تُنسَّق
            كلها عند أول تمرير — الآن ما خرج عن الشاشة يُتخطّى رسمُه */
         <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4 [&>*]:[content-visibility:auto] [&>*]:[contain-intrinsic-size:auto_240px]">
-          {items.map((x) => (
-            <LongPressable key={x.key} onLongPress={() => setSheet(x)}>
-              <PosterCard
-                href={x.href}
-                title={x.title}
-                posterPath={x.posterPath}
-                progress={x.progress}
-                badge={x.badge}
-                badgeTone={x.badgeTone}
-                count={x.count}
-                dropped={x.dropped}
-              />
-            </LongPressable>
+          {items.map((x, i) => (
+            <Fragment key={x.key}>
+              {/* فاصلٌ مسمّى عند تبدّل المجموعة (طلب المالك): الترتيب الذكي
+                  يرصف الحالات متجاورةً أصلاً، فالحدّ بينها سطرُ عنوانٍ
+                  بعرض الشبكة. يظهر في «الكل» بالترتيب الذكي وحده — الفرز
+                  بالاسم أو التقدّم يخلط المجموعات فيصير الفاصل كذبة */}
+              {status === "all" &&
+                sort === "smart" &&
+                i > 0 &&
+                x.status !== items[i - 1].status &&
+                x.status && (
+                  <div
+                    className="col-span-full flex items-center gap-2 pt-1"
+                    /* يُستثنى من content-visibility الموروثة: حجزُ ٢٤٠ بكسل
+                       لفاصلٍ ارتفاعه ٢٠ يجعل شريط التمرير يقفز */
+                    style={{ contentVisibility: "visible", containIntrinsicSize: "auto" }}
+                    role="separator"
+                  >
+                    <span className="shrink-0 text-[11px] font-bold text-muted">
+                      {statusLabel(x.status, t)}
+                    </span>
+                    <span className="flex-1 h-px bg-[color:var(--divider)]" aria-hidden />
+                  </div>
+                )}
+              <LongPressable onLongPress={() => setSheet(x)}>
+                <PosterCard
+                  href={x.href}
+                  title={x.title}
+                  posterPath={x.posterPath}
+                  progress={x.progress}
+                  badge={x.badge}
+                  badgeTone={x.badgeTone}
+                  count={x.count}
+                  dropped={x.dropped}
+                />
+              </LongPressable>
+            </Fragment>
           ))}
         </div>
       )}
@@ -344,6 +368,17 @@ function LongPressable({
 }
 
 type Dict = ReturnType<typeof getDict>;
+
+/** اسم رقاقة الحالة نفسه يسمّي الفاصل — مفهومٌ واحد، اسمٌ واحد (D-026) */
+function statusLabel(s: LibraryStatus, t: Dict): string {
+  return s === "watching"
+    ? t.libStatusWatching
+    : s === "completed"
+      ? t.libStatusCompleted
+      : s === "unstarted"
+        ? t.libStatusUnstarted
+        : t.libStatusDropped;
+}
 
 /** لوح الإجراءات السريعة — يطفو من الأسفل فوق الشبكة */
 function QuickActions({

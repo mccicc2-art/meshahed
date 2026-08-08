@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { getDict, type Locale } from "@/lib/i18n";
 
@@ -59,7 +58,6 @@ async function makeNonce(): Promise<[raw: string, hashed: string]> {
 
 export function GoogleButton({ locale }: { locale: Locale }) {
   const t = getDict(locale);
-  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [gsiReady, setGsiReady] = useState(false);
   /* بابٌ ثانٍ لا يظهر إلا لمن احتاجه: السطر تحت الزرّ كان يعرض خياراً
@@ -128,9 +126,12 @@ export function GoogleButton({ locale }: { locale: Locale }) {
             });
             if (error) throw error;
             done.current = true;
-            // `refresh` قبل `replace`: الخادم يقرأ كوكي الجلسة الجديدة
-            router.refresh();
-            router.replace("/");
+            /* تنقّلٌ كامل لا عميليّ: `router.replace` بعد تبدّل كوكي
+               الجلسة يرسم من خبيئة الراوتر المبنيّة قبل الدخول — فكان
+               الرأس يظهر رأسَ زائرٍ (علمُ اللغة بلا صورة) حتى يحدَّث
+               يدوياً. تحميل المستند من الصفر يجعل الخادم يقرأ الجلسة
+               الجديدة في كل شيء — كلفةُ تحميلٍ واحدة عند الدخول فقط. */
+            window.location.assign("/");
           } catch (e) {
             setLoading(false);
             setFailed(true);
@@ -166,7 +167,7 @@ export function GoogleButton({ locale }: { locale: Locale }) {
     return () => {
       cancelled = true;
     };
-  }, [locale, router, t]);
+  }, [locale, t]);
 
   return (
     <div className="w-full">
