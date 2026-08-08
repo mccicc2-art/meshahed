@@ -23,6 +23,11 @@ import {
   postCommunityMessage,
   searchCommunities,
   setCommunityPhoto,
+  myFollowingList,
+  inviteToCommunity,
+  cancelCommunityInvite,
+  acceptCommunityInvite,
+  rejectCommunityInvite,
 } from "@/lib/actions";
 import { createClient } from "@/lib/supabase/client";
 import type { CommunityLite, CommunityRoomData, PersonLite } from "@/lib/data";
@@ -41,9 +46,12 @@ type Dict = ReturnType<typeof getDict>;
  */
 export function CommunityDirectory({
   mine,
+  invites = [],
   locale,
 }: {
   mine: CommunityLite[];
+  /** دعواتٌ معلّقة إليّ — قسمها فوق «مجتمعاتي» (هجرة 42) */
+  invites?: CommunityLite[];
   locale: Locale;
 }) {
   const t = getDict(locale);
@@ -116,6 +124,20 @@ export function CommunityDirectory({
               ))}
             </ul>
           )}
+        </section>
+      )}
+
+      {/* ===== دعواتي — فوق مجتمعاتي: قرارٌ ينتظرك قبل ما تملكه ===== */}
+      {q.trim().length < 2 && invites.length > 0 && (
+        <section>
+          <p className="text-[11px] font-semibold text-muted uppercase tracking-wide mb-1.5">
+            {t.commInvitesSection}
+          </p>
+          <ul className="divide-y divide-[color:var(--divider)]">
+            {invites.map((c) => (
+              <InviteRow key={c.id} c={c} t={t} locale={locale} />
+            ))}
+          </ul>
         </section>
       )}
 
@@ -228,6 +250,63 @@ function CommunityRow({ c, t, locale }: { c: CommunityLite; t: Dict; locale: Loc
           {t.commJoin}
         </button>
       )}
+    </li>
+  );
+}
+
+/** صفُّ دعوةٍ في الدليل — قبولٌ يفتح الغرفة، ورفضٌ يحذف الدعوة (هجرة 42) */
+function InviteRow({ c, t, locale }: { c: CommunityLite; t: Dict; locale: Locale }) {
+  const router = useRouter();
+  const [gone, setGone] = useState(false);
+  const [pending, start] = useTransition();
+
+  function decide(accept: boolean) {
+    tap(accept ? 10 : 8);
+    start(async () => {
+      try {
+        if (accept) {
+          await acceptCommunityInvite(c.id);
+          router.push(`/people?tab=all&c=${c.id}`);
+          coalescedRefresh(router);
+        } else {
+          await rejectCommunityInvite(c.id);
+          setGone(true);
+        }
+      } catch (e) {
+        flashError((e as Error).message);
+      }
+    });
+  }
+
+  if (gone) return null;
+  return (
+    <li className="flex items-center gap-3 py-3">
+      <CommunityBadge name={c.name} photo={c.photo_url} />
+      <Link href={`/people?tab=all&c=${c.id}`} className="min-w-0 flex-1">
+        <span className="flex items-center gap-1.5 text-sm font-semibold truncate">
+          <span className="truncate">{c.name}</span>
+          {c.is_private && <Icon name="eye-off" size={13} className="text-muted shrink-0" />}
+        </span>
+        <span className="block text-xs text-muted">
+          {t.commMembers(num(c.member_count, locale))}
+        </span>
+      </Link>
+      <button
+        type="button"
+        disabled={pending}
+        onClick={() => decide(true)}
+        className="shrink-0 px-3 h-8 rounded-full bg-accent text-[color:var(--on-accent)] text-[12px] font-bold hover:brightness-110 active:scale-95 transition disabled:opacity-50"
+      >
+        {t.requestAccept}
+      </button>
+      <button
+        type="button"
+        disabled={pending}
+        onClick={() => decide(false)}
+        className="shrink-0 px-3 h-8 rounded-full border border-border text-[12px] font-semibold text-muted hover:text-foreground transition disabled:opacity-50"
+      >
+        {t.requestReject}
+      </button>
     </li>
   );
 }
@@ -361,6 +440,7 @@ export function CommunityRoom({
     room.isMember ? "member" : room.requested ? "requested" : "none",
   );
   const [membersOpen, setMembersOpen] = useState(false);
+  const [inviteOpen, setInviteOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const idRef = useRef(0);
   const endRef = useRef<HTMLDivElement>(null);
@@ -445,6 +525,22 @@ export function CommunityRoom({
           </button>
         </span>
 
+        {room.isOwner && (
+          /* «أضف أشخاصاً» (هجرة 42): بابُ الدعوة بجوار أفعال المالك —
+             يدعو ممن يتابعهم، والطرف الآخر يقبل من قسم «دعوات» في الدليل */
+          <button
+            type="button"
+            onClick={() => {
+              tap(8);
+              setInviteOpen(true);
+            }}
+            aria-label={t.commInviteBtn}
+            title={t.commInviteBtn}
+            className="shrink-0 grid place-items-center w-9 h-9 rounded-full text-muted hover:text-accent hover:bg-surface-2 transition"
+          >
+            <Icon name="people" size={16} />
+          </button>
+        )}
         {room.isOwner ? (
           <button
             type="button"
@@ -593,6 +689,11 @@ export function CommunityRoom({
         </div>
       )}
 
+      {/* ===== ورقة الدعوة — للمالك (هجرة 42) ===== */}
+      {inviteOpen && (
+        <InviteSheet room={room} t={t} onClose={() => setInviteOpen(false)} />
+      )}
+
       {/* ===== ورقة الأعضاء ===== */}
       {membersOpen && (
         <Sheet open variant="top" onClose={() => setMembersOpen(false)} closeLabel={t.closeLabel} labelledBy="comm-members-title">
@@ -719,6 +820,117 @@ function RoomPhotoButton({ room, t }: { room: CommunityRoomData; t: Dict }) {
         }}
       />
     </button>
+  );
+}
+
+/**
+ * ورقة «أضف أشخاصاً» (هجرة 42): قائمة من أتابعهم مع حالة كلٍّ منهم.
+ *
+ * من أتابعهم لا كلَّ الناس (طلب المالك حرفياً)، والبيانات تُجلب عند
+ * الفتح كنمط SendShareSheet — لا تُحمَّل مع الغرفة لمن لن يفتح الورقة.
+ * ثلاث حالاتٍ لكل صف: عضوٌ (نصٌّ صامت — لا فعل له)، مدعوٌّ (ضغطةٌ تلغي
+ * الدعوة)، وسواهما زرُّ «ادعُ». تفاؤليٌّ بالكامل مع تراجعٍ عند الفشل
+ * (D-007).
+ */
+function InviteSheet({
+  room,
+  t,
+  onClose,
+}: {
+  room: CommunityRoomData;
+  t: Dict;
+  onClose: () => void;
+}) {
+  const [people, setPeople] = useState<PersonLite[] | null>(null);
+  const [invited, setInvited] = useState<Set<string>>(new Set(room.invitedIds));
+  const memberIds = new Set(room.members.map((m) => m.id));
+
+  useEffect(() => {
+    let cancelled = false;
+    myFollowingList()
+      .then((p) => {
+        if (!cancelled) setPeople(p);
+      })
+      .catch(() => {
+        if (!cancelled) setPeople([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const nameOf = (p: PersonLite) =>
+    p.hide_name ? t.anonymousUser : p.nickname || p.username || "—";
+
+  function toggle(p: PersonLite) {
+    const was = invited.has(p.id);
+    tap(8);
+    setInvited((prev) => {
+      const next = new Set(prev);
+      if (was) next.delete(p.id);
+      else next.add(p.id);
+      return next;
+    });
+    (was ? cancelCommunityInvite(room.id, p.id) : inviteToCommunity(room.id, p.id)).catch(
+      (e) => {
+        flashError((e as Error).message);
+        setInvited((prev) => {
+          const next = new Set(prev);
+          if (was) next.add(p.id);
+          else next.delete(p.id);
+          return next;
+        });
+      },
+    );
+  }
+
+  return (
+    <Sheet open variant="top" onClose={onClose} closeLabel={t.closeLabel} labelledBy="comm-invite-title">
+      <SheetHeader
+        id="comm-invite-title"
+        title={t.commInviteTitle}
+        closeLabel={t.closeLabel}
+        onClose={onClose}
+      >
+        <p className="text-xs text-muted mt-0.5">{t.commInviteHint}</p>
+      </SheetHeader>
+      <div className="overflow-y-auto overscroll-contain divide-y divide-[color:var(--divider)] pb-[env(safe-area-inset-bottom)] min-h-[6rem]">
+        {people === null ? (
+          <p className="text-sm text-muted text-center py-8">{t.peopleSearching}</p>
+        ) : people.length === 0 ? (
+          <p className="text-sm text-muted text-center py-8 px-5">{t.commInviteEmpty}</p>
+        ) : (
+          people.map((p) => {
+            const name = nameOf(p);
+            const isMember = memberIds.has(p.id);
+            const isInvited = invited.has(p.id);
+            return (
+              <div key={p.id} className="flex items-center gap-3 px-5 py-3">
+                <Avatar src={p.hide_name ? null : p.avatar_url} name={name} size={40} alt={t.avatarAlt} />
+                <span className="min-w-0 flex-1 text-sm font-semibold truncate">{name}</span>
+                {isMember ? (
+                  <span className="shrink-0 text-[11px] font-bold text-muted">
+                    {t.commAlreadyMember}
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => toggle(p)}
+                    className={
+                      isInvited
+                        ? "shrink-0 px-3 h-8 rounded-full border border-border text-[12px] font-semibold text-muted hover:text-foreground transition"
+                        : "shrink-0 px-3 h-8 rounded-full bg-accent text-[color:var(--on-accent)] text-[12px] font-bold hover:brightness-110 active:scale-95 transition"
+                    }
+                  >
+                    {isInvited ? t.commInvited : t.commInviteAction}
+                  </button>
+                )}
+              </div>
+            );
+          })
+        )}
+      </div>
+    </Sheet>
   );
 }
 
