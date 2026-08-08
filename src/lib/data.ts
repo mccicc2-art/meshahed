@@ -1422,6 +1422,8 @@ export interface CommunityRoomData {
   is_private: boolean;
   owner_id: string;
   photo_url: string | null;
+  /** من دعاهم المالك — للمالك وحده؛ فارغة لغيره (هجرة 42) */
+  invitedIds: string[];
   isOwner: boolean;
   isMember: boolean;
   /** طلبتُ الانضمام وما زال معلّقاً (الخاصّ) */
@@ -1438,6 +1440,18 @@ export async function getMyCommunities(): Promise<CommunityLite[]> {
   try {
     const supabase = await createClient();
     const { data, error } = await supabase.rpc("my_communities");
+    if (error || !data) return [];
+    return (data as CommunityLite[]).map((c) => ({ ...c, member_count: Number(c.member_count) }));
+  } catch {
+    return [];
+  }
+}
+
+/** دعواتي المعلّقة — قسم «دعوات» فوق مجتمعاتي في الدليل (هجرة 42) */
+export async function getMyCommunityInvites(): Promise<CommunityLite[]> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("my_community_invites");
     if (error || !data) return [];
     return (data as CommunityLite[]).map((c) => ({ ...c, member_count: Number(c.member_count) }));
   } catch {
@@ -1465,7 +1479,7 @@ export async function getCommunityRoom(id: string): Promise<CommunityRoomData | 
     if (!c) return null;
     const isOwner = c.owner_id === me.id;
 
-    const [memberRows, msgRows, reqRows, myReq] = await Promise.all([
+    const [memberRows, msgRows, reqRows, myReq, inviteRows] = await Promise.all([
       supabase
         .from("community_members")
         .select("user_id")
@@ -1492,6 +1506,14 @@ export async function getCommunityRoom(id: string): Promise<CommunityRoomData | 
         .eq("community_id", id)
         .eq("user_id", me.id)
         .maybeSingle(),
+      // من دعاهم المالك — لحالة «مدعو» في ورقة الدعوة (هجرة 42)
+      isOwner
+        ? supabase
+            .from("community_invites")
+            .select("user_id")
+            .eq("community_id", id)
+            .limit(200)
+        : Promise.resolve({ data: [] as { user_id: string }[] }),
     ]);
 
     const members = (memberRows.data ?? []).map((r) => r.user_id);
@@ -1515,6 +1537,7 @@ export async function getCommunityRoom(id: string): Promise<CommunityRoomData | 
       is_private: c.is_private,
       owner_id: c.owner_id,
       photo_url: c.photo_url ?? null,
+      invitedIds: (inviteRows.data ?? []).map((r) => r.user_id),
       isOwner,
       isMember,
       requested: !!myReq.data,
@@ -1920,6 +1943,37 @@ export async function searchPublicLists(q: string, limit = 40): Promise<PublicLi
       .eq("is_public", true)
       .neq("user_id", user.id)
       .ilike("name", `%${needle}%`)
+      .order("updated_at", { ascending: false })
+      .limit(limit);
+    if (!lists?.length) return [];
+    return await shapeListCards(lists, true);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * قوائم من أتابعهم — صفّ «أصدقائك» في ديسكفري القوائم (D-082).
+ * المتابَعون أولاً ثم قوائمهم المعلنة: طلبان مهما كثر المتابَعون،
+ * والقراءة عبر سياسة `is_public` العالمية نفسها.
+ */
+export async function getFollowedPublicLists(limit = 15): Promise<PublicListCard[]> {
+  try {
+    const supabase = await createClient();
+    const user = await getUser();
+    if (!user) return [];
+    const { data: fs } = await supabase
+      .from("user_follows")
+      .select("following_id")
+      .eq("follower_id", user.id)
+      .limit(200);
+    const ids = (fs ?? []).map((f) => f.following_id);
+    if (ids.length === 0) return [];
+    const { data: lists } = await supabase
+      .from("user_lists")
+      .select("id, user_id, name, kind, updated_at")
+      .eq("is_public", true)
+      .in("user_id", ids)
       .order("updated_at", { ascending: false })
       .limit(limit);
     if (!lists?.length) return [];

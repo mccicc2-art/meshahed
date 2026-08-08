@@ -1713,6 +1713,72 @@ export async function myFollowersList(): Promise<PersonLite[]> {
   return (people ?? []) as PersonLite[];
 }
 
+/** من أتابعهم — لورقة دعوة المجتمع (هجرة 42): «أضيف من اللي متابعهم» */
+export async function myFollowingList(): Promise<PersonLite[]> {
+  const { supabase, user } = await requireUser();
+  const { data } = await supabase
+    .from("user_follows")
+    .select("following_id")
+    .eq("follower_id", user.id)
+    .limit(200);
+  const ids = [...new Set((data ?? []).map((r) => r.following_id))];
+  if (!ids.length) return [];
+  const { data: people } = await supabase
+    .from("public_profiles")
+    .select("id, nickname, username, avatar_url, hide_name")
+    .in("id", ids);
+  return (people ?? []) as PersonLite[];
+}
+
+/* ===== دعوات المجتمعات (هجرة 42) ===== */
+
+/** المالك يدعو شخصاً — سياسة الإدراج تتحقق من الملكية في SQL */
+export async function inviteToCommunity(communityId: string, userId: string) {
+  communityId = uuid(communityId);
+  userId = uuid(userId);
+  const { supabase, user } = await requireUser("community", 20, 60_000);
+  if (userId === user.id) throw new Error("لا تدعُ نفسك");
+  const { error } = await supabase
+    .from("community_invites")
+    .upsert({ community_id: communityId, user_id: userId });
+  if (error) fail(error);
+}
+
+/** المالك يلغي دعوةً معلّقة */
+export async function cancelCommunityInvite(communityId: string, userId: string) {
+  communityId = uuid(communityId);
+  userId = uuid(userId);
+  const { supabase } = await requireUser("community", 20, 60_000);
+  const { error } = await supabase
+    .from("community_invites")
+    .delete()
+    .match({ community_id: communityId, user_id: userId });
+  if (error) fail(error);
+}
+
+/** المدعوّ يقبل — الـRPC يتحقق من الدعوة ثم يُدخِله ويحذفها */
+export async function acceptCommunityInvite(communityId: string) {
+  communityId = uuid(communityId);
+  const { supabase } = await requireUser("community", 20, 60_000);
+  const { error } = await supabase.rpc("accept_community_invite", {
+    p_community: communityId,
+  });
+  if (error) fail(error);
+  revalidatePath("/people");
+}
+
+/** المدعوّ يرفض — يحذف صفّ دعوته */
+export async function rejectCommunityInvite(communityId: string) {
+  communityId = uuid(communityId);
+  const { supabase, user } = await requireUser("community", 20, 60_000);
+  const { error } = await supabase
+    .from("community_invites")
+    .delete()
+    .match({ community_id: communityId, user_id: user.id });
+  if (error) fail(error);
+  revalidatePath("/people");
+}
+
 /** من منحتُهم رؤية مكتبتي — لقسم الإعدادات (D-070) */
 export async function myLibraryGrants(): Promise<PersonLite[]> {
   const { supabase, user } = await requireUser();

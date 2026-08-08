@@ -17,10 +17,14 @@ export interface Universe {
   en: string;
   /** معرّفات TMDB للأفلام **بترتيب الأحداث** — القاموس هو الترتيب */
   movieIds: number[];
+  /** ترتيب أحداثٍ منسّق (العوالم) أم ترتيب إصدار (المجموعات كديزني)؟
+      يقرّر سطر الوعد على البطاقة: «بترتيب الأحداث» لا يُقال لما ليس كذلك */
+  storyOrder?: boolean;
 }
 
 export const UNIVERSES: Universe[] = [
   {
+    storyOrder: true,
     slug: "mcu",
     ar: "عالم مارفل السينمائي",
     en: "Marvel Cinematic Universe",
@@ -65,6 +69,7 @@ export const UNIVERSES: Universe[] = [
     ],
   },
   {
+    storyOrder: true,
     slug: "dc",
     ar: "عالم DC السينمائي",
     en: "DC Universe",
@@ -88,6 +93,7 @@ export const UNIVERSES: Universe[] = [
     ],
   },
   {
+    storyOrder: true,
     slug: "wizarding",
     ar: "عالم هاري بوتر السحري",
     en: "Wizarding World",
@@ -106,6 +112,7 @@ export const UNIVERSES: Universe[] = [
     ],
   },
   {
+    storyOrder: true,
     slug: "starwars",
     ar: "عالم حرب النجوم",
     en: "Star Wars",
@@ -125,13 +132,59 @@ export const UNIVERSES: Universe[] = [
   },
 ];
 
-/** أي عالمٍ ينتمي إليه هذا الفيلم؟ — فحصٌ محليّ بلا طلب شبكة */
+/**
+ * مجموعاتٌ منسّقة ليست «عوالم قصة» — ديزني وبيكسار أوّلها (طلب أحمد
+ * لديسكفري القوائم). ترتيبها ترتيب الإصدار، وهي **خارج** `universeOf`
+ * عمداً: بطاقة العالم في ترويسة الفيلم (D-080) للعوالم وحدها، وإلا صار
+ * كل فيلم ديزني يحمل زرّ «احفظ العالم» بوعدٍ لا يصدق.
+ */
+export const CURATED: Universe[] = [
+  {
+    slug: "disney",
+    ar: "كلاسيكيات ديزني وبيكسار",
+    en: "Disney & Pixar Classics",
+    movieIds: [
+      408,    // Snow White and the Seven Dwarfs
+      11224,  // Cinderella
+      10882,  // Sleeping Beauty
+      10144,  // The Little Mermaid
+      10020,  // Beauty and the Beast
+      812,    // Aladdin
+      8587,   // The Lion King
+      862,    // Toy Story
+      10674,  // Mulan
+      37135,  // Tarzan
+      585,    // Monsters, Inc.
+      11544,  // Lilo & Stitch
+      12,     // Finding Nemo
+      9806,   // The Incredibles
+      2062,   // Ratatouille
+      10681,  // WALL·E
+      14160,  // Up
+      38757,  // Tangled
+      109445, // Frozen
+      150540, // Inside Out
+      269149, // Zootopia
+      277834, // Moana
+      354912, // Coco
+      568124, // Encanto
+    ],
+  },
+];
+
+/** كل المجموعات المنسّقة معاً — لصفّ «قوائم منسّقة» في ديسكفري القوائم */
+export function allCuratedSets(): Universe[] {
+  return [...UNIVERSES, ...CURATED];
+}
+
+/** أي عالمٍ ينتمي إليه هذا الفيلم؟ — فحصٌ محليّ بلا طلب شبكة (العوالم وحدها) */
 export function universeOf(movieId: number): Universe | null {
   return UNIVERSES.find((u) => u.movieIds.includes(movieId)) ?? null;
 }
 
+/** البحث بالـslug يشمل المنسّقات — زرّ الحفظ واحدٌ للجميع (محرّك D-052) */
 export function universeBySlug(slug: string): Universe | null {
-  return UNIVERSES.find((u) => u.slug === slug) ?? null;
+  return allCuratedSets().find((u) => u.slug === slug) ?? null;
 }
 
 export function universeName(u: Universe, locale: "ar" | "en") {
