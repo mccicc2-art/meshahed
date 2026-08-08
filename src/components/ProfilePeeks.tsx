@@ -1,0 +1,196 @@
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
+import Image from "next/image";
+import { Sheet, SheetHeader } from "./ui/Sheet";
+import { Avatar } from "./Avatar";
+import { Icon, type IconName } from "./Icon";
+import { peopleFollowsOf } from "@/lib/actions";
+import type { PersonLite } from "@/lib/data";
+
+/**
+ * منبثقا الملف العام (دفعة أحمد الثالثة):
+ * - عدّادا المتابعة يضغطان فتُفتح ورقة الأسماء (تجلب عند أول فتح).
+ * - خانة «للمشاهدة» في بطاقة الأرقام تضغط فتعرض ما بقي لصاحب الصفحة —
+ *   العناصر تأتي مع الصفحة نفسها (محسوبة أصلاً لصفوفه) فلا طلب إضافي.
+ */
+
+export function FollowCountButton({
+  targetId,
+  dir,
+  count,
+  label,
+  locked,
+  labels,
+}: {
+  targetId: string;
+  dir: "followers" | "following";
+  count: number;
+  label: string;
+  /** صاحب الصفحة أقفل قائمتيه (هجرة 43) — العدد يبقى والباب يُقفل */
+  locked: boolean;
+  labels: { close: string; empty: string; anonymous: string };
+}) {
+  const [open, setOpen] = useState(false);
+  const [people, setPeople] = useState<PersonLite[] | null>(null);
+
+  const body = (
+    <>
+      <Icon name="people-filled" size={16} />
+      <span className="font-bold text-white tabular-nums">{count}</span>
+      <span className="text-white/75">{label}</span>
+    </>
+  );
+
+  if (locked) {
+    return <span className="shrink-0 flex items-center gap-1">{body}</span>;
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        className="shrink-0 flex items-center gap-1 hover:brightness-110 transition"
+        aria-haspopup="dialog"
+        onClick={() => {
+          setOpen(true);
+          if (!people) {
+            void peopleFollowsOf(targetId, dir)
+              .then(setPeople)
+              .catch(() => setPeople([]));
+          }
+        }}
+      >
+        {body}
+      </button>
+
+      <Sheet open={open} onClose={() => setOpen(false)} closeLabel={labels.close} labelledBy={`fp-${dir}`}>
+        <SheetHeader id={`fp-${dir}`} title={label} closeLabel={labels.close} onClose={() => setOpen(false)} />
+        <div className="flex-1 min-h-0 overflow-y-auto pb-2">
+          {people === null ? (
+            <div className="space-y-2 py-1" aria-hidden>
+              {Array.from({ length: 5 }, (_, i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-surface-2 animate-pulse" />
+                  <div className="h-3.5 w-1/2 rounded bg-surface-2 animate-pulse" />
+                </div>
+              ))}
+            </div>
+          ) : people.length === 0 ? (
+            <p className="text-center text-muted py-10 text-sm">{labels.empty}</p>
+          ) : (
+            <ul className="space-y-1 py-1">
+              {people.map((p) => {
+                const name = p.nickname || p.username || labels.anonymous;
+                const row = (
+                  <span className="flex items-center gap-3 rounded-xl px-1.5 py-1.5 hover:bg-surface-2 transition">
+                    <Avatar src={p.avatar_url} name={name} size={40} alt="" />
+                    <span className="min-w-0">
+                      <span className="block text-[14px] font-semibold truncate">{name}</span>
+                      {p.username && (
+                        <span className="block text-[12px] text-muted truncate" dir="ltr">
+                          @{p.username}
+                        </span>
+                      )}
+                    </span>
+                  </span>
+                );
+                return (
+                  <li key={p.id}>
+                    {/* مخفي الاسم بلا صفحةٍ تُقصد (D-011) — صفٌّ بلا رابط */}
+                    {p.username || p.nickname ? (
+                      <Link href={`/u/${p.username ?? p.id}`} prefetch={false} onClick={() => setOpen(false)}>
+                        {row}
+                      </Link>
+                    ) : (
+                      row
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      </Sheet>
+    </>
+  );
+}
+
+export type ToWatchItem = {
+  key: string;
+  href: string;
+  title: string;
+  poster: string | null;
+  /** «بقي N حلقة» للمسلسل — الفيلم بلا سطر ثانٍ */
+  remainingLabel: string | null;
+};
+
+export function ToWatchStat({
+  value,
+  label,
+  icon,
+  color,
+  items,
+  divider,
+  labels,
+}: {
+  value: number;
+  label: string;
+  icon: IconName;
+  color: string;
+  items: ToWatchItem[];
+  divider: boolean;
+  labels: { close: string; empty: string };
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button
+        type="button"
+        className="relative flex flex-col items-center justify-center px-1 py-2.5 w-full hover:bg-surface/60 rounded-xl transition"
+        aria-haspopup="dialog"
+        onClick={() => setOpen(true)}
+      >
+        {divider && <span className="absolute inset-y-1 end-0 w-px bg-white/10" aria-hidden />}
+        <span className="flex items-center gap-2">
+          <Icon name={icon} size={20} style={{ color }} className="shrink-0" />
+          <span className="text-[17px] font-bold leading-none tabular-nums">{value}</span>
+        </span>
+        <span className="block text-[11px] text-muted mt-1.5 leading-[1.25]">{label}</span>
+      </button>
+
+      <Sheet open={open} onClose={() => setOpen(false)} closeLabel={labels.close} labelledBy="towatch-peek">
+        <SheetHeader id="towatch-peek" title={label} closeLabel={labels.close} onClose={() => setOpen(false)} />
+        <div className="flex-1 min-h-0 overflow-y-auto pb-2">
+          {items.length === 0 ? (
+            <p className="text-center text-muted py-10 text-sm">{labels.empty}</p>
+          ) : (
+            <ul className="space-y-1 py-1">
+              {items.map((x) => (
+                <li key={x.key}>
+                  <Link
+                    href={x.href}
+                    prefetch={false}
+                    className="flex items-center gap-3 rounded-xl px-1.5 py-1.5 hover:bg-surface-2 transition"
+                    onClick={() => setOpen(false)}
+                  >
+                    <span className="relative w-10 h-[60px] shrink-0 rounded-lg overflow-hidden bg-surface-2">
+                      {x.poster && <Image src={x.poster} alt="" fill sizes="40px" className="object-cover" />}
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block text-[14px] font-semibold truncate">{x.title}</span>
+                      {x.remainingLabel && (
+                        <span className="block text-[12px] text-muted truncate">{x.remainingLabel}</span>
+                      )}
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </Sheet>
+    </>
+  );
+}

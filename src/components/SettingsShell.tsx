@@ -55,6 +55,7 @@ export function SettingsShell({
   genres,
   hideName,
   isPrivate,
+  hideFollowLists = false,
   homePrefs,
   traktReady,
   initial = "profile",
@@ -77,6 +78,7 @@ export function SettingsShell({
   hideName: boolean;
   /** حسابٌ خاص — المتابعة بطلب (follow_requests.sql) */
   isPrivate: boolean;
+  hideFollowLists?: boolean;
   homePrefs?: unknown;
   /** هل مفاتيح Trakt مضبوطة على الخادم؟ الزرّ لا يُعرض بلا ذلك */
   traktReady: boolean;
@@ -118,6 +120,7 @@ export function SettingsShell({
     genres,
     initialHideName: hideName,
     initialIsPrivate: isPrivate,
+    initialHideFollowLists: hideFollowLists,
   };
 
   function pane() {
@@ -132,7 +135,7 @@ export function SettingsShell({
         return (
           <div className="space-y-4">
             <p className="text-xs text-muted leading-relaxed">{t.settingsPrivacyHint}</p>
-            <AccountSettings {...accountProps} only={["hideName", "privateAccount"]} />
+            <AccountSettings {...accountProps} only={["hideName", "privateAccount", "followLists"]} />
             {/* استثناء «حساب خاص» الفرديّ: منحة رؤية المكتبة (D-070) */}
             <LibraryAccessList locale={locale} />
             {/* باب الرجوع الوحيد عن الحظر — الملفّ المحظور لم يعد يُفتح من دائرتك */}

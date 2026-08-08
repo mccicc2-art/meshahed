@@ -5,6 +5,10 @@ import { PosterRail, RailItem } from "./PosterRail";
 import { posterUrl } from "@/lib/media";
 import { getDict, type Locale } from "@/lib/i18n";
 import type { PublicListCard } from "@/lib/data";
+import { ListPeekTrigger } from "./ListPeek";
+
+/** تسميات ورقة المعاينة — تُمرَّر من الخادم لأن مكوّن المعاينة عميل */
+export type PeekLabels = { close: string; openList: string; failed: string; watchedMark: string };
 
 /**
  * صفّ «قوائم من المجتمع» — اكتشاف القوائم المعلنة في اكتشف.
@@ -24,11 +28,14 @@ export function PublicListsRail({
   lists,
   locale,
   title,
+  peekLabels,
 }: {
   lists: PublicListCard[];
   locale: Locale;
   /** عنوان الصفّ — يغيب فيحلّ عنوان «قوائم من المجتمع» */
   title?: string;
+  /** حاضرةً تجعل ضغطة البطاقة معاينةً منبثقة بدل الانتقال (تبويب القوائم) */
+  peekLabels?: PeekLabels;
 }) {
   const t = getDict(locale);
   if (!lists.length) return null;
@@ -39,7 +46,7 @@ export function PublicListsRail({
         /* wide لا الافتراضي: خانة الملصق (118px) لبطاقةٍ أعرض منها كانت
            تجعل البطاقات تتراكب فوق بعضها (لقطة المالك — D-084) */
         <RailItem key={l.id} wide>
-          <CommunityListCard list={l} locale={locale} className="w-full" />
+          <CommunityListCard list={l} locale={locale} className="w-full" peekLabels={peekLabels} />
         </RailItem>
       ))}
     </PosterRail>
@@ -55,20 +62,19 @@ export function CommunityListCard({
   list: l,
   locale,
   className = "w-full",
+  peekLabels,
 }: {
   list: PublicListCard;
   locale: Locale;
   /** عرض البطاقة — ثابتٌ في الصفّ الممرَّر، كاملٌ في الشبكة */
   className?: string;
+  /** حاضرةً: البطاقة تفتح معاينةً منبثقة (طلب أحمد)؛ غائبةً تبقى رابطاً */
+  peekLabels?: PeekLabels;
 }) {
   const t = getDict(locale);
   const posters = l.posters.map((p) => posterUrl(p, "w185")).filter(Boolean) as string[];
-  return (
-    <Link
-      href={`/lists/${l.id}`}
-      prefetch={false}
-      className={`block rounded-2xl border border-border bg-surface p-2.5 hover:bg-surface-2 transition ${className}`}
-    >
+  const body = (
+    <>
       <span className="block text-[14px] font-bold truncate">{l.name}</span>
       <span className="block text-[12px] text-muted truncate mt-0.5">
         {t.listCount(l.item_count)}
@@ -90,6 +96,20 @@ export function CommunityListCard({
           </span>
         )}
       </span>
+    </>
+  );
+
+  const cardClass = `block rounded-2xl border border-border bg-surface p-2.5 hover:bg-surface-2 transition ${className}`;
+  if (peekLabels) {
+    return (
+      <ListPeekTrigger kind="list" refId={l.id} title={l.name} labels={peekLabels}>
+        <span className={cardClass}>{body}</span>
+      </ListPeekTrigger>
+    );
+  }
+  return (
+    <Link href={`/lists/${l.id}`} prefetch={false} className={cardClass}>
+      {body}
     </Link>
   );
 }
