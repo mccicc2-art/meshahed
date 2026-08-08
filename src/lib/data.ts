@@ -1398,6 +1398,8 @@ export interface CommunityLite {
   name: string;
   is_private: boolean;
   owner_id: string;
+  /** صورة المجتمع — يرفعها المالك (هجرة 41)؛ غيابها يعيد قرص الحرف */
+  photo_url?: string | null;
   member_count: number;
   /** علاقتي به — يأتي من search_communities فقط */
   my_status?: "member" | "requested" | "none";
@@ -1419,6 +1421,7 @@ export interface CommunityRoomData {
   name: string;
   is_private: boolean;
   owner_id: string;
+  photo_url: string | null;
   isOwner: boolean;
   isMember: boolean;
   /** طلبتُ الانضمام وما زال معلّقاً (الخاصّ) */
@@ -1456,7 +1459,7 @@ export async function getCommunityRoom(id: string): Promise<CommunityRoomData | 
 
     const { data: c } = await supabase
       .from("communities")
-      .select("id, name, is_private, owner_id")
+      .select("id, name, is_private, owner_id, photo_url")
       .eq("id", id)
       .maybeSingle();
     if (!c) return null;
@@ -1511,6 +1514,7 @@ export async function getCommunityRoom(id: string): Promise<CommunityRoomData | 
       name: c.name,
       is_private: c.is_private,
       owner_id: c.owner_id,
+      photo_url: c.photo_url ?? null,
       isOwner,
       isMember,
       requested: !!myReq.data,
