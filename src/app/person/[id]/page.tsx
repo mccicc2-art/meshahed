@@ -5,7 +5,8 @@ import { redirect, notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getUser, isFollowingArtist } from "@/lib/data";
 import { FollowArtistButton } from "@/components/FollowArtistButton";
-import { getPerson, getPersonCredits, profileUrl, titleOf, yearOf } from "@/lib/tmdb";
+import { getPerson, getPersonCredits, isTvProgram, profileUrl, titleOf, yearOf } from "@/lib/tmdb";
+import { segmentedItem, segmentedTrackFull } from "@/components/ui/controls";
 import { getT } from "@/lib/locale";
 import { formatDate } from "@/lib/when";
 import { Icon, SectionTitle } from "@/components/Icon";
@@ -42,12 +43,21 @@ export async function generateMetadata({
   };
 }
 
-export default async function PersonPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function PersonPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ w?: string }>;
+}) {
   const user = await getUser();
   if (!user) redirect("/login");
 
   const { locale, t } = await getT();
   const { id } = await params;
+  const { w } = await searchParams;
+  /* تبويب الأعمال في الرابط (D-031 deep-linkable): الكل الافتراضي */
+  const worksTab = w === "tv" || w === "movie" || w === "show" ? w : "all";
   const personId = Number(id);
   if (!Number.isFinite(personId)) notFound();
 
@@ -164,7 +174,7 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
             </div>
           }
         >
-          <PersonWorks personId={personId} t={t} />
+          <PersonWorks personId={personId} t={t} worksTab={worksTab} />
         </Suspense>
       </section>
     </div>
@@ -175,17 +185,57 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
 async function PersonWorks({
   personId,
   t,
+  worksTab,
 }: {
   personId: number;
   t: Awaited<ReturnType<typeof getT>>["t"];
+  worksTab: "all" | "movie" | "tv" | "show";
 }) {
-  const works = await getPersonCredits(personId);
-  if (works.length === 0) {
+  const all = await getPersonCredits(personId);
+  if (all.length === 0) {
     return <p className="text-sm text-muted text-center py-10">{t.personNoWorks}</p>;
   }
 
+  /* التصنيف الثلاثي (طلب أحمد): ظهورات التوك شو كانت تُغرق السيرة —
+     البرامج (أخبار/واقع/توك شو بأنواع TMDB) تبويبٌ مستقل لا خلطٌ بالدراما */
+  const groups = {
+    all,
+    movie: all.filter((r) => r.media_type === "movie"),
+    tv: all.filter((r) => r.media_type === "tv" && !isTvProgram(r)),
+    show: all.filter((r) => isTvProgram(r)),
+  };
+  const works = groups[worksTab];
+
+  const tabs: { id: "all" | "movie" | "tv" | "show"; label: string; n: number }[] = [
+    { id: "all", label: t.browseAll, n: groups.all.length },
+    { id: "movie", label: t.shortMovies, n: groups.movie.length },
+    { id: "tv", label: t.shortShows, n: groups.tv.length },
+    { id: "show", label: t.personTabPrograms, n: groups.show.length },
+  ];
+
   return (
     <>
+      {/* روابط لا حالة عميل: الرابط يحمل التبويب، وكاش الراوتر (D-088)
+          يجعل التنقل بينها لحظياً بعد أول زيارة */}
+      <div className={`${segmentedTrackFull} mb-4`} role="tablist" aria-label={t.personWorksTitle}>
+        {tabs.map(({ id, label, n }) => (
+          <Link
+            key={id}
+            role="tab"
+            aria-selected={worksTab === id}
+            href={id === "all" ? `/person/${personId}` : `/person/${personId}?w=${id}`}
+            scroll={false}
+            className={segmentedItem(
+              worksTab === id,
+              "flex-1 basis-0 min-w-0 flex items-center justify-center gap-1.5 px-2 pt-1.5 pb-3 text-[13px]",
+              false,
+            )}
+          >
+            <span className="truncate">{label}</span>
+            <span className="text-[11px] tabular-nums opacity-75" dir="ltr">{n}</span>
+          </Link>
+        ))}
+      </div>
       <p className="text-xs text-muted mb-3">{t.personWorksCount(works.length)}</p>
       <PosterGrid>
         {works.map((w) => (
@@ -195,7 +245,7 @@ async function PersonWorks({
             title={titleOf(w)}
             posterPath={w.poster_path}
             year={yearOf(w)}
-            badge={w.media_type === "tv" ? t.typeSeries : t.typeMovie}
+            badge={w.media_type === "tv" ? (isTvProgram(w) ? t.typeProgram : t.typeSeries) : t.typeMovie}
           />
         ))}
       </PosterGrid>
