@@ -5,14 +5,11 @@ import {
   getFollowedArtists,
   getPublicListsFeed,
   getFollowedPublicLists,
-  searchPublicLists,
 } from "@/lib/data";
-import { PublicListsRail, CommunityListCard } from "@/components/PublicListsRail";
-import { ListsSearchField } from "@/components/ListsSearchField";
-import { ListsSourceChips, type ListsSource } from "@/components/ListsSourceChips";
+import { PublicListsRail } from "@/components/PublicListsRail";
 import { AddWorksToList } from "@/components/AddWorksToList";
 import { PosterRail, RailItem } from "@/components/PosterRail";
-import { allCuratedSets, universeName, type Universe } from "@/lib/universes";
+import { FRANCHISES, franchiseName, universeName, type Universe } from "@/lib/universes";
 import { Icon } from "@/components/Icon";
 import Image from "next/image";
 import {
@@ -97,15 +94,6 @@ export default async function NewsPage({
   const sp = await searchParams;
   const browse = parseBrowse(sp);
   const tab = parseDiscoverTab(sp.tab);
-  /* نصّ البحث يُقصّ هنا أيضاً لا في `searchPublicLists` وحدها: القيمة
-     تُرَدّ إلى حقل البحث كما هي، ورابطٌ بألف حرفٍ لا يرسم حقلاً بألف حرف */
-  const listsQ = (sp.q ?? "").slice(0, 60);
-  /* مصدر القوائم — كل قيمةٍ غير معروفة تسقط إلى «الكل» (عقيدة parseBrowse) */
-  const listsSrc: ListsSource =
-    sp.src === "curated" || sp.src === "friends" || sp.src === "community"
-      ? sp.src
-      : "all";
-
   /* قائمة المنصّات تُجلب على الخادم وتُمرَّر للورقة: طلبٌ واحد مخبَّأ ساعةً
      في طبقة fetch، ورأس الصفحة يبقى يرسم فوراً لأن الصفوف وحدها خلف
      Suspense. وفشلُ الجلب يُخفي المحور بدل أن يعرض خانةً فارغة.
@@ -139,24 +127,20 @@ export default async function NewsPage({
       />
 
       {tab === "lists" ? (
-        /* ===== تبويب «القوائم» — ديسكفري قوائم كامل (D-075 ثم D-082) =====
-            الحقل والرقائق خارج Suspense فيرسمان فوراً ويحفظ الحقل تركيزه؛
-            والأقسام وحدها تتبدّل — مفتاحها البحث والمصدر معاً */
-        <div className="space-y-4">
-          <ListsSearchField locale={locale} initial={listsQ} />
-          <ListsSourceChips locale={locale} src={listsSrc} />
-          <Suspense
-            key={`${listsQ}:${listsSrc}`}
-            fallback={
-              <div className="space-y-8" aria-hidden>
-                <RailSkeleton count={6} />
-                <RailSkeleton count={6} />
-              </div>
-            }
-          >
-            <ListsDiscovery locale={locale} t={t} q={listsQ} src={listsSrc} />
-          </Suspense>
-        </div>
+        /* ===== تبويب «القوائم» — صفوفٌ كصفوف الأعمال (D-084) =====
+            سقط البحث والرقائق (طلب المالك: «نفس التقسيم والتناسق»):
+            التبويب صفوفٌ تُقرأ بالتمرير كتبويب الأعمال تماماً — عالمٌ
+            فعالم، ثم من تتابعهم، ثم المجتمع. لا حالة في الرابط فلا مفتاح */
+        <Suspense
+          fallback={
+            <div className="space-y-8" aria-hidden>
+              <RailSkeleton count={6} />
+              <RailSkeleton count={6} />
+            </div>
+          }
+        >
+          <ListsDiscovery locale={locale} t={t} />
+        </Suspense>
       ) : (
         /* المفتاح يتغيّر بتغيّر الفلتر: React يُظهر الهيكل فوراً بدل أن
             يُبقي صفوف الفلتر السابق معلّقة حتى تصل الجديدة */
@@ -178,98 +162,38 @@ export default async function NewsPage({
 }
 
 /**
- * ديسكفري القوائم (D-082، طلب المالك): «يشبه الأفلام والمسلسلات».
+ * ديسكفري القوائم (D-082 ثم D-084): صفوفٌ كصفوف الأعمال، بلا بحثٍ ولا
+ * رقائق مصدر — «نفس التقسيم والتناسق» (طلب المالك).
  *
- * ثلاثة مصادر بصفوفٍ مسمّاة كصفوف تبويب الأعمال — المنسّقة (قوائمنا:
- * العوالم + ديزني)، فمن تتابعهم، فالمجتمع — والرقاقة تفرد مصدراً واحداً
- * شبكةً كاملة. البحث يبحث في قوائم المجتمع كلّها ويتجاهل المصدر: من يكتب
- * اسماً يريد النتيجة أينما كانت.
+ * كل عالمٍ صفٌّ باسمه: بطاقته الأولى القائمة الكاملة مرتّبةً، وبعدها
+ * الفرعيات (سبايدر-مان، آيرون مان…) — ثم صفّا من تتابعهم والمجتمع.
  */
-async function ListsDiscovery({
-  locale,
-  t,
-  q,
-  src,
-}: {
-  locale: Locale;
-  t: T;
-  q: string;
-  src: ListsSource;
-}) {
-  /* ===== البحث — فوق كل المصادر ===== */
-  if (q.trim()) {
-    const cards = await searchPublicLists(q, 40);
-    if (cards.length === 0)
-      return <p className="text-center text-muted py-20">{t.listsSearchEmpty}</p>;
-    return (
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        {cards.map((l) => (
-          <CommunityListCard key={l.id} list={l} locale={locale} />
-        ))}
-      </div>
-    );
-  }
-
-  /* ===== مصدرٌ مُفرَد — شبكة ===== */
-  if (src === "curated") {
-    return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {allCuratedSets().map((u) => (
-          <CuratedCard key={u.slug} u={u} locale={locale} t={t} />
-        ))}
-      </div>
-    );
-  }
-  if (src === "friends") {
-    const cards = await getFollowedPublicLists(40);
-    if (cards.length === 0)
-      return <p className="text-center text-muted py-20">{t.listsFriendsEmpty}</p>;
-    return (
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        {cards.map((l) => (
-          <CommunityListCard key={l.id} list={l} locale={locale} />
-        ))}
-      </div>
-    );
-  }
-  if (src === "community") {
-    const cards = await getPublicListsFeed(40).catch(() => []);
-    if (cards.length === 0)
-      return <p className="text-center text-muted py-20">{t.listsBrowseEmpty}</p>;
-    return (
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        {cards.map((l) => (
-          <CommunityListCard key={l.id} list={l} locale={locale} />
-        ))}
-      </div>
-    );
-  }
-
-  /* ===== «الكل» — صفوفٌ كصفوف الأعمال ===== */
+async function ListsDiscovery({ locale, t }: { locale: Locale; t: T }) {
   const [friends, community] = await Promise.all([
     getFollowedPublicLists(15),
     getPublicListsFeed(15).catch(() => []),
   ]);
+  const loc = locale === "en" ? ("en" as const) : ("ar" as const);
 
   return (
     <div className="space-y-8">
-      <PosterRail title={t.listsCurated} icon="sparkle-star">
-        {allCuratedSets().map((u) => (
-          <RailItem key={u.slug}>
-            <CuratedCard u={u} locale={locale} t={t} className="w-64" />
-          </RailItem>
-        ))}
-      </PosterRail>
+      {FRANCHISES.map((f) => (
+        <PosterRail key={f.slug} title={franchiseName(f, loc)} icon="sparkle-star">
+          {f.sets.map((u) => (
+            /* wide لا الافتراضي: بطاقة القائمة أعرض من بطاقة الملصق،
+               وخانةٌ ضيّقة كانت تجعل البطاقات تتراكب (لقطة المالك) */
+            <RailItem key={u.slug} wide>
+              <CuratedCard u={u} locale={locale} t={t} className="w-full" />
+            </RailItem>
+          ))}
+        </PosterRail>
+      ))}
 
       {friends.length > 0 && (
         <PublicListsRail lists={friends} locale={locale} title={t.listsFriendsRail} />
       )}
 
       <PublicListsRail lists={community} locale={locale} />
-
-      {friends.length === 0 && community.length === 0 && (
-        <p className="text-center text-muted py-10">{t.listsBrowseEmpty}</p>
-      )}
     </div>
   );
 }
