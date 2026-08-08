@@ -48,7 +48,8 @@ as
     p.avatar_pos,
     case when coalesce(p.hide_name, false) and p.id is distinct from auth.uid()
          then null else p.bio end        as bio,
-    coalesce(p.is_private, false)        as is_private
+    coalesce(p.is_private, false)        as is_private,
+    coalesce(p.hide_follow_lists, false) as hide_follow_lists
   from public.profiles p;
 
 revoke all on public.public_profiles from public, anon;
