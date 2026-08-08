@@ -33,7 +33,16 @@ export function parseDiscoverTab(v: string | undefined): DiscoverTab {
  * كل الرفوف دفعةً واحدة، فيضغط الشخص «سنوي» فتتحوّل «أفضل هذا الأسبوع»
  * كلّها إلى «هذه السنة».
  */
-export type BrowseWin = "week" | "year" | "all";
+/** نافذة صفوف «أفضل ١٠» — لكل صفٍّ نافذته (D-099، طلب أحمد): أزرار
+    خفيفة في عنوان الصف بدل محور النافذة العام الذي كان في ورقة
+    الفلاتر (يعدّل D-056/D-075). «كل الأوقات» القديمة يمثّلها ذيل
+    Top 50 الثابت، و«شهر» جديدة = آخر ثلاثين يوماً. */
+export type RailWin = "week" | "month" | "year";
+
+/** قراءة نافذة صفٍّ من معامل رابط (wm/ws/wa) — المجهول يسقط لأسبوع */
+export function parseRailWin(v: string | undefined): RailWin {
+  return v === "month" || v === "year" ? v : "week";
+}
 
 export interface BrowseGenre {
   /** المعرّف في الرابط — ثابتٌ لا يتغيّر بتغيّر اللغة */
@@ -218,8 +227,6 @@ export interface BrowseItem {
 
 export interface BrowseQuery {
   type: BrowseType;
-  /** نافذة الترتيب — أسبوعي/سنوي/كل الأوقات، المحور الأعلى */
-  win: BrowseWin;
   genre: BrowseGenre | null;
   /** لغة العمل الأصلية */
   lang: BrowseLang | null;
@@ -256,8 +263,8 @@ export function parseBrowse(params: {
   const type: BrowseType =
     params.type === "movie" || params.type === "tv" ? params.type : "all";
 
-  // النافذة: أسبوعي هو الافتراضي فيُحذف من الرابط، وغيرُه يُثبَّت
-  const win: BrowseWin = params.win === "year" || params.win === "all" ? params.win : "week";
+  // `win` القديم (محور الورقة قبل D-099) يُقرأ ويُتجاهل كـ`sort` —
+  // الروابط المشارَكة لا تنكسر، والنوافذ صارت لكل صفٍّ في wm/ws/wa
 
   const found = BROWSE_GENRES.find((g) => g.slug === params.g) ?? null;
   const genre = found && genreFitsType(found, type) ? found : null;
@@ -279,7 +286,6 @@ export function parseBrowse(params: {
 
   return {
     type,
-    win,
     genre,
     lang,
     country,
@@ -310,7 +316,6 @@ export function parseBrowse(params: {
  */
 export function browseCount(q: BrowseQuery) {
   return (
-    (q.win !== "week" ? 1 : 0) +
     (q.type !== "all" ? 1 : 0) +
     (q.genre ? 1 : 0) +
     (q.lang ? 1 : 0) +
@@ -342,7 +347,6 @@ export function needsDiscover(q: BrowseQuery) {
 /** بناء رابط «اكتشف» من فلترٍ — القيم الافتراضية تُحذف فيبقى نظيفاً */
 export function browseHref(q: {
   type?: BrowseType;
-  win?: BrowseWin;
   g?: string | null;
   lang?: string | null;
   co?: string | null;
@@ -352,7 +356,6 @@ export function browseHref(q: {
 }) {
   const p = new URLSearchParams();
   if (q.type && q.type !== "all") p.set("type", q.type);
-  if (q.win && q.win !== "week") p.set("win", q.win);
   if (q.g) p.set("g", q.g);
   if (q.lang) p.set("lang", q.lang);
   if (q.co) p.set("co", q.co);
@@ -367,7 +370,6 @@ export function browseHref(q: {
 export function browseKey(q: BrowseQuery, page = 1) {
   return [
     q.type,
-    q.win,
     q.genre?.slug ?? "all",
     q.lang?.code ?? "any",
     q.country?.code ?? "any",

@@ -699,12 +699,18 @@ export function isAnime(tv: {
  * المفتاحية مرتّباً بالرواج، ثم نرتّب بالتقييم بنفس منطق القائمتين
  * الأخريين — لتبقى الصفوف الثلاثة متّسقة في معناها.
  */
-export async function topTenAnimeThisWeek(limit = 10): Promise<SearchResult[]> {
+export async function topTenAnimeThisWeek(
+  limit = 10,
+  /** نافذة زمنية اختيارية (D-099): شهر/سنة = أنمي بدأ بثّه في المدى،
+      مرتّباً بالشعبية — نفس دلالة نافذتَي الأفلام والمسلسلات */
+  range?: { from: string; to: string },
+): Promise<SearchResult[]> {
   const data = await tmdb<{ results: SearchResult[] }>("/discover/tv", {
     with_keywords: ANIME_KEYWORD,
     sort_by: "popularity.desc",
     include_adult: "false",
     "vote_count.gte": "50",
+    ...(range ? { "first_air_date.gte": range.from, "first_air_date.lte": range.to } : {}),
   });
   const rows = (data.results ?? [])
     .filter((r) => r.poster_path && r.vote_average > 0)
