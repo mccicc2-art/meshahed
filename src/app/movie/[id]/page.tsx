@@ -19,7 +19,7 @@ import { getT, getWatchRegion } from "@/lib/locale";
 import { type Locale } from "@/lib/i18n";
 import { AddWorksToList } from "@/components/AddWorksToList";
 import { PublicListsRail } from "@/components/PublicListsRail";
-import { HeroRatings, TmdbStar } from "@/components/HeroRatings";
+import { HeroRatings, HeroRatingsSkeleton } from "@/components/HeroRatings";
 import { RatingBox } from "@/components/RatingBox";
 import { CommunityReviews } from "@/components/CommunityReviews";
 import { DetailTabs } from "@/components/DetailTabs";
@@ -108,7 +108,7 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
         />
       </div>
 
-      <div className="flex gap-4 -mt-24 sm:-mt-28 relative px-1">
+      <div className="flex flex-wrap gap-4 -mt-24 sm:-mt-28 relative px-1">
         <div className="w-32 sm:w-44 shrink-0">
           <div className="relative aspect-[2/3] rounded-poster overflow-hidden ring-1 ring-white/10 bg-surface-2 shadow-[0_18px_44px_rgba(0,0,0,0.55)]">
             {poster && <Image src={poster} alt={movie.title} fill sizes="176px" className="object-cover" />}
@@ -132,12 +132,14 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
                 <span>{t.minutesCount(movie.runtime)}</span>
               </>
             ) : null}
-            {/* IMDb وطماطم بدل نجمة TMDB (طلب أحمد — ينقض D-027)؛
-                النجمة القديمة هيكلُ الانتظار واحتياطُ غياب المفتاح */}
-            <Suspense fallback={<TmdbStar vote={movie.vote_average} />}>
-              <HeroRatings imdbId={movie.imdb_id} tmdbVote={movie.vote_average} />
-            </Suspense>
           </div>
+
+          {/* التقييم سطرٌ مستقلّ تحت البيانات، بشعارَي IMDb وطماطم لا
+              بأسمائهما، ومن هذين المصدرين فقط — لا نجمة TMDB (قرار أحمد
+              ٨ أغسطس، يُتمّ نقض D-027) */}
+          <Suspense fallback={<HeroRatingsSkeleton />}>
+            <HeroRatings imdbId={movie.imdb_id} />
+          </Suspense>
 
           {/* الأنواع صعدت من تبويب «معلومات» إلى جنب الملصق (طلب المالك):
               هوية الفيلم تُقرأ قبل قصّته لا بعدها */}
@@ -166,24 +168,27 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
             </div>
           )}
 
-          {/* زرّا السلسلة والعالم (D-052/D-074) — هنا لا في ذيل الصفحة
-              (طلب المالك): المساحة جنب الملصق هي بيت «الإضافات»، والصفّان
-              في الأسفل بقيا للتصفّح بلا أزرارٍ مكرّرة (بابٌ واحد لكل فعل) */}
-          {(movie.belongs_to_collection || universe) && (
-            <div className="mt-2.5 flex flex-wrap gap-2">
-              {movie.belongs_to_collection && (
-                <AddWorksToList
-                  source="collection"
-                  id={movie.belongs_to_collection.id}
-                  locale={locale}
-                />
-              )}
-              {universe && (
-                <AddWorksToList source="universe" id={universe.slug} locale={locale} />
-              )}
-            </div>
-          )}
         </div>
+
+        {/* زرّا السلسلة والعالم (D-052/D-074) — خرجا من عمود البيانات إلى
+            طرف الترويسة الفارغ (طلب المالك من لقطة الشاشة): على الشاشات
+            الواسعة عمود ثالث متوسّط عمودياً في نهاية الصفّ، وعلى الضيّقة —
+            حيث لا طرف فارغ أصلاً — يلتفّان سطراً كاملاً تحت الترويسة.
+            نسخة واحدة تتنقّل بالتخطيط لا نسختان (بابٌ واحد لكل فعل) */}
+        {(movie.belongs_to_collection || universe) && (
+          <div className="basis-full sm:basis-auto sm:self-center flex flex-wrap sm:flex-col gap-2 mt-3 sm:mt-0 sm:ms-2">
+            {movie.belongs_to_collection && (
+              <AddWorksToList
+                source="collection"
+                id={movie.belongs_to_collection.id}
+                locale={locale}
+              />
+            )}
+            {universe && (
+              <AddWorksToList source="universe" id={universe.slug} locale={locale} />
+            )}
+          </div>
+        )}
       </div>
 
       {/* الإجراء الرئيسي: أضف لقائمة + دائرة «شاهدتُه» — نفس لغة صفحة المسلسل */}
