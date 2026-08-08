@@ -59,8 +59,6 @@ export async function HeroRatings({
   imdbId,
   tvId,
 }: {
-  /** مؤقت انتقالي: تتجاهله النسخة الجديدة — يُحذف مع TmdbStar بعد تحديث الصفحتين */
-  tmdbVote?: number;
   /** معرّف IMDb إن كان بيدنا (الفيلم يحمله في تفاصيله) */
   imdbId?: string | null;
   /** مسلسل؟ يُحلّ معرّفه من /external_ids هنا — خارج مسار الترويسة الحرج */
@@ -95,12 +93,4 @@ export async function HeroRatings({
 /** هيكل الانتظار — نفس ارتفاع السطر حتى لا يقفز التخطيط عند الحلّ */
 export function HeroRatingsSkeleton() {
   return <div className="mt-2 h-5 w-32 rounded-md bg-surface-2 animate-pulse" />;
-}
-
-/** مؤقت انتقالي — يُحذف في كوميت التنظيف بعد تحديث صفحتَي الفيلم والمسلسل */
-export function TmdbStar({ vote }: { vote: number }) {
-  if (!(vote > 0)) return null;
-  return (
-    <span className="text-accent font-semibold tabular-nums">★ {vote.toFixed(1)}</span>
-  );
 }
