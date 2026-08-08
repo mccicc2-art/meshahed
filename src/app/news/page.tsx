@@ -1,7 +1,13 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
-import { getUser, getFollowedArtists, getPublicListsFeed } from "@/lib/data";
-import { PublicListsRail } from "@/components/PublicListsRail";
+import {
+  getUser,
+  getFollowedArtists,
+  getPublicListsFeed,
+  searchPublicLists,
+} from "@/lib/data";
+import { PublicListsRail, CommunityListCard } from "@/components/PublicListsRail";
+import { ListsSearchField } from "@/components/ListsSearchField";
 import {
   upcomingMovies,
   airingTv,
@@ -26,6 +32,7 @@ import { regionName } from "@/lib/region";
 import { type Locale } from "@/lib/i18n";
 import {
   parseBrowse,
+  parseDiscoverTab,
   browseKey,
   browseCount,
   needsDiscover,
@@ -61,6 +68,8 @@ export default async function NewsPage({
   searchParams,
 }: {
   searchParams: Promise<{
+    tab?: string;
+    q?: string;
     type?: string;
     win?: string;
     g?: string;
@@ -78,12 +87,19 @@ export default async function NewsPage({
   const { locale, t } = await getT();
   const sp = await searchParams;
   const browse = parseBrowse(sp);
+  const tab = parseDiscoverTab(sp.tab);
+  /* نصّ البحث يُقصّ هنا أيضاً لا في `searchPublicLists` وحدها: القيمة
+     تُرَدّ إلى حقل البحث كما هي، ورابطٌ بألف حرفٍ لا يرسم حقلاً بألف حرف */
+  const listsQ = (sp.q ?? "").slice(0, 60);
 
   /* قائمة المنصّات تُجلب على الخادم وتُمرَّر للورقة: طلبٌ واحد مخبَّأ ساعةً
      في طبقة fetch، ورأس الصفحة يبقى يرسم فوراً لأن الصفوف وحدها خلف
-     Suspense. وفشلُ الجلب يُخفي المحور بدل أن يعرض خانةً فارغة */
+     Suspense. وفشلُ الجلب يُخفي المحور بدل أن يعرض خانةً فارغة.
+     وتبويب «القوائم» لا يطلبها أصلاً — ورقة الفلاتر لا تُفتح فيه */
   const [providers, region] = await Promise.all([
-    listWatchProviders(browse.type === "tv" ? "tv" : "movie"),
+    tab === "titles"
+      ? listWatchProviders(browse.type === "tv" ? "tv" : "movie")
+      : Promise.resolve([] as { id: number; name: string }[]),
     getWatchRegion(),
   ]);
 
@@ -94,6 +110,7 @@ export default async function NewsPage({
 
       <DiscoverFilters
         locale={locale}
+        tab={tab}
         type={browse.type}
         win={browse.win}
         genre={browse.genre?.slug ?? null}
@@ -107,20 +124,65 @@ export default async function NewsPage({
         count={browseCount(browse)}
       />
 
-      {/* المفتاح يتغيّر بتغيّر الفلتر: React يُظهر الهيكل فوراً بدل أن
-          يُبقي صفوف الفلتر السابق معلّقة حتى تصل الجديدة */}
-      <Suspense
-        key={browseKey(browse)}
-        fallback={
-          <div className="space-y-8" aria-hidden>
-            <RailSkeleton count={6} />
-            <RailSkeleton count={6} />
-            <RailSkeleton count={6} />
-          </div>
-        }
-      >
-        <CuratedRails locale={locale} t={t} browse={browse} region={region} />
-      </Suspense>
+      {tab === "lists" ? (
+        /* ===== تبويب «القوائم» (طلب المالك) =====
+            الحقل خارج Suspense فيرسم فوراً ويحفظ تركيزه بين الجولات؛
+            والشبكة وحدها تتبدّل — مفتاحها نصّ البحث فيظهر الهيكل مع كل
+            بحثٍ جديد بدل نتائج البحث السابق معلّقة */
+        <div className="space-y-4">
+          <ListsSearchField locale={locale} initial={listsQ} />
+          <Suspense key={listsQ} fallback={<RailSkeleton count={6} />}>
+            <CommunityLists locale={locale} t={t} q={listsQ} />
+          </Suspense>
+        </div>
+      ) : (
+        /* المفتاح يتغيّر بتغيّر الفلتر: React يُظهر الهيكل فوراً بدل أن
+            يُبقي صفوف الفلتر السابق معلّقة حتى تصل الجديدة */
+        <Suspense
+          key={browseKey(browse)}
+          fallback={
+            <div className="space-y-8" aria-hidden>
+              <RailSkeleton count={6} />
+              <RailSkeleton count={6} />
+              <RailSkeleton count={6} />
+            </div>
+          }
+        >
+          <CuratedRails locale={locale} t={t} browse={browse} region={region} />
+        </Suspense>
+      )}
+    </div>
+  );
+}
+
+/**
+ * شبكة قوائم المجتمع — جسد تبويب «القوائم».
+ *
+ * شبكةٌ لا صفٌّ ممرَّر: الصفّ للذيل حين تكون القوائم توابل صفحةٍ أخرى،
+ * وهنا هي الصفحة نفسها — فتُفرش عموديّاً كصفحة `/lists`. والبطاقة بطاقةُ
+ * «قوائم من المجتمع» ذاتها (`CommunityListCard`) بعرضٍ كامل، لا نسخة.
+ *
+ * بلا بحثٍ تعرض أحدث المعلَن (أربعون: شاشتان أو ثلاث — تصفّحٌ لا أرشيف)،
+ * ومع البحث نتيجتَه من الخادم.
+ */
+async function CommunityLists({ locale, t, q }: { locale: Locale; t: T; q: string }) {
+  const cards = q.trim()
+    ? await searchPublicLists(q, 40)
+    : await getPublicListsFeed(40).catch(() => []);
+
+  if (cards.length === 0) {
+    return (
+      <p className="text-center text-muted py-20">
+        {q.trim() ? t.listsSearchEmpty : t.listsBrowseEmpty}
+      </p>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+      {cards.map((l) => (
+        <CommunityListCard key={l.id} list={l} locale={locale} />
+      ))}
     </div>
   );
 }
@@ -373,8 +435,8 @@ async function PersonalRails({ locale, t }: { locale: Locale; t: T }) {
      يجعل كل فتحٍ عيّنةً مختلفة، وزرّ التحديث يبقى للسحب داخل الزيارة */
   const suggested = [...pool];
   for (let i = suggested.length - 1; i > 0; i--) {
-    // eslint-disable-next-line react-hooks/purity -- العشوائية مقصودة: قرعةٌ
-    // لكل طلبٍ في مكوّن خادمٍ لا-متزامن يُنفَّذ مرةً واحدة، لا دالة عرضٍ تُعاد
+    // العشوائية مقصودة: قرعةٌ لكل طلبٍ في مكوّن خادمٍ لا-متزامن يُنفَّذ مرةً واحدة
+    // eslint-disable-next-line react-hooks/purity -- ليست دالة عرضٍ تُعاد
     const j = Math.floor(Math.random() * (i + 1));
     [suggested[i], suggested[j]] = [suggested[j], suggested[i]];
   }
