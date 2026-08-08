@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { HeroRatings, TmdbStar } from "@/components/HeroRatings";
+import { HeroRatings, HeroRatingsSkeleton } from "@/components/HeroRatings";
 import { Suspense } from "react";
 import { redirect, notFound } from "next/navigation";
 import Image from "next/image";
@@ -188,11 +188,14 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
             {tv.first_air_date && <span>{tv.first_air_date.slice(0, 4)}</span>}
             <span aria-hidden>·</span>
             <span>{t.seasonsCount(tv.number_of_seasons)}</span>
-            {/* IMDb وطماطم بدل نجمة TMDB (طلب أحمد — ينقض D-027) */}
-            <Suspense fallback={<TmdbStar vote={tv.vote_average} />}>
-              <HeroRatings tvId={tvId} tmdbVote={tv.vote_average} />
-            </Suspense>
           </div>
+
+          {/* التقييم سطرٌ مستقلّ تحت البيانات، بشعارَي IMDb وطماطم لا
+              بأسمائهما، ومن هذين المصدرين فقط — لا نجمة TMDB (قرار أحمد
+              ٨ أغسطس، يُتمّ نقض D-027) */}
+          <Suspense fallback={<HeroRatingsSkeleton />}>
+            <HeroRatings tvId={tvId} />
+          </Suspense>
 
           {/* الأنواع صعدت من «معلومات» إلى جنب الملصق — كصفحة الفيلم */}
           {tv.genres.length > 0 && (
@@ -290,17 +293,25 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
                   </div>
                 )}
 
-                {/* الطاقم فوق الترايلر — كصفحة الفيلم */}
-                <Suspense fallback={null}>
-                  <CastRail mediaType="tv" tmdbId={tvId} locale={locale} />
-                </Suspense>
-
                 <Suspense
                   fallback={<div className="skeleton aspect-video rounded-2xl" aria-hidden />}
                 >
                   <TrailerSection tvId={tvId} name={tv.name} backdrop={backdrop} locale={locale} />
                 </Suspense>
               </div>
+            ),
+          },
+          {
+            key: "cast",
+            label: t.tabCast,
+            icon: "people",
+            /* الطاقم تبويبٌ مستقلّ كصفحة الفيلم تماماً — الجلسة السابقة
+               بنته للأفلام وحدها فبقي المسلسل داخل «معلومات» (تنبيه أحمد):
+               تبويبٌ واحد بمعنى واحد في الصفحتين */
+            content: (
+              <Suspense fallback={null}>
+                <CastRail mediaType="tv" tmdbId={tvId} locale={locale} />
+              </Suspense>
             ),
           },
           {
