@@ -52,6 +52,10 @@ const ar = {
   recoBecauseRated: (title: string) => `أحببت «${title}»`,
   recoBecauseGenre: "من أنواعك المفضّلة",
   trendingWeek: "رائج هذا الأسبوع",
+  // تلميحات لمرة واحدة (م٣) + رقاقة النية في البحث
+  hintDiscover: "زر Filters يخفي فلاتر اللغة والحقبة والمنصة والتقييم — وأزرار أسبوع/شهر/سنة فوق صفوف أفضل ١٠.",
+  hintDismiss: "اضغط مطولاً على أي بطاقة لإخفاء اقتراحها نهائياً.",
+  searchIntentChip: (what: string) => `تصفّح ${what} في اكتشف`,
   pickGenresHint: "حدّد أنواعك المفضّلة في الملف الشخصي لتظهر لك اقتراحات على ذوقك ←",
   levelLabel: (n: number) => `المستوى ${n}`,
   levelNames: [
@@ -118,6 +122,7 @@ const ar = {
   libTabFinished: "أكملتها",
   libShowsGroup: "المسلسلات",
   libMoviesGroup: "الأفلام",
+  libraryEmptyCta: "اكتشف أعمالاً",
   libraryEmpty: "مكتبتك فارغة — ابحث عن عمل وتابعه ليظهر هنا.",
   searchPlaceholder: "ابحث عن مسلسل أو فيلم…",
   searchAllResults: (q: string) => `عرض كل النتائج عن «${q}» ←`,
@@ -828,6 +833,9 @@ const en: Dict = {
   recoBecauseRated: (title: string) => `You loved “${title}”`,
   recoBecauseGenre: "From your genres",
   trendingWeek: "Trending this week",
+  hintDiscover: "The Filters button hides language, era, platform and rating filters — and week/month/year chips sit on every Top 10 rail.",
+  hintDismiss: "Long-press any card to never see that suggestion again.",
+  searchIntentChip: (what: string) => `Browse ${what} in Discover`,
   pickGenresHint: "Pick your favourite genres in your profile to get suggestions you'll like →",
   levelLabel: (n: number) => `Level ${n}`,
   levelNames: [
@@ -891,6 +899,7 @@ const en: Dict = {
   libTabFinished: "Finished",
   libShowsGroup: "Series",
   libMoviesGroup: "Movies",
+  libraryEmptyCta: "Discover titles",
   libraryEmpty: "Your library is empty — search for a title and follow it.",
   searchPlaceholder: "Search for a show or a movie…",
   searchAllResults: (q: string) => `See all results for “${q}” →`,
