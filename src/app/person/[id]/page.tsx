@@ -36,9 +36,9 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { id } = await params;
   const person = Number.isFinite(Number(id)) ? await getPerson(Number(id)) : null;
-  if (!person) return { title: "Loopz" };
+  if (!person) return {};
   return {
-    title: `${person.name} — Loopz`,
+    title: person.name,
     description: person.biography.slice(0, 200) || person.name,
   };
 }
