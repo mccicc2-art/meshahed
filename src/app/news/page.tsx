@@ -24,6 +24,7 @@ import {
   topByFilter,
   top50,
   top50Anime,
+  topRatedRows,
   worksByPeople,
   upcomingByFilter,
   nowPlayingMovies,
@@ -53,7 +54,6 @@ import {
   type RailWin,
 } from "@/lib/browse";
 import { RankedRail } from "@/components/RankedRail";
-import { SectionDivider } from "@/components/SectionDivider";
 import { RailWindowChips } from "@/components/RailWindowChips";
 import { CountdownRail, type CountdownItem } from "@/components/CountdownRail";
 import { PickedForYou } from "@/components/PickedForYou";
@@ -107,8 +107,11 @@ export default async function NewsPage({
 
   const { locale, t } = await getT();
   const sp = await searchParams;
-  const browse = parseBrowse(sp);
-  const tab = parseDiscoverTab(sp.tab);
+  /* ثلاثة تبويبات (طلب أحمد 9 Aug): أفلام · مسلسلات · القوائم — الجهة
+     صعدت من ورقة الفلاتر إلى الرأس، فتُفرض هنا على التصفح من التبويب
+     (وروابط ?type القديمة يهديها parseDiscoverTab لتبويبها) */
+  const tab = parseDiscoverTab(sp.tab, sp.type);
+  const browse = parseBrowse({ ...sp, type: tab === "shows" ? "tv" : "movie" });
   /* نوافذ صفوف «أفضل ١٠» — لكل صفٍّ نافذته (D-099): أفلام/مسلسلات/أنمي */
   const rails = { m: parseRailWin(sp.wm), s: parseRailWin(sp.ws), a: parseRailWin(sp.wa) };
   /* قائمة المنصّات تُجلب على الخادم وتُمرَّر للورقة: طلبٌ واحد مخبَّأ ساعةً
@@ -116,7 +119,7 @@ export default async function NewsPage({
      Suspense. وفشلُ الجلب يُخفي المحور بدل أن يعرض خانةً فارغة.
      وتبويب «القوائم» لا يطلبها أصلاً — ورقة الفلاتر لا تُفتح فيه */
   const [providers, region] = await Promise.all([
-    tab === "titles"
+    tab !== "lists"
       ? listWatchProviders(browse.type === "tv" ? "tv" : "movie")
       : Promise.resolve([] as { id: number; name: string }[]),
     getWatchRegion(),
@@ -324,9 +327,13 @@ async function CuratedCard({
   className?: string;
 }) {
   const loc = locale === "en" ? ("en" as const) : ("ar" as const);
-  // مجموعات collectionId تُحلّ من سلسلة TMDB — العدد والملصقات من الحلّ
-  const ids = await resolveSetIds(u).catch(() => [] as number[]);
-  const four = await moviesByIds(ids.slice(0, 4)).catch(() => []);
+  /* مجموعات TOP 250: العدد ثابتٌ معلوم والملصقات من صفحة top_rated
+     الأولى وحدها — جلبُ ٢٥٠ عملاً لبطاقةٍ تعرض أربعة ملصقات إسراف.
+     وسائر المجموعات كما كانت: تُحلّ معرّفاتها ثم أربعة ملصقات */
+  const topRows = u.top ? await topRatedRows(u.top, 8).catch(() => []) : null;
+  const ids = topRows ? [] : await resolveSetIds(u).catch(() => [] as number[]);
+  const four = topRows ? topRows.slice(0, 4) : await moviesByIds(ids.slice(0, 4)).catch(() => []);
+  const count = topRows ? (u.topLimit ?? 250) : ids.length;
   const posters = four
     .map((m) => posterUrl(m.poster_path, "w185"))
     .filter(Boolean) as string[];
@@ -338,7 +345,7 @@ async function CuratedCard({
         <span className="truncate">{universeName(u, loc)}</span>
       </span>
       <span className="block text-[12px] text-muted truncate mt-0.5">
-        {t.listCount(ids.length)}
+        {t.listCount(count)}
         {u.storyOrder ? ` · ${t.listsStoryOrder}` : ""}
       </span>
       <span className="mt-2 flex gap-1.5">
@@ -498,23 +505,26 @@ async function CuratedRails({
       // أعلى ٥٠ على الإطلاق — ذيلٌ ثابت في الحالة غير المُصفّاة (طلب المالك).
       // نجمع ٦٠ مرشّحاً ثم نقتطع ٥٠ بعد ترتيب IMDb: من بلا تقييمٍ يسقط
       // من الذيل بدل أن يحتلّ مركزاً بلا شارة
+      /* ٢٥ لا ٥٠ (طلب أحمد 9 Aug: «عشان نخفف الضغط») — الصفحة أقصر،
+         وحصة OMDb أرخص للنصف؛ ومن يريد العمق كله فقوائم TOP 250 في
+         تبويب الليستات. نجمع ٤٠ ونقصّ ٢٥: الفاقد بلا ملصق/تقييم يُعوَّض */
       !active && wantMovies
-        ? top50("movie", {}, 60)
+        ? top50("movie", {}, 40)
             .then(withImdbRatings)
-            .then((r) => r.slice(0, 50))
+            .then((r) => r.slice(0, 25))
             .catch(() => [] as SearchResult[])
         : Promise.resolve([] as SearchResult[]),
       !active && wantSeries
-        ? top50("tv", {}, 60)
+        ? top50("tv", {}, 40)
             .then(withImdbRatings)
-            .then((r) => r.slice(0, 50))
+            .then((r) => r.slice(0, 25))
             .catch(() => [] as SearchResult[])
         : Promise.resolve([] as SearchResult[]),
-      // أفضل ٥٠ أنمي (طلب أحمد) — ذيلٌ ثالث بنفس قاعدة الصفّين
+      // أفضل ٢٥ أنمي — ذيلٌ ثالث بنفس قاعدة الصفّين
       !active && wantSeries
-        ? top50Anime(60)
+        ? top50Anime(40)
             .then(withImdbRatings)
-            .then((r) => r.slice(0, 50))
+            .then((r) => r.slice(0, 25))
             .catch(() => [] as SearchResult[])
         : Promise.resolve([] as SearchResult[]),
     ]);
@@ -588,20 +598,8 @@ async function CuratedRails({
         </Suspense>
       )}
 
-      {/* إيقاع الصفحة (تقييم 9 Aug م١): اكتشف بلا فلتر ١٢+ صفاً متتالياً
-          بلا استراحة — فاصلان مسمّيان يقسمانها «الآن» و«على الإطلاق»
-          («لك» يحمله PersonalRails نفسه كي لا يظهر عنوانٌ لقسمٍ فارغ).
-          مع فلترٍ نشطٍ لا فواصل: الصفوف كلها نتيجةُ الفلتر لا أقساماً */}
-      {!active &&
-        ((inCinemas && inCinemas.results.length > 0) ||
-          topMovies.length > 0 ||
-          topSeries.length > 0 ||
-          topAnime.length > 0 ||
-          rails.m !== "week" ||
-          rails.s !== "week" ||
-          rails.a !== "week" ||
-          soon.length > 0) && <SectionDivider label={t.sectionRightNow} />}
-
+      {/* فواصل الأقسام المسمّاة (م١/D-103) أُزيلت — «ما عجبتني» (قرار
+          أحمد 9 Aug): الصفوف تتوالى بلا عناوين قسمية كما كانت */}
       {inCinemas && inCinemas.results.length > 0 && (
         <RankedRail
           title={t.inCinemas}
@@ -648,11 +646,7 @@ async function CuratedRails({
         <CountdownRail title={t.comingSoon} icon="calendar" items={soon} locale={locale} />
       )}
 
-      {/* ذيل «أعلى ٥٠ على الإطلاق» — مرجعٌ ثابت في الحالة غير المُصفّاة */}
-      {!active &&
-        (top50Movies.length > 0 || top50Series.length > 0 || top50AnimeRows.length > 0) && (
-          <SectionDivider label={t.sectionAllTime} />
-        )}
+      {/* ذيل «أعلى ٢٥ على الإطلاق» — مرجعٌ ثابت في الحالة غير المُصفّاة */}
       {top50Movies.length > 0 && (
         <RankedRail title={t.top50Movies} icon="film" items={top50Movies} />
       )}
@@ -702,9 +696,6 @@ async function PersonalRails({ locale, t }: { locale: Locale; t: T }) {
 
   return (
     <div className="space-y-8">
-      {/* عنوان القسم هنا لا في الصفحة الأم: يظهر مع محتواه ويغيب معه —
-          الأم لا تعرف قبل اكتمال الجلب إن كان للزائر صفوفٌ شخصية */}
-      <SectionDivider label={t.sectionForYou} />
       {suggested.length > 0 && (
         /* السبب يُحسب هنا (يحتاج القاموس) والبطاقات تُسلسَل خفيفةً للعميل */
         <PickedForYou
