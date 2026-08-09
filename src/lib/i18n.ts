@@ -127,6 +127,15 @@ const ar = {
   searchPlaceholder: "ابحث عن مسلسل أو فيلم…",
   /* أوضاع ورقة البحث الثلاثة — كلمةٌ واحدة لكلٍّ: ثلاث خاناتٍ في ترويسة
      ورقةٍ على ٣٦٠px لا تحتمل «البحث عن الأشخاص» */
+  /* «كم مضى» لا «متى وقع» — لخطّ النشاط (D-136) */
+  agoNow: "الآن",
+  agoMinutes: (n: number) =>
+    n === 1 ? "قبل دقيقة" : n === 2 ? "قبل دقيقتين" : n <= 10 ? `قبل ${n} دقائق` : `قبل ${n} دقيقة`,
+  agoHours: (n: number) =>
+    n === 1 ? "قبل ساعة" : n === 2 ? "قبل ساعتين" : n <= 10 ? `قبل ${n} ساعات` : `قبل ${n} ساعة`,
+  agoYesterday: "أمس",
+  agoDays: (n: number) => (n === 2 ? "قبل يومين" : `قبل ${n} أيام`),
+
   searchModeTitles: "أعمال",
   searchModePeople: "أشخاص",
   searchModeAi: "وصف قصة",
@@ -983,6 +992,12 @@ const en: Dict = {
   libraryEmptyCta: "Discover titles",
   libraryEmpty: "Your library is empty — search for a title and follow it.",
   searchPlaceholder: "Search for a show or a movie…",
+  agoNow: "just now",
+  agoMinutes: (n: number) => (n === 1 ? "1 min ago" : `${n} min ago`),
+  agoHours: (n: number) => (n === 1 ? "1 hour ago" : `${n} hours ago`),
+  agoYesterday: "yesterday",
+  agoDays: (n: number) => `${n} days ago`,
+
   searchModeTitles: "Titles",
   searchModePeople: "People",
   searchModeAi: "Describe",

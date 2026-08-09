@@ -37,6 +37,32 @@ export function formatDateShort(date: string, t: Dict): string {
   }).format(d);
 }
 
+/**
+ * «قبل دقيقة · قبل ٣ ساعات · أمس · قبل ٥ أيام» — للأحداث الاجتماعية.
+ *
+ * التاريخ المطلق («٧ أغسطس») يجيب سؤالاً لا يسأله أحد في خطّ نشاط: من
+ * يقرأ ما فعله أصدقاؤه يريد أن يعرف **كم مضى** لا **متى وقع** (طلب أحمد
+ * 9 Aug: «في الأكتيفيتي لا يكتب التاريخ… يكتب قبل دقيقة أو ساعة أو يوم»).
+ * والفرق أن الأول يُقاس بلمحة والثاني يحتاج حساباً ذهنياً.
+ *
+ * وبعد أسبوع يعود التاريخ المطلق: «قبل ٢٣ يوماً» تحتاج حساباً أيضاً،
+ * والطزاجة لم تعد هي الخبر في ذلك العمر.
+ */
+export function timeAgo(iso: string, t: Dict): string {
+  const d = parseISO(iso);
+  if (!d) return "";
+  const secs = Math.floor((Date.now() - d.getTime()) / 1000);
+  if (secs < 60) return t.agoNow;
+  const mins = Math.floor(secs / 60);
+  if (mins < 60) return t.agoMinutes(mins);
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return t.agoHours(hours);
+  const days = Math.floor(hours / 24);
+  if (days === 1) return t.agoYesterday;
+  if (days <= 7) return t.agoDays(days);
+  return formatDateShort(iso, t);
+}
+
 /** عدد الأيام المتبقية حتى تاريخ ما (سالب لو مضى) */
 export function daysUntil(date: string): number | null {
   const d = parseISO(date);
