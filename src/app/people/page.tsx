@@ -18,7 +18,7 @@ import { myMutualFollows } from "@/lib/actions";
 import { getT } from "@/lib/locale";
 import type { Dict } from "@/lib/i18n";
 import { localizeRows } from "@/lib/localize";
-import { formatDateShort } from "@/lib/when";
+import { timeAgo } from "@/lib/when";
 import { FeedEmptyCta } from "@/components/FeedEmptyCta";
 import { PeopleToFollow } from "@/components/PeopleToFollow";
 import { Inbox } from "@/components/Inbox";
@@ -38,6 +38,52 @@ const BACKDROP_LIMIT = 12;
 type Tab = "mine" | "all" | "inbox";
 function asTab(v: string | undefined): Tab {
   return v === "all" || v === "inbox" ? v : "mine";
+}
+
+/**
+ * ترتيب خطّ النشاط — **درجةٌ واحدة تجمع النوع والعمر والتفاعل** (D-136).
+ *
+ * طلب أحمد نصّاً: «خلّه ذكي في العرض — التعليقات تأخذ أولوية من التقييم
+ * وبعدها المشاهدة، لكن في نفس الوقت الريفيو القديم ينزل والأجدد أولى،
+ * والي ياخذ لايك كأنه تجدّد ويبقى فوق أكثر».
+ *
+ * ثلاثة مطالب متعارضة لا يحلّها فرزٌ متعدّد المفاتيح: الفرز بالنوع أولاً
+ * يدفن مشاهدةً وقعت قبل دقيقة تحت مراجعةٍ عمرها أسبوع، والفرز بالوقت
+ * أولاً يُلغي الأولوية أصلاً. الحلّ **درجةٌ واحدة** يتنافس فيها الثلاثة:
+ *
+ *   score = وزنُ النوع − (عمرُ الحدث بالساعات ÷ ٣) + رصيدُ الإعجاب
+ *
+ *  • **وزن النوع** فارقٌ يعادل ساعاتٍ من العمر لا حاجزاً مطلقاً: مراجعةٌ
+ *    مكتوبة تبدأ متقدّمةً بما يوازي يومين على المشاهدة — فتسبقها ما دامتا
+ *    متقاربتين في العمر، وتتخلّف عنها إن شاخت. وهذا معنى «تأخذ أولوية»
+ *    عند من يقرأ خطّاً لا عند من يقرأ جدولاً.
+ *
+ *  • **الإعجاب يُجدِّد ولا يُخلِّد**: `log` لا ضربٌ خطّي — أوّل إعجابٍ يرفع
+ *    كثيراً والعاشر قليلاً، وسقفُه أربعٌ وعشرون نقطة = **ثلاثة أيامٍ من
+ *    العمر**. فمراجعةُ أمسٍ بثمانية إعجابات تسبق مراجعةَ اليوم العارية
+ *    («يبقى فوق أكثر»)، ومراجعةُ أربعة أيامٍ بثلاثين إعجاباً **لا** تسبقها
+ *    («القديم ينزل»). المعايرة جُرِّبت على تسعة صفوفٍ محاكاة قبل الشحن:
+ *    أول توزينٍ جعل الإعجاب يشتري تسعة أيام، فتصدّر الخطَّ صفٌّ عمره أربعة.
+ *
+ * ولا فرزَ ثانياً بعده: من أراد ترتيباً آخر فليس هذا خطَّه.
+ */
+const TYPE_WEIGHT: Record<string, number> = {
+  review: 30, // مراجعةٌ مكتوبة — رأيٌ يستحق قراءةً وردّاً
+  rate: 15, // تقييمٌ برقم
+  movie: 6, // فيلمٌ شوهد
+  episodes: 6, // حلقاتٌ شوهدت
+  add: 0, // أُضيف للمكتبة — أضعف خبرٍ في الخطّ
+};
+/** كل ثلاث ساعاتٍ تُنقص نقطةً — أي ثماني نقاطٍ في اليوم */
+const AGE_HOURS_PER_POINT = 3;
+/** أقصى ما يشتريه الإعجاب — بحدٍّ كي لا يصير الخطُّ سباقَ إعجابات */
+const LIKE_CEILING = 24;
+
+function feedScore(a: FeedItem, now: number): number {
+  const weight = TYPE_WEIGHT[a.review ? "review" : a.kind] ?? 0;
+  const hours = Math.max(0, (now - new Date(a.updated_at).getTime()) / 3_600_000);
+  const likes = Math.min(LIKE_CEILING, Math.log2(1 + Math.max(0, a.likes)) * 6);
+  return weight + likes - hours / AGE_HOURS_PER_POINT;
 }
 
 /**
@@ -208,6 +254,16 @@ export default async function PeoplePage({
   }
 
   // ===== خطّ الآراء — لتبويب «مجتمعي» وحده الآن =====
+  /* **المرجع أحدثُ حدثٍ في الخطّ لا ساعةُ النظام.** الدرجة تطرح العمر
+     طرحاً خطّياً، وطرحُ ثابتٍ واحد من كل الدرجات لا يغيّر ترتيبها — فأيّ
+     مرجعٍ ثابت يعطي الترتيب نفسه. واختيارُ أحدث حدثٍ يجعل الدالّة **نقيّة
+     وقابلة للاختبار**، ويُرضي قاعدة React التي تمنع قراءة الساعة أثناء
+     الرسم (لولاها لاختلف ترتيبُ إعادةِ رسمٍ عن سابقتها بلا سبب). */
+  const scoredAt = followingFeed.reduce(
+    (m, a) => Math.max(m, new Date(a.updated_at).getTime()),
+    0,
+  );
+
   const sorted =
     tab !== "mine"
       ? []
@@ -221,7 +277,8 @@ export default async function PeoplePage({
           )
           .sort((a, b) =>
             newest
-              ? b.updated_at.localeCompare(a.updated_at)
+              ? feedScore(b, scoredAt) - feedScore(a, scoredAt) ||
+                b.updated_at.localeCompare(a.updated_at)
               : b.likes - a.likes || b.updated_at.localeCompare(a.updated_at),
           );
   const feed = newest ? spreadByPerson(sorted) : sorted;
@@ -354,7 +411,7 @@ export default async function PeoplePage({
                           person={a.person}
                           t={t}
                           size={34}
-                          sub={formatDateShort(a.updated_at, t)}
+                          sub={timeAgo(a.updated_at, t)}
                         />
 
                         {/* سطر الفعل: ما الذي حدث. يظهر لغير المراجعات، ومع
