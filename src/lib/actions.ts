@@ -8,6 +8,7 @@ import { REGION_COOKIE, normalizeRegion } from "@/lib/region";
 import { GENRES, type MediaType } from "@/lib/media";
 import { THEMES } from "@/lib/themes";
 import { sanitizeHomePrefs, type HomePrefs } from "@/lib/homePrefs";
+import { sanitizeProfilePrefs, type ProfilePrefs } from "@/lib/profilePrefs";
 import { allow } from "@/lib/ratelimit";
 import { intId, intIn, asMediaType, uuid, dateOrNull } from "@/lib/validate";
 import { IMPORT_CAPS, type ImportPayload, type ResolveRequest, type ResolveResult } from "@/lib/importer";
@@ -83,6 +84,8 @@ export async function updateProfile(input: {
   favoriteGenres: number[];
   hideName?: boolean;
   homePrefs?: HomePrefs;
+  /** تخصيص البروفايل (D-129) — غيابه يعني «اتركه كما هو» */
+  profilePrefs?: ProfilePrefs;
   /** نبذةٌ قصيرة — غيابها يعني «اتركها كما هي» لا «امحُها» */
   bio?: string;
   /** حسابٌ خاص: المتابعة بطلب (follow_requests.sql) — غيابه يترك الحال */
@@ -134,6 +137,8 @@ export async function updateProfile(input: {
   }
   // تُنقّى قبل الكتابة كما تُنقّى بعد القراءة: القيمة تمرّ عبر الشبكة
   if (input.homePrefs !== undefined) payload.home_prefs = sanitizeHomePrefs(input.homePrefs);
+  if (input.profilePrefs !== undefined)
+    payload.profile_prefs = sanitizeProfilePrefs(input.profilePrefs);
 
   const { error } = await supabase.from("profiles").upsert(payload, { onConflict: "id" });
   if (error) {

@@ -64,6 +64,8 @@ export interface Profile {
   favorite_genres: number[];
   hide_name?: boolean | null;
   home_prefs?: unknown;
+  /** تخصيص البروفايل — توأم `home_prefs` (هجرة 51، D-129) */
+  profile_prefs?: unknown;
   /** نبذةٌ قصيرة — اختيارية، وتغيب قبل تشغيل profile_bio.sql */
   bio?: string | null;
   /** حسابٌ خاص: المتابعة بطلبٍ يُقبل (follow_requests.sql) */
@@ -83,7 +85,7 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
     let { data, error } = await supabase
       .from("profiles")
       .select(
-        "id, nickname, username, avatar_url, cover_url, cover_pos, avatar_pos, theme, favorite_genres, hide_name, home_prefs, bio, is_private, hide_follow_lists",
+        "id, nickname, username, avatar_url, cover_url, cover_pos, avatar_pos, theme, favorite_genres, hide_name, home_prefs, bio, is_private, hide_follow_lists, profile_prefs",
       )
       .eq("id", user.id)
       .maybeSingle();
@@ -101,7 +103,7 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
         .maybeSingle();
       if (mid.data) {
         // عمودا التموضع أحدث من هذه الدرجة — يسقطان إلى سلوكهما القديم
-        data = { ...mid.data, cover_pos: null, avatar_pos: null, home_prefs: null, bio: null, is_private: null, hide_follow_lists: null };
+        data = { ...mid.data, cover_pos: null, avatar_pos: null, home_prefs: null, bio: null, is_private: null, hide_follow_lists: null, profile_prefs: null };
       } else {
         const legacy = await supabase
           .from("profiles")
@@ -120,6 +122,7 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
             bio: null,
             is_private: null,
             hide_follow_lists: null,
+            profile_prefs: null,
           };
         }
       }
@@ -558,6 +561,8 @@ export interface PublicProfile {
   is_private?: boolean | null;
   /** قفل قائمتَي المتابعة (هجرة 43) — غيابه قبل تشغيلها = false */
   hide_follow_lists?: boolean | null;
+  /** تخصيص البروفايل (هجرة 51، D-129) — إخراجُ الصفحة للزائر */
+  profile_prefs?: unknown;
 }
 
 /** معرّف UUID كما يكتبه Postgres — يميّز رابط الهوية عن رابط المعرّف */
@@ -592,7 +597,11 @@ export async function getProfileByUsername(
     // الأعمدة العامة وحدها (انظر supabase/public_profiles.sql)
     const { data, error } = await supabase
       .from("public_profiles")
-      .select("id, nickname, username, avatar_url, cover_url, cover_pos, avatar_pos, favorite_genres, hide_name, bio, is_private")
+      /* `hide_follow_lists` و`profile_prefs` كانا مقروءَين في الصفحة
+         وغائبَين عن هذا السطر: العمودان أحدث من الاستعلام، فكان القفل
+         لا يقفل والتخصيص لا يُقرأ. أُضيفا بعد تشغيل الهجرتين 43 و51،
+         والاحتياط أدناه يمسكهما لو نُشر الكود قبل هجرةٍ لاحقة. */
+      .select("id, nickname, username, avatar_url, cover_url, cover_pos, avatar_pos, favorite_genres, hide_name, bio, is_private, hide_follow_lists, profile_prefs")
       .eq(column, value)
       .maybeSingle();
 
@@ -1307,6 +1316,30 @@ export async function getFollowedArtists(limit = 20): Promise<ArtistLite[]> {
       .order("created_at", { ascending: false })
       .limit(limit);
     return (data ?? []) as ArtistLite[];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * فنّانو **شخصٍ آخر** — لقسم «فنّانوك» في بروفايله (D-129).
+ *
+ * دالّة definer لا استعلامٌ على الجدول: `person_follows` صفوفُ صاحبها
+ * وحده بحكم RLS، فقراءتها هنا تعود بفراغٍ صامت. والبوّابة داخل الدالّة
+ * (`can_view_profile`) لا هنا — الحساب الخاص لا يُفتح بترتيب صفحة.
+ *
+ * **الدالّة غائبة؟ مصفوفةٌ فارغة** (نمط D-113): القسم يختفي بلا شاشة
+ * خطأ، فالكود يسبق الهجرة أحياناً.
+ */
+export async function getProfileArtists(userId: string, limit = 60): Promise<ArtistLite[]> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("profile_artists", {
+      p_user: userId,
+      p_limit: limit,
+    });
+    if (error || !data) return [];
+    return data as ArtistLite[];
   } catch {
     return [];
   }
