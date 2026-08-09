@@ -4,6 +4,7 @@ import Image from "next/image";
 import {
   getUser,
   getCommunityFeed,
+  getPeopleToFollow,
   getFollowLists,
   getIncomingFollowRequests,
   getMyCommunities,
@@ -23,6 +24,7 @@ import { formatDateShort } from "@/lib/when";
 import { num } from "@/lib/i18n";
 import { CommunityBar } from "@/components/CommunityBar";
 import { FeedEmptyCta } from "@/components/FeedEmptyCta";
+import { PeopleToFollow } from "@/components/PeopleToFollow";
 import { Inbox } from "@/components/Inbox";
 import { CommunityDirectory, CommunityRoom } from "@/components/Communities";
 import { PersonName } from "@/components/PersonRow";
@@ -234,6 +236,18 @@ export default async function PeoplePage({
           );
   const feed = newest ? spreadByPerson(sorted) : sorted;
 
+  /* «أشخاص لمتابعتهم» (D-126) — تُطلب حين يكون الخطّ هزيلاً لا فارغاً
+     وحده: دائرةٌ من شخصين تُنتج خطّاً صامتاً كدائرةٍ من صفر، والفرق أن
+     الأولى لا تُظهر حالةً فارغة فتبدو الصفحة معطوبة لا ناقصة.
+     ونداءٌ ثانٍ مشروط لا يدخل `Promise.all`: أكثر الحسابات دائرتُها
+     نشطة، فلا يُدفع ثمنُه إلا من يحتاجه. والمرشِّح يُلغيه — فراغُ
+     مرشِّحٍ ليس فراغ دائرة (نفس تفريق D-106). */
+  const FEED_THIN = 5;
+  const suggestions =
+    tab === "mine" && kind === null && feed.length < FEED_THIN
+      ? await getPeopleToFollow(null, 5)
+      : [];
+
   /* الصورة العرضية ليست في صفّ التقييم — تُطلب من TMDB لأوائل الخط فقط،
      متوازيةً ومخزَّنة ساعةً في طبقة fetch. الأولوية: عرضيّة TMDB، ثم
      ملصقها، ثم الملصق المخزَّن، ثم الأيقونة. */
@@ -412,9 +426,15 @@ export default async function PeoplePage({
                 {t.feedFilterEmpty}
               </p>
             ) : (
-              <FeedEmptyCta locale={locale} />
+              /* الحالة الفارغة تطوّرت من جملةٍ وزرّ بحث إلى أسماءٍ حقيقية
+                 (D-126): «ابحث عن أصدقاء» يفترض أنه يعرف من يبحث عنه */
+              <>
+                <FeedEmptyCta locale={locale} />
+                <PeopleToFollow people={suggestions} locale={locale} />
+              </>
             )
           ) : (
+            <>
             <div className="divide-y divide-[color:var(--divider)]">
               {feed.map((a) => {
                 const found = artById.get(`${a.media_type}-${a.tmdb_id}`);
@@ -518,6 +538,10 @@ export default async function PeoplePage({
                 );
               })}
             </div>
+            {/* خطٌّ هزيل: الاقتراح **بعد** الصفوف لا قبلها — ما فعلته
+                دائرتك أهمّ ممّن قد تضيفه إليها */}
+            <PeopleToFollow people={suggestions} locale={locale} compact />
+            </>
           )}
         </section>
       )}
