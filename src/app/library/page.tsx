@@ -8,11 +8,13 @@ import {
   getWatchedMovieIds,
   getMyLists,
   getSavedLists,
+  getFollowedArtists,
 } from "@/lib/data";
 import { getT } from "@/lib/locale";
 import { localizeFollows } from "@/lib/localize";
 import { Icon } from "@/components/Icon";
 import { LibraryGrid, type GridItem, type LibraryTab } from "@/components/LibraryGrid";
+import { getArtistShelf, type ArtistShelfItem } from "@/lib/artists";
 import { FollowMetaSync } from "@/components/MetaSync";
 import { PublicListsRail } from "@/components/PublicListsRail";
 import { ScrollMemory } from "@/components/ScrollMemory";
@@ -36,14 +38,20 @@ export default async function LibraryPage({
   const { locale, t } = await getT();
   const { filter } = await searchParams;
   const initialTab: LibraryTab =
-    filter === "movie" ? "movies" : filter === "list" ? "lists" : "shows";
+    filter === "movie"
+      ? "movies"
+      : filter === "person"
+        ? "artists"
+        : filter === "list"
+          ? "lists"
+          : "shows";
 
   // الملخّص المجمّع (صف لكل مسلسل، والإعادة محسوبة داخله) بدل قراءة كل
   // صفوف الحلقات — نفس الترقية التي أخذتها الرئيسية. الترجمة في نفس الموجة.
   // والقوائم في الموجة نفسها: استدعاءٌ واحد (`my_lists`) يرجع الاسم والعدد
   // وثلاثة ملصقات، ويجري بالتوازي فلا يزيد زمن الصفحة إلا بأبطأ استدعاء —
   // وهذا ثمن أن يفتح تبويب «القوائم» فوراً بلا دوّارة ولا رحلة شبكة.
-  const [followRows, summary, watchedMovieIds, lists, saved] = await Promise.all([
+  const [followRows, summary, watchedMovieIds, lists, saved, artistRows] = await Promise.all([
     getFollows(),
     getWatchSummary(),
     getWatchedMovieIds(),
@@ -51,8 +59,17 @@ export default async function LibraryPage({
     // القوائم المحفوظة تسكن تبويب «الليستات» هنا (طلب أحمد: بيتها
     // المكتبة لا صفحة منفصلة) — نفس الموجة فلا تبطئ الصفحة
     getSavedLists(),
+    // عدّاد تبويب الفنانين وحده (D-128): نداء Supabase خفيف، بلا TMDB
+    getFollowedArtists(60),
   ]);
   const follows = await localizeFollows(followRows, locale);
+
+  /* رفُّ الفنانين محسوباً — **حين يكون تبويبَه المفتوح وحده** (D-128).
+     حسابُ «شاهدتَ له ٧ أعمال» نداءٌ لـTMDB لكل فنان، وصفحة المكتبة اليوم
+     لا تفتح اتصالاً واحداً مع TMDB: جعلُ ذلك ثمناً لتبويبٍ يفتحه قليلون
+     تراجعٌ في أسخن صفحة. والتبويب يسكن الرابط (D-095) فالخادم يعرفه. */
+  const artists: ArtistShelfItem[] =
+    initialTab === "artists" ? await getArtistShelf(60) : [];
 
   // ما تغيّر اسمه بالترجمة يُكتب مرة واحدة — كانت الرئيسية وحدها تكتب،
   // فمن مدخله تبويب المكتبة يعيد دفع كلفة TMDB في كل زيارة
@@ -157,6 +174,8 @@ export default async function LibraryPage({
       <LibraryGrid
         shows={shows}
         movies={movies}
+        artists={artists}
+        artistCount={artistRows.length}
         lists={lists}
         locale={locale}
         initialTab={initialTab}
