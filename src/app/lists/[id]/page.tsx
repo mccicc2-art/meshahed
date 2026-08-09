@@ -29,9 +29,9 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { id } = await params;
   const pub = await getPublicList(id);
-  if (!pub) return { title: "Loopz" };
+  if (!pub) return {};
 
-  const title = `${pub.name} — Loopz`;
+  const title = pub.name;
   const description =
     pub.subtitle ??
     (pub.items.length
