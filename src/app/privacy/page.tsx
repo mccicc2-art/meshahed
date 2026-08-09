@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { getT } from "@/lib/locale";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy — Loopz",
+  title: "Privacy Policy",
   description: "What Loopz stores, why, and how to get it back or delete it.",
 };
 
