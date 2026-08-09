@@ -877,6 +877,24 @@ export async function getUnreadShares(): Promise<number> {
   }
 }
 
+/**
+ * عدّاد شارة الجرس وحده (**D-125**).
+ *
+ * يُنادى في كل صفحة (الترويسة عامّة)، فيحمل **رقماً لا أسطراً**: الأسطر
+ * تُطلب عند فتح الورقة بفعلٍ من العميل (نمط `myBlocksList`). والدالّة
+ * غائبة قبل الهجرة ٤٧؟ صفرٌ صامت — الجرس بلا شارة لا شاشة خطأ.
+ */
+export async function getUnreadSignals(): Promise<number> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("unread_signals");
+    if (error) return 0;
+    return Number(data ?? 0);
+  } catch {
+    return 0;
+  }
+}
+
 // ============================================================
 //  المحادثات — رسالة واحدة لكل شخص (لا خيطٌ لكل مشاركة)
 //

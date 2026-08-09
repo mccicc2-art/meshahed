@@ -431,6 +431,14 @@ const ar = {
   feedSortGroup: "ترتيب النشاط",
   feedSortTop: "الأكثر إعجاباً",
   feedSortNew: "الأحدث",
+  // جرس الإشعارات (D-125)
+  notifTitle: "الإشعارات",
+  notifEmpty: "لا إشعارات بعد — حين يتابعك أحدٌ أو يعجبه رأيك سيظهر هنا.",
+  notifUnreadAria: (n: number) => `${n} إشعار جديد`,
+  notifFollow: (who: string) => `${who} بدأ متابعتك`,
+  notifRequest: (who: string) => `${who} طلب متابعتك`,
+  notifLike: (who: string, title: string) =>
+    title ? `أعجب ${who} بـ«${title}»` : `أعجب ${who} بنشاطك`,
   // مرشِّح نوع الحدث في «مجتمعي» (D-123ب)
   feedFilterGroup: "نوع النشاط",
   feedFilterAll: "الكل",
@@ -1206,6 +1214,13 @@ const en: Dict = {
   feedSortGroup: "Sort activity",
   feedSortTop: "Most liked",
   feedSortNew: "Newest",
+  notifTitle: "Notifications",
+  notifEmpty: "Nothing yet — new followers and likes will show up here.",
+  notifUnreadAria: (n: number) => `${n} new notifications`,
+  notifFollow: (who: string) => `${who} started following you`,
+  notifRequest: (who: string) => `${who} asked to follow you`,
+  notifLike: (who: string, title: string) =>
+    title ? `${who} liked your ${title}` : `${who} liked your activity`,
   feedFilterGroup: "Activity type",
   feedFilterAll: "All",
   feedFilterRatings: "Ratings",

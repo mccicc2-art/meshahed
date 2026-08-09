@@ -773,6 +773,65 @@ export async function unblockUser(targetId: string) {
 }
 
 /** قائمة من حظرتُهم — لقسم «المحظورون» في الإعدادات */
+/** نوع إشارة الجرس — الأربعة التي ترجعها `my_signals` (D-125) */
+export type SignalKind = "follow" | "request" | "like_review" | "like_activity";
+
+export interface Signal {
+  kind: SignalKind;
+  person: PersonLite;
+  tmdbId: number | null;
+  mediaType: "tv" | "movie" | null;
+  title: string | null;
+  at: string;
+  isNew: boolean;
+}
+
+/**
+ * أسطر الجرس — تُطلب عند فتح الورقة وحدها (**D-125**).
+ *
+ * الشارة تحمل رقماً من `getUnreadSignals` في كل صفحة؛ أما الأسماء
+ * والعناوين فلا تُحمَّل إلا لمن فتح — نفس تقسيم `BlockedList`.
+ */
+export async function mySignals(): Promise<Signal[]> {
+  const { supabase } = await requireUser();
+  const { data, error } = await supabase.rpc("my_signals");
+  if (error) fail(error);
+  return ((data ?? []) as {
+    kind: SignalKind;
+    actor_id: string;
+    nickname: string | null;
+    username: string | null;
+    avatar_url: string | null;
+    hide_name: boolean | null;
+    tmdb_id: number | null;
+    media_type: "tv" | "movie" | null;
+    title: string | null;
+    at: string;
+    is_new: boolean;
+  }[]).map((r) => ({
+    kind: r.kind,
+    person: {
+      id: r.actor_id,
+      nickname: r.nickname,
+      username: r.username,
+      avatar_url: r.avatar_url,
+      hide_name: r.hide_name,
+    } as PersonLite,
+    tmdbId: r.tmdb_id,
+    mediaType: r.media_type,
+    title: r.title,
+    at: r.at,
+    isNew: r.is_new,
+  }));
+}
+
+/** ختمُ «رأيتُ الجرس» — يُنادى مرّةً عند الفتح فتسقط الشارة */
+export async function markSignalsSeen() {
+  const { supabase } = await requireUser();
+  const { error } = await supabase.rpc("mark_signals_seen");
+  if (error) fail(error);
+}
+
 export async function myBlocksList(): Promise<PersonLite[]> {
   const { supabase } = await requireUser();
   const { data, error } = await supabase.rpc("my_blocks");
