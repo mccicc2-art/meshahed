@@ -21,8 +21,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const pages: { path: string; priority: number; freq: "daily" | "weekly" | "monthly" }[] = [
     { path: "/", priority: 1, freq: "daily" },
     { path: "/features", priority: 0.8, freq: "weekly" },
-    // المقارنة: صفحة نيّةٍ عالية («بديل TV Time») فتستحق أولوية تسويقية
-    { path: "/compare", priority: 0.8, freq: "weekly" },
     { path: "/privacy", priority: 0.2, freq: "monthly" },
     { path: "/terms", priority: 0.2, freq: "monthly" },
   ];
