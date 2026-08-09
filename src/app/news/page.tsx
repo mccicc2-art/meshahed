@@ -53,6 +53,7 @@ import {
   type RailWin,
 } from "@/lib/browse";
 import { RankedRail } from "@/components/RankedRail";
+import { SectionDivider } from "@/components/SectionDivider";
 import { RailWindowChips } from "@/components/RailWindowChips";
 import { CountdownRail, type CountdownItem } from "@/components/CountdownRail";
 import { PickedForYou } from "@/components/PickedForYou";
@@ -587,6 +588,20 @@ async function CuratedRails({
         </Suspense>
       )}
 
+      {/* إيقاع الصفحة (تقييم 9 Aug م١): اكتشف بلا فلتر ١٢+ صفاً متتالياً
+          بلا استراحة — فاصلان مسمّيان يقسمانها «الآن» و«على الإطلاق»
+          («لك» يحمله PersonalRails نفسه كي لا يظهر عنوانٌ لقسمٍ فارغ).
+          مع فلترٍ نشطٍ لا فواصل: الصفوف كلها نتيجةُ الفلتر لا أقساماً */}
+      {!active &&
+        ((inCinemas && inCinemas.results.length > 0) ||
+          topMovies.length > 0 ||
+          topSeries.length > 0 ||
+          topAnime.length > 0 ||
+          rails.m !== "week" ||
+          rails.s !== "week" ||
+          rails.a !== "week" ||
+          soon.length > 0) && <SectionDivider label={t.sectionRightNow} />}
+
       {inCinemas && inCinemas.results.length > 0 && (
         <RankedRail
           title={t.inCinemas}
@@ -634,6 +649,10 @@ async function CuratedRails({
       )}
 
       {/* ذيل «أعلى ٥٠ على الإطلاق» — مرجعٌ ثابت في الحالة غير المُصفّاة */}
+      {!active &&
+        (top50Movies.length > 0 || top50Series.length > 0 || top50AnimeRows.length > 0) && (
+          <SectionDivider label={t.sectionAllTime} />
+        )}
       {top50Movies.length > 0 && (
         <RankedRail title={t.top50Movies} icon="film" items={top50Movies} />
       )}
@@ -683,6 +702,9 @@ async function PersonalRails({ locale, t }: { locale: Locale; t: T }) {
 
   return (
     <div className="space-y-8">
+      {/* عنوان القسم هنا لا في الصفحة الأم: يظهر مع محتواه ويغيب معه —
+          الأم لا تعرف قبل اكتمال الجلب إن كان للزائر صفوفٌ شخصية */}
+      <SectionDivider label={t.sectionForYou} />
       {suggested.length > 0 && (
         /* السبب يُحسب هنا (يحتاج القاموس) والبطاقات تُسلسَل خفيفةً للعميل */
         <PickedForYou
