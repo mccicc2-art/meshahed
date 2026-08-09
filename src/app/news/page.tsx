@@ -12,6 +12,7 @@ import { ListsFilters } from "@/components/ListsFilters";
 import { AddWorksToList } from "@/components/AddWorksToList";
 import { PosterRail, RailItem } from "@/components/PosterRail";
 import { FRANCHISES, franchiseName, universeName, type Universe } from "@/lib/universes";
+import { awardBySlug, awardBody, awardWins } from "@/lib/awards";
 import { Icon } from "@/components/Icon";
 import Image from "next/image";
 import {
@@ -25,6 +26,7 @@ import {
   top50,
   top50Anime,
   topRatedRows,
+  awardWinners,
   worksByPeople,
   upcomingByFilter,
   nowPlayingMovies,
@@ -64,6 +66,11 @@ import { getSuggestions } from "@/lib/suggest";
 
 type T = Awaited<ReturnType<typeof getT>>["t"];
 
+/** اسم الجائزة بلغة الواجهة — لعنوان صفّ الفائزين */
+function universeAwardTitle(a: { ar: string; en: string }, locale: Locale) {
+  return locale === "en" ? a.en : a.ar;
+}
+
 function dateOf(r: SearchResult) {
   return r.release_date ?? r.first_air_date ?? "";
 }
@@ -99,6 +106,7 @@ export default async function NewsPage({
     p?: string;
     era?: string;
     rate?: string;
+    award?: string;
     fr?: string;
     lsrc?: string;
   }>;
@@ -145,6 +153,7 @@ export default async function NewsPage({
         region={region}
         era={browse.era?.slug ?? null}
         rate={browse.rate}
+        award={browse.award}
         count={browseCount(browse)}
         listsFilters={
           tab === "lists"
@@ -337,10 +346,14 @@ async function CuratedCard({
   /* مجموعات TOP 250: العدد ثابتٌ معلوم والملصقات من صفحة top_rated
      الأولى وحدها — جلبُ ٢٥٠ عملاً لبطاقةٍ تعرض أربعة ملصقات إسراف.
      وسائر المجموعات كما كانت: تُحلّ معرّفاتها ثم أربعة ملصقات */
+  const award = u.award ? awardBySlug(u.award) : null;
+  /* بطاقة الجائزة: العدّ من القاموس بلا شبكة، والملصقات من أحدث أربعة
+     فائزين وحدهم — تثبيت الخمسة والثلاثين يقع عند الفتح لا هنا */
+  const awardFour = u.award ? await awardWinners(u.award, 4).catch(() => []) : null;
   const topRows = u.top ? await topRatedRows(u.top, 8).catch(() => []) : null;
-  const ids = topRows ? [] : await resolveSetIds(u).catch(() => [] as number[]);
-  const four = topRows ? topRows.slice(0, 4) : await moviesByIds(ids.slice(0, 4)).catch(() => []);
-  const count = topRows ? (u.topLimit ?? 250) : ids.length;
+  const ids = topRows || awardFour ? [] : await resolveSetIds(u).catch(() => [] as number[]);
+  const four = awardFour ?? (topRows ? topRows.slice(0, 4) : await moviesByIds(ids.slice(0, 4)).catch(() => []));
+  const count = award ? awardWins(award).length : topRows ? (u.topLimit ?? 250) : ids.length;
   const posters = four
     .map((m) => posterUrl(m.poster_path, "w185"))
     .filter(Boolean) as string[];
@@ -348,12 +361,12 @@ async function CuratedCard({
   return (
     <div className={`rounded-2xl border border-border bg-surface p-2.5 ${className}`}>
       <span className="flex items-center gap-1.5 text-[14px] font-bold truncate">
-        <Icon name="sparkle-star" size={14} className="text-accent shrink-0" />
+        <Icon name={award ? "star" : "sparkle-star"} size={14} className="text-accent shrink-0" />
         <span className="truncate">{universeName(u, loc)}</span>
       </span>
       <span className="block text-[12px] text-muted truncate mt-0.5">
         {t.listCount(count)}
-        {u.storyOrder ? ` · ${t.listsStoryOrder}` : ""}
+        {award ? ` · ${awardBody(award, loc)}` : u.storyOrder ? ` · ${t.listsStoryOrder}` : ""}
       </span>
       <span className="mt-2 flex gap-1.5">
         {posters.length > 0 ? (
@@ -415,6 +428,31 @@ async function CuratedRails({
   region: string;
 }) {
   const { type, genre, lang, country, provider, era, rate, active } = browse;
+  /* ===== فلتر الجائزة (طلب أحمد 9 Aug) =====
+     اختيار جائزةٍ سؤالٌ مغلق لا تصفّح: «من فاز بالسعفة؟» — فالصفحة تصير
+     صفّاً واحداً بالفائزين، الأحدث أولاً، بلا أرقام (الترتيب زمنيّ لا
+     تفضيليّ). وبقية الصفوف تصمت: خلطُ الفائزين برائج الأسبوع يُفقد
+     الجواب معناه. */
+  if (browse.award) {
+    const award = awardBySlug(browse.award);
+    const rows = award ? await awardWinners(browse.award).catch(() => []) : [];
+    return (
+      <div className="space-y-8">
+        {rows.length > 0 ? (
+          <RankedRail
+            title={award ? universeAwardTitle(award, locale) : ""}
+            icon="star"
+            items={rows}
+            ranked={false}
+            note={t.awardRailNote}
+          />
+        ) : (
+          <p className="text-center text-muted py-20">{t.browseEmpty}</p>
+        )}
+      </div>
+    );
+  }
+
   const wantMovies = type !== "tv";
   const wantSeries = type !== "movie";
   const deep = needsDiscover(browse);
