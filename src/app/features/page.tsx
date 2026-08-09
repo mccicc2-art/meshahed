@@ -1,12 +1,25 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { getT } from "@/lib/locale";
+import { getT, getLocale } from "@/lib/locale";
 import { Icon, type IconName } from "@/components/Icon";
+import { seoKeywords } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Features — Loopz",
-  description: "Everything Loopz can do, in one honest page.",
-};
+/* عنوانٌ ووصفٌ بلغة الزائر لا بالإنجليزية دائماً (D-122): هذه صفحةٌ عامّة
+   تُفهرَس، وسطرُ الوصف في نتيجة البحث هو الإعلان الوحيد الذي نملكه —
+   وأكثر جمهورنا يقرأ العربية. و«— Loopz» يُلحَق آلياً بقالب التخطيط. */
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  const ar = locale === "ar";
+  return {
+    title: ar ? "المميزات" : "Features",
+    description: ar
+      ? "كل ما يقدر عليه Loopz في صفحة واحدة: تتبّع الحلقات والأفلام والأنمي، اليوميات والإحصاءات، القوائم والجوائز، الأصدقاء والرسائل — وكلّه مجاني."
+      : "Everything Loopz can do, in one honest page: episode, movie and anime tracking, diary and stats, lists and awards, friends and messages — all free.",
+    keywords: seoKeywords(locale),
+    alternates: { canonical: "/features" },
+    openGraph: { type: "article", url: "/features" },
+  };
+}
 
 /**
  * مميزات Loopz — الحصر الذي طلبه أحمد (تدقيق 8 Aug، القسم ٢): الميزات
