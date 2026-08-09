@@ -115,9 +115,16 @@ export function PageTabs({
 
   return (
     /* الخلفية صمّاء لا شفافة: الملصقات وصور الأعمال تمرّ خلف الرأس.
-       والهوامش السالبة تمدّ الخلفية والخطّ إلى حافّتَي الشاشة. */
-    <div className="sticky top-[var(--sticky-top)] z-20 -mx-4 px-4 pt-1 pb-2 bg-[color:var(--background)] border-b border-[color:var(--divider)]">
-      <div className="flex items-stretch gap-2">
+       والهوامش السالبة تمدّ الخلفية والخطّ إلى حافّتَي الشاشة.
+
+       **الحدّ على صفّ التبويبات لا على الرأس كلّه** (بلاغ أحمد 9 Aug:
+       «لا تحط خط ثاني»): شريطُ التمييز الأصفر يجلس عند `-bottom-px` من
+       البند، فإن كان الحدّ أسفل الرأس بعد صفّ البحث طفا الأصفر فوقه
+       بفجوةٍ وقُرئ خطّاً ثانياً. وضعُه هنا يجعل الأصفر **جزءاً من الخطّ
+       الرمادي نفسه**. والصفّ يمتدّ إلى حافّتَي الشاشة بهامشٍ سالب
+       ثانٍ كي يبقى الخطّ بعرض الشاشة كما كان. */
+    <div className="sticky top-[var(--sticky-top)] z-20 -mx-4 px-4 pt-1 bg-[color:var(--background)]">
+      <div className="-mx-4 px-4 flex items-stretch gap-2 border-b border-[color:var(--divider)]">
         {asNav ? (
           <nav aria-label={ariaLabel} className="min-w-0 flex-1 flex items-stretch">
             {inner}
@@ -129,7 +136,9 @@ export function PageTabs({
         )}
         {action}
       </div>
-      {extra && <div className="mt-3">{extra}</div>}
+      {/* ما تحت الخطّ يبقى داخل الرأس اللاصق ويمرّر معه — والحشو
+          السفليّ هنا لا على الحاوية، وإلا فصل الخطَّ عن التبويبات */}
+      {extra ? <div className="pt-3 pb-2">{extra}</div> : <div className="pb-2" />}
     </div>
   );
 }

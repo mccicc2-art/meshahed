@@ -47,10 +47,17 @@ export const segmentedTrackFull =
 export const segmentedTrackBare = "inline-flex items-stretch";
 
 /**
- * خانة المقسّم — نصٌّ شفّاف يعلوه خطُّ تمييزٍ سفليّ عريض عند الاختيار.
+ * خانة المقسّم — **الخطّ الفاصل نفسه يصفرّ تحت المختار**.
  *
- * الخطّ عنصرٌ زائفٌ (`after`) يجلس على حدّ المسار السفليّ ويمتدّ بعرض
- * الخانة نفسها إلا هامشاً يسيراً على الطرفين. متماثلٌ في RTL/LTR.
+ * كان شريطاً ثالثَ الأبعاد: ثلاثة بكسلات بحوافّ مستديرة يطفو فوق الخطّ
+ * الرمادي — فيُقرأ **خطّاً ثانياً** لا علامةَ اختيار (بلاغ أحمد 9 Aug:
+ * «لا تحط خط ثاني، خلها نفس الخط هو الي يسير جزء منه أصفر»). الآن
+ * `after` بكسلٌ واحد بعرض الخانة كاملةً عند `-bottom-px` — أي **في موضع
+ * الحدّ نفسه وبسُمكه**، فلا يزيد الشكل خطّاً بل يلوّن جزءاً منه.
+ *
+ * وشرطُ نجاحه أن يحمل **صفُّ التبويبات** الحدَّ السفليّ لا حاويةٌ أبعد
+ * منه: لو كان الحدّ أسفل الرأس كلّه لطفا الأصفر فوقه بفجوة. `PageTabs`
+ * يضمن ذلك. متماثلٌ في RTL/LTR.
  *
  * والفاصل الرأسيّ عنصرٌ زائفٌ (`before`) على كل خانةٍ عدا الأولى، مقصوصٌ
  * من أعلى وأسفل فلا يلمس الخطّ الأفقيّ السفليّ. يُوضع على الحافة البادئة
@@ -64,7 +71,7 @@ export function segmentedItem(active: boolean, className = "", pad = true) {
     "before:pointer-events-none before:absolute before:inset-y-2 before:start-0 before:w-px before:bg-[color:var(--divider)] first:before:hidden";
   return `${pad ? "px-4 pt-2 pb-3 text-[13px] " : ""}relative font-semibold whitespace-nowrap transition-colors ${rule} ${
     active
-      ? "text-foreground after:pointer-events-none after:absolute after:-bottom-px after:inset-x-4 after:h-[3px] after:rounded-full after:bg-accent"
+      ? "text-foreground after:pointer-events-none after:absolute after:-bottom-px after:inset-x-0 after:h-px after:bg-accent"
       : "text-muted hover:text-foreground"
   }${className ? ` ${className}` : ""}`;
 }

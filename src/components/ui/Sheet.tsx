@@ -23,8 +23,15 @@ import { Icon } from "../Icon";
 export type SheetVariant = "bottom" | "top" | "center" | "bare";
 
 const PANEL: Record<SheetVariant, string> = {
+  /* `svh` لا `vh` (بلاغ أحمد 9 Aug: «قائمة الإشعارات… طالعة فوق»).
+     `vh` في متصفّحات الجوال تقيس الشاشة **بلا** شريط العنوان والأدوات،
+     فـ٨٥vh قد تتجاوز المرئيّ فعلاً — والورقة ملتصقةٌ بالأسفل، فالفائض
+     يخرج من **أعلاها**: ترويسةُ الورقة وزرُّ إغلاقها يصعدان خلف شريط
+     المتصفّح. و`svh` تقيس الأصغر (بعد ظهور الأشرطة) فلا يخرج شيء.
+     والسقف نزل إلى ٨٠ ليبقى تحت الورقة أثرٌ من الصفحة يقول إنها ورقة
+     لا شاشة. أُصلح في `Sheet` لا في الجرس: كل ورقةٍ سفلية كانت معرّضة. */
   bottom:
-    "sheet-pop relative w-full sm:max-w-md max-h-[85vh] flex flex-col rounded-t-sheet sm:rounded-sheet border border-border bg-[color:var(--elevated)] shadow-2xl overflow-hidden pb-[env(safe-area-inset-bottom)]",
+    "sheet-pop relative w-full sm:max-w-md max-h-[80svh] flex flex-col rounded-t-sheet sm:rounded-sheet border border-border bg-[color:var(--elevated)] shadow-2xl overflow-hidden pb-[env(safe-area-inset-bottom)]",
   /* الورقة العلوية — لِما يُكتب فيه لا لِما يُضغط.
      لوحة المفاتيح تأكل نصف الشاشة السفلي، فورقةٌ ملتصقة بالأسفل تُدفَع
      فوقها وتختفي نتائجها خلفها؛ وأعلى الشاشة يبقى ظاهراً دائماً فالحقل
