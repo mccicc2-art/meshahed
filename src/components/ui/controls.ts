@@ -87,3 +87,16 @@ export function chipClass(active: boolean, size: ChipSize = "md", className = ""
 /** صفٌّ أفقي من الرقائق يلامس حافّة الشاشة ويُمرَّر بالسحب */
 export const chipRow =
   "-mx-4 px-4 overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden";
+
+/**
+ * شبكة الملصقات — ثلاثة في الصفّ على الجوال وتتّسع مع الشاشة.
+ *
+ * انتُزعت من `LibraryGrid` حين صار للمكتبة تبويبٌ رابع بشبكةٍ ثانية
+ * (الفنانون، D-128): سلسلةُ أصنافٍ منسوخةٌ في موضعين تنحرف عند أول تعديل،
+ * وعدد الأعمدة في المكتبة ليس تفصيلاً بل هو إيقاعُها.
+ *
+ * و`content-visibility`: مكتبةٌ من ٣٠٠ عمل كانت ٣٠٠ بطاقة تُنسَّق كلها عند
+ * أول تمرير — الآن ما خرج عن الشاشة يُتخطّى رسمُه.
+ */
+export const posterGrid =
+  "grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4 [&>*]:[content-visibility:auto] [&>*]:[contain-intrinsic-size:auto_240px]";
