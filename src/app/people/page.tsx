@@ -19,7 +19,6 @@ import { getT } from "@/lib/locale";
 import type { Dict } from "@/lib/i18n";
 import { localizeRows } from "@/lib/localize";
 import { formatDateShort } from "@/lib/when";
-import { num } from "@/lib/i18n";
 import { FeedEmptyCta } from "@/components/FeedEmptyCta";
 import { PeopleToFollow } from "@/components/PeopleToFollow";
 import { Inbox } from "@/components/Inbox";
@@ -30,13 +29,7 @@ import { getTv, getMovie } from "@/lib/tmdb";
 import { Icon } from "@/components/Icon";
 import { LikeButton } from "@/components/LikeButton";
 import { ReportButton } from "@/components/ReportButton";
-import {
-  chipClass,
-  chipRow,
-  segmentedItem,
-  segmentedTrack,
-  segmentedTrackFull,
-} from "@/components/ui/controls";
+import { PageTabs } from "@/components/ui/PageTabs";
 import { ScrollMemory } from "@/components/ScrollMemory";
 
 /** كم عملاً نطلب له صورةً عرضية — سقفٌ يمنع موجة طلباتٍ بحجم الخط */
@@ -183,7 +176,6 @@ export default async function PeoplePage({
     getUnreadShares(),
   ]);
 
-  const mineCount = followingFeed.length;
   const allCount = myCommunities.length;
 
   // غرفةٌ مفتوحة؟ («‎?tab=all&c=<id>‎» — الحالة في الرابط كالوارد، D-051/D-054)
@@ -266,27 +258,22 @@ export default async function PeoplePage({
 
   // روابط التبويبات — الحالة في الرابط كبقيّة التطبيق: قابلةٌ للمشاركة
   // وللرجوع، وتُرسم على الخادم فلا وميض
-  const tabs: { key: Tab; href: string; label: string; count?: number; badge?: number }[] = [
-    { key: "mine", href: "/people", label: t.communityTabMine, count: mineCount },
+  /* **بلا عدّادٍ على «النشاط»** (D-134): الرقم كان طول الخطّ لا عدد
+     أصدقائك — «٦٠» بجانب اسمٍ يقرؤه المستخدم «٦٠ شخصاً» وهي ستّون
+     حدثاً في ثلاثين يوماً. رقمٌ يُقرأ خطأً أسوأ من لا رقم، وحذفُه
+     يُفسح للتبويب الرابع عرضاً على الشاشة الضيّقة. عدّاد «المجتمع»
+     يبقى (جردٌ صادق: عدد مجتمعاتك)، وشارة الرسائل تبقى (إشارةٌ تطلب
+     فعلاً لا جرد). */
+  const tabs = [
+    { key: "mine", href: "/people", label: t.communityTabMine },
     { key: "all", href: "/people?tab=all", label: t.communityTabAll, count: allCount },
-    { key: "inbox", href: "/people?tab=inbox", label: t.communityTabInbox, badge: unread },
-  ];
-
-  /* روابط الفرز والمرشِّح تحفظ بعضها — تغيير الفرز لا يمسح المرشِّح
-     والعكس (نمط D-095: الحالة في الرابط، قابلةً للمشاركة والرجوع).
-     انقلبت وجهتا الفرز مع انقلاب الافتراضي (D-123): العاري = الأحدث. */
-  const circleHref = (opts: { top?: boolean; k?: string | null }) => {
-    const p = new URLSearchParams();
-    if (opts.top ?? !newest) p.set("sort", "top");
-    const nk = opts.k === undefined ? kind : opts.k;
-    if (nk) p.set("k", nk);
-    const qs = p.toString();
-    return qs ? `/people?${qs}` : "/people";
-  };
-  const kinds: { key: "rate" | "review" | null; label: string }[] = [
-    { key: null, label: t.feedFilterAll },
-    { key: "rate", label: t.feedFilterRatings },
-    { key: "review", label: t.feedFilterReviews },
+    {
+      key: "inbox",
+      href: "/people?tab=inbox",
+      label: t.communityTabInbox,
+      badge: unread,
+      badgeLabel: t.communityUnreadAria(unread),
+    },
   ];
 
   return (
@@ -298,91 +285,16 @@ export default async function PeoplePage({
           التبويبات (طلب المالك) */}
       <h1 className="sr-only">{t.peopleTitle}</h1>
 
-      {/* ===== صفّ التبويبات =====
-          مقسّمٌ يملأ العرض ويقسّمه بالتساوي بأثلاثٍ متطابقة العرض
-          (segmentedTrackFull + flex-1 basis-0 min-w-0) — نفس صفّ شرائح
-          المكتبة (D-016، D-042). عدّادٌ على «مجتمعي» و«المجتمع»، وشارة غير
-          المقروء على «الرسائل» تختفي عند الصفر. */}
-      {/* رأسٌ لاصق (طلب أحمد 9 Aug): التبويبات وصفّ الترتيب/المرشِّح
-          يبقيان تحت الترويسة والخطّ يمرّ تحتهما. خلفية صمّاء لا شفافة —
-          صور الأعمال تمرّ خلفها. و`space-y-5` الأب يضيف فراغاً بين
-          الحاوية وما بعدها، فالحشو السفليّ هنا صغير. */}
-      <div className="sticky top-[var(--sticky-top)] z-20 -mx-4 px-4 pt-1 pb-2 bg-[color:var(--background)] border-b border-[color:var(--divider)] space-y-3">
-      <nav aria-label={t.communityTabsGroup} className={segmentedTrackFull}>
-        {tabs.map((tb) => {
-          const active = tb.key === tab;
-          return (
-            <Link
-              key={tb.key}
-              href={tb.href}
-              aria-current={active ? "page" : undefined}
-              className={segmentedItem(active, "flex-1 basis-0 min-w-0 flex items-center justify-center gap-1.5")}
-            >
-              <span className="truncate">{tb.label}</span>
-              {typeof tb.count === "number" && (
-                <span className={`tabular-nums text-[12px] ${active ? "text-muted" : "text-muted/70"}`} dir="ltr">
-                  {num(tb.count, locale)}
-                </span>
-              )}
-              {typeof tb.badge === "number" && tb.badge > 0 && (
-                <span
-                  aria-label={t.communityUnreadAria(tb.badge)}
-                  className="grid place-items-center min-w-[18px] h-[18px] px-1 rounded-full bg-accent text-[color:var(--on-accent)] text-[11px] font-bold tabular-nums"
-                  dir="ltr"
-                >
-                  {num(tb.badge, locale)}
-                </span>
-              )}
-            </Link>
-          );
-        })}
-      </nav>
-
-      {/* صفُّ «مجتمعي» وحده: الترتيب ثم مرشِّح النوع على البداية،
-          والعدّادات على الطرف. **تبويبا المجتمع والرسائل لم يعودا يرسمان
-          صفّاً خاصاً بالعدّادات** — تُحقن داخل صفّ بحثهما فيصير الرأس
-          صفّاً واحداً (طلب أحمد 9 Aug). ويختفي داخل محادثةٍ مفتوحة. */}
-      {tab === "mine" && !openWith && !openCommunity && (
-        <div className="flex items-center justify-between gap-2 flex-wrap">
-          <div className="min-w-0 flex items-center gap-3 flex-wrap">
-            {(feed.length > 0 || kind !== null) && (
-              <>
-                <div role="group" aria-label={t.feedSortGroup} className={segmentedTrack}>
-                  <Link
-                    href={circleHref({ top: false })}
-                    aria-current={newest ? "true" : undefined}
-                    className={segmentedItem(newest)}
-                  >
-                    {t.feedSortNew}
-                  </Link>
-                  <Link
-                    href={circleHref({ top: true })}
-                    aria-current={!newest ? "true" : undefined}
-                    className={segmentedItem(!newest)}
-                  >
-                    {t.feedSortTop}
-                  </Link>
-                </div>
-                {/* رقائق لا مقسّم ثانٍ: محوران مختلفان في صفٍّ واحد
-                    يحتاجان شكلين مختلفين وإلا قُرئا محوراً واحداً (D-016) */}
-                <div role="group" aria-label={t.feedFilterGroup} className={chipRow}>
-                  {kinds.map((kk) => (
-                    <Link
-                      key={kk.key ?? "all"}
-                      href={circleHref({ k: kk.key })}
-                      aria-current={kind === kk.key ? "true" : undefined}
-                      className={chipClass(kind === kk.key, "sm")}
-                    >
-                      {kk.label}
-                    </Link>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      )}
-      </div>
+      {/* ===== رأس التبويبات =====
+          `PageTabs` المشترك (D-134): نفس الموضع الرأسيّ في المكتبة
+          واكتشف، وخطٌّ فاصلٌ **واحد**. وصفُّ الفرز والمرشِّح الذي كان
+          تحته **حُذف** بطلب أحمد — انظر تعليق `newest`/`kind`. */}
+      <PageTabs
+        items={tabs}
+        active={tab}
+        ariaLabel={t.communityTabsGroup}
+        asNav
+      />
 
       {/* ===== محتوى التبويب ===== */}
       {tab === "inbox" ? (
