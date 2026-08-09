@@ -16,7 +16,8 @@ import {
   getAllMovieProgress,
   getMyRatings,
   getMyLists,
-  getFollowStats,
+  getFollowLists,
+  getIncomingFollowRequests,
   getReceivedLikes,
 } from "@/lib/data";
 import {
@@ -102,8 +103,9 @@ export default async function HomePage() {
     profile,
     movieProgress,
     myRatings,
-    followStats,
     receivedLikes,
+    followLists,
+    followRequests,
   ] = await Promise.all([
     getFollows(),
     getWatchSummary(),
@@ -111,8 +113,12 @@ export default async function HomePage() {
     getProfile(),
     getAllMovieProgress(),
     getMyRatings(),
-    getFollowStats(user.id),
     getReceivedLikes(user.id),
+    /* قائمتا المتابعة وطلباتها — انتقل عدّاداهما إلى الترويسة (D-133)،
+       والقائمتان تُقرآن معهما لأن الورقتين تُفتحان من هنا. استعلاماتٌ
+       ثلاثة سقطت عن `/people` مقابل هذه، فالميزان لم يتغيّر */
+    getFollowLists(user.id),
+    getIncomingFollowRequests(),
   ]);
 
   // مستخدم بلا مكتبة يذهب لشاشة الانضمام — قبل أي رسمٍ أو جلبٍ آخر
@@ -331,7 +337,9 @@ export default async function HomePage() {
         avatarPos={profile?.avatar_pos ?? null}
         level={level}
         stats={headerStats}
-        followers={followStats.followers}
+        followingList={followLists.following}
+        followersList={followLists.followers}
+        followRequests={followRequests}
         comments={myComments}
         ratings={myRatingsCount}
         likes={receivedLikes}
