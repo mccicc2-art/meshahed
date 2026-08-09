@@ -177,9 +177,13 @@ export default async function NewsPage({
         </Suspense>
       ) : (
         /* المفتاح يتغيّر بتغيّر الفلتر: React يُظهر الهيكل فوراً بدل أن
-            يُبقي صفوف الفلتر السابق معلّقة حتى تصل الجديدة */
+            يُبقي صفوف الفلتر السابق معلّقة حتى تصل الجديدة.
+            نوافذ الصفوف (wm/ws/wa) ليست في المفتاح عمداً (سؤال أحمد
+            «ليش كامل الصفحة تتحدث؟»): رقاقةٌ واحدة يجب ألا تعيد تركيب
+            الصفوف كلّها هيكلاً — التبديل transition في مكانه، والرقائق
+            تعتم قليلاً ريثما يصل الصف الجديد */
         <Suspense
-          key={`${browseKey(browse)}:${rails.m}:${rails.s}:${rails.a}`}
+          key={browseKey(browse)}
           fallback={
             <div className="space-y-8" aria-hidden>
               <RailSkeleton count={6} />
