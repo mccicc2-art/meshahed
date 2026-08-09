@@ -8,13 +8,15 @@ import { useRouter } from "next/navigation";
 import { getDict, type Locale } from "@/lib/i18n";
 import { startRewatch } from "@/lib/actions";
 import type { UserList } from "@/lib/data";
+import type { ArtistShelfItem } from "@/lib/artists";
+import { ArtistsGrid } from "./ArtistsGrid";
 import { PosterCard } from "./PosterCard";
 import { SectionDivider } from "./SectionDivider";
 import { LongPressable } from "./LongPressable";
 import { ListManager } from "./ListManager";
 import { Icon } from "./Icon";
 import { Sheet, SheetHeader } from "./ui/Sheet";
-import { chipClass, segmentedItem, segmentedTrackFull } from "./ui/controls";
+import { chipClass, posterGrid, segmentedItem, segmentedTrackFull } from "./ui/controls";
 import { buttonClass } from "./ui/Button";
 
 export interface GridItem {
@@ -49,7 +51,15 @@ export interface GridItem {
  * التالية» و«شفته كله» والبطاقة الحمراء — أقوى عادات TV Time، بلا فتح
  * صفحة العمل.
  */
-export type LibraryTab = "shows" | "movies" | "lists";
+export type LibraryTab = "shows" | "movies" | "artists" | "lists";
+
+/** التبويب ↔ قيمة `?filter=` — جدولٌ واحد بدل ثلاثة شروطٍ ثلاثيّة متفرّقة */
+export const TAB_FILTER: Record<LibraryTab, string | null> = {
+  shows: null,
+  movies: "movie",
+  artists: "person",
+  lists: "list",
+};
 
 /** حالات التقسيم — «أشاهدها» للمسلسلات وحدها؛ الفيلم يُشاهد أو لا */
 export type LibraryStatus = "watching" | "unstarted" | "completed" | "dropped";
@@ -57,6 +67,8 @@ export type LibraryStatus = "watching" | "unstarted" | "completed" | "dropped";
 export function LibraryGrid({
   shows,
   movies,
+  artists,
+  artistCount,
   lists,
   locale,
   initialTab = "shows",
@@ -64,6 +76,10 @@ export function LibraryGrid({
 }: {
   shows: GridItem[];
   movies: GridItem[];
+  /** رفُّ الفنانين — يصل **محسوباً** حين يكون تبويبَه المفتوح وحده (D-128) */
+  artists: ArtistShelfItem[];
+  /** عدّاد التبويب: نداءُ Supabase خفيفٌ يجري دائماً، بلا نداءات TMDB */
+  artistCount: number;
   lists: UserList[];
   locale: Locale;
   initialTab?: LibraryTab;
@@ -91,10 +107,8 @@ export function LibraryGrid({
   function goTab(id: LibraryTab) {
     if (id === tab) return;
     setPendingTab(id);
-    router.push(
-      id === "shows" ? "/library" : `/library?filter=${id === "movies" ? "movie" : "list"}`,
-      { scroll: false },
-    );
+    const f = TAB_FILTER[id];
+    router.push(f ? `/library?filter=${f}` : "/library", { scroll: false });
   }
   const [q, setQ] = useState("");
   const [sort, setSort] = useState<"smart" | "title" | "progress">("smart");
@@ -132,8 +146,17 @@ export function LibraryGrid({
   const tabs = [
     { id: "shows" as const, icon: "tv" as const, label: t.shortShows, n: shows.length },
     { id: "movies" as const, icon: "film" as const, label: t.shortMovies, n: movies.length },
+    { id: "artists" as const, icon: "people" as const, label: t.shortArtists, n: artistCount },
     { id: "lists" as const, icon: "list" as const, label: t.listsTitle, n: lists.length },
   ];
+
+  /* رفُّ الفنانين يُحسب على الخادم، والتفاؤل المحليّ يسبقه: بلا هذا
+     العلم يومض «ما تتابع أي فنان» في الطريق — وهي كذبةٌ لا حالةٌ فارغة */
+  const artistsPending = tab === "artists" && initialTab !== "artists";
+  /* البحث لغةُ عناوين، وشبكةُ الفنانين ليست عناوين — ورقائق الفرز
+     (الاسم/التقدّم) بلا معنى فيها: ترتيبُها **بعدد ما شاهدتَه** وهو
+     معناها. فالصفّ كلّه يغيب في تبويبها كما يغيب في القوائم. */
+  const showSearchRow = tab === "shows" || tab === "movies";
 
   return (
     <div>
@@ -152,7 +175,7 @@ export function LibraryGrid({
           الملصقات تمرّ خلفها. وصفّ البحث خرج من `tabpanel` إلى هنا: هو
           تحكّمٌ في اللوح لا محتواه، ويظهر لغير تبويب القوائم وحده. */}
       <div className="sticky top-[var(--sticky-top)] z-20 -mx-4 px-4 pt-1 pb-2 mb-3 bg-[color:var(--background)] border-b border-[color:var(--divider)]">
-      <div className={`${segmentedTrackFull} ${tab === "lists" ? "mb-1" : "mb-3"}`} role="tablist" aria-label={t.libraryTitle}>
+      <div className={`${segmentedTrackFull} ${showSearchRow ? "mb-3" : "mb-1"}`} role="tablist" aria-label={t.libraryTitle}>
         {tabs.map(({ id, icon, label, n }) => {
           const active = tab === id;
           return (
@@ -170,10 +193,15 @@ export function LibraryGrid({
                 false,
               )}
             >
+              {/* الأيقونة تغيب على الضيّق منذ صار التبويب رابعاً (D-128):
+                  أربع خاناتٍ على ٣٦٠px تعني ٨٢px للخانة، والأيقونة
+                  وفجوتها تأكلان ٢٤ منها فيُقصّ «مسلسلات». تصغيرُ الخطّ
+                  ممنوع (قاعدة `02`)، فالأيقونة هي ما يُضحّى به —
+                  وتعود من `sm:` حيث المساحة تحتملها. */}
               <Icon
                 name={icon}
                 size={16}
-                className={`shrink-0 transition-colors ${active ? "text-accent" : ""}`}
+                className={`shrink-0 hidden sm:block transition-colors ${active ? "text-accent" : ""}`}
               />
               <span className="truncate">{label}</span>
               <span
@@ -188,8 +216,8 @@ export function LibraryGrid({
           );
         })}
       </div>
-      {tab !== "lists" && (
-        /* بحثٌ وفرز: سطرٌ واحد تحت التبويبين */
+      {showSearchRow && (
+        /* بحثٌ وفرز: سطرٌ واحد تحت تبويبَي الأعمال */
         <div className="flex items-center gap-2">
         <div className="relative flex-1">
           <span className="absolute inset-y-0 start-3 grid place-items-center text-muted pointer-events-none">
@@ -235,6 +263,30 @@ export function LibraryGrid({
           <ListManager lists={lists} locale={locale} />
           {listsExtra}
         </div>
+      ) : tab === "artists" ? (
+        /* الفنانون: نفس الشبكة ونفس البطاقة — تبويبٌ رابع لا لغةٌ ثانية.
+           والفرز بعدد ما شاهدتَه له يقع في `getArtistShelf` على الخادم
+           (وهناك شرحُ كلفته وسقفه)، فلا حساب هنا. */
+        artistsPending ? (
+          <div className={posterGrid} aria-hidden>
+            {Array.from({ length: 6 }, (_, i) => (
+              <div key={i} className="aspect-[2/3] rounded-poster bg-surface border border-border animate-pulse" />
+            ))}
+          </div>
+        ) : artists.length === 0 ? (
+          <div className="text-center py-16 space-y-4">
+            <p className="text-muted">{t.artistsEmpty}</p>
+            <button
+              type="button"
+              onClick={() => router.push("/search")}
+              className={buttonClass({ size: "sm" })}
+            >
+              {t.artistsEmptyCta}
+            </button>
+          </div>
+        ) : (
+          <ArtistsGrid artists={artists} t={t} />
+        )
       ) : (
       <>
       <p className="text-[10px] text-muted/80 mb-4">{t.longPressHint}</p>
@@ -252,9 +304,8 @@ export function LibraryGrid({
           </button>
         </div>
       ) : (
-        /* content-visibility: مكتبة من ٣٠٠ عمل كانت ٣٠٠ بطاقة مركّبة تُنسَّق
-           كلها عند أول تمرير — الآن ما خرج عن الشاشة يُتخطّى رسمُه */
-        <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4 [&>*]:[content-visibility:auto] [&>*]:[contain-intrinsic-size:auto_240px]">
+        /* الشبكة وصفتُها في `ui/controls` منذ صار للمكتبة شبكتان (D-128) */
+        <div className={posterGrid}>
           {items.map((x, i) => (
             <Fragment key={x.key}>
               {/* فاصلٌ مسمّى عند تبدّل المجموعة (طلب المالك): الترتيب الذكي
