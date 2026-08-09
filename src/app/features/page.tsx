@@ -40,6 +40,8 @@ interface Feature {
   en: string;
   arBody: string;
   enBody: string;
+  /** ميزةٌ لم تُشحن بعد — تحمل وسم «قريباً» بدل «مجاني» (D-122) */
+  soon?: boolean;
 }
 
 interface Section {
@@ -96,6 +98,36 @@ const SECTIONS: Section[] = [
         en: "Stats",
         arBody: "ساعاتك وأنواعك وأرقامك — وبطاقة إحصاءات أنيقة تشاركها.",
         enBody: "Your hours, genres and numbers — with a shareable stats card.",
+      },
+    ],
+  },
+  {
+    icon: "sliders",
+    ar: "التخصيص",
+    en: "Make it yours",
+    items: [
+      {
+        icon: "grid",
+        ar: "رئيسيةٌ تبنيها أنت",
+        en: "A home screen you build",
+        arBody:
+          "أظهِر الأقسام التي تهمّك وأخفِ ما لا يهمّك ورتّبها كما تحب: أكمل المشاهدة، للمشاهدة، تقييماتي، قوائمي، ملخّص أسبوعك…",
+        enBody:
+          "Show the sections you care about, hide the ones you do not, and order them your way: continue watching, to watch, my ratings, my lists, your week…",
+      },
+      {
+        icon: "card",
+        ar: "شكل البطاقة وإحصاءات ترويستك",
+        en: "Card layout and header stats",
+        arBody: "اختر ما يظهر على بطاقة العمل، وأي أرقامٍ تراها في ترويسة رئيسيتك.",
+        enBody: "Choose what appears on a title card, and which numbers sit in your home header.",
+      },
+      {
+        icon: "palette",
+        ar: "سبعة ثيمات ووضعٌ نهاري",
+        en: "Seven themes and a light mode",
+        arBody: "بدّل مظهر التطبيق كاملاً — ومنها «النهاري» الفاتح للقراءة تحت الشمس.",
+        enBody: "Switch the whole look — including a light “daylight” theme for reading in the sun.",
       },
     ],
   },
@@ -227,8 +259,8 @@ const SECTIONS: Section[] = [
         icon: "download",
         ar: "استيراد تاريخك",
         en: "Import your history",
-        arBody: "انقل مشاهداتك من Trakt وTV Time بملفٍّ واحد.",
-        enBody: "Bring your history over from Trakt and TV Time.",
+        arBody: "انقل مشاهداتك من تطبيقك السابق بملفٍّ واحد — يُطابَق مع الكتالوج وتنتقل مشاهداتك دفعةً واحدة.",
+        enBody: "Bring your history over from your previous app in one file — matched against the catalogue and imported in one go.",
       },
       {
         icon: "settings",
@@ -236,6 +268,63 @@ const SECTIONS: Section[] = [
         en: "Your data is yours",
         arBody: "صدّر كل بياناتك JSON متى شئت، أو احذف حسابك نهائياً بضغطة.",
         enBody: "Export everything as JSON any time, or delete your account for good.",
+      },
+    ],
+  },
+  {
+    icon: "sparkle-star",
+    ar: "قريباً",
+    en: "Coming soon",
+    items: [
+      {
+        icon: "repeat",
+        ar: "تسجيلٌ تلقائي لما تشاهده",
+        en: "Automatic watch tracking",
+        arBody:
+          "لن تحتاج أن تعلّم شيئاً بيدك: يُسجَّل ما تشاهده تلقائياً أوّلاً بأوّل، ويبقى التعليم اليدوي متاحاً لمن يفضّله.",
+        enBody:
+          "No more ticking by hand: what you watch is logged automatically as you watch it, with manual ticking still there if you prefer it.",
+        soon: true,
+      },
+      {
+        icon: "tv",
+        ar: "ربط منصّات البثّ",
+        en: "Streaming platform linking",
+        arBody:
+          "اربط حساباتك على منصّات البثّ الكبرى مرّةً واحدة، وتتدفّق مشاهداتك إلى مكتبتك بلا خطوةٍ إضافية.",
+        enBody:
+          "Connect your accounts on the major streaming platforms once, and your watches flow into your library with no extra step.",
+        soon: true,
+      },
+      {
+        icon: "newspaper",
+        ar: "دعم اشتراكات IPTV",
+        en: "IPTV support",
+        arBody:
+          "من يشاهد عبر IPTV له مكانٌ هنا أيضاً — ربطٌ يقرأ ما تُشاهده ويضعه في سجلّك.",
+        enBody:
+          "If you watch over IPTV you are covered too — a link that reads what you are watching and files it in your log.",
+        soon: true,
+      },
+      {
+        icon: "download",
+        ar: "تطبيقا iOS وأندرويد",
+        en: "iOS and Android apps",
+        arBody:
+          "تطبيقان أصليّان على App Store وGoogle Play. وحتى ذلك الحين، ثبّت Loopz من متصفّحك على شاشتك الرئيسية ويعمل كتطبيق.",
+        enBody:
+          "Native apps on the App Store and Google Play. Until then, install Loopz from your browser to your home screen — it already behaves like an app.",
+        soon: true,
+      },
+      {
+        icon: "compass",
+        ar: "لغاتٌ أكثر",
+        en: "More languages",
+        arBody:
+          "العربية والإنجليزية كاملتان اليوم، وأهمّ لغات العالم في الطريق — Loopz ليس مبنياً لمنطقةٍ واحدة.",
+        enBody:
+          "Arabic and English are complete today, with the world's major languages on the way — Loopz is not built for one region.",
+        soon: true,
       },
     ],
   },
@@ -254,8 +343,8 @@ export default async function FeaturesPage() {
       <h1 className="text-2xl font-bold mt-3">{ar ? "مميزات Loopz" : "Loopz features"}</h1>
       <p className="text-sm text-muted mt-1.5 leading-relaxed">
         {ar
-          ? "كل ما يقدر عليه التطبيق، في صفحة واحدة صادقة — وكل شيء فيها مجاني اليوم."
-          : "Everything the app can do, on one honest page — and all of it is free today."}
+          ? "كل ما يقدر عليه التطبيق، في صفحة واحدة صادقة — وكل شيء فيها مجاني اليوم. وفي آخرها ما هو قيد العمل، موسوماً بـ«قريباً» كي لا يختلط الوعد بالمتاح."
+          : "Everything the app can do, on one honest page — and all of it is free today. At the foot you will find what is still being built, marked “Soon”, so a promise never reads as a feature."}
       </p>
 
       <div className="mt-8 space-y-9">
@@ -278,10 +367,18 @@ export default async function FeaturesPage() {
                       {ar ? f.arBody : f.enBody}
                     </p>
                   </div>
-                  {/* وسم «مجاني» — لون النجاح الواحد (D-003)؛ يوم يأتي الاشتراك
-                      يتبدّل وسم بنودٍ بعينها إلى «بريميوم» في نفس الخانة */}
-                  <span className="shrink-0 text-[11px] font-bold rounded-full px-2.5 py-1 border text-[color:var(--success)] border-[color:var(--success)]/35 bg-[color:var(--success)]/10">
-                    {ar ? "مجاني" : "Free"}
+                  {/* وسمان في خانةٍ واحدة: «مجاني» بلون النجاح (D-003)، و«قريباً»
+                      بلون الهوية — لونٌ يفرّق الوعد عن المتاح بلا صفٍّ ثانٍ.
+                      ويوم يأتي الاشتراك يتبدّل وسم بنودٍ بعينها إلى «بريميوم»
+                      في نفس الخانة، فلا يُعاد بناء شيء. */}
+                  <span
+                    className={`shrink-0 text-[11px] font-bold rounded-full px-2.5 py-1 border ${
+                      f.soon
+                        ? "text-accent border-accent/35 bg-accent/10"
+                        : "text-[color:var(--success)] border-[color:var(--success)]/35 bg-[color:var(--success)]/10"
+                    }`}
+                  >
+                    {f.soon ? (ar ? "قريباً" : "Soon") : ar ? "مجاني" : "Free"}
                   </span>
                 </li>
               ))}
