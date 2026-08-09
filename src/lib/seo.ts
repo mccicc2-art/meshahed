@@ -62,11 +62,11 @@ const KEYWORDS_EN = [
   "what to watch next",
   "rate movies and shows",
   "watch diary",
-  "TV Time alternative",
-  "Trakt alternative",
-  "Letterboxd alternative",
-  "Simkl alternative",
-  "Seen It alternative",
+  /* أسماء المنافسين حُذفت من الوسم بقرار أحمد: لا نكتب أسماءهم في صفحتنا
+     ولو في وسمٍ غير مرئي — والوسم نفسه يتجاهله قوقل، فلا خسارة */
+  "series tracker app",
+  "track episodes online",
+  "watch history tracker",
   "Loopz",
 ];
 
