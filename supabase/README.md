@@ -53,23 +53,33 @@
 | 40 | `library_grants.sql` | «من يرى مكتبتي»: منحة فردية تُطوى في `can_view_profile` (يستبدل نسخة 29) | **مشحونة** |
 | 41 | `community_photo.sql` | صورة المجتمع: `photo_url` + إرجاعها في دالتَي الدليل | **مشحونة** |
 | 42 | `community_invites.sql` | دعوات المجتمعات: جدول + قبولٌ definer يمرّ بوابة الخصوصية | **مشحونة** |
-| 43 | `follow_privacy.sql` | `hide_follow_lists` + العرض بذيله الجديد + دالتا أسماء المتابعة (definer) | **بانتظار التشغيل** |
+| 43 | `follow_privacy.sql` | `hide_follow_lists` + العرض بذيله الجديد + دالتا أسماء المتابعة (definer) | **مشحونة** |
 | 44 | `imdb_ratings.sql` | مخزن تقييمات IMDb عبر النشرات + `set_imdb_ratings` definer (D-113) | **مشحونة** |
 | 45 | `activity_v2.sql` | `following_activity_v2`: خطّ النشاط بأربعة أنواع، صفٌّ واحد لكل (شخص+عمل+يوم) + أربعة فهارس زمنية (D-123) | **مشحونة** |
 | 46 | `activity_likes.sql` | إعجابٌ بحدث مشاهدة: جدول بمفتاحٍ فيه يوم + `feed_activity_likes` definer (D-124) | **مشحونة** |
 | 47 | `notifications.sql` | جرس الإشعارات بلا جدول: عمود `notif_seen_at` + `my_signals`/`unread_signals`/`mark_signals_seen` (D-125) | **مشحونة** |
 | 48 | `social_discovery.sql` | `people_to_follow` (اقتراح متابعةٍ بتقاطع الذوق) + `title_circle` (نشاط دائرتك في صفحة العمل، مكتومٌ تحت ٣) + فهرسان (D-126/D-127) | **مشحونة** |
 | 49 | `imdb_votes.sql` | `imdb_ratings.imdb_votes` + `set_imdb_ratings` تحفظه — شرطُ ترتيب IMDb البايزيّ وحاجزِ الأهليّة (D-132) | **مشحونة** |
-| 50 | `imdb_chart.sql` | `imdb_pool` + `imdb_chart` + `set_imdb_pool`/`build_imdb_chart` — قائمة IMDb الحقيقية من ملفّاتها المفتوحة (D-135). ⚠️ **سياسة قراءةٍ مفتوحة رابعة** | **بانتظار التشغيل** |
+| 50 | `imdb_chart.sql` | `imdb_pool` + `imdb_chart` + `set_imdb_pool`/`build_imdb_chart` — قائمة IMDb الحقيقية من ملفّاتها المفتوحة (D-135). ⚠️ **سياسة قراءةٍ مفتوحة رابعة** | **مشحونة** |
+| 51 | `profile_prefs.sql` | `profiles.profile_prefs` + إظهاره في العرض العام + `profile_artists` definer — تخصيص البروفايل (D-129) | **مشحونة** |
 
 كلها تحقَّقت بالاستعلام المكتوب في ذيل ملفّها — **لا استثناءات: كل ملفات
-الجدول شُغِّلت** (آخرها ٢٩ المعاد كتابته و٣٦، في ٩ أغسطس).
+الجدول شُغِّلت** (آخرها ٤٣ و٥٠ و٥١، في ٩ أغسطس).
+
+## مصيدةٌ وقعنا فيها فعلاً — `safeupdate`
+
+Supabase تُحمّل إضافة `safeupdate` لدور `authenticated`، فأيّ
+`delete`/`update` **بلا `where`** يُرفض بـ«DELETE requires a WHERE
+clause» — **حتى داخل دالّة `security definer`**. وقع هذا في
+`build_imdb_chart` بعد أن كانت المسوّدة قد امتلأت بأربعة آلاف نداء.
+اكتب `where true` صراحةً في أي حذفٍ شامل.
 
 للتأكد أن قاعدة الإنتاج مطابقة:
 ```sql
 select tablename, policyname from pg_policies
 where schemaname = 'public' and qual = 'true';
--- المتوقَّع: user_follows و "read public lists/list items" و communities (دليل المجتمعات، مقصود منذ ٣٤).
+-- المتوقَّع **أربعٌ**: user_follows · communities (دليل المجتمعات، مقصود
+-- منذ ٣٤) · imdb_ratings (٤٤) · imdb_chart (٥٠).
 -- ⚠️ شغّله فعلاً ولا تكتفِ بوجوده: في ٨ أغسطس ٢٠٢٦ كشف أوّلُ تشغيلٍ له
 -- ثلاث سياسات مفتوحة على المكتبة وسجلّ المشاهدة، عمرها أشهر — انظر
 -- security3.sql.
