@@ -1113,6 +1113,34 @@ export async function topByFilter(
  * أعمالاً محدودة الجمهور، وعدد الأصوات أصدق دلالةً على «ما شاهده الجميع».
  * صفحة TMDB عشرون، فنطلب ثلاثاً لبلوغ الخمسين، ونحترم الفلتر لو وُجد.
  */
+/** أفضل ٥٠ أنمي على الإطلاق (طلب أحمد) — نفس محرّك top50 لكن على
+    مفتاح الأنمي: الأكثر أصواتاً تاريخياً، ثم يعيد withImdbRatings
+    ترتيبها بتقييم IMDb كسائر الصفوف المرتّبة (D-093). العتبة 200 لا
+    500: بِركة أصوات الأنمي في TMDB أصغر من الأفلام العالمية */
+export async function top50Anime(limit = 50): Promise<SearchResult[]> {
+  const pages = await Promise.all(
+    [1, 2, 3].map((page) =>
+      tmdb<{ results: SearchResult[] }>("/discover/tv", {
+        with_keywords: ANIME_KEYWORD,
+        sort_by: "vote_count.desc",
+        "vote_count.gte": "200",
+        include_adult: "false",
+        page: String(page),
+      }).catch(() => ({ results: [] as SearchResult[] })),
+    ),
+  );
+  const seen = new Set<number>();
+  const rows: SearchResult[] = [];
+  for (const p of pages) {
+    for (const r of p.results ?? []) {
+      if (!r.poster_path || seen.has(r.id)) continue;
+      seen.add(r.id);
+      rows.push({ ...r, media_type: "tv" });
+    }
+  }
+  return rows.slice(0, limit);
+}
+
 export async function top50(
   mediaType: MediaType,
   f: DiscoverFilter = {},
