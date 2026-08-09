@@ -26,6 +26,9 @@ type PeekRow = {
   title: string;
   poster: string | null;
   watched?: boolean;
+  /** سنة الفوز في قوائم الجوائز — تحلّ محلّ الرقم في صدر الصفّ
+      (طلب أحمد: «التاريخ مكتوب يمين الفلم مرتبه بالأحدث») */
+  awarded?: number;
 };
 
 export function ListPeekTrigger({
@@ -56,7 +59,7 @@ export function ListPeekTrigger({
       const res = await fetch(url);
       if (!res.ok) throw new Error(String(res.status));
       const json = (await res.json()) as {
-        parts?: { id: number; mediaType?: "tv" | "movie"; title: string; poster: string | null; watched?: boolean }[];
+        parts?: { id: number; mediaType?: "tv" | "movie"; title: string; poster: string | null; watched?: boolean; awarded?: number }[];
         items?: PeekRow[];
       };
       const list: PeekRow[] =
@@ -68,6 +71,7 @@ export function ListPeekTrigger({
           title: p.title,
           poster: p.poster,
           watched: p.watched,
+          awarded: p.awarded,
         }));
       setRows(list);
     } catch {
@@ -135,9 +139,16 @@ export function ListPeekTrigger({
                     className="flex items-center gap-3 rounded-xl px-1.5 py-1.5 hover:bg-surface-2 active:scale-[0.99] transition"
                     onClick={() => setOpen(false)}
                   >
-                    {/* الرقم قبل الملصق: القائمة ترتيبٌ والرقم موضعه فيه (D-043 روحاً) */}
-                    <span className="w-5 shrink-0 text-center text-[12px] font-bold text-accent tabular-nums" dir="ltr">
-                      {i + 1}
+                    {/* صدر الصفّ: الرقم للقوائم المرتّبة، و**سنة الفوز**
+                        لقوائم الجوائز (طلب أحمد) — وهي في العربية على
+                        اليمين حيث يبدأ السطر */}
+                    <span
+                      className={`shrink-0 text-center font-bold text-accent tabular-nums ${
+                        r.awarded ? "w-10 text-[13px]" : "w-5 text-[12px]"
+                      }`}
+                      dir="ltr"
+                    >
+                      {r.awarded ?? i + 1}
                     </span>
                     <span className="relative w-10 h-[60px] shrink-0 rounded-lg overflow-hidden bg-surface-2">
                       {r.poster && (

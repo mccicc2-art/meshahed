@@ -16,6 +16,7 @@ import {
   type BrowseRate,
   type BrowseType,
 } from "@/lib/browse";
+import { AWARDS, awardName } from "@/lib/awards";
 import { regionName } from "@/lib/region";
 import { tap } from "@/lib/haptics";
 import { Icon } from "./Icon";
@@ -33,6 +34,8 @@ export interface FilterDraft {
   provider: number | null;
   era: string | null;
   rate: BrowseRate | null;
+  /** slug جائزة — الصفوف تصير فائزيها (طلب أحمد 9 Aug) */
+  award: string | null;
 }
 
 /**
@@ -94,6 +97,7 @@ export function DiscoverFilterSheet({
     provider: null,
     era: null,
     rate: null,
+    award: null,
   };
   const dirty =
     draft.genre !== null ||
@@ -101,11 +105,8 @@ export function DiscoverFilterSheet({
     draft.country !== null ||
     draft.provider !== null ||
     draft.era !== null ||
-    draft.rate !== null;
-
-  /* البلد يظهر تحت اللغة العربية وحدها، ويُمسح متى غادرتها: خيارٌ مطبَّقٌ
-     لا يراه المستخدم يجعل النتائج تكذب على الواجهة */
-  const showCountry = draft.lang === "ar";
+    draft.rate !== null ||
+    draft.award !== null;
 
   return (
     /* سفليّةٌ لا علويّة: هذه ورقةُ لمسٍ لا كتابة — لا لوحة مفاتيح تدفعها،
@@ -154,8 +155,7 @@ export function DiscoverFilterSheet({
             label={t.browseLangGroup}
             active={!!draft.lang}
             value={draft.lang ?? ""}
-            /* مغادرة العربية تُسقط البلد معها — انظر showCountry */
-            onChange={(v) => set({ lang: v || null, country: null })}
+            onChange={(v) => set({ lang: v || null })}
           >
             <option value="">{t.browseAnyLang}</option>
             {BROWSE_LANGS.map((l) => (
@@ -165,22 +165,21 @@ export function DiscoverFilterSheet({
             ))}
           </SelectField>
 
-          {showCountry && (
-            <SelectField
-              id="browse-country"
-              label={t.browseCountryGroup}
-              active={!!draft.country}
-              value={draft.country ?? ""}
-              onChange={(v) => set({ country: v || null })}
-            >
-              <option value="">{t.browseAnyCountry}</option>
-              {BROWSE_COUNTRIES.map((c) => (
-                <option key={c.code} value={c.code}>
-                  {browseCountryName(c, lang)}
-                </option>
-              ))}
-            </SelectField>
-          )}
+          {/* الجنسية محورٌ دائم (طلب أحمد 9 Aug) — كان يظهر مع العربية وحدها */}
+          <SelectField
+            id="browse-country"
+            label={t.browseCountryGroup}
+            active={!!draft.country}
+            value={draft.country ?? ""}
+            onChange={(v) => set({ country: v || null })}
+          >
+            <option value="">{t.browseAnyCountry}</option>
+            {BROWSE_COUNTRIES.map((c) => (
+              <option key={c.code} value={c.code}>
+                {browseCountryName(c, lang)}
+              </option>
+            ))}
+          </SelectField>
 
           {providers.length > 0 && (
             <SelectField
@@ -234,6 +233,23 @@ export function DiscoverFilterSheet({
                  والمحرف ★ خطُّ نظامٍ يتقلّب شكله (D-002) — العنوان يكفي */
               <option key={r} value={r}>
                 {t.browseRateFrom(num(r, locale))}
+              </option>
+            ))}
+          </SelectField>
+
+          {/* الجائزة (طلب أحمد 9 Aug): اختيارُها يحوّل الصفحة إلى صفّ
+              الفائزين بالأحدث — قوائمها الكاملة في تبويب القوائم */}
+          <SelectField
+            id="browse-award"
+            label={t.browseAwardGroup}
+            active={!!draft.award}
+            value={draft.award ?? ""}
+            onChange={(v) => set({ award: v || null })}
+          >
+            <option value="">{t.browseAnyAward}</option>
+            {AWARDS.filter((a) => a.kind === (type === "tv" ? "tv" : "movie")).map((a) => (
+              <option key={a.slug} value={a.slug}>
+                {awardName(a, lang)}
               </option>
             ))}
           </SelectField>

@@ -17,6 +17,7 @@ import {
   type BrowseType,
   type DiscoverTab,
 } from "@/lib/browse";
+import { AWARDS, awardName } from "@/lib/awards";
 import { tap } from "@/lib/haptics";
 import { Icon } from "./Icon";
 import { ListsFilters, type ListsFiltersProps } from "./ListsFilters";
@@ -61,6 +62,7 @@ export function DiscoverFilters({
   region,
   era,
   rate,
+  award,
   count,
   listsFilters,
 }: {
@@ -88,6 +90,8 @@ export function DiscoverFilters({
   /** slug الحقبة المختارة */
   era: string | null;
   rate: BrowseRate | null;
+  /** slug الجائزة المختارة — يحوّل الصفوف إلى فائزيها */
+  award: string | null;
   /** عدد فلاتر الورقة المفعّلة — للعدّاد على الزرّ */
   count: number;
 }) {
@@ -104,6 +108,7 @@ export function DiscoverFilters({
     p?: number | null;
     era?: string | null;
     rate?: BrowseRate | null;
+    award?: string | null;
   }) {
     let nextGenre = next.g === undefined ? genre : next.g;
 
@@ -116,8 +121,8 @@ export function DiscoverFilters({
     if (tab === "shows") p.set("tab", "shows");
     if (nextGenre) p.set("g", nextGenre);
     const nextLang = next.lang === undefined ? lang : next.lang;
-    // البلد تابعٌ للعربية: مغادرتها تُسقطه، وإلا بقي مطبَّقاً بلا رقاقة تدلّ عليه
-    const nextCountry = nextLang === "ar" ? (next.co === undefined ? country : next.co) : null;
+    // الجنسية محورٌ مستقلّ (طلب أحمد): لا تسقط بتبدّل اللغة
+    const nextCountry = next.co === undefined ? country : next.co;
     const nextEra = next.era === undefined ? era : next.era;
     const nextRate = next.rate === undefined ? rate : next.rate;
     if (nextLang) p.set("lang", nextLang);
@@ -126,6 +131,8 @@ export function DiscoverFilters({
     if (nextProvider) p.set("p", String(nextProvider));
     if (nextEra) p.set("era", nextEra);
     if (nextRate) p.set("rate", String(nextRate));
+    const nextAward = next.award === undefined ? award : next.award;
+    if (nextAward) p.set("award", nextAward);
 
     const qs = p.toString();
     tap(8);
@@ -200,6 +207,14 @@ export function DiscoverFilters({
       clear: () => go({ era: null }),
     });
   }
+  const awardObj = AWARDS.find((a) => a.slug === award);
+  if (awardObj) {
+    chips.push({
+      key: "award",
+      label: awardName(awardObj, loc),
+      clear: () => go({ award: null }),
+    });
+  }
   if (rate) {
     chips.push({
       key: "rate",
@@ -208,7 +223,7 @@ export function DiscoverFilters({
     });
   }
 
-  const draft: FilterDraft = { genre, lang, country, provider, era, rate };
+  const draft: FilterDraft = { genre, lang, country, provider, era, rate, award };
 
   return (
     <div className={`space-y-3 transition-opacity ${pending ? "opacity-60" : "opacity-100"}`}>
@@ -313,7 +328,7 @@ export function DiscoverFilters({
             <button
               type="button"
               onClick={() =>
-              go({ g: null, lang: null, co: null, p: null, era: null, rate: null })
+              go({ g: null, lang: null, co: null, p: null, era: null, rate: null, award: null })
             }
               className="rounded-full border border-border text-muted hover:text-foreground hover:border-accent/50 px-3 py-1.5 text-[13px] font-semibold transition"
             >
@@ -340,6 +355,7 @@ export function DiscoverFilters({
               p: next.provider,
               era: next.era,
               rate: next.rate,
+              award: next.award,
             });
           }}
         />

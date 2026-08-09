@@ -68,11 +68,24 @@ export function TitleSearchSheet({
       try {
         const res = await aiStorySearch(desc);
         if (!res.ok) {
-          if (res.reason === "unconfigured") flashError(t.aiSearchMissing);
-          else setAiItems([]);
+          // «غير مفعّل» سقطت: غياب مفتاح النموذج له الآن مسارٌ بديل
+          // يُجيب بما يملكه التطبيق (إصلاح 9 Aug)
+          setAiItems([]);
           return;
         }
-        setAiItems(res.results);
+        /* سبب الترشيح يسكن `subtitle` — الصفّ الواحد يعرضه بلا فرعٍ
+           جديد في هندسته (نفس خانة مهنة الشخص) */
+        setAiItems(
+          res.results.map((r) => ({
+            kind: r.kind,
+            id: r.id,
+            title: r.title,
+            year: r.year,
+            poster: r.poster,
+            rating: r.rating,
+            subtitle: r.reason,
+          })),
+        );
       } catch (e) {
         flashError((e as Error).message);
       }
@@ -281,7 +294,9 @@ function ResultRow({
         <span className="block text-[11px] text-muted truncate">
           {person
             ? s.subtitle || t.searchPeopleTitle
-            : `${s.kind === "tv" ? t.typeSeries : t.typeMovie}${s.year ? ` · ${s.year}` : ""}`}
+            : s.subtitle
+              ? s.subtitle
+              : `${s.kind === "tv" ? t.typeSeries : t.typeMovie}${s.year ? ` · ${s.year}` : ""}`}
         </span>
       </span>
 
