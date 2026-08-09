@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import { getUser, getProfile } from "@/lib/data";
+import { getUser, getProfile, getUnreadSignals } from "@/lib/data";
 import { getT } from "@/lib/locale";
 import { SearchBox } from "./SearchBox";
 import { NavLinks } from "./NavLinks";
@@ -8,12 +8,17 @@ import { NavAvatar } from "./NavAvatar";
 import { LogoWordmark } from "./Logo";
 import { LangFlagMenu } from "./LangFlagMenu";
 import { ThemeCookieSync } from "./ThemeCookieSync";
+import { NotificationBell } from "./NotificationBell";
 import { buttonClass } from "./ui/Button";
 
 export async function Navbar() {
   const { locale, t } = await getT();
   const user = await getUser();
   const profile = user ? await getProfile() : null;
+  /* عدّاد الجرس مع بيانات الترويسة نفسها (D-125): نداءُ عدٍّ واحد خفيف،
+     والأسطر لا تُحمَّل إلا لمن فتح. الجرس في الترويسة لا في الشريط
+     السفليّ — ذاك أربعة تبويبات لا خامس لها (قاعدة 7، D-051). */
+  const unreadSignals = user ? await getUnreadSignals() : 0;
   const displayName = profile?.nickname || user?.email?.split("@")[0] || "";
 
   // زائرٌ غير مسجّل: اسمُ المنتج وحده وعلمُ اللغة في الطرف — لا شعار
@@ -56,6 +61,8 @@ export async function Navbar() {
                   <SearchBox locale={locale} />
                 </Suspense>
               </div>
+
+              <NotificationBell unread={unreadSignals} locale={locale} />
 
               {/* تختفي في الرئيسية وحدها — ترويسة الرئيسية تعرضها كبيرة */}
               <Suspense fallback={null}>
