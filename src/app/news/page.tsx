@@ -23,6 +23,7 @@ import {
   upcomingByGenre,
   topByFilter,
   top50,
+  top50Anime,
   worksByPeople,
   upcomingByFilter,
   nowPlayingMovies,
@@ -456,7 +457,7 @@ async function CuratedRails({
         : topTenThisWeek(mt).catch(() => [] as SearchResult[]);
   };
 
-  const [topMovies, topSeries, topAnime, cinemas, soonMovies, soonSeries, top50Movies, top50Series] =
+  const [topMovies, topSeries, topAnime, cinemas, soonMovies, soonSeries, top50Movies, top50Series, top50AnimeRows] =
     await Promise.all([
       /* الصفوف المرتّبة كلّها تُعاد بترتيب IMDb وتحمل تقييمه (قرار أحمد:
          «الترتيب بأعلى تقييم حسب IMDb والتقييم فقط من IMDb») — TMDB يبقى
@@ -504,6 +505,13 @@ async function CuratedRails({
         : Promise.resolve([] as SearchResult[]),
       !active && wantSeries
         ? top50("tv", {}, 60)
+            .then(withImdbRatings)
+            .then((r) => r.slice(0, 50))
+            .catch(() => [] as SearchResult[])
+        : Promise.resolve([] as SearchResult[]),
+      // أفضل ٥٠ أنمي (طلب أحمد) — ذيلٌ ثالث بنفس قاعدة الصفّين
+      !active && wantSeries
+        ? top50Anime(60)
             .then(withImdbRatings)
             .then((r) => r.slice(0, 50))
             .catch(() => [] as SearchResult[])
@@ -563,6 +571,7 @@ async function CuratedRails({
     soon.length === 0 &&
     top50Movies.length === 0 &&
     top50Series.length === 0 &&
+    top50AnimeRows.length === 0 &&
     !inCinemas?.results.length;
 
   return (
@@ -630,6 +639,9 @@ async function CuratedRails({
       )}
       {top50Series.length > 0 && (
         <RankedRail title={t.top50Series} icon="tv" items={top50Series} />
+      )}
+      {top50AnimeRows.length > 0 && (
+        <RankedRail title={t.top50Anime} icon="sparkle-star" items={top50AnimeRows} />
       )}
 
       {empty && (
