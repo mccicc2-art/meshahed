@@ -125,6 +125,11 @@ const ar = {
   libraryEmptyCta: "اكتشف أعمالاً",
   libraryEmpty: "مكتبتك فارغة — ابحث عن عمل وتابعه ليظهر هنا.",
   searchPlaceholder: "ابحث عن مسلسل أو فيلم…",
+  /* أوضاع ورقة البحث الثلاثة — كلمةٌ واحدة لكلٍّ: ثلاث خاناتٍ في ترويسة
+     ورقةٍ على ٣٦٠px لا تحتمل «البحث عن الأشخاص» */
+  searchModeTitles: "أعمال",
+  searchModePeople: "أشخاص",
+  searchModeAi: "وصف قصة",
   searchAllResults: (q: string) => `عرض كل النتائج عن «${q}» ←`,
   searchResultsFor: (q: string, n: number) => `نتائج البحث عن «${q}» — ${n} نتيجة`,
   searchNoResults: "لا توجد نتائج.",
@@ -975,6 +980,9 @@ const en: Dict = {
   libraryEmptyCta: "Discover titles",
   libraryEmpty: "Your library is empty — search for a title and follow it.",
   searchPlaceholder: "Search for a show or a movie…",
+  searchModeTitles: "Titles",
+  searchModePeople: "People",
+  searchModeAi: "Describe",
   searchAllResults: (q: string) => `See all results for “${q}” →`,
   searchResultsFor: (q: string, n: number) => `Results for “${q}” — ${n} found`,
   searchNoResults: "No results.",
