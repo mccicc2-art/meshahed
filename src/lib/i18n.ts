@@ -826,8 +826,36 @@ const ar = {
   obGenresTitle: "ما الذي يعجبك؟",
   obGenresHint: "اختياراتك تظهر في الاقتراحات مباشرة.",
   obFinish: "يالله نبدأ ✓",
+  /* «كمّل» لخطوة الأنواع منذ أن صارت رابعةٌ بعدها (D-126): زرٌّ يقول
+     «يالله نبدأ» ثم تظهر شاشةٌ أخرى يكسر الوعد */
+  obNext: "كمّل ←",
   obSkip: "تخطّي",
   obSaving: "جارٍ التجهيز…",
+  /* خطوة «تابع ٣ أشخاص» (D-126): الحساب الجديد يدخل ودائرته ليست صفراً */
+  obPeopleTitle: "تابع ٣ أشخاص",
+  obPeopleHint: "ذوقهم قريب من ذوقك — ما يشاهدونه يظهر لك في «مجتمعي».",
+  obPeopleNone: "ما فيه أحد نقترحه عليك الحين — تقدر تبحث عن أصدقائك بعدين.",
+  /* الخطوة اختيارية عمداً: «تابع ٣» دعوةٌ لا بوّابة — من لا يريد أحداً
+     يكمل، وإلا صارت آخر خطوةٍ قبل الدخول جداراً */
+  obPeopleSkip: "أكمل بدون متابعة",
+  obPeopleNext: (n: number) => `تتابع ${n} — يالله نبدأ ✓`,
+
+  /* «أشخاص لمتابعتهم» داخل الفيد وسطر «من دائرتك» في صفحة العمل */
+  suggestPeopleTitle: "أشخاص لمتابعتهم",
+  suggestPeopleHint: "خطّك يمتلئ بقدر دائرتك.",
+  suggestShared: (n: number) =>
+    n === 1
+      ? "يشاركك عملاً"
+      : n === 2
+        ? "يشارككما عملان"
+        : n <= 10
+          ? `يشاركك ${n} أعمال`
+          : `يشاركك ${n} عملاً`,
+  suggestFollowers: (n: number) =>
+    n === 1 ? "متابِع واحد" : n === 2 ? "متابِعان" : n <= 10 ? `${n} متابِعين` : `${n} متابِعاً`,
+  circleWatched: (n: number) =>
+    n <= 10 ? `${n} ممن تتابعهم شاهدوه` : `${n} شخصاً ممن تتابعهم شاهدوه`,
+  circleAvg: (v: string) => `متوسط تقييمهم ★${v}`,
 
   seeAll: "الكل ←",
   seasonToggleAria: (n: number) => `فتح أو طي الموسم ${n}`,
@@ -1591,8 +1619,21 @@ const en: Dict = {
   obGenresTitle: "What do you like?",
   obGenresHint: "Your picks feed the suggestions straight away.",
   obFinish: "Let's go ✓",
+  obNext: "Continue →",
   obSkip: "Skip",
   obSaving: "Setting things up…",
+  obPeopleTitle: "Follow 3 people",
+  obPeopleHint: "Their taste is close to yours — what they watch shows up in your circle.",
+  obPeopleNone: "No one to suggest just yet — you can search for friends later.",
+  obPeopleSkip: "Continue without following",
+  obPeopleNext: (n: number) => `Following ${n} — let's go ✓`,
+
+  suggestPeopleTitle: "People to follow",
+  suggestPeopleHint: "Your feed is as full as your circle.",
+  suggestShared: (n: number) => (n === 1 ? "Shares 1 title with you" : `Shares ${n} titles with you`),
+  suggestFollowers: (n: number) => (n === 1 ? "1 follower" : `${n} followers`),
+  circleWatched: (n: number) => `${n} people you follow watched it`,
+  circleAvg: (v: string) => `They rate it ★${v}`,
 
   seeAll: "All →",
   seasonToggleAria: (n: number) => `Expand or collapse season ${n}`,

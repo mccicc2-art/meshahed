@@ -1049,6 +1049,23 @@ export async function findPeople(q: string) {
 }
 
 /**
+ * «أشخاص لمتابعتهم» لشاشة التهيئة (D-126).
+ *
+ * البذرة تُمرَّر من العميل لأن المتابعات لم تُكتب بعد: شاشة الانضمام
+ * تحفظ كل شيء في خطوتها الأخيرة، فقراءة المكتبة هنا تقرأ فراغاً. والحدّ
+ * والتصفية كلّها في `people_to_follow` — هذا غلافُ إذنٍ لا منطق.
+ */
+export async function suggestPeople(seedIds: number[], want = 6) {
+  await requireUser("search", 15, 10_000);
+  const { getPeopleToFollow } = await import("@/lib/data");
+  const seeds = (Array.isArray(seedIds) ? seedIds : [])
+    .map((n) => Number(n))
+    .filter((n) => Number.isFinite(n) && n > 0)
+    .slice(0, 40);
+  return getPeopleToFollow(seeds.length ? seeds : null, want);
+}
+
+/**
  * يطبّق اختيارات شاشة الانضمام.
  *
  * «شفته كامل» ليس مجرّد وسم: للفيلم يُسجَّل كمشاهَد، وللمسلسل تُؤشَّر كل

@@ -1345,6 +1345,82 @@ export async function searchPeople(q: string): Promise<PersonLite[]> {
   }
 }
 
+export interface SuggestedPerson extends PersonLite {
+  /** كم عملاً من بذرتك في مكتبته — صفرٌ يعني «اقتراح احتياطي بلا سبب» */
+  shared: number;
+  followers: number;
+}
+
+/**
+ * «أشخاص لمتابعتهم» (D-126) — دالّة definer واحدة لسطحين.
+ *
+ * بذرةٌ صريحة في شاشة التهيئة (الأعمال التي ضغطها المستخدم قبل أن تُكتب
+ * في مكتبته)، وبذرةٌ ضمنية داخل الفيد (مكتبته الفعليّة). الحرّاس كلّهم في
+ * SQL: لا يُقترح من لا تُرى صفحته ولا من أخفى اسمه ولا من تتابعه أصلاً.
+ *
+ * **الدالّة غائبة؟ مصفوفةٌ فارغة** — الواجهتان تختفيان بلا شاشة خطأ
+ * (نمط D-113): الاقتراح إضافةٌ، وغيابُه يعيد الحال إلى ما قبل D-126.
+ */
+export async function getPeopleToFollow(
+  seedIds: number[] | null = null,
+  want = 6,
+): Promise<SuggestedPerson[]> {
+  try {
+    const supabase = await createClient();
+    const me = await getUser();
+    if (!me) return [];
+    const { data, error } = await supabase.rpc("people_to_follow", {
+      seed_ids: seedIds && seedIds.length ? seedIds.slice(0, 40) : null,
+      want,
+    });
+    if (error || !data) return [];
+    return data as SuggestedPerson[];
+  } catch {
+    return [];
+  }
+}
+
+export interface TitleCircle {
+  /** عدد من تتابعهم ممّن شاهدوه — **صفرٌ يعني «لا تُظهر السطر»** لا «لا أحد» */
+  watchers: number;
+  raters: number;
+  avgRating: number | null;
+}
+
+/**
+ * «٣ ممن تتابعهم شاهدوه · متوسط تقييمهم ★٨» (D-127).
+ *
+ * الكتم تحت ثلاثة يقع **في SQL لا هنا**: رقمٌ يقول «واحدٌ ممن تتابعهم
+ * شاهده» يسمّي شخصاً بعينه في حسابٍ دائرتُه صغيرة. والصفر الراجع من
+ * الدالّة يعني «لا تُرسم»، فلا تكتب الواجهة «لا أحد» — غيابُ الخبر ليس خبراً.
+ */
+export async function getTitleCircle(
+  tmdbId: number,
+  mediaType: "tv" | "movie",
+): Promise<TitleCircle> {
+  const none: TitleCircle = { watchers: 0, raters: 0, avgRating: null };
+  try {
+    const supabase = await createClient();
+    const me = await getUser();
+    if (!me) return none;
+    const { data, error } = await supabase.rpc("title_circle", {
+      t_id: tmdbId,
+      m_type: mediaType,
+    });
+    const row = Array.isArray(data) ? data[0] : data;
+    if (error || !row) return none;
+    return {
+      watchers: Number(row.watchers ?? 0),
+      raters: Number(row.raters ?? 0),
+      avgRating: row.avg_rating === null || row.avg_rating === undefined
+        ? null
+        : Number(row.avg_rating),
+    };
+  } catch {
+    return none;
+  }
+}
+
 export interface ActivityRow extends PersonLite {
   tmdb_id: number;
   media_type: "tv" | "movie";
