@@ -428,9 +428,23 @@ const ar = {
   justwatchAttribution:
     "بيانات توفّر الأعمال على المنصّات مصدرها JustWatch.",
   // ترتيب خطّ المجتمع
-  feedSortGroup: "ترتيب الآراء",
+  feedSortGroup: "ترتيب النشاط",
   feedSortTop: "الأكثر إعجاباً",
   feedSortNew: "الأحدث",
+  // أفعال خطّ النشاط (D-123) — سطرٌ واحد لكل نوع حدث
+  feedActRated: "قيّمه",
+  feedActMovie: "شاهد الفيلم",
+  feedActAdd: "أضافه للمشاهدة لاحقاً",
+  /* جمعُ العربية أربع حالات لا اثنتان — «١ حلقات» خطأٌ يظهر يوميّاً في
+     أكثر سطرٍ يُقرأ في التطبيق */
+  feedActEpisodes: (n: number) =>
+    n === 1
+      ? "شاهد حلقة"
+      : n === 2
+        ? "شاهد حلقتين"
+        : n <= 10
+          ? `شاهد ${n} حلقات`
+          : `شاهد ${n} حلقة`,
   // تبويبات المجتمع والرسائل
   communityTabsGroup: "أقسام المجتمع",
   communityTabMine: "مجتمعي",
@@ -1183,9 +1197,15 @@ const en: Dict = {
   regionHint:
     "What is available on each service changes from country to country. Pick yours so \u201cwhere to watch\u201d and the service filter answer for you.",
   justwatchAttribution: "Streaming availability data is provided by JustWatch.",
-  feedSortGroup: "Sort reviews",
+  feedSortGroup: "Sort activity",
   feedSortTop: "Most liked",
   feedSortNew: "Newest",
+  // Activity feed verbs (D-123)
+  feedActRated: "rated it",
+  feedActMovie: "watched the film",
+  feedActAdd: "added it to their watchlist",
+  feedActEpisodes: (n: number) =>
+    n === 1 ? "watched an episode" : `watched ${n} episodes`,
   // Community tabs and messages
   communityTabsGroup: "Community sections",
   communityTabMine: "My circle",

@@ -674,30 +674,49 @@ export async function getWatchedOf(
 }
 
 /** رأيٌ في خطّ المجتمع: صاحبه وعمله ونصّه وإعجاباته */
+/** نوع حدث الخطّ — الأولوية في SQL، والصياغة في `feedLine` (D-123) */
+export type FeedKind = "rate" | "movie" | "episodes" | "add";
+
 export interface FeedItem {
   person: PersonLite;
+  kind: FeedKind;
   tmdb_id: number;
   media_type: "tv" | "movie";
-  rating: number;
-  review: string;
+  /** رقمٌ للتقييم وحده — المشاهدة حدثٌ بلا رأي */
+  rating: number | null;
+  /** نصّ المراجعة إن كُتب؛ التقييم المجرّد صفٌّ بلا فقرة */
+  review: string | null;
   title: string | null;
   poster_path: string | null;
   updated_at: string;
+  /** يوم الحدث (UTC) — مفتاح التجميع، ويدخل في مفتاح الرسم */
+  day: string;
+  /** عدد حلقات ذلك اليوم وأعلى موسم — يلتقطهما التقييم إن ابتلع المشاهدة */
+  episodeCount: number;
+  topSeason: number;
   likes: number;
   likedByMe: boolean;
 }
 
 /**
- * خطّ الآراء: مراجعات مكتوبة، والأكثر إعجاباً أولاً.
+ * خطّ النشاط: ما فعلته دائرتك، لا ما كتبته وحده (**D-123**).
  *
- * `mode` هو الفرق الوحيد بين تبويبَي «مجتمعي» و«المجتمع»: الأول من
- * `following_activity` (من تتابعهم)، والثاني من `community_activity`
- * (الجميع عدا نفسك). دالّةٌ واحدة لا اثنتان متشابهتان (D-042).
+ * كان الخطّ حتى اليوم مراجعاتٍ مكتوبةً فقط — كلُّ تقييمٍ بلا نصّ كان
+ * يُسقَط هنا في الكود. فمن شاهد موسماً كاملاً ولم يكتب شيئاً لم يحدث في
+ * نظر التطبيق، والنتيجة خطٌّ صامتٌ يبدو ميتاً وإن كانت الدائرة نشطة.
+ * `following_activity_v2` (هجرة ٤٥) تفتحه لأربعة أنواع — تقييم، فيلم،
+ * حلقات، إضافة — **مجمّعةً صفّاً واحداً لكل (شخص + عمل + يوم)** كي لا
+ * يدفن من شاهد اثنتي عشرة حلقةً دائرته باثني عشر سطراً.
  *
- * وبعد جلب الخطّ: قراءةٌ واحدة للإعجابات ثم دمجٌ في الذاكرة — الخطّ
- * ستون مراجعة على الأكثر، والفرز بالإعجاب يحتاج العدّ كاملاً قبل الترتيب
- * فلا ينفع فيه ترقيم الخادم. و`feed_review_likes` يأخذ أي قائمة معرّفات،
- * فيصلح للخطّين بلا دالّة ثانية.
+ * `mode` يبقى الفرق الوحيد بين التبويبين، ودالّةٌ واحدة تخدمهما (D-042):
+ * «مجتمعي» من الدالّة الجديدة، و«المجتمع» من `community_activity` بشكلها
+ * القديم (مراجعات فقط) — تُطبَّع هنا إلى `kind: "rate"` فيبقى النوع واحداً
+ * في الواجهة مهما اختلف مصدره.
+ *
+ * **الإعجاب على التقييمات وحدها اليوم**: `feed_review_likes` مفتاحه
+ * المراجعة، وأحداث المشاهدة لا مراجعة لها. إعجابُ الحدث يحتاج
+ * `activity_likes` (D-124) — وحتى تُشحن، أزرارُ الإعجاب تظهر على صفوف
+ * التقييم فقط، وهو أصدق من زرٍّ لا يكتب شيئاً.
  */
 export async function getCommunityFeed(
   mode: "following" | "all" = "following",
@@ -707,11 +726,11 @@ export async function getCommunityFeed(
     const me = await getUser();
     if (!me) return [];
 
-    // نشاط المتابَعين أو المجتمع من دالة definer — جدول التقييمات لم يعد
-    // مفتوح القراءة، والدالّة تُرجع الأعمدة العامة وحدها مع إخفاء الاسم
-    // منفَّذاً في SQL (انظر supabase/security.sql و supabase/community_feed.sql)
+    // نشاط المتابَعين أو المجتمع من دالة definer — الجداول ليست مفتوحة
+    // القراءة، والدالّة تُرجع الأعمدة العامة وحدها مع إخفاء الاسم منفَّذاً
+    // في SQL (supabase/activity_v2.sql و supabase/community_feed.sql)
     const { data: actRows, error } = await supabase.rpc(
-      mode === "all" ? "community_activity" : "following_activity",
+      mode === "all" ? "community_activity" : "following_activity_v2",
     );
     if (error || !actRows) return [];
 
@@ -721,59 +740,74 @@ export async function getCommunityFeed(
       username: string | null;
       avatar_url: string | null;
       hide_name: boolean;
+      kind?: FeedKind;
       tmdb_id: number;
       media_type: "tv" | "movie";
-      rating: number;
+      rating: number | null;
       review: string | null;
       title: string | null;
       poster_path: string | null;
-      updated_at: string;
+      updated_at?: string;
+      day?: string;
+      episode_count?: number;
+      top_season?: number;
+      at?: string;
     };
-    const reviews = (actRows as ActivityRow[]).filter((r) => r.review?.trim());
-    if (!reviews.length) return [];
+    // صفٌّ بلا عنوان لا يُرسم — الملصق والعنوان يأتيان من `follows`، فإن
+    // غاب الصفّ هناك (استيرادٌ ناقص مثلاً) لم يبقَ ما يُعرض
+    const rows = (actRows as ActivityRow[]).filter((r) => r.title || r.review);
+    if (!rows.length) return [];
 
-    // إعجابات كل هذه المراجعات في نداء واحد — أعدادٌ و«هل أعجبتُ به»،
+    // إعجابات صفوف التقييم في نداء واحد — أعدادٌ و«هل أعجبتُ به»،
     // بلا أي معرّف مُعجِب
-    const uids = [...new Set(reviews.map((r) => r.id))];
+    const rated = rows.filter((r) => (r.kind ?? "rate") === "rate");
     const likeKey = (u: string, t2: number, m: string) => `${u}|${t2}|${m}`;
     const counts = new Map<string, number>();
     const mine = new Set<string>();
-    const { data: likeRows } = await supabase.rpc("feed_review_likes", { uids });
-    for (const l of (likeRows ?? []) as {
-      review_user_id: string;
-      tmdb_id: number;
-      media_type: string;
-      likes: number;
-      liked_by_me: boolean;
-    }[]) {
-      const k = likeKey(l.review_user_id, l.tmdb_id, l.media_type);
-      counts.set(k, Number(l.likes));
-      if (l.liked_by_me) mine.add(k);
+    if (rated.length) {
+      const uids = [...new Set(rated.map((r) => r.id))];
+      const { data: likeRows } = await supabase.rpc("feed_review_likes", { uids });
+      for (const l of (likeRows ?? []) as {
+        review_user_id: string;
+        tmdb_id: number;
+        media_type: string;
+        likes: number;
+        liked_by_me: boolean;
+      }[]) {
+        const k = likeKey(l.review_user_id, l.tmdb_id, l.media_type);
+        counts.set(k, Number(l.likes));
+        if (l.liked_by_me) mine.add(k);
+      }
     }
 
-    return reviews
-      .map((r) => {
-        const k = likeKey(r.id, r.tmdb_id, r.media_type);
-        return {
-          person: {
-            id: r.id,
-            nickname: r.nickname,
-            username: r.username,
-            avatar_url: r.avatar_url,
-            hide_name: r.hide_name,
-          } as PersonLite,
-          tmdb_id: r.tmdb_id,
-          media_type: r.media_type,
-          rating: r.rating,
-          review: r.review!.trim(),
-          title: r.title,
-          poster_path: r.poster_path,
-          updated_at: r.updated_at,
-          likes: counts.get(k) ?? 0,
-          likedByMe: mine.has(k),
-        };
-      })
-      .sort((a, b) => b.likes - a.likes || b.updated_at.localeCompare(a.updated_at));
+    return rows.map((r) => {
+      const kind: FeedKind = r.kind ?? "rate";
+      const when = r.at ?? r.updated_at ?? new Date(0).toISOString();
+      const k = likeKey(r.id, r.tmdb_id, r.media_type);
+      const review = r.review?.trim() ?? "";
+      return {
+        person: {
+          id: r.id,
+          nickname: r.nickname,
+          username: r.username,
+          avatar_url: r.avatar_url,
+          hide_name: r.hide_name,
+        } as PersonLite,
+        kind,
+        tmdb_id: r.tmdb_id,
+        media_type: r.media_type,
+        rating: kind === "rate" ? r.rating ?? null : null,
+        review: review || null,
+        title: r.title,
+        poster_path: r.poster_path,
+        updated_at: when,
+        day: r.day ?? when.slice(0, 10),
+        episodeCount: Number(r.episode_count ?? 0),
+        topSeason: Number(r.top_season ?? 0),
+        likes: kind === "rate" ? counts.get(k) ?? 0 : 0,
+        likedByMe: kind === "rate" ? mine.has(k) : false,
+      };
+    });
   } catch {
     return [];
   }
