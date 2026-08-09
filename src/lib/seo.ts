@@ -78,7 +78,14 @@ export function seoKeywords(locale: Locale): string[] {
 
 /* ───────────────────────── الأسئلة الشائعة ─────────────────────────
    كل سؤالٍ هنا سؤالٌ يُكتب فعلاً في مربّع البحث. الجواب قصيرٌ وصادق —
-   وصدقُه شرطٌ عمليّ لا أخلاقيّ فقط: قوقل يقيس رضا من نقر ثم عاد. */
+   وصدقُه شرطٌ عمليّ لا أخلاقيّ فقط: قوقل يقيس رضا من نقر ثم عاد.
+
+   **«عربي أولاً» حُذفت من كل نصٍّ هنا بقرار أحمد:** الطموح عالميّ ولغاتٌ
+   أخرى قادمة، ووصفُ المنتج بمنطقةٍ يسقّفه عند جمهورها ويصرف الباحث
+   الأجنبي قبل أن يقرأ. لكنّ **القدرة** بقيت مذكورة صراحةً — عربية كاملة
+   ودعم RTL — لأنها حقيقة، ولأنها السطر الوحيد في جدول المقارنة الذي
+   نتفوّق فيه على المنافسين الأربعة جميعاً. الفرق بين هويةٍ تُضيّق وميزةٍ
+   تُميّز. */
 export interface Faq {
   q: string;
   a: string;
@@ -91,7 +98,7 @@ export function faqs(locale: Locale): Faq[] {
 const FAQ_AR: Faq[] = [
   {
     q: "ما هو Loopz؟",
-    a: "Loopz منصّة عربية لتتبّع ما تشاهده: مسلسلات وأفلام وأنمي في مكانٍ واحد. تعلّم الحلقة التي وصلتها فيحسب تقدّمك ويذكّرك بحلقتك القادمة، وتقيّم ما شاهدته وتبني قوائمك وتتابع أصدقاءك.",
+    a: "Loopz منصّة لتتبّع ما تشاهده: مسلسلات وأفلام وأنمي في مكانٍ واحد. تعلّم الحلقة التي وصلتها فيحسب تقدّمك ويذكّرك بحلقتك القادمة، وتقيّم ما شاهدته وتبني قوائمك وتتابع أصدقاءك.",
   },
   {
     q: "هل Loopz مجاني؟",
@@ -106,12 +113,12 @@ const FAQ_AR: Faq[] = [
     a: "نعم. الأنمي مسلسلاتٌ وأفلامٌ في الكتالوج نفسه، بمواسمه وحلقاته وترتيب مشاهدته — لا يحتاج تطبيقاً منفصلاً.",
   },
   {
-    q: "هل يعمل بالعربية؟",
-    a: "Loopz عربيٌّ أولاً: الواجهة كلها من اليمين إلى اليسار، وأسماء الأعمال وقصصها تُعرض بالعربية حين تتوفّر، وفيه إنجليزية كاملة لمن يفضّلها.",
+    q: "بأي لغة يعمل Loopz؟",
+    a: "بالعربية والإنجليزية بالكامل اليوم — الواجهة كلها، وأسماء الأعمال وقصصها تُعرض بلغتك حين تتوفّر. ولغاتٌ أخرى في الطريق: Loopz ليس مبنياً لمنطقةٍ واحدة. ويدعم الكتابة من اليمين إلى اليسار دعماً كاملاً، وهو ما تفتقده أغلب تطبيقات التتبّع.",
   },
   {
     q: "هل أحتاج تنزيل تطبيق؟",
-    a: "لا. Loopz يعمل في المتصفّح على الجوال والحاسوب، ويمكنك تثبيته على شاشتك الرئيسية فيفتح كتطبيقٍ ويعمل جزئياً بلا إنترنت.",
+    a: "لا حاجة للانتظار: Loopz يعمل الآن في المتصفّح على الجوال والحاسوب، ويمكنك تثبيته على شاشتك الرئيسية فيفتح كتطبيقٍ ويعمل جزئياً بلا إنترنت. وتطبيقا App Store وأندرويد في الطريق.",
   },
   {
     q: "من أين تأتي بيانات الأعمال والتقييمات؟",
@@ -126,7 +133,7 @@ const FAQ_AR: Faq[] = [
 const FAQ_EN: Faq[] = [
   {
     q: "What is Loopz?",
-    a: "Loopz is an Arabic-first platform for tracking what you watch — shows, movies and anime in one place. Tick the episode you reached and it works out your progress and your next episode, and you can rate titles, build lists and follow friends.",
+    a: "Loopz is a platform for tracking what you watch — shows, movies and anime in one place. Tick the episode you reached and it works out your progress and your next episode, and you can rate titles, build lists and follow friends.",
   },
   {
     q: "Is Loopz free?",
@@ -141,12 +148,12 @@ const FAQ_EN: Faq[] = [
     a: "Yes. Anime lives in the same catalogue as everything else, with its seasons, episodes and watch order — no second app needed.",
   },
   {
-    q: "Does it work in Arabic?",
-    a: "Loopz is Arabic-first: the whole interface is right-to-left, and titles and overviews are shown in Arabic wherever they exist. Full English is one tap away.",
+    q: "What languages does Loopz support?",
+    a: "Full English and Arabic today — the whole interface, plus titles and overviews in your language wherever they exist. More languages are on the way: Loopz is not built for one region. Right-to-left is fully supported, which most trackers still lack.",
   },
   {
     q: "Do I need to install an app?",
-    a: "No. Loopz runs in the browser on phone and desktop, and you can install it to your home screen — it then opens like an app and keeps working partly offline.",
+    a: "No waiting required: Loopz runs today in the browser on phone and desktop, and installs to your home screen — it then opens like an app and keeps working partly offline. Native App Store and Android apps are on the way.",
   },
   {
     q: "Where do the catalogue and ratings come from?",
@@ -157,117 +164,6 @@ const FAQ_EN: Faq[] = [
     a: "You decide. Follows can require your approval, you choose who sees your library, and blocking is one tap. Everything you have can be exported or permanently deleted whenever you want.",
   },
 ];
-
-/* ───────────────────────── المقارنة ─────────────────────────
-   من يبحث «بديل TV Time» يبحث عن جدول، لا عن إعلان. والجدول الذي يكذب
-   يُكتشف في دقيقة ويكلّف الثقة — ولذلك تحته قسمٌ يعترف بما يتفوّق فيه
-   الآخرون. المقارنة الصادقة هي التي تُقرأ وتُشارَك، وهي التي تُرتَّب. */
-export interface CompareRow {
-  ar: string;
-  en: string;
-  /** لكل تطبيق: نعم / جزئي / لا */
-  loopz: Verdict;
-  tvtime: Verdict;
-  trakt: Verdict;
-  letterboxd: Verdict;
-  simkl: Verdict;
-}
-
-export type Verdict = "yes" | "part" | "no";
-
-export const COMPARE_APPS = ["Loopz", "TV Time", "Trakt", "Letterboxd", "Simkl"] as const;
-
-export const COMPARE_ROWS: CompareRow[] = [
-  {
-    ar: "واجهة عربية كاملة من اليمين لليسار",
-    en: "Full Arabic, right-to-left interface",
-    loopz: "yes",
-    tvtime: "no",
-    trakt: "no",
-    letterboxd: "no",
-    simkl: "part",
-  },
-  {
-    ar: "مسلسلات وأفلام وأنمي في تطبيق واحد",
-    en: "Shows, movies and anime in one app",
-    loopz: "yes",
-    tvtime: "part",
-    trakt: "yes",
-    letterboxd: "no",
-    simkl: "yes",
-  },
-  {
-    ar: "تقدّم الحلقات + موضع التوقّف في الفيلم بالدقيقة",
-    en: "Episode progress and movie stop-point to the minute",
-    loopz: "yes",
-    tvtime: "part",
-    trakt: "part",
-    letterboxd: "no",
-    simkl: "part",
-  },
-  {
-    ar: "استيراد سجلّك من TV Time وTrakt",
-    en: "Import your history from TV Time and Trakt",
-    loopz: "yes",
-    tvtime: "no",
-    trakt: "part",
-    letterboxd: "part",
-    simkl: "yes",
-  },
-  {
-    ar: "قوائم جاهزة بترتيب الأحداث (مارفل، هاري بوتر…)",
-    en: "Ready-made lists in story order (Marvel, Harry Potter…)",
-    loopz: "yes",
-    tvtime: "no",
-    trakt: "no",
-    letterboxd: "no",
-    simkl: "no",
-  },
-  {
-    ar: "قوائم الجوائز وأفضل 250 جاهزة",
-    en: "Award lists and ready-made Top 250s",
-    loopz: "yes",
-    tvtime: "no",
-    trakt: "part",
-    letterboxd: "part",
-    simkl: "part",
-  },
-  {
-    ar: "أصدقاء ورسائل فورية ومجتمعات",
-    en: "Friends, instant messages and communities",
-    loopz: "yes",
-    tvtime: "part",
-    trakt: "no",
-    letterboxd: "part",
-    simkl: "part",
-  },
-  {
-    ar: "مجاني بالكامل بلا إعلانات",
-    en: "Completely free, with no ads",
-    loopz: "yes",
-    tvtime: "no",
-    trakt: "part",
-    letterboxd: "part",
-    simkl: "part",
-  },
-];
-
-/** ما يتفوّق فيه غيرنا — يُكتب لأنه صحيح، ولأن المقارنة بلا اعترافٍ دعاية */
-export function compareHonesty(locale: Locale): string[] {
-  return locale === "ar"
-    ? [
-        "Letterboxd أعمق منّا في ثقافة النقد السينمائي: مجتمع كتّاب مراجعاتٍ ضخم وتاريخٌ طويل، ومن يريد القراءة قبل المشاهدة يجده هناك أوفر.",
-        "Trakt يتفوّق بالتسجيل التلقائي: يربط Plex وKodi وأجهزةً أخرى فتُسجَّل مشاهدتك بلا ضغطة. Loopz يعتمد على تعليمك أنت — أدقّ، لكنّه ليس تلقائياً.",
-        "TV Time أكبر منّا بسنوات وبعدد مستخدمين هائل، وشبكة أصدقائك الحالية غالباً هناك لا هنا.",
-        "Simkl يتفوّق في تكاملاته وإضافات المتصفّح، ولديه ما لا نملكه بعد من روابط تشغيلٍ آلية.",
-      ]
-    : [
-        "Letterboxd is far deeper on film criticism: a huge community of reviewers and years of writing. If you read before you watch, you will find more there.",
-        "Trakt wins on automatic scrobbling — it connects to Plex, Kodi and other players so watches log themselves. Loopz relies on you ticking, which is more accurate but not automatic.",
-        "TV Time is years older with a vastly larger user base, and your existing friends are probably there rather than here.",
-        "Simkl has more integrations and browser extensions than we do, including automation we have not built yet.",
-    ];
-}
 
 /* ───────────────────────── البيانات المُهيكلة ─────────────────────────
    `@graph` واحد بمعرّفاتٍ مترابطة بدل ثلاث كتلٍ منفصلة: قوقل يفهم الرسم
@@ -366,20 +262,6 @@ export function faqGraph(locale: Locale) {
       "@type": "Question",
       name: f.q,
       acceptedAnswer: { "@type": "Answer", text: f.a },
-    })),
-  };
-}
-
-/** فتات الطريق — يُظهر مسار الصفحة في نتيجة البحث بدل الرابط الخام */
-export function breadcrumbGraph(items: { name: string; path: string }[]) {
-  return {
-    "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
-    itemListElement: items.map((it, i) => ({
-      "@type": "ListItem",
-      position: i + 1,
-      name: it.name,
-      item: siteUrl(it.path),
     })),
   };
 }
