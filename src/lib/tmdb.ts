@@ -1215,6 +1215,96 @@ export async function topRatedRows(
 }
 
 /**
+ * بحثٌ بالكلمات المفتاحية — بديل بحث الذكاء حين لا مفتاح للنموذج
+ * (طلب أحمد 9 Aug: «الـAI ما زال سيء جداً»).
+ *
+ * TMDB يحمل قاموس كلماتٍ مفتاحية ضخماً («time loop»، «heist»، «amnesia»…)
+ * وهو أقرب ما عنده إلى الفهم الدلاليّ: نحوّل كلمات الوصف إلى معرّفات
+ * كلمات، ثم نطلب `/discover` بها. ليس ذكاءً — لكنه يجيب «فيلم عن سرقة
+ * بنك» بأفلام سرقةٍ فعلية بدل مطابقة عناوين. الكلمات إنجليزية عند TMDB،
+ * فالوصف العربي يعتمد المسار الآخر (النوع والحقبة) في actions.
+ */
+export async function keywordDiscover(
+  words: string[],
+  media: MediaType,
+  limit = 12,
+): Promise<SearchResult[]> {
+  const terms = words.filter((w) => /^[a-z][a-z' -]{2,}$/i.test(w)).slice(0, 4);
+  if (!terms.length) return [];
+
+  const ids: string[] = [];
+  await Promise.all(
+    terms.map(async (w) => {
+      try {
+        const data = await tmdb<{ results: { id: number; name: string }[] }>("/search/keyword", {
+          query: w,
+        });
+        const hit = (data.results ?? [])[0];
+        if (hit) ids.push(String(hit.id));
+      } catch {
+        /* كلمةٌ بلا مفتاح — تسقط وحدها */
+      }
+    }),
+  );
+  if (!ids.length) return [];
+
+  try {
+    const data = await tmdb<{ results: SearchResult[] }>(`/discover/${media}`, {
+      // «أو» بين الكلمات: التقاطع الصارم يُفرغ النتيجة غالباً
+      with_keywords: ids.join("|"),
+      sort_by: "vote_count.desc",
+      "vote_count.gte": "80",
+      include_adult: "false",
+    });
+    return (data.results ?? [])
+      .filter((r) => r.poster_path)
+      .map((r) => ({ ...r, media_type: media }))
+      .slice(0, limit);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * الفائزون بجائزةٍ — مثبَّتين على TMDB، الأحدث أولاً (طلب أحمد 9 Aug).
+ *
+ * القاموس يحمل الاسم والسنة (awards.ts)، وهذه الدالة تثبّت كل سطرٍ
+ * بنتيجة TMDB حقيقية — نفس مثبِّت بحث الذكاء (`searchByName`). السنة
+ * تقيّد بحث الأفلام ولا تقيّد المسلسلات: سنة الإيمي سنةُ حفلٍ لا سنةُ
+ * أول بثّ. وما لا يُطابَق يسقط بصمت.
+ *
+ * `awarded` سنةُ الفوز — تُعرض في صدر الصفّ وتُرتَّب بها القائمة، ولا
+ * تُستبدل بسنة الإصدار (فيلمٌ فاز متأخراً يبقى في موضع فوزه).
+ */
+export interface AwardRow extends SearchResult {
+  awarded: number;
+}
+
+export async function awardWinners(slug: string, limit?: number): Promise<AwardRow[]> {
+  const { awardBySlug, awardWins } = await import("./awards");
+  const award = awardBySlug(slug);
+  if (!award) return [];
+  /* `limit` للبطاقة وحدها (أربعة ملصقات): تثبيت خمسةٍ وثلاثين فائزاً
+     لبطاقةٍ تعرض أربعة إسرافٌ في طلبات TMDB — والقائمة الكاملة تُحلّ
+     عند الفتح أو الحفظ */
+  const wins = limit ? awardWins(award).slice(0, limit) : awardWins(award);
+
+  const rows: AwardRow[] = [];
+  const CHUNK = 12;
+  for (let i = 0; i < wins.length; i += CHUNK) {
+    const found = await Promise.all(
+      wins.slice(i, i + CHUNK).map((w) =>
+        searchByName(w.title, award.kind, award.kind === "movie" ? w.year : undefined)
+          .then((r) => (r ? { ...r, awarded: w.year } : null))
+          .catch(() => null),
+      ),
+    );
+    for (const r of found) if (r) rows.push(r);
+  }
+  return rows.sort((a, b) => b.awarded - a.awarded);
+}
+
+/**
  * أعمال فنّانيك — لصفّ «من فنّانيك» في اكتشف (person_follows.sql).
  *
  * `/discover/movie` بـ`with_people` (الشرطة العمودية = «أو»). أفلامٌ فقط:

@@ -414,6 +414,10 @@ const ar = {
   searchBrowseFrom: (place: string) => `تصفّح كل الأعمال من ${place}`,
   browseCountryGroup: "بلد الإنتاج",
   browseAnyCountry: "كل البلدان",
+  // الجائزة (طلب أحمد 9 Aug) — محورٌ يحوّل الصفحة إلى صفّ الفائزين
+  browseAwardGroup: "الجائزة",
+  browseAnyAward: "كل الجوائز",
+  awardRailNote: "الفائزون منذ ١٩٩٠ — الأحدث أولاً",
   // المنطقة مكتوبة في العنوان كي لا تُقرأ القائمة عالمية
   browseProviderGroup: (place: string) => `متاح على · ${place}`,
   browseAnyProvider: "كل المنصّات",
@@ -1170,6 +1174,9 @@ const en: Dict = {
   searchBrowseFrom: (place: string) => `Browse everything from ${place}`,
   browseCountryGroup: "Country of origin",
   browseAnyCountry: "Any country",
+  browseAwardGroup: "Award",
+  browseAnyAward: "Any award",
+  awardRailNote: "Winners since 1990 — newest first",
   browseProviderGroup: (place: string) => `Streaming on · ${place}`,
   browseAnyProvider: "Any service",
   regionSection: "Watch country",

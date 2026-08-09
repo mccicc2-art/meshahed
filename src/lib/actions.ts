@@ -1390,10 +1390,27 @@ export async function createListFromUniverse(slug: string) {
   const universe = universeBySlug(clean);
   if (!universe) throw new Error("عالمٌ غير معروف / Unknown universe");
 
-  const [{ moviesByIds, resolveSetIds, topRatedRows, titleOf }, { getLocale }] = await Promise.all([
+  const [{ moviesByIds, resolveSetIds, topRatedRows, awardWinners, titleOf }, { getLocale }] = await Promise.all([
     import("@/lib/tmdb"),
     import("@/lib/locale"),
   ]);
+
+  /* مجموعات الجوائز: الفائزون بالأحدث أولاً — نوعها «ranked» لأن ترتيبها
+     زمنيٌّ معنويّ لا ترتيب مشاهدة */
+  if (universe.award) {
+    const [rows, locale] = await Promise.all([
+      awardWinners(universe.award),
+      getLocale(),
+    ]);
+    if (!rows.length) throw new Error("تعذّر تحميل القائمة / Could not load this list");
+    const items: NewItem[] = rows.map((r) => ({
+      tmdbId: r.id,
+      mediaType: (r.media_type === "tv" ? "tv" : "movie") as MediaType,
+      title: titleOf(r),
+      posterPath: r.poster_path,
+    }));
+    return upsertListWithItems(universeName(universe, locale), items, "ranked");
+  }
 
   /* مجموعات TOP 250: العناصر من قوائم top_rated وقد تكون مسلسلات —
      والنوع «ranked»: هذه ترتيبُ جودةٍ لا ترتيبُ مشاهدة */
@@ -2499,6 +2516,8 @@ export interface AiSearchResult {
   year?: string;
   poster: string | null;
   rating?: number | null;
+  /** لماذا رُشِّح — سطرٌ من النموذج، أو وصفُ المسار البديل */
+  reason?: string;
 }
 
 /**
@@ -2516,31 +2535,55 @@ export interface AiSearchResult {
 export async function aiStorySearch(
   description: string,
 ): Promise<
-  | { ok: true; results: AiSearchResult[] }
-  | { ok: false; reason: "unconfigured" | "empty" | "short" }
+  | { ok: true; results: AiSearchResult[]; fallback?: boolean }
+  | { ok: false; reason: "empty" | "short" }
 > {
   await requireUser("aisearch", 6, 60_000);
 
   const desc = String(description ?? "").trim().slice(0, 600);
   if (desc.length < 8) return { ok: false, reason: "short" };
 
-  const { aiSuggestTitles } = await import("@/lib/ai");
-  const candidates = await aiSuggestTitles(desc);
-  if (candidates === null) return { ok: false, reason: "unconfigured" };
-  if (candidates.length === 0) return { ok: false, reason: "empty" };
+  const [{ aiSuggestTitles }, { getLocale }] = await Promise.all([
+    import("@/lib/ai"),
+    import("@/lib/locale"),
+  ]);
+  const locale = await getLocale();
+  const loc = locale === "en" ? ("en" as const) : ("ar" as const);
 
-  const { searchByName, titleOf, yearOf, posterUrl } = await import("@/lib/tmdb");
-  const grounded = await Promise.all(
-    candidates.map((c) => searchByName(c.title, c.type, c.year).catch(() => null)),
-  );
+  /* ===== الذوق يُمرَّر للنموذج (إصلاح 9 Aug) =====
+     الاقتراح بلا معرفةٍ بصاحبه جوابٌ لأي أحد. أعلى ما قيّمه، وأنواعه
+     المفضّلة، وما في مكتبته (لاستبعاده) — ثلاثتها تُقرأ مرةً هنا.
+     وفشلُ أيٍّ منها لا يمنع البحث: الذوق يرفع الدقة ولا يشترطها. */
+  const { getMyRatings, getProfile, getFollows } = await import("@/lib/data");
+  const [ratings, profile, follows] = await Promise.all([
+    getMyRatings().catch(() => []),
+    getProfile().catch(() => null),
+    getFollows().catch(() => []),
+  ]);
+  const loved = [...ratings]
+    .filter((r) => r.rating >= 8 && r.title)
+    .sort((a, b) => b.rating - a.rating)
+    .slice(0, 12)
+    .map((r) => r.title as string);
+  const { GENRES, genreName } = await import("@/lib/media");
+  const genres = (profile?.favorite_genres ?? [])
+    .map((id: number) => GENRES.find((g) => g.id === id))
+    .filter(Boolean)
+    .slice(0, 6)
+    .map((g) => genreName(g!, loc));
+  const exclude = follows.map((f) => f.title).filter(Boolean).slice(0, 40) as string[];
+
+  const candidates = await aiSuggestTitles(desc, { loved, genres, exclude, locale: loc });
+
+  const { searchByName, searchMulti, keywordDiscover, topByFilter, titleOf, yearOf, posterUrl } =
+    await import("@/lib/tmdb");
 
   const seen = new Set<string>();
   const results: AiSearchResult[] = [];
-  for (const r of grounded) {
-    if (!r) continue;
+  const push = (r: import("@/lib/tmdb").SearchResult, reason?: string) => {
     const kind = r.media_type === "tv" ? ("tv" as const) : ("movie" as const);
     const key = `${kind}-${r.id}`;
-    if (seen.has(key)) continue;
+    if (seen.has(key)) return;
     seen.add(key);
     results.push({
       kind,
@@ -2549,9 +2592,58 @@ export async function aiStorySearch(
       year: yearOf(r) || undefined,
       poster: posterUrl(r.poster_path, "w185"),
       rating: r.vote_average ? Math.round(r.vote_average * 10) / 10 : null,
+      reason,
     });
+  };
+
+  if (candidates && candidates.length) {
+    const grounded = await Promise.all(
+      candidates.map((c) =>
+        searchByName(c.title, c.type, c.year)
+          .then((r) => (r ? { row: r, reason: c.reason } : null))
+          .catch(() => null),
+      ),
+    );
+    for (const g of grounded) if (g) push(g.row, g.reason);
+    if (results.length) return { ok: true, results };
+  }
+
+  /* ===== المسار البديل — بلا نموذج (إصلاح 9 Aug) =====
+     غياب مفتاح Gemini كان يردّ «غير مفعّل» فيبدو الذكاء معطوباً. الآن
+     يجيب بما يملكه التطبيق فعلاً: نيّةُ النص (نوع درامي + حقبة) أولاً،
+     ثم كلمات TMDB المفتاحية، ثم مطابقةُ الاسم. أضعف من النموذج وأصدق
+     من رسالة عطل. */
+  const { matchBrowseIntent } = await import("@/lib/intent");
+  const { BROWSE_GENRES, eraRange, BROWSE_ERAS } = await import("@/lib/browse");
+  const intent = matchBrowseIntent(desc, loc);
+  const wantsShows = /مسلسل|أنمي|انمي|series|shows?|anime/i.test(desc);
+  const media = wantsShows ? ("tv" as const) : ("movie" as const);
+
+  if (intent) {
+    const url = new URLSearchParams(intent.href.split("?")[1] ?? "");
+    const g = BROWSE_GENRES.find((x) => x.slug === url.get("g"));
+    const era = BROWSE_ERAS.find((x) => x.slug === url.get("era")) ?? null;
+    const { from, to } = eraRange(era);
+    const rows = await topByFilter(
+      media,
+      { genreIds: media === "tv" ? g?.tv : g?.movie, from, to },
+      12,
+      "vote_average.desc",
+    ).catch(() => []);
+    for (const r of rows) push(r, intent.label);
+  }
+
+  if (results.length < 6) {
+    const words = desc.toLowerCase().split(/[^\p{L}\p{N}']+/u).filter((w) => w.length > 2);
+    const rows = await keywordDiscover(words, media).catch(() => []);
+    for (const r of rows) push(r);
+  }
+
+  if (results.length === 0) {
+    const rows = await searchMulti(desc.slice(0, 80)).catch(() => []);
+    for (const r of rows.slice(0, 10)) push(r);
   }
 
   if (results.length === 0) return { ok: false, reason: "empty" };
-  return { ok: true, results };
+  return { ok: true, results: results.slice(0, 12), fallback: true };
 }

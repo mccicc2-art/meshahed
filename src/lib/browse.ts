@@ -1,3 +1,5 @@
+import { AWARDS } from "./awards";
+
 // تصنيف التصفّح — آمن للاستخدام في الخادم والمتصفح معاً (لا next/headers).
 //
 // لماذا تصنيفٌ خاصّ بدل GENRES في media.ts: قوائم TMDB منفصلة للأفلام
@@ -115,21 +117,16 @@ export function browseLangName(l: BrowseLang, locale: "ar" | "en") {
 }
 
 /**
- * بلد الإنتاج — محورٌ يظهر مع العربية وحدها.
+ * بلد الإنتاج (الجنسية) — محورٌ مستقلّ (طلب أحمد 9 Aug: «أضف اختيار
+ * بالجنسية»).
  *
- * اللغة تفصل التركيّ عن الكوريّ فصلاً تامّاً، لكنها **لا تفصل السعوديّ عن
- * المصريّ عن الكويتيّ**: ثلاثتها `ar`. ومن يكتب «مسلسلات سعودية» يقصد
- * البلد لا اللغة. فالبلد هنا ليس بديلاً عن اللغة بل تفريعٌ لها عند اللغة
- * الوحيدة التي تحتاجه.
+ * كان يظهر مع العربية وحدها لأنه وُلد لتفريق السعودي عن المصري (كلاهما
+ * `ar`). لكن السؤال نفسه يُطرح خارج العربية: «مسلسلات كورية» ليست كل ما
+ * لغته `ko`، و«أفلام هندية» أوسع من الهندية لغةً. فصار محوراً عاماً —
+ * `with_origin_country` مدعومٌ في `/discover` للجهتين.
  *
- * ولماذا لا يظهر مع بقيّة اللغات: يصير محورين يقولان الشيء نفسه —
- * «تركي» في اللغة و«تركيا» في البلد — واختلافُهما في الحواف (مسلسل تركيّ
- * تنتجه نتفلكس) يعطي نتيجتين مختلفتين لسؤالٍ واحد، وهو أسوأ من غياب
- * الخيار. `with_origin_country` مدعومٌ في `/discover` للأفلام والمسلسلات
- * معاً.
- *
- * والقائمة بلدان الإنتاج العربية التي لها إنتاجٌ فعليّ مسجَّل في TMDB —
- * لا كل الدول: خانةٌ تعود فارغةً دائماً خيارٌ كاذب.
+ * والقائمة بلدانُ إنتاجٍ حقيقية في TMDB: العربية أولاً (جمهور التطبيق)
+ * ثم الأشهر عالمياً. خانةٌ تعود فارغةً دائماً خيارٌ كاذب.
  */
 export interface BrowseCountry {
   code: string;
@@ -150,16 +147,33 @@ export const BROWSE_COUNTRIES: BrowseCountry[] = [
   { code: "TN", ar: "تونس", en: "Tunisia" },
   { code: "QA", ar: "قطر", en: "Qatar" },
   { code: "BH", ar: "البحرين", en: "Bahrain" },
+  // ===== عالمياً =====
+  { code: "US", ar: "أمريكا", en: "United States" },
+  { code: "GB", ar: "بريطانيا", en: "United Kingdom" },
+  { code: "KR", ar: "كوريا الجنوبية", en: "South Korea" },
+  { code: "JP", ar: "اليابان", en: "Japan" },
+  { code: "TR", ar: "تركيا", en: "Türkiye" },
+  { code: "IN", ar: "الهند", en: "India" },
+  { code: "FR", ar: "فرنسا", en: "France" },
+  { code: "ES", ar: "إسبانيا", en: "Spain" },
+  { code: "IT", ar: "إيطاليا", en: "Italy" },
+  { code: "DE", ar: "ألمانيا", en: "Germany" },
+  { code: "CN", ar: "الصين", en: "China" },
+  { code: "MX", ar: "المكسيك", en: "Mexico" },
+  { code: "BR", ar: "البرازيل", en: "Brazil" },
+  { code: "CA", ar: "كندا", en: "Canada" },
+  { code: "AU", ar: "أستراليا", en: "Australia" },
+  { code: "SE", ar: "السويد", en: "Sweden" },
+  { code: "DK", ar: "الدنمارك", en: "Denmark" },
+  { code: "IR", ar: "إيران", en: "Iran" },
+  { code: "TH", ar: "تايلاند", en: "Thailand" },
 ];
 
 export function browseCountryName(c: BrowseCountry, locale: "ar" | "en") {
   return locale === "en" ? c.en : c.ar;
 }
 
-/** محور البلد لا معنى له إلا مع العربية — انظر التعليق أعلاه */
-export function countryApplies(lang: BrowseLang | null): boolean {
-  return lang?.code === "ar";
-}
+
 
 /** حقبة الإصدار — مدىً لا سنةً مفردة: السنة الواحدة تُفرغ الصفّ */
 export interface BrowseEra {
@@ -243,6 +257,8 @@ export interface BrowseQuery {
   era: BrowseEra | null;
   /** أدنى تقييم */
   rate: BrowseRate | null;
+  /** slug جائزة من `awards.ts` — يحوّل الصفوف إلى فائزيها (طلب أحمد) */
+  award: string | null;
   /** هل المستخدم يتصفّح فعلاً؟ لو لا، تبقى صفحة اكتشف على صفوفها المنسّقة */
   active: boolean;
 }
@@ -264,6 +280,7 @@ export function parseBrowse(params: {
   p?: string;
   era?: string;
   rate?: string;
+  award?: string;
 }): BrowseQuery {
   const type: BrowseType =
     params.type === "movie" || params.type === "tv" ? params.type : "all";
@@ -275,12 +292,8 @@ export function parseBrowse(params: {
   const genre = found && genreFitsType(found, type) ? found : null;
 
   const lang = BROWSE_LANGS.find((l) => l.code === params.lang) ?? null;
-  /* البلد يسقط تلقائياً متى لم تكن اللغة عربية: الرابط قد يُكتب باليد أو
-     يُشارَك ثم تُبدَّل لغته، وخيارٌ مطبَّقٌ لا يظهر في الواجهة أسوأ من
-     خيارٍ ضائع */
-  const country = countryApplies(lang)
-    ? (BROWSE_COUNTRIES.find((c) => c.code === params.co) ?? null)
-    : null;
+  // الجنسية محورٌ مستقلّ الآن — لا تتبع اللغة (طلب أحمد 9 Aug)
+  const country = BROWSE_COUNTRIES.find((c) => c.code === params.co) ?? null;
   const providerNum = Number(params.p);
   const provider = Number.isInteger(providerNum) && providerNum > 0 ? providerNum : null;
   const era = BROWSE_ERAS.find((e) => e.slug === params.era) ?? null;
@@ -288,6 +301,7 @@ export function parseBrowse(params: {
   const rate = (BROWSE_RATES as readonly number[]).includes(rateNum)
     ? (rateNum as BrowseRate)
     : null;
+  const award = AWARDS.some((a) => a.slug === params.award) ? params.award! : null;
 
   return {
     type,
@@ -297,6 +311,7 @@ export function parseBrowse(params: {
     provider,
     era,
     rate,
+    award,
     // الجهة (type) لا تجعل التصفّح «نشطاً»: صارت تبويبَ رأسٍ (أفلام/
     // مسلسلات — طلب أحمد) لا فلتراً، وتبديلها يعيد ضبط الرفوف —
     // كالنافذة تماماً. الفلاتر الحقيقية وحدها تقلب الصفحة لوضع النتائج
@@ -306,7 +321,8 @@ export function parseBrowse(params: {
       country !== null ||
       provider !== null ||
       era !== null ||
-      rate !== null,
+      rate !== null ||
+      award !== null,
   };
 }
 
@@ -324,7 +340,8 @@ export function browseCount(q: BrowseQuery) {
     (q.country ? 1 : 0) +
     (q.provider ? 1 : 0) +
     (q.era ? 1 : 0) +
-    (q.rate ? 1 : 0)
+    (q.rate ? 1 : 0) +
+    (q.award ? 1 : 0)
   );
 }
 
@@ -355,6 +372,7 @@ export function browseHref(q: {
   p?: number | null;
   era?: string | null;
   rate?: number | null;
+  award?: string | null;
 }) {
   const p = new URLSearchParams();
   if (q.type && q.type !== "all") p.set("type", q.type);
@@ -364,6 +382,7 @@ export function browseHref(q: {
   if (q.p) p.set("p", String(q.p));
   if (q.era) p.set("era", q.era);
   if (q.rate) p.set("rate", String(q.rate));
+  if (q.award) p.set("award", q.award);
   const qs = p.toString();
   return qs ? `/news?${qs}` : "/news";
 }
@@ -378,6 +397,7 @@ export function browseKey(q: BrowseQuery, page = 1) {
     q.provider ?? "any",
     q.era?.slug ?? "any",
     q.rate ?? "any",
+    q.award ?? "any",
     page,
   ].join(":");
 }

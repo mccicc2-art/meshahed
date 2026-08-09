@@ -1,3 +1,5 @@
+import { AWARDS } from "./awards";
+
 // العوالم السينمائية — قاموسٌ منسَّق لا بحث (روح D-050).
 //
 // TMDB يعرف «السلسلة» (belongs_to_collection) ولا يعرف «العالم»: سلسلة
@@ -34,6 +36,12 @@ export interface Universe {
   top?: "movie" | "tv" | "anime";
   /** حجم مجموعة top — الافتراضي ٢٥٠ */
   topLimit?: number;
+  /**
+   * مجموعة جائزة (طلب أحمد 9 Aug): slug من `awards.ts` — الفائزون
+   * يُثبَّتون على TMDB عند الطلب (`awardWinners`) وتُعرض سنةُ الفوز في
+   * صدر كل صفّ. لا معرّفات مكتوبة هنا: القاموس أسماءٌ وسنوات.
+   */
+  award?: string;
 }
 
 export const UNIVERSES: Universe[] = [
@@ -382,6 +390,17 @@ export const SUBLISTS2: Universe[] = [
 
 
 /**
+ * مجموعات الجوائز — تُبنى من قاموس `awards.ts` فلا يُكتب اسمٌ مرتين:
+ * إضافة جائزةٍ هناك تُظهر بطاقتها هنا تلقائياً.
+ */
+export const AWARD_SETS: Universe[] = AWARDS.map((a) => ({
+  slug: `award-${a.slug}`,
+  ar: a.ar,
+  en: a.en,
+  award: a.slug,
+}));
+
+/**
  * TOP 250 (طلب أحمد 9 Aug): ثلاث قوائم ديناميكية — أفلام ومسلسلات
  * وأنمي — تُحلّ من قوائم TMDB top_rated عند الطلب. الترتيب بتقييم TMDB
  * لا IMDb عمداً: ٧٥٠ عملاً بترتيب IMDb تعني ٧٥٠ طلب OMDb — الحصة كلها.
@@ -400,7 +419,7 @@ export interface Franchise {
 }
 
 const bySlug = (slug: string): Universe =>
-  [...TOP_LISTS, ...UNIVERSES, ...CURATED, ...SUBLISTS, ...SUBLISTS2].find((u) => u.slug === slug)!;
+  [...TOP_LISTS, ...AWARD_SETS, ...UNIVERSES, ...CURATED, ...SUBLISTS, ...SUBLISTS2].find((u) => u.slug === slug)!;
 
 export const FRANCHISES: Franchise[] = [
   /* TOP 250 أول الصفوف (طلب أحمد): مرجعُ الجودة قبل صفوف العوالم */
@@ -409,6 +428,14 @@ export const FRANCHISES: Franchise[] = [
     ar: "TOP 250",
     en: "TOP 250",
     sets: ["top250-movies", "top250-shows", "top250-anime"].map(bySlug),
+  },
+  /* صفّ الجوائز (طلب أحمد): بطاقة لكل جائزة — الفائزون من ١٩٩٠ مرتّبين
+     بالأحدث، وسنة الفوز مكتوبة في صدر كل صفّ */
+  {
+    slug: "awards",
+    ar: "الجوائز",
+    en: "Awards",
+    sets: AWARD_SETS,
   },
   {
     slug: "marvel",
@@ -473,7 +500,7 @@ export function franchiseName(f: Franchise, locale: "ar" | "en") {
 
 /** كل المجموعات المنسّقة معاً — قاموس `universeBySlug` (محرّك حفظٍ واحد) */
 export function allCuratedSets(): Universe[] {
-  return [...TOP_LISTS, ...UNIVERSES, ...CURATED, ...SUBLISTS, ...SUBLISTS2];
+  return [...TOP_LISTS, ...AWARD_SETS, ...UNIVERSES, ...CURATED, ...SUBLISTS, ...SUBLISTS2];
 }
 
 /** أي عالمٍ ينتمي إليه هذا الفيلم؟ — فحصٌ محليّ بلا طلب شبكة (العوالم وحدها) */
