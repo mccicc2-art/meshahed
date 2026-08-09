@@ -14,6 +14,7 @@
  */
 
 import { movieImdbId, tvImdbId, type SearchResult } from "./tmdb";
+import { createClient } from "./supabase/server";
 
 export interface ExternalRatings {
   /** «8.1» — من IMDb */
@@ -84,33 +85,97 @@ export async function seasonImdbRatings(
   }
 }
 
+/** عمر الصفّ المخزَّن قبل أن يستحق تجديداً من OMDb — «كل يوم مرة» */
+const STORE_TTL_MS = 24 * 60 * 60 * 1000;
+
+interface StoredRating {
+  media_type: string;
+  tmdb_id: number;
+  imdb_rating: number | null;
+  updated_at: string;
+}
+
 /**
  * يُلحق تقييم IMDb بصفٍّ من النتائج ويعيد ترتيبه به تنازلياً (طلب أحمد:
  * «الترتيب في ديسكفري بأعلى تقييم حسب IMDb» — يُتمّ نقض D-027).
  *
- * رحلتان لكل عمل: /external_ids ثم OMDb — كلتاهما مخبّأتان (ساعة/يوم)،
- * فالكلفة الحقيقية أول عرضٍ بعد انتهاء الخبيئة فقط. والدفعات من ٢٥
- * تُبقي التوازي مريحاً بدل ١٢٠ طلباً دفعةً واحدة.
+ * **المخزن أولاً (طلب أحمد 9 Aug: «اسحبها واحفظها عندك وحدّثها كل يوم
+ * مرة»):** جدول `imdb_ratings` في Supabase هو المصدر الأول — قراءةٌ
+ * واحدة للصفّ كلّه، ولا يذهب إلى OMDb إلا ما غاب عن الجدول أو تجاوز
+ * عمرُه يوماً، ثم تُكتب النتائج فيه دفعةً (`set_imdb_ratings`). هكذا
+ * يدفع أولُ زائرٍ بعد انتهاء العمر كلفةَ التجديد وحده، ويقرأ الباقون
+ * — عبر النشرات وإخلاءات الخبيئة كلها — من الجدول بصفر طلب OMDb.
+ * والجدول غير موجود بعد (الهجرة 44 لم تُشغَّل)؟ يسقط كل شيء بصمتٍ
+ * إلى مسار OMDb المباشر القديم.
  *
- * بلا مفتاح OMDb يعود الصفّ كما جاء: ترتيب TMDB القديم بلا شارات —
- * تدهورٌ صريح لا عطلٌ صامت. ومن لا تقييم له ينزل إلى الذيل مرتّباً
- * بعدد الأصوات، ولا يحمل شارةً أبداً.
+ * بلا مفتاح OMDb: المخزَّن يُقرأ ويُعرض، والمفقود يبقى بلا رقم IMDb
+ * (وتُظهر له الواجهة رقم TMDB بنجمته الزرقاء — تعديل 9 Aug).
+ * ومن لا تقييم له ينزل إلى الذيل مرتّباً بعدد الأصوات.
  */
 export async function withImdbRatings<T extends SearchResult>(rows: T[]): Promise<T[]> {
-  if (!process.env.OMDB_API_KEY || rows.length === 0) return rows;
+  if (rows.length === 0) return rows;
   const out = rows.map((r) => ({ ...r }));
-  const CHUNK = 25;
-  for (let i = 0; i < out.length; i += CHUNK) {
-    await Promise.all(
-      out.slice(i, i + CHUNK).map(async (r) => {
-        const iid =
-          r.media_type === "tv" ? await tvImdbId(r.id) : await movieImdbId(r.id);
-        const ext = await externalRatings(iid);
-        const n = ext?.imdb ? Number(ext.imdb) : NaN;
-        r.imdb_rating = Number.isFinite(n) ? n : null;
-      }),
-    );
+  const keyOf = (r: SearchResult) => `${r.media_type}-${r.id}`;
+
+  // ===== ١ · المخزن: ما زال حيّاً (< ٢٤ ساعة) يُعتمد كما هو =====
+  const stale = new Map(out.map((r) => [keyOf(r), r]));
+  try {
+    const supabase = await createClient();
+    const ids = [...new Set(out.map((r) => r.id))];
+    const { data } = await supabase
+      .from("imdb_ratings")
+      .select("media_type, tmdb_id, imdb_rating, updated_at")
+      .in("tmdb_id", ids);
+    const now = Date.now();
+    for (const s of (data ?? []) as StoredRating[]) {
+      const r = stale.get(`${s.media_type}-${s.tmdb_id}`);
+      if (!r) continue;
+      r.imdb_rating = s.imdb_rating == null ? null : Number(s.imdb_rating);
+      if (now - new Date(s.updated_at).getTime() < STORE_TTL_MS) {
+        stale.delete(`${s.media_type}-${s.tmdb_id}`);
+      }
+    }
+  } catch {
+    // الجدول غائب أو القراءة فشلت — الكل يمضي إلى OMDb كما قبل الهجرة
   }
+
+  // ===== ٢ · OMDb: الغائب والمنتهي عمره فقط، بدفعات ٢٥ =====
+  const toFetch = [...stale.values()];
+  const fetched: { media_type: string; tmdb_id: number; imdb_id: string | null; imdb_rating: number | null }[] = [];
+  if (process.env.OMDB_API_KEY && toFetch.length) {
+    const CHUNK = 25;
+    for (let i = 0; i < toFetch.length; i += CHUNK) {
+      await Promise.all(
+        toFetch.slice(i, i + CHUNK).map(async (r) => {
+          const iid =
+            r.media_type === "tv" ? await tvImdbId(r.id) : await movieImdbId(r.id);
+          const ext = await externalRatings(iid);
+          const n = ext?.imdb ? Number(ext.imdb) : NaN;
+          r.imdb_rating = Number.isFinite(n) ? n : null;
+          fetched.push({
+            media_type: r.media_type === "tv" ? "tv" : "movie",
+            tmdb_id: r.id,
+            imdb_id: iid ?? null,
+            imdb_rating: r.imdb_rating,
+          });
+        }),
+      );
+    }
+  }
+
+  // ===== ٣ · الكتابة للمخزن — دفعةً واحدة، وفشلها لا يعطّل العرض =====
+  if (fetched.length) {
+    try {
+      const supabase = await createClient();
+      await supabase.rpc("set_imdb_ratings", { p_rows: fetched });
+    } catch {
+      /* الهجرة لم تُشغَّل بعد — الخبيئة اليومية لطبقة fetch تبقى الشبكة */
+    }
+  }
+
+  // لا مخزن ولا مفتاح — الصفّ يعود كما جاء بترتيب TMDB (تدهور صريح)
+  if (!out.some((r) => r.imdb_rating !== undefined)) return rows;
+
   return out.sort(
     (a, b) =>
       (b.imdb_rating ?? -1) - (a.imdb_rating ?? -1) ||

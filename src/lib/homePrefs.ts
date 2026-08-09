@@ -9,11 +9,15 @@ export const HOME_SECTIONS = [
   "recap",
   "shows",
   "movies",
+  // «تقييماتي» و«قوائمي» (طلب أحمد 9 Aug): خارج الافتراضي كمسلسلاتي
+  // وأفلامي — يعودان من التخصيص لمن يريدهما
+  "ratings",
+  "lists",
   "trending",
 ] as const;
 export type HomeSection = (typeof HOME_SECTIONS)[number];
 
-/** خانات بطاقة الأرقام — ثمانية خيارات يعرض المستخدم منها ٢ إلى ٤ */
+/** خانات بطاقة الأرقام — خيارات يعرض المستخدم منها ٢ إلى ٤ */
 export const HEADER_STATS = [
   "shows",
   "movies",
@@ -23,6 +27,7 @@ export const HEADER_STATS = [
   "upcoming",
   "completed",
   "dropped",
+  "ratings",
 ] as const;
 export type HeaderStatKey = (typeof HEADER_STATS)[number];
 
