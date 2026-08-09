@@ -12,10 +12,12 @@ import {
   getConversations,
   getUnreadShares,
   type ConvShareEvent,
+  type FeedItem,
   type PersonLite,
 } from "@/lib/data";
 import { myMutualFollows } from "@/lib/actions";
 import { getT } from "@/lib/locale";
+import type { Dict } from "@/lib/i18n";
 import { localizeRows } from "@/lib/localize";
 import { formatDateShort } from "@/lib/when";
 import { num } from "@/lib/i18n";
@@ -40,6 +42,30 @@ function asTab(v: string | undefined): Tab {
   return v === "all" || v === "inbox" ? v : "mine";
 }
 
+/**
+ * سطر الفعل تحت الاسم — «ماذا فعل» في جملةٍ واحدة (D-123).
+ *
+ * التقييم مع مشاهدةٍ في نفس اليوم يذكرهما معاً («شاهد ٦ حلقات · قيّمه»):
+ * الصفّ الواحد ابتلع الحدثين، فالسطر يردّ للمشاهدة ذكرها. وتقييمٌ بمراجعةٍ
+ * مكتوبةٍ بلا مشاهدة لا يحتاج سطراً أصلاً — النصّ نفسه هو الخبر.
+ */
+function actionLine(a: FeedItem, t: Dict): string | null {
+  const parts: string[] = [];
+  if (a.episodeCount > 0) {
+    parts.push(t.feedActEpisodes(a.episodeCount));
+    if (a.topSeason > 0) parts.push(t.seasonLabel(a.topSeason));
+  }
+  if (a.kind === "rate") {
+    if (!parts.length && a.review) return null;
+    parts.push(t.feedActRated);
+  } else if (a.kind === "movie") {
+    parts.push(t.feedActMovie);
+  } else if (a.kind === "add") {
+    parts.push(t.feedActAdd);
+  }
+  return parts.length ? parts.join(" · ") : null;
+}
+
 export default async function PeoplePage({
   searchParams,
 }: {
@@ -52,7 +78,11 @@ export default async function PeoplePage({
 
   const { tab: tabParam, sort, with: withParam, c: cParam } = await searchParams;
   const tab = asTab(tabParam);
-  const newest = sort === "new";
+  /* **الأحدث هو الافتراضي منذ D-123**: الخطّ صار يحمل المشاهدة لا المراجعة
+     وحدها، وأحداث المشاهدة بلا إعجابات (D-124 لم تُشحن) — فالترتيب
+     بالإعجاب كان يدفنها كلّها أسفل الصفحة ويعيد الخطّ إلى شكله القديم.
+     والطزاجة هي ما يقول «الموقع حيّ». `?sort=top` يعيد القديم. */
+  const newest = sort !== "top";
   const openWith = tab === "inbox" && withParam ? withParam : null;
 
   /* الخطّان يُبنيان معاً كي يحمل التبويبان عدّادَيهما دائماً — كصفّ شرائح
@@ -139,9 +169,10 @@ export default async function PeoplePage({
     { key: "inbox", href: "/people?tab=inbox", label: t.communityTabInbox, badge: unread },
   ];
 
-  // روابط الفرز تحفظ التبويب الحالي — الفرز لا معنى له في الوارد
+  // روابط الفرز تحفظ التبويب الحالي — الفرز لا معنى له في الوارد.
+  // انقلبت الوجهتان مع انقلاب الافتراضي (D-123): العاري = الأحدث
   const sortBase = tab === "all" ? "/people?tab=all" : "/people";
-  const sortNewHref = tab === "all" ? "/people?tab=all&sort=new" : "/people?sort=new";
+  const sortTopHref = tab === "all" ? "/people?tab=all&sort=top" : "/people?sort=top";
 
   return (
     <div className="space-y-5">
@@ -197,17 +228,17 @@ export default async function PeoplePage({
               <div role="group" aria-label={t.feedSortGroup} className={segmentedTrack}>
                 <Link
                   href={sortBase}
-                  aria-current={!newest ? "true" : undefined}
-                  className={segmentedItem(!newest)}
-                >
-                  {t.feedSortTop}
-                </Link>
-                <Link
-                  href={sortNewHref}
                   aria-current={newest ? "true" : undefined}
                   className={segmentedItem(newest)}
                 >
                   {t.feedSortNew}
+                </Link>
+                <Link
+                  href={sortTopHref}
+                  aria-current={!newest ? "true" : undefined}
+                  className={segmentedItem(!newest)}
+                >
+                  {t.feedSortTop}
                 </Link>
               </div>
             )}
@@ -240,12 +271,13 @@ export default async function PeoplePage({
             <div className="divide-y divide-[color:var(--divider)]">
               {feed.map((a) => {
                 const found = artById.get(`${a.media_type}-${a.tmdb_id}`);
+                const line = actionLine(a, t);
                 const art =
                   backdropUrl(found?.backdrop ?? null, "w500") ??
                   posterUrl(found?.poster ?? a.poster_path, "w342");
                 return (
                   <article
-                    key={`${a.person.id}-${a.media_type}-${a.tmdb_id}`}
+                    key={`${a.person.id}-${a.media_type}-${a.tmdb_id}-${a.day}`}
                     className="py-4 first:pt-0"
                   >
                     <div className="flex items-start justify-between gap-4">
@@ -257,27 +289,40 @@ export default async function PeoplePage({
                           sub={formatDateShort(a.updated_at, t)}
                         />
 
-                        <p className="text-[15px] leading-relaxed whitespace-pre-line mt-3">
-                          {a.review}
-                        </p>
+                        {/* سطر الفعل: ما الذي حدث. يظهر لغير المراجعات، ومع
+                            المراجعة إن حملت مشاهدةً في نفس اليوم (التقييم
+                            يبتلع المشاهدة ولا يلغيها — D-123) */}
+                        {line && <p className="mt-2.5 text-[13px] text-muted">{line}</p>}
 
-                        <div className="mt-2 flex items-center gap-1">
-                          <LikeButton
-                            reviewUserId={a.person.id}
-                            tmdbId={a.tmdb_id}
-                            mediaType={a.media_type}
-                            likes={a.likes}
-                            likedByMe={a.likedByMe}
-                            isMine={false}
-                            locale={locale}
-                          />
-                          <ReportButton
-                            reviewUserId={a.person.id}
-                            tmdbId={a.tmdb_id}
-                            mediaType={a.media_type}
-                            locale={locale}
-                          />
-                        </div>
+                        {a.review && (
+                          <p className="text-[15px] leading-relaxed whitespace-pre-line mt-2">
+                            {a.review}
+                          </p>
+                        )}
+
+                        {/* الإعجاب والبلاغ للرأي وحده — حدثُ مشاهدةٍ بلا نصّ
+                            لا يُبلَّغ عنه، وإعجابه ينتظر D-124 */}
+                        {a.kind === "rate" && (
+                          <div className="mt-2 flex items-center gap-1">
+                            <LikeButton
+                              reviewUserId={a.person.id}
+                              tmdbId={a.tmdb_id}
+                              mediaType={a.media_type}
+                              likes={a.likes}
+                              likedByMe={a.likedByMe}
+                              isMine={false}
+                              locale={locale}
+                            />
+                            {a.review && (
+                              <ReportButton
+                                reviewUserId={a.person.id}
+                                tmdbId={a.tmdb_id}
+                                mediaType={a.media_type}
+                                locale={locale}
+                              />
+                            )}
+                          </div>
+                        )}
                       </div>
 
                       <Link
@@ -312,13 +357,18 @@ export default async function PeoplePage({
                           <span className="truncate">
                             {a.media_type === "tv" ? t.typeSeries : t.typeMovie}
                           </span>
-                          <span aria-hidden>·</span>
-                          <span
-                            className="shrink-0 font-semibold text-accent tabular-nums"
-                            title={t.rateOutOf(a.rating)}
-                          >
-                            ★ <span dir="ltr">{a.rating}/10</span>
-                          </span>
+                          {/* النجمة للتقييم وحده — مشاهدةٌ بلا رأيٍ لا رقم لها */}
+                          {a.rating !== null && (
+                            <>
+                              <span aria-hidden>·</span>
+                              <span
+                                className="shrink-0 font-semibold text-accent tabular-nums"
+                                title={t.rateOutOf(a.rating)}
+                              >
+                                ★ <span dir="ltr">{a.rating}/10</span>
+                              </span>
+                            </>
+                          )}
                         </span>
                       </Link>
                     </div>
