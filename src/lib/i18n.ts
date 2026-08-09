@@ -140,6 +140,9 @@ const ar = {
   nextEpisodeOn: (d: string) => `الحلقة القادمة ${d}`,
   watchedOf: (a: number, b: number) => `شاهدت ${a} من ${b} حلقة`,
   cascadeHint: "تأشير أي حلقة يعتبر كل الحلقات السابقة مشاهَدة تلقائياً.",
+  // تقييمات الحلقات مخفية افتراضياً (طلب أحمد): رقمُ حلقةٍ قادمة حرقٌ محتمل
+  epRatingsShow: "إظهار تقييمات الحلقات (IMDb)",
+  epRatingsHide: "إخفاء تقييمات الحلقات",
   seasonAll: "الموسم كامل ✓",
   seasonUndo: "إلغاء الموسم",
   airsOn: (d: string) => `يُعرض ${d}`,
@@ -393,6 +396,12 @@ const ar = {
   depDirecting: "إخراج",
   depWriting: "كتابة",
   depProduction: "إنتاج",
+  // صفة الشخص تحت اسمه في اقتراحات البحث (طلب أحمد: «يكتب فقط ممثل
+  // أو مخرج») — اسم مهنةٍ لا اسم حرفة: «ممثل» تحت اسمٍ أوضح من «تمثيل»
+  roleActor: "ممثل",
+  roleDirector: "مخرج",
+  roleWriter: "كاتب",
+  roleProducer: "منتج",
   searchPeopleTitle: "أشخاص",
   searchBrowseFrom: (place: string) => `تصفّح كل الأعمال من ${place}`,
   browseCountryGroup: "بلد الإنتاج",
@@ -902,6 +911,8 @@ const en: Dict = {
   nextEpisodeOn: (d: string) => `Next episode ${d}`,
   watchedOf: (a: number, b: number) => `Watched ${a} of ${b} episodes`,
   cascadeHint: "Ticking any episode marks every earlier episode as watched too.",
+  epRatingsShow: "Show episode ratings (IMDb)",
+  epRatingsHide: "Hide episode ratings",
   seasonAll: "Whole season ✓",
   seasonUndo: "Clear season",
   airsOn: (d: string) => `Airs ${d}`,
@@ -1140,6 +1151,10 @@ const en: Dict = {
   depDirecting: "Directing",
   depWriting: "Writing",
   depProduction: "Production",
+  roleActor: "Actor",
+  roleDirector: "Director",
+  roleWriter: "Writer",
+  roleProducer: "Producer",
   searchPeopleTitle: "People",
   searchBrowseFrom: (place: string) => `Browse everything from ${place}`,
   browseCountryGroup: "Country of origin",
@@ -1532,4 +1547,25 @@ export function getDict(locale: Locale): Dict {
 export function num(n: number, _locale: Locale) {
   void _locale;
   return n.toLocaleString("en-US");
+}
+
+/**
+ * مهنة الشخص اسماً — «ممثل»/«مخرج» تحت الاسم في نتائج البحث (طلب أحمد).
+ * تعيش هنا لأن موضعين يحتاجانها (مسار /api/suggest وصفحة البحث) —
+ * ونسخة ثانية من التحويل خطأ. قسمٌ غير معروف يعيد فراغاً فيسقط السطر
+ * لواجهته الاحتياطية بدل تخمينٍ خاطئ.
+ */
+export function roleName(dep: string | null | undefined, t: Dict): string {
+  switch (dep) {
+    case "Acting":
+      return t.roleActor;
+    case "Directing":
+      return t.roleDirector;
+    case "Writing":
+      return t.roleWriter;
+    case "Production":
+      return t.roleProducer;
+    default:
+      return "";
+  }
 }

@@ -47,6 +47,44 @@ export async function externalRatings(imdbId: string | null | undefined): Promis
 }
 
 /**
+ * تقييمات IMDb لحلقات موسمٍ كامل — طلبٌ واحد للموسم كلّه.
+ *
+ * OMDb يعيد الموسم بحلقاته في ردٍّ واحد (`&Season=n`)، فالكلفة حلقة
+ * OMDb واحدة لكل موسمٍ في اليوم لا واحدة لكل حلقة — مئات الحلقات كانت
+ * ستأكل الحصة. تُجلب عند طلب المستخدم وحده (زرّ كشف التقييمات في
+ * متتبّع الحلقات — مخفية افتراضياً لأنها قد تحرق الأحداث).
+ * حلقة بلا تقييم («N/A» — لم تُبثّ أو لا أصوات) لا تدخل الخريطة أصلاً.
+ */
+export async function seasonImdbRatings(
+  imdbId: string | null | undefined,
+  season: number,
+): Promise<Record<number, number>> {
+  const key = process.env.OMDB_API_KEY;
+  if (!key || !imdbId || !/^tt\d+$/.test(imdbId)) return {};
+  try {
+    const res = await fetch(
+      `https://www.omdbapi.com/?apikey=${key}&i=${imdbId}&Season=${season}`,
+      { next: { revalidate: 86400 } },
+    );
+    if (!res.ok) return {};
+    const j = (await res.json()) as {
+      Response?: string;
+      Episodes?: { Episode?: string; imdbRating?: string }[];
+    };
+    if (j.Response === "False" || !j.Episodes) return {};
+    const out: Record<number, number> = {};
+    for (const e of j.Episodes) {
+      const num = Number(e.Episode);
+      const rating = Number(e.imdbRating);
+      if (Number.isInteger(num) && Number.isFinite(rating)) out[num] = rating;
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+/**
  * يُلحق تقييم IMDb بصفٍّ من النتائج ويعيد ترتيبه به تنازلياً (طلب أحمد:
  * «الترتيب في ديسكفري بأعلى تقييم حسب IMDb» — يُتمّ نقض D-027).
  *
