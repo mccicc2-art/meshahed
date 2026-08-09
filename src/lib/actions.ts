@@ -1466,7 +1466,7 @@ export async function createListFromUniverse(slug: string) {
   const universe = universeBySlug(clean);
   if (!universe) throw new Error("عالمٌ غير معروف / Unknown universe");
 
-  const [{ moviesByIds, resolveSetIds, topRatedRows, awardWinners, titleOf }, { getLocale }] = await Promise.all([
+  const [{ moviesByIds, resolveSetIds, awardWinners, titleOf }, { getLocale }] = await Promise.all([
     import("@/lib/tmdb"),
     import("@/lib/locale"),
   ]);
@@ -1491,40 +1491,22 @@ export async function createListFromUniverse(slug: string) {
   /* مجموعات TOP 250: العناصر من قوائم top_rated وقد تكون مسلسلات —
      والنوع «ranked»: هذه ترتيبُ جودةٍ لا ترتيبُ مشاهدة */
   if (universe.top) {
-    /* **نفس ترتيب المعاينة حرفاً بحرف** (D-132): بِركةٌ ١٫٦× ثم ترتيبٌ
-       بايزيّ بتقييم IMDb ثم اقتطاع. قائمةٌ محفوظة تخالف ما عايَنه
-       المستخدم قبل ثانية هي أسوأ من ترتيبٍ رديء — لذا يُشتقّ الاثنان من
-       نفس الخطوات، وأيُّ تغييرٍ هنا يُنسَخ في `api/franchise`. */
+    /* **نفس ترتيب المعاينة حرفاً بحرف** (D-135): لم تعد الخطوات منسوخةً
+       هنا وفي `api/franchise` برجاءِ ألّا ينساها أحد — كلاهما ينادي
+       `topChartRows`. قائمةٌ محفوظة تخالف ما عايَنه المستخدم قبل ثانية
+       أسوأ من ترتيبٍ رديء، والضمانةُ الآن بنيويّة لا تحريريّة. */
     const want = universe.topLimit ?? 250;
-    const [chart, locale] = await Promise.all([
-      (await import("@/lib/data")).getImdbChart(universe.top, want),
+    const [rows, locale] = await Promise.all([
+      (await import("@/lib/topChart")).topChartRows(universe.top, want),
       getLocale(),
     ]);
 
-    /* **قائمة IMDb المثبَّتة أولاً** (D-135)، وإلا مسار D-132. ونفس
-       الترتيب الذي رآه في المعاينة حرفاً بحرف: قائمةٌ محفوظة تخالف ما
-       عايَنه قبل ثانية أسوأ من ترتيبٍ رديء — وأيّ تغييرٍ هنا يُنسَخ في
-       `api/franchise`. */
-    let items: NewItem[];
-    if (chart.length) {
-      items = chart.map((c) => ({
-        tmdbId: c.tmdb_id,
-        mediaType: c.media_type as MediaType,
-        title: c.title ?? "—",
-        posterPath: c.poster_path,
-      }));
-    } else {
-      const { rankByImdb, withImdbRatings } = await import("@/lib/omdb");
-      const pool = await topRatedRows(universe.top, Math.round(want * 1.6));
-      const rows = rankByImdb(await withImdbRatings(pool), { want }).slice(0, want);
-      if (!rows.length) throw new Error("تعذّر تحميل القائمة / Could not load this list");
-      items = rows.map((r) => ({
-        tmdbId: r.id,
-        mediaType: (r.media_type === "tv" ? "tv" : "movie") as MediaType,
-        title: titleOf(r),
-        posterPath: r.poster_path,
-      }));
-    }
+    const items: NewItem[] = rows.map((r) => ({
+      tmdbId: r.id,
+      mediaType: (r.media_type === "tv" ? "tv" : "movie") as MediaType,
+      title: titleOf(r),
+      posterPath: r.poster_path,
+    }));
     if (!items.length) throw new Error("تعذّر تحميل القائمة / Could not load this list");
     return upsertListWithItems(universeName(universe, locale), items, "ranked");
   }

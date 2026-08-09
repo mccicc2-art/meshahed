@@ -34,8 +34,8 @@ import { createClient } from "./supabase/server";
 const CANDIDATE_MIN_VOTES = 5_000;
 /** وأدنى تقييم: دون ٧٫٥ لا يدخل قائمة «أفضل» مهما كثرت أصواته */
 const CANDIDATE_MIN_RATING = 7.5;
-/** كم مرشّحاً نحتفظ به بعد الترتيب المبدئي — ستّة أضعاف المطلوب لكل صنف */
-export const CANDIDATE_POOL = 1_500;
+/** كم مرشّحاً نحتفظ به بعد الترتيب المبدئي — خمسة أضعاف المطلوب لكل صنف */
+export const CANDIDATE_POOL = 4_000;
 /** كم مرشّحاً يُحلّ في النداء الواحد — بحيث تنتهي الوظيفة دون مهلتها */
 export const RESOLVE_BATCH = 250;
 
@@ -51,24 +51,22 @@ export interface Candidate {
 }
 
 /**
- * يبثّ `title.ratings.tsv.gz` ويعيد أقوى `CANDIDATE_POOL` مرشّحاً.
+ * يبثّ ملفّاً مضغوطاً من IMDb سطراً سطراً.
  *
  * **يُبثّ ولا يُحمَّل كاملاً**: ستّة وعشرون ميغابايت من النصّ مقسومةً على
  * مليونٍ ونصف سطر تعني مصفوفةً بمئات الميغابايت لو `split`. هنا تُقرأ
- * القطعة تلو الأخرى ويُحتفظ بالمرشّحين وحدهم (~١٥ ألف صفّ) — فالذاكرة
- * ثابتةٌ مهما كبر الملف.
+ * القطعة تلو الأخرى — فالذاكرة ثابتةٌ مهما كبر الملف. وملفّ الحلقات
+ * تسعةُ ملايين سطر: بلا بثٍّ لا يُقرأ أصلاً.
  */
-export async function fetchCandidates(): Promise<Candidate[]> {
-  const res = await fetch("https://datasets.imdbws.com/title.ratings.tsv.gz", {
+async function streamTsv(url: string, onLine: (line: string) => void): Promise<void> {
+  const res = await fetch(url, {
     // يومٌ كامل: IMDb تحدّثه مرّةً يومياً، وإعادة تنزيله بين الدفعات هدر
     next: { revalidate: 86_400 },
   });
-  if (!res.ok || !res.body) throw new Error(`IMDb datasets ${res.status}`);
+  if (!res.ok || !res.body) throw new Error(`IMDb datasets ${res.status} ${url}`);
 
-  const stream = res.body.pipeThrough(new DecompressionStream("gzip"));
-  const reader = stream.getReader();
+  const reader = res.body.pipeThrough(new DecompressionStream("gzip")).getReader();
   const decoder = new TextDecoder();
-  const out: Candidate[] = [];
   let tail = "";
   let first = true;
 
@@ -84,18 +82,44 @@ export async function fetchCandidates(): Promise<Candidate[]> {
         first = false; // ترويسة الملف
         continue;
       }
-      // tconst \t averageRating \t numVotes
-      const a = line.indexOf("\t");
-      if (a < 0) continue;
-      const b = line.indexOf("\t", a + 1);
-      if (b < 0) continue;
-      const votes = Number(line.slice(b + 1));
-      if (!(votes >= CANDIDATE_MIN_VOTES)) continue;
-      const rating = Number(line.slice(a + 1, b));
-      if (!(rating >= CANDIDATE_MIN_RATING)) continue;
-      out.push({ tconst: line.slice(0, a), rating, votes });
+      onLine(line);
     }
   }
+}
+
+/**
+ * يعيد أقوى `CANDIDATE_POOL` مرشّحاً من ملفّات IMDb — **بلا حلقات**.
+ *
+ * **لماذا يُقرأ ملفّ الحلقات:** أوّل تشغيلٍ حقيقيّ حلّ ٣٧ عملاً من ٢٥٠ —
+ * لأن صدارة الترتيب البايزيّ حلقاتُ مسلسلات لا أفلام: «Ozymandias» ٩٫٩
+ * بمئتَي ألف صوت تسبق «الأب الروحي». `title.basics` (١٫٥ جيجابايت) يعرف
+ * النوع لكنه يقتل الوظيفة؛ و`title.episode` ثلاثون ميغابايت فقط ويكفي:
+ * لا نحتاج أن نعرف **ما هو** كل عمل، بل أن نُسقط ما هو **حلقة**. فبدل
+ * بناء مجموعةٍ من تسعة ملايين معرّف (غيغابايت ذاكرة) نحذف من خريطة
+ * المرشّحين وحدها — ذاكرةٌ ثابتة، ونداءات TMDB كلّها تذهب إلى أعمالٍ حقيقية.
+ */
+export async function fetchCandidates(): Promise<Candidate[]> {
+  const byId = new Map<string, Candidate>();
+
+  await streamTsv("https://datasets.imdbws.com/title.ratings.tsv.gz", (line) => {
+    // tconst \t averageRating \t numVotes
+    const a = line.indexOf("\t");
+    if (a < 0) return;
+    const b = line.indexOf("\t", a + 1);
+    if (b < 0) return;
+    const votes = Number(line.slice(b + 1));
+    if (!(votes >= CANDIDATE_MIN_VOTES)) return;
+    const rating = Number(line.slice(a + 1, b));
+    if (!(rating >= CANDIDATE_MIN_RATING)) return;
+    const tconst = line.slice(0, a);
+    byId.set(tconst, { tconst, rating, votes });
+  });
+
+  await streamTsv("https://datasets.imdbws.com/title.episode.tsv.gz", (line) => {
+    // tconst \t parentTconst \t seasonNumber \t episodeNumber
+    const a = line.indexOf("\t");
+    if (a > 0) byId.delete(line.slice(0, a));
+  });
 
   /* ترتيبٌ مبدئيّ بايزيّ بعتبةٍ وسطى: غرضُه اختيار من يستحقّ نداءَ TMDB،
      لا ترتيب القائمة النهائية — ذاك يقع في `build_imdb_chart` بعتبة كل
@@ -105,7 +129,7 @@ export async function fetchCandidates(): Promise<Candidate[]> {
     (c.votes / (c.votes + PROVISIONAL_M)) * c.rating +
     (PROVISIONAL_M / (c.votes + PROVISIONAL_M)) * GLOBAL_MEAN;
 
-  return out.sort((x, y) => score(y) - score(x)).slice(0, CANDIDATE_POOL);
+  return [...byId.values()].sort((x, y) => score(y) - score(x)).slice(0, CANDIDATE_POOL);
 }
 
 export interface ResolvedRow {
