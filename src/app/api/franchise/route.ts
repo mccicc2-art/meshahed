@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getUser, getWatchedMovieIds, getFollows } from "@/lib/data";
 import { awardWinners, getCollection, moviesByIds, posterUrl, resolveSetIds, titleOf, topRatedRows, yearOf } from "@/lib/tmdb";
+import { rankByImdb, withImdbRatings } from "@/lib/omdb";
 import { universeBySlug, universeName } from "@/lib/universes";
 import { getLocale } from "@/lib/locale";
 import { allow, retryAfter } from "@/lib/ratelimit";
@@ -69,12 +70,19 @@ export async function GET(request: Request) {
     /* مجموعات TOP 250 (طلب أحمد): عناصرها تُحلّ من قوائم top_rated لا
        من معرّفاتٍ مكتوبة — وقد تكون مسلسلات، فكل جزءٍ يحمل mediaType */
     if (u.top) {
-      const [rows, watchedIds, follows, locale] = await Promise.all([
-        topRatedRows(u.top, u.topLimit ?? 250),
+      const want = u.topLimit ?? 250;
+      /* **البِركة أوسع من القائمة بستّين بالمئة** (D-132): `rankByImdb`
+         تُسقط كل عملٍ بلا تقييم IMDb إسقاطاً كاملاً — لا إلى الذيل —
+         فبِركةٌ بحجم القائمة تعني قائمةً ناقصة. والترتيب بايزيّ لا
+         بالمتوسّط العاري: «الأب الروحي» بمليونَي صوت لا يزيحه فيلمٌ
+         ٩٫٤ بألف. هذا هو العيب الذي أُبلغنا عنه، وهذا موضع إصلاحه. */
+      const [pool, watchedIds, follows, locale] = await Promise.all([
+        topRatedRows(u.top, Math.round(want * 1.6)),
         getWatchedMovieIds(),
         getFollows(),
         getLocale(),
       ]);
+      const rows = rankByImdb(await withImdbRatings(pool), { want }).slice(0, want);
       const savedKeys = new Set(follows.map((f) => `${f.media_type}-${f.tmdb_id}`));
       return NextResponse.json({
         name: universeName(u, locale === "en" ? "en" : "ar"),
