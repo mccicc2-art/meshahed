@@ -295,7 +295,7 @@ export default async function PeoplePage({
           يبقيان تحت الترويسة والخطّ يمرّ تحتهما. خلفية صمّاء لا شفافة —
           صور الأعمال تمرّ خلفها. و`space-y-5` الأب يضيف فراغاً بين
           الحاوية وما بعدها، فالحشو السفليّ هنا صغير. */}
-      <div className="sticky top-[var(--sticky-top)] z-20 -mx-4 px-4 pt-1 pb-2 bg-[color:var(--background)] space-y-3">
+      <div className="sticky top-[var(--sticky-top)] z-20 -mx-4 px-4 pt-1 pb-2 bg-[color:var(--background)] border-b border-[color:var(--divider)] space-y-3">
       <nav aria-label={t.communityTabsGroup} className={segmentedTrackFull}>
         {tabs.map((tb) => {
           const active = tb.key === tab;
