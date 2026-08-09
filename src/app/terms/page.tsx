@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { getT } from "@/lib/locale";
 
 export const metadata: Metadata = {
-  title: "Terms of Use — Loopz",
+  title: "Terms of Use",
   description: "The rules for using Loopz, in plain language.",
 };
 
