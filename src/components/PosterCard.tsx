@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { posterUrl } from "@/lib/media";
+import { MarqueeText } from "./MarqueeText";
 import { Icon, type IconName } from "./Icon";
 
 type BadgeTone = "neutral" | "progress" | "watched" | "rating" | "dropped";
@@ -92,9 +93,9 @@ export function PosterCard({
           </p>
           {year && <p className="text-[10px] text-white/60 mt-0.5">{year}</p>}
           {note && (
-            <p className="text-[10px] text-accent-2/90 mt-0.5 line-clamp-1">
-              {note}
-            </p>
+            /* السبب يتحرك ليُقرأ كاملاً حين يفيض (ملاحظة صديق أحمد —
+               D-100): نصٌّ قصير يبقى ساكناً، والفائض يذهب ويعود */
+            <MarqueeText text={note} className="text-[10px] text-accent-2/90 mt-0.5" />
           )}
         </div>
 
