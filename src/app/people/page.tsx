@@ -43,6 +43,32 @@ function asTab(v: string | undefined): Tab {
 }
 
 /**
+ * تبديدُ الصفوف: لا يظهر شخصٌ مرّتين متتاليتين ما دام في الخطّ غيرُه.
+ *
+ * سقفُ الخمسة في SQL يمنع أن يملك شخصٌ الخطَّ **عدداً**، ولا يمنع أن
+ * يملكه **بصريّاً**: أوّل تشغيلٍ حيّ أظهر خمسة صفوفٍ متلاصقة لشخصٍ واحد
+ * («شاهد الفيلم» ×٥) فقرأ الخطّ كسجلٍّ لا كمجتمع. الترتيب الزمني وحده لا
+ * يكفي حين تكون الدائرة صغيرة.
+ *
+ * جشعٌ بسيط: خذ أوّل صفٍّ صاحبُه غير صاحب سابقه، وإلا فخذ التالي كما هو.
+ * الترتيب النسبي لصفوف الشخص الواحد محفوظ، والتكلفة لا شيء عند ستّين صفّاً.
+ * **يُطبَّق على «الأحدث» وحده** — «الأكثر إعجاباً» ترتيبُه هو معناه.
+ */
+function spreadByPerson(rows: FeedItem[]): FeedItem[] {
+  const pool = [...rows];
+  const out: FeedItem[] = [];
+  let last: string | null = null;
+  while (pool.length) {
+    let i = pool.findIndex((r) => r.person.id !== last);
+    if (i === -1) i = 0;
+    const [picked] = pool.splice(i, 1);
+    out.push(picked);
+    last = picked.person.id;
+  }
+  return out;
+}
+
+/**
  * سطر الفعل تحت الاسم — «ماذا فعل» في جملةٍ واحدة (D-123).
  *
  * التقييم مع مشاهدةٍ في نفس اليوم يذكرهما معاً («شاهد ٦ حلقات · قيّمه»):
@@ -134,7 +160,7 @@ export default async function PeoplePage({
   }
 
   // ===== خطّ الآراء — لتبويب «مجتمعي» وحده الآن =====
-  const feed =
+  const sorted =
     tab !== "mine"
       ? []
       : (await localizeRows(followingFeed, locale)).sort((a, b) =>
@@ -142,6 +168,7 @@ export default async function PeoplePage({
             ? b.updated_at.localeCompare(a.updated_at)
             : b.likes - a.likes || b.updated_at.localeCompare(a.updated_at),
         );
+  const feed = newest ? spreadByPerson(sorted) : sorted;
 
   /* الصورة العرضية ليست في صفّ التقييم — تُطلب من TMDB لأوائل الخط فقط،
      متوازيةً ومخزَّنة ساعةً في طبقة fetch. الأولوية: عرضيّة TMDB، ثم
