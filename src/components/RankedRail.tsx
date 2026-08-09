@@ -17,6 +17,8 @@ export function RankedRail({
   items,
   note,
   ranked = true,
+  control,
+  emptyText,
 }: {
   title: string;
   icon?: IconName;
@@ -25,19 +27,31 @@ export function RankedRail({
   note?: string;
   /** إخفاء الأرقام: بعض الصفوف قائمة لا ترتيب */
   ranked?: boolean;
+  /** أداةٌ في طرف العنوان — رقائق نافذة الصفّ (D-099) */
+  control?: React.ReactNode;
+  /** صفٌّ له أداة لا يختفي فارغاً — رسالة بدل البطاقات، وإلا ضاعت
+      الأداة ومعها طريق العودة لنافذةٍ فيها نتائج */
+  emptyText?: string;
 }) {
-  if (!items.length) return null;
+  if (!items.length && !control) return null;
 
   return (
     <section>
       <h2 className="flex items-center gap-2 text-base font-bold mb-1">
         {icon && <Icon name={icon} size={18} className="text-muted" />}
-        {title}
+        <span className="truncate">{title}</span>
+        {control && <span className="ms-auto shrink-0">{control}</span>}
       </h2>
       {/* السطر الفرعي اختياري: مصدر التقييمات كان يتكرّر فوق كل صفّ فيزحم
           الصفحة بسطر يعرفه القارئ من أول مرة. يبقى حيث يضيف معلومة —
           كالمنطقة فوق «يعرض الآن في السينما». */}
       {note ? <p className="text-[11px] text-muted mb-3">{note}</p> : <div className="mb-3" />}
+
+      {!items.length && emptyText && (
+        <p className="text-xs text-muted py-8 text-center bg-surface-2/40 border border-border rounded-2xl">
+          {emptyText}
+        </p>
+      )}
 
       <div className="-mx-4 px-4 overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <div className="flex gap-3 w-max pb-1">

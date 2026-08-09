@@ -15,7 +15,6 @@ import {
   genreFitsType,
   type BrowseRate,
   type BrowseType,
-  type BrowseWin,
   type DiscoverTab,
 } from "@/lib/browse";
 import { tap } from "@/lib/haptics";
@@ -54,7 +53,6 @@ export function DiscoverFilters({
   locale,
   tab = "titles",
   type,
-  win,
   genre,
   lang,
   country,
@@ -75,8 +73,6 @@ export function DiscoverFilters({
       ولقطة الصفحة أثناء الرفع المرتّب (صفر ERROR وسيط) */
   tab?: DiscoverTab;
   type: BrowseType;
-  /** نافذة الترتيب — صارت داخل ورقة الفلاتر بعد أن أخذ التبويبان مكانها */
-  win: BrowseWin;
   /** slug التصنيف المختار — صار داخل الورقة */
   genre: string | null;
   /** رمز اللغة المختارة */
@@ -103,7 +99,6 @@ export function DiscoverFilters({
 
   function go(next: {
     type?: BrowseType;
-    win?: BrowseWin;
     g?: string | null;
     lang?: string | null;
     co?: string | null;
@@ -119,11 +114,8 @@ export function DiscoverFilters({
     const found = BROWSE_GENRES.find((g) => g.slug === nextGenre);
     if (!found || !genreFitsType(found, nextType)) nextGenre = null;
 
-    const nextWin = next.win ?? win;
-
     const p = new URLSearchParams();
     if (nextType !== "all") p.set("type", nextType);
-    if (nextWin !== "week") p.set("win", nextWin);
     if (nextGenre) p.set("g", nextGenre);
     const nextLang = next.lang === undefined ? lang : next.lang;
     // البلد تابعٌ للعربية: مغادرتها تُسقطه، وإلا بقي مطبَّقاً بلا رقاقة تدلّ عليه
@@ -165,13 +157,6 @@ export function DiscoverFilters({
   const chips: { key: string; label: string; clear: () => void }[] = [];
   /* النافذة صارت خلف الورقة، فتحتاج رقاقةً كسائر المخفيّ: ما لا يُرى
      ولا رقاقة له فلترٌ سرّيّ يجعل «أفضل الأفلام» تكذب بلا تفسير */
-  if (win !== "week") {
-    chips.push({
-      key: "win",
-      label: win === "year" ? t.winYear : t.winAll,
-      clear: () => go({ win: "week" }),
-    });
-  }
   if (type !== "all") {
     chips.push({
       key: "type",
@@ -227,7 +212,7 @@ export function DiscoverFilters({
     });
   }
 
-  const draft: FilterDraft = { win, type, genre, lang, country, provider, era, rate };
+  const draft: FilterDraft = { type, genre, lang, country, provider, era, rate };
 
   return (
     <div className={`space-y-3 transition-opacity ${pending ? "opacity-60" : "opacity-100"}`}>
@@ -330,7 +315,7 @@ export function DiscoverFilters({
             <button
               type="button"
               onClick={() =>
-              go({ win: "week", type: "all", g: null, lang: null, co: null, p: null, era: null, rate: null })
+              go({ type: "all", g: null, lang: null, co: null, p: null, era: null, rate: null })
             }
               className="rounded-full border border-border text-muted hover:text-foreground hover:border-accent/50 px-3 py-1.5 text-[13px] font-semibold transition"
             >
@@ -350,7 +335,6 @@ export function DiscoverFilters({
           onApply={(next) => {
             setSheet(false);
             go({
-              win: next.win,
               type: next.type,
               g: next.genre,
               lang: next.lang,
