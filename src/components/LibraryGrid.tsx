@@ -16,7 +16,8 @@ import { LongPressable } from "./LongPressable";
 import { ListManager } from "./ListManager";
 import { Icon } from "./Icon";
 import { Sheet, SheetHeader } from "./ui/Sheet";
-import { chipClass, posterGrid, segmentedItem, segmentedTrackFull } from "./ui/controls";
+import { chipClass, posterGrid } from "./ui/controls";
+import { PageTabs } from "./ui/PageTabs";
 import { buttonClass } from "./ui/Button";
 
 export interface GridItem {
@@ -174,85 +175,59 @@ export function LibraryGrid({
           تحت الترويسة والشبكة تمرّ تحتهما. خلفية صمّاء لا شفافة —
           الملصقات تمرّ خلفها. وصفّ البحث خرج من `tabpanel` إلى هنا: هو
           تحكّمٌ في اللوح لا محتواه، ويظهر لغير تبويب القوائم وحده. */}
-      <div className="sticky top-[var(--sticky-top)] z-20 -mx-4 px-4 pt-1 pb-2 mb-3 bg-[color:var(--background)] border-b border-[color:var(--divider)]">
-      <div className={`${segmentedTrackFull} ${showSearchRow ? "mb-3" : "mb-1"}`} role="tablist" aria-label={t.libraryTitle}>
-        {tabs.map(({ id, icon, label, n }) => {
-          const active = tab === id;
-          return (
-            <button
-              key={id}
-              type="button"
-              role="tab"
-              id={`lib-tab-${id}`}
-              aria-selected={active}
-              aria-controls="lib-panel"
-              onClick={() => goTab(id)}
-              className={segmentedItem(
-                active,
-                "flex-1 basis-0 min-w-0 flex items-center justify-center gap-2 px-2 pt-1.5 pb-3 text-[13px]",
-                false,
-              )}
-            >
-              {/* الأيقونة تغيب على الضيّق منذ صار التبويب رابعاً (D-128):
-                  أربع خاناتٍ على ٣٦٠px تعني ٨٢px للخانة، والأيقونة
-                  وفجوتها تأكلان ٢٤ منها فيُقصّ «مسلسلات». تصغيرُ الخطّ
-                  ممنوع (قاعدة `02`)، فالأيقونة هي ما يُضحّى به —
-                  وتعود من `sm:` حيث المساحة تحتملها. */}
-              <Icon
-                name={icon}
-                size={16}
-                className={`shrink-0 hidden sm:block transition-colors ${active ? "text-accent" : ""}`}
-              />
-              <span className="truncate">{label}</span>
-              <span
-                className={`text-[11px] tabular-nums transition-colors ${
-                  active ? "text-accent" : "opacity-80"
-                }`}
-                dir="ltr"
-              >
-                {n}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-      {showSearchRow && (
-        /* بحثٌ وفرز: سطرٌ واحد تحت تبويبَي الأعمال */
-        <div className="flex items-center gap-2">
-        <div className="relative flex-1">
-          <span className="absolute inset-y-0 start-3 grid place-items-center text-muted pointer-events-none">
-            <Icon name="search" size={16} />
-          </span>
-          <input
-            type="search"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder={t.searchLibrary}
-            className="w-full bg-surface border border-border rounded-xl ps-9 pe-3 py-2.5 text-sm placeholder:text-muted focus:outline-none focus:border-accent/60"
-          />
-        </div>
-        <div className="flex items-center gap-1 shrink-0" role="group" aria-label={t.sortSmart}>
-          {(
-            [
-              { id: "smart", label: t.sortSmart },
-              { id: "title", label: t.sortTitle },
-              { id: "progress", label: t.sortProgress },
-            ] as const
-          ).map(({ id, label }) => (
-            <button
-              key={id}
-              type="button"
-              aria-pressed={sort === id}
-              onClick={() => setSort(id)}
-              className={chipClass(sort === id, "sm")}
-            >
-              {label}
-            </button>
-            ))}
-          </div>
-        </div>
-      )}
-      </div>
+      {/* الرأس اللاصق من `PageTabs` المشترك (D-134): نفس موضع تبويبات
+          المجتمع واكتشف بالبكسل، وخطٌّ فاصلٌ واحد لا اثنان. وصفُّ البحث
+          والفرز يُمرَّر `extra` فيسكن داخل الرأس لا تحته. */}
+      <PageTabs
+        items={tabs.map(({ id, icon, label, n }) => ({
+          key: id,
+          label,
+          count: n,
+          icon,
+          onClick: () => goTab(id),
+        }))}
+        active={tab}
+        ariaLabel={t.libraryTitle}
+        extra={
+          showSearchRow ? (
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <span className="absolute inset-y-0 start-3 grid place-items-center text-muted pointer-events-none">
+                  <Icon name="search" size={16} />
+                </span>
+                <input
+                  type="search"
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                  placeholder={t.searchLibrary}
+                  className="w-full bg-surface border border-border rounded-xl ps-9 pe-3 py-2.5 text-sm placeholder:text-muted focus:outline-none focus:border-accent/60"
+                />
+              </div>
+              <div className="flex items-center gap-1 shrink-0" role="group" aria-label={t.sortSmart}>
+                {(
+                  [
+                    { id: "smart", label: t.sortSmart },
+                    { id: "title", label: t.sortTitle },
+                    { id: "progress", label: t.sortProgress },
+                  ] as const
+                ).map(({ id, label }) => (
+                  <button
+                    key={id}
+                    type="button"
+                    aria-pressed={sort === id}
+                    onClick={() => setSort(id)}
+                    className={chipClass(sort === id, "sm")}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : undefined
+        }
+      />
+
+      <div className="mt-3" />
 
       <div id="lib-panel" role="tabpanel" aria-labelledby={`lib-tab-${tab}`}>
       {tab === "lists" ? (

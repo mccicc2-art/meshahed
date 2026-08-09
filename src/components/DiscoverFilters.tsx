@@ -22,7 +22,7 @@ import { tap } from "@/lib/haptics";
 import { Icon } from "./Icon";
 import { ListsFilters, type ListsFiltersProps } from "./ListsFilters";
 import { DiscoverFilterSheet, type FilterDraft } from "./DiscoverFilterSheet";
-import { segmentedItem } from "./ui/controls";
+import { PageTabs } from "./ui/PageTabs";
 
 /**
  * رأس «اكتشف».
@@ -226,55 +226,23 @@ export function DiscoverFilters({
   const draft: FilterDraft = { genre, lang, country, provider, era, rate, award };
 
   return (
-    /* رأسٌ لاصق (طلب أحمد 9 Aug: «الفلاتر والبحث والعناوين تكون ثابتة
-       وأمرّر تحتها»): التبويبان وزرّ الفلاتر ورقائق ما اخترتَه تبقى تحت
-       الترويسة مهما نزلتَ في الصفوف. الخلفية صمّاء لا شفافة — الملصقات
-       تمرّ خلفها فيصير النصّ غير مقروء. والهوامش السالبة تمدّ الخلفية إلى
-       حافّتَي الشاشة كما يمتدّ الخطّ الفاصل أصلاً. */
-    <div
-      className={`sticky top-[var(--sticky-top)] z-20 -mx-4 px-4 pt-2 pb-3 -mb-1 bg-[color:var(--background)] space-y-3 transition-opacity ${pending ? "opacity-60" : "opacity-100"}`}
-    >
-      {/* ===== التصنيف + زرّ الفلاتر =====
-          الخطّ الفاصل على الصفّ كلّه لا على شريط التبويبات وحده: لو حمله
-          الشريط لانقطع عند آخر تبويبٍ وترك الزرّ معلّقاً فوق فراغ. والهوامش
-          السالبة تمدّ الخطّ إلى حافّتَي الشاشة فيُقرأ حدّاً لرأس الصفحة. */}
-      <div className="-mx-4 px-4 flex items-stretch gap-2 border-b border-[color:var(--divider)]">
-        {/* ===== التبويبان: أعمالٌ / قوائم (طلب المالك) =====
-            أخذا مكان نافذة الترتيب: قسمان متساويا العرض من نفس عائلة
-            المقسّم (segmentedItem، D-016) — والنافذة انتقلت إلى الورقة.
-            ضغطُ «القوائم» يُبدّل الصفحة كلّها: بحثٌ في قوائم المجتمع
-            وتصفّحها بدل رفوف الأعمال. */}
-        <div
-          role="group"
-          aria-label={t.discoverTabsGroup}
-          /* بلا خطٍّ سفليّ: الصفّ نفسه يحمله (segmentedTrackBare منطقُه)،
-             فيمتدّ تحت التبويبين وزرّ الفلاتر معاً؛ وخطُّ القسم النشِط
-             (after:-bottom-px) يلتقي خطَّ الصفّ فلا يطفو */
-          className="min-w-0 flex-1 flex items-stretch"
-        >
-          {tabs.map((x) => {
-            const on = tab === x.value;
-            return (
-              <button
-                key={x.value}
-                type="button"
-                aria-pressed={on}
-                onClick={() => goTab(x.value)}
-                className={segmentedItem(on, "flex-1 basis-0 min-w-0 justify-center flex")}
-              >
-                {x.label}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* الزرّ إلى جانب التبويبين: المخرج الوحيد إلى الفلاتر —
-            زرّ الأعمال لتبويبها، وزرّ القوائم (بورقته الخاصة) في نفس
-            الخانة حين يكون تبويبها هو المفتوح */}
-        {tab === "lists" && listsFilters && (
+    /* رأسٌ لاصق (طلب أحمد 9 Aug): التبويبات وزرّ الفلاتر ورقائق ما
+       اخترتَه تبقى تحت الترويسة مهما نزلتَ في الصفوف.
+       الرأس اللاصق من `PageTabs` المشترك (D-134): نفس موضع تبويبات
+       المجتمع والمكتبة بالبكسل، وخطٌّ فاصلٌ واحد. زرّ الفلاتر يُمرَّر
+       `action` فيجلس في صفّ التبويبات، ورقائق ما اخترتَه `extra`. */
+    <div className={`transition-opacity ${pending ? "opacity-60" : "opacity-100"}`}>
+      <PageTabs
+        active={tab}
+        ariaLabel={t.discoverTabsGroup}
+        items={tabs.map((x) => ({ key: x.value, label: x.label, onClick: () => goTab(x.value) }))}
+        action={
+          <>
+        {/* الزرّ إلى جانب التبويبات: المخرج الوحيد إلى الفلاتر —
+            زرّ الأعمال لتبويبها، وزرّ القوائم (بورقته) في نفس الخانة */}
+        {tab === "lists" && listsFilters ? (
           <ListsFilters {...listsFilters} variant="button" />
-        )}
-        {tab !== "lists" && (
+        ) : tab !== "lists" ? (
           <button
             type="button"
             onClick={() => {
@@ -283,8 +251,7 @@ export function DiscoverFilters({
             }}
             aria-haspopup="dialog"
             aria-expanded={sheet}
-            /* أنحف مما كان (طلب أحمد: «الفلتر خل عرضه أصغر شوي») —
-               ثلاثة تبويبات تحتاج كل بكسل في السطر */
+            /* أنحف مما كان (طلب أحمد: «الفلتر خل عرضه أصغر شوي») */
             className={`shrink-0 self-center mb-1 flex items-center gap-1 rounded-full border px-2.5 py-1 text-[12px] font-semibold transition ${
               count > 0
                 ? "border-accent text-accent bg-accent/10"
@@ -302,49 +269,53 @@ export function DiscoverFilters({
               </span>
             )}
           </button>
-        )}
-      </div>
-
-      {/* ===== ما اختير ===== */}
-      {tab !== "lists" && chips.length > 0 && (
-        <div
-          role="group"
-          aria-label={t.browseActiveFilters}
-          className="-mx-4 px-4 flex flex-wrap items-center gap-2"
-        >
-          {chips.map((c) => (
-            <button
-              key={c.key}
-              type="button"
-              onClick={c.clear}
-              aria-label={t.browseRemoveFilter(c.label)}
-              /* الرقاقة هنا زرُّ إلغاءٍ لا زرُّ اختيار، ولذلك لم تأخذ
-                 `chipClass`: الممتلئة بلون الهوية تعني «مختار، المسني
-                 لتُلغيه» — وهذه معناها الإلغاء وحده. حدٌّ خفيف و× ظاهرة */
-              className="flex items-center gap-1.5 rounded-full border border-accent/40 bg-accent/10 text-accent px-3 py-1.5 text-[13px] font-semibold hover:bg-accent/20 active:scale-[0.97] transition"
+        ) : null}
+          </>
+        }
+        extra={
+          tab !== "lists" && chips.length > 0 ? (
+            <div
+              role="group"
+              aria-label={t.browseActiveFilters}
+              className="-mx-4 px-4 flex flex-wrap items-center gap-2"
             >
-              <span>{c.label}</span>
-              <Icon name="close" size={13} strokeWidth={2.4} />
-            </button>
-          ))}
-          {chips.length > 1 && (
-            /* نفس هندسة الرقاقة لا نصٌّ عارٍ: الصفّ قد يلتفّ فيقع «مسح
-               الكل» وحده في سطر — ونصٌّ وحده في سطرٍ يُقرأ عنواناً لا
-               زرّاً. الحدُّ والحشو يبقيانه فعلاً، ولونه الرمادي يبقيه
-               دون الرقائق في الصوت */
-            <button
-              type="button"
-              onClick={() =>
-              go({ g: null, lang: null, co: null, p: null, era: null, rate: null, award: null })
-            }
-              className="rounded-full border border-border text-muted hover:text-foreground hover:border-accent/50 px-3 py-1.5 text-[13px] font-semibold transition"
-            >
-              {t.browseClearAll}
-            </button>
-          )}
-        </div>
-      )}
+              {chips.map((c) => (
+                <button
+                  key={c.key}
+                  type="button"
+                  onClick={c.clear}
+                  aria-label={t.browseRemoveFilter(c.label)}
+                  /* الرقاقة هنا زرُّ إلغاءٍ لا زرُّ اختيار، ولذلك لم تأخذ
+                     `chipClass`: الممتلئة بلون الهوية تعني «مختار، المسني
+                     لتُلغيه» — وهذه معناها الإلغاء وحده. حدٌّ خفيف و× ظاهرة */
+                  className="flex items-center gap-1.5 rounded-full border border-accent/40 bg-accent/10 text-accent px-3 py-1.5 text-[13px] font-semibold hover:bg-accent/20 active:scale-[0.97] transition"
+                >
+                  <span>{c.label}</span>
+                  <Icon name="close" size={13} strokeWidth={2.4} />
+                </button>
+              ))}
+              {chips.length > 1 && (
+                /* نفس هندسة الرقاقة لا نصٌّ عارٍ: الصفّ قد يلتفّ فيقع «مسح
+                   الكل» وحده في سطر — ونصٌّ وحده في سطرٍ يُقرأ عنواناً لا
+                   زرّاً. الحدُّ والحشو يبقيانه فعلاً، ولونه الرمادي يبقيه
+                   دون الرقائق في الصوت */
+                <button
+                  type="button"
+                  onClick={() =>
+                  go({ g: null, lang: null, co: null, p: null, era: null, rate: null, award: null })
+                }
+                  className="rounded-full border border-border text-muted hover:text-foreground hover:border-accent/50 px-3 py-1.5 text-[13px] font-semibold transition"
+                >
+                  {t.browseClearAll}
+                </button>
+              )}
+            </div>
+          ) : undefined
+        }
+      />
 
+      {/* الورقة خارج الرأس اللاصق: نافذةٌ تطفو فوق الصفحة كلّها،
+          ووضعُها داخل حاويةٍ لاصقة يحبسها في سياق تكديسها */}
       {sheet && (
         <DiscoverFilterSheet
           locale={locale}
