@@ -57,6 +57,7 @@
 | 44 | `imdb_ratings.sql` | مخزن تقييمات IMDb عبر النشرات + `set_imdb_ratings` definer (D-113) | **مشحونة** |
 | 45 | `activity_v2.sql` | `following_activity_v2`: خطّ النشاط بأربعة أنواع، صفٌّ واحد لكل (شخص+عمل+يوم) + أربعة فهارس زمنية (D-123) | **مشحونة** |
 | 46 | `activity_likes.sql` | إعجابٌ بحدث مشاهدة: جدول بمفتاحٍ فيه يوم + `feed_activity_likes` definer (D-124) | **مشحونة** |
+| 47 | `notifications.sql` | جرس الإشعارات بلا جدول: عمود `notif_seen_at` + `my_signals`/`unread_signals`/`mark_signals_seen` (D-125) | **مشحونة** |
 
 كلها تحقَّقت بالاستعلام المكتوب في ذيل ملفّها — **لا استثناءات: كل ملفات
 الجدول شُغِّلت** (آخرها ٢٩ المعاد كتابته و٣٦، في ٩ أغسطس).
