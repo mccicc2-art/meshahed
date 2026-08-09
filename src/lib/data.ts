@@ -758,32 +758,60 @@ export async function getCommunityFeed(
     const rows = (actRows as ActivityRow[]).filter((r) => r.title || r.review);
     if (!rows.length) return [];
 
-    // إعجابات صفوف التقييم في نداء واحد — أعدادٌ و«هل أعجبتُ به»،
-    // بلا أي معرّف مُعجِب
+    /* الإعجابات في ندائين متوازيين — أعدادٌ و«هل أعجبتُ به» بلا أي
+       معرّف مُعجِب. صفُّ التقييم من `review_likes` (رأيٌ واحد برقمٍ واحد
+       أينما ظهر)، وحدثُ المشاهدة من `activity_likes` بمفتاحٍ فيه **يوم**
+       — لأن صفّ الخطّ نفسه مفتاحُه اليوم منذ D-123 (D-124). */
     const rated = rows.filter((r) => (r.kind ?? "rate") === "rate");
-    const likeKey = (u: string, t2: number, m: string) => `${u}|${t2}|${m}`;
+    const acted = rows.filter((r) => (r.kind ?? "rate") !== "rate");
+    const likeKey = (u: string, t2: number, m: string, d = "") => `${u}|${t2}|${m}|${d}`;
     const counts = new Map<string, number>();
     const mine = new Set<string>();
-    if (rated.length) {
-      const uids = [...new Set(rated.map((r) => r.id))];
-      const { data: likeRows } = await supabase.rpc("feed_review_likes", { uids });
-      for (const l of (likeRows ?? []) as {
-        review_user_id: string;
-        tmdb_id: number;
-        media_type: string;
-        likes: number;
-        liked_by_me: boolean;
-      }[]) {
-        const k = likeKey(l.review_user_id, l.tmdb_id, l.media_type);
-        counts.set(k, Number(l.likes));
-        if (l.liked_by_me) mine.add(k);
-      }
+
+    const [reviewLikes, activityLikes] = await Promise.all([
+      rated.length
+        ? supabase.rpc("feed_review_likes", {
+            uids: [...new Set(rated.map((r) => r.id))],
+          })
+        : Promise.resolve({ data: null }),
+      acted.length
+        ? supabase.rpc("feed_activity_likes", {
+            uids: [...new Set(acted.map((r) => r.id))],
+          })
+        : Promise.resolve({ data: null }),
+    ]);
+
+    for (const l of (reviewLikes.data ?? []) as {
+      review_user_id: string;
+      tmdb_id: number;
+      media_type: string;
+      likes: number;
+      liked_by_me: boolean;
+    }[]) {
+      const k = likeKey(l.review_user_id, l.tmdb_id, l.media_type);
+      counts.set(k, Number(l.likes));
+      if (l.liked_by_me) mine.add(k);
+    }
+    /* الجدول غائبٌ (لم تُشغَّل الهجرة ٤٦ بعد)؟ `data` يعود فارغاً
+       فتُقرأ الأعداد أصفاراً — سقوطٌ صامت لا شاشةُ خطأ (نمط D-113). */
+    for (const l of (activityLikes.data ?? []) as {
+      actor_id: string;
+      tmdb_id: number;
+      media_type: string;
+      day: string;
+      likes: number;
+      liked_by_me: boolean;
+    }[]) {
+      const k = likeKey(l.actor_id, l.tmdb_id, l.media_type, l.day);
+      counts.set(k, Number(l.likes));
+      if (l.liked_by_me) mine.add(k);
     }
 
     return rows.map((r) => {
       const kind: FeedKind = r.kind ?? "rate";
       const when = r.at ?? r.updated_at ?? new Date(0).toISOString();
-      const k = likeKey(r.id, r.tmdb_id, r.media_type);
+      const day = r.day ?? when.slice(0, 10);
+      const k = likeKey(r.id, r.tmdb_id, r.media_type, kind === "rate" ? "" : day);
       const review = r.review?.trim() ?? "";
       return {
         person: {
@@ -801,11 +829,11 @@ export async function getCommunityFeed(
         title: r.title,
         poster_path: r.poster_path,
         updated_at: when,
-        day: r.day ?? when.slice(0, 10),
+        day,
         episodeCount: Number(r.episode_count ?? 0),
         topSeason: Number(r.top_season ?? 0),
-        likes: kind === "rate" ? counts.get(k) ?? 0 : 0,
-        likedByMe: kind === "rate" ? mine.has(k) : false,
+        likes: counts.get(k) ?? 0,
+        likedByMe: mine.has(k),
       };
     });
   } catch {

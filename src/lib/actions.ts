@@ -1486,6 +1486,48 @@ export async function toggleReviewLike(
 }
 
 /**
+ * إعجابٌ بحدثِ مشاهدة، أو سحبه (**D-124**).
+ *
+ * توأمُ `toggleReviewLike` بجدولٍ آخر ومفتاحٍ فيه **يوم** — لأن صفّ الخطّ
+ * نفسه مفتاحُه (فاعل، عمل، جهة، يوم) منذ D-123. ولا يُستدعى لصفٍّ يحمل
+ * تقييماً: ذاك إعجابُ رأيٍ ويبقى في `review_likes` كي يبقى «أعجبني رأيك»
+ * رقماً واحداً أينما ظهر.
+ *
+ * والحراسة كلها في القاعدة كسابقتها: المفتاح الأساسي يمنع التكرار،
+ * والقيد يمنع الإعجاب بحدث النفس، والسياسة تمنع الكتابة باسم غيرك.
+ *
+ * **بلا `revalidatePath`:** الزرّ متفائلٌ ويملك عدّاده، والخطّ يُعاد
+ * قراءته في أول تنقّلٍ طبيعي — وتجديد `/people` مع كل قلبٍ يعيد بناء
+ * خطٍّ من ستّين صفّاً ثمناً لرقمٍ واحدٍ رُسم أصلاً.
+ */
+export async function toggleActivityLike(
+  actorId: string,
+  tmdbId: number,
+  mediaType: "tv" | "movie",
+  day: string,
+  liked: boolean,
+) {
+  actorId = uuid(actorId);
+  tmdbId = intId(tmdbId);
+  mediaType = asMediaType(mediaType);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) throw new Error("bad day");
+  const { supabase, user } = await requireUser();
+  const key = {
+    actor_id: actorId,
+    tmdb_id: tmdbId,
+    media_type: mediaType,
+    day,
+    liker_id: user.id,
+  };
+
+  const { error } = liked
+    ? await supabase.from("activity_likes").delete().match(key)
+    : await supabase.from("activity_likes").insert(key);
+
+  if (error) fail(error);
+}
+
+/**
  * «شفته كله»: يعلّم كل الحلقات المعروضة دفعةً واحدة.
  *
  * **وتُرجع ما أضافته هي وحدها.** ضغطة ✓ صارت فوريّة بلا ورقة تأكيد
