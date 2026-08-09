@@ -10,7 +10,7 @@ import { PosterRail, RailItem } from "@/components/PosterRail";
 import { Icon } from "@/components/Icon";
 import { matchNationality } from "@/lib/nationality";
 import { browseHref } from "@/lib/browse";
-import type { Locale } from "@/lib/i18n";
+import { roleName, type Locale } from "@/lib/i18n";
 import { SearchBox } from "@/components/SearchBox";
 import { Alert } from "@/components/ui/Alert";
 
@@ -111,31 +111,9 @@ async function SearchResults({
         </Link>
       )}
 
-      {/* الأشخاص فوق الأعمال: من كتب اسم ممثل يريده هو، ومن كتب اسم عملٍ
-          لن يجد أشخاصاً فلا يزاحمه الصفّ. وصفٌّ يُمرَّر لا شبكة — الأشخاص
-          سؤالٌ جانبي في صفحة بحثٍ عن أعمال */}
-      {people.length > 0 && (
-        <div className="mb-7">
-          <PosterRail title={t.searchPeopleTitle} icon="people">
-            {people.map((p) => (
-              <RailItem key={p.id}>
-                <PosterCard
-                  href={`/person/${p.id}`}
-                  title={p.name}
-                  posterPath={p.profile_path}
-                  posterSize="w185"
-                  fallbackIcon="people"
-                  note={(p.known_for ?? [])
-                    .slice(0, 2)
-                    .map((k) => titleOf(k))
-                    .join(" · ")}
-                />
-              </RailItem>
-            ))}
-          </PosterRail>
-        </div>
-      )}
-
+      {/* الأعمال فوق الأشخاص (طلب أحمد بفيديو «godf»: الأشخاص كانوا
+          يدفنون العراب تحتهم — من يكتب اسم عملٍ أكثر، والممثل يبقى صفاً
+          واضحاً تحت النتائج). وتحت اسم الشخص مهنته وحدها لا أعماله */}
       {results.length > 0 ? (
         <PosterGrid>
           {results.map((r) => (
@@ -149,10 +127,29 @@ async function SearchResults({
             />
           ))}
         </PosterGrid>
-      ) : q ? (
+      ) : q && people.length === 0 ? (
         <p className="text-center text-muted py-16">{t.searchNoResults}</p>
-      ) : (
+      ) : !q ? (
         <p className="text-center text-muted py-16">{t.searchStart}</p>
+      ) : null}
+
+      {people.length > 0 && (
+        <div className={results.length > 0 ? "mt-8" : ""}>
+          <PosterRail title={t.searchPeopleTitle} icon="people">
+            {people.map((p) => (
+              <RailItem key={p.id}>
+                <PosterCard
+                  href={`/person/${p.id}`}
+                  title={p.name}
+                  posterPath={p.profile_path}
+                  posterSize="w185"
+                  fallbackIcon="people"
+                  note={roleName(p.known_for_department, t)}
+                />
+              </RailItem>
+            ))}
+          </PosterRail>
+        </div>
       )}
     </>
   );
