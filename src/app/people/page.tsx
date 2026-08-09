@@ -30,14 +30,16 @@ import { Icon } from "@/components/Icon";
 import { LikeButton } from "@/components/LikeButton";
 import { ReportButton } from "@/components/ReportButton";
 import { PageTabs } from "@/components/ui/PageTabs";
+import { TitleNews } from "@/components/TitleNews";
+import { getTitleNews } from "@/lib/titleNews";
 import { ScrollMemory } from "@/components/ScrollMemory";
 
 /** كم عملاً نطلب له صورةً عرضية — سقفٌ يمنع موجة طلباتٍ بحجم الخط */
 const BACKDROP_LIMIT = 12;
 
-type Tab = "mine" | "all" | "inbox";
+type Tab = "mine" | "all" | "inbox" | "news";
 function asTab(v: string | undefined): Tab {
-  return v === "all" || v === "inbox" ? v : "mine";
+  return v === "all" || v === "inbox" || v === "news" ? v : "mine";
 }
 
 /**
@@ -289,6 +291,10 @@ export default async function PeoplePage({
      ونداءٌ ثانٍ مشروط لا يدخل `Promise.all`: أكثر الحسابات دائرتُها
      نشطة، فلا يُدفع ثمنُه إلا من يحتاجه. والمرشِّح يُلغيه — فراغُ
      مرشِّحٍ ليس فراغ دائرة (نفس تفريق D-106). */
+  /* الأخبار للتبويب الرابع وحده: قسم «جديد فنّانيك» فيها يكلّف نداءات
+     TMDB، ودفعُها في كل فتحةٍ للمجتمع ثمنٌ يدفعه من لم يفتح التبويب */
+  const news = tab === "news" ? await getTitleNews() : [];
+
   const FEED_THIN = 5;
   const suggestions =
     tab === "mine" && kind === null && feed.length < FEED_THIN
@@ -331,6 +337,10 @@ export default async function PeoplePage({
       badge: unread,
       badgeLabel: t.communityUnreadAria(unread),
     },
+    /* التبويب الرابع (طلب أحمد): **بلا عدّاد** — عدد الأخبار ليس مهمّةً
+       تنتظر، وشارةٌ تُلحّ على خبرٍ لا يُطلب فعلاً تُدرَّب عين المستخدم
+       على تجاهل الشارات كلّها */
+    { key: "news", href: "/people?tab=news", label: t.communityTabNews },
   ];
 
   return (
@@ -354,7 +364,9 @@ export default async function PeoplePage({
       />
 
       {/* ===== محتوى التبويب ===== */}
-      {tab === "inbox" ? (
+      {tab === "news" ? (
+        <TitleNews items={news} locale={locale} />
+      ) : tab === "inbox" ? (
         <Inbox
           conversations={conversations}
           startable={startable}
