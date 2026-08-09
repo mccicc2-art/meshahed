@@ -2,13 +2,13 @@
 
 import { useState, useTransition } from "react";
 import { flashError } from "@/lib/toast";
-import { toggleReviewLike } from "@/lib/actions";
+import { toggleActivityLike, toggleReviewLike } from "@/lib/actions";
 import { getDict, type Locale } from "@/lib/i18n";
 import { tap } from "@/lib/haptics";
 import { Icon } from "./Icon";
 
 /**
- * إعجابٌ بمراجعة.
+ * إعجابٌ بمراجعة، أو **بحدثِ مشاهدة** (D-124).
  *
  * الحالة تنقلب فور اللمس ثم تُكتب: الشبكة قد تأخذ نصف ثانية، والزرّ الذي
  * لا يستجيب يُلمس مرّتين. وإن فشلت الكتابة رجعت الحالة إلى ما كانت —
@@ -16,6 +16,11 @@ import { Icon } from "./Icon";
  *
  * ومراجعتك أنت تعرض العدد بلا زرّ: لا يُعجب المرء بنفسه، والقاعدة تمنعه
  * أصلاً في سياسة الإدراج.
+ *
+ * **زرٌّ واحد، وجهتان** (`target`): الصفُّ الذي يحمل تقييماً يكتب في
+ * `review_likes`، وحدثُ المشاهدة في `activity_likes` بمفتاحٍ فيه يوم.
+ * زرّان متطابقان شكلاً لمعنًى واحد كانا سيصيران عائلةً ثانية بلا سبب —
+ * والفرق كلّه في أي فعلٍ يُنادى.
  */
 export function LikeButton({
   reviewUserId,
@@ -24,6 +29,8 @@ export function LikeButton({
   likes,
   likedByMe,
   isMine,
+  target = "review",
+  day,
   locale,
 }: {
   reviewUserId: string;
@@ -32,6 +39,10 @@ export function LikeButton({
   likes: number;
   likedByMe: boolean;
   isMine: boolean;
+  /** وجهة الكتابة — الافتراضي المراجعة كي لا يتغيّر أي نداءٍ قائم */
+  target?: "review" | "activity";
+  /** يوم الحدث (YYYY-MM-DD) — لازمٌ لوجهة النشاط وحدها */
+  day?: string;
   locale: Locale;
 }) {
   const t = getDict(locale);
@@ -56,7 +67,11 @@ export function LikeButton({
     setCount((c) => c + (was ? -1 : 1));
     start(async () => {
       try {
-        await toggleReviewLike(reviewUserId, tmdbId, mediaType, was);
+        if (target === "activity") {
+          await toggleActivityLike(reviewUserId, tmdbId, mediaType, day ?? "", was);
+        } else {
+          await toggleReviewLike(reviewUserId, tmdbId, mediaType, was);
+        }
       } catch (e) {
         flashError((e as Error).message);
         setLiked(was);
