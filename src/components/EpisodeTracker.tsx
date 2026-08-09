@@ -9,6 +9,7 @@ import { getDict, type Dict, type Locale } from "@/lib/i18n";
 import { formatDateShort } from "@/lib/when";
 import { IMG } from "@/lib/media";
 import { Icon } from "./Icon";
+import { ImdbMark } from "./RatingMarks";
 import { Alert } from "./ui/Alert";
 
 export interface TrackerEpisode {
@@ -17,6 +18,9 @@ export interface TrackerEpisode {
   air_date: string | null;
   runtime: number | null;
   still_path: string | null;
+  /** تقييم IMDb — يصل فقط حين يُطلب الموسم بـ`r=1` (زرّ كشف التقييمات)؛
+      null = طُلب فلم يوجد، undefined = لم يُطلب بعد */
+  imdb_rating?: number | null;
 }
 
 /** رأس الموسم — يصل مع الصفحة بلا حلقاته، فالحلقات تُطلب عند الفتح */
@@ -92,6 +96,42 @@ export function EpisodeTracker({
   const watchedAired = Math.min(watched.size, airedTotal || watched.size);
   const progress = airedTotal ? Math.round((watchedAired / airedTotal) * 100) : 0;
 
+  /* ===== تقييمات الحلقات — مخفية افتراضياً (طلب أحمد: «بعض الأحيان
+     تعتبر حرق») ===== تُجلب عند أول ضغطة كشفٍ وحدها: جلبها مع كل موسم
+     كان سيحرق حصة OMDb على من لا يريدها. طلبٌ واحد للموسم كله (OMDb
+     يعيد الموسم بحلقاته)، والردّ يستبدل حلقات الموسم بنسختها المقيَّمة */
+  const [showRatings, setShowRatings] = useState(false);
+  const showRatingsRef = useRef(false);
+  const ratedRef = useRef<Set<number>>(new Set());
+
+  const loadRatings = useCallback(
+    async (n: number) => {
+      if (ratedRef.current.has(n)) return;
+      ratedRef.current.add(n); // يمنع طلباً مكرّراً أثناء الرحلة
+      try {
+        const res = await fetch(`/api/season?tv=${showTmdbId}&s=${n}&r=1`);
+        if (!res.ok) throw new Error(`season ${res.status}`);
+        const json = (await res.json()) as { episodes: TrackerEpisode[] };
+        const eps = json.episodes ?? [];
+        if (eps.length) setEpisodesBySeason((prev) => ({ ...prev, [n]: eps }));
+      } catch {
+        // فشل صامت — الرقم زينة اختيارية؛ يُعاد السعي عند ضغطةٍ قادمة
+        ratedRef.current.delete(n);
+      }
+    },
+    [showTmdbId],
+  );
+
+  function toggleRatings() {
+    const next = !showRatings;
+    showRatingsRef.current = next;
+    setShowRatings(next);
+    tap(8);
+    if (next) {
+      for (const k of Object.keys(episodesBySeason)) void loadRatings(Number(k));
+    }
+  }
+
   const loadSeason = useCallback(
     async (n: number): Promise<TrackerEpisode[]> => {
       const have = episodesBySeason[n];
@@ -105,6 +145,8 @@ export function EpisodeTracker({
         const json = (await res.json()) as { episodes: TrackerEpisode[] };
         const eps = json.episodes ?? [];
         setEpisodesBySeason((prev) => ({ ...prev, [n]: eps }));
+        // التقييمات مكشوفة؟ موسمٌ يُفتح لاحقاً يلحق بها من نفس الضغطة
+        if (showRatingsRef.current) void loadRatings(n);
         return eps;
       } catch {
         setErr(t.showLoadFailed);
@@ -113,7 +155,7 @@ export function EpisodeTracker({
         setLoading(null);
       }
     },
-    [episodesBySeason, showTmdbId, t.showLoadFailed],
+    [episodesBySeason, showTmdbId, t.showLoadFailed, loadRatings],
   );
 
   // الموسم المفتوح افتراضياً يُحمَّل من هنا لا من الخادم: الصفحة كانت
@@ -284,7 +326,25 @@ export function EpisodeTracker({
       <div className="mb-5">
         <div className="flex items-center justify-between text-sm mb-2">
           <span className="text-muted">{t.watchedOf(watchedAired, airedTotal)}</span>
-          <span className="font-semibold text-accent-2">{progress}%</span>
+          <span className="flex items-center gap-1.5">
+            {/* زرّ كشف تقييمات الحلقات (طلب أحمد): مخفية افتراضياً لأن
+                رقم حلقةٍ قادمة قد يحرق — النجمة تمتلئ لوناً وهي مكشوفة */}
+            <button
+              type="button"
+              onClick={toggleRatings}
+              aria-pressed={showRatings}
+              aria-label={showRatings ? t.epRatingsHide : t.epRatingsShow}
+              title={showRatings ? t.epRatingsHide : t.epRatingsShow}
+              className={`grid place-items-center w-9 h-9 -my-2 rounded-full transition ${
+                showRatings
+                  ? "text-accent bg-accent/10"
+                  : "text-muted hover:text-foreground hover:bg-surface-2"
+              }`}
+            >
+              <Icon name="star" size={16} />
+            </button>
+            <span className="font-semibold text-accent-2">{progress}%</span>
+          </span>
         </div>
         <div className="h-1.5 rounded-full bg-surface-2 overflow-hidden">
           {/* scaleX لا width: تحريك width يعيد التخطيط كل إطار — التحويل
@@ -470,6 +530,19 @@ export function EpisodeTracker({
                                 {metaLine(e, epAired, t)}
                               </p>
                             </div>
+
+                            {/* تقييم الحلقة — يظهر فقط بعد ضغطة الكشف؛
+                                شعار IMDb نفسه (D-093: لا رقم بلا مصدره) */}
+                            {showRatings && typeof e.imdb_rating === "number" && (
+                              <span
+                                className="shrink-0 inline-flex items-center gap-1 text-[11px] font-bold tabular-nums"
+                                dir="ltr"
+                                aria-label={`IMDb ${e.imdb_rating.toFixed(1)}`}
+                              >
+                                <ImdbMark className="text-[8px]" />
+                                {e.imdb_rating.toFixed(1)}
+                              </span>
+                            )}
 
                             <span className="hidden sm:block shrink-0 text-xs text-muted text-end tabular-nums">
                               {metaLine(e, epAired, t)}
