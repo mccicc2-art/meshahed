@@ -1253,7 +1253,7 @@ type NewItem = { tmdbId: number; mediaType: MediaType; title: string; posterPath
 async function upsertListWithItems(
   name: string,
   rawItems: NewItem[],
-  kind: "regular" | "watch_order",
+  kind: "regular" | "watch_order" | "ranked",
 ): Promise<{ listId: string; name: string; added: number; created: boolean }> {
   const clean = String(name ?? "").trim().slice(0, 60);
   if (!clean) throw new Error("مدخل غير صالح / Invalid input");
@@ -1273,7 +1273,9 @@ async function upsertListWithItems(
       seen.add(k);
       return true;
     })
-    .slice(0, 100);
+    // السقف 300 لا 100: قوائم TOP 250 (طلب أحمد) تحتاج ٢٥٠ عنصراً —
+    // ويبقى حاجزاً ضد دفعةٍ عابثة بآلاف الصفوف
+    .slice(0, 300);
   if (items.length === 0) {
     throw new Error("لا أعمال لإضافتها / Nothing to add");
   }
@@ -1388,10 +1390,28 @@ export async function createListFromUniverse(slug: string) {
   const universe = universeBySlug(clean);
   if (!universe) throw new Error("عالمٌ غير معروف / Unknown universe");
 
-  const [{ moviesByIds, resolveSetIds }, { getLocale }] = await Promise.all([
+  const [{ moviesByIds, resolveSetIds, topRatedRows, titleOf }, { getLocale }] = await Promise.all([
     import("@/lib/tmdb"),
     import("@/lib/locale"),
   ]);
+
+  /* مجموعات TOP 250: العناصر من قوائم top_rated وقد تكون مسلسلات —
+     والنوع «ranked»: هذه ترتيبُ جودةٍ لا ترتيبُ مشاهدة */
+  if (universe.top) {
+    const [rows, locale] = await Promise.all([
+      topRatedRows(universe.top, universe.topLimit ?? 250),
+      getLocale(),
+    ]);
+    if (!rows.length) throw new Error("تعذّر تحميل القائمة / Could not load this list");
+    const items: NewItem[] = rows.map((r) => ({
+      tmdbId: r.id,
+      mediaType: (r.media_type === "tv" ? "tv" : "movie") as MediaType,
+      title: titleOf(r),
+      posterPath: r.poster_path,
+    }));
+    return upsertListWithItems(universeName(universe, locale), items, "ranked");
+  }
+
   // مجموعات collectionId تُحلّ من سلسلة TMDB بترتيب الإصدار
   const ids = await resolveSetIds(universe);
   const [movies, locale] = await Promise.all([

@@ -25,6 +25,15 @@ export interface Universe {
   /** ترتيب أحداثٍ منسّق (العوالم) أم ترتيب إصدار (المجموعات كديزني)؟
       يقرّر سطر الوعد على البطاقة: «بترتيب الأحداث» لا يُقال لما ليس كذلك */
   storyOrder?: boolean;
+  /**
+   * مجموعة «الأعلى تقييماً» الديناميكية (طلب أحمد — TOP 250): لا معرّفات
+   * مكتوبة ولا سلسلة TMDB، بل قوائم top_rated تُحلّ عند الطلب عبر
+   * `topRatedRows` في tmdb.ts — فتتحدّث وحدها كل ساعة مع خبيئة tmdb().
+   * وجودُها يعني أن العناصر قد تكون مسلسلات لا أفلاماً فقط.
+   */
+  top?: "movie" | "tv" | "anime";
+  /** حجم مجموعة top — الافتراضي ٢٥٠ */
+  topLimit?: number;
 }
 
 export const UNIVERSES: Universe[] = [
@@ -372,6 +381,17 @@ export const SUBLISTS2: Universe[] = [
 ];
 
 
+/**
+ * TOP 250 (طلب أحمد 9 Aug): ثلاث قوائم ديناميكية — أفلام ومسلسلات
+ * وأنمي — تُحلّ من قوائم TMDB top_rated عند الطلب. الترتيب بتقييم TMDB
+ * لا IMDb عمداً: ٧٥٠ عملاً بترتيب IMDb تعني ٧٥٠ طلب OMDb — الحصة كلها.
+ */
+export const TOP_LISTS: Universe[] = [
+  { slug: "top250-movies", ar: "أفضل ٢٥٠ فيلماً", en: "Top 250 Movies", top: "movie" },
+  { slug: "top250-shows", ar: "أفضل ٢٥٠ مسلسلاً", en: "Top 250 Shows", top: "tv" },
+  { slug: "top250-anime", ar: "أفضل ٢٥٠ أنمي", en: "Top 250 Anime", top: "anime" },
+];
+
 export interface Franchise {
   slug: string;
   ar: string;
@@ -380,9 +400,16 @@ export interface Franchise {
 }
 
 const bySlug = (slug: string): Universe =>
-  [...UNIVERSES, ...CURATED, ...SUBLISTS, ...SUBLISTS2].find((u) => u.slug === slug)!;
+  [...TOP_LISTS, ...UNIVERSES, ...CURATED, ...SUBLISTS, ...SUBLISTS2].find((u) => u.slug === slug)!;
 
 export const FRANCHISES: Franchise[] = [
+  /* TOP 250 أول الصفوف (طلب أحمد): مرجعُ الجودة قبل صفوف العوالم */
+  {
+    slug: "top250",
+    ar: "TOP 250",
+    en: "TOP 250",
+    sets: ["top250-movies", "top250-shows", "top250-anime"].map(bySlug),
+  },
   {
     slug: "marvel",
     ar: "عالم مارفل",
@@ -446,7 +473,7 @@ export function franchiseName(f: Franchise, locale: "ar" | "en") {
 
 /** كل المجموعات المنسّقة معاً — قاموس `universeBySlug` (محرّك حفظٍ واحد) */
 export function allCuratedSets(): Universe[] {
-  return [...UNIVERSES, ...CURATED, ...SUBLISTS, ...SUBLISTS2];
+  return [...TOP_LISTS, ...UNIVERSES, ...CURATED, ...SUBLISTS, ...SUBLISTS2];
 }
 
 /** أي عالمٍ ينتمي إليه هذا الفيلم؟ — فحصٌ محليّ بلا طلب شبكة (العوالم وحدها) */

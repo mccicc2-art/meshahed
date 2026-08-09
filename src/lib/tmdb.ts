@@ -1169,6 +1169,52 @@ export async function top50(
 }
 
 /**
+ * الأعلى تقييماً على الإطلاق — لقوائم TOP 250 (طلب أحمد 9 Aug).
+ *
+ * الأفلام والمسلسلات من قوائم TMDB الرسمية `top_rated` (عتبات أصواتها
+ * مبنية فيها)، والأنمي — لا top_rated له — من `/discover` بمفتاح الأنمي
+ * مرتّباً بمتوسط التقييم فوق عتبة أصوات تمنع عملاً بعشرة أصواتٍ من
+ * التصدّر. الترتيب بتقييم TMDB لا IMDb عمداً: ٢٥٠ ×٣ بترتيب IMDb تعني
+ * حرق حصة OMDb كلها. الصفحات متوازية ومخبّأة ساعةً في طبقة tmdb().
+ */
+export async function topRatedRows(
+  media: "movie" | "tv" | "anime",
+  limit = 250,
+): Promise<SearchResult[]> {
+  const pageCount = Math.ceil(limit / 20);
+  const pageNums = Array.from({ length: pageCount }, (_, i) => i + 1);
+  const mt: MediaType = media === "movie" ? "movie" : "tv";
+
+  const pages = await Promise.all(
+    pageNums.map((page) =>
+      (media === "anime"
+        ? tmdb<{ results: SearchResult[] }>("/discover/tv", {
+            with_keywords: ANIME_KEYWORD,
+            sort_by: "vote_average.desc",
+            "vote_count.gte": "200",
+            include_adult: "false",
+            page: String(page),
+          })
+        : tmdb<{ results: SearchResult[] }>(`/${mt}/top_rated`, {
+            page: String(page),
+          })
+      ).catch(() => ({ results: [] as SearchResult[] })),
+    ),
+  );
+
+  const seen = new Set<number>();
+  const rows: SearchResult[] = [];
+  for (const p of pages) {
+    for (const r of p.results ?? []) {
+      if (!r.poster_path || seen.has(r.id)) continue;
+      seen.add(r.id);
+      rows.push({ ...r, media_type: mt });
+    }
+  }
+  return rows.slice(0, limit);
+}
+
+/**
  * أعمال فنّانيك — لصفّ «من فنّانيك» في اكتشف (person_follows.sql).
  *
  * `/discover/movie` بـ`with_people` (الشرطة العمودية = «أو»). أفلامٌ فقط:
