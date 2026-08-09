@@ -113,7 +113,15 @@ export function LibraryGrid({
       : byStatus;
     if (sort === "title") return [...filtered].sort((a, b) => a.title.localeCompare(b.title));
     if (sort === "progress")
-      return [...filtered].sort((a, b) => (b.progress ?? 0) - (a.progress ?? 0));
+      /* غير المكتمل أولاً (طلب أحمد 9 Aug): من يفرز بالتقدم يبحث عمّا
+         يُكمله لا عمّا أنهاه — المكتمل ١٠٠٪ ذيلٌ، والباقي أعلاه تنازلياً */
+      return [...filtered].sort((a, b) => {
+        const ap = a.progress ?? 0;
+        const bp = b.progress ?? 0;
+        const aDone = ap >= 100 ? 1 : 0;
+        const bDone = bp >= 100 ? 1 : 0;
+        return aDone - bDone || bp - ap;
+      });
     return filtered;
   }, [tab, shows, movies, q, sort]);
 

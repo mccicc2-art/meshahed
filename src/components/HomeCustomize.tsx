@@ -67,6 +67,8 @@ export function HomeCustomize({
     recap: { icon: "book", label: t.recapTitle },
     shows: { icon: "tv", label: t.myShows },
     movies: { icon: "film", label: t.myMovies },
+    ratings: { icon: "star", label: t.panelRatings },
+    lists: { icon: "list", label: t.myLists },
     trending: { icon: "trending", label: t.trendingWeek },
   };
 
@@ -79,6 +81,7 @@ export function HomeCustomize({
     upcoming: { icon: "hourglass", label: t.libUpcoming },
     completed: { icon: "check", label: t.libTabFinished },
     dropped: { icon: "card", label: t.droppedBadge },
+    ratings: { icon: "star", label: t.panelRatings },
   };
 
   const hiddenStats = HEADER_STATS.filter((k) => !prefs.statsPick.includes(k));

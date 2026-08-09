@@ -20,6 +20,26 @@ export function ImdbMark({ className = "" }: { className?: string }) {
   );
 }
 
+/** نجمة TMDB الزرقاء — احتياط ما لا تقييم IMDb له (قرار أحمد 9 Aug:
+    «خل يظهر تقييم TMDB ولوقو نجمة زرقاء» — يعدّل صمت D-093 الكامل).
+    اللون أزرق TMDB المميز فلا تُخلط بشارة IMDb الصفراء أبداً */
+export function TmdbMark({ size = 12, className = "" }: { size?: number; className?: string }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      aria-hidden
+      className={`shrink-0 ${className}`}
+    >
+      <path
+        fill="#01B4E4"
+        d="M12 1.8 15 9l7.8.4-6 5 1.9 7.6L12 17.8 5.3 22l1.9-7.6-6-5L9 9l3-7.2Z"
+      />
+    </svg>
+  );
+}
+
 /** شعار الطماطم: الثمرة الحمراء بورقتها — رسمٌ متجهيّ مبسّط يُقرأ في ١٤px */
 export function RtMark({ size = 14, className = "" }: { size?: number; className?: string }) {
   return (
