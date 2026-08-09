@@ -11,6 +11,8 @@ import { IMG } from "@/lib/media";
 import { Icon } from "./Icon";
 import { ImdbMark } from "./RatingMarks";
 import { Alert } from "./ui/Alert";
+import { EpisodeRateSheet, type EpisodeTarget } from "./EpisodeRateSheet";
+import type { EpisodeRatingRow } from "@/lib/data";
 
 export interface TrackerEpisode {
   episode_number: number;
@@ -56,6 +58,7 @@ export function EpisodeTracker({
   airedTotal,
   defaultRuntime,
   initialWatched,
+  initialEpisodeRatings = [],
   locale,
 }: {
   showTmdbId: number;
@@ -67,10 +70,25 @@ export function EpisodeTracker({
   airedTotal: number;
   defaultRuntime: number | null;
   initialWatched: string[];
+  /** تقييماتي في هذا المسلسل (D-139) — مفتاحُها «موسم-حلقة» */
+  initialEpisodeRatings?: EpisodeRatingRow[];
   locale: Locale;
 }) {
   const t = getDict(locale);
   const [watched, setWatched] = useState<Set<string>>(new Set(initialWatched));
+
+  /* تقييماتي — خريطةٌ في الحالة لا قراءةٌ من الخادم عند كل حفظ: الورقة
+     تُبلّغ بالنتيجة فيتحدّث الصفّ فوراً، كبقيّة أفعال هذه الشاشة */
+  const [myRatings, setMyRatings] = useState<Map<string, { rating: number; review: string | null }>>(
+    () =>
+      new Map(
+        initialEpisodeRatings.map((r) => [
+          episodeKey(r.season_number, r.episode_number),
+          { rating: r.rating, review: r.review },
+        ]),
+      ),
+  );
+  const [rateTarget, setRateTarget] = useState<EpisodeTarget | null>(null);
   const [, start] = useTransition();
 
   // وصلت لقطة خادمٍ جديدة (مثلاً بعد «شفته كله» من الترويسة)؟ تُعتمد هي —
@@ -544,6 +562,51 @@ export function EpisodeTracker({
                               </span>
                             )}
 
+                            {/* **تقييمي أنا — بابٌ دائم لا يظهر بضغطة كشف**
+                                (D-139): زرّ كشف التقييمات يخصّ أرقام IMDb
+                                لأنها حرقٌ محتمل لحلقةٍ لم تُشاهَد؛ أما رأيك
+                                أنت فليس حرقاً عليك، وإخفاؤه خلف ضغطةٍ يدفن
+                                الفعل الذي جاء المستخدم من أجله.
+                                والحلقة التي لم تُبثّ لا تُقيَّم. */}
+                            {epAired && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  tap(8);
+                                  const mine = myRatings.get(
+                                    episodeKey(s.season_number, e.episode_number),
+                                  );
+                                  setRateTarget({
+                                    season: s.season_number,
+                                    episode: e.episode_number,
+                                    name: e.name,
+                                    runtime: e.runtime ?? defaultRuntime,
+                                    rating: mine?.rating ?? null,
+                                    review: mine?.review ?? null,
+                                  });
+                                }}
+                                aria-label={t.epRateAria(s.season_number, e.episode_number)}
+                                className="shrink-0 inline-flex items-center gap-1 text-[12px] font-bold tabular-nums px-1.5 py-1 rounded-lg hover:bg-surface-2 transition"
+                                dir="ltr"
+                              >
+                                {(() => {
+                                  const mine = myRatings.get(
+                                    episodeKey(s.season_number, e.episode_number),
+                                  );
+                                  return mine ? (
+                                    <>
+                                      <span className="text-accent">★</span>
+                                      <span>{mine.rating}</span>
+                                    </>
+                                  ) : (
+                                    <span className="text-muted/40 hover:text-muted transition">
+                                      ★
+                                    </span>
+                                  );
+                                })()}
+                              </button>
+                            )}
+
                             <span className="hidden sm:block shrink-0 text-xs text-muted text-end tabular-nums">
                               {metaLine(e, epAired, t)}
                             </span>
@@ -570,6 +633,27 @@ export function EpisodeTracker({
           );
         })}
       </div>
+
+      <EpisodeRateSheet
+        showTmdbId={showTmdbId}
+        target={rateTarget}
+        locale={locale}
+        onClose={() => setRateTarget(null)}
+        onSaved={(season, episode, rating, review) => {
+          const k = episodeKey(season, episode);
+          setMyRatings((prev) => {
+            const next = new Map(prev);
+            if (rating === null) next.delete(k);
+            else next.set(k, { rating, review });
+            return next;
+          });
+          /* التقييم يعني المشاهدة (قرار أحمد): الصفّ يعلّم نفسه فوراً
+             بدل انتظار جولةٍ إلى الخادم — والقاعدة كتبتهما معاً أصلاً */
+          if (rating !== null) {
+            setWatched((prev) => (prev.has(k) ? prev : new Set(prev).add(k)));
+          }
+        }}
+      />
     </div>
   );
 }
