@@ -8,11 +8,12 @@ import { ProfileForm } from "./ProfileForm";
 import { AccountSettings } from "./AccountSettings";
 import { RegionSwitch } from "./RegionSwitch";
 import { HomeCustomize } from "./HomeCustomize";
+import { ProfileCustomize } from "./ProfileCustomize";
 import { PrivacyData } from "./PrivacyData";
 import { BlockedList } from "./BlockedList";
 import { LibraryAccessList } from "./LibraryAccessList";
 import { ImportPanel } from "./ImportPanel";
-import { chipClass } from "./ui/controls";
+import { chipClass, segmentedItem, segmentedTrackFull } from "./ui/controls";
 
 type SectionKey =
   | "profile"
@@ -56,6 +57,7 @@ export function SettingsShell({
   isPrivate,
   hideFollowLists = false,
   homePrefs,
+  profilePrefs,
   traktReady,
   initial = "profile",
 }: {
@@ -79,12 +81,14 @@ export function SettingsShell({
   isPrivate: boolean;
   hideFollowLists?: boolean;
   homePrefs?: unknown;
+  profilePrefs?: unknown;
   /** هل مفاتيح Trakt مضبوطة على الخادم؟ الزرّ لا يُعرض بلا ذلك */
   traktReady: boolean;
   initial?: SectionKey;
 }) {
   const t = getDict(locale);
   const [active, setActive] = useState<SectionKey>(initial);
+  const [custTab, setCustTab] = useState<"home" | "profile">("home");
 
   const nav: { key: SectionKey; icon: IconName; label: string }[] = [
     { key: "profile", icon: "edit", label: t.settingsNavProfile },
@@ -174,14 +178,47 @@ export function SettingsShell({
           </div>
         );
       case "customize":
+        /* سطحان لا صفحتان (D-129): الرئيسية لك، والبروفايل لمن يزورك —
+           مقسّمٌ من عائلة `segmented` نفسها (خياران معروفان يستبعد
+           أحدهما الآخر؛ الرقاقة للقوائم المفتوحة لا لهذا) */
         return (
-          <HomeCustomize
-            locale={locale}
-            nickname={nickname}
-            avatarUrl={avatarUrl}
-            genres={genres}
-            initial={homePrefs}
-          />
+          <div className="space-y-4">
+            <div className={segmentedTrackFull}>
+              {([
+                { k: "home" as const, label: t.custTabHome },
+                { k: "profile" as const, label: t.custTabProfile },
+              ]).map(({ k, label }) => (
+                <button
+                  key={k}
+                  type="button"
+                  onClick={() => setCustTab(k)}
+                  aria-selected={custTab === k}
+                  role="tab"
+                  className={segmentedItem(custTab === k, "flex-1 basis-0")}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {custTab === "home" ? (
+              <HomeCustomize
+                locale={locale}
+                nickname={nickname}
+                avatarUrl={avatarUrl}
+                genres={genres}
+                initial={homePrefs}
+              />
+            ) : (
+              <ProfileCustomize
+                locale={locale}
+                nickname={nickname}
+                avatarUrl={avatarUrl}
+                genres={genres}
+                initial={profilePrefs}
+              />
+            )}
+          </div>
         );
       case "billing":
         return (

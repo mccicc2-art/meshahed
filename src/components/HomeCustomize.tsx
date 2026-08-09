@@ -15,18 +15,17 @@ import {
   type HomeSection,
   type HeaderStatKey,
 } from "@/lib/homePrefs";
-import { Icon, type IconName } from "./Icon";
+import { type IconName } from "./Icon";
 import { Alert } from "./ui/Alert";
 import { buttonClass } from "./ui/Button";
+import { SectionOrderList, ToggleRow } from "./ui/SectionOrderList";
 
 /**
  * تخصيص الرئيسية.
  *
- * قسمان: مفاتيح إظهارٍ لعناصر الترويسة، وقائمة ترتيبٍ لأقسام المحتوى.
- * الترتيب بأسهمٍ لا سحبٍ: السحب على الجوال يتعارك مع تمرير الصفحة
- * ويحتاج مكتبة، والسهمان يؤدّيان الغرض بلا كليهما. وإخفاء القسم من
- * القائمة نفسها — عين مفتوحة أو مغلقة — فالمكان الذي تُرتّب فيه هو
- * المكان الذي تُخفي فيه.
+ * ثلاثة أقسام: مفاتيح إظهارٍ لعناصر الترويسة، وخانات بطاقة الأرقام،
+ * وترتيب أقسام المحتوى. الأخيران يرسمهما `SectionOrderList` نفسه الذي
+ * ترسم به شاشة البروفايل (D-129) — سجلّاتٌ ثلاثة، مصنعٌ واحد.
  *
  * الحفظ يمرّ عبر `updateProfile` نفسه الذي تكتب به بقية أقسام
  * الإعدادات: نموذجٌ واحد لجدولٍ واحد.
@@ -84,49 +83,16 @@ export function HomeCustomize({
     ratings: { icon: "star", label: t.panelRatings },
   };
 
-  const hiddenStats = HEADER_STATS.filter((k) => !prefs.statsPick.includes(k));
-
-  // القائمة تعرض الأقسام كلها: المرتَّبة أولاً ثم المخفيّة بعينٍ مغلقة
-  const hidden = HOME_SECTIONS.filter((s) => !prefs.order.includes(s));
+  const orderLabels = {
+    up: t.custMoveUp,
+    down: t.custMoveDown,
+    hide: t.custHide,
+    show: t.custShow,
+  };
 
   function set(next: HomePrefs) {
     setSaved(false);
     setPrefs(next);
-  }
-
-  function move(sec: HomeSection, dir: -1 | 1) {
-    const order = [...prefs.order];
-    const i = order.indexOf(sec);
-    const j = i + dir;
-    if (i < 0 || j < 0 || j >= order.length) return;
-    [order[i], order[j]] = [order[j], order[i]];
-    set({ ...prefs, order });
-  }
-
-  function toggleSection(sec: HomeSection) {
-    const order = prefs.order.includes(sec)
-      ? prefs.order.filter((s) => s !== sec)
-      : [...prefs.order, sec];
-    set({ ...prefs, order });
-  }
-
-  function moveStat(k: HeaderStatKey, dir: -1 | 1) {
-    const pick = [...prefs.statsPick];
-    const i = pick.indexOf(k);
-    const j = i + dir;
-    if (i < 0 || j < 0 || j >= pick.length) return;
-    [pick[i], pick[j]] = [pick[j], pick[i]];
-    set({ ...prefs, statsPick: pick });
-  }
-
-  function toggleStat(k: HeaderStatKey) {
-    if (prefs.statsPick.includes(k)) {
-      if (prefs.statsPick.length <= STATS_PICK_MIN) return;
-      set({ ...prefs, statsPick: prefs.statsPick.filter((s) => s !== k) });
-    } else {
-      if (prefs.statsPick.length >= STATS_PICK_MAX) return;
-      set({ ...prefs, statsPick: [...prefs.statsPick, k] });
-    }
   }
 
   function save() {
@@ -147,9 +113,6 @@ export function HomeCustomize({
     });
   }
 
-  const rowCls =
-    "flex items-center justify-between gap-3 px-3.5 py-3 border-b border-[color:var(--divider)] last:border-b-0";
-
   return (
     <div className="space-y-4">
       {/* ===== عناصر الترويسة ===== */}
@@ -159,26 +122,12 @@ export function HomeCustomize({
 
         <div className="rounded-xl border border-border overflow-hidden">
           {toggles.map(({ key, label }) => (
-            <label key={key} className={`${rowCls} cursor-pointer`}>
-              <span className="text-sm">{label}</span>
-              <input
-                type="checkbox"
-                checked={prefs[key]}
-                onChange={() => set({ ...prefs, [key]: !prefs[key] })}
-                className="sr-only peer"
-              />
-              {/* مفتاح iOS: المسار يتلوّن والقرص ينزلق */}
-              <span
-                aria-hidden
-                className="relative w-11 h-6.5 shrink-0 rounded-full transition peer-focus-visible:outline-2 peer-focus-visible:outline-accent bg-surface-2 peer-checked:bg-accent"
-              >
-                <span
-                  className={`absolute top-0.5 start-0.5 w-5.5 h-5.5 rounded-full bg-white shadow transition-transform ${
-                    prefs[key] ? "translate-x-[18px] rtl:-translate-x-[18px]" : ""
-                  }`}
-                />
-              </span>
-            </label>
+            <ToggleRow
+              key={key}
+              label={label}
+              checked={prefs[key]}
+              onChange={() => set({ ...prefs, [key]: !prefs[key] })}
+            />
           ))}
         </div>
       </section>
@@ -188,67 +137,15 @@ export function HomeCustomize({
         <h2 className="text-sm font-bold mb-1">{t.custStatsCard}</h2>
         <p className="text-xs text-muted leading-relaxed mb-3">{t.custStatsPickHint}</p>
 
-        <div className="rounded-xl border border-border overflow-hidden">
-          {prefs.statsPick.map((k, i) => (
-            <div key={k} className={rowCls}>
-              <span className="flex items-center gap-2.5 min-w-0 text-sm">
-                <Icon name={statMeta[k].icon} size={18} className="text-muted shrink-0" />
-                <span className="truncate">{statMeta[k].label}</span>
-              </span>
-              <span className="flex items-center gap-1 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => moveStat(k, -1)}
-                  disabled={i === 0}
-                  aria-label={t.custMoveUp}
-                  title={t.custMoveUp}
-                  className="grid place-items-center w-9 h-9 rounded-lg text-muted hover:text-foreground hover:bg-surface-2 disabled:opacity-30 disabled:pointer-events-none transition"
-                >
-                  <Icon name="chevron-up" size={16} strokeWidth={2.2} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => moveStat(k, 1)}
-                  disabled={i === prefs.statsPick.length - 1}
-                  aria-label={t.custMoveDown}
-                  title={t.custMoveDown}
-                  className="grid place-items-center w-9 h-9 rounded-lg text-muted hover:text-foreground hover:bg-surface-2 disabled:opacity-30 disabled:pointer-events-none transition"
-                >
-                  <Icon name="chevron-down" size={16} strokeWidth={2.2} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => toggleStat(k)}
-                  disabled={prefs.statsPick.length <= STATS_PICK_MIN}
-                  aria-label={t.custHide}
-                  title={t.custHide}
-                  className="grid place-items-center w-9 h-9 rounded-lg text-muted hover:text-foreground hover:bg-surface-2 disabled:opacity-30 disabled:pointer-events-none transition"
-                >
-                  <Icon name="eye" size={16} />
-                </button>
-              </span>
-            </div>
-          ))}
-
-          {hiddenStats.map((k) => (
-            <div key={k} className={`${rowCls} opacity-50`}>
-              <span className="flex items-center gap-2.5 min-w-0 text-sm">
-                <Icon name={statMeta[k].icon} size={18} className="text-muted shrink-0" />
-                <span className="truncate line-through">{statMeta[k].label}</span>
-              </span>
-              <button
-                type="button"
-                onClick={() => toggleStat(k)}
-                disabled={prefs.statsPick.length >= STATS_PICK_MAX}
-                aria-label={t.custShow}
-                title={t.custShow}
-                className="grid place-items-center w-9 h-9 rounded-lg text-muted hover:text-foreground hover:bg-surface-2 disabled:opacity-30 disabled:pointer-events-none transition shrink-0"
-              >
-                <Icon name="eye-off" size={16} />
-              </button>
-            </div>
-          ))}
-        </div>
+        <SectionOrderList
+          all={HEADER_STATS}
+          picked={prefs.statsPick}
+          meta={statMeta}
+          labels={orderLabels}
+          min={STATS_PICK_MIN}
+          max={STATS_PICK_MAX}
+          onChange={(statsPick) => set({ ...prefs, statsPick })}
+        />
       </section>
 
       {/* ===== ترتيب الأقسام ===== */}
@@ -256,65 +153,13 @@ export function HomeCustomize({
         <h2 className="text-sm font-bold mb-1">{t.custOrderSection}</h2>
         <p className="text-xs text-muted leading-relaxed mb-3">{t.custOrderHint}</p>
 
-        <div className="rounded-xl border border-border overflow-hidden">
-          {prefs.order.map((sec, i) => (
-            <div key={sec} className={rowCls}>
-              <span className="flex items-center gap-2.5 min-w-0 text-sm">
-                <Icon name={sectionMeta[sec].icon} size={18} className="text-muted shrink-0" />
-                <span className="truncate">{sectionMeta[sec].label}</span>
-              </span>
-              <span className="flex items-center gap-1 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => move(sec, -1)}
-                  disabled={i === 0}
-                  aria-label={t.custMoveUp}
-                  title={t.custMoveUp}
-                  className="grid place-items-center w-9 h-9 rounded-lg text-muted hover:text-foreground hover:bg-surface-2 disabled:opacity-30 disabled:pointer-events-none transition"
-                >
-                  <Icon name="chevron-up" size={16} strokeWidth={2.2} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => move(sec, 1)}
-                  disabled={i === prefs.order.length - 1}
-                  aria-label={t.custMoveDown}
-                  title={t.custMoveDown}
-                  className="grid place-items-center w-9 h-9 rounded-lg text-muted hover:text-foreground hover:bg-surface-2 disabled:opacity-30 disabled:pointer-events-none transition"
-                >
-                  <Icon name="chevron-down" size={16} strokeWidth={2.2} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => toggleSection(sec)}
-                  aria-label={t.custHide}
-                  title={t.custHide}
-                  className="grid place-items-center w-9 h-9 rounded-lg text-muted hover:text-foreground hover:bg-surface-2 transition"
-                >
-                  <Icon name="eye" size={16} />
-                </button>
-              </span>
-            </div>
-          ))}
-
-          {hidden.map((sec) => (
-            <div key={sec} className={`${rowCls} opacity-50`}>
-              <span className="flex items-center gap-2.5 min-w-0 text-sm">
-                <Icon name={sectionMeta[sec].icon} size={18} className="text-muted shrink-0" />
-                <span className="truncate line-through">{sectionMeta[sec].label}</span>
-              </span>
-              <button
-                type="button"
-                onClick={() => toggleSection(sec)}
-                aria-label={t.custShow}
-                title={t.custShow}
-                className="grid place-items-center w-9 h-9 rounded-lg text-muted hover:text-foreground hover:bg-surface-2 transition shrink-0"
-              >
-                <Icon name="eye-off" size={16} />
-              </button>
-            </div>
-          ))}
-        </div>
+        <SectionOrderList
+          all={HOME_SECTIONS}
+          picked={prefs.order}
+          meta={sectionMeta}
+          labels={orderLabels}
+          onChange={(order) => set({ ...prefs, order })}
+        />
 
         <button
           type="button"
