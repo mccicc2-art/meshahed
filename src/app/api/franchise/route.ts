@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getUser, getWatchedMovieIds, getFollows } from "@/lib/data";
+import { getUser, getWatchedMovieIds, getFollows, getImdbChart } from "@/lib/data";
 import { awardWinners, getCollection, moviesByIds, posterUrl, resolveSetIds, titleOf, topRatedRows, yearOf } from "@/lib/tmdb";
 import { rankByImdb, withImdbRatings } from "@/lib/omdb";
 import { universeBySlug, universeName } from "@/lib/universes";
@@ -76,13 +76,29 @@ export async function GET(request: Request) {
          فبِركةٌ بحجم القائمة تعني قائمةً ناقصة. والترتيب بايزيّ لا
          بالمتوسّط العاري: «الأب الروحي» بمليونَي صوت لا يزيحه فيلمٌ
          ٩٫٤ بألف. هذا هو العيب الذي أُبلغنا عنه، وهذا موضع إصلاحه. */
-      const [pool, watchedIds, follows, locale] = await Promise.all([
-        topRatedRows(u.top, Math.round(want * 1.6)),
+      const [chart, watchedIds, follows, locale] = await Promise.all([
+        getImdbChart(u.top, want),
         getWatchedMovieIds(),
         getFollows(),
         getLocale(),
       ]);
-      const rows = rankByImdb(await withImdbRatings(pool), { want }).slice(0, want);
+      /* **قائمة IMDb المثبَّتة أولاً** (D-135): بِركتها IMDb كلّها لا
+         أربعمئة عملٍ من TMDB. وإن كانت فارغة (الهجرة ٥٠ لم تُشغَّل أو
+         المسوّدة لم تُملأ) سقطنا إلى مسار D-132 — أضعفُ لا مكسور. */
+      const rows: { id: number; media_type: string; poster_path: string | null;
+                    title?: string; name?: string; release_date?: string;
+                    first_air_date?: string }[] = chart.length
+        ? chart.map((c) => ({
+            id: c.tmdb_id,
+            media_type: c.media_type,
+            poster_path: c.poster_path,
+            title: c.title ?? undefined,
+            name: c.title ?? undefined,
+          }))
+        : rankByImdb(
+            await withImdbRatings(await topRatedRows(u.top, Math.round(want * 1.6))),
+            { want },
+          ).slice(0, want);
       const savedKeys = new Set(follows.map((f) => `${f.media_type}-${f.tmdb_id}`));
       return NextResponse.json({
         name: universeName(u, locale === "en" ? "en" : "ar"),
