@@ -152,12 +152,21 @@ export async function withImdbRatings<T extends SearchResult>(rows: T[]): Promis
           const ext = await externalRatings(iid);
           const n = ext?.imdb ? Number(ext.imdb) : NaN;
           r.imdb_rating = Number.isFinite(n) ? n : null;
-          fetched.push({
-            media_type: r.media_type === "tv" ? "tv" : "movie",
-            tmdb_id: r.id,
-            imdb_id: iid ?? null,
-            imdb_rating: r.imdb_rating,
-          });
+          /* «وجدنا رقماً» أو «لا معرّف IMDb أصلاً» وحدهما يُخزَّنان.
+             أما «سألنا OMDb فلم يُجب برقم» فلا: ردُّه واحد للحالتين —
+             عملٌ بلا تقييم فعلاً، وحصةٌ منهكة (Request limit) — وتخزينُ
+             الثانية يسمّم المخزن بـnull كاذبة تعيش يوماً كاملاً بعد
+             تعافي الحصة (وهو ما كاد يحدث يوم التشغيل: الحصة كانت
+             محروقة ساعتها). غير المخزَّن يُعاد سؤاله — وخبيئة fetch
+             اليومية تمنع التكرار داخل النشرة الواحدة */
+          if (Number.isFinite(n) || !iid) {
+            fetched.push({
+              media_type: r.media_type === "tv" ? "tv" : "movie",
+              tmdb_id: r.id,
+              imdb_id: iid ?? null,
+              imdb_rating: r.imdb_rating,
+            });
+          }
         }),
       );
     }
