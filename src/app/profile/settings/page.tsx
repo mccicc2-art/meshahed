@@ -66,6 +66,7 @@ export default async function SettingsPage({
         isPrivate={!!profile?.is_private}
         hideFollowLists={!!(profile as { hide_follow_lists?: boolean } | null)?.hide_follow_lists}
         homePrefs={profile?.home_prefs}
+        profilePrefs={profile?.profile_prefs}
         traktReady={traktConfigured()}
         initial={initial}
       />
