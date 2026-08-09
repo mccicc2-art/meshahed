@@ -51,6 +51,7 @@ import {
 import { WeekStrip, type WeekEntry } from "@/components/WeekStrip";
 import { ShowStatsSync, type ShowStat } from "@/components/ShowStatsSync";
 import { FollowMetaSync, MovieStatsSync } from "@/components/MetaSync";
+import { RoutePrewarm } from "@/components/RoutePrewarm";
 
 export default async function HomePage() {
   const user = await getUser();
@@ -282,6 +283,10 @@ export default async function HomePage() {
      الهيكل يحجز ارتفاع صفّين (D-046). نمطُ /news نفسه (D-071). */
   return (
     <div className="space-y-8 sm:space-y-10">
+      {/* تسخين بقية التبويبات بعد هدوء الرئيسية (طلب أحمد) — أول ضغطة
+          تبويب تُعاد من كاش الراوتر لحظياً. البحث ليس بينها: تبويبه
+          ورقةٌ تنبثق لا صفحةٌ تُجلب */}
+      <RoutePrewarm routes={["/news", "/library", "/people"]} />
       <ProfileHeader
         displayName={displayName}
         bioText={profile?.bio ?? null}
