@@ -45,6 +45,7 @@ export function PageTabs({
   action,
   extra,
   asNav = false,
+  className = "",
 }: {
   items: PageTab[];
   active: string;
@@ -55,6 +56,16 @@ export function PageTabs({
   extra?: React.ReactNode;
   /** روابط لا أزرار: `nav` + `aria-current` بدل `tablist` + `aria-selected` */
   asNav?: boolean;
+  /**
+   * أصنافٌ تُضاف إلى الجذر **اللاصق** نفسه.
+   *
+   * **لماذا لا يلفّه المستدعي بحاويةٍ بدلاً من ذلك:** `position: sticky`
+   * يتحرّك داخل **حدود أبيه** لا داخل الصفحة. فحاويةٌ تلفّ الرأس وحده
+   * تكون بارتفاعه، فلا يبقى للّاصق مسافةٌ يقطعها ويمرّ مع الصفحة كأنه
+   * ليس لاصقاً. وقع هذا فعلاً في اكتشف (بلاغ أحمد ٩ Aug: «عمود التبويبات
+   * ظاهر مثل قبل»): حاويةُ `transition-opacity` كانت أباه القصير.
+   */
+  className?: string;
 }) {
   const inner = items.map((tb) => {
     const on = tb.key === active;
@@ -123,7 +134,9 @@ export function PageTabs({
        بفجوةٍ وقُرئ خطّاً ثانياً. وضعُه هنا يجعل الأصفر **جزءاً من الخطّ
        الرمادي نفسه**. والصفّ يمتدّ إلى حافّتَي الشاشة بهامشٍ سالب
        ثانٍ كي يبقى الخطّ بعرض الشاشة كما كان. */
-    <div className="sticky top-[var(--sticky-top)] z-20 -mx-4 px-4 pt-1 bg-[color:var(--background)]">
+    <div
+      className={`sticky top-[var(--sticky-top)] z-20 -mx-4 px-4 pt-1 bg-[color:var(--background)]${className ? ` ${className}` : ""}`}
+    >
       <div className="-mx-4 px-4 flex items-stretch gap-2 border-b border-[color:var(--divider)]">
         {asNav ? (
           <nav aria-label={ariaLabel} className="min-w-0 flex-1 flex items-stretch">
