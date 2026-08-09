@@ -14,6 +14,7 @@ import {
   getProfile,
   getAllMovieProgress,
   getMyRatings,
+  getMyLists,
   getFollowStats,
   getReceivedLikes,
 } from "@/lib/data";
@@ -29,13 +30,14 @@ import { getWatchedForShow } from "@/lib/data";
 import { nextUnwatchedEpisode } from "@/lib/progress";
 import { getT } from "@/lib/locale";
 import { whenLabel } from "@/lib/when";
-import { localizeFollows } from "@/lib/localize";
+import { localizeFollows, localizeRows } from "@/lib/localize";
 import { airedEpisodeCount, percentOf } from "@/lib/progress";
 import { PosterCard } from "@/components/PosterCard";
 import { ContinueCard } from "@/components/ContinueCard";
 import { ToWatchCard } from "@/components/ToWatchCard";
 import { QuickSaveCard } from "@/components/QuickSaveCard";
 import { PosterRail, RailItem } from "@/components/PosterRail";
+import { PublicListsRail } from "@/components/PublicListsRail";
 import { Icon, type IconName } from "@/components/Icon";
 import { posterUrl } from "@/lib/media";
 import { getWatchHistory } from "@/lib/data";
@@ -257,6 +259,15 @@ export default async function HomePage() {
       href: "/library",
       color: "var(--error)",
     },
+    // خانة «تقييماتي» في بطاقة الأرقام (طلب أحمد 9 Aug)
+    ratings: {
+      key: "ratings",
+      icon: "star",
+      value: String(myRatingsCount),
+      label: t.panelRatings,
+      href: "/ratings",
+      color: "var(--verified)",
+    },
   };
   const headerStats: HeaderStat[] = prefs.statsPick.map(
     (k) => allHeaderStats[k],
@@ -307,6 +318,7 @@ export default async function HomePage() {
           watchedByShow={watchedByShow}
           lastWatchedOrder={lastWatchedOrder}
           rewatchSinceMap={rewatchSinceMap}
+          myRatings={myRatings}
           locale={locale}
           t={t}
           today={today}
@@ -335,6 +347,7 @@ async function HomeBody({
   watchedByShow,
   lastWatchedOrder,
   rewatchSinceMap,
+  myRatings,
   locale,
   t,
   today,
@@ -348,6 +361,7 @@ async function HomeBody({
   watchedByShow: Map<number, number>;
   lastWatchedOrder: number[];
   rewatchSinceMap: Map<number, string>;
+  myRatings: Awaited<ReturnType<typeof getMyRatings>>;
   locale: Locale;
   t: T;
   today: string;
@@ -399,6 +413,14 @@ async function HomeBody({
     .filter((f) => f.stats_updated_at == null)
     .map((f) => f.tmdb_id);
 
+  /* قسما «تقييماتي» و«قوائمي» (طلب أحمد 9 Aug) — لا يدفع كلفتهما إلا
+     من أظهرهما من التخصيص، كقاعدة «recap» نفسها */
+  const topRatedRaw = prefs.order.includes("ratings")
+    ? [...myRatings]
+        .sort((a, b) => b.rating - a.rating || b.updated_at.localeCompare(a.updated_at))
+        .slice(0, 16)
+    : [];
+
   const [
     follows,
     bootstrapDetails,
@@ -406,6 +428,8 @@ async function HomeBody({
     recapHist,
     earlyExtra,
     earlyTrend,
+    topRated,
+    myListsRaw,
   ] = await Promise.all([
     // أسماء المكتبة وملصقاتها بلغة الواجهة لا بلغة يوم المتابعة
     localizeFollows(followRows, locale),
@@ -436,7 +460,27 @@ async function HomeBody({
     earlyShowTrending
       ? trending().catch(() => [] as SearchResult[])
       : Promise.resolve(null),
+    // العناوين بلغة الواجهة لا بلغة يوم التقييم (قاعدة D-048)
+    topRatedRaw.length
+      ? localizeRows(topRatedRaw, locale).catch(() => topRatedRaw)
+      : Promise.resolve(topRatedRaw),
+    prefs.order.includes("lists")
+      ? getMyLists().catch(() => [])
+      : Promise.resolve([]),
   ]);
+
+  /* قوائمي بنفس بطاقة المجتمع (PublicListCard): بطاقة واحدة للأبواب
+     كلها — بلا سطر صاحبٍ فالصفحة صفحته، والفارغة لا تُعرض */
+  const myListCards = myListsRaw
+    .map((l) => ({
+      id: l.id,
+      name: l.name,
+      kind: l.kind ?? null,
+      owner: null,
+      item_count: l.item_count,
+      posters: l.posters ?? [],
+    }))
+    .filter((c) => c.item_count > 0);
 
   // ما تغيّر اسمه بالترجمة يُكتب مرة واحدة في قاعدة البيانات
   const metaToCache = follows
@@ -1003,6 +1047,34 @@ async function HomeBody({
               </Link>
             </div>
           ) : null,
+          ratings:
+            topRated.length > 0 ? (
+              <Section
+                key="ratings"
+                title={t.ratingsListTitle}
+                icon="star"
+                iconColor="var(--verified)"
+                href="/ratings"
+                seeAll={t.seeAll}
+              >
+                {topRated.map((r) => (
+                  <PosterCard
+                    key={`rt-${r.media_type}-${r.tmdb_id}`}
+                    href={`/${r.media_type === "tv" ? "show" : "movie"}/${r.tmdb_id}`}
+                    title={r.title ?? "—"}
+                    posterPath={r.poster_path}
+                    badge={`★ ${r.rating}/10`}
+                    badgeTone="rating"
+                  />
+                ))}
+              </Section>
+            ) : null,
+          lists:
+            myListCards.length > 0 ? (
+              <div key="lists">
+                <PublicListsRail lists={myListCards} locale={locale} title={t.myLists} />
+              </div>
+            ) : null,
           trending:
             showTrending && trend.length > 0 ? (
               <Section key="trending" title={t.trendingWeek} icon="trending">
