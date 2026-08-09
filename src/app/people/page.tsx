@@ -20,6 +20,7 @@ import { localizeRows } from "@/lib/localize";
 import { formatDateShort } from "@/lib/when";
 import { num } from "@/lib/i18n";
 import { CommunityBar } from "@/components/CommunityBar";
+import { FeedEmptyCta } from "@/components/FeedEmptyCta";
 import { Inbox } from "@/components/Inbox";
 import { CommunityDirectory, CommunityRoom } from "@/components/Communities";
 import { PersonName } from "@/components/PersonRow";
@@ -232,9 +233,9 @@ export default async function PeoplePage({
       ) : (
         <section>
           {feed.length === 0 ? (
-            <p className="text-sm text-muted bg-surface border border-dashed border-border rounded-xl py-8 text-center">
-              {t.feedEmpty}
-            </p>
+            /* حالةٌ موجَّهة لا جملةٌ تشخّص (تقييم 9 Aug م٦): الزرّ يفتح
+               ورقة البحث عن الأشخاص — أول خطوةٍ للخروج من الفراغ */
+            <FeedEmptyCta locale={locale} />
           ) : (
             <div className="divide-y divide-[color:var(--divider)]">
               {feed.map((a) => {
