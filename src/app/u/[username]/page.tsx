@@ -11,6 +11,7 @@ import {
   getFollowsOf,
   getWatchedOf,
   getPublicListsOf,
+  getProfileArtists,
   displayNameOf,
 } from "@/lib/data";
 import { getT } from "@/lib/locale";
@@ -26,6 +27,7 @@ import { BackButton } from "@/components/BackButton";
 import { PublicListsRail } from "@/components/PublicListsRail";
 import { FollowCountButton, ToWatchStat } from "@/components/ProfilePeeks";
 import { posterUrl } from "@/lib/media";
+import { sanitizeProfilePrefs, type ProfileSection } from "@/lib/profilePrefs";
 
 /**
  * صفحة المستخدم العامة — بهيئة الرئيسية نفسها.
@@ -58,16 +60,23 @@ export default async function PublicProfilePage({
 
   // تسجيل الزيارة كتابةُ تحليلاتٍ لا غير — يجري بالتوازي مع القراءات
   // بدل أن يضيف رحلة كتابةٍ كاملة قبل أول بايت من الصفحة
-  const [rawRatings, stats, relation, visits, rawFollows, watched, publicLists] = await Promise.all([
-    getRatingsOf(profile.id),
-    getFollowStats(profile.id),
-    getFollowRelation(profile.id),
-    getProfileViewCount(profile.id),
-    getFollowsOf(profile.id),
-    getWatchedOf(profile.id),
-    getPublicListsOf(profile.id),
-    isMe ? Promise.resolve() : recordProfileView(profile.id),
-  ]);
+  /* التخصيص يُقرأ قبل الجلب لا بعده (D-129): قسمٌ أخفاه صاحبه لا يستحقّ
+     نداءً — و«فنّانوك» خاصّةً دالّةٌ إضافية لا داعي لدفعها لمن أطفأها */
+  const prefs = sanitizeProfilePrefs(profile.profile_prefs);
+  const wants = (s: ProfileSection) => prefs.order.includes(s);
+
+  const [rawRatings, stats, relation, visits, rawFollows, watched, publicLists, artists] =
+    await Promise.all([
+      getRatingsOf(profile.id),
+      getFollowStats(profile.id),
+      getFollowRelation(profile.id),
+      getProfileViewCount(profile.id),
+      getFollowsOf(profile.id),
+      getWatchedOf(profile.id),
+      wants("lists") ? getPublicListsOf(profile.id) : Promise.resolve([]),
+      wants("artists") ? getProfileArtists(profile.id) : Promise.resolve([]),
+      isMe ? Promise.resolve() : recordProfileView(profile.id),
+    ]);
 
   /* ملفّ غيرك قد يكون كُتب بلغةٍ غير لغتك — العناوين تُترجَم عند العرض
      (D-048) فلا تُقرأ صفحةٌ نصفها عربي ونصفها إنجليزي */
@@ -137,6 +146,82 @@ export default async function PublicProfilePage({
     };
   });
 
+  /** كل قسمٍ يُبنى مرّةً هنا، ويُرسم أعلاه بترتيب صاحبه — والفارغ `null`
+      فلا يترك عنواناً بلا محتوى */
+  const sections: Record<ProfileSection, React.ReactNode> = {
+    shows:
+      shows.length > 0 ? (
+        <PosterRail title={t.shortShows} icon="tv" iconColor="var(--accent)">
+          {shows.map((i) => (
+            <RailItem key={`s-${i.id}`}>
+              <PosterCard
+                href={`/show/${i.id}`}
+                title={i.title}
+                posterPath={i.posterPath}
+                progress={i.progress}
+              />
+            </RailItem>
+          ))}
+        </PosterRail>
+      ) : null,
+
+    movies:
+      movieFollows.length > 0 ? (
+        <PosterRail title={t.shortMovies} icon="film" iconColor="var(--accent-2)">
+          {movieFollows.map((f) => (
+            <RailItem key={`m-${f.tmdb_id}`}>
+              {/* بلا شارة «شوهد» وبلا خيط التقدم الأخضر (طلب أحمد) —
+                  الملصق وحده؛ حالته عند صاحبه شأنه */}
+              <PosterCard href={`/movie/${f.tmdb_id}`} title={f.title} posterPath={f.poster_path} />
+            </RailItem>
+          ))}
+        </PosterRail>
+      ) : null,
+
+    /* «فنّانوك» صفٌّ لا شبكة: البروفايل كلّه صفوف، والشبكة هنا لغةٌ
+       بصرية ثانية لنفس المحتوى. وبلا سطر «شاهدتَ له ٧ أعمال» — ذاك
+       العدد يُحسب من سجلّ **مشاهدتك أنت** (D-128)، وكتابتُه في صفحة
+       غيرك كذبٌ صريح، وحسابُه له ثلاثون نداءً لا تُدفع في صفحةٍ عامة */
+    artists:
+      artists.length > 0 ? (
+        <PosterRail title={t.shortArtists} icon="people" iconColor="var(--brand-3)">
+          {artists.map((a) => (
+            <RailItem key={`a-${a.person_id}`}>
+              <PosterCard
+                href={`/person/${a.person_id}`}
+                title={a.name ?? "—"}
+                posterPath={a.profile_path}
+                posterSize="w185"
+                fallbackIcon="people"
+              />
+            </RailItem>
+          ))}
+        </PosterRail>
+      ) : null,
+
+    /* قوائمه المعلنة (D-068) — صنعُه بعد متابعاته وقبل أحكامه. بطاقة
+       اكتشف نفسها بلا سطر صاحبٍ (الصفحة كلّها صفحته)، والرابط إلى
+       /lists/[id] حيث زرّ «أضِفها إلى قوائمي» */
+    lists: <PublicListsRail lists={publicLists} locale={locale} title={t.profileListsRail} />,
+
+    ratings:
+      ratings.length > 0 ? (
+        <PosterRail title={t.ratingsListTitle} icon="star" iconColor="var(--verified)">
+          {ratings.slice(0, 16).map((r) => (
+            <RailItem key={`r-${r.media_type}-${r.tmdb_id}`}>
+              <PosterCard
+                href={`/${r.media_type === "tv" ? "show" : "movie"}/${r.tmdb_id}`}
+                title={r.title ?? "—"}
+                posterPath={r.poster_path}
+                badge={`★ ${r.rating}/10`}
+                badgeTone="rating"
+              />
+            </RailItem>
+          ))}
+        </PosterRail>
+      ) : null,
+  };
+
   return (
     <div className="space-y-8">
       {/* ===== الغلاف — كما في الرئيسية ===== */}
@@ -199,9 +284,11 @@ export default async function PublicProfilePage({
             locale={locale}
             className="absolute top-3 start-3"
           />
-          <span className="absolute top-4 start-16 text-[11px] text-white/75 bg-black/40 backdrop-blur rounded-full px-2.5 py-1">
-            {t.visitsLabel} <span className="font-bold text-white tabular-nums">{visits}</span>
-          </span>
+          {prefs.visits && (
+            <span className="absolute top-4 start-16 text-[11px] text-white/75 bg-black/40 backdrop-blur rounded-full px-2.5 py-1">
+              {t.visitsLabel} <span className="font-bold text-white tabular-nums">{visits}</span>
+            </span>
+          )}
         </div>
 
         {/* ===== كتلة الهوية ===== */}
@@ -275,7 +362,7 @@ export default async function PublicProfilePage({
         )}
 
         {/* ===== صفّ الأرقام — بلا إطار كما في الرئيسية ===== */}
-        {canView && (
+        {canView && prefs.stats && (
         <div className="relative z-10 mt-5">
           <div className="grid grid-cols-4">
             {headerStats.map((s, i) =>
@@ -309,7 +396,7 @@ export default async function PublicProfilePage({
         )}
 
         {/* ===== المستوى — يتبع المحتوى في الحجب ===== */}
-        {canView && (
+        {canView && prefs.level && (
         <div className="relative z-10 mt-5 px-0.5">
           <p className="text-[13px] font-bold">
             {t.levelLabel(level.level)} ·{" "}
@@ -334,64 +421,17 @@ export default async function PublicProfilePage({
         )}
       </section>
 
-      {/* ===== صفوف أعماله ===== */}
-      {shows.length > 0 && (
-        <PosterRail title={t.shortShows} icon="tv" iconColor="var(--accent)">
-          {shows.map((i) => (
-            <RailItem key={`s-${i.id}`}>
-              <PosterCard
-                href={`/show/${i.id}`}
-                title={i.title}
-                posterPath={i.posterPath}
-                progress={i.progress}
-              />
-            </RailItem>
-          ))}
-        </PosterRail>
-      )}
+      {/* ===== صفوفه، بترتيب صاحب الصفحة (D-129) =====
+          خريطةٌ ثم `map` على `prefs.order` — لا سلسلةُ شروطٍ ثابتة.
+          الفرق ليس أناقة: الترتيب بيانٌ الآن، فإضافة قسمٍ خامس سطرٌ في
+          الخريطة وسطرٌ في السجلّ، لا إعادة ترتيب JSX يدوياً.
 
-      {movieFollows.length > 0 && (
-        <PosterRail title={t.shortMovies} icon="film" iconColor="var(--accent-2)">
-          {movieFollows.map((f) => (
-            <RailItem key={`m-${f.tmdb_id}`}>
-              {/* بلا شارة «شوهد» وبلا خيط التقدم الأخضر (طلب أحمد) —
-                  الملصق وحده؛ حالته عند صاحبه شأنه */}
-              <PosterCard
-                href={`/movie/${f.tmdb_id}`}
-                title={f.title}
-                posterPath={f.poster_path}
-              />
-            </RailItem>
-          ))}
-        </PosterRail>
-      )}
-
-      {/* ===== قوائمه المعلنة (D-068) — صنعُه بعد متابعاته وقبل أحكامه.
-          بطاقة اكتشف نفسها بلا سطر صاحبٍ (الصفحة كلّها صفحته)، والرابط
-          إلى /lists/[id] حيث زرّ «أضِفها إلى قوائمي». تتبع القفل: قوائم
-          حسابٍ خاصّ لا تُعرض لغير متابِعيه وإن بقيت سياسة SQL عامة —
-          الصفحة الموصدة لا تفتح نافذةً جانبية ===== */}
-      {canView && (
-        <PublicListsRail lists={publicLists} locale={locale} title={t.profileListsRail} />
-      )}
-
-      {/* ===== تقييماته ومراجعاته ===== */}
-      {ratings.length > 0 && (
-        <PosterRail title={t.ratingsListTitle} icon="star" iconColor="var(--verified)">
-          {ratings.slice(0, 16).map((r) => (
-            <RailItem key={`r-${r.media_type}-${r.tmdb_id}`}>
-              <PosterCard
-                href={`/${r.media_type === "tv" ? "show" : "movie"}/${r.tmdb_id}`}
-                title={r.title ?? "—"}
-                posterPath={r.poster_path}
-                badge={`★ ${r.rating}/10`}
-                badgeTone="rating"
-              />
-            </RailItem>
-          ))}
-        </PosterRail>
-      )}
-
+          و`canView` يبقى فوق كل شيء: التخصيص إخراجٌ، والقفل في SQL. */}
+      {canView &&
+        prefs.order.map((sec) => {
+          const node = sections[sec];
+          return node ? <div key={sec}>{node}</div> : null;
+        })}
     </div>
   );
 }
