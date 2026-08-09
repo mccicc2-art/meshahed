@@ -151,7 +151,7 @@ export function LibraryGrid({
           تحت الترويسة والشبكة تمرّ تحتهما. خلفية صمّاء لا شفافة —
           الملصقات تمرّ خلفها. وصفّ البحث خرج من `tabpanel` إلى هنا: هو
           تحكّمٌ في اللوح لا محتواه، ويظهر لغير تبويب القوائم وحده. */}
-      <div className="sticky top-[var(--sticky-top)] z-20 -mx-4 px-4 pt-1 pb-2 bg-[color:var(--background)]">
+      <div className="sticky top-[var(--sticky-top)] z-20 -mx-4 px-4 pt-1 pb-2 mb-3 bg-[color:var(--background)] border-b border-[color:var(--divider)]">
       <div className={`${segmentedTrackFull} ${tab === "lists" ? "mb-1" : "mb-3"}`} role="tablist" aria-label={t.libraryTitle}>
         {tabs.map(({ id, icon, label, n }) => {
           const active = tab === id;
