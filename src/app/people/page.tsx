@@ -75,6 +75,35 @@ function spreadByPerson(rows: FeedItem[]): FeedItem[] {
 }
 
 /**
+ * صفُّ النجوم في **عمود المحتوى** لا تحت الملصق (طلب أحمد 9 Aug:
+ * «التقييم لا يكون تحت الفلم، يكون في المحتوى وتظهر النجوم»).
+ *
+ * عشر نجوم لا خمس: هذا هو المقياس الذي يقيّم به المستخدم في `RatingBox`،
+ * وقسمتُه على اثنتين للعرض تجعل ما يراه غير ما ضغطه. ونفس الحرف ونفس
+ * لون التمييز — لا لغةَ بصريةٍ جديدة، والرقم يبقى بجانبها لمن يقرأ رقماً.
+ */
+function Stars({ rating, label }: { rating: number; label: string }) {
+  return (
+    <span className="mt-2 flex items-center gap-[1px]" aria-label={label}>
+      {Array.from({ length: 10 }, (_, i) => (
+        <span
+          key={i}
+          aria-hidden
+          className={`text-[13px] leading-none ${
+            i < rating ? "text-accent" : "text-muted/25"
+          }`}
+        >
+          ★
+        </span>
+      ))}
+      <span className="text-[12px] text-muted ms-1.5 tabular-nums" dir="ltr">
+        {rating}/10
+      </span>
+    </span>
+  );
+}
+
+/**
  * سطر الفعل تحت الاسم — «ماذا فعل» في جملةٍ واحدة (D-123).
  *
  * التقييم مع مشاهدةٍ في نفس اليوم يذكرهما معاً («شاهد ٦ حلقات · قيّمه»):
@@ -88,8 +117,9 @@ function actionLine(a: FeedItem, t: Dict): string | null {
     if (a.topSeason > 0) parts.push(t.seasonLabel(a.topSeason));
   }
   if (a.kind === "rate") {
-    if (!parts.length && a.review) return null;
-    parts.push(t.feedActRated);
+    /* لا كلمة «قيّمه» بعد اليوم (طلب أحمد 9 Aug — شطبها في لقطته):
+       صفُّ النجوم تحتها يقول الشيء نفسه بصورةٍ تُقرأ أسرع من كلمة.
+       وما بقي في السطر هو المشاهدة التي ابتلعها التقييم إن وُجدت. */
   } else if (a.kind === "movie") {
     parts.push(t.feedActMovie);
   } else if (a.kind === "add") {
@@ -261,6 +291,11 @@ export default async function PeoplePage({
           (segmentedTrackFull + flex-1 basis-0 min-w-0) — نفس صفّ شرائح
           المكتبة (D-016، D-042). عدّادٌ على «مجتمعي» و«المجتمع»، وشارة غير
           المقروء على «الرسائل» تختفي عند الصفر. */}
+      {/* رأسٌ لاصق (طلب أحمد 9 Aug): التبويبات وصفّ الترتيب/المرشِّح
+          يبقيان تحت الترويسة والخطّ يمرّ تحتهما. خلفية صمّاء لا شفافة —
+          صور الأعمال تمرّ خلفها. و`space-y-5` الأب يضيف فراغاً بين
+          الحاوية وما بعدها، فالحشو السفليّ هنا صغير. */}
+      <div className="sticky top-[var(--sticky-top)] z-20 -mx-4 px-4 pt-1 pb-2 bg-[color:var(--background)] space-y-3">
       <nav aria-label={t.communityTabsGroup} className={segmentedTrackFull}>
         {tabs.map((tb) => {
           const active = tb.key === tab;
@@ -336,6 +371,7 @@ export default async function PeoplePage({
           <CommunityBar following={lists.following} followers={lists.followers} requests={followRequests} locale={locale} />
         </div>
       )}
+      </div>
 
       {/* ===== محتوى التبويب ===== */}
       {tab === "inbox" ? (
@@ -405,6 +441,10 @@ export default async function PeoplePage({
                             يبتلع المشاهدة ولا يلغيها — D-123) */}
                         {line && <p className="mt-2.5 text-[13px] text-muted">{line}</p>}
 
+                        {a.rating !== null && (
+                          <Stars rating={a.rating} label={t.rateOutOf(a.rating)} />
+                        )}
+
                         {a.review && (
                           <p className="text-[15px] leading-relaxed whitespace-pre-line mt-2">
                             {a.review}
@@ -464,22 +504,11 @@ export default async function PeoplePage({
                           {a.title ?? "—"}
                         </span>
 
-                        <span className="mt-0.5 flex items-center gap-1.5 text-[11px] text-muted">
-                          <span className="truncate">
-                            {a.media_type === "tv" ? t.typeSeries : t.typeMovie}
-                          </span>
-                          {/* النجمة للتقييم وحده — مشاهدةٌ بلا رأيٍ لا رقم لها */}
-                          {a.rating !== null && (
-                            <>
-                              <span aria-hidden>·</span>
-                              <span
-                                className="shrink-0 font-semibold text-accent tabular-nums"
-                                title={t.rateOutOf(a.rating)}
-                              >
-                                ★ <span dir="ltr">{a.rating}/10</span>
-                              </span>
-                            </>
-                          )}
+                        {/* النوع وحده تحت الملصق — التقييم انتقل إلى عمود
+                            المحتوى نجوماً (طلب أحمد)، وبقاؤه هنا تكرارٌ
+                            لرقمٍ واحد في مكانين */}
+                        <span className="mt-0.5 block text-[11px] text-muted truncate">
+                          {a.media_type === "tv" ? t.typeSeries : t.typeMovie}
                         </span>
                       </Link>
                     </div>
