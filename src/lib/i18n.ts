@@ -431,6 +431,12 @@ const ar = {
   feedSortGroup: "ترتيب النشاط",
   feedSortTop: "الأكثر إعجاباً",
   feedSortNew: "الأحدث",
+  // مرشِّح نوع الحدث في «مجتمعي» (D-123ب)
+  feedFilterGroup: "نوع النشاط",
+  feedFilterAll: "الكل",
+  feedFilterRatings: "التقييمات",
+  feedFilterReviews: "المراجعات",
+  feedFilterEmpty: "لا نشاط من هذا النوع في دائرتك بعد.",
   // أفعال خطّ النشاط (D-123) — سطرٌ واحد لكل نوع حدث
   feedActRated: "قيّمه",
   feedActMovie: "شاهد الفيلم",
@@ -1200,6 +1206,11 @@ const en: Dict = {
   feedSortGroup: "Sort activity",
   feedSortTop: "Most liked",
   feedSortNew: "Newest",
+  feedFilterGroup: "Activity type",
+  feedFilterAll: "All",
+  feedFilterRatings: "Ratings",
+  feedFilterReviews: "Reviews",
+  feedFilterEmpty: "No activity of this kind in your circle yet.",
   // Activity feed verbs (D-123)
   feedActRated: "rated it",
   feedActMovie: "watched the film",
