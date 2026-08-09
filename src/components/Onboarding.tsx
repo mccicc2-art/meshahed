@@ -1,14 +1,34 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { follow, updateProfile, applyOnboardingProgress } from "@/lib/actions";
+import {
+  follow,
+  updateProfile,
+  applyOnboardingProgress,
+  suggestPeople,
+  requestOrFollowUser,
+} from "@/lib/actions";
 import { getDict, type Locale } from "@/lib/i18n";
 import { GENRES, posterUrl } from "@/lib/media";
+import { Avatar } from "./Avatar";
 import { Icon } from "./Icon";
 import { buttonClass } from "./ui/Button";
 import { chipClass } from "./ui/controls";
+
+/** الشكل الذي تُرجعه `people_to_follow` — مُعرَّفٌ هنا كي لا يستورد العميل `data.ts` */
+interface Suggested {
+  id: string;
+  nickname: string | null;
+  username: string | null;
+  avatar_url: string | null;
+  shared: number;
+  followers: number;
+}
+
+/** كم شخصاً نقترح: ستّةٌ تملأ الشاشة بلا تمرير، والمطلوب منها ثلاثة */
+const PEOPLE_LIMIT = 6;
 
 export interface SeedTitle {
   id: number;
@@ -45,7 +65,36 @@ export function Onboarding({
   const [genres, setGenres] = useState<number[]>(initialGenres);
   const [pending, start] = useTransition();
 
+  /* ===== خطوة الأشخاص (D-126) =====
+     الاقتراح يُطلب **عند الوصول للخطوة الرابعة لا قبلها**: البذرة هي ما
+     اختاره في الخطوة الأولى، وطلبُه مبكّراً يقترح على ذوقٍ لم يُصرَّح به
+     بعد. و`loaded` يفرّق بين «ما وصلت الإجابة» و«لا أحد» — الأول هيكلٌ
+     ينتظر، والثاني جملةٌ صادقة. */
+  const [people, setPeople] = useState<Suggested[]>([]);
+  const [peopleLoaded, setPeopleLoaded] = useState(false);
+  const [toFollow, setToFollow] = useState<Set<string>>(new Set());
+
   const chosen = seeds.filter((s) => picked.has(s.id));
+
+  useEffect(() => {
+    if (step !== 4 || peopleLoaded) return;
+    let alive = true;
+    suggestPeople(
+      seeds.filter((s) => picked.has(s.id)).map((s) => s.id),
+      PEOPLE_LIMIT,
+    )
+      .then((rows) => {
+        if (alive) setPeople(rows as Suggested[]);
+      })
+      // الدالّة غائبة أو الشبكة سقطت؟ خطوةٌ فارغةٌ تُتخطّى، لا شاشة خطأ
+      .catch(() => {})
+      .finally(() => {
+        if (alive) setPeopleLoaded(true);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [step, peopleLoaded, seeds, picked]);
 
   function toggle(id: number) {
     setPicked((prev) => {
@@ -94,6 +143,19 @@ export function Onboarding({
       } catch {
         // الأنواع اختيارية
       }
+
+      /* المتابعات الاجتماعية آخر شيء (D-126): فشلُها لا يمسّ المكتبة ولا
+         الملف، ومتابعةٌ واحدة تسقط لا توقف البقيّة. و`requestOrFollow`
+         لا `follow` لأن الحسابَ الخاص يردّ بطلبٍ لا بمتابعة — والاقتراح
+         لا يقترح خاصّاً أصلاً، فهذا دفاعٌ في العمق. */
+      for (const uid of toFollow) {
+        try {
+          await requestOrFollowUser(uid);
+        } catch {
+          // شخصٌ واحد فشل لا يوقف البقية
+        }
+      }
+
       router.replace("/");
       router.refresh();
     });
@@ -102,12 +164,24 @@ export function Onboarding({
   return (
     <div className="max-w-2xl mx-auto pb-32">
       <header className="text-center mb-6">
-        <p className="text-xs font-bold text-accent">{t.obStep(step, 3)}</p>
+        <p className="text-xs font-bold text-accent">{t.obStep(step, 4)}</p>
         <h1 className="text-2xl font-extrabold mt-2">
-          {step === 1 ? t.obPickTitle : step === 2 ? t.obProgressTitle : t.obGenresTitle}
+          {step === 1
+            ? t.obPickTitle
+            : step === 2
+              ? t.obProgressTitle
+              : step === 3
+                ? t.obGenresTitle
+                : t.obPeopleTitle}
         </h1>
         <p className="text-sm text-muted mt-2 leading-relaxed">
-          {step === 1 ? t.obPickHint : step === 2 ? t.obProgressHint : t.obGenresHint}
+          {step === 1
+            ? t.obPickHint
+            : step === 2
+              ? t.obProgressHint
+              : step === 3
+                ? t.obGenresHint
+                : t.obPeopleHint}
         </p>
       </header>
 
@@ -221,6 +295,73 @@ export function Onboarding({
         </div>
       )}
 
+      {/* ٤ — تابع ٣ أشخاص (D-126)
+          الحساب الجديد كان يدخل ودائرته صفر، فيفتح «مجتمعي» على فراغٍ
+          يقول له إن الموقع ميّت. الاقتراح بتقاطع الذوق مع ما اختاره في
+          الخطوة الأولى — لا بقائمةٍ عشوائية. الصفّ زرٌّ واحد يبدّل
+          الاختيار: لا متابعةَ تُكتب هنا، كلّها في «يالله نبدأ». */}
+      {step === 4 && (
+        <div className="space-y-2">
+          {!peopleLoaded ? (
+            Array.from({ length: 3 }, (_, i) => (
+              <div
+                key={i}
+                className="h-[68px] bg-surface border border-border rounded-xl animate-pulse"
+              />
+            ))
+          ) : people.length === 0 ? (
+            <p className="text-center text-muted py-10 text-sm">{t.obPeopleNone}</p>
+          ) : (
+            people.map((p) => {
+              const on = toFollow.has(p.id);
+              const name = p.nickname || p.username || t.anonymousUser;
+              const reason =
+                p.shared > 0
+                  ? t.suggestShared(p.shared)
+                  : p.followers > 0
+                    ? t.suggestFollowers(p.followers)
+                    : null;
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() =>
+                    setToFollow((prev) => {
+                      const next = new Set(prev);
+                      if (next.has(p.id)) next.delete(p.id);
+                      else next.add(p.id);
+                      return next;
+                    })
+                  }
+                  className={`w-full flex items-center gap-3 text-start bg-surface border rounded-xl p-3 transition ${
+                    on ? "border-accent ring-2 ring-accent" : "border-border"
+                  }`}
+                >
+                  <Avatar src={p.avatar_url} name={name} size={40} alt={t.avatarAlt} />
+                  <span className="flex-1 min-w-0">
+                    <span className="block text-sm font-semibold truncate">{name}</span>
+                    {reason && (
+                      <span className="block text-[11px] text-muted truncate">{reason}</span>
+                    )}
+                  </span>
+                  <span
+                    aria-hidden
+                    className={`shrink-0 w-6 h-6 rounded-full grid place-items-center border ${
+                      on
+                        ? "bg-[color:var(--success)] text-white border-transparent"
+                        : "border-border text-muted"
+                    }`}
+                  >
+                    <Icon name={on ? "check-line" : "plus"} size={14} strokeWidth={2.2} />
+                  </span>
+                </button>
+              );
+            })
+          )}
+        </div>
+      )}
+
       {seeds.length === 0 && step === 1 && (
         <p className="text-center text-muted py-10">{emptyHint}</p>
       )}
@@ -230,15 +371,17 @@ export function Onboarding({
         <div className="max-w-2xl mx-auto">
           <button
             disabled={pending || (step === 1 && picked.size === 0)}
-            onClick={() => (step < 3 ? setStep(step + 1) : finish())}
+            onClick={() => (step < 4 ? setStep(step + 1) : finish())}
             className={buttonClass({ size: "lg", full: true })}
           >
             {pending
               ? t.obSaving
-              : step === 1
-                ? t.obPickedN(picked.size)
-                : step === 3
-                  ? t.obFinish
+              : step === 3
+                ? t.obNext
+                : step === 4
+                  ? toFollow.size > 0
+                    ? t.obPeopleNext(toFollow.size)
+                    : t.obPeopleSkip
                   : t.obPickedN(picked.size)}
           </button>
           <button
