@@ -9,6 +9,7 @@ import { PosterGrid } from "@/components/PosterGrid";
 import { PosterRail, RailItem } from "@/components/PosterRail";
 import { Icon } from "@/components/Icon";
 import { matchNationality } from "@/lib/nationality";
+import { matchBrowseIntent } from "@/lib/intent";
 import { browseHref } from "@/lib/browse";
 import { roleName, type Locale } from "@/lib/i18n";
 import { SearchBox } from "@/components/SearchBox";
@@ -65,6 +66,9 @@ async function SearchResults({
   locale: Locale;
 }) {
   const nationality = q ? matchNationality(q) : null;
+  /* بحثٌ يفهم النية (طريق ١٠/١٠): «افلام كوميدية 2023» → رقاقة فلاتر.
+     رقاقة الجنسية أولى عند التعارض — رقاقتان فوق النتائج ضجيج */
+  const intent = nationality ? null : matchBrowseIntent(q, locale === "en" ? "en" : "ar");
   let results: Awaited<ReturnType<typeof searchMulti>> = [];
   let people: Awaited<ReturnType<typeof searchPeople>> = [];
   let failed = false;
@@ -105,6 +109,19 @@ async function SearchResults({
           <span className="text-sm font-semibold">
             {t.searchBrowseFrom(locale === "en" ? nationality.en : nationality.ar)}
           </span>
+          <span className="ms-auto shrink-0" aria-hidden>
+            <Icon name="chevron-down" size={16} className="-rotate-90 rtl:rotate-90" />
+          </span>
+        </Link>
+      )}
+
+      {intent && (
+        <Link
+          href={intent.href}
+          className="mb-5 flex items-center gap-2.5 rounded-2xl border border-accent/35 bg-accent/10 px-4 py-3 text-accent hover:bg-accent/20 transition"
+        >
+          <Icon name="compass" size={18} className="shrink-0" />
+          <span className="text-sm font-semibold">{t.searchIntentChip(intent.label)}</span>
           <span className="ms-auto shrink-0" aria-hidden>
             <Icon name="chevron-down" size={16} className="-rotate-90 rtl:rotate-90" />
           </span>
