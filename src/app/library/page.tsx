@@ -37,14 +37,16 @@ export default async function LibraryPage({
 
   const { locale, t } = await getT();
   const { filter } = await searchParams;
+  /* الأفلام هي الافتراضي (طلب أحمد: نفس ترتيب اكتشف). و`movie` القديم
+     يُهدى إلى الأفلام — كان يعني «الأفلام» فيبقى يعنيها. */
   const initialTab: LibraryTab =
-    filter === "movie"
-      ? "movies"
+    filter === "tv"
+      ? "shows"
       : filter === "person"
         ? "artists"
         : filter === "list"
           ? "lists"
-          : "shows";
+          : "movies";
 
   // الملخّص المجمّع (صف لكل مسلسل، والإعادة محسوبة داخله) بدل قراءة كل
   // صفوف الحلقات — نفس الترقية التي أخذتها الرئيسية. الترجمة في نفس الموجة.
