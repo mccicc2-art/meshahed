@@ -1345,6 +1345,43 @@ export async function searchPeople(q: string): Promise<PersonLite[]> {
   }
 }
 
+
+export interface ChartRow {
+  tmdb_id: number;
+  media_type: "tv" | "movie";
+  title: string | null;
+  poster_path: string | null;
+  rating: number;
+  votes: number;
+}
+
+/**
+ * قائمة IMDb المثبَّتة (D-135) — المصدر الأول لمجموعات TOP 250.
+ *
+ * تُقرأ من `imdb_chart` الذي بُني من ملفّات IMDb المفتوحة، فبِركةُ
+ * المرشّحين صارت IMDb كلّها لا أربعمئة عملٍ من TMDB. **والجدول فارغ أو
+ * غائب؟ مصفوفةٌ فارغة** — والمستدعي يسقط إلى مسار D-132 القديم، فلا
+ * تنكسر القوائم قبل أن تُشغَّل الهجرة أو تُملأ المسوّدة.
+ */
+export async function getImdbChart(
+  kind: "movie" | "tv" | "anime",
+  limit = 250,
+): Promise<ChartRow[]> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("imdb_chart")
+      .select("tmdb_id, media_type, title, poster_path, rating, votes")
+      .eq("kind", kind)
+      .order("rank", { ascending: true })
+      .limit(limit);
+    if (error || !data) return [];
+    return data as ChartRow[];
+  } catch {
+    return [];
+  }
+}
+
 export interface SuggestedPerson extends PersonLite {
   /** كم عملاً من بذرتك في مكتبته — صفرٌ يعني «اقتراح احتياطي بلا سبب» */
   shared: number;

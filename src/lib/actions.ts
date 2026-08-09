@@ -1496,19 +1496,36 @@ export async function createListFromUniverse(slug: string) {
        المستخدم قبل ثانية هي أسوأ من ترتيبٍ رديء — لذا يُشتقّ الاثنان من
        نفس الخطوات، وأيُّ تغييرٍ هنا يُنسَخ في `api/franchise`. */
     const want = universe.topLimit ?? 250;
-    const [pool, locale, { rankByImdb, withImdbRatings }] = await Promise.all([
-      topRatedRows(universe.top, Math.round(want * 1.6)),
+    const [chart, locale] = await Promise.all([
+      (await import("@/lib/data")).getImdbChart(universe.top, want),
       getLocale(),
-      import("@/lib/omdb"),
     ]);
-    const rows = rankByImdb(await withImdbRatings(pool), { want }).slice(0, want);
-    if (!rows.length) throw new Error("تعذّر تحميل القائمة / Could not load this list");
-    const items: NewItem[] = rows.map((r) => ({
-      tmdbId: r.id,
-      mediaType: (r.media_type === "tv" ? "tv" : "movie") as MediaType,
-      title: titleOf(r),
-      posterPath: r.poster_path,
-    }));
+
+    /* **قائمة IMDb المثبَّتة أولاً** (D-135)، وإلا مسار D-132. ونفس
+       الترتيب الذي رآه في المعاينة حرفاً بحرف: قائمةٌ محفوظة تخالف ما
+       عايَنه قبل ثانية أسوأ من ترتيبٍ رديء — وأيّ تغييرٍ هنا يُنسَخ في
+       `api/franchise`. */
+    let items: NewItem[];
+    if (chart.length) {
+      items = chart.map((c) => ({
+        tmdbId: c.tmdb_id,
+        mediaType: c.media_type as MediaType,
+        title: c.title ?? "—",
+        posterPath: c.poster_path,
+      }));
+    } else {
+      const { rankByImdb, withImdbRatings } = await import("@/lib/omdb");
+      const pool = await topRatedRows(universe.top, Math.round(want * 1.6));
+      const rows = rankByImdb(await withImdbRatings(pool), { want }).slice(0, want);
+      if (!rows.length) throw new Error("تعذّر تحميل القائمة / Could not load this list");
+      items = rows.map((r) => ({
+        tmdbId: r.id,
+        mediaType: (r.media_type === "tv" ? "tv" : "movie") as MediaType,
+        title: titleOf(r),
+        posterPath: r.poster_path,
+      }));
+    }
+    if (!items.length) throw new Error("تعذّر تحميل القائمة / Could not load this list");
     return upsertListWithItems(universeName(universe, locale), items, "ranked");
   }
 
