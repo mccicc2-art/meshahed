@@ -40,7 +40,7 @@ import {
   type DiscoverFilter,
 } from "@/lib/tmdb";
 import { ScrollMemory } from "@/components/ScrollMemory";
-import { withImdbRatings } from "@/lib/omdb";
+import { attachImdbRatings, onlyRated, withImdbRatings } from "@/lib/omdb";
 import { getT, getWatchRegion } from "@/lib/locale";
 import { regionName } from "@/lib/region";
 import { type Locale } from "@/lib/i18n";
@@ -531,7 +531,18 @@ async function CuratedRails({
               : { from: rails.a === "month" ? monthFrom : `${y}-01-01`, to: todayStr },
           ).then(withImdbRatings).catch(() => [] as SearchResult[])
         : Promise.resolve([] as SearchResult[]),
-      wantMovies ? nowPlayingMovies().catch(() => null) : Promise.resolve(null),
+      /* «في السينما» بتقييم IMDb كسائر الصفوف (طلب أحمد 9 Aug مساءً:
+         «أعمال السينما تكون مقيَّمة من IMDb»). كان الصفّ الوحيد الذي
+         يعرض ملصقاتٍ بلا رقم — والفيلم الذي تفكّر في حجز تذكرةٍ له هو
+         **أحوج** ما يكون إلى تقييم، لا أقلّها. الترتيب يبقى ترتيب دور
+         العرض: «ما يُعرض الآن» سؤالُ توقيتٍ لا سؤال جودة. */
+      wantMovies
+        ? nowPlayingMovies()
+            .then(async (c) =>
+              c ? { region: c.region, results: await attachImdbRatings(c.results) } : null,
+            )
+            .catch(() => null)
+        : Promise.resolve(null),
       // «القادم» يفتح صفّ العدّ التنازلي في كل النوافذ — هو النتيجة كلّها هناك
       wantMovies
         ? deep
@@ -547,29 +558,30 @@ async function CuratedRails({
             ? upcomingByGenre(genre.tv, "tv")
             : airingTv().catch(() => [] as SearchResult[])
         : Promise.resolve([] as SearchResult[]),
-      // أعلى ٥٠ على الإطلاق — ذيلٌ ثابت في الحالة غير المُصفّاة (طلب المالك).
-      // نجمع ٦٠ مرشّحاً ثم نقتطع ٥٠ بعد ترتيب IMDb: من بلا تقييمٍ يسقط
-      // من الذيل بدل أن يحتلّ مركزاً بلا شارة
-      /* ٢٥ لا ٥٠ (طلب أحمد 9 Aug: «عشان نخفف الضغط») — الصفحة أقصر،
-         وحصة OMDb أرخص للنصف؛ ومن يريد العمق كله فقوائم TOP 250 في
-         تبويب الليستات. نجمع ٤٠ ونقصّ ٢٥: الفاقد بلا ملصق/تقييم يُعوَّض */
+      /* ذيول «أفضل ٥٠» — **عادت خمسين بعد أن كانت خمساً وعشرين** (طلب
+         أحمد 9 Aug مساءً: «لاحظوا نقصاً في القائمة وانتقدوني»). تقصيرُها
+         في D-114 كان توفيراً في حصة OMDb، وقد سقط سببه: المخزن بعمرٍ
+         متدرّج (D-132) جعل الخمسين أرخص ممّا كانت الخمسٌ وعشرون.
+
+         والبِركة **٨٠ لا ٤٠**: `onlyRated` تُسقط من لا تقييم IMDb له
+         إسقاطاً كاملاً — لا إلى الذيل — فالفاقد يحتاج فائضاً يعوّضه،
+         وإلا عاد «النقص» الذي انتُقدنا عليه من بابٍ آخر. */
       !active && wantMovies
-        ? top50("movie", {}, 40)
+        ? top50("movie", {}, 80)
             .then(withImdbRatings)
-            .then((r) => r.slice(0, 25))
+            .then((r) => onlyRated(r).slice(0, 50))
             .catch(() => [] as SearchResult[])
         : Promise.resolve([] as SearchResult[]),
       !active && wantSeries
-        ? top50("tv", {}, 40)
+        ? top50("tv", {}, 80)
             .then(withImdbRatings)
-            .then((r) => r.slice(0, 25))
+            .then((r) => onlyRated(r).slice(0, 50))
             .catch(() => [] as SearchResult[])
         : Promise.resolve([] as SearchResult[]),
-      // أفضل ٢٥ أنمي — ذيلٌ ثالث بنفس قاعدة الصفّين
       !active && wantSeries
-        ? top50Anime(40)
+        ? top50Anime(80)
             .then(withImdbRatings)
-            .then((r) => r.slice(0, 25))
+            .then((r) => onlyRated(r).slice(0, 50))
             .catch(() => [] as SearchResult[])
         : Promise.resolve([] as SearchResult[]),
     ]);
