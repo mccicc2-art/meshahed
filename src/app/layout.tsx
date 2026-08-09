@@ -14,6 +14,7 @@ import { getDict, isRtl } from "@/lib/i18n";
 import { themeById, themeCss } from "@/lib/themes";
 import { HeaderShell } from "@/components/HeaderShell";
 import { getLocale } from "@/lib/locale";
+import { seoKeywords } from "@/lib/seo";
 
 export const viewport: Viewport = {
   themeColor: "#0D0D0D",
@@ -23,17 +24,29 @@ export const viewport: Viewport = {
 };
 
 export async function generateMetadata(): Promise<Metadata> {
-  const t = getDict(await getLocale());
-  /* صورة المشاركة = شعار Loopz صراحةً. بلا `og:image` كانت منصّات
-     المشاركة تكشط الصفحة وتلتقط أول صورةٍ مناسبة — وهي علم بلد المشاهدة
-     (السعودية عبر flagcdn)، فيظهر العلمُ لا الشعار. تحديدُها هنا يحسم ذلك،
-     ويحتاج `metadataBase` كي يصير المسار مطلقاً للكاشطات. */
-  const share = { url: "/icon-512.png", width: 512, height: 512, alt: t.brand };
+  const locale = await getLocale();
+  const t = getDict(locale);
+  /* صورة المشاركة لم تعد مذكورةً هنا: `app/opengraph-image.tsx` يتكفّل بها
+     لكل المسارات آلياً (og:image وtwitter:image معاً) ببطاقةٍ عريضة
+     1200×630 بدل المربّعة القديمة. ذكرُها هنا أيضاً كان سيُنتج وسمين.
+     وسببُ وجودها أصلاً باقٍ: بلا `og:image` كانت منصّات المشاركة تكشط
+     الصفحة وتلتقط أول صورةٍ مناسبة — علم بلد المشاهدة — فيظهر العلمُ لا
+     الشعار. و`metadataBase` هو ما يجعل المسار مطلقاً للكاشطات. */
   return {
     metadataBase: new URL("https://loopztv.com"),
-    title: t.metaTitle,
+    /* قالبٌ للعنوان (D-122): كل صفحةٍ تكتب عنوانها وحده ويُلحَق اسم
+       العلامة آلياً. قبله كانت كل صفحةٍ تكتب «— Loopz» بيدها، ومن نسيها
+       ظهر في نتائج البحث بعنوانٍ بلا علامة — واسم العلامة في العنوان هو
+       ما يجعل الباحث يتعرّف علينا قبل أن ينقر. */
+    title: { default: t.metaTitle, template: `%s — ${t.brand}` },
     description: t.metaDescription,
     applicationName: t.brand,
+    /* الوسم يتجاهله قوقل ويستعمله Bing بوزنٍ ضعيف — وجودُه رخيصٌ ولا يضرّ،
+       والعمل الحقيقي أن تكون هذه المعاني مكتوبةً في نصّ صفحة الهبوط */
+    keywords: seoKeywords(locale),
+    category: "entertainment",
+    creator: t.brand,
+    publisher: t.brand,
     appleWebApp: { capable: true, title: t.brand, statusBarStyle: "black-translucent" },
     icons: {
       icon: [{ url: "/icon-192.png", sizes: "192x192", type: "image/png" }],
@@ -44,14 +57,14 @@ export async function generateMetadata(): Promise<Metadata> {
       siteName: t.brand,
       title: t.metaTitle,
       description: t.metaDescription,
-      url: "/",
-      images: [share],
+      locale: locale === "ar" ? "ar_SA" : "en_US",
+      /* لا `url` هنا: كانت تُورَّث فتصير `og:url` لكل صفحةٍ في التطبيق
+         هي الجذر، فتُشارَك صفحة عملٍ بعنوان الصفحة الرئيسية */
     },
     twitter: {
-      card: "summary",
+      card: "summary_large_image",
       title: t.metaTitle,
       description: t.metaDescription,
-      images: [share],
     },
   };
 }
@@ -66,6 +79,17 @@ export default async function RootLayout({
   // يؤخّر أول بايت للصفحة كلها ~نصف ثانية. ThemeCookieSync يهاجر القدامى.
   const cookieStore = await cookies();
   const theme = themeById(cookieStore.get("theme")?.value);
+
+  /* هل الزائر مسجَّل؟ فحصُ كوكي الجلسة لا `getUser()` (D-122).
+     الجذر صار يعرض صفحة هبوطٍ للزائر غير المسجّل، وشريطُ تبويبات التطبيق
+     فوق صفحة تعريفٍ بالمنتج يقود إلى صفحاتٍ كلّها تردّه إلى الدخول.
+     ولماذا الكوكي لا الجلسة الحقيقية: `getUser()` رحلة شبكةٍ كاملة إلى
+     Supabase، ووضعُها هنا يحبس أول بايتٍ لكل صفحةٍ في التطبيق خلفها —
+     وهي مخاطرة أداءٍ لا تستحقّها مسألةُ «هل نُظهر شريطاً». الخطأ الوحيد
+     الممكن أن يرى صاحبُ كوكيٍّ منتهٍ الشريطَ لحظةً، وهو يراه اليوم دائماً. */
+  const signedIn = cookieStore
+    .getAll()
+    .some((c) => c.name.startsWith("sb-") && c.name.includes("auth-token"));
 
   return (
     <html
@@ -99,7 +123,7 @@ export default async function RootLayout({
           {t.navHome}
         </a>
         <Suspense fallback={null}>
-          <HeaderShell>
+          <HeaderShell signedIn={signedIn}>
             <Navbar />
           </HeaderShell>
         </Suspense>
@@ -108,7 +132,7 @@ export default async function RootLayout({
           {children}
         </main>
         <Footer text={t.footer} />
-        <BottomNav locale={locale} />
+        <BottomNav locale={locale} signedIn={signedIn} />
         <OfflineSync />
         <ToastHost />
         {/* بصمة البناء تُخبز في الصفحة: بها يعرف التبويب المُستأنَف أنه

@@ -1,8 +1,9 @@
 import { Suspense } from "react";
+import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import { redirect } from "next/navigation";
-import { type Locale } from "@/lib/i18n";
+import { getDict, type Locale } from "@/lib/i18n";
 import { RailSkeleton } from "@/components/Skeletons";
 import {
   getUser,
@@ -28,7 +29,7 @@ import {
 } from "@/lib/tmdb";
 import { getWatchedForShow } from "@/lib/data";
 import { nextUnwatchedEpisode } from "@/lib/progress";
-import { getT } from "@/lib/locale";
+import { getT, getLocale } from "@/lib/locale";
 import { whenLabel } from "@/lib/when";
 import { localizeFollows, localizeRows } from "@/lib/localize";
 import { airedEpisodeCount, percentOf } from "@/lib/progress";
@@ -52,12 +53,45 @@ import { WeekStrip, type WeekEntry } from "@/components/WeekStrip";
 import { ShowStatsSync, type ShowStat } from "@/components/ShowStatsSync";
 import { FollowMetaSync, MovieStatsSync } from "@/components/MetaSync";
 import { RoutePrewarm } from "@/components/RoutePrewarm";
+import { LandingHero } from "@/components/LandingHero";
+import { LandingContent } from "@/components/LandingContent";
+import { JsonLd } from "@/components/JsonLd";
+import { siteGraph, faqGraph, seoKeywords } from "@/lib/seo";
+
+/**
+ * الجذر يعرض صفحة الهبوط للزائر غير المسجّل بدل أن يحوّله (D-122).
+ *
+ * كان `redirect("/login")`، أي أن كل رابطٍ خارجي وكل إشارةٍ تصل إلى
+ * loopztv.com تُهدَر على تحويلٍ إلى صفحةٍ بلا نصّ، ويفهرس قوقل عنوان
+ * `/login` مكان الجذر. الآن الجذر نفسه يجيب بمحتوىً كامل: نفس الشاشة
+ * الأولى بالضبط (بكسل ببكسل)، وتحتها ما يُقرأ ويُفهرَس.
+ */
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  return {
+    // الجذر هو الرابط الرسمي للعلامة، و`/login` يشير إليه بـcanonical
+    alternates: { canonical: "/" },
+    keywords: seoKeywords(locale),
+  };
+}
 
 export default async function HomePage() {
   const user = await getUser();
-  if (!user) redirect("/login");
-
   const { locale, t } = await getT();
+
+  if (!user) {
+    /* البيانات المُهيكلة على الجذر لا في التخطيط: التخطيط يخدم كل صفحةٍ
+       في التطبيق، وتكرار تعريف العلامة في مئات الصفحات ضجيجٌ لا إشارة.
+       الجذر هو الصفحة التي تُعرّف بالمنتج، فهنا موضعها. */
+    return (
+      <>
+        <JsonLd data={siteGraph(locale, getDict(locale))} />
+        <JsonLd data={faqGraph(locale)} />
+        <LandingHero variant="flow" showWordmark={false} />
+        <LandingContent locale={locale} />
+      </>
+    );
+  }
 
   // ملخّص مجمّع: صف لكل مسلسل بدل صف لكل حلقة (آلاف الصفوف سابقاً).
   // صفوف الحلقات التفصيلية تُقرأ لاحقاً لمسلسل واحد فقط — صاحب «الحلقة التالية».

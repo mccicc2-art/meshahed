@@ -1,30 +1,34 @@
 import type { MetadataRoute } from "next";
-import { siteUrl } from "@/lib/site";
+import { SITE_URL, siteUrl } from "@/lib/site";
 
 /**
- * خريطة الموقع — الصفحات العامة فقط.
+ * خريطة الموقع — الصفحات التي تُجيب بمحتوى فعلاً، لا غير.
  *
- * كل ما خلف تسجيل الدخول (المكتبة، اليوميات، الرسائل…) ليس لمحركات
- * البحث، وروابط الأعمال والقوائم بحرٌ لا قاع له فلا تُسرد يدوياً —
- * تصل إليها المحركات من الصفحات العامة ومن روابط المشاركة.
- * العناوين تُبنى من `SITE_URL` فتشير كلها إلى النطاق الرسمي مهما كان
- * المضيف الذي قُدّمت منه.
+ * تصحيحٌ صريح (D-122): كانت الخريطة تسرد `/welcome` و`/news` و`/search`
+ * وثلاثتها خلف تسجيل الدخول — يزورها الزاحف فيتلقّى تحويلاً إلى `/login`.
+ * ومعها `/login` نفسها التي صارت الآن `noindex`. أي أن نصف ما نُعلنه
+ * للمحركات كان أبواباً مغلقة، وهذا يُنقص الثقة في الخريطة كلّها ويُهدر
+ * ميزانية الزحف على تحويلات.
+ *
+ * الباقي هنا كلّه يُجيب 200 لزائرٍ بلا حساب: الجذر (صار صفحة هبوطٍ
+ * بمحتوى)، المميزات، المقارنة، الخصوصية والشروط.
+ *
+ * وروابط الأعمال والقوائم ما تزال خارج الخريطة: كلها خلف تسجيل الدخول
+ * اليوم. حين تُفتح صفحات الأعمال للقراءة بلا حساب تصير هي أكبر مصدر
+ * ظهورٍ لدينا، وتُضاف هنا ديناميكياً.
  */
 export default function sitemap(): MetadataRoute.Sitemap {
-  const pages: { path: string; priority: number; freq: "daily" | "weekly" }[] = [
+  const pages: { path: string; priority: number; freq: "daily" | "weekly" | "monthly" }[] = [
     { path: "/", priority: 1, freq: "daily" },
-    { path: "/welcome", priority: 0.8, freq: "weekly" },
-    // صفحة المميزات (D-096): عامّة بلا حارس وتُعرّف بالمنتج — مكانها
-    // الطبيعي في الخريطة، بأولوية تسويقية عالية كـ/welcome
     { path: "/features", priority: 0.8, freq: "weekly" },
-    { path: "/news", priority: 0.7, freq: "daily" },
-    { path: "/search", priority: 0.5, freq: "weekly" },
-    { path: "/login", priority: 0.4, freq: "weekly" },
-    { path: "/privacy", priority: 0.2, freq: "weekly" },
-    { path: "/terms", priority: 0.2, freq: "weekly" },
+    // المقارنة: صفحة نيّةٍ عالية («بديل TV Time») فتستحق أولوية تسويقية
+    { path: "/compare", priority: 0.8, freq: "weekly" },
+    { path: "/privacy", priority: 0.2, freq: "monthly" },
+    { path: "/terms", priority: 0.2, freq: "monthly" },
   ];
   return pages.map((p) => ({
-    url: siteUrl(p.path),
+    // الجذر بلا شرطةٍ أخيرة كي يطابق `canonical` الذي يبنيه Next حرفياً
+    url: p.path === "/" ? SITE_URL : siteUrl(p.path),
     changeFrequency: p.freq,
     priority: p.priority,
   }));
