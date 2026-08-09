@@ -148,9 +148,21 @@ export function CommunityDirectory({
             {t.commMineSection}
           </p>
           {mine.length === 0 ? (
-            <p className="text-sm text-muted bg-surface border border-dashed border-border rounded-xl py-8 px-5 text-center">
-              {t.commEmptyDir}
-            </p>
+            /* حالة موجهة (نمط D-106): الزر يفتح ورقة الإنشاء نفسها —
+               زرُّ الرأس بعيدٌ عن عينِ من يقرأ صندوق الفراغ */
+            <div className="bg-surface border border-dashed border-border rounded-xl py-8 px-5 text-center space-y-4">
+              <p className="text-sm text-muted">{t.commEmptyDir}</p>
+              <button
+                type="button"
+                onClick={() => {
+                  tap(8);
+                  setCreate(true);
+                }}
+                className={buttonClass({ size: "sm" })}
+              >
+                + {t.commCreate}
+              </button>
+            </div>
           ) : (
             <ul className="divide-y divide-[color:var(--divider)]">
               {mine.map((c) => (

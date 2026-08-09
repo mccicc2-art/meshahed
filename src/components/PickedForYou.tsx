@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { PosterRail, RailItem } from "./PosterRail";
 import { PosterCard } from "./PosterCard";
+import { LongPressable } from "./LongPressable";
+import { OneTimeHint } from "./OneTimeHint";
 import { Icon } from "./Icon";
 import { getDict, type Locale } from "@/lib/i18n";
 import { tap } from "@/lib/haptics";
@@ -98,6 +100,8 @@ export function PickedForYou({
   }
 
   return (
+    <div className="space-y-2.5">
+      <OneTimeHint id="picked-dismiss" text={t.hintDismiss} closeLabel={t.closeLabel} />
     <PosterRail
       title={title}
       icon="sparkles"
@@ -119,27 +123,32 @@ export function PickedForYou({
     >
       {visible.map((s) => (
         <RailItem key={keyOf(s)}>
-          <div className="relative">
-            <PosterCard
-              href={`/${s.mediaType === "movie" ? "movie" : "show"}/${s.tmdbId}`}
-              title={s.title}
-              posterPath={s.posterPath}
-              year={s.year}
-              note={s.note}
-            />
-            {/* «غير مهتم» — زرٌّ حقيقي فوق الملصق لا داخل رابطه */}
-            <button
-              type="button"
-              onClick={() => dismiss(s)}
-              aria-label={t.notInterestedAria(s.title)}
-              title={t.notInterested}
-              className="absolute top-1.5 end-1.5 z-10 grid place-items-center w-7 h-7 rounded-full bg-black/55 text-white/85 hover:bg-black/75 hover:text-white active:scale-95 transition backdrop-blur-sm"
-            >
-              <Icon name="eye-off" size={14} strokeWidth={2} />
-            </button>
-          </div>
+          {/* «غير مهتم» بالضغط المطول (م٢ من تقييم 9 Aug): الزر الدائم
+              كان يزاحم زوايا البطاقة — الآن اللمس المطول يخفي، والزر
+              يبقى للفأرة (يظهر بالمرور) ولقارئ الشاشة (بالتركيز) */}
+          <LongPressable onLongPress={() => dismiss(s)}>
+            <div className="relative group/pk">
+              <PosterCard
+                href={`/${s.mediaType === "movie" ? "movie" : "show"}/${s.tmdbId}`}
+                title={s.title}
+                posterPath={s.posterPath}
+                year={s.year}
+                note={s.note}
+              />
+              <button
+                type="button"
+                onClick={() => dismiss(s)}
+                aria-label={t.notInterestedAria(s.title)}
+                title={t.notInterested}
+                className="absolute top-1.5 end-1.5 z-10 grid place-items-center w-7 h-7 rounded-full bg-black/55 text-white/85 opacity-0 group-hover/pk:opacity-100 focus-visible:opacity-100 hover:bg-black/75 hover:text-white active:scale-95 transition backdrop-blur-sm"
+              >
+                <Icon name="eye-off" size={14} strokeWidth={2} />
+              </button>
+            </div>
+          </LongPressable>
         </RailItem>
       ))}
     </PosterRail>
+    </div>
   );
 }

@@ -1,9 +1,8 @@
 "use client";
 
-import { Fragment, useMemo, useRef, useState, useTransition } from "react";
+import { Fragment, useMemo, useState, useTransition } from "react";
 import { flashError } from "@/lib/toast";
 import { runOrQueue } from "@/lib/offline";
-import { tap } from "@/lib/haptics";
 import { coalescedRefresh } from "@/lib/refresh";
 import { useRouter } from "next/navigation";
 import { getDict, type Locale } from "@/lib/i18n";
@@ -11,10 +10,12 @@ import { startRewatch } from "@/lib/actions";
 import type { UserList } from "@/lib/data";
 import { PosterCard } from "./PosterCard";
 import { SectionDivider } from "./SectionDivider";
+import { LongPressable } from "./LongPressable";
 import { ListManager } from "./ListManager";
 import { Icon } from "./Icon";
 import { Sheet, SheetHeader } from "./ui/Sheet";
 import { chipClass, segmentedItem, segmentedTrackFull } from "./ui/controls";
+import { buttonClass } from "./ui/Button";
 
 export interface GridItem {
   key: string;
@@ -232,7 +233,17 @@ export function LibraryGrid({
       <p className="text-[10px] text-muted/80 mb-4">{t.longPressHint}</p>
 
       {items.length === 0 ? (
-        <p className="text-center text-muted py-16">{t.libraryEmpty}</p>
+        /* حالة موجهة لا جملة تشخّص (نمط D-106): الزر يحمل أول خطوة */
+        <div className="text-center py-16 space-y-4">
+          <p className="text-muted">{t.libraryEmpty}</p>
+          <button
+            type="button"
+            onClick={() => router.push("/news")}
+            className={buttonClass({ size: "sm" })}
+          >
+            {t.libraryEmptyCta}
+          </button>
+        </div>
       ) : (
         /* content-visibility: مكتبة من ٣٠٠ عمل كانت ٣٠٠ بطاقة مركّبة تُنسَّق
            كلها عند أول تمرير — الآن ما خرج عن الشاشة يُتخطّى رسمُه */
@@ -285,66 +296,6 @@ export function LibraryGrid({
           onDone={() => coalescedRefresh(router)}
         />
       )}
-    </div>
-  );
-}
-
-/**
- * غلاف الضغطة المطوّلة.
- *
- * ٤٥٠ مللي ثانية بلا حركةٍ تُطلق الإجراء وتبتلع النقرة التالية حتى لا
- * يفتح الرابط. التحرّك أكثر من ١٠ بكسل يُلغي — فالتمرير يبقى تمريراً.
- */
-function LongPressable({
-  onLongPress,
-  children,
-}: {
-  onLongPress: () => void;
-  children: React.ReactNode;
-}) {
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const fired = useRef(false);
-  const origin = useRef<{ x: number; y: number } | null>(null);
-
-  function clear() {
-    if (timer.current) clearTimeout(timer.current);
-    timer.current = null;
-    origin.current = null;
-  }
-
-  return (
-    <div
-      className="select-none"
-      style={{ WebkitTouchCallout: "none" }}
-      onContextMenu={(e) => e.preventDefault()}
-      onPointerDown={(e) => {
-        fired.current = false;
-        origin.current = { x: e.clientX, y: e.clientY };
-        timer.current = setTimeout(() => {
-          fired.current = true;
-          // اهتزازة خفيفة تؤكّد أن الضغطة «مسكت» — حيث يدعمها الجهاز
-          tap(12);
-          onLongPress();
-        }, 450);
-      }}
-      onPointerMove={(e) => {
-        if (!origin.current) return;
-        const dx = e.clientX - origin.current.x;
-        const dy = e.clientY - origin.current.y;
-        if (dx * dx + dy * dy > 100) clear();
-      }}
-      onPointerUp={clear}
-      onPointerLeave={clear}
-      onPointerCancel={clear}
-      onClickCapture={(e) => {
-        if (fired.current) {
-          e.preventDefault();
-          e.stopPropagation();
-          fired.current = false;
-        }
-      }}
-    >
-      {children}
     </div>
   );
 }

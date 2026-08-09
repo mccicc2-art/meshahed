@@ -13,6 +13,7 @@ import { tap } from "@/lib/haptics";
 import { flashError } from "@/lib/toast";
 import { coalescedRefresh } from "@/lib/refresh";
 import { useChatPoll } from "@/lib/usePoll";
+import { FeedEmptyCta } from "./FeedEmptyCta";
 import { replyToShare, markConversationRead, hideConversation } from "@/lib/actions";
 import { StartConversationSheet } from "./StartConversationSheet";
 import type { Conversation, ConvEvent, PersonLite } from "@/lib/data";
@@ -52,11 +53,9 @@ export function Inbox({
 
   // لا محادثاتٍ ولا من نبدأ معه: الفراغ وحده، بلا حقل بحثٍ لا معنى له
   if (conversations.length === 0 && startable.length === 0) {
-    return (
-      <p className="text-sm text-muted bg-surface border border-dashed border-border rounded-xl py-8 px-5 text-center">
-        {t.inboxEmpty}
-      </p>
-    );
+    /* حالة موجهة (تعميم نمط D-106): الرسائل تحتاج متابعة متبادلة —
+       فأول خطوة من الفراغ هي إيجاد الأصدقاء، والزر يفتح ورقة البحث */
+    return <FeedEmptyCta locale={locale} text={t.inboxEmpty} />;
   }
 
   // ترشيحٌ بالاسم — يكمل محادثةً قائمة، أو **يبدأ** مع متابَعٍ متبادلٍ لم
