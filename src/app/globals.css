@@ -394,3 +394,14 @@ summary:focus-visible,
 ::-webkit-scrollbar-track {
   background: transparent;
 }
+
+/* سطر السبب في بطاقة الاقتراح يذهب ويعود ليُقرأ كاملاً (D-100) —
+   المسافة يقيسها MarqueeText في العميل ويمرّرها متغيّراً */
+@keyframes note-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(var(--note-dist, 0));
+  }
+}
