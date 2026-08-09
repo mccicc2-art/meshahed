@@ -31,7 +31,13 @@ import { getTv, getMovie } from "@/lib/tmdb";
 import { Icon } from "@/components/Icon";
 import { LikeButton } from "@/components/LikeButton";
 import { ReportButton } from "@/components/ReportButton";
-import { segmentedItem, segmentedTrack, segmentedTrackFull } from "@/components/ui/controls";
+import {
+  chipClass,
+  chipRow,
+  segmentedItem,
+  segmentedTrack,
+  segmentedTrackFull,
+} from "@/components/ui/controls";
 import { ScrollMemory } from "@/components/ScrollMemory";
 
 /** كم عملاً نطلب له صورةً عرضية — سقفٌ يمنع موجة طلباتٍ بحجم الخط */
@@ -95,15 +101,35 @@ function actionLine(a: FeedItem, t: Dict): string | null {
 export default async function PeoplePage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string; sort?: string; with?: string; c?: string }>;
+  searchParams: Promise<{
+    tab?: string;
+    sort?: string;
+    with?: string;
+    c?: string;
+    k?: string;
+  }>;
 }) {
   const user = await getUser();
   if (!user) redirect("/login");
 
   const { locale, t } = await getT();
 
-  const { tab: tabParam, sort, with: withParam, c: cParam } = await searchParams;
+  const {
+    tab: tabParam,
+    sort,
+    with: withParam,
+    c: cParam,
+    k: kParam,
+  } = await searchParams;
   const tab = asTab(tabParam);
+  /* مرشِّح نوع الحدث (طلب أحمد 9 Aug: «احتاج فلتر التعليقات وفلتر
+     التقييمات»). ثلاثة أقسام **متنافية** كي لا يتداخل مرشِّحان:
+     «التقييمات» = رقمٌ بلا نصّ · «المراجعات» = رأيٌ مكتوب. والمشاهدات
+     تظهر في «الكل» وحده — لها فعلها في السطر ولا تُطلب بذاتها.
+     ملاحظة مفردات (D-026): كلمة المنتج للنصّ هي «مراجعة» لا «تعليق» —
+     مصطلحٌ واحد لكل مفهوم؛ الفلتر هو ما طلبتَه واللفظ هو لفظ التطبيق. */
+  const kind: "rate" | "review" | null =
+    kParam === "rate" || kParam === "review" ? kParam : null;
   /* **الأحدث هو الافتراضي منذ D-123**: الخطّ صار يحمل المشاهدة لا المراجعة
      وحدها، وأحداث المشاهدة بلا إعجابات (D-124 لم تُشحن) — فالترتيب
      بالإعجاب كان يدفنها كلّها أسفل الصفحة ويعيد الخطّ إلى شكله القديم.
@@ -163,11 +189,19 @@ export default async function PeoplePage({
   const sorted =
     tab !== "mine"
       ? []
-      : (await localizeRows(followingFeed, locale)).sort((a, b) =>
-          newest
-            ? b.updated_at.localeCompare(a.updated_at)
-            : b.likes - a.likes || b.updated_at.localeCompare(a.updated_at),
-        );
+      : (await localizeRows(followingFeed, locale))
+          .filter((a) =>
+            kind === "review"
+              ? Boolean(a.review)
+              : kind === "rate"
+                ? a.kind === "rate" && !a.review
+                : true,
+          )
+          .sort((a, b) =>
+            newest
+              ? b.updated_at.localeCompare(a.updated_at)
+              : b.likes - a.likes || b.updated_at.localeCompare(a.updated_at),
+          );
   const feed = newest ? spreadByPerson(sorted) : sorted;
 
   /* الصورة العرضية ليست في صفّ التقييم — تُطلب من TMDB لأوائل الخط فقط،
@@ -196,10 +230,22 @@ export default async function PeoplePage({
     { key: "inbox", href: "/people?tab=inbox", label: t.communityTabInbox, badge: unread },
   ];
 
-  // روابط الفرز تحفظ التبويب الحالي — الفرز لا معنى له في الوارد.
-  // انقلبت الوجهتان مع انقلاب الافتراضي (D-123): العاري = الأحدث
-  const sortBase = tab === "all" ? "/people?tab=all" : "/people";
-  const sortTopHref = tab === "all" ? "/people?tab=all&sort=top" : "/people?sort=top";
+  /* روابط الفرز والمرشِّح تحفظ بعضها — تغيير الفرز لا يمسح المرشِّح
+     والعكس (نمط D-095: الحالة في الرابط، قابلةً للمشاركة والرجوع).
+     انقلبت وجهتا الفرز مع انقلاب الافتراضي (D-123): العاري = الأحدث. */
+  const circleHref = (opts: { top?: boolean; k?: string | null }) => {
+    const p = new URLSearchParams();
+    if (opts.top ?? !newest) p.set("sort", "top");
+    const nk = opts.k === undefined ? kind : opts.k;
+    if (nk) p.set("k", nk);
+    const qs = p.toString();
+    return qs ? `/people?${qs}` : "/people";
+  };
+  const kinds: { key: "rate" | "review" | null; label: string }[] = [
+    { key: null, label: t.feedFilterAll },
+    { key: "rate", label: t.feedFilterRatings },
+    { key: "review", label: t.feedFilterReviews },
+  ];
 
   return (
     <div className="space-y-5">
@@ -245,29 +291,46 @@ export default async function PeoplePage({
         })}
       </nav>
 
-      {/* صفٌّ واحد تحت التبويبات: ترتيب الخطّ على البداية (لتبويبَي الخطّ
-          فقط)، وعدّادا المتابعة وزرّ الإضافة على الطرف — نُقلا إلى هنا من
-          أعلى الصفحة بطلب المالك. يختفي داخل محادثةٍ مفتوحة لتصفو الدردشة */}
-      {!openWith && !openCommunity && (
-        <div className="flex items-center justify-between gap-2">
-          <div className="min-w-0">
-            {tab === "mine" && feed.length > 0 && (
-              <div role="group" aria-label={t.feedSortGroup} className={segmentedTrack}>
-                <Link
-                  href={sortBase}
-                  aria-current={newest ? "true" : undefined}
-                  className={segmentedItem(newest)}
-                >
-                  {t.feedSortNew}
-                </Link>
-                <Link
-                  href={sortTopHref}
-                  aria-current={!newest ? "true" : undefined}
-                  className={segmentedItem(!newest)}
-                >
-                  {t.feedSortTop}
-                </Link>
-              </div>
+      {/* صفُّ «مجتمعي» وحده: الترتيب ثم مرشِّح النوع على البداية،
+          والعدّادات على الطرف. **تبويبا المجتمع والرسائل لم يعودا يرسمان
+          صفّاً خاصاً بالعدّادات** — تُحقن داخل صفّ بحثهما فيصير الرأس
+          صفّاً واحداً (طلب أحمد 9 Aug). ويختفي داخل محادثةٍ مفتوحة. */}
+      {tab === "mine" && !openWith && !openCommunity && (
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div className="min-w-0 flex items-center gap-3 flex-wrap">
+            {(feed.length > 0 || kind !== null) && (
+              <>
+                <div role="group" aria-label={t.feedSortGroup} className={segmentedTrack}>
+                  <Link
+                    href={circleHref({ top: false })}
+                    aria-current={newest ? "true" : undefined}
+                    className={segmentedItem(newest)}
+                  >
+                    {t.feedSortNew}
+                  </Link>
+                  <Link
+                    href={circleHref({ top: true })}
+                    aria-current={!newest ? "true" : undefined}
+                    className={segmentedItem(!newest)}
+                  >
+                    {t.feedSortTop}
+                  </Link>
+                </div>
+                {/* رقائق لا مقسّم ثانٍ: محوران مختلفان في صفٍّ واحد
+                    يحتاجان شكلين مختلفين وإلا قُرئا محوراً واحداً (D-016) */}
+                <div role="group" aria-label={t.feedFilterGroup} className={chipRow}>
+                  {kinds.map((kk) => (
+                    <Link
+                      key={kk.key ?? "all"}
+                      href={circleHref({ k: kk.key })}
+                      aria-current={kind === kk.key ? "true" : undefined}
+                      className={chipClass(kind === kk.key, "sm")}
+                    >
+                      {kk.label}
+                    </Link>
+                  ))}
+                </div>
+              </>
             )}
           </div>
           <CommunityBar following={lists.following} followers={lists.followers} requests={followRequests} locale={locale} />
@@ -280,20 +343,41 @@ export default async function PeoplePage({
           conversations={conversations}
           startable={startable}
           openWith={openWith}
+          actions={
+            openWith ? undefined : (
+              <CommunityBar following={lists.following} followers={lists.followers} requests={followRequests} locale={locale} />
+            )
+          }
           locale={locale}
         />
       ) : tab === "all" ? (
         openCommunity ? (
           <CommunityRoom room={openCommunity} locale={locale} />
         ) : (
-          <CommunityDirectory mine={myCommunities} invites={myInvites} locale={locale} />
+          <CommunityDirectory
+            mine={myCommunities}
+            invites={myInvites}
+            actions={
+              <CommunityBar following={lists.following} followers={lists.followers} requests={followRequests} locale={locale} />
+            }
+            locale={locale}
+          />
         )
       ) : (
         <section>
           {feed.length === 0 ? (
             /* حالةٌ موجَّهة لا جملةٌ تشخّص (تقييم 9 Aug م٦): الزرّ يفتح
-               ورقة البحث عن الأشخاص — أول خطوةٍ للخروج من الفراغ */
-            <FeedEmptyCta locale={locale} />
+               ورقة البحث عن الأشخاص — أول خطوةٍ للخروج من الفراغ.
+               **لكن الفراغ الناتج عن مرشِّحٍ ليس فراغ دائرة**: اقتراح
+               «ابحث عن أصدقاء» هناك تشخيصٌ خاطئ، والصواب جملةٌ تقول
+               إن هذا النوع وحده خالٍ */
+            kind !== null ? (
+              <p className="text-sm text-muted bg-surface border border-dashed border-border rounded-xl py-8 px-5 text-center">
+                {t.feedFilterEmpty}
+              </p>
+            ) : (
+              <FeedEmptyCta locale={locale} />
+            )
           ) : (
             <div className="divide-y divide-[color:var(--divider)]">
               {feed.map((a) => {
