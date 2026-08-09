@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getUser } from "@/lib/data";
-import { getSeason } from "@/lib/tmdb";
+import { getSeason, tvImdbId } from "@/lib/tmdb";
+import { seasonImdbRatings } from "@/lib/omdb";
 import { allow, retryAfter } from "@/lib/ratelimit";
 
 /**
@@ -24,19 +25,29 @@ export async function GET(request: Request) {
   const params = new URL(request.url).searchParams;
   const tvId = Number(params.get("tv"));
   const seasonNumber = Number(params.get("s"));
+  /* r=1: أرفق تقييمات IMDb للحلقات — يطلبها متتبّع الحلقات فقط بعد أن
+     يضغط المستخدم زرّ الكشف، فلا تُحرق حصة OMDb على من لم يطلبها */
+  const withRatings = params.get("r") === "1";
 
   if (!Number.isInteger(tvId) || tvId <= 0 || !Number.isInteger(seasonNumber) || seasonNumber < 0) {
     return NextResponse.json({ episodes: [] }, { status: 400 });
   }
 
   try {
-    const season = await getSeason(tvId, seasonNumber);
+    const [season, ratings] = await Promise.all([
+      getSeason(tvId, seasonNumber),
+      withRatings
+        ? tvImdbId(tvId).then((iid) => seasonImdbRatings(iid, seasonNumber))
+        : Promise.resolve({} as Record<number, number>),
+    ]);
     const episodes = season.episodes.map((e) => ({
       episode_number: e.episode_number,
       name: e.name,
       air_date: e.air_date,
       runtime: e.runtime,
       still_path: e.still_path,
+      // undefined يسقط من JSON — الحقل لا يظهر أصلاً في الردّ العادي
+      imdb_rating: withRatings ? (ratings[e.episode_number] ?? null) : undefined,
     }));
     return NextResponse.json(
       { episodes },
