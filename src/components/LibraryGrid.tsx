@@ -10,6 +10,7 @@ import { getDict, type Locale } from "@/lib/i18n";
 import { startRewatch } from "@/lib/actions";
 import type { UserList } from "@/lib/data";
 import { PosterCard } from "./PosterCard";
+import { SectionDivider } from "./SectionDivider";
 import { ListManager } from "./ListManager";
 import { Icon } from "./Icon";
 import { Sheet, SheetHeader } from "./ui/Sheet";
@@ -238,21 +239,15 @@ export function LibraryGrid({
                 i > 0 &&
                 x.status !== items[i - 1].status &&
                 x.status && (
-                  <div
-                    className="col-span-full flex items-center gap-2 pt-1"
-                    /* يُستثنى من content-visibility الموروثة: حجزُ ٢٤٠ بكسل
-                       لفاصلٍ ارتفاعه ٢٠ يجعل شريط التمرير يقفز */
+                  /* الكلمة في منتصف السطر لا في أوّله (طلب المالك) — المكوّن
+                     المشترك SectionDivider. ويُستثنى من content-visibility
+                     الموروثة: حجزُ ٢٤٠ بكسل لفاصلٍ ارتفاعه ٢٠ يجعل شريط
+                     التمرير يقفز */
+                  <SectionDivider
+                    label={statusLabel(x.status, t)}
+                    className="col-span-full pt-1"
                     style={{ contentVisibility: "visible", containIntrinsicSize: "auto" }}
-                    role="separator"
-                  >
-                    {/* الكلمة في منتصف السطر لا في أوّله (طلب المالك):
-                        خيطان متساويان حولها فتتوسّط بعرض الشبكة كلّه */}
-                    <span className="flex-1 h-px bg-[color:var(--divider)]" aria-hidden />
-                    <span className="shrink-0 text-[11px] font-bold text-muted">
-                      {statusLabel(x.status, t)}
-                    </span>
-                    <span className="flex-1 h-px bg-[color:var(--divider)]" aria-hidden />
-                  </div>
+                  />
                 )}
               <LongPressable onLongPress={() => setSheet(x)}>
                 <PosterCard

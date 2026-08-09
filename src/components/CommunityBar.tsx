@@ -336,8 +336,10 @@ function FollowersSheet({
   );
 }
 
-/** بحثٌ فوريّ عن الأشخاص — يُطلق نفسه بعد حرفين بلا زرّ */
-function SearchSheet({ t, onClose }: { t: Dict; onClose: () => void }) {
+/** بحثٌ فوريّ عن الأشخاص — يُطلق نفسه بعد حرفين بلا زرّ.
+    مُصدَّر لأن حالة الخطّ الفارغة (تقييم 9 Aug م٦) تفتح الورقة نفسها:
+    ورقة بحثٍ واحدة في التطبيق لا نسختان */
+export function SearchSheet({ t, onClose }: { t: Dict; onClose: () => void }) {
   const [q, setQ] = useState("");
   const [results, setResults] = useState<PersonLite[] | null>(null);
   const [pending, start] = useTransition();

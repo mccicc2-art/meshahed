@@ -238,7 +238,7 @@ function ConversationView({
   /* فورية (م٥/D-069): Realtime على جداول الخيط يوقظ التجديد لحظةَ وصول
      رسالة، والاستطلاع كل ٦ ثوانٍ شبكةُ أمانٍ تحته. أحداث الخادم الجديدة
      تحلّ محلّ الحالة — بما فيها المتفائلة، وقد صارت حقيقيةً هناك */
-  useChatPoll(true, ["title_shares", "list_shares", "share_replies"]);
+  const liveStatus = useChatPoll(true, ["title_shares", "list_shares", "share_replies"]);
   /* مزامنةٌ أثناء الرسم لا داخل effect (توصية React نفسها): وصولُ نسخة
      خادمٍ أحدث يستبدل الحالة في نفس الجولة بلا رسمٍ متتالٍ */
   const [prevServerEvents, setPrevServerEvents] = useState(conv.events);
@@ -275,6 +275,19 @@ function ConversationView({
           alt={t.avatarAlt}
         />
         <span className="min-w-0 flex-1 text-sm font-bold truncate">{name}</span>
+        {/* مؤشر الفورية (تقييم 9 Aug م٥): نقطة خضراء = القناة الحية قائمة،
+            ونقطة صامتة = شبكة أمان الاستطلاع وحدها — صدقٌ لا زينة */}
+        <span
+          className="shrink-0 inline-flex items-center gap-1 text-[10px] text-muted"
+          title={liveStatus === "live" ? t.convLiveTitle : t.convPollingTitle}
+        >
+          <span
+            className="w-1.5 h-1.5 rounded-full"
+            style={{ background: liveStatus === "live" ? "var(--success)" : "var(--muted)" }}
+            aria-hidden
+          />
+          {liveStatus === "live" ? t.convLive : t.convPolling}
+        </span>
         <button
           type="button"
           onClick={() => {
