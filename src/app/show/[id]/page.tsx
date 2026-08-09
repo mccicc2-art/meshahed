@@ -7,6 +7,7 @@ import {
   getUser,
   getFollowState,
   getWatchedForShow,
+  getEpisodeRatings,
   getMyRating,
   getCommunityRating,
   getTitleReviews,
@@ -54,7 +55,8 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
   // بيانات أول رسمة فقط في الموجة الحاسمة — الترايلر والتعليقات تُبثّ
   // لاحقاً عبر Suspense فلا تؤخّر ترويسة الصفحة وتبويب الحلقات
   const userRegion = await getWatchRegion();
-  const [tv, followState, watched, watchWhere, myLists, inLists, circle] = await Promise.all([
+  const [tv, followState, watched, watchWhere, myLists, inLists, circle, epRatings] =
+    await Promise.all([
     getTv(tvId).catch(() => null),
     getFollowState(tvId, "tv"),
     getWatchedForShow(tvId),
@@ -65,6 +67,10 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
        Suspense: كلفتُه استعلامٌ محليّ (~50ms من الرياض) والصفحة تنتظر
        TMDB على كل حال، فحاجزُ تعليقٍ ثانٍ يشتري وميضاً لا سرعة */
     getTitleCircle(tvId, "tv"),
+    /* تقييماتي للحلقات (D-139) — في الموجة نفسها لا خلف حاجز: نداء
+       definer واحد على فهرسٍ يخدمه المفتاح الأوّليّ، والصفحة تنتظر TMDB
+       على كل حال */
+    getEpisodeRatings(tvId),
   ]);
   const following = followState.following;
 
@@ -276,6 +282,7 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
                 airedTotal={airedExact}
                 defaultRuntime={tv.episode_run_time?.[0] ?? null}
                 initialWatched={[...watched]}
+                initialEpisodeRatings={[...epRatings.values()]}
                 locale={locale}
               />
             ),
