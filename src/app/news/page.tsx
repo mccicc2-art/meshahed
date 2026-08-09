@@ -54,6 +54,7 @@ import {
   type RailWin,
 } from "@/lib/browse";
 import { RankedRail } from "@/components/RankedRail";
+import { OneTimeHint } from "@/components/OneTimeHint";
 import { RailWindowChips } from "@/components/RailWindowChips";
 import { CountdownRail, type CountdownItem } from "@/components/CountdownRail";
 import { PickedForYou } from "@/components/PickedForYou";
@@ -158,6 +159,12 @@ export default async function NewsPage({
             : undefined
         }
       />
+
+      {/* تلميح لمرة واحدة (م٣): القوة المدفونة خلف زر Filters ورقائق
+          النوافذ تُقال مرةً ثم تصمت للأبد */}
+      {tab !== "lists" && (
+        <OneTimeHint id="discover-power" text={t.hintDiscover} closeLabel={t.closeLabel} />
+      )}
 
       {tab === "lists" ? (
         /* ===== تبويب «القوائم» — صفوفٌ كصفوف الأعمال (D-084) =====
