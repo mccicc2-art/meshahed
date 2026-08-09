@@ -256,13 +256,20 @@ export function DiscoverFilters({
   const draft: FilterDraft = { genre, lang, country, provider, era, rate, award };
 
   return (
-    /* رأسٌ لاصق (طلب أحمد 9 Aug): التبويبات وزرّ الفلاتر ورقائق ما
+    /* **شذرةٌ لا حاوية** (بلاغ أحمد ٩ Aug: «عمود التبويبات ظاهر مثل
+       قبل»): كانت هنا `<div className="transition-opacity …">` تلفّ
+       الرأس اللاصق، وهي بارتفاعه — و`sticky` يتحرّك داخل حدود أبيه، فلم
+       تكن له مسافةٌ يقطعها فمرّ مع الصفحة. الشفافية تُمرَّر الآن إلى
+       الجذر اللاصق نفسه، وأبوه صار عمود الصفحة الطويل.
+
+       رأسٌ لاصق (طلب أحمد 9 Aug): التبويبات وزرّ الفلاتر ورقائق ما
        اخترتَه تبقى تحت الترويسة مهما نزلتَ في الصفوف.
        الرأس اللاصق من `PageTabs` المشترك (D-134): نفس موضع تبويبات
        المجتمع والمكتبة بالبكسل، وخطٌّ فاصلٌ واحد. زرّ الفلاتر يُمرَّر
        `action` فيجلس في صفّ التبويبات، ورقائق ما اخترتَه `extra`. */
-    <div className={`transition-opacity ${pending ? "opacity-60" : "opacity-100"}`}>
+    <>
       <PageTabs
+        className={`transition-opacity ${pending ? "opacity-60" : "opacity-100"}`}
         active={tab}
         ariaLabel={t.discoverTabsGroup}
         items={tabs.map((x) => ({ key: x.value, label: x.label, onClick: () => goTab(x.value) }))}
@@ -368,6 +375,6 @@ export function DiscoverFilters({
           }}
         />
       )}
-    </div>
+    </>
   );
 }

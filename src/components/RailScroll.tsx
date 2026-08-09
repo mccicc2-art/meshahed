@@ -30,10 +30,17 @@ export function RailScroll({
     el.scrollBy({ left: sign * el.clientWidth * 0.85, behavior: "smooth" });
   }
 
+  /* **ظاهرةٌ في السكون لا عند المرور وحده** (بلاغ أحمد ٩ Aug: «حتى
+     السلاسل الطويلة ما فيها سهم عشان تتصفّحها»): كانت `opacity-0` حتى
+     يمرّ المؤشر — وأداةٌ لا تُرى لا توجد. الآن ٦٥٪ في السكون وكاملةٌ عند
+     المرور، فتُعرف قبل أن تُجرَّب.
+
+     ولا `translate` خارج الحاوية: كانت تُدفع ثُلثاً إلى الخارج فتُقصّ عند
+     حافّة الشاشة على المقاسات الضيّقة — تجلس الآن على حافّة الصفّ داخله. */
   const btn =
     "hidden sm:grid place-items-center absolute top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full " +
-    "bg-black/55 border border-white/15 text-white backdrop-blur-sm transition " +
-    "opacity-0 group-hover/rail:opacity-100 focus-visible:opacity-100 hover:bg-black/75";
+    "bg-black/60 border border-white/15 text-white backdrop-blur-sm transition " +
+    "opacity-65 group-hover/rail:opacity-100 focus-visible:opacity-100 hover:bg-black/80";
 
   return (
     <div className="relative group/rail">
@@ -49,7 +56,7 @@ export function RailScroll({
         type="button"
         aria-label={prevLabel}
         onClick={() => go(-1)}
-        className={`${btn} left-0 -translate-x-1/3`}
+        className={`${btn} left-0`}
       >
         <Icon name="chevron-down" size={18} className="rotate-90" />
       </button>
@@ -57,7 +64,7 @@ export function RailScroll({
         type="button"
         aria-label={nextLabel}
         onClick={() => go(1)}
-        className={`${btn} right-0 translate-x-1/3`}
+        className={`${btn} right-0`}
       >
         <Icon name="chevron-down" size={18} className="-rotate-90" />
       </button>

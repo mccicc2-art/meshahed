@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { RailScroll } from "./RailScroll";
 import { Icon, type IconName } from "./Icon";
 import Image from "next/image";
 import { posterUrl, titleOf, type SearchResult } from "@/lib/tmdb";
@@ -53,8 +54,12 @@ export function RankedRail({
         </p>
       )}
 
-      <div className="-mx-4 px-4 overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        <div className="flex gap-3 w-max pb-1">
+      {/* حاوية التمرير المشتركة (`RailScroll`) لا حاويةٌ خاصّة: كان هذا
+          الصفّ يكتب `overflow-x-auto` بيده فلم يكن له سهما سطح المكتب —
+          وأحمد رأى ذلك قبل أن نراه («حتى السلاسل الطويلة ما فيها سهم»).
+          صفٌّ يُمرَّر بلا أداة تمريرٍ ظاهرة يبدو للمستخدم صفّاً مبتوراً. */}
+      {items.length > 0 && (
+      <RailScroll prevLabel="السابق / Previous" nextLabel="التالي / Next">
           {items.map((r, i) => {
             const img = posterUrl(r.poster_path, "w342");
             const href = `/${r.media_type === "tv" ? "show" : "movie"}/${r.id}`;
@@ -112,8 +117,8 @@ export function RankedRail({
               </Link>
             );
           })}
-        </div>
-      </div>
+      </RailScroll>
+      )}
     </section>
   );
 }

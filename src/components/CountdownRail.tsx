@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { RailScroll } from "./RailScroll";
 import { Icon, type IconName } from "./Icon";
 import Image from "next/image";
 import { getDict, type Locale } from "@/lib/i18n";
@@ -41,8 +42,11 @@ export function CountdownRail({
         {title}
       </h2>
 
-      <div className="-mx-4 px-4 overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        <div className="flex gap-3 w-max pb-1">
+      {/* حاوية التمرير المشتركة (`RailScroll`) لا حاويةٌ خاصّة: كان هذا
+          الصفّ يكتب `overflow-x-auto` بيده فلم يكن له سهما سطح المكتب —
+          وأحمد رأى ذلك قبل أن نراه («حتى السلاسل الطويلة ما فيها سهم»).
+          صفٌّ يُمرَّر بلا أداة تمريرٍ ظاهرة يبدو للمستخدم صفّاً مبتوراً. */}
+      <RailScroll prevLabel="السابق / Previous" nextLabel="التالي / Next">
           {items.map((item) => {
             const days = daysUntil(item.date);
             const soon = days !== null && days <= 7;
@@ -92,8 +96,7 @@ export function CountdownRail({
               </Link>
             );
           })}
-        </div>
-      </div>
+      </RailScroll>
     </section>
   );
 }
