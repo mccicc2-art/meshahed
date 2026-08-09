@@ -21,11 +21,10 @@ import { tap } from "@/lib/haptics";
 import { Icon } from "./Icon";
 import { Sheet, SheetHeader } from "./ui/Sheet";
 import { buttonClass } from "./ui/Button";
-import { segmentedItem, segmentedTrackFull } from "./ui/controls";
 
 export interface FilterDraft {
-  type: BrowseType;
-  /** slug النوع الدرامي — انتقل من صفّ التبويبات إلى قائمةٍ هنا (طلب المالك) */
+  /** slug النوع الدرامي — انتقل من صفّ التبويبات إلى قائمةٍ هنا (طلب المالك).
+      جهةُ المحتوى غادرت المسوّدة كلياً: صارت تبويبات الرأس (أفلام/مسلسلات) */
   genre: string | null;
   lang: string | null;
   /** بلد الإنتاج — تابعٌ للعربية، ويسقط معها */
@@ -57,6 +56,7 @@ export interface FilterDraft {
  */
 export function DiscoverFilterSheet({
   locale,
+  type,
   initial,
   providers,
   region,
@@ -64,6 +64,9 @@ export function DiscoverFilterSheet({
   onClose,
 }: {
   locale: Locale;
+  /** جهة التبويب المفتوح (أفلام/مسلسلات) — تقصّ قائمة الأنواع وحدها؛
+      ليست خياراً هنا: الجهة صعدت إلى تبويبات الرأس (طلب أحمد 9 Aug) */
+  type: BrowseType;
   initial: FilterDraft;
   /** منصّات المنطقة كما جاءت من TMDB — فارغةً حين يتعذّر جلبها */
   providers: { id: number; name: string }[];
@@ -76,33 +79,15 @@ export function DiscoverFilterSheet({
   const lang = locale === "en" ? "en" : "ar";
   const [draft, setDraft] = useState<FilterDraft>(initial);
 
-  const TYPES: { value: BrowseType; label: string }[] = [
-    { value: "all", label: t.browseAll },
-    { value: "movie", label: t.browseMovies },
-    { value: "tv", label: t.browseSeries },
-  ];
-
   function set(patch: Partial<FilterDraft>) {
     tap(6);
     setDraft((d) => ({ ...d, ...patch }));
   }
 
-  // تغيير الجهة قد يُسقط النوع المختار: «رعب» لا مقابل له في المسلسلات،
-  // فبدل قائمةٍ لا تجد شيئاً يعود النوع إلى «كل الأنواع» بصمت
-  function setType(next: BrowseType) {
-    tap(6);
-    setDraft((d) => {
-      const g = BROWSE_GENRES.find((x) => x.slug === d.genre);
-      const keepGenre = g && genreFitsType(g, next) ? d.genre : null;
-      return { ...d, type: next, genre: keepGenre };
-    });
-  }
-
-  // الأنواع المتاحة للجهة الحالية — «رعب/رومانسي» للأفلام، «واقع» للمسلسلات
-  const genres = BROWSE_GENRES.filter((g) => genreFitsType(g, draft.type));
+  // الأنواع المتاحة لجهة التبويب — «رعب/رومانسي» للأفلام، «واقع» للمسلسلات
+  const genres = BROWSE_GENRES.filter((g) => genreFitsType(g, type));
 
   const cleared: FilterDraft = {
-    type: "all",
     genre: null,
     lang: null,
     country: null,
@@ -111,7 +96,6 @@ export function DiscoverFilterSheet({
     rate: null,
   };
   const dirty =
-    draft.type !== "all" ||
     draft.genre !== null ||
     draft.lang !== null ||
     draft.country !== null ||
@@ -143,26 +127,8 @@ export function DiscoverFilterSheet({
       </SheetHeader>
 
       <div className="overflow-y-auto overscroll-contain px-5 py-4 space-y-5">
-        {/* نافذة الترتيب غادرت الورقة (D-099): صارت رقائق خفيفة في
-            عنوان كل صفّ «أفضل ١٠» — أداتان على نفس الصفوف لبس */}
-        {/* ===== جهة المحتوى ===== */}
-        <section>
-          <h4 className="text-xs font-bold text-muted mb-2">{t.browseTypeGroup}</h4>
-          <div role="group" aria-label={t.browseTypeGroup} className={segmentedTrackFull}>
-            {TYPES.map((o) => (
-              <button
-                key={o.value}
-                type="button"
-                aria-pressed={draft.type === o.value}
-                onClick={() => setType(o.value)}
-                className={segmentedItem(draft.type === o.value, "flex-1")}
-              >
-                {o.label}
-              </button>
-            ))}
-          </div>
-        </section>
-
+        {/* نافذة الترتيب غادرت الورقة (D-099) والجهة لحقت بها (تبويبات
+            الرأس — طلب أحمد 9 Aug): أداتان على نفس السؤال لبس */}
         {/* ===== شبكة المنسدلات — عمودان (طلب المالك، لقطة TMDB) =====
             الرقائق سقطت كلّها: قوائمُ تُختار منها قيمةٌ واحدة، والمنسدلة
             الأصلية تختصر كل قائمةٍ إلى سطرٍ مهما طالت. البلد يظهر خليةً

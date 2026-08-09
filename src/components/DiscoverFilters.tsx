@@ -51,7 +51,7 @@ import { segmentedItem } from "./ui/controls";
  */
 export function DiscoverFilters({
   locale,
-  tab = "titles",
+  tab = "movies",
   type,
   genre,
   lang,
@@ -98,7 +98,6 @@ export function DiscoverFilters({
   const [sheet, setSheet] = useState(false);
 
   function go(next: {
-    type?: BrowseType;
     g?: string | null;
     lang?: string | null;
     co?: string | null;
@@ -106,16 +105,15 @@ export function DiscoverFilters({
     era?: string | null;
     rate?: BrowseRate | null;
   }) {
-    const nextType = next.type ?? type;
     let nextGenre = next.g === undefined ? genre : next.g;
 
-    // تغيير الجهة قد يُسقط التصنيف المختار: «رعب» لا وجود له في المسلسلات،
-    // فبدل نتيجةٍ فارغة يعود الاختيار إلى «كل الأنواع»
+    // تصنيفٌ لا مقابل له في جهة التبويب («رعب» في المسلسلات) يسقط بصمت
     const found = BROWSE_GENRES.find((g) => g.slug === nextGenre);
-    if (!found || !genreFitsType(found, nextType)) nextGenre = null;
+    if (!found || !genreFitsType(found, type)) nextGenre = null;
 
     const p = new URLSearchParams();
-    if (nextType !== "all") p.set("type", nextType);
+    // الجهة يحملها التبويب لا معامل type — تبويب المسلسلات يبقى في رابطه
+    if (tab === "shows") p.set("tab", "shows");
     if (nextGenre) p.set("g", nextGenre);
     const nextLang = next.lang === undefined ? lang : next.lang;
     // البلد تابعٌ للعربية: مغادرتها تُسقطه، وإلا بقي مطبَّقاً بلا رقاقة تدلّ عليه
@@ -144,26 +142,24 @@ export function DiscoverFilters({
   function goTab(next: DiscoverTab) {
     if (next === tab) return;
     tap(8);
-    start(() => router.push(next === "lists" ? "/news?tab=lists" : "/news", { scroll: false }));
+    start(() =>
+      router.push(next === "movies" ? "/news" : `/news?tab=${next}`, { scroll: false }),
+    );
   }
 
+  /* ثلاثة تبويبات (طلب أحمد 9 Aug): أفلام · مسلسلات · القوائم —
+     الجهة صعدت من ورقة الفلاتر إلى الرأس فخفّت كل صفحةٍ للنصف */
   const tabs: { value: DiscoverTab; label: string }[] = [
-    { value: "titles", label: t.discoverTabTitles },
+    { value: "movies", label: t.discoverTabMovies },
+    { value: "shows", label: t.discoverTabShows },
     { value: "lists", label: t.discoverTabLists },
   ];
 
   /* ما اختير، مكتوباً: كل رقاقةٍ تحمل اسم الخيار لا اسم المحور — «تركي»
      أوضح من «اللغة: تركي» في مساحةٍ ضيّقة، والمحور يُفهم من القيمة */
   const chips: { key: string; label: string; clear: () => void }[] = [];
-  /* النافذة صارت خلف الورقة، فتحتاج رقاقةً كسائر المخفيّ: ما لا يُرى
-     ولا رقاقة له فلترٌ سرّيّ يجعل «أفضل الأفلام» تكذب بلا تفسير */
-  if (type !== "all") {
-    chips.push({
-      key: "type",
-      label: type === "movie" ? t.browseMovies : t.browseSeries,
-      clear: () => go({ type: "all" }),
-    });
-  }
+  /* رقاقة الجهة سقطت: الجهة صارت التبويب المضيء نفسه — رقاقةٌ تكرّره
+     كانت ستقول الشيء مرتين */
   const genreObj = BROWSE_GENRES.find((g) => g.slug === genre);
   if (genreObj) {
     chips.push({
@@ -212,7 +208,7 @@ export function DiscoverFilters({
     });
   }
 
-  const draft: FilterDraft = { type, genre, lang, country, provider, era, rate };
+  const draft: FilterDraft = { genre, lang, country, provider, era, rate };
 
   return (
     <div className={`space-y-3 transition-opacity ${pending ? "opacity-60" : "opacity-100"}`}>
@@ -256,7 +252,7 @@ export function DiscoverFilters({
         {tab === "lists" && listsFilters && (
           <ListsFilters {...listsFilters} variant="button" />
         )}
-        {tab === "titles" && (
+        {tab !== "lists" && (
           <button
             type="button"
             onClick={() => {
@@ -265,13 +261,15 @@ export function DiscoverFilters({
             }}
             aria-haspopup="dialog"
             aria-expanded={sheet}
-            className={`shrink-0 self-center mb-1 flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[13px] font-semibold transition ${
+            /* أنحف مما كان (طلب أحمد: «الفلتر خل عرضه أصغر شوي») —
+               ثلاثة تبويبات تحتاج كل بكسل في السطر */
+            className={`shrink-0 self-center mb-1 flex items-center gap-1 rounded-full border px-2.5 py-1 text-[12px] font-semibold transition ${
               count > 0
                 ? "border-accent text-accent bg-accent/10"
                 : "border-border text-muted hover:text-foreground"
             }`}
           >
-            <Icon name="sliders" size={16} strokeWidth={1.9} />
+            <Icon name="sliders" size={14} strokeWidth={1.9} />
             <span>{t.browseFilters}</span>
             {count > 0 && (
               <span
@@ -286,7 +284,7 @@ export function DiscoverFilters({
       </div>
 
       {/* ===== ما اختير ===== */}
-      {tab === "titles" && chips.length > 0 && (
+      {tab !== "lists" && chips.length > 0 && (
         <div
           role="group"
           aria-label={t.browseActiveFilters}
@@ -315,7 +313,7 @@ export function DiscoverFilters({
             <button
               type="button"
               onClick={() =>
-              go({ type: "all", g: null, lang: null, co: null, p: null, era: null, rate: null })
+              go({ g: null, lang: null, co: null, p: null, era: null, rate: null })
             }
               className="rounded-full border border-border text-muted hover:text-foreground hover:border-accent/50 px-3 py-1.5 text-[13px] font-semibold transition"
             >
@@ -328,6 +326,7 @@ export function DiscoverFilters({
       {sheet && (
         <DiscoverFilterSheet
           locale={locale}
+          type={type}
           initial={draft}
           providers={providers}
           region={region}
@@ -335,7 +334,6 @@ export function DiscoverFilters({
           onApply={(next) => {
             setSheet(false);
             go({
-              type: next.type,
               g: next.genre,
               lang: next.lang,
               co: next.country,

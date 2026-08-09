@@ -56,14 +56,15 @@ export function ListPeekTrigger({
       const res = await fetch(url);
       if (!res.ok) throw new Error(String(res.status));
       const json = (await res.json()) as {
-        parts?: { id: number; title: string; poster: string | null; watched?: boolean }[];
+        parts?: { id: number; mediaType?: "tv" | "movie"; title: string; poster: string | null; watched?: boolean }[];
         items?: PeekRow[];
       };
       const list: PeekRow[] =
         json.items ??
         (json.parts ?? []).map((p) => ({
           id: p.id,
-          mediaType: "movie" as const,
+          // السلاسل أفلامٌ تاريخياً؛ مجموعات TOP 250 تصرّح بجهة كل عنصر
+          mediaType: p.mediaType ?? ("movie" as const),
           title: p.title,
           poster: p.poster,
           watched: p.watched,
