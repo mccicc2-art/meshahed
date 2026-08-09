@@ -466,7 +466,10 @@ const ar = {
           : `شاهد ${n} حلقة`,
   // تبويبات المجتمع والرسائل
   communityTabsGroup: "أقسام المجتمع",
-  communityTabMine: "مجتمعي",
+  /* «النشاط» لا «مجتمعي» (قرار أحمد 9 Aug): التبويب المجاور اسمه
+     «المجتمع»، فاسمان من جذرٍ واحد على صفٍّ واحد لا يفرّقان شيئاً.
+     والمحتوى نشاطُ من تتابعهم — سمِّه بما هو. */
+  communityTabMine: "النشاط",
   communityTabAll: "المجتمع",
   communityTabInbox: "الرسائل",
   communityUnreadAria: (n: number) => `${n} رسالة غير مقروءة`,
@@ -1283,7 +1286,7 @@ const en: Dict = {
     n === 1 ? "watched an episode" : `watched ${n} episodes`,
   // Community tabs and messages
   communityTabsGroup: "Community sections",
-  communityTabMine: "My circle",
+  communityTabMine: "Activity",
   communityTabAll: "Community",
   communityTabInbox: "Messages",
   communityUnreadAria: (n: number) => `${n} unread`,
