@@ -230,13 +230,54 @@ export async function trending(): Promise<SearchResult[]> {
 }
 
 // أخبار: أفلام قادمة قريباً + مسلسلات تُعرض حالياً
+/**
+ * أدنى ما يليق بصفّ «قادم قريباً».
+ *
+ * **بلاغ أحمد ٩ Aug: «خليه يعرض أقرب ١٠ أقل شي عشان يكون متناسق مع
+ * البقية».** كان الصفّ يعرض ثلاث بطاقات بجانب صفوفٍ من عشرة وخمسين،
+ * فيُقرأ عطلاً لا ندرة. والسبب أن `/movie/upcoming` و`/tv/on_the_air`
+ * نافذتاهما فضفاضتان: أكثر ما تُرجعانه **قد صدر فعلاً**، فيسقط عند
+ * تصفية «القادم فقط» ولا يبقى إلا نَفَر.
+ */
+const SOON_MIN = 12;
+
+/**
+ * يُكمل صفَّ «القادم» من `/discover` حين تقصّر النافذة الجاهزة.
+ *
+ * `/movie/upcoming` أفضل ما يُبدأ به لأنه **يعرف بلدك**: مواعيد دور
+ * العرض تختلف بين البلدان، و`/discover` لا يعرفها. فنبدأ به ونكمل من
+ * `discover` بترتيب الشعبية — أدقُّ ما نملك أوّلاً، ثم ما يملأ الصفّ.
+ */
+async function fillSoon(
+  mediaType: MediaType,
+  have: SearchResult[],
+): Promise<SearchResult[]> {
+  const today = new Date().toISOString().slice(0, 10);
+  const future = have.filter((r) => ((r.release_date ?? r.first_air_date) ?? "") >= today);
+  if (future.length >= SOON_MIN) return future;
+
+  const more = await upcomingByFilter(mediaType, {} as DiscoverFilter).catch(
+    () => [] as SearchResult[],
+  );
+  const seen = new Set(future.map((r) => r.id));
+  for (const r of more) {
+    if (seen.has(r.id)) continue;
+    seen.add(r.id);
+    future.push(r);
+  }
+  return future;
+}
+
 export async function upcomingMovies(): Promise<SearchResult[]> {
   const data = await tmdb<{ results: SearchResult[] }>("/movie/upcoming", {
     region: await watchRegion(),
   });
-  return data.results
-    .filter((r) => r.poster_path)
-    .map((r) => ({ ...r, media_type: "movie" as const }));
+  return fillSoon(
+    "movie",
+    data.results
+      .filter((r) => r.poster_path)
+      .map((r) => ({ ...r, media_type: "movie" as const })),
+  );
 }
 
 /**
@@ -266,9 +307,12 @@ export async function nowPlayingMovies(
 
 export async function airingTv(): Promise<SearchResult[]> {
   const data = await tmdb<{ results: SearchResult[] }>("/tv/on_the_air");
-  return data.results
-    .filter((r) => r.poster_path)
-    .map((r) => ({ ...r, media_type: "tv" as const }));
+  return fillSoon(
+    "tv",
+    data.results
+      .filter((r) => r.poster_path)
+      .map((r) => ({ ...r, media_type: "tv" as const })),
+  );
 }
 
 // اقتراحات حسب الأنواع المفضّلة في البروفايل
