@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getUser, getWatchedMovieIds, getFollows } from "@/lib/data";
-import { getCollection, moviesByIds, posterUrl, resolveSetIds, titleOf, yearOf } from "@/lib/tmdb";
+import { getCollection, moviesByIds, posterUrl, resolveSetIds, titleOf, topRatedRows, yearOf } from "@/lib/tmdb";
 import { universeBySlug, universeName } from "@/lib/universes";
 import { getLocale } from "@/lib/locale";
 import { allow, retryAfter } from "@/lib/ratelimit";
@@ -40,6 +40,33 @@ export async function GET(request: Request) {
   if (slug) {
     const u = universeBySlug(slug.trim().toLowerCase());
     if (!u) return NextResponse.json({ parts: [] });
+
+    /* مجموعات TOP 250 (طلب أحمد): عناصرها تُحلّ من قوائم top_rated لا
+       من معرّفاتٍ مكتوبة — وقد تكون مسلسلات، فكل جزءٍ يحمل mediaType */
+    if (u.top) {
+      const [rows, watchedIds, follows, locale] = await Promise.all([
+        topRatedRows(u.top, u.topLimit ?? 250),
+        getWatchedMovieIds(),
+        getFollows(),
+        getLocale(),
+      ]);
+      const savedKeys = new Set(follows.map((f) => `${f.media_type}-${f.tmdb_id}`));
+      return NextResponse.json({
+        name: universeName(u, locale === "en" ? "en" : "ar"),
+        parts: rows.map((r) => ({
+          id: r.id,
+          mediaType: r.media_type === "tv" ? "tv" : "movie",
+          title: titleOf(r),
+          year: yearOf(r) || null,
+          poster: posterUrl(r.poster_path, "w342"),
+          // «شوهد» للمكتمل يقيناً وحده: الأفلام من سجلّها — والمسلسل
+          // لا حكم سريعاً عليه هنا فلا نكذب بعلامة
+          watched: r.media_type === "movie" && watchedIds.has(r.id),
+          saved: savedKeys.has(`${r.media_type}-${r.id}`),
+        })),
+      });
+    }
+
     const [ids, watchedIds, follows, locale] = await Promise.all([
       resolveSetIds(u),
       getWatchedMovieIds(),
