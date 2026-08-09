@@ -451,29 +451,31 @@ export default async function PeoplePage({
                           </p>
                         )}
 
-                        {/* الإعجاب والبلاغ للرأي وحده — حدثُ مشاهدةٍ بلا نصّ
-                            لا يُبلَّغ عنه، وإعجابه ينتظر D-124 */}
-                        {a.kind === "rate" && (
-                          <div className="mt-2 flex items-center gap-1">
-                            <LikeButton
+                        {/* الإعجاب على **كل** حدث (D-124): صفُّ التقييم
+                            يكتب في `review_likes` وغيرُه في
+                            `activity_likes`. أما البلاغ فللنصّ المكتوب
+                            وحده — لا يُبلَّغ عن مشاهدةٍ لا رأي فيها */}
+                        <div className="mt-2 flex items-center gap-1">
+                          <LikeButton
+                            reviewUserId={a.person.id}
+                            tmdbId={a.tmdb_id}
+                            mediaType={a.media_type}
+                            likes={a.likes}
+                            likedByMe={a.likedByMe}
+                            isMine={false}
+                            target={a.kind === "rate" ? "review" : "activity"}
+                            day={a.day}
+                            locale={locale}
+                          />
+                          {a.review && (
+                            <ReportButton
                               reviewUserId={a.person.id}
                               tmdbId={a.tmdb_id}
                               mediaType={a.media_type}
-                              likes={a.likes}
-                              likedByMe={a.likedByMe}
-                              isMine={false}
                               locale={locale}
                             />
-                            {a.review && (
-                              <ReportButton
-                                reviewUserId={a.person.id}
-                                tmdbId={a.tmdb_id}
-                                mediaType={a.media_type}
-                                locale={locale}
-                              />
-                            )}
-                          </div>
-                        )}
+                          )}
+                        </div>
                       </div>
 
                       <Link
