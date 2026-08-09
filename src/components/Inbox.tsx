@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -31,12 +31,15 @@ export function Inbox({
   conversations,
   startable,
   openWith,
+  actions,
   locale,
 }: {
   conversations: Conversation[];
   /** متابَعون متبادلون لا محادثة معهم بعد — لبدء محادثةٍ من البحث */
   startable: PersonLite[];
   openWith: string | null;
+  /** عدّادا المتابعة وزرّ الإضافة — في صفّ البحث نفسه (طلب أحمد 9 Aug) */
+  actions?: ReactNode;
   locale: Locale;
 }) {
   const t = getDict(locale);
@@ -54,8 +57,14 @@ export function Inbox({
   // لا محادثاتٍ ولا من نبدأ معه: الفراغ وحده، بلا حقل بحثٍ لا معنى له
   if (conversations.length === 0 && startable.length === 0) {
     /* حالة موجهة (تعميم نمط D-106): الرسائل تحتاج متابعة متبادلة —
-       فأول خطوة من الفراغ هي إيجاد الأصدقاء، والزر يفتح ورقة البحث */
-    return <FeedEmptyCta locale={locale} text={t.inboxEmpty} />;
+       فأول خطوة من الفراغ هي إيجاد الأصدقاء، والزر يفتح ورقة البحث.
+       والعدّادات تبقى فوقها: من لا محادثة له أحوجُ ما يكون لزرّ الإضافة */
+    return (
+      <div>
+        {actions && <div className="flex items-center justify-end mb-3">{actions}</div>}
+        <FeedEmptyCta locale={locale} text={t.inboxEmpty} />
+      </div>
+    );
   }
 
   // ترشيحٌ بالاسم — يكمل محادثةً قائمة، أو **يبدأ** مع متابَعٍ متبادلٍ لم
@@ -74,7 +83,8 @@ export function Inbox({
     <div>
       {/* حقلُ بحثٍ يتصدّر القائمة: أيقونةٌ ثابتة داخل الحقل، وزرُّ مسحٍ
           يظهر عند الكتابة فقط — نفس هيكل بحث التطبيق، بلا عائلةِ تحكّمٍ جديدة */}
-      <div className="relative mb-3">
+      <div className="flex items-center gap-2 mb-3">
+      <div className="relative min-w-0 flex-1">
         <span className="pointer-events-none absolute inset-y-0 start-3 grid place-items-center text-muted">
           <Icon name="search" size={16} />
         </span>
@@ -95,6 +105,8 @@ export function Inbox({
             <Icon name="close" size={15} />
           </button>
         )}
+      </div>
+      {actions}
       </div>
 
       {nothing && (

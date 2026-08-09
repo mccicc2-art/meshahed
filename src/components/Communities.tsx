@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Avatar } from "./Avatar";
@@ -47,11 +47,14 @@ type Dict = ReturnType<typeof getDict>;
 export function CommunityDirectory({
   mine,
   invites = [],
+  actions,
   locale,
 }: {
   mine: CommunityLite[];
   /** دعواتٌ معلّقة إليّ — قسمها فوق «مجتمعاتي» (هجرة 42) */
   invites?: CommunityLite[];
+  /** عدّادا المتابعة وزرّ الإضافة — يُحقنان في صفّ البحث نفسه لا فوقه */
+  actions?: ReactNode;
   locale: Locale;
 }) {
   const t = getDict(locale);
@@ -83,7 +86,8 @@ export function CommunityDirectory({
 
   return (
     <div className="space-y-5">
-      {/* ===== أنشئ + ابحث — ما طلبه المالك مكان الصفّ القديم ===== */}
+      {/* ===== أنشئ + ابحث + العدّادات — **صفٌّ واحد** (طلب أحمد 9 Aug:
+           «الإضافة خلها كلها صف واحد») ===== */}
       <div className="flex items-center gap-2">
         <div className="relative min-w-0 flex-1">
           <span className="pointer-events-none absolute inset-y-0 start-3 grid place-items-center text-muted">
@@ -108,6 +112,7 @@ export function CommunityDirectory({
         >
           + {t.commCreate}
         </button>
+        {actions}
       </div>
 
       {/* ===== نتائج البحث — تتصدّر متى كُتب حرفان ===== */}
