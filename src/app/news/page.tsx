@@ -43,13 +43,16 @@ import { type Locale } from "@/lib/i18n";
 import {
   parseBrowse,
   parseDiscoverTab,
+  parseRailWin,
   browseKey,
   browseCount,
   needsDiscover,
   eraRange,
   type BrowseQuery,
+  type RailWin,
 } from "@/lib/browse";
 import { RankedRail } from "@/components/RankedRail";
+import { RailWindowChips } from "@/components/RailWindowChips";
 import { CountdownRail, type CountdownItem } from "@/components/CountdownRail";
 import { PickedForYou } from "@/components/PickedForYou";
 import { RailSkeleton } from "@/components/Skeletons";
@@ -83,6 +86,9 @@ export default async function NewsPage({
     src?: string;
     type?: string;
     win?: string;
+    wm?: string;
+    ws?: string;
+    wa?: string;
     g?: string;
     sort?: string;
     lang?: string;
@@ -101,6 +107,8 @@ export default async function NewsPage({
   const sp = await searchParams;
   const browse = parseBrowse(sp);
   const tab = parseDiscoverTab(sp.tab);
+  /* نوافذ صفوف «أفضل ١٠» — لكل صفٍّ نافذته (D-099): أفلام/مسلسلات/أنمي */
+  const rails = { m: parseRailWin(sp.wm), s: parseRailWin(sp.ws), a: parseRailWin(sp.wa) };
   /* قائمة المنصّات تُجلب على الخادم وتُمرَّر للورقة: طلبٌ واحد مخبَّأ ساعةً
      في طبقة fetch، ورأس الصفحة يبقى يرسم فوراً لأن الصفوف وحدها خلف
      Suspense. وفشلُ الجلب يُخفي المحور بدل أن يعرض خانةً فارغة.
@@ -123,7 +131,6 @@ export default async function NewsPage({
         locale={locale}
         tab={tab}
         type={browse.type}
-        win={browse.win}
         genre={browse.genre?.slug ?? null}
         lang={browse.lang?.code ?? null}
         country={browse.country?.code ?? null}
@@ -172,7 +179,7 @@ export default async function NewsPage({
         /* المفتاح يتغيّر بتغيّر الفلتر: React يُظهر الهيكل فوراً بدل أن
             يُبقي صفوف الفلتر السابق معلّقة حتى تصل الجديدة */
         <Suspense
-          key={browseKey(browse)}
+          key={`${browseKey(browse)}:${rails.m}:${rails.s}:${rails.a}`}
           fallback={
             <div className="space-y-8" aria-hidden>
               <RailSkeleton count={6} />
@@ -181,7 +188,7 @@ export default async function NewsPage({
             </div>
           }
         >
-          <CuratedRails locale={locale} t={t} browse={browse} region={region} />
+          <CuratedRails locale={locale} t={t} browse={browse} rails={rails} region={region} />
         </Suspense>
       )}
     </div>
@@ -376,19 +383,21 @@ async function CuratedRails({
   locale,
   t,
   browse,
+  rails,
   region,
 }: {
   locale: Locale;
   t: T;
   browse: BrowseQuery;
+  /** نوافذ صفوف «أفضل ١٠» — أسبوع/شهر/سنة لكل صفٍّ (D-099) */
+  rails: { m: RailWin; s: RailWin; a: RailWin };
   /** بلد المشاهدة — يُقاس عليه فلتر المنصّات */
   region: string;
 }) {
-  const { type, win, genre, lang, country, provider, era, rate, active } = browse;
+  const { type, genre, lang, country, provider, era, rate, active } = browse;
   const wantMovies = type !== "tv";
   const wantSeries = type !== "movie";
   const deep = needsDiscover(browse);
-  const isWeek = win === "week";
 
   /* «القادم» نمطٌ لا مدى: ما لم يصدر لا أصوات له، فصفّا «أفضل ١٠»
      يكذبان أو يفرغان — يسقطان، ويحمل صفُّ العدّ التنازلي وحده النتيجة
@@ -409,13 +418,17 @@ async function CuratedRails({
     minRate: rate,
   };
 
-  /* أعلى ١٠ حسب النافذة: أسبوعي = الرائج (أو discover المُصفّى)، سنوي =
-     discover لهذه السنة مرتّباً بالشعبية، كل الأوقات = الأكثر أصواتاً.
-     السنة تفرض مداها الزمني فوق الحقبة، وكلّ الأوقات يبقي مدى الحقبة إن
-     اختير. */
+  /* أعلى ١٠ حسب نافذة الصفّ (D-099): أسبوع = الرائج (أو discover
+     المُصفّى)، شهر = آخر ثلاثين يوماً (لا الشهر التقويمي — أوّلُه
+     بِركةٌ من أيامٍ معدودة)، سنة = هذه السنة التقويمية — كلاهما
+     discover بالشعبية. و«كل الأوقات» القديمة يمثّلها ذيل Top 50. */
   const y = new Date().getUTCFullYear();
-  const topFor = (mt: "movie" | "tv", genreIds: number[] | undefined) => {
-    if (win === "year") {
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const back30 = new Date();
+  back30.setUTCDate(back30.getUTCDate() - 30);
+  const monthFrom = back30.toISOString().slice(0, 10);
+  const topFor = (mt: "movie" | "tv", genreIds: number[] | undefined, w: RailWin) => {
+    if (w === "year") {
       return topByFilter(
         mt,
         { ...base, from: `${y}-01-01`, to: `${y}-12-31`, genreIds },
@@ -423,12 +436,15 @@ async function CuratedRails({
         "popularity.desc",
       ).catch(() => [] as SearchResult[]);
     }
-    if (win === "all") {
-      return topByFilter(mt, { ...base, genreIds }, 10, "vote_count.desc").catch(
-        () => [] as SearchResult[],
-      );
+    if (w === "month") {
+      return topByFilter(
+        mt,
+        { ...base, from: monthFrom, to: todayStr, genreIds },
+        10,
+        "popularity.desc",
+      ).catch(() => [] as SearchResult[]);
     }
-    // أسبوعي
+    // أسبوع
     return deep
       ? topByFilter(mt, { ...base, genreIds }).catch(() => [] as SearchResult[])
       : genreIds
@@ -442,26 +458,31 @@ async function CuratedRails({
          «الترتيب بأعلى تقييم حسب IMDb والتقييم فقط من IMDb») — TMDB يبقى
          مصدر التجميع (من يدخل الصفّ)، وIMDb مصدر الترتيب والرقم */
       wantMovies && !upcoming
-        ? topFor("movie", genre?.movie).then(withImdbRatings).catch(() => [] as SearchResult[])
+        ? topFor("movie", genre?.movie, rails.m).then(withImdbRatings).catch(() => [] as SearchResult[])
         : Promise.resolve([] as SearchResult[]),
       wantSeries && !upcoming
-        ? topFor("tv", genre?.tv).then(withImdbRatings).catch(() => [] as SearchResult[])
+        ? topFor("tv", genre?.tv, rails.s).then(withImdbRatings).catch(() => [] as SearchResult[])
         : Promise.resolve([] as SearchResult[]),
-      // صفوف أسبوعية بطبعها: الأنمي «هذا الأسبوع»، ودور العرض «الآن»،
-      // والقادم «مستقبلاً» — لا معنى لها في نافذتَي السنة وكل الأوقات
-      isWeek && !active && wantSeries
-        ? topTenAnimeThisWeek().then(withImdbRatings).catch(() => [] as SearchResult[])
+      // الأنمي بنافذته المستقلة (D-099): أسبوع = الرائج، شهر/سنة = ما
+      // بدأ بثّه في المدى بالشعبية — بوابة isWeek سقطت مع محور الورقة
+      !active && wantSeries
+        ? topTenAnimeThisWeek(
+            10,
+            rails.a === "week"
+              ? undefined
+              : { from: rails.a === "month" ? monthFrom : `${y}-01-01`, to: todayStr },
+          ).then(withImdbRatings).catch(() => [] as SearchResult[])
         : Promise.resolve([] as SearchResult[]),
-      isWeek && wantMovies ? nowPlayingMovies().catch(() => null) : Promise.resolve(null),
+      wantMovies ? nowPlayingMovies().catch(() => null) : Promise.resolve(null),
       // «القادم» يفتح صفّ العدّ التنازلي في كل النوافذ — هو النتيجة كلّها هناك
-      (isWeek || upcoming) && wantMovies
+      wantMovies
         ? deep
           ? upcomingByFilter("movie", { ...base, genreIds: genre?.movie })
           : genre
             ? upcomingByGenre(genre.movie, "movie")
             : upcomingMovies().catch(() => [] as SearchResult[])
         : Promise.resolve([] as SearchResult[]),
-      (isWeek || upcoming) && wantSeries
+      wantSeries
         ? deep
           ? upcomingByFilter("tv", { ...base, genreIds: genre?.tv })
           : genre
@@ -547,7 +568,7 @@ async function CuratedRails({
           Promise.all الصفوف كلّها فيرهن أبطأُ طلبٍ رسمَ الصفحة بأكملها.
           فصلُهما يجعل «أفضل ١٠» ودور العرض تظهر فور جاهزيتها، ويلحق
           الشخصيّ حين يكتمل — والهيكل يحجز ارتفاعه (D-046) */}
-      {isWeek && !active && (
+      {!active && (
         <Suspense fallback={<RailSkeleton count={6} />}>
           <PersonalRails locale={locale} t={t} />
         </Suspense>
@@ -566,14 +587,34 @@ async function CuratedRails({
         />
       )}
 
-      {topMovies.length > 0 && (
-        <RankedRail title={t.topMoviesWin(win)} icon="film" items={topMovies} />
+      {/* رقائق النافذة (D-099): الصفّ لا يختفي في نافذةٍ فارغة —
+          رسالةٌ مكانه وإلا ضاع طريق العودة لنافذةٍ فيها نتائج */}
+      {(topMovies.length > 0 || rails.m !== "week") && (
+        <RankedRail
+          title={t.top10Movies}
+          icon="film"
+          items={topMovies}
+          control={<RailWindowChips param="wm" value={rails.m} locale={locale} />}
+          emptyText={t.railWinEmpty}
+        />
       )}
-      {topSeries.length > 0 && (
-        <RankedRail title={t.topSeriesWin(win)} icon="tv" items={topSeries} />
+      {(topSeries.length > 0 || rails.s !== "week") && (
+        <RankedRail
+          title={t.top10Series}
+          icon="tv"
+          items={topSeries}
+          control={<RailWindowChips param="ws" value={rails.s} locale={locale} />}
+          emptyText={t.railWinEmpty}
+        />
       )}
-      {topAnime.length > 0 && (
-        <RankedRail title={t.topTenAnime} icon="sparkle-star" items={topAnime} />
+      {(topAnime.length > 0 || rails.a !== "week") && (
+        <RankedRail
+          title={t.top10Anime}
+          icon="sparkle-star"
+          items={topAnime}
+          control={<RailWindowChips param="wa" value={rails.a} locale={locale} />}
+          emptyText={t.railWinEmpty}
+        />
       )}
       {soon.length > 0 && (
         <CountdownRail title={t.comingSoon} icon="calendar" items={soon} locale={locale} />
