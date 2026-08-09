@@ -25,9 +25,18 @@ import { usePathname } from "next/navigation";
  * القاعدة العامة: **أي غلاف يُوضع حول عنصر `sticky` يجب أن يكون
  * `contents`، وإلا صار سقفاً لالتصاقه.**
  */
-export function HeaderShell({ children }: { children: React.ReactNode }) {
+export function HeaderShell({
+  children,
+  signedIn = true,
+}: {
+  children: React.ReactNode;
+  signedIn?: boolean;
+}) {
   const pathname = usePathname();
-  const hideOnMobile = pathname === "/";
+  /* الإخفاء على الجوال للمسجَّل وحده (D-122): الجذر صار صفحة هبوطٍ للزائر
+     غير المسجّل، وشريطُ الزائر يحمل مبدّل اللغة — إخفاؤه كان سيحبس زائر
+     الجوال في لغةٍ واحدة بلا مخرج. أما المسجَّل فترويسةُ صفحته تُغني. */
+  const hideOnMobile = signedIn && pathname === "/";
 
   return (
     <div className={hideOnMobile ? "hidden md:contents" : "contents"}>{children}</div>

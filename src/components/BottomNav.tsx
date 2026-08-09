@@ -40,11 +40,15 @@ const TABS: {
   { href: "/search", key: "search", icon: "search" },
 ];
 
-export function BottomNav({ locale }: { locale: Locale }) {
+export function BottomNav({ locale, signedIn = true }: { locale: Locale; signedIn?: boolean }) {
   const pathname = usePathname();
   const t = getDict(locale);
   // الحالة قبل أي خروجٍ مبكّر: ترتيب الخطّافات لا يتغيّر بين تصييرين
   const [searchOpen, setSearchOpen] = useState(false);
+  /* الزائر غير المسجّل لا شريط له (D-122): تبويباته الخمسة كلها خلف
+     تسجيل الدخول، فكلّ ضغطةٍ فيها تردّه — وهو فوق صفحة هبوطٍ تعرّفه
+     بالمنتج، لا داخل تطبيقٍ يتنقّل فيه */
+  if (!signedIn) return null;
   // شاشات مركّزة: لا شريط تبويبات يزاحم زر الإجراء
   if (pathname === "/login" || pathname === "/welcome") return null;
 
