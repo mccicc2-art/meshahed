@@ -569,6 +569,19 @@ const ar = {
   sortTitle: "الاسم",
   sortProgress: "التقدّم",
   shortMovies: "أفلام",
+  /* تبويب المكتبة الرابع (D-128) — كلمةٌ واحدة كإخوته: أربعة عناوين
+     عربية في صفٍّ واحد على ٣٦٠px لا تحتمل «الفنانون المفضّلون» */
+  shortArtists: "فنانون",
+  artistWorksWatched: (n: number) =>
+    n === 1
+      ? "شاهدتَ له عملاً"
+      : n === 2
+        ? "شاهدتَ له عملين"
+        : n <= 10
+          ? `شاهدتَ له ${n} أعمال`
+          : `شاهدتَ له ${n} عملاً`,
+  artistsEmpty: "ما تتابع أي فنان بعد — افتح صفحة ممثل أو مخرج واضغط «تابِع».",
+  artistsEmptyCta: "ابحث عن فنان",
   custHeaderSection: "عناصر الترويسة",
   custHeaderHint: "أظهر أو أخفِ ما يعلو صفحتك الرئيسية.",
   custStatsCard: "بطاقة الأرقام",
@@ -622,9 +635,9 @@ const ar = {
   railWinYear: "سنة",
   railWinEmpty: "لا أعمال تكفي في هذه النافذة بعد",
   // ٢٥ لا ٥٠ (طلب أحمد): الذيل أخفّ، والعمق كله في قوائم TOP 250
-  top50Movies: "أفضل ٢٥ فيلماً على الإطلاق",
-  top50Series: "أفضل ٢٥ مسلسلاً على الإطلاق",
-  top50Anime: "أفضل ٢٥ أنمي على الإطلاق",
+  top50Movies: "أفضل ٥٠ فيلماً على الإطلاق",
+  top50Series: "أفضل ٥٠ مسلسلاً على الإطلاق",
+  top50Anime: "أفضل ٥٠ أنمي على الإطلاق",
   pickedRefresh: "اقتراحات أخرى",
   pickedRefreshAria: "عرض عشرة اقتراحاتٍ أخرى",
   notInterested: "غير مهتم",
@@ -1366,6 +1379,10 @@ const en: Dict = {
   sortTitle: "Title",
   sortProgress: "Progress",
   shortMovies: "Movies",
+  shortArtists: "Artists",
+  artistWorksWatched: (n: number) => (n === 1 ? "1 title watched" : `${n} titles watched`),
+  artistsEmpty: "You don't follow any artists yet — open an actor or director and tap Follow.",
+  artistsEmptyCta: "Find an artist",
   custHeaderSection: "Header elements",
   custHeaderHint: "Show or hide what sits at the top of your Home.",
   custStatsCard: "Statistics card",
@@ -1417,9 +1434,9 @@ const en: Dict = {
   railWinMonth: "Month",
   railWinYear: "Year",
   railWinEmpty: "Nothing here for this window yet",
-  top50Movies: "Top 25 movies of all time",
-  top50Series: "Top 25 shows of all time",
-  top50Anime: "Top 25 anime of all time",
+  top50Movies: "Top 50 movies of all time",
+  top50Series: "Top 50 shows of all time",
+  top50Anime: "Top 50 anime of all time",
   pickedRefresh: "More picks",
   pickedRefreshAria: "Show ten more picks",
   notInterested: "Not interested",

@@ -91,6 +91,9 @@ export interface SearchResult {
   /** تقييم IMDb عبر OMDb — يُلحقه `withImdbRatings` بعد الجلب؛
       null = بحثنا فلم نجد، undefined = لم نبحث (لا شارة في الحالتين) */
   imdb_rating?: number | null;
+  /** عدد أصوات IMDb — بلا هذا الرقم يعلو فيلمٌ بألف صوت على «الأب
+      الروحي»، وهي علّة قوائمنا التي انتُقدت (D-132) */
+  imdb_votes?: number | null;
 }
 
 export interface Episode {
@@ -1113,13 +1116,26 @@ export async function topByFilter(
  * أعمالاً محدودة الجمهور، وعدد الأصوات أصدق دلالةً على «ما شاهده الجميع».
  * صفحة TMDB عشرون، فنطلب ثلاثاً لبلوغ الخمسين، ونحترم الفلتر لو وُجد.
  */
+/**
+ * كم صفحةً من TMDB لبلوغ `limit` صفّاً — الصفحة عشرون.
+ *
+ * كان العدد ثابتاً (ثلاث صفحات = ستّون) فطلبُ ثمانين لا يزيد شيئاً: مرّر
+ * `limit` ولا يتغيّر المُرجَع. وقد صار الطلب أكبر منذ D-132 (بِركةٌ فائضة
+ * لأن غير المقيَّم يسقط كاملاً)، فالعدد يتبع الطلب. وسقفُ عشر صفحاتٍ حاجزٌ
+ * ضدّ حلقةٍ مفتوحة تطلب مئة صفحة بلا قصد.
+ */
+function pagesFor(limit: number): number[] {
+  const n = Math.min(10, Math.max(1, Math.ceil(limit / 20)));
+  return Array.from({ length: n }, (_, i) => i + 1);
+}
+
 /** أفضل ٥٠ أنمي على الإطلاق (طلب أحمد) — نفس محرّك top50 لكن على
     مفتاح الأنمي: الأكثر أصواتاً تاريخياً، ثم يعيد withImdbRatings
     ترتيبها بتقييم IMDb كسائر الصفوف المرتّبة (D-093). العتبة 200 لا
     500: بِركة أصوات الأنمي في TMDB أصغر من الأفلام العالمية */
 export async function top50Anime(limit = 50): Promise<SearchResult[]> {
   const pages = await Promise.all(
-    [1, 2, 3].map((page) =>
+    pagesFor(limit).map((page) =>
       tmdb<{ results: SearchResult[] }>("/discover/tv", {
         with_keywords: ANIME_KEYWORD,
         sort_by: "vote_count.desc",
@@ -1147,7 +1163,7 @@ export async function top50(
   limit = 50,
 ): Promise<SearchResult[]> {
   const pages = await Promise.all(
-    [1, 2, 3].map((page) =>
+    pagesFor(limit).map((page) =>
       tmdb<{ results: SearchResult[] }>(`/discover/${mediaType}`, {
         ...discoverParams(mediaType, f),
         sort_by: "vote_count.desc",
@@ -1171,17 +1187,24 @@ export async function top50(
 /**
  * الأعلى تقييماً على الإطلاق — لقوائم TOP 250 (طلب أحمد 9 Aug).
  *
+ * **TMDB هنا بِركةُ مرشّحين لا مصدرَ ترتيب** (D-132 يُصلح D-116).
+ * كان الترتيب بتقييم TMDB لأن «٢٥٠ ×٣ بترتيب IMDb تعني حرق حصة OMDb
+ * كلها» — وقد سقط هذا العذر بالمخزن ذي العمر المتدرّج، وبقيت نتيجته:
+ * قائمةٌ فيها أعمالٌ ضعيفة وغيرُ مقيَّمة، وهو ما أُبلغنا به.
+ *
+ * فالدالّة تعيد **بِركةً أوسع ممّا يُطلب** (`pool`)، ويقع الترتيب
+ * والاقتطاع عند المستدعي بعد `withImdbRatings` + `rankByImdb`: أعلى
+ * ٢٥٠ بالصيغة البايزيّة من بين ٤٠٠ مرشّح، وغيرُ المقيَّم خارجٌ تماماً.
+ *
  * الأفلام والمسلسلات من قوائم TMDB الرسمية `top_rated` (عتبات أصواتها
  * مبنية فيها)، والأنمي — لا top_rated له — من `/discover` بمفتاح الأنمي
- * مرتّباً بمتوسط التقييم فوق عتبة أصوات تمنع عملاً بعشرة أصواتٍ من
- * التصدّر. الترتيب بتقييم TMDB لا IMDb عمداً: ٢٥٠ ×٣ بترتيب IMDb تعني
- * حرق حصة OMDb كلها. الصفحات متوازية ومخبّأة ساعةً في طبقة tmdb().
+ * فوق عتبة أصوات. الصفحات متوازية ومخبّأة ساعةً في طبقة tmdb().
  */
 export async function topRatedRows(
   media: "movie" | "tv" | "anime",
   limit = 250,
 ): Promise<SearchResult[]> {
-  const pageCount = Math.ceil(limit / 20);
+  const pageCount = Math.min(25, Math.ceil(limit / 20));
   const pageNums = Array.from({ length: pageCount }, (_, i) => i + 1);
   const mt: MediaType = media === "movie" ? "movie" : "tv";
 

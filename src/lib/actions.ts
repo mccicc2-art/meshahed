@@ -1491,10 +1491,17 @@ export async function createListFromUniverse(slug: string) {
   /* مجموعات TOP 250: العناصر من قوائم top_rated وقد تكون مسلسلات —
      والنوع «ranked»: هذه ترتيبُ جودةٍ لا ترتيبُ مشاهدة */
   if (universe.top) {
-    const [rows, locale] = await Promise.all([
-      topRatedRows(universe.top, universe.topLimit ?? 250),
+    /* **نفس ترتيب المعاينة حرفاً بحرف** (D-132): بِركةٌ ١٫٦× ثم ترتيبٌ
+       بايزيّ بتقييم IMDb ثم اقتطاع. قائمةٌ محفوظة تخالف ما عايَنه
+       المستخدم قبل ثانية هي أسوأ من ترتيبٍ رديء — لذا يُشتقّ الاثنان من
+       نفس الخطوات، وأيُّ تغييرٍ هنا يُنسَخ في `api/franchise`. */
+    const want = universe.topLimit ?? 250;
+    const [pool, locale, { rankByImdb, withImdbRatings }] = await Promise.all([
+      topRatedRows(universe.top, Math.round(want * 1.6)),
       getLocale(),
+      import("@/lib/omdb"),
     ]);
+    const rows = rankByImdb(await withImdbRatings(pool), { want }).slice(0, want);
     if (!rows.length) throw new Error("تعذّر تحميل القائمة / Could not load this list");
     const items: NewItem[] = rows.map((r) => ({
       tmdbId: r.id,
