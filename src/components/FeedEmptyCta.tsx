@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { getDict, type Locale } from "@/lib/i18n";
 import { buttonClass } from "./ui/Button";
-import { SearchSheet } from "./CommunityBar";
+import { TitleSearchSheet } from "./TitleSearchSheet";
 
 /**
  * الحالة الفارغة الموجَّهة لخطّ الأصدقاء (تقييم 9 Aug م٦).
@@ -22,7 +22,15 @@ export function FeedEmptyCta({ locale, text }: { locale: Locale; text?: string }
       <button type="button" onClick={() => setOpen(true)} className={buttonClass({ size: "sm" })}>
         {t.feedEmptyCta}
       </button>
-      {open && <SearchSheet t={t} onClose={() => setOpen(false)} />}
+      {/* ورقة البحث العامة على وضع «أشخاص» — لا ورقةَ بحثٍ ثانية في
+          التطبيق بعد اليوم (طلب أحمد: دمج «إضافة صديق» مع البحث العام) */}
+      {open && (
+        <TitleSearchSheet
+          locale={locale}
+          initialMode="people"
+          onClose={() => setOpen(false)}
+        />
+      )}
     </div>
   );
 }

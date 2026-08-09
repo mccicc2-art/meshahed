@@ -4,15 +4,31 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { getDict, type Locale } from "@/lib/i18n";
-import { aiStorySearch } from "@/lib/actions";
+import { aiStorySearch, findPeople } from "@/lib/actions";
 import { flashError } from "@/lib/toast";
 import { tap } from "@/lib/haptics";
 import { Icon } from "./Icon";
 import { Sheet, SheetHeader } from "./ui/Sheet";
 import { buttonClass } from "./ui/Button";
+import { segmentedItem, segmentedTrackBare } from "./ui/controls";
 
 /** أدنى عدد أحرف يُطلق البحث — مطابقٌ لحدّ `/api/suggest` وبحث الأشخاص */
 const MIN = 2;
+
+/**
+ * أوضاع البحث الثلاثة — **بابٌ واحد للبحث لا ثلاثة** (طلب أحمد 9 Aug
+ * مساءً: «إضافة صديق ادمجها مع البحث العام… زرّ بحث عن شخص»).
+ *
+ * كان في التطبيق ورقتا بحثٍ منفصلتان: هذه للأعمال، وأخرى للأشخاص خلف زرّ
+ * «+» في صفحة المجتمع. وهو تقسيمٌ يعرفه الكود ولا يعرفه المستخدم: من
+ * يريد صديقاً يضغط «بحث» كما يضغطه لفيلم، فلا يجد ما يريد ولا يخطر له
+ * أن يبحث عن زرٍّ ثانٍ في صفحةٍ ثالثة.
+ *
+ * والوضع مقسّمٌ لا رقائق: خياراتٌ **يستبعد بعضها بعضاً** وعددها قليل
+ * ومعروف — وهذا تعريف عائلة `segmented` في `ui/controls`. والرقائق
+ * للفلاتر من قائمةٍ مفتوحة.
+ */
+export type SearchMode = "titles" | "people" | "ai";
 
 interface Suggestion {
   kind: "tv" | "movie" | "person";
@@ -23,6 +39,13 @@ interface Suggestion {
   rating?: number | null;
   /** أشهر أعمال الشخص — سطرٌ ثانٍ تحت الاسم */
   subtitle?: string;
+  /** وجهةٌ صريحة تسبق الوجهة المشتقّة من النوع — مستخدمو التطبيق
+      معرّفُهم نصّيّ ووجهتُهم `/u/…`، لا `/person/<رقم TMDB>` */
+  href?: string;
+  /** مفتاح صفٍّ فريد حين لا يكفي `kind-id` (مستخدمو التطبيق كلّهم id=0).
+      اسمُه ليس `key`: حقلٌ بذلك الاسم داخل كائنٍ يُمرَّر إلى JSX فخٌّ
+      يُقرأ خطأً من أول نظرة */
+  rowKey?: string;
 }
 
 /**
@@ -38,12 +61,16 @@ interface Suggestion {
 export function TitleSearchSheet({
   onClose,
   locale,
+  initialMode = "titles",
 }: {
   onClose: () => void;
   locale: Locale;
+  /** يُفتح على وضعٍ بعينه — حالة الفيد الفارغة تفتحه على «أشخاص» */
+  initialMode?: SearchMode;
 }) {
   const t = getDict(locale);
   const router = useRouter();
+  const [mode, setMode] = useState<SearchMode>(initialMode);
   const [q, setQ] = useState("");
   const [items, setItems] = useState<Suggestion[]>([]);
   const [loading, setLoading] = useState(false);
@@ -55,7 +82,6 @@ export function TitleSearchSheet({
      كتب اسماً أو وصف قصةً — والتبديل يحفظ مصيدة التركيز (منطق D-066).
      نتائج الذكاء تُطلب بزرٍّ لا مع الكتابة: النداء يكلّف نموذجاً وعشرة
      طلبات TMDB، ووصفُ قصةٍ يُكتب كاملاً ثم يُسأل عنه. */
-  const [ai, setAi] = useState(false);
   const [aiText, setAiText] = useState("");
   const [aiItems, setAiItems] = useState<Suggestion[] | null>(null);
   const [aiPending, startAi] = useTransition();
@@ -112,19 +138,43 @@ export function TitleSearchSheet({
     }
   }
 
-  // اقتراحات من حرفين مع تأخيرٍ يسير — نفس حدّ `/api/suggest`
+  /* اقتراحات من حرفين مع تأخيرٍ يسير — نفس حدّ `/api/suggest`.
+     والوضع في قائمة اعتماديّاته: تبديلُه بنصٍّ مكتوبٍ أصلاً يجب أن يعيد
+     السؤال إلى المصدر الآخر فوراً، لا أن يترك نتائج الوضع السابق معروضة
+     تحت عنوانٍ صار يعني شيئاً آخر. */
   useEffect(() => {
+    if (mode === "ai") return;
     const term = q.trim();
     if (term.length < MIN) return;
     const ctrl = new AbortController();
     const timer = setTimeout(async () => {
       setLoading(true);
       try {
-        const res = await fetch(`/api/suggest?q=${encodeURIComponent(term)}`, {
-          signal: ctrl.signal,
-        });
-        const data = await res.json();
-        setItems(data.results ?? []);
+        if (mode === "people") {
+          /* بحث الأشخاص فعلُ خادمٍ لا مسار API: يمرّ بحدّ المعدّل
+             (`requireUser("search")`) وبدالّة SQL تُهرّب أحرف البحث */
+          const rows = await findPeople(term);
+          setItems(
+            rows.map((p) => ({
+              kind: "person" as const,
+              /* `ResultRow` يبني الرابط من الرقم للأشخاص (TMDB)، وهؤلاء
+                 مستخدمو التطبيق — فالمعرّف نصّي والوجهة `/u/…`. لذلك
+                 يحمل الصفّ `href` صريحاً هنا. */
+              id: 0,
+              href: `/u/${p.username ?? p.id}`,
+              title: p.hide_name ? t.anonymousUser : p.nickname || p.username || "—",
+              poster: p.hide_name ? null : p.avatar_url,
+              subtitle: p.username ? `@${p.username}` : undefined,
+              rowKey: p.id,
+            })),
+          );
+        } else {
+          const res = await fetch(`/api/suggest?q=${encodeURIComponent(term)}`, {
+            signal: ctrl.signal,
+          });
+          const data = await res.json();
+          setItems(data.results ?? []);
+        }
         setTouched(true);
       } catch {
         /* أُلغي الطلب أو فشل — تُتجاهل بصمت */
@@ -136,7 +186,7 @@ export function TitleSearchSheet({
       clearTimeout(timer);
       ctrl.abort();
     };
-  }, [q]);
+  }, [q, mode, t]);
 
   function go(href: string) {
     onClose();
@@ -158,14 +208,49 @@ export function TitleSearchSheet({
         title={t.navSearch}
         closeLabel={t.closeLabel}
         onClose={onClose}
-      />
+      >
+        {/* محور «فيمَ أبحث؟» في الترويسة نفسها (طلب أحمد): يُقرأ قبل أن
+            تلمس الحقل، لا بعد أن تكتب فيه وتجد نتائج النوع الخطأ.
+            وتبديل الوضع يُصفّر النتائج والنصّ — كتابةٌ لنوعٍ لا تصلح
+            لغيره، وإبقاؤها يجعل الشاشة تكذب لثلث ثانية. */}
+        <div className={`${segmentedTrackBare} mt-2 -mb-3`} role="tablist" aria-label={t.navSearch}>
+          {(
+            [
+              ["titles", t.searchModeTitles],
+              ["people", t.searchModePeople],
+              ["ai", t.searchModeAi],
+            ] as [SearchMode, string][]
+          ).map(([m, label]) => (
+            <button
+              key={m}
+              type="button"
+              role="tab"
+              aria-selected={mode === m}
+              onClick={() => {
+                if (m === mode) return;
+                tap(8);
+                setMode(m);
+                setQ("");
+                setItems([]);
+                setTouched(false);
+                inputRef.current?.focus();
+              }}
+              className={segmentedItem(mode === m, "px-3 pt-1.5 pb-2.5 text-[13px]", false)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </SheetHeader>
 
       <div className="px-5 pt-4 pb-3 space-y-3">
-        {!ai ? (
+        {mode !== "ai" ? (
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              if (term) go(`/search?q=${encodeURIComponent(term)}`);
+              /* «كل النتائج» صفحةٌ للأعمال وحدها — وضعُ الأشخاص نتائجُه
+                 كاملةٌ في الورقة، فلا وجهةَ للإرسال فيه */
+              if (term && mode === "titles") go(`/search?q=${encodeURIComponent(term)}`);
             }}
           >
             <div className="relative">
@@ -176,8 +261,8 @@ export function TitleSearchSheet({
                 ref={inputRef}
                 value={q}
                 onChange={(e) => changeQ(e.target.value)}
-                placeholder={t.searchPlaceholder}
-                aria-label={t.searchPlaceholder}
+                placeholder={mode === "people" ? t.peopleSearchPlaceholder : t.searchPlaceholder}
+                aria-label={mode === "people" ? t.peopleSearchPlaceholder : t.searchPlaceholder}
                 /* ١٦ بكسلاً لا ١٤: سفاري iOS يكبّر الصفحة تلقائياً عند
                    التركيز على أي حقلٍ خطُّه أصغر من ١٦، فتقفز الشاشة عند
                    فتح البحث. الحجم هنا يمنع القفزة من أصلها بلا
@@ -211,22 +296,12 @@ export function TitleSearchSheet({
           </div>
         )}
 
-        {/* التبديل بين الوضعين — سطرٌ واحد لا عائلة تحكّمٍ جديدة */}
-        <button
-          type="button"
-          onClick={() => {
-            tap(8);
-            setAi((v) => !v);
-          }}
-          className="w-full flex items-center justify-center gap-1.5 text-[13px] font-semibold text-muted hover:text-accent transition py-1"
-        >
-          <Icon name={ai ? "search" : "sparkles"} size={15} strokeWidth={2} />
-          {ai ? t.aiSearchBack : t.aiSearchBtn}
-        </button>
+        {/* سطر «صف قصة» حُذف: صار وضعاً ثالثاً في مقسّم الترويسة، وزرٌّ
+            يفعل ما يفعله المقسّم فوقه محورٌ ثانٍ لمعنًى واحد */}
       </div>
 
       <div className="overflow-y-auto overscroll-contain divide-y divide-[color:var(--divider)] min-h-[6rem]">
-        {ai ? (
+        {mode === "ai" ? (
           aiPending ? (
             <p className="text-sm text-muted text-center py-8">{t.peopleSearching}</p>
           ) : aiItems === null ? (
@@ -239,11 +314,17 @@ export function TitleSearchSheet({
         ) : loading ? (
           <p className="text-sm text-muted text-center py-8">{t.peopleSearching}</p>
         ) : term.length < MIN ? (
-          <p className="text-xs text-muted text-center py-8 px-5">{t.searchStart}</p>
+          <p className="text-xs text-muted text-center py-8 px-5">
+            {mode === "people" ? t.peopleSearchHint : t.searchStart}
+          </p>
         ) : items.length === 0 && touched ? (
-          <p className="text-sm text-muted text-center py-8 px-5">{t.searchNoResults}</p>
+          <p className="text-sm text-muted text-center py-8 px-5">
+            {mode === "people" ? t.peopleNoResults : t.searchNoResults}
+          </p>
         ) : (
-          items.map((s) => <ResultRow key={`${s.kind}-${s.id}`} s={s} t={t} onGo={go} />)
+          items.map((s) => (
+            <ResultRow key={s.rowKey ?? `${s.kind}-${s.id}`} s={s} t={t} onGo={go} />
+          ))
         )}
       </div>
     </Sheet>
@@ -265,9 +346,9 @@ function ResultRow({
   onGo: (href: string) => void;
 }) {
   const person = s.kind === "person";
-  const href = person
-    ? `/person/${s.id}`
-    : `/${s.kind === "tv" ? "show" : "movie"}/${s.id}`;
+  const href =
+    s.href ??
+    (person ? `/person/${s.id}` : `/${s.kind === "tv" ? "show" : "movie"}/${s.id}`);
   return (
     <button
       type="button"

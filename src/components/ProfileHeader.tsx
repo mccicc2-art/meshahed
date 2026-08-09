@@ -6,6 +6,8 @@ import { levelName, type LevelInfo } from "@/lib/level";
 import { Icon, type IconName } from "./Icon";
 import { Logo } from "./Logo";
 import { HeaderTools } from "./HeaderTools";
+import { FollowPills } from "./FollowPills";
+import type { PersonLite } from "@/lib/data";
 
 export interface HeaderStat {
   key: string;
@@ -88,7 +90,9 @@ export function ProfileHeader({
   avatarPos = null,
   level,
   stats,
-  followers,
+  followingList,
+  followersList,
+  followRequests = [],
   comments,
   ratings,
   show,
@@ -108,7 +112,10 @@ export function ProfileHeader({
   avatarPos?: number | null;
   level: LevelInfo;
   stats: HeaderStat[];
-  followers: number;
+  /** قائمتا المتابعة وطلباتها — تُفتحان في ورقتين من صفّ الأرقام (D-133) */
+  followingList: PersonLite[];
+  followersList: PersonLite[];
+  followRequests?: PersonLite[];
   comments: number;
   ratings: number;
   /** إعجابات تلقّتها مراجعاته */
@@ -254,18 +261,17 @@ export function ProfileHeader({
 
           {(show.followers || show.social) && (
             <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[13px] text-white/75 leading-tight mt-1 drop-shadow">
+              {/* عدّادا المتابعة **انتقلا من `/people` إلى هنا** (طلب
+                  أحمد 9 Aug مساءً). كان هنا رقمٌ واحد يقود إلى الصفحة،
+                  فصار رقمين يفتحان قائمتيهما في مكانهما — لأن هذا
+                  إحصاءٌ عنك، ومن يضغطه يريد أسماء لا وجهة. */}
               {show.followers && (
-                <Link
-                  href="/people"
-                  title={t.followersLabel}
-                  aria-label={`${followers} ${t.followersLabel}`}
-                  className="shrink-0 flex items-center gap-1.5 hover:text-white transition"
-                >
-                  <Icon name="people-filled" size={16} />
-                  <span className="font-bold text-white tabular-nums">
-                    {followers}
-                  </span>
-                </Link>
+                <FollowPills
+                  following={followingList}
+                  followers={followersList}
+                  requests={followRequests}
+                  locale={locale}
+                />
               )}
               {show.followers && show.social && (
                 <span className="opacity-40 shrink-0">•</span>
