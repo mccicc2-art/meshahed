@@ -1274,6 +1274,51 @@ export async function getFollowedPeople(): Promise<PublicProfile[]> {
 }
 
 // ============================================================
+//  تقييم الحلقات (episode_ratings.sql, D-139)
+// ============================================================
+
+export interface EpisodeRatingRow {
+  season_number: number;
+  episode_number: number;
+  rating: number;
+  review: string | null;
+  updated_at: string;
+}
+
+/**
+ * تقييمات شخصٍ في مسلسلٍ واحد — مفتاحُها `s-e` للبحث السريع عند الرسم.
+ *
+ * تُقرأ عبر definer لا بفتح الجدول: `episode_ratings` صفوفُ صاحبها،
+ * والبوّابة `can_view_profile` داخل الدالّة. و`userId` غيابُه يعني
+ * «أنا» — أكثر الاستدعاءات.
+ *
+ * **الدالّة غائبة؟ خريطةٌ فارغة** (نمط D-113): صفحة المسلسل تعمل بلا
+ * نجومٍ بدل أن تسقط، فالكود يسبق الهجرة أحياناً.
+ */
+export async function getEpisodeRatings(
+  showTmdbId: number,
+  userId?: string,
+): Promise<Map<string, EpisodeRatingRow>> {
+  const out = new Map<string, EpisodeRatingRow>();
+  try {
+    const supabase = await createClient();
+    const who = userId ?? (await getUser())?.id;
+    if (!who) return out;
+    const { data, error } = await supabase.rpc("episode_ratings_of", {
+      p_user: who,
+      p_show: showTmdbId,
+    });
+    if (error || !data) return out;
+    for (const r of data as EpisodeRatingRow[]) {
+      out.set(`${r.season_number}-${r.episode_number}`, r);
+    }
+    return out;
+  } catch {
+    return out;
+  }
+}
+
+// ============================================================
 //  متابعة الفنانين (person_follows.sql) — «فنان» تمييزاً عن متابعة
 //  المستخدمين أعلاه: getFollowedPeople تعيد أشخاص التطبيق، وهذه تعيد
 //  أشخاص TMDB. الاسم والصورة محفوظان مع الصفّ (D-048).

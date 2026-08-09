@@ -335,6 +335,69 @@ export async function toggleEpisode(input: {
   revalidatePath("/stats");
 }
 
+/**
+ * تقييم حلقة (D-139) — **رأيٌ ومشاهدةٌ في نداءٍ واحد**.
+ *
+ * قرار أحمد: التقييم يعني المشاهدة. والكتابتان تجريان داخل دالّة
+ * `set_episode_rating` في القاعدة لا هنا بنداءَين: نداءان من العميل قد
+ * ينجح أوّلهما ويسقط ثانيهما، فتبقى حلقةٌ مقيَّمة وغير مشاهَدة — وهي
+ * الحالة التي وُجد هذا التصميم لمنعها أصلاً.
+ *
+ * ونفس دلو `ep`: التقييم يقع في نفس دفقة تأشير الحلقات ولا يستحقّ حدّاً
+ * أضيق منه.
+ */
+export async function rateEpisode(input: {
+  showTmdbId: number;
+  season: number;
+  episode: number;
+  /** ١..١٠ — و`null` تعني «اسحب تقييمي»، والمشاهدة تبقى */
+  rating: number | null;
+  review?: string | null;
+  runtime?: number | null;
+}) {
+  const showTmdbId = intId(input.showTmdbId);
+  const season = intIn(input.season, 0, 1000);
+  const episode = intIn(input.episode, 1, 20_000);
+  const { supabase } = await requireUser("ep", 120, 60_000);
+
+  /* **الهجرة ٥٢ لم تُشغَّل؟ رسالةٌ للمستخدم لا رسالةُ Postgres.**
+     `42883` = الدالّة غير موجودة. الكود قد يسبق الهجرة بدقائق (وقع هذا
+     فعلاً: تعطّلت لوحة Supabase ساعةَ الشحن)، وفي تلك الدقائق يجب أن
+     يقرأ المستخدم جملةً مفهومة لا «function set_episode_rating does not
+     exist». وهذا **ليس فشلاً صامتاً**: التقييم لا يُحفظ ويُقال ذلك. */
+  const guard = (error: { code?: string } | null) => {
+    if (!error) return;
+    if (error.code === "42883")
+      throw new Error("تقييم الحلقات غير مفعّل بعد. / Episode ratings aren't enabled yet.");
+    fail(error);
+  };
+
+  if (input.rating === null) {
+    const { error } = await supabase.rpc("clear_episode_rating", {
+      p_show: showTmdbId,
+      p_season: season,
+      p_episode: episode,
+    });
+    guard(error);
+  } else {
+    const { error } = await supabase.rpc("set_episode_rating", {
+      p_show: showTmdbId,
+      p_season: season,
+      p_episode: episode,
+      p_rating: intIn(input.rating, 1, 10),
+      /* يُقصّ هنا كما يُقصّ في القاعدة: رسالةُ خطأٍ من Postgres ليست
+         رسالةً للمستخدم (نفس قاعدة النبذة في D-044) */
+      p_review: (input.review ?? "").trim().slice(0, 2000) || null,
+      p_runtime: input.runtime == null ? null : intIn(input.runtime, 0, 10_000),
+    });
+    guard(error);
+  }
+
+  revalidatePath("/");
+  revalidatePath("/ratings");
+  revalidatePath("/stats");
+}
+
 // تأشير حلقة وكل ما قبلها كمشاهَد (اختيار الحلقة ٥٠ يعني مشاهدة ١..٥٠)
 export async function watchUpTo(input: {
   showTmdbId: number;
