@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { getUser, getWatchedMovieIds, getFollows, getImdbChart } from "@/lib/data";
-import { awardWinners, getCollection, moviesByIds, posterUrl, resolveSetIds, titleOf, topRatedRows, yearOf } from "@/lib/tmdb";
-import { rankByImdb, withImdbRatings } from "@/lib/omdb";
+import { getUser, getWatchedMovieIds, getFollows } from "@/lib/data";
+import { awardWinners, getCollection, moviesByIds, posterUrl, resolveSetIds, titleOf, yearOf } from "@/lib/tmdb";
+import { topChartRows } from "@/lib/topChart";
 import { universeBySlug, universeName } from "@/lib/universes";
 import { getLocale } from "@/lib/locale";
 import { allow, retryAfter } from "@/lib/ratelimit";
@@ -71,34 +71,15 @@ export async function GET(request: Request) {
        من معرّفاتٍ مكتوبة — وقد تكون مسلسلات، فكل جزءٍ يحمل mediaType */
     if (u.top) {
       const want = u.topLimit ?? 250;
-      /* **البِركة أوسع من القائمة بستّين بالمئة** (D-132): `rankByImdb`
-         تُسقط كل عملٍ بلا تقييم IMDb إسقاطاً كاملاً — لا إلى الذيل —
-         فبِركةٌ بحجم القائمة تعني قائمةً ناقصة. والترتيب بايزيّ لا
-         بالمتوسّط العاري: «الأب الروحي» بمليونَي صوت لا يزيحه فيلمٌ
-         ٩٫٤ بألف. هذا هو العيب الذي أُبلغنا عنه، وهذا موضع إصلاحه. */
-      const [chart, watchedIds, follows, locale] = await Promise.all([
-        getImdbChart(u.top, want),
+      /* **مصدرٌ واحد للمعاينة والحفظ** (D-135): `topChartRows` هي نفسها
+         التي يستدعيها `saveUniverseList`، فقائمةٌ محفوظة لا يمكن أن
+         تخالف ما عايَنه المستخدم قبل ثانية. طبقاتها الثلاث موصوفةٌ عندها. */
+      const [rows, watchedIds, follows, locale] = await Promise.all([
+        topChartRows(u.top, want),
         getWatchedMovieIds(),
         getFollows(),
         getLocale(),
       ]);
-      /* **قائمة IMDb المثبَّتة أولاً** (D-135): بِركتها IMDb كلّها لا
-         أربعمئة عملٍ من TMDB. وإن كانت فارغة (الهجرة ٥٠ لم تُشغَّل أو
-         المسوّدة لم تُملأ) سقطنا إلى مسار D-132 — أضعفُ لا مكسور. */
-      const rows: { id: number; media_type: string; poster_path: string | null;
-                    title?: string; name?: string; release_date?: string;
-                    first_air_date?: string }[] = chart.length
-        ? chart.map((c) => ({
-            id: c.tmdb_id,
-            media_type: c.media_type,
-            poster_path: c.poster_path,
-            title: c.title ?? undefined,
-            name: c.title ?? undefined,
-          }))
-        : rankByImdb(
-            await withImdbRatings(await topRatedRows(u.top, Math.round(want * 1.6))),
-            { want },
-          ).slice(0, want);
       const savedKeys = new Set(follows.map((f) => `${f.media_type}-${f.tmdb_id}`));
       return NextResponse.json({
         name: universeName(u, locale === "en" ? "en" : "ar"),
