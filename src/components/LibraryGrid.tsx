@@ -72,7 +72,7 @@ export function LibraryGrid({
   artistCount,
   lists,
   locale,
-  initialTab = "shows",
+  initialTab = "movies",
   listsExtra,
 }: {
   shows: GridItem[];
@@ -145,8 +145,8 @@ export function LibraryGrid({
 
 
   const tabs = [
-    { id: "shows" as const, icon: "tv" as const, label: t.shortShows, n: shows.length },
     { id: "movies" as const, icon: "film" as const, label: t.shortMovies, n: movies.length },
+    { id: "shows" as const, icon: "tv" as const, label: t.shortShows, n: shows.length },
     { id: "artists" as const, icon: "people" as const, label: t.shortArtists, n: artistCount },
     { id: "lists" as const, icon: "list" as const, label: t.listsTitle, n: lists.length },
   ];

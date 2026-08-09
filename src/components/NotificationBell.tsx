@@ -8,7 +8,7 @@ import { Icon } from "./Icon";
 import { Sheet, SheetHeader } from "./ui/Sheet";
 import { mySignals, markSignalsSeen, type Signal } from "@/lib/actions";
 import { getDict, num, type Locale } from "@/lib/i18n";
-import { formatDateShort } from "@/lib/when";
+import { timeAgo } from "@/lib/when";
 import { tap } from "@/lib/haptics";
 
 /**
@@ -98,6 +98,11 @@ export function NotificationBell({
           onClose={() => setOpen(false)}
         />
 
+        {/* حاويةٌ تُمرَّر: لوح الورقة `overflow-hidden`، فقائمةٌ من ثلاثين
+            إشعاراً كانت **تُقصّ بلا أي طريقةٍ لرؤية بقيّتها** — لا تمرير
+            ولا إشارة. كل ورقةٍ في التطبيق تحمل هذه الحاوية، وهذه وحدها
+            نسيتها (بلاغ أحمد 9 Aug). */}
+        <div className="overflow-y-auto overscroll-contain px-5">
           {rows === null || (pending && !rows) ? (
             /* هيكلٌ بارتفاع الصفوف نفسه — لا تقفز الورقة عند الوصول (D-046) */
             <ul className="space-y-3 px-1 pb-2">
@@ -128,7 +133,7 @@ export function NotificationBell({
                     <span className="min-w-0 flex-1">
                       <span className="block text-[13px] leading-snug">{line(s)}</span>
                       <span className="block text-[11px] text-muted mt-0.5">
-                        {formatDateShort(s.at, t)}
+                        {timeAgo(s.at, t)}
                       </span>
                     </span>
                     {/* النقطة تقول «هذا وصل بعد آخر فتحة» — لا لونٌ يغرق السطر */}
@@ -151,6 +156,7 @@ export function NotificationBell({
               })}
             </ul>
           )}
+        </div>
       </Sheet>
     </>
   );
