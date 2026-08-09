@@ -59,7 +59,8 @@
 | 46 | `activity_likes.sql` | إعجابٌ بحدث مشاهدة: جدول بمفتاحٍ فيه يوم + `feed_activity_likes` definer (D-124) | **مشحونة** |
 | 47 | `notifications.sql` | جرس الإشعارات بلا جدول: عمود `notif_seen_at` + `my_signals`/`unread_signals`/`mark_signals_seen` (D-125) | **مشحونة** |
 | 48 | `social_discovery.sql` | `people_to_follow` (اقتراح متابعةٍ بتقاطع الذوق) + `title_circle` (نشاط دائرتك في صفحة العمل، مكتومٌ تحت ٣) + فهرسان (D-126/D-127) | **مشحونة** |
-| 49 | `imdb_votes.sql` | `imdb_ratings.imdb_votes` + `set_imdb_ratings` تحفظه — شرطُ ترتيب IMDb البايزيّ وحاجزِ الأهليّة (D-132) | **بانتظار التشغيل** |
+| 49 | `imdb_votes.sql` | `imdb_ratings.imdb_votes` + `set_imdb_ratings` تحفظه — شرطُ ترتيب IMDb البايزيّ وحاجزِ الأهليّة (D-132) | **مشحونة** |
+| 50 | `imdb_chart.sql` | `imdb_pool` + `imdb_chart` + `set_imdb_pool`/`build_imdb_chart` — قائمة IMDb الحقيقية من ملفّاتها المفتوحة (D-135). ⚠️ **سياسة قراءةٍ مفتوحة رابعة** | **بانتظار التشغيل** |
 
 كلها تحقَّقت بالاستعلام المكتوب في ذيل ملفّها — **لا استثناءات: كل ملفات
 الجدول شُغِّلت** (آخرها ٢٩ المعاد كتابته و٣٦، في ٩ أغسطس).
