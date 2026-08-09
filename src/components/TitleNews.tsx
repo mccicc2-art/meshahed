@@ -49,21 +49,24 @@ export function TitleNews({ items, locale }: { items: NewsItem[]; locale: Locale
 
       <div className="divide-y divide-[color:var(--divider)]">
         {items.map((n) => (
-          <article key={n.key} className="py-4 first:pt-0">
-            <div className="flex items-start justify-between gap-4">
+          <article key={n.key} className="py-3 first:pt-0">
+            {/* **الصفّ محاذٍ رأسياً لا مبدوءٌ من الأعلى، والملصق صغير:**
+                نصُّ الخبر ثلاثة أسطر قصيرة، وملصقٌ ٢:٣ بعرض ٩٦ بكسلاً
+                يجعله ضعف ارتفاع نصّه — فتُقرأ القائمة فراغاتٍ متتابعة لا
+                أخباراً. صفُّ النشاط لا يعاني هذا لأن صورته ١٦:٩. */}
+            <div className="flex items-center justify-between gap-4">
               <div className="min-w-0 flex-1">
                 <p className="text-[13px] font-semibold text-accent">{label(n)}</p>
-                <p className="mt-1 text-[13px] text-muted">{when(n)}</p>
-                <p className="mt-2 text-[15px] leading-snug font-semibold">{n.title}</p>
-                <p className="mt-0.5 text-[11px] text-muted">
-                  {n.mediaType === "tv" ? t.typeSeries : t.typeMovie}
+                <p className="mt-1.5 text-[15px] leading-snug font-semibold">{n.title}</p>
+                <p className="mt-1 text-[11px] text-muted">
+                  {when(n)} · {n.mediaType === "tv" ? t.typeSeries : t.typeMovie}
                 </p>
               </div>
 
               <Link
                 href={`/${n.mediaType === "tv" ? "show" : "movie"}/${n.tmdbId}`}
                 prefetch={false}
-                className="shrink-0 w-20 sm:w-24 group"
+                className="shrink-0 w-14 sm:w-16 group"
               >
                 <span className="relative block w-full aspect-[2/3] rounded-lg overflow-hidden bg-surface-2">
                   {n.posterPath ? (
@@ -71,7 +74,7 @@ export function TitleNews({ items, locale }: { items: NewsItem[]; locale: Locale
                       src={posterUrl(n.posterPath, "w185") ?? ""}
                       alt=""
                       fill
-                      sizes="(max-width: 640px) 80px, 96px"
+                      sizes="(max-width: 640px) 56px, 64px"
                       className="object-cover"
                     />
                   ) : (
