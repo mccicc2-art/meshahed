@@ -133,7 +133,11 @@ as $$
 declare
   lim integer := least(greatest(coalesce(p_limit, 250), 10), 500);
 begin
-  delete from public.imdb_chart;
+  /* `where true` وليس حذفاً عارياً: Supabase تُحمّل `safeupdate` لدور
+     `authenticated`، فحذفٌ بلا شرطٍ يُرفض بـ«DELETE requires a WHERE
+     clause» — حتى داخل دالّة definer. و`truncate` تأخذ قفلاً حصرياً على
+     جدولٍ يُقرأ في كل معاينة قائمة، والحذف داخل المعاملة يكفي. */
+  delete from public.imdb_chart where true;
 
   insert into public.imdb_chart
     (kind, rank, tconst, tmdb_id, media_type, title, poster_path, rating, votes)
