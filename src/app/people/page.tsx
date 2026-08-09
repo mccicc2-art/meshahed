@@ -5,8 +5,6 @@ import {
   getUser,
   getCommunityFeed,
   getPeopleToFollow,
-  getFollowLists,
-  getIncomingFollowRequests,
   getMyCommunities,
   getMyCommunityInvites,
   getCommunityRoom,
@@ -22,7 +20,6 @@ import type { Dict } from "@/lib/i18n";
 import { localizeRows } from "@/lib/localize";
 import { formatDateShort } from "@/lib/when";
 import { num } from "@/lib/i18n";
-import { CommunityBar } from "@/components/CommunityBar";
 import { FeedEmptyCta } from "@/components/FeedEmptyCta";
 import { PeopleToFollow } from "@/components/PeopleToFollow";
 import { Inbox } from "@/components/Inbox";
@@ -175,14 +172,15 @@ export default async function PeoplePage({
   /* «المجتمع» صار دليلَ مجتمعاتٍ لا خطَّ تفاعلات (قرار المالك): خطُّ
      الجميع أُسقط — «مجتمعي» يكفي لدائرتك والتقييمات في صفحة كل عمل —
      فسقط طلبُه أيضاً، وحلّ محلّه نداءُ مجتمعاتي الخفيف لعدّاد التبويب. */
-  const [followingFeed, myCommunities, myInvites, unread, lists, followRequests] = await Promise.all([
+  /* سقط استعلاما قوائم المتابعة وطلباتها من هذه الصفحة مع سقوط شريطها
+     (طلب أحمد): عدّاداهما انتقلا إلى ترويسة الرئيسية، فبقاؤهما هنا
+     استعلامان يُدفعان في كل فتحةٍ لصفحةٍ لم تعد تعرضهما */
+  const [followingFeed, myCommunities, myInvites, unread] = await Promise.all([
     getCommunityFeed("following"),
     getMyCommunities(),
     // دعواتي المعلّقة (هجرة 42) — قسم «دعوات» فوق مجتمعاتي في الدليل
     getMyCommunityInvites(),
     getUnreadShares(),
-    getFollowLists(user.id),
-    getIncomingFollowRequests(),
   ]);
 
   const mineCount = followingFeed.length;
@@ -382,7 +380,6 @@ export default async function PeoplePage({
               </>
             )}
           </div>
-          <CommunityBar following={lists.following} followers={lists.followers} requests={followRequests} locale={locale} />
         </div>
       )}
       </div>
@@ -393,11 +390,6 @@ export default async function PeoplePage({
           conversations={conversations}
           startable={startable}
           openWith={openWith}
-          actions={
-            openWith ? undefined : (
-              <CommunityBar following={lists.following} followers={lists.followers} requests={followRequests} locale={locale} />
-            )
-          }
           locale={locale}
         />
       ) : tab === "all" ? (
@@ -407,9 +399,6 @@ export default async function PeoplePage({
           <CommunityDirectory
             mine={myCommunities}
             invites={myInvites}
-            actions={
-              <CommunityBar following={lists.following} followers={lists.followers} requests={followRequests} locale={locale} />
-            }
             locale={locale}
           />
         )
