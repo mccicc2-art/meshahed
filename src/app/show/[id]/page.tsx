@@ -12,6 +12,7 @@ import {
   getTitleReviews,
   getMyLists,
   getListsContaining,
+  getTitleCircle,
 } from "@/lib/data";
 import {
   getTv,
@@ -33,6 +34,7 @@ import { Trailer } from "@/components/Trailer";
 import { WatchChip } from "@/components/WatchChip";
 import { TitleActions } from "@/components/TitleActions";
 import { DetailTopBar } from "@/components/DetailTopBar";
+import { CircleNote } from "@/components/CircleNote";
 import { ReadMore } from "@/components/ReadMore";
 import { formatDate } from "@/lib/when";
 import { ShowStatsSync } from "@/components/ShowStatsSync";
@@ -52,13 +54,17 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
   // بيانات أول رسمة فقط في الموجة الحاسمة — الترايلر والتعليقات تُبثّ
   // لاحقاً عبر Suspense فلا تؤخّر ترويسة الصفحة وتبويب الحلقات
   const userRegion = await getWatchRegion();
-  const [tv, followState, watched, watchWhere, myLists, inLists] = await Promise.all([
+  const [tv, followState, watched, watchWhere, myLists, inLists, circle] = await Promise.all([
     getTv(tvId).catch(() => null),
     getFollowState(tvId, "tv"),
     getWatchedForShow(tvId),
     getWatchProviders("tv", tvId),
     getMyLists(),
     getListsContaining(tvId, "tv"),
+    /* نشاط دائرتك (D-127) — نداء definer واحد داخل الموجة نفسها لا خلف
+       Suspense: كلفتُه استعلامٌ محليّ (~50ms من الرياض) والصفحة تنتظر
+       TMDB على كل حال، فحاجزُ تعليقٍ ثانٍ يشتري وميضاً لا سرعة */
+    getTitleCircle(tvId, "tv"),
   ]);
   const following = followState.following;
 
@@ -196,6 +202,11 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
           <Suspense fallback={<HeroRatingsSkeleton />}>
             <HeroRatings tvId={tvId} />
           </Suspense>
+
+          {/* «٣ ممن تتابعهم شاهدوه» (D-127) — تحت تقييم العالم مباشرة:
+              الرأي العام أولاً ثم رأي من تثق بهم. ولا يُرسم شيء تحت
+              الثلاثة — الكتم في SQL لا هنا */}
+          <CircleNote circle={circle} locale={locale} />
 
           {/* الأنواع صعدت من «معلومات» إلى جنب الملصق — كصفحة الفيلم */}
           {tv.genres.length > 0 && (
