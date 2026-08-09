@@ -37,6 +37,13 @@ const SOURCE_WEIGHT: Record<Source, number> = {
 /** مكافأة لكل مصدر إضافي يقترح نفس العمل — التوافق دليل قوة */
 const CONSENSUS_BONUS = 0.35;
 
+/**
+ * أرضية الجودة: لا نقترح عملاً تقييمه ٦٫٥ فأقل (طلب المالك). التقييم من
+ * TMDB لا IMDb عمداً — جلب IMDb لكل مرشّح يعني مئات طلبات OMDb في كل
+ * تحميل، والحصة اليومية ألف طلب فقط. المقياسان متقاربان عند هذه العتبة.
+ */
+const MIN_RATING = 6.5;
+
 function baseScore(c: Candidate) {
   const rankDecay = 1 / (1 + c.rank * 0.12);
   const rating = Math.max(0, Math.min(10, c.result.vote_average ?? 0)) / 10;
@@ -57,6 +64,8 @@ export function blendRecommendations(
     if (!c.result?.id || !c.result.poster_path) continue;
     if (c.result.media_type !== "tv" && c.result.media_type !== "movie") continue;
     if (opts.exclude.has(c.result.id)) continue;
+    // ما دون الأرضية لا يدخل أصلاً — اقتراح عملٍ ضعيف أسوأ من اقتراحٍ أقل
+    if ((c.result.vote_average ?? 0) <= MIN_RATING) continue;
 
     const score = baseScore(c);
     const prev = byId.get(c.result.id);

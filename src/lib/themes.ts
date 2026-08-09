@@ -22,6 +22,16 @@ export interface Theme {
     /** سطحٌ معاكس للخلفية: زرّ الفعل الأول والزرّ الاجتماعي */
     "surface-inverse": string;
     "on-surface-inverse": string;
+    /**
+     * درجات الألوان الدلالية — اختيارية، والغياب يعني قيم globals.css
+     * الافتراضية. المعنى ثابتٌ عبر الثيمات (أخضر نجاح، أحمر خطأ، ذهبي
+     * توثيق)؛ الدرجة وحدها تتبدّل حيث تفشل الافتراضية قراءةً — النهاري
+     * (جولة تباين 9 Aug م٤): ‎#22c55e نصاً على الأبيض تباينه ~2.0،
+     * كقصة الأصفر نفسها التي أنتجت ‎#8a6d00.
+     */
+    success?: string;
+    error?: string;
+    verified?: string;
   };
   glowA: string;
   glowB: string;
@@ -201,6 +211,12 @@ export const THEMES: Theme[] = [
       divider: "rgba(13, 13, 13, 0.10)",
       "surface-inverse": "#0D0D0D",
       "on-surface-inverse": "#FFFFFF",
+      /* الدلاليات تُعتَّم كما عُتِّم الأصفر (م٤): درجةٌ أعمق من نفسها
+         لا لونٌ آخر — النجاح ‎#15803d (~4.7 على الأبيض) والخطأ ‎#b91c1c
+         (~5.9) والتوثيق يستعير ذهبيّ النهار نفسه */
+      success: "#15803d",
+      error: "#b91c1c",
+      verified: "#8a6d00",
     },
     glowA: "rgba(255, 210, 0, 0.14)",
     glowB: "rgba(245, 158, 11, 0.07)",
@@ -227,13 +243,18 @@ export function themeName(t: Theme, locale: "ar" | "en") {
  * `elevated` و`divider` و`surface-inverse` تُكتب هنا الآن بعد أن كانت
  * ثابتةً في globals.css: قيمها الداكنة كانت تُطبَّق على الثيم الفاتح أيضاً،
  * فكل ورقةٍ منبثقة تخرج سوداء على صفحةٍ بيضاء، وزرُّ الفعل الأول الأبيض
- * يختفي على سطحٍ أبيض. اللون الدلاليّ (نجاح/خطأ/توثيق) وحده يبقى ثابتاً —
- * معناه لا يتبدّل بتبدّل اللوحة.
+ * يختفي على سطحٍ أبيض. اللون الدلاليّ (نجاح/خطأ/توثيق) معناه ثابتٌ عبر
+ * اللوحات، ودرجتُه تتبدّل حيث لا تُقرأ الافتراضية (النهاري — م٤): الغياب
+ * يعني قيمة globals.css فلا يُكتب المتغير أصلاً.
  */
 export function themeCss(t: Theme) {
   const v = t.vars;
   // تدرّج الشعار يتبع الهوية لا الثيم: الثيمات تغيّر لون الواجهة، أما
   // العلامة فتبقى كما هي في كل مكان تُرى فيه
   const b = t.brand ?? DEFAULT_BRAND;
-  return `:root{--background:${v.background};--surface:${v.surface};--surface-2:${v["surface-2"]};--foreground:${v.foreground};--muted:${v.muted};--accent:${v.accent};--accent-2:${v["accent-2"]};--border:${v.border};--on-accent:${v["on-accent"]};--on-accent-2:${v["on-accent-2"]};--glow-a:${t.glowA};--glow-b:${t.glowB};--brand-1:${b[0]};--brand-2:${b[1]};--brand-3:${b[2]};--elevated:${v.elevated};--divider:${v.divider};--surface-inverse:${v["surface-inverse"]};--on-surface-inverse:${v["on-surface-inverse"]};}`;
+  const semantic =
+    (v.success ? `--success:${v.success};` : "") +
+    (v.error ? `--error:${v.error};` : "") +
+    (v.verified ? `--verified:${v.verified};` : "");
+  return `:root{--background:${v.background};--surface:${v.surface};--surface-2:${v["surface-2"]};--foreground:${v.foreground};--muted:${v.muted};--accent:${v.accent};--accent-2:${v["accent-2"]};--border:${v.border};--on-accent:${v["on-accent"]};--on-accent-2:${v["on-accent-2"]};--glow-a:${t.glowA};--glow-b:${t.glowB};--brand-1:${b[0]};--brand-2:${b[1]};--brand-3:${b[2]};--elevated:${v.elevated};--divider:${v.divider};--surface-inverse:${v["surface-inverse"]};--on-surface-inverse:${v["on-surface-inverse"]};${semantic}}`;
 }
