@@ -147,7 +147,12 @@ export function LibraryGrid({
           ولا وميض. وبما أن القوائم تُقرأ مع الصفحة صار عدّادُها مجّانيّاً،
           فاستوت الخانات الثلاث شكلاً ووزناً: `segmentedTrackFull` يقسّم
           العرض بالتساوي و`flex-1 basis-0` يمنع النصّ الأطول من توسيع خانته. */}
-      <div className={`${segmentedTrackFull} mb-5`} role="tablist" aria-label={t.libraryTitle}>
+      {/* رأسٌ لاصق (طلب أحمد 9 Aug): التبويبات وصفّ البحث والفرز يبقيان
+          تحت الترويسة والشبكة تمرّ تحتهما. خلفية صمّاء لا شفافة —
+          الملصقات تمرّ خلفها. وصفّ البحث خرج من `tabpanel` إلى هنا: هو
+          تحكّمٌ في اللوح لا محتواه، ويظهر لغير تبويب القوائم وحده. */}
+      <div className="sticky top-[var(--sticky-top)] z-20 -mx-4 px-4 pt-1 pb-2 bg-[color:var(--background)]">
+      <div className={`${segmentedTrackFull} ${tab === "lists" ? "mb-1" : "mb-3"}`} role="tablist" aria-label={t.libraryTitle}>
         {tabs.map(({ id, icon, label, n }) => {
           const active = tab === id;
           return (
@@ -183,20 +188,9 @@ export function LibraryGrid({
           );
         })}
       </div>
-
-      <div id="lib-panel" role="tabpanel" aria-labelledby={`lib-tab-${tab}`}>
-      {tab === "lists" ? (
-        /* نفس تركيبة صفحة `/lists` حرفياً — لا نسخة ثانية منها: المسار
-           يبقى قائماً للروابط المباشرة، وهذا اللوح يعرض المكوّنين
-           نفسيهما (قوائمي ثم القوائم المحفوظة) */
-        <div className="space-y-8">
-          <ListManager lists={lists} locale={locale} />
-          {listsExtra}
-        </div>
-      ) : (
-      <>
-      {/* بحثٌ وفرز: سطرٌ واحد تحت التبويبين */}
-      <div className="flex items-center gap-2 mb-2">
+      {tab !== "lists" && (
+        /* بحثٌ وفرز: سطرٌ واحد تحت التبويبين */
+        <div className="flex items-center gap-2">
         <div className="relative flex-1">
           <span className="absolute inset-y-0 start-3 grid place-items-center text-muted pointer-events-none">
             <Icon name="search" size={16} />
@@ -226,10 +220,23 @@ export function LibraryGrid({
             >
               {label}
             </button>
-          ))}
+            ))}
+          </div>
         </div>
+      )}
       </div>
 
+      <div id="lib-panel" role="tabpanel" aria-labelledby={`lib-tab-${tab}`}>
+      {tab === "lists" ? (
+        /* نفس تركيبة صفحة `/lists` حرفياً — لا نسخة ثانية منها: المسار
+           يبقى قائماً للروابط المباشرة، وهذا اللوح يعرض المكوّنين
+           نفسيهما (قوائمي ثم القوائم المحفوظة) */
+        <div className="space-y-8">
+          <ListManager lists={lists} locale={locale} />
+          {listsExtra}
+        </div>
+      ) : (
+      <>
       <p className="text-[10px] text-muted/80 mb-4">{t.longPressHint}</p>
 
       {items.length === 0 ? (

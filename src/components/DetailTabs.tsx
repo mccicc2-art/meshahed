@@ -32,7 +32,9 @@ export function DetailTabs({ tabs }: { tabs: DetailTab[] }) {
           عليه خطٌّ بلون التمييز — أخفّ من كبسولةٍ بحدّ. والأسهم تنقل بين
           التبويبات (مقلوبةً في RTL) كما يتوقّع مستخدم لوحة المفاتيح وقارئ
           الشاشة */}
-      <div className="sticky top-[var(--header-h)] z-10 bg-[color:var(--background)] py-2">
+      {/* `--sticky-top` لا `--header-h` وحده: الترويسة تحمل شريط الحالة
+          في وضع التثبيت، فالالتصاق عليه وحده يُدخل الشريط تحتها */}
+      <div className="sticky top-[var(--sticky-top)] z-10 bg-[color:var(--background)] py-2">
         <div
           role="tablist"
           className="grid border-b border-[color:var(--divider)]"

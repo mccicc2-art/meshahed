@@ -226,7 +226,14 @@ export function DiscoverFilters({
   const draft: FilterDraft = { genre, lang, country, provider, era, rate, award };
 
   return (
-    <div className={`space-y-3 transition-opacity ${pending ? "opacity-60" : "opacity-100"}`}>
+    /* رأسٌ لاصق (طلب أحمد 9 Aug: «الفلاتر والبحث والعناوين تكون ثابتة
+       وأمرّر تحتها»): التبويبان وزرّ الفلاتر ورقائق ما اخترتَه تبقى تحت
+       الترويسة مهما نزلتَ في الصفوف. الخلفية صمّاء لا شفافة — الملصقات
+       تمرّ خلفها فيصير النصّ غير مقروء. والهوامش السالبة تمدّ الخلفية إلى
+       حافّتَي الشاشة كما يمتدّ الخطّ الفاصل أصلاً. */
+    <div
+      className={`sticky top-[var(--sticky-top)] z-20 -mx-4 px-4 pt-2 pb-3 -mb-1 bg-[color:var(--background)] space-y-3 transition-opacity ${pending ? "opacity-60" : "opacity-100"}`}
+    >
       {/* ===== التصنيف + زرّ الفلاتر =====
           الخطّ الفاصل على الصفّ كلّه لا على شريط التبويبات وحده: لو حمله
           الشريط لانقطع عند آخر تبويبٍ وترك الزرّ معلّقاً فوق فراغ. والهوامش
