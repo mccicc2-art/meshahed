@@ -168,9 +168,16 @@ export default async function PublicProfilePage({
 
           {/* مكان أدوات المالك: زرّ المتابعة، وبجانبه نقاط القائمة —
               رسالة / بلاغ / حظر (ProfileMenu). «إضافة» ليست في القائمة
-              عمداً: هي الزرّ الظاهر نفسه، وتكرارها حالتان تتعارضان */}
+              عمداً: هي الزرّ الظاهر نفسه، وتكرارها حالتان تتعارضان.
+
+              **بلا `env(safe-area-inset-top)` (إصلاح 9 Aug من لقطة أحمد:
+              «نازل بزيادة»):** الأزرار الثلاثة كانت تضيف حجزَ شريط الحالة
+              مرّةً ثانية. القاعدة في D-040 تخصّ ما يُثبَّت في **أعلى
+              الشاشة**، وهذا الغلاف يبدأ **تحت الترويسة اللاصقة** التي
+              حجزت `--safe-top` أصلاً — فالحجز الثاني يهبط بها ٤٧–٥٩ بكسلاً
+              على الجوال ولا يظهر أثره على سطح المكتب حيث `env()` صفر. */}
           {!isMe && (
-            <div className="absolute top-[calc(0.75rem+env(safe-area-inset-top))] end-3 flex items-center gap-2">
+            <div className="absolute top-3 end-3 flex items-center gap-2">
               <FollowUserButton targetId={profile.id} locale={locale} initialFollowing={relation.following} initialRequested={relation.requested} />
               <ProfileMenu
                 person={{
@@ -190,9 +197,9 @@ export default async function PublicProfilePage({
               شارة الزيارات زحفت بعده (start-16) لتفسح لعرضه 44px */}
           <BackButton
             locale={locale}
-            className="absolute top-[calc(0.75rem+env(safe-area-inset-top))] start-3"
+            className="absolute top-3 start-3"
           />
-          <span className="absolute top-[calc(1rem+env(safe-area-inset-top))] start-16 text-[11px] text-white/75 bg-black/40 backdrop-blur rounded-full px-2.5 py-1">
+          <span className="absolute top-4 start-16 text-[11px] text-white/75 bg-black/40 backdrop-blur rounded-full px-2.5 py-1">
             {t.visitsLabel} <span className="font-bold text-white tabular-nums">{visits}</span>
           </span>
         </div>
