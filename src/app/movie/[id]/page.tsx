@@ -12,6 +12,7 @@ import {
   getMyLists,
   getListsContaining,
   getPublicListsContaining,
+  getTitleCircle,
 } from "@/lib/data";
 import { getMovie, getTrailer, getWatchProviders, backdropUrl, posterUrl } from "@/lib/tmdb";
 import { universeOf } from "@/lib/universes";
@@ -30,6 +31,7 @@ import { Trailer } from "@/components/Trailer";
 import { WatchChip } from "@/components/WatchChip";
 import { TitleActions } from "@/components/TitleActions";
 import { DetailTopBar } from "@/components/DetailTopBar";
+import { CircleNote } from "@/components/CircleNote";
 import { ReadMore } from "@/components/ReadMore";
 import { buttonClass } from "@/components/ui/Button";
 
@@ -46,13 +48,15 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
   // وانتظار الأولى قبل الثانية كان يضيف رحلة كاملة إلى الخادم
   // بيانات أول رسمة فقط — الترايلر والتعليقات تُبثّ لاحقاً عبر Suspense
   const userRegion = await getWatchRegion();
-  const [movie, followState, watched, watchWhere, myLists, inLists] = await Promise.all([
+  const [movie, followState, watched, watchWhere, myLists, inLists, circle] = await Promise.all([
     getMovie(movieId).catch(() => null),
     getFollowState(movieId, "movie"),
     isMovieWatched(movieId),
     getWatchProviders("movie", movieId),
     getMyLists(),
     getListsContaining(movieId, "movie"),
+    /* نشاط دائرتك (D-127) — داخل الموجة نفسها؛ انظر تعليق صفحة المسلسل */
+    getTitleCircle(movieId, "movie"),
   ]);
 
   if (!movie) {
@@ -140,6 +144,9 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
           <Suspense fallback={<HeroRatingsSkeleton />}>
             <HeroRatings imdbId={movie.imdb_id} />
           </Suspense>
+
+          {/* «٣ ممن تتابعهم شاهدوه» (D-127) — انظر تعليق صفحة المسلسل */}
+          <CircleNote circle={circle} locale={locale} />
 
           {/* الأنواع صعدت من تبويب «معلومات» إلى جنب الملصق (طلب المالك):
               هوية الفيلم تُقرأ قبل قصّته لا بعدها */}
