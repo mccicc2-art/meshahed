@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getUser } from "@/lib/data";
 import { searchMulti, searchPeople, titleOf, yearOf, posterUrl, profileUrl } from "@/lib/tmdb";
+import { getT } from "@/lib/locale";
+import { roleName } from "@/lib/i18n";
 import { allow, retryAfter } from "@/lib/ratelimit";
 
 // اقتراحات البحث الفورية — يبقى مفتاح TMDB على الخادم
@@ -24,23 +26,24 @@ export async function GET(request: Request) {
 
   try {
     /* الأشخاص والأعمال معاً — كصفحة البحث: `searchMulti` يُسقط الأشخاص،
-       فاسم ممثلٍ كان يعيد «لا نتائج» في الورقة بينما تجده الصفحة. طلبان
-       متوازيان، والأشخاص أوّلاً لأن من كتب اسم ممثلٍ يريده هو، ومن كتب
-       اسم عملٍ لا يعيد بحث الأشخاص شيئاً فلا يزاحمه. */
+       فاسم ممثلٍ كان يعيد «لا نتائج» في الورقة بينما تجده الصفحة.
+       **الأعمال أوّلاً** (طلب أحمد بفيديو «godf»: كانت خمسة أشخاص تدفن
+       العراب تحتها — من يكتب اسم عملٍ أكثر ممن يكتب اسم ممثل، والممثل
+       يبقى ظاهراً تحت الأعمال مباشرة). */
     const [titles, people] = await Promise.all([searchMulti(q), searchPeople(q, 6)]);
+    const { t } = await getT();
 
     const peopleItems = people.map((p) => ({
       kind: "person" as const,
       id: p.id,
       title: p.name,
       poster: profileUrl(p.profile_path, "w185"),
-      subtitle: (p.known_for ?? [])
-        .slice(0, 2)
-        .map((k) => titleOf(k))
-        .join(" · "),
+      /* تحت اسم الشخص مهنتُه وحدها — «ممثل» أو «مخرج» (طلب أحمد): قائمة
+         «أشهر أعماله» كانت تجعل صفّ الشخص يُقرأ كأنه صفّ عمل */
+      subtitle: roleName(p.known_for_department, t),
     }));
 
-    const titleItems = titles.slice(0, 10).map((r) => ({
+    const titleItems = titles.slice(0, 9).map((r) => ({
       kind: r.media_type,
       id: r.id,
       title: titleOf(r),
@@ -49,8 +52,9 @@ export async function GET(request: Request) {
       rating: r.vote_average ? Number(r.vote_average.toFixed(1)) : null,
     }));
 
-    // سقفٌ ١٢ يترك مجالاً لخمسة اقتراحاتٍ فأكثر دائماً حين توجد
-    const results = [...peopleItems, ...titleItems].slice(0, 12);
+    // سقفٌ ١٢: تسعة أعمال كحدٍّ أقصى والأشخاص يكمّلون الباقي —
+    // وحين تشحّ الأعمال (اسمٌ لا يطابق إلا أشخاصاً) يملؤون المكان
+    const results = [...titleItems, ...peopleItems].slice(0, 12);
     return NextResponse.json({ results });
   } catch {
     return NextResponse.json({ results: [] });
