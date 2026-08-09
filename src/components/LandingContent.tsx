@@ -56,6 +56,15 @@ const HIGHLIGHTS: Highlight[] = [
       "No second app for anime: its seasons, episodes and watch order sit in your library beside everything else.",
   },
   {
+    icon: "settings",
+    ar: "رئيسيةٌ تبنيها أنت",
+    en: "A home screen you build",
+    arBody:
+      "رتّب صفحتك الرئيسية كما تريدها: أظهِر الأقسام التي تهمّك وأخفِ ما لا يهمّك، واختَر الإحصاءات التي تراها وشكل البطاقة نفسها.",
+    enBody:
+      "Arrange your home page exactly as you want it: show the sections you care about, hide the ones you do not, and choose which stats you see and how cards look.",
+  },
+  {
     icon: "calendar",
     ar: "يوميات وإحصاءات",
     en: "A diary and real numbers",
@@ -99,13 +108,13 @@ export function LandingContent({ locale }: { locale: Locale }) {
         </h2>
         <p className="mt-3 text-sm sm:text-[15px] text-muted leading-relaxed">
           {ar
-            ? "Loopz منصّة عربية لتتبّع كل ما تشاهده: المسلسلات والأفلام والأنمي في مكانٍ واحد. بدل أن تحاول تذكّر أين توقّفت في كل عمل، تعلّم ما شاهدته فيتولّى Loopz الباقي — يحسب تقدّمك، ويذكّرك بحلقتك القادمة، ويحفظ تقييماتك ويومياتك وقوائمك، ويريك ما يشاهده أصدقاؤك."
-            : "Loopz is an Arabic-first platform for tracking everything you watch: shows, movies and anime in one place. Instead of trying to remember where you stopped in each title, you tick what you watched and Loopz does the rest — it computes your progress, surfaces your next episode, keeps your ratings, diary and lists, and shows you what your friends are watching."}
+            ? "Loopz منصّة لتتبّع كل ما تشاهده: المسلسلات والأفلام والأنمي في مكانٍ واحد. بدل أن تحاول تذكّر أين توقّفت في كل عمل، تعلّم ما شاهدته فيتولّى Loopz الباقي — يحسب تقدّمك، ويذكّرك بحلقتك القادمة، ويحفظ تقييماتك ويومياتك وقوائمك، ويريك ما يشاهده أصدقاؤك."
+            : "Loopz is a platform for tracking everything you watch: shows, movies and anime in one place. Instead of trying to remember where you stopped in each title, you tick what you watched and Loopz does the rest — it computes your progress, surfaces your next episode, keeps your ratings, diary and lists, and shows you what your friends are watching."}
         </p>
         <p className="mt-2.5 text-sm sm:text-[15px] text-muted leading-relaxed">
           {ar
-            ? "يعمل في المتصفّح على الجوال والحاسوب بلا تنزيل، ويمكن تثبيته على شاشتك الرئيسية. الكتالوج من TMDB وأرقام التقييم من IMDb وRotten Tomatoes. وكل شيء فيه مجاني اليوم بلا إعلانات."
-            : "It runs in the browser on phone and desktop with nothing to download, and installs to your home screen if you want it there. The catalogue comes from TMDB and the rating numbers from IMDb and Rotten Tomatoes. Everything is free today, with no ads."}
+            ? "يعمل في المتصفّح على الجوال والحاسوب بلا تنزيل، ويمكن تثبيته على شاشتك الرئيسية. الكتالوج من TMDB وأرقام التقييم من IMDb وRotten Tomatoes. يعمل بالعربية والإنجليزية بالكامل — بواجهةٍ من اليمين إلى اليسار حين تلزم — ولغاتٌ أخرى في الطريق. وكل شيء فيه مجاني اليوم بلا إعلانات."
+            : "It runs in the browser on phone and desktop with nothing to download, and installs to your home screen if you want it there. The catalogue comes from TMDB and the rating numbers from IMDb and Rotten Tomatoes. It runs fully in English and Arabic — right-to-left included — with more languages on the way. Everything is free today, with no ads."}
         </p>
       </div>
 
@@ -133,22 +142,18 @@ export function LandingContent({ locale }: { locale: Locale }) {
         </Link>
       </p>
 
-      {/* المقارنة — تمهيدٌ ورابط، والجدول الكامل في صفحته */}
+      {/* الانتقال من تطبيقٍ آخر — نيّةٌ عالية: من يبحث عن «بديل TV Time»
+          يريد أن ينقل سجلّه لا أن يقرأ جدولاً. الجدول حُذف بقرار أحمد
+          (لا نُروّج لأسماء المنافسين في صفحتنا)، والاستيراد ميزةٌ عندنا
+          فيبقى ذكرُه — تعريفاً بما نقدر عليه لا مقارنة. */}
       <div className="mt-12 max-w-2xl mx-auto text-center">
         <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight">
-          {ar ? "جايٍ من TV Time أو Trakt؟" : "Coming from TV Time or Trakt?"}
+          {ar ? "تنقل من تطبيقٍ آخر؟" : "Moving from another app?"}
         </h2>
         <p className="mt-3 text-sm sm:text-[15px] text-muted leading-relaxed">
           {ar
-            ? "لا تبدأ من الصفر: صدّر سجلّك من تطبيقك القديم وارفعه في إعدادات Loopz فتنتقل مشاهداتك دفعةً واحدة. وقبل أن تنتقل، هذه مقارنةٌ صريحة — بما نتفوّق فيه وبما يتفوّقون فيه علينا."
-            : "You do not start from zero: export your history from your old app, upload it in Loopz settings, and your watches come across in one go. Before you move, here is a straight comparison — including where the others are still ahead of us."}
-        </p>
-        <p className="mt-4 text-[13px]">
-          <Link href="/compare" className="text-accent hover:underline font-semibold">
-            {ar
-              ? "Loopz مقابل TV Time وTrakt وLetterboxd وSimkl ←"
-              : "Loopz vs TV Time, Trakt, Letterboxd and Simkl →"}
-          </Link>
+            ? "لا تبدأ من الصفر: صدّر سجلّ مشاهدتك من TV Time أو Trakt وارفع الملف في إعدادات Loopz — تُطابَق أعمالك مع الكتالوج وتنتقل مشاهداتك دفعةً واحدة، بحلقاتها وتواريخها."
+            : "You do not start from zero: export your watch history from TV Time or Trakt, upload the file in Loopz settings, and your titles are matched against the catalogue — episodes, dates and all — in one go."}
         </p>
       </div>
 
