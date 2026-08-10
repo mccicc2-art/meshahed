@@ -1,5 +1,7 @@
 // تفضيلات الصفحة الرئيسية — ماذا يظهر وبأي ترتيب
 
+import { sanitizeCardCount, type CardCount } from "./cardCount";
+
 /** أقسام الرئيسية القابلة للترتيب */
 export const HOME_SECTIONS = [
   "continue",
@@ -47,6 +49,8 @@ export interface HomePrefs {
   order: HomeSection[];
   /** خانات بطاقة الأرقام بترتيب عرضها — من ٢ إلى ٤ */
   statsPick: HeaderStatKey[];
+  /** سقفُ بطاقات الصفّ — يقصّ ولا يمدّ (D-152) */
+  cards: CardCount;
 }
 
 export const DEFAULT_HOME_PREFS: HomePrefs = {
@@ -58,6 +62,7 @@ export const DEFAULT_HOME_PREFS: HomePrefs = {
   // لكنهما باقيان في قائمة الأقسام لمن يحبّ إرجاعهما من التخصيص
   order: ["continue", "week", "towatch", "upcoming", "trending"],
   statsPick: ["shows", "movies", "towatch", "time"],
+  cards: "full",
 };
 
 /**
@@ -108,5 +113,6 @@ export function sanitizeHomePrefs(raw: unknown): HomePrefs {
     social: bool("social") as boolean,
     order,
     statsPick,
+    cards: sanitizeCardCount(o.cards),
   };
 }

@@ -1498,6 +1498,42 @@ export async function getFollowedArtists(limit = 20): Promise<ArtistLite[]> {
  * **الدالّة غائبة؟ مصفوفةٌ فارغة** (نمط D-113): القسم يختفي بلا شاشة
  * خطأ، فالكود يسبق الهجرة أحياناً.
  */
+/**
+ * عنصرٌ في صفّ «مفضّلاتي» بالبروفايل (D-152).
+ *
+ * `media_type` بنوعه الضيّق لا `string` كبقية صفوف هذا الملفّ: الصفوف
+ * تمرّ على `localizeRows` (D-048) وهي تشترطه. والقاعدة تضمنه أصلاً بقيد
+ * `check (media_type in ('tv','movie'))` على `user_list_items`.
+ */
+export interface FavoriteLite {
+  tmdb_id: number;
+  media_type: "tv" | "movie";
+  title: string | null;
+  poster_path: string | null;
+}
+
+/**
+ * مفضّلات صاحب بروفايلٍ أزوره (D-152).
+ *
+ * توأم `getProfileArtists` لا نسخته: نفس الشكل — دالّة definer تأخذ
+ * صاحب الصفحة وتحرسه `can_view_profile` — والمختلف الصفوف وحدها.
+ * و`getMyFavorites` تبقى لحالها: تلك **مجموعةُ مفاتيحك أنت** لتلوين
+ * القلوب، وهذه **صفوفُ صاحب الصفحة** لترسم صفّاً.
+ *
+ * وسقوطُه يعيد صفّاً فارغاً فيغيب القسم بصمت — لا شاشةَ خطأ في صفحةٍ
+ * عامّة لم يطلب صاحبُها شيئاً.
+ */
+export async function getProfileFavorites(userId: string): Promise<FavoriteLite[]> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("profile_favorites", { p_user: userId });
+    if (error || !data) return [];
+    return data as FavoriteLite[];
+  } catch {
+    return [];
+  }
+}
+
 export async function getProfileArtists(userId: string, limit = 60): Promise<ArtistLite[]> {
   try {
     const supabase = await createClient();
@@ -2511,6 +2547,10 @@ export async function getPublicListsOf(userId: string, limit = 15): Promise<Publ
       .select("id, user_id, name, kind, updated_at")
       .eq("is_public", true)
       .eq("user_id", userId)
+      /* المفضّلة قسمٌ بذاته في البروفايل (D-152) — ولولا هذا السطر
+         لظهرت مرّتين في الصفحة نفسها لمن أعلنها. شيءٌ واحد، مكانٌ واحد.
+         وهي باقيةٌ في `/lists` كما هي: تلك صفحةُ قوائمه لا بروفايله */
+      .neq("kind", "favorites")
       .order("updated_at", { ascending: false })
       .limit(limit);
     if (!lists?.length) return [];

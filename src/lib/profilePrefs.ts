@@ -1,5 +1,9 @@
 // تفضيلات البروفايل — ماذا يرى زائرُ صفحتك وبأي ترتيب (D-129)
 
+import { sanitizeCardCount, type CardCount } from "./cardCount";
+import type { Dict } from "./i18n";
+import type { IconName } from "@/components/Icon";
+
 /**
  * **توأم `homePrefs` عمداً، لا نسخةٌ منه.**
  *
@@ -19,10 +23,35 @@ export const PROFILE_SECTIONS = [
   /* «فنّانوك»: نفس شبكة تبويب المكتبة الرابع (D-128) — تُبنى مرة وتظهر
      مرتين. خارج الافتراضي لأنها تكلّف نداءات TMDB لعدّ الأعمال */
   "artists",
+  /* «مفضّلاتي» (D-152): القائمة المثبّتة من D-130 تصير قسماً يراه زائرك.
+     خارج الافتراضي **لأن إظهاره هو الإعلان نفسه** — من لم يطلبه لم
+     يعلنه، ولا نعلن عنه نيابةً عنه */
+  "favorites",
   "lists",
   "ratings",
 ] as const;
 export type ProfileSection = (typeof PROFILE_SECTIONS)[number];
+
+/**
+ * أيقونةُ كل قسمٍ واسمُه — **سجلٌّ واحد لقارئَين** (D-152).
+ *
+ * كانت هذه الخريطة مكتوبةً في `ProfileCustomize` وحدها، ثم احتاجتها
+ * صفحةُ البروفايل لترسم صفوف «مخفي عن الزائر». ونسخُها كان سيعني
+ * قسماً يظهر في شاشة التخصيص باسمٍ وفي الصفحة باسمٍ آخر عند أوّل
+ * تعديل — وهو بالضبط ما تحذّر منه قاعدة D-145.
+ *
+ * وهي **دالّةٌ تأخذ القاموس** لا ثابتٌ: الأسماء تتبع لغة الواجهة.
+ */
+export function profileSectionMeta(t: Dict): Record<ProfileSection, { icon: IconName; label: string }> {
+  return {
+    shows: { icon: "tv", label: t.shortShows },
+    movies: { icon: "film", label: t.shortMovies },
+    artists: { icon: "people", label: t.shortArtists },
+    favorites: { icon: "heart", label: t.profileFavoritesRail },
+    lists: { icon: "list", label: t.profileListsRail },
+    ratings: { icon: "star", label: t.ratingsListTitle },
+  };
+}
 
 export interface ProfilePrefs {
   /** صفّ الأرقام الأربعة فوق المستوى */
@@ -33,6 +62,8 @@ export interface ProfilePrefs {
   visits: boolean;
   /** ترتيب الأقسام، والغائب عن القائمة مخفيّ */
   order: ProfileSection[];
+  /** سقفُ بطاقات الصفّ — يقصّ ولا يمدّ (D-152) */
+  cards: CardCount;
 }
 
 export const DEFAULT_PROFILE_PREFS: ProfilePrefs = {
@@ -41,6 +72,7 @@ export const DEFAULT_PROFILE_PREFS: ProfilePrefs = {
   visits: true,
   // ما تعرضه الصفحة اليوم حرفياً — فمن لم يخصّص لا يرى شيئاً تغيّر
   order: ["shows", "movies", "lists", "ratings"],
+  cards: "full",
 };
 
 /**
@@ -70,5 +102,11 @@ export function sanitizeProfilePrefs(raw: unknown): ProfilePrefs {
     );
   }
 
-  return { stats: bool("stats"), level: bool("level"), visits: bool("visits"), order };
+  return {
+    stats: bool("stats"),
+    level: bool("level"),
+    visits: bool("visits"),
+    order,
+    cards: sanitizeCardCount(o.cards),
+  };
 }

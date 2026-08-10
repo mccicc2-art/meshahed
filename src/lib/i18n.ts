@@ -685,6 +685,19 @@ const ar = {
   custProfileOrder: "أقسام البروفايل",
   custVisits: "عدّاد الزيارات",
   custProfileEmpty: "أخفيتَ كل الأقسام — لن يرى الزائر إلا ترويستك.",
+  /* عددُ البطاقات (D-152) — «كامل» أوّلاً في الذهن وإن كان آخر الخانات:
+     هو الافتراضي، والدرجتان الأخريان **تقصّان** منه */
+  custCards: "عدد البطاقات في الصفّ",
+  custCardsHint: "يقصّ الصفوف الطويلة ولا يزيدها — الصفُّ القصير يبقى كما هو.",
+  cardsCompact: "مختصر",
+  cardsMedium: "متوسط",
+  cardsFull: "كامل",
+  /* «مفضّلاتي» قسماً في البروفايل (D-152) */
+  profileFavoritesRail: "مفضّلاتي",
+  /* القسم المخفيّ يبقى مرئياً **لصاحبه وحده** بعلامةٍ صريحة — وبلا
+     محتوى: ما أخفيتَه لا يُجلب (قاعدة D-129) */
+  profileHiddenBadge: "مخفي عن الزائر",
+  profileHiddenHint: "لا يراه أحدٌ غيرك. أظهِره من «التخصيص».",
   settingsNavProfile: "الملف الشخصي",
   settingsNavAccount: "الحساب",
   settingsNavPrivacy: "الخصوصية والأمان",
@@ -1553,6 +1566,14 @@ const en: Dict = {
   custProfileOrder: "Profile sections",
   custVisits: "Visits counter",
   custProfileEmpty: "You've hidden every section — visitors will see your header only.",
+  custCards: "Cards per row",
+  custCardsHint: "Trims long rows — it never adds. A short row stays as it is.",
+  cardsCompact: "Compact",
+  cardsMedium: "Medium",
+  cardsFull: "Full",
+  profileFavoritesRail: "My favourites",
+  profileHiddenBadge: "Hidden from visitors",
+  profileHiddenHint: "Only you can see this. Turn it back on under Customise.",
   settingsNavProfile: "Profile",
   settingsNavAccount: "Account",
   settingsNavPrivacy: "Privacy & security",
