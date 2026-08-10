@@ -80,11 +80,11 @@ export default async function PrivacyPage() {
         />
 
         <Block
-          title={ar ? "الاستيراد من TV Time وTrakt" : "Importing from TV Time and Trakt"}
+          title={ar ? "استيراد مكتبتك" : "Importing your library"}
           body={
             ar
-              ? "ملف التصدير الذي ترفعه من TV Time يُقرأ داخل متصفّحك ولا يُرفع إلى أي خادم — تُرسل أسماء الأعمال فقط لمطابقتها مع TMDB. أما Trakt فتربطه بإذنك عبر OAuth، ونقرأ مشاهداتك وتقييماتك منه مرّةً لننقلها إلى حسابك، ولا نحتفظ بمفتاح الوصول بعد انتهاء النقل."
-              : "The TV Time export file you upload is read inside your browser and never uploaded to any server — only title names travel, to match them against TMDB. Trakt is connected with your permission over OAuth; we read your watch history and ratings once to copy them into your account, and we do not keep the access token after the transfer finishes."
+              ? "ملف التصدير الذي ترفعه — من Letterboxd أو Simkl أو TV Time — يُقرأ داخل متصفّحك ولا يُرفع إلى أي خادم. ولا نربط حسابك في أي خدمةٍ أخرى ولا نطلب إذناً منها: ما يغادر جهازك هو أسماء الأعمال فقط لمطابقتها مع TMDB — وحتى هذا لا يحدث حين يحمل التصدير معرّفات TMDB أصلاً، فلا يغادر شيء."
+              : "The export file you upload — from Letterboxd, Simkl or TV Time — is read inside your browser and never uploaded to any server. We do not link your account on any other service and we ask no permission from one: all that leaves your device is title names, to match them against TMDB — and not even that when the export already carries TMDB ids, in which case nothing leaves at all."
           }
         />
 
@@ -92,8 +92,8 @@ export default async function PrivacyPage() {
           title={ar ? "حقّك في بياناتك" : "Your data, your call"}
           body={
             ar
-              ? "تستطيع تعديل أو حذف أي تقييمٍ أو مراجعةٍ أو قائمةٍ أو متابعةٍ متى شئت من داخل التطبيق. وحذف الحساب من الإعدادات يمسح ملفك ومتابعاتك وحلقاتك وتقييماتك وقوائمك. وبصراحةٍ تامّة: صفّ تسجيل الدخول نفسه في نظام المصادقة يبقى حالياً بعد الحذف — نعمل على إزالته آلياً، وحتى ذلك الحين راسلنا وسنحذفه يدوياً."
-              : "You can edit or delete any rating, review, list or follow from inside the app at any time. Deleting your account from Settings removes your profile, follows, watched episodes, ratings and lists. In full honesty: the sign-in record itself in the authentication system currently remains after deletion — we are working on removing it automatically, and until then, write to us and we will delete it by hand."
+              ? "تستطيع تعديل أو حذف أي تقييمٍ أو مراجعةٍ أو قائمةٍ أو متابعةٍ متى شئت من داخل التطبيق. وحذف الحساب من الإعدادات يحذف صفّ تسجيل الدخول نفسه، فيسقط معه كلُّ ما يشير إليه: ملفك ومتابعاتك وحلقاتك وتقييماتك وقوائمك ورسائلك ومشاركاتك وصورك. لا يبقى منك صفٌّ واحد، ولا تحتاج مراسلتنا."
+              : "You can edit or delete any rating, review, list or follow from inside the app at any time. Deleting your account from Settings deletes the sign-in record itself, and everything that points at it falls with it: your profile, follows, watched episodes, ratings, lists, messages, posts and images. Not one row of you remains, and you do not need to write to us."
           }
         />
 
