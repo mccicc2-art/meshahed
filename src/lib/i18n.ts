@@ -452,7 +452,9 @@ const ar = {
   // الجائزة (طلب أحمد 9 Aug) — محورٌ يحوّل الصفحة إلى صفّ الفائزين
   browseAwardGroup: "الجائزة",
   browseAnyAward: "كل الجوائز",
-  awardRailNote: "الفائزون منذ ١٩٩٠ — الأحدث أولاً",
+  /* السنة تُحسب من البيانات لا تُكتب هنا: كانت «منذ ١٩٩٠» ثابتةً فصارت
+     كذبةً يوم امتدّت القوائم إلى ١٩٢٧ (D-144) */
+  awardRailNote: (n: string, from: string) => `${n} فائزاً منذ ${from} — الأحدث أولاً`,
   // المنطقة مكتوبة في العنوان كي لا تُقرأ القائمة عالمية
   browseProviderGroup: (place: string) => `متاح على · ${place}`,
   browseAnyProvider: "كل المنصّات",
@@ -1331,7 +1333,7 @@ const en: Dict = {
   browseAnyCountry: "Any country",
   browseAwardGroup: "Award",
   browseAnyAward: "Any award",
-  awardRailNote: "Winners since 1990 — newest first",
+  awardRailNote: (n: string, from: string) => `${n} winners since ${from} — newest first`,
   browseProviderGroup: (place: string) => `Streaming on · ${place}`,
   browseAnyProvider: "Any service",
   regionSection: "Watch country",
