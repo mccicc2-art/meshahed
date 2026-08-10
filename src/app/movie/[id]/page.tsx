@@ -14,6 +14,7 @@ import {
   getListsContaining,
   getPublicListsContaining,
   getTitleCircle,
+  getMyArtFor,
 } from "@/lib/data";
 import { getMovie, getTrailer, getWatchProviders, backdropUrl, posterUrl } from "@/lib/tmdb";
 import { universeOf } from "@/lib/universes";
@@ -50,7 +51,7 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
   // وانتظار الأولى قبل الثانية كان يضيف رحلة كاملة إلى الخادم
   // بيانات أول رسمة فقط — الترايلر والتعليقات تُبثّ لاحقاً عبر Suspense
   const userRegion = await getWatchRegion();
-  const [movie, followState, watched, watchWhere, myLists, inLists, circle] = await Promise.all([
+  const [movie, followState, watched, watchWhere, myLists, inLists, circle, myArt] = await Promise.all([
     getMovie(movieId).catch(() => null),
     getFollowState(movieId, "movie"),
     isMovieWatched(movieId),
@@ -59,6 +60,8 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
     getListsContaining(movieId, "movie"),
     /* نشاط دائرتك (D-127) — داخل الموجة نفسها؛ انظر تعليق صفحة المسلسل */
     getTitleCircle(movieId, "movie"),
+    /* غلافي المختار لهذا العمل (D-131) — قراءةٌ من خريطةٍ مخبّأة لكل طلب */
+    getMyArtFor(movieId, "movie"),
   ]);
 
   if (!movie) {
@@ -83,8 +86,10 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
     );
   }
 
-  const backdrop = backdropUrl(movie.backdrop_path);
-  const poster = posterUrl(movie.poster_path, "w342");
+  /* غلافي المختار (D-131) يسبق غلاف TMDB — **في صفحتي أنا وحدها**
+     (ق٨). النقطة واحدة هنا فلا تتفرّق على البطاقات. */
+  const backdrop = backdropUrl(myArt?.backdrop_path ?? movie.backdrop_path);
+  const poster = posterUrl(myArt?.poster_path ?? movie.poster_path, "w342");
   /* العالم فحصٌ محليّ في القاموس — زرّه صعد إلى الترويسة (طلب المالك) */
   const universe = universeOf(movieId);
 
@@ -111,6 +116,7 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
           mediaType="movie"
           posterPath={movie.poster_path}
           initialDropped={followState.dropped}
+          art={myArt}
         />
       </div>
 
