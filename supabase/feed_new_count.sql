@@ -22,9 +22,15 @@ stable
 security definer
 set search_path = public
 as $$
+  /* ⚠️ العمود اسمه `at` لا `updated_at`.
+     `following_activity_v2` تُعلن `at timestamptz` في توقيعها (هجرة ٤٥)،
+     و`updated_at` اسمٌ في `community_activity` القديمة وحدها — ولهذا
+     يكتب `data.ts` حرفياً `r.at ?? r.updated_at`. النسخة الأولى من هذه
+     الهجرة خمّنت الاسم فسقطت بـ42703 عند أوّل تشغيل.
+     **الدرس: اقرأ توقيع الدالّة، لا تستنتجه من اسم عمودٍ في جدولٍ آخر.** */
   select count(*)::integer
   from public.following_activity_v2() a
-  where a.updated_at > coalesce(
+  where a."at" > coalesce(
     (select feed_seen_at from public.profiles where id = auth.uid()),
     '-infinity'::timestamptz
   )
