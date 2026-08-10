@@ -227,6 +227,37 @@ export const getMyTitleArt = cache(async (): Promise<Map<string, TitleArt>> => {
   }
 });
 
+/**
+ * أغلفة صاحب بروفايلٍ أزوره (D-131).
+ *
+ * بروفايل الشخص من سطوحه (ق٨) فما اختاره يظهر فيه لزائره — لكن عبر
+ * `profile_title_art` (definer) خلف `can_view_profile` **وحدها**: البوابة
+ * الواحدة، ولا باب ثانٍ (D-061/D-070). وسقوطُها يعيد خريطةً فارغة:
+ * الأغلفة زينةٌ، ولا يجوز أن يُسقط سقوطُها البروفايل.
+ */
+export async function getProfileArt(userId: string): Promise<Map<string, TitleArt>> {
+  const out = new Map<string, TitleArt>();
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("profile_title_art", { p_user: userId });
+    if (error || !data) return out;
+    for (const r of data as {
+      tmdb_id: number;
+      media_type: string;
+      poster_path: string | null;
+      backdrop_path: string | null;
+    }[]) {
+      out.set(artKey(r.media_type, r.tmdb_id), {
+        poster_path: r.poster_path ?? null,
+        backdrop_path: r.backdrop_path ?? null,
+      });
+    }
+    return out;
+  } catch {
+    return out;
+  }
+}
+
 /** غلافُ عملٍ بعينه عندي — لصفحة العمل (خلفيةً وملصقاً) */
 export async function getMyArtFor(
   tmdbId: number,
