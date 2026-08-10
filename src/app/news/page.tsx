@@ -444,7 +444,11 @@ async function CuratedRails({
             icon="star"
             items={rows}
             ranked={false}
-            note={t.awardRailNote}
+            /* الوصف من البيانات لا من ثابتٍ مكتوب: القائمة تمتدّ فيتبعها */
+            note={t.awardRailNote(
+              String(rows.length),
+              String(Math.min(...rows.map((r) => r.awarded))),
+            )}
           />
         ) : (
           <p className="text-center text-muted py-20">{t.browseEmpty}</p>
