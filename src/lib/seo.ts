@@ -105,8 +105,8 @@ const FAQ_AR: Faq[] = [
     a: "نعم، كل شيء فيه مجاني اليوم بلا اشتراك ولا إعلانات. إن أُضيف اشتراكٌ مستقبلاً فستجد في صفحة المميزات ما يبقى مجاناً وما يتطلّبه.",
   },
   {
-    q: "كيف أنقل سجلّي من TV Time أو Trakt؟",
-    a: "صدّر بياناتك من التطبيق القديم وارفع الملف في إعدادات Loopz — تُستورد مشاهداتك دفعةً واحدة فلا تبدأ من الصفر.",
+    q: "كيف أنقل سجلّي من Letterboxd أو Simkl أو TV Time؟",
+    a: "صدّر بياناتك من التطبيق القديم وارفع الملف في إعدادات Loopz — تُستورد مشاهداتك دفعةً واحدة فلا تبدأ من الصفر. والملف يُقرأ في متصفّحك، بلا ربط حساباتٍ ولا أذوناتٍ تُمنح.",
   },
   {
     q: "هل يتتبّع الأنمي؟",
@@ -140,8 +140,8 @@ const FAQ_EN: Faq[] = [
     a: "Yes. Everything is free today, with no subscription and no ads. If a paid tier ever arrives, the features page will say plainly what stays free.",
   },
   {
-    q: "How do I import my history from TV Time or Trakt?",
-    a: "Export your data from the old app and upload the file in Loopz settings — your watch history comes across in one go, so you never restart from zero.",
+    q: "How do I import my history from Letterboxd, Simkl or TV Time?",
+    a: "Export your data from the old app and upload the file in Loopz settings — your watch history comes across in one go, so you never restart from zero. The file is read inside your browser: no account linking, no permissions granted.",
   },
   {
     q: "Does it track anime?",
@@ -235,7 +235,7 @@ export function siteGraph(locale: Locale, dict: { brand: string; metaDescription
                 "قوائم عامة وخاصة",
                 "تقييمات ومراجعات",
                 "أصدقاء ورسائل ومجتمعات",
-                "استيراد من Trakt وTV Time",
+                "استيراد من Letterboxd وSimkl وTV Time",
               ]
             : [
                 "Episode and season tracking",
@@ -245,7 +245,7 @@ export function siteGraph(locale: Locale, dict: { brand: string; metaDescription
                 "Public and private lists",
                 "Ratings and reviews",
                 "Friends, messages and communities",
-                "Import from Trakt and TV Time",
+                "Import from Letterboxd, Simkl and TV Time",
               ],
       },
     ],

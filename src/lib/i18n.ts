@@ -211,7 +211,8 @@ const ar = {
 
   // الاستيراد من الخدمات الأخرى
   importSection: "استيراد مكتبتك",
-  importHint: "انقل ما شاهدته من TV Time أو Trakt — بلا أن تبدأ من الصفر.",
+  importHint:
+    "انقل ما شاهدته من Letterboxd أو Simkl أو TV Time — صدّر ملفك من عندهم وارفعه هنا، بلا أن تبدأ من الصفر.",
   importTvTimeTitle: "TV Time",
   importTvTimeHint:
     "اطلب نسخة بياناتك من TV Time ثم ارفع الملف المضغوط هنا كما نزّلته. يُقرأ الملف في جهازك ولا يُرفع إلى أي خادم — تُرسل أسماء الأعمال فقط لمطابقتها.",
@@ -232,7 +233,13 @@ const ar = {
   importTraktTitle: "Trakt",
   importTraktHint: "اربط حسابك في Trakt ونجلب مشاهداتك وتقييماتك مباشرةً.",
   importTraktConnect: "الربط مع Trakt",
-  importTraktOff: "ربط Trakt غير مُهيّأ بعد على هذا الموقع.",
+  /* D-155: «بعد» تَعِدُ بما لن يأتي — تراكت مُسقَطٌ بقرار لا مؤجَّلٌ بانتظار
+     (D-154). فالنصّ يقول الحال، والسببَ، والطريقَ الذي يعمل فعلاً. */
+  importTraktOff: "ربط Trakt غير متاح على هذا الموقع.",
+  importTraktWhy:
+    "تراكت لا يتيح هذا الربط مجاناً: إنشاء التطبيق يتطلّب اشتراك VIP، والحساب المجاني يسمح بتطبيقٍ خارجيّ واحد متصل فقط — فمن يستعمل Plex أو Infuse كان سيخسر ربطه الحالي ليصلنا.",
+  importTraktAlt:
+    "وإن كنت مشتركاً في VIP: صدّر بياناتك من تراكت وارفع الملف في بطاقة Simkl أعلاه — قارئُها يقبل أي تصديرٍ يحمل معرّفات TMDB.",
   importTraktDenied: "أُلغي الربط.",
   importTraktFailed: "تعذّر الاتصال بـTrakt. حاول مرة أخرى.",
   importFileHint: "صيغ مقبولة: zip أو csv أو json.",
@@ -1161,7 +1168,8 @@ const en: Dict = {
   errSave: "Couldn't save: ",
 
   importSection: "Import your library",
-  importHint: "Bring what you have watched over from TV Time or Trakt — no starting from scratch.",
+  importHint:
+    "Bring what you have watched over from Letterboxd, Simkl or TV Time — export your file from them and upload it here, no starting from scratch.",
   importTvTimeTitle: "TV Time",
   importTvTimeHint:
     "Request your data copy from TV Time, then upload the zip here exactly as you downloaded it. The file is read on your device and never uploaded — only title names are sent, to match them.",
@@ -1182,7 +1190,11 @@ const en: Dict = {
   importTraktTitle: "Trakt",
   importTraktHint: "Connect your Trakt account and we'll pull your history and ratings directly.",
   importTraktConnect: "Connect Trakt",
-  importTraktOff: "Trakt linking isn't set up on this site yet.",
+  importTraktOff: "Trakt linking is not available on this site.",
+  importTraktWhy:
+    "Trakt does not offer this linking for free: creating the app requires a VIP subscription, and a free account allows only one connected third-party app — anyone using Plex or Infuse would have to give up their existing connection to reach us.",
+  importTraktAlt:
+    "If you are a VIP subscriber: export your data from Trakt and upload the file in the Simkl card above — its reader accepts any export carrying TMDB ids.",
   importTraktDenied: "Linking was cancelled.",
   importTraktFailed: "Couldn't reach Trakt. Please try again.",
   importFileHint: "Accepted: zip, csv or json.",
