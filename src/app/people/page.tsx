@@ -11,6 +11,7 @@ import {
   getTitleRooms,
   getConversations,
   getUnreadShares,
+  getFeedSeenAt,
   type ConvShareEvent,
   type FeedItem,
   type PersonLite,
@@ -34,6 +35,7 @@ import { PageTabs } from "@/components/ui/PageTabs";
 import { TitleNews } from "@/components/TitleNews";
 import { getTitleNews } from "@/lib/titleNews";
 import { ScrollMemory } from "@/components/ScrollMemory";
+import { FeedSeenSync } from "@/components/FeedSeenSync";
 
 /** كم عملاً نطلب له صورةً عرضية — سقفٌ يمنع موجة طلباتٍ بحجم الخط */
 const BACKDROP_LIMIT = 12;
@@ -82,11 +84,27 @@ const AGE_HOURS_PER_POINT = 3;
 /** أقصى ما يشتريه الإعجاب — بحدٍّ كي لا يصير الخطُّ سباقَ إعجابات */
 const LIKE_CEILING = 24;
 
-function feedScore(a: FeedItem, now: number): number {
+/**
+ * ما لم يُرَ بعدُ يعلو على ما رُئي — **مهما كان نوعه أو عمره** (D-149).
+ *
+ * ألفُ نقطةٍ ليست معايرةً بل **فصلٌ**: أكبر ما تبلغه الدرجة الطبيعية
+ * ثلاثون وزناً زائد أربعٌ وعشرون إعجاباً، فألفٌ تجعل «لم يُرَ» طبقةً
+ * فوق الخطّ لا متسابقاً فيه. وداخل الطبقتين تبقى خوارزمية D-134 كما هي
+ * حرفياً — النقض في **بعدٍ أُضيف فوقها**، لا في وزنٍ عُدِّل داخلها.
+ */
+const UNSEEN_BOOST = 1000;
+
+function isUnseen(a: FeedItem, seenAt: number | null): boolean {
+  if (seenAt === null) return true; // لم يفتح خطَّه قطّ: كلُّه جديد
+  return new Date(a.updated_at).getTime() > seenAt;
+}
+
+function feedScore(a: FeedItem, now: number, seenAt: number | null = null): number {
   const weight = TYPE_WEIGHT[a.review ? "review" : a.kind] ?? 0;
   const hours = Math.max(0, (now - new Date(a.updated_at).getTime()) / 3_600_000);
   const likes = Math.min(LIKE_CEILING, Math.log2(1 + Math.max(0, a.likes)) * 6);
-  return weight + likes - hours / AGE_HOURS_PER_POINT;
+  const fresh = isUnseen(a, seenAt) ? UNSEEN_BOOST : 0;
+  return fresh + weight + likes - hours / AGE_HOURS_PER_POINT;
 }
 
 /**
@@ -268,6 +286,10 @@ export default async function PeoplePage({
     startable = (await myMutualFollows()).filter((p) => !withConv.has(p.id));
   }
 
+  /* ختمُ «آخر مرّة رأى خطَّه» (D-149) — يُقرأ لتبويب «مجتمعي» وحده،
+     فلا يُدفع نداءٌ في تبويبٍ لا يرتّب شيئاً */
+  const feedSeenAt = tab === "mine" ? await getFeedSeenAt() : null;
+
   // ===== خطّ الآراء — لتبويب «مجتمعي» وحده الآن =====
   /* **المرجع أحدثُ حدثٍ في الخطّ لا ساعةُ النظام.** الدرجة تطرح العمر
      طرحاً خطّياً، وطرحُ ثابتٍ واحد من كل الدرجات لا يغيّر ترتيبها — فأيّ
@@ -292,7 +314,7 @@ export default async function PeoplePage({
           )
           .sort((a, b) =>
             newest
-              ? feedScore(b, scoredAt) - feedScore(a, scoredAt) ||
+              ? feedScore(b, scoredAt, feedSeenAt) - feedScore(a, scoredAt, feedSeenAt) ||
                 b.updated_at.localeCompare(a.updated_at)
               : b.likes - a.likes || b.updated_at.localeCompare(a.updated_at),
           );
@@ -419,10 +441,17 @@ export default async function PeoplePage({
             )
           ) : (
             <>
+            {/* الختم بعد الرسم لا قبله — انظر FeedSeenSync (D-149) */}
+            <FeedSeenSync stamp={scoredAt} />
             <div className="divide-y divide-[color:var(--divider)]">
               {feed.map((a) => {
                 const found = artById.get(`${a.media_type}-${a.tmdb_id}`);
                 const line = actionLine(a, t);
+                /* علامةُ «جديد» على ما لم يُرَ (D-149): الترتيب وحده لا
+                   يُعلِم القارئ **لماذا** علا هذا الصفّ — والنقطة أرخص من
+                   كلمة وتُقرأ في لمحة. تظهر في «الأحدث» وحده: «الأكثر
+                   إعجاباً» ترتيبُه هو معناه ولا جِدّةَ فيه. */
+                const unseen = newest && isUnseen(a, feedSeenAt);
                 const art =
                   backdropUrl(found?.backdrop ?? null, "w500") ??
                   posterUrl(found?.poster ?? a.poster_path, "w342");
@@ -439,6 +468,18 @@ export default async function PeoplePage({
                           size={34}
                           sub={timeAgo(a.updated_at, t)}
                         />
+                        {unseen && (
+                          <span
+                            className="inline-flex items-center gap-1.5 mt-2 text-[11px] font-semibold text-accent"
+                            title={t.feedUnseen}
+                          >
+                            <span
+                              aria-hidden
+                              className="w-1.5 h-1.5 rounded-full bg-accent"
+                            />
+                            {t.feedUnseen}
+                          </span>
+                        )}
 
                         {/* سطر الفعل: ما الذي حدث. يظهر لغير المراجعات، ومع
                             المراجعة إن حملت مشاهدةً في نفس اليوم (التقييم
