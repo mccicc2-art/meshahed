@@ -3,7 +3,9 @@
 import { useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getDict, num, type Locale } from "@/lib/i18n";
-import { parseTvTimeFiles, groupForResolve, type RawRecord } from "@/lib/tvtime";
+import { parseTvTimeFiles } from "@/lib/tvtime";
+import { parseLetterboxdFiles } from "@/lib/letterboxd";
+import { groupForResolve, recordKey, type ParseOutcome, type RawRecord } from "@/lib/importParse";
 import {
   IMPORT_CAPS,
   type ImportMovie,
@@ -16,6 +18,23 @@ import { buttonClass } from "./ui/Button";
 import { Icon } from "./Icon";
 
 type Phase = "idle" | "reading" | "matching" | "writing" | "done";
+
+/**
+ * مصادر الملفات — **سجلٌّ لا فرعُ شرط** (D-153).
+ *
+ * كل مصدرٍ سطرٌ واحد هنا: اسمُه ومحلّلُه وما يقبله من امتدادات. وإضافة
+ * الخدمة القادمة سطرٌ في هذا السجلّ، لا نسخةٌ ثانية من مسار الاستيراد
+ * كلِّه — فالمراحل الثلاث (قراءة · مطابقة · كتابة) واحدةٌ للجميع.
+ */
+type SourceId = "tvtime" | "letterboxd";
+
+const SOURCES: Record<
+  SourceId,
+  { parse: (f: { name: string; buf: ArrayBuffer }[]) => Promise<ParseOutcome>; accept: string }
+> = {
+  tvtime: { parse: parseTvTimeFiles, accept: ".zip,.csv,.json" },
+  letterboxd: { parse: parseLetterboxdFiles, accept: ".zip,.csv" },
+};
 
 /**
  * استيراد المكتبة من خدمةٍ أخرى.
@@ -39,10 +58,13 @@ export function ImportPanel({
   const t = getDict(locale);
   const router = useRouter();
   const params = useSearchParams();
-  const fileRef = useRef<HTMLInputElement>(null);
+  const tvtimeRef = useRef<HTMLInputElement>(null);
+  const letterboxdRef = useRef<HTMLInputElement>(null);
   const stop = useRef(false);
 
   const [phase, setPhase] = useState<Phase>("idle");
+  /** أيُّ مصدرٍ يعمل الآن — الشريط والنتيجة يظهران تحت قسمه وحده */
+  const [active, setActive] = useState<SourceId | null>(null);
   const [pct, setPct] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<{
@@ -69,8 +91,9 @@ export function ImportPanel({
             ? t.importTraktFailed
             : null;
 
-  async function run(files: FileList) {
+  async function run(files: FileList, source: SourceId) {
     stop.current = false;
+    setActive(source);
     setError(null);
     setResult(null);
     setPct(0);
@@ -80,7 +103,7 @@ export function ImportPanel({
       const bufs = await Promise.all(
         [...files].map(async (f) => ({ name: f.name, buf: await f.arrayBuffer() })),
       );
-      const { records } = await parseTvTimeFiles(bufs);
+      const { records } = await SOURCES[source].parse(bufs);
       if (!records.length) {
         setPhase("idle");
         setError(t.importNothing);
@@ -105,16 +128,9 @@ export function ImportPanel({
       const movieMap = new Map<number, ImportMovie>();
       const unmatched = new Set<string>();
 
-      const keyOf = (r: RawRecord): string =>
-        r.kind === "ep-name"
-          ? `tv:${r.show.toLowerCase()}:${r.year ?? ""}`
-          : r.kind === "rating-show"
-            ? `tv:${r.show.toLowerCase()}:`
-            : r.kind === "movie-name"
-              ? `mv:${r.name.toLowerCase()}:${r.year ?? ""}`
-              : r.kind === "show-tvdb"
-                ? `tvdb:${r.tvdbId}`
-                : `tvdbe:${r.episodeTvdbId}`;
+      /* المفتاح من `importParse` نفسه لا نسخةً منه: لو انحرف أحدهما عن
+         الآخر لفشلت كل مطابقةٍ بصمتٍ تامّ — لا خطأ، فقط نتيجةٌ فارغة */
+      const keyOf = (r: RawRecord): string => recordKey(r);
 
       const addShow = (hit: NonNullable<ResolveResult>) => {
         let sh = showMap.get(hit.tmdbId);
@@ -131,7 +147,7 @@ export function ImportPanel({
           const label =
             r.kind === "ep-name" || r.kind === "rating-show"
               ? r.show
-              : r.kind === "movie-name"
+              : r.kind === "movie-name" || r.kind === "movie-watchlist"
                 ? r.name
                 : "";
           if (label) unmatched.add(label);
@@ -149,6 +165,17 @@ export function ImportPanel({
           addShow(hit);
         } else if (r.kind === "rating-show") {
           addShow(hit).rating = r.rating;
+        } else if (r.kind === "movie-watchlist") {
+          /* لا يدهس مشاهدةً سبقته: من شاهد الفيلم ثم بقي في قائمته،
+             المشاهدة هي الحقيقة الأقوى */
+          if (!movieMap.has(hit.tmdbId)) {
+            movieMap.set(hit.tmdbId, {
+              tmdbId: hit.tmdbId,
+              title: hit.title,
+              posterPath: hit.posterPath,
+              watched: false,
+            });
+          }
         } else if (r.kind === "movie-name") {
           const prev = movieMap.get(hit.tmdbId);
           movieMap.set(hit.tmdbId, {
@@ -156,7 +183,9 @@ export function ImportPanel({
             title: hit.title,
             posterPath: hit.posterPath,
             watched: true,
-            at: prev?.at ?? r.at,
+            /* أقدمُ تاريخٍ يُحفظ: اليوميات تحمل يوم المشاهدة الحقيقي،
+               وملفُّ «watched» يحمل يوم التسجيل — والأوّل أصدق */
+            at: prev?.at && r.at ? (prev.at < r.at ? prev.at : r.at) : (prev?.at ?? r.at),
             rating: r.rating ?? prev?.rating,
           });
         }
@@ -226,94 +255,118 @@ export function ImportPanel({
         <p className="text-xs text-muted leading-relaxed">{t.importHint}</p>
       </section>
 
-      {/* ===== TV Time ===== */}
-      <section className="bg-surface border border-border rounded-2xl p-3.5 sm:p-5">
-        <h3 className="text-sm font-bold mb-1" dir="ltr">
-          {t.importTvTimeTitle}
-        </h3>
-        <p className="text-xs text-muted leading-relaxed mb-3">{t.importTvTimeHint}</p>
+      {/* ===== المصادر: بطاقةٌ واحدة تُرسم مرّتين (D-153) =====
+          نسخُ القسم لكل خدمةٍ كان سيعني شريطَ تقدّمٍ ورسالةَ نتيجةٍ
+          وقائمةَ «لم تُطابَق» تتكرّر — ثم تفترق عند أوّل إصلاح. */}
+      {(
+        [
+          {
+            id: "letterboxd" as const,
+            ref: letterboxdRef,
+            title: t.importLetterboxdTitle,
+            hint: t.importLetterboxdHint,
+            fileHint: t.importLetterboxdFileHint,
+          },
+          {
+            id: "tvtime" as const,
+            ref: tvtimeRef,
+            title: t.importTvTimeTitle,
+            hint: t.importTvTimeHint,
+            fileHint: t.importFileHint,
+          },
+        ] as const
+      ).map((src) => {
+        const mine = active === src.id;
+        return (
+          <section key={src.id} className="bg-surface border border-border rounded-2xl p-3.5 sm:p-5">
+            <h3 className="text-sm font-bold mb-1" dir="ltr">
+              {src.title}
+            </h3>
+            <p className="text-xs text-muted leading-relaxed mb-3">{src.hint}</p>
 
-        <input
-          ref={fileRef}
-          type="file"
-          multiple
-          accept=".zip,.csv,.json"
-          className="hidden"
-          onChange={(e) => {
-            const f = e.target.files;
-            if (f && f.length) run(f);
-            e.target.value = "";
-          }}
-        />
-
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => fileRef.current?.click()}
-            className={buttonClass({ variant: "surface", size: "md" })}
-          >
-            <Icon name="download" size={16} />
-            {t.importPickFile}
-          </button>
-          {busy && (
-            <button
-              type="button"
-              onClick={() => {
-                stop.current = true;
+            <input
+              ref={src.ref}
+              type="file"
+              multiple
+              accept={SOURCES[src.id].accept}
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files;
+                if (f && f.length) run(f, src.id);
+                e.target.value = "";
               }}
-              className={buttonClass({ variant: "ghost", size: "md" })}
-            >
-              {t.importCancel}
-            </button>
-          )}
-        </div>
-        <p className="text-[11px] text-muted mt-2">{t.importFileHint}</p>
+            />
 
-        {busy && (
-          <div className="mt-4">
-            <p className="text-xs text-muted mb-1.5">{phaseLabel}</p>
-            {/* `scaleX` لا `width` — انظر D-022 */}
-            <div className="h-1.5 rounded-full bg-surface-2 overflow-hidden">
-              <div
-                className="h-full bg-accent origin-left rtl:origin-right transition-transform duration-300"
-                style={{ transform: `scaleX(${Math.max(0.02, pct / 100)})` }}
-              />
-            </div>
-          </div>
-        )}
-
-        {error && (
-          <div className="mt-3">
-            <Alert tone="error">{error}</Alert>
-          </div>
-        )}
-
-        {phase === "done" && result && (
-          <div className="mt-4 space-y-3">
-            <Alert tone="success">
-              <b className="block">{t.importDone}</b>
-              {t.importDoneBody(
-                num(result.shows, locale),
-                num(result.episodes, locale),
-                num(result.movies, locale),
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => src.ref.current?.click()}
+                className={buttonClass({ variant: "surface", size: "md" })}
+              >
+                <Icon name="download" size={16} />
+                {t.importPickFile}
+              </button>
+              {busy && mine && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    stop.current = true;
+                  }}
+                  className={buttonClass({ variant: "ghost", size: "md" })}
+                >
+                  {t.importCancel}
+                </button>
               )}
-            </Alert>
+            </div>
+            <p className="text-[11px] text-muted mt-2">{src.fileHint}</p>
 
-            {result.unmatched.length > 0 && (
-              <div className="rounded-xl border border-border bg-surface-2 p-3">
-                <p className="text-xs font-bold mb-1">
-                  {t.importUnmatchedTitle(num(result.unmatched.length, locale))}
-                </p>
-                <p className="text-[11px] text-muted mb-2">{t.importUnmatchedHint}</p>
-                <p className="text-[11px] text-muted leading-relaxed break-words">
-                  {result.unmatched.join(" · ")}
-                </p>
+            {busy && mine && (
+              <div className="mt-4">
+                <p className="text-xs text-muted mb-1.5">{phaseLabel}</p>
+                {/* `scaleX` لا `width` — انظر D-022 */}
+                <div className="h-1.5 rounded-full bg-surface-2 overflow-hidden">
+                  <div
+                    className="h-full bg-accent origin-left rtl:origin-right transition-transform duration-300"
+                    style={{ transform: `scaleX(${Math.max(0.02, pct / 100)})` }}
+                  />
+                </div>
               </div>
             )}
-          </div>
-        )}
-      </section>
+
+            {error && mine && (
+              <div className="mt-3">
+                <Alert tone="error">{error}</Alert>
+              </div>
+            )}
+
+            {phase === "done" && result && mine && (
+              <div className="mt-4 space-y-3">
+                <Alert tone="success">
+                  <b className="block">{t.importDone}</b>
+                  {t.importDoneBody(
+                    num(result.shows, locale),
+                    num(result.episodes, locale),
+                    num(result.movies, locale),
+                  )}
+                </Alert>
+
+                {result.unmatched.length > 0 && (
+                  <div className="rounded-xl border border-border bg-surface-2 p-3">
+                    <p className="text-xs font-bold mb-1">
+                      {t.importUnmatchedTitle(num(result.unmatched.length, locale))}
+                    </p>
+                    <p className="text-[11px] text-muted mb-2">{t.importUnmatchedHint}</p>
+                    <p className="text-[11px] text-muted leading-relaxed break-words">
+                      {result.unmatched.join(" · ")}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+          </section>
+        );
+      })}
 
       {/* ===== Trakt ===== */}
       <section className="bg-surface border border-border rounded-2xl p-3.5 sm:p-5">
