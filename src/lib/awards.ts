@@ -33,9 +33,28 @@ export interface Award {
 }
 
 /* ملاحظة صيانة: عند إعلان فائزٍ جديد أضف سطراً واحداً في رأس المصفوفة
-   — لا شيء آخر. القوائم تُرتَّب بالسنة تنازلياً عند العرض لا هنا. */
+   — لا شيء آخر. القوائم تُرتَّب بالسنة تنازلياً عند العرض لا هنا.
+   آخر تحديث: **فائزو ٢٠٢٥** في القوائم الستّ (أوسكار أفضل فيلم «One
+   Battle After Another» وأفضل فيلم دولي «Sentimental Value» من حفل
+   ٢٠٢٦ · السعفة «It Was Just an Accident» من كان ٢٠٢٥ · جولدن جلوب
+   دراما «Hamnet» من حفل ٢٠٢٦ · إيمي دراما «The Pitt» وكوميدي «The
+   Studio» من حفل ٢٠٢٥). */
+
+/* لماذا يبلغ **الأوسكار وحده** سنة ١٩٧٠ وتقف البقية عند ١٩٩٠:
+   طلب أحمد التمديد إلى ما قبل ١٩٩٠ **إن أمكن** («اسحب عليها حالياً» إن
+   لم تكفِ المساحة). وأفضلُ فيلمٍ في الأوسكار قائمةٌ واحدةٌ لا لبس فيها،
+   تحقّقنا منها سطراً سطراً من مصدرٍ منشور. أما البقية فلا:
+   - **السعفة قبل ١٩٧٥ ليست سعفة** أصلاً بل «الجائزة الكبرى»، وسنواتُ
+     السبعينات والثمانينات فيها **تعادلاتٌ** (فيلمان في العام الواحد) —
+     ونموذجنا سطرٌ واحدٌ لكل سنة، فالتمديد يكذب أو يُسقط فائزاً.
+   - **الأوسكار الدولي والإيمي قبل ١٩٩٠** أعمالٌ كثيرٌ منها ضعيف التغطية
+     في TMDB، فيسقط صفُّها بصمت في `searchByName` — قائمةٌ بثقوبٍ أسوأ
+     من قائمةٍ قصيرةٍ صادقة.
+   فائزٌ خاطئ في قاموسٍ دائم أسوأ من قائمةٍ أقصر. من أراد تمديدها فليأتِ
+   بمصدرٍ مُتحقَّقٍ سنةً سنة، ولْيُعالج التعادل في `AwardWin` أوّلاً. */
 
 const OSCAR_BEST_PICTURE: AwardWin[] = [
+  { year: 2025, title: "One Battle After Another" },
   { year: 2024, title: "Anora" },
   { year: 2023, title: "Oppenheimer" },
   { year: 2022, title: "Everything Everywhere All at Once" },
@@ -71,9 +90,32 @@ const OSCAR_BEST_PICTURE: AwardWin[] = [
   { year: 1992, title: "Unforgiven" },
   { year: 1991, title: "The Silence of the Lambs" },
   { year: 1990, title: "Dances with Wolves" },
+  /* عقدان إلى الوراء (طلب أحمد ١٠ أغسطس: «اللي قبل 1990 مهي موجودة»).
+     أُضيفا هنا وحدهما دون بقية الجوائز — السبب مكتوبٌ في رأس الملف. */
+  { year: 1989, title: "Driving Miss Daisy" },
+  { year: 1988, title: "Rain Man" },
+  { year: 1987, title: "The Last Emperor" },
+  { year: 1986, title: "Platoon" },
+  { year: 1985, title: "Out of Africa" },
+  { year: 1984, title: "Amadeus" },
+  { year: 1983, title: "Terms of Endearment" },
+  { year: 1982, title: "Gandhi" },
+  { year: 1981, title: "Chariots of Fire" },
+  { year: 1980, title: "Ordinary People" },
+  { year: 1979, title: "Kramer vs. Kramer" },
+  { year: 1978, title: "The Deer Hunter" },
+  { year: 1977, title: "Annie Hall" },
+  { year: 1976, title: "Rocky" },
+  { year: 1975, title: "One Flew Over the Cuckoo's Nest" },
+  { year: 1974, title: "The Godfather Part II" },
+  { year: 1973, title: "The Sting" },
+  { year: 1972, title: "The Godfather" },
+  { year: 1971, title: "The French Connection" },
+  { year: 1970, title: "Patton" },
 ];
 
 const OSCAR_INTERNATIONAL: AwardWin[] = [
+  { year: 2025, title: "Sentimental Value" },
   { year: 2024, title: "I'm Still Here" },
   { year: 2023, title: "The Zone of Interest" },
   { year: 2022, title: "All Quiet on the Western Front" },
@@ -112,6 +154,7 @@ const OSCAR_INTERNATIONAL: AwardWin[] = [
 ];
 
 const PALME_DOR: AwardWin[] = [
+  { year: 2025, title: "It Was Just an Accident" },
   { year: 2024, title: "Anora" },
   { year: 2023, title: "Anatomy of a Fall" },
   { year: 2022, title: "Triangle of Sadness" },
@@ -150,6 +193,7 @@ const PALME_DOR: AwardWin[] = [
 ];
 
 const GLOBE_DRAMA: AwardWin[] = [
+  { year: 2025, title: "Hamnet" },
   { year: 2024, title: "The Brutalist" },
   { year: 2023, title: "Oppenheimer" },
   { year: 2022, title: "The Fabelmans" },
@@ -190,6 +234,7 @@ const GLOBE_DRAMA: AwardWin[] = [
 /* الإيمي بسنة الحفل، والمكرّر يُطوى إلى أحدث فوزٍ له عند العرض:
    «ماد مِن» أربع مرات صفٌّ واحد لا أربعة */
 const EMMY_DRAMA: AwardWin[] = [
+  { year: 2025, title: "The Pitt" },
   { year: 2024, title: "Shōgun" },
   { year: 2023, title: "Succession" },
   { year: 2022, title: "Succession" },
@@ -228,6 +273,7 @@ const EMMY_DRAMA: AwardWin[] = [
 ];
 
 const EMMY_COMEDY: AwardWin[] = [
+  { year: 2025, title: "The Studio" },
   { year: 2024, title: "Hacks" },
   { year: 2023, title: "The Bear" },
   { year: 2022, title: "Ted Lasso" },
