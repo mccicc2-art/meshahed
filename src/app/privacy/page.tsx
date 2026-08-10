@@ -30,7 +30,9 @@ export default async function PrivacyPage() {
 
       <h1 className="text-2xl font-bold mt-3">{ar ? "سياسة الخصوصية" : "Privacy Policy"}</h1>
       <p className="text-xs text-muted mt-1.5" dir="ltr">
-        {ar ? "آخر تحديث: ٧ أغسطس ٢٠٢٦" : "Last updated: 7 August 2026"}
+        {/* D-155: السياسةُ نفسها تَعِد بتحديث هذا التاريخ عند أي تغييرٍ
+            جوهري — وقد تغيّر بابا «الاستيراد» و«حقّك في بياناتك» اليوم. */}
+        {ar ? "آخر تحديث: ١١ أغسطس ٢٠٢٦" : "Last updated: 11 August 2026"}
       </p>
 
       <div className="mt-7 space-y-7 text-[15px] leading-relaxed">
