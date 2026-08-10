@@ -505,6 +505,8 @@ const ar = {
   watchElsewhere: "ليس بلدك",
   watchOnJustWatch: "كل الخيارات والأسعار على JustWatch",
   feedUnseen: "جديد",
+  /** شارة «وصل جديد» العائمة (D-151) */
+  feedNewCount: (n: string) => `${n} جديد`,
   feedFilterEmpty: "لا نشاط من هذا النوع في دائرتك بعد.",
   // أفعال خطّ النشاط (D-123) — سطرٌ واحد لكل نوع حدث
   feedActRated: "قيّمه",
@@ -1398,6 +1400,7 @@ const en: Dict = {
   watchElsewhere: "not your country",
   watchOnJustWatch: "All options and prices on JustWatch",
   feedUnseen: "New",
+  feedNewCount: (n: string) => `${n} new`,
   feedFilterEmpty: "No activity of this kind in your circle yet.",
   // Activity feed verbs (D-123)
   feedActRated: "rated it",

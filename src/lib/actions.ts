@@ -910,6 +910,18 @@ export async function markSignalsSeen() {
  * وفشلُه صامت: ختمٌ لم يُكتب يعني صفّاً يعلو مرّةً زائدة، وهو أرخص من
  * رسالة خطأ على شاشةٍ لم يطلب صاحبها شيئاً.
  */
+/** عدّادُ ما وصل بعد ختمك (D-151) — رقمٌ لا أسطر، وصفرٌ صامتٌ عند أي خلل */
+export async function newFeedCount(): Promise<number> {
+  try {
+    const { supabase } = await requireUser();
+    const { data, error } = await supabase.rpc("new_feed_count");
+    if (error) return 0;
+    return Number(data ?? 0);
+  } catch {
+    return 0;
+  }
+}
+
 export async function markFeedSeen() {
   try {
     const { supabase } = await requireUser();
