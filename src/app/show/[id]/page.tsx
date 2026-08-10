@@ -16,6 +16,8 @@ import {
   getListsContaining,
   getTitleCircle,
   getMyArtFor,
+  getMyFavorites,
+  artKey,
 } from "@/lib/data";
 import {
   getTv,
@@ -58,7 +60,7 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
   // بيانات أول رسمة فقط في الموجة الحاسمة — الترايلر والتعليقات تُبثّ
   // لاحقاً عبر Suspense فلا تؤخّر ترويسة الصفحة وتبويب الحلقات
   const userRegion = await getWatchRegion();
-  const [tv, followState, watched, watchWhere, myLists, inLists, circle, epRatings, myArt] =
+  const [tv, followState, watched, watchWhere, myLists, inLists, circle, epRatings, myArt, favs] =
     await Promise.all([
     getTv(tvId).catch(() => null),
     getFollowState(tvId, "tv"),
@@ -76,6 +78,8 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
     getEpisodeRatings(tvId),
     /* غلافي المختار لهذا العمل (D-131) — قراءةٌ من خريطةٍ مخبّأة لكل طلب */
     getMyArtFor(tvId, "tv"),
+    /* مفضّلاتي (D-130) — نداءٌ واحد مخبّأ للطلب، لا سؤالٌ لكل عمل */
+    getMyFavorites(),
   ]);
   const following = followState.following;
 
@@ -270,6 +274,7 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
           episodesTotal={airedExact}
           runtime={null}
           initialDone={airedExact > 0 && watched.size >= airedExact}
+          initialFavorite={favs.has(artKey("tv", tvId))}
         />
       </div>
 
