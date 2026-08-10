@@ -403,41 +403,48 @@ create policy "read own ratings" on public.ratings
 drop policy if exists "read all ratings" on public.ratings;
 
 -- ============================================================
---  ٦) حذف الحساب: كل بيانات المستخدم في نداء واحد
---     RLS يحمي القراءة لكن لا يوجد أي طريق «امسحني كلّياً». الدالة
---     تحذف كل صفوف المستخدم وصوره. (حساب auth نفسه يحتاج مفتاح خدمة —
---     خارج النطاق عمداً؛ ما يبقى صدفة فارغة بلا أي بيانات.)
+--  ٦) حذف الحساب: صفٌّ واحد يجرّ الباقي
+--
+--  ⚠️ **أُعيدت كتابتها في `account_deletion.sql` (هجرة 56، D-146).**
+--  النسخة هنا هي النسخة الحالية حرفاً بحرف — فإعادةُ تشغيل هذا الملف
+--  آمنة. النسخة القديمة كانت تعدّد الجداول بأسمائها (أحد عشر)، وصار
+--  في `public` أربعةٌ وأربعون مفتاحاً إلى `auth.users`، فكانت تترك
+--  الرسائل والمجتمعات والحظر والأغلفة خلفها — **عطلُ خصوصية لا دَين**.
+--
+--  والقائمة هي المرض لا الحلّ: كل مفاتيح `public` إلى `auth.users`
+--  `on delete cascade` بلا استثناء، فحذفُ صفّ المستخدم يمحو الأثر كلَّه
+--  اليومَ وبعد عشرين جدولاً. **من يضيف جدولاً لا يلمس هذه الدالّة —
+--  يجعل مفتاحه cascade.**
 -- ============================================================
 
 create or replace function public.delete_my_account()
 returns void
 language plpgsql
+volatile
 security definer
 set search_path = public
 as $$
 declare
   uid uuid := auth.uid();
+  gone integer;
 begin
   if uid is null then
     raise exception 'not authenticated';
   end if;
 
-  delete from public.review_likes    where liker_id = uid;
-  delete from public.post_reactions  where user_id = uid;
-  delete from public.profile_views   where profile_id = uid or viewer_id = uid;
-  delete from public.user_follows    where follower_id = uid or following_id = uid;
-  delete from public.ratings         where user_id = uid;  -- يجرّ إعجابات مراجعاته
-  delete from public.user_lists      where user_id = uid;  -- يجرّ عناصر قوائمه
-  delete from public.movie_progress  where user_id = uid;
-  delete from public.watched_episodes where user_id = uid;
-  delete from public.watched_movies  where user_id = uid;
-  delete from public.follows         where user_id = uid;
-  delete from public.profiles        where id = uid;
-
-  -- صوره المرفوعة (الرمزية والغلاف) من المخزن
+  -- الصور أوّلاً: `storage.objects` لا يشير إلى `auth.users` فلا يجرّه
+  -- الشلّال؛ وهي أوّلاً كي تسقط داخل نفس المعاملة إن فشل ما بعدها.
   delete from storage.objects
   where bucket_id = 'avatars'
     and (storage.foldername(name))[1] = uid::text;
+
+  delete from auth.users where id = uid;
+  get diagnostics gone = row_count;
+
+  -- صفرُ صفوفٍ يعني أن الحذف لم يحدث — فلا نقول للمستخدم إنه حدث.
+  if gone = 0 then
+    raise exception 'account deletion did not remove the auth row';
+  end if;
 end;
 $$;
 
