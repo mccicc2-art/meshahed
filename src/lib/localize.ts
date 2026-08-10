@@ -101,3 +101,47 @@ export async function localizeRows<T extends LocalizableRow>(
 export function localizeFollows(rows: FollowRow[], locale: Locale): Promise<FollowRow[]> {
   return localizeRows(rows, locale);
 }
+
+/**
+ * أسماء غرف الأعمال بلغة القارئ (D-147).
+ *
+ * غرفةُ العمل صفٌّ **واحد يراه كل الناس**، واسمُه يُكتب مرّةً بلغة أوّل
+ * من ولّدها (D-140). فمن واجهتُه إنجليزية كان يرى «حكاية لعبة ٥»
+ * و«الأوديسة» — وهو عيبٌ أثقل من عيب الأعمدة المخزّنة في `follows`، لأن
+ * ذاك اختيارُ صاحبه وهذا اختيارُ **غريب**.
+ *
+ * ولا يُصلَح في القاعدة: الصفّ واحدٌ والقرّاء بلغتين، وترجمتُه هناك تعني
+ * عمودَ اسمٍ لكل لغة. `tmdb_id` موجودٌ في الصفّ أصلاً — وهو كل ما يلزم
+ * ليُرسم الاسم عند العرض، بنفس محرّك D-048 ونفس تخبئته.
+ *
+ * وغرف الناس لا تُمسّ: اسمُها من صاحبها لا من TMDB.
+ */
+export async function localizeTitleRooms<
+  T extends {
+    name: string;
+    kind?: string;
+    tmdb_id?: number | null;
+    media_type?: MediaType | null;
+  },
+>(rooms: T[], locale: Locale): Promise<T[]> {
+  const rows: LocalizableRow[] = [];
+  for (const r of rooms) {
+    if (r.kind !== "title" || !r.tmdb_id || !r.media_type) continue;
+    rows.push({
+      tmdb_id: r.tmdb_id,
+      media_type: r.media_type,
+      title: r.name,
+      poster_path: null,
+    });
+  }
+  if (!rows.length) return rooms;
+
+  const done = await localizeRows(rows, locale);
+  const byKey = new Map(done.map((r) => [`${r.media_type}-${r.tmdb_id}`, r.title]));
+
+  return rooms.map((r) => {
+    if (r.kind !== "title" || !r.tmdb_id || !r.media_type) return r;
+    const name = byKey.get(`${r.media_type}-${r.tmdb_id}`);
+    return name && name !== r.name ? { ...r, name } : r;
+  });
+}

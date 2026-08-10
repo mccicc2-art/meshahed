@@ -720,12 +720,43 @@ export async function titleImages(
   }
 }
 
-export function getTv(id: number): Promise<TvDetails> {
-  return tmdb<TvDetails>(`/tv/${id}`);
+/**
+ * ملصقٌ احتياطيّ حين تُفرغه اللغة (D-148).
+ *
+ * `poster_path` في TMDB **مُرشَّحٌ باللغة**: عملٌ بلا ملصقٍ عربيّ يعود
+ * `null` تماماً حين نسأل بالعربية — لا يعود إلى الإنجليزي وحده. فبطاقةٌ
+ * سليمةٌ في الإنجليزية تصير أيقونةَ فيلمٍ رمادية في العربية («Peninsula»
+ * في لقطة أحمد). والقارئ يقرأها «العمل ناقص» لا «الصورة بلغةٍ أخرى».
+ *
+ * والعلاج نداءٌ ثانٍ **لمن فرغ ملصقُه وحده**: `language=en-US`. من له
+ * ملصقٌ بلغته لا يدفع شيئاً، والنداء الثاني مخبّأ ساعةً كغيره — فالثمن
+ * يُدفع مرّةً لكل عملٍ ناقص لا مرّةً لكل فتح صفحة.
+ *
+ * ولماذا هنا لا في `localizeRows` وحدها: الفراغ يقع في **كل** قارئٍ
+ * للتفاصيل — صفحةُ العمل والمكتبة والاقتراحات — فإصلاحُه عند المصدر
+ * إصلاحٌ واحد، وإصلاحُه عند كل قارئٍ ستُّ نسخٍ تنحرف.
+ */
+async function withPoster<T extends { poster_path?: string | null }>(
+  row: T,
+  path: string,
+): Promise<T> {
+  if (row.poster_path) return row;
+  try {
+    const en = await tmdb<{ poster_path?: string | null }>(path, {
+      language: "en-US",
+    });
+    return en.poster_path ? { ...row, poster_path: en.poster_path } : row;
+  } catch {
+    return row;
+  }
 }
 
-export function getMovie(id: number): Promise<MovieDetails> {
-  return tmdb<MovieDetails>(`/movie/${id}`);
+export async function getTv(id: number): Promise<TvDetails> {
+  return withPoster(await tmdb<TvDetails>(`/tv/${id}`), `/tv/${id}`);
+}
+
+export async function getMovie(id: number): Promise<MovieDetails> {
+  return withPoster(await tmdb<MovieDetails>(`/movie/${id}`), `/movie/${id}`);
 }
 
 
