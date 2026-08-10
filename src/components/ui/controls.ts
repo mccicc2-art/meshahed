@@ -107,3 +107,19 @@ export const chipRow =
  */
 export const posterGrid =
   "grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4 [&>*]:[content-visibility:auto] [&>*]:[contain-intrinsic-size:auto_240px]";
+
+/**
+ * صفُّ قائمةٍ داخل ورقة «المزيد» — أيقونةٌ ثم نصّ، بعرض الورقة كاملاً.
+ *
+ * كانت هذه السلسلة منسوخةً حرفياً في `DetailTopBar` و`ProfileMenu`
+ * (`menuItem` المحلّي في كلٍّ منهما)، وجاءت `Inbox` تطلب ثالثةً — وثلاث
+ * نسخٍ من صفٍّ واحد تنحرف عند أوّل تعديل. وصفةٌ واحدة هنا، على نمط
+ * `chipClass`: الشكل يوحَّد والدلالة تبقى لكل موضعٍ (زرٌّ أو رابط).
+ *
+ * ٥٤ بكسلاً ارتفاعاً تقريباً (`py-3.5` + نصٌّ ١٥) — فوق حدّ هدف اللمس.
+ */
+export const sheetMenuItem =
+  "w-full flex items-center gap-3 px-5 py-3.5 text-start text-[15px] hover:bg-surface-2 transition";
+
+/** فاصلٌ رفيع بين مجموعتَي صفوفٍ في ورقة «المزيد» */
+export const sheetMenuDivider = "h-px bg-[color:var(--divider)] mx-5 my-1";
