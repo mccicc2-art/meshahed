@@ -8,6 +8,7 @@ import {
   isMovieWatched,
   getMyRating,
   getCommunityRating,
+  getTitleRoomOf,
   getTitleReviews,
   getMyLists,
   getListsContaining,
@@ -23,6 +24,7 @@ import { PublicListsRail } from "@/components/PublicListsRail";
 import { HeroRatings, HeroRatingsSkeleton } from "@/components/HeroRatings";
 import { RatingBox } from "@/components/RatingBox";
 import { CommunityReviews } from "@/components/CommunityReviews";
+import { TitleRoomLink } from "@/components/TitleRoomLink";
 import { DetailTabs } from "@/components/DetailTabs";
 import { RelatedTitles } from "@/components/RelatedTitles";
 import { CastRail } from "@/components/CastRail";
@@ -348,13 +350,16 @@ async function MovieReviewsTab({
   posterPath: string | null;
   locale: Awaited<ReturnType<typeof getT>>["locale"];
 }) {
-  const [myRating, community, titleReviews] = await Promise.all([
+  const [myRating, community, titleReviews, room] = await Promise.all([
     getMyRating(movieId, "movie"),
     getCommunityRating(movieId, "movie"),
     getTitleReviews(movieId, "movie"),
+    getTitleRoomOf(movieId, "movie"),
   ]);
   return (
     <div className="space-y-4">
+      {/* غرفة النقاش قبل التقييم — نفس ترتيب صفحة المسلسل (D-140) */}
+      <TitleRoomLink tmdbId={movieId} mediaType="movie" room={room} locale={locale} />
       <RatingBox
         variant="review"
         tmdbId={movieId}
