@@ -10,6 +10,7 @@ import {
   getEpisodeRatings,
   getMyRating,
   getCommunityRating,
+  getTitleRoomOf,
   getTitleReviews,
   getMyLists,
   getListsContaining,
@@ -27,6 +28,7 @@ import { EpisodeTracker, type SeasonSummary } from "@/components/EpisodeTracker"
 import { getT, getWatchRegion } from "@/lib/locale";
 import { RatingBox } from "@/components/RatingBox";
 import { CommunityReviews } from "@/components/CommunityReviews";
+import { TitleRoomLink } from "@/components/TitleRoomLink";
 import { DetailTabs } from "@/components/DetailTabs";
 import { RelatedTitles } from "@/components/RelatedTitles";
 import { CastRail } from "@/components/CastRail";
@@ -395,13 +397,17 @@ async function ReviewsTab({
   posterPath: string | null;
   locale: Awaited<ReturnType<typeof getT>>["locale"];
 }) {
-  const [myRating, community, titleReviews] = await Promise.all([
+  const [myRating, community, titleReviews, room] = await Promise.all([
     getMyRating(tvId, "tv"),
     getCommunityRating(tvId, "tv"),
     getTitleReviews(tvId, "tv"),
+    getTitleRoomOf(tvId, "tv"),
   ]);
   return (
     <div className="space-y-4">
+      {/* غرفة النقاش قبل التقييم: التقييم رأيٌ تكتبه وحدك، والغرفة حديثٌ
+          مع غيرك — ومن فتح تبويب التعليقات جاء للناس أوّلاً (D-140) */}
+      <TitleRoomLink tmdbId={tvId} mediaType="tv" room={room} locale={locale} />
       <RatingBox
         variant="review"
         tmdbId={tvId}
