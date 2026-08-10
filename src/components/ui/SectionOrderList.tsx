@@ -1,6 +1,8 @@
 "use client";
 
 import { Icon, type IconName } from "../Icon";
+import { CARD_COUNTS, type CardCount } from "@/lib/cardCount";
+import { segmentedItem, segmentedTrackFull } from "./controls";
 
 /**
  * قائمة ترتيبٍ وإخفاء — **محرّك واحد لشاشتَي التخصيص** (D-129).
@@ -124,6 +126,43 @@ export function SectionOrderList<K extends string>({
             <Icon name="eye-off" size={16} />
           </button>
         </div>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * عددُ بطاقات الصفّ — **مقسّمٌ من ثلاث خانات، لا حقلُ رقم** (D-152).
+ *
+ * ثلاثة خياراتٍ ظاهرة لمسةٌ واحدة بلا قائمةٍ تُفتح، وهي الحالة التي
+ * بقيت فيها عائلةُ `segmented` بعد D-076. وحقلُ الرقم الحرّ مرفوض:
+ * العدد **كلفةٌ** لا شكلٌ فقط، والقصّ في اتجاهٍ واحد (انظر `cardCount.ts`).
+ *
+ * وهو هنا لا في كل شاشةٍ على حدة: الرئيسية والبروفايل يستدعيانه كما
+ * يستدعيان `SectionOrderList` — مصنعٌ واحد، سجلّان (D-129).
+ */
+export function CardCountRow({
+  value,
+  labels,
+  onChange,
+}: {
+  value: CardCount;
+  /** نصُّ كل درجة بلغة الواجهة، بترتيب `CARD_COUNTS` */
+  labels: Record<CardCount, string>;
+  onChange: (next: CardCount) => void;
+}) {
+  return (
+    <div className={segmentedTrackFull}>
+      {CARD_COUNTS.map((k) => (
+        <button
+          key={k}
+          type="button"
+          aria-pressed={value === k}
+          onClick={() => onChange(k)}
+          className={segmentedItem(value === k, "flex-1 basis-0 min-w-0")}
+        >
+          {labels[k]}
+        </button>
       ))}
     </div>
   );
