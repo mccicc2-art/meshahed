@@ -236,6 +236,11 @@ const ar = {
   importTraktDenied: "أُلغي الربط.",
   importTraktFailed: "تعذّر الاتصال بـTrakt. حاول مرة أخرى.",
   importFileHint: "صيغ مقبولة: zip أو csv أو json.",
+  /* Letterboxd (D-153) — البديل المجاني عن تراكت للأفلام */
+  importLetterboxdTitle: "Letterboxd",
+  importLetterboxdHint:
+    "من Letterboxd: الإعدادات ← Data ← «Export your data»، ثم ارفع الملف المضغوط كما نزل. نقرأ ما شاهدتَه وتقييماتك وقائمة انتظارك — والقوائم والإعجابات لا تُقرأ.",
+  importLetterboxdFileHint: "صيغ مقبولة: zip أو csv. التقييم يُحوَّل من خمس نجوم إلى عشر درجات.",
 
   usernameSection: "اسم المستخدم",
   usernameHint: "معرّفك الفريد داخل التطبيق. أحرف إنجليزية وأرقام و _ فقط.",
@@ -1176,6 +1181,10 @@ const en: Dict = {
   importTraktDenied: "Linking was cancelled.",
   importTraktFailed: "Couldn't reach Trakt. Please try again.",
   importFileHint: "Accepted: zip, csv or json.",
+  importLetterboxdTitle: "Letterboxd",
+  importLetterboxdHint:
+    "In Letterboxd: Settings → Data → \"Export your data\", then upload the ZIP exactly as it downloaded. We read your watched films, ratings and watchlist — lists and likes are not read.",
+  importLetterboxdFileHint: "Accepted: zip or csv. Ratings convert from five stars to ten points.",
 
   usernameSection: "Username",
   usernameHint: "Your unique handle in the app. Latin letters, digits and _ only.",
