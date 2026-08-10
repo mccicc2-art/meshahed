@@ -38,6 +38,7 @@ import { CastRail } from "@/components/CastRail";
 import { Icon, SectionTitle } from "@/components/Icon";
 import { Trailer } from "@/components/Trailer";
 import { WatchChip } from "@/components/WatchChip";
+import { WatchProviders } from "@/components/WatchProviders";
 import { TitleActions } from "@/components/TitleActions";
 import { DetailTopBar } from "@/components/DetailTopBar";
 import { CircleNote } from "@/components/CircleNote";
@@ -306,6 +307,16 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
             icon: "info",
             content: (
               <div className="space-y-7">
+                {/* «أين أشاهده» كاملاً بالتقسيم المتعارف (D-150): الشارة
+                    في الترويسة جوابٌ سريع، وهذا الجوابُ الكامل */}
+                {watchWhere && (
+                  <WatchProviders
+                    options={watchWhere.options}
+                    region={watchWhere.region}
+                    userRegion={userRegion}
+                    locale={locale}
+                  />
+                )}
                 {tv.overview && (
                   <section>
                     <SectionTitle icon="info" className="mb-2.5">
