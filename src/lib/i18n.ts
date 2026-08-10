@@ -380,6 +380,9 @@ const ar = {
   titleRoomStart: "ابدأ غرفة النقاش",
   titleRoomStartHint: "لا غرفة لهذا العمل بعد — كن أوّل من يفتحها.",
   titleRoomOpenHint: (n: string) => `${n} في الغرفة الآن`,
+  /* «٠ أعضاء» وصفٌ صادق ودعوةٌ ميّتة. الغرفةُ الجديدة تحتاج أوّلَ داخل،
+     فلتقل ذلك بدل أن تعلن خواءها */
+  titleRoomBeFirst: "كن أوّل من يدخل",
   titleRoomJoinToWrite: "انضمّ لتكتب",
   titleRoomReadOnly: "تقرأ فقط — انضمّ لتشارك",
   titleRoomToTitle: "افتح صفحة العمل",
@@ -1266,6 +1269,7 @@ const en: Dict = {
   titleRoomStart: "Start the discussion room",
   titleRoomStartHint: "No room for this title yet — be the first to open it.",
   titleRoomOpenHint: (n: string) => `${n} in the room now`,
+  titleRoomBeFirst: "Be the first one in",
   titleRoomJoinToWrite: "Join to write",
   titleRoomReadOnly: "Read-only — join to take part",
   titleRoomToTitle: "Open the title page",
