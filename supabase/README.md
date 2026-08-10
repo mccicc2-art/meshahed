@@ -67,9 +67,10 @@
 | 54 | `title_art.sql` | أغلفة وبوسترات شخصية: `title_art` بـRLS للمالك + `profile_title_art` definer خلف `can_view_profile` (D-131) | **مشحونة** |
 | 55 | `favorites.sql` | المفضّلات بلا جدول جديد: `kind='favorites'` + فهرسٌ فريد جزئيّ + `toggle_favorite`/`my_favorites` (D-130) | **مشحونة** |
 | 56 | `account_deletion.sql` | حذف الحساب يحذف الحساب فعلاً: `delete_my_account` صارت **صفّاً واحداً** يحذف من `auth.users` فيجرّ الأربعة والأربعين مفتاحاً cascade — بدل قائمةٍ من أحد عشر جدولاً بقيت وراءها الرسائل والمجتمعات والحظر والأغلفة (D-146). **⚠️ نسخة `security.sql` §٦ حُدّثت لتطابقها** | **مشحونة** |
+| 57 | `feed_seen.sql` | الجديد يعلو مرّةً ثم ينزل: `profiles.feed_seen_at` + `my_feed_seen`/`mark_feed_seen` — بلا جدولِ «مقروء» لكل صفّ (D-149). تحقُّق: `col=1 · funcs=2 · open_policies=4` | **مشحونة** |
 
 كلها تحقَّقت بالاستعلام المكتوب في ذيل ملفّها — **لا استثناءات: كل ملفات
-الجدول شُغِّلت** (٥٢–٥٦ في ١٠ أغسطس). تحقُّق ٥٦: `non_cascade_fks=0` ·
+الجدول شُغِّلت** (٥٢–٥٧ في ١٠ أغسطس). تحقُّق ٥٦: `non_cascade_fks=0` ·
 `is_definer=true` · `owner=postgres` · `deletes_auth_row=true`.
 تحقُّق ٥٥ على الإنتاج:
 `kind_check` يضمّ `favorites` · `fav_idx=1` · `new_funcs=2` ·
