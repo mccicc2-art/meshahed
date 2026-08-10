@@ -8,6 +8,7 @@ import type { MediaType } from "@/lib/media";
 import { Icon } from "./Icon";
 import { Sheet } from "./ui/Sheet";
 import { SendShareSheet } from "./SendShareSheet";
+import { TitleArtSheet } from "./TitleArtSheet";
 import { stopWatching } from "@/lib/actions";
 import { coalescedRefresh } from "@/lib/refresh";
 import { tap } from "@/lib/haptics";
@@ -29,6 +30,7 @@ export function DetailTopBar({
   mediaType,
   posterPath,
   initialDropped = false,
+  art = null,
 }: {
   title: string;
   locale: Locale;
@@ -37,11 +39,14 @@ export function DetailTopBar({
   posterPath: string | null;
   /** موقوفٌ مسبقاً — لعرض «تابع من جديد» بدل «أوقف المتابعة» */
   initialDropped?: boolean;
+  /** غلافي المختار لهذا العمل إن وُجد (D-131) */
+  art?: { poster_path: string | null; backdrop_path: string | null } | null;
 }) {
   const t = getDict(locale);
   const router = useRouter();
   const [menu, setMenu] = useState(false);
   const [send, setSend] = useState(false);
+  const [artOpen, setArt] = useState(false);
   const [dropped, setDropped] = useState(initialDropped);
   const [pending, start] = useTransition();
 
@@ -136,6 +141,18 @@ export function DetailTopBar({
             <Icon name="share" size={18} className="text-muted" />
             {t.shareCopyLink}
           </button>
+          {/* غلاف العمل (D-131): يسكن «المزيد» لا شريط الأفعال — تجميلٌ
+              يُفعل مرّةً، والشريط لمِا يُفعل كل زيارة */}
+          <button
+            onClick={() => {
+              setMenu(false);
+              setArt(true);
+            }}
+            className={menuItem}
+          >
+            <Icon name="edit" size={18} className="text-muted" />
+            {t.artTitle}
+          </button>
 
           {/* فاصلٌ ثم «أوقف المتابعة» — نفس فعل البطاقة الحمراء (setDropped) */}
           <div className="h-px bg-[color:var(--divider)] mx-5 my-1" />
@@ -160,6 +177,16 @@ export function DetailTopBar({
           posterPath={posterPath}
           locale={locale}
           onClose={() => setSend(false)}
+        />
+      )}
+
+      {artOpen && (
+        <TitleArtSheet
+          tmdbId={tmdbId}
+          mediaType={mediaType}
+          locale={locale}
+          current={art}
+          onClose={() => setArt(false)}
         />
       )}
     </>
