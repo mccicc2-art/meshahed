@@ -1361,7 +1361,15 @@ export async function awardWinners(slug: string, limit?: number): Promise<AwardR
   for (let i = 0; i < wins.length; i += CHUNK) {
     const found = await Promise.all(
       wins.slice(i, i + CHUNK).map((w) =>
-        searchByName(w.title, award.kind, award.kind === "movie" ? w.year : undefined)
+        /* سنةُ البحث ليست سنةَ العرض: `tmdbYear` — إن كُتبت — سنةُ
+           الإصدار في TMDB أو سنةُ أوّل بثٍّ للمسلسل، وهي التي تفكّ
+           الالتباس («شوغن» ١٩٨٠ أم ٢٠٢٤؟ «ذا أوفيس» البريطاني أم
+           الأمريكي؟). وبدونها: سنةُ الجائزة للأفلام، ولا سنةَ للمسلسلات. */
+        searchByName(
+          w.title,
+          award.kind,
+          w.tmdbYear ?? (award.kind === "movie" ? w.year : undefined),
+        )
           .then((r) => (r ? { ...r, awarded: w.year } : null))
           .catch(() => null),
       ),
@@ -1491,14 +1499,35 @@ export async function searchByName(
 ): Promise<SearchResult | null> {
   const q = name.trim();
   if (!q) return null;
-  const params: Record<string, string> = { query: q, include_adult: "false" };
-  if (year && year > 1870 && year < 2200) {
-    params[media === "tv" ? "first_air_date_year" : "year"] = String(year);
-  }
-  try {
+  const base: Record<string, string> = { query: q, include_adult: "false" };
+  const hasYear = !!year && year > 1870 && year < 2200;
+  const pick = (rows: SearchResult[]) =>
+    rows.find((r) => r.poster_path) ?? rows[0] ?? null;
+  const run = async (params: Record<string, string>) => {
     const data = await tmdb<{ results: SearchResult[] }>(`/search/${media}`, params);
-    const rows = (data.results ?? []).map((r) => ({ ...r, media_type: media }));
-    return rows.find((r) => r.poster_path) ?? rows[0] ?? null;
+    return (data.results ?? []).map((r) => ({ ...r, media_type: media }));
+  };
+
+  try {
+    if (!hasYear) return pick(await run(base));
+
+    const key = media === "tv" ? "first_air_date_year" : "year";
+    const exact = pick(await run({ ...base, [key]: String(year) }));
+    if (exact) return exact;
+
+    /* السنة مُرشِّحٌ صارم في TMDB: لا نتيجة = صفٌّ يسقط **بصمت**. وهذا
+       يقع كثيراً في الجوائز لأن سنة الجائزة ليست دائماً سنة الإصدار —
+       «سينما باراديزو» جائزةُ ١٩٨٩ وإصدارُه ١٩٨٨، و«لا سترادا» جائزةُ
+       ١٩٥٦ وإصدارُه ١٩٥٤، وفائزُ كان يُعرض في المهرجان قبل إصداره.
+       فبدل السقوط: بحثٌ بلا سنة، ثم **أقرب إصدارٍ داخل ثلاث سنوات**.
+       والحدُّ مقصود — بلا سقفٍ يصير «هاملت ١٩٤٨» أيَّ هاملت. */
+    const all = await run(base);
+    const yearOf = (r: SearchResult) =>
+      Number((r.release_date || r.first_air_date || "").slice(0, 4)) || 0;
+    const near = all
+      .filter((r) => yearOf(r) && Math.abs(yearOf(r) - year!) <= 3)
+      .sort((a, b) => Math.abs(yearOf(a) - year!) - Math.abs(yearOf(b) - year!));
+    return near.find((r) => r.poster_path) ?? near[0] ?? null;
   } catch {
     return null;
   }
