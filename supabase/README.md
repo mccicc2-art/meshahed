@@ -62,9 +62,11 @@
 | 49 | `imdb_votes.sql` | `imdb_ratings.imdb_votes` + `set_imdb_ratings` تحفظه — شرطُ ترتيب IMDb البايزيّ وحاجزِ الأهليّة (D-132) | **مشحونة** |
 | 50 | `imdb_chart.sql` | `imdb_pool` + `imdb_chart` + `set_imdb_pool`/`build_imdb_chart` — قائمة IMDb الحقيقية من ملفّاتها المفتوحة (D-135). ⚠️ **سياسة قراءةٍ مفتوحة رابعة** | **مشحونة** |
 | 51 | `profile_prefs.sql` | `profiles.profile_prefs` + إظهاره في العرض العام + `profile_artists` definer — تخصيص البروفايل (D-129) | **مشحونة** |
+| 52 | `episode_ratings.sql` | `episode_ratings` + `set_episode_rating`/`clear_episode_rating` definer — التقييم يعلّم المشاهدة داخل القاعدة (D-139) | **مشحونة** |
+| 53 | `title_communities.sql` | غرف الأعمال: `kind`/`tmdb_id`/`media_type`/`archived_at`، فكُّ فرادة `owner_id` بفهرسٍ جزئيّ، `title_community`/`title_room_of`/`title_rooms`/`maintain_title_communities` + قراءةُ غرفة العمل بلا انضمام (D-140) | **معلّقة** |
 
 كلها تحقَّقت بالاستعلام المكتوب في ذيل ملفّها — **لا استثناءات: كل ملفات
-الجدول شُغِّلت** (آخرها ٤٣ و٥٠ و٥١، في ٩ أغسطس).
+الجدول شُغِّلت حتى ٥٢** (٥٢ في ١٠ أغسطس). **٥٣ معلّقة** حتى يشغّلها أحمد.
 
 ## مصيدةٌ وقعنا فيها فعلاً — `safeupdate`
 
