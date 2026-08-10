@@ -496,6 +496,14 @@ const ar = {
   feedFilterRatings: "التقييمات",
   feedFilterReviews: "المراجعات",
   /** علامة «لم تره بعد» في خطّ النشاط (D-149) */
+  /** «أين أشاهده» بالتقسيم المتعارف عليه (D-150) */
+  watchWhereTitle: "أين أشاهده",
+  watchFree: "مجاناً",
+  watchFlatrate: "بالاشتراك",
+  watchRent: "إيجار",
+  watchBuy: "شراء",
+  watchElsewhere: "ليس بلدك",
+  watchOnJustWatch: "كل الخيارات والأسعار على JustWatch",
   feedUnseen: "جديد",
   feedFilterEmpty: "لا نشاط من هذا النوع في دائرتك بعد.",
   // أفعال خطّ النشاط (D-123) — سطرٌ واحد لكل نوع حدث
@@ -1382,6 +1390,13 @@ const en: Dict = {
   feedFilterAll: "All",
   feedFilterRatings: "Ratings",
   feedFilterReviews: "Reviews",
+  watchWhereTitle: "Where to watch",
+  watchFree: "Free",
+  watchFlatrate: "Subscription",
+  watchRent: "Rent",
+  watchBuy: "Buy",
+  watchElsewhere: "not your country",
+  watchOnJustWatch: "All options and prices on JustWatch",
   feedUnseen: "New",
   feedFilterEmpty: "No activity of this kind in your circle yet.",
   // Activity feed verbs (D-123)
