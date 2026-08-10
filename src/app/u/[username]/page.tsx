@@ -12,6 +12,8 @@ import {
   getWatchedOf,
   getPublicListsOf,
   getProfileArtists,
+  getProfileArt,
+  artKey,
   displayNameOf,
 } from "@/lib/data";
 import { getT } from "@/lib/locale";
@@ -80,10 +82,26 @@ export default async function PublicProfilePage({
 
   /* ملفّ غيرك قد يكون كُتب بلغةٍ غير لغتك — العناوين تُترجَم عند العرض
      (D-048) فلا تُقرأ صفحةٌ نصفها عربي ونصفها إنجليزي */
-  const [ratings, follows] = await Promise.all([
+  const [ratings, follows, profileArt] = await Promise.all([
     localizeRows(rawRatings, locale),
     localizeRows(rawFollows, locale),
+    /* أغلفة صاحب البروفايل (D-131) — بروفايله من سطوحه (ق٨)، والدالّة
+       تمرّ بـ`can_view_profile` فالحارس واحد لا اثنان */
+    getProfileArt(profile.id),
   ]);
+
+  /* استبدالٌ في مصدرٍ واحد: كل أقسام البروفايل تُبنى من هذين الصفّين،
+     فلا تُلمس بطاقةٌ واحدة */
+  if (profileArt.size) {
+    for (const f of follows) {
+      const a = profileArt.get(artKey(f.media_type, f.tmdb_id));
+      if (a?.poster_path) f.poster_path = a.poster_path;
+    }
+    for (const r of ratings) {
+      const a = profileArt.get(artKey(r.media_type, r.tmdb_id));
+      if (a?.poster_path) r.poster_path = a.poster_path;
+    }
+  }
 
   /* غلاف «حساب خاص»: الحارس الحقيقي في SQL (can_view_profile يفرغ الدوال
      لغير المتابِع — profile_visibility.sql)، وهذا الشرط للعرض فقط: نرسم
