@@ -64,11 +64,10 @@
 | 51 | `profile_prefs.sql` | `profiles.profile_prefs` + إظهاره في العرض العام + `profile_artists` definer — تخصيص البروفايل (D-129) | **مشحونة** |
 | 52 | `episode_ratings.sql` | `episode_ratings` + `set_episode_rating`/`clear_episode_rating` definer — التقييم يعلّم المشاهدة داخل القاعدة (D-139) | **مشحونة** |
 | 53 | `title_communities.sql` | غرف الأعمال: `kind`/`tmdb_id`/`media_type`/`archived_at`، فكُّ فرادة `owner_id` بفهرسٍ جزئيّ، `title_community`/`title_room_of`/`title_rooms`/`maintain_title_communities` + قراءةُ غرفة العمل بلا انضمام (D-140) | **مشحونة** |
-
-| 54 | `title_art.sql` | أغلفة وبوسترات شخصية: `title_art` بـRLS للمالك + `profile_title_art` definer خلف `can_view_profile` (D-131) | **معلّقة** |
+| 54 | `title_art.sql` | أغلفة وبوسترات شخصية: `title_art` بـRLS للمالك + `profile_title_art` definer خلف `can_view_profile` (D-131) | **مشحونة** |
 
 كلها تحقَّقت بالاستعلام المكتوب في ذيل ملفّها — **لا استثناءات: كل ملفات
-الجدول شُغِّلت حتى ٥٣** (٥٢ و٥٣ في ١٠ أغسطس). **٥٤ معلّقة** حتى تُشغَّل.
+الجدول شُغِّلت** (٥٢ و٥٣ و٥٤ في ١٠ أغسطس).
 
 ## مصيدةٌ وقعنا فيها فعلاً — `safeupdate`
 
