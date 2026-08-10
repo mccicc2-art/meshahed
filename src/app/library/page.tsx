@@ -9,6 +9,8 @@ import {
   getMyLists,
   getSavedLists,
   getFollowedArtists,
+  getMyTitleArt,
+  artKey,
 } from "@/lib/data";
 import { getT } from "@/lib/locale";
 import { localizeFollows } from "@/lib/localize";
@@ -65,6 +67,15 @@ export default async function LibraryPage({
     getFollowedArtists(60),
   ]);
   const follows = await localizeFollows(followRows, locale);
+
+  /* الأغلفة المختارة (D-131) — تُطبَّق هنا على مصدرٍ واحد: كل بطاقةٍ في
+     المكتبة تقرأ من `follows`، فاستبدالُ الملصق مرّةً هنا يغطّي التبويبات
+     كلَّها بلا لمس بطاقةٍ واحدة. وهذا سطحُ صاحبها، فلا تسريب (ق٨). */
+  const myArt = await getMyTitleArt();
+  for (const f of follows) {
+    const art = myArt.get(artKey(f.media_type, f.tmdb_id));
+    if (art?.poster_path) f.poster_path = art.poster_path;
+  }
 
   /* رفُّ الفنانين محسوباً — **حين يكون تبويبَه المفتوح وحده** (D-128).
      حسابُ «شاهدتَ له ٧ أعمال» نداءٌ لـTMDB لكل فنان، وصفحة المكتبة اليوم
