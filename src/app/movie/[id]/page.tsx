@@ -15,6 +15,8 @@ import {
   getPublicListsContaining,
   getTitleCircle,
   getMyArtFor,
+  getMyFavorites,
+  artKey,
 } from "@/lib/data";
 import { getMovie, getTrailer, getWatchProviders, backdropUrl, posterUrl } from "@/lib/tmdb";
 import { universeOf } from "@/lib/universes";
@@ -51,7 +53,7 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
   // وانتظار الأولى قبل الثانية كان يضيف رحلة كاملة إلى الخادم
   // بيانات أول رسمة فقط — الترايلر والتعليقات تُبثّ لاحقاً عبر Suspense
   const userRegion = await getWatchRegion();
-  const [movie, followState, watched, watchWhere, myLists, inLists, circle, myArt] = await Promise.all([
+  const [movie, followState, watched, watchWhere, myLists, inLists, circle, myArt, favs] = await Promise.all([
     getMovie(movieId).catch(() => null),
     getFollowState(movieId, "movie"),
     isMovieWatched(movieId),
@@ -62,6 +64,8 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
     getTitleCircle(movieId, "movie"),
     /* غلافي المختار لهذا العمل (D-131) — قراءةٌ من خريطةٍ مخبّأة لكل طلب */
     getMyArtFor(movieId, "movie"),
+    /* مفضّلاتي (D-130) — نداءٌ واحد مخبّأ للطلب، لا سؤالٌ لكل عمل */
+    getMyFavorites(),
   ]);
 
   if (!movie) {
@@ -221,6 +225,7 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
           runtime={movie.runtime ?? null}
           initialDone={watched}
           collectionId={movie.belongs_to_collection?.id ?? null}
+          initialFavorite={favs.has(artKey("movie", movieId))}
         />
       </div>
 
