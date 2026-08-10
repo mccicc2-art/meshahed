@@ -47,7 +47,9 @@ export function TitleRoomLink({
         <span className="min-w-0 flex-1">
           <span className="block text-sm font-bold">{t.titleRoomOpen}</span>
           <span className="block text-xs text-muted">
-            {t.titleRoomOpenHint(num(room.member_count, locale))}
+            {room.member_count > 0
+              ? t.titleRoomOpenHint(num(room.member_count, locale))
+              : t.titleRoomBeFirst}
           </span>
         </span>
         <Icon

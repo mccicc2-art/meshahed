@@ -271,7 +271,11 @@ function CommunityRow({ c, t, locale }: { c: CommunityLite; t: Dict; locale: Loc
           {c.is_private && <Icon name="eye-off" size={13} className="text-muted shrink-0" />}
         </span>
         <span className="block text-xs text-muted">
-          {t.commMembers(num(c.member_count, locale))}
+          {/* غرفةٌ وليدةٌ من المهمّة المجدولة عدّادُها صفر؛ و«٠ أعضاء»
+              في صفٍّ بعد صفّ يقرؤها المستخدم «مهجورة» لا «جديدة» */}
+          {c.kind === "title" && c.member_count === 0
+            ? t.titleRoomBeFirst
+            : t.commMembers(num(c.member_count, locale))}
         </span>
       </Link>
       {/* غرفةُ العمل تُقرأ بلا انضمام، فزرُّها «افتح» لا «انضم» حتى لغير
