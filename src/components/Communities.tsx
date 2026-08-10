@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Avatar } from "./Avatar";
 import { Icon } from "./Icon";
@@ -30,7 +31,12 @@ import {
   rejectCommunityInvite,
 } from "@/lib/actions";
 import { createClient } from "@/lib/supabase/client";
-import type { CommunityLite, CommunityRoomData, PersonLite } from "@/lib/data";
+import type {
+  CommunityKind,
+  CommunityLite,
+  CommunityRoomData,
+  PersonLite,
+} from "@/lib/data";
 
 type Dict = ReturnType<typeof getDict>;
 
@@ -47,12 +53,15 @@ type Dict = ReturnType<typeof getDict>;
 export function CommunityDirectory({
   mine,
   invites = [],
+  titleRooms = [],
   actions,
   locale,
 }: {
   mine: CommunityLite[];
   /** دعواتٌ معلّقة إليّ — قسمها فوق «مجتمعاتي» (هجرة 42) */
   invites?: CommunityLite[];
+  /** غرف الأعمال الحيّة — صفٌّ للاكتشاف أسفل مجتمعاتي (D-140، هجرة 53) */
+  titleRooms?: CommunityLite[];
   /** عدّادا المتابعة وزرّ الإضافة — يُحقنان في صفّ البحث نفسه لا فوقه */
   actions?: ReactNode;
   locale: Locale;
@@ -176,7 +185,7 @@ export function CommunityDirectory({
                     href={`/people?tab=all&c=${c.id}`}
                     className="flex items-center gap-3 py-3 hover:bg-surface-2 -mx-2 px-2 rounded-xl transition"
                   >
-                    <CommunityBadge name={c.name} photo={c.photo_url} />
+                    <CommunityBadge name={c.name} photo={c.photo_url} kind={c.kind} />
                     <span className="min-w-0 flex-1">
                       <span className="flex items-center gap-1.5 text-sm font-semibold truncate">
                         <span className="truncate">{c.name}</span>
@@ -194,6 +203,23 @@ export function CommunityDirectory({
               ))}
             </ul>
           )}
+        </section>
+      )}
+
+      {/* ===== غرف الأعمال — اكتشافٌ أسفل ما تملكه (D-140).
+           لا حالة فراغ لها: القسم كلّه يختفي إن لم توجد غرفةٌ حيّة —
+           صندوقُ «لا غرف بعد» يَعِد بشيءٍ لا يستطيع الزائر إنشاءه من
+           هنا؛ بابُها صفحةُ العمل وحدها ===== */}
+      {q.trim().length < 2 && titleRooms.length > 0 && (
+        <section>
+          <p className="text-[11px] font-semibold text-muted uppercase tracking-wide mb-1.5">
+            {t.titleRoomsSection}
+          </p>
+          <ul className="divide-y divide-[color:var(--divider)]">
+            {titleRooms.map((c) => (
+              <CommunityRow key={c.id} c={c} t={t} locale={locale} />
+            ))}
+          </ul>
         </section>
       )}
 
@@ -238,7 +264,7 @@ function CommunityRow({ c, t, locale }: { c: CommunityLite; t: Dict; locale: Loc
 
   return (
     <li className="flex items-center gap-3 py-3">
-      <CommunityBadge name={c.name} photo={c.photo_url} />
+      <CommunityBadge name={c.name} photo={c.photo_url} kind={c.kind} />
       <Link href={`/people?tab=all&c=${c.id}`} className="min-w-0 flex-1">
         <span className="flex items-center gap-1.5 text-sm font-semibold truncate">
           <span className="truncate">{c.name}</span>
@@ -248,7 +274,16 @@ function CommunityRow({ c, t, locale }: { c: CommunityLite; t: Dict; locale: Loc
           {t.commMembers(num(c.member_count, locale))}
         </span>
       </Link>
-      {status === "member" ? (
+      {/* غرفةُ العمل تُقرأ بلا انضمام، فزرُّها «افتح» لا «انضم» حتى لغير
+          العضو — زرٌّ يطلب التزاماً قبل أن يُري شيئاً يُقرأ رفضاً */}
+      {c.kind === "title" && status !== "member" ? (
+        <Link
+          href={`/people?tab=all&c=${c.id}`}
+          className={buttonClass({ variant: "surface", size: "sm", className: "shrink-0" })}
+        >
+          {t.commOpen}
+        </Link>
+      ) : status === "member" ? (
         <Link
           href={`/people?tab=all&c=${c.id}`}
           className={buttonClass({ variant: "surface", size: "sm", className: "shrink-0" })}
@@ -298,7 +333,7 @@ function InviteRow({ c, t, locale }: { c: CommunityLite; t: Dict; locale: Locale
   if (gone) return null;
   return (
     <li className="flex items-center gap-3 py-3">
-      <CommunityBadge name={c.name} photo={c.photo_url} />
+      <CommunityBadge name={c.name} photo={c.photo_url} kind={c.kind} />
       <Link href={`/people?tab=all&c=${c.id}`} className="min-w-0 flex-1">
         <span className="flex items-center gap-1.5 text-sm font-semibold truncate">
           <span className="truncate">{c.name}</span>
@@ -328,8 +363,40 @@ function InviteRow({ c, t, locale }: { c: CommunityLite; t: Dict; locale: Locale
   );
 }
 
-/** قرص المجتمع: صورته إن رفعها المالك (هجرة 41)، وإلا حرفُ اسمه */
-function CommunityBadge({ name, photo }: { name: string; photo?: string | null }) {
+/**
+ * قرص المجتمع: صورته إن رفعها المالك (هجرة 41)، وإلا حرفُ اسمه.
+ *
+ * وغرفةُ العمل **مستطيلٌ لا قرص** (هجرة 53): صورتها ملصقٌ بنسبة ٢:٣،
+ * وقصُّه دائرةً يقطع رأسَ البطل ورِجليه. المستطيل المدوَّر هو شكلُ
+ * الملصق في كل التطبيق — فالشكل هنا يقول «هذا عملٌ لا شخص» بلا كلمة.
+ */
+function CommunityBadge({
+  name,
+  photo,
+  kind = "user",
+}: {
+  name: string;
+  photo?: string | null;
+  kind?: CommunityKind;
+}) {
+  if (kind === "title") {
+    return (
+      <span className="shrink-0 w-11 h-11 rounded-xl overflow-hidden bg-surface-2 border border-border grid place-items-center">
+        {photo ? (
+          <Image
+            src={photo}
+            alt=""
+            width={44}
+            height={44}
+            sizes="44px"
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <Icon name="film" size={18} className="text-muted" />
+        )}
+      </span>
+    );
+  }
   if (photo) return <Avatar src={photo} name={name} size={44} className="shrink-0" alt="" />;
   return (
     <span className="shrink-0 grid place-items-center w-11 h-11 rounded-full bg-accent/15 text-accent font-extrabold text-lg">
@@ -486,6 +553,14 @@ export function CommunityRoom({
   const nameOf = (p: PersonLite | null) =>
     !p || p.hide_name ? t.anonymousUser : p.nickname || p.username || "—";
 
+  /* غرفةُ العمل (هجرة 53): بابٌ إلى العمل، وقراءةٌ قبل الانضمام —
+     السياسة في SQL تعطي غيرَ العضو الرسائل، فالواجهة تصدُق معها. */
+  const titleHref =
+    room.kind === "title" && room.tmdb_id
+      ? `/${room.media_type === "movie" ? "movie" : "show"}/${room.tmdb_id}`
+      : null;
+  const canRead = status === "member" || room.kind === "title";
+
   function join() {
     tap(10);
     joinCommunity(room.id)
@@ -525,12 +600,24 @@ export function CommunityRoom({
         </Link>
         {room.isOwner ? (
           <RoomPhotoButton room={room} t={t} />
+        ) : titleHref ? (
+          /* ملصقُ الغرفة بابٌ إلى العمل: من دخل الغرفة من الدليل يحتاج
+             طريقاً إلى ما تتحدّث عنه، ولا يملك المتصفّح رجوعاً إليه */
+          <Link href={titleHref} aria-label={t.titleRoomToTitle} className="shrink-0">
+            <CommunityBadge name={room.name} photo={room.photo_url} kind="title" />
+          </Link>
         ) : (
           <CommunityBadge name={room.name} photo={room.photo_url} />
         )}
         <span className="min-w-0 flex-1">
           <span className="flex items-center gap-1.5 text-sm font-bold truncate">
-            <span className="truncate">{room.name}</span>
+            {titleHref ? (
+              <Link href={titleHref} className="truncate hover:text-accent transition">
+                {room.name}
+              </Link>
+            ) : (
+              <span className="truncate">{room.name}</span>
+            )}
             {room.is_private && <Icon name="eye-off" size={13} className="text-muted shrink-0" />}
           </span>
           <button
@@ -634,7 +721,7 @@ export function CommunityRoom({
       )}
 
       {/* ===== الدردشة أو غلاف الانضمام ===== */}
-      {status === "member" ? (
+      {canRead ? (
         <>
           <div className="py-4 space-y-3">
             {messages.length === 0 ? (
@@ -662,25 +749,46 @@ export function CommunityRoom({
             )}
             <div ref={endRef} />
           </div>
-          <MessageBox
-            t={t}
-            onSend={(body) => {
-              setMessages((prev) => [
-                ...prev,
-                {
-                  id: `tmp-${idRef.current++}`,
-                  author_id: "",
-                  author: null,
-                  mine: true,
-                  body,
-                  created_at: new Date().toISOString(),
-                },
-              ]);
-              postCommunityMessage(room.id, body).catch((e) =>
-                flashError((e as Error).message),
-              );
-            }}
-          />
+          {status !== "member" ? (
+            /* قارئٌ لم ينضمّ: شريطٌ في مكان حقل الكتابة نفسه — الفراغُ
+               مكانَ الحقل يقول «معطّل»، والشريطُ يقول «هذا ما ينقصك» */
+            <div className="flex items-center gap-3 pt-3 border-t border-[color:var(--divider)]">
+              <span className="min-w-0 flex-1 text-xs text-muted">{t.titleRoomReadOnly}</span>
+              {status === "requested" ? (
+                <span className="shrink-0 text-xs font-semibold text-muted">
+                  {t.commRequested}
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={join}
+                  className={buttonClass({ variant: "primary", size: "sm", className: "shrink-0" })}
+                >
+                  {t.titleRoomJoinToWrite}
+                </button>
+              )}
+            </div>
+          ) : (
+            <MessageBox
+              t={t}
+              onSend={(body) => {
+                setMessages((prev) => [
+                  ...prev,
+                  {
+                    id: `tmp-${idRef.current++}`,
+                    author_id: "",
+                    author: null,
+                    mine: true,
+                    body,
+                    created_at: new Date().toISOString(),
+                  },
+                ]);
+                postCommunityMessage(room.id, body).catch((e) =>
+                  flashError((e as Error).message),
+                );
+              }}
+            />
+          )}
         </>
       ) : (
         <div className="py-14 text-center space-y-4">
