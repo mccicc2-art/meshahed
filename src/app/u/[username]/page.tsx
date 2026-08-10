@@ -12,6 +12,7 @@ import {
   getWatchedOf,
   getPublicListsOf,
   getProfileArtists,
+  getProfileFavorites,
   getProfileArt,
   artKey,
   displayNameOf,
@@ -29,7 +30,13 @@ import { BackButton } from "@/components/BackButton";
 import { PublicListsRail } from "@/components/PublicListsRail";
 import { FollowCountButton, ToWatchStat } from "@/components/ProfilePeeks";
 import { posterUrl } from "@/lib/media";
-import { sanitizeProfilePrefs, type ProfileSection } from "@/lib/profilePrefs";
+import {
+  PROFILE_SECTIONS,
+  profileSectionMeta,
+  sanitizeProfilePrefs,
+  type ProfileSection,
+} from "@/lib/profilePrefs";
+import { capCards } from "@/lib/cardCount";
 
 /**
  * صفحة المستخدم العامة — بهيئة الرئيسية نفسها.
@@ -67,8 +74,17 @@ export default async function PublicProfilePage({
   const prefs = sanitizeProfilePrefs(profile.profile_prefs);
   const wants = (s: ProfileSection) => prefs.order.includes(s);
 
-  const [rawRatings, stats, relation, visits, rawFollows, watched, publicLists, artists] =
-    await Promise.all([
+  const [
+    rawRatings,
+    stats,
+    relation,
+    visits,
+    rawFollows,
+    watched,
+    publicLists,
+    artists,
+    rawFavorites,
+  ] = await Promise.all([
       getRatingsOf(profile.id),
       getFollowStats(profile.id),
       getFollowRelation(profile.id),
@@ -77,14 +93,17 @@ export default async function PublicProfilePage({
       getWatchedOf(profile.id),
       wants("lists") ? getPublicListsOf(profile.id) : Promise.resolve([]),
       wants("artists") ? getProfileArtists(profile.id) : Promise.resolve([]),
+      wants("favorites") ? getProfileFavorites(profile.id) : Promise.resolve([]),
       isMe ? Promise.resolve() : recordProfileView(profile.id),
     ]);
 
   /* ملفّ غيرك قد يكون كُتب بلغةٍ غير لغتك — العناوين تُترجَم عند العرض
      (D-048) فلا تُقرأ صفحةٌ نصفها عربي ونصفها إنجليزي */
-  const [ratings, follows, profileArt] = await Promise.all([
+  const [ratings, follows, favorites, profileArt] = await Promise.all([
     localizeRows(rawRatings, locale),
     localizeRows(rawFollows, locale),
+    /* المفضّلة عناوينُها مخزّنةٌ كبقية الصفوف، فتُترجَم عند العرض (D-048) */
+    localizeRows(rawFavorites, locale),
     /* أغلفة صاحب البروفايل (D-131) — بروفايله من سطوحه (ق٨)، والدالّة
        تمرّ بـ`can_view_profile` فالحارس واحد لا اثنان */
     getProfileArt(profile.id),
@@ -100,6 +119,10 @@ export default async function PublicProfilePage({
     for (const r of ratings) {
       const a = profileArt.get(artKey(r.media_type, r.tmdb_id));
       if (a?.poster_path) r.poster_path = a.poster_path;
+    }
+    for (const f of favorites) {
+      const a = profileArt.get(artKey(f.media_type, f.tmdb_id));
+      if (a?.poster_path) f.poster_path = a.poster_path;
     }
   }
 
@@ -166,11 +189,18 @@ export default async function PublicProfilePage({
 
   /** كل قسمٍ يُبنى مرّةً هنا، ويُرسم أعلاه بترتيب صاحبه — والفارغ `null`
       فلا يترك عنواناً بلا محتوى */
+  /* سقفُ المستخدم يُطبَّق هنا لا في كل صفٍّ على حدة (D-152): `capCards`
+     تأخذ الأصغر من سقف الصفّ وسقفه، فالافتراضي `full` لا يغيّر شيئاً */
+  const cap = (rowCap: number) => capCards(rowCap, prefs.cards);
+
+  /* نفس سجلّ شاشة التخصيص — لا خريطةَ ثانية تنحرف عنها (D-152) */
+  const hiddenMeta = profileSectionMeta(t);
+
   const sections: Record<ProfileSection, React.ReactNode> = {
     shows:
       shows.length > 0 ? (
         <PosterRail title={t.shortShows} icon="tv" iconColor="var(--accent)">
-          {shows.map((i) => (
+          {shows.slice(0, cap(shows.length)).map((i) => (
             <RailItem key={`s-${i.id}`}>
               <PosterCard
                 href={`/show/${i.id}`}
@@ -186,7 +216,7 @@ export default async function PublicProfilePage({
     movies:
       movieFollows.length > 0 ? (
         <PosterRail title={t.shortMovies} icon="film" iconColor="var(--accent-2)">
-          {movieFollows.map((f) => (
+          {movieFollows.slice(0, cap(movieFollows.length)).map((f) => (
             <RailItem key={`m-${f.tmdb_id}`}>
               {/* بلا شارة «شوهد» وبلا خيط التقدم الأخضر (طلب أحمد) —
                   الملصق وحده؛ حالته عند صاحبه شأنه */}
@@ -203,7 +233,7 @@ export default async function PublicProfilePage({
     artists:
       artists.length > 0 ? (
         <PosterRail title={t.shortArtists} icon="people" iconColor="var(--brand-3)">
-          {artists.map((a) => (
+          {artists.slice(0, cap(artists.length)).map((a) => (
             <RailItem key={`a-${a.person_id}`}>
               <PosterCard
                 href={`/person/${a.person_id}`}
@@ -220,12 +250,31 @@ export default async function PublicProfilePage({
     /* قوائمه المعلنة (D-068) — صنعُه بعد متابعاته وقبل أحكامه. بطاقة
        اكتشف نفسها بلا سطر صاحبٍ (الصفحة كلّها صفحته)، والرابط إلى
        /lists/[id] حيث زرّ «أضِفها إلى قوائمي» */
+    /* «مفضّلاتي» (D-152): القائمة المثبّتة من D-130 صفّاً في البروفايل.
+       بلا شارةٍ ولا خيط تقدّم — الملصق وحده، كصفّ الأفلام تماماً: القلبُ
+       رأيٌ في العمل لا حالةُ مشاهدةٍ له. وترتيبُها ترتيبُ صاحبها اليدويّ
+       (يأتي مرتَّباً من الدالّة، فلا فرزَ هنا) */
+    favorites:
+      favorites.length > 0 ? (
+        <PosterRail title={t.profileFavoritesRail} icon="heart" iconColor="var(--error)">
+          {favorites.slice(0, cap(favorites.length)).map((f) => (
+            <RailItem key={`fav-${f.media_type}-${f.tmdb_id}`}>
+              <PosterCard
+                href={`/${f.media_type === "tv" ? "show" : "movie"}/${f.tmdb_id}`}
+                title={f.title ?? "—"}
+                posterPath={f.poster_path}
+              />
+            </RailItem>
+          ))}
+        </PosterRail>
+      ) : null,
+
     lists: <PublicListsRail lists={publicLists} locale={locale} title={t.profileListsRail} />,
 
     ratings:
       ratings.length > 0 ? (
         <PosterRail title={t.ratingsListTitle} icon="star" iconColor="var(--verified)">
-          {ratings.slice(0, 16).map((r) => (
+          {ratings.slice(0, cap(16)).map((r) => (
             <RailItem key={`r-${r.media_type}-${r.tmdb_id}`}>
               <PosterCard
                 href={`/${r.media_type === "tv" ? "show" : "movie"}/${r.tmdb_id}`}
@@ -450,6 +499,38 @@ export default async function PublicProfilePage({
           const node = sections[sec];
           return node ? <div key={sec}>{node}</div> : null;
         })}
+
+      {/* ===== ما أخفيتَه، تراه أنت وحدك (D-152) =====
+          كان القسم المخفيّ يختفي عن صاحبه أيضاً، فيقف أمام صفحته ولا
+          يعرف أنه أخفى شيئاً — «مفتاحٌ واحدٌ للاثنين» في بريف التخصيص.
+          والعلاج ليس مفتاحاً ثانياً (مفتاحان لسؤالٍ واحد يجعلانك تقارن
+          بدل أن تختار — D-061)، بل **علامةٌ صريحة**: المفتاح يبقى واحداً
+          والصفحة تقول لك ماذا فعل.
+
+          **وبلا محتوى عمداً:** قاعدة D-129 «قسمٌ مطفأ لا يُجلب أصلاً»
+          قائمة — فلا نداءَ لصفٍّ أطفأتَه، ولو لصاحبه. هذا اسمٌ وبابٌ
+          إلى شاشة التخصيص لا أكثر. */}
+      {canView && isMe && (
+        <>
+          {PROFILE_SECTIONS.filter((s) => !prefs.order.includes(s)).map((sec) => (
+            <div
+              key={`hidden-${sec}`}
+              className="flex items-center justify-between gap-3 rounded-2xl border border-dashed border-border px-4 py-3.5"
+            >
+              <span className="min-w-0">
+                <span className="flex items-center gap-2 text-sm font-bold text-muted">
+                  <Icon name={hiddenMeta[sec].icon} size={16} className="shrink-0" />
+                  <span className="truncate">{hiddenMeta[sec].label}</span>
+                </span>
+                <span className="block text-[11px] text-muted mt-0.5">{t.profileHiddenHint}</span>
+              </span>
+              <span className="shrink-0 text-[11px] text-muted border border-border rounded-full px-2.5 py-1">
+                {t.profileHiddenBadge}
+              </span>
+            </div>
+          ))}
+        </>
+      )}
     </div>
   );
 }
