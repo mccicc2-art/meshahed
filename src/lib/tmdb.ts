@@ -1357,7 +1357,11 @@ export async function awardWinners(slug: string, limit?: number): Promise<AwardR
   const wins = limit ? awardWins(award).slice(0, limit) : awardWins(award);
 
   const rows: AwardRow[] = [];
-  const CHUNK = 12;
+  /* رُفعت من ١٢ مع تمديد القوائم (D-144): أطولُها صارت ٩٨ صفّاً، أي
+     تسع جولاتٍ متتابعة بدل ثلاث. عشرون طلباً متوازياً دون حدّ TMDB
+     بمراحل، والجولات تنزل إلى خمس. (والنتيجة مخبّأةٌ ساعةً في طبقة
+     fetch، فأوّلُ زائرٍ وحده يدفع.) */
+  const CHUNK = 20;
   for (let i = 0; i < wins.length; i += CHUNK) {
     const found = await Promise.all(
       wins.slice(i, i + CHUNK).map((w) =>
