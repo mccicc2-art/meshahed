@@ -14,6 +14,9 @@ import { flashError } from "@/lib/toast";
 import { coalescedRefresh } from "@/lib/refresh";
 import { useChatPoll } from "@/lib/usePoll";
 import { FeedEmptyCta } from "./FeedEmptyCta";
+import { Sheet } from "./ui/Sheet";
+import { sheetMenuItem, sheetMenuDivider } from "./ui/controls";
+import { BlockConfirmSheet } from "./BlockConfirmSheet";
 import { replyToShare, markConversationRead, hideConversation } from "@/lib/actions";
 import { StartConversationSheet } from "./StartConversationSheet";
 import type { Conversation, ConvEvent, PersonLite } from "@/lib/data";
@@ -258,6 +261,23 @@ function ConversationView({
     setEvents(conv.events);
   }
 
+  /* قائمة «المزيد» في الترويسة. كان فيها زرُّ إخفاءٍ وحيد، والحظر لا بابَ
+     له إلا صفحةُ الملف — وهذا معكوس: من يريد حظر أحدٍ يريده **وهو يقرأ
+     رسالته**، لا بعد رحلةٍ إلى ملفّه. والزرُّ الرابع في ترويسةٍ ضيّقة كان
+     سيزاحم؛ فصار الزرّ نقاطاً وصارت الأفعال الثلاثة صفوفاً — نفس ورقة
+     `DetailTopBar` و`ProfileMenu` بلا عائلةٍ ثانية (D-018). */
+  const [menu, setMenu] = useState(false);
+  const [confirmBlock, setConfirmBlock] = useState(false);
+  const username = conv.person?.username ?? null;
+
+  function doHide() {
+    setMenu(false);
+    tap(8);
+    hideConversation(conv.personId)
+      .then(() => router.push("/people?tab=inbox"))
+      .catch((e) => flashError((e as Error).message));
+  }
+
   // الوارد يُعلَّم مقروءاً عند الفتح — وكلّما وصل جديدٌ والخيط مفتوح
   useEffect(() => {
     if (conv.unread > 0) {
@@ -302,18 +322,77 @@ function ConversationView({
         <button
           type="button"
           onClick={() => {
-            tap(8);
-            hideConversation(conv.personId)
-              .then(() => router.push("/people?tab=inbox"))
-              .catch((e) => flashError((e as Error).message));
+            tap(6);
+            setMenu(true);
           }}
-          aria-label={t.convHideAria(name)}
-          title={t.convHide}
+          aria-label={t.moreMenuTitle}
+          title={t.moreMenuTitle}
           className="shrink-0 grid place-items-center w-9 h-9 rounded-full text-muted hover:text-foreground hover:bg-surface-2 transition"
         >
-          <Icon name="eye-off" size={16} />
+          <Icon name="dots" size={16} />
         </button>
       </div>
+
+      {/* ورقة «المزيد» — الملفّ ثم الإخفاء ثم الحظر، الأخطرُ أخيراً */}
+      <Sheet
+        open={menu}
+        onClose={() => setMenu(false)}
+        closeLabel={t.closeLabel}
+        variant="bottom"
+        labelledBy="conv-menu-title"
+      >
+        <p id="conv-menu-title" className="text-center font-bold text-[15px] pt-5 pb-2">
+          {t.moreMenuTitle}
+        </p>
+        <div className="pb-3">
+          {/* بلا معرّفٍ لا صفحة — والصفُّ يغيب بدل أن يظهر معطّلاً بلا سبب */}
+          {username && (
+            <Link
+              href={`/u/${username}`}
+              onClick={() => setMenu(false)}
+              className={sheetMenuItem}
+            >
+              <Icon name="people" size={18} className="text-accent" />
+              {t.viewProfileOf(name)}
+            </Link>
+          )}
+
+          <button type="button" onClick={doHide} className={sheetMenuItem}>
+            <Icon name="eye-off" size={18} className="text-muted" />
+            {t.convHide}
+          </button>
+
+          <div className={sheetMenuDivider} />
+
+          <button
+            type="button"
+            onClick={() => {
+              setMenu(false);
+              setConfirmBlock(true);
+            }}
+            className={sheetMenuItem}
+          >
+            <Icon name="close" size={18} className="text-[color:var(--error)]" />
+            <span className="text-[color:var(--error)]">{t.blockOption}</span>
+          </button>
+        </div>
+      </Sheet>
+
+      {/* الحظر من داخل المحادثة يُخفي الخيط أيضاً — لا صفَّ تشرحه لمن
+          حظرتَ صاحبه. والإخفاء من جهتي وحدها كما هو (D-066)، فالحظر لا
+          يمحو ما كتبه أحدٌ عند نفسه. */}
+      {confirmBlock && (
+        <BlockConfirmSheet
+          targetId={conv.personId}
+          locale={locale}
+          onClose={() => setConfirmBlock(false)}
+          onBlocked={() => {
+            hideConversation(conv.personId)
+              .catch(() => {})
+              .finally(() => router.push("/people?tab=inbox"));
+          }}
+        />
+      )}
 
       {/* الأحداث */}
       <div className="py-4 space-y-3">

@@ -7,6 +7,7 @@ import { siteUrl } from "@/lib/site";
 import type { MediaType } from "@/lib/media";
 import { Icon } from "./Icon";
 import { Sheet } from "./ui/Sheet";
+import { sheetMenuItem } from "./ui/controls";
 import { SendShareSheet } from "./SendShareSheet";
 import { TitleArtSheet } from "./TitleArtSheet";
 import { stopWatching } from "@/lib/actions";
@@ -95,9 +96,6 @@ export function DetailTopBar({
     "w-11 h-11 rounded-full bg-black/35 backdrop-blur-md border border-white/15 " +
     "grid place-items-center text-white/90 active:scale-95 transition";
 
-  const menuItem =
-    "w-full flex items-center gap-3 px-5 py-3.5 text-start text-[15px] hover:bg-surface-2 transition";
-
   return (
     <>
       <div className="absolute inset-x-0 top-0 z-20 flex items-center justify-between px-3 pt-3">
@@ -132,12 +130,12 @@ export function DetailTopBar({
               setMenu(false);
               setSend(true);
             }}
-            className={menuItem}
+            className={sheetMenuItem}
           >
             <Icon name="person-check" size={18} className="text-accent" />
             {t.shareSendTitle}
           </button>
-          <button onClick={shareLink} className={menuItem}>
+          <button onClick={shareLink} className={sheetMenuItem}>
             <Icon name="share" size={18} className="text-muted" />
             {t.shareCopyLink}
           </button>
@@ -148,7 +146,7 @@ export function DetailTopBar({
               setMenu(false);
               setArt(true);
             }}
-            className={menuItem}
+            className={sheetMenuItem}
           >
             <Icon name="edit" size={18} className="text-muted" />
             {t.artTitle}
@@ -156,7 +154,7 @@ export function DetailTopBar({
 
           {/* فاصلٌ ثم «أوقف المتابعة» — نفس فعل البطاقة الحمراء (setDropped) */}
           <div className="h-px bg-[color:var(--divider)] mx-5 my-1" />
-          <button onClick={toggleStop} disabled={pending} className={menuItem}>
+          <button onClick={toggleStop} disabled={pending} className={sheetMenuItem}>
             <Icon
               name="card"
               size={18}

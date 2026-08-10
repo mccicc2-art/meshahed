@@ -5,8 +5,10 @@ import { useRouter } from "next/navigation";
 import { Icon } from "./Icon";
 import { Sheet } from "./ui/Sheet";
 import { buttonClass } from "./ui/Button";
+import { sheetMenuItem, sheetMenuDivider } from "./ui/controls";
 import { StartConversationSheet } from "./StartConversationSheet";
-import { blockUser, reportUser } from "@/lib/actions";
+import { BlockConfirmSheet } from "./BlockConfirmSheet";
+import { reportUser } from "@/lib/actions";
 import { toast, flashError } from "@/lib/toast";
 import { tap } from "@/lib/haptics";
 import { getDict, type Locale } from "@/lib/i18n";
@@ -50,9 +52,6 @@ export function ProfileMenu({
   const [reported, setReported] = useState(false);
   const [pending, start] = useTransition();
 
-  const menuItem =
-    "w-full flex items-center gap-3 px-5 py-3.5 text-start text-[15px] hover:bg-surface-2 transition";
-
   function openMessage() {
     setMenu(false);
     if (!mutual) {
@@ -73,21 +72,6 @@ export function ProfileMenu({
       } catch (e) {
         flashError((e as Error).message);
         setReported(false);
-      }
-    });
-  }
-
-  function doBlock() {
-    setConfirmBlock(false);
-    tap(12);
-    start(async () => {
-      try {
-        await blockUser(person.id);
-        toast(t.blockedToast, { tone: "info" });
-        // الصفحة تُنعش: زرّ المتابعة يعود «تابِع» لأن الحظر فكّها
-        router.refresh();
-      } catch (e) {
-        flashError((e as Error).message);
       }
     });
   }
@@ -119,12 +103,12 @@ export function ProfileMenu({
           {t.moreMenuTitle}
         </p>
         <div className="pb-3">
-          <button onClick={openMessage} className={menuItem}>
+          <button onClick={openMessage} className={sheetMenuItem}>
             <Icon name="comment" size={18} className={mutual ? "text-accent" : "text-muted"} />
             <span className={mutual ? "" : "text-muted"}>{t.msgUserOption}</span>
           </button>
 
-          <div className="h-px bg-[color:var(--divider)] mx-5 my-1" />
+          <div className={sheetMenuDivider} />
 
           <button
             onClick={() => {
@@ -132,7 +116,7 @@ export function ProfileMenu({
               if (!reported) setReport(true);
             }}
             disabled={pending}
-            className={menuItem}
+            className={sheetMenuItem}
           >
             <Icon name="shield" size={18} className="text-muted" />
             {reported ? t.reportDone : t.reportUserOption}
@@ -144,7 +128,7 @@ export function ProfileMenu({
               setConfirmBlock(true);
             }}
             disabled={pending}
-            className={menuItem}
+            className={sheetMenuItem}
           >
             <Icon name="close" size={18} className="text-[color:var(--error)]" />
             <span className="text-[color:var(--error)]">{t.blockOption}</span>
@@ -187,34 +171,16 @@ export function ProfileMenu({
         </>
       </Sheet>
 
-      {/* ورقة تأكيد الحظر */}
-      <Sheet
-        open={confirmBlock}
-        onClose={() => setConfirmBlock(false)}
-        closeLabel={t.closeLabel}
-        variant="center"
-        labelledBy="block-confirm-title"
-        className="p-5"
-      >
-        <>
-          <p id="block-confirm-title" className="font-bold text-[15px] mb-1.5">
-            {t.blockConfirmTitle}
-          </p>
-          <p className="text-xs text-muted leading-relaxed mb-4">{t.blockConfirmBody}</p>
-          <div className="flex items-center gap-2.5">
-            <button onClick={() => setConfirmBlock(false)} className={buttonClass({ variant: "ghost", size: "md" })}>
-              {t.cancelLabel}
-            </button>
-            <button
-              onClick={doBlock}
-              disabled={pending}
-              className={buttonClass({ variant: "danger", size: "md", className: "flex-1" })}
-            >
-              {t.blockConfirmButton}
-            </button>
-          </div>
-        </>
-      </Sheet>
+      {/* ورقة تأكيد الحظر — المشتركة مع باب المحادثة */}
+      {confirmBlock && (
+        <BlockConfirmSheet
+          targetId={person.id}
+          locale={locale}
+          onClose={() => setConfirmBlock(false)}
+          /* الصفحة تُنعش: زرّ المتابعة يعود «تابِع» لأن الحظر فكّها */
+          onBlocked={() => router.refresh()}
+        />
+      )}
 
       {message && (
         <StartConversationSheet person={person} locale={locale} onClose={() => setMessage(false)} />
