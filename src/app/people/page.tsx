@@ -18,7 +18,7 @@ import {
 import { myMutualFollows } from "@/lib/actions";
 import { getT } from "@/lib/locale";
 import type { Dict } from "@/lib/i18n";
-import { localizeRows } from "@/lib/localize";
+import { localizeRows, localizeTitleRooms } from "@/lib/localize";
 import { timeAgo } from "@/lib/when";
 import { FeedEmptyCta } from "@/components/FeedEmptyCta";
 import { PeopleToFollow } from "@/components/PeopleToFollow";
@@ -228,12 +228,20 @@ export default async function PeoplePage({
   const allCount = myCommunities.length;
 
   // غرفةٌ مفتوحة؟ («‎?tab=all&c=<id>‎» — الحالة في الرابط كالوارد، D-051/D-054)
-  const openCommunity =
+  const openCommunityRaw =
     tab === "all" && cParam ? await getCommunityRoom(cParam) : null;
 
   /* غرف الأعمال الحيّة (D-140) — لتبويب الدليل وحده وحين لا غرفة مفتوحة:
      نداءٌ لا يُدفع في تبويبٍ لا يعرضه */
-  const titleRooms = tab === "all" && !openCommunity ? await getTitleRooms(12) : [];
+  const titleRoomsRaw =
+    tab === "all" && !openCommunityRaw ? await getTitleRooms(12) : [];
+
+  /* اسمُ غرفة العمل بلغة القارئ لا بلغة أوّل من ولّدها (D-147).
+     الصفحة هي من يملك `locale` لا طبقةُ البيانات — قاعدة D-048 نفسها. */
+  const titleRooms = await localizeTitleRooms(titleRoomsRaw, locale);
+  const openCommunity = openCommunityRaw
+    ? (await localizeTitleRooms([openCommunityRaw], locale))[0]
+    : null;
 
   // ===== الرسائل — محادثةٌ لكل شخص =====
   // ترجمة عناوين الأعمال المُشارَكة عند العرض (D-048): نجمع أحداث المشاركة
