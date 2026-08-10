@@ -13,6 +13,7 @@ import {
   markShowWatched,
   unmarkEpisodes,
   toggleMovieWatched,
+  toggleFavorite,
 } from "@/lib/actions";
 import { getDict, type Locale } from "@/lib/i18n";
 import type { MediaType } from "@/lib/media";
@@ -78,6 +79,7 @@ export function TitleActions({
   runtime,
   initialDone,
   collectionId,
+  initialFavorite = false,
 }: {
   tmdbId: number;
   mediaType: MediaType;
@@ -95,6 +97,8 @@ export function TitleActions({
   initialDone: boolean;
   /** معرّف سلسلة الفيلم — تُعرض أجزاؤها تحت الصفّ بعد ضغطة ✓ */
   collectionId?: number | null;
+  /** في «مفضّلاتي» عند فتح الصفحة (D-130) */
+  initialFavorite?: boolean;
 }) {
   const t = getDict(locale);
   const router = useRouter();
@@ -105,7 +109,22 @@ export function TitleActions({
   /* لوحة الأجزاء تُفتح بضغطة ✓ وتبقى مفتوحة: من أشّر جزءاً يريد التالي،
      وإغلاقها تلقائياً يسحب الجواب من تحت يده */
   const [showParts, setShowParts] = useState(false);
+  const [fav, setFav] = useState(initialFavorite);
   const [pending, start] = useTransition();
+
+  /* القلب تفاؤليٌّ مع تراجعٍ عند الفشل (D-007): فعلٌ من ضغطةٍ واحدة لا
+     يحتمل انتظار رحلةِ شبكة، وخطؤه يُصحَّح بنفسه */
+  function flipFavorite() {
+    const next = !fav;
+    tap(next ? [10, 20] : 8);
+    setFav(next);
+    toggleFavorite({ tmdbId, mediaType, title, posterPath, listName: t.favListName })
+      .then((real) => setFav(real))
+      .catch((e) => {
+        setFav(!next);
+        flashError((e as Error).message);
+      });
+  }
 
   const badge = inLists.size + (following ? 1 : 0);
 
@@ -270,6 +289,23 @@ export function TitleActions({
             style={badge > 0 ? { fill: "currentColor" } : undefined}
           />
           {t.listAddTo}
+        </button>
+
+        {/* القلب بين الحفظ والحالة (D-130): «أحببتُه» رأيٌ لا حالةَ
+            مشاهدة ولا حفظٌ في قائمة — فله موضعه، وأيقونته تمتلئ ولا
+            تتلوّن دائرتُها كي لا يزاحم ✓ في الوزن البصريّ */}
+        <button
+          onClick={flipFavorite}
+          aria-pressed={fav}
+          aria-label={t.favAria}
+          title={t.favAria}
+          className={`w-12 h-12 shrink-0 rounded-full grid place-items-center border-[1.5px] active:scale-95 transition ${
+            fav
+              ? "border-transparent bg-[color:var(--error)]/12 text-[color:var(--error)]"
+              : "border-border text-foreground/85 hover:border-accent/60"
+          }`}
+        >
+          <Icon name={fav ? "heart-filled" : "heart"} size={20} strokeWidth={2.2} />
         </button>
 
         {/* دائرة «شاهدتُه» — ضغطةٌ واحدة، بلا ورقة، والتراجع في الرسالة */}
