@@ -1072,14 +1072,60 @@ export async function searchCommunities(q: string) {
   const { supabase } = await requireUser("community", 30, 60_000);
   const { data, error } = await supabase.rpc("search_communities", { q: term });
   if (error) fail(error);
-  return (data ?? []) as {
-    id: string;
-    name: string;
-    is_private: boolean;
-    owner_id: string;
-    member_count: number;
-    my_status: "member" | "requested" | "none";
-  }[];
+  return ((data ?? []) as CommunityLite[]).map((c) => ({
+    ...c,
+    member_count: Number(c.member_count),
+  }));
+}
+
+/**
+ * غرفة عملٍ عند أوّل اهتمام (D-140، هجرة 53) — تُرجع معرّف الغرفة.
+ *
+ * **الاسم والملصق يُجلبان هنا على الخادم من TMDB، لا يُرسلهما العميل.**
+ * غرفةُ العمل صفٌّ لا يملكه أحد ويراه كل الناس؛ ولو قَبِل الاسمَ من
+ * المتصفّح لصار أوّلُ زائرٍ قادراً على تسمية غرفة «Interstellar» بما شاء
+ * للأبد. النداءُ مخبّأٌ ساعةً في طبقة TMDB، ولا يقع إلا على من ضغط.
+ */
+export async function openTitleRoom(tmdbId: number, mediaType: "tv" | "movie") {
+  const id = intId(tmdbId);
+  const type = asMediaType(mediaType);
+  const { supabase } = await requireUser("title-room", 10, 60_000);
+
+  const { getTv, getMovie } = await import("@/lib/tmdb");
+  let name = "";
+  let poster: string | null = null;
+  try {
+    if (type === "tv") {
+      const tv = await getTv(id);
+      name = (tv.name ?? "").trim();
+      poster = tv.poster_path;
+    } else {
+      const mv = await getMovie(id);
+      name = (mv.title ?? "").trim();
+      poster = mv.poster_path;
+    }
+  } catch {
+    throw new Error("تعذّر جلب بيانات العمل / Could not load the title");
+  }
+  if (name.length < 2) throw new Error("تعذّر جلب بيانات العمل / Could not load the title");
+
+  const { data, error } = await supabase.rpc("title_community", {
+    p_tmdb: id,
+    p_type: type,
+    p_name: name,
+    p_poster: poster ? `https://image.tmdb.org/t/p/w185${poster}` : null,
+  });
+  // 42883 = الدالّة غير موجودة — هجرة ٥٣ لم تُشغَّل بعد. جملةٌ عربية
+  // للمستخدم لا رسالةَ Postgres (درس D-139).
+  if (error) {
+    if ((error as { code?: string }).code === "42883") {
+      throw new Error("غرف الأعمال غير مفعّلة بعد / Title rooms are not enabled yet");
+    }
+    fail(error);
+  }
+  if (!data) throw new Error("تعذّر فتح الغرفة / Could not open the room");
+  revalidatePath("/people");
+  return data as string;
 }
 
 export async function followUser(targetId: string) {

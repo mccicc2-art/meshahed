@@ -1668,17 +1668,26 @@ export async function getFollowLists(
 //  المجتمعات (communities.sql)
 // ============================================================
 
+/** نوع الغرفة (هجرة 53): غرفةُ شخصٍ يملكها، أو غرفةُ عملٍ لا يملكها أحد */
+export type CommunityKind = "user" | "title";
+
 /** مجتمعٌ كما يظهر في الدليل والبحث */
 export interface CommunityLite {
   id: string;
   name: string;
   is_private: boolean;
-  owner_id: string;
-  /** صورة المجتمع — يرفعها المالك (هجرة 41)؛ غيابها يعيد قرص الحرف */
+  /** `null` لغرفة العمل — لا مالكَ لها، وهذا ما يفكّ عنها قيدَ الفرادة */
+  owner_id: string | null;
+  /** صورة المجتمع — يرفعها المالك (هجرة 41)؛ ولغرفة العمل ملصقُه */
   photo_url?: string | null;
   member_count: number;
   /** علاقتي به — يأتي من search_communities فقط */
   my_status?: "member" | "requested" | "none";
+  /** هجرة 53 — غياب الحقل يعني قاعدةً لم تُهاجَر بعد، فالافتراض `user` */
+  kind?: CommunityKind;
+  tmdb_id?: number | null;
+  media_type?: "tv" | "movie" | null;
+  archived?: boolean;
 }
 
 /** رسالةٌ في غرفة مجتمع */
@@ -1696,8 +1705,12 @@ export interface CommunityRoomData {
   id: string;
   name: string;
   is_private: boolean;
-  owner_id: string;
+  owner_id: string | null;
   photo_url: string | null;
+  /** هجرة 53 — غرفةُ عملٍ تُقرأ قبل الانضمام وترويستُها تربط بالعمل */
+  kind: CommunityKind;
+  tmdb_id: number | null;
+  media_type: "tv" | "movie" | null;
   /** من دعاهم المالك — للمالك وحده؛ فارغة لغيره (هجرة 42) */
   invitedIds: string[];
   isOwner: boolean;
@@ -1749,13 +1762,14 @@ export async function getCommunityRoom(id: string): Promise<CommunityRoomData | 
 
     const { data: c } = await supabase
       .from("communities")
-      .select("id, name, is_private, owner_id, photo_url")
+      .select("id, name, is_private, owner_id, photo_url, kind, tmdb_id, media_type")
       .eq("id", id)
       .maybeSingle();
     if (!c) return null;
-    const isOwner = c.owner_id === me.id;
+    // `owner_id` قد يكون null (غرفة عمل) — والمساواة به تكذب لو تُركت
+    const isOwner = !!c.owner_id && c.owner_id === me.id;
 
-    const [memberRows, msgRows, reqRows, myReq, inviteRows] = await Promise.all([
+    const [memberRows, msgRows, reqRows, myReq, inviteRows, countRow] = await Promise.all([
       supabase
         .from("community_members")
         .select("user_id")
@@ -1790,6 +1804,9 @@ export async function getCommunityRoom(id: string): Promise<CommunityRoomData | 
             .eq("community_id", id)
             .limit(200)
         : Promise.resolve({ data: [] as { user_id: string }[] }),
+      // العدد الحقيقي (هجرة 53): قائمة الأعضاء محروسةٌ بالعضوية، فكان
+      // غيرُ العضو — وهو من يقرأ غرفة العمل الآن — يرى «٠ أعضاء»
+      supabase.rpc("community_member_count", { p_community: id }),
     ]);
 
     const members = (memberRows.data ?? []).map((r) => r.user_id);
@@ -1813,11 +1830,14 @@ export async function getCommunityRoom(id: string): Promise<CommunityRoomData | 
       is_private: c.is_private,
       owner_id: c.owner_id,
       photo_url: c.photo_url ?? null,
+      kind: (c.kind as CommunityKind) ?? "user",
+      tmdb_id: c.tmdb_id ?? null,
+      media_type: (c.media_type as "tv" | "movie" | null) ?? null,
       invitedIds: (inviteRows.data ?? []).map((r) => r.user_id),
       isOwner,
       isMember,
       requested: !!myReq.data,
-      member_count: members.length,
+      member_count: Math.max(Number(countRow?.data ?? 0), members.length),
       members: members.map((uid) => byId.get(uid)).filter(Boolean) as PersonLite[],
       messages: (msgRows.data ?? []).map((m) => ({
         id: m.id,
@@ -1831,6 +1851,47 @@ export async function getCommunityRoom(id: string): Promise<CommunityRoomData | 
         .map((r) => byId.get(r.user_id))
         .filter(Boolean) as PersonLite[],
     };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * غرف الأعمال الحيّة — صفٌّ في دليل المجتمعات (هجرة 53).
+ *
+ * الترتيب في SQL بالكلام لا بالعدد، والمؤرشفة مستبعدةٌ هناك — فما يصل
+ * إلى هنا غرفٌ فيها نفَس. القاعدة غير المهاجَرة تُرجع خطأً فنعود بلا
+ * شيء: قسمٌ يختفي أهون من صفحةٍ تسقط.
+ */
+export async function getTitleRooms(limit = 12): Promise<CommunityLite[]> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("title_rooms", { p_limit: limit });
+    if (error || !data) return [];
+    return (data as CommunityLite[]).map((c) => ({
+      ...c,
+      member_count: Number(c.member_count),
+    }));
+  } catch {
+    return [];
+  }
+}
+
+/** غرفةُ عملٍ بعينه **إن وُجدت** — صفحة العمل تسأل قبل أن تَعِد */
+export async function getTitleRoomOf(
+  tmdbId: number,
+  mediaType: "tv" | "movie",
+): Promise<{ id: string; member_count: number; archived: boolean } | null> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("title_room_of", {
+      p_tmdb: tmdbId,
+      p_type: mediaType,
+    });
+    if (error || !data) return null;
+    const row = (data as { id: string; member_count: number; archived: boolean }[])[0];
+    if (!row) return null;
+    return { id: row.id, member_count: Number(row.member_count), archived: !!row.archived };
   } catch {
     return null;
   }
