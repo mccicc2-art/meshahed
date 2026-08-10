@@ -8,6 +8,8 @@ import { RailSkeleton } from "@/components/Skeletons";
 import {
   getUser,
   getFollows,
+  getMyTitleArt,
+  artKey,
   getAllWatchedEpisodes,
   getWatchSummary,
   getWatchedMovies,
@@ -515,6 +517,21 @@ async function HomeBody({
       ? getMyLists().catch(() => [])
       : Promise.resolve([]),
   ]);
+
+  /* أغلفتي المختارة (D-131) — استبدالٌ في مصدرٍ واحد بعد الترجمة: بطاقات
+     «أكمل» و«ابدأ» و«للمشاهدة» كلّها تُبنى من `follows`، والرئيسية سطحي
+     أنا فلا تسريب (ق٨). التقييمات كذلك — بطاقةُ عملٍ قيّمتُه في صفحتي. */
+  const homeArt = await getMyTitleArt();
+  if (homeArt.size) {
+    for (const f of follows) {
+      const a = homeArt.get(artKey(f.media_type, f.tmdb_id));
+      if (a?.poster_path) f.poster_path = a.poster_path;
+    }
+    for (const r of topRated) {
+      const a = homeArt.get(artKey(r.media_type, r.tmdb_id));
+      if (a?.poster_path) r.poster_path = a.poster_path;
+    }
+  }
 
   /* قوائمي بنفس بطاقة المجتمع (PublicListCard): بطاقة واحدة للأبواب
      كلها — بلا سطر صاحبٍ فالصفحة صفحته، والفارغة لا تُعرض */
