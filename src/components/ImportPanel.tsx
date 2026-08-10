@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { getDict, num, type Locale } from "@/lib/i18n";
 import { parseTvTimeFiles } from "@/lib/tvtime";
 import { parseLetterboxdFiles } from "@/lib/letterboxd";
+import { parseTrackerExport } from "@/lib/trackerExport";
 import { groupForResolve, recordKey, type ParseOutcome, type RawRecord } from "@/lib/importParse";
 import {
   IMPORT_CAPS,
@@ -26,7 +27,7 @@ type Phase = "idle" | "reading" | "matching" | "writing" | "done";
  * الخدمة القادمة سطرٌ في هذا السجلّ، لا نسخةٌ ثانية من مسار الاستيراد
  * كلِّه — فالمراحل الثلاث (قراءة · مطابقة · كتابة) واحدةٌ للجميع.
  */
-type SourceId = "tvtime" | "letterboxd";
+type SourceId = "tvtime" | "letterboxd" | "simkl";
 
 const SOURCES: Record<
   SourceId,
@@ -34,6 +35,7 @@ const SOURCES: Record<
 > = {
   tvtime: { parse: parseTvTimeFiles, accept: ".zip,.csv,.json" },
   letterboxd: { parse: parseLetterboxdFiles, accept: ".zip,.csv" },
+  simkl: { parse: parseTrackerExport, accept: ".zip,.json,.csv" },
 };
 
 /**
@@ -60,6 +62,7 @@ export function ImportPanel({
   const params = useSearchParams();
   const tvtimeRef = useRef<HTMLInputElement>(null);
   const letterboxdRef = useRef<HTMLInputElement>(null);
+  const simklRef = useRef<HTMLInputElement>(null);
   const stop = useRef(false);
 
   const [phase, setPhase] = useState<Phase>("idle");
@@ -111,6 +114,9 @@ export function ImportPanel({
       }
 
       // ===== المطابقة =====
+      /* ما وصل بمعرّف TMDB لا يمرّ من هنا إطلاقاً (D-154): لا رحلةَ
+         خادمٍ له ولا بحثَ اسم. ولهذا مكتبة Simkl تدخل في ثوانٍ بينما
+         مثلُها من TV Time يحتاج مئات الطلبات. */
       setPhase("matching");
       const { requests, keys } = groupForResolve(records);
       const resolved = new Map<string, ResolveResult>();
@@ -142,6 +148,35 @@ export function ImportPanel({
       };
 
       for (const r of records) {
+        /* المعرّف بيده — يُبنى مباشرةً. والعنوان من المصدر، والملصق
+           يُترك فارغاً تملؤه `FollowMetaSync` عند أوّل زيارة (نفس قاعدة
+           مستورد الخادم: مئاتُ طلبات TMDB داخل استيرادٍ واحد تُنهي المهلة) */
+        if (r.kind === "tmdb-show") {
+          const sh = showMap.get(r.tmdbId) ?? {
+            tmdbId: r.tmdbId,
+            title: r.title,
+            posterPath: null,
+            episodes: [],
+          };
+          sh.episodes.push(...r.episodes);
+          if (r.rating != null) sh.rating = r.rating;
+          showMap.set(r.tmdbId, sh);
+          continue;
+        }
+        if (r.kind === "tmdb-movie") {
+          const prev = movieMap.get(r.tmdbId);
+          movieMap.set(r.tmdbId, {
+            tmdbId: r.tmdbId,
+            title: r.title,
+            posterPath: null,
+            /* «أنوي مشاهدته» لا يُختم مشاهَداً — ومشاهدةٌ سابقة تغلبه */
+            watched: (prev?.watched ?? false) || !r.planned,
+            at: prev?.at ?? r.at,
+            rating: r.rating ?? prev?.rating,
+          });
+          continue;
+        }
+
         const hit = resolved.get(keyOf(r));
         if (!hit) {
           const label =
@@ -266,6 +301,13 @@ export function ImportPanel({
             title: t.importLetterboxdTitle,
             hint: t.importLetterboxdHint,
             fileHint: t.importLetterboxdFileHint,
+          },
+          {
+            id: "simkl" as const,
+            ref: simklRef,
+            title: t.importSimklTitle,
+            hint: t.importSimklHint,
+            fileHint: t.importSimklFileHint,
           },
           {
             id: "tvtime" as const,
