@@ -186,6 +186,56 @@ export const getFollows = cache(async (): Promise<FollowRow[]> => {
   return data ?? [];
 });
 
+/** مفتاح خريطة الأغلفة — نوعٌ ومعرّف، لا نصٌّ حرّ */
+export function artKey(mediaType: string, tmdbId: number) {
+  return `${mediaType}-${tmdbId}`;
+}
+
+export interface TitleArt {
+  poster_path: string | null;
+  backdrop_path: string | null;
+}
+
+/**
+ * أغلفتي المختارة (D-131) — خريطةٌ واحدة تُقرأ مرّةً وتُطبَّق على كل
+ * بطاقة، بدل استعلامٍ لكل عمل.
+ *
+ * `cache` لأن الصفحة الواحدة قد تطلبها من موضعين (المكتبة والرئيسية)،
+ * والقاعدة غير المهاجَرة تُرجع خطأً فنعود بخريطةٍ فارغة: الأغلفة زينةٌ،
+ * وسقوطُها لا يجوز أن يُسقط المكتبة.
+ */
+export const getMyTitleArt = cache(async (): Promise<Map<string, TitleArt>> => {
+  const out = new Map<string, TitleArt>();
+  try {
+    const supabase = await createClient();
+    const user = await getUser();
+    if (!user) return out;
+    const { data, error } = await supabase
+      .from("title_art")
+      .select("tmdb_id, media_type, poster_path, backdrop_path")
+      .eq("user_id", user.id);
+    if (error || !data) return out;
+    for (const r of data) {
+      out.set(artKey(r.media_type as string, r.tmdb_id as number), {
+        poster_path: r.poster_path ?? null,
+        backdrop_path: r.backdrop_path ?? null,
+      });
+    }
+    return out;
+  } catch {
+    return out;
+  }
+});
+
+/** غلافُ عملٍ بعينه عندي — لصفحة العمل (خلفيةً وملصقاً) */
+export async function getMyArtFor(
+  tmdbId: number,
+  mediaType: "tv" | "movie",
+): Promise<TitleArt | null> {
+  const map = await getMyTitleArt();
+  return map.get(artKey(mediaType, tmdbId)) ?? null;
+}
+
 // PostgREST يرجّع 1000 صف كحد أقصى للطلب الواحد — نقرأ على صفحات حتى لا تضيع حلقات
 async function pageAll<T>(
   fetchPage: (from: number, to: number) => PromiseLike<{ data: T[] | null }>,

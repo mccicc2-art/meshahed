@@ -672,6 +672,54 @@ export async function relatedTitles(
   return out;
 }
 
+/** صورةٌ واحدة من `/images` — المسار ولغتُه وعدد أصواتها */
+export interface ArtImage {
+  file_path: string;
+  iso_639_1: string | null;
+  vote_count: number;
+  vote_average: number;
+}
+
+/**
+ * كل ملصقات العمل وخلفياته (D-131).
+ *
+ * **الترتيب هو الميزة لا العدد** (ق٧): TMDB يعطي ١٥–٤٠ صورة، وعرضُها
+ * بترتيبه يضع لغاتٍ لا يقرؤها المستخدم في الصدر. فالفرز هنا:
+ *   ١) لغة المستخدم   ٢) الإنجليزية   ٣) **بلا نصّ** (`iso_639_1 = null`)
+ *   ٤) ثم بعدد الأصوات تنازلياً.
+ * و«بلا نصّ» ثالثةً لا أخيرةً عن قصد: الملصق النظيف يصلح لأي لغة، وهو
+ * أجمل ما في الشبكة لمن لا يجد لغته.
+ *
+ * `include_image_language` يطلب من TMDB أن يضمّ الثلاثة معاً — بدونه
+ * يردّ لغة الطلب وحدها فتعود الشبكة بصورتين.
+ */
+export async function titleImages(
+  media: MediaType,
+  id: number,
+  locale: "ar" | "en",
+): Promise<{ posters: ArtImage[]; backdrops: ArtImage[] }> {
+  const lang = locale === "en" ? "en" : "ar";
+  try {
+    const data = await tmdb<{ posters?: ArtImage[]; backdrops?: ArtImage[] }>(
+      `/${media}/${id}/images`,
+      { include_image_language: `${lang},en,null` },
+    );
+    const rank = (im: ArtImage) => {
+      if (im.iso_639_1 === lang) return 0;
+      if (im.iso_639_1 === "en") return 1;
+      if (!im.iso_639_1) return 2;
+      return 3;
+    };
+    const sortArt = (rows: ArtImage[] = []) =>
+      [...rows]
+        .filter((im) => !!im.file_path)
+        .sort((a, b) => rank(a) - rank(b) || (b.vote_count ?? 0) - (a.vote_count ?? 0));
+    return { posters: sortArt(data.posters), backdrops: sortArt(data.backdrops) };
+  } catch {
+    return { posters: [], backdrops: [] };
+  }
+}
+
 export function getTv(id: number): Promise<TvDetails> {
   return tmdb<TvDetails>(`/tv/${id}`);
 }

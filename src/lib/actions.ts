@@ -2885,3 +2885,86 @@ export async function aiStorySearch(
   if (results.length === 0) return { ok: false, reason: "empty" };
   return { ok: true, results: results.slice(0, 12), fallback: true };
 }
+
+// ============================================================
+//  أغلفة وبوسترات شخصية (title_art.sql، D-131)
+// ============================================================
+
+/**
+ * بوّابة الميزة (ق٩) — نقطةٌ واحدة، ترجع `true` اليوم.
+ *
+ * البريف يذكر تمييزاً مدفوعاً مؤجَّلاً. المنفذ الواحد مقصود: تقييدُه
+ * لاحقاً تغييرُ جسمِ هذه الدالّة، لا تعقّبُ شرطٍ منثورٍ في عشرة ملفات.
+ * (وقبل أيّ تسييل: شروط TMDB تشترط ترخيصاً تجارياً حين يكون توليد
+ * الإيراد غرضاً أساسياً — والميزة مبنيةٌ حرفياً على صورهم.)
+ */
+export async function canUseArt(): Promise<boolean> {
+  return true;
+}
+
+/**
+ * صور العمل للمنتقي — مسارات نصّية فقط، مرتَّبةً بلغة المستخدم (ق٧).
+ *
+ * سقفٌ معلَن: ٢٤ ملصقاً و١٢ خلفية. TMDB يعطي أربعين أحياناً، وأربعون
+ * صورةً في ورقةٍ واحدة تقتل شبكة الجوال — والشبكة كسولة التحميل فوق ذلك.
+ */
+export async function titleArtOptions(tmdbId: number, mediaType: "tv" | "movie") {
+  const id = intId(tmdbId);
+  const type = asMediaType(mediaType);
+  await requireUser("art", 30, 60_000);
+  if (!(await canUseArt())) return { posters: [], backdrops: [] };
+
+  const [{ titleImages }, { getLocale }] = await Promise.all([
+    import("@/lib/tmdb"),
+    import("@/lib/locale"),
+  ]);
+  const locale = await getLocale();
+  const { posters, backdrops } = await titleImages(type, id, locale === "en" ? "en" : "ar");
+  return {
+    posters: posters.map((p) => p.file_path).filter(Boolean).slice(0, 24),
+    backdrops: backdrops.map((p) => p.file_path).filter(Boolean).slice(0, 12),
+  };
+}
+
+/**
+ * تثبيت الاختيار. `null` لحقلٍ = «أعِده للأصل»، والصفّ يُحذف حين يخلو
+ * الاثنان معاً — صفٌّ بلا اختيارٍ يخالف قيد القاعدة ولا معنى له.
+ */
+export async function setTitleArt(input: {
+  tmdbId: number;
+  mediaType: "tv" | "movie";
+  posterPath: string | null;
+  backdropPath: string | null;
+}) {
+  const id = intId(input.tmdbId);
+  const type = asMediaType(input.mediaType);
+  const poster = safeImagePath(input.posterPath);
+  const backdrop = safeImagePath(input.backdropPath);
+  const { supabase, user } = await requireUser("art", 30, 60_000);
+  if (!(await canUseArt())) return;
+
+  if (!poster && !backdrop) {
+    const { error } = await supabase
+      .from("title_art")
+      .delete()
+      .match({ user_id: user.id, tmdb_id: id, media_type: type });
+    if (error) fail(error);
+  } else {
+    const { error } = await supabase.from("title_art").upsert({
+      user_id: user.id,
+      tmdb_id: id,
+      media_type: type,
+      poster_path: poster,
+      backdrop_path: backdrop,
+      updated_at: new Date().toISOString(),
+    });
+    if (error) {
+      if ((error as { code?: string }).code === "42P01") {
+        throw new Error("الأغلفة الشخصية غير مفعّلة بعد / Custom art is not enabled yet");
+      }
+      fail(error);
+    }
+  }
+  revalidatePath("/library");
+  revalidatePath(`/${type === "tv" ? "show" : "movie"}/${id}`);
+}
