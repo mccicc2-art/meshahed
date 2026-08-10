@@ -52,6 +52,7 @@ import {
   type HomeSection,
   type HeaderStatKey,
 } from "@/lib/homePrefs";
+import { capCards } from "@/lib/cardCount";
 import { WeekStrip, type WeekEntry } from "@/components/WeekStrip";
 import { ShowStatsSync, type ShowStat } from "@/components/ShowStatsSync";
 import { FollowMetaSync, MovieStatsSync } from "@/components/MetaSync";
@@ -918,6 +919,13 @@ async function HomeBody({
       )}
 
       {(() => {
+        /* سقفُ البطاقات (D-152) — يُطبَّق **عند الرسم لا عند الجلب**:
+           أرقام الجلب أعلاه مضبوطةٌ على كلفة نداءات TMDB والفحوص
+           (`bootstrapIds`, `CONTINUE_PROBE`)، وقصُّها هناك كان سيغيّر ما
+           يُحسب لا ما يُعرض. و`capCards` تأخذ الأصغر فالافتراضي `full`
+           لا يمسّ سطراً واحداً. */
+        const cap = (n: number) => capCards(n, prefs.cards);
+
         /* أقسام المحتوى تُرسم بترتيب التفضيلات: قائمة أسماء من التخصيص
            تُترجم إلى قوالب هنا، والغائب عن القائمة لا يُرسم أصلاً */
         const sections: Record<HomeSection, React.ReactNode> = {
@@ -968,7 +976,7 @@ async function HomeBody({
                 href="/library"
                 seeAll={t.seeAll}
               >
-                {toWatchRow.map((x) => (
+                {toWatchRow.slice(0, cap(toWatchRow.length)).map((x) => (
                   <ToWatchCard
                     key={x.key}
                     tmdbId={x.tmdbId!}
@@ -997,7 +1005,7 @@ async function HomeBody({
                 href="/library"
                 seeAll={t.seeAll}
               >
-                {upcomingRow.map((x) => (
+                {upcomingRow.slice(0, cap(upcomingRow.length)).map((x) => (
                   <PosterCard
                     key={x.key}
                     href={x.href}
@@ -1018,7 +1026,7 @@ async function HomeBody({
                 href="/library?filter=tv"
                 seeAll={t.seeAll}
               >
-                {myShows.map((i) => (
+                {myShows.slice(0, cap(myShows.length)).map((i) => (
                   <PosterCard
                     key={`ms-${i.id}`}
                     href={`/show/${i.id}`}
@@ -1050,7 +1058,7 @@ async function HomeBody({
                 href="/library?filter=movie"
                 seeAll={t.seeAll}
               >
-                {myMovies.map((m) => (
+                {myMovies.slice(0, cap(myMovies.length)).map((m) => (
                   <PosterCard
                     key={`mm-${m.tmdbId}`}
                     href={`/movie/${m.tmdbId}`}
@@ -1121,7 +1129,7 @@ async function HomeBody({
                 href="/ratings"
                 seeAll={t.seeAll}
               >
-                {topRated.map((r) => (
+                {topRated.slice(0, cap(topRated.length)).map((r) => (
                   <PosterCard
                     key={`rt-${r.media_type}-${r.tmdb_id}`}
                     href={`/${r.media_type === "tv" ? "show" : "movie"}/${r.tmdb_id}`}
@@ -1142,7 +1150,7 @@ async function HomeBody({
           trending:
             showTrending && trend.length > 0 ? (
               <Section key="trending" title={t.trendingWeek} icon="trending">
-                {trend.slice(0, 12).map((r) => {
+                {trend.slice(0, cap(12)).map((r) => {
                   const mt = r.media_type === "tv" ? "tv" : "movie";
                   const seen =
                     mt === "movie"
