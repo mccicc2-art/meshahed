@@ -36,6 +36,7 @@ import { TitleNews } from "@/components/TitleNews";
 import { getTitleNews } from "@/lib/titleNews";
 import { ScrollMemory } from "@/components/ScrollMemory";
 import { FeedSeenSync } from "@/components/FeedSeenSync";
+import { NewActivityPill } from "@/components/NewActivityPill";
 
 /** كم عملاً نطلب له صورةً عرضية — سقفٌ يمنع موجة طلباتٍ بحجم الخط */
 const BACKDROP_LIMIT = 12;
@@ -443,6 +444,8 @@ export default async function PeoplePage({
             <>
             {/* الختم بعد الرسم لا قبله — انظر FeedSeenSync (D-149) */}
             <FeedSeenSync stamp={scoredAt} />
+            {/* الشارة العائمة (D-151): الجديد لا يُقحم فوق ما تقرؤه */}
+            {newest && <NewActivityPill locale={locale} />}
             <div className="divide-y divide-[color:var(--divider)]">
               {feed.map((a) => {
                 const found = artById.get(`${a.media_type}-${a.tmdb_id}`);
