@@ -34,6 +34,7 @@ import { CastRail } from "@/components/CastRail";
 import { SectionTitle } from "@/components/Icon";
 import { Trailer } from "@/components/Trailer";
 import { WatchChip } from "@/components/WatchChip";
+import { WatchProviders } from "@/components/WatchProviders";
 import { TitleActions } from "@/components/TitleActions";
 import { DetailTopBar } from "@/components/DetailTopBar";
 import { CircleNote } from "@/components/CircleNote";
@@ -239,6 +240,16 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
             icon: "info",
             content: (
               <div className="space-y-7">
+                {/* «أين أشاهده» كاملاً بالتقسيم المتعارف (D-150): الشارة
+                    في الترويسة جوابٌ سريع، وهذا الجوابُ الكامل */}
+                {watchWhere && (
+                  <WatchProviders
+                    options={watchWhere.options}
+                    region={watchWhere.region}
+                    userRegion={userRegion}
+                    locale={locale}
+                  />
+                )}
                 {movie.overview && (
                   <section>
                     <SectionTitle icon="info" className="mb-2.5">
