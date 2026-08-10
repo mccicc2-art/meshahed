@@ -900,6 +900,25 @@ export async function markSignalsSeen() {
   if (error) fail(error);
 }
 
+/**
+ * ختمُ «رأيتُ خطّي» (D-149) — يُنادى **بعد** رسم الصفحة لا قبله.
+ *
+ * الترتيب هو المعنى كلّه: لو خُتم قبل الرسم لسقط علوُّ الجديد في نفس
+ * الزيارة التي جاء ليُريها. فالزيارة الحالية تراه عالياً، والتالية تراه
+ * في مكانه — «مرّة وحدة ثم تنزل».
+ *
+ * وفشلُه صامت: ختمٌ لم يُكتب يعني صفّاً يعلو مرّةً زائدة، وهو أرخص من
+ * رسالة خطأ على شاشةٍ لم يطلب صاحبها شيئاً.
+ */
+export async function markFeedSeen() {
+  try {
+    const { supabase } = await requireUser();
+    await supabase.rpc("mark_feed_seen");
+  } catch {
+    /* لا شيء — انظر أعلاه */
+  }
+}
+
 export async function myBlocksList(): Promise<PersonLite[]> {
   const { supabase } = await requireUser();
   const { data, error } = await supabase.rpc("my_blocks");

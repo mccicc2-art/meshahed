@@ -996,6 +996,25 @@ export async function getUnreadShares(): Promise<number> {
  * تُطلب عند فتح الورقة بفعلٍ من العميل (نمط `myBlocksList`). والدالّة
  * غائبة قبل الهجرة ٤٧؟ صفرٌ صامت — الجرس بلا شارة لا شاشة خطأ.
  */
+/**
+ * متى رأى القارئ خطَّه آخر مرّة (D-149).
+ *
+ * `null` تعني «لم يفتحه قطّ» — وكلُّ حدثٍ حينها جديد، وهو الصحيح: من لم
+ * يفتح الخطّ لم يرَ شيئاً منه. والدالّة غائبة قبل الهجرة ٥٧؟ `null`
+ * صامتة، فيعود الترتيب إلى خوارزمية D-134 وحدها بلا شاشة خطأ.
+ */
+export async function getFeedSeenAt(): Promise<number | null> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("my_feed_seen");
+    if (error || !data) return null;
+    const t = new Date(data as string).getTime();
+    return Number.isFinite(t) ? t : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function getUnreadSignals(): Promise<number> {
   try {
     const supabase = await createClient();

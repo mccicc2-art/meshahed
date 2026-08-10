@@ -495,6 +495,8 @@ const ar = {
   feedFilterAll: "الكل",
   feedFilterRatings: "التقييمات",
   feedFilterReviews: "المراجعات",
+  /** علامة «لم تره بعد» في خطّ النشاط (D-149) */
+  feedUnseen: "جديد",
   feedFilterEmpty: "لا نشاط من هذا النوع في دائرتك بعد.",
   // أفعال خطّ النشاط (D-123) — سطرٌ واحد لكل نوع حدث
   feedActRated: "قيّمه",
@@ -1380,6 +1382,7 @@ const en: Dict = {
   feedFilterAll: "All",
   feedFilterRatings: "Ratings",
   feedFilterReviews: "Reviews",
+  feedUnseen: "New",
   feedFilterEmpty: "No activity of this kind in your circle yet.",
   // Activity feed verbs (D-123)
   feedActRated: "rated it",
