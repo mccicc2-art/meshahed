@@ -65,10 +65,12 @@
 | 52 | `episode_ratings.sql` | `episode_ratings` + `set_episode_rating`/`clear_episode_rating` definer — التقييم يعلّم المشاهدة داخل القاعدة (D-139) | **مشحونة** |
 | 53 | `title_communities.sql` | غرف الأعمال: `kind`/`tmdb_id`/`media_type`/`archived_at`، فكُّ فرادة `owner_id` بفهرسٍ جزئيّ، `title_community`/`title_room_of`/`title_rooms`/`maintain_title_communities` + قراءةُ غرفة العمل بلا انضمام (D-140) | **مشحونة** |
 | 54 | `title_art.sql` | أغلفة وبوسترات شخصية: `title_art` بـRLS للمالك + `profile_title_art` definer خلف `can_view_profile` (D-131) | **مشحونة** |
-| 55 | `favorites.sql` | المفضّلات بلا جدول جديد: `kind='favorites'` + فهرسٌ فريد جزئيّ + `toggle_favorite`/`my_favorites` (D-130) | **معلّقة** |
+| 55 | `favorites.sql` | المفضّلات بلا جدول جديد: `kind='favorites'` + فهرسٌ فريد جزئيّ + `toggle_favorite`/`my_favorites` (D-130) | **مشحونة** |
 
 كلها تحقَّقت بالاستعلام المكتوب في ذيل ملفّها — **لا استثناءات: كل ملفات
-الجدول شُغِّلت حتى ٥٤** (٥٢–٥٤ في ١٠ أغسطس). **٥٥ معلّقة** حتى تُشغَّل.
+الجدول شُغِّلت** (٥٢–٥٥ في ١٠ أغسطس). تحقُّق ٥٥ على الإنتاج:
+`kind_check` يضمّ `favorites` · `fav_idx=1` · `new_funcs=2` ·
+**`open_policies=4`** — لا سياسة مفتوحة خامسة.
 
 ## مصيدةٌ وقعنا فيها فعلاً — `safeupdate`
 
