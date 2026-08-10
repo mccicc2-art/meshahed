@@ -23,7 +23,26 @@ export type RawRecord =
   /* فيلمٌ في قائمة المشاهدة لاحقاً — يدخل المكتبة بلا صفّ مشاهدة (D-153).
      `applyImportChunk` يفهمه أصلاً: `watched:false` يكتب `follows` وحدها */
   | { kind: "movie-watchlist"; name: string; year?: number }
-  | { kind: "rating-show"; show: string; rating: number };
+  | { kind: "rating-show"; show: string; rating: number }
+  /* عملٌ وصل **بمعرّف TMDB جاهز** (Simkl، D-154) — لا يحتاج مطابقةً
+     أصلاً: لا رحلةَ خادم، ولا بحثَ اسمٍ يخطئ. ولهذا `groupForResolve`
+     تتجاهله عمداً، و`ImportPanel` يبنيه مباشرةً */
+  | {
+      kind: "tmdb-show";
+      tmdbId: number;
+      title: string;
+      episodes: { s: number; e: number; at?: string }[];
+      rating?: number;
+      planned?: boolean;
+    }
+  | {
+      kind: "tmdb-movie";
+      tmdbId: number;
+      title: string;
+      at?: string;
+      rating?: number;
+      planned?: boolean;
+    };
 
 export interface ParseOutcome {
   records: RawRecord[];
@@ -198,6 +217,11 @@ export function recordKey(r: RawRecord): string {
       return `tvdb:${r.tvdbId}`;
     case "ep-tvdb":
       return `tvdbe:${r.episodeTvdbId}`;
+    /* مفتاحٌ لا يُطلب من الخادم — موجودٌ ليكتمل الفرز وحده */
+    case "tmdb-show":
+      return `tmdbtv:${r.tmdbId}`;
+    case "tmdb-movie":
+      return `tmdbmv:${r.tmdbId}`;
   }
 }
 
@@ -212,6 +236,8 @@ export function groupForResolve(records: RawRecord[]): GroupedRaw {
       map.set(key, { kind: "name-movie", name: r.name, year: r.year });
     else if (r.kind === "show-tvdb") map.set(key, { kind: "tvdb-tv", id: r.tvdbId });
     else if (r.kind === "ep-tvdb") map.set(key, { kind: "tvdb-episode", id: r.episodeTvdbId });
+    /* `tmdb-*` لا يُطلب: معرّفه بيده. **وإدراجه هنا كان سيكلّف رحلةَ
+       خادمٍ لكل عملٍ بلا فائدة** — وهي مئاتُ الطلبات في مكتبةٍ كبيرة */
   }
   return { requests: [...map.values()], keys: [...map.keys()] };
 }

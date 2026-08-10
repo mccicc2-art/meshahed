@@ -241,6 +241,11 @@ const ar = {
   importLetterboxdHint:
     "من Letterboxd: الإعدادات ← Data ← «Export your data»، ثم ارفع الملف المضغوط كما نزل. نقرأ ما شاهدتَه وتقييماتك وقائمة انتظارك — والقوائم والإعجابات لا تُقرأ.",
   importLetterboxdFileHint: "صيغ مقبولة: zip أو csv. التقييم يُحوَّل من خمس نجوم إلى عشر درجات.",
+  /* Simkl (D-154) — التصدير عبر JSON مجانيٌّ لكل الأعضاء عندهم */
+  importSimklTitle: "Simkl",
+  importSimklHint:
+    "من Simkl: الإعدادات ← Import/Export ← نزّل نسخة JSON الاحتياطية (مجانية للجميع)، ثم ارفع الملف كما نزل. أعمالك تصل بمعرّفاتها فتُطابَق فوراً بلا بحثٍ بالاسم.",
+  importSimklFileHint: "صيغ مقبولة: zip أو json أو csv. يعمل مع أي تصديرٍ يحمل معرّفات TMDB.",
 
   usernameSection: "اسم المستخدم",
   usernameHint: "معرّفك الفريد داخل التطبيق. أحرف إنجليزية وأرقام و _ فقط.",
@@ -1185,6 +1190,10 @@ const en: Dict = {
   importLetterboxdHint:
     "In Letterboxd: Settings → Data → \"Export your data\", then upload the ZIP exactly as it downloaded. We read your watched films, ratings and watchlist — lists and likes are not read.",
   importLetterboxdFileHint: "Accepted: zip or csv. Ratings convert from five stars to ten points.",
+  importSimklTitle: "Simkl",
+  importSimklHint:
+    "In Simkl: Settings → Import/Export → download the JSON backup (free for everyone), then upload the file as it downloaded. Titles arrive with their IDs, so they match instantly — no name search.",
+  importSimklFileHint: "Accepted: zip, json or csv. Works with any export carrying TMDB ids.",
 
   usernameSection: "Username",
   usernameHint: "Your unique handle in the app. Latin letters, digits and _ only.",
