@@ -8,6 +8,7 @@ import {
   getMyCommunities,
   getMyCommunityInvites,
   getCommunityRoom,
+  getTitleRooms,
   getConversations,
   getUnreadShares,
   type ConvShareEvent,
@@ -230,6 +231,10 @@ export default async function PeoplePage({
   const openCommunity =
     tab === "all" && cParam ? await getCommunityRoom(cParam) : null;
 
+  /* غرف الأعمال الحيّة (D-140) — لتبويب الدليل وحده وحين لا غرفة مفتوحة:
+     نداءٌ لا يُدفع في تبويبٍ لا يعرضه */
+  const titleRooms = tab === "all" && !openCommunity ? await getTitleRooms(12) : [];
+
   // ===== الرسائل — محادثةٌ لكل شخص =====
   // ترجمة عناوين الأعمال المُشارَكة عند العرض (D-048): نجمع أحداث المشاركة
   // من كل المحادثات، نترجمها دفعةً، ثم نعيدها إلى مواضعها بمعرّفاتها
@@ -380,6 +385,7 @@ export default async function PeoplePage({
           <CommunityDirectory
             mine={myCommunities}
             invites={myInvites}
+            titleRooms={titleRooms}
             locale={locale}
           />
         )
