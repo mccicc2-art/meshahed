@@ -15,6 +15,7 @@ import {
   getMyLists,
   getListsContaining,
   getTitleCircle,
+  getMyArtFor,
 } from "@/lib/data";
 import {
   getTv,
@@ -57,7 +58,7 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
   // بيانات أول رسمة فقط في الموجة الحاسمة — الترايلر والتعليقات تُبثّ
   // لاحقاً عبر Suspense فلا تؤخّر ترويسة الصفحة وتبويب الحلقات
   const userRegion = await getWatchRegion();
-  const [tv, followState, watched, watchWhere, myLists, inLists, circle, epRatings] =
+  const [tv, followState, watched, watchWhere, myLists, inLists, circle, epRatings, myArt] =
     await Promise.all([
     getTv(tvId).catch(() => null),
     getFollowState(tvId, "tv"),
@@ -73,6 +74,8 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
        definer واحد على فهرسٍ يخدمه المفتاح الأوّليّ، والصفحة تنتظر TMDB
        على كل حال */
     getEpisodeRatings(tvId),
+    /* غلافي المختار لهذا العمل (D-131) — قراءةٌ من خريطةٍ مخبّأة لكل طلب */
+    getMyArtFor(tvId, "tv"),
   ]);
   const following = followState.following;
 
@@ -135,8 +138,10 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
   // نفس الرقم الذي تستخدمه الرئيسية والمكتبة، فلا تختلف النسبة بين الشاشات
   const airedExact = airedEpisodeCount(tv);
 
-  const backdrop = backdropUrl(tv.backdrop_path);
-  const poster = posterUrl(tv.poster_path, "w342");
+  /* غلافي المختار (D-131) يسبق غلاف TMDB — **في صفحتي أنا وحدها**
+     (ق٨). النقطة واحدة هنا فلا تتفرّق على البطاقات. */
+  const backdrop = backdropUrl(myArt?.backdrop_path ?? tv.backdrop_path);
+  const poster = posterUrl(myArt?.poster_path ?? tv.poster_path, "w342");
   const next = tv.next_episode_to_air;
 
   return (
@@ -175,6 +180,7 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
           mediaType="tv"
           posterPath={tv.poster_path}
           initialDropped={followState.dropped}
+          art={myArt}
         />
       </div>
 
