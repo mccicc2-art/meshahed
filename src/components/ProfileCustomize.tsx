@@ -7,14 +7,13 @@ import { getDict, type Locale } from "@/lib/i18n";
 import {
   DEFAULT_PROFILE_PREFS,
   PROFILE_SECTIONS,
+  profileSectionMeta,
   sanitizeProfilePrefs,
   type ProfilePrefs,
-  type ProfileSection,
 } from "@/lib/profilePrefs";
-import { type IconName } from "./Icon";
 import { Alert } from "./ui/Alert";
 import { buttonClass } from "./ui/Button";
-import { SectionOrderList, ToggleRow } from "./ui/SectionOrderList";
+import { CardCountRow, SectionOrderList, ToggleRow } from "./ui/SectionOrderList";
 
 /**
  * تخصيص البروفايل (D-129) — **توأم `HomeCustomize` لا نسخته**.
@@ -56,12 +55,13 @@ export function ProfileCustomize({
     { key: "visits", label: t.custVisits },
   ];
 
-  const sectionMeta: Record<ProfileSection, { icon: IconName; label: string }> = {
-    shows: { icon: "tv", label: t.shortShows },
-    movies: { icon: "film", label: t.shortMovies },
-    artists: { icon: "people", label: t.shortArtists },
-    lists: { icon: "list", label: t.profileListsRail },
-    ratings: { icon: "star", label: t.ratingsListTitle },
+  /* سجلٌّ واحد تقرؤه هذه الشاشة وصفحةُ البروفايل معاً (D-152) */
+  const sectionMeta = profileSectionMeta(t);
+
+  const cardLabels = {
+    compact: t.cardsCompact,
+    medium: t.cardsMedium,
+    full: t.cardsFull,
   };
 
   function set(next: ProfilePrefs) {
@@ -130,6 +130,16 @@ export function ProfileCustomize({
         >
           {t.custReset}
         </button>
+      </section>
+
+      <section className="bg-surface border border-border rounded-2xl p-3.5 sm:p-5">
+        <h2 className="text-sm font-bold mb-1">{t.custCards}</h2>
+        <p className="text-xs text-muted leading-relaxed mb-3">{t.custCardsHint}</p>
+        <CardCountRow
+          value={prefs.cards}
+          labels={cardLabels}
+          onChange={(cards) => set({ ...prefs, cards })}
+        />
       </section>
 
       {error && <Alert>{error}</Alert>}

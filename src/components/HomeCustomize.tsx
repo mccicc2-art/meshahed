@@ -18,7 +18,7 @@ import {
 import { type IconName } from "./Icon";
 import { Alert } from "./ui/Alert";
 import { buttonClass } from "./ui/Button";
-import { SectionOrderList, ToggleRow } from "./ui/SectionOrderList";
+import { CardCountRow, SectionOrderList, ToggleRow } from "./ui/SectionOrderList";
 
 /**
  * تخصيص الرئيسية.
@@ -168,6 +168,17 @@ export function HomeCustomize({
         >
           {t.custReset}
         </button>
+      </section>
+
+      {/* ===== عدد البطاقات (D-152) ===== */}
+      <section className="bg-surface border border-border rounded-2xl p-3.5 sm:p-5">
+        <h2 className="text-sm font-bold mb-1">{t.custCards}</h2>
+        <p className="text-xs text-muted leading-relaxed mb-3">{t.custCardsHint}</p>
+        <CardCountRow
+          value={prefs.cards}
+          labels={{ compact: t.cardsCompact, medium: t.cardsMedium, full: t.cardsFull }}
+          onChange={(cards) => set({ ...prefs, cards })}
+        />
       </section>
 
       {error && (
