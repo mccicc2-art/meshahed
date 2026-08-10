@@ -2968,3 +2968,43 @@ export async function setTitleArt(input: {
   revalidatePath("/library");
   revalidatePath(`/${type === "tv" ? "show" : "movie"}/${id}`);
 }
+
+// ============================================================
+//  المفضّلات (favorites.sql، D-130)
+// ============================================================
+
+/**
+ * قلبُ عملٍ في «مفضّلاتي» — تُرجع الحالة **بعد** الفعل.
+ *
+ * لا جدول جديد: القائمة صفٌّ في `user_lists` بعلامة `kind='favorites'`،
+ * فترث المشاركة والحفظ والترتيب والسحب من محرّك القوائم مجاناً (ب٣).
+ * والاسم يُمرَّر بلغة الواجهة لأن القائمة تُولد عند أوّل قلب، ومن يقلب
+ * بالعربية لا يريد قائمةً اسمها «Favorites».
+ */
+export async function toggleFavorite(input: {
+  tmdbId: number;
+  mediaType: "tv" | "movie";
+  title: string;
+  posterPath: string | null;
+  listName: string;
+}): Promise<boolean> {
+  const id = intId(input.tmdbId);
+  const type = asMediaType(input.mediaType);
+  const { supabase } = await requireUser("fav", 30, 60_000);
+  const { data, error } = await supabase.rpc("toggle_favorite", {
+    p_tmdb: id,
+    p_type: type,
+    p_title: String(input.title ?? "").slice(0, 200),
+    p_poster: safeImagePath(input.posterPath),
+    p_list_name: String(input.listName ?? "").slice(0, 60),
+  });
+  if (error) {
+    if ((error as { code?: string }).code === "42883") {
+      throw new Error("المفضّلات غير مفعّلة بعد / Favorites are not enabled yet");
+    }
+    fail(error);
+  }
+  revalidatePath("/lists");
+  revalidatePath(`/${type === "tv" ? "show" : "movie"}/${id}`);
+  return !!data;
+}

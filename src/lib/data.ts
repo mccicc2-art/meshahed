@@ -228,6 +228,28 @@ export const getMyTitleArt = cache(async (): Promise<Map<string, TitleArt>> => {
 });
 
 /**
+ * مفضّلاتي — مجموعةُ مفاتيح (D-130).
+ *
+ * نداءٌ واحد بدل سؤالٍ لكل عمل، ومخبّأٌ للطلب فتقرؤه صفحةٌ من موضعين
+ * بلا رحلةٍ ثانية. وسقوطُه يعيد مجموعةً فارغة: قلبٌ صامتٌ أهون من صفحةٍ
+ * لا تُرسم.
+ */
+export const getMyFavorites = cache(async (): Promise<Set<string>> => {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("my_favorites");
+    if (error || !data) return new Set();
+    return new Set(
+      (data as { tmdb_id: number; media_type: string }[]).map((r) =>
+        artKey(r.media_type, r.tmdb_id),
+      ),
+    );
+  } catch {
+    return new Set();
+  }
+});
+
+/**
  * أغلفة صاحب بروفايلٍ أزوره (D-131).
  *
  * بروفايل الشخص من سطوحه (ق٨) فما اختاره يظهر فيه لزائره — لكن عبر

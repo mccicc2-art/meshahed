@@ -398,6 +398,9 @@ const ar = {
   artUseDefault: "أعِد الأصل",
   artSaved: "حُفظ الغلاف",
   artReset: "رجع الغلاف الأصلي",
+  // المفضّلات (D-130) — قائمةٌ مثبّتة لا جدولٌ جديد
+  favAria: "أضِفه إلى مفضّلاتي",
+  favListName: "المفضّلة",
   followersLabel: "متابِع",
   profileWatchlist: "واتش ليست",
   followingLabel: "يتابع",
@@ -1297,6 +1300,8 @@ const en: Dict = {
   artUseDefault: "Back to default",
   artSaved: "Artwork saved",
   artReset: "Back to the original artwork",
+  favAria: "Add to my favourites",
+  favListName: "Favourites",
   followersLabel: "followers",
   profileWatchlist: "Watchlist",
   followingLabel: "following",
