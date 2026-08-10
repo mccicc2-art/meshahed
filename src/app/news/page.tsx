@@ -651,7 +651,8 @@ async function CuratedRails({
           الشخصيّ حين يكتمل — والهيكل يحجز ارتفاعه (D-046) */}
       {!active && (
         <Suspense fallback={<RailSkeleton count={6} />}>
-          <PersonalRails locale={locale} t={t} />
+          {/* الجهة تُمرَّر: التبويب وعدٌ، والصفّ الذي لا يعرف تبويبه يخلفه */}
+          <PersonalRails locale={locale} t={t} type={type} />
         </Suspense>
       )}
 
@@ -730,18 +731,38 @@ async function CuratedRails({
  * الثلاثمئة D-064 + with_people) وأكثره خصوصيةً فأقلّه استفادةً من خبيئة
  * fetch المشتركة — ففُصلا عن المسار الحرج بدل أن يرهنا رسم الصفحة كلّها.
  */
-async function PersonalRails({ locale, t }: { locale: Locale; t: T }) {
+async function PersonalRails({
+  locale,
+  t,
+  type,
+}: {
+  locale: Locale;
+  t: T;
+  /** جهة التبويب — أفلام أو مسلسلات (D-141) */
+  type: BrowseQuery["type"];
+}) {
+  const wantMovies = type !== "tv";
   const [pool, artistWorks] = await Promise.all([
     getSuggestions(300, locale).catch(() => []),
-    getFollowedArtists(20)
-      .then((a) => (a.length ? worksByPeople(a.map((x) => x.person_id), 20) : []))
-      .catch(() => [] as SearchResult[]),
+    /* «من فنّانيك» أفلامٌ فقط — TMDB لا يدعم `with_people` في
+       `/discover/tv`. فصفٌّ من الأفلام تحت تبويب «مسلسلات» هو الخطأ
+       نفسه مقلوباً، والصمتُ أصدق من صفٍّ في غير بابه */
+    wantMovies
+      ? getFollowedArtists(20)
+          .then((a) => (a.length ? worksByPeople(a.map((x) => x.person_id), 20) : []))
+          .catch(() => [] as SearchResult[])
+      : Promise.resolve([] as SearchResult[]),
   ]);
 
   /* قرعةُ خادمٍ عند كل طلب (D-073): البِركة مخبّأة ساعةً فكانت العشرة
      الأولى تتجمّد معها — فتح «اكتشف» مرتين يعرض الوجوه نفسها. الخلطُ هنا
      يجعل كل فتحٍ عيّنةً مختلفة، وزرّ التحديث يبقى للسحب داخل الزيارة */
-  const suggested = [...pool];
+  /* التبويب فلترٌ لا زينة (بلاغ أحمد ١٠ أغسطس: «بيكد فور يو فالافلام
+     قاعد يقترح مسلسلات»). البِركة ثلاثمئة مختلطة، والصفّ يعرض عشراً —
+     فالتصفية هنا لا تُفقره، والعشرُ الباقيات تحت العنوان الذي وعد بها. */
+  const suggested = pool.filter((s) =>
+    wantMovies ? s.result.media_type === "movie" : s.result.media_type === "tv",
+  );
   for (let i = suggested.length - 1; i > 0; i--) {
     // العشوائية مقصودة: قرعةٌ لكل طلبٍ في مكوّن خادمٍ لا-متزامن يُنفَّذ مرةً واحدة
     // eslint-disable-next-line react-hooks/purity -- ليست دالة عرضٍ تُعاد
