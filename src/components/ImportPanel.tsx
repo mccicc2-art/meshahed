@@ -415,7 +415,11 @@ export function ImportPanel({
         <h3 className="text-sm font-bold mb-1" dir="ltr">
           {t.importTraktTitle}
         </h3>
-        <p className="text-xs text-muted leading-relaxed mb-3">{t.importTraktHint}</p>
+        {/* D-155: الوصفُ يتبع الحال. حين لا مفاتيح، وعدُ «نجلب مشاهداتك
+            مباشرةً» كذبٌ يقرؤه المستخدم فوق سطرٍ يقول إنه غير متاح. */}
+        <p className="text-xs text-muted leading-relaxed mb-3">
+          {traktReady ? t.importTraktHint : t.importTraktWhy}
+        </p>
 
         {traktReady ? (
           /* رابطٌ لا زرّ فعل: الوجهة خارجية ويجب أن تُرى في شريط العنوان
@@ -425,7 +429,12 @@ export function ImportPanel({
             {t.importTraktConnect}
           </a>
         ) : (
-          <Alert tone="info">{t.importTraktOff}</Alert>
+          <>
+            <Alert tone="info">{t.importTraktOff}</Alert>
+            {/* البابُ المغلق يُشار منه إلى بابٍ يفتح: قارئ D-154 يقرأ تصدير
+                تراكت نفسه إن حمل `tmdb` — بلا سطرٍ إضافي في الشيفرة. */}
+            <p className="text-xs text-muted leading-relaxed mt-3">{t.importTraktAlt}</p>
+          </>
         )}
 
         {traktMsg && (

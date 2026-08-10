@@ -152,8 +152,8 @@ export function LandingContent({ locale }: { locale: Locale }) {
         </h2>
         <p className="mt-3 text-sm sm:text-[15px] text-muted leading-relaxed">
           {ar
-            ? "لا تبدأ من الصفر: صدّر سجلّ مشاهدتك من TV Time أو Trakt وارفع الملف في إعدادات Loopz — تُطابَق أعمالك مع الكتالوج وتنتقل مشاهداتك دفعةً واحدة، بحلقاتها وتواريخها."
-            : "You do not start from zero: export your watch history from TV Time or Trakt, upload the file in Loopz settings, and your titles are matched against the catalogue — episodes, dates and all — in one go."}
+            ? "لا تبدأ من الصفر: صدّر سجلّ مشاهدتك من Letterboxd أو Simkl أو TV Time وارفع الملف في إعدادات Loopz — تُطابَق أعمالك مع الكتالوج وتنتقل مشاهداتك دفعةً واحدة، بحلقاتها وتواريخها."
+            : "You do not start from zero: export your watch history from Letterboxd, Simkl or TV Time, upload the file in Loopz settings, and your titles are matched against the catalogue — episodes, dates and all — in one go."}
         </p>
       </div>
 
