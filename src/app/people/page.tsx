@@ -17,7 +17,7 @@ import {
   type PersonLite,
 } from "@/lib/data";
 import { myMutualFollows } from "@/lib/actions";
-import { getT, getHiddenCommunityTabs } from "@/lib/locale";
+import { getT, getTabPrefs } from "@/lib/locale"; import { applyTabPrefs, defaultTab } from "@/lib/tabPrefs";
 import type { Dict } from "@/lib/i18n";
 import { localizeRows, localizeTitleRooms } from "@/lib/localize";
 import { timeAgo } from "@/lib/when";
@@ -204,7 +204,7 @@ export default async function PeoplePage({
   if (!user) redirect("/login");
 
   const { locale, t } = await getT();
-  const hiddenTabs = await getHiddenCommunityTabs();
+  const tabPrefs = await getTabPrefs("community");
 
   const {
     tab: tabParam,
@@ -213,7 +213,7 @@ export default async function PeoplePage({
     c: cParam,
     k: kParam,
   } = await searchParams;
-  const tab = asTab(tabParam);
+  const tab = tabParam ? asTab(tabParam) : asTab(defaultTab(tabPrefs, "mine"));
   /* مرشِّح نوع الحدث (طلب أحمد 9 Aug: «احتاج فلتر التعليقات وفلتر
      التقييمات»). ثلاثة أقسام **متنافية** كي لا يتداخل مرشِّحان:
      «التقييمات» = رقمٌ بلا نصّ · «المراجعات» = رأيٌ مكتوب. والمشاهدات
@@ -384,7 +384,7 @@ export default async function PeoplePage({
   /* التبويبات المخفيّة (D-177) — من الكوكي على الخادم، فلا يومض تبويبٌ
      ثم يختفي. **والتبويب المفتوح لا يُخفى من نفسه**: من أخفى تبويباً وهو
      واقفٌ فيه يبقى يراه حتى يغادره، وإلا اختفت الصفحة تحت قدميه. */
-  const visibleTabs = tabs.filter((x) => x.key === tab || !hiddenTabs.includes(x.key));
+  const visibleTabs = applyTabPrefs(tabs, tabPrefs, tab);
 
   return (
     <div className="space-y-5">
@@ -408,7 +408,7 @@ export default async function PeoplePage({
         action={
           <CommunityTools
             locale={locale}
-            hidden={hiddenTabs}
+            prefs={tabPrefs}
             labels={Object.fromEntries(tabs.map((x) => [x.key, x.label]))}
           />
         }
