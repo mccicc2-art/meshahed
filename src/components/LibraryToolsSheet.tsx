@@ -5,6 +5,9 @@ import { Sheet, SheetHeader } from "./ui/Sheet";
 import { segmentedItem, segmentedTrackFull, sheetScroll } from "./ui/controls";
 import { Icon } from "./Icon";
 import { NewListForm } from "./NewListForm";
+/* القسم الرابع في هذه الورقة — نفسُ المكوّن في اكتشف والمجتمع (D-179) */
+import { TabsPrefs } from "./TabsPrefs";
+import type { TabPref } from "@/lib/tabPrefs";
 
 export type LibrarySort = "smart" | "title" | "progress";
 
@@ -40,6 +43,8 @@ export function LibraryToolsSheet({
   onQ,
   /** هل لهذا التبويب ترتيبٌ وبحث؟ (الأعمال نعم، الفنانون والقوائم لا) */
   showFilters,
+  tabPrefs,
+  tabLabels,
 }: {
   locale: Locale;
   onClose: () => void;
@@ -48,6 +53,9 @@ export function LibraryToolsSheet({
   q: string;
   onQ: (v: string) => void;
   showFilters: boolean;
+  /** القسم الرابع: ترتيبُ تبويبات المكتبة وإظهارها (D-179) */
+  tabPrefs: TabPref[];
+  tabLabels: Record<string, string>;
 }) {
   const t = getDict(locale);
 
@@ -135,6 +143,20 @@ export function LibraryToolsSheet({
             {t.listNewGroup}
           </span>
           <NewListForm locale={locale} onCreated={onClose} />
+        </div>
+
+        {/* القسم الرابع — نفس `TabsPrefs` التي في اكتشف والمجتمع.
+            و`-mx-4` يردّ حشو الجسم: صفوفُ القسم تحمل حشوها بنفسها
+            كصفوف أوراق «المزيد»، فتصطفّ في الأوراق الأربع عند البكسل
+            نفسه بدل أن تُزاح في واحدةٍ منها */}
+        <div className="-mx-4 pt-1 border-t border-[color:var(--divider)]">
+          <TabsPrefs
+            locale={locale}
+            surface="library"
+            prefs={tabPrefs}
+            labels={tabLabels}
+            title={t.tabsPrefsGroup}
+          />
         </div>
       </div>
     </Sheet>
