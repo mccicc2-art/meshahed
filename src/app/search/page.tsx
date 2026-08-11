@@ -2,8 +2,8 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getUser } from "@/lib/data";
-import { listWatchProviders, searchMulti, searchPeople, titleOf, yearOf } from "@/lib/tmdb";
-import { getT, getWatchRegion } from "@/lib/locale";
+import { searchMulti, searchPeople, titleOf, yearOf } from "@/lib/tmdb";
+import { getT } from "@/lib/locale";
 import { PosterCard } from "@/components/PosterCard";
 import { PosterGrid } from "@/components/PosterGrid";
 import { PosterRail, RailItem } from "@/components/PosterRail";
@@ -13,7 +13,6 @@ import { matchBrowseIntent } from "@/lib/intent";
 import { browseHref } from "@/lib/browse";
 import { roleName, type Locale } from "@/lib/i18n";
 import { SearchBox } from "@/components/SearchBox";
-import { DiscoverFilterEntry } from "@/components/DiscoverFilterEntry";
 import { Alert } from "@/components/ui/Alert";
 
 export default async function SearchPage({
@@ -32,16 +31,11 @@ export default async function SearchPage({
   // الآن الصندوق يرسم فوراً والنتائج تلحق بهيكل شبكة.
   return (
     <div>
-      <div className="max-w-xl mx-auto mb-8 space-y-3">
+      {/* «فلتر الاكتشاف» غادر هذه الصفحة (D-177) — رجع أحمد عن طلب D-174
+          بنصّه، والفلترُ عاد إلى رأس اكتشف رمزاً بلا كلمة. */}
+      <div className="max-w-xl mx-auto mb-8">
         <Suspense fallback={null}>
           <SearchBox big locale={locale} />
-        </Suspense>
-        {/* «فلتر الاكتشاف» تحت الصندوق لا فوقه (D-174): البحثُ بالكتابة هو
-            الفعلُ الأوّل في هذه الصفحة، والفلترُ مخرجُ من لم يعرف ماذا
-            يكتب. وخلف `Suspense` بلا بديل: يحتاج قائمةَ المنصّات من الشبكة،
-            **وصندوقُ البحث لا ينتظرها** — نفس حارس الصفحة اليوم. */}
-        <Suspense fallback={null}>
-          <DiscoverFilterGate />
         </Suspense>
       </div>
 
@@ -61,22 +55,6 @@ export default async function SearchPage({
       </Suspense>
     </div>
   );
-}
-
-/**
- * بابُ ورقة الفلاتر — يجلب ما تحتاجه الورقة وحدَه (D-174).
- *
- * مكوّنٌ خادميٌّ صغيرٌ خلف `Suspense`: طلبُ قائمة المنصّات لا يجوز أن يؤخّر
- * رسمَ صندوق البحث — وهو نفسُ السبب الذي وضع النتائج خلف `Suspense` أصلاً.
- * وفشلُ الجلب يُخفي محورَ المنصّات داخل الورقة ولا يُسقط الصفحة.
- */
-async function DiscoverFilterGate() {
-  const { locale } = await getT();
-  const [providers, region] = await Promise.all([
-    listWatchProviders("movie").catch(() => [] as { id: number; name: string }[]),
-    getWatchRegion(),
-  ]);
-  return <DiscoverFilterEntry locale={locale} providers={providers} region={region} />;
 }
 
 /** نتائج البحث — تجلب بياناتها بنفسها فلا تحجب رسم الصندوق */
