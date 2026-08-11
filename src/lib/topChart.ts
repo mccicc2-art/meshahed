@@ -73,6 +73,13 @@ export async function topChartRows(
   for (const r of ranked) {
     if (out.length >= want) break;
     const mt = r.media_type === "tv" ? "tv" : "movie";
+    /* **الذيلُ يخضع للجهة كما تخضع لها القائمة** — وإلا كذب الرفّ.
+       رُصد حيّاً: «أفضل ٥٠ فيلم أنمي» طلب جهةَ الأفلام من `imdb_chart`
+       فعادت صفراً (البِركة لم تُملأ بالعلَم بعد)، **فملأ الذيلُ الرفَّ
+       بمسلسلاتٍ تحت عنوان «أفلام»** — «هجوم العمالقة» أوّلاً. والحارس
+       في المستدعي (`r.length > 0`) لم يرَ شيئاً لأن الرفّ لم يكن فارغاً،
+       **بل ممتلئاً بالخطأ** — وهو أسوأ من الفراغ لأنه لا يُرى. */
+    if (media && mt !== media) continue;
     const k = `${mt}-${r.id}`;
     if (seen.has(k)) continue;
     seen.add(k);
