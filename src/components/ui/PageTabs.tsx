@@ -69,9 +69,18 @@ export function PageTabs({
 }) {
   const inner = items.map((tb) => {
     const on = tb.key === active;
+    /* **`flex-1 basis-auto` ولا انكماش — بدل `basis-0` المتساوي.**
+       كان كلُّ تبويبٍ رُبعَ الصفّ بالضبط مهما طال اسمه، فاسمٌ لا يسع
+       رُبعاً **يُقصّ** — وهو بلاغ أحمد بلقطة: «اسم الكومينتي فوق ما هو
+       ظاهر» (Comm…). والقصُّ أسوأ ما يقع لتبويب: **بابٌ لا يُقرأ اسمه
+       ليس باباً**، وتصغيرُ الخطّ ممنوع (`02`).
+       الآن: العرضُ يبدأ من عرض النصّ ثم **ينمو** ليملأ الصفّ — فأربعةُ
+       أسماءٍ قصيرة تتوزّع بالتساوي كما كانت تماماً — **ولا ينكمش**
+       (`shrink-0`)، فإن طال مجموعُها مرّر الصفُّ نفسه أفقياً بدل أن
+       يبتلع الحروف. وهو ما تفعله كلُّ التطبيقات على الجوال. */
     const cls = segmentedItem(
       on,
-      "flex-1 basis-0 min-w-0 flex items-center justify-center gap-1.5 px-2 pt-2 pb-3 text-[13px]",
+      "flex-1 shrink-0 flex items-center justify-center gap-1.5 px-3 pt-2 pb-3 text-[13px] whitespace-nowrap",
       false,
     );
     const body = (
@@ -83,7 +92,7 @@ export function PageTabs({
             className={`shrink-0 hidden sm:block transition-colors ${on ? "text-accent" : ""}`}
           />
         )}
-        <span className="truncate">{tb.label}</span>
+        <span>{tb.label}</span>
         {typeof tb.count === "number" && (
           <span
             className={`shrink-0 tabular-nums text-[12px] transition-colors ${
@@ -146,12 +155,22 @@ export function PageTabs({
       className={`sticky top-[var(--sticky-top)] z-20 -mt-6 -mx-4 px-4 pt-1 bg-[color:var(--background)]${className ? ` ${className}` : ""}`}
     >
       <div className="-mx-4 px-4 flex items-stretch gap-2 border-b border-[color:var(--divider)]">
+        {/* صمّامُ الأمان: يُمرَّر أفقياً حين لا يسع الصفُّ أسماءه — وبلا
+            شريط تمرير مرئيّ (نفس وصفة `chipRow` و`RailScroll`، فلا عائلةَ
+            تمريرٍ ثانية). ولا `-mx-4 px-4` هنا: الأبُ يحملها أصلاً */}
         {asNav ? (
-          <nav aria-label={ariaLabel} className="min-w-0 flex-1 flex items-stretch">
+          <nav
+            aria-label={ariaLabel}
+            className="min-w-0 flex-1 flex items-stretch overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
             {inner}
           </nav>
         ) : (
-          <div role="tablist" aria-label={ariaLabel} className="min-w-0 flex-1 flex items-stretch">
+          <div
+            role="tablist"
+            aria-label={ariaLabel}
+            className="min-w-0 flex-1 flex items-stretch overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
             {inner}
           </div>
         )}
