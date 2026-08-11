@@ -20,6 +20,7 @@ import {
   airingTv,
   topTenThisWeek,
   topTenAnimeThisWeek,
+  topTenAnimeMoviesThisWeek,
   topTenGenreThisWeek,
   upcomingByGenre,
   topByFilter,
@@ -38,7 +39,7 @@ import {
   type DiscoverFilter,
 } from "@/lib/tmdb";
 import { ScrollMemory } from "@/components/ScrollMemory";
-import { topChartRail } from "@/lib/topChart";
+import { animeMovieRail, topChartRail } from "@/lib/topChart";
 import { attachImdbRatings, withImdbRatings } from "@/lib/omdb";
 import { getT, getWatchRegion } from "@/lib/locale";
 import { regionName } from "@/lib/region";
@@ -98,6 +99,8 @@ export default async function NewsPage({
     wm?: string;
     ws?: string;
     wa?: string;
+    /** نافذة صفّ «أفضل ١٠ أفلام أنمي» (D-169) */
+    wam?: string;
     g?: string;
     sort?: string;
     lang?: string;
@@ -121,13 +124,20 @@ export default async function NewsPage({
   const tab = parseDiscoverTab(sp.tab, sp.type);
   const browse = parseBrowse({ ...sp, type: tab === "shows" ? "tv" : "movie" });
   /* نوافذ صفوف «أفضل ١٠» — لكل صفٍّ نافذته (D-099): أفلام/مسلسلات/أنمي */
-  const rails = { m: parseRailWin(sp.wm), s: parseRailWin(sp.ws), a: parseRailWin(sp.wa) };
+  const rails = {
+    m: parseRailWin(sp.wm),
+    s: parseRailWin(sp.ws),
+    a: parseRailWin(sp.wa),
+    am: parseRailWin(sp.wam),
+  };
   /* قائمة المنصّات تُجلب على الخادم وتُمرَّر للورقة: طلبٌ واحد مخبَّأ ساعةً
      في طبقة fetch، ورأس الصفحة يبقى يرسم فوراً لأن الصفوف وحدها خلف
      Suspense. وفشلُ الجلب يُخفي المحور بدل أن يعرض خانةً فارغة.
      وتبويب «القوائم» لا يطلبها أصلاً — ورقة الفلاتر لا تُفتح فيه */
   const [providers, region] = await Promise.all([
-    tab !== "lists"
+    /* تبويبا الأعمال وحدهما يفتحان ورقة الفلاتر — القوائم والأنمي لا
+       يطلبان قائمة المنصّات أصلاً (D-169) */
+    tab === "movies" || tab === "shows"
       ? listWatchProviders(browse.type === "tv" ? "tv" : "movie")
       : Promise.resolve([] as { id: number; name: string }[]),
     getWatchRegion(),
@@ -170,11 +180,28 @@ export default async function NewsPage({
 
       {/* تلميح لمرة واحدة (م٣): القوة المدفونة خلف زر Filters ورقائق
           النوافذ تُقال مرةً ثم تصمت للأبد */}
-      {tab !== "lists" && (
+      {(tab === "movies" || tab === "shows") && (
         <OneTimeHint id="discover-power" text={t.hintDiscover} closeLabel={t.closeLabel} />
       )}
 
-      {tab === "lists" ? (
+      {tab === "anime" ? (
+        /* ===== تبويب الأنمي (D-169، طلب أحمد) =====
+            ستّة صفوف بمعانٍ ثابتة: الشخصيّ ← ما يُعرض الآن ← الأفضل
+            عشراً (فيلماً ومسلسلاً) ← الأفضل خمسين (فيلماً ومسلسلاً).
+            **ولا فلتر عليه**: صفوفه ليست مساحةَ تصفّح بل ستّة أسئلة
+            محسومة، فلا محورَ يُصفّى (نفس منطق D-075). */
+        <Suspense
+          fallback={
+            <div className="space-y-8" aria-hidden>
+              <RailSkeleton count={6} />
+              <RailSkeleton count={6} />
+              <RailSkeleton count={6} />
+            </div>
+          }
+        >
+          <AnimeRails locale={locale} t={t} rails={rails} />
+        </Suspense>
+      ) : tab === "lists" ? (
         /* ===== تبويب «القوائم» — صفوفٌ كصفوف الأعمال (D-084) =====
             سقط البحث والرقائق (طلب المالك: «نفس التقسيم والتناسق»):
             التبويب صفوفٌ تُقرأ بالتمرير كتبويب الأعمال تماماً — عالمٌ
@@ -422,7 +449,7 @@ async function CuratedRails({
   t: T;
   browse: BrowseQuery;
   /** نوافذ صفوف «أفضل ١٠» — أسبوع/شهر/سنة لكل صفٍّ (D-099) */
-  rails: { m: RailWin; s: RailWin; a: RailWin };
+  rails: { m: RailWin; s: RailWin; a: RailWin; am: RailWin };
   /** بلد المشاهدة — يُقاس عليه فلتر المنصّات */
   region: string;
 }) {
@@ -739,15 +766,131 @@ async function CuratedRails({
  * الثلاثمئة D-064 + with_people) وأكثره خصوصيةً فأقلّه استفادةً من خبيئة
  * fetch المشتركة — ففُصلا عن المسار الحرج بدل أن يرهنا رسم الصفحة كلّها.
  */
+/**
+ * هل هذا الصفُّ أنمي؟ — من حقلَي الصفّ نفسه بلا نداءٍ ثانٍ.
+ *
+ * `isAnime` في `tmdb.ts` تقرأ `genres` و`origin_country` وهما في
+ * **التفاصيل** لا في نتائج البحث. وصفوف `/discover` و`/now_playing` تحمل
+ * `genre_ids` و`original_language` — نفس المعنى بحقلين آخرين، فلا يُجلب
+ * لكل بطاقةٍ تفصيلٌ كامل لتُصنَّف.
+ */
+const ANIMATION_GENRE_ID = 16;
+function looksAnime(r: SearchResult): boolean {
+  return (r.genre_ids ?? []).includes(ANIMATION_GENRE_ID) && r.original_language === "ja";
+}
+
+/**
+ * تبويب الأنمي — ستّة صفوف (D-169، طلب أحمد).
+ *
+ * **الجديد فيه ليس التبويب بل جهةُ الأفلام:** «أفضل ١٠ أنمي» و«أفضل ٥٠
+ * أنمي» كانا موجودَين منذ D-099/D-164 لكنّهما **مسلسلاتٌ حصراً** — لا
+ * لأنه قرار، بل لأن `is_anime` في `imdb_pool` يشترط `media_type='tv'`.
+ * فـ«روح الربيع» و«اسمك» و«أكيرا» لم يكن لها صفٌّ في التطبيق كلّه.
+ *
+ * **وصفُّ الأفلام يُقال ضعفُه:** بِركته من `/discover` بكلمة الأنمي لا من
+ * ملفّات IMDb (انظر `animeMovieRail`). أضعفُ لا مكسور، والحلُّ النهائيّ
+ * دَينٌ مُعلَن.
+ */
+async function AnimeRails({
+  locale,
+  t,
+  rails,
+}: {
+  locale: Locale;
+  t: T;
+  rails: { m: RailWin; s: RailWin; a: RailWin; am: RailWin };
+}) {
+  const y = new Date().getUTCFullYear();
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const back30 = new Date();
+  back30.setUTCDate(back30.getUTCDate() - 30);
+  const monthFrom = back30.toISOString().slice(0, 10);
+  const winRange = (w: RailWin) =>
+    w === "week"
+      ? undefined
+      : { from: w === "month" ? monthFrom : `${y}-01-01`, to: todayStr };
+
+  const [topMovies, topSeries, cinemas, top50Movies, top50Series] = await Promise.all([
+    topTenAnimeMoviesThisWeek(10, winRange(rails.am))
+      .then(withImdbRatings)
+      .catch(() => [] as SearchResult[]),
+    topTenAnimeThisWeek(10, winRange(rails.a))
+      .then(withImdbRatings)
+      .catch(() => [] as SearchResult[]),
+    /* «في السينما» يعود بالمنطقة كاملةً ثم يُصفّى هنا: TMDB لا يقبل
+       تصنيفاً ولا لغةً على `/now_playing`، والصفّ عشرون عملاً لا أكثر —
+       فالتصفية على النتائج أرخص من طلبٍ ثانٍ (نفس منطق `fitsCinema`). */
+    nowPlayingMovies()
+      .then(async (c) => {
+        if (!c) return null;
+        const only = c.results.filter(looksAnime);
+        return only.length ? { region: c.region, results: await attachImdbRatings(only) } : null;
+      })
+      .catch(() => null),
+    animeMovieRail(50, locale).catch(() => [] as SearchResult[]),
+    topChartRail("anime", 50, locale).catch(() => [] as SearchResult[]),
+  ]);
+
+  return (
+    <div className="space-y-8">
+      {/* الشخصيّ أوّلاً كما في تبويبَي الأعمال، وخلف Suspense خاصّته
+          (D-071): بِركة المقترحات أبطأ طلبٍ في الصفحة، فلا تُرهن به
+          الصفوف الخمسة الباقية */}
+      <Suspense fallback={<RailSkeleton count={6} />}>
+        <PersonalRails locale={locale} t={t} type="movie" anime />
+      </Suspense>
+
+      {cinemas && cinemas.results.length > 0 && (
+        <RankedRail
+          title={t.animeInCinemas}
+          icon="film"
+          items={cinemas.results}
+          note={t.inCinemasRegion(regionName(cinemas.region, locale === "en" ? "en" : "ar"))}
+          ranked={false}
+        />
+      )}
+
+      {(topMovies.length > 0 || rails.am !== "week") && (
+        <RankedRail
+          title={t.top10AnimeMovies}
+          icon="film"
+          items={topMovies}
+          control={<RailWindowChips param="wam" value={rails.am} locale={locale} />}
+          emptyText={t.railWinEmpty}
+        />
+      )}
+      {(topSeries.length > 0 || rails.a !== "week") && (
+        <RankedRail
+          title={t.top10AnimeSeries}
+          icon="sparkle-star"
+          items={topSeries}
+          control={<RailWindowChips param="wa" value={rails.a} locale={locale} />}
+          emptyText={t.railWinEmpty}
+        />
+      )}
+
+      {top50Movies.length > 0 && (
+        <RankedRail title={t.top50AnimeMovies} icon="film" items={top50Movies} />
+      )}
+      {top50Series.length > 0 && (
+        <RankedRail title={t.top50AnimeSeries} icon="sparkle-star" items={top50Series} />
+      )}
+    </div>
+  );
+}
+
 async function PersonalRails({
   locale,
   t,
   type,
+  anime = false,
 }: {
   locale: Locale;
   t: T;
   /** جهة التبويب — أفلام أو مسلسلات (D-141) */
   type: BrowseQuery["type"];
+  /** تبويب الأنمي (D-169): الفلترة بالأنمي لا بالجهة، وبلا صفّ فنّانين */
+  anime?: boolean;
 }) {
   const wantMovies = type !== "tv";
   const [pool, artistWorks] = await Promise.all([
@@ -755,7 +898,9 @@ async function PersonalRails({
     /* «من فنّانيك» أفلامٌ فقط — TMDB لا يدعم `with_people` في
        `/discover/tv`. فصفٌّ من الأفلام تحت تبويب «مسلسلات» هو الخطأ
        نفسه مقلوباً، والصمتُ أصدق من صفٍّ في غير بابه */
-    wantMovies
+    /* ولا «من فنّانيك» في تبويب الأنمي: الصفّ أفلامٌ لممثّلين تتابعهم
+       (D-062)، ووضعُه تحت عنوان أنمي وعدٌ يُخلَف (D-141) */
+    wantMovies && !anime
       ? getFollowedArtists(20)
           .then((a) => (a.length ? worksByPeople(a.map((x) => x.person_id), 20) : []))
           .catch(() => [] as SearchResult[])
@@ -769,7 +914,11 @@ async function PersonalRails({
      قاعد يقترح مسلسلات»). البِركة ثلاثمئة مختلطة، والصفّ يعرض عشراً —
      فالتصفية هنا لا تُفقره، والعشرُ الباقيات تحت العنوان الذي وعد بها. */
   const suggested = pool.filter((s) =>
-    wantMovies ? s.result.media_type === "movie" : s.result.media_type === "tv",
+    anime
+      ? looksAnime(s.result)
+      : wantMovies
+        ? s.result.media_type === "movie"
+        : s.result.media_type === "tv",
   );
   for (let i = suggested.length - 1; i > 0; i--) {
     // العشوائية مقصودة: قرعةٌ لكل طلبٍ في مكوّن خادمٍ لا-متزامن يُنفَّذ مرةً واحدة
