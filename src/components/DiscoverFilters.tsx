@@ -24,7 +24,7 @@ import { Icon } from "./Icon";
 import { FilterIconButton } from "./ui/FilterIconButton";
 import { ListsFilters, type ListsFiltersProps } from "./ListsFilters";
 import { DiscoverFilterSheet, type FilterDraft } from "./DiscoverFilterSheet";
-import { PageTabs } from "./ui/PageTabs";
+import { PageTabs } from "./ui/PageTabs"; import { applyTabPrefs, tabPrefsTouched, type TabPref } from "@/lib/tabPrefs";
 
 /**
  * رأس «اكتشف».
@@ -69,9 +69,9 @@ export function DiscoverFilters({
   era,
   rate,
   award,
-  listsFilters,
+  listsFilters, tabPrefs,
 }: {
-  locale: Locale;
+  locale: Locale; /** ترتيبُ تبويبات اكتشف وإظهارها — من الكوكي على الخادم (D-014) */ tabPrefs: TabPref[];
   /** فلاتر تبويب القوائم — يرسم زرّها في خانة زرّ الأعمال نفسها
       (طلب أحمد: «مكان الفلتر مثل الأفلام والمسلسلات») */
   listsFilters?: ListsFiltersProps;
@@ -182,25 +182,29 @@ export function DiscoverFilters({
 
   /* ثلاثة تبويبات (طلب أحمد 9 Aug): أفلام · مسلسلات · القوائم —
      الجهة صعدت من ورقة الفلاتر إلى الرأس فخفّت كل صفحةٍ للنصف */
-  const tabs: { value: DiscoverTab; label: string }[] = [
-    { value: "movies", label: t.discoverTabMovies },
-    { value: "shows", label: t.discoverTabShows },
+  const tabs: { key: DiscoverTab; label: string }[] = [
+    { key: "shows", label: t.discoverTabShows },
+    { key: "movies", label: t.discoverTabMovies },
     /* الأنمي تبويبٌ رابع لا صفّان يتيمان (D-169، طلب أحمد): كان صفّاه
        يعيشان داخل تبويب المسلسلات، **وأفلامه بلا صفٍّ أصلاً**. */
-    { value: "anime", label: t.discoverTabAnime },
-    { value: "lists", label: t.discoverTabLists },
+    { key: "anime", label: t.discoverTabAnime },
+    { key: "lists", label: t.discoverTabLists },
   ];
 
-  /* ما اختير، مكتوباً: كل رقاقةٍ تحمل اسم الخيار لا اسم المحور — «تركي»
-     أوضح من «اللغة: تركي» في مساحةٍ ضيّقة، والمحور يُفهم من القيمة */
-  const chips: { key: string; label: string; clear: () => void }[] = [];
-  /* رقاقة الجهة سقطت: الجهة صارت التبويب المضيء نفسه — رقاقةٌ تكرّره
-     كانت ستقول الشيء مرتين */
-  const genreObj = BROWSE_GENRES.find((g) => g.slug === genre);
-  if (genreObj) {
-    chips.push({
-      key: "genre",
-      label: browseGenreName(genreObj, loc),
+  /* الترتيب والإخفاء من الكوكي — والتبويب المفتوح لا يُخفى من نفسه */
+  const shownTabs = applyTabPrefs(tabs, tabPrefs, tab);
+  const tabLabels = Object.fromEntries(tabs.map((x) => [x.key, x.label]));
+
+  {tab === "lists" && listsFilters ? (
+          <ListsFilters {...listsFilters} variant="button" />
+        ) : (
+          <FilterIconButton
+            onClick={() => setSheet(true)}
+            label={t.discoverToolsTitle}
+            active={chips.length > 0 || tabPrefsTouched("discover", tabPrefs)}
+            expanded={sheet}
+          />
+        )}
       clear: () => go({ g: null }),
     });
   }
@@ -271,7 +275,7 @@ export function DiscoverFilters({
         className={`transition-opacity ${pending ? "opacity-60" : "opacity-100"}`}
         active={tab}
         ariaLabel={t.discoverTabsGroup}
-        items={tabs.map((x) => ({ key: x.value, label: x.label, onClick: () => goTab(x.value) }))}
+        items={shownTabs.map((x) => ({ key: x.key, label: x.label, onClick: () => goTab(x.key) }))}
         action={
           <>
         {/* **رمزٌ بلا كلمة (D-177)** — نفس الزرّ في المكتبة والمجتمع، نفس
@@ -343,6 +347,9 @@ export function DiscoverFilters({
           initial={draft}
           providers={providers}
           region={region}
+          showFilters={tab === "movies" || tab === "shows"}
+          tabPrefs={tabPrefs}
+          tabLabels={tabLabels}
           onClose={() => setSheet(false)}
           onApply={(next) => {
             setSheet(false);
