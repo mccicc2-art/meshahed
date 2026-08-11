@@ -41,7 +41,7 @@ import {
 import { ScrollMemory } from "@/components/ScrollMemory";
 import { animeMovieRail, topChartRail } from "@/lib/topChart";
 import { attachImdbRatings, withImdbRatings } from "@/lib/omdb";
-import { getT, getWatchRegion } from "@/lib/locale";
+import { getT, getWatchRegion, getTabPrefs } from "@/lib/locale"; import { defaultTab } from "@/lib/tabPrefs";
 import { regionName } from "@/lib/region";
 import { type Locale } from "@/lib/i18n";
 import {
@@ -120,7 +120,7 @@ export default async function NewsPage({
   /* ثلاثة تبويبات (طلب أحمد 9 Aug): أفلام · مسلسلات · القوائم — الجهة
      صعدت من ورقة الفلاتر إلى الرأس، فتُفرض هنا على التصفح من التبويب
      (وروابط ?type القديمة يهديها parseDiscoverTab لتبويبها) */
-  const tab = parseDiscoverTab(sp.tab, sp.type);
+  const tabPrefs = await getTabPrefs("discover"); const tab = sp.tab || sp.type ? parseDiscoverTab(sp.tab, sp.type) : parseDiscoverTab(defaultTab(tabPrefs, "shows"));
   const browse = parseBrowse({ ...sp, type: tab === "shows" ? "tv" : "movie" });
   /* نوافذ صفوف «أفضل ١٠» — لكل صفٍّ نافذته (D-099): أفلام/مسلسلات/أنمي */
   const rails = {
@@ -151,7 +151,7 @@ export default async function NewsPage({
 
       <DiscoverFilters
         locale={locale}
-        tab={tab}
+        tab={tab} tabPrefs={tabPrefs}
         type={browse.type}
         genre={browse.genre?.slug ?? null}
         lang={browse.lang?.code ?? null}
