@@ -1,4 +1,7 @@
 import { getImdbChart } from "./data";
+import { localizeRows } from "./localize";
+import type { Locale } from "./i18n";
+import type { SearchResult } from "./tmdb";
 import { rankByImdb, withImdbRatings } from "./omdb";
 import { topRatedRows } from "./tmdb";
 
@@ -17,6 +20,10 @@ export interface TopRow {
   name?: string;
   release_date?: string;
   first_air_date?: string;
+  /** تقييم IMDb وعدد أصواته — يأتيان مع صفّ القائمة نفسه، بلا نداءِ OMDb.
+      الصفّ المرقّم يرسم الشارة منهما (D-164). */
+  imdb_rating?: number;
+  imdb_votes?: number;
 }
 
 /**
@@ -45,6 +52,8 @@ export async function topChartRows(
     poster_path: c.poster_path,
     title: c.title ?? undefined,
     name: c.title ?? undefined,
+    imdb_rating: typeof c.rating === "number" ? c.rating : Number(c.rating),
+    imdb_votes: typeof c.votes === "number" ? c.votes : Number(c.votes),
   }));
   if (out.length >= want) return out.slice(0, want);
 
@@ -69,7 +78,59 @@ export async function topChartRows(
       name: r.name,
       release_date: r.release_date,
       first_air_date: r.first_air_date,
+      imdb_rating: r.imdb_rating ?? undefined,
+      imdb_votes: r.imdb_votes ?? undefined,
     });
   }
   return out;
+}
+
+/**
+ * نفس القائمة، بشكل صفٍّ جاهزٍ للعرض ومترجَمةً — لرفوف «أفضل ٥٠» (D-164).
+ *
+ * **ولماذا هنا لا في الصفحة:** الصفحة كانت المكان الثالث الذي يبني
+ * «الأفضل» بطريقته الخاصّة، وهو أصل العطل. فالتحويل والترجمة يقعان مرّةً
+ * واحدة إلى جانب المصدر، فلا يُولد مكانٌ رابع.
+ *
+ * **والترجمة عند العرض لا عند البناء (D-048/D-147):** الجدول يخزّن العنوان
+ * مرّةً بلغة من بناه، وهذا صفٌّ لا يملكه أحد ويقرؤه الناس بلغتين — فلو
+ * عُرض كما خُزّن لرأى نصفُ المستخدمين لغةَ النصف الآخر. والمحرّك مخبّأ
+ * ساعةً والقائمة واحدةٌ للجميع، فالكلفة تُدفع مرّةً لا لكل زائر.
+ */
+export async function topChartRail(
+  kind: "movie" | "tv" | "anime",
+  want: number,
+  locale: Locale,
+): Promise<SearchResult[]> {
+  const rows = await topChartRows(kind, want);
+  if (rows.length === 0) return [];
+
+  const localized = await localizeRows(
+    rows.map((r) => ({
+      tmdb_id: r.id,
+      media_type: (r.media_type === "tv" ? "tv" : "movie") as "tv" | "movie",
+      title: r.title ?? null,
+      poster_path: r.poster_path,
+    })),
+    locale,
+    want,
+  );
+
+  return rows.map((r, i) => {
+    const l = localized[i];
+    return {
+      id: r.id,
+      media_type: (r.media_type === "tv" ? "tv" : "movie") as "tv" | "movie",
+      title: l?.title ?? r.title,
+      name: l?.title ?? r.name,
+      poster_path: l?.poster_path ?? r.poster_path,
+      backdrop_path: null,
+      overview: "",
+      vote_average: 0,
+      release_date: r.release_date,
+      first_air_date: r.first_air_date,
+      imdb_rating: r.imdb_rating,
+      imdb_votes: r.imdb_votes,
+    } as SearchResult;
+  });
 }
