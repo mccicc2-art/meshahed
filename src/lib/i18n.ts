@@ -769,6 +769,22 @@ const ar = {
   notInterestedAria: (title: string) => `غير مهتم بـ«${title}» — لا يُقترح مجدداً`,
   dismissedToast: "حسناً، لن نقترحه مجدداً",
   animeBadge: "أنمي",
+  /* مصدرُ الأنمي واستوديوه من AniList (D-173) — TMDB لا تعرف أيّهما،
+     و`networks` عندها قناةُ البثّ لا الاستوديو. */
+  animeSourceLabel: (v: string) =>
+    ({
+      ORIGINAL: "قصّة أصلية",
+      MANGA: "عن مانغا",
+      LIGHT_NOVEL: "عن رواية خفيفة",
+      VISUAL_NOVEL: "عن رواية مرئية",
+      VIDEO_GAME: "عن لعبة",
+      NOVEL: "عن رواية",
+      DOUJINSHI: "عن دوجينشي",
+      ANIME: "عن أنمي",
+      WEB_NOVEL: "عن رواية إلكترونية",
+      OTHER: "",
+    })[v] ?? "",
+  animeStudioLabel: (name: string) => `استوديو ${name}`,
   countdownDays: (n: number) => `باقي ${n} يوم`,
   tabInfo: "معلومات",
   tabReviews: "التعليقات",
@@ -1670,6 +1686,20 @@ const en: Dict = {
   notInterestedAria: (title: string) => `Not interested in “${title}” — don't suggest it again`,
   dismissedToast: "Got it — we won't suggest it again",
   animeBadge: "Anime",
+  animeSourceLabel: (v: string) =>
+    ({
+      ORIGINAL: "Original story",
+      MANGA: "From a manga",
+      LIGHT_NOVEL: "From a light novel",
+      VISUAL_NOVEL: "From a visual novel",
+      VIDEO_GAME: "From a game",
+      NOVEL: "From a novel",
+      DOUJINSHI: "From a doujinshi",
+      ANIME: "From an anime",
+      WEB_NOVEL: "From a web novel",
+      OTHER: "",
+    })[v] ?? "",
+  animeStudioLabel: (name: string) => `${name} studio`,
   countdownDays: (n: number) => `${n} days to go`,
   tabInfo: "About",
   tabReviews: "Reviews",
