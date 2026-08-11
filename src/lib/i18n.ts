@@ -784,7 +784,10 @@ const ar = {
       WEB_NOVEL: "عن رواية إلكترونية",
       OTHER: "",
     })[v] ?? "",
-  animeStudioLabel: (name: string) => `استوديو ${name}`,
+  /* لا تُضاف كلمة «استوديو» إن كان الاسم يحملها أصلاً: «استوديو WIT
+     STUDIO» تكرارٌ ظهر حيّاً على «هجوم العمالقة» أوّل ما شُحن. */
+  animeStudioLabel: (name: string) =>
+    /studio/i.test(name) ? name : `استوديو ${name}`,
   countdownDays: (n: number) => `باقي ${n} يوم`,
   tabInfo: "معلومات",
   tabReviews: "التعليقات",
@@ -1699,7 +1702,8 @@ const en: Dict = {
       WEB_NOVEL: "From a web novel",
       OTHER: "",
     })[v] ?? "",
-  animeStudioLabel: (name: string) => `${name} studio`,
+  animeStudioLabel: (name: string) =>
+    /studio/i.test(name) ? name : `${name} studio`,
   countdownDays: (n: number) => `${n} days to go`,
   tabInfo: "About",
   tabReviews: "Reviews",
