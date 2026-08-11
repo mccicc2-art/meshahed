@@ -1,12 +1,12 @@
 "use client";
 
-import { Fragment, useMemo, useState, useTransition } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { flashError } from "@/lib/toast";
 import { runOrQueue } from "@/lib/offline";
 import { coalescedRefresh } from "@/lib/refresh";
 import { useRouter } from "next/navigation";
 import { getDict, type Locale } from "@/lib/i18n";
-import { startRewatch } from "@/lib/actions";
+import { startRewatch, classifyMyFollows } from "@/lib/actions";
 import type { UserList } from "@/lib/data";
 import type { ArtistShelfItem } from "@/lib/artists";
 import { ArtistsGrid } from "./ArtistsGrid";
@@ -55,12 +55,13 @@ export interface GridItem {
  * التالية» و«شفته كله» والبطاقة الحمراء — أقوى عادات TV Time، بلا فتح
  * صفحة العمل.
  */
-export type LibraryTab = "shows" | "movies" | "artists" | "lists";
+export type LibraryTab = "shows" | "movies" | "anime" | "artists" | "lists";
 
 /** التبويب ↔ قيمة `?filter=` — جدولٌ واحد بدل ثلاثة شروطٍ ثلاثيّة متفرّقة */
 export const TAB_FILTER: Record<LibraryTab, string | null> = {
   shows: "tv",
   movies: "movie",
+  anime: "anime",
   artists: "person",
   lists: "list",
 };
@@ -71,6 +72,12 @@ export type LibraryStatus = "watching" | "unstarted" | "completed" | "dropped";
 export function LibraryGrid({
   shows,
   movies,
+  /* اختياريّتان بقيمتين محايدتين — **لا تهاوناً بل لأن الدفعة تُصرَّف
+     وحدها** (D-028/D-155): هذا الملفّ يُرفع في دفعةٍ وصفحةُ المكتبة في
+     أخرى، وبينهما كوميتٌ تبنيه Vercel. والافتراضُ يبقي التبويب فارغاً
+     لا مكسوراً حتى تصل الصفحة (نمط `onPick?` في D-167). */
+  anime = [],
+  animeUnknown = 0,
   artists,
   artistCount,
   lists,
@@ -80,6 +87,14 @@ export function LibraryGrid({
 }: {
   shows: GridItem[];
   movies: GridItem[];
+  /** أنميك — **مسلسلاتٌ وأفلامٌ معاً**، ولا يُنزع أيٌّ منها من تبويبه
+      الأصليّ. تبويبٌ يجمع لا يقتطع: علَمُ `is_anime` يُملأ من TMDB وقد
+      يُخطئ أو يتأخّر، **وعملٌ يختفي من «مسلسلاتي» يُقرأ فقداناً لا
+      تصنيفاً**. (وهذا يخالف D-170 في اكتشف عن قصد: هناك رفّان على شاشةٍ
+      واحدة فالتكرار ضجيج، وهنا تبويبان لا يُريان معاً.) */
+  anime?: GridItem[];
+  /** كم صفّاً لم يُصنَّف بعد — يُطلق تصنيفةً واحدة عند أوّل فتحٍ للتبويب */
+  animeUnknown?: number;
   /** رفُّ الفنانين — يصل **محسوباً** حين يكون تبويبَه المفتوح وحده (D-128) */
   artists: ArtistShelfItem[];
   /** عدّاد التبويب: نداءُ Supabase خفيفٌ يجري دائماً، بلا نداءات TMDB */
@@ -124,7 +139,7 @@ export function LibraryGrid({
   /* البحث والفرز في الذاكرة: القائمة وصلت كاملةً من الخادم، فالحرف
      الواحد يصفّي فوراً بلا رحلة شبكة */
   const items = useMemo(() => {
-    const base = tab === "movies" ? movies : shows;
+    const base = tab === "anime" ? anime : tab === "movies" ? movies : shows;
     /* صفُّ رقائق الحالة حُذف بطلب المالك (نقض جزئي لـ D-078) —
        الفواصل المسمّاة بقيت، والشبكة تعرض الكل دائماً */
     const byStatus = base;
@@ -144,7 +159,7 @@ export function LibraryGrid({
         return aDone - bDone || bp - ap;
       });
     return filtered;
-  }, [tab, shows, movies, q, sort]);
+  }, [tab, shows, movies, anime, q, sort]);
 
   /* عدّاد كل رقاقةٍ من التبويب الحاليّ — الرقم يجيب «كم عندي؟» قبل الضغط */
 
@@ -152,6 +167,10 @@ export function LibraryGrid({
   const tabs = [
     { key: "shows" as const, icon: "tv" as const, label: t.shortShows, n: shows.length },
     { key: "movies" as const, icon: "film" as const, label: t.shortMovies, n: movies.length },
+    /* والتسميةُ تسميةُ اكتشف نفسها (`discoverTabAnime`) لا كلمةٌ ثانية:
+       تبويبٌ واحد باسمين في سطحين يُقرأ شيئين. والأيقونة `sparkles`
+       موضعياً — لا مِيكا في العُدّة، ورسمُ واحدةٍ بندٌ لا ذريعةُ تأخير. */
+    { key: "anime" as const, icon: "sparkles" as const, label: t.discoverTabAnime, n: anime.length },
     { key: "artists" as const, icon: "people" as const, label: t.shortArtists, n: artistCount },
     { key: "lists" as const, icon: "list" as const, label: t.listsTitle, n: lists.length },
   ];
@@ -166,7 +185,28 @@ export function LibraryGrid({
   /* البحث لغةُ عناوين، وشبكةُ الفنانين ليست عناوين — ورقائق الفرز
      (الاسم/التقدّم) بلا معنى فيها: ترتيبُها **بعدد ما شاهدتَه** وهو
      معناها. فالصفّ كلّه يغيب في تبويبها كما يغيب في القوائم. */
-  const showSearchRow = tab === "shows" || tab === "movies";
+  const showSearchRow = tab === "shows" || tab === "movies" || tab === "anime";
+
+  /* **تصنيفُ ما لم يُصنَّف — مرّةً، عند من فتح التبويب** (D-182).
+     ولماذا من المتصفّح لا من الخادم: الصفحة تُرسم على الخادم، والكتابةُ
+     أثناء الرسم تنقض نقاء React (قاعدة الصحّة) وتُبطئ أوّل بايت **لكل
+     زائر** لأجل تبويبٍ قد لا يفتحه. فالثمن يدفعه من طلبه، مرّةً. */
+  const [classifying, setClassifying] = useState(false);
+  const askedRef = useRef(false);
+  useEffect(() => {
+    if (tab !== "anime" || animeUnknown <= 0 || askedRef.current) return;
+    askedRef.current = true;
+    setClassifying(true);
+    classifyMyFollows()
+      .then((n) => {
+        if (n > 0) coalescedRefresh(router);
+      })
+      .catch(() => {
+        /* أخفق؟ لا شاشةَ خطأ: التبويب يعرض ما صُنّف، والباقي يُسأل عنه
+           في الفتحة القادمة — نمط D-113. */
+      })
+      .finally(() => setClassifying(false));
+  }, [tab, animeUnknown, router]);
 
   return (
     <div>
@@ -219,6 +259,11 @@ export function LibraryGrid({
       )}
 
       <div className="mt-3" />
+
+      {/* سطرٌ يقول الحقّ بدل تبويبٍ يدّعي الاكتمال وهو نصفُ ممتلئ */}
+      {tab === "anime" && classifying && (
+        <p className="text-center text-xs text-muted py-2">{t.animeClassifying}</p>
+      )}
 
       <div id="lib-panel" role="tabpanel" aria-labelledby={`lib-tab-${tab}`}>
       {tab === "lists" ? (

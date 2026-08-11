@@ -97,17 +97,27 @@ export function RankedRail({
                     </span>
                   )}
 
-                  {/* تقييمٌ واحد بشعاره: IMDb إن وُجد، **وTMDB إن تأكّدنا أن
-                      لا تقييم IMDb لهذا العمل** (D-172، اختيار أحمد).
-                      و`imdb_absent` وحدها تسمح بالبديل — «لم نصل إلى OMDb»
-                      لا يُساوي «لا تقييم»، وعرضُ رقمٍ من مقياسٍ آخر بناءً على
-                      إخفاقِ سؤالٍ هو ما أسقط المحاولة الأولى (D-132). */}
+                  {/* تقييمٌ واحد بشعاره: IMDb إن وُجد، **وTMDB إن لم يوجد**
+                      — أيّاً كان السبب (D-181، طلب أحمد الصريح: «قلنا نحط
+                      شارة TMDB»).
+
+                      **وهذا يوسّع D-172 ويُقال صراحةً لا يُخفى.** كان الشرط
+                      `imdb_absent` وحده — أي «سألنا فتأكّدنا أن لا تقييم» —
+                      وتبقى حالةٌ واحدة بلا شارة: من أخفق سؤالُه (شبكةٌ ساقطة
+                      أو حصةُ OMDb محروقة). فكانت البطاقة تخرج بلا رقمٍ إطلاقاً
+                      وهي في رفٍّ كلُّ جيرانها مرقَّمون — **فراغٌ يُقرأ عطلاً**.
+
+                      **وثمنُه مكتوبٌ هنا لمن يقرأ بعدنا:** أثناء إخفاق السؤال
+                      قد يظهر رقمُ TMDB لعملٍ **له تقييم IMDb حقيقي** — وهو
+                      نصفُ ما أسقط المحاولة الأولى (D-132). والفرق عن ٱلمرّة
+                      الأولى أن الحال اليوم **عابرة**: أوّلُ سؤالٍ ينجح يخزّن
+                      الرقم الحقيقي فيحلّ محلّه، والشعار مختلفٌ بيّن. */}
                   {typeof r.imdb_rating === "number" ? (
                     <span className="absolute bottom-1.5 end-1.5 flex items-center gap-1 text-[11px] font-bold text-white bg-black/55 backdrop-blur rounded-md px-1.5 py-0.5">
                       <ImdbMark className="text-[8px]" />
                       <span dir="ltr">{r.imdb_rating.toFixed(1)}</span>
                     </span>
-                  ) : r.imdb_absent && r.vote_average > 0 ? (
+                  ) : r.vote_average > 0 ? (
                     <span className="absolute bottom-1.5 end-1.5 flex items-center gap-1 text-[11px] font-bold text-white bg-black/55 backdrop-blur rounded-md px-1.5 py-0.5">
                       <TmdbMark className="text-[8px]" />
                       <span dir="ltr">{r.vote_average.toFixed(1)}</span>
