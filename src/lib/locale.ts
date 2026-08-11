@@ -45,13 +45,6 @@ export async function getWatchRegion(): Promise<string> {
 }
 
 /**
- * تبويبات المجتمع التي أخفاها المستخدم (D-177) — من الكوكي، قبل أوّل رسمة.
- *
- * **والقصّ يتكرّر هنا عمداً:** الكاتب يحرس (`setHiddenCommunityTabs`)،
- * والقارئ يحرس أيضاً — فكوكي قديمٌ أو محرَّرٌ بيد لا يُفرغ الصفحة من
- * تبويباتها. **حارسٌ على طرفٍ واحد ليس حارساً.**
- */
-/**
  * تفضيلاتُ تبويبات سطحٍ واحد (الترتيب + الإظهار) — من الكوكي، **قبل أوّل
  * رسمة**: الرأس يُرسم مرتَّباً مصفّىً من أوّل بايت، فلا يومض تبويبٌ ثم
  * يختفي ولا يقفز إلى موضعه.
@@ -71,14 +64,4 @@ export async function getTabPrefs(surface: TabSurface): Promise<TabPref[]> {
   } catch {
     return parseTabPrefs(surface, null);
   }
-}
-
-export async function getHiddenCommunityTabs(): Promise<string[]> {
-  const store = await cookies();
-  const raw = store.get("loopz_ctabs_hidden")?.value ?? "";
-  const known = ["mine", "all", "inbox", "news"];
-  const clean = [...new Set(raw.split(",").map((s) => s.trim()))].filter((k) =>
-    known.includes(k),
-  );
-  return clean.slice(0, known.length - 1);
 }

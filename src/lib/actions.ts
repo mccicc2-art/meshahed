@@ -198,27 +198,16 @@ export async function setWatchRegion(value: string) {
 }
 
 /**
- * تبويبات المجتمع المخفيّة (D-177، طلب أحمد: «حتى إخفاء تيوب من تيوبات
- * الكوميونتي — أخبار، أكتفيتي، كوميونتي»).
- *
- * **كوكي لا عمود** — نفس حجّة `setWatchRegion` حرفاً بحرف (D-014): تفضيلُ
- * عرضٍ يقرؤه الخادم **قبل أوّل رسمة** فلا يومض تبويبٌ ثم يختفي، ولا يستحقّ
- * هجرةً ولا صفّاً في قاعدة البيانات.
- *
- * **وحارسٌ لا يُترك للواجهة:** لو أخفى المستخدم الأربعة لصارت الصفحة بلا
- * باب. فالقائمة تُقصّ هنا على ثلاثةٍ كحدٍّ أقصى — **واحدٌ يبقى دائماً**،
- * ولو أرسل العميلُ أربعة (أو أرسل شيئاً غير تبويب).
- */
-const COMMUNITY_TABS = ["mine", "all", "inbox", "news"] as const;
-const CTABS_COOKIE = "loopz_ctabs_hidden";
-
-/**
  * تفضيلاتُ تبويبات سطحٍ واحد — **الترتيب والإظهار في كتابةٍ واحدة**
  * (طلب أحمد ١١ أغسطس: «حطّ إمكانية أغيّر موقع التيوب… حتى في الديسكفري
  * والمكتبة حطّ خيار الإخفاء»).
  *
- * **كوكي لا عمود** — نفس حجّة `setWatchRegion` و`setHiddenCommunityTabs`
- * حرفاً بحرف (D-014): تفضيلُ عرضٍ يقرؤه الخادم قبل أوّل رسمة.
+ * **كوكي لا عمود** — نفس حجّة `setWatchRegion` حرفاً بحرف (D-014): تفضيلُ
+ * عرضٍ يقرؤه الخادم قبل أوّل رسمة، ولا يستحقّ هجرةً ولا صفّاً.
+ *
+ * *(حلّت محلّ `setHiddenCommunityTabs` من D-177 وحُذفت معها. وكوكيُّ
+ * الإخفاء القديم `loopz_ctabs_hidden` **ما زال يُقرأ** مرّةً كترقيةٍ صامتة
+ * في `parseTabPrefs` — يُقرأ ولا يُكتب، فمن أخفى تبويباً أمسِ لا يخسره.)*
  *
  * **ولا يُصدَّق ما يصل:** المصفوفة تمرّ بـ`parseTabPrefs` نفسِها التي
  * يمرّ بها الكوكي المقروء — فالمجهولُ يسقط، والناقصُ يُلحَق بحالته
@@ -229,20 +218,6 @@ export async function setTabPrefs(surface: string, prefs: TabPref[]) {
   const clean = parseTabPrefs(surface, serializeTabPrefs(prefs));
   const store = await cookies();
   store.set(surfaceCookie(surface), serializeTabPrefs(clean), {
-    path: "/",
-    maxAge: 60 * 60 * 24 * 365,
-    sameSite: "lax",
-  });
-}
-
-export async function setHiddenCommunityTabs(keys: string[]) {
-  const clean = [...new Set(keys)].filter((k) =>
-    (COMMUNITY_TABS as readonly string[]).includes(k),
-  );
-  /* ثلاثةٌ كحدٍّ أقصى — الرابعُ يسقط بصمت فيبقى للصفحة بابٌ واحد */
-  const kept = clean.slice(0, COMMUNITY_TABS.length - 1);
-  const store = await cookies();
-  store.set(CTABS_COOKIE, kept.join(","), {
     path: "/",
     maxAge: 60 * 60 * 24 * 365,
     sameSite: "lax",

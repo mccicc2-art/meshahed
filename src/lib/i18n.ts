@@ -117,9 +117,9 @@ const ar = {
      التي يفتحها («مجتمعك») يصلح عنواناً ولا يصلح صفّاً (D-155) */
   communityToolsCreate: "أنشئ مجتمعاً",
   communityToolsMessage: "راسل صديقاً",
-  communityToolsHideGroup: "التبويبات الظاهرة",
-  /* قسمُ التبويبات — **اسمٌ يقول المحورين** (طلب أحمد: الموضع والإخفاء):
-     «التبويبات الظاهرة» وحدها كانت تصف نصف ما صار الصفُّ يفعله (D-155) */
+  /* قسمُ التبويبات — **اسمٌ يقول المحورين** (طلب أحمد: الموضع والإخفاء).
+     وحلّ محلّ «التبويبات الظاهرة» من D-177 (حُذف): كان يصف نصفَ ما صار
+     الصفُّ يفعله، والاسمُ الذي يصف نصفَ الأداة يُخفي نصفَها (D-155) */
   tabsPrefsGroup: "التبويبات — الترتيب والإظهار",
   tabsPrefsMoveUp: (name: string) => `قدِّم ${name}`,
   tabsPrefsMoveDown: (name: string) => `أخِّر ${name}`,
@@ -1151,7 +1151,6 @@ const en: Dict = {
   communityToolsTitle: "Community tools",
   communityToolsCreate: "Create a community",
   communityToolsMessage: "Message a friend",
-  communityToolsHideGroup: "Visible tabs",
   tabsPrefsGroup: "Tabs — order and visibility",
   tabsPrefsMoveUp: (name: string) => `Move ${name} earlier`,
   tabsPrefsMoveDown: (name: string) => `Move ${name} later`,
