@@ -903,12 +903,21 @@ async function AnimeRails({
     /* ذيلا «أفضل ٥٠» من `imdb_chart` لا من `/discover` — لا نوعَ فيهما
        ولا حقبةَ ولا منصّة. فيغيبان ما دام الفلتر مفعّلاً (اختيار أحمد)
        بدل أن يعرضا ما لم يُطلب تحت رأسٍ يقول إن الفلتر مُطبَّق */
+    /* **رفُّ أفلام الأنمي: القائمةُ الحقيقية أوّلاً، وذيلُ D-132 احتياطاً.**
+       صنفُ `anime` صار يحمل أفلاماً ومسلسلاتٍ معاً بعد الهجرة ٦٠، فالرفّ
+       يقرأ منه جهةَ الأفلام. **وإن عاد فارغاً فالبِركةُ لم تُملأ بعد** —
+       فيرجع إلى بِركة `/discover` كما كان، بلا رفٍّ فارغٍ في الطريق
+       (D-169: «أضعفُ لا مكسور» — واليوم صار «صحيحٌ متى أمكن»). */
     active
       ? Promise.resolve([] as SearchResult[])
-      : animeMovieRail(50, locale).catch(() => [] as SearchResult[]),
+      : topChartRail("anime", 50, locale, "movie")
+          .then((r) => (r.length > 0 ? r : animeMovieRail(50, locale)))
+          .catch(() => [] as SearchResult[]),
+    /* ورفُّ المسلسلات صار يطلب جهته صراحةً: كان صنفُ الأنمي مسلسلاتٍ
+       حصراً فاستغنى عن ذلك، ولو بقي بلا جهةٍ بعد الهجرة لاختلط الرفّان. */
     active
       ? Promise.resolve([] as SearchResult[])
-      : topChartRail("anime", 50, locale).catch(() => [] as SearchResult[]),
+      : topChartRail("anime", 50, locale, "tv").catch(() => [] as SearchResult[]),
   ]);
 
   return (
