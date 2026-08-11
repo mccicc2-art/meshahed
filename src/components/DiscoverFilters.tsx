@@ -195,16 +195,16 @@ export function DiscoverFilters({
   const shownTabs = applyTabPrefs(tabs, tabPrefs, tab);
   const tabLabels = Object.fromEntries(tabs.map((x) => [x.key, x.label]));
 
-  {tab === "lists" && listsFilters ? (
-          <ListsFilters {...listsFilters} variant="button" />
-        ) : (
-          <FilterIconButton
-            onClick={() => setSheet(true)}
-            label={t.discoverToolsTitle}
-            active={chips.length > 0 || tabPrefsTouched("discover", tabPrefs)}
-            expanded={sheet}
-          />
-        )}
+  /* ما اختير، مكتوباً: كل رقاقةٍ تحمل اسم الخيار لا اسم المحور — «تركي»
+     أوضح من «اللغة: تركي» في مساحةٍ ضيّقة، والمحور يُفهم من القيمة */
+  const chips: { key: string; label: string; clear: () => void }[] = [];
+  /* رقاقة الجهة سقطت: الجهة صارت التبويب المضيء نفسه — رقاقةٌ تكرّره
+     كانت ستقول الشيء مرتين */
+  const genreObj = BROWSE_GENRES.find((g) => g.slug === genre);
+  if (genreObj) {
+    chips.push({
+      key: "genre",
+      label: browseGenreName(genreObj, loc),
       clear: () => go({ g: null }),
     });
   }
@@ -284,14 +284,14 @@ export function DiscoverFilters({
             يفتح ورقةً لا تُطبَّق على ما يُعرض كذبةٌ في الواجهة (D-075). */}
         {tab === "lists" && listsFilters ? (
           <ListsFilters {...listsFilters} variant="button" />
-        ) : tab === "movies" || tab === "shows" ? (
+        ) : (
           <FilterIconButton
             onClick={() => setSheet(true)}
-            label={t.browseFilters}
-            active={chips.length > 0}
+            label={t.discoverToolsTitle}
+            active={chips.length > 0 || tabPrefsTouched("discover", tabPrefs)}
             expanded={sheet}
           />
-        ) : null}
+        )}
           </>
         }
         extra={
