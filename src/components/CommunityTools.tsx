@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { searchCommunities } from "@/lib/actions";
 import { getDict, type Locale } from "@/lib/i18n";
 import { tap } from "@/lib/haptics";
-import { tabPrefsTouched, type TabPref } from "@/lib/tabPrefs";
+import type { TabPref } from "@/lib/tabPrefs";
 import { Icon } from "./Icon";
 import { Sheet, SheetHeader } from "./ui/Sheet";
 import { sheetScroll, sheetMenuItem, sheetMenuDivider } from "./ui/controls";
@@ -100,7 +100,6 @@ export function CommunityTools({
       <FilterIconButton
         onClick={() => setOpen(true)}
         label={t.communityToolsTitle}
-        active={tabPrefsTouched("community", prefs)}
         expanded={open}
       />
 
