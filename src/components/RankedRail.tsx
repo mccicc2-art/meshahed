@@ -3,7 +3,7 @@ import { RailScroll } from "./RailScroll";
 import { Icon, type IconName } from "./Icon";
 import Image from "next/image";
 import { posterUrl, titleOf, type SearchResult } from "@/lib/tmdb";
-import { ImdbMark } from "./RatingMarks";
+import { ImdbMark, TmdbMark } from "./RatingMarks";
 
 /**
  * صفّ أفقي مرقّم — قائمة «أفضل ١٠».
@@ -97,18 +97,22 @@ export function RankedRail({
                     </span>
                   )}
 
-                  {/* الشارة من IMDb وحده. **احتياط TMDB أُزيل** (D-132
-                      ينقض D-112): جاءت انتقاداتٌ كثيرة على أرقامٍ لا
-                      تطابق ما يعرفه الناس — والشعار المختلف لم يمنع
-                      قراءة المقياسين مقياساً واحداً. رقمٌ خاطئ أسوأ من
-                      لا رقم، وصفوفُ هذه المكوّنة صارت لا تحمل غير
-                      المقيَّم أصلاً (`onlyRated`). */}
-                  {typeof r.imdb_rating === "number" && (
+                  {/* تقييمٌ واحد بشعاره: IMDb إن وُجد، **وTMDB إن تأكّدنا أن
+                      لا تقييم IMDb لهذا العمل** (D-172، اختيار أحمد).
+                      و`imdb_absent` وحدها تسمح بالبديل — «لم نصل إلى OMDb»
+                      لا يُساوي «لا تقييم»، وعرضُ رقمٍ من مقياسٍ آخر بناءً على
+                      إخفاقِ سؤالٍ هو ما أسقط المحاولة الأولى (D-132). */}
+                  {typeof r.imdb_rating === "number" ? (
                     <span className="absolute bottom-1.5 end-1.5 flex items-center gap-1 text-[11px] font-bold text-white bg-black/55 backdrop-blur rounded-md px-1.5 py-0.5">
                       <ImdbMark className="text-[8px]" />
                       <span dir="ltr">{r.imdb_rating.toFixed(1)}</span>
                     </span>
-                  )}
+                  ) : r.imdb_absent && r.vote_average > 0 ? (
+                    <span className="absolute bottom-1.5 end-1.5 flex items-center gap-1 text-[11px] font-bold text-white bg-black/55 backdrop-blur rounded-md px-1.5 py-0.5">
+                      <TmdbMark className="text-[8px]" />
+                      <span dir="ltr">{r.vote_average.toFixed(1)}</span>
+                    </span>
+                  ) : null}
                 </div>
 
                 <p className="text-xs font-medium leading-tight line-clamp-2 mt-1.5 group-hover:text-accent transition">

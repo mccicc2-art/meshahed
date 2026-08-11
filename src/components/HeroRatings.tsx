@@ -34,7 +34,9 @@ export async function HeroRatings({
 }) {
   const iid = imdbId ?? (tvId ? await tvImdbId(tvId) : null);
   const ext = await externalRatings(iid);
-  if (!ext) return null;
+  /* `externalRatings` صارت تُميّز «لا تقييم» عن «لم نصل» (D-172)، فتعود
+     بكائنٍ فارغ بدل `null`. والترويسة لا ترسم صفّاً فارغاً. */
+  if (!ext || (!ext.imdb && !ext.rt)) return null;
 
   return (
     <div className="flex items-center gap-4 mt-2 text-sm">
