@@ -43,9 +43,9 @@ import { NewActivityPill } from "@/components/NewActivityPill";
 /** كم عملاً نطلب له صورةً عرضية — سقفٌ يمنع موجة طلباتٍ بحجم الخط */
 const BACKDROP_LIMIT = 12;
 
-type Tab = "mine" | "all" | "inbox" | "news";
+type Tab = "mine" | "reviews" | "all" | "inbox" | "news";
 function asTab(v: string | undefined): Tab {
-  return v === "all" || v === "inbox" || v === "news" ? v : "mine";
+  return v === "all" || v === "inbox" || v === "news" || v === "reviews" ? v : "mine";
 }
 
 /**
@@ -305,16 +305,24 @@ export default async function PeoplePage({
     0,
   );
 
+  /* **المراجعات غادرت «النشاط» إلى تبويبها** (طلب أحمد ١٢ أغسطس):
+     «التعليقات تنتقل من الأكتيف إلى ريفيو». فالخطّ واحدٌ ومصدرُه واحد
+     (`getCommunityFeed`)، **والتقسيم عند العرض لا بنداءٍ ثانٍ** — نداءُ
+     definer إضافيّ لأجل تبويبٍ يقرأ نفس الصفوف كان سيُضاعف الكلفة بلا
+     صفٍّ جديد.
+     و«مراجعة» = رأيٌ مكتوب (`a.review`)، و«النشاط» = كلُّ ما عداه:
+     تقييمٌ بلا نصّ · مشاهدة · حلقات · إضافةٌ إلى قائمة. **متنافيان
+     تماماً فلا يظهر حدثٌ في تبويبين** — ولو تداخلا لصار العدّاد يكذب. */
   const sorted =
-    tab !== "mine"
+    tab !== "mine" && tab !== "reviews"
       ? []
       : (await localizeRows(followingFeed, locale))
           .filter((a) =>
-            kind === "review"
+            tab === "reviews"
               ? Boolean(a.review)
-              : kind === "rate"
-                ? a.kind === "rate" && !a.review
-                : true,
+              : /* «النشاط»: بلا مراجعات — ثم مرشِّح الرابط فوقه إن وُجد.
+                   و`k=review` لم يعد له معنى هنا (صار تبويباً) فيسقط. */
+                !a.review && (kind === "rate" ? a.kind === "rate" : true),
           )
           .sort((a, b) =>
             newest
@@ -368,6 +376,9 @@ export default async function PeoplePage({
      فعلاً لا جرد). */
   const tabs = [
     { key: "mine", href: "/people", label: t.communityTabMine },
+    /* **بلا عدّاد** كتبويب الأخبار: عددُ مراجعات دائرتك ليس مهمّةً تنتظر،
+       وشارةٌ تُلحّ على ما لا يُطلب فعلاً تُدرِّب العين على تجاهل الشارات. */
+    { key: "reviews", href: "/people?tab=reviews", label: t.communityTabReviews },
     { key: "all", href: "/people?tab=all", label: t.communityTabAll, count: allCount },
     {
       key: "inbox",
@@ -444,7 +455,14 @@ export default async function PeoplePage({
                **لكن الفراغ الناتج عن مرشِّحٍ ليس فراغ دائرة**: اقتراح
                «ابحث عن أصدقاء» هناك تشخيصٌ خاطئ، والصواب جملةٌ تقول
                إن هذا النوع وحده خالٍ */
-            kind !== null ? (
+            /* **وفراغُ تبويب المراجعات ليس فراغ دائرة أيضاً**: من يتابع
+               عشرةً لم يكتب أحدُهم رأياً بعد لا يُنصح بأن «يبحث عن
+               أصدقاء» — تشخيصٌ خاطئ لسببٍ صحيح (نفس تفريق D-106). */
+            tab === "reviews" ? (
+              <p className="text-sm text-muted bg-surface border border-dashed border-border rounded-xl py-8 px-5 text-center">
+                {t.reviewsEmpty}
+              </p>
+            ) : kind !== null ? (
               <p className="text-sm text-muted bg-surface border border-dashed border-border rounded-xl py-8 px-5 text-center">
                 {t.feedFilterEmpty}
               </p>
