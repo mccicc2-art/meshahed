@@ -11,6 +11,7 @@ import {
   browseCountryName,
   browseEraName,
   browseGenreName,
+  browseHref,
   browseLangName,
   genreFitsType,
   type BrowseRate,
@@ -40,15 +41,17 @@ import { PageTabs } from "./ui/PageTabs";
  *     أعلى الرأس صار مفترقَ صنفَي الصفحة لا محورَ فلترة — والقوائم صنفٌ
  *     كامل له بحثه، لا فلتر يُقصّ به المعروض. نافذة الترتيب التي كانت
  *     هنا انتقلت إلى داخل الورقة مع أخواتها.
- *  2. **زرّ الفلاتر** بعدّاده: النافذة وجهةُ المحتوى واللغة والحقبة
- *     والتقييم كلّها خلفه. خمسة محاورَ مفروشةً تأكل الشاشة الأولى قبل أن
- *     يظهر عمل.
- *  3. **رقائق ما اختير**: الفلتر المخفيّ خلف ورقةٍ يُنسى — فما اختير يبقى
+ *  2. **رقائق ما اختير**: الفلتر المخفيّ خلف ورقةٍ يُنسى — فما اختير يبقى
  *     مكتوباً تحت التبويبات ويُلغى بلمسةٍ على ×، بلا فتح الورقة ثانيةً.
+ *     وأولُ الرقائق «تعديل الفلتر» — البابُ الوحيد الباقي هنا.
  *
- * وسقط من هنا شيئان: صفُّ الترتيب (لكل صفٍّ ترتيبه بحكم معناه بعد أن صار
- * الفلتر يُبقي الصفوف ولا يستبدلها بشبكة)، ومدخلُ البحث (صار له تبويبه في
- * الشريط السفلي، ومدخلان لفعلٍ واحد في شاشةٍ واحدة زيادة). قرارُ المالك.
+ * **وزرّ «فلاتر» غادر هذا الرأس (D-174).** بابُ الفلتر صار في صفحة البحث
+ * (`DiscoverFilterEntry`) والنتيجةُ تنزل هنا — طلبُ أحمد ١٢ أغسطس. فما بقي
+ * هنا **عرضُ الحالة وتعديلُها**، لا فتحُها من الصفر.
+ *
+ * وسقط من هنا قبلَه شيئان: صفُّ الترتيب (لكل صفٍّ ترتيبه بحكم معناه بعد أن
+ * صار الفلتر يُبقي الصفوف ولا يستبدلها بشبكة)، ومدخلُ البحث (صار له تبويبه
+ * في الشريط السفلي، ومدخلان لفعلٍ واحد في شاشةٍ واحدة زيادة). قرارُ المالك.
  */
 export function DiscoverFilters({
   locale,
@@ -63,7 +66,6 @@ export function DiscoverFilters({
   era,
   rate,
   award,
-  count,
   listsFilters,
 }: {
   locale: Locale;
@@ -92,8 +94,6 @@ export function DiscoverFilters({
   rate: BrowseRate | null;
   /** slug الجائزة المختارة — يحوّل الصفوف إلى فائزيها */
   award: string | null;
-  /** عدد فلاتر الورقة المفعّلة — للعدّاد على الزرّ */
-  count: number;
 }) {
   const t = getDict(locale);
   const loc = locale === "en" ? "en" : "ar";
@@ -116,28 +116,21 @@ export function DiscoverFilters({
     const found = BROWSE_GENRES.find((g) => g.slug === nextGenre);
     if (!found || !genreFitsType(found, type)) nextGenre = null;
 
-    const p = new URLSearchParams();
-    // الجهة يحملها التبويب لا معامل type — تبويب المسلسلات يبقى في رابطه
-    if (tab === "shows") p.set("tab", "shows");
-    if (tab === "anime") p.set("tab", "anime");
-    if (nextGenre) p.set("g", nextGenre);
-    const nextLang = next.lang === undefined ? lang : next.lang;
     // الجنسية محورٌ مستقلّ (طلب أحمد): لا تسقط بتبدّل اللغة
-    const nextCountry = next.co === undefined ? country : next.co;
-    const nextEra = next.era === undefined ? era : next.era;
-    const nextRate = next.rate === undefined ? rate : next.rate;
-    if (nextLang) p.set("lang", nextLang);
-    if (nextCountry) p.set("co", nextCountry);
-    const nextProvider = next.p === undefined ? provider : next.p;
-    if (nextProvider) p.set("p", String(nextProvider));
-    if (nextEra) p.set("era", nextEra);
-    if (nextRate) p.set("rate", String(nextRate));
-    const nextAward = next.award === undefined ? award : next.award;
-    if (nextAward) p.set("award", nextAward);
+    // والرابطُ يبنيه `browseHref` وحده (D-174) — الجهة يحملها التبويب
+    const href = browseHref({
+      tab,
+      g: nextGenre,
+      lang: next.lang === undefined ? lang : next.lang,
+      co: next.co === undefined ? country : next.co,
+      p: next.p === undefined ? provider : next.p,
+      era: next.era === undefined ? era : next.era,
+      rate: next.rate === undefined ? rate : next.rate,
+      award: next.award === undefined ? award : next.award,
+    });
 
-    const qs = p.toString();
     tap(8);
-    start(() => router.replace(qs ? `/news?${qs}` : "/news", { scroll: false }));
+    start(() => router.replace(href, { scroll: false }));
   }
 
   /* `push` لا `replace` (ذاكرة التنقل — تدقيق 8 Aug م١): التبويب تبديلُ
@@ -164,25 +157,24 @@ export function DiscoverFilters({
   function goTab(next: DiscoverTab) {
     if (next === tab) return;
     tap(8);
-    const p = new URLSearchParams();
-    if (next !== "movies") p.set("tab", next);
     /* تبويب القوائم لا يقبل فلاتر الأعمال — ورقة فلاتره أخرى تماماً،
-       وفلترُ أعمالٍ في رابط قوائم حالةٌ ميتة تعود يوم يعود التبويب */
-    if (next !== "lists") {
-      /* تصنيفٌ لا مقابل له في الجهة الجديدة («رعب» في المسلسلات) يسقط
-         بصمت — نفس حارس `go` بالضبط، وإلا أدّى الحملُ إلى صفحةٍ فارغة */
-      const g = BROWSE_GENRES.find((x) => x.slug === genre);
-      const nextType = next === "shows" ? "tv" : "movie";
-      if (g && genreFitsType(g, nextType)) p.set("g", g.slug);
-      if (lang) p.set("lang", lang);
-      if (country) p.set("co", country);
-      if (provider) p.set("p", String(provider));
-      if (era) p.set("era", era);
-      if (rate) p.set("rate", String(rate));
-      if (award) p.set("award", award);
-    }
-    const qs = p.toString();
-    start(() => router.push(qs ? `/news?${qs}` : "/news", { scroll: false }));
+       وفلترُ أعمالٍ في رابط قوائم حالةٌ ميتة تعود يوم يعود التبويب.
+       وتصنيفٌ لا مقابل له في الجهة الجديدة («رعب» في المسلسلات) يسقط
+       بصمت — نفس حارس `go` بالضبط، وإلا أدّى الحملُ إلى صفحةٍ فارغة */
+    const g = BROWSE_GENRES.find((x) => x.slug === genre);
+    const carry =
+      next === "lists"
+        ? {}
+        : {
+            g: g && genreFitsType(g, next === "shows" ? "tv" : "movie") ? g.slug : null,
+            lang,
+            co: country,
+            p: provider,
+            era,
+            rate,
+            award,
+          };
+    start(() => router.push(browseHref({ tab: next, ...carry }), { scroll: false }));
   }
 
   /* ثلاثة تبويبات (طلب أحمد 9 Aug): أفلام · مسلسلات · القوائم —
@@ -279,40 +271,15 @@ export function DiscoverFilters({
         items={tabs.map((x) => ({ key: x.value, label: x.label, onClick: () => goTab(x.value) }))}
         action={
           <>
-        {/* الزرّ إلى جانب التبويبات: المخرج الوحيد إلى الفلاتر —
-            زرّ الأعمال لتبويبها، وزرّ القوائم (بورقته) في نفس الخانة */}
-        {/* ولا زرَّ فلاتر في تبويب الأنمي (D-169): صفوفه ستّة معانٍ ثابتة
-            لا مساحةَ تصفّحٍ — وزرٌّ يفتح ورقةً لا تُطبَّق على ما يُعرض
-            كذبةٌ في الواجهة، وهي قاعدة D-075 حرفياً. */}
+        {/* **زرّ «فلاتر» غادر هذا الرأس (D-174، طلب أحمد: «ضيف الفلتر في
+            البحث و احذفه من الديسكفري»).** بابُ الفلتر صار في صفحة البحث،
+            والنتيجةُ تنزل هنا. والسببُ الذي يجعله قراراً لا نقلاً: «اكتشف»
+            صفحةُ تصفّحٍ بلا نيّة، و«ابحث» صفحةُ نيّةٍ صريحة — والفلترُ
+            فعلُ نيّة. وخانةُ القوائم تبقى كما هي: ورقتُها أخرى تماماً
+            وتُصفّي ما تعرضه صفحتُها نفسها.
+            ولا زرَّ في تبويب الأنمي أصلاً (D-169): صفوفه ستّة معانٍ ثابتة. */}
         {tab === "lists" && listsFilters ? (
           <ListsFilters {...listsFilters} variant="button" />
-        ) : tab === "movies" || tab === "shows" ? (
-          <button
-            type="button"
-            onClick={() => {
-              tap(8);
-              setSheet(true);
-            }}
-            aria-haspopup="dialog"
-            aria-expanded={sheet}
-            /* أنحف مما كان (طلب أحمد: «الفلتر خل عرضه أصغر شوي») */
-            className={`shrink-0 self-center mb-1 flex items-center gap-1 rounded-full border px-2.5 py-1 text-[12px] font-semibold transition ${
-              count > 0
-                ? "border-accent text-accent bg-accent/10"
-                : "border-border text-muted hover:text-foreground"
-            }`}
-          >
-            <Icon name="sliders" size={14} strokeWidth={1.9} />
-            <span>{t.browseFilters}</span>
-            {count > 0 && (
-              <span
-                className="grid place-items-center min-w-[18px] h-[18px] px-1 rounded-full bg-accent text-[color:var(--on-accent)] text-[11px] font-bold tabular-nums"
-                dir="ltr"
-              >
-                {num(count, locale)}
-              </span>
-            )}
-          </button>
         ) : null}
           </>
         }
@@ -338,6 +305,26 @@ export function DiscoverFilters({
                   <Icon name="close" size={13} strokeWidth={2.4} />
                 </button>
               ))}
+              {/* **بابُ التعديل حيث تُعرض الحالة (D-174).** الزرّ رحل إلى
+                  البحث، ولو رحل معه كلُّ مدخلٍ لصار الفلترُ المفعَّل
+                  **مرئيّاً غيرَ قابلٍ للتعديل**: تُلغي رقاقةً برقاقة أو
+                  تعبر إلى تبويب البحث لتبدأ من الصفر. فالرقاقةُ الأولى هنا
+                  تفتح نفسَ الورقة بنفس الحالة.
+                  ولا تظهر إلا حين يكون هناك ما يُعدَّل — بابٌ دائمٌ هنا
+                  يُعيد الزرَّ الذي طُلب حذفه بثوبٍ آخر. */}
+              <button
+                type="button"
+                onClick={() => {
+                  tap(8);
+                  setSheet(true);
+                }}
+                aria-haspopup="dialog"
+                aria-expanded={sheet}
+                className="flex items-center gap-1.5 rounded-full border border-border text-muted hover:text-foreground hover:border-accent/50 px-3 py-1.5 text-[13px] font-semibold transition"
+              >
+                <Icon name="sliders" size={13} strokeWidth={2} />
+                <span>{t.browseEditFilters}</span>
+              </button>
               {chips.length > 1 && (
                 /* نفس هندسة الرقاقة لا نصٌّ عارٍ: الصفّ قد يلتفّ فيقع «مسح
                    الكل» وحده في سطر — ونصٌّ وحده في سطرٍ يُقرأ عنواناً لا
