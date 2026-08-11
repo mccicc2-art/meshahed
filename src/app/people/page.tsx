@@ -17,7 +17,7 @@ import {
   type PersonLite,
 } from "@/lib/data";
 import { myMutualFollows } from "@/lib/actions";
-import { getT } from "@/lib/locale";
+import { getT, getHiddenCommunityTabs } from "@/lib/locale";
 import type { Dict } from "@/lib/i18n";
 import { localizeRows, localizeTitleRooms } from "@/lib/localize";
 import { timeAgo } from "@/lib/when";
@@ -32,6 +32,7 @@ import { Icon } from "@/components/Icon";
 import { LikeButton } from "@/components/LikeButton";
 import { ReportButton } from "@/components/ReportButton";
 import { PageTabs } from "@/components/ui/PageTabs";
+import { CommunityTools } from "@/components/CommunityTools";
 import { TitleNews } from "@/components/TitleNews";
 import { getTitleNews } from "@/lib/titleNews";
 import { ScrollMemory } from "@/components/ScrollMemory";
@@ -203,6 +204,7 @@ export default async function PeoplePage({
   if (!user) redirect("/login");
 
   const { locale, t } = await getT();
+  const hiddenTabs = await getHiddenCommunityTabs();
 
   const {
     tab: tabParam,
@@ -379,6 +381,11 @@ export default async function PeoplePage({
     { key: "news", href: "/people?tab=news", label: t.communityTabNews },
   ];
 
+  /* التبويبات المخفيّة (D-177) — من الكوكي على الخادم، فلا يومض تبويبٌ
+     ثم يختفي. **والتبويب المفتوح لا يُخفى من نفسه**: من أخفى تبويباً وهو
+     واقفٌ فيه يبقى يراه حتى يغادره، وإلا اختفت الصفحة تحت قدميه. */
+  const visibleTabs = tabs.filter((x) => x.key === tab || !hiddenTabs.includes(x.key));
+
   return (
     <div className="space-y-5">
       {/* ذاكرة موضع التمرير — العائد من ملف صديقٍ يهبط حيث كان (تدقيق 8 Aug م٢) */}
@@ -393,10 +400,18 @@ export default async function PeoplePage({
           واكتشف، وخطٌّ فاصلٌ **واحد**. وصفُّ الفرز والمرشِّح الذي كان
           تحته **حُذف** بطلب أحمد — انظر تعليق `newest`/`kind`. */}
       <PageTabs
-        items={tabs}
+        items={visibleTabs}
         active={tab}
         ariaLabel={t.communityTabsGroup}
         asNav
+        /* رمزُ الأدوات (D-177) — نفس الزرّ ونفس المقاس في المكتبة واكتشف */
+        action={
+          <CommunityTools
+            locale={locale}
+            hidden={hiddenTabs}
+            labels={Object.fromEntries(tabs.map((x) => [x.key, x.label]))}
+          />
+        }
       />
 
       {/* ===== محتوى التبويب ===== */}
