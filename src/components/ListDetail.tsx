@@ -13,6 +13,7 @@ import { Icon, type IconName } from "./Icon";
 import type { ListItem, ListKind } from "@/lib/data";
 import { Sheet, SheetHeader } from "./ui/Sheet";
 import { buttonClass } from "./ui/Button";
+import { sheetScroll } from "./ui/controls";
 import { ShareListSheet } from "./ShareListSheet";
 
 type Dict = ReturnType<typeof getDict>;
@@ -724,7 +725,7 @@ function ReorderSheet({
       {/* `min-h-0` ليست زينة: ابنُ الفليكس لا ينكمش تحت ارتفاع محتواه بلا
           هذه، فقائمةٌ من ثلاثين عملاً كانت تتجاوز سقف الورقة (85vh) وتُقصّ
           بلا إمكانية تمرير — أي لا يمكن الوصول إلى آخرها أصلاً */}
-      <div ref={body} className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-2 py-2">
+      <div ref={body} className={`${sheetScroll} px-2 py-2`}>
         <ul className="relative" style={{ height: order.length * ROW }}>
           {order.map((it, i) => {
             const dragging = from === i;

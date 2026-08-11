@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { createPortal } from "react-dom";
 import Link from "next/link";
 import Image from "next/image";
 import { Sheet, SheetHeader } from "./ui/Sheet";
+import { sheetScroll } from "./ui/controls";
 import { Avatar } from "./Avatar";
 import { Icon, type IconName } from "./Icon";
 import { peopleFollowsOf } from "@/lib/actions";
@@ -66,10 +66,13 @@ export function FollowCountButton({
         {body}
       </button>
 
-      {open && typeof document !== "undefined" && createPortal(
+      {/* بلا بوّابةٍ هنا (D-166): `Sheet` تُرسم في `document.body` منذ D-159 —
+          وهذا اللفّ من ٨ أغسطس كان علاجَ العَرَض عند المستدعي قبل أن يُعرف
+          السبب، فبقي بعد أن عولج السبب. */}
+      {open && (
       <Sheet open={open} onClose={() => setOpen(false)} closeLabel={labels.close} labelledBy={`fp-${dir}`}>
         <SheetHeader id={`fp-${dir}`} title={label} closeLabel={labels.close} onClose={() => setOpen(false)} />
-        <div className="flex-1 min-h-0 overflow-y-auto pb-2">
+        <div className={`${sheetScroll} pb-2`}>
           {people === null ? (
             <div className="space-y-2 py-1" aria-hidden>
               {Array.from({ length: 5 }, (_, i) => (
@@ -114,8 +117,8 @@ export function FollowCountButton({
             </ul>
           )}
         </div>
-      </Sheet>,
-      document.body)}
+      </Sheet>
+      )}
     </>
   );
 }
@@ -163,10 +166,13 @@ export function ToWatchStat({
         <span className="block text-[11px] text-muted mt-1.5 leading-[1.25]">{label}</span>
       </button>
 
-      {open && typeof document !== "undefined" && createPortal(
+      {/* بلا بوّابةٍ هنا (D-166): `Sheet` تُرسم في `document.body` منذ D-159 —
+          وهذا اللفّ من ٨ أغسطس كان علاجَ العَرَض عند المستدعي قبل أن يُعرف
+          السبب، فبقي بعد أن عولج السبب. */}
+      {open && (
       <Sheet open={open} onClose={() => setOpen(false)} closeLabel={labels.close} labelledBy="towatch-peek">
         <SheetHeader id="towatch-peek" title={label} closeLabel={labels.close} onClose={() => setOpen(false)} />
-        <div className="flex-1 min-h-0 overflow-y-auto pb-2">
+        <div className={`${sheetScroll} pb-2`}>
           {items.length === 0 ? (
             <p className="text-center text-muted py-10 text-sm">{labels.empty}</p>
           ) : (
@@ -194,8 +200,8 @@ export function ToWatchStat({
             </ul>
           )}
         </div>
-      </Sheet>,
-      document.body)}
+      </Sheet>
+      )}
     </>
   );
 }

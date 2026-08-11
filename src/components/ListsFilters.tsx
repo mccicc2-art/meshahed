@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { Sheet, SheetHeader } from "./ui/Sheet";
 import { Icon } from "./Icon";
@@ -138,7 +137,10 @@ export function ListsFilters({
 
   if (variant === "chips") return chips || null;
 
-  const sheet = open && typeof document !== "undefined" ? createPortal(
+  /* بلا `createPortal` هنا (D-166): `Sheet` نفسها تُرسم في `document.body`
+     منذ D-159، فبوّابةٌ حول بوّابة. وهذا اللفّ من ٨ أغسطس كان **علاج
+     العَرَض عند المستدعي** قبل أن يُعرف السبب — بقي بعد أن عولج السبب. */
+  const sheet = open ? (
       <Sheet
         open={open}
         onClose={() => setOpen(false)}
@@ -182,8 +184,7 @@ export function ListsFilters({
             {labels.apply}
           </Button>
         </div>
-      </Sheet>,
-      document.body,
+      </Sheet>
   ) : null;
 
   if (variant === "button") {

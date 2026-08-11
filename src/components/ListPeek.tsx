@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { createPortal } from "react-dom";
 import Link from "next/link";
 import Image from "next/image";
 import { Sheet, SheetHeader } from "./ui/Sheet";
+import { sheetScroll } from "./ui/controls";
 import { Icon } from "./Icon";
 
 /**
@@ -104,7 +104,10 @@ export function ListPeekTrigger({
         {children}
       </div>
 
-      {open && typeof document !== "undefined" && createPortal(
+      {/* بلا بوّابةٍ هنا (D-166): `Sheet` تُرسم في `document.body` منذ D-159 —
+          وهذا اللفّ من ٨ أغسطس كان علاجَ العَرَض عند المستدعي قبل أن يُعرف
+          السبب، فبقي بعد أن عولج السبب. */}
+      {open && (
       <Sheet
         open={open}
         onClose={() => setOpen(false)}
@@ -117,7 +120,7 @@ export function ListPeekTrigger({
           closeLabel={labels.close}
           onClose={() => setOpen(false)}
         />
-        <div className="flex-1 min-h-0 overflow-y-auto -mx-1 px-1 pb-2">
+        <div className={`${sheetScroll} -mx-1 px-1 pb-2`}>
           {err ? (
             <p className="text-center text-muted py-10 text-sm">{labels.failed}</p>
           ) : rows === null ? (
@@ -182,8 +185,8 @@ export function ListPeekTrigger({
             </Link>
           )}
         </div>
-      </Sheet>,
-      document.body)}
+      </Sheet>
+      )}
     </>
   );
 }
