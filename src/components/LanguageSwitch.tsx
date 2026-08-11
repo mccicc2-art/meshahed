@@ -1,7 +1,6 @@
 "use client";
 
 import { useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { setLocale } from "@/lib/actions";
 import { getDict, type Locale } from "@/lib/i18n";
 import { segmentedItem, segmentedTrack } from "./ui/controls";
@@ -13,15 +12,22 @@ export function LanguageSwitch({
   locale: Locale;
   compact?: boolean;
 }) {
-  const router = useRouter();
   const t = getDict(locale);
   const [pending, start] = useTransition();
 
+  /**
+   * تحميلٌ كامل لا `router.refresh()` — نفس قاعدة D-162.
+   *
+   * هذا ثاني مبدّلٍ للّغة في التطبيق (الأوّل علمُ صفحة الهبوط)، وتركُ أحدهما
+   * على `refresh` يعني **سلوكين لنفس الفعل** ينحرفان عند أوّل إصلاح — وهو
+   * بالضبط ما تمنعه قاعدة D-145. والسبب نفسه: `refresh` يعيد رسم شجرة React
+   * ويترك `lang` و`dir` وكلَّ ودجت طرفٍ ثالث على حالها القديم.
+   */
   function pick(next: Locale) {
     if (next === locale || pending) return;
     start(async () => {
       await setLocale(next);
-      router.refresh();
+      window.location.reload();
     });
   }
 
