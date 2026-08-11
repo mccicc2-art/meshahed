@@ -875,9 +875,19 @@ export async function getCommunityFeed(
     // نشاط المتابَعين أو المجتمع من دالة definer — الجداول ليست مفتوحة
     // القراءة، والدالّة تُرجع الأعمدة العامة وحدها مع إخفاء الاسم منفَّذاً
     // في SQL (supabase/activity_v2.sql و supabase/community_feed.sql)
-    const { data: actRows, error } = await supabase.rpc(
+    let { data: actRows, error } = await supabase.rpc(
       mode === "all" ? "community_activity" : "following_activity_v2",
     );
+    /* **ارتدادٌ حين تكون الدالّة غائبةً لا حين يفشل الاستعلام** (D-187):
+       `community_activity` مكتوبةٌ في `supabase/community_feed.sql` منذ
+       الهجرة ٢٧ **ولم تُشغَّل قطّ** — فكان «الكل» يعود فارغاً بصمت بينما
+       «من أتابع» مليء، وهو أسوأ من عطلٍ ظاهر لأنه يُقرأ «لا أحد يكتب».
+       فالارتدادُ يُبقي التبويب حيّاً بخطّ المتابَعين حتى تُشغَّل، **ثم
+       يسقط من نفسه** يوم توجد. (نفس شكل حارس D-185: لا يُصدَّق الغياب
+       قبل دليل.) */
+    if (error && mode === "all") {
+      ({ data: actRows, error } = await supabase.rpc("following_activity_v2"));
+    }
     if (error || !actRows) return [];
 
     type ActivityRow = {
