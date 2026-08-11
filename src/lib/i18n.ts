@@ -506,6 +506,11 @@ const ar = {
   searchBrowseFrom: (place: string) => `تصفّح كل الأعمال من ${place}`,
   browseCountryGroup: "بلد الإنتاج",
   browseAnyCountry: "كل البلدان",
+  /* الوسم (طلب أحمد ١١ أغسطس) — «عن ماذا؟» لا «من أيّ نوع؟»: زومبي،
+     سرقات، سفرٌ عبر الزمن. وسُمّي «الموضوع» لا «الوسم» كي لا يُقرأ
+     مصطلحاً تقنياً، ولا «التصنيف» كي لا يلتبس بمحور النوع فوقه */
+  browseTagGroup: "الموضوع",
+  browseAnyTag: "أي موضوع",
   // الجائزة (طلب أحمد 9 Aug) — محورٌ يحوّل الصفحة إلى صفّ الفائزين
   browseAwardGroup: "الجائزة",
   browseAnyAward: "كل الجوائز",
@@ -1487,6 +1492,8 @@ const en: Dict = {
   searchBrowseFrom: (place: string) => `Browse everything from ${place}`,
   browseCountryGroup: "Country of origin",
   browseAnyCountry: "Any country",
+  browseTagGroup: "Theme",
+  browseAnyTag: "Any theme",
   browseAwardGroup: "Award",
   browseAnyAward: "Any award",
   awardRailNote: (n: string, from: string) => `${n} winners since ${from} — newest first`,

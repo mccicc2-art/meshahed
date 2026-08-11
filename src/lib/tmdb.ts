@@ -1162,6 +1162,42 @@ export interface DiscoverFilter {
   to?: string | null;
   /** أدنى متوسّط تقييم */
   minRate?: number | null;
+  /**
+   * معرّفات كلماتٍ مفتاحية — **تُجمع بـ«و» لا بـ«أو»**.
+   *
+   * لأن مستدعيها يضع فيها شيئين مختلفَين في المعنى: مفتاحَ الأنمي
+   * (شرطُ التبويب) ووسمَ الموضوع الذي اختاره الشخص. «أو» بينهما تعني
+   * «أنمي **أو** زومبي» — أي كلَّ الأنمي وكلَّ أفلام الزومبي معاً،
+   * وهو نقيضُ ما طُلب.
+   */
+  keywords?: string[];
+}
+
+/**
+ * معرّف كلمةٍ مفتاحية من نصّها الإنجليزيّ.
+ *
+ * **يُحلّ عند الطلب ولا يُكتب في الشيفرة:** معرّفات كلمات TMDB لا تُنشر
+ * في وثيقةٍ، وتخمينُ رقمٍ يعني صفّاً فارغاً بلا رسالة خطأ. والنداء مخبّأ
+ * ساعةً في `tmdb()` كسائر النداءات، فثمنُه نداءٌ واحد لكل وسمٍ في الساعة.
+ *
+ * **والمطابقة الحرفية أوّلاً:** `/search/keyword?query=space` يعيد
+ * «space opera» و«space marine» قبل «space» أحياناً — والأوّلُ الأعمى
+ * كان سيقلب معنى الوسم بلا أن يقول.
+ */
+export async function keywordId(q: string): Promise<string | null> {
+  try {
+    const data = await tmdb<{ results?: { id: number; name: string }[] }>(
+      "/search/keyword",
+      { query: q },
+    );
+    const rows = data.results ?? [];
+    const exact = rows.find((r) => r.name.toLowerCase() === q.toLowerCase());
+    const hit = exact ?? rows[0];
+    return hit ? String(hit.id) : null;
+  } catch {
+    /* تعذّر الحلّ — الوسم يسقط بصمت بدل أن يُفرغ الصفحة بمعرّفٍ خاطئ */
+    return null;
+  }
 }
 
 /**
@@ -1237,6 +1273,8 @@ function discoverParams(mediaType: MediaType, f: DiscoverFilter) {
   if (f.from) p[k.gte] = f.from;
   if (f.to) p[k.lte] = f.to;
   if (f.minRate) p["vote_average.gte"] = String(f.minRate);
+  /* الفاصلة «و» عند TMDB والشرطة العمودية «أو» — انظر تعليق `keywords` */
+  if (f.keywords?.length) p.with_keywords = f.keywords.join(",");
   return p;
 }
 

@@ -178,6 +178,61 @@ export function browseCountryName(c: BrowseCountry, locale: "ar" | "en") {
 
 
 
+/**
+ * الوسوم — المحور الذي يسأل «عن ماذا؟» لا «من أيّ نوع؟» (طلب أحمد ١١
+ * أغسطس: «في الفلتر احتاجك تضيف ماكرو جينرز»، ثم اختار الأدقّ: «وسوم مثل
+ * زومبي وسرقات»).
+ *
+ * **ولماذا محورٌ ثانٍ بجانب النوع الدرامي لا توسعةٌ له:** أنواع TMDB
+ * الخمسة عشر تصف **الشكل** (أكشن، دراما، رعب)، والوسم يصف **الموضوع**
+ * (زومبي، سرقة، سفرٌ عبر الزمن). ومن يبحث عن فيلم سرقةٍ لا يجد محوراً
+ * يقوله اليوم: «جريمة» تعطيه المافيا والمخدّرات والسرقة معاً. المحوران
+ * يتقاطعان ولا يتبادلان.
+ *
+ * **والمخزون هنا كلماتٌ إنجليزية لا معرّفاتٌ رقمية** — وهذا مقصود.
+ * معرّفات كلمات TMDB المفتاحية لا تُنشر في وثيقةٍ ولا تُشتقّ، فكتابتُها
+ * بالتخمين تعني رقماً خاطئاً يعيد صفّاً فارغاً **بصمت**. الكلمة تُحلّ إلى
+ * معرّفها عند الطلب عبر `/search/keyword` (`keywordId` في `tmdb.ts`)،
+ * والنتيجة مخبّأةٌ ساعةً كسائر نداءات TMDB — فالثمن نداءٌ واحد في الساعة،
+ * والمقابل أن الوسم **يصحّح نفسه** يوم يغيّر TMDB فهرسه.
+ */
+export interface BrowseTag {
+  slug: string;
+  ar: string;
+  en: string;
+  /** استعلام `/search/keyword` — إنجليزيٌّ لأن كلمات TMDB إنجليزية */
+  q: string;
+}
+
+/** الترتيب بالطلب المتوقَّع لا بالأبجدية — أوّلُ خمسةٍ يغطّون أكثر ما يُسأل */
+export const BROWSE_TAGS: BrowseTag[] = [
+  { slug: "zombie", ar: "زومبي", en: "Zombie", q: "zombie" },
+  { slug: "heist", ar: "سرقات", en: "Heist", q: "heist" },
+  { slug: "superhero", ar: "أبطال خارقون", en: "Superhero", q: "superhero" },
+  { slug: "time-travel", ar: "سفر عبر الزمن", en: "Time travel", q: "time travel" },
+  { slug: "true-story", ar: "قصة حقيقية", en: "Based on a true story", q: "based on true story" },
+  { slug: "serial-killer", ar: "قاتل متسلسل", en: "Serial killer", q: "serial killer" },
+  { slug: "post-apocalyptic", ar: "ما بعد النهاية", en: "Post-apocalyptic", q: "post-apocalyptic" },
+  { slug: "dystopia", ar: "عالمٌ بائس", en: "Dystopia", q: "dystopia" },
+  { slug: "space", ar: "فضاء", en: "Space", q: "space" },
+  { slug: "spy", ar: "جواسيس", en: "Spy", q: "spy" },
+  { slug: "survival", ar: "نجاة", en: "Survival", q: "survival" },
+  { slug: "revenge", ar: "انتقام", en: "Revenge", q: "revenge" },
+  { slug: "vampire", ar: "مصّاصو دماء", en: "Vampire", q: "vampire" },
+  { slug: "martial-arts", ar: "فنون قتالية", en: "Martial arts", q: "martial arts" },
+  { slug: "coming-of-age", ar: "بلوغ", en: "Coming of age", q: "coming of age" },
+  { slug: "courtroom", ar: "محاكم", en: "Courtroom", q: "courtroom" },
+  { slug: "sports", ar: "رياضة", en: "Sports", q: "sports" },
+  { slug: "musical", ar: "استعراضي", en: "Musical", q: "musical" },
+  { slug: "supernatural", ar: "خوارق", en: "Supernatural", q: "supernatural" },
+  { slug: "isekai", ar: "عالمٌ آخر (إيسيكاي)", en: "Isekai", q: "isekai" },
+  { slug: "mecha", ar: "روبوتات (ميكا)", en: "Mecha", q: "mecha" },
+];
+
+export function browseTagName(x: BrowseTag, locale: "ar" | "en") {
+  return locale === "en" ? x.en : x.ar;
+}
+
 /** حقبة الإصدار — مدىً لا سنةً مفردة: السنة الواحدة تُفرغ الصفّ */
 export interface BrowseEra {
   slug: string;
@@ -260,6 +315,8 @@ export interface BrowseQuery {
   era: BrowseEra | null;
   /** أدنى تقييم */
   rate: BrowseRate | null;
+  /** وسمُ الموضوع — «عن ماذا؟» بجانب «من أيّ نوع؟» */
+  tag: BrowseTag | null;
   /** slug جائزة من `awards.ts` — يحوّل الصفوف إلى فائزيها (طلب أحمد) */
   award: string | null;
   /** هل المستخدم يتصفّح فعلاً؟ لو لا، تبقى صفحة اكتشف على صفوفها المنسّقة */
@@ -283,6 +340,7 @@ export function parseBrowse(params: {
   p?: string;
   era?: string;
   rate?: string;
+  tag?: string;
   award?: string;
 }): BrowseQuery {
   const type: BrowseType =
@@ -304,6 +362,7 @@ export function parseBrowse(params: {
   const rate = (BROWSE_RATES as readonly number[]).includes(rateNum)
     ? (rateNum as BrowseRate)
     : null;
+  const tag = BROWSE_TAGS.find((x) => x.slug === params.tag) ?? null;
   const award = AWARDS.some((a) => a.slug === params.award) ? params.award! : null;
 
   return {
@@ -314,6 +373,7 @@ export function parseBrowse(params: {
     provider,
     era,
     rate,
+    tag,
     award,
     // الجهة (type) لا تجعل التصفّح «نشطاً»: صارت تبويبَ رأسٍ (أفلام/
     // مسلسلات — طلب أحمد) لا فلتراً، وتبديلها يعيد ضبط الرفوف —
@@ -325,6 +385,7 @@ export function parseBrowse(params: {
       provider !== null ||
       era !== null ||
       rate !== null ||
+      tag !== null ||
       award !== null,
   };
 }
@@ -336,6 +397,10 @@ export function parseBrowse(params: {
  * زمنياً ولا عتبة تقييم — تقبل الجهة والنوع الدرامي فقط (والأخير بتصفيةٍ
  * عندنا). فمتى طُلب أحد الثلاثة انتقلنا إلى `/discover` الذي يقبلها كلّها،
  * وضحّينا بجودة الانتقاء التحريري مقابل أن يصل المستخدم إلى ما طلبه.
+ *
+ * **والوسم منها:** `with_keywords` معاملُ `/discover` وحده، ولا سبيل
+ * لتصفية «الرائج» به عندنا — الرائجُ لا يحمل كلماته المفتاحية في نتيجته،
+ * فتصفيتُه محلياً تعني نداءً لكل عمل.
  */
 export function needsDiscover(q: BrowseQuery) {
   return (
@@ -343,7 +408,8 @@ export function needsDiscover(q: BrowseQuery) {
     q.country !== null ||
     q.provider !== null ||
     q.era !== null ||
-    q.rate !== null
+    q.rate !== null ||
+    q.tag !== null
   );
 }
 
@@ -369,6 +435,7 @@ export function browseHref(q: {
   p?: number | null;
   era?: string | null;
   rate?: number | null;
+  tag?: string | null;
   award?: string | null;
 }) {
   const p = new URLSearchParams();
@@ -388,6 +455,7 @@ export function browseHref(q: {
   if (q.p) p.set("p", String(q.p));
   if (q.era) p.set("era", q.era);
   if (q.rate) p.set("rate", String(q.rate));
+  if (q.tag) p.set("tag", q.tag);
   if (q.award) p.set("award", q.award);
   const qs = p.toString();
   return qs ? `/news?${qs}` : "/news";
@@ -403,6 +471,7 @@ export function browseKey(q: BrowseQuery, page = 1) {
     q.provider ?? "any",
     q.era?.slug ?? "any",
     q.rate ?? "any",
+    q.tag?.slug ?? "any",
     q.award ?? "any",
     page,
   ].join(":");
