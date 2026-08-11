@@ -24,7 +24,7 @@ import { Icon } from "./Icon";
 import { FilterIconButton } from "./ui/FilterIconButton";
 import { ListsFilters, type ListsFiltersProps } from "./ListsFilters";
 import { DiscoverFilterSheet, type FilterDraft } from "./DiscoverFilterSheet";
-import { PageTabs } from "./ui/PageTabs"; import { applyTabPrefs, tabPrefsTouched, type TabPref } from "@/lib/tabPrefs";
+import { PageTabs } from "./ui/PageTabs"; import { applyTabPrefs, type TabPref } from "@/lib/tabPrefs";
 
 /**
  * رأس «اكتشف».
@@ -288,7 +288,7 @@ export function DiscoverFilters({
           <FilterIconButton
             onClick={() => setSheet(true)}
             label={t.discoverToolsTitle}
-            active={chips.length > 0 || tabPrefsTouched("discover", tabPrefs)}
+            active={chips.length > 0}
             expanded={sheet}
           />
         )}
