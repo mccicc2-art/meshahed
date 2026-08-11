@@ -27,6 +27,7 @@ import {
   backdropUrl,
   posterUrl,
 } from "@/lib/tmdb";
+import { animeExtras } from "@/lib/anilist";
 import { EpisodeTracker, type SeasonSummary } from "@/components/EpisodeTracker";
 import { getT, getWatchRegion } from "@/lib/locale";
 import { RatingBox } from "@/components/RatingBox";
@@ -214,6 +215,16 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
             <span aria-hidden>·</span>
             <span>{t.seasonsCount(tv.number_of_seasons)}</span>
           </div>
+
+          {/* المصدر والاستوديو من AniList (D-173) — لِما ثبت أنه أنمي وحده،
+              وخلف Suspense خاصّته: السلسلة نداءان إلى خدمتين لا نملكهما،
+              فلا تُرهن بهما ترويسةُ الصفحة (D-071). وغيابُهما لا يترك فراغاً
+              محجوزاً — السطر إمّا يُرسم كاملاً أو لا يوجد أصلاً. */}
+          {isAnime(tv) && (
+            <Suspense fallback={null}>
+              <AnimeFacts tmdbId={tvId} t={t} />
+            </Suspense>
+          )}
 
           {/* التقييم سطرٌ مستقلّ تحت البيانات، بشعارَي IMDb وطماطم لا
               بأسمائهما، ومن هذين المصدرين فقط — لا نجمة TMDB (قرار أحمد
@@ -448,6 +459,39 @@ async function ReviewsTab({
         count={community.count}
         reviews={titleReviews}
       />
+    </div>
+  );
+}
+
+/**
+ * سطرُ «عن مانغا · استوديو MAPPA» — أو لا شيء (D-173).
+ *
+ * مكوّن خادمٍ صغير لأن `animeExtras` تنادي خدمتين خارجيتين، ووضعُه خلف
+ * `Suspense` يُخرجهما من المسار الحرج للترويسة.
+ */
+async function AnimeFacts({
+  tmdbId,
+  t,
+}: {
+  tmdbId: number;
+  t: Awaited<ReturnType<typeof getT>>["t"];
+}) {
+  const extras = await animeExtras(tmdbId, "tv");
+  if (!extras) return null;
+  const parts = [
+    extras.source ? t.animeSourceLabel(extras.source) : "",
+    extras.studio ? t.animeStudioLabel(extras.studio) : "",
+  ].filter(Boolean);
+  if (parts.length === 0) return null;
+
+  return (
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs sm:text-sm text-muted mt-1">
+      {parts.map((p, i) => (
+        <span key={p} className="inline-flex items-center gap-2">
+          {i > 0 && <span aria-hidden>·</span>}
+          <span>{p}</span>
+        </span>
+      ))}
     </div>
   );
 }
