@@ -43,8 +43,11 @@ interface Suggestion {
       معرّفُهم نصّيّ ووجهتُهم `/u/…`، لا `/person/<رقم TMDB>` */
   href?: string;
   /** مسار ملصق TMDB الخام — لا الرابط الجاهز. من يلتقط العمل ليضيفه إلى
-      قائمة يحتاج المسار، و`safeImagePath` ترفض الرابط الكامل (D-167) */
-  posterPath?: string | null;
+      قائمة يحتاج المسار، و`safeImagePath` ترفض الرابط الكامل (D-167).
+      **واسمُه بالشرطة السفلية كما يأتي من `/api/suggest` حرفياً:** الصفوف
+      تُسنَد من ردّ الشبكة بلا تحويل (`setItems(data.results)`)، فاسمٌ
+      مخالفٌ هنا يقرأ `undefined` بصمت — وهو ما وقع فعلاً أوّل مرّة. */
+  poster_path?: string | null;
   /** مفتاح صفٍّ فريد حين لا يكفي `kind-id` (مستخدمو التطبيق كلّهم id=0).
       اسمُه ليس `key`: حقلٌ بذلك الاسم داخل كائنٍ يُمرَّر إلى JSX فخٌّ
       يُقرأ خطأً من أول نظرة */
@@ -396,7 +399,7 @@ function ResultRow({
               kind: s.kind as "tv" | "movie",
               id: s.id,
               title: s.title,
-              posterPath: s.posterPath ?? null,
+              posterPath: s.poster_path ?? null,
             })
           : onGo(href)
       }
