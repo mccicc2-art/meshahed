@@ -113,6 +113,9 @@ const ar = {
   listNewGroup: "قائمة جديدة",
   /* أدوات المجتمع (D-177) — «أدوات» لا «فلتر»: ما خلفها أفعالٌ لا ترشيح */
   communityToolsTitle: "أدوات المجتمع",
+  /* فعلٌ لا عنوان: صفُّ قائمةٍ يقول ماذا يفعل الضغطُ عليه، وعنوانُ الورقة
+     التي يفتحها («مجتمعك») يصلح عنواناً ولا يصلح صفّاً (D-155) */
+  communityToolsCreate: "أنشئ مجتمعاً",
   communityToolsMessage: "راسل صديقاً",
   communityToolsHideGroup: "التبويبات الظاهرة",
   browseActiveFilters: "الفلاتر المفعّلة",
@@ -1122,6 +1125,7 @@ const en: Dict = {
   librarySortGroup: "Sort",
   listNewGroup: "New list",
   communityToolsTitle: "Community tools",
+  communityToolsCreate: "Create a community",
   communityToolsMessage: "Message a friend",
   communityToolsHideGroup: "Visible tabs",
   browseActiveFilters: "Active filters",
