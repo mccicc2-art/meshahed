@@ -3,10 +3,10 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Sheet, SheetHeader } from "./ui/Sheet";
+import { FilterIconButton } from "./ui/FilterIconButton";
 import { Icon } from "./Icon";
 import { Button } from "./ui/Button";
 import { chipClass } from "./ui/controls";
-import { tap } from "@/lib/haptics";
 
 /**
  * فلاتر تبويب القوائم (طلب أحمد: «زر فلتر مثل الموجود في الأفلام»).
@@ -74,35 +74,21 @@ export function ListsFilters({
     community: labels.community,
   };
 
+  /* **نفس زرّ اكتشف والمكتبة والمجتمع (D-177، طلب أحمد):** كان هنا زرٌّ
+     بكلمةٍ وعدّاد — «الاختلاف في التصميم في كل موقع لازم ما يتكرّر، هذي
+     هوية ولازم تكون موحّدة». والعدّاد سقط مع الكلمة: نقطةُ الحالة تقول
+     «هناك شيءٌ مفعَّل»، والتفصيل في الرقائق تحته. */
   const filterButton = (
-    <button
-      type="button"
+    <FilterIconButton
       onClick={() => {
-        tap(8);
         setDraftFr(fr ?? "");
         setDraftSrc(lsrc);
         setOpen(true);
       }}
-      aria-haspopup="dialog"
-      aria-expanded={open}
-      /* self-center mb-1: موضع زرّ تبويب الأفلام حرفياً في سطر التبويبات */
-      className={`shrink-0 self-center mb-1 flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[13px] font-semibold transition ${
-        count > 0
-          ? "border-accent text-accent bg-accent/10"
-          : "border-border text-muted hover:text-foreground"
-      }`}
-    >
-      <Icon name="sliders" size={16} strokeWidth={1.9} />
-      <span>{labels.button}</span>
-      {count > 0 && (
-        <span
-          className="grid place-items-center min-w-[18px] h-[18px] px-1 rounded-full bg-accent text-[color:var(--on-accent)] text-[11px] font-bold tabular-nums"
-          dir="ltr"
-        >
-          {count}
-        </span>
-      )}
-    </button>
+      label={labels.button}
+      active={count > 0}
+      expanded={open}
+    />
   );
 
   {/* المختار يظهر ويُزال من مكانه — كصفّ رقائق تبويب الأفلام */}
