@@ -10,6 +10,7 @@ import {
   getSavedLists,
   getFollowedArtists,
   getMyTitleArt,
+  getMyAnimeFlags,
   artKey,
 } from "@/lib/data";
 import { getT, getTabPrefs } from "@/lib/locale";
@@ -50,11 +51,13 @@ export default async function LibraryPage({
       ? "shows"
       : filter === "movie"
         ? "movies"
-        : filter === "person"
-          ? "artists"
-          : filter === "list"
-            ? "lists"
-            : (defaultTab(tabPrefs, "shows") as LibraryTab);
+        : filter === "anime"
+          ? "anime"
+          : filter === "person"
+            ? "artists"
+            : filter === "list"
+              ? "lists"
+              : (defaultTab(tabPrefs, "shows") as LibraryTab);
 
   // الملخّص المجمّع (صف لكل مسلسل، والإعادة محسوبة داخله) بدل قراءة كل
   // صفوف الحلقات — نفس الترقية التي أخذتها الرئيسية. الترجمة في نفس الموجة.
@@ -182,6 +185,24 @@ export default async function LibraryPage({
     })
     .sort((a, b) => a.rank - b.rank);
 
+  /* **تبويبُ الأنمي: عرضٌ ثالثٌ لا اقتطاعٌ من الأوّلين** (D-182).
+     العلَمُ يُقرأ من `follows.is_anime` — من متابعة صاحبه لا من بِركة
+     «أفضل الأعمال»: بِركةُ `imdb_pool` أربعةُ آلاف مرشّح فوق عتبة خمسة
+     آلاف صوت، **فأنميك متوسّطُ التقييم ليس فيها**، وتبويبٌ يُخفي نصفَ
+     مكتبتك ويدّعي الاكتمال أسوأُ من غيابه.
+     وترتيبُ المسلسلات ثم الأفلام محفوظٌ لأن كلَّ مصفوفةٍ وصلت مرتَّبة. */
+  const animeFlags = await getMyAnimeFlags();
+  const anime = [...shows, ...movies].filter(
+    (x) => animeFlags.get(`${x.mediaType}-${x.tmdbId}`) === true,
+  );
+  /* **و`null` ليست `false`:** ما لم يُصنَّف بعد يُسأل عنه مرّةً عند أوّل
+     فتحٍ للتبويب. صفٌّ جديد يولد غيرَ مصنَّف، فالعدّ لا يجفّ للأبد.
+     والخريطةُ الفارغة (قبل الهجرة ٦١) تعني «الكلُّ غير مصنَّف» — وهو
+     الصدق: لا عمودَ بعد. */
+  const animeUnknown = follows.filter(
+    (f) => (animeFlags.get(`${f.media_type}-${f.tmdb_id}`) ?? null) === null,
+  ).length;
+
   return (
     <div>
       {/* ذاكرة موضع التمرير — العائد من عملٍ يهبط حيث كان (تدقيق 8 Aug م٢) */}
@@ -193,6 +214,8 @@ export default async function LibraryPage({
       <LibraryGrid
         shows={shows}
         movies={movies}
+        anime={anime}
+        animeUnknown={animeUnknown}
         artists={artists}
         artistCount={artistRows.length}
         lists={lists}
