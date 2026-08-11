@@ -2,11 +2,13 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createList } from "@/lib/actions";
 import { posterUrl } from "@/lib/media";
 import { getDict, type Locale } from "@/lib/i18n";
+import { toast } from "@/lib/toast";
+import { tap } from "@/lib/haptics";
 import { Icon } from "./Icon";
 import type { UserList } from "@/lib/data";
 import { Alert } from "./ui/Alert";
@@ -36,15 +38,39 @@ export function ListManager({ lists, locale }: { lists: UserList[]; locale: Loca
      نفس ورقة مشاركة صفحة القائمة — مكوّنٌ واحد لا نسختان */
   const [shareFor, setShareFor] = useState<UserList | null>(null);
 
+  const nameRef = useRef<HTMLInputElement>(null);
+  const subRef = useRef<HTMLInputElement>(null);
+  /* ختمُ آخر إطلاق: الزرّ يعمل على `pointerdown` **و** `click` معاً (انظر
+     `fire` أدناه)، وبعض المتصفّحات ترسل الاثنين — فلا يُنشأ اسمٌ مرّتين */
+  const firedAt = useRef(0);
+
   function add() {
-    const clean = name.trim();
-    if (!clean) return;
+    /* الاسم من الحقل نفسه أوّلاً لا من الحالة (D-168): إن أخفق مسارُ
+       إدخالٍ ما في إطلاق `onChange` عند React — لوحةُ مفاتيح، تصحيحٌ
+       تلقائيّ، ملءٌ تلقائيّ — تبقى قيمة الـDOM هي الصحيحة. */
+    const clean = (nameRef.current?.value ?? name).trim();
+    const sub = subRef.current?.value ?? subtitle;
+    if (!clean) {
+      /* لا يُترك الزرّ معطّلاً ثم لا شيء يحدث: يقول سببه ويعيد التركيز.
+         زرٌّ معطّل على الجوال (`disabled:pointer-events-none`) لا يُلمس
+         أصلاً، فيبدو التطبيق مكسوراً بلا رسالة. */
+      setError(t.listNameRequired);
+      nameRef.current?.focus();
+      return;
+    }
     setError(null);
+    tap([12, 30]);
     start(async () => {
       try {
-        await createList(clean, false, subtitle);
+        const id = await createList(clean, false, sub);
         setName("");
         setSubtitle("");
+        if (nameRef.current) nameRef.current.value = "";
+        /* توستٌ صريح: لو تأخّر `router.refresh()` أو لم يُعِد الرسم على
+           جهازٍ ما، يبقى للمستخدم دليلٌ أن الفعل وقع — وبابٌ إليه. */
+        toast(t.listMadeToast(clean), {
+          action: id ? { label: t.openListAction, run: () => router.push(`/lists/${id}`) } : undefined,
+        });
         router.refresh();
       } catch (e) {
         setError((e as Error).message);
@@ -52,22 +78,53 @@ export function ListManager({ lists, locale }: { lists: UserList[]; locale: Loca
     });
   }
 
+  /**
+   * إطلاقُ الإنشاء — **على `pointerdown` لا على `click` وحده (D-168).**
+   *
+   * **بلاغ أحمد:** «حتى في التطبيق لا تستطيع إنشاء لستة» — يعمل على
+   * سطح المكتب ولا يعمل على الجوال ولا على التطبيق المثبَّت.
+   *
+   * **والفرق بين الجهازين هو لوحة المفاتيح:** الحقل مركَّز واللوحة
+   * مفتوحة، فلمسُ الزرّ يُطلق `blur` أوّلاً ← تُغلق اللوحة ← **تتمدّد
+   * الشاشة المرئية وتنزاح الصفحة** ← وعند `touchend` لم يعد الإصبع فوق
+   * الزرّ، **فلا يُطلق `click` إطلاقاً**. بالفأرة لا لوحةَ ولا انزياح،
+   * فيعمل دائماً — وهذا بالضبط ما جعله «غير قابل للتكرار» في الفحص.
+   *
+   * `preventDefault` على `pointerdown` يمنع نزع التركيز أصلاً، فلا تُغلق
+   * اللوحة ولا تنزاح الصفحة. و`onClick` يبقى للوحة المفاتيح ولأي متصفّحٍ
+   * لا يرسل `pointerdown` — والختم يمنع التنفيذ مرّتين.
+   */
+  function fire() {
+    const now = performance.now();
+    if (now - firedAt.current < 700) return;
+    firedAt.current = now;
+    add();
+  }
+
   return (
     <div>
       <div className="mb-5">
         <div className="flex gap-2">
           <input
+            ref={nameRef}
             value={name}
             onChange={(e) => setName(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && add()}
+            onKeyDown={(e) => e.key === "Enter" && fire()}
             maxLength={60}
             placeholder={t.listNamePlaceholder}
-            className="flex-1 min-w-0 rounded-control bg-surface-2 border border-border px-3 py-2.5 text-base outline-none focus:border-accent transition"
+            /* `min-h-11` — أربعةٌ وأربعون بكسلاً، أدنى هدفِ لمسٍ يصيبه
+               الإبهام (نفس قاعدة نقاط صفحة القائمة) */
+            className="flex-1 min-w-0 min-h-11 rounded-control bg-surface-2 border border-border px-3 py-2.5 text-base outline-none focus:border-accent transition"
           />
           <button
-            onClick={add}
-            disabled={pending || !name.trim()}
-            className={buttonClass({ className: "shrink-0" })}
+            type="button"
+            onPointerDown={(e) => {
+              e.preventDefault();
+              fire();
+            }}
+            onClick={fire}
+            disabled={pending}
+            className={buttonClass({ className: "shrink-0 min-h-11" })}
           >
             {t.listCreate}
           </button>
@@ -78,9 +135,10 @@ export function ListManager({ lists, locale }: { lists: UserList[]; locale: Loca
             متاحاً لحظة الإنشاء لمن يريده بلا أن يعترض طريق من لا يريده */}
         {name.trim() && (
           <input
+            ref={subRef}
             value={subtitle}
             onChange={(e) => setSubtitle(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && add()}
+            onKeyDown={(e) => e.key === "Enter" && fire()}
             maxLength={120}
             placeholder={t.listSubtitlePlaceholder}
             aria-label={t.listSubtitleLabel}
