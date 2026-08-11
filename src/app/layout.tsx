@@ -4,6 +4,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 import { Navbar } from "@/components/Navbar";
 import { BottomNav } from "@/components/BottomNav";
+import { NavSignalDot } from "@/components/NavSignalDot";
 import { Footer } from "@/components/Footer";
 import { OfflineSync } from "@/components/OfflineSync";
 import { ToastHost } from "@/components/ToastHost";
@@ -132,7 +133,19 @@ export default async function RootLayout({
           {children}
         </main>
         <Footer text={t.footer} />
-        <BottomNav locale={locale} signedIn={signedIn} />
+                {/* نقطةُ «جديد» تُبثّ خلف Suspense: عدُّها نداءُ قاعدة، ولو انتظرته
+            الصفحة لتأخّر أوّل بايت في كل مسار (نفس سبب Suspense للترويسة) */}
+        <BottomNav
+          locale={locale}
+          signedIn={signedIn}
+          peopleDot={
+            signedIn ? (
+              <Suspense fallback={null}>
+                <NavSignalDot />
+              </Suspense>
+            ) : null
+          }
+        />
         <OfflineSync />
         <ToastHost />
         {/* بصمة البناء تُخبز في الصفحة: بها يعرف التبويب المُستأنَف أنه
