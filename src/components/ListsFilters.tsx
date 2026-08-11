@@ -7,6 +7,10 @@ import { FilterIconButton } from "./ui/FilterIconButton";
 import { Icon } from "./Icon";
 import { Button } from "./ui/Button";
 import { chipClass } from "./ui/controls";
+/* تبويب القوائم له بابُه هنا لا في ورقة اكتشف — رمزٌ واحد لكل تبويب (D-179) */
+import { TabsPrefs } from "./TabsPrefs";
+import type { Locale } from "@/lib/i18n";
+import type { TabPref } from "@/lib/tabPrefs";
 
 /**
  * فلاتر تبويب القوائم (طلب أحمد: «زر فلتر مثل الموجود في الأفلام»).
@@ -47,10 +51,25 @@ export function ListsFilters({
   franchises,
   labels,
   variant = "full",
+  tabsPrefs,
 }: ListsFiltersProps & {
   /** button: الزرّ وورقته في سطر التبويبات (طلب أحمد: مكان زرّ الأفلام
       نفسه) · chips: المختار وحده فوق الصفوف · full: الاثنان معاً */
   variant?: "full" | "button" | "chips";
+  /**
+   * قسمُ تفضيلات التبويبات — **لأن تبويب القوائم له بابُه هنا لا هناك.**
+   *
+   * زرُّ هذا التبويب ليس `FilterIconButton` الذي يفتح ورقة اكتشف، بل هذه
+   * الورقة. فلو سكن القسمُ في تلك وحدها لبقي تبويبُ القوائم بلا طريقٍ
+   * إلى ترتيب تبويباته — **رمزٌ واحد لكل تبويب، وخلفه كلُّ ما يخصّه.**
+   * والمنطق واحدٌ في الورقتين (`TabsPrefs`)، فلا نسخةَ ثانية (D-145).
+   */
+  tabsPrefs?: {
+    locale: Locale;
+    prefs: TabPref[];
+    labels: Record<string, string>;
+    title: string;
+  };
 }) {
 
   const router = useRouter();
@@ -139,7 +158,10 @@ export function ListsFilters({
           closeLabel={labels.close}
           onClose={() => setOpen(false)}
         />
-        <div className="grid grid-cols-2 gap-3 py-2">
+        {/* حشوٌ جانبيّ كان ناقصاً: لوح الورقة بلا `px` (الترويسة وحدها
+            تحمله)، فكانت المنسدلتان تلتصقان بإطار الورقة — ظهر بوضوح حين
+            نزل قسمُ التبويبات تحتهما بحشوه الصحيح */}
+        <div className="grid grid-cols-2 gap-3 px-5 py-2">
           <SelectField
             label={labels.world}
             value={draftFr}
@@ -158,7 +180,7 @@ export function ListsFilters({
             ]}
           />
         </div>
-        <div className="pt-2 pb-1">
+        <div className="px-5 pt-2 pb-1">
           <Button
             variant="primary"
             className="w-full"
@@ -170,6 +192,17 @@ export function ListsFilters({
             {labels.apply}
           </Button>
         </div>
+        {tabsPrefs && (
+          <div className="mt-3 pt-2 border-t border-[color:var(--divider)]">
+            <TabsPrefs
+              locale={tabsPrefs.locale}
+              surface="discover"
+              prefs={tabsPrefs.prefs}
+              labels={tabsPrefs.labels}
+              title={tabsPrefs.title}
+            />
+          </div>
+        )}
       </Sheet>
   ) : null;
 
