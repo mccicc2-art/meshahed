@@ -145,6 +145,14 @@ export function GoogleButton({ locale }: { locale: Locale }) {
          لونها أصفر على أسود. وهذه الخيارات هي كلّ ما تسمح Google بتغييره —
          الزرّ يرسمه محرّكها لا نحن، وشرطُ هذه الطريقة أن يكون زرَّها. */
       const width = Math.min(400, Math.max(200, holder.current.clientWidth || 320));
+      /* أفرغ الصندوق قبل الرسم (D-161).
+         تبديلُ اللغة `router.refresh()` لا إعادةَ تحميل (`LangFlagMenu`)، فهذا
+         التأثير يُعاد تشغيله بلغةٍ جديدة **والزرّ القديم ما زال في الصندوق**.
+         ومحرّك Google يُلحق زرّه ولا يستبدل ما وجده، فيبقى الأوّل هو الظاهر:
+         الصفحة كلّها تتحوّل إلى الإنجليزية **وزرّ الدخول وحده يبقى عربياً** —
+         وهو أوّل ما يراه زائرٌ إنجليزيّ، وآخرُ ما يُفترض أن يرتبك فيه.
+         سطرٌ واحد يمنع ذلك، ويمنع تراكم زرَّين مع كل تبديل. */
+      holder.current.replaceChildren();
       window.google.accounts.id.renderButton(holder.current, {
         type: "standard",
         theme: "outline",
