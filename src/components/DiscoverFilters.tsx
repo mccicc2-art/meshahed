@@ -21,6 +21,7 @@ import {
 import { AWARDS, awardName } from "@/lib/awards";
 import { tap } from "@/lib/haptics";
 import { Icon } from "./Icon";
+import { FilterIconButton } from "./ui/FilterIconButton";
 import { ListsFilters, type ListsFiltersProps } from "./ListsFilters";
 import { DiscoverFilterSheet, type FilterDraft } from "./DiscoverFilterSheet";
 import { PageTabs } from "./ui/PageTabs";
@@ -45,9 +46,11 @@ import { PageTabs } from "./ui/PageTabs";
  *     مكتوباً تحت التبويبات ويُلغى بلمسةٍ على ×، بلا فتح الورقة ثانيةً.
  *     وأولُ الرقائق «تعديل الفلتر» — البابُ الوحيد الباقي هنا.
  *
- * **وزرّ «فلاتر» غادر هذا الرأس (D-174).** بابُ الفلتر صار في صفحة البحث
- * (`DiscoverFilterEntry`) والنتيجةُ تنزل هنا — طلبُ أحمد ١٢ أغسطس. فما بقي
- * هنا **عرضُ الحالة وتعديلُها**، لا فتحُها من الصفر.
+ * **وزرّ الفلتر عاد إلى هذا الرأس (D-177) — نقضٌ صريح لـD-174.** نُقل قبل
+ * ساعاتٍ إلى صفحة البحث بطلب أحمد، **ثم رجع عن طلبه بنصّه**: «أرجع عن كلامي
+ * أن يكون الفلتر داخل البحث». والسبب الذي جعل الرجوع صحيحاً: الفلتر صار
+ * **رمزاً بلا كلمة** (`FilterIconButton`)، فالحجّة التي بُني عليها النقل —
+ * أنه يزاحم صفّ التبويبات — سقطت. **والفلتر حيث تُعرض نتيجتُه أقرب.**
  *
  * وسقط من هنا قبلَه شيئان: صفُّ الترتيب (لكل صفٍّ ترتيبه بحكم معناه بعد أن
  * صار الفلتر يُبقي الصفوف ولا يستبدلها بشبكة)، ومدخلُ البحث (صار له تبويبه
@@ -271,15 +274,19 @@ export function DiscoverFilters({
         items={tabs.map((x) => ({ key: x.value, label: x.label, onClick: () => goTab(x.value) }))}
         action={
           <>
-        {/* **زرّ «فلاتر» غادر هذا الرأس (D-174، طلب أحمد: «ضيف الفلتر في
-            البحث و احذفه من الديسكفري»).** بابُ الفلتر صار في صفحة البحث،
-            والنتيجةُ تنزل هنا. والسببُ الذي يجعله قراراً لا نقلاً: «اكتشف»
-            صفحةُ تصفّحٍ بلا نيّة، و«ابحث» صفحةُ نيّةٍ صريحة — والفلترُ
-            فعلُ نيّة. وخانةُ القوائم تبقى كما هي: ورقتُها أخرى تماماً
-            وتُصفّي ما تعرضه صفحتُها نفسها.
-            ولا زرَّ في تبويب الأنمي أصلاً (D-169): صفوفه ستّة معانٍ ثابتة. */}
+        {/* **رمزٌ بلا كلمة (D-177)** — نفس الزرّ في المكتبة والمجتمع، نفس
+            المقاس ونفس الموضع. وخانةُ القوائم تبقى لورقتها هي.
+            ولا زرَّ في تبويب الأنمي (D-169): صفوفه ستّة معانٍ ثابتة، وزرٌّ
+            يفتح ورقةً لا تُطبَّق على ما يُعرض كذبةٌ في الواجهة (D-075). */}
         {tab === "lists" && listsFilters ? (
           <ListsFilters {...listsFilters} variant="button" />
+        ) : tab === "movies" || tab === "shows" ? (
+          <FilterIconButton
+            onClick={() => setSheet(true)}
+            label={t.browseFilters}
+            active={chips.length > 0}
+            expanded={sheet}
+          />
         ) : null}
           </>
         }
@@ -305,26 +312,8 @@ export function DiscoverFilters({
                   <Icon name="close" size={13} strokeWidth={2.4} />
                 </button>
               ))}
-              {/* **بابُ التعديل حيث تُعرض الحالة (D-174).** الزرّ رحل إلى
-                  البحث، ولو رحل معه كلُّ مدخلٍ لصار الفلترُ المفعَّل
-                  **مرئيّاً غيرَ قابلٍ للتعديل**: تُلغي رقاقةً برقاقة أو
-                  تعبر إلى تبويب البحث لتبدأ من الصفر. فالرقاقةُ الأولى هنا
-                  تفتح نفسَ الورقة بنفس الحالة.
-                  ولا تظهر إلا حين يكون هناك ما يُعدَّل — بابٌ دائمٌ هنا
-                  يُعيد الزرَّ الذي طُلب حذفه بثوبٍ آخر. */}
-              <button
-                type="button"
-                onClick={() => {
-                  tap(8);
-                  setSheet(true);
-                }}
-                aria-haspopup="dialog"
-                aria-expanded={sheet}
-                className="flex items-center gap-1.5 rounded-full border border-border text-muted hover:text-foreground hover:border-accent/50 px-3 py-1.5 text-[13px] font-semibold transition"
-              >
-                <Icon name="sliders" size={13} strokeWidth={2} />
-                <span>{t.browseEditFilters}</span>
-              </button>
+              {/* رقاقةُ «تعديل الفلتر» حُذفت مع عودة الزرّ (D-177): بابان
+                  إلى ورقةٍ واحدة في شاشةٍ واحدة زيادةٌ لا خيار. */}
               {chips.length > 1 && (
                 /* نفس هندسة الرقاقة لا نصٌّ عارٍ: الصفّ قد يلتفّ فيقع «مسح
                    الكل» وحده في سطر — ونصٌّ وحده في سطرٍ يُقرأ عنواناً لا
