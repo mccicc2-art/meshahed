@@ -15,6 +15,7 @@ import { Sheet, SheetHeader } from "./ui/Sheet";
 import { buttonClass } from "./ui/Button";
 import { sheetScroll } from "./ui/controls";
 import { ShareListSheet } from "./ShareListSheet";
+import { TitleSearchSheet, type PickedTitle } from "./TitleSearchSheet";
 
 type Dict = ReturnType<typeof getDict>;
 
@@ -100,8 +101,12 @@ export function ListDetail({
   }
   const [removed, setRemoved] = useState<Set<string>>(new Set());
   const [sheet, setSheet] = useState<
-    "menu" | "rename" | "type" | "reorder" | "delete" | "share" | null
+    "menu" | "rename" | "type" | "reorder" | "delete" | "share" | "add" | null
   >(null);
+  /* الأعمال المضافة في هذه الجلسة تُرسم فوراً ثم يلحق `router.refresh()`:
+     الانتظار كان سيجعل الورقة تُغلق على شبكةٍ لم تتغيّر، فيُقرأ الفعل
+     فاشلاً (نفس منطق الترتيب المحليّ أعلاه). */
+  const [added, setAdded] = useState<ListItem[]>([]);
 
   /* الترتيب المحليّ يسبق الخادم: بعد «تمّ» تتبدّل الأرقام في اللحظة نفسها،
      ثم يلحق `router.refresh()` بالتأكيد. الانتظار كان سيجعل أهم لحظةٍ في
@@ -109,11 +114,14 @@ export function ListDetail({
   const [order, setOrder] = useState<string[] | null>(null);
 
   const visible = useMemo(() => {
-    const live = items.filter((i) => !removed.has(keyOf(i)));
+    const seen = new Set(items.map(keyOf));
+    const live = [...items, ...added.filter((a) => !seen.has(keyOf(a)))].filter(
+      (i) => !removed.has(keyOf(i)),
+    );
     if (!order) return live;
     const rank = new Map(order.map((k, i) => [k, i]));
     return [...live].sort((a, b) => (rank.get(keyOf(a)) ?? 1e9) - (rank.get(keyOf(b)) ?? 1e9));
-  }, [items, removed, order]);
+  }, [items, added, removed, order]);
 
   const numbered = NUMBERED.includes(kind);
 
@@ -135,6 +143,81 @@ export function ListDetail({
       }
     });
   }
+
+  /**
+   * إضافةُ عملٍ من داخل القائمة نفسها (D-167).
+   *
+   * **بلاغ أحمد:** «إضافة لستة ما تشتغل من قائمة اللستات بالمكتبة».
+   * ولم يكن زرٌّ معطّلاً بل **باباً غير موجود**: القائمة الفارغة كانت
+   * تقول «افتح أي عمل وأضفه من زر أضف لقائمة» — أي تُرسل صاحبها إلى
+   * مكانٍ آخر ليفعل ما جاء ليفعله هنا.
+   *
+   * ولا فعلَ خادمٍ جديد: `toggleInList` هي نفسها التي يستدعيها زرّ صفحة
+   * العمل، و`upsert` عندها يجعل الإضافة المكرّرة بلا أثر — فالرسالة
+   * تفرّق بين «أُضيف» و«موجودٌ أصلاً» بما نعرفه محلياً لا بنداءٍ ثانٍ.
+   */
+  function addPicked(p: PickedTitle) {
+    const key = `${p.kind}-${p.id}`;
+    if (visible.some((i) => keyOf(i) === key)) {
+      toast(t.listAlreadyIn, { tone: "info" });
+      return;
+    }
+    tap([12, 30]);
+    setAdded((prev) => [
+      ...prev,
+      {
+        tmdb_id: p.id,
+        media_type: p.kind,
+        title: p.title,
+        poster_path: p.posterPath,
+        /* الصفّ المتفائل كاملُ الشكل لا مقولَبٌ بـ`as`: القالب كان
+           سيُخفي أيّ حقلٍ يُضاف إلى `ListItem` غداً. والوقت في معالج
+           حدثٍ لا في الرسم، فلا يمسّ نقاء التصيير (D-073). */
+        added_at: new Date().toISOString(),
+        sort_order: null,
+      },
+    ]);
+    setRemoved((prev) => {
+      if (!prev.has(key)) return prev;
+      const next = new Set(prev);
+      next.delete(key);
+      return next;
+    });
+    start(async () => {
+      try {
+        await toggleInList({
+          listId,
+          tmdbId: p.id,
+          mediaType: p.kind,
+          title: p.title,
+          posterPath: p.posterPath,
+          add: true,
+        });
+        toast(t.listAddedToast(p.title));
+        router.refresh();
+      } catch (e) {
+        setAdded((prev) => prev.filter((i) => keyOf(i) !== key));
+        flashError((e as Error).message);
+      }
+    });
+  }
+
+  /* الزرّ نفسه في موضعين — الترويسة وحالةُ الفراغ — فوصفتُه هنا مرّةً
+     واحدة (قاعدة D-145) */
+  const addButton = (
+    <button
+      type="button"
+      onClick={() => {
+        tap(8);
+        setSheet("add");
+      }}
+      aria-haspopup="dialog"
+      className="shrink-0 inline-flex items-center gap-1.5 rounded-full border border-accent bg-accent px-3 py-1.5 text-[13px] font-semibold text-[color:var(--on-accent)] hover:brightness-110 active:scale-95 transition"
+    >
+      <Icon name="plus" size={14} strokeWidth={2.2} />
+      {t.listAddTitles}
+    </button>
+  );
 
   return (
     <div>
@@ -159,6 +242,10 @@ export function ListDetail({
             {saved ? t.listSavedBtn : t.listSaveBtn}
           </button>
         )}
+        {/* «أضِف أعمالاً» قبل النقاط لا داخلها: إضافةُ عملٍ هي الفعل الأوّل
+            في قائمةٍ تملكها، ودفنُه في قائمةٍ يفتحها زرٌّ آخر هو بالضبط
+            العطل الذي بلّغ عنه أحمد (D-167). */}
+        {isOwner && addButton}
         {isOwner && (
           /* هدف لمسٍ ٤٤×٤٤ كاملاً وإن بدت الدائرة ٣٦: أصغر من ذلك يُخطئه
              الإبهام — وهو المقاس الذي توصي به آبل ولا نجادل فيه */
@@ -252,7 +339,12 @@ export function ListDetail({
       </div>
 
       {visible.length === 0 ? (
-        <p className="text-sm text-muted text-center py-16">{t.listItemsEmpty}</p>
+        <div className="flex flex-col items-center gap-4 py-16">
+          <p className="text-sm text-muted text-center">{t.listItemsEmpty}</p>
+          {/* والبابُ في حالة الفراغ أيضاً: هنا يقف من لا يملك شيئاً يفعله
+              غيرَ الإضافة — فالنصّ وحده كان يتركه واقفاً */}
+          {isOwner && addButton}
+        </div>
       ) : (
         <div className="grid gap-3 sm:gap-4 grid-cols-[repeat(auto-fill,minmax(102px,1fr))] sm:grid-cols-[repeat(auto-fill,minmax(136px,1fr))]">
           {visible.map((it, i) => (
@@ -267,6 +359,17 @@ export function ListDetail({
             />
           ))}
         </div>
+      )}
+
+      {sheet === "add" && (
+        <TitleSearchSheet
+          locale={locale}
+          onClose={() => setSheet(null)}
+          onPick={(p) => {
+            addPicked(p);
+            setSheet(null);
+          }}
+        />
       )}
 
       {sheet === "menu" && (
