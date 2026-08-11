@@ -6,6 +6,7 @@ import type { Metadata } from "next";
 import { getUser, isFollowingArtist } from "@/lib/data";
 import { FollowArtistButton } from "@/components/FollowArtistButton";
 import { getPerson, getPersonCredits, isTvProgram, profileUrl, titleOf, yearOf } from "@/lib/tmdb";
+import { displayPersonName } from "@/lib/wikidata";
 import { segmentedItem, segmentedTrackFull } from "@/components/ui/controls";
 import { getT } from "@/lib/locale";
 import { formatDate } from "@/lib/when";
@@ -77,6 +78,12 @@ export default async function PersonPage({
     );
   }
 
+  /* الاسم بالعربية من ويكي‑بيانات إن وُجد (D-171): TMDB لا يترجم أسماء
+     الأشخاص، فكانت صفحة «عادل إمام» تكتب `Adel Emam` في واجهةٍ عربية.
+     والنداء لا يقع إلا إن كانت الواجهة عربية والاسمُ ليس عربياً أصلاً،
+     وفشلُه صامتٌ يُبقي اسم TMDB. */
+  const name = await displayPersonName(personId, person.name, locale);
+
   const photo = profileUrl(person.profile_path, "h632");
   const facts = [
     person.known_for_department ? departmentName(person.known_for_department, t) : null,
@@ -95,7 +102,7 @@ export default async function PersonPage({
             {photo ? (
               <Image
                 src={photo}
-                alt={person.name}
+                alt={name}
                 fill
                 priority
                 sizes="(max-width: 640px) 112px, 160px"
@@ -111,7 +118,7 @@ export default async function PersonPage({
 
         <div className="flex-1 min-w-0 pt-1">
           <h1 className="text-xl sm:text-3xl font-extrabold leading-tight tracking-tight">
-            {person.name}
+            {name}
           </h1>
           <div className="mt-2 space-y-1">
             {facts.map((f) => (
@@ -125,7 +132,7 @@ export default async function PersonPage({
               (فعل العمر) — كلاهما في ترويسة الفنان يملآن عمود البيانات */}
           <FollowArtistButton
             personId={personId}
-            name={person.name}
+            name={name}
             profilePath={person.profile_path}
             initialFollowing={following}
             locale={locale}
