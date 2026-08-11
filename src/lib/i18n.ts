@@ -103,6 +103,11 @@ const ar = {
   browseRateFrom: (n: string) => `${n} فأعلى`,
   browseApply: "عرض النتائج",
   browseClearAll: "مسح الكل",
+  /* بابُ الورقة من صفحة البحث (D-174) — «الاكتشاف» مذكورٌ في الاسم لأن
+     الضغطة تُغادر البحث إلى اكتشف، ووعدٌ لا يُقال يُقرأ عطلاً */
+  discoverFilterEntry: "فلتر الاكتشاف",
+  /* رقاقةٌ في اكتشف — «تعديل» لا «فلاتر»: هناك فلترٌ قائمٌ معروضٌ بجانبها */
+  browseEditFilters: "تعديل الفلتر",
   browseActiveFilters: "الفلاتر المفعّلة",
   browseRemoveFilter: (label: string) => `إزالة ${label}`,
   typeSeries: "مسلسل",
@@ -1105,6 +1110,8 @@ const en: Dict = {
   browseRateFrom: (n: string) => `${n} and up`,
   browseApply: "Show results",
   browseClearAll: "Clear all",
+  discoverFilterEntry: "Discover filter",
+  browseEditFilters: "Edit filter",
   browseActiveFilters: "Active filters",
   browseRemoveFilter: (label: string) => `Remove ${label}`,
   typeSeries: "Series",

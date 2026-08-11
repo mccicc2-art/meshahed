@@ -330,25 +330,6 @@ export function parseBrowse(params: {
 }
 
 /**
- * عدد الفلاتر المخفيّة خلف الورقة — للعدّاد على زرّ الفلاتر.
- *
- * الجهة **خرجت من العدّ**: صعدت من الورقة إلى تبويبات الرأس (أفلام/
- * مسلسلات — طلب أحمد 9 Aug)، وما يُرى في الرأس لا يُحسب على زرٍّ يعدّ
- * المخفيّ.
- */
-export function browseCount(q: BrowseQuery) {
-  return (
-    (q.genre ? 1 : 0) +
-    (q.lang ? 1 : 0) +
-    (q.country ? 1 : 0) +
-    (q.provider ? 1 : 0) +
-    (q.era ? 1 : 0) +
-    (q.rate ? 1 : 0) +
-    (q.award ? 1 : 0)
-  );
-}
-
-/**
  * هل يتجاوز الفلتر ما تقدر عليه قوائم TMDB الجاهزة؟
  *
  * `/trending` و`/movie/upcoming` و`/tv/on_the_air` لا تقبل لغةً ولا مدىً
@@ -366,8 +347,21 @@ export function needsDiscover(q: BrowseQuery) {
   );
 }
 
-/** بناء رابط «اكتشف» من فلترٍ — القيم الافتراضية تُحذف فيبقى نظيفاً */
+/**
+ * بناء رابط «اكتشف» من فلترٍ — القيم الافتراضية تُحذف فيبقى نظيفاً.
+ *
+ * **وهذه الدالةُ صارت البانيَ الوحيد (D-174):** كان رأس اكتشف يبني الرابط
+ * بيده في موضعين (`go` و`goTab`) بنفس السطور السبعة، وهذه الدالة ثالثةً —
+ * **ثلاثُ نسخٍ من قاعدةٍ واحدة**، ويوم يُضاف محورُ فلترٍ رابع يُنسى أحدُها.
+ * وD-145 تقول: منطقٌ منسوخٌ في ملفّين عيب. فنُودي من الجميع.
+ *
+ * **و`tab` يسبق `type`:** التبويب هو الشكل الحاليّ (`?tab=shows`)، و`type`
+ * شكلٌ قديم يهديه `parseDiscoverTab` إلى تبويبه — فيبقى مقبولاً للروابط
+ * المحفوظة، ولا يُكتب من جديد.
+ */
 export function browseHref(q: {
+  /** التبويب المقصود — الشكل الحاليّ، ويسبق `type` */
+  tab?: DiscoverTab;
   type?: BrowseType;
   g?: string | null;
   lang?: string | null;
@@ -378,7 +372,10 @@ export function browseHref(q: {
   award?: string | null;
 }) {
   const p = new URLSearchParams();
-  if (q.type && q.type !== "all") p.set("type", q.type);
+  if (q.tab) {
+    // «الأفلام» هو الافتراض فلا يُكتب — الرابط يبقى `/news` عارياً
+    if (q.tab !== "movies") p.set("tab", q.tab);
+  } else if (q.type && q.type !== "all") p.set("type", q.type);
   if (q.g) p.set("g", q.g);
   if (q.lang) p.set("lang", q.lang);
   if (q.co) p.set("co", q.co);
