@@ -77,6 +77,9 @@ export interface SearchResult {
   first_air_date?: string;
   release_date?: string;
   vote_average: number;
+  /** تأكّدنا أن لا تقييم IMDb لهذا العمل — لا أنّ السؤال أخفق (D-172).
+      وحدَه يسمح بعرض بديل TMDB. */
+  imdb_absent?: boolean;
   /** عدد المصوّتين عالمياً — تُستخدم كعتبة حتى لا يتصدّر عمل بصوتين */
   vote_count?: number;
   popularity?: number;

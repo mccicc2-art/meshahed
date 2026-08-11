@@ -25,6 +25,16 @@ export interface ExternalRatings {
   votes: number | null;
 }
 
+/**
+ * ردٌّ **صحيحٌ** من OMDb بلا تقييم — أي «هذا العمل ليس له تقييم IMDb».
+ *
+ * كان هذا الردّ و«الحصة محروقة» و«الشبكة سقطت» تعود كلُّها `null`
+ * فيستحيل التمييز (وهو مكتوبٌ صراحةً في `attachImdbRatings`). والفرق
+ * صار مهمّاً في D-172: **لا يُعرض بديل TMDB إلا لمن تأكّدنا أن لا تقييم
+ * IMDb له** — وشرطُ أحمد كان هذا حرفياً.
+ */
+export const NO_IMDB_RATING: ExternalRatings = { imdb: null, rt: null, votes: null };
+
 export async function externalRatings(imdbId: string | null | undefined): Promise<ExternalRatings | null> {
   const key = process.env.OMDB_API_KEY;
   if (!key || !imdbId || !/^tt\d+$/.test(imdbId)) return null;
@@ -46,7 +56,9 @@ export async function externalRatings(imdbId: string | null | undefined): Promis
     // «2,343,110» — الفواصل تُنزع قبل التحويل
     const vRaw = Number((j.imdbVotes ?? "").replace(/[^\d]/g, ""));
     const votes = Number.isFinite(vRaw) && vRaw > 0 ? vRaw : null;
-    if (!imdb && !rt) return null;
+    /* لا يُردّ `null` هنا بعد اليوم (D-172): الردّ وصل وقُرئ، فغيابُ
+       الرقم **خبرٌ لا فشل**. و`null` صارت تعني «لم نصل» وحدها. */
+    if (!imdb && !rt) return NO_IMDB_RATING;
     return { imdb, rt, votes };
   } catch {
     return null;
@@ -281,6 +293,9 @@ export async function attachImdbRatings<T extends SearchResult>(rows: T[]): Prom
       if (!r) continue;
       r.imdb_rating = s.imdb_rating == null ? null : Number(s.imdb_rating);
       r.imdb_votes = s.imdb_votes == null ? null : Number(s.imdb_votes);
+      /* صفٌّ مخزَّن بتقييمٍ فارغ **لا يُكتب إلا عن يقين** (انظر شرط الكتابة
+         أدناه)، فهو وحده دليلُ «لا تقييم IMDb» — D-172 */
+      r.imdb_absent = s.imdb_rating == null;
       /* الأصوات غائبة عن صفٍّ كُتب قبل الهجرة ٤٩ ومعه تقييم؟ يُعاد سؤاله:
          الترتيب البايزيّ بلا أصوات هو المتوسّط العاري الذي نصلحه */
       const missingVotes = s.imdb_rating != null && s.imdb_votes == null;
@@ -318,6 +333,11 @@ export async function attachImdbRatings<T extends SearchResult>(rows: T[]): Prom
           const n = ext?.imdb ? Number(ext.imdb) : NaN;
           r.imdb_rating = Number.isFinite(n) ? n : null;
           r.imdb_votes = ext?.votes ?? null;
+          /* **يقينُ الغياب (D-172):** إمّا لا معرّف IMDb أصلاً، أو OMDb
+             ردَّ ردّاً صحيحاً وقال «لا تقييم». وما عداهما — حصةٌ محروقة أو
+             شبكةٌ ساقطة — **ليس يقيناً**، فلا بديلَ يُعرض ولا شيء يُخزَّن. */
+          const absent = !iid || (ext !== null && ext.imdb === null);
+          r.imdb_absent = absent;
           /* «وجدنا رقماً» أو «لا معرّف IMDb أصلاً» وحدهما يُخزَّنان.
              أما «سألنا OMDb فلم يُجب برقم» فلا: ردُّه واحد للحالتين —
              عملٌ بلا تقييم فعلاً، وحصةٌ منهكة (Request limit) — وتخزينُ
@@ -325,7 +345,11 @@ export async function attachImdbRatings<T extends SearchResult>(rows: T[]): Prom
              تعافي الحصة (وهو ما كاد يحدث يوم التشغيل: الحصة كانت
              محروقة ساعتها). غير المخزَّن يُعاد سؤاله — وخبيئة fetch
              اليومية تمنع التكرار داخل النشرة الواحدة */
-          if (Number.isFinite(n) || !iid) {
+          /* وشرطُ الكتابة اتّسع معه: كان «وجدنا رقماً أو لا معرّف»، فصار
+             يشمل «سألنا فأجاب: لا تقييم» — وهي الحالة التي كنّا نعيد سؤالها
+             كل مرّة لأننا لم نكن نميّزها عن انهاك الحصة. **تمييزُها يوفّر
+             نداءً متكرّراً ويُغني عن التعليق الذي كان يعتذر عنه.** */
+          if (Number.isFinite(n) || absent) {
             fetched.push({
               media_type: r.media_type === "tv" ? "tv" : "movie",
               tmdb_id: r.id,
