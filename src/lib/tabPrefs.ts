@@ -46,13 +46,18 @@ export const TAB_SURFACES: Record<TabSurface, SurfaceSpec> = {
     tabs: [{ key: "mine" }, { key: "all" }, { key: "inbox" }, { key: "news" }],
     legacyHiddenCookie: "loopz_ctabs_hidden",
   },
+    /* **المسلسلات أوّلاً ثم الأفلام** (طلب أحمد ١١ أغسطس: «خلي يكون أول
+         تبويب من البيئات مسلسلات وبعدها أفلام، فقط اعكسها») — في اكتشف
+              والمكتبة معاً، فلا تختلف الصفحتان في ترتيبٍ واحد.
+                   **وهذا ترتيبُ الافتراض لا أمرٌ نهائيّ:** من رتّبها بنفسه يبقى على
+                        ترتيبه، لأن القارئ يقرأ الكوكي قبل أن يقرأ هذه القائمة. */
   discover: {
     cookie: "loopz_tabs_discover",
-    tabs: [{ key: "movies" }, { key: "shows" }, { key: "anime" }, { key: "lists" }],
+    tabs: [{ key: "shows" }, { key: "movies" }, { key: "anime" }, { key: "lists" }],
   },
   library: {
     cookie: "loopz_tabs_library",
-    tabs: [{ key: "movies" }, { key: "shows" }, { key: "artists" }, { key: "lists" }],
+    tabs: [{ key: "shows" }, { key: "movies" }, { key: "artists" }, { key: "lists" }],
   },
 };
 
