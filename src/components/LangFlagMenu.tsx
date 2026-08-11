@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { createPortal } from "react-dom";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { setLocale } from "@/lib/actions";
@@ -70,12 +71,27 @@ export function LangFlagMenu({ locale }: { locale: Locale }) {
 
       {open && (
         <>
-          <button
-            aria-hidden
-            tabIndex={-1}
-            onClick={() => setOpen(false)}
-            className="fixed inset-0 z-40 cursor-default"
-          />
+          {/* ماسكُ النقر خارج القائمة — **في `body` لا هنا** (نفس علّة D-159).
+              هذا الزرّ يعيش داخل الترويسة، وعليها `backdrop-blur` فهي إطارٌ
+              مرجعيّ لكل `fixed` تحتها: `inset-0` كانت تعني «غطِّ الترويسة»
+              لا «غطِّ الشاشة»، فالنقر أسفلها لا يُغلق القائمة أبداً.
+
+              **و`z-20` لا `z-40`، وهذا هو بيت القصيد:** القائمة نفسها تبقى
+              داخل الترويسة (فهي `absolute` تحت العلم)، والترويسة `z-30`
+              **وتُنشئ سياق تكديسٍ خاصّاً بها**. فماسكٌ في `body` بـ`z-40`
+              كان سيُرسم **فوق** القائمة ويبتلع النقر على اللغات — عطلٌ أسوأ
+              من الذي نعالجه. تحت الثلاثين يبقى الماسك خلف الترويسة، ويغطّي
+              كلَّ ما عداها. */}
+          {typeof document !== "undefined" &&
+            createPortal(
+              <button
+                aria-hidden
+                tabIndex={-1}
+                onClick={() => setOpen(false)}
+                className="fixed inset-0 z-20 cursor-default"
+              />,
+              document.body,
+            )}
           <ul
             role="listbox"
             className="absolute end-0 top-full mt-2 z-50 min-w-40 rounded-2xl border border-border bg-[color:var(--elevated)]/95 backdrop-blur-xl shadow-2xl overflow-hidden sheet-pop"
