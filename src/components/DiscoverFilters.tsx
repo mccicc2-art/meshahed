@@ -119,6 +119,7 @@ export function DiscoverFilters({
     const p = new URLSearchParams();
     // الجهة يحملها التبويب لا معامل type — تبويب المسلسلات يبقى في رابطه
     if (tab === "shows") p.set("tab", "shows");
+    if (tab === "anime") p.set("tab", "anime");
     if (nextGenre) p.set("g", nextGenre);
     const nextLang = next.lang === undefined ? lang : next.lang;
     // الجنسية محورٌ مستقلّ (طلب أحمد): لا تسقط بتبدّل اللغة
@@ -189,6 +190,9 @@ export function DiscoverFilters({
   const tabs: { value: DiscoverTab; label: string }[] = [
     { value: "movies", label: t.discoverTabMovies },
     { value: "shows", label: t.discoverTabShows },
+    /* الأنمي تبويبٌ رابع لا صفّان يتيمان (D-169، طلب أحمد): كان صفّاه
+       يعيشان داخل تبويب المسلسلات، **وأفلامه بلا صفٍّ أصلاً**. */
+    { value: "anime", label: t.discoverTabAnime },
     { value: "lists", label: t.discoverTabLists },
   ];
 
@@ -277,9 +281,12 @@ export function DiscoverFilters({
           <>
         {/* الزرّ إلى جانب التبويبات: المخرج الوحيد إلى الفلاتر —
             زرّ الأعمال لتبويبها، وزرّ القوائم (بورقته) في نفس الخانة */}
+        {/* ولا زرَّ فلاتر في تبويب الأنمي (D-169): صفوفه ستّة معانٍ ثابتة
+            لا مساحةَ تصفّحٍ — وزرٌّ يفتح ورقةً لا تُطبَّق على ما يُعرض
+            كذبةٌ في الواجهة، وهي قاعدة D-075 حرفياً. */}
         {tab === "lists" && listsFilters ? (
           <ListsFilters {...listsFilters} variant="button" />
-        ) : tab !== "lists" ? (
+        ) : tab === "movies" || tab === "shows" ? (
           <button
             type="button"
             onClick={() => {
@@ -310,7 +317,7 @@ export function DiscoverFilters({
           </>
         }
         extra={
-          tab !== "lists" && chips.length > 0 ? (
+          tab !== "lists" && tab !== "anime" && chips.length > 0 ? (
             <div
               role="group"
               aria-label={t.browseActiveFilters}

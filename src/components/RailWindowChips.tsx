@@ -22,7 +22,8 @@ export function RailWindowChips({
   value,
   locale,
 }: {
-  param: "wm" | "ws" | "wa";
+  /** `wam` = نافذة صفّ أفلام الأنمي (D-169) */
+  param: "wm" | "ws" | "wa" | "wam";
   value: RailWin;
   locale: Locale;
 }) {
