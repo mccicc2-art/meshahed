@@ -1232,80 +1232,11 @@ export async function topByFilter(
   return best.slice(0, limit);
 }
 
-/**
- * أعلى ٥٠ عملاً على الإطلاق — لصفّ ذيل «اكتشف» (طلب المالك).
- *
- * «كل الأوقات» = الأكثر أصواتاً (`vote_count.desc`): أعلى متوسّطٍ يُصعّد
- * أعمالاً محدودة الجمهور، وعدد الأصوات أصدق دلالةً على «ما شاهده الجميع».
- * صفحة TMDB عشرون، فنطلب ثلاثاً لبلوغ الخمسين، ونحترم الفلتر لو وُجد.
- */
-/**
- * كم صفحةً من TMDB لبلوغ `limit` صفّاً — الصفحة عشرون.
- *
- * كان العدد ثابتاً (ثلاث صفحات = ستّون) فطلبُ ثمانين لا يزيد شيئاً: مرّر
- * `limit` ولا يتغيّر المُرجَع. وقد صار الطلب أكبر منذ D-132 (بِركةٌ فائضة
- * لأن غير المقيَّم يسقط كاملاً)، فالعدد يتبع الطلب. وسقفُ عشر صفحاتٍ حاجزٌ
- * ضدّ حلقةٍ مفتوحة تطلب مئة صفحة بلا قصد.
- */
-function pagesFor(limit: number): number[] {
-  const n = Math.min(10, Math.max(1, Math.ceil(limit / 20)));
-  return Array.from({ length: n }, (_, i) => i + 1);
-}
-
-/** أفضل ٥٠ أنمي على الإطلاق (طلب أحمد) — نفس محرّك top50 لكن على
-    مفتاح الأنمي: الأكثر أصواتاً تاريخياً، ثم يعيد withImdbRatings
-    ترتيبها بتقييم IMDb كسائر الصفوف المرتّبة (D-093). العتبة 200 لا
-    500: بِركة أصوات الأنمي في TMDB أصغر من الأفلام العالمية */
-export async function top50Anime(limit = 50): Promise<SearchResult[]> {
-  const pages = await Promise.all(
-    pagesFor(limit).map((page) =>
-      tmdb<{ results: SearchResult[] }>("/discover/tv", {
-        with_keywords: ANIME_KEYWORD,
-        sort_by: "vote_count.desc",
-        "vote_count.gte": "200",
-        include_adult: "false",
-        page: String(page),
-      }).catch(() => ({ results: [] as SearchResult[] })),
-    ),
-  );
-  const seen = new Set<number>();
-  const rows: SearchResult[] = [];
-  for (const p of pages) {
-    for (const r of p.results ?? []) {
-      if (!r.poster_path || seen.has(r.id)) continue;
-      seen.add(r.id);
-      rows.push({ ...r, media_type: "tv" });
-    }
-  }
-  return rows.slice(0, limit);
-}
-
-export async function top50(
-  mediaType: MediaType,
-  f: DiscoverFilter = {},
-  limit = 50,
-): Promise<SearchResult[]> {
-  const pages = await Promise.all(
-    pagesFor(limit).map((page) =>
-      tmdb<{ results: SearchResult[] }>(`/discover/${mediaType}`, {
-        ...discoverParams(mediaType, f),
-        sort_by: "vote_count.desc",
-        "vote_count.gte": "500",
-        page: String(page),
-      }).catch(() => ({ results: [] as SearchResult[] })),
-    ),
-  );
-  const seen = new Set<number>();
-  const rows: SearchResult[] = [];
-  for (const p of pages) {
-    for (const r of p.results ?? []) {
-      if (!r.poster_path || seen.has(r.id)) continue;
-      seen.add(r.id);
-      rows.push({ ...r, media_type: mediaType });
-    }
-  }
-  return rows.slice(0, limit);
-}
+/* حُذفت `top50` و`top50Anime` (D-164).
+   كانتا تبنيان «أفضل ٥٠» من `/discover` مرتَّبةً بـ`vote_count.desc` — أي
+   الأكثر تصويتاً لا الأفضل — فسقطت أعمالٌ أعلى تقييماً وأقلُّ أصواتاً، ودخل
+   الأنمي صفَّ المسلسلات. الرفوف الثلاثة تقرأ الآن من `imdb_chart` نفسها التي
+   تبني «أفضل ٢٥٠» (`topChartRail`)، فلا بِركةَ ثانية تفترق عن الأولى. */
 
 /**
  * الأعلى تقييماً على الإطلاق — لقوائم TOP 250 (طلب أحمد 9 Aug).
