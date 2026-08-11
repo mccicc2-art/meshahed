@@ -49,7 +49,6 @@ import {
   parseDiscoverTab,
   parseRailWin,
   browseKey,
-  browseCount,
   needsDiscover,
   eraRange,
   type BrowseQuery,
@@ -163,7 +162,6 @@ export default async function NewsPage({
         era={browse.era?.slug ?? null}
         rate={browse.rate}
         award={browse.award}
-        count={browseCount(browse)}
         listsFilters={
           tab === "lists"
             ? listsFiltersProps(
