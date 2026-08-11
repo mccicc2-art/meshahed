@@ -10,7 +10,6 @@ import {
   getEpisodeRatings,
   getMyRating,
   getCommunityRating,
-  getTitleRoomOf,
   getTitleReviews,
   getMyLists,
   getListsContaining,
@@ -33,14 +32,13 @@ import { EpisodeTracker, type SeasonSummary } from "@/components/EpisodeTracker"
 import { getT, getWatchRegion } from "@/lib/locale";
 import { RatingBox } from "@/components/RatingBox";
 import { CommunityReviews } from "@/components/CommunityReviews";
-import { TitleRoomLink } from "@/components/TitleRoomLink";
 import { DetailTabs } from "@/components/DetailTabs";
+import { TitleRoomTab } from "@/components/TitleRoomTab";
 import { RelatedTitles } from "@/components/RelatedTitles";
 import { CastRail } from "@/components/CastRail";
 import { Icon, SectionTitle } from "@/components/Icon";
 import { Trailer } from "@/components/Trailer";
 import { WatchChip } from "@/components/WatchChip";
-import { WatchProviders } from "@/components/WatchProviders";
 import { TitleActions } from "@/components/TitleActions";
 import { DetailTopBar } from "@/components/DetailTopBar";
 import { CircleNote } from "@/components/CircleNote";
@@ -325,16 +323,12 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
             icon: "info",
             content: (
               <div className="space-y-7">
-                {/* «أين أشاهده» كاملاً بالتقسيم المتعارف (D-150): الشارة
-                    في الترويسة جوابٌ سريع، وهذا الجوابُ الكامل */}
-                {watchWhere && (
-                  <WatchProviders
-                    options={watchWhere.options}
-                    region={watchWhere.region}
-                    userRegion={userRegion}
-                    locale={locale}
-                  />
-                )}
+                {/* **«أين أشاهده» حُذف من هنا كاملاً** (D-190، طلب أحمد).
+                    الشارةُ في الترويسة صارت الجوابَ الوحيد: رموزُ منصّات
+                    الطبقة الأولى بلا أسماء، والضغطُ يفتح JustWatch بكلّ
+                    التفاصيل. **وثلاثةُ صفوفٍ تقول اشتراك/تأجير/شراء كانت
+                    تجيب سؤالاً لم يُسأل** — من يفتح صفحة عملٍ يريد أن يعرف
+                    «أقدر أشاهده؟» لا جدولَ أسعارٍ لا نملكه أصلاً (D-150). */}
                 {tv.overview && (
                   <section>
                     <SectionTitle icon="info" className="mb-2.5">
@@ -359,6 +353,25 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
                   <TrailerSection tvId={tvId} name={title} backdrop={backdrop} locale={locale} />
                 </Suspense>
               </div>
+            ),
+          },
+          {
+            /* **تبويبُ المجتمع — الغرفةُ نفسها لا رابطٌ إليها** (D-191،
+               طلب أحمد: «تبويب اسمه كوميونيتي مربوط بغرفة الكوميونيتي
+               الخاصة فيه»). وموضعُه **ثالثاً** كما طلب: الحديثُ عن العمل
+               أقربُ إلى العمل من «مشابه»، وغرفُ الأعمال (D-140) كانت أثمنَ
+               ما في المجتمع وأخفاه — سطراً في تبويبٍ رابع.
+               والسطرُ القديم (`TitleRoomLink`) حُذف من «التعليقات» مع
+               النقل: **لا بابان لغرفةٍ واحدة.** */
+            key: "community",
+            label: t.tabCommunity,
+            icon: "people",
+            content: (
+              <Suspense
+                fallback={<div className="skeleton h-64 rounded-2xl" aria-hidden />}
+              >
+                <TitleRoomTab tmdbId={tvId} mediaType="tv" locale={locale} />
+              </Suspense>
             ),
           },
           {
@@ -437,17 +450,15 @@ async function ReviewsTab({
   posterPath: string | null;
   locale: Awaited<ReturnType<typeof getT>>["locale"];
 }) {
-  const [myRating, community, titleReviews, room] = await Promise.all([
+  const [myRating, community, titleReviews] = await Promise.all([
     getMyRating(tvId, "tv"),
     getCommunityRating(tvId, "tv"),
     getTitleReviews(tvId, "tv"),
-    getTitleRoomOf(tvId, "tv"),
   ]);
   return (
     <div className="space-y-4">
       {/* غرفة النقاش قبل التقييم: التقييم رأيٌ تكتبه وحدك، والغرفة حديثٌ
           مع غيرك — ومن فتح تبويب التعليقات جاء للناس أوّلاً (D-140) */}
-      <TitleRoomLink tmdbId={tvId} mediaType="tv" room={room} locale={locale} />
       <RatingBox
         variant="review"
         tmdbId={tvId}
