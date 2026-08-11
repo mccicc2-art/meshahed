@@ -438,6 +438,19 @@ async function CuratedCard({
  *    عشرون عملاً لا أكثر. نخسر جِدّة الترتيب ونكسب أن يصل من طلب «تركي
  *    ٢٠٢٠ فأعلى» إلى تركيٍّ ٢٠٢٠ فأعلى — وهو ما طلبه.
  */
+/**
+ * هل هذا الصفُّ أنمي؟ — من حقلَي الصفّ نفسه بلا نداءٍ ثانٍ.
+ *
+ * `isAnime` في `tmdb.ts` تقرأ `genres` و`origin_country` وهما في
+ * **التفاصيل** لا في نتائج البحث. وصفوف `/discover` و`/now_playing` تحمل
+ * `genre_ids` و`original_language` — نفس المعنى بحقلين آخرين، فلا يُجلب
+ * لكل بطاقةٍ تفصيلٌ كامل لتُصنَّف.
+ */
+const ANIMATION_GENRE_ID = 16;
+function looksAnime(r: SearchResult): boolean {
+  return (r.genre_ids ?? []).includes(ANIMATION_GENRE_ID) && r.original_language === "ja";
+}
+
 async function CuratedRails({
   locale,
   t,
@@ -548,8 +561,15 @@ async function CuratedRails({
       /* الصفوف المرتّبة كلّها تُعاد بترتيب IMDb وتحمل تقييمه (قرار أحمد:
          «الترتيب بأعلى تقييم حسب IMDb والتقييم فقط من IMDb») — TMDB يبقى
          مصدر التجميع (من يدخل الصفّ)، وIMDb مصدر الترتيب والرقم */
+      /* **والأنمي يغادر رفَّ أفلام «أفضل ١٠» أيضاً (D-170، طلب أحمد):**
+         «الأنمي يغادر تبويب الأفلام والمسلسلات كليهما». رفُّ المسلسلات
+         يُسقط الرسوم أصلاً في `topTenThisWeek`، ورفُّ الأفلام لم يكن
+         يُسقط شيئاً — فكان «قاتل الشياطين» يتصدّره ويكرّر تبويب الأنمي. */
       wantMovies && !upcoming
-        ? topFor("movie", genre?.movie, rails.m).then(withImdbRatings).catch(() => [] as SearchResult[])
+        ? topFor("movie", genre?.movie, rails.m)
+            .then((rows) => rows.filter((r) => !looksAnime(r)))
+            .then(withImdbRatings)
+            .catch(() => [] as SearchResult[])
         : Promise.resolve([] as SearchResult[]),
       wantSeries && !upcoming
         ? topFor("tv", genre?.tv, rails.s).then(withImdbRatings).catch(() => [] as SearchResult[])
@@ -742,19 +762,6 @@ async function CuratedRails({
  * الثلاثمئة D-064 + with_people) وأكثره خصوصيةً فأقلّه استفادةً من خبيئة
  * fetch المشتركة — ففُصلا عن المسار الحرج بدل أن يرهنا رسم الصفحة كلّها.
  */
-/**
- * هل هذا الصفُّ أنمي؟ — من حقلَي الصفّ نفسه بلا نداءٍ ثانٍ.
- *
- * `isAnime` في `tmdb.ts` تقرأ `genres` و`origin_country` وهما في
- * **التفاصيل** لا في نتائج البحث. وصفوف `/discover` و`/now_playing` تحمل
- * `genre_ids` و`original_language` — نفس المعنى بحقلين آخرين، فلا يُجلب
- * لكل بطاقةٍ تفصيلٌ كامل لتُصنَّف.
- */
-const ANIMATION_GENRE_ID = 16;
-function looksAnime(r: SearchResult): boolean {
-  return (r.genre_ids ?? []).includes(ANIMATION_GENRE_ID) && r.original_language === "ja";
-}
-
 /**
  * تبويب الأنمي — ستّة صفوف (D-169، طلب أحمد).
  *
