@@ -540,7 +540,10 @@ async function CuratedRails({
         : topTenThisWeek(mt).catch(() => [] as SearchResult[]);
   };
 
-  const [topMovies, topSeries, topAnime, cinemas, soonMovies, soonSeries, top50Movies, top50Series, top50AnimeRows] =
+  /* **ولا صفَّ أنمي هنا بعد اليوم (D-169):** صار له تبويبه بستّة صفوف،
+     فبقاؤه هنا يعني الصفَّ نفسه في بابين — ونسخةٌ ثانية من معنًى واحد
+     هي بالضبط ما تمنعه D-145. وتبويب المسلسلات يوفّر معها نداءَين. */
+  const [topMovies, topSeries, cinemas, soonMovies, soonSeries, top50Movies, top50Series] =
     await Promise.all([
       /* الصفوف المرتّبة كلّها تُعاد بترتيب IMDb وتحمل تقييمه (قرار أحمد:
          «الترتيب بأعلى تقييم حسب IMDb والتقييم فقط من IMDb») — TMDB يبقى
@@ -550,16 +553,6 @@ async function CuratedRails({
         : Promise.resolve([] as SearchResult[]),
       wantSeries && !upcoming
         ? topFor("tv", genre?.tv, rails.s).then(withImdbRatings).catch(() => [] as SearchResult[])
-        : Promise.resolve([] as SearchResult[]),
-      // الأنمي بنافذته المستقلة (D-099): أسبوع = الرائج، شهر/سنة = ما
-      // بدأ بثّه في المدى بالشعبية — بوابة isWeek سقطت مع محور الورقة
-      !active && wantSeries
-        ? topTenAnimeThisWeek(
-            10,
-            rails.a === "week"
-              ? undefined
-              : { from: rails.a === "month" ? monthFrom : `${y}-01-01`, to: todayStr },
-          ).then(withImdbRatings).catch(() => [] as SearchResult[])
         : Promise.resolve([] as SearchResult[]),
       /* «في السينما» بتقييم IMDb كسائر الصفوف (طلب أحمد 9 Aug مساءً:
          «أعمال السينما تكون مقيَّمة من IMDb»). كان الصفّ الوحيد الذي
@@ -616,9 +609,6 @@ async function CuratedRails({
       !active && wantSeries
         ? topChartRail("tv", 50, locale).catch(() => [] as SearchResult[])
         : Promise.resolve([] as SearchResult[]),
-      !active && wantSeries
-        ? topChartRail("anime", 50, locale).catch(() => [] as SearchResult[])
-        : Promise.resolve([] as SearchResult[]),
     ]);
 
   const today = new Date().toISOString().slice(0, 10);
@@ -670,11 +660,9 @@ async function CuratedRails({
   const empty =
     topMovies.length === 0 &&
     topSeries.length === 0 &&
-    topAnime.length === 0 &&
     soon.length === 0 &&
     top50Movies.length === 0 &&
     top50Series.length === 0 &&
-    top50AnimeRows.length === 0 &&
     !inCinemas?.results.length;
 
   return (
@@ -726,15 +714,6 @@ async function CuratedRails({
           emptyText={t.railWinEmpty}
         />
       )}
-      {(topAnime.length > 0 || rails.a !== "week") && (
-        <RankedRail
-          title={t.top10Anime}
-          icon="sparkle-star"
-          items={topAnime}
-          control={<RailWindowChips param="wa" value={rails.a} locale={locale} />}
-          emptyText={t.railWinEmpty}
-        />
-      )}
       {soon.length > 0 && (
         <CountdownRail title={t.comingSoon} icon="calendar" items={soon} locale={locale} />
       )}
@@ -745,9 +724,6 @@ async function CuratedRails({
       )}
       {top50Series.length > 0 && (
         <RankedRail title={t.top50Series} icon="tv" items={top50Series} />
-      )}
-      {top50AnimeRows.length > 0 && (
-        <RankedRail title={t.top50Anime} icon="sparkle-star" items={top50AnimeRows} />
       )}
 
       {empty && (
