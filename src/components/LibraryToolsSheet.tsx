@@ -79,7 +79,7 @@ export function LibraryToolsSheet({
                 htmlFor="lib-q"
                 className="block text-[13px] font-bold text-muted mb-2"
               >
-                {t.searchLibrary}
+                {t.librarySearchGroup}
               </label>
               <div className="relative">
                 <span className="absolute inset-y-0 start-3 grid place-items-center text-muted pointer-events-none">

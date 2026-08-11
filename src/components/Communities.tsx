@@ -411,7 +411,11 @@ function CommunityBadge({
 }
 
 /** ورقة الإنشاء — اسمٌ وخصوصيةٌ وزرّ؛ علويةٌ لأن فيها كتابة (D-018) */
-function CreateCommunitySheet({
+/**
+ * ورقةُ إنشاء مجتمع — **مُصدَّرةٌ منذ D-177** لأن لها باباً ثانياً:
+ * رمزُ الأدوات في رأس المجتمع. والتصديرُ لا النسخُ هو القاعدة (D-145).
+ */
+export function CreateCommunitySheet({
   t,
   onClose,
   onCreated,
