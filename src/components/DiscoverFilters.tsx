@@ -26,7 +26,8 @@ import { Icon } from "./Icon";
 import { FilterIconButton } from "./ui/FilterIconButton";
 import { ListsFilters, type ListsFiltersProps } from "./ListsFilters";
 import { DiscoverFilterSheet, type FilterDraft } from "./DiscoverFilterSheet";
-import { PageTabs } from "./ui/PageTabs"; import { applyTabPrefs, type TabPref } from "@/lib/tabPrefs";
+import { PageTabs } from "./ui/PageTabs";
+import { applyTabPrefs, type TabPref } from "@/lib/tabPrefs";
 
 /**
  * رأس «اكتشف».
@@ -72,9 +73,12 @@ export function DiscoverFilters({
   rate,
   tag,
   award,
-  listsFilters, tabPrefs,
+  listsFilters,
+  tabPrefs,
 }: {
-  locale: Locale; /** ترتيبُ تبويبات اكتشف وإظهارها — من الكوكي على الخادم (D-014) */ tabPrefs: TabPref[];
+  locale: Locale;
+  /** ترتيبُ تبويبات اكتشف وإظهارها — من الكوكي على الخادم (D-014) */
+  tabPrefs: TabPref[];
   /** فلاتر تبويب القوائم — يرسم زرّها في خانة زرّ الأعمال نفسها
       (طلب أحمد: «مكان الفلتر مثل الأفلام والمسلسلات») */
   listsFilters?: ListsFiltersProps;

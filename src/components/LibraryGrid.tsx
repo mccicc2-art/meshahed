@@ -19,7 +19,8 @@ import { Sheet, SheetHeader } from "./ui/Sheet";
 import { posterGrid } from "./ui/controls";
 import { PageTabs } from "./ui/PageTabs";
 import { FilterIconButton } from "./ui/FilterIconButton";
-import { LibraryToolsSheet } from "./LibraryToolsSheet"; import { applyTabPrefs, type TabPref } from "@/lib/tabPrefs";
+import { LibraryToolsSheet } from "./LibraryToolsSheet";
+import { applyTabPrefs, type TabPref } from "@/lib/tabPrefs";
 import { buttonClass } from "./ui/Button";
 
 export interface GridItem {
