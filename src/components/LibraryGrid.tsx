@@ -16,8 +16,10 @@ import { LongPressable } from "./LongPressable";
 import { ListManager } from "./ListManager";
 import { Icon } from "./Icon";
 import { Sheet, SheetHeader } from "./ui/Sheet";
-import { chipClass, posterGrid } from "./ui/controls";
+import { posterGrid } from "./ui/controls";
 import { PageTabs } from "./ui/PageTabs";
+import { FilterIconButton } from "./ui/FilterIconButton";
+import { LibraryToolsSheet } from "./LibraryToolsSheet";
 import { buttonClass } from "./ui/Button";
 
 export interface GridItem {
@@ -113,6 +115,8 @@ export function LibraryGrid({
   }
   const [q, setQ] = useState("");
   const [sort, setSort] = useState<"smart" | "title" | "progress">("smart");
+  /* ورقةُ الأدوات (D-177): البحث والترتيب وإنشاء القائمة خلف رمزٍ واحد */
+  const [tools, setTools] = useState(false);
   /* رقاقة الحالة (طلب المالك): «الكل» افتراضاً، والترشيح محليّ كالبحث */
   const [sheet, setSheet] = useState<GridItem | null>(null);
 
@@ -188,44 +192,32 @@ export function LibraryGrid({
         }))}
         active={tab}
         ariaLabel={t.libraryTitle}
-        extra={
-          showSearchRow ? (
-            <div className="flex items-center gap-2">
-              <div className="relative flex-1">
-                <span className="absolute inset-y-0 start-3 grid place-items-center text-muted pointer-events-none">
-                  <Icon name="search" size={16} />
-                </span>
-                <input
-                  type="search"
-                  value={q}
-                  onChange={(e) => setQ(e.target.value)}
-                  placeholder={t.searchLibrary}
-                  className="w-full bg-surface border border-border rounded-xl ps-9 pe-3 py-2.5 text-sm placeholder:text-muted focus:outline-none focus:border-accent/60"
-                />
-              </div>
-              <div className="flex items-center gap-1 shrink-0" role="group" aria-label={t.sortSmart}>
-                {(
-                  [
-                    { id: "smart", label: t.sortSmart },
-                    { id: "title", label: t.sortTitle },
-                    { id: "progress", label: t.sortProgress },
-                  ] as const
-                ).map(({ id, label }) => (
-                  <button
-                    key={id}
-                    type="button"
-                    aria-pressed={sort === id}
-                    onClick={() => setSort(id)}
-                    className={chipClass(sort === id, "sm")}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ) : undefined
+        /* **الصفُّ الذي كان هنا انتقل خلف الرمز (D-177).** كان يحمل صندوق
+           البحث وثلاث رقائق ترتيب، ويأكل أوّل ما تراه العين قبل أن يظهر
+           ملصقٌ واحد — والمكتبة سؤالُها «ماذا عندي؟» وجوابُه بالأغلفة
+           (D-006). ورقاقةُ الحالة المفعَّلة تُغني عن العنوان: البحثُ يظهر
+           في نقطة الزرّ، والترتيبُ غيرُ الافتراضيّ كذلك. */
+        action={
+          <FilterIconButton
+            onClick={() => setTools(true)}
+            label={t.libraryToolsTitle}
+            active={q.trim().length > 0 || (showSearchRow && sort !== "smart")}
+            expanded={tools}
+          />
         }
       />
+
+      {tools && (
+        <LibraryToolsSheet
+          locale={locale}
+          onClose={() => setTools(false)}
+          sort={sort}
+          onSort={setSort}
+          q={q}
+          onQ={setQ}
+          showFilters={showSearchRow}
+        />
+      )}
 
       <div className="mt-3" />
 
