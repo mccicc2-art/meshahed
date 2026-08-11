@@ -839,6 +839,8 @@ const ar = {
   countdownDays: (n: number) => `باقي ${n} يوم`,
   tabInfo: "معلومات",
   tabReviews: "التعليقات",
+  /** تبويبُ غرفة العمل (D-191) — «المجتمع» كاسم القسم في الشريط السفليّ */
+  tabCommunity: "المجتمع",
   tabCast: "الطاقم",
   tabSimilar: "مشابه",
   tabEpisodes: "الحلقات",
@@ -1784,6 +1786,7 @@ const en: Dict = {
   countdownDays: (n: number) => `${n} days to go`,
   tabInfo: "About",
   tabReviews: "Reviews",
+  tabCommunity: "Community",
   tabCast: "Cast",
   tabSimilar: "Similar",
   tabEpisodes: "Episodes",
