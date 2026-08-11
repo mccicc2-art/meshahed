@@ -102,7 +102,7 @@ export function CommunityTools({
               className={sheetMenuItem}
             >
               <Icon name="people" size={18} />
-              <span>{t.commCreateTitle}</span>
+              <span>{t.communityToolsCreate}</span>
             </button>
 
             <button
