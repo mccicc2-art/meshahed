@@ -37,7 +37,7 @@
 | 24 | `review_reports.sql` | جدول البلاغات + `ratings.hidden` + مُشغِّل الإخفاء عند البلاغ العاشر | **مشحونة** |
 | 25 | `referrals.sql` | رموز الدعوة والدعوات المحقَّقة + أربع دوال definer | لم تُبنَ بعد |
 | 26 | `shares.sql` | `title_shares` + `share_replies` + `are_mutual` + `unread_shares` | لم تُبنَ بعد |
-| 27 | `community_feed.sql` | `community_activity()` — خطّ آراء الجميع. 🔴 **مطلوبةٌ الآن**: رقاقة «الكل» في تبويب «الأعمال» تقرأ منها (D-187)، وحتى تُشغَّل يرتدّ التطبيق إلى خطّ المتابَعين | 🔴 **معلّقة — تُشغَّل** |
+| 27 | `community_feed.sql` | `community_activity()` — خطّ آراء الجميع؛ عليه تقوم رقاقة «الكل» في تبويب «الأعمال» (D-187) | **RUN 12 Aug** — مُتحقَّق: `definer` · `execute` لـ`authenticated` وحدها · `ratings_updated_idx` · **والسياساتُ المفتوحة أربعٌ ولا `public.ratings` فيها** |
 | 28 | `person_follows.sql` | متابعة الفنانين | **مشحونة** |
 | 29 | `profile_visibility.sql` | **أُعيد كتابته ٩ أغسطس:** الحساب الخاص يخفي محتواه — `can_view_profile` + بوّابة دوال الملف الخمس + `is_private` في العرض. ⚠️ يُشغَّل **بعد** ٢٤ و٣٢ رغم رقمه | **مشحونة** |
 | 30 | `security3.sql` | إغلاق قراءة `follows` و`watched_*` | لا واجهة لها |
