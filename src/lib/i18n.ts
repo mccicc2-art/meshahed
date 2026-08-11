@@ -578,6 +578,14 @@ const ar = {
   communityTabMine: "النشاط",
   /* تبويبُ المراجعات — الرأيُ المكتوب وحده (طلب أحمد ١٢ أغسطس) */
   communityTabReviews: "المراجعات",
+  /* تبويبُ «الأعمال» (D-187) — الصفُّ عملٌ لا رأي */
+  communityTabWorks: "الأعمال",
+  worksReviewCount: (n: number) => (n === 1 ? "رأيٌ واحد" : n === 2 ? "رأيان" : `${num(n, "ar")} آراء`),
+  worksScopeAll: "الكل",
+  worksScopeFollowing: "من أتابع",
+  worksEmptyAll: "لا أحد كتب رأياً بعد — كن أوّلَ من يفتح الكلام.",
+  worksEmptyFollowing: "من تتابعهم لم يكتبوا شيئاً بعد. جرّب «الكل».",
+  messagesUnreadAria: (n: number) => `الرسائل — ${num(n, "ar")} غير مقروءة`,
   reviewsEmpty: "لا مراجعات من دائرتك بعد — أوّلُ رأيٍ يُكتب يظهر هنا.",
   /* **«المجتمعات» جمعاً لا «المجتمع» مفرداً** (طلب أحمد ١١ أغسطس بلقطة).
      كان التبويبُ يحمل **اسم القسم نفسه حرفياً** — والقسمُ يضمّ أربعة
@@ -1550,6 +1558,13 @@ const en: Dict = {
   communityTabsGroup: "Community sections",
   communityTabMine: "Activity",
   communityTabReviews: "Reviews",
+  communityTabWorks: "Titles",
+  worksReviewCount: (n: number) => (n === 1 ? "1 review" : `${num(n, "en")} reviews`),
+  worksScopeAll: "Everyone",
+  worksScopeFollowing: "People I follow",
+  worksEmptyAll: "Nobody has written a review yet — be the first to start the conversation.",
+  worksEmptyFollowing: "The people you follow haven't written anything yet. Try Everyone.",
+  messagesUnreadAria: (n: number) => `Messages — ${num(n, "en")} unread`,
   reviewsEmpty: "No reviews from your circle yet — the first one written shows up here.",
   communityTabAll: "Communities",
   communityTabInbox: "Messages",
