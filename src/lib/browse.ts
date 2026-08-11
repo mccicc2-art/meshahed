@@ -23,13 +23,16 @@ export type BrowseType = "all" | "movie" | "tv";
  * من الورقة إلى الرأس (نفس درس D-099: المحور الذي صار في الرأس يغادر
  * الورقة — أداتان على نفس السؤال لبس). الافتراضي «أفلام».
  */
-export type DiscoverTab = "movies" | "shows" | "lists";
+export type DiscoverTab = "movies" | "shows" | "anime" | "lists";
 
 /** قراءة التبويب من الرابط — والروابط القديمة تُهدى لموضعها الجديد:
     `tab=titles` ومعامل `type` القديم يحسمان بين أفلام ومسلسلات */
 export function parseDiscoverTab(v: string | undefined, legacyType?: string): DiscoverTab {
   if (v === "lists") return "lists";
   if (v === "shows") return "shows";
+  /* تبويبٌ رابع للأنمي (D-169، طلب أحمد): كان الأنمي صفَّين يتيمين داخل
+     تبويب المسلسلات — و**أفلامه لم يكن لها صفٌّ قطّ**. صار له بابه. */
+  if (v === "anime") return "anime";
   return legacyType === "tv" ? "shows" : "movies";
 }
 

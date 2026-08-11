@@ -842,6 +842,18 @@ export async function topTenAnimeThisWeek(
     .filter((r) => r.poster_path && r.vote_average > 0)
     .map((r) => ({ ...r, media_type: "tv" as const }));
 
+  return pickByVotes(rows, limit);
+}
+
+/**
+ * سُلّمُ عتبات الأصوات — يُنزِل العتبة حتى يمتلئ الصفّ.
+ *
+ * كانت منسوخةً حرفياً في صفَّي «أفضل ١٠»، فجاء صفُّ أفلام الأنمي يطلب
+ * ثالثة — وسلسلةٌ منسوخة في ثلاثة مواضع عيبٌ لا أسلوب (D-145).
+ * عتبةٌ ثابتة تُفرغ الصفّ في أسبوعٍ هادئ، ومنخفضةٌ تُدخل ما لا يستحقّ،
+ * فالسلّم يأخذ أعلى عتبةٍ تملأ الصفّ.
+ */
+function pickByVotes(rows: SearchResult[], limit: number): SearchResult[] {
   for (const floor of [300, 100, 25, 0]) {
     const picked = rows
       .filter((r) => (r.vote_count ?? 0) >= floor)
@@ -849,6 +861,34 @@ export async function topTenAnimeThisWeek(
     if (picked.length >= limit || floor === 0) return picked.slice(0, limit);
   }
   return [];
+}
+
+/**
+ * أفضل عشرة **أفلام** أنمي — نظيرُ صفّ المسلسلات على جهة الأفلام (D-169).
+ *
+ * **ولماذا دالّةٌ ثانية لا معاملٌ في الأولى:** مدى المسلسل
+ * `first_air_date` ومدى الفيلم `primary_release_date`، والمسار مختلف
+ * (`/discover/tv` و`/discover/movie`). دمجُهما ثلاثةُ فروعٍ داخل دالّةٍ
+ * واحدة تُقرأ أسوأ من نسختين صريحتين — والمشترك مُستخرَجٌ فعلاً في
+ * `ANIME_KEYWORD` و`pickByVotes`.
+ */
+export async function topTenAnimeMoviesThisWeek(
+  limit = 10,
+  range?: { from: string; to: string },
+): Promise<SearchResult[]> {
+  const data = await tmdb<{ results: SearchResult[] }>("/discover/movie", {
+    with_keywords: ANIME_KEYWORD,
+    sort_by: "popularity.desc",
+    include_adult: "false",
+    "vote_count.gte": "50",
+    ...(range
+      ? { "primary_release_date.gte": range.from, "primary_release_date.lte": range.to }
+      : {}),
+  });
+  const rows = (data.results ?? [])
+    .filter((r) => r.poster_path && r.vote_average > 0)
+    .map((r) => ({ ...r, media_type: "movie" as const }));
+  return pickByVotes(rows, limit);
 }
 
 /**
@@ -873,13 +913,7 @@ export async function topTenThisWeek(
     .filter((r) => mediaType !== "tv" || !(r.genre_ids ?? []).includes(ANIMATION_GENRE))
     .map((r) => ({ ...r, media_type: mediaType }));
 
-  for (const floor of [300, 100, 25, 0]) {
-    const picked = rows
-      .filter((r) => (r.vote_count ?? 0) >= floor)
-      .sort((a, b) => b.vote_average - a.vote_average);
-    if (picked.length >= limit || floor === 0) return picked.slice(0, limit);
-  }
-  return [];
+  return pickByVotes(rows, limit);
 }
 
 /** الأكثر رواجاً عالمياً هذا الأسبوع — ترتيب TMDB نفسه */
@@ -1255,17 +1289,26 @@ export async function topByFilter(
  * فوق عتبة أصوات. الصفحات متوازية ومخبّأة ساعةً في طبقة tmdb().
  */
 export async function topRatedRows(
-  media: "movie" | "tv" | "anime",
+  media: "movie" | "tv" | "anime" | "anime-movie",
   limit = 250,
 ): Promise<SearchResult[]> {
   const pageCount = Math.min(25, Math.ceil(limit / 20));
   const pageNums = Array.from({ length: pageCount }, (_, i) => i + 1);
-  const mt: MediaType = media === "movie" ? "movie" : "tv";
+  const mt: MediaType = media === "movie" || media === "anime-movie" ? "movie" : "tv";
+  /* **أفلام الأنمي بِركتُها هنا وحدها، ويُقال لماذا (D-169):**
+     `imdb_chart` لا تعرفها أصلاً — عمود `is_anime` في `imdb_pool` يشترط
+     `media_type='tv'` (انظر `resolveOne`)، فـ«روح الربيع» و«اسمك» تسكنان
+     بِركة الأفلام العامّة مختلطتين بغيرهما ولا تُستخرَجان منها. فالبِركة
+     من `/discover` بكلمة الأنمي ثم يرتّبها IMDb عند المستدعي (مسار
+     D-132) — أضعفُ من القائمة، لا مكسور.
+     ⚠️ **والحلّ النهائيّ رفعُ شرط `tv` عن `is_anime`** — هجرةٌ يشغّلها
+     أحمد وإعادةُ ملءٍ للبِركة؛ دَينٌ مُعلَن في `05_Todo`. */
+  const animeKeyword = media === "anime" || media === "anime-movie";
 
   const pages = await Promise.all(
     pageNums.map((page) =>
-      (media === "anime"
-        ? tmdb<{ results: SearchResult[] }>("/discover/tv", {
+      (animeKeyword
+        ? tmdb<{ results: SearchResult[] }>(`/discover/${mt}`, {
             with_keywords: ANIME_KEYWORD,
             sort_by: "vote_average.desc",
             "vote_count.gte": "200",

@@ -192,3 +192,43 @@ export async function topChartRail(
     } as SearchResult;
   });
 }
+
+/**
+ * «أفضل ٥٠ فيلم أنمي» — الصفُّ الوحيد الذي لا قائمةَ IMDb خلفه (D-169).
+ *
+ * **ويُقال صراحةً بدل أن يُخفى:** `imdb_chart` تصنّف `movie | tv | anime`،
+ * و`anime` فيها **مسلسلاتٌ حصراً** لأن `is_anime` في `imdb_pool` يشترط
+ * `media_type='tv'`. فأفلام الأنمي موجودةٌ في بِركة الأفلام مختلطةً بغيرها
+ * ولا سبيل لاستخراجها منها. فهذا الصفّ يمشي على **مسار D-132**: بِركةٌ من
+ * `/discover` بكلمة الأنمي، ثم ترتيبٌ بايزيّ بتقييمات IMDb.
+ *
+ * **وهو أضعفُ من أخواته ولا يُدّعى غير ذلك:** بِركة TMDB أضيق من ملفّات
+ * IMDb، وعتبةُ الأصوات ثابتة. الحلّ النهائيّ رفعُ شرط `tv` عن `is_anime`
+ * — هجرةٌ وإعادةُ ملء، وهي دَينٌ مُعلَن.
+ */
+export async function animeMovieRail(want: number, locale: Locale): Promise<SearchResult[]> {
+  /* البِركة أوسع من المطلوب بمرّتين: `rankByImdb` تُسقط كل عملٍ بلا تقييم
+     IMDb إسقاطاً كاملاً، فبِركةٌ بحجم المطلوب تعطي صفّاً ناقصاً */
+  const pool = await topRatedRows("anime-movie", want * 2).catch(() => [] as SearchResult[]);
+  if (pool.length === 0) return [];
+  const ranked = rankByImdb(await withImdbRatings(pool), { want });
+  if (ranked.length === 0) return [];
+
+  const localized = await localizeRows(
+    ranked.map((r) => ({
+      tmdb_id: r.id,
+      media_type: "movie" as const,
+      title: r.title ?? r.name ?? null,
+      poster_path: r.poster_path,
+    })),
+    locale,
+    want,
+  );
+
+  return ranked.map((r, i) => ({
+    ...r,
+    title: localized[i]?.title ?? r.title,
+    name: localized[i]?.title ?? r.name,
+    poster_path: localized[i]?.poster_path ?? r.poster_path,
+  }));
+}
