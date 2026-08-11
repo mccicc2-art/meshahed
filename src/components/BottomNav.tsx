@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { getDict, type Locale } from "@/lib/i18n";
 import { Icon, type IconName } from "./Icon";
 import { TitleSearchSheet } from "./TitleSearchSheet";
@@ -10,18 +10,46 @@ import { TitleSearchSheet } from "./TitleSearchSheet";
 /**
  * شريط التبويبات السفلي.
  *
- * كبسولة واحدة تحمل خمس وجهات: الرئيسية، المكتبة، اكتشف، البحث،
- * المجتمع. الخامسة — البحث — أُضيفت بقرار المالك ويُسجَّل بها D-024:
- * البحث كان مدخلاً داخل «اكتشف» وحده، فمن أراده دفع ضغطتين ومرّ على
- * صفحةٍ لا يريدها. وهو أكثر أفعال التطبيق تكراراً بعد التأشير.
+ * خمس وجهات: الرئيسية، المكتبة، اكتشف، المجتمع، البحث. والبحث أُضيف
+ * بقرار المالك ويُسجَّل به D-024: كان مدخلاً داخل «اكتشف» وحده، فمن أراده
+ * دفع ضغطتين ومرّ على صفحةٍ لا يريدها — وهو أكثر أفعال التطبيق تكراراً
+ * بعد التأشير.
  *
  * والخانات متساوية العرض بشبكةٍ من خمسة أعمدة لا بحشوٍ لكل خانة:
  * «المجتمع» أعرض من «بحث» بضعف، فالحشو المتساوي يعطي خاناتٍ متفاوتة
  * والعين تقرأ التفاوت اضطراباً. العرض واحد والنصّ يُقصّ إن طال.
  *
- * لونان لا خمسة: النشط بنفسجيّ الهوية واسمه أبيض، والخامل رماديّ
- * `--disabled`. تلوين كل تبويب بلونه كان يجعلها متساوية في الصياح،
- * فلا يُعرف موضعك إلا بقراءة الكلمات.
+ * لونان لا خمسة: النشط بلون الهوية، والخامل رماديّ `--disabled`. تلوين
+ * كل تبويبٍ بلونه كان يجعلها متساوية في الصياح، فلا يُعرف موضعك إلا
+ * بقراءة الكلمات.
+ *
+ * ---
+ *
+ * **الشكل: شريطٌ ملتصقٌ بالحافّة لا كبسولةٌ عائمة** (طلب أحمد ١١ أغسطس:
+ * «الشريط السفلي احتاجك تغير تصميمه وما يكون كذا عائم، يكون مثل تبع
+ * تويتر»). وثلاثةُ أشياء تغيّرت معاً، وكلٌّ منها له سببُه:
+ *
+ *  ١) **الكبسولة ذهبت.** كانت لوحاً مستديراً بحدٍّ وظلٍّ ثقيل يطفو فوق
+ *     المحتوى، **فتأكل من الشاشة مرّتين**: بارتفاعها، وبالتدرّج المعتم
+ *     الذي كان تحتها ليفصلها عمّا خلفها. والشريطُ الملتصق يحتاج **خطّاً
+ *     واحداً** ليقول أين ينتهي التطبيق ويبدأ النظام.
+ *
+ *  ٢) **شفافيةٌ وضباب** (طلب أحمد، ولقطته الثالثة مرجعاً): الخلفية
+ *     `color-mix` مع الشفاف و`backdrop-blur` — فيُرى أن تحته محتوًى يمرّ،
+ *     وهو ما يجعل الشريط جزءاً من الصفحة لا صندوقاً فوقها. **والصنف
+ *     الصمّاء تبقى مكتوبةً قبله**: لو لم يفهم متصفّحٌ `color-mix` سقط
+ *     السطر المضمَّن وعاد اللون الصمّاء — **ولا شريط شفّافاً بلا ضباب**،
+ *     فذاك نصٌّ فوق ملصقات.
+ *
+ *  ٣) **النقطة الصفراء تحت الاسم ذهبت** (طلب أحمد: «ما يحتاج النقطة
+ *     الصفراء اللي تحت، كفاية إذا اخترت الأيقونة يتغير لونها أصفر مثل
+ *     الثيم»). **وهو محقّ:** الأيقونةُ الصفراء والاسمُ العريض يقولان
+ *     «أنت هنا» مرّتين، والنقطةُ ثالثة. **وإشارةٌ تُكرَّر ثلاثاً تُقرأ
+ *     زينةً لا معنى.**
+ *
+ * **وحلَّ محلّها معنًى مختلف تماماً — نقطةُ «هناك جديدٌ هناك»** على تبويبٍ
+ * **لستَ فيه** (`NavSignalDot`). الفرق ليس في الشكل بل في الجملة: تلك
+ * كانت تقول ما تعرفه، وهذه تقول ما لا تعرفه.
  */
 
 const TABS: {
@@ -40,7 +68,16 @@ const TABS: {
   { href: "/search", key: "search", icon: "search" },
 ];
 
-export function BottomNav({ locale, signedIn = true }: { locale: Locale; signedIn?: boolean }) {
+export function BottomNav({
+  locale,
+  signedIn = true,
+  peopleDot,
+}: {
+  locale: Locale;
+  signedIn?: boolean;
+  /** نقطةُ «جديد» على تبويب المجتمع — عقدةُ خادمٍ تصل خلف Suspense */
+  peopleDot?: ReactNode;
+}) {
   const pathname = usePathname();
   const t = getDict(locale);
   // الحالة قبل أي خروجٍ مبكّر: ترتيب الخطّافات لا يتغيّر بين تصييرين
@@ -73,87 +110,71 @@ export function BottomNav({ locale, signedIn = true }: { locale: Locale; signedI
 
   return (
     <>
-    <div className="md:hidden fixed bottom-0 inset-x-0 z-40 pointer-events-none">
-      <div
-        className="flex items-center justify-center gap-3 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3"
-        style={{
-          background:
-            "linear-gradient(to top, var(--background) 45%, transparent)",
-        }}
+      <nav
+        aria-label={t.navHome}
+        /* الصنف الصمّاء أوّلاً وهي الاحتياط: السطر المضمَّن أدناه يغلبها
+           حيث يُفهم، ويسقط كاملاً حيث لا يُفهم فيبقى اللون الصمّاء */
+        className="md:hidden fixed bottom-0 inset-x-0 z-40 grid grid-cols-5 border-t border-[color:var(--divider)] bg-[color:var(--background)] backdrop-blur-xl pt-1.5 pb-[max(0.5rem,env(safe-area-inset-bottom))]"
+        style={{ background: "color-mix(in srgb, var(--background) 76%, transparent)" }}
       >
-        {/* كبسولة التبويبات — خمسة أعمدة متساوية لا خانات بحشوٍ متساوٍ */}
-        <nav className="pointer-events-auto grid grid-cols-5 w-full max-w-[26rem] rounded-[26px] border border-border bg-[color:var(--surface)] px-1.5 py-2 shadow-[0_10px_30px_rgba(0,0,0,0.6)]">
-          {TABS.map(({ href, key, icon }) => {
-            const isSearch = key === "search";
-            const active = isSearch ? searchOpen : isActive(href);
-            const face = (
-              <>
+        {TABS.map(({ href, key, icon }) => {
+          const isSearch = key === "search";
+          const active = isSearch ? searchOpen : isActive(href);
+          const face = (
+            <>
+              <span className="relative">
                 <Icon
                   name={icon}
-                  size={22}
+                  size={23}
                   strokeWidth={active ? 2.2 : 1.7}
-                  style={{
-                    color: active ? "var(--accent)" : "var(--disabled)",
-                  }}
+                  style={{ color: active ? "var(--accent)" : "var(--disabled)" }}
                 />
-                <span
-                  className={`max-w-full truncate text-[11px] leading-none ${
-                    active ? "font-semibold" : ""
-                  }`}
-                  style={{
-                    color: active ? "var(--foreground)" : "var(--disabled)",
-                  }}
-                >
-                  {label[key]}
-                </span>
-                {/* النقطة تحت الاسم: علامة الموضع في المرجع */}
-                <span
-                  className={`absolute bottom-0.5 w-1 h-1 rounded-full transition-opacity ${
-                    active ? "opacity-100" : "opacity-0"
-                  }`}
-                  style={{ background: "var(--accent)" }}
-                  aria-hidden
-                />
-              </>
-            );
-            const face_cls =
-              "relative flex min-w-0 flex-col items-center justify-center gap-1 rounded-2xl px-1 pt-1 pb-2 transition active:bg-surface-2";
-
-            // البحث يفتح ورقةً في مكانه؛ وبقية التبويبات وجهاتٌ تُزار
-            return isSearch ? (
-              <button
-                key={href}
-                type="button"
-                onClick={() => setSearchOpen(true)}
-                aria-expanded={searchOpen}
-                aria-haspopup="dialog"
-                className={face_cls}
+                {/* «هناك جديدٌ هناك» — وتسقط على التبويب المفتوح: أنت فيه */}
+                {key === "people" && !active && peopleDot}
+              </span>
+              <span
+                className={`max-w-full truncate text-[11px] leading-none ${
+                  active ? "font-semibold" : ""
+                }`}
+                style={{ color: active ? "var(--foreground)" : "var(--disabled)" }}
               >
-                {face}
-              </button>
-            ) : (
-              <Link
-                key={href}
-                href={href}
-                aria-current={active ? "page" : undefined}
-                className={face_cls}
-              >
-                {face}
-              </Link>
-            );
-          })}
-        </nav>
-      </div>
+                {label[key]}
+              </span>
+            </>
+          );
+          const face_cls =
+            "relative flex min-w-0 flex-col items-center justify-center gap-1 rounded-2xl px-1 py-1.5 transition active:bg-surface-2";
 
-    </div>
+          // البحث يفتح ورقةً في مكانه؛ وبقية التبويبات وجهاتٌ تُزار
+          return isSearch ? (
+            <button
+              key={href}
+              type="button"
+              onClick={() => setSearchOpen(true)}
+              aria-expanded={searchOpen}
+              aria-haspopup="dialog"
+              className={face_cls}
+            >
+              {face}
+            </button>
+          ) : (
+            <Link
+              key={href}
+              href={href}
+              aria-current={active ? "page" : undefined}
+              className={face_cls}
+            >
+              {face}
+            </Link>
+          );
+        })}
+      </nav>
 
-    {/* الورقة خارج غلاف الشريط عمداً: الغلاف يحمل `pointer-events-none`
-        (ليمرّ اللمس من حول الكبسولة إلى الصفحة) وهو `z-40` يصنع سياق
-        تكديسٍ يحبس ما بداخله. فورقةٌ بداخله لا تستقبل لمسةً أصلاً —
-        تُضغط الصفحة من خلفها — ولا تعلو غيرها مهما رُفع رقمها. */}
-    {searchOpen && (
-      <TitleSearchSheet onClose={() => setSearchOpen(false)} locale={locale} />
-    )}
+      {/* الورقة خارج الشريط عمداً: الشريط `z-40` ويصنع سياق تكديسٍ يحبس
+          ما بداخله — فورقةٌ بداخله لا تعلو غيرها مهما رُفع رقمها */}
+      {searchOpen && (
+        <TitleSearchSheet onClose={() => setSearchOpen(false)} locale={locale} />
+      )}
     </>
   );
 }
