@@ -118,6 +118,16 @@ const ar = {
   communityToolsCreate: "أنشئ مجتمعاً",
   communityToolsMessage: "راسل صديقاً",
   communityToolsHideGroup: "التبويبات الظاهرة",
+  /* قسمُ التبويبات — **اسمٌ يقول المحورين** (طلب أحمد: الموضع والإخفاء):
+     «التبويبات الظاهرة» وحدها كانت تصف نصف ما صار الصفُّ يفعله (D-155) */
+  tabsPrefsGroup: "التبويبات — الترتيب والإظهار",
+  tabsPrefsMoveUp: (name: string) => `قدِّم ${name}`,
+  tabsPrefsMoveDown: (name: string) => `أخِّر ${name}`,
+  /* عنوانُ ورقة اكتشف بعد أن صارت تحمل قسمين — «تصفية اكتشف» كانت تصف
+     نصفها، ومن يفتحها ليرتّب تبويباته يقرأ عنواناً لا يخصّه */
+  discoverToolsTitle: "أدوات اكتشف",
+  browseFiltersGroup: "الفلترة",
+  communityToolsSearchGroup: "ابحث عن مجتمع",
   browseActiveFilters: "الفلاتر المفعّلة",
   browseRemoveFilter: (label: string) => `إزالة ${label}`,
   typeSeries: "مسلسل",
@@ -1128,6 +1138,12 @@ const en: Dict = {
   communityToolsCreate: "Create a community",
   communityToolsMessage: "Message a friend",
   communityToolsHideGroup: "Visible tabs",
+  tabsPrefsGroup: "Tabs — order and visibility",
+  tabsPrefsMoveUp: (name: string) => `Move ${name} earlier`,
+  tabsPrefsMoveDown: (name: string) => `Move ${name} later`,
+  discoverToolsTitle: "Discover tools",
+  browseFiltersGroup: "Filters",
+  communityToolsSearchGroup: "Find a community",
   browseActiveFilters: "Active filters",
   browseRemoveFilter: (label: string) => `Remove ${label}`,
   typeSeries: "Series",

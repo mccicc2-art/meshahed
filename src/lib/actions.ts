@@ -9,6 +9,13 @@ import { GENRES, type MediaType } from "@/lib/media";
 import { THEMES } from "@/lib/themes";
 import { sanitizeHomePrefs, type HomePrefs } from "@/lib/homePrefs";
 import { sanitizeProfilePrefs, type ProfilePrefs } from "@/lib/profilePrefs";
+import {
+  isTabSurface,
+  parseTabPrefs,
+  serializeTabPrefs,
+  surfaceCookie,
+  type TabPref,
+} from "@/lib/tabPrefs";
 import { allow } from "@/lib/ratelimit";
 import { intId, intIn, asMediaType, uuid, dateOrNull } from "@/lib/validate";
 import { IMPORT_CAPS, type ImportPayload, type ResolveRequest, type ResolveResult } from "@/lib/importer";
@@ -204,6 +211,29 @@ export async function setWatchRegion(value: string) {
  */
 const COMMUNITY_TABS = ["mine", "all", "inbox", "news"] as const;
 const CTABS_COOKIE = "loopz_ctabs_hidden";
+
+/**
+ * تفضيلاتُ تبويبات سطحٍ واحد — **الترتيب والإظهار في كتابةٍ واحدة**
+ * (طلب أحمد ١١ أغسطس: «حطّ إمكانية أغيّر موقع التيوب… حتى في الديسكفري
+ * والمكتبة حطّ خيار الإخفاء»).
+ *
+ * **كوكي لا عمود** — نفس حجّة `setWatchRegion` و`setHiddenCommunityTabs`
+ * حرفاً بحرف (D-014): تفضيلُ عرضٍ يقرؤه الخادم قبل أوّل رسمة.
+ *
+ * **ولا يُصدَّق ما يصل:** المصفوفة تمرّ بـ`parseTabPrefs` نفسِها التي
+ * يمرّ بها الكوكي المقروء — فالمجهولُ يسقط، والناقصُ يُلحَق بحالته
+ * الافتراضية، **والأخيرُ الظاهر لا يُخفى** مهما أرسل العميل.
+ */
+export async function setTabPrefs(surface: string, prefs: TabPref[]) {
+  if (!isTabSurface(surface)) return;
+  const clean = parseTabPrefs(surface, serializeTabPrefs(prefs));
+  const store = await cookies();
+  store.set(surfaceCookie(surface), serializeTabPrefs(clean), {
+    path: "/",
+    maxAge: 60 * 60 * 24 * 365,
+    sameSite: "lax",
+  });
+}
 
 export async function setHiddenCommunityTabs(keys: string[]) {
   const clean = [...new Set(keys)].filter((k) =>

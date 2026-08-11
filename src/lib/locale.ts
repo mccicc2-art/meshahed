@@ -1,6 +1,7 @@
 import { cookies, headers } from "next/headers";
 import { LOCALE_COOKIE, normalizeLocale, getDict, type Locale, type Dict } from "@/lib/i18n";
 import { REGION_COOKIE, DEFAULT_REGION, normalizeRegion } from "@/lib/region";
+import { TAB_SURFACES, parseTabPrefs, type TabPref, type TabSurface } from "@/lib/tabPrefs";
 
 export async function getLocale(): Promise<Locale> {
   try {
@@ -50,6 +51,28 @@ export async function getWatchRegion(): Promise<string> {
  * والقارئ يحرس أيضاً — فكوكي قديمٌ أو محرَّرٌ بيد لا يُفرغ الصفحة من
  * تبويباتها. **حارسٌ على طرفٍ واحد ليس حارساً.**
  */
+/**
+ * تفضيلاتُ تبويبات سطحٍ واحد (الترتيب + الإظهار) — من الكوكي، **قبل أوّل
+ * رسمة**: الرأس يُرسم مرتَّباً مصفّىً من أوّل بايت، فلا يومض تبويبٌ ثم
+ * يختفي ولا يقفز إلى موضعه.
+ *
+ * والقصُّ يتكرّر هنا عمداً (نفس ثلاثيّة D-177): العميل يُعطّل، والكاتب
+ * يقصّ، والقارئ يقصّ. **حارسٌ على طرفٍ واحد ليس حارساً.**
+ */
+export async function getTabPrefs(surface: TabSurface): Promise<TabPref[]> {
+  const spec = TAB_SURFACES[surface];
+  try {
+    const store = await cookies();
+    return parseTabPrefs(
+      surface,
+      store.get(spec.cookie)?.value,
+      spec.legacyHiddenCookie ? store.get(spec.legacyHiddenCookie)?.value : null,
+    );
+  } catch {
+    return parseTabPrefs(surface, null);
+  }
+}
+
 export async function getHiddenCommunityTabs(): Promise<string[]> {
   const store = await cookies();
   const raw = store.get("loopz_ctabs_hidden")?.value ?? "";
