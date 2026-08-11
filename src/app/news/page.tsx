@@ -41,7 +41,7 @@ import {
   type DiscoverFilter,
 } from "@/lib/tmdb";
 import { ScrollMemory } from "@/components/ScrollMemory";
-import { animeMovieRail, topChartRail } from "@/lib/topChart";
+import { animeMovieRail, topChartRail, tmdbTopRail } from "@/lib/topChart";
 import { attachImdbRatings, withImdbRatings } from "@/lib/omdb";
 import { getT, getWatchRegion, getTabPrefs } from "@/lib/locale";
 import { defaultTab } from "@/lib/tabPrefs";
@@ -670,11 +670,20 @@ async function CuratedRails({
          **وثمنُها أرخص لا أغلى:** ثلاثة صفوفٍ كانت تكلّف ٢٤٠ نداء OMDb
          (٨٠ لكلٍّ) فصارت **ثلاث قراءاتٍ من القاعدة**، والتقييم يصل مع
          الصفّ نفسه. */
+      /* 🔴 **ورجعا إلى بِركة TMDB بقرار أحمد (١٢ أغسطس):** «اجعل ديسكفري
+         لا يعتمد على الـAPI المضافة، فقط الأنمي يستفيد منه».
+         **والسببُ مقيسٌ لا انطباع:** رفُّ المسلسلات كان يحمل **أربعة عشر
+         عملاً هندياً من خمسين**، أوّلُها في المرتبة الثامنة — عتبةُ
+         المسلسلات في بِركة IMDb خمسةُ آلاف صوت، ومسلسلاتُ الويب الهندية
+         تقييماتُها ٩+ بأصواتٍ متواضعة فتتصدّر الصيغة البايزيّة.
+         **والقائمةُ لم تُهجر بل حُصرت حيث تنفع:** تبويبُ الأنمي وقوائمُ
+         «أفضل ٢٥٠» (وهي التي قال أحمد إنها صحيحة). التفصيلُ والمقايضةُ
+         كاملةً في رأس `tmdbTopRail`. */
       !active && wantMovies
-        ? topChartRail("movie", 50, locale).catch(() => [] as SearchResult[])
+        ? tmdbTopRail("movie", 50, locale).catch(() => [] as SearchResult[])
         : Promise.resolve([] as SearchResult[]),
       !active && wantSeries
-        ? topChartRail("tv", 50, locale).catch(() => [] as SearchResult[])
+        ? tmdbTopRail("tv", 50, locale).catch(() => [] as SearchResult[])
         : Promise.resolve([] as SearchResult[]),
     ]);
 
