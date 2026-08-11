@@ -312,7 +312,20 @@ export function DiscoverFilters({
             كان يفتح تفضيلات التبويبات وحدها لأن صفوفه لم تكن تقرأ
             الفلتر — وقد صارت تقرؤه. */}
         {tab === "lists" && listsFilters ? (
-          <ListsFilters {...listsFilters} variant="button" />
+          /* **وقسمُ التبويبات يُمرَّر إلى ورقة القوائم لا إلى ورقتنا:**
+             زرُّ هذا التبويب يفتح تلك لا هذه، فلو بقي القسمُ هنا وحده
+             لكان تبويبٌ من أربعة بلا طريقٍ إلى ترتيب تبويباته — والمنطق
+             نفسُه (`TabsPrefs`) في الورقتين، فلا نسخةَ ثانية (D-145) */
+          <ListsFilters
+            {...listsFilters}
+            variant="button"
+            tabsPrefs={{
+              locale,
+              prefs: tabPrefs,
+              labels: tabLabels,
+              title: t.tabsPrefsGroup,
+            }}
+          />
         ) : (
           <FilterIconButton
             onClick={() => setSheet(true)}
