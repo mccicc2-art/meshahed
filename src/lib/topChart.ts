@@ -281,30 +281,61 @@ export async function topChartRail(
 }
 
 /**
- * «أفضل ٥٠ فيلم أنمي» — الصفُّ الوحيد الذي لا قائمةَ IMDb خلفه (D-169).
+ * رفُّ «الأفضل» من بِركة TMDB — **مسارُ D-132**، وهو مصدرُ رفوف اكتشف
+ * للأفلام والمسلسلات بعد قرار أحمد (١٢ أغسطس).
  *
- * **ويُقال صراحةً بدل أن يُخفى:** `imdb_chart` تصنّف `movie | tv | anime`،
- * و`anime` فيها **مسلسلاتٌ حصراً** لأن `is_anime` في `imdb_pool` يشترط
- * `media_type='tv'`. فأفلام الأنمي موجودةٌ في بِركة الأفلام مختلطةً بغيرها
- * ولا سبيل لاستخراجها منها. فهذا الصفّ يمشي على **مسار D-132**: بِركةٌ من
- * `/discover` بكلمة الأنمي، ثم ترتيبٌ بايزيّ بتقييمات IMDb.
+ * **ولماذا رجعنا إليه بعد أن غادرناه في D-164 — يُقال كاملاً لا نصفَه:**
+ * D-164 جعلت الرفوف تقرأ `imdb_chart` (بِركتُها ملفّات IMDb المفتوحة)،
+ * وكسبت بذلك أسماءً كانت ساقطة: «الأب الروحي ٢» و«اثنا عشر رجلاً غاضباً»
+ * و«الأخوة في السلاح» و«ذا واير» و«الأسرة». **والكسبُ حقيقيّ ومقيس.**
  *
- * **وهو أضعفُ من أخواته ولا يُدّعى غير ذلك:** بِركة TMDB أضيق من ملفّات
- * IMDb، وعتبةُ الأصوات ثابتة. الحلّ النهائيّ رفعُ شرط `tv` عن `is_anime`
- * — هجرةٌ وإعادةُ ملء، وهي دَينٌ مُعلَن.
+ * **لكنّ ثمنَه ظهر على الشاشة:** عتبةُ المسلسلات في تلك البِركة **خمسة
+ * آلاف صوت**، ومسلسلاتُ الويب الهندية (TVF وأخواتها) تقييماتُها ٩+
+ * بأصواتٍ متواضعة — فتتصدّر الصيغةَ البايزيّة. القياسُ يوم ١٢ أغسطس:
+ * **أربعة عشر عملاً هندياً من الخمسين، أوّلُها في المرتبة الثامنة.**
+ * وحين خرجت الوثائقيات (D-165) صعد الذيلُ مكانها فصار الأمرُ أظهر.
+ *
+ * **وقرار أحمد بنصّه:** «اجعل ديسكفري لا يعتمد على الـAPI المضافة، فقط
+ * الأنمي يستفيد منه». فالبِركةُ الجديدة بقيت حيث تنفع بلا ضرر:
+ * **تبويبُ الأنمي وقوائمُ «أفضل ٢٥٠»** (وهي التي قال إنها صحيحة).
+ *
+ * ⚠️ **وما يُتوقَّع أن يعود ناقصاً — يُقال قبل أن يُكتشف:** الأسماءُ
+ * الخمسة أعلاه قد تغيب عن الرفوف ثانيةً، لأن `/top_rated` عند TMDB
+ * بِركةٌ أضيق من ملفّات IMDb. **وهي أسماءٌ بلّغ عنها أحمد بنفسه يوم ١١
+ * أغسطس** — فإن نقصت فالمقايضة معروفةٌ لا مفاجئة، ومكانُها هذا التعليق.
  */
-export async function animeMovieRail(want: number, locale: Locale): Promise<SearchResult[]> {
+export async function tmdbTopRail(
+  media: "movie" | "tv" | "anime-movie",
+  want: number,
+  locale: Locale,
+): Promise<SearchResult[]> {
   /* البِركة أوسع من المطلوب بمرّتين: `rankByImdb` تُسقط كل عملٍ بلا تقييم
      IMDb إسقاطاً كاملاً، فبِركةٌ بحجم المطلوب تعطي صفّاً ناقصاً */
-  const pool = await topRatedRows("anime-movie", want * 2).catch(() => [] as SearchResult[]);
+  const pool = await topRatedRows(media, want * 2).catch(() => [] as SearchResult[]);
   if (pool.length === 0) return [];
-  const ranked = rankByImdb(await withImdbRatings(pool), { want });
+
+  /* **والتصفيتان تأتيان مجّاناً هنا:** صفوفُ TMDB تحمل `genre_ids`
+     و`original_language` معها، فلا نداءَ لكل عنوانٍ كما في مسار القائمة.
+     الوثائقيّ يغادر (D-165) والأنمي يغادر (D-170) — إلا في رفّ الأنمي. */
+  const cleaned =
+    media === "anime-movie"
+      ? pool
+      : pool.filter((r) => {
+          if (isExcluded(r.id, r.media_type ?? media)) return false;
+          const g = r.genre_ids ?? [];
+          if (g.includes(DOCUMENTARY_GENRE)) return false;
+          if (g.includes(ANIMATION_GENRE) && r.original_language === "ja") return false;
+          return true;
+        });
+  if (cleaned.length === 0) return [];
+
+  const ranked = rankByImdb(await withImdbRatings(cleaned), { want });
   if (ranked.length === 0) return [];
 
   const localized = await localizeRows(
     ranked.map((r) => ({
       tmdb_id: r.id,
-      media_type: "movie" as const,
+      media_type: (media === "tv" ? "tv" : "movie") as "tv" | "movie",
       title: r.title ?? r.name ?? null,
       poster_path: r.poster_path,
     })),
@@ -318,4 +349,23 @@ export async function animeMovieRail(want: number, locale: Locale): Promise<Sear
     name: localized[i]?.title ?? r.name,
     poster_path: localized[i]?.poster_path ?? r.poster_path,
   }));
+}
+
+/**
+ * «أفضل ٥٠ فيلم أنمي» — الصفُّ الوحيد الذي لا قائمةَ IMDb خلفه (D-169).
+ *
+ * **ويُقال صراحةً بدل أن يُخفى:** `imdb_chart` تصنّف `movie | tv | anime`،
+ * و`anime` فيها **مسلسلاتٌ حصراً** لأن `is_anime` في `imdb_pool` يشترط
+ * `media_type='tv'`. فأفلام الأنمي موجودةٌ في بِركة الأفلام مختلطةً بغيرها
+ * ولا سبيل لاستخراجها منها. فهذا الصفّ يمشي على **مسار D-132**: بِركةٌ من
+ * `/discover` بكلمة الأنمي، ثم ترتيبٌ بايزيّ بتقييمات IMDb.
+ *
+ * **وهو أضعفُ من أخواته ولا يُدّعى غير ذلك:** بِركة TMDB أضيق من ملفّات
+ * IMDb، وعتبةُ الأصوات ثابتة. الحلّ النهائيّ رفعُ شرط `tv` عن `is_anime`
+ * — هجرةٌ وإعادةُ ملء، وهي دَينٌ مُعلَن.
+ */
+export async function animeMovieRail(want: number, locale: Locale): Promise<SearchResult[]> {
+  /* غلافٌ لا نسخة (D-145): نفس الخطوات حرفياً في `tmdbTopRail`، والفرق
+     بِركتُها وحدها — فلو تغيّرت الوصفة تغيّرت في موضعٍ واحد. */
+  return tmdbTopRail("anime-movie", want, locale);
 }
