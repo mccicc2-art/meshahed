@@ -43,7 +43,8 @@ import {
 import { ScrollMemory } from "@/components/ScrollMemory";
 import { animeMovieRail, topChartRail } from "@/lib/topChart";
 import { attachImdbRatings, withImdbRatings } from "@/lib/omdb";
-import { getT, getWatchRegion, getTabPrefs } from "@/lib/locale"; import { defaultTab } from "@/lib/tabPrefs";
+import { getT, getWatchRegion, getTabPrefs } from "@/lib/locale";
+import { defaultTab } from "@/lib/tabPrefs";
 import { regionName } from "@/lib/region";
 import { type Locale } from "@/lib/i18n";
 import {
@@ -124,7 +125,13 @@ export default async function NewsPage({
   /* ثلاثة تبويبات (طلب أحمد 9 Aug): أفلام · مسلسلات · القوائم — الجهة
      صعدت من ورقة الفلاتر إلى الرأس، فتُفرض هنا على التصفح من التبويب
      (وروابط ?type القديمة يهديها parseDiscoverTab لتبويبها) */
-  const tabPrefs = await getTabPrefs("discover"); const tab = sp.tab || sp.type ? parseDiscoverTab(sp.tab, sp.type) : parseDiscoverTab(defaultTab(tabPrefs, "shows"));
+  const tabPrefs = await getTabPrefs("discover");
+  /* الرابط الأعزل يعني «افتح على تبويبي الأوّل» لا «افتح على الأفلام»
+     (D-179): الافتراضُ صار يخصّ صاحبه، فيُقرأ من الكوكي لا من الشيفرة */
+  const tab =
+    sp.tab || sp.type
+      ? parseDiscoverTab(sp.tab, sp.type)
+      : parseDiscoverTab(defaultTab(tabPrefs, "shows"));
   /* **وجهةُ الأنمي «الكلّ» لا «فيلم»** (طلب أحمد ١١ أغسطس: «الأنمي في
      ديسكفري لازم يكون له فلتر»): تبويبُه يحمل صفَّي أفلامٍ وصفَّي
      مسلسلات معاً، فلو قُيّد بجهةٍ واحدة لسقط من قائمة الأنواع ما لا
@@ -163,7 +170,8 @@ export default async function NewsPage({
 
       <DiscoverFilters
         locale={locale}
-        tab={tab} tabPrefs={tabPrefs}
+        tab={tab}
+        tabPrefs={tabPrefs}
         type={browse.type}
         genre={browse.genre?.slug ?? null}
         lang={browse.lang?.code ?? null}
