@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -34,19 +34,15 @@ export function Inbox({
   conversations,
   startable,
   openWith,
-  actions,
   locale,
 }: {
   conversations: Conversation[];
-  /** متابَعون متبادلون لا محادثة معهم بعد — لبدء محادثةٍ من البحث */
+  /** متابَعون متبادلون لا محادثة معهم بعد — منهم تبدأ محادثةٌ جديدة */
   startable: PersonLite[];
   openWith: string | null;
-  /** عدّادا المتابعة وزرّ الإضافة — في صفّ البحث نفسه (طلب أحمد 9 Aug) */
-  actions?: ReactNode;
   locale: Locale;
 }) {
   const t = getDict(locale);
-  const [query, setQuery] = useState("");
   const [startWith, setStartWith] = useState<PersonLite | null>(null);
 
   const nameOf = (p: PersonLite | null) =>
@@ -57,67 +53,31 @@ export function Inbox({
     return <ConversationView conv={open} name={nameOf(open.person)} locale={locale} />;
   }
 
-  // لا محادثاتٍ ولا من نبدأ معه: الفراغ وحده، بلا حقل بحثٍ لا معنى له
+  // لا محادثاتٍ ولا من نبدأ معه: الفراغ وحده
   if (conversations.length === 0 && startable.length === 0) {
     /* حالة موجهة (تعميم نمط D-106): الرسائل تحتاج متابعة متبادلة —
-       فأول خطوة من الفراغ هي إيجاد الأصدقاء، والزر يفتح ورقة البحث.
-       والعدّادات تبقى فوقها: من لا محادثة له أحوجُ ما يكون لزرّ الإضافة */
+       فأول خطوة من الفراغ هي إيجاد الأصدقاء، والزر يفتح ورقة البحث */
     return (
       <div>
-        {actions && <div className="flex items-center justify-end mb-3">{actions}</div>}
         <FeedEmptyCta locale={locale} text={t.inboxEmpty} />
       </div>
     );
   }
 
-  // ترشيحٌ بالاسم — يكمل محادثةً قائمة، أو **يبدأ** مع متابَعٍ متبادلٍ لم
-  // تراسله. بحثٌ محلّيّ فوق المحمّل: لا طلبَ شبكةٍ لكل حرف. المحادثات تظهر
-  // دائماً؛ ومن نبدأ معهم لا يظهرون إلا عند الكتابة كي لا تُغرق القائمةَ.
-  const q = query.trim().toLowerCase();
-  const shown = q
-    ? conversations.filter((c) => nameOf(c.person).toLowerCase().includes(q))
-    : conversations;
-  const startShown = q
-    ? startable.filter((p) => nameOf(p).toLowerCase().includes(q))
-    : [];
-  const nothing = q !== "" && shown.length === 0 && startShown.length === 0;
+  /* **صفُّ البحث ذهب** (طلب أحمد ١١ أغسطس، لقطةٌ مشطوبةٌ بالأحمر): كان
+     يفعل شيئين — يُرشّح محادثاتك بالاسم، **ويكشف من تستطيع أن تبدأ معه**.
+     والأوّل يسقط بلا خسارة: الوارد قائمةٌ قصيرة عند أكثر الناس، وترشيحُ
+     خمسة صفوفٍ حقلٌ لا يستحقّ صدر الشاشة.
+     **والثاني لا يسقط، فهو البابُ الوحيد لمحادثةٍ جديدة** — فصار قسمُ
+     «ابدأ محادثة» **ظاهراً دائماً** بدل أن ينتظر حرفاً يُكتب.
+     **والكلفة تُقال:** من له متابَعون متبادلون كثيرون يرى قائمةً أطول
+     أسفل محادثاته. ولم يُقصَّ القسم بسقفٍ صامت — سقفٌ يُخفي أشخاصاً
+     ويقول إنه عرض الجميع أسوأ من قائمةٍ طويلة (D-165). */
+  const shown = conversations;
+  const startShown = startable;
 
   return (
     <div>
-      {/* حقلُ بحثٍ يتصدّر القائمة: أيقونةٌ ثابتة داخل الحقل، وزرُّ مسحٍ
-          يظهر عند الكتابة فقط — نفس هيكل بحث التطبيق، بلا عائلةِ تحكّمٍ جديدة */}
-      <div className="flex items-center gap-2 mb-3">
-      <div className="relative min-w-0 flex-1">
-        <span className="pointer-events-none absolute inset-y-0 start-3 grid place-items-center text-muted">
-          <Icon name="search" size={16} />
-        </span>
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder={t.convSearchPlaceholder}
-          aria-label={t.convSearchPlaceholder}
-          className="w-full rounded-full bg-surface-2 border border-border ps-9 pe-9 py-2 text-base outline-none focus:border-accent transition"
-        />
-        {query && (
-          <button
-            type="button"
-            onClick={() => setQuery("")}
-            aria-label={t.closeLabel}
-            className="absolute inset-y-0 end-2 my-auto grid place-items-center w-7 h-7 rounded-full text-muted hover:text-foreground hover:bg-surface transition"
-          >
-            <Icon name="close" size={15} />
-          </button>
-        )}
-      </div>
-      {actions}
-      </div>
-
-      {nothing && (
-        <p className="text-sm text-muted bg-surface border border-dashed border-border rounded-xl py-8 px-5 text-center">
-          {t.convNoMatch}
-        </p>
-      )}
-
       {shown.length > 0 && (
         <ul className="divide-y divide-[color:var(--divider)]">
           {shown.map((c) => {
@@ -168,7 +128,8 @@ export function Inbox({
         </ul>
       )}
 
-      {/* ابدأ محادثة — متابَعون متبادلون طابق اسمُهم البحثَ ولا خيط معهم بعد.
+      {/* ابدأ محادثة — كلُّ متابَعٍ متبادلٍ لا خيط معه بعد، **ظاهراً دائماً**
+          بعد أن ذهب صفُّ البحث الذي كان يكشفهم.
           الضغط يفتح ورقةَ اختيار عمل، فتبدأ المحادثة بمشاركةٍ (D-051 قائمة) */}
       {startShown.length > 0 && (
         <section className="mt-5">

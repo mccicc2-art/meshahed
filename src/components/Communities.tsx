@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -22,7 +22,6 @@ import {
   rejectCommunityRequest,
   deleteCommunity,
   postCommunityMessage,
-  searchCommunities,
   setCommunityPhoto,
   myFollowingList,
   inviteToCommunity,
@@ -55,7 +54,6 @@ export function CommunityDirectory({
   mine,
   invites = [],
   titleRooms = [],
-  actions,
   locale,
 }: {
   mine: CommunityLite[];
@@ -63,87 +61,23 @@ export function CommunityDirectory({
   invites?: CommunityLite[];
   /** غرف الأعمال الحيّة — صفٌّ للاكتشاف أسفل مجتمعاتي (D-140، هجرة 53) */
   titleRooms?: CommunityLite[];
-  /** عدّادا المتابعة وزرّ الإضافة — يُحقنان في صفّ البحث نفسه لا فوقه */
-  actions?: ReactNode;
   locale: Locale;
 }) {
   const t = getDict(locale);
   const router = useRouter();
   const [create, setCreate] = useState(false);
-  const [q, setQ] = useState("");
-  const [results, setResults] = useState<CommunityLite[] | null>(null);
-  const [pending, start] = useTransition();
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  function onChange(v: string) {
-    setQ(v);
-    if (timer.current) clearTimeout(timer.current);
-    const term = v.trim();
-    if (term.length < 2) {
-      setResults(null);
-      return;
-    }
-    timer.current = setTimeout(() => {
-      start(async () => {
-        try {
-          setResults(await searchCommunities(term));
-        } catch {
-          setResults([]);
-        }
-      });
-    }, 300);
-  }
-
+  /* **الصفُّ الذي كان هنا ذهب خلف الرمز** (طلب أحمد ١١ أغسطس، بلقطةٍ
+     مشطوبةٍ بالأحمر — نفسُ ما فعله D-177 بصفّ المكتبة): حقلُ البحث وزرُّ
+     «أنشئ مجتمعاً» كانا يتصدّران اللوح قبل أن يظهر مجتمعٌ واحد.
+     **والزرُّ سقط بلا بديل** لأنه مكرَّرٌ في ورقة الأدوات منذ D-177،
+     **والبحثُ انتقل إليها بنتائجه** لأنه البابُ الوحيد لاكتشاف مجتمعٍ
+     بالاسم. وما بقي هنا هو ما تملكه: الدعوات، ثم مجتمعاتك، ثم غرف
+     الأعمال الحيّة. */
   return (
     <div className="space-y-5">
-      {/* ===== أنشئ + ابحث + العدّادات — **صفٌّ واحد** (طلب أحمد 9 Aug:
-           «الإضافة خلها كلها صف واحد») ===== */}
-      <div className="flex items-center gap-2">
-        <div className="relative min-w-0 flex-1">
-          <span className="pointer-events-none absolute inset-y-0 start-3 grid place-items-center text-muted">
-            <Icon name="search" size={16} />
-          </span>
-          <input
-            value={q}
-            onChange={(e) => onChange(e.target.value)}
-            placeholder={t.commSearchPlaceholder}
-            aria-label={t.commSearchPlaceholder}
-            className="w-full rounded-full bg-surface-2 border border-border ps-9 pe-4 py-2 text-base outline-none focus:border-accent transition"
-            autoComplete="off"
-          />
-        </div>
-        <button
-          type="button"
-          onClick={() => {
-            tap(8);
-            setCreate(true);
-          }}
-          className={buttonClass({ variant: "primary", size: "sm", className: "shrink-0" })}
-        >
-          + {t.commCreate}
-        </button>
-        {actions}
-      </div>
-
-      {/* ===== نتائج البحث — تتصدّر متى كُتب حرفان ===== */}
-      {q.trim().length >= 2 && (
-        <section>
-          {pending && results === null ? (
-            <p className="text-sm text-muted text-center py-6">{t.peopleSearching}</p>
-          ) : (results ?? []).length === 0 ? (
-            <p className="text-sm text-muted text-center py-6">{t.commNoResults}</p>
-          ) : (
-            <ul className="divide-y divide-[color:var(--divider)]">
-              {(results ?? []).map((c) => (
-                <CommunityRow key={c.id} c={c} t={t} locale={locale} />
-              ))}
-            </ul>
-          )}
-        </section>
-      )}
-
       {/* ===== دعواتي — فوق مجتمعاتي: قرارٌ ينتظرك قبل ما تملكه ===== */}
-      {q.trim().length < 2 && invites.length > 0 && (
+      {invites.length > 0 && (
         <section>
           <p className="text-[11px] font-semibold text-muted uppercase tracking-wide mb-1.5">
             {t.commInvitesSection}
@@ -157,8 +91,7 @@ export function CommunityDirectory({
       )}
 
       {/* ===== مجتمعاتي ===== */}
-      {q.trim().length < 2 && (
-        <section>
+      <section>
           <p className="text-[11px] font-semibold text-muted uppercase tracking-wide mb-1.5">
             {t.commMineSection}
           </p>
@@ -204,14 +137,13 @@ export function CommunityDirectory({
               ))}
             </ul>
           )}
-        </section>
-      )}
+      </section>
 
       {/* ===== غرف الأعمال — اكتشافٌ أسفل ما تملكه (D-140).
            لا حالة فراغ لها: القسم كلّه يختفي إن لم توجد غرفةٌ حيّة —
            صندوقُ «لا غرف بعد» يَعِد بشيءٍ لا يستطيع الزائر إنشاءه من
            هنا؛ بابُها صفحةُ العمل وحدها ===== */}
-      {q.trim().length < 2 && titleRooms.length > 0 && (
+      {titleRooms.length > 0 && (
         <section>
           <p className="text-[11px] font-semibold text-muted uppercase tracking-wide mb-1.5">
             {t.titleRoomsSection}
@@ -239,8 +171,26 @@ export function CommunityDirectory({
   );
 }
 
-/** صفُّ مجتمعٍ في نتائج البحث — زرّه بحسب علاقتي به */
-function CommunityRow({ c, t, locale }: { c: CommunityLite; t: Dict; locale: Locale }) {
+/**
+ * صفُّ مجتمعٍ في نتائج البحث — زرّه بحسب علاقتي به.
+ *
+ * **مُصدَّرٌ لا منسوخ** (D-145): بحثُ المجتمعات انتقل إلى ورقة الأدوات،
+ * ونتائجُه هناك هي هذه الصفوف نفسها — ونسخةٌ ثانية منها كانت ستتفرّق عند
+ * أوّل تعديل. و`onNavigate` هي كلُّ ما احتاجه الانتقال: **الورقة تُغلق
+ * حين يأخذك الصفُّ إلى مجتمع** (D-054: مكوّنٌ واحد، وكلُّ بابٍ يقرّر ما
+ * يحدث بعده).
+ */
+export function CommunityRow({
+  c,
+  t,
+  locale,
+  onNavigate,
+}: {
+  c: CommunityLite;
+  t: Dict;
+  locale: Locale;
+  onNavigate?: () => void;
+}) {
   const router = useRouter();
   const [status, setStatus] = useState(c.my_status ?? "none");
   const [pending, start] = useTransition();
@@ -266,7 +216,11 @@ function CommunityRow({ c, t, locale }: { c: CommunityLite; t: Dict; locale: Loc
   return (
     <li className="flex items-center gap-3 py-3">
       <CommunityBadge name={c.name} photo={c.photo_url} kind={c.kind} />
-      <Link href={`/people?tab=all&c=${c.id}`} className="min-w-0 flex-1">
+      <Link
+        href={`/people?tab=all&c=${c.id}`}
+        onClick={onNavigate}
+        className="min-w-0 flex-1"
+      >
         <span className="flex items-center gap-1.5 text-sm font-semibold truncate">
           <span className="truncate">{c.name}</span>
           {c.is_private && <Icon name="eye-off" size={13} className="text-muted shrink-0" />}
@@ -284,6 +238,7 @@ function CommunityRow({ c, t, locale }: { c: CommunityLite; t: Dict; locale: Loc
       {c.kind === "title" && status !== "member" ? (
         <Link
           href={`/people?tab=all&c=${c.id}`}
+          onClick={onNavigate}
           className={buttonClass({ variant: "surface", size: "sm", className: "shrink-0" })}
         >
           {t.commOpen}
@@ -291,6 +246,7 @@ function CommunityRow({ c, t, locale }: { c: CommunityLite; t: Dict; locale: Loc
       ) : status === "member" ? (
         <Link
           href={`/people?tab=all&c=${c.id}`}
+          onClick={onNavigate}
           className={buttonClass({ variant: "surface", size: "sm", className: "shrink-0" })}
         >
           {t.commOpen}
@@ -301,7 +257,10 @@ function CommunityRow({ c, t, locale }: { c: CommunityLite; t: Dict; locale: Loc
         <button
           type="button"
           disabled={pending}
-          onClick={join}
+          onClick={() => {
+            onNavigate?.();
+            join();
+          }}
           className={buttonClass({ variant: "primary", size: "sm", className: "shrink-0" })}
         >
           {t.commJoin}
