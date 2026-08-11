@@ -17,7 +17,8 @@ import {
   type PersonLite,
 } from "@/lib/data";
 import { myMutualFollows } from "@/lib/actions";
-import { getT, getTabPrefs } from "@/lib/locale"; import { applyTabPrefs, defaultTab } from "@/lib/tabPrefs";
+import { getT, getTabPrefs } from "@/lib/locale";
+import { applyTabPrefs, defaultTab } from "@/lib/tabPrefs";
 import type { Dict } from "@/lib/i18n";
 import { localizeRows, localizeTitleRooms } from "@/lib/localize";
 import { timeAgo } from "@/lib/when";
