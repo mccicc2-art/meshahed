@@ -8,10 +8,12 @@ import {
   BROWSE_GENRES,
   BROWSE_LANGS,
   BROWSE_RATES,
+  BROWSE_TAGS,
   browseCountryName,
   browseEraName,
   browseGenreName,
   browseLangName,
+  browseTagName,
   genreFitsType,
   type BrowseRate,
   type BrowseType,
@@ -38,6 +40,8 @@ export interface FilterDraft {
   provider: number | null;
   era: string | null;
   rate: BrowseRate | null;
+  /** slug وسم الموضوع — «عن ماذا؟» بجانب «من أيّ نوع؟» (طلب أحمد ١١ أغسطس) */
+  tag: string | null;
   /** slug جائزة — الصفوف تصير فائزيها (طلب أحمد 9 Aug) */
   award: string | null;
 }
@@ -67,7 +71,7 @@ export function DiscoverFilterSheet({
   initial,
   providers,
   region,
-  showFilters,
+  axes,
   tabPrefs,
   tabLabels,
   onApply,
@@ -83,15 +87,20 @@ export function DiscoverFilterSheet({
   /** بلد المشاهدة — يُكتب في عنوان المجموعة فلا تُقرأ القائمة عالمية */
   region: string;
   /**
-   * هل لهذا التبويب فلاتر؟ (الأفلام والمسلسلات نعم، الأنمي لا).
+   * أيّ محاورَ تفتحها الورقة (D-180، طلب أحمد ١١ أغسطس):
    *
-   * **وهذا هو ما جعل الرمز يظهر في التبويبات الأربعة** بدل اثنين: صفوفُ
-   * الأنمي ستّة معانٍ ثابتة لا تقرأ معاملات الفلتر، **فزرٌّ يفتح فلاتر لا
-   * تُطبَّق كذبةٌ في الواجهة** (D-075) — وكان ذلك سببَ غيابه (البند ٧ج).
-   * والآن يفتح شيئاً يعمل فعلاً: تفضيلات التبويبات. فالقسمُ يظهر ويغيب،
-   * **والباب لا يُغلق في وجه تبويبين من أربعة.**
+   * - `full` — الأعمال: المحاور السبعة كلّها.
+   * - `anime` — أربعةٌ: النوع والحقبة والتقييم والمنصّة، ومعها الوسم.
+   *   **وثلاثةٌ تغيب لأنها تكذب لا لأنها تزحم:** اللغةُ والجنسية
+   *   جوابهما محسومٌ في تبويبٍ كلُّه يابانيّ، وقوائمُ الجوائز عندنا
+   *   للأفلام والمسلسلات لا للأنمي — فخانةٌ تعود فارغةً دائماً خيارٌ كاذب.
+   * - `none` — القوائم: تفضيلاتُ التبويبات وحدها؛ فلاترُ القوائم في
+   *   ورقتها هي.
+   *
+   * **والباب لا يُغلق في وجه أيّ تبويب:** قسمُ التبويبات يظهر في الأحوال
+   * الثلاثة، وهو سببُ ظهور الرمز في التبويبات الأربعة.
    */
-  showFilters: boolean;
+  axes: "full" | "anime" | "none";
   /** تفضيلات تبويبات اكتشف — القسم الثاني في هذه الورقة */
   tabPrefs: TabPref[];
   tabLabels: Record<string, string>;
@@ -101,6 +110,9 @@ export function DiscoverFilterSheet({
   const t = getDict(locale);
   const lang = locale === "en" ? "en" : "ar";
   const [draft, setDraft] = useState<FilterDraft>(initial);
+  const showFilters = axes !== "none";
+  /** المحاور الثلاثة التي تخصّ الأعمال وحدها: اللغة والجنسية والجائزة */
+  const wide = axes === "full";
 
   function set(patch: Partial<FilterDraft>) {
     tap(6);
@@ -117,6 +129,7 @@ export function DiscoverFilterSheet({
     provider: null,
     era: null,
     rate: null,
+    tag: null,
     award: null,
   };
   const dirty =
@@ -126,6 +139,7 @@ export function DiscoverFilterSheet({
     draft.provider !== null ||
     draft.era !== null ||
     draft.rate !== null ||
+    draft.tag !== null ||
     draft.award !== null;
 
   return (
@@ -173,36 +187,58 @@ export function DiscoverFilterSheet({
             ))}
           </SelectField>
 
+          {/* ===== الوسم — المحور الجديد (طلب أحمد ١١ أغسطس) =====
+              يجلس ثانياً بجانب النوع لا في الذيل: هما سؤالان متجاوران —
+              «من أيّ نوع؟» و«عن ماذا؟» — ومن يفتح الورقة يقرؤهما معاً */}
           <SelectField
-            id="browse-lang"
-            label={t.browseLangGroup}
-            active={!!draft.lang}
-            value={draft.lang ?? ""}
-            onChange={(v) => set({ lang: v || null })}
+            id="browse-tag"
+            label={t.browseTagGroup}
+            active={!!draft.tag}
+            value={draft.tag ?? ""}
+            onChange={(v) => set({ tag: v || null })}
           >
-            <option value="">{t.browseAnyLang}</option>
-            {BROWSE_LANGS.map((l) => (
-              <option key={l.code} value={l.code}>
-                {browseLangName(l, lang)}
+            <option value="">{t.browseAnyTag}</option>
+            {BROWSE_TAGS.map((x) => (
+              <option key={x.slug} value={x.slug}>
+                {browseTagName(x, lang)}
               </option>
             ))}
           </SelectField>
 
+          {wide && (
+            <SelectField
+              id="browse-lang"
+              label={t.browseLangGroup}
+              active={!!draft.lang}
+              value={draft.lang ?? ""}
+              onChange={(v) => set({ lang: v || null })}
+            >
+              <option value="">{t.browseAnyLang}</option>
+              {BROWSE_LANGS.map((l) => (
+                <option key={l.code} value={l.code}>
+                  {browseLangName(l, lang)}
+                </option>
+              ))}
+            </SelectField>
+          )}
+
           {/* الجنسية محورٌ دائم (طلب أحمد 9 Aug) — كان يظهر مع العربية وحدها */}
-          <SelectField
-            id="browse-country"
-            label={t.browseCountryGroup}
-            active={!!draft.country}
-            value={draft.country ?? ""}
-            onChange={(v) => set({ country: v || null })}
-          >
-            <option value="">{t.browseAnyCountry}</option>
-            {BROWSE_COUNTRIES.map((c) => (
-              <option key={c.code} value={c.code}>
-                {browseCountryName(c, lang)}
-              </option>
-            ))}
-          </SelectField>
+          {wide && (
+            <SelectField
+              id="browse-country"
+              label={t.browseCountryGroup}
+              active={!!draft.country}
+              value={draft.country ?? ""}
+              onChange={(v) => set({ country: v || null })}
+            >
+              <option value="">{t.browseAnyCountry}</option>
+              {BROWSE_COUNTRIES.map((c) => (
+                <option key={c.code} value={c.code}>
+                  {browseCountryName(c, lang)}
+                </option>
+              ))}
+            </SelectField>
+          )}
 
           {providers.length > 0 && (
             <SelectField
@@ -262,20 +298,22 @@ export function DiscoverFilterSheet({
 
           {/* الجائزة (طلب أحمد 9 Aug): اختيارُها يحوّل الصفحة إلى صفّ
               الفائزين بالأحدث — قوائمها الكاملة في تبويب القوائم */}
-          <SelectField
-            id="browse-award"
-            label={t.browseAwardGroup}
-            active={!!draft.award}
-            value={draft.award ?? ""}
-            onChange={(v) => set({ award: v || null })}
-          >
-            <option value="">{t.browseAnyAward}</option>
-            {AWARDS.filter((a) => a.kind === (type === "tv" ? "tv" : "movie")).map((a) => (
-              <option key={a.slug} value={a.slug}>
-                {awardName(a, lang)}
-              </option>
-            ))}
-          </SelectField>
+          {wide && (
+            <SelectField
+              id="browse-award"
+              label={t.browseAwardGroup}
+              active={!!draft.award}
+              value={draft.award ?? ""}
+              onChange={(v) => set({ award: v || null })}
+            >
+              <option value="">{t.browseAnyAward}</option>
+              {AWARDS.filter((a) => a.kind === (type === "tv" ? "tv" : "movie")).map((a) => (
+                <option key={a.slug} value={a.slug}>
+                  {awardName(a, lang)}
+                </option>
+              ))}
+            </SelectField>
+          )}
         </div>
       </div>
         )}

@@ -8,11 +8,13 @@ import {
   BROWSE_ERAS,
   BROWSE_GENRES,
   BROWSE_LANGS,
+  BROWSE_TAGS,
   browseCountryName,
   browseEraName,
   browseGenreName,
   browseHref,
   browseLangName,
+  browseTagName,
   genreFitsType,
   type BrowseRate,
   type BrowseType,
@@ -68,6 +70,7 @@ export function DiscoverFilters({
   region,
   era,
   rate,
+  tag,
   award,
   listsFilters, tabPrefs,
 }: {
@@ -95,6 +98,8 @@ export function DiscoverFilters({
   /** slug الحقبة المختارة */
   era: string | null;
   rate: BrowseRate | null;
+  /** slug وسم الموضوع المختار — زومبي، سرقات… */
+  tag: string | null;
   /** slug الجائزة المختارة — يحوّل الصفوف إلى فائزيها */
   award: string | null;
 }) {
@@ -111,6 +116,7 @@ export function DiscoverFilters({
     p?: number | null;
     era?: string | null;
     rate?: BrowseRate | null;
+    tag?: string | null;
     award?: string | null;
   }) {
     let nextGenre = next.g === undefined ? genre : next.g;
@@ -129,6 +135,7 @@ export function DiscoverFilters({
       p: next.p === undefined ? provider : next.p,
       era: next.era === undefined ? era : next.era,
       rate: next.rate === undefined ? rate : next.rate,
+      tag: next.tag === undefined ? tag : next.tag,
       award: next.award === undefined ? award : next.award,
     });
 
@@ -165,17 +172,25 @@ export function DiscoverFilters({
        وتصنيفٌ لا مقابل له في الجهة الجديدة («رعب» في المسلسلات) يسقط
        بصمت — نفس حارس `go` بالضبط، وإلا أدّى الحملُ إلى صفحةٍ فارغة */
     const g = BROWSE_GENRES.find((x) => x.slug === genre);
+    /* جهةُ التبويب القادم — والأنمي «الكلّ» لأن صفوفه أفلامٌ ومسلسلات معاً */
+    const nextType: BrowseType =
+      next === "shows" ? "tv" : next === "anime" ? "all" : "movie";
+    /* **والأنمي يحمل أربعةً من سبعة:** فلترُه النوع والحقبة والتقييم
+       والمنصّة. واللغةُ والجنسية لا معنى لهما فيه (الأنمي يابانيٌّ
+       بحدّه)، والجوائز قوائمها للأفلام والمسلسلات لا له — فتسقط الثلاثة
+       عند الدخول إليه بدل أن تبقى في الرابط حالةً ميتة تعود عند الخروج */
     const carry =
       next === "lists"
         ? {}
         : {
-            g: g && genreFitsType(g, next === "shows" ? "tv" : "movie") ? g.slug : null,
-            lang,
-            co: country,
+            g: g && genreFitsType(g, nextType) ? g.slug : null,
+            lang: next === "anime" ? null : lang,
+            co: next === "anime" ? null : country,
             p: provider,
             era,
             rate,
-            award,
+            tag,
+            award: next === "anime" ? null : award,
           };
     start(() => router.push(browseHref({ tab: next, ...carry }), { scroll: false }));
   }
@@ -240,6 +255,14 @@ export function DiscoverFilters({
       clear: () => go({ era: null }),
     });
   }
+  const tagObj = BROWSE_TAGS.find((x) => x.slug === tag);
+  if (tagObj) {
+    chips.push({
+      key: "tag",
+      label: browseTagName(tagObj, loc),
+      clear: () => go({ tag: null }),
+    });
+  }
   const awardObj = AWARDS.find((a) => a.slug === award);
   if (awardObj) {
     chips.push({
@@ -256,7 +279,12 @@ export function DiscoverFilters({
     });
   }
 
-  const draft: FilterDraft = { genre, lang, country, provider, era, rate, award };
+  const draft: FilterDraft = { genre, lang, country, provider, era, rate, tag, award };
+
+  /* أيّ محاورَ تفتحها الورقة (D-180): كلُّها في الأعمال، وأربعةٌ في
+     الأنمي، ولا شيءَ في القوائم — ولها ورقتها هي أصلاً */
+  const axes: "full" | "anime" | "none" =
+    tab === "movies" || tab === "shows" ? "full" : tab === "anime" ? "anime" : "none";
 
   return (
     /* **شذرةٌ لا حاوية** (بلاغ أحمد ٩ Aug: «عمود التبويبات ظاهر مثل
@@ -280,8 +308,9 @@ export function DiscoverFilters({
           <>
         {/* **رمزٌ بلا كلمة (D-177)** — نفس الزرّ في المكتبة والمجتمع، نفس
             المقاس ونفس الموضع. وخانةُ القوائم تبقى لورقتها هي.
-            ولا زرَّ في تبويب الأنمي (D-169): صفوفه ستّة معانٍ ثابتة، وزرٌّ
-            يفتح ورقةً لا تُطبَّق على ما يُعرض كذبةٌ في الواجهة (D-075). */}
+            **وفي الأنمي يفتح فلتراً حقيقياً الآن** (طلب أحمد ١١ أغسطس):
+            كان يفتح تفضيلات التبويبات وحدها لأن صفوفه لم تكن تقرأ
+            الفلتر — وقد صارت تقرؤه. */}
         {tab === "lists" && listsFilters ? (
           <ListsFilters {...listsFilters} variant="button" />
         ) : (
@@ -295,7 +324,7 @@ export function DiscoverFilters({
           </>
         }
         extra={
-          tab !== "lists" && tab !== "anime" && chips.length > 0 ? (
+          tab !== "lists" && chips.length > 0 ? (
             <div
               role="group"
               aria-label={t.browseActiveFilters}
@@ -326,8 +355,17 @@ export function DiscoverFilters({
                 <button
                   type="button"
                   onClick={() =>
-                  go({ g: null, lang: null, co: null, p: null, era: null, rate: null, award: null })
-                }
+                    go({
+                      g: null,
+                      lang: null,
+                      co: null,
+                      p: null,
+                      era: null,
+                      rate: null,
+                      tag: null,
+                      award: null,
+                    })
+                  }
                   className="rounded-full border border-border text-muted hover:text-foreground hover:border-accent/50 px-3 py-1.5 text-[13px] font-semibold transition"
                 >
                   {t.browseClearAll}
@@ -347,7 +385,7 @@ export function DiscoverFilters({
           initial={draft}
           providers={providers}
           region={region}
-          showFilters={tab === "movies" || tab === "shows"}
+          axes={axes}
           tabPrefs={tabPrefs}
           tabLabels={tabLabels}
           onClose={() => setSheet(false)}
@@ -360,6 +398,7 @@ export function DiscoverFilters({
               p: next.provider,
               era: next.era,
               rate: next.rate,
+              tag: next.tag,
               award: next.award,
             });
           }}
