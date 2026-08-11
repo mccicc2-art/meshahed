@@ -559,10 +559,14 @@ async function CuratedRails({
       /* الصفوف المرتّبة كلّها تُعاد بترتيب IMDb وتحمل تقييمه (قرار أحمد:
          «الترتيب بأعلى تقييم حسب IMDb والتقييم فقط من IMDb») — TMDB يبقى
          مصدر التجميع (من يدخل الصفّ)، وIMDb مصدر الترتيب والرقم */
-      /* **والأنمي يغادر رفَّ أفلام «أفضل ١٠» أيضاً (D-170، طلب أحمد):**
-         «الأنمي يغادر تبويب الأفلام والمسلسلات كليهما». رفُّ المسلسلات
-         يُسقط الرسوم أصلاً في `topTenThisWeek`، ورفُّ الأفلام لم يكن
-         يُسقط شيئاً — فكان «قاتل الشياطين» يتصدّره ويكرّر تبويب الأنمي. */
+      /* **والأنمي يغادر رفَّي «أفضل ١٠» كليهما — بحارسٍ واحد (D-170 ثم
+         D-175، طلب أحمد):** «الأنمي يغادر تبويب الأفلام والمسلسلات
+         كليهما». كان رفُّ الأفلام يُصفّى هنا ورفُّ المسلسلات يُصفّى
+         **داخل `topTenThisWeek`** — أي **في مسارٍ واحدٍ من ثلاثة**، فيعود
+         الأنمي بمجرّد اختيار نوعٍ أو نافذةِ شهر. `topFor` هو الفم الذي
+         تصبّ فيه المسارات الثلاثة، فالحارسُ عليه لا داخل أحدها.
+         و`looksAnime` تشترط **اللغة اليابانية** مع نوع الرسوم — فيبقى
+         «ريك آند مورتي» كما طلب أحمد. */
       wantMovies && !upcoming
         ? topFor("movie", genre?.movie, rails.m)
             .then((rows) => rows.filter((r) => !looksAnime(r)))
@@ -570,7 +574,10 @@ async function CuratedRails({
             .catch(() => [] as SearchResult[])
         : Promise.resolve([] as SearchResult[]),
       wantSeries && !upcoming
-        ? topFor("tv", genre?.tv, rails.s).then(withImdbRatings).catch(() => [] as SearchResult[])
+        ? topFor("tv", genre?.tv, rails.s)
+            .then((rows) => rows.filter((r) => !looksAnime(r)))
+            .then(withImdbRatings)
+            .catch(() => [] as SearchResult[])
         : Promise.resolve([] as SearchResult[]),
       /* «في السينما» بتقييم IMDb كسائر الصفوف (طلب أحمد 9 Aug مساءً:
          «أعمال السينما تكون مقيَّمة من IMDb»). كان الصفّ الوحيد الذي
