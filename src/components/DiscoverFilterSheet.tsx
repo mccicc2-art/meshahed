@@ -23,6 +23,9 @@ import { Icon } from "./Icon";
 import { Sheet, SheetHeader } from "./ui/Sheet";
 import { buttonClass } from "./ui/Button";
 import { sheetScroll } from "./ui/controls";
+/* القسم الثاني في هذه الورقة — نفسُ المكوّن في المكتبة والمجتمع (D-179) */
+import { TabsPrefs } from "./TabsPrefs";
+import type { TabPref } from "@/lib/tabPrefs";
 
 export interface FilterDraft {
   /** slug النوع الدرامي — انتقل من صفّ التبويبات إلى قائمةٍ هنا (طلب المالك).
@@ -64,6 +67,9 @@ export function DiscoverFilterSheet({
   initial,
   providers,
   region,
+  showFilters,
+  tabPrefs,
+  tabLabels,
   onApply,
   onClose,
 }: {
@@ -76,6 +82,19 @@ export function DiscoverFilterSheet({
   providers: { id: number; name: string }[];
   /** بلد المشاهدة — يُكتب في عنوان المجموعة فلا تُقرأ القائمة عالمية */
   region: string;
+  /**
+   * هل لهذا التبويب فلاتر؟ (الأفلام والمسلسلات نعم، الأنمي لا).
+   *
+   * **وهذا هو ما جعل الرمز يظهر في التبويبات الأربعة** بدل اثنين: صفوفُ
+   * الأنمي ستّة معانٍ ثابتة لا تقرأ معاملات الفلتر، **فزرٌّ يفتح فلاتر لا
+   * تُطبَّق كذبةٌ في الواجهة** (D-075) — وكان ذلك سببَ غيابه (البند ٧ج).
+   * والآن يفتح شيئاً يعمل فعلاً: تفضيلات التبويبات. فالقسمُ يظهر ويغيب،
+   * **والباب لا يُغلق في وجه تبويبين من أربعة.**
+   */
+  showFilters: boolean;
+  /** تفضيلات تبويبات اكتشف — القسم الثاني في هذه الورقة */
+  tabPrefs: TabPref[];
+  tabLabels: Record<string, string>;
   onApply: (next: FilterDraft) => void;
   onClose: () => void;
 }) {
@@ -121,14 +140,17 @@ export function DiscoverFilterSheet({
     >
       <SheetHeader
         id="discover-filters-title"
-        title={t.browseFiltersTitle}
+        title={t.discoverToolsTitle}
         closeLabel={t.closeLabel}
         onClose={onClose}
       >
-        <p className="text-xs text-muted mt-0.5">{t.browseFiltersHint}</p>
+        {showFilters && <p className="text-xs text-muted mt-0.5">{t.browseFiltersHint}</p>}
       </SheetHeader>
 
-      <div className={`${sheetScroll} px-5 py-4 space-y-5`}>
+      <div className={`${sheetScroll} py-4 space-y-5`}>
+        {showFilters && (
+        <div className="px-5 space-y-4">
+          <p className="text-[13px] font-bold text-muted">{t.browseFiltersGroup}</p>
         {/* نافذة الترتيب غادرت الورقة (D-099) والجهة لحقت بها (تبويبات
             الرأس — طلب أحمد 9 Aug): أداتان على نفس السؤال لبس */}
         {/* ===== شبكة المنسدلات — عمودان (طلب المالك، لقطة TMDB) =====
@@ -256,10 +278,25 @@ export function DiscoverFilterSheet({
           </SelectField>
         </div>
       </div>
+        )}
 
+        {/* القسم الثاني — `TabsPrefs` المشترك، بلا أصنافٍ جانبية: صفوفُه
+            تمتدّ إلى حافّتَي الورقة كصفوف أوراق «المزيد» */}
+        <TabsPrefs
+          locale={locale}
+          surface="discover"
+          prefs={tabPrefs}
+          labels={tabLabels}
+          title={t.tabsPrefsGroup}
+        />
+      </div>
       {/* ===== الأفعال =====
           ملتصقةٌ بأسفل الورقة لا في نهاية التمرير: الورقة قد تُمرَّر على
           شاشةٍ قصيرة، وزرُّ التطبيق لا يجوز أن يُبحث عنه */}
+      {/* **وتغيب مع الفلاتر:** «مسح الكل» و«عرض النتائج» فعلا فلترة،
+          وتفضيلاتُ التبويبات تُحفظ عند اللمس بلا زرّ تطبيق — فشريطٌ
+          يقول «عرض النتائج» في ورقةٍ بلا فلاتر يَعِد بفعلٍ لا يقع */}
+      {showFilters && (
       <div className="shrink-0 flex items-center gap-3 px-5 py-3 border-t border-[color:var(--divider)] bg-[color:var(--elevated)]">
         <button
           type="button"
@@ -283,7 +320,8 @@ export function DiscoverFilterSheet({
           {t.browseApply}
         </button>
       </div>
-    </Sheet>
+          )}
+        </Sheet>
   );
 }
 
