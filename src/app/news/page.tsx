@@ -616,10 +616,20 @@ async function CuratedRails({
          يعرض ملصقاتٍ بلا رقم — والفيلم الذي تفكّر في حجز تذكرةٍ له هو
          **أحوج** ما يكون إلى تقييم، لا أقلّها. الترتيب يبقى ترتيب دور
          العرض: «ما يُعرض الآن» سؤالُ توقيتٍ لا سؤال جودة. */
+      /* **والأنمي يغادر هذا الصفَّ أيضاً (طلب أحمد ١٢ أغسطس):** «الأنمي
+         ما زال في الأفلام والمسلسلات، المفروض فقط في الأنمي». والتصفية
+         هنا لا في `fitsCinema`: تلك تُطبَّق **حين يكون الفلتر مفعّلاً
+         وحده** (انظر `inCinemas` أدناه)، فحارسٌ فيها يترك الصفَّ الافتراضيّ
+         — وهو ما يراه أكثرُ الناس — بلا حراسة. */
       wantMovies
         ? nowPlayingMovies()
             .then(async (c) =>
-              c ? { region: c.region, results: await attachImdbRatings(c.results) } : null,
+              c
+                ? {
+                    region: c.region,
+                    results: await attachImdbRatings(c.results.filter((r) => !looksAnime(r))),
+                  }
+                : null,
             )
             .catch(() => null)
         : Promise.resolve(null),
@@ -703,7 +713,13 @@ async function CuratedRails({
       : cinemas;
 
   // القادم فقط في صفّ العدّ التنازلي — ما صدر أمس ليس «قادماً»
+  /* **والأنمي يغادر «القادم قريباً» كذلك** (نفس طلب ١٢ أغسطس): صفُّ
+     العدّ التنازليّ كان آخرَ بابٍ يدخل منه إلى تبويبَي الأعمال، وهو
+     أظهرُها لأنه يفتح كلَّ النوافذ. **وحارسٌ واحد على الفم المشترك**
+     (`soon`) لا على المسارين قبله — نفسُ درسِ D-175: الترشيح في موضع
+     النداء لا في أحد فروعه. */
   const soon: CountdownItem[] = [...soonMovies, ...soonSeries]
+    .filter((r) => !looksAnime(r))
     .filter((r) => r.media_type === "tv" || r.media_type === "movie")
     .filter((r) => dateOf(r) >= today)
     .sort((a, b) => dateOf(a).localeCompare(dateOf(b)))
@@ -1011,12 +1027,15 @@ async function PersonalRails({
   /* التبويب فلترٌ لا زينة (بلاغ أحمد ١٠ أغسطس: «بيكد فور يو فالافلام
      قاعد يقترح مسلسلات»). البِركة ثلاثمئة مختلطة، والصفّ يعرض عشراً —
      فالتصفية هنا لا تُفقره، والعشرُ الباقيات تحت العنوان الذي وعد بها. */
+  /* **والجهةُ وحدها لا تكفي (طلب أحمد ١٢ أغسطس):** بِركةُ المقترحات
+     تُبنى من أعمالك، ومن يتابع أنمي تأتيه مقترحاتُ أنميٍ — فكانت تظهر
+     في تبويب المسلسلات نفسها. فالشرطُ صار شرطين: الجهة **وألّا يكون
+     أنمي** — وله تبويبُه حيث يقترحه هذا الصفّ نفسه. */
   const suggested = pool.filter((s) =>
     anime
       ? looksAnime(s.result)
-      : wantMovies
-        ? s.result.media_type === "movie"
-        : s.result.media_type === "tv",
+      : (wantMovies ? s.result.media_type === "movie" : s.result.media_type === "tv") &&
+        !looksAnime(s.result),
   );
   for (let i = suggested.length - 1; i > 0; i--) {
     // العشوائية مقصودة: قرعةٌ لكل طلبٍ في مكوّن خادمٍ لا-متزامن يُنفَّذ مرةً واحدة
