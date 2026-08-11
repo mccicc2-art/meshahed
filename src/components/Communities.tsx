@@ -37,6 +37,7 @@ import type {
   CommunityRoomData,
   PersonLite,
 } from "@/lib/data";
+import { sheetScroll } from "./ui/controls";
 
 type Dict = ReturnType<typeof getDict>;
 
@@ -832,7 +833,7 @@ export function CommunityRoom({
             closeLabel={t.closeLabel}
             onClose={() => setMembersOpen(false)}
           />
-          <div className="overflow-y-auto overscroll-contain divide-y divide-[color:var(--divider)] pb-[env(safe-area-inset-bottom)]">
+          <div className={`${sheetScroll} divide-y divide-[color:var(--divider)] pb-[env(safe-area-inset-bottom)]`}>
             {room.members.map((p) => {
               const name = nameOf(p);
               return (
@@ -1023,7 +1024,7 @@ function InviteSheet({
       >
         <p className="text-xs text-muted mt-0.5">{t.commInviteHint}</p>
       </SheetHeader>
-      <div className="overflow-y-auto overscroll-contain divide-y divide-[color:var(--divider)] pb-[env(safe-area-inset-bottom)] min-h-[6rem]">
+      <div className={`${sheetScroll} divide-y divide-[color:var(--divider)] pb-[env(safe-area-inset-bottom)] min-h-[6rem]`}>
         {people === null ? (
           <p className="text-sm text-muted text-center py-8">{t.peopleSearching}</p>
         ) : people.length === 0 ? (

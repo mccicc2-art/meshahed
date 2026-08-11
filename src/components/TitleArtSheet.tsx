@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Sheet, SheetHeader } from "./ui/Sheet";
 import { Icon } from "./Icon";
-import { segmentedTrackFull, segmentedItem } from "./ui/controls";
+import { segmentedItem, segmentedTrackFull, sheetScroll } from "./ui/controls";
 import { getDict, type Locale } from "@/lib/i18n";
 import { posterUrl, backdropUrl, type MediaType } from "@/lib/media";
 import { tap } from "@/lib/haptics";
@@ -118,7 +118,7 @@ export function TitleArtSheet({
         </div>
       </div>
 
-      <div className="overflow-y-auto overscroll-contain px-5 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+      <div className={`${sheetScroll} px-5 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))]`}>
         {opts === null ? (
           <p className="text-sm text-muted text-center py-10">{t.peopleSearching}</p>
         ) : rows.length === 0 ? (

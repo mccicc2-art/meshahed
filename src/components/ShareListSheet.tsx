@@ -17,6 +17,7 @@ import {
   postCommunityMessage,
 } from "@/lib/actions";
 import type { PersonLite, CommunityLite } from "@/lib/data";
+import { sheetScroll } from "./ui/controls";
 
 /**
  * ورقة مشاركة القائمة — داخل التطبيق أولاً، ثم الرابط للخارج.
@@ -229,7 +230,7 @@ function FriendPicker({
   }
 
   return (
-    <div className="overflow-y-auto overscroll-contain pb-[env(safe-area-inset-bottom)]">
+    <div className={`${sheetScroll} pb-[env(safe-area-inset-bottom)]`}>
       <p className="text-center text-xs text-muted px-6 pb-1">{t.shareSendPickHint}</p>
       {people === null ? (
         <p className="text-sm text-muted text-center py-8">{t.shareLoadingPeople}</p>
@@ -342,7 +343,7 @@ function CommunityPicker({
   }
 
   return (
-    <div className="overflow-y-auto overscroll-contain pb-[env(safe-area-inset-bottom)]">
+    <div className={`${sheetScroll} pb-[env(safe-area-inset-bottom)]`}>
       <p className="text-center text-xs text-muted px-6 pb-1">{t.listSharePickCommunity}</p>
       {rooms === null ? (
         <p className="text-sm text-muted text-center py-8">{t.shareLoadingPeople}</p>

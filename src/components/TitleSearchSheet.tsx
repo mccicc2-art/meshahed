@@ -10,7 +10,7 @@ import { tap } from "@/lib/haptics";
 import { Icon } from "./Icon";
 import { Sheet, SheetHeader } from "./ui/Sheet";
 import { buttonClass } from "./ui/Button";
-import { segmentedItem, segmentedTrackBare } from "./ui/controls";
+import { segmentedItem, segmentedTrackBare, sheetScroll } from "./ui/controls";
 
 /** أدنى عدد أحرف يُطلق البحث — مطابقٌ لحدّ `/api/suggest` وبحث الأشخاص */
 const MIN = 2;
@@ -300,7 +300,7 @@ export function TitleSearchSheet({
             يفعل ما يفعله المقسّم فوقه محورٌ ثانٍ لمعنًى واحد */}
       </div>
 
-      <div className="overflow-y-auto overscroll-contain divide-y divide-[color:var(--divider)] min-h-[6rem]">
+      <div className={`${sheetScroll} divide-y divide-[color:var(--divider)] min-h-[6rem]`}>
         {mode === "ai" ? (
           aiPending ? (
             <p className="text-sm text-muted text-center py-8">{t.peopleSearching}</p>

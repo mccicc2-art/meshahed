@@ -14,12 +14,14 @@ import {
   unmarkEpisodes,
   toggleMovieWatched,
   toggleFavorite,
+  myRatingFor,
 } from "@/lib/actions";
 import { getDict, type Locale } from "@/lib/i18n";
 import type { MediaType } from "@/lib/media";
 import { Icon } from "./Icon";
 import { Sheet } from "./ui/Sheet";
 import { FranchisePanel } from "./FranchisePanel";
+import { RatingBox } from "./RatingBox";
 import { buttonClass } from "./ui/Button";
 
 /**
@@ -111,6 +113,11 @@ export function TitleActions({
   const [showParts, setShowParts] = useState(false);
   const [fav, setFav] = useState(initialFavorite);
   const [pending, start] = useTransition();
+  /* ورقة التقييم بعد ✓ (D-158، طلب أحمد: «يسألني عن التقييم مباشرة»).
+     `null` = مغلقة؛ وإلا فهي تقييمي الحالي، يُحمَّل عند الفتح لا مع الصفحة. */
+  const [rateSheet, setRateSheet] = useState<
+    { rating: number | null; review: string | null } | null
+  >(null);
 
   /* القلب تفاؤليٌّ مع تراجعٍ عند الفشل (D-007): فعلٌ من ضغطةٍ واحدة لا
      يحتمل انتظار رحلةِ شبكة، وخطؤه يُصحَّح بنفسه */
@@ -178,6 +185,31 @@ export function TitleActions({
    * التأشير الكامل. `followedNow` يُمرَّر إلى التراجع كي يعيد الحالة كما
    * كانت: من لم يكن في المكتبة قبل الضغطة لا يجوز أن يبقى فيها بعد إلغائها.
    */
+  /**
+   * السؤال عن التقييم فور «شاهدتُه» (D-158) — طلب أحمد: «يكون أريح».
+   *
+   * **وهو عرضٌ لا تأكيد، فلا ينقض D-047:** الختم وقع وسُجّل قبل أن تُفتح
+   * الورقة، والإغلاق يتركه كما هو. التأكيد يقف *قبل* الفعل ويعاقب من أصاب؛
+   * هذا يقع *بعده* ويلتقط اللحظة التي يكون فيها الرأي حاضراً.
+   *
+   * **ومن قيّمه من قبلُ لا يُسأل ثانيةً:** الورقة تُفتح فقط حين يعود
+   * الخادم بلا تقييم. سؤالُ من أجاب قبل قليل إلحاحٌ لا خدمة، وهو ما يجعل
+   * العين تتعلّم تجاهل ما نعرضه (نفس منطق «بلا عدّاد على التبويب»، D-137).
+   *
+   * ولا نجلب التقييم مع الصفحة: `myRatingFor` تُنادى هنا وحدها، فلا تدفع
+   * كل فتحةِ صفحةٍ كلفةَ ورقةٍ قد لا تُفتح (نمط جرس D-125).
+   */
+  function askRating() {
+    myRatingFor(tmdbId, mediaType)
+      .then((r) => {
+        if (r.rating == null) setRateSheet(r);
+      })
+      .catch(() => {
+        /* تعذّرت القراءة: لا نسأل على الشكّ — إظهارُ صفر نجومٍ لمن قيّم
+           بثمانية يمحو رأيه إن حفظ. الصمت هنا أصدق. */
+      });
+  }
+
   function markWatched() {
     if (done) {
       if (mediaType === "movie") {
@@ -220,6 +252,9 @@ export function TitleActions({
             },
           });
         }
+        /* والسؤال يقع هنا: بعد نجاح الختم لا قبله (D-158).
+           ورقةٌ تُفتح ثم يفشل الختم تسأل عن رأيك في شيءٍ لم يُسجَّل. */
+        askRating();
       } catch (e) {
         flashError((e as Error).message);
         setDone(false);
@@ -390,6 +425,46 @@ export function TitleActions({
             </button>
           </div>
         </>
+      </Sheet>
+
+      {/* ورقة «ما تقييمك له؟» بعد ✓ مباشرةً (D-158).
+
+          `center` لا `bottom`: سؤالٌ قصيرٌ من سطرٍ وصفّ نجوم، والورقة
+          السفلية شكلُ قوائم الأفعال (D-018). و`dismissible` كما هي — هذا
+          عرضٌ يُترك بلمسةٍ خارجه، لا حاجزٌ يُجتاز (D-047).
+
+          وصندوقُ التقييم هو نفسه صندوقُ تبويب التتبّع بلا نسخة: **لا عائلة
+          تقييمٍ ثانية** (D-139)، فالنجوم العشر وحفظُها ورسائلُها تُكتب
+          مرّةً واحدة وتظهر في موضعين. */}
+      <Sheet
+        open={rateSheet !== null}
+        onClose={() => setRateSheet(null)}
+        closeLabel={t.closeLabel}
+        variant="center"
+        labelledBy="rate-now-title"
+      >
+        {/* عنوانُ الورقة هو اسمُ العمل، ولا سطرَ ثانياً يسأل: صندوقُ
+            التقييم يحمل عنوانه بنفسه («قيّم هذا العمل»)، فسؤالٌ فوقه
+            يقول الشيء مرّتين في شبرٍ واحد. */}
+        <div className="p-3.5 sm:p-4">
+          <p id="rate-now-title" className="font-bold text-[15px] mb-2.5 px-1 truncate">
+            {title}
+          </p>
+          <RatingBox
+            tmdbId={tmdbId}
+            mediaType={mediaType}
+            title={title}
+            posterPath={posterPath}
+            locale={locale}
+            initialRating={rateSheet?.rating ?? null}
+            initialReview={rateSheet?.review ?? null}
+            /* الحفظ يُغلق الورقة: الجواب وصل، فبقاؤها مفتوحةً يطلبه ثانيةً */
+            onSaved={() => {
+              setRateSheet(null);
+              coalescedRefresh(router);
+            }}
+          />
+        </div>
       </Sheet>
     </>
   );

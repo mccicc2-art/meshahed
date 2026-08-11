@@ -11,6 +11,7 @@ import { tap } from "@/lib/haptics";
 import { toast, flashError } from "@/lib/toast";
 import { getDict, type Locale } from "@/lib/i18n";
 import type { PersonLite } from "@/lib/data";
+import { sheetScroll } from "./ui/controls";
 
 /**
  * عدّادا «أتابعهم» و«يتابعونني» — **انتقلا من صفحة المجتمع إلى الرئيسية**
@@ -149,7 +150,7 @@ function PeopleSheet({
        قراءةٌ لا فعلٌ سريع — فتُفتح من أعلى الشاشة حيث تبدأ العين */
     <Sheet open variant="top" onClose={onClose} closeLabel={t.closeLabel} labelledBy="people-sheet-title">
       <SheetHeader id="people-sheet-title" title={title} closeLabel={t.closeLabel} onClose={onClose} />
-      <div className="overflow-y-auto overscroll-contain divide-y divide-[color:var(--divider)] pb-[env(safe-area-inset-bottom)]">
+      <div className={`${sheetScroll} divide-y divide-[color:var(--divider)] pb-[env(safe-area-inset-bottom)]`}>
         {people.length === 0 ? (
           <p className="text-sm text-muted text-center py-10 px-5">{empty}</p>
         ) : (
@@ -220,7 +221,7 @@ function FollowersSheet({
         closeLabel={t.closeLabel}
         onClose={onClose}
       />
-      <div className="overflow-y-auto overscroll-contain pb-[env(safe-area-inset-bottom)]">
+      <div className={`${sheetScroll} pb-[env(safe-area-inset-bottom)]`}>
         {reqs.length > 0 && (
           <section className="border-b border-[color:var(--divider)]">
             <p className="text-[11px] font-semibold text-muted uppercase tracking-wide px-5 pt-3 pb-1">

@@ -10,6 +10,7 @@ import { mySignals, markSignalsSeen, type Signal } from "@/lib/actions";
 import { getDict, num, type Locale } from "@/lib/i18n";
 import { timeAgo } from "@/lib/when";
 import { tap } from "@/lib/haptics";
+import { sheetScroll } from "./ui/controls";
 
 /**
  * جرسُ الإشعارات (**D-125**) — النصف المفقود من الحلقة الاجتماعية.
@@ -102,7 +103,7 @@ export function NotificationBell({
             إشعاراً كانت **تُقصّ بلا أي طريقةٍ لرؤية بقيّتها** — لا تمرير
             ولا إشارة. كل ورقةٍ في التطبيق تحمل هذه الحاوية، وهذه وحدها
             نسيتها (بلاغ أحمد 9 Aug). */}
-        <div className="overflow-y-auto overscroll-contain px-5">
+        <div className={`${sheetScroll} px-5`}>
           {rows === null || (pending && !rows) ? (
             /* هيكلٌ بارتفاع الصفوف نفسه — لا تقفز الورقة عند الوصول (D-046) */
             <ul className="space-y-3 px-1 pb-2">

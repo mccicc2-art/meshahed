@@ -22,6 +22,7 @@ import { tap } from "@/lib/haptics";
 import { Icon } from "./Icon";
 import { Sheet, SheetHeader } from "./ui/Sheet";
 import { buttonClass } from "./ui/Button";
+import { sheetScroll } from "./ui/controls";
 
 export interface FilterDraft {
   /** slug النوع الدرامي — انتقل من صفّ التبويبات إلى قائمةٍ هنا (طلب المالك).
@@ -127,7 +128,7 @@ export function DiscoverFilterSheet({
         <p className="text-xs text-muted mt-0.5">{t.browseFiltersHint}</p>
       </SheetHeader>
 
-      <div className="overflow-y-auto overscroll-contain px-5 py-4 space-y-5">
+      <div className={`${sheetScroll} px-5 py-4 space-y-5`}>
         {/* نافذة الترتيب غادرت الورقة (D-099) والجهة لحقت بها (تبويبات
             الرأس — طلب أحمد 9 Aug): أداتان على نفس السؤال لبس */}
         {/* ===== شبكة المنسدلات — عمودان (طلب المالك، لقطة TMDB) =====

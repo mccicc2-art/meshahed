@@ -13,6 +13,7 @@ import { coalescedRefresh } from "@/lib/refresh";
 import { sendShare } from "@/lib/actions";
 import type { MediaType } from "@/lib/media";
 import type { PersonLite } from "@/lib/data";
+import { sheetScroll } from "./ui/controls";
 
 /** أدنى عدد أحرف يُطلق البحث — مطابقٌ لحدّ `/api/suggest` */
 const MIN = 2;
@@ -226,7 +227,7 @@ export function StartConversationSheet({
             </div>
           </div>
 
-          <div className="overflow-y-auto overscroll-contain divide-y divide-[color:var(--divider)] min-h-[6rem]">
+          <div className={`${sheetScroll} divide-y divide-[color:var(--divider)] min-h-[6rem]`}>
             {loading ? (
               <p className="text-sm text-muted text-center py-8">{t.peopleSearching}</p>
             ) : term.length < MIN ? (

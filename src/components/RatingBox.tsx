@@ -17,6 +17,7 @@ export function RatingBox({
   initialRating,
   initialReview,
   variant = "stars",
+  onSaved,
 }: {
   tmdbId: number;
   mediaType: MediaType;
@@ -32,6 +33,13 @@ export function RatingBox({
    * — وضعهما في صندوق واحد كان يجعل تبويب التتبّع طويلاً ويدفن التعليقات.
    */
   variant?: "stars" | "review";
+  /**
+   * يُنادى بعد حفظٍ ناجح — تستعمله ورقةُ «قيّمه الآن» لتغلق نفسها (D-158).
+   *
+   * اختياريّ عمداً: الصندوق في تبويب التتبّع لا يُغلق شيئاً، فالغياب هو
+   * السلوك القائم حرفاً بحرف (قاعدة D-152: التفضيل الجديد افتراضُه ما كان).
+   */
+  onSaved?: () => void;
 }) {
   const t = getDict(locale);
   const [rating, setRating] = useState(initialRating ?? 0);
@@ -56,6 +64,7 @@ export function RatingBox({
     start(async () => {
       try {
         await saveRating({ tmdbId, mediaType, rating, review, title, posterPath });
+        onSaved?.();
       } catch (e) {
         setSaved(false);
         setError((e as Error).message);

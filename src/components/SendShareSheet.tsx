@@ -10,6 +10,7 @@ import { toast, flashError } from "@/lib/toast";
 import { myMutualFollows, sendShare } from "@/lib/actions";
 import type { MediaType } from "@/lib/media";
 import type { PersonLite } from "@/lib/data";
+import { sheetScroll } from "./ui/controls";
 
 /**
  * «أرسِله لـ…» — منتقي صديقٍ من المتابَعين المتبادلين، مع سطرٍ اختياري.
@@ -93,7 +94,7 @@ export function SendShareSheet({
         <p className="text-xs text-muted mt-0.5">{t.shareSendPickHint}</p>
       </SheetHeader>
 
-      <div className="overflow-y-auto overscroll-contain pb-[env(safe-area-inset-bottom)]">
+      <div className={`${sheetScroll} pb-[env(safe-area-inset-bottom)]`}>
         {people === null ? (
           <p className="text-sm text-muted text-center py-8">{t.shareLoadingPeople}</p>
         ) : people.length === 0 ? (
