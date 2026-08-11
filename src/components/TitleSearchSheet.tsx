@@ -42,6 +42,9 @@ interface Suggestion {
   /** وجهةٌ صريحة تسبق الوجهة المشتقّة من النوع — مستخدمو التطبيق
       معرّفُهم نصّيّ ووجهتُهم `/u/…`، لا `/person/<رقم TMDB>` */
   href?: string;
+  /** مسار ملصق TMDB الخام — لا الرابط الجاهز. من يلتقط العمل ليضيفه إلى
+      قائمة يحتاج المسار، و`safeImagePath` ترفض الرابط الكامل (D-167) */
+  posterPath?: string | null;
   /** مفتاح صفٍّ فريد حين لا يكفي `kind-id` (مستخدمو التطبيق كلّهم id=0).
       اسمُه ليس `key`: حقلٌ بذلك الاسم داخل كائنٍ يُمرَّر إلى JSX فخٌّ
       يُقرأ خطأً من أول نظرة */
@@ -58,19 +61,41 @@ interface Suggestion {
  *
  * علوية لا سفلية: اللوحة تأكل النصف السفلي، فالنتائج تبقى فوقها ظاهرة.
  */
+/** ما يُسلَّم لمن فتح الورقة لاقتطاف عملٍ لا للانتقال إليه */
+export interface PickedTitle {
+  kind: "tv" | "movie";
+  id: number;
+  title: string;
+  posterPath: string | null;
+}
+
 export function TitleSearchSheet({
   onClose,
   locale,
   initialMode = "titles",
+  onPick,
 }: {
   onClose: () => void;
   locale: Locale;
   /** يُفتح على وضعٍ بعينه — حالة الفيد الفارغة تفتحه على «أشخاص» */
   initialMode?: SearchMode;
+  /**
+   * ورقةٌ واحدة، بابان (نمط D-054): بلا هذه الدالّة الصفُّ **ينتقل** إلى
+   * العمل — وهو البحث كما نعرفه. ومعها الصفُّ **يُسلّم العمل** لمن فتح
+   * الورقة ولا ينتقل: صفحةُ القائمة تفتحها لتضيف، لا لتغادر.
+   *
+   * ولا ورقةَ بحثٍ ثانية لهذا: نسخُها كان سيعني محرّكَي اقتراحاتٍ
+   * ينحرفان عند أوّل إصلاح (قاعدة D-145).
+   *
+   * **ووضعُ الأعمال وحده حين تُمرَّر:** شخصٌ لا يدخل قائمة أعمال، ووصفُ
+   * قصةٍ بابٌ إلى صفحة عملٍ لا إلى التقاطه — ومقسّمٌ بخيارٍ واحد ليس
+   * مقسّماً، فيغيب كلُّه.
+   */
+  onPick?: (item: PickedTitle) => void;
 }) {
   const t = getDict(locale);
   const router = useRouter();
-  const [mode, setMode] = useState<SearchMode>(initialMode);
+  const [mode, setMode] = useState<SearchMode>(onPick ? "titles" : initialMode);
   const [q, setQ] = useState("");
   const [items, setItems] = useState<Suggestion[]>([]);
   const [loading, setLoading] = useState(false);
@@ -205,7 +230,7 @@ export function TitleSearchSheet({
     >
       <SheetHeader
         id="title-search-title"
-        title={t.navSearch}
+        title={onPick ? t.listAddTitles : t.navSearch}
         closeLabel={t.closeLabel}
         onClose={onClose}
       >
@@ -213,6 +238,7 @@ export function TitleSearchSheet({
             تلمس الحقل، لا بعد أن تكتب فيه وتجد نتائج النوع الخطأ.
             وتبديل الوضع يُصفّر النتائج والنصّ — كتابةٌ لنوعٍ لا تصلح
             لغيره، وإبقاؤها يجعل الشاشة تكذب لثلث ثانية. */}
+        {!onPick && (
         <div className={`${segmentedTrackBare} mt-2 -mb-3`} role="tablist" aria-label={t.navSearch}>
           {(
             [
@@ -241,6 +267,7 @@ export function TitleSearchSheet({
             </button>
           ))}
         </div>
+        )}
       </SheetHeader>
 
       <div className="px-5 pt-4 pb-3 space-y-3">
@@ -323,7 +350,13 @@ export function TitleSearchSheet({
           </p>
         ) : (
           items.map((s) => (
-            <ResultRow key={s.rowKey ?? `${s.kind}-${s.id}`} s={s} t={t} onGo={go} />
+            <ResultRow
+              key={s.rowKey ?? `${s.kind}-${s.id}`}
+              s={s}
+              t={t}
+              onGo={go}
+              onPick={onPick}
+            />
           ))
         )}
       </div>
@@ -340,19 +373,33 @@ function ResultRow({
   s,
   t,
   onGo,
+  onPick,
 }: {
   s: Suggestion;
   t: ReturnType<typeof getDict>;
   onGo: (href: string) => void;
+  onPick?: (item: PickedTitle) => void;
 }) {
   const person = s.kind === "person";
   const href =
     s.href ??
     (person ? `/person/${s.id}` : `/${s.kind === "tv" ? "show" : "movie"}/${s.id}`);
+  /* الالتقاط للأعمال وحدها: شخصٌ لا يدخل قائمة أعمال، فصفُّه يبقى انتقالاً
+     حتى لو فُتحت الورقة للالتقاط */
+  const pick = onPick && !person ? onPick : null;
   return (
     <button
       type="button"
-      onClick={() => onGo(href)}
+      onClick={() =>
+        pick
+          ? pick({
+              kind: s.kind as "tv" | "movie",
+              id: s.id,
+              title: s.title,
+              posterPath: s.posterPath ?? null,
+            })
+          : onGo(href)
+      }
       className="w-full flex items-center gap-3 px-5 py-2.5 text-start hover:bg-surface-2 transition"
     >
       {/* الشخص صورةٌ دائرية والعمل ملصقٌ رأسيّ — الشكل يقول النوع */}
