@@ -651,6 +651,32 @@ export async function cacheFollowMeta(
 
 // ================= التقييمات والمراجعات =================
 
+/**
+ * تقييمي لعملٍ بعينه — يُقرأ **عند فتح ورقة التقييم لا مع الصفحة** (D-158).
+ *
+ * صفحةُ العمل تقرأ التقييم أصلاً، **لكن داخل مكوّنٍ مبثوثٍ خلف Suspense**
+ * بعيداً عن `TitleActions`. وتمريرُه إليها كان يعني نقلَ القراءة إلى
+ * المسار الحرج لتُدفع كلفتُها في **كل** فتحة صفحة، من أجل ورقةٍ تُفتح
+ * أحياناً — وهو بالضبط ما رفضه جرسُ D-125: «الشارة رقمٌ من الخادم،
+ * والأسطر تُحمَّل عند الفتح».
+ *
+ * ولا سياسة جديدة ولا جدول: قراءةٌ من `ratings` بمفتاحها الكامل
+ * (user + tmdb + media)، فهرسيّةٌ وتخصّ صاحبها وحده (D-012).
+ */
+export async function myRatingFor(
+  tmdbId: number,
+  mediaType: MediaType,
+): Promise<{ rating: number | null; review: string | null }> {
+  try {
+    const { getMyRating } = await import("@/lib/data");
+    const row = await getMyRating(intId(tmdbId), asMediaType(mediaType));
+    return { rating: row?.rating ?? null, review: row?.review ?? null };
+  } catch {
+    // فشلُ القراءة لا يمنع التقييم — الورقة تُفتح فارغةً والحفظ يعمل
+    return { rating: null, review: null };
+  }
+}
+
 export async function saveRating(input: {
   tmdbId: number;
   mediaType: MediaType;
