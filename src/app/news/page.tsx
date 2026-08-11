@@ -23,8 +23,6 @@ import {
   topTenGenreThisWeek,
   upcomingByGenre,
   topByFilter,
-  top50,
-  top50Anime,
   topRatedRows,
   awardWinners,
   worksByPeople,
@@ -40,7 +38,8 @@ import {
   type DiscoverFilter,
 } from "@/lib/tmdb";
 import { ScrollMemory } from "@/components/ScrollMemory";
-import { attachImdbRatings, onlyRated, withImdbRatings } from "@/lib/omdb";
+import { topChartRail } from "@/lib/topChart";
+import { attachImdbRatings, withImdbRatings } from "@/lib/omdb";
 import { getT, getWatchRegion } from "@/lib/locale";
 import { regionName } from "@/lib/region";
 import { type Locale } from "@/lib/i18n";
@@ -562,31 +561,36 @@ async function CuratedRails({
             ? upcomingByGenre(genre.tv, "tv")
             : airingTv().catch(() => [] as SearchResult[])
         : Promise.resolve([] as SearchResult[]),
-      /* ذيول «أفضل ٥٠» — **عادت خمسين بعد أن كانت خمساً وعشرين** (طلب
-         أحمد 9 Aug مساءً: «لاحظوا نقصاً في القائمة وانتقدوني»). تقصيرُها
-         في D-114 كان توفيراً في حصة OMDb، وقد سقط سببه: المخزن بعمرٍ
-         متدرّج (D-132) جعل الخمسين أرخص ممّا كانت الخمسٌ وعشرون.
+      /* ذيول «أفضل ٥٠» — **من نفس بِركة «أفضل ٢٥٠» لا من بِركةٍ ثانية**
+         (D-164، بلاغ أحمد ١١ أغسطس).
 
-         والبِركة **٨٠ لا ٤٠**: `onlyRated` تُسقط من لا تقييم IMDb له
-         إسقاطاً كاملاً — لا إلى الذيل — فالفاقد يحتاج فائضاً يعوّضه،
-         وإلا عاد «النقص» الذي انتُقدنا عليه من بابٍ آخر. */
+         كانت تُبنى من `/discover` مرتَّبةً بـ`vote_count.desc` — أي
+         **الأكثر تصويتاً لا الأفضل**. فسقط «الأب الروحي ٢» و«اثنا عشر
+         رجلاً غاضباً» و«الأخوة في السلاح» و«ذا واير» و«الأسرة» — كلُّها
+         أعلى تقييماً وأقلُّ أصواتاً من كتلة الجماهير — **بينما قائمة
+         الـ٢٥٠ تحملها كلَّها**، لأنها تُبنى في القاعدة بالصيغة البايزيّة
+         من ملفّات IMDb (D-135).
+
+         **وقائمتان لنفس السؤال تفترقان، وهذا نصّ قاعدة D-135 نفسها**:
+         «مصدرٌ واحد لمكانين» — وقد كان هنا مكانٌ ثالث نُسي.
+
+         **وتفريقُ الأنمي يأتي مجاناً:** الدالّة في القاعدة تصنّف
+         `movie | anime | tv` بـ`is_anime` (رسومٌ متحرّكة بلغةٍ أصلية
+         يابانية)، فصفُّ المسلسلات يخلو من الأنمي **بلا سطرِ ترشيحٍ
+         واحد** — وهو طلب أحمد حرفياً، ويُبقي «ريك ومورتي» في مكانه لأنه
+         ليس يابانياً.
+
+         **وثمنُها أرخص لا أغلى:** ثلاثة صفوفٍ كانت تكلّف ٢٤٠ نداء OMDb
+         (٨٠ لكلٍّ) فصارت **ثلاث قراءاتٍ من القاعدة**، والتقييم يصل مع
+         الصفّ نفسه. */
       !active && wantMovies
-        ? top50("movie", {}, 80)
-            .then(withImdbRatings)
-            .then((r) => onlyRated(r).slice(0, 50))
-            .catch(() => [] as SearchResult[])
+        ? topChartRail("movie", 50, locale).catch(() => [] as SearchResult[])
         : Promise.resolve([] as SearchResult[]),
       !active && wantSeries
-        ? top50("tv", {}, 80)
-            .then(withImdbRatings)
-            .then((r) => onlyRated(r).slice(0, 50))
-            .catch(() => [] as SearchResult[])
+        ? topChartRail("tv", 50, locale).catch(() => [] as SearchResult[])
         : Promise.resolve([] as SearchResult[]),
       !active && wantSeries
-        ? top50Anime(80)
-            .then(withImdbRatings)
-            .then((r) => onlyRated(r).slice(0, 50))
-            .catch(() => [] as SearchResult[])
+        ? topChartRail("anime", 50, locale).catch(() => [] as SearchResult[])
         : Promise.resolve([] as SearchResult[]),
     ]);
 
