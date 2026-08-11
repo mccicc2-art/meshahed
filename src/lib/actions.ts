@@ -190,6 +190,35 @@ export async function setWatchRegion(value: string) {
   });
 }
 
+/**
+ * تبويبات المجتمع المخفيّة (D-177، طلب أحمد: «حتى إخفاء تيوب من تيوبات
+ * الكوميونتي — أخبار، أكتفيتي، كوميونتي»).
+ *
+ * **كوكي لا عمود** — نفس حجّة `setWatchRegion` حرفاً بحرف (D-014): تفضيلُ
+ * عرضٍ يقرؤه الخادم **قبل أوّل رسمة** فلا يومض تبويبٌ ثم يختفي، ولا يستحقّ
+ * هجرةً ولا صفّاً في قاعدة البيانات.
+ *
+ * **وحارسٌ لا يُترك للواجهة:** لو أخفى المستخدم الأربعة لصارت الصفحة بلا
+ * باب. فالقائمة تُقصّ هنا على ثلاثةٍ كحدٍّ أقصى — **واحدٌ يبقى دائماً**،
+ * ولو أرسل العميلُ أربعة (أو أرسل شيئاً غير تبويب).
+ */
+const COMMUNITY_TABS = ["mine", "all", "inbox", "news"] as const;
+const CTABS_COOKIE = "loopz_ctabs_hidden";
+
+export async function setHiddenCommunityTabs(keys: string[]) {
+  const clean = [...new Set(keys)].filter((k) =>
+    (COMMUNITY_TABS as readonly string[]).includes(k),
+  );
+  /* ثلاثةٌ كحدٍّ أقصى — الرابعُ يسقط بصمت فيبقى للصفحة بابٌ واحد */
+  const kept = clean.slice(0, COMMUNITY_TABS.length - 1);
+  const store = await cookies();
+  store.set(CTABS_COOKIE, kept.join(","), {
+    path: "/",
+    maxAge: 60 * 60 * 24 * 365,
+    sameSite: "lax",
+  });
+}
+
 // تبديل لغة الواجهة — تُحفظ في كوكي ليقرأها الخادم وتُخزَّن في الحساب أيضاً
 export async function setLocale(value: string) {
   const locale = normalizeLocale(value);

@@ -106,8 +106,15 @@ const ar = {
   /* عنوانُ ورقة أدوات المكتبة (D-177) — «أدوات» لا «فلاتر»: فيها إنشاءُ
      قائمةٍ أيضاً، وهو فعلٌ لا ترشيح */
   libraryToolsTitle: "أدوات المكتبة",
+  /* عنوانُ الحقل لا نصُّ الإرشاد: «ابحث في مكتبتك…» بنقاطها تُقرأ عنواناً
+     ناقصاً فوق حقلٍ يقول الشيء نفسه (D-155) */
+  librarySearchGroup: "البحث",
   librarySortGroup: "الترتيب",
   listNewGroup: "قائمة جديدة",
+  /* أدوات المجتمع (D-177) — «أدوات» لا «فلتر»: ما خلفها أفعالٌ لا ترشيح */
+  communityToolsTitle: "أدوات المجتمع",
+  communityToolsMessage: "راسل صديقاً",
+  communityToolsHideGroup: "التبويبات الظاهرة",
   browseActiveFilters: "الفلاتر المفعّلة",
   browseRemoveFilter: (label: string) => `إزالة ${label}`,
   typeSeries: "مسلسل",
@@ -1111,8 +1118,12 @@ const en: Dict = {
   browseApply: "Show results",
   browseClearAll: "Clear all",
   libraryToolsTitle: "Library tools",
+  librarySearchGroup: "Search",
   librarySortGroup: "Sort",
   listNewGroup: "New list",
+  communityToolsTitle: "Community tools",
+  communityToolsMessage: "Message a friend",
+  communityToolsHideGroup: "Visible tabs",
   browseActiveFilters: "Active filters",
   browseRemoveFilter: (label: string) => `Remove ${label}`,
   typeSeries: "Series",

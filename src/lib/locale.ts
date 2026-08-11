@@ -42,3 +42,20 @@ export async function getWatchRegion(): Promise<string> {
     return DEFAULT_REGION;
   }
 }
+
+/**
+ * تبويبات المجتمع التي أخفاها المستخدم (D-177) — من الكوكي، قبل أوّل رسمة.
+ *
+ * **والقصّ يتكرّر هنا عمداً:** الكاتب يحرس (`setHiddenCommunityTabs`)،
+ * والقارئ يحرس أيضاً — فكوكي قديمٌ أو محرَّرٌ بيد لا يُفرغ الصفحة من
+ * تبويباتها. **حارسٌ على طرفٍ واحد ليس حارساً.**
+ */
+export async function getHiddenCommunityTabs(): Promise<string[]> {
+  const store = await cookies();
+  const raw = store.get("loopz_ctabs_hidden")?.value ?? "";
+  const known = ["mine", "all", "inbox", "news"];
+  const clean = [...new Set(raw.split(",").map((s) => s.trim()))].filter((k) =>
+    known.includes(k),
+  );
+  return clean.slice(0, known.length - 1);
+}
