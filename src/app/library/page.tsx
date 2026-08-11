@@ -12,7 +12,7 @@ import {
   getMyTitleArt,
   artKey,
 } from "@/lib/data";
-import { getT } from "@/lib/locale";
+import { getT, getTabPrefs } from "@/lib/locale"; import { defaultTab } from "@/lib/tabPrefs";
 import { localizeFollows } from "@/lib/localize";
 import { Icon } from "@/components/Icon";
 import { LibraryGrid, type GridItem, type LibraryTab } from "@/components/LibraryGrid";
@@ -38,17 +38,10 @@ export default async function LibraryPage({
   if (!user) redirect("/login");
 
   const { locale, t } = await getT();
-  const { filter } = await searchParams;
+  const { filter } = await searchParams; const tabPrefs = await getTabPrefs("library");
   /* الأفلام هي الافتراضي (طلب أحمد: نفس ترتيب اكتشف). و`movie` القديم
      يُهدى إلى الأفلام — كان يعني «الأفلام» فيبقى يعنيها. */
-  const initialTab: LibraryTab =
-    filter === "tv"
-      ? "shows"
-      : filter === "person"
-        ? "artists"
-        : filter === "list"
-          ? "lists"
-          : "movies";
+  const initialTab: LibraryTab = filter === "tv" ? "shows" : filter === "movie" ? "movies" : filter === "person" ? "artists" : filter === "list" ? "lists" : (defaultTab(tabPrefs, "shows") as LibraryTab);
 
   // الملخّص المجمّع (صف لكل مسلسل، والإعادة محسوبة داخله) بدل قراءة كل
   // صفوف الحلقات — نفس الترقية التي أخذتها الرئيسية. الترجمة في نفس الموجة.
@@ -191,7 +184,7 @@ export default async function LibraryPage({
         artistCount={artistRows.length}
         lists={lists}
         locale={locale}
-        initialTab={initialTab}
+        initialTab={initialTab} tabPrefs={tabPrefs}
         listsExtra={
           <PublicListsRail
             lists={saved}
