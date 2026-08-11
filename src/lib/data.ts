@@ -186,6 +186,40 @@ export const getFollows = cache(async (): Promise<FollowRow[]> => {
   return data ?? [];
 });
 
+/**
+ * علَمُ الأنمي لكل متابعة (D-182) — **استعلامٌ منفصلٌ عن `getFollows` عمداً.**
+ *
+ * وضعُ `is_anime` في اختيار `getFollows` كان سيُسقط الاستعلام كلَّه إلى
+ * احتياطِه ذي الأعمدة الخمسة **في كل زيارةٍ قبل تشغيل الهجرة ٦١** — فتفقد
+ * المكتبةُ التقدّم والحلقات والبطاقة الحمراء لأجل علَمٍ واحد. **عمودٌ جديد
+ * لا يُقحم في استعلامٍ قائمٍ يحمل غيره.** (درسُ الهجرة ٥٨ في `04`: هجرةٌ لم
+ * تُشغَّل ليست مشحونة — والشيفرة تُكتب لتعيش قبلها وبعدها.)
+ *
+ * الجدول بلا العمود؟ **خريطةٌ فارغة** — فيبقى كلُّ شيءٍ «غير مصنَّف»،
+ * والتبويب يقول ذلك بدل أن ينكسر.
+ */
+export const getMyAnimeFlags = cache(
+  async (): Promise<Map<string, boolean | null>> => {
+    const out = new Map<string, boolean | null>();
+    try {
+      const supabase = await createClient();
+      const user = await getUser();
+      if (!user) return out;
+      const { data, error } = await supabase
+        .from("follows")
+        .select("tmdb_id, media_type, is_anime")
+        .eq("user_id", user.id);
+      if (error || !data) return out;
+      for (const r of data as { tmdb_id: number; media_type: string; is_anime: boolean | null }[]) {
+        out.set(`${r.media_type}-${r.tmdb_id}`, r.is_anime ?? null);
+      }
+      return out;
+    } catch {
+      return out;
+    }
+  },
+);
+
 /** مفتاح خريطة الأغلفة — نوعٌ ومعرّف، لا نصٌّ حرّ */
 export function artKey(mediaType: string, tmdbId: number) {
   return `${mediaType}-${tmdbId}`;
@@ -1589,6 +1623,10 @@ export interface ChartRow {
   poster_path: string | null;
   rating: number;
   votes: number;
+  /** وثائقيّ — علَمٌ يحمله صفُّ القائمة نفسه منذ الهجرة ٦٠ (D-165).
+      **وقد يصل `false` لصفٍّ كُتب قبل إعادة ملء البِركة**، فالقارئ لا
+      يفترض أنه يقين — انظر `filterRail`. */
+  is_doc?: boolean;
 }
 
 /**
@@ -1602,15 +1640,18 @@ export interface ChartRow {
 export async function getImdbChart(
   kind: "movie" | "tv" | "anime",
   limit = 250,
+  /** جهةٌ داخل الصنف — للأنمي وحده اليوم: صنفُه يحمل أفلاماً ومسلسلاتٍ
+      معاً منذ الهجرة ٦٠، ورفّاه منفصلان في الواجهة (D-169). */
+  media?: "tv" | "movie",
 ): Promise<ChartRow[]> {
   try {
     const supabase = await createClient();
-    const { data, error } = await supabase
+    let q = supabase
       .from("imdb_chart")
-      .select("tmdb_id, media_type, title, poster_path, rating, votes")
-      .eq("kind", kind)
-      .order("rank", { ascending: true })
-      .limit(limit);
+      .select("tmdb_id, media_type, title, poster_path, rating, votes, is_doc")
+      .eq("kind", kind);
+    if (media) q = q.eq("media_type", media);
+    const { data, error } = await q.order("rank", { ascending: true }).limit(limit);
     if (error || !data) return [];
     return data as ChartRow[];
   } catch {

@@ -57,7 +57,10 @@ export const TAB_SURFACES: Record<TabSurface, SurfaceSpec> = {
   },
   library: {
     cookie: "loopz_tabs_library",
-    tabs: [{ key: "shows" }, { key: "movies" }, { key: "artists" }, { key: "lists" }],
+    /* **والأنمي في الذيل عمداً** (D-182): القارئ المتسامح يُلحق كلَّ
+       مفتاحٍ ناقصٍ بذيل الكوكي القديم، فمن رتّب تبويباته أمس يجد الجديد
+       آخرَها لا مقحماً في وسط ترتيبه. ومن أراده أوّلاً حرّكه بسهمين. */
+    tabs: [{ key: "shows" }, { key: "movies" }, { key: "anime" }, { key: "artists" }, { key: "lists" }],
   },
 };
 

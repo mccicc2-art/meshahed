@@ -141,6 +141,9 @@ export interface ResolvedRow {
   rating: number;
   votes: number;
   is_anime: boolean;
+  /** وثائقيّ — يُقرأ من نفس ردّ `/find`، ويُوفّر على الرفّ ثمانين نداءً
+      (D-165، الهجرة ٦٠). */
+  is_doc: boolean;
 }
 
 interface FindHit {
@@ -154,6 +157,8 @@ interface FindHit {
 
 /** رقم نوع «رسوم متحرّكة» عند TMDB — يخدم الجهتين */
 const ANIMATION_GENRE = 16;
+/** رقم نوع «وثائقي» — نفس الرقم في `topChart.ts`، ومصدرُه هنا هو الأصل */
+const DOCUMENTARY_GENRE = 99;
 
 /**
  * يحلّ معرّف IMDb إلى عملٍ في TMDB — **وهو مصدر الملصق أيضاً**.
@@ -188,12 +193,21 @@ export async function resolveOne(c: Candidate): Promise<ResolvedRow | null> {
       poster_path: hit.poster_path,
       rating: c.rating,
       votes: c.votes,
-      /* الأنمي مسلسلٌ رسومٌ متحرّكة لغتُه الأصلية يابانية — الحقلان في
-         ردّ `/find` نفسه، فلا نداء ثانٍ لتصنيفه */
+      /* الأنمي رسومٌ متحرّكة لغتُها الأصلية يابانية — الحقلان في ردّ
+         `/find` نفسه، فلا نداء ثانٍ لتصنيفه.
+
+         **وشرطُ `media_type === "tv"` سقط هنا (الهجرة ٦٠).** كان يقول
+         إن الأنمي مسلسلٌ حصراً، فبقيت «روح الربيع» و«اسمك» و«أكيرا»
+         **في بِركة الأفلام العامّة** ولم يكن لها صفٌّ في التطبيق كلّه
+         (D-169). والقائمة تصنّف الأنمي قبل الفيلم منذ الهجرة ٦٠،
+         فالطرفان صارا يقولان الشيء نفسه — **وهذا نصفُ الإصلاح الثاني،
+         ولا أثر لأحدهما بلا الآخر.** */
       is_anime:
-        mt === "tv" &&
         (hit.genre_ids ?? []).includes(ANIMATION_GENRE) &&
         hit.original_language === "ja",
+      /* الوثائقيّ يُعرف مرّةً هنا ويُقرأ ألف مرّة: كان رفُّ «أفضل ٥٠»
+         يسأل TMDB عن كل عنوانٍ ليعرف نوعه — ثمانون نداءً لكل رسمة (D-165). */
+      is_doc: (hit.genre_ids ?? []).includes(DOCUMENTARY_GENRE),
     };
   } catch {
     return null;

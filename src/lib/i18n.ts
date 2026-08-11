@@ -804,6 +804,8 @@ const ar = {
   notInterestedAria: (title: string) => `غير مهتم بـ«${title}» — لا يُقترح مجدداً`,
   dismissedToast: "حسناً، لن نقترحه مجدداً",
   animeBadge: "أنمي",
+  /** تبويبُ الأنمي في المكتبة أثناء أوّل تصنيف (D-182) */
+  animeClassifying: "نُصنّف مكتبتك…",
   /* مصدرُ الأنمي واستوديوه من AniList (D-173) — TMDB لا تعرف أيّهما،
      و`networks` عندها قناةُ البثّ لا الاستوديو. */
   animeSourceLabel: (v: string) =>
@@ -1743,6 +1745,7 @@ const en: Dict = {
   notInterestedAria: (title: string) => `Not interested in “${title}” — don't suggest it again`,
   dismissedToast: "Got it — we won't suggest it again",
   animeBadge: "Anime",
+  animeClassifying: "Sorting your library…",
   animeSourceLabel: (v: string) =>
     ({
       ORIGINAL: "Original story",

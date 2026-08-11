@@ -325,6 +325,94 @@ export async function unfollow(input: { tmdbId: number; mediaType: MediaType }) 
   revalidatePath(`/${input.mediaType === "tv" ? "show" : "movie"}/${input.tmdbId}`);
 }
 
+/**
+ * تصنيفُ ما لم يُصنَّف من متابعاتك: أنمي أو لا (D-182).
+ *
+ * **لماذا هنا لا عند المتابعة:** لو صنّفنا وقت الضغط على «تابع» لدفع
+ * المستخدم ثمنَ نداءِ TMDB في أسخن فعلٍ في التطبيق، **ولاحتجنا مسارين
+ * للتصنيف** — واحدٌ للجديد وآخرُ للقديم — يتفرّقان يوم يتغيّر التعريف.
+ * فالمسارُ واحد: الصفُّ يولد `null`، وأوّلُ فتحٍ لتبويب الأنمي يصنّف ما
+ * لم يُصنَّف. **ويتكرّر بلا ضرر** لأن `null` وحدها تُسأل.
+ *
+ * **والتعريف هو نفسه في المواضع الثلاثة** (`looksAnime`، و`is_anime`
+ * في البِركة، وهنا): رسومٌ متحرّكة (نوع ١٦) **ولغةٌ أصلية يابانية** —
+ * فلا يتفرّق التصنيف بين مكتبةٍ وقائمةٍ ورفّ (قاعدة D-089/D-135).
+ *
+ * ولا يلمس صفَّ أحدٍ غيرك: كلُّ كتابةٍ مقيّدةٌ بـ`user_id` — وبـ`in`
+ * صريحة، فمصيدةُ `safeupdate` (حذفٌ أو تحديثٌ بلا `where`) لا تقترب.
+ */
+export async function classifyMyFollows(limit = 240): Promise<number> {
+  const { supabase, user } = await requireUser();
+  /* حارسٌ على المعدّل: الفعل يُطلق من المتصفّح، وتكرارُه بلا داعٍ ينفق
+     حصةَ TMDB لا أكثر — فالحدُّ واسعٌ ويكفي */
+  if (!allow(`${user.id}:anime`, 6, 60_000)) return 0;
+
+  const { data } = await supabase
+    .from("follows")
+    .select("tmdb_id, media_type")
+    .eq("user_id", user.id)
+    .is("is_anime", null)
+    .limit(Math.min(Math.max(limit, 1), 400));
+  const rows = (data ?? []) as { tmdb_id: number; media_type: "tv" | "movie" }[];
+  if (rows.length === 0) return 0;
+
+  const { getMovie, getTv } = await import("@/lib/tmdb");
+  /** رقم «رسوم متحرّكة» عند TMDB — واحدٌ للأفلام والمسلسلات */
+  const ANIMATION_GENRE = 16;
+
+  const verdict = new Map<string, boolean>();
+  /* خمسٌ وعشرون متوازيةً كما في `imdbChart.ts` و`topChart.ts` — نفس
+     الخادم ونفس السبب، وتفاصيلُ TMDB مخبّأةٌ فالزيارة الثانية بلا نداء */
+  const CHUNK = 25;
+  for (let i = 0; i < rows.length; i += CHUNK) {
+    await Promise.all(
+      rows.slice(i, i + CHUNK).map(async (r) => {
+        try {
+          const d = (r.media_type === "tv"
+            ? await getTv(r.tmdb_id)
+            : await getMovie(r.tmdb_id)) as {
+            genres?: { id: number }[];
+            original_language?: string;
+          } | null;
+          if (!d) return;
+          verdict.set(
+            `${r.media_type}-${r.tmdb_id}`,
+            (d.genres ?? []).some((g) => g.id === ANIMATION_GENRE) &&
+              d.original_language === "ja",
+          );
+        } catch {
+          /* لم نعرف؟ **يبقى `null`** — ويُسأل عنه في الفتحة القادمة.
+             الكتابةُ بالشكّ تُخفي عملاً من تبويبه إلى الأبد بصمت. */
+        }
+      }),
+    );
+  }
+  if (verdict.size === 0) return 0;
+
+  /* أربعُ كتاباتٍ لا صفٌّ صف: (مسلسل/فيلم) × (أنمي/ليس أنمي) */
+  for (const media of ["tv", "movie"] as const) {
+    for (const value of [true, false]) {
+      const ids = rows
+        .filter(
+          (r) =>
+            r.media_type === media &&
+            verdict.get(`${r.media_type}-${r.tmdb_id}`) === value,
+        )
+        .map((r) => r.tmdb_id);
+      if (ids.length === 0) continue;
+      await supabase
+        .from("follows")
+        .update({ is_anime: value })
+        .eq("user_id", user.id)
+        .eq("media_type", media)
+        .in("tmdb_id", ids);
+    }
+  }
+
+  revalidatePath("/library");
+  return verdict.size;
+}
+
 export async function toggleEpisode(input: {
   showTmdbId: number;
   season: number;

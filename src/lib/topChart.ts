@@ -24,6 +24,9 @@ export interface TopRow {
       الصفّ المرقّم يرسم الشارة منهما (D-164). */
   imdb_rating?: number;
   imdb_votes?: number;
+  /** وثائقيّ — من صفّ القائمة نفسه (الهجرة ٦٠). **غيابُه يعني «لا نعرف»**
+      لا «ليس وثائقياً»: صفوفُ ذيل D-132 لا تحمله أصلاً. */
+  is_doc?: boolean;
 }
 
 /**
@@ -44,8 +47,10 @@ export interface TopRow {
 export async function topChartRows(
   kind: "movie" | "tv" | "anime",
   want: number,
+  /** جهةٌ داخل الصنف — صنفُ الأنمي وحده يحمل جهتين (الهجرة ٦٠) */
+  media?: "tv" | "movie",
 ): Promise<TopRow[]> {
-  const chart = await getImdbChart(kind, want).catch(() => []);
+  const chart = await getImdbChart(kind, want, media).catch(() => []);
   const out: TopRow[] = chart.map((c) => ({
     id: c.tmdb_id,
     media_type: c.media_type,
@@ -54,6 +59,7 @@ export async function topChartRows(
     name: c.title ?? undefined,
     imdb_rating: typeof c.rating === "number" ? c.rating : Number(c.rating),
     imdb_votes: typeof c.votes === "number" ? c.votes : Number(c.votes),
+    is_doc: c.is_doc,
   }));
   if (out.length >= want) return out.slice(0, want);
 
@@ -147,12 +153,29 @@ async function filterRail(
      الربيع» و«اسمك» تسكنان بِركة الأفلام العامّة. ولمّا صار للأنمي تبويبه
      (D-169) صار وجودُه في الرفّين تكراراً لا إثراءً. */
   const dropAnime = kind !== "anime";
+
+  /* **البِركةُ مصنَّفة؟ فلا نداءَ TMDB واحد** (الهجرة ٦٠ + D-165).
+     والدليلُ صفُّ أنميٍّ واحدٌ من جهة الأفلام: لا يكتبه إلا الشيفرةُ التي
+     ترسل العلَمين، **فوجودُه وحده يعني أن البِركة أُعيد ملؤها بعدها**.
+
+     ولماذا دليلٌ لا افتراض: الهجرة تُشغَّل من لوحة أحمد قبل شحن الشيفرة
+     بساعات، وفي تلك النافذة تحمل كلُّ صفوف القائمة `is_doc = false`
+     **كذباً لا نفياً**. فالثقةُ العمياء بالعلَم كانت ستُعيد الوثائقيات
+     (D-165) والأنمي (D-170) إلى الرفوف حتى يعيد أحمد الملء — عطلٌ صامت
+     مقابل سطرين. وبعد إعادة الملء يسقط الفحصُ من نفسه. */
+  const classified =
+    (await getImdbChart("anime", 1, "movie").catch(() => [])).length > 0;
+
   const drop: boolean[] = [];
   /* خمسٌ وعشرون متوازيةً كما في `imdbChart.ts` — نفس الخادم ونفس السبب */
   for (let i = 0; i < rows.length; i += 25) {
     const got = await Promise.all(
       rows.slice(i, i + 25).map(async (r) => {
         if (isExcluded(r.id, r.media_type)) return true;
+        /* علَمٌ مكتوبٌ عن يقين يُغني عن النداء. والأنمي لا يُفحص هنا في
+           هذه الحال: صنفُ القائمة يفصله (`kind='anime'`) فلا يصل الرفَّ
+           أصلاً. وما لا علَمَ له — ذيلُ D-132 — يمضي إلى الفحص كما كان. */
+        if (classified && typeof r.is_doc === "boolean") return r.is_doc;
         try {
           const d =
             r.media_type === "tv"
@@ -210,10 +233,12 @@ export async function topChartRail(
   kind: "movie" | "tv" | "anime",
   want: number,
   locale: Locale,
+  /** جهةٌ داخل الصنف — رفّا الأنمي منفصلان وصنفُه واحد (D-169) */
+  media?: "tv" | "movie",
 ): Promise<SearchResult[]> {
   /* نطلب أكثر ممّا نعرض ثم نُسقط الوثائقيات: التصفية بعد القصّ كانت
      ستُعيد ثمانيةً وثلاثين بطاقة وتسمّيها «أفضل خمسين» */
-  const pool = await topChartRows(kind, Math.round(want * DOC_MARGIN));
+  const pool = await topChartRows(kind, Math.round(want * DOC_MARGIN), media);
   if (pool.length === 0) return [];
   const rows = await filterRail(pool, want, kind);
   if (rows.length === 0) return [];
