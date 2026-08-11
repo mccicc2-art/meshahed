@@ -19,6 +19,7 @@ import {
   artKey,
 } from "@/lib/data";
 import { getMovie, getTrailer, getWatchProviders, backdropUrl, posterUrl } from "@/lib/tmdb";
+import { displayWorkTitle } from "@/lib/wikidata";
 import { universeOf } from "@/lib/universes";
 import { getT, getWatchRegion } from "@/lib/locale";
 import { type Locale } from "@/lib/i18n";
@@ -91,6 +92,10 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
     );
   }
 
+  /* العنوان بالعربية إن لم تترجمه TMDB (D-176) — نفس شرطَي `displayPersonName`
+     ونفس صمته، وبعد حارس `!movie` لا قبله. */
+  const title = await displayWorkTitle(movieId, "movie", movie.title, locale);
+
   /* غلافي المختار (D-131) يسبق غلاف TMDB — **في صفحتي أنا وحدها**
      (ق٨). النقطة واحدة هنا فلا تتفرّق على البطاقات. */
   const backdrop = backdropUrl(myArt?.backdrop_path ?? movie.backdrop_path);
@@ -115,7 +120,7 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-[color:var(--background)] via-[color:var(--background)]/35 to-transparent" />
         <DetailTopBar
-          title={movie.title}
+          title={title}
           locale={locale}
           tmdbId={movieId}
           mediaType="movie"
@@ -128,7 +133,7 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
       <div className="flex flex-wrap gap-4 -mt-24 sm:-mt-28 relative px-1">
         <div className="w-32 sm:w-44 shrink-0">
           <div className="relative aspect-[2/3] rounded-poster overflow-hidden ring-1 ring-white/10 bg-surface-2 shadow-[0_18px_44px_rgba(0,0,0,0.55)]">
-            {poster && <Image src={poster} alt={movie.title} fill sizes="176px" className="object-cover" />}
+            {poster && <Image src={poster} alt={title} fill sizes="176px" className="object-cover" />}
           </div>
         </div>
 
@@ -139,7 +144,7 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
             فأزرار السلسلة والعالم — التي كانت تسكن ذيل الصفحة. */}
         <div className="flex-1 min-w-0 self-start pt-0.5">
           <h1 className="text-xl sm:text-3xl font-extrabold leading-tight tracking-tight drop-shadow-[0_2px_10px_rgba(0,0,0,0.65)]">
-            {movie.title}
+            {title}
           </h1>
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs sm:text-sm text-muted mt-1">
             {movie.release_date && <span>{movie.release_date.slice(0, 4)}</span>}
@@ -266,7 +271,7 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
                 >
                   <MovieTrailerSection
                     movieId={movieId}
-                    title={movie.title}
+                    title={title}
                     backdrop={backdrop}
                     locale={locale}
                   />
