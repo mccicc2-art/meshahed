@@ -8,7 +8,6 @@ import {
   isMovieWatched,
   getMyRating,
   getCommunityRating,
-  getTitleRoomOf,
   getTitleReviews,
   getMyLists,
   getListsContaining,
@@ -28,14 +27,13 @@ import { PublicListsRail } from "@/components/PublicListsRail";
 import { HeroRatings, HeroRatingsSkeleton } from "@/components/HeroRatings";
 import { RatingBox } from "@/components/RatingBox";
 import { CommunityReviews } from "@/components/CommunityReviews";
-import { TitleRoomLink } from "@/components/TitleRoomLink";
 import { DetailTabs } from "@/components/DetailTabs";
+import { TitleRoomTab } from "@/components/TitleRoomTab";
 import { RelatedTitles } from "@/components/RelatedTitles";
 import { CastRail } from "@/components/CastRail";
 import { SectionTitle } from "@/components/Icon";
 import { Trailer } from "@/components/Trailer";
 import { WatchChip } from "@/components/WatchChip";
-import { WatchProviders } from "@/components/WatchProviders";
 import { TitleActions } from "@/components/TitleActions";
 import { DetailTopBar } from "@/components/DetailTopBar";
 import { CircleNote } from "@/components/CircleNote";
@@ -202,13 +200,14 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
             نسخة واحدة تتنقّل بالتخطيط لا نسختان (بابٌ واحد لكل فعل) */}
         {(movie.belongs_to_collection || universe) && (
           <div className="basis-full sm:basis-auto sm:self-center flex flex-wrap sm:flex-col gap-2 mt-3 sm:mt-0 sm:ms-2">
-            {movie.belongs_to_collection && (
-              <AddWorksToList
-                source="collection"
-                id={movie.belongs_to_collection.id}
-                locale={locale}
-              />
-            )}
+            {/* **زرُّ «احفظ كل الأجزاء كقائمة» حُذف** (D-190، شطبه أحمد
+                بلقطة). كان يُنشئ قائمةً من مجموعة الفيلم بضغطةٍ — فعلٌ
+                نادرٌ يأخذ أوّلَ صفٍّ في الترويسة فوق «أضف إلى قائمة»
+                نفسه، **وزرّان متجاوران يبدأان بـ«أضف/احفظ» يجعلان الأهمَّ
+                يُقرأ ثانياً**. ومجموعةُ الفيلم ما زالت في تبويب «مشابه»
+                (`RelatedTitles`)، فلا شيء صار غير ممكن — صار أطولَ خطوة.
+                وزرُّ الكون (`universe`) باقٍ: مجموعاتُ الأكوان لا يعرضها
+                تبويبٌ آخر. */}
             {universe && (
               <AddWorksToList source="universe" id={universe.slug} locale={locale} />
             )}
@@ -245,16 +244,12 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
             icon: "info",
             content: (
               <div className="space-y-7">
-                {/* «أين أشاهده» كاملاً بالتقسيم المتعارف (D-150): الشارة
-                    في الترويسة جوابٌ سريع، وهذا الجوابُ الكامل */}
-                {watchWhere && (
-                  <WatchProviders
-                    options={watchWhere.options}
-                    region={watchWhere.region}
-                    userRegion={userRegion}
-                    locale={locale}
-                  />
-                )}
+                {/* **«أين أشاهده» حُذف من هنا كاملاً** (D-190، طلب أحمد).
+                    الشارةُ في الترويسة صارت الجوابَ الوحيد: رموزُ منصّات
+                    الطبقة الأولى بلا أسماء، والضغطُ يفتح JustWatch بكلّ
+                    التفاصيل. **وثلاثةُ صفوفٍ تقول اشتراك/تأجير/شراء كانت
+                    تجيب سؤالاً لم يُسأل** — من يفتح صفحة عملٍ يريد أن يعرف
+                    «أقدر أشاهده؟» لا جدولَ أسعارٍ لا نملكه أصلاً (D-150). */}
                 {movie.overview && (
                   <section>
                     <SectionTitle icon="info" className="mb-2.5">
@@ -288,6 +283,25 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
             content: (
               <Suspense fallback={null}>
                 <CastRail mediaType="movie" tmdbId={movieId} locale={locale} />
+              </Suspense>
+            ),
+          },
+          {
+            /* **تبويبُ المجتمع — الغرفةُ نفسها لا رابطٌ إليها** (D-191،
+               طلب أحمد: «تبويب اسمه كوميونيتي مربوط بغرفة الكوميونيتي
+               الخاصة فيه»). وموضعُه **ثالثاً** كما طلب: الحديثُ عن العمل
+               أقربُ إلى العمل من «مشابه»، وغرفُ الأعمال (D-140) كانت أثمنَ
+               ما في المجتمع وأخفاه — سطراً في تبويبٍ رابع.
+               والسطرُ القديم (`TitleRoomLink`) حُذف من «التعليقات» مع
+               النقل: **لا بابان لغرفةٍ واحدة.** */
+            key: "community",
+            label: t.tabCommunity,
+            icon: "people",
+            content: (
+              <Suspense
+                fallback={<div className="skeleton h-64 rounded-2xl" aria-hidden />}
+              >
+                <TitleRoomTab tmdbId={movieId} mediaType="movie" locale={locale} />
               </Suspense>
             ),
           },
@@ -377,16 +391,14 @@ async function MovieReviewsTab({
   posterPath: string | null;
   locale: Awaited<ReturnType<typeof getT>>["locale"];
 }) {
-  const [myRating, community, titleReviews, room] = await Promise.all([
+  const [myRating, community, titleReviews] = await Promise.all([
     getMyRating(movieId, "movie"),
     getCommunityRating(movieId, "movie"),
     getTitleReviews(movieId, "movie"),
-    getTitleRoomOf(movieId, "movie"),
   ]);
   return (
     <div className="space-y-4">
       {/* غرفة النقاش قبل التقييم — نفس ترتيب صفحة المسلسل (D-140) */}
-      <TitleRoomLink tmdbId={movieId} mediaType="movie" room={room} locale={locale} />
       <RatingBox
         variant="review"
         tmdbId={movieId}
