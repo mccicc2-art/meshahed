@@ -49,6 +49,10 @@ export async function GET(request: Request) {
       title: titleOf(r),
       year: yearOf(r),
       poster: posterUrl(r.poster_path, "w185"),
+      /* المسار الخام إلى جانب الرابط الجاهز (D-167): من يعرض الصفّ يريد
+         رابطاً، ومن يضيفه إلى قائمة يريد المسار — `safeImagePath` في
+         `actions.ts` ترفض الرابط الكامل فيُخزَّن الملصق فارغاً بدونه. */
+      poster_path: r.poster_path ?? null,
       rating: r.vote_average ? Number(r.vote_average.toFixed(1)) : null,
     }));
 
