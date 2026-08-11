@@ -87,9 +87,32 @@ export async function topChartRows(
 
 /** رقم نوع «وثائقي» عند TMDB */
 const DOCUMENTARY_GENRE = 99;
+/** رقم نوع «رسوم متحرّكة» — واحدٌ للأفلام والمسلسلات */
+const ANIMATION_GENRE = 16;
 
 /** كم صفّاً نطلبه من القائمة لكل صفٍّ نعرضه — هامشٌ يُعوّض ما يسقط */
 const DOC_MARGIN = 1.6;
+
+/**
+ * أعمالٌ تُستبعد من رفوف «أفضل ٥٠» بمعرّفها، لا بقاعدة (D-170).
+ *
+ * **ولماذا قائمةٌ يدوية وهي آخر ما نحبّ:** أحمد أشار إلى صفٍّ بعينه
+ * («رقم ٦ هذا تحديداً شيله»)، **ولا حقلَ في TMDB يفصله عمّا يريد إبقاءه**.
+ * «بلوي» مسلسلُ رسومٍ للأطفال، و«ريك ومورتي» مسلسلُ رسومٍ للكبار — وقد
+ * قال صراحةً إن الثاني يبقى. والنوعُ ١٦ يجمعهما، ونوع «أطفال» (10762)
+ * يشمل أعمالاً لم يطلب حذفها. **فالقاعدة هنا تُسقط ما لم يُطلب إسقاطه —
+ * والمعرّف الصريح أصدق من قاعدةٍ تتظاهر بأنها تعرف الفرق.**
+ *
+ * **وشرطُ بقائها نظيفة:** كل سطرٍ يحمل اسمه وسببه ومن طلبه. قائمةٌ بلا
+ * أسماء تصير مقبرةً لا أحد يجرؤ على مراجعتها. **ولا تُضاف إليها إلا
+ * بطلبٍ صريح من أحمد** — وإلا صارت ذوقَ من كتب الشيفرة.
+ */
+const RAIL_EXCLUDED: { id: number; media: "tv" | "movie"; why: string }[] = [
+  // طلب أحمد ١٢ أغسطس، بلقطة شاشة: «رقم ٦ هذا تحديداً شيله من توب ٥٠»
+  { id: 82728, media: "tv", why: "Bluey — رسومٌ للأطفال في رفٍّ للدراما" },
+];
+const isExcluded = (id: number, media: string) =>
+  RAIL_EXCLUDED.some((x) => x.id === id && x.media === (media === "tv" ? "tv" : "movie"));
 
 /**
  * يُسقط الوثائقيات من رفّ «أفضل ٥٠» — **ومنه وحده** (D-165).
@@ -113,28 +136,60 @@ const DOC_MARGIN = 1.6;
  * **و`localizeRows` تطلبها لهذه الصفوف نفسها بعد سطرين** — فما نُنفقه
  * فعلاً هو هامش الثلاثين الزائد لا الثمانون.
  */
-async function withoutDocumentaries(rows: TopRow[], want: number): Promise<TopRow[]> {
-  const isDoc: boolean[] = [];
+async function filterRail(
+  rows: TopRow[],
+  want: number,
+  kind: "movie" | "tv" | "anime",
+): Promise<TopRow[]> {
+  /* **الأنمي يغادر رفَّي الأفلام والمسلسلات كليهما (D-170، طلب أحمد).**
+     رفُّ المسلسلات خلا منه في D-164 مجّاناً لأن SQL يفصل `is_anime`،
+     **ورفُّ الأفلام لم يخلُ**: `is_anime` يشترط `media_type='tv'`، فـ«روح
+     الربيع» و«اسمك» تسكنان بِركة الأفلام العامّة. ولمّا صار للأنمي تبويبه
+     (D-169) صار وجودُه في الرفّين تكراراً لا إثراءً. */
+  const dropAnime = kind !== "anime";
+  const drop: boolean[] = [];
   /* خمسٌ وعشرون متوازيةً كما في `imdbChart.ts` — نفس الخادم ونفس السبب */
   for (let i = 0; i < rows.length; i += 25) {
     const got = await Promise.all(
       rows.slice(i, i + 25).map(async (r) => {
+        if (isExcluded(r.id, r.media_type)) return true;
         try {
-          const d = r.media_type === "tv" ? await getTv(r.id) : await getMovie(r.id);
-          return (d.genres ?? []).some((g) => g.id === DOCUMENTARY_GENRE);
+          const d =
+            r.media_type === "tv"
+              ? ((await getTv(r.id)) as {
+                  genres?: { id: number }[];
+                  original_language?: string;
+                })
+              : ((await getMovie(r.id)) as {
+                  genres?: { id: number }[];
+                  original_language?: string;
+                });
+          const genres = d.genres ?? [];
+          if (genres.some((g) => g.id === DOCUMENTARY_GENRE)) return true;
+          /* والأنمي بالبيانات لا بالاسم (D-089/D-154): رسومٌ متحرّكة
+             بلغةٍ أصلية يابانية — نفس تعريف `is_anime` في القاعدة، فلا
+             يتفرّق التصنيف بين موضعين. و«ريك ومورتي» يبقى: ليس يابانياً. */
+          if (
+            dropAnime &&
+            genres.some((g) => g.id === ANIMATION_GENRE) &&
+            d.original_language === "ja"
+          ) {
+            return true;
+          }
+          return false;
         } catch {
           /* لم نعرف؟ يبقى. الحذفُ بالشكّ يُنقص القائمة عملاً حقيقياً،
-             والإبقاءُ بالشكّ يُبقي وثائقيّةً واحدة — أهونُ الضررين. */
+             والإبقاءُ بالشكّ يُبقي واحداً — أهونُ الضررين. */
           return false;
         }
       }),
     );
-    isDoc.push(...got);
+    drop.push(...got);
   }
 
   const out: TopRow[] = [];
   for (let i = 0; i < rows.length && out.length < want; i++) {
-    if (!isDoc[i]) out.push(rows[i]);
+    if (!drop[i]) out.push(rows[i]);
   }
   return out;
 }
@@ -160,7 +215,7 @@ export async function topChartRail(
      ستُعيد ثمانيةً وثلاثين بطاقة وتسمّيها «أفضل خمسين» */
   const pool = await topChartRows(kind, Math.round(want * DOC_MARGIN));
   if (pool.length === 0) return [];
-  const rows = await withoutDocumentaries(pool, want);
+  const rows = await filterRail(pool, want, kind);
   if (rows.length === 0) return [];
 
   const localized = await localizeRows(
