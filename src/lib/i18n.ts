@@ -571,11 +571,14 @@ const ar = {
           ? `شاهد ${n} حلقات`
           : `شاهد ${n} حلقة`,
   // تبويبات المجتمع والرسائل
-  communityTabsGroup: "الأقسام الاجتماعية",
+  communityTabsGroup: "أقسام المجتمع",
   /* «النشاط» لا «مجتمعي» (قرار أحمد 9 Aug): التبويب المجاور اسمه
      «المجتمع»، فاسمان من جذرٍ واحد على صفٍّ واحد لا يفرّقان شيئاً.
      والمحتوى نشاطُ من تتابعهم — سمِّه بما هو. */
   communityTabMine: "النشاط",
+  /* تبويبُ المراجعات — الرأيُ المكتوب وحده (طلب أحمد ١٢ أغسطس) */
+  communityTabReviews: "المراجعات",
+  reviewsEmpty: "لا مراجعات من دائرتك بعد — أوّلُ رأيٍ يُكتب يظهر هنا.",
   /* **«المجتمعات» جمعاً لا «المجتمع» مفرداً** (طلب أحمد ١١ أغسطس بلقطة).
      كان التبويبُ يحمل **اسم القسم نفسه حرفياً** — والقسمُ يضمّ أربعة
      تبويبات، فاسمٌ واحد لهما يجعل التبويب يُقرأ وكأنه الصفحة كلّها،
@@ -1001,7 +1004,7 @@ const ar = {
      الرسائل · الأخبار. **و«المجتمع» كان أضيقَ منه**: يسمّي واحداً من
      الأربعة ويترك الثلاثة بلا مظلّة (طلب أحمد: «يحتاج تغيير لشيء أشمل»).
      و«الاجتماعي» يسعها كلَّها — بما فيها الأخبار. */
-  peopleTitle: "الاجتماعي",
+  peopleTitle: "المجتمع",
   communitySub: "ابحث عن أصدقائك، وتابع ما يشاهدونه ويقيّمونه.",
   peopleSearchPlaceholder: "ابحث باسم المستخدم…",
   peopleSearchHint: "اكتب حرفين على الأقل للبحث عن شخص.",
@@ -1018,7 +1021,7 @@ const ar = {
   hideNameHint: "لما تفعّله، تظهر تقييماتك ومراجعاتك بلا اسمك، وما يقدر أحد يفتح صفحتك من التعليق.",
   hideNameOn: "اسمي مخفي",
   hideNameOff: "اسمي ظاهر",
-  navPeople: "الاجتماعي",
+  navPeople: "المجتمع",
   viewProfileOf: (name: string) => `عرض صفحة ${name}`,
   obStep: (a: number, b: number) => `الخطوة ${a} من ${b}`,
   obPickTitle: "ماذا شاهدت من هذه؟",
@@ -1544,8 +1547,10 @@ const en: Dict = {
   feedActEpisodes: (n: number) =>
     n === 1 ? "watched an episode" : `watched ${n} episodes`,
   // Community tabs and messages
-  communityTabsGroup: "Social sections",
+  communityTabsGroup: "Community sections",
   communityTabMine: "Activity",
+  communityTabReviews: "Reviews",
+  reviewsEmpty: "No reviews from your circle yet — the first one written shows up here.",
   communityTabAll: "Communities",
   communityTabInbox: "Messages",
   communityUnreadAria: (n: number) => `${n} unread`,
@@ -1927,7 +1932,7 @@ const en: Dict = {
   notFoundBody: "That link doesn't point anywhere. Try searching or head back home.",
   loadingLabel: "Loading…",
 
-  peopleTitle: "Social",
+  peopleTitle: "Community",
   communitySub: "Find your friends, and see what they watch and rate.",
   peopleSearchPlaceholder: "Search by username…",
   peopleSearchHint: "Type at least two characters to find someone.",
@@ -1944,7 +1949,7 @@ const en: Dict = {
   hideNameHint: "When on, your ratings and reviews appear without your name, and no one can open your page from a review.",
   hideNameOn: "My name is hidden",
   hideNameOff: "My name is visible",
-  navPeople: "Social",
+  navPeople: "Community",
   viewProfileOf: (name: string) => `View ${name}'s page`,
   obStep: (a: number, b: number) => `Step ${a} of ${b}`,
   obPickTitle: "Which of these have you watched?",
