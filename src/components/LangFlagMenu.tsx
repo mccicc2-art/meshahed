@@ -3,7 +3,6 @@
 import { useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
 import { setLocale } from "@/lib/actions";
 import { getDict, type Locale } from "@/lib/i18n";
 import { Icon } from "./Icon";
@@ -30,7 +29,6 @@ const FLAGS: Record<Locale, string> = {
 
 export function LangFlagMenu({ locale }: { locale: Locale }) {
   const t = getDict(locale);
-  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, start] = useTransition();
 
@@ -39,12 +37,26 @@ export function LangFlagMenu({ locale }: { locale: Locale }) {
     { id: "en", flag: FLAGS.en, label: t.englishLang },
   ];
 
+  /**
+   * تبديلُ اللغة يُعيد تحميل المستند، لا `router.refresh()` (D-162).
+   *
+   * **العطل المقيس:** `refresh` يعيد رسم شجرة React فتتبدّل النصوص و`dir`
+   * و`lang` — **ويبقى ما لا تملكه React كما هو**. وزرّ الدخول يرسمه محرّك
+   * Google داخل إطارٍ خاصّ به، فكانت الصفحة كلّها تتحوّل إلى الإنجليزية
+   * **وزرّ الدخول وحده يبقى عربياً**. وتفريغُ الصندوق قبل إعادة الرسم
+   * (D-161) لم يكفِ: المحرّك يُهيَّأ مرّةً واحدة لكل صفحة.
+   *
+   * **وهذا تعميمُ D-081 حرفياً:** «أيُّ تدفّقٍ يغيّر شيئاً عامّاً في
+   * المستند ينتقل بتحميلٍ كامل لا بالراوتر». اللغة تغيّر `lang` و`dir`
+   * والنصوص وكل ودجت طرفٍ ثالث — فهي من هذا الصنف.
+   * والكلفة تُدفع مرّةً في العمر: اللغة تُلمس مرّةً ثم لا تُلمس.
+   */
   function pick(next: Locale) {
     setOpen(false);
     if (next === locale || pending) return;
     start(async () => {
       await setLocale(next);
-      router.refresh();
+      window.location.reload();
     });
   }
 
