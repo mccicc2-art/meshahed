@@ -19,7 +19,7 @@ import { Sheet, SheetHeader } from "./ui/Sheet";
 import { posterGrid } from "./ui/controls";
 import { PageTabs } from "./ui/PageTabs";
 import { FilterIconButton } from "./ui/FilterIconButton";
-import { LibraryToolsSheet } from "./LibraryToolsSheet";
+import { LibraryToolsSheet } from "./LibraryToolsSheet"; import { applyTabPrefs, type TabPref } from "@/lib/tabPrefs";
 import { buttonClass } from "./ui/Button";
 
 export interface GridItem {
@@ -58,7 +58,7 @@ export type LibraryTab = "shows" | "movies" | "artists" | "lists";
 
 /** التبويب ↔ قيمة `?filter=` — جدولٌ واحد بدل ثلاثة شروطٍ ثلاثيّة متفرّقة */
 export const TAB_FILTER: Record<LibraryTab, string | null> = {
-  shows: null,
+  shows: "tv",
   movies: "movie",
   artists: "person",
   lists: "list",
@@ -74,7 +74,7 @@ export function LibraryGrid({
   artistCount,
   lists,
   locale,
-  initialTab = "movies",
+  initialTab = "shows", tabPrefs,
   listsExtra,
 }: {
   shows: GridItem[];
@@ -85,7 +85,7 @@ export function LibraryGrid({
   artistCount: number;
   lists: UserList[];
   locale: Locale;
-  initialTab?: LibraryTab;
+  initialTab?: LibraryTab; /** ترتيبُ تبويبات المكتبة وإظهارها — من الكوكي (D-179) */ tabPrefs: TabPref[];
   /** ما يلي قوائمي في اللوح (القوائم المحفوظة — طلب أحمد: بيتها
       المكتبة لا صفحة منفصلة): يُرسم على الخادم ويُمرَّر عقدةً جاهزة،
       فيبقى PublicListsRail مكوّن خادمٍ بلا JS كما وُلد (D-063) */
@@ -149,11 +149,15 @@ export function LibraryGrid({
 
 
   const tabs = [
-    { id: "movies" as const, icon: "film" as const, label: t.shortMovies, n: movies.length },
-    { id: "shows" as const, icon: "tv" as const, label: t.shortShows, n: shows.length },
-    { id: "artists" as const, icon: "people" as const, label: t.shortArtists, n: artistCount },
-    { id: "lists" as const, icon: "list" as const, label: t.listsTitle, n: lists.length },
+    { key: "shows" as const, icon: "tv" as const, label: t.shortShows, n: shows.length },
+    { key: "movies" as const, icon: "film" as const, label: t.shortMovies, n: movies.length },
+    { key: "artists" as const, icon: "people" as const, label: t.shortArtists, n: artistCount },
+    { key: "lists" as const, icon: "list" as const, label: t.listsTitle, n: lists.length },
   ];
+
+  /* الترتيب والإخفاء من الكوكي — والتبويب المفتوح لا يُخفى من نفسه */
+  const shownTabs = applyTabPrefs(tabs, tabPrefs, tab);
+  const tabLabels = Object.fromEntries(tabs.map((x) => [x.key, x.label]));
 
   /* رفُّ الفنانين يُحسب على الخادم، والتفاؤل المحليّ يسبقه: بلا هذا
      العلم يومض «ما تتابع أي فنان» في الطريق — وهي كذبةٌ لا حالةٌ فارغة */
@@ -183,13 +187,7 @@ export function LibraryGrid({
           المجتمع واكتشف بالبكسل، وخطٌّ فاصلٌ واحد لا اثنان. وصفُّ البحث
           والفرز يُمرَّر `extra` فيسكن داخل الرأس لا تحته. */}
       <PageTabs
-        items={tabs.map(({ id, icon, label, n }) => ({
-          key: id,
-          label,
-          count: n,
-          icon,
-          onClick: () => goTab(id),
-        }))}
+        items={shownTabs.map(({ key, icon, label, n }) => ({ key, label, count: n, icon, onClick: () => goTab(key) }))}
         active={tab}
         ariaLabel={t.libraryTitle}
         /* **الصفُّ الذي كان هنا انتقل خلف الرمز (D-177).** كان يحمل صندوق
@@ -215,7 +213,7 @@ export function LibraryGrid({
           onSort={setSort}
           q={q}
           onQ={setQ}
-          showFilters={showSearchRow}
+          showFilters={showSearchRow} tabPrefs={tabPrefs} tabLabels={tabLabels}
         />
       )}
 
