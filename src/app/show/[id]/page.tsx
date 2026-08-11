@@ -28,6 +28,7 @@ import {
   posterUrl,
 } from "@/lib/tmdb";
 import { animeExtras } from "@/lib/anilist";
+import { displayWorkTitle } from "@/lib/wikidata";
 import { EpisodeTracker, type SeasonSummary } from "@/components/EpisodeTracker";
 import { getT, getWatchRegion } from "@/lib/locale";
 import { RatingBox } from "@/components/RatingBox";
@@ -107,6 +108,12 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
     );
   }
 
+  /* العنوان بالعربية إن لم تترجمه TMDB (D-176) — ويكي‑بيانات، بنفس شرطَي
+     `displayPersonName`: واجهةٌ عربية وعنوانٌ ليس عربياً أصلاً، فصفرُ طلباتٍ
+     في الحالة الغالبة. وبعد حارس `!tv` لا قبله: لا يُسأل عن عملٍ لم يُجلب.
+     والفشل صامتٌ فيبقى عنوان TMDB. */
+  const title = await displayWorkTitle(tvId, "tv", tv.name, locale);
+
   // كانت الصفحة تجلب حلقات كل المواسم دفعة واحدة — مسلسل بثلاثين موسماً يعني
   // ثلاثين طلب TMDB وآلاف الحلقات تُرسل للمتصفح. الآن: رؤوس المواسم فقط،
   // وحلقات موسم واحد (الذي فيه أول حلقة غير مشاهَدة)، والباقي عند الفتح.
@@ -180,7 +187,7 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-[color:var(--background)] via-[color:var(--background)]/35 to-transparent" />
         <DetailTopBar
-          title={tv.name}
+          title={title}
           locale={locale}
           tmdbId={tvId}
           mediaType="tv"
@@ -193,7 +200,7 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
       <div className="flex gap-4 -mt-24 sm:-mt-28 relative px-1">
         <div className="w-28 sm:w-40 shrink-0">
           <div className="relative aspect-[2/3] rounded-poster overflow-hidden ring-1 ring-white/10 bg-surface-2 shadow-[0_18px_44px_rgba(0,0,0,0.55)]">
-            {poster && <Image src={poster} alt={tv.name} fill sizes="160px" className="object-cover" />}
+            {poster && <Image src={poster} alt={title} fill sizes="160px" className="object-cover" />}
           </div>
         </div>
 
@@ -201,7 +208,7 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
             (طلب المالك)، والأنواع صعدت إلى المساحة تحته */}
         <div className="flex-1 min-w-0 self-start pt-0.5">
           <h1 className="text-xl sm:text-3xl font-extrabold leading-tight tracking-tight drop-shadow-[0_2px_10px_rgba(0,0,0,0.65)]">
-            {tv.name}
+            {title}
           </h1>
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs sm:text-sm text-muted mt-1.5">
             {/* وسم الأنمي: يعرفه المستخدم من الشارة لا من قراءة الأنواع */}
@@ -349,7 +356,7 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
                 <Suspense
                   fallback={<div className="skeleton aspect-video rounded-2xl" aria-hidden />}
                 >
-                  <TrailerSection tvId={tvId} name={tv.name} backdrop={backdrop} locale={locale} />
+                  <TrailerSection tvId={tvId} name={title} backdrop={backdrop} locale={locale} />
                 </Suspense>
               </div>
             ),
