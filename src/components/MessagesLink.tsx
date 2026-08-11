@@ -1,0 +1,44 @@
+import Link from "next/link";
+import { getDict, num, type Locale } from "@/lib/i18n";
+import { Icon } from "./Icon";
+
+/**
+ * الرسائل الخاصّة في الترويسة، بجانب الجرس (**D-187** — قرار أحمد).
+ *
+ * **ولماذا غادرت المجتمع:** كانت تبويباً من خمسة في صفحةٍ عامّة، وهي
+ * ليست سطحاً عامّاً أصلاً. **والرسالة تُفتح حين تصل لا حين تتصفّح** —
+ * فمكانُها حيث تُنتظر الأخبار الشخصية: بجانب الجرس.
+ *
+ * **والسبب الثاني أثقل:** شارةُ غير المقروء كانت تُرفع إلى تبويب المجتمع
+ * كلِّه، فصارت نقطةٌ واحدة تعني «رسالة» أو «خبر» أو «ردّ». **وشارةٌ تعني
+ * ثلاثة أشياء لا تعني شيئاً** — والمستخدم يتعلّم تجاهلها. الآن لكلّ
+ * معنًى بابُه: الجرسُ للإشعارات، والظرفُ للرسائل.
+ *
+ * **مكوّنُ خادمٍ بلا جافاسكربت:** رابطٌ وأيقونةٌ ورقم. العدّاد يصل محسوباً
+ * من `Navbar` مع بقية بيانات الترويسة — **لا نداءَ ثانٍ** (نمط D-125).
+ */
+export function MessagesLink({ unread, locale }: { unread: number; locale: Locale }) {
+  const t = getDict(locale);
+  const has = unread > 0;
+
+  return (
+    <Link
+      href="/messages"
+      aria-label={has ? t.messagesUnreadAria(unread) : t.communityTabInbox}
+      title={t.communityTabInbox}
+      className="relative grid place-items-center w-10 h-10 rounded-full text-foreground/80 hover:text-foreground hover:bg-surface-2 active:scale-95 transition"
+    >
+      <Icon name="mail" size={20} />
+      {has && (
+        /* نفسُ شارة الجرس شكلاً وموضعاً: عائلةٌ واحدة لمعنًى واحد
+           («عندك جديدٌ هنا»)، فلا يتعلّم المستخدم لغتين للشيء نفسه. */
+        <span
+          className="absolute -top-0.5 -end-0.5 min-w-[18px] h-[18px] px-1 grid place-items-center rounded-full bg-accent text-[10px] font-extrabold text-black tabular-nums"
+          aria-hidden
+        >
+          {num(Math.min(unread, 99), locale)}
+        </span>
+      )}
+    </Link>
+  );
+}

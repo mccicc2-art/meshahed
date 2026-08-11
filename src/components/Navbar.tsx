@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import { getUser, getProfile, getUnreadSignals } from "@/lib/data";
+import { getUser, getProfile, getUnreadSignals, getUnreadShares } from "@/lib/data";
 import { getT } from "@/lib/locale";
 import { SearchBox } from "./SearchBox";
 import { NavLinks } from "./NavLinks";
@@ -9,6 +9,7 @@ import { LogoWordmark } from "./Logo";
 import { LangFlagMenu } from "./LangFlagMenu";
 import { ThemeCookieSync } from "./ThemeCookieSync";
 import { NotificationBell } from "./NotificationBell";
+import { MessagesLink } from "./MessagesLink";
 import { buttonClass } from "./ui/Button";
 
 export async function Navbar() {
@@ -19,6 +20,9 @@ export async function Navbar() {
      والأسطر لا تُحمَّل إلا لمن فتح. الجرس في الترويسة لا في الشريط
      السفليّ — ذاك أربعة تبويبات لا خامس لها (قاعدة 7، D-051). */
   const unreadSignals = user ? await getUnreadSignals() : 0;
+  /* عدّادُ الرسائل مع نفس الموجة (D-187): نداءٌ خفيف بجانب نداء الجرس،
+     ولا يُحمَّل خيطٌ واحد لرسم رقم — نفسُ تقسيم D-125. */
+  const unreadMessages = user ? await getUnreadShares() : 0;
   const displayName = profile?.nickname || user?.email?.split("@")[0] || "";
 
   // زائرٌ غير مسجّل: اسمُ المنتج وحده وعلمُ اللغة في الطرف — لا شعار
@@ -61,6 +65,10 @@ export async function Navbar() {
                   <SearchBox locale={locale} />
                 </Suspense>
               </div>
+
+              {/* الظرفُ قبل الجرس: الرسائل أخصُّ من الإشعارات، والأخصُّ
+                  أقربُ إلى صورة صاحب الحساب (D-187) */}
+              <MessagesLink unread={unreadMessages} locale={locale} />
 
               <NotificationBell unread={unreadSignals} locale={locale} />
 

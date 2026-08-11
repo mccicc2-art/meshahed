@@ -61,9 +61,18 @@ export type IconName =
   | "close"
   | "eye"
   | "eye-off"
-  | "dots";
+  | "dots"
+  | "mail";
 
 const PATHS: Record<IconName, React.ReactNode> = {
+  /* الظرف — أيقونةُ الرسائل في الترويسة (D-187). ضربتان لا ثلاث:
+     مستطيلٌ وطيّةٌ مثلّثة، فتبقى مقروءةً في ٢٠ بكسلاً بجانب الجرس. */
+  mail: (
+    <>
+      <rect x="3" y="5.5" width="18" height="13" rx="2.5" />
+      <path d="m3.8 7 7.2 5.4a1.7 1.7 0 0 0 2 0L20.2 7" />
+    </>
+  ),
   bell: (
     <>
       <path d="M6.5 9.5a5.5 5.5 0 0 1 11 0c0 4 1.5 5.5 1.5 5.5H5s1.5-1.5 1.5-5.5Z" />
