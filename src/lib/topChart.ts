@@ -3,7 +3,7 @@ import { localizeRows } from "./localize";
 import type { Locale } from "./i18n";
 import type { SearchResult } from "./tmdb";
 import { rankByImdb, withImdbRatings } from "./omdb";
-import { topRatedRows } from "./tmdb";
+import { getMovie, getTv, topRatedRows } from "./tmdb";
 
 /**
  * صفٌّ في قائمة «أفضل ٢٥٠» — بشكل صفّ TMDB عمداً.
@@ -85,6 +85,60 @@ export async function topChartRows(
   return out;
 }
 
+/** رقم نوع «وثائقي» عند TMDB */
+const DOCUMENTARY_GENRE = 99;
+
+/** كم صفّاً نطلبه من القائمة لكل صفٍّ نعرضه — هامشٌ يُعوّض ما يسقط */
+const DOC_MARGIN = 1.6;
+
+/**
+ * يُسقط الوثائقيات من رفّ «أفضل ٥٠» — **ومنه وحده** (D-165).
+ *
+ * **بلاغ أحمد:** «الوثائقيات لا يحطها في توب ٥٠». وقد كان محقّاً قبل
+ * D-164 بالمصادفة لا بالتصميم: الرفّ كان يُبنى من `vote_count.desc` عند
+ * TMDB فلم يكن الوثائقيّ يبلغه أصلاً. ولمّا صار الرفّ يقرأ قائمة IMDb
+ * الحقيقية دخلت معها اثنتا عشرة وثائقيّة في المسلسلات — Planet Earth
+ * ثالثاً ورابعاً، وBlue Planet وCosmos وOur Planet خلفهما.
+ *
+ * **ولا تُحذف من «أفضل ٢٥٠»:** أحمد قال إن الـ٢٥٠ صحيحة، وهي كذلك —
+ * قائمة IMDb نفسها تضع Planet Earth في صدارة مسلسلاتها. فالمطلب ليس
+ * «الوثائقيّ ليس عملاً عظيماً» بل «رفُّ الخمسين واجهةُ دراما لا أرشيف
+ * طبيعة». الفرق في **مكان العرض** لا في **جودة العمل**، فالتصفية هنا في
+ * الرفّ لا في القائمة ولا في SQL.
+ *
+ * **والنوع من TMDB لا من IMDb:** `imdb_pool` لا يحمل نوعاً — و`is_anime`
+ * وحده يُقرأ من ردّ `/find`. وإضافةُ `is_doc` نظيراً له هي الحلّ الصحيح
+ * نهائياً (تصفيةٌ بلا نداءٍ واحد)، لكنها تحتاج ترحيلاً في القاعدة يشغّله
+ * أحمد بنفسه وإعادةَ ملءٍ للبِركة. فحتى ذلك: تفاصيل TMDB مخبّأة ساعةً،
+ * **و`localizeRows` تطلبها لهذه الصفوف نفسها بعد سطرين** — فما نُنفقه
+ * فعلاً هو هامش الثلاثين الزائد لا الثمانون.
+ */
+async function withoutDocumentaries(rows: TopRow[], want: number): Promise<TopRow[]> {
+  const isDoc: boolean[] = [];
+  /* خمسٌ وعشرون متوازيةً كما في `imdbChart.ts` — نفس الخادم ونفس السبب */
+  for (let i = 0; i < rows.length; i += 25) {
+    const got = await Promise.all(
+      rows.slice(i, i + 25).map(async (r) => {
+        try {
+          const d = r.media_type === "tv" ? await getTv(r.id) : await getMovie(r.id);
+          return (d.genres ?? []).some((g) => g.id === DOCUMENTARY_GENRE);
+        } catch {
+          /* لم نعرف؟ يبقى. الحذفُ بالشكّ يُنقص القائمة عملاً حقيقياً،
+             والإبقاءُ بالشكّ يُبقي وثائقيّةً واحدة — أهونُ الضررين. */
+          return false;
+        }
+      }),
+    );
+    isDoc.push(...got);
+  }
+
+  const out: TopRow[] = [];
+  for (let i = 0; i < rows.length && out.length < want; i++) {
+    if (!isDoc[i]) out.push(rows[i]);
+  }
+  return out;
+}
+
 /**
  * نفس القائمة، بشكل صفٍّ جاهزٍ للعرض ومترجَمةً — لرفوف «أفضل ٥٠» (D-164).
  *
@@ -102,7 +156,11 @@ export async function topChartRail(
   want: number,
   locale: Locale,
 ): Promise<SearchResult[]> {
-  const rows = await topChartRows(kind, want);
+  /* نطلب أكثر ممّا نعرض ثم نُسقط الوثائقيات: التصفية بعد القصّ كانت
+     ستُعيد ثمانيةً وثلاثين بطاقة وتسمّيها «أفضل خمسين» */
+  const pool = await topChartRows(kind, Math.round(want * DOC_MARGIN));
+  if (pool.length === 0) return [];
+  const rows = await withoutDocumentaries(pool, want);
   if (rows.length === 0) return [];
 
   const localized = await localizeRows(
