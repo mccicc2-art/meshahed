@@ -781,6 +781,9 @@ const ar = {
   listsSub: "رتّب أعمالك كما تحبّ — قائمة لكل مزاج.",
   listNamePlaceholder: "اسم قائمة جديدة…",
   listCreate: "أنشئ",
+  /* تُقال حين يُضغط «أنشئ» والحقل فارغ (D-168): الزرّ لم يعد
+     معطّلاً، فلا بدّ أن يقول سببَ عدم حدوث شيء. */
+  listNameRequired: "اكتب اسم القائمة أولاً",
   listsEmpty: "لا قوائم لديك بعد — اكتب اسماً في الأعلى وابدأ.",
   listCount: (n: number) =>
     n === 0 ? "فاضية" : n === 1 ? "عمل واحد" : n === 2 ? "عملان" : `${n} أعمال`,
@@ -1673,6 +1676,7 @@ const en: Dict = {
   listsSub: "Group your titles however you like \u2014 a list for every mood.",
   listNamePlaceholder: "New list name\u2026",
   listCreate: "Create",
+  listNameRequired: "Type a list name first",
   listsEmpty: "No lists yet \u2014 type a name above to start.",
   listCount: (n: number) => (n === 0 ? "Empty" : `${n} title${n === 1 ? "" : "s"}`),
   listContentCount: (shows: number, movies: number) =>
