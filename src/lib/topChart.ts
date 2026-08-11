@@ -344,7 +344,16 @@ export async function tmdbTopRail(
         });
   if (cleaned.length === 0) return [];
 
-  const ranked = rankByImdb(await withImdbRatings(cleaned), { want });
+  /* 🔴 **والقصُّ هنا لا في `rankByImdb`، وهذا عطلٌ وقع ويُقال:**
+     `rankByImdb` **لا تقصّ** — تُرجع كلَّ ما عبر حاجزَ الأصوات مرتَّباً،
+     و`want` عندها معناه «كم أحتاج قبل أن ألّين الحاجز» لا «كم أُرجع».
+     فرفٌّ عنوانُه «أفضل ٥٠» عرض **١٥٧ فيلماً و١٢٢ مسلسلاً** (بلاغ أحمد
+     بلقطة: The Kardashians بـ٤٫٥ في المرتبة ١٢٢) — **وذيلُه كلُّه أعمالٌ
+     لم يكن لها أن تُعرض**.
+     **وD-185 لم يخلقه بل كشفه وضاعفه:** البِركةُ الأوسع تعني صفوفاً أكثر
+     تعبر الحاجز، فطال الذيلُ حتى صار يُرى. **عنوانٌ يقول رقماً وصفٌّ يعرض
+     ثلاثة أضعافه يكذب مرّتين: في العدد وفي معنى «الأفضل».** */
+  const ranked = rankByImdb(await withImdbRatings(cleaned), { want }).slice(0, want);
   if (ranked.length === 0) return [];
 
   const localized = await localizeRows(
