@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Icon } from "./Icon";
 import { timeAgo } from "@/lib/when";
 import { getDict, type Locale } from "@/lib/i18n";
-import { NEWS_SOURCES } from "@/lib/news";
+import { NEWS_SOURCES, decodeEntities } from "@/lib/news";
 import type { NewsFeedItem } from "@/lib/data";
 
 /**
@@ -60,12 +60,12 @@ export function NewsFeed({ items, locale }: { items: NewsFeedItem[]; locale: Loc
                 rel="noopener noreferrer nofollow"
                 className="block text-[15px] leading-snug font-semibold hover:text-accent transition"
               >
-                {n.title}
+                {decodeEntities(n.title)}
               </a>
 
               {n.summary && (
                 <p className="mt-1.5 text-[13px] leading-snug text-muted line-clamp-2">
-                  {n.summary}
+                  {decodeEntities(n.summary)}
                 </p>
               )}
 
