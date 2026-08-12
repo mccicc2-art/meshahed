@@ -138,6 +138,68 @@ const RAIL_MUTED_LANGS = new Set([
 const ANIMATION_GENRE = 16;
 
 /**
+ * هل هذا الصفُّ أنمي؟ — **من حقلَي الصفّ نفسه بلا نداءٍ ثانٍ.**
+ *
+ * `isAnime` في `tmdb.ts` تقرأ `genres` و`origin_country` وهما في
+ * **التفاصيل** لا في نتائج القوائم. وصفوف `/trending` و`/discover`
+ * و`/now_playing` تحمل `genre_ids` و`original_language` — **نفس المعنى
+ * بحقلين آخرين، بصفر نداءات.**
+ *
+ * ⚠️ **وسكنُها هنا مقصود:** كانت في `news/page.tsx` وحدها، **ونظيرتُها
+ * للغة لم تكن موجودةً هناك إطلاقاً** — فسكن التعريفان معاً إلى جانب
+ * `RAIL_MUTED_LANGS` و`filterRail`، **فصار «ما يغادر رفّاً» ملفّاً واحداً**
+ * لا اثنين يفترقان (D-145، والدرسُ الذي كلّفنا D-175).
+ */
+export function looksAnime(r: { genre_ids?: number[]; original_language?: string }): boolean {
+  return (r.genre_ids ?? []).includes(ANIMATION_GENRE) && r.original_language === "ja";
+}
+
+/** لغةٌ مكتومةٌ عن الرفوف الافتراضية — تُقرأ من الصفّ، بلا نداء */
+export function looksMutedLang(r: { original_language?: string }): boolean {
+  return !!r.original_language && RAIL_MUTED_LANGS.has(r.original_language);
+}
+
+/**
+ * **حارسُ الرفوف الجاهزة — واحدٌ لكل رفٍّ في اكتشف** (D-194، بلاغ أحمد:
+ * «مشكلة الكوري الي كانت في top 50 انتشرت في كل شي، في الأب‑كومينج وكل
+ * مكان»).
+ *
+ * **والبلاغُ كان دقيقاً، والسببُ أنّ العلاج كان في المكان الخطأ:** كتمُ
+ * اللغات (D-188/D-189) عاش داخل `filterRail` — وهي حارسُ **قائمة IMDb**
+ * وحدها. فرفوفُ «أفضل ١٠» و«القادم» و«في السينما» تأتي من `/trending`
+ * و`/discover`، **ولم تكن تمرّ به قطّ**. فبدا أنّ المشكلة «انتشرت»،
+ * وهي لم تُعالَج في تلك الرفوف أصلاً.
+ *
+ * **وثمنُه صفر:** صفوفُ TMDB تحمل `original_language` و`genre_ids` معها،
+ * فالحُكمُ يقع على الصفّ الذي بين يديك بلا طلبٍ ثانٍ — **بخلاف
+ * `filterRail`** التي تحرس `imdb_chart` ولا تحمل تلك القائمةُ لغةً
+ * فتلزمها التفاصيل.
+ *
+ * **والقاعدة التي طلبها أحمد بنصّها: «خلّها تظهر إذا شخص حدّد جنسيتهم
+ * فقط»** — فالكتمُ يسقط لحظةَ يختار المستخدم لغةً أو بلداً
+ * (`unmute`)، ويعود إن أزالهما. **قرارُ موضعٍ لا قرارُ جودة** (نفس
+ * تفريق D-165/D-189).
+ *
+ * ⚠️ **ولا يُطبَّق على الصفوف الشخصية** — «مقترح لك» و«من فنّانيك»
+ * مبنيّان على مكتبة المستخدم ومن يتابعه. **كتمُ لغةٍ اختارها هو بنفسه
+ * ليس تحريراً بل تجاهلٌ لذوقه**، وهو ما لم يطلبه أحد.
+ */
+export function railGuard<T extends { genre_ids?: number[]; original_language?: string }>(
+  rows: T[],
+  opts: { anime?: "drop" | "keep" | "only"; unmute?: boolean } = {},
+): T[] {
+  const anime = opts.anime ?? "drop";
+  return rows.filter((r) => {
+    const isAnime = looksAnime(r);
+    if (anime === "drop" && isAnime) return false;
+    if (anime === "only" && !isAnime) return false;
+    /* رفُّ الأنمي يابانيٌّ بطبعه، فكتمُ لغةٍ فيه لا معنى له (D-189) */
+    if (anime !== "only" && !opts.unmute && looksMutedLang(r)) return false;
+    return true;
+  });
+}
+
+/**
  * كم صفّاً نطلبه من القائمة لكل صفٍّ نعرضه — هامشٌ يُعوّض ما يسقط.
  *
  * **اتّسع من ١٫٦ إلى ٢٫٢ (D-189):** كان يُعوّض الوثائقيات والأنمي، فصار
