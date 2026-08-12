@@ -782,6 +782,14 @@ const ar = {
         ? `الموسم ${n} من «${name}» ينطلق ${date}`
         : `موسمٌ جديد من «${name}» ينطلق ${date}`,
   newsTheatrical: (name: string, date: string) => `رسمياً: «${name}» في الصالات ${date}`,
+  newsChart: (name: string, rank: number) => `«${name}» دخل قائمة أفضل ٥٠ عندنا — المركز ${rank}`,
+  newsProvider: (name: string, on: string) => `«${name}» صار متاحاً على ${on} في السعودية`,
+  newsProviderAny: (name: string) => `«${name}» صار متاحاً على منصّةٍ جديدة في السعودية`,
+  newsRenewed: (name: string, n: number) =>
+    n > 0 ? `تجدّد «${name}» لموسمٍ ${n}` : `تجدّد «${name}» لموسمٍ جديد`,
+  newsCanceled2: (name: string) => `أُلغي «${name}»`,
+  newsDelayed: (name: string) => `تأجّل «${name}»`,
+  newsPerSource: (src: string) => `بحسب ${src}`,
   newsOutNow: (name: string) => `صدر «${name}»`,
   // الأخبار الحقيقية (D-209)
   newsRealTitle: "آخر الأخبار",
@@ -1807,6 +1815,14 @@ const en: Dict = {
         ? `Season ${n} of “${name}” premieres ${date}`
         : `A new season of “${name}” premieres ${date}`,
   newsTheatrical: (name: string, date: string) => `Official: “${name}” hits theatres ${date}`,
+  newsChart: (name: string, rank: number) => `“${name}” entered our Top 50 — at #${rank}`,
+  newsProvider: (name: string, on: string) => `“${name}” is now streaming on ${on} in Saudi Arabia`,
+  newsProviderAny: (name: string) => `“${name}” landed on a new streamer in Saudi Arabia`,
+  newsRenewed: (name: string, n: number) =>
+    n > 0 ? `“${name}” is renewed for season ${n}` : `“${name}” is renewed for another season`,
+  newsCanceled2: (name: string) => `“${name}” has been cancelled`,
+  newsDelayed: (name: string) => `“${name}” has been delayed`,
+  newsPerSource: (src: string) => `via ${src}`,
   newsOutNow: (name: string) => `“${name}” is out`,
   newsRealTitle: "Latest news",
   newsRealHint: "Headlines from news sources — in your interface language, credited to their source.",

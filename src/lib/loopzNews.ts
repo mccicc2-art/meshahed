@@ -33,7 +33,10 @@ export type NewsKind =
   | "status"
   | "season_date"
   | "theatrical"
-  | "released";
+  | "released"
+  | "chart"
+  | "provider"
+  | "report";
 
 export interface Snapshot {
   tmdb_id: number;
@@ -47,6 +50,10 @@ export interface Snapshot {
   next_season_date: string | null;
   next_season_num: number | null;
   theatrical_date: string | null;
+  /** رتبةُ العمل في قائمتنا — **من جدولنا لا من TMDB**: خبرٌ بصفر نداءات */
+  chart_rank: number | null;
+  /** معرّفاتُ منصّات الاشتراك في السعودية، مرتّبةً ومفصولةً بفاصلة */
+  providers: string | null;
 }
 
 /** «اليوم» بصيغة `YYYY-MM-DD` — والمقارنةُ نصّيةٌ لأن الصيغة مرتَّبة معجمياً */
@@ -85,9 +92,22 @@ function day(v: unknown): string | null {
 async function readTitle(
   tmdbId: number,
   mediaType: "tv" | "movie",
+  chartRank: number | null,
 ): Promise<{ snap: Snapshot; title: string; poster: string | null } | null> {
   try {
-    const { getTv, getMovie, getTrailer, movieTheatricalDate } = await import("@/lib/tmdb");
+    const { getTv, getMovie, getTrailer, movieTheatricalDate, getWatchProviders } = await import(
+      "@/lib/tmdb"
+    );
+    /* **منصّاتُ السعودية وحدها**: الخبرُ يقول «صار متاحاً في السعودية»،
+       وسلسلةُ جيرانٍ تجعل الجملةَ تكذب على من يقرؤها هنا. والاشتراكُ
+       (`flatrate`) لا الشراء: «صار على نتفليكس» خبر، و«صار للشراء بـ٤٩
+       ريالاً» ليس كذلك. */
+    const prov = await getWatchProviders(mediaType, tmdbId, ["SA"]).catch(() => null);
+    const providers =
+      (prov?.options.flatrate ?? [])
+        .map((x) => x.provider_id)
+        .sort((a, b) => a - b)
+        .join(",") || null;
     if (mediaType === "tv") {
       const tv = await getTv(tmdbId);
       const trailer = await getTrailer("tv", tmdbId).catch(() => null);
@@ -111,6 +131,8 @@ async function readTitle(
           next_season_date: upcoming ? day(upcoming.air_date) : null,
           next_season_num: upcoming ? upcoming.season_number : null,
           theatrical_date: null,
+          chart_rank: chartRank,
+          providers,
         },
       };
     }
@@ -135,6 +157,8 @@ async function readTitle(
         next_season_date: null,
         next_season_num: null,
         theatrical_date: theatrical,
+        chart_rank: chartRank,
+        providers,
       },
     };
   } catch {
@@ -259,7 +283,38 @@ export function diffToPosts(
     });
   }
 
-  /* ٧) **صدر فعلاً** — الحالةُ عبرت إلى `Released`. خبرٌ ينتظره من وضع
+  /* ٧) **دخل قائمتنا** — أرخصُ خبرٍ نملكه: رتبةٌ من جدولنا بلا نداء.
+     والحدُّ خمسون لأنه اسمُ الرفّ الذي يراه المستخدم («أفضل ٥٠»). */
+  if (
+    after.chart_rank !== null &&
+    after.chart_rank <= 50 &&
+    (before.chart_rank === null || before.chart_rank > 50)
+  ) {
+    out.push({
+      ...base,
+      kind: "chart",
+      key: `chart:${id}:${after.chart_rank}`,
+      data: { rank: after.chart_rank },
+    });
+  }
+
+  /* ٨) **صار متاحاً على منصّة** — معرّفٌ جديد في قائمة الاشتراك.
+     **ولا خبرَ من لقطةٍ فارغة**: من لم نكن نعرف منصّاتِه لا نقول إنها
+     «صارت» — قد تكون هناك منذ سنة. */
+  if (after.providers && before.providers !== null) {
+    const had = new Set(before.providers.split(",").filter(Boolean));
+    const fresh = after.providers.split(",").filter((x) => x && !had.has(x));
+    if (fresh.length) {
+      out.push({
+        ...base,
+        kind: "provider",
+        key: `provider:${id}:${fresh[0]}`,
+        data: { provider: Number(fresh[0]) || 0 },
+      });
+    }
+  }
+
+  /* ٩) **صدر فعلاً** — الحالةُ عبرت إلى `Released`. خبرٌ ينتظره من وضع
      الفيلم في قائمته منذ شهور. */
   if (
     after.media_type === "movie" &&
@@ -393,13 +448,19 @@ export async function runNewsSlice(limit = 26): Promise<{
   const supabase = await createClient();
 
   const { data: slice } = await supabase.rpc("news_watch_slice", { p_limit: limit });
-  const rows = (slice ?? []) as { tmdb_id: number; media_type: "tv" | "movie" }[];
+  const rows = (slice ?? []) as {
+    tmdb_id: number;
+    media_type: "tv" | "movie";
+    chart_rank: number | null;
+  }[];
   if (!rows.length) return { checked: 0, posts: 0, snapshots: 0 };
 
   const keys = rows.map((r) => r.tmdb_id);
   const { data: prevRows } = await supabase
     .from("title_snapshots")
-    .select("tmdb_id, media_type, status, release_date, next_air_date, seasons, trailer_key")
+    .select(
+      "tmdb_id, media_type, status, release_date, next_air_date, seasons, trailer_key, last_air_date, next_season_date, next_season_num, theatrical_date, chart_rank, providers",
+    )
     .in("tmdb_id", keys);
   const prev = new Map<string, Snapshot>();
   for (const s of (prevRows ?? []) as Snapshot[]) {
@@ -413,7 +474,7 @@ export async function runNewsSlice(limit = 26): Promise<{
   const CHUNK = 6;
   for (let i = 0; i < rows.length; i += CHUNK) {
     const got = await Promise.all(
-      rows.slice(i, i + CHUNK).map((r) => readTitle(r.tmdb_id, r.media_type)),
+      rows.slice(i, i + CHUNK).map((r) => readTitle(r.tmdb_id, r.media_type, r.chart_rank ?? null)),
     );
     for (const g of got) {
       if (!g) continue;

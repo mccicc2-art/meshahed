@@ -2909,7 +2909,9 @@ export async function refreshNewsNow(): Promise<number> {
 
 export interface LoopzNewsItem {
   key: string;
-  kind: "trailer" | "date" | "season" | "status" | "season_date" | "theatrical" | "released";
+  kind:
+    | "trailer" | "date" | "season" | "status" | "season_date" | "theatrical"
+    | "released" | "chart" | "provider" | "report";
   tmdb_id: number;
   media_type: "tv" | "movie";
   title: string;
@@ -2955,8 +2957,11 @@ export async function getNewsGenStale(minutes = 30): Promise<boolean> {
 export async function refreshLoopzNews(): Promise<number> {
   try {
     const { runNewsSlice } = await import("@/lib/loopzNews");
+    const { runReportSlice } = await import("@/lib/newsReports");
     const r = await runNewsSlice();
-    return r.posts;
+    /* **ودفعةُ الصحافة معها**: الحدثُ من عندهم والجملةُ من عندنا (D-213) */
+    const rep = await runReportSlice().catch(() => ({ saved: 0 }));
+    return r.posts + rep.saved;
   } catch {
     return 0;
   }
