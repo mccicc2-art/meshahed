@@ -2,7 +2,6 @@ import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import {
   getUser,
-  getFollowedArtists,
   getPublicListsFeed,
 } from "@/lib/data";
 import { PublicListsRail } from "@/components/PublicListsRail";
@@ -15,20 +14,14 @@ import { awardBySlug, awardBody, awardWins } from "@/lib/awards";
 import { Icon } from "@/components/Icon";
 import Image from "next/image";
 import {
-  upcomingMovies,
-  airingTv,
-  topTenThisWeek,
   topTenAnimeThisWeek,
   topTenAnimeMoviesThisWeek,
-  topTenGenreThisWeek,
   keywordId,
   companyId,
   ANIME_KEYWORD,
-  upcomingByGenre,
   topByFilter,
   topRatedRows,
   awardWinners,
-  worksByPeople,
   upcomingByFilter,
   nowPlayingMovies,
   listWatchProviders,
@@ -53,7 +46,6 @@ import {
   parseDiscoverTab,
   parseRailWin,
   browseKey,
-  needsDiscover,
   eraRange,
   seasonRange,
   browseHref,
@@ -583,7 +575,11 @@ async function CuratedRails({
 
   const wantMovies = type !== "tv";
   const wantSeries = type !== "movie";
-  const deep = needsDiscover(browse);
+  /* **`needsDiscover` غادر هذه الصفحة إلى `sections.ts` (D-199):** هو
+     السؤالُ «هل يتجاوز الفلترُ ما تقدر عليه قوائمُ TMDB الجاهزة؟»، وقد
+     صار جوابُه داخلَ بناءِ القسم حيث يُستعمل — **لا هنا حيث كان يُحسب
+     ثم يُمرَّر إلى فرعٍ يقرّر**. والدالّةُ باقيةٌ في `browse.ts` لأنها
+     تُقرأ هناك، ولا مستدعيَ لها في هذا الملفّ بعد اليوم. */
 
   /* «القادم» نمطٌ لا مدى: ما لم يصدر لا أصوات له، فصفّا «أفضل ١٠»
      يكذبان أو يفرغان — يسقطان، ويحمل صفُّ العدّ التنازلي وحده النتيجة
@@ -621,30 +617,27 @@ async function CuratedRails({
   const back30 = new Date();
   back30.setUTCDate(back30.getUTCDate() - 30);
   const monthFrom = back30.toISOString().slice(0, 10);
-  const topFor = (mt: "movie" | "tv", genreIds: number[] | undefined, w: RailWin) => {
-    if (w === "year") {
-      return topByFilter(
-        mt,
-        { ...base, from: `${y}-01-01`, to: `${y}-12-31`, genreIds },
-        10,
-        "popularity.desc",
-      ).catch(() => [] as SearchResult[]);
-    }
-    if (w === "month") {
-      return topByFilter(
-        mt,
-        { ...base, from: monthFrom, to: todayStr, genreIds },
-        10,
-        "popularity.desc",
-      ).catch(() => [] as SearchResult[]);
-    }
-    // أسبوع
-    return deep
-      ? topByFilter(mt, { ...base, genreIds }).catch(() => [] as SearchResult[])
-      : genreIds
-        ? topTenGenreThisWeek(mt, genreIds).catch(() => [] as SearchResult[])
-        : topTenThisWeek(mt).catch(() => [] as SearchResult[]);
-  };
+  /**
+   * **صار غلافاً على السجلّ (D-199)** — ثلاثةُ فروعٍ للنوافذ كانت مكتوبةً
+   * هنا **وثلاثةٌ مثلها في `sections.ts`**. والمدى وحده يُحسب هنا لأنه
+   * تاريخٌ يخصّ هذه الصفحة، **والقرارُ الذي يليه ملكُ السجلّ**.
+   *
+   * **ولماذا يهمّ العميل:** رقائقُ «أسبوع/شهر/سنة» تعِد بأنّ الضغط على
+   * العنوان يفتح **نفسَ النافذة** موسَّعةً — فلو اختلف الفرعُ بين الملفّين
+   * لرأى شهراً في الصفحة وأسبوعاً في الصفّ، **وهو لا يعرف أنه رأى شيئين**.
+   */
+  const winRangeOf = (w: RailWin) =>
+    w === "year"
+      ? { from: `${y}-01-01`, to: `${y}-12-31` }
+      : w === "month"
+        ? { from: monthFrom, to: todayStr }
+        : null;
+  const topFor = (mt: "movie" | "tv", genreIds: number[] | undefined, w: RailWin) =>
+    buildSection(
+      "top-ten",
+      { media: mt, base, genreIds, active, win: w, winRange: winRangeOf(w) },
+      10,
+    );
 
   /* **ولا صفَّ أنمي هنا بعد اليوم (D-169):** صار له تبويبه بستّة صفوف،
      فبقاؤه هنا يعني الصفَّ نفسه في بابين — ونسخةٌ ثانية من معنًى واحد
@@ -727,32 +720,33 @@ async function CuratedRails({
          هنا لا في `fitsCinema`: تلك تُطبَّق **حين يكون الفلتر مفعّلاً
          وحده** (انظر `inCinemas` أدناه)، فحارسٌ فيها يترك الصفَّ الافتراضيّ
          — وهو ما يراه أكثرُ الناس — بلا حراسة. */
+      /* **ومنها إلى `buildSection` (D-199):** الصفوفُ من السجلّ، **والمنطقةُ
+         وحدها تبقى هنا** — لأن اسمَ البلد يُطبع في سطرٍ تحت العنوان
+         (D-150: من يقرأ سعراً يجب أن يعرف لأيّ سوق). فالسجلُّ يملك
+         «ما يُعرض»، والصفحةُ تملك «أين». */
       wantMovies
-        ? nowPlayingMovies()
-            .then(async (c) =>
-              c
-                ? {
-                    region: c.region,
-                    results: await attachImdbRatings(railGuard(c.results, { unmute })),
-                  }
+        ? Promise.all([
+            buildSection("in-cinemas", { media: "movie", base, genreIds: genre?.movie, active }, 20),
+            nowPlayingMovies().catch(() => null),
+          ])
+            .then(async ([results, c]) =>
+              results.length && c
+                ? { region: c.region, results: await attachImdbRatings(results) }
                 : null,
             )
             .catch(() => null)
         : Promise.resolve(null),
-      // «القادم» يفتح صفّ العدّ التنازلي في كل النوافذ — هو النتيجة كلّها هناك
+      /* «القادم» يفتح صفّ العدّ التنازلي في كل النوافذ — هو النتيجة كلّها
+         هناك. **ومصدرُه صار السجلَّ (D-199):** كان يُبنى هنا بثلاثة فروع
+         (فلتر · نوع · قائمةٌ جاهزة) **وفي `sections.ts` بثلاثةٍ مثلها** —
+         ففرعٌ يتغيّر في أحدهما يجعل الصفحةَ تعرض غيرَ ما وعد الصفّ.
+         **والعميلُ هو من يدفع ذلك الفرق**: يضغط «القادم قريباً» فيرى
+         قائمةً أخرى، فيقرؤها عطلاً لا اختلافَ نطاق. */
       wantMovies
-        ? deep
-          ? upcomingByFilter("movie", { ...base, genreIds: genre?.movie })
-          : genre
-            ? upcomingByGenre(genre.movie, "movie")
-            : upcomingMovies().catch(() => [] as SearchResult[])
+        ? buildSection("upcoming", { media: "movie", base, genreIds: genre?.movie, active }, 20)
         : Promise.resolve([] as SearchResult[]),
       wantSeries
-        ? deep
-          ? upcomingByFilter("tv", { ...base, genreIds: genre?.tv })
-          : genre
-            ? upcomingByGenre(genre.tv, "tv")
-            : airingTv().catch(() => [] as SearchResult[])
+        ? buildSection("upcoming", { media: "tv", base, genreIds: genre?.tv, active }, 20)
         : Promise.resolve([] as SearchResult[]),
       /* ذيول «أفضل ٥٠» — **من نفس بِركة «أفضل ٢٥٠» لا من بِركةٍ ثانية**
          (D-164، بلاغ أحمد ١١ أغسطس).
@@ -1284,10 +1278,10 @@ async function PersonalRails({
        نفسه مقلوباً، والصمتُ أصدق من صفٍّ في غير بابه */
     /* ولا «من فنّانيك» في تبويب الأنمي: الصفّ أفلامٌ لممثّلين تتابعهم
        (D-062)، ووضعُه تحت عنوان أنمي وعدٌ يُخلَف (D-141) */
+    /* **ومنه إلى السجلّ (D-199)** — فما يفتحه ضغطُ العنوان هو نفسُ ما
+       يعرضه الصفّ. **وهذا القسمُ لا يُكتم** (انظر تعليقه في `sections.ts`). */
     wantMovies && !anime
-      ? getFollowedArtists(20)
-          .then((a) => (a.length ? worksByPeople(a.map((x) => x.person_id), 20) : []))
-          .catch(() => [] as SearchResult[])
+      ? buildSection("from-artists", { media: "movie", base: {}, active: false }, 20)
       : Promise.resolve([] as SearchResult[]),
   ]);
 
