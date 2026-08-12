@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { posterUrl } from "@/lib/media";
+import { backdropUrl, posterUrl } from "@/lib/media";
 import { getDict, type Locale } from "@/lib/i18n";
 import { Icon } from "./Icon";
 import type { UserList } from "@/lib/data";
@@ -46,6 +46,9 @@ export function ListManager({ lists, locale }: { lists: UserList[]; locale: Loca
             const posters = (l.posters ?? [])
               .map((p) => posterUrl(p, "w185"))
               .filter(Boolean) as string[];
+            /* غلافُ القائمة إن اختاره صاحبها (D-208) — وغيابُه يعني
+               الملصقات كما هي اليوم بالضبط (قاعدة D-152) */
+            const cover = backdropUrl(l.cover_backdrop ?? null, "w780");
             // عدّاد ديناميكي حسب المحتوى الفعلي؛ وقبل تشغيل SQL يسقط إلى العدّ الكلّي
             const hasBreakdown =
               typeof l.shows_count === "number" || typeof l.movies_count === "number";
@@ -91,9 +94,23 @@ export function ListManager({ lists, locale }: { lists: UserList[]; locale: Loca
                   </Link>
                 </div>
 
-                {/* صفُّ الملصقات: رابطٌ إلى القائمة، يمرّر أفقياً عند الفيض */}
+                {/* صفُّ الملصقات: رابطٌ إلى القائمة، يمرّر أفقياً عند الفيض.
+                    **وحين يختار صاحبُها غلافاً** (D-208) يحلّ محلَّ الصفّ لا
+                    فوقه: بطاقةٌ تحمل غلافاً **و**صفَّ ملصقاتٍ تقول الشيء
+                    مرّتين بارتفاعٍ مضاعف. والغلافُ خلفيّةٌ ١٦:٩ أصلاً لا
+                    ملصقاً مقصوصاً — فلا يقع القصُّ على وجهٍ ولا اسم (D-206) */}
                 <Link href={`/lists/${l.id}`} className="block">
-                  {posters.length > 0 ? (
+                  {cover ? (
+                    <div className="relative mt-2 aspect-[16/9] rounded-lg overflow-hidden bg-surface-2 border border-[color:var(--background)]">
+                      <Image
+                        src={cover}
+                        alt=""
+                        fill
+                        sizes="(max-width: 640px) 100vw, 420px"
+                        className="object-cover"
+                      />
+                    </div>
+                  ) : posters.length > 0 ? (
                     <div className="mt-2 -mx-2.5 px-2.5 scroll-px-2.5 overflow-x-auto overscroll-x-contain snap-x snap-proximity [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                       <div className="flex gap-2 w-max pb-0.5">
                         {posters.map((url, i) => (

@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { deleteList, renameList, reorderList, setListKind, toggleInList, saveList } from "@/lib/actions";
-import { posterUrl } from "@/lib/media";
+import { backdropUrl, posterUrl } from "@/lib/media";
 import { tap } from "@/lib/haptics";
 import { toast, flashError } from "@/lib/toast";
 import { getDict, type Locale } from "@/lib/i18n";
@@ -15,6 +15,7 @@ import { Sheet, SheetHeader } from "./ui/Sheet";
 import { buttonClass } from "./ui/Button";
 import { sheetScroll } from "./ui/controls";
 import { ShareListSheet } from "./ShareListSheet";
+import { ListCoverSheet } from "./ListCoverSheet";
 import { TitleSearchSheet, type PickedTitle } from "./TitleSearchSheet";
 
 type Dict = ReturnType<typeof getDict>;
@@ -50,6 +51,7 @@ export function ListDetail({
   owner,
   locale,
   initialSaved,
+  cover,
 }: {
   listId: string;
   name: string;
@@ -65,6 +67,13 @@ export function ListDetail({
   locale: Locale;
   /** حالة الحفظ لغير المالك (D-068) — الغياب يعني زائراً بلا حساب فلا زرّ */
   initialSaved?: boolean | null;
+  /** غلافُ القائمة (D-208) — يُعرض لكل من يفتحها، ولا يبدّله إلا صاحبها.
+      الغيابُ (أو هجرةٌ لم تُشغَّل بعد) يعني صفحةً كما كانت بالضبط */
+  cover?: {
+    backdrop: string | null;
+    tmdbId?: number | null;
+    mediaType?: "tv" | "movie" | null;
+  } | null;
 }) {
   const t = getDict(locale);
   const router = useRouter();
@@ -101,7 +110,7 @@ export function ListDetail({
   }
   const [removed, setRemoved] = useState<Set<string>>(new Set());
   const [sheet, setSheet] = useState<
-    "menu" | "rename" | "type" | "reorder" | "delete" | "share" | "add" | null
+    "menu" | "rename" | "type" | "reorder" | "delete" | "share" | "add" | "cover" | null
   >(null);
   /* الأعمال المضافة في هذه الجلسة تُرسم فوراً ثم يلحق `router.refresh()`:
      الانتظار كان سيجعل الورقة تُغلق على شبكةٍ لم تتغيّر، فيُقرأ الفعل
@@ -124,6 +133,9 @@ export function ListDetail({
   }, [items, added, removed, order]);
 
   const numbered = NUMBERED.includes(kind);
+  /* `w780` لا الأصل: الغلافُ يُرسم بعرض الصفحة على الجوال، والأصلُ ملفٌّ
+     بحجم ثلاثة أضعافه لا تراه العين (نفس مقاس منتقي D-131) */
+  const coverUrl = backdropUrl(cover?.backdrop ?? null, "w780");
 
   function remove(it: ListItem) {
     setRemoved((prev) => new Set(prev).add(keyOf(it)));
@@ -221,6 +233,22 @@ export function ListDetail({
 
   return (
     <div>
+      {/* الغلاف فوق الاسم لا خلفه (D-208): نصٌّ فوق صورةٍ لا يملكها
+          المصمّم يعني تباينَ لونٍ يتغيّر مع كل قائمة — والاسمُ أهمّ من
+          أن يُقامر به. وحين لا غلاف لا يبقى فراغُه: العنصرُ غائبٌ أصلاً */}
+      {coverUrl && (
+        <div className="relative mb-4 -mx-1 aspect-[16/9] sm:aspect-[21/9] rounded-2xl overflow-hidden bg-surface-2 border border-[color:var(--background)]">
+          <Image
+            src={coverUrl}
+            alt=""
+            fill
+            sizes="(max-width: 640px) 100vw, 640px"
+            priority
+            className="object-cover"
+          />
+        </div>
+      )}
+
       {/* الترويسة: الاسم يملأ السطر وزرّ الخيارات وحده على الطرف — كان
           القلم يزاحم الاسم على شاشةٍ ضيّقة فيقصّه بلا داعٍ */}
       <div className="flex items-start gap-3 mb-1.5">
@@ -389,6 +417,14 @@ export function ListDetail({
           {/* مشاركة القائمة — في المجتمع (تظهر في ملفّك العام) أو خارج
               التطبيق (رابط). بابٌ واحد لكل فعل، فمكانها هنا لا على البطاقة */}
           <MenuRow icon="share" label={t.listShare} onClick={() => setSheet("share")} />
+          {/* غلافُ القائمة (D-208): بابٌ واحد لفعلٍ واحد — من قائمة النقاط
+              لا من البطاقة، كما التسميةُ والنوعُ والحذف */}
+          <MenuRow
+            icon="image"
+            label={t.listCover}
+            value={cover?.backdrop ? t.listCoverSet : undefined}
+            onClick={() => setSheet("cover")}
+          />
           <MenuRow
             icon="list"
             label={t.listType}
@@ -408,6 +444,22 @@ export function ListDetail({
           )}
           <MenuRow icon="trash" label={t.listDeleteThis} danger onClick={() => setSheet("delete")} />
         </Sheet>
+      )}
+
+      {sheet === "cover" && (
+        <ListCoverSheet
+          listId={listId}
+          /* الأعمالُ المرئية لا الأصلية: من حذف عملاً قبل قليل لا يُعرض
+             عليه غلافٌ من عملٍ لم يعد في قائمته */
+          items={visible}
+          current={{
+            tmdbId: cover?.tmdbId ?? null,
+            mediaType: cover?.mediaType ?? null,
+            backdrop: cover?.backdrop ?? null,
+          }}
+          locale={locale}
+          onClose={() => setSheet(null)}
+        />
       )}
 
       {sheet === "share" && (
