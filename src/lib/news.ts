@@ -111,8 +111,57 @@ export const NEWS_SOURCES: NewsSource[] = [
   {
     slug: "crunchyroll",
     label: "Crunchyroll",
-    url: "https://www.crunchyroll.com/newsrss",
+    url: "https://www.crunchyroll.com/news/rss",
     lang: "en",
+    precision: "unknown",
+    candidate: true,
+  },
+  // ===== مرشّحون عرب — الطرفُ الفقير، ويُوسَّع بالفحص لا بالظنّ =====
+  {
+    slug: "youm7-art",
+    label: "اليوم السابع — فن",
+    url: "https://www.youm7.com/rss/SectionRss?SectionID=42",
+    lang: "ar",
+    precision: "unknown",
+    candidate: true,
+  },
+  {
+    slug: "ahram-arts",
+    label: "بوابة الأهرام — فنون",
+    url: "https://gate.ahram.org.eg/rss/32.aspx",
+    lang: "ar",
+    precision: "unknown",
+    candidate: true,
+  },
+  {
+    slug: "elfann",
+    label: "الفن",
+    url: "https://www.elfann.com/rss/news.xml",
+    lang: "ar",
+    precision: "unknown",
+    candidate: true,
+  },
+  {
+    slug: "skynews-arabia-var",
+    label: "سكاي نيوز عربية — منوعات",
+    url: "https://www.skynewsarabia.com/web/rss/varieties.xml",
+    lang: "ar",
+    precision: "unknown",
+    candidate: true,
+  },
+  {
+    slug: "euronews-arabic-culture",
+    label: "يورونيوز عربي — ثقافة",
+    url: "https://arabic.euronews.com/rss?level=vertical&name=culture",
+    lang: "ar",
+    precision: "unknown",
+    candidate: true,
+  },
+  {
+    slug: "aljazeera-culture",
+    label: "الجزيرة — فنون وثقافة",
+    url: "https://www.aljazeera.net/xml/rss/all.xml",
+    lang: "ar",
     precision: "unknown",
     candidate: true,
   },
@@ -224,7 +273,9 @@ export async function fetchFeed(
       /* بعضُ المواقع ترفض الطلبَ بلا وكيل — وليس تنكّراً: اسمُنا فيه
          ورابطُنا، فمن أراد منعَنا يستطيع */
       headers: {
-        "user-agent": "LoopzBot/1.0 (+https://loopztv.com)",
+        /* يبدأ بـ`Mozilla/5.0` **لا تنكّراً**: اسمُنا ورابطُنا باقيان فيه،
+           لكنّ جدرانَ الحماية (مصراوي منها) ترفض كلَّ ما لا يبدأ بها */
+        "user-agent": "Mozilla/5.0 (compatible; LoopzBot/1.0; +https://loopztv.com)",
         accept: "application/rss+xml, application/xml, text/xml, */*",
       },
       cache: "no-store",
