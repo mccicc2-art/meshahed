@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getUser } from "@/lib/data";
 import { allow, retryAfter } from "@/lib/ratelimit";
 import { runNewsSlice } from "@/lib/loopzNews";
+import { runReportSlice } from "@/lib/newsReports";
 
 /** ستّةٌ وعشرون عملاً × نداءين — والدفعةُ تنتهي في ثوانٍ */
 export const maxDuration = 60;
@@ -34,5 +35,12 @@ export async function GET(request: Request) {
 
   const t0 = Date.now();
   const r = await runNewsSlice(limit);
-  return NextResponse.json({ ...r, secs: Math.round((Date.now() - t0) / 100) / 10 });
+  /* دفعةُ الصحافة في نفس الدورة — **وسقوطُها لا يُسقط رصدَ البيانات** */
+  const rep = await runReportSlice().catch(() => ({ found: 0, saved: 0 }));
+  return NextResponse.json({
+    ...r,
+    reportsFound: rep.found,
+    reportsSaved: rep.saved,
+    secs: Math.round((Date.now() - t0) / 100) / 10,
+  });
 }
