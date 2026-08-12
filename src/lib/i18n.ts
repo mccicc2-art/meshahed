@@ -799,6 +799,16 @@ const ar = {
   ratingsListTitle: "التقييمات — من الأعلى",
   inCinemas: "يُعرض الآن في السينما",
   inCinemasRegion: (c: string) => `في ${c}`,
+  /* ================= مواصفةُ اكتشف (D-195) =================
+     «الأكثر شعبية» ليست «أفضل ١٠ هذا الأسبوع»: تلك حركةُ الأسبوع
+     (`/trending`) وهذه مخزونُ شعبيةٍ تراكميّ (`/popular`). والاسمان
+     يجب أن يفرّقا ما تفرّقه البيانات، وإلا قرأهما المستخدم صفّاً مكرَّراً. */
+  mostPopularMovies: "الأكثر شعبية — أفلام",
+  mostPopularSeries: "الأكثر شعبية — مسلسلات",
+  mostPopularAnime: "الأكثر شعبية — أنمي",
+  /** «يُعرض الآن» للأنمي — نظيرُ «في السينما» في تبويب الأفلام */
+  airingNowAnime: "يُعرض الآن",
+  upcomingAnime: "أنميٌ قادم",
   topTenMovies: "أفضل ١٠ أفلام هذا الأسبوع",
   topTenSeries: "أفضل ١٠ مسلسلات هذا الأسبوع",
   topTenAnime: "أفضل ١٠ أنمي هذا الأسبوع",
@@ -1764,6 +1774,12 @@ const en: Dict = {
   ratingsListTitle: "Ratings — highest first",
   inCinemas: "Now in cinemas",
   inCinemasRegion: (c: string) => `in ${c}`,
+  // Discover structure (D-195)
+  mostPopularMovies: "Most popular movies",
+  mostPopularSeries: "Most popular shows",
+  mostPopularAnime: "Most popular anime",
+  airingNowAnime: "Airing now",
+  upcomingAnime: "Upcoming anime",
   topTenMovies: "Top 10 movies this week",
   topTenSeries: "Top 10 shows this week",
   topTenAnime: "Top 10 anime this week",

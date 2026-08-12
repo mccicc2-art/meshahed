@@ -934,6 +934,30 @@ export async function mostPopularThisWeek(): Promise<SearchResult[]> {
   return [...rows].sort((a, b) => (b.popularity ?? 0) - (a.popularity ?? 0));
 }
 
+/**
+ * **«الأكثر شعبية» لجهةٍ واحدة** — `/movie/popular` أو `/tv/popular`
+ * (D-195، مواصفةُ أحمد لاكتشف).
+ *
+ * **ولماذا لا `mostPopularThisWeek` الموجودة فوق:** تلك تقرأ
+ * `/trending/all/week` **فتخلط الأفلام بالمسلسلات** ثم تُرتّب بالشعبية —
+ * فصفٌّ منها تحت تبويب «مسلسلات» يعرض أفلاماً، وهو عطلُ D-141 نفسه.
+ * وهذه تسأل TMDB جهةً واحدة.
+ *
+ * **وهي غير «أفضل ١٠ هذا الأسبوع»** وإن تشابهتا في النظرة الأولى:
+ * `/trending` **حركةٌ** (ما يُشاهد الآن، يتغيّر كل يوم) و`/popular`
+ * **مخزونُ شعبيةٍ** تراكميّ يتغيّر ببطء. **الأولى تسأل «ما الجديد؟»
+ * والثانية «ما الذي يعرفه الناس؟»** — ولذلك تجاورهما مفيدٌ لا مكرَّر.
+ *
+ * ⚠️ **وسقفُ الصفحة الواحدة عشرون عملاً** — وهو أكثرُ ممّا يعرض الصفّ،
+ * فلا صفحةَ ثانية.
+ */
+export async function popularByMedia(mediaType: MediaType): Promise<SearchResult[]> {
+  const data = await tmdb<{ results: SearchResult[] }>(`/${mediaType}/popular`);
+  return (data.results ?? [])
+    .filter((r) => r.poster_path)
+    .map((r) => ({ ...r, media_type: mediaType }));
+}
+
 // ============================================================
 //  الترايلر وأين تشاهده
 // ============================================================
