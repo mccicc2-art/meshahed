@@ -426,39 +426,79 @@ async function CuratedCard({
     .map((m) => posterUrl(m.poster_path, "w185"))
     .filter(Boolean) as string[];
 
+  /**
+   * **صورةٌ واحدة للسلسلة، وثلاثٌ للمتنوّع** (D-204، طلب أحمد بصورتين
+   * مرجعيّتين: «الأعمال الي ضمن سلسلة واحدة حطّ صورة، والأعمال متنوّعة
+   * خلّها ٣ أو ٤»).
+   *
+   * **والقاعدةُ من معنى المجموعة لا من عددها:** «TOP 250» و«الجوائز»
+   * **تجمعان أعمالاً لا يربطها إلا معيار** — فأربعُ ملصقاتٍ تقول «هنا
+   * تنوّع»، وملصقٌ واحد كان سيوهم أن القائمة عن ذلك الفيلم. أمّا «عالم
+   * مارفل» و«حرب النجوم» **فعملٌ واحدٌ ممتدّ**، وملصقاتُه المتجاورة تُقرأ
+   * تكراراً لا تنوّعاً — **فواحدٌ أكبرُ يقول الهويّة أصدق**.
+   *
+   * **وثلاثةٌ لا أربعة في المتنوّع:** البطاقة عرضُها ثابتٌ في صفٍّ يُمرَّر،
+   * والرابعُ يجعل كلَّ ملصقٍ ٥٦px — **أصغرَ من أن يُعرف الفيلمُ منه**،
+   * فيصير زينةً لا معلومة. (وصورتُه المرجعية ثلاثة.)
+   */
+  const single = !award && !u.top;
+
   return (
     <div className={`rounded-2xl border border-border bg-surface p-2.5 ${className}`}>
-      <span className="flex items-center gap-1.5 text-[14px] font-bold truncate">
-        <Icon name={award ? "star" : "sparkle-star"} size={14} className="text-accent shrink-0" />
-        <span className="truncate">{universeName(u, loc)}</span>
+      <span className="flex items-start gap-1.5 text-[14px] font-bold">
+        <Icon
+          name={award ? "star" : "sparkle-star"}
+          size={14}
+          className="text-accent shrink-0 mt-1"
+        />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate">{universeName(u, loc)}</span>
+          <span className="block text-[12px] font-normal text-muted truncate mt-0.5">
+            {t.listCount(count)}
+            {award ? ` · ${awardBody(award, loc)}` : u.storyOrder ? ` · ${t.listsStoryOrder}` : ""}
+          </span>
+        </span>
+        {/* **رمزُ الحفظ في الزاوية** (D-204): كان زرّاً بعرض البطاقة يقول
+            «احفظها في قوائمي» — **فيُقرأ الفعلَ الأوّل وهو ليس كذلك**:
+            الأوّلُ فتحُها. والرمزُ عُرفٌ يُقرأ بلا كلمة، ويترك مساحةَ
+            الصورة للصورة. */}
+        <AddWorksToList
+          source="universe"
+          id={u.slug}
+          locale={locale}
+          label={t.curatedSaveBtn}
+          iconOnly
+        />
       </span>
-      <span className="block text-[12px] text-muted truncate mt-0.5">
-        {t.listCount(count)}
-        {award ? ` · ${awardBody(award, loc)}` : u.storyOrder ? ` · ${t.listsStoryOrder}` : ""}
-      </span>
-      <span className="mt-2 flex gap-1.5">
-        {posters.length > 0 ? (
-          posters.map((url, i) => (
+
+      {posters.length === 0 ? (
+        <span className="mt-2 grid place-items-center w-14 aspect-[2/3] rounded-lg border border-dashed border-border text-muted">
+          <Icon name="list" size={16} />
+        </span>
+      ) : single ? (
+        /* الواحدةُ أوسع: الغلافُ الأفقيّ يقول «عالمٌ» لا «فيلمٌ بعينه» —
+           ولو كان ملصقاً ٢:٣ لقُرئ بطاقةَ عملٍ واحد */
+        <span className="mt-2 relative block w-full aspect-[16/9] rounded-lg overflow-hidden bg-surface-2">
+          <Image
+            src={posters[0]}
+            alt=""
+            fill
+            sizes="(min-width:640px) 260px, 60vw"
+            className="object-cover"
+          />
+        </span>
+      ) : (
+        <span className="mt-2 flex gap-1.5">
+          {posters.slice(0, 3).map((url, i) => (
             <span
               key={i}
-              className="relative w-[calc(25%-4.5px)] aspect-[2/3] rounded-lg overflow-hidden bg-surface-2 border border-[color:var(--background)]"
+              className="relative w-[calc(33.333%-4px)] aspect-[2/3] rounded-lg overflow-hidden bg-surface-2 border border-[color:var(--background)]"
             >
-              <Image src={url} alt="" fill sizes="64px" className="object-cover" />
+              <Image src={url} alt="" fill sizes="80px" className="object-cover" />
             </span>
-          ))
-        ) : (
-          <span className="grid place-items-center w-14 aspect-[2/3] rounded-lg border border-dashed border-border text-muted">
-            <Icon name="list" size={16} />
-          </span>
-        )}
-      </span>
-      <AddWorksToList
-        source="universe"
-        id={u.slug}
-        locale={locale}
-        label={t.curatedSaveBtn}
-        className="mt-2.5 w-full justify-center"
-      />
+          ))}
+        </span>
+      )}
     </div>
   );
 }
