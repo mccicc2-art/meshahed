@@ -112,7 +112,9 @@ export default async function SectionPage({
 
   const rows = await buildSection(
     section,
-    { media, base, genreIds, active: browse.active, win, winRange },
+    /* **بلا `sample`** — الصفحةُ جردٌ مرتَّب، والقرعةُ للصفّ وحده (D-202):
+       قرعةٌ في صفحةٍ تُمرَّر تكرّر وتُسقط. و`locale` لمصدر الكلاسيكيّات. */
+    { media, base, genreIds, active: browse.active, win, winRange, locale },
     LIMIT,
   );
 
