@@ -951,11 +951,38 @@ export async function mostPopularThisWeek(): Promise<SearchResult[]> {
  * ⚠️ **وسقفُ الصفحة الواحدة عشرون عملاً** — وهو أكثرُ ممّا يعرض الصفّ،
  * فلا صفحةَ ثانية.
  */
-export async function popularByMedia(mediaType: MediaType): Promise<SearchResult[]> {
-  const data = await tmdb<{ results: SearchResult[] }>(`/${mediaType}/popular`);
-  return (data.results ?? [])
-    .filter((r) => r.poster_path)
-    .map((r) => ({ ...r, media_type: mediaType }));
+export async function popularByMedia(
+  mediaType: MediaType,
+  /**
+   * كم صفحةً تُطلب — **والصفحةُ الواحدة عشرون عملاً عند TMDB**.
+   *
+   * ⚠️ **وأُضيف بعد قياسٍ على الإنتاج لا احتياطاً:** صفحةُ القسم الكاملة
+   * طلبت ستّين فأعادت **سبعةَ عشر** — صفحةً واحدةً بعد الحارس. **وعنوانٌ
+   * يقول «القائمة الكاملة» فوق سبعةَ عشرَ عملاً يُقرأ نقصاً لا اكتمالاً.**
+   * والصفُّ يبقى على صفحةٍ واحدة: يعرض عشرين، فلا يدفع ما لا يعرض.
+   */
+  pages = 1,
+): Promise<SearchResult[]> {
+  const got = await Promise.all(
+    Array.from({ length: Math.max(1, pages) }, (_, i) =>
+      tmdb<{ results: SearchResult[] }>(`/${mediaType}/popular`, {
+        page: String(i + 1),
+      }).catch(() => ({ results: [] as SearchResult[] })),
+    ),
+  );
+  /* **ولا إسقاطَ للمتشابهات في الاسم:** «Paradise Hotel» تعود ثلاث مرّات
+     من TMDB — وهي **ثلاثةُ أعمالٍ مختلفة** (نسخٌ وطنية بمعرّفاتٍ وسنينَ
+     مختلفة). فحذفُها بالاسم يُخفي عملاً حقيقياً، **والسنةُ على البطاقة هي
+     ما يفرّقها للقارئ.** والإسقاطُ بالمعرّف وحده — وهو ما يمنع تكرارَ
+     الصفحات. */
+  const seen = new Set<number>();
+  const out: SearchResult[] = [];
+  for (const r of got.flatMap((g) => g.results ?? [])) {
+    if (!r.poster_path || seen.has(r.id)) continue;
+    seen.add(r.id);
+    out.push({ ...r, media_type: mediaType });
+  }
+  return out;
 }
 
 // ============================================================

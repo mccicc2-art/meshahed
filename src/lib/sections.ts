@@ -161,7 +161,10 @@ export async function buildSection(
           sides(media).map((mt) =>
             active || media === "anime"
               ? topByFilter(mt, { ...base, genreIds }, limit * 2, "popularity.desc")
-              : popularByMedia(mt),
+              /* صفحاتٌ بقدر الحدّ: الصفُّ صفحةٌ واحدة، والصفحةُ الكاملة
+                 ثلاث — **قِيس على الإنتاج: بلا هذا عادت الستّون سبعةَ
+                 عشر**. */
+              : popularByMedia(mt, Math.ceil((limit * 1.5) / 20)),
           ),
         );
         return guard(
