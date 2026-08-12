@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import {
   getFollows,
+  getMyListNames,
   getUser,
   getPublicListsFeed,
 } from "@/lib/data";
@@ -347,6 +348,10 @@ async function ListsDiscovery({
      صارت قوائمُهم تُعرض في خطّ المجتمع **كسائر الناس** — فلا تكرار،
      ولا استبعاد، **ولا نداء**. */
   const community = (await getPublicListsFeed(25).catch(() => [])).slice(0, 15);
+  /* **قراءةٌ واحدة لعلامات الحفظ** (D-206): بطاقاتُ المجموعات عشراتٌ في هذا
+     التبويب، **ولو سألت كلُّ بطاقةٍ عن نفسها لصارت الصفحةُ عشرين استعلاماً**.
+     و`getMyListNames` مغلَّفةٌ بـ`cache` فالنداءُ واحدٌ للطلب كلِّه. */
+  const savedNames = await getMyListNames();
 
   const loc = locale === "en" ? ("en" as const) : ("ar" as const);
   const rows = fr ? FRANCHISES.filter((f) => f.slug === fr) : FRANCHISES;
@@ -379,7 +384,13 @@ async function ListsDiscovery({
               <RailItem key={u.slug} wide>
                 {/* ضغطة جسد البطاقة تفتح المعاينة الكاملة؛ زرّ الحفظ يمرّ لصاحبه */}
                 <ListPeekTrigger kind="set" refId={u.slug} title={universeName(u, loc)} labels={peekLabels}>
-                  <CuratedCard u={u} locale={locale} t={t} className="w-full" />
+                  <CuratedCard
+                    u={u}
+                    locale={locale}
+                    t={t}
+                    savedNames={savedNames}
+                    className="w-full"
+                  />
                 </ListPeekTrigger>
               </RailItem>
             ))}
@@ -404,14 +415,21 @@ async function CuratedCard({
   u,
   locale,
   t,
+  savedNames,
   className = "w-full",
 }: {
   u: Universe;
   locale: Locale;
   t: T;
+  /** أسماءُ قوائمي — تُقرأ مرّةً في الصفحة لا لكل بطاقة (D-206) */
+  savedNames?: Set<string>;
   className?: string;
 }) {
   const loc = locale === "en" ? ("en" as const) : ("ar" as const);
+  /* **الاسمان معاً** (D-206): الحفظُ يسمّي القائمةَ بلغة الواجهة وقتَها
+     (D-130)، فمن حفظ بالعربية ثم قرأ بالإنجليزية يجب أن يرى علامتَه. */
+  const names = [universeName(u, "ar"), universeName(u, "en")];
+  const saved = names.some((n) => savedNames?.has(n.trim()));
   /* مجموعات TOP 250: العدد ثابتٌ معلوم والملصقات من صفحة top_rated
      الأولى وحدها — جلبُ ٢٥٠ عملاً لبطاقةٍ تعرض أربعة ملصقات إسراف.
      وسائر المجموعات كما كانت: تُحلّ معرّفاتها ثم أربعة ملصقات */
@@ -427,22 +445,19 @@ async function CuratedCard({
     .map((m) => posterUrl(m.poster_path, "w185"))
     .filter(Boolean) as string[];
 
-  /**
-   * **صورةٌ واحدة للسلسلة، وثلاثٌ للمتنوّع** (D-204، طلب أحمد بصورتين
-   * مرجعيّتين: «الأعمال الي ضمن سلسلة واحدة حطّ صورة، والأعمال متنوّعة
-   * خلّها ٣ أو ٤»).
-   *
-   * **والقاعدةُ من معنى المجموعة لا من عددها:** «TOP 250» و«الجوائز»
-   * **تجمعان أعمالاً لا يربطها إلا معيار** — فأربعُ ملصقاتٍ تقول «هنا
-   * تنوّع»، وملصقٌ واحد كان سيوهم أن القائمة عن ذلك الفيلم. أمّا «عالم
-   * مارفل» و«حرب النجوم» **فعملٌ واحدٌ ممتدّ**، وملصقاتُه المتجاورة تُقرأ
-   * تكراراً لا تنوّعاً — **فواحدٌ أكبرُ يقول الهويّة أصدق**.
-   *
-   * **وثلاثةٌ لا أربعة في المتنوّع:** البطاقة عرضُها ثابتٌ في صفٍّ يُمرَّر،
-   * والرابعُ يجعل كلَّ ملصقٍ ٥٦px — **أصغرَ من أن يُعرف الفيلمُ منه**،
-   * فيصير زينةً لا معلومة. (وصورتُه المرجعية ثلاثة.)
-   */
-  const single = !award && !u.top;
+  /* **وصورةٌ واحدة للسلسلة؟ جُرّبت وسقطت — ويُقال بدل أن يُمحى** (D-206).
+     كان الشرطُ `!award && !u.top` يعطي «عالم مارفل» و«حرب النجوم» غلافاً
+     أفقياً واحداً. **وقرارُ أحمد بعد أن رآه: «الصورة الوحدة طلعت سيئة،
+     خلّها كلها ٣ بوسترات».**
+
+     **والسببُ الذي جعلها سيئةً مرئيٌّ في لقطته:** الغلافُ ١٦:٩ يُقصّ من
+     ملصقٍ ٢:٣ **فيقع القصُّ على الوجه أو على الاسم** — «كابتن أمريكا»
+     ظهر مقطوعَ العنوان، و«الرينغز ساغا» وجهاً مكبَّراً بلا سياق.
+     **وملصقٌ صُمّم رأسياً لا يصير غلافاً بقصّه.** (والغلافُ الصحيح
+     `backdrop_path` — وهو ما لا تحمله بطاقةُ المجموعة.)
+
+     **فالإيقاعُ واحدٌ لكل البطاقات الآن**: ثلاثةُ ملصقاتٍ — وهو أيضاً ما
+     يجعل صفَّ «القوائم» يُقرأ صفّاً واحداً لا صفَّين بإيقاعين. */
 
   return (
     <div className={`rounded-2xl border border-border bg-surface p-2.5 ${className}`}>
@@ -469,24 +484,14 @@ async function CuratedCard({
           locale={locale}
           label={t.curatedSaveBtn}
           iconOnly
+          names={names}
+          saved={saved}
         />
       </span>
 
       {posters.length === 0 ? (
         <span className="mt-2 grid place-items-center w-14 aspect-[2/3] rounded-lg border border-dashed border-border text-muted">
           <Icon name="list" size={16} />
-        </span>
-      ) : single ? (
-        /* الواحدةُ أوسع: الغلافُ الأفقيّ يقول «عالمٌ» لا «فيلمٌ بعينه» —
-           ولو كان ملصقاً ٢:٣ لقُرئ بطاقةَ عملٍ واحد */
-        <span className="mt-2 relative block w-full aspect-[16/9] rounded-lg overflow-hidden bg-surface-2">
-          <Image
-            src={posters[0]}
-            alt=""
-            fill
-            sizes="(min-width:640px) 260px, 60vw"
-            className="object-cover"
-          />
         </span>
       ) : (
         <span className="mt-2 flex gap-1.5">
