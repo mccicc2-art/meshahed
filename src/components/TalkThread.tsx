@@ -1,0 +1,453 @@
+"use client";
+
+import { useMemo, useState, useTransition } from "react";
+import { addReviewReply, deleteMyReply, reportReply } from "@/lib/actions";
+import { getDict, type Locale } from "@/lib/i18n";
+import { displayNameOf } from "@/lib/people";
+import type { ReviewReply, TitleReview } from "@/lib/data";
+import { timeAgo } from "@/lib/when";
+import { tap } from "@/lib/haptics";
+import { Avatar } from "./Avatar";
+import { Icon } from "./Icon";
+import { PersonName } from "./PersonRow";
+import { LikeButton } from "./LikeButton";
+import { ReportButton } from "./ReportButton";
+import { buttonClass } from "./ui/Button";
+
+/** ردٌّ محليٌّ لم يُقرأ من القاعدة بعد — معرّفُه مؤقّت */
+const TEMP = "temp:";
+
+/**
+ * **خيطُ الكلام عن عمل** (D-193، طلب أحمد: «إذا ضغطت على الفيلم أبغى صفحة
+ * تعليقات فقط كأني فاتح مجتمع، لكن فيه كل التعليقات الي في صفحة الفيلم
+ * **ومربوطين ببعض**»).
+ *
+ * **و«مربوطين ببعض» هي كلُّ الفرق بين هذه الصفحة وتبويب الآراء:** هناك
+ * الآراءُ قائمةٌ متجاورة — عشرةُ أشخاصٍ يتكلّمون في الهواء ولا أحد يجيب.
+ * هنا **لكل رأيٍ خيطُه**: تردّ على صاحبه، ويردّ عليك، فيصير الرأيُ حواراً.
+ *
+ * ================= أربعةُ قرارات في الرسم =================
+ *
+ * **١ · «أردّ على نفس الشخص أو أعلّق على الفيلم»** (نصُّه) — فعلان لا
+ * واحد، وقد فُصلا في الواجهة كما فُصلا في القاعدة: زرُّ «ردّ» تحت كل رأي،
+ * **و«قل رأيك في العمل» صندوقُ التقييم نفسُه** (`RatingBox variant="review"`
+ * في الصفحة، لا نسخةٌ ثانية منه هنا — قاعدة ٦). فالتعليقُ على العمل
+ * تقييمٌ ورأي، ومن كتب رأيه صار له خيطٌ يردّ عليه الناس.
+ *
+ * **٢ · عمقٌ واحد، والردُّ على ردٍّ يُعلّق باسم صاحبه.** القاعدة تمنع
+ * العمقَ الثالث (`review_replies_depth_guard`)، فالواجهةُ لا تعرض زرَّ
+ * ردٍّ على ردّ **بل زرَّ «ردّ» واحداً يذكر لمن**: تضغطه على ردٍّ فيُرسل
+ * `parentId`، وتضغطه على الرأي فيُرسل `null`. **حدٌّ واحد في مكانين لا
+ * قاعدتان.**
+ *
+ * **٣ · تفاؤليٌّ كبقية الأفعال.** الردُّ يظهر قبل جواب الخادم بمعرّفٍ
+ * مؤقّت، ويُسحب إن فشلت الكتابة. **ولا `router.refresh()`:** الفعل
+ * يُبطل الصفحتين على الخادم، فأوّلُ تنقّلٍ طبيعي يقرأ الحقيقة — وتحديثُ
+ * الصفحة تحت إصبع الكاتب يقفز به بعيداً عن سطره.
+ *
+ * **٤ · الإعجابُ والبلاغُ على الرأي من مكوّنيهما القائمين** (`LikeButton`
+ * · `ReportButton`) — نفسُ الرقم في صفحة العمل وهنا، لأنه نفسُ الجدول.
+ * وللردّ بلاغُه الخاصّ (`reportReply`) صامتاً بلا عدّاد، كالرأي.
+ */
+export function TalkThread({
+  reviews,
+  replies,
+  tmdbId,
+  mediaType,
+  locale,
+  signedIn,
+}: {
+  reviews: TitleReview[];
+  replies: ReviewReply[];
+  tmdbId: number;
+  mediaType: "tv" | "movie";
+  locale: Locale;
+  signedIn: boolean;
+}) {
+  const t = getDict(locale);
+  const [added, setAdded] = useState<ReviewReply[]>([]);
+  const [removed, setRemoved] = useState<Set<string>>(new Set());
+  /** الخيطُ المفتوح للكتابة: `reviewUserId` أو `reviewUserId|parentId` */
+  const [open, setOpen] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const all = useMemo(
+    () => [...replies, ...added].filter((r) => !removed.has(r.replyId)),
+    [replies, added, removed],
+  );
+
+  /* الردودُ مفهرسةٌ بصاحب الرأي مرّةً واحدة: الرسمُ يمرّ على الآراء،
+     ولو بحث كلُّ رأيٍ في المصفوفة كلّها صار العملُ حاصلَ ضرب */
+  const byReview = useMemo(() => {
+    const m = new Map<string, ReviewReply[]>();
+    for (const r of all) {
+      const arr = m.get(r.reviewUserId);
+      if (arr) arr.push(r);
+      else m.set(r.reviewUserId, [r]);
+    }
+    for (const arr of m.values()) arr.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    return m;
+  }, [all]);
+
+  /* الرأيُ يظهر إن كان مكتوباً — **أو إن كان له ردود**: خيطٌ برأسٍ محذوف
+     النصِّ يقرأ كحوارٍ مع فراغ، فيُعرض رأسُه ولو كان تقييماً مجرّداً */
+  const shown = reviews.filter((r) => r.review?.trim() || byReview.has(r.id));
+
+  if (!shown.length) {
+    return (
+      <div className="rounded-2xl border border-dashed border-border px-5 py-10 text-center">
+        <p className="text-2xl mb-2" aria-hidden>
+          💬
+        </p>
+        <p className="text-sm text-muted leading-relaxed">{t.noReviews}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {error && (
+        <p role="alert" className="text-xs text-[color:var(--error)]">
+          {error}
+        </p>
+      )}
+      {shown.map((r) => {
+        const thread = byReview.get(r.id) ?? [];
+        const tops = thread.filter((x) => !x.parentId);
+        const kids = (id: string) => thread.filter((x) => x.parentId === id);
+        return (
+          <article
+            key={r.id}
+            id={`review-${r.id}`}
+            className="bg-surface border border-border rounded-2xl p-4"
+          >
+            <div className="flex items-center justify-between gap-3 mb-2.5">
+              <PersonName person={r} t={t} size={32} sub={timeAgo(r.updated_at, t)} />
+              <span
+                className="text-[13px] shrink-0 font-bold text-accent tabular-nums bg-accent/10 border border-accent/25 px-2 py-1 rounded-full"
+                title={t.rateOutOf(r.rating)}
+              >
+                ★ <span dir="ltr">{r.rating}/10</span>
+              </span>
+            </div>
+
+            {r.review?.trim() && (
+              <p className="text-sm text-muted leading-relaxed whitespace-pre-line">{r.review}</p>
+            )}
+
+            <div className="mt-3 pt-2.5 border-t border-[color:var(--divider)] flex items-center gap-2">
+              <LikeButton
+                reviewUserId={r.id}
+                tmdbId={tmdbId}
+                mediaType={mediaType}
+                likes={r.likes}
+                likedByMe={r.likedByMe}
+                isMine={r.isMine}
+                locale={locale}
+              />
+              {signedIn && (
+                <ReplyToggle
+                  label={t.talkReply}
+                  active={open === r.id}
+                  onClick={() => {
+                    tap(6);
+                    setOpen(open === r.id ? null : r.id);
+                  }}
+                />
+              )}
+              {!r.isMine && (
+                <span className="ms-auto">
+                  <ReportButton
+                    reviewUserId={r.id}
+                    tmdbId={tmdbId}
+                    mediaType={mediaType}
+                    locale={locale}
+                  />
+                </span>
+              )}
+            </div>
+
+            {open === r.id && (
+              <Composer
+                t={t}
+                onCancel={() => setOpen(null)}
+                onSend={(body) =>
+                  send({ reviewUserId: r.id, parentId: null, body, person: null })
+                }
+              />
+            )}
+
+            {/* الردود — إزاحةٌ واحدة للخيط، وإزاحةٌ ثانية للردّ على ردّ.
+                ولا خطَّ رأسيّ ثالث: العمقُ محدودٌ باثنين في القاعدة */}
+            {tops.length > 0 && (
+              <ul className="mt-3 space-y-3 border-s-2 border-[color:var(--divider)] ps-3">
+                {tops.map((x) => (
+                  <li key={x.replyId}>
+                    <ReplyRow
+                      reply={x}
+                      t={t}
+                      locale={locale}
+                      signedIn={signedIn}
+                      onReply={() => {
+                        tap(6);
+                        const k = `${r.id}|${x.replyId}`;
+                        setOpen(open === k ? null : k);
+                      }}
+                      replying={open === `${r.id}|${x.replyId}`}
+                      onDelete={() => remove(x)}
+                      onReport={() => void reportReply({ replyId: x.replyId })}
+                    />
+                    {open === `${r.id}|${x.replyId}` && (
+                      <Composer
+                        t={t}
+                        hint={t.talkReplyingTo(displayNameOf(x, t.anonymousUser))}
+                        onCancel={() => setOpen(null)}
+                        onSend={(body) =>
+                          send({
+                            reviewUserId: r.id,
+                            parentId: x.replyId,
+                            body,
+                            person: x,
+                          })
+                        }
+                      />
+                    )}
+                    {kids(x.replyId).length > 0 && (
+                      <ul className="mt-3 space-y-3 border-s-2 border-[color:var(--divider)] ps-3">
+                        {kids(x.replyId).map((k) => (
+                          <li key={k.replyId}>
+                            <ReplyRow
+                              reply={k}
+                              t={t}
+                              locale={locale}
+                              signedIn={signedIn}
+                              onDelete={() => remove(k)}
+                              onReport={() => void reportReply({ replyId: k.replyId })}
+                            />
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </article>
+        );
+      })}
+    </div>
+  );
+
+  /** إرسالُ ردّ — تفاؤليّ: يظهر بمعرّفٍ مؤقّت ويُسحب إن فشل */
+  function send(input: {
+    reviewUserId: string;
+    parentId: string | null;
+    body: string;
+    person: ReviewReply | null;
+  }) {
+    const temp = `${TEMP}${input.reviewUserId}:${input.parentId ?? ""}:${input.body.length}`;
+    /* صاحبُ الردّ المؤقّت: الصفحةُ لا تملك ملفي هنا، والاسمُ يصل مع
+       القراءة الحقيقية. فيُرسم بلا اسم كمن أخفاه — لا باسمٍ مخترع */
+    setAdded((a) => [
+      ...a,
+      {
+        id: "",
+        nickname: null,
+        username: null,
+        avatar_url: null,
+        hide_name: true,
+        replyId: temp,
+        reviewUserId: input.reviewUserId,
+        parentId: input.parentId,
+        body: input.body,
+        createdAt: new Date().toISOString(),
+        isMine: true,
+      },
+    ]);
+    setOpen(null);
+    setError(null);
+    void (async () => {
+      try {
+        await addReviewReply({
+          reviewUserId: input.reviewUserId,
+          tmdbId,
+          mediaType,
+          body: input.body,
+          parentId: input.parentId,
+        });
+      } catch (e) {
+        setAdded((a) => a.filter((x) => x.replyId !== temp));
+        setError((e as Error).message);
+      }
+    })();
+  }
+
+  function remove(x: ReviewReply) {
+    setRemoved((s) => new Set(s).add(x.replyId));
+    if (x.replyId.startsWith(TEMP)) return;
+    void (async () => {
+      try {
+        await deleteMyReply({ replyId: x.replyId, tmdbId, mediaType });
+      } catch (e) {
+        setRemoved((s) => {
+          const n = new Set(s);
+          n.delete(x.replyId);
+          return n;
+        });
+        setError((e as Error).message);
+      }
+    })();
+  }
+}
+
+/** زرُّ «ردّ» — نفسُ صوت `LikeButton`: نصٌّ صغير ورمزٌ، لا زرٌّ ممتلئ */
+function ReplyToggle({
+  label,
+  active,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-expanded={active}
+      className={`inline-flex items-center gap-1.5 text-[12px] font-semibold rounded-full px-2.5 py-1 transition ${
+        active ? "text-accent bg-accent/10" : "text-muted hover:text-foreground"
+      }`}
+    >
+      <Icon name="comment" size={14} />
+      {label}
+    </button>
+  );
+}
+
+function ReplyRow({
+  reply,
+  t,
+  locale,
+  signedIn,
+  replying,
+  onReply,
+  onDelete,
+  onReport,
+}: {
+  reply: ReviewReply;
+  t: ReturnType<typeof getDict>;
+  locale: Locale;
+  signedIn: boolean;
+  replying?: boolean;
+  onReply?: () => void;
+  onDelete: () => void;
+  onReport: () => void;
+}) {
+  const [reported, setReported] = useState(false);
+  const name = displayNameOf(reply, t.anonymousUser);
+  const pending = reply.replyId.startsWith(TEMP);
+  return (
+    <div className={`flex items-start gap-2 ${pending ? "opacity-60" : ""}`}>
+      <Avatar src={reply.avatar_url} name={name} size={24} alt="" className="shrink-0 mt-0.5" />
+      <div className="min-w-0 flex-1">
+        <p className="text-[13px] leading-snug">
+          <span className="font-semibold">{name}</span>
+          <span className="text-muted text-[11px]"> · {timeAgo(reply.createdAt, t)}</span>
+        </p>
+        <p className="text-[13px] leading-relaxed text-muted whitespace-pre-line">{reply.body}</p>
+        {!pending && (
+          <div className="mt-1 flex items-center gap-3 text-[11px]">
+            {signedIn && onReply && (
+              <button
+                type="button"
+                onClick={onReply}
+                aria-expanded={!!replying}
+                className={`font-semibold transition ${replying ? "text-accent" : "text-muted hover:text-foreground"}`}
+              >
+                {t.talkReply}
+              </button>
+            )}
+            {reply.isMine ? (
+              <button
+                type="button"
+                onClick={onDelete}
+                className="text-muted hover:text-red-300 transition"
+              >
+                {t.talkDeleteReply}
+              </button>
+            ) : (
+              signedIn && (
+                <button
+                  type="button"
+                  disabled={reported}
+                  onClick={() => {
+                    setReported(true);
+                    onReport();
+                  }}
+                  className="text-muted hover:text-red-300 transition disabled:opacity-50"
+                  lang={locale}
+                >
+                  {reported ? t.reportDone : t.reportLabel}
+                </button>
+              )
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * صندوقُ الكتابة — واحدٌ للردّ على رأيٍ وللردّ على ردّ.
+ *
+ * `Enter` لا يُرسل: الردُّ قد يكون سطرين، و«إرسالٌ بالخطأ» في سطحٍ عامّ
+ * أسوأُ من ضغطةٍ إضافية على زرّ.
+ */
+function Composer({
+  t,
+  hint,
+  onSend,
+  onCancel,
+}: {
+  t: ReturnType<typeof getDict>;
+  hint?: string;
+  onSend: (body: string) => void;
+  onCancel: () => void;
+}) {
+  const [body, setBody] = useState("");
+  const [pending, start] = useTransition();
+  const ready = body.trim().length > 0;
+
+  return (
+    <div className="mt-3">
+      {hint && <p className="text-[11px] text-muted mb-1">{hint}</p>}
+      <textarea
+        value={body}
+        onChange={(e) => setBody(e.target.value.slice(0, 1000))}
+        placeholder={t.shareReplyPlaceholder}
+        rows={2}
+        autoFocus
+        className="w-full bg-surface-2 border border-border rounded-xl px-3 py-2 text-sm resize-y outline-none focus:border-accent/60"
+      />
+      <div className="mt-1.5 flex items-center gap-2">
+        <button
+          type="button"
+          disabled={!ready || pending}
+          onClick={() => start(() => onSend(body.trim()))}
+          className={buttonClass({ size: "sm" })}
+        >
+          {t.shareReplySend}
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="text-[12px] text-muted hover:text-foreground transition px-2"
+        >
+          {t.cancelLabel}
+        </button>
+      </div>
+    </div>
+  );
+}
