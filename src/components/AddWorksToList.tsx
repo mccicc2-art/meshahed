@@ -22,6 +22,7 @@ export function AddWorksToList({
   locale,
   label,
   className = "",
+  iconOnly = false,
 }: {
   source: "person" | "collection" | "universe";
   /** معرّف TMDB رقميّ للفنان/السلسلة، وslug نصيّ للعالم */
@@ -29,6 +30,17 @@ export function AddWorksToList({
   locale: Locale;
   label?: string;
   className?: string;
+  /**
+   * **علامةُ حفظٍ بلا كلمة** (D-204، طلب أحمد: «Save to my list احذفها
+   * واكتفِ بعلامة البوك مارك»).
+   *
+   * **ولماذا صحيحٌ هنا وخطأٌ في مواضع أخرى:** بطاقةُ القائمة تحمل اسمَها
+   * وعددَها وملصقاتِها — **والزرُّ الممتلئ بعرضها كان يقرأ الفعلَ الأوّل
+   * فيها**، وهو ليس كذلك: الفعلُ الأوّل فتحُها. ورمزُ الحفظ **عُرفٌ راسخ**
+   * يُقرأ بلا كلمة (D-150: حيث يوجد عُرف، اتّباعُه ميزةٌ لا كسل).
+   * ⚠️ **ويبقى له `aria-label`**: رمزٌ بلا اسمٍ لقارئ الشاشة زرٌّ مجهول.
+   */
+  iconOnly?: boolean;
 }) {
   const t = getDict(locale);
   const router = useRouter();
@@ -61,6 +73,21 @@ export function AddWorksToList({
         flashError((e as Error).message);
       }
     });
+  }
+
+  if (iconOnly) {
+    return (
+      <button
+        type="button"
+        onClick={run}
+        disabled={pending}
+        aria-label={text}
+        title={text}
+        className={`shrink-0 grid place-items-center w-8 h-8 -me-1 -mt-0.5 rounded-full text-muted hover:text-accent active:scale-90 disabled:opacity-50 transition ${className}`}
+      >
+        <Icon name="bookmark" size={17} strokeWidth={2} />
+      </button>
+    );
   }
 
   return (
