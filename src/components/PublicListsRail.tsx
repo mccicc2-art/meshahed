@@ -81,13 +81,17 @@ export function CommunityListCard({
         {l.owner ? ` · ${t.listByOwner(l.owner)}` : ""}
       </span>
       <span className="mt-2 flex gap-1.5">
+        {/* **ثلاثةٌ لا أربعة — نفسُ بطاقات المجموعات المنسّقة** (D-206، طلب
+            أحمد: «حتى الليست من الكميونتي تُعرض بنفس الطريقة»). **وبطاقتان
+            بإيقاعين لمعنًى واحد هي ما تمنعه القاعدة ٦** — والرابعُ يجعل كلَّ
+            ملصقٍ ٥٦px، أصغرَ من أن يُعرف الفيلمُ منه. */}
         {posters.length > 0 ? (
-          posters.map((url, i) => (
+          posters.slice(0, 3).map((url, i) => (
             <span
               key={i}
-              className="relative w-[calc(25%-4.5px)] aspect-[2/3] rounded-lg overflow-hidden bg-surface-2 border border-[color:var(--background)]"
+              className="relative w-[calc(33.333%-4px)] aspect-[2/3] rounded-lg overflow-hidden bg-surface-2 border border-[color:var(--background)]"
             >
-              <Image src={url} alt="" fill sizes="56px" className="object-cover" />
+              <Image src={url} alt="" fill sizes="80px" className="object-cover" />
             </span>
           ))
         ) : (
