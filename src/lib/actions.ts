@@ -3292,3 +3292,42 @@ export async function reportReply(input: { replyId: string; reason?: string }): 
   );
   if (error) fail(error);
 }
+
+/**
+ * **حذفُ قائمةٍ باسمها — الضغطةُ الثانية على علامة الحفظ** (D-206، طلب
+ * أحمد: «إذا ضغطت عليها ثاني مرّة تنحذف من قائمتي»).
+ *
+ * **ولماذا بالاسم لا بالمعرّف:** بطاقةُ المجموعة في «اكتشف» لا تعرف معرّفَ
+ * قائمتك — **هي تعرف اسمَ المجموعة وحده**، والحفظُ نفسُه يطابق بالاسم
+ * (`upsertListWithItems`). **فالإزالةُ تسأل نفسَ السؤال الذي سأله الحفظ**،
+ * وإلا حفظت بمقياسٍ وأزالت بآخر.
+ *
+ * **والأسماءُ جمعٌ لا مفرد:** الاسمُ يُكتب بلغة الواجهة وقتَ الحفظ (D-130)،
+ * فمن حفظ «عالم مارفل» ثم بدّل إلى الإنجليزية يجب أن تُزيله علامتُه —
+ * فتُمرَّر التسميتان ويُحذف ما وُجد منهما.
+ *
+ * ⚠️ **ويحذف قوائمَك أنت وحدها** (`user_id`) — والسياسةُ تحرسها فوق ذلك.
+ * **ولا يحذف إلا ما طابق حرفياً**: من سمّى قائمةً بنفس الاسم بيده يفقدها،
+ * **وهذا حدٌّ مقصود** — لأن الحفظَ نفسه كان سيُضيف إليها لا يُنشئ غيرها،
+ * فهي عند المحرّك القائمةُ نفسُها.
+ */
+export async function removeListsNamed(names: string[]): Promise<number> {
+  const clean = [...new Set((names ?? []).map((n) => String(n ?? "").trim()).filter(Boolean))]
+    .slice(0, 4)
+    .map((n) => n.slice(0, 60));
+  if (!clean.length) return 0;
+
+  const { supabase, user } = await requireUser("list", 10, 60_000);
+  const { data, error } = await supabase
+    .from("user_lists")
+    .delete()
+    .eq("user_id", user.id)
+    .in("name", clean)
+    .select("id");
+  if (error) fail(error);
+
+  revalidatePath("/lists");
+  revalidatePath("/news");
+  revalidatePath("/library");
+  return (data ?? []).length;
+}

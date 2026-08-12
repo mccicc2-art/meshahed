@@ -598,6 +598,10 @@ const ar = {
   worksAvgHint: "متوسّطُ تقييمات من تكلّموا عن العمل",
   /* زرُّ «+ للمشاهدة» على الملصق (D-205) — **اسمُه لقارئ الشاشة لا للعين**:
      الرمزُ وحده على ملصقٍ ١١٢px، والكلمةُ تكسره. */
+  /* علامةُ الحفظ على بطاقة مجموعة (D-206) — الضغطةُ الثانية تُزيل.
+     **و`listUnsavedToast` موجودةٌ أصلاً** (حفظُ قائمةِ غيرك، D-068) فتُعاد
+     استعمالاً: **نصٌّ واحد لمعنًى واحد** — ونسختان تفترقان عند أوّل تعديل. */
+  listUnsaveLabel: "أزِلها من قوائمي",
   quickAddLabel: "أضِفه إلى «للمشاهدة»",
   quickAddRemove: "أزِله من «للمشاهدة»",
   quickAddDone: "أُضيف إلى «للمشاهدة»",
@@ -1610,6 +1614,7 @@ const en: Dict = {
   communityTabWorks: "Titles",
   // Talk page and replies (D-193)
   worksAvgHint: "Average rating of the people talking about it",
+  listUnsaveLabel: "Remove from my lists",
   quickAddLabel: "Add to To watch",
   quickAddRemove: "Remove from To watch",
   quickAddDone: "Added to To watch",
