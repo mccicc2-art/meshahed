@@ -720,6 +720,11 @@ async function CuratedRails({
           base,
           genreIds: wantMovies ? genre?.movie : genre?.tv,
           active,
+          /* **قرعةٌ للصفّ لا للصفحة** (D-202، طلب أحمد: «عشوائية مثل بيكد
+             فور يو»): الصفُّ عشرون من بِركةٍ أوسع، فلا يتجمّد على نفس
+             الوجوه. **والصفحةُ الكاملة لا تُقرع** — من فتحها يريد الجردَ
+             مرتَّباً، وقرعةٌ فيها تجعل التمرير يكرّر ويُسقط. */
+          sample: true,
         },
         20,
       ).then(withImdbRatings),
@@ -1096,7 +1101,9 @@ async function AnimeRails({
        «أنمي» نفسُه هو الوعد، وفيلمُ أنميٍ في صفّ أنميٍ ليس في غير بابه
        (قيدُ D-141 كان صفّاً يعِد بجهةٍ ويعرض غيرها). و`buildSection`
        تجمعهما وترتّبهما بالشعبية — **ونفسُها من تبني الصفحة الكاملة**. */
-    buildSection("most-popular", { media: "anime", base, active }, 20).then(withImdbRatings),
+    buildSection("most-popular", { media: "anime", base, active, sample: true }, 20).then(
+      withImdbRatings,
+    ),
     /* **«يُعرض الآن» = أنميُ الموسم الحاليّ — لا `‎/tv/on_the_air`.**
 
        ⚠️ **وقد جُرّبت تلك الطريقُ أوّلاً وسقطت، ويُقال بدل أن يُمحى:**
