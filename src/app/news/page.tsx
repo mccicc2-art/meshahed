@@ -1005,16 +1005,34 @@ async function AnimeRails({
       )
       .then(withImdbRatings)
       .catch(() => [] as SearchResult[]),
-    /* «يُعرض الآن» — نظيرُ «في السينما» في تبويب الأفلام، وبنفس قيده:
-       `/tv/on_the_air` **لا يقبل نوعاً ولا لغةً ولا مفتاحاً**، فالتصفيةُ
-       على نتائجه. **ويغيب وقتَ الفلتر** كما يغيب صفُّ السينما — عرضُ ما
-       لم يُطلب تحت رأسٍ يقول إن الفلتر مُطبَّق كذبٌ في الواجهة (D-075). */
-    active
-      ? Promise.resolve([] as SearchResult[])
-      : airingTv()
-          .then((rows) => railGuard(rows, { anime: "only" }))
-          .then(withImdbRatings)
-          .catch(() => [] as SearchResult[]),
+    /* **«يُعرض الآن» = أنميُ الموسم الحاليّ — لا `‎/tv/on_the_air`.**
+
+       ⚠️ **وقد جُرّبت تلك الطريقُ أوّلاً وسقطت، ويُقال بدل أن يُمحى:**
+       `‎/tv/on_the_air` قائمةٌ عالميّة من عشرين مسلسلاً **لا تقبل مفتاحاً
+       ولا نوعاً**، فتصفيتُها بالأنمي أعادت **صفراً** — رفٌّ اختفى بلا
+       سبب مرئيّ. (مُقاسٌ على الإنتاج، لا مفترض.)
+
+       **والمصدرُ الصحيح `/discover` بمفتاح الأنمي ومدى الموسم**: الأنمي
+       يُبثّ **بمواسمَ ربعيّة** (يناير · أبريل · يوليو · أكتوبر) — وهي
+       الوحدةُ التي يتكلّم بها متابعُه فعلاً. **فـ«يُعرض الآن» = ما بدأ
+       بثُّه في هذا الربع**، وهو أدقُّ ممّا يعطيه `on_the_air` أصلاً.
+       **وهذا نفسُه أساسُ محور «Season» في الفلتر** حين يُبنى.
+
+       **ويطيع الفلتر كاملاً** (مواصفة أحمد: الفلتر عامٌّ داخل التبويب) —
+       فلا يغيب حين يُفعَّل، بخلاف صفّ السينما الذي لا يقبل محاوره. */
+    (() => {
+      const m = new Date().getUTCMonth();
+      const q = `${y}-${String(Math.floor(m / 3) * 3 + 1).padStart(2, "0")}-01`;
+      return topByFilter(
+        "tv",
+        { ...base, genreIds: genre?.tv, from: q, to: todayStr },
+        20,
+        "popularity.desc",
+      )
+        .then((rows) => railGuard(rows, { anime: "only" }))
+        .then(withImdbRatings)
+        .catch(() => [] as SearchResult[]);
+    })(),
     /* «أنميٌ قادم» — `upcomingByFilter` يقبل المفتاح فيطيع الفلتر كاملاً */
     upcomingByFilter("tv", { ...base, genreIds: genre?.tv })
       .then((rows) => railGuard(rows, { anime: "only" }))
