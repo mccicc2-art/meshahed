@@ -132,9 +132,15 @@ begin
     (url, source, source_label, lang, title, summary, published_at, tmdb_id, media_type)
   select url, source, source_label, lang, title, summary, published_at, tmdb_id, media_type
   from clean
-  /* **لا يُعاد كتابةُ خبرٍ موجود**: أوّلُ نسخةٍ تدخل هي النسخة، فلا
-     يستطيع نداءٌ لاحق تبديلَ عنوانِ خبرٍ مقروء */
-  on conflict (url) do nothing;
+  /* **النصُّ لا يُمسّ، والنسبةُ تُستكمل.** أوّلُ نسخةٍ تدخل هي النسخة —
+     فلا يستطيع نداءٌ لاحق تبديلَ عنوانِ خبرٍ مقروء — **لكن خبراً دخل بلا
+     عملٍ ثم تحسّنت المطابقة يستحقّ بابَه**. فالتحديثُ محصورٌ بحقلَي
+     النسبة، وبشرط أنهما فارغان أصلاً. */
+  on conflict (url) do update
+     set tmdb_id    = excluded.tmdb_id,
+         media_type = excluded.media_type
+   where public.news_items.tmdb_id is null
+     and excluded.tmdb_id is not null;
 
   get diagnostics v_count = row_count;
 
