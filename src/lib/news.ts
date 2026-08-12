@@ -456,16 +456,25 @@ export function titleCandidates(headline: string): string[] {
 
   const after = headline.split(AR_KIND)[1];
   if (after) {
-    const cut = after.split(/[.،,:؛|()\-–—]/)[0].split(/\s+/).slice(0, 5).join(" ");
+    const cut = after.split(/[.،,:؛|()\-–—]/)[0].split(/\s+/).slice(0, 4).join(" ");
     if (cut) out.push(cut);
   }
 
-  const latin = headline.match(/[A-Z][A-Za-z0-9'&.:\- ]{3,50}/);
-  if (latin) out.push(latin[0]);
+  /* **المقطعُ اللاتينيّ يُقصّ إلى أربع كلمات.** أوّلُ نسخةٍ أخذته كاملاً،
+     فصار المرشّحُ عنواناً بأكمله («Yellowjackets Season 4 Premiere Date
+     Set at Showtime») ولا يجد TMDB شيئاً — **مطابقةٌ واحدة من ١٢٠**.
+     والاسمُ يقع في أوّل الجملة عادةً، لا في آخرها. */
+  const latin = headline.match(/[A-Z][A-Za-z0-9'&.:\- ]{3,60}/);
+  if (latin) out.push(latin[0].split(/\s+/).slice(0, 4).join(" "));
+
+  /* وأوّلُ ثلاث كلماتٍ من العنوان: عناوينُ TVLine وVariety تبدأ باسم
+     العمل ثم خبرِه («Yellowjackets Season 4…») */
+  const head3 = headline.split(/\s+/).slice(0, 3).join(" ");
+  if (head3) out.push(head3);
 
   const seen = new Set<string>();
   return out
-    .map((s) => s.replace(/\s+/g, " ").trim())
+    .map((s) => s.replace(/\s+/g, " ").replace(/[:،,.\-–—]+$/, "").trim())
     .filter((s) => s.length >= 3 && !seen.has(s) && seen.add(s))
     .slice(0, 3);
 }
@@ -493,10 +502,15 @@ export async function matchTitle(
       return null;
     }
     for (const r of (rows ?? []).slice(0, 3)) {
-      const name = norm(String(r.title ?? r.name ?? ""));
-      /* اسمٌ من كلمةٍ قصيرة يطابق أيَّ شيء — «Up» و«It» و«صدفة» */
-      if (name.length < 4) continue;
-      if (flat.includes(name) && (r.media_type === "tv" || r.media_type === "movie")) {
+      if (r.media_type !== "tv" && r.media_type !== "movie") continue;
+      /* **الاسمان معاً: المترجَمُ والأصليّ.** خبرٌ عربيّ قد يسمّي العمل
+         بالإنجليزية والعكس — ومقارنةٌ بواحدٍ منهما تُسقط نصفَ المطابقات */
+      const raw = r as unknown as Record<string, unknown>;
+      const names = [r.title, r.name, raw["original_title"], raw["original_name"]]
+        .map((v) => norm(String(v ?? "")))
+        /* اسمٌ من كلمةٍ قصيرة يطابق أيَّ شيء — «Up» و«It» و«صدفة» */
+        .filter((v) => v.length >= 4);
+      if (names.some((n) => flat.includes(n))) {
         return { tmdbId: r.id, mediaType: r.media_type };
       }
     }
@@ -523,7 +537,7 @@ export interface NewsRow {
  * كانت الدفعةُ الواحدة قد تطلب مئتين — **وثمنُ ذلك يقع على مسارٍ يبدأ
  * لأن زائراً فتح تبويباً**.
  */
-export async function collectNews(perSource = 10, tmdbBudget = 60): Promise<NewsRow[]> {
+export async function collectNews(perSource = 8, tmdbBudget = 90): Promise<NewsRow[]> {
   const live = NEWS_SOURCES.filter((s) => s.enabled);
   const fetched = await Promise.all(live.map((s) => fetchFeed(s, perSource)));
 
