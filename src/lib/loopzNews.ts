@@ -30,6 +30,16 @@ export interface Snapshot {
   trailer_key: string | null;
 }
 
+/** «اليوم» بصيغة `YYYY-MM-DD` — والمقارنةُ نصّيةٌ لأن الصيغة مرتَّبة معجمياً */
+function today(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+/** يومٌ بعد اليوم بعددٍ من الأيام — لسقفِ «قريبٌ بما يكفي ليكون خبراً» */
+function inDays(n: number): string {
+  return new Date(Date.now() + n * 86_400_000).toISOString().slice(0, 10);
+}
+
 export interface GeneratedPost {
   key: string;
   kind: NewsKind;
@@ -110,7 +120,7 @@ export function diffToPosts(
   title: string,
   poster: string | null,
 ): GeneratedPost[] {
-  if (!before) return [];
+  if (!before) return firstSightPosts(after, title, poster);
   const base = {
     tmdb_id: after.tmdb_id,
     media_type: after.media_type,
@@ -134,7 +144,7 @@ export function diffToPosts(
      خبراً** — TMDB تصحّح تواريخَ قديمة كثيراً، وتصحيحُ أرشيفٍ لا يهمّ
      أحداً. فالخبرُ لما هو آتٍ فقط. */
   if (after.release_date && after.release_date !== before.release_date) {
-    const future = after.release_date >= new Date().toISOString().slice(0, 10);
+    const future = after.release_date >= today();
     if (future) {
       out.push({
         ...base,
@@ -191,6 +201,52 @@ export function diffToPosts(
     });
   }
 
+  return out;
+}
+
+/**
+ * **أوّلُ لقاءٍ بعملٍ لا يولّد «تغيّراً» — لكنه قد يحمل حقيقةً هي خبرٌ
+ * بنفسها.**
+ *
+ * لو صمتنا عند اللقطة الأولى لبقيت الصفحةُ فارغةً حتى يتبدّل شيءٌ في
+ * الدنيا — يوماً أو أسبوعاً. **والصمتُ ليس صدقاً أكثر:** «الحلقةُ
+ * القادمة من س يوم الثلاثاء» جملةٌ صحيحةٌ اليوم سواءٌ عرفناها أمس أم لا.
+ *
+ * **فالمسموحُ في اللقاء الأوّل ما كان صحيحاً كحالةٍ لا كحدث:** موعدٌ
+ * **قادم** لحلقةٍ (أسبوعان) أو لصدورٍ (شهران). **والمقطعُ الدعائيّ
+ * ممنوع** — «نزل مقطعٌ جديد» عن مقطعٍ عمرُه سنة كذبة.
+ */
+function firstSightPosts(
+  after: Snapshot,
+  title: string,
+  poster: string | null,
+): GeneratedPost[] {
+  const base = {
+    tmdb_id: after.tmdb_id,
+    media_type: after.media_type,
+    title,
+    poster_path: poster,
+  };
+  const id = `${after.media_type}:${after.tmdb_id}`;
+  const out: GeneratedPost[] = [];
+  const now = today();
+
+  if (after.next_air_date && after.next_air_date >= now && after.next_air_date <= inDays(14)) {
+    out.push({
+      ...base,
+      kind: "episode",
+      key: `episode:${id}:${after.next_air_date}`,
+      data: { date: after.next_air_date },
+    });
+  }
+  if (after.release_date && after.release_date > now && after.release_date <= inDays(60)) {
+    out.push({
+      ...base,
+      kind: "date",
+      key: `date:${id}:${after.release_date}`,
+      data: { to: after.release_date },
+    });
+  }
   return out;
 }
 
