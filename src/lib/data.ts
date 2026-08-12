@@ -2902,3 +2902,62 @@ export async function refreshNewsNow(): Promise<number> {
     return 0;
   }
 }
+
+// ============================================================
+//  أخبارُنا نحن (D-211، هجرة ٦٥)
+// ============================================================
+
+export interface LoopzNewsItem {
+  key: string;
+  kind: "trailer" | "date" | "season" | "status" | "episode";
+  tmdb_id: number;
+  media_type: "tv" | "movie";
+  title: string;
+  poster_path: string | null;
+  data: Record<string, string | number> | null;
+  published_at: string;
+}
+
+/**
+ * أخبارُنا المولَّدة — **حقائقُ لا جُمَل**: الجملةُ تُركَّب في الواجهة من
+ * قوالب `i18n`، فالخبرُ الواحد يُقرأ بلغتين بلا عمودٍ ثانٍ (D-211).
+ *
+ * والقراءةُ بدالّة `definer` لا بسياسةٍ مفتوحة — **فالسياساتُ المفتوحة
+ * تبقى أربعاً**. والسقوطُ صامت: قبل تشغيل الهجرة قائمةٌ فارغة، لا خطأ.
+ */
+export async function getLoopzNews(limit = 30): Promise<LoopzNewsItem[]> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("loopz_news", { p_limit: limit });
+    if (error || !data) return [];
+    return data as LoopzNewsItem[];
+  } catch {
+    return [];
+  }
+}
+
+/** «هل حان الرصدُ التالي؟» — يُسأل في القاعدة لا على ساعة الرسم */
+export async function getNewsGenStale(minutes = 30): Promise<boolean> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("news_gen_stale", { p_minutes: minutes });
+    if (error) return false;
+    return data === true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * دورةُ رصدٍ واحدة **بعد إرسال الصفحة** (`after`) — نفسُ نمط D-210
+ * الذي اختاره أحمد: **التجديدُ بحركة المرور، بلا سرٍّ وبلا صفِّ cron**.
+ */
+export async function refreshLoopzNews(): Promise<number> {
+  try {
+    const { runNewsSlice } = await import("@/lib/loopzNews");
+    const r = await runNewsSlice();
+    return r.posts;
+  } catch {
+    return 0;
+  }
+}
