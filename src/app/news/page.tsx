@@ -4,7 +4,6 @@ import {
   getUser,
   getFollowedArtists,
   getPublicListsFeed,
-  getFollowedPublicLists,
 } from "@/lib/data";
 import { PublicListsRail } from "@/components/PublicListsRail";
 import { ListPeekTrigger } from "@/components/ListPeek";
@@ -31,6 +30,7 @@ import {
   worksByPeople,
   upcomingByFilter,
   nowPlayingMovies,
+  popularByMedia,
   listWatchProviders,
   moviesByIds,
   resolveSetIds,
@@ -187,8 +187,9 @@ export default async function NewsPage({
           tab === "lists"
             ? listsFiltersProps(
                 FRANCHISES.some((f) => f.slug === sp.fr) ? sp.fr! : null,
-                ["curated", "friends", "community"].includes(sp.lsrc ?? "")
-                  ? (sp.lsrc as "curated" | "friends" | "community")
+                /* `friends` لم يُدرَج (D-195): الرابطُ القديم يقرأ «الكل» */
+                ["curated", "community"].includes(sp.lsrc ?? "")
+                  ? (sp.lsrc as "curated" | "community")
                   : "all",
                 locale === "en" ? "en" : "ar",
                 t,
@@ -244,7 +245,11 @@ export default async function NewsPage({
             locale={locale}
             t={t}
             fr={FRANCHISES.some((f) => f.slug === sp.fr) ? sp.fr! : null}
-            lsrc={["curated", "friends", "community"].includes(sp.lsrc ?? "") ? (sp.lsrc as "curated" | "friends" | "community") : "all"}
+            lsrc={
+              ["curated", "community"].includes(sp.lsrc ?? "")
+                ? (sp.lsrc as "curated" | "community")
+                : "all"
+            }
           />
         </Suspense>
       ) : (
@@ -282,7 +287,7 @@ export default async function NewsPage({
 /** خصائص فلاتر القوائم — يبنيها الخادم مرةً للزرّ (في سطر التبويبات) والرقائق */
 function listsFiltersProps(
   fr: string | null,
-  lsrc: "all" | "curated" | "friends" | "community",
+  lsrc: "all" | "curated" | "community",
   loc: "ar" | "en",
   t: T,
 ) {
@@ -297,7 +302,6 @@ function listsFiltersProps(
       source: t.listsFilterSource,
       all: t.browseAll,
       curated: t.listsCurated,
-      friends: t.listsFriendsRail,
       community: t.publicListsRail,
       apply: t.browseApply,
       close: t.closeLabel,
@@ -316,15 +320,21 @@ async function ListsDiscovery({
   /** فلتر العالم من الرابط (?fr=slug) — دفعة أحمد الثالثة */
   fr: string | null;
   /** فلتر المصدر (?lsrc=) */
-  lsrc: "all" | "curated" | "friends" | "community";
+  lsrc: "all" | "curated" | "community";
 }) {
-  const [friends, communityRaw] = await Promise.all([
-    getFollowedPublicLists(15),
-    getPublicListsFeed(25).catch(() => []),
-  ]);
-  /* لا تكرار (طلب أحمد): قائمة صديقٍ لها صفّها — صفُّ المجتمع للبقية */
-  const friendIds = new Set(friends.map((l) => l.id));
-  const community = communityRaw.filter((l) => !friendIds.has(l.id)).slice(0, 15);
+  /* **صفُّ «من أتابعهم» حُذف (D-195، مواصفةُ أحمد بنصّها: «From People You
+     Follow is not included. Community content remains in the separate
+     Community section»).**
+
+     **والسببُ الذي يجعله صحيحاً لا مجرَّد طلبٍ يُنفَّذ:** اكتشفُ سؤالُ
+     «ماذا أشاهد؟»، **ومن أتابعهم بابُهم قسمُ المجتمع** — وقائمةٌ واحدة في
+     بابين نسختان لمعنًى واحد (D-145).
+
+     **وسقط معه نداءٌ كامل:** `getFollowedPublicLists` كان يُقرأ **لغرض
+     الاستبعاد وحده** (كي لا تظهر قائمةُ صديقٍ في الصفّين). ولمّا ذهب صفُّه
+     صارت قوائمُهم تُعرض في خطّ المجتمع **كسائر الناس** — فلا تكرار،
+     ولا استبعاد، **ولا نداء**. */
+  const community = (await getPublicListsFeed(25).catch(() => [])).slice(0, 15);
 
   const loc = locale === "en" ? ("en" as const) : ("ar" as const);
   const rows = fr ? FRANCHISES.filter((f) => f.slug === fr) : FRANCHISES;
@@ -363,10 +373,6 @@ async function ListsDiscovery({
             ))}
           </PosterRail>
         ))}
-
-      {(lsrc === "all" || lsrc === "friends") && !fr && friends.length > 0 && (
-        <PublicListsRail lists={friends} locale={locale} title={t.listsFriendsRail} peekLabels={peekLabels} />
-      )}
 
       {(lsrc === "all" || lsrc === "community") && !fr && community.length > 0 && (
         <PublicListsRail lists={community} locale={locale} peekLabels={peekLabels} />
@@ -584,8 +590,16 @@ async function CuratedRails({
      والحقبةُ لا يفكّانه**: من طلب «جريمة ٢٠٢٠» لم يطلب دراما كورية. */
   const unmute = !!browse.lang || !!browse.country;
 
-  const [topMovies, topSeries, cinemas, soonMovies, soonSeries, top50Movies, top50Series] =
-    await Promise.all([
+  const [
+    topMovies,
+    topSeries,
+    popular,
+    cinemas,
+    soonMovies,
+    soonSeries,
+    top50Movies,
+    top50Series,
+  ] = await Promise.all([
       /* الصفوف المرتّبة كلّها تُعاد بترتيب IMDb وتحمل تقييمه (قرار أحمد:
          «الترتيب بأعلى تقييم حسب IMDb والتقييم فقط من IMDb») — TMDB يبقى
          مصدر التجميع (من يدخل الصفّ)، وIMDb مصدر الترتيب والرقم */
@@ -605,6 +619,35 @@ async function CuratedRails({
         : Promise.resolve([] as SearchResult[]),
       wantSeries && !upcoming
         ? topFor("tv", genre?.tv, rails.s)
+            .then((rows) => railGuard(rows, { unmute }))
+            .then(withImdbRatings)
+            .catch(() => [] as SearchResult[])
+        : Promise.resolve([] as SearchResult[]),
+      /* **«الأكثر شعبية» — صفٌّ جديد (D-195، مواصفةُ أحمد).**
+
+         **ولماذا ليس تكراراً لـ«أفضل ١٠ هذا الأسبوع»:** ذاك `/trending`
+         — **حركةُ الأسبوع**، تتغيّر كل يوم وتُرتَّب عندنا بتقييم IMDb.
+         وهذا `/popular` — **مخزونُ شعبيةٍ تراكميّ** يتغيّر ببطء ويحتفظ
+         بترتيب TMDB نفسه. **الأوّل يسأل «ما الجديد؟» والثاني «ما الذي
+         يعرفه الناس؟»**، فالجواران يفيدان.
+
+         **والفلترُ يطاع هنا كما في أخيه** (مواصفة أحمد: الفلتر عامٌّ داخل
+         التبويب): مع الفلتر يصير المصدر `/discover` بـ`popularity.desc`
+         — نفس المعنى بمصدرٍ يقبل المحاور. **ولا ترتيبَ بتقييم IMDb:**
+         الصفُّ عنوانُه الشعبية، وترتيبُه بالجودة كان سيكذّب اسمه.
+
+         ⚠️ **والحارسُ عليه كسائر الرفوف** (D-194) — وإلا صار البابَ
+         الجديد الذي يعود منه ما أُخرج من الأبواب الأخرى. */
+      wantMovies || wantSeries
+        ? (active
+            ? topByFilter(
+                wantMovies ? "movie" : "tv",
+                { ...base, genreIds: wantMovies ? genre?.movie : genre?.tv },
+                20,
+                "popularity.desc",
+              )
+            : popularByMedia(wantMovies ? "movie" : "tv")
+          )
             .then((rows) => railGuard(rows, { unmute }))
             .then(withImdbRatings)
             .catch(() => [] as SearchResult[])
@@ -750,6 +793,7 @@ async function CuratedRails({
     soon.length === 0 &&
     top50Movies.length === 0 &&
     top50Series.length === 0 &&
+    popular.length === 0 &&
     !inCinemas?.results.length;
 
   return (
@@ -777,6 +821,20 @@ async function CuratedRails({
              صار يبدأ من بلد المستخدم، وخريطةٌ من أربعة بلدان كانت
              ستطبع «MA» لمن اختار المغرب */
           note={t.inCinemasRegion(regionName(inCinemas.region, locale === "en" ? "en" : "ar"))}
+          ranked={false}
+        />
+      )}
+
+      {/* «الأكثر شعبية» بعد دور العرض وقبل «أفضل ١٠» (ترتيبُ مواصفة
+          أحمد): الشخصيُّ أوّلاً، ثم ما يُعرض اليوم، ثم الشعبيّ، ثم
+          المرتَّب بالجودة، ثم القادم — من الآنِ إلى الغد. */}
+      {popular.length > 0 && (
+        <RankedRail
+          title={wantMovies ? t.mostPopularMovies : t.mostPopularSeries}
+          icon="trending"
+          items={popular}
+          /* غيرُ مرقَّم: الترتيبُ ترتيبُ TMDB للشعبية لا حكمٌ بالجودة،
+             ورقمٌ أمام الملصق يُقرأ «الأفضل» فيكذب العنوان */
           ranked={false}
         />
       )}
@@ -905,7 +963,8 @@ async function AnimeRails({
     );
   };
 
-  const [topMovies, topSeries, cinemas, top50Movies, top50Series] = await Promise.all([
+  const [topMovies, topSeries, popular, airing, soon, cinemas, top50Movies, top50Series] =
+    await Promise.all([
     animeTop("movie", genre?.movie, rails.am)
       /* **ورفوفُ الأنمي تُصفّى بـ`anime:"only"`** (D-194): بِركتُها من
          `with_keywords` عند TMDB، **وكلمةُ «أنمي» يحملها عملٌ غيرُ يابانيّ
@@ -916,6 +975,49 @@ async function AnimeRails({
     animeTop("tv", genre?.tv, rails.a)
       .then((rows) => railGuard(rows, { anime: "only" }))
       .then(withImdbRatings)
+      .catch(() => [] as SearchResult[]),
+    /* **ثلاثةُ صفوفٍ جديدة في تبويب الأنمي (D-195، مواصفةُ أحمد):**
+       «الأكثر شعبية» · «يُعرض الآن» · «أنميٌ قادم».
+
+       **وكلُّها من `/discover` بمفتاح الأنمي** (`base`) لا من قوائم TMDB
+       الجاهزة — **و`‎/tv/popular` لا يقبل مفتاحاً**، فتصفيتُه بالأنمي
+       تعطي صفّاً من ثلاثة. فالفرق عن تبويبَي الأعمال مقصود: هناك المصدرُ
+       قائمةٌ جاهزةٌ حين لا فلتر، **وهنا `/discover` دائماً** لأن «أنمي»
+       نفسُه شرطٌ لا يقبله غيرُه.
+       **وثمنُه أن ترتيب الشعبية عندنا لا عند TMDB** — وهو نفسُ الرقم
+       (`popularity.desc`) بمصدرٍ يقبل الشرط. */
+    /* **والجهتان معاً في صفٍّ واحد هنا، بخلاف «أفضل ١٠»** — تبويبُ
+       «أنمي» نفسُه هو الوعد، وفيلمُ أنميٍ في صفّ أنميٍ ليس في غير بابه
+       (قيدُ D-141 كان صفّاً يعِد بجهةٍ ويعرض غيرها). والترتيبُ بالشعبية
+       يجمعهما بمقياسٍ واحد. */
+    Promise.all([
+      topByFilter("tv", { ...base, genreIds: genre?.tv }, 20, "popularity.desc").catch(
+        () => [] as SearchResult[],
+      ),
+      topByFilter("movie", { ...base, genreIds: genre?.movie }, 20, "popularity.desc").catch(
+        () => [] as SearchResult[],
+      ),
+    ])
+      .then(([tv, mv]) =>
+        railGuard([...tv, ...mv], { anime: "only" })
+          .sort((a, b) => (b.popularity ?? 0) - (a.popularity ?? 0))
+          .slice(0, 20),
+      )
+      .then(withImdbRatings)
+      .catch(() => [] as SearchResult[]),
+    /* «يُعرض الآن» — نظيرُ «في السينما» في تبويب الأفلام، وبنفس قيده:
+       `/tv/on_the_air` **لا يقبل نوعاً ولا لغةً ولا مفتاحاً**، فالتصفيةُ
+       على نتائجه. **ويغيب وقتَ الفلتر** كما يغيب صفُّ السينما — عرضُ ما
+       لم يُطلب تحت رأسٍ يقول إن الفلتر مُطبَّق كذبٌ في الواجهة (D-075). */
+    active
+      ? Promise.resolve([] as SearchResult[])
+      : airingTv()
+          .then((rows) => railGuard(rows, { anime: "only" }))
+          .then(withImdbRatings)
+          .catch(() => [] as SearchResult[]),
+    /* «أنميٌ قادم» — `upcomingByFilter` يقبل المفتاح فيطيع الفلتر كاملاً */
+    upcomingByFilter("tv", { ...base, genreIds: genre?.tv })
+      .then((rows) => railGuard(rows, { anime: "only" }))
       .catch(() => [] as SearchResult[]),
     /* «في السينما» يعود بالمنطقة كاملةً ثم يُصفّى هنا: TMDB لا يقبل
        تصنيفاً ولا لغةً على `/now_playing`، والصفّ عشرون عملاً لا أكثر —
@@ -975,6 +1077,17 @@ async function AnimeRails({
         />
       )}
 
+      {/* «يُعرض الآن» ثم «الأكثر شعبية» قبل رفوف «أفضل ١٠» — نفسُ ترتيب
+          مواصفة أحمد في التبويبين الآخرين: الآنَ أوّلاً ثم الشعبيّ ثم
+          المرتَّب بالجودة ثم القادم. */}
+      {airing.length > 0 && (
+        <RankedRail title={t.airingNowAnime} icon="tv" items={airing} ranked={false} />
+      )}
+
+      {popular.length > 0 && (
+        <RankedRail title={t.mostPopularAnime} icon="trending" items={popular} ranked={false} />
+      )}
+
       {(topMovies.length > 0 || rails.am !== "week") && (
         <RankedRail
           title={t.top10AnimeMovies}
@@ -994,6 +1107,12 @@ async function AnimeRails({
         />
       )}
 
+      {/* «أنميٌ قادم» — بعد المرتَّب بالجودة وقبل مراجع «أفضل ٥٠»:
+          القادمُ آخرُ الحاضر، والخمسون مرجعٌ ثابتٌ لا حاضر. */}
+      {soon.length > 0 && (
+        <RankedRail title={t.upcomingAnime} icon="calendar" items={soon} ranked={false} />
+      )}
+
       {top50Movies.length > 0 && (
         <RankedRail title={t.top50AnimeMovies} icon="film" items={top50Movies} />
       )}
@@ -1004,7 +1123,11 @@ async function AnimeRails({
       {/* **صفحةٌ خالية تقول لماذا:** بعد أن صار للتبويب فلتر، صار ممكناً
           أن يُفرغه اختيارٌ ضيّق («غربي · التسعينات · ٩ فأعلى») — وشاشةٌ
           بيضاء بلا سطرٍ تُقرأ عطلاً لا نتيجة */}
-      {active && topMovies.length === 0 && topSeries.length === 0 && (
+      {active &&
+        topMovies.length === 0 &&
+        topSeries.length === 0 &&
+        popular.length === 0 &&
+        soon.length === 0 && (
         <p className="text-center text-muted py-20">{t.browseEmpty}</p>
       )}
     </div>
