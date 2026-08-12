@@ -55,8 +55,12 @@ export function LoopzNews({ items, locale }: { items: LoopzNewsItem[]; locale: L
           : d.status === "Canceled"
             ? t.newsCanceled(n.title)
             : t.newsReturning(n.title);
-      case "episode":
-        return t.newsNextEp(n.title, showDate(d.date));
+      case "season_date":
+        return t.newsSeasonDate(n.title, Number(d.season) || 0, showDate(d.date));
+      case "theatrical":
+        return t.newsTheatrical(n.title, showDate(d.date));
+      case "released":
+        return t.newsOutNow(n.title);
       default:
         return null;
     }
