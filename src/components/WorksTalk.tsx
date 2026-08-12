@@ -3,7 +3,7 @@ import Image from "next/image";
 import { posterUrl } from "@/lib/tmdb";
 import { getDict, type Locale } from "@/lib/i18n";
 import { timeAgo } from "@/lib/when";
-import { displayNameOf, type FeedItem } from "@/lib/data";
+import { displayNameOf, type FeedItem, type TalkStat } from "@/lib/data";
 import { Avatar } from "./Avatar";
 import { Icon } from "./Icon";
 
@@ -12,8 +12,10 @@ export interface WorkTalk {
   mediaType: "tv" | "movie";
   title: string;
   posterPath: string | null;
-  /** كم رأياً مكتوباً على هذا العمل في الخطّ */
+  /** كم رأياً مكتوباً على هذا العمل في الخطّ — لم يعد يُرسم، انظر أدناه */
   count: number;
+  /** متوسّطُ تقييمات من تكلّموا عن العمل هنا — `null` إن لم يقيّم أحد */
+  avg: number | null;
   /** آخر رأيين — بهذا الترتيب */
   last: FeedItem[];
   updatedAt: string;
@@ -26,28 +28,62 @@ export interface WorkTalk {
  * **ولماذا هذا أصحُّ من خطٍّ مسطَّح:** خطُّ الآراء يخلط عشرة أعمالٍ في
  * عشرين بطاقة، فيقرأ المستخدم **أشخاصاً** لا **أعمالاً** — ومن يفتح
  * المجتمع في تطبيق مشاهدةٍ يسأل «عن ماذا يتكلّم الناس؟» لا «من تكلّم؟».
- * فالتجميعُ بالعمل يجيب السؤال المطروح، **ويقصّر الطريق إلى غرفة العمل**
- * (D-140) بدل أن يتركها مخبوءة في تبويبٍ آخر.
  *
  * **وآخرُ رأيين لا ثلاثة ولا واحد:** واحدٌ يبدو اقتباساً منفرداً فلا يوحي
  * بحوار، وثلاثةٌ تجعل الصفَّ شاشةً كاملة فيسقط معنى «أمرّر بين الأعمال».
  * **اثنان أقلُّ ما يُقرأ محادثةً.**
  *
- * والسطرُ كلُّه رابطٌ واحد إلى صفحة العمل: هدفُ لمسٍ واسع، **ولا زرَّ
- * داخل زرّ** — الإعجابُ والبلاغ يبقيان في صفحة العمل حيث الرأي كامل.
+ * ================= ما تغيّر في D-193 =================
+ *
+ * **١ · لا كلمةَ «رأي» ولا عدّادَها** (طلب أحمد: «بس بدون كلمة ريفيو»).
+ * كان السطرُ الثاني «٣ آراء» — تسميةٌ لما تراه بعينك تحته. وحلّ محلّه
+ * **رقمان لا يُرى غيرُهما من الصفّ**: عددُ الردود وعددُ من شاهد.
+ *
+ * **٢ · التقييمُ جنب الاسم بنجمةٍ صفراء** (طلبه حرفياً). والرقمُ
+ * **متوسّطُ من تكلّم عن العمل هنا** لا تقييمُ IMDb — لأن الصفَّ بطاقةُ
+ * مجتمع: الآراءُ تحته أصحابُ هذه الأرقام، فيتّسق ما تقرأ بما ترى.
+ * ولا يُكلّف نداءً: التقييمُ يأتي مع كل صفٍّ في الخطّ أصلاً.
+ * **وثمنُه يُقال:** نجمةٌ صفراء في التطبيق تعني «تقييم» في أماكن أخرى
+ * منها IMDb — فـ`title` يسمّي المقصود لمن توقّف عندها، **وإن أرادها
+ * أحمد تقييمَ IMDb فهي قراءةٌ واحدة من `imdb_ratings` بالمعرّفات**
+ * (بندٌ في `05`، لا تخمينٌ هنا).
+ *
+ * **٣ · «الريتويت» لا وجودَ له** (سأل: «وش المقصد في ريتويت؟»). لم يكن
+ * في البطاقة رمزٌ للتكرار قطُّ — والفكرةُ نفسُها لا معنى لها في تطبيق
+ * مشاهدة: إعادةُ نشر رأي غيرك ليست فعلاً يريده أحد. **واقتراحُه هو
+ * المنفَّذ: مكانَه عددُ من شاهد** (`title_talk_stats`) — رقمٌ يقول «هذا
+ * العملُ مُشاهَد» فيدعو من لم يشاهده.
+ *
+ * **٤ · الضغطُ يفتح صفحة الكلام لا صفحة العمل** (طلبه: «ما أبغاه يوديني
+ * صفحة الفيلم، أبغى صفحة تعليقات فقط كأني فاتح مجتمع»). فـ`href` صار
+ * `‎/talk/<type>/<id>`. **ومن أراد العمل نفسه يجده هناك في سطرٍ واحد** —
+ * فلا طريقٌ انقطع.
+ *
+ * والسطرُ كلُّه رابطٌ واحد: هدفُ لمسٍ واسع، **ولا زرَّ داخل زرّ** — الردُّ
+ * والإعجابُ والبلاغ كلُّها في صفحة الكلام حيث الرأي كامل.
  */
-export function WorksTalk({ works, locale }: { works: WorkTalk[]; locale: Locale }) {
+export function WorksTalk({
+  works,
+  stats,
+  locale,
+}: {
+  works: WorkTalk[];
+  /** `‎${media_type}-${tmdb_id}` → ردودٌ ومشاهدون. غيابُ المفتاح = صفران */
+  stats?: Map<string, TalkStat>;
+  locale: Locale;
+}) {
   const t = getDict(locale);
 
   return (
     <div className="divide-y divide-[color:var(--divider)]">
       {works.map((w) => {
-        const href = `/${w.mediaType === "tv" ? "show" : "movie"}/${w.tmdbId}`;
+        const key = `${w.mediaType}-${w.tmdbId}`;
+        const s = stats?.get(key);
         const poster = posterUrl(w.posterPath, "w185");
         return (
           <Link
-            key={`${w.mediaType}-${w.tmdbId}`}
-            href={href}
+            key={key}
+            href={`/talk/${w.mediaType}/${w.tmdbId}`}
             className="flex gap-3 py-4 first:pt-0 group active:opacity-80 transition"
           >
             {/* الملصق ثابتُ المقاس: شبكةٌ رأسية العينُ تمسحها بسرعة */}
@@ -66,13 +102,37 @@ export function WorksTalk({ works, locale }: { works: WorkTalk[]; locale: Locale
                 <h3 className="font-bold text-[15px] leading-tight line-clamp-1 group-hover:text-accent transition">
                   {w.title}
                 </h3>
-                <span className="shrink-0 text-[11px] text-muted tabular-nums">
+                {/* التقييمُ ملتصقٌ بالاسم لا في سطرٍ ثانٍ: هو صفةُ العمل
+                    لا خبرٌ عنه. و`dir="ltr"` كي لا يُقلب «7.4» في RTL */}
+                {w.avg != null && (
+                  <span
+                    className="shrink-0 text-[12px] font-bold text-accent tabular-nums"
+                    title={t.worksAvgHint}
+                  >
+                    ★ <span dir="ltr">{w.avg.toFixed(1)}</span>
+                  </span>
+                )}
+                <span className="ms-auto shrink-0 text-[11px] text-muted tabular-nums">
                   {timeAgo(w.updatedAt, t)}
                 </span>
               </div>
-              <p className="mt-0.5 text-[11px] font-semibold text-accent">
-                {t.worksReviewCount(w.count)}
-              </p>
+
+              {/* رقمان لا كلمات: الردودُ ومن شاهد. الصفرُ يُخفى — رقمٌ
+                  صفريّ يشغل مكاناً ولا يقول شيئاً */}
+              <div className="mt-1 flex items-center gap-3 text-[11px] text-muted tabular-nums">
+                {(s?.replies ?? 0) > 0 && (
+                  <span className="inline-flex items-center gap-1" title={t.talkRepliesHint}>
+                    <Icon name="comment" size={12} />
+                    {s!.replies}
+                  </span>
+                )}
+                {(s?.watchers ?? 0) > 0 && (
+                  <span className="inline-flex items-center gap-1" title={t.talkWatchersHint}>
+                    <Icon name="eye" size={12} />
+                    {s!.watchers}
+                  </span>
+                )}
+              </div>
 
               {/* الرأيان: صاحبُه ثم سطرٌ واحد منه. `line-clamp-2` لا
                   `truncate`: الرأي جملةٌ لا عنوان، وقطعُه عند الحرف الأول
@@ -118,9 +178,16 @@ export function WorksTalk({ works, locale }: { works: WorkTalk[]; locale: Locale
  */
 export function groupByWork(feed: FeedItem[]): WorkTalk[] {
   const map = new Map<string, WorkTalk>();
+  /* مجموعُ التقييمات وعددُها منفصلان عن `count`: الرأيُ المكتوب قد يأتي
+     بلا رقم (نظرياً)، فمتوسّطُ ثلاثةٍ لا يُقسم على أربعة */
+  const sums = new Map<string, { sum: number; n: number }>();
   for (const a of feed) {
     if (!a.review || !a.title) continue;
     const key = `${a.media_type}-${a.tmdb_id}`;
+    if (a.rating != null) {
+      const cur = sums.get(key) ?? { sum: 0, n: 0 };
+      sums.set(key, { sum: cur.sum + a.rating, n: cur.n + 1 });
+    }
     const cur = map.get(key);
     if (!cur) {
       map.set(key, {
@@ -129,6 +196,7 @@ export function groupByWork(feed: FeedItem[]): WorkTalk[] {
         title: a.title,
         posterPath: a.poster_path,
         count: 1,
+        avg: null,
         last: [a],
         updatedAt: a.updated_at,
       });
@@ -137,6 +205,10 @@ export function groupByWork(feed: FeedItem[]): WorkTalk[] {
     cur.count += 1;
     if (cur.last.length < 2) cur.last.push(a);
     if (a.updated_at > cur.updatedAt) cur.updatedAt = a.updated_at;
+  }
+  for (const [key, w] of map) {
+    const s = sums.get(key);
+    w.avg = s && s.n > 0 ? s.sum / s.n : null;
   }
   /* الترتيب بأحدث رأيٍ على العمل: «ما يتحدّث عنه الناس الآن» سؤالُ
      طزاجةٍ لا سؤالُ حجم — وعملٌ بعشرين رأياً قديماً ليس حديثَ اليوم. */

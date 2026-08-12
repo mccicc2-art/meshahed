@@ -1,15 +1,30 @@
 import { getDict, type Locale } from "@/lib/i18n";
-import { formatDate } from "@/lib/when";
-import type { TitleReview } from "@/lib/data";
-import { PersonName } from "./PersonRow";
-import { LikeButton } from "./LikeButton";
-import { ReportButton } from "./ReportButton";
+import type { ReviewReply, TitleReview } from "@/lib/data";
+import { TalkThread } from "./TalkThread";
 
+/**
+ * تبويبُ «الآراء» في صفحة العمل — **ترويسةُ التقييم، ثم الخيطُ نفسه**.
+ *
+ * **وما كان قبله (D-193):** هذا المكوّن كان يرسم الآراء بنفسه — بطاقةٌ
+ * لكل رأي، وإعجابٌ وبلاغٌ تحتها، **ولا ردّ**. ثم وُلدت `‎/talk` بالردود،
+ * فصار الرأيُ الواحد يُرسم في سطحين بقدرتين مختلفتين: هنا حديثٌ مغلق،
+ * وهناك حوار. **ونسخةٌ ثانية من أيّ شيء عيب** (قاعدة ٦) — والأسوأ أن
+ * الردَّ يُكتب في صفحةٍ ولا يظهر في الأخرى، فيبدو أنه ضاع.
+ *
+ * **فالرسمُ كلُّه انتقل إلى `TalkThread`** وبقي هنا ما لا يملكه غيرُه:
+ * سطرُ «تقييم المستخدمين» ومتوسّطُه وعددُه. **والردودُ تصل من الصفحة**
+ * (`getTitleReplies`) لأن القراءة شأنُ الخادم لا شأنُ المكوّن.
+ *
+ * ⚠️ **وثمنُه نداءٌ إضافيّ على أسخن صفحة** — لكنه داخل نفس `Suspense`
+ * الذي يبثّ التبويب، وقراءةٌ واحدة مفهرسة بالعمل. **والبديلُ كان
+ * سطحين يفترقان**، وذاك أغلى.
+ */
 export function CommunityReviews({
   locale,
   avg,
   count,
   reviews,
+  replies,
   tmdbId,
   mediaType,
 }: {
@@ -20,11 +35,19 @@ export function CommunityReviews({
   mediaType: "tv" | "movie";
   /** مراجعات مع أصحابها — الاسم يظهر إلا لمن أخفاه من الإعدادات */
   reviews: TitleReview[];
+  /**
+   * الردودُ على تلك المراجعات (هجرة ٦٢).
+   *
+   * **اختياريّةٌ لسببٍ واحد:** النشرُ في هذا المستودع يقع مجلّداً مجلّداً
+   * و**كلُّ رفعةٍ تُبنى وحدها** (`19_Tools_And_Access.md`) — فخاصّيةٌ
+   * إلزاميةٌ هنا تكسر البناءَ في اللحظة بين رفعة `components` ورفعة
+   * `app`. وغيابُها يعني «لا ردود» لا «تعذّرت القراءة»: `getTitleReplies`
+   * تُرجع مصفوفةً فارغة عند الفشل أصلاً، فالحالتان تُرسمان سواءً.
+   */
+  replies?: ReviewReply[];
 }) {
   const t = getDict(locale);
-
   const rounded = Math.round(avg * 10) / 10;
-  const written = reviews.filter((r) => r.review?.trim());
 
   return (
     <section className="mt-6 max-w-xl">
@@ -38,57 +61,16 @@ export function CommunityReviews({
         </div>
       )}
 
-      {written.length === 0 ? (
-        /* حالة فارغة مرئية بدل الاختفاء الصامت — دعوة لا فراغ */
-        <div className="rounded-2xl border border-dashed border-border px-5 py-8 text-center">
-          <p className="text-2xl mb-2" aria-hidden>
-            💬
-          </p>
-          <p className="text-sm text-muted leading-relaxed">{t.noReviews}</p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {written.map((r) => (
-            <article
-              key={`${r.id}-${r.updated_at}`}
-              className="bg-surface border border-border rounded-2xl p-4"
-            >
-              <div className="flex items-center justify-between gap-3 mb-2.5">
-                <PersonName person={r} t={t} size={32} sub={formatDate(r.updated_at, t)} />
-                <span
-                  className="text-[13px] shrink-0 font-bold text-accent tabular-nums bg-accent/10 border border-accent/25 px-2 py-1 rounded-full"
-                  title={t.rateOutOf(r.rating)}
-                >
-                  ★ <span dir="ltr">{r.rating}/10</span>
-                </span>
-              </div>
-              <p className="text-sm text-muted leading-relaxed whitespace-pre-line">{r.review}</p>
-              {/* الإعجاب يملأ البداية والإبلاغ في الطرف: فعلٌ يوميّ وفعلُ
-                  ضرورة، ولا يجوز أن يتساويا في الصوت. ولا يظهر الإبلاغ على
-                  رأيك أنت — لا يُبلِغ المرء عن نفسه */}
-              <div className="mt-3 pt-2.5 border-t border-[color:var(--divider)] flex items-center justify-between gap-2">
-                <LikeButton
-                  reviewUserId={r.id}
-                  tmdbId={tmdbId}
-                  mediaType={mediaType}
-                  likes={r.likes}
-                  likedByMe={r.likedByMe}
-                  isMine={r.isMine}
-                  locale={locale}
-                />
-                {!r.isMine && (
-                  <ReportButton
-                    reviewUserId={r.id}
-                    tmdbId={tmdbId}
-                    mediaType={mediaType}
-                    locale={locale}
-                  />
-                )}
-              </div>
-            </article>
-          ))}
-        </div>
-      )}
+      {/* الحالةُ الفارغة داخل `TalkThread` لا هنا: من يملك الرسم يملك
+          فراغه — وإلا صار للفراغ صندوقان */}
+      <TalkThread
+        reviews={reviews}
+        replies={replies ?? []}
+        tmdbId={tmdbId}
+        mediaType={mediaType}
+        locale={locale}
+        signedIn
+      />
     </section>
   );
 }

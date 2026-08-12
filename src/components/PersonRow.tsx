@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Avatar } from "./Avatar";
-import { displayNameOf, type PersonLite } from "@/lib/data";
+import { displayNameOf, type PersonLite } from "@/lib/people";
 import type { Dict } from "@/lib/i18n";
 
 /**

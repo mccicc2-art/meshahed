@@ -19,7 +19,8 @@ import { sheetMenuItem, sheetMenuDivider } from "./ui/controls";
 import { BlockConfirmSheet } from "./BlockConfirmSheet";
 import { replyToShare, markConversationRead, hideConversation } from "@/lib/actions";
 import { StartConversationSheet } from "./StartConversationSheet";
-import type { Conversation, ConvEvent, PersonLite } from "@/lib/data";
+import type { Conversation, ConvEvent } from "@/lib/data";
+import { displayNameOf, type PersonLite } from "@/lib/people";
 
 /**
  * تبويب «الرسائل» — محادثةٌ واحدة لكل شخص، كالرسائل الخاصة.
@@ -45,8 +46,12 @@ export function Inbox({
   const t = getDict(locale);
   const [startWith, setStartWith] = useState<PersonLite | null>(null);
 
-  const nameOf = (p: PersonLite | null) =>
-    !p || p.hide_name ? t.anonymousUser : p.nickname || p.username || "—";
+  /* **الاسمُ من `displayNameOf` لا من سطرٍ محليّ** (D-193): كان هنا تعريفٌ
+     ثانٍ لـ«اسمُ من أخفى اسمه» — نسخةٌ وُلدت لأن الدالّة الأصلية كانت في
+     `data.ts` ولا يستوردها مكوّنُ عميل. وقد صارت في `people.ts` النقيّ،
+     **فسقط عذرُ النسخة**. وفرقٌ واحد يُقال: من لا نكنيةَ له ولا معرّف كان
+     يُرسم «—» وصار «مستخدم» — نفسُ ما تقوله بقيةُ الشاشات عنه. */
+  const nameOf = (p: PersonLite | null) => displayNameOf(p, t.anonymousUser);
 
   const open = openWith ? conversations.find((c) => c.personId === openWith) : null;
   if (open) {
