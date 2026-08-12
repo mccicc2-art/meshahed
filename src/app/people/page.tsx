@@ -3,9 +3,9 @@ import { after } from "next/server";
 import Link from "next/link";
 import {
   getUser,
-  getNewsFeed,
-  getNewsStale,
-  refreshNewsNow,
+  getLoopzNews,
+  getNewsGenStale,
+  refreshLoopzNews,
   getCommunityFeed,
   getMyCommunities,
   getMyCommunityInvites,
@@ -21,7 +21,7 @@ import { CommunityDirectory, CommunityRoom } from "@/components/Communities";
 import { PageTabs } from "@/components/ui/PageTabs";
 import { CommunityTools } from "@/components/CommunityTools";
 import { TitleNews } from "@/components/TitleNews";
-import { NewsFeed } from "@/components/NewsFeed";
+import { LoopzNews } from "@/components/LoopzNews";
 import { getTitleNews } from "@/lib/titleNews";
 import { ScrollMemory } from "@/components/ScrollMemory";
 
@@ -152,12 +152,15 @@ export default async function PeoplePage({
   /* الأخبار للتبويب الرابع وحده: قسم «جديد فنّانيك» فيها يكلّف نداءات
      TMDB، ودفعُها في كل فتحةٍ للمجتمع ثمنٌ يدفعه من لم يفتح التبويب */
   const news = tab === "news" ? await getTitleNews() : [];
-  /* الأخبارُ الحقيقية (D-209): تُقرأ بلغة الواجهة وحدها — طلبُ أحمد */
-  const realNews = tab === "news" ? await getNewsFeed(locale, 30) : [];
-  /* **التجديدُ بحركة المرور:** من فتح التبويب بعد ساعةٍ يُطلق الدفعةَ
-     **بعد إرسال الصفحة** (`after`) فلا ينتظرها — ولا صفَّ cron ولا سرّ */
-  if (tab === "news" && (await getNewsStale(60))) {
-    after(() => refreshNewsNow());
+  /* **أخبارُنا نحن** (D-211): حقائقُ نرصدها ونكتبها، بلا رابطٍ خارجيّ
+     ولا مصدرٍ يُخفى — **والعناوينُ المجمَّعة رُفعت من الواجهة بطلب أحمد**
+     (الجدولُ والمسار باقيان للفحص، انظر `05`) */
+  const genNews = tab === "news" ? await getLoopzNews(30) : [];
+  /* **التجديدُ بحركة المرور** (اختيارُ أحمد في D-210، ويُعاد هنا): من فتح
+     التبويب بعد نصف ساعةٍ يُطلق دورةَ رصدٍ **بعد إرسال الصفحة** فلا
+     ينتظرها — ولا صفَّ cron ولا سرَّ في البيئة */
+  if (tab === "news" && (await getNewsGenStale(30))) {
+    after(() => refreshLoopzNews());
   }
 
   /* **سقط مع خطّ البطاقات:** «أشخاصٌ لمتابعتهم» (D-126) والصورُ
@@ -225,7 +228,7 @@ export default async function PeoplePage({
            الأخبار يريد ما جدَّ في الدنيا، وما جدَّ في مكتبته يتبعه —
            **قسمان بعنوانين، لا قائمةٌ واحدة بمعنيين** */
         <div className="space-y-8">
-          <NewsFeed items={realNews} locale={locale} />
+          <LoopzNews items={genNews} locale={locale} />
           <div>
             <h2 className="text-[15px] font-bold mb-2">{t.communityTabNews}</h2>
             <TitleNews items={news} locale={locale} />
