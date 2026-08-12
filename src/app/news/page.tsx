@@ -31,7 +31,6 @@ import {
   worksByPeople,
   upcomingByFilter,
   nowPlayingMovies,
-  popularByMedia,
   listWatchProviders,
   moviesByIds,
   resolveSetIds,
@@ -43,6 +42,7 @@ import {
 } from "@/lib/tmdb";
 import { ScrollMemory } from "@/components/ScrollMemory";
 import { animeMovieRail, topChartRail, looksAnime, railGuard } from "@/lib/topChart";
+import { buildSection, sectionHref } from "@/lib/sections";
 import { attachImdbRatings, withImdbRatings } from "@/lib/omdb";
 import { getT, getWatchRegion, getTabPrefs } from "@/lib/locale";
 import { defaultTab } from "@/lib/tabPrefs";
@@ -56,6 +56,7 @@ import {
   needsDiscover,
   eraRange,
   seasonRange,
+  browseHref,
   type BrowseQuery,
   type RailWin,
 } from "@/lib/browse";
@@ -475,6 +476,31 @@ async function CuratedCard({
  *    ٢٠٢٠ فأعلى» إلى تركيٍّ ٢٠٢٠ فأعلى — وهو ما طلبه.
  */
 /**
+ * سلسلةُ الفلتر الحاليّة — تُحمل إلى صفحة القسم كي لا تُلغى تصفيةُ القارئ.
+ *
+ * **وتُبنى من `browseHref` لا بيدنا** (D-174: بانٍ واحد للرابط): محورٌ
+ * جديد غداً يصل من نفسه، **ولو عُدّدت المحاور هنا لصار موضعاً رابعاً
+ * يُنسى تحديثُه**.
+ */
+function filterQs(b: BrowseQuery): string {
+  const href = browseHref({
+    g: b.genre?.slug ?? null,
+    lang: b.lang?.code ?? null,
+    co: b.country?.code ?? null,
+    p: b.provider,
+    era: b.era?.slug ?? null,
+    rate: b.rate,
+    tag: b.tag?.slug ?? null,
+    award: b.award,
+    st: b.status?.slug ?? null,
+    se: b.season?.slug ?? null,
+    std: b.studio?.slug ?? null,
+  });
+  const i = href.indexOf("?");
+  return i === -1 ? "" : href.slice(i + 1);
+}
+
+/**
  * **هل يطابق هذا الصفُّ الفلتر — بحقول الصفّ وحدها، بلا نداء؟** (D-197،
  * قرارُ أحمد: «يطيعان الفلتر، وإن فرغا يُخفيان».)
  *
@@ -627,6 +653,8 @@ async function CuratedRails({
      فالكتمُ يسقط لحظةَ يختار لغةً أو بلداً، ويعود إن أزالهما. **والنوعُ
      والحقبةُ لا يفكّانه**: من طلب «جريمة ٢٠٢٠» لم يطلب دراما كورية. */
   const unmute = !!browse.lang || !!browse.country;
+  /** يُحمل إلى صفحات الأقسام مع عناوينها (D-198) */
+  const qs = filterQs(browse);
 
   const [
     topMovies,
@@ -676,20 +704,19 @@ async function CuratedRails({
 
          ⚠️ **والحارسُ عليه كسائر الرفوف** (D-194) — وإلا صار البابَ
          الجديد الذي يعود منه ما أُخرج من الأبواب الأخرى. */
-      wantMovies || wantSeries
-        ? (active
-            ? topByFilter(
-                wantMovies ? "movie" : "tv",
-                { ...base, genreIds: wantMovies ? genre?.movie : genre?.tv },
-                20,
-                "popularity.desc",
-              )
-            : popularByMedia(wantMovies ? "movie" : "tv")
-          )
-            .then((rows) => railGuard(rows, { unmute }))
-            .then(withImdbRatings)
-            .catch(() => [] as SearchResult[])
-        : Promise.resolve([] as SearchResult[]),
+      /* **ومنها إلى `buildSection` لا استعلامٌ هنا (D-198):** الصفُّ
+         والصفحةُ الكاملة يناديان **نفسَ الدالّة** بحدَّين مختلفين — فلا
+         مصدرٌ ثانٍ لقسمٍ واحد، وهو العطلُ الذي كلّفنا D-135/D-164/D-183. */
+      buildSection(
+        "most-popular",
+        {
+          media: wantMovies ? "movie" : "tv",
+          base,
+          genreIds: wantMovies ? genre?.movie : genre?.tv,
+          active,
+        },
+        20,
+      ).then(withImdbRatings),
       /* «في السينما» بتقييم IMDb كسائر الصفوف (طلب أحمد 9 Aug مساءً:
          «أعمال السينما تكون مقيَّمة من IMDb»). كان الصفّ الوحيد الذي
          يعرض ملصقاتٍ بلا رقم — والفيلم الذي تفكّر في حجز تذكرةٍ له هو
@@ -858,6 +885,8 @@ async function CuratedRails({
           title={t.inCinemas}
           icon="film"
           items={inCinemas.results}
+          href={sectionHref("in-cinemas", "movie", qs)}
+          seeAllLabel={t.seeAll}
           /* اسم البلد من `region.ts` لا من خريطةٍ محلية: صفّ السينما
              صار يبدأ من بلد المستخدم، وخريطةٌ من أربعة بلدان كانت
              ستطبع «MA» لمن اختار المغرب */
@@ -874,6 +903,8 @@ async function CuratedRails({
           title={wantMovies ? t.mostPopularMovies : t.mostPopularSeries}
           icon="trending"
           items={popular}
+          href={sectionHref("most-popular", wantMovies ? "movie" : "tv", qs)}
+          seeAllLabel={t.seeAll}
           /* غيرُ مرقَّم: الترتيبُ ترتيبُ TMDB للشعبية لا حكمٌ بالجودة،
              ورقمٌ أمام الملصق يُقرأ «الأفضل» فيكذب العنوان */
           ranked={false}
@@ -887,6 +918,7 @@ async function CuratedRails({
           title={t.top10Movies}
           icon="film"
           items={topMovies}
+          href={sectionHref("top-ten", "movie", `${qs}${qs ? "&" : ""}w=${rails.m}`)}
           control={<RailWindowChips param="wm" value={rails.m} locale={locale} />}
           emptyText={t.railWinEmpty}
         />
@@ -896,12 +928,20 @@ async function CuratedRails({
           title={t.top10Series}
           icon="tv"
           items={topSeries}
+          href={sectionHref("top-ten", "tv", `${qs}${qs ? "&" : ""}w=${rails.s}`)}
           control={<RailWindowChips param="ws" value={rails.s} locale={locale} />}
           emptyText={t.railWinEmpty}
         />
       )}
       {soon.length > 0 && (
-        <CountdownRail title={t.comingSoon} icon="calendar" items={soon} locale={locale} />
+        <CountdownRail
+          title={t.comingSoon}
+          icon="calendar"
+          items={soon}
+          locale={locale}
+          href={sectionHref("upcoming", wantMovies ? "movie" : "tv", qs)}
+          seeAllLabel={t.seeAll}
+        />
       )}
 
       {/* ذيل «أعلى ٢٥ على الإطلاق» — مرجعٌ ثابت في الحالة غير المُصفّاة */}
@@ -981,6 +1021,7 @@ async function AnimeRails({
   const seasonR = season
     ? seasonRange(season, eraR.to ? Number(eraR.to.slice(0, 4)) : y)
     : null;
+  const qs = filterQs(browse);
   const base: DiscoverFilter = {
     /* **اللغةُ والجنسيةُ صارتا هنا أيضاً (D-196)** — ومحورٌ يُعرض في
        الورقة ولا يصل إلى الاستعلام **كذبٌ في الواجهة**: المستخدم يختار
@@ -1046,23 +1087,9 @@ async function AnimeRails({
        (`popularity.desc`) بمصدرٍ يقبل الشرط. */
     /* **والجهتان معاً في صفٍّ واحد هنا، بخلاف «أفضل ١٠»** — تبويبُ
        «أنمي» نفسُه هو الوعد، وفيلمُ أنميٍ في صفّ أنميٍ ليس في غير بابه
-       (قيدُ D-141 كان صفّاً يعِد بجهةٍ ويعرض غيرها). والترتيبُ بالشعبية
-       يجمعهما بمقياسٍ واحد. */
-    Promise.all([
-      topByFilter("tv", { ...base, genreIds: genre?.tv }, 20, "popularity.desc").catch(
-        () => [] as SearchResult[],
-      ),
-      topByFilter("movie", { ...base, genreIds: genre?.movie }, 20, "popularity.desc").catch(
-        () => [] as SearchResult[],
-      ),
-    ])
-      .then(([tv, mv]) =>
-        railGuard([...tv, ...mv], { anime: "only" })
-          .sort((a, b) => (b.popularity ?? 0) - (a.popularity ?? 0))
-          .slice(0, 20),
-      )
-      .then(withImdbRatings)
-      .catch(() => [] as SearchResult[]),
+       (قيدُ D-141 كان صفّاً يعِد بجهةٍ ويعرض غيرها). و`buildSection`
+       تجمعهما وترتّبهما بالشعبية — **ونفسُها من تبني الصفحة الكاملة**. */
+    buildSection("most-popular", { media: "anime", base, active }, 20).then(withImdbRatings),
     /* **«يُعرض الآن» = أنميُ الموسم الحاليّ — لا `‎/tv/on_the_air`.**
 
        ⚠️ **وقد جُرّبت تلك الطريقُ أوّلاً وسقطت، ويُقال بدل أن يُمحى:**
@@ -1078,19 +1105,11 @@ async function AnimeRails({
 
        **ويطيع الفلتر كاملاً** (مواصفة أحمد: الفلتر عامٌّ داخل التبويب) —
        فلا يغيب حين يُفعَّل، بخلاف صفّ السينما الذي لا يقبل محاوره. */
-    (() => {
-      const m = new Date().getUTCMonth();
-      const q = `${y}-${String(Math.floor(m / 3) * 3 + 1).padStart(2, "0")}-01`;
-      return topByFilter(
-        "tv",
-        { ...base, genreIds: genre?.tv, from: q, to: todayStr },
-        20,
-        "popularity.desc",
-      )
-        .then((rows) => railGuard(rows, { anime: "only" }))
-        .then(withImdbRatings)
-        .catch(() => [] as SearchResult[]);
-    })(),
+    buildSection(
+      "airing-now",
+      { media: "anime", base, genreIds: genre?.tv, active },
+      20,
+    ).then(withImdbRatings),
     /* «أنميٌ قادم» — `upcomingByFilter` يقبل المفتاح فيطيع الفلتر كاملاً */
     upcomingByFilter("tv", { ...base, genreIds: genre?.tv })
       .then((rows) => railGuard(rows, { anime: "only" }))
@@ -1163,11 +1182,25 @@ async function AnimeRails({
           مواصفة أحمد في التبويبين الآخرين: الآنَ أوّلاً ثم الشعبيّ ثم
           المرتَّب بالجودة ثم القادم. */}
       {airing.length > 0 && (
-        <RankedRail title={t.airingNowAnime} icon="tv" items={airing} ranked={false} />
+        <RankedRail
+          title={t.airingNowAnime}
+          icon="tv"
+          items={airing}
+          ranked={false}
+          href={sectionHref("airing-now", "anime", qs)}
+          seeAllLabel={t.seeAll}
+        />
       )}
 
       {popular.length > 0 && (
-        <RankedRail title={t.mostPopularAnime} icon="trending" items={popular} ranked={false} />
+        <RankedRail
+          title={t.mostPopularAnime}
+          icon="trending"
+          items={popular}
+          ranked={false}
+          href={sectionHref("most-popular", "anime", qs)}
+          seeAllLabel={t.seeAll}
+        />
       )}
 
       {(topMovies.length > 0 || rails.am !== "week") && (
@@ -1192,7 +1225,14 @@ async function AnimeRails({
       {/* «أنميٌ قادم» — بعد المرتَّب بالجودة وقبل مراجع «أفضل ٥٠»:
           القادمُ آخرُ الحاضر، والخمسون مرجعٌ ثابتٌ لا حاضر. */}
       {soon.length > 0 && (
-        <RankedRail title={t.upcomingAnime} icon="calendar" items={soon} ranked={false} />
+        <RankedRail
+          title={t.upcomingAnime}
+          icon="calendar"
+          items={soon}
+          ranked={false}
+          href={sectionHref("upcoming", "anime", qs)}
+          seeAllLabel={t.seeAll}
+        />
       )}
 
       {top50Movies.length > 0 && (
@@ -1314,7 +1354,14 @@ async function PersonalRails({
       {/* «من فنّانيك» بعد المقترحات مباشرة: كلاهما صفٌّ شخصيّ، والشخصيّ
           يسبق العامّ. غير مرقّم — هذه أحدث أعمال فنّانيك لا ترتيبها */}
       {artistRows.length > 0 && (
-        <RankedRail title={t.artistsRail} icon="people" items={artistRows} ranked={false} />
+        <RankedRail
+          title={t.artistsRail}
+          icon="people"
+          items={artistRows}
+          ranked={false}
+          href={sectionHref("from-artists", "movie")}
+          seeAllLabel={t.seeAll}
+        />
       )}
     </div>
   );
