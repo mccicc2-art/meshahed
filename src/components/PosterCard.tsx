@@ -3,6 +3,8 @@ import Image from "next/image";
 import { posterUrl } from "@/lib/media";
 import { MarqueeText } from "./MarqueeText";
 import { Icon, type IconName } from "./Icon";
+import { QuickAdd } from "./QuickAdd";
+import type { Locale } from "@/lib/i18n";
 
 type BadgeTone = "neutral" | "progress" | "watched" | "rating" | "dropped";
 
@@ -28,6 +30,7 @@ export function PosterCard({
   dropped = false,
   posterSize = "w342",
   fallbackIcon = "film",
+  quickAdd,
 }: {
   href: string;
   title: string;
@@ -51,6 +54,24 @@ export function PosterCard({
   posterSize?: "w185" | "w342";
   /** أيقونة الفراغ: فيلمٌ للأعمال، وشخصٌ للأشخاص */
   fallbackIcon?: IconName;
+  /**
+   * **زرُّ «+ للمشاهدة» على هذه البطاقة** (D-207 — امتدادُ D-205).
+   *
+   * **ولماذا اختياريّ لا افتراضيّ:** البطاقةُ نفسها تُرسم في ثمانية أسطح —
+   * المكتبة، والبحث، وصفحةُ الشخص، والأعمالُ المشابهة، وطاقمُ العمل.
+   * **وفي المكتبة الزرُّ عبثٌ** (كلُّ ما فيها مُضافٌ أصلاً)، **وعلى
+   * الممثّلين خطأٌ** (لا يُتابَع شخصٌ كعمل). فمن يعرف أن سياقَه «عملٌ
+   * قابلٌ للإضافة» يمرّره، ومن لا يعرف لا يدفع شيئاً.
+   *
+   * ⚠️ **و`added` يأتي من المستدعي لا من نداءٍ هنا** — لنفس سبب D-205:
+   * شبكةٌ من ستّين بطاقةً تسأل كلُّ واحدةٍ عن نفسها هي ستّون استعلاماً.
+   */
+  quickAdd?: {
+    tmdbId: number;
+    mediaType: "tv" | "movie";
+    added: boolean;
+    locale: Locale;
+  };
 }) {
   const url = posterUrl(posterPath, posterSize);
   return (
@@ -71,6 +92,19 @@ export function PosterCard({
           <div className="w-full h-full grid place-items-center text-muted">
             <Icon name={fallbackIcon} size={26} />
           </div>
+        )}
+        {/* **والزرُّ لا يُرسم مع شارة العدد**: كلاهما في `top end`، ورقمُ
+            الحلقات المتبقية يعني أن العملَ في المكتبة أصلاً — فالإضافةُ
+            لغوٌ هناك لا مزاحمةٌ على الزاوية. */
+        quickAdd && !(typeof count === "number" && count > 0) && (
+          <QuickAdd
+            tmdbId={quickAdd.tmdbId}
+            mediaType={quickAdd.mediaType}
+            title={title}
+            posterPath={posterPath}
+            added={quickAdd.added}
+            locale={quickAdd.locale}
+          />
         )}
         {badge && (
           <span
