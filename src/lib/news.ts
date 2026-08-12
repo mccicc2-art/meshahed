@@ -157,6 +157,50 @@ export const NEWS_SOURCES: NewsSource[] = [
     precision: "unknown",
     candidate: true,
   },
+  /* **جوجل نيوز بحثاً لا موقعاً** — والسببُ اضطراريّ: مصراوي (أدقُّ مصدرٍ
+     عربيّ في بحث ١٠ أغسطس) **تردّ ٤٠٣ على خادم Vercel** مهما كان الوكيل،
+     فالحجبُ على العنوان لا على الاسم. وفيدُ البحث يعطي **ما يسمّي عملاً
+     بحكم الاستعلام نفسه**، وينسب كلَّ خبرٍ لمصدره الأصليّ في عنوانه. */
+  {
+    slug: "gnews-ar-series",
+    label: "أخبار المسلسلات (عربي)",
+    url: "https://news.google.com/rss/search?q=%D9%85%D8%B3%D9%84%D8%B3%D9%84&hl=ar&gl=EG&ceid=EG:ar",
+    lang: "ar",
+    precision: "unknown",
+    candidate: true,
+  },
+  {
+    slug: "gnews-ar-movies",
+    label: "أخبار الأفلام (عربي)",
+    url: "https://news.google.com/rss/search?q=%D9%81%D9%8A%D9%84%D9%85&hl=ar&gl=EG&ceid=EG:ar",
+    lang: "ar",
+    precision: "unknown",
+    candidate: true,
+  },
+  {
+    slug: "gnews-ar-anime",
+    label: "أخبار الأنمي (عربي)",
+    url: "https://news.google.com/rss/search?q=%D8%A3%D9%86%D9%85%D9%8A&hl=ar&gl=EG&ceid=EG:ar",
+    lang: "ar",
+    precision: "unknown",
+    candidate: true,
+  },
+  {
+    slug: "cnn-arabic-ent",
+    label: "CNN بالعربية — ترفيه",
+    url: "https://arabic.cnn.com/entertainment/rss",
+    lang: "ar",
+    precision: "unknown",
+    candidate: true,
+  },
+  {
+    slug: "filfan",
+    label: "في الفن",
+    url: "https://www.filfan.com/rss/all",
+    lang: "ar",
+    precision: "unknown",
+    candidate: true,
+  },
   {
     slug: "aljazeera-culture",
     label: "الجزيرة — فنون وثقافة",
