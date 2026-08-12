@@ -18,7 +18,22 @@ import { createClient } from "@/lib/supabase/server";
  * الصفحةُ سجلَّ تعديلاتٍ لا أخباراً.**
  */
 
-export type NewsKind = "trailer" | "date" | "season" | "status" | "episode";
+/**
+ * **بلاغُ أحمد (D-212):** «كلّها موعد نزول الحلقة القادمة، وهو أصلاً في
+ * Upcoming… أبغى أخبار أثقل». **فحُذف `episode` من الوجود**، وأُضيفت
+ * ثلاثةٌ ثقيلة: انطلاقُ موسمٍ · التاريخُ الرسميّ في الصالات · صدورٌ فعليّ.
+ *
+ * **والقاعدةُ المستخلصة:** الخبرُ ما **لا يعرفه المستخدم من مكانٍ آخر في
+ * التطبيق** — لا ما يسهل رصدُه.
+ */
+export type NewsKind =
+  | "trailer"
+  | "date"
+  | "season"
+  | "status"
+  | "season_date"
+  | "theatrical"
+  | "released";
 
 export interface Snapshot {
   tmdb_id: number;
@@ -28,6 +43,10 @@ export interface Snapshot {
   next_air_date: string | null;
   seasons: number | null;
   trailer_key: string | null;
+  last_air_date: string | null;
+  next_season_date: string | null;
+  next_season_num: number | null;
+  theatrical_date: string | null;
 }
 
 /** «اليوم» بصيغة `YYYY-MM-DD` — والمقارنةُ نصّيةٌ لأن الصيغة مرتَّبة معجمياً */
@@ -68,10 +87,15 @@ async function readTitle(
   mediaType: "tv" | "movie",
 ): Promise<{ snap: Snapshot; title: string; poster: string | null } | null> {
   try {
-    const { getTv, getMovie, getTrailer } = await import("@/lib/tmdb");
+    const { getTv, getMovie, getTrailer, movieTheatricalDate } = await import("@/lib/tmdb");
     if (mediaType === "tv") {
       const tv = await getTv(tmdbId);
       const trailer = await getTrailer("tv", tmdbId).catch(() => null);
+      /* **موسمٌ قادم له موعد**: أبعدُ موسمٍ تاريخُ انطلاقه في المستقبل —
+         وهو خبرُ «الإعلان عن الموسم الثاني» الذي طلبه أحمد بالاسم */
+      const upcoming = (tv.seasons ?? [])
+        .filter((se) => se.season_number > 0 && day(se.air_date) && day(se.air_date)! > today())
+        .sort((a, b) => (a.air_date ?? "").localeCompare(b.air_date ?? ""))[0];
       return {
         title: tv.name,
         poster: tv.poster_path ?? null,
@@ -83,11 +107,19 @@ async function readTitle(
           next_air_date: day(tv.next_episode_to_air?.air_date),
           seasons: tv.number_of_seasons ?? null,
           trailer_key: trailer?.key ?? null,
+          last_air_date: day(tv.last_air_date),
+          next_season_date: upcoming ? day(upcoming.air_date) : null,
+          next_season_num: upcoming ? upcoming.season_number : null,
+          theatrical_date: null,
         },
       };
     }
     const mv = await getMovie(tmdbId);
     const trailer = await getTrailer("movie", tmdbId).catch(() => null);
+    /* **والنداءُ الثالث لمن لم يصدر بعدُ وحده**: تاريخُ الصالات لا يتغيّر
+       لفيلمٍ عُرض قبل سنة، ودفعُ نداءٍ عنه هدرٌ صافٍ */
+    const notOut = (mv.status ?? "") !== "Released" || (day(mv.release_date) ?? "") > today();
+    const theatrical = notOut ? await movieTheatricalDate(tmdbId).catch(() => null) : null;
     return {
       title: mv.title,
       poster: mv.poster_path ?? null,
@@ -99,6 +131,10 @@ async function readTitle(
         next_air_date: null,
         seasons: null,
         trailer_key: trailer?.key ?? null,
+        last_air_date: null,
+        next_season_date: null,
+        next_season_num: null,
+        theatrical_date: theatrical,
       },
     };
   } catch {
@@ -189,15 +225,50 @@ export function diffToPosts(
     });
   }
 
-  /* ٥) موعدُ الحلقة القادمة حين يتحدّد بعد انقطاع — **لا مع كل حلقة**:
-     مسلسلٌ أسبوعيّ كان سيعطي خبراً كلَّ أسبوع لكل عمل. الشرطُ أن يكون
-     الموعدُ غائباً قبلَه. */
-  if (after.media_type === "tv" && after.next_air_date && !before.next_air_date) {
+  /* ٥) **انطلاقُ موسمٍ قادم** — «الإعلان عن الموسم الثاني» بعينه.
+     ويولد حين يظهر الموعدُ أوّلَ مرّة أو يتبدّل، **لا مع كل حلقة**. */
+  if (
+    after.media_type === "tv" &&
+    after.next_season_date &&
+    after.next_season_date !== before.next_season_date
+  ) {
     out.push({
       ...base,
-      kind: "episode",
-      key: `episode:${id}:${after.next_air_date}`,
-      data: { date: after.next_air_date },
+      kind: "season_date",
+      key: `seasondate:${id}:${after.next_season_num ?? 0}:${after.next_season_date}`,
+      data: { season: after.next_season_num ?? 0, date: after.next_season_date },
+    });
+  }
+
+  /* ٦) **رسمياً في الصالات** — تاريخُ العرض السينمائيّ حين يتحدّد أو
+     يتبدّل، وهو غيرُ `release_date` العامّ (قد يكون رقميّاً أو مهرجانياً) */
+  if (
+    after.media_type === "movie" &&
+    after.theatrical_date &&
+    after.theatrical_date !== before.theatrical_date &&
+    after.theatrical_date >= today()
+  ) {
+    out.push({
+      ...base,
+      kind: "theatrical",
+      key: `theatrical:${id}:${after.theatrical_date}`,
+      data: { date: after.theatrical_date },
+    });
+  }
+
+  /* ٧) **صدر فعلاً** — الحالةُ عبرت إلى `Released`. خبرٌ ينتظره من وضع
+     الفيلم في قائمته منذ شهور. */
+  if (
+    after.media_type === "movie" &&
+    after.status === "Released" &&
+    before.status &&
+    before.status !== "Released"
+  ) {
+    out.push({
+      ...base,
+      kind: "released",
+      key: `released:${id}`,
+      data: {},
     });
   }
 
@@ -231,20 +302,61 @@ function firstSightPosts(
   const out: GeneratedPost[] = [];
   const now = today();
 
-  if (after.next_air_date && after.next_air_date >= now && after.next_air_date <= inDays(14)) {
+  /* **موسمٌ قادم بموعدٍ معلن** — أثقلُ ما يمكن قولُه عن مسلسلٍ اليوم */
+  if (
+    after.media_type === "tv" &&
+    after.next_season_date &&
+    after.next_season_date > now &&
+    after.next_season_date <= inDays(180)
+  ) {
     out.push({
       ...base,
-      kind: "episode",
-      key: `episode:${id}:${after.next_air_date}`,
-      data: { date: after.next_air_date },
+      kind: "season_date",
+      key: `seasondate:${id}:${after.next_season_num ?? 0}:${after.next_season_date}`,
+      data: { season: after.next_season_num ?? 0, date: after.next_season_date },
+    });
+  }
+
+  /* **رسمياً في الصالات** */
+  if (
+    after.media_type === "movie" &&
+    after.theatrical_date &&
+    after.theatrical_date > now &&
+    after.theatrical_date <= inDays(180)
+  ) {
+    out.push({
+      ...base,
+      kind: "theatrical",
+      key: `theatrical:${id}:${after.theatrical_date}`,
+      data: { date: after.theatrical_date },
+    });
+  }
+
+  /* **مسلسلٌ انتهى أو أُلغي حديثاً** — و«حديثاً» شرطٌ لا زينة: «انتهى
+     Friends» ليس خبراً، **و«انتهى قبل أسبوعين» خبرٌ لمن يتابعه.** */
+  if (
+    after.media_type === "tv" &&
+    (after.status === "Ended" || after.status === "Canceled") &&
+    after.last_air_date &&
+    after.last_air_date >= inDays(-45) &&
+    after.last_air_date <= now
+  ) {
+    out.push({
+      ...base,
+      kind: "status",
+      key: `status:${id}:${after.status}`,
+      data: { status: after.status },
     });
   }
   /* **ومسلسلٌ يعرض حلقاته الآن لا يُقال فيه «تحدّد موعد صدوره».**
      `first_air_date` لمسلسلٍ جارٍ هو تاريخُ حلقةٍ قادمة أحياناً، فيظهر
      الخبرُ مرّتين بصيغتين — رأيتُه حيّاً في «General Anesthesia».
      **فسطرُ الحلقة أولى، وسطرُ الصدور للأفلام ولمسلسلٍ لم يبدأ.** */
+  /* **ولا يُقال «تحدّد موعدُ صدوره» لفيلمٍ قيل فيه «رسمياً في الصالات»** —
+     خبرٌ واحد بصيغتين هو العيبُ الذي أصلحناه أمس بعينه */
   const airing = after.media_type === "tv" && !!after.next_air_date;
-  if (!airing && after.release_date && after.release_date > now && after.release_date <= inDays(60)) {
+  const said = after.media_type === "movie" && !!after.theatrical_date;
+  if (!airing && !said && after.release_date && after.release_date > now && after.release_date <= inDays(60)) {
     out.push({
       ...base,
       kind: "date",

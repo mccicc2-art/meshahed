@@ -754,6 +754,37 @@ async function withPoster<T extends { poster_path?: string | null }>(
   }
 }
 
+/**
+ * **التاريخُ الرسميّ في الصالات** (D-212) — طلبُ أحمد بالاسم: «رسمياً موعد
+ * فِلم كذا في السينما».
+ *
+ * `release_date` في تفاصيل الفيلم **تاريخٌ أوّليّ واحد** قد يكون رقميّاً أو
+ * مهرجانياً؛ و`/release_dates` تعطي التواريخَ **بنوعها وبلدها**: ٢ عرضٌ
+ * محدود و٣ عرضٌ في الصالات. **والأولويةُ: السعودية ثم أمريكا ثم أبكرُ
+ * تاريخٍ في الدنيا** — فمن يقرأ بالعربية يرى موعدَ صالاته إن وُجد.
+ */
+export async function movieTheatricalDate(id: number): Promise<string | null> {
+  try {
+    const data = await tmdb<{
+      results?: { iso_3166_1: string; release_dates?: { type: number; release_date: string }[] }[];
+    }>(`/movie/${id}/release_dates`);
+    const pick = (rows: { type: number; release_date: string }[] = []) =>
+      rows
+        .filter((r) => (r.type === 2 || r.type === 3) && typeof r.release_date === "string")
+        .map((r) => r.release_date.slice(0, 10))
+        .sort()[0] ?? null;
+    const byCountry = new Map(
+      (data.results ?? []).map((r) => [r.iso_3166_1, pick(r.release_dates)]),
+    );
+    const preferred = byCountry.get("SA") || byCountry.get("US");
+    if (preferred) return preferred;
+    const all = [...byCountry.values()].filter(Boolean) as string[];
+    return all.sort()[0] ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export async function getTv(id: number): Promise<TvDetails> {
   return withPoster(await tmdb<TvDetails>(`/tv/${id}`), `/tv/${id}`);
 }

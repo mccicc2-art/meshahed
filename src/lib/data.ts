@@ -2909,7 +2909,7 @@ export async function refreshNewsNow(): Promise<number> {
 
 export interface LoopzNewsItem {
   key: string;
-  kind: "trailer" | "date" | "season" | "status" | "episode";
+  kind: "trailer" | "date" | "season" | "status" | "season_date" | "theatrical" | "released";
   tmdb_id: number;
   media_type: "tv" | "movie";
   title: string;
