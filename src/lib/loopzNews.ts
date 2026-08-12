@@ -239,7 +239,12 @@ function firstSightPosts(
       data: { date: after.next_air_date },
     });
   }
-  if (after.release_date && after.release_date > now && after.release_date <= inDays(60)) {
+  /* **ومسلسلٌ يعرض حلقاته الآن لا يُقال فيه «تحدّد موعد صدوره».**
+     `first_air_date` لمسلسلٍ جارٍ هو تاريخُ حلقةٍ قادمة أحياناً، فيظهر
+     الخبرُ مرّتين بصيغتين — رأيتُه حيّاً في «General Anesthesia».
+     **فسطرُ الحلقة أولى، وسطرُ الصدور للأفلام ولمسلسلٍ لم يبدأ.** */
+  const airing = after.media_type === "tv" && !!after.next_air_date;
+  if (!airing && after.release_date && after.release_date > now && after.release_date <= inDays(60)) {
     out.push({
       ...base,
       kind: "date",
