@@ -3,6 +3,7 @@ import { getUser } from "@/lib/data";
 import { allow, retryAfter } from "@/lib/ratelimit";
 import { runNewsSlice } from "@/lib/loopzNews";
 import { runReportSlice } from "@/lib/newsReports";
+import { NEWS_SOURCES, probeSources } from "@/lib/news";
 
 /** ستّةٌ وعشرون عملاً × نداءين — والدفعةُ تنتهي في ثوانٍ */
 export const maxDuration = 60;
@@ -32,6 +33,20 @@ export async function GET(request: Request) {
 
   const url = new URL(request.url);
   const limit = Math.max(1, Math.min(60, Number(url.searchParams.get("limit") ?? 26) | 0));
+
+  /* **الفاحصُ انتقل إلى هنا** (D-214): مسارُ الأخبار المجمَّعة حُذف بطلب
+     أحمد، **لكنّ فحصَ الفيدات بقي لأن `report` يقرأ من الفيدات نفسِها** —
+     وهو ما يكشف موتَ مصدرٍ قبل أن يظهر بصمتٍ في صفر مطابقات. */
+  if (url.searchParams.get("probe") === "1") {
+    const results = await probeSources(NEWS_SOURCES.filter((s) => s.enabled));
+    return NextResponse.json({
+      mode: "probe",
+      wrote: 0,
+      ok: results.filter((x) => x.ok).length,
+      of: results.length,
+      results,
+    });
+  }
 
   const t0 = Date.now();
   const r = await runNewsSlice(limit);
