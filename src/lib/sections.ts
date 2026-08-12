@@ -14,8 +14,9 @@ import {
   worksByPeople,
   type DiscoverFilter,
 } from "./tmdb";
-import { getFollowedArtists, getImdbChart } from "./data";
-import { railGuard } from "./topChart";
+import { getFollowedArtists } from "./data";
+import { railGuard, topChartRail } from "./topChart";
+import type { Locale } from "./i18n";
 
 /**
  * خلطٌ عشوائيّ — **قرعةُ خادمٍ لا دالّةُ عرض** (نمط D-073 حرفياً).
@@ -105,6 +106,13 @@ export interface SectionCtx {
    * العشرين»**، وهو أقصى ما يمكن أن يعنيه الوعدُ لصفٍّ طُلب أن يتغيّر.
    */
   sample?: boolean;
+  /**
+   * لغةُ القارئ — **يلزمها مصدرُ الكلاسيكيّات وحده** (`topChartRail`):
+   * صفوفُ `imdb_chart` لا يملكها أحد فتُترجَم عند العرض (D-048/D-147).
+   * اختياريّةٌ فبدونها يسقط المزجُ ويبقى الرائجُ وحده — **درجةٌ أقلُّ لا
+   * شاشةُ خطأ**.
+   */
+  locale?: Locale;
 }
 
 /** مفتاحُ الترجمة لعنوان القسم — الاسمُ يبقى في `i18n.ts` لا يُنسخ هنا */
@@ -216,6 +224,7 @@ export async function buildSection(
               لا تحمل لغةً ولا سنةً تُصفّى بها** (D-189). فالتصفيةُ وعدٌ
               يُقدَّم على التنويع. */
         const wantMix = !active && media !== "anime";
+        const locale = ctx.locale;
         const [fresh, classics] = await Promise.all([
           Promise.all(
             sides(media).map((mt) =>
@@ -223,24 +232,27 @@ export async function buildSection(
               popularWellKnown(mt, { ...base, genreIds }, wantMix ? 2 : 3),
             ),
           ).then((r) => r.flat()),
-          wantMix
-            ? getImdbChart(media === "movie" ? "movie" : "tv", 60)
-                .then((rows) =>
-                  rows.map(
-                    (r): SearchResult => ({
-                      id: r.tmdb_id,
-                      media_type: r.media_type === "tv" ? "tv" : "movie",
-                      title: r.title ?? undefined,
-                      name: r.title ?? undefined,
-                      poster_path: r.poster_path,
-                      backdrop_path: null,
-                      overview: "",
-                      vote_average: 0,
-                      genre_ids: [],
-                    }),
-                  ),
-                )
-                .catch(() => [] as SearchResult[])
+          /* 🔴 **`topChartRail` لا `getImdbChart` — وهذا خطأٌ وقع وقِيس على
+             الإنتاج قبل أن يُصلَح، فيُقال:** أوّلُ نسخةٍ قرأت القائمةَ
+             **خاماً** فعاد الصفُّ يحمل **«Sapne vs Everyone» و«Scam 1992»**
+             (هنديّ) و**«Blue Planet II» و«Cosmos» مرّتين** (وثائقيّ)
+             و**«Bluey»** — أي **كلُّ ما أُسقط في D-165 وD-170 وD-189 عاد
+             من بابٍ خلفيّ**.
+
+             **والسببُ أنّ الحُرّاس ليست في القائمة بل في `filterRail`**:
+             الوثائقيُّ واللغةُ المكتومة وقائمةُ الاستبعاد كلُّها هناك.
+             **وأسوأُ من ذلك أن `railGuard` لم يكن يستطيع مساعدتَنا**:
+             الصفوفُ المصنوعة يدوياً من `ChartRow` **لا تحمل
+             `original_language` ولا `genre_ids`** — فالحارسُ يقرأ فراغاً
+             ويُمرّر. **حارسٌ يُمرَّر عليه صفٌّ بلا حقولٍ يقرؤها ليس حارساً.**
+
+             **فالمصدرُ صار الدالّةَ التي تحرس وتترجم أصلاً** — وهي نفسُها
+             التي تبني «أفضل ٥٠» في هذه الصفحة، **فالتفاصيلُ مخبّأةٌ من
+             ندائها ولا كلفةَ ثانية**. */
+          wantMix && locale
+            ? topChartRail(media === "movie" ? "movie" : "tv", 60, locale).catch(
+                () => [] as SearchResult[],
+              )
             : Promise.resolve([] as SearchResult[]),
         ]);
 
