@@ -596,6 +596,11 @@ const ar = {
      يقرؤه أحد يُحذف لا يُترك**: بقاؤه يوحي بسطحٍ ثانٍ يستعمله، فيُنسخ
      عنه من يريد عدّاداً بدل أن يقرأ القرار. */
   worksAvgHint: "متوسّطُ تقييمات من تكلّموا عن العمل",
+  /* زرُّ «+ للمشاهدة» على الملصق (D-205) — **اسمُه لقارئ الشاشة لا للعين**:
+     الرمزُ وحده على ملصقٍ ١١٢px، والكلمةُ تكسره. */
+  quickAddLabel: "أضِفه إلى «للمشاهدة»",
+  quickAddRemove: "أزِله من «للمشاهدة»",
+  quickAddDone: "أُضيف إلى «للمشاهدة»",
   talkRepliesHint: "ردود",
   talkWatchersHint: "شاهدوه",
   talkReply: "ردّ",
@@ -1605,6 +1610,9 @@ const en: Dict = {
   communityTabWorks: "Titles",
   // Talk page and replies (D-193)
   worksAvgHint: "Average rating of the people talking about it",
+  quickAddLabel: "Add to To watch",
+  quickAddRemove: "Remove from To watch",
+  quickAddDone: "Added to To watch",
   talkRepliesHint: "replies",
   talkWatchersHint: "watching",
   talkReply: "Reply",
