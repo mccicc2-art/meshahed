@@ -9,6 +9,7 @@ import {
   getMyRating,
   getCommunityRating,
   getTitleReviews,
+  getTitleReplies,
   getMyLists,
   getListsContaining,
   getPublicListsContaining,
@@ -391,10 +392,13 @@ async function MovieReviewsTab({
   posterPath: string | null;
   locale: Awaited<ReturnType<typeof getT>>["locale"];
 }) {
-  const [myRating, community, titleReviews] = await Promise.all([
+  const [myRating, community, titleReviews, titleReplies] = await Promise.all([
     getMyRating(movieId, "movie"),
     getCommunityRating(movieId, "movie"),
     getTitleReviews(movieId, "movie"),
+    /* الردودُ مع الآراء في نفس الدفعة (D-193): نداءٌ ثانٍ متسلسلٌ كان
+       يضيف رحلةً كاملة إلى تبويبٍ يُبثّ أصلاً */
+    getTitleReplies(movieId, "movie"),
   ]);
   return (
     <div className="space-y-4">
@@ -416,6 +420,7 @@ async function MovieReviewsTab({
         avg={community.avg}
         count={community.count}
         reviews={titleReviews}
+        replies={titleReplies}
       />
     </div>
   );
