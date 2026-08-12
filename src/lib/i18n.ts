@@ -776,7 +776,11 @@ const ar = {
   newsCanceled: (name: string) => `أُلغي «${name}»`,
   newsReturning: (name: string) => `«${name}» يعود بموسمٍ جديد`,
   newsSeasonDate: (name: string, n: number, date: string) =>
-    n > 0 ? `الموسم ${n} من «${name}» ينطلق ${date}` : `موسمٌ جديد من «${name}» ينطلق ${date}`,
+    n === 1
+      ? `«${name}» ينطلق ${date}`
+      : n > 1
+        ? `الموسم ${n} من «${name}» ينطلق ${date}`
+        : `موسمٌ جديد من «${name}» ينطلق ${date}`,
   newsTheatrical: (name: string, date: string) => `رسمياً: «${name}» في الصالات ${date}`,
   newsOutNow: (name: string) => `صدر «${name}»`,
   // الأخبار الحقيقية (D-209)
@@ -1797,7 +1801,11 @@ const en: Dict = {
   newsCanceled: (name: string) => `“${name}” has been cancelled`,
   newsReturning: (name: string) => `“${name}” is coming back`,
   newsSeasonDate: (name: string, n: number, date: string) =>
-    n > 0 ? `Season ${n} of “${name}” premieres ${date}` : `A new season of “${name}” premieres ${date}`,
+    n === 1
+      ? `“${name}” premieres ${date}`
+      : n > 1
+        ? `Season ${n} of “${name}” premieres ${date}`
+        : `A new season of “${name}” premieres ${date}`,
   newsTheatrical: (name: string, date: string) => `Official: “${name}” hits theatres ${date}`,
   newsOutNow: (name: string) => `“${name}” is out`,
   newsRealTitle: "Latest news",

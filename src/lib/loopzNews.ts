@@ -179,7 +179,10 @@ export function diffToPosts(
   /* ٢) موعدُ الصدور: تحدَّد أو تبدّل. **والتاريخُ الذاهب إلى الماضي ليس
      خبراً** — TMDB تصحّح تواريخَ قديمة كثيراً، وتصحيحُ أرشيفٍ لا يهمّ
      أحداً. فالخبرُ لما هو آتٍ فقط. */
-  if (after.release_date && after.release_date !== before.release_date) {
+  /* **و`date` للأفلام وحدها** (D-212): «تحدّد موعد صدور» لمسلسلٍ يقولها
+     `season_date` أصدقَ وأثقل — **ورأيتُ الخبرَ مكرّراً بصيغتين حيّاً**
+     («General Anesthesia» مرّتين في اللقطة نفسها). */
+  if (after.media_type === "movie" && after.release_date && after.release_date !== before.release_date) {
     const future = after.release_date >= today();
     if (future) {
       out.push({
@@ -354,9 +357,16 @@ function firstSightPosts(
      **فسطرُ الحلقة أولى، وسطرُ الصدور للأفلام ولمسلسلٍ لم يبدأ.** */
   /* **ولا يُقال «تحدّد موعدُ صدوره» لفيلمٍ قيل فيه «رسمياً في الصالات»** —
      خبرٌ واحد بصيغتين هو العيبُ الذي أصلحناه أمس بعينه */
-  const airing = after.media_type === "tv" && !!after.next_air_date;
+  /* **الأفلامُ وحدها، وما لم يُقل بصيغةٍ أثقل**: من له تاريخُ صالاتٍ قيل
+     فيه «رسمياً»، ومن له موسمٌ قادم قيل فيه «ينطلق». */
   const said = after.media_type === "movie" && !!after.theatrical_date;
-  if (!airing && !said && after.release_date && after.release_date > now && after.release_date <= inDays(60)) {
+  if (
+    after.media_type === "movie" &&
+    !said &&
+    after.release_date &&
+    after.release_date > now &&
+    after.release_date <= inDays(60)
+  ) {
     out.push({
       ...base,
       kind: "date",
