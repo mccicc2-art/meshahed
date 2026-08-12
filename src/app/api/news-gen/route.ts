@@ -1,0 +1,38 @@
+import { NextResponse } from "next/server";
+import { getUser } from "@/lib/data";
+import { allow, retryAfter } from "@/lib/ratelimit";
+import { runNewsSlice } from "@/lib/loopzNews";
+
+/** ستّةٌ وعشرون عملاً × نداءين — والدفعةُ تنتهي في ثوانٍ */
+export const maxDuration = 60;
+
+/**
+ * دورةُ رصدٍ يدوية — **بابُ الفحص، لا محرّكُ الميزة** (D-211).
+ *
+ * المحرّكُ هو `after()` في تبويب الأخبار (التجديدُ بحركة المرور، اختيارُ
+ * أحمد)، **وهذا المسار يجعل الدورةَ قابلةً للاستدعاء والقياس** — وهو ما
+ * كشف أعطالَ المطابقة في D-210 قبل أن يراها مستخدم.
+ *
+ * والحارسُ هو حارسُ `‎/api/imdb-chart` نفسُه: جلسةٌ + حدُّ معدّل،
+ * **ولا سرَّ جديداً**. ولا شيءَ من جسم الطلب يدخل القاعدة: المعرّفاتُ
+ * تأتي من `news_watch_slice` في القاعدة، والحقائقُ من TMDB.
+ */
+export async function GET(request: Request) {
+  const user = await getUser();
+  if (!user) return NextResponse.json({ error: "auth" }, { status: 401 });
+
+  const key = `newsgen:${user.id}`;
+  if (!allow(key, 6, 60_000)) {
+    return NextResponse.json(
+      { error: "rate" },
+      { status: 429, headers: { "Retry-After": String(retryAfter(key)) } },
+    );
+  }
+
+  const url = new URL(request.url);
+  const limit = Math.max(1, Math.min(60, Number(url.searchParams.get("limit") ?? 26) | 0));
+
+  const t0 = Date.now();
+  const r = await runNewsSlice(limit);
+  return NextResponse.json({ ...r, secs: Math.round((Date.now() - t0) / 100) / 10 });
+}
