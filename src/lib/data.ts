@@ -2824,84 +2824,11 @@ export async function isListSaved(listId: string): Promise<boolean> {
   }
 }
 
-// ============================================================
-//  الأخبار الحقيقية (D-209، هجرة ٦٤)
-// ============================================================
-
-export interface NewsFeedItem {
-  url: string;
-  source: string;
-  source_label: string | null;
-  title: string;
-  summary: string | null;
-  published_at: string | null;
-  tmdb_id: number | null;
-  media_type: "tv" | "movie" | null;
-}
-
-/**
- * أخبارُ لغة الواجهة — **طلبُ أحمد الصريح**: من اختار الإنجليزية لا يرى
- * عناوينَ عربية والعكس، فخبرٌ لا يُقرأ ليس خبراً.
- *
- * والقراءةُ بدالّة `security definer` لا بسياسةٍ مفتوحة — **فالسياساتُ
- * المفتوحة تبقى أربعاً** (نمط الهجرتين ٦٢ و٦٣).
- * والسقوطُ صامت: قبل تشغيل الهجرة تعود قائمةٌ فارغة فيغيب القسم، **ولا
- * شاشةَ خطأ**.
- */
-export async function getNewsFeed(lang: "ar" | "en", limit = 30): Promise<NewsFeedItem[]> {
-  try {
-    const supabase = await createClient();
-    const { data, error } = await supabase.rpc("news_feed", { p_lang: lang, p_limit: limit });
-    if (error || !data) return [];
-    return data as NewsFeedItem[];
-  } catch {
-    return [];
-  }
-}
-
-/**
- * **هل بردت الأخبار؟** — سؤالٌ يُطرح على القاعدة لا على الساعة.
- *
- * قراءةُ `Date.now()` أثناء الرسم تنقض قاعدةَ نقاء React عندنا، **والقاعدةُ
- * تعرف وقتَها** — فتعود بجوابٍ واحد. والسقوطُ **إلى `false`**: من تعذّرت
- * عليه القراءة لا يُطلق دفعةً، **فالعطلُ لا يصير حِملاً**.
- */
-export async function getNewsStale(minutes = 60): Promise<boolean> {
-  try {
-    const supabase = await createClient();
-    const { data, error } = await supabase.rpc("news_is_stale", { p_minutes: minutes });
-    if (error) return false;
-    return data === true;
-  } catch {
-    return false;
-  }
-}
-
-/**
- * دفعةُ ابتلاعٍ الآن — **تُستدعى من `after()` بعد إرسال الصفحة** (D-209).
- *
- * **ولماذا التجديدُ بحركة المرور (اختيارُ أحمد):** لا سرَّ في البيئة، ولا
- * صفَّ `pg_cron` ثانٍ — **فقاعدةُ «صفٌّ نشطٌ واحد» في الفحص الصحّي لا
- * تُكسر أصلاً** — وتطبيقٌ لا يزوره أحد لا يستهلك شيئاً. **وثمنُه أن
- * أوّلَ زائرٍ بعد ساعةٍ يدفع الجلبَ من حصّة وظيفته لا من انتظاره**:
- * `after` تعمل بعد إرسال الردّ، فلا تُبطئ رسمةً واحدة.
- *
- * والبرودةُ محسوبةٌ **في القاعدة** أيضاً (خمس دقائق داخل `set_news_items`)
- * — فعشرةُ زوّارٍ في لحظةٍ واحدة لا يعنون عشرَ دفعات.
- */
-export async function refreshNewsNow(): Promise<number> {
-  try {
-    const { collectNews } = await import("@/lib/news");
-    const rows = await collectNews();
-    if (!rows.length) return 0;
-    const supabase = await createClient();
-    const { data } = await supabase.rpc("set_news_items", { p_rows: rows });
-    return Number(data ?? 0);
-  } catch {
-    /* الابتلاعُ خدمةٌ خلفية: سقوطُه لا يظهر لأحد ولا يُسجَّل شاشةَ خطأ */
-    return 0;
-  }
-}
+/* ⚠️ **قرّاءُ الأخبار المجمَّعة حُذفوا** (D-214، بطلب أحمد): `getNewsFeed`
+   و`getNewsStale` و`refreshNewsNow` وجدولُهم `news_items` — **لم يبقَ لهم
+   مستهلك** بعد أن صارت الأخبارُ من عندنا (D-211 → D-213).
+   **وما بقي من ذلك العمل عمداً:** `src/lib/news.ts` — سجلُّ المصادر وقارئُ
+   الفيدات، **وهو اليوم محرّكُ `report`** (D-213). */
 
 // ============================================================
 //  أخبارُنا نحن (D-211، هجرة ٦٥)
