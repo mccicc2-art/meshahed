@@ -26,11 +26,16 @@ export function CountdownRail({
   icon,
   items,
   locale,
+  href,
+  seeAllLabel,
 }: {
   title: string;
   icon?: IconName;
   items: CountdownItem[];
   locale: Locale;
+  /** العنوانُ بابٌ حين توجد وجهة — نفسُ نمط `PosterRail`/`RankedRail` (D-198) */
+  href?: string;
+  seeAllLabel?: string;
 }) {
   const t = getDict(locale);
   if (!items.length) return null;
@@ -39,7 +44,21 @@ export function CountdownRail({
     <section>
       <h2 className="flex items-center gap-2 text-base font-bold mb-3">
         {icon && <Icon name={icon} size={18} className="text-muted" />}
-        {title}
+        {href ? (
+          <Link href={href} className="truncate hover:text-accent transition">
+            {title}
+          </Link>
+        ) : (
+          title
+        )}
+        {href && seeAllLabel && (
+          <Link
+            href={href}
+            className="ms-auto shrink-0 text-[13px] text-muted hover:text-accent transition font-normal"
+          >
+            {seeAllLabel}
+          </Link>
+        )}
       </h2>
 
       {/* حاوية التمرير المشتركة (`RailScroll`) لا حاويةٌ خاصّة: كان هذا

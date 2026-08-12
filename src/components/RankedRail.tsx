@@ -20,6 +20,8 @@ export function RankedRail({
   ranked = true,
   control,
   emptyText,
+  href,
+  seeAllLabel,
 }: {
   title: string;
   icon?: IconName;
@@ -33,6 +35,16 @@ export function RankedRail({
   /** صفٌّ له أداة لا يختفي فارغاً — رسالة بدل البطاقات، وإلا ضاعت
       الأداة ومعها طريق العودة لنافذةٍ فيها نتائج */
   emptyText?: string;
+  /**
+   * **العنوانُ بابٌ حين توجد وجهة** (D-198، مواصفةُ أحمد: «Every section
+   * title should be clickable»).
+   *
+   * **ونفسُ نمط `PosterRail` حرفاً بحرف** — رابطٌ على النصّ ورابطٌ «الكل»
+   * في الطرف. **ولا نمطَ ثانٍ لبابٍ واحد** (قاعدة ٦): لو رُسم هنا زرٌّ أو
+   * سهمٌ لصار للقارئ إيماءتان لنفس الفعل في صفحةٍ واحدة.
+   */
+  href?: string;
+  seeAllLabel?: string;
 }) {
   if (!items.length && !control) return null;
 
@@ -40,8 +52,28 @@ export function RankedRail({
     <section>
       <h2 className="flex items-center gap-2 text-base font-bold mb-1">
         {icon && <Icon name={icon} size={18} className="text-muted" />}
-        <span className="truncate">{title}</span>
-        {control && <span className="ms-auto shrink-0">{control}</span>}
+        {href ? (
+          <Link href={href} className="truncate hover:text-accent transition">
+            {title}
+          </Link>
+        ) : (
+          <span className="truncate">{title}</span>
+        )}
+        {/* الأداةُ تُقدَّم على «الكل» في الطرف: رقائقُ النافذة تُلمس أكثر،
+            **ولا يجتمعان** — طرفٌ فيه شيئان على ٣٦٠px يتزاحمان */}
+        {control ? (
+          <span className="ms-auto shrink-0">{control}</span>
+        ) : (
+          href &&
+          seeAllLabel && (
+            <Link
+              href={href}
+              className="ms-auto shrink-0 text-[13px] text-muted hover:text-accent transition font-normal"
+            >
+              {seeAllLabel}
+            </Link>
+          )
+        )}
       </h2>
       {/* السطر الفرعي اختياري: مصدر التقييمات كان يتكرّر فوق كل صفّ فيزحم
           الصفحة بسطر يعرفه القارئ من أول مرة. يبقى حيث يضيف معلومة —
