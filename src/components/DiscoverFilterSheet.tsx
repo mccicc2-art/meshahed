@@ -4,6 +4,12 @@ import { useState } from "react";
 import { getDict, num, type Locale } from "@/lib/i18n";
 import {
   BROWSE_COUNTRIES,
+  BROWSE_STATUSES,
+  BROWSE_SEASONS,
+  BROWSE_STUDIOS,
+  browseStatusName,
+  browseSeasonName,
+  browseStudioName,
   BROWSE_ERAS,
   BROWSE_GENRES,
   BROWSE_LANGS,
@@ -44,6 +50,12 @@ export interface FilterDraft {
   tag: string | null;
   /** slug جائزة — الصفوف تصير فائزيها (طلب أحمد 9 Aug) */
   award: string | null;
+  /** slug حالةِ المسلسل — تبويبُ المسلسلات وحده (D-196) */
+  status: string | null;
+  /** slug موسمِ الأنمي — تبويبُ الأنمي وحده (D-196) */
+  season: string | null;
+  /** slug استوديو الأنمي — تبويبُ الأنمي وحده (D-196) */
+  studio: string | null;
 }
 
 /**
@@ -111,8 +123,23 @@ export function DiscoverFilterSheet({
   const lang = locale === "en" ? "en" : "ar";
   const [draft, setDraft] = useState<FilterDraft>(initial);
   const showFilters = axes !== "none";
-  /** المحاور الثلاثة التي تخصّ الأعمال وحدها: اللغة والجنسية والجائزة */
-  const wide = axes === "full";
+  /**
+   * **اللغةُ والجنسيةُ والجائزةُ صارت في التبويبات الثلاثة — نقضٌ صريح
+   * لـD-180** (مواصفةُ أحمد ١٢ أغسطس: التبويبات الثلاثة تحمل
+   * `Original Language` و`Country of Origin` و`Award`).
+   *
+   * **وD-180 رفضها في الأنمي بحجّةٍ كانت معقولةً وصارت خطأً:** «الأنمي
+   * يابانيٌّ بطبعه فمحورُ اللغة فيه بلا معنى». **والواقع أن الرسومَ
+   * الآسيوية ليست يابانيةً كلَّها** — الصينيّة (donghua) والكوريّة صنفٌ
+   * قائمٌ له جمهوره، **ومحورُ اللغة هو البابُ الوحيد إليه** بعد أن صار
+   * الحارسُ يكتم ما لم يُطلب (D-194). فالمحورُ الذي كان زينةً صار طريقاً.
+   *
+   * **والجائزةُ أضعفُها ويُقال:** جوائزُ `awards.ts` أوسكارٌ وإيميٌّ وسعفة
+   * — يفوز بها الأنمي نادراً، فالصفُّ قد يعود قصيراً. **لكنه قرارُ أحمد
+   * الصريح، وقصرُ صفٍّ أهونُ من محورٍ يغيب بلا سبب مرئيّ.**
+   */
+  const wide = showFilters;
+  const isAnime = axes === "anime";
 
   function set(patch: Partial<FilterDraft>) {
     tap(6);
@@ -131,6 +158,9 @@ export function DiscoverFilterSheet({
     rate: null,
     tag: null,
     award: null,
+    status: null,
+    season: null,
+    studio: null,
   };
   const dirty =
     draft.genre !== null ||
@@ -140,7 +170,10 @@ export function DiscoverFilterSheet({
     draft.era !== null ||
     draft.rate !== null ||
     draft.tag !== null ||
-    draft.award !== null;
+    draft.award !== null ||
+    draft.status !== null ||
+    draft.season !== null ||
+    draft.studio !== null;
 
   return (
     /* سفليّةٌ لا علويّة: هذه ورقةُ لمسٍ لا كتابة — لا لوحة مفاتيح تدفعها،
@@ -310,6 +343,68 @@ export function DiscoverFilterSheet({
               {AWARDS.filter((a) => a.kind === (type === "tv" ? "tv" : "movie")).map((a) => (
                 <option key={a.slug} value={a.slug}>
                   {awardName(a, lang)}
+                </option>
+              ))}
+            </SelectField>
+          )}
+
+          {/* **المحاورُ الثلاثة تظهر حيث تعني شيئاً وتغيب حيث لا تعني**
+              (مواصفةُ أحمد: «Filters should be dynamic depending on the
+              selected tab»). **ومحورٌ يظهر في تبويبٍ لا يقبله كذبٌ في
+              الواجهة** — نفسُ قاعدة D-075 التي تُخفي زرَّ الفلاتر عن تبويب
+              القوائم. */}
+
+          {/* الحالة — المسلسلات وحدها. و«الأفلام» لا حالةَ لها عند TMDB
+              (`with_status` معاملُ `/discover/tv` وحده، ويردّ خطأً في
+              الأفلام) — فالغيابُ هنا قيدُ مصدرٍ لا اختيارُ تصميم. */}
+          {type === "tv" && !isAnime && (
+            <SelectField
+              id="browse-status"
+              label={t.browseStatusGroup}
+              active={!!draft.status}
+              value={draft.status ?? ""}
+              onChange={(v) => set({ status: v || null })}
+            >
+              <option value="">{t.browseAnyStatus}</option>
+              {BROWSE_STATUSES.map((x) => (
+                <option key={x.slug} value={x.slug}>
+                  {browseStatusName(x, lang)}
+                </option>
+              ))}
+            </SelectField>
+          )}
+
+          {/* الموسمُ والاستوديو — الأنمي وحده. وهما مفرداتُ صناعته: الموسمُ
+              ربعُ سنةٍ (لا شهر)، والاستوديو اسمٌ يعرفه متابعُه ويختار به. */}
+          {isAnime && (
+            <SelectField
+              id="browse-season"
+              label={t.browseSeasonGroup}
+              active={!!draft.season}
+              value={draft.season ?? ""}
+              onChange={(v) => set({ season: v || null })}
+            >
+              <option value="">{t.browseAnySeason}</option>
+              {BROWSE_SEASONS.map((x) => (
+                <option key={x.slug} value={x.slug}>
+                  {browseSeasonName(x, lang)}
+                </option>
+              ))}
+            </SelectField>
+          )}
+
+          {isAnime && (
+            <SelectField
+              id="browse-studio"
+              label={t.browseStudioGroup}
+              active={!!draft.studio}
+              value={draft.studio ?? ""}
+              onChange={(v) => set({ studio: v || null })}
+            >
+              <option value="">{t.browseAnyStudio}</option>
+              {BROWSE_STUDIOS.map((x) => (
+                <option key={x.slug} value={x.slug}>
+                  {browseStudioName(x, lang)}
                 </option>
               ))}
             </SelectField>

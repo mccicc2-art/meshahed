@@ -19,6 +19,12 @@ import {
   type BrowseRate,
   type BrowseType,
   type DiscoverTab,
+  BROWSE_STATUSES,
+  BROWSE_SEASONS,
+  BROWSE_STUDIOS,
+  browseStatusName,
+  browseSeasonName,
+  browseStudioName,
 } from "@/lib/browse";
 import { AWARDS, awardName } from "@/lib/awards";
 import { tap } from "@/lib/haptics";
@@ -73,6 +79,9 @@ export function DiscoverFilters({
   rate,
   tag,
   award,
+  status,
+  season,
+  studio,
   listsFilters,
   tabPrefs,
 }: {
@@ -106,6 +115,12 @@ export function DiscoverFilters({
   tag: string | null;
   /** slug الجائزة المختارة — يحوّل الصفوف إلى فائزيها */
   award: string | null;
+  /* الثلاثةُ الجديدة (D-196) — **اختياريّةٌ لسببٍ تشغيليّ لا تصميميّ:**
+     النشرُ مجلّداً مجلّداً، فرفعةُ `components` تُبنى قبل أن تصل رفعةُ
+     `app` التي تُمرّرها. وغيابُها = «لا شيء مختار». */
+  status?: string | null;
+  season?: string | null;
+  studio?: string | null;
 }) {
   const t = getDict(locale);
   const loc = locale === "en" ? "en" : "ar";
@@ -122,6 +137,9 @@ export function DiscoverFilters({
     rate?: BrowseRate | null;
     tag?: string | null;
     award?: string | null;
+    st?: string | null;
+    se?: string | null;
+    std?: string | null;
   }) {
     let nextGenre = next.g === undefined ? genre : next.g;
 
@@ -141,6 +159,9 @@ export function DiscoverFilters({
       rate: next.rate === undefined ? rate : next.rate,
       tag: next.tag === undefined ? tag : next.tag,
       award: next.award === undefined ? award : next.award,
+      st: next.st === undefined ? status : next.st,
+      se: next.se === undefined ? season : next.se,
+      std: next.std === undefined ? studio : next.std,
     });
 
     tap(8);
@@ -179,22 +200,31 @@ export function DiscoverFilters({
     /* جهةُ التبويب القادم — والأنمي «الكلّ» لأن صفوفه أفلامٌ ومسلسلات معاً */
     const nextType: BrowseType =
       next === "shows" ? "tv" : next === "anime" ? "all" : "movie";
-    /* **والأنمي يحمل أربعةً من سبعة:** فلترُه النوع والحقبة والتقييم
-       والمنصّة. واللغةُ والجنسية لا معنى لهما فيه (الأنمي يابانيٌّ
-       بحدّه)، والجوائز قوائمها للأفلام والمسلسلات لا له — فتسقط الثلاثة
-       عند الدخول إليه بدل أن تبقى في الرابط حالةً ميتة تعود عند الخروج */
+    /* **والأنمي صار يحمل السبعة كلَّها — نقضُ D-180** (مواصفةُ أحمد
+       ١٢ أغسطس: التبويبات الثلاثة تحمل اللغة والجنسية والجائزة).
+       **وحجّةُ D-180 كانت «الأنمي يابانيٌّ بحدّه» — وهي ناقصة:** الرسومُ
+       الصينية (donghua) والكورية صنفٌ له جمهوره، **ومحورُ اللغة هو البابُ
+       الوحيد إليه** بعد أن صار الحارسُ يكتم ما لم يُطلب (D-194).
+
+       **وما يسقط عند التبديل هو ما لا يقبله التبويبُ القادم وحده:**
+       الحالةُ محورُ المسلسلات، والموسمُ والاستوديو محورا الأنمي.
+       **ومحورٌ يبقى في الرابط بلا واجهةٍ تُظهره حالةٌ ميتة** تُصفّي
+       الصفحة ولا يعرف صاحبُها لماذا — وهي أسوأ من فقدان الاختيار. */
     const carry =
       next === "lists"
         ? {}
         : {
             g: g && genreFitsType(g, nextType) ? g.slug : null,
-            lang: next === "anime" ? null : lang,
-            co: next === "anime" ? null : country,
+            lang,
+            co: country,
             p: provider,
             era,
             rate,
             tag,
-            award: next === "anime" ? null : award,
+            award,
+            st: next === "shows" ? status : null,
+            se: next === "anime" ? season : null,
+            std: next === "anime" ? studio : null,
           };
     start(() => router.push(browseHref({ tab: next, ...carry }), { scroll: false }));
   }
@@ -275,6 +305,32 @@ export function DiscoverFilters({
       clear: () => go({ award: null }),
     });
   }
+  /* رقائقُ الثلاثة الجديدة (D-196): **ما يُختار يُرى ويُزال** — زرٌّ
+     يخفي فلتراً بلا أثرٍ ظاهر يكذب (شكل D-030). */
+  const statusObj = BROWSE_STATUSES.find((x) => x.slug === status);
+  if (statusObj) {
+    chips.push({
+      key: "status",
+      label: browseStatusName(statusObj, loc),
+      clear: () => go({ st: null }),
+    });
+  }
+  const seasonObj = BROWSE_SEASONS.find((x) => x.slug === season);
+  if (seasonObj) {
+    chips.push({
+      key: "season",
+      label: browseSeasonName(seasonObj, loc),
+      clear: () => go({ se: null }),
+    });
+  }
+  const studioObj = BROWSE_STUDIOS.find((x) => x.slug === studio);
+  if (studioObj) {
+    chips.push({
+      key: "studio",
+      label: browseStudioName(studioObj, loc),
+      clear: () => go({ std: null }),
+    });
+  }
   if (rate) {
     chips.push({
       key: "rate",
@@ -283,7 +339,19 @@ export function DiscoverFilters({
     });
   }
 
-  const draft: FilterDraft = { genre, lang, country, provider, era, rate, tag, award };
+  const draft: FilterDraft = {
+    genre,
+    lang,
+    country,
+    provider,
+    era,
+    rate,
+    tag,
+    award,
+    status: status ?? null,
+    season: season ?? null,
+    studio: studio ?? null,
+  };
 
   /* أيّ محاورَ تفتحها الورقة (D-180): كلُّها في الأعمال، وأربعةٌ في
      الأنمي، ولا شيءَ في القوائم — ولها ورقتها هي أصلاً */
@@ -381,6 +449,9 @@ export function DiscoverFilters({
                       rate: null,
                       tag: null,
                       award: null,
+                      st: null,
+                      se: null,
+                      std: null,
                     })
                   }
                   className="rounded-full border border-border text-muted hover:text-foreground hover:border-accent/50 px-3 py-1.5 text-[13px] font-semibold transition"
@@ -417,6 +488,9 @@ export function DiscoverFilters({
               rate: next.rate,
               tag: next.tag,
               award: next.award,
+              st: next.status,
+              se: next.season,
+              std: next.studio,
             });
           }}
         />
