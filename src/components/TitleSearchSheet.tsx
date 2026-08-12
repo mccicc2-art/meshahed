@@ -10,7 +10,7 @@ import { tap } from "@/lib/haptics";
 import { Icon } from "./Icon";
 import { Sheet, SheetHeader } from "./ui/Sheet";
 import { buttonClass } from "./ui/Button";
-import { segmentedItem, segmentedTrackBare, sheetScroll } from "./ui/controls";
+import { segmentedItem, segmentedTrack, sheetScroll } from "./ui/controls";
 
 /** أدنى عدد أحرف يُطلق البحث — مطابقٌ لحدّ `/api/suggest` وبحث الأشخاص */
 const MIN = 2;
@@ -242,7 +242,14 @@ export function TitleSearchSheet({
             وتبديل الوضع يُصفّر النتائج والنصّ — كتابةٌ لنوعٍ لا تصلح
             لغيره، وإبقاؤها يجعل الشاشة تكذب لثلث ثانية. */}
         {!onPick && (
-        <div className={`${segmentedTrackBare} mt-2 -mb-3`} role="tablist" aria-label={t.navSearch}>
+        /* **`segmentedTrack` لا `Bare` (D-201):** كان بلا خطٍّ سفليّ —
+           **ولا صفَّ أوسع يحمله هنا** (`-mb-3` يسحب ما بعده فوقه). ولمّا
+           صار شريطُ الاختيار ثلاثةَ بكسلات (طلب أحمد ١٢ أغسطس) وجد نفسه
+           **يطفو بلا خطٍّ يجلس عليه** — وهي بعينها شكوى ٩ أغسطس: «لا تحط
+           خط ثاني». **فالنقصُ كان في الخطّ لا في الشريط**، والعلاجُ إعادةُ
+           الخطّ لا استثناءُ هذا السطح بشريطٍ أنحف (وإلا صار للاختيار
+           شكلان — وهو ما تمنعه القاعدة ٦). */
+        <div className={`${segmentedTrack} mt-2 -mb-3`} role="tablist" aria-label={t.navSearch}>
           {(
             [
               ["titles", t.searchModeTitles],
