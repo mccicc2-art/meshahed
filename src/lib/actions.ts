@@ -1544,6 +1544,55 @@ export async function reorderList(listId: string, keys: string[]) {
   revalidatePath(`/lists/${listId}`);
 }
 
+/**
+ * غلافُ القائمة — خلفيّةُ عملٍ من داخلها (D-208).
+ *
+ * **ولماذا لا تُعيد استخدام `setTitleArt`:** تلك تكتب في `title_art`
+ * وتعني «هذا العملُ بالوجه الذي أريده» في كل سطوحي؛ وهذه تعني «هذه
+ * القائمةُ بهذا الوجه». صورةٌ واحدة ومعنيان مختلفان — وخلطُهما كان
+ * سيجعل اختيار غلافِ قائمةٍ يبدّل وجهَ العمل في المكتبة كلها.
+ *
+ * **والمصدرُ محصورٌ بأعمال القائمة** لأن الطلب كذلك حرفياً («صورة من
+ * هيدرات الأفلام التي ضمن اللستة») — والحصرُ يقع في المنتقي لا هنا:
+ * الفعلُ يتحقّق من شكل المسار والملكية، **ولا يستعلم TMDB أصلاً** فلا
+ * موضع لتحقّقٍ ثالثٍ يكلّف نداءً في كل حفظ.
+ *
+ * تمريرُ `backdropPath = null` يمحو الغلاف ويعيد الملصقات — نفس نمط
+ * «أعِد الأصل» في D-131، بلا زرٍّ ثالثٍ لفعلٍ عكسيّ واضح.
+ */
+export async function setListCover(input: {
+  listId: string;
+  tmdbId: number | null;
+  mediaType: MediaType | null;
+  backdropPath: string | null;
+}) {
+  const listId = uuid(input.listId);
+  const backdrop = safeImagePath(input.backdropPath);
+  /* لا خلفيةَ = لا نسب: الحقولُ الثلاثة تُمحى معاً فلا يبقى معرّفٌ
+     معلّقٌ بلا صورة */
+  const tmdbId = backdrop && input.tmdbId ? intId(input.tmdbId) : null;
+  const mediaType = backdrop && input.mediaType ? asMediaType(input.mediaType) : null;
+
+  const { supabase, user } = await requireUser("art", 30, 60_000);
+  const { data, error } = await supabase
+    .from("user_lists")
+    .update({
+      cover_backdrop: backdrop,
+      cover_tmdb_id: tmdbId,
+      cover_media_type: mediaType,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", listId)
+    .eq("user_id", user.id)
+    .select("id");
+  if (error) fail(error);
+  if (!data?.length) throw new Error("القائمة غير موجودة / List not found");
+
+  revalidatePath("/lists");
+  revalidatePath(`/lists/${listId}`);
+  revalidatePath("/library");
+}
+
 export async function deleteList(listId: string) {
   listId = uuid(listId);
   const { supabase, user } = await requireUser();

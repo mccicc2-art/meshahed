@@ -2334,6 +2334,14 @@ export interface UserList {
   shows_count?: number;
   movies_count?: number;
   posters: string[] | null;
+  /**
+   * غلافُ القائمة الذي اختاره صاحبها من خلفيّات أعمالها (D-208،
+   * `list_cover.sql`) — **اختياريّ قبل تشغيل الهجرة**: غيابُه يعني «لا
+   * غلاف» فتعرض البطاقةُ ملصقاتها كما كانت (قاعدة D-152).
+   */
+  cover_backdrop?: string | null;
+  cover_tmdb_id?: number | null;
+  cover_media_type?: "tv" | "movie" | null;
 }
 
 /** نوع القائمة — هو ما يقرّر هل للترتيب اليدوي وأرقامه معنى (lists2.sql) */
@@ -2416,6 +2424,10 @@ export async function getList(listId: string): Promise<{
     is_public: boolean;
     user_id: string;
     kind: ListKind;
+    /** الغلافُ المختار (D-208) — غائبٌ قبل تشغيل هجرة ٦٣ فلا يُعرض شيء */
+    cover_backdrop?: string | null;
+    cover_tmdb_id?: number | null;
+    cover_media_type?: "tv" | "movie" | null;
   };
   items: ListItem[];
   ratings: Record<string, number>;
@@ -2423,11 +2435,23 @@ export async function getList(listId: string): Promise<{
   if (!/^[0-9a-f-]{36}$/i.test(listId)) return null;
   try {
     const supabase = await createClient();
-    const { data: list } = await supabase
+    const BASE = "id, name, subtitle, is_public, user_id, kind";
+    /* أعمدةُ الغلاف تُطلب أوّلاً، **والسقوطُ إلى الأساس لا إلى الخطأ**:
+       قبل تشغيل هجرة ٦٣ يردّ PostgREST «عمودٌ مجهول» فتصير الصفحةُ ٤٠٤
+       — وصفحةُ قائمةٍ تختفي لأن ميزةَ زينةٍ لم تُهاجَر بعدُ عطلٌ لا
+       تدرّج. الاستعلامُ الثاني لا يقع إلا في تلك الحالة وحدها. */
+    let { data: list } = await supabase
       .from("user_lists")
-      .select("id, name, subtitle, is_public, user_id, kind")
+      .select(`${BASE}, cover_backdrop, cover_tmdb_id, cover_media_type`)
       .eq("id", listId)
       .maybeSingle();
+    if (!list) {
+      ({ data: list } = await supabase
+        .from("user_lists")
+        .select(BASE)
+        .eq("id", listId)
+        .maybeSingle());
+    }
     if (!list) return null;
 
     const { data: items } = await supabase
@@ -2477,6 +2501,8 @@ export interface PublicList {
   owner_nickname: string | null;
   owner_username: string | null;
   owner_avatar: string | null;
+  /** غلافُ القائمة يسافر مع الرابط (D-208) — غائبٌ قبل هجرة ٦٣ */
+  cover_backdrop?: string | null;
   items: ListItem[];
 }
 
