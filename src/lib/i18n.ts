@@ -764,6 +764,12 @@ const ar = {
   newsHint: "أخبار ما في مكتبتك ومن تتابعهم من الفنانين — لا شيء عامّ.",
   titleNewsEmpty:
     "لا جديد الآن. أضِف أعمالاً إلى مكتبتك أو تابِع فنانين، وستظهر أخبارهم هنا.",
+  // الأخبار الحقيقية (D-209)
+  newsRealTitle: "آخر الأخبار",
+  newsRealHint: "عناوينُ من مصادرَ إخبارية — بلغة واجهتك، ومنسوبةٌ لمصدرها.",
+  newsRealEmpty: "لا أخبارَ الآن. تصل أوّلُ دفعةٍ خلال دقائق.",
+  newsDiscuss: "ناقشه",
+  newsReadAt: (src: string) => `اقرأه في ${src}`,
   newsTonight: "حلقة اليوم",
   newsSoon: "حلقة قادمة",
   newsAired: "نزلت حلقة جديدة",
@@ -1765,6 +1771,11 @@ const en: Dict = {
   newsHint: "News about what's in your library and the artists you follow — nothing generic.",
   titleNewsEmpty:
     "Nothing new right now. Add titles to your library or follow some artists, and their news will land here.",
+  newsRealTitle: "Latest news",
+  newsRealHint: "Headlines from news sources — in your interface language, credited to their source.",
+  newsRealEmpty: "No news yet. The first batch lands within minutes.",
+  newsDiscuss: "Discuss",
+  newsReadAt: (src: string) => `Read it on ${src}`,
   newsTonight: "Airing today",
   newsSoon: "Next episode",
   newsAired: "New episode is out",

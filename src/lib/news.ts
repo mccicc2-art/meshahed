@@ -29,6 +29,13 @@ export interface NewsSource {
   precision: "high" | "medium" | "unknown";
   /** مرشّحٌ لم يُثبت بعد — يُجرَّب في الفحص ولا يُبتلع */
   candidate?: boolean;
+  /**
+   * **يدخل الابتلاع فعلاً.** الفحصُ الحيّ في ١٢ أغسطس هو الذي رفع هذا
+   * العلَم أو أسقطه — لا الظنّ: ما ردّ ٤٠٣/٤٠٤ أو قناةً فارغة يبقى في
+   * السجلّ **بلا علَم** كي لا تُعاد تجربتُه من الصفر كلَّ مرّة، وكي
+   * يبقى سببُ سقوطه مكتوباً بجانبه.
+   */
+  enabled?: boolean;
 }
 
 /**
@@ -59,13 +66,21 @@ export const NEWS_SOURCES: NewsSource[] = [
     precision: "medium",
   },
   // ===== إنجليزي =====
-  { slug: "tvline", label: "TVLine", url: "https://tvline.com/feed/", lang: "en", precision: "high" },
+  {
+    slug: "tvline",
+    label: "TVLine",
+    url: "https://tvline.com/feed/",
+    lang: "en",
+    precision: "high",
+    enabled: true,
+  },
   {
     slug: "screenrant",
     label: "ScreenRant",
     url: "https://screenrant.com/feed/",
     lang: "en",
     precision: "medium",
+    enabled: true,
   },
   {
     slug: "slashfilm",
@@ -73,6 +88,7 @@ export const NEWS_SOURCES: NewsSource[] = [
     url: "https://www.slashfilm.com/feed/",
     lang: "en",
     precision: "medium",
+    enabled: true,
   },
   /* ردّتا ٤٠٢ على أداة الجلب في ١٠ أغسطس — **تُعادان من الخادم** */
   {
@@ -82,6 +98,7 @@ export const NEWS_SOURCES: NewsSource[] = [
     lang: "en",
     precision: "unknown",
     candidate: true,
+    enabled: true,
   },
   {
     slug: "variety",
@@ -90,6 +107,7 @@ export const NEWS_SOURCES: NewsSource[] = [
     lang: "en",
     precision: "unknown",
     candidate: true,
+    enabled: true,
   },
   // ===== أنمي — لم يُتحقّق من واحدٍ منها بعد =====
   {
@@ -99,6 +117,7 @@ export const NEWS_SOURCES: NewsSource[] = [
     lang: "en",
     precision: "unknown",
     candidate: true,
+    enabled: true,
   },
   {
     slug: "mal",
@@ -107,6 +126,7 @@ export const NEWS_SOURCES: NewsSource[] = [
     lang: "en",
     precision: "unknown",
     candidate: true,
+    enabled: true,
   },
   {
     slug: "crunchyroll",
@@ -156,6 +176,7 @@ export const NEWS_SOURCES: NewsSource[] = [
     lang: "ar",
     precision: "unknown",
     candidate: true,
+    enabled: true,
   },
   /* **جوجل نيوز بحثاً لا موقعاً** — والسببُ اضطراريّ: مصراوي (أدقُّ مصدرٍ
      عربيّ في بحث ١٠ أغسطس) **تردّ ٤٠٣ على خادم Vercel** مهما كان الوكيل،
@@ -168,6 +189,7 @@ export const NEWS_SOURCES: NewsSource[] = [
     lang: "ar",
     precision: "unknown",
     candidate: true,
+    enabled: true,
   },
   {
     slug: "gnews-ar-movies",
@@ -176,6 +198,7 @@ export const NEWS_SOURCES: NewsSource[] = [
     lang: "ar",
     precision: "unknown",
     candidate: true,
+    enabled: true,
   },
   {
     slug: "gnews-ar-anime",
@@ -184,6 +207,7 @@ export const NEWS_SOURCES: NewsSource[] = [
     lang: "ar",
     precision: "unknown",
     candidate: true,
+    enabled: true,
   },
   {
     slug: "cnn-arabic-ent",
@@ -192,6 +216,7 @@ export const NEWS_SOURCES: NewsSource[] = [
     lang: "ar",
     precision: "unknown",
     candidate: true,
+    enabled: true,
   },
   {
     slug: "filfan",
@@ -384,4 +409,146 @@ export async function probeSources(sources = NEWS_SOURCES): Promise<ProbeResult[
       };
     }),
   );
+}
+
+// ============================================================
+//  الابتلاع — من الفيد إلى صفٍّ منسوبٍ إلى عمل
+// ============================================================
+
+/**
+ * **جوجل نيوز يذيّل عنوانه باسم الناشر** (`… - Masrawy`). واسمُ الناشر
+ * ليس جزءاً من الخبر — يُقصّ ويُخزَّن في عموده، فيُعرض «مصراوي» شارةً لا
+ * ذيلاً في الجملة.
+ */
+function splitPublisher(title: string): { title: string; label: string | null } {
+  const i = title.lastIndexOf(" - ");
+  if (i < 12) return { title, label: null };
+  const label = title.slice(i + 3).trim();
+  /* اسمُ ناشرٍ لا جملةٌ: ما طال عن ٤٠ محرفاً أو حمل نقطةً ختامية ليس اسماً */
+  if (!label || label.length > 40 || /[.!?]$/.test(label)) return { title, label: null };
+  return { title: title.slice(0, i).trim(), label };
+}
+
+/** تطبيعٌ للمقارنة: حروفٌ وأرقامٌ ومسافةٌ واحدة، بلا تشكيلٍ ولا همزات مختلفة */
+function norm(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/[ً-ْـ]/g, "")
+    .replace(/[أإآ]/g, "ا")
+    .replace(/[ىي]/g, "ي")
+    .replace(/[ةه]/g, "ه")
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim();
+}
+
+const AR_KIND = /(?:مسلسل|فيلم|أنمي|انمي|برنامج)\s+/;
+
+/**
+ * مرشّحو اسمِ العمل داخل العنوان — **ثلاثةٌ على الأكثر، وبالترتيب**:
+ * ما بين علامتَي اقتباس، ثم ما يلي كلمةَ «مسلسل/فيلم/أنمي»، ثم أوّلُ
+ * مقطعٍ لاتينيّ بحرفٍ كبير. **ولا يُخترع اسمٌ:** ما لا يظهر في العنوان
+ * لا يُبحث عنه.
+ */
+export function titleCandidates(headline: string): string[] {
+  const out: string[] = [];
+  const quoted = headline.match(/[«"“”]([^«»"“”]{2,60})[»"“”]/);
+  if (quoted) out.push(quoted[1]);
+
+  const after = headline.split(AR_KIND)[1];
+  if (after) {
+    const cut = after.split(/[.،,:؛|()\-–—]/)[0].split(/\s+/).slice(0, 5).join(" ");
+    if (cut) out.push(cut);
+  }
+
+  const latin = headline.match(/[A-Z][A-Za-z0-9'&.:\- ]{3,50}/);
+  if (latin) out.push(latin[0]);
+
+  const seen = new Set<string>();
+  return out
+    .map((s) => s.replace(/\s+/g, " ").trim())
+    .filter((s) => s.length >= 3 && !seen.has(s) && seen.add(s))
+    .slice(0, 3);
+}
+
+/**
+ * النسبةُ إلى عمل — **بمعرّف TMDB أو لا نسبة** (D-144).
+ *
+ * **والشرطُ الذي يمنع الكذب:** لا يكفي أن يردّ TMDB نتيجةً — يجب أن
+ * **يحتوي العنوانُ نفسُه اسمَ العمل** بعد التطبيع. فبحثُ «فيلم» وحدها
+ * يعيد مئةَ عمل، ولا واحدَ منها في العنوان.
+ */
+export async function matchTitle(
+  headline: string,
+  budget: { left: number },
+): Promise<{ tmdbId: number; mediaType: "tv" | "movie" } | null> {
+  const flat = norm(headline);
+  for (const cand of titleCandidates(headline)) {
+    if (budget.left <= 0) return null;
+    budget.left -= 1;
+    let rows;
+    try {
+      const { searchMulti } = await import("@/lib/tmdb");
+      rows = await searchMulti(cand);
+    } catch {
+      return null;
+    }
+    for (const r of (rows ?? []).slice(0, 3)) {
+      const name = norm(String(r.title ?? r.name ?? ""));
+      /* اسمٌ من كلمةٍ قصيرة يطابق أيَّ شيء — «Up» و«It» و«صدفة» */
+      if (name.length < 4) continue;
+      if (flat.includes(name) && (r.media_type === "tv" || r.media_type === "movie")) {
+        return { tmdbId: r.id, mediaType: r.media_type };
+      }
+    }
+  }
+  return null;
+}
+
+export interface NewsRow {
+  url: string;
+  source: string;
+  source_label: string | null;
+  lang: NewsLang;
+  title: string;
+  summary: string | null;
+  published_at: string | null;
+  tmdb_id: number | null;
+  media_type: "tv" | "movie" | null;
+}
+
+/**
+ * دفعةُ ابتلاعٍ كاملة: جلبُ المصادر المُثبَتة ثم النسبةُ بميزانيةٍ معلَنة.
+ *
+ * **الميزانيةُ رقمٌ لا رجاء:** ستّون نداءَ TMDB للدفعة كلِّها. بلا سقفٍ
+ * كانت الدفعةُ الواحدة قد تطلب مئتين — **وثمنُ ذلك يقع على مسارٍ يبدأ
+ * لأن زائراً فتح تبويباً**.
+ */
+export async function collectNews(perSource = 10, tmdbBudget = 60): Promise<NewsRow[]> {
+  const live = NEWS_SOURCES.filter((s) => s.enabled);
+  const fetched = await Promise.all(live.map((s) => fetchFeed(s, perSource)));
+
+  const budget = { left: tmdbBudget };
+  const rows: NewsRow[] = [];
+  const seen = new Set<string>();
+
+  for (const r of fetched) {
+    for (const it of r.items) {
+      if (seen.has(it.url)) continue;
+      seen.add(it.url);
+      const { title, label } = splitPublisher(it.title);
+      const hit = await matchTitle(title, budget);
+      rows.push({
+        url: it.url,
+        source: it.source,
+        source_label: label,
+        lang: it.lang,
+        title,
+        summary: it.summary,
+        published_at: it.publishedAt,
+        tmdb_id: hit?.tmdbId ?? null,
+        media_type: hit?.mediaType ?? null,
+      });
+    }
+  }
+  return rows;
 }
