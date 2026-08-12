@@ -41,7 +41,7 @@ import {
   type DiscoverFilter,
 } from "@/lib/tmdb";
 import { ScrollMemory } from "@/components/ScrollMemory";
-import { animeMovieRail, topChartRail } from "@/lib/topChart";
+import { animeMovieRail, topChartRail, looksAnime, railGuard } from "@/lib/topChart";
 import { attachImdbRatings, withImdbRatings } from "@/lib/omdb";
 import { getT, getWatchRegion, getTabPrefs } from "@/lib/locale";
 import { defaultTab } from "@/lib/tabPrefs";
@@ -463,18 +463,11 @@ async function CuratedCard({
  *    عشرون عملاً لا أكثر. نخسر جِدّة الترتيب ونكسب أن يصل من طلب «تركي
  *    ٢٠٢٠ فأعلى» إلى تركيٍّ ٢٠٢٠ فأعلى — وهو ما طلبه.
  */
-/**
- * هل هذا الصفُّ أنمي؟ — من حقلَي الصفّ نفسه بلا نداءٍ ثانٍ.
- *
- * `isAnime` في `tmdb.ts` تقرأ `genres` و`origin_country` وهما في
- * **التفاصيل** لا في نتائج البحث. وصفوف `/discover` و`/now_playing` تحمل
- * `genre_ids` و`original_language` — نفس المعنى بحقلين آخرين، فلا يُجلب
- * لكل بطاقةٍ تفصيلٌ كامل لتُصنَّف.
- */
-const ANIMATION_GENRE_ID = 16;
-function looksAnime(r: SearchResult): boolean {
-  return (r.genre_ids ?? []).includes(ANIMATION_GENRE_ID) && r.original_language === "ja";
-}
+/* **حارسُ الرفوف انتقل إلى `topChart.ts`** (D-194): `looksAnime` كانت
+   تسكن هنا، **ونظيرتُها للغة لم تكن موجودةً هنا إطلاقاً** — فكان الكوريّ
+   والهنديّ يعبران كلَّ رفٍّ جاهزٍ في هذه الصفحة. صارا `railGuard` واحداً
+   إلى جانب `RAIL_MUTED_LANGS` و`filterRail`: **ملفٌّ واحد يعرف ما يغادر
+   رفّاً.** (والدرسُ درسُ D-175 نفسه، مرّةً ثانية.) */
 
 async function CuratedRails({
   locale,
@@ -586,6 +579,11 @@ async function CuratedRails({
   /* **ولا صفَّ أنمي هنا بعد اليوم (D-169):** صار له تبويبه بستّة صفوف،
      فبقاؤه هنا يعني الصفَّ نفسه في بابين — ونسخةٌ ثانية من معنًى واحد
      هي بالضبط ما تمنعه D-145. وتبويب المسلسلات يوفّر معها نداءَين. */
+  /* **«خلّها تظهر إذا شخص حدّد جنسيتهم فقط» — طلب أحمد بنصّه** (D-194).
+     فالكتمُ يسقط لحظةَ يختار لغةً أو بلداً، ويعود إن أزالهما. **والنوعُ
+     والحقبةُ لا يفكّانه**: من طلب «جريمة ٢٠٢٠» لم يطلب دراما كورية. */
+  const unmute = !!browse.lang || !!browse.country;
+
   const [topMovies, topSeries, cinemas, soonMovies, soonSeries, top50Movies, top50Series] =
     await Promise.all([
       /* الصفوف المرتّبة كلّها تُعاد بترتيب IMDb وتحمل تقييمه (قرار أحمد:
@@ -601,13 +599,13 @@ async function CuratedRails({
          «ريك آند مورتي» كما طلب أحمد. */
       wantMovies && !upcoming
         ? topFor("movie", genre?.movie, rails.m)
-            .then((rows) => rows.filter((r) => !looksAnime(r)))
+            .then((rows) => railGuard(rows, { unmute }))
             .then(withImdbRatings)
             .catch(() => [] as SearchResult[])
         : Promise.resolve([] as SearchResult[]),
       wantSeries && !upcoming
         ? topFor("tv", genre?.tv, rails.s)
-            .then((rows) => rows.filter((r) => !looksAnime(r)))
+            .then((rows) => railGuard(rows, { unmute }))
             .then(withImdbRatings)
             .catch(() => [] as SearchResult[])
         : Promise.resolve([] as SearchResult[]),
@@ -627,7 +625,7 @@ async function CuratedRails({
               c
                 ? {
                     region: c.region,
-                    results: await attachImdbRatings(c.results.filter((r) => !looksAnime(r))),
+                    results: await attachImdbRatings(railGuard(c.results, { unmute })),
                   }
                 : null,
             )
@@ -732,8 +730,7 @@ async function CuratedRails({
      أظهرُها لأنه يفتح كلَّ النوافذ. **وحارسٌ واحد على الفم المشترك**
      (`soon`) لا على المسارين قبله — نفسُ درسِ D-175: الترشيح في موضع
      النداء لا في أحد فروعه. */
-  const soon: CountdownItem[] = [...soonMovies, ...soonSeries]
-    .filter((r) => !looksAnime(r))
+  const soon: CountdownItem[] = railGuard([...soonMovies, ...soonSeries], { unmute })
     .filter((r) => r.media_type === "tv" || r.media_type === "movie")
     .filter((r) => dateOf(r) >= today)
     .sort((a, b) => dateOf(a).localeCompare(dateOf(b)))
@@ -910,9 +907,14 @@ async function AnimeRails({
 
   const [topMovies, topSeries, cinemas, top50Movies, top50Series] = await Promise.all([
     animeTop("movie", genre?.movie, rails.am)
+      /* **ورفوفُ الأنمي تُصفّى بـ`anime:"only"`** (D-194): بِركتُها من
+         `with_keywords` عند TMDB، **وكلمةُ «أنمي» يحملها عملٌ غيرُ يابانيّ
+         أحياناً** — فالحارسُ يجعل الرفَّ يطابق عنوانه. ولا كتمَ لغةٍ فيه. */
+      .then((rows) => railGuard(rows, { anime: "only" }))
       .then(withImdbRatings)
       .catch(() => [] as SearchResult[]),
     animeTop("tv", genre?.tv, rails.a)
+      .then((rows) => railGuard(rows, { anime: "only" }))
       .then(withImdbRatings)
       .catch(() => [] as SearchResult[]),
     /* «في السينما» يعود بالمنطقة كاملةً ثم يُصفّى هنا: TMDB لا يقبل
@@ -924,7 +926,9 @@ async function AnimeRails({
       : nowPlayingMovies()
           .then(async (c) => {
             if (!c) return null;
-            const only = c.results.filter(looksAnime);
+            /* `railGuard` بـ`anime:"only"` لا `filter(looksAnime)` —
+               **بابٌ واحد لكل تصفيةِ رفّ** حتى لا يتفرّق التعريف (D-194) */
+            const only = railGuard(c.results, { anime: "only" });
             return only.length
               ? { region: c.region, results: await attachImdbRatings(only) }
               : null;
