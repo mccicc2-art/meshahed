@@ -4,6 +4,8 @@ import { Icon, type IconName } from "./Icon";
 import Image from "next/image";
 import { posterUrl, titleOf, type SearchResult } from "@/lib/tmdb";
 import { ImdbMark, TmdbMark } from "./RatingMarks";
+import { QuickAdd } from "./QuickAdd";
+import type { Locale } from "@/lib/i18n";
 
 /**
  * صفّ أفقي مرقّم — قائمة «أفضل ١٠».
@@ -22,12 +24,25 @@ export function RankedRail({
   emptyText,
   href,
   seeAllLabel,
+  quickAdd,
 }: {
   title: string;
   icon?: IconName;
   items: SearchResult[];
   /** نصّ صغير تحت العنوان — يشرح مصدر الترتيب أو نطاقه */
   note?: string;
+  /**
+   * **زرُّ «+ للمشاهدة» على كل ملصق** (D-205) — يُفعَّل بتمرير لغةِ القارئ
+   * ومجموعةِ ما يتابعه (`${media}-${id}`).
+   *
+   * **ولماذا خيارٌ لا سلوكٌ دائم:** الصفوفُ ليست كلُّها اكتشافاً — رفٌّ في
+   * صفحة عملٍ يعرض «مشابهاً» أو «من فنّانيك» في سياقٍ آخر، **وزرُّ حفظٍ
+   * على كل ملصقٍ في التطبيق كلّه يجعله زينةً تُتجاهَل**. فمن يريده يطلبه.
+   *
+   * ⚠️ **والمجموعةُ تُقرأ مرّةً في الصفحة لا مرّةً لكل بطاقة** — وإلا
+   * صارت رسمةُ اكتشف مئةَ استعلام.
+   */
+  quickAdd?: { locale: Locale; following: Set<string> };
   /** إخفاء الأرقام: بعض الصفوف قائمة لا ترتيب */
   ranked?: boolean;
   /** أداةٌ في طرف العنوان — رقائق نافذة الصفّ (D-099) */
@@ -113,6 +128,19 @@ export function RankedRail({
                     />
                   ) : (
                     <div className="w-full h-full grid place-items-center text-muted"><Icon name="film" size={22} /></div>
+                  )}
+
+                  {/* الزرُّ داخل الملصق لا تحته: تحتَه سطرٌ لكل بطاقة
+                      يطيل الصفَّ (نفسُ سبب وضع الرقم داخله) */}
+                  {quickAdd && (r.media_type === "tv" || r.media_type === "movie") && (
+                    <QuickAdd
+                      tmdbId={r.id}
+                      mediaType={r.media_type}
+                      title={titleOf(r)}
+                      posterPath={r.poster_path}
+                      added={quickAdd.following.has(`${r.media_type}-${r.id}`)}
+                      locale={quickAdd.locale}
+                    />
                   )}
 
                   {/* الرقم على تعتيم سفلي حتى يُقرأ فوق أي ملصق */}
