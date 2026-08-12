@@ -3187,3 +3187,108 @@ export async function toggleFavorite(input: {
   revalidatePath(`/${type === "tv" ? "show" : "movie"}/${id}`);
   return !!data;
 }
+
+// ============================================================
+//  الردودُ على الآراء (review_replies.sql — هجرة ٦٢، D-193)
+//
+//  **ولماذا فعلٌ ثالث لا توسيعُ `saveRating`:** الرأيُ صفٌّ واحدٌ لكل
+//  شخصٍ لكل عمل (`user_id, tmdb_id, media_type`) — لا يتشعّب. فالردُّ
+//  كتابةٌ في جدولٍ آخر، والحراسةُ كلُّها في القاعدة: سياسةٌ تمنع الكتابة
+//  باسم غيرك، ومُشغِّلٌ يمنع العمقَ الثالث، وقيدُ طولٍ على النصّ.
+//
+//  والتجديدُ يُصيب صفحتين لا التطبيق: صفحةَ التعليقات وصفحةَ العمل —
+//  فالردُّ يُقرأ من هذين البابين وحدهما.
+// ============================================================
+
+/** المسارُ المشترك للردّ: صفحةُ التعليقات ثم صفحةُ العمل نفسها */
+function talkPaths(tmdbId: number, mediaType: "tv" | "movie") {
+  return [
+    `/talk/${mediaType}/${tmdbId}`,
+    `/${mediaType === "tv" ? "show" : "movie"}/${tmdbId}`,
+  ];
+}
+
+/**
+ * ردٌّ على رأي — أو ردٌّ على ردّ (`parentId`).
+ *
+ * **و«تعليقٌ على العمل» ليس فعلاً رابعاً:** طلب أحمد «أقدر أردّ على نفس
+ * الشخص **أو** أعلّق على الفيلم» — والثاني هو التقييمُ نفسه
+ * (`saveRating`)، فمن لم يشاهد العمل يقيّمه ثم يتكلّم. وهذا يمنع أن
+ * يصير للعمل خطّان: آراءٌ ولا تقييم، وتقييماتٌ بلا رأي.
+ *
+ * `parentId` لا يُتحقَّق منه هنا: المُشغِّل في القاعدة يرفض ردّاً على
+ * ردٍّ على ردّ، **ويرفض أباً في عملٍ آخر** — والفحصُ هناك يصحّ لأي
+ * مستدعٍ لا لهذا وحده.
+ */
+export async function addReviewReply(input: {
+  reviewUserId: string;
+  tmdbId: number;
+  mediaType: MediaType;
+  body: string;
+  parentId?: string | null;
+}): Promise<void> {
+  const reviewUserId = uuid(input.reviewUserId);
+  const tmdbId = intId(input.tmdbId);
+  const mediaType = asMediaType(input.mediaType);
+  const parentId = input.parentId ? uuid(input.parentId) : null;
+
+  /* دلوٌ أضيقُ من الافتراضي: الردُّ نصٌّ يقرؤه الناس، لا نقرةُ قلب */
+  const { supabase, user } = await requireUser("reply", 15, 60_000);
+
+  const body = String(input.body ?? "").replace(/\s{3,}/g, "  ").trim().slice(0, 1000);
+  if (!body) return;
+
+  const { error } = await supabase.from("review_replies").insert({
+    review_user_id: reviewUserId,
+    tmdb_id: tmdbId,
+    media_type: mediaType,
+    user_id: user.id,
+    body,
+    parent_id: parentId,
+  });
+  if (error) fail(error);
+
+  for (const p of talkPaths(tmdbId, mediaType)) revalidatePath(p);
+}
+
+/**
+ * حذفُ ردّي — والسياسةُ تمنع حذفَ ردِّ غيري، فلا فحصَ قبل الكتابة.
+ *
+ * والردودُ عليه تُحذف معه (`on delete cascade`): خيطٌ رأسُه محذوفٌ
+ * وأطرافُه باقيةٌ يقرأ كحوارٍ مع فراغ.
+ */
+export async function deleteMyReply(input: {
+  replyId: string;
+  tmdbId: number;
+  mediaType: MediaType;
+}): Promise<void> {
+  const replyId = uuid(input.replyId);
+  const tmdbId = intId(input.tmdbId);
+  const mediaType = asMediaType(input.mediaType);
+
+  const { supabase, user } = await requireUser();
+  const { error } = await supabase
+    .from("review_replies")
+    .delete()
+    .match({ id: replyId, user_id: user.id });
+  if (error) fail(error);
+
+  for (const p of talkPaths(tmdbId, mediaType)) revalidatePath(p);
+}
+
+/**
+ * الإبلاغُ عن ردّ — توأمُ `reportReview` بحرفيّته: صامتٌ، لا يعود
+ * بعدّاد، والإخفاءُ عند العاشر في مُشغِّل SQL لا هنا. وتكرارُه بلا أثر
+ * (المفتاحُ الأساسي + `ignoreDuplicates`).
+ */
+export async function reportReply(input: { replyId: string; reason?: string }): Promise<void> {
+  const replyId = uuid(input.replyId);
+  const { supabase, user } = await requireUser("report", 10, 60_000);
+
+  const reason = (input.reason ?? "").replace(/\s+/g, " ").trim().slice(0, 300);
+  const { error } = await supabase.from("reply_reports").upsert(
+    { reply_id: replyId, reporter_id: user.id, reason: reason || null },
+    { onConflict: "reply_id,reporter_id", ignoreDuplicates: true },
+  );
+  if (error) fail(error);
+}

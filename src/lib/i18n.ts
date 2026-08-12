@@ -580,7 +580,20 @@ const ar = {
   communityTabReviews: "المراجعات",
   /* تبويبُ «الأعمال» (D-187) — الصفُّ عملٌ لا رأي */
   communityTabWorks: "الأعمال",
-  worksReviewCount: (n: number) => (n === 1 ? "رأيٌ واحد" : n === 2 ? "رأيان" : `${num(n, "ar")} آراء`),
+  /* ================= صفحةُ الكلام والردود (D-193) =================
+     **و`worksReviewCount` حُذف** («٣ آراء») — طلب أحمد «بدون كلمة ريفيو»،
+     وبحثٌ في `src` أثبت أن البطاقةَ كانت قارئَه الوحيد. **مفتاحٌ لا
+     يقرؤه أحد يُحذف لا يُترك**: بقاؤه يوحي بسطحٍ ثانٍ يستعمله، فيُنسخ
+     عنه من يريد عدّاداً بدل أن يقرأ القرار. */
+  worksAvgHint: "متوسّطُ تقييمات من تكلّموا عن العمل",
+  talkRepliesHint: "ردود",
+  talkWatchersHint: "شاهدوه",
+  talkReply: "ردّ",
+  talkReplyingTo: (name: string) => `ردّاً على ${name}`,
+  talkDeleteReply: "حذف",
+  talkHeading: "الكلام",
+  talkOpenTitlePage: "افتح صفحة العمل",
+  talkFallbackTitle: "عملٌ بلا عنوان",
   worksScopeAll: "الكل",
   worksScopeFollowing: "من أتابع",
   worksEmptyAll: "لا أحد كتب رأياً بعد — كن أوّلَ من يفتح الكلام.",
@@ -1561,7 +1574,16 @@ const en: Dict = {
   communityTabMine: "Activity",
   communityTabReviews: "Reviews",
   communityTabWorks: "Titles",
-  worksReviewCount: (n: number) => (n === 1 ? "1 review" : `${num(n, "en")} reviews`),
+  // Talk page and replies (D-193)
+  worksAvgHint: "Average rating of the people talking about it",
+  talkRepliesHint: "replies",
+  talkWatchersHint: "watching",
+  talkReply: "Reply",
+  talkReplyingTo: (name: string) => `Replying to ${name}`,
+  talkDeleteReply: "Delete",
+  talkHeading: "The conversation",
+  talkOpenTitlePage: "Open the title page",
+  talkFallbackTitle: "Untitled",
   worksScopeAll: "Everyone",
   worksScopeFollowing: "People I follow",
   worksEmptyAll: "Nobody has written a review yet — be the first to start the conversation.",

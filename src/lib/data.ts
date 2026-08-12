@@ -1,5 +1,6 @@
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
+import type { PersonLite } from "./people";
 import { episodeKey } from "@/lib/keys";
 
 export { episodeKey };
@@ -1594,22 +1595,12 @@ export async function getProfileArtists(userId: string, limit = 60): Promise<Art
 
 // ================= الطبقة الاجتماعية =================
 
-export interface PersonLite {
-  id: string;
-  nickname: string | null;
-  username: string | null;
-  avatar_url: string | null;
-  hide_name: boolean;
-}
-
-/** الاسم المعروض مع احترام خيار الإخفاء */
-export function displayNameOf(
-  p: { nickname: string | null; username: string | null; hide_name?: boolean | null },
-  anonymousLabel: string,
-): string {
-  if (p.hide_name) return anonymousLabel;
-  return p.nickname || p.username || anonymousLabel;
-}
+/* **`PersonLite` و`displayNameOf` انتقلا إلى `people.ts`** (D-193) —
+   ملفٌّ نقيٌّ يقرؤه مكوّنُ العميل أيضاً، لأن هذا الملفَّ يستورد عميلَ
+   الخادم فيسقط البناء إن دخل حزمةَ المتصفّح. **ويُعاد تصديرُهما من هنا**
+   كي لا يتغيّر سطرٌ في مئات الاستدعاءات القائمة. */
+export type { PersonLite } from "./people";
+export { displayNameOf } from "./people";
 
 /** بحث عن أشخاص بالاسم أو المعرّف — الأحرف البديلة تُهرَّب داخل الدالة */
 export async function searchPeople(q: string): Promise<PersonLite[]> {
@@ -1775,6 +1766,109 @@ export interface TitleReview extends PersonLite {
   likes: number;
   likedByMe: boolean;
   isMine: boolean;
+}
+
+export interface ReviewReply extends PersonLite {
+  /** معرّفُ الردّ — و`id` الموروثُ من `PersonLite` هو معرّفُ كاتبه */
+  replyId: string;
+  /** صاحبُ الرأي المردود عليه — مفتاحُ الخيط */
+  reviewUserId: string;
+  /** ردٌّ على ردّ؟ عمقٌ واحد فقط (الهجرة ٦٢ تمنع الثالث) */
+  parentId: string | null;
+  body: string;
+  createdAt: string;
+  isMine: boolean;
+}
+
+/**
+ * ردودُ عملٍ واحد كلُّها في نداءٍ واحد (D-193، الهجرة ٦٢).
+ *
+ * **والدالّةُ هي من يحترم الإخفاءَ والحظرَ والمُبلَّغَ عنه** — لا الواجهة
+ * (D-011/D-145). فلو قرأها سطحٌ ثانٍ يوماً قرأها بنفس الحدود.
+ *
+ * ونداءٌ واحد لكل الخيوط لا خيطاً خيطاً: صفحة `‎/talk` تعرض كلَّ آراء
+ * العمل، وعشرون رأياً بعشرين نداءً هو ما نمنعه في كل قارئ (D-128).
+ */
+export async function getTitleReplies(
+  tmdbId: number,
+  mediaType: "tv" | "movie",
+): Promise<ReviewReply[]> {
+  try {
+    const supabase = await createClient();
+    const [{ data, error }, me] = await Promise.all([
+      supabase.rpc("title_replies", { p_tmdb: tmdbId, p_type: mediaType }),
+      getUser(),
+    ]);
+    if (error || !data) return [];
+    return (data as {
+      id: string;
+      review_user_id: string;
+      parent_id: string | null;
+      author_id: string;
+      nickname: string | null;
+      username: string | null;
+      avatar_url: string | null;
+      hide_name: boolean;
+      body: string;
+      created_at: string;
+    }[]).map((r) => ({
+      /* ⚠️ **و`id` هنا معرّفُ الكاتب لا معرّفُ الردّ** — لأن `ReviewReply`
+         يمدّ `PersonLite`، و`PersonLite.id` معناه «صاحبُ الصفّ» في كل
+         مكوّنٍ يقرؤه (`Avatar` · `displayNameOf` · زرُّ الحظر). ومعرّفُ
+         الردّ نفسِه في `replyId`. **الاسمُ الملتبس يُسمّى ولا يُصلَح
+         بالاصطلاح**: تغييرُ معنى `PersonLite.id` هنا كان سيكسر كلَّ
+         مستدعٍ آخر. */
+      id: r.author_id,
+      nickname: r.nickname,
+      username: r.username,
+      avatar_url: r.avatar_url,
+      hide_name: r.hide_name,
+      replyId: r.id,
+      reviewUserId: r.review_user_id,
+      parentId: r.parent_id,
+      body: r.body,
+      createdAt: r.created_at,
+      isMine: !!me && me.id === r.author_id,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+export interface TalkStat {
+  replies: number;
+  watchers: number;
+}
+
+/**
+ * عدّادا صفّ «الأعمال»: كم ردّاً وكم مشاهداً — **بنداءٍ واحد للصفّ كلّه**
+ * (D-193). والمفتاح `"<media>-<id>"` كما في بقيّة الخرائط.
+ *
+ * **و«المشاهد» = من يتابع العمل** — أصدقُ ما نملك بلا عمودٍ جديد، وهو
+ * بديلُ «إعادة النشر» التي لا معنى لها عندنا (سؤالُ أحمد: «وش المقصد في
+ * ريتويت؟»). **وليس زرّاً بل رقماً:** ما لا يُضغط لا يُرسم كزرّ.
+ */
+export async function getTalkStats(): Promise<Map<string, TalkStat>> {
+  const out = new Map<string, TalkStat>();
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("title_talk_stats");
+    if (error || !data) return out;
+    for (const r of data as {
+      tmdb_id: number;
+      media_type: string;
+      replies: number;
+      watchers: number;
+    }[]) {
+      out.set(`${r.media_type}-${r.tmdb_id}`, {
+        replies: Number(r.replies),
+        watchers: Number(r.watchers),
+      });
+    }
+    return out;
+  } catch {
+    return out;
+  }
 }
 
 /** مراجعات عمل معيّن مع أصحابها */
