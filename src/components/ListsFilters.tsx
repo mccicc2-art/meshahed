@@ -23,6 +23,15 @@ import type { TabPref } from "@/lib/tabPrefs";
  * السطر؛ هذه خلف زرٍّ ولا تظهر إلا مختارةً — بنية تبويب الأفلام حرفياً.
  */
 
+/* **`friends` لم يبقَ خياراً معروضاً (D-195، مواصفةُ أحمد):** صفُّ «من
+   أتابعهم» حُذف من تبويب القوائم — **وخيارُ فلترٍ بلا صفٍّ يُرشِّحه يُفرغ
+   الشاشة بصمت**، وهو أسوأ من غياب الخيار.
+
+   ⚠️ **ويبقى في النوع، ولا يُحذف منه:** الرابطُ المحفوظ `?lsrc=friends`
+   يجب أن يُقرأ ويُهدى إلى «الكل» لا أن يسقط، **والنشرُ هنا يقع مجلّداً
+   مجلّداً وكلُّ رفعةٍ تُبنى وحدها** (`19_Tools_And_Access.md`) — فتضييقُ
+   النوع في رفعة `components` كان يكسر البناءَ قبل أن تصل رفعةُ `app`.
+   **ونفسُ السبب يجعل `labels.friends` اختياريّةً.** */
 export type ListsSource = "all" | "curated" | "friends" | "community";
 
 export type ListsFiltersProps = {
@@ -39,7 +48,8 @@ type ListsFiltersLabels = {
   source: string;
   all: string;
   curated: string;
-  friends: string;
+  /** لم تُعرض بعد D-195 — تبقى اختياريّةً لأجل الرابط المحفوظ */
+  friends?: string;
   community: string;
   apply: string;
   close: string;
@@ -89,7 +99,8 @@ export function ListsFilters({
   const srcLabel: Record<ListsSource, string> = {
     all: labels.all,
     curated: labels.curated,
-    friends: labels.friends,
+    /* رقاقةُ الرابط المحفوظ تُسمّى «الكل» — لا فراغاً بلا اسم */
+    friends: labels.all,
     community: labels.community,
   };
 
@@ -175,7 +186,6 @@ export function ListsFilters({
             options={[
               { value: "all", label: labels.all },
               { value: "curated", label: labels.curated },
-              { value: "friends", label: labels.friends },
               { value: "community", label: labels.community },
             ]}
           />
