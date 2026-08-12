@@ -234,6 +234,120 @@ export function browseTagName(x: BrowseTag, locale: "ar" | "en") {
 }
 
 /** حقبة الإصدار — مدىً لا سنةً مفردة: السنة الواحدة تُفرغ الصفّ */
+/**
+ * **حالةُ المسلسل — محورٌ في تبويب المسلسلات وحده** (D-196، مواصفةُ أحمد).
+ *
+ * **والأربعةُ هي ما يسأل عنه الناس فعلاً**، لا كلُّ ما يعرفه TMDB: «يُبثّ
+ * الآن؟» و«انتهى فأشاهده كاملاً؟» و«قادم؟» و«أُلغي فلا أبدأه؟».
+ * **وحالتا «قيد الإنتاج» (0 و2) لا تُعرضان:** لا فرق يراه المستخدم بينهما
+ * وبين «مخطَّط»، وثلاثُ رقائق لمعنًى واحد تُقرأ لبساً.
+ *
+ * ⚠️ **والأرقام أرقامُ TMDB الموثَّقة لا اجتهاداً منّا** — وهي المعنى نفسُه
+ * الذي يحمله `with_status`.
+ */
+export interface BrowseStatus {
+  slug: string;
+  ar: string;
+  en: string;
+  /** رقمُ `with_status` عند TMDB */
+  code: string;
+}
+
+export const BROWSE_STATUSES: BrowseStatus[] = [
+  { slug: "airing", ar: "يُبثّ الآن", en: "Returning", code: "0" },
+  { slug: "ended", ar: "مُنتهٍ", en: "Ended", code: "3" },
+  { slug: "planned", ar: "قادم", en: "Planned", code: "1" },
+  { slug: "canceled", ar: "مُلغى", en: "Canceled", code: "4" },
+];
+
+export function browseStatusName(x: BrowseStatus, locale: "ar" | "en") {
+  return locale === "en" ? x.en : x.ar;
+}
+
+/**
+ * **استوديو الأنمي — أسماءٌ لا معرّفات** (D-196).
+ *
+ * **والسببُ قاعدةُ D-144 الملزمة:** معرّفٌ يُكتب بالحدس يُنتج صفّاً خاطئاً
+ * **يبدو صحيحاً**، ولا يمسكه `tsc` ولا البناء. فالاسمُ هو ما نملكه،
+ * و`companyId` تسأل TMDB عنه عند الطلب — **نفسُ نمط `keywordId` للوسوم**.
+ *
+ * **والاثنا عشر هم من يعرفهم متابعُ الأنمي بالاسم**، لا كلُّ استوديو في
+ * اليابان: قائمةٌ من ستّين تصير حائطاً لا فلتراً.
+ */
+export interface BrowseStudio {
+  slug: string;
+  /** الاسمُ كما تعرفه TMDB — هو مفتاحُ البحث لا زينة */
+  name: string;
+  ar: string;
+  en: string;
+}
+
+export const BROWSE_STUDIOS: BrowseStudio[] = [
+  { slug: "ghibli", name: "Studio Ghibli", ar: "ستوديو جيبلي", en: "Studio Ghibli" },
+  { slug: "mappa", name: "MAPPA", ar: "مابا", en: "MAPPA" },
+  { slug: "ufotable", name: "ufotable", ar: "يوفوتيبل", en: "ufotable" },
+  { slug: "bones", name: "Bones", ar: "بونز", en: "Bones" },
+  { slug: "madhouse", name: "Madhouse", ar: "مادهاوس", en: "Madhouse" },
+  { slug: "kyoani", name: "Kyoto Animation", ar: "كيوتو أنميشن", en: "Kyoto Animation" },
+  { slug: "wit", name: "Wit Studio", ar: "ويت ستوديو", en: "Wit Studio" },
+  { slug: "toei", name: "Toei Animation", ar: "توي أنميشن", en: "Toei Animation" },
+  { slug: "pierrot", name: "Pierrot", ar: "بييرو", en: "Pierrot" },
+  { slug: "sunrise", name: "Sunrise", ar: "صن رايز", en: "Sunrise" },
+  { slug: "trigger", name: "Trigger", ar: "تريغر", en: "Trigger" },
+  { slug: "a1", name: "A-1 Pictures", ar: "إيه-١ بيكتشرز", en: "A-1 Pictures" },
+];
+
+export function browseStudioName(x: BrowseStudio, locale: "ar" | "en") {
+  return locale === "en" ? x.en : x.ar;
+}
+
+/**
+ * **موسمُ الأنمي — أربعةُ أرباعٍ لا اثنا عشر شهراً** (D-196).
+ *
+ * **والوحدةُ ليست اختيارنا بل عُرفُ الصناعة:** الأنمي يُبثّ بمواسمَ ربعيّة
+ * (يناير · أبريل · يوليو · أكتوبر)، **وبها يتكلّم متابعُه** — «موسم الشتاء»
+ * لا «فبراير». **وحيث يوجد عُرفٌ راسخ، اتّباعُه ميزةٌ لا كسل** (D-150).
+ *
+ * **والمدى يُحسب عند الطلب لا يُكتب:** لو كُتب لجُمِّد عند سنةِ الكتابة —
+ * وهو خطأُ «القادم» في D-065 نفسه.
+ */
+export interface BrowseSeason {
+  slug: string;
+  ar: string;
+  en: string;
+  /** الشهرُ الأوّل (١-١٢) */
+  month: number;
+}
+
+export const BROWSE_SEASONS: BrowseSeason[] = [
+  { slug: "winter", ar: "شتاء", en: "Winter", month: 1 },
+  { slug: "spring", ar: "ربيع", en: "Spring", month: 4 },
+  { slug: "summer", ar: "صيف", en: "Summer", month: 7 },
+  { slug: "fall", ar: "خريف", en: "Fall", month: 10 },
+];
+
+export function browseSeasonName(x: BrowseSeason, locale: "ar" | "en") {
+  return locale === "en" ? x.en : x.ar;
+}
+
+/**
+ * مدى الموسم في سنةٍ بعينها — أو في السنة الحالية إن لم تُحدَّد حقبة.
+ *
+ * ⚠️ **والموسمُ يعلو على الحقبة حين يُختاران معاً**: من اختار «خريف» يقصد
+ * ثلاثة أشهرٍ بعينها، والحقبةُ عشرُ سنين — فتضييقُ الأضيق هو المقصود.
+ * **وحقبةٌ من عقدٍ كامل مع موسم؟ يُؤخذ الموسمُ من آخر سنةٍ فيها** — أحدثُ
+ * ما يطابق، لا أوّلُه.
+ */
+export function seasonRange(s: BrowseSeason, year: number): { from: string; to: string } {
+  const m = String(s.month).padStart(2, "0");
+  const endMonth = s.month + 2;
+  const last = new Date(Date.UTC(year, endMonth, 0)).getUTCDate();
+  return {
+    from: `${year}-${m}-01`,
+    to: `${year}-${String(endMonth).padStart(2, "0")}-${last}`,
+  };
+}
+
 export interface BrowseEra {
   slug: string;
   ar: string;
@@ -319,6 +433,12 @@ export interface BrowseQuery {
   tag: BrowseTag | null;
   /** slug جائزة من `awards.ts` — يحوّل الصفوف إلى فائزيها (طلب أحمد) */
   award: string | null;
+  /** حالةُ المسلسل — تبويبُ المسلسلات وحده (D-196) */
+  status: BrowseStatus | null;
+  /** موسمُ الأنمي — تبويبُ الأنمي وحده (D-196) */
+  season: BrowseSeason | null;
+  /** استوديو الأنمي — تبويبُ الأنمي وحده (D-196) */
+  studio: BrowseStudio | null;
   /** هل المستخدم يتصفّح فعلاً؟ لو لا، تبقى صفحة اكتشف على صفوفها المنسّقة */
   active: boolean;
 }
@@ -342,6 +462,9 @@ export function parseBrowse(params: {
   rate?: string;
   tag?: string;
   award?: string;
+  st?: string;
+  se?: string;
+  std?: string;
 }): BrowseQuery {
   const type: BrowseType =
     params.type === "movie" || params.type === "tv" ? params.type : "all";
@@ -364,6 +487,13 @@ export function parseBrowse(params: {
     : null;
   const tag = BROWSE_TAGS.find((x) => x.slug === params.tag) ?? null;
   const award = AWARDS.some((a) => a.slug === params.award) ? params.award! : null;
+  /* **الثلاثةُ الجديدة (D-196) تُقرأ بلا شرطِ تبويب** — كما تُقرأ الجنسية
+     منذ D-174. **والشرطُ في الواجهة لا في القراءة:** الرابطُ المحفوظ
+     `?st=ended` يجب أن يُقرأ ولو فُتح من تبويبٍ آخر، **وإلا ضاع بصمت**؛
+     و`discoverParams` يحرس ما لا يقبله النوع (الحالة للمسلسلات وحدها). */
+  const status = BROWSE_STATUSES.find((x) => x.slug === params.st) ?? null;
+  const season = BROWSE_SEASONS.find((x) => x.slug === params.se) ?? null;
+  const studio = BROWSE_STUDIOS.find((x) => x.slug === params.std) ?? null;
 
   return {
     type,
@@ -375,6 +505,9 @@ export function parseBrowse(params: {
     rate,
     tag,
     award,
+    status,
+    season,
+    studio,
     // الجهة (type) لا تجعل التصفّح «نشطاً»: صارت تبويبَ رأسٍ (أفلام/
     // مسلسلات — طلب أحمد) لا فلتراً، وتبديلها يعيد ضبط الرفوف —
     // كالنافذة تماماً. الفلاتر الحقيقية وحدها تقلب الصفحة لوضع النتائج
@@ -386,7 +519,10 @@ export function parseBrowse(params: {
       era !== null ||
       rate !== null ||
       tag !== null ||
-      award !== null,
+      award !== null ||
+      status !== null ||
+      season !== null ||
+      studio !== null,
   };
 }
 
@@ -409,7 +545,12 @@ export function needsDiscover(q: BrowseQuery) {
     q.provider !== null ||
     q.era !== null ||
     q.rate !== null ||
-    q.tag !== null
+    q.tag !== null ||
+    /* الثلاثةُ لا تقبلها القوائم الجاهزة أصلاً: `with_status`
+       و`with_companies` ومدى التواريخ معاملاتُ `/discover` وحده */
+    q.status !== null ||
+    q.season !== null ||
+    q.studio !== null
   );
 }
 
@@ -437,6 +578,9 @@ export function browseHref(q: {
   rate?: number | null;
   tag?: string | null;
   award?: string | null;
+  st?: string | null;
+  se?: string | null;
+  std?: string | null;
 }) {
   const p = new URLSearchParams();
   if (q.tab) {
@@ -456,6 +600,9 @@ export function browseHref(q: {
   if (q.era) p.set("era", q.era);
   if (q.rate) p.set("rate", String(q.rate));
   if (q.tag) p.set("tag", q.tag);
+  if (q.st) p.set("st", q.st);
+  if (q.se) p.set("se", q.se);
+  if (q.std) p.set("std", q.std);
   if (q.award) p.set("award", q.award);
   const qs = p.toString();
   return qs ? `/news?${qs}` : "/news";
@@ -473,6 +620,9 @@ export function browseKey(q: BrowseQuery, page = 1) {
     q.rate ?? "any",
     q.tag?.slug ?? "any",
     q.award ?? "any",
+    q.status?.slug ?? "any",
+    q.season?.slug ?? "any",
+    q.studio?.slug ?? "any",
     page,
   ].join(":");
 }

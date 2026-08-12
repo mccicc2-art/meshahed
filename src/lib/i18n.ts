@@ -511,6 +511,16 @@ const ar = {
      مصطلحاً تقنياً، ولا «التصنيف» كي لا يلتبس بمحور النوع فوقه */
   browseTagGroup: "الموضوع",
   browseAnyTag: "أي موضوع",
+  /* ثلاثةُ محاورَ تتبع تبويبها (D-196، مواصفةُ أحمد) — الحالةُ للمسلسلات،
+     والموسمُ والاستوديو للأنمي. **والموسمُ هنا موسمُ بثٍّ ربعيّ لا موسمُ
+     مسلسل** — ولذلك «موسم البثّ» لا «الموسم» وحدها: الثانيةُ تعني في
+     صفحة العمل شيئاً آخر، واسمٌ واحد لمعنيين لبس. */
+  browseStatusGroup: "الحالة",
+  browseAnyStatus: "أي حالة",
+  browseSeasonGroup: "موسم البثّ",
+  browseAnySeason: "أي موسم",
+  browseStudioGroup: "الاستوديو",
+  browseAnyStudio: "أي استوديو",
   // الجائزة (طلب أحمد 9 Aug) — محورٌ يحوّل الصفحة إلى صفّ الفائزين
   browseAwardGroup: "الجائزة",
   browseAnyAward: "كل الجوائز",
@@ -1540,6 +1550,12 @@ const en: Dict = {
   browseAnyCountry: "Any country",
   browseTagGroup: "Theme",
   browseAnyTag: "Any theme",
+  browseStatusGroup: "Status",
+  browseAnyStatus: "Any status",
+  browseSeasonGroup: "Season",
+  browseAnySeason: "Any season",
+  browseStudioGroup: "Studio",
+  browseAnyStudio: "Any studio",
   browseAwardGroup: "Award",
   browseAnyAward: "Any award",
   awardRailNote: (n: string, from: string) => `${n} winners since ${from} — newest first`,

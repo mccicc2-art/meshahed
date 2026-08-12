@@ -1195,6 +1195,25 @@ export interface DiscoverFilter {
    * وهو نقيضُ ما طُلب.
    */
   keywords?: string[];
+  /**
+   * حالةُ المسلسل عند TMDB — `with_status` (D-196، مواصفةُ أحمد: «Status»
+   * محورٌ في تبويب المسلسلات وحده).
+   *
+   * **ورقمُ الحالة عند TMDB ثابتٌ موثَّق لا مخمَّن:** 0 قيدَ الإنتاج ·
+   * 1 مخطَّط · 2 قيدَ الإنتاج · 3 مُنتهٍ · 4 مُلغى · 5 يُبثّ.
+   * **ولا معنى له في الأفلام** — فـ`discoverParams` لا يُرسله إلا لـ`tv`،
+   * وإرسالُه إلى `/discover/movie` يُرجع خطأً لا صفراً.
+   */
+  status?: string | null;
+  /**
+   * معرّفاتُ شركاتِ الإنتاج — `with_companies`، تُجمع بـ«أو» (D-196،
+   * محورُ «Studio» في تبويب الأنمي).
+   *
+   * **والمعرّفُ يُحَلُّ عند الطلب لا يُكتب في الشيفرة** — نفسُ نمط
+   * `keywordId` حرفياً، **ولنفس سبب D-144:** معرّفٌ مكتوبٌ بالحدس يُنتج
+   * صفّاً خاطئاً يبدو صحيحاً. فالقاموسُ أسماءٌ، والاسمُ يُسأل عنه TMDB.
+   */
+  companies?: string[];
 }
 
 /**
@@ -1220,6 +1239,32 @@ export async function keywordId(q: string): Promise<string | null> {
     return hit ? String(hit.id) : null;
   } catch {
     /* تعذّر الحلّ — الوسم يسقط بصمت بدل أن يُفرغ الصفحة بمعرّفٍ خاطئ */
+    return null;
+  }
+}
+
+/**
+ * معرّفُ شركةِ إنتاجٍ من اسمها — **توأمُ `keywordId` بحرفيّته** (D-196).
+ *
+ * **ولماذا سؤالٌ عند الطلب لا قاموسُ معرّفات:** قاعدةُ D-144 الملزمة —
+ * معرّفٌ يُكتب بالحدس يُنتج صفّاً خاطئاً **يبدو صحيحاً**، ولا يكشفه فحصٌ
+ * آليّ أبداً. وأسماءُ الاستوديوهات مستقرّة، ومعرّفاتُها ليست معرفتَنا.
+ *
+ * **والتطابقُ التامّ يُقدَّم على الأوّل:** بحثُ «Bones» عند TMDB يعيد
+ * شركاتٍ كثيرةً تحمل الكلمة، **والاستوديو المقصود هو من اسمُه الاسمُ**.
+ * وتعذُّرُ الحلّ يُسقط المحور بصمت — كالوسم — لا يُفرغ الصفحة بمعرّفٍ خطأ.
+ */
+export async function companyId(name: string): Promise<string | null> {
+  try {
+    const data = await tmdb<{ results?: { id: number; name: string }[] }>(
+      "/search/company",
+      { query: name },
+    );
+    const rows = data.results ?? [];
+    const exact = rows.find((r) => r.name.toLowerCase() === name.toLowerCase());
+    const hit = exact ?? rows[0];
+    return hit ? String(hit.id) : null;
+  } catch {
     return null;
   }
 }
@@ -1299,6 +1344,11 @@ function discoverParams(mediaType: MediaType, f: DiscoverFilter) {
   if (f.minRate) p["vote_average.gte"] = String(f.minRate);
   /* الفاصلة «و» عند TMDB والشرطة العمودية «أو» — انظر تعليق `keywords` */
   if (f.keywords?.length) p.with_keywords = f.keywords.join(",");
+  /* الحالةُ للمسلسلات وحدها: `/discover/movie` لا يعرف `with_status`
+     **ويردّ خطأً** لا صفراً — فحارسُ النوع هنا لا عند المستدعي */
+  if (f.status && mediaType === "tv") p.with_status = f.status;
+  /* الشركاتُ بـ«أو»: من اختار «MAPPA» لا يقصد «MAPPA **و** يوفوتيبل» */
+  if (f.companies?.length) p.with_companies = f.companies.join("|");
   return p;
 }
 
