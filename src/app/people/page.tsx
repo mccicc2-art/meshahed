@@ -7,6 +7,7 @@ import {
   getMyCommunityInvites,
   getCommunityRoom,
   getTitleRooms,
+  getTalkStats,
 } from "@/lib/data";
 import { getT, getTabPrefs } from "@/lib/locale";
 import { WorksTalk, groupByWork } from "@/components/WorksTalk";
@@ -131,6 +132,12 @@ export default async function PeoplePage({
       ? groupByWork(await localizeRows(followingFeed, locale))
       : [];
 
+  /* أرقامُ البطاقة (D-193): الردودُ ومن شاهد — **نداءٌ واحد للأعمال كلّها**
+     (`title_talk_stats`) لا نداءٌ لكل صفّ. ولا يُدفع إلا في تبويبه، ولا
+     يُدفع لخطٍّ فارغ. **وسقوطُه لا يُسقط الصفّ**: الدالّة تُرجع خريطةً
+     فارغة فتُخفى الأرقام ويبقى الكلامُ مقروءاً. */
+  const talkStats = works.length ? await getTalkStats() : undefined;
+
   /* «أشخاص لمتابعتهم» (D-126) — تُطلب حين يكون الخطّ هزيلاً لا فارغاً
      وحده: دائرةٌ من شخصين تُنتج خطّاً صامتاً كدائرةٍ من صفر، والفرق أن
      الأولى لا تُظهر حالةً فارغة فتبدو الصفحة معطوبة لا ناقصة.
@@ -250,7 +257,7 @@ export default async function PeoplePage({
               {scope === "all" ? t.worksEmptyAll : t.worksEmptyFollowing}
             </p>
           ) : (
-            <WorksTalk works={works} locale={locale} />
+            <WorksTalk works={works} stats={talkStats} locale={locale} />
           )}
         </section>
       )}
