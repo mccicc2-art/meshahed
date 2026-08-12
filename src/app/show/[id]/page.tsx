@@ -353,39 +353,17 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
                 >
                   <TrailerSection tvId={tvId} name={title} backdrop={backdrop} locale={locale} />
                 </Suspense>
+
+                {/* **الطاقمُ عاد إلى «عن العمل» — ثالثاً لا أوّلاً** (D-203،
+                    طلب أحمد: «الأوّل القصة بعده الفيديو بعده كاست»).
+                    **والترتيبُ ترتيبُ السؤال:** «عن ماذا؟» ثم «كيف يبدو؟»
+                    ثم «من فيه؟». وتفصيلُ النقض في نظيره في صفحة الفيلم —
+                    **والصفحتان تتحرّكان معاً دائماً** (تنبيهُ أحمد يومَ
+                    تحرّكت إحداهما وحدها). */}
+                <Suspense fallback={null}>
+                  <CastRail mediaType="tv" tmdbId={tvId} locale={locale} />
+                </Suspense>
               </div>
-            ),
-          },
-          {
-            /* **تبويبُ المجتمع — الغرفةُ نفسها لا رابطٌ إليها** (D-191،
-               طلب أحمد: «تبويب اسمه كوميونيتي مربوط بغرفة الكوميونيتي
-               الخاصة فيه»). وموضعُه **ثالثاً** كما طلب: الحديثُ عن العمل
-               أقربُ إلى العمل من «مشابه»، وغرفُ الأعمال (D-140) كانت أثمنَ
-               ما في المجتمع وأخفاه — سطراً في تبويبٍ رابع.
-               والسطرُ القديم (`TitleRoomLink`) حُذف من «التعليقات» مع
-               النقل: **لا بابان لغرفةٍ واحدة.** */
-            key: "community",
-            label: t.tabCommunity,
-            icon: "people",
-            content: (
-              <Suspense
-                fallback={<div className="skeleton h-64 rounded-2xl" aria-hidden />}
-              >
-                <TitleRoomTab tmdbId={tvId} mediaType="tv" locale={locale} />
-              </Suspense>
-            ),
-          },
-          {
-            key: "cast",
-            label: t.tabCast,
-            icon: "people",
-            /* الطاقم تبويبٌ مستقلّ كصفحة الفيلم تماماً — الجلسة السابقة
-               بنته للأفلام وحدها فبقي المسلسل داخل «معلومات» (تنبيه أحمد):
-               تبويبٌ واحد بمعنى واحد في الصفحتين */
-            content: (
-              <Suspense fallback={null}>
-                <CastRail mediaType="tv" tmdbId={tvId} locale={locale} />
-              </Suspense>
             ),
           },
           {
@@ -407,6 +385,25 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
                   posterPath={tv.poster_path}
                   locale={locale}
                 />
+              </Suspense>
+            ),
+          },
+          {
+            /* **تبويبُ المجتمع — الغرفةُ نفسها لا رابطٌ إليها** (D-191،
+               طلب أحمد: «تبويب اسمه كوميونيتي مربوط بغرفة الكوميونيتي
+               الخاصة فيه»). وموضعُه **ثالثاً** كما طلب: الحديثُ عن العمل
+               أقربُ إلى العمل من «مشابه»، وغرفُ الأعمال (D-140) كانت أثمنَ
+               ما في المجتمع وأخفاه — سطراً في تبويبٍ رابع.
+               والسطرُ القديم (`TitleRoomLink`) حُذف من «التعليقات» مع
+               النقل: **لا بابان لغرفةٍ واحدة.** */
+            key: "community",
+            label: t.tabCommunity,
+            icon: "people",
+            content: (
+              <Suspense
+                fallback={<div className="skeleton h-64 rounded-2xl" aria-hidden />}
+              >
+                <TitleRoomTab tmdbId={tvId} mediaType="tv" locale={locale} />
               </Suspense>
             ),
           },
