@@ -21,6 +21,31 @@ import type { LoopzNewsItem } from "@/lib/data";
  * **وهندستُه هي هندسةُ `TitleNews` نفسها** — نصٌّ يميناً وملصقٌ صغير
  * يساراً. لغةٌ بصرية ثانية في تبويبٍ واحد كانت ستُقرأ سطحين لا سطحاً.
  */
+/**
+ * أسماءُ أشهر المنصّات بمعرّفات TMDB — **قائمةٌ قصيرةٌ مقصودة**: خبرُ
+ * «صار على منصّة» لا يُكتب إلا لمن يعرفه القارئ، **وما لم نعرف اسمَه
+ * يُقال «منصّةٌ جديدة» بلا اختراع**.
+ */
+const PROVIDERS: Record<number, string> = {
+  8: "Netflix",
+  9: "Prime Video",
+  337: "Disney+",
+  350: "Apple TV+",
+  1899: "HBO Max",
+  384: "HBO Max",
+  283: "Crunchyroll",
+  119: "Prime Video",
+  2100: "Prime Video",
+  1993: "Viu",
+  188: "YouTube Premium",
+  531: "Paramount+",
+  386: "Peacock",
+  1968: "Shahid",
+  2178: "Shahid VIP",
+  3000: "OSN+",
+  1902: "StarzPlay",
+};
+
 export function LoopzNews({ items, locale }: { items: LoopzNewsItem[]; locale: Locale }) {
   const t = getDict(locale);
 
@@ -61,6 +86,18 @@ export function LoopzNews({ items, locale }: { items: LoopzNewsItem[]; locale: L
         return t.newsTheatrical(n.title, showDate(d.date));
       case "released":
         return t.newsOutNow(n.title);
+      case "chart":
+        return t.newsChart(n.title, Number(d.rank) || 0);
+      case "provider": {
+        const name = PROVIDERS[Number(d.provider)] ?? null;
+        return name ? t.newsProvider(n.title, name) : t.newsProviderAny(n.title);
+      }
+      case "report":
+        return d.event === "renewed"
+          ? t.newsRenewed(n.title, Number(d.season) || 0)
+          : d.event === "canceled"
+            ? t.newsCanceled2(n.title)
+            : t.newsDelayed(n.title);
       default:
         return null;
     }
@@ -99,6 +136,26 @@ export function LoopzNews({ items, locale }: { items: LoopzNewsItem[]; locale: L
                   >
                     {text}
                   </Link>
+                  {/* **سطرُ النسبة** (D-213): الحدثُ من الصحافة، والجملةُ
+                      من عندنا — **فالمصدرُ يُذكر دائماً، ورابطُه صغيرٌ
+                      تحته** (طلبُ أحمد بنصّه). ولا يظهر إلا لخبرٍ منقول. */}
+                  {n.kind === "report" && typeof (n.data ?? {}).source === "string" && (
+                    <p className="mt-1 text-[11px] text-muted">
+                      {typeof (n.data ?? {}).url === "string" ? (
+                        <a
+                          href={String((n.data ?? {}).url)}
+                          target="_blank"
+                          rel="noopener noreferrer nofollow"
+                          className="underline decoration-dotted underline-offset-2 hover:text-accent transition"
+                        >
+                          {t.newsPerSource(String((n.data ?? {}).source))}
+                        </a>
+                      ) : (
+                        t.newsPerSource(String((n.data ?? {}).source))
+                      )}
+                    </p>
+                  )}
+
                   <div className="mt-1.5 flex items-center gap-2 text-[11px] text-muted">
                     <span>{timeAgo(n.published_at, t)}</span>
                     <span aria-hidden>·</span>
