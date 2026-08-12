@@ -272,38 +272,27 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
                     locale={locale}
                   />
                 </Suspense>
+
+                {/* **الطاقمُ عاد إلى «عن العمل» — ثالثاً لا أوّلاً** (D-203،
+                    طلب أحمد بنصّه: «تيوب cast احذف وضيف كاست ضمن تبويب
+                    أباوت، لكن ما يكون أوّل شيء: الأوّل القصة بعده الفيديو
+                    بعده كاست»).
+
+                    **ونقضٌ صريحٌ لقرارٍ سابق:** كان الطاقمُ داخل «معلومات»
+                    منذ D-080، ثم خرج تبويباً بطلبه (D-090) لأن التبويبَ
+                    طال. **وقد عاد لأن السببَ زال:** «أين أشاهده» غادرت في
+                    D-190، والأنواعُ صعدت إلى الترويسة — **فالتبويبُ الذي
+                    كان طويلاً صار سطرَ قصّةٍ ومقطعاً**.
+
+                    **والترتيبُ الذي طلبه هو ترتيبُ السؤال:** «عن ماذا؟» ثم
+                    «كيف يبدو؟» ثم «من فيه؟» — والوجوهُ آخرُ ما يُسأل عنه
+                    قبل المشاهدة لا أوّلُه. **وخمسةُ تبويباتٍ على ٣٦٠px
+                    كانت تُقصّ أسماءها** («Epis…» · «Com…» · «Revi…» في
+                    لقطته) — فحذفُ واحدٍ يشتري قراءةَ الأربعة الباقية. */}
+                <Suspense fallback={null}>
+                  <CastRail mediaType="movie" tmdbId={movieId} locale={locale} />
+                </Suspense>
               </div>
-            ),
-          },
-          {
-            key: "cast",
-            label: t.tabCast,
-            icon: "people",
-            /* الطاقم صار تبويبه (طلب أحمد بعد أن طالت «معلومات») — كان
-               داخلها منذ D-080؛ المحتوى نفسه، بابه وحده تغيّر */
-            content: (
-              <Suspense fallback={null}>
-                <CastRail mediaType="movie" tmdbId={movieId} locale={locale} />
-              </Suspense>
-            ),
-          },
-          {
-            /* **تبويبُ المجتمع — الغرفةُ نفسها لا رابطٌ إليها** (D-191،
-               طلب أحمد: «تبويب اسمه كوميونيتي مربوط بغرفة الكوميونيتي
-               الخاصة فيه»). وموضعُه **ثالثاً** كما طلب: الحديثُ عن العمل
-               أقربُ إلى العمل من «مشابه»، وغرفُ الأعمال (D-140) كانت أثمنَ
-               ما في المجتمع وأخفاه — سطراً في تبويبٍ رابع.
-               والسطرُ القديم (`TitleRoomLink`) حُذف من «التعليقات» مع
-               النقل: **لا بابان لغرفةٍ واحدة.** */
-            key: "community",
-            label: t.tabCommunity,
-            icon: "people",
-            content: (
-              <Suspense
-                fallback={<div className="skeleton h-64 rounded-2xl" aria-hidden />}
-              >
-                <TitleRoomTab tmdbId={movieId} mediaType="movie" locale={locale} />
-              </Suspense>
             ),
           },
           {
@@ -346,6 +335,25 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
                   posterPath={movie.poster_path}
                   locale={locale}
                 />
+              </Suspense>
+            ),
+          },
+          {
+            /* **تبويبُ المجتمع — الغرفةُ نفسها لا رابطٌ إليها** (D-191،
+               طلب أحمد: «تبويب اسمه كوميونيتي مربوط بغرفة الكوميونيتي
+               الخاصة فيه»). وموضعُه **ثالثاً** كما طلب: الحديثُ عن العمل
+               أقربُ إلى العمل من «مشابه»، وغرفُ الأعمال (D-140) كانت أثمنَ
+               ما في المجتمع وأخفاه — سطراً في تبويبٍ رابع.
+               والسطرُ القديم (`TitleRoomLink`) حُذف من «التعليقات» مع
+               النقل: **لا بابان لغرفةٍ واحدة.** */
+            key: "community",
+            label: t.tabCommunity,
+            icon: "people",
+            content: (
+              <Suspense
+                fallback={<div className="skeleton h-64 rounded-2xl" aria-hidden />}
+              >
+                <TitleRoomTab tmdbId={movieId} mediaType="movie" locale={locale} />
               </Suspense>
             ),
           },
