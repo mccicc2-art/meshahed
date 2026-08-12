@@ -2,7 +2,7 @@ import type { SearchResult } from "./tmdb";
 import {
   airingTv,
   nowPlayingMovies,
-  popularByMedia,
+  popularWellKnown,
   topByFilter,
   topTenThisWeek,
   topTenGenreThisWeek,
@@ -14,8 +14,26 @@ import {
   worksByPeople,
   type DiscoverFilter,
 } from "./tmdb";
-import { getFollowedArtists } from "./data";
+import { getFollowedArtists, getImdbChart } from "./data";
 import { railGuard } from "./topChart";
+
+/**
+ * خلطٌ عشوائيّ — **قرعةُ خادمٍ لا دالّةُ عرض** (نمط D-073 حرفياً).
+ *
+ * ⚠️ **وبلا `eslint-disable` هنا، بخلاف D-073:** قاعدةُ `react-hooks/purity`
+ * تفحص **دوالَّ الرسم** لا كلَّ دالّة، وهذه دالّةٌ مساعدة في وحدةِ خادم —
+ * فالاستثناءُ كان سيُبلَّغ عنه «تعليقٌ زائد». **والقاعدةُ التي تحمينا هنا
+ * أنّ هذا الملفَّ لا يُستورد من مكوّن عميلٍ قطُّ** (يقرأ `./data`).
+ */
+function shuffle<T>(rows: T[]): T[] {
+  const a = [...rows];
+  for (let i = a.length - 1; i > 0; i--) {
+    // العشوائية مقصودة: تُنفَّذ مرّةً لكل طلبٍ على الخادم، لا في رسمٍ يُعاد
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
 
 /**
  * **سجلُّ أقسام «اكتشف» — مصدرٌ واحد للصفّ وللصفحة الكاملة** (D-198،
@@ -77,6 +95,16 @@ export interface SectionCtx {
   win?: "week" | "month" | "year";
   /** مدى النافذة محسوباً — يُمرَّر كي لا يُحسب التاريخ مرّتين */
   winRange?: { from: string; to: string } | null;
+  /**
+   * **قرعةٌ لكل طلب — للصفّ لا للصفحة** (D-202، طلب أحمد: «تكون عشوائية
+   * مثل بيكد فور يو»).
+   *
+   * **والوعدُ الذي قطعه D-199 يبقى قائماً بصياغته الصحيحة:** الصفُّ
+   * **عيّنةٌ من بِركة الصفحة**، فكلُّ ما تراه في الصفّ موجودٌ في الصفحة —
+   * والصفحةُ لا تُقرع فترتيبُها ثابتٌ بالشعبية. **«نفسُ المصدر» لا «نفسُ
+   * العشرين»**، وهو أقصى ما يمكن أن يعنيه الوعدُ لصفٍّ طُلب أن يتغيّر.
+   */
+  sample?: boolean;
 }
 
 /** مفتاحُ الترجمة لعنوان القسم — الاسمُ يبقى في `i18n.ts` لا يُنسخ هنا */
@@ -157,25 +185,88 @@ export async function buildSection(
   try {
     switch (key) {
       case "most-popular": {
-        /* بلا فلتر: قائمةُ TMDB الجاهزة (`/popular`) — ترتيبُ شعبيةٍ
-           تراكميّ لا نملك مثله. ومع الفلتر: `/discover` بنفس الترتيب،
-           فالمحاورُ تُقبل. **وتبويبُ الأنمي `/discover` دائماً** لأن
-           `/popular` لا يقبل مفتاحاً (فتصفيتُه بالأنمي تُفرغه). */
-        const rows = await Promise.all(
-          sides(media).map((mt) =>
-            active || media === "anime"
-              ? topByFilter(mt, { ...base, genreIds }, limit * 2, "popularity.desc")
-              /* صفحاتٌ بقدر الحدّ: الصفُّ صفحةٌ واحدة، والصفحةُ الكاملة
-                 ثلاث — **قِيس على الإنتاج: بلا هذا عادت الستّون سبعةَ
-                 عشر**. */
-              : popularByMedia(mt, Math.ceil((limit * 1.5) / 20)),
-          ),
+        /* ================= D-202 — إعادةُ بناءٍ كاملة =================
+           **بلاغ أحمد بلقطة:** الصفُّ كان Secret Story ٤٫٦ · Paradise
+           Hotel ٤٫٣ · Paradise Hotel ٤٫١ · Big Brother. وطلبُه بنصّه:
+           «لازم فيها الأشياء الأكثر شعبية **جداً** · وتكون عشوائية مثل
+           بيكد فور يو · وتركّز على الشعبية العالية **والمعروفة جداً** ·
+           وتكون ذكية: تعرض شيئاً شعبياً جداً رائجاً **مع** شعبيٍّ جداً
+           يجب مشاهدتُه **مثل Lost»**.
+
+           **فثلاثةُ أشياء لا واحد، ولكلٍّ سببُه:**
+
+           **١) حاجزُ جودةٍ وحاجزُ أصوات** (`popularWellKnown`): قائمةُ
+              `/popular` العارية تُرتّب بـ`popularity` — **رقمُ حركةٍ لا
+              رقمُ جودة**. وبرامجُ الواقع تُنتج نسخةً وطنيةً كلَّ موسم
+              فتتصدّرها بأصواتٍ قليلة (**ولهذا ظهر «Paradise Hotel»
+              مرّتين — صفّان مختلفان عند TMDB**).
+
+           **٢) مزجٌ بالمعروفِ الخالد** (`getImdbChart`): «مثل Lost» هي
+              المفتاح — Lost **ليست رائجةً هذا الأسبوع**، فلا تصل من
+              مصدرِ شعبيةٍ أبداً مهما رفعنا حاجزه. **فالثلثُ من قائمة
+              IMDb** التي نملكها أصلاً (D-135)، وهي حرفياً «شعبيٌّ جداً
+              يجب مشاهدتُه». **ولا نداءَ جديد:** قراءةٌ من قاعدتنا.
+
+           **٣) قرعةٌ لكل طلبٍ للصفّ** (`ctx.sample`، نمط D-073): الصفُّ
+              عشرون من بِركةِ ستّين، فلا يتجمّد على نفس الوجوه — **وهو
+              ما طلبه: «عشوائية مثل بيكد فور يو»**.
+
+           ⚠️ **ومع الفلتر يسقط المزجُ ويبقى الحاجزان:** من اختار «٢٠٢٦»
+              أو «كوري» لا يريد كلاسيكيّاتٍ لا تطابق اختياره — **والقائمةُ
+              لا تحمل لغةً ولا سنةً تُصفّى بها** (D-189). فالتصفيةُ وعدٌ
+              يُقدَّم على التنويع. */
+        const wantMix = !active && media !== "anime";
+        const [fresh, classics] = await Promise.all([
+          Promise.all(
+            sides(media).map((mt) =>
+              /* الأنمي `/discover` دائماً: `/popular` لا يقبل مفتاحاً */
+              popularWellKnown(mt, { ...base, genreIds }, wantMix ? 2 : 3),
+            ),
+          ).then((r) => r.flat()),
+          wantMix
+            ? getImdbChart(media === "movie" ? "movie" : "tv", 60)
+                .then((rows) =>
+                  rows.map(
+                    (r): SearchResult => ({
+                      id: r.tmdb_id,
+                      media_type: r.media_type === "tv" ? "tv" : "movie",
+                      title: r.title ?? undefined,
+                      name: r.title ?? undefined,
+                      poster_path: r.poster_path,
+                      backdrop_path: null,
+                      overview: "",
+                      vote_average: 0,
+                      genre_ids: [],
+                    }),
+                  ),
+                )
+                .catch(() => [] as SearchResult[])
+            : Promise.resolve([] as SearchResult[]),
+        ]);
+
+        const byPopularity = guard(
+          fresh.sort((a, b) => (b.popularity ?? 0) - (a.popularity ?? 0)),
         );
-        return guard(
-          rows
-            .flat()
-            .sort((a, b) => (b.popularity ?? 0) - (a.popularity ?? 0)),
-        );
+        /* **الثلثُ خالدٌ والثلثان رائج** — ونصيبُ الخالد يُحسب من الحدّ لا
+           من طول البِركة، كي تبقى النسبةُ نفسَها في الصفّ وفي الصفحة. */
+        const keepClassics = wantMix ? Math.round(limit / 3) : 0;
+        const seen = new Set(byPopularity.map((r) => `${r.media_type}-${r.id}`));
+        const mixed = [
+          ...byPopularity,
+          ...classics.filter((r) => !seen.has(`${r.media_type}-${r.id}`)).slice(0, keepClassics * 2),
+        ];
+
+        if (!ctx.sample) return mixed.slice(0, limit);
+
+        /* قرعةُ خادمٍ عند كل طلب (D-073): البِركةُ مخبّأةٌ ساعةً، فبلا
+           القرعة يرى العميلُ الوجوهَ نفسها كلَّ فتحة. والانحيازُ مقصود:
+           الرائجُ أوّلاً ثم يُخلط الكلّ، فيبقى الصفُّ «الأكثرَ شعبية» ولا
+           يصير رفَّ كلاسيكيّات. */
+        const pick = [
+          ...shuffle(byPopularity.slice(0, Math.max(limit, 40))).slice(0, limit - keepClassics),
+          ...shuffle(mixed.slice(byPopularity.length)).slice(0, keepClassics),
+        ];
+        return shuffle(pick).slice(0, limit);
       }
 
       case "top-ten": {
