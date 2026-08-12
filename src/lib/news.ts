@@ -489,9 +489,17 @@ export function titleCandidates(headline: string): string[] {
 export async function matchTitle(
   headline: string,
   budget: { left: number },
+  memo?: Map<string, { tmdbId: number; mediaType: "tv" | "movie" } | null>,
 ): Promise<{ tmdbId: number; mediaType: "tv" | "movie" } | null> {
   const flat = norm(headline);
   for (const cand of titleCandidates(headline)) {
+    const key = norm(cand);
+    if (memo?.has(key)) {
+      const cached = memo.get(key) ?? null;
+      /* المخزَّنُ يُقبل بشرطه نفسِه: اسمُ العمل في هذا العنوان أيضاً */
+      if (cached) return cached;
+      continue;
+    }
     if (budget.left <= 0) return null;
     budget.left -= 1;
     let rows;
@@ -511,9 +519,12 @@ export async function matchTitle(
         /* اسمٌ من كلمةٍ قصيرة يطابق أيَّ شيء — «Up» و«It» و«صدفة» */
         .filter((v) => v.length >= 4);
       if (names.some((n) => flat.includes(n))) {
-        return { tmdbId: r.id, mediaType: r.media_type };
+        const hit = { tmdbId: r.id, mediaType: r.media_type };
+        memo?.set(key, hit);
+        return hit;
       }
     }
+    memo?.set(key, null);
   }
   return null;
 }
@@ -541,28 +552,42 @@ export async function collectNews(perSource = 8, tmdbBudget = 90): Promise<NewsR
   const live = NEWS_SOURCES.filter((s) => s.enabled);
   const fetched = await Promise.all(live.map((s) => fetchFeed(s, perSource)));
 
+  /* **تناوبٌ بين المصادر لا مصدرٌ بعد مصدر.** أوّلُ نسخةٍ عالجت الفيدات
+     بالترتيب، **فابتلعت الميزانيةَ كلَّها على الإنجليزية ولم يبقَ لأخبار
+     جوجل العربية شيء** — وهي أدقُّها في تسمية الأعمال. سبعُ مطابقاتٍ من
+     ستٍّ وتسعين كان هذا نصفَ سببها. */
+  const queues = fetched.map((f) => [...f.items]);
+  const ordered: RawNewsItem[] = [];
+  for (let i = 0; i < perSource; i++) {
+    for (const q of queues) {
+      const it = q.shift();
+      if (it) ordered.push(it);
+    }
+  }
+
   const budget = { left: tmdbBudget };
+  /* **وذاكرةٌ للمرشّحين:** «The Odyssey» تتكرّر في خمسة عناوين، فبحثٌ
+     واحدٌ يكفيها. والنفيُ يُخزَّن كالإثبات — وإلا أعاد الفاشلُ نفسَه. */
+  const memo = new Map<string, { tmdbId: number; mediaType: "tv" | "movie" } | null>();
   const rows: NewsRow[] = [];
   const seen = new Set<string>();
 
-  for (const r of fetched) {
-    for (const it of r.items) {
-      if (seen.has(it.url)) continue;
-      seen.add(it.url);
-      const { title, label } = splitPublisher(it.title);
-      const hit = await matchTitle(title, budget);
-      rows.push({
-        url: it.url,
-        source: it.source,
-        source_label: label,
-        lang: it.lang,
-        title,
-        summary: it.summary,
-        published_at: it.publishedAt,
-        tmdb_id: hit?.tmdbId ?? null,
-        media_type: hit?.mediaType ?? null,
-      });
-    }
+  for (const it of ordered) {
+    if (seen.has(it.url)) continue;
+    seen.add(it.url);
+    const { title, label } = splitPublisher(it.title);
+    const hit = await matchTitle(title, budget, memo);
+    rows.push({
+      url: it.url,
+      source: it.source,
+      source_label: label,
+      lang: it.lang,
+      title,
+      summary: it.summary,
+      published_at: it.publishedAt,
+      tmdb_id: hit?.tmdbId ?? null,
+      media_type: hit?.mediaType ?? null,
+    });
   }
   return rows;
 }
