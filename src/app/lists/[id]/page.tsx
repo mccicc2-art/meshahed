@@ -84,6 +84,9 @@ export default async function ListPage({ params }: { params: Promise<{ id: strin
             avatar: pub.owner_avatar,
           }}
           locale={locale}
+          /* الغلافُ يسافر مع الرابط (D-208): من فُتح له رابطُ القائمة يرى
+             وجهَها الذي اختاره صاحبُها — ولا يبدّله لأنها ليست قائمته */
+          cover={pub.cover_backdrop ? { backdrop: pub.cover_backdrop } : null}
         />
 
         {/* دعوةٌ واحدة في القاع لا لافتةٌ فوق المحتوى: الزائر جاء ليرى
@@ -148,6 +151,11 @@ export default async function ListPage({ params }: { params: Promise<{ id: strin
         }
         locale={locale}
         initialSaved={isOwner ? null : saved}
+        cover={{
+          backdrop: data.list.cover_backdrop ?? null,
+          tmdbId: data.list.cover_tmdb_id ?? null,
+          mediaType: data.list.cover_media_type ?? null,
+        }}
       />
     </div>
   );
