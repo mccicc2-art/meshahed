@@ -286,15 +286,40 @@ function text(node: unknown): string {
   return "";
 }
 
+/**
+ * **فكُّ ترميز HTML.** الفيدُ يرسل `&#8216;The Lincoln Lawyer&#8217;`،
+ * فظهرت الأرقامُ نصّاً في البطاقة على الإنتاج — **عطلٌ كشفته اللقطةُ
+ * الحيّة لا `tsc`.** ويُصدَّر لأن الواجهةَ تناديه أيضاً: **الصفوفُ التي
+ * دخلت قبل هذا الإصلاح تُشفى عند العرض** بلا تعديلِ نصٍّ مخزَّن (والنصُّ
+ * المخزَّن لا يُمسّ عمداً — انظر `set_news_items`).
+ */
+export function decodeEntities(s: string): string {
+  const named: Record<string, string> = {
+    amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " ",
+    hellip: "…", mdash: "—", ndash: "–", rsquo: "’", lsquo: "‘",
+    rdquo: "”", ldquo: "“", laquo: "«", raquo: "»", middot: "·",
+  };
+  return s.replace(/&(#x?[0-9a-fA-F]+|[a-zA-Z]+);/g, (m, body: string) => {
+    if (body[0] === "#") {
+      const code =
+        body[1] === "x" || body[1] === "X"
+          ? parseInt(body.slice(2), 16)
+          : parseInt(body.slice(1), 10);
+      return Number.isFinite(code) && code > 0 && code < 0x110000
+        ? String.fromCodePoint(code)
+        : m;
+    }
+    return named[body.toLowerCase()] ?? m;
+  });
+}
+
 /** وسومُ HTML تُنزع من الملخّص: الفيد يعطي فقرةً كاملة أحياناً */
 function plain(html: string, max = 300): string {
-  const s = html
-    .replace(/<script[\s\S]*?<\/script>/gi, " ")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&quot;/g, '"')
-    .replace(/&#8217;|&rsquo;/g, "'")
+  const s = decodeEntities(
+    html
+      .replace(/<script[\s\S]*?<\/script>/gi, " ")
+      .replace(/<[^>]+>/g, " "),
+  )
     .replace(/\s+/g, " ")
     .trim();
   return s.length > max ? `${s.slice(0, max - 1)}…` : s;
