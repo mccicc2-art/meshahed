@@ -157,7 +157,20 @@ export default async function NewsPage({
   ]);
 
   return (
-    <div className="space-y-8">
+    /* **الإيقاعُ الرأسيّ ضُيّق (D-200، لقطةُ أحمد بخطوطٍ زرقاء على الفراغ):**
+       الجذرُ كان `space-y-8` — **اثنان وثلاثون بكسلاً بين الرأس اللاصق
+       وأوّل صفّ**، والرأسُ نفسُه ينتهي بـ`pb-2`. أي **أربعون بكسلاً لا
+       تفصل شيئاً عن شيء**: فوقها خطُّ الرأس وتحتها عنوانٌ عريض.
+
+       **وثمنُها يُقاس بما لا يراه العميل:** على شاشة ٣٦٠×٨٠٠ كانت الشاشةُ
+       الأولى تنتهي عند بطاقات «مقترح لك» وحدها؛ وباستعادة هذه البكسلات
+       ومثلِها من كل فجوة يظهر عنوانُ الصفّ الثاني **قبل التمرير** — وهو
+       ما يجعله يمرّر أصلاً. **الفراغُ الذي لا يفصل معنيين ليس تنفّساً بل
+       تأجيلٌ للمحتوى.**
+
+       والاثنا عشر هنا لا صفر: **العناوينُ عريضة، وصفرٌ يجعل أوّلَ عنوانٍ
+       يلتصق بخطّ الرأس** فيُقرأ جزءاً منه. */
+    <div className="space-y-3">
       {/* ذاكرة موضع التمرير — العائد من عملٍ يهبط حيث كان (تدقيق 8 Aug م٢) */}
       <ScrollMemory />
       {/* العنوان مخفيٌّ بصريًّا وباقٍ لقارئ الشاشة — أُزيلت الترويسة */}
@@ -216,7 +229,7 @@ export default async function NewsPage({
         <Suspense
           key={browseKey(browse)}
           fallback={
-            <div className="space-y-8" aria-hidden>
+            <div className="space-y-6" aria-hidden>
               <RailSkeleton count={6} />
               <RailSkeleton count={6} />
               <RailSkeleton count={6} />
@@ -233,7 +246,7 @@ export default async function NewsPage({
         <Suspense
           key={`${sp.fr ?? ""}|${sp.lsrc ?? ""}`}
           fallback={
-            <div className="space-y-8" aria-hidden>
+            <div className="space-y-6" aria-hidden>
               <RailSkeleton count={6} />
               <RailSkeleton count={6} />
             </div>
@@ -260,7 +273,7 @@ export default async function NewsPage({
         <Suspense
           key={browseKey(browse)}
           fallback={
-            <div className="space-y-8" aria-hidden>
+            <div className="space-y-6" aria-hidden>
               <RailSkeleton count={6} />
               <RailSkeleton count={6} />
               <RailSkeleton count={6} />
@@ -345,7 +358,7 @@ async function ListsDiscovery({
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* الزرّ صعد إلى سطر التبويبات (داخل DiscoverFilters) — هنا
           رقائق المختار وحدها، كصفّ رقائق تبويب الأعمال (طلب أحمد) */}
       <ListsFilters variant="chips" {...listsFiltersProps(fr, lsrc, loc, t)} />
@@ -553,7 +566,7 @@ async function CuratedRails({
     const award = awardBySlug(browse.award);
     const rows = award ? await awardWinners(browse.award).catch(() => []) : [];
     return (
-      <div className="space-y-8">
+      <div className="space-y-6">
         {rows.length > 0 ? (
           <RankedRail
             title={award ? universeAwardTitle(award, locale) : ""}
@@ -856,7 +869,7 @@ async function CuratedRails({
     !inCinemas?.results.length;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* ===== الصفّان الشخصيّان — Suspense مستقلّ (م٧/D-071) =====
           المقترحات وحدها ~٤٠ طلب TMDB في أول تحميل، وكانت داخل
           Promise.all الصفوف كلّها فيرهن أبطأُ طلبٍ رسمَ الصفحة بأكملها.
@@ -1146,7 +1159,7 @@ async function AnimeRails({
   ]);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* الشخصيّ أوّلاً كما في تبويبَي الأعمال، وخلف Suspense خاصّته
           (D-071): بِركة المقترحات أبطأ طلبٍ في الصفحة، فلا تُرهن به
           الصفوف الخمسة الباقية. ويغيب مع الفلتر كما يغيب هناك */}
@@ -1321,7 +1334,7 @@ async function PersonalRails({
   if (suggested.length === 0 && artistRows.length === 0) return null;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {suggested.length > 0 && (
         /* السبب يُحسب هنا (يحتاج القاموس) والبطاقات تُسلسَل خفيفةً للعميل */
         <PickedForYou
