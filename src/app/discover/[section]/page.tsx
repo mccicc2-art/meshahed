@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
-import { getUser } from "@/lib/data";
+import { getFollows, getUser } from "@/lib/data";
 import { getT, getWatchRegion } from "@/lib/locale";
 import { eraRange, parseBrowse, seasonRange, browseHref } from "@/lib/browse";
 import { keywordId, companyId, titleOf, yearOf, ANIME_KEYWORD, type DiscoverFilter } from "@/lib/tmdb";
@@ -153,6 +153,21 @@ export default async function SectionPage({
     locale,
     rows.length,
   );
+  /**
+   * **ما يتابعه القارئ — قراءةٌ واحدة للشبكة كلّها** (D-207).
+   *
+   * صفحةُ القسم تعرض ستّين بطاقةً وأكثر، **وكلُّ بطاقةٍ تحمل زرَّ «+»**
+   * فتحتاج أن تعرف هل العملُ مُضافٌ أصلاً. ولو سألت كلُّ واحدةٍ عن نفسها
+   * لصارت الصفحةُ ستّين استعلاماً — فالقراءةُ هنا مرّةً، والمجموعةُ تُقرأ
+   * بالمفتاح `media_type-id`.
+   *
+   * **وسقوطُها لا يُسقط الزرّ**: مجموعةٌ فارغة تعني «لم يُضَف بعد»،
+   * وأوّلُ لمسٍ يُصلح الحقيقة (`upsert` لا `insert`) — نفس عقد D-205.
+   */
+  const following = new Set(
+    (await getFollows().catch(() => [])).map((f) => `${f.media_type}-${f.tmdb_id}`),
+  );
+
   const cards = rows.map((r, i) => {
     const l = localized[i];
     const tv = r.media_type === "tv";
@@ -163,6 +178,7 @@ export default async function SectionPage({
       poster: l?.poster_path ?? r.poster_path,
       year: yearOf(r),
       tv,
+      id: r.id,
     };
   });
 
@@ -195,6 +211,17 @@ export default async function SectionPage({
               posterPath={r.poster}
               year={r.year}
               fallbackIcon={r.tv ? "tv" : "film"}
+              /* **الحفظُ من القائمة الكاملة لا من صفحة العمل** (D-207،
+                 مواصفةُ أحمد: «A quick + button can be displayed directly
+                 on the content card»). **ومن فتح «عرض الكل» هو أعمقُ من
+                 يتصفّح** — فحرمانُه من الزرِّ الذي في الرفّ يعني أن الطريقَ
+                 الأطول يعطي أدواتٍ أقلّ، وهو نقيضُ المقصود. */
+              quickAdd={{
+                tmdbId: r.id,
+                mediaType: r.tv ? "tv" : "movie",
+                added: following.has(`${r.tv ? "tv" : "movie"}-${r.id}`),
+                locale,
+              }}
             />
           ))}
         </PosterGrid>
