@@ -1,7 +1,11 @@
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import Link from "next/link";
 import {
   getUser,
+  getNewsFeed,
+  getNewsStale,
+  refreshNewsNow,
   getCommunityFeed,
   getMyCommunities,
   getMyCommunityInvites,
@@ -17,6 +21,7 @@ import { CommunityDirectory, CommunityRoom } from "@/components/Communities";
 import { PageTabs } from "@/components/ui/PageTabs";
 import { CommunityTools } from "@/components/CommunityTools";
 import { TitleNews } from "@/components/TitleNews";
+import { NewsFeed } from "@/components/NewsFeed";
 import { getTitleNews } from "@/lib/titleNews";
 import { ScrollMemory } from "@/components/ScrollMemory";
 
@@ -147,6 +152,13 @@ export default async function PeoplePage({
   /* الأخبار للتبويب الرابع وحده: قسم «جديد فنّانيك» فيها يكلّف نداءات
      TMDB، ودفعُها في كل فتحةٍ للمجتمع ثمنٌ يدفعه من لم يفتح التبويب */
   const news = tab === "news" ? await getTitleNews() : [];
+  /* الأخبارُ الحقيقية (D-209): تُقرأ بلغة الواجهة وحدها — طلبُ أحمد */
+  const realNews = tab === "news" ? await getNewsFeed(locale, 30) : [];
+  /* **التجديدُ بحركة المرور:** من فتح التبويب بعد ساعةٍ يُطلق الدفعةَ
+     **بعد إرسال الصفحة** (`after`) فلا ينتظرها — ولا صفَّ cron ولا سرّ */
+  if (tab === "news" && (await getNewsStale(60))) {
+    after(() => refreshNewsNow());
+  }
 
   /* **سقط مع خطّ البطاقات:** «أشخاصٌ لمتابعتهم» (D-126) والصورُ
      العرضية (نداءُ TMDB لأوائل الخطّ). صفُّ «الأعمال» يعرض الملصق الذي
@@ -209,7 +221,16 @@ export default async function PeoplePage({
 
       {/* ===== محتوى التبويب ===== */}
       {tab === "news" ? (
-        <TitleNews items={news} locale={locale} />
+        /* الأخبارُ الحقيقية أوّلاً ثم «أخبارُ أعمالك»: من فتح تبويب
+           الأخبار يريد ما جدَّ في الدنيا، وما جدَّ في مكتبته يتبعه —
+           **قسمان بعنوانين، لا قائمةٌ واحدة بمعنيين** */
+        <div className="space-y-8">
+          <NewsFeed items={realNews} locale={locale} />
+          <div>
+            <h2 className="text-[15px] font-bold mb-2">{t.communityTabNews}</h2>
+            <TitleNews items={news} locale={locale} />
+          </div>
+        </div>
       ) : tab === "all" ? (
         openCommunity ? (
           <CommunityRoom room={openCommunity} locale={locale} />
