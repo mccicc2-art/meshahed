@@ -22,6 +22,7 @@ import {
   topTenAnimeMoviesThisWeek,
   topTenGenreThisWeek,
   keywordId,
+  companyId,
   ANIME_KEYWORD,
   upcomingByGenre,
   topByFilter,
@@ -54,6 +55,7 @@ import {
   browseKey,
   needsDiscover,
   eraRange,
+  seasonRange,
   type BrowseQuery,
   type RailWin,
 } from "@/lib/browse";
@@ -183,6 +185,9 @@ export default async function NewsPage({
         rate={browse.rate}
         tag={browse.tag?.slug ?? null}
         award={browse.award}
+        status={browse.status?.slug ?? null}
+        season={browse.season?.slug ?? null}
+        studio={browse.studio?.slug ?? null}
         listsFilters={
           tab === "lists"
             ? listsFiltersProps(
@@ -469,6 +474,36 @@ async function CuratedCard({
  *    عشرون عملاً لا أكثر. نخسر جِدّة الترتيب ونكسب أن يصل من طلب «تركي
  *    ٢٠٢٠ فأعلى» إلى تركيٍّ ٢٠٢٠ فأعلى — وهو ما طلبه.
  */
+/**
+ * **هل يطابق هذا الصفُّ الفلتر — بحقول الصفّ وحدها، بلا نداء؟** (D-197،
+ * قرارُ أحمد: «يطيعان الفلتر، وإن فرغا يُخفيان».)
+ *
+ * **ولماذا محلّياً لا بـ`/discover`:** الصفّان الشخصيّان لا يُبنيان من
+ * استعلام — بِركةُ «مقترح لك» ثلاثمئة عملٍ مشتقّةٍ من مكتبتك، و«من
+ * فنّانيك» أعمالُ من تتابعه. **فلا استعلامَ نُمرّر إليه المحاور**، والحكمُ
+ * يقع على الصفوف التي بين يديك.
+ *
+ * **وثلاثةُ محاورٍ لا يستطيعها الصفُّ ولا نتظاهر بها:** الموضوع (كلمةٌ
+ * مفتاحية لا تأتي في نتائج القوائم) والجائزة والاستوديو والموسم والحالة.
+ * **فمتى اختير أحدها غاب الصفّان كما كانا يغيبان** — وعرضُ صفٍّ «مُصفّى
+ * بالموضوع» وهو غيرُ مصفّى **كذبٌ أسوأ من الغياب** (D-141).
+ */
+function localAxesOnly(b: BrowseQuery): boolean {
+  return !b.tag && !b.award && !b.status && !b.season && !b.studio;
+}
+
+function matchesBrowse(r: SearchResult, b: BrowseQuery, ids?: number[]): boolean {
+  if (b.genre && ids?.length && !(r.genre_ids ?? []).some((g) => ids.includes(g))) return false;
+  if (b.lang && r.original_language !== b.lang.code) return false;
+  if (b.country && !(r.origin_country ?? []).includes(b.country.code)) return false;
+  if (b.rate && (r.vote_average ?? 0) < b.rate) return false;
+  const d = r.release_date || r.first_air_date || "";
+  const era = eraRange(b.era);
+  if (era.from && (!d || d < era.from)) return false;
+  if (era.to && (!d || d > era.to)) return false;
+  return true;
+}
+
 /* **حارسُ الرفوف انتقل إلى `topChart.ts`** (D-194): `looksAnime` كانت
    تسكن هنا، **ونظيرتُها للغة لم تكن موجودةً هنا إطلاقاً** — فكان الكوريّ
    والهنديّ يعبران كلَّ رفٍّ جاهزٍ في هذه الصفحة. صارا `railGuard` واحداً
@@ -490,7 +525,7 @@ async function CuratedRails({
   /** بلد المشاهدة — يُقاس عليه فلتر المنصّات */
   region: string;
 }) {
-  const { type, genre, lang, country, provider, era, rate, tag, active } = browse;
+  const { type, genre, lang, country, provider, era, rate, tag, status, active } = browse;
   /* ===== فلتر الجائزة (طلب أحمد 9 Aug) =====
      اختيار جائزةٍ سؤالٌ مغلق لا تصفّح: «من فاز بالسعفة؟» — فالصفحة تصير
      صفّاً واحداً بالفائزين، الأحدث أولاً، بلا أرقام (الترتيب زمنيّ لا
@@ -546,6 +581,9 @@ async function CuratedRails({
     to: eraR.to,
     minRate: rate,
     keywords: tagId ? [tagId] : undefined,
+    /* الحالةُ محورُ المسلسلات (D-196) — و`discoverParams` يُسقطها في
+       الأفلام من نفسه، فلا شرطَ هنا ولا تعريفان للقاعدة */
+    status: status?.code ?? null,
   };
 
   /* أعلى ١٠ حسب نافذة الصفّ (D-099): أسبوع = الرائج (أو discover
@@ -803,10 +841,13 @@ async function CuratedRails({
           Promise.all الصفوف كلّها فيرهن أبطأُ طلبٍ رسمَ الصفحة بأكملها.
           فصلُهما يجعل «أفضل ١٠» ودور العرض تظهر فور جاهزيتها، ويلحق
           الشخصيّ حين يكتمل — والهيكل يحجز ارتفاعه (D-046) */}
-      {!active && (
+      {/* **صار يظهر مع الفلتر أيضاً — بشرطين** (D-197، قرارُ أحمد
+          «يطيعان الفلتر»): أن تكون المحاورُ المختارة ممّا يستطيعه الصفّ
+          (`localAxesOnly`)، وأن يبقى فيه شيءٌ بعد التصفية (يُخفي نفسه). */}
+      {(!active || localAxesOnly(browse)) && (
         <Suspense fallback={<RailSkeleton count={6} />}>
           {/* الجهة تُمرَّر: التبويب وعدٌ، والصفّ الذي لا يعرف تبويبه يخلفه */}
-          <PersonalRails locale={locale} t={t} type={type} />
+          <PersonalRails locale={locale} t={t} type={type} browse={active ? browse : undefined} />
         </Suspense>
       )}
 
@@ -913,7 +954,7 @@ async function AnimeRails({
   browse: BrowseQuery;
   region: string;
 }) {
-  const { genre, provider, era, rate, tag, active } = browse;
+  const { genre, lang, country, provider, era, rate, tag, season, studio, active } = browse;
   const y = new Date().getUTCFullYear();
   const todayStr = new Date().toISOString().slice(0, 10);
   const back30 = new Date();
@@ -930,13 +971,30 @@ async function AnimeRails({
   const animeKeywords = [ANIME_KEYWORD, ...(tagId ? [tagId] : [])];
 
   const eraR = eraRange(era);
+  /* **معرّفُ الاستوديو يُسأل عنه TMDB ولا يُكتب** — نفسُ نمط الوسم أعلاه،
+     ونفسُ سبب D-144. وما تعذّر حلُّه يسقط وحده بلا إفراغِ الصفحة. */
+  const studioId = studio ? await companyId(studio.name) : null;
+  /* **والموسمُ يعلو على الحقبة حين يُختاران معاً** (`seasonRange`): من
+     اختار «خريف» يقصد ثلاثة أشهرٍ بعينها، والحقبةُ عشرُ سنين — فتضييقُ
+     الأضيق هو المقصود. **وسنتُه آخرُ سنةٍ في الحقبة** (أحدثُ ما يطابق)
+     أو السنةُ الحالية إن لم تُختر حقبة. */
+  const seasonR = season
+    ? seasonRange(season, eraR.to ? Number(eraR.to.slice(0, 4)) : y)
+    : null;
   const base: DiscoverFilter = {
+    /* **اللغةُ والجنسيةُ صارتا هنا أيضاً (D-196)** — ومحورٌ يُعرض في
+       الورقة ولا يصل إلى الاستعلام **كذبٌ في الواجهة**: المستخدم يختار
+       «صينيّ» فيرى نفسَ الصفوف ويظنّ أن الفلتر معطوب. **فالعرضُ والطاعةُ
+       يُشحنان معاً أو لا يُشحن أحدهما.** */
+    lang: lang?.code ?? null,
+    country: country?.code ?? null,
     provider,
     watchRegion: region,
-    from: eraR.from,
-    to: eraR.to,
+    from: seasonR?.from ?? eraR.from,
+    to: seasonR?.to ?? eraR.to,
     minRate: rate,
     keywords: animeKeywords,
+    companies: studioId ? [studioId] : undefined,
   };
 
   /* الصفّان اللذان **يستطيعان** الطاعة: مسارهما `/discover` أصلاً، فيكفي
@@ -1079,9 +1137,15 @@ async function AnimeRails({
       {/* الشخصيّ أوّلاً كما في تبويبَي الأعمال، وخلف Suspense خاصّته
           (D-071): بِركة المقترحات أبطأ طلبٍ في الصفحة، فلا تُرهن به
           الصفوف الخمسة الباقية. ويغيب مع الفلتر كما يغيب هناك */}
-      {!active && (
+      {(!active || localAxesOnly(browse)) && (
         <Suspense fallback={<RailSkeleton count={6} />}>
-          <PersonalRails locale={locale} t={t} type="movie" anime />
+          <PersonalRails
+            locale={locale}
+            t={t}
+            type="movie"
+            anime
+            browse={active ? browse : undefined}
+          />
         </Suspense>
       )}
 
@@ -1157,6 +1221,7 @@ async function PersonalRails({
   t,
   type,
   anime = false,
+  browse,
 }: {
   locale: Locale;
   t: T;
@@ -1164,6 +1229,12 @@ async function PersonalRails({
   type: BrowseQuery["type"];
   /** تبويب الأنمي (D-169): الفلترة بالأنمي لا بالجهة، وبلا صفّ فنّانين */
   anime?: boolean;
+  /**
+   * الفلترُ المفعَّل — **الصفّان يطيعانه بقدر ما تسمح حقولُ الصفّ** (D-197،
+   * قرارُ أحمد). **واختياريّ لسببٍ تشغيليّ:** رفعةُ `components`/`app`
+   * تُبنى كلٌّ وحدها، وغيابُه = «لا فلتر» — وهو السلوكُ القائم حرفاً بحرف.
+   */
+  browse?: BrowseQuery;
 }) {
   const wantMovies = type !== "tv";
   const [pool, artistWorks] = await Promise.all([
@@ -1190,12 +1261,20 @@ async function PersonalRails({
      تُبنى من أعمالك، ومن يتابع أنمي تأتيه مقترحاتُ أنميٍ — فكانت تظهر
      في تبويب المسلسلات نفسها. فالشرطُ صار شرطين: الجهة **وألّا يكون
      أنمي** — وله تبويبُه حيث يقترحه هذا الصفّ نفسه. */
-  const suggested = pool.filter((s) =>
-    anime
-      ? looksAnime(s.result)
-      : (wantMovies ? s.result.media_type === "movie" : s.result.media_type === "tv") &&
-        !looksAnime(s.result),
+  /* **والفلترُ يُطبَّق فوق شرط التبويب لا بدلاً منه** (D-197): من اختار
+     «جريمة» في تبويب المسلسلات يريد مقترحاتِ مسلسلاتٍ جريمة — لا كلَّ ما
+     هو جريمة. والمحاورُ التي لا يستطيعها الصفّ أسقطته أصلاً في الصفحة. */
+  const ids = browse?.genre ? (wantMovies ? browse.genre.movie : browse.genre.tv) : undefined;
+  const suggested = pool.filter(
+    (s) =>
+      (anime
+        ? looksAnime(s.result)
+        : (wantMovies ? s.result.media_type === "movie" : s.result.media_type === "tv") &&
+          !looksAnime(s.result)) && (!browse || matchesBrowse(s.result, browse, ids)),
   );
+  const artistRows = browse
+    ? artistWorks.filter((r) => matchesBrowse(r, browse, browse.genre?.movie))
+    : artistWorks;
   for (let i = suggested.length - 1; i > 0; i--) {
     // العشوائية مقصودة: قرعةٌ لكل طلبٍ في مكوّن خادمٍ لا-متزامن يُنفَّذ مرةً واحدة
     // eslint-disable-next-line react-hooks/purity -- ليست دالة عرضٍ تُعاد
@@ -1203,7 +1282,9 @@ async function PersonalRails({
     [suggested[i], suggested[j]] = [suggested[j], suggested[i]];
   }
 
-  if (suggested.length === 0 && artistWorks.length === 0) return null;
+  /* **الفراغُ يُخفي ولا يُعلن** (قرارُ أحمد): صندوقٌ فارغٌ تحت عنوانٍ
+     شخصيّ يُقرأ «لا أحد يعرفك» لا «لا نتيجةَ لهذا الفلتر». */
+  if (suggested.length === 0 && artistRows.length === 0) return null;
 
   return (
     <div className="space-y-8">
@@ -1232,8 +1313,8 @@ async function PersonalRails({
 
       {/* «من فنّانيك» بعد المقترحات مباشرة: كلاهما صفٌّ شخصيّ، والشخصيّ
           يسبق العامّ. غير مرقّم — هذه أحدث أعمال فنّانيك لا ترتيبها */}
-      {artistWorks.length > 0 && (
-        <RankedRail title={t.artistsRail} icon="people" items={artistWorks} ranked={false} />
+      {artistRows.length > 0 && (
+        <RankedRail title={t.artistsRail} icon="people" items={artistRows} ranked={false} />
       )}
     </div>
   );
