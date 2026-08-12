@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import {
+  getFollows,
   getUser,
   getPublicListsFeed,
 } from "@/lib/data";
@@ -628,6 +629,20 @@ async function CuratedRails({
 
   const wantMovies = type !== "tv";
   const wantSeries = type !== "movie";
+
+  /**
+   * **ما يتابعه القارئ — قراءةٌ واحدة لكل الرفوف** (D-205).
+   *
+   * زرُّ «+» على كل ملصقٍ يحتاج أن يعرف حالتَه، **ولو سأل كلُّ ملصقٍ عن
+   * نفسه لصارت رسمةُ اكتشف مئةَ استعلام**. و`getFollows` مغلَّفةٌ بـ`cache`
+   * فالنداءُ واحدٌ للطلب كلِّه ولو استُدعي من ثلاثة رفوف.
+   * **وسقوطُها لا يُسقط الزرّ**: مجموعةٌ فارغة تعني «لم يُضَف بعد»،
+   * وأوّلُ لمسٍ يُصلح الحقيقة (`upsert` لا `insert`).
+   */
+  const following = new Set(
+    (await getFollows().catch(() => [])).map((f) => `${f.media_type}-${f.tmdb_id}`),
+  );
+  const quickAdd = { locale, following };
   /* **`needsDiscover` غادر هذه الصفحة إلى `sections.ts` (D-199):** هو
      السؤالُ «هل يتجاوز الفلترُ ما تقدر عليه قوائمُ TMDB الجاهزة؟»، وقد
      صار جوابُه داخلَ بناءِ القسم حيث يُستعمل — **لا هنا حيث كان يُحسب
@@ -949,6 +964,7 @@ async function CuratedRails({
       {inCinemas && inCinemas.results.length > 0 && (
         <RankedRail
           title={t.inCinemas}
+          quickAdd={quickAdd}
           icon="film"
           items={inCinemas.results}
           href={sectionHref("in-cinemas", "movie", qs)}
@@ -967,6 +983,7 @@ async function CuratedRails({
       {popular.length > 0 && (
         <RankedRail
           title={wantMovies ? t.mostPopularMovies : t.mostPopularSeries}
+          quickAdd={quickAdd}
           icon="trending"
           items={popular}
           href={sectionHref("most-popular", wantMovies ? "movie" : "tv", qs)}
@@ -982,6 +999,7 @@ async function CuratedRails({
       {(topMovies.length > 0 || rails.m !== "week") && (
         <RankedRail
           title={t.top10Movies}
+          quickAdd={quickAdd}
           icon="film"
           items={topMovies}
           href={sectionHref("top-ten", "movie", `${qs}${qs ? "&" : ""}w=${rails.m}`)}
@@ -992,6 +1010,7 @@ async function CuratedRails({
       {(topSeries.length > 0 || rails.s !== "week") && (
         <RankedRail
           title={t.top10Series}
+          quickAdd={quickAdd}
           icon="tv"
           items={topSeries}
           href={sectionHref("top-ten", "tv", `${qs}${qs ? "&" : ""}w=${rails.s}`)}
@@ -1012,10 +1031,20 @@ async function CuratedRails({
 
       {/* ذيل «أعلى ٢٥ على الإطلاق» — مرجعٌ ثابت في الحالة غير المُصفّاة */}
       {top50Movies.length > 0 && (
-        <RankedRail title={t.top50Movies} icon="film" items={top50Movies} />
+        <RankedRail
+          title={t.top50Movies}
+          icon="film"
+          items={top50Movies}
+          quickAdd={quickAdd}
+        />
       )}
       {top50Series.length > 0 && (
-        <RankedRail title={t.top50Series} icon="tv" items={top50Series} />
+        <RankedRail
+          title={t.top50Series}
+          icon="tv"
+          items={top50Series}
+          quickAdd={quickAdd}
+        />
       )}
 
       {empty && (
@@ -1077,6 +1106,14 @@ async function AnimeRails({
   const animeKeywords = [ANIME_KEYWORD, ...(tagId ? [tagId] : [])];
 
   const eraR = eraRange(era);
+  /* نفسُ مجموعة المتابعات — و`getFollows` مغلَّفةٌ بـ`cache` فلا نداءَ ثانٍ
+     ولو استُدعيت من تبويبين (D-205) */
+  const quickAdd = {
+    locale,
+    following: new Set(
+      (await getFollows().catch(() => [])).map((f) => `${f.media_type}-${f.tmdb_id}`),
+    ),
+  };
   /* **معرّفُ الاستوديو يُسأل عنه TMDB ولا يُكتب** — نفسُ نمط الوسم أعلاه،
      ونفسُ سبب D-144. وما تعذّر حلُّه يسقط وحده بلا إفراغِ الصفحة. */
   const studioId = studio ? await companyId(studio.name) : null;
@@ -1240,6 +1277,7 @@ async function AnimeRails({
       {cinemas && cinemas.results.length > 0 && (
         <RankedRail
           title={t.animeInCinemas}
+          quickAdd={quickAdd}
           icon="film"
           items={cinemas.results}
           note={t.inCinemasRegion(regionName(cinemas.region, locale === "en" ? "en" : "ar"))}
@@ -1253,6 +1291,7 @@ async function AnimeRails({
       {airing.length > 0 && (
         <RankedRail
           title={t.airingNowAnime}
+          quickAdd={quickAdd}
           icon="tv"
           items={airing}
           ranked={false}
@@ -1264,6 +1303,7 @@ async function AnimeRails({
       {popular.length > 0 && (
         <RankedRail
           title={t.mostPopularAnime}
+          quickAdd={quickAdd}
           icon="trending"
           items={popular}
           ranked={false}
@@ -1275,6 +1315,7 @@ async function AnimeRails({
       {(topMovies.length > 0 || rails.am !== "week") && (
         <RankedRail
           title={t.top10AnimeMovies}
+          quickAdd={quickAdd}
           icon="film"
           items={topMovies}
           control={<RailWindowChips param="wam" value={rails.am} locale={locale} />}
@@ -1284,6 +1325,7 @@ async function AnimeRails({
       {(topSeries.length > 0 || rails.a !== "week") && (
         <RankedRail
           title={t.top10AnimeSeries}
+          quickAdd={quickAdd}
           icon="sparkle-star"
           items={topSeries}
           control={<RailWindowChips param="wa" value={rails.a} locale={locale} />}
@@ -1296,6 +1338,7 @@ async function AnimeRails({
       {soon.length > 0 && (
         <RankedRail
           title={t.upcomingAnime}
+          quickAdd={quickAdd}
           icon="calendar"
           items={soon}
           ranked={false}
