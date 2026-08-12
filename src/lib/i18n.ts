@@ -874,7 +874,10 @@ const ar = {
   tabReviews: "التعليقات",
   /** تبويبُ غرفة العمل (D-191) — «المجتمع» كاسم القسم في الشريط السفليّ */
   tabCommunity: "المجتمع",
-  tabCast: "الطاقم",
+  /* **`tabCast` حُذف (D-203):** الطاقمُ عاد قسماً داخل «عن العمل» فلم يبقَ
+     له تبويبٌ يُسمّى — **ومفتاحٌ لا يقرؤه أحد يُحذف لا يُترك**، وإلا أوهم
+     من يقرأ القاموسَ أن التبويبَ ما زال قائماً في مكانٍ ما.
+     (وعنوانُ القسم نفسُه في `CastRail` بمفتاحه الخاصّ.) */
   tabSimilar: "مشابه",
   tabEpisodes: "الحلقات",
   storyTitle: "القصة",
@@ -1841,7 +1844,6 @@ const en: Dict = {
   tabInfo: "About",
   tabReviews: "Reviews",
   tabCommunity: "Community",
-  tabCast: "Cast",
   tabSimilar: "Similar",
   tabEpisodes: "Episodes",
   storyTitle: "Story",
