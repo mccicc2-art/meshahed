@@ -27,8 +27,6 @@ export function TitleNews({ items, locale }: { items: NewsItem[]; locale: Locale
 
   const label = (n: NewsItem): string => {
     const byKind: Record<NewsKind, string> = {
-      tonight: t.newsTonight,
-      soon: t.newsSoon,
       aired: t.newsAired,
       released: t.newsReleased,
       upcoming: t.newsUpcoming,
