@@ -2885,10 +2885,20 @@ export async function refreshLoopzNews(): Promise<number> {
   try {
     const { runNewsSlice } = await import("@/lib/loopzNews");
     const { runReportSlice } = await import("@/lib/newsReports");
-    const r = await runNewsSlice();
+    /* **دورتان لا واحدة، وأربعون عملاً لا ستّةٌ وعشرون** (D-215): الزيارةُ
+       الواحدة كانت تفحص ٢٦ من ألف، **فالمرورُ الكامل أربعون زيارة**.
+       والعملُ كلُّه **بعد إرسال الصفحة** (`after`) فلا يدفع القارئ ثمنه —
+       وحدُّه الحقيقيّ مهلةُ الوظيفة لا صبرُ المستخدم. */
+    let posts = 0;
+    for (let i = 0; i < 2; i++) {
+      const r = await runNewsSlice(40);
+      posts += r.posts;
+      /* شريحةٌ عادت فارغة تعني **لا مستحقَّ الآن** — فلا داعي لدورةٍ ثانية */
+      if (r.checked === 0) break;
+    }
     /* **ودفعةُ الصحافة معها**: الحدثُ من عندهم والجملةُ من عندنا (D-213) */
     const rep = await runReportSlice().catch(() => ({ saved: 0 }));
-    return r.posts + rep.saved;
+    return posts + rep.saved;
   } catch {
     return 0;
   }
