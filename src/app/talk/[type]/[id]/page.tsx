@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
-import { redirect, notFound } from "next/navigation";
+import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 import {
   getUser,
   getMyArtFor,
@@ -20,6 +21,55 @@ import { TalkThread } from "@/components/TalkThread";
 import { Icon } from "@/components/Icon";
 
 export const dynamic = "force-dynamic";
+
+/**
+ * **عنوانٌ ووصفٌ لصفحةٍ صارت تُقرأ بلا حساب** (D-221).
+ *
+ * **وصفحةٌ مفتوحةٌ بلا وصفٍ نصفُ مفتوحة:** الزاحفُ يفهرس عنواناً فارغاً،
+ * ومن شارك الرابط في محادثةٍ يرى مربّعاً بلا معنى. **ففتحُ الباب يشمل
+ * تعريفَ ما خلفه.**
+ *
+ * **والوصفُ من الكلام نفسِه لا من قالبٍ عامّ** — أوّلُ رأيٍ مكتوب، **فما
+ * يراه الباحثُ هو ما سيجده**. وإن لم يكن كلامٌ بعد فسطرٌ صادق: غرفةٌ
+ * تنتظر أوّلَ رأي.
+ *
+ * ⚠️ **ولا يُنادى TMDB مرّتين:** `getMovie`/`getTv` تمرّان على ذاكرة
+ * الطلب نفسِها التي تقرؤها الصفحة، **فالنداءُ واحدٌ للاثنين.**
+ */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ type: string; id: string }>;
+}): Promise<Metadata> {
+  const { type, id } = await params;
+  if (type !== "tv" && type !== "movie") return {};
+  const tmdbId = Number(id);
+  if (!Number.isFinite(tmdbId)) return {};
+
+  const { locale, t } = await getT();
+  const [details, reviews] = await Promise.all([
+    (type === "tv" ? getTv(tmdbId) : getMovie(tmdbId)).catch(() => null),
+    getTitleReviews(tmdbId, type).catch(() => []),
+  ]);
+  const raw = details
+    ? type === "tv"
+      ? (details as { name: string }).name
+      : (details as { title: string }).title
+    : "";
+  if (!raw) return {};
+  const name = await displayWorkTitle(tmdbId, type, raw, locale);
+
+  const said = reviews.find((r) => r.review?.trim())?.review?.trim() ?? "";
+  const title = t.talkMetaTitle(name);
+  const description = said ? said.slice(0, 155) : t.talkMetaEmpty(name);
+
+  return {
+    title,
+    description,
+    openGraph: { title, description, type: "article" },
+    twitter: { card: "summary", title, description },
+  };
+}
 
 /**
  * **صفحةُ الكلام عن عمل** (D-193، طلب أحمد بنصّه: «إذا ضغطت على الفيلم ما
@@ -51,8 +101,15 @@ export default async function TalkPage({
 }: {
   params: Promise<{ type: string; id: string }>;
 }) {
+  /* **وتُقرأ بلا حساب** (D-221): كان هنا `redirect("/login")` — **فقوقل لا
+     تفهرس حرفاً من نقاشاتنا، ومن وصله رابطٌ من صديقٍ وجد جدارَ تسجيلٍ قبل
+     أن يرى لماذا يسجّل.** **والقراءةُ للجميع والكتابةُ للمسجَّلين.**
+
+     ⚠️ **والحراسةُ في القاعدة لا هنا** (هجرة ٧٢): الحساباتُ الخاصّة تختفي
+     عن الزائر بـ`can_view_profile`، وإخفاءُ الاسم والمبلَّغُ عنه كما هما.
+     **وشرطٌ في الصفحة كان سيصير شرطاً ثانياً يفترق عن الأوّل.** */
   const user = await getUser();
-  if (!user) redirect("/login");
+  const signedIn = !!user;
 
   const { locale, t } = await getT();
   const { type, id } = await params;
@@ -208,15 +265,27 @@ export default async function TalkPage({
           — فلا يظنّهما أحدٌ زرّين فيضغطهما ولا يحدث شيء. **ولو صارا زرّين
           لصارا عائلةَ أفعالٍ ثانية تنافس شريطَ صفحة العمل** (ق٣). */}
       <div className="px-4 sm:px-6 max-w-xl mx-auto -mt-1 flex items-center gap-3 flex-wrap">
-        <TalkCompose
-          tmdbId={tmdbId}
-          mediaType={mediaType}
-          title={rawTitle}
-          posterPath={posterPath}
-          locale={locale}
-          initialRating={mine?.rating ?? null}
-          initialReview={mine?.review ?? null}
-        />
+        {signedIn ? (
+          <TalkCompose
+            tmdbId={tmdbId}
+            mediaType={mediaType}
+            title={rawTitle}
+            posterPath={posterPath}
+            locale={locale}
+            initialRating={mine?.rating ?? null}
+            initialReview={mine?.review ?? null}
+          />
+        ) : (
+          /* **دعوةٌ لا جدار** (D-221): الزائرُ قرأ الحوار أوّلاً، **فالطلبُ
+             يأتي بعد أن رأى لماذا** — وهو عكسُ ما كان تماماً. */
+          <Link
+            href="/login"
+            className="inline-flex items-center gap-1.5 rounded-full border border-white/25 bg-black/40 backdrop-blur-md px-3 py-1.5 text-white active:scale-95 transition hover:border-accent"
+          >
+            <Icon name="comment" size={13} className="shrink-0 text-accent" />
+            <span className="text-[12px] font-bold">{t.talkSignInToWrite}</span>
+          </Link>
+        )}
         {watchedIt && (
           <span className="inline-flex items-center gap-1.5 text-[12px] text-muted">
             <Icon name="check" size={13} className="text-accent" />
@@ -241,7 +310,7 @@ export default async function TalkPage({
           tmdbId={tmdbId}
           mediaType={mediaType}
           locale={locale}
-          signedIn
+          signedIn={signedIn}
         />
       </div>
     </main>
