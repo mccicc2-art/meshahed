@@ -159,7 +159,7 @@ export default async function PeoplePage({
   /* **التجديدُ بحركة المرور** (اختيارُ أحمد في D-210، ويُعاد هنا): من فتح
      التبويب بعد نصف ساعةٍ يُطلق دورةَ رصدٍ **بعد إرسال الصفحة** فلا
      ينتظرها — ولا صفَّ cron ولا سرَّ في البيئة */
-  if (tab === "news" && (await getNewsGenStale(30))) {
+  if (tab === "news" && (await getNewsGenStale(10))) {
     after(() => refreshLoopzNews());
   }
 
