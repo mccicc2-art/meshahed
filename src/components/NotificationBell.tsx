@@ -63,6 +63,9 @@ export function NotificationBell({
       : s.person.nickname || s.person.username || t.anonymousUser;
     if (s.kind === "follow") return t.notifFollow(who);
     if (s.kind === "request") return t.notifRequest(who);
+    /* **الردّ** (D-218) — والعملُ قد يكون بلا عنوان إن حُذف التقييمُ وبقي
+       الخيط، **فجملتان لا جملةٌ بفراغ**: «ردّ عليك في X» أو «ردّ عليك» */
+    if (s.kind === "reply") return t.notifReply(who, s.title ?? "");
     return t.notifLike(who, s.title ?? "");
   }
 
@@ -119,11 +122,19 @@ export function NotificationBell({
           ) : (
             <ul className="divide-y divide-[color:var(--divider)] pb-2">
               {rows.map((s, i) => {
-                const href = s.person.username
-                  ? `/u/${s.person.username}`
-                  : s.tmdbId
-                    ? `/${s.mediaType === "tv" ? "show" : "movie"}/${s.tmdbId}`
-                    : null;
+                /* 🔑 **الوجهةُ هي الشيءُ نفسُه لا صاحبُه** (D-218).
+                   بقيةُ الإشعارات تفتح ملفَّ الفاعل لأن الخبرَ عنه («تابعك»
+                   · «أعجبه رأيك») — **أما الردُّ فخبرٌ عن حديثٍ ينتظرك**،
+                   وفتحُ ملفِّ من ردّ يترك الحلقةَ مفتوحةً كما كانت: **علمتَ
+                   ولم تصل إلى ما تردّ عليه.** فيفتح غرفةَ الكلام. */
+                const href =
+                  s.kind === "reply" && s.tmdbId
+                    ? `/talk/${s.mediaType ?? "movie"}/${s.tmdbId}`
+                    : s.person.username
+                      ? `/u/${s.person.username}`
+                      : s.tmdbId
+                        ? `/${s.mediaType === "tv" ? "show" : "movie"}/${s.tmdbId}`
+                        : null;
                 const body = (
                   <span className="flex items-center gap-3 py-3">
                     <Avatar
