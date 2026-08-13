@@ -638,6 +638,12 @@ const ar = {
   /* **شاراتُ الحالة في الترويسة** (D-217) — تُقرأ ولا تُضغط */
   talkWatchedIt: "شاهدته",
   talkInLibrary: "في مكتبتك",
+  /* **دعوةٌ لا جدار** (D-221): الزائرُ قرأ الحوار أوّلاً، **فالطلبُ يأتي
+     بعد أن رأى لماذا** — ولذلك «شارِك» لا «سجّل الدخول». */
+  talkSignInToWrite: "شارِك برأيك",
+  /* **عنوانُ الصفحة ووصفُها للزاحف ولمن شارك الرابط** (D-221) */
+  talkMetaTitle: (name: string) => `الكلام عن «${name}»`,
+  talkMetaEmpty: (name: string) => `آراءُ الناس في «${name}» — وأوّلُ رأيٍ لم يُكتب بعد.`,
   worksScopeAll: "الكل",
   worksScopeFollowing: "من أتابع",
   worksEmptyAll: "لا أحد كتب رأياً بعد — كن أوّلَ من يفتح الكلام.",
@@ -1697,6 +1703,9 @@ const en: Dict = {
   talkWriteTitle: "Your review",
   talkWatchedIt: "Watched",
   talkInLibrary: "In your library",
+  talkSignInToWrite: "Join the conversation",
+  talkMetaTitle: (name: string) => `Talking about “${name}”`,
+  talkMetaEmpty: (name: string) => `What people think of “${name}” — no one has written yet.`,
   worksScopeAll: "Everyone",
   worksScopeFollowing: "People I follow",
   worksEmptyAll: "Nobody has written a review yet — be the first to start the conversation.",
