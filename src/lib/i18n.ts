@@ -607,12 +607,23 @@ const ar = {
   quickAddDone: "أُضيف إلى «للمشاهدة»",
   talkRepliesHint: "ردود",
   talkWatchersHint: "شاهدوه",
+  /* **«فضّلوه» لا «مفضّلة»**: العددُ أشخاصٌ فعلوا لا صفةٌ للعمل — وهو
+     نفسُ نحو «شاهدوه» بجانبه، فيُقرأ الصفُّ لغةً واحدة (D-216) */
+  talkFavoritesHint: "فضّلوه",
+  /* **مقامُ النجمة**: «١٠٫٠» من واحدٍ ليست «١٠٫٠» من مئة */
+  worksRatedByHint: (n: number) =>
+    n === 1 ? "تقييمُ شخصٍ واحدٍ ممّن تكلّموا" : `متوسّطُ ${num(n, "ar")} من تكلّموا عن العمل`,
   talkReply: "ردّ",
   talkReplyingTo: (name: string) => `ردّاً على ${name}`,
   talkDeleteReply: "حذف",
   talkHeading: "الكلام",
   talkOpenTitlePage: "افتح صفحة العمل",
   talkFallbackTitle: "عملٌ بلا عنوان",
+  /* **زرُّ التعليق** (D-216): كان صندوقاً مفتوحاً يأخذ نصفَ الشاشة قبل
+     أن تُقرأ كلمةٌ من الحوار. **والفعلُ يُسمّى بفعله** لا بـ«صندوقك». */
+  talkWriteCta: "اكتب رأيك",
+  talkEditCta: "عدّل رأيك",
+  talkWriteTitle: "رأيك في العمل",
   worksScopeAll: "الكل",
   worksScopeFollowing: "من أتابع",
   worksEmptyAll: "لا أحد كتب رأياً بعد — كن أوّلَ من يفتح الكلام.",
@@ -1654,12 +1665,20 @@ const en: Dict = {
   quickAddDone: "Added to To watch",
   talkRepliesHint: "replies",
   talkWatchersHint: "watching",
+  talkFavoritesHint: "favourited",
+  worksRatedByHint: (n: number) =>
+    n === 1
+      ? "One person's rating among those talking"
+      : `Average of ${num(n, "en")} people talking about it`,
   talkReply: "Reply",
   talkReplyingTo: (name: string) => `Replying to ${name}`,
   talkDeleteReply: "Delete",
   talkHeading: "The conversation",
   talkOpenTitlePage: "Open the title page",
   talkFallbackTitle: "Untitled",
+  talkWriteCta: "Write your review",
+  talkEditCta: "Edit your review",
+  talkWriteTitle: "Your review",
   worksScopeAll: "Everyone",
   worksScopeFollowing: "People I follow",
   worksEmptyAll: "Nobody has written a review yet — be the first to start the conversation.",
