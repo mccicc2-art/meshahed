@@ -592,8 +592,12 @@ const ar = {
   communityTabMine: "النشاط",
   /* تبويبُ المراجعات — الرأيُ المكتوب وحده (طلب أحمد ١٢ أغسطس) */
   communityTabReviews: "المراجعات",
-  /* تبويبُ «الأعمال» (D-187) — الصفُّ عملٌ لا رأي */
-  communityTabWorks: "الأعمال",
+  /* **تبويبُ «نقاش»** (D-187 اسمُه «الأعمال»، وسمّاه أحمد في D-219) —
+     الصفُّ عملٌ لا رأي: «عن ماذا يتكلّم الناس؟» */
+  communityTabWorks: "نقاش",
+  /* **تبويبُ «تعليقات»** (D-219) — الصفُّ رأيُ إنسانٍ واحد: «من تكلّم؟».
+     **والسؤالان لا يتنافسان على تبويبٍ واحد بعد اليوم.** */
+  communityTabComments: "تعليقات",
   /* ================= صفحةُ الكلام والردود (D-193) =================
      **و`worksReviewCount` حُذف** («٣ آراء») — طلب أحمد «بدون كلمة ريفيو»،
      وبحثٌ في `src` أثبت أن البطاقةَ كانت قارئَه الوحيد. **مفتاحٌ لا
@@ -1668,7 +1672,8 @@ const en: Dict = {
   communityTabsGroup: "Community sections",
   communityTabMine: "Activity",
   communityTabReviews: "Reviews",
-  communityTabWorks: "Titles",
+  communityTabWorks: "Discussions",
+  communityTabComments: "Comments",
   // Talk page and replies (D-193)
   worksAvgHint: "Average rating of the people talking about it",
   listUnsaveLabel: "Remove from my lists",
