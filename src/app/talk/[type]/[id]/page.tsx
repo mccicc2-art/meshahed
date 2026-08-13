@@ -8,6 +8,8 @@ import {
   getCommunityRating,
   getTitleReviews,
   getTitleReplies,
+  getFollowState,
+  isMovieWatched,
 } from "@/lib/data";
 import { getMovie, getTv, posterUrl, backdropUrl } from "@/lib/tmdb";
 import { displayWorkTitle } from "@/lib/wikidata";
@@ -64,14 +66,21 @@ export default async function TalkPage({
      **و`getMyArtFor` سادسُها بلا كلفةٍ في الزمن** (D-216): الغلافُ الذي
      اخترتَه للعمل في صفحته هو غلافُه هنا — **صورتان مختلفتان لعملٍ واحد
      تُقرآن عملين.** */
-  const [details, reviews, replies, mine, community, myArt] = await Promise.all([
-    (mediaType === "tv" ? getTv(tmdbId) : getMovie(tmdbId)).catch(() => null),
-    getTitleReviews(tmdbId, mediaType),
-    getTitleReplies(tmdbId, mediaType),
-    getMyRating(tmdbId, mediaType),
-    getCommunityRating(tmdbId, mediaType),
-    getMyArtFor(tmdbId, mediaType).catch(() => null),
-  ]);
+  const [details, reviews, replies, mine, community, myArt, follow, watchedIt] =
+    await Promise.all([
+      (mediaType === "tv" ? getTv(tmdbId) : getMovie(tmdbId)).catch(() => null),
+      getTitleReviews(tmdbId, mediaType),
+      getTitleReplies(tmdbId, mediaType),
+      getMyRating(tmdbId, mediaType),
+      getCommunityRating(tmdbId, mediaType),
+      getMyArtFor(tmdbId, mediaType).catch(() => null),
+      /* **حالتُك من مصادرها القائمة** (D-217): نفسُ الدالّتين اللتين تقرؤهما
+         صفحةُ العمل — **فالحالةُ واحدةٌ في السطحين لأنها من صفٍّ واحد.** */
+      getFollowState(tmdbId, mediaType).catch(() => ({ following: false, dropped: false })),
+      /* ⚠️ **و«شاهدته» للأفلام وحدها**: المسلسلُ يُشاهَد حلقةً حلقة، **ولا
+         صفَّ واحداً يقول «شاهدتُه»** — فادّعاؤه للمسلسلات كان سيكذب. */
+      mediaType === "movie" ? isMovieWatched(tmdbId).catch(() => false) : Promise.resolve(false),
+    ]);
 
   /* TMDB ساقطٌ أو المعرّف خاطئ؟ **الكلامُ يبقى** — العنوانُ مخزَّنٌ مع
      كل تقييم (D-048)، فالصفحة تُرسم من القاعدة وحدها. و`notFound` هنا
@@ -115,88 +124,112 @@ export default async function TalkPage({
           «سهم الرجوع فوق يسار وسهم الفلم يمين» صحيحٌ في الإنجليزية
           **وينقلب في العربية**. فالرجوعُ في `start` وسهمُ العمل في `end`،
           **فيقعان حيث طلب في اللاتينية ويصحّان وحدَهما في RTL.** */}
-      <header className="relative">
-        <div className="relative h-[140px] sm:h-[180px] w-full overflow-hidden bg-surface-2">
-          {backdrop && (
-            <Image
-              src={backdrop}
-              alt=""
-              fill
-              sizes="100vw"
-              priority
-              className="object-cover"
-            />
-          )}
-          {/* تدرّجان: واحدٌ يُلبس الصورةَ سواداً كي يُقرأ الاسمُ فوقها
-              مهما كان لونها، وآخرُ من الأعلى كي يُقرأ الزرّان */}
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/55 to-transparent" />
-          <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/45 to-transparent" />
-        </div>
+      {/* ============ وما تغيّر في D-217 ============
+
+          **طلبُ أحمد:** «الهيدر أحتاج نفس اللي بالصورة **بدون هوامش**…
+          والهيدر وبوستر العرض ياخذ **٢٥٪ من رأس الصفحة** وتحتها مباشرة
+          الردود».
+
+          **فالكلُّ داخل الشريط لا تحته:** الملصقُ والاسمُ والشاراتُ كلُّها
+          **فوق الصورة**، فالترويسةُ **كتلةٌ واحدة قياسُها معلوم** —
+          و`-mt-10` القديمة كانت تُخرج الملصقَ خارجها فيصير الرأسُ أطولَ
+          ممّا يُقاس. **و`25svh` لا `25vh`**: متصفّحُ الجوال يقيس `vh` بلا
+          أشرطته فيخرج الشريطُ عن ربعه.
+
+          **وحدّان يُقالان:** `min-h` كي لا تنسحق الترويسةُ في شاشةٍ قصيرة،
+          و`max-h` كي لا تلتهم نصفَ الشاشة في لوحٍ طويل. **والنسبةُ وحدها
+          بلا حدّين تكسر أحدَ الطرفين دائماً.** */}
+      <header className="relative h-[25svh] min-h-[190px] max-h-[300px] w-full overflow-hidden bg-surface-2">
+        {backdrop && (
+          <Image src={backdrop} alt="" fill sizes="100vw" priority className="object-cover" />
+        )}
+        {/* تدرّجان: واحدٌ يُلبس الصورةَ سواداً كي يُقرأ الاسمُ فوقها مهما
+            كان لونها، وآخرُ من الأعلى كي يُقرأ الزرّان */}
+        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/70 to-transparent" />
+        <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/50 to-transparent" />
 
         {/* الزرّان العائمان — **هيئةُ صفحة العمل حرفاً بحرف**: زجاجيّان
-            دائريّان بقطر لمسٍ ٤٤، فالرجوعُ بابٌ واحدٌ في التطبيق كلّه */}
-        <div className="absolute inset-x-0 top-0 px-3 pt-3 flex items-center justify-between pointer-events-none">
-          <div className="pointer-events-auto">
-            <BackButton locale={locale} />
-          </div>
+            دائريّان بقطر لمسٍ ٤٤، فالرجوعُ بابٌ واحدٌ في التطبيق كلّه.
+            ⚠️ **و`start`/`end` لا `left`/`right`** (D-216): يقعان يساراً
+            ويميناً في اللاتينية **وينقلبان وحدَهما في العربية.** */}
+        <div className="absolute inset-x-0 top-0 px-3 pt-3 flex items-center justify-between">
+          <BackButton locale={locale} />
           <Link
             href={href}
             aria-label={t.talkOpenTitlePage}
             title={t.talkOpenTitlePage}
-            className="pointer-events-auto w-11 h-11 rounded-full bg-black/35 backdrop-blur-md border border-white/15 grid place-items-center text-white/90 active:scale-95 transition"
+            className="w-11 h-11 rounded-full bg-black/35 backdrop-blur-md border border-white/15 grid place-items-center text-white/90 active:scale-95 transition"
           >
             <Icon name="chevron-down" size={18} className="-rotate-90 rtl:rotate-90" />
           </Link>
         </div>
 
-        {/* الملصقُ والاسمُ يركبان حافّةَ الصورة — **السطرُ كلُّه رابطٌ إلى
-            العمل** كما كان: هدفُ لمسٍ واسع، ولا زرَّ داخل زرّ */}
-        <div className="px-4 sm:px-6 -mt-10 relative">
-          <Link href={href} className="flex items-end gap-3 group active:opacity-80 transition">
-            <div className="relative w-[62px] h-[93px] shrink-0 rounded-xl overflow-hidden bg-surface-2 border border-border shadow-lg">
+        <div className="absolute inset-x-0 bottom-0 px-4 sm:px-6 pb-3 flex items-end gap-3">
+          {/* الملصقُ والاسمُ رابطٌ واحد إلى العمل — هدفُ لمسٍ واسع، ولا
+              زرَّ داخل زرّ. **والشاراتُ خارجَه** لأن فيها ما يُضغط لغيره */}
+          <Link href={href} className="flex items-end gap-3 min-w-0 flex-1 active:opacity-80 transition">
+            <div className="relative w-[58px] h-[87px] shrink-0 rounded-xl overflow-hidden bg-surface-2 border border-white/15 shadow-xl">
               {poster ? (
-                <Image src={poster} alt="" fill sizes="62px" className="object-cover" />
+                <Image src={poster} alt="" fill sizes="58px" className="object-cover" />
               ) : (
                 <span className="absolute inset-0 grid place-items-center text-muted">
                   <Icon name={mediaType === "tv" ? "tv" : "film"} size={18} />
                 </span>
               )}
             </div>
-            <div className="min-w-0 flex-1 pb-1">
-              <h1 className="font-bold text-[18px] leading-tight line-clamp-2 group-hover:text-accent transition">
+            <div className="min-w-0 flex-1">
+              <h1 className="font-bold text-[18px] leading-tight line-clamp-2 text-white drop-shadow">
                 {title}
               </h1>
-              <p className="mt-1 flex items-center gap-2 text-[12px] text-muted">
-                {community.count > 0 && (
-                  <span className="font-bold text-accent tabular-nums" title={t.communityRating}>
-                    ★ <span dir="ltr">{avg}</span>
-                    {/* **ومقامُ النجمة معها هنا أيضاً** (D-216): «٩٫٥»
-                        من اثنين ليست «٩٫٥» من ألف */}
-                    <span className="font-normal text-muted"> ({community.count})</span>
-                  </span>
-                )}
-                <span>{t.talkOpenTitlePage}</span>
-              </p>
+              {community.count > 0 && (
+                <p
+                  className="mt-0.5 text-[12px] font-bold text-accent tabular-nums"
+                  title={t.communityRating}
+                >
+                  ★ <span dir="ltr">{avg}</span>
+                  {/* **ومقامُ النجمة معها** (D-216): «٩٫٥» من اثنين ليست
+                      «٩٫٥» من ألف */}
+                  <span className="font-normal text-white/70"> ({community.count})</span>
+                </p>
+              )}
             </div>
           </Link>
         </div>
       </header>
 
-      <div className="px-4 sm:px-6 max-w-xl mx-auto">
-        {/* **زرٌّ لا صندوق** (D-216) — التفصيلُ في `TalkCompose.tsx` */}
-        <div className="mt-5">
-          <TalkCompose
-            tmdbId={tmdbId}
-            mediaType={mediaType}
-            title={rawTitle}
-            posterPath={posterPath}
-            locale={locale}
-            initialRating={mine?.rating ?? null}
-            initialReview={mine?.review ?? null}
-          />
-        </div>
+      {/* **شريطُ حالتك — في ذيل الترويسة لا في وسط الصفحة** (D-217).
+          ⚠️ **والقاعدةُ: المُطَوَّق يُضغط والعاري يُقرأ.** «رأيك» شارةٌ
+          مؤطَّرة تفتح الورقة، **و«شاهدته» و«في مكتبتك» نصٌّ ورمزٌ بلا إطار**
+          — فلا يظنّهما أحدٌ زرّين فيضغطهما ولا يحدث شيء. **ولو صارا زرّين
+          لصارا عائلةَ أفعالٍ ثانية تنافس شريطَ صفحة العمل** (ق٣). */}
+      <div className="px-4 sm:px-6 max-w-xl mx-auto -mt-1 flex items-center gap-3 flex-wrap">
+        <TalkCompose
+          tmdbId={tmdbId}
+          mediaType={mediaType}
+          title={rawTitle}
+          posterPath={posterPath}
+          locale={locale}
+          initialRating={mine?.rating ?? null}
+          initialReview={mine?.review ?? null}
+        />
+        {watchedIt && (
+          <span className="inline-flex items-center gap-1.5 text-[12px] text-muted">
+            <Icon name="check" size={13} className="text-accent" />
+            {t.talkWatchedIt}
+          </span>
+        )}
+        {!watchedIt && follow.following && (
+          <span className="inline-flex items-center gap-1.5 text-[12px] text-muted">
+            <Icon name="bookmark" size={13} className="text-accent" />
+            {t.talkInLibrary}
+          </span>
+        )}
+      </div>
 
-        <h2 className="mt-6 mb-3 font-bold text-[15px]">{t.talkHeading}</h2>
+      <div className="px-4 sm:px-6 max-w-xl mx-auto mt-4">
+        {/* **ولا عنوانَ «الكلام» فوق الحوار** (D-217، «تحتها مباشرة
+            الردود»): عنوانٌ يسمّي ما تراه بعينك يأكل سطراً ولا يضيف معنى —
+            **والصفحةُ كلُّها حوارٌ أصلاً.** */}
         <TalkThread
           reviews={reviews}
           replies={replies}
