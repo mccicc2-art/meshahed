@@ -16,6 +16,8 @@ export interface WorkTalk {
   count: number;
   /** متوسّطُ تقييمات من تكلّموا عن العمل هنا — `null` إن لم يقيّم أحد */
   avg: number | null;
+  /** **مقامُ `avg`**: كم واحداً من هؤلاء وضع رقماً (D-216) */
+  ratedBy: number;
   /** آخر رأيين — بهذا الترتيب */
   last: FeedItem[];
   updatedAt: string;
@@ -61,6 +63,24 @@ export interface WorkTalk {
  *
  * والسطرُ كلُّه رابطٌ واحد: هدفُ لمسٍ واسع، **ولا زرَّ داخل زرّ** — الردُّ
  * والإعجابُ والبلاغ كلُّها في صفحة الكلام حيث الرأي كامل.
+ *
+ * ================= ما تغيّر في D-216 =================
+ *
+ * **طلبُ أحمد:** «هذا الكارد يحتاج تحسين أكثر… عدد المشاهدة وعدد التعليقات
+ * وعدد المقيّمين وعدد المفضّلة، كذا أيقونات».
+ *
+ * **١ · «المقيّمون» مقامٌ لا أيقونة.** البطاقةُ كانت تقول «★ 10.0» وهي
+ * **رأيُ شخصٍ واحد** — **رقمٌ يكذب بحسن نيّة.** فصارت `★ 10.0 (1)`
+ * ملتصقةً بالاسم. **والعددُ من نفس الآراء التي بُني منها المتوسّط** لا
+ * من عدّ كلِّ من قيّم في التطبيق: **بسطٌ ومقامٌ من قومين رقمٌ يبدو دقيقاً
+ * وهو غلط.** ولذلك لا يأتي من `title_talk_stats` بل من `groupByWork`.
+ *
+ * **٢ · والمفضّلةُ ثالثةُ الأيقونات** (هجرة ٧٠). **وهي أضعفُ الأربعة
+ * ويُقال:** «مفضَّل» يقع داخل «متابَع» غالباً، **فالعينُ تغطّي محورَه** —
+ * لكنه رقمٌ طلبَه أحمد وكلفتُه صفرُ نداءات (نفس الدالّة).
+ *
+ * **٣ · والصفرُ يبقى مخفيّاً كما كان.** أربعةُ عدّاداتٍ أصفار تجعل الصفَّ
+ * **لوحةَ قيادةٍ بأربعة ثقوب** — **ورقمٌ صفريّ يشغل مكاناً ولا يقول شيئاً.**
  */
 export function WorksTalk({
   works,
@@ -103,13 +123,21 @@ export function WorksTalk({
                   {w.title}
                 </h3>
                 {/* التقييمُ ملتصقٌ بالاسم لا في سطرٍ ثانٍ: هو صفةُ العمل
-                    لا خبرٌ عنه. و`dir="ltr"` كي لا يُقلب «7.4» في RTL */}
+                    لا خبرٌ عنه. و`dir="ltr"` كي لا يُقلب «7.4» في RTL.
+                    **والمقامُ بجانبه**: «١٠٫٠» من واحدٍ ليست «١٠٫٠» من
+                    مئة، **والبطاقةُ كانت تقولهما بنفس الشكل** (D-216) */}
                 {w.avg != null && (
                   <span
                     className="shrink-0 text-[12px] font-bold text-accent tabular-nums"
-                    title={t.worksAvgHint}
+                    title={t.worksRatedByHint(w.ratedBy)}
                   >
-                    ★ <span dir="ltr">{w.avg.toFixed(1)}</span>
+                    ★{" "}
+                    <span dir="ltr">
+                      {w.avg.toFixed(1)}
+                      {/* **ويظهر ولو كان واحداً — بل خاصّةً حينها:**
+                          «١٠٫٠» بلا مقامٍ هي الحالةُ التي تكذب */}
+                      <span className="font-normal text-muted"> ({w.ratedBy})</span>
+                    </span>
                   </span>
                 )}
                 <span className="ms-auto shrink-0 text-[11px] text-muted tabular-nums">
@@ -130,6 +158,12 @@ export function WorksTalk({
                   <span className="inline-flex items-center gap-1" title={t.talkWatchersHint}>
                     <Icon name="eye" size={12} />
                     {s!.watchers}
+                  </span>
+                )}
+                {(s?.favorites ?? 0) > 0 && (
+                  <span className="inline-flex items-center gap-1" title={t.talkFavoritesHint}>
+                    <Icon name="heart" size={12} />
+                    {s!.favorites}
                   </span>
                 )}
               </div>
@@ -197,6 +231,7 @@ export function groupByWork(feed: FeedItem[]): WorkTalk[] {
         posterPath: a.poster_path,
         count: 1,
         avg: null,
+        ratedBy: 0,
         last: [a],
         updatedAt: a.updated_at,
       });
@@ -209,6 +244,9 @@ export function groupByWork(feed: FeedItem[]): WorkTalk[] {
   for (const [key, w] of map) {
     const s = sums.get(key);
     w.avg = s && s.n > 0 ? s.sum / s.n : null;
+    /* **مقامُ المتوسّط يُحفظ معه** (D-216): من يرسم «١٠٫٠» يجب أن يملك
+       «من كم» في نفس الصفّ، وإلّا رسمها بلا مقامٍ لأنه لا يملكه */
+    w.ratedBy = s?.n ?? 0;
   }
   /* الترتيب بأحدث رأيٍ على العمل: «ما يتحدّث عنه الناس الآن» سؤالُ
      طزاجةٍ لا سؤالُ حجم — وعملٌ بعشرين رأياً قديماً ليس حديثَ اليوم. */
