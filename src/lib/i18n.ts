@@ -616,14 +616,20 @@ const ar = {
   talkReply: "ردّ",
   talkReplyingTo: (name: string) => `ردّاً على ${name}`,
   talkDeleteReply: "حذف",
-  talkHeading: "الكلام",
+  /* **و`talkHeading` («الكلام») حُذف** (D-217): طلبُ أحمد «تحتها مباشرة
+     الردود» — **وعنوانٌ يسمّي ما تراه بعينك يأكل سطراً ولا يضيف معنى.**
+     وبحثٌ في `src` أثبت أن صفحةَ الكلام كانت قارئَه الوحيد. **ومفتاحٌ لا
+     يقرؤه أحدٌ يُحذف لا يُترك.** */
   talkOpenTitlePage: "افتح صفحة العمل",
   talkFallbackTitle: "عملٌ بلا عنوان",
   /* **زرُّ التعليق** (D-216): كان صندوقاً مفتوحاً يأخذ نصفَ الشاشة قبل
      أن تُقرأ كلمةٌ من الحوار. **والفعلُ يُسمّى بفعله** لا بـ«صندوقك». */
-  talkWriteCta: "اكتب رأيك",
+  talkWriteCta: "رأيك",
   talkEditCta: "عدّل رأيك",
   talkWriteTitle: "رأيك في العمل",
+  /* **شاراتُ الحالة في الترويسة** (D-217) — تُقرأ ولا تُضغط */
+  talkWatchedIt: "شاهدته",
+  talkInLibrary: "في مكتبتك",
   worksScopeAll: "الكل",
   worksScopeFollowing: "من أتابع",
   worksEmptyAll: "لا أحد كتب رأياً بعد — كن أوّلَ من يفتح الكلام.",
@@ -1673,12 +1679,13 @@ const en: Dict = {
   talkReply: "Reply",
   talkReplyingTo: (name: string) => `Replying to ${name}`,
   talkDeleteReply: "Delete",
-  talkHeading: "The conversation",
   talkOpenTitlePage: "Open the title page",
   talkFallbackTitle: "Untitled",
-  talkWriteCta: "Write your review",
-  talkEditCta: "Edit your review",
+  talkWriteCta: "Your review",
+  talkEditCta: "Edit review",
   talkWriteTitle: "Your review",
+  talkWatchedIt: "Watched",
+  talkInLibrary: "In your library",
   worksScopeAll: "Everyone",
   worksScopeFollowing: "People I follow",
   worksEmptyAll: "Nobody has written a review yet — be the first to start the conversation.",
