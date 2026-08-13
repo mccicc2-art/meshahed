@@ -15,6 +15,7 @@ import {
 } from "@/lib/data";
 import { getT, getTabPrefs } from "@/lib/locale";
 import { WorksTalk, groupByWork } from "@/components/WorksTalk";
+import { CommentsFeed } from "@/components/CommentsFeed";
 import { applyTabPrefs, defaultTab } from "@/lib/tabPrefs";
 import { localizeRows, localizeTitleRooms } from "@/lib/localize";
 import { CommunityDirectory, CommunityRoom } from "@/components/Communities";
@@ -26,12 +27,25 @@ import { getTitleNews } from "@/lib/titleNews";
 import { ScrollMemory } from "@/components/ScrollMemory";
 
 
-type Tab = "works" | "all" | "news";
+/**
+ * **ثلاثةُ تبويبات: تعليقات · نقاش · خبر** (D-219، طلبُ أحمد بلوحاته).
+ *
+ * **و«تعليقات» نقضٌ مقصودٌ لجزءٍ من D-187 لا نسيانٌ له:** يومها جُمّع
+ * الخطُّ بالعمل لأن «عن ماذا يتكلّم الناس؟» أنفعُ من «من تكلّم؟».
+ * **والسؤالان كلاهما صحيح** — فصارا تبويبين بدل أن يتنافسا على واحد.
+ *
+ * ⚠️ **و`all` باقٍ نوعاً ولا يظهر شريحةً** (اختيارُ أحمد: «يُخفى تماماً
+ * الآن»). **والفرقُ بين «يُخفى» و«يُحذف» ليس تفصيلاً:** صفحةُ العمل تحمل
+ * `TitleRoomLink` تُشير إلى `‎/people?tab=all&c=<id>`، **وحذفُ الفرع كان
+ * يكسر رابطاً حيّاً في سطحٍ آخر** — **يُفحص المستهلك قبل الحذف** (D-214).
+ * فالغرفةُ تُفتح بالرابط، **ولا شريحةَ لها في الصفّ.**
+ */
+type Tab = "comments" | "talk" | "news" | "all";
 function asTab(v: string | undefined): Tab {
-  /* المفاتيح القديمة (`mine` · `reviews` · `inbox`) تسقط إلى «الأعمال»
-     بدل أن تُعيد صفحةً فارغة: روابطُ محفوظةٌ ومشاركةٌ في محادثات لا
-     يجوز أن تموت بتغييرِ تبويب (D-187). و`inbox` له تحويلٌ حقيقيّ أدناه. */
-  return v === "all" || v === "news" ? v : "works";
+  /* المفاتيحُ القديمة (`works` · `mine` · `reviews`) تسقط إلى «نقاش» —
+     **وهو وريثُها حرفاً**: نفسُ `WorksTalk` ونفسُ التجميع. **وروابطُ
+     محفوظةٌ ومشاركةٌ في محادثات لا يجوز أن تموت بتغييرِ تبويب** (D-187). */
+  return v === "comments" || v === "news" || v === "all" ? v : "talk";
 }
 
 /* **سقطت هنا خوارزميةُ ترتيب الخطّ كاملةً (D-134/D-136/D-149)** مع
@@ -74,7 +88,7 @@ export default async function PeoplePage({
   if (tabParam === "inbox") {
     redirect(withParam ? `/messages?with=${encodeURIComponent(withParam)}` : "/messages");
   }
-  const tab = tabParam ? asTab(tabParam) : asTab(defaultTab(tabPrefs, "works"));
+  const tab = tabParam ? asTab(tabParam) : asTab(defaultTab(tabPrefs, "comments"));
   /* **نطاقُ «الأعمال»: الكلُّ افتراضاً** (D-187، طلب أحمد: «أحتاج الكل
      يقدر يتفاعل مع الآخر»). دائرةُ المستخدم الجديد فارغة، **وخطٌّ مشروطٌ
      بمتابعاتٍ لم تُبنَ بعد يبدو تطبيقاً ميّتاً لا تبويباً فارغاً**.
@@ -99,14 +113,19 @@ export default async function PeoplePage({
   /* سقط استعلاما قوائم المتابعة وطلباتها من هذه الصفحة مع سقوط شريطها
      (طلب أحمد): عدّاداهما انتقلا إلى ترويسة الرئيسية، فبقاؤهما هنا
      استعلامان يُدفعان في كل فتحةٍ لصفحةٍ لم تعد تعرضهما */
-  const [followingFeed, myCommunities, myInvites] = await Promise.all([
-    getCommunityFeed(scope),
-    getMyCommunities(),
-    // دعواتي المعلّقة (هجرة 42) — قسم «دعوات» فوق مجتمعاتي في الدليل
-    getMyCommunityInvites(),
-  ]);
-
-  const allCount = myCommunities.length;
+  /* **ونداءا المجتمعات صارا مشروطين بتبويبهما** (D-219): شريحتُهما أُزيلت
+     من الصفّ، **فلم يعد لهما عدّادٌ يُدفع ثمنُه في كل فتحة** — ولا
+     يُقرآن إلا لمن وصل بالرابط. **مكسبٌ لم يكن مقصوداً من إخفاء
+     الشريحة، ويُقال لأنه يوضّح لماذا الفرعُ باقٍ.** */
+  const followingFeed = tab === "all" ? [] : await getCommunityFeed(scope);
+  const [myCommunities, myInvites] =
+    tab === "all"
+      ? await Promise.all([
+          getMyCommunities(),
+          // دعواتي المعلّقة (هجرة 42) — قسم «دعوات» فوق مجتمعاتي في الدليل
+          getMyCommunityInvites(),
+        ])
+      : [[], []];
 
   // غرفةٌ مفتوحة؟ («‎?tab=all&c=<id>‎» — الحالة في الرابط كالوارد، D-051/D-054)
   const openCommunityRaw =
@@ -132,10 +151,12 @@ export default async function PeoplePage({
      فيقرأ المستخدم «عن ماذا يتكلّم الناس» لا «من تكلّم». والترجمة قبل
      التجميع لا بعده: العنوان مفتاحُ العرض، ولو جُمّع بالعنوان المخزَّن
      لانقسم العملُ الواحد بين لغتين (D-048). */
-  const works =
-    tab === "works"
-      ? groupByWork(await localizeRows(followingFeed, locale))
-      : [];
+  /* **والخطُّ نفسُه يخدم تبويبين** (D-219): «نقاش» يجمّعه بالعمل،
+     و«تعليقات» يعرضه كما هو صفّاً صفّاً. **نداءٌ واحد لسؤالين**، والترجمةُ
+     قبل التجميع لا بعده كما كانت. */
+  const localized =
+    tab === "talk" || tab === "comments" ? await localizeRows(followingFeed, locale) : [];
+  const works = tab === "talk" ? groupByWork(localized) : [];
 
   /* أرقامُ البطاقة (D-193): الردودُ ومن شاهد — **نداءٌ واحد للأعمال كلّها**
      (`title_talk_stats`) لا نداءٌ لكل صفّ. ولا يُدفع إلا في تبويبه، ولا
@@ -179,10 +200,12 @@ export default async function PeoplePage({
      يبقى (جردٌ صادق: عدد مجتمعاتك)، وشارة الرسائل تبقى (إشارةٌ تطلب
      فعلاً لا جرد). */
   const tabs = [
-    /* **ثلاثةٌ بعد خمسة (D-187).** «الأعمال» أوّلاً لأنها السؤال الذي
-       يفتح المستخدمُ المجتمعَ لأجله: «عن ماذا يتكلّم الناس؟». */
-    { key: "works", href: "/people", label: t.communityTabWorks },
-    { key: "all", href: "/people?tab=all", label: t.communityTabAll, count: allCount },
+    /* **ثلاثةٌ بترتيب أحمد** (D-219): تعليقات · نقاش · خبر.
+       **و«تعليقات» أوّلاً لأنه أسرعُ ما يُقرأ**: سطرٌ من إنسانٍ عن عمل،
+       بلا تجميعٍ ولا مقدّمة. **و«المجتمعات» ليست هنا** — تُفتح بالرابط
+       من صفحة العمل، وشريحتُها أُزيلت باختيار أحمد. */
+    { key: "comments", href: "/people", label: t.communityTabComments },
+    { key: "talk", href: "/people?tab=talk", label: t.communityTabWorks },
     /* **بلا عدّاد**: عددُ الأخبار ليس مهمّةً تنتظر، وشارةٌ تُلحّ على ما لا
        يُطلب فعلاً تُدرِّب العين على تجاهل الشارات كلّها */
     { key: "news", href: "/people?tab=news", label: t.communityTabNews },
@@ -254,8 +277,12 @@ export default async function PeoplePage({
           <div className="flex items-center gap-2 mb-4">
             {(
               [
-                { key: "all", label: t.worksScopeAll, href: "/people" },
-                { key: "following", label: t.worksScopeFollowing, href: "/people?scope=following" },
+                { key: "all", label: t.worksScopeAll, href: `/people?tab=${tab}` },
+                {
+                  key: "following",
+                  label: t.worksScopeFollowing,
+                  href: `/people?tab=${tab}&scope=following`,
+                },
               ] as const
             ).map((c) => (
               <Link
@@ -273,7 +300,12 @@ export default async function PeoplePage({
             ))}
           </div>
 
-          {works.length === 0 ? (
+          {/* **الرقاقتان فوق التبويبين معاً** (D-219): النطاقُ سؤالٌ عن
+              «كلامِ مَن» لا عن شكل العرض، **فيصحّ فوق التجميع وفوق الخطّ
+              المسطّح** — ولا نسخةَ ثانية منه. */}
+          {tab === "comments" ? (
+            <CommentsFeed items={localized} meId={user.id} locale={locale} />
+          ) : works.length === 0 ? (
             /* **وفراغُ «الكل» غيرُ فراغ «من أتابع»** — ولكلٍّ جملتُه:
                الأوّل يعني «لم يكتب أحدٌ بعد» فيدعوك لتكون الأوّل، والثاني
                يعني «دائرتُك صامتة» فيدلّك على «الكل» (نمط D-106). */
