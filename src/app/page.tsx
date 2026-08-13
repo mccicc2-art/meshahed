@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { getDict, type Locale } from "@/lib/i18n";
 import { RailSkeleton } from "@/components/Skeletons";
 import {
@@ -30,7 +31,7 @@ import {
   yearOf,
   type SearchResult,
 } from "@/lib/tmdb";
-import { getWatchedForShow } from "@/lib/data";
+import { getWatchedForShow, getNewsGenStale, refreshLoopzNews } from "@/lib/data";
 import { nextUnwatchedEpisode } from "@/lib/progress";
 import { getT, getLocale } from "@/lib/locale";
 import { whenLabel } from "@/lib/when";
@@ -82,6 +83,19 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function HomePage() {
   const user = await getUser();
   const { locale, t } = await getT();
+
+  /* **بابٌ ثانٍ لتجديد الأخبار** (D-215): كان التجديدُ لا يقع إلا حين
+     يُفتح تبويبُ الأخبار — **وهو أقلُّ أسطح التطبيق زيارةً**، فبقيت
+     الأخبارُ ساكنةً ساعاتٍ (بلاغُ أحمد). والرئيسيةُ أكثرُها زيارةً،
+     **والكلفةُ سؤالٌ منطقيٌّ واحد** على القاعدة، **والعملُ كلُّه بعد
+     إرسال الصفحة** (`after`) فلا يبطئ رسمة. */
+  if (user) {
+    try {
+      if (await getNewsGenStale(10)) after(() => refreshLoopzNews());
+    } catch {
+      /* تجديدُ الأخبار خدمةٌ خلفية — سقوطُه لا يمسّ الصفحة */
+    }
+  }
 
   if (!user) {
     /* البيانات المُهيكلة على الجذر لا في التخطيط: التخطيط يخدم كل صفحةٍ
