@@ -26,6 +26,22 @@ import { RatingBox } from "./RatingBox";
  * **فالعلاجُ عكسُ الترتيب لا إضافةُ ميزة:** زرٌّ من سطرٍ واحد، والحوارُ
  * تحته مباشرةً، **والكتابةُ ورقةٌ تُفتح بقصد.**
  *
+ * ================= وما تغيّر في D-217 =================
+ *
+ * **طلبُ أحمد:** «علامة اكتب ردّ حطّها في الهيدر أيقونة… بحيث يبان لي على
+ * طول إني مقيّمه وكاتب ردّ وشاهدته أو في الواتش لِست، وإذا احتجت أكتب ردّ
+ * أضغط على كلمة رِفيو».
+ *
+ * **فصار الزرُّ شارةً في الترويسة لا شريطاً عبر الصفحة** — والحوارُ يبدأ
+ * فوراً تحتها. **وهي تقول حالتَك قبل أن تُضغط**: نجمتُك إن قيّمت، وكلمةُ
+ * «عدّل» إن كتبت.
+ *
+ * ⚠️ **وقاعدةٌ تُسنّ هنا لأن الخلط فيها فخّ:** **المُطَوَّق يُضغط، والعاري
+ * يُقرأ.** هذه الشارةُ وحدَها لها إطار — وشاراتُ «شاهدته» و«في مكتبتك»
+ * بجانبها **نصٌّ ورمزٌ بلا إطار**، **فلا يظنّها أحدٌ أزراراً فيضغطها ولا
+ * يحدث شيء.** ولو صرن أزراراً لصارت **عائلةَ أفعالٍ ثانية** تنافس شريطَ
+ * صفحة العمل (ق٣).
+ *
  * **ولماذا ورقةٌ لا تمدُّدٌ في المكان** (اختيارُ أحمد): لوحةُ المفاتيح
  * تأكل نصفَ الشاشة، وصندوقٌ يتمدّد في وسط الصفحة يدفع الحوارَ تحتها
  * فيكتب المرءُ وهو لا يرى ما يردّ عليه. **والورقة `top`** — وهي في
@@ -68,15 +84,15 @@ export function TalkCompose({
           tap(6);
           setOpen(true);
         }}
-        className="w-full flex items-center gap-2.5 rounded-2xl border border-border bg-surface px-4 py-3 text-start active:scale-[0.99] transition hover:border-accent"
+        className="inline-flex items-center gap-1.5 rounded-full border border-white/25 bg-black/40 backdrop-blur-md px-3 py-1.5 text-white active:scale-95 transition hover:border-accent"
       >
-        <Icon name={has ? "edit" : "star"} size={16} className="shrink-0 text-accent" />
-        <span className="text-sm font-semibold">{has ? t.talkEditCta : t.talkWriteCta}</span>
+        <Icon name={has ? "edit" : "comment"} size={13} className="shrink-0 text-accent" />
+        <span className="text-[12px] font-bold">{has ? t.talkEditCta : t.talkWriteCta}</span>
         {/* **نجمتُك إن كانت** — من فتح الغرفة يرى رأيه السابق بلا فتحِ
-            الورقة، **فالزرُّ يخبر لا يسأل فقط** */}
+            الورقة، **فالشارةُ تخبر لا تسأل فقط** */}
         {initialRating != null && (
-          <span className="ms-auto shrink-0 text-[12px] font-bold text-accent tabular-nums">
-            ★ <span dir="ltr">{initialRating}/10</span>
+          <span className="shrink-0 text-[12px] font-bold text-accent tabular-nums">
+            ★ <span dir="ltr">{initialRating}</span>
           </span>
         )}
       </button>

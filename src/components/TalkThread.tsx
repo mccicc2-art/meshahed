@@ -105,7 +105,17 @@ export function TalkThread({
   }
 
   return (
-    <div className="space-y-3">
+    /* **صفوفٌ مفصولةٌ بخطّ لا بطاقاتٌ مؤطَّرة** (D-217، طلب أحمد: «الردود
+       بدون إطارات تكون مثل كذا بالمحادثة… شكلها قريب تويتر، ناعم واحترافي»).
+       **والإطارُ كان يقول شيئاً غيرَ صحيح:** بطاقةٌ محاطة تُقرأ **غرضاً
+       مستقلّاً**، والآراءُ هنا **أدوارُ حديثٍ واحد**. **والخطُّ الفاصل يفصل
+       بلا أن يعزل** — وهو شكلُ صفّ «الأعمال» نفسُه (`WorksTalk`)، **فسطحان
+       بشكلٍ واحد لا شكلين.**
+
+       ⚠️ **وهذا يغيّر سطحين لا سطحاً:** `CommunityReviews` (تبويب الآراء في
+       صفحة العمل) يرسم بهذا المكوّن نفسِه منذ D-193. **وهو الصواب لا أثرٌ
+       جانبيّ:** الرأيُ الواحد لا يُقرأ بشكلين في التطبيق. */
+    <div className="divide-y divide-[color:var(--divider)]">
       {error && (
         <p role="alert" className="text-xs text-[color:var(--error)]">
           {error}
@@ -116,15 +126,13 @@ export function TalkThread({
         const tops = thread.filter((x) => !x.parentId);
         const kids = (id: string) => thread.filter((x) => x.parentId === id);
         return (
-          <article
-            key={r.id}
-            id={`review-${r.id}`}
-            className="bg-surface border border-border rounded-2xl p-4"
-          >
-            <div className="flex items-center justify-between gap-3 mb-2.5">
+          <article key={r.id} id={`review-${r.id}`} className="py-4 first:pt-0">
+            <div className="flex items-center justify-between gap-3 mb-2">
               <PersonName person={r} t={t} size={32} sub={timeAgo(r.updated_at, t)} />
+              {/* **النجمةُ نصٌّ لا شارةٌ مؤطَّرة**: الإطارُ الصغير داخل صفٍّ
+                  بلا إطارٍ يعود بالضجيج الذي أُزيل من حوله */}
               <span
-                className="text-[13px] shrink-0 font-bold text-accent tabular-nums bg-accent/10 border border-accent/25 px-2 py-1 rounded-full"
+                className="text-[13px] shrink-0 font-bold text-accent tabular-nums"
                 title={t.rateOutOf(r.rating)}
               >
                 ★ <span dir="ltr">{r.rating}/10</span>
@@ -135,7 +143,9 @@ export function TalkThread({
               <p className="text-sm text-muted leading-relaxed whitespace-pre-line">{r.review}</p>
             )}
 
-            <div className="mt-3 pt-2.5 border-t border-[color:var(--divider)] flex items-center gap-2">
+            {/* **ولا خطَّ فاصلٍ فوق شريط الأفعال**: الصفُّ كلُّه بلا إطار،
+                فخطٌّ داخله يرسم بطاقةً من جديد */}
+            <div className="mt-2.5 flex items-center gap-2">
               <LikeButton
                 reviewUserId={r.id}
                 tmdbId={tmdbId}
