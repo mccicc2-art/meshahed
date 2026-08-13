@@ -989,8 +989,23 @@ export async function unblockUser(targetId: string) {
 }
 
 /** قائمة من حظرتُهم — لقسم «المحظورون» في الإعدادات */
-/** نوع إشارة الجرس — الأربعة التي ترجعها `my_signals` (D-125) */
-export type SignalKind = "follow" | "request" | "like_review" | "like_activity";
+/**
+ * نوع إشارة الجرس — ما ترجعه `my_signals` (D-125).
+ *
+ * **و`reply` خامسُها** (D-218، هجرة ٧١): **من رُدَّ عليه كان لا يعلم
+ * أبداً، فتموت المحادثةُ عند دورها الأول.** وتغطّي الحالتين — ردٌّ على
+ * رأيك وردٌّ على ردّك — **بنوعٍ واحد لأن الجملة واحدة**.
+ *
+ * ⚠️ **والشيفرةُ تسبق هجرتَها بلا ضرر:** قبل ٧١ لا يعود صفُّ `reply`
+ * أصلاً، **فنوعٌ زائدٌ في الشيفرة لا يُظهر شيئاً** — والخطرُ المعاكس
+ * (صفٌّ بنوعٍ لا تعرفه الواجهة) هو ما يُحرس منه في الرسم.
+ */
+export type SignalKind =
+  | "follow"
+  | "request"
+  | "like_review"
+  | "like_activity"
+  | "reply";
 
 export interface Signal {
   kind: SignalKind;

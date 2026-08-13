@@ -548,6 +548,10 @@ const ar = {
   notifRequest: (who: string) => `${who} طلب متابعتك`,
   notifLike: (who: string, title: string) =>
     title ? `أعجب ${who} بـ«${title}»` : `أعجب ${who} بنشاطك`,
+  /* **الردّ** (D-218) — **فعلٌ ينتظر جواباً لا خبرٌ يُقرأ**، ولذلك صيغتُه
+     «ردّ عليك» لا «كتب ردّاً». والعملُ قد يغيب عنوانُه فجملتان لا فراغ. */
+  notifReply: (who: string, title: string) =>
+    title ? `ردّ ${who} عليك في «${title}»` : `ردّ ${who} عليك`,
   // مرشِّح نوع الحدث في «مجتمعي» (D-123ب)
   feedFilterGroup: "نوع النشاط",
   feedFilterAll: "الكل",
@@ -1638,6 +1642,8 @@ const en: Dict = {
   notifRequest: (who: string) => `${who} asked to follow you`,
   notifLike: (who: string, title: string) =>
     title ? `${who} liked your ${title}` : `${who} liked your activity`,
+  notifReply: (who: string, title: string) =>
+    title ? `${who} replied to you about “${title}”` : `${who} replied to you`,
   feedFilterGroup: "Activity type",
   feedFilterAll: "All",
   feedFilterRatings: "Ratings",
