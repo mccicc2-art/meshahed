@@ -139,7 +139,12 @@ export default async function TalkPage({
           **وحدّان يُقالان:** `min-h` كي لا تنسحق الترويسةُ في شاشةٍ قصيرة،
           و`max-h` كي لا تلتهم نصفَ الشاشة في لوحٍ طويل. **والنسبةُ وحدها
           بلا حدّين تكسر أحدَ الطرفين دائماً.** */}
-      <header className="relative h-[25svh] min-h-[190px] max-h-[300px] w-full overflow-hidden bg-surface-2">
+      {/* ⚠️ **و«بلا هوامش» تعني الخروجَ من حشو التخطيط لا صفراً في هذا
+          الملفّ** (كشفه أوّلُ فحصٍ حيّ): `<main>` في `layout.tsx` يحمل
+          `px-4 py-6`، **فشريطٌ عرضُه `w-full` يبقى بينه وبين الحافّة ستّةَ
+          عشرَ بكسلاً** — وهو الهامشُ الذي رآه أحمد وظننتُه مُزالاً.
+          **و`-mt-6 -mx-4` تُلغيهما بالضبط** لا بالتقدير. */}
+      <header className="relative -mt-6 -mx-4 h-[25svh] min-h-[190px] max-h-[300px] overflow-hidden bg-surface-2">
         {backdrop && (
           <Image src={backdrop} alt="" fill sizes="100vw" priority className="object-cover" />
         )}
