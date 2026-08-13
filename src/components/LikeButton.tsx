@@ -29,6 +29,7 @@ export function LikeButton({
   likes,
   likedByMe,
   isMine,
+  readOnly = false,
   target = "review",
   day,
   locale,
@@ -39,6 +40,14 @@ export function LikeButton({
   likes: number;
   likedByMe: boolean;
   isMine: boolean;
+  /**
+   * **رقمٌ بلا زرّ** (D-221) — للزائر بلا حساب.
+   *
+   * **ولم يُعَد استعمالُ `isMine` لهذا** وإن كان السلوكُ نفسَه: **معنَيان
+   * في علمٍ واحد يجعلان أوّلَ تعديلٍ غداً يمسّ الحالتين معاً**. علمٌ لكل
+   * معنى، والسلوكُ يتشاركانه.
+   */
+  readOnly?: boolean;
   /** وجهة الكتابة — الافتراضي المراجعة كي لا يتغيّر أي نداءٍ قائم */
   target?: "review" | "activity";
   /** يوم الحدث (YYYY-MM-DD) — لازمٌ لوجهة النشاط وحدها */
@@ -50,7 +59,7 @@ export function LikeButton({
   const [count, setCount] = useState(likes);
   const [pending, start] = useTransition();
 
-  if (isMine) {
+  if (isMine || readOnly) {
     return (
       <span className="flex items-center gap-1.5 text-[12px] text-muted" title={t.likesLabel}>
         <Icon name="like" size={16} />

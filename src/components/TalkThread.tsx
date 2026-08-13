@@ -153,6 +153,9 @@ export function TalkThread({
                 likes={r.likes}
                 likedByMe={r.likedByMe}
                 isMine={r.isMine}
+                /* **الزائرُ يقرأ الرقم ولا يضغطه** (D-221): زرٌّ يفشل عند
+                   أوّل لمسةٍ أسوأُ من رقمٍ ساكن */
+                readOnly={!signedIn}
                 locale={locale}
               />
               {signedIn && (
@@ -165,7 +168,9 @@ export function TalkThread({
                   }}
                 />
               )}
-              {!r.isMine && (
+              {/* **والبلاغُ فعلٌ يحتاج صاحباً** (D-221): بلاغٌ بلا هويّةٍ
+                  لا يُقبل في القاعدة أصلاً، فزرُّه للزائر وعدٌ كاذب */}
+              {signedIn && !r.isMine && (
                 <span className="ms-auto">
                   <ReportButton
                     reviewUserId={r.id}
