@@ -31,8 +31,11 @@ export default async function PrivacyPage() {
       <h1 className="text-2xl font-bold mt-3">{ar ? "سياسة الخصوصية" : "Privacy Policy"}</h1>
       <p className="text-xs text-muted mt-1.5" dir="ltr">
         {/* D-155: السياسةُ نفسها تَعِد بتحديث هذا التاريخ عند أي تغييرٍ
-            جوهري — وقد تغيّر بابا «الاستيراد» و«حقّك في بياناتك» اليوم. */}
-        {ar ? "آخر تحديث: ١١ أغسطس ٢٠٢٦" : "Last updated: 11 August 2026"}
+            جوهري — **وD-221 أجوهرُ ما وقع**: «الآخرون» في هذه الوثيقة
+            كانوا المسجَّلين، وصاروا الإنترنتَ حين فُتحت غرفةُ الكلام
+            وصفحاتُ الخيوط للقراءة بلا حساب. **ووعدٌ لم يعد صادقاً أسوأُ
+            من وعدٍ لم يُكتب.** */}
+        {ar ? "آخر تحديث: ١٤ أغسطس ٢٠٢٦" : "Last updated: 14 August 2026"}
       </p>
 
       <div className="mt-7 space-y-7 text-[15px] leading-relaxed">
@@ -58,8 +61,8 @@ export default async function PrivacyPage() {
           title={ar ? "ما الذي يراه الآخرون" : "What other people can see"}
           body={
             ar
-              ? "ملفك الشخصي وتقييماتك ومراجعاتك تظهر في المجتمع باسمك المستعار ومعرّفك وصورتك. وفي الإعدادات خيار «إخفاء الاسم» يُخفي اسمك وصورتك ومعرّفك عن الآخرين ويُخرجك من بحث المستخدمين — وهو مطبَّق في قاعدة البيانات نفسها لا في الواجهة، فلا يمكن الالتفاف عليه. والقائمة لا تُرى إلا إن جعلتها «معلنة» بنفسك، وحينها يفتحها كل من يملك رابطها. بريدك الإلكتروني لا يُعرض لأحد أبداً."
-              : "Your profile, ratings and reviews appear in the community with your nickname, username and picture. Settings has a “hide my name” switch that hides your name, picture and username from others and removes you from people search — it is enforced in the database itself, not in the interface, so it cannot be worked around. A list is visible only if you mark it public, and then anyone with the link can open it. Your email address is never shown to anyone."
+              ? "ملفك الشخصي وتقييماتك ومراجعاتك تظهر في المجتمع باسمك المستعار ومعرّفك وصورتك. و«الآخرون» هنا تعني الإنترنت لا المسجَّلين وحدهم: صفحة الكلام عن أي عمل، وصفحة كل تعليق، وصفحات نشرات Loopz — كلها تُقرأ بلا حساب ويجوز أن تفهرسها محرّكات البحث. أما الكتابة والردّ والإعجاب والإبلاغ فللمسجَّلين وحدهم. وفي الإعدادات خيار «إخفاء الاسم» يُخفي اسمك وصورتك ومعرّفك عن الآخرين ويُخرجك من بحث المستخدمين — وهو مطبَّق في قاعدة البيانات نفسها لا في الواجهة، فلا يمكن الالتفاف عليه. والقائمة لا تُرى إلا إن جعلتها «معلنة» بنفسك، وحينها يفتحها كل من يملك رابطها. بريدك الإلكتروني لا يُعرض لأحد أبداً."
+              : "Your profile, ratings and reviews appear in the community with your nickname, username and picture. “Other people” here means the internet, not only signed-in members: the discussion page for any title, the page for each comment, and Loopz bulletin pages are all readable without an account and may be indexed by search engines. Writing, replying, liking and reporting stay for signed-in members only. Settings has a “hide my name” switch that hides your name, picture and username from others and removes you from people search — it is enforced in the database itself, not in the interface, so it cannot be worked around. A list is visible only if you mark it public, and then anyone with the link can open it. Your email address is never shown to anyone."
           }
         />
 
