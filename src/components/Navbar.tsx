@@ -5,6 +5,7 @@ import { getT } from "@/lib/locale";
 import { SearchBox } from "./SearchBox";
 import { NavLinks } from "./NavLinks";
 import { NavAvatar } from "./NavAvatar";
+import { NavTitle } from "./NavTitle";
 import { Logo } from "./Logo";
 import { LangFlagMenu } from "./LangFlagMenu";
 import { ThemeCookieSync } from "./ThemeCookieSync";
@@ -48,20 +49,42 @@ export async function Navbar() {
     <header className="sticky top-0 z-30 border-b border-border bg-[color:var(--background)]/80 backdrop-blur pt-[var(--safe-top)]">
       {/* يهاجر ثيم الحساب إلى الكوكي مرة واحدة — ثم لا يفعل شيئاً */}
       {profile?.theme && <ThemeCookieSync theme={profile.theme} />}
-      <div className="max-w-6xl mx-auto px-4 h-16 flex items-center gap-2 sm:gap-3">
+      <div className="relative max-w-6xl mx-auto px-4 h-16 flex items-center gap-2 sm:gap-3">
         <Link href="/" className="shrink-0" aria-label={t.brand}>
           {/* **الرمزُ وحده في الشريط** (D-256، طلبُ أحمد: «الأيقونة في كل
               الصفحات بدل كلمة لوبز اللي فوق»). **ونقضٌ يُسجَّل**: كان
               السطرُ هنا يقول «الرمزُ سقط من الهوية فالكلمة هي الشعار» —
               **والهويّةُ الجديدة أعادت الرمزَ ومعه الوردمارك المرسوم**،
               فالحجّةُ ماتت بموت سببها.
-              **والرمزُ لا الكلمة في شريطٍ يحمل أربعةَ روابطٍ وبحثاً**:
-              مربّعٌ ٣٢px يُعرف من طرف العين ولا يزاحم، **والكلمةُ تأخذ
-              ثلاثةَ أضعافِ عرضِه لتقول ما يقوله.** */}
-          <Logo size={32} />
+
+              **🆕 والمقاسُ ٤٤ لا ٣٢** (D-258، بلاغُ أحمد: «أحسه صغير
+              شوي») — **والعلّةُ قِيست لا خُمِّنت**: الملفُّ مربّعٌ
+              ٥١٢×٥١٢ **والعلامةُ فيه ٤٣٧×٢٢١** (بحشوٍ مقصودٍ ليصلح
+              صورةَ حساب). **فمربّعُ ٣٢ يرسم `∞` ارتفاعُها ١٤px** —
+              أصغرَ من حرفٍ في السطر المجاور. **والمربّعُ يكبر ولا يُقصّ
+              الملفّ**: هو نفسُه صورةُ حساب Loopz، **وقصُّه هنا يقصّه
+              هناك.** ٤٤ تعطي `∞` بـ٣٧×١٩ — تُقرأ ولا تزاحم. */}
+          <Logo size={44} />
         </Link>
 
         {user && <NavLinks locale={locale} />}
+
+        {/* **اسمُ الصفحة في المنتصف** (D-258) — والمكوّنُ يقرّر متى يظهر */}
+        {user && <NavTitle locale={locale} />}
+
+        {/* **الظرفُ في البداية على الهاتف** (D-258، طلبُ أحمد: «إذا
+            الأيقونتين اليمين مسوّين زحمة، ودّي وحدة منهم تكون يمين
+            اللوقو»). **وهو شرطُ المنتصف لا زينة**: بثلاثِ أيقوناتٍ في
+            الطرف وواحدةٍ في البداية **يصير مركزُ الشريط غيرَ مركزِ
+            الفراغ**، فعنوانٌ «في المنتصف» يلامس الجرس. **وبالنقل صار
+            الطرفان ٦٤px لكلٍّ** — والمنتصفُ منتصفٌ حقّاً.
+            **وعلى الشاشة الواسعة يبقى مكانَه** (D-187: الأخصُّ أقربُ إلى
+            صورة الحساب) — **فلا زحامَ هناك، ولا عنوانَ يُوسَّط.** */}
+        {user && (
+          <div className="md:hidden shrink-0">
+            <MessagesLink unread={unreadMessages} locale={locale} />
+          </div>
+        )}
 
         <div className="flex-1 flex justify-end items-center gap-2 sm:gap-3">
           {user ? (
@@ -72,9 +95,9 @@ export async function Navbar() {
                 </Suspense>
               </div>
 
-              {/* الظرفُ قبل الجرس: الرسائل أخصُّ من الإشعارات، والأخصُّ
-                  أقربُ إلى صورة صاحب الحساب (D-187) */}
-              <MessagesLink unread={unreadMessages} locale={locale} />
+              <div className="hidden md:block">
+                <MessagesLink unread={unreadMessages} locale={locale} />
+              </div>
 
               {/* **واسمُك يُمرَّر معه** (D-257): إشعارُ الردّ يفتح صفحةَ
                   **تعليقِك** — ومسارُها `‎/review/<type>/<id>/<username>`،

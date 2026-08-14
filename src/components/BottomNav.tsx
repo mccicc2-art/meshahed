@@ -114,36 +114,41 @@ export function BottomNav({
         aria-label={t.navHome}
         /* الصنف الصمّاء أوّلاً وهي الاحتياط: السطر المضمَّن أدناه يغلبها
            حيث يُفهم، ويسقط كاملاً حيث لا يُفهم فيبقى اللون الصمّاء */
-        className="md:hidden fixed bottom-0 inset-x-0 z-40 grid grid-cols-5 border-t border-[color:var(--divider)] bg-[color:var(--background)] backdrop-blur-xl pt-1.5 pb-[max(0.5rem,env(safe-area-inset-bottom))]"
+        className="md:hidden fixed bottom-0 inset-x-0 z-40 grid grid-cols-5 border-t border-[color:var(--divider)] bg-[color:var(--background)] backdrop-blur-xl pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]"
         style={{ background: "color-mix(in srgb, var(--background) 76%, transparent)" }}
       >
         {TABS.map(({ href, key, icon }) => {
           const isSearch = key === "search";
           const active = isSearch ? searchOpen : isActive(href);
+          /* **أيقونةٌ بلا كلمة** (D-258، طلبُ أحمد: «اخفِ الكلمات في
+             الشريط السفلي واكتبها فوق»). **والاسمُ لم يُحذف بل انتقل**
+             إلى منتصف الشريط العلويّ (`NavTitle`) — انظر حجّتَه هناك.
+
+             **والمقاسُ ٢٥ لا ٢٣**: الأيقونةُ صارت وحدَها تحمل الخانة،
+             **ورمزٌ ورث فراغَ كلمةٍ يجب أن يرث شيئاً من ثقلها** — وإلا
+             قُرئ الشريطُ أنحفَ لا أنظف.
+
+             ⚠️ **والاسمُ يبقى في `aria-label`**: ما سقط رسمُه لا يسقط
+             نطقُه — **وشريطُ تنقّلٍ بخمسة أزرارٍ بلا أسماء لقارئ الشاشة
+             خمسةُ أزرارٍ بلا معنى** (D-177: الرمزُ عُرفٌ يُقرأ بالعين،
+             والمعنى في `aria-label`). */
           const face = (
-            <>
-              <span className="relative">
-                <Icon
-                  name={icon}
-                  size={23}
-                  strokeWidth={active ? 2.2 : 1.7}
-                  style={{ color: active ? "var(--accent)" : "var(--disabled)" }}
-                />
-                {/* «هناك جديدٌ هناك» — وتسقط على التبويب المفتوح: أنت فيه */}
-                {key === "people" && !active && peopleDot}
-              </span>
-              <span
-                className={`max-w-full truncate text-[11px] leading-none ${
-                  active ? "font-semibold" : ""
-                }`}
-                style={{ color: active ? "var(--foreground)" : "var(--disabled)" }}
-              >
-                {label[key]}
-              </span>
-            </>
+            <span className="relative">
+              <Icon
+                name={icon}
+                size={25}
+                strokeWidth={active ? 2.2 : 1.7}
+                style={{ color: active ? "var(--accent)" : "var(--disabled)" }}
+              />
+              {/* «هناك جديدٌ هناك» — وتسقط على التبويب المفتوح: أنت فيه */}
+              {key === "people" && !active && peopleDot}
+            </span>
           );
+          /* **والحشوُ يعوّض ارتفاعَ السطر الذاهب**: هدفُ اللمس ٤٤px
+             (D-033/D-168) **لا يُشترى بالنصّ بل يُكتب** — وخانةٌ بلا
+             كلمةٍ وبحشوها القديم تصير ٣٤px. */
           const face_cls =
-            "relative flex min-w-0 flex-col items-center justify-center gap-1 rounded-2xl px-1 py-1.5 transition active:bg-surface-2";
+            "relative flex min-w-0 items-center justify-center rounded-2xl px-1 py-2.5 transition active:bg-surface-2";
 
           // البحث يفتح ورقةً في مكانه؛ وبقية التبويبات وجهاتٌ تُزار
           return isSearch ? (
@@ -153,6 +158,8 @@ export function BottomNav({
               onClick={() => setSearchOpen(true)}
               aria-expanded={searchOpen}
               aria-haspopup="dialog"
+              aria-label={label[key]}
+              title={label[key]}
               className={face_cls}
             >
               {face}
@@ -162,6 +169,8 @@ export function BottomNav({
               key={href}
               href={href}
               aria-current={active ? "page" : undefined}
+              aria-label={label[key]}
+              title={label[key]}
               className={face_cls}
             >
               {face}
