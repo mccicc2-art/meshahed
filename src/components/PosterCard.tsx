@@ -81,9 +81,10 @@ export function PosterCard({
    */
   saved?: boolean;
   watched?: boolean;
-  /* **ويُغلبان حين يُمرَّر `hold`**: هناك تسكن الحالةُ التفاؤلية فتنزل
-     منها إلى هنا — **والخيطُ يُرسم مرّةً واحدة، هنا، داخل صندوق القصّ**
-     (D-238). كانا مالكين اثنين فاختلفا في الشكل وفي اللحظة. */
+  /* ⚠️ **ويُتجاهلان حين يُمرَّر `hold`** — هناك تسكن الحالةُ التفاؤلية،
+     **وخيطان لحالةٍ واحدة يفترقان عند أوّل ضغطة** (D-235). **والحدُّ
+     بين الخادم والعميل هو ما يمنع توحيدَهما**: تمريرُ الحالة من هناك
+     إلى هنا تمريرُ دالّةٍ عبر الحدّ، وقد جُرِّب فأسقط الصفحة (D-238). */
   /**
    * **الضغطُ المطوَّل بأفعاله الثلاثة** — يُمرَّر حيث تكون البطاقة عملاً
    * يملك القارئ أن يفعل به شيئاً. **وحيث لا يُمرَّر لا يتغيّر شيء**:
@@ -116,15 +117,7 @@ export function PosterCard({
   };
 }) {
   const url = posterUrl(posterPath, posterSize);
-
-  /**
-   * **البطاقةُ دالّةٌ في حالتها** (D-238) — لأن الخيطَ تحتها يتغيّر
-   * بضغطةٍ في `PosterHold`، **والخيطُ لا يجوز أن يُرسم خارج هذا الصندوق**:
-   * `overflow-hidden` هنا هو ما يجعله يتبع انحناءَ الملصق تماماً.
-   * **وبلا `hold` الحالةُ هي ما جاء في الخصائص** — فمن لا يمرّره لا
-   * يدفع شيئاً ولا يتغيّر شكلُه.
-   */
-  const card = (st: { saved: boolean; watched: boolean }) => (
+  const card = (
     // prefetch={false}: الصفحة الواحدة فيها عشرات البطاقات، والتحميل المسبق
     // الافتراضي يطلق طلب RSC لكل بطاقة تدخل الشاشة — عشرات الطلبات المتزامنة
     // كانت ترجع 503 وتُبطئ التنقّل الفعلي. الرابط يُحمَّل عند النقر.
@@ -189,7 +182,7 @@ export function PosterCard({
 
         {/* الحالة كلها في خيط اللون: أخضر مكتمل، بنفسجي قيد المشاهدة،
             أحمر موقوف — وما لم يبدأ لا خيط له إطلاقاً */}
-        {(dropped || st.watched || st.saved || (progress ?? 0) > 0) && (
+        {(dropped || (!hold && (watched || saved)) || (progress ?? 0) > 0) && (
           <div className="absolute inset-x-0 bottom-0 h-1.5 bg-black/50">
             <div
               className="h-full transition-colors"
@@ -197,12 +190,12 @@ export function PosterCard({
                 /* **الأولوية: موقوفٌ ثم منتهٍ ثم جارٍ ثم محفوظ** — وأخصُّ
                    الحالات يغلب أعمَّها، فعملٌ منتهٍ محفوظٌ يُقرأ منتهياً */
                 width:
-                  dropped || st.watched || (st.saved && (progress ?? 0) <= 0)
+                  dropped || watched || (saved && (progress ?? 0) <= 0)
                     ? "100%"
                     : `${Math.max(0, Math.min(100, progress ?? 0))}%`,
                 background: dropped
                   ? "var(--error)"
-                  : st.watched || (progress ?? 0) >= 100
+                  : watched || (progress ?? 0) >= 100
                     ? "var(--success)"
                     : (progress ?? 0) > 0
                       ? "var(--accent)"
@@ -231,6 +224,6 @@ export function PosterCard({
       {card}
     </PosterHold>
   ) : (
-    card({ saved, watched })
+    card
   );
 }
