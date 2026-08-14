@@ -24,11 +24,16 @@ import { useRouter } from "next/navigation";
  * من الإصبع، **فيُحسّ القارئُ أنه يشدّ شيئاً له وزن** — والحركةُ الحرفية
  * ١:١ تجعل الصفحةَ تبدو منفصلةً عن يده.
  *
- * **٥ · ولا شيءَ يتحرّك إلا المؤشّر** — **وارتدادُ النظام مُطفأ**
- * (`overscroll-behavior-y: none` في `globals.css`، D-245): كان iOS يجرّ
- * الصفحةَ كلَّها معنا فيتحرّك اثنان لحركةٍ واحدة. جرُّ الصفحة كلِّها يعني إعادةَ
- * تخطيطٍ في كل إطار على قوائمَ فيها عشرات الملصقات. **فالمؤشّرُ وحده
- * ينزل، والمحتوى ثابت** — نفسُ إحساسٍ بثمنٍ أقلّ.
+ * **٥ · والمحتوى ينزل مع الإصبع والترويسةُ تثبت** (D-246، طلبُ أحمد:
+ * «النشرات ما تنزل — أحتاجها تنزل عشان يوضح أن الشخص يعمل ريفرش»).
+ * **وهو نقضُ «لا يتحرّك إلا المؤشّر» (D-243) ويُسجَّل**: حجّتي كانت كلفةَ
+ * إعادة التخطيط، **وكانت حجّةً خاطئة التشخيص** — الجرُّ بـ`transform`
+ * تركيبٌ لا تخطيط، لا يُعاد حسابُ صفٍّ واحد. وأحمد محقٌّ في الجوهر:
+ * **مؤشّرٌ فوق محتوًى ساكنٍ يُقرأ زخرفةً، ومحتوًى ينزل يُقرأ فعلاً.**
+ * ويُجَرّ `#main` وحده **إجبارياً لا عبر الحالة** (`style.transform`
+ * مباشرةً): تصييرُ React في كل إطارِ لمسٍ هدرٌ لحركةٍ لا يقرؤها أحد.
+ * **وارتدادُ النظام يبقى مُطفأً** (`overscroll-behavior-y: none`، D-245)
+ * — وإلا تحرّك اثنان لحركةٍ واحدة.
  *
  * ⚠️ **و`router.refresh()` لا `location.reload()`**: الأوّلُ يعيد
  * جلبَ مكوّنات الخادم **ويُبقي حالةَ العميل والتمرير**، والثاني يهدم
@@ -43,6 +48,19 @@ export function PullToRefresh() {
   const THRESHOLD = 70;
 
   useEffect(() => {
+    /**
+     * **جرُّ المحتوى** (D-246) — `#main` وحده: الترويسةُ والتبويبات خارجه
+     * فتثبت كتويتر، والمؤشّرُ يظهر في الفجوة التي يكشفها النزول.
+     * **والعودةُ وحدها تُحرَّك** (`transition` عند الإفلات لا أثناء الجرّ):
+     * انتقالٌ أثناء اللمس يجعل الصفحةَ تلحق الإصبعَ متأخّرةً فتُحَسّ ثقيلة.
+     */
+    function shift(px: number, animate: boolean) {
+      const el = document.getElementById("main");
+      if (!el) return;
+      el.style.transition = animate ? "transform 0.25s ease" : "none";
+      el.style.transform = px > 0 ? `translateY(${px}px)` : "";
+    }
+
     /* **لا لمسَ لا مستمع** — انظر الحدّ ٢ */
     if (typeof window === "undefined" || !("ontouchstart" in window)) return;
 
@@ -57,9 +75,12 @@ export function PullToRefresh() {
       if (d <= 0) {
         start.current = null;
         setPull(0);
+        shift(0, true);
         return;
       }
-      setPull(Math.min(d / 2.2, THRESHOLD + 24));
+      const p = Math.min(d / 2.2, THRESHOLD + 24);
+      setPull(p);
+      shift(p, false);
     }
     function onEnd() {
       if (start.current === null) return;
@@ -67,14 +88,21 @@ export function PullToRefresh() {
       setPull((p) => {
         if (p >= THRESHOLD) {
           setBusy(true);
+          /* **يستقرّ المحتوى عند العتبة ما دام الجلبُ جارياً** — فجوةُ
+             المؤشّر باقيةٌ حتى يكتمل، وهو عقدُ تويتر نفسُه */
+          shift(THRESHOLD, true);
           /* **وتُترك دورةٌ للمؤشّر كي يُرسم قبل الجلب** — تحديثٌ بلا
              أثرٍ مرئيّ يجعل القارئ يسحب ثانيةً ظنّاً أن شيئاً لم يقع */
           setTimeout(() => {
             router.refresh();
-            setTimeout(() => setBusy(false), 700);
+            setTimeout(() => {
+              setBusy(false);
+              shift(0, true);
+            }, 700);
           }, 60);
           return THRESHOLD;
         }
+        shift(0, true);
         return 0;
       });
     }
@@ -88,6 +116,7 @@ export function PullToRefresh() {
       window.removeEventListener("touchmove", onMove);
       window.removeEventListener("touchend", onEnd);
       window.removeEventListener("touchcancel", onEnd);
+      shift(0, false);
     };
   }, [busy, router]);
 
