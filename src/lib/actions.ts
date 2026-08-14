@@ -3285,13 +3285,65 @@ function talkPaths(tmdbId: number, mediaType: "tv" | "movie") {
  * ردٍّ على ردّ، **ويرفض أباً في عملٍ آخر** — والفحصُ هناك يصحّ لأي
  * مستدعٍ لا لهذا وحده.
  */
+/**
+ * **صاحبُ الردّ كما سيُقرأ** (D-241) — يُعاد مع كلِّ ردٍّ يُكتب.
+ *
+ * **والسببُ عيبان قاسهما أحمد في لقطةٍ واحدة:** الردُّ يظهر **مرّتين**،
+ * وإحداهما باسم «Someone».
+ *
+ * **العيبُ الأوّل — النسخةُ التفاؤلية لا تُصالَح.** كانت تُضاف بمعرّفٍ
+ * مؤقّت وتُحذف **عند الفشل وحده**؛ فإذا نجحت الكتابة أبطلَ الفعلُ المسارَ،
+ * **فأعاد الخادمُ الردَّ الحقيقيَّ بينما المؤقّتُ لا يزال في الحالة** —
+ * فصارا اثنين. **ومعرّفٌ حقيقيٌّ يعود مع الكتابة يحلّها من أصلها**:
+ * الواجهةُ تُسقط نسختَها لحظةَ ظهور معرّفِها في حمولة الخادم.
+ *
+ * **والعيبُ الثاني — «Someone».** النسخةُ المؤقّتة كانت تُرسم `hide_name`
+ * لأن «الصفحةَ لا تملك ملفّي». **وكانت حجّةً كسولة**: الخادمُ يملكه وهو من
+ * يكتب. **فأن أرى كلامي باسم غريبٍ لثوانٍ أسوأُ من أن أراه بلا اسم** —
+ * والاسمُ يعود مع الردّ لا بنداءٍ ثانٍ من الواجهة.
+ */
+async function replyAuthor(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+): Promise<{
+  nickname: string | null;
+  username: string | null;
+  avatar_url: string | null;
+  hide_name: boolean;
+}> {
+  const { data } = await supabase
+    .from("profiles")
+    .select("nickname, username, avatar_url, hide_name")
+    .eq("id", userId)
+    .maybeSingle();
+  const hidden = !!data?.hide_name;
+  /* **والإخفاءُ يُطبَّق هنا كما يُطبَّق في القارئ** (D-011): من أخفى اسمَه
+     يراه مخفيّاً في نسخته أيضاً، **وإلا رأى نفسَه بشكلٍ لا يراه به أحد.** */
+  return {
+    nickname: hidden ? null : (data?.nickname ?? null),
+    username: hidden ? null : (data?.username ?? null),
+    avatar_url: hidden ? null : (data?.avatar_url ?? null),
+    hide_name: hidden,
+  };
+}
+
+/** ما يعود من كتابة ردّ — **يكفي لرسم الصفّ نهائياً بلا نداءٍ ثانٍ** */
+export type NewReply = {
+  replyId: string;
+  createdAt: string;
+  nickname: string | null;
+  username: string | null;
+  avatar_url: string | null;
+  hide_name: boolean;
+};
+
 export async function addReviewReply(input: {
   reviewUserId: string;
   tmdbId: number;
   mediaType: MediaType;
   body: string;
   parentId?: string | null;
-}): Promise<void> {
+}): Promise<NewReply | null> {
   const reviewUserId = uuid(input.reviewUserId);
   const tmdbId = intId(input.tmdbId);
   const mediaType = asMediaType(input.mediaType);
@@ -3301,19 +3353,27 @@ export async function addReviewReply(input: {
   const { supabase, user } = await requireUser("reply", 15, 60_000);
 
   const body = String(input.body ?? "").replace(/\s{3,}/g, "  ").trim().slice(0, 1000);
-  if (!body) return;
+  if (!body) return null;
 
-  const { error } = await supabase.from("review_replies").insert({
-    review_user_id: reviewUserId,
-    tmdb_id: tmdbId,
-    media_type: mediaType,
-    user_id: user.id,
-    body,
-    parent_id: parentId,
-  });
+  const { data, error } = await supabase
+    .from("review_replies")
+    .insert({
+      review_user_id: reviewUserId,
+      tmdb_id: tmdbId,
+      media_type: mediaType,
+      user_id: user.id,
+      body,
+      parent_id: parentId,
+    })
+    /* **والمعرّفُ يعود مع الكتابة** (D-241) — انظر `replyAuthor` */
+    .select("id, created_at")
+    .single();
   if (error) fail(error);
 
   for (const p of talkPaths(tmdbId, mediaType)) revalidatePath(p);
+
+  const who = await replyAuthor(supabase, user.id);
+  return { replyId: String(data!.id), createdAt: String(data!.created_at), ...who };
 }
 
 /**
@@ -3327,25 +3387,33 @@ export async function addNewsReply(input: {
   postKey: string;
   body: string;
   parentId?: string | null;
-}): Promise<void> {
+}): Promise<NewReply | null> {
   const postKey = String(input.postKey ?? "").trim().slice(0, 120);
-  if (!postKey) return;
+  if (!postKey) return null;
   const parentId = input.parentId ? uuid(input.parentId) : null;
 
   const { supabase, user } = await requireUser("reply", 15, 60_000);
 
   const body = String(input.body ?? "").replace(/\s{3,}/g, "  ").trim().slice(0, 1000);
-  if (!body) return;
+  if (!body) return null;
 
-  const { error } = await supabase.from("news_post_replies").insert({
-    post_key: postKey,
-    user_id: user.id,
-    body,
-    parent_id: parentId,
-  });
+  const { data, error } = await supabase
+    .from("news_post_replies")
+    .insert({
+      post_key: postKey,
+      user_id: user.id,
+      body,
+      parent_id: parentId,
+    })
+    .select("id, created_at")
+    .single();
   if (error) fail(error);
 
   revalidatePath("/people");
+  revalidatePath("/post/[key]", "page");
+
+  const who = await replyAuthor(supabase, user.id);
+  return { replyId: String(data!.id), createdAt: String(data!.created_at), ...who };
 }
 
 /**
