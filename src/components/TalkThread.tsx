@@ -5,17 +5,14 @@ import { addReviewReply, deleteMyReply, reportReply } from "@/lib/actions";
 import { getDict, type Locale } from "@/lib/i18n";
 import { displayNameOf } from "@/lib/people";
 import type { ReviewReply, TitleReview } from "@/lib/data";
-import { timeAgo } from "@/lib/when";
 import { tap } from "@/lib/haptics";
-import { Avatar } from "./Avatar";
 import { Composer } from "./Composer";
 import { Icon } from "./Icon";
+import { timeAgo } from "@/lib/when";
+import { ReplyRow, TEMP } from "./ReplyRow";
 import { PersonName } from "./PersonRow";
 import { LikeButton } from "./LikeButton";
 import { ReportButton } from "./ReportButton";
-
-/** ردٌّ محليٌّ لم يُقرأ من القاعدة بعد — معرّفُه مؤقّت */
-const TEMP = "temp:";
 
 /**
  * **خيطُ الكلام عن عمل** (D-193، طلب أحمد: «إذا ضغطت على الفيلم أبغى صفحة
@@ -200,7 +197,6 @@ export function TalkThread({
                   <li key={x.replyId}>
                     <ReplyRow
                       reply={x}
-                      t={t}
                       locale={locale}
                       signedIn={signedIn}
                       onReply={() => {
@@ -233,7 +229,6 @@ export function TalkThread({
                           <li key={k.replyId}>
                             <ReplyRow
                               reply={k}
-                              t={t}
                               locale={locale}
                               signedIn={signedIn}
                               onDelete={() => remove(k)}
@@ -337,79 +332,5 @@ function ReplyToggle({
       <Icon name="comment" size={14} />
       {label}
     </button>
-  );
-}
-
-function ReplyRow({
-  reply,
-  t,
-  locale,
-  signedIn,
-  replying,
-  onReply,
-  onDelete,
-  onReport,
-}: {
-  reply: ReviewReply;
-  t: ReturnType<typeof getDict>;
-  locale: Locale;
-  signedIn: boolean;
-  replying?: boolean;
-  onReply?: () => void;
-  onDelete: () => void;
-  onReport: () => void;
-}) {
-  const [reported, setReported] = useState(false);
-  const name = displayNameOf(reply, t.anonymousUser);
-  const pending = reply.replyId.startsWith(TEMP);
-  return (
-    <div className={`flex items-start gap-2 ${pending ? "opacity-60" : ""}`}>
-      <Avatar src={reply.avatar_url} name={name} size={24} alt="" className="shrink-0 mt-0.5" />
-      <div className="min-w-0 flex-1">
-        <p className="text-[13px] leading-snug">
-          <span className="font-semibold">{name}</span>
-          <span className="text-muted text-[11px]"> · {timeAgo(reply.createdAt, t)}</span>
-        </p>
-        <p className="text-[13px] leading-relaxed text-muted whitespace-pre-line">{reply.body}</p>
-        {!pending && (
-          <div className="mt-1 flex items-center gap-3 text-[11px]">
-            {signedIn && onReply && (
-              <button
-                type="button"
-                onClick={onReply}
-                aria-expanded={!!replying}
-                className={`font-semibold transition ${replying ? "text-accent" : "text-muted hover:text-foreground"}`}
-              >
-                {t.talkReply}
-              </button>
-            )}
-            {reply.isMine ? (
-              <button
-                type="button"
-                onClick={onDelete}
-                className="text-muted hover:text-red-300 transition"
-              >
-                {t.talkDeleteReply}
-              </button>
-            ) : (
-              signedIn && (
-                <button
-                  type="button"
-                  disabled={reported}
-                  onClick={() => {
-                    setReported(true);
-                    onReport();
-                  }}
-                  className="text-muted hover:text-red-300 transition disabled:opacity-50"
-                  lang={locale}
-                >
-                  {reported ? t.reportDone : t.reportLabel}
-                </button>
-              )
-            )}
-          </div>
-        )}
-      </div>
-    </div>
   );
 }
