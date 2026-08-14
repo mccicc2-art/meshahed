@@ -24,7 +24,9 @@ import { useRouter } from "next/navigation";
  * من الإصبع، **فيُحسّ القارئُ أنه يشدّ شيئاً له وزن** — والحركةُ الحرفية
  * ١:١ تجعل الصفحةَ تبدو منفصلةً عن يده.
  *
- * **٥ · ولا شيءَ يتحرّك إلا المؤشّر.** جرُّ الصفحة كلِّها يعني إعادةَ
+ * **٥ · ولا شيءَ يتحرّك إلا المؤشّر** — **وارتدادُ النظام مُطفأ**
+ * (`overscroll-behavior-y: none` في `globals.css`، D-245): كان iOS يجرّ
+ * الصفحةَ كلَّها معنا فيتحرّك اثنان لحركةٍ واحدة. جرُّ الصفحة كلِّها يعني إعادةَ
  * تخطيطٍ في كل إطار على قوائمَ فيها عشرات الملصقات. **فالمؤشّرُ وحده
  * ينزل، والمحتوى ثابت** — نفسُ إحساسٍ بثمنٍ أقلّ.
  *
@@ -93,10 +95,18 @@ export function PullToRefresh() {
   if (shown <= 0) return null;
 
   return (
+    /* **المؤشّرُ يظهر تحت الترويسة اللاصقة لا فوق كل شيء** (D-245،
+       لقطةُ أحمد مقارِناً بتويتر): هناك يولد الدوّارُ **بين الرأس الثابت
+       والمحتوى** — وهنا كان يولد عند حافّة الشاشة فوق الترويسة نفسِها.
+       و`--sticky-top` هي نفسُ المرساة التي تلتصق عندها التبويبات،
+       **فتعريفٌ واحدٌ يحكم الاثنين** ولا ينفكّان. */
     <div
       aria-hidden
-      className="fixed inset-x-0 top-0 z-30 flex justify-center pointer-events-none"
-      style={{ transform: `translateY(${Math.max(0, shown - 26)}px)` }}
+      className="fixed inset-x-0 z-20 flex justify-center pointer-events-none"
+      style={{
+        top: "var(--sticky-top)",
+        transform: `translateY(${Math.max(0, shown - 26)}px)`,
+      }}
     >
       <span
         className={`grid place-items-center w-9 h-9 rounded-full bg-surface border border-border shadow-lg ${
