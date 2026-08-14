@@ -11,7 +11,7 @@ import {
   getMyCommunityInvites,
   getCommunityRoom,
   getTitleRooms,
-  getTalkStats,
+  getTalkRooms,
   getFollows,
   getReactions,
   getFollowingIds,
@@ -19,7 +19,7 @@ import {
   getPostViewCounts,
 } from "@/lib/data";
 import { getT, getTabPrefs, getFeedStrangers } from "@/lib/locale";
-import { WorksTalk, groupByWork } from "@/components/WorksTalk";
+import { WorksTalk } from "@/components/WorksTalk";
 import { ActivityFeed } from "@/components/ActivityFeed";
 import { commentViewKey, newsViewKey } from "@/lib/postKeys";
 import { applyTabPrefs, defaultTab } from "@/lib/tabPrefs";
@@ -170,7 +170,10 @@ export default async function PeoplePage({
      من الصفّ، **فلم يعد لهما عدّادٌ يُدفع ثمنُه في كل فتحة** — ولا
      يُقرآن إلا لمن وصل بالرابط. **مكسبٌ لم يكن مقصوداً من إخفاء
      الشريحة، ويُقال لأنه يوضّح لماذا الفرعُ باقٍ.** */
-  const followingFeed = tab === "all" ? [] : await getCommunityFeed(scope);
+  /* ⚠️ **وصار خطُّ الآراء لتبويب «النشاط» وحده** (D-257): كان يُقرأ
+     لتبويب «نقاش» أيضاً ليُجمَّع بالعمل، **وغرفُ النقاش لم تعد تُبنى
+     منه** — فنداءٌ ثقيلٌ سقط عن تبويبٍ لا يعرضه. */
+  const followingFeed = tab === "activity" ? await getCommunityFeed(scope) : [];
   const [myCommunities, myInvites] =
     tab === "all"
       ? await Promise.all([
@@ -200,30 +203,27 @@ export default async function PeoplePage({
      `getConversations` و`myMutualFollows` وترجمةُ أحداث المشاركة، **نقلاً
      لا نسخاً**. والرابط القديم `?tab=inbox` يُحوَّل أعلاه. */
 
-  /* **الأعمال لا الآراء** (D-187): الخطّ يُجمَّع بالعمل في `groupByWork`،
-     فيقرأ المستخدم «عن ماذا يتكلّم الناس» لا «من تكلّم». والترجمة قبل
-     التجميع لا بعده: العنوان مفتاحُ العرض، ولو جُمّع بالعنوان المخزَّن
-     لانقسم العملُ الواحد بين لغتين (D-048). */
-  /* **والخطُّ نفسُه يخدم تبويبين** (D-219): «نقاش» يجمّعه بالعمل،
-     و«تعليقات» يعرضه كما هو صفّاً صفّاً. **نداءٌ واحد لسؤالين**، والترجمةُ
-     قبل التجميع لا بعده كما كانت. */
-  const localized =
-    tab === "talk" || tab === "activity" ? await localizeRows(followingFeed, locale) : [];
-  const works = tab === "talk" ? groupByWork(localized) : [];
+  /* **وخطُّ الآراء لتبويب «النشاط» وحده الآن** (D-257): كان يخدم «نقاش»
+     معه بعد تجميعه بالعمل (`groupByWork`) — **وذلك هو اللبسُ الذي صحّحه
+     أحمد**: «النقاش ليس الريفيو، يختلف». **فغرفُ النقاش صار لها مصدرُها**
+     (`title_talk_rooms`)، وسقط التجميعُ ومعه `getTalkStats`. */
+  const localized = tab === "activity" ? await localizeRows(followingFeed, locale) : [];
 
-  /* أرقامُ البطاقة (D-193): الردودُ ومن شاهد — **نداءٌ واحد للأعمال كلّها**
-     (`title_talk_stats`) لا نداءٌ لكل صفّ. ولا يُدفع إلا في تبويبه، ولا
-     يُدفع لخطٍّ فارغ. **وسقوطُه لا يُسقط الصفّ**: الدالّة تُرجع خريطةً
-     فارغة فتُخفى الأرقام ويبقى الكلامُ مقروءاً. */
-  /* **ونداءٌ واحدٌ يخدم التبويبين** (D-198): «نقاش» يعرض الردودَ والمشاهدين
-     على بطاقة العمل، و«النشاط» يعرض «كم شاهده» في ذيل الصفّ — **ومصدرٌ
-     واحد لقسمين خيرٌ من دالّتين تختلفان يوماً.** */
-  /* ⚠️ **ولم يعد يُدفع لتبويب «النشاط»** (D-237): كان يُقرأ منه
-     `watchers` في ذيل كل صفّ **بمعنى خاطئ** — «كم شاهد العمل» في مكانٍ
-     يسأل «كم رأى المنشور». **والعدّادُ الصحيح جدولُه الخاصّ**
-     (`post_views`)، فسقط المستهلكُ الثاني وبقي مستهلكُه الأوّل: بطاقةُ
-     «نقاش». **ونداءٌ واحدٌ خدم قسمين حتى افترق معناهما** (كان D-198). */
-  const talkStats = works.length ? await getTalkStats() : undefined;
+  /* **غرفُ النقاش الحيّة** (الهجرة ٧٨) — نداءٌ واحد للتبويب كلِّه، ولا
+     يُدفع في غيره. **والعنوانُ والملصقُ يأتيان مع الصفّ** فلا نداءَ
+     TMDB لكل بطاقة (D-164).
+
+     **و«من أتابع» يُرشَّح هنا لا في SQL:** الغرفةُ ليست شخصاً — **هي
+     تصير «غرفةَ من أتابع» إذا تكلّم فيها أحدُهم**، وذلك سؤالٌ عن
+     الوجوه التي تحملها البطاقة أصلاً. **ودالّةُ SQL ثانيةٌ لفرقٍ يُقرأ
+     من نفس الصفّ نسخةٌ تفترق يوماً** (D-145). */
+  const rooms = tab === "talk" ? await getTalkRooms(40) : [];
+  const talkFollowing = tab === "talk" && scope === "following" ? await getFollowingIds() : null;
+  const visibleRooms = talkFollowing
+    ? rooms.filter(
+        (r) => r.faces.some((p) => talkFollowing.has(p.id)) || r.faces.some((p) => p.id === user.id),
+      )
+    : rooms;
 
   /* «أشخاص لمتابعتهم» (D-126) — تُطلب حين يكون الخطّ هزيلاً لا فارغاً
      وحده: دائرةٌ من شخصين تُنتج خطّاً صامتاً كدائرةٍ من صفر، والفرق أن
@@ -469,7 +469,7 @@ export default async function PeoplePage({
               }
               locale={locale}
             />
-          ) : works.length === 0 ? (
+          ) : visibleRooms.length === 0 ? (
             /* **وفراغُ «الكل» غيرُ فراغ «من أتابع»** — ولكلٍّ جملتُه:
                الأوّل يعني «لم يكتب أحدٌ بعد» فيدعوك لتكون الأوّل، والثاني
                يعني «دائرتُك صامتة» فيدلّك على «الكل» (نمط D-106). */
@@ -477,7 +477,7 @@ export default async function PeoplePage({
               {scope === "all" ? t.worksEmptyAll : t.worksEmptyFollowing}
             </p>
           ) : (
-            <WorksTalk works={works} stats={talkStats} locale={locale} />
+            <WorksTalk rooms={visibleRooms} locale={locale} />
           )}
         </section>
       )}
