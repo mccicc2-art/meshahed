@@ -92,6 +92,7 @@ export default async function PeoplePage({
   searchParams: Promise<{
     tab?: string;
     scope?: string;
+    sort?: string;
 
     c?: string;
     with?: string;
@@ -106,6 +107,7 @@ export default async function PeoplePage({
   const {
     tab: tabParam,
     scope: sParam,
+    sort: sortParam,
     c: cParam,
     with: withParam,
   } = await searchParams;
@@ -126,6 +128,27 @@ export default async function PeoplePage({
      تعليقه)، **ولا هجرةَ جديدة ولا سياسة قراءةٍ خامسة** حين تُشغَّل:
      الدالّة تُخفي الاسم في SQL وتستثني المبلَّغ عنه وصاحبَ الحساب. */
   const scope: "all" | "following" = sParam === "following" ? "following" : "all";
+
+  /**
+   * **فرزُ خطّ النشاط** (D-240) — ثلاثُ رقاقات: **لك · الأحدث · الأكثر
+   * تفاعلاً**، و«لك» هي الافتراضية.
+   *
+   * **ولماذا لم تبقَ «الكل/من أتابع» هنا:** «الكل» تعني حرفياً **«كلَّ من
+   * في Loopz»**، وهي ليست ما يريده أحد؛ **و«من أتابع» تُقصي كلامَ غريبٍ
+   * عن مسلسلٍ في مكتبتك وهو أقربُ إليك من كلام صديقك عن عملٍ لا تعرفه.**
+   * **فـ«لك» تجمع الاثنين**: دائرتُك **ومكتبتُك**.
+   *
+   * ⚠️ **والرقاقتان القديمتان تبقيان لتبويب «نقاش»**: هناك الصفُّ **عملٌ**
+   * لا حدث، **وترتيبٌ بالتفاعل على بطاقةِ عملٍ ليس له معنى** — سؤالُ ذاك
+   * التبويب «كلامُ مَن» لا «أيُّ كلامٍ أوّلاً». **رقاقتان بمعنيين في
+   * سطحين، لا رقاقةٌ واحدة تكذب في أحدهما.**
+   *
+   * **ولا `sort=top` قبل أن يكون تفاعل**: انظر تحذيري لأحمد — خطٌّ
+   * أكثرُ إعجاباته صفر يُرتَّب بالإعجاب فيبدو عشوائياً. **يبقى الخيار
+   * لأن `views` تملؤه من أوّل يوم بعد الهجرة ٧٤**، وهي مقياسٌ يتحرّك.
+   */
+  const feedSort: "for-you" | "latest" | "top" =
+    sortParam === "latest" ? "latest" : sortParam === "top" ? "top" : "for-you";
   /* **سقطا مع خطّ البطاقات (D-187):** مرشِّحُ نوع الحدث (`?k=`) —
      صار «الأعمال» مراجعاتٍ كلَّها فلا نوعَ يُرشَّح — وترتيبُ «الأكثر
      إعجاباً» (`?sort=top`): الصفُّ عملٌ لا حدثٌ، وإعجاباتُ الأعمال ليست
@@ -215,10 +238,11 @@ export default async function PeoplePage({
      **وسقفُها اثنا عشر لا ثلاثون** بعد الدمج: الخبرُ يُولَّد ذاتياً كلَّ
      دورةٍ والتعليقُ يُكتب بيد إنسان، **فسقفٌ واسعٌ يدفن كلامَ الناس تحت
      رصدنا نحن** — والتبويب اسمُه «النشاط» لا «الأخبار».
-     **ولا خبرَ في «من أتابع»**: الرقاقةُ تسأل «كلامُ مَن؟»، **وخبرُنا
-     ليس كلامَ أحدٍ تتابعه** — فبقاؤه فيها يجعل الرقاقتين بلا فرق. */
-  const genNews =
-    tab === "activity" && scope === "all" ? await getLoopzNews(12) : [];
+     ⚠️ **وكان يسقط في «من أتابع»** بحجّة أن خبرَنا ليس كلامَ من تتابع.
+     **والرقاقاتُ الثلاث نقضت الحجّة** (D-240): «لك» ليست «كلامُ مَن»
+     بل **«ما يخصّك»**، **ونشرتُنا تخصّك بحكم فتحك التطبيق**. فيُدفع
+     للتبويب كلِّه، **والترشيحُ في `ActivityFeed` يقرّر بقاءَه.** */
+  const genNews = tab === "activity" ? await getLoopzNews(12) : [];
   /* **التجديدُ بحركة المرور** (اختيارُ أحمد في D-210، ويُعاد هنا): من فتح
      التبويب بعد عشر دقائق يُطلق دورةَ رصدٍ **بعد إرسال الصفحة** فلا
      ينتظرها — ولا صفَّ cron ولا سرَّ في البيئة.
@@ -361,30 +385,42 @@ export default async function PeoplePage({
               بنطاقين، **وتبويبان لخطّين رفيعين يجعلان كليهما يبدو ميّتاً**.
               وهما روابطُ لا أزرار: الحالة تسكن الرابط فيُشارَك ويعود
               إليه زرُّ الرجوع (D-095). */}
+          {/* **ثلاثُ رقاقاتٍ للنشاط، واثنتان للنقاش** (D-240) — انظر حجّة
+              `feedSort` أعلاه. **وثلاثٌ تسع صفَّ الهاتف بلا قصٍّ ولا
+              تمريرٍ أفقيّ**: التمريرُ الأفقيّ في رأس الصفحة **يخفي
+              خياراً**، ومن لا يمرّر لا يعرف أنه موجود. */}
           <div className="flex items-center gap-2 mb-4">
-            {(
-              [
-                { key: "all", label: t.worksScopeAll, href: `/people?tab=${tab}` },
-                {
-                  key: "following",
-                  label: t.worksScopeFollowing,
-                  href: `/people?tab=${tab}&scope=following`,
-                },
-              ] as const
-            ).map((c) => (
-              <Link
-                key={c.key}
-                href={c.href}
-                aria-current={scope === c.key ? "true" : undefined}
-                className={
-                  scope === c.key
-                    ? "px-3.5 py-1.5 rounded-full text-[13px] font-bold bg-accent text-black"
-                    : "px-3.5 py-1.5 rounded-full text-[13px] font-semibold border border-border text-muted hover:text-foreground transition"
-                }
-              >
-                {c.label}
-              </Link>
-            ))}
+            {(tab === "activity"
+              ? ([
+                  { key: "for-you", label: t.feedForYou, href: `/people?tab=${tab}` },
+                  { key: "latest", label: t.feedLatest, href: `/people?tab=${tab}&sort=latest` },
+                  { key: "top", label: t.feedTop, href: `/people?tab=${tab}&sort=top` },
+                ] as const)
+              : ([
+                  { key: "all", label: t.worksScopeAll, href: `/people?tab=${tab}` },
+                  {
+                    key: "following",
+                    label: t.worksScopeFollowing,
+                    href: `/people?tab=${tab}&scope=following`,
+                  },
+                ] as const)
+            ).map((c) => {
+              const on = tab === "activity" ? feedSort === c.key : scope === c.key;
+              return (
+                <Link
+                  key={c.key}
+                  href={c.href}
+                  aria-current={on ? "true" : undefined}
+                  className={
+                    on
+                      ? "px-3.5 py-1.5 rounded-full text-[13px] font-bold bg-accent text-black"
+                      : "px-3.5 py-1.5 rounded-full text-[13px] font-semibold border border-border text-muted hover:text-foreground transition"
+                  }
+                >
+                  {c.label}
+                </Link>
+              );
+            })}
           </div>
 
           {/* **الرقاقتان فوق التبويبين معاً** (D-219): النطاقُ سؤالٌ عن
@@ -398,9 +434,19 @@ export default async function PeoplePage({
               followed={followed}
               postLikes={postLikes}
               views={viewCounts}
+              sort={feedSort}
               followingIds={followingIds}
               newsReplies={newsReplies}
-              emptyText={scope === "all" ? t.worksEmptyAll : t.worksEmptyFollowing}
+              /* **وفراغُ «لك» جملتُه فعلٌ لا اعتذار** (D-240): يقول ماذا
+                 تفعل ليمتلئ، **لا «لا يوجد شيء»** — والفراغُ الافتراضيّ
+                 يُقرأ عطلاً ما لم يقل سببَه (D-181). */
+              emptyText={
+                feedSort === "for-you"
+                  ? t.feedEmptyForYou
+                  : scope === "all"
+                    ? t.worksEmptyAll
+                    : t.worksEmptyFollowing
+              }
               locale={locale}
             />
           ) : works.length === 0 ? (
