@@ -141,21 +141,45 @@ export function threadOgCard({
             textAlign: rtl ? "right" : "left",
           }}
         >
-          {/* ⚠️ **`direction` تُكتب على عقدة النصّ نفسِها لا على الجذر
-              وحده**: satori لا يورّثها كما يورّثها المتصفّح، **فالسطرُ
-              الثاني من جملةٍ عربيةٍ ملتفّة كان يُرسم بكلماتٍ معكوسة** —
-              فُحص حيّاً على رأيٍ من سطرين ثم أُعيد فحصُه. */}
-          <div
-            style={{
-              display: "flex",
-              fontSize: fontSize(body.length),
-              lineHeight: 1.28,
-              direction: rtl ? "rtl" : "ltr",
-              textAlign: rtl ? "right" : "left",
-            }}
-          >
-            {body}
-          </div>
+          {/* ================= لماذا الكلماتُ صناديقُ لا نصٌّ واحد =================
+              ⚠️ **satori ليس متصفّحاً، وثنائيةُ الاتجاه فيه تقف عند السطر
+              الأول**: جملةٌ عربيةٌ تلتفّ إلى سطرين تُرسم **بكلماتٍ معكوسةٍ
+              في السطر الثاني** — فُحص حيّاً ثلاثَ مرّات، **و`direction`
+              على الجذر ثم على عقدة النصّ لم يُصلحه.**
+
+              **فالالتفافُ يُدار هنا لا هناك:** كلُّ كلمةٍ صندوقٌ مستقلّ في
+              صفٍّ `wrap` معكوسِ الاتجاه — **فيبدأ الملءُ من اليمين ويهبط
+              إلى السطر التالي من اليمين**، وهو سلوكُ الفقرة العربية نفسُه.
+              **والتشكيلُ لا يُكسَر**: العربيةُ لا تصل حروفَها عبر المسافة،
+              فحدُّ الكلمة حدٌّ أصلاً.
+
+              **واللاتينيّ يبقى نصّاً واحداً** — لا عطلَ فيه، **وحلٌّ يُطبَّق
+              حيث لا داءَ يصير داءً.** */}
+          {rtl ? (
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                flexDirection: "row-reverse",
+                justifyContent: "flex-start",
+                fontSize: fontSize(body.length),
+                lineHeight: 1.28,
+              }}
+            >
+              {body
+                .split(/\s+/)
+                .filter(Boolean)
+                .map((w, i) => (
+                  <div key={`${i}-${w}`} style={{ display: "flex", margin: "0 7px" }}>
+                    {w}
+                  </div>
+                ))}
+            </div>
+          ) : (
+            <div style={{ display: "flex", fontSize: fontSize(body.length), lineHeight: 1.28 }}>
+              {body}
+            </div>
+          )}
           {(work || badge) && (
             <div
               style={{
