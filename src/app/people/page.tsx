@@ -18,7 +18,7 @@ import {
   getNewsReplyCounts,
   getPostViewCounts,
 } from "@/lib/data";
-import { getT, getTabPrefs } from "@/lib/locale";
+import { getT, getTabPrefs, getFeedStrangers } from "@/lib/locale";
 import { WorksTalk, groupByWork } from "@/components/WorksTalk";
 import { ActivityFeed } from "@/components/ActivityFeed";
 import { commentViewKey, newsViewKey } from "@/lib/postKeys";
@@ -103,6 +103,9 @@ export default async function PeoplePage({
 
   const { locale, t } = await getT();
   const tabPrefs = await getTabPrefs("community");
+  /* **من يظهر في «النشاط»** (D-255) — كوكي يُقرأ قبل أوّل رسمة، فلا
+     يومض صفُّ غريبٍ ثم يختفي */
+  const showStrangers = await getFeedStrangers();
 
   const {
     tab: tabParam,
@@ -403,6 +406,7 @@ export default async function PeoplePage({
             locale={locale}
             prefs={tabPrefs}
             labels={Object.fromEntries(tabs.map((x) => [x.key, x.label]))}
+            strangers={showStrangers}
           />
         }
         /* صفُّ الفرز داخل الرأس اللاصق — انظر `filterChips` أعلاه (D-245) */
@@ -451,6 +455,8 @@ export default async function PeoplePage({
               sort={feedSort}
               followingIds={followingIds}
               newsReplies={newsReplies}
+              /* **مفتاحُ «من يظهر»** (D-255) — يُقرأ من الكوكي على الخادم */
+              showStrangers={showStrangers}
               /* **وفراغُ «لك» جملتُه فعلٌ لا اعتذار** (D-240): يقول ماذا
                  تفعل ليمتلئ، **لا «لا يوجد شيء»** — والفراغُ الافتراضيّ
                  يُقرأ عطلاً ما لم يقل سببَه (D-181). */
