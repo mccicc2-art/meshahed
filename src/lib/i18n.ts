@@ -621,11 +621,15 @@ const ar = {
   undoNotWatched: "لم أشاهده",
   /* **صفحةُ النشرة** (D-239) — «النشرة» لا «الخبر»: **الخبرُ حدثٌ في
      العالم، والنشرةُ ما كتبناه نحن عنه** — والصفحةُ صفحتُنا لا صفحتُه */
-  postPageTitle: "نشرة Loopz",
+  postPageTitle: "منشور",
   postRepliesTitle: "الردود",
   postNoReplies: "لا ردود بعد — كن أوّل من يتكلّم",
   postReplyPlaceholder: "اكتب ردّك…",
   postOpenReplies: "عرض الردود",
+  /* **«منشور» و«تعليق» لا «صفحة»** (D-242): العنوانُ يسمّي **ما تقرؤه**
+     لا **أين أنت** — وهو نصُّ ترويسة تويتر نفسُه */
+  reviewPageTitle: "تعليق",
+  reviewPageMeta: (who: string, title: string) => `رأيُ ${who} في ${title}`,
   /* **ثلاثُ رقاقاتٍ للنشاط** (D-240). **و«تريندينق» حُذفت من اقتراح
      أحمد**: هي و«الأكثر لايك» ترتيبٌ واحد بلبوسين — **ورقاقتان تُنتجان
      نفسَ القائمة رقاقةٌ واحدة تُربك** (قاعدة ٣: لا عائلةَ ثانية) */
@@ -1716,11 +1720,13 @@ const en: Dict = {
   talkWatchersHint: "watching",
   postViewsHint: "post views",
   undoNotWatched: "Not watched",
-  postPageTitle: "Loopz post",
+  postPageTitle: "Post",
   postRepliesTitle: "Replies",
   postNoReplies: "No replies yet — be the first",
   postReplyPlaceholder: "Write a reply…",
   postOpenReplies: "See replies",
+  reviewPageTitle: "Comment",
+  reviewPageMeta: (who: string, title: string) => `${who} on ${title}`,
   feedForYou: "For you",
   feedLatest: "Latest",
   feedTop: "Top",

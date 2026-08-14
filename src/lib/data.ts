@@ -1963,6 +1963,35 @@ export interface NewsReply {
   isMine: boolean;
 }
 
+/**
+ * **وجهي واسمي** (D-242) — لصفِّ الكتابة وللنسخة التفاؤلية.
+ *
+ * **ولماذا يُقرأ في الصفحة لا في المكوّن:** المكوّنُ عميل، **ونداءٌ منه
+ * يعني وميضاً**: يُرسم الصفُّ بلا وجهٍ ثم يقفز. والصفحةُ تعرفه قبل أن
+ * تُرسل الحرفَ الأوّل.
+ */
+export const getMyProfileLite = cache(
+  async (): Promise<{ name: string; avatar: string | null } | null> => {
+    try {
+      const user = await getUser();
+      if (!user) return null;
+      const supabase = await createClient();
+      const { data } = await supabase
+        .from("profiles")
+        .select("nickname, username, avatar_url, hide_name")
+        .eq("id", user.id)
+        .maybeSingle();
+      const hidden = !!data?.hide_name;
+      return {
+        name: hidden ? "" : (data?.nickname ?? data?.username ?? ""),
+        avatar: hidden ? null : (data?.avatar_url ?? null),
+      };
+    } catch {
+      return null;
+    }
+  },
+);
+
 export async function getNewsThread(postKey: string): Promise<NewsReply[]> {
   const key = String(postKey ?? "").trim();
   if (!key) return [];
