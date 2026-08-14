@@ -627,6 +627,8 @@ const ar = {
      سطرٍ بعينه**، ومن الخطّ أنت **تفتح الغرفةَ لتكتب فيها** — ولم تختر بعدُ
      على أيّ سطرٍ تردّ. **وفعلان مختلفان كلمتان مختلفتان.** */
   actionComment: "تعليق",
+  /** توستُ الإرسال — **الإيصالُ لأن الردّ لا يظهر في الخطّ** (D-227) */
+  replySentToast: "أُرسِل ردُّك",
   talkReplyingTo: (name: string) => `ردّاً على ${name}`,
   talkDeleteReply: "حذف",
   /* **و`talkHeading` («الكلام») حُذف** (D-217): طلبُ أحمد «تحتها مباشرة
@@ -1700,6 +1702,7 @@ const en: Dict = {
       : `Average of ${num(n, "en")} people talking about it`,
   talkReply: "Reply",
   actionComment: "Comment",
+  replySentToast: "Reply sent",
   talkReplyingTo: (name: string) => `Replying to ${name}`,
   talkDeleteReply: "Delete",
   talkOpenTitlePage: "Open the title page",
