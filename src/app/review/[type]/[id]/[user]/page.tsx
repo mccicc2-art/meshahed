@@ -4,12 +4,14 @@ import { notFound } from "next/navigation";
 import {
   getUser,
   getMyProfileLite,
+  getMyArtFor,
+  getCommunityRating,
   getTitleReviews,
   getTitleReplies,
   getPostViewCounts,
 } from "@/lib/data";
 import { displayNameOf } from "@/lib/people";
-import { getMovie, getTv } from "@/lib/tmdb";
+import { getMovie, getTv, posterUrl, backdropUrl } from "@/lib/tmdb";
 import { displayWorkTitle } from "@/lib/wikidata";
 import { commentViewKey } from "@/lib/postKeys";
 import { dirOf } from "@/lib/dir";
@@ -17,7 +19,9 @@ import { getT } from "@/lib/locale";
 import { Avatar } from "@/components/Avatar";
 import { LikeButton } from "@/components/LikeButton";
 import { ShareTitleButton } from "@/components/ShareTitleButton";
-import { ThreadTopBar, ThreadDateLine, ThreadActionBar } from "@/components/thread/ThreadShell";
+import { Icon } from "@/components/Icon";
+import { TitleHero } from "@/components/TitleHero";
+import { ThreadDateLine, ThreadActionBar } from "@/components/thread/ThreadShell";
 import { ThreadReplies } from "@/components/thread/ThreadReplies";
 
 export const dynamic = "force-dynamic";
@@ -89,11 +93,30 @@ export default async function ReviewPage({
      يقول إنه ميّت — **وصفحةٌ فارغة تُقرأ عطلاً في التطبيق** (D-181). */
   if (!r) notFound();
 
-  const [profile, views, work] = await Promise.all([
+  /* **الغلافُ بنفس مصادر صفحة الغرفة** (D-244، طلبُ أحمد: «أحتاج الغلاف
+     تبع الفلم فوق»): TMDB للرسميّ، و`getMyArtFor` لاختيارك أنت — **صورتان
+     مختلفتان لعملٍ واحد تُقرآن عملين** (D-131). و`getTv`/`getMovie` تمرّان
+     على ذاكرة الطلب فلا يُدفع النداءُ مرّتين مع `workTitle`. */
+  const [profile, views, work, details, myArt, community] = await Promise.all([
     me ? getMyProfileLite() : Promise.resolve(null),
     getPostViewCounts([commentViewKey(authorId, mediaType, tmdbId)]),
     workTitle(tmdbId, mediaType, locale),
+    (mediaType === "tv" ? getTv(tmdbId) : getMovie(tmdbId)).catch(() => null),
+    getMyArtFor(tmdbId, mediaType).catch(() => null),
+    getCommunityRating(tmdbId, mediaType).catch(() => ({ avg: 0, count: 0 })),
   ]);
+  const poster = posterUrl(
+    myArt?.poster_path ??
+      (details as { poster_path?: string | null } | null)?.poster_path ??
+      null,
+    "w185",
+  );
+  const backdrop = backdropUrl(
+    myArt?.backdrop_path ??
+      (details as { backdrop_path?: string | null } | null)?.backdrop_path ??
+      null,
+    "w780",
+  );
 
   const replies = allReplies
     .filter((x) => x.reviewUserId === authorId)
@@ -115,11 +138,36 @@ export default async function ReviewPage({
   const titleHref = `/${mediaType === "tv" ? "show" : "movie"}/${tmdbId}`;
 
   return (
-    <main className="pb-24 px-4 max-w-[680px] mx-auto">
-      <ThreadTopBar title={t.reviewPageTitle} locale={locale} />
+    <main className="pb-24">
+      {/* **الغلافُ فوق، والبابُ إلى غرفة العمل في طرفه** (D-244، طلبُ
+          أحمد: «فيه زر يدخّلني لصفحة تعليقات الفلم») — **عكسُ سهم صفحة
+          الغرفة**: هناك الطرفُ يودّي إلى العمل، وهنا إلى كلامه. **الموضعُ
+          واحدٌ والوجهةُ لصاحب الصفحة.** */}
+      <TitleHero
+        backdrop={backdrop}
+        poster={poster}
+        title={work}
+        href={titleHref}
+        mediaType={mediaType}
+        avg={Math.round(community.avg * 10) / 10}
+        count={community.count}
+        ratingLabel={t.communityRating}
+        locale={locale}
+        end={
+          <Link
+            href={`/talk/${mediaType}/${tmdbId}`}
+            aria-label={t.reviewOpenTalk}
+            title={t.reviewOpenTalk}
+            className="w-11 h-11 rounded-full bg-black/35 backdrop-blur-md border border-white/15 grid place-items-center text-white/90 active:scale-95 transition"
+          >
+            <Icon name="comment" size={18} />
+          </Link>
+        }
+      />
 
+      <div className="px-4 sm:px-6 max-w-[680px] mx-auto">
       {/* ============ التعليقُ نفسُه ============ */}
-      <article className="pt-3">
+      <article className="pt-4">
         <div className="flex items-start gap-3">
           {whoHref ? (
             <Link href={whoHref} prefetch={false} className="shrink-0 active:opacity-80 transition">
@@ -208,6 +256,7 @@ export default async function ReviewPage({
         locale={locale}
         signedIn={!!me}
       />
+      </div>
     </main>
   );
 }
