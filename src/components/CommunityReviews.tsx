@@ -1,6 +1,8 @@
+import Link from "next/link";
 import { getDict, type Locale } from "@/lib/i18n";
 import type { ReviewReply, TitleReview } from "@/lib/data";
 import { TalkThread } from "./TalkThread";
+import { Icon } from "./Icon";
 
 /**
  * تبويبُ «الآراء» في صفحة العمل — **ترويسةُ التقييم، ثم الخيطُ نفسه**.
@@ -60,6 +62,22 @@ export function CommunityReviews({
           <span className="text-xs text-muted">{t.communityCount(count)}</span>
         </div>
       )}
+
+      {/* **بابُ غرفة النقاش من صفحة العمل** (D-257).
+          **ولماذا بابٌ هنا ولا تبويبَ رابع:** الغرفةُ صارت كياناً مستقلّاً
+          (`title_posts`) **ولم يكن يصلها من صفحة العمل طريقٌ قطّ** —
+          يصلها من تبويب «نقاش» ومن صفحة تعليق. **وسطحٌ لا يُوصَل إليه من
+          حيث يُطلَب لا يُستعمل.**
+          **وسطرٌ لا تبويب**: التبويبُ الرابع يزاحم «الآراء» و«المجتمع»
+          على انتباهٍ واحد، **ورقاقةٌ تحت الترويسة تقول «هنا أيضاً حديث»
+          بلا أن تدّعي أنها نصفُ الصفحة.** */}
+      <Link
+        href={`/talk/${mediaType}/${tmdbId}`}
+        className="mb-3 inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-3 py-1.5 text-[12px] font-semibold text-muted hover:text-foreground hover:border-[color:var(--divider)] active:scale-95 transition"
+      >
+        <Icon name="comment" size={13} className="shrink-0 text-accent" />
+        {t.reviewOpenTalk}
+      </Link>
 
       {/* الحالةُ الفارغة داخل `TalkThread` لا هنا: من يملك الرسم يملك
           فراغه — وإلا صار للفراغ صندوقان */}

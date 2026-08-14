@@ -76,7 +76,14 @@ export async function Navbar() {
                   أقربُ إلى صورة صاحب الحساب (D-187) */}
               <MessagesLink unread={unreadMessages} locale={locale} />
 
-              <NotificationBell unread={unreadSignals} locale={locale} />
+              {/* **واسمُك يُمرَّر معه** (D-257): إشعارُ الردّ يفتح صفحةَ
+                  **تعليقِك** — ومسارُها `‎/review/<type>/<id>/<username>`،
+                  ولا يعرف الجرسُ اسمَك من الإشارة وحدها. */}
+              <NotificationBell
+                unread={unreadSignals}
+                myUsername={profile?.username ?? null}
+                locale={locale}
+              />
 
               {/* تختفي في الرئيسية وحدها — ترويسة الرئيسية تعرضها كبيرة */}
               <Suspense fallback={null}>

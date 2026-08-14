@@ -27,10 +27,13 @@ import { sheetScroll } from "./ui/controls";
  */
 export function NotificationBell({
   unread,
+  myUsername = null,
   locale,
 }: {
   /** العدّاد المحسوب على الخادم — يُرسم فوراً بلا وميض */
   unread: number;
+  /** اسمُك — **وجهةُ إشعار الردّ صفحةُ تعليقك** (D-257)، انظر `href` */
+  myUsername?: string | null;
   locale: Locale;
 }) {
   const t = getDict(locale);
@@ -126,15 +129,24 @@ export function NotificationBell({
                    بقيةُ الإشعارات تفتح ملفَّ الفاعل لأن الخبرَ عنه («تابعك»
                    · «أعجبه رأيك») — **أما الردُّ فخبرٌ عن حديثٍ ينتظرك**،
                    وفتحُ ملفِّ من ردّ يترك الحلقةَ مفتوحةً كما كانت: **علمتَ
-                   ولم تصل إلى ما تردّ عليه.** فيفتح غرفةَ الكلام. */
+                   ولم تصل إلى ما تردّ عليه.**
+
+                   ⚠️ **وكانت `‎/talk` حتى D-257 — وصارت كذبةً يومَها**:
+                   الردُّ ردٌّ على **تعليقك**، و`‎/talk` صارت نقاشاً خالصاً
+                   لا تعليقَ فيها. **فالوجهةُ صفحةُ تعليقك نفسِها.**
+                   **وبلا اسمٍ تسقط إلى صفحة العمل** — أقربُ ما نملك،
+                   ولا رابطَ ميّت. */
+                const titleHref = s.tmdbId
+                  ? `/${s.mediaType === "tv" ? "show" : "movie"}/${s.tmdbId}`
+                  : null;
                 const href =
                   s.kind === "reply" && s.tmdbId
-                    ? `/talk/${s.mediaType ?? "movie"}/${s.tmdbId}`
+                    ? myUsername
+                      ? `/review/${s.mediaType ?? "movie"}/${s.tmdbId}/${myUsername}`
+                      : titleHref
                     : s.person.username
                       ? `/u/${s.person.username}`
-                      : s.tmdbId
-                        ? `/${s.mediaType === "tv" ? "show" : "movie"}/${s.tmdbId}`
-                        : null;
+                      : titleHref;
                 const body = (
                   <span className="flex items-center gap-3 py-3">
                     <Avatar
