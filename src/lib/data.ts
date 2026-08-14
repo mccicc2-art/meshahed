@@ -1915,6 +1915,29 @@ export async function getTalkStats(): Promise<Map<string, TalkStat>> {
   }
 }
 
+/**
+ * **عدّادُ ردودِ النشرات — نداءٌ واحد للخطّ كلِّه** (D-236/D-164).
+ *
+ * **وسقوطُه صامت**: قبل تشغيل الهجرة ٧٣ تعود الخريطةُ فارغةً فتُخفى
+ * الأرقام ويبقى الخطُّ مقروءاً — **آمنٌ عند الغياب** (D-151).
+ */
+export async function getNewsReplyCounts(keys: string[]): Promise<Map<string, number>> {
+  const out = new Map<string, number>();
+  const unique = [...new Set(keys)].slice(0, 200);
+  if (!unique.length) return out;
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("news_reply_counts", { keys: unique });
+    if (error || !data) return out;
+    for (const r of data as { post_key: string; replies: number }[]) {
+      out.set(String(r.post_key), Number(r.replies));
+    }
+    return out;
+  } catch {
+    return out;
+  }
+}
+
 /** مراجعات عمل معيّن مع أصحابها */
 export async function getTitleReviews(
   tmdbId: number,

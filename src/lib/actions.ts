@@ -3316,6 +3316,38 @@ export async function addReviewReply(input: {
 }
 
 /**
+ * **ردٌّ على نشرةِ Loopz** (D-236) — جدولٌ ثالثٌ لأن نشرتَنا لا صاحبَ لها
+ * في `auth.users`، والحجّةُ كاملةً في `supabase/news_post_replies.sql`.
+ *
+ * **ونفسُ دلوِ `addReviewReply` وحدودِه حرفاً** — خمسةَ عشرَ في الدقيقة
+ * وألفُ حرف: **قاعدتان لفعلٍ واحد يتعلّمهما المستخدم مرّتين.**
+ */
+export async function addNewsReply(input: {
+  postKey: string;
+  body: string;
+  parentId?: string | null;
+}): Promise<void> {
+  const postKey = String(input.postKey ?? "").trim().slice(0, 120);
+  if (!postKey) return;
+  const parentId = input.parentId ? uuid(input.parentId) : null;
+
+  const { supabase, user } = await requireUser("reply", 15, 60_000);
+
+  const body = String(input.body ?? "").replace(/\s{3,}/g, "  ").trim().slice(0, 1000);
+  if (!body) return;
+
+  const { error } = await supabase.from("news_post_replies").insert({
+    post_key: postKey,
+    user_id: user.id,
+    body,
+    parent_id: parentId,
+  });
+  if (error) fail(error);
+
+  revalidatePath("/people");
+}
+
+/**
  * حذفُ ردّي — والسياسةُ تمنع حذفَ ردِّ غيري، فلا فحصَ قبل الكتابة.
  *
  * والردودُ عليه تُحذف معه (`on delete cascade`): خيطٌ رأسُه محذوفٌ
