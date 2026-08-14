@@ -190,8 +190,12 @@ export default async function PeoplePage({
   /* **ونداءٌ واحدٌ يخدم التبويبين** (D-198): «نقاش» يعرض الردودَ والمشاهدين
      على بطاقة العمل، و«النشاط» يعرض «كم شاهده» في ذيل الصفّ — **ومصدرٌ
      واحد لقسمين خيرٌ من دالّتين تختلفان يوماً.** */
-  const talkStats =
-    works.length || tab === "activity" ? await getTalkStats() : undefined;
+  /* ⚠️ **ولم يعد يُدفع لتبويب «النشاط»** (D-237): كان يُقرأ منه
+     `watchers` في ذيل كل صفّ **بمعنى خاطئ** — «كم شاهد العمل» في مكانٍ
+     يسأل «كم رأى المنشور». **والعدّادُ الصحيح جدولُه الخاصّ**
+     (`post_views`)، فسقط المستهلكُ الثاني وبقي مستهلكُه الأوّل: بطاقةُ
+     «نقاش». **ونداءٌ واحدٌ خدم قسمين حتى افترق معناهما** (كان D-198). */
+  const talkStats = works.length ? await getTalkStats() : undefined;
 
   /* «أشخاص لمتابعتهم» (D-126) — تُطلب حين يكون الخطّ هزيلاً لا فارغاً
      وحده: دائرةٌ من شخصين تُنتج خطّاً صامتاً كدائرةٍ من صفر، والفرق أن
@@ -246,6 +250,7 @@ export default async function PeoplePage({
   const newsReplies = genNews.length
     ? await getNewsReplyCounts(genNews.map((n) => n.key))
     : new Map<string, number>();
+
 
   /* **سقط مع خطّ البطاقات:** «أشخاصٌ لمتابعتهم» (D-126) والصورُ
      العرضية (نداءُ TMDB لأوائل الخطّ). صفُّ «الأعمال» يعرض الملصق الذي
@@ -377,7 +382,6 @@ export default async function PeoplePage({
               meId={user.id}
               followed={followed}
               postLikes={postLikes}
-              stats={talkStats}
               followingIds={followingIds}
               newsReplies={newsReplies}
               emptyText={scope === "all" ? t.worksEmptyAll : t.worksEmptyFollowing}
