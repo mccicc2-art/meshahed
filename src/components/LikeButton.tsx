@@ -59,7 +59,17 @@ export function LikeButton({
   const [count, setCount] = useState(likes);
   const [pending, start] = useTransition();
 
+  /**
+   * **والصفرُ يُخفى** (D-219/D-134/D-216) — كان كلُّ صفٍّ في الخطّ يحمل
+   * «❤ ٠»، **فتُقرأ الصفحةُ جداراً من أصفار** بينما جارُه `WorksTalk`
+   * يُخفيها من أوّل يوم: **لغتان لرقمٍ واحد في صفحةٍ واحدة**.
+   * **ورقمٌ يُقرأ خطأً أسوأ من لا رقم** — والصفرُ هنا لا يقول «لم يُعجب
+   * أحد»، يقول «هذا التطبيق فارغ».
+   */
   if (isMine || readOnly) {
+    /* صفرٌ بلا زرّ لا يقول شيئاً ولا يُضغط — **وأداةٌ لا تفعل ولا تخبر
+       تُحذف من الصفّ** (D-138/D-142) */
+    if (count === 0) return null;
     return (
       <span className="flex items-center gap-1.5 text-[12px] text-muted" title={t.likesLabel}>
         <Icon name="like" size={16} />
@@ -89,6 +99,9 @@ export function LikeButton({
     });
   }
 
+  /* **حشوةٌ بهامشٍ سالبٍ يقابلها**: الرقمُ حين يغيب يترك رمزاً بعرض ١٦
+     بكسل هدفَ لمسٍ وحيداً — **فالزرُّ يُوسَّع ولا يتحرّك**، والهامشُ متماثلُ
+     الطرفين فلا ينقلب في RTL (D-033/D-216) */
   return (
     <button
       type="button"
@@ -96,12 +109,13 @@ export function LikeButton({
       aria-pressed={liked}
       aria-label={t.likesLabel}
       title={t.likesLabel}
-      className={`flex items-center gap-1.5 text-[12px] transition ${
+      className={`flex items-center gap-1.5 rounded-full -mx-2 px-2 py-1.5 text-[12px] transition ${
         liked ? "text-accent" : "text-muted hover:text-foreground"
       }`}
     >
       <Icon name={liked ? "like-filled" : "like"} size={16} />
-      <span className="tabular-nums">{count}</span>
+      {/* **والزرُّ يبقى وإن غاب رقمُه** — الرمزُ وحده فعلٌ مفهوم */}
+      {count > 0 && <span className="tabular-nums">{count}</span>}
     </button>
   );
 }
