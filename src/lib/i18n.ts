@@ -615,6 +615,21 @@ const ar = {
   quickAddDone: "أُضيف إلى «للمشاهدة»",
   talkRepliesHint: "ردود",
   talkWatchersHint: "شاهدوه",
+  /* ================= عنوانُ النقاش — مولَّدٌ بحت (D-254) =================
+     **اختيارُ أحمد الصريح: «تلقائيّ بحت لكل عمل/حلقة»** — لا يكتبه أحد.
+     **والاسمُ داخل العنوان لا فوقه**: لقطتُه تعرض اسمَ العمل سطراً ثم
+     سؤالاً تحته، **ونحن بلا سؤالٍ يكتبه إنسان** — فلو وضعنا اسمَ العمل
+     سطراً ثم «نقاش الفيلم» تحته لكرّرنا ما قرأه القارئ للتوّ (D-224).
+     **فالعنوانُ يحمل الاسم، والملصقُ يحمل الهويّة البصرية.** */
+  talkRoomTitle: (title: string, isTv: boolean) =>
+    `نقاش ${isTv ? "مسلسل" : "فيلم"} ${title}`,
+  /* **«مشاركة» تجمع الرأيَ والردّ**: الغرفةُ فيها الاثنان، **وعدٌّ يسمّي
+     أحدَهما وحده يكذب على الآخر** */
+  talkRoomPosts: (n: number) => (n === 1 ? "مشاركةٌ واحدة" : `${num(n, "ar")} مشاركة`),
+  /* ⚠️ **«آخر رأي» لا «آخر ردّ»** خلافاً للقطة: **الوقتُ الذي نملكه وقتُ
+     أحدث رأيٍ لا أحدث ردّ** — ولا نملك وقتَ الردود دون نداءٍ ثانٍ.
+     **ووسمٌ يسمّي ما لا يقيسه أسوأُ من وسمٍ أقلَّ إثارة.** */
+  talkRoomLastAt: (when: string) => `آخر رأي ${when}`,
   /* **«شاهدوا المنشور» لا «شاهدوه»** (D-237): الأولى تخصّ الصفَّ الذي
      تحته، والثانيةُ تخصّ العملَ — **وكلمةٌ واحدة كانت تحمل المعنيين** */
   postViewsHint: "شاهدوا المنشور",
@@ -1721,6 +1736,10 @@ const en: Dict = {
   quickAddDone: "Added to To watch",
   talkRepliesHint: "replies",
   talkWatchersHint: "watching",
+  talkRoomTitle: (title: string, isTv: boolean) =>
+    `Discussing the ${isTv ? "series" : "film"} ${title}`,
+  talkRoomPosts: (n: number) => (n === 1 ? "1 post" : `${num(n, "en")} posts`),
+  talkRoomLastAt: (when: string) => `last opinion ${when}`,
   postViewsHint: "post views",
   undoNotWatched: "Not watched",
   postPageTitle: "Post",
