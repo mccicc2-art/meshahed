@@ -4,7 +4,7 @@ import { Avatar } from "@/components/Avatar";
 import { getDict, type Locale } from "@/lib/i18n";
 import { levelName, type LevelInfo } from "@/lib/level";
 import { Icon, type IconName } from "./Icon";
-import { Logo } from "./Logo";
+import { LogoWordmark } from "./Logo";
 import { HeaderTools } from "./HeaderTools";
 import { FollowPills } from "./FollowPills";
 import type { PersonLite } from "@/lib/data";
@@ -201,8 +201,17 @@ export function ProfileHeader({
             إليه هي `2×safe-top`. ثم يُضاف الهامش المطلوب فوقه. وفي
             المتصفّح وعلى الشاشات الواسعة `--safe-top` صفرٌ فيعود الرقم
             إلى ما كان — لا شيء يتغيّر هناك. */}
-        <span className="absolute top-[calc(2*var(--safe-top)+0.9rem)] start-4 opacity-[0.07] drop-shadow-[0_2px_6px_rgba(0,0,0,0.6)]">
-          <Logo size={24} className="text-white" />
+        {/* **ختمُ العلامة على الغلاف — وردماركٌ مرسومٌ بوضوح ٩٠٪**
+            (D-256، طلبُ أحمد: «اسم لوبز الشفاف ترجعه ٩٠٪ وضوح وتكتبه
+            نفس ما هو موجود في الهيدر»).
+            **وكان ٧٪ فكان غائباً لا هادئاً**: اخترتُه خافتاً كي لا يزاحم
+            صورةَ صاحب الملفّ، **فصار ظلّاً لا يُقرأ** — ونفسُ خطأ خيط
+            «عندك» الرماديّ (D-250). **وعلامةٌ لا تُرى ليست علامةً
+            متواضعة، هي علامةٌ غائبة.**
+            **والظلُّ يبقى** لأن الوردمارك أبيضُ وقد يقف فوق غلافٍ فاتح —
+            وهو ما يفصله عنه بلا إطار. */}
+        <span className="absolute top-[calc(2*var(--safe-top)+0.9rem)] start-4 opacity-90 drop-shadow-[0_2px_6px_rgba(0,0,0,0.6)]">
+          <LogoWordmark size={26} />
         </span>
 
         {/* أداة الغلاف الوحيدة: الإعدادات */}

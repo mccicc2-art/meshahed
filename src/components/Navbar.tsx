@@ -5,7 +5,7 @@ import { getT } from "@/lib/locale";
 import { SearchBox } from "./SearchBox";
 import { NavLinks } from "./NavLinks";
 import { NavAvatar } from "./NavAvatar";
-import { LogoWordmark } from "./Logo";
+import { Logo } from "./Logo";
 import { LangFlagMenu } from "./LangFlagMenu";
 import { ThemeCookieSync } from "./ThemeCookieSync";
 import { NotificationBell } from "./NotificationBell";
@@ -50,9 +50,15 @@ export async function Navbar() {
       {profile?.theme && <ThemeCookieSync theme={profile.theme} />}
       <div className="max-w-6xl mx-auto px-4 h-16 flex items-center gap-2 sm:gap-3">
         <Link href="/" className="shrink-0" aria-label={t.brand}>
-          {/* الكلمة تظهر كاملةً في كل المقاسات: كانت تُخفى على الجوال ويبقى
-              الرمز — والرمز سقط من الهوية فالكلمة هي الشعار */}
-          <LogoWordmark size={28} />
+          {/* **الرمزُ وحده في الشريط** (D-256، طلبُ أحمد: «الأيقونة في كل
+              الصفحات بدل كلمة لوبز اللي فوق»). **ونقضٌ يُسجَّل**: كان
+              السطرُ هنا يقول «الرمزُ سقط من الهوية فالكلمة هي الشعار» —
+              **والهويّةُ الجديدة أعادت الرمزَ ومعه الوردمارك المرسوم**،
+              فالحجّةُ ماتت بموت سببها.
+              **والرمزُ لا الكلمة في شريطٍ يحمل أربعةَ روابطٍ وبحثاً**:
+              مربّعٌ ٣٢px يُعرف من طرف العين ولا يزاحم، **والكلمةُ تأخذ
+              ثلاثةَ أضعافِ عرضِه لتقول ما يقوله.** */}
+          <Logo size={32} />
         </Link>
 
         {user && <NavLinks locale={locale} />}
