@@ -19,6 +19,7 @@ import { getT } from "@/lib/locale";
 import { Avatar } from "@/components/Avatar";
 import { LikeButton } from "@/components/LikeButton";
 import { ShareTitleButton } from "@/components/ShareTitleButton";
+import { ReportButton } from "@/components/ReportButton";
 import { Icon } from "@/components/Icon";
 import { TitleHero } from "@/components/TitleHero";
 import { ThreadDateLine, ThreadActionBar } from "@/components/thread/ThreadShell";
@@ -247,6 +248,22 @@ export default async function ReviewPage({
           locale={locale}
         />
         <ShareTitleButton path={titleHref} title={work} locale={locale} />
+        {/* **بابُ البلاغ يعود إلى سطحه** (بند ١٦): غادر خطَّ `/talk` مع
+            D-242 لأن قائمةَ الخطّ لا تحمل بلاغاً لكلّ صفّ — **فبقي كلامُ
+            الناس على سطحٍ عامٍّ بلا بابِ بلاغ، وهذا نقصٌ لا اختصار.**
+            وموضعُه هنا صحيح: **صفحةُ التعليق تخصّ تعليقاً واحداً**، فالبلاغ
+            فيها لا يحتاج أن يسأل «على أيّهم؟».
+            ⚠️ **وشرطان لا واحد**: لا يظهر للزائر (`me`) لأن الكتابةَ
+            للمسجَّلين وحدهم (D-221)، ولا لصاحب الرأي — **زرُّ بلاغٍ على
+            كلامك أنت عبثٌ يُقرأ عطلاً.** */}
+        {me && !r.isMine && (
+          <ReportButton
+            reviewUserId={authorId}
+            tmdbId={tmdbId}
+            mediaType={mediaType}
+            locale={locale}
+          />
+        )}
       </ThreadActionBar>
 
       <ThreadReplies
