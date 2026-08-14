@@ -12,6 +12,7 @@ import {
   getCommunityRoom,
   getTitleRooms,
   getTalkStats,
+  getFollows,
 } from "@/lib/data";
 import { getT, getTabPrefs } from "@/lib/locale";
 import { WorksTalk, groupByWork } from "@/components/WorksTalk";
@@ -215,6 +216,14 @@ export default async function PeoplePage({
     after(() => refreshLoopzNews());
   }
 
+  /* **حالةُ «+ للمشاهدة» الابتدائية** (D-205/D-223): **نداءٌ واحدٌ
+     مخزَّنٌ (`cache`) للصفحة كلِّها**، لا سؤالٌ من كل بطاقة — ثلاثون بطاقةً
+     تسأل عن نفسها ثلاثون استعلاماً. **ولا يُدفع إلا في تبويبه.** */
+  const followed =
+    tab === "activity"
+      ? new Set((await getFollows()).map((f) => `${f.media_type}-${f.tmdb_id}`))
+      : new Set<string>();
+
   /* **سقط مع خطّ البطاقات:** «أشخاصٌ لمتابعتهم» (D-126) والصورُ
      العرضية (نداءُ TMDB لأوائل الخطّ). صفُّ «الأعمال» يعرض الملصق الذي
      يحمله الصفُّ نفسه — **فلا نداءَ خارجيّاً واحداً في هذا التبويب بعد
@@ -338,6 +347,7 @@ export default async function PeoplePage({
               comments={localized}
               news={genNews}
               meId={user.id}
+              followed={followed}
               emptyText={scope === "all" ? t.worksEmptyAll : t.worksEmptyFollowing}
               locale={locale}
             />
