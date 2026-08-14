@@ -24,6 +24,6 @@ export const LOOPZ_PERSON: PersonLite = {
   id: LOOPZ_ID,
   nickname: "Loopz",
   username: LOOPZ_USERNAME,
-  avatar_url: "/icon-192.png",
+  avatar_url: "/loopz-mark.png",
   hide_name: false,
 };

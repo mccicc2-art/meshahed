@@ -656,7 +656,7 @@ const ar = {
   feedPeopleGroup: "خطُّ النشاط — من يظهر",
   feedShowStrangers: "أظهِر من لا أتابعهم",
   feedShowStrangersHint:
-    "حين يُطفأ، لا يعرض «الأحدث» و«الأكثر تفاعلاً» إلا كلامَ من تتابعهم وكلامَك. و«لك» تُرشّح بنفسها فلا يمسّها المفتاح، ونشراتُ Loopz تُلغى من قائمة حسابها.",
+    "حين يُطفأ، لا يعرض الخطُّ إلا كلامَ من تتابعهم وكلامَك — في الرقاقات الثلاث. ونشراتُ Loopz لا يمسّها المفتاح: تُلغى من قائمة حسابها.",
   feedForYou: "لك",
   feedLatest: "الأحدث",
   feedTop: "الأكثر تفاعلاً",
@@ -1759,7 +1759,7 @@ const en: Dict = {
   feedPeopleGroup: "Activity feed — who shows up",
   feedShowStrangers: "Show people I don't follow",
   feedShowStrangersHint:
-    "When off, Latest and Top show only people you follow, plus your own posts. For you filters on its own, and Loopz bulletins are turned off from that account's own menu.",
+    "When off, the feed shows only people you follow plus your own posts — in all three chips. Loopz bulletins are unaffected; turn those off from that account's own menu.",
   feedForYou: "For you",
   feedLatest: "Latest",
   feedTop: "Top",
