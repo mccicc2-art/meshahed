@@ -37,6 +37,7 @@ export function Dropdown({
   onClose,
   labelledBy,
   align = "end",
+  caret = false,
   catcherZ = "z-20",
   className = "",
   children,
@@ -47,6 +48,16 @@ export function Dropdown({
   labelledBy?: string;
   /** جهةُ المحاذاة تحت المقبض: النهاية افتراضاً (تنقلب في RTL من نفسها) */
   align?: "start" | "end";
+  /**
+   * **سنٌّ صغير يشير إلى المقبض** (D-233، بلاغُ أحمد: «هذي القائمة ما هي
+   * واضحة إنها طالعة من الفلم»).
+   *
+   * **يُطلب حين يكون المقبضُ صورةً لا رمزاً**: قائمةُ النقاط ملتصقةٌ
+   * برمزٍ صغيرٍ فوقها مباشرةً فالعلاقةُ ظاهرة، **أمّا الملصقُ فعرضُه ٩٢px
+   * والقائمةُ ٢٠٨** — فتخرج مزاحةً وتبدو معلَّقةً في الهواء. **والسنُّ
+   * يربطها بحافته**، ومعه إطارٌ يُضيء الملصقَ نفسَه (انظر `PosterHold`).
+   */
+  caret?: boolean;
   catcherZ?: string;
   className?: string;
   children: React.ReactNode;
@@ -79,6 +90,14 @@ export function Dropdown({
           />,
           document.body,
         )}
+      {caret && (
+        <span
+          aria-hidden
+          /* مربّعٌ مُدارٌ نصفُه تحت البطاقة — **حدٌّ على ضلعين فقط** حتى لا
+             يُرسم خطٌّ عبر جسم القائمة */
+          className={`absolute ${align === "end" ? "end-4" : "start-4"} top-full mt-0.5 z-50 w-3 h-3 rotate-45 rounded-[3px] border-s border-t border-border bg-[color:var(--elevated)] menu-pop`}
+        />
+      )}
       <div
         ref={panel}
         role="menu"
