@@ -198,7 +198,12 @@ export function ProfileMenu({
             aria-expanded={menu}
             aria-label={t.profileMenuAria}
             title={t.profileMenuAria}
-            className="w-8 h-8 -m-1 rounded-full grid place-items-center text-muted hover:text-foreground active:scale-90 transition"
+            /* **هدفُ لمسٍ ٣٢px بهامشٍ سالبٍ رأسيّ أكبر** (D-230): الزرُّ كان يمدّ
+               سطرَ الترويسة إلى ٢٤px **فينفتح فراغٌ بين الاسم واسم العمل**
+               (بلاغُ أحمد: «خلّ اسم الفلم قريباً من الاسم شويّة»).
+               **والحلّ لا يُنقص الهدف**: يبقى ٣٢×٣٢ ملموساً ويُسحب رأسياً
+               فلا يُملي ارتفاعَ السطر — نفسُ حيلة `LikeButton` في D-222. */
+            className="w-8 h-8 -mx-1 -my-2 rounded-full grid place-items-center text-muted hover:text-foreground active:scale-90 transition"
           >
             <Icon name="dots" size={16} />
           </button>

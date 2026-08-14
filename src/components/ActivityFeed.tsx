@@ -356,7 +356,7 @@ function CommentRow({
               <Link
                 href={whoHref}
                 prefetch={false}
-                className="min-w-0 truncate font-bold text-[14px] text-foreground hover:text-accent transition"
+                className="min-w-0 truncate font-bold text-[14px] leading-tight text-foreground hover:text-accent transition"
               >
                 <bdi>{who}</bdi>
               </Link>
@@ -385,7 +385,7 @@ function CommentRow({
                 (أن يُقرأ تقييمَ العمل) **زال بأن صار للعمل سطرٌ يملكه
                 صاحبُ الصفّ**: الترويسةُ كلُّها كلامُ خالد، فالنجمةُ فيها
                 نجمتُه. */}
-            <div className="mt-0.5 flex items-center gap-1.5">
+            <div className="mt-1 flex items-center gap-1.5">
               <Link
                 href={titleHref}
                 prefetch={false}
