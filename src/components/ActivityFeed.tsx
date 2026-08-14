@@ -11,6 +11,7 @@ import { QuickAdd } from "./QuickAdd";
 import { PosterCard } from "./PosterCard";
 import { ShareTitleButton } from "./ShareTitleButton";
 import { ProfileMenu } from "./ProfileMenu";
+import { RowComment } from "./RowComment";
 
 /**
  * **تبويب «النشاط»** — التعليقاتُ وأخبارُنا في خطٍّ واحدٍ مرتَّبٍ بالزمن
@@ -371,11 +372,7 @@ function CommentRow({
             >
               <bdi>{a.title}</bdi>
             </Link>
-            {/* **الوقتُ ملاصقٌ للنقاط في الطرف** (طلبُ أحمد): بيانُ حاشيةٍ
-                عند حافةٍ واحدة مع مقبض الخيارات، **فيخلو الذيلُ للأفعال
-                وحدها** ويصير شريطاً موزَّعاً بلا منازع. */}
-            <span className="ms-auto shrink-0 flex items-center gap-1.5">
-              <span className="text-[11px] text-muted">{timeAgo(a.updated_at, t)}</span>
+            <span className="ms-auto shrink-0">
               <ProfileMenu
                 person={a.person}
                 mutual={false}
@@ -385,6 +382,15 @@ function CommentRow({
               />
             </span>
           </div>
+
+          {/* **الوقتُ سطرٌ تحت الاسم، وأصغرُ درجة** (طلبُ أحمد).
+              **وهو موضعُه الطبيعيّ**: بيانُ نشرٍ يخصّ صاحبَ الكلام، فيسكن
+              تحت اسمه لا في حافةٍ بعيدة ولا بين الأفعال — **والذيلُ يخلو
+              للأفعال وحدها** فيصير شريطاً موزَّعاً بلا منازع.
+              **و١٠px لا ١١**: درجةٌ أخفتُ تجعله يُقرأ حاشيةً لا معلومة. */}
+          <span className="block mt-0.5 text-[10px] leading-none text-muted">
+            {timeAgo(a.updated_at, t)}
+          </span>
 
           {/* الضغطُ على النصّ يفتح الغرفة — **حيث يُقرأ كاملاً ويُردّ عليه** */}
           {/* **اتّجاهُ الكلام من الكلام لا من الصفحة** (طلبُ أحمد: «من
@@ -410,29 +416,42 @@ function CommentRow({
           </Link>
         </div>
 
-        <RowFooter>
-          <LikeButton
-            reviewUserId={a.person.id}
-            tmdbId={a.tmdb_id}
-            mediaType={a.media_type}
-            likes={a.likes}
-            likedByMe={a.likedByMe}
-            isMine={a.person.id === meId}
-            locale={locale}
-          />
-          <CommentAction href={talkHref} label={t.actionComment} />
-          <StatChip icon="chart" n={watchers} label={t.talkWatchersHint} />
-          <QuickAdd
-            variant="inline"
-            tmdbId={a.tmdb_id}
-            mediaType={a.media_type}
-            title={a.title ?? ""}
-            posterPath={a.poster_path}
-            added={added}
-            locale={locale}
-          />
-          <ShareTitleButton path={titleHref} title={a.title ?? ""} locale={locale} />
-        </RowFooter>
+        {/* **الذيلُ كلُّه في `RowComment`** لأن صندوق الكتابة يحتاج عرضَ
+            الصفّ والمقبضَ يسكن شريطاً مسقوفاً — حالةٌ واحدة لعنصرين
+            يحملها مكوّنٌ واحد (D-227). */}
+        <RowComment
+          reviewUserId={a.person.id}
+          tmdbId={a.tmdb_id}
+          mediaType={a.media_type}
+          label={t.actionComment}
+          locale={locale}
+          before={
+            <LikeButton
+              reviewUserId={a.person.id}
+              tmdbId={a.tmdb_id}
+              mediaType={a.media_type}
+              likes={a.likes}
+              likedByMe={a.likedByMe}
+              isMine={a.person.id === meId}
+              locale={locale}
+            />
+          }
+          after={
+            <>
+              <StatChip icon="chart" n={watchers} label={t.talkWatchersHint} />
+              <QuickAdd
+                variant="inline"
+                tmdbId={a.tmdb_id}
+                mediaType={a.media_type}
+                title={a.title ?? ""}
+                posterPath={a.poster_path}
+                added={added}
+                locale={locale}
+              />
+              <ShareTitleButton path={titleHref} title={a.title ?? ""} locale={locale} />
+            </>
+          }
+        />
       </div>
 
       <RowPoster
@@ -484,14 +503,12 @@ function NewsRow({
               في الطرف. **ولا نقاطَ هنا:** القائمةُ متابعةٌ وحظرٌ وبلاغٌ على
               **إنسان**، ولا إنسانَ في خبرِنا — **ومقبضٌ يفتح خياراتٍ لا
               تنطبق أسوأ من غيابه** (D-217). */}
-          <div className="flex items-center gap-1.5">
-            <span className="shrink-0 font-bold text-[14px] text-foreground" dir="ltr">
-              Loopz
-            </span>
-            <span className="ms-auto shrink-0 text-[11px] text-muted">
-              {timeAgo(n.published_at, t)}
-            </span>
-          </div>
+          <span className="block font-bold text-[14px] text-foreground w-fit" dir="ltr">
+            Loopz
+          </span>
+          <span className="block mt-0.5 text-[10px] leading-none text-muted">
+            {timeAgo(n.published_at, t)}
+          </span>
 
           {/* **وصوتُنا لا يعلو على صوت الناس**: جملةُ الخبر بمقاس نصّ
               التعليق نفسِه — **وسطرٌ لنا أغلظ من كلام إنسانٍ يقلب معنى

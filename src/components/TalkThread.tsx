@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useState } from "react";
 import { addReviewReply, deleteMyReply, reportReply } from "@/lib/actions";
 import { getDict, type Locale } from "@/lib/i18n";
 import { displayNameOf } from "@/lib/people";
@@ -8,11 +8,11 @@ import type { ReviewReply, TitleReview } from "@/lib/data";
 import { timeAgo } from "@/lib/when";
 import { tap } from "@/lib/haptics";
 import { Avatar } from "./Avatar";
+import { Composer } from "./Composer";
 import { Icon } from "./Icon";
 import { PersonName } from "./PersonRow";
 import { LikeButton } from "./LikeButton";
 import { ReportButton } from "./ReportButton";
-import { buttonClass } from "./ui/Button";
 
 /** ردٌّ محليٌّ لم يُقرأ من القاعدة بعد — معرّفُه مؤقّت */
 const TEMP = "temp:";
@@ -184,7 +184,7 @@ export function TalkThread({
 
             {open === r.id && (
               <Composer
-                t={t}
+                locale={locale}
                 onCancel={() => setOpen(null)}
                 onSend={(body) =>
                   send({ reviewUserId: r.id, parentId: null, body, person: null })
@@ -214,7 +214,7 @@ export function TalkThread({
                     />
                     {open === `${r.id}|${x.replyId}` && (
                       <Composer
-                        t={t}
+                        locale={locale}
                         hint={t.talkReplyingTo(displayNameOf(x, t.anonymousUser))}
                         onCancel={() => setOpen(null)}
                         onSend={(body) =>
@@ -409,59 +409,6 @@ function ReplyRow({
             )}
           </div>
         )}
-      </div>
-    </div>
-  );
-}
-
-/**
- * صندوقُ الكتابة — واحدٌ للردّ على رأيٍ وللردّ على ردّ.
- *
- * `Enter` لا يُرسل: الردُّ قد يكون سطرين، و«إرسالٌ بالخطأ» في سطحٍ عامّ
- * أسوأُ من ضغطةٍ إضافية على زرّ.
- */
-function Composer({
-  t,
-  hint,
-  onSend,
-  onCancel,
-}: {
-  t: ReturnType<typeof getDict>;
-  hint?: string;
-  onSend: (body: string) => void;
-  onCancel: () => void;
-}) {
-  const [body, setBody] = useState("");
-  const [pending, start] = useTransition();
-  const ready = body.trim().length > 0;
-
-  return (
-    <div className="mt-3">
-      {hint && <p className="text-[11px] text-muted mb-1">{hint}</p>}
-      <textarea
-        value={body}
-        onChange={(e) => setBody(e.target.value.slice(0, 1000))}
-        placeholder={t.shareReplyPlaceholder}
-        rows={2}
-        autoFocus
-        className="w-full bg-surface-2 border border-border rounded-xl px-3 py-2 text-sm resize-y outline-none focus:border-accent/60"
-      />
-      <div className="mt-1.5 flex items-center gap-2">
-        <button
-          type="button"
-          disabled={!ready || pending}
-          onClick={() => start(() => onSend(body.trim()))}
-          className={buttonClass({ size: "sm" })}
-        >
-          {t.shareReplySend}
-        </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="text-[12px] text-muted hover:text-foreground transition px-2"
-        >
-          {t.cancelLabel}
-        </button>
       </div>
     </div>
   );
