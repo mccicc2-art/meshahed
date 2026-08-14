@@ -201,10 +201,17 @@ function RowPoster({
   );
 }
 
-/** ذيلُ الصفّ — الأفعالُ في البداية، والنوعُ والوقتُ في النهاية */
+/**
+ * ذيلُ الصفّ — الأفعالُ في البداية، والنوعُ والوقتُ في النهاية.
+ *
+ * **ولا `mt-auto` يدفعه إلى القاع:** الصفُّ ارتفاعُه ارتفاعُ الملصق،
+ * **والخبرُ القصير كان يترك فجوةً بين جملته وذيله تُقرأ عطباً**. فالعمودُ
+ * كلُّه يتوسّط رأسياً (`justify-center`) والذيلُ آخرُه — **الترتيبُ محفوظ
+ * والفجوةُ موزَّعة على الطرفين بدل أن تتكوّم في الوسط.**
+ */
 function RowFooter({ children, meta }: { children: React.ReactNode; meta: string }) {
   return (
-    <div className="mt-auto pt-2 flex items-center gap-1">
+    <div className="pt-2 flex items-center gap-1">
       {children}
       <span className="ms-auto shrink-0 text-[11px] text-muted">{meta}</span>
     </div>
@@ -239,7 +246,7 @@ function CommentRow({
         />
       </Link>
 
-      <div className={`min-w-0 flex-1 flex flex-col ${ROW_MIN_H}`}>
+      <div className={`min-w-0 flex-1 flex flex-col justify-center ${ROW_MIN_H}`}>
         {/* **الصدرُ للهويّة**: من قال، وبكم قيّمه */}
         <div className="flex items-baseline gap-2">
           <Link
@@ -318,17 +325,20 @@ function NewsRow({ n, added, locale }: { n: LoopzNewsItem; added: boolean; local
         <Avatar src="/icon-192.png" name="Loopz" size={44} alt="" />
       </span>
 
-      <div className={`min-w-0 flex-1 flex flex-col ${ROW_MIN_H}`}>
+      <div className={`min-w-0 flex-1 flex flex-col justify-center ${ROW_MIN_H}`}>
         <span className="font-bold text-[14px] text-foreground" dir="ltr">
           Loopz
         </span>
 
         {/* **ولا رابطَ خارجيّ في الجملة إطلاقاً** (طلبُ أحمد الصريح):
             الضغطُ يفتح صفحةَ العمل عندنا — والقراءةُ والتعليقُ داخل التطبيق */}
+        {/* **وصوتُنا لا يعلو على صوت الناس**: جملةُ الخبر بمقاس نصّ التعليق
+            نفسِه وبوزنٍ أثقل قليلاً لأنها كلُّ ما في الصفّ — **وسطرٌ لنا
+            أغلظ من كلام إنسانٍ يقلب معنى الصفحة** (D-223). */}
         <Link
           href={titleHref}
           prefetch={false}
-          className="block mt-1 text-[14px] leading-snug font-bold hover:text-accent transition line-clamp-3"
+          className="block mt-1 text-[13px] leading-relaxed font-semibold hover:text-accent transition line-clamp-3"
         >
           {text}
         </Link>
