@@ -3,7 +3,7 @@ import { getDict, type Locale } from "@/lib/i18n";
 import { timeAgoShort } from "@/lib/when";
 import { displayNameOf, type FeedItem, type LoopzNewsItem } from "@/lib/data";
 import { newsLine, newsSource } from "@/lib/newsLine";
-import type { TalkStat } from "@/lib/data";
+import { commentViewKey, newsViewKey } from "@/lib/postKeys";
 import { Avatar } from "./Avatar";
 import { Icon } from "./Icon";
 import { LikeButton } from "./LikeButton";
@@ -12,6 +12,7 @@ import { ShareTitleButton } from "./ShareTitleButton";
 import { ProfileMenu } from "./ProfileMenu";
 import { RowComment } from "./RowComment";
 import { NewsComment } from "./NewsComment";
+import { PostViews } from "./PostViews";
 
 /**
  * **تبويب «النشاط»** — التعليقاتُ وأخبارُنا في خطٍّ واحدٍ مرتَّبٍ بالزمن
@@ -107,7 +108,7 @@ export function ActivityFeed({
   meId,
   followed = new Set<string>(),
   postLikes,
-  stats,
+  views,
   followingIds,
   newsReplies,
   emptyText,
@@ -127,8 +128,14 @@ export function ActivityFeed({
   followed?: ReadonlySet<string>;
   /** إعجاباتُ الأخبار — تُقرأ في الصفحة بنداءٍ واحدٍ للقائمة كلِّها */
   postLikes?: PostLikes;
-  /** عدّاداتُ العمل (كم شاهده) — نداءٌ واحد لكل الصفوف (D-193) */
-  stats?: Map<string, TalkStat>;
+  /**
+   * **كم شخصاً رأى كلَّ منشور** — بمفتاح `postKeys`، نداءٌ واحد للخطّ (D-237).
+   *
+   * ⚠️ **وكان `stats.watchers` فسقط**: ذاك «كم شاهد **العمل**»، فيظهر
+   * الرقمُ نفسُه تحت كلِّ صفٍّ يتكلّم عن «Se7en» — **رقمٌ لا يخصّ الصفَّ
+   * الذي تحته أسوأ من لا رقم** (D-134، وبلاغُ أحمد نصّاً).
+   */
+  views?: Map<string, number>;
   /** مَن أتابعهم — لصفّ المتابعة في قائمة النقاط (نداءٌ واحدٌ مخزَّن) */
   followingIds?: ReadonlySet<string>;
   /** ردودُ نشراتنا — بمفتاح المنشور، نداءٌ واحد للخطّ كلِّه (D-236) */
@@ -178,7 +185,8 @@ export function ActivityFeed({
             a={row.item}
             meId={meId}
             added={followed.has(key)}
-            watchers={stats?.get(key)?.watchers ?? 0}
+            viewKey={commentViewKey(row.item.person.id, row.item.media_type, row.item.tmdb_id)}
+            views={views}
             iFollowThem={followingIds?.has(row.item.person.id) ?? false}
             locale={locale}
           />
@@ -187,7 +195,8 @@ export function ActivityFeed({
             key={`n-${row.item.key}`}
             n={row.item}
             added={followed.has(key)}
-            watchers={stats?.get(key)?.watchers ?? 0}
+            viewKey={newsViewKey(row.item.key)}
+            views={views}
             likes={postLikes?.counts[key] ?? 0}
             likedByMe={postLikes?.mine.has(key) ?? false}
             replies={newsReplies?.get(row.item.key) ?? 0}
@@ -195,6 +204,10 @@ export function ActivityFeed({
           />
         );
       })}
+      {/* **جزيرةٌ واحدة تعدّ الخطَّ كلَّه** (D-237): تلتقط الصفوفَ من
+          سِمَتها `data-post-key` — **فلا عميلَ في كل صفّ** ولا نداءَ
+          لكل صفّ. */}
+      <PostViews />
     </div>
   );
 }
@@ -284,14 +297,16 @@ function CommentRow({
   a,
   meId,
   added,
-  watchers,
+  viewKey,
+  views,
   iFollowThem,
   locale,
 }: {
   a: FeedItem;
   meId: string;
   added: boolean;
-  watchers: number;
+  viewKey: string;
+  views?: Map<string, number>;
   iFollowThem: boolean;
   locale: Locale;
 }) {
@@ -303,7 +318,10 @@ function CommentRow({
   const whoHref = a.person.username ? `/u/${a.person.username}` : talkHref;
 
   return (
-    <article className="py-4 first:pt-0 flex gap-3">
+    /* **`data-post-key` هي عقدُ العدّ** (D-237): `PostViews` تراقب هذه
+       السِّمة وحدها — **فالصفُّ الذي لا يحملها لا يُعدّ**، والعقدُ ظاهرٌ
+       في الترميز لا مخبوءٌ في مكوّن. */
+    <article className="py-4 first:pt-0 flex gap-3" data-post-key={viewKey}>
       {/* **العمودُ الأيسر يحمل الصفَّ كلَّه، والملصقُ وحده خارجه** (D-228).
           **والنصُّ يمرّ تحت الوجه لا بجانبه** (بلاغُ أحمد: «المساحة تحت
           صورة الشخص نحتاجها ضمن مساحة التعليق») — **فالوجهُ يجاور
@@ -420,7 +438,7 @@ function CommentRow({
             }
             after={
               <>
-                <StatChip icon="chart" n={watchers} label={t.talkWatchersHint} />
+                <StatChip icon="chart" n={views?.get(viewKey) ?? 0} label={t.postViewsHint} />
                 <ShareTitleButton path={titleHref} title={a.title ?? ""} locale={locale} />
               </>
             }
@@ -443,7 +461,8 @@ function CommentRow({
 function NewsRow({
   n,
   added,
-  watchers,
+  viewKey,
+  views,
   likes,
   likedByMe,
   replies,
@@ -451,7 +470,8 @@ function NewsRow({
 }: {
   n: LoopzNewsItem;
   added: boolean;
-  watchers: number;
+  viewKey: string;
+  views?: Map<string, number>;
   likes: number;
   likedByMe: boolean;
   replies: number;
@@ -464,7 +484,10 @@ function NewsRow({
   const src = newsSource(n);
 
   return (
-    <article className="py-4 first:pt-0 flex gap-3">
+    /* **`data-post-key` هي عقدُ العدّ** (D-237): `PostViews` تراقب هذه
+       السِّمة وحدها — **فالصفُّ الذي لا يحملها لا يُعدّ**، والعقدُ ظاهرٌ
+       في الترميز لا مخبوءٌ في مكوّن. */
+    <article className="py-4 first:pt-0 flex gap-3" data-post-key={viewKey}>
       {/* **هيكلُ صفّ التعليق نفسُه حرفاً** (D-232، بلاغُ أحمد: «ليه الفوضى
           هذي… وشكلٌ مختلف!»). **والعلّةُ كانت بنيويةً لا تنسيقاً:** صفُّ
           التعليق نُقل ليمرّ نصُّه تحت الوجه (D-228) **ولم يُنقل معه صفُّ
@@ -571,7 +594,7 @@ function NewsRow({
             }
             after={
               <>
-                <StatChip icon="chart" n={watchers} label={t.talkWatchersHint} />
+                <StatChip icon="chart" n={views?.get(viewKey) ?? 0} label={t.postViewsHint} />
                 <ShareTitleButton path={titleHref} title={n.title} locale={locale} />
               </>
             }
