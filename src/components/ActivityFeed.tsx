@@ -480,9 +480,18 @@ function NewsRow({
 
       <div className={`min-w-0 flex-1 flex flex-col justify-between ${ROW_MIN_H}`}>
         <div>
-          <span className="block font-bold text-[14px] text-foreground" dir="ltr">
-            Loopz
-          </span>
+          {/* **ترويسةٌ بترتيب صفّ التعليق نفسِه** — الاسمُ في الصدر والوقتُ
+              في الطرف. **ولا نقاطَ هنا:** القائمةُ متابعةٌ وحظرٌ وبلاغٌ على
+              **إنسان**، ولا إنسانَ في خبرِنا — **ومقبضٌ يفتح خياراتٍ لا
+              تنطبق أسوأ من غيابه** (D-217). */}
+          <div className="flex items-center gap-1.5">
+            <span className="shrink-0 font-bold text-[14px] text-foreground" dir="ltr">
+              Loopz
+            </span>
+            <span className="ms-auto shrink-0 text-[11px] text-muted">
+              {timeAgo(n.published_at, t)}
+            </span>
+          </div>
 
           {/* **وصوتُنا لا يعلو على صوت الناس**: جملةُ الخبر بمقاس نصّ
               التعليق نفسِه — **وسطرٌ لنا أغلظ من كلام إنسانٍ يقلب معنى
