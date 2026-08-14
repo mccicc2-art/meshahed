@@ -263,42 +263,6 @@ summary:focus-visible,
   transform-origin: var(--menu-origin, 100% 0);
 }
 
-/* **إجراءاتُ الملصق تنبت من الملصق** (D-229، طلبُ أحمد: «أهمّ شيء ما يطلع
-   شاشة منبثقة — يطلع من نفس البوستر بشكل سموث»). الطبقةُ تكبر من مركز
-   الملصق نفسِه، **فالعينُ لا تفقد ما ضغطت عليه**: لا غطاءَ يبتلع الشاشة
-   ولا ورقةٌ تصعد من حافةٍ بعيدة. والصفوفُ تتبعها بإزاحةٍ متدرّجة قصيرة
-   حتى تُقرأ قائمةً لا كتلةً واحدة. */
-@keyframes poster-actions-in {
-  0% {
-    transform: scale(0.9);
-    opacity: 0;
-  }
-  100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
-@keyframes poster-row-in {
-  0% {
-    transform: translateY(6px);
-    opacity: 0;
-  }
-  100% {
-    transform: translateY(0);
-    opacity: 1;
-  }
-}
-
-.poster-actions {
-  animation: poster-actions-in 0.16s cubic-bezier(0.16, 1, 0.3, 1) both;
-  transform-origin: center;
-}
-
-.poster-actions-row {
-  animation: poster-row-in 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
-  animation-delay: var(--row-delay, 0ms);
-}
 
 /* توهّج احتفالي: الظلّ ثابت على طبقة خلفية ويُحرَّك شفافها فقط —
    تحريك box-shadow نفسه كان يعيد رسم منطقة ضبابية كبيرة كل إطار
@@ -431,8 +395,6 @@ summary:focus-visible,
 @media (prefers-reduced-motion: reduce) {
   .sheet-pop,
   .menu-pop,
-  .poster-actions,
-  .poster-actions-row,
   .glow-celebrate::before,
   .confetti-piece,
   .marquee-track,
