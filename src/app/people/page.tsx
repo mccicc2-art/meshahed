@@ -16,10 +16,12 @@ import {
   getReactions,
   getFollowingIds,
   getNewsReplyCounts,
+  getPostViewCounts,
 } from "@/lib/data";
 import { getT, getTabPrefs } from "@/lib/locale";
 import { WorksTalk, groupByWork } from "@/components/WorksTalk";
 import { ActivityFeed } from "@/components/ActivityFeed";
+import { commentViewKey, newsViewKey } from "@/lib/postKeys";
 import { applyTabPrefs, defaultTab } from "@/lib/tabPrefs";
 import { localizeRows, localizeTitleRooms } from "@/lib/localize";
 import { CommunityDirectory, CommunityRoom } from "@/components/Communities";
@@ -251,6 +253,19 @@ export default async function PeoplePage({
     ? await getNewsReplyCounts(genNews.map((n) => n.key))
     : new Map<string, number>();
 
+  /* **مشاهداتُ منشورات الخطّ** (D-237): نداءٌ واحد لمفاتيح النوعين معاً
+     — **والمفاتيحُ تُبنى هنا بنفس دالّتَي `postKeys`** التي تكتبها
+     الواجهةُ في `data-post-key`، فلا صيغتان تفترقان.
+     **وسقوطُه صامتٌ قبل الهجرة ٧٤**: تُخفى الخانةُ ويبقى الخطُّ. */
+  const viewCounts =
+    tab === "activity"
+      ? await getPostViewCounts([
+          ...localized
+            .filter((a) => a.review?.trim())
+            .map((a) => commentViewKey(a.person.id, a.media_type, a.tmdb_id)),
+          ...genNews.map((n) => newsViewKey(n.key)),
+        ])
+      : new Map<string, number>();
 
   /* **سقط مع خطّ البطاقات:** «أشخاصٌ لمتابعتهم» (D-126) والصورُ
      العرضية (نداءُ TMDB لأوائل الخطّ). صفُّ «الأعمال» يعرض الملصق الذي
@@ -382,6 +397,7 @@ export default async function PeoplePage({
               meId={user.id}
               followed={followed}
               postLikes={postLikes}
+              views={viewCounts}
               followingIds={followingIds}
               newsReplies={newsReplies}
               emptyText={scope === "all" ? t.worksEmptyAll : t.worksEmptyFollowing}
