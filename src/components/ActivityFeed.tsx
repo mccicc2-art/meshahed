@@ -114,6 +114,7 @@ export function ActivityFeed({
   postLikes,
   views,
   followingIds,
+  showStrangers = true,
   newsReplies,
   sort = "latest",
   emptyText,
@@ -143,6 +144,13 @@ export function ActivityFeed({
   views?: Map<string, number>;
   /** مَن أتابعهم — لصفّ المتابعة في قائمة النقاط (نداءٌ واحدٌ مخزَّن) */
   followingIds?: ReadonlySet<string>;
+  /**
+   * **هل يُعرض كلامُ من لا تتابعهم؟** (D-255، طلبُ أحمد) — **يُرشِّح
+   * «الأحدث» و«الأكثر تفاعلاً» وحدهما**: «لك» تُرشّح أصلاً بأوسع منه.
+   * **وافتراضُه `true`** لأن افتراضَ أي تفضيلٍ جديد هو السلوكُ القائم
+   * (D-152)، **ولأن مكوّناً يسبق مستهلكَه يأخذ حقلاً اختيارياً** (D-028).
+   */
+  showStrangers?: boolean;
   /** ردودُ نشراتنا — بمفتاح المنشور، نداءٌ واحد للخطّ كلِّه (D-236) */
   newsReplies?: Map<string, number>;
   /**
@@ -191,9 +199,24 @@ export function ActivityFeed({
      **ونشرتُنا تبقى في «لك» دائماً**: القارئُ اشترك في Loopz بفتحه
      التطبيقَ، **وخطُّ «لك» بلا شيءٍ منّا لمن لا يتابع أحداً خطٌّ فارغ**
      — وفراغٌ افتراضيٌّ يُقرأ عطلاً لا نقصاً (D-181). */
-  let shown = rows;
+  /* **ترشيحُ الغرباء يسبق الفرز** (D-255، طلبُ أحمد): يُطبَّق على
+     «الأحدث» و«الأكثر تفاعلاً» — **و«لك» لا تحتاجه** لأنها ترشّح بأوسع
+     منه أصلاً (تُدخل الغريبَ إن تكلّم عن عملٍ في مكتبتك، وهو مقصودٌ).
+     **ونشرتُنا لا تُرشَّح**: «من لا أتابعهم» جملةٌ عن أشخاص، **وLoopz
+     حسابٌ يُتابَع ويُلغى من قائمته هو** (D-252) — فإلغاؤه هناك لا هنا. */
+  let rowsAfterPeople = rows;
+  if (!showStrangers && sort !== "for-you") {
+    rowsAfterPeople = rows.filter(
+      (r) =>
+        r.kind === "news" ||
+        r.item.person.id === meId ||
+        (followingIds?.has(r.item.person.id) ?? false),
+    );
+  }
+
+  let shown = rowsAfterPeople;
   if (sort === "for-you") {
-    shown = rows.filter(
+    shown = rowsAfterPeople.filter(
       (r) =>
         r.kind === "news" ||
         /* **وكلامُك أنت أوّلُ ما يخصّك** (D-251، بنصّ أحمد: «تعليقاتي
@@ -210,7 +233,7 @@ export function ActivityFeed({
        مختلفة تحتاج حجّةً لكلِّ رقمٍ فيها**، ولا حجّةَ عندنا بعد —
        **ورقمٌ سحريٌّ بلا سبب أسوأ من جمعٍ بسيطٍ مفهوم.**
        والزمنُ يفصل عند التساوي، فلا يثبت ترتيبُ الأصفار عشوائياً. */
-    shown = [...rows].sort((a, b) => score(b) - score(a) || b.at - a.at);
+    shown = [...rowsAfterPeople].sort((a, b) => score(b) - score(a) || b.at - a.at);
   }
 
   if (shown.length === 0) {

@@ -2,7 +2,7 @@
 
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { searchCommunities } from "@/lib/actions";
+import { searchCommunities, setFeedStrangers } from "@/lib/actions";
 import { getDict, type Locale } from "@/lib/i18n";
 import { tap } from "@/lib/haptics";
 import type { TabPref } from "@/lib/tabPrefs";
@@ -49,17 +49,24 @@ export function CommunityTools({
   locale,
   prefs,
   labels,
+  strangers: strangersInitial,
 }: {
   locale: Locale;
   /** تفضيلات التبويبات — تأتي من الخادم فلا يومض شيء */
   prefs: TabPref[];
   /** أسماء التبويبات كما تُعرض في الرأس — مصدرٌ واحد لا قاموسٌ ثانٍ */
   labels: Record<string, string>;
+  /** **هل يُظهر الخطُّ من لا يتابعهم؟** (D-255) — من الخادم كأخواتها */
+  strangers: boolean;
 }) {
   const t = getDict(locale);
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [create, setCreate] = useState(false);
+  /* **تفاؤليٌّ بلا ارتداد**: كتابةُ كوكي لا تفشل عملياً، **والارتدادُ
+     على مفتاحٍ في ورقةٍ مفتوحة يومض أكثر ممّا يُصلح** */
+  const [strangers, setStrangers] = useState(strangersInitial);
+  const [savingStrangers, saveStrangers] = useTransition();
 
   const [q, setQ] = useState("");
   const [results, setResults] = useState<Awaited<ReturnType<typeof searchCommunities>> | null>(
@@ -190,6 +197,59 @@ export function CommunityTools({
               <Icon name="comment" size={18} />
               <span>{t.communityToolsMessage}</span>
             </button>
+
+            <div className={sheetMenuDivider} />
+
+            {/* **٥) من يظهر في «النشاط»** (D-255، طلبُ أحمد: «نحتاج تضيف
+                خيار إخفاء الأشخاص اللي ما أتابعهم من الأكتيفتي»).
+                **وبيتُه هذه الورقة لا رقاقةٌ سادسة في الرأس:** الرقاقاتُ
+                الثلاث **ترتيبُ جلسةٍ يُبدَّل كثيراً**، وهذا **تفضيلٌ
+                يبقى** — وخلطُهما يُثقل الرأسَ بما لا يُمَسّ (D-245).
+                **وهو جارُ «التبويبات» عن قصد:** كلاهما يجيب «ماذا أرى في
+                هذه الصفحة»، فيُقرآن قسماً واحداً. */}
+            <p className="px-5 pt-3 pb-2 text-[13px] font-bold text-muted">
+              {t.feedPeopleGroup}
+            </p>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={strangers}
+              disabled={savingStrangers}
+              onClick={() => {
+                tap(8);
+                const next = !strangers;
+                setStrangers(next);
+                saveStrangers(async () => {
+                  await setFeedStrangers(next);
+                  router.refresh();
+                });
+              }}
+              className="w-full flex items-center justify-between gap-3 min-h-11 px-5 py-2 text-start text-[15px] hover:bg-surface-2 disabled:opacity-45 transition"
+            >
+              <span className="min-w-0 flex items-center gap-3">
+                <Icon name={strangers ? "eye" : "eye-off"} size={18} />
+                <span className="truncate">{t.feedShowStrangers}</span>
+              </span>
+              <span
+                aria-hidden
+                className={`shrink-0 h-5 w-9 rounded-full transition relative ${
+                  strangers ? "bg-accent" : "bg-border"
+                }`}
+              >
+                <span
+                  className={`absolute top-0.5 h-4 w-4 rounded-full bg-[color:var(--background)] transition-all ${
+                    strangers ? "start-[18px]" : "start-0.5"
+                  }`}
+                />
+              </span>
+            </button>
+            {/* **جملةٌ تحت المفتاح تقول أثرَه بالضبط**: «لك» تُرشّح أصلاً،
+                **فالمفتاحُ يعمل في «الأحدث» و«الأكثر تفاعلاً»** — ومفتاحٌ
+                يبدو أنه لم يفعل شيئاً في الرقاقة المفتوحة عطلٌ في عين من
+                ضغطه (D-155). */}
+            <p className="px-5 pb-3 text-[12px] text-muted leading-relaxed">
+              {t.feedShowStrangersHint}
+            </p>
 
             <div className={sheetMenuDivider} />
 
