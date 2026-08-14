@@ -4,6 +4,7 @@ import { posterUrl } from "@/lib/media";
 import { MarqueeText } from "./MarqueeText";
 import { Icon, type IconName } from "./Icon";
 import { QuickAdd } from "./QuickAdd";
+import { PosterHold } from "./PosterHold";
 import type { Locale } from "@/lib/i18n";
 
 type BadgeTone = "neutral" | "progress" | "watched" | "rating" | "dropped";
@@ -31,6 +32,9 @@ export function PosterCard({
   posterSize = "w342",
   fallbackIcon = "film",
   hideTitle = false,
+  saved = false,
+  watched = false,
+  hold,
   quickAdd,
 }: {
   href: string;
@@ -67,6 +71,29 @@ export function PosterCard({
    */
   hideTitle?: boolean;
   /**
+   * **خيطُ الحالة تحت الملصق** (D-229، طلبُ أحمد: «خطّ تحت البوستر — أخضر
+   * شفته، رصاصي معناه في «للمشاهدة»، مثل ما احنا مسوّين في المكتبة»).
+   *
+   * **وهو ترقيةُ الخيط القائم لا خيطٌ ثانٍ:** كان يُرسم للتقدّم والإيقاف
+   * وحدهما، **فعملٌ محفوظٌ لم يبدأ لا أثرَ له على وجهه** — والقارئ لا
+   * يعرف أنه في مكتبته إلا بفتحه. **الرماديُّ يقول «عندك»، والأخضرُ
+   * «انتهيت»** — بلا كلمةٍ ولا شارة.
+   */
+  saved?: boolean;
+  watched?: boolean;
+  /**
+   * **الضغطُ المطوَّل بأفعاله الثلاثة** — يُمرَّر حيث تكون البطاقة عملاً
+   * يملك القارئ أن يفعل به شيئاً. **وحيث لا يُمرَّر لا يتغيّر شيء**:
+   * بطاقةُ ممثّلٍ لا تُتابَع كعمل، وبطاقةٌ في ورقة اختيارٍ ليست سطحَ فعل.
+   */
+  hold?: {
+    tmdbId: number;
+    mediaType: "tv" | "movie";
+    added: boolean;
+    watched: boolean;
+    locale: Locale;
+  };
+  /**
    * **زرُّ «+ للمشاهدة» على هذه البطاقة** (D-207 — امتدادُ D-205).
    *
    * **ولماذا اختياريّ لا افتراضيّ:** البطاقةُ نفسها تُرسم في ثمانية أسطح —
@@ -86,7 +113,7 @@ export function PosterCard({
   };
 }) {
   const url = posterUrl(posterPath, posterSize);
-  return (
+  const card = (
     // prefetch={false}: الصفحة الواحدة فيها عشرات البطاقات، والتحميل المسبق
     // الافتراضي يطلق طلب RSC لكل بطاقة تدخل الشاشة — عشرات الطلبات المتزامنة
     // كانت ترجع 503 وتُبطئ التنقّل الفعلي. الرابط يُحمَّل عند النقر.
@@ -151,24 +178,48 @@ export function PosterCard({
 
         {/* الحالة كلها في خيط اللون: أخضر مكتمل، بنفسجي قيد المشاهدة،
             أحمر موقوف — وما لم يبدأ لا خيط له إطلاقاً */}
-        {(dropped || (progress ?? 0) > 0) && (
+        {(dropped || watched || saved || (progress ?? 0) > 0) && (
           <div className="absolute inset-x-0 bottom-0 h-1.5 bg-black/50">
             <div
               className="h-full"
               style={{
-                width: dropped
-                  ? "100%"
-                  : `${Math.max(0, Math.min(100, progress ?? 0))}%`,
+                /* **الأولوية: موقوفٌ ثم منتهٍ ثم جارٍ ثم محفوظ** — وأخصُّ
+                   الحالات يغلب أعمَّها، فعملٌ منتهٍ محفوظٌ يُقرأ منتهياً */
+                width:
+                  dropped || watched || (saved && (progress ?? 0) <= 0)
+                    ? "100%"
+                    : `${Math.max(0, Math.min(100, progress ?? 0))}%`,
                 background: dropped
                   ? "var(--error)"
-                  : (progress ?? 0) >= 100
+                  : watched || (progress ?? 0) >= 100
                     ? "var(--success)"
-                    : "var(--accent)",
+                    : (progress ?? 0) > 0
+                      ? "var(--accent)"
+                      : /* الرماديُّ حدُّ الملصق نفسُه: حالةٌ لا تُلحّ */
+                        "var(--border)",
               }}
             />
           </div>
         )}
       </div>
     </Link>
+  );
+
+  /* **الضغطُ المطوَّل غلافٌ لا تعديلٌ في البطاقة**: من لا يمرّره يحصل على
+     البطاقة نفسِها بلا عقدةٍ إضافية في الشجرة (D-229). */
+  return hold ? (
+    <PosterHold
+      tmdbId={hold.tmdbId}
+      mediaType={hold.mediaType}
+      title={title}
+      posterPath={posterPath}
+      added={hold.added}
+      watched={hold.watched}
+      locale={hold.locale}
+    >
+      {card}
+    </PosterHold>
+  ) : (
+    card
   );
 }

@@ -7,7 +7,6 @@ import type { TalkStat } from "@/lib/data";
 import { Avatar } from "./Avatar";
 import { Icon } from "./Icon";
 import { LikeButton } from "./LikeButton";
-import { QuickAdd } from "./QuickAdd";
 import { PosterCard } from "./PosterCard";
 import { ShareTitleButton } from "./ShareTitleButton";
 import { ProfileMenu } from "./ProfileMenu";
@@ -212,11 +211,15 @@ function RowPoster({
   mediaType,
   title,
   posterPath,
+  added,
+  locale,
 }: {
   tmdbId: number;
   mediaType: "tv" | "movie";
   title: string;
   posterPath: string | null;
+  added: boolean;
+  locale: Locale;
 }) {
   return (
     <div className={`${POSTER_W} shrink-0`}>
@@ -231,6 +234,12 @@ function RowPoster({
         posterSize="w185"
         fallbackIcon={mediaType === "tv" ? "tv" : "film"}
         hideTitle
+        /* **الخيطُ الرماديّ يقول «عندك»** (D-229) — والأخضرُ لا يُرسم هنا
+           لأن الخطَّ لا يقرأ «شوهد كاملاً»؛ يعود يوم يقرأه. */
+        saved={added}
+        /* **الضغطُ المطوَّل بأفعاله الثلاثة** — وهو بديلُ المِرجَعية التي
+           غادرت الذيل (D-229، طلبُ أحمد) */
+        hold={{ tmdbId, mediaType, added, watched: false, locale }}
       />
     </div>
   );
@@ -435,15 +444,6 @@ function CommentRow({
             after={
               <>
                 <StatChip icon="chart" n={watchers} label={t.talkWatchersHint} />
-                <QuickAdd
-                  variant="inline"
-                  tmdbId={a.tmdb_id}
-                  mediaType={a.media_type}
-                  title={a.title ?? ""}
-                  posterPath={a.poster_path}
-                  added={added}
-                  locale={locale}
-                />
                 <ShareTitleButton path={titleHref} title={a.title ?? ""} locale={locale} />
               </>
             }
@@ -456,6 +456,8 @@ function CommentRow({
         mediaType={a.media_type}
         title={a.title ?? ""}
         posterPath={a.poster_path}
+        added={added}
+        locale={locale}
       />
     </article>
   );
@@ -559,15 +561,6 @@ function NewsRow({
           />
           <CommentAction href={talkHref} label={t.actionComment} />
           <StatChip icon="chart" n={watchers} label={t.talkWatchersHint} />
-          <QuickAdd
-            variant="inline"
-            tmdbId={n.tmdb_id}
-            mediaType={n.media_type}
-            title={n.title}
-            posterPath={n.poster_path}
-            added={added}
-            locale={locale}
-          />
           <ShareTitleButton path={titleHref} title={n.title} locale={locale} />
         </RowFooter>
       </div>
@@ -577,6 +570,8 @@ function NewsRow({
         mediaType={n.media_type}
         title={n.title}
         posterPath={n.poster_path}
+        added={added}
+        locale={locale}
       />
     </article>
   );
