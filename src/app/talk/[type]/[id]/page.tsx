@@ -4,10 +4,9 @@ import { notFound } from "next/navigation";
 import {
   getUser,
   getMyArtFor,
-  getMyRating,
+  getMyProfileLite,
   getCommunityRating,
-  getTitleReviews,
-  getTitleReplies,
+  getTitleThread,
   getFollowState,
   isMovieWatched,
 } from "@/lib/data";
@@ -15,22 +14,16 @@ import { getMovie, getTv, posterUrl, backdropUrl } from "@/lib/tmdb";
 import { displayWorkTitle } from "@/lib/wikidata";
 import { getT } from "@/lib/locale";
 import { TitleHero } from "@/components/TitleHero";
-import { TalkCompose } from "@/components/TalkCompose";
-import { TalkThread } from "@/components/TalkThread";
+import { ThreadReplies } from "@/components/thread/ThreadReplies";
 import { Icon } from "@/components/Icon";
 
 export const dynamic = "force-dynamic";
 
 /**
- * **عنوانٌ ووصفٌ لصفحةٍ صارت تُقرأ بلا حساب** (D-221).
+ * **عنوانٌ ووصفٌ لصفحةٍ تُقرأ بلا حساب** (D-221).
  *
- * **وصفحةٌ مفتوحةٌ بلا وصفٍ نصفُ مفتوحة:** الزاحفُ يفهرس عنواناً فارغاً،
- * ومن شارك الرابط في محادثةٍ يرى مربّعاً بلا معنى. **ففتحُ الباب يشمل
- * تعريفَ ما خلفه.**
- *
- * **والوصفُ من الكلام نفسِه لا من قالبٍ عامّ** — أوّلُ رأيٍ مكتوب، **فما
- * يراه الباحثُ هو ما سيجده**. وإن لم يكن كلامٌ بعد فسطرٌ صادق: غرفةٌ
- * تنتظر أوّلَ رأي.
+ * **والوصفُ من الكلام نفسِه لا من قالبٍ عامّ** — أوّلُ مشاركةٍ في الغرفة،
+ * **فما يراه الباحثُ هو ما سيجده**. وإن كانت الغرفةُ خاليةً فسطرٌ صادق.
  *
  * ⚠️ **ولا يُنادى TMDB مرّتين:** `getMovie`/`getTv` تمرّان على ذاكرة
  * الطلب نفسِها التي تقرؤها الصفحة، **فالنداءُ واحدٌ للاثنين.**
@@ -46,9 +39,9 @@ export async function generateMetadata({
   if (!Number.isFinite(tmdbId)) return {};
 
   const { locale, t } = await getT();
-  const [details, reviews] = await Promise.all([
+  const [details, thread] = await Promise.all([
     (type === "tv" ? getTv(tmdbId) : getMovie(tmdbId)).catch(() => null),
-    getTitleReviews(tmdbId, type).catch(() => []),
+    getTitleThread(tmdbId, type).catch(() => []),
   ]);
   const raw = details
     ? type === "tv"
@@ -58,8 +51,8 @@ export async function generateMetadata({
   if (!raw) return {};
   const name = await displayWorkTitle(tmdbId, type, raw, locale);
 
-  const said = reviews.find((r) => r.review?.trim())?.review?.trim() ?? "";
-  const title = t.talkMetaTitle(name);
+  const said = thread[0]?.body?.trim() ?? "";
+  const title = t.talkRoomTitle(name, type === "tv");
   const description = said ? said.slice(0, 155) : t.talkMetaEmpty(name);
 
   return {
@@ -71,42 +64,43 @@ export async function generateMetadata({
 }
 
 /**
- * **صفحةُ الكلام عن عمل** (D-193، طلب أحمد بنصّه: «إذا ضغطت على الفيلم ما
- * أبغاه يوديني صفحة الفيلم، لا، أبغى صفحة تعليقات فقط كأني فاتح مجتمع،
- * لكن فيه كل التعليقات الي موجودة في صفحة الفيلم **ومربوطين ببعض**»).
+ * **غرفةُ النقاش — نقاشٌ خالصٌ لا آراء** (D-257).
  *
- * **ولماذا صفحةٌ ثالثة والآراءُ موجودةٌ في صفحة العمل؟** لأن صفحة العمل
- * تجيب سؤالاً آخر: «ما هذا العمل، وهل أشاهده؟» — فيها الغلافُ والقصّةُ
- * والممثّلون والمنصّات، والآراءُ تبويبٌ من ثلاثة في أسفلها. **ومن ضغط
- * بطاقةَ كلامٍ في المجتمع لا يسأل ذاك السؤال: هو داخلٌ على حديث.**
- * فتُفتح له الغرفةُ مباشرةً — ملصقٌ صغير وسطرُ عنوانٍ، ثم الكلام.
+ * ================= قرارا أحمد اللذان تنفّذهما هذه الصفحة =================
  *
- * **وهي نفسُ البيانات لا نسخةٌ منها:** `getTitleReviews` هي هي التي
- * تقرؤها صفحةُ العمل، والإعجابُ والبلاغُ نفسُ الجدولين — فرقمُ الإعجاب
- * واحدٌ في السطحين لأنه صفٌّ واحد. **والجديدُ وحده الردود**
- * (`getTitleReplies`، هجرة ٦٢) وهي «مربوطين ببعض» التي طلبها.
+ * **(١) «النقاش ليس الريفيو، يختلف».** كانت هذه الصفحةُ تعرض `TalkThread`
+ * — **آراءَ العمل نفسَها** التي تعرضها صفحةُ العمل وصفحاتُ `/review`،
+ * وتسمّي نفسَها نقاشاً. **وثلاثةُ أسطحٍ تعرض نفسَ الصفوف ليست ثلاثَ
+ * ميزات، هي ميزةٌ واحدةٌ ضائعة.**
  *
- * **والطريقُ إلى العمل نفسه لم يُقطع:** سطرُ الترويسة كلُّه رابطٌ إليه —
- * ومن أراد المشاهدة يصل بلمسة. وصفحةُ العمل بدورها لا تُرسل إلى هنا: لها
- * تبويبُها ولها غرفتُها (D-191)، **ولا نُخرج القارئ من العمل ليتكلّم عنه.**
+ * **(٢) «تخرج — `/talk` تصير نقاشاً خالصاً»** (جوابُه حرفاً على سؤالي).
+ * **فالآراءُ خرجت من هنا** إلى بيوتها الثلاثة: خطُّ النشاط، وتبويبُ
+ * الآراء في صفحة العمل، وصفحةُ `/review` لكلِّ رأيٍ بعينه. **ولم يُحذف
+ * منها شيء، نُقل موضعُ قراءتها.**
+ *
+ * ================= وما بقي من الترويسة ولماذا =================
+ *
+ * `TitleHero` بغلافه وملصقه **وتقييم المجتمع**. **والتقييمُ ليس رأياً
+ * ولم يخرج:** هو **حقيقةٌ عن العمل** كسنة الإصدار — ومن يدخل غرفةً
+ * ليتكلّم عن عملٍ يريد أن يعرف كيف استقبله الناس **قبل أن يكتب**.
+ * **وشاراتُ حالتك** («شاهدته» · «في مكتبتك») تبقى للسبب نفسِه.
+ *
+ * ⚠️ **وزرُّ «رأيك» (`TalkCompose`) خرج**: هو بابُ التقييم والمراجعة،
+ * **وبابٌ إلى فعلٍ لم يعد لهذه الصفحة صلةٌ به** يعِد بما لا تعرضه.
+ * **ومن أراد أن يقيّم يجده في صفحة العمل** — وسهمُ الترويسة يوصله بلمسة.
  *
  * ⚠️ `type` في المسار هو `tv` أو `movie` — **مفرداتُ TMDB لا مفرداتُ
- * الروابط** (`‎/show/…` · `‎/movie/…`). والسببُ أن الصفحة عامّةٌ للنوعين
- * ومفتاحُها في القاعدة `media_type`، فمسارٌ يخالف عمودَ القاعدة يُترجم في
- * كل نداء. **وغيرُهما `notFound` لا افتراضٌ صامت.**
+ * الروابط** (`‎/show/…` · `‎/movie/…`)، لأن مفتاحَ القاعدة `media_type`.
+ * **وغيرُهما `notFound` لا افتراضٌ صامت.**
  */
 export default async function TalkPage({
   params,
 }: {
   params: Promise<{ type: string; id: string }>;
 }) {
-  /* **وتُقرأ بلا حساب** (D-221): كان هنا `redirect("/login")` — **فقوقل لا
-     تفهرس حرفاً من نقاشاتنا، ومن وصله رابطٌ من صديقٍ وجد جدارَ تسجيلٍ قبل
-     أن يرى لماذا يسجّل.** **والقراءةُ للجميع والكتابةُ للمسجَّلين.**
-
-     ⚠️ **والحراسةُ في القاعدة لا هنا** (هجرة ٧٢): الحساباتُ الخاصّة تختفي
-     عن الزائر بـ`can_view_profile`، وإخفاءُ الاسم والمبلَّغُ عنه كما هما.
-     **وشرطٌ في الصفحة كان سيصير شرطاً ثانياً يفترق عن الأوّل.** */
+  /* **وتُقرأ بلا حساب** (D-221): القراءةُ للجميع والكتابةُ للمسجَّلين،
+     **والحراسةُ في القاعدة لا هنا** — `title_thread` تشترط `auth.uid()`
+     وتستثني المحظور، فالزائرُ يرى الترويسةَ ودعوةَ الدخول. */
   const user = await getUser();
   const signedIn = !!user;
 
@@ -117,60 +111,43 @@ export default async function TalkPage({
   const tmdbId = Number(id);
   if (!Number.isFinite(tmdbId)) notFound();
 
-  /* الخمسةُ معاً: لا شيء منها يعتمد على الآخر، والتسلسلُ كان يضيف
-     أربعَ رحلاتٍ إلى صفحةٍ محتواها سطورُ نصّ.
-     **و`getMyArtFor` سادسُها بلا كلفةٍ في الزمن** (D-216): الغلافُ الذي
-     اخترتَه للعمل في صفحته هو غلافُه هنا — **صورتان مختلفتان لعملٍ واحد
-     تُقرآن عملين.** */
-  const [details, reviews, replies, mine, community, myArt, follow, watchedIt] =
-    await Promise.all([
-      (mediaType === "tv" ? getTv(tmdbId) : getMovie(tmdbId)).catch(() => null),
-      getTitleReviews(tmdbId, mediaType),
-      getTitleReplies(tmdbId, mediaType),
-      getMyRating(tmdbId, mediaType),
-      getCommunityRating(tmdbId, mediaType),
-      getMyArtFor(tmdbId, mediaType).catch(() => null),
-      /* **حالتُك من مصادرها القائمة** (D-217): نفسُ الدالّتين اللتين تقرؤهما
-         صفحةُ العمل — **فالحالةُ واحدةٌ في السطحين لأنها من صفٍّ واحد.** */
-      getFollowState(tmdbId, mediaType).catch(() => ({ following: false, dropped: false })),
-      /* ⚠️ **و«شاهدته» للأفلام وحدها**: المسلسلُ يُشاهَد حلقةً حلقة، **ولا
-         صفَّ واحداً يقول «شاهدتُه»** — فادّعاؤه للمسلسلات كان سيكذب. */
-      mediaType === "movie" ? isMovieWatched(tmdbId).catch(() => false) : Promise.resolve(false),
-    ]);
+  /* الستّةُ معاً: لا شيء منها يعتمد على الآخر، **والتسلسلُ كان يضيف
+     رحلاتٍ إلى صفحةٍ محتواها سطورُ نصّ.** */
+  const [details, thread, community, myArt, me, follow, watchedIt] = await Promise.all([
+    (mediaType === "tv" ? getTv(tmdbId) : getMovie(tmdbId)).catch(() => null),
+    getTitleThread(tmdbId, mediaType),
+    getCommunityRating(tmdbId, mediaType),
+    /* **غلافُك أنت** (D-216): الغلافُ الذي اخترتَه للعمل في صفحته هو
+       غلافُه هنا — **صورتان مختلفتان لعملٍ واحد تُقرآن عملين.** */
+    getMyArtFor(tmdbId, mediaType).catch(() => null),
+    user ? getMyProfileLite() : Promise.resolve(null),
+    getFollowState(tmdbId, mediaType).catch(() => ({ following: false, dropped: false })),
+    /* ⚠️ **و«شاهدته» للأفلام وحدها**: المسلسلُ يُشاهَد حلقةً حلقة، **ولا
+       صفَّ واحداً يقول «شاهدتُه»** — فادّعاؤه للمسلسلات كان سيكذب. */
+    mediaType === "movie" ? isMovieWatched(tmdbId).catch(() => false) : Promise.resolve(false),
+  ]);
 
   /* TMDB ساقطٌ أو المعرّف خاطئ؟ **الكلامُ يبقى** — العنوانُ مخزَّنٌ مع
-     كل تقييم (D-048)، فالصفحة تُرسم من القاعدة وحدها. و`notFound` هنا
-     كان سيُخفي حواراً قائماً لأن مصدراً خارجياً تعذّر */
+     كل مشاركة (نمطُ D-048)، فالصفحة تُرسم من القاعدة وحدها. و`notFound`
+     هنا كان سيُخفي حواراً قائماً لأن مصدراً خارجياً تعذّر. */
   const rawTitle = details
     ? mediaType === "tv"
       ? (details as { name: string }).name
       : (details as { title: string }).title
-    : (reviews[0] as { title?: string } | undefined)?.title ?? "";
+    : "";
   const title = rawTitle
     ? await displayWorkTitle(tmdbId, mediaType, rawTitle, locale)
     : t.talkFallbackTitle;
-  /* **ملصقان لا واحد، والفرقُ مقصود:** `posterPath` ما يُخزَّن مع التقييم
-     — **ملصقُ TMDB الرسميّ** لأنه يُقرأ في أسطح الآخرين. و`artPoster` ما
-     تراه أنت في هذه الصفحة (D-131). **وخلطُهما يكتب ذوقَك في بيانات
-     غيرك.** */
+
   const posterPath = (details as { poster_path?: string | null } | null)?.poster_path ?? null;
+  const backdropPath = (details as { backdrop_path?: string | null } | null)?.backdrop_path ?? null;
   const poster = posterUrl(myArt?.poster_path ?? posterPath, "w185");
-  const backdrop = backdropUrl(
-    myArt?.backdrop_path ??
-      (details as { backdrop_path?: string | null } | null)?.backdrop_path ??
-      null,
-    "w780",
-  );
+  const backdrop = backdropUrl(myArt?.backdrop_path ?? backdropPath, "w780");
   const href = `/${mediaType === "tv" ? "show" : "movie"}/${tmdbId}`;
   const avg = Math.round(community.avg * 10) / 10;
 
   return (
     <main className="pb-24">
-      {/* **الترويسةُ صارت `TitleHero` المشترَكة** (D-244): وُلدت هنا
-          (D-216/D-217) ثم طلبها أحمد فوق صفحة التعليق — **وقارئٌ ثانٍ هو
-          لحظةُ الاستخراج**، والنسخةُ المحلّية حُذفت في الدفعة نفسِها.
-          حُجَجُ الهندسة كلُّها (25svh بحدّين، إلغاءُ حشو التخطيط بالضبط،
-          start/end لا يسار/يمين) انتقلت معها إلى ملفّها. */}
       <TitleHero
         backdrop={backdrop}
         poster={poster}
@@ -193,56 +170,71 @@ export default async function TalkPage({
         }
       />
 
-      {/* **شريطُ حالتك — في ذيل الترويسة لا في وسط الصفحة** (D-217).
-          ⚠️ **والقاعدةُ: المُطَوَّق يُضغط والعاري يُقرأ.** «رأيك» شارةٌ
-          مؤطَّرة تفتح الورقة، **و«شاهدته» و«في مكتبتك» نصٌّ ورمزٌ بلا إطار**
-          — فلا يظنّهما أحدٌ زرّين فيضغطهما ولا يحدث شيء. **ولو صارا زرّين
-          لصارا عائلةَ أفعالٍ ثانية تنافس شريطَ صفحة العمل** (ق٣). */}
-      <div className="px-4 sm:px-6 max-w-xl mx-auto -mt-1 flex items-center gap-3 flex-wrap">
-        {signedIn ? (
-          <TalkCompose
-            tmdbId={tmdbId}
-            mediaType={mediaType}
-            title={rawTitle}
-            posterPath={posterPath}
-            locale={locale}
-            initialRating={mine?.rating ?? null}
-            initialReview={mine?.review ?? null}
-          />
-        ) : (
-          /* **دعوةٌ لا جدار** (D-221): الزائرُ قرأ الحوار أوّلاً، **فالطلبُ
-             يأتي بعد أن رأى لماذا** — وهو عكسُ ما كان تماماً. */
-          <Link
-            href="/login"
-            className="inline-flex items-center gap-1.5 rounded-full border border-white/25 bg-black/40 backdrop-blur-md px-3 py-1.5 text-white active:scale-95 transition hover:border-accent"
-          >
-            <Icon name="comment" size={13} className="shrink-0 text-accent" />
-            <span className="text-[12px] font-bold">{t.talkSignInToWrite}</span>
-          </Link>
-        )}
-        {watchedIt && (
-          <span className="inline-flex items-center gap-1.5 text-[12px] text-muted">
-            <Icon name="check" size={13} className="text-accent" />
-            {t.talkWatchedIt}
-          </span>
-        )}
-        {!watchedIt && follow.following && (
-          <span className="inline-flex items-center gap-1.5 text-[12px] text-muted">
-            <Icon name="bookmark" size={13} className="text-accent" />
-            {t.talkInLibrary}
-          </span>
-        )}
+      {/* **عنوانُ الغرفة المولَّد — أوّلُ ما يُقرأ تحت الترويسة** (D-257،
+          طلبُ أحمد: «لازم يكون له عنوان، مبدئياً يكون عنوانه نقاش فلم
+          كذا»). **وهو نفسُ نصِّ البطاقة حرفاً** — فمن ضغط بطاقةً وجد
+          عنوانَها فوق الغرفة، **ولا يسأل: هل فُتحت الغرفةُ التي ضغطتُها؟** */}
+      <div className="px-4 sm:px-6 max-w-xl mx-auto mt-1">
+        <h1 className="text-[17px] font-bold leading-snug">
+          {t.talkRoomTitle(title, mediaType === "tv")}
+        </h1>
+
+        {/* **شاراتُ حالتك — تُقرأ ولا تُضغط** (D-217): «المُطَوَّق يُضغط
+            والعاري يُقرأ»، فلا يظنُّها أحدٌ زرّين ويضغطهما بلا أثر. */}
+        <div className="mt-2 flex items-center gap-3 flex-wrap">
+          {!signedIn && (
+            /* **دعوةٌ لا جدار** (D-221): الزائرُ قرأ الحوار أوّلاً،
+               **فالطلبُ يأتي بعد أن رأى لماذا.** */
+            <Link
+              href="/login"
+              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-3 py-1.5 active:scale-95 transition hover:border-accent"
+            >
+              <Icon name="comment" size={13} className="shrink-0 text-accent" />
+              <span className="text-[12px] font-bold">{t.talkSignInToWrite}</span>
+            </Link>
+          )}
+          {watchedIt && (
+            <span className="inline-flex items-center gap-1.5 text-[12px] text-muted">
+              <Icon name="check" size={13} className="text-accent" />
+              {t.talkWatchedIt}
+            </span>
+          )}
+          {!watchedIt && follow.following && (
+            <span className="inline-flex items-center gap-1.5 text-[12px] text-muted">
+              <Icon name="bookmark" size={13} className="text-accent" />
+              {t.talkInLibrary}
+            </span>
+          )}
+        </div>
       </div>
 
-      <div className="px-4 sm:px-6 max-w-xl mx-auto mt-4">
-        {/* **ولا عنوانَ «الكلام» فوق الحوار** (D-217، «تحتها مباشرة
-            الردود»): عنوانٌ يسمّي ما تراه بعينك يأكل سطراً ولا يضيف معنى —
-            **والصفحةُ كلُّها حوارٌ أصلاً.** */}
-        <TalkThread
-          reviews={reviews}
-          replies={replies}
-          tmdbId={tmdbId}
-          mediaType={mediaType}
+      {/* **الخيطُ شجرةٌ كـReddit** (طلبُ أحمد: «تكون مثل Reddit لا مثل
+          تويتر») — والحجّةُ كاملةً في رأس `ThreadReplies`.
+          **والعنوانُ والملصقُ والغلافُ يُمرَّرون ليُكتبوا مع الصفّ**: بطاقةُ
+          الغرفة تقرؤهما من المشاركات لا من TMDB (D-164). */}
+      <div className="px-4 sm:px-6 max-w-xl mx-auto mt-3">
+        <ThreadReplies
+          target={{
+            kind: "talk",
+            tmdbId,
+            mediaType,
+            title: rawTitle || null,
+            posterPath,
+            backdropPath,
+          }}
+          replies={thread.map((p) => ({
+            replyId: p.postId,
+            authorId: p.authorId,
+            nickname: p.nickname,
+            username: p.username,
+            avatar_url: p.avatar_url,
+            hide_name: p.hide_name,
+            parentId: p.parentId,
+            body: p.body,
+            createdAt: p.createdAt,
+            isMine: p.isMine,
+          }))}
+          me={me}
           locale={locale}
           signedIn={signedIn}
         />
