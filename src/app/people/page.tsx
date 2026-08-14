@@ -325,6 +325,60 @@ export default async function PeoplePage({
      واقفٌ فيه يبقى يراه حتى يغادره، وإلا اختفت الصفحة تحت قدميه. */
   const visibleTabs = applyTabPrefs(tabs, tabPrefs, tab);
 
+  /**
+   * **رقاقاتُ الفرز داخل الرأس اللاصق لا تحته** (D-245، بلاغُ أحمد
+   * بلقطتين: «ليه هيدر الصفحة ما يكون ثابت مثل تويتر» و«في مساحة كبيرة
+   * فوق الفلتر»).
+   *
+   * **والعيبان كانا عيباً واحداً:** الرقاقاتُ كانت أوّلَ المحتوى — تحت
+   * الرأس بمسافة `space-y-5` — **فتُترك فجوةٌ فوقها وتغادر الشاشةَ مع
+   * أوّل تمريرة**. وتويتر يضع صفَّ الفرز **في الرأس الملتصق نفسِه**:
+   * تُبدِّل الترتيبَ من أيّ عمقٍ في الخطّ بلا صعود. و`PageTabs` تملك
+   * خانةَ `extra` لهذا بالضبط (بُنيت لصفّ بحث المكتبة) — **فلا رأسَ
+   * ثانٍ يُخترع.**
+   *
+   * **ولا رقاقاتَ لتبويبَي الرابط** («أخبار» و«مجتمعات»): فرزُهما ليس
+   * سؤالاً هناك، وخانةٌ فارغة خيرٌ من خياراتٍ لا تنطبق (D-217).
+   */
+  const filterChips =
+    tab === "activity" || tab === "talk" ? (
+      /* والحشوُ حول الصفّ ملكُ `PageTabs` لا ملكُنا — حشوٌ ثانٍ هنا
+         يُضاعِفه (نفسُ درس الخطّين في D-134) */
+      <div className="flex items-center gap-2">
+        {(tab === "activity"
+          ? ([
+              { key: "for-you", label: t.feedForYou, href: `/people?tab=${tab}` },
+              { key: "latest", label: t.feedLatest, href: `/people?tab=${tab}&sort=latest` },
+              { key: "top", label: t.feedTop, href: `/people?tab=${tab}&sort=top` },
+            ] as const)
+          : ([
+              { key: "all", label: t.worksScopeAll, href: `/people?tab=${tab}` },
+              {
+                key: "following",
+                label: t.worksScopeFollowing,
+                href: `/people?tab=${tab}&scope=following`,
+              },
+            ] as const)
+        ).map((c) => {
+          const on = tab === "activity" ? feedSort === c.key : scope === c.key;
+          return (
+            <Link
+              key={c.key}
+              href={c.href}
+              aria-current={on ? "true" : undefined}
+              className={
+                on
+                  ? "px-3.5 py-1.5 rounded-full text-[13px] font-bold bg-accent text-black"
+                  : "px-3.5 py-1.5 rounded-full text-[13px] font-semibold border border-border text-muted hover:text-foreground transition"
+              }
+            >
+              {c.label}
+            </Link>
+          );
+        })}
+      </div>
+    ) : undefined;
+
   return (
     <div className="space-y-5">
       {/* ذاكرة موضع التمرير — العائد من ملف صديقٍ يهبط حيث كان (تدقيق 8 Aug م٢) */}
@@ -351,6 +405,8 @@ export default async function PeoplePage({
             labels={Object.fromEntries(tabs.map((x) => [x.key, x.label]))}
           />
         }
+        /* صفُّ الفرز داخل الرأس اللاصق — انظر `filterChips` أعلاه (D-245) */
+        extra={filterChips}
       />
 
       {/* ===== محتوى التبويب ===== */}
@@ -381,48 +437,6 @@ export default async function PeoplePage({
            المريح للقراءة ٦٠–٨٠ حرفاً** — والسقفُ يخدم «نقاش» معه، فهو
            على القسم لا على الخطّ وحده. */
         <section className="max-w-[680px]">
-          {/* رقاقتان لا تبويبان (D-187): «الكل» و«من أتابع» سؤالٌ واحد
-              بنطاقين، **وتبويبان لخطّين رفيعين يجعلان كليهما يبدو ميّتاً**.
-              وهما روابطُ لا أزرار: الحالة تسكن الرابط فيُشارَك ويعود
-              إليه زرُّ الرجوع (D-095). */}
-          {/* **ثلاثُ رقاقاتٍ للنشاط، واثنتان للنقاش** (D-240) — انظر حجّة
-              `feedSort` أعلاه. **وثلاثٌ تسع صفَّ الهاتف بلا قصٍّ ولا
-              تمريرٍ أفقيّ**: التمريرُ الأفقيّ في رأس الصفحة **يخفي
-              خياراً**، ومن لا يمرّر لا يعرف أنه موجود. */}
-          <div className="flex items-center gap-2 mb-4">
-            {(tab === "activity"
-              ? ([
-                  { key: "for-you", label: t.feedForYou, href: `/people?tab=${tab}` },
-                  { key: "latest", label: t.feedLatest, href: `/people?tab=${tab}&sort=latest` },
-                  { key: "top", label: t.feedTop, href: `/people?tab=${tab}&sort=top` },
-                ] as const)
-              : ([
-                  { key: "all", label: t.worksScopeAll, href: `/people?tab=${tab}` },
-                  {
-                    key: "following",
-                    label: t.worksScopeFollowing,
-                    href: `/people?tab=${tab}&scope=following`,
-                  },
-                ] as const)
-            ).map((c) => {
-              const on = tab === "activity" ? feedSort === c.key : scope === c.key;
-              return (
-                <Link
-                  key={c.key}
-                  href={c.href}
-                  aria-current={on ? "true" : undefined}
-                  className={
-                    on
-                      ? "px-3.5 py-1.5 rounded-full text-[13px] font-bold bg-accent text-black"
-                      : "px-3.5 py-1.5 rounded-full text-[13px] font-semibold border border-border text-muted hover:text-foreground transition"
-                  }
-                >
-                  {c.label}
-                </Link>
-              );
-            })}
-          </div>
-
           {/* **الرقاقتان فوق التبويبين معاً** (D-219): النطاقُ سؤالٌ عن
               «كلامِ مَن» لا عن شكل العرض، **فيصحّ فوق التجميع وفوق الخطّ
               المسطّح** — ولا نسخةَ ثانية منه. */}
