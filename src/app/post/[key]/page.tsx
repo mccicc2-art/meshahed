@@ -93,7 +93,7 @@ export default async function PostPage({
             prefetch={false}
             className="shrink-0 active:opacity-80 transition"
           >
-            <Avatar src="/icon-192.png" name="Loopz" size={44} alt="" />
+            <Avatar src="/loopz-mark.png" name="Loopz" size={44} alt="" />
           </Link>
           <div className="min-w-0 flex-1">
             <Link
