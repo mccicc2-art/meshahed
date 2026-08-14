@@ -14,6 +14,7 @@ import {
   getTalkStats,
   getFollows,
   getReactions,
+  getFollowingIds,
 } from "@/lib/data";
 import { getT, getTabPrefs } from "@/lib/locale";
 import { WorksTalk, groupByWork } from "@/components/WorksTalk";
@@ -185,7 +186,11 @@ export default async function PeoplePage({
      (`title_talk_stats`) لا نداءٌ لكل صفّ. ولا يُدفع إلا في تبويبه، ولا
      يُدفع لخطٍّ فارغ. **وسقوطُه لا يُسقط الصفّ**: الدالّة تُرجع خريطةً
      فارغة فتُخفى الأرقام ويبقى الكلامُ مقروءاً. */
-  const talkStats = works.length ? await getTalkStats() : undefined;
+  /* **ونداءٌ واحدٌ يخدم التبويبين** (D-198): «نقاش» يعرض الردودَ والمشاهدين
+     على بطاقة العمل، و«النشاط» يعرض «كم شاهده» في ذيل الصفّ — **ومصدرٌ
+     واحد لقسمين خيرٌ من دالّتين تختلفان يوماً.** */
+  const talkStats =
+    works.length || tab === "activity" ? await getTalkStats() : undefined;
 
   /* «أشخاص لمتابعتهم» (D-126) — تُطلب حين يكون الخطّ هزيلاً لا فارغاً
      وحده: دائرةٌ من شخصين تُنتج خطّاً صامتاً كدائرةٍ من صفر، والفرق أن
@@ -231,6 +236,9 @@ export default async function PeoplePage({
   const postLikes = genNews.length
     ? await getReactions(genNews.map((n) => n.tmdb_id))
     : { counts: {}, mine: new Set<string>() };
+
+  /* مَن أتابعهم — لصفّ المتابعة في قائمة نقاط كل صفّ (D-225) */
+  const followingIds = tab === "activity" ? await getFollowingIds() : new Set<string>();
 
   /* **سقط مع خطّ البطاقات:** «أشخاصٌ لمتابعتهم» (D-126) والصورُ
      العرضية (نداءُ TMDB لأوائل الخطّ). صفُّ «الأعمال» يعرض الملصق الذي
@@ -316,7 +324,12 @@ export default async function PeoplePage({
           />
         )
       ) : (
-        <section>
+        /* **عمودُ قراءةٍ مسقوف** (D-225): على الشاشة العريضة كان سطرُ
+           التعليق يمتدّ ٦٦٠px، **فيبعد النصُّ عن اسم صاحبه** ويقفز
+           سطرٌ عربيّ (`dir="auto"`) إلى الطرف المقابل. **والقياسُ
+           المريح للقراءة ٦٠–٨٠ حرفاً** — والسقفُ يخدم «نقاش» معه، فهو
+           على القسم لا على الخطّ وحده. */
+        <section className="max-w-[680px]">
           {/* رقاقتان لا تبويبان (D-187): «الكل» و«من أتابع» سؤالٌ واحد
               بنطاقين، **وتبويبان لخطّين رفيعين يجعلان كليهما يبدو ميّتاً**.
               وهما روابطُ لا أزرار: الحالة تسكن الرابط فيُشارَك ويعود
@@ -357,6 +370,8 @@ export default async function PeoplePage({
               meId={user.id}
               followed={followed}
               postLikes={postLikes}
+              stats={talkStats}
+              followingIds={followingIds}
               emptyText={scope === "all" ? t.worksEmptyAll : t.worksEmptyFollowing}
               locale={locale}
             />
