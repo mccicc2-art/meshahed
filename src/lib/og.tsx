@@ -88,6 +88,10 @@ export function threadOgCard({
         background: "#0D0D0D",
         color: "#FFFFFF",
         fontFamily: "Cairo, CairoLatin",
+        /* ⚠️ **`direction` لا `textAlign` وحدها**: المحرّكُ هنا satori لا
+           متصفّح، **وبلا `direction` يقلب ترتيبَ كلماتِ السطر الثاني**
+           حين تلتفّ الجملةُ العربية — فُحص حيّاً على رأيٍ من سطرين. */
+        direction: rtl ? "rtl" : "ltr",
       }}
     >
       {/* هالةٌ خفيفة — نفسُ إحساسِ بطاقة الجذر فلا تبدوان من تطبيقين */}
@@ -151,7 +155,26 @@ export function threadOgCard({
               }}
             >
               {work && <div style={{ display: "flex" }}>{work}</div>}
-              {badge && <div style={{ display: "flex", color: "#FFD200" }}>★ {badge}</div>}
+              {/* ⚠️ **نجمةٌ مرسومةٌ لا محرف `★`**: خطُّ Cairo لا يحمل
+                  U+2605، **فيُرسم مربّعاً فارغاً** — فُحص حيّاً على بطاقة
+                  تعليق. **وحرفٌ لا يملكه الخطُّ عطلٌ يراه الناسُ خارج
+                  التطبيق**، فالشكلُ يُرسم لا يُستعار. */}
+              {badge && (
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    color: "#FFD200",
+                    flexDirection: rtl ? "row-reverse" : "row",
+                  }}
+                >
+                  <svg width="26" height="26" viewBox="0 0 24 24" fill="#FFD200">
+                    <path d="M12 2.4l2.9 6.1 6.6.9-4.8 4.6 1.2 6.6L12 17.5 6.1 20.6l1.2-6.6L2.5 9.4l6.6-.9z" />
+                  </svg>
+                  <div style={{ display: "flex" }}>{badge}</div>
+                </div>
+              )}
             </div>
           )}
         </div>
