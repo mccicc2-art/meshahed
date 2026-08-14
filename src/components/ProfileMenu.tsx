@@ -38,6 +38,7 @@ export function ProfileMenu({
   mutual,
   follow,
   variant = "cover",
+  system = false,
   locale,
 }: {
   person: PersonLite;
@@ -59,6 +60,15 @@ export function ProfileMenu({
    * والمختلفُ المقبضُ وحده (D-224، نفسُ حجّة `QuickAdd`).
    */
   variant?: "cover" | "plain";
+  /**
+   * **حسابُ نظامٍ لا إنسانَ خلفه** (D-252 — حساب Loopz): تسقط «رسالة»
+   * (الرسالةُ تشترط متابعةً متبادلة **ولا أحدَ خلف الحساب يقبلها** —
+   * وخيارٌ يعد بما لا يقع يكذب، D-217) وتسقط «بلاغ» (**البلاغُ يذهب
+   * إلينا نحن** — والشكوى من المحتوى بابُها بلاغُ النشرة نفسِها).
+   * **وتبقى المتابعةُ والحظر** — بنصّ أحمد: «متابعة وبلوك مثله مثل أي
+   * حساب». **والمكوّنُ واحدٌ بصفوفٍ مرشَّحة لا توأمٌ له** (D-145).
+   */
+  system?: boolean;
   locale: Locale;
 }) {
   const t = getDict(locale);
@@ -142,25 +152,29 @@ export function ProfileMenu({
         </button>
       )}
 
-      <button onClick={openMessage} role="menuitem" className={itemClass}>
-        <Icon name="comment" size={18} className={mutual ? "text-accent" : "text-muted"} />
-        <span className={mutual ? "" : "text-muted"}>{t.msgUserOption}</span>
-      </button>
+      {!system && (
+        <button onClick={openMessage} role="menuitem" className={itemClass}>
+          <Icon name="comment" size={18} className={mutual ? "text-accent" : "text-muted"} />
+          <span className={mutual ? "" : "text-muted"}>{t.msgUserOption}</span>
+        </button>
+      )}
 
       <div className={dividerClass} />
 
-      <button
-        onClick={() => {
-          setMenu(false);
-          if (!reported) setReport(true);
-        }}
-        disabled={pending}
-        role="menuitem"
-        className={itemClass}
-      >
-        <Icon name="shield" size={18} className="text-muted" />
-        {reported ? t.reportDone : t.reportUserOption}
-      </button>
+      {!system && (
+        <button
+          onClick={() => {
+            setMenu(false);
+            if (!reported) setReport(true);
+          }}
+          disabled={pending}
+          role="menuitem"
+          className={itemClass}
+        >
+          <Icon name="shield" size={18} className="text-muted" />
+          {reported ? t.reportDone : t.reportUserOption}
+        </button>
+      )}
 
       <button
         onClick={() => {

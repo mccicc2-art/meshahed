@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getDict, type Locale } from "@/lib/i18n";
 import { timeAgoShort } from "@/lib/when";
+import { LOOPZ_ID, LOOPZ_USERNAME, LOOPZ_PERSON } from "@/lib/loopz";
 import { displayNameOf, type FeedItem, type LoopzNewsItem } from "@/lib/data";
 import { newsLine, newsSource } from "@/lib/newsLine";
 import { dirOf } from "@/lib/dir";
@@ -260,6 +261,7 @@ export function ActivityFeed({
             likes={postLikes?.counts[key] ?? 0}
             likedByMe={postLikes?.mine.has(key) ?? false}
             replies={newsReplies?.get(row.item.key) ?? 0}
+            followLoopz={followingIds?.has(LOOPZ_ID) ?? false}
             locale={locale}
           />
         );
@@ -543,6 +545,7 @@ function NewsRow({
   likes,
   likedByMe,
   replies,
+  followLoopz,
   locale,
 }: {
   n: LoopzNewsItem;
@@ -552,6 +555,8 @@ function NewsRow({
   likes: number;
   likedByMe: boolean;
   replies: number;
+  /** هل يتابع القارئُ حسابَ Loopz؟ — حالةُ صفّ المتابعة في ⋯ (D-252) */
+  followLoopz: boolean;
   locale: Locale;
 }) {
   const t = getDict(locale);
@@ -579,23 +584,30 @@ function NewsRow({
         {/* ===== الترويسة: ختمٌ · اسمٌ / عملٌ · نوعٌ · عمرٌ ===== */}
         <div className="flex items-center gap-2.5">
           {/* **ختمُ Loopz في موضع الوجه** — الأيقونةُ الرسمية نفسُها، لا
-              مونوغرام جديد: **الوردمارك هو الشعار** (D-039). */}
-          <span className="shrink-0">
+              مونوغرام جديد: **الوردمارك هو الشعار** (D-039).
+              **🆕 وصار باباً** (D-252): الوجهُ في صفّ التعليق يفتح صاحبَه،
+              **والختمُ صار له صاحبٌ حقيقيّ** — فعائلةُ الصفّ الواحدة
+              تقتضي أن يفتح مثلَه. */}
+          <Link
+            href={`/u/${LOOPZ_USERNAME}`}
+            prefetch={false}
+            className="shrink-0 active:opacity-80 transition"
+          >
             <Avatar src="/icon-192.png" name="Loopz" size={44} alt="" />
-          </span>
+          </Link>
 
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5">
-              <span className="shrink-0 font-bold text-[14px] leading-tight text-foreground" dir="ltr">
+              <Link
+                href={`/u/${LOOPZ_USERNAME}`}
+                prefetch={false}
+                className="shrink-0 font-bold text-[14px] leading-tight text-foreground hover:text-accent transition"
+                dir="ltr"
+              >
                 Loopz
-              </span>
-              {/* **ولا نقاطَ هنا**: القائمةُ متابعةٌ وحظرٌ وبلاغٌ على
-                  **إنسان**، ولا إنسانَ في خبرِنا — **ومقبضٌ يفتح خياراتٍ لا
-                  تنطبق أسوأ من غيابه** (D-217). */}
+              </Link>
               {/* **العمرُ رابطٌ إلى صفحة النشرة** (D-239) — **عادةُ تويتر
-                  نفسُها**: الوسمُ الزمنيّ يفتح المنشورَ وحدَه. **ولا زرَّ
-                  جديد في شريطٍ مكتظّ**: الوقتُ موجودٌ أصلاً، وإنّما صار
-                  يقود إلى مكانٍ صار له وجود. */}
+                  نفسُها**: الوسمُ الزمنيّ يفتح المنشورَ وحدَه. */}
               <Link
                 href={postHref}
                 prefetch={false}
@@ -603,6 +615,21 @@ function NewsRow({
               >
                 {timeAgoShort(n.published_at, t)}
               </Link>
+              {/* **⋯ عادت إلى صفّ النشرة** (D-252 — بلاغُ أحمد: «لوبز لازم
+                  يكون له ٣ نقاط»). **حجّةُ غيابها ماتت بموت سببها** (نفسُ
+                  حكم D-250): «لا إنسانَ في خبرنا» كانت صحيحةً يومَ كان
+                  الختمُ صورةً — **وصار خلفَه حسابٌ يُتابَع ويُحظَر.**
+                  والقائمةُ مرشَّحةٌ بـ`system`: لا رسالةَ ولا بلاغ. */}
+              <span className="shrink-0 flex items-center">
+                <ProfileMenu
+                  person={LOOPZ_PERSON}
+                  mutual={false}
+                  follow={{ following: followLoopz }}
+                  variant="plain"
+                  system
+                  locale={locale}
+                />
+              </span>
             </div>
 
             {/* **اسمُ العمل ونوعُه تحت الاسم** (طلبُ أحمد) — موضعُ «اسمِ
