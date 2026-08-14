@@ -15,6 +15,7 @@ import {
   getFollows,
   getReactions,
   getFollowingIds,
+  getNewsReplyCounts,
 } from "@/lib/data";
 import { getT, getTabPrefs } from "@/lib/locale";
 import { WorksTalk, groupByWork } from "@/components/WorksTalk";
@@ -240,6 +241,12 @@ export default async function PeoplePage({
   /* مَن أتابعهم — لصفّ المتابعة في قائمة نقاط كل صفّ (D-225) */
   const followingIds = tab === "activity" ? await getFollowingIds() : new Set<string>();
 
+  /* **ردودُ نشراتنا** (D-236): نداءٌ واحد لمفاتيح الخطّ كلِّها، **وسقوطُه
+     صامتٌ قبل الهجرة ٧٣** فتُخفى الأرقام ويبقى الخطُّ مقروءاً. */
+  const newsReplies = genNews.length
+    ? await getNewsReplyCounts(genNews.map((n) => n.key))
+    : new Map<string, number>();
+
   /* **سقط مع خطّ البطاقات:** «أشخاصٌ لمتابعتهم» (D-126) والصورُ
      العرضية (نداءُ TMDB لأوائل الخطّ). صفُّ «الأعمال» يعرض الملصق الذي
      يحمله الصفُّ نفسه — **فلا نداءَ خارجيّاً واحداً في هذا التبويب بعد
@@ -372,6 +379,7 @@ export default async function PeoplePage({
               postLikes={postLikes}
               stats={talkStats}
               followingIds={followingIds}
+              newsReplies={newsReplies}
               emptyText={scope === "all" ? t.worksEmptyAll : t.worksEmptyFollowing}
               locale={locale}
             />
