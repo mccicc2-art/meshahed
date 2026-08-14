@@ -6,6 +6,7 @@ import { newsLine, newsSource } from "@/lib/newsLine";
 import { Avatar } from "./Avatar";
 import { Icon } from "./Icon";
 import { LikeButton } from "./LikeButton";
+import { QuickAdd } from "./QuickAdd";
 import { PosterCard } from "./PosterCard";
 
 /**
@@ -17,60 +18,51 @@ import { PosterCard } from "./PosterCard";
  * يقتسمان قارئاً واحداً ومحتوًى شحيحاً، **وخطّان رفيعان يجعلان كليهما
  * يبدو ميّتاً** (نفسُ حجّة رقاقتَي النطاق في D-187).
  *
- * ================= هندسةُ الصفّ (D-223) =================
+ * ================= هندسةُ الصفّ (D-223/D-224) =================
  *
- * **ثلاثةُ أعمدةٍ للنوعين معاً** — عائلةُ صفٍّ واحدة، وهندستان في قائمةٍ
- * واحدة تُقرأ سطحين لا سطحاً:
+ * **ثلاثةُ أعمدةٍ للنوعين معاً** — عائلةُ صفٍّ واحدة:
  *
  * ```
- * [الوجه]  اسمٌ ★تقييمُه              [بطاقةُ الملصق]
- *          النصُّ / جملةُ الخبر         الاسمُ داخلها
- *          «بحسب X»                    و«+ للمشاهدة» في زاويتها
- *          ❤ · 💬 ردّ ⋯ نوعٌ · متى
+ * [الوجه ٤٤]  اسمٌ ★تقييمُه          ← ثابتٌ في القمّة
+ *             النصُّ / جملةُ الخبر      [ملصقٌ ٨٤×١٢٦]
+ *             «بحسب X»                 الاسمُ داخله
+ *             متى · ❤ · تعليق · 🔖   ← ثابتٌ في القاع
  * ```
  *
  * **والهويّةُ في البداية والملصقُ في النهاية** — لا «يمين» و«يسار»
  * (D-216): بالعربية ينقلب الصفُّ من نفسه.
  *
- * **١ · اسمُ العمل داخل ملصقه لا فوق النصّ** (طلبُ أحمد). **والمكسبُ
- * ليس ترتيباً بل سطرٌ كامل يُستردّ**: كان الصفُّ يحمل الاسمَ مرّتين —
- * مكتوباً وفي الصورة — **فصار العمودُ الأوسط لصاحب الكلام وحده.**
- * **ولا بطاقةَ ثانية تُخترع لذلك:** `PosterCard` هي التي تكتب الاسم على
- * حجابٍ متدرّج في ثمانية أسطحٍ أخرى، فأُعيد استعمالُها كما هي.
+ * **١ · الاسمُ في القمّة والذيلُ في القاع، ثابتين** (بلاغُ أحمد: «مرّةً
+ * الاسمُ فوق ومرّةً نازل وهذا يشوّه المنظر»). **وهذا نقضٌ لتوسيطٍ شحنتُه
+ * قبله بساعة** — كنتُ وزّعتُ الفراغ على الطرفين ليبدو الصفُّ متوازناً،
+ * **فصار موضعُ الاسم يتبع طولَ التعليق**: سطرٌ واحدٌ يُنزله وثلاثةٌ
+ * ترفعه. **والقائمةُ تُقرأ بالمَسح لا بالصفّ الواحد** — وعمودٌ لا يستقرّ
+ * فيه شيء يُتعب العين أكثر مما يريحها توازنُ صفٍّ منفرد.
+ * **والقاعدة: في قائمةٍ، ثباتُ المِرساة يغلب توازنَ العنصر.**
  *
- * **٢ · «+ للمشاهدة» على الملصق** (D-205/D-207، طلبُ أحمد هنا): **الحفظُ
- * الذي لا يقطع القراءة**. ومن قرأ رأياً في عملٍ لا يملكه فهذه لحظتُه —
- * **وهي اللحظةُ نفسُها التي بُني لها الزرُّ في اكتشف.**
- * ⚠️ **و`added` من `getFollows()` المخزَّنة في الصفحة** لا من نداءٍ لكل
- * صفّ (D-205)، **ولا زرَّ «شاهدته» بجانبه**: التأشيرُ يفتح ورقةَ تقييمٍ
- * في وجه من كان يقرأ (a04، مرفوض).
+ * **٢ · اسمُ العمل داخل ملصقه لا فوق النصّ** (طلبُ أحمد). **والمكسبُ
+ * سطرٌ كامل يُستردّ**: كان الصفُّ يحمل الاسمَ مرّتين — مكتوباً وفي
+ * الصورة. **ولا بطاقةَ ثانية تُخترع لذلك:** `PosterCard` هي التي تكتب
+ * الاسم على حجابٍ متدرّج في ثمانية أسطحٍ أخرى.
  *
  * **٣ · ★ بجانب الاسم لا بجانب العنوان.** كان بجوار اسم العمل **فيُقرأ
  * تقييمَ العمل**، وهو تقييمُ صاحبِ التعليق وحده — **ورقمٌ يُقرأ خطأً أسوأ
  * من لا رقم** (D-134). وموضعُه بعد الاسم يقول الجملة كاملة: «فلانٌ أعطاه
  * ٩». **ولا مقامَ له لأنه ليس متوسّطاً** (D-216 تخصّ المتوسّطات).
  *
- * **٤ · الوقتُ في آخر سطر** (طلبُ أحمد). **وهو الأصحّ لا الأجمل فقط:**
- * الصدرُ للهويّة والقلبُ للكلام، **والزمنُ بيانُ حاشيةٍ لا عنوان** —
- * فمكانُه مع النوع في ذيل الصفّ، بعد الأفعال.
+ * **٤ · الذيلُ: متى · إعجاب · تعليق · حفظ** (ترتيبُ أحمد نصّاً).
+ * **ولا قلبَ مع الإعجاب** — سألتُ لأن «عائلةَ تفاعلٍ ثانية» مرفوضة،
+ * **وحكمُ أحمد: «صادق، اللايك يكفي حالياً بدون قلب»**.
  *
- * **٥ · «ردّ» لا «ناقشه» على التعليق** (طلبُ أحمد: «الشخص بيعلّق على
- * تقييمه»). **والكلمتان تبقيان اثنتين لأن الفعلين اثنان:** على تعليقٍ
- * أنت تردّ على إنسان (`talkReply`، ونفسُ كلمة `TalkThread` — مفردةٌ
- * واحدة للفعل الواحد)، وعلى خبرٍ أنت تفتح نقاشَ العمل (`newsDiscuss`).
- * **وتوحيدُهما كان سيجعل إحداهما تكذب.**
- *
- * **٦ · ارتفاعُ الصفّ من الملصق** (طلبُ أحمد: «البوستر يساوي ارتفاع
- * الردّ»): الملصقُ نسبةٌ ثابتة `2:3` بعرضٍ ثابت، **والعمودُ الأوسط يبلغ
- * ارتفاعَه بحدٍّ أدنى والذيلُ يهبط إلى قاعه** (`mt-auto`).
- * **ولم يُمدَّد الملصقُ ليطابق النصّ** — كان كلُّ صفٍّ سيقصّ ملصقَه قصّاً
- * مختلفاً بحسب طول التعليق، **وقصٌّ متغيّر يجعل القائمة تهتزّ.**
+ * **٥ · ولا «نوع» في الذيل** (طلبُ أحمد: «Series أو Movie تدخل في نفس
+ * محتوى الخبر لا تكون لحالها»). **وهو صحيح:** جملةُ الخبر تقولها أصلاً
+ * («موسم ٢»، «في الصالات») — **وكلمةٌ تكرّر ما قرأه القارئ للتوّ ضجيج.**
  *
  * ================= ما لم يُنقض =================
  *
- * **خطٌّ فاصل لا إطار** (D-220، حكمُ أحمد) · **❤ برقمه و💬 بلا رقم**
- * (عددُ الردود لا نملكه لكلِّ تعليق؛ `title_talk_stats` تعدّ ردودَ العمل
- * كلِّه) · **ولا علامةَ حفظٍ** حتى يُبنى الفعل (D-217).
+ * **خطٌّ فاصل لا إطار** (D-220، حكمُ أحمد) · **💬 بلا رقم** (عددُ الردود
+ * لا نملكه لكلِّ تعليق) · **ولا علامةَ حفظٍ للتعليق** — المِرجَعيةُ هنا
+ * تحفظ **العمل** لا الكلام، و«حفظُ تعليق» فعلٌ غيرُ مبنيّ (D-217).
  */
 
 /** صفٌّ في الخطّ: تعليقُ إنسانٍ أو خبرٌ من عندنا — **والزمنُ يرتّبهما معاً** */
@@ -82,11 +74,15 @@ type Row =
 const POSTER_W = "w-[84px]";
 const ROW_MIN_H = "min-h-[126px]";
 
+/** إعجاباتُ خبرِنا — عددٌ لكلّ عمل، وما أعجبتُ به أنا (`post_reactions`) */
+export type PostLikes = { counts: Record<string, number>; mine: ReadonlySet<string> };
+
 export function ActivityFeed({
   comments,
   news,
   meId,
   followed = new Set<string>(),
+  postLikes,
   emptyText,
   locale,
 }: {
@@ -96,13 +92,14 @@ export function ActivityFeed({
   /** لتمييز تعليقي: مراجعتُك تعرض العدد بلا زرّ إعجاب */
   meId: string;
   /**
-   * مفاتيحُ `"<media>-<tmdb>"` لما في مكتبة القارئ — حالةُ «+» الابتدائية.
+   * مفاتيحُ `"<media>-<tmdb>"` لما في مكتبة القارئ — حالةُ المِرجَعية.
    *
-   * **اختياريٌّ لأن المكوّن يُشحن قبل مستهلكه** (D-028: كل دفعة تُصرَّف
-   * وحدها)، **والغيابُ يُظهر «+» لا «✓»** — وهو الاتجاه الآمن: أوّلُ لمسةٍ
-   * تُصلحه بـ`upsert`، بينما «✓» كاذبة تمنع الحفظ (نفسُ حجّة D-205).
+   * **اختياريٌّ لأن المكوّن يُشحن قبل مستهلكه** (D-028)، **والغيابُ يُظهر
+   * «احفظ» لا «محفوظ»** — وهو الاتجاه الآمن: أوّلُ لمسةٍ تُصلحه بـ`upsert`.
    */
   followed?: ReadonlySet<string>;
+  /** إعجاباتُ الأخبار — تُقرأ في الصفحة بنداءٍ واحدٍ للقائمة كلِّها */
+  postLikes?: PostLikes;
   /** **وفراغُ «الكل» غيرُ فراغ «من أتابع»** — الصفحةُ تملك النطاق فتملك جملته */
   emptyText: string;
   locale: Locale;
@@ -140,24 +137,27 @@ export function ActivityFeed({
 
   return (
     <div className="divide-y divide-[color:var(--divider)]">
-      {rows.map((row) =>
-        row.kind === "comment" ? (
+      {rows.map((row) => {
+        const key = `${row.item.media_type}-${row.item.tmdb_id}`;
+        return row.kind === "comment" ? (
           <CommentRow
-            key={`c-${row.item.person.id}-${row.item.tmdb_id}-${row.item.media_type}-${row.item.day}`}
+            key={`c-${row.item.person.id}-${key}-${row.item.day}`}
             a={row.item}
             meId={meId}
-            added={followed.has(`${row.item.media_type}-${row.item.tmdb_id}`)}
+            added={followed.has(key)}
             locale={locale}
           />
         ) : (
           <NewsRow
             key={`n-${row.item.key}`}
             n={row.item}
-            added={followed.has(`${row.item.media_type}-${row.item.tmdb_id}`)}
+            added={followed.has(key)}
+            likes={postLikes?.counts[key] ?? 0}
+            likedByMe={postLikes?.mine.has(key) ?? false}
             locale={locale}
           />
-        ),
-      )}
+        );
+      })}
     </div>
   );
 }
@@ -167,25 +167,23 @@ export function ActivityFeed({
    ولا تُنسخ سلسلةُ الأصناف في موضعين. */
 
 /**
- * عمودُ الملصق — **`PosterCard` كما هي**: الاسمُ داخلها على حجابٍ متدرّج،
- * و«+ للمشاهدة» في زاويتها. **ولا `badge` عليها**: شارةٌ فوق ملصقٍ عرضُه
- * ٨٤px تأكل الصورة، **وتقييمُ صاحبِ التعليق ليس تقييمَ العمل** فلا يُوضع
- * على وجهه.
+ * عمودُ الملصق — **`PosterCard` كما هي**: الاسمُ داخلها على حجابٍ متدرّج.
+ *
+ * **ولا `+` في زاويتها** (طلبُ أحمد): الحفظُ نزل إلى ذيل الصفّ مِرجَعيةً
+ * بين الأفعال. **والحجّةُ تُقال:** على ملصقٍ عرضُه ٨٤px كان القرصُ ٣٢px
+ * يأكل ثلثَ العرض ويجلس على وجه العمل — **وفي شبكة اكتشف عرضُ البطاقة
+ * ضِعفُ هذا فلا يزاحم.** موضعٌ ثانٍ لأن المقاس ثانٍ، لا لأن الفعل ثانٍ.
  */
 function RowPoster({
   tmdbId,
   mediaType,
   title,
   posterPath,
-  added,
-  locale,
 }: {
   tmdbId: number;
   mediaType: "tv" | "movie";
   title: string;
   posterPath: string | null;
-  added: boolean;
-  locale: Locale;
 }) {
   return (
     <div className={`${POSTER_W} shrink-0`}>
@@ -195,26 +193,43 @@ function RowPoster({
         posterPath={posterPath}
         posterSize="w185"
         fallbackIcon={mediaType === "tv" ? "tv" : "film"}
-        quickAdd={{ tmdbId, mediaType, added, locale }}
       />
     </div>
   );
 }
 
 /**
- * ذيلُ الصفّ — الأفعالُ في البداية، والنوعُ والوقتُ في النهاية.
+ * ذيلُ الصفّ — **متى · إعجاب · تعليق · حفظ**، بهذا الترتيب (طلبُ أحمد).
  *
- * **ولا `mt-auto` يدفعه إلى القاع:** الصفُّ ارتفاعُه ارتفاعُ الملصق،
- * **والخبرُ القصير كان يترك فجوةً بين جملته وذيله تُقرأ عطباً**. فالعمودُ
- * كلُّه يتوسّط رأسياً (`justify-center`) والذيلُ آخرُه — **الترتيبُ محفوظ
- * والفجوةُ موزَّعة على الطرفين بدل أن تتكوّم في الوسط.**
+ * **والوقتُ أوّلُ الذيل لا آخرُه:** كان في الحافة المقابلة **فبَعُد عن
+ * الصفّ الذي يخصّه** وقطعت عينُ القارئ الشاشةَ كلَّها لتصله. وموضعُه
+ * الآن يقرأ الجملةَ كما تُقال: «قبل تسع ساعات… وهذه أفعالُك».
+ *
+ * **والفعلان الأخيران يخصّان العمل لا الكلام** — وهما ما يجعل الخبرَ
+ * والتعليق ذيلاً واحداً: **ما يختلف بينهما شيءٌ واحد، مَن يُعجَب به.**
  */
-function RowFooter({ children, meta }: { children: React.ReactNode; meta: string }) {
+function RowFooter({ time, children }: { time: string; children: React.ReactNode }) {
   return (
-    <div className="pt-2 flex items-center gap-1">
+    <div className="pt-2 flex items-center gap-0.5">
+      <span className="shrink-0 text-[11px] text-muted pe-1.5">{time}</span>
       {children}
-      <span className="ms-auto shrink-0 text-[11px] text-muted">{meta}</span>
     </div>
+  );
+}
+
+/** بابُ الغرفة — «تعليق»: تفتح الغرفةَ لتكتب فيها، لا لتردّ على سطرٍ بعينه */
+function CommentAction({ href, label }: { href: string; label: string }) {
+  return (
+    <Link
+      href={href}
+      prefetch={false}
+      aria-label={label}
+      title={label}
+      className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[12px] font-semibold text-muted hover:text-accent transition"
+    >
+      <Icon name="comment" size={14} />
+      {label}
+    </Link>
   );
 }
 
@@ -246,34 +261,38 @@ function CommentRow({
         />
       </Link>
 
-      <div className={`min-w-0 flex-1 flex flex-col justify-center ${ROW_MIN_H}`}>
-        {/* **الصدرُ للهويّة**: من قال، وبكم قيّمه */}
-        <div className="flex items-baseline gap-2">
-          <Link
-            href={whoHref}
-            prefetch={false}
-            className="font-bold text-[14px] text-foreground line-clamp-1 hover:text-accent transition"
-          >
-            {who}
-          </Link>
-          {a.rating != null && (
-            <span
-              className="shrink-0 text-[12px] font-bold text-accent tabular-nums"
-              title={t.rateOutOf(a.rating)}
+      {/* **`justify-between`: الاسمُ في القمّة والذيلُ في القاع مهما طال
+          النصّ** — والفراغُ يقع في الوسط حيث لا مِرساةَ تهتزّ */}
+      <div className={`min-w-0 flex-1 flex flex-col justify-between ${ROW_MIN_H}`}>
+        <div>
+          {/* **الصدرُ للهويّة**: من قال، وبكم قيّمه */}
+          <div className="flex items-baseline gap-2">
+            <Link
+              href={whoHref}
+              prefetch={false}
+              className="font-bold text-[14px] text-foreground line-clamp-1 hover:text-accent transition"
             >
-              ★ <span dir="ltr">{a.rating.toFixed(1)}</span>
-            </span>
-          )}
+              {who}
+            </Link>
+            {a.rating != null && (
+              <span
+                className="shrink-0 text-[12px] font-bold text-accent tabular-nums"
+                title={t.rateOutOf(a.rating)}
+              >
+                ★ <span dir="ltr">{a.rating.toFixed(1)}</span>
+              </span>
+            )}
+          </div>
+
+          {/* الضغطُ على النصّ يفتح الغرفة — **حيث يُقرأ كاملاً ويُردّ عليه** */}
+          <Link href={talkHref} prefetch={false} className="block mt-1">
+            <p className="text-[13px] leading-relaxed text-foreground/85 line-clamp-3">
+              {a.review}
+            </p>
+          </Link>
         </div>
 
-        {/* الضغطُ على النصّ يفتح الغرفة — **حيث يُقرأ كاملاً ويُردّ عليه** */}
-        <Link href={talkHref} prefetch={false} className="block mt-1">
-          <p className="text-[13px] leading-relaxed text-foreground/85 line-clamp-3">
-            {a.review}
-          </p>
-        </Link>
-
-        <RowFooter meta={timeAgo(a.updated_at, t)}>
+        <RowFooter time={timeAgo(a.updated_at, t)}>
           <LikeButton
             reviewUserId={a.person.id}
             tmdbId={a.tmdb_id}
@@ -283,17 +302,16 @@ function CommentRow({
             isMine={a.person.id === meId}
             locale={locale}
           />
-          {/* **«ردّ» لا «ناقشه»** — الوجهةُ إنسانٌ كتب، لا موضوعٌ يُفتح */}
-          <Link
-            href={talkHref}
-            prefetch={false}
-            aria-label={t.talkReply}
-            title={t.talkReply}
-            className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[12px] font-semibold text-muted hover:text-accent transition"
-          >
-            <Icon name="comment" size={14} />
-            {t.talkReply}
-          </Link>
+          <CommentAction href={talkHref} label={t.actionComment} />
+          <QuickAdd
+            variant="inline"
+            tmdbId={a.tmdb_id}
+            mediaType={a.media_type}
+            title={a.title ?? ""}
+            posterPath={a.poster_path}
+            added={added}
+            locale={locale}
+          />
         </RowFooter>
       </div>
 
@@ -302,18 +320,29 @@ function CommentRow({
         mediaType={a.media_type}
         title={a.title ?? ""}
         posterPath={a.poster_path}
-        added={added}
-        locale={locale}
       />
     </article>
   );
 }
 
-function NewsRow({ n, added, locale }: { n: LoopzNewsItem; added: boolean; locale: Locale }) {
+function NewsRow({
+  n,
+  added,
+  likes,
+  likedByMe,
+  locale,
+}: {
+  n: LoopzNewsItem;
+  added: boolean;
+  likes: number;
+  likedByMe: boolean;
+  locale: Locale;
+}) {
   const t = getDict(locale);
   const text = newsLine(n, t, locale);
   if (!text) return null;
   const titleHref = `/${n.media_type === "tv" ? "show" : "movie"}/${n.tmdb_id}`;
+  const talkHref = `/talk/${n.media_type}/${n.tmdb_id}`;
   const src = newsSource(n);
 
   return (
@@ -325,57 +354,67 @@ function NewsRow({ n, added, locale }: { n: LoopzNewsItem; added: boolean; local
         <Avatar src="/icon-192.png" name="Loopz" size={44} alt="" />
       </span>
 
-      <div className={`min-w-0 flex-1 flex flex-col justify-center ${ROW_MIN_H}`}>
-        <span className="font-bold text-[14px] text-foreground" dir="ltr">
-          Loopz
-        </span>
+      <div className={`min-w-0 flex-1 flex flex-col justify-between ${ROW_MIN_H}`}>
+        <div>
+          <span className="block font-bold text-[14px] text-foreground" dir="ltr">
+            Loopz
+          </span>
 
-        {/* **ولا رابطَ خارجيّ في الجملة إطلاقاً** (طلبُ أحمد الصريح):
-            الضغطُ يفتح صفحةَ العمل عندنا — والقراءةُ والتعليقُ داخل التطبيق */}
-        {/* **وصوتُنا لا يعلو على صوت الناس**: جملةُ الخبر بمقاس نصّ التعليق
-            نفسِه وبوزنٍ أثقل قليلاً لأنها كلُّ ما في الصفّ — **وسطرٌ لنا
-            أغلظ من كلام إنسانٍ يقلب معنى الصفحة** (D-223). */}
-        <Link
-          href={titleHref}
-          prefetch={false}
-          className="block mt-1 text-[13px] leading-relaxed font-semibold hover:text-accent transition line-clamp-3"
-        >
-          {text}
-        </Link>
-
-        {/* **سطرُ النسبة** (D-213): الحدثُ من الصحافة والجملةُ من عندنا */}
-        {src && (
-          <p className="mt-1 text-[11px] text-muted">
-            {src.url ? (
-              <a
-                href={src.url}
-                target="_blank"
-                rel="noopener noreferrer nofollow"
-                className="underline decoration-dotted underline-offset-2 hover:text-accent transition"
-              >
-                {t.newsPerSource(src.name)}
-              </a>
-            ) : (
-              t.newsPerSource(src.name)
-            )}
-          </p>
-        )}
-
-        <RowFooter
-          meta={`${n.media_type === "tv" ? t.typeSeries : t.typeMovie} · ${timeAgo(n.published_at, t)}`}
-        >
-          {/* **«ناقشه» لا «ردّ»** — لا أحدَ يُردّ عليه في خبر؛ والبابُ
-              بابُ الكلام القائم (D-193)، ولا خيطَ نقاشٍ ثالث تحت كل خبر */}
+          {/* **وصوتُنا لا يعلو على صوت الناس**: جملةُ الخبر بمقاس نصّ
+              التعليق نفسِه — **وسطرٌ لنا أغلظ من كلام إنسانٍ يقلب معنى
+              الصفحة**. **ولا رابطَ خارجيّ فيها** (طلبُ أحمد الصريح):
+              الضغطُ يفتح صفحةَ العمل عندنا. */}
           <Link
-            href={`/talk/${n.media_type}/${n.tmdb_id}`}
+            href={titleHref}
             prefetch={false}
-            aria-label={t.newsDiscuss}
-            title={t.newsDiscuss}
-            className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[12px] font-semibold text-muted hover:text-accent transition"
+            className="block mt-1 text-[13px] leading-relaxed font-semibold hover:text-accent transition line-clamp-3"
           >
-            <Icon name="comment" size={14} />
-            {t.newsDiscuss}
+            {text}
           </Link>
+
+          {/* **سطرُ النسبة** (D-213): الحدثُ من الصحافة والجملةُ من عندنا */}
+          {src && (
+            <p className="mt-1 text-[11px] text-muted">
+              {src.url ? (
+                <a
+                  href={src.url}
+                  target="_blank"
+                  rel="noopener noreferrer nofollow"
+                  className="underline decoration-dotted underline-offset-2 hover:text-accent transition"
+                >
+                  {t.newsPerSource(src.name)}
+                </a>
+              ) : (
+                t.newsPerSource(src.name)
+              )}
+            </p>
+          )}
+        </div>
+
+        <RowFooter time={timeAgo(n.published_at, t)}>
+          {/* **إعجابٌ على خبرِنا** — `post_reactions` القائم منذ `news.sql`
+              (D-224). **وهو قرارُ 🔥 المرفوض وقد صُحِّح لا نُقض:** الرفضُ
+              كان أن «🔥 هي الإعجابُ نفسه بأيقونةٍ أخرى» — **فرُسمت
+              بأيقونة الإعجاب**، عائلةً واحدة برمزٍ واحد. */}
+          <LikeButton
+            target="post"
+            tmdbId={n.tmdb_id}
+            mediaType={n.media_type}
+            likes={likes}
+            likedByMe={likedByMe}
+            isMine={false}
+            locale={locale}
+          />
+          <CommentAction href={talkHref} label={t.actionComment} />
+          <QuickAdd
+            variant="inline"
+            tmdbId={n.tmdb_id}
+            mediaType={n.media_type}
+            title={n.title}
+            posterPath={n.poster_path}
+            added={added}
+            locale={locale}
+          />
         </RowFooter>
       </div>
 
@@ -384,8 +423,6 @@ function NewsRow({ n, added, locale }: { n: LoopzNewsItem; added: boolean; local
         mediaType={n.media_type}
         title={n.title}
         posterPath={n.poster_path}
-        added={added}
-        locale={locale}
       />
     </article>
   );

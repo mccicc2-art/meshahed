@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { flashError } from "@/lib/toast";
-import { toggleActivityLike, toggleReviewLike } from "@/lib/actions";
+import { toggleActivityLike, toggleReviewLike, toggleReaction } from "@/lib/actions";
 import { getDict, type Locale } from "@/lib/i18n";
 import { tap } from "@/lib/haptics";
 import { Icon } from "./Icon";
@@ -23,7 +23,7 @@ import { Icon } from "./Icon";
  * والفرق كلّه في أي فعلٍ يُنادى.
  */
 export function LikeButton({
-  reviewUserId,
+  reviewUserId = "",
   tmdbId,
   mediaType,
   likes,
@@ -34,7 +34,8 @@ export function LikeButton({
   day,
   locale,
 }: {
-  reviewUserId: string;
+  /** صاحبُ الرأي — لوجهتَي المراجعة والنشاط؛ **وخبرُنا لا صاحبَ له** */
+  reviewUserId?: string;
   tmdbId: number;
   mediaType: "tv" | "movie";
   likes: number;
@@ -48,8 +49,16 @@ export function LikeButton({
    * معنى، والسلوكُ يتشاركانه.
    */
   readOnly?: boolean;
-  /** وجهة الكتابة — الافتراضي المراجعة كي لا يتغيّر أي نداءٍ قائم */
-  target?: "review" | "activity";
+  /**
+   * وجهة الكتابة — الافتراضي المراجعة كي لا يتغيّر أي نداءٍ قائم.
+   *
+   * **و`post` هو خبرُنا نحن** (`post_reactions`، D-224): لا كاتبَ له فلا
+   * `review_likes` تسعه. **وهذا هو قرار 🔥 المرفوض وقد صُحِّح لا نُقض:**
+   * الرفضُ كان أن «🔥 هي الإعجابُ نفسه بأيقونةٍ أخرى» — **فالعلاجُ أن
+   * تُرسم بأيقونة الإعجاب**، لا أن يُهجر الجدول. عائلةُ تفاعلٍ واحدة،
+   * ورمزٌ واحد، وجدولان لأن الشيء المُعجَب به يختلف.
+   */
+  target?: "review" | "activity" | "post";
   /** يوم الحدث (YYYY-MM-DD) — لازمٌ لوجهة النشاط وحدها */
   day?: string;
   locale: Locale;
@@ -86,7 +95,9 @@ export function LikeButton({
     setCount((c) => c + (was ? -1 : 1));
     start(async () => {
       try {
-        if (target === "activity") {
+        if (target === "post") {
+          await toggleReaction({ tmdbId, mediaType, on: !was });
+        } else if (target === "activity") {
           await toggleActivityLike(reviewUserId, tmdbId, mediaType, day ?? "", was);
         } else {
           await toggleReviewLike(reviewUserId, tmdbId, mediaType, was);

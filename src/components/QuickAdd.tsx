@@ -49,6 +49,7 @@ export function QuickAdd({
   posterPath,
   added = false,
   locale,
+  variant = "corner",
   className = "",
 }: {
   tmdbId: number;
@@ -58,6 +59,23 @@ export function QuickAdd({
   /** هل هو في «للمشاهدة» أصلاً؟ — يُمرَّر ولا يُسأل عنه (انظر أعلاه) */
   added?: boolean;
   locale: Locale;
+  /**
+   * **موضعان لفعلٍ واحد** (D-224 — امتدادُ D-205/D-207، لا نسخةٌ منه).
+   *
+   * `corner`: قرصٌ مطلَقٌ في زاوية الملصق — الأصل، وسطحُه شبكاتُ الملصقات.
+   * `inline`: زرٌّ في صفٍّ من أفعال، بعلامة **مِرجَعية** (`bookmark`) لا `+`.
+   *
+   * **ولماذا امتدادٌ لا مكوّنٌ ثانٍ:** المنطقُ كلُّه واحد — تفاؤليٌّ بلا
+   * تجديد، ونفسُ `follow`/`unfollow`، ونفسُ التوست، ونفسُ حجّة «الحالة من
+   * المستدعي». **والمختلفُ الرسمُ وحده** — ومكوّنٌ ثانٍ لأجل الرسم كان
+   * سيصير عائلةً ثانية للحفظ (قاعدةُ «لا عائلة ثانية لأي شيء»).
+   *
+   * ⚠️ **والرمزُ يختلف لأن الموضع يختلف:** على الملصق لا نصَّ يشرح، فـ`+`
+   * أوضحُ رمزٍ للإضافة. **وفي صفٍّ من أفعالٍ نصّية** بجانب «تعليق»
+   * المِرجَعيةُ هي العُرف الراسخ للحفظ — **واتّباعُ عُرفٍ راسخ ميزةٌ لا
+   * كسل** (D-150).
+   */
+  variant?: "corner" | "inline";
   className?: string;
 }) {
   const t = getDict(locale);
@@ -86,6 +104,25 @@ export function QuickAdd({
         flashError((err as Error).message);
       }
     });
+  }
+
+  if (variant === "inline") {
+    return (
+      <button
+        type="button"
+        onClick={run}
+        disabled={pending}
+        aria-pressed={on}
+        aria-label={on ? t.quickAddRemove : t.quickAddLabel}
+        title={on ? t.quickAddRemove : t.quickAddLabel}
+        /* نفسُ حشوة جيرانه في الذيل، فلا يخرج زرٌّ عن صفٍّ واحد */
+        className={`inline-flex items-center rounded-full px-2.5 py-1.5 transition active:scale-90 disabled:opacity-60 ${
+          on ? "text-accent" : "text-muted hover:text-accent"
+        } ${className}`}
+      >
+        <Icon name="bookmark" size={15} className={on ? "fill-current" : undefined} />
+      </button>
+    );
   }
 
   return (
