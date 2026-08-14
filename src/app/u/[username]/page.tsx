@@ -26,6 +26,7 @@ import { PosterCard } from "@/components/PosterCard";
 import { PosterRail, RailItem } from "@/components/PosterRail";
 import { FollowUserButton } from "@/components/FollowUserButton";
 import { ProfileMenu } from "@/components/ProfileMenu";
+import { isLoopz } from "@/lib/loopz";
 import { BackButton } from "@/components/BackButton";
 import { PublicListsRail } from "@/components/PublicListsRail";
 import { FollowCountButton, ToWatchStat } from "@/components/ProfilePeeks";
@@ -340,6 +341,9 @@ export default async function PublicProfilePage({
                   hide_name: profile.hide_name ?? false,
                 }}
                 mutual={relation.following && relation.followsMe}
+                /* **حسابُ النظام بلا رسالةٍ ولا بلاغ** (D-252): لا أحدَ
+                   خلفه يقبل متابعةً متبادلة، والبلاغُ يذهب إلينا نحن */
+                system={isLoopz(profile.id)}
                 locale={locale}
               />
             </div>
