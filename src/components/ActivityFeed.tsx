@@ -102,6 +102,20 @@ const ROW_MIN_H = "min-h-[138px]";
 /** إعجاباتُ خبرِنا — عددٌ لكلّ عمل، وما أعجبتُ به أنا (`post_reactions`) */
 export type PostLikes = { counts: Record<string, number>; mine: ReadonlySet<string> };
 
+/**
+ * **ترتيبُ الخطّ** (D-240):
+ * - `for-you` — **دائرتُك ومكتبتُك**: كلامُ من تتابعهم، **وكلامُ الغرباء
+ *   عن أعمالٍ في مكتبتك**. وهو الافتراضيّ. **والثاني هو الجديد**: بلا
+ *   ه «الكلّ» تعني «كلَّ من في Loopz» وهي ليست ما يريده أحد.
+ * - `latest` — زمنٌ خالص، بلا ترشيح.
+ * - `top` — **الأكثر تفاعلاً**: إعجابٌ + ردٌّ + مشاهدة.
+ *
+ * ⚠️ **ولا نافذةَ زمنية لـ`top`** رغم أنها تبدو لازمة: **الخطُّ نفسُه
+ * نافذة** — اثنا عشر خبراً وقائمةُ تعليقاتٍ حديثة، **فحدٌّ زمنيٌّ ثانٍ
+ * فوق حدٍّ قائمٍ رقمٌ يُخترع.** يُكتب يوم يصير الأرشيفُ مقروءاً.
+ */
+export type FeedSort = "for-you" | "latest" | "top";
+
 export function ActivityFeed({
   comments,
   news,
@@ -111,6 +125,7 @@ export function ActivityFeed({
   views,
   followingIds,
   newsReplies,
+  sort = "latest",
   emptyText,
   locale,
 }: {
@@ -140,6 +155,16 @@ export function ActivityFeed({
   followingIds?: ReadonlySet<string>;
   /** ردودُ نشراتنا — بمفتاح المنشور، نداءٌ واحد للخطّ كلِّه (D-236) */
   newsReplies?: Map<string, number>;
+  /**
+   * **الفرزُ الثلاثيّ** (D-240، حكمُ أحمد بعد عرضِ ثلاثةِ ترتيبات).
+   *
+   * **ويُنفَّذ هنا لا في القاعدة** عن قصد: كلُّ ما يلزمه — الإعجاباتُ
+   * والردودُ والمشاهداتُ ومن أتابعهم ومكتبتي — **مقروءٌ أصلاً لهذا
+   * الخطّ بنداءاتٍ قائمة**. **فدالّةُ SQL جديدة كانت ستكون هجرةً سابعةً
+   * معلّقة**، ولا تشتري شيئاً على خطٍّ سقفُه اثنا عشر خبراً وقائمةُ
+   * تعليقاتٍ محدودة. **يوم يصير الخطُّ صفحاتٍ ينتقل الفرزُ إلى القاعدة.**
+   */
+  sort?: FeedSort;
   /** **وفراغُ «الكل» غيرُ فراغ «من أتابع»** — الصفحةُ تملك النطاق فتملك جملته */
   emptyText: string;
   locale: Locale;
@@ -167,7 +192,32 @@ export function ActivityFeed({
       })),
   ].sort((a, b) => b.at - a.at);
 
-  if (rows.length === 0) {
+  /* ============ الترشيحُ والترتيب (D-240) ============
+
+     **«لك» ترشيحٌ لا ترتيب**، و«الأكثر تفاعلاً» ترتيبٌ لا ترشيح —
+     **وخلطُهما في مفهومٍ واحد هو ما جعل «تريندينق» و«الأكثر لايك»
+     تبدوان خيارين وهما واحد.**
+
+     **ونشرتُنا تبقى في «لك» دائماً**: القارئُ اشترك في Loopz بفتحه
+     التطبيقَ، **وخطُّ «لك» بلا شيءٍ منّا لمن لا يتابع أحداً خطٌّ فارغ**
+     — وفراغٌ افتراضيٌّ يُقرأ عطلاً لا نقصاً (D-181). */
+  let shown = rows;
+  if (sort === "for-you") {
+    shown = rows.filter(
+      (r) =>
+        r.kind === "news" ||
+        followingIds?.has(r.item.person.id) ||
+        followed.has(`${r.item.media_type}-${r.item.tmdb_id}`),
+    );
+  } else if (sort === "top") {
+    /* **الدرجةُ جمعٌ لا وزن**: إعجابٌ وردٌّ ومشاهدةٌ بواحد. **وأوزانٌ
+       مختلفة تحتاج حجّةً لكلِّ رقمٍ فيها**، ولا حجّةَ عندنا بعد —
+       **ورقمٌ سحريٌّ بلا سبب أسوأ من جمعٍ بسيطٍ مفهوم.**
+       والزمنُ يفصل عند التساوي، فلا يثبت ترتيبُ الأصفار عشوائياً. */
+    shown = [...rows].sort((a, b) => score(b) - score(a) || b.at - a.at);
+  }
+
+  if (shown.length === 0) {
     return (
       <p className="text-sm text-muted bg-surface border border-dashed border-border rounded-xl py-10 px-5 text-center leading-relaxed">
         {emptyText}
@@ -175,9 +225,24 @@ export function ActivityFeed({
     );
   }
 
+  function score(r: Row): number {
+    const key = `${r.item.media_type}-${r.item.tmdb_id}`;
+    if (r.kind === "comment") {
+      return (
+        (r.item.likes ?? 0) +
+        (views?.get(commentViewKey(r.item.person.id, r.item.media_type, r.item.tmdb_id)) ?? 0)
+      );
+    }
+    return (
+      (postLikes?.counts[key] ?? 0) +
+      (newsReplies?.get(r.item.key) ?? 0) +
+      (views?.get(newsViewKey(r.item.key)) ?? 0)
+    );
+  }
+
   return (
     <div className="divide-y divide-[color:var(--divider)]">
-      {rows.map((row) => {
+      {shown.map((row) => {
         const key = `${row.item.media_type}-${row.item.tmdb_id}`;
         return row.kind === "comment" ? (
           <CommentRow
@@ -481,6 +546,9 @@ function NewsRow({
   const text = newsLine(n, t, locale);
   if (!text) return null;
   const titleHref = `/${n.media_type === "tv" ? "show" : "movie"}/${n.tmdb_id}`;
+  /* **مفتاحُ النشرة مُرمَّزٌ في المسار** (D-239): `key` نصٌّ مركَّب
+     `kind:media:id:dedupe` — والترميزُ عقدٌ لا احتياط. */
+  const postHref = `/post/${encodeURIComponent(n.key)}`;
   const src = newsSource(n);
 
   return (
@@ -512,9 +580,17 @@ function NewsRow({
               {/* **ولا نقاطَ هنا**: القائمةُ متابعةٌ وحظرٌ وبلاغٌ على
                   **إنسان**، ولا إنسانَ في خبرِنا — **ومقبضٌ يفتح خياراتٍ لا
                   تنطبق أسوأ من غيابه** (D-217). */}
-              <span className="ms-auto shrink-0 text-[11px] text-muted tabular-nums">
+              {/* **العمرُ رابطٌ إلى صفحة النشرة** (D-239) — **عادةُ تويتر
+                  نفسُها**: الوسمُ الزمنيّ يفتح المنشورَ وحدَه. **ولا زرَّ
+                  جديد في شريطٍ مكتظّ**: الوقتُ موجودٌ أصلاً، وإنّما صار
+                  يقود إلى مكانٍ صار له وجود. */}
+              <Link
+                href={postHref}
+                prefetch={false}
+                className="ms-auto shrink-0 text-[11px] text-muted tabular-nums hover:text-accent transition"
+              >
                 {timeAgoShort(n.published_at, t)}
-              </span>
+              </Link>
             </div>
 
             {/* **اسمُ العمل ونوعُه تحت الاسم** (طلبُ أحمد) — موضعُ «اسمِ
@@ -567,6 +643,20 @@ function NewsRow({
               t.newsPerSource(src.name)
             )}
           </p>
+        )}
+
+        {/* **وبابٌ صريحٌ حين يكون هناك ما يُقرأ** (D-239): الوسمُ الزمنيّ
+            يعرفه من يعرف تويتر، **ومن لا يعرفه لا يجد الردودَ أبداً**.
+            **ولا يظهر على صفرٍ** (D-222) — ولا رقمَ فيه لأن 💬 يحمله:
+            **رقمٌ مرّتين في شريطٍ واحد ضجيج.** */}
+        {replies > 0 && (
+          <Link
+            href={postHref}
+            prefetch={false}
+            className="mt-1 inline-block text-[12px] font-semibold text-accent hover:underline"
+          >
+            {t.postOpenReplies}
+          </Link>
         )}
 
         {/* **الذيلُ في `NewsComment`** لأن صندوق الكتابة يحتاج عرضَ الصفّ
