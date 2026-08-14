@@ -1,5 +1,4 @@
 import Link from "next/link";
-import Image from "next/image";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import {
@@ -15,7 +14,7 @@ import {
 import { getMovie, getTv, posterUrl, backdropUrl } from "@/lib/tmdb";
 import { displayWorkTitle } from "@/lib/wikidata";
 import { getT } from "@/lib/locale";
-import { BackButton } from "@/components/BackButton";
+import { TitleHero } from "@/components/TitleHero";
 import { TalkCompose } from "@/components/TalkCompose";
 import { TalkThread } from "@/components/TalkThread";
 import { Icon } from "@/components/Icon";
@@ -167,55 +166,22 @@ export default async function TalkPage({
 
   return (
     <main className="pb-24">
-      {/* ============ الترويسة (D-216) ============
-
-          **طلبُ أحمد:** «المفروض العرض يكون أفضل ١٠٠ مرة، يكون هيدر تبع
-          الفلم وزرّ يوديني صفحة الفلم وزرّ يرجّعنا».
-
-          **وشريطٌ قصير لا هيرو كامل** (اختيارُه): صفحةُ العمل تُعطي الغلافَ
-          نصفَ الشاشة لأن سؤالَها «ما هذا العمل؟» — **وسؤالُ هذه الصفحة
-          «ماذا قالوا؟»**، وغلافٌ طويل فوق حوارٍ يرتكب **نفسَ خطأ صندوق
-          التعليق الذي نُصلحه أسفلَ هذا الملفّ**: يدفن المحتوى تحت الطيّة.
-
-          ⚠️ **ويسار/يمين ليست القاعدة — البدايةُ والنهاية هي.** طلبُ أحمد
-          «سهم الرجوع فوق يسار وسهم الفلم يمين» صحيحٌ في الإنجليزية
-          **وينقلب في العربية**. فالرجوعُ في `start` وسهمُ العمل في `end`،
-          **فيقعان حيث طلب في اللاتينية ويصحّان وحدَهما في RTL.** */}
-      {/* ============ وما تغيّر في D-217 ============
-
-          **طلبُ أحمد:** «الهيدر أحتاج نفس اللي بالصورة **بدون هوامش**…
-          والهيدر وبوستر العرض ياخذ **٢٥٪ من رأس الصفحة** وتحتها مباشرة
-          الردود».
-
-          **فالكلُّ داخل الشريط لا تحته:** الملصقُ والاسمُ والشاراتُ كلُّها
-          **فوق الصورة**، فالترويسةُ **كتلةٌ واحدة قياسُها معلوم** —
-          و`-mt-10` القديمة كانت تُخرج الملصقَ خارجها فيصير الرأسُ أطولَ
-          ممّا يُقاس. **و`25svh` لا `25vh`**: متصفّحُ الجوال يقيس `vh` بلا
-          أشرطته فيخرج الشريطُ عن ربعه.
-
-          **وحدّان يُقالان:** `min-h` كي لا تنسحق الترويسةُ في شاشةٍ قصيرة،
-          و`max-h` كي لا تلتهم نصفَ الشاشة في لوحٍ طويل. **والنسبةُ وحدها
-          بلا حدّين تكسر أحدَ الطرفين دائماً.** */}
-      {/* ⚠️ **و«بلا هوامش» تعني الخروجَ من حشو التخطيط لا صفراً في هذا
-          الملفّ** (كشفه أوّلُ فحصٍ حيّ): `<main>` في `layout.tsx` يحمل
-          `px-4 py-6`، **فشريطٌ عرضُه `w-full` يبقى بينه وبين الحافّة ستّةَ
-          عشرَ بكسلاً** — وهو الهامشُ الذي رآه أحمد وظننتُه مُزالاً.
-          **و`-mt-6 -mx-4` تُلغيهما بالضبط** لا بالتقدير. */}
-      <header className="relative -mt-6 -mx-4 h-[25svh] min-h-[190px] max-h-[300px] overflow-hidden bg-surface-2">
-        {backdrop && (
-          <Image src={backdrop} alt="" fill sizes="100vw" priority className="object-cover" />
-        )}
-        {/* تدرّجان: واحدٌ يُلبس الصورةَ سواداً كي يُقرأ الاسمُ فوقها مهما
-            كان لونها، وآخرُ من الأعلى كي يُقرأ الزرّان */}
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/70 to-transparent" />
-        <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/50 to-transparent" />
-
-        {/* الزرّان العائمان — **هيئةُ صفحة العمل حرفاً بحرف**: زجاجيّان
-            دائريّان بقطر لمسٍ ٤٤، فالرجوعُ بابٌ واحدٌ في التطبيق كلّه.
-            ⚠️ **و`start`/`end` لا `left`/`right`** (D-216): يقعان يساراً
-            ويميناً في اللاتينية **وينقلبان وحدَهما في العربية.** */}
-        <div className="absolute inset-x-0 top-0 px-3 pt-3 flex items-center justify-between">
-          <BackButton locale={locale} />
+      {/* **الترويسةُ صارت `TitleHero` المشترَكة** (D-244): وُلدت هنا
+          (D-216/D-217) ثم طلبها أحمد فوق صفحة التعليق — **وقارئٌ ثانٍ هو
+          لحظةُ الاستخراج**، والنسخةُ المحلّية حُذفت في الدفعة نفسِها.
+          حُجَجُ الهندسة كلُّها (25svh بحدّين، إلغاءُ حشو التخطيط بالضبط،
+          start/end لا يسار/يمين) انتقلت معها إلى ملفّها. */}
+      <TitleHero
+        backdrop={backdrop}
+        poster={poster}
+        title={title}
+        href={href}
+        mediaType={mediaType}
+        avg={avg}
+        count={community.count}
+        ratingLabel={t.communityRating}
+        locale={locale}
+        end={
           <Link
             href={href}
             aria-label={t.talkOpenTitlePage}
@@ -224,40 +190,8 @@ export default async function TalkPage({
           >
             <Icon name="chevron-down" size={18} className="-rotate-90 rtl:rotate-90" />
           </Link>
-        </div>
-
-        <div className="absolute inset-x-0 bottom-0 px-4 sm:px-6 pb-3 flex items-end gap-3">
-          {/* الملصقُ والاسمُ رابطٌ واحد إلى العمل — هدفُ لمسٍ واسع، ولا
-              زرَّ داخل زرّ. **والشاراتُ خارجَه** لأن فيها ما يُضغط لغيره */}
-          <Link href={href} className="flex items-end gap-3 min-w-0 flex-1 active:opacity-80 transition">
-            <div className="relative w-[58px] h-[87px] shrink-0 rounded-xl overflow-hidden bg-surface-2 border border-white/15 shadow-xl">
-              {poster ? (
-                <Image src={poster} alt="" fill sizes="58px" className="object-cover" />
-              ) : (
-                <span className="absolute inset-0 grid place-items-center text-muted">
-                  <Icon name={mediaType === "tv" ? "tv" : "film"} size={18} />
-                </span>
-              )}
-            </div>
-            <div className="min-w-0 flex-1">
-              <h1 className="font-bold text-[18px] leading-tight line-clamp-2 text-white drop-shadow">
-                {title}
-              </h1>
-              {community.count > 0 && (
-                <p
-                  className="mt-0.5 text-[12px] font-bold text-accent tabular-nums"
-                  title={t.communityRating}
-                >
-                  ★ <span dir="ltr">{avg}</span>
-                  {/* **ومقامُ النجمة معها** (D-216): «٩٫٥» من اثنين ليست
-                      «٩٫٥» من ألف */}
-                  <span className="font-normal text-white/70"> ({community.count})</span>
-                </p>
-              )}
-            </div>
-          </Link>
-        </div>
-      </header>
+        }
+      />
 
       {/* **شريطُ حالتك — في ذيل الترويسة لا في وسط الصفحة** (D-217).
           ⚠️ **والقاعدةُ: المُطَوَّق يُضغط والعاري يُقرأ.** «رأيك» شارةٌ
