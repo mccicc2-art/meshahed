@@ -1390,6 +1390,35 @@ export async function getFollowRelation(
   }
 }
 
+/**
+ * **مَن أتابعهم، مجموعةَ معرّفاتٍ بنداءٍ واحدٍ مخزَّن** (D-225).
+ *
+ * **ولماذا لا `getFollowRelation` لكل صفّ:** خطُّ النشاط فيه عشرون كاتباً،
+ * **وثلاثةُ استعلاماتٍ لكلٍّ منهم ستّون استعلاماً لرسمةٍ واحدة** — وهي
+ * قاعدةُ «نداءٌ واحد لكل قسم، ولا نداء لكل صفّ» (D-164) حرفاً.
+ *
+ * **و«طلبتُ متابعته» ليست هنا عمداً:** حالةٌ ثالثة تعني استعلاماً ثانياً
+ * على `follow_requests` لكل رسمة، **وقائمةُ الخطّ لا تحتاج التمييز**:
+ * من ضغط «تابِع» على حسابٍ خاصّ يرى التوست الصحيح من الفعل نفسه
+ * (`requestOrFollowUser` تُرجع الحالة). **والملفُّ العامّ يبقى صاحبَ
+ * الزرّ ثلاثيّ الحالة.**
+ */
+export const getFollowingIds = cache(async (): Promise<Set<string>> => {
+  try {
+    const supabase = await createClient();
+    const user = await getUser();
+    if (!user) return new Set();
+    const { data } = await supabase
+      .from("user_follows")
+      .select("following_id")
+      .eq("follower_id", user.id)
+      .limit(1000);
+    return new Set((data ?? []).map((r) => String(r.following_id)));
+  } catch {
+    return new Set();
+  }
+});
+
 /** طلبات المتابعة الواردة إليّ — أصحابها بالأقدميّة، لصندوق القبول/الرفض */
 export async function getIncomingFollowRequests(): Promise<PersonLite[]> {
   try {
