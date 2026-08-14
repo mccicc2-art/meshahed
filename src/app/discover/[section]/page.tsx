@@ -222,6 +222,18 @@ export default async function SectionPage({
                 added: following.has(`${r.tv ? "tv" : "movie"}-${r.id}`),
                 locale,
               }}
+              /* **الضغطُ المطوَّل قاعدةٌ لا سطحٌ واحد** (D-229، طلبُ أحمد:
+                 «قاعدة طبّقها على أيّ بوستر في LOOPZ») — و«للمشاهدة» فيه
+                 هي `+` نفسُها، **فلا فعلَ يُزاد بل طريقٌ ثانٍ إليه**
+                 ومعه «شاهدته» و«ريفيو» اللذان لا زرَّ لهما هنا. */
+              saved={following.has(`${r.tv ? "tv" : "movie"}-${r.id}`)}
+              hold={{
+                tmdbId: r.id,
+                mediaType: r.tv ? "tv" : "movie",
+                added: following.has(`${r.tv ? "tv" : "movie"}-${r.id}`),
+                watched: false,
+                locale,
+              }}
             />
           ))}
         </PosterGrid>
