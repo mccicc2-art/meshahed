@@ -242,6 +242,27 @@ summary:focus-visible,
   animation: sheet-up 0.32s cubic-bezier(0.21, 0.9, 0.35, 1) both;
 }
 
+/* قائمةٌ منسدلة تُفتح من مقبضها — **لا من أسفل الشاشة** (D-226، طلب أحمد:
+   «منسدلة ناعمة فيها أنيميشن سريع»). حركةٌ صغيرةٌ سريعة تقول **من أين
+   جاءت القائمة**، وهي وظيفةٌ لا زينة: من ضغط زرّاً في زاويةٍ يحتاج أن
+   يربط ما ظهر بما ضغط. و`transform-origin` عند المقبض لا في الوسط،
+   ومدّتُها ١٣٠ms — أسرعُ من ورقة الشاشة (٣٢٠ms) لأن مسافتها أقصر. */
+@keyframes menu-pop {
+  0% {
+    transform: scale(0.94) translateY(-4px);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+}
+
+.menu-pop {
+  animation: menu-pop 0.13s cubic-bezier(0.16, 1, 0.3, 1) both;
+  transform-origin: var(--menu-origin, 100% 0);
+}
+
 /* توهّج احتفالي: الظلّ ثابت على طبقة خلفية ويُحرَّك شفافها فقط —
    تحريك box-shadow نفسه كان يعيد رسم منطقة ضبابية كبيرة كل إطار
    في لحظة المكافأة بالذات */
@@ -372,6 +393,7 @@ summary:focus-visible,
 
 @media (prefers-reduced-motion: reduce) {
   .sheet-pop,
+  .menu-pop,
   .glow-celebrate::before,
   .confetti-piece,
   .marquee-track,
