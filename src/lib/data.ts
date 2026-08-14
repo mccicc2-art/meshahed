@@ -1915,6 +1915,142 @@ export async function getTalkStats(): Promise<Map<string, TalkStat>> {
   }
 }
 
+/* ============================================================
+ *  النقاشُ كيانٌ مستقلّ (D-257، الهجرة ٧٨)
+ *
+ *  **تصحيحُ أحمد بنصّه: «عندك لبس — النقاش ليس الريفيو، يختلف».**
+ *  فما تحت هذين القارئين ليس `ratings` ولا `review_replies`، **هو
+ *  `title_posts`** — جدولٌ لا نجمةَ فيه ولا صاحبَ للغرفة.
+ * ============================================================ */
+
+/**
+ * **مشاركةٌ في غرفة نقاش** — وهي `ThreadReply` نفسُها زائدَ `depth`.
+ *
+ * **ولماذا نفسُ الشكل:** صفُّ الردّ في Loopz واحدٌ (`ReplyItem`، D-242)،
+ * **وشكلٌ ثانٍ لنفس الصفّ يعني مكوّناً ثانياً يفترق عند أوّل إصلاح.**
+ * **والعمقُ وحدَه جديد** لأن هذا الخيطَ شجرةٌ لا قائمة (طلبُ أحمد:
+ * «تكون مثل Reddit لا مثل تويتر»).
+ */
+export interface TalkPost {
+  postId: string;
+  authorId: string;
+  nickname: string | null;
+  username: string | null;
+  avatar_url: string | null;
+  hide_name: boolean;
+  parentId: string | null;
+  /** ٠ للجذر، وسقفُه ٣ — **يحسبه المُشغِّل في القاعدة** لا العميل */
+  depth: number;
+  body: string;
+  createdAt: string;
+  isMine: boolean;
+}
+
+/**
+ * **خيطُ غرفةٍ كاملاً بنداءٍ واحد** (الهجرة ٧٨).
+ *
+ * **والشجرةُ تُبنى في الواجهة لا في SQL**: السقفُ ٣٠٠ صفّاً ومعها
+ * `parent_id`، **وترتيبُ شجرةٍ في SQL يكلّف `recursive` لأمرٍ تفعله
+ * الواجهةُ في تمريرةٍ واحدة** (D-240).
+ *
+ * **وسقوطُها صامت** قبل تشغيل الهجرة: غرفةٌ فارغةٌ وصندوقُ كتابةٍ يعمل.
+ */
+export async function getTitleThread(
+  tmdbId: number,
+  mediaType: "tv" | "movie",
+): Promise<TalkPost[]> {
+  try {
+    const supabase = await createClient();
+    const [{ data, error }, me] = await Promise.all([
+      supabase.rpc("title_thread", { t_id: tmdbId, m_type: mediaType }),
+      getUser(),
+    ]);
+    if (error || !data) return [];
+    return (data as {
+      id: string;
+      parent_id: string | null;
+      depth: number;
+      author_id: string;
+      nickname: string | null;
+      username: string | null;
+      avatar_url: string | null;
+      hide_name: boolean;
+      body: string;
+      created_at: string;
+    }[]).map((r) => ({
+      postId: String(r.id),
+      authorId: String(r.author_id),
+      nickname: r.nickname,
+      username: r.username,
+      avatar_url: r.avatar_url,
+      hide_name: r.hide_name,
+      parentId: r.parent_id,
+      depth: Number(r.depth ?? 0),
+      body: r.body,
+      createdAt: r.created_at,
+      isMine: !!me && me.id === r.author_id,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * **بطاقةُ غرفةٍ حيّة** — والغرفةُ `(tmdb_id, media_type)` لا صفٌّ في
+ * جدول (قرارُ أحمد: «غرفةٌ واحدة لكل عمل، عنوانُها مولَّد»).
+ */
+export interface TalkRoom {
+  tmdbId: number;
+  mediaType: "tv" | "movie";
+  title: string | null;
+  posterPath: string | null;
+  /** **خلفيّةُ البطاقة** (طلبُ أحمد: «الخلفية تكون من غلاف الفلم») */
+  backdropPath: string | null;
+  posts: number;
+  lastAt: string;
+  /** أحدثُ خمسةِ متكلّمين — **أشخاصٌ لا مشاركات** */
+  faces: PersonLite[];
+}
+
+/**
+ * **الغرفُ الحيّة مرتَّبةً بأحدث مشاركة** (`title_talk_rooms`).
+ *
+ * **ولا غرفةَ فارغة**: الغرفةُ تولد بأوّل مشاركةٍ وتموت بآخرها،
+ * **وجدولُ غرفٍ فارغةٍ سجلٌّ لا قارئ له** (D-224).
+ *
+ * ⚠️ **والاسمُ `title_talk_rooms` لا `title_rooms`** — الثاني مشغولٌ
+ * بغرف المجتمعات التلقائية (`getTitleRooms` أدناه)، **وردّت القاعدةُ
+ * المحاولةَ بنفسها**: اسمٌ يبدو حرّاً قد يكون بيتَ ميزةٍ أخرى.
+ */
+export async function getTalkRooms(limit = 40): Promise<TalkRoom[]> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("title_talk_rooms", { p_limit: limit });
+    if (error || !data) return [];
+    return (data as {
+      tmdb_id: number;
+      media_type: string;
+      title: string | null;
+      poster_path: string | null;
+      backdrop_path: string | null;
+      posts: number;
+      last_at: string;
+      faces: PersonLite[] | null;
+    }[]).map((r) => ({
+      tmdbId: Number(r.tmdb_id),
+      mediaType: r.media_type === "tv" ? "tv" : "movie",
+      title: r.title,
+      posterPath: r.poster_path,
+      backdropPath: r.backdrop_path,
+      posts: Number(r.posts),
+      lastAt: String(r.last_at),
+      faces: Array.isArray(r.faces) ? r.faces.slice(0, 5) : [],
+    }));
+  } catch {
+    return [];
+  }
+}
+
 /**
  * **عدّادُ ردودِ النشرات — نداءٌ واحد للخطّ كلِّه** (D-236/D-164).
  *

@@ -3504,6 +3504,107 @@ export async function reportNewsReply(input: {
   if (error) fail(error);
 }
 
+/* ============================================================
+ *  مشاركاتُ النقاش (D-257، الهجرة ٧٨) — **الكتابةُ في `title_posts`**
+ *
+ *  **ولماذا فعلٌ ثالثٌ لا عَلَمٌ في `addReviewReply`:** ذاك يشترط
+ *  `reviewUserId` — **مرساةً إلى رأي إنسان**، وهذا لا مرساةَ له غيرُ
+ *  الغرفة. **وفعلٌ يتجاهل نصفَ وسائطه ليس نفسَ الفعل.**
+ * ============================================================ */
+
+/**
+ * **مشاركةٌ في غرفة نقاش** — جذرٌ (`parentId = null`) أو ردٌّ عليه.
+ *
+ * **والعنوانُ والملصقُ والغلافُ يُرسَلون مع الصفّ** لا يُقرآن من TMDB
+ * لاحقاً: نمطُ `ratings` نفسُه منذ أوّل يوم (D-048) — **وبديلُه أربعون
+ * نداءَ TMDB لفتحةِ تبويب** (D-164). **والغلافُ خاصّةً لخلفيّة البطاقة**
+ * (طلبُ أحمد: «الخلفية تكون من غلاف الفلم»).
+ *
+ * **ونفسُ دلوِ الردّ وحدودِه**: خمسةَ عشرَ في الدقيقة — **قاعدتان لفعلٍ
+ * واحد يتعلّمهما المستخدم مرّتين.** **والسقفُ ألفان** لأن هذا سطرُ
+ * نقاشٍ لا ردّاً عابراً، **والقاعدةُ تحرسه بنفسها** (`check`).
+ */
+export async function addTalkPost(input: {
+  tmdbId: number;
+  mediaType: MediaType;
+  body: string;
+  parentId?: string | null;
+  title?: string | null;
+  posterPath?: string | null;
+  backdropPath?: string | null;
+}): Promise<NewReply | null> {
+  const tmdbId = intId(input.tmdbId);
+  const mediaType = asMediaType(input.mediaType);
+  const parentId = input.parentId ? uuid(input.parentId) : null;
+
+  const { supabase, user } = await requireUser("reply", 15, 60_000);
+
+  const body = String(input.body ?? "").replace(/\s{3,}/g, "  ").trim().slice(0, 2000);
+  if (!body) return null;
+
+  const { data, error } = await supabase
+    .from("title_posts")
+    .insert({
+      tmdb_id: tmdbId,
+      media_type: mediaType,
+      user_id: user.id,
+      body,
+      parent_id: parentId,
+      title: input.title?.slice(0, 200) || null,
+      poster_path: input.posterPath || null,
+      backdrop_path: input.backdropPath || null,
+      /* **ولا `depth` هنا**: المُشغِّل يحسبه ويقيّده — **ورقمٌ يكتبه
+         العميل يكذب**، وقيدُ العمق في القاعدة لا في الواجهة (D-193). */
+    })
+    .select("id, created_at")
+    .single();
+  if (error) fail(error);
+
+  for (const p of talkPaths(tmdbId, mediaType)) revalidatePath(p);
+  /* **وتبويبُ «نقاش» يُبطَل معها**: البطاقةُ تحمل عدّاداً ووقتَ آخر
+     مشاركة، **فصفحةٌ لا تُبطَل تعرض غرفةً تحرّكت قبل دقيقةٍ ساكنةً.** */
+  revalidatePath("/people");
+
+  const who = await replyAuthor(supabase, user.id);
+  return { replyId: String(data!.id), createdAt: String(data!.created_at), ...who };
+}
+
+/** حذفُ مشاركتي — والردودُ عليها تسقط معها (`on delete cascade`) */
+export async function deleteMyTalkPost(input: {
+  postId: string;
+  tmdbId: number;
+  mediaType: MediaType;
+}): Promise<void> {
+  const postId = uuid(input.postId);
+  const tmdbId = intId(input.tmdbId);
+  const mediaType = asMediaType(input.mediaType);
+
+  const { supabase, user } = await requireUser();
+  const { error } = await supabase
+    .from("title_posts")
+    .delete()
+    .match({ id: postId, user_id: user.id });
+  if (error) fail(error);
+
+  for (const p of talkPaths(tmdbId, mediaType)) revalidatePath(p);
+  revalidatePath("/people");
+}
+
+/** صامتٌ بلا عدّاد، والإخفاءُ عند العاشر في مُشغِّل SQL لا هنا */
+export async function reportTalkPost(input: {
+  postId: string;
+  reason?: string;
+}): Promise<void> {
+  const postId = uuid(input.postId);
+  const { supabase, user } = await requireUser("report", 10, 60_000);
+  const reason = (input.reason ?? "").replace(/\s+/g, " ").trim().slice(0, 300);
+  const { error } = await supabase.from("title_post_reports").upsert(
+    { post_id: postId, reporter_id: user.id, reason: reason || null },
+    { onConflict: "post_id,reporter_id", ignoreDuplicates: true },
+  );
+  if (error) fail(error);
+}
+
 /**
  * حذفُ ردّي — والسياسةُ تمنع حذفَ ردِّ غيري، فلا فحصَ قبل الكتابة.
  *

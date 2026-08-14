@@ -623,13 +623,19 @@ const ar = {
      **فالعنوانُ يحمل الاسم، والملصقُ يحمل الهويّة البصرية.** */
   talkRoomTitle: (title: string, isTv: boolean) =>
     `نقاش ${isTv ? "مسلسل" : "فيلم"} ${title}`,
-  /* **«مشاركة» تجمع الرأيَ والردّ**: الغرفةُ فيها الاثنان، **وعدٌّ يسمّي
+  /* **«مشاركة» تجمع الجذرَ والردّ**: الغرفةُ فيها الاثنان، **وعدٌّ يسمّي
      أحدَهما وحده يكذب على الآخر** */
   talkRoomPosts: (n: number) => (n === 1 ? "مشاركةٌ واحدة" : `${num(n, "ar")} مشاركة`),
-  /* ⚠️ **«آخر رأي» لا «آخر ردّ»** خلافاً للقطة: **الوقتُ الذي نملكه وقتُ
-     أحدث رأيٍ لا أحدث ردّ** — ولا نملك وقتَ الردود دون نداءٍ ثانٍ.
-     **ووسمٌ يسمّي ما لا يقيسه أسوأُ من وسمٍ أقلَّ إثارة.** */
-  talkRoomLastAt: (when: string) => `آخر رأي ${when}`,
+  /* ✅ **وصارت «آخر مشاركة» كما في لقطة أحمد** (D-257): كُتبت «آخر رأي»
+     **لأن الوقتَ الذي كنّا نملكه وقتُ أحدث رأي** — وكان صدقاً في حينه.
+     **واليوم للغرفة جدولُها** (`title_posts`) و`last_at` وقتُ أحدث
+     مشاركةٍ فعلاً، **فالوسمُ يسمّي ما يقيسه.** */
+  talkRoomLastAt: (when: string) => `آخر مشاركة ${when}`,
+  /* **دعوةُ الغرفة غيرُ دعوةِ الردّ** (D-257): هناك تردّ على سطرٍ قِيل،
+     **وهنا قد تكون الغرفةُ خاليةً فلا سطرَ تردّ عليه** — والفعلُ يُسمّى
+     باسمه. **والفراغُ يقول ماذا تفعل ليمتلئ** لا «لا يوجد» (D-181). */
+  talkRoomPlaceholder: "شارِك في النقاش…",
+  talkRoomEmpty: "لا مشاركات بعد — افتح النقاشَ بأوّل سطر",
   /* **«شاهدوا المنشور» لا «شاهدوه»** (D-237): الأولى تخصّ الصفَّ الذي
      تحته، والثانيةُ تخصّ العملَ — **وكلمةٌ واحدة كانت تحمل المعنيين** */
   postViewsHint: "شاهدوا المنشور",
@@ -644,9 +650,11 @@ const ar = {
   /* **«منشور» و«تعليق» لا «صفحة»** (D-242): العنوانُ يسمّي **ما تقرؤه**
      لا **أين أنت** — وهو نصُّ ترويسة تويتر نفسُه */
   reviewPageTitle: "تعليق",
-  /* **«كل التعليقات» لا «صفحة الفلم»**: الزرُّ يودّي إلى غرفة الكلام
-     (D-244) — والاسمُ يسمّي الوجهةَ لا الطريق */
-  reviewOpenTalk: "كل التعليقات",
+  /* **«نقاش العمل» لا «كل التعليقات»** (D-257): الزرُّ يودّي إلى
+     `‎/talk`، **وتلك صارت نقاشاً خالصاً لا تعليقاتٍ فيها** — والاسمُ
+     يسمّي **ما خلف الباب** لا الطريقَ إليه (D-244). **واسمٌ بقي بعد أن
+     تغيّر ما يسمّيه يصير كذبةً بحسن نيّة.** */
+  reviewOpenTalk: "نقاش العمل",
   reviewPageMeta: (who: string, title: string) => `رأيُ ${who} في ${title}`,
   /* **ثلاثُ رقاقاتٍ للنشاط** (D-240). **و«تريندينق» حُذفت من اقتراح
      أحمد**: هي و«الأكثر لايك» ترتيبٌ واحد بلبوسين — **ورقاقتان تُنتجان
@@ -1745,7 +1753,9 @@ const en: Dict = {
   talkRoomTitle: (title: string, isTv: boolean) =>
     `Discussing the ${isTv ? "series" : "film"} ${title}`,
   talkRoomPosts: (n: number) => (n === 1 ? "1 post" : `${num(n, "en")} posts`),
-  talkRoomLastAt: (when: string) => `last opinion ${when}`,
+  talkRoomLastAt: (when: string) => `last post ${when}`,
+  talkRoomPlaceholder: "Join the discussion…",
+  talkRoomEmpty: "No posts yet — open the discussion with the first line",
   postViewsHint: "post views",
   undoNotWatched: "Not watched",
   postPageTitle: "Post",
@@ -1754,7 +1764,7 @@ const en: Dict = {
   postReplyPlaceholder: "Write a reply…",
   postOpenReplies: "See replies",
   reviewPageTitle: "Comment",
-  reviewOpenTalk: "All comments",
+  reviewOpenTalk: "Discussion",
   reviewPageMeta: (who: string, title: string) => `${who} on ${title}`,
   feedPeopleGroup: "Activity feed — who shows up",
   feedShowStrangers: "Show people I don't follow",
