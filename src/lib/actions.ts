@@ -10,6 +10,7 @@ import { THEMES } from "@/lib/themes";
 import { sanitizeHomePrefs, type HomePrefs } from "@/lib/homePrefs";
 import { sanitizeProfilePrefs, type ProfilePrefs } from "@/lib/profilePrefs";
 import {
+  FEED_STRANGERS_COOKIE,
   isTabSurface,
   parseTabPrefs,
   serializeTabPrefs,
@@ -219,6 +220,27 @@ export async function setTabPrefs(surface: string, prefs: TabPref[]) {
   const clean = parseTabPrefs(surface, serializeTabPrefs(prefs));
   const store = await cookies();
   store.set(surfaceCookie(surface), serializeTabPrefs(clean), {
+    path: "/",
+    maxAge: 60 * 60 * 24 * 365,
+    sameSite: "lax",
+  });
+}
+
+/**
+ * **«أظهِر من لا أتابعهم» في خطّ النشاط** (D-255، طلبُ أحمد: «نحتاج
+ * تضيف خيار إخفاء الأشخاص اللي ما أتابعهم من الأكتيفتي»).
+ *
+ * **كوكي لا عمود** — نفسُ حكم تفضيلات التبويبات المجاورة له في الورقة
+ * نفسِها: **تفضيلُ عرضٍ يخصّ الجهاز، ويُقرأ على الخادم قبل أوّل رسمة**
+ * فلا يومض صفٌّ ثم يختفي. ولو صار عموداً لاحتاج نداءَ قاعدةٍ في كل
+ * فتحةٍ لسؤالٍ جوابُه في الكوكي.
+ *
+ * **وافتراضُه السلوكُ القائم** (D-152): الغرباءُ ظاهرون حتى يُطفَأوا —
+ * فمن لم يفتح الورقةَ قطُّ لا يتغيّر خطُّه تحته.
+ */
+export async function setFeedStrangers(show: boolean) {
+  const store = await cookies();
+  store.set(FEED_STRANGERS_COOKIE, show ? "1" : "0", {
     path: "/",
     maxAge: 60 * 60 * 24 * 365,
     sameSite: "lax",

@@ -651,6 +651,12 @@ const ar = {
   /* **ثلاثُ رقاقاتٍ للنشاط** (D-240). **و«تريندينق» حُذفت من اقتراح
      أحمد**: هي و«الأكثر لايك» ترتيبٌ واحد بلبوسين — **ورقاقتان تُنتجان
      نفسَ القائمة رقاقةٌ واحدة تُربك** (قاعدة ٣: لا عائلةَ ثانية) */
+  /* **قسمُ «من يظهر» في ورقة الأدوات** (D-255) — جارُ «التبويبات» لأن
+     كليهما يجيب «ماذا أرى في هذه الصفحة» */
+  feedPeopleGroup: "خطُّ النشاط — من يظهر",
+  feedShowStrangers: "أظهِر من لا أتابعهم",
+  feedShowStrangersHint:
+    "حين يُطفأ، لا يعرض «الأحدث» و«الأكثر تفاعلاً» إلا كلامَ من تتابعهم وكلامَك. و«لك» تُرشّح بنفسها فلا يمسّها المفتاح، ونشراتُ Loopz تُلغى من قائمة حسابها.",
   feedForYou: "لك",
   feedLatest: "الأحدث",
   feedTop: "الأكثر تفاعلاً",
@@ -1750,6 +1756,10 @@ const en: Dict = {
   reviewPageTitle: "Comment",
   reviewOpenTalk: "All comments",
   reviewPageMeta: (who: string, title: string) => `${who} on ${title}`,
+  feedPeopleGroup: "Activity feed — who shows up",
+  feedShowStrangers: "Show people I don't follow",
+  feedShowStrangersHint:
+    "When off, Latest and Top show only people you follow, plus your own posts. For you filters on its own, and Loopz bulletins are turned off from that account's own menu.",
   feedForYou: "For you",
   feedLatest: "Latest",
   feedTop: "Top",

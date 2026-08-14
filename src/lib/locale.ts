@@ -1,7 +1,14 @@
 import { cookies, headers } from "next/headers";
 import { LOCALE_COOKIE, normalizeLocale, getDict, type Locale, type Dict } from "@/lib/i18n";
 import { REGION_COOKIE, DEFAULT_REGION, normalizeRegion } from "@/lib/region";
-import { TAB_SURFACES, parseTabPrefs, type TabPref, type TabSurface } from "@/lib/tabPrefs";
+import {
+  TAB_SURFACES,
+  parseTabPrefs,
+  FEED_STRANGERS_COOKIE,
+  parseFeedStrangers,
+  type TabPref,
+  type TabSurface,
+} from "@/lib/tabPrefs";
 
 export async function getLocale(): Promise<Locale> {
   try {
@@ -52,6 +59,19 @@ export async function getWatchRegion(): Promise<string> {
  * والقصُّ يتكرّر هنا عمداً (نفس ثلاثيّة D-177): العميل يُعطّل، والكاتب
  * يقصّ، والقارئ يقصّ. **حارسٌ على طرفٍ واحد ليس حارساً.**
  */
+/**
+ * **هل يُظهر خطُّ النشاط من لا يتابعهم؟** (D-255) — يُقرأ على الخادم
+ * قبل أوّل رسمة، **فلا يومض صفُّ غريبٍ ثم يختفي.**
+ */
+export async function getFeedStrangers(): Promise<boolean> {
+  try {
+    const store = await cookies();
+    return parseFeedStrangers(store.get(FEED_STRANGERS_COOKIE)?.value);
+  } catch {
+    return true;
+  }
+}
+
 export async function getTabPrefs(surface: TabSurface): Promise<TabPref[]> {
   const spec = TAB_SURFACES[surface];
   try {
