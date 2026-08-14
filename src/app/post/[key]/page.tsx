@@ -17,6 +17,7 @@ import { LikeButton } from "@/components/LikeButton";
 import { PosterCard } from "@/components/PosterCard";
 import { ShareTitleButton } from "@/components/ShareTitleButton";
 import { ThreadTopBar, ThreadDateLine, ThreadActionBar } from "@/components/thread/ThreadShell";
+import { LOOPZ_USERNAME } from "@/lib/loopz";
 import { ThreadReplies } from "@/components/thread/ThreadReplies";
 
 export const dynamic = "force-dynamic";
@@ -84,12 +85,25 @@ export default async function PostPage({
       {/* ============ النشرةُ نفسُها ============ */}
       <article className="pt-3">
         <div className="flex items-start gap-3">
-          {/* **ختمُ Loopz في موضع الوجه** — الأيقونةُ الرسمية نفسُها (D-039) */}
-          <Avatar src="/icon-192.png" name="Loopz" size={44} alt="" className="shrink-0" />
+          {/* **ختمُ Loopz في موضع الوجه** — الأيقونةُ الرسمية نفسُها (D-039).
+              **🆕 وبابٌ إلى حسابه** (D-252) — وجهُ صاحب الصفحة في `/review`
+              يفتح ملفَّه، وهذا نظيرُه حرفاً. */}
+          <Link
+            href={`/u/${LOOPZ_USERNAME}`}
+            prefetch={false}
+            className="shrink-0 active:opacity-80 transition"
+          >
+            <Avatar src="/icon-192.png" name="Loopz" size={44} alt="" />
+          </Link>
           <div className="min-w-0 flex-1">
-            <p className="font-bold text-[15px] leading-tight" dir="ltr">
+            <Link
+              href={`/u/${LOOPZ_USERNAME}`}
+              prefetch={false}
+              className="block font-bold text-[15px] leading-tight hover:text-accent transition"
+              dir="ltr"
+            >
               Loopz
-            </p>
+            </Link>
             <div className="mt-0.5 flex items-center gap-1.5">
               <Link
                 href={titleHref}
