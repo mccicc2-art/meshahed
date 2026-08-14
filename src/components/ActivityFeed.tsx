@@ -245,17 +245,32 @@ function RowPoster({
   );
 }
 
-/** عدّادٌ صغيرٌ برمزه — **والصفرُ لا يُرسم** (D-222) */
+/**
+ * **خانةُ الإحصاء — تُحجَز وإن كان العدد صفراً** (D-234، بلاغُ أحمد:
+ * «شكلٌ مختلف!»).
+ *
+ * **والعلّةُ كانت في `justify-between` لا في الرقم:** شريطٌ موزَّعٌ يعيد
+ * توزيعَ عناصره كلَّما نقص واحد — **فصفٌّ بلا إحصاءٍ تنزلق رموزُه كلُّها**
+ * ولا يحاذي جارَه. **والقائمةُ تُقرأ بالمَسح**، فأعمدةٌ تتحرّك بين صفٍّ
+ * وصفّ فوضى ولو كان كلُّ صفٍّ صحيحاً وحده.
+ *
+ * **فتُحجَز الخانة ويُخفى رقمُها** — **والصفرُ يبقى غيرَ مرسوم**
+ * (D-222): **الحجزُ للتخطيط والإخفاءُ للصدق**، ولا يتنازعان.
+ * (D-046 نفسُها: لا شيء يتغيّر موضعُه بعد أن يُرسم.)
+ */
 function StatChip({ icon, n, label }: { icon: "chart"; n: number; label: string }) {
-  if (n <= 0) return null;
+  const has = n > 0;
   return (
     <span
-      className="inline-flex items-center gap-1 px-1 text-[12px] text-muted tabular-nums"
-      title={label}
-      aria-label={`${label}: ${n}`}
+      className={`inline-flex items-center gap-1 px-2.5 text-[12px] tabular-nums ${
+        has ? "text-muted" : "text-muted/35"
+      }`}
+      title={has ? label : undefined}
+      aria-label={has ? `${label}: ${n}` : undefined}
+      aria-hidden={!has}
     >
       <Icon name={icon} size={14} />
-      {n}
+      {has && n}
     </span>
   );
 }
