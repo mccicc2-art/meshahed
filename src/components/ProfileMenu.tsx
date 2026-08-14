@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Icon } from "./Icon";
 import { Sheet } from "./ui/Sheet";
+import { Dropdown, dropdownItem, dropdownDivider } from "./ui/Dropdown";
 import { buttonClass } from "./ui/Button";
 import { sheetMenuItem, sheetMenuDivider } from "./ui/controls";
 import { StartConversationSheet } from "./StartConversationSheet";
@@ -120,28 +121,108 @@ export function ProfileMenu({
     });
   }
 
-  return (
+  /* **صفوفُ القائمة تُكتب مرّةً وتُعرض في وعاءين** (D-226): الورقةُ فوق
+     صورة الغلاف، والمنسدلةُ في صفٍّ من نصّ — **والمحتوى واحد**، فلا
+     تُنسخ أربعةُ صفوفٍ بأفعالها لأن الوعاء اختلف. */
+  const rows = (itemClass: string, dividerClass: string) => (
     <>
-      {/* نقاط القائمة — قرصُ الغلاف نفسه الذي يرسمه DetailTopBar */}
-      <button
-        onClick={() => {
-          tap(6);
-          setMenu(true);
-        }}
-        aria-label={t.profileMenuAria}
-        title={t.profileMenuAria}
-        className={
-          variant === "plain"
-            ? "w-8 h-8 -m-1 rounded-full grid place-items-center text-muted hover:text-foreground active:scale-90 transition"
-            : "w-10 h-10 rounded-full bg-black/35 backdrop-blur-md border border-white/15 grid place-items-center text-white/90 active:scale-95 transition"
-        }
-      >
-        <Icon name="dots" size={variant === "plain" ? 16 : 18} />
+      {follow && (
+        <button
+          onClick={flipFollow}
+          disabled={pending}
+          role="menuitem"
+          className={itemClass}
+        >
+          <Icon
+            name={following ? "person-check" : "people"}
+            size={18}
+            className={following ? "text-accent" : "text-muted"}
+          />
+          {following ? t.following : t.follow}
+        </button>
+      )}
+
+      <button onClick={openMessage} role="menuitem" className={itemClass}>
+        <Icon name="comment" size={18} className={mutual ? "text-accent" : "text-muted"} />
+        <span className={mutual ? "" : "text-muted"}>{t.msgUserOption}</span>
       </button>
 
-      {/* القائمة */}
+      <div className={dividerClass} />
+
+      <button
+        onClick={() => {
+          setMenu(false);
+          if (!reported) setReport(true);
+        }}
+        disabled={pending}
+        role="menuitem"
+        className={itemClass}
+      >
+        <Icon name="shield" size={18} className="text-muted" />
+        {reported ? t.reportDone : t.reportUserOption}
+      </button>
+
+      <button
+        onClick={() => {
+          setMenu(false);
+          setConfirmBlock(true);
+        }}
+        disabled={pending}
+        role="menuitem"
+        className={itemClass}
+      >
+        <Icon name="close" size={18} className="text-[color:var(--error)]" />
+        <span className="text-[color:var(--error)]">{t.blockOption}</span>
+      </button>
+    </>
+  );
+
+  return (
+    <>
+      {/* **وعاءان لقائمةٍ واحدة** (D-226): فوق صورةِ غلافٍ ورقةٌ سفلية —
+          **قرارٌ يستحقّ أن يوقف الصفحة** ومقبضُه بعيدٌ عن أسفل الإبهام؛
+          وفي صفّ خطّ النشاط منسدلةٌ ملتصقةٌ بنقاطها **لأن الصفوف كثيرة
+          وورقةٌ تغطّي الشاشة لكل صفٍّ فيها ثقلٌ لا يستحقّه خيارٌ سريع**.
+          ⚠️ **ودَينٌ يُعلَن:** شكلان لقائمةٍ واحدة رائحةُ عائلةٍ ثانية —
+          **يُوحَّدان على المنسدلة بعد فحصها حيّاً في صفحة الملفّ**، ولم
+          يُفعل في هذه الدفعة لأن ترويسة الغلاف لها سياقُ تكديسٍ خاصّ
+          يُقاس ولا يُفترض. */}
+      {variant === "plain" ? (
+        <span className="relative inline-block">
+          <button
+            onClick={() => {
+              tap(6);
+              setMenu((v) => !v);
+            }}
+            aria-haspopup="menu"
+            aria-expanded={menu}
+            aria-label={t.profileMenuAria}
+            title={t.profileMenuAria}
+            className="w-8 h-8 -m-1 rounded-full grid place-items-center text-muted hover:text-foreground active:scale-90 transition"
+          >
+            <Icon name="dots" size={16} />
+          </button>
+          <Dropdown open={menu} onClose={() => setMenu(false)}>
+            {rows(dropdownItem, dropdownDivider)}
+          </Dropdown>
+        </span>
+      ) : (
+        <button
+          onClick={() => {
+            tap(6);
+            setMenu(true);
+          }}
+          aria-label={t.profileMenuAria}
+          title={t.profileMenuAria}
+          className="w-10 h-10 rounded-full bg-black/35 backdrop-blur-md border border-white/15 grid place-items-center text-white/90 active:scale-95 transition"
+        >
+          <Icon name="dots" size={18} />
+        </button>
+      )}
+
+      {/* الورقةُ لوعاء الغلاف وحده */}
       <Sheet
-        open={menu}
+        open={menu && variant === "cover"}
         onClose={() => setMenu(false)}
         closeLabel={t.closeLabel}
         variant="bottom"
@@ -150,51 +231,9 @@ export function ProfileMenu({
         <p id="profile-menu-title" className="text-center font-bold text-[15px] pt-5 pb-2">
           {t.moreMenuTitle}
         </p>
-        <div className="pb-3">
-          {/* **المتابعة أوّلاً حين تكون هنا** — الأخفُّ أثراً في الصدر
-              والأخطرُ في الذيل (D-145) */}
-          {follow && (
-            <button onClick={flipFollow} disabled={pending} className={sheetMenuItem}>
-              <Icon
-                name={following ? "person-check" : "people"}
-                size={18}
-                className={following ? "text-accent" : "text-muted"}
-              />
-              {following ? t.following : t.follow}
-            </button>
-          )}
-
-          <button onClick={openMessage} className={sheetMenuItem}>
-            <Icon name="comment" size={18} className={mutual ? "text-accent" : "text-muted"} />
-            <span className={mutual ? "" : "text-muted"}>{t.msgUserOption}</span>
-          </button>
-
-          <div className={sheetMenuDivider} />
-
-          <button
-            onClick={() => {
-              setMenu(false);
-              if (!reported) setReport(true);
-            }}
-            disabled={pending}
-            className={sheetMenuItem}
-          >
-            <Icon name="shield" size={18} className="text-muted" />
-            {reported ? t.reportDone : t.reportUserOption}
-          </button>
-
-          <button
-            onClick={() => {
-              setMenu(false);
-              setConfirmBlock(true);
-            }}
-            disabled={pending}
-            className={sheetMenuItem}
-          >
-            <Icon name="close" size={18} className="text-[color:var(--error)]" />
-            <span className="text-[color:var(--error)]">{t.blockOption}</span>
-          </button>
-        </div>
+        {/* **المتابعة أوّلاً حين تكون هنا** — الأخفُّ أثراً في الصدر
+            والأخطرُ في الذيل (D-145). والصفوفُ من `rows` نفسِها. */}
+        <div className="pb-3">{rows(sheetMenuItem, sheetMenuDivider)}</div>
       </Sheet>
 
       {/* ورقة البلاغ — نمط ReportButton حرفياً: سببٌ اختياريّ ثم إرسال */}

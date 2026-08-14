@@ -232,7 +232,7 @@ function RowPoster({
 }
 
 /** عدّادٌ صغيرٌ برمزه — **والصفرُ لا يُرسم** (D-222) */
-function StatChip({ icon, n, label }: { icon: "eye"; n: number; label: string }) {
+function StatChip({ icon, n, label }: { icon: "chart"; n: number; label: string }) {
   if (n <= 0) return null;
   return (
     <span
@@ -256,17 +256,15 @@ function StatChip({ icon, n, label }: { icon: "eye"; n: number; label: string })
  * **والفعلان الأخيران يخصّان العمل لا الكلام** — وهما ما يجعل الخبرَ
  * والتعليق ذيلاً واحداً: **ما يختلف بينهما شيءٌ واحد، مَن يُعجَب به.**
  */
-function RowFooter({ time, children }: { time: string; children: React.ReactNode }) {
+function RowFooter({ children }: { children: React.ReactNode }) {
   return (
-    <div className="pt-2 flex items-center">
-      {/* **شريطُ أفعالٍ موزَّعٌ بعرضٍ مسقوف** (طلبُ أحمد: «تباعد الأيقونات
-          يكون منسّق»): `justify-between` داخل `max-w` — **فتتساوى المسافات
-          ولا تتمدّد إلى آخر الشاشة** فيبعد آخرُ رمزٍ عن أوّله بمسافةٍ لا
-          تُقطع بالإبهام. والسقفُ ٢٤٠px يترك للوقت مكانَه في الطرف. */}
-      <div className="flex items-center justify-between w-full max-w-[240px] -ms-2.5">
-        {children}
-      </div>
-      <span className="ms-auto shrink-0 text-[11px] text-muted ps-2">{time}</span>
+    /* **شريطُ أفعالٍ موزَّعٌ بعرضٍ مسقوف** (طلبُ أحمد: «تباعد الأيقونات
+       يكون منسّق»): `justify-between` داخل `max-w` — **فتتساوى المسافات
+       ولا تتمدّد إلى آخر الشاشة** فيبعد آخرُ رمزٍ عن أوّله بمسافةٍ لا
+       تُقطع بالإبهام. **والوقتُ غادر إلى الترويسة** فلم يعد في الذيل
+       منازعٌ للأفعال. */
+    <div className="pt-2 flex items-center justify-between w-full max-w-[260px] -ms-2.5">
+      {children}
     </div>
   );
 }
@@ -348,11 +346,22 @@ function CommentRow({
             <Link
               href={whoHref}
               prefetch={false}
-              className="font-bold text-[14px] text-foreground line-clamp-1 hover:text-accent transition"
+              className="shrink-0 font-bold text-[14px] text-foreground line-clamp-1 hover:text-accent transition"
             >
               <bdi>{who}</bdi>
             </Link>
-            <span aria-hidden className="text-muted text-[12px]">
+            {/* **★ بعد الاسم مباشرةً** (حكمُ أحمد الأخير بعد ثلاثة مواضع
+                جُرِّبت): يلتصق بصاحبه، **والفاصلةُ `·` تعزله عن اسم العمل**
+                فلا يُقرأ تقييمَ العمل — وهو الخطرُ الذي أخرجه من هناك. */}
+            {a.rating != null && (
+              <span
+                className="shrink-0 text-[12px] font-bold text-accent tabular-nums"
+                title={t.rateOutOf(a.rating)}
+              >
+                ★ <span dir="ltr">{a.rating.toFixed(1)}</span>
+              </span>
+            )}
+            <span aria-hidden className="shrink-0 text-muted text-[12px]">
               ·
             </span>
             <Link
@@ -362,7 +371,11 @@ function CommentRow({
             >
               <bdi>{a.title}</bdi>
             </Link>
-            <span className="ms-auto shrink-0">
+            {/* **الوقتُ ملاصقٌ للنقاط في الطرف** (طلبُ أحمد): بيانُ حاشيةٍ
+                عند حافةٍ واحدة مع مقبض الخيارات، **فيخلو الذيلُ للأفعال
+                وحدها** ويصير شريطاً موزَّعاً بلا منازع. */}
+            <span className="ms-auto shrink-0 flex items-center gap-1.5">
+              <span className="text-[11px] text-muted">{timeAgo(a.updated_at, t)}</span>
               <ProfileMenu
                 person={a.person}
                 mutual={false}
@@ -392,25 +405,12 @@ function CommentRow({
               dir={dirOf(a.review)}
               className="text-[13px] leading-relaxed text-foreground/85 line-clamp-3"
             >
-              {/* **★ داخل الجملة لا فوقها ولا تحت الوجه** (D-225، ثلاثةُ
-                  مواضع رُفضت): بجوار اسم العمل كانت تُقرأ تقييمَ العمل،
-                  وبجوار الاسم وتحت الوجه سطرٌ زائدٌ في صفٍّ ضيّق.
-                  **وموضعُها الصحيح صدرُ كلامه**: «أعطاه ٩ وقال…» —
-                  **جملةٌ واحدة، ولا سطرَ يُدفع ثمنُها.** */}
-              {a.rating != null && (
-                <span
-                  className="me-1.5 text-[12px] font-bold text-accent tabular-nums"
-                  title={t.rateOutOf(a.rating)}
-                >
-                  ★ <span dir="ltr">{a.rating.toFixed(1)}</span>
-                </span>
-              )}
               {a.review}
             </p>
           </Link>
         </div>
 
-        <RowFooter time={timeAgo(a.updated_at, t)}>
+        <RowFooter>
           <LikeButton
             reviewUserId={a.person.id}
             tmdbId={a.tmdb_id}
@@ -421,7 +421,7 @@ function CommentRow({
             locale={locale}
           />
           <CommentAction href={talkHref} label={t.actionComment} />
-          <StatChip icon="eye" n={watchers} label={t.talkWatchersHint} />
+          <StatChip icon="chart" n={watchers} label={t.talkWatchersHint} />
           <QuickAdd
             variant="inline"
             tmdbId={a.tmdb_id}
@@ -515,7 +515,7 @@ function NewsRow({
           )}
         </div>
 
-        <RowFooter time={timeAgo(n.published_at, t)}>
+        <RowFooter>
           {/* **إعجابٌ على خبرِنا** — `post_reactions` القائم منذ `news.sql`
               (D-224). **وهو قرارُ 🔥 المرفوض وقد صُحِّح لا نُقض:** الرفضُ
               كان أن «🔥 هي الإعجابُ نفسه بأيقونةٍ أخرى» — **فرُسمت
@@ -530,7 +530,7 @@ function NewsRow({
             locale={locale}
           />
           <CommentAction href={talkHref} label={t.actionComment} />
-          <StatChip icon="eye" n={watchers} label={t.talkWatchersHint} />
+          <StatChip icon="chart" n={watchers} label={t.talkWatchersHint} />
           <QuickAdd
             variant="inline"
             tmdbId={n.tmdb_id}

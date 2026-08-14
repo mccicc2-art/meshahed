@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { createPortal } from "react-dom";
+
 import Image from "next/image";
 import { setLocale } from "@/lib/actions";
 import { getDict, type Locale } from "@/lib/i18n";
 import { Icon } from "./Icon";
+import { Dropdown } from "./ui/Dropdown";
 
 /**
  * علمٌ في أعلى الصفحة يفتح قائمة لغات منسدلة.
@@ -81,64 +82,45 @@ export function LangFlagMenu({ locale }: { locale: Locale }) {
         />
       </button>
 
-      {open && (
-        <>
-          {/* ماسكُ النقر خارج القائمة — **في `body` لا هنا** (نفس علّة D-159).
-              هذا الزرّ يعيش داخل الترويسة، وعليها `backdrop-blur` فهي إطارٌ
-              مرجعيّ لكل `fixed` تحتها: `inset-0` كانت تعني «غطِّ الترويسة»
-              لا «غطِّ الشاشة»، فالنقر أسفلها لا يُغلق القائمة أبداً.
-
-              **و`z-20` لا `z-40`، وهذا هو بيت القصيد:** القائمة نفسها تبقى
-              داخل الترويسة (فهي `absolute` تحت العلم)، والترويسة `z-30`
-              **وتُنشئ سياق تكديسٍ خاصّاً بها**. فماسكٌ في `body` بـ`z-40`
-              كان سيُرسم **فوق** القائمة ويبتلع النقر على اللغات — عطلٌ أسوأ
-              من الذي نعالجه. تحت الثلاثين يبقى الماسك خلف الترويسة، ويغطّي
-              كلَّ ما عداها. */}
-          {typeof document !== "undefined" &&
-            createPortal(
-              <button
-                aria-hidden
-                tabIndex={-1}
-                onClick={() => setOpen(false)}
-                className="fixed inset-0 z-20 cursor-default"
-              />,
-              document.body,
-            )}
-          <ul
-            role="listbox"
-            className="absolute end-0 top-full mt-2 z-50 min-w-40 rounded-2xl border border-border bg-[color:var(--elevated)]/95 backdrop-blur-xl shadow-2xl overflow-hidden sheet-pop"
-          >
-            {options.map((o) => {
-              const active = o.id === locale;
-              return (
-                <li key={o.id}>
-                  <button
-                    role="option"
-                    aria-selected={active}
-                    onClick={() => pick(o.id)}
-                    className={`w-full flex items-center gap-3 px-4 py-3 text-start text-[14px] transition ${
-                      active
-                        ? "font-bold text-foreground bg-surface-2"
-                        : "text-muted hover:text-foreground hover:bg-surface-2"
-                    }`}
-                  >
-                    <Image
-                      src={o.flag}
-                      alt=""
-                      width={20}
-                      height={20}
-                      className="w-5 h-5 rounded-full object-cover shrink-0"
-                      aria-hidden
-                    />
-                    {o.label}
-                    {active && <Icon name="check-line" size={16} strokeWidth={2.2} className="ms-auto text-accent" />}
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        </>
-      )}
+      {/* **الصندوقُ والماسكُ وحجّتُهما انتقلا إلى `ui/Dropdown`** (D-226):
+          كانا يُكتبان هنا بيدٍ منذ D-162، ثم طلب أحمد منسدلةً مثلها لقائمة
+          صفّ النشاط — **ونسخةٌ ثانية كانت ستصير عائلةً ثانية**. فنُقلا إلى
+          المصدر **وحُذفت نسخةُ الأصل في الدفعة نفسها** (D-159/D-166).
+          وحجّةُ `z-20` مكتوبةٌ هناك بنصّها، فهي منها لا من هنا. */}
+      <Dropdown open={open} onClose={() => setOpen(false)} className="min-w-40 py-0">
+        <ul role="listbox">
+          {options.map((o) => {
+            const active = o.id === locale;
+            return (
+              <li key={o.id}>
+                <button
+                  role="option"
+                  aria-selected={active}
+                  onClick={() => pick(o.id)}
+                  className={`w-full flex items-center gap-3 px-4 py-3 text-start text-[14px] transition ${
+                    active
+                      ? "font-bold text-foreground bg-surface-2"
+                      : "text-muted hover:text-foreground hover:bg-surface-2"
+                  }`}
+                >
+                  <Image
+                    src={o.flag}
+                    alt=""
+                    width={20}
+                    height={20}
+                    className="w-5 h-5 rounded-full object-cover shrink-0"
+                    aria-hidden
+                  />
+                  {o.label}
+                  {active && (
+                    <Icon name="check-line" size={16} strokeWidth={2.2} className="ms-auto text-accent" />
+                  )}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      </Dropdown>
     </div>
   );
 }
