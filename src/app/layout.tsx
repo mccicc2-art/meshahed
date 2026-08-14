@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from "next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 import { Navbar } from "@/components/Navbar";
+import { PullToRefresh } from "@/components/PullToRefresh";
 import { BottomNav } from "@/components/BottomNav";
 import { NavSignalDot } from "@/components/NavSignalDot";
 import { Footer } from "@/components/Footer";
@@ -129,6 +130,12 @@ export default async function RootLayout({
           </HeaderShell>
         </Suspense>
         {/* مساحة سفلية على الجوال حتى لا يغطي شريط التبويبات المحتوى */}
+        {/* **السحبُ للتحديث في التخطيط لا في كل صفحة** (D-243، طلبُ
+            أحمد: «إذا سحبت يعمل تحديث مثل تويتر»). **وتويتر لا يحصره في
+            الخطّ**، وحصرُه في صفحةٍ يجعل الإيماءةَ تعمل مرّةً وتصمت
+            مرّة — **وإيماءةٌ تعمل أحياناً أسوأ من إيماءةٍ لا توجد.**
+            وهو خفيف: مستمعُ لمسٍ واحد، ولا يُركَّب على غير اللمس أصلاً. */}
+        <PullToRefresh />
         <main id="main" className="flex-1 w-full max-w-6xl mx-auto px-4 py-6">
           {children}
         </main>
