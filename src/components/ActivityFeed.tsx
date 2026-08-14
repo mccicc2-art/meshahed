@@ -195,6 +195,12 @@ export function ActivityFeed({
     shown = rows.filter(
       (r) =>
         r.kind === "news" ||
+        /* **وكلامُك أنت أوّلُ ما يخصّك** (D-251، بنصّ أحمد: «تعليقاتي
+           أحتاج أشوفها في فور يو تظهر لي مثل ما تظهر للناس»). **ولا خطَّ
+           اجتماعيٌّ يُخفي عن الكاتب ما كتب**: من نشر رأياً ولم يجده في
+           مكانه ظنّ أنه لم يُنشر. **والحارسُ الآخر في القاعدة** (هجرة ٧٦):
+           السطرُ هنا لا ينفع ما لم تُرجعه الدالّة. */
+        r.item.person.id === meId ||
         followingIds?.has(r.item.person.id) ||
         followed.has(`${r.item.media_type}-${r.item.tmdb_id}`),
     );
@@ -425,16 +431,22 @@ function CommentRow({
                 {timeAgoShort(a.updated_at, t)}
               </Link>
               {/* **والغلافُ حاويةُ مرونةٍ أيضاً** — حارسٌ ثانٍ على نفس
-                  العلّة: لا صندوقَ سطرٍ يُعيد فراغَ النوازل من الباب الآخر. */}
-              <span className="shrink-0 flex items-center">
-                <ProfileMenu
-                  person={a.person}
-                  mutual={false}
-                  follow={{ following: iFollowThem }}
-                  variant="plain"
-                  locale={locale}
-                />
-              </span>
+                  العلّة: لا صندوقَ سطرٍ يُعيد فراغَ النوازل من الباب الآخر.
+                  ⚠️ **ولا نقاطَ على صفّك أنت** (D-251): القائمةُ متابعةٌ
+                  وحظرٌ وبلاغٌ ورسالة — **وكلُّها على نفسك عبثٌ يُقرأ
+                  عطلاً** (D-217). **وصفُّك يبقى كصفّ الناس في كل شيءٍ
+                  آخر**، والحذفُ والتعديل لهما بيتٌ في صفحة العمل. */}
+              {a.person.id !== meId && (
+                <span className="shrink-0 flex items-center">
+                  <ProfileMenu
+                    person={a.person}
+                    mutual={false}
+                    follow={{ following: iFollowThem }}
+                    variant="plain"
+                    locale={locale}
+                  />
+                </span>
+              )}
             </div>
 
             {/* **اسمُ العمل سطرٌ ثانٍ، والتقييمُ بعده** (طلبُ أحمد):
