@@ -629,6 +629,9 @@ const ar = {
   /* **«منشور» و«تعليق» لا «صفحة»** (D-242): العنوانُ يسمّي **ما تقرؤه**
      لا **أين أنت** — وهو نصُّ ترويسة تويتر نفسُه */
   reviewPageTitle: "تعليق",
+  /* **«كل التعليقات» لا «صفحة الفلم»**: الزرُّ يودّي إلى غرفة الكلام
+     (D-244) — والاسمُ يسمّي الوجهةَ لا الطريق */
+  reviewOpenTalk: "كل التعليقات",
   reviewPageMeta: (who: string, title: string) => `رأيُ ${who} في ${title}`,
   /* **ثلاثُ رقاقاتٍ للنشاط** (D-240). **و«تريندينق» حُذفت من اقتراح
      أحمد**: هي و«الأكثر لايك» ترتيبٌ واحد بلبوسين — **ورقاقتان تُنتجان
@@ -1726,6 +1729,7 @@ const en: Dict = {
   postReplyPlaceholder: "Write a reply…",
   postOpenReplies: "See replies",
   reviewPageTitle: "Comment",
+  reviewOpenTalk: "All comments",
   reviewPageMeta: (who: string, title: string) => `${who} on ${title}`,
   feedForYou: "For you",
   feedLatest: "Latest",
