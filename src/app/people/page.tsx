@@ -15,19 +15,37 @@ import {
 } from "@/lib/data";
 import { getT, getTabPrefs } from "@/lib/locale";
 import { WorksTalk, groupByWork } from "@/components/WorksTalk";
-import { CommentsFeed } from "@/components/CommentsFeed";
+import { ActivityFeed } from "@/components/ActivityFeed";
 import { applyTabPrefs, defaultTab } from "@/lib/tabPrefs";
 import { localizeRows, localizeTitleRooms } from "@/lib/localize";
 import { CommunityDirectory, CommunityRoom } from "@/components/Communities";
 import { PageTabs } from "@/components/ui/PageTabs";
 import { CommunityTools } from "@/components/CommunityTools";
 import { TitleNews } from "@/components/TitleNews";
-import { LoopzNews } from "@/components/LoopzNews";
 import { getTitleNews } from "@/lib/titleNews";
 import { ScrollMemory } from "@/components/ScrollMemory";
 
 
 /**
+ * **تبويبان اليوم: النشاط · نقاش** — و«الناس» يأتي في دفعته (طلبُ أحمد
+ * ١٤ أغسطس: «اكتيفتي ثم نقاشات ثم People»، و«People صفحةٌ جديدة… حالياً
+ * ركّز تُقفل اكتيفتي»).
+ *
+ * **و«النشاط» يبتلع «خبر»** بنصّ أحمد: «الأخبار تُدمج مع اكتيفتي» —
+ * تعليقاتُ الناس وأخبارُنا نحن في خطٍّ واحدٍ مرتَّبٍ بالزمن
+ * (`ActivityFeed`). **وحجّتُه أن التبويبين كانا يقتسمان قارئاً واحداً
+ * ومحتوًى شحيحاً**، وخطّان رفيعان يجعلان كليهما يبدو ميّتاً.
+ *
+ * ⚠️ **و«أخبارُ أعمالك» (`TitleNews`) لم تُدمج، وبقيت خلف `?tab=news`**
+ * — **وهذا حكمٌ لا سهو**، لسببين يُقالان:
+ * **الأوّل أن نصفَ صفوفها مستقبلٌ لا ماضٍ** («يصدر بعد أسبوعين»)، **وخطٌّ
+ * يرتّب بالزمن لا يحمل ما لم يقع بعد**.
+ * **والثاني أن قسم «جديد فنّانيك» يكلّف اثني عشر نداءَ TMDB**، ووضعُه في
+ * التبويب الافتراضيّ يجعل كلَّ فتحةٍ للمجتمع تدفعها.
+ * **والرابطُ يبقى حيّاً** كما بقي `?tab=all` — يُخفى ولا يُحذف (D-219).
+ *
+ * **(وما سبق من نصّ D-219 يبقى للحجّة، وما نُقض منه مُعلَّمٌ أعلاه.)**
+ *
  * **ثلاثةُ تبويبات: تعليقات · نقاش · خبر** (D-219، طلبُ أحمد بلوحاته).
  *
  * **و«تعليقات» نقضٌ مقصودٌ لجزءٍ من D-187 لا نسيانٌ له:** يومها جُمّع
@@ -40,12 +58,15 @@ import { ScrollMemory } from "@/components/ScrollMemory";
  * يكسر رابطاً حيّاً في سطحٍ آخر** — **يُفحص المستهلك قبل الحذف** (D-214).
  * فالغرفةُ تُفتح بالرابط، **ولا شريحةَ لها في الصفّ.**
  */
-type Tab = "comments" | "talk" | "news" | "all";
+type Tab = "activity" | "talk" | "news" | "all";
 function asTab(v: string | undefined): Tab {
+  /* **`comments` وريثُه `activity` حرفاً** — نفسُ التعليقات ومعها الأخبار.
+     ورابطٌ محفوظٌ أو مشاركٌ في محادثةٍ لا يجوز أن يموت بتغييرِ اسم. */
+  if (v === "activity" || v === "comments") return "activity";
   /* المفاتيحُ القديمة (`works` · `mine` · `reviews`) تسقط إلى «نقاش» —
      **وهو وريثُها حرفاً**: نفسُ `WorksTalk` ونفسُ التجميع. **وروابطُ
      محفوظةٌ ومشاركةٌ في محادثات لا يجوز أن تموت بتغييرِ تبويب** (D-187). */
-  return v === "comments" || v === "news" || v === "all" ? v : "talk";
+  return v === "news" || v === "all" ? v : "talk";
 }
 
 /* **سقطت هنا خوارزميةُ ترتيب الخطّ كاملةً (D-134/D-136/D-149)** مع
@@ -88,7 +109,7 @@ export default async function PeoplePage({
   if (tabParam === "inbox") {
     redirect(withParam ? `/messages?with=${encodeURIComponent(withParam)}` : "/messages");
   }
-  const tab = tabParam ? asTab(tabParam) : asTab(defaultTab(tabPrefs, "comments"));
+  const tab = tabParam ? asTab(tabParam) : asTab(defaultTab(tabPrefs, "activity"));
   /* **نطاقُ «الأعمال»: الكلُّ افتراضاً** (D-187، طلب أحمد: «أحتاج الكل
      يقدر يتفاعل مع الآخر»). دائرةُ المستخدم الجديد فارغة، **وخطٌّ مشروطٌ
      بمتابعاتٍ لم تُبنَ بعد يبدو تطبيقاً ميّتاً لا تبويباً فارغاً**.
@@ -155,7 +176,7 @@ export default async function PeoplePage({
      و«تعليقات» يعرضه كما هو صفّاً صفّاً. **نداءٌ واحد لسؤالين**، والترجمةُ
      قبل التجميع لا بعده كما كانت. */
   const localized =
-    tab === "talk" || tab === "comments" ? await localizeRows(followingFeed, locale) : [];
+    tab === "talk" || tab === "activity" ? await localizeRows(followingFeed, locale) : [];
   const works = tab === "talk" ? groupByWork(localized) : [];
 
   /* أرقامُ البطاقة (D-193): الردودُ ومن شاهد — **نداءٌ واحد للأعمال كلّها**
@@ -175,12 +196,22 @@ export default async function PeoplePage({
   const news = tab === "news" ? await getTitleNews() : [];
   /* **أخبارُنا نحن** (D-211): حقائقُ نرصدها ونكتبها، بلا رابطٍ خارجيّ
      ولا مصدرٍ يُخفى — **والعناوينُ المجمَّعة رُفعت من الواجهة بطلب أحمد**
-     (الجدولُ والمسار باقيان للفحص، انظر `05`) */
-  const genNews = tab === "news" ? await getLoopzNews(30) : [];
+     (الجدولُ والمسار باقيان للفحص، انظر `05`)
+
+     **وسقفُها اثنا عشر لا ثلاثون** بعد الدمج: الخبرُ يُولَّد ذاتياً كلَّ
+     دورةٍ والتعليقُ يُكتب بيد إنسان، **فسقفٌ واسعٌ يدفن كلامَ الناس تحت
+     رصدنا نحن** — والتبويب اسمُه «النشاط» لا «الأخبار».
+     **ولا خبرَ في «من أتابع»**: الرقاقةُ تسأل «كلامُ مَن؟»، **وخبرُنا
+     ليس كلامَ أحدٍ تتابعه** — فبقاؤه فيها يجعل الرقاقتين بلا فرق. */
+  const genNews =
+    tab === "activity" && scope === "all" ? await getLoopzNews(12) : [];
   /* **التجديدُ بحركة المرور** (اختيارُ أحمد في D-210، ويُعاد هنا): من فتح
-     التبويب بعد نصف ساعةٍ يُطلق دورةَ رصدٍ **بعد إرسال الصفحة** فلا
-     ينتظرها — ولا صفَّ cron ولا سرَّ في البيئة */
-  if (tab === "news" && (await getNewsGenStale(10))) {
+     التبويب بعد عشر دقائق يُطلق دورةَ رصدٍ **بعد إرسال الصفحة** فلا
+     ينتظرها — ولا صفَّ cron ولا سرَّ في البيئة.
+     **والبوّابةُ زمنٌ لا حركة**: انتقالُها إلى التبويب الافتراضيّ يزيد
+     عددَ من يمرّ بها ولا يزيد عددَ الدورات — أوّلُ مارٍّ بعد العشر
+     دقائق يُطلقها، ومن بعده يجدها غيرَ مستحقّة. */
+  if (tab === "activity" && (await getNewsGenStale(10))) {
     after(() => refreshLoopzNews());
   }
 
@@ -200,15 +231,16 @@ export default async function PeoplePage({
      يبقى (جردٌ صادق: عدد مجتمعاتك)، وشارة الرسائل تبقى (إشارةٌ تطلب
      فعلاً لا جرد). */
   const tabs = [
-    /* **ثلاثةٌ بترتيب أحمد** (D-219): تعليقات · نقاش · خبر.
-       **و«تعليقات» أوّلاً لأنه أسرعُ ما يُقرأ**: سطرٌ من إنسانٍ عن عمل،
-       بلا تجميعٍ ولا مقدّمة. **و«المجتمعات» ليست هنا** — تُفتح بالرابط
-       من صفحة العمل، وشريحتُها أُزيلت باختيار أحمد. */
-    { key: "comments", href: "/people", label: t.communityTabComments },
+    /* **اثنان بترتيب أحمد** (١٤ أغسطس): النشاط · نقاش — **و«الناس»
+       ثالثاً حين يُعرف محتواه.**
+       **و«النشاط» أوّلاً لأنه أسرعُ ما يُقرأ**: سطرٌ من إنسانٍ عن عمل،
+       أو سطرٌ منّا عمّا جدَّ فيه — بلا تجميعٍ ولا مقدّمة.
+       **و«المجتمعات» و«أخبارُ أعمالك» ليستا هنا** — تُفتحان بالرابط،
+       وشريحتاهما أُزيلتا باختيار أحمد.
+       ⚠️ **والمفتاحُ نفسُه في `TAB_SURFACES`** — تبويبٌ يُعاد تسميته
+       يُعاد تسميتُه في مكانين (D-220). */
+    { key: "activity", href: "/people", label: t.communityTabMine },
     { key: "talk", href: "/people?tab=talk", label: t.communityTabWorks },
-    /* **بلا عدّاد**: عددُ الأخبار ليس مهمّةً تنتظر، وشارةٌ تُلحّ على ما لا
-       يُطلب فعلاً تُدرِّب العين على تجاهل الشارات كلّها */
-    { key: "news", href: "/people?tab=news", label: t.communityTabNews },
   ];
 
 
@@ -247,15 +279,13 @@ export default async function PeoplePage({
 
       {/* ===== محتوى التبويب ===== */}
       {tab === "news" ? (
-        /* الأخبارُ الحقيقية أوّلاً ثم «أخبارُ أعمالك»: من فتح تبويب
-           الأخبار يريد ما جدَّ في الدنيا، وما جدَّ في مكتبته يتبعه —
-           **قسمان بعنوانين، لا قائمةٌ واحدة بمعنيين** */
-        <div className="space-y-8">
-          <LoopzNews items={genNews} locale={locale} />
-          <div>
-            <h2 className="text-[15px] font-bold mb-2">{t.communityTabNews}</h2>
-            <TitleNews items={news} locale={locale} />
-          </div>
+        /* **«أخبارُ أعمالك» وحدها** — أخبارُنا انتقلت إلى «النشاط»
+           (انظر رأس الملفّ). **وفرعٌ بلا شريحة كفرع «المجتمعات»**:
+           يُفتح بالرابط فلا يموت رابطٌ مشارَك، ولا يُدفع ثمنُ نداءات
+           TMDB في التبويب الافتراضيّ. */
+        <div>
+          <h2 className="text-[15px] font-bold mb-2">{t.communityTabNews}</h2>
+          <TitleNews items={news} locale={locale} />
         </div>
       ) : tab === "all" ? (
         openCommunity ? (
@@ -303,8 +333,14 @@ export default async function PeoplePage({
           {/* **الرقاقتان فوق التبويبين معاً** (D-219): النطاقُ سؤالٌ عن
               «كلامِ مَن» لا عن شكل العرض، **فيصحّ فوق التجميع وفوق الخطّ
               المسطّح** — ولا نسخةَ ثانية منه. */}
-          {tab === "comments" ? (
-            <CommentsFeed items={localized} meId={user.id} locale={locale} />
+          {tab === "activity" ? (
+            <ActivityFeed
+              comments={localized}
+              news={genNews}
+              meId={user.id}
+              emptyText={scope === "all" ? t.worksEmptyAll : t.worksEmptyFollowing}
+              locale={locale}
+            />
           ) : works.length === 0 ? (
             /* **وفراغُ «الكل» غيرُ فراغ «من أتابع»** — ولكلٍّ جملتُه:
                الأوّل يعني «لم يكتب أحدٌ بعد» فيدعوك لتكون الأوّل، والثاني
