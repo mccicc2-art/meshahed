@@ -13,6 +13,7 @@ import {
   getTitleRooms,
   getTalkStats,
   getFollows,
+  getReactions,
 } from "@/lib/data";
 import { getT, getTabPrefs } from "@/lib/locale";
 import { WorksTalk, groupByWork } from "@/components/WorksTalk";
@@ -224,6 +225,13 @@ export default async function PeoplePage({
       ? new Set((await getFollows()).map((f) => `${f.media_type}-${f.tmdb_id}`))
       : new Set<string>();
 
+  /* **إعجاباتُ أخبارِنا** (D-224): `post_reactions` القائم منذ `news.sql`،
+     **بنداءٍ واحدٍ للقائمة كلِّها** (`reaction_counts` — دالّة definer
+     تعدّ في Postgres ولا تكشف معرّف من تفاعل). ولا يُدفع لخطٍّ بلا أخبار. */
+  const postLikes = genNews.length
+    ? await getReactions(genNews.map((n) => n.tmdb_id))
+    : { counts: {}, mine: new Set<string>() };
+
   /* **سقط مع خطّ البطاقات:** «أشخاصٌ لمتابعتهم» (D-126) والصورُ
      العرضية (نداءُ TMDB لأوائل الخطّ). صفُّ «الأعمال» يعرض الملصق الذي
      يحمله الصفُّ نفسه — **فلا نداءَ خارجيّاً واحداً في هذا التبويب بعد
@@ -348,6 +356,7 @@ export default async function PeoplePage({
               news={genNews}
               meId={user.id}
               followed={followed}
+              postLikes={postLikes}
               emptyText={scope === "all" ? t.worksEmptyAll : t.worksEmptyFollowing}
               locale={locale}
             />
