@@ -30,6 +30,7 @@ export function PosterCard({
   dropped = false,
   posterSize = "w342",
   fallbackIcon = "film",
+  hideTitle = false,
   quickAdd,
 }: {
   href: string;
@@ -54,6 +55,17 @@ export function PosterCard({
   posterSize?: "w185" | "w342";
   /** أيقونة الفراغ: فيلمٌ للأعمال، وشخصٌ للأشخاص */
   fallbackIcon?: IconName;
+  /**
+   * **ملصقٌ بلا اسمٍ مكتوبٍ عليه** (D-225، بلاغُ أحمد: «ملصقاتٌ كثيرة اسمُ
+   * المسلسل مكتوبٌ فيها أصلاً»).
+   *
+   * **وهو صحيح:** فنُّ الملصق يحمل العنوان في تصميمه، **فحجابُنا يكتبه
+   * مرّةً ثانية على وجه العمل** — «تابو» فوق ملصقٍ مكتوبٍ عليه TABOO.
+   * **يُطفأ حيث يكون للاسم بيتٌ آخر** (سطرُ الترويسة في خطّ النشاط)،
+   * **ويبقى مضاءً في الشبكات** حيث الملصقُ وحده بلا نصٍّ يجاوره.
+   * ⚠️ **ولا يُطفأ إلا مع بديل:** ملصقٌ بلا اسمٍ في سياقٍ بلا اسم لغزٌ.
+   */
+  hideTitle?: boolean;
   /**
    * **زرُّ «+ للمشاهدة» على هذه البطاقة** (D-207 — امتدادُ D-205).
    *
@@ -120,7 +132,10 @@ export function PosterCard({
           </span>
         )}
         {/* الاسم داخل الملصق على حجابٍ متدرّج: البطاقة مستطيلٌ واحد،
-            والعين تقرأ الصورة والاسم في حركةٍ واحدة */}
+            والعين تقرأ الصورة والاسم في حركةٍ واحدة.
+            **ويُطفأ كلُّه بـ`hideTitle`** — الحجابُ يذهب مع النصّ، فحجابٌ
+            بلا نصٍّ ظلٌّ بلا سبب. */}
+        {!hideTitle && (
         <div className="absolute inset-x-0 bottom-0 p-2 pt-7 bg-gradient-to-t from-black/90 via-black/60 to-transparent">
           <p className="text-[12px] font-semibold leading-tight text-white line-clamp-2 drop-shadow">
             {title}
@@ -132,6 +147,7 @@ export function PosterCard({
             <MarqueeText text={note} className="text-[10px] text-accent-2/90 mt-0.5" />
           )}
         </div>
+        )}
 
         {/* الحالة كلها في خيط اللون: أخضر مكتمل، بنفسجي قيد المشاهدة،
             أحمر موقوف — وما لم يبدأ لا خيط له إطلاقاً */}

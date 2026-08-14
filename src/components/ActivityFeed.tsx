@@ -3,11 +3,14 @@ import { getDict, type Locale } from "@/lib/i18n";
 import { timeAgo } from "@/lib/when";
 import { displayNameOf, type FeedItem, type LoopzNewsItem } from "@/lib/data";
 import { newsLine, newsSource } from "@/lib/newsLine";
+import type { TalkStat } from "@/lib/data";
 import { Avatar } from "./Avatar";
 import { Icon } from "./Icon";
 import { LikeButton } from "./LikeButton";
 import { QuickAdd } from "./QuickAdd";
 import { PosterCard } from "./PosterCard";
+import { ShareTitleButton } from "./ShareTitleButton";
+import { ProfileMenu } from "./ProfileMenu";
 
 /**
  * **تبويب «النشاط»** — التعليقاتُ وأخبارُنا في خطٍّ واحدٍ مرتَّبٍ بالزمن
@@ -65,14 +68,30 @@ import { PosterCard } from "./PosterCard";
  * تحفظ **العمل** لا الكلام، و«حفظُ تعليق» فعلٌ غيرُ مبنيّ (D-217).
  */
 
+/**
+ * **اتّجاهُ نصٍّ من أوّل حرفٍ قويّ فيه** — بديلُ `dir="auto"` حين لا يكون
+ * النصُّ أوّلَ ما في الفقرة (انظر `CommentRow`).
+ *
+ * **والمدى يشمل العربية والفارسية والعبرية معاً** — لا العربيةَ وحدها:
+ * قاعدةٌ تُكتب لحرفٍ واحد تُكسَر بأوّل مستخدمٍ يكتب بغيره.
+ */
+const RTL_FIRST = /^[^\p{L}]*[\p{Script=Arabic}\p{Script=Hebrew}]/u;
+function dirOf(text: string | null): "rtl" | "ltr" {
+  return text && RTL_FIRST.test(text) ? "rtl" : "ltr";
+}
+
 /** صفٌّ في الخطّ: تعليقُ إنسانٍ أو خبرٌ من عندنا — **والزمنُ يرتّبهما معاً** */
 type Row =
   | { at: number; kind: "comment"; item: FeedItem }
   | { at: number; kind: "news"; item: LoopzNewsItem };
 
-/** ارتفاعُ الصفّ = ارتفاعُ الملصق: عرضٌ ثابت ونسبة `2:3` (٨٤ × ١٢٦) */
-const POSTER_W = "w-[84px]";
-const ROW_MIN_H = "min-h-[126px]";
+/**
+ * ارتفاعُ الصفّ = ارتفاعُ الملصق: عرضٌ ثابت ونسبة `2:3` (٧٢ × ١٠٨).
+ * **ضُيِّق من ٨٤** (D-225): الصفُّ كان ١٢٦px لتعليقٍ من سطرٍ واحد،
+ * **فالقائمةُ تُقرأ فارغةً لا واسعة**.
+ */
+const POSTER_W = "w-[72px]";
+const ROW_MIN_H = "min-h-[108px]";
 
 /** إعجاباتُ خبرِنا — عددٌ لكلّ عمل، وما أعجبتُ به أنا (`post_reactions`) */
 export type PostLikes = { counts: Record<string, number>; mine: ReadonlySet<string> };
@@ -83,6 +102,8 @@ export function ActivityFeed({
   meId,
   followed = new Set<string>(),
   postLikes,
+  stats,
+  followingIds,
   emptyText,
   locale,
 }: {
@@ -100,6 +121,10 @@ export function ActivityFeed({
   followed?: ReadonlySet<string>;
   /** إعجاباتُ الأخبار — تُقرأ في الصفحة بنداءٍ واحدٍ للقائمة كلِّها */
   postLikes?: PostLikes;
+  /** عدّاداتُ العمل (كم شاهده) — نداءٌ واحد لكل الصفوف (D-193) */
+  stats?: Map<string, TalkStat>;
+  /** مَن أتابعهم — لصفّ المتابعة في قائمة النقاط (نداءٌ واحدٌ مخزَّن) */
+  followingIds?: ReadonlySet<string>;
   /** **وفراغُ «الكل» غيرُ فراغ «من أتابع»** — الصفحةُ تملك النطاق فتملك جملته */
   emptyText: string;
   locale: Locale;
@@ -145,6 +170,8 @@ export function ActivityFeed({
             a={row.item}
             meId={meId}
             added={followed.has(key)}
+            watchers={stats?.get(key)?.watchers ?? 0}
+            iFollowThem={followingIds?.has(row.item.person.id) ?? false}
             locale={locale}
           />
         ) : (
@@ -152,6 +179,7 @@ export function ActivityFeed({
             key={`n-${row.item.key}`}
             n={row.item}
             added={followed.has(key)}
+            watchers={stats?.get(key)?.watchers ?? 0}
             likes={postLikes?.counts[key] ?? 0}
             likedByMe={postLikes?.mine.has(key) ?? false}
             locale={locale}
@@ -187,14 +215,34 @@ function RowPoster({
 }) {
   return (
     <div className={`${POSTER_W} shrink-0`}>
+      {/* **`hideTitle`** (D-225، بلاغُ أحمد): فنُّ الملصق يحمل العنوان في
+          تصميمه، **فحجابُنا كان يكتبه ثانيةً على وجهه**. والاسمُ انتقل
+          إلى سطر الترويسة للتعليق، **وجملةُ الخبر تقوله أصلاً للخبر** —
+          فلا ملصقَ بلا اسمٍ في سياقٍ بلا اسم. */}
       <PosterCard
         href={`/${mediaType === "tv" ? "show" : "movie"}/${tmdbId}`}
         title={title}
         posterPath={posterPath}
         posterSize="w185"
         fallbackIcon={mediaType === "tv" ? "tv" : "film"}
+        hideTitle
       />
     </div>
+  );
+}
+
+/** عدّادٌ صغيرٌ برمزه — **والصفرُ لا يُرسم** (D-222) */
+function StatChip({ icon, n, label }: { icon: "eye"; n: number; label: string }) {
+  if (n <= 0) return null;
+  return (
+    <span
+      className="inline-flex items-center gap-1 px-1 text-[12px] text-muted tabular-nums"
+      title={label}
+      aria-label={`${label}: ${n}`}
+    >
+      <Icon name={icon} size={14} />
+      {n}
+    </span>
   );
 }
 
@@ -210,9 +258,15 @@ function RowPoster({
  */
 function RowFooter({ time, children }: { time: string; children: React.ReactNode }) {
   return (
-    <div className="pt-2 flex items-center gap-0.5">
-      {children}
-      <span className="ms-auto shrink-0 text-[11px] text-muted">{time}</span>
+    <div className="pt-2 flex items-center">
+      {/* **شريطُ أفعالٍ موزَّعٌ بعرضٍ مسقوف** (طلبُ أحمد: «تباعد الأيقونات
+          يكون منسّق»): `justify-between` داخل `max-w` — **فتتساوى المسافات
+          ولا تتمدّد إلى آخر الشاشة** فيبعد آخرُ رمزٍ عن أوّله بمسافةٍ لا
+          تُقطع بالإبهام. والسقفُ ٢٤٠px يترك للوقت مكانَه في الطرف. */}
+      <div className="flex items-center justify-between w-full max-w-[240px] -ms-2.5">
+        {children}
+      </div>
+      <span className="ms-auto shrink-0 text-[11px] text-muted ps-2">{time}</span>
     </div>
   );
 }
@@ -241,15 +295,20 @@ function CommentRow({
   a,
   meId,
   added,
+  watchers,
+  iFollowThem,
   locale,
 }: {
   a: FeedItem;
   meId: string;
   added: boolean;
+  watchers: number;
+  iFollowThem: boolean;
   locale: Locale;
 }) {
   const t = getDict(locale);
   const talkHref = `/talk/${a.media_type}/${a.tmdb_id}`;
+  const titleHref = `/${a.media_type === "tv" ? "show" : "movie"}/${a.tmdb_id}`;
   const who = displayNameOf(a.person, t.anonymousUser);
   /** الملفُّ إن كان له `@handle`؛ وإلّا فالغرفة — **ولا صفَّ ملفٍّ بلا اسم** (D-063) */
   const whoHref = a.person.username ? `/u/${a.person.username}` : talkHref;
@@ -261,7 +320,7 @@ function CommentRow({
           فتُقرأ تقييمَ العمل، ثم بجوار الاسم فتُقرأ صحيحةً — **وتحت
           وجهه تُقرأ صحيحةً بلا قراءة**، لأن ما تحت الصورة يخصّ صاحبَها.
           وعرضٌ ثابت (`w-11`) كي تتحاذى أعمدةُ الصفوف كلِّها. */}
-      <div className="shrink-0 w-11 flex flex-col items-center gap-1">
+      <span className="shrink-0 w-11">
         <Link href={whoHref} prefetch={false} className="active:opacity-80 transition">
           <Avatar
             src={a.person.hide_name ? null : a.person.avatar_url}
@@ -270,44 +329,82 @@ function CommentRow({
             alt=""
           />
         </Link>
-        {a.rating != null && (
-          <span
-            className="text-[11px] font-bold text-accent tabular-nums leading-none"
-            title={t.rateOutOf(a.rating)}
-          >
-            ★ <span dir="ltr">{a.rating.toFixed(1)}</span>
-          </span>
-        )}
-      </div>
+      </span>
 
       {/* **`justify-between`: الاسمُ في القمّة والذيلُ في القاع مهما طال
           النصّ** — والفراغُ يقع في الوسط حيث لا مِرساةَ تهتزّ */}
       <div className={`min-w-0 flex-1 flex flex-col justify-between ${ROW_MIN_H}`}>
         <div>
-          {/* **الصدرُ للاسم وحده** — والتقييمُ انتقل تحت الوجه */}
-          <Link
-            href={whoHref}
-            prefetch={false}
-            dir="auto"
-            className="block font-bold text-[14px] text-foreground line-clamp-1 hover:text-accent transition"
-          >
-            {who}
-          </Link>
+          {/* **الترويسة: مَن · عن ماذا · ثم النقاط في الطرف.**
+              **واسمُ العمل هنا لأن الملصق لم يعد يكتبه** (D-225) — وموضعُه
+              بعد اسم الكاتب يقرأ الجملة كما تُقال: «خالد، عن تابو».
+              ⚠️ **ولا `dir="auto"` على الاسم** — كان عليه فطار اسمٌ
+              لاتينيّ إلى الطرف المقابل في الواجهة العربية (بلاغُ أحمد:
+              «اسمُ الشخص في العربية ما هو مكانَ الصورة»). **`bdi` هي
+              الأداة الصحيحة**: تعزل اتّجاهَ الاسم داخلَه ولا تمسّ محاذاةَ
+              السطر — فالنصُّ المكتوب يأخذ `dir="auto"`، **والأسماءُ
+              القصيرة تُعزَل ولا تُوجَّه.** */}
+          <div className="flex items-center gap-1.5">
+            <Link
+              href={whoHref}
+              prefetch={false}
+              className="font-bold text-[14px] text-foreground line-clamp-1 hover:text-accent transition"
+            >
+              <bdi>{who}</bdi>
+            </Link>
+            <span aria-hidden className="text-muted text-[12px]">
+              ·
+            </span>
+            <Link
+              href={titleHref}
+              prefetch={false}
+              className="min-w-0 truncate text-[12px] text-muted hover:text-accent transition"
+            >
+              <bdi>{a.title}</bdi>
+            </Link>
+            <span className="ms-auto shrink-0">
+              <ProfileMenu
+                person={a.person}
+                mutual={false}
+                follow={{ following: iFollowThem }}
+                variant="plain"
+                locale={locale}
+              />
+            </span>
+          </div>
 
           {/* الضغطُ على النصّ يفتح الغرفة — **حيث يُقرأ كاملاً ويُردّ عليه** */}
-          {/* **`dir="auto"`: اتّجاهُ الكلام من الكلام لا من الصفحة**
-              (طلبُ أحمد: «من يكتب بالعربي يكون عرضُه RTL»). المتصفّح يقرأ
-              أوّلَ حرفٍ ذي اتجاهٍ قويّ فيحسم — **فتعليقٌ عربيّ داخل واجهةٍ
+          {/* **اتّجاهُ الكلام من الكلام لا من الصفحة** (طلبُ أحمد: «من
+              يكتب بالعربي يكون عرضُه RTL») — **فتعليقٌ عربيّ داخل واجهةٍ
               إنجليزية يُرسم من اليمين، ونقطتُه وفاصلتُه في مكانهما.**
               **وهو أصحُّ من قراءة لغة الحساب:** الكاتبُ قد يكتب بلغةٍ غير
               لغة واجهته، **والنصُّ يعرف نفسَه ولا يحتاج من يخبره.**
-              ⚠️ **ولا يوضع على جملة الخبر**: تلك جملتُنا نحن بلغة القارئ،
-              وعنوانٌ عربيٌّ في أوّلها كان سيقلب سطراً إنجليزياً كاملاً. */}
+
+              ⚠️ **ويُحسَب هنا ولا يُترك لـ`dir="auto"`**: النجمةُ تسبق
+              النصَّ في الفقرة نفسِها، **و«★» محايدٌ و«٩٫٠» ضعيف** — فكان
+              المتصفّح يفشل في الحسم ويسقط إلى اليسار، **فيهاجر التعليقُ
+              العربيُّ كلُّه.** الحسابُ من أوّل حرفٍ قويّ في النصّ وحده.
+
+              ⚠️ **ولا شيءَ من هذا على جملة الخبر**: تلك جملتُنا نحن بلغة
+              القارئ، وعنوانٌ عربيٌّ في أوّلها كان سيقلب سطراً إنجليزياً. */}
           <Link href={talkHref} prefetch={false} className="block mt-1">
             <p
-              dir="auto"
+              dir={dirOf(a.review)}
               className="text-[13px] leading-relaxed text-foreground/85 line-clamp-3"
             >
+              {/* **★ داخل الجملة لا فوقها ولا تحت الوجه** (D-225، ثلاثةُ
+                  مواضع رُفضت): بجوار اسم العمل كانت تُقرأ تقييمَ العمل،
+                  وبجوار الاسم وتحت الوجه سطرٌ زائدٌ في صفٍّ ضيّق.
+                  **وموضعُها الصحيح صدرُ كلامه**: «أعطاه ٩ وقال…» —
+                  **جملةٌ واحدة، ولا سطرَ يُدفع ثمنُها.** */}
+              {a.rating != null && (
+                <span
+                  className="me-1.5 text-[12px] font-bold text-accent tabular-nums"
+                  title={t.rateOutOf(a.rating)}
+                >
+                  ★ <span dir="ltr">{a.rating.toFixed(1)}</span>
+                </span>
+              )}
               {a.review}
             </p>
           </Link>
@@ -324,6 +421,7 @@ function CommentRow({
             locale={locale}
           />
           <CommentAction href={talkHref} label={t.actionComment} />
+          <StatChip icon="eye" n={watchers} label={t.talkWatchersHint} />
           <QuickAdd
             variant="inline"
             tmdbId={a.tmdb_id}
@@ -333,6 +431,7 @@ function CommentRow({
             added={added}
             locale={locale}
           />
+          <ShareTitleButton path={titleHref} title={a.title ?? ""} locale={locale} />
         </RowFooter>
       </div>
 
@@ -349,12 +448,14 @@ function CommentRow({
 function NewsRow({
   n,
   added,
+  watchers,
   likes,
   likedByMe,
   locale,
 }: {
   n: LoopzNewsItem;
   added: boolean;
+  watchers: number;
   likes: number;
   likedByMe: boolean;
   locale: Locale;
@@ -429,6 +530,7 @@ function NewsRow({
             locale={locale}
           />
           <CommentAction href={talkHref} label={t.actionComment} />
+          <StatChip icon="eye" n={watchers} label={t.talkWatchersHint} />
           <QuickAdd
             variant="inline"
             tmdbId={n.tmdb_id}
@@ -438,6 +540,7 @@ function NewsRow({
             added={added}
             locale={locale}
           />
+          <ShareTitleButton path={titleHref} title={n.title} locale={locale} />
         </RowFooter>
       </div>
 

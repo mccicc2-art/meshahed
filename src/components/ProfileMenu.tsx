@@ -8,7 +8,7 @@ import { buttonClass } from "./ui/Button";
 import { sheetMenuItem, sheetMenuDivider } from "./ui/controls";
 import { StartConversationSheet } from "./StartConversationSheet";
 import { BlockConfirmSheet } from "./BlockConfirmSheet";
-import { reportUser } from "@/lib/actions";
+import { reportUser, requestOrFollowUser, unfollowUser } from "@/lib/actions";
 import { toast, flashError } from "@/lib/toast";
 import { tap } from "@/lib/haptics";
 import { getDict, type Locale } from "@/lib/i18n";
@@ -35,16 +35,35 @@ import type { PersonLite } from "@/lib/data";
 export function ProfileMenu({
   person,
   mutual,
+  follow,
+  variant = "cover",
   locale,
 }: {
   person: PersonLite;
   /** متابعةٌ متبادلة؟ — بوّاب خيار «رسالة» (D-051) */
   mutual: boolean;
+  /**
+   * **صفُّ المتابعة داخل القائمة** (D-225) — يُمرَّر حيث **لا زرَّ متابعة
+   * بجانب النقاط**، أي في صفوف خطّ النشاط.
+   *
+   * **وهذا ليس نقضاً لقاعدة هذا المكوّن بل تطبيقٌ لها:** «الإضافة ليست في
+   * القائمة **لأنها الزرّ بجانبها**» — فحيث لا زرَّ بجانبها، القائمةُ هي
+   * بيتُها. **وحالتان للفعل الواحد على شاشةٍ واحدة لا تقعان** لأن الصفَّ
+   * لا يظهر إلا حين يغيب الزرّ.
+   */
+  follow?: { following: boolean };
+  /**
+   * شكلُ زرّ النقاط: `cover` قرصٌ زجاجيٌّ فوق صورةِ غلاف (الأصل)،
+   * و`plain` رمزٌ عارٍ في صفٍّ من نصّ. **الورقةُ نفسُها في الحالتين** —
+   * والمختلفُ المقبضُ وحده (D-224، نفسُ حجّة `QuickAdd`).
+   */
+  variant?: "cover" | "plain";
   locale: Locale;
 }) {
   const t = getDict(locale);
   const router = useRouter();
   const [menu, setMenu] = useState(false);
+  const [following, setFollowing] = useState(follow?.following ?? false);
   const [report, setReport] = useState(false);
   const [confirmBlock, setConfirmBlock] = useState(false);
   const [message, setMessage] = useState(false);
@@ -59,6 +78,31 @@ export function ProfileMenu({
       return;
     }
     setMessage(true);
+  }
+
+  /** متابعةٌ تفاؤلية بارتداد — نفسُ عقد `FollowUserButton` بلا زرِّه */
+  function flipFollow() {
+    setMenu(false);
+    const was = following;
+    tap(was ? 6 : [10, 24]);
+    setFollowing(!was);
+    start(async () => {
+      try {
+        if (was) await unfollowUser(person.id);
+        else {
+          const r = await requestOrFollowUser(person.id);
+          /* حسابٌ خاصّ: الفعلُ يُرجع «طلبتَ» لا «أتابعه» — **والتوست هو
+             من يقول الفرق**، فلا حالةَ ثالثة في صفٍّ داخل قائمة */
+          if (r === "requested") {
+            setFollowing(false);
+            toast(t.followRequested, { tone: "info" });
+          }
+        }
+      } catch (e) {
+        setFollowing(was);
+        flashError((e as Error).message);
+      }
+    });
   }
 
   function sendReport() {
@@ -86,9 +130,13 @@ export function ProfileMenu({
         }}
         aria-label={t.profileMenuAria}
         title={t.profileMenuAria}
-        className="w-10 h-10 rounded-full bg-black/35 backdrop-blur-md border border-white/15 grid place-items-center text-white/90 active:scale-95 transition"
+        className={
+          variant === "plain"
+            ? "w-8 h-8 -m-1 rounded-full grid place-items-center text-muted hover:text-foreground active:scale-90 transition"
+            : "w-10 h-10 rounded-full bg-black/35 backdrop-blur-md border border-white/15 grid place-items-center text-white/90 active:scale-95 transition"
+        }
       >
-        <Icon name="dots" size={18} />
+        <Icon name="dots" size={variant === "plain" ? 16 : 18} />
       </button>
 
       {/* القائمة */}
@@ -103,6 +151,19 @@ export function ProfileMenu({
           {t.moreMenuTitle}
         </p>
         <div className="pb-3">
+          {/* **المتابعة أوّلاً حين تكون هنا** — الأخفُّ أثراً في الصدر
+              والأخطرُ في الذيل (D-145) */}
+          {follow && (
+            <button onClick={flipFollow} disabled={pending} className={sheetMenuItem}>
+              <Icon
+                name={following ? "person-check" : "people"}
+                size={18}
+                className={following ? "text-accent" : "text-muted"}
+              />
+              {following ? t.following : t.follow}
+            </button>
+          )}
+
           <button onClick={openMessage} className={sheetMenuItem}>
             <Icon name="comment" size={18} className={mutual ? "text-accent" : "text-muted"} />
             <span className={mutual ? "" : "text-muted"}>{t.msgUserOption}</span>
