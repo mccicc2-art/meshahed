@@ -333,7 +333,7 @@ function CommentRow({
           الترويسةَ وحدها**، وما تحته عرضٌ يُستردّ للكلام. */}
       <div className={`min-w-0 flex-1 flex flex-col ${ROW_MIN_H}`}>
         {/* ===== الترويسة: وجهٌ · اسمٌ / عملٌ ★ · عمرٌ · نقاط ===== */}
-        <div className="flex items-start gap-2.5">
+        <div className="flex items-center gap-2.5">
           <Link
             href={whoHref}
             prefetch={false}
@@ -385,17 +385,17 @@ function CommentRow({
                 (أن يُقرأ تقييمَ العمل) **زال بأن صار للعمل سطرٌ يملكه
                 صاحبُ الصفّ**: الترويسةُ كلُّها كلامُ خالد، فالنجمةُ فيها
                 نجمتُه. */}
-            <div className="mt-1 flex items-center gap-1.5">
+            <div className="mt-px flex items-center gap-1.5">
               <Link
                 href={titleHref}
                 prefetch={false}
-                className="min-w-0 truncate text-[12px] text-muted hover:text-accent transition"
+                className="min-w-0 truncate text-[13px] text-muted hover:text-accent transition"
               >
                 <bdi>{a.title}</bdi>
               </Link>
               {a.rating != null && (
                 <span
-                  className="shrink-0 text-[12px] font-bold text-accent tabular-nums"
+                  className="shrink-0 text-[13px] font-bold text-accent tabular-nums"
                   title={t.rateOutOf(a.rating)}
                 >
                   ★ <span dir="ltr">{a.rating.toFixed(1)}</span>

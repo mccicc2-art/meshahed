@@ -9,24 +9,32 @@ import { tap } from "@/lib/haptics";
 import { getDict, type Locale } from "@/lib/i18n";
 import { Icon, type IconName } from "./Icon";
 import { LongPressable } from "./LongPressable";
+import { Dropdown, dropdownItem } from "./ui/Dropdown";
 
 /**
  * **الضغطُ المطوَّل على أيّ ملصق** (D-229، طلبُ أحمد: «أيّ أحد يضغط HOLD
  * على البوستر يقدر يختار تو واتش أو شاهدته أو ريفيو — **وهذه قاعدة
  * طبّقها على أيّ بوستر في LOOPZ**»).
  *
- * ================= لماذا لا ورقة =================
+ * ================= لماذا منسدلةٌ لا ورقة ولا طبقة =================
  *
- * **«أهمّ شيء ما تطلع شاشة منبثقة — تطلع من نفس البوستر بشكل سموث»**
- * (نصُّ أحمد). **والحجّةُ تحته أعمق من الشكل:** الورقةُ السفلية تغطّي
- * الشاشة فتُخفي ما ضغطتَ عليه — **فتسأل «أيّ عملٍ هذا؟» بعد لمسةٍ
- * واحدة**، وتحتاج عنواناً يذكّرك (وهو ما تفعله ورقةُ المكتبة). **وطبقةٌ
- * داخل الملصق نفسِه لا تسأل السؤال**: العملُ تحتها، والاختيارُ فوقه.
+ * **الورقةُ السفلية تغطّي الشاشة فتُخفي ما ضغطتَ عليه** — فتسأل «أيّ عملٍ
+ * هذا؟» بعد لمسةٍ واحدة، وتحتاج عنواناً يذكّرك (وهو ما تفعله ورقةُ
+ * المكتبة). **والمنسدلةُ ملتصقةٌ بمقبضها فلا تسأل السؤال.**
  *
- * ⚠️ **وورقةُ المكتبة تبقى كما هي** (`LibraryGrid`): أفعالُها ستّة
- * وفيها «حلقة تالية» و«بطاقة حمراء» — **قائمةٌ من ستّة صفوف لا تُوضع
- * في ١١٢px**. سطحان بمقاسين لا عائلتان: **`LongPressable` واحدٌ
- * للاثنين**، والمختلفُ ما يُعرض بعده.
+ * ⚠️ **وشُحنت أوّلاً طبقةً داخل الملصق ورُدَّت** (نصُّ أحمد يومها: «يطلع
+ * من نفس البوستر»). **والتنفيذُ كذّب الفكرة**: الملصقُ ٩٢–١١٢px، **فثلاثةُ
+ * صفوفٍ بنصٍّ عربيّ وإنجليزيّ داخله تُقصّ كلُّها** — «Add to To…» و«Watche
+ * it all». **وقائمةٌ مقصوصةُ الكلمات أسوأ من قائمةٍ خارج الإطار.**
+ * **والحكم: مساحةُ العنصر تحدّ ما يُوضع فيه، لا نيّةُ المصمّم.**
+ *
+ * **فصارت `Dropdown` نفسَها التي تفتحها النقاط** (D-226): بطاقةٌ مرتفعة
+ * تخرج من مقبضها بحركةٍ سريعة، تُغلق بالنقر خارجها وبـ`Escape`.
+ * **وقائمةٌ واحدة لكل «المزيد» في التطبيق** — لا ثالثة.
+ *
+ * ⚠️ **وورقةُ المكتبة تبقى كما هي** (`LibraryGrid`): أفعالُها ستّة وفيها
+ * «حلقة تالية» و«بطاقة حمراء». **`LongPressable` واحدٌ للاثنين**،
+ * والمختلفُ ما يُعرض بعده.
  *
  * ================= ثلاثةُ أفعال، ولا رابع =================
  *
@@ -130,62 +138,35 @@ export function PosterHold({
     <div className="relative">
       <LongPressable onLongPress={() => setOpen(true)}>{children}</LongPressable>
 
-      {open && (
-        <>
-          {/* **ماسكُ النقر بلا لون** — يُغلق الطبقة ولا يُعتّم الشاشة:
-              التعتيمُ هو الشاشةُ المنبثقة بعينها */}
-          <button
-            aria-hidden
-            tabIndex={-1}
-            onClick={() => setOpen(false)}
-            className="fixed inset-0 z-30 cursor-default"
-          />
-          <div
-            role="menu"
-            aria-label={title}
-            /* **داخل حدود الملصق تماماً**: نفسُ نصف قطره (`rounded-poster`)
-               ونفسُ إطاره، **فالطبقةُ تبدو الملصقَ وقد انقلب** لا نافذةً
-               حطّت فوقه. والضبابةُ تُبقي الصورةَ محسوسةً تحتها. */
-            className="absolute inset-0 z-40 rounded-poster overflow-hidden border border-white/15 bg-black/70 backdrop-blur-md flex flex-col justify-center gap-0.5 p-1.5 poster-actions"
-          >
-            <HoldRow
-              delay={0}
-              icon={inList ? "check" : "plus"}
-              label={inList ? t.quickAddRemove : t.quickAddLabel}
-              active={inList}
-              onClick={toWatch}
-            />
-            <HoldRow
-              delay={35}
-              icon="check-line"
-              label={t.markAllWatched}
-              active={seen}
-              onClick={markWatched}
-            />
-            <HoldRow delay={70} icon="star" label={t.reviewSectionTitle} onClick={openReview} />
-          </div>
-        </>
-      )}
+      <Dropdown open={open} onClose={() => setOpen(false)} align="end">
+        <HoldRow
+          icon={inList ? "check" : "plus"}
+          label={inList ? t.quickAddRemove : t.quickAddLabel}
+          active={inList}
+          onClick={toWatch}
+        />
+        <HoldRow
+          icon="check-line"
+          label={t.markAllWatched}
+          active={seen}
+          onClick={markWatched}
+        />
+        <HoldRow icon="star" label={t.reviewSectionTitle} onClick={openReview} />
+      </Dropdown>
     </div>
   );
 }
 
-/**
- * صفٌّ في الطبقة — **رمزٌ ونصٌّ صغير**. والنصُّ لا يُحذف وإن ضاق الملصق:
- * ثلاثةُ رموزٍ عارية فوق صورةٍ ملوّنة **لغزٌ لا قائمة** (نقيضُ حالة الذيل
- * حيث الرموزُ تسكن سطراً هادئاً وتُقرأ بالعُرف).
- */
+/** صفٌّ في القائمة — **بوصفة `dropdownItem` نفسِها** التي تستعملها النقاط */
 function HoldRow({
   icon,
   label,
   active = false,
-  delay,
   onClick,
 }: {
   icon: IconName;
   label: string;
   active?: boolean;
-  delay: number;
   onClick: () => void;
 }) {
   return (
@@ -197,13 +178,14 @@ function HoldRow({
         e.stopPropagation();
         onClick();
       }}
-      style={{ ["--row-delay" as string]: `${delay}ms` }}
-      className={`poster-actions-row w-full flex items-center gap-1.5 rounded-xl px-2 py-1.5 text-start text-[11px] font-semibold leading-tight transition active:scale-95 ${
-        active ? "bg-accent/20 text-accent" : "text-white hover:bg-white/10"
-      }`}
+      className={dropdownItem}
     >
-      <Icon name={icon} size={14} className="shrink-0" />
-      <span className="line-clamp-2">{label}</span>
+      <Icon
+        name={icon}
+        size={18}
+        className={active ? "text-accent shrink-0" : "text-muted shrink-0"}
+      />
+      <span className={active ? "text-accent" : undefined}>{label}</span>
     </button>
   );
 }
