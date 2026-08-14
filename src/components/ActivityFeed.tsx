@@ -272,14 +272,14 @@ function StatChip({ icon, n, label }: { icon: "chart"; n: number; label: string 
  */
 function RowFooter({ children }: { children: React.ReactNode }) {
   return (
-    /* **شريطُ أفعالٍ موزَّعٌ بعرضٍ مسقوف** (طلبُ أحمد: «تباعد الأيقونات
-       يكون منسّق»): `justify-between` داخل `max-w` — **فتتساوى المسافات
-       ولا تتمدّد إلى آخر الشاشة** فيبعد آخرُ رمزٍ عن أوّله بمسافةٍ لا
-       تُقطع بالإبهام. **والوقتُ غادر إلى الترويسة** فلم يعد في الذيل
-       منازعٌ للأفعال. */
-    <div className="pt-2 flex items-center justify-between w-full max-w-[260px] -ms-2.5">
-      {children}
-    </div>
+    /* **شريطٌ موزَّعٌ بعرض العمود كلِّه** (D-232، بلاغُ أحمد: «راحت يسار
+       بزيادة… خلّها متوازنة مع صورة الشخص ومع الثلاث نقاط»).
+       **والسقفُ ٢٦٠px كان الخطأ**: شريطٌ مسقوفٌ في عمودٍ عريضٍ يبدأ من
+       حافةٍ وينتهي في الهواء — **فلا يحاذي شيئاً**. الآن أوّلُ رمزٍ فوق
+       حافة الوجه وآخرُه تحت النقاط، **فالصفُّ مربوطٌ بمِرساتين لا بواحدة**.
+       **و`-mx-2.5` تُلغي حشوةَ الزرّ عند الطرفين** فتتحاذى **الرموزُ**
+       لا صناديقُها — وهي متماثلةٌ فلا تنقلب في RTL (D-216). */
+    <div className="pt-2 -mx-2.5 flex items-center justify-between">{children}</div>
   );
 }
 
@@ -487,82 +487,107 @@ function NewsRow({
 
   return (
     <article className="py-4 first:pt-0 flex gap-3">
-      {/* **ختمُ Loopz في موضع الوجه** — الأيقونةُ الرسمية نفسُها، لا
-          مونوغرام جديد: **الوردمارك هو الشعار** (D-039)، وعلامةٌ ثانية
-          للعلامة الواحدة عيبٌ لا تمييز. */}
-      {/* نفسُ عرض عمود الهويّة في صفّ التعليق — **فتتحاذى الصفوف كلُّها**
-          وإن لم يكن للخبر تقييمٌ تحته */}
-      <span className="shrink-0 w-11">
-        <Avatar src="/icon-192.png" name="Loopz" size={44} alt="" />
-      </span>
+      {/* **هيكلُ صفّ التعليق نفسُه حرفاً** (D-232، بلاغُ أحمد: «ليه الفوضى
+          هذي… وشكلٌ مختلف!»). **والعلّةُ كانت بنيويةً لا تنسيقاً:** صفُّ
+          التعليق نُقل ليمرّ نصُّه تحت الوجه (D-228) **ولم يُنقل معه صفُّ
+          الخبر** — فبقي ذيلُه مزاحاً بعرض الوجه بينما ذيلُ جاره على الحافة.
+          **وصفّان بهيكلين في قائمةٍ واحدة يُقرآن تطبيقين.**
+          **والقاعدة: تغييرُ هيكلِ صفٍّ في عائلةٍ يُطبَّق على العائلة كلِّها
+          في الدفعة نفسِها** — وإلا فالعائلةُ انقسمت. */}
+      <div className={`min-w-0 flex-1 flex flex-col ${ROW_MIN_H}`}>
+        {/* ===== الترويسة: ختمٌ · اسمٌ / عملٌ · نوعٌ · عمرٌ ===== */}
+        <div className="flex items-center gap-2.5">
+          {/* **ختمُ Loopz في موضع الوجه** — الأيقونةُ الرسمية نفسُها، لا
+              مونوغرام جديد: **الوردمارك هو الشعار** (D-039). */}
+          <span className="shrink-0">
+            <Avatar src="/icon-192.png" name="Loopz" size={44} alt="" />
+          </span>
 
-      <div className={`min-w-0 flex-1 flex flex-col justify-between ${ROW_MIN_H}`}>
-        <div>
-          {/* **ترويسةٌ بترتيب صفّ التعليق نفسِه** — الاسمُ في الصدر والوقتُ
-              في الطرف. **ولا نقاطَ هنا:** القائمةُ متابعةٌ وحظرٌ وبلاغٌ على
-              **إنسان**، ولا إنسانَ في خبرِنا — **ومقبضٌ يفتح خياراتٍ لا
-              تنطبق أسوأ من غيابه** (D-217). */}
-          <div className="flex items-center gap-1.5">
-            <span className="shrink-0 font-bold text-[14px] text-foreground" dir="ltr">
-              Loopz
-            </span>
-            {/* **ولا نقاطَ هنا**: القائمةُ متابعةٌ وحظرٌ وبلاغٌ على **إنسان**،
-                ولا إنسانَ في خبرِنا — **ومقبضٌ يفتح خياراتٍ لا تنطبق أسوأ
-                من غيابه** (D-217). والعمرُ يأخذ موضعَه في الطرف. */}
-            <span className="ms-auto shrink-0 text-[11px] text-muted tabular-nums">
-              {timeAgoShort(n.published_at, t)}
-            </span>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5">
+              <span className="shrink-0 font-bold text-[14px] leading-tight text-foreground" dir="ltr">
+                Loopz
+              </span>
+              {/* **ولا نقاطَ هنا**: القائمةُ متابعةٌ وحظرٌ وبلاغٌ على
+                  **إنسان**، ولا إنسانَ في خبرِنا — **ومقبضٌ يفتح خياراتٍ لا
+                  تنطبق أسوأ من غيابه** (D-217). */}
+              <span className="ms-auto shrink-0 text-[11px] text-muted tabular-nums">
+                {timeAgoShort(n.published_at, t)}
+              </span>
+            </div>
+
+            {/* **اسمُ العمل ونوعُه تحت الاسم** (طلبُ أحمد) — موضعُ «اسمِ
+                العمل و★» في صفّ التعليق بعينه. **والنوعُ عاد ملتصقاً
+                بالعنوان لا وحده في الذيل**: هناك كان يكرّر ما تقوله الجملة،
+                **وهنا يعرّف العملَ الذي يتكلّم عنه الخبر.** */}
+            <div className="mt-px flex items-center gap-1.5">
+              <Link
+                href={titleHref}
+                prefetch={false}
+                className="min-w-0 truncate text-[13px] text-muted hover:text-accent transition"
+              >
+                <bdi>{n.title}</bdi>
+              </Link>
+              <span aria-hidden className="shrink-0 text-muted text-[12px]">
+                ·
+              </span>
+              <span className="shrink-0 text-[13px] text-muted">
+                {n.media_type === "tv" ? t.typeSeries : t.typeMovie}
+              </span>
+            </div>
           </div>
-
-          {/* **وصوتُنا لا يعلو على صوت الناس**: جملةُ الخبر بمقاس نصّ
-              التعليق نفسِه — **وسطرٌ لنا أغلظ من كلام إنسانٍ يقلب معنى
-              الصفحة**. **ولا رابطَ خارجيّ فيها** (طلبُ أحمد الصريح):
-              الضغطُ يفتح صفحةَ العمل عندنا. */}
-          <Link
-            href={titleHref}
-            prefetch={false}
-            className="block mt-1 text-[13px] leading-relaxed font-semibold hover:text-accent transition line-clamp-3"
-          >
-            {text}
-          </Link>
-
-          {/* **سطرُ النسبة** (D-213): الحدثُ من الصحافة والجملةُ من عندنا */}
-          {src && (
-            <p className="mt-1 text-[11px] text-muted">
-              {src.url ? (
-                <a
-                  href={src.url}
-                  target="_blank"
-                  rel="noopener noreferrer nofollow"
-                  className="underline decoration-dotted underline-offset-2 hover:text-accent transition"
-                >
-                  {t.newsPerSource(src.name)}
-                </a>
-              ) : (
-                t.newsPerSource(src.name)
-              )}
-            </p>
-          )}
         </div>
 
-        <RowFooter>
-          {/* **إعجابٌ على خبرِنا** — `post_reactions` القائم منذ `news.sql`
-              (D-224). **وهو قرارُ 🔥 المرفوض وقد صُحِّح لا نُقض:** الرفضُ
-              كان أن «🔥 هي الإعجابُ نفسه بأيقونةٍ أخرى» — **فرُسمت
-              بأيقونة الإعجاب**، عائلةً واحدة برمزٍ واحد. */}
-          <LikeButton
-            target="post"
-            tmdbId={n.tmdb_id}
-            mediaType={n.media_type}
-            likes={likes}
-            likedByMe={likedByMe}
-            isMine={false}
-            locale={locale}
-          />
-          <CommentAction href={talkHref} label={t.actionComment} />
-          <StatChip icon="chart" n={watchers} label={t.talkWatchersHint} />
-          <ShareTitleButton path={titleHref} title={n.title} locale={locale} />
-        </RowFooter>
+        {/* ===== الجملة — بعرض العمود كلِّه، تحت الختم =====
+            **وصوتُنا لا يعلو على صوت الناس**: بمقاس نصّ التعليق نفسِه.
+            **ولا رابطَ خارجيّ فيها** (طلبُ أحمد الصريح): الضغطُ يفتح
+            صفحةَ العمل عندنا. */}
+        <Link
+          href={titleHref}
+          prefetch={false}
+          className="block mt-2 text-[13px] leading-relaxed font-semibold hover:text-accent transition line-clamp-3"
+        >
+          {text}
+        </Link>
+
+        {/* **سطرُ النسبة** (D-213): الحدثُ من الصحافة والجملةُ من عندنا */}
+        {src && (
+          <p className="mt-1 text-[11px] text-muted">
+            {src.url ? (
+              <a
+                href={src.url}
+                target="_blank"
+                rel="noopener noreferrer nofollow"
+                className="underline decoration-dotted underline-offset-2 hover:text-accent transition"
+              >
+                {t.newsPerSource(src.name)}
+              </a>
+            ) : (
+              t.newsPerSource(src.name)
+            )}
+          </p>
+        )}
+
+        <div className="mt-auto">
+          <RowFooter>
+            {/* **إعجابٌ على خبرِنا** — `post_reactions` القائم منذ `news.sql`
+                (D-224). **وهو قرارُ 🔥 المرفوض وقد صُحِّح لا نُقض:** الرفضُ
+                كان أن «🔥 هي الإعجابُ نفسه بأيقونةٍ أخرى» — **فرُسمت
+                بأيقونة الإعجاب**، عائلةً واحدة برمزٍ واحد. */}
+            <LikeButton
+              target="post"
+              tmdbId={n.tmdb_id}
+              mediaType={n.media_type}
+              likes={likes}
+              likedByMe={likedByMe}
+              isMine={false}
+              locale={locale}
+            />
+            <CommentAction href={talkHref} label={t.actionComment} />
+            <StatChip icon="chart" n={watchers} label={t.talkWatchersHint} />
+            <ShareTitleButton path={titleHref} title={n.title} locale={locale} />
+          </RowFooter>
+        </div>
       </div>
 
       <RowPoster

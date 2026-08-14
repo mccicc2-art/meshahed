@@ -71,7 +71,13 @@ export function RowComment({
 
   return (
     <>
-      <div className="pt-2 flex items-center justify-between w-full max-w-[260px] -ms-2.5">
+      {/* **نفسُ شريط `RowFooter`** (D-232): بعرض العمود كلِّه وبهامشٍ
+          سالبٍ متماثل، فأوّلُ رمزٍ فوق حافة الوجه وآخرُه تحت النقاط.
+          **والسقفُ ٢٦٠px حُذف** — شريطٌ مسقوفٌ في عمودٍ عريض لا يحاذي
+          شيئاً. ⚠️ **والسلسلةُ مكرَّرةٌ هنا وفي `RowFooter`** لأن هذا
+          المكوّن يملك حالةَ الفتح ولا يستطيع أن يلفّ نفسه بذاك — **دَينٌ
+          يُوحَّد يوم يُنقل الشريطُ إلى وصفةٍ في `controls.ts`.** */}
+      <div className="pt-2 -mx-2.5 flex items-center justify-between">
         {before}
         <button
           type="button"
