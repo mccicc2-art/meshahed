@@ -1,0 +1,111 @@
+import { getDict, type Locale } from "@/lib/i18n";
+import { BackButton } from "../BackButton";
+
+/**
+ * **تشريحُ صفحة الخيط — وصفةٌ واحدة لسطحين** (D-242، طلبُ أحمد بلقطتين
+ * من تويتر: «أبغاها مثلها، وحتى طريقة الفتح نفس الصورة. ما أبغى أخترع
+ * شي، أبغى شي مألوف للناس ويفهمه بسرعة»).
+ *
+ * ================= ولماذا يُنسخ شكلٌ عمداً =================
+ *
+ * **هذا ليس كسلاً في التصميم، هو قرارُ تصميم.** الناسُ يفتحون تويتر
+ * يومياً، **فتشريحُ صفحة المنشور عندهم ليس واجهةً بل عادة**: يعرف
+ * الإصبعُ أين يذهب قبل أن تقرأ العينُ. **وواجهةٌ «أصلية» تُنفق انتباهَ
+ * القارئ في تعلّمها تُنفقه من رصيدٍ كان سيذهب إلى المحتوى.**
+ * **والابتكارُ يُدَّخر لما لا يوجد له مثال** — ولخيطِ ردودٍ ألفُ مثال.
+ *
+ * ================= أربعةُ قطعٍ لا صفحةٌ واحدة =================
+ *
+ * **الشريط · سطرُ التاريخ · شريطُ الأفعال · الفواصل.** وتُصدَّر قِطعاً
+ * لأن الرأسَين مختلفان — نشرةٌ لها مصدرٌ ونوع، وتعليقٌ له تقييم —
+ * **والمشترَكُ بينهما الإيقاعُ لا المحتوى.** ولو كُتب كلٌّ في صفحته
+ * لافترقا في الحشو والمقاس بعد أسبوع، **وهو ما وقع حرفياً بين صفَّي
+ * الخطّ قبل D-232.**
+ */
+
+/** الشريطُ العلويّ — رجوعٌ وعنوانٌ ثابت، كترويسة تويتر */
+export function ThreadTopBar({ title, locale }: { title: string; locale: Locale }) {
+  return (
+    /* **لاصقٌ في الأعلى**: الخيطُ يطول، **ومن نزل عشرين ردّاً يحتاج
+       بابَ الرجوع حيث تركه لا في أعلى مستندٍ لا يراه.** */
+    <div className="sticky top-0 z-10 -mx-4 px-4 py-2.5 flex items-center gap-4 bg-[color:var(--background)]/85 backdrop-blur-md border-b border-[color:var(--divider)]">
+      <BackButton locale={locale} className="!w-9 !h-9 !bg-transparent !border-0" />
+      <h1 className="text-[17px] font-bold">{title}</h1>
+    </div>
+  );
+}
+
+/**
+ * **سطرُ التاريخ والمشاهدات** — بين النصّ وشريط الأفعال، بفاصلٍ فوقه
+ * وتحته. **وهو ما يجعل المنشورَ الرئيسيَّ يبدو رئيسياً**: الردودُ
+ * تحمل وسماً زمنياً صغيراً بجانب الاسم، **وصاحبُ الصفحة وحده يأخذ
+ * سطراً كاملاً لتاريخه.**
+ */
+export function ThreadDateLine({
+  iso,
+  views,
+  locale,
+}: {
+  iso: string;
+  views?: number;
+  locale: Locale;
+}) {
+  const t = getDict(locale);
+  const d = new Date(iso);
+  /* **التقويمُ يتبع لغةَ الواجهة لا لغةَ الجهاز**: من اختار الإنجليزية
+     في Loopz يقرأ تاريخَه بالإنجليزية ولو كان هاتفُه عربياً (D-048). */
+  const stamp = Number.isNaN(d.getTime())
+    ? ""
+    : new Intl.DateTimeFormat(locale === "ar" ? "ar" : "en", {
+        hour: "numeric",
+        minute: "2-digit",
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      }).format(d);
+  return (
+    <div className="py-3 border-y border-[color:var(--divider)] flex items-center gap-1.5 text-[13px] text-muted">
+      <span dir="ltr">{stamp}</span>
+      {/* **والصفرُ لا يُرسم** (D-222): «٠ مشاهدة» تحت منشورٍ تقرؤه أنت
+          الآن تناقضٌ ظاهر — والعدُّ يبدأ بعد الهجرة ٧٤. */}
+      {!!views && views > 0 && (
+        <>
+          <span aria-hidden>·</span>
+          <span className="font-bold text-foreground tabular-nums">{views}</span>
+          <span>{t.postViewsHint}</span>
+        </>
+      )}
+    </div>
+  );
+}
+
+/**
+ * **شريطُ الأفعال الرئيسيّ** — موزَّعٌ على عرض العمود كشريط تويتر،
+ * **وبنفس إزاحة `-mx-0.5`** التي ضبطها أحمد في خطّ النشاط (D-234)
+ * فتقف الرموزُ على حافّة الصفّ لا داخله.
+ */
+export function ThreadActionBar({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="py-1.5 -mx-0.5 border-b border-[color:var(--divider)] flex items-center justify-between">
+      {children}
+    </div>
+  );
+}
+
+/**
+ * **سطرُ «رداً على فلان»** — نفسُ سطر تويتر فوق الردّ المتشعّب.
+ *
+ * ⚠️ **وهو بديلُ التداخل لا زينةٌ فوقه** (D-242): كانت الردودُ على
+ * الردود تُزاح بخطٍّ رأسيّ، **فيضيق العمودُ كلَّما عمُق الحوار** —
+ * وعلى شاشةِ هاتفٍ تصير ثلاثُ كلماتٍ في السطر. **وتويتر يسطّح الخيط
+ * ويقول لمن الردّ بكلمات** — أوسعُ للقراءة، وأصدقُ حين يُقرأ الخيط
+ * بالمَسح لا بالتتبّع.
+ */
+export function ReplyingTo({ name, locale }: { name: string; locale: Locale }) {
+  const t = getDict(locale);
+  return (
+    <p className="text-[12px] text-muted mb-0.5">
+      <bdi>{t.talkReplyingTo(name)}</bdi>
+    </p>
+  );
+}
