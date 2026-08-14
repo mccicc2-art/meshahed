@@ -615,6 +615,10 @@ const ar = {
   quickAddDone: "أُضيف إلى «للمشاهدة»",
   talkRepliesHint: "ردود",
   talkWatchersHint: "شاهدوه",
+  /* **«شاهدوا المنشور» لا «شاهدوه»** (D-237): الأولى تخصّ الصفَّ الذي
+     تحته، والثانيةُ تخصّ العملَ — **وكلمةٌ واحدة كانت تحمل المعنيين** */
+  postViewsHint: "شاهدوا المنشور",
+  undoNotWatched: "لم أشاهده",
   /* **«فضّلوه» لا «مفضّلة»**: العددُ أشخاصٌ فعلوا لا صفةٌ للعمل — وهو
      نفسُ نحو «شاهدوه» بجانبه، فيُقرأ الصفُّ لغةً واحدة (D-216) */
   talkFavoritesHint: "فضّلوه",
@@ -1695,6 +1699,8 @@ const en: Dict = {
   quickAddDone: "Added to To watch",
   talkRepliesHint: "replies",
   talkWatchersHint: "watching",
+  postViewsHint: "post views",
+  undoNotWatched: "Not watched",
   talkFavoritesHint: "favourited",
   worksRatedByHint: (n: number) =>
     n === 1

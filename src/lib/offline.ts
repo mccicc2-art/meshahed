@@ -101,14 +101,21 @@ function isNetworkError(e: unknown) {
 /**
  * نفّذ الفعل، وإن قطعت الشبكة فاحفظه للطابور وأرجع "queued" —
  * الواجهة المتفائلة تكمل كأن شيئاً لم يكن.
+ *
+ * **ويُرجع ما أرجعه الفعلُ حين ينجح** (D-238): أكثرُ الأفعال `void`
+ * فلا يتغيّر شيءٌ لمستدعيها، **لكنّ `markShowWatched` تُرجع ما أضافته
+ * هي وحدها** — **وهو إيصالُ التراجع.** وكان يُبتلع هنا، فمن أشّر من
+ * الخطّ لم يملك أن يتراجع. **والطابورُ نفسُه لا إيصالَ له**: ما لم
+ * يُكتب بعد لا يُحذف — ولذلك `"queued"` قيمةٌ صريحة لا `null`.
  */
 export async function runOrQueue<N extends FnName>(
   fn: N,
   ...args: Parameters<(typeof FNS)[N]>
-): Promise<"done" | "queued"> {
+): Promise<"queued" | Awaited<ReturnType<(typeof FNS)[N]>>> {
   try {
-    await (FNS[fn] as (...a: unknown[]) => Promise<unknown>)(...args);
-    return "done";
+    return (await (FNS[fn] as (...a: unknown[]) => Promise<unknown>)(
+      ...args,
+    )) as Awaited<ReturnType<(typeof FNS)[N]>>;
   } catch (e) {
     // بلا صاحبٍ معروف لا طابور: لا نخاطر بدفع أفعال حسابٍ لحساب آخر
     if (isNetworkError(e) && storageKey()) {

@@ -1938,6 +1938,30 @@ export async function getNewsReplyCounts(keys: string[]): Promise<Map<string, nu
   }
 }
 
+/**
+ * **عدُّ مشاهداتِ المنشورات** (D-237) — نداءٌ واحد للخطّ كلِّه (D-164).
+ *
+ * **وسقوطُه صامتٌ** كأخيه في ٧٣: قبل الهجرة ٧٤ لا دالّةَ، **فتعود خريطةٌ
+ * فارغة وتُخفى الخانةُ ويبقى الخطُّ مقروءاً**. **ورقمٌ غائبٌ خيرٌ من صفحةٍ
+ * ساقطة** — والعدّادُ زينةٌ لا ركن.
+ */
+export async function getPostViewCounts(keys: string[]): Promise<Map<string, number>> {
+  const out = new Map<string, number>();
+  const unique = [...new Set(keys)].slice(0, 200);
+  if (!unique.length) return out;
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("post_view_counts", { keys: unique });
+    if (error || !data) return out;
+    for (const r of data as { post_key: string; views: number }[]) {
+      out.set(String(r.post_key), Number(r.views));
+    }
+    return out;
+  } catch {
+    return out;
+  }
+}
+
 /** مراجعات عمل معيّن مع أصحابها */
 export async function getTitleReviews(
   tmdbId: number,

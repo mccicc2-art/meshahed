@@ -17,6 +17,7 @@ import {
   type TabPref,
 } from "@/lib/tabPrefs";
 import { allow } from "@/lib/ratelimit";
+import { isViewKey } from "@/lib/postKeys";
 import { intId, intIn, asMediaType, uuid, dateOrNull } from "@/lib/validate";
 import { IMPORT_CAPS, type ImportPayload, type ResolveRequest, type ResolveResult } from "@/lib/importer";
 import type { PersonLite, CommunityLite } from "@/lib/data";
@@ -3345,6 +3346,33 @@ export async function addNewsReply(input: {
   if (error) fail(error);
 
   revalidatePath("/people");
+}
+
+/**
+ * **تسجيلُ مشاهداتِ منشورات** (D-237) — دفعةٌ واحدة لا صفٌّ صفّ.
+ *
+ * **ولا `revalidatePath` هنا** عن قصد: هذا **أثرٌ جانبيٌّ للقراءة**، ومن
+ * أبطل مسارَ `/people` كلَّما مرّت عينُ قارئٍ على الخطّ **جعل القراءةَ
+ * تكتب ثم تُعيد بناءَ نفسِها** — فالرقمُ يظهر في التحميل التالي، وهو
+ * ما يكفي عدّاداً بطيءَ الأثر.
+ *
+ * **والسقوطُ صامتٌ**: عدّادٌ لا يُكتب لا يستحقّ أن يُفسد صفحةً تُقرأ —
+ * وقبل الهجرة ٧٤ لا جدولَ أصلاً.
+ */
+export async function recordPostViews(keys: string[]): Promise<void> {
+  const unique = [...new Set((keys ?? []).filter(isViewKey))].slice(0, 60);
+  if (!unique.length) return;
+  try {
+    /* حدٌّ سخيّ: التمريرةُ الواحدة نداءٌ واحد، والقارئُ النهم يفتح
+       الخطَّ مرّاتٍ في الدقيقة — **والخنقُ هنا يفقد عدّاداً لا يمنع أذى** */
+    const { supabase, user } = await requireUser("view", 40, 60_000);
+    await supabase.from("post_views").upsert(
+      unique.map((post_key) => ({ post_key, user_id: user.id })),
+      { onConflict: "post_key,user_id", ignoreDuplicates: true },
+    );
+  } catch {
+    /* لا شيء — انظر أعلاه */
+  }
 }
 
 /**
