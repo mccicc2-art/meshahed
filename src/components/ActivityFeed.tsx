@@ -365,11 +365,14 @@ function CommentRow({
   locale: Locale;
 }) {
   const t = getDict(locale);
-  const talkHref = `/talk/${a.media_type}/${a.tmdb_id}`;
+  /* **وضغطةُ الصفّ تفتح التعليقَ نفسَه لا غرفةَ العمل** (D-242، طلبُ
+     أحمد: «وحتى طريقة الفتح نفس الصورة»). **كانت تفتح `/talk`** — فتضغط
+     كلامَ خالد فتصل إلى صفحةٍ فيها كلامُ عشرة وتبحث عن سطره. */
+  const reviewHref = `/review/${a.media_type}/${a.tmdb_id}/${a.person.id}`;
   const titleHref = `/${a.media_type === "tv" ? "show" : "movie"}/${a.tmdb_id}`;
   const who = displayNameOf(a.person, t.anonymousUser);
   /** الملفُّ إن كان له `@handle`؛ وإلّا فالغرفة — **ولا صفَّ ملفٍّ بلا اسم** (D-063) */
-  const whoHref = a.person.username ? `/u/${a.person.username}` : talkHref;
+  const whoHref = a.person.username ? `/u/${a.person.username}` : reviewHref;
 
   return (
     /* **`data-post-key` هي عقدُ العدّ** (D-237): `PostViews` تراقب هذه
@@ -412,9 +415,15 @@ function CommentRow({
               {/* **العمرُ مختصرٌ ملاصقٌ للنقاط** (طلبُ أحمد): `6d` لا «قبل
                   ستّة أيام» — **جملةٌ في موضعِ وسمٍ تسرق العرضَ من الاسم
                   فيُقصّ**، والترويسةُ تحمل أربعةَ أشياء في سطر. */}
-              <span className="ms-auto shrink-0 text-[11px] text-muted tabular-nums">
+              {/* **والعمرُ بابٌ ثانٍ إلى الصفحة** — عادةُ تويتر نفسُها،
+                  ونفسُ ما فُعل بصفّ النشرة في D-239. */}
+              <Link
+                href={reviewHref}
+                prefetch={false}
+                className="ms-auto shrink-0 text-[11px] text-muted tabular-nums hover:text-accent transition"
+              >
                 {timeAgoShort(a.updated_at, t)}
-              </span>
+              </Link>
               <span className="shrink-0">
                 <ProfileMenu
                   person={a.person}
@@ -459,7 +468,7 @@ function CommentRow({
             عربيّ داخل واجهةٍ إنجليزية يُرسم من اليمين ونقطتُه في مكانها.
             **وأصحُّ من قراءة لغة الحساب**: الكاتبُ قد يكتب بغير لغة
             واجهته، **والنصُّ يعرف نفسَه ولا يحتاج من يخبره.** */}
-        <Link href={talkHref} prefetch={false} className="block mt-2">
+        <Link href={reviewHref} prefetch={false} className="block mt-2">
           <p
             dir={dirOf(a.review)}
             className="text-[13px] leading-relaxed text-foreground/85 line-clamp-3"
