@@ -81,6 +81,8 @@ export function PosterCard({
    */
   saved?: boolean;
   watched?: boolean;
+  /* ⚠️ **ويُتجاهلان حين يُمرَّر `hold`** — هناك تسكن الحالةُ التفاؤلية،
+     **وخيطان لحالةٍ واحدة يفترقان عند أوّل ضغطة** (D-235). */
   /**
    * **الضغطُ المطوَّل بأفعاله الثلاثة** — يُمرَّر حيث تكون البطاقة عملاً
    * يملك القارئ أن يفعل به شيئاً. **وحيث لا يُمرَّر لا يتغيّر شيء**:
@@ -178,7 +180,7 @@ export function PosterCard({
 
         {/* الحالة كلها في خيط اللون: أخضر مكتمل، بنفسجي قيد المشاهدة،
             أحمر موقوف — وما لم يبدأ لا خيط له إطلاقاً */}
-        {(dropped || watched || saved || (progress ?? 0) > 0) && (
+        {(dropped || (!hold && (watched || saved)) || (progress ?? 0) > 0) && (
           <div className="absolute inset-x-0 bottom-0 h-1.5 bg-black/50">
             <div
               className="h-full"

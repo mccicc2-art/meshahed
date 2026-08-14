@@ -77,7 +77,7 @@ export function RowComment({
           شيئاً. ⚠️ **والسلسلةُ مكرَّرةٌ هنا وفي `RowFooter`** لأن هذا
           المكوّن يملك حالةَ الفتح ولا يستطيع أن يلفّ نفسه بذاك — **دَينٌ
           يُوحَّد يوم يُنقل الشريطُ إلى وصفةٍ في `controls.ts`.** */}
-      <div className="pt-2 -mx-1.5 flex items-center justify-between">
+      <div className="pt-2 -mx-0.5 flex items-center justify-between">
         {before}
         <button
           type="button"

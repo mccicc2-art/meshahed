@@ -109,12 +109,28 @@ export function PosterHold({
     });
   }
 
+  /**
+   * **«شاهدته» تُضيفه إلى المكتبة أوّلاً** (D-235، بلاغُ أحمد: «اخترتُ
+   * شاهدته كامل ولا سجّلها في المكتبة»).
+   *
+   * **والعلّةُ في نيّة الفعل لا في تنفيذه:** `markShowWatched` تكتب في
+   * `watched_episodes` وحدها — **وهي مصمَّمةٌ لسطح المكتبة حيث العملُ
+   * مضافٌ أصلاً**. ومن ضغطها من الخطّ كتب حلقاتِ عملٍ **لا يملكه**، فلا
+   * يظهر في مكتبته ولا يُحسب في تقدّمه: **سجلٌّ يتيم.**
+   * **و«شاهدتُه» تعني «هذا لي وقد انتهيت منه»** — فالإضافةُ جزءٌ من
+   * المعنى لا خطوةٌ سابقة له.
+   */
   function markWatched() {
     tap([12, 30]);
+    const wasIn = inList;
     setSeen(true);
+    setInList(true);
     setOpen(false);
     start(async () => {
       try {
+        /* الترتيبُ مقصود: الإضافةُ أوّلاً فإن سقط التأشيرُ بقي العملُ
+           في المكتبة — **والعكسُ يترك حلقاتٍ بلا عمل** */
+        if (!wasIn) await follow({ tmdbId, mediaType, title, posterPath });
         if (mediaType === "tv") await runOrQueue("markShowWatched", tmdbId);
         else
           await runOrQueue("toggleMovieWatched", {
@@ -124,6 +140,7 @@ export function PosterHold({
           });
       } catch (e) {
         setSeen(false);
+        setInList(wasIn);
         flashError((e as Error).message);
       }
     });
@@ -145,6 +162,22 @@ export function PosterHold({
       }`}
     >
       <LongPressable onLongPress={() => setOpen(true)}>{children}</LongPressable>
+
+      {/* **خيطُ الحالة يرسمه هذا المكوّن لا البطاقة** (D-235): الحالةُ
+          تفاؤليةٌ وتسكن هنا، **وخيطٌ في `PosterCard` لا يراها فلا يتغيّر
+          لونُه إلا بعد تنقّلٍ كامل** — فيضغط المستخدم «شاهدته» ولا يرى
+          شيئاً، **ويظنّ الفعلَ سقط**. أخضرُ للمنتهي ورماديٌّ للمحفوظ. */}
+      {(seen || inList) && (
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-1.5 rounded-b-poster overflow-hidden bg-black/50"
+        >
+          <span
+            className="block h-full w-full transition-colors"
+            style={{ background: seen ? "var(--success)" : "var(--border)" }}
+          />
+        </span>
+      )}
 
       <Dropdown open={open} onClose={() => setOpen(false)} align="end" caret>
         <HoldRow
