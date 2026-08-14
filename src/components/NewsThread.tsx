@@ -51,7 +51,13 @@ export function NewsThread({
   const [open, setOpen] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const all = [...replies, ...added].filter((r) => !removed.has(r.replyId));
+  /* **الحمولةُ تغلب النسخةَ المحلّية** (D-241) — نفسُ مصالحة `TalkThread`
+     حرفاً: ما ظهر معرّفُه من الخادم تسقط نسختُه هنا، **فلا يظهر الردُّ
+     مرّتين ولا يظهر أحدُهما بلا اسم.** */
+  const fromServer = new Set(replies.map((r) => r.replyId));
+  const all = [...replies, ...added.filter((a) => !fromServer.has(a.replyId))].filter(
+    (r) => !removed.has(r.replyId),
+  );
   const tops = all.filter((r) => !r.parentId);
   const kids = (id: string) => all.filter((r) => r.parentId === id);
 
@@ -150,9 +156,8 @@ export function NewsThread({
   /** إرسالٌ تفاؤليّ — يظهر بمعرّفٍ مؤقّت ويُسحب إن فشل */
   function send(body: string, parentId: string | null) {
     const temp = `${TEMP}${parentId ?? ""}:${body.length}:${all.length}`;
-    /* **صاحبُ الردّ المؤقّت بلا اسم**: الصفحةُ لا تملك ملفّي هنا،
-       والاسمُ يصل مع القراءة الحقيقية — **فيُرسم كمن أخفى اسمَه، لا
-       باسمٍ مخترع** (نفسُ حكم `TalkThread`). */
+    /* **بلا اسمٍ لجزءٍ من ثانية وحدها** (D-241): الاسمُ يعود مع الفعل
+       نفسِه — **ولا اسمَ مخترعاً في هذه اللحظة.** */
     setAdded((a) => [
       ...a,
       {
@@ -172,7 +177,24 @@ export function NewsThread({
     setError(null);
     void (async () => {
       try {
-        await addNewsReply({ postKey, body, parentId });
+        const real = await addNewsReply({ postKey, body, parentId });
+        if (real) {
+          setAdded((a) =>
+            a.map((x) =>
+              x.replyId === temp
+                ? {
+                    ...x,
+                    replyId: real.replyId,
+                    createdAt: real.createdAt,
+                    nickname: real.nickname,
+                    username: real.username,
+                    avatar_url: real.avatar_url,
+                    hide_name: real.hide_name,
+                  }
+                : x,
+            ),
+          );
+        }
       } catch (e) {
         setAdded((a) => a.filter((x) => x.replyId !== temp));
         setError((e as Error).message);

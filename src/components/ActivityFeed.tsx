@@ -3,6 +3,7 @@ import { getDict, type Locale } from "@/lib/i18n";
 import { timeAgoShort } from "@/lib/when";
 import { displayNameOf, type FeedItem, type LoopzNewsItem } from "@/lib/data";
 import { newsLine, newsSource } from "@/lib/newsLine";
+import { dirOf } from "@/lib/dir";
 import { commentViewKey, newsViewKey } from "@/lib/postKeys";
 import { Avatar } from "./Avatar";
 import { Icon } from "./Icon";
@@ -69,18 +70,6 @@ import { PostViews } from "./PostViews";
  * لا نملكه لكلِّ تعليق) · **ولا علامةَ حفظٍ للتعليق** — المِرجَعيةُ هنا
  * تحفظ **العمل** لا الكلام، و«حفظُ تعليق» فعلٌ غيرُ مبنيّ (D-217).
  */
-
-/**
- * **اتّجاهُ نصٍّ من أوّل حرفٍ قويّ فيه** — بديلُ `dir="auto"` حين لا يكون
- * النصُّ أوّلَ ما في الفقرة (انظر `CommentRow`).
- *
- * **والمدى يشمل العربية والفارسية والعبرية معاً** — لا العربيةَ وحدها:
- * قاعدةٌ تُكتب لحرفٍ واحد تُكسَر بأوّل مستخدمٍ يكتب بغيره.
- */
-const RTL_FIRST = /^[^\p{L}]*[\p{Script=Arabic}\p{Script=Hebrew}]/u;
-function dirOf(text: string | null): "rtl" | "ltr" {
-  return text && RTL_FIRST.test(text) ? "rtl" : "ltr";
-}
 
 /** صفٌّ في الخطّ: تعليقُ إنسانٍ أو خبرٌ من عندنا — **والزمنُ يرتّبهما معاً** */
 type Row =

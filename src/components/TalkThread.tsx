@@ -9,6 +9,7 @@ import { tap } from "@/lib/haptics";
 import { Composer } from "./Composer";
 import { Icon } from "./Icon";
 import { timeAgo } from "@/lib/when";
+import { dirOf } from "@/lib/dir";
 import { ReplyRow, TEMP } from "./ReplyRow";
 import { PersonName } from "./PersonRow";
 import { LikeButton } from "./LikeButton";
@@ -68,10 +69,26 @@ export function TalkThread({
   const [open, setOpen] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const all = useMemo(
-    () => [...replies, ...added].filter((r) => !removed.has(r.replyId)),
-    [replies, added, removed],
-  );
+  /**
+   * **الحمولةُ تغلب النسخةَ المحلّية** (D-241، بلاغُ أحمد: «إذا كتبت ردّ
+   * يظهر مرّتين، بتواجد منهم Someone»).
+   *
+   * **والعلّةُ كانت في «متى تُحذف النسخة» لا في إضافتها:** كانت تُحذف
+   * **عند الفشل وحده**. والكتابةُ الناجحة تُبطل المسار، **فيعيد الخادمُ
+   * الردَّ الحقيقيَّ والنسخةُ المؤقّتة باقية** — فيراهما القارئ اثنين،
+   * وأحدُهما بلا اسم لأنه لم يكن يحمل ملفّاً.
+   *
+   * **فالمصالحةُ بالمعرّف لا بالنصّ:** الفعلُ يعيد معرّفَ الردّ (D-241)،
+   * **فما ظهر معرّفُه في حمولة الخادم تسقط نسختُه المحلّية.** وردّان
+   * بنصٍّ واحد يبقيان اثنين كما كتبهما صاحبُهما — **والمطابقةُ بالنصّ كانت
+   * ستبتلع أحدَهما.**
+   */
+  const all = useMemo(() => {
+    const fromServer = new Set(replies.map((r) => r.replyId));
+    return [...replies, ...added.filter((a) => !fromServer.has(a.replyId))].filter(
+      (r) => !removed.has(r.replyId),
+    );
+  }, [replies, added, removed]);
 
   /* الردودُ مفهرسةٌ بصاحب الرأي مرّةً واحدة: الرسمُ يمرّ على الآراء،
      ولو بحث كلُّ رأيٍ في المصفوفة كلّها صار العملُ حاصلَ ضرب */
@@ -128,21 +145,46 @@ export function TalkThread({
               <PersonName person={r} t={t} size={32} sub={timeAgo(r.updated_at, t)} />
               {/* **النجمةُ نصٌّ لا شارةٌ مؤطَّرة**: الإطارُ الصغير داخل صفٍّ
                   بلا إطارٍ يعود بالضجيج الذي أُزيل من حوله */}
+              {/* **وشكلُ الرقم واحدٌ في السطحين** (D-241): كان «10/10» هنا
+                  و«10.0» في خطّ النشاط — **رقمٌ واحد بشكلين يجعل القارئ
+                  يتساءل إن كانا مقياسين.** والمقامُ محذوفٌ لأن المقياسَ
+                  ثابتٌ في التطبيق كلِّه، **والمقامُ يُكتب حيث يتغيّر
+                  (متوسّطُ الجماعة وعددُه) لا حيث يثبت.** */}
               <span
                 className="text-[13px] shrink-0 font-bold text-accent tabular-nums"
                 title={t.rateOutOf(r.rating)}
               >
-                ★ <span dir="ltr">{r.rating}/10</span>
+                ★ <span dir="ltr">{r.rating.toFixed(1)}</span>
               </span>
             </div>
 
+            {/* **اتّجاهُ الرأي من الرأي** (D-241، وهو ما رآه أحمد في لقطته):
+                كان بلا `dir` إطلاقاً، **فيرث اتّجاهَ الواجهة** — ورأيٌ
+                عربيٌّ في واجهةٍ إنجليزية تنحلّ أسطرُه كلٌّ على حدة، فيصطفّ
+                سطران يميناً وثالثٌ يساراً. **وهي العلّةُ نفسُها التي
+                أُصلحت في خطّ النشاط (D-228) ولم تُصلَح هنا** — والقاعدة:
+                إصلاحُ سلوكٍ في سطحٍ يُطبَّق على كلِّ سطحٍ يعرضه.
+
+                **ولونُه لون المتن لا لون الحاشية**: كان `text-muted` —
+                **وأخفتُ نصٍّ في صفحةٍ لا يصحّ أن يكون سببَ وجودها.** */}
             {r.review?.trim() && (
-              <p className="text-sm text-muted leading-relaxed whitespace-pre-line">{r.review}</p>
+              <p
+                dir={dirOf(r.review)}
+                className="text-sm text-foreground/85 leading-relaxed whitespace-pre-line"
+              >
+                {r.review}
+              </p>
             )}
 
             {/* **ولا خطَّ فاصلٍ فوق شريط الأفعال**: الصفُّ كلُّه بلا إطار،
                 فخطٌّ داخله يرسم بطاقةً من جديد */}
-            <div className="mt-2.5 flex items-center gap-2">
+            {/* **وشريطُ الأفعال بهندسة خطّ النشاط** (D-241، وهو حكمُ أحمد
+                هناك: «خلّه متوازن مع صورة الشخص… ليه الفوضى هذي في كل مكان
+                وشكلٌ مختلف!»). **كان مكوَّماً في البداية والبلاغُ منفيّاً
+                إلى النهاية**، فيبدو الشريطُ نصفَ ممتلئ. **موزَّعٌ الآن
+                بـ`justify-between` وبإزاحة `-mx-0.5` نفسِها** — فأوّلُ رمزٍ
+                يقف على حافّة الصفّ كما يقف في الخطّ. */}
+            <div className="mt-2.5 -mx-0.5 flex items-center justify-between">
               <LikeButton
                 reviewUserId={r.id}
                 tmdbId={tmdbId}
@@ -155,7 +197,10 @@ export function TalkThread({
                 readOnly={!signedIn}
                 locale={locale}
               />
-              {signedIn && (
+              {/* **وكذلك خانةُ الردّ**: الزائرُ يقرأ ولا يردّ (D-221)،
+                  **وشريطُه يجب أن يحاذي شريطَ المسجَّل** لأن القائمةَ
+                  واحدة وتُقرأ بالمَسح. */}
+              {signedIn ? (
                 <ReplyToggle
                   label={t.talkReply}
                   active={open === r.id}
@@ -164,18 +209,26 @@ export function TalkThread({
                     setOpen(open === r.id ? null : r.id);
                   }}
                 />
+              ) : (
+                <span aria-hidden className="w-8 h-8" />
               )}
               {/* **والبلاغُ فعلٌ يحتاج صاحباً** (D-221): بلاغٌ بلا هويّةٍ
-                  لا يُقبل في القاعدة أصلاً، فزرُّه للزائر وعدٌ كاذب */}
-              {signedIn && !r.isMine && (
-                <span className="ms-auto">
-                  <ReportButton
-                    reviewUserId={r.id}
-                    tmdbId={tmdbId}
-                    mediaType={mediaType}
-                    locale={locale}
-                  />
-                </span>
+                  لا يُقبل في القاعدة أصلاً، فزرُّه للزائر وعدٌ كاذب.
+
+                  ⚠️ **وخانتُه تُحجَز وإن لم يُرسم** (D-234 حرفاً): شريطٌ
+                  موزَّعٌ بعنصرين وحدهما **يقذفهما إلى الطرفين** — وهو
+                  بعينه ما رفضه أحمد في الخطّ («راحت يسار بزيادة»). **رأيي
+                  أنا لا يُبلَّغ عنه، فلو سقطت الخانةُ لاختلف شريطُ صفّي عن
+                  شريط جاري في القائمة نفسِها.** */}
+              {signedIn && !r.isMine ? (
+                <ReportButton
+                  reviewUserId={r.id}
+                  tmdbId={tmdbId}
+                  mediaType={mediaType}
+                  locale={locale}
+                />
+              ) : (
+                <span aria-hidden className="w-8 h-8" />
               )}
             </div>
 
@@ -256,8 +309,9 @@ export function TalkThread({
     person: ReviewReply | null;
   }) {
     const temp = `${TEMP}${input.reviewUserId}:${input.parentId ?? ""}:${input.body.length}`;
-    /* صاحبُ الردّ المؤقّت: الصفحةُ لا تملك ملفي هنا، والاسمُ يصل مع
-       القراءة الحقيقية. فيُرسم بلا اسم كمن أخفاه — لا باسمٍ مخترع */
+    /* **ويُرسم بلا اسمٍ لجزءٍ من ثانية وحدها** (D-241): الاسمُ والصورةُ
+       يعودان مع الفعل نفسِه، **فلا يستقرّ «Someone» في الشاشة.** ولا
+       اسمَ مخترعاً في هذه اللحظة — **الفراغُ أصدقُ من التخمين.** */
     setAdded((a) => [
       ...a,
       {
@@ -278,13 +332,33 @@ export function TalkThread({
     setError(null);
     void (async () => {
       try {
-        await addReviewReply({
+        const real = await addReviewReply({
           reviewUserId: input.reviewUserId,
           tmdbId,
           mediaType,
           body: input.body,
           parentId: input.parentId,
         });
+        /* **النسخةُ تلبس هويّتَها الحقيقية فور وصولها** — معرّفاً واسماً
+           وصورة. **ولا نحذفها هنا وننتظر الخادم**: بينهما لحظةٌ يختفي
+           فيها كلامُ الكاتب من تحت إصبعه، **والوميضُ يُقرأ فشلاً.** */
+        if (real) {
+          setAdded((a) =>
+            a.map((x) =>
+              x.replyId === temp
+                ? {
+                    ...x,
+                    replyId: real.replyId,
+                    createdAt: real.createdAt,
+                    nickname: real.nickname,
+                    username: real.username,
+                    avatar_url: real.avatar_url,
+                    hide_name: real.hide_name,
+                  }
+                : x,
+            ),
+          );
+        }
       } catch (e) {
         setAdded((a) => a.filter((x) => x.replyId !== temp));
         setError((e as Error).message);
