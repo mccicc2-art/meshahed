@@ -279,7 +279,7 @@ function RowFooter({ children }: { children: React.ReactNode }) {
        حافة الوجه وآخرُه تحت النقاط، **فالصفُّ مربوطٌ بمِرساتين لا بواحدة**.
        **و`-mx-2.5` تُلغي حشوةَ الزرّ عند الطرفين** فتتحاذى **الرموزُ**
        لا صناديقُها — وهي متماثلةٌ فلا تنقلب في RTL (D-216). */
-    <div className="pt-2 -mx-2.5 flex items-center justify-between">{children}</div>
+    <div className="pt-2 -mx-1.5 flex items-center justify-between">{children}</div>
   );
 }
 

@@ -135,10 +135,18 @@ export function PosterHold({
   }
 
   return (
-    <div className="relative">
+    /* **الملصقُ نفسُه يُضاء ما دامت القائمةُ مفتوحة** (D-233): إطارٌ
+       بلون الهوية حول حدوده — **فالعينُ تصل القائمةَ بمصدرها في لمحة**،
+       وهو ما عجز عنه الموضعُ وحده. ولا تعتيمَ للشاشة: التعتيمُ هو
+       الشاشةُ المنبثقة التي رُفضت. */
+    <div
+      className={`relative rounded-poster transition ${
+        open ? "ring-2 ring-accent ring-offset-2 ring-offset-[color:var(--background)]" : ""
+      }`}
+    >
       <LongPressable onLongPress={() => setOpen(true)}>{children}</LongPressable>
 
-      <Dropdown open={open} onClose={() => setOpen(false)} align="end">
+      <Dropdown open={open} onClose={() => setOpen(false)} align="end" caret>
         <HoldRow
           icon={inList ? "check" : "plus"}
           label={inList ? t.quickAddRemove : t.quickAddLabel}
