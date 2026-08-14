@@ -11,6 +11,7 @@ import { PosterCard } from "./PosterCard";
 import { ShareTitleButton } from "./ShareTitleButton";
 import { ProfileMenu } from "./ProfileMenu";
 import { RowComment } from "./RowComment";
+import { NewsComment } from "./NewsComment";
 
 /**
  * **تبويب «النشاط»** — التعليقاتُ وأخبارُنا في خطٍّ واحدٍ مرتَّبٍ بالزمن
@@ -108,6 +109,7 @@ export function ActivityFeed({
   postLikes,
   stats,
   followingIds,
+  newsReplies,
   emptyText,
   locale,
 }: {
@@ -129,6 +131,8 @@ export function ActivityFeed({
   stats?: Map<string, TalkStat>;
   /** مَن أتابعهم — لصفّ المتابعة في قائمة النقاط (نداءٌ واحدٌ مخزَّن) */
   followingIds?: ReadonlySet<string>;
+  /** ردودُ نشراتنا — بمفتاح المنشور، نداءٌ واحد للخطّ كلِّه (D-236) */
+  newsReplies?: Map<string, number>;
   /** **وفراغُ «الكل» غيرُ فراغ «من أتابع»** — الصفحةُ تملك النطاق فتملك جملته */
   emptyText: string;
   locale: Locale;
@@ -186,6 +190,7 @@ export function ActivityFeed({
             watchers={stats?.get(key)?.watchers ?? 0}
             likes={postLikes?.counts[key] ?? 0}
             likedByMe={postLikes?.mine.has(key) ?? false}
+            replies={newsReplies?.get(row.item.key) ?? 0}
             locale={locale}
           />
         );
@@ -272,49 +277,6 @@ function StatChip({ icon, n, label }: { icon: "chart"; n: number; label: string 
       <Icon name={icon} size={14} />
       {has && n}
     </span>
-  );
-}
-
-/**
- * ذيلُ الصفّ — **متى · إعجاب · تعليق · حفظ**، بهذا الترتيب (طلبُ أحمد).
- *
- * **والوقتُ أوّلُ الذيل لا آخرُه:** كان في الحافة المقابلة **فبَعُد عن
- * الصفّ الذي يخصّه** وقطعت عينُ القارئ الشاشةَ كلَّها لتصله. وموضعُه
- * الآن يقرأ الجملةَ كما تُقال: «قبل تسع ساعات… وهذه أفعالُك».
- *
- * **والفعلان الأخيران يخصّان العمل لا الكلام** — وهما ما يجعل الخبرَ
- * والتعليق ذيلاً واحداً: **ما يختلف بينهما شيءٌ واحد، مَن يُعجَب به.**
- */
-function RowFooter({ children }: { children: React.ReactNode }) {
-  return (
-    /* **شريطٌ موزَّعٌ بعرض العمود كلِّه** (D-232، بلاغُ أحمد: «راحت يسار
-       بزيادة… خلّها متوازنة مع صورة الشخص ومع الثلاث نقاط»).
-       **والسقفُ ٢٦٠px كان الخطأ**: شريطٌ مسقوفٌ في عمودٍ عريضٍ يبدأ من
-       حافةٍ وينتهي في الهواء — **فلا يحاذي شيئاً**. الآن أوّلُ رمزٍ فوق
-       حافة الوجه وآخرُه تحت النقاط، **فالصفُّ مربوطٌ بمِرساتين لا بواحدة**.
-       **و`-mx-2.5` تُلغي حشوةَ الزرّ عند الطرفين** فتتحاذى **الرموزُ**
-       لا صناديقُها — وهي متماثلةٌ فلا تنقلب في RTL (D-216). */
-    <div className="pt-2 -mx-0.5 flex items-center justify-between">{children}</div>
-  );
-}
-
-/**
- * بابُ الغرفة — **رمزٌ بلا كلمة** (طلبُ أحمد: «احذف كلمة كومنت، العلامة
- * تكفي»). **والمعنى في `aria-label` لا يسقط** (D-177): فقاعةُ الكلام عُرفٌ
- * يُقرأ بلا نصّ، **وكلمةٌ واحدة بين ثلاثة رموزٍ عارية تُخلّ بالصفّ أكثر
- * ممّا تشرح.**
- */
-function CommentAction({ href, label }: { href: string; label: string }) {
-  return (
-    <Link
-      href={href}
-      prefetch={false}
-      aria-label={label}
-      title={label}
-      className="inline-flex items-center rounded-full px-2.5 py-1.5 text-muted hover:text-accent transition"
-    >
-      <Icon name="comment" size={15} />
-    </Link>
   );
 }
 
@@ -484,6 +446,7 @@ function NewsRow({
   watchers,
   likes,
   likedByMe,
+  replies,
   locale,
 }: {
   n: LoopzNewsItem;
@@ -491,13 +454,13 @@ function NewsRow({
   watchers: number;
   likes: number;
   likedByMe: boolean;
+  replies: number;
   locale: Locale;
 }) {
   const t = getDict(locale);
   const text = newsLine(n, t, locale);
   if (!text) return null;
   const titleHref = `/${n.media_type === "tv" ? "show" : "movie"}/${n.tmdb_id}`;
-  const talkHref = `/talk/${n.media_type}/${n.tmdb_id}`;
   const src = newsSource(n);
 
   return (
@@ -583,25 +546,36 @@ function NewsRow({
           </p>
         )}
 
+        {/* **الذيلُ في `NewsComment`** لأن صندوق الكتابة يحتاج عرضَ الصفّ
+            والمقبضَ يسكن الشريط — حالةٌ واحدة لعنصرين (D-236). */}
         <div className="mt-auto">
-          <RowFooter>
-            {/* **إعجابٌ على خبرِنا** — `post_reactions` القائم منذ `news.sql`
-                (D-224). **وهو قرارُ 🔥 المرفوض وقد صُحِّح لا نُقض:** الرفضُ
-                كان أن «🔥 هي الإعجابُ نفسه بأيقونةٍ أخرى» — **فرُسمت
-                بأيقونة الإعجاب**، عائلةً واحدة برمزٍ واحد. */}
-            <LikeButton
-              target="post"
-              tmdbId={n.tmdb_id}
-              mediaType={n.media_type}
-              likes={likes}
-              likedByMe={likedByMe}
-              isMine={false}
-              locale={locale}
-            />
-            <CommentAction href={talkHref} label={t.actionComment} />
-            <StatChip icon="chart" n={watchers} label={t.talkWatchersHint} />
-            <ShareTitleButton path={titleHref} title={n.title} locale={locale} />
-          </RowFooter>
+          <NewsComment
+            postKey={n.key}
+            replies={replies}
+            label={t.actionComment}
+            locale={locale}
+            before={
+              /* **إعجابٌ على خبرِنا** — `post_reactions` القائم منذ
+                 `news.sql` (D-224). **وهو قرارُ 🔥 المرفوض وقد صُحِّح لا
+                 نُقض:** الرفضُ كان أن «🔥 هي الإعجابُ نفسه بأيقونةٍ أخرى»
+                 — **فرُسمت بأيقونة الإعجاب**، عائلةً واحدة برمزٍ واحد. */
+              <LikeButton
+                target="post"
+                tmdbId={n.tmdb_id}
+                mediaType={n.media_type}
+                likes={likes}
+                likedByMe={likedByMe}
+                isMine={false}
+                locale={locale}
+              />
+            }
+            after={
+              <>
+                <StatChip icon="chart" n={watchers} label={t.talkWatchersHint} />
+                <ShareTitleButton path={titleHref} title={n.title} locale={locale} />
+              </>
+            }
+          />
         </div>
       </div>
 
