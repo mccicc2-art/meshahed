@@ -211,13 +211,18 @@ function RowPoster({
 function RowFooter({ time, children }: { time: string; children: React.ReactNode }) {
   return (
     <div className="pt-2 flex items-center gap-0.5">
-      <span className="shrink-0 text-[11px] text-muted pe-1.5">{time}</span>
       {children}
+      <span className="ms-auto shrink-0 text-[11px] text-muted">{time}</span>
     </div>
   );
 }
 
-/** بابُ الغرفة — «تعليق»: تفتح الغرفةَ لتكتب فيها، لا لتردّ على سطرٍ بعينه */
+/**
+ * بابُ الغرفة — **رمزٌ بلا كلمة** (طلبُ أحمد: «احذف كلمة كومنت، العلامة
+ * تكفي»). **والمعنى في `aria-label` لا يسقط** (D-177): فقاعةُ الكلام عُرفٌ
+ * يُقرأ بلا نصّ، **وكلمةٌ واحدة بين ثلاثة رموزٍ عارية تُخلّ بالصفّ أكثر
+ * ممّا تشرح.**
+ */
 function CommentAction({ href, label }: { href: string; label: string }) {
   return (
     <Link
@@ -225,10 +230,9 @@ function CommentAction({ href, label }: { href: string; label: string }) {
       prefetch={false}
       aria-label={label}
       title={label}
-      className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[12px] font-semibold text-muted hover:text-accent transition"
+      className="inline-flex items-center rounded-full px-2.5 py-1.5 text-muted hover:text-accent transition"
     >
-      <Icon name="comment" size={14} />
-      {label}
+      <Icon name="comment" size={15} />
     </Link>
   );
 }
@@ -252,41 +256,58 @@ function CommentRow({
 
   return (
     <article className="py-4 first:pt-0 flex gap-3">
-      <Link href={whoHref} prefetch={false} className="shrink-0 active:opacity-80 transition">
-        <Avatar
-          src={a.person.hide_name ? null : a.person.avatar_url}
-          name={who}
-          size={44}
-          alt=""
-        />
-      </Link>
+      {/* **عمودُ الهويّة: وجهُه وتحته تقييمُه** (طلبُ أحمد).
+          **وهو أصدقُ موضعٍ للنجمة على الإطلاق**: كانت بجوار اسم العمل
+          فتُقرأ تقييمَ العمل، ثم بجوار الاسم فتُقرأ صحيحةً — **وتحت
+          وجهه تُقرأ صحيحةً بلا قراءة**، لأن ما تحت الصورة يخصّ صاحبَها.
+          وعرضٌ ثابت (`w-11`) كي تتحاذى أعمدةُ الصفوف كلِّها. */}
+      <div className="shrink-0 w-11 flex flex-col items-center gap-1">
+        <Link href={whoHref} prefetch={false} className="active:opacity-80 transition">
+          <Avatar
+            src={a.person.hide_name ? null : a.person.avatar_url}
+            name={who}
+            size={44}
+            alt=""
+          />
+        </Link>
+        {a.rating != null && (
+          <span
+            className="text-[11px] font-bold text-accent tabular-nums leading-none"
+            title={t.rateOutOf(a.rating)}
+          >
+            ★ <span dir="ltr">{a.rating.toFixed(1)}</span>
+          </span>
+        )}
+      </div>
 
       {/* **`justify-between`: الاسمُ في القمّة والذيلُ في القاع مهما طال
           النصّ** — والفراغُ يقع في الوسط حيث لا مِرساةَ تهتزّ */}
       <div className={`min-w-0 flex-1 flex flex-col justify-between ${ROW_MIN_H}`}>
         <div>
-          {/* **الصدرُ للهويّة**: من قال، وبكم قيّمه */}
-          <div className="flex items-baseline gap-2">
-            <Link
-              href={whoHref}
-              prefetch={false}
-              className="font-bold text-[14px] text-foreground line-clamp-1 hover:text-accent transition"
-            >
-              {who}
-            </Link>
-            {a.rating != null && (
-              <span
-                className="shrink-0 text-[12px] font-bold text-accent tabular-nums"
-                title={t.rateOutOf(a.rating)}
-              >
-                ★ <span dir="ltr">{a.rating.toFixed(1)}</span>
-              </span>
-            )}
-          </div>
+          {/* **الصدرُ للاسم وحده** — والتقييمُ انتقل تحت الوجه */}
+          <Link
+            href={whoHref}
+            prefetch={false}
+            dir="auto"
+            className="block font-bold text-[14px] text-foreground line-clamp-1 hover:text-accent transition"
+          >
+            {who}
+          </Link>
 
           {/* الضغطُ على النصّ يفتح الغرفة — **حيث يُقرأ كاملاً ويُردّ عليه** */}
+          {/* **`dir="auto"`: اتّجاهُ الكلام من الكلام لا من الصفحة**
+              (طلبُ أحمد: «من يكتب بالعربي يكون عرضُه RTL»). المتصفّح يقرأ
+              أوّلَ حرفٍ ذي اتجاهٍ قويّ فيحسم — **فتعليقٌ عربيّ داخل واجهةٍ
+              إنجليزية يُرسم من اليمين، ونقطتُه وفاصلتُه في مكانهما.**
+              **وهو أصحُّ من قراءة لغة الحساب:** الكاتبُ قد يكتب بلغةٍ غير
+              لغة واجهته، **والنصُّ يعرف نفسَه ولا يحتاج من يخبره.**
+              ⚠️ **ولا يوضع على جملة الخبر**: تلك جملتُنا نحن بلغة القارئ،
+              وعنوانٌ عربيٌّ في أوّلها كان سيقلب سطراً إنجليزياً كاملاً. */}
           <Link href={talkHref} prefetch={false} className="block mt-1">
-            <p className="text-[13px] leading-relaxed text-foreground/85 line-clamp-3">
+            <p
+              dir="auto"
+              className="text-[13px] leading-relaxed text-foreground/85 line-clamp-3"
+            >
               {a.review}
             </p>
           </Link>
@@ -350,7 +371,9 @@ function NewsRow({
       {/* **ختمُ Loopz في موضع الوجه** — الأيقونةُ الرسمية نفسُها، لا
           مونوغرام جديد: **الوردمارك هو الشعار** (D-039)، وعلامةٌ ثانية
           للعلامة الواحدة عيبٌ لا تمييز. */}
-      <span className="shrink-0">
+      {/* نفسُ عرض عمود الهويّة في صفّ التعليق — **فتتحاذى الصفوف كلُّها**
+          وإن لم يكن للخبر تقييمٌ تحته */}
+      <span className="shrink-0 w-11">
         <Avatar src="/icon-192.png" name="Loopz" size={44} alt="" />
       </span>
 
