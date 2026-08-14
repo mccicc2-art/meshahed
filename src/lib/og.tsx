@@ -141,7 +141,19 @@ export function threadOgCard({
             textAlign: rtl ? "right" : "left",
           }}
         >
-          <div style={{ display: "flex", fontSize: fontSize(body.length), lineHeight: 1.28 }}>
+          {/* ⚠️ **`direction` تُكتب على عقدة النصّ نفسِها لا على الجذر
+              وحده**: satori لا يورّثها كما يورّثها المتصفّح، **فالسطرُ
+              الثاني من جملةٍ عربيةٍ ملتفّة كان يُرسم بكلماتٍ معكوسة** —
+              فُحص حيّاً على رأيٍ من سطرين ثم أُعيد فحصُه. */}
+          <div
+            style={{
+              display: "flex",
+              fontSize: fontSize(body.length),
+              lineHeight: 1.28,
+              direction: rtl ? "rtl" : "ltr",
+              textAlign: rtl ? "right" : "left",
+            }}
+          >
             {body}
           </div>
           {(work || badge) && (
