@@ -3376,6 +3376,45 @@ export async function recordPostViews(keys: string[]): Promise<void> {
 }
 
 /**
+ * **حذفُ ردّي على نشرة** و**الإبلاغُ عن ردِّ غيري** (D-239) — توأما
+ * `deleteMyReply` و`reportReply` بحرفيّتهما، على جدولِ النشرات.
+ *
+ * ⚠️ **ولماذا فعلان لا عَلَمٌ في الفعلين القائمين:** ذانك يشترطان
+ * `tmdbId` و`mediaType` **مِرساةً لإبطال المسارات**، وهذه النشرةُ
+ * مرساتُها مفتاحٌ نصّيّ. **وعَلَمٌ يقلب نصفَ الوسائط ليس عَلَماً.**
+ * والمشترَكُ الحقيقيُّ بينهما — **صفُّ الردّ** — مُستخرَجٌ أصلاً
+ * (`ReplyRow`).
+ *
+ * **وبابُ البلاغ من أوّل يوم**: سطحٌ عامٌّ جديد بلا بابِ بلاغ هو كيف
+ * تُولد المشكلة (D-193).
+ */
+export async function deleteMyNewsReply(input: { replyId: string }): Promise<void> {
+  const replyId = uuid(input.replyId);
+  const { supabase, user } = await requireUser();
+  const { error } = await supabase
+    .from("news_post_replies")
+    .delete()
+    .match({ id: replyId, user_id: user.id });
+  if (error) fail(error);
+  revalidatePath("/people");
+}
+
+/** صامتٌ بلا عدّاد، والإخفاءُ عند العاشر في مُشغِّل SQL لا هنا */
+export async function reportNewsReply(input: {
+  replyId: string;
+  reason?: string;
+}): Promise<void> {
+  const replyId = uuid(input.replyId);
+  const { supabase, user } = await requireUser("report", 10, 60_000);
+  const reason = (input.reason ?? "").replace(/\s+/g, " ").trim().slice(0, 300);
+  const { error } = await supabase.from("news_reply_reports").upsert(
+    { reply_id: replyId, reporter_id: user.id, reason: reason || null },
+    { onConflict: "reply_id,reporter_id", ignoreDuplicates: true },
+  );
+  if (error) fail(error);
+}
+
+/**
  * حذفُ ردّي — والسياسةُ تمنع حذفَ ردِّ غيري، فلا فحصَ قبل الكتابة.
  *
  * والردودُ عليه تُحذف معه (`on delete cascade`): خيطٌ رأسُه محذوفٌ

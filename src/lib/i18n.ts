@@ -619,6 +619,21 @@ const ar = {
      تحته، والثانيةُ تخصّ العملَ — **وكلمةٌ واحدة كانت تحمل المعنيين** */
   postViewsHint: "شاهدوا المنشور",
   undoNotWatched: "لم أشاهده",
+  /* **صفحةُ النشرة** (D-239) — «النشرة» لا «الخبر»: **الخبرُ حدثٌ في
+     العالم، والنشرةُ ما كتبناه نحن عنه** — والصفحةُ صفحتُنا لا صفحتُه */
+  postPageTitle: "نشرة Loopz",
+  postRepliesTitle: "الردود",
+  postNoReplies: "لا ردود بعد — كن أوّل من يتكلّم",
+  postReplyPlaceholder: "اكتب ردّك…",
+  postOpenReplies: "عرض الردود",
+  /* **ثلاثُ رقاقاتٍ للنشاط** (D-240). **و«تريندينق» حُذفت من اقتراح
+     أحمد**: هي و«الأكثر لايك» ترتيبٌ واحد بلبوسين — **ورقاقتان تُنتجان
+     نفسَ القائمة رقاقةٌ واحدة تُربك** (قاعدة ٣: لا عائلةَ ثانية) */
+  feedForYou: "لك",
+  feedLatest: "الأحدث",
+  feedTop: "الأكثر تفاعلاً",
+  feedEmptyForYou:
+    "لا شيء لك بعد. تابِع أشخاصاً أو أضِف أعمالاً إلى مكتبتك، فيمتلئ هذا الخطّ بكلامٍ يخصّك.",
   /* **«فضّلوه» لا «مفضّلة»**: العددُ أشخاصٌ فعلوا لا صفةٌ للعمل — وهو
      نفسُ نحو «شاهدوه» بجانبه، فيُقرأ الصفُّ لغةً واحدة (D-216) */
   talkFavoritesHint: "فضّلوه",
@@ -1701,6 +1716,16 @@ const en: Dict = {
   talkWatchersHint: "watching",
   postViewsHint: "post views",
   undoNotWatched: "Not watched",
+  postPageTitle: "Loopz post",
+  postRepliesTitle: "Replies",
+  postNoReplies: "No replies yet — be the first",
+  postReplyPlaceholder: "Write a reply…",
+  postOpenReplies: "See replies",
+  feedForYou: "For you",
+  feedLatest: "Latest",
+  feedTop: "Top",
+  feedEmptyForYou:
+    "Nothing for you yet. Follow a few people or add titles to your library, and this feed fills with talk that concerns you.",
   talkFavoritesHint: "favourited",
   worksRatedByHint: (n: number) =>
     n === 1

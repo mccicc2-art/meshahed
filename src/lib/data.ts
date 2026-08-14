@@ -1939,6 +1939,86 @@ export async function getNewsReplyCounts(keys: string[]): Promise<Map<string, nu
 }
 
 /**
+ * **ردودُ نشرةٍ واحدة** (D-239، الهجرة ٧٣) — مستهلكُ `news_post_thread`.
+ *
+ * **وهي الثغرةُ التي أغلقتها هذه الدفعة:** الردُّ كان يُكتب منذ D-236
+ * **ولا يراه أحدٌ بعد إرساله** — الدالّةُ مكتوبةٌ في الهجرة وبلا قارئ.
+ * **وسطحُ كتابةٍ بلا سطحِ قراءةٍ ليس ميزةً ناقصة، هو وعدٌ مكسور.**
+ *
+ * **والدالّةُ هي من تحترم الإخفاءَ والحظر** لا الواجهة (D-011/D-145)،
+ * **وسقوطُها صامت** قبل تشغيل ٧٣: خيطٌ فارغٌ وصندوقُ كتابةٍ يعمل.
+ */
+export interface NewsReply {
+  replyId: string;
+  /** كاتبُ الردّ */
+  authorId: string;
+  nickname: string | null;
+  username: string | null;
+  avatar_url: string | null;
+  hide_name: boolean;
+  /** ردٌّ على ردّ؟ عمقٌ واحد فقط (حارسُ الهجرة ٧٣) */
+  parentId: string | null;
+  body: string;
+  createdAt: string;
+  isMine: boolean;
+}
+
+export async function getNewsThread(postKey: string): Promise<NewsReply[]> {
+  const key = String(postKey ?? "").trim();
+  if (!key) return [];
+  try {
+    const supabase = await createClient();
+    const [{ data, error }, me] = await Promise.all([
+      supabase.rpc("news_post_thread", { p_key: key }),
+      getUser(),
+    ]);
+    if (error || !data) return [];
+    return (
+      data as {
+        id: string;
+        parent_id: string | null;
+        author_id: string;
+        nickname: string | null;
+        username: string | null;
+        avatar_url: string | null;
+        hide_name: boolean;
+        body: string;
+        created_at: string;
+      }[]
+    ).map((r) => ({
+      replyId: r.id,
+      authorId: r.author_id,
+      nickname: r.nickname,
+      username: r.username,
+      avatar_url: r.avatar_url,
+      hide_name: !!r.hide_name,
+      parentId: r.parent_id,
+      body: r.body,
+      createdAt: r.created_at,
+      isMine: !!me && me.id === r.author_id,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * **نشرةٌ واحدة بمفتاحها** — للصفحة التي تحمل خيطَها.
+ *
+ * ⚠️ **ولا دالّةَ SQL جديدة لها عن قصد:** كانت ستكون الهجرةَ ٧٥،
+ * **وصفحةٌ لا تعمل حتى تُشغَّل هجرةٌ ليست صفحة**. والمقصُّ يبقي ٣٠٠
+ * منشورٍ على الأكثر (`prune_news_posts`)، **فقراءةُ الثلاثمئة والبحثُ
+ * فيها سقفٌ معروفٌ لا نموّ**: نداءٌ واحدٌ لفتحةِ صفحةٍ واحدة.
+ * **يوم يكبر الأرشيفُ تُكتب الدالّة** — ولا تُكتب قبل أن تلزم.
+ */
+export async function getNewsPost(postKey: string): Promise<LoopzNewsItem | null> {
+  const key = String(postKey ?? "").trim();
+  if (!key) return null;
+  const all = await getLoopzNews(300);
+  return all.find((n) => n.key === key) ?? null;
+}
+
+/**
  * **عدُّ مشاهداتِ المنشورات** (D-237) — نداءٌ واحد للخطّ كلِّه (D-164).
  *
  * **وسقوطُه صامتٌ** كأخيه في ٧٣: قبل الهجرة ٧٤ لا دالّةَ، **فتعود خريطةٌ
