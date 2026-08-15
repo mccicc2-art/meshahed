@@ -641,6 +641,11 @@ const ar = {
      باسمه. **والفراغُ يقول ماذا تفعل ليمتلئ** لا «لا يوجد» (D-181). */
   talkRoomPlaceholder: "شارِك في النقاش…",
   talkRoomEmpty: "لا مشاركات بعد — افتح النقاشَ بأوّل سطر",
+  /* **وفراغُ التبويب غيرُ فراغ الغرفة** (D-259): هذا يقول «لا غرفةَ
+     بعد» وذاك يقول «الغرفةُ خالية». **وكان يقرأ نصَّ الآراء** («لم يكتب
+     أحدٌ رأياً بعد») — **اسمٌ بقي بعد أن تغيّر ما يسمّيه.**
+     **ويدلّ على الباب** لأن الغرفة لا تُفتح من هنا: تُفتح من صفحة العمل. */
+  talkRoomsEmpty: "لا نقاشات بعد — افتح أوّلَ غرفةٍ من صفحة أيّ عمل",
   /* **«شاهدوا المنشور» لا «شاهدوه»** (D-237): الأولى تخصّ الصفَّ الذي
      تحته، والثانيةُ تخصّ العملَ — **وكلمةٌ واحدة كانت تحمل المعنيين** */
   postViewsHint: "شاهدوا المنشور",
@@ -1765,6 +1770,7 @@ const en: Dict = {
   talkRoomLastAt: (when: string) => `last post ${when}`,
   talkRoomPlaceholder: "Join the discussion…",
   talkRoomEmpty: "No posts yet — open the discussion with the first line",
+  talkRoomsEmpty: "No discussions yet — start the first one from any title's page",
   postViewsHint: "post views",
   undoNotWatched: "Not watched",
   postPageTitle: "Post",
