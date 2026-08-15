@@ -292,6 +292,13 @@ export default async function PeoplePage({
           need("reviews") ? getPeopleTopReviews(30, wantAll ? 10 : 3) : [],
         ])
       : null;
+  /* **ومن أتابعهم — نداءٌ واحدٌ مخزَّنٌ للتبويب** (D-275): الأقسامُ تعرض
+     الناسَ كلَّهم لا الغرباءَ وحدهم، **و«متابعة» تحت اسمِ من تتابعه كذبةٌ
+     يراها صاحبُها في الحال** (D-216). **ولا يُدفع في تبويبٍ آخر.**
+     ⚠️ **وخارجَ `Promise.all` عمداً**: `getFollowingIds` مخزَّنةٌ
+     (`cache`) ويقرؤها تبويبُ «النشاط» أيضاً، **فالنداءُ واحدٌ للصفحة لا
+     نداءان** (D-205/D-223). */
+  const boardFollowing = tab === "people" ? await getFollowingIds() : new Set<string>();
   const featured = peopleTab?.[0] ?? [];
   const board = peopleTab?.[1] ?? [];
   const topReviews = peopleTab?.[2] ?? [];
@@ -604,14 +611,35 @@ export default async function PeoplePage({
                   ‹ {t.backAria}
                 </Link>
                 {allView === "featured" && (
-                  <PeopleLeaderboard rows={featured} locale={locale} mode="featured" limit={10} />
+                  <PeopleLeaderboard
+                    rows={featured}
+                    locale={locale}
+                    mode="featured"
+                    limit={10}
+                    meId={user.id}
+                    following={boardFollowing}
+                  />
                 )}
                 {allView === "top" && (
-                  <PeopleLeaderboard rows={board} locale={locale} mode="top" limit={10} />
+                  <PeopleLeaderboard
+                    rows={board}
+                    locale={locale}
+                    mode="top"
+                    limit={10}
+                    meId={user.id}
+                    following={boardFollowing}
+                  />
                 )}
                 {allView === "reviews" && <TopReviews rows={topReviews} locale={locale} />}
                 {allView === "rising" && (
-                  <PeopleLeaderboard rows={board} locale={locale} mode="rising" limit={10} />
+                  <PeopleLeaderboard
+                    rows={board}
+                    locale={locale}
+                    mode="rising"
+                    limit={10}
+                    meId={user.id}
+                    following={boardFollowing}
+                  />
                 )}
               </>
             ) : (
@@ -635,12 +663,16 @@ export default async function PeoplePage({
                   locale={locale}
                   mode="featured"
                   seeAllHref="/people?tab=people&all=featured"
+                  meId={user.id}
+                  following={boardFollowing}
                 />
                 <PeopleLeaderboard
                   rows={board}
                   locale={locale}
                   mode="top"
                   seeAllHref="/people?tab=people&all=top"
+                  meId={user.id}
+                  following={boardFollowing}
                 />
                 <TopReviews
                   rows={topReviews}
@@ -652,6 +684,8 @@ export default async function PeoplePage({
                   locale={locale}
                   mode="rising"
                   seeAllHref="/people?tab=people&all=rising"
+                  meId={user.id}
+                  following={boardFollowing}
                 />
               </>
             ))
