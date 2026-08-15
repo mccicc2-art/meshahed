@@ -463,16 +463,3 @@ export function PeopleWatching({
     </BoardSection>
   );
 }
-
-/* ⚠️ **وسيطُ دفعةٍ واحدة** (D-028): يسقط في الدفعة التي تلي هبوط
-   `app/people/page.tsx` — **الرفعُ مجلّداً مجلّداً يفرض أن يبقى المفتاحُ
-   القديم حيّاً حتى ينتقل مستهلكُه**، ولا بناءَ وسيطٌ أحمر. */
-export function TopReviewCard({
-  row,
-  locale,
-}: {
-  row: PeopleTopReviewRow | null;
-  locale: Locale;
-}) {
-  return <TopReviews rows={row ? [row] : []} locale={locale} />;
-}
