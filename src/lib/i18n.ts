@@ -608,6 +608,42 @@ const ar = {
      مكتبةً أو متابَعاً — **ولا يقول «لا يوجد أحد»** فذاك كذبٌ عن موقعٍ
      فيه ناس. */
   peopleTabEmpty: "لا اقتراحات بعد — أضِف أعمالاً إلى مكتبتك وسنجد من يشبه ذوقك",
+  /* ================= أقسامُ تبويب «الناس» (D-263) =================
+     **عددٌ صريح لا نقاطٌ موزونة** — قرارُ أحمد بسؤالٍ صريح. **والرقمُ
+     المعروض مجموعُ ثلاثةٍ مكتوبةٍ تحته**، فمن شكّ جمعها بنفسه:
+     **رقمٌ لا يستطيع أحدٌ مراجعته يُفقِد الثقةَ بالصفحة كلِّها** (D-219). */
+  peopleBoardTop: "الأكثر مشاركةً هذا الأسبوع",
+  peopleBoardActions: (n: number) =>
+    n === 1
+      ? "تفاعلٌ واحد"
+      : n === 2
+        ? "تفاعلان"
+        : n <= 10
+          ? `${num(n, "ar")} تفاعلات`
+          : `${num(n, "ar")} تفاعلاً`,
+  /* **والتفصيلُ تحته لا بدلَه**: مشاركةٌ ورأيٌ وإعجابٌ **ثلاثةُ أفعالٍ
+     مختلفة**، **وجمعُها في كلمةٍ واحدة بلا تفصيل هو ما يصنع «النقطة»**
+     التي رُفضت. */
+  peopleBoardBreakdown: (posts: number, reviews: number, likes: number) =>
+    `${num(posts, "ar")} مشاركة · ${num(reviews, "ar")} رأي · ${num(likes, "ar")} إعجاب`,
+  peopleBoardRising: "نجومٌ صاعدون",
+  /* **والصعودُ فرقٌ لا رصيد**: نافذةُ الأسبوع ناقصَ التي قبلها —
+     **فمن ثبت رقمُه ليس صاعداً وإن كان الأوّل.** */
+  peopleBoardDelta: (n: number) => `+${num(n, "ar")} عن الأسبوع الماضي`,
+  peopleBoardTopReview: "أعلى تعليقٍ حصل على إعجابات",
+  peopleBoardLikes: (n: number) =>
+    n === 1
+      ? "إعجابٌ واحد"
+      : n === 2
+        ? "إعجابان"
+        : n <= 10
+          ? `${num(n, "ar")} إعجابات`
+          : `${num(n, "ar")} إعجاباً`,
+  /* ⚠️ **ولا «ماذا يشاهد الأعضاء الآن»** (D-216): **لا حضورَ لحظيّاً
+     عندنا**، والذي نعلمه ما أُضيف إلى المكتبة للتوّ — **فالجملةُ تتبع
+     البيانات لا العكس.** */
+  peopleBoardWatching: "أضافوها إلى مكتباتهم",
+  peopleBoardAdded: (when: string) => `أضافه ${when}`,
   /* **تبويبُ «تعليقات»** (D-219) — الصفُّ رأيُ إنسانٍ واحد: «من تكلّم؟».
      **والسؤالان لا يتنافسان على تبويبٍ واحد بعد اليوم.** */
   communityTabComments: "تعليقات",
@@ -1794,6 +1830,17 @@ const en: Dict = {
   communityTabWorks: "Discussions",
   communityTabPeople: "People",
   peopleTabEmpty: "No suggestions yet — add titles to your library and we\u2019ll find people with your taste",
+  // People tab sections (D-263) — an explicit count, never a weighted score
+  peopleBoardTop: "Most active this week",
+  peopleBoardActions: (n: number) => (n === 1 ? "1 action" : `${num(n, "en")} actions`),
+  peopleBoardBreakdown: (posts: number, reviews: number, likes: number) =>
+    `${num(posts, "en")} posts · ${num(reviews, "en")} reviews · ${num(likes, "en")} likes`,
+  peopleBoardRising: "Rising stars",
+  peopleBoardDelta: (n: number) => `+${num(n, "en")} vs last week`,
+  peopleBoardTopReview: "Most liked comment",
+  peopleBoardLikes: (n: number) => (n === 1 ? "1 like" : `${num(n, "en")} likes`),
+  peopleBoardWatching: "Added to their libraries",
+  peopleBoardAdded: (when: string) => `added ${when}`,
   communityTabComments: "Comments",
   // Talk page and replies (D-193)
   worksAvgHint: "Average rating of the people talking about it",

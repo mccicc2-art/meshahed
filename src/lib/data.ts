@@ -1724,6 +1724,178 @@ export async function getPeopleToFollow(
   }
 }
 
+/* ============================================================
+   **أقسامُ تبويب «الناس»** (D-263 · الهجرة ٨١)
+   ============================================================
+   **ثلاثُ دوالِّ `security definer`** تقرأ باحترام `hide_name` والحظر،
+   **ولا سياسةَ قراءةٍ خامسة**. والصفُّ يصل بأعمدةٍ `snake_case` فيُحوَّل
+   هنا — **الواجهةُ لا ترى أسماءَ القاعدة** (نمطُ `getTalkRooms`).
+
+   ⚠️ **والحارسُ في SQL لا هنا**: `auth.uid() is null` تعني صفراً من
+   الصفوف، **فزائرٌ لا يرى شيئاً بلا فرعٍ في الواجهة.** */
+
+/**
+ * **صفُّ لوحة النشاط — والمقاييسُ الثلاثةُ تصل منفصلةً عمداً.**
+ *
+ * `total` مجموعُها، **و`prevTotal` مجموعُ النافذة السابقة** — فقسمُ
+ * «الصاعدون» **طرحٌ في الواجهة لا نداءٌ ثانٍ** (D-198).
+ * **ولا عمودَ نقاط**: الرقمُ المعروض يُراجَع بجمع مكوّناته (D-219).
+ */
+export interface PeopleLeaderRow extends PersonLite {
+  posts: number;
+  reviews: number;
+  likesIn: number;
+  total: number;
+  prevTotal: number;
+}
+
+/**
+ * **نداءٌ واحدٌ يخدم قسمين** (D-198): «الأكثر مشاركة» و«الصاعدون».
+ *
+ * ⚠️ **والسقفُ عشرون لا خمسة** رغم أن كلَّ قسمٍ يعرض خمسة: الدالّةُ
+ * ترتّب **بالمجموع**، **والصاعدُ قد يكون العاشر مجموعاً وهو الأوّل
+ * فرقاً** — فسقفٌ بخمسةٍ كان يجعل القسم الثاني نسخةً من الأوّل بترتيبٍ
+ * آخر. **والقصُّ في الواجهة بعد الفرزين** (وسقفُ الدالّة نفسُها ٢٠).
+ */
+export async function getPeopleLeaderboard(days = 7, limit = 20): Promise<PeopleLeaderRow[]> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("people_leaderboard", {
+      p_days: days,
+      p_limit: limit,
+    });
+    if (error || !data) return [];
+    return (data as {
+      user_id: string;
+      nickname: string | null;
+      username: string | null;
+      avatar_url: string | null;
+      hide_name: boolean | null;
+      posts: number;
+      reviews: number;
+      likes_in: number;
+      total: number;
+      prev_total: number;
+    }[]).map((r) => ({
+      id: String(r.user_id),
+      nickname: r.nickname,
+      username: r.username,
+      avatar_url: r.avatar_url,
+      hide_name: Boolean(r.hide_name),
+      posts: Number(r.posts ?? 0),
+      reviews: Number(r.reviews ?? 0),
+      likesIn: Number(r.likes_in ?? 0),
+      total: Number(r.total ?? 0),
+      prevTotal: Number(r.prev_total ?? 0),
+    }));
+  } catch {
+    return [];
+  }
+}
+
+/** **أعلى تعليقٍ حصل على إعجابات** — صفٌّ واحد أو لا شيء (D-263) */
+export interface PeopleTopReviewRow extends PersonLite {
+  tmdbId: number;
+  mediaType: "tv" | "movie";
+  title: string | null;
+  posterPath: string | null;
+  review: string;
+  rating: number;
+  likes: number;
+  createdAt: string;
+}
+
+/**
+ * **والنافذةُ ثلاثون يوماً لا الأبد**: «أعلى تعليق» بلا نافذةٍ يتجمّد على
+ * صفٍّ واحدٍ إلى الأبد فيصير زينةً لا خبراً (حجّةُ الهجرة ٨١).
+ * **ولا إعجابَ ولا صفّ** — الدالّةُ تشترط `join` على الإعجابات.
+ */
+export async function getPeopleTopReview(days = 30): Promise<PeopleTopReviewRow | null> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("people_top_review", { p_days: days });
+    const r = (Array.isArray(data) ? data[0] : data) as {
+      user_id: string;
+      nickname: string | null;
+      username: string | null;
+      avatar_url: string | null;
+      hide_name: boolean | null;
+      tmdb_id: number;
+      media_type: string;
+      title: string | null;
+      poster_path: string | null;
+      review: string | null;
+      rating: number | null;
+      likes: number;
+      created_at: string;
+    } | undefined;
+    if (error || !r || !r.review) return null;
+    return {
+      id: String(r.user_id),
+      nickname: r.nickname,
+      username: r.username,
+      avatar_url: r.avatar_url,
+      hide_name: Boolean(r.hide_name),
+      tmdbId: Number(r.tmdb_id),
+      mediaType: r.media_type === "tv" ? "tv" : "movie",
+      title: r.title,
+      posterPath: r.poster_path,
+      review: r.review,
+      rating: Number(r.rating ?? 0),
+      likes: Number(r.likes ?? 0),
+      createdAt: String(r.created_at),
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * **ما أضافه الأعضاء إلى مكتباتهم** — **لا «ماذا يشاهدون الآن»**:
+ * لا حضورَ لحظيّاً عندنا، **والجملةُ تتبع البيانات لا العكس** (D-216).
+ * **والعنوانُ والملصقُ على الصفّ نفسِه** (D-048) فلا نداءَ TMDB.
+ */
+export interface PeopleWatchingRow extends PersonLite {
+  tmdbId: number;
+  mediaType: "tv" | "movie";
+  title: string | null;
+  posterPath: string | null;
+  addedAt: string;
+}
+
+export async function getPeopleWatching(limit = 8): Promise<PeopleWatchingRow[]> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("people_watching", { p_limit: limit });
+    if (error || !data) return [];
+    return (data as {
+      user_id: string;
+      nickname: string | null;
+      username: string | null;
+      avatar_url: string | null;
+      hide_name: boolean | null;
+      tmdb_id: number;
+      media_type: string;
+      title: string | null;
+      poster_path: string | null;
+      added_at: string;
+    }[]).map((r) => ({
+      id: String(r.user_id),
+      nickname: r.nickname,
+      username: r.username,
+      avatar_url: r.avatar_url,
+      hide_name: Boolean(r.hide_name),
+      tmdbId: Number(r.tmdb_id),
+      mediaType: r.media_type === "tv" ? "tv" : "movie",
+      title: r.title,
+      posterPath: r.poster_path,
+      addedAt: String(r.added_at),
+    }));
+  } catch {
+    return [];
+  }
+}
+
 export interface TitleCircle {
   /** عدد من تتابعهم ممّن شاهدوه — **صفرٌ يعني «لا تُظهر السطر»** لا «لا أحد» */
   watchers: number;
