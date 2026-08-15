@@ -624,8 +624,13 @@ const ar = {
   /* **والتفصيلُ تحته لا بدلَه**: مشاركةٌ ورأيٌ وإعجابٌ **ثلاثةُ أفعالٍ
      مختلفة**، **وجمعُها في كلمةٍ واحدة بلا تفصيل هو ما يصنع «النقطة»**
      التي رُفضت. */
-  peopleBoardBreakdown: (posts: number, reviews: number, likes: number) =>
-    `${num(posts, "ar")} مشاركة · ${num(reviews, "ar")} رأي · ${num(likes, "ar")} إعجاب`,
+  /* ⚠️ **وجمعُ القِلّة من ٣ إلى ١٠ وحدها** — نفسُ قاعدة `suggestShared`:
+     «٦ رأي» خطأٌ صريحٌ رآه الفحصُ الحيّ، **و«١١ آراء» خطأٌ مثلُه.** */
+  peopleBoardBreakdown: (posts: number, reviews: number, likes: number) => {
+    const u = (n: number, one: string, few: string) =>
+      `${num(n, "ar")} ${n >= 3 && n <= 10 ? few : one}`;
+    return `${u(posts, "مشاركة", "مشاركات")} · ${u(reviews, "رأي", "آراء")} · ${u(likes, "إعجاب", "إعجابات")}`;
+  },
   peopleBoardRising: "نجومٌ صاعدون",
   /* **والصعودُ فرقٌ لا رصيد**: نافذةُ الأسبوع ناقصَ التي قبلها —
      **فمن ثبت رقمُه ليس صاعداً وإن كان الأوّل.** */
@@ -1833,8 +1838,11 @@ const en: Dict = {
   // People tab sections (D-263) — an explicit count, never a weighted score
   peopleBoardTop: "Most active this week",
   peopleBoardActions: (n: number) => (n === 1 ? "1 action" : `${num(n, "en")} actions`),
-  peopleBoardBreakdown: (posts: number, reviews: number, likes: number) =>
-    `${num(posts, "en")} posts · ${num(reviews, "en")} reviews · ${num(likes, "en")} likes`,
+  // “1 posts” shipped and was caught on the live page — singular is not optional
+  peopleBoardBreakdown: (posts: number, reviews: number, likes: number) => {
+    const u = (n: number, w: string) => `${num(n, "en")} ${n === 1 ? w : `${w}s`}`;
+    return `${u(posts, "post")} · ${u(reviews, "review")} · ${u(likes, "like")}`;
+  },
   peopleBoardRising: "Rising stars",
   peopleBoardDelta: (n: number) => `+${num(n, "en")} vs last week`,
   peopleBoardTopReview: "Most liked comment",
