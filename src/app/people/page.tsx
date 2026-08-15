@@ -19,19 +19,12 @@ import {
   getFollowingIds,
   getNewsReplyCounts,
   getPostViewCounts,
-  getPeopleToFollow,
   getPeopleLeaderboard,
   getPeopleTopReviews,
-  getPeopleWatching,
 } from "@/lib/data";
 import { getT, getTabPrefs, getFeedStrangers } from "@/lib/locale";
 import { WorksTalk } from "@/components/WorksTalk";
-import {
-  PeopleLeaderboard,
-  TopReviews,
-  PeopleSuggestions,
-  PeopleWatching,
-} from "@/components/PeopleBoard";
+import { PeopleLeaderboard, TopReviews } from "@/components/PeopleBoard";
 import { ActivityFeed } from "@/components/ActivityFeed";
 import { commentViewKey, newsViewKey } from "@/lib/postKeys";
 import { applyTabPrefs, defaultTab } from "@/lib/tabPrefs";
@@ -93,11 +86,13 @@ function asTab(v: string | undefined): Tab {
  * **ومفتاحٌ مجهولٌ يسقط إلى اللوحة كاملةً** لا إلى شاشة خطأ: الرابطُ
  * قد يُكتب بيد، **وقارئٌ متسامح خيرٌ من `404` على معاملٍ زائد** (D-179).
  */
-type BoardAll = "top" | "rising" | "reviews" | "people" | "watching";
+type BoardAll = "top" | "reviews" | "rising";
 function asAll(v: string | undefined): BoardAll | null {
-  return v === "top" || v === "rising" || v === "reviews" || v === "people" || v === "watching"
-    ? v
-    : null;
+  /* ⚠️ **و`people` و`watching` سقطتا مع قسميهما** (D-270) — **ورابطٌ
+     قديمٌ بهما يهبط على اللوحة كاملةً لا على `404`**: هو نفسُ القارئ
+     المتسامح أعلاه، **والقسمُ الذي كان يُفتح لم يعد موجوداً فلا بديلَ
+     له يُحوَّل إليه.** */
+  return v === "top" || v === "reviews" || v === "rising" ? v : null;
 }
 
 /* **سقطت هنا خوارزميةُ ترتيب الخطّ كاملةً (D-134/D-136/D-149)** مع
@@ -280,21 +275,15 @@ export default async function PeoplePage({
   const peopleTab =
     tab === "people"
       ? await Promise.all([
-          /* **و٣ في القسم و١٠ في «عرض الكل»**: البطاقةُ تُقرأ بنظرة،
-             **وصفٌّ من اثني عشر وجهاً في لوحةٍ ليس اقتراحاً بل دليل.** */
-          need("people") ? getPeopleToFollow(null, wantAll ? 10 : 3) : [],
-          /* **نداءٌ واحدٌ يخدم القسمين ١ و٢** (D-198) — الدالّةُ تُرجع
+          /* **نداءٌ واحدٌ يخدم قسمَي الأسبوع** (D-198) — الدالّةُ تُرجع
              النافذتين معاً، **والواجهةُ تطرح.** */
           need("top") || need("rising") ? getPeopleLeaderboard(20) : [],
           /* **ثلاثةٌ لا واحد** (D-264، الهجرة ٨٢) */
           need("reviews") ? getPeopleTopReviews(30, wantAll ? 10 : 3) : [],
-          need("watching") ? getPeopleWatching(wantAll ? 10 : 4) : [],
         ])
       : null;
-  const suggested = peopleTab?.[0] ?? [];
-  const board = peopleTab?.[1] ?? [];
-  const topReviews = peopleTab?.[2] ?? [];
-  const watching = peopleTab?.[3] ?? [];
+  const board = peopleTab?.[0] ?? [];
+  const topReviews = peopleTab?.[1] ?? [];
   /* **وفراغُ «الصاعدين» ليس فراغَ اللوحة**: النداءُ واحدٌ للقسمين، **فقد
      تعود اللوحةُ ممتلئةً ولا يكون فيها صاعدٌ واحد** — ولو قيس هذا القسمُ
      بطول `board` لبقي «عرض الكل» صفحةً فيها بابُ رجوعٍ ولا شيء تحته.
@@ -302,10 +291,7 @@ export default async function PeoplePage({
   const peopleEmpty =
     allView === "rising"
       ? board.every((r) => r.total - r.prevTotal <= 0)
-      : suggested.length === 0 &&
-        board.length === 0 &&
-        topReviews.length === 0 &&
-        watching.length === 0;
+      : board.length === 0 && topReviews.length === 0;
 
   /* «أشخاص لمتابعتهم» (D-126) — تُطلب حين يكون الخطّ هزيلاً لا فارغاً
      وحده: دائرةٌ من شخصين تُنتج خطّاً صامتاً كدائرةٍ من صفر، والفرق أن
@@ -598,24 +584,27 @@ export default async function PeoplePage({
                 {allView === "top" && (
                   <PeopleLeaderboard rows={board} locale={locale} mode="top" limit={10} />
                 )}
+                {allView === "reviews" && <TopReviews rows={topReviews} locale={locale} />}
                 {allView === "rising" && (
                   <PeopleLeaderboard rows={board} locale={locale} mode="rising" limit={10} />
                 )}
-                {allView === "reviews" && <TopReviews rows={topReviews} locale={locale} />}
-                {allView === "people" && (
-                  <PeopleSuggestions people={suggested} locale={locale} limit={10} />
-                )}
-                {allView === "watching" && (
-                  <PeopleWatching rows={watching} locale={locale} limit={10} />
-                )}
               </>
             ) : (
-              /* **الترتيبُ ترتيبُ لوحة أحمد** (D-264): الأكثرُ مشاركةً ·
-                 أعلى التعليقات · أشخاصٌ يشبهون ذوقك · الصاعدون · ما
-                 أُضيف إلى المكتبات. **وقسمُ «أعضاء يستحقّون المتابعة»
-                 سقط باختيار أحمد**: مصدرُه عندنا هو مصدرُ «يشبهون ذوقك»
-                 نفسُه، **وقسمان من مصدرٍ واحد يعرضان الأشخاصَ أنفسَهم
-                 مرّتين** (تكرّر Razan وM7MD في لوحته). */
+              /* **حذفُ قسمين أوّلاً، والإضافةُ في الدفعة التالية** (D-270،
+                 طلبُ أحمد: «نفس العناوين في الصورة المرسلة ما نبغى —
+                 People to follow · Added to their libraries — وضِف بأوّل
+                 شي Featured Members»). **والحذفُ يسبق لأنه لا يحتاج شيئاً
+                 جديداً**، **و«المميّزون» ينتظرون دالّتَهم ووضعَهم في
+                 المكوّن** — **دفعتان تبنيان كلٌّ منهما وحدَها** (D-028).
+
+                 **وقسما «يشبهون ذوقك» و«أضافوها إلى مكتباتهم» حُذفا
+                 كاملَين** — **لا أُخفيا**: حكمُ صاحبِ المنتج على قسمٍ
+                 يعمل هو حكمٌ نافذ، **وقسمٌ يُخفى بشرطٍ يبقى شيفرةً
+                 تُقرأ ولا تُرسم** (D-214: ما لا قارئَ له يُحذف).
+
+                 ⚠️ **وقيل لأحمد قبل اختياره إن «المميّزين» سيكرّرون
+                 وجوهَ «الأكثر مشاركة»** — واختار، **وحجّتُه أن الصدارةَ
+                 على تسعين يوماً غيرُ صدارةِ سبتٍ واحد** وهي صحيحة. */
               <>
                 <PeopleLeaderboard
                   rows={board}
@@ -628,21 +617,11 @@ export default async function PeoplePage({
                   locale={locale}
                   seeAllHref="/people?tab=people&all=reviews"
                 />
-                <PeopleSuggestions
-                  people={suggested}
-                  locale={locale}
-                  seeAllHref="/people?tab=people&all=people"
-                />
                 <PeopleLeaderboard
                   rows={board}
                   locale={locale}
                   mode="rising"
                   seeAllHref="/people?tab=people&all=rising"
-                />
-                <PeopleWatching
-                  rows={watching}
-                  locale={locale}
-                  seeAllHref="/people?tab=people&all=watching"
                 />
               </>
             ))
