@@ -2206,6 +2206,16 @@ export interface TalkRoom {
   lastAt: string;
   /** أحدثُ خمسةِ متكلّمين — **أشخاصٌ لا مشاركات** */
   faces: PersonLite[];
+  /**
+   * 🆕 **`data` أحدثِ نشرةِ حلقةٍ نشرها Loopz في الغرفة** (D-273 · الهجرة
+   * ٨٧) — `s` و`e` و`name_ar` و`name_en`، **وهي هي حقولُ الهجرة ٨٠**
+   * فيقرؤها `bulletinLine` نفسُه ولا تُفكَّك هنا.
+   *
+   * ⚠️ **ومعناها «آخرُ ما نشرناه هنا» لا «الحلقةُ التي يناقشونها»** —
+   * والثانيةَ لا نعلمها (D-216). **و«يتحدّث دوريّاً» يقع مجّاناً**:
+   * الدالّةُ تقرأ الأحدث، فأيُّ نشرٍ يزيح ما قبله بلا cron.
+   */
+  bulletin: Record<string, unknown> | null;
 }
 
 /**
@@ -2232,6 +2242,7 @@ export async function getTalkRooms(limit = 40): Promise<TalkRoom[]> {
       posts: number;
       last_at: string;
       faces: PersonLite[] | null;
+      bulletin?: Record<string, unknown> | null;
     }[]).map((r) => ({
       tmdbId: Number(r.tmdb_id),
       mediaType: r.media_type === "tv" ? "tv" : "movie",
@@ -2241,6 +2252,9 @@ export async function getTalkRooms(limit = 40): Promise<TalkRoom[]> {
       posts: Number(r.posts),
       lastAt: String(r.last_at),
       faces: Array.isArray(r.faces) ? r.faces.slice(0, 5) : [],
+      /* **قارئٌ متسامح** (D-179): قبل الهجرة ٨٧ لا عمودَ لها فتصل
+         `undefined` — **والبطاقةُ تُرسم بلا سطر ولا شاشةَ خطأ.** */
+      bulletin: r.bulletin ?? null,
     }));
   } catch {
     return [];

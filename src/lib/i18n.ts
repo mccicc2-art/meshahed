@@ -695,6 +695,20 @@ const ar = {
   /* **«مشاركة» تجمع الجذرَ والردّ**: الغرفةُ فيها الاثنان، **وعدٌّ يسمّي
      أحدَهما وحده يكذب على الآخر** */
   talkRoomPosts: (n: number) => (n === 1 ? "مشاركةٌ واحدة" : `${num(n, "ar")} مشاركة`),
+  /**
+   * **آخرُ حلقةٍ نشرها Loopz في الغرفة** (D-273، طلبُ أحمد: «رقم الموسم
+   * والحلقة وعنوانها»).
+   *
+   * ⚠️ **ولا تُستعمل `bulletinEpisode` مكانَها**: تلك **جملةُ خبر**
+   * («نزلت الحلقة…») تصلح يومَ نزولها، **وهذه بطاقةٌ تُقرأ بعد أسبوع** —
+   * **فمعنيان لا صيغةٌ واحدةٌ تُقحَم في الاثنين** (D-145 تُقرأ بحدّها:
+   * الوصفةُ تُشارَك حين يتّحد المعنى، لا حين يتشابه النصّ).
+   * **والعنوانُ معزولٌ بين `⁩⁨`** لأنه قد يبدأ بمحايد (D-228).
+   */
+  talkRoomEpisode: (season: number, episode: number, name?: string | null) =>
+    name
+      ? `الموسم ${num(season, "ar")} · الحلقة ${num(episode, "ar")} — ⁨${name}⁩`
+      : `الموسم ${num(season, "ar")} · الحلقة ${num(episode, "ar")}`,
   /* ✅ **وصارت «آخر مشاركة» كما في لقطة أحمد** (D-257): كُتبت «آخر رأي»
      **لأن الوقتَ الذي كنّا نملكه وقتُ أحدث رأي** — وكان صدقاً في حينه.
      **واليوم للغرفة جدولُها** (`title_posts`) و`last_at` وقتُ أحدث
@@ -1884,6 +1898,11 @@ const en: Dict = {
   talkRoomTitle: (title: string, isTv: boolean) =>
     `Discussing the ${isTv ? "series" : "film"} ${title}`,
   talkRoomPosts: (n: number) => (n === 1 ? "1 post" : `${num(n, "en")} posts`),
+  // A label, not the bulletin's "just dropped" sentence — read weeks later
+  talkRoomEpisode: (season: number, episode: number, name?: string | null) =>
+    name
+      ? `Season ${num(season, "en")} · Episode ${num(episode, "en")} — \u2068${name}\u2069`
+      : `Season ${num(season, "en")} · Episode ${num(episode, "en")}`,
   talkRoomLastAt: (when: string) => `last post ${when}`,
   talkRoomPlaceholder: "Join the discussion…",
   talkRoomEmpty: "No posts yet — open the discussion with the first line",

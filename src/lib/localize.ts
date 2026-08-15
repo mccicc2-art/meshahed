@@ -116,6 +116,48 @@ export function localizeFollows(rows: FollowRow[], locale: Locale): Promise<Foll
  *
  * وغرف الناس لا تُمسّ: اسمُها من صاحبها لا من TMDB.
  */
+/**
+ * **أسماءُ غرف النقاش بلغة القارئ** (D-273 — **وهي حجّةُ D-147 بعينها**).
+ *
+ * **بلاغُ أحمد: «كيف طلع الاسم بالعربي؟»** — واجهتُه إنجليزية والبطاقةُ
+ * تقول «Discussing the series انقر الرابط». **والسببُ ليس عطلاً في
+ * الاسم، هو غيابُ الترجمة**: `title_posts.title` يُكتب **مرّةً بلغة أوّل
+ * من فتح الغرفة** (الهجرة ٧٨)، **والغرفةُ صفٌّ واحدٌ يراه كل الناس.**
+ *
+ * **وغرفُ الأعمال التلقائية تُترجَم منذ D-147 وهذه لم تكن** — **وهو
+ * سهوٌ لا قرار**: نفسُ العلّة ونفسُ العلاج، **وسطحٌ ثانٍ للمعنى نفسِه
+ * نُسي** حتى رآه صاحبُه.
+ *
+ * ⚠️ **والفرقُ الوحيد عن `localizeTitleRooms` أسماءُ الحقول**: تلك تقرأ
+ * `name`/`tmdb_id`، وصفُّ الغرفة `camelCase` — **فالغلافُ يترجم الشكل
+ * ولا يُنسخ المحرّك** (D-145).
+ */
+export async function localizeTalkRooms<
+  T extends {
+    tmdbId: number;
+    mediaType: MediaType;
+    title: string | null;
+    posterPath: string | null;
+  },
+>(rooms: T[], locale: Locale): Promise<T[]> {
+  if (!rooms.length) return rooms;
+  const done = await localizeRows(
+    rooms.map((r) => ({
+      tmdb_id: r.tmdbId,
+      media_type: r.mediaType,
+      title: r.title,
+      poster_path: r.posterPath,
+    })),
+    locale,
+  );
+  return rooms.map((r, i) => {
+    const d = done[i];
+    return d.title === r.title && d.poster_path === r.posterPath
+      ? r
+      : ({ ...r, title: d.title, posterPath: d.poster_path } as T);
+  });
+}
+
 export async function localizeTitleRooms<
   T extends {
     name: string;
