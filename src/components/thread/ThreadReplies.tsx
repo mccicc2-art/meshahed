@@ -138,7 +138,15 @@ export function ThreadReplies({
       {signedIn && (
         <div className="py-3 border-b border-[color:var(--divider)]">
           {open === "" ? (
-            <Composer locale={locale} onCancel={() => setOpen(null)} onSend={(b) => send(b, null)} />
+            <Composer
+              locale={locale}
+              /* **والمفتاحُ حيث يُخزَّن وحدَه** (D-271): `has_spoiler`
+                 عمودٌ على `title_posts` — **فلا يظهر على خيط رأيٍ ولا
+                 نشرة**، وزرٌّ يُضغط بلا أثرٍ أسوأُ من زرٍّ غائب. */
+              allowSpoiler={nested}
+              onCancel={() => setOpen(null)}
+              onSend={(b, sp) => send(b, null, sp)}
+            />
           ) : (
             <button
               type="button"
@@ -206,8 +214,9 @@ export function ThreadReplies({
             <Composer
               locale={locale}
               hint={t.talkReplyingTo(nameOf.get(r.replyId) ?? "")}
+              allowSpoiler={nested}
               onCancel={() => setOpen(null)}
-              onSend={(b) => send(b, r.replyId)}
+              onSend={(b, sp) => send(b, r.replyId, sp)}
             />
           </div>
         )}
@@ -217,7 +226,7 @@ export function ThreadReplies({
   }
 
   /** إرسالٌ تفاؤليّ — ثم مصالحةٌ بالمعرّف الحقيقيّ (D-241) */
-  function send(body: string, parentId: string | null) {
+  function send(body: string, parentId: string | null, hasSpoiler = false) {
     const temp = `${TEMP}${parentId ?? ""}:${body.length}:${all.length}`;
     setAdded((a) => [
       ...a,
@@ -232,6 +241,10 @@ export function ThreadReplies({
         body,
         createdAt: new Date().toISOString(),
         isMine: true,
+        /* **والنسخةُ التفاؤلية تحمل العَلَم** (D-241): من أعلن الحرقَ
+           يرى سطرَه محجوباً فوراً — **ولو ظهر مكشوفاً ثم انحجب بعد
+           المصالحة لظنَّ أن الزرّ لم يعمل.** */
+        hasSpoiler,
       },
     ]);
     setOpen(null);
@@ -253,6 +266,7 @@ export function ThreadReplies({
                   mediaType: target.mediaType,
                   body,
                   parentId,
+                  hasSpoiler,
                   title: target.title,
                   posterPath: target.posterPath,
                   backdropPath: target.backdropPath,
