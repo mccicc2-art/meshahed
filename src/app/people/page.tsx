@@ -20,10 +20,18 @@ import {
   getNewsReplyCounts,
   getPostViewCounts,
   getPeopleToFollow,
+  getPeopleLeaderboard,
+  getPeopleTopReview,
+  getPeopleWatching,
 } from "@/lib/data";
 import { getT, getTabPrefs, getFeedStrangers } from "@/lib/locale";
 import { WorksTalk } from "@/components/WorksTalk";
 import { PeopleToFollow } from "@/components/PeopleToFollow";
+import {
+  PeopleLeaderboard,
+  TopReviewCard,
+  PeopleWatching,
+} from "@/components/PeopleBoard";
 import { ActivityFeed } from "@/components/ActivityFeed";
 import { commentViewKey, newsViewKey } from "@/lib/postKeys";
 import { applyTabPrefs, defaultTab } from "@/lib/tabPrefs";
@@ -235,7 +243,26 @@ export default async function PeoplePage({
   /* **ولا يُدفع ثمنُ تبويبٍ لا يُعرض** (D-194): الاقتراحُ نداءٌ واحدٌ في
      تبويبه وحده. **و٢٤ لا ٦**: الستّةُ كانت بطاقةً داخل خطٍّ هزيل
      (D-126)، **وصفحةٌ كاملةٌ بستّة أسطرٍ تُقرأ عطلاً** (D-181). */
-  const suggested = tab === "people" ? await getPeopleToFollow(null, 24) : [];
+  /* ⚠️ **وأربعةُ نداءاتٍ متوازيةٌ لا متتابعة** (D-263): كلُّها دوالُّ
+     `definer` خفيفةٌ تقرأ صفوفاً قائمة **ولا واحدةَ منها تحتاج نتيجةَ
+     الأخرى** — **فتسلسلُها كان يجمع زمنَها أربعَ مرّات بلا سبب** (نفسُ
+     درس `Promise.all` في D-164). **ولا نداءَ TMDB في القسم كلِّه**:
+     العنوانُ والملصقُ على الصفوف (D-048). */
+  const peopleTab =
+    tab === "people"
+      ? await Promise.all([
+          getPeopleToFollow(null, 24),
+          /* **نداءٌ واحدٌ يخدم القسمين ١ و٢** (D-198) — الدالّةُ تُرجع
+             النافذتين معاً، **والواجهةُ تطرح.** */
+          getPeopleLeaderboard(7, 20),
+          getPeopleTopReview(30),
+          getPeopleWatching(8),
+        ])
+      : null;
+  const suggested = peopleTab?.[0] ?? [];
+  const board = peopleTab?.[1] ?? [];
+  const topReview = peopleTab?.[2] ?? null;
+  const watching = peopleTab?.[3] ?? [];
 
   /* «أشخاص لمتابعتهم» (D-126) — تُطلب حين يكون الخطّ هزيلاً لا فارغاً
      وحده: دائرةٌ من شخصين تُنتج خطّاً صامتاً كدائرةٍ من صفر، والفرق أن
@@ -503,12 +530,30 @@ export default async function PeoplePage({
             /* **صفحةٌ كاملةٌ فتُعرض بلا إطارٍ متقطّع** (`compact`): الإطارُ
                في D-126 كان يقول «هذه بطاقةٌ داخل خطّ»، **وهنا هي الصفحة**
                — **والإطارُ يُشترى بحاجة لا بتصنيف** (D-220). */
-            suggested.length === 0 ? (
+            /* **وفراغُ التبويب يُعلَن مرّةً واحدة** (D-181): كان الشرطُ
+               على الاقتراحات وحدها، **والصفحةُ صارت خمسةَ أقسام** — فلو
+               بقي كما كان لاختفت اللوحةُ وأعلى تعليقٍ ومكتباتُ الناس
+               خلف اقتراحٍ فارغ. **وكلُّ قسمٍ يخفي نفسَه عند فراغه**،
+               **والجملةُ لا تُقال إلا حين تفرغ الخمسةُ معاً.** */
+            suggested.length === 0 &&
+            board.length === 0 &&
+            !topReview &&
+            watching.length === 0 ? (
               <p className="text-sm text-muted bg-surface border border-dashed border-border rounded-xl py-10 px-5 text-center">
                 {t.peopleTabEmpty}
               </p>
             ) : (
-              <PeopleToFollow people={suggested} locale={locale} compact />
+              /* **الترتيبُ ترتيبُ لوحتَي أحمد** (D-263): الأكثرُ مشاركةً ·
+                 الصاعدون · أعلى تعليق · **أشخاصٌ يشبهون ذوقك** · ما
+                 أُضيف إلى المكتبات. **والرابعُ مبنيٌّ منذ D-126 ولم
+                 يُمسّ** — إعادةُ استعمالٍ لا بناءٌ (قاعدة ٥). */
+              <>
+                <PeopleLeaderboard rows={board} locale={locale} mode="top" />
+                <PeopleLeaderboard rows={board} locale={locale} mode="rising" />
+                <TopReviewCard row={topReview} locale={locale} />
+                <PeopleToFollow people={suggested} locale={locale} compact />
+                <PeopleWatching rows={watching} locale={locale} />
+              </>
             )
           ) : rooms.length === 0 ? (
             /* **وفراغٌ واحدٌ لا اثنان** (D-259): كان لكل رقاقةٍ جملتُها —
