@@ -23,26 +23,73 @@ import { tvImdbId } from "@/lib/tmdb";
 import { ImdbMark, RtMark } from "./RatingMarks";
 export { ImdbMark, RtMark } from "./RatingMarks";
 
+/**
+ * 🆕 **والتصنيفُ العمريُّ يركب هذا السطرَ نفسَه** (D-286، طلبُ أحمد:
+ * «التصنيف العمري حطها في كل صفحات المسلسلات والأفلام»).
+ *
+ * **ولا نداءَ جديداً له:** OMDb تُرسل `Rated` في الردّ الذي ننادِيه هنا
+ * أصلاً — **كان يصلنا فنرميه**، وهي سيرةُ `votes` بحرفها (D-132).
+ *
+ * **وشكلُه إطارٌ لا لون:** التصنيفُ **ليس حالةً** (D-003)، **وهو أيضاً
+ * ليس رقماً يُقارَن** بالتقييمين بجانبه — فيُفصل عنهما بحدٍّ رفيعٍ يقول
+ * «هذا صنفٌ آخر من المعلومة».
+ * ⚠️ **و`dir="ltr"` عليه**: «PG-13» تنقلب شرطتُها في سطرٍ عربيّ (D-015).
+ */
+function AgeMark({ rated, label, compact }: { rated: string; label: string; compact?: boolean }) {
+  return (
+    <span
+      dir="ltr"
+      aria-label={`${label}: ${rated}`}
+      className={`inline-block rounded-md border font-bold uppercase tracking-wide leading-none ${
+        compact
+          ? "border-white/45 text-white/90 px-1.5 py-[3px] text-[10px]"
+          : "border-border text-muted px-1.5 py-1 text-[11px]"
+      }`}
+    >
+      {rated}
+    </span>
+  );
+}
+
 export async function HeroRatings({
   imdbId,
   tvId,
+  ageLabel,
+  compact = false,
 }: {
   /** معرّف IMDb إن كان بيدنا (الفيلم يحمله في تفاصيله) */
   imdbId?: string | null;
   /** مسلسل؟ يُحلّ معرّفه من /external_ids هنا — خارج مسار الترويسة الحرج */
   tvId?: number;
+  /** اسمُ «التصنيف العمري» بلغة القارئ — لقارئ الشاشة وحدَه (D-177) */
+  ageLabel?: string;
+  /**
+   * 🆕 **شكلٌ ثانٍ لا مكوّنٌ ثانٍ** (D-286، سيرةُ `variant` في D-224/D-281):
+   * فوق الغلاف يقف السطرُ **على صورةٍ داكنة** وبمقاسٍ أصغر — **ونسخُ
+   * الملفّ لأجل لونين وحجمين هو العطلُ نفسُه** (D-002).
+   */
+  compact?: boolean;
 }) {
   const iid = imdbId ?? (tvId ? await tvImdbId(tvId) : null);
   const ext = await externalRatings(iid);
   /* `externalRatings` صارت تُميّز «لا تقييم» عن «لم نصل» (D-172)، فتعود
-     بكائنٍ فارغ بدل `null`. والترويسة لا ترسم صفّاً فارغاً. */
-  if (!ext || (!ext.imdb && !ext.rt)) return null;
+     بكائنٍ فارغ بدل `null`. والترويسة لا ترسم صفّاً فارغاً.
+     ⚠️ **والتصنيفُ يدخل الشرط** (D-286): عملٌ بلا تقييمٍ وله تصنيفٌ
+     عمريٌّ يستحقّ سطرَه — **وشرطٌ لم يُوسَّع مع ما يعرضه يُخفي الجديد
+     صامتاً.** */
+  if (!ext || (!ext.imdb && !ext.rt && !ext.rated)) return null;
 
   return (
-    <div className="flex items-center gap-4 mt-2 text-sm">
+    <div
+      className={
+        compact
+          ? "flex items-center gap-2.5 mt-1 text-[12px] text-white/90"
+          : "flex items-center gap-4 mt-2 text-sm"
+      }
+    >
       {ext.imdb && (
         <span className="inline-flex items-center gap-1.5" aria-label={`IMDb ${ext.imdb}`}>
-          <ImdbMark className="text-[10px]" />
+          <ImdbMark className={compact ? "text-[9px]" : "text-[10px]"} />
           <span dir="ltr" className="font-bold tabular-nums">
             {ext.imdb}
           </span>
@@ -50,17 +97,26 @@ export async function HeroRatings({
       )}
       {ext.rt && (
         <span className="inline-flex items-center gap-1.5" aria-label={`Rotten Tomatoes ${ext.rt}`}>
-          <RtMark size={15} />
+          <RtMark size={compact ? 13 : 15} />
           <span dir="ltr" className="font-bold tabular-nums">
             {ext.rt}
           </span>
         </span>
       )}
+      {ext.rated && <AgeMark rated={ext.rated} label={ageLabel ?? "Age rating"} compact={compact} />}
     </div>
   );
 }
 
 /** هيكل الانتظار — نفس ارتفاع السطر حتى لا يقفز التخطيط عند الحلّ */
-export function HeroRatingsSkeleton() {
-  return <div className="mt-2 h-5 w-32 rounded-md bg-surface-2 animate-pulse" />;
+export function HeroRatingsSkeleton({ compact = false }: { compact?: boolean }) {
+  return (
+    <div
+      className={
+        compact
+          ? "mt-1 h-4 w-28 rounded-md bg-white/15 animate-pulse"
+          : "mt-2 h-5 w-32 rounded-md bg-surface-2 animate-pulse"
+      }
+    />
+  );
 }

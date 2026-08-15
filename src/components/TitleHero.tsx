@@ -47,6 +47,8 @@ export function TitleHero({
   ratingLabel,
   locale,
   end,
+  meta,
+  sub,
 }: {
   /** روابطُ صورٍ كاملة — المستدعي يملك قرارَ «فنّي أم رسميّ» (D-131) */
   backdrop: string | null;
@@ -62,9 +64,32 @@ export function TitleHero({
   locale: Locale;
   /** الزرُّ العائم في طرف النهاية — انظر أعلاه */
   end?: React.ReactNode;
+  /**
+   * 🆕 **سطرُ الحقائق تحت الاسم** (D-286، طلبُ أحمد: «اسم المسلسل ارفعه
+   * فوق وحط تحته تقييمه من IMDb والتصنيف العمري»).
+   *
+   * **وهو وسيطٌ لا محتوًى يُبنى هنا** — لسببِ `end` نفسِه: التقييمُ رحلةٌ
+   * إلى OMDb، **وترويسةٌ تنتظر شبكةً قبل أن تُرسم عطلٌ لا ميزة.**
+   * فيمرّره المستدعي داخل `Suspense` بهيكلٍ بارتفاع السطر (D-046).
+   */
+  meta?: React.ReactNode;
+  /**
+   * 🆕 **سطرٌ خافتٌ أسفلَ الكتلة** (D-286، طلبُ أحمد: «اكتب العنوان في
+   * المساحة في الغلاف»). **كان في الغلاف فراغٌ وتحته صفحةٌ مزدحمة** —
+   * فصعد وصفُ الغرفة إلى الفراغ، **وبدأ متنُ الصفحة بما جاء له القارئ.**
+   */
+  sub?: React.ReactNode;
 }) {
   return (
-    <header className="relative -mt-6 -mx-4 h-[14svh] min-h-[128px] max-h-[172px] overflow-hidden bg-surface-2">
+    /* ⚖️ **وعادت ١٦px من الستّة والستّين التي قُصّت** (D-286): D-284 قصّت
+       الترويسةَ إلى ١٢٨px، **وكان ذلك صواباً لِما كانت تحمله يومَها** —
+       اسمٌ وحدَه. **ثم صارت تحمل ثلاثةَ أسطرٍ وملصقاً وزرَّين، والمقاسُ
+       يتبع ما يوضع فيه** (D-229). **والحسابُ صريحٌ لا ذوق:** صفُّ الزرَّين
+       ٥٦px من الأعلى، والملصقُ ٧٥ مع حشوٍ ١٢ من الأسفل — **فأقلُّ ارتفاعٍ
+       لا يتلامسان عنده ١٤٤.** **وعند ١٢٨ كان زرُّ الرجوع يقف على الملصق
+       فعلاً** — يُرى في لقطة أحمد، **ولم يمسكه أيُّ فحصٍ لأنّ التلامسَ
+       ليس خطأً.** */
+    <header className="relative -mt-6 -mx-4 h-[16svh] min-h-[144px] max-h-[180px] overflow-hidden bg-surface-2">
       {backdrop && (
         <Image src={backdrop} alt="" fill sizes="100vw" priority className="object-cover" />
       )}
@@ -84,9 +109,12 @@ export function TitleHero({
           href={href}
           className="flex items-end gap-3 min-w-0 flex-1 active:opacity-80 transition"
         >
-          <div className="relative w-[58px] h-[87px] shrink-0 rounded-xl overflow-hidden bg-surface-2 border border-white/15 shadow-xl">
+          {/* **٥٠×٧٥ لا ٥٨×٨٧** (D-286): الملصقُ هنا **مِرساةُ هويّةٍ لا
+              صورةٌ تُتأمَّل** — الغلافُ خلفَه يقول العملَ نفسَه — **وكلُّ
+              بكسلٍ يأخذه من الارتفاع يأخذه من سطرٍ يُقرأ.** */}
+          <div className="relative w-[50px] h-[75px] shrink-0 rounded-xl overflow-hidden bg-surface-2 border border-white/15 shadow-xl">
             {poster ? (
-              <Image src={poster} alt="" fill sizes="58px" className="object-cover" />
+              <Image src={poster} alt="" fill sizes="50px" className="object-cover" />
             ) : (
               <span className="absolute inset-0 grid place-items-center text-muted">
                 <Icon name={mediaType === "tv" ? "tv" : "film"} size={18} />
@@ -94,7 +122,10 @@ export function TitleHero({
             )}
           </div>
           <div className="min-w-0 flex-1">
-            <h1 className="font-bold text-[18px] leading-tight line-clamp-2 text-white drop-shadow">
+            {/* ⚠️ **سطرٌ واحدٌ لا سطران** (D-286): تحت الاسم صار سطران،
+                **واسمٌ يأخذ سطرين يدفعهما إلى صفِّ الزرّين.** والاسمُ
+                الطويلُ يُقصّ هنا **وصفحتُه على بُعد ضغطة.** */}
+            <h1 className="font-bold text-[18px] leading-tight line-clamp-1 text-white drop-shadow">
               {title}
             </h1>
             {typeof avg === "number" && typeof count === "number" && count > 0 && (
@@ -105,6 +136,12 @@ export function TitleHero({
                 ★ <span dir="ltr">{avg}</span>
                 <span className="font-normal text-white/70"> ({count})</span>
               </p>
+            )}
+            {meta}
+            {/* **والوصفُ آخرَ الكتلة وأخفتُها** — D-223: صوتُنا لا يعلو
+                على اسم العمل ولا على كلام الناس تحته. */}
+            {sub && (
+              <p className="mt-1 text-[11px] leading-snug text-white/65 line-clamp-1">{sub}</p>
             )}
           </div>
         </Link>
