@@ -1926,51 +1926,7 @@ export async function getPeopleTopReviews(
   }
 }
 
-/* ⏳ **جسرٌ مؤقّتٌ يسقط في دفعةٍ تالية** (D-028): `PeopleBoard` في المستودع
-   ما زال يستورد `PeopleWatchingRow`، **ويُحذف المقروءُ بعد قارئه لا قبله**
-   — وإلا كسرت هذه الدفعةُ البناءَ وحدَها. **وحجّةُ الحذف تحته.** */
-export interface PeopleWatchingRow extends PersonLite {
-  tmdbId: number;
-  mediaType: "tv" | "movie";
-  title: string | null;
-  posterPath: string | null;
-  addedAt: string;
-}
-
-export async function getPeopleWatching(limit = 8): Promise<PeopleWatchingRow[]> {
-  try {
-    const supabase = await createClient();
-    const { data, error } = await supabase.rpc("people_watching", { p_limit: limit });
-    if (error || !data) return [];
-    return (data as {
-      user_id: string;
-      nickname: string | null;
-      username: string | null;
-      avatar_url: string | null;
-      hide_name: boolean | null;
-      tmdb_id: number;
-      media_type: string;
-      title: string | null;
-      poster_path: string | null;
-      added_at: string;
-    }[]).map((r) => ({
-      id: String(r.user_id),
-      nickname: r.nickname,
-      username: r.username,
-      avatar_url: r.avatar_url,
-      hide_name: Boolean(r.hide_name),
-      tmdbId: Number(r.tmdb_id),
-      mediaType: r.media_type === "tv" ? "tv" : "movie",
-      title: r.title,
-      posterPath: r.poster_path,
-      addedAt: String(r.added_at),
-    }));
-  } catch {
-    return [];
-  }
-}
-
-/* ⚠️ **`getPeopleWatching` و`PeopleWatchingRow` يُحذفان** (D-270، طلبُ أحمد
+/* ⚠️ **`getPeopleWatching` و`PeopleWatchingRow` حُذفا** (D-270، طلبُ أحمد
    بالحرف: «"Added to their libraries" ما نبغى»). **وكانا يعملان بلا عطل**
    — والحذفُ حكمُ صاحبِ المنتج على القسم لا حكمٌ على الشيفرة.
    **ودالّةُ `people_watching` تبقى في القاعدة حتى تُشغَّل الهجرة ٨٦**:

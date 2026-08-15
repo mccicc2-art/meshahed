@@ -659,12 +659,7 @@ const ar = {
         : n <= 10
           ? `${num(n, "ar")} إعجابات`
           : `${num(n, "ar")} إعجاباً`,
-  /* ⏳ **جسرٌ مؤقّتٌ يسقط في الدفعة التالية** (D-028): `PeopleBoard` في
-     المستودع ما زال يقرأ هذه الأربعة، **والمفتاحُ يُحذف بعد قارئه لا
-     قبله** — وإلا كسرت هذه الدفعةُ البناءَ وحدَها. */
-  peopleBoardWatching: "أضافوها إلى مكتباتهم",
-  peopleBoardAdded: (when: string) => `أضافه ${when}`,
-  /* ⚠️ **`peopleBoardWatching` و`peopleBoardAdded` تُحذفان** مع قسمِهما
+  /* ⚠️ **`peopleBoardWatching` و`peopleBoardAdded` حُذفتا** مع قسمِهما
      (D-270، طلبُ أحمد: «"Added to their libraries" ما نبغى»)، **وكذلك
      `suggestPeopleTitle` و`suggestPeopleHint`** مع «أشخاص لمتابعتهم».
      **و`suggestShared`/`suggestFollowers` باقيتان**: تقرؤهما شاشةُ
@@ -1346,10 +1341,7 @@ const ar = {
   obPeopleSkip: "أكمل بدون متابعة",
   obPeopleNext: (n: number) => `تتابع ${n} — يالله نبدأ ✓`,
 
-  /* ⏳ **جسرٌ مؤقّتٌ كسابقه** — يسقط مع `PeopleSuggestions` */
-  suggestPeopleTitle: "أشخاص لمتابعتهم",
-  suggestPeopleHint: "خطّك يمتلئ بقدر دائرتك.",
-  /* **سببُ الاقتراح** — ويبقى لشاشة التهيئة بعد D-270 (انظر
+  /* **سببُ الاقتراح** — وبقي لشاشة التهيئة وحدَها بعد D-270 (انظر
      التذييلَ عند `peopleBoardTopReview`) */
   suggestShared: (n: number) =>
     n === 1
@@ -1879,8 +1871,7 @@ const en: Dict = {
   peopleBoardDelta: (n: number) => `+${num(n, "en")} vs last week`,
   peopleBoardTopReview: "Most liked comments",
   peopleBoardLikes: (n: number) => (n === 1 ? "1 like" : `${num(n, "en")} likes`),
-  peopleBoardWatching: "Added to their libraries",
-  peopleBoardAdded: (when: string) => `added ${when}`,
+  // peopleBoardWatching / peopleBoardAdded deleted with their section (D-270)
   communityTabComments: "Comments",
   // Talk page and replies (D-193)
   worksAvgHint: "Average rating of the people talking about it",
@@ -2412,8 +2403,8 @@ const en: Dict = {
   obPeopleSkip: "Continue without following",
   obPeopleNext: (n: number) => `Following ${n} — let's go ✓`,
 
-  suggestPeopleTitle: "People to follow",
-  suggestPeopleHint: "Your feed is as full as your circle.",
+  // suggestPeopleTitle / suggestPeopleHint deleted with their section (D-270);
+  // the two below stay — Onboarding reads them
   suggestShared: (n: number) => (n === 1 ? "Shares 1 title with you" : `Shares ${n} titles with you`),
   suggestFollowers: (n: number) => (n === 1 ? "1 follower" : `${n} followers`),
   circleWatched: (n: number) => `${n} people you follow watched it`,
