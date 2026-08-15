@@ -52,20 +52,32 @@ import { TitleSearchSheet } from "./TitleSearchSheet";
  * كانت تقول ما تعرفه، وهذه تقول ما لا تعرفه.
  */
 
+/**
+ * **وجهان لكل تبويب: مفرَّغٌ خامل ومصمتٌ نشط** (D-260، طلبُ أحمد: «هل
+ * في أيقونات أفضل؟ والأيقونات تحتاج تكبر»).
+ *
+ * **والرموزُ لم تُستبدل** — بيتٌ وشريطُ فيلمٍ وبوصلةٌ وناسٌ وعدسة أعرافٌ
+ * تُقرأ بلا تعلُّم (D-150)، **وتبديلُ رمزٍ يفهمه المستخدم ليس تحسيناً
+ * بل إعادةُ تعليم.** **والذي تغيّر حالتُه:** كان النشطُ نفسَ الخطّ
+ * بلونٍ أصفر وسمكٍ أعرضَ بنصف بكسل — **وذلك فرقٌ يُقاس ولا يُرى**،
+ * وصار عبئُه أثقلَ يومَ سقطت الكلماتُ من تحته (D-258).
+ */
 const TABS: {
   href: string;
   key: "home" | "library" | "news" | "search" | "people";
   icon: IconName;
+  /** الوجهُ المصمت — يُرسم حين تكون في التبويب */
+  iconOn: IconName;
 }[] = [
-  { href: "/", key: "home", icon: "home" },
-  { href: "/library", key: "library", icon: "film" },
-  { href: "/news", key: "news", icon: "compass" },
-  { href: "/people", key: "people", icon: "people" },
+  { href: "/", key: "home", icon: "home", iconOn: "home-filled" },
+  { href: "/library", key: "library", icon: "film", iconOn: "film-filled" },
+  { href: "/news", key: "news", icon: "compass", iconOn: "compass-filled" },
+  { href: "/people", key: "people", icon: "people", iconOn: "people-filled" },
   /* البحث في الطرف: فعلٌ لا وجهةَ تصفّح، والأطراف أسهل ما تصله الإبهام.
      ولأنه فعل، لا يُنقل المستخدم إلى صفحة: ضغطُه يفتح ورقةً بحقلٍ مركَّز
      فتظهر لوحة المفاتيح فوراً. الرابط يبقى مكتوباً لمن فتح `/search`
      برابطٍ مباشر أو بلا جافاسكربت. */
-  { href: "/search", key: "search", icon: "search" },
+  { href: "/search", key: "search", icon: "search", iconOn: "search-filled" },
 ];
 
 export function BottomNav({
@@ -126,7 +138,7 @@ export function BottomNav({
         className="md:hidden fixed bottom-0 inset-x-0 z-40 grid grid-cols-5 border-t border-[color:var(--divider)] bg-[color:var(--background)] backdrop-blur-xl pt-1.5 pb-[max(0.375rem,calc(env(safe-area-inset-bottom)*0.5))]"
         style={{ background: "color-mix(in srgb, var(--background) 76%, transparent)" }}
       >
-        {TABS.map(({ href, key, icon }) => {
+        {TABS.map(({ href, key, icon, iconOn }) => {
           const isSearch = key === "search";
           const active = isSearch ? searchOpen : isActive(href);
           /* **أيقونةٌ بلا كلمة** (D-258، طلبُ أحمد: «اخفِ الكلمات في
@@ -143,10 +155,15 @@ export function BottomNav({
              والمعنى في `aria-label`). */
           const face = (
             <span className="relative">
+              {/* **٢٨ لا ٢٥** (D-260، بلاغُ أحمد: «الأيقونات تحتاج تكبر»):
+                  **الخانةُ خُمسُ الشاشة والرمزُ وحده فيها** بعد سقوط
+                  الكلمة — **ورمزٌ يرث خانةً كاملة يرث حجمَها.**
+                  **والمصمتُ لا يحتاج سُمكاً**: `strokeWidth` للمفرَّغ
+                  وحده، **وسمكٌ على شكلٍ مصمتٍ يزيده وزناً بلا معنى.** */}
               <Icon
-                name={icon}
-                size={25}
-                strokeWidth={active ? 2.2 : 1.7}
+                name={active ? iconOn : icon}
+                size={28}
+                strokeWidth={1.8}
                 style={{ color: active ? "var(--accent)" : "var(--disabled)" }}
               />
               {/* «هناك جديدٌ هناك» — وتسقط على التبويب المفتوح: أنت فيه */}
@@ -156,9 +173,9 @@ export function BottomNav({
           /* **والحشوُ يعوّض ارتفاعَ السطر الذاهب**: هدفُ اللمس ٤٤px
              (D-033/D-168) **لا يُشترى بالنصّ بل يُكتب** — وخانةٌ بلا
              كلمةٍ وبحشوها القديم تصير ٣٤px.
-             **و`py-2` لا `py-2.5`** (D-259): ٢٥+١٦ = ٤١px، **والأربعةُ
-             والأربعون تكتمل بحشو الشريط العلويّ فوقها** — والخانةُ
-             لا تُقاس وحدها. */
+             **و`py-2` لا `py-2.5`** (D-259): ٢٨+١٦ = ٤٤px بالضبط
+             (D-260 بعد أن كبرت الأيقونة) — **والهدفُ اكتمل في الخانة
+             نفسِها، فلم يعد يستعير من حشو الشريط.** */
           const face_cls =
             "relative flex min-w-0 items-center justify-center rounded-2xl px-1 py-2 transition active:bg-surface-2";
 
