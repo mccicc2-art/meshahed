@@ -36,7 +36,7 @@ import { CommunityTools } from "@/components/CommunityTools";
 import { TitleNews } from "@/components/TitleNews";
 import { getTitleNews } from "@/lib/titleNews";
 import { ScrollMemory } from "@/components/ScrollMemory";
-import { TabSwipe } from "@/components/TabSwipe";
+import { TabPager } from "@/components/TabPager";
 
 
 /**
@@ -202,7 +202,11 @@ export default async function PeoplePage({
   /* ⚠️ **وصار خطُّ الآراء لتبويب «النشاط» وحده** (D-257): كان يُقرأ
      لتبويب «نقاش» أيضاً ليُجمَّع بالعمل، **وغرفُ النقاش لم تعد تُبنى
      منه** — فنداءٌ ثقيلٌ سقط عن تبويبٍ لا يعرضه. */
-  const followingFeed = tab === "activity" ? await getCommunityFeed(scope) : [];
+  /* ⚠️ **سقط اشتراطُ التبويب عن نداءات الثلاثة** (D-276): `pagerTab`
+     تعني «هذا تبويبٌ من الصفّ» — **والثلاثةُ تُرسم معاً فتُقرأ معاً.**
+     **وهو نقضٌ مسجَّلٌ لـD-194 باختيار أحمد بعد أن قُرئ عليه الثمن.** */
+  const pagerTab = tab === "activity" || tab === "talk" || tab === "people";
+  const followingFeed = pagerTab ? await getCommunityFeed(scope) : [];
   const [myCommunities, myInvites] =
     tab === "all"
       ? await Promise.all([
@@ -236,7 +240,7 @@ export default async function PeoplePage({
      معه بعد تجميعه بالعمل (`groupByWork`) — **وذلك هو اللبسُ الذي صحّحه
      أحمد**: «النقاش ليس الريفيو، يختلف». **فغرفُ النقاش صار لها مصدرُها**
      (`title_talk_rooms`)، وسقط التجميعُ ومعه `getTalkStats`. */
-  const localized = tab === "activity" ? await localizeRows(followingFeed, locale) : [];
+  const localized = pagerTab ? await localizeRows(followingFeed, locale) : [];
 
   /* **غرفُ النقاش الحيّة** (الهجرة ٧٨) — نداءٌ واحد للتبويب كلِّه، ولا
      يُدفع في غيره. **والعنوانُ والملصقُ يأتيان مع الصفّ** فلا نداءَ
@@ -260,7 +264,7 @@ export default async function PeoplePage({
      **والغرفةُ صفٌّ واحدٌ يراه كل الناس** — **وهي حجّةُ D-147 نفسُها،
      وقد نُسي هذا السطحُ يومَها.** والصفحةُ هي من تملك `locale` لا طبقةُ
      البيانات (D-048). */
-  const rooms = tab === "talk" ? await localizeTalkRooms(await getTalkRooms(40), locale) : [];
+  const rooms = pagerTab ? await localizeTalkRooms(await getTalkRooms(40), locale) : [];
 
   /* ⚠️ **وأربعةُ نداءاتٍ متوازيةٌ لا متتابعة** (D-263): كلُّها دوالُّ
      `definer` خفيفةٌ تقرأ صفوفاً قائمة **ولا واحدةَ منها تحتاج نتيجةَ
@@ -279,8 +283,7 @@ export default async function PeoplePage({
      و«الصاعدين» معاً (D-198). */
   const wantAll = allView !== null;
   const need = (k: BoardAll) => !wantAll || allView === k;
-  const peopleTab =
-    tab === "people"
+  const peopleTab = pagerTab
       ? await Promise.all([
           /* **و٣ في القسم و١٠ في «عرض الكل»**: البطاقةُ تُقرأ بنظرة،
              **وصفٌّ من اثني عشر وجهاً في لوحةٍ ليس تمييزاً بل دليل.** */
@@ -298,7 +301,7 @@ export default async function PeoplePage({
      ⚠️ **وخارجَ `Promise.all` عمداً**: `getFollowingIds` مخزَّنةٌ
      (`cache`) ويقرؤها تبويبُ «النشاط» أيضاً، **فالنداءُ واحدٌ للصفحة لا
      نداءان** (D-205/D-223). */
-  const boardFollowing = tab === "people" ? await getFollowingIds() : new Set<string>();
+  const boardFollowing = pagerTab ? await getFollowingIds() : new Set<string>();
   const featured = peopleTab?.[0] ?? [];
   const board = peopleTab?.[1] ?? [];
   const topReviews = peopleTab?.[2] ?? [];
@@ -331,14 +334,14 @@ export default async function PeoplePage({
      **والرقاقاتُ الثلاث نقضت الحجّة** (D-240): «لك» ليست «كلامُ مَن»
      بل **«ما يخصّك»**، **ونشرتُنا تخصّك بحكم فتحك التطبيق**. فيُدفع
      للتبويب كلِّه، **والترشيحُ في `ActivityFeed` يقرّر بقاءَه.** */
-  const genNews = tab === "activity" ? await getLoopzNews(12) : [];
+  const genNews = pagerTab ? await getLoopzNews(12) : [];
   /* **التجديدُ بحركة المرور** (اختيارُ أحمد في D-210، ويُعاد هنا): من فتح
      التبويب بعد عشر دقائق يُطلق دورةَ رصدٍ **بعد إرسال الصفحة** فلا
      ينتظرها — ولا صفَّ cron ولا سرَّ في البيئة.
      **والبوّابةُ زمنٌ لا حركة**: انتقالُها إلى التبويب الافتراضيّ يزيد
      عددَ من يمرّ بها ولا يزيد عددَ الدورات — أوّلُ مارٍّ بعد العشر
      دقائق يُطلقها، ومن بعده يجدها غيرَ مستحقّة. */
-  if (tab === "activity" && (await getNewsGenStale(10))) {
+  if (pagerTab && (await getNewsGenStale(10))) {
     after(() => refreshLoopzNews());
   }
 
@@ -354,10 +357,9 @@ export default async function PeoplePage({
   /* **حالةُ «+ للمشاهدة» الابتدائية** (D-205/D-223): **نداءٌ واحدٌ
      مخزَّنٌ (`cache`) للصفحة كلِّها**، لا سؤالٌ من كل بطاقة — ثلاثون بطاقةً
      تسأل عن نفسها ثلاثون استعلاماً. **ولا يُدفع إلا في تبويبه.** */
-  const followed =
-    tab === "activity"
-      ? new Set((await getFollows()).map((f) => `${f.media_type}-${f.tmdb_id}`))
-      : new Set<string>();
+  const followed = pagerTab
+    ? new Set((await getFollows()).map((f) => `${f.media_type}-${f.tmdb_id}`))
+    : new Set<string>();
 
   /* **إعجاباتُ أخبارِنا** (D-224): `post_reactions` القائم منذ `news.sql`،
      **بنداءٍ واحدٍ للقائمة كلِّها** (`reaction_counts` — دالّة definer
@@ -367,7 +369,7 @@ export default async function PeoplePage({
     : { counts: {}, mine: new Set<string>() };
 
   /* مَن أتابعهم — لصفّ المتابعة في قائمة نقاط كل صفّ (D-225) */
-  const followingIds = tab === "activity" ? await getFollowingIds() : new Set<string>();
+  const followingIds = pagerTab ? await getFollowingIds() : new Set<string>();
 
   /* **ردودُ نشراتنا** (D-236): نداءٌ واحد لمفاتيح الخطّ كلِّها، **وسقوطُه
      صامتٌ قبل الهجرة ٧٣** فتُخفى الأرقام ويبقى الخطُّ مقروءاً. */
@@ -379,8 +381,7 @@ export default async function PeoplePage({
      — **والمفاتيحُ تُبنى هنا بنفس دالّتَي `postKeys`** التي تكتبها
      الواجهةُ في `data-post-key`، فلا صيغتان تفترقان.
      **وسقوطُه صامتٌ قبل الهجرة ٧٤**: تُخفى الخانةُ ويبقى الخطُّ. */
-  const viewCounts =
-    tab === "activity"
+  const viewCounts = pagerTab
       ? await getPostViewCounts([
           ...localized
             .filter((a) => a.review?.trim())
@@ -485,81 +486,23 @@ export default async function PeoplePage({
       </div>
     ) : undefined;
 
-  return (
-    <div className="space-y-5">
-      {/* ذاكرة موضع التمرير — العائد من ملف صديقٍ يهبط حيث كان (تدقيق 8 Aug م٢) */}
-      <ScrollMemory />
-      {/* **إيماءةٌ صامتة تعيد `null`** — انظر `TabSwipe` (D-274) */}
-      <TabSwipe hrefs={swipeHrefs} index={swipeIndex} rtl={locale !== "en"} />
-      {/* العنوان مخفيٌّ بصريّاً وباقٍ لقارئ الشاشة — أُزيلت كلمة «المجتمع»
-          المرئية، وانتقل عدّادا المتابعة وزرّ الإضافة إلى صفّ الترتيب أسفل
-          التبويبات (طلب المالك) */}
-      <h1 className="sr-only">{t.peopleTitle}</h1>
 
-      {/* ===== رأس التبويبات =====
-          `PageTabs` المشترك (D-134): نفس الموضع الرأسيّ في المكتبة
-          واكتشف، وخطٌّ فاصلٌ **واحد**. وصفُّ الفرز والمرشِّح الذي كان
-          تحته **حُذف** بطلب أحمد — انظر تعليق `newest`/`kind`. */}
-      <PageTabs
-        items={visibleTabs}
-        active={tab}
-        ariaLabel={t.communityTabsGroup}
-        asNav
-        /* رمزُ الأدوات (D-177) — نفس الزرّ ونفس المقاس في المكتبة واكتشف */
-        action={
-          <CommunityTools
-            locale={locale}
-            prefs={tabPrefs}
-            labels={Object.fromEntries(tabs.map((x) => [x.key, x.label]))}
-            strangers={showStrangers}
-          />
-        }
-        /* صفُّ الفرز داخل الرأس اللاصق — انظر `filterChips` أعلاه (D-245) */
-        extra={filterChips}
-      />
+  /* ============================================================
+     لوحاتُ التبويبات الثلاث — تُبنى كلُّها ثم تُسلَّم إلى `TabPager`
+     ============================================================
+     **وهذا ثمنُ الانزلاق الذي قُرئ على أحمد قبل أن يُبنى** (D-276):
+     **صفحةٌ تنزلق تحتاج جارَها مرسوماً قبل أن يُلمَس**، فسقط اشتراطُ
+     كلِّ نداءٍ بتبويبه (D-194) وصارت كلُّ فتحةٍ تدفع الثلاثة.
+     ⚠️ **و«أخبارُ أعمالك» و«المجتمعات» خارج هذا كلِّه** — سطحا رابطٍ بلا
+     شريحة (D-219)، **ولا يُدفع نداؤهما إلا لمن وصل بالرابط.**
 
-      {/* ===== محتوى التبويب ===== */}
-      {tab === "news" ? (
-        /* **«أخبارُ أعمالك» وحدها** — أخبارُنا انتقلت إلى «النشاط»
-           (انظر رأس الملفّ). **وفرعٌ بلا شريحة كفرع «المجتمعات»**:
-           يُفتح بالرابط فلا يموت رابطٌ مشارَك، ولا يُدفع ثمنُ نداءات
-           TMDB في التبويب الافتراضيّ. */
-        <div>
-          <h2 className="text-[15px] font-bold mb-2">{t.communityTabNews}</h2>
-          <TitleNews items={news} locale={locale} />
-        </div>
-      ) : tab === "all" ? (
-        openCommunity ? (
-          <CommunityRoom room={openCommunity} locale={locale} />
-        ) : (
-          <CommunityDirectory
-            mine={myCommunities}
-            invites={myInvites}
-            titleRooms={titleRooms}
-            locale={locale}
-          />
-        )
-      ) : (
-        /* **عمودُ قراءةٍ مسقوف** (D-225): على الشاشة العريضة كان سطرُ
-           التعليق يمتدّ ٦٦٠px، **فيبعد النصُّ عن اسم صاحبه** ويقفز
-           سطرٌ عربيّ (`dir="auto"`) إلى الطرف المقابل. **والقياسُ
-           المريح للقراءة ٦٠–٨٠ حرفاً** — والسقفُ يخدم «نقاش» معه، فهو
-           على القسم لا على الخطّ وحده. */
-        /* ⚠️ **و`mx-auto` معه لا بعده** (بلاغُ أحمد: «طريقة العرض في متصفح
-            البي سي سيئة… خلّ المحتوى متوازي مثل قبل»). **السقفُ وحدَه
-            يقصّ ولا يوسّط**: الحاوية الأمّ `max-w-6xl` متوسّطةٌ (١١٥٢px)
-            **فعمودٌ ٦٨٠ داخلها بلا توسيطٍ يلتصق بالبداية ويترك ٤٧٠px
-            فراغاً في الطرف الآخر** — والعينُ تقرأ الصفحةَ مائلة.
-            **والدليلُ أن السطر ناقصٌ لا مقصود:** `/post` و`/review`
-            تكتبان `max-w-[680px] mx-auto` معاً منذ D-239/D-242 —
-            **وثلاثةُ أسطحٍ لعمودِ قراءةٍ واحد تُكتب واحداً** (قاعدة ٦).
-            **وهذا التعليقُ نصٌّ لا JSX** — D-250: تعليقُ JSX لا يقف بين
-            `? (` وعنصرها، **وقد وقعتُ فيها هنا فعلاً قبل أن يمسكها `tsc`.** */
-        <section className="max-w-[680px] mx-auto">
-          {/* **الرقاقتان فوق التبويبين معاً** (D-219): النطاقُ سؤالٌ عن
-              «كلامِ مَن» لا عن شكل العرض، **فيصحّ فوق التجميع وفوق الخطّ
-              المسطّح** — ولا نسخةَ ثانية منه. */}
-          {tab === "activity" ? (
+     **وعمودُ القراءة على كلِّ لوحة لا على الحاوية** (D-263): `mx-auto`
+     مع السقف لا بعده، **ووصفةٌ تُنسخ ناقصةً هي عطلٌ لا أسلوب** — فهي
+     هنا ثابتٌ واحد. */
+  const READING = "max-w-[680px] mx-auto";
+
+  const activityBody = (
+    <section className={READING}>
             <ActivityFeed
               comments={localized}
               news={genNews}
@@ -584,7 +527,12 @@ export default async function PeoplePage({
               }
               locale={locale}
             />
-          ) : tab === "people" ? (
+    </section>
+  );
+
+  const peopleBody = (
+    <section className={READING}>
+      {
             (/* **وفراغُ التبويب يُعلَن مرّةً واحدة** (D-181): كان الشرطُ
                على الاقتراحات وحدها، **والصفحةُ صارت خمسةَ أقسام** — فلو
                بقي كما كان لاختفت اللوحةُ وأعلى التعليقات ومكتباتُ الناس
@@ -689,7 +637,13 @@ export default async function PeoplePage({
                 />
               </>
             ))
-          ) : rooms.length === 0 ? (
+      }
+    </section>
+  );
+
+  const talkBody = (
+    <section className={READING}>
+      {rooms.length === 0 ? (
             /* **وفراغٌ واحدٌ لا اثنان** (D-259): كان لكل رقاقةٍ جملتُها —
                «لم يكتب أحدٌ بعد» و«دائرتُك صامتة». **وبسقوط الرقاقتين
                سقطت الثانية**: لا نطاقَ يُدلّ عليه، **والجملةُ الباقية هي
@@ -699,8 +653,79 @@ export default async function PeoplePage({
             </p>
           ) : (
             <WorksTalk rooms={rooms} locale={locale} />
-          )}
-        </section>
+        )}
+    </section>
+  );
+
+  /* **اللوحاتُ بترتيب الصفّ الظاهر** — من أخفى تبويباً لا يمرّ به سحبُه
+     (D-274)، **والإيماءةُ تعد بما يراه لا بما في الشيفرة.** */
+  const paneOf: Record<string, React.ReactNode> = {
+    activity: activityBody,
+    talk: talkBody,
+    people: peopleBody,
+  };
+  const panes = visibleTabs.map((x) => paneOf[x.key] ?? null);
+
+  return (
+    <div className="space-y-5">
+      {/* ذاكرة موضع التمرير — العائد من ملف صديقٍ يهبط حيث كان (تدقيق 8 Aug م٢) */}
+      <ScrollMemory />
+      {/* العنوان مخفيٌّ بصريّاً وباقٍ لقارئ الشاشة — أُزيلت كلمة «المجتمع»
+          المرئية، وانتقل عدّادا المتابعة وزرّ الإضافة إلى صفّ الترتيب أسفل
+          التبويبات (طلب المالك) */}
+      <h1 className="sr-only">{t.peopleTitle}</h1>
+
+      {/* ===== رأس التبويبات =====
+          `PageTabs` المشترك (D-134): نفس الموضع الرأسيّ في المكتبة
+          واكتشف، وخطٌّ فاصلٌ **واحد**. وصفُّ الفرز والمرشِّح الذي كان
+          تحته **حُذف** بطلب أحمد — انظر تعليق `newest`/`kind`. */}
+      <PageTabs
+        items={visibleTabs}
+        active={tab}
+        ariaLabel={t.communityTabsGroup}
+        asNav
+        /* **الشريطُ يمشي مع اللوحة** (D-276) — ولا يُطلب إلا حيث تنزلق */
+        swipe={swipeIndex >= 0}
+        /* رمزُ الأدوات (D-177) — نفس الزرّ ونفس المقاس في المكتبة واكتشف */
+        action={
+          <CommunityTools
+            locale={locale}
+            prefs={tabPrefs}
+            labels={Object.fromEntries(tabs.map((x) => [x.key, x.label]))}
+            strangers={showStrangers}
+          />
+        }
+        /* صفُّ الفرز داخل الرأس اللاصق — انظر `filterChips` أعلاه (D-245) */
+        extra={filterChips}
+      />
+
+      {/* ===== محتوى التبويب ===== */}
+      {tab === "news" ? (
+        /* **«أخبارُ أعمالك» وحدها** — أخبارُنا انتقلت إلى «النشاط»
+           (انظر رأس الملفّ). **وفرعٌ بلا شريحة كفرع «المجتمعات»**:
+           يُفتح بالرابط فلا يموت رابطٌ مشارَك، ولا يُدفع ثمنُ نداءات
+           TMDB في التبويب الافتراضيّ. */
+        <div>
+          <h2 className="text-[15px] font-bold mb-2">{t.communityTabNews}</h2>
+          <TitleNews items={news} locale={locale} />
+        </div>
+      ) : tab === "all" ? (
+        openCommunity ? (
+          <CommunityRoom room={openCommunity} locale={locale} />
+        ) : (
+          <CommunityDirectory
+            mine={myCommunities}
+            invites={myInvites}
+            titleRooms={titleRooms}
+            locale={locale}
+          />
+        )
+      ) : (
+        /* ===== ثلاثُ لوحاتٍ تنزلق مع الإصبع ===== (D-276)
+           **المفتوحةُ وحدَها في التدفّق وجاراتُها مطلقاتٌ مخفيّات** —
+           فلا صندوقَ تمريرٍ ثانٍ، **وينجو الرأسُ اللاصق والسحبُ للتحديث
+           وذاكرةُ التمرير والشريطُ السفليّ بلا سطرٍ يمسّها.** */
+        <TabPager panes={panes} index={swipeIndex} hrefs={swipeHrefs} rtl={locale !== "en"} />
       )}
     </div>
   );
