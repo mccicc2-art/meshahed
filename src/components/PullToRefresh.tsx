@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
+import { claimGesture, releaseGesture, gestureTakenBy } from "@/lib/tabDrag";
 import { useRouter } from "next/navigation";
 
 /**
@@ -87,9 +88,27 @@ export function PullToRefresh() {
     }
     function onMove(e: TouchEvent) {
       if (start.current === null) return;
+      /* **ومن سبق مَلَك** (D-277): إن كان سحبُ التبويبات قد أمسك اللمسة
+         **فهذه ليست جرّةَ تحديث** — تُلغى فوراً ولا يعلق المؤشّر.
+         **وهو نصفُ علاجِ لخبطةِ أحمد**: النصفُ الآخر أن الأفقيَّ يمنع
+         التمرير، وهذا أن الرأسيَّ يعترف بالأوّل. */
+      if (gestureTakenBy("y")) {
+        start.current = null;
+        setPull(0);
+        shift(0, true);
+        return;
+      }
       const d = (e.touches[0]?.clientY ?? 0) - start.current;
       /* سحبٌ لأعلى؟ ليس تحديثاً — يُلغى فوراً فلا يعلق المؤشّر */
       if (d <= 0) {
+        start.current = null;
+        setPull(0);
+        shift(0, true);
+        return;
+      }
+      /* **ولا يُملَك إلا عند جرّةٍ حقيقيّة** — لا عند أوّل بكسل: لمسةٌ
+         ساكنةٌ لا تحجز الإصبعَ عن السحب الأفقيّ (D-277). */
+      if (d > 8 && !claimGesture("y")) {
         start.current = null;
         setPull(0);
         shift(0, true);
@@ -100,6 +119,7 @@ export function PullToRefresh() {
       shift(p, false);
     }
     function onEnd() {
+      releaseGesture("y");
       if (start.current === null) return;
       start.current = null;
       setPull((p) => {

@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { tap } from "@/lib/haptics";
-import { setTabDrag } from "@/lib/tabDrag";
+import { setTabDrag, claimGesture, releaseGesture, gestureTakenBy } from "@/lib/tabDrag";
 
 /**
  * **صفحاتٌ تنزلق مع الإصبع** (D-276، طلبُ أحمد بلقطةٍ من X: «احتاج فيه
@@ -168,10 +168,24 @@ export function TabPager({
         if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
         /* **الاتّجاهُ يُقفل مرّةً ولا يتردّد**: قارئٌ ينزل في الخطّ ويميل
            إصبعُه قليلاً **يجب ألّا تنزلق تحته الصفحة** (D-274). */
-        s.lock = Math.abs(dx) > Math.abs(dy) * RATIO ? "x" : "y";
+        const wantX = Math.abs(dx) > Math.abs(dy) * RATIO;
+        /* **ومن سبق مَلَك** (D-277، بلاغُ أحمد «أقدر ألفّ وأسحب تحت في
+           نفس الوقت»): **إن كان السحبُ للتحديث قد بدأ فاللمسةُ له**،
+           ونقف نحن ساكنين إلى أن يُرفع الإصبع. */
+        if (wantX && !claimGesture("x")) {
+          s.lock = "y";
+          return;
+        }
+        s.lock = wantX ? "x" : "y";
         if (s.lock === "x") armNeighbours();
       }
       if (s.lock !== "x") return;
+      /* ⚠️ **وهنا كان نصفُ العطل**: المستمعُ كان `passive` **فلا يستطيع
+         منعَ التمرير أصلاً** — فتنزلق اللوحاتُ وتنزل الصفحةُ معاً تحت
+         الإصبع نفسِه. **والمنعُ هو ما يجعل الإيماءةَ واحدة**، ولذلك صار
+         `passive: false` (انظر التسجيل أدناه). */
+      if (e.cancelable) e.preventDefault();
+      if (gestureTakenBy("x")) return;
 
       const w = vp.clientWidth || 1;
       const next = index + (dx < 0 ? 1 : -1) * (rtl ? -1 : 1);
@@ -215,11 +229,13 @@ export function TabPager({
     const onEnd = (e: TouchEvent) => {
       const s = drag.current;
       drag.current = null;
+      releaseGesture("x");
       if (!s || s.lock !== "x" || e.changedTouches.length !== 1) return;
       finish(s, e);
     };
 
     const onCancel = () => {
+      releaseGesture("x");
       if (drag.current?.lock === "x") {
         setX(0, SNAP_MS);
         publish(0);
@@ -229,7 +245,10 @@ export function TabPager({
     };
 
     document.addEventListener("touchstart", onStart, { passive: true });
-    document.addEventListener("touchmove", onMove, { passive: true });
+    /* **غيرُ خاملٍ عمداً** — وهو الفرقُ بين إيماءةٍ تعمل وإيماءتين
+       تتزاحمان: **`passive` تمنع `preventDefault`**، وبلا منعٍ يبقى
+       المستندُ ينزل تحت الإصبع بينما اللوحاتُ تنزلق (D-277). */
+    document.addEventListener("touchmove", onMove, { passive: false });
     document.addEventListener("touchend", onEnd, { passive: true });
     document.addEventListener("touchcancel", onCancel, { passive: true });
 
