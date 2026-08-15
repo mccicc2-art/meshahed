@@ -2,7 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { posterUrl } from "@/lib/tmdb";
 import { getDict, num, type Locale } from "@/lib/i18n";
-import { timeAgo } from "@/lib/when";
+import { timeAgoShort } from "@/lib/when";
 import { dirOf } from "@/lib/dir";
 import type { PeopleLeaderRow, PeopleTopReviewRow } from "@/lib/data";
 import { PersonName } from "./PersonRow";
@@ -339,58 +339,98 @@ export function TopReviews({
         {rows.map((row) => {
           const poster = posterUrl(row.posterPath, "w185");
           const title = row.title?.trim();
+          const reviewHref = `/review/${row.mediaType}/${row.tmdbId}/${row.id}`;
+          const titleHref =
+            row.mediaType === "tv" ? `/show/${row.tmdbId}` : `/movie/${row.tmdbId}`;
           return (
             <li key={`${row.id}-${row.mediaType}-${row.tmdbId}`}>
               <article className="flex gap-3 p-3.5 rounded-2xl bg-surface border border-border">
                 <div className="min-w-0 flex-1">
+                  {/* **الترويسةُ ترويسةُ صفّ «النشاط» حرفاً** (D-272، طلبُ
+                      أحمد: «خلي تنسيقه مثل الرفيو في اكتيفتي عشان
+                      التناسق»): **وجهٌ ٤٤ · اسمٌ ثم عمرٌ مختصرٌ في الطرف ·
+                      وسطرٌ ثانٍ فيه العملُ ونجمتُه.**
+
+                      **وحجّةُ ذلك الصفّ تنتقل معه** (D-228): عنوانٌ طويل
+                      بجانب الاسم يقصّهما معاً، **فسطرٌ يملكه العملُ يحلّها
+                      بلا قصّ** — **و★ بعد العنوان لا بعد الاسم** لأن
+                      الترويسةَ كلَّها كلامُ صاحب الصفّ فنجمتُها نجمتُه.
+
+                      ⚠️ **والوسمُ الزمنيّ صار مختصراً** (`7d` لا «7 days
+                      ago»): **جملةٌ في موضع وسمٍ تسرق العرضَ من الاسم**،
+                      **وبابُه التعليقُ لا الملفّ** — ولهذا هو في `end`
+                      خارج رابط الاسم. */}
                   <PersonName
                     person={row}
                     t={t}
-                    size={32}
-                    sub={timeAgo(row.createdAt, t)}
+                    size={44}
+                    end={
+                      <Link
+                        href={reviewHref}
+                        prefetch={false}
+                        className="text-[11px] text-muted tabular-nums hover:text-accent transition"
+                      >
+                        {timeAgoShort(row.createdAt, t)}
+                      </Link>
+                    }
+                    sub={
+                      <span className="flex items-center gap-1.5">
+                        {title && (
+                          <Link
+                            href={titleHref}
+                            prefetch={false}
+                            className="min-w-0 truncate text-[13px] hover:text-accent transition"
+                          >
+                            <bdi>{title}</bdi>
+                          </Link>
+                        )}
+                        {row.rating > 0 && (
+                          <span
+                            className="shrink-0 text-[13px] font-bold text-accent tabular-nums"
+                            title={t.rateOutOf(row.rating)}
+                          >
+                            ★ <span dir="ltr">{row.rating.toFixed(1)}</span>
+                          </span>
+                        )}
+                      </span>
+                    }
                   />
-                  <Link href={`/review/${row.mediaType}/${row.tmdbId}/${row.id}`} prefetch={false}>
+
+                  {/* **والكلامُ بعرض العمود تحت الوجه** — لا بجانبه (D-228) */}
+                  <Link href={reviewHref} prefetch={false} className="block mt-2">
                     <p
                       dir={dirOf(row.review)}
-                      className="mt-2 text-[13px] leading-relaxed text-foreground/85 line-clamp-3"
+                      className="text-[13px] leading-relaxed text-foreground/85 line-clamp-3"
                     >
                       {row.review}
                     </p>
                   </Link>
-                  <div className="mt-2 flex items-center flex-wrap gap-x-2 gap-y-1 text-[12px] text-muted">
-                    <span className="inline-flex items-center gap-1.5 shrink-0">
-                      <Icon name="heart-filled" size={13} />
-                      <span className="tabular-nums">{t.peopleBoardLikes(row.likes)}</span>
-                    </span>
-                    {row.rating > 0 && (
-                      <>
-                        <span aria-hidden>·</span>
-                        <span className="shrink-0 tabular-nums text-accent font-bold">
-                          ★{num(row.rating, locale)}
-                        </span>
-                      </>
-                    )}
-                    {title && (
-                      <>
-                        <span aria-hidden>·</span>
-                        <span dir={dirOf(title)} className="truncate">
-                          {title}
-                        </span>
-                      </>
-                    )}
-                  </div>
+
+                  {/* **والإعجابُ يبقى وحدَه في الذيل** — **وهو سببُ وجود
+                      القسم**: «أعلى التعليقات إعجاباً» بلا رقمِ إعجابٍ
+                      عنوانٌ بلا دليل (D-219). **ولا شريطَ أفعالٍ ثانٍ**:
+                      البطاقةُ بابٌ إلى `/review` حيث الردُّ والإعجاب
+                      يعملان (D-224). */}
+                  <p className="mt-2 inline-flex items-center gap-1.5 text-[12px] text-muted">
+                    <Icon name="heart-filled" size={13} className="shrink-0" />
+                    <span className="tabular-nums">{t.peopleBoardLikes(row.likes)}</span>
+                  </p>
                 </div>
 
+                {/* **والملصقُ بعرض ملصقِ «النشاط» نفسِه** (٩٢px، طلبُ أحمد
+                    «كبّره شوي»): **كان ٤٨×٧٢ فيُقرأ زينةً لا باباً** —
+                    **ومقاسٌ ثانٍ لمعنًى واحدٍ في سطحين هو ما تمنعه
+                    D-222.** **والنسبةُ ٢:٣ تحفظه من التمدّد** (D-046). */}
                 <Link
-                  href={row.mediaType === "tv" ? `/show/${row.tmdbId}` : `/movie/${row.tmdbId}`}
+                  href={titleHref}
                   prefetch={false}
-                  className="relative w-12 h-[72px] shrink-0 self-start rounded-xl overflow-hidden bg-surface-2 border border-border"
+                  className="relative w-[92px] aspect-[2/3] shrink-0 self-start rounded-xl overflow-hidden bg-surface-2 border border-border"
                 >
                   {poster ? (
-                    <Image src={poster} alt="" fill sizes="48px" className="object-cover" />
+                    <Image src={poster} alt="" fill sizes="92px" className="object-cover" />
                   ) : (
                     <span className="absolute inset-0 grid place-items-center text-muted">
-                      <Icon name={row.mediaType === "tv" ? "tv" : "film"} size={14} />
+                      <Icon name={row.mediaType === "tv" ? "tv" : "film"} size={16} />
                     </span>
                   )}
                 </Link>
