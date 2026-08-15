@@ -854,6 +854,10 @@ const ar = {
     n === 1
       ? "تقييمُ شخصٍ واحدٍ ممّن تكلّموا"
       : `متوسّطُ ${num(n, "ar")} من تكلّموا عن العمل`,
+  /* 🆕 **نصُّ سهم التوسيع** (D-284) — **يقول عددَه فلا يُخفى شيءٌ بلا
+     إشارة**، وصيغةُ الجمع جزءٌ من الصدق (D-015: جمعُ القِلّة ٣–١٠). */
+  talkShowReplies: (n: number) =>
+    n === 1 ? "عرض ردّ واحد" : n === 2 ? "عرض ردَّين" : n <= 10 ? `عرض ${num(n, "ar")} ردود` : `عرض ${num(n, "ar")} ردّاً`,
   talkReply: "ردّ",
   /* **«تعليق» في ذيل خطّ النشاط** (D-224، طلبُ أحمد: «ريبلي غيّرها كومنت»).
      **وهي غيرُ `talkReply` عمداً وإن تجاورتا:** داخل الغرفة أنت **تردّ على
@@ -2073,6 +2077,7 @@ const en: Dict = {
     n === 1
       ? "One person's rating among those talking"
       : `Average of ${num(n, "en")} people talking about it`,
+  talkShowReplies: (n: number) => (n === 1 ? "Show 1 reply" : `Show ${num(n, "en")} replies`),
   talkReply: "Reply",
   actionComment: "Comment",
   replySentToast: "Reply sent",
