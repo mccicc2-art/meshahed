@@ -94,6 +94,16 @@ export function TabPager({
     last: number;
     lastT: number;
   } | null>(null);
+  /** مؤقّتُ الحارس — انظر `reset` أدناه (D-278) */
+  const guard = useRef<number | undefined>(undefined);
+  /**
+   * ⚠️ **مفتاحٌ نصّيٌّ لا المصفوفة نفسُها** (D-278): `hrefs` تُبنى في كل
+   * رسمةٍ فهويّتُها جديدةٌ دائماً — **فالتأثيرُ كان يُعاد تركيبه مع كل
+   * رسمة، ومعه `reset`.** ولو وقعت رسمةٌ من مكوّنٍ أبٍ **أثناء** سحبٍ
+   * جارٍ لانقطعت الحركةُ تحت الإصبع. **والمقارنةُ بالمحتوى لا بالهويّة**
+   * تجعل التركيبَ يقع عند تبدّل التبويب وحدَه.
+   */
+  const hrefsKey = hrefs.join("|");
 
   useEffect(() => {
     const vp = viewport.current;
@@ -101,6 +111,7 @@ export function TabPager({
 
     const track = vp.firstElementChild as HTMLElement | null;
     if (!track) return;
+    const list = hrefsKey.split("|");
     const sides = [...track.children] as HTMLElement[];
     const sign = rtl ? 1 : -1;
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -137,6 +148,34 @@ export function TabPager({
       track.style.transition = ms ? `transform ${ms}ms cubic-bezier(.22,.61,.36,1)` : "none";
       track.style.transform = `translate3d(${dx}px,0,0)`;
     };
+
+    /**
+     * **الصفرُ الأوّل — وهو ما كان ناقصاً** (D-278، بلاغُ أحمد: «بعض
+     * الأحيان تختفي»).
+     *
+     * **العطل:** حين ينجح السحبُ **يطير المسارُ بعرض شاشةٍ كاملة** ثم
+     * تُفتح الصفحة. **وReact يعيد استعمالَ العُقَد نفسِها** (نفسُ
+     * الصفحة، تبويبٌ آخر) — **والأنماطُ التي كتبتُها بيدي على `style`
+     * ليست ملكَه فلا يمسحها.** فتبقى `translate3d(-390px)` على مسارٍ
+     * محتواه الجديد سليم: **صفحةٌ مرسومةٌ بالكامل خارج الشاشة** — وهي
+     * «تختفي» التي رآها أحمد. **ولا تقع دائماً**: حين تُبنى العُقَد من
+     * جديد تولد نظيفة، فالعطلُ متقطّعٌ بطبعه — **وهذا أخطرُ من عطلٍ
+     * ثابت.**
+     *
+     * **والقاعدة:** ما يُكتب على `style` بيدٍ خارج React **يُمسح بيدٍ
+     * عند كل تبدّل** — **ولا يُنتظر منه أن يُنظّف نفسَه.**
+     */
+    const reset = () => {
+      track.style.transition = "none";
+      track.style.transform = "translate3d(0,0,0)";
+      vp.style.minHeight = "";
+      sides.forEach((el) => {
+        el.style.top = "";
+        el.style.visibility = "";
+      });
+      setTabDrag(0);
+    };
+    reset();
 
     const onStart = (e: TouchEvent) => {
       drag.current = null;
@@ -190,7 +229,7 @@ export function TabPager({
       const w = vp.clientWidth || 1;
       const next = index + (dx < 0 ? 1 : -1) * (rtl ? -1 : 1);
       /* **ولا التفاف**: الطرفُ يشدّ كالمطاط ولا يعبر (D-274) */
-      const damped = hrefs[next] ? dx : dx * RUBBER;
+      const damped = list[next] ? dx : dx * RUBBER;
       s.dx = damped;
       s.last = t.clientX;
       s.lastT = e.timeStamp;
@@ -205,7 +244,7 @@ export function TabPager({
       const v = (t.clientX - s.last) / dt;
       const dx = s.dx;
       const next = index + (dx < 0 ? 1 : -1) * (rtl ? -1 : 1);
-      const href = hrefs[next];
+      const href = list[next];
       const go =
         !!href &&
         (Math.abs(dx) > w * COMMIT || (Math.abs(v) > FLING && Math.sign(v) === Math.sign(dx)));
@@ -224,6 +263,17 @@ export function TabPager({
       setX(Math.sign(dx) * w, reduced ? 0 : SNAP_MS);
       publish(Math.sign(sign * dx));
       router.push(href);
+      /* ⚠️ **وحارسٌ إن لم تصل** (D-278): الطبيعيُّ أن يتبدّل `index`
+         فيُصفّر التأثيرُ كلَّ شيء عند إعادة تركيبه. **لكنّ نداءً يفشل أو
+         يعود إلى التبويب نفسِه يترك الصفحةَ طائرةً خارج الشاشة إلى
+         الأبد** — **وحالةٌ لا مخرجَ منها إلا بإعادة التحميل ليست حالة.**
+         والمؤقّتُ يُلغى في التنظيف إن وصلت. */
+      window.clearTimeout(guard.current);
+      guard.current = window.setTimeout(() => {
+        setX(0, SNAP_MS);
+        publish(0);
+        window.setTimeout(disarm, SNAP_MS);
+      }, 1200);
     };
 
     const onEnd = (e: TouchEvent) => {
@@ -254,18 +304,20 @@ export function TabPager({
 
     /* **والجارُ يُجلب مسبقاً** فلا تنتظر الرحلةُ الشبكة */
     for (const step of [-1, 1]) {
-      const h = hrefs[index + step];
+      const h = list[index + step];
       if (h) router.prefetch(h);
     }
 
     return () => {
+      window.clearTimeout(guard.current);
       document.removeEventListener("touchstart", onStart);
       document.removeEventListener("touchmove", onMove);
       document.removeEventListener("touchend", onEnd);
       document.removeEventListener("touchcancel", onCancel);
+      releaseGesture("x");
       publish(0);
     };
-  }, [index, hrefs, rtl, panes.length, router]);
+  }, [index, hrefsKey, rtl, panes.length, router]);
 
   /* **خارجَ الصفّ لا pager**: `?tab=all` و`?tab=news` سطحا رابطٍ بلا
      شريحة (D-219) — **وسحبٌ منهما يقفز بالقارئ إلى مكانٍ لم يدخل منه.** */
