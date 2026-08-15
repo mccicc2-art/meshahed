@@ -29,7 +29,7 @@ import { PeopleLeaderboard, TopReviews } from "@/components/PeopleBoard";
 import { ActivityFeed } from "@/components/ActivityFeed";
 import { commentViewKey, newsViewKey } from "@/lib/postKeys";
 import { applyTabPrefs, defaultTab } from "@/lib/tabPrefs";
-import { localizeRows, localizeTitleRooms } from "@/lib/localize";
+import { localizeRows, localizeTitleRooms, localizeTalkRooms } from "@/lib/localize";
 import { CommunityDirectory, CommunityRoom } from "@/components/Communities";
 import { PageTabs } from "@/components/ui/PageTabs";
 import { CommunityTools } from "@/components/CommunityTools";
@@ -254,7 +254,12 @@ export default async function PeoplePage({
      أغلبُ ضغطاتها تُنتج شاشةً فارغة تُقرأ عطلاً لا ترشيحاً** (D-181).
      **والبديلُ قائمٌ ولم يُحذف:** الترتيبُ بأحدث مشاركة يرفع الحيَّ
      تلقائياً. */
-  const rooms = tab === "talk" ? await getTalkRooms(40) : [];
+  /* **واسمُ الغرفة بلغة القارئ** (D-273، بلاغُ أحمد «كيف طلع الاسم
+     بالعربي؟»): `title_posts.title` يُكتب مرّةً بلغة أوّل من فتح الغرفة،
+     **والغرفةُ صفٌّ واحدٌ يراه كل الناس** — **وهي حجّةُ D-147 نفسُها،
+     وقد نُسي هذا السطحُ يومَها.** والصفحةُ هي من تملك `locale` لا طبقةُ
+     البيانات (D-048). */
+  const rooms = tab === "talk" ? await localizeTalkRooms(await getTalkRooms(40), locale) : [];
 
   /* ⚠️ **وأربعةُ نداءاتٍ متوازيةٌ لا متتابعة** (D-263): كلُّها دوالُّ
      `definer` خفيفةٌ تقرأ صفوفاً قائمة **ولا واحدةَ منها تحتاج نتيجةَ
