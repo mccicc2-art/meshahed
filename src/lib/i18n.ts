@@ -603,7 +603,10 @@ const ar = {
   /* **«الناس» لا «اكتشف أشخاصاً»** (D-262): التبويبُ اسمُ مكانٍ لا اسمُ
      فعل — وجيرانُه «النشاط» و«نقاش» أسماءُ أماكن. **وثلاثُ كلماتٍ في
      شريحةٍ على الهاتف تُقصّ** (D-258). */
-  communityTabPeople: "الناس",
+  /* ⚖️ **«الأعضاء» بعد أن كانت «الناس»** (D-274، طلبُ أحمد) — **والمفتاحُ
+     `people` والرابطُ `?tab=people` لم يتغيّرا**: الاسمُ للقارئ والمفتاحُ
+     للروابط المحفوظة، **وتبديلُ الثاني يقتل رابطاً مشارَكاً** (D-219). */
+  communityTabPeople: "الأعضاء",
   /* **وفراغُه يقول لماذا هو فارغ** (D-181) **ويقول الفعلَ الذي يملؤه**
      — **ولا يقول «لا يوجد أحد»** فذاك كذبٌ عن موقعٍ فيه ناس.
      ⚠️ **وتغيّر نصُّه في D-270 لأن أقسامَه تغيّرت**: كان يتكلّم عن
@@ -1868,7 +1871,8 @@ const en: Dict = {
   communityTabMine: "Activity",
   communityTabReviews: "Reviews",
   communityTabWorks: "Discussions",
-  communityTabPeople: "People",
+  // Renamed from "People" (D-274); the key and the URL stay `people`
+  communityTabPeople: "Members",
   peopleTabEmpty: "No activity yet — write a review or join a discussion and names will show up here",
   // People tab sections (D-263) — an explicit count, never a weighted score
   // “Featured” reads as hand-picked; the note says what it actually measures
