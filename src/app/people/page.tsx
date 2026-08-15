@@ -479,9 +479,10 @@ export default async function PeoplePage({
               showStrangers={showStrangers}
               /* **وجملةُ الفراغ فعلٌ لا اعتذار** (D-181): تقول ماذا تفعل
                  ليمتلئ، **لا «لا يوجد شيء»**.
-                 ⚠️ **وصارت واحدةً لا اثنتين** (D-280): سقطت `feedEmptyForYou`
-                 مع الرقاقة التي كانت تفرغ وحدَها. */
-              emptyText={scope === "all" ? t.worksEmptyAll : t.worksEmptyFollowing}
+                 ⚖️ **وعادت `feedEmptyForYou`** (D-283): صار الخطُّ يرشّح
+                 بالدائرة والمكتبة، **فالفراغُ هنا معناه «دائرتُك فارغة»
+                 لا «لا أحدَ يتكلّم»** — وجملةٌ تقول الثاني تكذب. */
+              emptyText={t.feedEmptyForYou}
               locale={locale}
             />
     </section>
