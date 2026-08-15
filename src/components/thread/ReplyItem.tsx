@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { getDict, type Locale } from "@/lib/i18n";
+import { num, getDict, type Locale } from "@/lib/i18n";
 import { displayNameOf } from "@/lib/people";
 import { timeAgoShort } from "@/lib/when";
 import { dirOf } from "@/lib/dir";
@@ -73,6 +73,7 @@ export function ReplyItem({
   locale,
   signedIn,
   canReply,
+  replyCount = 0,
   onReply,
   onDelete,
   onReport,
@@ -84,6 +85,16 @@ export function ReplyItem({
   signedIn: boolean;
   /** **العمقُ الثاني لا يُردّ عليه**: القاعدةُ تمنعه، فلا زرَّ يعد بما تمنعه */
   canReply: boolean;
+  /**
+   * 🆕 **عددُ الردود بجانب علامة التعليق** (D-284، طلبُ أحمد: «عدد الردود
+   * الي في محادثة أحمد المفروض يُكتب جنب علامة التعليق الي في رسالته
+   * الأولى»).
+   *
+   * **والرقمُ يجاور صاحبَه** (D-223/D-241): هو عددُ ما تحت *هذا* الصفّ،
+   * **فيسكن زرَّ الردّ عليه لا سطراً في مكانٍ آخر.**
+   * **والصفر يُخفى** (D-222) — «٠ ردّاً» ضجيجٌ لا خبر.
+   */
+  replyCount?: number;
   onReply: () => void;
   onDelete: () => void;
   onReport: () => void;
@@ -241,6 +252,9 @@ export function ReplyItem({
               className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[12px] text-muted hover:text-accent transition"
             >
               <Icon name="comment" size={15} />
+              {replyCount > 0 && (
+                <span className="tabular-nums">{num(replyCount, locale)}</span>
+              )}
             </button>
           </div>
         )}

@@ -16,6 +16,7 @@ import { getDict, type Locale } from "@/lib/i18n";
 import { displayNameOf } from "@/lib/people";
 import { tap } from "@/lib/haptics";
 import { Avatar } from "../Avatar";
+import { Icon } from "../Icon";
 import { Composer } from "../Composer";
 import { ReplyItem, TEMP, type ThreadReply } from "./ReplyItem";
 
@@ -96,6 +97,19 @@ export function ThreadReplies({
   /** الصندوقُ المفتوح: `""` للمنشور نفسِه، أو معرّفُ ردٍّ يُردّ عليه */
   const [open, setOpen] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  /**
+   * 🆕 **الفروعُ مطويّةٌ حتى تُفتح** (D-284، طلبُ أحمد: «الردود الي في ردّ
+   * الشخص المفروض ما تظهر على طول، لازم فيه سهم توسيع»).
+   *
+   * **والعطلُ الذي رآه:** خيطٌ فيه ثلاثةُ ردودٍ متداخلة يفتح الصفحةَ
+   * على شجرةٍ كاملة، **فيقرأ القارئُ حواراً جانبيّاً قبل أن يرى بقيّة
+   * الغرفة** — والصفحةُ صارت أطولَ مما تقول.
+   * **والمطويُّ يُعلن عددَه** فلا يُخفى شيءٌ بلا إشارة (D-138: أداةٌ لا
+   * تُرى لا توجد).
+   * ⚠️ **وما كتبتَه أنت يُفتح فوراً**: من ردّ ثم رأى ردَّه مطويّاً ظنّ
+   * أنه لم يُرسَل (D-241/D-251).
+   */
+  const [opened, setOpened] = useState<Set<string>>(new Set());
 
   /* **الحمولةُ تغلب النسخةَ المحلّية** (D-241): ما ظهر معرّفُه من الخادم
      تسقط نسختُه هنا — فلا يظهر الردُّ مرّتين. */
@@ -134,9 +148,33 @@ export function ThreadReplies({
         </p>
       )}
 
-      {/* ===== صفُّ الكتابة ===== */}
+      {/* ===== الردود ===== */}
+      {all.length === 0 ? (
+        <p className="py-10 px-5 text-center text-sm text-muted leading-relaxed">
+          {nested ? t.talkRoomEmpty : t.postNoReplies}
+        </p>
+      ) : (
+        roots.map((r) => node(r, 0))
+      )}
+
+      {/* ===== صفُّ الكتابة — في قاع الصفحة (D-284) =====
+          **طلبُ أحمد بلقطةٍ من X: «مكان كتابتي للتعليق خلّه تحت جدًّا في
+          أسفل الصفحة».**
+
+          **وكان فوق الردود، وهو موضعٌ يقلب معنى الصفحة**: أوّلُ ما تراه
+          دعوةٌ لتكتب، **قبل أن تقرأ سطراً واحداً ممّا كُتب** — والغرفةُ
+          سطحُ قراءةٍ يجوز أن يُكتب فيه، لا سطحُ كتابةٍ تحته أرشيف.
+          **والقاعُ هو عُرف تويتر وX وReddit** — ولِما له عُرفٌ راسخ
+          يُنسخ (D-150/D-242).
+
+          ⚠️ **و`sticky` لا `fixed`**: `fixed` يخرج من عمود القراءة
+          فيمتدّ بعرض الشاشة على اللوح، **و`sticky` يرث عرضَ أبيه**.
+          ⚠️ **ويجلس فوق الشريط السفليّ لا تحته**: الشريطُ `fixed` بارتفاعٍ
+          ثابتٍ زائدَ المنطقةِ الآمنة، **فالإزاحةُ تحسبه** — ويسقط
+          الحسابُ من `md:` فصاعداً حيث يختفي الشريط (`md:hidden`).
+          **وأداةٌ تختفي خلف أخرى أسوأُ من أداةٍ غائبة** (D-138). */}
       {signedIn && (
-        <div className="py-3 border-b border-[color:var(--divider)]">
+        <div className="sticky bottom-[calc(env(safe-area-inset-bottom,0px)+3.5rem)] md:bottom-0 z-20 -mx-4 sm:-mx-6 px-4 sm:px-6 py-3 border-t border-[color:var(--divider)] bg-[color:var(--background)]">
           {open === "" ? (
             <Composer
               locale={locale}
@@ -167,14 +205,6 @@ export function ThreadReplies({
         </div>
       )}
 
-      {/* ===== الردود ===== */}
-      {all.length === 0 ? (
-        <p className="py-10 px-5 text-center text-sm text-muted leading-relaxed">
-          {nested ? t.talkRoomEmpty : t.postNoReplies}
-        </p>
-      ) : (
-        roots.map((r) => node(r, 0))
-      )}
     </>
   );
 
@@ -202,6 +232,8 @@ export function ThreadReplies({
           signedIn={signedIn}
           /* **وحدُّ الردّ حدُّ القاعدة نفسُه** — فلا زرَّ يعد بما تمنعه */
           canReply={nested ? depth < MAX_DEPTH : !r.parentId}
+          /* **والعددُ بجانب علامته** (D-284) — كلُّ الفرع لا أبناؤه وحدهم */
+          replyCount={nested ? countUnder(r.replyId) : 0}
           onReply={() => {
             tap(6);
             setOpen(open === r.replyId ? null : r.replyId);
@@ -220,9 +252,31 @@ export function ThreadReplies({
             />
           </div>
         )}
-        {kid.map((c) => node(c, depth + 1))}
+        {kid.length > 0 &&
+          (opened.has(r.replyId) || kid.some((c) => c.isMine) ? (
+            kid.map((c) => node(c, depth + 1))
+          ) : (
+            /* **السهمُ يقول ما تحته بعدده** — ولا يُقصّ العددُ من العين */
+            <button
+              type="button"
+              onClick={() => {
+                tap(6);
+                setOpened((s2) => new Set(s2).add(r.replyId));
+              }}
+              className="mb-3 ms-[52px] inline-flex items-center gap-1.5 text-[12px] font-bold text-muted hover:text-accent transition"
+            >
+              <Icon name="chevron-down" size={14} className="shrink-0" />
+              {t.talkShowReplies(countUnder(r.replyId))}
+            </button>
+          ))}
       </div>
     );
+  }
+
+  /** **كلُّ ما تحته لا أبناؤه المباشرون** — العددُ يعد الفرعَ كلَّه */
+  function countUnder(id: string): number {
+    const direct = kids.get(id) ?? [];
+    return direct.reduce((n, c) => n + 1 + countUnder(c.replyId), 0);
   }
 
   /** إرسالٌ تفاؤليّ — ثم مصالحةٌ بالمعرّف الحقيقيّ (D-241) */
