@@ -69,6 +69,8 @@ export function NotificationBell({
     /* **الردّ** (D-218) — والعملُ قد يكون بلا عنوان إن حُذف التقييمُ وبقي
        الخيط، **فجملتان لا جملةٌ بفراغ**: «ردّ عليك في X» أو «ردّ عليك» */
     if (s.kind === "reply") return t.notifReply(who, s.title ?? "");
+    /* **وردُّ الغرفة جملتُه تسمّي المكان** (D-259) — انظر `notifTalkReply` */
+    if (s.kind === "talk_reply") return t.notifTalkReply(who, s.title ?? "");
     return t.notifLike(who, s.title ?? "");
   }
 
@@ -140,13 +142,17 @@ export function NotificationBell({
                   ? `/${s.mediaType === "tv" ? "show" : "movie"}/${s.tmdbId}`
                   : null;
                 const href =
-                  s.kind === "reply" && s.tmdbId
-                    ? myUsername
-                      ? `/review/${s.mediaType ?? "movie"}/${s.tmdbId}/${myUsername}`
-                      : titleHref
-                    : s.person.username
-                      ? `/u/${s.person.username}`
-                      : titleHref;
+                  /* **ردُّ الغرفة يفتح الغرفة** (D-259) — ولا يحتاج اسمَك:
+                     الغرفةُ لا صاحبَ لها، ومسارُها العملُ نفسُه. */
+                  s.kind === "talk_reply" && s.tmdbId
+                    ? `/talk/${s.mediaType ?? "movie"}/${s.tmdbId}`
+                    : s.kind === "reply" && s.tmdbId
+                      ? myUsername
+                        ? `/review/${s.mediaType ?? "movie"}/${s.tmdbId}/${myUsername}`
+                        : titleHref
+                      : s.person.username
+                        ? `/u/${s.person.username}`
+                        : titleHref;
                 const body = (
                   <span className="flex items-center gap-3 py-3">
                     <Avatar

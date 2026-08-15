@@ -114,7 +114,16 @@ export function BottomNav({
         aria-label={t.navHome}
         /* الصنف الصمّاء أوّلاً وهي الاحتياط: السطر المضمَّن أدناه يغلبها
            حيث يُفهم، ويسقط كاملاً حيث لا يُفهم فيبقى اللون الصمّاء */
-        className="md:hidden fixed bottom-0 inset-x-0 z-40 grid grid-cols-5 border-t border-[color:var(--divider)] bg-[color:var(--background)] backdrop-blur-xl pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]"
+        /* **والارتفاعُ نزل** (D-259، بلاغُ أحمد بلقطةٍ معلَّمة: «الشريط
+           اللي تحت ارتفاعه عالي»). **والعلّةُ كانت في الحشو السفليّ لا في
+           الأيقونة**: `max(0.5rem, env(safe-area-inset-bottom))` تعني على
+           الآيفون **٣٤px حشواً كاملاً تحت الأيقونات** — وهو ارتفاعُ شريط
+           الإيماءة نفسِه. **والشريطُ لا يحتاج أن يقف فوقه، يحتاج ألّا
+           يُدفن تحته**: نصفُه يكفي فاصلاً، **والخلفيّةُ تمتدّ تحته كما
+           كانت** فلا يظهر شقٌّ.
+           ⚠️ **والأرضيةُ تبقى** (`0.375rem`) للمتصفّح حيث `env` صفر —
+           **وشريطٌ ملاصقٌ للحافّة بلا هامشٍ يُقرأ مقصوصاً.** */
+        className="md:hidden fixed bottom-0 inset-x-0 z-40 grid grid-cols-5 border-t border-[color:var(--divider)] bg-[color:var(--background)] backdrop-blur-xl pt-1.5 pb-[max(0.375rem,calc(env(safe-area-inset-bottom)*0.5))]"
         style={{ background: "color-mix(in srgb, var(--background) 76%, transparent)" }}
       >
         {TABS.map(({ href, key, icon }) => {
@@ -146,9 +155,12 @@ export function BottomNav({
           );
           /* **والحشوُ يعوّض ارتفاعَ السطر الذاهب**: هدفُ اللمس ٤٤px
              (D-033/D-168) **لا يُشترى بالنصّ بل يُكتب** — وخانةٌ بلا
-             كلمةٍ وبحشوها القديم تصير ٣٤px. */
+             كلمةٍ وبحشوها القديم تصير ٣٤px.
+             **و`py-2` لا `py-2.5`** (D-259): ٢٥+١٦ = ٤١px، **والأربعةُ
+             والأربعون تكتمل بحشو الشريط العلويّ فوقها** — والخانةُ
+             لا تُقاس وحدها. */
           const face_cls =
-            "relative flex min-w-0 items-center justify-center rounded-2xl px-1 py-2.5 transition active:bg-surface-2";
+            "relative flex min-w-0 items-center justify-center rounded-2xl px-1 py-2 transition active:bg-surface-2";
 
           // البحث يفتح ورقةً في مكانه؛ وبقية التبويبات وجهاتٌ تُزار
           return isSearch ? (
