@@ -13,6 +13,7 @@ import {
 import { getMovie, getTv, posterUrl, backdropUrl } from "@/lib/tmdb";
 import { displayWorkTitle } from "@/lib/wikidata";
 import { getT } from "@/lib/locale";
+import { bulletinLine } from "@/lib/bulletinLine";
 import { TitleHero } from "@/components/TitleHero";
 import { ThreadReplies } from "@/components/thread/ThreadReplies";
 import { Icon } from "@/components/Icon";
@@ -53,7 +54,13 @@ export async function generateMetadata({
 
   const said = thread[0]?.body?.trim() ?? "";
   const title = t.talkRoomTitle(name, type === "tv");
-  const description = said ? said.slice(0, 155) : t.talkMetaEmpty(name);
+  /* **وأوّلُ سطرٍ قد يكون نشرةَ Loopz** (D-261) — **وهي بلا متن**، فكان
+     الوصفُ يسقط إلى «لا مشاركات» وفي الغرفة نشرة. الجملةُ تُركَّب هنا
+     بنفس الدالّة التي يرسمها الخيط (`bulletinLine`).
+     ⚠️ **ولا حرقَ في وصف المستند أبداً**: هذا النصُّ يذهب إلى محرّكات
+     البحث وبطاقةِ المشاركة، **وحاجبٌ يُكشف في معاينةِ رابطٍ ليس حاجباً.** */
+  const firstLine = said || bulletinLine(thread[0]?.kind ?? null, thread[0]?.data ?? null, t, locale);
+  const description = firstLine ? firstLine.slice(0, 155) : t.talkMetaEmpty(name);
 
   return {
     title,
@@ -233,6 +240,10 @@ export default async function TalkPage({
             body: p.body,
             createdAt: p.createdAt,
             isMine: p.isMine,
+            /* 🆕 D-261 — تمرُّ كما جاءت، **والصفُّ يقرّر متنَه** */
+            kind: p.kind,
+            data: p.data,
+            spoiler: p.spoiler,
           }))}
           me={me}
           locale={locale}
