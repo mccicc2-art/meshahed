@@ -1941,9 +1941,20 @@ export interface TalkPost {
   parentId: string | null;
   /** ٠ للجذر، وسقفُه ٣ — **يحسبه المُشغِّل في القاعدة** لا العميل */
   depth: number;
+  /**
+   * ⚠️ **فارغٌ لنشرة Loopz** (D-261): متنُها يُصاغ عند العرض من `data`.
+   * **ويبقى `string` لا `string | null`** كي لا يُجبَر كلُّ قارئٍ قائمٍ
+   * على حارسٍ لا يحتاجه — **والقاعدةُ تضمن أن `kind` هو الفارق**.
+   */
   body: string;
   createdAt: string;
   isMine: boolean;
+  /** 🆕 D-261 — `null` لكلام البشر، و`"episode"` لنشرة Loopz */
+  kind: string | null;
+  /** حقائقُ النشرة (`BulletinData`) — تُصاغ جملةً في `i18n.ts` */
+  data: Record<string, unknown> | null;
+  /** النثرُ المحجوب بلغتيه — `{ ar?, en? }` */
+  spoiler: Record<string, unknown> | null;
 }
 
 /**
@@ -1975,8 +1986,13 @@ export async function getTitleThread(
       username: string | null;
       avatar_url: string | null;
       hide_name: boolean;
-      body: string;
+      body: string | null;
       created_at: string;
+      /* 🆕 D-261 — **تغيب قبل تشغيل الهجرة ٨٠ فتُقرأ `undefined`**،
+         والحارسُ `?? null` يجعل الصفَّ يُقرأ كلامَ إنسانٍ كما كان */
+      kind?: string | null;
+      data?: Record<string, unknown> | null;
+      spoiler?: Record<string, unknown> | null;
     }[]).map((r) => ({
       postId: String(r.id),
       authorId: String(r.author_id),
@@ -1986,9 +2002,12 @@ export async function getTitleThread(
       hide_name: r.hide_name,
       parentId: r.parent_id,
       depth: Number(r.depth ?? 0),
-      body: r.body,
+      body: r.body ?? "",
       createdAt: r.created_at,
       isMine: !!me && me.id === r.author_id,
+      kind: r.kind ?? null,
+      data: r.data ?? null,
+      spoiler: r.spoiler ?? null,
     }));
   } catch {
     return [];
@@ -3235,6 +3254,43 @@ export async function refreshLoopzNews(): Promise<number> {
     /* **ودفعةُ الصحافة معها**: الحدثُ من عندهم والجملةُ من عندنا (D-213) */
     const rep = await runReportSlice().catch(() => ({ saved: 0 }));
     return posts + rep.saved;
+  } catch {
+    return 0;
+  }
+}
+
+/**
+ * **هل حان وقتُ نشرةِ غرفةٍ؟** (D-261) — تُسأل في القاعدة لا على ساعة
+ * الرسم، **بنمط `getNewsGenStale` حرفاً**.
+ *
+ * **وافتراضُها ثلاثُ ساعاتٍ لا عشرُ دقائق**، والفرقُ مقصود: دورةُ الأخبار
+ * ترصد تغيّراً قد يقع أيَّ لحظة، **وحلقةُ مسلسلٍ تنزل مرّةً في الأسبوع**
+ * — **وبوّابةٌ أسرعُ من الحدث تفحص فراغاً وتدفع ثمنه** (D-215).
+ */
+export async function getTalkBulletinStale(minutes = 180): Promise<boolean> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("talk_bulletin_stale", { p_minutes: minutes });
+    if (error) return false;
+    return data === true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * **دورةُ نشرٍ واحدة بعد إرسال الصفحة** (`after`) — نفسُ نمط D-210/D-215:
+ * **بحركة المرور، بلا سرٍّ وبلا صفِّ cron.**
+ *
+ * ⚠️ **ودورةٌ واحدة لا اثنتان** (بخلاف `refreshLoopzNews`): تلك تمرّ على
+ * ألفِ عملٍ بحثاً عن تغيّر، **وهذه تكتب ثلاثاً بسقفٍ معلَن** — وتكرارُها
+ * في الزيارة الواحدة يضاعف النشراتِ لا التغطية.
+ */
+export async function refreshTalkBulletins(): Promise<number> {
+  try {
+    const { runTalkBulletinSlice } = await import("@/lib/talkBulletins");
+    const r = await runTalkBulletinSlice();
+    return r.posted;
   } catch {
     return 0;
   }

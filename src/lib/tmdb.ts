@@ -108,6 +108,14 @@ export interface Episode {
   air_date: string | null;
   still_path: string | null;
   runtime: number | null;
+  /**
+   * تقييمُ الحلقة نفسِها — **يرسله TMDB منذ البداية ولم يكن يُقرأ**
+   * (D-261، طلبُ أحمد: «وأخذت تقييم كذا»).
+   * **واختياريٌّ لأنه كذلك في المصدر**: حلقةٌ لم يصوّت عليها أحد تعود
+   * بصفر، وحقلٌ قد يغيب يُكتب غائباً — **حقلٌ يُسمّى كما تسمّيه الشبكة**
+   * (D-167).
+   */
+  vote_average?: number;
 }
 
 export interface Season {
@@ -791,6 +799,22 @@ export async function getTv(id: number): Promise<TvDetails> {
 
 export async function getMovie(id: number): Promise<MovieDetails> {
   return withPoster(await tmdb<MovieDetails>(`/movie/${id}`), `/movie/${id}`);
+}
+
+/**
+ * **تفاصيلُ مسلسلٍ بلغةٍ مطلوبةٍ صراحةً** (D-261).
+ *
+ * `getTv` تسأل TMDB **بلغة القارئ** (`tmdbLanguage`) — وهو الصواب لكل
+ * سطحٍ يقرؤه إنسانٌ الآن. **ونشرةُ Loopz تُكتب مرّةً وتُقرأ باللغتين**،
+ * فتحتاج النصَّين معاً وقتَ الكتابة لا وقتَ القراءة (D-211).
+ *
+ * ⚠️ **ولا نداءَ ثالثاً للغةٍ ثالثة**: اللغتان هما لغتا التطبيق، ولا
+ * ثالثةَ — **وحين تُضاف لغةٌ تُضاف هنا سطراً** لا يُعاد بناءُ المولِّد.
+ * **ولا `withPoster`**: النشرةُ تأخذ ملصقَها من الصفّ لا من هذا النداء،
+ * **ونداءُ صورٍ إضافيٌّ لكل مرشَّحٍ هو بعينه ما تمنعه D-164.**
+ */
+export async function getTvIn(id: number, language: "ar-SA" | "en-US"): Promise<TvDetails> {
+  return tmdb<TvDetails>(`/tv/${id}`, { language });
 }
 
 

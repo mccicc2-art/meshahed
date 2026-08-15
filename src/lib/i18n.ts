@@ -646,6 +646,35 @@ const ar = {
      أحدٌ رأياً بعد») — **اسمٌ بقي بعد أن تغيّر ما يسمّيه.**
      **ويدلّ على الباب** لأن الغرفة لا تُفتح من هنا: تُفتح من صفحة العمل. */
   talkRoomsEmpty: "لا نقاشات بعد — افتح أوّلَ غرفةٍ من صفحة أيّ عمل",
+  /* **نشرةُ Loopz في الغرفة** (D-261، طلبُ أحمد: «نزول حلقة كذا بعنوان
+     كذا وأخذت تقييم كذا، ويذكر أبرز ما فيها»).
+     **والجملةُ تُركَّب هنا ولا تُخزَّن** (D-211/`newsLine`): الصفُّ يحمل
+     الأرقامَ والأسماء، **فمن بدّل لغتَه وجد النشرةَ بلغته** — وجملةٌ
+     محفوظةٌ كانت تُقفل لغتَها يومَ كُتبت.
+     ⚠️ **و«نزلت» لا «تنزل»**: الماضي هو ما يفرّق هذه النشرةَ عن جدول
+     Upcoming الذي حذفت D-212 تكرارَه. */
+  /* **وحرفان لا يُريان ولا يُحذفان** (`U+2068 FSI` و`U+2069 PDI` حول
+     العنوان): عنوانُ الحلقة لاتينيٌّ داخل جملةٍ عربية والعكس،
+     **وهو `bdi` نفسُه بصيغةِ نصّ** (D-228) — ولا يصلح وسمٌ هنا لأن هذه
+     سلسلةٌ لا JSX. **يُطبَّق بالقاعدة لا بالبلاغ.**
+
+     ⚠️ **وتصحيحٌ يُسجَّل ولا يُمحى** (D-161): كتبتُ أوّلاً أن الصورةَ
+     أمسكت به — **ولم تفعل.** رسمتُ السطرَ في Chromium بالعزل وبدونه، في
+     الاتّجاهين، وبعنوانٍ ينتهي برقم (أسوأُ الحالات) — **والرسمتان
+     متطابقتان**: المحرِّكُ يعزل بالقوسين أصلاً. وما ظننتُه كسراً كان
+     **التفافَ سطرٍ عادياً** لعنوانٍ من كلمتين.
+     **فيبقى العزلُ لأنه قاعدةُ D-228 لا لأنه أصلح عطلاً**، والقاعدةُ
+     تحمي ما لا تحميه القوسان: عنوانٌ يبدأ أو ينتهي بمحايد. */
+  bulletinEpisode: (season: number, episode: number, name?: string | null) =>
+    name
+      ? `نزلت الحلقة ${num(episode, "ar")} من الموسم ${num(season, "ar")} — «⁨${name}⁩»`
+      : `نزلت الحلقة ${num(episode, "ar")} من الموسم ${num(season, "ar")}`,
+  bulletinRuntime: (mins: number) => `${num(mins, "ar")} دقيقة`,
+  /* **زرُّ الحاجب فعلٌ لا تحذير** (D-181): يقول ماذا يفعل لا ما يخفيه */
+  spoilerShow: "اعرض الحرق",
+  spoilerHide: "أخفِ الحرق",
+  /* **وسببُ الحجب يُقال مرّةً** — ولا يُكرَّر مع كل نشرة */
+  spoilerNote: "يكشف أحداثَ الحلقة",
   /* **«شاهدوا المنشور» لا «شاهدوه»** (D-237): الأولى تخصّ الصفَّ الذي
      تحته، والثانيةُ تخصّ العملَ — **وكلمةٌ واحدة كانت تحمل المعنيين** */
   postViewsHint: "شاهدوا المنشور",
@@ -1771,6 +1800,14 @@ const en: Dict = {
   talkRoomPlaceholder: "Join the discussion…",
   talkRoomEmpty: "No posts yet — open the discussion with the first line",
   talkRoomsEmpty: "No discussions yet — start the first one from any title's page",
+  bulletinEpisode: (season: number, episode: number, name?: string | null) =>
+    name
+      ? `Episode ${num(episode, "en")} of season ${num(season, "en")} is out — “⁨${name}⁩”`
+      : `Episode ${num(episode, "en")} of season ${num(season, "en")} is out`,
+  bulletinRuntime: (mins: number) => `${num(mins, "en")} min`,
+  spoilerShow: "Show spoiler",
+  spoilerHide: "Hide spoiler",
+  spoilerNote: "Reveals what happens in the episode",
   postViewsHint: "post views",
   undoNotWatched: "Not watched",
   postPageTitle: "Post",
