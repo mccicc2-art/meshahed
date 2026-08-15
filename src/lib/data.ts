@@ -1763,22 +1763,12 @@ export interface PeopleLeaderRow extends PersonLite {
  * الرياض، **والواجهةُ تطلب العددَ وحده.**
  */
 export async function getPeopleLeaderboard(limit = 20): Promise<PeopleLeaderRow[]> {
-  const want = limit;
   try {
     const supabase = await createClient();
-    /* ⚠️ **حارسُ عبورٍ حتى تُشغَّل الهجرة ٨٣** (D-264/D-265): التوقيعُ
-       بمعاملٍ واحدٍ **غيرُ موجودٍ قبلها**، **وسقوطُه الصامت كان سيُخفي
-       قسمين معاً** — اللوحةَ والصاعدين. **فيُعاد النداءُ بالتوقيع
-       القديم**: النافذةُ تبقى متدحرجةً سبعةَ أيامٍ حتى تُشغَّل الهجرة،
-       **ثم تصير سبتيّةً بلا دفعةٍ ثانية.**
-       **⬜ ويُحذف الفرعُ بعد تأكيد ٨٣** — مكتوبٌ في `05` (D-151). */
-    let { data, error } = await supabase.rpc("people_leaderboard", { p_limit: want });
-    if (error) {
-      ({ data, error } = await supabase.rpc("people_leaderboard", {
-        p_days: 7,
-        p_limit: want,
-      }));
-    }
+    /* **وحارسُ العبور حُذف** بعد أن شُغِّلت الهجرة ٨٣ وتحقّقت
+       (`board_overloads=1` و`week_starts` ينتهي بسبت) — **حارسٌ مؤقّتٌ
+       يُنسى يصير كذبةً عن حالة القاعدة** (D-151). */
+    const { data, error } = await supabase.rpc("people_leaderboard", { p_limit: limit });
     if (error || !data) return [];
     return (data as {
       user_id: string;
@@ -1836,20 +1826,12 @@ export async function getPeopleTopReviews(
 ): Promise<PeopleTopReviewRow[]> {
   try {
     const supabase = await createClient();
-    let { data, error } = await supabase.rpc("people_top_review", {
+    /* **وحارسُ العبور حُذف** بعد أن شُغِّلت الهجرة ٨٢ وتحقّقت
+       (`top_review_overloads=1`) — D-151. */
+    const { data, error } = await supabase.rpc("people_top_review", {
       p_days: days,
       p_limit: limit,
     });
-    /* ⚠️ **حارسُ عبورٍ حتى تُشغَّل الهجرة ٨٢** (D-264): النداءُ بمعاملين
-       **يفشل بتوقيعٍ غير موجود** قبلها، **وسقوطُه الصامت كان سيُخفي
-       القسمَ كلَّه** — وهو قسمٌ يعمل اليوم بصفٍّ واحد. **فيُعاد النداءُ
-       بالتوقيع القديم ويُقصّ هنا**: الميزةُ تهبط ناقصةً لا غائبة،
-       **وتكتمل لحظةَ تشغيل الهجرة بلا دفعةٍ ثانية.**
-       **⬜ ويُحذف هذا الفرعُ في الجلسة التي تلي تأكيدَ ٨٢** — مكتوبٌ في
-       `05`، **فحارسٌ مؤقّتٌ يُنسى يصير كذبةً عن حالة القاعدة** (D-151). */
-    if (error) {
-      ({ data, error } = await supabase.rpc("people_top_review", { p_days: days }));
-    }
     if (error || !data) return [];
     return (data as {
       user_id: string;
