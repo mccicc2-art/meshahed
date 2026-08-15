@@ -108,8 +108,18 @@ export function ThreadReplies({
    * تُرى لا توجد).
    * ⚠️ **وما كتبتَه أنت يُفتح فوراً**: من ردّ ثم رأى ردَّه مطويّاً ظنّ
    * أنه لم يُرسَل (D-241/D-251).
+   *
+   * 🆕 **ويُطوى بعد أن يُفتح** (D-287، سؤالُ أحمد: «بعد ما فتحتها وين
+   * الزرُّ الي قفلها؟»). **وزرٌّ يفتح ولا يُغلق ليس مفتاحاً** — **ومن فتح
+   * فرعاً بالخطأ كان عليه أن يعيد تحميل الصفحة ليخفيه** (D-047:
+   * «تراجَع بعد» يقتضي وجودَ تراجُع).
+   *
+   * ⚠️ **والمجموعةُ تحمل «ما قلبه القارئ» لا «ما هو مفتوح»** — لأن
+   * الافتراضَ نفسَه يختلف من فرعٍ لفرع (فرعٌ فيه ردُّك مفتوحٌ ابتداءً).
+   * **فالمحسوبُ `toggled ? !auto : auto`** — **ومجموعةٌ تعني «مفتوح»
+   * كانت ستمنع أحمد من طيّ فرعه هو**، وهو بالضبط الفرعُ الذي في لقطته.
    */
-  const [opened, setOpened] = useState<Set<string>>(new Set());
+  const [toggled, setToggled] = useState<Set<string>>(new Set());
 
   /* **الحمولةُ تغلب النسخةَ المحلّية** (D-241): ما ظهر معرّفُه من الخادم
      تسقط نسختُه هنا — فلا يظهر الردُّ مرّتين. */
@@ -253,22 +263,41 @@ export function ThreadReplies({
           </div>
         )}
         {kid.length > 0 &&
-          (opened.has(r.replyId) || kid.some((c) => c.isMine) ? (
-            kid.map((c) => node(c, depth + 1))
-          ) : (
-            /* **السهمُ يقول ما تحته بعدده** — ولا يُقصّ العددُ من العين */
-            <button
-              type="button"
-              onClick={() => {
-                tap(6);
-                setOpened((s2) => new Set(s2).add(r.replyId));
-              }}
-              className="mb-3 ms-[52px] inline-flex items-center gap-1.5 text-[12px] font-bold text-muted hover:text-accent transition"
-            >
-              <Icon name="chevron-down" size={14} className="shrink-0" />
-              {t.talkShowReplies(countUnder(r.replyId))}
-            </button>
-          ))}
+          (() => {
+            /* **الافتراضُ: مفتوحٌ إن كان فيه ردُّك** — ثم قلبُ القارئ
+               يغلب الافتراض في الاتّجاهين (D-287). */
+            const auto = kid.some((c) => c.isMine);
+            const isOpen = toggled.has(r.replyId) ? !auto : auto;
+            return (
+              <>
+                {/* **الزرُّ في مكانه فتحاً وطيّاً** — **وأداةٌ تنتقل عند
+                    الضغط تُفقِد القارئَ مكانَه** (D-224/D-258). والسهمُ
+                    يدور ولا يُستبدل برمزٍ ثانٍ (D-260). */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    tap(6);
+                    setToggled((s2) => {
+                      const n = new Set(s2);
+                      if (n.has(r.replyId)) n.delete(r.replyId);
+                      else n.add(r.replyId);
+                      return n;
+                    });
+                  }}
+                  aria-expanded={isOpen}
+                  className="mb-3 ms-[52px] inline-flex items-center gap-1.5 text-[12px] font-bold text-muted hover:text-accent transition"
+                >
+                  <Icon
+                    name="chevron-down"
+                    size={14}
+                    className={`shrink-0 transition-transform ${isOpen ? "rotate-180" : ""}`}
+                  />
+                  {isOpen ? t.talkHideReplies : t.talkShowReplies(countUnder(r.replyId))}
+                </button>
+                {isOpen && kid.map((c) => node(c, depth + 1))}
+              </>
+            );
+          })()}
       </div>
     );
   }
