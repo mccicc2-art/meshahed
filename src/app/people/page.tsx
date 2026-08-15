@@ -121,7 +121,7 @@ export default async function PeoplePage({
     scope?: string;
     sort?: string;
     all?: string;
-    q?: string;
+    who?: string;
     c?: string;
     with?: string;
   }>;
@@ -140,7 +140,7 @@ export default async function PeoplePage({
     scope: sParam,
     sort: sortParam,
     all: allParam,
-    q: qParam,
+    who: whoParam,
     c: cParam,
     with: withParam,
   } = await searchParams;
@@ -154,7 +154,7 @@ export default async function PeoplePage({
   /* **البحثُ بالاسم** (D-266) — **آخرُ ما بقي من D-262.** والحدُّ حرفان
      في `searchPeople` نفسِها، **ويُقرأ هنا كي لا يُدفع نداءٌ يُرَدُّ
      حتماً** (D-164). */
-  const term = tab === "people" ? (qParam ?? "").trim().slice(0, 50) : "";
+  const term = tab === "people" ? (whoParam ?? "").trim().slice(0, 50) : "";
   const searching = term.length >= 2;
   /* **و«عرض الكل» لا يعيش إلا داخل تبويب «الناس»** — معاملٌ على تبويبٍ
      آخر يُتجاهَل صامتاً ولا يُغيّر شيئاً.
