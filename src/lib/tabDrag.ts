@@ -28,17 +28,25 @@
  * ميزةً، هما لخبطة** (نصُّ أحمد).
  */
 let progress = 0;
-const subs = new Set<(p: number) => void>();
+const subs = new Set<(p: number, ms: number) => void>();
 
-export function setTabDrag(p: number) {
+/**
+ * **ومعه زمنُه** (D-279، طلبُ أحمد «انسيابي مثل تويتر»): تحت الإصبع
+ * `ms = 0` — **الحركةُ هي الإصبعُ نفسُه فلا تُلطّف**. وعند رفعه يصحب
+ * الرقمَ زمنُ الاستقرار، **فيغتنم الشريطُ منحنى اللوحة نفسَه** بدل أن
+ * يقفز إلى مكانه.
+ * **وزمنٌ واحدٌ لحركتين متجاورتين** — وإلا سبقت إحداهما الأخرى فقُرئتا
+ * شيئين لا شيئاً واحداً (D-046: لا شيء يتحرّك وحدَه في مشهدٍ واحد).
+ */
+export function setTabDrag(p: number, ms = 0) {
   progress = p;
-  for (const f of subs) f(p);
+  for (const f of subs) f(p, ms);
 }
 
 /** يُنادى فوراً بالقيمة الحالية ثم عند كل تغيير — ويعيد دالّةَ الفصل */
-export function onTabDrag(f: (p: number) => void) {
+export function onTabDrag(f: (p: number, ms: number) => void) {
   subs.add(f);
-  f(progress);
+  f(progress, 0);
   return () => {
     subs.delete(f);
   };
