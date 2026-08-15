@@ -1793,7 +1793,7 @@ export async function getPeopleLeaderboard(days = 7, limit = 20): Promise<People
   }
 }
 
-/** **أعلى تعليقٍ حصل على إعجابات** — صفٌّ واحد أو لا شيء (D-263) */
+/** **أعلى التعليقات إعجاباً** (D-263 · D-264 — ثلاثةٌ لا واحد) */
 export interface PeopleTopReviewRow extends PersonLite {
   tmdbId: number;
   mediaType: "tv" | "movie";
@@ -1809,12 +1809,34 @@ export interface PeopleTopReviewRow extends PersonLite {
  * **والنافذةُ ثلاثون يوماً لا الأبد**: «أعلى تعليق» بلا نافذةٍ يتجمّد على
  * صفٍّ واحدٍ إلى الأبد فيصير زينةً لا خبراً (حجّةُ الهجرة ٨١).
  * **ولا إعجابَ ولا صفّ** — الدالّةُ تشترط `join` على الإعجابات.
+ *
+ * **⚠️ و`p_limit` معاملٌ منذ الهجرة ٨٢ وكان `limit 1` في جسم الدالّة**
+ * (D-264، طلبُ أحمد «أظهر ٣ بدل واحد»): **حدٌّ متجمّدٌ في القاعدة ليس
+ * حارساً، هو قرارٌ أُخذ عن الواجهة** — والحارسُ الحقيقيّ هو السقفُ
+ * الأعلى (٢٠) لا الرقمُ المختار.
  */
-export async function getPeopleTopReview(days = 30): Promise<PeopleTopReviewRow | null> {
+export async function getPeopleTopReviews(
+  days = 30,
+  limit = 3,
+): Promise<PeopleTopReviewRow[]> {
   try {
     const supabase = await createClient();
-    const { data, error } = await supabase.rpc("people_top_review", { p_days: days });
-    const r = (Array.isArray(data) ? data[0] : data) as {
+    let { data, error } = await supabase.rpc("people_top_review", {
+      p_days: days,
+      p_limit: limit,
+    });
+    /* ⚠️ **حارسُ عبورٍ حتى تُشغَّل الهجرة ٨٢** (D-264): النداءُ بمعاملين
+       **يفشل بتوقيعٍ غير موجود** قبلها، **وسقوطُه الصامت كان سيُخفي
+       القسمَ كلَّه** — وهو قسمٌ يعمل اليوم بصفٍّ واحد. **فيُعاد النداءُ
+       بالتوقيع القديم ويُقصّ هنا**: الميزةُ تهبط ناقصةً لا غائبة،
+       **وتكتمل لحظةَ تشغيل الهجرة بلا دفعةٍ ثانية.**
+       **⬜ ويُحذف هذا الفرعُ في الجلسة التي تلي تأكيدَ ٨٢** — مكتوبٌ في
+       `05`، **فحارسٌ مؤقّتٌ يُنسى يصير كذبةً عن حالة القاعدة** (D-151). */
+    if (error) {
+      ({ data, error } = await supabase.rpc("people_top_review", { p_days: days }));
+    }
+    if (error || !data) return [];
+    return (data as {
       user_id: string;
       nickname: string | null;
       username: string | null;
@@ -1828,26 +1850,36 @@ export async function getPeopleTopReview(days = 30): Promise<PeopleTopReviewRow 
       rating: number | null;
       likes: number;
       created_at: string;
-    } | undefined;
-    if (error || !r || !r.review) return null;
-    return {
-      id: String(r.user_id),
-      nickname: r.nickname,
-      username: r.username,
-      avatar_url: r.avatar_url,
-      hide_name: Boolean(r.hide_name),
-      tmdbId: Number(r.tmdb_id),
-      mediaType: r.media_type === "tv" ? "tv" : "movie",
-      title: r.title,
-      posterPath: r.poster_path,
-      review: r.review,
-      rating: Number(r.rating ?? 0),
-      likes: Number(r.likes ?? 0),
-      createdAt: String(r.created_at),
-    };
+    }[])
+      /* **وصفٌّ بلا نصّ لا يُرسم**: الدالّةُ تشترطه، **والحارسُ هنا
+         احتياطٌ لا تكرار** — قارئٌ متسامح (D-179). */
+      .filter((r) => Boolean(r.review))
+      .map((r) => ({
+        id: String(r.user_id),
+        nickname: r.nickname,
+        username: r.username,
+        avatar_url: r.avatar_url,
+        hide_name: Boolean(r.hide_name),
+        tmdbId: Number(r.tmdb_id),
+        mediaType: r.media_type === "tv" ? "tv" : "movie",
+        title: r.title,
+        posterPath: r.poster_path,
+        review: String(r.review),
+        rating: Number(r.rating ?? 0),
+        likes: Number(r.likes ?? 0),
+        createdAt: String(r.created_at),
+      }));
   } catch {
-    return null;
+    return [];
   }
+}
+
+
+/* ⚠️ **وسيطُ دفعةٍ واحدة** (D-028): يسقط في الدفعة التي تلي هبوط
+   `app/people/page.tsx` — **الرفعُ مجلّداً مجلّداً يفرض أن يبقى المفتاحُ
+   القديم حيّاً حتّى ينتقل مستهلكُه**، ولا بناءَ وسيطٌ أحمر. */
+export async function getPeopleTopReview(days = 30): Promise<PeopleTopReviewRow | null> {
+  return (await getPeopleTopReviews(days, 1))[0] ?? null;
 }
 
 /**

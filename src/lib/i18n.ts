@@ -639,7 +639,9 @@ const ar = {
      فتُقرأ «ثلاثة زائد» لا «زيادة ثلاثة». **والعلاجُ كلمةٌ لا حرفُ
      عزلٍ خفيّ** (دَينُ D-248 يكفي). */
   peopleBoardDelta: (n: number) => `زاد ${num(n, "ar")} عن الأسبوع الماضي`,
-  peopleBoardTopReview: "أعلى تعليقٍ حصل على إعجابات",
+  /* **وصار جمعاً لأن العدد صار ثلاثة** (D-264): عنوانٌ مفرَدٌ فوق ثلاث
+     بطاقات **اسمٌ بقي بعد أن تغيّر ما يسمّيه** (D-257). */
+  peopleBoardTopReview: "أعلى التعليقات إعجاباً",
   peopleBoardLikes: (n: number) =>
     n === 1
       ? "إعجابٌ واحد"
@@ -1849,7 +1851,7 @@ const en: Dict = {
   },
   peopleBoardRising: "Rising stars",
   peopleBoardDelta: (n: number) => `+${num(n, "en")} vs last week`,
-  peopleBoardTopReview: "Most liked comment",
+  peopleBoardTopReview: "Most liked comments",
   peopleBoardLikes: (n: number) => (n === 1 ? "1 like" : `${num(n, "en")} likes`),
   peopleBoardWatching: "Added to their libraries",
   peopleBoardAdded: (when: string) => `added ${when}`,
