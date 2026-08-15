@@ -19,9 +19,11 @@ import {
   getFollowingIds,
   getNewsReplyCounts,
   getPostViewCounts,
+  getPeopleToFollow,
 } from "@/lib/data";
 import { getT, getTabPrefs, getFeedStrangers } from "@/lib/locale";
 import { WorksTalk } from "@/components/WorksTalk";
+import { PeopleToFollow } from "@/components/PeopleToFollow";
 import { ActivityFeed } from "@/components/ActivityFeed";
 import { commentViewKey, newsViewKey } from "@/lib/postKeys";
 import { applyTabPrefs, defaultTab } from "@/lib/tabPrefs";
@@ -66,7 +68,7 @@ import { ScrollMemory } from "@/components/ScrollMemory";
  * يكسر رابطاً حيّاً في سطحٍ آخر** — **يُفحص المستهلك قبل الحذف** (D-214).
  * فالغرفةُ تُفتح بالرابط، **ولا شريحةَ لها في الصفّ.**
  */
-type Tab = "activity" | "talk" | "news" | "all";
+type Tab = "activity" | "talk" | "people" | "news" | "all";
 function asTab(v: string | undefined): Tab {
   /* **`comments` وريثُه `activity` حرفاً** — نفسُ التعليقات ومعها الأخبار.
      ورابطٌ محفوظٌ أو مشاركٌ في محادثةٍ لا يجوز أن يموت بتغييرِ اسم. */
@@ -74,7 +76,7 @@ function asTab(v: string | undefined): Tab {
   /* المفاتيحُ القديمة (`works` · `mine` · `reviews`) تسقط إلى «نقاش» —
      **وهو وريثُها حرفاً**: نفسُ `WorksTalk` ونفسُ التجميع. **وروابطُ
      محفوظةٌ ومشاركةٌ في محادثات لا يجوز أن تموت بتغييرِ تبويب** (D-187). */
-  return v === "news" || v === "all" ? v : "talk";
+  return v === "news" || v === "all" || v === "people" ? v : "talk";
 }
 
 /* **سقطت هنا خوارزميةُ ترتيب الخطّ كاملةً (D-134/D-136/D-149)** مع
@@ -230,6 +232,11 @@ export default async function PeoplePage({
      تلقائياً. */
   const rooms = tab === "talk" ? await getTalkRooms(40) : [];
 
+  /* **ولا يُدفع ثمنُ تبويبٍ لا يُعرض** (D-194): الاقتراحُ نداءٌ واحدٌ في
+     تبويبه وحده. **و٢٤ لا ٦**: الستّةُ كانت بطاقةً داخل خطٍّ هزيل
+     (D-126)، **وصفحةٌ كاملةٌ بستّة أسطرٍ تُقرأ عطلاً** (D-181). */
+  const suggested = tab === "people" ? await getPeopleToFollow(null, 24) : [];
+
   /* «أشخاص لمتابعتهم» (D-126) — تُطلب حين يكون الخطّ هزيلاً لا فارغاً
      وحده: دائرةٌ من شخصين تُنتج خطّاً صامتاً كدائرةٍ من صفر، والفرق أن
      الأولى لا تُظهر حالةً فارغة فتبدو الصفحة معطوبة لا ناقصة.
@@ -334,6 +341,11 @@ export default async function PeoplePage({
        يُعاد تسميتُه في مكانين (D-220). */
     { key: "activity", href: "/people", label: t.communityTabMine },
     { key: "talk", href: "/people?tab=talk", label: t.communityTabWorks },
+    /* **و«الناس» ثالثاً بعد أن عُرف محتواه** (D-262، طلبُ أحمد: «الناس
+       يكون تبويب ثالث في كومينتي»). **ومحتواه اكتشافُ أشخاصٍ باختياره** —
+       والمكوّنُ `PeopleToFollow` مبنيٌّ منذ D-126 وغيرُ مركَّب، **فهذه
+       دفعةُ تركيبٍ لا دفعةُ بناء** (قاعدة ٥: أعِد الاستعمال قبل أن تُنشئ). */
+    { key: "people", href: "/people?tab=people", label: t.communityTabPeople },
   ];
 
 
@@ -477,6 +489,17 @@ export default async function PeoplePage({
               }
               locale={locale}
             />
+          ) : tab === "people" ? (
+            /* **صفحةٌ كاملةٌ فتُعرض بلا إطارٍ متقطّع** (`compact`): الإطارُ
+               في D-126 كان يقول «هذه بطاقةٌ داخل خطّ»، **وهنا هي الصفحة**
+               — **والإطارُ يُشترى بحاجة لا بتصنيف** (D-220). */
+            suggested.length === 0 ? (
+              <p className="text-sm text-muted bg-surface border border-dashed border-border rounded-xl py-10 px-5 text-center">
+                {t.peopleTabEmpty}
+              </p>
+            ) : (
+              <PeopleToFollow people={suggested} locale={locale} compact />
+            )
           ) : rooms.length === 0 ? (
             /* **وفراغٌ واحدٌ لا اثنان** (D-259): كان لكل رقاقةٍ جملتُها —
                «لم يكتب أحدٌ بعد» و«دائرتُك صامتة». **وبسقوط الرقاقتين
