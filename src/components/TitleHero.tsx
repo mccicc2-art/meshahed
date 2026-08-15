@@ -88,7 +88,12 @@ export function TitleHero({
        ٥٦px من الأعلى، والملصقُ ٧٥ مع حشوٍ ١٢ من الأسفل — **فأقلُّ ارتفاعٍ
        لا يتلامسان عنده ١٤٤.** **وعند ١٢٨ كان زرُّ الرجوع يقف على الملصق
        فعلاً** — يُرى في لقطة أحمد، **ولم يمسكه أيُّ فحصٍ لأنّ التلامسَ
-       ليس خطأً.** */
+       ليس خطأً.**
+       🆕 **والحسابُ أُعيد في D-288 والارتفاعُ لم يتغيّر:** السهمُ العاري
+       يشغل ٨+٢٤ = **٣٢ من الأعلى** (وهدفُ لمسه ينتهي عند ٤٢)، والملصقُ
+       عاد ٨٧+١٢ = **٩٩ من الأسفل** فرأسُه عند ٤٥. **فبقيت الفرجةُ ٣px
+       بعد أن كبر الملصقُ وصغُر السهم** — **وهو ما يجعل الطلبين متوافقين
+       لا متعارضين.** */
     <header className="relative -mt-6 -mx-4 h-[16svh] min-h-[144px] max-h-[180px] overflow-hidden bg-surface-2">
       {backdrop && (
         <Image src={backdrop} alt="" fill sizes="100vw" priority className="object-cover" />
@@ -98,8 +103,12 @@ export function TitleHero({
       <div className="absolute inset-0 bg-gradient-to-t from-background via-background/70 to-transparent" />
       <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/50 to-transparent" />
 
-      <div className="absolute inset-x-0 top-0 px-3 pt-3 flex items-center justify-between">
-        <BackButton locale={locale} />
+      {/* 🆕 **الصفُّ يُحاذى من الأعلى لا من الوسط** (D-288): السهمُ صار
+          ٢٤px والزرُّ المقابل ٤٤، **و`items-center` كانت تُنزل السهمَ إلى
+          منتصف الأطول فتُلغي رفعَه.** **والحشوُ ١٢ → ٨** — وهو ما طلبه
+          أحمد بـ«ارفعه فوق». */}
+      <div className="absolute inset-x-0 top-0 px-3 pt-2 flex items-start justify-between">
+        <BackButton locale={locale} variant="bare" />
         {end}
       </div>
 
@@ -109,12 +118,16 @@ export function TitleHero({
           href={href}
           className="flex items-end gap-3 min-w-0 flex-1 active:opacity-80 transition"
         >
-          {/* **٥٠×٧٥ لا ٥٨×٨٧** (D-286): الملصقُ هنا **مِرساةُ هويّةٍ لا
-              صورةٌ تُتأمَّل** — الغلافُ خلفَه يقول العملَ نفسَه — **وكلُّ
-              بكسلٍ يأخذه من الارتفاع يأخذه من سطرٍ يُقرأ.** */}
-          <div className="relative w-[50px] h-[75px] shrink-0 rounded-xl overflow-hidden bg-surface-2 border border-white/15 shadow-xl">
+          {/* ⚖️ **والملصقُ عاد ٥٨×٨٧** (D-288، نصُّ أحمد: «إيه صغّرت حجم
+              البوستر!! أنا ما طلبت منك — رجّعه نفس حجمه»).
+              **وتصغيرُه في D-286 كان قراراً لم يُطلَب**: احتجتُ ١٢px
+              لأسطرٍ جديدة **فأخذتُها من عنصرٍ لم يشتكِ منه أحد** بدل أن
+              أقولها وأسأل. **والثمنُ يُدفع من الارتفاع لا من عنصرٍ في
+              الشاشة** — والارتفاعُ باقٍ ١٤٤ لأن السهمَ العاري صار يقف
+              في ٣٢px بدل ٥٦ (انظر أعلاه). */}
+          <div className="relative w-[58px] h-[87px] shrink-0 rounded-xl overflow-hidden bg-surface-2 border border-white/15 shadow-xl">
             {poster ? (
-              <Image src={poster} alt="" fill sizes="50px" className="object-cover" />
+              <Image src={poster} alt="" fill sizes="58px" className="object-cover" />
             ) : (
               <span className="absolute inset-0 grid place-items-center text-muted">
                 <Icon name={mediaType === "tv" ? "tv" : "film"} size={18} />

@@ -336,7 +336,11 @@ export function PeopleLeaderboard({
                   <span className="block mt-0.5 text-[10px] opacity-80">
                     {mode === "rising"
                       ? t.peopleBoardVsLast(p.total, p.prevTotal)
-                      : t.peopleBoardBreakdown(p.posts, p.reviews, p.likesIn)}
+                      : /* ⚖️ **والإعجابُ خرج من المكوّنات** (D-288، بعد
+                           تشغيل ٨٩): **`total` صار مشاركاتٍ وآراءَ فقط**،
+                           **وتفصيلٌ يذكر ثالثاً لا يجمعه العنوانُ كذبٌ**
+                           (D-219/D-275). */
+                        t.peopleBoardBreakdown(p.posts, p.reviews)}
                   </span>
                 </>
               }
