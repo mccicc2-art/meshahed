@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { buttonClass } from "./ui/Button";
 import { getDict, type Locale } from "@/lib/i18n";
+import { Icon } from "./Icon";
 
 /**
  * **صندوقُ الكتابة — واحدٌ لكل ردّ في التطبيق** (D-227).
@@ -21,17 +22,28 @@ export function Composer({
   locale,
   hint,
   autoFocus = true,
+  allowSpoiler = false,
   onSend,
   onCancel,
 }: {
   locale: Locale;
   hint?: string;
   autoFocus?: boolean;
-  onSend: (body: string) => void;
+  /**
+   * 🆕 **مفتاحُ «فيها حرق»** (D-271، طلبُ أحمد: «ضِف له زرّ يختاره إذا
+   * رسالته فيها حرق») — **ولا يظهر إلا حيث يُخزَّن**: النقاشُ وحدَه اليوم
+   * (`title_posts.has_spoiler`، الهجرة ٨٤). **وزرٌّ يُضغط ولا أثرَ له
+   * أسوأُ من زرٍّ غائب** (D-217)، **والريفيو في دفعةٍ ثانية باختيار أحمد**
+   * لأن `ratings` بلا عمود ونصُّها يُقرأ من ستّ دوالَّ حيّة.
+   */
+  allowSpoiler?: boolean;
+  /** **والعَلَمُ يصحب المتن** — لا حالةٌ ثانيةٌ عند المستدعي تفترق عنه */
+  onSend: (body: string, hasSpoiler: boolean) => void;
   onCancel: () => void;
 }) {
   const t = getDict(locale);
   const [body, setBody] = useState("");
+  const [spoiler, setSpoiler] = useState(false);
   const [pending, start] = useTransition();
   const ready = body.trim().length > 0;
 
@@ -54,11 +66,32 @@ export function Composer({
         <button
           type="button"
           disabled={!ready || pending}
-          onClick={() => start(() => onSend(body.trim()))}
+          onClick={() => start(() => onSend(body.trim(), spoiler))}
           className={buttonClass({ size: "sm" })}
         >
           {t.shareReplySend}
         </button>
+
+        {/* **رقاقةٌ تُضغط فتَقِف** (D-271) — **عائلةُ الرقاقات نفسُها**
+            (`rounded-full` وحدٌّ وحالةُ تشغيلٍ باللون) لا عائلةٌ ثالثة
+            (D-002/D-222). **ولا `checkbox` عارٍ**: مربّعُ النظام يختلف
+            شكلاً بين المتصفّحات ولا يرث الثيم.
+            **والرمزُ يقول الفعلَ**: عينٌ مشطوبةٌ = «سيُحجب». */}
+        {allowSpoiler && (
+          <button
+            type="button"
+            onClick={() => setSpoiler((v) => !v)}
+            aria-pressed={spoiler}
+            className={
+              spoiler
+                ? "inline-flex items-center gap-1.5 rounded-full border border-accent bg-accent/10 px-3 py-1.5 text-[12px] font-bold text-accent transition"
+                : "inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-[12px] text-muted transition hover:text-foreground"
+            }
+          >
+            <Icon name={spoiler ? "eye-off" : "eye"} size={14} className="shrink-0" />
+            <span>{t.spoilerMark}</span>
+          </button>
+        )}
         <button
           type="button"
           onClick={onCancel}

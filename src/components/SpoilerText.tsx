@@ -21,7 +21,22 @@ import { Icon } from "./Icon";
  * ⚠️ **ولا كشفَ يعود مغلقاً بنفسه**: من كشف فقد قرّر — **و«تراجَع بعد»
  * لا «أكِّد قبل»** (D-047)، فزرُّ الإخفاء يبقى في مكانه.
  */
-export function SpoilerText({ text, locale }: { text: string; locale: Locale }) {
+export function SpoilerText({
+  text,
+  locale,
+  note,
+}: {
+  text: string;
+  locale: Locale;
+  /**
+   * **سببُ الحجب — ويختلف باختلاف من حجب** (D-271): نشرةُ Loopz تحجب
+   * **وصفَ الحلقة** فسببُها «يكشف أحداثَ الحلقة»، **ومشاركةُ عضوٍ تُحجب
+   * لأنه هو أعلنها** — **وسطرٌ يقول «يكشف أحداث الحلقة» فوق كلام إنسانٍ
+   * يعِد بما لا يعرفه أحد** (D-216). **والافتراضيُّ يبقى للنشرة** فلا
+   * يتغيّر قارئُها القائم.
+   */
+  note?: string;
+}) {
   const t = getDict(locale);
   const [shown, setShown] = useState(false);
 
@@ -38,7 +53,9 @@ export function SpoilerText({ text, locale }: { text: string; locale: Locale }) 
       </button>
 
       {/* **السببُ بجانب الزرّ لا فوق النصّ** — ويسقط متى ظهر النصّ */}
-      {!shown && <span className="ms-2 align-middle text-[11px] text-muted/70">{t.spoilerNote}</span>}
+      {!shown && (
+        <span className="ms-2 align-middle text-[11px] text-muted/70">{note ?? t.spoilerNote}</span>
+      )}
 
       {/* ⚠️ **غيرُ مُصيَّرٍ حتى يُطلب** — لا `hidden` ولا `blur` */}
       {shown && (

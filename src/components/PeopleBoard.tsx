@@ -4,14 +4,8 @@ import { posterUrl } from "@/lib/tmdb";
 import { getDict, num, type Locale } from "@/lib/i18n";
 import { timeAgo } from "@/lib/when";
 import { dirOf } from "@/lib/dir";
-import type {
-  PeopleLeaderRow,
-  PeopleTopReviewRow,
-  PeopleWatchingRow,
-  SuggestedPerson,
-} from "@/lib/data";
+import type { PeopleLeaderRow, PeopleTopReviewRow } from "@/lib/data";
 import { PersonName } from "./PersonRow";
-import { FollowUserButton } from "./FollowUserButton";
 import { Icon, type IconName } from "./Icon";
 
 /**
@@ -40,15 +34,44 @@ import { Icon, type IconName } from "./Icon";
  * **٣) قسما المتابعة صارا واحداً** (اختيارُ أحمد): مصدرُهما عندنا
  * `people_to_follow` وحدها، **وقسمان من مصدرٍ واحد يعرضان الأشخاصَ
  * أنفسَهم مرّتين** — وقد تكرّر Razan وM7MD في اللوحة نفسِها.
+ * ⚠️ **ثم حُذف القسمُ الموحَّد كلُّه في D-270** بحكم أحمد، **وحُذف معه
+ * «ما أضافه الأعضاء إلى مكتباتهم»** — انظر التذييل آخرَ الملفّ.
  *
- * **٤) «ما أضافه الأعضاء إلى مكتباتهم» ليس في اللوحة وبقي** — قسمٌ
- * مبنيٌّ ببياناتٍ حقيقية، **وحذفُ ما يعمل لأنه غاب عن رسمةٍ ليس تصميماً.**
+ * ================= وأربعةُ أقسامٍ اليوم =================
+ *
+ * **مميّزون · الأكثرُ مشاركةً هذا الأسبوع · أعلى التعليقات · نجومٌ
+ * صاعدون** (D-270، ترتيبُ أحمد). **وثلاثةٌ منها لوحةُ نشاطٍ واحدة
+ * بثلاثة أوضاع** — لا ثلاثةُ مكوّنات.
  *
  * ================= ولا قسمَ فارغاً يُرسم =================
  *
  * كلُّ مكوّنٍ هنا يعيد `null` حين لا صفَّ له، **والصفحةُ تُعلن الفراغَ
- * مرّةً واحدةً حين تفرغ الخمسةُ معاً** (D-181/D-263).
+ * مرّةً واحدةً حين تفرغ الأربعةُ معاً** (D-181/D-263).
  */
+
+/**
+ * **ألوانُ رموزِ الأقسام** (D-268، طلبُ أحمد: «رموزٌ ملوّنة كما في
+ * لوحتي»).
+ *
+ * ⚠️ **وهذه علاماتُ أقسامٍ لا ألوانُ حالة** — والفرقُ يُقال صراحةً كي
+ * لا تُقرأ نقضاً لـD-003 («اللون يحمل الحالة، ولون نجاح واحد لا
+ * اثنان»): **لا أحدَ منها يعني نجاحاً ولا خطأً ولا تحذيراً**، هي
+ * فهرسٌ بصريٌّ يميّز عناوينَ متجاورة. **وحالاتُ التطبيق تبقى على
+ * `--accent` و`--success` وحدهما.**
+ *
+ * **وهي هنا في خريطةٍ واحدة لا مبثوثةٌ في النداءات** — **خامسٌ يُضاف
+ * يُضاف هنا** (D-145: وصفةٌ لا نسخة).
+ */
+const SECTION_TONE = {
+  /** ✨ البنفسجيُّ للمميّزين — ورث لونَ الاقتراحات المحذوفة (D-270) */
+  featured: "text-[#A78BFA]",
+  /** 🏆 الذهبُ لونُ العلامة أصلاً — والمرتبةُ الأولى تستحقّه */
+  top: "text-accent",
+  /** ❤️ */
+  reviews: "text-[#F26D6D]",
+  /** 🔥 */
+  rising: "text-[#FB923C]",
+} as const;
 
 /* ============================================================
    وصفةُ القسم — رأسٌ برمزٍ و«عرض الكل»
@@ -59,13 +82,24 @@ import { Icon, type IconName } from "./Icon";
    فتتبع الثيم**، ولا عائلةَ ثانية (D-002). */
 export function BoardSection({
   icon,
+  tone,
   title,
+  note,
   seeAllHref,
   seeAllLabel,
   children,
 }: {
   icon: IconName;
+  /** **لونُ رمزِ القسم** — انظر `SECTION_TONE` (D-268) */
+  tone?: string;
   title: string;
+  /**
+   * **سطرٌ يقول ما يقيسه القسمُ فعلاً** (D-270) — **لا شرحٌ ولا ترويج.**
+   * **ولا يُكتب إلا حين يكذب العنوانُ وحدَه**: «أعضاء مميّزون» تُقرأ
+   * «اخترناهم»، **و«الأكثر مشاركةً هذا الأسبوع» لا تحتاج سطراً** لأنها
+   * تقول شرطَها في اسمها. **وسطرٌ تحت كلِّ عنوانٍ يصير ضجيجاً** (D-181).
+   */
+  note?: string;
   seeAllHref?: string;
   seeAllLabel?: string;
   children: React.ReactNode;
@@ -73,18 +107,25 @@ export function BoardSection({
   return (
     <section
       aria-label={title}
-      className="mt-6 pt-5 border-t border-[color:var(--divider)] first:mt-0 first:pt-0 first:border-t-0"
+      /* **ولا خطَّ فاصلاً بين الأقسام** (D-269، طلبُ أحمد بلقطتين للخطّ
+         وحده): **البطاقاتُ تفصل نفسَها بحوافّها**، والخطُّ فوقها فاصلٌ
+         ثانٍ لِما هو مفصولٌ أصلاً — **وهو منطقُ D-134 نفسُه** (خطٌّ
+         فاصلٌ واحد لا خطّان). **والمسافةُ وحدَها تفصل.** */
+      className="mt-7 first:mt-0"
     >
-      <header className="flex items-center justify-between gap-3 mb-3">
-        <h2 className="flex items-center gap-2 text-[15px] font-bold min-w-0">
-          <Icon name={icon} size={17} className="text-accent shrink-0" />
-          <span className="truncate">{title}</span>
-        </h2>
+      <header className="flex items-start justify-between gap-3 mb-3">
+        <div className="min-w-0">
+          <h2 className="flex items-center gap-2 text-[15px] font-bold min-w-0">
+            <Icon name={icon} size={17} className={`shrink-0 ${tone ?? "text-accent"}`} />
+            <span className="truncate">{title}</span>
+          </h2>
+          {note && <p className="mt-0.5 text-[11px] text-muted">{note}</p>}
+        </div>
         {seeAllHref && seeAllLabel && (
           <Link
             href={seeAllHref}
             prefetch={false}
-            className="shrink-0 text-[12px] text-muted hover:text-accent transition"
+            className="shrink-0 mt-0.5 text-[12px] text-muted hover:text-accent transition"
           >
             {seeAllLabel}
           </Link>
@@ -144,18 +185,27 @@ function RankBadge({ rank, locale }: { rank: number; locale: Locale }) {
 }
 
 /**
- * **لوحةُ النشاط — قسمان من نداءٍ واحد** (D-198).
+ * **لوحةُ النشاط — ثلاثةُ أقسامٍ بمكوّنٍ واحد** (D-198 · D-270).
  *
- * `mode="top"` يسأل عن **حجم** النافذة، و`mode="rising"` عن **الفرق**
- * بينها وبين التي قبلها. **والدالّةُ ترجع النافذتين معاً فالواجهةُ تطرح.**
+ * `mode="top"` يسأل عن **حجم** نافذة الأسبوع، و`mode="rising"` عن **الفرق**
+ * بينها وبين التي قبلها — **ونداءٌ واحدٌ يخدمهما** لأن الدالّةَ ترجع
+ * النافذتين معاً فالواجهةُ تطرح.
+ * **و`mode="featured"` نافذةٌ أخرى بالكامل** (تسعون يوماً، الهجرة ٨٥)
+ * **فصفوفُه تأتي من نداءٍ ثانٍ** — ولذلك `rows` تُمرَّر من الصفحة ولا
+ * يفترض المكوّنُ مصدرَها.
+ *
+ * ⚠️ **والشكلُ واحدٌ فالمكوّنُ واحد** (D-145/D-222): ثلاثةُ أقسامٍ تعرض
+ * **وجهاً ورقماً وتفصيلَه**، **ونسخةٌ ثالثة من بطاقةِ شخصٍ كانت ستكون
+ * العائلةَ الرابعة.** **والمختلفُ ثلاثةُ أشياءٍ فقط**: الفرز، والميدالية،
+ * والعنوان.
  *
  * ⚠️ **والفرزُ هنا لا في SQL**: الدالّةُ ترتّب بالمجموع، **والصاعدُ قد
  * يكون العاشرَ مجموعاً وهو الأوّل فرقاً** — فلو قُصّت القائمةُ في القاعدة
  * بثلاثةٍ لصار القسمُ الثاني نسخةً من الأوّل بترتيبٍ آخر.
  *
- * **والنافذةُ متدحرجةٌ سبعةَ أيام** (اختيارُ أحمد حين سُئل عن معنى
- * «أسبوعيّ»): **تُحسب عند كل فتحةٍ من `now()`** فلا cron ولا لقطة —
- * **والرقمُ يتحرّك كلَّ يوم ولا ينتظر السبت.**
+ * **والنافذةُ أسبوعٌ تقويميٌّ يبدأ السبت** (D-265، طلبُ أحمد «خلها يتصفر
+ * كل سبت» — **نقضٌ صريحٌ لجوابه في D-264**): المرساةُ في SQL بتوقيت
+ * الرياض، **فالرقمُ يقف يومَ السبت ولا يتدحرج.**
  */
 export function PeopleLeaderboard({
   rows,
@@ -166,30 +216,51 @@ export function PeopleLeaderboard({
 }: {
   rows: PeopleLeaderRow[];
   locale: Locale;
-  mode: "top" | "rising";
+  mode: "top" | "rising" | "featured";
   limit?: number;
   seeAllHref?: string;
 }) {
   const t = getDict(locale);
 
   /* **ومن لم يصعد لا يظهر في «الصاعدين»**: فرقٌ صفرٌ أو سالبٌ ليس
-     صعوداً، **و«زاد ٠» تحت عنوانٍ يقول «صاعدون» تكذب** (D-216). */
+     صعوداً، **و«زاد ٠» تحت عنوانٍ يقول «صاعدون» تكذب** (D-216).
+     **و«المميّزون» يُفرزون بالمجموع كـ«الأكثر»** — والفرقُ نافذتُهما
+     لا قاعدةُ فرزهما، **و`prevTotal` تصل صفراً فيهم دائماً.** */
   const list =
-    mode === "top"
-      ? [...rows].sort((a, b) => b.total - a.total).slice(0, limit)
-      : rows
+    mode === "rising"
+      ? rows
           .map((r) => ({ r, delta: r.total - r.prevTotal }))
           .filter((x) => x.delta > 0)
           .sort((a, b) => b.delta - a.delta)
           .slice(0, limit)
-          .map((x) => x.r);
+          .map((x) => x.r)
+      : [...rows].sort((a, b) => b.total - a.total).slice(0, limit);
 
   if (!list.length) return null;
 
+  const icon: IconName =
+    mode === "featured" ? "sparkle-star" : mode === "top" ? "chart" : "trending";
+  const tone =
+    mode === "featured"
+      ? SECTION_TONE.featured
+      : mode === "top"
+        ? SECTION_TONE.top
+        : SECTION_TONE.rising;
+  const title =
+    mode === "featured"
+      ? t.peopleBoardFeatured
+      : mode === "top"
+        ? t.peopleBoardTop
+        : t.peopleBoardRising;
+
   return (
     <BoardSection
-      icon={mode === "top" ? "chart" : "trending"}
-      title={mode === "top" ? t.peopleBoardTop : t.peopleBoardRising}
+      icon={icon}
+      tone={tone}
+      title={title}
+      /* **والسطرُ للمميّزين وحدهم**: عنوانُهما هو الوحيدُ الذي لا يقول
+         نافذتَه — انظر `note` في `BoardSection` (D-270). */
+      note={mode === "featured" ? t.peopleBoardFeaturedNote : undefined}
       seeAllHref={seeAllHref}
       seeAllLabel={t.seeAll}
     >
@@ -201,19 +272,21 @@ export function PeopleLeaderboard({
               t={t}
               size={56}
               vertical
-              /* **الميداليةُ للأوائل وحدها، وفي «الصاعدين» لا مرتبة**:
-                 الصعودُ ليس ترتيباً دائماً بل حركةَ أسبوع */
+              /* **الميداليةُ للوحة الأسبوع وحدها**: الصعودُ ليس ترتيباً
+                 دائماً بل حركةَ أسبوع، **و«المميّزون» ثلاثةٌ متساوون في
+                 صفةٍ واحدة لا سبّاقٌ ووصيف** — **وميداليةٌ في قسمين
+                 تُلغي معنى الأولى** (حجّةُ `RankBadge` نفسُها). */
               badge={mode === "top" ? <RankBadge rank={i + 1} locale={locale} /> : undefined}
               sub={
                 <>
                   <span
                     className={`block text-[12px] font-bold tabular-nums ${
-                      mode === "top" ? "text-accent" : "text-success"
+                      mode === "rising" ? "text-success" : "text-accent"
                     }`}
                   >
-                    {mode === "top"
-                      ? t.peopleBoardActions(p.total)
-                      : t.peopleBoardDelta(p.total - p.prevTotal)}
+                    {mode === "rising"
+                      ? t.peopleBoardDelta(p.total - p.prevTotal)
+                      : t.peopleBoardActions(p.total)}
                   </span>
                   {/* **مكوّناتُ الرقم تحته** — وهي سببُ بقاء العدد صريحاً */}
                   <span className="block mt-0.5 text-[10px] opacity-80">
@@ -257,6 +330,7 @@ export function TopReviews({
   return (
     <BoardSection
       icon="heart-filled"
+      tone={SECTION_TONE.reviews}
       title={t.peopleBoardTopReview}
       seeAllHref={seeAllHref}
       seeAllLabel={t.seeAll}
@@ -329,145 +403,20 @@ export function TopReviews({
   );
 }
 
-/**
- * **«أشخاص يشبهون ذوقك»** — **وريثُ `PeopleToFollow`** (D-126) بعد أن
- * صار للتبويب لوحةٌ ببطاقات.
- *
- * **وحجّةُ D-126 تبقى كما هي:** `FeedEmptyCta` يقول «ابحث عن أصدقاء»
- * **ويفترض أن المستخدم يعرف من يبحث عنه بالاسم**، وأكثرُ الحسابات
- * الجديدة لا تعرف أحداً هنا. **هذا القسم يحمل الاسمَ إليه بدل أن يطلبه
- * منه.** ولا فيدَ عامّ (D-059): الغرباءُ **اقتراحُ متابعة** لا محتوى.
- *
- * **وسببٌ واحدٌ لا سببان** (D-126): التقاطعُ إن وُجد، وإلا المتابِعون —
- * **وسطران يشرحان لا شيء.**
- *
- * ⚠️ **ولا «تطابق ٩٢٪»**: النسبةُ تحتاج مقاماً لا نملكه، **ورقمٌ بلا
- * مقامٍ من نفس القوم هو ما تمنعه D-216.**
- */
-export function PeopleSuggestions({
-  people,
-  locale,
-  limit = 3,
-  seeAllHref,
-}: {
-  people: SuggestedPerson[];
-  locale: Locale;
-  limit?: number;
-  seeAllHref?: string;
-}) {
-  const t = getDict(locale);
-  const list = people.slice(0, limit);
-  if (!list.length) return null;
+/* ⚠️ **`PeopleSuggestions` و`PeopleWatching` حُذفا** (D-270، طلبُ أحمد
+   بالحرف: «نفس العناوين في الصورة المرسلة ما نبغى — People to follow ·
+   Added to their libraries»).
 
-  return (
-    <BoardSection
-      icon="sparkles"
-      title={t.suggestPeopleTitle}
-      seeAllHref={seeAllHref}
-      seeAllLabel={t.seeAll}
-    >
-      <CardGrid>
-        {list.map((p) => (
-          <PersonCard key={p.id}>
-            <PersonName
-              person={p}
-              t={t}
-              size={56}
-              vertical
-              sub={
-                p.shared > 0
-                  ? t.suggestShared(p.shared)
-                  : p.followers > 0
-                    ? t.suggestFollowers(p.followers)
-                    : undefined
-              }
-            />
-            <div className="w-full flex justify-center">
-              <FollowUserButton targetId={p.id} locale={locale} initialFollowing={false} />
-            </div>
-          </PersonCard>
-        ))}
-      </CardGrid>
-    </BoardSection>
-  );
-}
+   **وكانا يعملان ببياناتٍ حقيقية بلا عطل** — **والحذفُ حكمُ صاحبِ المنتج
+   على قسمٍ لا حكمٌ على شيفرته.** وقد كتبتُ يومَ بنيتُهما أن «حذفَ ما يعمل
+   لأنه غاب عن رسمةٍ ليس تصميماً»، **وهذه ليست تلك الحالة**: أحمد رأى
+   القسمين مبنيَّين على شاشته **ثم حكم** — **وحكمٌ بعد رؤيةٍ غيرُ حكمٍ عن
+   غياب.**
 
-/**
- * **ما أضافه الأعضاء إلى مكتباتهم** — **لا «ماذا يشاهدون الآن»**.
- *
- * لوحةُ أحمد الأولى كتبت «الأعضاء يشاهدون الآن»، **ولا حضورَ لحظيّاً
- * عندنا** فلا نعلمه. **والذي نعلمه ما أُضيف إلى المكتبة للتوّ** —
- * **فالجملةُ تتبع البيانات لا العكس** (D-216). **وشخصٌ واحدٌ لكلِّ عملٍ
- * في SQL**، فمن أضاف عشرةً لا يملأ القسمَ وحده.
- *
- * **⚠️ وهذا القسمُ ملصقٌ لا وجه** — فبطاقتُه غيرُ بطاقةِ الشخص عمداً:
- * **الصفُّ هنا عملٌ أضافه فلان**، والملصقُ هو هويّته (D-257).
- */
-export function PeopleWatching({
-  rows,
-  locale,
-  limit = 4,
-  seeAllHref,
-}: {
-  rows: PeopleWatchingRow[];
-  locale: Locale;
-  limit?: number;
-  seeAllHref?: string;
-}) {
-  const t = getDict(locale);
-  const list = rows.slice(0, limit);
-  if (!list.length) return null;
+   **وحُذفا كاملَين ولم يُخفَيا** (D-214): **قسمٌ يُخفى بشرطٍ يبقى شيفرةً
+   تُقرأ في كل مراجعةٍ ولا تُرسم على شاشة.** **وحجّتُهما محفوظةٌ في تاريخ
+   الملفّ** — من أرادها وجدها، **ولا تُستنسخ من هنا يوماً.**
 
-  return (
-    <BoardSection
-      icon="bookmark"
-      title={t.peopleBoardWatching}
-      seeAllHref={seeAllHref}
-      seeAllLabel={t.seeAll}
-    >
-      <ul className="grid grid-cols-2 gap-2.5">
-        {list.map((r) => {
-          const poster = posterUrl(r.posterPath, "w185");
-          const title = r.title?.trim();
-          return (
-            <li key={`${r.id}-${r.mediaType}-${r.tmdbId}`}>
-              <div className="flex gap-3 p-2.5 rounded-xl bg-surface border border-border h-full">
-                <Link
-                  href={r.mediaType === "tv" ? `/show/${r.tmdbId}` : `/movie/${r.tmdbId}`}
-                  prefetch={false}
-                  className="relative w-11 h-16 shrink-0 rounded-lg overflow-hidden bg-surface-2 border border-border"
-                >
-                  {poster ? (
-                    <Image src={poster} alt="" fill sizes="44px" className="object-cover" />
-                  ) : (
-                    <span className="absolute inset-0 grid place-items-center text-muted">
-                      <Icon name={r.mediaType === "tv" ? "tv" : "film"} size={14} />
-                    </span>
-                  )}
-                </Link>
-                <div className="min-w-0 flex-1">
-                  {title && (
-                    <p
-                      dir={dirOf(title)}
-                      className="text-[13px] font-semibold leading-snug line-clamp-2"
-                    >
-                      {title}
-                    </p>
-                  )}
-                  <div className="mt-1">
-                    <PersonName
-                      person={r}
-                      t={t}
-                      size={20}
-                      sub={t.peopleBoardAdded(timeAgo(r.addedAt, t))}
-                    />
-                  </div>
-                </div>
-              </div>
-            </li>
-          );
-        })}
-      </ul>
-    </BoardSection>
-  );
-}
+   ⚠️ **والترتيبُ معكوسٌ عمداً** (D-028): يسقطان من `page.tsx` **قبل** أن
+   يسقطا من هنا — **ولو حُذفا من هنا أوّلاً لكسر البناءُ في نشرةٍ وسيطة**،
+   وهو خطأٌ وقعتُ فيه فعلاً في `b9bf25a`. */
