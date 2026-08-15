@@ -1874,14 +1874,6 @@ export async function getPeopleTopReviews(
   }
 }
 
-
-/* ⚠️ **وسيطُ دفعةٍ واحدة** (D-028): يسقط في الدفعة التي تلي هبوط
-   `app/people/page.tsx` — **الرفعُ مجلّداً مجلّداً يفرض أن يبقى المفتاحُ
-   القديم حيّاً حتّى ينتقل مستهلكُه**، ولا بناءَ وسيطٌ أحمر. */
-export async function getPeopleTopReview(days = 30): Promise<PeopleTopReviewRow | null> {
-  return (await getPeopleTopReviews(days, 1))[0] ?? null;
-}
-
 /**
  * **ما أضافه الأعضاء إلى مكتباتهم** — **لا «ماذا يشاهدون الآن»**:
  * لا حضورَ لحظيّاً عندنا، **والجملةُ تتبع البيانات لا العكس** (D-216).
