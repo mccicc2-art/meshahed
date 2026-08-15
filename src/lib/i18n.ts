@@ -600,6 +600,14 @@ const ar = {
   /* **تبويبُ «نقاش»** (D-187 اسمُه «الأعمال»، وسمّاه أحمد في D-219) —
      الصفُّ عملٌ لا رأي: «عن ماذا يتكلّم الناس؟» */
   communityTabWorks: "نقاش",
+  /* **«الناس» لا «اكتشف أشخاصاً»** (D-262): التبويبُ اسمُ مكانٍ لا اسمُ
+     فعل — وجيرانُه «النشاط» و«نقاش» أسماءُ أماكن. **وثلاثُ كلماتٍ في
+     شريحةٍ على الهاتف تُقصّ** (D-258). */
+  communityTabPeople: "الناس",
+  /* **وفراغُه يقول لماذا هو فارغ** (D-181): الاقتراحُ يحتاج بذرةً —
+     مكتبةً أو متابَعاً — **ولا يقول «لا يوجد أحد»** فذاك كذبٌ عن موقعٍ
+     فيه ناس. */
+  peopleTabEmpty: "لا اقتراحات بعد — أضِف أعمالاً إلى مكتبتك وسنجد من يشبه ذوقك",
   /* **تبويبُ «تعليقات»** (D-219) — الصفُّ رأيُ إنسانٍ واحد: «من تكلّم؟».
      **والسؤالان لا يتنافسان على تبويبٍ واحد بعد اليوم.** */
   communityTabComments: "تعليقات",
@@ -1784,6 +1792,8 @@ const en: Dict = {
   communityTabMine: "Activity",
   communityTabReviews: "Reviews",
   communityTabWorks: "Discussions",
+  communityTabPeople: "People",
+  peopleTabEmpty: "No suggestions yet — add titles to your library and we\u2019ll find people with your taste",
   communityTabComments: "Comments",
   // Talk page and replies (D-193)
   worksAvgHint: "Average rating of the people talking about it",
