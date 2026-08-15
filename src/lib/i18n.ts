@@ -674,8 +674,9 @@ const ar = {
   /* ⚖️ **وسقط الإعجابُ من المكوّنات** (D-288، بعد تشغيل الهجرة ٨٩):
      **العنوانُ «N أكشن» صار مشاركاتٍ وآراءَ بلا إعجابات**، **وتفصيلٌ
      تحت عنوانٍ يجب أن يجمع العنوانَ نفسَه** (D-219). **والمعاملُ الثالث
-     يبقى اختياريّاً دفعةً واحدة** حتى يسقط من مستهلكه (D-028). */
-  peopleBoardBreakdown: (posts: number, reviews: number, _likes?: number) => {
+     بقي اختياريّاً دفعةً واحدة ثم سقط** بعد أن سقط من مستهلكه
+     (D-028/D-214). */
+  peopleBoardBreakdown: (posts: number, reviews: number) => {
     const u = (n: number, one: string, few: string) =>
       `${num(n, "ar")} ${n >= 3 && n <= 10 ? few : one}`;
     return `${u(posts, "مشاركة", "مشاركات")} · ${u(reviews, "رأي", "آراء")}`;
@@ -2018,7 +2019,7 @@ const en: Dict = {
   peopleBoardActions: (n: number) =>
     n === 1 ? "1 action" : `${num(n, "en")} actions`,
   // “1 posts” shipped and was caught on the live page — singular is not optional
-  peopleBoardBreakdown: (posts: number, reviews: number, _likes?: number) => {
+  peopleBoardBreakdown: (posts: number, reviews: number) => {
     const u = (n: number, w: string) =>
       `${num(n, "en")} ${n === 1 ? w : `${w}s`}`;
     return `${u(posts, "post")} · ${u(reviews, "review")}`;
