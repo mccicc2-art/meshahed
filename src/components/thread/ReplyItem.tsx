@@ -7,8 +7,10 @@ import { displayNameOf } from "@/lib/people";
 import { timeAgoShort } from "@/lib/when";
 import { dirOf } from "@/lib/dir";
 import { tap } from "@/lib/haptics";
+import { bulletinLine, bulletinFacts, bulletinSpoiler } from "@/lib/bulletinLine";
 import { Avatar } from "../Avatar";
 import { Icon } from "../Icon";
+import { SpoilerText } from "../SpoilerText";
 import { Dropdown, dropdownItem } from "../ui/Dropdown";
 import { ReplyingTo } from "./ThreadShell";
 
@@ -42,6 +44,14 @@ export type ThreadReply = {
   body: string;
   createdAt: string;
   isMine: boolean;
+  /**
+   * 🆕 **نشرةُ Loopz** (D-261) — `null`/غائبٌ لكلام البشر، وهو الحالُ في
+   * الخيوط الثلاثة إلا غرفةَ النقاش. **ومتنُها يُصاغ من `data` عند
+   * العرض** فلا يُقرأ من `body` (D-211).
+   */
+  kind?: string | null;
+  data?: Record<string, unknown> | null;
+  spoiler?: Record<string, unknown> | null;
 };
 
 /** ردٌّ محليٌّ لم يُقرأ من القاعدة بعد — **معرّفُه مؤقّتٌ فيُرسم باهتاً** */
@@ -74,6 +84,12 @@ export function ReplyItem({
   const name = displayNameOf(reply, t.anonymousUser);
   const pending = reply.replyId.startsWith(TEMP);
   const whoHref = reply.username ? `/u/${reply.username}` : null;
+
+  /* **متنُ النشرة يُركَّب هنا** (D-261) — و`bulletin === null` يعني
+     «صفُّ إنسان»، **فالفرعُ واحدٌ لا ثلاثة أعلام.** */
+  const bulletin = bulletinLine(reply.kind ?? null, reply.data ?? null, t, locale);
+  const facts = bulletin ? bulletinFacts(reply.data ?? null, t) : { runtime: null, vote: null };
+  const spoilerText = bulletin ? bulletinSpoiler(reply.spoiler ?? null, locale) : null;
 
   return (
     <article
@@ -155,13 +171,48 @@ export function ReplyItem({
 
         {replyingToName && <ReplyingTo name={replyingToName} locale={locale} />}
 
-        {/* **اتّجاهُ الردّ من الردّ** (D-241) — لا من لغة الواجهة */}
-        <p
-          dir={dirOf(reply.body)}
-          className="text-[14px] leading-relaxed text-foreground/90 whitespace-pre-line"
-        >
-          {reply.body}
-        </p>
+        {/* **صفٌّ واحدٌ بمتنين** (D-261) — **ولا مكوّنَ ثانٍ للنشرة**:
+            الوجهُ والاسمُ والوقتُ والنقاطُ وزرُّ الردّ **كلُّها هي هي**،
+            **والذي يفترق المتنُ وحدَه** — ومكوّنٌ ثانٍ كان سيُصلَح مرّتين
+            (D-257: الفحصُ ليس «هل يبدوان مختلفين» بل «هل يُصلَح العيبُ
+            مرّتين»). */}
+        {bulletin ? (
+          <div>
+            {/* **الحقائقُ ظاهرةٌ بلا حرق** — بخطّ المتن لا الحاشية (D-241) */}
+            <p
+              dir={dirOf(bulletin)}
+              className="text-[14px] leading-relaxed text-foreground/90 whitespace-pre-line"
+            >
+              {bulletin}
+            </p>
+
+            {/* **المدّةُ والتقييمُ سطرٌ ثانٍ**، وكلٌّ يغيب وحدَه والصفرُ
+                يُخفى (D-219). **و★ تجاور رقمَها** (D-223). */}
+            {(facts.runtime || facts.vote) && (
+              <p className="mt-1 flex items-center gap-2 text-[12px] text-muted">
+                {facts.runtime && <span>{facts.runtime}</span>}
+                {facts.runtime && facts.vote && <span aria-hidden="true">·</span>}
+                {facts.vote && (
+                  <span className="inline-flex items-center gap-1">
+                    <Icon name="star" size={12} className="shrink-0 text-accent" />
+                    <span dir="ltr">{facts.vote}</span>
+                  </span>
+                )}
+              </p>
+            )}
+
+            {/* **«أبرزُ ما فيها» خلف الحاجب** — قرارُ أحمد */}
+            {spoilerText && <SpoilerText text={spoilerText} locale={locale} />}
+          </div>
+        ) : (
+          /* **اتّجاهُ الردّ من الردّ** (D-241) — لا من لغة الواجهة */
+          <p
+            dir={dirOf(reply.body)}
+            className="text-[14px] leading-relaxed text-foreground/90 whitespace-pre-line"
+          >
+            {reply.body}
+          </p>
+        )}
 
         {!pending && signedIn && canReply && (
           <div className="mt-1.5 -mx-0.5">
