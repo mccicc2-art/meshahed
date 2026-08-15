@@ -801,13 +801,12 @@ const ar = {
      كليهما يجيب «ماذا أرى في هذه الصفحة» */
   feedPeopleGroup: "خطُّ النشاط — من يظهر",
   feedShowStrangers: "أظهِر من لا أتابعهم",
+  /* ⚠️ **وسقطت «في الرقاقات الثلاث» من الجملة** (D-280): الرقاقاتُ حُذفت،
+     **وجملةٌ تشير إلى ما لا يراه القارئ تكذب عليه** (D-257: اسمٌ بقي بعد
+     أن تغيّر ما يسمّيه). **ومعها سقطت `feedForYou` و`feedLatest`
+     و`feedTop` و`feedEmptyForYou`** — لا قارئَ لها. */
   feedShowStrangersHint:
-    "حين يُطفأ، لا يعرض الخطُّ إلا كلامَ من تتابعهم وكلامَك — في الرقاقات الثلاث. ونشراتُ Loopz لا يمسّها المفتاح: تُلغى من قائمة حسابها.",
-  feedForYou: "لك",
-  feedLatest: "الأحدث",
-  feedTop: "الأكثر تفاعلاً",
-  feedEmptyForYou:
-    "لا شيء لك بعد. تابِع أشخاصاً أو أضِف أعمالاً إلى مكتبتك، فيمتلئ هذا الخطّ بكلامٍ يخصّك.",
+    "حين يُطفأ، لا يعرض الخطُّ إلا كلامَ من تتابعهم وكلامَك. ونشراتُ Loopz لا يمسّها المفتاح: تُلغى من قائمة حسابها.",
   /* **«فضّلوه» لا «مفضّلة»**: العددُ أشخاصٌ فعلوا لا صفةٌ للعمل — وهو
      نفسُ نحو «شاهدوه» بجانبه، فيُقرأ الصفُّ لغةً واحدة (D-216) */
   talkFavoritesHint: "فضّلوه",
@@ -1950,12 +1949,7 @@ const en: Dict = {
   feedPeopleGroup: "Activity feed — who shows up",
   feedShowStrangers: "Show people I don't follow",
   feedShowStrangersHint:
-    "When off, the feed shows only people you follow plus your own posts — in all three chips. Loopz bulletins are unaffected; turn those off from that account's own menu.",
-  feedForYou: "For you",
-  feedLatest: "Latest",
-  feedTop: "Top",
-  feedEmptyForYou:
-    "Nothing for you yet. Follow a few people or add titles to your library, and this feed fills with talk that concerns you.",
+    "When off, the feed shows only people you follow plus your own posts. Loopz bulletins are unaffected; turn those off from that account's own menu.",
   talkFavoritesHint: "favourited",
   worksRatedByHint: (n: number) =>
     n === 1
