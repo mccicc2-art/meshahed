@@ -282,7 +282,7 @@ export default async function PeoplePage({
           need("people") ? getPeopleToFollow(null, wantAll ? 10 : 3) : [],
           /* **نداءٌ واحدٌ يخدم القسمين ١ و٢** (D-198) — الدالّةُ تُرجع
              النافذتين معاً، **والواجهةُ تطرح.** */
-          need("top") || need("rising") ? getPeopleLeaderboard(7, 20) : [],
+          need("top") || need("rising") ? getPeopleLeaderboard(20) : [],
           /* **ثلاثةٌ لا واحد** (D-264، الهجرة ٨٢) */
           need("reviews") ? getPeopleTopReviews(30, wantAll ? 10 : 3) : [],
           need("watching") ? getPeopleWatching(wantAll ? 10 : 4) : [],
