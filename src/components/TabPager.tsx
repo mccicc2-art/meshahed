@@ -108,16 +108,26 @@ export function TabPager({
     /** **الشريطُ يمشي مع اللوحة** — رقمٌ واحدٌ يقرؤه رأسُ التبويبات */
     const publish = setTabDrag;
 
-    /** يُظهر الجارَ عند موضع القراءة الحاليّ لا عند رأس اللوحة */
+    /**
+     * يُظهر الجارَ عند موضع القراءة الحاليّ لا عند رأس اللوحة.
+     *
+     * ⚠️ **ويُفتح للنافذة ارتفاعُها لحظتَها**: الصندوقُ يقصّ (`overflow:
+     * clip`) وارتفاعُه ارتفاعُ اللوحة المفتوحة — **فلو كانت قصيرةً
+     * (٣٩٨px) والجارُ طويلاً لظهر منه شريطٌ بقدرها وحدَه.** فيُمدّ إلى
+     * أسفل الشاشة أثناء السحب ثم يُعاد. **والمدُّ نزولاً لا يزحزح موضعَ
+     * القراءة** — الصفحةُ تطول تحت الإصبع لا فوقه.
+     */
     const armNeighbours = () => {
-      const top = window.scrollY - vp.offsetTop;
+      const top = Math.max(0, window.scrollY - vp.offsetTop);
+      vp.style.minHeight = `${top + window.innerHeight}px`;
       sides.forEach((el, i) => {
         if (i === index) return;
-        el.style.top = `${Math.max(0, top)}px`;
+        el.style.top = `${top}px`;
         el.style.visibility = "visible";
       });
     };
     const disarm = () => {
+      vp.style.minHeight = "";
       sides.forEach((el, i) => {
         if (i !== index) el.style.visibility = "hidden";
       });
@@ -243,11 +253,20 @@ export function TabPager({
   if (index < 0) return <>{children}</>;
 
   return (
-    /* ⚠️ **`overflow-x: clip` لا `hidden`**: `hidden` يصنع صندوقَ تمريرٍ
-       يكسر `position: sticky` لِما بداخله ويبتلع تمريرَ المستند في بعض
+    /* ⚠️ **`clip` لا `hidden`**: `hidden` يصنع صندوقَ تمريرٍ يكسر
+       `position: sticky` لِما بداخله ويبتلع تمريرَ المستند في بعض
        المحرّكات، **و`clip` تقصّ ولا تُنشئ صندوقاً** — وهو الفرقُ الذي
-       يُبقي الرأسَ اللاصق والسحبَ للتحديث يعملان بلا مساس. */
-    <div ref={viewport} className="relative [overflow-x:clip]">
+       يُبقي الرأسَ اللاصق والسحبَ للتحديث يعملان بلا مساس.
+
+       ⚠️⚠️ **وعلى المحورين لا على الأفقيّ وحده — وهذا عطلٌ قِيس بعد
+       الشحن**: اللوحاتُ المخفيّة مطلقةُ الموضع **فلا ترفع ارتفاعَ أبيها،
+       لكنّها تفيض منه** — ومع قصِّ الأفقيّ وحدَه **بقي الفيضُ الرأسيُّ
+       يمدّ صفحةَ المستند**: تبويبُ «نقاش» ارتفاعُه ٣٩٨px والصفحةُ
+       ٧٣٣٠px، **لأن خطَّ النشاط المخفيَّ (٧١٩٢px) كان يمدّها من تحته.**
+       فيُقرأ شريطُ التمرير كذباً وتُسحب الصفحةُ إلى فراغ.
+       **والقصُّ على المحورين يُنهيه** — ولا يخسر شيئاً: لا شيءَ في
+       اللوحات يحتاج أن يفيض. */
+    <div ref={viewport} className="relative [overflow:clip]">
       <div className="relative will-change-transform">
         {panes.map((pane, i) => (
           <div
