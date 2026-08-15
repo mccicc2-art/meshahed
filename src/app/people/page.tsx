@@ -472,7 +472,7 @@ export default async function PeoplePage({
                سقطت الثانية**: لا نطاقَ يُدلّ عليه، **والجملةُ الباقية هي
                الصادقة** — لا غرفةَ حيّةً بعد، فكن أوّلَ من يفتح واحدة. */
             <p className="text-sm text-muted bg-surface border border-dashed border-border rounded-xl py-10 px-5 text-center">
-              {t.worksEmptyAll}
+              {t.talkRoomsEmpty}
             </p>
           ) : (
             <WorksTalk rooms={rooms} locale={locale} />
