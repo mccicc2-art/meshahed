@@ -671,10 +671,14 @@ const ar = {
      التي رُفضت. */
   /* ⚠️ **وجمعُ القِلّة من ٣ إلى ١٠ وحدها** — نفسُ قاعدة `suggestShared`:
      «٦ رأي» خطأٌ صريحٌ رآه الفحصُ الحيّ، **و«١١ آراء» خطأٌ مثلُه.** */
-  peopleBoardBreakdown: (posts: number, reviews: number, likes: number) => {
+  /* ⚖️ **وسقط الإعجابُ من المكوّنات** (D-288، بعد تشغيل الهجرة ٨٩):
+     **العنوانُ «N أكشن» صار مشاركاتٍ وآراءَ بلا إعجابات**، **وتفصيلٌ
+     تحت عنوانٍ يجب أن يجمع العنوانَ نفسَه** (D-219). **والمعاملُ الثالث
+     يبقى اختياريّاً دفعةً واحدة** حتى يسقط من مستهلكه (D-028). */
+  peopleBoardBreakdown: (posts: number, reviews: number, _likes?: number) => {
     const u = (n: number, one: string, few: string) =>
       `${num(n, "ar")} ${n >= 3 && n <= 10 ? few : one}`;
-    return `${u(posts, "مشاركة", "مشاركات")} · ${u(reviews, "رأي", "آراء")} · ${u(likes, "إعجاب", "إعجابات")}`;
+    return `${u(posts, "مشاركة", "مشاركات")} · ${u(reviews, "رأي", "آراء")}`;
   },
   peopleBoardRising: "نجومٌ صاعدون",
   /* **والصعودُ فرقٌ لا رصيد**: نافذةُ الأسبوع ناقصَ التي قبلها —
@@ -2014,10 +2018,10 @@ const en: Dict = {
   peopleBoardActions: (n: number) =>
     n === 1 ? "1 action" : `${num(n, "en")} actions`,
   // “1 posts” shipped and was caught on the live page — singular is not optional
-  peopleBoardBreakdown: (posts: number, reviews: number, likes: number) => {
+  peopleBoardBreakdown: (posts: number, reviews: number, _likes?: number) => {
     const u = (n: number, w: string) =>
       `${num(n, "en")} ${n === 1 ? w : `${w}s`}`;
-    return `${u(posts, "post")} · ${u(reviews, "review")} · ${u(likes, "like")}`;
+    return `${u(posts, "post")} · ${u(reviews, "review")}`;
   },
   peopleBoardRising: "Rising stars",
   peopleBoardDelta: (n: number) => `+${num(n, "en")} vs last week`,
