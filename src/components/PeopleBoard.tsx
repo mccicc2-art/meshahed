@@ -104,7 +104,7 @@ export function BoardSection({
  * **ونموذجُ `GET` لا مكوّنُ عميل:** `searchPeople` تعيش في `data.ts` منذ
  * زمن **ولها سطحٌ واحدٌ في ورقة المحادثات**، وبناءُ سطحٍ ثانٍ بحالةٍ
  * وتأخيرٍ ونداءٍ لكل حرف **يشتري لمعةً بثمنِ ملفٍّ ثالث**.
- * **والنتيجةُ في الرابط** (`?tab=people&q=…`): تُشارَك، ويعود منها الظهر،
+ * **والنتيجةُ في الرابط** (`?tab=people&who=…`): تُشارَك، ويعود منها الظهر،
  * **وتُرسم على الخادم فلا تومض** (D-051/D-054) — **وهي القاعدة نفسُها
  * التي بُني عليها «عرض الكل».**
  *
@@ -138,11 +138,17 @@ export function PeopleSearch({
     <div className="mb-5">
       {/* **حقلٌ ١٦px وهدفُ لمسٍ ٤٤** (D-033/D-168) — ووصفةُ الحقل هي
           وصفةُ `NewListForm` نفسُها، لا ثانيةٌ لها (D-145) */}
+      {/* ⚠️ **والمعاملُ `who` لا `q`** (D-266، عطلٌ شُحن وقِيس): `SearchBox`
+          في الشريط العلويّ يقرأ `?q=` بـ`useSearchParams` **فيملأ نفسَه
+          بكلمتنا ويفتح قائمةَ اقتراحات TMDB فوق الصفحة** — ورابطٌ يُشارَك
+          كان يفتح على القارئ قائمةَ أفلامٍ لم يطلبها.
+          **واسمُ المعامل جزءٌ من الواجهة لا تفصيلُ تنفيذ**: عامٌّ في
+          الشريط، **فيُخصَّص هنا.** */}
       <form method="get" action="/people" className="flex items-center gap-2">
         <input type="hidden" name="tab" value="people" />
         <input
           type="search"
-          name="q"
+          name="who"
           defaultValue={q}
           placeholder={t.peopleSearchPlaceholder}
           aria-label={t.peopleSearchPlaceholder}
