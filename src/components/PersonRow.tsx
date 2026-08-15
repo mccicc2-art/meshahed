@@ -23,6 +23,7 @@ export function PersonName({
   vertical = false,
   badge,
   end,
+  corner,
 }: {
   person: PersonLite;
   t: Dict;
@@ -42,6 +43,16 @@ export function PersonName({
    * تشريحُ صفّ «النشاط» حرفاً** (D-242).
    */
   end?: React.ReactNode;
+  /**
+   * 🆕 **ما يجلس على حافّة الوجه ويُضغط** — علامةُ المتابعة في «عرض
+   * الكل» (D-281).
+   *
+   * ⚠️ **وهو خارج رابط الملفّ عمداً، ولهذا انقسم رابطُ `vertical` إلى
+   * رابطين**: **زرٌّ داخل رابطٍ ترميزٌ باطل** ويسرق الضغطةَ إلى الملفّ.
+   * **وهو نفسُ درس D-272 حرفاً** — وقع هناك على الوسم الزمنيّ ويقع هنا
+   * على العلامة. **فالقاعدة: ما يُضغط لنفسه لا يسكن رابطَ غيره.**
+   */
+  corner?: React.ReactNode;
 }) {
   const name = displayNameOf(person, t.anonymousUser);
   /* من أخفى اسمه لا يُفتح ملفه؛ ومن لم يختر معرّفاً يُفتح بهويته —
@@ -82,13 +93,15 @@ export function PersonName({
   if (vertical) {
     return (
       <span className="flex flex-col items-center text-center gap-1.5 min-w-0 w-full">
-        {door(
-          <>
-            {face}
-            <span className="min-w-0 w-full">{nameText}</span>
-          </>,
-          "flex flex-col items-center gap-1.5 min-w-0 w-full",
-        )}
+        {/* **رابطان لا رابط** (D-281): الوجهُ بابٌ والاسمُ بابٌ،
+            **والعلامةُ بينهما لا تحت أحدهما** — انظر `corner` أعلاه.
+            وكان الرابطُ يلفّهما معاً؛ **والقسمةُ لا تغيّر شيئاً في
+            العين** ولا في قاعدة الإخفاء (كلاهما يمرّ بـ`door`). */}
+        <span className="relative">
+          {door(face, "block")}
+          {corner}
+        </span>
+        {door(nameText, "block min-w-0 w-full")}
         {sub && (
           <span className="block w-full text-[11px] text-muted leading-tight">{sub}</span>
         )}
