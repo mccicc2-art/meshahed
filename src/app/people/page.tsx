@@ -523,6 +523,9 @@ export default async function PeoplePage({
                     limit={10}
                     meId={user.id}
                     following={boardFollowing}
+                    /* **والفعلُ هنا وحدَه** (D-281، حكمُ أحمد): المعاينةُ
+                       تُقرأ و«عرض الكل» يُعمل فيه. */
+                    follow
                   />
                 )}
                 {allView === "top" && (
@@ -533,6 +536,9 @@ export default async function PeoplePage({
                     limit={10}
                     meId={user.id}
                     following={boardFollowing}
+                    /* **والفعلُ هنا وحدَه** (D-281، حكمُ أحمد): المعاينةُ
+                       تُقرأ و«عرض الكل» يُعمل فيه. */
+                    follow
                   />
                 )}
                 {allView === "reviews" && <TopReviews rows={topReviews} locale={locale} />}
@@ -544,6 +550,9 @@ export default async function PeoplePage({
                     limit={10}
                     meId={user.id}
                     following={boardFollowing}
+                    /* **والفعلُ هنا وحدَه** (D-281، حكمُ أحمد): المعاينةُ
+                       تُقرأ و«عرض الكل» يُعمل فيه. */
+                    follow
                   />
                 )}
               </>
