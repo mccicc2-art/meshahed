@@ -1762,14 +1762,8 @@ export interface PeopleLeaderRow extends PersonLite {
  * **فلا طولَ يُختار ولا معاملَ `p_days`**: المرساةُ في SQL بتوقيت
  * الرياض، **والواجهةُ تطلب العددَ وحده.**
  */
-export async function getPeopleLeaderboard(
-  limit = 20,
-  /** ⚠️ **وسيطُ دفعةٍ واحدة** (D-028): النداءُ القديم كان `(7, 20)`،
-      **فيصل ٧ إلى `limit` و٢٠ إلى هنا** — ويُقرأ هذا. **يسقط في الدفعة
-      التي تلي هبوط `page.tsx`.** */
-  legacyLimit?: number,
-): Promise<PeopleLeaderRow[]> {
-  const want = legacyLimit ?? limit;
+export async function getPeopleLeaderboard(limit = 20): Promise<PeopleLeaderRow[]> {
+  const want = limit;
   try {
     const supabase = await createClient();
     /* ⚠️ **حارسُ عبورٍ حتى تُشغَّل الهجرة ٨٣** (D-264/D-265): التوقيعُ
