@@ -244,6 +244,8 @@ export default async function TalkPage({
             kind: p.kind,
             data: p.data,
             spoiler: p.spoiler,
+            /* 🆕 D-271 — إعلانُ الكاتب، **والصفُّ يحجب متنَه به** */
+            hasSpoiler: p.hasSpoiler,
           }))}
           me={me}
           locale={locale}
