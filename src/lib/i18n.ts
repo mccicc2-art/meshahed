@@ -799,8 +799,6 @@ const ar = {
   /* **زرُّ الحاجب فعلٌ لا تحذير** (D-181): يقول ماذا يفعل لا ما يخفيه */
   spoilerShow: "اعرض الحرق",
   spoilerHide: "أخفِ الحرق",
-  /* **وسببُ الحجب يُقال مرّةً** — ولا يُكرَّر مع كل نشرة */
-  spoilerNote: "يكشف أحداثَ الحلقة",
   /* **ومفتاحُ الكاتب فعلٌ لا تحذير** (D-271): «فيها حرق» تصف رسالتَه،
    **و«تحذير: حرق» تخاطب قارئاً غيرَ موجودٍ بعد.** */
   spoilerMark: "فيها حرق",
@@ -2060,7 +2058,6 @@ const en: Dict = {
   bulletinRuntime: (mins: number) => `${num(mins, "en")} min`,
   spoilerShow: "Show spoiler",
   spoilerHide: "Hide spoiler",
-  spoilerNote: "Reveals what happens in the episode",
   spoilerMark: "Contains a spoiler",
   // We know what our own bulletin hides; we do not know what a member wrote
   spoilerByAuthor: "Marked by its author",
