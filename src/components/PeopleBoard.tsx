@@ -10,6 +10,9 @@ import type {
   PeopleWatchingRow,
   SuggestedPerson,
 } from "@/lib/data";
+/* **من `people.ts` لا من `data.ts`**: ملفٌّ نقيٌّ لا يسحب عميلَ الخادم
+   (D-193) — والنوعُ واحدٌ في الحالتين، **والأنقى أولى.** */
+import type { PersonLite } from "@/lib/people";
 import { PersonName } from "./PersonRow";
 import { FollowUserButton } from "./FollowUserButton";
 import { Icon, type IconName } from "./Icon";
@@ -92,6 +95,96 @@ export function BoardSection({
       </header>
       {children}
     </section>
+  );
+}
+
+/**
+ * **البحثُ بالاسم داخل التبويب** (D-266) — **آخرُ ما بقي من D-262.**
+ *
+ * **ونموذجُ `GET` لا مكوّنُ عميل:** `searchPeople` تعيش في `data.ts` منذ
+ * زمن **ولها سطحٌ واحدٌ في ورقة المحادثات**، وبناءُ سطحٍ ثانٍ بحالةٍ
+ * وتأخيرٍ ونداءٍ لكل حرف **يشتري لمعةً بثمنِ ملفٍّ ثالث**.
+ * **والنتيجةُ في الرابط** (`?tab=people&q=…`): تُشارَك، ويعود منها الظهر،
+ * **وتُرسم على الخادم فلا تومض** (D-051/D-054) — **وهي القاعدة نفسُها
+ * التي بُني عليها «عرض الكل».**
+ *
+ * ⚠️ **والبحثُ يبتلع اللوحةَ ولا يجاورها**: هو مرشِّحٌ لا قسمٌ سادس،
+ * **ولوحةٌ تحت نتائجِ بحثٍ تُقرأ ضجيجاً** — **وفراغُ المرشِّح ليس فراغَ
+ * الصفحة** (D-106/D-181).
+ *
+ * ⚠️ **ونفسي لا أظهر في نتائجي**: زرُّ «متابعة» على وجهك **يعد بما تمنعه
+ * القاعدة** (D-217).
+ */
+export function PeopleSearch({
+  q,
+  results,
+  followingIds,
+  meId,
+  locale,
+}: {
+  q: string;
+  results: PersonLite[];
+  /** **من أتابعهم** — **وزرُّ «متابعة» على من تتابعه كذبةٌ صغيرة** (D-238) */
+  followingIds: Set<string>;
+  meId: string;
+  locale: Locale;
+}) {
+  const t = getDict(locale);
+  const term = q.trim();
+  const searching = term.length >= 2;
+  const list = results.filter((p) => p.id !== meId);
+
+  return (
+    <div className="mb-5">
+      {/* **حقلٌ ١٦px وهدفُ لمسٍ ٤٤** (D-033/D-168) — ووصفةُ الحقل هي
+          وصفةُ `NewListForm` نفسُها، لا ثانيةٌ لها (D-145) */}
+      <form method="get" action="/people" className="flex items-center gap-2">
+        <input type="hidden" name="tab" value="people" />
+        <input
+          type="search"
+          name="q"
+          defaultValue={q}
+          placeholder={t.peopleSearchPlaceholder}
+          aria-label={t.peopleSearchPlaceholder}
+          className="flex-1 min-w-0 min-h-11 rounded-control bg-surface-2 border border-border px-3 py-2.5 text-base outline-none focus:border-accent transition"
+        />
+        <button
+          type="submit"
+          aria-label={t.navSearch}
+          title={t.navSearch}
+          className="shrink-0 w-11 h-11 grid place-items-center rounded-control border border-border text-muted hover:text-accent hover:border-[color:var(--divider)] transition"
+        >
+          <Icon name="search" size={17} />
+        </button>
+      </form>
+
+      {/* **والحدُّ يُقال قبل أن يُصطدم به** — لا بعد ضغطةٍ تعود فارغة */}
+      {term.length > 0 && !searching && (
+        <p className="mt-2 text-xs text-muted">{t.peopleSearchHint}</p>
+      )}
+
+      {searching &&
+        (list.length === 0 ? (
+          <p className="mt-4 text-sm text-muted bg-surface border border-dashed border-border rounded-xl py-8 px-5 text-center">
+            {t.searchNoResults}
+          </p>
+        ) : (
+          <CardGrid>
+            {list.map((p) => (
+              <PersonCard key={p.id}>
+                <PersonName person={p} t={t} size={56} vertical />
+                <div className="w-full flex justify-center">
+                  <FollowUserButton
+                    targetId={p.id}
+                    locale={locale}
+                    initialFollowing={followingIds.has(p.id)}
+                  />
+                </div>
+              </PersonCard>
+            ))}
+          </CardGrid>
+        ))}
+    </div>
   );
 }
 
