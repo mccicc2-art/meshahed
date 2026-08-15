@@ -17,6 +17,7 @@ import { bulletinLine } from "@/lib/bulletinLine";
 import { TitleHero } from "@/components/TitleHero";
 import { ThreadReplies } from "@/components/thread/ThreadReplies";
 import { Icon } from "@/components/Icon";
+import { dirOf, alignOf } from "@/lib/dir";
 
 export const dynamic = "force-dynamic";
 
@@ -151,6 +152,10 @@ export default async function TalkPage({
   const poster = posterUrl(myArt?.poster_path ?? posterPath, "w185");
   const backdrop = backdropUrl(myArt?.backdrop_path ?? backdropPath, "w780");
   const href = `/${mediaType === "tv" ? "show" : "movie"}/${tmdbId}`;
+  /* **النبذةُ من TMDB مباشرةً** — `details` مقروءةٌ أصلاً لهذه الصفحة،
+     **فلا نداءَ جديد** (D-198). و`?.trim()` لأن TMDB تُرجع نصّاً فارغاً
+     لا `null` حين لا تملك ترجمة. */
+  const overview = ((details as { overview?: string | null } | null)?.overview ?? "").trim();
   const avg = Math.round(community.avg * 10) / 10;
 
   return (
@@ -182,9 +187,36 @@ export default async function TalkPage({
           كذا»). **وهو نفسُ نصِّ البطاقة حرفاً** — فمن ضغط بطاقةً وجد
           عنوانَها فوق الغرفة، **ولا يسأل: هل فُتحت الغرفةُ التي ضغطتُها؟** */}
       <div className="px-4 sm:px-6 max-w-xl mx-auto mt-1">
-        <h1 className="text-[17px] font-bold leading-snug">
+        {/* ⚖️ **وسطرُ الغرفة نزل من عنوانٍ إلى سطر** (D-284، طلبُ أحمد:
+            «اكتب العنوان في مكان صحيح»).
+            **والعطلُ كان تكراراً لا مقاساً**: اسمُ العمل مكتوبٌ فوق
+            الغلاف بحجمٍ كبير، **ثم يُعاد كاملاً في «Discussing the series
+            LINK CLICK»** — سطران يقولان الشيء نفسَه، أعلاهما أكبر.
+            **والعنوانُ الحقيقيُّ للصفحة هو اسمُ العمل**، وهذا وصفُ
+            المكان. **⚠️ وكان `h1` ثانياً في صفحةٍ فيها `h1`** — وعنوانان
+            أوّلان ليسا اثنين، **هما غيابُ عنوان**.
+            **وبقي النصُّ نفسُه حرفاً** (D-257: من ضغط بطاقةً وجد عنوانَها
+            فوق الغرفة) — **تغيّر وزنُه لا كلماتُه.** */}
+        <p className="text-[12px] text-muted leading-snug">
           {t.talkRoomTitle(title, mediaType === "tv")}
-        </h1>
+        </p>
+
+        {/* 🆕 **ونبذةُ العمل مكانَ الفراغ** (D-284، طلبُ أحمد: «ونبذة عن
+            المسلسل»). **ثلاثةُ أسطرٍ لا أكثر**: الصفحةُ للحوار، **والنبذةُ
+            تعرّف بمن لم يشاهد ولا تزاحم من جاء يقرأ** (D-223: صوتُنا لا
+            يعلو على صوت الناس).
+            **وتُقصّ بلا زرِّ توسيع**: صفحةُ العمل على بُعد ضغطةٍ من
+            الترويسة، **وبابٌ قائمٌ خيرٌ من بابٍ ثانٍ** (D-266).
+            ⚠️ **واتّجاهُها من نصّها** (D-282): TMDB تُرجعها بلغة القارئ
+            حين تتوفّر، **فقد تعود عربيةً في واجهةٍ إنجليزية.** */}
+        {overview && (
+          <p
+            dir={dirOf(overview)}
+            className={`mt-2 text-[13px] leading-relaxed text-muted line-clamp-3 ${alignOf(overview)}`}
+          >
+            {overview}
+          </p>
+        )}
 
         {/* **شاراتُ حالتك — تُقرأ ولا تُضغط** (D-217): «المُطَوَّق يُضغط
             والعاري يُقرأ»، فلا يظنُّها أحدٌ زرّين ويضغطهما بلا أثر. */}
