@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Icon, type IconName } from "../Icon";
 import { segmentedItem } from "./controls";
+import { TabUnderline } from "./TabUnderline";
 
 export interface PageTab {
   key: string;
@@ -45,6 +46,7 @@ export function PageTabs({
   action,
   extra,
   asNav = false,
+  swipe = false,
   className = "",
 }: {
   items: PageTab[];
@@ -56,6 +58,13 @@ export function PageTabs({
   extra?: React.ReactNode;
   /** روابط لا أزرار: `nav` + `aria-current` بدل `tablist` + `aria-selected` */
   asNav?: boolean;
+  /**
+   * 🆕 **الشريطُ يمشي مع سحب الصفحة** (D-276) — **اختياريٌّ لا افتراضيّ**:
+   * لا يُشترى إلا لصفٍّ صفحاتُه تنزلق فعلاً (`TabPager`). **وأداةٌ تعد
+   * بحركةٍ لا تقع أسوأُ من أداةٍ ساكنة** (D-217).
+   * **ويُخفى الشريطُ الزائف عن المختار هنا وحدَه** فلا شريطان.
+   */
+  swipe?: boolean;
   /**
    * أصنافٌ تُضاف إلى الجذر **اللاصق** نفسه.
    *
@@ -158,22 +167,29 @@ export function PageTabs({
         {/* صمّامُ الأمان: يُمرَّر أفقياً حين لا يسع الصفُّ أسماءه — وبلا
             شريط تمرير مرئيّ (نفس وصفة `chipRow` و`RailScroll`، فلا عائلةَ
             تمريرٍ ثانية). ولا `-mx-4 px-4` هنا: الأبُ يحملها أصلاً */}
-        {asNav ? (
-          <nav
-            aria-label={ariaLabel}
-            className="min-w-0 flex-1 flex items-stretch overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-          >
-            {inner}
-          </nav>
-        ) : (
-          <div
-            role="tablist"
-            aria-label={ariaLabel}
-            className="min-w-0 flex-1 flex items-stretch overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-          >
-            {inner}
-          </div>
-        )}
+        {(() => {
+          /* **المحدِّثُ الموضعيّ يُخفي الشريطَ الزائف** ويُبقي `segmentedItem`
+             كما هو لبقيّة التطبيق — **لا عائلةَ ثانية** (D-002/D-276). */
+          const strip = `relative min-w-0 flex-1 flex items-stretch overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden${
+            swipe ? " [&_[aria-current=page]]:after:hidden" : ""
+          }`;
+          const at = swipe ? items.findIndex((x) => x.key === active) : -1;
+          const body = (
+            <>
+              {inner}
+              {at >= 0 && <TabUnderline index={at} />}
+            </>
+          );
+          return asNav ? (
+            <nav aria-label={ariaLabel} className={strip}>
+              {body}
+            </nav>
+          ) : (
+            <div role="tablist" aria-label={ariaLabel} className={strip}>
+              {body}
+            </div>
+          );
+        })()}
         {action}
       </div>
       {/* ما تحت الخطّ يبقى داخل الرأس اللاصق ويمرّر معه — والحشو
