@@ -213,17 +213,20 @@ export default async function PeoplePage({
      يُدفع في غيره. **والعنوانُ والملصقُ يأتيان مع الصفّ** فلا نداءَ
      TMDB لكل بطاقة (D-164).
 
-     **و«من أتابع» يُرشَّح هنا لا في SQL:** الغرفةُ ليست شخصاً — **هي
-     تصير «غرفةَ من أتابع» إذا تكلّم فيها أحدُهم**، وذلك سؤالٌ عن
-     الوجوه التي تحملها البطاقة أصلاً. **ودالّةُ SQL ثانيةٌ لفرقٍ يُقرأ
-     من نفس الصفّ نسخةٌ تفترق يوماً** (D-145). */
+     ⚠️ **ورقاقتا «الكل / من أتابع» سقطتا** (D-259، سؤالُ أحمد: «احذف
+     الفلاتر في النقاش، ما أعتقد يحتاجها — ولا وش رأيك؟» — **ورأيي أنه
+     محقّ، بثلاثة أسباب تُقال**):
+     **(١) الغرفةُ ليست شخصاً.** «من أتابع» سؤالٌ عن صاحب الكلام، **وللغرفة
+     خمسةُ أصحاب** — فكان الترشيحُ يقول «غرفةٌ تكلّم فيها من أتابع»، وهي
+     جملةٌ لا يسألها أحد.
+     **(٢) والقائمةُ قصيرة.** الغرفُ عشراتٌ لا آلاف، **ومرشِّحٌ على قائمةٍ
+     تُمسَح بنظرةٍ يزيد ضغطةً ولا يوفّر بحثاً** — وهو نفسُ سببِ إسقاط
+     مرشِّح نوع الحدث في D-187.
+     **(٣) وأكثرُ نتائجه فراغ.** دائرةُ المتابعة عندنا صغيرة، **فرقاقةٌ
+     أغلبُ ضغطاتها تُنتج شاشةً فارغة تُقرأ عطلاً لا ترشيحاً** (D-181).
+     **والبديلُ قائمٌ ولم يُحذف:** الترتيبُ بأحدث مشاركة يرفع الحيَّ
+     تلقائياً. */
   const rooms = tab === "talk" ? await getTalkRooms(40) : [];
-  const talkFollowing = tab === "talk" && scope === "following" ? await getFollowingIds() : null;
-  const visibleRooms = talkFollowing
-    ? rooms.filter(
-        (r) => r.faces.some((p) => talkFollowing.has(p.id)) || r.faces.some((p) => p.id === user.id),
-      )
-    : rooms;
 
   /* «أشخاص لمتابعتهم» (D-126) — تُطلب حين يكون الخطّ هزيلاً لا فارغاً
      وحده: دائرةٌ من شخصين تُنتج خطّاً صامتاً كدائرةٍ من صفر، والفرق أن
@@ -343,27 +346,21 @@ export default async function PeoplePage({
    * **ولا رقاقاتَ لتبويبَي الرابط** («أخبار» و«مجتمعات»): فرزُهما ليس
    * سؤالاً هناك، وخانةٌ فارغة خيرٌ من خياراتٍ لا تنطبق (D-217).
    */
+  /* ⚠️ **ورقاقاتُ «نقاش» سقطت في D-259** — الحجّةُ الثلاثية عند نداء
+     `getTalkRooms` أعلاه. **وبقي فرزُ «النشاط» وحدَه.** */
   const filterChips =
-    tab === "activity" || tab === "talk" ? (
+    tab === "activity" ? (
       /* والحشوُ حول الصفّ ملكُ `PageTabs` لا ملكُنا — حشوٌ ثانٍ هنا
          يُضاعِفه (نفسُ درس الخطّين في D-134) */
       <div className="flex items-center gap-2">
-        {(tab === "activity"
-          ? ([
-              { key: "for-you", label: t.feedForYou, href: `/people?tab=${tab}` },
-              { key: "latest", label: t.feedLatest, href: `/people?tab=${tab}&sort=latest` },
-              { key: "top", label: t.feedTop, href: `/people?tab=${tab}&sort=top` },
-            ] as const)
-          : ([
-              { key: "all", label: t.worksScopeAll, href: `/people?tab=${tab}` },
-              {
-                key: "following",
-                label: t.worksScopeFollowing,
-                href: `/people?tab=${tab}&scope=following`,
-              },
-            ] as const)
+        {(
+          [
+            { key: "for-you", label: t.feedForYou, href: `/people?tab=${tab}` },
+            { key: "latest", label: t.feedLatest, href: `/people?tab=${tab}&sort=latest` },
+            { key: "top", label: t.feedTop, href: `/people?tab=${tab}&sort=top` },
+          ] as const
         ).map((c) => {
-          const on = tab === "activity" ? feedSort === c.key : scope === c.key;
+          const on = feedSort === c.key;
           return (
             <Link
               key={c.key}
@@ -469,15 +466,16 @@ export default async function PeoplePage({
               }
               locale={locale}
             />
-          ) : visibleRooms.length === 0 ? (
-            /* **وفراغُ «الكل» غيرُ فراغ «من أتابع»** — ولكلٍّ جملتُه:
-               الأوّل يعني «لم يكتب أحدٌ بعد» فيدعوك لتكون الأوّل، والثاني
-               يعني «دائرتُك صامتة» فيدلّك على «الكل» (نمط D-106). */
+          ) : rooms.length === 0 ? (
+            /* **وفراغٌ واحدٌ لا اثنان** (D-259): كان لكل رقاقةٍ جملتُها —
+               «لم يكتب أحدٌ بعد» و«دائرتُك صامتة». **وبسقوط الرقاقتين
+               سقطت الثانية**: لا نطاقَ يُدلّ عليه، **والجملةُ الباقية هي
+               الصادقة** — لا غرفةَ حيّةً بعد، فكن أوّلَ من يفتح واحدة. */
             <p className="text-sm text-muted bg-surface border border-dashed border-border rounded-xl py-10 px-5 text-center">
-              {scope === "all" ? t.worksEmptyAll : t.worksEmptyFollowing}
+              {t.worksEmptyAll}
             </p>
           ) : (
-            <WorksTalk rooms={visibleRooms} locale={locale} />
+            <WorksTalk rooms={rooms} locale={locale} />
           )}
         </section>
       )}
