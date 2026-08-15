@@ -807,6 +807,14 @@ const ar = {
      و`feedTop` و`feedEmptyForYou`** — لا قارئَ لها. */
   feedShowStrangersHint:
     "حين يُطفأ، لا يعرض الخطُّ إلا كلامَ من تتابعهم وكلامَك. ونشراتُ Loopz لا يمسّها المفتاح: تُلغى من قائمة حسابها.",
+  /* ⚖️ **وعادت `feedEmptyForYou` بعد أربعين دقيقة من حذفها** (D-283،
+     طلبُ أحمد: «ناس ما أتابعهم ولا أتابع أفلامهم لا تظهرهم لي»).
+     **وحذفتُها في D-280 لأن قارئَها سقط، وعادت لأن سلوكَها عاد** —
+     **وهذا ليس تردّداً**: المفتاحُ يُحذف يوم لا قارئَ له ويُكتب يوم
+     يحتاجه سطح (D-214). **والنصُّ فعلٌ لا اعتذار** (D-181): يقول ماذا
+     تفعل ليمتلئ الخطُّ، لا «لا يوجد شيء». */
+  feedEmptyForYou:
+    "لا شيء لك بعد. تابِع أشخاصاً أو أضِف أعمالاً إلى مكتبتك، فيمتلئ هذا الخطّ بكلامٍ يخصّك.",
   /* **«فضّلوه» لا «مفضّلة»**: العددُ أشخاصٌ فعلوا لا صفةٌ للعمل — وهو
      نفسُ نحو «شاهدوه» بجانبه، فيُقرأ الصفُّ لغةً واحدة (D-216) */
   talkFavoritesHint: "فضّلوه",
@@ -1950,6 +1958,8 @@ const en: Dict = {
   feedShowStrangers: "Show people I don't follow",
   feedShowStrangersHint:
     "When off, the feed shows only people you follow plus your own posts. Loopz bulletins are unaffected; turn those off from that account's own menu.",
+  feedEmptyForYou:
+    "Nothing for you yet. Follow a few people or add titles to your library, and this feed fills with talk that concerns you.",
   talkFavoritesHint: "favourited",
   worksRatedByHint: (n: number) =>
     n === 1
