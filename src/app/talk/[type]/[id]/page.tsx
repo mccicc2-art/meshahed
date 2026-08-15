@@ -15,9 +15,11 @@ import { displayWorkTitle } from "@/lib/wikidata";
 import { getT } from "@/lib/locale";
 import { bulletinLine } from "@/lib/bulletinLine";
 import { TitleHero } from "@/components/TitleHero";
+import { HeroRatings, HeroRatingsSkeleton } from "@/components/HeroRatings";
 import { ThreadReplies } from "@/components/thread/ThreadReplies";
 import { Icon } from "@/components/Icon";
 import { dirOf, alignOf } from "@/lib/dir";
+import { Suspense } from "react";
 
 export const dynamic = "force-dynamic";
 
@@ -170,6 +172,27 @@ export default async function TalkPage({
         count={community.count}
         ratingLabel={t.communityRating}
         locale={locale}
+        /* 🆕 **تقييمُ IMDb والتصنيفُ العمريّ تحت الاسم** (D-286، طلبُ
+           أحمد). **خلف `Suspense`** لأن OMDb رحلةُ شبكةٍ خارجية —
+           **والترويسةُ تُرسم فوراً والسطرُ يلحق** (D-071)، **وهيكلُه
+           بارتفاع السطر فلا تقفز الكتلة** (D-046).
+           **والمعرّفُ يأتي مع تفاصيل الفيلم، ويُحلُّ للمسلسل داخل
+           المكوّن** — وهو تقسيمُ `HeroRatings` القائم، لا شرطٌ جديد. */
+        meta={
+          <Suspense fallback={<HeroRatingsSkeleton compact />}>
+            <HeroRatings
+              compact
+              ageLabel={t.ageRating}
+              imdbId={(details as { imdb_id?: string | null } | null)?.imdb_id ?? null}
+              tvId={mediaType === "tv" ? tmdbId : undefined}
+            />
+          </Suspense>
+        }
+        /* 🆕 **ووصفُ الغرفة صعد إلى الغلاف** (D-286، طلبُ أحمد: «اكتب
+           العنوان في المساحة في الغلاف»). **النصُّ هو نفسُه حرفاً** —
+           وهو ما يجعل من ضغط بطاقةً يجد عنوانَها فوق الغرفة (D-257) —
+           **وإنما تركَ متنَ الصفحة للنبذة ثم للكلام.** */
+        sub={t.talkRoomTitle(title, mediaType === "tv")}
         end={
           <Link
             href={href}
@@ -182,26 +205,14 @@ export default async function TalkPage({
         }
       />
 
-      {/* **عنوانُ الغرفة المولَّد — أوّلُ ما يُقرأ تحت الترويسة** (D-257،
-          طلبُ أحمد: «لازم يكون له عنوان، مبدئياً يكون عنوانه نقاش فلم
-          كذا»). **وهو نفسُ نصِّ البطاقة حرفاً** — فمن ضغط بطاقةً وجد
-          عنوانَها فوق الغرفة، **ولا يسأل: هل فُتحت الغرفةُ التي ضغطتُها؟** */}
+      {/* ⚖️ **ووصفُ الغرفة غادر المتنَ إلى الغلاف** (D-286، طلبُ أحمد:
+          «اكتب العنوان في المساحة في الغلاف»).
+          **وسيرتُه في سطرين:** كان `h1` ثانياً في صفحةٍ فيها `h1`، فنزل
+          في D-284 إلى سطرٍ خافت، **ثم صعد اليوم إلى الفراغ الذي كان في
+          الغلاف** — **والنصُّ لم يتغيّر في المرّتين** (D-257).
+          **فصار أوّلُ ما يقرؤه القارئُ في المتن نبذةَ العمل، ثم الكلام.** */}
       <div className="px-4 sm:px-6 max-w-xl mx-auto mt-1">
-        {/* ⚖️ **وسطرُ الغرفة نزل من عنوانٍ إلى سطر** (D-284، طلبُ أحمد:
-            «اكتب العنوان في مكان صحيح»).
-            **والعطلُ كان تكراراً لا مقاساً**: اسمُ العمل مكتوبٌ فوق
-            الغلاف بحجمٍ كبير، **ثم يُعاد كاملاً في «Discussing the series
-            LINK CLICK»** — سطران يقولان الشيء نفسَه، أعلاهما أكبر.
-            **والعنوانُ الحقيقيُّ للصفحة هو اسمُ العمل**، وهذا وصفُ
-            المكان. **⚠️ وكان `h1` ثانياً في صفحةٍ فيها `h1`** — وعنوانان
-            أوّلان ليسا اثنين، **هما غيابُ عنوان**.
-            **وبقي النصُّ نفسُه حرفاً** (D-257: من ضغط بطاقةً وجد عنوانَها
-            فوق الغرفة) — **تغيّر وزنُه لا كلماتُه.** */}
-        <p className="text-[12px] text-muted leading-snug">
-          {t.talkRoomTitle(title, mediaType === "tv")}
-        </p>
-
-        {/* 🆕 **ونبذةُ العمل مكانَ الفراغ** (D-284، طلبُ أحمد: «ونبذة عن
+        {/* **ونبذةُ العمل مكانَ الفراغ** (D-284، طلبُ أحمد: «ونبذة عن
             المسلسل»). **ثلاثةُ أسطرٍ لا أكثر**: الصفحةُ للحوار، **والنبذةُ
             تعرّف بمن لم يشاهد ولا تزاحم من جاء يقرأ** (D-223: صوتُنا لا
             يعلو على صوت الناس).
