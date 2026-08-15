@@ -90,11 +90,22 @@ export function WorksTalk({ rooms, locale }: { rooms: TalkRoom[]; locale: Locale
                     شفافيّتُه، والغطاءُ فوقه. **وطبقتان تخفتان معاً حاصلُهما
                     الغياب.**
                     **والآن الكثافةُ تنتهي عند ٥٥٪** (`via-[55%]`) بقيمةٍ
-                    أخفّ (`‎/70`)، **فالنصفُ الأوّل محميٌّ كما كان والنصفُ
-                    الثاني يُرى فيه العمل** — وهو ما طلبه أحمد أصلاً. */}
+                    أخفّ (`‎/70`)، **فالنصفُ الأوّل محميٌّ والثاني يُرى فيه
+                    العمل.**
+
+                    ⚠️⚠️ **والنصفُ الثاني من العطل كان الاتّجاهَ نفسَه، ولم
+                    يُمسك إلا بقياس `getComputedStyle`:** كان
+                    `bg-gradient-to-l` في LTR — **و`to left` تضع `from`
+                    عند اليمين** — بينما الملصقُ والنصُّ في البداية
+                    (اليسار). **فالغطاءُ كان على الفراغ، والغلافُ مكشوفٌ
+                    تحت النصّ حيث لا يُنظر إليه** — وهو سببُ «الغلاف ماهو
+                    واضح» أكثرَ من الشفافية.
+                    **والقاعدة: `to-r` تضع البدايةَ يساراً و`to-l` تضعها
+                    يميناً — فالمحاذاةُ مع `start` عكسُ ما يوحي به الاسم.**
+                    (وكان مقلوباً في الاتّجاهين معاً منذ D-257.) */}
                 <span
                   aria-hidden
-                  className="absolute inset-0 pointer-events-none bg-gradient-to-l rtl:bg-gradient-to-r from-[color:var(--surface)] via-[color:var(--surface)]/70 via-[55%] to-transparent"
+                  className="absolute inset-0 pointer-events-none bg-gradient-to-r rtl:bg-gradient-to-l from-[color:var(--surface)] via-[color:var(--surface)]/70 via-[55%] to-transparent"
                 />
               </>
             )}
