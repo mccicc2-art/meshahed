@@ -345,7 +345,7 @@ export function TopReviews({
           return (
             <li key={`${row.id}-${row.mediaType}-${row.tmdbId}`}>
               <article className="flex gap-3 p-3.5 rounded-2xl bg-surface border border-border">
-                <div className="min-w-0 flex-1">
+                <div className="min-w-0 flex-1 flex flex-col">
                   {/* **الترويسةُ ترويسةُ صفّ «النشاط» حرفاً** (D-272، طلبُ
                       أحمد: «خلي تنسيقه مثل الرفيو في اكتيفتي عشان
                       التناسق»): **وجهٌ ٤٤ · اسمٌ ثم عمرٌ مختصرٌ في الطرف ·
@@ -411,7 +411,11 @@ export function TopReviews({
                       عنوانٌ بلا دليل (D-219). **ولا شريطَ أفعالٍ ثانٍ**:
                       البطاقةُ بابٌ إلى `/review` حيث الردُّ والإعجاب
                       يعملان (D-224). */}
-                  <p className="mt-2 inline-flex items-center gap-1.5 text-[12px] text-muted">
+                  {/* **و`mt-auto` تُنزله إلى القاع** فيثبت موضعُه بين
+                      البطاقات مهما قصُر الكلام (D-224) — **والملصقُ أطولُ
+                      من النصّ في أكثر البطاقات، فبلا هذا يطفو الرقمُ في
+                      وسط فراغ.** */}
+                  <p className="mt-auto pt-2 inline-flex items-center gap-1.5 text-[12px] text-muted">
                     <Icon name="heart-filled" size={13} className="shrink-0" />
                     <span className="tabular-nums">{t.peopleBoardLikes(row.likes)}</span>
                   </p>
