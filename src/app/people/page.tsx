@@ -19,6 +19,7 @@ import {
   getFollowingIds,
   getNewsReplyCounts,
   getPostViewCounts,
+  getPeopleFeatured,
   getPeopleLeaderboard,
   getPeopleTopReviews,
 } from "@/lib/data";
@@ -86,13 +87,13 @@ function asTab(v: string | undefined): Tab {
  * **ومفتاحٌ مجهولٌ يسقط إلى اللوحة كاملةً** لا إلى شاشة خطأ: الرابطُ
  * قد يُكتب بيد، **وقارئٌ متسامح خيرٌ من `404` على معاملٍ زائد** (D-179).
  */
-type BoardAll = "top" | "reviews" | "rising";
+type BoardAll = "featured" | "top" | "reviews" | "rising";
 function asAll(v: string | undefined): BoardAll | null {
   /* ⚠️ **و`people` و`watching` سقطتا مع قسميهما** (D-270) — **ورابطٌ
      قديمٌ بهما يهبط على اللوحة كاملةً لا على `404`**: هو نفسُ القارئ
      المتسامح أعلاه، **والقسمُ الذي كان يُفتح لم يعد موجوداً فلا بديلَ
      له يُحوَّل إليه.** */
-  return v === "top" || v === "reviews" || v === "rising" ? v : null;
+  return v === "featured" || v === "top" || v === "reviews" || v === "rising" ? v : null;
 }
 
 /* **سقطت هنا خوارزميةُ ترتيب الخطّ كاملةً (D-134/D-136/D-149)** مع
@@ -275,6 +276,9 @@ export default async function PeoplePage({
   const peopleTab =
     tab === "people"
       ? await Promise.all([
+          /* **و٣ في القسم و١٠ في «عرض الكل»**: البطاقةُ تُقرأ بنظرة،
+             **وصفٌّ من اثني عشر وجهاً في لوحةٍ ليس تمييزاً بل دليل.** */
+          need("featured") ? getPeopleFeatured(90, wantAll ? 10 : 3) : [],
           /* **نداءٌ واحدٌ يخدم قسمَي الأسبوع** (D-198) — الدالّةُ تُرجع
              النافذتين معاً، **والواجهةُ تطرح.** */
           need("top") || need("rising") ? getPeopleLeaderboard(20) : [],
@@ -282,8 +286,9 @@ export default async function PeoplePage({
           need("reviews") ? getPeopleTopReviews(30, wantAll ? 10 : 3) : [],
         ])
       : null;
-  const board = peopleTab?.[0] ?? [];
-  const topReviews = peopleTab?.[1] ?? [];
+  const featured = peopleTab?.[0] ?? [];
+  const board = peopleTab?.[1] ?? [];
+  const topReviews = peopleTab?.[2] ?? [];
   /* **وفراغُ «الصاعدين» ليس فراغَ اللوحة**: النداءُ واحدٌ للقسمين، **فقد
      تعود اللوحةُ ممتلئةً ولا يكون فيها صاعدٌ واحد** — ولو قيس هذا القسمُ
      بطول `board` لبقي «عرض الكل» صفحةً فيها بابُ رجوعٍ ولا شيء تحته.
@@ -291,7 +296,7 @@ export default async function PeoplePage({
   const peopleEmpty =
     allView === "rising"
       ? board.every((r) => r.total - r.prevTotal <= 0)
-      : board.length === 0 && topReviews.length === 0;
+      : featured.length === 0 && board.length === 0 && topReviews.length === 0;
 
   /* «أشخاص لمتابعتهم» (D-126) — تُطلب حين يكون الخطّ هزيلاً لا فارغاً
      وحده: دائرةٌ من شخصين تُنتج خطّاً صامتاً كدائرةٍ من صفر، والفرق أن
@@ -581,6 +586,9 @@ export default async function PeoplePage({
                 >
                   ‹ {t.backAria}
                 </Link>
+                {allView === "featured" && (
+                  <PeopleLeaderboard rows={featured} locale={locale} mode="featured" limit={10} />
+                )}
                 {allView === "top" && (
                   <PeopleLeaderboard rows={board} locale={locale} mode="top" limit={10} />
                 )}
@@ -590,12 +598,11 @@ export default async function PeoplePage({
                 )}
               </>
             ) : (
-              /* **حذفُ قسمين أوّلاً، والإضافةُ في الدفعة التالية** (D-270،
-                 طلبُ أحمد: «نفس العناوين في الصورة المرسلة ما نبغى —
-                 People to follow · Added to their libraries — وضِف بأوّل
-                 شي Featured Members»). **والحذفُ يسبق لأنه لا يحتاج شيئاً
-                 جديداً**، **و«المميّزون» ينتظرون دالّتَهم ووضعَهم في
-                 المكوّن** — **دفعتان تبنيان كلٌّ منهما وحدَها** (D-028).
+              /* **أربعةُ أقسامٍ بترتيب أحمد** (D-270، بالحرف: «نفس
+                 العناوين في الصورة المرسلة ما نبغى — People to follow ·
+                 Added to their libraries — وضِف بأوّل شي Featured
+                 Members»): **مميّزون · الأكثرُ مشاركةً هذا الأسبوع ·
+                 أعلى التعليقات · نجومٌ صاعدون.**
 
                  **وقسما «يشبهون ذوقك» و«أضافوها إلى مكتباتهم» حُذفا
                  كاملَين** — **لا أُخفيا**: حكمُ صاحبِ المنتج على قسمٍ
@@ -606,6 +613,12 @@ export default async function PeoplePage({
                  وجوهَ «الأكثر مشاركة»** — واختار، **وحجّتُه أن الصدارةَ
                  على تسعين يوماً غيرُ صدارةِ سبتٍ واحد** وهي صحيحة. */
               <>
+                <PeopleLeaderboard
+                  rows={featured}
+                  locale={locale}
+                  mode="featured"
+                  seeAllHref="/people?tab=people&all=featured"
+                />
                 <PeopleLeaderboard
                   rows={board}
                   locale={locale}
