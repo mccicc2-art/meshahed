@@ -1798,6 +1798,61 @@ export async function getPeopleLeaderboard(limit = 20): Promise<PeopleLeaderRow[
   }
 }
 
+/**
+ * **«أعضاء مميّزون» — نافذةُ تسعين يوماً** (D-270 · الهجرة ٨٥، طلبُ أحمد:
+ * «ضِف بأوّل شي Featured Members»).
+ *
+ * **واختار محسوبين لا مختارين بيده** («الأكثر نشاطاً على المدى الطويل»)،
+ * **وقيل له قبل الاختيار إن الوجوهَ ستتكرّر مع «الأكثر مشاركة»** — واختار.
+ * **وحجّتُه صحيحةٌ فعلاً**: من تصدّر تسعين يوماً بنى عادةً، ومن تصدّر
+ * سبتاً واحداً قد يكون مرّ (D-224: القرارُ يُقرأ بحجّته لا بعنوانه).
+ *
+ * ⚠️ **ودالّةٌ ثانيةٌ لا معاملٌ في `people_leaderboard`**: تلك صارت أسبوعاً
+ * تقويميّاً يبدأ السبت (D-265) **و`p_days` أُسقطت عمداً يومَها** —
+ * **وإعادتُها لتخدم نافذةً بمعنًى آخر تُرجع الكذبةَ التي أُسقطت**: دالّةٌ
+ * اسمُها «لوحةُ الأسبوع» تُسأل عن تسعين يوماً.
+ *
+ * **والشكلُ نفسُه بالضبط** (`PeopleLeaderRow`) **كي يقرأها المكوّنُ نفسُه**:
+ * `PeopleLeaderboard` بثلاثة أوضاع لا ثلاثةُ مكوّنات (D-145).
+ * **و`prevTotal` تعود صفراً دائماً** — لا «صاعدين» على مدى تسعين يوماً،
+ * **والحقلُ يبقى ليبقى الشكلُ واحداً** وهو أرخصُ من نوعٍ ثانٍ.
+ */
+export async function getPeopleFeatured(days = 90, limit = 3): Promise<PeopleLeaderRow[]> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("people_featured", {
+      p_days: days,
+      p_limit: limit,
+    });
+    if (error || !data) return [];
+    return (data as {
+      user_id: string;
+      nickname: string | null;
+      username: string | null;
+      avatar_url: string | null;
+      hide_name: boolean | null;
+      posts: number;
+      reviews: number;
+      likes_in: number;
+      total: number;
+      prev_total: number;
+    }[]).map((r) => ({
+      id: String(r.user_id),
+      nickname: r.nickname,
+      username: r.username,
+      avatar_url: r.avatar_url,
+      hide_name: Boolean(r.hide_name),
+      posts: Number(r.posts ?? 0),
+      reviews: Number(r.reviews ?? 0),
+      likesIn: Number(r.likes_in ?? 0),
+      total: Number(r.total ?? 0),
+      prevTotal: 0,
+    }));
+  } catch {
+    return [];
+  }
+}
+
 /** **أعلى التعليقات إعجاباً** (D-263 · D-264 — ثلاثةٌ لا واحد) */
 export interface PeopleTopReviewRow extends PersonLite {
   tmdbId: number;
@@ -1871,11 +1926,9 @@ export async function getPeopleTopReviews(
   }
 }
 
-/**
- * **ما أضافه الأعضاء إلى مكتباتهم** — **لا «ماذا يشاهدون الآن»**:
- * لا حضورَ لحظيّاً عندنا، **والجملةُ تتبع البيانات لا العكس** (D-216).
- * **والعنوانُ والملصقُ على الصفّ نفسِه** (D-048) فلا نداءَ TMDB.
- */
+/* ⏳ **جسرٌ مؤقّتٌ يسقط في دفعةٍ تالية** (D-028): `PeopleBoard` في المستودع
+   ما زال يستورد `PeopleWatchingRow`، **ويُحذف المقروءُ بعد قارئه لا قبله**
+   — وإلا كسرت هذه الدفعةُ البناءَ وحدَها. **وحجّةُ الحذف تحته.** */
 export interface PeopleWatchingRow extends PersonLite {
   tmdbId: number;
   mediaType: "tv" | "movie";
@@ -1916,6 +1969,13 @@ export async function getPeopleWatching(limit = 8): Promise<PeopleWatchingRow[]>
     return [];
   }
 }
+
+/* ⚠️ **`getPeopleWatching` و`PeopleWatchingRow` يُحذفان** (D-270، طلبُ أحمد
+   بالحرف: «"Added to their libraries" ما نبغى»). **وكانا يعملان بلا عطل**
+   — والحذفُ حكمُ صاحبِ المنتج على القسم لا حكمٌ على الشيفرة.
+   **ودالّةُ `people_watching` تبقى في القاعدة حتى تُشغَّل الهجرة ٨٦**:
+   **يُحذف القارئُ أوّلاً ثم المقروء** (D-028 معكوسةً)، **وإسقاطُها اليوم
+   يُفرغ القسمَ في الإنتاج قبل أن تصل الشيفرةُ التي لا تناديه.** */
 
 export interface TitleCircle {
   /** عدد من تتابعهم ممّن شاهدوه — **صفرٌ يعني «لا تُظهر السطر»** لا «لا أحد» */
@@ -2103,6 +2163,14 @@ export interface TalkPost {
   kind: string | null;
   /** حقائقُ النشرة (`BulletinData`) — تُصاغ جملةً في `i18n.ts` */
   data: Record<string, unknown> | null;
+  /**
+   * 🆕 **أعلن صاحبُه أن فيه حرقاً** (D-268، هجرة ٨٤).
+   *
+   * ⚠️ **وهو غيرُ `spoiler` تحته**: تلك تحجب **نصّاً ثانياً** في نشرة
+   * Loopz والمتنُ الظاهر يبقى، **وهذه تحجب المتنَ نفسَه.**
+   * **ولا يجتمعان على صفّ.**
+   */
+  hasSpoiler: boolean;
   /** النثرُ المحجوب بلغتيه — `{ ar?, en? }` */
   spoiler: Record<string, unknown> | null;
 }
@@ -2143,6 +2211,8 @@ export async function getTitleThread(
       kind?: string | null;
       data?: Record<string, unknown> | null;
       spoiler?: Record<string, unknown> | null;
+      /* **وتغيب قبل الهجرة ٨٤** فتُقرأ `false` — والمتنُ يظهر كما كان */
+      has_spoiler?: boolean | null;
     }[]).map((r) => ({
       postId: String(r.id),
       authorId: String(r.author_id),
@@ -2158,6 +2228,7 @@ export async function getTitleThread(
       kind: r.kind ?? null,
       data: r.data ?? null,
       spoiler: r.spoiler ?? null,
+      hasSpoiler: Boolean(r.has_spoiler),
     }));
   } catch {
     return [];

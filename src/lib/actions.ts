@@ -3541,6 +3541,8 @@ export async function addTalkPost(input: {
   title?: string | null;
   posterPath?: string | null;
   backdropPath?: string | null;
+  /** **أعلن الكاتبُ أن فيها حرقاً** (D-268) — عَلَمٌ يرسله هو ولا يُستنتج */
+  hasSpoiler?: boolean;
 }): Promise<NewReply | null> {
   const tmdbId = intId(input.tmdbId);
   const mediaType = asMediaType(input.mediaType);
@@ -3562,6 +3564,10 @@ export async function addTalkPost(input: {
       title: input.title?.slice(0, 200) || null,
       poster_path: input.posterPath || null,
       backdrop_path: input.backdropPath || null,
+      /* **العَلَمُ من الكاتب وحده** (D-268): لا نستنتج الحرقَ من نصٍّ —
+         **واستنتاجٌ خاطئٌ في هذا الباب يكشف ما أراد ستْرَه أو يستر ما
+         أراد قولَه.** والقاعدةُ تحرس نوعَه، والافتراضُ `false`. */
+      has_spoiler: input.hasSpoiler === true,
       /* **ولا `depth` هنا**: المُشغِّل يحسبه ويقيّده — **ورقمٌ يكتبه
          العميل يكذب**، وقيدُ العمق في القاعدة لا في الواجهة (D-193). */
     })

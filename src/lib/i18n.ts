@@ -604,14 +604,23 @@ const ar = {
      فعل — وجيرانُه «النشاط» و«نقاش» أسماءُ أماكن. **وثلاثُ كلماتٍ في
      شريحةٍ على الهاتف تُقصّ** (D-258). */
   communityTabPeople: "الناس",
-  /* **وفراغُه يقول لماذا هو فارغ** (D-181): الاقتراحُ يحتاج بذرةً —
-     مكتبةً أو متابَعاً — **ولا يقول «لا يوجد أحد»** فذاك كذبٌ عن موقعٍ
-     فيه ناس. */
-  peopleTabEmpty: "لا اقتراحات بعد — أضِف أعمالاً إلى مكتبتك وسنجد من يشبه ذوقك",
+  /* **وفراغُه يقول لماذا هو فارغ** (D-181) **ويقول الفعلَ الذي يملؤه**
+     — **ولا يقول «لا يوجد أحد»** فذاك كذبٌ عن موقعٍ فيه ناس.
+     ⚠️ **وتغيّر نصُّه في D-270 لأن أقسامَه تغيّرت**: كان يتكلّم عن
+     «الاقتراحات» **وقد حُذف قسمُ الاقتراحات** — **وجملةُ فراغٍ تصف قسماً
+     غيرَ موجود هي اسمٌ بقي بعد أن تغيّر ما يسمّيه** (D-257).
+     **والأقسامُ الأربعةُ اليوم كلُّها نشاطٌ**: مشاركةٌ ورأيٌ وإعجاب. */
+  peopleTabEmpty: "لا نشاط بعد — اكتب رأياً أو شارك في نقاشٍ وستظهر الأسماء هنا",
   /* ================= أقسامُ تبويب «الناس» (D-263) =================
      **عددٌ صريح لا نقاطٌ موزونة** — قرارُ أحمد بسؤالٍ صريح. **والرقمُ
      المعروض مجموعُ ثلاثةٍ مكتوبةٍ تحته**، فمن شكّ جمعها بنفسه:
      **رقمٌ لا يستطيع أحدٌ مراجعته يُفقِد الثقةَ بالصفحة كلِّها** (D-219). */
+  /* **«أعضاء مميّزون» — والعنوانُ وحدَه يكذب** (D-270): الكلمةُ تُقرأ
+     «اخترناهم بأيدينا»، **والحقيقةُ أنهم محسوبون** بنفس عدّادِ اللوحة
+     على تسعين يوماً. **فالسطرُ تحت العنوان ليس زينةً بل تصحيحُ قراءة**
+     (D-216: الجملةُ تتبع البيانات). */
+  peopleBoardFeatured: "أعضاء مميّزون",
+  peopleBoardFeaturedNote: "الأكثر نشاطاً خلال تسعين يوماً",
   peopleBoardTop: "الأكثر مشاركةً هذا الأسبوع",
   peopleBoardActions: (n: number) =>
     n === 1
@@ -650,11 +659,16 @@ const ar = {
         : n <= 10
           ? `${num(n, "ar")} إعجابات`
           : `${num(n, "ar")} إعجاباً`,
-  /* ⚠️ **ولا «ماذا يشاهد الأعضاء الآن»** (D-216): **لا حضورَ لحظيّاً
-     عندنا**، والذي نعلمه ما أُضيف إلى المكتبة للتوّ — **فالجملةُ تتبع
-     البيانات لا العكس.** */
+  /* ⏳ **جسرٌ مؤقّتٌ يسقط في الدفعة التالية** (D-028): `PeopleBoard` في
+     المستودع ما زال يقرأ هذه الأربعة، **والمفتاحُ يُحذف بعد قارئه لا
+     قبله** — وإلا كسرت هذه الدفعةُ البناءَ وحدَها. */
   peopleBoardWatching: "أضافوها إلى مكتباتهم",
   peopleBoardAdded: (when: string) => `أضافه ${when}`,
+  /* ⚠️ **`peopleBoardWatching` و`peopleBoardAdded` تُحذفان** مع قسمِهما
+     (D-270، طلبُ أحمد: «"Added to their libraries" ما نبغى»)، **وكذلك
+     `suggestPeopleTitle` و`suggestPeopleHint`** مع «أشخاص لمتابعتهم».
+     **و`suggestShared`/`suggestFollowers` باقيتان**: تقرؤهما شاشةُ
+     التهيئة (`Onboarding`) — **يُفحص المستهلك قبل الحذف** (D-214). */
   /* **تبويبُ «تعليقات»** (D-219) — الصفُّ رأيُ إنسانٍ واحد: «من تكلّم؟».
      **والسؤالان لا يتنافسان على تبويبٍ واحد بعد اليوم.** */
   communityTabComments: "تعليقات",
@@ -730,6 +744,13 @@ const ar = {
   spoilerHide: "أخفِ الحرق",
   /* **وسببُ الحجب يُقال مرّةً** — ولا يُكرَّر مع كل نشرة */
   spoilerNote: "يكشف أحداثَ الحلقة",
+  /* **ومفتاحُ الكاتب فعلٌ لا تحذير** (D-271): «فيها حرق» تصف رسالتَه،
+     **و«تحذير: حرق» تخاطب قارئاً غيرَ موجودٍ بعد.** */
+  spoilerMark: "فيها حرق",
+  /* ⚠️ **وسببُ الحجب يتغيّر بمن حجب**: نشرتُنا تحجب وصفَ الحلقة فنعرف
+     ما فيها، **وكلامُ العضو لا نعرف ما فيه** — **فالسببُ أنه هو قال**
+     (D-216: الجملةُ تتبع ما نعلمه). */
+  spoilerByAuthor: "حدّده كاتبُه",
   /* **«شاهدوا المنشور» لا «شاهدوه»** (D-237): الأولى تخصّ الصفَّ الذي
      تحته، والثانيةُ تخصّ العملَ — **وكلمةٌ واحدة كانت تحمل المعنيين** */
   postViewsHint: "شاهدوا المنشور",
@@ -1325,9 +1346,11 @@ const ar = {
   obPeopleSkip: "أكمل بدون متابعة",
   obPeopleNext: (n: number) => `تتابع ${n} — يالله نبدأ ✓`,
 
-  /* «أشخاص لمتابعتهم» داخل الفيد وسطر «من دائرتك» في صفحة العمل */
+  /* ⏳ **جسرٌ مؤقّتٌ كسابقه** — يسقط مع `PeopleSuggestions` */
   suggestPeopleTitle: "أشخاص لمتابعتهم",
   suggestPeopleHint: "خطّك يمتلئ بقدر دائرتك.",
+  /* **سببُ الاقتراح** — ويبقى لشاشة التهيئة بعد D-270 (انظر
+     التذييلَ عند `peopleBoardTopReview`) */
   suggestShared: (n: number) =>
     n === 1
       ? "يشاركك عملاً"
@@ -1840,8 +1863,11 @@ const en: Dict = {
   communityTabReviews: "Reviews",
   communityTabWorks: "Discussions",
   communityTabPeople: "People",
-  peopleTabEmpty: "No suggestions yet — add titles to your library and we\u2019ll find people with your taste",
+  peopleTabEmpty: "No activity yet — write a review or join a discussion and names will show up here",
   // People tab sections (D-263) — an explicit count, never a weighted score
+  // “Featured” reads as hand-picked; the note says what it actually measures
+  peopleBoardFeatured: "Featured members",
+  peopleBoardFeaturedNote: "Most active over the last 90 days",
   peopleBoardTop: "Most active this week",
   peopleBoardActions: (n: number) => (n === 1 ? "1 action" : `${num(n, "en")} actions`),
   // “1 posts” shipped and was caught on the live page — singular is not optional
@@ -1879,6 +1905,9 @@ const en: Dict = {
   spoilerShow: "Show spoiler",
   spoilerHide: "Hide spoiler",
   spoilerNote: "Reveals what happens in the episode",
+  spoilerMark: "Contains a spoiler",
+  // We know what our own bulletin hides; we do not know what a member wrote
+  spoilerByAuthor: "Marked by its author",
   postViewsHint: "post views",
   undoNotWatched: "Not watched",
   postPageTitle: "Post",
