@@ -27,6 +27,15 @@ import { Icon } from "./Icon";
  * سهماً إلى صفحة العمل، وصفحةُ التعليق تضع باباً إلى الغرفة — **الموضعُ
  * ثابتٌ والفعلُ لصاحب الصفحة.**
  */
+/* ⚖️ **وقُصَّ النصفُ** (D-284، طلبُ أحمد: «مساحة المسلسل كبيرة جدًّا
+   وبدون فايدة، قلّلها للنص»): كان `25svh` بحدٍّ أدنى ١٩٠px وأقصى ٣٠٠.
+   **وكان الفراغُ يشتري صورةً لا تُقرأ**: الغلافُ خافتٌ تحت تدرّجين،
+   **والقارئُ جاء للكلام لا للصورة** — فسرقت الترويسةُ ثلثَ الشاشة الأولى
+   من الحوار الذي هو سببُ الصفحة.
+   **والمقاسُ الجديد يسع ما يجب أن يُقرأ ولا يزيد**: الملصقُ ٨٧px والحشوُ
+   ١٢، فالحدُّ الأدنى ١٢٨ يكفيهما بلا قصّ (D-046: لا شيء يتغيّر حجمه بعد
+   أن يُرسم). **وهي مشتركةٌ مع `/review`** — سطحان أخوان بمقاسٍ واحد
+   (D-244). */
 export function TitleHero({
   backdrop,
   poster,
@@ -55,7 +64,7 @@ export function TitleHero({
   end?: React.ReactNode;
 }) {
   return (
-    <header className="relative -mt-6 -mx-4 h-[25svh] min-h-[190px] max-h-[300px] overflow-hidden bg-surface-2">
+    <header className="relative -mt-6 -mx-4 h-[14svh] min-h-[128px] max-h-[172px] overflow-hidden bg-surface-2">
       {backdrop && (
         <Image src={backdrop} alt="" fill sizes="100vw" priority className="object-cover" />
       )}
