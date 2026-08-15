@@ -23,7 +23,8 @@ const ar = {
   tagline: "كل ما تشاهده، مرتّباً كما يليق.",
   taglineEn: "Track. Watch. Remember.",
   metaTitle: "Loopz — تتبّع أفلامك ومسلسلاتك",
-  metaDescription: "منصة ذكية لتتبع الأفلام والمسلسلات والأنمي — كل ما تشاهده، في مكان واحد.",
+  metaDescription:
+    "منصة ذكية لتتبع الأفلام والمسلسلات والأنمي — كل ما تشاهده، في مكان واحد.",
   /* شعارٌ لا نسبةُ بيانات: التذييل يظهر تحت كل شاشة في التطبيق، وسطرٌ
      تقنيّ في ذلك الموضع يُهدر آخر ما تقع عليه العين. النسبة إلى TMDB
      انتقلت إلى قسم اللغة في الإعدادات. قرارُ المالك. */
@@ -53,10 +54,12 @@ const ar = {
   recoBecauseGenre: "من أنواعك المفضّلة",
   trendingWeek: "رائج هذا الأسبوع",
   // تلميحات لمرة واحدة (م٣) + رقاقة النية في البحث
-  hintDiscover: "زر Filters يخفي فلاتر اللغة والحقبة والمنصة والتقييم — وأزرار أسبوع/شهر/سنة فوق صفوف أفضل ١٠.",
+  hintDiscover:
+    "زر Filters يخفي فلاتر اللغة والحقبة والمنصة والتقييم — وأزرار أسبوع/شهر/سنة فوق صفوف أفضل ١٠.",
   hintDismiss: "اضغط مطولاً على أي بطاقة لإخفاء اقتراحها نهائياً.",
   searchIntentChip: (what: string) => `تصفّح ${what} في اكتشف`,
-  pickGenresHint: "حدّد أنواعك المفضّلة في الملف الشخصي لتظهر لك اقتراحات على ذوقك ←",
+  pickGenresHint:
+    "حدّد أنواعك المفضّلة في الملف الشخصي لتظهر لك اقتراحات على ذوقك ←",
   levelLabel: (n: number) => `المستوى ${n}`,
   levelNames: [
     "وصلت للتو",
@@ -155,9 +158,21 @@ const ar = {
   /* «كم مضى» لا «متى وقع» — لخطّ النشاط (D-136) */
   agoNow: "الآن",
   agoMinutes: (n: number) =>
-    n === 1 ? "قبل دقيقة" : n === 2 ? "قبل دقيقتين" : n <= 10 ? `قبل ${n} دقائق` : `قبل ${n} دقيقة`,
+    n === 1
+      ? "قبل دقيقة"
+      : n === 2
+        ? "قبل دقيقتين"
+        : n <= 10
+          ? `قبل ${n} دقائق`
+          : `قبل ${n} دقيقة`,
   agoHours: (n: number) =>
-    n === 1 ? "قبل ساعة" : n === 2 ? "قبل ساعتين" : n <= 10 ? `قبل ${n} ساعات` : `قبل ${n} ساعة`,
+    n === 1
+      ? "قبل ساعة"
+      : n === 2
+        ? "قبل ساعتين"
+        : n <= 10
+          ? `قبل ${n} ساعات`
+          : `قبل ${n} ساعة`,
   agoYesterday: "أمس",
   agoDays: (n: number) => (n === 2 ? "قبل يومين" : `قبل ${n} أيام`),
 
@@ -165,21 +180,25 @@ const ar = {
   searchModePeople: "أشخاص",
   searchModeAi: "وصف قصة",
   searchAllResults: (q: string) => `عرض كل النتائج عن «${q}» ←`,
-  searchResultsFor: (q: string, n: number) => `نتائج البحث عن «${q}» — ${n} نتيجة`,
+  searchResultsFor: (q: string, n: number) =>
+    `نتائج البحث عن «${q}» — ${n} نتيجة`,
   searchNoResults: "لا توجد نتائج.",
   searchStart: "ابحث عن مسلسل أو فيلم للبدء.",
   searchFailed: "تعذّر الوصول لخدمة البيانات حالياً. حاول مرة أخرى بعد قليل.",
   // بحث الذكاء (D-076)
   aiSearchBtn: "اوصف قصةً وسيجدها الذكاء",
   aiSearchBack: "البحث بالاسم",
-  aiSearchPlaceholder: "اكتب القصة أو ما تتذكره من العمل — بالعربي أو الإنجليزي…",
+  aiSearchPlaceholder:
+    "اكتب القصة أو ما تتذكره من العمل — بالعربي أو الإنجليزي…",
   aiSearchRun: "ابحث بالذكاء",
-  aiSearchHint: "اوصف حبكةً أو مشهداً أو فيلماً نسيت اسمه، وسيرشّح لك الذكاء أعمالاً حقيقية تشبهه.",
+  aiSearchHint:
+    "اوصف حبكةً أو مشهداً أو فيلماً نسيت اسمه، وسيرشّح لك الذكاء أعمالاً حقيقية تشبهه.",
   aiSearchEmpty: "لم أجد أعمالاً مطابقة — جرّب وصفاً أوسع أو أضف تفاصيل.",
   aiSearchMissing: "بحث الذكاء غير مفعّل بعد.",
 
   // صفحة المسلسل
-  showLoadFailed: "تعذّر تحميل بيانات هذا المسلسل حالياً. حاول مرة أخرى بعد قليل.",
+  showLoadFailed:
+    "تعذّر تحميل بيانات هذا المسلسل حالياً. حاول مرة أخرى بعد قليل.",
   seasonsCount: (n: number) => `${n} موسم`,
   episodesCount: (n: number) => `${n} حلقة`,
   nextEpisodeOn: (d: string) => `الحلقة القادمة ${d}`,
@@ -195,7 +214,8 @@ const ar = {
   seasonLabel: (n: number) => `الموسم ${n}`,
 
   // صفحة الفيلم
-  movieLoadFailed: "تعذّر تحميل بيانات هذا الفيلم حالياً. حاول مرة أخرى بعد قليل.",
+  movieLoadFailed:
+    "تعذّر تحميل بيانات هذا الفيلم حالياً. حاول مرة أخرى بعد قليل.",
   minutesCount: (n: number) => `${n} دقيقة`,
   follow: "+ تابِع",
   following: "✓ أتابعه",
@@ -224,7 +244,8 @@ const ar = {
   bioHint: "تظهر في ملفك العام. يخفيها إخفاء الاسم معه.",
   nicknamePlaceholder: "مثال: أبو محمد",
   favoriteContent: "الأنواع المفضّلة",
-  favoriteHint: "اختر أنواعك المفضّلة، فتظهر لك اقتراحات مبنيّة عليها في الصفحة الرئيسية.",
+  favoriteHint:
+    "اختر أنواعك المفضّلة، فتظهر لك اقتراحات مبنيّة عليها في الصفحة الرئيسية.",
   selectedN: (n: number) => `اخترت ${n} نوعاً.`,
   saveChanges: "حفظ التغييرات",
   saving: "جارٍ الحفظ…",
@@ -252,7 +273,8 @@ const ar = {
     `أُضيف ${shows} مسلسلاً و${eps} حلقة و${movies} فيلماً إلى مكتبتك.`,
   importNothing: "لم نتعرّف على أي بيانات في هذا الملف.",
   importUnmatchedTitle: (n: string) => `${n} عملاً لم نجده`,
-  importUnmatchedHint: "ابحث عنها يدوياً وأضفها — الأسماء هنا كما وردت في التصدير.",
+  importUnmatchedHint:
+    "ابحث عنها يدوياً وأضفها — الأسماء هنا كما وردت في التصدير.",
   importStart: "ابدأ الاستيراد",
   importCancel: "إيقاف",
   importTraktTitle: "Trakt",
@@ -272,12 +294,14 @@ const ar = {
   importLetterboxdTitle: "Letterboxd",
   importLetterboxdHint:
     "من Letterboxd: الإعدادات ← Data ← «Export your data»، ثم ارفع الملف المضغوط كما نزل. نقرأ ما شاهدتَه وتقييماتك وقائمة انتظارك — والقوائم والإعجابات لا تُقرأ.",
-  importLetterboxdFileHint: "صيغ مقبولة: zip أو csv. التقييم يُحوَّل من خمس نجوم إلى عشر درجات.",
+  importLetterboxdFileHint:
+    "صيغ مقبولة: zip أو csv. التقييم يُحوَّل من خمس نجوم إلى عشر درجات.",
   /* Simkl (D-154) — التصدير عبر JSON مجانيٌّ لكل الأعضاء عندهم */
   importSimklTitle: "Simkl",
   importSimklHint:
     "من Simkl: الإعدادات ← Import/Export ← نزّل نسخة JSON الاحتياطية (مجانية للجميع)، ثم ارفع الملف كما نزل. أعمالك تصل بمعرّفاتها فتُطابَق فوراً بلا بحثٍ بالاسم.",
-  importSimklFileHint: "صيغ مقبولة: zip أو json أو csv. يعمل مع أي تصديرٍ يحمل معرّفات TMDB.",
+  importSimklFileHint:
+    "صيغ مقبولة: zip أو json أو csv. يعمل مع أي تصديرٍ يحمل معرّفات TMDB.",
 
   usernameSection: "اسم المستخدم",
   usernameHint: "معرّفك الفريد داخل التطبيق. أحرف إنجليزية وأرقام و _ فقط.",
@@ -302,7 +326,8 @@ const ar = {
   ratePickFirst: "اختر عدد النجوم أولاً.",
   // تقييم الحلقات (D-139)
   epRateTitle: "قيّم هذه الحلقة",
-  epRateHint: "تقييمك للحلقة يعلّمها مشاهَدة تلقائياً — ولا يغيّر تقييمك للمسلسل.",
+  epRateHint:
+    "تقييمك للحلقة يعلّمها مشاهَدة تلقائياً — ولا يغيّر تقييمك للمسلسل.",
   epRateRemove: "اسحب تقييمي",
   epReviewPlaceholder: "رأيك في هذه الحلقة… (اختياري)",
   epLabel: (s: number, e: number) => `م${s} · ح${e}`,
@@ -336,7 +361,8 @@ const ar = {
   msgNeedsMutual: "الرسائل بين المتابعين المتبادلين — تابِعا بعضكما أولاً",
   reportUserOption: "بلاغ",
   reportUserTitle: "الإبلاغ عن هذا الحساب",
-  reportUserBody: "يصل البلاغ إلى إدارة Loopz وحدها. لا يُخبَر صاحب الحساب، ولا يظهر أثر.",
+  reportUserBody:
+    "يصل البلاغ إلى إدارة Loopz وحدها. لا يُخبَر صاحب الحساب، ولا يظهر أثر.",
   blockOption: "حظر",
   blockConfirmTitle: "حظر هذا الحساب؟",
   blockConfirmBody:
@@ -383,7 +409,8 @@ const ar = {
   commInvitesSection: "دعوات",
   commInviteBtn: "أضف أشخاصاً",
   commInviteTitle: "أضف أشخاصاً",
-  commInviteHint: "ادعُ ممن تتابعهم — تصلهم الدعوة في دليل المجتمعات ويقبلونها بضغطة.",
+  commInviteHint:
+    "ادعُ ممن تتابعهم — تصلهم الدعوة في دليل المجتمعات ويقبلونها بضغطة.",
   commInviteEmpty: "لا تتابع أحداً بعد.",
   commInviteAction: "ادعُ",
   commInvited: "مدعو",
@@ -432,7 +459,8 @@ const ar = {
   titleRoomBadge: "غرفة عمل",
   // غلاف العمل الشخصي (D-131)
   artTitle: "غلاف العمل",
-  artHint: "اختر ملصقاً أو خلفية من صور TMDB — يظهر اختيارك في مكتبتك وصفحتك أنت.",
+  artHint:
+    "اختر ملصقاً أو خلفية من صور TMDB — يظهر اختيارك في مكتبتك وصفحتك أنت.",
   artPosters: "الملصقات",
   artBackdrops: "الخلفيات",
   artEmpty: "لا صور إضافية لهذا العمل.",
@@ -449,7 +477,8 @@ const ar = {
   followingLabel: "يتابع",
   followListEmpty: "لا أحد هنا بعد",
   followListsSection: "قوائم المتابعة",
-  followListsHint: "من يفتح ملفك يستطيع رؤية من يتابعك ومن تتابعهم. أقفلها فتبقى الأعداد وحدها.",
+  followListsHint:
+    "من يفتح ملفك يستطيع رؤية من يتابعك ومن تتابعهم. أقفلها فتبقى الأعداد وحدها.",
   followListsOn: "القوائم مقفلة — الأعداد وحدها تظهر",
   followListsOff: "القوائم مفتوحة لزوّار ملفك",
   toWatchEmpty: "ما بقي شيء — شاهد كل شيء!",
@@ -477,7 +506,8 @@ const ar = {
   // الإبلاغ — فعلٌ صامت بلا عدّاد
   reportLabel: "إبلاغ",
   reportTitle: "الإبلاغ عن هذا الرأي",
-  reportBody: "يصل البلاغ إلى إدارة Loopz وحدها. لا يُخبَر صاحب الرأي، ولا يظهر عدّاد.",
+  reportBody:
+    "يصل البلاغ إلى إدارة Loopz وحدها. لا يُخبَر صاحب الرأي، ولا يظهر عدّاد.",
   reportReasonPlaceholder: "سببٌ مختصر (اختياري)",
   reportSend: "أبلِغ",
   reportDone: "وصل بلاغك — شكراً",
@@ -526,7 +556,8 @@ const ar = {
   browseAnyAward: "كل الجوائز",
   /* السنة تُحسب من البيانات لا تُكتب هنا: كانت «منذ ١٩٩٠» ثابتةً فصارت
      كذبةً يوم امتدّت القوائم إلى ١٩٢٧ (D-144) */
-  awardRailNote: (n: string, from: string) => `${n} فائزاً منذ ${from} — الأحدث أولاً`,
+  awardRailNote: (n: string, from: string) =>
+    `${n} فائزاً منذ ${from} — الأحدث أولاً`,
   // المنطقة مكتوبة في العنوان كي لا تُقرأ القائمة عالمية
   browseProviderGroup: (place: string) => `متاح على · ${place}`,
   browseAnyProvider: "كل المنصّات",
@@ -534,8 +565,7 @@ const ar = {
   regionSection: "بلد المشاهدة",
   regionHint:
     "توفّر الأعمال على المنصّات يختلف من بلدٍ إلى بلد. اختر بلدك ليكون «أين أشاهده» وفلتر المنصّات عنه.",
-  justwatchAttribution:
-    "بيانات توفّر الأعمال على المنصّات مصدرها JustWatch.",
+  justwatchAttribution: "بيانات توفّر الأعمال على المنصّات مصدرها JustWatch.",
   // ترتيب خطّ المجتمع
   feedSortGroup: "ترتيب النشاط",
   feedSortTop: "الأكثر إعجاباً",
@@ -613,7 +643,8 @@ const ar = {
      «الاقتراحات» **وقد حُذف قسمُ الاقتراحات** — **وجملةُ فراغٍ تصف قسماً
      غيرَ موجود هي اسمٌ بقي بعد أن تغيّر ما يسمّيه** (D-257).
      **والأقسامُ الأربعةُ اليوم كلُّها نشاطٌ**: مشاركةٌ ورأيٌ وإعجاب. */
-  peopleTabEmpty: "لا نشاط بعد — اكتب رأياً أو شارك في نقاشٍ وستظهر الأسماء هنا",
+  peopleTabEmpty:
+    "لا نشاط بعد — اكتب رأياً أو شارك في نقاشٍ وستظهر الأسماء هنا",
   /* ================= أقسامُ تبويب «الناس» (D-263) =================
      **عددٌ صريح لا نقاطٌ موزونة** — قرارُ أحمد بسؤالٍ صريح. **والرقمُ
      المعروض مجموعُ ثلاثةٍ مكتوبةٍ تحته**، فمن شكّ جمعها بنفسه:
@@ -623,7 +654,6 @@ const ar = {
      على تسعين يوماً. **فالسطرُ تحت العنوان ليس زينةً بل تصحيحُ قراءة**
      (D-216: الجملةُ تتبع البيانات). */
   peopleBoardFeatured: "أعضاء مميّزون",
-  peopleBoardFeaturedNote: "الأكثر نشاطاً خلال تسعين يوماً",
   peopleBoardTop: "الأكثر مشاركةً هذا الأسبوع",
   peopleBoardActions: (n: number) =>
     n === 1
@@ -645,7 +675,7 @@ const ar = {
   },
   peopleBoardRising: "نجومٌ صاعدون",
   /* **والصعودُ فرقٌ لا رصيد**: نافذةُ الأسبوع ناقصَ التي قبلها —
-     **فمن ثبت رقمُه ليس صاعداً وإن كان الأوّل.** */
+   **فمن ثبت رقمُه ليس صاعداً وإن كان الأوّل.** */
   /* ⚠️ **ولا علامةَ `+` في العربية**: الفحصُ الحيّ أظهر «+٣» تُرسم
      «٣+» — **البايدي يدفع العلامةَ إلى يمين الرقم في سطرٍ RTL**،
      فتُقرأ «ثلاثة زائد» لا «زيادة ثلاثة». **والعلاجُ كلمةٌ لا حرفُ
@@ -679,7 +709,7 @@ const ar = {
      **و`suggestShared`/`suggestFollowers` باقيتان**: تقرؤهما شاشةُ
      التهيئة (`Onboarding`) — **يُفحص المستهلك قبل الحذف** (D-214). */
   /* **تبويبُ «تعليقات»** (D-219) — الصفُّ رأيُ إنسانٍ واحد: «من تكلّم؟».
-     **والسؤالان لا يتنافسان على تبويبٍ واحد بعد اليوم.** */
+   **والسؤالان لا يتنافسان على تبويبٍ واحد بعد اليوم.** */
   communityTabComments: "تعليقات",
   /* ================= صفحةُ الكلام والردود (D-193) =================
      **و`worksReviewCount` حُذف** («٣ آراء») — طلب أحمد «بدون كلمة ريفيو»،
@@ -708,7 +738,8 @@ const ar = {
     `نقاش ${isTv ? "مسلسل" : "فيلم"} ${title}`,
   /* **«مشاركة» تجمع الجذرَ والردّ**: الغرفةُ فيها الاثنان، **وعدٌّ يسمّي
      أحدَهما وحده يكذب على الآخر** */
-  talkRoomPosts: (n: number) => (n === 1 ? "مشاركةٌ واحدة" : `${num(n, "ar")} مشاركة`),
+  talkRoomPosts: (n: number) =>
+    n === 1 ? "مشاركةٌ واحدة" : `${num(n, "ar")} مشاركة`,
   /**
    * **آخرُ حلقةٍ نشرها Loopz في الغرفة** (D-273، طلبُ أحمد: «رقم الموسم
    * والحلقة وعنوانها»).
@@ -768,7 +799,7 @@ const ar = {
   /* **وسببُ الحجب يُقال مرّةً** — ولا يُكرَّر مع كل نشرة */
   spoilerNote: "يكشف أحداثَ الحلقة",
   /* **ومفتاحُ الكاتب فعلٌ لا تحذير** (D-271): «فيها حرق» تصف رسالتَه،
-     **و«تحذير: حرق» تخاطب قارئاً غيرَ موجودٍ بعد.** */
+   **و«تحذير: حرق» تخاطب قارئاً غيرَ موجودٍ بعد.** */
   spoilerMark: "فيها حرق",
   /* ⚠️ **وسببُ الحجب يتغيّر بمن حجب**: نشرتُنا تحجب وصفَ الحلقة فنعرف
      ما فيها، **وكلامُ العضو لا نعرف ما فيه** — **فالسببُ أنه هو قال**
@@ -820,7 +851,9 @@ const ar = {
   talkFavoritesHint: "فضّلوه",
   /* **مقامُ النجمة**: «١٠٫٠» من واحدٍ ليست «١٠٫٠» من مئة */
   worksRatedByHint: (n: number) =>
-    n === 1 ? "تقييمُ شخصٍ واحدٍ ممّن تكلّموا" : `متوسّطُ ${num(n, "ar")} من تكلّموا عن العمل`,
+    n === 1
+      ? "تقييمُ شخصٍ واحدٍ ممّن تكلّموا"
+      : `متوسّطُ ${num(n, "ar")} من تكلّموا عن العمل`,
   talkReply: "ردّ",
   /* **«تعليق» في ذيل خطّ النشاط** (D-224، طلبُ أحمد: «ريبلي غيّرها كومنت»).
      **وهي غيرُ `talkReply` عمداً وإن تجاورتا:** داخل الغرفة أنت **تردّ على
@@ -850,7 +883,8 @@ const ar = {
   talkSignInToWrite: "شارِك برأيك",
   /* **عنوانُ الصفحة ووصفُها للزاحف ولمن شارك الرابط** (D-221) */
   talkMetaTitle: (name: string) => `الكلام عن «${name}»`,
-  talkMetaEmpty: (name: string) => `آراءُ الناس في «${name}» — وأوّلُ رأيٍ لم يُكتب بعد.`,
+  talkMetaEmpty: (name: string) =>
+    `آراءُ الناس في «${name}» — وأوّلُ رأيٍ لم يُكتب بعد.`,
   worksScopeAll: "الكل",
   worksScopeFollowing: "من أتابع",
   worksEmptyAll: "لا أحد كتب رأياً بعد — كن أوّلَ من يفتح الكلام.",
@@ -866,7 +900,8 @@ const ar = {
   communityTabInbox: "الرسائل",
   communityUnreadAria: (n: number) => `${n} رسالة غير مقروءة`,
   communityAllEmpty: "لا آراء في المجتمع بعد — كن أوّل من يكتب رأياً.",
-  inboxEmpty: "لا رسائل بعد. أرسِل عملاً لصديقٍ من صفحة أي عمل: «المزيد» ← «أرسِله لـ…».",
+  inboxEmpty:
+    "لا رسائل بعد. أرسِل عملاً لصديقٍ من صفحة أي عمل: «المزيد» ← «أرسِله لـ…».",
   inboxFromYou: (name: string) => `أرسلتَه إلى ${name}`,
   inboxFromOther: (name: string) => `${name} أرسله إليك`,
   shareReplyPlaceholder: "ردٌّ قصير…",
@@ -888,7 +923,8 @@ const ar = {
   worksToListBtn: "أضِف أعماله إلى قائمة",
   partsToListBtn: "احفظ الأجزاء في قائمة",
   universeToListBtn: "احفظ العالم كاملاً في قائمة",
-  universeHint: "كل أفلام العالم بترتيب الأحداث — تعرف من أين تبدأ، وتلحق ما فاتك قبل أي فيلمٍ جديد.",
+  universeHint:
+    "كل أفلام العالم بترتيب الأحداث — تعرف من أين تبدأ، وتلحق ما فاتك قبل أي فيلمٍ جديد.",
   listMadeToast: (name: string) => `أُنشئت قائمة «${name}» ✓`,
   listGrewToast: (n: number) => `أُضيف ${n} إلى القائمة ✓`,
   listHadAllToast: "كل الأعمال موجودة في القائمة مسبقاً",
@@ -947,9 +983,21 @@ const ar = {
   statsTopShows: "الأكثر مشاهدة",
   statsTopShowsSub: "مسلسلاتك مرتّبة بعدد الحلقات التي شاهدتها.",
   diaryEpsGrouped: (n: number) =>
-    n === 1 ? "حلقة واحدة" : n === 2 ? "حلقتان" : n <= 10 ? `${n} حلقات` : `${n} حلقة`,
+    n === 1
+      ? "حلقة واحدة"
+      : n === 2
+        ? "حلقتان"
+        : n <= 10
+          ? `${n} حلقات`
+          : `${n} حلقة`,
   moviesGrouped: (n: number) =>
-    n === 1 ? "فيلم واحد" : n === 2 ? "فيلمان" : n <= 10 ? `${n} أفلام` : `${n} فيلماً`,
+    n === 1
+      ? "فيلم واحد"
+      : n === 2
+        ? "فيلمان"
+        : n <= 10
+          ? `${n} أفلام`
+          : `${n} فيلماً`,
   markNextEp: "شاهدت الحلقة التالية +١",
   librarySummary: (n: number, done: number, left: number) =>
     `${n} عمل · ${done} أكملتها · ${left} حلقة متبقية`,
@@ -1007,8 +1055,10 @@ const ar = {
   newsGenHint: "ما جدَّ في الأعمال — نرصده ونكتبه هنا، ولا يخرجك من التطبيق.",
   newsGenEmpty: "لا جديدَ بعد. أوّلُ دورةِ رصدٍ تملأ هذا المكان.",
   newsTrailerOut: (name: string) => `نزل مقطعٌ دعائيّ جديد لـ«${name}»`,
-  newsDateSet: (name: string, date: string) => `تحدّد موعد صدور «${name}»: ${date}`,
-  newsDateMoved: (name: string, date: string) => `تبدّل موعد صدور «${name}» إلى ${date}`,
+  newsDateSet: (name: string, date: string) =>
+    `تحدّد موعد صدور «${name}»: ${date}`,
+  newsDateMoved: (name: string, date: string) =>
+    `تبدّل موعد صدور «${name}» إلى ${date}`,
   newsSeasonUp: (name: string, n: number) => `تأكّد الموسم ${n} من «${name}»`,
   newsEnded: (name: string) => `انتهى «${name}»`,
   newsCanceled: (name: string) => `أُلغي «${name}»`,
@@ -1019,10 +1069,14 @@ const ar = {
       : n > 1
         ? `الموسم ${n} من «${name}» ينطلق ${date}`
         : `موسمٌ جديد من «${name}» ينطلق ${date}`,
-  newsTheatrical: (name: string, date: string) => `رسمياً: «${name}» في الصالات ${date}`,
-  newsChart: (name: string, rank: number) => `«${name}» دخل قائمة أفضل ٥٠ عندنا — المركز ${rank}`,
-  newsProvider: (name: string, on: string) => `«${name}» صار متاحاً على ${on} في السعودية`,
-  newsProviderAny: (name: string) => `«${name}» صار متاحاً على منصّةٍ جديدة في السعودية`,
+  newsTheatrical: (name: string, date: string) =>
+    `رسمياً: «${name}» في الصالات ${date}`,
+  newsChart: (name: string, rank: number) =>
+    `«${name}» دخل قائمة أفضل ٥٠ عندنا — المركز ${rank}`,
+  newsProvider: (name: string, on: string) =>
+    `«${name}» صار متاحاً على ${on} في السعودية`,
+  newsProviderAny: (name: string) =>
+    `«${name}» صار متاحاً على منصّةٍ جديدة في السعودية`,
   newsRenewed: (name: string, n: number) =>
     n > 0 ? `تجدّد «${name}» لموسمٍ ${n}` : `تجدّد «${name}» لموسمٍ جديد`,
   newsCanceled2: (name: string) => `أُلغي «${name}»`,
@@ -1067,7 +1121,8 @@ const ar = {
   settingsNavBilling: "الاشتراك والدفع",
   settingsNavHeading: "الإعدادات",
   settingsSoonTitle: "قيد التطوير",
-  settingsBillingHint: "لا توجد اشتراكات مدفوعة في التطبيق حالياً، فلا شيء يُدار هنا بعد.",
+  settingsBillingHint:
+    "لا توجد اشتراكات مدفوعة في التطبيق حالياً، فلا شيء يُدار هنا بعد.",
   settingsPrivacyHint: "ما يراه الآخرون منك — وبياناتك: تصديرها وحذفها بيدك.",
   dataExportTitle: "تصدير بياناتك",
   dataExportDesc:
@@ -1119,7 +1174,8 @@ const ar = {
   pickedRefresh: "اقتراحات أخرى",
   pickedRefreshAria: "عرض عشرة اقتراحاتٍ أخرى",
   notInterested: "غير مهتم",
-  notInterestedAria: (title: string) => `غير مهتم بـ«${title}» — لا يُقترح مجدداً`,
+  notInterestedAria: (title: string) =>
+    `غير مهتم بـ«${title}» — لا يُقترح مجدداً`,
   dismissedToast: "حسناً، لن نقترحه مجدداً",
   animeBadge: "أنمي",
   /** تبويبُ الأنمي في المكتبة أثناء أوّل تصنيف (D-182) */
@@ -1163,7 +1219,8 @@ const ar = {
   diaryToday: "اليوم",
   diaryYesterday: "أمس",
   diaryEpisode: (s: number, e: number) => `م${s} · ح${e}`,
-  diaryDayCount: (n: number) => (n === 1 ? "عمل واحد" : n === 2 ? "عملان" : `${n} أعمال`),
+  diaryDayCount: (n: number) =>
+    n === 1 ? "عمل واحد" : n === 2 ? "عملان" : `${n} أعمال`,
   listsTitle: "القوائم",
   listsSub: "رتّب أعمالك كما تحبّ — قائمة لكل مزاج.",
   listNamePlaceholder: "اسم قائمة جديدة…",
@@ -1200,8 +1257,10 @@ const ar = {
   listPublicHint: "المعلنة يقدر يفتحها أي مستخدم عنده الرابط.",
   listShare: "شارك القائمة",
   listShareSheetTitle: "مشاركة القائمة",
-  listSharePublicHint: "أي شخص يفتح الرابط يرى قائمتك — وتظهر في ملفّك العام للمجتمع.",
-  listSharePrivateHint: "القائمة خاصة الآن — اجعلها معلنة ليفتحها غيرك وتظهر في المجتمع.",
+  listSharePublicHint:
+    "أي شخص يفتح الرابط يرى قائمتك — وتظهر في ملفّك العام للمجتمع.",
+  listSharePrivateHint:
+    "القائمة خاصة الآن — اجعلها معلنة ليفتحها غيرك وتظهر في المجتمع.",
   listShareLinkBtn: "مشاركة الرابط",
   listMakePublicShare: "اجعلها معلنة وانسخ الرابط",
   listMadePublicCopied: "صارت معلنة، ونُسخ الرابط ✓",
@@ -1242,7 +1301,8 @@ const ar = {
   listReorderHint: "اسحب من المقبض، ثم «تمّ» لحفظ الترتيب.",
   // غلاف القائمة (D-208) — نصوصُ الاختيار والحفظ مشتركةٌ مع D-131
   listCover: "غلاف القائمة",
-  listCoverHint: "اختر عملاً من القائمة، ثم خلفيةً من صوره — تصير وجهَ القائمة.",
+  listCoverHint:
+    "اختر عملاً من القائمة، ثم خلفيةً من صوره — تصير وجهَ القائمة.",
   listCoverPick: "أعمالُ القائمة",
   listCoverBack: "عملٌ آخر",
   listCoverEmpty: "أضِف عملاً إلى القائمة أوّلاً، ثم اختر غلافها من صوره.",
@@ -1267,7 +1327,8 @@ const ar = {
   shareEpisodes: "حلقة",
   shareMovies: "فيلم",
   shareTime: "وقت المشاهدة",
-  shareRated: (n: number, avg: string) => `قيّم ${n} عملاً · متوسّط ${avg} من ١٠`,
+  shareRated: (n: number, avg: string) =>
+    `قيّم ${n} عملاً · متوسّط ${avg} من ١٠`,
   shareNoRatings: "ما قيّم شيئاً بعد",
   shareFailed: "تعذّر توليد البطاقة — جرّب بعد شوي.",
   weekTitle: "أسبوعك",
@@ -1284,7 +1345,8 @@ const ar = {
   loginOtherWay: "طريقة دخولٍ أخرى",
   loginRedirecting: "جارٍ التحويل…",
   loginFailed: "تعذّر تسجيل الدخول: ",
-  loginNeedsKeys: "التطبيق يحتاج إعداد المفاتيح أولاً في إعدادات Vercel ثم أعد النشر.",
+  loginNeedsKeys:
+    "التطبيق يحتاج إعداد المفاتيح أولاً في إعدادات Vercel ثم أعد النشر.",
   avatarAlt: "الصورة الشخصية",
 
   runtimeMin: (n: number) => `${n} د`,
@@ -1309,7 +1371,8 @@ const ar = {
   analysisMix: "توزيع المكتبة",
   analysisStatus: "أين وصلت",
   analysisTaste: "خريطة ذوقك",
-  analysisTasteSub: "الأنواع الأكثر تكراراً فيما تتابعه — النسبة من مجموع الأنواع لا من عدد الأعمال.",
+  analysisTasteSub:
+    "الأنواع الأكثر تكراراً فيما تتابعه — النسبة من مجموع الأنواع لا من عدد الأعمال.",
   analysisRatings: "توزيع تقييماتك",
   analysisDecades: "العقود التي تميل لها",
   analysisEmpty: "تابع بعض الأعمال ليظهر تحليل مكتبتك هنا.",
@@ -1319,12 +1382,14 @@ const ar = {
   avgRatingLabel: (n: string) => `متوسط تقييمك ${n} من ١٠`,
   ratedCount: (n: number) => `قيّمت ${n} عملاً`,
   errorTitle: "صار خلل غير متوقّع",
-  errorBody: "ما قدرنا نحمّل هذا الجزء الآن. جرّب مرة ثانية، وإذا تكرر الخطأ حدّث الصفحة.",
+  errorBody:
+    "ما قدرنا نحمّل هذا الجزء الآن. جرّب مرة ثانية، وإذا تكرر الخطأ حدّث الصفحة.",
   errorRetry: "حاول مجدداً",
   errorHome: "الرجوع للرئيسية",
   errorCode: (d: string) => `رمز الخطأ: ${d}`,
   notFoundTitle: "الصفحة غير موجودة",
-  notFoundBody: "الرابط الذي فتحته لا صفحة له. جرّب البحث أو ارجع إلى الرئيسية.",
+  notFoundBody:
+    "الرابط الذي فتحته لا صفحة له. جرّب البحث أو ارجع إلى الرئيسية.",
   loadingLabel: "جارٍ التحميل…",
 
   /* اسمُ القسم كلِّه — ويحمل أربعةَ تبويبات: النشاط · المجتمعات ·
@@ -1345,7 +1410,8 @@ const ar = {
   anonymousUser: "مستخدم",
   visitsLabel: "زيارة",
   hideNameSection: "إخفاء اسمي",
-  hideNameHint: "لما تفعّله، تظهر تقييماتك ومراجعاتك بلا اسمك، وما يقدر أحد يفتح صفحتك من التعليق.",
+  hideNameHint:
+    "لما تفعّله، تظهر تقييماتك ومراجعاتك بلا اسمك، وما يقدر أحد يفتح صفحتك من التعليق.",
   hideNameOn: "اسمي مخفي",
   hideNameOff: "اسمي ظاهر",
   navPeople: "المجتمع",
@@ -1353,7 +1419,8 @@ const ar = {
   obStep: (a: number, b: number) => `الخطوة ${a} من ${b}`,
   obPickTitle: "ماذا شاهدت من هذه؟",
   obPickHint: "اختر ما شاهدته — نبني مكتبتك ونتعرّف على ذوقك من هنا.",
-  obPickedN: (n: number) => (n === 0 ? "اختر عملاً واحداً على الأقل" : `اخترت ${n} — كمّل ←`),
+  obPickedN: (n: number) =>
+    n === 0 ? "اختر عملاً واحداً على الأقل" : `اخترت ${n} — كمّل ←`,
   obProgressTitle: "أين وصلت فيها؟",
   obProgressHint: "حدّد تقدّمك بسرعة، ويمكنك تعديله لاحقاً من صفحة كل عمل.",
   obNotStarted: "ما بدأته",
@@ -1387,7 +1454,13 @@ const ar = {
           ? `يشاركك ${n} أعمال`
           : `يشاركك ${n} عملاً`,
   suggestFollowers: (n: number) =>
-    n === 1 ? "متابِع واحد" : n === 2 ? "متابِعان" : n <= 10 ? `${n} متابِعين` : `${n} متابِعاً`,
+    n === 1
+      ? "متابِع واحد"
+      : n === 2
+        ? "متابِعان"
+        : n <= 10
+          ? `${n} متابِعين`
+          : `${n} متابِعاً`,
   circleWatched: (n: number) =>
     n <= 10 ? `${n} ممن تتابعهم شاهدوه` : `${n} شخصاً ممن تتابعهم شاهدوه`,
   circleAvg: (v: string) => `متوسط تقييمهم ★${v}`,
@@ -1405,7 +1478,8 @@ const en: Dict = {
   tagline: "Everything you watch. Organized beautifully.",
   taglineEn: "Track. Watch. Remember.",
   metaTitle: "Loopz \u2014 track your shows & movies",
-  metaDescription: "A smart home for the shows, movies and anime you watch \u2014 all in one place.",
+  metaDescription:
+    "A smart home for the shows, movies and anime you watch \u2014 all in one place.",
   footer: "Every story matters",
   tmdbAttribution:
     "This product uses the TMDB API but is not endorsed or certified by TMDB.",
@@ -1428,10 +1502,12 @@ const en: Dict = {
   recoBecauseRated: (title: string) => `You loved “${title}”`,
   recoBecauseGenre: "From your genres",
   trendingWeek: "Trending this week",
-  hintDiscover: "The Filters button hides language, era, platform and rating filters — and week/month/year chips sit on every Top 10 rail.",
+  hintDiscover:
+    "The Filters button hides language, era, platform and rating filters — and week/month/year chips sit on every Top 10 rail.",
   hintDismiss: "Long-press any card to never see that suggestion again.",
   searchIntentChip: (what: string) => `Browse ${what} in Discover`,
-  pickGenresHint: "Pick your favourite genres in your profile to get suggestions you'll like →",
+  pickGenresHint:
+    "Pick your favourite genres in your profile to get suggestions you'll like →",
   levelLabel: (n: number) => `Level ${n}`,
   levelNames: [
     "Just Arrived",
@@ -1526,18 +1602,22 @@ const en: Dict = {
   searchFailed: "Couldn't reach the data service right now. Try again shortly.",
   aiSearchBtn: "Describe a story, AI will find it",
   aiSearchBack: "Search by name",
-  aiSearchPlaceholder: "Describe the plot or what you remember — Arabic or English…",
+  aiSearchPlaceholder:
+    "Describe the plot or what you remember — Arabic or English…",
   aiSearchRun: "Search with AI",
-  aiSearchHint: "Describe a plot, a scene, or a film you forgot the name of — AI suggests real matches.",
+  aiSearchHint:
+    "Describe a plot, a scene, or a film you forgot the name of — AI suggests real matches.",
   aiSearchEmpty: "No matches found — try a broader description or add details.",
   aiSearchMissing: "AI search isn't set up yet.",
 
-  showLoadFailed: "Couldn't load this show right now. Please try again shortly.",
+  showLoadFailed:
+    "Couldn't load this show right now. Please try again shortly.",
   seasonsCount: (n: number) => `${n} seasons`,
   episodesCount: (n: number) => `${n} episodes`,
   nextEpisodeOn: (d: string) => `Next episode ${d}`,
   watchedOf: (a: number, b: number) => `Watched ${a} of ${b} episodes`,
-  cascadeHint: "Ticking any episode marks every earlier episode as watched too.",
+  cascadeHint:
+    "Ticking any episode marks every earlier episode as watched too.",
   epRatingsShow: "Show episode ratings (IMDb)",
   epRatingsHide: "Hide episode ratings",
   seasonAll: "Whole season ✓",
@@ -1546,7 +1626,8 @@ const en: Dict = {
   markWatchedAria: "Mark as watched",
   seasonLabel: (n: number) => `Season ${n}`,
 
-  movieLoadFailed: "Couldn't load this movie right now. Please try again shortly.",
+  movieLoadFailed:
+    "Couldn't load this movie right now. Please try again shortly.",
   minutesCount: (n: number) => `${n} min`,
   follow: "+ Follow",
   following: "✓ Following",
@@ -1563,7 +1644,8 @@ const en: Dict = {
   coverSection: "Cover image (header)",
   repositionHint: "Drag the image up or down to adjust its position.",
   repositionAria: "Vertical image position",
-  coverHint: "A wide banner shown behind your photo at the top of Home. Landscape works best.",
+  coverHint:
+    "A wide banner shown behind your photo at the top of Home. Landscape works best.",
   changeCover: "Change cover",
   removeCover: "Remove cover",
   noCover: "No cover yet",
@@ -1571,11 +1653,13 @@ const en: Dict = {
   themeHint: "Pick the colours for the top bar and the rest of the app.",
   nicknameSection: "Nickname",
   bioSection: "Bio",
-  bioPlaceholder: "One line about you — e.g. chasing Korean dramas, forgetting the endings",
+  bioPlaceholder:
+    "One line about you — e.g. chasing Korean dramas, forgetting the endings",
   bioHint: "Shows on your public profile. Hiding your name hides it too.",
   nicknamePlaceholder: "e.g. Ahmed",
   favoriteContent: "Favourite genres",
-  favoriteHint: "Pick the genres you like and Home will suggest titles based on them.",
+  favoriteHint:
+    "Pick the genres you like and Home will suggest titles based on them.",
   selectedN: (n: number) => `${n} selected.`,
   saveChanges: "Save changes",
   saving: "Saving…",
@@ -1602,11 +1686,13 @@ const en: Dict = {
     `Added ${shows} shows, ${eps} episodes and ${movies} movies to your library.`,
   importNothing: "We couldn't recognise any data in this file.",
   importUnmatchedTitle: (n: string) => `${n} titles we couldn't find`,
-  importUnmatchedHint: "Search for them manually and add them — these names are as they appeared in the export.",
+  importUnmatchedHint:
+    "Search for them manually and add them — these names are as they appeared in the export.",
   importStart: "Start import",
   importCancel: "Stop",
   importTraktTitle: "Trakt",
-  importTraktHint: "Connect your Trakt account and we'll pull your history and ratings directly.",
+  importTraktHint:
+    "Connect your Trakt account and we'll pull your history and ratings directly.",
   importTraktConnect: "Connect Trakt",
   importTraktOff: "Trakt linking is not available on this site.",
   importTraktWhy:
@@ -1618,15 +1704,18 @@ const en: Dict = {
   importFileHint: "Accepted: zip, csv or json.",
   importLetterboxdTitle: "Letterboxd",
   importLetterboxdHint:
-    "In Letterboxd: Settings → Data → \"Export your data\", then upload the ZIP exactly as it downloaded. We read your watched films, ratings and watchlist — lists and likes are not read.",
-  importLetterboxdFileHint: "Accepted: zip or csv. Ratings convert from five stars to ten points.",
+    'In Letterboxd: Settings → Data → "Export your data", then upload the ZIP exactly as it downloaded. We read your watched films, ratings and watchlist — lists and likes are not read.',
+  importLetterboxdFileHint:
+    "Accepted: zip or csv. Ratings convert from five stars to ten points.",
   importSimklTitle: "Simkl",
   importSimklHint:
     "In Simkl: Settings → Import/Export → download the JSON backup (free for everyone), then upload the file as it downloaded. Titles arrive with their IDs, so they match instantly — no name search.",
-  importSimklFileHint: "Accepted: zip, json or csv. Works with any export carrying TMDB ids.",
+  importSimklFileHint:
+    "Accepted: zip, json or csv. Works with any export carrying TMDB ids.",
 
   usernameSection: "Username",
-  usernameHint: "Your unique handle in the app. Latin letters, digits and _ only.",
+  usernameHint:
+    "Your unique handle in the app. Latin letters, digits and _ only.",
   usernameShort: "Username must be at least 3 characters.",
   willSaveAs: (u: string) => `Will be saved as: @${u}`,
   displayNameSection: "Display name",
@@ -1637,7 +1726,8 @@ const en: Dict = {
   saveSettings: "Save settings",
   signOutAccount: "Sign out of this account",
   languageSection: "Interface language",
-  languageHint: "Changing the language also flips the page direction and the TMDB data language.",
+  languageHint:
+    "Changing the language also flips the page direction and the TMDB data language.",
   arabicLang: "العربية",
   englishLang: "English",
 
@@ -1646,13 +1736,16 @@ const en: Dict = {
   rateOutOf: (n: number) => `${n}/10`,
   ratePickFirst: "Pick a star rating first.",
   epRateTitle: "Rate this episode",
-  epRateHint: "Rating an episode marks it watched — it doesn't change your rating of the series.",
+  epRateHint:
+    "Rating an episode marks it watched — it doesn't change your rating of the series.",
   epRateRemove: "Remove my rating",
   epReviewPlaceholder: "What did you think of this one? (optional)",
   epLabel: (s: number, e: number) => `S${s} · E${e}`,
   epRateAria: (s: number, e: number) => `Rate season ${s} episode ${e}`,
   epMyRatings: (n: number, avg: string) =>
-    n === 1 ? `You rated 1 episode · avg ★${avg}` : `You rated ${n} episodes · avg ★${avg}`,
+    n === 1
+      ? `You rated 1 episode · avg ★${avg}`
+      : `You rated ${n} episodes · avg ★${avg}`,
   reviewPlaceholder: "Write your thoughts… (optional)",
   saveRating: "Save rating",
   deleteRating: "Delete my rating",
@@ -1672,15 +1765,18 @@ const en: Dict = {
   removeFollowerAria: (name: string) => `Remove ${name} from your followers`,
   removedFollowerToast: "Removed from your followers",
   privateSection: "Private account",
-  privateHint: "No one follows you without a request you approve. Current followers stay.",
+  privateHint:
+    "No one follows you without a request you approve. Current followers stay.",
   privateOn: "Private — follow by request",
   privateOff: "Public — anyone can follow",
   profileMenuAria: "Account options",
   msgUserOption: "Message",
-  msgNeedsMutual: "Messages are between mutual followers — follow each other first",
+  msgNeedsMutual:
+    "Messages are between mutual followers — follow each other first",
   reportUserOption: "Report",
   reportUserTitle: "Report this account",
-  reportUserBody: "The report reaches Loopz only. The account owner is not told, and nothing shows.",
+  reportUserBody:
+    "The report reaches Loopz only. The account owner is not told, and nothing shows.",
   blockOption: "Block",
   blockConfirmTitle: "Block this account?",
   blockConfirmBody:
@@ -1688,12 +1784,14 @@ const en: Dict = {
   blockConfirmButton: "Block",
   blockedToast: "Blocked",
   blockedListTitle: "Blocked",
-  blockedListHint: "A blocked account can't message or follow you. Unblocking doesn't restore follows.",
+  blockedListHint:
+    "A blocked account can't message or follow you. Unblocking doesn't restore follows.",
   blockedEmpty: "You haven't blocked anyone",
   unblockButton: "Unblock",
   unblockedToast: "Unblocked",
   privateCoverTitle: "Private account",
-  privateCoverHint: "Follow them — once they accept, you'll see their library and ratings.",
+  privateCoverHint:
+    "Follow them — once they accept, you'll see their library and ratings.",
   artistsRail: "From your artists",
   followArtistAria: "Follow this artist",
   publicListsRail: "Lists from the community",
@@ -1720,7 +1818,8 @@ const en: Dict = {
   commInvitesSection: "Invitations",
   commInviteBtn: "Add people",
   commInviteTitle: "Add people",
-  commInviteHint: "Invite people you follow — they'll get the invitation in the communities directory.",
+  commInviteHint:
+    "Invite people you follow — they'll get the invitation in the communities directory.",
   commInviteEmpty: "You don't follow anyone yet.",
   commInviteAction: "Invite",
   commInvited: "Invited",
@@ -1745,7 +1844,8 @@ const en: Dict = {
   commOpen: "Open",
   commLeave: "Leave community",
   commDelete: "Delete community",
-  commDeleteConfirm: "Sure? Tap again — the community and all its messages are deleted",
+  commDeleteConfirm:
+    "Sure? Tap again — the community and all its messages are deleted",
   commJoinRequests: "Join requests",
   commJoinToChat: "Join to read and take part in the chat",
   commMsgPlaceholder: "Write a message…",
@@ -1765,7 +1865,8 @@ const en: Dict = {
   titleRoomToTitle: "Open the title page",
   titleRoomBadge: "Title room",
   artTitle: "Title artwork",
-  artHint: "Pick a poster or backdrop from TMDB's images — your choice shows on your library and your pages.",
+  artHint:
+    "Pick a poster or backdrop from TMDB's images — your choice shows on your library and your pages.",
   artPosters: "Posters",
   artBackdrops: "Backdrops",
   artEmpty: "No extra images for this title.",
@@ -1781,7 +1882,8 @@ const en: Dict = {
   followingLabel: "following",
   followListEmpty: "Nobody here yet",
   followListsSection: "Follow lists",
-  followListsHint: "Visitors to your profile can see who follows you and who you follow. Lock it and only the counts remain.",
+  followListsHint:
+    "Visitors to your profile can see who follows you and who you follow. Lock it and only the counts remain.",
   followListsOn: "Lists locked — counts only",
   followListsOff: "Lists visible to profile visitors",
   toWatchEmpty: "Nothing left — all caught up!",
@@ -1806,7 +1908,8 @@ const en: Dict = {
   franchiseTitle: "The rest of the series",
   reportLabel: "Report",
   reportTitle: "Report this review",
-  reportBody: "The report reaches Loopz only. The author is not told, and no counter appears.",
+  reportBody:
+    "The report reaches Loopz only. The author is not told, and no counter appears.",
   reportReasonPlaceholder: "A short reason (optional)",
   reportSend: "Report",
   reportDone: "Report received — thank you",
@@ -1841,7 +1944,8 @@ const en: Dict = {
   browseAnyStudio: "Any studio",
   browseAwardGroup: "Award",
   browseAnyAward: "Any award",
-  awardRailNote: (n: string, from: string) => `${n} winners since ${from} — newest first`,
+  awardRailNote: (n: string, from: string) =>
+    `${n} winners since ${from} — newest first`,
   browseProviderGroup: (place: string) => `Streaming on · ${place}`,
   browseAnyProvider: "Any service",
   regionSection: "Watch country",
@@ -1891,16 +1995,18 @@ const en: Dict = {
   communityTabWorks: "Discussions",
   // Renamed from "People" (D-274); the key and the URL stay `people`
   communityTabPeople: "Members",
-  peopleTabEmpty: "No activity yet — write a review or join a discussion and names will show up here",
+  peopleTabEmpty:
+    "No activity yet — write a review or join a discussion and names will show up here",
   // People tab sections (D-263) — an explicit count, never a weighted score
   // “Featured” reads as hand-picked; the note says what it actually measures
   peopleBoardFeatured: "Featured members",
-  peopleBoardFeaturedNote: "Most active over the last 90 days",
   peopleBoardTop: "Most active this week",
-  peopleBoardActions: (n: number) => (n === 1 ? "1 action" : `${num(n, "en")} actions`),
+  peopleBoardActions: (n: number) =>
+    n === 1 ? "1 action" : `${num(n, "en")} actions`,
   // “1 posts” shipped and was caught on the live page — singular is not optional
   peopleBoardBreakdown: (posts: number, reviews: number, likes: number) => {
-    const u = (n: number, w: string) => `${num(n, "en")} ${n === 1 ? w : `${w}s`}`;
+    const u = (n: number, w: string) =>
+      `${num(n, "en")} ${n === 1 ? w : `${w}s`}`;
     return `${u(posts, "post")} · ${u(reviews, "review")} · ${u(likes, "like")}`;
   },
   peopleBoardRising: "Rising stars",
@@ -1910,7 +2016,8 @@ const en: Dict = {
   peopleBoardVsLast: (now: number, prev: number) =>
     `${num(now, "en")} this week · ${num(prev, "en")} last week`,
   peopleBoardTopReview: "Most liked comments",
-  peopleBoardLikes: (n: number) => (n === 1 ? "1 like" : `${num(n, "en")} likes`),
+  peopleBoardLikes: (n: number) =>
+    n === 1 ? "1 like" : `${num(n, "en")} likes`,
   // peopleBoardWatching / peopleBoardAdded deleted with their section (D-270)
   communityTabComments: "Comments",
   // Talk page and replies (D-193)
@@ -1932,7 +2039,8 @@ const en: Dict = {
   talkRoomLastAt: (when: string) => `last post ${when}`,
   talkRoomPlaceholder: "Join the discussion…",
   talkRoomEmpty: "No posts yet — open the discussion with the first line",
-  talkRoomsEmpty: "No discussions yet — start the first one from any title's page",
+  talkRoomsEmpty:
+    "No discussions yet — start the first one from any title's page",
   bulletinEpisode: (season: number, episode: number, name?: string | null) =>
     name
       ? `Episode ${num(episode, "en")} of season ${num(season, "en")} is out — “⁨${name}⁩”`
@@ -1979,18 +2087,23 @@ const en: Dict = {
   talkInLibrary: "In your library",
   talkSignInToWrite: "Join the conversation",
   talkMetaTitle: (name: string) => `Talking about “${name}”`,
-  talkMetaEmpty: (name: string) => `What people think of “${name}” — no one has written yet.`,
+  talkMetaEmpty: (name: string) =>
+    `What people think of “${name}” — no one has written yet.`,
   worksScopeAll: "Everyone",
   worksScopeFollowing: "People I follow",
-  worksEmptyAll: "Nobody has written a review yet — be the first to start the conversation.",
-  worksEmptyFollowing: "The people you follow haven't written anything yet. Try Everyone.",
+  worksEmptyAll:
+    "Nobody has written a review yet — be the first to start the conversation.",
+  worksEmptyFollowing:
+    "The people you follow haven't written anything yet. Try Everyone.",
   messagesUnreadAria: (n: number) => `Messages — ${num(n, "en")} unread`,
-  reviewsEmpty: "No reviews from your circle yet — the first one written shows up here.",
+  reviewsEmpty:
+    "No reviews from your circle yet — the first one written shows up here.",
   communityTabAll: "Communities",
   communityTabInbox: "Messages",
   communityUnreadAria: (n: number) => `${n} unread`,
   communityAllEmpty: "No community takes yet — be the first to write one.",
-  inboxEmpty: "No messages yet. Send a title to a friend from any title page: “More” → “Send to…”.",
+  inboxEmpty:
+    "No messages yet. Send a title to a friend from any title page: “More” → “Send to…”.",
   inboxFromYou: (name: string) => `You sent to ${name}`,
   inboxFromOther: (name: string) => `${name} sent you this`,
   shareReplyPlaceholder: "A short reply…",
@@ -2005,14 +2118,16 @@ const en: Dict = {
   shareSendNotePlaceholder: "Add a note (optional)…",
   shareSendButton: "Send",
   shareSendPickHint: "Pick a friend you mutually follow",
-  shareNoMutual: "No mutual follows yet — you can send to people who follow you back.",
+  shareNoMutual:
+    "No mutual follows yet — you can send to people who follow you back.",
   shareSentToast: "Sent ✓",
   shareLoadingPeople: "Loading…",
   // A list from a person's filmography or a franchise's parts
   worksToListBtn: "Add filmography to a list",
   partsToListBtn: "Save all parts as a list",
   universeToListBtn: "Save the whole universe as a list",
-  universeHint: "Every film in the universe, in story order — know where to start and catch up before any new release.",
+  universeHint:
+    "Every film in the universe, in story order — know where to start and catch up before any new release.",
   listMadeToast: (name: string) => `Created “${name}” ✓`,
   listGrewToast: (n: number) => `Added ${n} to the list ✓`,
   listHadAllToast: "Everything is already in the list",
@@ -2027,7 +2142,8 @@ const en: Dict = {
   convSharedPreview: (title: string) => `Shared “${title}”`,
   convSharedListPreview: (name: string) => `Shared the list “${name}”`,
   convListBadge: "List",
-  convReplyNeedsTitle: "Replies attach to a title — send one from its page to start the thread.",
+  convReplyNeedsTitle:
+    "Replies attach to a title — send one from its page to start the thread.",
   convHide: "Hide conversation",
   convHideAria: (name: string) => `Hide conversation with ${name}`,
   convOpenAria: (name: string) => `Conversation with ${name}`,
@@ -2061,7 +2177,8 @@ const en: Dict = {
   dropTitle: "Red card — drop it",
   leftEps: (n: number) => `${n} left`,
   finishedShowTitle: (title: string) => `You finished "${title}" 🏁`,
-  finishedShowSub: (n: number) => `A ${n}-episode journey, complete. Well done!`,
+  finishedShowSub: (n: number) =>
+    `A ${n}-episode journey, complete. Well done!`,
   rateQuestion: "How would you rate it?",
   ratedThanks: "Rating saved ✓",
   rewatchBtn: "Watch it again",
@@ -2090,35 +2207,44 @@ const en: Dict = {
   sortProgress: "Progress",
   shortMovies: "Movies",
   shortArtists: "Artists",
-  artistWorksWatched: (n: number) => (n === 1 ? "1 title watched" : `${n} titles watched`),
-  artistsEmpty: "You don't follow any artists yet — open an actor or director and tap Follow.",
+  artistWorksWatched: (n: number) =>
+    n === 1 ? "1 title watched" : `${n} titles watched`,
+  artistsEmpty:
+    "You don't follow any artists yet — open an actor or director and tap Follow.",
   artistsEmptyCta: "Find an artist",
   custHeaderSection: "Header elements",
   custHeaderHint: "Show or hide what sits at the top of your Home.",
   custStatsCard: "Statistics card",
-  custStatsPickHint: "Pick 2 to 4 numbers to show on the card, and order them your way.",
+  custStatsPickHint:
+    "Pick 2 to 4 numbers to show on the card, and order them your way.",
   shortEpisodes: "Episodes",
   custLevel: "Level bar",
   custFollowers: "Followers line",
   custSocial: "Reviews, ratings & likes",
   custOrderSection: "Home sections",
-  custOrderHint: "Arrange the sections however you like, or hide the ones you don't want.",
+  custOrderHint:
+    "Arrange the sections however you like, or hide the ones you don't want.",
   custWeekStrip: "Week calendar",
   custMoveUp: "Move up",
   custMoveDown: "Move down",
   custHide: "Hide section",
   custShow: "Show section",
   communityTabNews: "News",
-  newsHint: "News about what's in your library and the artists you follow — nothing generic.",
+  newsHint:
+    "News about what's in your library and the artists you follow — nothing generic.",
   titleNewsEmpty:
     "Nothing new right now. Add titles to your library or follow some artists, and their news will land here.",
   newsGenTitle: "Latest news",
-  newsGenHint: "What changed in the titles — we watch it and write it here, and it never sends you away.",
+  newsGenHint:
+    "What changed in the titles — we watch it and write it here, and it never sends you away.",
   newsGenEmpty: "Nothing yet. The first watch round will fill this in.",
   newsTrailerOut: (name: string) => `A new trailer is out for “${name}”`,
-  newsDateSet: (name: string, date: string) => `“${name}” now has a release date: ${date}`,
-  newsDateMoved: (name: string, date: string) => `“${name}” moved its release to ${date}`,
-  newsSeasonUp: (name: string, n: number) => `Season ${n} of “${name}” is confirmed`,
+  newsDateSet: (name: string, date: string) =>
+    `“${name}” now has a release date: ${date}`,
+  newsDateMoved: (name: string, date: string) =>
+    `“${name}” moved its release to ${date}`,
+  newsSeasonUp: (name: string, n: number) =>
+    `Season ${n} of “${name}” is confirmed`,
   newsEnded: (name: string) => `“${name}” has ended`,
   newsCanceled: (name: string) => `“${name}” has been cancelled`,
   newsReturning: (name: string) => `“${name}” is coming back`,
@@ -2128,12 +2254,18 @@ const en: Dict = {
       : n > 1
         ? `Season ${n} of “${name}” premieres ${date}`
         : `A new season of “${name}” premieres ${date}`,
-  newsTheatrical: (name: string, date: string) => `Official: “${name}” hits theatres ${date}`,
-  newsChart: (name: string, rank: number) => `“${name}” entered our Top 50 — at #${rank}`,
-  newsProvider: (name: string, on: string) => `“${name}” is now streaming on ${on} in Saudi Arabia`,
-  newsProviderAny: (name: string) => `“${name}” landed on a new streamer in Saudi Arabia`,
+  newsTheatrical: (name: string, date: string) =>
+    `Official: “${name}” hits theatres ${date}`,
+  newsChart: (name: string, rank: number) =>
+    `“${name}” entered our Top 50 — at #${rank}`,
+  newsProvider: (name: string, on: string) =>
+    `“${name}” is now streaming on ${on} in Saudi Arabia`,
+  newsProviderAny: (name: string) =>
+    `“${name}” landed on a new streamer in Saudi Arabia`,
   newsRenewed: (name: string, n: number) =>
-    n > 0 ? `“${name}” is renewed for season ${n}` : `“${name}” is renewed for another season`,
+    n > 0
+      ? `“${name}” is renewed for season ${n}`
+      : `“${name}” is renewed for another season`,
   newsCanceled2: (name: string) => `“${name}” has been cancelled`,
   newsDelayed: (name: string) => `“${name}” has been delayed`,
   newsPerSource: (src: string) => `via ${src}`,
@@ -2153,7 +2285,8 @@ const en: Dict = {
   custProfileHeader: "Top of the profile",
   custProfileOrder: "Profile sections",
   custVisits: "Visits counter",
-  custProfileEmpty: "You've hidden every section — visitors will see your header only.",
+  custProfileEmpty:
+    "You've hidden every section — visitors will see your header only.",
   custCards: "Cards per row",
   custCardsHint: "Trims long rows — it never adds. A short row stays as it is.",
   cardsCompact: "Compact",
@@ -2170,8 +2303,10 @@ const en: Dict = {
   settingsNavBilling: "Subscription & billing",
   settingsNavHeading: "Settings",
   settingsSoonTitle: "Not built yet",
-  settingsBillingHint: "The app has no paid plans yet, so there is nothing to manage here.",
-  settingsPrivacyHint: "What other people can see about you — and your data, yours to export or delete.",
+  settingsBillingHint:
+    "The app has no paid plans yet, so there is nothing to manage here.",
+  settingsPrivacyHint:
+    "What other people can see about you — and your data, yours to export or delete.",
   dataExportTitle: "Export your data",
   dataExportDesc:
     "A full copy of everything you've logged here — follows, watch history, ratings and lists — as a single JSON file saved to your device.",
@@ -2214,7 +2349,8 @@ const en: Dict = {
   pickedRefresh: "More picks",
   pickedRefreshAria: "Show ten more picks",
   notInterested: "Not interested",
-  notInterestedAria: (title: string) => `Not interested in “${title}” — don't suggest it again`,
+  notInterestedAria: (title: string) =>
+    `Not interested in “${title}” — don't suggest it again`,
   dismissedToast: "Got it — we won't suggest it again",
   animeBadge: "Anime",
   animeClassifying: "Sorting your library…",
@@ -2244,7 +2380,8 @@ const en: Dict = {
   diaryTitle: "Journal",
   diarySub: "Your watching journey, day by day.",
   recapTitle: "Your week recap",
-  diaryEmpty: "Nothing ticked yet \u2014 mark an episode or a movie and it lands here.",
+  diaryEmpty:
+    "Nothing ticked yet \u2014 mark an episode or a movie and it lands here.",
   diaryToday: "Today",
   diaryYesterday: "Yesterday",
   diaryEpisode: (s: number, e: number) => `S${s} \u00b7 E${e}`,
@@ -2255,7 +2392,8 @@ const en: Dict = {
   listCreate: "Create",
   listNameRequired: "Type a list name first",
   listsEmpty: "No lists yet \u2014 type a name above to start.",
-  listCount: (n: number) => (n === 0 ? "Empty" : `${n} title${n === 1 ? "" : "s"}`),
+  listCount: (n: number) =>
+    n === 0 ? "Empty" : `${n} title${n === 1 ? "" : "s"}`,
   listContentCount: (shows: number, movies: number) =>
     shows > 0 && movies > 0
       ? `${shows} show${shows === 1 ? "" : "s"} · ${movies} movie${movies === 1 ? "" : "s"}`
@@ -2279,8 +2417,10 @@ const en: Dict = {
   listPublicHint: "Anyone with the link can open a public list.",
   listShare: "Share list",
   listShareSheetTitle: "Share list",
-  listSharePublicHint: "Anyone with the link can view your list — and it shows on your public profile for the community.",
-  listSharePrivateHint: "This list is private — make it public so others can open it and it shows in the community.",
+  listSharePublicHint:
+    "Anyone with the link can view your list — and it shows on your public profile for the community.",
+  listSharePrivateHint:
+    "This list is private — make it public so others can open it and it shows in the community.",
   listShareLinkBtn: "Share link",
   listMakePublicShare: "Make public & copy link",
   listMadePublicCopied: "Now public — link copied ✓",
@@ -2289,7 +2429,8 @@ const en: Dict = {
     "Your private account is hidden from non-followers — here you grant specific people access to your profile and library, and revoke it anytime.",
   libraryAccessAdd: "Grant",
   libraryAccessEmpty: "You haven't granted anyone yet.",
-  libraryAccessNoCandidates: "All your followers are granted — or no followers yet.",
+  libraryAccessNoCandidates:
+    "All your followers are granted — or no followers yet.",
   libraryGrantedToast: "Library access granted ✓",
   libraryRevokedToast: "Grant revoked",
   libraryRevokeButton: "Revoke",
@@ -2304,7 +2445,8 @@ const en: Dict = {
   listShareToFriend: "Send to a friend",
   listShareToCommunity: "Post to my community",
   listSharePickCommunity: "Pick a community",
-  listShareNoCommunities: "You're not in a community yet — join one from the Community tab.",
+  listShareNoCommunities:
+    "You're not in a community yet — join one from the Community tab.",
   listSharePostedToast: "Posted to the community ✓",
   commListLink: "Open list",
   listRename: "Rename",
@@ -2314,26 +2456,31 @@ const en: Dict = {
   listEditTitle: "Edit list",
   listNameLabel: "Name",
   listSubtitleLabel: "Subtitle (optional)",
-  listSubtitlePlaceholder: "Briefly describe what makes this list special\u2026",
+  listSubtitlePlaceholder:
+    "Briefly describe what makes this list special\u2026",
   listDone: "Done",
   listCancel: "Cancel",
   listReorder: "Reorder",
   listReorderHint: "Drag by the handle, then press Done to save the order.",
   listCover: "List cover",
-  listCoverHint: "Pick a title from the list, then one of its backdrops — it becomes the list's face.",
+  listCoverHint:
+    "Pick a title from the list, then one of its backdrops — it becomes the list's face.",
   listCoverPick: "Titles in this list",
   listCoverBack: "Another title",
-  listCoverEmpty: "Add a title to the list first, then choose its cover from that title's images.",
+  listCoverEmpty:
+    "Add a title to the list first, then choose its cover from that title's images.",
   listCoverSet: "Selected",
   listDeleteThis: "Delete list",
-  listDeleteBody: "The list and everything in it will be deleted. This cannot be undone.",
+  listDeleteBody:
+    "The list and everything in it will be deleted. This cannot be undone.",
   listType: "List type",
   listTypeRegular: "Regular list",
   listTypeRegularHint: "A plain collection — no order, no numbers.",
   listTypeRanked: "Ranked list",
   listTypeRankedHint: "Best to worst — numbered on the posters.",
   listTypeWatch: "Watch order",
-  listTypeWatchHint: "A chronological or recommended viewing order — numbered on the posters.",
+  listTypeWatchHint:
+    "A chronological or recommended viewing order — numbered on the posters.",
   listMoveUp: "Move up",
   listMoveDown: "Move down",
   listPositionOf: (i: number, n: number) => `Position ${i} of ${n}`,
@@ -2345,7 +2492,8 @@ const en: Dict = {
   shareEpisodes: "Episodes",
   shareMovies: "Movies",
   shareTime: "Watch time",
-  shareRated: (n: number, avg: string) => `Rated ${n} titles \u00b7 ${avg}/10 average`,
+  shareRated: (n: number, avg: string) =>
+    `Rated ${n} titles \u00b7 ${avg}/10 average`,
   shareNoRatings: "No ratings yet",
   shareFailed: "Could not build the card \u2014 try again shortly.",
   weekTitle: "Your week",
@@ -2362,7 +2510,8 @@ const en: Dict = {
   loginOtherWay: "Another way to sign in",
   loginRedirecting: "Redirecting…",
   loginFailed: "Sign-in failed: ",
-  loginNeedsKeys: "The app needs its keys configured in Vercel settings, then redeploy.",
+  loginNeedsKeys:
+    "The app needs its keys configured in Vercel settings, then redeploy.",
   avatarAlt: "Profile photo",
 
   runtimeMin: (n: number) => `${n} min`,
@@ -2383,11 +2532,13 @@ const en: Dict = {
 
   // Library analysis
   analysisTitle: "Your library, analysed",
-  analysisSub: "What your library is made of, and what your taste says about you.",
+  analysisSub:
+    "What your library is made of, and what your taste says about you.",
   analysisMix: "Library mix",
   analysisStatus: "Where you stand",
   analysisTaste: "Taste map",
-  analysisTasteSub: "The genres that recur most in what you follow — as a share of all genre tags, not of titles.",
+  analysisTasteSub:
+    "The genres that recur most in what you follow — as a share of all genre tags, not of titles.",
   analysisRatings: "Your ratings",
   analysisDecades: "Decades you lean toward",
   analysisEmpty: "Follow a few titles and your library analysis appears here.",
@@ -2397,12 +2548,14 @@ const en: Dict = {
   avgRatingLabel: (n: string) => `You average ${n} out of 10`,
   ratedCount: (n: number) => `${n} title${n === 1 ? "" : "s"} rated`,
   errorTitle: "Something went wrong",
-  errorBody: "We couldn't load this part right now. Try again — if it keeps failing, refresh the page.",
+  errorBody:
+    "We couldn't load this part right now. Try again — if it keeps failing, refresh the page.",
   errorRetry: "Try again",
   errorHome: "Back to home",
   errorCode: (d: string) => `Error code: ${d}`,
   notFoundTitle: "Page not found",
-  notFoundBody: "That link doesn't point anywhere. Try searching or head back home.",
+  notFoundBody:
+    "That link doesn't point anywhere. Try searching or head back home.",
   loadingLabel: "Loading…",
 
   peopleTitle: "Community",
@@ -2415,21 +2568,26 @@ const en: Dict = {
   closeLabel: "Close",
   peopleFollowingTitle: "Following",
   peopleFollowersTitle: "Followers",
-  peopleNoFollowing: "You're not following anyone yet — find someone and their activity shows up here.",
+  peopleNoFollowing:
+    "You're not following anyone yet — find someone and their activity shows up here.",
   anonymousUser: "Someone",
   visitsLabel: "visits",
   hideNameSection: "Hide my name",
-  hideNameHint: "When on, your ratings and reviews appear without your name, and no one can open your page from a review.",
+  hideNameHint:
+    "When on, your ratings and reviews appear without your name, and no one can open your page from a review.",
   hideNameOn: "My name is hidden",
   hideNameOff: "My name is visible",
   navPeople: "Community",
   viewProfileOf: (name: string) => `View ${name}'s page`,
   obStep: (a: number, b: number) => `Step ${a} of ${b}`,
   obPickTitle: "Which of these have you watched?",
-  obPickHint: "Tap the ones you've seen — we'll build your library and learn your taste from this.",
-  obPickedN: (n: number) => (n === 0 ? "Pick at least one" : `${n} selected — continue →`),
+  obPickHint:
+    "Tap the ones you've seen — we'll build your library and learn your taste from this.",
+  obPickedN: (n: number) =>
+    n === 0 ? "Pick at least one" : `${n} selected — continue →`,
   obProgressTitle: "How far did you get?",
-  obProgressHint: "Set your progress quickly — you can adjust it later on each title's page.",
+  obProgressHint:
+    "Set your progress quickly — you can adjust it later on each title's page.",
   obNotStarted: "Not started",
   obSomeOf: "Started it",
   obFinished: "Watched it all",
@@ -2440,14 +2598,17 @@ const en: Dict = {
   obSkip: "Skip",
   obSaving: "Setting things up…",
   obPeopleTitle: "Follow 3 people",
-  obPeopleHint: "Their taste is close to yours — what they watch shows up in your circle.",
-  obPeopleNone: "No one to suggest just yet — you can search for friends later.",
+  obPeopleHint:
+    "Their taste is close to yours — what they watch shows up in your circle.",
+  obPeopleNone:
+    "No one to suggest just yet — you can search for friends later.",
   obPeopleSkip: "Continue without following",
   obPeopleNext: (n: number) => `Following ${n} — let's go ✓`,
 
   // suggestPeopleTitle / suggestPeopleHint deleted with their section (D-270);
   // the two below stay — Onboarding reads them
-  suggestShared: (n: number) => (n === 1 ? "Shares 1 title with you" : `Shares ${n} titles with you`),
+  suggestShared: (n: number) =>
+    n === 1 ? "Shares 1 title with you" : `Shares ${n} titles with you`,
   suggestFollowers: (n: number) => (n === 1 ? "1 follower" : `${n} followers`),
   circleWatched: (n: number) => `${n} people you follow watched it`,
   circleAvg: (v: string) => `They rate it ★${v}`,
