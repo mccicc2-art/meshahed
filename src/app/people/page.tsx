@@ -23,7 +23,6 @@ import {
   getPeopleLeaderboard,
   getPeopleTopReviews,
   getPeopleWatching,
-  searchPeople,
 } from "@/lib/data";
 import { getT, getTabPrefs, getFeedStrangers } from "@/lib/locale";
 import { WorksTalk } from "@/components/WorksTalk";
@@ -32,7 +31,6 @@ import {
   TopReviews,
   PeopleSuggestions,
   PeopleWatching,
-  PeopleSearch,
 } from "@/components/PeopleBoard";
 import { ActivityFeed } from "@/components/ActivityFeed";
 import { commentViewKey, newsViewKey } from "@/lib/postKeys";
@@ -121,7 +119,6 @@ export default async function PeoplePage({
     scope?: string;
     sort?: string;
     all?: string;
-    who?: string;
     c?: string;
     with?: string;
   }>;
@@ -140,7 +137,6 @@ export default async function PeoplePage({
     scope: sParam,
     sort: sortParam,
     all: allParam,
-    who: whoParam,
     c: cParam,
     with: withParam,
   } = await searchParams;
@@ -151,16 +147,12 @@ export default async function PeoplePage({
     redirect(withParam ? `/messages?with=${encodeURIComponent(withParam)}` : "/messages");
   }
   const tab = tabParam ? asTab(tabParam) : asTab(defaultTab(tabPrefs, "activity"));
-  /* **البحثُ بالاسم** (D-266) — **آخرُ ما بقي من D-262.** والحدُّ حرفان
-     في `searchPeople` نفسِها، **ويُقرأ هنا كي لا يُدفع نداءٌ يُرَدُّ
-     حتماً** (D-164). */
-  const term = tab === "people" ? (whoParam ?? "").trim().slice(0, 50) : "";
-  const searching = term.length >= 2;
+  /* **⚠️ وبحثُ الأشخاص حُذف من هذا التبويب في يومه** (D-267، طلبُ أحمد):
+     **بحثُ الشريط العلويّ فيه تبويبُ «أشخاص» أصلاً** — وسطحان لسؤالٍ
+     واحد هو ما تمنعه D-222. **و`?who=` ماتت قبل أن يشاركها أحد.** */
   /* **و«عرض الكل» لا يعيش إلا داخل تبويب «الناس»** — معاملٌ على تبويبٍ
-     آخر يُتجاهَل صامتاً ولا يُغيّر شيئاً.
-     **⚠️ والبحثُ يغلب «عرض الكل»**: رابطٌ يحمل الاثنين سؤالٌ فيه نيّتان،
-     **والأحدثُ نيّةً ما كتبه المستخدم للتوّ.** */
-  const allView = tab === "people" && !searching ? asAll(allParam) : null;
+     آخر يُتجاهَل صامتاً ولا يُغيّر شيئاً */
+  const allView = tab === "people" ? asAll(allParam) : null;
   /* **نطاقُ «الأعمال»: الكلُّ افتراضاً** (D-187، طلب أحمد: «أحتاج الكل
      يقدر يتفاعل مع الآخر»). دائرةُ المستخدم الجديد فارغة، **وخطٌّ مشروطٌ
      بمتابعاتٍ لم تُبنَ بعد يبدو تطبيقاً ميّتاً لا تبويباً فارغاً**.
@@ -286,7 +278,7 @@ export default async function PeoplePage({
   const wantAll = allView !== null;
   const need = (k: BoardAll) => !wantAll || allView === k;
   const peopleTab =
-    tab === "people" && !searching
+    tab === "people"
       ? await Promise.all([
           /* **و٣ في القسم و١٠ في «عرض الكل»**: البطاقةُ تُقرأ بنظرة،
              **وصفٌّ من اثني عشر وجهاً في لوحةٍ ليس اقتراحاً بل دليل.** */
@@ -303,15 +295,6 @@ export default async function PeoplePage({
   const board = peopleTab?.[1] ?? [];
   const topReviews = peopleTab?.[2] ?? [];
   const watching = peopleTab?.[3] ?? [];
-  /* **ونداءا البحث معاً**: النتائجُ وحدها لا تكفي — **زرُّ «متابعة» على
-     من تتابعه كذبةٌ صغيرة**، فتُقرأ دائرتُك معها. **ولا يُدفعان إلا حين
-     يُبحث فعلاً** (D-194). */
-  const peopleSearch = searching
-    ? await Promise.all([searchPeople(term), getFollowingIds()])
-    : null;
-  const searchResults = peopleSearch?.[0] ?? [];
-  const searchFollowing = peopleSearch?.[1] ?? new Set<string>();
-
   /* **وفراغُ «الصاعدين» ليس فراغَ اللوحة**: النداءُ واحدٌ للقسمين، **فقد
      تعود اللوحةُ ممتلئةً ولا يكون فيها صاعدٌ واحد** — ولو قيس هذا القسمُ
      بطول `board` لبقي «عرض الكل» صفحةً فيها بابُ رجوعٍ ولا شيء تحته.
@@ -587,23 +570,7 @@ export default async function PeoplePage({
               locale={locale}
             />
           ) : tab === "people" ? (
-            /* **وصفُّ البحث فوق كلِّ شيء إلا في «عرض الكل»**: هناك سطحٌ
-               فرعيٌّ لقسمٍ بعينه، **وحقلُ بحثٍ فوقه يعد بترشيحه وهو لا
-               يرشّحه** (D-180). */
-            <>
-              {!allView && (
-                <PeopleSearch
-                  q={term}
-                  results={searchResults}
-                  followingIds={searchFollowing}
-                  meId={user.id}
-                  locale={locale}
-                />
-              )}
-              {/* **والبحثُ يبتلع اللوحةَ ولا يجاورها** — مرشِّحٌ لا قسمٌ
-                  سادس (D-106/D-181) */}
-              {!searching &&
-                (/* **وفراغُ التبويب يُعلَن مرّةً واحدة** (D-181): كان الشرطُ
+            (/* **وفراغُ التبويب يُعلَن مرّةً واحدة** (D-181): كان الشرطُ
                على الاقتراحات وحدها، **والصفحةُ صارت خمسةَ أقسام** — فلو
                بقي كما كان لاختفت اللوحةُ وأعلى التعليقات ومكتباتُ الناس
                خلف اقتراحٍ فارغ. **وكلُّ قسمٍ يخفي نفسَه عند فراغه**،
@@ -678,8 +645,7 @@ export default async function PeoplePage({
                   seeAllHref="/people?tab=people&all=watching"
                 />
               </>
-            ))}
-            </>
+            ))
           ) : rooms.length === 0 ? (
             /* **وفراغٌ واحدٌ لا اثنان** (D-259): كان لكل رقاقةٍ جملتُها —
                «لم يكتب أحدٌ بعد» و«دائرتُك صامتة». **وبسقوط الرقاقتين
