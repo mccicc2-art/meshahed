@@ -158,8 +158,11 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
           {/* التقييم سطرٌ مستقلّ تحت البيانات، بشعارَي IMDb وطماطم لا
               بأسمائهما، ومن هذين المصدرين فقط — لا نجمة TMDB (قرار أحمد
               ٨ أغسطس، يُتمّ نقض D-027) */}
+          {/* 🆕 **والتصنيفُ العمريُّ يذيّل السطرَ نفسَه** (D-286، طلبُ
+              أحمد: «التصنيف العمري حطها في كل صفحات المسلسلات والأفلام»).
+              **ولا نداءَ ثالثاً له** — يصل في ردّ OMDb نفسِه. */}
           <Suspense fallback={<HeroRatingsSkeleton />}>
-            <HeroRatings imdbId={movie.imdb_id} />
+            <HeroRatings imdbId={movie.imdb_id} ageLabel={t.ageRating} />
           </Suspense>
 
           {/* «٣ ممن تتابعهم شاهدوه» (D-127) — انظر تعليق صفحة المسلسل */}
