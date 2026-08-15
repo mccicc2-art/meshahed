@@ -235,8 +235,11 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
           {/* التقييم سطرٌ مستقلّ تحت البيانات، بشعارَي IMDb وطماطم لا
               بأسمائهما، ومن هذين المصدرين فقط — لا نجمة TMDB (قرار أحمد
               ٨ أغسطس، يُتمّ نقض D-027) */}
+          {/* 🆕 **والتصنيفُ العمريُّ يذيّل السطرَ نفسَه** (D-286، طلبُ
+              أحمد: «التصنيف العمري حطها في كل صفحات المسلسلات والأفلام»).
+              **ولا نداءَ ثالثاً له** — يصل في ردّ OMDb نفسِه. */}
           <Suspense fallback={<HeroRatingsSkeleton />}>
-            <HeroRatings tvId={tvId} />
+            <HeroRatings tvId={tvId} ageLabel={t.ageRating} />
           </Suspense>
 
           {/* «٣ ممن تتابعهم شاهدوه» (D-127) — تحت تقييم العالم مباشرة:
