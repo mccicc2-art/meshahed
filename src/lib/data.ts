@@ -1756,14 +1756,35 @@ export interface PeopleLeaderRow extends PersonLite {
  * ترتّب **بالمجموع**، **والصاعدُ قد يكون العاشر مجموعاً وهو الأوّل
  * فرقاً** — فسقفٌ بخمسةٍ كان يجعل القسم الثاني نسخةً من الأوّل بترتيبٍ
  * آخر. **والقصُّ في الواجهة بعد الفرزين** (وسقفُ الدالّة نفسُها ٢٠).
+ *
+ * **⚖️ والنافذةُ أسبوعٌ تقويميٌّ يبدأ السبت منذ الهجرة ٨٣** (D-265، طلبُ
+ * أحمد «خلها يتصفر كل سبت» — **نقضٌ صريحٌ لجوابه في D-264**).
+ * **فلا طولَ يُختار ولا معاملَ `p_days`**: المرساةُ في SQL بتوقيت
+ * الرياض، **والواجهةُ تطلب العددَ وحده.**
  */
-export async function getPeopleLeaderboard(days = 7, limit = 20): Promise<PeopleLeaderRow[]> {
+export async function getPeopleLeaderboard(
+  limit = 20,
+  /** ⚠️ **وسيطُ دفعةٍ واحدة** (D-028): النداءُ القديم كان `(7, 20)`،
+      **فيصل ٧ إلى `limit` و٢٠ إلى هنا** — ويُقرأ هذا. **يسقط في الدفعة
+      التي تلي هبوط `page.tsx`.** */
+  legacyLimit?: number,
+): Promise<PeopleLeaderRow[]> {
+  const want = legacyLimit ?? limit;
   try {
     const supabase = await createClient();
-    const { data, error } = await supabase.rpc("people_leaderboard", {
-      p_days: days,
-      p_limit: limit,
-    });
+    /* ⚠️ **حارسُ عبورٍ حتى تُشغَّل الهجرة ٨٣** (D-264/D-265): التوقيعُ
+       بمعاملٍ واحدٍ **غيرُ موجودٍ قبلها**، **وسقوطُه الصامت كان سيُخفي
+       قسمين معاً** — اللوحةَ والصاعدين. **فيُعاد النداءُ بالتوقيع
+       القديم**: النافذةُ تبقى متدحرجةً سبعةَ أيامٍ حتى تُشغَّل الهجرة،
+       **ثم تصير سبتيّةً بلا دفعةٍ ثانية.**
+       **⬜ ويُحذف الفرعُ بعد تأكيد ٨٣** — مكتوبٌ في `05` (D-151). */
+    let { data, error } = await supabase.rpc("people_leaderboard", { p_limit: want });
+    if (error) {
+      ({ data, error } = await supabase.rpc("people_leaderboard", {
+        p_days: 7,
+        p_limit: want,
+      }));
+    }
     if (error || !data) return [];
     return (data as {
       user_id: string;
