@@ -552,6 +552,11 @@ const ar = {
      «ردّ عليك» لا «كتب ردّاً». والعملُ قد يغيب عنوانُه فجملتان لا فراغ. */
   notifReply: (who: string, title: string) =>
     title ? `ردّ ${who} عليك في «${title}»` : `ردّ ${who} عليك`,
+  /* **وردُّ الغرفة جملتُه غيرُ جملة الردّ** (D-259): هناك ردٌّ على تعليقٍ
+     كتبتَه في مكانٍ واحد، **وهنا ردٌّ عليك داخل حديثٍ لغيرِه سياق** —
+     **والجملةُ تسمّي المكان لأن الضغطةَ ستُدخِلك إليه.** */
+  notifTalkReply: (who: string, title: string) =>
+    title ? `ردّ ${who} عليك في نقاش «${title}»` : `ردّ ${who} عليك في النقاش`,
   // مرشِّح نوع الحدث في «مجتمعي» (D-123ب)
   feedFilterGroup: "نوع النشاط",
   feedFilterAll: "الكل",
@@ -1716,6 +1721,10 @@ const en: Dict = {
     title ? `${who} liked your ${title}` : `${who} liked your activity`,
   notifReply: (who: string, title: string) =>
     title ? `${who} replied to you about “${title}”` : `${who} replied to you`,
+  notifTalkReply: (who: string, title: string) =>
+    title
+      ? `${who} replied to you in the “${title}” discussion`
+      : `${who} replied to you in a discussion`,
   feedFilterGroup: "Activity type",
   feedFilterAll: "All",
   feedFilterRatings: "Ratings",
