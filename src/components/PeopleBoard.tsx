@@ -3,7 +3,7 @@ import Image from "next/image";
 import { posterUrl } from "@/lib/tmdb";
 import { getDict, num, type Locale } from "@/lib/i18n";
 import { timeAgoShort } from "@/lib/when";
-import { dirOf } from "@/lib/dir";
+import { dirOf, alignOf } from "@/lib/dir";
 import type { PeopleLeaderRow, PeopleTopReviewRow } from "@/lib/data";
 import { PersonName } from "./PersonRow";
 import { FollowUserButton } from "./FollowUserButton";
@@ -450,11 +450,14 @@ export function TopReviews({
                   />
 
                   {/* **والكلامُ بعرض العمود تحت الوجه** — لا بجانبه (D-228) */}
-                  <Link href={reviewHref} prefetch={false} className="block mt-2">
-                    <p
-                      dir={dirOf(row.review)}
-                      className="text-[13px] leading-relaxed text-foreground/85 line-clamp-3"
-                    >
+                  <Link
+                    href={reviewHref}
+                    prefetch={false}
+                    /* **الاتّجاه على الرابط لا على المقصوص** — D-282 */
+                    dir={dirOf(row.review)}
+                    className={`block mt-2 ${alignOf(row.review)}`}
+                  >
+                    <p className="text-[13px] leading-relaxed text-foreground/85 line-clamp-3">
                       {row.review}
                     </p>
                   </Link>

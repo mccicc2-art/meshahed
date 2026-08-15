@@ -3,7 +3,7 @@ import { getDict, type Locale } from "@/lib/i18n";
 import { displayNameOf } from "@/lib/people";
 import type { ReviewReply, TitleReview } from "@/lib/data";
 import { timeAgoShort } from "@/lib/when";
-import { dirOf } from "@/lib/dir";
+import { dirOf, alignOf } from "@/lib/dir";
 import { Avatar } from "./Avatar";
 import { Icon } from "./Icon";
 import { LikeButton } from "./LikeButton";
@@ -122,11 +122,14 @@ export function TalkThread({
               {r.review?.trim() && (
                 /* **اتّجاهُ الرأي من الرأي** (D-241)، **ولونُه لون المتن**:
                    أخفتُ نصٍّ في صفحةٍ لا يصحّ أن يكون سببَ وجودها. */
-                <Link href={href} prefetch={false} className="block mt-2">
-                  <p
-                    dir={dirOf(r.review)}
-                    className="text-[14px] leading-relaxed text-foreground/90 whitespace-pre-line line-clamp-6"
-                  >
+                <Link
+                  href={href}
+                  prefetch={false}
+                  /* **الاتّجاه على الرابط لا على المقصوص** — D-282 */
+                  dir={dirOf(r.review)}
+                  className={`block mt-2 ${alignOf(r.review)}`}
+                >
+                  <p className="text-[14px] leading-relaxed text-foreground/90 whitespace-pre-line line-clamp-6">
                     {r.review}
                   </p>
                 </Link>

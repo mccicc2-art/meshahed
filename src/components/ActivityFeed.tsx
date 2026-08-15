@@ -4,7 +4,7 @@ import { timeAgoShort } from "@/lib/when";
 import { LOOPZ_ID, LOOPZ_USERNAME, LOOPZ_PERSON } from "@/lib/loopz";
 import { displayNameOf, type FeedItem, type LoopzNewsItem } from "@/lib/data";
 import { newsLine, newsSource } from "@/lib/newsLine";
-import { dirOf } from "@/lib/dir";
+import { dirOf, alignOf } from "@/lib/dir";
 import { commentViewKey, newsViewKey } from "@/lib/postKeys";
 import { Avatar } from "./Avatar";
 import { Icon } from "./Icon";
@@ -453,11 +453,18 @@ function CommentRow({
             عربيّ داخل واجهةٍ إنجليزية يُرسم من اليمين ونقطتُه في مكانها.
             **وأصحُّ من قراءة لغة الحساب**: الكاتبُ قد يكتب بغير لغة
             واجهته، **والنصُّ يعرف نفسَه ولا يحتاج من يخبره.** */}
-        <Link href={reviewHref} prefetch={false} className="block mt-2">
-          <p
-            dir={dirOf(a.review)}
-            className="text-[13px] leading-relaxed text-foreground/85 line-clamp-3"
-          >
+        {/* ⚠️ **و`dir` على الرابط لا على الفقرة** (D-282): الفقرةُ تحمل
+            `line-clamp` وهي `display: -webkit-box`، **وصندوقُ WebKit يحلّ
+            `text-align: start` حلّاً آخر** — فيُرسم العربيُّ يساراً على
+            iPhone ويميناً على سطح المكتب. **فصلُ الاتّجاه عن الصندوق
+            المقصوص، ومحاذاةٌ صريحة فوقه.** */}
+        <Link
+          href={reviewHref}
+          prefetch={false}
+          dir={dirOf(a.review)}
+          className={`block mt-2 ${alignOf(a.review)}`}
+        >
+          <p className="text-[13px] leading-relaxed text-foreground/85 line-clamp-3">
             {a.review}
           </p>
         </Link>
