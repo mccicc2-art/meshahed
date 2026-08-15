@@ -651,6 +651,17 @@ const ar = {
      فتُقرأ «ثلاثة زائد» لا «زيادة ثلاثة». **والعلاجُ كلمةٌ لا حرفُ
      عزلٍ خفيّ** (دَينُ D-248 يكفي). */
   peopleBoardDelta: (n: number) => `زاد ${num(n, "ar")} عن الأسبوع الماضي`,
+  /**
+   * 🆕 **الرقمان اللذان يُطرحان، تحت الفرق** (D-275).
+   *
+   * ⚠️ **وكان تحته `peopleBoardBreakdown` وهو كذبٌ ينتظر يومَه**: العنوانُ
+   * فرقٌ (`total − prev`) **والتفصيلُ مكوّناتُ النافذة الحالية** — فمجموعُ
+   * الثلاثة `total` لا الفرق. **يتصادفان ما دام `prev = 0` للجميع**،
+   * **وأوّلَ أسبوعٍ يكون لأحدهم رصيدٌ سابق تقول البطاقة «زاد ٢» وتحتها
+   * «٩ تفاعلات».** **والمراجعةُ تُكتب ولا تُترك ممكنة** (D-219).
+   */
+  peopleBoardVsLast: (now: number, prev: number) =>
+    `${num(now, "ar")} هذا الأسبوع · ${num(prev, "ar")} الأسبوع الماضي`,
   /* **وصار جمعاً لأن العدد صار ثلاثة** (D-264): عنوانٌ مفرَدٌ فوق ثلاث
      بطاقات **اسمٌ بقي بعد أن تغيّر ما يسمّيه** (D-257). */
   peopleBoardTopReview: "أعلى التعليقات إعجاباً",
@@ -1887,6 +1898,10 @@ const en: Dict = {
   },
   peopleBoardRising: "Rising stars",
   peopleBoardDelta: (n: number) => `+${num(n, "en")} vs last week`,
+  // The two numbers being subtracted — the breakdown below a delta summed to
+  // the total, not to the delta (D-275)
+  peopleBoardVsLast: (now: number, prev: number) =>
+    `${num(now, "en")} this week · ${num(prev, "en")} last week`,
   peopleBoardTopReview: "Most liked comments",
   peopleBoardLikes: (n: number) => (n === 1 ? "1 like" : `${num(n, "en")} likes`),
   // peopleBoardWatching / peopleBoardAdded deleted with their section (D-270)
