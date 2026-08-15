@@ -224,6 +224,10 @@ export function ThreadReplies({
    */
   function node(r: ThreadReply, depth: number) {
     const kid = nested ? (kids.get(r.replyId) ?? []) : [];
+    /* **الافتراضُ: مفتوحٌ إن كان فيه ردُّك** (D-284/D-251) — **وقلبُ
+       القارئ يغلب الافتراضَ في الاتّجاهين** (D-287). */
+    const autoOpen = kid.some((c) => c.isMine);
+    const kidsOpen = toggled.has(r.replyId) ? !autoOpen : autoOpen;
     return (
       <div
         key={r.replyId}
@@ -235,6 +239,34 @@ export function ThreadReplies({
       >
         <ReplyItem
           reply={r}
+          /* 🆕 **وسهمُ الطيّ يركب صفَّ الأفعال** (D-288): كان سطراً
+             مستقلّاً بإزاحة ٥٢px تحت الرسالة — **سطرٌ كاملٌ لأربع
+             كلمات** — وطلب أحمد ضمَّه إلى صفّ العلامات. */
+          fold={
+            kid.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => {
+                  tap(6);
+                  setToggled((s2) => {
+                    const n = new Set(s2);
+                    if (n.has(r.replyId)) n.delete(r.replyId);
+                    else n.add(r.replyId);
+                    return n;
+                  });
+                }}
+                aria-expanded={kidsOpen}
+                className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[12px] font-bold text-muted hover:text-accent transition"
+              >
+                <Icon
+                  name="chevron-down"
+                  size={14}
+                  className={`shrink-0 transition-transform ${kidsOpen ? "rotate-180" : ""}`}
+                />
+                {kidsOpen ? t.talkHideReplies : t.talkShowReplies(countUnder(r.replyId))}
+              </button>
+            ) : null
+          }
           /* **و«ردّاً على فلان» للمسطَّح وحده**: في الشجرة الأبُ فوقها
              بعينه — **وسطرٌ يقول ما تراه العينُ يأكل سطراً بلا معنى.** */
           replyingToName={!nested && r.parentId ? (nameOf.get(r.parentId) ?? null) : null}
@@ -262,42 +294,7 @@ export function ThreadReplies({
             />
           </div>
         )}
-        {kid.length > 0 &&
-          (() => {
-            /* **الافتراضُ: مفتوحٌ إن كان فيه ردُّك** — ثم قلبُ القارئ
-               يغلب الافتراض في الاتّجاهين (D-287). */
-            const auto = kid.some((c) => c.isMine);
-            const isOpen = toggled.has(r.replyId) ? !auto : auto;
-            return (
-              <>
-                {/* **الزرُّ في مكانه فتحاً وطيّاً** — **وأداةٌ تنتقل عند
-                    الضغط تُفقِد القارئَ مكانَه** (D-224/D-258). والسهمُ
-                    يدور ولا يُستبدل برمزٍ ثانٍ (D-260). */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    tap(6);
-                    setToggled((s2) => {
-                      const n = new Set(s2);
-                      if (n.has(r.replyId)) n.delete(r.replyId);
-                      else n.add(r.replyId);
-                      return n;
-                    });
-                  }}
-                  aria-expanded={isOpen}
-                  className="mb-3 ms-[52px] inline-flex items-center gap-1.5 text-[12px] font-bold text-muted hover:text-accent transition"
-                >
-                  <Icon
-                    name="chevron-down"
-                    size={14}
-                    className={`shrink-0 transition-transform ${isOpen ? "rotate-180" : ""}`}
-                  />
-                  {isOpen ? t.talkHideReplies : t.talkShowReplies(countUnder(r.replyId))}
-                </button>
-                {isOpen && kid.map((c) => node(c, depth + 1))}
-              </>
-            );
-          })()}
+        {kidsOpen && kid.map((c) => node(c, depth + 1))}
       </div>
     );
   }

@@ -74,6 +74,7 @@ export function ReplyItem({
   signedIn,
   canReply,
   replyCount = 0,
+  fold,
   onReply,
   onDelete,
   onReport,
@@ -95,6 +96,12 @@ export function ReplyItem({
    * **والصفر يُخفى** (D-222) — «٠ ردّاً» ضجيجٌ لا خبر.
    */
   replyCount?: number;
+  /**
+   * 🆕 **سهمُ طيّ الفرع — وسيطٌ لا مبنيٌّ هنا** (D-288). **الفرعُ يخصّ
+   * `ThreadReplies` وحدَها** (هي التي تعرف الأبناءَ وتحسب عددَهم)،
+   * **والمكانُ يخصّ هذا الصفّ** — **فيُمرَّر العنصرُ ولا تُنقل الحالة.**
+   */
+  fold?: React.ReactNode;
   onReply: () => void;
   onDelete: () => void;
   onReport: () => void;
@@ -242,20 +249,30 @@ export function ReplyItem({
           </p>
         )}
 
-        {!pending && signedIn && canReply && (
-          <div className="mt-1.5 -mx-0.5">
-            <button
-              type="button"
-              onClick={onReply}
-              aria-label={t.talkReply}
-              title={t.talkReply}
-              className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[12px] text-muted hover:text-accent transition"
-            >
-              <Icon name="comment" size={15} />
-              {replyCount > 0 && (
-                <span className="tabular-nums">{num(replyCount, locale)}</span>
-              )}
-            </button>
+        {/* 🆕 **صفُّ أفعالٍ واحد** (D-288، طلبُ أحمد: «هذي العبارة لا
+            تخلّيها في سطر لها، حطّها مع نفس سطر علامة اللايك والتعليق —
+            ضروري نستغلّ المساحات»). **وسهمُ الطيّ فعلٌ على هذه الرسالة
+            كعلامة الردّ** — فيسكن صفَّها لا سطراً تحته.
+            ⚠️ **والشرطُ صار شرطين لا واحداً**: زرُّ الردّ يشترط دخولاً
+            وسماحاً، **والطيُّ لا يشترط شيئاً** — **فزائرٌ لا يستطيع
+            الردَّ كان سيفقد سهمَ الطيّ لو بقي الشرطُ واحداً.** */}
+        {!pending && ((signedIn && canReply) || fold) && (
+          <div className="mt-1.5 -mx-0.5 flex items-center gap-1">
+            {signedIn && canReply && (
+              <button
+                type="button"
+                onClick={onReply}
+                aria-label={t.talkReply}
+                title={t.talkReply}
+                className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[12px] text-muted hover:text-accent transition"
+              >
+                <Icon name="comment" size={15} />
+                {replyCount > 0 && (
+                  <span className="tabular-nums">{num(replyCount, locale)}</span>
+                )}
+              </button>
+            )}
+            {fold}
           </div>
         )}
       </div>
