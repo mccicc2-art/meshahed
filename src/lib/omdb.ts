@@ -23,6 +23,32 @@ export interface ExternalRatings {
   rt: string | null;
   /** عدد أصوات IMDb — يأتي في نفس الردّ، وكنّا نرميه (D-132) */
   votes: number | null;
+  /**
+   * 🆕 **التصنيفُ العمريّ** — «TV-MA» · «PG-13» · «R» (D-286، طلبُ أحمد:
+   * «التصنيف العمري حطها في كل صفحات المسلسلات والأفلام»).
+   *
+   * **ولماذا من OMDb لا من TMDB:** TMDB تعطيه في `content_ratings`
+   * للمسلسل و`release_dates` للفيلم — **نداءان بمسارين مختلفين لسؤالٍ
+   * واحد** — **ونحن ننادي OMDb أصلاً في هذه الترويسة بعينها** والردُّ
+   * مخبّأٌ يوماً كاملاً. **وسؤالان عن سطرٍ واحد نداءٌ واحد** (D-198)،
+   * **والحقلُ كان يصلنا ونرميه** (سيرةُ `votes` في D-132 حرفاً).
+   *
+   * ⚠️ **وحدُّه يُقال:** OMDb تعطي التصنيفَ الأمريكيَّ وحدَه. **وهو ما
+   * يعرفه القارئُ فعلاً** (TV-MA كما يراه على نتفلكس)، **ولا تملك TMDB
+   * تصنيفاً سعوديّاً أصلاً** — فالبديلُ ليس أدقَّ، هو أغلى فقط.
+   *
+   * **و«N/A» و«Not Rated» و«Unrated» تقول «لا نعرف» فتُردّ `null`** —
+   * **والغيابُ أصدق من البديل** (D-063).
+   */
+  rated: string | null;
+}
+
+/** ما تقوله OMDb حين لا تصنيفَ عندها — **يُقرأ غياباً لا قيمة** */
+const NO_RATING_WORDS = new Set(["n/a", "not rated", "unrated", "none", ""]);
+
+function cleanRated(raw: string | undefined): string | null {
+  const v = (raw ?? "").trim();
+  return NO_RATING_WORDS.has(v.toLowerCase()) ? null : v;
 }
 
 /**
@@ -33,7 +59,7 @@ export interface ExternalRatings {
  * صار مهمّاً في D-172: **لا يُعرض بديل TMDB إلا لمن تأكّدنا أن لا تقييم
  * IMDb له** — وشرطُ أحمد كان هذا حرفياً.
  */
-export const NO_IMDB_RATING: ExternalRatings = { imdb: null, rt: null, votes: null };
+export const NO_IMDB_RATING: ExternalRatings = { imdb: null, rt: null, votes: null, rated: null };
 
 export async function externalRatings(imdbId: string | null | undefined): Promise<ExternalRatings | null> {
   const key = process.env.OMDB_API_KEY;
@@ -48,6 +74,7 @@ export async function externalRatings(imdbId: string | null | undefined): Promis
       Response?: string;
       imdbRating?: string;
       imdbVotes?: string;
+      Rated?: string;
       Ratings?: { Source: string; Value: string }[];
     };
     if (j.Response === "False") return null;
@@ -56,10 +83,13 @@ export async function externalRatings(imdbId: string | null | undefined): Promis
     // «2,343,110» — الفواصل تُنزع قبل التحويل
     const vRaw = Number((j.imdbVotes ?? "").replace(/[^\d]/g, ""));
     const votes = Number.isFinite(vRaw) && vRaw > 0 ? vRaw : null;
+    const rated = cleanRated(j.Rated);
     /* لا يُردّ `null` هنا بعد اليوم (D-172): الردّ وصل وقُرئ، فغيابُ
-       الرقم **خبرٌ لا فشل**. و`null` صارت تعني «لم نصل» وحدها. */
-    if (!imdb && !rt) return NO_IMDB_RATING;
-    return { imdb, rt, votes };
+       الرقم **خبرٌ لا فشل**. و`null` صارت تعني «لم نصل» وحدها.
+       ⚠️ **والتصنيفُ يُحمل معه** (D-286): عملٌ بلا تقييم IMDb قد يكون
+       له تصنيفٌ عمريّ، **وردُّ `NO_IMDB_RATING` عارياً كان يرميه.** */
+    if (!imdb && !rt) return { ...NO_IMDB_RATING, rated };
+    return { imdb, rt, votes, rated };
   } catch {
     return null;
   }

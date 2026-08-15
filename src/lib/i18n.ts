@@ -338,6 +338,9 @@ const ar = {
   deleteRating: "حذف تقييمي",
   myRating: "تقييمي",
   communityRating: "تقييم المستخدمين",
+  /* 🆕 **اسمُ التصنيف العمريّ — لقارئ الشاشة وحدَه** (D-286): الشارةُ
+     «TV-MA» عُرفٌ يُقرأ بلا كلمة (D-177)، **والمعنى في `aria-label`.** */
+  ageRating: "التصنيف العمري",
   communityCount: (n: number) => `${n} تقييم`,
   reviewsTitle: "آراء المستخدمين",
   noReviews: "لا توجد آراء مكتوبة بعد — كن أول من يكتب.",
@@ -858,6 +861,10 @@ const ar = {
      إشارة**، وصيغةُ الجمع جزءٌ من الصدق (D-015: جمعُ القِلّة ٣–١٠). */
   talkShowReplies: (n: number) =>
     n === 1 ? "عرض ردّ واحد" : n === 2 ? "عرض ردَّين" : n <= 10 ? `عرض ${num(n, "ar")} ردود` : `عرض ${num(n, "ar")} ردّاً`,
+  /* 🆕 **والطيُّ يعود من حيث فُتح** (D-287، سؤالُ أحمد: «بعد ما فتحتها
+     وين الزرُّ الي قفلها؟»). **زرٌّ يفتح ولا يُغلق ليس مفتاحاً، هو بابٌ
+     بلا مقبضٍ من الداخل** — **و«تراجَع بعد» لا «أكِّد قبل»** (D-047). */
+  talkHideReplies: "إخفاء الردود",
   talkReply: "ردّ",
   /* **«تعليق» في ذيل خطّ النشاط** (D-224، طلبُ أحمد: «ريبلي غيّرها كومنت»).
      **وهي غيرُ `talkReply` عمداً وإن تجاورتا:** داخل الغرفة أنت **تردّ على
@@ -1755,6 +1762,7 @@ const en: Dict = {
   deleteRating: "Delete my rating",
   myRating: "My rating",
   communityRating: "Community rating",
+  ageRating: "Age rating",
   communityCount: (n: number) => `${n} ratings`,
   reviewsTitle: "What people say",
   noReviews: "No written reviews yet — be the first.",
@@ -2078,6 +2086,7 @@ const en: Dict = {
       ? "One person's rating among those talking"
       : `Average of ${num(n, "en")} people talking about it`,
   talkShowReplies: (n: number) => (n === 1 ? "Show 1 reply" : `Show ${num(n, "en")} replies`),
+  talkHideReplies: "Hide replies",
   talkReply: "Reply",
   actionComment: "Comment",
   replySentToast: "Reply sent",
