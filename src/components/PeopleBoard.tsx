@@ -282,9 +282,12 @@ export function PeopleLeaderboard({
       icon={icon}
       tone={tone}
       title={title}
-      /* **والسطرُ للمميّزين وحدهم**: عنوانُهما هو الوحيدُ الذي لا يقول
-         نافذتَه — انظر `note` في `BoardSection` (D-270). */
-      note={mode === "featured" ? t.peopleBoardFeaturedNote : undefined}
+      /* ⚖️ **وسقط سطرُ «آخر ٩٠ يوماً»** (D-283، طلبُ أحمد: «احذف هذي
+         العبارة»). **وخانةُ `note` باقيةٌ في `BoardSection`** لمن
+         يحتاجها لاحقاً — **الحذفُ للنصّ لا للأداة.**
+         ⚠️ **والثمنُ يُقال:** كُتب السطرُ في D-270 لأن «مميّزون» تُقرأ
+         «اخترناهم بأيدينا» وهم محسوبون. **وأحمد رآه ثم حكم** — وحكمٌ
+         بعد رؤيةٍ غيرُ حكمٍ عن غياب (D-270). */
       seeAllHref={seeAllHref}
       seeAllLabel={t.seeAll}
     >
@@ -397,8 +400,34 @@ export function TopReviews({
             row.mediaType === "tv" ? `/show/${row.tmdbId}` : `/movie/${row.tmdbId}`;
           return (
             <li key={`${row.id}-${row.mediaType}-${row.tmdbId}`}>
-              <article className="flex gap-3 p-3.5 rounded-2xl bg-surface border border-border">
-                <div className="min-w-0 flex-1 flex flex-col">
+              <article className="relative overflow-hidden flex gap-3 p-3.5 rounded-2xl bg-surface border border-border">
+                {/* ============ غلافُ العمل خلف البطاقة (D-283) ============
+                    **طلبُ أحمد: «حط الخلفية غلاف الفلم على أفضل الردود،
+                    يستاهلون».** **ووصفةُ `WorksTalk` نفسُها حرفاً**
+                    (D-145: وصفةٌ تُنسخ ناقصةً عطلٌ لا أسلوب): صورةٌ
+                    بـ`opacity-[0.40]` ثم طبقةٌ من لون السطح إلى الشفّاف
+                    **باتّجاه البداية حيث يُقرأ النصّ**.
+                    ⚠️ **والمصدرُ هو الملصقُ لا الغلافُ العريض**:
+                    `ratings` لا تحمل `backdrop_path`، **وإضافتُه تغيّرُ
+                    أعمدةِ الدالّة أي `drop`** — وهو خارج الإذن. **فالملصقُ
+                    ممدودٌ بـ`object-cover`**، ويبقى الغلافُ الحقيقيّ
+                    دَيناً مكتوباً. */}
+                {poster && (
+                  <>
+                    <Image
+                      src={poster}
+                      alt=""
+                      fill
+                      sizes="680px"
+                      className="object-cover opacity-[0.40] pointer-events-none"
+                    />
+                    <span
+                      aria-hidden
+                      className="absolute inset-0 pointer-events-none bg-gradient-to-r rtl:bg-gradient-to-l from-[color:var(--surface)] via-[color:var(--surface)]/70 via-[55%] to-transparent"
+                    />
+                  </>
+                )}
+                <div className="relative min-w-0 flex-1 flex flex-col">
                   {/* **الترويسةُ ترويسةُ صفّ «النشاط» حرفاً** (D-272، طلبُ
                       أحمد: «خلي تنسيقه مثل الرفيو في اكتيفتي عشان
                       التناسق»): **وجهٌ ٤٤ · اسمٌ ثم عمرٌ مختصرٌ في الطرف ·
