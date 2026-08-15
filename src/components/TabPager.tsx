@@ -51,8 +51,24 @@ const COMMIT = 0.28;
 const FLING = 0.45;
 /** شدُّ المطاط عند الطرف الذي لا تبويبَ بعده */
 const RUBBER = 0.28;
-/** زمنُ الاستقرار */
-const SNAP_MS = 260;
+/**
+ * **أزمنةُ الاستقرار ومنحناها** (D-279، طلبُ أحمد: «التمرير سريع، احتاج
+ * يكون مرن وانسيابي مثل تويتر، بطيء شوي»).
+ *
+ * **وكان `260ms` بمنحنى `(.22,.61,.36,1)`** — وهو تباطؤٌ لطيفٌ **لكنّه
+ * يبدأ سريعاً**، فتُقرأ الحركةُ قفزةً لا انزلاقاً.
+ *
+ * **والمنحنى الجديد `(.32,.72,0,1)` ينتهي بصفرِ ميلٍ تماماً** — **فآخرُ
+ * البكسلات تزحف** وهو ما يصنع إحساسَ «الرزانة» في iOS وتويتر. **والزمنُ
+ * أطول، والرجوعُ أقصرُ من الذهاب**: العودةُ إلغاءٌ يريده القارئُ سريعاً،
+ * **والذهابُ رحلةٌ تُشاهَد** — وطولُها يملأ زمنَ رسم الصفحة الجديدة على
+ * الخادم بدل أن يقف الشيءُ ساكناً (D-250).
+ */
+const EASE = "cubic-bezier(.32,.72,0,1)";
+/** الرجوعُ بعد سحبٍ لم يبلغ الحدّ */
+const SNAP_MS = 320;
+/** والذهابُ حين يبلغه */
+const FLY_MS = 420;
 
 /** هل بدأت اللمسةُ داخل شيءٍ يمرّر أفقيّاً؟ (D-274) */
 function insideXScroller(node: Element | null): boolean {
@@ -145,7 +161,7 @@ export function TabPager({
     };
 
     const setX = (dx: number, ms = 0) => {
-      track.style.transition = ms ? `transform ${ms}ms cubic-bezier(.22,.61,.36,1)` : "none";
+      track.style.transition = ms ? `transform ${ms}ms ${EASE}` : "none";
       track.style.transform = `translate3d(${dx}px,0,0)`;
     };
 
@@ -250,9 +266,10 @@ export function TabPager({
         (Math.abs(dx) > w * COMMIT || (Math.abs(v) > FLING && Math.sign(v) === Math.sign(dx)));
 
       if (!go) {
-        setX(0, reduced ? 0 : SNAP_MS);
-        publish(0);
-        window.setTimeout(disarm, reduced ? 0 : SNAP_MS);
+        const ms = reduced ? 0 : SNAP_MS;
+        setX(0, ms);
+        publish(0, ms);
+        window.setTimeout(disarm, ms);
         return;
       }
 
@@ -260,8 +277,9 @@ export function TabPager({
       /* **تُكمل الرحلةَ ثم تُفتح** — والصفحةُ الجديدة تُرسم على الخادم،
          **فالإكمالُ يملأ زمنَ الرحلة بدل أن يقف الشيءُ ساكناً** (D-250:
          الانتظارُ حدثٌ لا مؤقّت — وهنا الحدثُ نهايةُ الحركة). */
-      setX(Math.sign(dx) * w, reduced ? 0 : SNAP_MS);
-      publish(Math.sign(sign * dx));
+      const ms = reduced ? 0 : FLY_MS;
+      setX(Math.sign(dx) * w, ms);
+      publish(Math.sign(sign * dx), ms);
       router.push(href);
       /* ⚠️ **وحارسٌ إن لم تصل** (D-278): الطبيعيُّ أن يتبدّل `index`
          فيُصفّر التأثيرُ كلَّ شيء عند إعادة تركيبه. **لكنّ نداءً يفشل أو
@@ -271,7 +289,7 @@ export function TabPager({
       window.clearTimeout(guard.current);
       guard.current = window.setTimeout(() => {
         setX(0, SNAP_MS);
-        publish(0);
+        publish(0, SNAP_MS);
         window.setTimeout(disarm, SNAP_MS);
       }, 1200);
     };
@@ -288,7 +306,7 @@ export function TabPager({
       releaseGesture("x");
       if (drag.current?.lock === "x") {
         setX(0, SNAP_MS);
-        publish(0);
+        publish(0, SNAP_MS);
         window.setTimeout(disarm, SNAP_MS);
       }
       drag.current = null;
