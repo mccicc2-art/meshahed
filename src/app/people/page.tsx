@@ -6,6 +6,8 @@ import {
   getLoopzNews,
   getNewsGenStale,
   refreshLoopzNews,
+  getTalkBulletinStale,
+  refreshTalkBulletins,
   getCommunityFeed,
   getMyCommunities,
   getMyCommunityInvites,
@@ -257,6 +259,15 @@ export default async function PeoplePage({
      دقائق يُطلقها، ومن بعده يجدها غيرَ مستحقّة. */
   if (tab === "activity" && (await getNewsGenStale(10))) {
     after(() => refreshLoopzNews());
+  }
+
+  /* **ونشرةُ الغرفة على البوّابة نفسِها** (D-261) — **وفي التبويبين معاً
+     لا في «نقاش» وحده**: الغرفةُ التي يفتحها Loopz لا توجد بعد،
+     **وبوّابةٌ لا تُطرق إلا من التبويب الذي تملؤه هي حلقةٌ لا تبدأ.**
+     **والثمنُ نداءُ بوّابةٍ واحدٌ** يُرجع منطقياً، والدورةُ كلُّها
+     `after` فلا ينتظرها قارئ (D-215). */
+  if (await getTalkBulletinStale(180)) {
+    after(() => refreshTalkBulletins());
   }
 
   /* **حالةُ «+ للمشاهدة» الابتدائية** (D-205/D-223): **نداءٌ واحدٌ
