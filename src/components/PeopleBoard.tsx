@@ -6,6 +6,7 @@ import { timeAgoShort } from "@/lib/when";
 import { dirOf } from "@/lib/dir";
 import type { PeopleLeaderRow, PeopleTopReviewRow } from "@/lib/data";
 import { PersonName } from "./PersonRow";
+import { FollowUserButton } from "./FollowUserButton";
 import { Icon, type IconName } from "./Icon";
 
 /**
@@ -213,12 +214,25 @@ export function PeopleLeaderboard({
   mode,
   limit = 3,
   seeAllHref,
+  meId,
+  following,
 }: {
   rows: PeopleLeaderRow[];
   locale: Locale;
   mode: "top" | "rising" | "featured";
   limit?: number;
   seeAllHref?: string;
+  /**
+   * 🆕 **هويّتي — فلا يُعرض عليَّ أن أتابع نفسي** (D-275).
+   */
+  meId?: string;
+  /**
+   * 🆕 **من أتابعهم** (D-275) — **والحالةُ الابتدائية تأتي من الخادم**:
+   * القسمُ يعرض الناسَ كلَّهم لا الغرباءَ وحدهم، **و«متابعة» تحت اسمِ من
+   * تتابعه كذبةٌ يراها صاحبُها في الحال** (D-216).
+   * **ونداءٌ واحدٌ مخزَّنٌ للصفحة** لا سؤالٌ من كل بطاقة (D-205/D-223).
+   */
+  following?: Set<string>;
 }) {
   const t = getDict(locale);
 
@@ -288,13 +302,38 @@ export function PeopleLeaderboard({
                       ? t.peopleBoardDelta(p.total - p.prevTotal)
                       : t.peopleBoardActions(p.total)}
                   </span>
-                  {/* **مكوّناتُ الرقم تحته** — وهي سببُ بقاء العدد صريحاً */}
+                  {/* **مكوّناتُ الرقم تحته** — وهي سببُ بقاء العدد صريحاً.
+                      ⚠️ **وفي «الصاعدين» الرقمان اللذان يُطرحان لا
+                      المكوّنات** (D-275): المكوّناتُ تجمع `total` **والعنوانُ
+                      فرقٌ**، فكانت تكذب كلَّ أسبوعٍ يكون فيه رصيدٌ سابق —
+                      **وتصادفت مع الحقّ ما دام `prev = 0`.** */}
                   <span className="block mt-0.5 text-[10px] opacity-80">
-                    {t.peopleBoardBreakdown(p.posts, p.reviews, p.likesIn)}
+                    {mode === "rising"
+                      ? t.peopleBoardVsLast(p.total, p.prevTotal)
+                      : t.peopleBoardBreakdown(p.posts, p.reviews, p.likesIn)}
                   </span>
                 </>
               }
             />
+
+            {/* **وفعلٌ تحت الوجه، لا وجهٌ وحدَه** (D-275): بحذف قسم
+                الاقتراحات (D-270) ذهب معه **الفعلُ الوحيد في التبويب** —
+                فصارت الصفحةُ تعرض أشخاصاً **ولا تعطي القارئَ شيئاً يفعله
+                بهم** إلا أن يفتح ملفّاً ويعود. **وسطحُ اكتشافٍ بلا فعلٍ
+                معرضٌ لا اكتشاف.**
+                **والزرُّ هو الزرُّ نفسُه بحاويته نفسِها** التي كُتبت في
+                D-264 — **دفعةُ تركيبٍ لا بناء** (D-266).
+                ⚠️ **ولا يُعرض على صاحبه**: «تابع نفسك» عبثٌ، والخانةُ
+                تسقط كلُّها فلا تبقى فجوةٌ تحت وجهٍ واحد. */}
+            {meId && p.id !== meId && (
+              <div className="w-full flex justify-center">
+                <FollowUserButton
+                  targetId={p.id}
+                  locale={locale}
+                  initialFollowing={following?.has(p.id) ?? false}
+                />
+              </div>
+            )}
           </PersonCard>
         ))}
       </CardGrid>
