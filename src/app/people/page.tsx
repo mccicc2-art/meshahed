@@ -36,6 +36,7 @@ import { CommunityTools } from "@/components/CommunityTools";
 import { TitleNews } from "@/components/TitleNews";
 import { getTitleNews } from "@/lib/titleNews";
 import { ScrollMemory } from "@/components/ScrollMemory";
+import { TabSwipe } from "@/components/TabSwipe";
 
 
 /**
@@ -420,6 +421,15 @@ export default async function PeoplePage({
      واقفٌ فيه يبقى يراه حتى يغادره، وإلا اختفت الصفحة تحت قدميه. */
   const visibleTabs = applyTabPrefs(tabs, tabPrefs, tab);
 
+  /* **والسحبُ الأفقيُّ يتبع الصفَّ الظاهر لا قائمةَ التبويبات كلَّها**
+     (D-274، طلبُ أحمد): من أخفى تبويباً لا يمرّ به سحبُه، **والإيماءةُ
+     تعد بما يراه لا بما في الشيفرة.**
+     ⚠️ **و`-1` تعني «لا سحبَ هنا»**: `?tab=all` و`?tab=news` سطحان
+     يُفتحان بالرابط بلا شريحة (D-219)، **وسحبٌ منهما كان سيقفز بالقارئ
+     إلى مكانٍ لم يدخل منه.** */
+  const swipeHrefs = visibleTabs.map((x) => x.href).filter((h): h is string => !!h);
+  const swipeIndex = visibleTabs.findIndex((x) => x.key === tab);
+
   /**
    * **رقاقاتُ الفرز داخل الرأس اللاصق لا تحته** (D-245، بلاغُ أحمد
    * بلقطتين: «ليه هيدر الصفحة ما يكون ثابت مثل تويتر» و«في مساحة كبيرة
@@ -472,6 +482,8 @@ export default async function PeoplePage({
     <div className="space-y-5">
       {/* ذاكرة موضع التمرير — العائد من ملف صديقٍ يهبط حيث كان (تدقيق 8 Aug م٢) */}
       <ScrollMemory />
+      {/* **إيماءةٌ صامتة تعيد `null`** — انظر `TabSwipe` (D-274) */}
+      <TabSwipe hrefs={swipeHrefs} index={swipeIndex} rtl={locale !== "en"} />
       {/* العنوان مخفيٌّ بصريّاً وباقٍ لقارئ الشاشة — أُزيلت كلمة «المجتمع»
           المرئية، وانتقل عدّادا المتابعة وزرّ الإضافة إلى صفّ الترتيب أسفل
           التبويبات (طلب المالك) */}
