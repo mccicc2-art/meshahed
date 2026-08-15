@@ -57,9 +57,12 @@ export function WorksTalk({ rooms, locale }: { rooms: TalkRoom[]; locale: Locale
       {rooms.map((r) => {
         const key = `${r.mediaType}-${r.tmdbId}`;
         const poster = posterUrl(r.posterPath, "w185");
-        /* **والغلافُ صغيرٌ عمداً** (`w300`): هو خلفيّةٌ بـ١٤٪ خلف نصّ،
-           **وتحميلُ `w780` لطبقةٍ لا تكاد تُرى دفعُ ثمنٍ بلا مقابل** */
-        const backdrop = backdropUrl(r.backdropPath, "w300");
+        /* ⚠️ **والمقاسُ تبع الظهور** (بلاغُ أحمد: «الغلاف ماهو واضح»):
+           كان `w300` **لأن الطبقة كانت ١٤٪ فلا تكاد تُرى** — ومنطقُ ذلك
+           سليمٌ لتلك الشفافية. **ولمّا صارت ٤٠٪ صار `w300` ممدوداً على
+           ٦٨٠px يُقرأ ضبابياً**، فالحجّةُ التي اشترت الصغَر ماتت بموت
+           سببها (D-250). */
+        const backdrop = backdropUrl(r.backdropPath, "w780");
         const title = r.title?.trim() || t.talkFallbackTitle;
 
         return (
@@ -76,15 +79,22 @@ export function WorksTalk({ rooms, locale }: { rooms: TalkRoom[]; locale: Locale
                   alt=""
                   fill
                   sizes="680px"
-                  className="object-cover opacity-[0.14] pointer-events-none"
+                  className="object-cover opacity-[0.40] pointer-events-none"
                 />
                 {/* **طبقةٌ من لون السطح إلى الشفّاف باتّجاه البداية**:
                     النصُّ والملصقُ كلاهما في البداية، **فالحمايةُ حيث
-                    يُقرأ لا على البطاقة كلِّها** — وغطاءٌ كاملٌ يقتل
-                    الغلافَ الذي طلبَه أحمد. */}
+                    يُقرأ لا على البطاقة كلِّها**.
+                    ⚠️ **وهنا كان نصفُ العطل** (بلاغُ أحمد): الوسَطُ كان
+                    `‎/85` **بلا موضعٍ محدَّد، فيمتدّ الغطاءُ الكثيفُ إلى
+                    نحو ٨٥٪ من العرض** — فيجتمع على الغلاف خفوتان:
+                    شفافيّتُه، والغطاءُ فوقه. **وطبقتان تخفتان معاً حاصلُهما
+                    الغياب.**
+                    **والآن الكثافةُ تنتهي عند ٥٥٪** (`via-[55%]`) بقيمةٍ
+                    أخفّ (`‎/70`)، **فالنصفُ الأوّل محميٌّ كما كان والنصفُ
+                    الثاني يُرى فيه العمل** — وهو ما طلبه أحمد أصلاً. */}
                 <span
                   aria-hidden
-                  className="absolute inset-0 pointer-events-none bg-gradient-to-l rtl:bg-gradient-to-r from-[color:var(--surface)] via-[color:var(--surface)]/85 to-transparent"
+                  className="absolute inset-0 pointer-events-none bg-gradient-to-l rtl:bg-gradient-to-r from-[color:var(--surface)] via-[color:var(--surface)]/70 via-[55%] to-transparent"
                 />
               </>
             )}
