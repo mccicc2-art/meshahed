@@ -3,6 +3,9 @@
 import { useEffect, useRef } from "react";
 import { onTabDrag } from "@/lib/tabDrag";
 
+/** **منحنى الاستقرار** — واحدٌ للشريط واللوحة (D-279) */
+const EASE = "cubic-bezier(.32,.72,0,1)";
+
 /**
  * **الشريطُ الأصفر يمشي مع اللوحة** (D-276، طلبُ أحمد: «حتى الشريط اللي
  * تحت الاسم يمشي معك»).
@@ -43,7 +46,12 @@ export function TabUnderline({ index }: { index: number }) {
       draw(0);
     };
 
-    const draw = (p: number) => {
+    const draw = (p: number, ms = 0) => {
+      /* **المنحنى منحنى اللوحة حرفاً** (D-279) — والقيمةُ صفرٌ تحت
+         الإصبع فيتبعه بلا تأخير */
+      el.style.transition = ms
+        ? `transform ${ms}ms ${EASE}, width ${ms}ms ${EASE}`
+        : "none";
       const from = rects[index];
       if (!from) return;
       /* **الجارُ في الاتّجاه المقصود، وإلا فالمختارُ نفسُه** — فلا يتمطّط
