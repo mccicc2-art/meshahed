@@ -227,8 +227,10 @@ export function ThreadReplies({
                  عمودٌ على `title_posts` — **فلا يظهر على خيط رأيٍ ولا
                  نشرة**، وزرٌّ يُضغط بلا أثرٍ أسوأُ من زرٍّ غائب. */
               allowSpoiler={nested}
+              /* **والصورةُ حيث تُخزَّن وحدَها** — `title_posts.data` (D-298) */
+              allowImage={nested}
               onCancel={() => setOpen(null)}
-              onSend={(b, sp) => send(b, null, sp)}
+              onSend={(b, sp, img) => send(b, null, sp, img)}
             />
           ) : (
             <button
@@ -339,8 +341,10 @@ export function ThreadReplies({
               locale={locale}
               hint={t.talkReplyingTo(nameOf.get(r.replyId) ?? "")}
               allowSpoiler={nested}
+              /* **والصورةُ حيث تُخزَّن وحدَها** — النقاشُ اليوم (D-298) */
+              allowImage={nested}
               onCancel={() => setOpen(null)}
-              onSend={(b, sp) => send(b, r.replyId, sp)}
+              onSend={(b, sp, img) => send(b, r.replyId, sp, img)}
             />
           </div>
         )}
@@ -356,7 +360,16 @@ export function ThreadReplies({
   }
 
   /** إرسالٌ تفاؤليّ — ثم مصالحةٌ بالمعرّف الحقيقيّ (D-241) */
-  function send(body: string, parentId: string | null, hasSpoiler = false) {
+  /**
+   * 🆕 **والصورةُ تسافر مع المتن** (D-298) — **لا حالةٌ ثانيةٌ هنا تفترق
+   * عنه** (نفسُ حجّة `hasSpoiler` في D-271).
+   */
+  function send(
+    body: string,
+    parentId: string | null,
+    hasSpoiler = false,
+    imageUrl?: string | null,
+  ) {
     const temp = `${TEMP}${parentId ?? ""}:${body.length}:${all.length}`;
     setAdded((a) => [
       ...a,
@@ -375,6 +388,10 @@ export function ThreadReplies({
            يرى سطرَه محجوباً فوراً — **ولو ظهر مكشوفاً ثم انحجب بعد
            المصالحة لظنَّ أن الزرّ لم يعمل.** */
         hasSpoiler,
+        /* **والنسخةُ التفاؤليّة تحمل الصورةَ أيضاً** (D-241): من رفع
+           صورةً ثم لم يرها في الحال ظنَّ الرفعَ سقط — **والرابطُ بيدنا
+           أصلاً فلا انتظارَ لمصالحة.** */
+        data: imageUrl ? { img: imageUrl } : null,
       },
     ]);
     setOpen(null);
@@ -397,6 +414,7 @@ export function ThreadReplies({
                   body,
                   parentId,
                   hasSpoiler,
+                  imageUrl,
                   title: target.title,
                   posterPath: target.posterPath,
                   backdropPath: target.backdropPath,

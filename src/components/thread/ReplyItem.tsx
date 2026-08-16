@@ -138,6 +138,19 @@ export function ReplyItem({
   const facts = bulletin ? bulletinFacts(reply.data ?? null, t) : { runtime: null, vote: null };
   const spoilerText = bulletin ? bulletinSpoiler(reply.spoiler ?? null, locale) : null;
 
+  /**
+   * 🆕 **صورةُ المشاركة** (D-298) — **من `data` لا من عمودٍ جديد.**
+   *
+   * **وقارئٌ متسامح** (D-179): الصفوفُ القديمة `data` فيها `null`،
+   * **والنشراتُ `data` فيها موسمٌ وحلقة** — **فالشرطُ نوعُ الحقل نفسِه
+   * لا وجودُه**، **ولا صفَّ ينكسر لأن حمولته ليست ما نتوقّع.**
+   * ⚠️ **ولا تُقرأ لصفِّ نشرة**: `bulletin` حاضرٌ يعني `kind = 'episode'`،
+   * **وحمولتُه موسمٌ وحلقةٌ لا صورة** — **وحقلٌ يُقرأ بمعنى غير معناه هو
+   * كيف يولد العطل** (D-224).
+   */
+  const raw = !bulletin ? (reply.data as Record<string, unknown> | null)?.img : null;
+  const image = typeof raw === "string" && raw.startsWith("https://") ? raw : null;
+
   return (
     /* 🆕 **الصفُّ صار طابقين لا عمودين** (D-296، طلبُ أحمد بلقطةٍ مرجعية:
        «نحتاج نستفيد من المساحة العرضية كاملة… نصغّر الأفاتار بحيث الكلام
@@ -283,7 +296,12 @@ export function ReplyItem({
              لم يكن ثمّة ما يحتاج إذناً أصلاً، كان تفضيلاً قاله مرّة**).
              **والزرُّ يقول «اعرض الحرق» وحدَه.** */
           <div className="mt-1.5">
-            <SpoilerText text={reply.body} locale={locale} />
+            {/* **والصورةُ خلف الحاجب نفسِه** (D-298): **حرقٌ في صورةٍ
+                أسرعُ وصولاً منه في جملة** — **وحاجبٌ يستر النصَّ ويترك
+                صورتَه ليس حاجباً.** */}
+            <SpoilerText text={reply.body} locale={locale}>
+              {image && <PostImage src={image} alt={t.talkImageAlt} />}
+            </SpoilerText>
           </div>
         ) : (
           /* **اتّجاهُ الردّ من الردّ** (D-241) — لا من لغة الواجهة */
@@ -293,6 +311,14 @@ export function ReplyItem({
           >
             {reply.body}
           </p>
+        )}
+
+        {/* **والصورةُ بعد المتن** — **ترتيبُ الكتابة هو ترتيبُ القراءة**:
+            من كتب سطراً ثم أرفق صورةً يتوقّعها تحته. */}
+        {image && !reply.hasSpoiler && (
+          <div className="mt-2">
+            <PostImage src={image} alt={t.talkImageAlt} />
+          </div>
         )}
 
         {/* 🆕 **صفُّ أفعالٍ واحد** (D-288، طلبُ أحمد: «هذي العبارة لا
@@ -347,5 +373,31 @@ export function ReplyItem({
         )}
       </div>
     </article>
+  );
+}
+
+/**
+ * 🆕 **صورةُ مشاركةٍ في الخيط** (D-298).
+ *
+ * **ونسبتُها من الصورة لا منّا**: `width`/`height` صفرٌ مع `w-full h-auto`
+ * **تجعل المتصفّح يحجز مكانَها بنسبتها الحقيقيّة قبل أن تصل** — **فلا
+ * يقفز الكلامُ تحتها حين تُرسم** (D-046: لا شيء يتغيّر حجمه بعد أن
+ * يُرسم). **وسقفٌ لارتفاعها** حتى لا تبتلع صورةٌ طويلةٌ الشاشةَ كلَّها،
+ * **والباقي يُقصّ لا يُشوَّه** (`object-cover`).
+ *
+ * ⚠️ **ورابطٌ يفتحها بحجمها الكامل**: **ما قُصّ يجب أن يكون له بابٌ
+ * يُفتح منه** (D-155/D-063: الغيابُ أصدق من الوهم).
+ */
+function PostImage({ src, alt }: { src: string; alt: string }) {
+  return (
+    <a
+      href={src}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="block relative rounded-xl overflow-hidden border border-border bg-surface-2 max-h-[420px]"
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={src} alt={alt} loading="lazy" className="w-full h-auto object-cover" />
+    </a>
   );
 }
