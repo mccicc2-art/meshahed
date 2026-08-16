@@ -27,7 +27,7 @@ import {
   getPeopleTopReviews,
   getTopSavedLists,
 } from "@/lib/data";
-import { getT, getTabPrefs, getFeedStrangers } from "@/lib/locale";
+import { getT, getTabPrefs, getFeedStrangers, getFeedSort, getTalkFollowedOnly } from "@/lib/locale";
 import { WorksTalk } from "@/components/WorksTalk";
 import {
   PeopleLeaderboard,
@@ -142,6 +142,9 @@ export default async function PeoplePage({
   /* **من يظهر في «النشاط»** (D-255) — كوكي يُقرأ قبل أوّل رسمة، فلا
      يومض صفُّ غريبٍ ثم يختفي */
   const showStrangers = await getFeedStrangers();
+  /* 🆕 **تفضيلا D-306** — كوكيان يُقرآن على الخادم قبل أوّل رسمة */
+  const feedSort = await getFeedSort();
+  const talkFollowedOnly = await getTalkFollowedOnly();
 
   const {
     tab: tabParam,
@@ -426,6 +429,16 @@ export default async function PeoplePage({
     ? new Set((await getFollows()).map((f) => `${f.media_type}-${f.tmdb_id}`))
     : new Set<string>();
 
+  /* 🆕 **«النقاشات»: أعمالي المتابَعة فقط** (D-306، نصُّ أحمد: «إخفاء
+     النقاشات اللي ما يتابعها»). **الترشيحُ على مجموعةٍ مدفوعةٍ أصلاً**
+     (`followed` فوقه — D-194/D-291: نداءٌ قائمٌ يحمل الجواب)، **ويخصّ
+     قائمةَ التبويب وحدَها**: بطاقةُ لوحة الأعضاء ترتيبٌ عامٌّ فلا
+     يرشَّح، **ومفتاحُ الورقة يقول ما يفعله في صفحته لا في غيرها.** */
+  const roomsShown =
+    talkFollowedOnly && user
+      ? rooms.filter((r) => followed.has(`${r.mediaType}-${r.tmdbId}`))
+      : rooms;
+
   /* **إعجاباتُ أخبارِنا** (D-224): `post_reactions` القائم منذ `news.sql`،
      **بنداءٍ واحدٍ للقائمة كلِّها** (`reaction_counts` — دالّة definer
      تعدّ في Postgres ولا تكشف معرّف من تفاعل). ولا يُدفع لخطٍّ بلا أخبار. */
@@ -550,6 +563,7 @@ export default async function PeoplePage({
               /* **مفتاحُ «من يظهر»** (D-255) — يُقرأ من الكوكي على الخادم
                  **وهو الشخصنةُ الباقية وحدَها** بعد D-280. */
               showStrangers={showStrangers}
+              sort={feedSort}
               /* **وجملةُ الفراغ فعلٌ لا اعتذار** (D-181): تقول ماذا تفعل
                  ليمتلئ، **لا «لا يوجد شيء»**.
                  ⚖️ **وعادت `feedEmptyForYou`** (D-283): صار الخطُّ يرشّح
@@ -710,7 +724,7 @@ export default async function PeoplePage({
               {t.talkRoomsEmpty}
             </p>
           ) : (
-            <WorksTalk rooms={rooms} locale={locale} pins={pins ?? undefined} />
+            <WorksTalk rooms={roomsShown} locale={locale} pins={pins ?? undefined} />
         )}
     </section>
   );
@@ -750,7 +764,10 @@ export default async function PeoplePage({
             locale={locale}
             prefs={tabPrefs}
             labels={Object.fromEntries(tabs.map((x) => [x.key, x.label]))}
+            activeTab={tab}
             strangers={showStrangers}
+            feedSort={feedSort}
+            talkFollowedOnly={talkFollowedOnly}
           />
         }
         /* ⚠️ **ولا `extra` هنا** — انظر D-280 أعلاه */
