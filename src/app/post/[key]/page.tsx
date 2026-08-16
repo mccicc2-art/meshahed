@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import {
@@ -9,14 +10,16 @@ import {
   getPostViewCounts,
   getReactions,
 } from "@/lib/data";
+import { getMovie, getTv, posterUrl, backdropUrl } from "@/lib/tmdb";
 import { newsLine, newsSource } from "@/lib/newsLine";
 import { newsViewKey } from "@/lib/postKeys";
 import { getT } from "@/lib/locale";
 import { Avatar } from "@/components/Avatar";
 import { LikeButton } from "@/components/LikeButton";
-import { PosterCard } from "@/components/PosterCard";
 import { ShareTitleButton } from "@/components/ShareTitleButton";
-import { ThreadTopBar, ThreadDateLine, ThreadActionBar } from "@/components/thread/ThreadShell";
+import { TitleHero } from "@/components/TitleHero";
+import { HeroRatings, HeroRatingsSkeleton } from "@/components/HeroRatings";
+import { ThreadDateLine, ThreadActionBar } from "@/components/thread/ThreadShell";
 import { LOOPZ_USERNAME } from "@/lib/loopz";
 import { ThreadReplies } from "@/components/thread/ThreadReplies";
 
@@ -67,21 +70,69 @@ export default async function PostPage({
   /* **ونشرةٌ بلا صيغةٍ تسقط هنا لا في الرسم**: نفسُ حارس `ActivityFeed` */
   if (!line) notFound();
 
-  const [replies, me, views, likes] = await Promise.all([
+  /* 🆕 **وتفاصيلُ العمل معها — للغلاف وحدَه** (D-299).
+     **`getLoopzNews` تحمل الملصقَ ولا تحمل الغلافَ العريض**، **وترويسةٌ
+     غلافيّةٌ بلا غلافٍ سطحٌ رماديّ** (D-034). **والنداءُ مقبولٌ هنا وهو
+     مرفوضٌ في الخطّ**: صفحةٌ واحدةٌ لعملٍ واحد مقابلَ أربعين صفّاً
+     (D-164) — **ونفسُ ما تفعله `/review` حرفاً** (D-145: وصفةٌ واحدة). */
+  const [replies, me, views, likes, details] = await Promise.all([
     getNewsThread(key),
     user ? getMyProfileLite() : Promise.resolve(null),
     getPostViewCounts([newsViewKey(key)]),
     getReactions([post.tmdb_id]),
+    (post.media_type === "tv" ? getTv(post.tmdb_id) : getMovie(post.tmdb_id)).catch(() => null),
   ]);
 
   const src = newsSource(post);
   const titleHref = `/${post.media_type === "tv" ? "show" : "movie"}/${post.tmdb_id}`;
   const likeKey = `${post.media_type}-${post.tmdb_id}`;
 
-  return (
-    <main className="pb-24 px-4 max-w-[680px] mx-auto">
-      <ThreadTopBar title={t.postPageTitle} locale={locale} />
+  const poster = posterUrl(
+    post.poster_path ?? (details as { poster_path?: string | null } | null)?.poster_path ?? null,
+    "w342",
+  );
+  const backdrop = backdropUrl(
+    (details as { backdrop_path?: string | null } | null)?.backdrop_path ?? null,
+    "w780",
+  );
 
+  return (
+    <main className="pb-24">
+      {/**
+       * 🆕 **والنشرةُ لبست ترويسةَ الريفيو** (D-299، طلبُ أحمد: «بوستات
+       * لوبز خلّها شكلها مثل النشرات الثانية»).
+       *
+       * **وكان رأسُها شريطاً نصّيّاً مكتوباً عليه «Post»** — **وهو رأسٌ
+       * يقول نوعَ الصفحة ولا يقول عن أيِّ عملٍ هي**، **بينما جارتُها
+       * `/review` تفتح بغلاف العمل واسمِه وتقييمه.**
+       * **وسطحان يتكلّمان عن عملٍ واحد بترويستين يقولان إنهما شيئان
+       * مختلفان** (D-244: الترويسةُ الغلافيّة مكوّنٌ واحدٌ لسطوحه).
+       *
+       * **✅ وبلا مكوّنٍ جديد**: `TitleHero` هي هي — **والثالثُ لها بعد
+       * `/review` و`/talk`** (D-266).
+       * ⚠️ **ولا `end` فيها**: البابُ الطبيعيُّ من نشرةٍ هو صفحةُ العمل،
+       * **والملصقُ يفتحها أصلاً** — **وبابان إلى غرفةٍ واحدة** (D-297).
+       */}
+      <TitleHero
+        backdrop={backdrop}
+        poster={poster}
+        title={post.title}
+        href={titleHref}
+        mediaType={post.media_type}
+        locale={locale}
+        meta={
+          <Suspense fallback={<HeroRatingsSkeleton compact />}>
+            <HeroRatings
+              compact
+              ageLabel={t.ageRating}
+              imdbId={(details as { imdb_id?: string | null } | null)?.imdb_id ?? null}
+              tvId={post.media_type === "tv" ? post.tmdb_id : undefined}
+            />
+          </Suspense>
+        }
+      />
+
+      <div className="px-4 max-w-[680px] mx-auto">
       {/* ============ النشرةُ نفسُها ============ */}
       <article className="pt-3">
         <div className="flex items-start gap-3">
@@ -104,21 +155,10 @@ export default async function PostPage({
             >
               Loopz
             </Link>
-            <div className="mt-0.5 flex items-center gap-1.5">
-              <Link
-                href={titleHref}
-                prefetch={false}
-                className="min-w-0 truncate text-[13px] text-muted hover:text-accent transition"
-              >
-                <bdi>{post.title}</bdi>
-              </Link>
-              <span aria-hidden className="shrink-0 text-muted text-[12px]">
-                ·
-              </span>
-              <span className="shrink-0 text-[13px] text-muted">
-                {post.media_type === "tv" ? t.typeSeries : t.typeMovie}
-              </span>
-            </div>
+            {/* ⚖️ 🆕 **وسطرُ «الاسم · النوع» سقط** (D-299): **صعد كلُّه إلى
+                الغلاف** — الاسمُ في `h1` والنوعُ في أيقونة الملصق —
+                **وسطرٌ يُعيد ما فوقه بحجمٍ أصغر تكرارٌ لا سياق** (D-224).
+                **والنصُّ لم يتغيّر، تغيّر موضعُه** (D-257/D-286). */}
           </div>
         </div>
 
@@ -144,19 +184,11 @@ export default async function PostPage({
           </p>
         )}
 
-        {/* **الملصقُ بطاقةً عريضةً تحت النصّ** — موضعُ صورةِ المنشور في
-            تويتر. **ولا ضغطةَ مطوَّلة هنا**: الصفحةُ للنقاش، **وقائمةٌ
-            تفتح «للمشاهدة» فوق خيطِ كلامٍ تسرق الانتباهَ من سبب الزيارة.** */}
-        <div className="mt-3 w-[112px]">
-          <PosterCard
-            href={titleHref}
-            title={post.title}
-            posterPath={post.poster_path}
-            posterSize="w185"
-            fallbackIcon={post.media_type === "tv" ? "tv" : "film"}
-            hideTitle
-          />
-        </div>
+        {/* ⚖️ 🆕 **والملصقُ في المتن سقط** (D-299): **صار في الغلاف فوقه
+            بالحجم نفسِه تقريباً وبنفس الوجهة** — **وصورةٌ واحدةٌ مرّتين في
+            شاشةٍ واحدة تُقرأ عطلاً لا تأكيداً** (D-257). **وموضعُ صورةِ
+            المنشور في تويتر يبقى محجوزاً لصورةٍ يرفعها الكاتب** — وهي
+            سطرُ D-298 نفسُه يوم يصل إلى النشرات. */}
       </article>
 
       <ThreadDateLine
@@ -186,6 +218,7 @@ export default async function PostPage({
         locale={locale}
         signedIn={!!user}
       />
+      </div>
     </main>
   );
 }
