@@ -227,6 +227,9 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
           mediaType="movie"
           title={movie.title}
           posterPath={movie.poster_path}
+          /* 🆕 D-313 — غلافُ TMDB لا غلافي المختار: البطاقةُ يراها كلُّ
+             الناس، **وزينتي لا تسافر** (حجّةُ D-131 حرفاً) */
+          backdropPath={movie.backdrop_path}
           locale={locale}
           initialFollowing={followState.following}
           lists={myLists.map((l) => ({ id: l.id, name: l.name }))}
@@ -361,6 +364,7 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
                   movieId={movieId}
                   title={movie.title}
                   posterPath={movie.poster_path}
+                  backdropPath={movie.backdrop_path}
                   locale={locale}
                 />
               </Suspense>
@@ -421,11 +425,14 @@ async function MovieReviewsTab({
   movieId,
   title,
   posterPath,
+  backdropPath,
   locale,
 }: {
   movieId: number;
   title: string;
   posterPath: string | null;
+  /** 🆕 D-313 — يمرّ إلى صندوق التقييم فيُكتب مع الحفظ */
+  backdropPath?: string | null;
   locale: Awaited<ReturnType<typeof getT>>["locale"];
 }) {
   const [myRating, community, titleReviews, titleReplies] = await Promise.all([
@@ -445,6 +452,7 @@ async function MovieReviewsTab({
         mediaType="movie"
         title={title}
         posterPath={posterPath}
+        backdropPath={backdropPath}
         locale={locale}
         initialRating={myRating?.rating ?? null}
         initialReview={myRating?.review ?? null}
