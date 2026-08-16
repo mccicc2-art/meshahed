@@ -42,7 +42,7 @@ function AgeMark({ rated, label, compact }: { rated: string; label: string; comp
       aria-label={`${label}: ${rated}`}
       className={`inline-block rounded-md border font-bold uppercase tracking-wide leading-none ${
         compact
-          ? "border-white/45 text-white/90 px-1.5 py-[3px] text-[10px]"
+          ? "border-white/70 text-white px-2 py-[3px] text-[11px]"
           : "border-border text-muted px-1.5 py-1 text-[11px]"
       }`}
     >
@@ -79,7 +79,21 @@ export async function HeroRatings({
      صامتاً.** */
   if (!ext || (!ext.imdb && !ext.rt && !ext.rated)) return null;
 
-  return (
+  /**
+   * 🆕 **والتصنيفُ نزل سطراً تحت التقييمات** (D-297، طلبُ أحمد: «يكون تحت
+   * IMDb وليس يمينه»).
+   *
+   * **والحجّةُ التي كانت تضعه بجانبهما ما زالت صحيحةً وقد اكتملت:**
+   * قيل في D-286 إنه **صنفٌ آخر من المعلومة** فيُفصل بحدٍّ رفيع —
+   * **والحدُّ يفصل صنفاً عن صنف، والسطرُ يفصلهما فصلاً لا يُخطئه أحد.**
+   * **ورقمان يُقارَنان في سطر، وحقيقةٌ لا تُقارَن في سطرها.**
+   *
+   * ⚠️ **وفي الغلاف وحدَه** (`compact`): صفحةُ العمل لم يشتكِ منها أحد،
+   * **وما لم يُطلب لا يُغيَّر** (D-288). **وحين تُطلب، السطرُ هو هو.**
+   */
+  const stacked = compact && !!ext.rated && (!!ext.imdb || !!ext.rt);
+
+  const marks = (
     <div
       className={
         compact
@@ -103,8 +117,22 @@ export async function HeroRatings({
           </span>
         </span>
       )}
-      {ext.rated && <AgeMark rated={ext.rated} label={ageLabel ?? "Age rating"} compact={compact} />}
+      {ext.rated && !stacked && (
+        <AgeMark rated={ext.rated} label={ageLabel ?? "Age rating"} compact={compact} />
+      )}
     </div>
+  );
+
+  if (!stacked) return marks;
+  return (
+    <>
+      {marks}
+      {/* **سطرُه وحدَه، ومقاسُه أكبرُ قليلاً**: صار وحيدَ سطرِه **فلا
+          يزاحمه شيء**، **وحجمٌ يُقرأ من بعيدٍ هو ما يجعل الشارةَ شارة.** */}
+      <div className="mt-1">
+        <AgeMark rated={ext.rated!} label={ageLabel ?? "Age rating"} compact={compact} />
+      </div>
+    </>
   );
 }
 
