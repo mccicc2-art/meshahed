@@ -705,7 +705,7 @@ const ar = {
   peopleBoardTopReview: "أعلى التعليقات إعجاباً",
   /* 🆕 **قسمُ القوائم** (D-289، طلبُ أحمد: «أكثر الليستات إضافةً
      للمكاتب أو حفظاً»). **والعنوانُ يقول ما يقيسه**: الحفظُ لا الإنشاء. */
-  peopleBoardSavedLists: "الأكثرُ حفظاً هذا الأسبوع",
+  peopleBoardSavedLists: "ما يحفظه الناس",
   /* **والعددُ صريحٌ بصيغة جمعه** (D-015/D-219) */
   peopleBoardSaves: (n: number) =>
     n === 1 ? "حفظٌ واحد" : n === 2 ? "حفظان" : n <= 10 ? `${num(n, "ar")} حفظات` : `${num(n, "ar")} حفظاً`,
@@ -2036,7 +2036,7 @@ const en: Dict = {
   peopleBoardVsLast: (now: number, prev: number) =>
     `${num(now, "en")} this week · ${num(prev, "en")} last week`,
   peopleBoardTopReview: "Most liked comments",
-  peopleBoardSavedLists: "Most saved this week",
+  peopleBoardSavedLists: "What people are saving",
   peopleBoardSaves: (n: number) => `${num(n, "en")} ${n === 1 ? "save" : "saves"}`,
   peopleBoardLikes: (n: number) =>
     n === 1 ? "1 like" : `${num(n, "en")} likes`,
