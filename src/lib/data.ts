@@ -1744,7 +1744,6 @@ export async function getPeopleToFollow(
 export interface PeopleLeaderRow extends PersonLite {
   posts: number;
   reviews: number;
-  likesIn: number;
   total: number;
   prevTotal: number;
 }
@@ -1778,7 +1777,6 @@ export async function getPeopleLeaderboard(limit = 20): Promise<PeopleLeaderRow[
       hide_name: boolean | null;
       posts: number;
       reviews: number;
-      likes_in: number;
       total: number;
       prev_total: number;
     }[]).map((r) => ({
@@ -1789,7 +1787,7 @@ export async function getPeopleLeaderboard(limit = 20): Promise<PeopleLeaderRow[
       hide_name: Boolean(r.hide_name),
       posts: Number(r.posts ?? 0),
       reviews: Number(r.reviews ?? 0),
-      likesIn: Number(r.likes_in ?? 0),
+      /* ⚖️ **وسقط `likes_in`** (D-312، الهجرة ٩٧) — بلا قارئٍ منذ D-285 */
       total: Number(r.total ?? 0),
       prevTotal: Number(r.prev_total ?? 0),
     }));
@@ -1833,7 +1831,6 @@ export async function getPeopleFeatured(days = 90, limit = 3): Promise<PeopleLea
       hide_name: boolean | null;
       posts: number;
       reviews: number;
-      likes_in: number;
       total: number;
       prev_total: number;
     }[]).map((r) => ({
@@ -1844,7 +1841,7 @@ export async function getPeopleFeatured(days = 90, limit = 3): Promise<PeopleLea
       hide_name: Boolean(r.hide_name),
       posts: Number(r.posts ?? 0),
       reviews: Number(r.reviews ?? 0),
-      likesIn: Number(r.likes_in ?? 0),
+      /* ⚖️ **وسقط `likes_in`** (D-312) — كأختها أعلاه */
       total: Number(r.total ?? 0),
       prevTotal: 0,
     }));
@@ -2129,6 +2126,13 @@ export interface TalkPost {
   hasSpoiler: boolean;
   /** النثرُ المحجوب بلغتيه — `{ ar?, en? }` */
   spoiler: Record<string, unknown> | null;
+  /**
+   * 🆕 **صورةُ المشاركة عموداً حقيقيّاً** (D-312، الهجرة ٩٧) — سكنت
+   * `data.img` يومَ D-298 لأن العمودَ كان يوجب `drop` خارجَ الإذن،
+   * **وحقيبةُ `jsonb` لمعنيين بابُ العطل الصامت** (D-224). **والدالّةُ
+   * تُرجع `coalesce`** فصفوفُ النافذة الانتقالية لا تفقد صورتَها.
+   */
+  imagePath: string | null;
 }
 
 /**
@@ -2169,6 +2173,8 @@ export async function getTitleThread(
       spoiler?: Record<string, unknown> | null;
       /* **وتغيب قبل الهجرة ٨٤** فتُقرأ `false` — والمتنُ يظهر كما كان */
       has_spoiler?: boolean | null;
+      /* **وتغيب قبل الهجرة ٩٧** فتُقرأ `null` — والقارئُ يعود لـ`data` */
+      image_path?: string | null;
     }[]).map((r) => ({
       postId: String(r.id),
       authorId: String(r.author_id),
@@ -2185,6 +2191,7 @@ export async function getTitleThread(
       data: r.data ?? null,
       spoiler: r.spoiler ?? null,
       hasSpoiler: Boolean(r.has_spoiler),
+      imagePath: r.image_path ?? null,
     }));
   } catch {
     return [];
@@ -2598,14 +2605,12 @@ export async function getNewsThread(postKey: string): Promise<NewsReply[]> {
  * 🆕 **نشراتُ Loopz عن عملٍ بعينه** (D-300، طلبُ أحمد: «يُفضّل في صفحة
  * الفلم يكون فيه تبويب أخبار أو تحديث ويُكتب فيه»).
  *
- * ⚠️ **والترشيحُ هنا لا في القاعدة — وثمنُه يُقال ولا يُخفى:**
- * `loopz_news(p_limit)` **لا تعرف عملاً**، **وإضافةُ معاملٍ إليها توقيعٌ
- * جديدٌ يوجب `drop` للقديم** (D-037) — **وهو خارج الإذن الدائم.**
- * **فتُقرأ ثلاثُمئةٍ وتُرشَّح** — **وهي قراءةُ جدولٍ صغيرٍ بدالّة
- * `definer`، وصفحةُ عملٍ واحدةٍ في المرّة** (D-164 يمنع هذا في خطٍّ من
- * أربعين صفّاً، **ولا يمنعه في صفحةٍ واحدة**).
- * **والمخرجُ الرخيص مكتوبٌ في `05`**: `p_tmdb` في هجرةٍ ٩٢ **يجعل القصَّ
- * في القاعدة** (D-164: المرشَّحون يُقصّون قبل أن يُنادى لهم).
+ * 🆕 **والقصُّ صار في القاعدة** (D-312، الهجرة ٩٧): كان الترشيحُ هنا —
+ * «اقرأ ثلاثمئةً ورشّح» — **وسقفُ الدالّة ٦٠ أصلاً، فكان يُرشَّح ممّا
+ * وصل لا ممّا وُجد**: خبرُ عملٍ خرج من آخر ستّين نشرةً كان يغيب عن
+ * تبويبه وهو في الجدول. **والدالّةُ الثالثةُ الوسائط تعرف العملَ**
+ * (D-164: المرشَّحون يُقصّون قبل أن يُنادى لهم) — **ولا `drop`
+ * للقديمة**: توقيعٌ ثانٍ لا بديل.
  *
  * **وهي خلف `Suspense` في الصفحة** فلا تؤخّر رسمَها (D-071).
  */
@@ -2614,8 +2619,20 @@ export async function getTitleLoopzNews(
   mediaType: "tv" | "movie",
   limit = 20,
 ): Promise<LoopzNewsItem[]> {
-  const all = await getLoopzNews(300);
-  return all.filter((n) => n.tmdb_id === tmdbId && n.media_type === mediaType).slice(0, limit);
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("loopz_news", {
+      p_limit: limit,
+      p_tmdb: tmdbId,
+      p_media: mediaType,
+    });
+    if (error || !data) return [];
+    /* **بلا تطبيع كأختها `getLoopzNews`** — الدالّتان تُرجعان الأعمدةَ
+       الثمانية نفسَها حرفاً */
+    return data as LoopzNewsItem[];
+  } catch {
+    return [];
+  }
 }
 
 export async function getNewsPost(postKey: string): Promise<LoopzNewsItem | null> {
