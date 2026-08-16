@@ -12,6 +12,8 @@ import {
   parseFeedSort,
   TALK_FOLLOWED_COOKIE,
   parseTalkFollowed,
+  TRANSLATE_COOKIE,
+  parseTranslate,
 } from "@/lib/tabPrefs";
 
 export async function getLocale(): Promise<Locale> {
@@ -93,6 +95,16 @@ export async function getTalkFollowedOnly(): Promise<boolean> {
     return parseTalkFollowed(store.get(TALK_FOLLOWED_COOKIE)?.value);
   } catch {
     return false;
+  }
+}
+
+/** 🆕 **هل الترجمةُ التلقائيّة مفعّلة؟** (D-309) */
+export async function getTranslateEnabled(): Promise<boolean> {
+  try {
+    const store = await cookies();
+    return parseTranslate(store.get(TRANSLATE_COOKIE)?.value);
+  } catch {
+    return true;
   }
 }
 

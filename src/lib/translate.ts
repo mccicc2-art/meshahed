@@ -60,6 +60,11 @@ async function callDeepL(text: string, target: "ar" | "en"): Promise<string | nu
     if (typeof out !== "string" || !out.trim()) return null;
     /* **مصدرٌ هو الهدفُ نفسُه ليس ترجمة** */
     if (src.toLowerCase().startsWith(target)) return null;
+    /* 🔴 🆕 **وناتجٌ يطابق أصلَه ليس ترجمةً مهما قال كاشفُ اللغة**
+       (D-309، بلاغُ أحمد: «Test بالإنجلش والمفروض ما تطلع Original text
+       إلا إذا فعلاً تمت الترجمة») — DeepL حسِب «Test» ألمانيّةً وأعادها
+       حرفاً، **وزرٌّ يعد بأصلٍ هو المعروضُ نفسُه زرٌّ يكذب** (D-217). */
+    if (out.trim().toLowerCase() === body.toLowerCase()) return null;
     return out;
   } catch {
     return null;
@@ -76,7 +81,9 @@ export function getTextTranslation(
   text: string,
   target: "ar" | "en",
 ): Promise<string | null> {
-  return unstable_cache(() => callDeepL(text, target), ["tr", target, id], {
+  /* ⚠️ **والمفتاحُ نُسّخ (`tr2`)** — ذاكرةُ الإصدار الأوّل تحمل نواتجَ
+     مطابقةً لأصولها، **وذاكرةٌ لا تُنسَّخ تُبقي العطلَ بعد علاجه.** */
+  return unstable_cache(() => callDeepL(text, target), ["tr2", target, id], {
     revalidate: 60 * 60 * 24 * 30,
   })();
 }
@@ -98,7 +105,8 @@ export async function getBatchTranslations(
   );
   capped.forEach((x, i) => {
     const tr = results[i];
-    if (tr) out[x.id] = tr;
+    /* **حزامٌ ثانٍ عند القراءة** — يمسك ما فات على الذاكرة القديمة */
+    if (tr && tr.trim().toLowerCase() !== x.text.trim().toLowerCase()) out[x.id] = tr;
   });
   return out;
 }

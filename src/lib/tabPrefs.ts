@@ -175,6 +175,17 @@ export function parseTalkFollowed(v: string | undefined): boolean {
 }
 
 /**
+ * 🆕 **الترجمةُ التلقائيّة** (D-309، طلبُ أحمد: «ضيف خيار بالتولز لإلغاء
+ * الترجمة التلقائية») — كوكي كأخواته.
+ */
+export const TRANSLATE_COOKIE = "loopz_translate";
+
+/** **والغيابُ تفعيلٌ** (D-152): الترجمةُ هي السلوكُ القائم منذ D-307 */
+export function parseTranslate(v: string | undefined): boolean {
+  return v !== "0";
+}
+
+/**
  * **قارئٌ متسامح — وهو ما يجعل الميزة تعيش بعد أوّل تبويبٍ جديد.**
  *
  * أيُّ مفتاحٍ مجهولٍ يسقط (كوكي قديمٌ أو محرَّرٌ بيد)، وأيُّ مفتاحٍ ناقصٍ
