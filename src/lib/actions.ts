@@ -1996,6 +1996,28 @@ export async function togglePostLike(postId: string, liked: boolean) {
   if (error) fail(error);
 }
 
+/**
+ * 🆕 **صوتُ مشاركةٍ — فوق أو تحت أو سحب** (D-305، الهجرة ٩٤).
+ *
+ * **`vote` ثلاثُ قيمٍ لا مفتاحُ تبديل**: ١ فوق، -١ تحت، ٠ سحبٌ —
+ * **والواجهةُ ترسل الحالةَ المقصودة لا «اعكس ما عندك»**، فطلبان
+ * متسابقان ينتهيان إلى ما ضُغط آخراً لا إلى انعكاسين (D-241).
+ * **و`upsert` بمفتاح الصفّ**: تبديلُ الرأي تعديلٌ في مكانه،
+ * **وضغطتان على شبكةٍ بطيئة لا ترفعان خطأَ مفتاحٍ مكرَّر** (D-301).
+ */
+export async function votePost(postId: string, vote: -1 | 0 | 1) {
+  postId = uuid(postId);
+  const { supabase, user } = await requireUser("vote", 60, 60_000);
+  const key = { post_id: postId, user_id: user.id };
+  const { error } =
+    vote === 0
+      ? await supabase.from("title_post_votes").delete().match(key)
+      : await supabase
+          .from("title_post_votes")
+          .upsert({ ...key, vote }, { onConflict: "post_id,user_id" });
+  if (error) fail(error);
+}
+
 export async function toggleReviewLike(
   reviewUserId: string,
   tmdbId: number,

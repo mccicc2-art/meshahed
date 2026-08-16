@@ -275,6 +275,13 @@ const ar = {
      رابط، ما تكبر لوحدها»). **والكلمةُ تقول ما يقع** — «تكبير» لا
      «فتح في لسانٍ جديد»، **لأنها لم تعد تُخرجك** (D-217). */
   talkOpenImage: "كبِّر الصورة",
+  /* 🆕 **توسيعُ نصٍّ مطويّ** (D-304) — **كلمتان لا جملتان**: تقعان في
+     آخر السطر نفسِه، **وجملةٌ هناك تصير هي النصّ.** */
+  showMore: "المزيد",
+  showLess: "أقل",
+  /* 🆕 **سهما التصويت** (D-305) — الفعلُ لا الحالة (D-224) */
+  voteUp: "صوّت لأعلى",
+  voteDown: "صوّت لأسفل",
   errTooLarge: "حجم الصورة كبير — الحد الأقصى ٢ ميجابايت.",
   errUpload: "تعذّر رفع الصورة: ",
   errSave: "تعذّر الحفظ: ",
@@ -1733,6 +1740,10 @@ const en: Dict = {
   talkRemoveImage: "Remove the photo",
   talkImageAlt: "Photo attached to the post",
   talkOpenImage: "View full size",
+  showMore: "More",
+  showLess: "Less",
+  voteUp: "Upvote",
+  voteDown: "Downvote",
   errTooLarge: "Image too large — 2 MB maximum.",
   errUpload: "Couldn't upload the image: ",
   errSave: "Couldn't save: ",

@@ -2447,6 +2447,36 @@ export async function getPostLikes(
   }
 }
 
+/**
+ * 🆕 **أصواتُ الغرفة — نداءٌ واحدٌ لكلِّ مشاركاتها** (D-305، الهجرة ٩٤).
+ *
+ * نمطُ `getPostLikes` حرفاً: **المفاتيحُ معرّفاتُ الخيط نفسِه** فلا
+ * تُنادى قبله، **والسقوطُ صامتٌ** — غرفةٌ بلا أرقامٍ خيرٌ من غرفةٍ لا
+ * تُفتح (D-179). **و`mine` رقمٌ لا قائمة**: الصوتُ ثلاثُ حالاتٍ
+ * (١ / -١ / لا شيء) **وقائمةُ عضويّةٍ تحمل حالتين فقط.**
+ */
+export async function getPostVotes(
+  ids: string[],
+): Promise<{ scores: Record<string, number>; mine: Record<string, number> }> {
+  const unique = [...new Set(ids)].slice(0, 300);
+  const empty = { scores: {} as Record<string, number>, mine: {} as Record<string, number> };
+  if (!unique.length) return empty;
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("post_vote_scores", { ids: unique });
+    if (error || !data) return empty;
+    const scores: Record<string, number> = {};
+    const mine: Record<string, number> = {};
+    for (const r of data as { post_id: string; score: number; mine: number }[]) {
+      scores[String(r.post_id)] = Number(r.score) || 0;
+      if (r.mine) mine[String(r.post_id)] = Number(r.mine);
+    }
+    return { scores, mine };
+  } catch {
+    return empty;
+  }
+}
+
 export async function getNewsReplyCounts(keys: string[]): Promise<Map<string, number>> {
   const out = new Map<string, number>();
   const unique = [...new Set(keys)].slice(0, 200);
