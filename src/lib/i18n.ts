@@ -271,6 +271,10 @@ const ar = {
   talkUnpin: "أزل التثبيت",
   talkRemoveImage: "أزل الصورة",
   talkImageAlt: "صورة مرفقة بالمشاركة",
+  /* 🆕 **فتحُ الصورة كاملةً** (D-302، بلاغُ أحمد: «إذا ضغطتها يوديك على
+     رابط، ما تكبر لوحدها»). **والكلمةُ تقول ما يقع** — «تكبير» لا
+     «فتح في لسانٍ جديد»، **لأنها لم تعد تُخرجك** (D-217). */
+  talkOpenImage: "كبِّر الصورة",
   errTooLarge: "حجم الصورة كبير — الحد الأقصى ٢ ميجابايت.",
   errUpload: "تعذّر رفع الصورة: ",
   errSave: "تعذّر الحفظ: ",
@@ -1728,6 +1732,7 @@ const en: Dict = {
   talkUnpin: "Unpin",
   talkRemoveImage: "Remove the photo",
   talkImageAlt: "Photo attached to the post",
+  talkOpenImage: "View full size",
   errTooLarge: "Image too large — 2 MB maximum.",
   errUpload: "Couldn't upload the image: ",
   errSave: "Couldn't save: ",
