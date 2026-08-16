@@ -289,6 +289,8 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
           mediaType="tv"
           title={tv.name}
           posterPath={tv.poster_path}
+          /* 🆕 D-313 — غلافُ TMDB لا غلافي المختار (حجّةُ D-131) */
+          backdropPath={tv.backdrop_path}
           locale={locale}
           initialFollowing={following}
           lists={myLists.map((l) => ({ id: l.id, name: l.name }))}
@@ -411,6 +413,7 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
                   tvId={tvId}
                   name={tv.name}
                   posterPath={tv.poster_path}
+                  backdropPath={tv.backdrop_path}
                   locale={locale}
                 />
               </Suspense>
@@ -469,11 +472,14 @@ async function ReviewsTab({
   tvId,
   name,
   posterPath,
+  backdropPath,
   locale,
 }: {
   tvId: number;
   name: string;
   posterPath: string | null;
+  /** 🆕 D-313 — يمرّ إلى صندوق التقييم فيُكتب مع الحفظ */
+  backdropPath?: string | null;
   locale: Awaited<ReturnType<typeof getT>>["locale"];
 }) {
   const [myRating, community, titleReviews, titleReplies] = await Promise.all([
@@ -494,6 +500,7 @@ async function ReviewsTab({
         mediaType="tv"
         title={name}
         posterPath={posterPath}
+        backdropPath={backdropPath}
         locale={locale}
         initialRating={myRating?.rating ?? null}
         initialReview={myRating?.review ?? null}
