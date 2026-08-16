@@ -203,16 +203,15 @@ export default async function TalkPage({
            وهو ما يجعل من ضغط بطاقةً يجد عنوانَها فوق الغرفة (D-257) —
            **وإنما تركَ متنَ الصفحة للنبذة ثم للكلام.** */
         sub={t.talkRoomTitle(title, mediaType === "tv")}
-        end={
-          <Link
-            href={href}
-            aria-label={t.talkOpenTitlePage}
-            title={t.talkOpenTitlePage}
-            className="w-11 h-11 rounded-full bg-black/35 backdrop-blur-md border border-white/15 grid place-items-center text-white/90 active:scale-95 transition"
-          >
-            <Icon name="chevron-down" size={18} className="-rotate-90 rtl:rotate-90" />
-          </Link>
-        }
+        /* ⚖️ 🆕 **وسهمُ «افتح صفحة العمل» حُذف** (D-297، نصُّ أحمد:
+           «السهم اللي فوق يمين احذفه، لأن اللي يبغى بيانات المسلسل يضغط
+           على صورته»). **وحجّتُه صحيحةٌ وحرفيّة: الملصقُ والاسمُ رابطٌ
+           واحدٌ إلى الوجهة نفسِها منذ أوّل يوم** — **فكان بابين إلى غرفةٍ
+           واحدة** (D-266: أرخصُ عنصرٍ هو الذي لا يُرسم).
+           ⚠️ **ولم يسقط `end` من `TitleHero`**: صفحةُ `/review` تضع فيه
+           **علامةَ تعليقٍ تفتح النقاش** — **وجهةٌ أخرى لا نسخةٌ من
+           الملصق** — **والمعاملُ يُحذف حين يسقط قارئوه كلُّهم لا أوّلُهم**
+           (D-214). */
       />
 
       {/* ⚖️ **ووصفُ الغرفة غادر المتنَ إلى الغلاف** (D-286، طلبُ أحمد:
