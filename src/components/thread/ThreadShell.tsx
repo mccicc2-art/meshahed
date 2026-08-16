@@ -1,5 +1,4 @@
 import { getDict, type Locale } from "@/lib/i18n";
-import { BackButton } from "../BackButton";
 
 /**
  * **تشريحُ صفحة الخيط — وصفةٌ واحدة لسطحين** (D-242، طلبُ أحمد بلقطتين
@@ -23,17 +22,10 @@ import { BackButton } from "../BackButton";
  * الخطّ قبل D-232.**
  */
 
-/** الشريطُ العلويّ — رجوعٌ وعنوانٌ ثابت، كترويسة تويتر */
-export function ThreadTopBar({ title, locale }: { title: string; locale: Locale }) {
-  return (
-    /* **لاصقٌ في الأعلى**: الخيطُ يطول، **ومن نزل عشرين ردّاً يحتاج
-       بابَ الرجوع حيث تركه لا في أعلى مستندٍ لا يراه.** */
-    <div className="sticky top-0 z-10 -mx-4 px-4 py-2.5 flex items-center gap-4 bg-[color:var(--background)]/85 backdrop-blur-md border-b border-[color:var(--divider)]">
-      <BackButton locale={locale} className="!w-9 !h-9 !bg-transparent !border-0" />
-      <h1 className="text-[17px] font-bold">{title}</h1>
-    </div>
-  );
-}
+/* ⚠️ **و`ThreadTopBar` حُذف** (D-299): **قارئُه الوحيد كان صفحةَ النشرة،
+   وقد لبست ترويسةَ الغلاف** — **وحين يصل الخَلَفُ يُحذف السلفُ في يومه**
+   (D-002/D-214). **وسيرتُه في `07` إن عاد له قارئ.** */
+
 
 /**
  * **سطرُ التاريخ والمشاهدات** — بين النصّ وشريط الأفعال، بفاصلٍ فوقه
