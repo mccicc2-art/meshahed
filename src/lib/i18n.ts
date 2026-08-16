@@ -905,7 +905,9 @@ const ar = {
      الردود» — **وعنوانٌ يسمّي ما تراه بعينك يأكل سطراً ولا يضيف معنى.**
      وبحثٌ في `src` أثبت أن صفحةَ الكلام كانت قارئَه الوحيد. **ومفتاحٌ لا
      يقرؤه أحدٌ يُحذف لا يُترك.** */
-  talkOpenTitlePage: "افتح صفحة العمل",
+  /* ⚠️ **و`talkOpenTitlePage` حُذفت** (D-297): **سهمُها سقط من ترويسة
+     الغرفة لأن الملصقَ يفتح الوجهةَ نفسَها** — **ومفتاحٌ بلا قارئ يُحذف
+     لا يُترك** (D-214). */
   talkFallbackTitle: "عملٌ بلا عنوان",
   /* **زرُّ التعليق** (D-216): كان صندوقاً مفتوحاً يأخذ نصفَ الشاشة قبل
      أن تُقرأ كلمةٌ من الحوار. **والفعلُ يُسمّى بفعله** لا بـ«صندوقك». */
@@ -2125,7 +2127,7 @@ const en: Dict = {
   replySentToast: "Reply sent",
   talkReplyingTo: (name: string) => `Replying to ${name}`,
   talkDeleteReply: "Delete",
-  talkOpenTitlePage: "Open the title page",
+  // talkOpenTitlePage deleted with the header chevron it labelled (D-297)
   talkFallbackTitle: "Untitled",
   talkWriteCta: "Your review",
   talkEditCta: "Edit review",
