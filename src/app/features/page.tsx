@@ -235,7 +235,8 @@ const SECTIONS: Section[] = [
         enBody: "Group rooms with photos and invites, for you and your people.",
       },
       {
-        icon: "like",
+        /* 🆕 **القلبُ لا الإبهام** — رمزٌ واحدٌ للإعجاب في التطبيق كلِّه (D-294) */
+        icon: "heart",
         ar: "آراء وتقييمات",
         en: "Reviews & ratings",
         arBody: "قيّم من ١ إلى ١٠، اكتب رأيك، وتفاعل مع آراء الآخرين.",
