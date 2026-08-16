@@ -504,6 +504,7 @@ async function ReviewsTab({
         locale={locale}
         initialRating={myRating?.rating ?? null}
         initialReview={myRating?.review ?? null}
+        initialHasSpoiler={Boolean(myRating?.has_spoiler)}
       />
       <CommunityReviews
         tmdbId={tvId}
