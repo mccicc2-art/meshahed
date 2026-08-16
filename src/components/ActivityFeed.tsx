@@ -4,7 +4,6 @@ import { timeAgoShort } from "@/lib/when";
 import { LOOPZ_ID, LOOPZ_USERNAME, LOOPZ_PERSON } from "@/lib/loopz";
 import { displayNameOf, type FeedItem, type LoopzNewsItem } from "@/lib/data";
 import { newsLine, newsSource } from "@/lib/newsLine";
-import { dirOf, alignOf } from "@/lib/dir";
 import { commentViewKey, newsViewKey } from "@/lib/postKeys";
 import { Avatar } from "./Avatar";
 import { Icon } from "./Icon";
@@ -13,6 +12,7 @@ import { PosterCard } from "./PosterCard";
 import { ShareTitleButton } from "./ShareTitleButton";
 import { ProfileMenu } from "./ProfileMenu";
 import { RowComment } from "./RowComment";
+import { FeedReviewText } from "./FeedReviewText";
 import { NewsComment } from "./NewsComment";
 import { PostViews } from "./PostViews";
 
@@ -108,6 +108,7 @@ export function ActivityFeed({
   followingIds,
   showStrangers = true,
   sort = "smart",
+  translations,
   newsReplies,
   reviewReplies,
   emptyText,
@@ -150,6 +151,8 @@ export function ActivityFeed({
    * ثانية**: الصفوفُ مرتّبةٌ بالزمن أصلاً عند بنائها.
    */
   sort?: "smart" | "latest";
+  /** 🆕 **ترجماتُ المراجعات بلغة القارئ** (D-307) — بمفتاح `commentViewKey` */
+  translations?: Record<string, string>;
   /** ردودُ نشراتنا — بمفتاح المنشور، نداءٌ واحد للخطّ كلِّه (D-236) */
   newsReplies?: Map<string, number>;
   /**
@@ -276,6 +279,7 @@ export function ActivityFeed({
             views={views}
             iFollowThem={followingIds?.has(row.item.person.id) ?? false}
             locale={locale}
+            translated={translations?.[commentViewKey(row.item.person.id, row.item.media_type, row.item.tmdb_id)] ?? null}
           />
         ) : (
           <NewsRow
@@ -389,8 +393,11 @@ function CommentRow({
   views,
   iFollowThem,
   locale,
+  translated,
 }: {
   a: FeedItem;
+  /** 🆕 **ترجمةُ المراجعة بلغة القارئ** (D-307) — غيابُها «لا ترجمةَ لازمة» */
+  translated?: string | null;
   meId: string;
   added: boolean;
   viewKey: string;
@@ -515,16 +522,15 @@ function CommentRow({
             `text-align: start` حلّاً آخر** — فيُرسم العربيُّ يساراً على
             iPhone ويميناً على سطح المكتب. **فصلُ الاتّجاه عن الصندوق
             المقصوص، ومحاذاةٌ صريحة فوقه.** */}
-        <Link
+        {/* 🆕 **المتنُ في جزيرةِ عميلٍ صغيرة** (D-307) — الخطُّ مكوّنُ
+            خادمٍ وزرُّ «النص الأصلي» حالةُ ضغطة؛ الحجّةُ كاملةً في رأس
+            `FeedReviewText`. **والاتّجاهُ من النصّ المعروض لا الأصل.** */}
+        <FeedReviewText
           href={reviewHref}
-          prefetch={false}
-          dir={dirOf(a.review)}
-          className={`block mt-2 ${alignOf(a.review)}`}
-        >
-          <p className="text-[13px] leading-relaxed text-foreground/85 line-clamp-3">
-            {a.review}
-          </p>
-        </Link>
+          review={a.review ?? ""}
+          translated={translated}
+          locale={locale}
+        />
 
         {/* **الذيلُ كلُّه في `RowComment`** لأن صندوق الكتابة يحتاج عرضَ
             الصفّ والمقبضَ يسكن شريطاً مسقوفاً — حالةٌ واحدة لعنصرين
