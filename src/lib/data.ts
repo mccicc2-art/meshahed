@@ -2267,6 +2267,67 @@ export async function getTalkRooms(limit = 40): Promise<TalkRoom[]> {
  * **وسقوطُه صامت**: قبل تشغيل الهجرة ٧٣ تعود الخريطةُ فارغةً فتُخفى
  * الأرقام ويبقى الخطُّ مقروءاً — **آمنٌ عند الغياب** (D-151).
  */
+/**
+ * 🆕 **إعجاباتُ مشاركات الغرفة — عددُها وحالتي، في نداءٍ واحد** (D-289،
+ * الهجرة ٩٠، طلبُ أحمد: «لازم فيه لايك عند كل ردّ»).
+ *
+ * **نداءٌ واحدٌ للغرفة كلِّها لا لكلِّ صفّ** (D-164/D-205) — والغرفةُ قد
+ * تحمل عشراتِ المشاركات. **و«هل أعجبتُ أنا» تأتي مع العدد** لأنهما
+ * سؤالان عن صفٍّ واحد (D-198).
+ *
+ * ⚠️ **والسقوطُ صامتٌ ومقصود**: قبل تشغيل ٩٠ تعود الخريطتان فارغتين،
+ * **فيُرسم الزرُّ بصفرٍ لا ينكسر شيء** (D-028/D-179).
+ */
+/**
+ * 🆕 **ردودُ آراءِ الناس — النصفُ الغائب من ترجيح D-283** (الهجرة ٨٩).
+ *
+ * **صيغةُ أحمد كانت «كل لايك ينقص نصف ساعة وكل ردّ ساعة»**، وشُحن نصفُها
+ * في D-283 **لأن عدّادَ الردود كان لنشراتنا وحدها** (`news_reply_counts`).
+ * **وهذه تُكمله** — والمفتاحُ صيغةُ `commentViewKey` نفسُها فلا صيغةَ
+ * خامسة (D-237).
+ *
+ * ⚠️ **وسقوطُها صامتٌ ومقصود** (D-179): قبل ٨٩ تعود خريطةً فارغة
+ * **فيبقى الترتيبُ زمنيّاً بالإعجابات وحدَها** — لا ينكسر شيء.
+ */
+export async function getReviewReplyCounts(keys: string[]): Promise<Map<string, number>> {
+  const out = new Map<string, number>();
+  const unique = [...new Set(keys)].slice(0, 200);
+  if (!unique.length) return out;
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("review_reply_counts", { keys: unique });
+    if (error || !data) return out;
+    for (const r of data as { post_key: string; replies: number }[]) {
+      out.set(String(r.post_key), Number(r.replies));
+    }
+    return out;
+  } catch {
+    return out;
+  }
+}
+
+export async function getPostLikes(
+  ids: string[],
+): Promise<{ counts: Record<string, number>; mine: string[] }> {
+  const unique = [...new Set(ids)].slice(0, 300);
+  const empty = { counts: {} as Record<string, number>, mine: [] as string[] };
+  if (!unique.length) return empty;
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("post_like_counts", { ids: unique });
+    if (error || !data) return empty;
+    const counts: Record<string, number> = {};
+    const mine: string[] = [];
+    for (const r of data as { post_id: string; n: number; mine: boolean }[]) {
+      counts[String(r.post_id)] = Number(r.n) || 0;
+      if (r.mine) mine.push(String(r.post_id));
+    }
+    return { counts, mine };
+  } catch {
+    return empty;
+  }
+}
+
 export async function getNewsReplyCounts(keys: string[]): Promise<Map<string, number>> {
   const out = new Map<string, number>();
   const unique = [...new Set(keys)].slice(0, 200);

@@ -1929,6 +1929,31 @@ function safeImagePath(path: string | null): string | null {
  * المفتاح الأساسي يمنع التكرار، وسياسة الإدراج تمنع الإعجاب بمراجعة
  * النفس — فلا يحتاج هذا الفعل فحصاً قبل الكتابة، والقاعدة هي الحارس.
  */
+/**
+ * 🆕 **إعجابٌ بمشاركةٍ في غرفة النقاش، أو سحبُه** (D-289، الهجرة ٩٠).
+ *
+ * **توأمُ `toggleReviewLike` بجدولٍ ثالث** — والفرقُ كلُّه في المفتاح:
+ * هناك (صاحبُ الرأي، العمل، الجهة)، **وهنا معرّفُ المشاركة وحدَه**
+ * لأن المشاركةَ صفٌّ له `id` (D-254: الغرفةُ مفتاحٌ والمشاركةُ صفّ).
+ *
+ * ⚠️ **ولا حارسَ هنا لِما تحرسه القاعدة**: «لا تُعجب بمشاركتك» و«لا
+ * تُعجب بمخفيّة» شرطان في سياسة الإدراج (D-193) — **والواجهةُ تخفي
+ * الزرَّ، والقاعدةُ ترفض الصفّ.**
+ *
+ * ⚠️ **ولا `revalidatePath`**: صفحةُ الغرفة `force-dynamic` أصلاً،
+ * **والحالةُ تنقلب تفاؤليّاً عند اللمس** (D-241) — **وتجديدُ صفحةٍ
+ * كاملةٍ مع كلِّ قلبٍ هدرٌ صافٍ** (D-008).
+ */
+export async function togglePostLike(postId: string, liked: boolean) {
+  postId = uuid(postId);
+  const { supabase, user } = await requireUser();
+  const key = { post_id: postId, user_id: user.id };
+  const { error } = liked
+    ? await supabase.from("title_post_likes").delete().match(key)
+    : await supabase.from("title_post_likes").insert(key);
+  if (error) fail(error);
+}
+
 export async function toggleReviewLike(
   reviewUserId: string,
   tmdbId: number,
