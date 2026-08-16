@@ -27,7 +27,7 @@ import {
   getPeopleTopReviews,
   getTopSavedLists,
 } from "@/lib/data";
-import { getT, getTabPrefs, getFeedStrangers, getFeedSort, getTalkFollowedOnly } from "@/lib/locale";
+import { getT, getTabPrefs, getFeedStrangers, getFeedSort, getTalkFollowedOnly, getTranslateEnabled } from "@/lib/locale";
 import { WorksTalk } from "@/components/WorksTalk";
 import {
   PeopleLeaderboard,
@@ -146,6 +146,7 @@ export default async function PeoplePage({
   /* 🆕 **تفضيلا D-306** — كوكيان يُقرآن على الخادم قبل أوّل رسمة */
   const feedSort = await getFeedSort();
   const talkFollowedOnly = await getTalkFollowedOnly();
+  const translateOn = await getTranslateEnabled();
 
   const {
     tab: tabParam,
@@ -266,7 +267,7 @@ export default async function PeoplePage({
      `commentViewKey` نفسِه الذي يقرؤه الصفّ، **وسقفُ الدفعة في
      `getBatchTranslations` هو حدُّ الخطّ** (D-164). **وبلا مفتاحِ
      `DEEPL_API_KEY` تعود فارغةً ولا يتغيّر شيء** (D-077). */
-  const feedTranslations = pagerTab
+  const feedTranslations = pagerTab && translateOn
     ? await getBatchTranslations(
         localized
           .filter((a) => a.review?.trim())
@@ -786,6 +787,7 @@ export default async function PeoplePage({
             strangers={showStrangers}
             feedSort={feedSort}
             talkFollowedOnly={talkFollowedOnly}
+            translate={translateOn}
           />
         }
         /* ⚠️ **ولا `extra` هنا** — انظر D-280 أعلاه */
