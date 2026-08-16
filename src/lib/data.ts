@@ -2306,6 +2306,62 @@ export async function getReviewReplyCounts(keys: string[]): Promise<Map<string, 
   }
 }
 
+/**
+ * 🆕 **أكثرُ القوائم حفظاً — أعلى ٣ في آخر ٧ أيام** (D-289، الهجرة ٩٠،
+ * طلبُ أحمد: «ضيف أكثر الليستات إضافةً للمكاتب أو حفظاً، وأظهر أعلى ٣
+ * آخر ٧ أيام»).
+ *
+ * **والدالّةُ هي من تحرس** (D-011): العامّةُ وحدَها، و`hide_name`،
+ * والحظر، **وحسابُ النظام خارجَها** — **لا الواجهة.**
+ * **والملصقاتُ الثلاثةُ تأتي مع الصفّ** فلا نداءَ ثانٍ لصورها (D-164).
+ */
+export interface SavedListRow {
+  listId: string;
+  name: string;
+  ownerId: string;
+  nickname: string | null;
+  username: string | null;
+  avatarUrl: string | null;
+  hideName: boolean;
+  saves: number;
+  posters: string[];
+}
+
+export async function getTopSavedLists(days = 7, limit = 3): Promise<SavedListRow[]> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("top_saved_lists", {
+      p_days: days,
+      p_limit: limit,
+    });
+    if (error || !data) return [];
+    return (data as {
+      list_id: string;
+      name: string;
+      owner_id: string;
+      nickname: string | null;
+      username: string | null;
+      avatar_url: string | null;
+      hide_name: boolean;
+      saves: number;
+      posters: string[] | null;
+    }[]).map((r) => ({
+      listId: String(r.list_id),
+      name: String(r.name ?? ""),
+      ownerId: String(r.owner_id),
+      nickname: r.nickname,
+      username: r.username,
+      avatarUrl: r.avatar_url,
+      hideName: Boolean(r.hide_name),
+      saves: Number(r.saves) || 0,
+      posters: (r.posters ?? []).filter(Boolean),
+    }));
+  } catch {
+    /* **سقوطٌ صامتٌ قبل الهجرة ٩٠** — والقسمُ لا يُرسم أصلاً بلا صفوف */
+    return [];
+  }
+}
+
 export async function getPostLikes(
   ids: string[],
 ): Promise<{ counts: Record<string, number>; mine: string[] }> {

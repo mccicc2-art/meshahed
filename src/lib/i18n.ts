@@ -703,6 +703,12 @@ const ar = {
   /* **وصار جمعاً لأن العدد صار ثلاثة** (D-264): عنوانٌ مفرَدٌ فوق ثلاث
      بطاقات **اسمٌ بقي بعد أن تغيّر ما يسمّيه** (D-257). */
   peopleBoardTopReview: "أعلى التعليقات إعجاباً",
+  /* 🆕 **قسمُ القوائم** (D-289، طلبُ أحمد: «أكثر الليستات إضافةً
+     للمكاتب أو حفظاً»). **والعنوانُ يقول ما يقيسه**: الحفظُ لا الإنشاء. */
+  peopleBoardSavedLists: "الأكثرُ حفظاً هذا الأسبوع",
+  /* **والعددُ صريحٌ بصيغة جمعه** (D-015/D-219) */
+  peopleBoardSaves: (n: number) =>
+    n === 1 ? "حفظٌ واحد" : n === 2 ? "حفظان" : n <= 10 ? `${num(n, "ar")} حفظات` : `${num(n, "ar")} حفظاً`,
   peopleBoardLikes: (n: number) =>
     n === 1
       ? "إعجابٌ واحد"
@@ -2030,6 +2036,8 @@ const en: Dict = {
   peopleBoardVsLast: (now: number, prev: number) =>
     `${num(now, "en")} this week · ${num(prev, "en")} last week`,
   peopleBoardTopReview: "Most liked comments",
+  peopleBoardSavedLists: "Most saved this week",
+  peopleBoardSaves: (n: number) => `${num(n, "en")} ${n === 1 ? "save" : "saves"}`,
   peopleBoardLikes: (n: number) =>
     n === 1 ? "1 like" : `${num(n, "en")} likes`,
   // peopleBoardWatching / peopleBoardAdded deleted with their section (D-270)
