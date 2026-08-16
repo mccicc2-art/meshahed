@@ -7,6 +7,7 @@ import { displayNameOf } from "@/lib/people";
 import type { TalkRoom } from "@/lib/data";
 import { bulletinLine } from "@/lib/bulletinLine";
 import { Avatar } from "./Avatar";
+import { RoomPinButton } from "./RoomPinButton";
 import { Icon } from "./Icon";
 
 /**
@@ -86,11 +87,19 @@ export function TalkRoomCard({
   room: r,
   locale,
   hero = false,
+  pinned,
 }: {
   room: TalkRoom;
   locale: Locale;
   /** **البطاقةُ العريضةُ الواحدة** في لوحة الأعضاء — المقاساتُ وحدَها تكبر */
   hero?: boolean;
+  /**
+   * 🆕 **حالةُ التثبيت** (D-301) — **وغيابُها يعني «لا دبّوس هنا»** لا
+   * «غيرُ مثبَّتة»: **بطاقةُ لوحة الأعضاء ليست قائمةً تُرتَّب** (D-291)،
+   * **ودبّوسٌ لا يرتّب شيئاً وعدٌ مكسور** (D-217).
+   * **فالتمييزُ `undefined` مقابلَ `boolean`، لا عَلَمٌ ثانٍ** (D-182).
+   */
+  pinned?: boolean;
 }) {
   const t = getDict(locale);
   const poster = posterUrl(r.posterPath, "w185");
@@ -109,6 +118,10 @@ export function TalkRoomCard({
   const episode = bulletinLabel(r.bulletin, t, locale);
 
   return (
+    /* ⚠️ **والغلافُ نسبيٌّ لأن الدبّوسَ مطلقٌ فيه** (D-301) — **وهو أخٌ
+       للرابط لا ابنٌ له**: **زرٌّ داخل رابطٍ عطلٌ يمسكه فحصُنا** (D-155).
+       **ولا غلافَ حين لا دبّوس**: عقدةٌ في الشجرة بلا سبب (D-229). */
+    <Wrap pinned={pinned} room={r} locale={locale}>
     <Link
       href={`/talk/${r.mediaType}/${r.tmdbId}`}
       className={`relative overflow-hidden flex rounded-2xl bg-surface border border-border group active:scale-[0.99] hover:border-[color:var(--divider)] transition ${
@@ -230,10 +243,55 @@ export function TalkRoomCard({
           </div>
         </div>
       </Link>
+    </Wrap>
   );
 }
 
-export function WorksTalk({ rooms, locale }: { rooms: TalkRoom[]; locale: Locale }) {
+/**
+ * **الغلافُ النسبيُّ ودبّوسُه — أو لا شيء** (D-301).
+ *
+ * **وصفةٌ لا مكوّنٌ عامّ** (D-145): سطرانِ يخصّان هذه البطاقةَ وحدَها،
+ * **ومكوّنٌ مُصدَّرٌ لهما كان سيوحي بأنه يخدم غيرها.**
+ */
+function Wrap({
+  pinned,
+  room,
+  locale,
+  children,
+}: {
+  pinned?: boolean;
+  room: TalkRoom;
+  locale: Locale;
+  children: React.ReactNode;
+}) {
+  if (pinned === undefined) return <>{children}</>;
+  return (
+    <div className="relative">
+      {children}
+      <RoomPinButton
+        tmdbId={room.tmdbId}
+        mediaType={room.mediaType}
+        pinned={pinned}
+        locale={locale}
+      />
+    </div>
+  );
+}
+
+export function WorksTalk({
+  rooms,
+  locale,
+  pins,
+}: {
+  rooms: TalkRoom[];
+  locale: Locale;
+  /**
+   * 🆕 **مفاتيحُ غرفي المثبَّتة** (D-301) — **مجموعةٌ لا خريطة**:
+   * السؤالُ «أمثبَّتةٌ؟» سؤالُ وجود. **وغيابُها يُسقط الدبّوسَ كلَّه**
+   * (زائرٌ لا يثبّت شيئاً — D-221).
+   */
+  pins?: Set<string>;
+}) {
   return (
     /* **بطاقاتٌ متباعدة لا صفوفٌ يفصلها خطّ**: الخطُّ الفاصل يقول «هذه
        عناصرُ قائمةٍ تُمسح» — وهو صوابُ خطّ النشاط حيث الصفُّ جملةٌ تُقرأ
@@ -241,7 +299,12 @@ export function WorksTalk({ rooms, locale }: { rooms: TalkRoom[]; locale: Locale
        لا جملة. */
     <div className="space-y-2.5">
       {rooms.map((r) => (
-        <TalkRoomCard key={`${r.mediaType}-${r.tmdbId}`} room={r} locale={locale} />
+        <TalkRoomCard
+          key={`${r.mediaType}-${r.tmdbId}`}
+          room={r}
+          locale={locale}
+          pinned={pins ? pins.has(`${r.mediaType}-${r.tmdbId}`) : undefined}
+        />
       ))}
     </div>
   );
