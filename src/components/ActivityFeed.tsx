@@ -108,6 +108,7 @@ export function ActivityFeed({
   followingIds,
   showStrangers = true,
   newsReplies,
+  reviewReplies,
   emptyText,
   locale,
 }: {
@@ -144,6 +145,11 @@ export function ActivityFeed({
   showStrangers?: boolean;
   /** ردودُ نشراتنا — بمفتاح المنشور، نداءٌ واحد للخطّ كلِّه (D-236) */
   newsReplies?: Map<string, number>;
+  /**
+   * 🆕 **ردودُ آراءِ الناس** (D-289، الهجرة ٨٩) — **النصفُ الذي كان
+   * معلَّقاً في D-283.** مفتاحُها `commentViewKey`.
+   */
+  reviewReplies?: Map<string, number>;
   /** **وفراغُ «الكل» غيرُ فراغ «من أتابع»** — الصفحةُ تملك النطاق فتملك جملته */
   emptyText: string;
   locale: Locale;
@@ -214,16 +220,23 @@ export function ActivityFeed({
      **وهذا ما يمنع عطلَ «الأكثر تفاعلاً» القديم** (D-240): ذاك كان
      يرتّب بالتفاعل وحدَه **فيتصدّر خطّاً أكثرُ إعجاباته صفر عشوائياً.**
 
-     ⚠️ **وردودُ الآراء لم تصل بعد**: العددُ عندنا لنشراتنا وحدها
-     (`news_reply_counts`، هجرة ٧٣)، **ورأيُ الإنسان لا عدّادَ ردودٍ له
-     في هذا الخطّ** — فيُحسب إعجابُه ولا تُحسب ردودُه حتى تصل الهجرة ٨٩.
-     **ويُقال ولا يُسكت عنه**: نصفُ صيغةٍ يعمل صامتاً أسوأُ من نصفٍ
-     معلَن (D-217). */
+     ✅ **واكتمل النصفان** (D-289، الهجرة ٨٩): كان الإعجابُ يُحسب
+     للرأي ولا تُحسب ردودُه لأن العدّادَ كان لنشراتنا وحدها — **وصار
+     `review_reply_counts` يعطيها بصيغة `commentViewKey` نفسِها**
+     (D-237). **ونصفُ صيغةٍ يعمل صامتاً أسوأُ من نصفٍ معلَن** (D-217)،
+     **فيُشطب الإعلانُ يومَ يكتمل لا يُترك يكذب** (D-155/D-146). */
   const LIKE_MS = 30 * 60 * 1000;
   const REPLY_MS = 60 * 60 * 1000;
   const effAt = (r: Row): number => {
     const key = `${r.item.media_type}-${r.item.tmdb_id}`;
-    if (r.kind === "comment") return r.at + (r.item.likes ?? 0) * LIKE_MS;
+    if (r.kind === "comment") {
+      /* ✅ **واكتملت الصيغةُ هنا** (D-289): كانت تحسب الإعجابَ وحدَه
+         **لأن ردودَ الآراء لم يكن لها عدّاد**، وصار لها منذ ٨٩. */
+      const ck = commentViewKey(r.item.person.id, r.item.media_type, r.item.tmdb_id);
+      return (
+        r.at + (r.item.likes ?? 0) * LIKE_MS + (reviewReplies?.get(ck) ?? 0) * REPLY_MS
+      );
+    }
     return (
       r.at +
       (postLikes?.counts[key] ?? 0) * LIKE_MS +
