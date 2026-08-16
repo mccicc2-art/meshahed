@@ -706,6 +706,12 @@ const ar = {
   /* 🆕 **قسمُ القوائم** (D-289، طلبُ أحمد: «أكثر الليستات إضافةً
      للمكاتب أو حفظاً»). **والعنوانُ يقول ما يقيسه**: الحفظُ لا الإنشاء. */
   peopleBoardSavedLists: "ما يحفظه الناس",
+  /* 🆕 **العملُ الذي يدور حوله الكلام** (D-291).
+     ⚠️ **ولا «هذا الأسبوع» فيه** رغم أن الاقتراح كتبها: الرقمُ تحته
+     **عدُّ المشاركات كلِّه** لا عدُّ الأسبوع، **وعنوانٌ يعِد بنافذةٍ لا
+     يملكها الرقمُ هو الكذبةُ التي تُفقد الثقةَ بالصفحة** (D-219).
+     **والحياةُ شرطُ اختيارٍ في الصفحة لا وعدٌ في العنوان.** */
+  peopleBoardTalked: "العملُ الذي يدور حوله الكلام",
   /* **والعددُ صريحٌ بصيغة جمعه** (D-015/D-219) */
   peopleBoardSaves: (n: number) =>
     n === 1 ? "حفظٌ واحد" : n === 2 ? "حفظان" : n <= 10 ? `${num(n, "ar")} حفظات` : `${num(n, "ar")} حفظاً`,
@@ -2037,6 +2043,9 @@ const en: Dict = {
     `${num(now, "en")} this week · ${num(prev, "en")} last week`,
   peopleBoardTopReview: "Most liked comments",
   peopleBoardSavedLists: "What people are saving",
+  // No "this week": the count below is all-time, and a heading that promises
+  // a window the number does not have is the unreviewable number (D-219)
+  peopleBoardTalked: "The work people are talking about",
   peopleBoardSaves: (n: number) => `${num(n, "en")} ${n === 1 ? "save" : "saves"}`,
   peopleBoardLikes: (n: number) =>
     n === 1 ? "1 like" : `${num(n, "en")} likes`,
