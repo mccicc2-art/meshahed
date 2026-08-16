@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { posterUrl } from "@/lib/tmdb";
+import { posterUrl, backdropUrl } from "@/lib/tmdb";
 import { getDict, num, type Locale } from "@/lib/i18n";
 import { timeAgoShort } from "@/lib/when";
 import { dirOf, alignOf } from "@/lib/dir";
@@ -536,6 +536,9 @@ export function TopReviews({
       <ul className="space-y-2.5">
         {rows.map((row) => {
           const poster = posterUrl(row.posterPath, "w185");
+          /* 🆕 **الغلافُ الحقيقيُّ أوّلاً** (D-313، الهجرة ٩٨) — والملصقُ
+             الممدودُ حزامَ الصفوف القديمة (D-179) */
+          const bg = backdropUrl(row.backdropPath, "w780") ?? poster;
           const title = row.title?.trim();
           const reviewHref = `/review/${row.mediaType}/${row.tmdbId}/${row.id}`;
           const titleHref =
@@ -549,15 +552,14 @@ export function TopReviews({
                     (D-145: وصفةٌ تُنسخ ناقصةً عطلٌ لا أسلوب): صورةٌ
                     بـ`opacity-[0.40]` ثم طبقةٌ من لون السطح إلى الشفّاف
                     **باتّجاه البداية حيث يُقرأ النصّ**.
-                    ⚠️ **والمصدرُ هو الملصقُ لا الغلافُ العريض**:
-                    `ratings` لا تحمل `backdrop_path`، **وإضافتُه تغيّرُ
-                    أعمدةِ الدالّة أي `drop`** — وهو خارج الإذن. **فالملصقُ
-                    ممدودٌ بـ`object-cover`**، ويبقى الغلافُ الحقيقيّ
-                    دَيناً مكتوباً. */}
-                {poster && (
+                    ✅ **والغلافُ الحقيقيُّ وصل** (D-313، الهجرة ٩٨):
+                    `ratings.backdrop_path` يُكتب مع كلِّ حفظٍ من صفحة
+                    العمل — **والصفوفُ القديمة بلا غلافٍ تعود لملصقها
+                    الممدود** (D-179): قيمةٌ لا تُخترع (D-216). */}
+                {bg && (
                   <>
                     <Image
-                      src={poster}
+                      src={bg}
                       alt=""
                       fill
                       sizes="680px"

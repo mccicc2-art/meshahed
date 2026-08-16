@@ -73,6 +73,7 @@ export function TitleActions({
   mediaType,
   title,
   posterPath,
+  backdropPath,
   locale,
   initialFollowing,
   lists,
@@ -87,6 +88,8 @@ export function TitleActions({
   mediaType: MediaType;
   title: string;
   posterPath: string | null;
+  /** 🆕 **غلافُ العمل** (D-313) — يمرّ إلى صندوق التقييم فيُكتب مع الحفظ */
+  backdropPath?: string | null;
   locale: Locale;
   initialFollowing: boolean;
   lists: { id: string; name: string }[];
@@ -455,6 +458,7 @@ export function TitleActions({
             mediaType={mediaType}
             title={title}
             posterPath={posterPath}
+            backdropPath={backdropPath}
             locale={locale}
             initialRating={rateSheet?.rating ?? null}
             initialReview={rateSheet?.review ?? null}

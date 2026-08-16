@@ -13,6 +13,7 @@ export function RatingBox({
   mediaType,
   title,
   posterPath,
+  backdropPath,
   locale,
   initialRating,
   initialReview,
@@ -23,6 +24,11 @@ export function RatingBox({
   mediaType: MediaType;
   title: string;
   posterPath: string | null;
+  /**
+   * 🆕 **غلافُ العمل** (D-313) — يُكتب مع التقييم لبطاقة «أعلى
+   * التعليقات». **اختياريٌّ**: سطحٌ لا يملكه لا يمسّ ما كتبه غيرُه.
+   */
+  backdropPath?: string | null;
   locale: Locale;
   initialRating: number | null;
   initialReview: string | null;
@@ -63,7 +69,7 @@ export function RatingBox({
     setSaved(true);
     start(async () => {
       try {
-        await saveRating({ tmdbId, mediaType, rating, review, title, posterPath });
+        await saveRating({ tmdbId, mediaType, rating, review, title, posterPath, backdropPath });
         onSaved?.();
       } catch (e) {
         setSaved(false);
