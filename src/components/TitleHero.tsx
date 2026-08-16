@@ -163,7 +163,12 @@ export function TitleHero({
                 الملصق كانت فارغةً وقد فرغ ركنُها الأعلى بحذف السهم** —
                 **واسمُ العمل هو سببُ الصفحة، فيأخذها.** */}
             {/* **الاسمُ في رأس العمود، موازياً لرأس الملصق** (D-297/D-310) */}
-            <h1 className="font-bold text-[22px] leading-tight line-clamp-1 text-white drop-shadow">
+            {/* 🆕 **و`foreground` لا `white`** (D-318): قاعُ الترويسة يذوب
+                في `from-background` — **أرضيّةٌ تتبع الثيم لا يقف عليها
+                لونٌ صلب**. في الثيمات الداكنة `foreground` أبيضُ عمليّاً
+                فلا يتغيّر بكسل، **وفي النهاريّ كان الأبيضُ يموت على
+                القاع الفاتح.** */}
+            <h1 className="font-bold text-[22px] leading-tight line-clamp-1 text-foreground drop-shadow">
               {title}
             </h1>
             {typeof avg === "number" && typeof count === "number" && count > 0 && (
@@ -176,12 +181,12 @@ export function TitleHero({
                 title={ratingLabel}
               >
                 ★ <span dir="ltr">{avg}</span>
-                <span className="font-normal text-white/70"> ({count})</span>
+                <span className="font-normal text-foreground/70"> ({count})</span>
               </p>
             )}
             {meta}
             {sub && (
-              <p className="mt-0.5 text-[10px] leading-none text-white/65 line-clamp-1">{sub}</p>
+              <p className="mt-0.5 text-[10px] leading-none text-foreground/65 line-clamp-1">{sub}</p>
             )}
           </div>
         </Link>

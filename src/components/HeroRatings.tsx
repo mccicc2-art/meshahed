@@ -42,7 +42,11 @@ function AgeMark({ rated, label, compact }: { rated: string; label: string; comp
       aria-label={`${label}: ${rated}`}
       className={`inline-block rounded-md border font-bold uppercase tracking-wide leading-none ${
         compact
-          ? "border-white/70 text-white px-2 py-[3px] text-[11px]"
+          /* 🆕 **و`foreground` لا `white` في نسخة الغلاف** (D-318): هذه
+             الأسطرُ تقف على قاعٍ يذوب في `from-background` — أرضيّةٌ
+             تتبع الثيم، **والأبيضُ الصلبُ كان يموت عليها في النهاريّ.**
+             في الثيمات الداكنة `foreground` أبيضُ عمليّاً فلا يتغيّر شيء. */
+          ? "border-foreground/70 text-foreground px-2 py-[3px] text-[11px]"
           : "border-border text-muted px-1.5 py-1 text-[11px]"
       }`}
     >
@@ -97,7 +101,7 @@ export async function HeroRatings({
     <div
       className={
         compact
-          ? "flex items-center gap-2.5 mt-1 text-[12px] text-white/90"
+          ? "flex items-center gap-2.5 mt-1 text-[12px] text-foreground/90"
           : "flex items-center gap-4 mt-2 text-sm"
       }
     >
@@ -142,7 +146,7 @@ export function HeroRatingsSkeleton({ compact = false }: { compact?: boolean }) 
     <div
       className={
         compact
-          ? "mt-1 h-4 w-28 rounded-md bg-white/15 animate-pulse"
+          ? "mt-1 h-4 w-28 rounded-md bg-foreground/15 animate-pulse"
           : "mt-2 h-5 w-32 rounded-md bg-surface-2 animate-pulse"
       }
     />

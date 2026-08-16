@@ -86,7 +86,11 @@ export function RoomPinButton({
       className={`absolute top-2 end-2 z-10 w-7 h-7 grid place-items-center rounded-full transition
         before:absolute before:-inset-[8px] before:content-['']
         active:scale-90 disabled:opacity-50 ${
-          pinned ? "text-accent drop-shadow" : "text-white/70 hover:text-white drop-shadow"
+          /* 🆕 **و`foreground` لا `white` لغير المثبَّت** (D-318): الدبّوسُ
+             يقف على غلافٍ شفافيّتُه فوق لون السطح — **فالأرضيّةُ تتبع
+             الثيم**، والأبيضُ كان يذوب في النهاريّ. والظلُّ باقٍ يفصله
+             عن أيّ صورة (D-003/D-301). */
+          pinned ? "text-accent drop-shadow" : "text-foreground/70 hover:text-foreground drop-shadow"
         }`}
     >
       <Icon name={pinned ? "pin-filled" : "pin"} size={17} strokeWidth={2.2} />
