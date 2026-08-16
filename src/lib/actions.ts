@@ -904,6 +904,13 @@ export async function saveRating(input: {
   review: string;
   title: string;
   posterPath: string | null;
+  /**
+   * 🆕 **غلافُ العمل العريض** (D-313، الهجرة ٩٨) — لبطاقة «أعلى
+   * التعليقات». **اختياريٌّ عمداً**: من لا يملكه (بطاقةُ المتابعة) لا
+   * يُجبر عليه، **وغيابُه لا يكتب `null` فوق قيمةٍ قائمة** — انظر
+   * الإدراج.
+   */
+  backdropPath?: string | null;
 }) {
   input = {
     ...input,
@@ -911,6 +918,8 @@ export async function saveRating(input: {
     mediaType: asMediaType(input.mediaType),
     title: String(input.title ?? "").slice(0, 300),
     posterPath: safeImagePath(input.posterPath),
+    backdropPath:
+      input.backdropPath === undefined ? undefined : safeImagePath(input.backdropPath),
   };
   const { supabase, user } = await requireUser("rate", 20, 60_000);
 
@@ -926,6 +935,9 @@ export async function saveRating(input: {
       review: review || null,
       title: input.title,
       poster_path: input.posterPath,
+      /* **حقلٌ غائبٌ لا يُكتب** (D-152): إعادةُ حفظٍ من سطحٍ لا يملك
+         الغلافَ تُبقي ما كتبه سطحٌ يملكه */
+      ...(input.backdropPath !== undefined ? { backdrop_path: input.backdropPath } : {}),
       updated_at: new Date().toISOString(),
     },
     { onConflict: "user_id,tmdb_id,media_type" },

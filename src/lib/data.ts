@@ -1856,6 +1856,11 @@ export interface PeopleTopReviewRow extends PersonLite {
   mediaType: "tv" | "movie";
   title: string | null;
   posterPath: string | null;
+  /**
+   * 🆕 **الغلافُ الحقيقيّ لخلفيّة البطاقة** (D-313، الهجرة ٩٨) —
+   * `null` للصفوف القديمة **فتعود البطاقةُ لملصقها الممدود** (D-179).
+   */
+  backdropPath: string | null;
   review: string;
   rating: number;
   likes: number;
@@ -1895,6 +1900,7 @@ export async function getPeopleTopReviews(
       media_type: string;
       title: string | null;
       poster_path: string | null;
+      backdrop_path?: string | null;
       review: string | null;
       rating: number | null;
       likes: number;
@@ -1913,6 +1919,7 @@ export async function getPeopleTopReviews(
         mediaType: r.media_type === "tv" ? "tv" : "movie",
         title: r.title,
         posterPath: r.poster_path,
+        backdropPath: r.backdrop_path ?? null,
         review: String(r.review),
         rating: Number(r.rating ?? 0),
         likes: Number(r.likes ?? 0),
