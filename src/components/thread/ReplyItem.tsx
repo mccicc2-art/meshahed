@@ -292,22 +292,20 @@ export function ReplyItem({
               className="text-[14px] leading-relaxed text-foreground/90 whitespace-pre-line"
             >
               {bulletin}
+              {/* 🆕 **★ في سطر العنوان** (D-308، طلبُ أحمد: «احذف الوقت
+                  وخلّ التقييم بعد العنوان مباشرة عشان ما تخسر سطر على
+                  الفاضي») — والصفرُ يُخفى (D-219)، والرقمُ `ltr`. */}
+              {facts.vote && (
+                <span className="inline-flex items-center gap-1 ms-2 text-[12px] text-muted align-middle">
+                  <Icon name="star" size={12} className="shrink-0 text-accent" />
+                  <span dir="ltr">{facts.vote}</span>
+                </span>
+              )}
             </p>
 
-            {/* **المدّةُ والتقييمُ سطرٌ ثانٍ**، وكلٌّ يغيب وحدَه والصفرُ
-                يُخفى (D-219). **و★ تجاور رقمَها** (D-223). */}
-            {(facts.runtime || facts.vote) && (
-              <p className="mt-1 flex items-center gap-2 text-[12px] text-muted">
-                {facts.runtime && <span>{facts.runtime}</span>}
-                {facts.runtime && facts.vote && <span aria-hidden="true">·</span>}
-                {facts.vote && (
-                  <span className="inline-flex items-center gap-1">
-                    <Icon name="star" size={12} className="shrink-0 text-accent" />
-                    <span dir="ltr">{facts.vote}</span>
-                  </span>
-                )}
-              </p>
-            )}
+            {/* ⚖️ **والمدّةُ سقطت من النشرة كلِّها** (D-308): هي في صفحة
+                الحلقة لمن أرادها، **وسطرٌ في كلِّ نشرةٍ ثمنُ رقمٍ لا
+                يُقرَّر به شيء** (D-266). */}
 
             {/* **«أبرزُ ما فيها» خلف الحاجب** — قرارُ أحمد */}
             {spoilerText && <SpoilerText text={spoilerText} locale={locale} />}
