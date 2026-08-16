@@ -14,6 +14,7 @@ import {
   getCommunityRoom,
   getTitleRooms,
   getTalkRooms,
+  getMyRoomPins,
   pickTalkedAboutRoom,
   getFollows,
   getReactions,
@@ -279,7 +280,23 @@ export default async function PeoplePage({
      **والغرفةُ صفٌّ واحدٌ يراه كل الناس** — **وهي حجّةُ D-147 نفسُها،
      وقد نُسي هذا السطحُ يومَها.** والصفحةُ هي من تملك `locale` لا طبقةُ
      البيانات (D-048). */
-  const rooms = pagerTab ? await localizeTalkRooms(await getTalkRooms(40), locale) : [];
+  const roomsRaw = pagerTab ? await localizeTalkRooms(await getTalkRooms(40), locale) : [];
+
+  /* 🆕 **غرفي المثبَّتة، والترتيبُ يتبعها** (D-301، الهجرة ٩٢).
+     **ولا نداءَ لزائر**: لا صفوفَ له أصلاً، **وسياسةُ «صفوفي أنا» كانت
+     ستُعيد فراغاً — ونداءٌ يُعرف جوابُه سلفاً ثمنٌ بلا سبب** (D-194).
+     **والفرزُ في الذاكرة** (D-283/D-291): أربعون صفّاً، **وعمودُ ترتيبٍ
+     في القاعدة لهذا كان سيوجب `drop` لدالّةٍ قائمة.**
+     ⚠️ **و`sort` مستقرٌّ في JS الحديثة**، **فترتيبُ الأحدثِ داخل كلِّ
+     مجموعةٍ يبقى كما جاء من القاعدة** — **والتثبيتُ يرفع ولا يخلط.** */
+  const pins = pagerTab && user ? await getMyRoomPins() : null;
+  const rooms = pins
+    ? [...roomsRaw].sort((a, b) => {
+        const pa = pins.has(`${a.mediaType}-${a.tmdbId}`) ? 1 : 0;
+        const pb = pins.has(`${b.mediaType}-${b.tmdbId}`) ? 1 : 0;
+        return pb - pa;
+      })
+    : roomsRaw;
 
   /* ⚠️ **وأربعةُ نداءاتٍ متوازيةٌ لا متتابعة** (D-263): كلُّها دوالُّ
      `definer` خفيفةٌ تقرأ صفوفاً قائمة **ولا واحدةَ منها تحتاج نتيجةَ
@@ -693,7 +710,7 @@ export default async function PeoplePage({
               {t.talkRoomsEmpty}
             </p>
           ) : (
-            <WorksTalk rooms={rooms} locale={locale} />
+            <WorksTalk rooms={rooms} locale={locale} pins={pins ?? undefined} />
         )}
     </section>
   );
