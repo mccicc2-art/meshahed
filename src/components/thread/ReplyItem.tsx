@@ -63,6 +63,11 @@ export type ThreadReply = {
    * لمعنيين** (حجّةُ الهجرة ٨٤).
    */
   hasSpoiler?: boolean;
+  /**
+   * 🆕 **صورةُ المشاركة من عمودها** (D-312، الهجرة ٩٧) — كانت في
+   * `data.img` (D-298)، **والقراءةُ تُبقي ذلك السقفَ حزاماً** (D-179).
+   */
+  imagePath?: string | null;
 };
 
 /** ردٌّ محليٌّ لم يُقرأ من القاعدة بعد — **معرّفُه مؤقّتٌ فيُرسم باهتاً** */
@@ -177,7 +182,9 @@ export function ReplyItem({
    * **وحمولتُه موسمٌ وحلقةٌ لا صورة** — **وحقلٌ يُقرأ بمعنى غير معناه هو
    * كيف يولد العطل** (D-224).
    */
-  const raw = !bulletin ? (reply.data as Record<string, unknown> | null)?.img : null;
+  const raw = !bulletin
+    ? (reply.imagePath ?? (reply.data as Record<string, unknown> | null)?.img)
+    : null;
   const image = typeof raw === "string" && raw.startsWith("https://") ? raw : null;
 
   return (

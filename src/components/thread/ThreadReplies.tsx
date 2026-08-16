@@ -471,8 +471,8 @@ export function ThreadReplies({
         hasSpoiler,
         /* **والنسخةُ التفاؤليّة تحمل الصورةَ أيضاً** (D-241): من رفع
            صورةً ثم لم يرها في الحال ظنَّ الرفعَ سقط — **والرابطُ بيدنا
-           أصلاً فلا انتظارَ لمصالحة.** */
-        data: imageUrl ? { img: imageUrl } : null,
+           أصلاً فلا انتظارَ لمصالحة.** **وفي حقلها الحقيقيّ** (D-312). */
+        imagePath: imageUrl ?? null,
       },
     ]);
     setOpen(null);
