@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   addReviewReply,
   addNewsReply,
@@ -291,9 +291,19 @@ export function ThreadReplies({
           RTL — **فلا يغطّي بدايةَ السطور وهي جهةُ القراءة.**
           **وفوق شريط التنقّل بنفس حساب الشريط القديم** — والارتفاعُ
           `bottom` نفسُه فلا يظهر تحته فراغٌ جديد. */}
+      {/* 🔴 🆕 **والصندوقُ المفتوح يرسو على حافّة النافذة المرئيّة**
+          (D-320، بلاغُ أحمد بلقطتين: «إذا فتحته لا يرتفع فوق مرّة —
+          خلّه قريباً من الكيبورد»).
+          **`sticky` كان يسقط بنفس علّة القلم** (D-319): آخرُ عنصرٍ في
+          غرفةٍ قصيرةٍ موضعُه الطبيعيُّ فوق الحافّة فلا ينعقد، **فيجلس
+          الصندوقُ بعيداً عن الكيبورد وتحته فراغٌ ميّت** — وهو ما صوّره.
+          **والمرسى `KeyboardDock` أسفل الملفّ**: `fixed` يُرفع بقياس
+          `visualViewport` فيلتصق بالكيبورد حين يفتح وبشريط التنقّل حين
+          يغيب — **والعرضُ يُقاس من عمود الصفحة لا يُفترض** (D-282):
+          الغرفةُ `max-w-xl` والنشرةُ ٦٨٠px، والمرسى يخدمهما معاً. */}
       {signedIn &&
         (open === "" ? (
-          <div className="sticky bottom-[calc(env(safe-area-inset-bottom,0px)+3.5rem)] md:bottom-0 z-20 -mx-4 sm:-mx-6 px-4 sm:px-6 py-3 border-t border-[color:var(--divider)] bg-[color:var(--background)]">
+          <KeyboardDock>
             <Composer
               locale={locale}
               /* **والمفتاحُ حيث يُخزَّن وحدَه** (D-271): `has_spoiler`
@@ -305,7 +315,7 @@ export function ThreadReplies({
               onCancel={() => setOpen(null)}
               onSend={(b, sp, img) => send(b, null, sp, img)}
             />
-          </div>
+          </KeyboardDock>
         ) : (
           /* 🔴 🆕 **والقلمُ `fixed` لا `sticky`** (D-319، بلاغُ أحمد
              بلقطتين: «القلم المفروض عائم، هذا ثابت!!»).
@@ -595,4 +605,74 @@ export function ThreadReplies({
         ? reportTalkPost({ postId: x.replyId })
         : reportNewsReply({ replyId: x.replyId }));
   }
+}
+
+
+/**
+ * 🆕 **مرسى الكتابة — على حافّة النافذة المرئيّة** (D-320).
+ *
+ * **لماذا لا يكفي `fixed bottom-0`:** حين يفتح الكيبورد على iOS تبقى
+ * عناصرُ `fixed` مربوطةً بنافذة *التخطيط* — **فيغرق الشريطُ خلف
+ * الكيبورد.** و`visualViewport` هي الحقيقة: **ما حجبه الكيبورد =
+ * `innerHeight - height - offsetTop`**، فيُرفع الشريطُ بهذا القياس
+ * ويُعاد قياسُه مع كلِّ `resize`/`scroll` للنافذة المرئيّة —
+ * **الانتظارُ حدثٌ لا مؤقّت** (D-250).
+ *
+ * **والعرضُ يُقاس من الفاصل لا يُفترض** (D-282): الفاصلُ `h-40` يسكن
+ * عمودَ الصفحة نفسَه — أيّاً كان عرضُه — **ويحجز في التدفق مكانَ
+ * الشريط كي لا يختفي آخرُ ردٍّ خلفه** (D-138). والنزفُ الجانبيُّ
+ * (`bleed`) يعيد امتدادَ `-mx-4 sm:-mx-6` القديم بالقياس.
+ *
+ * **وحين لا كيبورد** (عتبةُ ٦٠px تُسقط تنفُّسَ أشرطة المتصفّح) يجلس
+ * فوق شريط التنقّل بنفس حساب الشريط القديم — ويسقط الحسابُ من `md:`
+ * حيث يختفي الشريط.
+ */
+function KeyboardDock({ children }: { children: React.ReactNode }) {
+  const anchor = useRef<HTMLDivElement | null>(null);
+  const [box, setBox] = useState<{ left: number; width: number; kb: number } | null>(null);
+  useEffect(() => {
+    const read = () => {
+      const el = anchor.current;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      const bleed = window.innerWidth >= 640 ? 24 : 16;
+      const vv = window.visualViewport;
+      const kb = vv ? Math.max(0, window.innerHeight - vv.height - vv.offsetTop) : 0;
+      setBox({
+        left: Math.max(0, r.left - bleed),
+        width: Math.min(window.innerWidth, r.width + bleed * 2),
+        kb,
+      });
+    };
+    read();
+    const vv = window.visualViewport;
+    window.addEventListener("resize", read);
+    vv?.addEventListener("resize", read);
+    vv?.addEventListener("scroll", read);
+    return () => {
+      window.removeEventListener("resize", read);
+      vv?.removeEventListener("resize", read);
+      vv?.removeEventListener("scroll", read);
+    };
+  }, []);
+  const kbOpen = (box?.kb ?? 0) > 60;
+  return (
+    <>
+      <div ref={anchor} aria-hidden className="h-40" />
+      <div
+        className={`fixed z-30 ${
+          kbOpen ? "" : "bottom-[calc(env(safe-area-inset-bottom,0px)+3.5rem)] md:bottom-0"
+        }`}
+        style={{
+          left: box ? box.left : 0,
+          width: box ? box.width : "100%",
+          ...(kbOpen && box ? { bottom: box.kb + 6 } : null),
+        }}
+      >
+        <div className="px-4 sm:px-6 py-3 border-t border-[color:var(--divider)] bg-[color:var(--background)]">
+          {children}
+        </div>
+      </div>
+    </>
+  );
 }
