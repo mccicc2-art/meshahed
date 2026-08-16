@@ -75,6 +75,9 @@ export function ReplyItem({
   canReply,
   replyCount = 0,
   fold,
+  likes = 0,
+  likedByMe = false,
+  onLike,
   onReply,
   onDelete,
   onReport,
@@ -102,6 +105,22 @@ export function ReplyItem({
    * **والمكانُ يخصّ هذا الصفّ** — **فيُمرَّر العنصرُ ولا تُنقل الحالة.**
    */
   fold?: React.ReactNode;
+  /**
+   * 🆕 **إعجابُ المشاركة** (D-289، الهجرة ٩٠، طلبُ أحمد: «لازم فيه لايك
+   * عند كل ردّ»).
+   *
+   * **ولماذا وسيطٌ لا `LikeButton`:** ذاك زرُّ عميلٍ يعرف وجهتَه ويكتب
+   * بنفسه، **وهذا الصفُّ يعيش داخل خيطٍ يملك حالتَه التفاؤليّة كلَّها**
+   * (`added`/`removed`/`toggled`) — **وحالتان لشيءٍ واحد تفترقان.**
+   * فيُمرَّر العددُ والحالةُ ويُرفع الفعلُ إلى `ThreadReplies`.
+   *
+   * ⚠️ **و`onLike` غائبةٌ حيث لا يُسمح**: مشاركتُك أنت، أو زائرٌ لم
+   * يدخل، أو خيطٌ ليس غرفةَ نقاش — **والزرُّ يصير عدّاداً يُقرأ**
+   * (D-217: العاري يُقرأ)، **ولا يُرسم أصلاً إن كان صفراً** (D-222).
+   */
+  likes?: number;
+  likedByMe?: boolean;
+  onLike?: () => void;
   onReply: () => void;
   onDelete: () => void;
   onReport: () => void;
@@ -238,7 +257,13 @@ export function ReplyItem({
              حاجباً لا ضباباً** (D-063). **والسببُ يتغيّر وحدَه**: من أعلن
              الحرقَ هو الكاتب، **فلا نقول «يكشف أحداث الحلقة» عن كلامٍ لا
              نعرف ما فيه** (D-216). */
-          <SpoilerText text={reply.body} locale={locale} note={t.spoilerByAuthor} />
+          /* ⚖️ **وسقط السطرُ الثاني أيضاً** (D-289، بعد أن حُذف أخوه في
+             D-287): طلبُ أحمد كان «مو لازم تشرح» — **وحين سألتُه عن هذا
+             تحديداً لم يفهم السؤال، فكان الجوابُ أن أحذفه لا أن أُعيد
+             السؤال** (D-285: الإذنُ الذي لا يُفهَم ليس إذناً — **وهنا
+             لم يكن ثمّة ما يحتاج إذناً أصلاً، كان تفضيلاً قاله مرّة**).
+             **والزرُّ يقول «اعرض الحرق» وحدَه.** */
+          <SpoilerText text={reply.body} locale={locale} />
         ) : (
           /* **اتّجاهُ الردّ من الردّ** (D-241) — لا من لغة الواجهة */
           <p
@@ -256,7 +281,7 @@ export function ReplyItem({
             ⚠️ **والشرطُ صار شرطين لا واحداً**: زرُّ الردّ يشترط دخولاً
             وسماحاً، **والطيُّ لا يشترط شيئاً** — **فزائرٌ لا يستطيع
             الردَّ كان سيفقد سهمَ الطيّ لو بقي الشرطُ واحداً.** */}
-        {!pending && ((signedIn && canReply) || fold) && (
+        {!pending && ((signedIn && canReply) || fold || onLike || likes > 0) && (
           <div className="mt-1.5 -mx-0.5 flex items-center gap-1">
             {signedIn && canReply && (
               <button
@@ -270,6 +295,26 @@ export function ReplyItem({
                 {replyCount > 0 && (
                   <span className="tabular-nums">{num(replyCount, locale)}</span>
                 )}
+              </button>
+            )}
+            {/* 🆕 **الإعجابُ بجانب الردّ في الصفّ نفسِه** (D-289/D-288):
+                **فعلان على هذه الرسالة، فصفٌّ واحد يحملهما.**
+                **والقلبُ المصمتُ حالةٌ والمفرَّغُ غيابُها** (D-260)،
+                **واللونُ يحمل الحالة** (D-003). */}
+            {(onLike || likes > 0) && (
+              <button
+                type="button"
+                onClick={onLike}
+                disabled={!onLike}
+                aria-pressed={likedByMe}
+                aria-label={t.likesLabel}
+                title={t.likesLabel}
+                className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[12px] transition ${
+                  likedByMe ? "text-accent" : "text-muted"
+                } ${onLike ? "hover:text-accent active:scale-95" : "cursor-default"}`}
+              >
+                <Icon name={likedByMe ? "heart-filled" : "heart"} size={15} />
+                {likes > 0 && <span className="tabular-nums">{num(likes, locale)}</span>}
               </button>
             )}
             {fold}

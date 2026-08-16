@@ -11,6 +11,7 @@ import {
   reportReply,
   reportNewsReply,
   reportTalkPost,
+  togglePostLike,
 } from "@/lib/actions";
 import { getDict, type Locale } from "@/lib/i18n";
 import { displayNameOf } from "@/lib/people";
@@ -83,9 +84,16 @@ export function ThreadReplies({
   me,
   locale,
   signedIn,
+  likes,
 }: {
   target: ReplyTarget;
   replies: ThreadReply[];
+  /**
+   * 🆕 **إعجاباتُ المشاركات — عدداً وحالةً** (D-289، الهجرة ٩٠).
+   * **تصل من الخادم في نداءٍ واحدٍ للغرفة** (D-205)، **وتغيب في
+   * السطحين الآخرين** (الرأي والنشرة) فلا يُرسم زرّ.
+   */
+  likes?: { counts: Record<string, number>; mine: string[] };
   /** وجهي واسمي — **لصفّ الكتابة وللنسخة التفاؤلية** (D-241) */
   me: { name: string; avatar: string | null } | null;
   locale: Locale;
@@ -120,6 +128,33 @@ export function ThreadReplies({
    * كانت ستمنع أحمد من طيّ فرعه هو**، وهو بالضبط الفرعُ الذي في لقطته.
    */
   const [toggled, setToggled] = useState<Set<string>>(new Set());
+
+  /**
+   * 🆕 **قلبُ الإعجاب تفاؤليّاً** (D-289/D-241): الخريطةُ تحمل **الفرقَ
+   * عن الخادم لا الرقمَ نفسَه** — `+1` أو `-1` — **فما يصل من الخادم
+   * يبقى هو المصدر، والفرقُ يُضاف إليه.**
+   * **ورقمٌ محليٌّ كاملٌ كان سيتجمّد** يوم يتغيّر الخادمُ تحته.
+   */
+  const [likeDelta, setLikeDelta] = useState<Record<string, number>>({});
+  const serverMine = new Set(likes?.mine ?? []);
+  const likedNow = (id: string) => {
+    const d = likeDelta[id];
+    return d === undefined ? serverMine.has(id) : d > 0;
+  };
+  const likesNow = (id: string) =>
+    Math.max(0, (likes?.counts[id] ?? 0) + (likeDelta[id] ?? 0));
+
+  function like(id: string) {
+    const was = likedNow(id);
+    tap(8);
+    /* **الحالةُ تنقلب فور اللمس ثم تُكتب** — وزرٌّ لا يستجيب يُلمس
+       مرّتين (سيرةُ `LikeButton`). **وإن فشلت الكتابة رجعت.** */
+    setLikeDelta((d) => ({ ...d, [id]: was ? -1 : 1 }));
+    void togglePostLike(id, was).catch(() => {
+      setLikeDelta((d) => ({ ...d, [id]: was ? 1 : -1 }));
+      setError(t.errorTitle);
+    });
+  }
 
   /* **الحمولةُ تغلب النسخةَ المحلّية** (D-241): ما ظهر معرّفُه من الخادم
      تسقط نسختُه هنا — فلا يظهر الردُّ مرّتين. */
@@ -276,6 +311,17 @@ export function ThreadReplies({
           canReply={nested ? depth < MAX_DEPTH : !r.parentId}
           /* **والعددُ بجانب علامته** (D-284) — كلُّ الفرع لا أبناؤه وحدهم */
           replyCount={nested ? countUnder(r.replyId) : 0}
+          /* **الإعجابُ في الغرفة وحدَها** (D-289): الجدولُ يشير إلى
+             `title_posts`، **وسطحٌ يعرض زرّاً لا وجهةَ له يعد بما
+             تمنعه القاعدة** (D-217). **ولا زرَّ على مشاركتك** — ولا
+             على نسخةٍ تفاؤليّةٍ لم يصلها معرّفُها بعد (D-241). */
+          likes={likes ? likesNow(r.replyId) : 0}
+          likedByMe={likes ? likedNow(r.replyId) : false}
+          onLike={
+            likes && signedIn && !r.isMine && !r.replyId.startsWith(TEMP)
+              ? () => like(r.replyId)
+              : undefined
+          }
           onReply={() => {
             tap(6);
             setOpen(open === r.replyId ? null : r.replyId);
