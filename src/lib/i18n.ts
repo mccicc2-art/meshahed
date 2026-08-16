@@ -285,6 +285,9 @@ const ar = {
   feedSortSmart: "ترتيب ذكي",
   feedSortLatest: "آخر منشور",
   talkFollowedOnly: "أعمالي المتابَعة فقط",
+  /* 🆕 **الترجمةُ عند العرض** (D-307) — الزرُّ يقول الفعلَ القادم لا الحالة */
+  showOriginalText: "النص الأصلي",
+  showTranslation: "الترجمة",
   errTooLarge: "حجم الصورة كبير — الحد الأقصى ٢ ميجابايت.",
   errUpload: "تعذّر رفع الصورة: ",
   errSave: "تعذّر الحفظ: ",
@@ -1741,6 +1744,8 @@ const en: Dict = {
   feedSortSmart: "Smart order",
   feedSortLatest: "Latest post",
   talkFollowedOnly: "Only shows I follow",
+  showOriginalText: "Original text",
+  showTranslation: "Translation",
   errTooLarge: "Image too large — 2 MB maximum.",
   errUpload: "Couldn't upload the image: ",
   errSave: "Couldn't save: ",
