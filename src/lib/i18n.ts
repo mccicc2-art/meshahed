@@ -122,7 +122,6 @@ const ar = {
   communityToolsTitle: "أدوات المجتمع",
   /* فعلٌ لا عنوان: صفُّ قائمةٍ يقول ماذا يفعل الضغطُ عليه، وعنوانُ الورقة
      التي يفتحها («مجتمعك») يصلح عنواناً ولا يصلح صفّاً (D-155) */
-  communityToolsCreate: "أنشئ مجتمعاً",
   communityToolsMessage: "راسل صديقاً",
   /* قسمُ التبويبات — **اسمٌ يقول المحورين** (طلب أحمد: الموضع والإخفاء).
      وحلّ محلّ «التبويبات الظاهرة» من D-177 (حُذف): كان يصف نصفَ ما صار
@@ -454,17 +453,9 @@ const ar = {
   commInvited: "مدعو",
   commAlreadyMember: "عضو",
   commMineSection: "مجتمعاتي",
-  commCreate: "أنشئ مجتمعاً",
-  commCreateTitle: "مجتمعك",
-  commCreateHint: "لكل شخصٍ مجتمعٌ واحد يسمّيه ويديره.",
-  commNamePlaceholder: "اسم المجتمع…",
-  commPublic: "عام — الدخول مباشر",
-  commPrivate: "خاص — الدخول بطلب",
-  commCreateButton: "أنشئ",
-  commSearchPlaceholder: "ابحث عن مجتمع…",
-  commSearchHint: "اكتب حرفين فأكثر للبحث بالاسم.",
-  commNoResults: "لا مجتمع بهذا الاسم.",
-  commEmptyDir: "لا مجتمعات بعد — كن أوّل من ينشئ واحداً.",
+  /* 🔴 **مفاتيحُ الإنشاء والبحث حُذفت** (D-306): سقط قرّاؤها مع إغلاق
+     باب الكومينتيز — **ومفتاحٌ بلا قارئ يُحذف لا يُترك** (D-214/D-287). */
+  commEmptyDir: "لا مجتمعات بعد.",
   commMembers: (n: string) => `${n} أعضاء`,
   commJoin: "انضم",
   commRequested: "طلبتَ الانضمام",
@@ -1626,7 +1617,6 @@ const en: Dict = {
   librarySortGroup: "Sort",
   listNewGroup: "New list",
   communityToolsTitle: "Community tools",
-  communityToolsCreate: "Create a community",
   communityToolsMessage: "Message a friend",
   tabsPrefsGroup: "Tabs — order and visibility",
   // Two words, not two phrases — a segmented slot is glanced at, not read
@@ -1912,17 +1902,7 @@ const en: Dict = {
   commInvited: "Invited",
   commAlreadyMember: "Member",
   commMineSection: "My communities",
-  commCreate: "Create a community",
-  commCreateTitle: "Your community",
-  commCreateHint: "One community per person — you name it and run it.",
-  commNamePlaceholder: "Community name…",
-  commPublic: "Public — open join",
-  commPrivate: "Private — join by request",
-  commCreateButton: "Create",
-  commSearchPlaceholder: "Search communities…",
-  commSearchHint: "Type two or more letters to search by name.",
-  commNoResults: "No community by that name.",
-  commEmptyDir: "No communities yet — be the first to create one.",
+  commEmptyDir: "No communities yet.",
   commMembers: (n: string) => `${n} members`,
   commJoin: "Join",
   commRequested: "Requested",

@@ -1220,32 +1220,11 @@ export async function reportUser(input: { targetId: string; reason?: string }) {
 //  المجتمعات (communities.sql)
 // ============================================================
 
-/**
- * إنشاء مجتمعي — واحدٌ لكل شخص (unique owner_id).
- *
- * الدالّة في القاعدة تُنشئ الصفّ وتُدخل المالك عضواً في نقلةٍ واحدة.
- * تعارضُ الفريد (23505) يعني «لديك مجتمعٌ بالفعل» — رسالةٌ للمستخدم لا
- * خطأُ قاعدةٍ خام.
- */
-export async function createCommunity(input: {
-  name: string;
-  isPrivate: boolean;
-}): Promise<string> {
-  const name = String(input.name ?? "").replace(/\s+/g, " ").trim().slice(0, 50);
-  if (name.length < 2) throw new Error("اسمٌ أقصر من حرفين / Name too short");
-  const { supabase } = await requireUser("community", 5, 60_000);
-  const { data, error } = await supabase.rpc("create_community", {
-    p_name: name,
-    p_private: !!input.isPrivate,
-  });
-  if (error) {
-    if (error.code === "23505")
-      throw new Error("لديك مجتمعٌ بالفعل — لكل شخصٍ مجتمعٌ واحد / You already have a community");
-    fail(error);
-  }
-  revalidatePath("/people");
-  return data as string;
-}
+/* 🔴 **حُذف `createCommunity`** (D-306، نصُّ أحمد: «احنا حاذفين الكومينتي
+   فالمفروض ما أحد يقدر يأسس كومينتي جديد») — **سقط قرّاؤه فسقط** (D-214).
+   **⚠️ ودالّةُ `create_community` في القاعدة بابٌ ثانٍ ما زال مفتوحاً
+   تقنيّاً** — **وإغلاقُه يمسّ ما هو خارج الإذن الدائم، فيُعرض على أحمد
+   قبل تشغيله.** */
 
 /** الانضمام: مباشرةً للعامّ، وطلبٌ للخاصّ — تُرجع أيّهما وقع */
 export async function joinCommunity(id: string): Promise<"joined" | "requested" | "noop"> {
@@ -1354,18 +1333,6 @@ export async function postCommunityMessage(communityId: string, body: string) {
   });
   if (error) fail(error);
   revalidatePath("/people");
-}
-
-/** بحث المجتمعات بالاسم — يمرّ عبر أكشن لأن العميل لا يستدعي data.ts */
-export async function searchCommunities(q: string) {
-  const term = String(q ?? "").trim().slice(0, 50);
-  const { supabase } = await requireUser("community", 30, 60_000);
-  const { data, error } = await supabase.rpc("search_communities", { q: term });
-  if (error) fail(error);
-  return ((data ?? []) as CommunityLite[]).map((c) => ({
-    ...c,
-    member_count: Number(c.member_count),
-  }));
 }
 
 /**
