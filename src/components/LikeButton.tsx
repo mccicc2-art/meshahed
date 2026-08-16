@@ -81,7 +81,7 @@ export function LikeButton({
     if (count === 0) return null;
     return (
       <span className="flex items-center gap-1.5 text-[12px] text-muted" title={t.likesLabel}>
-        <Icon name="like" size={16} />
+        <Icon name="heart" size={16} />
         <span className="tabular-nums">{count}</span>
       </span>
     );
@@ -124,7 +124,12 @@ export function LikeButton({
         liked ? "text-accent" : "text-muted hover:text-foreground"
       }`}
     >
-      <Icon name={liked ? "like-filled" : "like"} size={16} />
+      {/* 🆕 **القلبُ لا الإبهام** (D-294، طلبُ أحمد: «ماتبغى علامة لايك
+          ولا كلمة لايك، فقط نستخدم القلب عشان نوحّد»). **ورمزان لفعلٍ
+          واحدٍ في صفحةٍ واحدة هو ما تمنعه القاعدة ٣** — الخطُّ كان
+          بالإبهام والغرفةُ بالقلب. **ولا كلمةَ بجانبه**: الرمزُ عُرفٌ
+          يُقرأ بلا نصّ، والمعنى في `aria-label` (D-177/D-204). */}
+      <Icon name={liked ? "heart-filled" : "heart"} size={16} />
       {/* **والزرُّ يبقى وإن غاب رقمُه** — الرمزُ وحده فعلٌ مفهوم */}
       {count > 0 && <span className="tabular-nums">{count}</span>}
     </button>
