@@ -11,6 +11,8 @@ import { sanitizeHomePrefs, type HomePrefs } from "@/lib/homePrefs";
 import { sanitizeProfilePrefs, type ProfilePrefs } from "@/lib/profilePrefs";
 import {
   FEED_STRANGERS_COOKIE,
+  FEED_SORT_COOKIE,
+  TALK_FOLLOWED_COOKIE,
   isTabSurface,
   parseTabPrefs,
   serializeTabPrefs,
@@ -241,6 +243,26 @@ export async function setTabPrefs(surface: string, prefs: TabPref[]) {
 export async function setFeedStrangers(show: boolean) {
   const store = await cookies();
   store.set(FEED_STRANGERS_COOKIE, show ? "1" : "0", {
+    path: "/",
+    maxAge: 60 * 60 * 24 * 365,
+    sameSite: "lax",
+  });
+}
+
+/** 🆕 **ترتيبُ خطّ النشاط** (D-306) — كوكي كأخيه فوقه، بالحجّة نفسِها */
+export async function setFeedSort(sort: "smart" | "latest") {
+  const store = await cookies();
+  store.set(FEED_SORT_COOKIE, sort === "latest" ? "latest" : "smart", {
+    path: "/",
+    maxAge: 60 * 60 * 24 * 365,
+    sameSite: "lax",
+  });
+}
+
+/** 🆕 **«النقاشات»: أعمالي المتابَعة فقط** (D-306) */
+export async function setTalkFollowedOnly(on: boolean) {
+  const store = await cookies();
+  store.set(TALK_FOLLOWED_COOKIE, on ? "1" : "0", {
     path: "/",
     maxAge: 60 * 60 * 24 * 365,
     sameSite: "lax",

@@ -152,6 +152,29 @@ export function parseFeedStrangers(v: string | undefined): boolean {
 }
 
 /**
+ * 🆕 **ترتيبُ خطّ النشاط** (D-306، طلبُ أحمد: «الترتيب بآخر منشور أو
+ * ترتيب ذكي مثل الحالي») — كوكي كأخواته: تفضيلُ عرضٍ يخصّ الجهاز
+ * ويُقرأ على الخادم قبل أوّل رسمة.
+ */
+export const FEED_SORT_COOKIE = "loopz_feed_sort";
+
+/** **والغيابُ «ذكيّ»** (D-152): هو السلوكُ القائم منذ D-283 */
+export function parseFeedSort(v: string | undefined): "smart" | "latest" {
+  return v === "latest" ? "latest" : "smart";
+}
+
+/**
+ * 🆕 **غرفُ أعمالي المتابَعة وحدَها في «النقاشات»** (D-306، طلبُ أحمد:
+ * «إخفاء النقاشات اللي ما يتابعها»).
+ */
+export const TALK_FOLLOWED_COOKIE = "loopz_talk_followed";
+
+/** **والغيابُ إظهارُ الكلّ** (D-152) */
+export function parseTalkFollowed(v: string | undefined): boolean {
+  return v === "1";
+}
+
+/**
  * **قارئٌ متسامح — وهو ما يجعل الميزة تعيش بعد أوّل تبويبٍ جديد.**
  *
  * أيُّ مفتاحٍ مجهولٍ يسقط (كوكي قديمٌ أو محرَّرٌ بيد)، وأيُّ مفتاحٍ ناقصٍ

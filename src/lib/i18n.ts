@@ -282,6 +282,10 @@ const ar = {
   /* 🆕 **سهما التصويت** (D-305) — الفعلُ لا الحالة (D-224) */
   voteUp: "صوّت لأعلى",
   voteDown: "صوّت لأسفل",
+  /* 🆕 **أدواتُ الورقة السياقيّة** (D-306) — كلمتان لخانة مقسّم تُلمح لمحاً */
+  feedSortSmart: "ترتيب ذكي",
+  feedSortLatest: "آخر منشور",
+  talkFollowedOnly: "أعمالي المتابَعة فقط",
   errTooLarge: "حجم الصورة كبير — الحد الأقصى ٢ ميجابايت.",
   errUpload: "تعذّر رفع الصورة: ",
   errSave: "تعذّر الحفظ: ",
@@ -1744,6 +1748,9 @@ const en: Dict = {
   showLess: "Less",
   voteUp: "Upvote",
   voteDown: "Downvote",
+  feedSortSmart: "Smart order",
+  feedSortLatest: "Latest post",
+  talkFollowedOnly: "Only shows I follow",
   errTooLarge: "Image too large — 2 MB maximum.",
   errUpload: "Couldn't upload the image: ",
   errSave: "Couldn't save: ",

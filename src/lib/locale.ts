@@ -8,6 +8,10 @@ import {
   parseFeedStrangers,
   type TabPref,
   type TabSurface,
+  FEED_SORT_COOKIE,
+  parseFeedSort,
+  TALK_FOLLOWED_COOKIE,
+  parseTalkFollowed,
 } from "@/lib/tabPrefs";
 
 export async function getLocale(): Promise<Locale> {
@@ -69,6 +73,26 @@ export async function getFeedStrangers(): Promise<boolean> {
     return parseFeedStrangers(store.get(FEED_STRANGERS_COOKIE)?.value);
   } catch {
     return true;
+  }
+}
+
+/** 🆕 **ترتيبُ خطّ النشاط** (D-306) — من الخادم قبل أوّل رسمة */
+export async function getFeedSort(): Promise<"smart" | "latest"> {
+  try {
+    const store = await cookies();
+    return parseFeedSort(store.get(FEED_SORT_COOKIE)?.value);
+  } catch {
+    return "smart";
+  }
+}
+
+/** 🆕 **«النقاشات»: أعمالي المتابَعة فقط؟** (D-306) */
+export async function getTalkFollowedOnly(): Promise<boolean> {
+  try {
+    const store = await cookies();
+    return parseTalkFollowed(store.get(TALK_FOLLOWED_COOKIE)?.value);
+  } catch {
+    return false;
   }
 }
 
