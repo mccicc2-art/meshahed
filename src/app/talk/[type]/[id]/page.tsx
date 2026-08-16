@@ -18,6 +18,7 @@ import { getT } from "@/lib/locale";
 import { bulletinLine } from "@/lib/bulletinLine";
 import { TitleHero } from "@/components/TitleHero";
 import { ExpandableText } from "@/components/ExpandableText";
+import { getBatchTranslations } from "@/lib/translate";
 import { HeroRatings, HeroRatingsSkeleton } from "@/components/HeroRatings";
 import { ThreadReplies } from "@/components/thread/ThreadReplies";
 import { Icon } from "@/components/Icon";
@@ -152,6 +153,14 @@ export default async function TalkPage({
        اللحظة، **والسقوطُ صامتٌ بصفر** (D-179). */
     getPostVotes(thread.map((p) => p.postId)),
   ]);
+
+  /* 🆕 **ترجمةُ كلام الأعضاء بلغة القارئ** (D-307) — **النشراتُ ثنائيّةُ
+     اللغة أصلاً** (`name_ar`/`name_en`) فلا تدخل، **والمفتاحُ غائبٌ؟
+     خريطةٌ فارغةٌ والأصلُ وحدَه** (D-077). */
+  const translations = await getBatchTranslations(
+    thread.filter((p) => !p.kind && p.body?.trim()).map((p) => ({ id: p.postId, text: p.body })),
+    locale === "ar" ? "ar" : "en",
+  );
 
 
 
@@ -294,6 +303,7 @@ export default async function TalkPage({
             backdropPath,
           }}
           votes={postVotes}
+          translations={translations}
           replies={thread.map((p) => ({
             replyId: p.postId,
             authorId: p.authorId,
