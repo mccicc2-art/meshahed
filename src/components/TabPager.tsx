@@ -260,7 +260,11 @@ export function TabPager({
      * القراءة** — الصفحةُ تطول تحت الإصبع لا فوقه.
      */
     const armNeighbours = () => {
-      const top = Math.max(0, window.scrollY - vp.offsetTop);
+      /* 🆕 **من المستطيل لا من `offsetTop`** (D-304): `offsetTop` تُقاس
+         على أقرب أبٍ **موضَّع**، **فتكذب يومَ يولد أبٌ `relative` فوقنا**
+         — **و`-rect.top` هي «كم نزلت النافذةُ داخل الصندوق» تعريفاً**،
+         بلا افتراضٍ عن الشجرة (نفسُ درس D-293: القياسُ لا الحساب). */
+      const top = Math.max(0, -vp.getBoundingClientRect().top);
       vp.style.minHeight = `${top + window.innerHeight}px`;
       sides.forEach((el, i) => {
         if (i === index) return;
@@ -268,16 +272,47 @@ export function TabPager({
         el.style.visibility = "visible";
       });
     };
+    /**
+     * 🔴 🆕 **ولا تُخفي لوحةً صارت هي المفتوحة** (D-304، بلاغُ أحمد:
+     * «أحياناً مع اللفّ والتنقّل بين الصفحات الشاشة تصير سوداء»).
+     *
+     * **العطل:** `disarm` تُنادى بعد مؤقّتٍ (٣٦٠ms بعد الارتداد، أو بعد
+     * حارس ١٢٠٠ms)، **وتحمل `index` الذي أُغلق عليه يومَ جُدولت.**
+     * **فإن تبدّل التبويبُ قبل أن تُطلق** — بضغطةٍ على الشريط أو برحلةٍ
+     * تالية — **أخفت كلَّ لوحةٍ إلا القديمة، ومنها اللوحةُ المفتوحة
+     * الآن**: **صفحةٌ سوداءُ تماماً لا مخرجَ منها إلا إعادةُ التحميل.**
+     *
+     * **والعلاجُ من الحقيقة لا من الإغلاق**: **اللوحةُ المفتوحة هي
+     * الوحيدةُ في تدفّق المستند** (`position: static`) — **فالسؤالُ
+     * يُوجَّه إلى المتصفّح لحظتَها لا إلى ذاكرةِ مؤقّت** (D-282: كلُّ
+     * قياسٍ حيٍّ يبدأ من الحال، لا من لقطةٍ قديمة).
+     * **ومؤقّتاتُها تُجمع وتُلغى في التنظيف** — **ومؤقّتٌ ينجو من صاحبه
+     * يفعل باسمه ما لا يريد** (D-278).
+     */
+    const timers = new Set<number>();
+    const later = (fn: () => void, ms: number) => {
+      const id = window.setTimeout(() => {
+        timers.delete(id);
+        fn();
+      }, ms);
+      timers.add(id);
+    };
     const disarm = () => {
       vp.style.minHeight = "";
-      sides.forEach((el, i) => {
-        if (i !== index) el.style.visibility = "hidden";
+      sides.forEach((el) => {
+        if (getComputedStyle(el).position === "absolute") el.style.visibility = "hidden";
       });
     };
 
+    /**
+     * 🆕 **وإزاحةٌ رأسيّةٌ ثانية** (D-304) — **تعويضٌ لا حركة.**
+     * **تبقى صفراً في السحب كلِّه**، ولا تُستعمل إلا في اللحظة التي
+     * يُصفَّر فيها تمريرُ المستند تحت الرحلة (انظر `finish`).
+     */
+    let dy = 0;
     const setX = (dx: number, ms = 0) => {
       track.style.transition = ms ? `transform ${ms}ms ${EASE}` : "none";
-      track.style.transform = `translate3d(${dx}px,0,0)`;
+      track.style.transform = `translate3d(${dx}px,${dy}px,0)`;
     };
 
     /**
@@ -387,11 +422,38 @@ export function TabPager({
         const ms = reduced ? 0 : SNAP_MS;
         setX(0, ms);
         publish(0, ms);
-        window.setTimeout(disarm, ms);
+        later(disarm, ms);
         return;
       }
 
       tap(6);
+      /**
+       * 🔴 🆕 **والتمريرُ يُصفَّر هنا، لا عند الوصول** (D-304، بلاغُ أحمد
+       * الثالث: «مازالت إذا نزلت في صفحة، الصفحة الثانية تنزل معها»).
+       *
+       * **D-295 وD-302 كلاهما علّق التصفيرَ على *الوصول*** — رسمةً تقع
+       * بعد `router.push` — **وكلاهما فشل على الجهاز لسببٍ لم نُمسكه:
+       * التوجيهُ في App Router قد يقرّر ألّا يمرّر أصلاً حين يرى الشريحةَ
+       * الجديدة في مكانها، والرسمةُ قد تُعاد بعُقدٍ جديدة.**
+       * **وثلاثُ محاولاتٍ تفشل بالنمط نفسِه تقول إن الشرطَ خارج أيدينا،
+       * لا إن ضبطَه ناقص** (D-293: حين يُضبط الرقمُ مرّتين، الثالثةُ حذف).
+       *
+       * **فالتصفيرُ صار فعلاً نملكه لحظةَ الالتزام**: نقرأ `scrollY`،
+       * **نُصفّر المستندَ فوراً**، **ونزيح المسارَ `-y` فتبقى الصورةُ على
+       * الشاشة كما هي بكسلاً بكسل** — **والجارُ مطلقُ الموضع داخل الصندوق
+       * فلا يتحرّك معه.** **ثم تهبط الصفحةُ الجديدة والمستندُ عند رأسه
+       * أصلاً** — **ولا رسمةَ وسيطةً ننتظرها ولا علامةَ ننتظر وصولَها.**
+       *
+       * ⚠️ **ولا شيءَ يُرى**: الإزاحةُ تعويضٌ رياضيٌّ تامٌّ للتمرير
+       * الملغى، **والفرقُ الوحيد أن شريطَ التمرير قفز إلى أعلاه** —
+       * وهو ما نريده.
+       */
+      const y = window.scrollY;
+      if (y > 0) {
+        dy = -y;
+        window.scrollTo(0, 0);
+        setX(dx);
+      }
       /* **تُكمل الرحلةَ ثم تُفتح** — والصفحةُ الجديدة تُرسم على الخادم،
          **فالإكمالُ يملأ زمنَ الرحلة بدل أن يقف الشيءُ ساكناً** (D-250:
          الانتظارُ حدثٌ لا مؤقّت — وهنا الحدثُ نهايةُ الحركة). */
@@ -417,9 +479,13 @@ export function TabPager({
            وحدَه**: يعيد المسارَ إلى مكانه فلا تبقى الصفحةُ طائرةً،
            **ولا يقرّر نيابةً عن الرحلة أنها ماتت** (D-221: الشرطُ
            الواحد لا يخدم معنيين). */
+        /* **ورحلةٌ لم تصل تُعيد تعويضَها أيضاً** (D-304): المستندُ صُفِّر
+           عند الالتزام، **فبقاءُ الإزاحة يترك الصفحةَ مرفوعةً بلا سبب.**
+           **والقارئُ يعود إلى رأس تبويبه** — وهو أهونُ من صفحةٍ معلّقة. */
+        dy = 0;
         setX(0, SNAP_MS);
         publish(0, SNAP_MS);
-        window.setTimeout(disarm, SNAP_MS);
+        later(disarm, SNAP_MS);
       }, 1200);
     };
 
@@ -436,7 +502,7 @@ export function TabPager({
       if (drag.current?.lock === "x") {
         setX(0, SNAP_MS);
         publish(0, SNAP_MS);
-        window.setTimeout(disarm, SNAP_MS);
+        later(disarm, SNAP_MS);
       }
       drag.current = null;
     };
@@ -457,6 +523,8 @@ export function TabPager({
 
     return () => {
       window.clearTimeout(guard.current);
+      timers.forEach((id) => window.clearTimeout(id));
+      timers.clear();
       document.removeEventListener("touchstart", onStart);
       document.removeEventListener("touchmove", onMove);
       document.removeEventListener("touchend", onEnd);
