@@ -308,6 +308,48 @@ export async function toggleReaction(input: {
   revalidatePath("/news");
 }
 
+/**
+ * 🆕 **تثبيتُ غرفةِ نقاشٍ لي أنا** (D-301، الهجرة ٩٢).
+ *
+ * **وتوقيعُه توقيعُ `toggleReaction` حرفاً** — `on` لا `pin`/`unpin`:
+ * **فعلٌ واحدٌ باتّجاهين** (D-238)، **وفعلان بأسماء مختلفة يتعلّمهما
+ * المستدعي مرّتين.**
+ *
+ * ⚠️ **و`upsert` لا `insert`**: ضغطتان متتاليتان على شبكةٍ بطيئة تنتجان
+ * نداءين — **والثاني كان سيسقط بخطأ مفتاحٍ مكرَّر ويومض للقارئ خطأً لا
+ * ذنبَ له فيه** (D-047: التراجعُ يُسحب من مكانه بلا حوار).
+ *
+ * ⚠️ **ولا `revalidatePath`**: تبويبُ «نقاش» يُرتَّب على الخادم،
+ * **والحالةُ تفاؤليّةٌ في البطاقة** — **وتجديدُ الصفحة تحت الإصبع يُقفز
+ * البطاقةَ من مكانها بينما يقرؤها صاحبُها** (D-008/D-205).
+ * **والترتيبُ الجديد يظهر في الفتحة التالية، وهو ما يعنيه «تثبيت».**
+ */
+export async function toggleRoomPin(input: {
+  tmdbId: number;
+  mediaType: MediaType;
+  on: boolean;
+}) {
+  const tmdbId = intId(input.tmdbId);
+  const mediaType = asMediaType(input.mediaType);
+  const { supabase, user } = await requireUser("pin", 30, 60_000);
+
+  if (input.on) {
+    const { error } = await supabase
+      .from("title_room_pins")
+      .upsert(
+        { user_id: user.id, tmdb_id: tmdbId, media_type: mediaType },
+        { onConflict: "user_id,tmdb_id,media_type" },
+      );
+    if (error) fail(error);
+  } else {
+    const { error } = await supabase
+      .from("title_room_pins")
+      .delete()
+      .match({ user_id: user.id, tmdb_id: tmdbId, media_type: mediaType });
+    if (error) fail(error);
+  }
+}
+
 export async function follow(input: {
   tmdbId: number;
   mediaType: MediaType;

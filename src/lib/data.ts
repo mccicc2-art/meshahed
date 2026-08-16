@@ -2228,6 +2228,36 @@ export interface TalkRoom {
  * بغرف المجتمعات التلقائية (`getTitleRooms` أدناه)، **وردّت القاعدةُ
  * المحاولةَ بنفسها**: اسمٌ يبدو حرّاً قد يكون بيتَ ميزةٍ أخرى.
  */
+/**
+ * 🆕 **غرفي المثبَّتة** (D-301، الهجرة ٩٢) — **مفاتيحُ لا صفوف.**
+ *
+ * **ولا دالّةَ `definer`**: الصفوفُ صفوفي، **وسياسةُ القراءة «صفوفي أنا»
+ * تكفي** — **ودالّةُ `definer` تُكتب حين يُقرأ ما ليس لك** (٩٠ كانت تعدّ
+ * إعجاباتِ الناس كلِّهم). **وأرخصُ دالّةٍ هي التي لا تُكتب** (D-266).
+ *
+ * **والمفتاحُ `mediaType-tmdbId`** — صيغةُ `likeKey` نفسُها في هذه
+ * الصفحة، **فلا صيغةَ ثانيةٌ تفترق يوماً** (D-237/D-261).
+ *
+ * **وسقوطُه صامتٌ**: قبل تشغيل ٩٢ تعود مجموعةٌ فارغة **فتُرسم البطاقاتُ
+ * بلا تثبيت ولا ينكسر شيء** (D-151/D-179).
+ */
+export async function getMyRoomPins(): Promise<Set<string>> {
+  const out = new Set<string>();
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("title_room_pins")
+      .select("tmdb_id, media_type");
+    if (error || !data) return out;
+    for (const r of data as { tmdb_id: number; media_type: string }[]) {
+      out.add(`${r.media_type}-${r.tmdb_id}`);
+    }
+    return out;
+  } catch {
+    return out;
+  }
+}
+
 export async function getTalkRooms(limit = 40): Promise<TalkRoom[]> {
   try {
     const supabase = await createClient();

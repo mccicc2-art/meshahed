@@ -264,6 +264,11 @@ const ar = {
   /* 🆕 **رفعُ صورةٍ في النقاش** (D-298، طلبُ أحمد: «نحتاج نحطّ خيار
      رفع صورة»). **والرمزُ يقول الفعل، والكلمةُ لقارئ الشاشة** (D-177). */
   talkAddImage: "أضف صورة",
+  /* 🆕 **تثبيتُ الغرفة** (D-301، طلبُ أحمد: «إذا ضغطت عليها يتثبّت»).
+     **وفعلان مختلفان كلمتان مختلفتان** (D-223/D-224)، **والمعنى في
+     `aria-label` لأن الرمزَ وحدَه هو الزرّ** (D-177). */
+  talkPin: "ثبِّت الغرفة",
+  talkUnpin: "أزل التثبيت",
   talkRemoveImage: "أزل الصورة",
   talkImageAlt: "صورة مرفقة بالمشاركة",
   errTooLarge: "حجم الصورة كبير — الحد الأقصى ٢ ميجابايت.",
@@ -1719,6 +1724,8 @@ const en: Dict = {
   savedOk: "✓ Saved",
   errPickImage: "Please choose an image file.",
   talkAddImage: "Add a photo",
+  talkPin: "Pin this room",
+  talkUnpin: "Unpin",
   talkRemoveImage: "Remove the photo",
   talkImageAlt: "Photo attached to the post",
   errTooLarge: "Image too large — 2 MB maximum.",
