@@ -18,6 +18,7 @@ import {
   getReactions,
   getFollowingIds,
   getNewsReplyCounts,
+  getReviewReplyCounts,
   getPostViewCounts,
   getPeopleFeatured,
   getPeopleLeaderboard,
@@ -382,6 +383,17 @@ export default async function PeoplePage({
     ? await getNewsReplyCounts(genNews.map((n) => n.key))
     : new Map<string, number>();
 
+  /* 🆕 **وردودُ آراءِ الناس** (D-289، الهجرة ٨٩): **النصفُ الذي أعلنتُه
+     ناقصاً في D-283 واكتمل اليوم.** نداءٌ واحدٌ لمفاتيح الخطّ كلِّها،
+     **وسقوطُه صامت** فيبقى الترتيبُ بالإعجابات وحدَها. */
+  const reviewReplies = pagerTab
+    ? await getReviewReplyCounts(
+        localized
+          .filter((a) => a.review?.trim())
+          .map((a) => commentViewKey(a.person.id, a.media_type, a.tmdb_id)),
+      )
+    : new Map<string, number>();
+
   /* **مشاهداتُ منشورات الخطّ** (D-237): نداءٌ واحد لمفاتيح النوعين معاً
      — **والمفاتيحُ تُبنى هنا بنفس دالّتَي `postKeys`** التي تكتبها
      الواجهةُ في `data-post-key`، فلا صيغتان تفترقان.
@@ -474,6 +486,8 @@ export default async function PeoplePage({
               views={viewCounts}
               followingIds={followingIds}
               newsReplies={newsReplies}
+              /* ✅ **والنصفُ الثاني من الترجيح** (D-289، الهجرة ٨٩) */
+              reviewReplies={reviewReplies}
               /* **مفتاحُ «من يظهر»** (D-255) — يُقرأ من الكوكي على الخادم
                  **وهو الشخصنةُ الباقية وحدَها** بعد D-280. */
               showStrangers={showStrangers}
