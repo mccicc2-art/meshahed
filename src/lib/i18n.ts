@@ -135,7 +135,8 @@ const ar = {
      نصفها، ومن يفتحها ليرتّب تبويباته يقرأ عنواناً لا يخصّه */
   discoverToolsTitle: "أدوات اكتشف",
   browseFiltersGroup: "الفلترة",
-  communityToolsSearchGroup: "ابحث عن مجتمع",
+  /* ⚠️ **و`communityToolsSearchGroup` حُذفت** (D-292): **عنوانُ المجموعة
+     صار `communityTabAll` — «المجتمعات» كما في الرأس** (D-214). */
   browseActiveFilters: "الفلاتر المفعّلة",
   browseRemoveFilter: (label: string) => `إزالة ${label}`,
   typeSeries: "مسلسل",
@@ -850,9 +851,9 @@ const ar = {
   /* **ثلاثُ رقاقاتٍ للنشاط** (D-240). **و«تريندينق» حُذفت من اقتراح
      أحمد**: هي و«الأكثر لايك» ترتيبٌ واحد بلبوسين — **ورقاقتان تُنتجان
      نفسَ القائمة رقاقةٌ واحدة تُربك** (قاعدة ٣: لا عائلةَ ثانية) */
-  /* **قسمُ «من يظهر» في ورقة الأدوات** (D-255) — جارُ «التبويبات» لأن
-     كليهما يجيب «ماذا أرى في هذه الصفحة» */
-  feedPeopleGroup: "خطُّ النشاط — من يظهر",
+  /* ⚠️ **و`feedPeopleGroup` حُذفت** (D-292): **عنوانُ القسم صار
+     `communityTabMine` — اسمَ التبويب في الرأس** — **ومفتاحٌ بلا قارئ
+     يُحذف لا يُترك** (D-214). */
   feedShowStrangers: "أظهِر الغرباء",
   /* ⚠️ **وسقطت «في الرقاقات الثلاث» من الجملة** (D-280): الرقاقاتُ حُذفت،
      **وجملةٌ تشير إلى ما لا يراه القارئ تكذب عليه** (D-257: اسمٌ بقي بعد
@@ -1602,7 +1603,7 @@ const en: Dict = {
   tabsPrefsMoveDown: (name: string) => `Move ${name} later`,
   discoverToolsTitle: "Discover tools",
   browseFiltersGroup: "Filters",
-  communityToolsSearchGroup: "Find a community",
+  // communityToolsSearchGroup deleted with its reader (D-292)
   browseActiveFilters: "Active filters",
   browseRemoveFilter: (label: string) => `Remove ${label}`,
   typeSeries: "Series",
@@ -2104,7 +2105,8 @@ const en: Dict = {
   reviewPageTitle: "Comment",
   reviewOpenTalk: "Discussion",
   reviewPageMeta: (who: string, title: string) => `${who} on ${title}`,
-  feedPeopleGroup: "Activity feed — who shows up",
+  // feedPeopleGroup deleted with its reader (D-292) — the group heading is
+  // now communityTabMine, the tab name as shown in the header
   feedShowStrangers: "Show strangers",
   // Shortened (D-292). The Loopz-bulletin exception stays — without it the
   // switch reads broken to anyone who turns it off and still sees them
