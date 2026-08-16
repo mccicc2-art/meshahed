@@ -427,6 +427,12 @@ export function TopSavedLists({
       iconColor="#60A5FA"
       href={seeAllHref}
       seeAllLabel={seeAllHref ? t.seeAll : undefined}
+      /* **هامشُ أقسام اللوحة نفسُه** (بلاغُ أحمد: «الكلام لاصق في
+         الكارد»): قسمُ `PosterRail` عارٍ لأن صفوفَ الصفحات الأخرى
+         تُباعدها حاويتُها — **وهنا كلُّ قسمٍ يحمل هامشَه** (وصفةُ
+         `BoardSection` حرفاً)، **فكانت الفجوةُ صفراً مقيسةً** تحت
+         بطاقة D-291 ذات الحدّ الصلب. */
+      className="mt-7 first:mt-0"
     >
       {rows.map((row) => (
         /* **`wide` لا الافتراضي** — خانةُ الملصق أضيقُ من بطاقة قائمة

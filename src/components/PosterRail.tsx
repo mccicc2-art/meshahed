@@ -17,6 +17,7 @@ export function PosterRail({
   seeAllLabel,
   subtitle,
   action,
+  className,
   children,
 }: {
   title: string;
@@ -28,10 +29,17 @@ export function PosterRail({
   subtitle?: string;
   /** عنصرٌ في طرف العنوان (زرّ إجراء) — بديلٌ عن رابط «الكل» في هذا الصفّ */
   action?: React.ReactNode;
+  /**
+   * صفوفُ الصفحات الأخرى تُباعدها حاويتُها (`space-y-*`)، **وأقسامُ لوحة
+   * الأعضاء تحمل هامشَها بنفسها** (`mt-7` في `BoardSection`) — فمن سكن
+   * اللوحةَ مرّر هامشَها من هنا. **والغيابُ هو السلوكُ القائم** فلا
+   * يتحرّك قارئٌ آخر (D-152).
+   */
+  className?: string;
   children: React.ReactNode;
 }) {
   return (
-    <section>
+    <section className={className}>
       <div className="flex items-center justify-between gap-3 mb-1">
         <h2 className="flex items-center gap-2.5 text-[19px] font-bold">
           {icon && (
