@@ -124,6 +124,11 @@ const ar = {
      وحلّ محلّ «التبويبات الظاهرة» من D-177 (حُذف): كان يصف نصفَ ما صار
      الصفُّ يفعله، والاسمُ الذي يصف نصفَ الأداة يُخفي نصفَها (D-155) */
   tabsPrefsGroup: "التبويبات — الترتيب والإظهار",
+  /* 🆕 **تبويبا الورقة** (D-292، طلبُ أحمد: «اعملها ٢ تبويب»).
+     **«أدوات» أفعالٌ تُفعل، و«عرض» تفضيلاتٌ تُضبط** — **وكلمتان لا
+     جملتان**: خانةُ المقسّم تُقرأ بنظرةٍ لا تُدرَس. */
+  communityToolsTabDo: "أدوات",
+  communityToolsTabSee: "عرض",
   tabsPrefsMoveUp: (name: string) => `قدِّم ${name}`,
   tabsPrefsMoveDown: (name: string) => `أخِّر ${name}`,
   /* عنوانُ ورقة اكتشف بعد أن صارت تحمل قسمين — «تصفية اكتشف» كانت تصف
@@ -848,13 +853,19 @@ const ar = {
   /* **قسمُ «من يظهر» في ورقة الأدوات** (D-255) — جارُ «التبويبات» لأن
      كليهما يجيب «ماذا أرى في هذه الصفحة» */
   feedPeopleGroup: "خطُّ النشاط — من يظهر",
-  feedShowStrangers: "أظهِر من لا أتابعهم",
+  feedShowStrangers: "أظهِر الغرباء",
   /* ⚠️ **وسقطت «في الرقاقات الثلاث» من الجملة** (D-280): الرقاقاتُ حُذفت،
      **وجملةٌ تشير إلى ما لا يراه القارئ تكذب عليه** (D-257: اسمٌ بقي بعد
      أن تغيّر ما يسمّيه). **ومعها سقطت `feedForYou` و`feedLatest`
      و`feedTop` و`feedEmptyForYou`** — لا قارئَ لها. */
-  feedShowStrangersHint:
-    "حين يُطفأ، لا يعرض الخطُّ إلا كلامَ من تتابعهم وكلامَك. ونشراتُ Loopz لا يمسّها المفتاح: تُلغى من قائمة حسابها.",
+  /* 🆕 **واختُصرا معاً** (D-292، طلبُ أحمد: «اختصر خيارات الأكتيفتي فيد
+     والشرح»). **الاسمُ صار فعلاً لا جملةً** («أظهِر الغرباء»)،
+     **والشرحُ سطراً واحداً يقول الأثرَ ثم الاستثناء**.
+     ⚠️ **والاستثناءُ لم يسقط**: **نشراتُ Loopz لا يمسّها المفتاح**، **ومن
+     يظنّ أنه أطفأها فرآها عادَ يقرأ المفتاحَ معطّلاً** (D-155). **وسقط
+     منه «تُلغى من قائمة حسابها» وحدَه** — **مكانُ الإلغاء يُعرف حين
+     يُقصَد، وسطرٌ يشرح باباً ثانياً في ورقةٍ ثالثة ضجيج** (D-224). */
+  feedShowStrangersHint: "حين يُطفأ ترى من تتابعهم وكلامَك وحدَه. ونشراتُ Loopz لا يمسّها.",
   /* ⚖️ **وعادت `feedEmptyForYou` بعد أربعين دقيقة من حذفها** (D-283،
      طلبُ أحمد: «ناس ما أتابعهم ولا أتابع أفلامهم لا تظهرهم لي»).
      **وحذفتُها في D-280 لأن قارئَها سقط، وعادت لأن سلوكَها عاد** —
@@ -1584,6 +1595,9 @@ const en: Dict = {
   communityToolsCreate: "Create a community",
   communityToolsMessage: "Message a friend",
   tabsPrefsGroup: "Tabs — order and visibility",
+  // Two words, not two phrases — a segmented slot is glanced at, not read
+  communityToolsTabDo: "Tools",
+  communityToolsTabSee: "View",
   tabsPrefsMoveUp: (name: string) => `Move ${name} earlier`,
   tabsPrefsMoveDown: (name: string) => `Move ${name} later`,
   discoverToolsTitle: "Discover tools",
@@ -2091,9 +2105,10 @@ const en: Dict = {
   reviewOpenTalk: "Discussion",
   reviewPageMeta: (who: string, title: string) => `${who} on ${title}`,
   feedPeopleGroup: "Activity feed — who shows up",
-  feedShowStrangers: "Show people I don't follow",
-  feedShowStrangersHint:
-    "When off, the feed shows only people you follow plus your own posts. Loopz bulletins are unaffected; turn those off from that account's own menu.",
+  feedShowStrangers: "Show strangers",
+  // Shortened (D-292). The Loopz-bulletin exception stays — without it the
+  // switch reads broken to anyone who turns it off and still sees them
+  feedShowStrangersHint: "Off: only people you follow, plus you. Loopz bulletins are unaffected.",
   feedEmptyForYou:
     "Nothing for you yet. Follow a few people or add titles to your library, and this feed fills with talk that concerns you.",
   talkFavoritesHint: "favourited",
