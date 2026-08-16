@@ -6,8 +6,9 @@ import { timeAgoShort } from "@/lib/when";
 import { dirOf, alignOf } from "@/lib/dir";
 import type { PeopleLeaderRow, PeopleTopReviewRow, SavedListRow } from "@/lib/data";
 import { PersonName } from "./PersonRow";
-import { displayNameOf } from "@/lib/people";
 import { FollowUserButton } from "./FollowUserButton";
+import { PosterRail, RailItem } from "./PosterRail";
+import { CommunityListCard } from "./PublicListsRail";
 import { Icon, type IconName } from "./Icon";
 
 /**
@@ -73,8 +74,6 @@ const SECTION_TONE = {
   reviews: "text-[#F26D6D]",
   /** 🔥 */
   rising: "text-[#FB923C]",
-  /** 🆕 🔖 الأزرقُ للقوائم — **لونٌ خامسٌ في الفهرس لا لونُ حالة** (D-268) */
-  lists: "text-[#60A5FA]",
 } as const;
 
 /* ============================================================
@@ -379,20 +378,30 @@ export function PeopleLeaderboard({
  * التي لا وجهَ فيها (D-257).
  */
 /**
- * 🆕 **أكثرُ القوائم حفظاً — أعلى ٣ في آخر ٧ أيام** (D-289، الهجرة ٩٠).
+ * 🆕 **ما يحفظه الناس — صفٌّ أفقيٌّ يكسر إيقاعَ اللوحة** (D-290، بلاغُ
+ * أحمد على أوّل نسخة: «العنوان غيّره، والتصميم وطريقة العرض غيّرها…
+ * وأنا أحتاج شيئاً بينهم يكسر طابعَ التكرار، وكان في بالي قائمة
+ * الليست»).
  *
- * **طلبُ أحمد في ١٥ أغسطس**: «ضيف أكثر الليستات إضافةً للمكاتب أو حفظاً
- * وأظهر أعلى ٣ آخر ٧ أيام». **وتأخّر لأنّي حوّلتُه إلى سؤال** («القسمُ
- * الخامسُ يُقاس قبل أن يُبنى» — D-267) — **وقياسُ الخامس حجّةٌ حين
- * أقترحه أنا، لا حين يطلبه هو.**
+ * ================= لماذا صفٌّ أفقيٌّ لا صفوفٌ مكدّسة =================
  *
- * **ولماذا صفٌّ لا بطاقةُ وجه:** الأقسامُ الأربعةُ قبله ترتّب **أشخاصاً**،
- * **وهذا يرتّب شيئاً صنعه شخص** — **فالمِرساةُ ملصقاتُ القائمة والاسمُ
- * ثم صاحبُها خافتاً**، لا وجهٌ في الصدارة (D-222 معكوسةً بحجّتها:
- * صاحبُ الكلام في صدر الصفّ، **وصاحبُ القائمة ليس هو القائمة**).
+ * **الأقسامُ الأربعةُ حوله كلُّها إيقاعٌ واحد**: عنوانٌ ثم بطاقاتُ وجوهٍ
+ * متجاورة. **ونسختي الأولى كانت صفّاً مكدّساً بملصقاتٍ صغيرة** — **شكلاً
+ * خامساً من العائلة نفسِها، فلم تكسر شيئاً.**
+ * **والكسرُ يقع بالإيقاع لا بالمحتوى**: صفٌّ **يُسحب أفقيّاً** ببطاقاتٍ
+ * عريضةٍ فيها ثلاثةُ ملصقات **يختلف عن شبكة الوجوه في اتّجاهه وحجمه
+ * معاً** — فتقع العينُ عليه فتعرف أنها غيّرت الموضوع.
  *
- * **وثلاثةُ ملصقاتٍ متراكبة** — غلافٌ بلا نداءٍ ثانٍ (D-164)، **وقائمةٌ
- * فارغةٌ تُرسم بمربّعٍ لا بفراغ** (D-181).
+ * ================= ولا بطاقةَ جديدة =================
+ *
+ * **`CommunityListCard` مبنيّةٌ منذ D-063 وتخدم ثلاثةَ أبواب** (اكتشف ·
+ * قوائمي المحفوظة · قوائم الشخص) — **وهذا رابعُها** (D-068/D-262: أرخصُ
+ * مكوّنٍ هو الذي لا يُكتب، **وقبل أن يُبنى شيء يُسأل: أهو مبنيٌّ في
+ * مكانٍ آخر؟**). **وسطرُ العدّ وحدَه اختلف** فصار `countLabel`.
+ *
+ * **و`PosterRail` هي ترويسةُ الصفّ نفسُها** التي تحملها رفوفُ التطبيق —
+ * **بعنوانٍ ورمزٍ ورابط «الكل»**، فلا ترويسةَ ثانيةٌ تُخترع لهذا القسم
+ * (D-002).
  */
 export function TopSavedLists({
   rows,
@@ -408,60 +417,40 @@ export function TopSavedLists({
   if (!rows.length) return null;
 
   return (
-    <BoardSection
-      icon="bookmark"
-      tone={SECTION_TONE.lists}
+    <PosterRail
       title={t.peopleBoardSavedLists}
-      seeAllHref={seeAllHref}
-      seeAllLabel={t.seeAll}
+      icon="bookmark"
+      iconColor="#60A5FA"
+      href={seeAllHref}
+      seeAllLabel={seeAllHref ? t.seeAll : undefined}
     >
-      <ul className="space-y-2.5">
-        {rows.map((row) => (
-          <li key={row.listId}>
-            <Link
-              href={`/lists/${row.listId}`}
-              className="flex items-center gap-3 p-3 rounded-2xl bg-surface border border-border active:opacity-80 transition"
-            >
-              {/* **ثلاثةُ ملصقاتٍ متراكبة** — **بمقاسٍ ثابتٍ لا يتغيّر
-                  بعدد ما وصل** (D-046)، **والفارغُ مربّعٌ خافت.** */}
-              <span className="relative w-[54px] h-[54px] shrink-0">
-                {[0, 1, 2].map((i) => {
-                  const src = posterUrl(row.posters[i] ?? null, "w185");
-                  return (
-                    <span
-                      key={i}
-                      className="absolute top-0 w-[34px] h-[51px] rounded-md overflow-hidden bg-surface-2 border border-[color:var(--divider)]"
-                      style={{ insetInlineStart: `${i * 10}px`, zIndex: 3 - i }}
-                    >
-                      {src && (
-                        <Image src={src} alt="" fill sizes="34px" className="object-cover" />
-                      )}
-                    </span>
-                  );
-                })}
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block font-bold text-[14px] truncate">
-                  <bdi>{row.name}</bdi>
-                </span>
-                {/* **وصاحبُها خافتاً تحتها** — **و`hide_name` محسومةٌ في
-                    القاعدة** فالاسمُ يصل `null` (D-011). */}
-                <span className="block mt-0.5 text-[12px] text-muted truncate">
-                  {displayNameOf(
-                    { nickname: row.nickname, username: row.username, hide_name: row.hideName },
-                    t.anonymousUser,
-                  )}
-                </span>
-              </span>
-              {/* **والعددُ في النهاية** — **صريحٌ لا نقاط** (D-219) */}
-              <span className="shrink-0 text-[12px] font-bold text-muted tabular-nums">
-                {t.peopleBoardSaves(row.saves)}
-              </span>
-            </Link>
-          </li>
-        ))}
-      </ul>
-    </BoardSection>
+      {rows.map((row) => (
+        /* **`wide` لا الافتراضي** — خانةُ الملصق أضيقُ من بطاقة قائمة
+           (D-084)، **والبطاقاتُ كانت تتراكب.** */
+        <RailItem key={row.listId} wide>
+          <CommunityListCard
+            list={{
+              id: row.listId,
+              name: row.name,
+              kind: null,
+              /* **واسمُ الصاحب من الحارس نفسِه** (D-011): `hide_name`
+                 محسومةٌ في القاعدة، **ومخفيُّ الاسم يظهر بلا سطرِ صاحبٍ
+                 أصلاً** — **وسطرٌ باسمٍ بديل يوحي بأن «مستخدم» شخصٌ
+                 يُقصد** (حجّةُ `PublicListsRail` حرفاً). */
+              owner: row.hideName ? null : (row.nickname ?? row.username),
+              /* **لا يُقرأ**: `countLabel` يحلّ محلَّه — انظر أدناه */
+              item_count: 0,
+              posters: row.posters,
+            }}
+            locale={locale}
+            /* **والمقياسُ يُكتب صريحاً**: القسمُ يرتّب بالحفظ **فالرقمُ
+               الظاهرُ هو الحفظ** (D-219: الرقمُ يخصّ ما تحته). */
+            countLabel={t.peopleBoardSaves(row.saves)}
+            className="w-full"
+          />
+        </RailItem>
+      ))}
+    </PosterRail>
   );
 }
 

@@ -63,9 +63,18 @@ export function CommunityListCard({
   locale,
   className = "w-full",
   peekLabels,
+  countLabel,
 }: {
   list: PublicListCard;
   locale: Locale;
+  /**
+   * 🆕 **بديلُ سطر العدّ** (D-290): البطاقةُ تقول «N عملاً» لأنها في
+   * «اكتشف» تعرّف بحجم القائمة — **وفي قسم «ما يحفظه الناس» المقياسُ
+   * هو الحفظ لا الحجم**، **ورقمٌ يُقرأ بمعنًى غير معناه أسوأُ من لا
+   * رقم** (D-219). **فيُمرَّر النصُّ ولا تُنسخ البطاقة** (D-068: بطاقةٌ
+   * واحدةٌ لأربعة أبواب).
+   */
+  countLabel?: string;
   /** عرض البطاقة — ثابتٌ في الصفّ الممرَّر، كاملٌ في الشبكة */
   className?: string;
   /** حاضرةً: البطاقة تفتح معاينةً منبثقة (طلب أحمد)؛ غائبةً تبقى رابطاً */
@@ -77,7 +86,7 @@ export function CommunityListCard({
     <>
       <span className="block text-[14px] font-bold truncate">{l.name}</span>
       <span className="block text-[12px] text-muted truncate mt-0.5">
-        {t.listCount(l.item_count)}
+        {countLabel ?? t.listCount(l.item_count)}
         {l.owner ? ` · ${t.listByOwner(l.owner)}` : ""}
       </span>
       <span className="mt-2 flex gap-1.5">
