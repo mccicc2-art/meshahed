@@ -330,7 +330,11 @@ export function ThreadReplies({
           onReport={() => report(r)}
         />
         {open === r.replyId && (
-          <div className="pb-3 border-b border-[color:var(--divider)] ps-[52px]">
+          /* 🆕 **وحشوةُ الـ٥٢ سقطت** (D-296): كانت تُحاذي عمودَ النصّ
+             القديم (وجهٌ ٤٠ + فجوةٌ ١٢)، **وذلك العمودُ لم يعد موجوداً** —
+             **ومحاذاةٌ لعنصرٍ حُذف هي كيف تبقى الأرقامُ السحريّة** (D-214).
+             **وصندوقُ الكتابة يأخذ العرضَ كما يأخذه المتنُ فوقه.** */
+          <div className="pb-3 border-b border-[color:var(--divider)]">
             <Composer
               locale={locale}
               hint={t.talkReplyingTo(nameOf.get(r.replyId) ?? "")}

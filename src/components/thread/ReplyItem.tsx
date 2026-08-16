@@ -139,21 +139,38 @@ export function ReplyItem({
   const spoilerText = bulletin ? bulletinSpoiler(reply.spoiler ?? null, locale) : null;
 
   return (
+    /* 🆕 **الصفُّ صار طابقين لا عمودين** (D-296، طلبُ أحمد بلقطةٍ مرجعية:
+       «نحتاج نستفيد من المساحة العرضية كاملة… نصغّر الأفاتار بحيث الكلام
+       يُعرض من بداية الشاشة»).
+    
+       **وكان الوجهُ عموداً يمينَه كلُّ شيء**: وجهٌ ٤٠ + فجوةٌ ١٢ + حشوةُ
+       الصفحة ١٦ = **٦٨px تُقتطع من كلِّ سطرٍ في الصفحة**، على شاشةٍ عرضُها
+       ٣٩٣. **والوجهُ يخصّ الترويسة وحدَها، والمتنُ لا علاقة له به** —
+       **فبقاؤه عموداً كان يُملي على الكلام هامشاً لا سبب له.**
+    
+       **والآن: ترويسةٌ فيها الوجهُ والاسمُ والوقتُ والنقاط، ثم المتنُ
+       والأفعالُ بعرض الصفّ كلِّه.** **ومكسبُه ٥٢px في كلِّ سطر.**
+    
+       ⚠️ **وهذا هو تشريحُ Reddit لا تويتر** — **وهو اختيارُ أحمد نفسُه
+       لهذا السطح** («تكون مثل Reddit لا مثل تويتر»، رأسُ `ThreadReplies`):
+       **تويتر يُزيح المتنَ تحت الوجه لأن خيطَه مسطَّح، وReddit يُفرغ
+       العرضَ للكلام لأن خيطَه شجرة.** **فالتشريحُ تبع الخيط لا تبع
+       الذوق** (D-242). */
     <article
-      className={`py-3 border-b border-[color:var(--divider)] flex gap-3 ${
-        pending ? "opacity-60" : ""
-      }`}
+      className={`py-3 border-b border-[color:var(--divider)] ${pending ? "opacity-60" : ""}`}
     >
-      {whoHref ? (
-        <Link href={whoHref} prefetch={false} className="shrink-0 active:opacity-80 transition">
-          <Avatar src={reply.avatar_url} name={name} size={40} alt="" />
-        </Link>
-      ) : (
-        <Avatar src={reply.avatar_url} name={name} size={40} alt="" className="shrink-0" />
-      )}
-
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-1.5">
+      <div className="min-w-0">
+        <div className="flex items-center gap-2">
+          {/* **والوجهُ ٣٤ لا ٤٠**: صار في سطرِ ترويسةٍ ارتفاعُه ارتفاعُ
+              سطرين من النصّ، **ووجهٌ أطولُ من ترويسته يمطّ الصفَّ بلا
+              معنًى** (D-229: المقاسُ يُراجَع يومَ يتغيّر ما حوله). */}
+          {whoHref ? (
+            <Link href={whoHref} prefetch={false} className="shrink-0 active:opacity-80 transition">
+              <Avatar src={reply.avatar_url} name={name} size={34} alt="" />
+            </Link>
+          ) : (
+            <Avatar src={reply.avatar_url} name={name} size={34} alt="" className="shrink-0" />
+          )}
           <span className="min-w-0 truncate font-bold text-[14px] leading-tight">
             <bdi>{name}</bdi>
           </span>
@@ -224,7 +241,9 @@ export function ReplyItem({
             (D-257: الفحصُ ليس «هل يبدوان مختلفين» بل «هل يُصلَح العيبُ
             مرّتين»). */}
         {bulletin ? (
-          <div>
+          /* **ومسافةٌ تفصل المتنَ عن ترويسته** — الصفّان صارا طابقين
+             فلا فجوةَ أفقيّةً تفصلهما كما كان (D-296) */
+          <div className="mt-1.5">
             {/* **الحقائقُ ظاهرةٌ بلا حرق** — بخطّ المتن لا الحاشية (D-241) */}
             <p
               dir={dirOf(bulletin)}
@@ -263,12 +282,14 @@ export function ReplyItem({
              السؤال** (D-285: الإذنُ الذي لا يُفهَم ليس إذناً — **وهنا
              لم يكن ثمّة ما يحتاج إذناً أصلاً، كان تفضيلاً قاله مرّة**).
              **والزرُّ يقول «اعرض الحرق» وحدَه.** */
-          <SpoilerText text={reply.body} locale={locale} />
+          <div className="mt-1.5">
+            <SpoilerText text={reply.body} locale={locale} />
+          </div>
         ) : (
           /* **اتّجاهُ الردّ من الردّ** (D-241) — لا من لغة الواجهة */
           <p
             dir={dirOf(reply.body)}
-            className="text-[14px] leading-relaxed text-foreground/90 whitespace-pre-line"
+            className="mt-1.5 text-[14px] leading-relaxed text-foreground/90 whitespace-pre-line"
           >
             {reply.body}
           </p>
@@ -283,22 +304,12 @@ export function ReplyItem({
             الردَّ كان سيفقد سهمَ الطيّ لو بقي الشرطُ واحداً.** */}
         {!pending && ((signedIn && canReply) || fold || onLike || likes > 0) && (
           <div className="mt-1.5 -mx-0.5 flex items-center gap-1">
-            {signedIn && canReply && (
-              <button
-                type="button"
-                onClick={onReply}
-                aria-label={t.talkReply}
-                title={t.talkReply}
-                className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[12px] text-muted hover:text-accent transition"
-              >
-                <Icon name="comment" size={15} />
-                {replyCount > 0 && (
-                  <span className="tabular-nums">{num(replyCount, locale)}</span>
-                )}
-              </button>
-            )}
-            {/* 🆕 **الإعجابُ بجانب الردّ في الصفّ نفسِه** (D-289/D-288):
-                **فعلان على هذه الرسالة، فصفٌّ واحد يحملهما.**
+            {/* 🆕 **والقلبُ أوّلاً — والترتيبُ قاعدةٌ لا ذوق** (D-294،
+                طلبُ أحمد: «دائماً الأول القلب بعدها التعليق وبعدها
+                المشاهدة وآخر شي النشر، حافظ على هذا الترتيب»).
+                **وكان الردُّ أوّلَ هذا الصفّ وحدَه في التطبيق** — والخطُّ
+                يبدأ بالقلب — **وترتيبان لأفعالٍ واحدة في سطحين هما ما
+                تمنعه القاعدة ٣**: **الإصبعُ يحفظ الموضعَ لا الأيقونة.**
                 **والقلبُ المصمتُ حالةٌ والمفرَّغُ غيابُها** (D-260)،
                 **واللونُ يحمل الحالة** (D-003). */}
             {(onLike || likes > 0) && (
@@ -315,6 +326,20 @@ export function ReplyItem({
               >
                 <Icon name={likedByMe ? "heart-filled" : "heart"} size={15} />
                 {likes > 0 && <span className="tabular-nums">{num(likes, locale)}</span>}
+              </button>
+            )}
+            {signedIn && canReply && (
+              <button
+                type="button"
+                onClick={onReply}
+                aria-label={t.talkReply}
+                title={t.talkReply}
+                className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[12px] text-muted hover:text-accent transition"
+              >
+                <Icon name="comment" size={15} />
+                {replyCount > 0 && (
+                  <span className="tabular-nums">{num(replyCount, locale)}</span>
+                )}
               </button>
             )}
             {fold}
