@@ -87,12 +87,20 @@ export function TalkRoomCard({
   room: r,
   locale,
   hero = false,
+  weekly = false,
   pinned,
 }: {
   room: TalkRoom;
   locale: Locale;
   /** **البطاقةُ العريضةُ الواحدة** في لوحة الأعضاء — المقاساتُ وحدَها تكبر */
   hero?: boolean;
+  /**
+   * 🆕 **العدّادُ يعدّ الأسبوعَ لا العمرَ كلَّه** (D-311) — لبطاقة D-291
+   * وحدَها: عنوانُها يقول «هذا الأسبوع» **فالرقمُ تحته يملك النافذةَ
+   * نفسَها** (D-219). **وليس داخل `hero` عمداً**: ذاك مقاساتٌ فقط
+   * (القاعدة ٣)، **وهذا معنى الرقم** — علَمان لهمّين مختلفين.
+   */
+  weekly?: boolean;
   /**
    * 🆕 **حالةُ التثبيت** (D-301) — **وغيابُها يعني «لا دبّوس هنا»** لا
    * «غيرُ مثبَّتة»: **بطاقةُ لوحة الأعضاء ليست قائمةً تُرتَّب** (D-291)،
@@ -237,7 +245,9 @@ export function TalkRoomCard({
               ))}
             </div>
             <div className="ms-auto shrink-0 text-[11px] text-muted text-end leading-tight">
-              <span className="tabular-nums">{t.talkRoomPosts(r.posts)}</span>
+              <span className="tabular-nums">
+                {weekly ? t.talkRoomPostsWeek(r.postsWeek) : t.talkRoomPosts(r.posts)}
+              </span>
               <span className="block">{t.talkRoomLastAt(timeAgo(r.lastAt, t))}</span>
             </div>
           </div>
