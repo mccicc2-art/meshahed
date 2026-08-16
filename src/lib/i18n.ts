@@ -741,8 +741,10 @@ const ar = {
      ⚠️ **ولا «هذا الأسبوع» فيه** رغم أن الاقتراح كتبها: الرقمُ تحته
      **عدُّ المشاركات كلِّه** لا عدُّ الأسبوع، **وعنوانٌ يعِد بنافذةٍ لا
      يملكها الرقمُ هو الكذبةُ التي تُفقد الثقةَ بالصفحة** (D-219).
-     **والحياةُ شرطُ اختيارٍ في الصفحة لا وعدٌ في العنوان.** */
-  peopleBoardTalked: "العملُ الذي يدور حوله الكلام",
+     **🆕 وعادت «هذا الأسبوع» في D-311** — لأن الرقمَ صار أسبوعيّاً فعلاً
+     (`posts_week`، الهجرة ٩٦): **العبارةُ سقطت يومَ كذبت وعادت يومَ
+     صدقت.** */
+  peopleBoardTalked: "العملُ الذي يدور حوله الكلام هذا الأسبوع",
   /* **والعددُ صريحٌ بصيغة جمعه** (D-015/D-219) */
   peopleBoardSaves: (n: number) =>
     n === 1 ? "حفظٌ واحد" : n === 2 ? "حفظان" : n <= 10 ? `${num(n, "ar")} حفظات` : `${num(n, "ar")} حفظاً`,
@@ -791,6 +793,10 @@ const ar = {
      أحدَهما وحده يكذب على الآخر** */
   talkRoomPosts: (n: number) =>
     n === 1 ? "مشاركةٌ واحدة" : `${num(n, "ar")} مشاركة`,
+  /* 🆕 **عدُّ الأسبوع لبطاقة D-291** (D-311) — النافذةُ في الجملة لأن
+     الرقمَ صار يملكها فعلاً (الهجرة ٩٦) */
+  talkRoomPostsWeek: (n: number) =>
+    n === 1 ? "مشاركةٌ واحدة هذا الأسبوع" : `${num(n, "ar")} مشاركة هذا الأسبوع`,
   /**
    * **آخرُ حلقةٍ نشرها Loopz في الغرفة** (D-273، طلبُ أحمد: «رقم الموسم
    * والحلقة وعنوانها»).
@@ -2092,9 +2098,8 @@ const en: Dict = {
     `${num(now, "en")} this week · ${num(prev, "en")} last week`,
   peopleBoardTopReview: "Most liked comments",
   peopleBoardSavedLists: "What people are saving",
-  // No "this week": the count below is all-time, and a heading that promises
-  // a window the number does not have is the unreviewable number (D-219)
-  peopleBoardTalked: "The work people are talking about",
+  // "this week" returned in D-311: the number is truly weekly now (mig. 96)
+  peopleBoardTalked: "The work people are talking about this week",
   peopleBoardSaves: (n: number) => `${num(n, "en")} ${n === 1 ? "save" : "saves"}`,
   peopleBoardLikes: (n: number) =>
     n === 1 ? "1 like" : `${num(n, "en")} likes`,
@@ -2111,6 +2116,8 @@ const en: Dict = {
   talkRoomTitle: (title: string, isTv: boolean) =>
     `Discussing the ${isTv ? "series" : "film"} ${title}`,
   talkRoomPosts: (n: number) => (n === 1 ? "1 post" : `${num(n, "en")} posts`),
+  talkRoomPostsWeek: (n: number) =>
+    n === 1 ? "1 post this week" : `${num(n, "en")} posts this week`,
   // A label, not the bulletin's "just dropped" sentence — read weeks later
   talkRoomEpisode: (season: number, episode: number, name?: string | null) =>
     name

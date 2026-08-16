@@ -2202,7 +2202,10 @@ export interface TalkRoom {
   posterPath: string | null;
   /** **خلفيّةُ البطاقة** (طلبُ أحمد: «الخلفية تكون من غلاف الفلم») */
   backdropPath: string | null;
+  /** **كلامُ الناس وحدَه** — النشراتُ لا تُحسب (D-311، الهجرة ٩٦) */
   posts: number;
+  /** 🆕 **مشاركاتُ أسبوعِ السبت الجاري** (D-311) — لسطح D-291 الصادق */
+  postsWeek: number;
   lastAt: string;
   /** أحدثُ خمسةِ متكلّمين — **أشخاصٌ لا مشاركات** */
   faces: PersonLite[];
@@ -2270,6 +2273,7 @@ export async function getTalkRooms(limit = 40): Promise<TalkRoom[]> {
       poster_path: string | null;
       backdrop_path: string | null;
       posts: number;
+      posts_week?: number;
       last_at: string;
       faces: PersonLite[] | null;
       bulletin?: Record<string, unknown> | null;
@@ -2280,6 +2284,8 @@ export async function getTalkRooms(limit = 40): Promise<TalkRoom[]> {
       posterPath: r.poster_path,
       backdropPath: r.backdrop_path,
       posts: Number(r.posts),
+      /* **قارئٌ متسامح** (D-179): قبل الهجرة ٩٦ لا عمودَ له فيصل صفراً */
+      postsWeek: Number(r.posts_week ?? 0),
       lastAt: String(r.last_at),
       faces: Array.isArray(r.faces) ? r.faces.slice(0, 5) : [],
       /* **قارئٌ متسامح** (D-179): قبل الهجرة ٨٧ لا عمودَ لها فتصل
@@ -2297,31 +2303,23 @@ export async function getTalkRooms(limit = 40): Promise<TalkRoom[]> {
  * **تُمرَّر لها الغرفُ المجلوبةُ أصلاً**، **فلا نداءَ ثانٍ ولا هجرة**
  * (D-194: ما يُدفع مرّةً لا يُدفع مرّتين).
  *
- * ================= شرطان، وكلاهما مكتوبٌ لأن أحدَهما وحدَه يكذب =====
+ * ================= 🆕 D-311 — الأسبوعُ صار رقماً يُملك =================
  *
- * **١ · حيّةٌ خلال `days`**: `title_talk_rooms` ترتّب بـ`last_at`
- * **وتُرجع عدَّ المشاركات كلَّه لا عدَّ النافذة** — **فغرفةٌ ماتت في
- * مارس ولها أربعون مشاركةً كانت ستتصدّر لوحةً تقول «يدور حوله الكلام»
- * الآن** (D-219).
- * **٢ · ثم الأعلى مشاركاتٍ بين الحيّات**: اللوحةُ كلُّها ترتيبٌ،
- * **وأحدثُ غرفةٍ ليست أكثرَها كلاماً** — **وترتيبُ الأحدث هو ما يعرضه
- * تبويبُ «نقاش» أصلاً، وسطحان يقولان الشيءَ نفسَه أحدُهما زائد**
- * (D-244).
+ * **كان الشرطان: حيّةٌ خلال سبعةِ أيام ثم الأعلى مشاركاتٍ كلَّ العمر** —
+ * لأن `title_talk_rooms` لم تكن تملك عدَّ نافذة، **وكاد العنوانُ يقول
+ * «هذا الأسبوع» فوق رقمٍ عمرُه سنة** (D-219) فسقطت العبارةُ يومَها.
+ * **والآن `posts_week` من الهجرة ٩٦**: الاختيارُ بالعدّ الأسبوعيّ
+ * نفسِه — **`postsWeek > 0` يغني عن ساعة الحائط** (فسقط `Date.now()`
+ * ومعه سببُ التحذير الأصليّ)، **وغرفةٌ كلامُها القديمُ كثيرٌ وأسبوعُها
+ * صفرٌ لا تتصدّر لوحةً تقول «هذا الأسبوع».**
  *
  * **وعند التساوي تفوز الأحدث**: `reduce` تُبقي الأولى **والصفوفُ تصل
  * مرتّبةً بـ`last_at` تنازليّاً** — **تعادلٌ يُحسم بمعنًى لا بالصدفة.**
- *
- * ⚠️ **وموضعُها هنا لا في الصفحة، وليس ترتيباً معماريّاً:** الدالّةُ
- * تقرأ الساعة، **و`eslint` يردّ `Date.now()` داخل الرسم**
- * (`react-hooks/purity`) — **وهو ردٌّ صحيح: رسمتان تعطيان نتيجتين.**
- * **فكلُّ ما يقرأ «الآن» يعيش خارج المكوّن.**
  */
-export function pickTalkedAboutRoom(rooms: TalkRoom[], days = 7): TalkRoom | null {
-  if (!rooms.length) return null;
-  const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
-  const live = rooms.filter((r) => new Date(r.lastAt).getTime() >= cutoff);
+export function pickTalkedAboutRoom(rooms: TalkRoom[]): TalkRoom | null {
+  const live = rooms.filter((r) => r.postsWeek > 0);
   if (!live.length) return null;
-  return live.reduce((best, r) => (r.posts > best.posts ? r : best));
+  return live.reduce((best, r) => (r.postsWeek > best.postsWeek ? r : best));
 }
 
 /**
