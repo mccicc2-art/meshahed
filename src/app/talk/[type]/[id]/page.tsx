@@ -7,6 +7,7 @@ import {
   getMyProfileLite,
   getCommunityRating,
   getTitleThread,
+  getPostLikes,
   getFollowState,
   isMovieWatched,
 } from "@/lib/data";
@@ -137,6 +138,15 @@ export default async function TalkPage({
     mediaType === "movie" ? isMovieWatched(tmdbId).catch(() => false) : Promise.resolve(false),
   ]);
 
+  /* 🆕 **وإعجاباتُ المشاركات بعد الخيط لا معه** (D-289): **مفاتيحُها هي
+     معرّفاتُ الخيط نفسِه**، فلا تُنادى قبل أن يصل. **ونداءٌ واحدٌ
+     للغرفة كلِّها** (D-164/D-205)، **وسقوطُه صامتٌ فيُرسم الزرُّ
+     بصفر.** */
+  const postLikes = await getPostLikes(thread.map((p) => p.postId)).catch(() => ({
+    counts: {} as Record<string, number>,
+    mine: [] as string[],
+  }));
+
   /* TMDB ساقطٌ أو المعرّف خاطئ؟ **الكلامُ يبقى** — العنوانُ مخزَّنٌ مع
      كل مشاركة (نمطُ D-048)، فالصفحة تُرسم من القاعدة وحدها. و`notFound`
      هنا كان سيُخفي حواراً قائماً لأن مصدراً خارجياً تعذّر. */
@@ -264,6 +274,10 @@ export default async function TalkPage({
           الغرفة تقرؤهما من المشاركات لا من TMDB (D-164). */}
       <div className="px-4 sm:px-6 max-w-xl mx-auto mt-3">
         <ThreadReplies
+          /* 🆕 **إعجاباتُ الغرفة — نداءٌ واحدٌ لكلِّ مشاركاتها** (D-289،
+             الهجرة ٩٠). **بعد الخيط لأن مفاتيحَه هي مدخلُه**، **وقبل
+             الرسم فلا يقفز الرقم** (D-046). */
+          likes={postLikes}
           target={{
             kind: "talk",
             tmdbId,
