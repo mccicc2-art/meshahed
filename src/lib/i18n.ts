@@ -268,6 +268,10 @@ const ar = {
      `aria-label` لأن الرمزَ وحدَه هو الزرّ** (D-177). */
   talkPin: "ثبِّت الغرفة",
   talkUnpin: "أزل التثبيت",
+  /* 🆕 **الدبّوسُ الإداريّ** (D-314) — الاسمُ يقول أثرَه: للجميع */
+  talkPinAll: "ثبِّت للجميع",
+  talkUnpinAll: "أزل تثبيت الجميع",
+  talkPinnedByLoopz: "مثبَّتةٌ من لوبز",
   talkRemoveImage: "أزل الصورة",
   talkImageAlt: "صورة مرفقة بالمشاركة",
   /* 🆕 **فتحُ الصورة كاملةً** (D-302، بلاغُ أحمد: «إذا ضغطتها يوديك على
@@ -1742,6 +1746,9 @@ const en: Dict = {
   talkAddImage: "Add a photo",
   talkPin: "Pin this room",
   talkUnpin: "Unpin",
+  talkPinAll: "Pin for everyone",
+  talkUnpinAll: "Unpin for everyone",
+  talkPinnedByLoopz: "Pinned by Loopz",
   talkRemoveImage: "Remove the photo",
   talkImageAlt: "Photo attached to the post",
   talkOpenImage: "View full size",

@@ -383,6 +383,29 @@ export async function toggleRoomPin(input: {
   }
 }
 
+/**
+ * 🆕 **التثبيتُ الإداريّ — للجميع** (D-314، الهجرة ٩٩).
+ *
+ * **الحارسُ في جسم دالّة القاعدة لا هنا** (D-011/D-193): `rpc` ترفض
+ * غيرَ الإدارة بـ`forbidden` مهما قال العميل. **ولا `revalidatePath`**
+ * — نفسُ حجّة الدبّوس الشخصيّ: الترتيبُ في الفتحة التالية (D-008).
+ */
+export async function setGlobalRoomPin(input: {
+  tmdbId: number;
+  mediaType: MediaType;
+  on: boolean;
+}) {
+  const tmdbId = intId(input.tmdbId);
+  const mediaType = asMediaType(input.mediaType);
+  const { supabase } = await requireUser("pin", 30, 60_000);
+  const { error } = await supabase.rpc("set_global_room_pin", {
+    p_tmdb: tmdbId,
+    p_media: mediaType,
+    p_on: input.on === true,
+  });
+  if (error) fail(error);
+}
+
 export async function follow(input: {
   tmdbId: number;
   mediaType: MediaType;

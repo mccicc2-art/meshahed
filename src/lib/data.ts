@@ -2258,6 +2258,46 @@ export interface TalkRoom {
  * **وسقوطُه صامتٌ**: قبل تشغيل ٩٢ تعود مجموعةٌ فارغة **فتُرسم البطاقاتُ
  * بلا تثبيت ولا ينكسر شيء** (D-151/D-179).
  */
+/**
+ * 🆕 **الغرفُ المثبَّتة إداريّاً — يراها الجميع** (D-314، الهجرة ٩٩).
+ *
+ * **دالّةُ `definer` لا سياسة**: سياسةُ قراءةٍ عامّةٌ كانت ستكسر ثابتَ
+ * «أربع سياسات مفتوحة» (D-013) لأجل صفوفٍ قليلة. **والمفتاحُ
+ * `mediaType-tmdbId`** — صيغةُ `likeKey` نفسُها (D-237).
+ * **وسقوطُه صامتٌ** (D-179): قبل ٩٩ مجموعةٌ فارغةٌ ولا شيء ينكسر.
+ */
+export async function getGlobalRoomPins(): Promise<Set<string>> {
+  const out = new Set<string>();
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("global_room_pins");
+    if (error || !data) return out;
+    for (const r of data as { tmdb_id: number; media_type: string }[]) {
+      out.add(`${r.media_type}-${r.tmdb_id}`);
+    }
+    return out;
+  } catch {
+    return out;
+  }
+}
+
+/**
+ * 🆕 **هل أنا إدارة؟** (D-314) — سؤالُ زرٍّ واحدٍ في تبويب «نقاش»:
+ * `is_admin or is_system` تحسمه القاعدةُ لا الواجهة (D-011)،
+ * **والجوابُ هنا للرسم وحدَه** — الحارسُ الحقيقيُّ في جسم دالّة
+ * الكتابة. **وسقوطُه `false`** — زرٌّ يغيب خيرٌ من زرٍّ يكذب.
+ */
+export async function getAmAdmin(): Promise<boolean> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("am_admin");
+    if (error) return false;
+    return data === true;
+  } catch {
+    return false;
+  }
+}
+
 export async function getMyRoomPins(): Promise<Set<string>> {
   const out = new Set<string>();
   try {
