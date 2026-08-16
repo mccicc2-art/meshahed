@@ -257,6 +257,11 @@ const ar = {
   saving: "جارٍ الحفظ…",
   savedOk: "✓ تم الحفظ",
   errPickImage: "الرجاء اختيار ملف صورة.",
+  /* 🆕 **رفعُ صورةٍ في النقاش** (D-298، طلبُ أحمد: «نحتاج نحطّ خيار
+     رفع صورة»). **والرمزُ يقول الفعل، والكلمةُ لقارئ الشاشة** (D-177). */
+  talkAddImage: "أضف صورة",
+  talkRemoveImage: "أزل الصورة",
+  talkImageAlt: "صورة مرفقة بالمشاركة",
   errTooLarge: "حجم الصورة كبير — الحد الأقصى ٢ ميجابايت.",
   errUpload: "تعذّر رفع الصورة: ",
   errSave: "تعذّر الحفظ: ",
@@ -1707,6 +1712,9 @@ const en: Dict = {
   saving: "Saving…",
   savedOk: "✓ Saved",
   errPickImage: "Please choose an image file.",
+  talkAddImage: "Add a photo",
+  talkRemoveImage: "Remove the photo",
+  talkImageAlt: "Photo attached to the post",
   errTooLarge: "Image too large — 2 MB maximum.",
   errUpload: "Couldn't upload the image: ",
   errSave: "Couldn't save: ",

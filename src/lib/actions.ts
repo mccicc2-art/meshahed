@@ -3568,6 +3568,11 @@ export async function addTalkPost(input: {
   backdropPath?: string | null;
   /** **أعلن الكاتبُ أن فيها حرقاً** (D-268) — عَلَمٌ يرسله هو ولا يُستنتج */
   hasSpoiler?: boolean;
+  /**
+   * 🆕 **صورةٌ مرفوعةٌ مع المشاركة** (D-298) — **رابطُها العامُّ من مخزننا.**
+   * **والرفعُ يقع في المتصفّح** (نمطُ صورة الملف حرفاً)، **ويصل هنا رابطاً.**
+   */
+  imageUrl?: string | null;
 }): Promise<NewReply | null> {
   const tmdbId = intId(input.tmdbId);
   const mediaType = asMediaType(input.mediaType);
@@ -3576,7 +3581,34 @@ export async function addTalkPost(input: {
   const { supabase, user } = await requireUser("reply", 15, 60_000);
 
   const body = String(input.body ?? "").replace(/\s{3,}/g, "  ").trim().slice(0, 2000);
-  if (!body) return null;
+
+  /**
+   * 🔴 **والرابطُ يُحرَس ولا يُصدَّق** (D-298).
+   *
+   * **الرفعُ في المتصفّح، فالرابطُ يصل من العميل** — **وعميلٌ يستطيع أن
+   * يرسل أيَّ رابطٍ في الدنيا**، ونحن نرسمه `<img>` لكلِّ من يفتح الغرفة:
+   * **بكسلُ تتبّعٍ من نطاقٍ غريب، أو صورةٌ تُبدَّل بعد النشر، أو محتوًى
+   * لا نملك حذفَه.**
+   *
+   * **فالشرطُ أن يكون من مخزننا نحن وحدَه** — بادئةُ المشروع الحقيقيّة
+   * من البيئة لا من نصٍّ مكتوب. **وما لم يطابق يسقط صامتاً ولا يمنع
+   * المشاركة**: النصُّ حقُّ صاحبه، **وصورةٌ لا نثق بها تغيب** (D-063).
+   *
+   * ⚠️ **وهذا حارسُ الشكل لا حارسُ الملكيّة**: القاعدةُ التي تمنع
+   * الكتابةَ في مجلّد غيرك هي سياسةُ `storage.objects` نفسُها
+   * (`foldername[1] = auth.uid()`) — **والحارسان طبقتان لا بديلان**.
+   */
+  const base = (process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").replace(/\/+$/, "");
+  const raw = typeof input.imageUrl === "string" ? input.imageUrl.trim() : "";
+  const imageUrl =
+    base && raw.startsWith(`${base}/storage/v1/object/public/avatars/`) && raw.length < 500
+      ? raw
+      : null;
+
+  /* **ومشاركةٌ بصورةٍ بلا نصٍّ مشاركة** (D-298): **الصورةُ متنٌ كالمتن** —
+     **وشرطٌ يطلب نصّاً بعد أن صار للمتن شكلان يرفض نصفَ ما يُرسَل**
+     (D-214: الشرطُ يُوسَّع يومَ يُضاف إليه). */
+  if (!body && !imageUrl) return null;
 
   const { data, error } = await supabase
     .from("title_posts")
@@ -3593,6 +3625,14 @@ export async function addTalkPost(input: {
          **واستنتاجٌ خاطئٌ في هذا الباب يكشف ما أراد ستْرَه أو يستر ما
          أراد قولَه.** والقاعدةُ تحرس نوعَه، والافتراضُ `false`. */
       has_spoiler: input.hasSpoiler === true,
+      /* 🆕 **والصورةُ تسكن `data` لا عموداً جديداً** (D-298).
+         **و`data jsonb` هي حقيبةُ حمولةِ الصفّ منذ ٨٠** — يقرؤها
+         `title_thread` أصلاً **فتصل الواجهةَ بلا هجرةٍ ولا `drop`**.
+         ⚠️ **ولا التباسَ مع النشرات**: تلك يميّزها `kind = 'episode'`
+         **وصفُّ الإنسان `kind` فيه `null`** — **فالمميِّزُ عمودٌ قائمٌ لا
+         تخمين** (D-182). **والبديلُ عمودٌ حقيقيٌّ ثمنُه `drop` لدالّة
+         `title_thread` — خارج الإذن الدائم، ومكتوبٌ في `05` متى أردناه.** */
+      data: imageUrl ? { img: imageUrl } : null,
       /* **ولا `depth` هنا**: المُشغِّل يحسبه ويقيّده — **ورقمٌ يكتبه
          العميل يكذب**، وقيدُ العمق في القاعدة لا في الواجهة (D-193). */
     })
