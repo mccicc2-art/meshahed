@@ -86,6 +86,7 @@ export function ThreadReplies({
   signedIn,
   likes,
   votes,
+  translations,
 }: {
   target: ReplyTarget;
   replies: ThreadReply[];
@@ -101,6 +102,8 @@ export function ThreadReplies({
    * يُرسم. **والترتيبُ وقع في الصفحة قبل الوصول** — انظر رأسَها.
    */
   votes?: { scores: Record<string, number>; mine: Record<string, number> };
+  /** 🆕 **ترجماتُ المتون بلغة القارئ** (D-307) — بمفتاح المشاركة، من الخادم */
+  translations?: Record<string, string>;
   /** وجهي واسمي — **لصفّ الكتابة وللنسخة التفاؤلية** (D-241) */
   me: { name: string; avatar: string | null } | null;
   locale: Locale;
@@ -374,6 +377,7 @@ export function ThreadReplies({
           }
           /* **و«ردّاً على فلان» للمسطَّح وحده**: في الشجرة الأبُ فوقها
              بعينه — **وسطرٌ يقول ما تراه العينُ يأكل سطراً بلا معنى.** */
+          translatedBody={translations?.[r.replyId] ?? null}
           replyingToName={!nested && r.parentId ? (nameOf.get(r.parentId) ?? null) : null}
           locale={locale}
           signedIn={signedIn}

@@ -70,6 +70,7 @@ export const TEMP = "temp:";
 
 export function ReplyItem({
   reply,
+  translatedBody,
   replyingToName,
   locale,
   signedIn,
@@ -87,6 +88,13 @@ export function ReplyItem({
   onReport,
 }: {
   reply: ThreadReply;
+  /**
+   * 🆕 **ترجمةُ المتن بلغة القارئ** (D-307) — **تصل من الخادم مع الصفّ**
+   * (لا نداءَ من العميل)، **وغيابُها يعني «لا ترجمةَ لازمة»** فلا زرَّ
+   * يُرسم (D-217). **والمعروضُ الترجمةُ افتراضاً وزرٌّ صغيرٌ يقلب** —
+   * «تراجَع بعد» (D-047).
+   */
+  translatedBody?: string | null;
   /** اسمُ صاحب الردّ الأب — يظهر سطراً فوق النصّ، لا إزاحةً */
   replyingToName?: string | null;
   locale: Locale;
@@ -145,6 +153,9 @@ export function ReplyItem({
 }) {
   const t = getDict(locale);
   const [menu, setMenu] = useState(false);
+  /* 🆕 **«النص الأصلي» حالةُ هذا الصفّ وحدَه** (D-307) — لا تفضيلَ يُحفظ */
+  const [showOriginal, setShowOriginal] = useState(false);
+  const shownBody = translatedBody && !showOriginal ? translatedBody : reply.body;
   const [reported, setReported] = useState(false);
   const name = displayNameOf(reply, t.anonymousUser);
   const pending = reply.replyId.startsWith(TEMP);
@@ -317,7 +328,7 @@ export function ReplyItem({
             {/* **والصورةُ خلف الحاجب نفسِه** (D-298): **حرقٌ في صورةٍ
                 أسرعُ وصولاً منه في جملة** — **وحاجبٌ يستر النصَّ ويترك
                 صورتَه ليس حاجباً.** */}
-            <SpoilerText text={reply.body} locale={locale}>
+            <SpoilerText text={shownBody} locale={locale}>
               {image && <PostImage src={image} alt={t.talkImageAlt} locale={locale} />}
             </SpoilerText>
           </div>
@@ -326,14 +337,27 @@ export function ReplyItem({
              🆕 **ولا فقرةَ لمتنٍ فارغ** (D-302): **صورةٌ بلا نصٍّ مشاركةٌ
              كاملة**، **وفقرةٌ فارغةٌ فوقها هامشٌ لا يفسّره شيء** —
              **وأرخصُ عنصرٍ هو الذي لا يُرسم** (D-266/D-222). */
-          reply.body.trim() && (
+          shownBody.trim() && (
             <p
-              dir={dirOf(reply.body)}
+              dir={dirOf(shownBody)}
               className="mt-1.5 text-[14px] leading-relaxed text-foreground/90 whitespace-pre-line"
             >
-              {reply.body}
+              {shownBody}
             </p>
           )
+        )}
+
+        {/* 🆕 **زرُّ «النص الأصلي / الترجمة»** (D-307) — **لا يُرسم إلا
+            حيث توجد ترجمةٌ فعلاً** (D-217)، **وبصيغة الفعل القادم**:
+            من يقرأ ترجمةً يريد الأصل، والعكس. */}
+        {translatedBody && !reply.hasSpoiler && (
+          <button
+            type="button"
+            onClick={() => setShowOriginal((v) => !v)}
+            className="mt-1 text-[11px] font-bold text-muted hover:text-accent transition"
+          >
+            {showOriginal ? t.showTranslation : t.showOriginalText}
+          </button>
         )}
 
         {/* **والصورةُ بعد المتن** — **ترتيبُ الكتابة هو ترتيبُ القراءة**:
