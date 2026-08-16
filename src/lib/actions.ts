@@ -909,14 +909,19 @@ export async function cacheFollowMeta(
 export async function myRatingFor(
   tmdbId: number,
   mediaType: MediaType,
-): Promise<{ rating: number | null; review: string | null }> {
+): Promise<{ rating: number | null; review: string | null; hasSpoiler: boolean }> {
   try {
     const { getMyRating } = await import("@/lib/data");
     const row = await getMyRating(intId(tmdbId), asMediaType(mediaType));
-    return { rating: row?.rating ?? null, review: row?.review ?? null };
+    return {
+      rating: row?.rating ?? null,
+      review: row?.review ?? null,
+      /* 🆕 D-315 — يعود مع الصفّ كي لا تُسقط إعادةُ الحفظ إعلاناً قائماً */
+      hasSpoiler: Boolean(row?.has_spoiler),
+    };
   } catch {
     // فشلُ القراءة لا يمنع التقييم — الورقة تُفتح فارغةً والحفظ يعمل
-    return { rating: null, review: null };
+    return { rating: null, review: null, hasSpoiler: false };
   }
 }
 
@@ -934,6 +939,12 @@ export async function saveRating(input: {
    * الإدراج.
    */
   backdropPath?: string | null;
+  /**
+   * 🆕 **«رسالتي فيها حرق» في الريفيو** (D-315، الهجرة ١٠٠) — إعلانُ
+   * الكاتب لا استنتاجُنا (D-268)، **ويُكتب دائماً**: العَلَمُ جزءُ
+   * الحفظ نفسِه، ومن حفظ بلا إعلانٍ فقد أسقطه.
+   */
+  hasSpoiler?: boolean;
 }) {
   input = {
     ...input,
@@ -961,6 +972,8 @@ export async function saveRating(input: {
       /* **حقلٌ غائبٌ لا يُكتب** (D-152): إعادةُ حفظٍ من سطحٍ لا يملك
          الغلافَ تُبقي ما كتبه سطحٌ يملكه */
       ...(input.backdropPath !== undefined ? { backdrop_path: input.backdropPath } : {}),
+      /* 🆕 D-315 — والعَلَمُ يُكتب دائماً: هو جزءُ الرأي لا زينتُه */
+      has_spoiler: input.hasSpoiler === true,
       updated_at: new Date().toISOString(),
     },
     { onConflict: "user_id,tmdb_id,media_type" },

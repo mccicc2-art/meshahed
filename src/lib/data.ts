@@ -604,6 +604,8 @@ export interface RatingRow {
   title: string | null;
   poster_path: string | null;
   updated_at: string;
+  /** 🆕 **أعلن كاتبُه أن فيه حرقاً** (D-315، الهجرة ١٠٠) — كأخيه في المشاركات */
+  has_spoiler?: boolean;
 }
 
 export async function getMyRating(
@@ -616,7 +618,9 @@ export async function getMyRating(
     if (!user) return null;
     const { data } = await supabase
       .from("ratings")
-      .select("user_id, tmdb_id, media_type, rating, review, title, poster_path, updated_at")
+      .select(
+        "user_id, tmdb_id, media_type, rating, review, title, poster_path, updated_at, has_spoiler",
+      )
       .eq("user_id", user.id)
       .eq("tmdb_id", tmdbId)
       .eq("media_type", mediaType)
@@ -635,7 +639,9 @@ export async function getMyRatings(): Promise<RatingRow[]> {
     if (!user) return [];
     const { data } = await supabase
       .from("ratings")
-      .select("user_id, tmdb_id, media_type, rating, review, title, poster_path, updated_at")
+      .select(
+        "user_id, tmdb_id, media_type, rating, review, title, poster_path, updated_at, has_spoiler",
+      )
       .eq("user_id", user.id)
       .order("rating", { ascending: false })
       .order("updated_at", { ascending: false })
@@ -843,6 +849,8 @@ export interface FeedItem {
   topSeason: number;
   likes: number;
   likedByMe: boolean;
+  /** 🆕 **أعلن كاتبُ الرأي أن فيه حرقاً** (D-315، الهجرة ١٠٠) */
+  hasSpoiler: boolean;
 }
 
 /**
@@ -909,6 +917,8 @@ export async function getCommunityFeed(
       episode_count?: number;
       top_season?: number;
       at?: string;
+      /* 🆕 D-315 — يغيب قبل الهجرة ١٠٠ فيُقرأ `false` */
+      has_spoiler?: boolean;
     };
     // صفٌّ بلا عنوان لا يُرسم — الملصق والعنوان يأتيان من `follows`، فإن
     // غاب الصفّ هناك (استيرادٌ ناقص مثلاً) لم يبقَ ما يُعرض
@@ -991,6 +1001,8 @@ export async function getCommunityFeed(
         topSeason: Number(r.top_season ?? 0),
         likes: counts.get(k) ?? 0,
         likedByMe: mine.has(k),
+        /* 🆕 D-315 — إعلانُ الكاتب يسافر مع الصفّ إلى الخطّ */
+        hasSpoiler: Boolean(r.has_spoiler),
       };
     });
   } catch {
@@ -1865,6 +1877,8 @@ export interface PeopleTopReviewRow extends PersonLite {
   rating: number;
   likes: number;
   createdAt: string;
+  /** 🆕 **إعلانُ كاتبه** (D-315) */
+  hasSpoiler: boolean;
 }
 
 /**
@@ -1905,6 +1919,7 @@ export async function getPeopleTopReviews(
       rating: number | null;
       likes: number;
       created_at: string;
+      has_spoiler?: boolean;
     }[])
       /* **وصفٌّ بلا نصّ لا يُرسم**: الدالّةُ تشترطه، **والحارسُ هنا
          احتياطٌ لا تكرار** — قارئٌ متسامح (D-179). */
@@ -1924,6 +1939,7 @@ export async function getPeopleTopReviews(
         rating: Number(r.rating ?? 0),
         likes: Number(r.likes ?? 0),
         createdAt: String(r.created_at),
+        hasSpoiler: Boolean(r.has_spoiler),
       }));
   } catch {
     return [];
@@ -1986,6 +2002,8 @@ export interface ActivityRow extends PersonLite {
   title: string | null;
   poster_path: string | null;
   updated_at: string;
+  /** 🆕 D-315 — يغيب قبل الهجرة ١٠٠ فيُقرأ `false` */
+  has_spoiler?: boolean;
 }
 
 /** آخر تقييمات ومراجعات من تتابعهم */
@@ -2004,6 +2022,8 @@ export interface TitleReview extends PersonLite {
   rating: number;
   review: string | null;
   updated_at: string;
+  /** 🆕 **إعلانُ كاتبه** (D-315) — يغيب قبل الهجرة ١٠٠ فيُقرأ `false` */
+  has_spoiler?: boolean;
   /** عدد الإعجابات، وهل أعجبتُ بها، وهل هي مراجعتي */
   likes: number;
   likedByMe: boolean;
