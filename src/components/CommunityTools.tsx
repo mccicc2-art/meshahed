@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { setFeedStrangers, setFeedSort, setTalkFollowedOnly } from "@/lib/actions";
+import { setFeedStrangers, setFeedSort, setTalkFollowedOnly, setTranslateEnabled } from "@/lib/actions";
 import { getDict, type Locale } from "@/lib/i18n";
 import { tap } from "@/lib/haptics";
 import type { TabPref } from "@/lib/tabPrefs";
@@ -112,6 +112,7 @@ export function CommunityTools({
   strangers: strangersInitial,
   feedSort: feedSortInitial = "smart",
   talkFollowedOnly: followedInitial = false,
+  translate: translateInitial = true,
 }: {
   locale: Locale;
   /** تفضيلات التبويبات — تأتي من الخادم فلا يومض شيء */
@@ -128,6 +129,10 @@ export function CommunityTools({
   feedSort?: "smart" | "latest";
   /** 🆕 «النقاشات»: أعمالي المتابَعة فقط (D-306) — اختياريٌّ كذلك */
   talkFollowedOnly?: boolean;
+  /** 🆕 **الترجمةُ التلقائيّة** (D-309) — تفضيلٌ واحدٌ يظهر في أدوات
+   * السطحين اللذين يترجمان (النشاط والنقاشات): **بابان لمفتاحٍ واحد
+   * أهونُ من مفتاحٍ في صفحةٍ لا تعرضه** (D-217). اختياريٌّ (D-028). */
+  translate?: boolean;
 }) {
   const t = getDict(locale);
   const router = useRouter();
@@ -139,6 +144,7 @@ export function CommunityTools({
   const [strangers, setStrangers] = useState(strangersInitial);
   const [feedSort, setFeedSortLocal] = useState(feedSortInitial);
   const [followedOnly, setFollowedOnly] = useState(followedInitial);
+  const [translate, setTranslate] = useState(translateInitial);
   const [saving, save] = useTransition();
 
   function close() {
@@ -251,6 +257,25 @@ export function CommunityTools({
                         ))}
                       </div>
                     </div>
+                    {/* 🆕 **مفتاحُ الترجمة التلقائيّة** (D-309، طلبُ أحمد:
+                        «ضيف خيار بالتولز لإلغاء الترجمة التلقائية») —
+                        **كوكي واحدٌ يظهر في أدوات السطحين اللذين
+                        يترجمان** — بابان لمفتاحٍ واحد (D-217/D-306). */}
+                    <SwitchRow
+                      icon="sparkles"
+                      label={t.autoTranslate}
+                      on={translate}
+                      busy={saving}
+                      onToggle={() => {
+                        tap(8);
+                        const next = !translate;
+                        setTranslate(next);
+                        save(async () => {
+                          await setTranslateEnabled(next);
+                          router.refresh();
+                        });
+                      }}
+                    />
                   </>
                 )}
 
@@ -274,6 +299,25 @@ export function CommunityTools({
                         setFollowedOnly(next);
                         save(async () => {
                           await setTalkFollowedOnly(next);
+                          router.refresh();
+                        });
+                      }}
+                    />
+                    {/* 🆕 **مفتاحُ الترجمة التلقائيّة** (D-309، طلبُ أحمد:
+                        «ضيف خيار بالتولز لإلغاء الترجمة التلقائية») —
+                        **كوكي واحدٌ يظهر في أدوات السطحين اللذين
+                        يترجمان** — بابان لمفتاحٍ واحد (D-217/D-306). */}
+                    <SwitchRow
+                      icon="sparkles"
+                      label={t.autoTranslate}
+                      on={translate}
+                      busy={saving}
+                      onToggle={() => {
+                        tap(8);
+                        const next = !translate;
+                        setTranslate(next);
+                        save(async () => {
+                          await setTranslateEnabled(next);
                           router.refresh();
                         });
                       }}
