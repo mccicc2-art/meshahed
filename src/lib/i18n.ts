@@ -84,6 +84,10 @@ const ar = {
   // الأخبار
   newsTitle: "اكتشف",
   newsEmpty: "تعذّر تحميل الأخبار حالياً. حاول مرة أخرى بعد قليل.",
+  /* 🆕 **فراغُ تبويب أخبار العمل** (D-300) — **وهو غيابٌ لا عطل**:
+     `newsEmpty` فوقه يقول «تعذّر التحميل»، **وجملةٌ تقول عطلاً حيث لا
+     عطلَ تُفزع بلا سبب** (D-077: «غيرُ مفعّل» حالةُ منتجٍ لا خطأ). */
+  workNewsEmpty: "لا أخبارَ عن هذا العمل بعد.",
 
   // تصفّح اكتشف
   browseAll: "الكل",
@@ -839,7 +843,8 @@ const ar = {
   undoNotWatched: "لم أشاهده",
   /* **صفحةُ النشرة** (D-239) — «النشرة» لا «الخبر»: **الخبرُ حدثٌ في
      العالم، والنشرةُ ما كتبناه نحن عنه** — والصفحةُ صفحتُنا لا صفحتُه */
-  postPageTitle: "منشور",
+  /* ⚠️ **و`postPageTitle` حُذفت** (D-299): **رأسُها النصّيُّ استُبدل
+     بترويسة الغلاف** — **ومفتاحٌ بلا قارئ يُحذف لا يُترك** (D-214). */
   postRepliesTitle: "الردود",
   postNoReplies: "لا ردود بعد — كن أوّل من يتكلّم",
   postReplyPlaceholder: "اكتب ردّك…",
@@ -1575,6 +1580,7 @@ const en: Dict = {
 
   newsTitle: "Discover",
   newsEmpty: "Couldn't load the news right now. Please try again shortly.",
+  workNewsEmpty: "No news about this title yet.",
 
   browseAll: "All",
   browseMovies: "Movies",
@@ -2107,7 +2113,7 @@ const en: Dict = {
   spoilerMark: "Contains a spoiler",
   postViewsHint: "post views",
   undoNotWatched: "Not watched",
-  postPageTitle: "Post",
+  // postPageTitle deleted with the text top bar it labelled (D-299)
   postRepliesTitle: "Replies",
   postNoReplies: "No replies yet — be the first",
   postReplyPlaceholder: "Write a reply…",

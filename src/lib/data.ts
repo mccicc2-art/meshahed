@@ -2536,6 +2536,30 @@ export async function getNewsThread(postKey: string): Promise<NewsReply[]> {
  * فيها سقفٌ معروفٌ لا نموّ**: نداءٌ واحدٌ لفتحةِ صفحةٍ واحدة.
  * **يوم يكبر الأرشيفُ تُكتب الدالّة** — ولا تُكتب قبل أن تلزم.
  */
+/**
+ * 🆕 **نشراتُ Loopz عن عملٍ بعينه** (D-300، طلبُ أحمد: «يُفضّل في صفحة
+ * الفلم يكون فيه تبويب أخبار أو تحديث ويُكتب فيه»).
+ *
+ * ⚠️ **والترشيحُ هنا لا في القاعدة — وثمنُه يُقال ولا يُخفى:**
+ * `loopz_news(p_limit)` **لا تعرف عملاً**، **وإضافةُ معاملٍ إليها توقيعٌ
+ * جديدٌ يوجب `drop` للقديم** (D-037) — **وهو خارج الإذن الدائم.**
+ * **فتُقرأ ثلاثُمئةٍ وتُرشَّح** — **وهي قراءةُ جدولٍ صغيرٍ بدالّة
+ * `definer`، وصفحةُ عملٍ واحدةٍ في المرّة** (D-164 يمنع هذا في خطٍّ من
+ * أربعين صفّاً، **ولا يمنعه في صفحةٍ واحدة**).
+ * **والمخرجُ الرخيص مكتوبٌ في `05`**: `p_tmdb` في هجرةٍ ٩٢ **يجعل القصَّ
+ * في القاعدة** (D-164: المرشَّحون يُقصّون قبل أن يُنادى لهم).
+ *
+ * **وهي خلف `Suspense` في الصفحة** فلا تؤخّر رسمَها (D-071).
+ */
+export async function getTitleLoopzNews(
+  tmdbId: number,
+  mediaType: "tv" | "movie",
+  limit = 20,
+): Promise<LoopzNewsItem[]> {
+  const all = await getLoopzNews(300);
+  return all.filter((n) => n.tmdb_id === tmdbId && n.media_type === mediaType).slice(0, limit);
+}
+
 export async function getNewsPost(postKey: string): Promise<LoopzNewsItem | null> {
   const key = String(postKey ?? "").trim();
   if (!key) return null;
