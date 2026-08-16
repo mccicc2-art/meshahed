@@ -17,6 +17,7 @@ import { commentViewKey } from "@/lib/postKeys";
 import { dirOf } from "@/lib/dir";
 import { getT } from "@/lib/locale";
 import { Avatar } from "@/components/Avatar";
+import { SpoilerText } from "@/components/SpoilerText";
 import { LikeButton } from "@/components/LikeButton";
 import { ShareTitleButton } from "@/components/ShareTitleButton";
 import { ReportButton } from "@/components/ReportButton";
@@ -67,7 +68,9 @@ export async function generateMetadata({
   const work = await workTitle(tmdbId, type, locale);
   return {
     title: t.reviewPageMeta(who, work),
-    description: (r.review ?? "").slice(0, 160) || undefined,
+    /* 🆕 D-315 — **الوصفُ لا يكشف ما حجبه كاتبُه**: بطاقةُ مشاركةٍ تعرض
+       الحرقَ في المعاينة تكسر الحاجبَ قبل أن يُفتح */
+    description: r.has_spoiler ? undefined : (r.review ?? "").slice(0, 160) || undefined,
   };
 }
 
@@ -219,14 +222,19 @@ export default async function ReviewPage({
           </div>
         </div>
 
-        {r.review?.trim() && (
-          <p
-            dir={dirOf(r.review)}
-            className="mt-3 text-[17px] leading-relaxed text-foreground whitespace-pre-line"
-          >
-            {r.review}
-          </p>
-        )}
+        {r.review?.trim() &&
+          /* 🆕 D-315 — **الحاجبُ في صفحة الرأي نفسِها**: من فتح الرابط لم
+             يكشف بعدُ، **والكشفُ ضغطتُه هو** (D-063) */
+          (r.has_spoiler ? (
+            <SpoilerText text={r.review} locale={locale} />
+          ) : (
+            <p
+              dir={dirOf(r.review)}
+              className="mt-3 text-[17px] leading-relaxed text-foreground whitespace-pre-line"
+            >
+              {r.review}
+            </p>
+          ))}
       </article>
 
       <ThreadDateLine
