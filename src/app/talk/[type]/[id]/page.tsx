@@ -195,6 +195,7 @@ export default async function TalkPage({
         backdrop={backdrop}
         poster={poster}
         title={title}
+        sub={t.talkRoomTitle(title, mediaType === "tv")}
         href={href}
         mediaType={mediaType}
         avg={avg}
