@@ -46,6 +46,7 @@ import { TitleNews } from "@/components/TitleNews";
 import { getTitleNews } from "@/lib/titleNews";
 import { ScrollMemory } from "@/components/ScrollMemory";
 import { TabPager } from "@/components/TabPager";
+import { getBatchTranslations } from "@/lib/translate";
 
 
 /**
@@ -260,6 +261,22 @@ export default async function PeoplePage({
      أحمد**: «النقاش ليس الريفيو، يختلف». **فغرفُ النقاش صار لها مصدرُها**
      (`title_talk_rooms`)، وسقط التجميعُ ومعه `getTalkStats`. */
   const localized = pagerTab ? await localizeRows(followingFeed, locale) : [];
+
+  /* 🆕 **ترجمةُ مراجعات الخطّ بلغة القارئ** (D-307) — بمفتاح
+     `commentViewKey` نفسِه الذي يقرؤه الصفّ، **وسقفُ الدفعة في
+     `getBatchTranslations` هو حدُّ الخطّ** (D-164). **وبلا مفتاحِ
+     `DEEPL_API_KEY` تعود فارغةً ولا يتغيّر شيء** (D-077). */
+  const feedTranslations = pagerTab
+    ? await getBatchTranslations(
+        localized
+          .filter((a) => a.review?.trim())
+          .map((a) => ({
+            id: commentViewKey(a.person.id, a.media_type, a.tmdb_id),
+            text: a.review ?? "",
+          })),
+        locale === "ar" ? "ar" : "en",
+      )
+    : {};
 
   /* **غرفُ النقاش الحيّة** (الهجرة ٧٨) — نداءٌ واحد للتبويب كلِّه، ولا
      يُدفع في غيره. **والعنوانُ والملصقُ يأتيان مع الصفّ** فلا نداءَ
@@ -564,6 +581,7 @@ export default async function PeoplePage({
                  **وهو الشخصنةُ الباقية وحدَها** بعد D-280. */
               showStrangers={showStrangers}
               sort={feedSort}
+              translations={feedTranslations}
               /* **وجملةُ الفراغ فعلٌ لا اعتذار** (D-181): تقول ماذا تفعل
                  ليمتلئ، **لا «لا يوجد شيء»**.
                  ⚖️ **وعادت `feedEmptyForYou`** (D-283): صار الخطُّ يرشّح
