@@ -29,6 +29,7 @@ import { HeroRatings, HeroRatingsSkeleton } from "@/components/HeroRatings";
 import { RatingBox } from "@/components/RatingBox";
 import { CommunityReviews } from "@/components/CommunityReviews";
 import { DetailTabs } from "@/components/DetailTabs";
+import { TitleNewsTab } from "@/components/TitleNewsTab";
 import { TitleRoomTab } from "@/components/TitleRoomTab";
 import { RelatedTitles } from "@/components/RelatedTitles";
 import { CastRail } from "@/components/CastRail";
@@ -317,6 +318,30 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
                   <ListsWithMovie movieId={movieId} locale={locale} />
                 </Suspense>
               </div>
+            ),
+          },
+          {
+            /**
+             * 🆕 **تبويبُ «الأخبار»** (D-300، طلبُ أحمد: «يُفضّل في صفحة
+             * الفلم يكون فيه تبويب أخبار أو تحديث ويُكتب فيه»).
+             *
+             * **وموضعُه بعد «معلومات» وقبل «التعليقات»**: الأوّلُ حقائقُ
+             * العمل الثابتة، **وهذا حقائقُه المتحرّكة**، **والتعليقاتُ
+             * كلامُ الناس عنه** — **فالترتيبُ من الأثبت إلى الأكثر
+             * تغيّراً إلى الرأي** (D-222: صاحبُ الكلام في صدر صفّه،
+             * والحقيقةُ قبل الرأي).
+             *
+             * **وخلف `Suspense`**: قراءتُه ترشيحٌ فوق ثلاثمئة صفّ
+             * (انظر `getTitleLoopzNews`) — **فلا يؤخّر رسمَ الصفحة**
+             * (D-071/D-087).
+             */
+            key: "news",
+            label: t.communityTabNews,
+            icon: "newspaper",
+            content: (
+              <Suspense fallback={<div className="skeleton h-40 rounded-2xl" aria-hidden />}>
+                <TitleNewsTab tmdbId={movieId} mediaType="movie" locale={locale} />
+              </Suspense>
             ),
           },
           {
