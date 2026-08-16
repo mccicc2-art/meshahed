@@ -15,6 +15,8 @@ import {
   getTitleRooms,
   getTalkRooms,
   getMyRoomPins,
+  getGlobalRoomPins,
+  getAmAdmin,
   pickTalkedAboutRoom,
   getFollows,
   getReactions,
@@ -310,14 +312,26 @@ export default async function PeoplePage({
      في القاعدة لهذا كان سيوجب `drop` لدالّةٍ قائمة.**
      ⚠️ **و`sort` مستقرٌّ في JS الحديثة**، **فترتيبُ الأحدثِ داخل كلِّ
      مجموعةٍ يبقى كما جاء من القاعدة** — **والتثبيتُ يرفع ولا يخلط.** */
-  const pins = pagerTab && user ? await getMyRoomPins() : null;
-  const rooms = pins
-    ? [...roomsRaw].sort((a, b) => {
-        const pa = pins.has(`${a.mediaType}-${a.tmdbId}`) ? 1 : 0;
-        const pb = pins.has(`${b.mediaType}-${b.tmdbId}`) ? 1 : 0;
-        return pb - pa;
-      })
-    : roomsRaw;
+  /* 🆕 **والمثبَّتُ إداريّاً فوق الجميع** (D-314، الهجرة ٩٩):
+     درجتان لا درجة — **تثبيتُ لوبز ثم تثبيتي ثم البقية**، والفرزُ
+     مستقرٌّ فيبقى الأحدثُ أوّلَ كلِّ طبقة. **ونداءان متوازيان**
+     (D-164)، والعالميُّ يُقرأ حتى بلا `user`؟ لا — كلا السطحين خلف
+     تسجيل الدخول (الدالّةُ تشترط `auth.uid()`). */
+  const [pins, globalPins, amAdmin] = pagerTab && user
+    ? await Promise.all([getMyRoomPins(), getGlobalRoomPins(), getAmAdmin()])
+    : [null, null, false];
+  const rooms =
+    pins || globalPins
+      ? [...roomsRaw].sort((a, b) => {
+          const rank = (r: (typeof roomsRaw)[number]) => {
+            const key = `${r.mediaType}-${r.tmdbId}`;
+            if (globalPins?.has(key)) return 2;
+            if (pins?.has(key)) return 1;
+            return 0;
+          };
+          return rank(b) - rank(a);
+        })
+      : roomsRaw;
 
   /* ⚠️ **وأربعةُ نداءاتٍ متوازيةٌ لا متتابعة** (D-263): كلُّها دوالُّ
      `definer` خفيفةٌ تقرأ صفوفاً قائمة **ولا واحدةَ منها تحتاج نتيجةَ
@@ -748,7 +762,13 @@ export default async function PeoplePage({
               {t.talkRoomsEmpty}
             </p>
           ) : (
-            <WorksTalk rooms={roomsShown} locale={locale} pins={pins ?? undefined} />
+            <WorksTalk
+              rooms={roomsShown}
+              locale={locale}
+              pins={pins ?? undefined}
+              globalPins={globalPins ?? undefined}
+              admin={amAdmin}
+            />
         )}
     </section>
   );
