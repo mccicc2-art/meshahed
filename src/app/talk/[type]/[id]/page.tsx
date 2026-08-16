@@ -14,7 +14,7 @@ import {
 } from "@/lib/data";
 import { getMovie, getTv, posterUrl, backdropUrl } from "@/lib/tmdb";
 import { displayWorkTitle } from "@/lib/wikidata";
-import { getT } from "@/lib/locale";
+import { getT, getTranslateEnabled } from "@/lib/locale";
 import { bulletinLine } from "@/lib/bulletinLine";
 import { TitleHero } from "@/components/TitleHero";
 import { ExpandableText } from "@/components/ExpandableText";
@@ -157,10 +157,12 @@ export default async function TalkPage({
   /* 🆕 **ترجمةُ كلام الأعضاء بلغة القارئ** (D-307) — **النشراتُ ثنائيّةُ
      اللغة أصلاً** (`name_ar`/`name_en`) فلا تدخل، **والمفتاحُ غائبٌ؟
      خريطةٌ فارغةٌ والأصلُ وحدَه** (D-077). */
-  const translations = await getBatchTranslations(
+  const translations = (await getTranslateEnabled())
+    ? await getBatchTranslations(
     thread.filter((p) => !p.kind && p.body?.trim()).map((p) => ({ id: p.postId, text: p.body })),
-    locale === "ar" ? "ar" : "en",
-  );
+        locale === "ar" ? "ar" : "en",
+      )
+    : {};
 
 
 
