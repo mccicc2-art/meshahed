@@ -4,8 +4,9 @@ import { posterUrl } from "@/lib/tmdb";
 import { getDict, num, type Locale } from "@/lib/i18n";
 import { timeAgoShort } from "@/lib/when";
 import { dirOf, alignOf } from "@/lib/dir";
-import type { PeopleLeaderRow, PeopleTopReviewRow } from "@/lib/data";
+import type { PeopleLeaderRow, PeopleTopReviewRow, SavedListRow } from "@/lib/data";
 import { PersonName } from "./PersonRow";
+import { displayNameOf } from "@/lib/people";
 import { FollowUserButton } from "./FollowUserButton";
 import { Icon, type IconName } from "./Icon";
 
@@ -72,6 +73,8 @@ const SECTION_TONE = {
   reviews: "text-[#F26D6D]",
   /** 🔥 */
   rising: "text-[#FB923C]",
+  /** 🆕 🔖 الأزرقُ للقوائم — **لونٌ خامسٌ في الفهرس لا لونُ حالة** (D-268) */
+  lists: "text-[#60A5FA]",
 } as const;
 
 /* ============================================================
@@ -375,6 +378,93 @@ export function PeopleLeaderboard({
  * النهاية** — عائلةُ صفّ النشاط نفسُها (D-222)، لا عائلةُ بطاقةِ الغرفة
  * التي لا وجهَ فيها (D-257).
  */
+/**
+ * 🆕 **أكثرُ القوائم حفظاً — أعلى ٣ في آخر ٧ أيام** (D-289، الهجرة ٩٠).
+ *
+ * **طلبُ أحمد في ١٥ أغسطس**: «ضيف أكثر الليستات إضافةً للمكاتب أو حفظاً
+ * وأظهر أعلى ٣ آخر ٧ أيام». **وتأخّر لأنّي حوّلتُه إلى سؤال** («القسمُ
+ * الخامسُ يُقاس قبل أن يُبنى» — D-267) — **وقياسُ الخامس حجّةٌ حين
+ * أقترحه أنا، لا حين يطلبه هو.**
+ *
+ * **ولماذا صفٌّ لا بطاقةُ وجه:** الأقسامُ الأربعةُ قبله ترتّب **أشخاصاً**،
+ * **وهذا يرتّب شيئاً صنعه شخص** — **فالمِرساةُ ملصقاتُ القائمة والاسمُ
+ * ثم صاحبُها خافتاً**، لا وجهٌ في الصدارة (D-222 معكوسةً بحجّتها:
+ * صاحبُ الكلام في صدر الصفّ، **وصاحبُ القائمة ليس هو القائمة**).
+ *
+ * **وثلاثةُ ملصقاتٍ متراكبة** — غلافٌ بلا نداءٍ ثانٍ (D-164)، **وقائمةٌ
+ * فارغةٌ تُرسم بمربّعٍ لا بفراغ** (D-181).
+ */
+export function TopSavedLists({
+  rows,
+  locale,
+  seeAllHref,
+}: {
+  rows: SavedListRow[];
+  locale: Locale;
+  seeAllHref?: string;
+}) {
+  const t = getDict(locale);
+  /* **ومن لا شيءَ له لا يُعرض في لوحة** (D-181) — والقسمُ يغيب كلَّه */
+  if (!rows.length) return null;
+
+  return (
+    <BoardSection
+      icon="bookmark"
+      tone={SECTION_TONE.lists}
+      title={t.peopleBoardSavedLists}
+      seeAllHref={seeAllHref}
+      seeAllLabel={t.seeAll}
+    >
+      <ul className="space-y-2.5">
+        {rows.map((row) => (
+          <li key={row.listId}>
+            <Link
+              href={`/lists/${row.listId}`}
+              className="flex items-center gap-3 p-3 rounded-2xl bg-surface border border-border active:opacity-80 transition"
+            >
+              {/* **ثلاثةُ ملصقاتٍ متراكبة** — **بمقاسٍ ثابتٍ لا يتغيّر
+                  بعدد ما وصل** (D-046)، **والفارغُ مربّعٌ خافت.** */}
+              <span className="relative w-[54px] h-[54px] shrink-0">
+                {[0, 1, 2].map((i) => {
+                  const src = posterUrl(row.posters[i] ?? null, "w185");
+                  return (
+                    <span
+                      key={i}
+                      className="absolute top-0 w-[34px] h-[51px] rounded-md overflow-hidden bg-surface-2 border border-[color:var(--divider)]"
+                      style={{ insetInlineStart: `${i * 10}px`, zIndex: 3 - i }}
+                    >
+                      {src && (
+                        <Image src={src} alt="" fill sizes="34px" className="object-cover" />
+                      )}
+                    </span>
+                  );
+                })}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block font-bold text-[14px] truncate">
+                  <bdi>{row.name}</bdi>
+                </span>
+                {/* **وصاحبُها خافتاً تحتها** — **و`hide_name` محسومةٌ في
+                    القاعدة** فالاسمُ يصل `null` (D-011). */}
+                <span className="block mt-0.5 text-[12px] text-muted truncate">
+                  {displayNameOf(
+                    { nickname: row.nickname, username: row.username, hide_name: row.hideName },
+                    t.anonymousUser,
+                  )}
+                </span>
+              </span>
+              {/* **والعددُ في النهاية** — **صريحٌ لا نقاط** (D-219) */}
+              <span className="shrink-0 text-[12px] font-bold text-muted tabular-nums">
+                {t.peopleBoardSaves(row.saves)}
+              </span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </BoardSection>
+  );
+}
+
 export function TopReviews({
   rows,
   locale,
