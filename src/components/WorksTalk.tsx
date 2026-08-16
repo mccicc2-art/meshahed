@@ -89,6 +89,8 @@ export function TalkRoomCard({
   hero = false,
   weekly = false,
   pinned,
+  globalPinned,
+  admin,
 }: {
   room: TalkRoom;
   locale: Locale;
@@ -108,6 +110,10 @@ export function TalkRoomCard({
    * **فالتمييزُ `undefined` مقابلَ `boolean`، لا عَلَمٌ ثانٍ** (D-182).
    */
   pinned?: boolean;
+  /** 🆕 **مثبَّتةٌ للجميع** (D-314) — علامةٌ لغير الإدارة وزرٌّ لها */
+  globalPinned?: boolean;
+  /** 🆕 **القارئُ إدارة** (D-314) */
+  admin?: boolean;
 }) {
   const t = getDict(locale);
   const poster = posterUrl(r.posterPath, "w185");
@@ -129,7 +135,7 @@ export function TalkRoomCard({
     /* ⚠️ **والغلافُ نسبيٌّ لأن الدبّوسَ مطلقٌ فيه** (D-301) — **وهو أخٌ
        للرابط لا ابنٌ له**: **زرٌّ داخل رابطٍ عطلٌ يمسكه فحصُنا** (D-155).
        **ولا غلافَ حين لا دبّوس**: عقدةٌ في الشجرة بلا سبب (D-229). */
-    <Wrap pinned={pinned} room={r} locale={locale}>
+    <Wrap pinned={pinned} globalPinned={globalPinned} admin={admin} room={r} locale={locale}>
     <Link
       href={`/talk/${r.mediaType}/${r.tmdbId}`}
       className={`relative overflow-hidden flex rounded-2xl bg-surface border border-border group active:scale-[0.99] hover:border-[color:var(--divider)] transition ${
@@ -265,25 +271,54 @@ export function TalkRoomCard({
  */
 function Wrap({
   pinned,
+  globalPinned,
+  admin,
   room,
   locale,
   children,
 }: {
   pinned?: boolean;
+  /** 🆕 **مثبَّتةٌ للجميع** (D-314) — علامةٌ لا زرٌّ لغير الإدارة */
+  globalPinned?: boolean;
+  /** 🆕 **القارئُ إدارة** — دبّوسُه يكتب للجميع (D-314) */
+  admin?: boolean;
   room: TalkRoom;
   locale: Locale;
   children: React.ReactNode;
 }) {
-  if (pinned === undefined) return <>{children}</>;
+  const t = getDict(locale);
+  if (pinned === undefined && !globalPinned && !admin) return <>{children}</>;
   return (
     <div className="relative">
       {children}
-      <RoomPinButton
-        tmdbId={room.tmdbId}
-        mediaType={room.mediaType}
-        pinned={pinned}
-        locale={locale}
-      />
+      {admin ? (
+        /* **زرُّ الإدارة يحلّ محلَّ الشخصيّ** — دبّوسان في زاويةٍ واحدة
+           التباسٌ (D-216)، **والإدارةُ حين تثبّت تثبّت للناس.** */
+        <RoomPinButton
+          tmdbId={room.tmdbId}
+          mediaType={room.mediaType}
+          pinned={globalPinned === true}
+          locale={locale}
+          global
+        />
+      ) : globalPinned ? (
+        /* **علامةٌ لا زرّ**: التثبيتُ الرسميُّ ليس فعلَ القارئ —
+           **وزرٌّ لا يفعل شيئاً وعدٌ مكسور** (D-217). */
+        <span
+          title={t.talkPinnedByLoopz}
+          aria-label={t.talkPinnedByLoopz}
+          className="absolute top-2 end-2 z-10 w-7 h-7 grid place-items-center text-accent drop-shadow"
+        >
+          <Icon name="pin-filled" size={17} strokeWidth={2.2} />
+        </span>
+      ) : pinned !== undefined ? (
+        <RoomPinButton
+          tmdbId={room.tmdbId}
+          mediaType={room.mediaType}
+          pinned={pinned}
+          locale={locale}
+        />
+      ) : null}
     </div>
   );
 }
@@ -292,6 +327,8 @@ export function WorksTalk({
   rooms,
   locale,
   pins,
+  globalPins,
+  admin = false,
 }: {
   rooms: TalkRoom[];
   locale: Locale;
@@ -301,6 +338,10 @@ export function WorksTalk({
    * (زائرٌ لا يثبّت شيئاً — D-221).
    */
   pins?: Set<string>;
+  /** 🆕 **مفاتيحُ المثبَّت للجميع** (D-314) — نفسُ الصيغة (D-237) */
+  globalPins?: Set<string>;
+  /** 🆕 **القارئُ إدارة** — دبّوسُه يكتب للجميع (D-314) */
+  admin?: boolean;
 }) {
   return (
     /* **بطاقاتٌ متباعدة لا صفوفٌ يفصلها خطّ**: الخطُّ الفاصل يقول «هذه
@@ -314,6 +355,8 @@ export function WorksTalk({
           room={r}
           locale={locale}
           pinned={pins ? pins.has(`${r.mediaType}-${r.tmdbId}`) : undefined}
+          globalPinned={globalPins?.has(`${r.mediaType}-${r.tmdbId}`) ?? false}
+          admin={admin}
         />
       ))}
     </div>

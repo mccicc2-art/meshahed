@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { toggleRoomPin } from "@/lib/actions";
+import { toggleRoomPin, setGlobalRoomPin } from "@/lib/actions";
 import { getDict, type Locale } from "@/lib/i18n";
 import { tap } from "@/lib/haptics";
 import { Icon } from "./Icon";
@@ -35,22 +35,32 @@ export function RoomPinButton({
   mediaType,
   pinned: initial,
   locale,
+  global = false,
 }: {
   tmdbId: number;
   mediaType: "tv" | "movie";
   pinned: boolean;
   locale: Locale;
+  /**
+   * 🆕 **الدبّوسُ الإداريّ** (D-314) — **الزرُّ نفسُه بفعلٍ آخر لا
+   * نسخةٌ ثانية** (القاعدة ٣): للإدارة وحدَها، يكتب تثبيتاً يراه
+   * الجميع، **واسمُه يقولها** (D-216: زرٌّ يثبّت للناس لا يلبس اسمَ
+   * زرٍّ يثبّت لصاحبه).
+   */
+  global?: boolean;
 }) {
   const t = getDict(locale);
   const [pinned, setPinned] = useState(initial);
   const [pending, start] = useTransition();
+  const labelOn = global ? t.talkUnpinAll : t.talkUnpin;
+  const labelOff = global ? t.talkPinAll : t.talkPin;
 
   return (
     <button
       type="button"
       aria-pressed={pinned}
-      aria-label={pinned ? t.talkUnpin : t.talkPin}
-      title={pinned ? t.talkUnpin : t.talkPin}
+      aria-label={pinned ? labelOn : labelOff}
+      title={pinned ? labelOn : labelOff}
       disabled={pending}
       onClick={(e) => {
         /* ⚠️ **ويُمنع الحدثُ عن الرابط تحته** — الدبّوسُ خارجَه في الشجرة
@@ -62,7 +72,8 @@ export function RoomPinButton({
         setPinned(next);
         start(async () => {
           try {
-            await toggleRoomPin({ tmdbId, mediaType, on: next });
+            if (global) await setGlobalRoomPin({ tmdbId, mediaType, on: next });
+            else await toggleRoomPin({ tmdbId, mediaType, on: next });
           } catch {
             setPinned(!next);
           }
