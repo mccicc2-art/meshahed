@@ -25,6 +25,7 @@ export function SpoilerText({
   text,
   locale,
   note,
+  children,
 }: {
   text: string;
   locale: Locale;
@@ -40,6 +41,15 @@ export function SpoilerText({
    * **فبلا `note` لا سطرَ أصلاً، والغيابُ هو الافتراض** (D-063).
    */
   note?: string;
+  /**
+   * 🆕 **ما يُكشف مع النصّ** (D-298) — **صورةُ المشاركة اليوم.**
+   *
+   * **ولا يُرسم قبل الكشف ولا يُضبَّب**: نفسُ حكم النصّ حرفاً (D-063:
+   * حاجبٌ لا ضباب) — **وصورةٌ مضبَّبةٌ تحت كلامٍ محجوب تكشف نصفَ ما
+   * سُتر**، **والحرقُ في صورةٍ أسرعُ وصولاً منه في جملة.**
+   * ⚠️ **وهو `prop` اختياريٌّ لا مكوّنٌ ثانٍ** (D-234/D-284).
+   */
+  children?: React.ReactNode;
 }) {
   const t = getDict(locale);
   const [shown, setShown] = useState(false);
@@ -64,12 +74,17 @@ export function SpoilerText({
 
       {/* ⚠️ **غيرُ مُصيَّرٍ حتى يُطلب** — لا `hidden` ولا `blur` */}
       {shown && (
-        <p
-          dir={dirOf(text)}
-          className="mt-2 border-s-2 border-[color:var(--divider)] ps-3 text-[14px] leading-relaxed text-foreground/80 whitespace-pre-line"
-        >
-          {text}
-        </p>
+        <div className="mt-2 border-s-2 border-[color:var(--divider)] ps-3">
+          {text && (
+            <p
+              dir={dirOf(text)}
+              className="text-[14px] leading-relaxed text-foreground/80 whitespace-pre-line"
+            >
+              {text}
+            </p>
+          )}
+          {children}
+        </div>
       )}
     </div>
   );

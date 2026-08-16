@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
+import Image from "next/image";
+import { createClient } from "@/lib/supabase/client";
 import { buttonClass } from "./ui/Button";
 import { getDict, type Locale } from "@/lib/i18n";
 import { Icon } from "./Icon";
@@ -23,6 +25,7 @@ export function Composer({
   hint,
   autoFocus = true,
   allowSpoiler = false,
+  allowImage = false,
   onSend,
   onCancel,
 }: {
@@ -37,15 +40,81 @@ export function Composer({
    * لأن `ratings` بلا عمود ونصُّها يُقرأ من ستّ دوالَّ حيّة.
    */
   allowSpoiler?: boolean;
+  /**
+   * 🆕 **زرُّ الصورة** (D-298، طلبُ أحمد: «نحتاج نحطّ خيار رفع صورة»).
+   *
+   * **ولا يظهر إلا حيث تُخزَّن** — كحجّة `allowSpoiler` حرفاً: النقاشُ
+   * وحدَه اليوم (`title_posts.data`)، **وزرٌّ يُضغط ولا أثرَ له أسوأُ من
+   * زرٍّ غائب** (D-217).
+   */
+  allowImage?: boolean;
   /** **والعَلَمُ يصحب المتن** — لا حالةٌ ثانيةٌ عند المستدعي تفترق عنه */
-  onSend: (body: string, hasSpoiler: boolean) => void;
+  onSend: (body: string, hasSpoiler: boolean, imageUrl?: string | null) => void;
   onCancel: () => void;
 }) {
   const t = getDict(locale);
   const [body, setBody] = useState("");
   const [spoiler, setSpoiler] = useState(false);
+  const [img, setImg] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const file = useRef<HTMLInputElement>(null);
   const [pending, start] = useTransition();
-  const ready = body.trim().length > 0;
+  /* **وصورةٌ وحدَها مشاركة** (D-298): **الصورةُ متنٌ كالمتن**، **وشرطٌ
+     يطلب نصّاً بعد أن صار للمتن شكلان يرفض نصفَ ما يُرسَل.** */
+  const ready = body.trim().length > 0 || !!img;
+
+  /**
+   * 🆕 **الرفعُ في المتصفّح إلى مخزننا القائم** (D-298).
+   *
+   * ================= ولا مخزنَ جديد ولا سياسةَ جديدة =================
+   *
+   * **`avatars` قائمٌ منذ `profile.sql` بسياستين**: قراءةٌ عامّةٌ
+   * (`bucket_id = 'avatars'`) **وكتابةٌ في مجلّدك أنت وحدَه**
+   * (`foldername[1] = auth.uid()`). **وصورةُ غلاف المجتمع تسكنه أصلاً**
+   * — **فهو مخزنُ «صور المستخدمين» لا مخزنُ الأفاتار وحده** (D-002:
+   * مخزنٌ ثانٍ لمعنًى واحدٍ عائلةٌ ثانية).
+   *
+   * **✅ وثلاثةُ مكاسبَ تُقاس، لا ذوق:**
+   * **١) لا سياسةَ خامسة** — عددُ السياسات المفتوحة لا يُمَسّ (D-013).
+   * **٢) وحذفُ الحساب يمسحها معه** — `account_deletion.sql` يحذف
+   *    `bucket_id='avatars'` تحت مجلّد صاحبه، **فصورُ نقاشه تسقط بلا
+   *    سطرٍ واحدٍ يُكتب** (D-247: وعدُ الخصوصية يُراجَع في دفعته).
+   * **٣) ومخزنٌ جديد كان سيحتاج تعديلَ `account_deletion.sql`
+   *    و`security.sql` معاً** — **موضعان يفترقان يومَ يُنسى أحدهما**
+   *    (D-145).
+   *
+   * **والمجلّدُ `talk/` داخل مجلّد صاحبه**: تمييزٌ للعين عند المراجعة،
+   * **والسياسةُ لا تراه أصلاً** لأنها تحرس المستوى الأوّل وحدَه.
+   *
+   * ⚠️ **والهويّةُ تُقرأ من الجلسة لا من وسيط**: تمريرُها عبر ثلاثة أسطح
+   * كان يجعلها **مُدخَلاً يُصدَّق**، **وهنا هي عائدُ `getUser()`** —
+   * ونداءٌ واحدٌ لا يقع إلا عند أوّل رفع (D-194).
+   */
+  async function pick(f: File) {
+    setErr(null);
+    if (!f.type.startsWith("image/")) return setErr(t.errPickImage);
+    if (f.size > 2 * 1024 * 1024) return setErr(t.errTooLarge);
+    setBusy(true);
+    try {
+      const supabase = await createClient();
+      const { data: who } = await supabase.auth.getUser();
+      const uid = who.user?.id;
+      if (!uid) throw new Error("no session");
+      const ext = f.name.split(".").pop()?.toLowerCase().slice(0, 5) || "jpg";
+      const path = `${uid}/talk/${Date.now()}.${ext}`;
+      const { error } = await supabase.storage
+        .from("avatars")
+        .upload(path, f, { upsert: true, contentType: f.type });
+      if (error) throw new Error(error.message);
+      setImg(supabase.storage.from("avatars").getPublicUrl(path).data.publicUrl);
+    } catch (e) {
+      setErr(t.errUpload + (e as Error).message);
+    } finally {
+      setBusy(false);
+      if (file.current) file.current.value = "";
+    }
+  }
 
   return (
     <div className="mt-3">
@@ -62,11 +131,29 @@ export function Composer({
         dir="auto"
         className="w-full bg-surface-2 border border-border rounded-xl px-3 py-2 text-base resize-y outline-none focus:border-accent/60"
       />
+      {/* **والمعاينةُ فوق الصفّ لا داخله** — **ما يُرفع يُرى قبل أن
+          يُرسل**، **وزرُّ إزالتها عليها** (D-047: تراجَع بعد لا أكِّد قبل). */}
+      {img && (
+        <div className="mt-2 relative w-28 h-28 rounded-xl overflow-hidden border border-border bg-surface-2">
+          <Image src={img} alt="" fill sizes="112px" className="object-cover" />
+          <button
+            type="button"
+            onClick={() => setImg(null)}
+            aria-label={t.talkRemoveImage}
+            title={t.talkRemoveImage}
+            className="absolute top-1 end-1 w-7 h-7 rounded-full bg-black/60 grid place-items-center text-white drop-shadow active:scale-95 transition"
+          >
+            <Icon name="close" size={14} />
+          </button>
+        </div>
+      )}
+      {err && <p role="alert" className="mt-1.5 text-[12px] text-[color:var(--error)]">{err}</p>}
+
       <div className="mt-1.5 flex items-center gap-2">
         <button
           type="button"
-          disabled={!ready || pending}
-          onClick={() => start(() => onSend(body.trim(), spoiler))}
+          disabled={!ready || pending || busy}
+          onClick={() => start(() => onSend(body.trim(), spoiler, img))}
           className={buttonClass({ size: "sm" })}
         >
           {t.shareReplySend}
@@ -91,6 +178,36 @@ export function Composer({
             <Icon name={spoiler ? "eye-off" : "eye"} size={14} className="shrink-0" />
             <span>{t.spoilerMark}</span>
           </button>
+        )}
+        {/* 🆕 **زرُّ الصورة — رمزٌ في صفِّ الأفعال نفسِه** (D-298):
+            **صفٌّ واحدٌ لأفعال هذا الصندوق** (D-288)، **ولا سطرَ ثانٍ
+            لزرٍّ واحد.**
+            ⚠️ **ولا يُضغط حقلُ الملفّ مباشرةً**: `input[type=file]` عارياً
+            يختلف شكلُه بين المتصفّحات ولا يرث الثيم — **فيُخفى ويُنادى من
+            زرٍّ من عائلتنا** (نفسُ حجّة الرقاقة أعلاه، D-016/D-002). */}
+        {allowImage && (
+          <>
+            <input
+              ref={file}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) void pick(f);
+              }}
+            />
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => file.current?.click()}
+              aria-label={t.talkAddImage}
+              title={t.talkAddImage}
+              className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-[12px] text-muted transition hover:text-foreground disabled:opacity-50"
+            >
+              <Icon name="image" size={14} className="shrink-0" />
+            </button>
+          </>
         )}
         <button
           type="button"
