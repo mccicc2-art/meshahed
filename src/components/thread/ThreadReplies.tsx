@@ -307,7 +307,23 @@ export function ThreadReplies({
             />
           </div>
         ) : (
-          <div className="sticky bottom-[calc(env(safe-area-inset-bottom,0px)+3.5rem)] md:bottom-4 z-20 flex justify-end pointer-events-none pb-1">
+          /* 🔴 🆕 **والقلمُ `fixed` لا `sticky`** (D-319، بلاغُ أحمد
+             بلقطتين: «القلم المفروض عائم، هذا ثابت!!»).
+             **`sticky bottom` لا ينعقد إلا ما دام الموضعُ الطبيعيُّ
+             للعنصر تحت حافّة الشاشة** — والقلمُ آخرُ عنصرٍ في الغرفة،
+             **ففي غرفةٍ قصيرةٍ موضعُه الطبيعيُّ فوق الحافّة أصلاً فيجلس
+             في التدفق كأيِّ صفّ** — وهو ما صوّره أحمد حرفاً.
+             **وحجّةُ «لا `fixed`» أعلاه كانت حجّةَ الشريط**: شريطٌ بعرض
+             العمود يحتاج وراثةَ عرض أبيه — **والقلمُ دائرةٌ ٤٨px لا
+             عرضَ لها، فالحجّةُ ماتت بموت سببها** (D-250). **والعائمُ
+             الحقُّ يسكن الشاشةَ لا المستند** — وهو عُرف القلم في كلِّ
+             تطبيقٍ نسخنا شكلَه (D-150).
+             **والفراغُ `h-14` قبله يبقى في التدفق** كي لا يختفي ذيلُ
+             آخرِ صفٍّ خلف القلم (D-138: أداةٌ تخفي أخرى أسوأُ من
+             غائبة). */
+          <>
+            <div aria-hidden className="h-14" />
+            <div className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+4rem)] md:bottom-6 end-4 md:end-8 z-20 pointer-events-none">
             <button
               type="button"
               onClick={() => {
@@ -320,7 +336,8 @@ export function ThreadReplies({
             >
               <Icon name="edit" size={20} />
             </button>
-          </div>
+            </div>
+          </>
         ))}
 
     </>
