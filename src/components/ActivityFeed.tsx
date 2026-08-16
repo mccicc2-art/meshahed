@@ -107,6 +107,7 @@ export function ActivityFeed({
   views,
   followingIds,
   showStrangers = true,
+  sort = "smart",
   newsReplies,
   reviewReplies,
   emptyText,
@@ -143,6 +144,12 @@ export function ActivityFeed({
    * (D-152)، **ولأن مكوّناً يسبق مستهلكَه يأخذ حقلاً اختيارياً** (D-028).
    */
   showStrangers?: boolean;
+  /**
+   * 🆕 **ترتيبُ الخطّ** (D-306، طلبُ أحمد: «الترتيب بآخر منشور أو ترتيب
+   * ذكي مثل الحالي»). **و«آخر منشور» تخطٍّ للساعة المصحَّحة لا صيغةٌ
+   * ثانية**: الصفوفُ مرتّبةٌ بالزمن أصلاً عند بنائها.
+   */
+  sort?: "smart" | "latest";
   /** ردودُ نشراتنا — بمفتاح المنشور، نداءٌ واحد للخطّ كلِّه (D-236) */
   newsReplies?: Map<string, number>;
   /**
@@ -243,7 +250,9 @@ export function ActivityFeed({
       (newsReplies?.get(r.item.key) ?? 0) * REPLY_MS
     );
   };
-  shown = [...shown].sort((a, b) => effAt(b) - effAt(a));
+  /* 🆕 **والذكيُّ اختيارٌ لا قدَر** (D-306): «آخر منشور» يُبقي ترتيبَ
+     الزمن الذي بُنيت به الصفوف — **فلا فرزَ ثانياً أصلاً.** */
+  if (sort === "smart") shown = [...shown].sort((a, b) => effAt(b) - effAt(a));
 
   if (shown.length === 0) {
     return (

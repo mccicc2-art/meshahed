@@ -14,7 +14,6 @@ import { toast, flashError } from "@/lib/toast";
 import { coalescedRefresh } from "@/lib/refresh";
 import { useChatPoll } from "@/lib/usePoll";
 import {
-  createCommunity,
   joinCommunity,
   leaveCommunity,
   cancelCommunityRequest,
@@ -64,8 +63,6 @@ export function CommunityDirectory({
   locale: Locale;
 }) {
   const t = getDict(locale);
-  const router = useRouter();
-  const [create, setCreate] = useState(false);
 
   /* **الصفُّ الذي كان هنا ذهب خلف الرمز** (طلب أحمد ١١ أغسطس، بلقطةٍ
      مشطوبةٍ بالأحمر — نفسُ ما فعله D-177 بصفّ المكتبة): حقلُ البحث وزرُّ
@@ -96,20 +93,12 @@ export function CommunityDirectory({
             {t.commMineSection}
           </p>
           {mine.length === 0 ? (
-            /* حالة موجهة (نمط D-106): الزر يفتح ورقة الإنشاء نفسها —
-               زرُّ الرأس بعيدٌ عن عينِ من يقرأ صندوق الفراغ */
-            <div className="bg-surface border border-dashed border-border rounded-xl py-8 px-5 text-center space-y-4">
+            /* 🔴 **وسقط زرُّ الإنشاء** (D-306، نصُّ أحمد: «احنا حاذفين
+               الكومينتي، فالمفروض ما أحد يقدر يأسس كومينتي جديد») —
+               **والفراغُ يبقى صادقاً بلا وعدٍ بفعلٍ أُغلق بابُه**
+               (D-063/D-217: لا زرَّ يعد بما يُمنع). */
+            <div className="bg-surface border border-dashed border-border rounded-xl py-8 px-5 text-center">
               <p className="text-sm text-muted">{t.commEmptyDir}</p>
-              <button
-                type="button"
-                onClick={() => {
-                  tap(8);
-                  setCreate(true);
-                }}
-                className={buttonClass({ size: "sm" })}
-              >
-                + {t.commCreate}
-              </button>
             </div>
           ) : (
             <ul className="divide-y divide-[color:var(--divider)]">
@@ -156,17 +145,7 @@ export function CommunityDirectory({
         </section>
       )}
 
-      {create && (
-        <CreateCommunitySheet
-          t={t}
-          onClose={() => setCreate(false)}
-          onCreated={(id) => {
-            setCreate(false);
-            router.push(`/people?tab=all&c=${id}`);
-            coalescedRefresh(router);
-          }}
-        />
-      )}
+
     </div>
   );
 }
@@ -369,104 +348,11 @@ function CommunityBadge({
   );
 }
 
-/** ورقة الإنشاء — اسمٌ وخصوصيةٌ وزرّ؛ علويةٌ لأن فيها كتابة (D-018) */
-/**
- * ورقةُ إنشاء مجتمع — **مُصدَّرةٌ منذ D-177** لأن لها باباً ثانياً:
- * رمزُ الأدوات في رأس المجتمع. والتصديرُ لا النسخُ هو القاعدة (D-145).
- */
-export function CreateCommunitySheet({
-  t,
-  onClose,
-  onCreated,
-}: {
-  t: Dict;
-  onClose: () => void;
-  onCreated: (id: string) => void;
-}) {
-  const [name, setName] = useState("");
-  const [isPrivate, setIsPrivate] = useState(false);
-  const [pending, start] = useTransition();
-  const inputRef = useRef<HTMLInputElement>(null);
+/* 🔴 **حُذفت `CreateCommunitySheet` بقرار أحمد** (D-306): «احنا حاذفين
+   الكومينتي، فالمفروض ما أحد يقدر يأسس كومينتي جديد» — **سقط قارئاها
+   (الورقةُ والدليل) فسقطت في يومها** (D-214/D-002). **وما أُسّس يبقى
+   يُقرأ** (D-219). */
 
-  useEffect(() => {
-    const id = setTimeout(() => inputRef.current?.focus(), 60);
-    return () => clearTimeout(id);
-  }, []);
-
-  function submit() {
-    const clean = name.trim();
-    if (clean.length < 2 || pending) return;
-    tap([12, 30]);
-    start(async () => {
-      try {
-        const id = await createCommunity({ name: clean, isPrivate });
-        onCreated(id);
-      } catch (e) {
-        flashError((e as Error).message);
-      }
-    });
-  }
-
-  return (
-    <Sheet open variant="top" onClose={onClose} closeLabel={t.closeLabel} labelledBy="comm-create-title">
-      <SheetHeader id="comm-create-title" title={t.commCreateTitle} closeLabel={t.closeLabel} onClose={onClose}>
-        <p className="text-xs text-muted mt-0.5">{t.commCreateHint}</p>
-      </SheetHeader>
-      <div className="p-5 space-y-4">
-        <input
-          ref={inputRef}
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder={t.commNamePlaceholder}
-          aria-label={t.commNamePlaceholder}
-          maxLength={50}
-          className="w-full rounded-xl bg-surface-2 border border-border px-4 py-3 text-base outline-none focus:border-accent transition"
-        />
-        {/* الخصوصية رقاقتان لا مفتاح: خياران متنافيان معروفان (D-016) */}
-        <div role="group" aria-label={t.commCreateTitle} className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            aria-pressed={!isPrivate}
-            onClick={() => {
-              tap(6);
-              setIsPrivate(false);
-            }}
-            className={chip(!isPrivate)}
-          >
-            {t.commPublic}
-          </button>
-          <button
-            type="button"
-            aria-pressed={isPrivate}
-            onClick={() => {
-              tap(6);
-              setIsPrivate(true);
-            }}
-            className={chip(isPrivate)}
-          >
-            {t.commPrivate}
-          </button>
-        </div>
-        <button
-          type="button"
-          onClick={submit}
-          disabled={name.trim().length < 2 || pending}
-          className="w-full h-12 rounded-full bg-accent text-[color:var(--on-accent)] font-bold text-[15px] disabled:opacity-40 hover:brightness-110 active:scale-[0.98] transition"
-        >
-          {t.commCreateButton}
-        </button>
-      </div>
-    </Sheet>
-  );
-}
-
-function chip(on: boolean) {
-  return `px-3.5 py-2 text-sm rounded-full border font-semibold whitespace-nowrap transition ${
-    on
-      ? "bg-accent text-[color:var(--on-accent)] border-accent"
-      : "bg-surface text-muted border-border hover:text-foreground hover:border-accent/50"
-  }`;
-}
 
 // ============================================================
 //  غرفة المجتمع
