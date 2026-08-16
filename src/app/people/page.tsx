@@ -272,7 +272,9 @@ export default async function PeoplePage({
   const feedTranslations = pagerTab && translateOn
     ? await getBatchTranslations(
         localized
-          .filter((a) => a.review?.trim())
+          /* 🆕 **ولا تُترجَم المحجوبات** (D-315): نصٌّ حجبه كاتبُه لا
+             يُرسَل لخدمةٍ خارجية ولا يُعرض مترجَماً فوق حاجبه */
+          .filter((a) => a.review?.trim() && !a.hasSpoiler)
           .map((a) => ({
             id: commentViewKey(a.person.id, a.media_type, a.tmdb_id),
             text: a.review ?? "",
