@@ -324,6 +324,8 @@ export default async function TalkPage({
             spoiler: p.spoiler,
             /* 🆕 D-271 — إعلانُ الكاتب، **والصفُّ يحجب متنَه به** */
             hasSpoiler: p.hasSpoiler,
+            /* 🆕 D-312 — الصورةُ من عمودها الحقيقيّ (الهجرة ٩٧) */
+            imagePath: p.imagePath,
           }))}
           me={me}
           locale={locale}
