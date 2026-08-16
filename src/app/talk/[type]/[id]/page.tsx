@@ -8,6 +8,7 @@ import {
   getCommunityRating,
   getTitleThread,
   getPostLikes,
+  getPostVotes,
   getFollowState,
   isMovieWatched,
 } from "@/lib/data";
@@ -16,10 +17,10 @@ import { displayWorkTitle } from "@/lib/wikidata";
 import { getT } from "@/lib/locale";
 import { bulletinLine } from "@/lib/bulletinLine";
 import { TitleHero } from "@/components/TitleHero";
+import { ExpandableText } from "@/components/ExpandableText";
 import { HeroRatings, HeroRatingsSkeleton } from "@/components/HeroRatings";
 import { ThreadReplies } from "@/components/thread/ThreadReplies";
 import { Icon } from "@/components/Icon";
-import { dirOf, alignOf } from "@/lib/dir";
 import { Suspense } from "react";
 
 export const dynamic = "force-dynamic";
@@ -142,10 +143,17 @@ export default async function TalkPage({
      معرّفاتُ الخيط نفسِه**، فلا تُنادى قبل أن يصل. **ونداءٌ واحدٌ
      للغرفة كلِّها** (D-164/D-205)، **وسقوطُه صامتٌ فيُرسم الزرُّ
      بصفر.** */
-  const postLikes = await getPostLikes(thread.map((p) => p.postId)).catch(() => ({
-    counts: {} as Record<string, number>,
-    mine: [] as string[],
-  }));
+  const [postLikes, postVotes] = await Promise.all([
+    getPostLikes(thread.map((p) => p.postId)).catch(() => ({
+      counts: {} as Record<string, number>,
+      mine: [] as string[],
+    })),
+    /* 🆕 **والأصواتُ معها** (D-305، الهجرة ٩٤) — نفسُ المفاتيح فنفسُ
+       اللحظة، **والسقوطُ صامتٌ بصفر** (D-179). */
+    getPostVotes(thread.map((p) => p.postId)),
+  ]);
+
+
 
   /* TMDB ساقطٌ أو المعرّف خاطئ؟ **الكلامُ يبقى** — العنوانُ مخزَّنٌ مع
      كل مشاركة (نمطُ D-048)، فالصفحة تُرسم من القاعدة وحدها. و`notFound`
@@ -202,7 +210,6 @@ export default async function TalkPage({
            العنوان في المساحة في الغلاف»). **النصُّ هو نفسُه حرفاً** —
            وهو ما يجعل من ضغط بطاقةً يجد عنوانَها فوق الغرفة (D-257) —
            **وإنما تركَ متنَ الصفحة للنبذة ثم للكلام.** */
-        sub={t.talkRoomTitle(title, mediaType === "tv")}
         /* ⚖️ 🆕 **وسهمُ «افتح صفحة العمل» حُذف** (D-297، نصُّ أحمد:
            «السهم اللي فوق يمين احذفه، لأن اللي يبغى بيانات المسلسل يضغط
            على صورته»). **وحجّتُه صحيحةٌ وحرفيّة: الملصقُ والاسمُ رابطٌ
@@ -229,14 +236,11 @@ export default async function TalkPage({
             الترويسة، **وبابٌ قائمٌ خيرٌ من بابٍ ثانٍ** (D-266).
             ⚠️ **واتّجاهُها من نصّها** (D-282): TMDB تُرجعها بلغة القارئ
             حين تتوفّر، **فقد تعود عربيةً في واجهةٍ إنجليزية.** */}
-        {overview && (
-          <p
-            dir={dirOf(overview)}
-            className={`mt-2 text-[13px] leading-relaxed text-muted line-clamp-3 ${alignOf(overview)}`}
-          >
-            {overview}
-          </p>
-        )}
+        {/* 🆕 **سطرٌ واحدٌ وزرُّ «المزيد»** (D-304، طلبُ أحمد) — والحجّةُ
+            كاملةً في رأس `ExpandableText`. **ولا مكوّنَ ثانٍ للنصّ
+            المطويّ**: هذا هو الأوّل، **ومن أراد نصّاً يُوسَّع بعده يقرؤه
+            من هنا** (D-002). */}
+        {overview && <ExpandableText text={overview} locale={locale} />}
 
         {/* **شاراتُ حالتك — تُقرأ ولا تُضغط** (D-217): «المُطَوَّق يُضغط
             والعاري يُقرأ»، فلا يظنُّها أحدٌ زرّين ويضغطهما بلا أثر. */}
@@ -289,6 +293,7 @@ export default async function TalkPage({
             posterPath,
             backdropPath,
           }}
+          votes={postVotes}
           replies={thread.map((p) => ({
             replyId: p.postId,
             authorId: p.authorId,
