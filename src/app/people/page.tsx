@@ -14,6 +14,7 @@ import {
   getCommunityRoom,
   getTitleRooms,
   getTalkRooms,
+  pickTalkedAboutRoom,
   getFollows,
   getReactions,
   getFollowingIds,
@@ -27,7 +28,12 @@ import {
 } from "@/lib/data";
 import { getT, getTabPrefs, getFeedStrangers } from "@/lib/locale";
 import { WorksTalk } from "@/components/WorksTalk";
-import { PeopleLeaderboard, TopReviews, TopSavedLists } from "@/components/PeopleBoard";
+import {
+  PeopleLeaderboard,
+  TopReviews,
+  TopSavedLists,
+  TalkedAboutWork,
+} from "@/components/PeopleBoard";
 import { ActivityFeed } from "@/components/ActivityFeed";
 import { commentViewKey, newsViewKey } from "@/lib/postKeys";
 import { applyTabPrefs, defaultTab } from "@/lib/tabPrefs";
@@ -319,6 +325,34 @@ export default async function PeoplePage({
   const board = peopleTab?.[1] ?? [];
   const topReviews = peopleTab?.[2] ?? [];
   const savedLists = peopleTab?.[3] ?? [];
+
+  /* 🆕 **العملُ الذي يدور حوله الكلام — بطاقةٌ واحدةٌ في اللوحة** (D-291).
+     **وبلا نداءٍ جديدٍ ولا هجرة:** `rooms` مجلوبةٌ فوق لهذا التبويب نفسِه
+     (`pagerTab` تشمل `people`)، **فهذه قراءةٌ ثانيةٌ لصفوفٍ مدفوعةٍ مرّةً**
+     (D-194/D-198: نداءٌ واحدٌ يخدم سطحين).
+
+     **والاختيارُ شرطان، وكلاهما مكتوبٌ لأن أحدَهما وحدَه يكذب:**
+     **١) حيّةٌ خلال سبعة أيام** — الدالّةُ ترتّب بـ`last_at` **وتُرجع
+     عدَّ المشاركات كلَّه**، **فغرفةٌ ماتت في مارس ولها أربعون مشاركةً
+     كانت ستتصدّر لوحةً تقول «يدور حوله الكلام» الآن** (D-219).
+     **٢) ثم الأعلى مشاركاتٍ بين الحيّات** — لأن اللوحةَ كلَّها ترتيبٌ،
+     **وأحدثُ غرفةٍ ليست أكثرَها كلاماً** (وهي ما يعرضه تبويبُ «نقاش»
+     أصلاً، **فسطحان يقولان الشيءَ نفسَه أحدُهما زائد** — D-244).
+
+     **وعند التساوي تفوز الأحدث** لأن `reduce` تُبقي الأولى والصفوفُ
+     واصلةٌ مرتّبةً بـ`last_at` تنازليّاً — **تعادلٌ يُحسم بمعنًى لا
+     بالصدفة.**
+
+     ⚠️ **ولا تُحسب في «عرض الكل»**: القسمُ لا يُرسم هناك أصلاً،
+     **وحسابٌ بلا قارئ ثمنٌ بلا سبب** (D-194).
+
+     ⚠️⚠️ **والاختيارُ في `lib` لا هنا، وليس ترتيباً معماريّاً:**
+     **`eslint` ردّ `Date.now()` داخل الرسم** (`react-hooks/purity`) —
+     **ودالّةٌ تقرأ الساعةَ ليست خالصةً فلا تُستدعى في `render`.**
+     **وهو ردٌّ صحيح**: نفسُ الصفحة تُرسم مرّتين فتعطي نتيجتين.
+     **والقاعدةُ التي تبقى: كلُّ ما يقرأ «الآن» يعيش خارج المكوّن** —
+     **وهذا ما لا يمسكه `tsc` ويمسكه `eslint`** (D-289 بالعكس). */
+  const talkedAbout = wantAll ? null : pickTalkedAboutRoom(rooms);
   /* **وفراغُ «الصاعدين» ليس فراغَ اللوحة**: النداءُ واحدٌ للقسمين، **فقد
      تعود اللوحةُ ممتلئةً ولا يكون فيها صاعدٌ واحد** — ولو قيس هذا القسمُ
      بطول `board` لبقي «عرض الكل» صفحةً فيها بابُ رجوعٍ ولا شيء تحته.
@@ -617,6 +651,14 @@ export default async function PeoplePage({
                   locale={locale}
                   seeAllHref="/people?tab=people&all=reviews"
                 />
+                {/* 🆕 **وقبل الرفّ: بطاقةُ العمل الذي يدور حوله الكلام**
+                    (D-291). **وموضعُها فوق رفِّ القوائم كما كُتب الاقتراح**:
+                    الثلاثةُ فوقها ترتيباتُ أشخاص، **وهي وما تحتها ليسا
+                    شخصين** — فتُفتح بهما نافذةٌ واحدةٌ في اللوحة بدل
+                    كسرَين متباعدين يقطعان الأشخاصَ مرّتين.
+                    **والحجمُ يكسر ثم الاتّجاهُ يكسر**، **وآخرُ قسمٍ يعود
+                    إلى الوجوه** فتُقفل اللوحةُ على ما فُتحت عليه. */}
+                <TalkedAboutWork room={talkedAbout} locale={locale} />
                 {/* 🆕 **والخامسُ: أكثرُ القوائم حفظاً** (D-289).
                     **وموضعُه بعد «أعلى التعليقات» وقبل «الصاعدين»**:
                     الثلاثةُ فوقه أشخاصٌ يُرتَّبون، **وهذا شيءٌ صنعه
