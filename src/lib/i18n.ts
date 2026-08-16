@@ -810,7 +810,6 @@ const ar = {
   /* ⚠️ **وسببُ الحجب يتغيّر بمن حجب**: نشرتُنا تحجب وصفَ الحلقة فنعرف
      ما فيها، **وكلامُ العضو لا نعرف ما فيه** — **فالسببُ أنه هو قال**
      (D-216: الجملةُ تتبع ما نعلمه). */
-  spoilerByAuthor: "حدّده كاتبُه",
   /* **«شاهدوا المنشور» لا «شاهدوه»** (D-237): الأولى تخصّ الصفَّ الذي
      تحته، والثانيةُ تخصّ العملَ — **وكلمةٌ واحدة كانت تحمل المعنيين** */
   postViewsHint: "شاهدوا المنشور",
@@ -2064,8 +2063,6 @@ const en: Dict = {
   spoilerShow: "Show spoiler",
   spoilerHide: "Hide spoiler",
   spoilerMark: "Contains a spoiler",
-  // We know what our own bulletin hides; we do not know what a member wrote
-  spoilerByAuthor: "Marked by its author",
   postViewsHint: "post views",
   undoNotWatched: "Not watched",
   postPageTitle: "Post",
