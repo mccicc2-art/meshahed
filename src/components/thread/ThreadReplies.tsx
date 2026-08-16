@@ -12,11 +12,11 @@ import {
   reportNewsReply,
   reportTalkPost,
   togglePostLike,
+  votePost,
 } from "@/lib/actions";
 import { getDict, type Locale } from "@/lib/i18n";
 import { displayNameOf } from "@/lib/people";
 import { tap } from "@/lib/haptics";
-import { Avatar } from "../Avatar";
 import { Icon } from "../Icon";
 import { Composer } from "../Composer";
 import { ReplyItem, TEMP, type ThreadReply } from "./ReplyItem";
@@ -85,6 +85,7 @@ export function ThreadReplies({
   locale,
   signedIn,
   likes,
+  votes,
 }: {
   target: ReplyTarget;
   replies: ThreadReply[];
@@ -94,6 +95,12 @@ export function ThreadReplies({
    * السطحين الآخرين** (الرأي والنشرة) فلا يُرسم زرّ.
    */
   likes?: { counts: Record<string, number>; mine: string[] };
+  /**
+   * 🆕 **أصواتُ المشاركات** (D-305، الهجرة ٩٤) — نمطُ `likes` حرفاً:
+   * **من الخادم في نداءٍ واحد، وتغيب في السطحين الآخرين** فلا سهمَ
+   * يُرسم. **والترتيبُ وقع في الصفحة قبل الوصول** — انظر رأسَها.
+   */
+  votes?: { scores: Record<string, number>; mine: Record<string, number> };
   /** وجهي واسمي — **لصفّ الكتابة وللنسخة التفاؤلية** (D-241) */
   me: { name: string; avatar: string | null } | null;
   locale: Locale;
@@ -156,6 +163,28 @@ export function ThreadReplies({
     });
   }
 
+  /**
+   * 🆕 **حالةُ الصوت التفاؤليّة — قيمةٌ لا فرق** (D-305). الإعجابُ
+   * ثنائيٌّ ففرقُه `±1` يكفي؛ **والصوتُ ثلاثيٌّ** (فوق/تحت/لا شيء)
+   * **وفرقُ قفزةٍ من -١ إلى ١ اثنان** — فتُخزَّن **قيمتي الجديدة**
+   * ويُشتقّ الفرقُ منها ومن قيمة الخادم. **والمجموعُ لا يُعاد ترتيبُ
+   * الشاشة به تحت الإصبع** (D-008) — الترتيبُ للفتحة التالية.
+   */
+  const [voteNow, setVoteNow] = useState<Record<string, number>>({});
+  const myVoteOf = (id: string) => voteNow[id] ?? votes?.mine[id] ?? 0;
+  const scoreOf = (id: string) =>
+    (votes?.scores[id] ?? 0) + (myVoteOf(id) - (votes?.mine[id] ?? 0));
+
+  function vote(id: string, v: -1 | 0 | 1) {
+    const was = myVoteOf(id) as -1 | 0 | 1;
+    tap(8);
+    setVoteNow((d) => ({ ...d, [id]: v }));
+    void votePost(id, v).catch(() => {
+      setVoteNow((d) => ({ ...d, [id]: was }));
+      setError(t.errorTitle);
+    });
+  }
+
   /* **الحمولةُ تغلب النسخةَ المحلّية** (D-241): ما ظهر معرّفُه من الخادم
      تسقط نسختُه هنا — فلا يظهر الردُّ مرّتين. */
   const fromServer = new Set(replies.map((r) => r.replyId));
@@ -163,6 +192,31 @@ export function ThreadReplies({
     .filter((r) => !removed.has(r.replyId))
     /* **ترتيبٌ زمنيٌّ واحدٌ للخيط كلِّه** — لا شجرة */
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+
+  /**
+   * 🆕 **ثم الجذورُ بالأصوات حيث توجد** (D-305، نصُّ أحمد: «أكثر ردّ
+   * عنده أسهم يكون فوق واللي بالسالب ينزل تحت — فهذا شي يسهّل القراءة»).
+   *
+   * **بأرقام الخادم لا بالحالة التفاؤليّة عمداً**: ترتيبٌ يقرأ صوتَك
+   * لحظةَ ضغطه **يقفز بالرسالة من تحت إصبعك وأنت تقرؤها** (D-008/D-301)
+   * — **فالصوتُ الجديد يُرى رقماً، ويُرتَّب في الفتحة التالية.** وهو
+   * عقدُ الدبّوس حرفاً.
+   *
+   * **والفرزُ مستقرٌّ** (ضمانةُ اللغة): المتساوون — وكلُّ الأبناء —
+   * **يبقون بترتيب الزمن.** **وموضعُ الابن في المصفوفة لا يغيّر أباه**:
+   * الشجرةُ تُبنى من `parentId` لا من الجوار.
+   */
+  if (votes) {
+    /* ⚠️ **قسمةٌ ثم دمجٌ، لا مقارنٌ مشروط**: مقارنٌ يرجع صفراً لكلِّ
+       زوجٍ فيه ابنٌ **ليس ترتيباً متعدّياً** — والفرزُ به غيرُ معرَّف.
+       فتُفرز الجذورُ وحدَها ويُعاد بناءُ المصفوفة. */
+    const roots = all.filter((r) => !r.parentId);
+    const children = all.filter((r) => r.parentId);
+    roots.sort(
+      (a, b) => (votes.scores[b.replyId] ?? 0) - (votes.scores[a.replyId] ?? 0),
+    );
+    all.splice(0, all.length, ...roots, ...children);
+  }
 
   const nameOf = new Map(all.map((r) => [r.replyId, displayNameOf(r, t.anonymousUser)]));
 
@@ -218,9 +272,25 @@ export function ThreadReplies({
           ثابتٍ زائدَ المنطقةِ الآمنة، **فالإزاحةُ تحسبه** — ويسقط
           الحسابُ من `md:` فصاعداً حيث يختفي الشريط (`md:hidden`).
           **وأداةٌ تختفي خلف أخرى أسوأُ من أداةٍ غائبة** (D-138). */}
-      {signedIn && (
-        <div className="sticky bottom-[calc(env(safe-area-inset-bottom,0px)+3.5rem)] md:bottom-0 z-20 -mx-4 sm:-mx-6 px-4 sm:px-6 py-3 border-t border-[color:var(--divider)] bg-[color:var(--background)]">
-          {open === "" ? (
+      {/* 🔴 🆕 **زرُّ الكتابة صار علامةً عائمةً** (D-305، طلبُ أحمد
+          بلقطتين: دائرةٌ على شريط «Join the discussion…» عندنا وقلمٌ
+          عائمٌ من التطبيق الآخر — «احذف هذي حقّة الكتابة اللي عندنا
+          وخلّها مثل الموقع الثاني، علامة بتكون أفضل»).
+
+          **وحجّتُه تُقاس**: الشريطُ كان يحجز صفّاً كاملاً بعرض الشاشة
+          **وخطَّ حدٍّ فوقه** — **دعوةٌ دائمةُ الحضور لفعلٍ نادرِ
+          الوقوع**، وآخرُ رسالةٍ في الغرفة تختفي خلفه (D-266: أرخصُ
+          عنصرٍ هو الذي لا يُرسم). **والقلمُ يقول «اكتب» بلا سطر.**
+
+          ⚠️ **وإذا فُتح الصندوقُ عاد الشريطُ كما كان** — الكتابةُ نفسُها
+          تحتاج العرضَ كلَّه، **والعلامةُ بابٌ لا غرفة.**
+          ⚠️ **والموضعُ `end` المنطقيّ** (D-216): يمينٌ في LTR ويسارٌ في
+          RTL — **فلا يغطّي بدايةَ السطور وهي جهةُ القراءة.**
+          **وفوق شريط التنقّل بنفس حساب الشريط القديم** — والارتفاعُ
+          `bottom` نفسُه فلا يظهر تحته فراغٌ جديد. */}
+      {signedIn &&
+        (open === "" ? (
+          <div className="sticky bottom-[calc(env(safe-area-inset-bottom,0px)+3.5rem)] md:bottom-0 z-20 -mx-4 sm:-mx-6 px-4 sm:px-6 py-3 border-t border-[color:var(--divider)] bg-[color:var(--background)]">
             <Composer
               locale={locale}
               /* **والمفتاحُ حيث يُخزَّن وحدَه** (D-271): `has_spoiler`
@@ -232,25 +302,23 @@ export function ThreadReplies({
               onCancel={() => setOpen(null)}
               onSend={(b, sp, img) => send(b, null, sp, img)}
             />
-          ) : (
+          </div>
+        ) : (
+          <div className="sticky bottom-[calc(env(safe-area-inset-bottom,0px)+3.5rem)] md:bottom-4 z-20 flex justify-end pointer-events-none pb-1">
             <button
               type="button"
               onClick={() => {
                 tap(6);
                 setOpen("");
               }}
-              className="w-full flex items-center gap-3 text-start"
+              aria-label={nested ? t.talkRoomPlaceholder : t.postReplyPlaceholder}
+              title={nested ? t.talkRoomPlaceholder : t.postReplyPlaceholder}
+              className="pointer-events-auto w-12 h-12 rounded-full bg-surface-2 border border-border text-foreground grid place-items-center shadow-xl active:scale-95 transition hover:border-accent"
             >
-              <Avatar src={me?.avatar ?? null} name={me?.name ?? ""} size={40} alt="" className="shrink-0" />
-              {/* **ودعوةُ الغرفة غيرُ دعوةِ الردّ**: هناك تردّ على سطرٍ
-                  قِيل، **وهنا تبدأ حديثاً لم يبدأه أحد** (D-257) */}
-              <span className="text-[15px] text-muted">
-                {nested ? t.talkRoomPlaceholder : t.postReplyPlaceholder}
-              </span>
+              <Icon name="edit" size={20} />
             </button>
-          )}
-        </div>
-      )}
+          </div>
+        ))}
 
     </>
   );
@@ -322,6 +390,15 @@ export function ThreadReplies({
           onLike={
             likes && signedIn && !r.isMine && !r.replyId.startsWith(TEMP)
               ? () => like(r.replyId)
+              : undefined
+          }
+          /* 🆕 **والسهمان بشروط القلب نفسِها** (D-305/D-289) — سطحٌ
+             واحد، ولا صوتَ على كلامك ولا على نسخةٍ لم يصل معرّفُها. */
+          score={votes ? scoreOf(r.replyId) : 0}
+          myVote={votes ? myVoteOf(r.replyId) : 0}
+          onVote={
+            votes && signedIn && !r.isMine && !r.replyId.startsWith(TEMP)
+              ? (v) => vote(r.replyId, v)
               : undefined
           }
           onReply={() => {

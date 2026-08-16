@@ -79,6 +79,9 @@ export function ReplyItem({
   likes = 0,
   likedByMe = false,
   onLike,
+  score = 0,
+  myVote = 0,
+  onVote,
   onReply,
   onDelete,
   onReport,
@@ -122,6 +125,20 @@ export function ReplyItem({
   likes?: number;
   likedByMe?: boolean;
   onLike?: () => void;
+  /**
+   * 🆕 **أسهمُ التصويت** (D-305، الهجرة ٩٤، طلبُ أحمد بلقطةٍ من Reddit).
+   *
+   * **وليست القلبَ باسمٍ ثانٍ**: القلبُ «أحببتُه» — إشارةٌ لصاحب الردّ؛
+   * **والسهمان «يستحق مكاناً أعلى/أدنى»** — إشارةٌ للترتيب يقرؤها
+   * الجميع (D-224: معنيان فمعموران). **والترتيبُ نفسُه يقع على الخادم
+   * في الفتحة التالية لا تحت الإصبع** (D-008/D-301).
+   *
+   * **و`onVote` غائبةٌ حيث لا يُسمح** — مشاركتُك أنت، أو زائر، أو خيطٌ
+   * ليس غرفةَ نقاش — **فيصير الرقمُ عدّاداً يُقرأ** (D-217/D-289 حرفاً).
+   */
+  score?: number;
+  myVote?: number;
+  onVote?: (v: -1 | 0 | 1) => void;
   onReply: () => void;
   onDelete: () => void;
   onReport: () => void;
@@ -334,7 +351,7 @@ export function ReplyItem({
             ⚠️ **والشرطُ صار شرطين لا واحداً**: زرُّ الردّ يشترط دخولاً
             وسماحاً، **والطيُّ لا يشترط شيئاً** — **فزائرٌ لا يستطيع
             الردَّ كان سيفقد سهمَ الطيّ لو بقي الشرطُ واحداً.** */}
-        {!pending && ((signedIn && canReply) || fold || onLike || likes > 0) && (
+        {!pending && ((signedIn && canReply) || fold || onLike || likes > 0 || onVote || score !== 0) && (
           <div className="mt-1.5 -mx-0.5 flex items-center gap-1">
             {/* 🆕 **والقلبُ أوّلاً — والترتيبُ قاعدةٌ لا ذوق** (D-294،
                 طلبُ أحمد: «دائماً الأول القلب بعدها التعليق وبعدها
@@ -344,6 +361,53 @@ export function ReplyItem({
                 تمنعه القاعدة ٣**: **الإصبعُ يحفظ الموضعَ لا الأيقونة.**
                 **والقلبُ المصمتُ حالةٌ والمفرَّغُ غيابُها** (D-260)،
                 **واللونُ يحمل الحالة** (D-003). */}
+            {/* 🆕 **السهمان في أوّل الصفّ** (D-305، نصُّ أحمد: «يكونون
+                يسار القلب») — **وهو موضعُ Reddit نفسُه الذي أرسل لقطتَه**:
+                أداةُ الترتيب قبل أدوات التفاعل. **⚠️ وهذا استثناءٌ مقصودٌ
+                من ترتيب D-294** (قلبٌ · تعليق · مشاهدة · نشر): تلك قاعدةُ
+                أفعال التفاعل، **والسهمان ليسا منها** — فيقفان قبلها كما
+                في المرجع الذي طُلب.
+                **والرقمُ بين السهمين** يقرأ صافيَ الأصوات، **ولونُه يقول
+                صوتي أنا**: أصفرُ فوق، خافتٌ تحت (D-003: اللونُ يحمل
+                الحالة). **وضغطُ السهم نفسِه مرّتين سحبٌ** — «تراجَع بعد»
+                (D-047). */}
+            {(onVote || score !== 0) && (
+              <span className="inline-flex items-center gap-0.5 me-0.5">
+                <button
+                  type="button"
+                  onClick={onVote ? () => onVote(myVote === 1 ? 0 : 1) : undefined}
+                  disabled={!onVote}
+                  aria-pressed={myVote === 1}
+                  aria-label={t.voteUp}
+                  title={t.voteUp}
+                  className={`inline-flex items-center rounded-full p-1.5 transition ${
+                    myVote === 1 ? "text-accent" : "text-muted"
+                  } ${onVote ? "hover:text-accent active:scale-90" : "cursor-default"}`}
+                >
+                  <Icon name="chevron-up" size={16} strokeWidth={2.4} />
+                </button>
+                <span
+                  className={`min-w-[1ch] text-center text-[12px] tabular-nums ${
+                    myVote === 1 ? "text-accent" : myVote === -1 ? "text-muted" : "text-muted"
+                  }`}
+                >
+                  {num(score, locale)}
+                </span>
+                <button
+                  type="button"
+                  onClick={onVote ? () => onVote(myVote === -1 ? 0 : -1) : undefined}
+                  disabled={!onVote}
+                  aria-pressed={myVote === -1}
+                  aria-label={t.voteDown}
+                  title={t.voteDown}
+                  className={`inline-flex items-center rounded-full p-1.5 transition ${
+                    myVote === -1 ? "text-foreground" : "text-muted"
+                  } ${onVote ? "hover:text-foreground active:scale-90" : "cursor-default"}`}
+                >
+                  <Icon name="chevron-down" size={16} strokeWidth={2.4} />
+                </button>
+              </span>
+            )}
             {(onLike || likes > 0) && (
               <button
                 type="button"
