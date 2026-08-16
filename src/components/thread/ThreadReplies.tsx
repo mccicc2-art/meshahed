@@ -439,7 +439,19 @@ export function ThreadReplies({
         }
       } catch (e) {
         setAdded((a) => a.filter((x) => x.replyId !== temp));
-        setError((e as Error).message);
+        /* 🔴 **ونصُّ الخطأ لنا لا للقارئ** (D-302، لقطةُ أحمد: سطرٌ أحمر
+           في وسط الغرفة يقول «Minified React error #441; visit
+           react.dev/errors/441…»).
+           **وNext تُخفي رسائلَ أخطاء الخادم في الإنتاج عمداً** لئلّا
+           تُسرّب تفاصيل — **فما يصل العميلَ ليس سببَ العطل، هو رقمُ
+           عطلٍ في React ورابطُ توثيق.** **وعرضُه كما هو يعطي القارئَ
+           نصّاً لا يفهمه ولا يستطيع فعلَ شيءٍ به** (D-077/D-181: الرسالةُ
+           تقول ما جرى وما العمل، **ورقمٌ إنجليزيٌّ في سطحٍ عربيٍّ يُقرأ
+           عطلاً في التطبيق نفسِه**).
+           **فالمعروضُ جملتُنا، والتفصيلُ إلى `console`** — حيث يقرؤه من
+           يصلح لا من يكتب. */
+        console.error("thread send failed", e);
+        setError(t.errorTitle);
       }
     })();
   }
@@ -470,7 +482,10 @@ export function ThreadReplies({
           n.delete(x.replyId);
           return n;
         });
-        setError((e as Error).message);
+        /* **ونفسُ حجّة D-302 أعلاه** — **ونسخةٌ ثانيةٌ من العلاج في
+           الملفّ نفسِه تُصلَح معه لا بعده** (D-145). */
+        console.error("thread delete failed", e);
+        setError(t.errorTitle);
       }
     })();
   }

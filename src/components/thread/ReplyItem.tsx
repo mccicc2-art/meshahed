@@ -12,6 +12,7 @@ import { Avatar } from "../Avatar";
 import { Icon } from "../Icon";
 import { SpoilerText } from "../SpoilerText";
 import { Dropdown, dropdownItem } from "../ui/Dropdown";
+import { Sheet } from "../ui/Sheet";
 import { ReplyingTo } from "./ThreadShell";
 
 /**
@@ -300,24 +301,29 @@ export function ReplyItem({
                 أسرعُ وصولاً منه في جملة** — **وحاجبٌ يستر النصَّ ويترك
                 صورتَه ليس حاجباً.** */}
             <SpoilerText text={reply.body} locale={locale}>
-              {image && <PostImage src={image} alt={t.talkImageAlt} />}
+              {image && <PostImage src={image} alt={t.talkImageAlt} locale={locale} />}
             </SpoilerText>
           </div>
         ) : (
-          /* **اتّجاهُ الردّ من الردّ** (D-241) — لا من لغة الواجهة */
-          <p
-            dir={dirOf(reply.body)}
-            className="mt-1.5 text-[14px] leading-relaxed text-foreground/90 whitespace-pre-line"
-          >
-            {reply.body}
-          </p>
+          /* **اتّجاهُ الردّ من الردّ** (D-241) — لا من لغة الواجهة.
+             🆕 **ولا فقرةَ لمتنٍ فارغ** (D-302): **صورةٌ بلا نصٍّ مشاركةٌ
+             كاملة**، **وفقرةٌ فارغةٌ فوقها هامشٌ لا يفسّره شيء** —
+             **وأرخصُ عنصرٍ هو الذي لا يُرسم** (D-266/D-222). */
+          reply.body.trim() && (
+            <p
+              dir={dirOf(reply.body)}
+              className="mt-1.5 text-[14px] leading-relaxed text-foreground/90 whitespace-pre-line"
+            >
+              {reply.body}
+            </p>
+          )
         )}
 
         {/* **والصورةُ بعد المتن** — **ترتيبُ الكتابة هو ترتيبُ القراءة**:
             من كتب سطراً ثم أرفق صورةً يتوقّعها تحته. */}
         {image && !reply.hasSpoiler && (
           <div className="mt-2">
-            <PostImage src={image} alt={t.talkImageAlt} />
+            <PostImage src={image} alt={t.talkImageAlt} locale={locale} />
           </div>
         )}
 
@@ -385,19 +391,50 @@ export function ReplyItem({
  * يُرسم). **وسقفٌ لارتفاعها** حتى لا تبتلع صورةٌ طويلةٌ الشاشةَ كلَّها،
  * **والباقي يُقصّ لا يُشوَّه** (`object-cover`).
  *
- * ⚠️ **ورابطٌ يفتحها بحجمها الكامل**: **ما قُصّ يجب أن يكون له بابٌ
- * يُفتح منه** (D-155/D-063: الغيابُ أصدق من الوهم).
+ * ================= 🔴 🆕 والضغطةُ تكبّرها ولا تُخرجك (D-302) =================
+ *
+ * **وكانت رابطاً** (`target="_blank"`) — **بلاغُ أحمد: «إذا ضغطتها يوديك
+ * على رابط، ما تكبر لوحدها».** **وحجّتُه أنّ ما قُصّ له بابٌ ما زالت
+ * صحيحة، والبابُ كان خاطئاً:** رابطُ التخزين يخرج بالقارئ من التطبيق
+ * إلى لسانٍ ثانٍ **يعرض ملفّاً عارياً على خلفيّةٍ بيضاء بعنوان
+ * `supabase.co`** — **فيفقد موضعَه في النقاش، ويقرأ العنوانَ الغريب
+ * عطلاً** (D-063: الغيابُ أصدق من الوهم، **والوهمُ هنا أنه خرج**).
+ *
+ * **فالبابُ صار عارضاً في مكانه**: `Sheet variant="bare"` — **الورقةُ
+ * نفسُها التي في التطبيق منذ D-018** بحجابها وقفلِ تمريرها وحبسِ تركيزها
+ * وإغلاقِها بـ`Escape` وباللمس خارجها. **ولا عارضَ صورٍ ثانٍ**
+ * (D-002/D-018: عائلةٌ ثانيةٌ لمعنًى واحدٍ عطل).
+ *
+ * ⚠️ **والمصغَّرةُ صارت زرّاً لا رابطاً**: **ما لا ينقلك إلى عنوانٍ ليس
+ * رابطاً** — والفرقُ يسمعه قارئُ الشاشة قبل أن تراه العين (D-217).
  */
-function PostImage({ src, alt }: { src: string; alt: string }) {
+function PostImage({ src, alt, locale }: { src: string; alt: string; locale: Locale }) {
+  const t = getDict(locale);
+  const [open, setOpen] = useState(false);
   return (
-    <a
-      href={src}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="block relative rounded-xl overflow-hidden border border-border bg-surface-2 max-h-[420px]"
-    >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={src} alt={alt} loading="lazy" className="w-full h-auto object-cover" />
-    </a>
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        aria-label={t.talkOpenImage}
+        title={t.talkOpenImage}
+        className="block w-full relative rounded-xl overflow-hidden border border-border bg-surface-2 max-h-[420px] active:scale-[.99] transition"
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={src} alt={alt} loading="lazy" className="w-full h-auto object-cover" />
+      </button>
+      {/* **وبحجمها الكامل بلا قصّ**: `object-contain` وسقفٌ بالشاشة —
+          **العارضُ يعرض ما قُصَّ، فقصٌّ فيه يُبطل سببَ فتحه** (D-046). */}
+      {open && (
+        <Sheet open onClose={() => setOpen(false)} closeLabel={t.closeLabel} variant="bare">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={src}
+            alt={alt}
+            className="max-h-[86svh] max-w-full w-auto h-auto object-contain rounded-xl"
+          />
+        </Sheet>
+      )}
+    </>
   );
 }
