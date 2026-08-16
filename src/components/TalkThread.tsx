@@ -7,6 +7,7 @@ import { dirOf, alignOf } from "@/lib/dir";
 import { Avatar } from "./Avatar";
 import { Icon } from "./Icon";
 import { LikeButton } from "./LikeButton";
+import { SpoilerText } from "./SpoilerText";
 
 /**
  * **صفحةُ كلامِ العمل — خطٌّ لا شجرة** (D-193، وأُعيد تشريحُها في D-242).
@@ -119,21 +120,29 @@ export function TalkThread({
                 </span>
               </div>
 
-              {r.review?.trim() && (
-                /* **اتّجاهُ الرأي من الرأي** (D-241)، **ولونُه لون المتن**:
-                   أخفتُ نصٍّ في صفحةٍ لا يصحّ أن يكون سببَ وجودها. */
-                <Link
-                  href={href}
-                  prefetch={false}
-                  /* **الاتّجاه على الرابط لا على المقصوص** — D-282 */
-                  dir={dirOf(r.review)}
-                  className={`block mt-2 ${alignOf(r.review)}`}
-                >
-                  <p className="text-[14px] leading-relaxed text-foreground/90 whitespace-pre-line line-clamp-6">
-                    {r.review}
-                  </p>
-                </Link>
-              )}
+              {r.review?.trim() &&
+                /* 🆕 **إعلانُ الحرق يحجب المتنَ نفسَه** (D-315، الهجرة
+                   ١٠٠) — **والحاجبُ خارج الرابط**: زرُّ الكشف داخلَ رابطٍ
+                   هو عطلُ D-155 بعينه، **ومن ضغط «اعرض الحرق» لم يقصد أن
+                   يفتح صفحة.** */
+                (r.has_spoiler ? (
+                  /* **ولا سطرَ شرحٍ بجانب الزرّ** — حكمُ D-287/D-289 قائم */
+                  <SpoilerText text={r.review} locale={locale} />
+                ) : (
+                  /* **اتّجاهُ الرأي من الرأي** (D-241)، **ولونُه لون المتن**:
+                     أخفتُ نصٍّ في صفحةٍ لا يصحّ أن يكون سببَ وجودها. */
+                  <Link
+                    href={href}
+                    prefetch={false}
+                    /* **الاتّجاه على الرابط لا على المقصوص** — D-282 */
+                    dir={dirOf(r.review)}
+                    className={`block mt-2 ${alignOf(r.review)}`}
+                  >
+                    <p className="text-[14px] leading-relaxed text-foreground/90 whitespace-pre-line line-clamp-6">
+                      {r.review}
+                    </p>
+                  </Link>
+                ))}
 
               {/* **الذيل: إعجابٌ · عدّادُ ردودٍ يفتح الخيط** — وشكلُه شكلُ
                   ذيلِ خطّ النشاط حرفاً (D-234): بإزاحة `-mx-0.5` نفسِها.

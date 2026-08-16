@@ -119,7 +119,7 @@ export function TitleActions({
   /* ورقة التقييم بعد ✓ (D-158، طلب أحمد: «يسألني عن التقييم مباشرة»).
      `null` = مغلقة؛ وإلا فهي تقييمي الحالي، يُحمَّل عند الفتح لا مع الصفحة. */
   const [rateSheet, setRateSheet] = useState<
-    { rating: number | null; review: string | null } | null
+    { rating: number | null; review: string | null; hasSpoiler?: boolean } | null
   >(null);
 
   /* القلب تفاؤليٌّ مع تراجعٍ عند الفشل (D-007): فعلٌ من ضغطةٍ واحدة لا
@@ -462,6 +462,7 @@ export function TitleActions({
             locale={locale}
             initialRating={rateSheet?.rating ?? null}
             initialReview={rateSheet?.review ?? null}
+            initialHasSpoiler={rateSheet?.hasSpoiler ?? false}
             /* الحفظ يُغلق الورقة: الجواب وصل، فبقاؤها مفتوحةً يطلبه ثانيةً */
             onSaved={() => {
               setRateSheet(null);

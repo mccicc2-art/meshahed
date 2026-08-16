@@ -530,6 +530,7 @@ function CommentRow({
           review={a.review ?? ""}
           translated={translated}
           locale={locale}
+          hasSpoiler={a.hasSpoiler}
         />
 
         {/* **الذيلُ كلُّه في `RowComment`** لأن صندوق الكتابة يحتاج عرضَ

@@ -10,6 +10,7 @@ import { FollowUserButton } from "./FollowUserButton";
 import { PosterRail, RailItem } from "./PosterRail";
 import { CommunityListCard } from "./PublicListsRail";
 import { TalkRoomCard } from "./WorksTalk";
+import { SpoilerText } from "./SpoilerText";
 import { Icon, type IconName } from "./Icon";
 
 /**
@@ -622,18 +623,24 @@ export function TopReviews({
                     }
                   />
 
-                  {/* **والكلامُ بعرض العمود تحت الوجه** — لا بجانبه (D-228) */}
-                  <Link
-                    href={reviewHref}
-                    prefetch={false}
-                    /* **الاتّجاه على الرابط لا على المقصوص** — D-282 */
-                    dir={dirOf(row.review)}
-                    className={`block mt-2 ${alignOf(row.review)}`}
-                  >
-                    <p className="text-[13px] leading-relaxed text-foreground/85 line-clamp-3">
-                      {row.review}
-                    </p>
-                  </Link>
+                  {/* **والكلامُ بعرض العمود تحت الوجه** — لا بجانبه (D-228)
+                      🆕 **والمحجوبُ خلف حاجبه هنا أيضاً** (D-315): زرُّ
+                      الكشف لا يسكن رابطاً (D-155). */}
+                  {row.hasSpoiler ? (
+                    <SpoilerText text={row.review} locale={locale} />
+                  ) : (
+                    <Link
+                      href={reviewHref}
+                      prefetch={false}
+                      /* **الاتّجاه على الرابط لا على المقصوص** — D-282 */
+                      dir={dirOf(row.review)}
+                      className={`block mt-2 ${alignOf(row.review)}`}
+                    >
+                      <p className="text-[13px] leading-relaxed text-foreground/85 line-clamp-3">
+                        {row.review}
+                      </p>
+                    </Link>
+                  )}
 
                   {/* **والإعجابُ يبقى وحدَه في الذيل** — **وهو سببُ وجود
                       القسم**: «أعلى التعليقات إعجاباً» بلا رقمِ إعجابٍ

@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { getDict, type Locale } from "@/lib/i18n";
 import { dirOf, alignOf } from "@/lib/dir";
+import { SpoilerText } from "./SpoilerText";
 
 /**
  * 🆕 **متنُ المراجعة في الخطّ — جزيرةُ عميلٍ صغيرة** (D-307).
@@ -21,16 +22,27 @@ export function FeedReviewText({
   review,
   translated,
   locale,
+  hasSpoiler = false,
 }: {
   href: string;
   review: string;
   /** غيابُها = «لا ترجمةَ لازمة» — فلا زرَّ يُرسم (D-217) */
   translated?: string | null;
   locale: Locale;
+  /**
+   * 🆕 **إعلانُ كاتبه** (D-315) — الحاجبُ بدل الرابط المقصوص: **زرُّ
+   * الكشف داخل رابطٍ عطلُ D-155**، ومن كشف هنا قرأ في مكانه.
+   * **ولا ترجمةَ لمحجوب** — الصفحةُ لا تجمعها أصلاً (D-307).
+   */
+  hasSpoiler?: boolean;
 }) {
   const t = getDict(locale);
   const [showOriginal, setShowOriginal] = useState(false);
   const shown = translated && !showOriginal ? translated : review;
+
+  if (hasSpoiler) {
+    return <SpoilerText text={review} locale={locale} />;
+  }
 
   return (
     <>

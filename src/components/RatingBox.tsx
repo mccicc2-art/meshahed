@@ -7,6 +7,7 @@ import type { MediaType } from "@/lib/media";
 import { tap } from "@/lib/haptics";
 import { Alert } from "./ui/Alert";
 import { buttonClass } from "./ui/Button";
+import { Icon } from "./Icon";
 
 export function RatingBox({
   tmdbId,
@@ -17,6 +18,7 @@ export function RatingBox({
   locale,
   initialRating,
   initialReview,
+  initialHasSpoiler = false,
   variant = "stars",
   onSaved,
 }: {
@@ -32,6 +34,12 @@ export function RatingBox({
   locale: Locale;
   initialRating: number | null;
   initialReview: string | null;
+  /**
+   * 🆕 **«رسالتي فيها حرق» — الدفعةُ الثانية** (D-315، الهجرة ١٠٠):
+   * إعلانُ الكاتب كما في مؤلّف النقاش (D-271)، **ورقاقةُ الحرق نفسُها
+   * لا عائلةٌ ثالثة** (D-002).
+   */
+  initialHasSpoiler?: boolean;
   /**
    * `stars` في تبويب التتبّع، و`review` في تبويب التعليقات.
    *
@@ -51,6 +59,7 @@ export function RatingBox({
   const [rating, setRating] = useState(initialRating ?? 0);
   const [hover, setHover] = useState(0);
   const [review, setReview] = useState(initialReview ?? "");
+  const [spoiler, setSpoiler] = useState(initialHasSpoiler);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -69,7 +78,16 @@ export function RatingBox({
     setSaved(true);
     start(async () => {
       try {
-        await saveRating({ tmdbId, mediaType, rating, review, title, posterPath, backdropPath });
+        await saveRating({
+          tmdbId,
+          mediaType,
+          rating,
+          review,
+          title,
+          posterPath,
+          backdropPath,
+          hasSpoiler: spoiler,
+        });
         onSaved?.();
       } catch (e) {
         setSaved(false);
@@ -167,6 +185,24 @@ export function RatingBox({
             className={buttonClass({ size: "sm" })}
           >
             {pending ? t.saving : t.saveReview}
+          </button>
+          {/* 🆕 **رقاقةُ الحرق — وصفةُ مؤلّف النقاش حرفاً** (D-315/D-271):
+              نفسُ العائلة ونفسُ الرمز، **ولا `checkbox` عارٍ** (D-016). */}
+          <button
+            type="button"
+            onClick={() => {
+              setSpoiler((v) => !v);
+              setSaved(false);
+            }}
+            aria-pressed={spoiler}
+            className={
+              spoiler
+                ? "inline-flex items-center gap-1.5 rounded-full border border-accent bg-accent/10 px-3 py-1.5 text-[12px] font-bold text-accent transition"
+                : "inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-[12px] text-muted transition hover:text-foreground"
+            }
+          >
+            <Icon name={spoiler ? "eye-off" : "eye"} size={14} className="shrink-0" />
+            <span>{t.spoilerMark}</span>
           </button>
           {initialRating != null && (
             <button
