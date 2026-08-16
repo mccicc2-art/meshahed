@@ -23,10 +23,11 @@ import {
   getPeopleFeatured,
   getPeopleLeaderboard,
   getPeopleTopReviews,
+  getTopSavedLists,
 } from "@/lib/data";
 import { getT, getTabPrefs, getFeedStrangers } from "@/lib/locale";
 import { WorksTalk } from "@/components/WorksTalk";
-import { PeopleLeaderboard, TopReviews } from "@/components/PeopleBoard";
+import { PeopleLeaderboard, TopReviews, TopSavedLists } from "@/components/PeopleBoard";
 import { ActivityFeed } from "@/components/ActivityFeed";
 import { commentViewKey, newsViewKey } from "@/lib/postKeys";
 import { applyTabPrefs, defaultTab } from "@/lib/tabPrefs";
@@ -89,13 +90,15 @@ function asTab(v: string | undefined): Tab {
  * **ومفتاحٌ مجهولٌ يسقط إلى اللوحة كاملةً** لا إلى شاشة خطأ: الرابطُ
  * قد يُكتب بيد، **وقارئٌ متسامح خيرٌ من `404` على معاملٍ زائد** (D-179).
  */
-type BoardAll = "featured" | "top" | "reviews" | "rising";
+type BoardAll = "featured" | "top" | "reviews" | "lists" | "rising";
 function asAll(v: string | undefined): BoardAll | null {
   /* ⚠️ **و`people` و`watching` سقطتا مع قسميهما** (D-270) — **ورابطٌ
      قديمٌ بهما يهبط على اللوحة كاملةً لا على `404`**: هو نفسُ القارئ
      المتسامح أعلاه، **والقسمُ الذي كان يُفتح لم يعد موجوداً فلا بديلَ
      له يُحوَّل إليه.** */
-  return v === "featured" || v === "top" || v === "reviews" || v === "rising" ? v : null;
+  return v === "featured" || v === "top" || v === "reviews" || v === "lists" || v === "rising"
+    ? v
+    : null;
 }
 
 /* **سقطت هنا خوارزميةُ ترتيب الخطّ كاملةً (D-134/D-136/D-149)** مع
@@ -299,6 +302,10 @@ export default async function PeoplePage({
           need("top") || need("rising") ? getPeopleLeaderboard(20) : [],
           /* **ثلاثةٌ لا واحد** (D-264، الهجرة ٨٢) */
           need("reviews") ? getPeopleTopReviews(30, wantAll ? 10 : 3) : [],
+          /* 🆕 **أكثرُ القوائم حفظاً** (D-289، الهجرة ٩٠): **آخر ٧ أيام
+             وأعلى ٣** كما طلب أحمد بالحرف — **وعشرةٌ في «عرض الكل»**
+             كبقيّة الأقسام. */
+          need("lists") ? getTopSavedLists(7, wantAll ? 10 : 3) : [],
         ])
       : null;
   /* **ومن أتابعهم — نداءٌ واحدٌ مخزَّنٌ للتبويب** (D-275): الأقسامُ تعرض
@@ -311,6 +318,7 @@ export default async function PeoplePage({
   const featured = peopleTab?.[0] ?? [];
   const board = peopleTab?.[1] ?? [];
   const topReviews = peopleTab?.[2] ?? [];
+  const savedLists = peopleTab?.[3] ?? [];
   /* **وفراغُ «الصاعدين» ليس فراغَ اللوحة**: النداءُ واحدٌ للقسمين، **فقد
      تعود اللوحةُ ممتلئةً ولا يكون فيها صاعدٌ واحد** — ولو قيس هذا القسمُ
      بطول `board` لبقي «عرض الكل» صفحةً فيها بابُ رجوعٍ ولا شيء تحته.
@@ -557,6 +565,7 @@ export default async function PeoplePage({
                   />
                 )}
                 {allView === "reviews" && <TopReviews rows={topReviews} locale={locale} />}
+                {allView === "lists" && <TopSavedLists rows={savedLists} locale={locale} />}
                 {allView === "rising" && (
                   <PeopleLeaderboard
                     rows={board}
@@ -607,6 +616,15 @@ export default async function PeoplePage({
                   rows={topReviews}
                   locale={locale}
                   seeAllHref="/people?tab=people&all=reviews"
+                />
+                {/* 🆕 **والخامسُ: أكثرُ القوائم حفظاً** (D-289).
+                    **وموضعُه بعد «أعلى التعليقات» وقبل «الصاعدين»**:
+                    الثلاثةُ فوقه أشخاصٌ يُرتَّبون، **وهذا شيءٌ صنعه
+                    شخص** — فيفصل بين ترتيبين للناس بدل أن يذيّلهما. */}
+                <TopSavedLists
+                  rows={savedLists}
+                  locale={locale}
+                  seeAllHref="/people?tab=people&all=lists"
                 />
                 <PeopleLeaderboard
                   rows={board}
