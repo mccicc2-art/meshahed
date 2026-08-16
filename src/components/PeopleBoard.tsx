@@ -96,7 +96,6 @@ export function BoardSection({
   icon,
   tone,
   title,
-  note,
   seeAllHref,
   seeAllLabel,
   children,
@@ -105,13 +104,6 @@ export function BoardSection({
   /** **لونُ رمزِ القسم** — انظر `SECTION_TONE` (D-268) */
   tone?: string;
   title: string;
-  /**
-   * **سطرٌ يقول ما يقيسه القسمُ فعلاً** (D-270) — **لا شرحٌ ولا ترويج.**
-   * **ولا يُكتب إلا حين يكذب العنوانُ وحدَه**: «أعضاء مميّزون» تُقرأ
-   * «اخترناهم»، **و«الأكثر مشاركةً هذا الأسبوع» لا تحتاج سطراً** لأنها
-   * تقول شرطَها في اسمها. **وسطرٌ تحت كلِّ عنوانٍ يصير ضجيجاً** (D-181).
-   */
-  note?: string;
   seeAllHref?: string;
   seeAllLabel?: string;
   children: React.ReactNode;
@@ -131,7 +123,6 @@ export function BoardSection({
             <Icon name={icon} size={17} className={`shrink-0 ${tone ?? "text-accent"}`} />
             <span className="truncate">{title}</span>
           </h2>
-          {note && <p className="mt-0.5 text-[11px] text-muted">{note}</p>}
         </div>
         {seeAllHref && seeAllLabel && (
           <Link
@@ -294,8 +285,11 @@ export function PeopleLeaderboard({
       tone={tone}
       title={title}
       /* ⚖️ **وسقط سطرُ «آخر ٩٠ يوماً»** (D-283، طلبُ أحمد: «احذف هذي
-         العبارة»). **وخانةُ `note` باقيةٌ في `BoardSection`** لمن
-         يحتاجها لاحقاً — **الحذفُ للنصّ لا للأداة.**
+         العبارة»)، **🆕 وسقطت معه خانتُه اليوم** (D-303): **بقيت ثلاثةَ
+         أسابيعَ بلا قارئٍ واحد** — **ومعاملٌ يُحتفظ به «لمن يحتاجه
+         لاحقاً» هو تعريفُ ما تمنعه D-214**: يُقرأ في كل مراجعةٍ، ويُحمل
+         في كل توقيع، **ولا يرسم شيئاً.** **وإرجاعُه ثلاثةُ أسطرٍ يومَ
+         يُطلب.**
          ⚠️ **والثمنُ يُقال:** كُتب السطرُ في D-270 لأن «مميّزون» تُقرأ
          «اخترناهم بأيدينا» وهم محسوبون. **وأحمد رآه ثم حكم** — وحكمٌ
          بعد رؤيةٍ غيرُ حكمٍ عن غياب (D-270). */

@@ -155,8 +155,12 @@ export function TitleHero({
               {title}
             </h1>
             {typeof avg === "number" && typeof count === "number" && count > 0 && (
+              /* 🆕 **وسطرٌ بارتفاع نصِّه لا أكثر** (D-303، البند (ب) من
+                 مخرجَي D-297): **`leading-none` وبلا هامشٍ علويّ** —
+                 **الخطُّ نفسُه والرقمُ نفسُه، وإنما سقط الفراغُ الذي لا
+                 يحمل معنًى.** */
               <p
-                className="mt-0.5 text-[12px] font-bold text-accent tabular-nums"
+                className="text-[12px] font-bold leading-none text-accent tabular-nums"
                 title={ratingLabel}
               >
                 ★ <span dir="ltr">{avg}</span>
@@ -166,8 +170,11 @@ export function TitleHero({
             {meta}
             {/* **والوصفُ آخرَ الكتلة وأخفتُها** — D-223: صوتُنا لا يعلو
                 على اسم العمل ولا على كلام الناس تحته. */}
+            {/* 🆕 **والوصفُ أدقّ سطراً** (D-303): **١٠px بارتفاع نصِّه** —
+                **وهو أخفتُ ما في الكتلة أصلاً** (D-223)، **فالبكسلات
+                تُؤخذ من حيث لا تُقرأ.** */}
             {sub && (
-              <p className="mt-1 text-[11px] leading-snug text-white/65 line-clamp-1">{sub}</p>
+              <p className="mt-0.5 text-[10px] leading-none text-white/65 line-clamp-1">{sub}</p>
             )}
           </div>
         </Link>
