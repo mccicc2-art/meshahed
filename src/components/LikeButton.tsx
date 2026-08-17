@@ -2,7 +2,12 @@
 
 import { useState, useTransition } from "react";
 import { flashError } from "@/lib/toast";
-import { toggleActivityLike, toggleReviewLike, toggleReaction } from "@/lib/actions";
+import {
+  toggleActivityLike,
+  toggleReviewLike,
+  toggleReaction,
+  toggleListReviewLike,
+} from "@/lib/actions";
 import { getDict, type Locale } from "@/lib/i18n";
 import { tap } from "@/lib/haptics";
 import { Icon } from "./Icon";
@@ -24,8 +29,9 @@ import { Icon } from "./Icon";
  */
 export function LikeButton({
   reviewUserId = "",
-  tmdbId,
-  mediaType,
+  tmdbId = 0,
+  mediaType = "movie",
+  listId,
   likes,
   likedByMe,
   isMine,
@@ -36,8 +42,17 @@ export function LikeButton({
 }: {
   /** صاحبُ الرأي — لوجهتَي المراجعة والنشاط؛ **وخبرُنا لا صاحبَ له** */
   reviewUserId?: string;
-  tmdbId: number;
-  mediaType: "tv" | "movie";
+  /**
+   * العملُ المُعجَبُ برأيه.
+   *
+   * ⚠️ **واختياريٌّ منذ D-370**: مراجعةُ قائمةٍ لا عملَ لها، **وتمريرُ
+   * صفرٍ ليرضى النوعُ كذبةٌ تُقرأ معرّفاً** (D-181) — **فالوجهةُ هي التي
+   * تقول أيَّ المفاتيح يُقرأ**، والافتراضُ لا يُستعمل في وجهة القائمة.
+   */
+  tmdbId?: number;
+  mediaType?: "tv" | "movie";
+  /** 🆕 **القائمةُ المُعجَبُ برأيها** (D-370) — لوجهة `listReview` وحدَها */
+  listId?: string;
   likes: number;
   likedByMe: boolean;
   isMine: boolean;
@@ -58,7 +73,13 @@ export function LikeButton({
    * تُرسم بأيقونة الإعجاب**، لا أن يُهجر الجدول. عائلةُ تفاعلٍ واحدة،
    * ورمزٌ واحد، وجدولان لأن الشيء المُعجَب به يختلف.
    */
-  target?: "review" | "activity" | "post";
+  /**
+   * 🆕 **و`listReview` رابعُها** (D-370، الهجرة ١١٣): **الشيءُ المُعجَبُ
+   * به يختلف فيختلف الجدول** — `list_review_likes` بمفتاح (صاحبُ الرأي +
+   * القائمة). **ورمزٌ واحدٌ وعائلةٌ واحدة** (القاعدة ٦)، والفرقُ كلُّه
+   * في أيِّ فعلٍ يُنادى.
+   */
+  target?: "review" | "activity" | "post" | "listReview";
   /** يوم الحدث (YYYY-MM-DD) — لازمٌ لوجهة النشاط وحدها */
   day?: string;
   locale: Locale;
@@ -97,6 +118,8 @@ export function LikeButton({
       try {
         if (target === "post") {
           await toggleReaction({ tmdbId, mediaType, on: !was });
+        } else if (target === "listReview") {
+          await toggleListReviewLike(reviewUserId, listId ?? "", was);
         } else if (target === "activity") {
           await toggleActivityLike(reviewUserId, tmdbId, mediaType, day ?? "", was);
         } else {

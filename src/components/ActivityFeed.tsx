@@ -2,7 +2,13 @@ import Link from "next/link";
 import { getDict, type Locale } from "@/lib/i18n";
 import { timeAgoShort } from "@/lib/when";
 import { LOOPZ_ID, LOOPZ_USERNAME, LOOPZ_PERSON } from "@/lib/loopz";
-import { displayNameOf, type FeedItem, type LoopzNewsItem } from "@/lib/data";
+import {
+  displayNameOf,
+  listReviewKey,
+  type FeedItem,
+  type LoopzNewsItem,
+  type ListReviewSocial,
+} from "@/lib/data";
 import { newsLine, newsSource } from "@/lib/newsLine";
 import { commentViewKey, newsViewKey } from "@/lib/postKeys";
 import { curatedName } from "@/lib/universes";
@@ -112,6 +118,7 @@ export function ActivityFeed({
   translations,
   newsReplies,
   reviewReplies,
+  listSocial,
   emptyText,
   locale,
 }: {
@@ -161,6 +168,15 @@ export function ActivityFeed({
    * معلَّقاً في D-283.** مفتاحُها `commentViewKey`.
    */
   reviewReplies?: Map<string, number>;
+  /**
+   * 🆕 **قلوبُ آراء القوائم وعددُ ردودها** (D-370، الهجرة ١١٣) —
+   * بمفتاح `listId|userId` من `listReviewKey`.
+   *
+   * **واختياريّةٌ لأن غيابَها يعني «لا قلوبَ بعد» لا «تعذّرت القراءة»**
+   * (D-028/D-063): القارئُ يُرجع خريطةً فارغةً عند الفشل، **فيُرسم
+   * الذيلُ بصفرٍ ويبقى الخطُّ مقروءاً.**
+   */
+  listSocial?: Map<string, ListReviewSocial>;
   /** **وفراغُ «الكل» غيرُ فراغ «من أتابع»** — الصفحةُ تملك النطاق فتملك جملته */
   emptyText: string;
   locale: Locale;
@@ -279,6 +295,7 @@ export function ActivityFeed({
             viewKey={commentViewKey(row.item.person.id, row.item.media_type, row.item.tmdb_id)}
             views={views}
             iFollowThem={followingIds?.has(row.item.person.id) ?? false}
+            listSocial={listSocial}
             locale={locale}
             translated={translations?.[commentViewKey(row.item.person.id, row.item.media_type, row.item.tmdb_id)] ?? null}
           />
@@ -393,6 +410,7 @@ function CommentRow({
   viewKey,
   views,
   iFollowThem,
+  listSocial,
   locale,
   translated,
 }: {
@@ -404,6 +422,8 @@ function CommentRow({
   viewKey: string;
   views?: Map<string, number>;
   iFollowThem: boolean;
+  /** 🆕 **قلوبُ آراء القوائم وردودُها** (D-370) — لذيل صفِّ القائمة وحدَه */
+  listSocial?: Map<string, ListReviewSocial>;
   locale: Locale;
 }) {
   const t = getDict(locale);
@@ -560,10 +580,47 @@ function CommentRow({
             الصفّ والمقبضَ يسكن شريطاً مسقوفاً — حالةٌ واحدة لعنصرين
             يحملها مكوّنٌ واحد (D-227). و`mt-auto` يُنزله إلى القاع فيثبت
             موضعُه بين الصفوف (D-224). */}
-        {/* ⚠️ **وذيلُ الأفعال لا يُرسم لصفِّ قائمة**: الإعجابُ والردُّ
-            مفتاحُهما `(كاتب، عمل، وسيط)` — **ولا عملَ هنا** (لا
-            `list_review_likes` اليوم)، **وزرٌّ لا يكتب شيئاً أسوأُ من
-            غيابه** (نصُّ D-123 حرفاً). */}
+        {/* ⚖️ **وذيلُ صفِّ القائمة وُلد اليوم** (D-370، الهجرة ١١٣):
+            **كان يُحذف عمداً** لأن «الإعجابَ والردَّ مفتاحُهما (كاتب،
+            عمل، وسيط) ولا عملَ هنا — وزرٌّ لا يكتب شيئاً أسوأُ من غيابه»
+            (D-123). **والذي تغيّر أن الجدولَ وُجد**: `list_review_likes`
+            بمفتاح (صاحبُ الرأي + القائمة)، **فصار الزرُّ يكتب.**
+            ⚠️ **وذيلُه ليس ذيلَ العمل**: **لا صندوقَ كتابةٍ في الخطّ**
+            (`RowComment` يكتب في `review_replies` بمفتاح العمل)، **ولا
+            عدّادَ مشاهدات** (صفُّ القائمة لا يُعدّ — D-237)، **ولا
+            مشاركةَ عملٍ لا عملَ له**. **قلبٌ يكتب، ورقمُ ردودٍ يفتح
+            صفحتَها** — **وما لا يُنفَّذ هنا يُشار إلى حيث يُنفَّذ**
+            (D-155). */}
+        {isList && a.listId && (
+          <div className="mt-auto -mx-0.5 flex items-center gap-1">
+            <LikeButton
+              target="listReview"
+              reviewUserId={a.person.id}
+              listId={a.listId}
+              likes={listSocial?.get(listReviewKey(a.listId, a.person.id))?.likes ?? 0}
+              likedByMe={
+                listSocial?.get(listReviewKey(a.listId, a.person.id))?.likedByMe ?? false
+              }
+              isMine={a.person.id === meId}
+              locale={locale}
+            />
+            {/* **رابطٌ لا زرّ**: الخيطُ يسكن تبويبَ تقييمات القائمة
+                (D-333/D-334)، **والرقمُ يجاور صاحبَه** (D-223). */}
+            <Link
+              href={listHref ?? "#"}
+              prefetch={false}
+              aria-label={t.talkReply}
+              title={t.talkReply}
+              className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[12px] tabular-nums text-muted hover:text-accent transition"
+            >
+              <Icon name="comment" size={15} />
+              {/* **والصفرُ لا يُرسم** (D-222) */}
+              {(listSocial?.get(listReviewKey(a.listId, a.person.id))?.replies ?? 0) > 0 &&
+                listSocial!.get(listReviewKey(a.listId, a.person.id))!.replies}
+            </Link>
+          </div>
+        )}
+
         {!isList && (
         <div className="mt-auto">
           <RowComment
