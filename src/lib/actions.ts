@@ -230,6 +230,21 @@ export async function setTabPrefs(surface: string, prefs: TabPref[]) {
 }
 
 /**
+ * 🆕 **صفوفُك الخاصة في اكتشف** (D-337) — كوكيزٌ كنمط `setTabPrefs`
+ * حرفاً: التعقيمُ بإعادة التحليل ضدّ القاموسَين، **فلا يُخزَّن إلا ما
+ * يُعرف** (slug غريبٌ يسقط صامتاً لا يفرغ الصفحة).
+ */
+export async function setMyRows(raw: string) {
+  const { parseMyRows, serializeMyRows, MY_ROWS_COOKIE } = await import("@/lib/myRows");
+  const store = await cookies();
+  store.set(MY_ROWS_COOKIE, serializeMyRows(parseMyRows(raw)), {
+    path: "/",
+    maxAge: 60 * 60 * 24 * 365,
+    sameSite: "lax",
+  });
+}
+
+/**
  * **«أظهِر من لا أتابعهم» في خطّ النشاط** (D-255، طلبُ أحمد: «نحتاج
  * تضيف خيار إخفاء الأشخاص اللي ما أتابعهم من الأكتيفتي»).
  *

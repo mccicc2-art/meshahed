@@ -875,6 +875,12 @@ const ar = {
   listReviewDelete: "احذف رأيي",
   listReviewOwn: "قائمتك — تقييمُ نفسك لا يُحسب.",
   listReviewCount: (n: string) => `${n} رأي`,
+  /* 🆕 D-337 — صفوفُك الخاصة في اكتشف */
+  myRowsTitle: "صفوفك الخاصة",
+  myRowsHint: "اختر نوعاً — ومعه موضوعاً إن شئت — يظهر صفٌّ باسمهما في اكتشف.",
+  myRowsRow: (n: string) => `الصف ${n}`,
+  myRowsGenreOff: "بدون — الصف مطفأ",
+  myRowsTagAny: "بدون موضوع",
   /* 🆕 D-332 — رقاقةُ القفز إلى التقييمات من رأس القائمة (بلاغُ أحمد:
      «ماينفع تشوف كل الأفلام وبعدها التعليق») */
   listReviewsJump: "قيّم القائمة",
@@ -2174,6 +2180,11 @@ const en: Dict = {
   listReviewDelete: "Delete mine",
   listReviewOwn: "Your list — rating yourself does not count.",
   listReviewCount: (n: string) => `${n} ratings`,
+  myRowsTitle: "Your rows",
+  myRowsHint: "Pick a genre — and a theme if you like — and a row with that name appears in Discover.",
+  myRowsRow: (n: string) => `Row ${n}`,
+  myRowsGenreOff: "None — row off",
+  myRowsTagAny: "No theme",
   listReviewsJump: "Rate this list",
   listReviewReport: "Report",
   listReviewReported: "Report received",
