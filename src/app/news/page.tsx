@@ -10,8 +10,11 @@ import {
   getMySavedListIds,
   getListCardsByIds,
   getCuratedListIds,
+  getListCardStats,
 } from "@/lib/data";
 import { getLibState } from "@/lib/libState";
+import { LOOPZ_PERSON } from "@/lib/loopz";
+import { Avatar } from "@/components/Avatar";
 import { PublicListsRail } from "@/components/PublicListsRail";
 import { ListsFilters } from "@/components/ListsFilters";
 import { AddWorksToList } from "@/components/AddWorksToList";
@@ -47,7 +50,7 @@ import { attachImdbRatings, withImdbRatings } from "@/lib/omdb";
 import { getT, getWatchRegion, getTabPrefs } from "@/lib/locale";
 import { defaultTab } from "@/lib/tabPrefs";
 import { regionName } from "@/lib/region";
-import { type Locale } from "@/lib/i18n";
+import { num, type Locale } from "@/lib/i18n";
 import {
   parseBrowse,
   parseDiscoverTab,
@@ -419,6 +422,10 @@ async function ListsDiscovery({
      التبويب، **ولو سألت كلُّ بطاقةٍ عن نفسها لصارت الصفحةُ عشرين استعلاماً**.
      و`getMyListNames` مغلَّفةٌ بـ`cache` فالنداءُ واحدٌ للطلب كلِّه. */
   const savedNames = await getMyListNames();
+  /* 🆕 **أرقامُ بطاقات لوبز** (D-335): نداءُ `list_card_stats` واحدٌ
+     للاثنتين والأربعين (D-205) — بعد خريطة `curated` لأنه يحتاج
+     معرّفاتِها. */
+  const curatedStats = await getListCardStats([...curated.values()]);
 
   const loc = locale === "en" ? ("en" as const) : ("ar" as const);
   const rows = fr ? FRANCHISES.filter((f) => f.slug === fr) : FRANCHISES;
@@ -469,6 +476,7 @@ async function ListsDiscovery({
                       locale={locale}
                       t={t}
                       savedNames={savedNames}
+                      stats={curatedStats.get(curated.get(u.slug) ?? "") ?? null}
                       className="w-full"
                     />
                   </Link>
@@ -496,6 +504,7 @@ async function CuratedCard({
   locale,
   t,
   savedNames,
+  stats,
   className = "w-full",
 }: {
   u: Universe;
@@ -503,6 +512,9 @@ async function CuratedCard({
   t: T;
   /** أسماءُ قوائمي — تُقرأ مرّةً في الصفحة لا لكل بطاقة (D-206) */
   savedNames?: Set<string>;
+  /** 🆕 أرقامُ قائمة لوبز المولَّدة (D-335) — غيابُها يعني قائمةً بلا
+      رقمٍ بعد، **والصفرُ لا يُطبع** (D-219) */
+  stats?: { saves: number; rating: number | null } | null;
   className?: string;
 }) {
   const loc = locale === "en" ? ("en" as const) : ("ar" as const);
@@ -549,9 +561,38 @@ async function CuratedCard({
         />
         <span className="min-w-0 flex-1">
           <span className="block truncate">{universeName(u, loc)}</span>
-          <span className="block text-[12px] font-normal text-muted truncate mt-0.5">
-            {t.listCount(count)}
-            {award ? ` · ${awardBody(award, loc)}` : u.storyOrder ? ` · ${t.listsStoryOrder}` : ""}
+          {/* 🆕 **وجهُ لوبز واسمُه والأرقامُ في السطر القائم** (D-335،
+              طلبُ أحمد: «صورة الشخص الي عملها تظهر دائرة صغيرة واسمه
+              وكذلك تقييمها وعدد الحافظينها — بدون زيادة حجم الكارد»):
+              الدائرةُ ١٤px داخل سطر الـ12px **فلا يعلو شيء**، والوجهُ
+              من ثابت `LOOPZ_PERSON` بلا نداء (D-164). **والعدُّ يتنازل
+              عند الضيق لا الأرقامُ**: حكمُ الناس أخصُّ من حجمٍ يقوله
+              العنوانُ غالباً. */}
+          <span className="mt-0.5 flex items-center gap-1 text-[12px] font-normal text-muted min-w-0">
+            <Avatar
+              src={LOOPZ_PERSON.avatar_url}
+              name={LOOPZ_PERSON.nickname}
+              size={14}
+              className="shrink-0"
+            />
+            <span className="shrink-0">{LOOPZ_PERSON.nickname}</span>
+            {(stats?.rating ?? null) !== null && (
+              <span className="flex items-center gap-0.5 shrink-0 font-bold text-foreground tabular-nums" dir="ltr">
+                <Icon name="star" size={11} className="text-accent" />
+                {num(stats!.rating as number, locale)}
+              </span>
+            )}
+            {(stats?.saves ?? 0) > 0 && (
+              <span className="flex items-center gap-0.5 shrink-0 tabular-nums" dir="ltr">
+                <Icon name="heart-filled" size={11} className="fill-current" />
+                {num(stats!.saves, locale)}
+              </span>
+            )}
+            <span aria-hidden>·</span>
+            <span className="truncate">
+              {t.listCount(count)}
+              {award ? ` · ${awardBody(award, loc)}` : u.storyOrder ? ` · ${t.listsStoryOrder}` : ""}
+            </span>
           </span>
         </span>
         {/* **رمزُ الحفظ في الزاوية** (D-204): كان زرّاً بعرض البطاقة يقول
