@@ -8,6 +8,7 @@ import {
   getWatchedMovieIds,
   getMyLists,
   getSavedLists,
+  getListCardStats,
   getFollowedArtists,
   getMyTitleArt,
   getMyAnimeFlags,
@@ -69,9 +70,14 @@ export default async function LibraryPage({
     getWatchSummary(),
     getWatchedMovieIds(),
     getMyLists(),
-    // القوائم المحفوظة تسكن تبويب «الليستات» هنا (طلب أحمد: بيتها
-    // المكتبة لا صفحة منفصلة) — نفس الموجة فلا تبطئ الصفحة
-    getSavedLists(),
+    /* 🔴 **والمحفوظةُ لا تُقرأ إلا في تبويبها** (D-350، بند ٢): كانت
+       تُنادى في **كلِّ** فتحةٍ للمكتبة وناتجُها لا يُستعمل إلا في تبويب
+       «القوائم» — **وهي تمرّ بـ`shapeListCards`: أربعةُ استعلامات**
+       (العناصر · الملفّات · الأرقام · «أحفظتُها أنا») **فوق استعلامها**.
+       **ورفُّ الفنانين مشروطٌ بتبويبه منذ D-128 والحجّةُ واحدة**، وهذا
+       سقط منها سهواً. **والعدّادُ لا يحتاجها** — عدّادُ التبويب من
+       `getMyLists`. */
+    initialTab === "lists" ? getSavedLists() : Promise.resolve([]),
     // عدّاد تبويب الفنانين وحده (D-128): نداء Supabase خفيف، بلا TMDB
     getFollowedArtists(60),
   ]);
@@ -92,6 +98,18 @@ export default async function LibraryPage({
      تراجعٌ في أسخن صفحة. والتبويب يسكن الرابط (D-095) فالخادم يعرفه. */
   const artists: ArtistShelfItem[] =
     initialTab === "artists" ? await getArtistShelf(60) : [];
+
+  /* 🆕 **★ و♥ على «قوائمي» أيضاً** (D-350، بند ٣): كانت بطاقةُ قوائمي
+     بلا أرقامٍ **وبطاقةُ «المحفوظة» تحتها في اللوح نفسِه تحملها** —
+     **بطاقتان بإيقاعين لمعنًى واحد** (القاعدة ٦)، وهو بابٌ آخرُ لعطل
+     D-347. **ونداءٌ واحدٌ لقوائمي كلِّها** (D-205)، **والعامّةُ وحدَها
+     لها أرقام** (الخاصّةُ لا تُقرأ فلا تُقيَّم — نصُّ ١٠٥). */
+  const listStats =
+    initialTab === "lists"
+      ? await getListCardStats(lists.filter((l) => l.is_public).map((l) => l.id)).catch(
+          () => new Map<string, { saves: number; rating: number | null }>(),
+        )
+      : new Map<string, { saves: number; rating: number | null }>();
 
   // ما تغيّر اسمه بالترجمة يُكتب مرة واحدة — كانت الرئيسية وحدها تكتب،
   // فمن مدخله تبويب المكتبة يعيد دفع كلفة TMDB في كل زيارة
@@ -134,6 +152,7 @@ export default async function LibraryPage({
       const dropped = !!f.dropped;
       return {
         key: `tv-${f.tmdb_id}`,
+        addedAt: f.added_at,
         tmdbId: f.tmdb_id,
         mediaType: "tv" as const,
         href: `/show/${f.tmdb_id}`,
@@ -167,6 +186,7 @@ export default async function LibraryPage({
       const dropped = !!f.dropped;
       return {
         key: `mv-${f.tmdb_id}`,
+        addedAt: f.added_at,
         tmdbId: f.tmdb_id,
         mediaType: "movie" as const,
         href: `/movie/${f.tmdb_id}`,
@@ -219,6 +239,7 @@ export default async function LibraryPage({
         artists={artists}
         artistCount={artistRows.length}
         lists={lists}
+        listStats={listStats}
         locale={locale}
         initialTab={initialTab}
         tabPrefs={tabPrefs}
