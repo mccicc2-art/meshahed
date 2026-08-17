@@ -12,6 +12,7 @@ import {
 } from "@/lib/data";
 import { ListReviews } from "@/components/ListReviews";
 import { getT } from "@/lib/locale";
+import { BackCrumb } from "@/components/BackButton";
 import { ListDetail } from "@/components/ListDetail";
 import { localizeRows } from "@/lib/localize";
 import { buttonClass } from "@/components/ui/Button";
@@ -136,15 +137,12 @@ export default async function ListPage({ params }: { params: Promise<{ id: strin
 
   return (
     <div>
-      {/* الرجوع إلى تبويب «القوائم» في المكتبة لا إلى المسار المنفصل:
-          هو المكان الذي جاء منه المستخدم فعلاً بعد نقل القوائم إليه (D-042) */}
-      <Link
-        href="/library?filter=list"
-        className="inline-flex items-center gap-1 text-xs text-muted hover:text-foreground transition mb-3 -ms-1 px-1 py-1"
-      >
-        <span aria-hidden>‹</span>
-        {t.listsTitle}
-      </Link>
+      {/* 🆕 **الرجوعُ من حيث أتيت** (D-336، بلاغُ أحمد: فتح قائمةً من
+          اكتشف فرماه «رجوع» في المكتبة): كان الرابطُ مسمَّراً إلى
+          `/library?filter=list` — وصار `router.back()` بفتاتٍ من باب
+          الرجوع الواحد، **والمكتبةُ وجهةَ من لا تاريخَ له وحدَه**
+          (رابطُ مشاركةٍ عميق). */}
+      <BackCrumb label={t.listsTitle} fallback="/library?filter=list" className="mb-3" />
       <ListDetail
         listId={data.list.id}
         name={data.list.name}
