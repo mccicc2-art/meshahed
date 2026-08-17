@@ -959,7 +959,19 @@ export async function topTenThisWeek(
   mediaType: MediaType,
   limit = 10,
 ): Promise<SearchResult[]> {
-  const data = await tmdb<{ results: SearchResult[] }>(`/trending/${mediaType}/week`);
+  /* 🆕 **صفحةٌ ثانيةٌ حين يُطلب أكثرُ من صفحة** (D-322): صفحةُ الرائج
+     عشرون صفّاً، **ومن يطلب خمسةً وعشرين لا يستطيع أن يعطيه أحدٌ أكثرَ
+     ممّا جلب.** والمستدعي يطلب هامشاً لأن حارسَه يُسقط (D-185/D-189)،
+     **فبِركةٌ بحجم الحدّ تُفسد الحارسَ الذي فوقها.** */
+  const pages = limit > 20 ? [1, 2] : [1];
+  const got = await Promise.all(
+    pages.map((page) =>
+      tmdb<{ results: SearchResult[] }>(`/trending/${mediaType}/week`, {
+        page: String(page),
+      }).catch(() => ({ results: [] as SearchResult[] })),
+    ),
+  );
+  const data = { results: got.flatMap((d) => d.results ?? []) };
   const rows = (data.results ?? [])
     .filter((r) => r.poster_path && r.vote_average > 0)
     /* **ولا تصفيةَ أنميٍ هنا بعد اليوم (D-175).** كانت هنا: تُسقط من
@@ -1456,13 +1468,21 @@ export async function topByFilter(
   sort: "vote_average.desc" | "popularity.desc" | "vote_count.desc" = "vote_average.desc",
 ): Promise<SearchResult[]> {
   let best: SearchResult[] = [];
+  /* 🆕 **وصفحتان حين يُطلب أكثرُ من صفحة** (D-322) — نفسُ حجّة الرائج */
+  const pages = limit > 20 ? [1, 2] : [1];
   for (const floor of [200, 50, 10]) {
     try {
-      const data = await tmdb<{ results: SearchResult[] }>(`/discover/${mediaType}`, {
-        ...discoverParams(mediaType, f),
-        sort_by: sort,
-        "vote_count.gte": String(floor),
-      });
+      const got = await Promise.all(
+        pages.map((page) =>
+          tmdb<{ results: SearchResult[] }>(`/discover/${mediaType}`, {
+            ...discoverParams(mediaType, f),
+            sort_by: sort,
+            "vote_count.gte": String(floor),
+            page: String(page),
+          }).catch(() => ({ results: [] as SearchResult[] })),
+        ),
+      );
+      const data = { results: got.flatMap((d) => d.results ?? []) };
       const rows = (data.results ?? [])
         .filter((r) => r.poster_path)
         .map((r) => ({ ...r, media_type: mediaType }));

@@ -284,26 +284,34 @@ export async function buildSection(
       case "top-ten": {
         /* نوافذُ D-099 كما هي: الأسبوعُ من الرائج (أو `/discover` المُصفّى)،
            والشهرُ والسنةُ من `/discover` بمدىً محسوبٍ في المستدعي. */
+        /* 🔴 🆕 **هامشٌ قبل الحارس** (D-322، عطلٌ قِيس على المنشور: رفُّ
+           «أفضل ١٠ مسلسلات» عرض **ستّةً** بعد أن اتّسع الكتمُ في D-321).
+           **والعلّةُ أن هذا الفرعَ وحدَه كان يطلب من المصدر عددَ ما يعرض
+           بالضبط** — بينما «أفضل ٥٠» يطلب `DOC_MARGIN` و«الأكثر شعبية»
+           صفحتين. **فبِركةٌ بحجم الحدّ تُفسد الحاجزَ الذي فوقها** (D-185)،
+           **ودرسُ D-189 يُعاد للمرّة الرابعة: الهامشُ يتّسع مع ما يُسقطه
+           أو يكذب العنوان.** */
+        const pool = Math.min(60, Math.round(limit * 2.5));
         const w = ctx.win ?? "week";
         const rows = await Promise.all(
           sides(media).map((mt) => {
             if (media === "anime" && !active) {
               const r = ctx.winRange ?? undefined;
               return mt === "movie"
-                ? topTenAnimeMoviesThisWeek(limit, r)
-                : topTenAnimeThisWeek(limit, r);
+                ? topTenAnimeMoviesThisWeek(pool, r)
+                : topTenAnimeThisWeek(pool, r);
             }
             if (active || w !== "week" || media === "anime") {
               return topByFilter(
                 mt,
                 { ...base, genreIds, ...(ctx.winRange ?? {}) },
-                limit,
+                pool,
                 w === "week" ? "vote_average.desc" : "popularity.desc",
               );
             }
             return genreIds?.length
-              ? topTenGenreThisWeek(mt, genreIds, limit)
-              : topTenThisWeek(mt, limit);
+              ? topTenGenreThisWeek(mt, genreIds, pool)
+              : topTenThisWeek(mt, pool);
           }),
         );
         return guard(rows.flat());
