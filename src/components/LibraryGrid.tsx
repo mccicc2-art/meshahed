@@ -7,6 +7,7 @@ import { coalescedRefresh } from "@/lib/refresh";
 import { useRouter } from "next/navigation";
 import { getDict, type Locale } from "@/lib/i18n";
 import { startRewatch, classifyMyFollows } from "@/lib/actions";
+import { tap } from "@/lib/haptics";
 import type { UserList } from "@/lib/data";
 import type { ArtistShelfItem } from "@/lib/artists";
 import { ArtistsGrid } from "./ArtistsGrid";
@@ -443,6 +444,7 @@ function QuickActions({
 }) {
   const [pending, start] = useTransition();
   const [msg, setMsg] = useState<string | null>(null);
+  const router = useRouter();
 
   /**
    * تفاؤلي بالكامل: العلامة تظهر في نفس اللحظة واللوح يُغلق، والخادم
@@ -451,6 +453,9 @@ function QuickActions({
    * الفشل يظهر توستاً، والتجديد المُجمَّع يصحّح أي تفاؤلٍ كاذب.
    */
   function run(label: string, fn: () => Promise<unknown>) {
+    /* 🆕 **والاهتزازةُ نفسُها في السطحين** (D-353): كانت في `PosterHold`
+       وحدَها، **فالإيماءةُ الواحدة تُجيب بجوابين على الجهاز نفسِه.** */
+    tap([12, 30]);
     setMsg(label);
     onDone();
     setTimeout(onClose, 650);
@@ -537,8 +542,33 @@ function QuickActions({
               }
               className={`${btn} border-t border-[color:var(--divider)]`}
             >
-              <Icon name="check" size={20} className="text-[color:var(--success)] shrink-0" />
+              {/* **`check-line` كالمنسدلة لا `check`** (D-353): أيقونتان
+                  لفعلٍ واحد في سطحين هي ما تمنعه قاعدةُ الأيقونات. */}
+              <Icon name="check-line" size={20} className="text-[color:var(--success)] shrink-0" />
               {t.markAllWatched}
+            </button>
+
+            {/* 🆕 **«ريفيو» ثالثاً — الصفُّ الذي كان ناقصاً هنا وحدَه**
+                (D-353، حكمُ أحمد «ج»): الإيماءةُ واحدةٌ في المكتبة
+                واكتشف، **والقائمتان كانتا تختلفان في المعنى لا في الشكل
+                وحدَه** — «ريفيو» موجودةٌ هناك وغائبةٌ هنا بلا سبب.
+                **وينتقل ولا يفتح**: كتابةُ رأيٍ تحتاج تقييماً ونصّاً
+                ومساحة، **وما يستحقّ صفحةً يأخذها** (نصُّ D-229 حرفاً).
+                **والترتيبُ صار ترتيبَ المنسدلة**: أفعالُ المشاهدة ثم
+                «ريفيو» ثم ما لا رجعةَ سهلةَ فيه. */}
+            <button
+              type="button"
+              onClick={() => {
+                tap(8);
+                onClose();
+                router.push(
+                  `/${item.mediaType === "tv" ? "show" : "movie"}/${item.tmdbId}`,
+                );
+              }}
+              className={`${btn} border-t border-[color:var(--divider)]`}
+            >
+              <Icon name="star" size={20} className="text-accent shrink-0" />
+              {t.reviewSectionTitle}
             </button>
 
             <button
