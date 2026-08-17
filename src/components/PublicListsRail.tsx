@@ -7,6 +7,7 @@ import { posterUrl } from "@/lib/media";
 import { getDict, num, type Locale } from "@/lib/i18n";
 import { curatedName } from "@/lib/universes";
 import { ListSaveHeart } from "./ListSaveHeart";
+import { ListRateStar } from "./ListRateStar";
 import type { PublicListCard } from "@/lib/data";
 
 /**
@@ -91,6 +92,18 @@ export function CommunityListCard({
         {/* ⚠️ **ولا يظهر لقائمتي أنا ولا لزائرٍ بلا حساب**: نفسُ شرط
             `list_saves` حرفاً — **وزرٌّ لا يستطيع أن يكتب وعدٌ كاذب**
             (D-217). */}
+        {/* 🆕 **النجمةُ يسارَ القلب وظاهرةٌ دائماً** (D-352، طلبُ أحمد):
+            **زرٌّ دائمٌ ورقمٌ صادق** — البابُ لا يُغلق، **والرقمُ يبقى
+            محكوماً بـD-219** فيظهر إن وُجد ويغيب إن لم يوجد. */}
+        {l.can_review && (
+          <ListRateStar
+            listId={l.id}
+            listName={name}
+            rating={l.rating ?? null}
+            mine={l.my_review ?? null}
+            locale={locale}
+          />
+        )}
         {l.can_save && (
           <ListSaveHeart listId={l.id} saved={l.saved_by_me} locale={locale} />
         )}
@@ -117,9 +130,14 @@ export function CommunityListCard({
           🔴 **والصفرُ يُخفى ولا يُطبع**: «★ — · ♥ 0» تحت قائمةٍ جديدة
           **تُقرأ حكماً لا فراغاً** (D-219/D-134)، **فالسطرُ كلُّه يغيب
           حتى يوجد رقمٌ حقيقيّ.** */}
-      {((l.rating ?? null) !== null || (l.saves ?? 0) > 0) && (
+      {/* ⚠️ **والنجمةُ لا تُطبع مرّتين**: صعدت إلى الزاوية زرّاً (D-352)
+          حيث القارئُ يقرؤها ويضغطها، **فبقاؤها هنا رقمان لمعنًى واحد في
+          بطاقةٍ واحدة** — والسطرُ يبقى لـ♥ وحدَه، **ويغيب كلَّه بالصفر**
+          (D-219). ولمن لا يستطيع التقييم (قائمتُه أو زائر) تبقى النجمةُ
+          في سطرها كما كانت — **فلا يفقد الرقمَ من لا زرَّ له.** */}
+      {((!l.can_review && (l.rating ?? null) !== null) || (l.saves ?? 0) > 0) && (
         <span className="block text-[12px] mt-0.5 flex items-center gap-2.5 tabular-nums">
-          {(l.rating ?? null) !== null && (
+          {!l.can_review && (l.rating ?? null) !== null && (
             <span className="flex items-center gap-1 font-bold" dir="ltr">
               <Icon name="star" size={12} className="text-accent" />
               {num(l.rating as number, locale)}

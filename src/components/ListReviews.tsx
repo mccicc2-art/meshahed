@@ -4,9 +4,8 @@ import { useState, useTransition } from "react";
 import { Avatar } from "./Avatar";
 import { Icon } from "./Icon";
 import { SpoilerText } from "./SpoilerText";
-import { buttonClass } from "./ui/Button";
-import { chipClass, chipRow } from "./ui/controls";
-import { saveListReview, deleteListReview, reportListReview } from "@/lib/actions";
+import { reportListReview } from "@/lib/actions";
+import { ListReviewForm } from "./ListReviewForm";
 import { toast, flashError } from "@/lib/toast";
 import { tap } from "@/lib/haptics";
 import { getDict, num, type Locale } from "@/lib/i18n";
@@ -59,42 +58,8 @@ export function ListReviews({
   stats: { avg: number | null; count: number };
 }) {
   const t = getDict(locale);
-  const [rating, setRating] = useState(mine?.rating ?? 0);
-  const [body, setBody] = useState(mine?.body ?? "");
-  const [spoiler, setSpoiler] = useState(mine?.hasSpoiler ?? false);
-  const [saved, setSaved] = useState(!!mine);
   const [reported, setReported] = useState<ReadonlySet<string>>(new Set());
   const [, start] = useTransition();
-
-  function submit() {
-    if (!rating) return;
-    tap([12, 30]);
-    setSaved(true);
-    start(async () => {
-      try {
-        await saveListReview({ listId, rating, body, hasSpoiler: spoiler });
-        toast(t.listReviewSave, { tone: "success" });
-      } catch (e) {
-        setSaved(false);
-        flashError((e as Error).message);
-      }
-    });
-  }
-
-  function removeMine() {
-    tap(8);
-    setSaved(false);
-    setRating(0);
-    setBody("");
-    setSpoiler(false);
-    start(async () => {
-      try {
-        await deleteListReview(listId);
-      } catch (e) {
-        flashError((e as Error).message);
-      }
-    });
-  }
 
   function report(userId: string) {
     tap(8);
@@ -132,78 +97,12 @@ export function ListReviews({
       {isOwner ? (
         <p className="text-[13px] text-muted">{t.listReviewOwn}</p>
       ) : canReview ? (
-        <div className="rounded-card border border-border bg-surface p-4 space-y-3">
-          <p className="text-[13px] font-semibold text-muted">{t.listReviewMine}</p>
-          <div className={chipRow}>
-            {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
-              <button
-                key={n}
-                type="button"
-                aria-pressed={rating === n}
-                onClick={() => {
-                  tap(8);
-                  setRating(n);
-                  setSaved(false);
-                }}
-                className={chipClass(rating === n, "sm")}
-              >
-                <span dir="ltr">{num(n, locale)}</span>
-              </button>
-            ))}
-          </div>
-
-          <textarea
-            value={body}
-            onChange={(e) => {
-              setBody(e.target.value);
-              setSaved(false);
-            }}
-            rows={3}
-            maxLength={2000}
-            placeholder={t.reviewPlaceholder}
-            className="w-full rounded-control bg-surface-2 border border-border p-3 text-[15px] outline-none focus:border-accent/60"
-          />
-
-          <div className="flex items-center gap-2 flex-wrap">
-            {/* **رقاقةُ الحرق بوصفة `Composer` حرفاً** (D-315) — عَلَمُ
-                الحرق إعلانُ كاتبه لا حكمُنا عليه. */}
-            <button
-              type="button"
-              aria-pressed={spoiler}
-              onClick={() => {
-                tap(8);
-                setSpoiler((v) => !v);
-                setSaved(false);
-              }}
-              className={chipClass(spoiler, "sm")}
-            >
-              <Icon name={spoiler ? "eye-off" : "eye"} size={14} strokeWidth={2.2} />
-              <span className="ms-1.5">{t.spoilerMark}</span>
-            </button>
-
-            <button
-              type="button"
-              disabled={!rating || saved}
-              onClick={submit}
-              className={`ms-auto ${buttonClass({ variant: "primary", size: "md" })}`}
-            >
-              {t.listReviewSave}
-            </button>
-            {mine && (
-              <button
-                type="button"
-                onClick={removeMine}
-                className={buttonClass({ variant: "ghost", size: "md" })}
-              >
-                {t.listReviewDelete}
-              </button>
-            )}
-          </div>
+        /* 🔧 **الصندوقُ خرج مكوّناً عند قارئه الثاني** (D-352):
+            النجمةُ على بطاقة القائمة تفتحه ورقةً، **ونسخُه كان سيعني
+            سلّمين يفترقان يوماً** (القاعدة ٦). */
+        <div className="rounded-card border border-border bg-surface p-4">
+          <ListReviewForm listId={listId} locale={locale} mine={mine} />
         </div>
-      ) : null}
-
-      {reviews.length === 0 ? (
-        <p className="text-[13px] text-muted">{t.listReviewsEmpty}</p>
       ) : (
         <ul className="space-y-3">
           {reviews.map((r) => (
