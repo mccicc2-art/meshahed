@@ -6,12 +6,15 @@ import {
   addReviewReply,
   addNewsReply,
   addTalkPost,
+  addListReviewReply,
   deleteMyReply,
   deleteMyNewsReply,
   deleteMyTalkPost,
+  deleteMyListReviewReply,
   reportReply,
   reportNewsReply,
   reportTalkPost,
+  reportListReviewReply,
   togglePostLike,
   votePost,
 } from "@/lib/actions";
@@ -68,6 +71,16 @@ export type ReplyTarget =
    * لها**، ومرساتُها العملُ نفسُه. **والعنوانُ والملصقُ والغلافُ يُمرَّرون
    * ليُكتبوا مع الصفّ** (انظر `addTalkPost`).
    */
+  /**
+   * 🆕 **مراجعةُ قائمة** (D-370، الهجرة ١١٣) — **رابعُ ما يُردّ عليه في
+   * Loopz، وأوّلُ ما لا عملَ له ولا صفحةَ خاصّة.**
+   *
+   * **ولا صفحةَ ثالثة**: مراجعةُ العمل تُفتح في `‎/review/…`، **ومراجعةُ
+   * القائمة بيتُها تبويبُ تقييمات صفحتها** (D-333/D-334: **بابٌ واحدٌ
+   * للقائمة**، وقد حُذفت المعاينةُ المنبثقة لهذا بعينه). **فالخيطُ يُفتح
+   * تحت الرأي المضغوط وحدَه** — واحدٌ في الشاشة لا عشرة (علّةُ D-242).
+   */
+  | { kind: "listReview"; reviewUserId: string; listId: string }
   | {
       kind: "talk";
       tmdbId: number;
@@ -559,7 +572,14 @@ export function ThreadReplies({
                   posterPath: target.posterPath,
                   backdropPath: target.backdropPath,
                 })
-              : await addNewsReply({ postKey: target.postKey, body, parentId });
+              : target.kind === "listReview"
+                ? await addListReviewReply({
+                    reviewUserId: target.reviewUserId,
+                    listId: target.listId,
+                    body,
+                    parentId,
+                  })
+                : await addNewsReply({ postKey: target.postKey, body, parentId });
         if (real) {
           setAdded((a) =>
             a.map((x) =>
@@ -613,6 +633,8 @@ export function ThreadReplies({
             tmdbId: target.tmdbId,
             mediaType: target.mediaType,
           });
+        } else if (target.kind === "listReview") {
+          await deleteMyListReviewReply({ replyId: x.replyId, listId: target.listId });
         } else {
           await deleteMyNewsReply({ replyId: x.replyId });
         }
@@ -635,7 +657,9 @@ export function ThreadReplies({
       ? reportReply({ replyId: x.replyId })
       : target.kind === "talk"
         ? reportTalkPost({ postId: x.replyId })
-        : reportNewsReply({ replyId: x.replyId }));
+        : target.kind === "listReview"
+          ? reportListReviewReply({ replyId: x.replyId })
+          : reportNewsReply({ replyId: x.replyId }));
   }
 }
 
