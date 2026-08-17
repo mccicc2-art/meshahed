@@ -553,48 +553,13 @@ async function CuratedCard({
 
   return (
     <div className={`rounded-2xl border border-border bg-surface p-2.5 ${className}`}>
-      <span className="flex items-start gap-1.5 text-[14px] font-bold">
+      <span className="flex items-center gap-1.5 text-[14px] font-bold">
         <Icon
           name={award ? "star" : "sparkle-star"}
           size={14}
-          className="text-accent shrink-0 mt-1"
+          className="text-accent shrink-0"
         />
-        <span className="min-w-0 flex-1">
-          <span className="block truncate">{universeName(u, loc)}</span>
-          {/* 🆕 **وجهُ لوبز واسمُه والأرقامُ في السطر القائم** (D-335،
-              طلبُ أحمد: «صورة الشخص الي عملها تظهر دائرة صغيرة واسمه
-              وكذلك تقييمها وعدد الحافظينها — بدون زيادة حجم الكارد»):
-              الدائرةُ ١٤px داخل سطر الـ12px **فلا يعلو شيء**، والوجهُ
-              من ثابت `LOOPZ_PERSON` بلا نداء (D-164). **والعدُّ يتنازل
-              عند الضيق لا الأرقامُ**: حكمُ الناس أخصُّ من حجمٍ يقوله
-              العنوانُ غالباً. */}
-          <span className="mt-0.5 flex items-center gap-1 text-[12px] font-normal text-muted min-w-0">
-            <Avatar
-              src={LOOPZ_PERSON.avatar_url}
-              name={LOOPZ_PERSON.nickname}
-              size={14}
-              className="shrink-0"
-            />
-            <span className="shrink-0">{LOOPZ_PERSON.nickname}</span>
-            {(stats?.rating ?? null) !== null && (
-              <span className="flex items-center gap-0.5 shrink-0 font-bold text-foreground tabular-nums" dir="ltr">
-                <Icon name="star" size={11} className="text-accent" />
-                {num(stats!.rating as number, locale)}
-              </span>
-            )}
-            {(stats?.saves ?? 0) > 0 && (
-              <span className="flex items-center gap-0.5 shrink-0 tabular-nums" dir="ltr">
-                <Icon name="heart-filled" size={11} className="fill-current" />
-                {num(stats!.saves, locale)}
-              </span>
-            )}
-            <span aria-hidden>·</span>
-            <span className="truncate">
-              {t.listCount(count)}
-              {award ? ` · ${awardBody(award, loc)}` : u.storyOrder ? ` · ${t.listsStoryOrder}` : ""}
-            </span>
-          </span>
-        </span>
+        <span className="min-w-0 flex-1 truncate">{universeName(u, loc)}</span>
         {/* **رمزُ الحفظ في الزاوية** (D-204): كان زرّاً بعرض البطاقة يقول
             «احفظها في قوائمي» — **فيُقرأ الفعلَ الأوّل وهو ليس كذلك**:
             الأوّلُ فتحُها. والرمزُ عُرفٌ يُقرأ بلا كلمة، ويترك مساحةَ
@@ -608,6 +573,43 @@ async function CuratedCard({
           names={names}
           saved={saved}
         />
+      </span>
+
+      {/* 🆕 **وجهُ لوبز والأرقامُ سطراً ثانياً بعرض البطاقة** (D-335→D-336،
+          طلبُ أحمد على اللقطة: «السطر الثاني تحطه تحت وينكتب من بداية
+          السطر بحيث الأيقونة تكون موازية للنجمة»): كان السطرُ محشوراً
+          داخل عمود العنوان **فتَبدأ الدائرةُ بعد مسافةِ النجمة** — وصار
+          صفّاً مستقلّاً يبدأ من بداية البطاقة، **فالدائرةُ تحت النجمة
+          حرفاً**. الارتفاعُ كما هو: سطران قبلُ وسطران بعد.
+          **والعدُّ يتنازل عند الضيق لا الأرقامُ** (D-219). */}
+      <span className="mt-1 flex items-center gap-1 text-[12px] font-normal text-muted min-w-0">
+        <Avatar
+          src={LOOPZ_PERSON.avatar_url}
+          name={LOOPZ_PERSON.nickname}
+          size={14}
+          className="shrink-0"
+        />
+        <span className="shrink-0">{LOOPZ_PERSON.nickname}</span>
+        {(stats?.rating ?? null) !== null && (
+          <span
+            className="flex items-center gap-0.5 shrink-0 font-bold text-foreground tabular-nums"
+            dir="ltr"
+          >
+            <Icon name="star" size={11} className="text-accent" />
+            {num(stats!.rating as number, locale)}
+          </span>
+        )}
+        {(stats?.saves ?? 0) > 0 && (
+          <span className="flex items-center gap-0.5 shrink-0 tabular-nums" dir="ltr">
+            <Icon name="heart-filled" size={11} className="fill-current" />
+            {num(stats!.saves, locale)}
+          </span>
+        )}
+        <span aria-hidden>·</span>
+        <span className="truncate">
+          {t.listCount(count)}
+          {award ? ` · ${awardBody(award, loc)}` : u.storyOrder ? ` · ${t.listsStoryOrder}` : ""}
+        </span>
       </span>
 
       {posters.length === 0 ? (
