@@ -1,7 +1,16 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getUser, getList, getPublicList, isListSaved } from "@/lib/data";
+import {
+  getUser,
+  getList,
+  getPublicList,
+  isListSaved,
+  getListReviews,
+  getListReviewStats,
+  getMyListReview,
+} from "@/lib/data";
+import { ListReviews } from "@/components/ListReviews";
 import { getT } from "@/lib/locale";
 import { ListDetail } from "@/components/ListDetail";
 import { localizeRows } from "@/lib/localize";
@@ -111,9 +120,14 @@ export default async function ListPage({ params }: { params: Promise<{ id: strin
   const isOwner = data.list.user_id === user.id;
   // صاحب القائمة يُقرأ من الباب العامّ نفسه — لا استعلام ثانٍ على الملفات؛
   // وحالة الحفظ لغير المالك وحده (D-068)
-  const [pub, saved] = await Promise.all([
+  const [pub, saved, reviews, reviewStats, myReview] = await Promise.all([
     isOwner ? Promise.resolve(null) : getPublicList(id),
     isOwner ? Promise.resolve(false) : isListSaved(id),
+    /* **ثلاثةُ نداءاتٍ متوازية** (D-327): كلامُ الناس ومتوسّطُهم ورأيي —
+       **ولا يحتاج أحدُها ناتجَ الآخر** فلا يُنتظر أحدُها لأجل أخيه. */
+    data.list.is_public ? getListReviews(id) : Promise.resolve([]),
+    data.list.is_public ? getListReviewStats(id) : Promise.resolve({ avg: null, count: 0 }),
+    data.list.is_public && !isOwner ? getMyListReview(id) : Promise.resolve(null),
   ]);
 
   /* العناوين مخزّنة بلغة يوم الإضافة — تُترجَم عند العرض وحده (D-048)،
@@ -157,6 +171,23 @@ export default async function ListPage({ params }: { params: Promise<{ id: strin
           mediaType: data.list.cover_media_type ?? null,
         }}
       />
+
+      {/* 🆕 **التقييماتُ تحت القائمة لا فوقها** (D-327): من فتح رابطَ
+          قائمةٍ جاء ليراها، **ورأيُ الناس فيها سياقٌ بعدها لا قبلها**
+          (نفسُ ترتيب دعوة الزائر في القاع أعلاه).
+          ⚠️ **ولا تُرسم لقائمةٍ خاصّة**: لا تُقرأ أصلاً فلا رأيَ فيها،
+          **وصندوقٌ لا يستطيع أحدٌ رؤيةَ ناتجه وعدٌ كاذب** (D-217). */}
+      {data.list.is_public && (
+        <ListReviews
+          listId={data.list.id}
+          locale={locale}
+          isOwner={isOwner}
+          canReview={!isOwner}
+          reviews={reviews}
+          mine={myReview}
+          stats={reviewStats}
+        />
+      )}
     </div>
   );
 }
