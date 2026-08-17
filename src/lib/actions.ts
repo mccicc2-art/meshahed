@@ -2007,6 +2007,85 @@ export async function createListFromUniverse(slug: string) {
   return upsertListWithItems(universeName(universe, locale), items, "watch_order");
 }
 
+/**
+ * 🆕 **توليدُ مجموعةٍ منسّقةٍ كقائمةٍ حقيقيّةٍ بحساب لوبز** (D-328،
+ * الهجرة ١٠٤ — طلبُ أحمد: «أي ليست أقدر أقسمها وأقدر أكتب عليها تعليق»).
+ *
+ * **ولا محرّكَ ثانياً**: نفسُ خطوات `createListFromUniverse` حرفاً
+ * (D-135/D-145) — والفرقُ **مَن يملك الصفّ**: هناك القارئُ نفسُه،
+ * **وهنا حسابُ لوبز عبر دالّة `definer` لأن أحداً لا يكتب في حساب غيره.**
+ *
+ * **وبها تصير المجموعةُ قائمةً كسائر القوائم**: صفحةٌ ورابطٌ ومشاركةٌ
+ * وقلبٌ **وتقييمٌ وتعليقات** (D-327) — **بلا سطحٍ رابعٍ ولا جدولٍ ثانٍ.**
+ *
+ * ⚠️ **والاسمُ عربيٌّ عند التوليد** — والقائمةُ تحمل `source_slug` فيمكن
+ * ترجمةُ اسمها عند العرض لاحقاً من `universes.ts` (D-147). **ودَينٌ
+ * يُعلَن لا يُكتشف.**
+ *
+ * ⚠️ **وإداريٌّ وحدَه** — الحارسُ في جسم دالّة القاعدة (`am_admin()`
+ * من D-314)، **والواجهةُ لا تعرض هذا الفعل لأحد**: يُنادى من الجلسة.
+ */
+export async function buildCuratedList(slug: string): Promise<{ slug: string; listId: string; items: number }> {
+  const clean = String(slug ?? "").trim().toLowerCase();
+  const { universeBySlug, universeName } = await import("@/lib/universes");
+  const u = universeBySlug(clean);
+  if (!u) throw new Error("عالمٌ غير معروف / Unknown universe");
+
+  const { supabase } = await requireUser("curated", 20, 60_000);
+  const { moviesByIds, resolveSetIds, awardWinners, titleOf } = await import("@/lib/tmdb");
+
+  let items: NewItem[] = [];
+  let kind: "watch_order" | "ranked" = "watch_order";
+
+  if (u.award) {
+    const rows = await awardWinners(u.award);
+    kind = "ranked";
+    items = rows.map((r) => ({
+      tmdbId: r.id,
+      mediaType: (r.media_type === "tv" ? "tv" : "movie") as MediaType,
+      title: titleOf(r),
+      posterPath: r.poster_path,
+    }));
+  } else if (u.top) {
+    const rows = await (await import("@/lib/topChart")).topChartRows(u.top, u.topLimit ?? 250);
+    kind = "ranked";
+    items = rows.map((r) => ({
+      tmdbId: r.id,
+      mediaType: (r.media_type === "tv" ? "tv" : "movie") as MediaType,
+      title: titleOf(r) || r.title || r.name || "",
+      posterPath: r.poster_path,
+    }));
+  } else {
+    const ids = await resolveSetIds(u);
+    const movies = await moviesByIds(ids);
+    items = movies.map((m) => ({
+      tmdbId: m.id,
+      mediaType: "movie" as MediaType,
+      title: m.title,
+      posterPath: m.poster_path,
+    }));
+  }
+
+  /* **الفراغُ لا يُكتب**: قائمةٌ منسّقةٌ فارغةٌ بحساب لوبز أسوأ من غيابها
+     — **والمصدرُ قد يسقط لحظةً** (D-063). */
+  if (!items.length) throw new Error("تعذّر تحميل القائمة / Could not load this list");
+
+  const { data, error } = await supabase.rpc("upsert_curated_list", {
+    p_slug: clean,
+    p_name: universeName(u, "ar").slice(0, 60),
+    p_kind: kind,
+    p_items: items.map((i) => ({
+      tmdbId: i.tmdbId,
+      mediaType: i.mediaType,
+      title: (i.title ?? "").slice(0, 200),
+      posterPath: i.posterPath ?? null,
+    })),
+  });
+  if (error) fail(error);
+  revalidatePath("/news");
+  return { slug: clean, listId: String(data), items: items.length };
+}
+
 /** مسار ملصق TMDB فقط — لا نقبل عنواناً كاملاً من العميل */
 function safeImagePath(path: string | null): string | null {
   if (!path) return null;

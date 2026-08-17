@@ -3647,6 +3647,30 @@ export async function getPublicListsFeed(limit = 15): Promise<PublicListCard[]> 
 }
 
 /**
+ * 🆕 **خريطةُ المجموعات المنسّقة: slug → معرّفُ قائمتها** (D-328).
+ *
+ * **نداءٌ واحدٌ للصفحة كلِّها** (D-205): تبويبُ القوائم يعرض ثلاثةً
+ * وستّين بطاقة، **ولو سألت كلُّ واحدةٍ عن قائمتها لصارت الصفحةُ ثلاثةً
+ * وستّين استعلاماً.** **والغيابُ يعني «لم تُولَّد بعد»** فتُفتح معاينتُها
+ * كما كانت — **ولا شاشةَ خطأٍ لبطاقةٍ تعمل** (D-181).
+ */
+export async function getCuratedListIds(): Promise<Map<string, string>> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("curated_list_ids");
+    if (error || !data) return new Map();
+    return new Map(
+      (data as { source_slug: string; list_id: string }[]).map((r) => [
+        String(r.source_slug),
+        String(r.list_id),
+      ]),
+    );
+  } catch {
+    return new Map();
+  }
+}
+
+/**
  * 🆕 **مراجعاتُ قائمةٍ وتقييمُها** (D-327، الهجرة ١٠٣ — طلبُ أحمد).
  *
  * **ثلاثةُ قرّاءٍ لا واحد، وكلٌّ لسؤاله**: كلامُ الناس (definer، محروسٌ
