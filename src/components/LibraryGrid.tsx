@@ -15,8 +15,7 @@ import { PosterCard } from "./PosterCard";
 import { SectionDivider } from "./SectionDivider";
 import { LongPressable } from "./LongPressable";
 import { ListManager } from "./ListManager";
-import { Icon } from "./Icon";
-import { Sheet, SheetHeader } from "./ui/Sheet";
+import { Dropdown, DropdownRow } from "./ui/Dropdown";
 import { posterGrid } from "./ui/controls";
 import { PageTabs } from "./ui/PageTabs";
 import { FilterIconButton } from "./ui/FilterIconButton";
@@ -88,6 +87,7 @@ export function LibraryGrid({
   artistCount,
   lists,
   listStats,
+  savedCount = 0,
   locale,
   initialTab = "shows", tabPrefs,
   listsExtra,
@@ -110,6 +110,13 @@ export function LibraryGrid({
   /** 🆕 **أرقامُ قوائمي العامّة** (D-350) — تُقرأ في الصفحة مرّةً لا لكلِّ
       بطاقة (D-206)، **وغيابُها يعيد البطاقةَ كما كانت** (D-152) */
   listStats?: Map<string, { saves: number; rating: number | null }>;
+  /**
+   * 🆕 **كم قائمةً محفوظةً عندي** (D-374) — **عدّادُ التبويب يجمع
+   * قوائمي وما حفظتُه**، لأن اللوحَ تحته يعرض الاثنين. **ورقمٌ في رأس
+   * تبويبٍ يكذّب ما تحته أسوأُ من لا رقم** (D-219).
+   * **واختياريٌّ بصفرٍ محايد** لأن الصفحةَ تصل في دفعةٍ تالية (D-028).
+   */
+  savedCount?: number;
   locale: Locale;
   initialTab?: LibraryTab; /** ترتيبُ تبويبات المكتبة وإظهارها — من الكوكي (D-179) */ tabPrefs: TabPref[];
   /** ما يلي قوائمي في اللوح (القوائم المحفوظة — طلب أحمد: بيتها
@@ -144,7 +151,9 @@ export function LibraryGrid({
   /* ورقةُ الأدوات (D-177): البحث والترتيب وإنشاء القائمة خلف رمزٍ واحد */
   const [tools, setTools] = useState(false);
   /* رقاقة الحالة (طلب المالك): «الكل» افتراضاً، والترشيح محليّ كالبحث */
-  const [sheet, setSheet] = useState<GridItem | null>(null);
+  /* 🆕 **مفتاحُ الصفِّ المفتوحةِ قائمتُه** (D-376) — **واحدٌ لا غير**،
+     **والمنسدلةُ تُركَّب عند فتحها وحدَها** فلا ستّون نسخةً بحالاتها. */
+  const [hold, setHold] = useState<string | null>(null);
 
   /* البحث والفرز في الذاكرة: القائمة وصلت كاملةً من الخادم، فالحرف
      الواحد يصفّي فوراً بلا رحلة شبكة */
@@ -193,7 +202,13 @@ export function LibraryGrid({
        موضعياً — لا مِيكا في العُدّة، ورسمُ واحدةٍ بندٌ لا ذريعةُ تأخير. */
     { key: "anime" as const, icon: "sparkles" as const, label: t.discoverTabAnime, n: anime.length },
     { key: "artists" as const, icon: "people" as const, label: t.shortArtists, n: artistCount },
-    { key: "lists" as const, icon: "list" as const, label: t.listsTitle, n: lists.length },
+    {
+      key: "lists" as const,
+      icon: "list" as const,
+      label: t.listsTitle,
+      /* 🆕 **قوائمي + محفوظاتي** (D-374) — نفسُ ما يعرضه اللوح */
+      n: lists.length + savedCount,
+    },
   ];
 
   /* الترتيب والإخفاء من الكوكي — والتبويب المفتوح لا يُخفى من نفسه */
@@ -385,18 +400,49 @@ export function LibraryGrid({
                     style={{ contentVisibility: "visible", containIntrinsicSize: "auto" }}
                   />
                 )}
-              <LongPressable onLongPress={() => setSheet(x)}>
-                <PosterCard
-                  href={x.href}
-                  title={x.title}
-                  posterPath={x.posterPath}
-                  progress={x.progress}
-                  badge={x.badge}
-                  badgeTone={x.badgeTone}
-                  count={x.count}
-                  dropped={x.dropped}
-                />
-              </LongPressable>
+              {/* 🆕 **المنسدلةُ تخرج من الملصق نفسِه** (D-376، طلبُ أحمد:
+                  «القائمة بعد ما اعمل hold ما هي واضحة… في المكتبة ما
+                  أبغى هذي المنبثقة، أبغى نفس تبع الاكسبلورر»).
+                  **والغلافُ نسبيٌّ لأن المنسدلةَ مطلقةٌ فيه** — وهو
+                  تركيبُ `PosterHold` حرفاً. */}
+              <div
+                className="relative"
+                /* 🔴 **والحاويةُ تخرج من `content-visibility` ما دامت
+                   قائمتُها مفتوحة** (D-376): شبكةُ المكتبة تضع
+                   `content-visibility:auto` على كلِّ خليّةٍ لأن ثلاثمئة
+                   بطاقةٍ كانت تُنسَّق دفعةً واحدة — **وهي تُورث احتواءَ
+                   الرسم، فيُقصّ كلُّ ما خرج عن حدود الخليّة**،
+                   **ومنسدلةٌ عرضُها ٢٠٨px فوق ملصقٍ عرضُه ٩٢ كانت
+                   ستُقصّ نصفَها.** **والاستثناءُ للمفتوحة وحدَها**
+                   فلا يضيع المكسبُ في الشبكة كلِّها — **وهو الاستثناءُ
+                   نفسُه المكتوب للفاصل أعلاه.** */
+                style={
+                  hold === x.key
+                    ? { contentVisibility: "visible", containIntrinsicSize: "auto" }
+                    : undefined
+                }
+              >
+                <LongPressable onLongPress={() => setHold(x.key)}>
+                  <PosterCard
+                    href={x.href}
+                    title={x.title}
+                    posterPath={x.posterPath}
+                    progress={x.progress}
+                    badge={x.badge}
+                    badgeTone={x.badgeTone}
+                    count={x.count}
+                    dropped={x.dropped}
+                  />
+                </LongPressable>
+                {hold === x.key && (
+                  <HoldMenu
+                    item={x}
+                    t={t}
+                    onClose={() => setHold(null)}
+                    onDone={() => coalescedRefresh(router)}
+                  />
+                )}
+              </div>
             </Fragment>
           ))}
         </div>
@@ -405,14 +451,6 @@ export function LibraryGrid({
       )}
       </div>
 
-      {sheet && (
-        <QuickActions
-          item={sheet}
-          t={t}
-          onClose={() => setSheet(null)}
-          onDone={() => coalescedRefresh(router)}
-        />
-      )}
     </div>
   );
 }
@@ -430,8 +468,26 @@ function statusLabel(s: LibraryStatus, t: Dict): string {
         : t.libStatusDropped;
 }
 
-/** لوح الإجراءات السريعة — يطفو من الأسفل فوق الشبكة */
-function QuickActions({
+/**
+ * 🆕 **قائمةُ الضغط المطوَّل في المكتبة — منسدلةٌ لا ورقة** (D-376، طلبُ
+ * أحمد: «القائمة بعد ما اعمل hold ما هي واضحة… في المكتبة ما أبغى هذي
+ * المنبثقة، أبغى نفس تبع الاكسبلورر»).
+ *
+ * ⚖️ **وهو نقضٌ مسجَّلٌ لشطرٍ من D-229/D-353** — «ورقةُ المكتبة تبقى
+ * ورقةً لأن أفعالَها ستّةٌ ولا تسع في منسدلة». **والحجّةُ سقطت بالقياس
+ * لا بالرأي**: الأفعالُ المعروضةُ في أيّ لحظةٍ **ثلاثةٌ أو أربعة** (حلقةٌ
+ * تالية *أو* إعادةُ مشاهدة، ثم «شاهدته»، ثم «ريفيو»، ثم «بطاقة حمراء») —
+ * **والستّةُ كانت مجموعَ الحالات كلِّها لا ما يُرسم معاً.**
+ * **والثمنُ الذي دفعناه بالورقة حقيقيّ**: تغطّي الشبكةَ فتُخفي الملصقَ
+ * الذي ضغطتَه، **فتحتاج عنواناً يذكّرك بما ضغطت** — وهو نصُّ D-229 في
+ * وصف الورقة، **ولقطةُ أحمد أرَت العنوان «Room» وحدَه فوق شاشةٍ مطموسة.**
+ *
+ * **والمعنى لم يتغيّر بحرف** (D-353): البنودُ نفسُها وترتيبُها نفسُه
+ * وأيقوناتُها نفسُها والاهتزازةُ نفسُها — **والذي تغيّر السطحُ وحدَه.**
+ *
+ * **والصفُّ `DropdownRow` المشترك** (D-376/D-002) لا نسخةٌ من صفوف الورقة.
+ */
+function HoldMenu({
   item,
   t,
   onClose,
@@ -443,22 +499,19 @@ function QuickActions({
   onDone: () => void;
 }) {
   const [pending, start] = useTransition();
-  const [msg, setMsg] = useState<string | null>(null);
   const router = useRouter();
 
   /**
-   * تفاؤلي بالكامل: العلامة تظهر في نفس اللحظة واللوح يُغلق، والخادم
-   * يلحق في الخلفية — كانت هذه الواجهة الوحيدة التي تُبقي المستخدم
-   * يحدّق في زرٍّ معتم ٤٠٠–١٢٠٠ مللي ثانية، وهي أميز تفاعلٍ في التطبيق.
-   * الفشل يظهر توستاً، والتجديد المُجمَّع يصحّح أي تفاؤلٍ كاذب.
+   * تفاؤلي بالكامل: القائمةُ تُغلق فوراً والخادم يلحق في الخلفية.
+   * **والفشلُ توستٌ، والتجديدُ المُجمَّع يصحّح أيَّ تفاؤلٍ كاذب.**
+   * **ولا سطرَ نجاحٍ داخل القائمة**: المنسدلةُ تُغلق عند الفعل
+   * (`PosterHold` حرفاً)، **ورسالةٌ في قائمةٍ مغلقةٍ لا يقرؤها أحد.**
    */
-  function run(label: string, fn: () => Promise<unknown>) {
-    /* 🆕 **والاهتزازةُ نفسُها في السطحين** (D-353): كانت في `PosterHold`
-       وحدَها، **فالإيماءةُ الواحدة تُجيب بجوابين على الجهاز نفسِه.** */
+  function run(fn: () => Promise<unknown>) {
+    /* **والاهتزازةُ نفسُها في السطحين** (D-353) */
     tap([12, 30]);
-    setMsg(label);
+    onClose();
     onDone();
-    setTimeout(onClose, 650);
     start(async () => {
       try {
         await fn();
@@ -469,121 +522,82 @@ function QuickActions({
   }
 
   const isTv = item.mediaType === "tv";
-  const btn =
-    "flex items-center gap-3 w-full text-start px-5 py-3.5 text-sm font-semibold transition active:bg-surface-2 disabled:opacity-40";
 
   return (
-    <Sheet open onClose={onClose} closeLabel={t.closeLabel} labelledBy="quick-actions-title">
-      <SheetHeader id="quick-actions-title" title={item.title} closeLabel={t.closeLabel} onClose={onClose}>
-        {msg && (
-          <p role="status" className="text-xs text-[color:var(--success)] mt-1">
-            {msg}
-          </p>
-        )}
-      </SheetHeader>
+    <Dropdown open onClose={onClose} align="end" caret>
+      {item.dropped ? (
+        /* عملٌ موقوف: الإجراء الوحيد المنطقي هو التراجع عن الإيقاف */
+        <DropdownRow
+          icon="play"
+          label={t.undoWatched}
+          disabled={pending}
+          onClick={() =>
+            run(() => runOrQueue("setDropped", item.tmdbId!, item.mediaType!, false))
+          }
+        />
+      ) : (
+        <>
+          {isTv && !item.completed && (
+            <DropdownRow
+              icon="play"
+              label={t.markNextEp}
+              disabled={pending}
+              onClick={() => run(() => runOrQueue("markNextEpisode", item.tmdbId!))}
+            />
+          )}
 
-        {item.dropped ? (
-          /* عملٌ موقوف: الإجراء الوحيد المنطقي هو التراجع عن الإيقاف */
-          <button
-            type="button"
+          {/* عملٌ مكتمل: بابه «أشاهده من جديد» — دورةٌ جديدة واليوميات سليمة */}
+          {isTv && item.completed && (
+            <DropdownRow
+              icon="repeat"
+              label={t.rewatchBtn}
+              disabled={pending}
+              onClick={() => run(() => startRewatch(item.tmdbId!))}
+            />
+          )}
+
+          {/* **`check-line` كالمنسدلة لا `check`** (D-353) */}
+          <DropdownRow
+            icon="check-line"
+            label={t.markAllWatched}
+            tone="success"
             disabled={pending}
             onClick={() =>
-              run("✓", () => runOrQueue("setDropped", item.tmdbId!, item.mediaType!, false))
+              run(() =>
+                isTv
+                  ? runOrQueue("markShowWatched", item.tmdbId!)
+                  : runOrQueue("toggleMovieWatched", {
+                      movieTmdbId: item.tmdbId!,
+                      runtime: null,
+                      watched: true,
+                    }),
+              )
             }
-            className={btn}
-          >
-            <Icon name="play" size={20} className="text-accent shrink-0" />
-            {t.undoWatched}
-          </button>
-        ) : (
-          <>
-            {isTv && !item.completed && (
-              <button
-                type="button"
-                disabled={pending}
-                onClick={() =>
-                  run("✓", () => runOrQueue("markNextEpisode", item.tmdbId!))
-                }
-                className={btn}
-              >
-                <Icon name="play" size={20} className="text-accent shrink-0" />
-                {t.markNextEp}
-              </button>
-            )}
+          />
 
-            {/* عملٌ مكتمل: بابه «أشاهده من جديد» — دورةٌ جديدة واليوميات سليمة */}
-            {isTv && item.completed && (
-              <button
-                type="button"
-                disabled={pending}
-                onClick={() =>
-                  run("✓", () => startRewatch(item.tmdbId!))
-                }
-                className={btn}
-              >
-                <Icon name="repeat" size={20} className="text-accent shrink-0" />
-                {t.rewatchBtn}
-              </button>
-            )}
+          {/* **«ريفيو» ينتقل ولا يفتح** — ما يستحقّ صفحةً يأخذها (D-353) */}
+          <DropdownRow
+            icon="star"
+            label={t.reviewSectionTitle}
+            onClick={() => {
+              tap(8);
+              onClose();
+              router.push(`/${item.mediaType === "tv" ? "show" : "movie"}/${item.tmdbId}`);
+            }}
+          />
 
-            <button
-              type="button"
-              disabled={pending}
-              onClick={() =>
-                run("✓", () =>
-                  isTv
-                    ? runOrQueue("markShowWatched", item.tmdbId!)
-                    : runOrQueue("toggleMovieWatched", {
-                        movieTmdbId: item.tmdbId!,
-                        runtime: null,
-                        watched: true,
-                      }),
-                )
-              }
-              className={`${btn} border-t border-[color:var(--divider)]`}
-            >
-              {/* **`check-line` كالمنسدلة لا `check`** (D-353): أيقونتان
-                  لفعلٍ واحد في سطحين هي ما تمنعه قاعدةُ الأيقونات. */}
-              <Icon name="check-line" size={20} className="text-[color:var(--success)] shrink-0" />
-              {t.markAllWatched}
-            </button>
-
-            {/* 🆕 **«ريفيو» ثالثاً — الصفُّ الذي كان ناقصاً هنا وحدَه**
-                (D-353، حكمُ أحمد «ج»): الإيماءةُ واحدةٌ في المكتبة
-                واكتشف، **والقائمتان كانتا تختلفان في المعنى لا في الشكل
-                وحدَه** — «ريفيو» موجودةٌ هناك وغائبةٌ هنا بلا سبب.
-                **وينتقل ولا يفتح**: كتابةُ رأيٍ تحتاج تقييماً ونصّاً
-                ومساحة، **وما يستحقّ صفحةً يأخذها** (نصُّ D-229 حرفاً).
-                **والترتيبُ صار ترتيبَ المنسدلة**: أفعالُ المشاهدة ثم
-                «ريفيو» ثم ما لا رجعةَ سهلةَ فيه. */}
-            <button
-              type="button"
-              onClick={() => {
-                tap(8);
-                onClose();
-                router.push(
-                  `/${item.mediaType === "tv" ? "show" : "movie"}/${item.tmdbId}`,
-                );
-              }}
-              className={`${btn} border-t border-[color:var(--divider)]`}
-            >
-              <Icon name="star" size={20} className="text-accent shrink-0" />
-              {t.reviewSectionTitle}
-            </button>
-
-            <button
-              type="button"
-              disabled={pending}
-              onClick={() =>
-                run("✓", () => runOrQueue("setDropped", item.tmdbId!, item.mediaType!, true))
-              }
-              className={`${btn} border-t border-[color:var(--divider)]`}
-            >
-              <Icon name="card" size={20} className="text-[color:var(--error)] shrink-0" />
-              {t.dropTitle}
-            </button>
-          </>
-        )}
-    </Sheet>
+          {/* **وما لا رجعةَ سهلةَ فيه آخِراً** (D-322/D-353) */}
+          <DropdownRow
+            icon="card"
+            label={t.dropTitle}
+            tone="danger"
+            disabled={pending}
+            onClick={() =>
+              run(() => runOrQueue("setDropped", item.tmdbId!, item.mediaType!, true))
+            }
+          />
+        </>
+      )}
+    </Dropdown>
   );
 }

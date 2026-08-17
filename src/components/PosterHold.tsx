@@ -7,9 +7,9 @@ import { runOrQueue } from "@/lib/offline";
 import { toast, flashError } from "@/lib/toast";
 import { tap } from "@/lib/haptics";
 import { getDict, type Locale } from "@/lib/i18n";
-import { Icon, type IconName } from "./Icon";
+import { type IconName } from "./Icon";
 import { LongPressable } from "./LongPressable";
-import { Dropdown, dropdownItem } from "./ui/Dropdown";
+import { Dropdown, DropdownRow } from "./ui/Dropdown";
 import { StatusThread } from "./StatusThread";
 
 /**
@@ -305,7 +305,7 @@ export function PosterHold({
       />
 
       <Dropdown open={open} onClose={() => setOpen(false)} align="end" caret>
-        <HoldRow
+        <DropdownRow
           icon={inList ? "check" : "plus"}
           label={inList ? t.quickAddRemove : t.quickAddLabel}
           active={inList}
@@ -316,7 +316,7 @@ export function PosterHold({
             أحدَهما دائماً بلا معنى — **وخيارٌ لا ينطبق أسوأ من غيابه**
             (D-217). والحالةُ الثالثة (مُشاهَدٌ بلا إيصال) **تنقل إلى
             صفحة العمل**: نفسُ حكم «ريفيو» — ما يستحقّ صفحةً يأخذها. */}
-        <HoldRow
+        <DropdownRow
           /* **`eye-off` لا سهمُ تراجع**: الزوجُ `eye`/`eye-off` قائمٌ في
              العائلة ويقول المعنى نفسَه — **ولا أيقونةَ جديدة لفعلٍ له
              أيقونةٌ تصفه** (قاعدة ٣: أيقوناتٌ واحدة). */
@@ -325,12 +325,12 @@ export function PosterHold({
           active={seen}
           onClick={seen ? (canUndo ? undoWatched : goToTitle) : markWatched}
         />
-        <HoldRow icon="star" label={t.reviewSectionTitle} onClick={goToTitle} />
+        <DropdownRow icon="star" label={t.reviewSectionTitle} onClick={goToTitle} />
         {/* 🆕 **وصفُّ السطح آخِراً** (D-322): «غير مهتم» فعلٌ يُخفي
             البطاقةَ من تحت إصبعك، **فلا يجاور فعلاً يُبقيها** — والأخيرُ
             موضعُ ما لا رجعةَ سهلةَ فيه (وله «تراجع» في التوست، D-019). */}
         {extra && (
-          <HoldRow
+          <DropdownRow
             icon={extra.icon}
             label={extra.label}
             onClick={() => {
@@ -344,35 +344,6 @@ export function PosterHold({
   );
 }
 
-/** صفٌّ في القائمة — **بوصفة `dropdownItem` نفسِها** التي تستعملها النقاط */
-function HoldRow({
-  icon,
-  label,
-  active = false,
-  onClick,
-}: {
-  icon: IconName;
-  label: string;
-  active?: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      role="menuitem"
-      onClick={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        onClick();
-      }}
-      className={dropdownItem}
-    >
-      <Icon
-        name={icon}
-        size={18}
-        className={active ? "text-accent shrink-0" : "text-muted shrink-0"}
-      />
-      <span className={active ? "text-accent" : undefined}>{label}</span>
-    </button>
-  );
-}
+/* 🔁 **و`HoldRow` غادر هذا الملفَّ إلى `ui/Dropdown` باسم `DropdownRow`**
+   (D-376) — **جاء قارئُه الثاني** (شبكةُ المكتبة)، **ولحظةُ الاستخراج
+   هي القارئُ الثاني لا الأوّل** (D-002). ولا جثّةَ هنا (D-214). */

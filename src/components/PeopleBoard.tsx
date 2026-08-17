@@ -4,7 +4,12 @@ import { posterUrl, backdropUrl } from "@/lib/tmdb";
 import { getDict, num, type Locale } from "@/lib/i18n";
 import { timeAgoShort } from "@/lib/when";
 import { dirOf, alignOf } from "@/lib/dir";
-import type { PeopleLeaderRow, PeopleTopReviewRow, SavedListRow, TalkRoom } from "@/lib/data";
+import type {
+  PeopleLeaderRow,
+  PeopleTopReviewRow,
+  PublicListCard,
+  TalkRoom,
+} from "@/lib/data";
 import { PersonName } from "./PersonRow";
 import { FollowUserButton } from "./FollowUserButton";
 import { PosterRail, RailItem } from "./PosterRail";
@@ -408,17 +413,38 @@ export function PeopleLeaderboard({
  * (D-002).
  */
 export function TopSavedLists({
+  cards = [],
   rows,
   locale,
   seeAllHref,
 }: {
-  rows: SavedListRow[];
+  /**
+   * 🆕 **بطاقاتٌ مشكَّلةٌ من البوّابة نفسِها** (D-375، بلاغُ أحمد: «شكل
+   * الليست في الأعضاء لازم تكون مثل شكلها في كل مكان، لها قلب ولها نجمة
+   * تقييم بعددهم»).
+   *
+   * **وكانت تُبنى هنا باليد من عائد `top_saved_lists`** — بلا وجهِ صاحبٍ
+   * ولا ♥ ولا ★ ولا زرِّ حفظ، **ومكانَها سطرُ «N save» نصّاً** —
+   * **فبطاقةٌ واحدةٌ تُقرأ بشكلين في بابين** (القاعدة ٦/D-068).
+   * **والآن `shapeListCards` تشكّلها كما تشكّل بطاقةَ اكتشف والمكتبة
+   * وصفحةِ الشخص** — **مكانٌ واحدٌ تُبنى فيه البطاقة.**
+   */
+  cards?: PublicListCard[];
+  /**
+   * ⚠️ **حزامُ نافذةِ النشر وحدَه** (D-028): هذا الملفُّ يُرفع في دفعةٍ
+   * وصفحةُ الأعضاء في أخرى، **وبينهما كوميتٌ تبنيه Vercel** —
+   * **ومعاملٌ يختفي في الأولى يُحمِّر البناءَ في الثانية.** فيُقبل الاسمُ
+   * القديم ولا يُقرأ، **ويُحذف في الرفعة التالية للملفّ نفسِه**
+   * («يُرفع الملفُّ مرّتين» — D-028/D-299). **ولا يبقى بعدها** (D-214).
+   */
+  rows?: unknown;
   locale: Locale;
   seeAllHref?: string;
 }) {
+  void rows;
   const t = getDict(locale);
   /* **ومن لا شيءَ له لا يُعرض في لوحة** (D-181) — والقسمُ يغيب كلَّه */
-  if (!rows.length) return null;
+  if (!cards.length) return null;
 
   return (
     <PosterRail
@@ -430,34 +456,18 @@ export function TopSavedLists({
       /* **هامشُ أقسام اللوحة نفسُه** (بلاغُ أحمد: «الكلام لاصق في
          الكارد»): قسمُ `PosterRail` عارٍ لأن صفوفَ الصفحات الأخرى
          تُباعدها حاويتُها — **وهنا كلُّ قسمٍ يحمل هامشَه** (وصفةُ
-         `BoardSection` حرفاً)، **فكانت الفجوةُ صفراً مقيسةً** تحت
-         بطاقة D-291 ذات الحدّ الصلب. */
+         `BoardSection` حرفاً). */
       className="mt-7 first:mt-0"
     >
-      {rows.map((row) => (
+      {cards.map((c) => (
         /* **`wide` لا الافتراضي** — خانةُ الملصق أضيقُ من بطاقة قائمة
            (D-084)، **والبطاقاتُ كانت تتراكب.** */
-        <RailItem key={row.listId} wide>
-          <CommunityListCard
-            list={{
-              id: row.listId,
-              name: row.name,
-              kind: null,
-              /* **واسمُ الصاحب من الحارس نفسِه** (D-011): `hide_name`
-                 محسومةٌ في القاعدة، **ومخفيُّ الاسم يظهر بلا سطرِ صاحبٍ
-                 أصلاً** — **وسطرٌ باسمٍ بديل يوحي بأن «مستخدم» شخصٌ
-                 يُقصد** (حجّةُ `PublicListsRail` حرفاً). */
-              owner: row.hideName ? null : (row.nickname ?? row.username),
-              /* **لا يُقرأ**: `countLabel` يحلّ محلَّه — انظر أدناه */
-              item_count: 0,
-              posters: row.posters,
-            }}
-            locale={locale}
-            /* **والمقياسُ يُكتب صريحاً**: القسمُ يرتّب بالحفظ **فالرقمُ
-               الظاهرُ هو الحفظ** (D-219: الرقمُ يخصّ ما تحته). */
-            countLabel={t.peopleBoardSaves(row.saves)}
-            className="w-full"
-          />
+        <RailItem key={c.id} wide>
+          {/* ⚖️ **وسقط `countLabel` معها** (نقضُ D-290 المسجَّل): كُتب يومَ
+              كانت البطاقةُ بلا ♥، **فكان «N save» هو الرقمَ الوحيد** —
+              **واليومَ القلبُ يحمل العددَ نفسَه في موضعه من كلِّ بطاقة**،
+              **ورقمٌ يُطبع مرّتين في بطاقةٍ واحدة يُقرأ رقمين** (D-223/D-357). */}
+          <CommunityListCard list={c} locale={locale} className="w-full" />
         </RailItem>
       ))}
     </PosterRail>
