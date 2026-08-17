@@ -27,7 +27,7 @@ const csp = [
   // السكربت وتسقط الطريقة إلى التحويل القديم بصمت
   "script-src 'self' 'unsafe-inline' https://accounts.google.com",
   "style-src 'self' 'unsafe-inline' https://accounts.google.com",
-  "img-src 'self' data: blob: https://image.tmdb.org https://lh3.googleusercontent.com https://*.supabase.co",
+  "img-src 'self' data: blob: https://image.tmdb.org https://lh3.googleusercontent.com https://*.supabase.co https://media.giphy.com",
   "font-src 'self' data:",
   `connect-src 'self' ${supabaseHost} https://*.supabase.co wss://*.supabase.co https://accounts.google.com`,
   "manifest-src 'self'",
