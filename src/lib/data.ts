@@ -3476,6 +3476,10 @@ export interface PublicListCard {
   saves?: number;
   reviews?: number;
   rating?: number | null;
+  /* 🆕 **وجهُ الصاحب** (D-335، طلبُ أحمد: «صورة الشخص الي عملها تظهر
+     دائرة صغيرة واسمه») — من `public_profiles` فمخفي الاسم يصل صورتُه
+     `null` من الباب نفسِه (D-011). */
+  owner_avatar?: string | null;
 }
 
 /**
@@ -3500,9 +3504,9 @@ async function shapeListCards(
     withOwner
       ? supabase
           .from("public_profiles")
-          .select("id, nickname, username, hide_name")
+          .select("id, nickname, username, avatar_url, hide_name")
           .in("id", [...new Set(lists.map((l) => l.user_id))])
-      : Promise.resolve({ data: [] as { id: string; nickname: string | null; username: string | null; hide_name: boolean | null }[] }),
+      : Promise.resolve({ data: [] as { id: string; nickname: string | null; username: string | null; avatar_url: string | null; hide_name: boolean | null }[] }),
     /* 🆕 **نداءٌ واحدٌ لأرقام البطاقات كلِّها** (D-329/D-205): الحفظُ
        والتقييمُ لثلاثٍ وستّين بطاقةً في استدعاءٍ واحد، **لا استعلامين
        لكلِّ واحدة**. وسقوطُه لا يُسقط البطاقة — **الرقمُ الغائبُ لا
@@ -3541,6 +3545,9 @@ async function shapeListCards(
       p.hide_name ? null : (p.nickname || p.username || null),
     ]),
   );
+  const faceOf = new Map(
+    (owners.data ?? []).map((p) => [p.id, p.hide_name ? null : (p.avatar_url ?? null)]),
+  );
 
   return lists
     .map((l) => {
@@ -3554,6 +3561,7 @@ async function shapeListCards(
         name: l.name,
         kind: l.kind ?? null,
         owner: withOwner ? (nameOf.get(l.user_id) ?? null) : null,
+        owner_avatar: withOwner ? (faceOf.get(l.user_id) ?? null) : null,
         item_count: e.count,
         posters: e.posters,
       };
@@ -3696,6 +3704,38 @@ export async function getCuratedListIds(): Promise<Map<string, string>> {
       (data as { source_slug: string; list_id: string }[]).map((r) => [
         String(r.source_slug),
         String(r.list_id),
+      ]),
+    );
+  } catch {
+    return new Map();
+  }
+}
+
+/**
+ * 🆕 **أرقامُ بطاقاتٍ بمعرّفاتها وحدَها** (D-335، ذيلُ D-329 — طلبُ أحمد:
+ * بطاقةُ «Top 250» تُظهر التقييمَ وعددَ الحافظين كبطاقات الأعضاء).
+ *
+ * **ولماذا قارئٌ ثانٍ و`shapeListCards` تجلبها؟** لأن بطاقةَ المجموعة
+ * المنسّقة **تبني ملصقاتِها وعنوانَها من قاموس `universes` لا من صفوف
+ * القائمة** (الاسمُ يُترجم عند العرض — D-147/D-273)، **وجلبُ ألف صفِّ
+ * عنصرٍ لرسم رقمين إسرافٌ** (D-205). فنداءُ الدالّة ١٠٥ وحدَه —
+ * **والقائمةُ التي لا رقمَ لها لا صفَّ لها** فيُقرأ غيابُها صمتاً (D-063).
+ */
+export async function getListCardStats(
+  ids: string[],
+): Promise<Map<string, { saves: number; rating: number | null }>> {
+  try {
+    if (!ids.length) return new Map();
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("list_card_stats", { p_ids: ids });
+    if (error || !data) return new Map();
+    return new Map(
+      (data as { list_id: string; saves: number; avg_rating: number | null }[]).map((r) => [
+        String(r.list_id),
+        {
+          saves: Number(r.saves) || 0,
+          rating: r.avg_rating === null ? null : Number(r.avg_rating),
+        },
       ]),
     );
   } catch {
