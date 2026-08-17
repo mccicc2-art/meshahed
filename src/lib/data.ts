@@ -3558,6 +3558,12 @@ export interface PublicListCard {
      (نفسُ شرط `list_saves`)، و`saved` حالتُها الابتدائية — **وكلاهما
      يُقرأ في `shapeListCards` مرّةً للصفحة لا لكلِّ بطاقة** (D-206). */
   can_save?: boolean;
+  /* 🆕 **بابُ التقييم على البطاقة** (D-352): **قائمةٌ عامّةٌ ليست لي ولي
+     حساب** — نفسُ شرط `list_reviews.with check` حرفاً (D-327)، **وزرٌّ
+     يفشل عند الضغط وعدٌ كاذب** (D-217). */
+  can_review?: boolean;
+  /** رأيي القائم في هذه القائمة — يملأ ورقةَ النجمة فيكون تعديلاً */
+  my_review?: { rating: number; body: string | null; hasSpoiler: boolean } | null;
   /** ⚠️ `saved_by_me` لا `saved` — و`saves` فوقها عددُ الناس: **اسمان
       متقاربان لمعنيين متباعدين هو كيف يُقرأ عدّادٌ حالةً** (D-219). */
   saved_by_me?: boolean;
@@ -3582,7 +3588,7 @@ async function shapeListCards(
   const supabase = await createClient();
   const me = await getUser().catch(() => null);
   const ids = lists.map((l) => l.id);
-  const [items, owners, stats, savedRows] = await Promise.all([
+  const [items, owners, stats, savedRows, myReviews] = await Promise.all([
     supabase
       .from("user_list_items")
       .select("list_id, poster_path, added_at")
@@ -3609,9 +3615,30 @@ async function shapeListCards(
     me
       ? supabase.from("list_saves").select("list_id").eq("user_id", me.id).in("list_id", ids)
       : Promise.resolve({ data: [] as { list_id: string }[] }),
+    /* 🆕 **«ما رأيي أنا فيها؟» — استعلامٌ واحدٌ للصفحة كلِّها** (D-352):
+       سياسةُ `list_reviews` «صفوفي أنا» فالقراءةُ مقصورةٌ عليّ أصلاً،
+       **وورقةُ النجمة تُملأ بلا نداءٍ عند الفتح** (D-205/D-206). */
+    me
+      ? supabase
+          .from("list_reviews")
+          .select("list_id, rating, body, has_spoiler")
+          .eq("user_id", me.id)
+          .in("list_id", ids)
+      : Promise.resolve({ data: [] as { list_id: string; rating: number; body: string | null; has_spoiler: boolean }[] }),
   ]);
   const savedSet = new Set(
     ((savedRows?.data ?? []) as { list_id: string }[]).map((r) => String(r.list_id)),
+  );
+  const mineOf = new Map(
+    ((myReviews?.data ?? []) as {
+      list_id: string;
+      rating: number;
+      body: string | null;
+      has_spoiler: boolean;
+    }[]).map((r) => [
+      String(r.list_id),
+      { rating: Number(r.rating), body: r.body ?? null, hasSpoiler: !!r.has_spoiler },
+    ]),
   );
   const statOf = new Map(
     ((stats?.data ?? []) as {
@@ -3667,6 +3694,10 @@ async function shapeListCards(
            (D-302) فالقاعدةُ تحرسه أيضاً. وزائرٌ بلا حساب لا زرَّ له. */
         can_save: !!me && l.user_id !== me.id,
         saved_by_me: savedSet.has(l.id),
+        /* **والتقييمُ شرطُه شرطُ الحفظ نفسُه ومعه العلانية** — والبطاقاتُ
+           هنا كلُّها من قوائمَ عامّة (مصادرُها تشترطها). */
+        can_review: !!me && l.user_id !== me.id,
+        my_review: mineOf.get(l.id) ?? null,
       };
     })
     /* قائمةٌ فارغة لا تُكتشف — لا تعرض شيئاً ولا تدعو لشيء */
@@ -3848,6 +3879,37 @@ export async function getCuratedSlug(listId: string): Promise<string | null> {
     return String(data) || null;
   } catch {
     return null;
+  }
+}
+
+/**
+ * 🆕 **رأيي أنا في قوائمَ بمعرّفاتها** (D-352) — لبطاقات لوبز التي تبني
+ * نفسَها من القاموس لا من `shapeListCards`. **استعلامٌ واحدٌ لاثنتين
+ * وأربعين بطاقة** (D-205)، وسياسةُ «صفوفي أنا» تكفيه حارساً.
+ */
+export async function getMyListReviews(
+  ids: string[],
+): Promise<Map<string, { rating: number; body: string | null; hasSpoiler: boolean }>> {
+  try {
+    if (!ids.length) return new Map();
+    const supabase = await createClient();
+    const user = await getUser();
+    if (!user) return new Map();
+    const { data } = await supabase
+      .from("list_reviews")
+      .select("list_id, rating, body, has_spoiler")
+      .eq("user_id", user.id)
+      .in("list_id", ids);
+    return new Map(
+      ((data ?? []) as { list_id: string; rating: number; body: string | null; has_spoiler: boolean }[]).map(
+        (r) => [
+          String(r.list_id),
+          { rating: Number(r.rating), body: r.body ?? null, hasSpoiler: !!r.has_spoiler },
+        ],
+      ),
+    );
+  } catch {
+    return new Map();
   }
 }
 
