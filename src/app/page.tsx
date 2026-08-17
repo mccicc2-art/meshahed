@@ -19,6 +19,7 @@ import {
   getAllMovieProgress,
   getMyRatings,
   getMyLists,
+  getFriendsWatching,
   getFollowLists,
   getIncomingFollowRequests,
   getReceivedLikes,
@@ -44,6 +45,7 @@ import { ContinueCard } from "@/components/ContinueCard";
 import { ToWatchCard } from "@/components/ToWatchCard";
 import { QuickSaveCard } from "@/components/QuickSaveCard";
 import { PosterRail, RailItem } from "@/components/PosterRail";
+import { RailNewBadge } from "@/components/RailNewBadge";
 import { PublicListsRail } from "@/components/PublicListsRail";
 import { Icon, type IconName } from "@/components/Icon";
 import { posterUrl } from "@/lib/media";
@@ -496,6 +498,7 @@ async function HomeBody({
     earlyTrend,
     topRated,
     myListsRaw,
+    friendsRows,
   ] = await Promise.all([
     // أسماء المكتبة وملصقاتها بلغة الواجهة لا بلغة يوم المتابعة
     localizeFollows(followRows, locale),
@@ -540,6 +543,12 @@ async function HomeBody({
       : Promise.resolve(topRatedRaw),
     prefs.order.includes("lists")
       ? getMyLists().catch(() => [])
+      : Promise.resolve([]),
+    /* 🆕 **«أعمالُ أصدقائك الآن»** (البند ٧) — **ولا يدفع كلفتَه إلا من
+       أظهره** (قاعدةُ «recap» و«قوائمي» نفسُها)، **وهو نداءُ الخطّ نفسِه
+       بلا إعجاباتٍ ولا ترجمة** (D-205). */
+    prefs.order.includes("friends")
+      ? getFriendsWatching(12).catch(() => [])
       : Promise.resolve([]),
   ]);
 
@@ -1177,6 +1186,47 @@ async function HomeBody({
               <div key="lists">
                 <PublicListsRail lists={myListCards} locale={locale} title={t.myLists} />
               </div>
+            ) : null,
+          /* 🆕 **صفُّ «أعمالُ أصدقائك الآن» + شارةُ «جديد»** (البند ٧).
+             **والشارةُ هنا لا في «الرائج»**: الرائجُ يتحرّك كلَّ يومٍ فشارتُه
+             مضاءةٌ دائماً **فتُقرأ زينةً ثم لا تُقرأ** (D-134/D-219) —
+             **وهذا الصفُّ يتحرّك حين يتحرّك أحدٌ تعرفه**، وهو الخبرُ نفسُه.
+             **والبصمةُ من معرّفات البطاقات**: صفٌّ أُعيد جلبُه بنفس محتواه
+             ليس «جديداً». */
+          friends:
+            friendsRows.length > 0 ? (
+              <PosterRail
+                key="friends"
+                title={t.railFriendsNow}
+                icon="people"
+                href="/people"
+                seeAllLabel={t.seeAll}
+                action={
+                  <RailNewBadge
+                    id="friends"
+                    sig={friendsRows.map((r) => `${r.media_type}${r.tmdb_id}`).join(",")}
+                    locale={locale}
+                  />
+                }
+              >
+                {friendsRows.slice(0, cap(12)).map((r) => (
+                  <RailItem key={`fw-${r.media_type}-${r.tmdb_id}`}>
+                    <PosterCard
+                      href={`/${r.media_type === "tv" ? "show" : "movie"}/${r.tmdb_id}`}
+                      title={r.title}
+                      posterPath={r.poster_path}
+                      /* الخيطُ الرباعيُّ تحت الملصق من مكتبتك أنت (D-322)
+                         — **فترى ما عندك منها قبل أن تفتح** */
+                      saved={followedKeys.has(`${r.media_type}-${r.tmdb_id}`)}
+                      watched={
+                        r.media_type === "movie"
+                          ? watchedMovieIds.has(r.tmdb_id)
+                          : doneShowIds.has(r.tmdb_id)
+                      }
+                    />
+                  </RailItem>
+                ))}
+              </PosterRail>
             ) : null,
           trending:
             showTrending && trend.length > 0 ? (
