@@ -13,6 +13,7 @@ import { Icon, type IconName } from "./Icon";
 import type { ListItem, ListKind } from "@/lib/data";
 import { Sheet, SheetHeader } from "./ui/Sheet";
 import { DetailTabs } from "./DetailTabs";
+import { FeatureListButton } from "./FeatureListButton";
 import { buttonClass } from "./ui/Button";
 import { sheetScroll } from "./ui/controls";
 import { ShareListSheet } from "./ShareListSheet";
@@ -49,6 +50,7 @@ export function ListDetail({
   items,
   ratings,
   isOwner,
+  featured,
   owner,
   locale,
   initialSaved,
@@ -64,6 +66,12 @@ export function ListDetail({
   items: ListItem[];
   ratings: Record<string, number>;
   isOwner: boolean;
+  /**
+   * 🆕 **تثبيتُ «يرشّحها لوبز»** (D-349) — **يُرسم للإداريّ وحدَه**:
+   * `undefined` تعني «لستُ إداريّاً» فلا زرّ. **والحارسُ الحقيقيُّ
+   * `am_admin()` في جسم دالّة القاعدة** (D-011/D-193).
+   */
+  featured?: boolean;
   /** صاحب القائمة — يُمرَّر حين يفتحها غيرُه. قائمةٌ بلا صاحبٍ ظاهرٍ
       مجهولةُ المصدر، ومن أخفى اسمه يصل هنا فارغاً فلا يُنسب شيء */
   owner?: { nickname: string | null; username: string | null; avatar: string | null } | null;
@@ -295,6 +303,12 @@ export function ListDetail({
         {/* «أضِف أعمالاً» قبل النقاط لا داخلها: إضافةُ عملٍ هي الفعل الأوّل
             في قائمةٍ تملكها، ودفنُه في قائمةٍ يفتحها زرٌّ آخر هو بالضبط
             العطل الذي بلّغ عنه أحمد (D-167). */}
+        {/* 🆕 **ودبّوسُ لوبز بجانب الحفظ** (D-349): **القرارُ يُتَّخذ حيث
+            يُقرأ الشيء** — تفتح القائمةَ فتحكم أنها قائمةُ الأسبوع
+            (D-167). ولا يراه إلا الإداريّ. */}
+        {featured !== undefined && (
+          <FeatureListButton listId={listId} featured={featured} locale={locale} />
+        )}
         {isOwner && addButton}
         {isOwner && (
           /* هدف لمسٍ ٤٤×٤٤ كاملاً وإن بدت الدائرة ٣٦: أصغر من ذلك يُخطئه
