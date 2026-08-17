@@ -539,3 +539,63 @@ export function curatedName(
   const u = universeBySlug(sourceSlug);
   return u ? universeName(u, locale) : storedName;
 }
+
+/**
+ * 🆕 **نبذةُ قائمةِ لوبز** (D-373، بلاغُ أحمد: «ليستات لوبز لازم يكون لها
+ * شرح ونبذة مثل ليستة مشعل»).
+ *
+ * ================= لماذا تُصاغ ولا تُخزَّن =================
+ *
+ * **البابُ الرخيص كان عمود `subtitle`**: اثنتان وأربعون قائمةً تُكتب
+ * نبذتُها بيدٍ في هجرة. **ورُفض بحجّتين**: عمودُ الاسم واحدٌ في الصفّ
+ * فيلحقه عمودُ الوصف بلغةٍ واحدة — **وهو بعينه الدَّينُ الذي سدّدته
+ * D-343** (اسمٌ عربيٌّ يقرؤه الإنجليزيّ) — **ونبذةٌ مكتوبةٌ بيدٍ لاثنتين
+ * وأربعين قائمةً تتقادم يومَ تتغيّر طريقةُ بنائها.**
+ *
+ * **فالنبذةُ تُصاغ من القاموس عند العرض** (D-147/D-273 حرفاً): **القاموسُ
+ * يعرف كيف بُنيت القائمة** — بترتيب أحداثٍ أم إصدار، من جائزةٍ أم من
+ * تقييمات — **فالجملةُ تصف طريقةَ البناء لا تمدح المحتوى.**
+ *
+ * ⚠️ **ولا رقمَ في الجملة**: «أفضل ٢٥٠» وعدٌ لا عدّ (D-340)، **وقائمةُ
+ * الأنمي ١٤٥ اليوم** — **فجملةٌ تقول «مئتان وخمسون» تكذب مرّةً ثانية**
+ * (D-219).
+ *
+ * **وقائمةُ العضو لا تُمَسّ**: `null` تعني «اقرأ `subtitle` كما كتبه
+ * صاحبُه» (D-063).
+ */
+export function curatedBlurb(
+  sourceSlug: string | null | undefined,
+  locale: "ar" | "en",
+): string | null {
+  if (!sourceSlug) return null;
+  const u = universeBySlug(sourceSlug);
+  if (!u) return null;
+  const name = universeName(u, locale);
+  const en = locale === "en";
+
+  /* **الأعلى تقييماً** — تُبنى من تقييمات IMDb بعتبة D-323/D-365 */
+  if (u.top) {
+    return en
+      ? `Ranked from IMDb ratings, with a floor of 20,000 votes so a high score on a handful of votes cannot climb it.`
+      : `مرتَّبةٌ بتقييمات IMDb، وبعتبة عشرين ألف صوتٍ فأكثر — فلا يعلوها عملٌ نال درجةً عاليةً من أصواتٍ قليلة.`;
+  }
+
+  /* **الجوائز** — الفائزون بأسمائهم وسنواتهم */
+  if (u.award) {
+    return en
+      ? `Every ${name} winner, year by year — each title carries the year it won.`
+      : `الفائزون بـ${name} عبر سنواتها — ومع كلِّ عملٍ سنةُ فوزه.`;
+  }
+
+  /* **ترتيبُ الأحداث** — وهو سببُ وجود القاموس أصلاً */
+  if (u.storyOrder) {
+    return en
+      ? `Every ${name} title in story order, not release order — so you know where to start and what follows.`
+      : `أعمالُ ${name} كلُّها بترتيب الأحداث لا بترتيب الإصدار — لتعرف من أين تبدأ وما الذي يليه.`;
+  }
+
+  /* **والباقي سلسلةٌ بترتيب إصدارها** */
+  return en
+    ? `The ${name} films in release order, from the first to the newest.`
+    : `أفلامُ ${name} بترتيب إصدارها، من أوّلها إلى أحدثها.`;
+}

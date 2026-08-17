@@ -4318,6 +4318,75 @@ export async function getSavedLists(limit = 30): Promise<PublicListCard[]> {
   }
 }
 
+/**
+ * 🆕 **كم قائمةً حفظتُ؟** (D-374، بلاغُ أحمد: «وفوق List المفروض ٣ بدل صفر»).
+ *
+ * **عدّادُ تبويب «القوائم» كان `lists.length` وحدَها** — أي قوائمي التي
+ * أنشأتُها — **بينما اللوحُ تحته يعرض «قوائمُ محفوظة · ٣»**، **فالرقمُ
+ * في رأس التبويب يكذّب ما تحته** (D-219: رقمٌ يُقرأ خطأً أسوأُ من لا
+ * رقم).
+ *
+ * ⚠️ **ولماذا نداءٌ ثانٍ ولا يُقرأ من `getSavedLists`**: تلك مشروطةٌ
+ * بفتح تبويبها منذ D-350 (أربعةُ استعلاماتٍ لتبويبٍ قد لا يُفتح) —
+ * **والعدّادُ يجب أن يصدق وأنت في «أفلامي».** **فهو نمطُ `artistCount`
+ * حرفاً**: نداءٌ خفيفٌ يجري دائماً (`head: true` بلا صفوف) **والثقيلُ
+ * مشروطٌ بتبويبه** (D-128/D-350).
+ */
+export async function getSavedListsCount(): Promise<number> {
+  try {
+    const supabase = await createClient();
+    const user = await getUser();
+    if (!user) return 0;
+    const { count } = await supabase
+      .from("list_saves")
+      .select("list_id", { count: "exact", head: true })
+      .eq("user_id", user.id);
+    return count ?? 0;
+  } catch {
+    /* **والصفرُ عند السقوط يُبقي العدّادَ كما كان** — لا شاشةَ خطأ (D-063) */
+    return 0;
+  }
+}
+
+/**
+ * 🆕 **«ما يحفظه الناس» ببطاقة البطاقات نفسِها** (D-375، بلاغُ أحمد:
+ * «شكل الليست في الأعضاء لازم تكون مثل شكلها في كل مكان، لها قلب ولها
+ * نجمة تقييم بعددهم»).
+ *
+ * **وكانت الصفوفُ تُبنى باليد من عائد `top_saved_lists`** — بلا وجهِ
+ * صاحبٍ ولا ♥ ولا ★ ولا زرِّ حفظ — **ونصُّ D-068 أن `shapeListCards` هي
+ * المكانُ الوحيد الذي تُبنى فيه البطاقة**: بابٌ خامسٌ يبني بطاقتَه بيده
+ * هو كيف تفترق البطاقتان.
+ *
+ * **واستعلامٌ خفيفٌ واحدٌ هو الثمن**: الدالّةُ ترتّب بالحفظ ولا تُرجع
+ * `kind` ولا `source_slug`، **فتُقرأ صفوفُ القوائم الثلاث ثم تمرّ من
+ * البوّابة** — **والترتيبُ يبقى ترتيبَ الحفظ** (D-215: الاستحقاقُ قبل
+ * الترتيب، والترتيبُ هنا هو المعنى).
+ */
+export async function getTopSavedListCards(
+  days = 7,
+  limit = 3,
+): Promise<PublicListCard[]> {
+  try {
+    const rows = await getTopSavedLists(days, limit);
+    if (!rows.length) return [];
+    const supabase = await createClient();
+    const { data: lists } = await supabase
+      .from("user_lists")
+      .select("id, user_id, name, kind, source_slug")
+      .in("id", rows.map((r) => r.listId))
+      .eq("is_public", true);
+    if (!lists?.length) return [];
+    const rank = new Map(rows.map((r, i) => [r.listId, i]));
+    const sorted = [...lists].sort(
+      (a, b) => (rank.get(a.id) ?? 1e9) - (rank.get(b.id) ?? 1e9),
+    );
+    return await shapeListCards(sorted, true);
+  } catch {
+    return [];
+  }
+}
+
 /** هل حفظ المستخدمُ هذه القائمة؟ — لحالة زرّ «أضِفها إلى قوائمي» */
 export async function isListSaved(listId: string): Promise<boolean> {
   try {
