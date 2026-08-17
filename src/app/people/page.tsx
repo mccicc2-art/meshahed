@@ -488,6 +488,40 @@ export default async function PeoplePage({
   /* مَن أتابعهم — لصفّ المتابعة في قائمة نقاط كل صفّ (D-225) */
   const followingIds = pagerTab ? await getFollowingIds() : new Set<string>();
 
+  /* 🔴 🆕 **نشرةُ لوبز تصل من يهمّه خبرُها وحدَه** (D-360، طلبُ أحمد:
+     «نشرات لوبز ما ابغاها كلها تصلني، احتاج فقط الأشياء الي أنا مهتم
+     فيها — لوبز مايكون مزعج، يكون مساعد ذكي»).
+
+     ================= أيُّ إشارةٍ تقول «هذا يهمُّني»؟ =================
+
+     **اختيارُ أحمد: مكتبتي ومَن أتابعهم.** وكلتاهما **محمولةٌ في هذه
+     الصفحة أصلاً**: `followed` مجموعةُ مكتبتي (`getFollows` المخبّأة)
+     و`localized` خطُّ المجتمع الذي يحمل صاحبَ كلِّ صفّ — **فالسؤالُ
+     «أثمّة نداءٌ في هذه الصفحة يحمل الجواب؟» جوابُه نعم** (D-291)،
+     **ولا هجرةَ ولا جدولَ ولا استعلامَ جديد** (D-013).
+
+     ⚠️ **والترشيحُ في الصفحة لا في `loopz_news`**: الدالّةُ يقرؤها
+     تبويبُ أخبار العمل وصفحةُ النشرة أيضاً — **وهناك الخبرُ هو المطلوب
+     بعينه، فمن فتح صفحةَ عملٍ يريد أخبارَه** (D-326/D-348: المنعُ يوضع
+     في الجهة التي تخسر أقلّ).
+
+     🔴 **ومن لا إشارةَ له لا يُرشَّح له**: حسابٌ جديد بلا مكتبةٍ ولا
+     متابَعين **كلُّ الأخبار عنده سواء** — **وترشيحٌ يُفرِغ الخطَّ لمن لم
+     يبنِ ذوقَه بعدُ عقوبةٌ لا مساعدة** (D-181)، **والافتراضُ يبقى
+     السلوكَ القائم حتى توجد إشارة** (D-152). */
+  const talkedByFriends = new Set(
+    localized
+      .filter((a) => a.tmdb_id && a.person?.id && followingIds.has(a.person.id))
+      .map((a) => `${a.media_type}-${a.tmdb_id}`),
+  );
+  const hasTasteSignal = followed.size > 0 || talkedByFriends.size > 0;
+  const newsForMe = hasTasteSignal
+    ? genNews.filter((n) => {
+        const key = `${n.media_type}-${n.tmdb_id}`;
+        return followed.has(key) || talkedByFriends.has(key);
+      })
+    : genNews;
+
   /* **ردودُ نشراتنا** (D-236): نداءٌ واحد لمفاتيح الخطّ كلِّها، **وسقوطُه
      صامتٌ قبل الهجرة ٧٣** فتُخفى الأرقام ويبقى الخطُّ مقروءاً. */
   const newsReplies = genNews.length
@@ -590,7 +624,9 @@ export default async function PeoplePage({
     <section className={READING}>
             <ActivityFeed
               comments={localized}
-              news={genNews}
+              /* 🆕 **المرشَّحةُ لا الخام** (D-360) — والخبرُ الذي لا يخصّك
+                 لا يُرسَم، ولا يُعدّ في فراغ الخطّ. */
+              news={newsForMe}
               meId={user.id}
               followed={followed}
               postLikes={postLikes}
