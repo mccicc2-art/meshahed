@@ -11,6 +11,7 @@ import {
   getCuratedListIds,
   getListCardStats,
   getCuratedCounts,
+  getMyListReviews,
   getFeaturedListIds,
 } from "@/lib/data";
 import { getLibState } from "@/lib/libState";
@@ -22,6 +23,7 @@ import { Avatar } from "@/components/Avatar";
 import { PublicListsRail } from "@/components/PublicListsRail";
 import { ListsFilters } from "@/components/ListsFilters";
 import { ListSaveHeart } from "@/components/ListSaveHeart";
+import { ListRateStar } from "@/components/ListRateStar";
 import { PosterRail, RailItem } from "@/components/PosterRail";
 import { FRANCHISES, franchiseName, universeName, type Universe } from "@/lib/universes";
 import { awardBySlug, awardBody, awardWins } from "@/lib/awards";
@@ -449,9 +451,11 @@ async function ListsDiscovery({
      لاثنتين وأربعين بطاقة** — الأرقامُ والعدد — **لا استعلامٌ لكلِّ
      بطاقة** (D-205). **وغيابُ الدالّة يعيد رقمَ القاموس** فلا تسقط
      بطاقةٌ قبل تشغيل الهجرة ١٠٧ (D-028). */
-  const [curatedStats, curatedCounts] = await Promise.all([
+  const [curatedStats, curatedCounts, curatedMine] = await Promise.all([
     getListCardStats([...curated.values()]),
     getCuratedCounts([...curated.values()]),
+    /* 🆕 رأيي في قوائم لوبز — لملء ورقة النجمة بلا نداءٍ عند الفتح (D-352) */
+    getMyListReviews([...curated.values()]),
   ]);
 
   const loc = locale === "en" ? ("en" as const) : ("ar" as const);
@@ -517,6 +521,8 @@ async function ListsDiscovery({
                       saved={savedIds.has(curated.get(u.slug) ?? "")}
                       stats={curatedStats.get(curated.get(u.slug) ?? "") ?? null}
                       items={curatedCounts.get(curated.get(u.slug) ?? "")}
+                      mine={curatedMine.get(curated.get(u.slug) ?? "") ?? null}
+                      canReview={!!me}
                       className="w-full"
                     />
                   </Link>
@@ -613,6 +619,8 @@ async function CuratedCard({
   t,
   listId,
   saved,
+  mine,
+  canReview,
   stats,
   items,
   className = "w-full",
@@ -631,6 +639,10 @@ async function CuratedCard({
    */
   listId?: string;
   saved?: boolean;
+  /** 🆕 رأيي القائم في هذه القائمة (D-352) — يملأ ورقةَ النجمة */
+  mine?: { rating: number; body: string | null; hasSpoiler: boolean } | null;
+  /** **قوائمُ لوبز عامّةٌ وليست لأحدٍ منّا** — فالشرطُ الباقي: أن يكون لك حساب */
+  canReview?: boolean;
   /** 🆕 أرقامُ قائمة لوبز المولَّدة (D-335) — غيابُها يعني قائمةً بلا
       رقمٍ بعد، **والصفرُ لا يُطبع** (D-219) */
   stats?: { saves: number; rating: number | null } | null;
@@ -700,6 +712,17 @@ async function CuratedCard({
             حقيقيةً في D-328، **فبقي الفعلُ الأقدمُ يعمل بلا سببه.**
             **وثمنُه كان الأرقامَ كلَّها**: من ضغط البوك‑مارك لم يُكتب له
             صفُّ حفظ، **فبقي ♥ صفراً و★ مخفيّةً** على أغنى بطاقاتنا. */}
+        {/* 🆕 **النجمةُ يسارَ القلب وظاهرةٌ دائماً** (D-352) — نفسُ
+            بطاقة العضو حرفاً، **فلا إيقاعان لبطاقتين متجاورتين.** */}
+        {listId && canReview && (
+          <ListRateStar
+            listId={listId}
+            listName={universeName(u, loc)}
+            rating={stats?.rating ?? null}
+            mine={mine ?? null}
+            locale={locale}
+          />
+        )}
         {listId && <ListSaveHeart listId={listId} saved={saved} locale={locale} />}
       </span>
 
@@ -718,7 +741,7 @@ async function CuratedCard({
           className="shrink-0"
         />
         <span className="shrink-0">{LOOPZ_PERSON.nickname}</span>
-        {(stats?.rating ?? null) !== null && (
+        {!canReview && (stats?.rating ?? null) !== null && (
           <span
             className="flex items-center gap-0.5 shrink-0 font-bold text-foreground tabular-nums"
             dir="ltr"
