@@ -10,6 +10,8 @@ import {
   getListReviewStats,
   getMyListReview,
   getCuratedSlug,
+  getAmAdmin,
+  getFeaturedListIds,
 } from "@/lib/data";
 import { curatedName } from "@/lib/universes";
 import { ListReviews } from "@/components/ListReviews";
@@ -130,7 +132,7 @@ export default async function ListPage({ params }: { params: Promise<{ id: strin
   const isOwner = data.list.user_id === user.id;
   // صاحب القائمة يُقرأ من الباب العامّ نفسه — لا استعلام ثانٍ على الملفات؛
   // وحالة الحفظ لغير المالك وحده (D-068)
-  const [pub, saved, reviews, reviewStats, myReview] = await Promise.all([
+  const [pub, saved, reviews, reviewStats, myReview, amAdmin, featuredIds] = await Promise.all([
     isOwner ? Promise.resolve(null) : getPublicList(id),
     isOwner ? Promise.resolve(false) : isListSaved(id),
     /* **ثلاثةُ نداءاتٍ متوازية** (D-327): كلامُ الناس ومتوسّطُهم ورأيي —
@@ -138,6 +140,11 @@ export default async function ListPage({ params }: { params: Promise<{ id: strin
     data.list.is_public ? getListReviews(id) : Promise.resolve([]),
     data.list.is_public ? getListReviewStats(id) : Promise.resolve({ avg: null, count: 0 }),
     data.list.is_public && !isOwner ? getMyListReview(id) : Promise.resolve(null),
+    /* 🆕 **دبّوسُ «يرشّحها لوبز»** (D-349) — **للرسم لا للحراسة** (D-011):
+       الحارسُ `am_admin()` في جسم `set_featured_list`. ولا يُقرأ التثبيتُ
+       إلا لقائمةٍ عامّة. */
+    getAmAdmin().catch(() => false),
+    data.list.is_public ? getFeaturedListIds().catch(() => [] as string[]) : Promise.resolve([]),
   ]);
 
   /* العناوين مخزّنة بلغة يوم الإضافة — تُترجَم عند العرض وحده (D-048)،
@@ -161,6 +168,7 @@ export default async function ListPage({ params }: { params: Promise<{ id: strin
         items={items}
         ratings={data.ratings}
         isOwner={isOwner}
+        featured={amAdmin && data.list.is_public ? featuredIds.includes(id) : undefined}
         owner={
           pub
             ? {
