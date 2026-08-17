@@ -421,6 +421,25 @@ export async function setGlobalRoomPin(input: {
   if (error) fail(error);
 }
 
+/**
+ * 🆕 **تثبيتُ قائمةٍ في صفّ «قائمةُ الأسبوع»** (D-349) — فعلٌ إداريّ.
+ *
+ * **والحارسُ في جسم دالّة القاعدة لا هنا** (D-011/D-193/D-314):
+ * `set_featured_list` ترفع `forbidden` لغير `am_admin()`، **فزرٌّ يُخفى
+ * في الواجهة ليس حارساً** — وهذا نفسُ عقد `setGlobalRoomPin` حرفاً.
+ */
+export async function setFeaturedList(input: { listId: string; on: boolean }) {
+  const listId = uuid(input.listId);
+  const { supabase } = await requireUser("pin", 30, 60_000);
+  const { error } = await supabase.rpc("set_featured_list", {
+    p_list: listId,
+    p_on: input.on === true,
+  });
+  if (error) fail(error);
+  /* الصفُّ يُقرأ في تبويب القوائم — والتثبيتُ يُرى في أوّل فتحةٍ له */
+  revalidatePath("/news");
+}
+
 export async function follow(input: {
   tmdbId: number;
   mediaType: MediaType;

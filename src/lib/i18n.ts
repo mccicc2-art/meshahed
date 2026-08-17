@@ -1385,6 +1385,15 @@ const ar = {
      تتابعهم هذا الأسبوع — **العملُ لا الجملة**: خطُّ النشاط يحكي، وهذا
      الصفُّ يعرض ما يُشاهَد الآن ليُفتَح لا ليُقرأ (D-224: معنيان فسطحان). */
   railFriendsNow: "أعمالُ أصدقائك الآن",
+  /* 🆕 **صفُّ قائمة الأسبوع** (D-349): **تحريريٌّ لا حسابيّ** — الاختيارُ
+     يحمل معرفةً سابقةً للبيانات (فيلمٌ يُعرض بعد شهرٍ يجعل قائمتَه مهمّةً
+     قبل أن يحفظها أحد). **والاسمُ يقول من اختار**: «رائجة» تَعِد عدّاً،
+     و«يرشّحها لوبز» تقول الحقيقة (D-219). */
+  listsFeatured: "يرشّحها لوبز",
+  listFeature: "ثبّتها في «يرشّحها لوبز»",
+  listUnfeature: "أزِل التثبيت",
+  listFeaturedToast: "ثُبّتت في «يرشّحها لوبز» ✓",
+  listUnfeaturedToast: "أُزيل تثبيتُها",
   /* 🆕 **شارةُ «جديد» على صفٍّ تغيّر**: تظهر حين تبدّلت بطاقاتُ الصفّ منذ
      آخر مرّةٍ رأيتَه فيها — **ولا تظهر في أوّل زيارة** (كلُّ شيءٍ جديدٌ
      يومَها فالشارةُ لا تخبر بشيء). */
@@ -2592,6 +2601,11 @@ const en: Dict = {
   libraryRevokedToast: "Grant revoked",
   libraryRevokeButton: "Revoke",
   railFriendsNow: "What your friends are watching",
+  listsFeatured: "Picked by Loopz",
+  listFeature: "Feature in “Picked by Loopz”",
+  listUnfeature: "Remove from featured",
+  listFeaturedToast: "Featured ✓",
+  listUnfeaturedToast: "No longer featured",
   railNew: "New",
   railNewAria: "This row changed since your last visit",
   listSaveBtn: "Add to my lists",

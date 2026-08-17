@@ -3362,42 +3362,6 @@ export interface ListItem {
   sort_order: number | null;
 }
 
-/**
- * **أسماءُ قوائمي — لعلامةِ «محفوظة» على بطاقات المجموعات** (D-206، طلب
- * أحمد: «الي أحفظها عندي تسير الأيقونة باللون الأصفر معبّأة بالكامل، وإذا
- * ضغطت عليها ثاني مرّة تنحذف من قائمتي»).
- *
- * **والأسماءُ هي المفتاح لأن المحرّك يطابق بالاسم أصلاً:**
- * `upsertListWithItems` يبحث عن «قائمةٍ بنفس الاسم عندي» ويُضيف إليها بدل
- * أن يكرّرها (D-052). **فالعلامةُ تسأل نفسَ السؤال الذي يسأله الحفظ** —
- * ولو سألت غيره لاختلفت العلامةُ عن الفعل.
- *
- * ⚠️ **وحدُّه يُقال:** الاسمُ يُكتب بلغة الواجهة وقتَ الحفظ (D-130)، فمن
- * حفظ «عالم مارفل» ثم بدّل إلى الإنجليزية لا يطابق «Marvel Cinematic
- * Universe». **فالبطاقة تسأل عن الاسمين معاً** — وهو ما يجعل هذه الدالّة
- * تُرجع المجموعة كاملةً لا تجيب عن اسمٍ واحد. **والحلُّ النهائيّ عمودُ
- * `source_slug` على `user_lists`** — هجرةٌ، ودَينٌ مُعلَنٌ لا شيفرةٌ
- * مؤجَّلة.
- */
-export const getMyListNames = cache(async (): Promise<Set<string>> => {
-  const out = new Set<string>();
-  try {
-    const supabase = await createClient();
-    const user = await getUser();
-    if (!user) return out;
-    const { data } = await supabase
-      .from("user_lists")
-      .select("name")
-      .eq("user_id", user.id)
-      .limit(300);
-    for (const r of (data ?? []) as { name: string | null }[]) {
-      if (r.name) out.add(r.name.trim());
-    }
-  } catch {
-    /* تعذّرت القراءة؟ مجموعةٌ فارغة — العلامةُ تغيب ولا تكذب */
-  }
-  return out;
-});
 
 /** قوائمي مع عدد عناصر كل واحدة — استعلام واحد لا استعلام لكل قائمة */
 export async function getMyLists(): Promise<UserList[]> {
@@ -4072,6 +4036,24 @@ export async function getListCardsByIds(ids: string[]): Promise<PublicListCard[]
  * **وما حفظتَه صار عندك** — بابُه «قوائمي» في المكتبة. **واقتراحُ ما
  * تملكه ليس اكتشافاً** (نفسُ حجّة إخراج قوائمك من `for_you_lists`).
  */
+/**
+ * 🆕 **قوائمُ الأسبوع المثبَّتة تحريريّاً** (D-349، الهجرة ١٠٨).
+ *
+ * **معرّفاتٌ ورتبةٌ فقط** — البطاقاتُ تُبنى بـ`getListCardsByIds` كأخواتها
+ * (D-068: بطاقةٌ واحدةٌ لكلِّ الأبواب)، **فلا محوّلَ ثانٍ ولا شكلَ ثانٍ.**
+ * **والغيابُ يعني «لا صفَّ»** لا شاشةَ خطأ (D-181).
+ */
+export async function getFeaturedListIds(): Promise<string[]> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("featured_list_ids");
+    if (error || !data) return [];
+    return (data as { list_id: string }[]).map((r) => String(r.list_id));
+  } catch {
+    return [];
+  }
+}
+
 export async function getMySavedListIds(): Promise<Set<string>> {
   try {
     const supabase = await createClient();
