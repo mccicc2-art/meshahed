@@ -42,10 +42,18 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
   const { id } = await params;
-  const pub = await getPublicList(id);
+  const [pub, slug, { locale }] = await Promise.all([
+    getPublicList(id),
+    getCuratedSlug(id),
+    getT(),
+  ]);
   if (!pub) return {};
 
-  const title = pub.name;
+  /* 🔧 **وبطاقةُ المشاركة تُعرَّب أيضاً** (دَينٌ مُعلَنٌ من D-343): كانت
+     الصفحةُ تُترجم اسمَ قائمة لوبز **وبطاقتُها في واتساب لا** — فيصل
+     الرابطُ بعنوانٍ عربيٍّ إلى قارئٍ إنجليزيّ. **ونصفُ ترجمةٍ يُقرأ عطلاً
+     لا تدرّجاً** (D-155). */
+  const title = curatedName(slug, pub.name, locale === "en" ? "en" : "ar");
   const description =
     pub.subtitle ??
     (pub.items.length
