@@ -16,6 +16,10 @@ export const HOME_SECTIONS = [
   "ratings",
   "lists",
   "trending",
+  /* 🆕 **«أعمالُ أصدقائك الآن»** (البند ٧) — الدليلُ الاجتماعيُّ صفّاً في
+     الرئيسية لا سطوراً في `/people` وحدها. **وفي الافتراضي** لأنه يُخفي
+     نفسَه لمن لا يتابع أحداً (D-181) فلا يكلّف من لا دائرةَ له شيئاً. */
+  "friends",
 ] as const;
 export type HomeSection = (typeof HOME_SECTIONS)[number];
 
@@ -60,7 +64,7 @@ export const DEFAULT_HOME_PREFS: HomePrefs = {
   social: true,
   // «مسلسلاتي» و«أفلامي» انتقلا إلى المكتبة، فليسا في الافتراضي —
   // لكنهما باقيان في قائمة الأقسام لمن يحبّ إرجاعهما من التخصيص
-  order: ["continue", "week", "towatch", "upcoming", "trending"],
+  order: ["continue", "week", "towatch", "friends", "upcoming", "trending"],
   statsPick: ["shows", "movies", "towatch", "time"],
   cards: "full",
 };
