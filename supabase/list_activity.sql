@@ -89,7 +89,7 @@ stable
 security definer
 set search_path = public
 as $$
-  with rows as (
+  with feed as (
     -- كلامُ الناس على الأعمال — كما هو منذ الهجرة ٢٧، بذيلٍ فارغ
     select
       r.user_id as id,
@@ -129,7 +129,7 @@ as $$
     coalesce(p.hide_name, false),
     x.tmdb_id, x.media_type, x.rating, x.review, x.title, x.poster_path,
     x.updated_at, x.list_id, x.list_name, x.list_slug
-  from rows x
+  from feed x
   join public.profiles p on p.id = x.id
   order by x.updated_at desc
   limit 60;
