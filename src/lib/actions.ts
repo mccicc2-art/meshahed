@@ -2585,6 +2585,69 @@ export async function saveList(listId: string, save: boolean) {
   revalidatePath(`/lists/${listId}`);
 }
 
+/**
+ * 🆕 **حفظُ رأيك في قائمةِ غيرك** (D-327، الهجرة ١٠٣).
+ *
+ * **صفٌّ واحدٌ لكلِّ (قارئ، قائمة)** — والمفتاحُ المركَّب يمنع الثاني،
+ * **فالتعديلُ `upsert` لا صفٌّ جديد** (D-263). **والحرّاسُ في القاعدة**:
+ * قائمةٌ معلنةٌ وليست لي شرطٌ في `with check` — **وحدٌّ في الواجهة وحدَها
+ * ليس حدّاً** (D-302).
+ */
+export async function saveListReview(input: {
+  listId: string;
+  rating: number;
+  body?: string | null;
+  hasSpoiler?: boolean;
+}) {
+  const listId = uuid(input.listId);
+  const rating = Math.max(1, Math.min(10, Math.round(Number(input.rating) || 0)));
+  const body = (input.body ?? "").trim().slice(0, 2000) || null;
+  const { supabase, user } = await requireUser("review", 20, 60_000);
+
+  const { error } = await supabase.from("list_reviews").upsert(
+    {
+      user_id: user.id,
+      list_id: listId,
+      rating,
+      body,
+      has_spoiler: !!input.hasSpoiler,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "user_id,list_id" },
+  );
+  if (error) fail(error);
+  revalidatePath(`/lists/${listId}`);
+}
+
+/** سحبُ رأيي — **يحذف صفّي وحدَه**، ولا يمسّ تقييمَ غيري (D-238) */
+export async function deleteListReview(listId: string) {
+  listId = uuid(listId);
+  const { supabase, user } = await requireUser("review", 20, 60_000);
+  const { error } = await supabase
+    .from("list_reviews")
+    .delete()
+    .match({ user_id: user.id, list_id: listId });
+  if (error) fail(error);
+  revalidatePath(`/lists/${listId}`);
+}
+
+/**
+ * **بابُ البلاغ** — **سطحٌ عامٌّ جديدٌ بلا بلاغ هو كيف تُولد المشكلة**
+ * (D-193). وصفةُ `reportReview` حرفاً: بلاغٌ واحدٌ لكل شخصٍ (المفتاحُ
+ * المركَّب)، **والإخفاءُ عند العاشر يقع في مُشغِّلٍ في القاعدة لا هنا.**
+ */
+export async function reportListReview(input: { listId: string; reviewUserId: string }) {
+  const listId = uuid(input.listId);
+  const reviewUserId = uuid(input.reviewUserId);
+  const { supabase, user } = await requireUser("report", 10, 60_000);
+  if (user.id === reviewUserId) return;
+  const { error } = await supabase.from("list_review_reports").upsert(
+    { review_user_id: reviewUserId, list_id: listId, reporter_id: user.id },
+    { onConflict: "review_user_id,list_id,reporter_id" },
+  );
+  if (error) fail(error);
+}
+
 /** مجتمعاتي — غلاف فعلٍ لورقة «انشرها في مجتمعي» (rpc القائمة نفسها) */
 export async function myCommunitiesList(): Promise<CommunityLite[]> {
   const { supabase } = await requireUser();

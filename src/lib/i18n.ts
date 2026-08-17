@@ -867,6 +867,17 @@ const ar = {
   /* **ومفتاحُ الكاتب فعلٌ لا تحذير** (D-271): «فيها حرق» تصف رسالتَه،
    **و«تحذير: حرق» تخاطب قارئاً غيرَ موجودٍ بعد.** */
   spoilerMark: "فيها حرق",
+  /* 🆕 D-327 — تقييمُ القوائم ومراجعتُها */
+  listReviewsTitle: "التقييمات",
+  listReviewsEmpty: "لا آراء بعد — كن أوّل من يكتب.",
+  listReviewMine: "رأيك",
+  listReviewSave: "احفظ",
+  listReviewDelete: "احذف رأيي",
+  listReviewOwn: "قائمتك — تقييمُ نفسك لا يُحسب.",
+  listReviewCount: (n: string) => `${n} رأي`,
+  listReviewReport: "أبلغ",
+  listReviewReported: "وصلنا بلاغُك",
+  listReviewSpoilerNote: "حدَّده كاتبُه",
   /* ⚠️ **وسببُ الحجب يتغيّر بمن حجب**: نشرتُنا تحجب وصفَ الحلقة فنعرف
      ما فيها، **وكلامُ العضو لا نعرف ما فيه** — **فالسببُ أنه هو قال**
      (D-216: الجملةُ تتبع ما نعلمه). */
@@ -2153,6 +2164,16 @@ const en: Dict = {
   spoilerShow: "Show spoiler",
   spoilerHide: "Hide spoiler",
   spoilerMark: "Contains a spoiler",
+  listReviewsTitle: "Ratings",
+  listReviewsEmpty: "No thoughts yet — be the first.",
+  listReviewMine: "Your rating",
+  listReviewSave: "Save",
+  listReviewDelete: "Delete mine",
+  listReviewOwn: "Your list — rating yourself does not count.",
+  listReviewCount: (n: string) => `${n} ratings`,
+  listReviewReport: "Report",
+  listReviewReported: "Report received",
+  listReviewSpoilerNote: "marked by its author",
   postViewsHint: "post views",
   undoNotWatched: "Not watched",
   // postPageTitle deleted with the text top bar it labelled (D-299)

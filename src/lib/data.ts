@@ -3647,6 +3647,100 @@ export async function getPublicListsFeed(limit = 15): Promise<PublicListCard[]> 
 }
 
 /**
+ * 🆕 **مراجعاتُ قائمةٍ وتقييمُها** (D-327، الهجرة ١٠٣ — طلبُ أحمد).
+ *
+ * **ثلاثةُ قرّاءٍ لا واحد، وكلٌّ لسؤاله**: كلامُ الناس (definer، محروسٌ
+ * بـ`can_view_profile` وبعَلَم الإخفاء) · متوسّطُهم (رقمان لا صفوف) ·
+ * ورأيي أنا (سياسةُ «صفوفي أنا» تكفيه فلا دالّة). **وأرخصُ دالّةٍ هي
+ * التي لا تُكتب** (D-301).
+ */
+export interface ListReviewRow {
+  userId: string;
+  nickname: string | null;
+  username: string | null;
+  avatarUrl: string | null;
+  hideName: boolean;
+  rating: number;
+  body: string | null;
+  updatedAt: string;
+  hasSpoiler: boolean;
+}
+
+export async function getListReviews(listId: string, limit = 50): Promise<ListReviewRow[]> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("list_reviews_of", {
+      p_list: listId,
+      p_limit: limit,
+    });
+    if (error || !data) return [];
+    return (data as {
+      id: string;
+      nickname: string | null;
+      username: string | null;
+      avatar_url: string | null;
+      hide_name: boolean;
+      rating: number;
+      body: string | null;
+      updated_at: string;
+      has_spoiler: boolean;
+    }[]).map((r) => ({
+      userId: String(r.id),
+      nickname: r.nickname,
+      username: r.username,
+      avatarUrl: r.avatar_url,
+      hideName: Boolean(r.hide_name),
+      rating: Number(r.rating) || 0,
+      body: r.body,
+      updatedAt: String(r.updated_at),
+      hasSpoiler: Boolean(r.has_spoiler),
+    }));
+  } catch {
+    /* **سقوطٌ صامتٌ قبل الهجرة ١٠٣** — والقسمُ لا يُرسم بلا صفوف */
+    return [];
+  }
+}
+
+export async function getListReviewStats(
+  listId: string,
+): Promise<{ avg: number | null; count: number }> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("list_review_stats", { p_list: listId });
+    const row = (data as { avg_rating: number | null; reviews: number }[] | null)?.[0];
+    if (error || !row) return { avg: null, count: 0 };
+    return { avg: row.avg_rating === null ? null : Number(row.avg_rating), count: Number(row.reviews) || 0 };
+  } catch {
+    return { avg: null, count: 0 };
+  }
+}
+
+/** رأيي أنا في قائمةٍ — لتعبئة الصندوق بما كتبتُه سابقاً (D-047) */
+export async function getMyListReview(
+  listId: string,
+): Promise<{ rating: number; body: string | null; hasSpoiler: boolean } | null> {
+  try {
+    const supabase = await createClient();
+    const user = await getUser();
+    if (!user) return null;
+    const { data } = await supabase
+      .from("list_reviews")
+      .select("rating, body, has_spoiler")
+      .eq("user_id", user.id)
+      .eq("list_id", listId)
+      .maybeSingle();
+    if (!data) return null;
+    return {
+      rating: Number(data.rating) || 0,
+      body: (data.body as string | null) ?? null,
+      hasSpoiler: Boolean(data.has_spoiler),
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
  * 🆕 **بطاقاتُ قوائمَ بمعرّفاتها، بترتيبها كما جاءت** (D-326).
  *
  * **ولماذا وُلدت:** رفّا «تناسبك» و«الأكثر حفظاً» يأتيان من دالّتَي
