@@ -28,7 +28,7 @@ import {
   getPeopleFeatured,
   getPeopleLeaderboard,
   getPeopleTopReviews,
-  getTopSavedLists,
+  getTopSavedListCards,
 } from "@/lib/data";
 import { getT, getTabPrefs, getFeedStrangers, getFeedSort, getTalkFollowedOnly, getTranslateEnabled } from "@/lib/locale";
 import { WorksTalk } from "@/components/WorksTalk";
@@ -371,7 +371,7 @@ export default async function PeoplePage({
           /* 🆕 **أكثرُ القوائم حفظاً** (D-289، الهجرة ٩٠): **آخر ٧ أيام
              وأعلى ٣** كما طلب أحمد بالحرف — **وعشرةٌ في «عرض الكل»**
              كبقيّة الأقسام. */
-          need("lists") ? getTopSavedLists(7, wantAll ? 10 : 3) : [],
+          need("lists") ? getTopSavedListCards(7, wantAll ? 10 : 3) : [],
         ])
       : null;
   /* **ومن أتابعهم — نداءٌ واحدٌ مخزَّنٌ للتبويب** (D-275): الأقسامُ تعرض
@@ -721,7 +721,7 @@ export default async function PeoplePage({
                   />
                 )}
                 {allView === "reviews" && <TopReviews rows={topReviews} locale={locale} />}
-                {allView === "lists" && <TopSavedLists rows={savedLists} locale={locale} />}
+                {allView === "lists" && <TopSavedLists cards={savedLists} locale={locale} />}
                 {allView === "rising" && (
                   <PeopleLeaderboard
                     rows={board}
@@ -786,7 +786,7 @@ export default async function PeoplePage({
                     الثلاثةُ فوقه أشخاصٌ يُرتَّبون، **وهذا شيءٌ صنعه
                     شخص** — فيفصل بين ترتيبين للناس بدل أن يذيّلهما. */}
                 <TopSavedLists
-                  rows={savedLists}
+                  cards={savedLists}
                   locale={locale}
                   seeAllHref="/people?tab=people&all=lists"
                 />
