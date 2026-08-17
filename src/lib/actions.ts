@@ -2184,7 +2184,7 @@ export async function togglePostLike(postId: string, liked: boolean) {
  * **و`upsert` بمفتاح الصفّ**: تبديلُ الرأي تعديلٌ في مكانه،
  * **وضغطتان على شبكةٍ بطيئة لا ترفعان خطأَ مفتاحٍ مكرَّر** (D-301).
  */
-export async function votePost(postId: string, vote: -1 | 0 | 1) {
+export async function votePost(postId: string, vote: -1 | 0 | 1, path?: string) {
   postId = uuid(postId);
   const { supabase, user } = await requireUser("vote", 60, 60_000);
   const key = { post_id: postId, user_id: user.id };
@@ -2195,6 +2195,27 @@ export async function votePost(postId: string, vote: -1 | 0 | 1) {
           .from("title_post_votes")
           .upsert({ ...key, vote }, { onConflict: "post_id,user_id" });
   if (error) fail(error);
+
+  /* 🔴 🆕 **والصوتُ يُبطل نسخةَ الصفحة** (D-361، بلاغُ أحمد: «عطيته -١ لكن
+     ماينزل، وإذا طلعت ورجعت أحصله ٠ — ما انحفظ الي سويته»).
+
+     **والقياسُ قال إن الصوتَ محفوظ**: صفٌّ في `title_post_votes` بـ`-1`،
+     **و`-1` تظهر على تحميلٍ كاملٍ طازجٍ لصفحة الغرفة.** **والذي رآه أحمد
+     صفراً هو ذاكرةُ موجّه Next**: الرجوعُ يستعيد نسخةَ العميل المحفوظة،
+     **فيقرأ صاحبُ الفعل أن فعلَه ضاع** — **ورقمٌ يُقرأ خطأً أسوأُ من لا
+     رقم** (D-219)، **ومن يقول «لم يُحفظ» يُصدَّق ثم يُقاس** (D-152).
+
+     ⚖️ **ونقضٌ مسجَّلٌ لبندِ «لا `revalidatePath`» في D-305 — بحجّةٍ
+     قِيست لا برأي.** **وثمنُه مقصودٌ لا محتمَل**: الترتيبُ يتحرّك بعد
+     التصويت، **وهو نصُّ طلبه** («ماينزل») — **وعقدُ «الترتيبُ في الفتحة
+     التالية» يسقط حين لا تأتي فتحةٌ تالية أصلاً** لأن الصفحة تُستعاد من
+     الذاكرة.
+
+     ⚠️ **والمسارُ يصل من العميل فيُحرَس بشكله** (D-155/D-298: ما يصل من
+     عميلٍ يُحرَس، لا يُصدَّق): مسارٌ داخليٌّ يبدأ بشرطةٍ مائلة، بلا
+     بروتوكولٍ ولا مضيف، وبطولٍ محدود — **وما لا يطابق يسقط صامتاً ولا
+     يُبطل شيئاً** (D-179). */
+  if (path && /^\/[\w\-/[\]%.]{0,180}$/.test(path)) revalidatePath(path);
 }
 
 export async function toggleReviewLike(
