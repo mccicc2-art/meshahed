@@ -828,7 +828,19 @@ export async function getWatchedOf(
 
 /** رأيٌ في خطّ المجتمع: صاحبه وعمله ونصّه وإعجاباته */
 /** نوع حدث الخطّ — الأولوية في SQL، والصياغة في `feedLine` (D-123) */
-export type FeedKind = "rate" | "movie" | "episodes" | "add";
+/**
+ * 🆕 **`list_review` خامسُها — الخيطُ الثالث** (الهجرة ١٠٦).
+ *
+ * **كلامُ الناس على القوائم كان يُكتب ولا يُرى إلا من فتح القائمة**
+ * (D-327): لا في خطّ النشاط ولا في جرس صاحبها — **فأغلى ما في السطح
+ * الجديد كان أخفاه**، وهو حرفاً عطلُ «أرخصُ ميزةٍ هي التي بُنيت ولم
+ * تُوصَل» (D-262).
+ *
+ * ⚠️ **والشيفرةُ تسبق هجرتَها** (D-028): قبل ١٠٦ لا يعود صفٌّ بهذا
+ * النوع أصلاً، **والخطرُ المعاكس** — صفُّ قائمةٍ يصل إلى واجهةٍ لا تعرفه
+ * فيُرسم برابط `/movie/null` — **هو ما يُحرس منه هنا وفي الرسم.**
+ */
+export type FeedKind = "rate" | "movie" | "episodes" | "add" | "list_review";
 
 export interface FeedItem {
   person: PersonLite;
@@ -851,6 +863,12 @@ export interface FeedItem {
   likedByMe: boolean;
   /** 🆕 **أعلن كاتبُ الرأي أن فيه حرقاً** (D-315، الهجرة ١٠٠) */
   hasSpoiler: boolean;
+  /* 🆕 **صفُّ قائمةٍ لا صفُّ عمل** (الهجرة ١٠٦): وجهتُه `/lists/<id>`
+     **وليس له `tmdb_id` أصلاً** — فحضورُ `listId` هو ما يبدّل الوجهة
+     والعنوان، **وغيابُه يترك كلَّ صفٍّ قائمٍ كما هو** (D-063). */
+  listId?: string | null;
+  /** slug قائمةِ لوبز إن كانت منسّقة — الاسمُ يُترجَم عند العرض (D-328) */
+  listSlug?: string | null;
 }
 
 /**
@@ -919,18 +937,27 @@ export async function getCommunityFeed(
       at?: string;
       /* 🆕 D-315 — يغيب قبل الهجرة ١٠٠ فيُقرأ `false` */
       has_spoiler?: boolean;
+      /* 🆕 **ذيلُ الهجرة ١٠٦** — يغيب قبلها فلا يتغيّر شيء (D-028) */
+      list_id?: string | null;
+      list_name?: string | null;
+      list_slug?: string | null;
     };
     // صفٌّ بلا عنوان لا يُرسم — الملصق والعنوان يأتيان من `follows`، فإن
     // غاب الصفّ هناك (استيرادٌ ناقص مثلاً) لم يبقَ ما يُعرض
-    const rows = (actRows as ActivityRow[]).filter((r) => r.title || r.review);
+    const rows = (actRows as ActivityRow[]).filter((r) => r.title || r.review || r.list_id);
     if (!rows.length) return [];
 
     /* الإعجابات في ندائين متوازيين — أعدادٌ و«هل أعجبتُ به» بلا أي
        معرّف مُعجِب. صفُّ التقييم من `review_likes` (رأيٌ واحد برقمٍ واحد
        أينما ظهر)، وحدثُ المشاهدة من `activity_likes` بمفتاحٍ فيه **يوم**
        — لأن صفّ الخطّ نفسه مفتاحُه اليوم منذ D-123 (D-124). */
-    const rated = rows.filter((r) => (r.kind ?? "rate") === "rate");
-    const acted = rows.filter((r) => (r.kind ?? "rate") !== "rate");
+    /* ⚠️ **وصفُّ القائمة خارج البابين** (الهجرة ١٠٦): مفتاحُ الإعجاب
+       `(شخص، عمل، وسيط)` **ولا عملَ في صفِّ قائمة** — فسؤالُه يعني
+       نداءً بمعرّفٍ صفريّ يعود فارغاً دائماً. **ولا إعجابَ على مراجعة
+       قائمةٍ اليوم** (لا جدولَ له)، **وزرٌّ لا يكتب شيئاً أسوأ من
+       غيابه** (نصُّ D-123 حرفاً). */
+    const rated = rows.filter((r) => !r.list_id && (r.kind ?? "rate") === "rate");
+    const acted = rows.filter((r) => !r.list_id && (r.kind ?? "rate") !== "rate");
     const likeKey = (u: string, t2: number, m: string, d = "") => `${u}|${t2}|${m}|${d}`;
     const counts = new Map<string, number>();
     const mine = new Set<string>();
@@ -975,7 +1002,10 @@ export async function getCommunityFeed(
     }
 
     return rows.map((r) => {
-      const kind: FeedKind = r.kind ?? "rate";
+      /* **النوعُ من الصفّ لا من العمود وحدَه**: صفُّ القائمة يأتي من
+         `community_activity` بلا عمود `kind` (شكلُها القديم يُطبَّع إلى
+         `rate` هنا منذ D-123)، **فحضورُ `list_id` هو ما يسمّيه.** */
+      const kind: FeedKind = r.list_id ? "list_review" : (r.kind ?? "rate");
       const when = r.at ?? r.updated_at ?? new Date(0).toISOString();
       const day = r.day ?? when.slice(0, 10);
       const k = likeKey(r.id, r.tmdb_id, r.media_type, kind === "rate" ? "" : day);
@@ -991,9 +1021,11 @@ export async function getCommunityFeed(
         kind,
         tmdb_id: r.tmdb_id,
         media_type: r.media_type,
-        rating: kind === "rate" ? r.rating ?? null : null,
+        /* **وتقييمُ القائمة رقمٌ كتقييم العمل** — سلّمٌ واحدٌ من عشرة
+           (D-002/D-327)، فيُرسم في موضعه نفسِه بلا فرعٍ في الواجهة. */
+        rating: kind === "rate" || kind === "list_review" ? r.rating ?? null : null,
         review: review || null,
-        title: r.title,
+        title: r.list_id ? r.list_name ?? r.title : r.title,
         poster_path: r.poster_path,
         updated_at: when,
         day,
@@ -1003,8 +1035,78 @@ export async function getCommunityFeed(
         likedByMe: mine.has(k),
         /* 🆕 D-315 — إعلانُ الكاتب يسافر مع الصفّ إلى الخطّ */
         hasSpoiler: Boolean(r.has_spoiler),
+        /* 🆕 الهجرة ١٠٦ — الوجهةُ والاسمُ المترجَم يسافران مع الصفّ */
+        listId: r.list_id ?? null,
+        listSlug: r.list_slug ?? null,
       };
     });
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * 🆕 **«أعمالُ أصدقائك الآن» — صفُّ ملصقاتٍ لا خطُّ كلام** (البند ٧).
+ *
+ * ================= ولماذا صفٌّ وقد وُجد الخطّ =================
+ *
+ * **خطُّ النشاط يحكي، وهذا الصفُّ يعرض** (D-224: معنيان فسطحان). الخطُّ
+ * في `/people` سطورٌ تُقرأ — **وسؤالُ الرئيسية «ماذا أشاهد؟» لا «ماذا
+ * قالوا؟»**، **وجوابُه ملصقٌ يُفتح بضغطة.** **والدليلُ الاجتماعيُّ أقوى
+ * مرشّحٍ نملكه** وكان محبوساً في صفحةٍ واحدة (D-262: أرخصُ ميزةٍ هي التي
+ * بُنيت ولم تُوصَل).
+ *
+ * ================= وثمنُه نداءُ الخطّ نفسِه =================
+ *
+ * `following_activity_v2` **مجمَّعةٌ أصلاً صفّاً لكلِّ (شخص + عمل + يوم)**
+ * (D-123) — **فلا استعلامَ جديدَ ولا جدول**، **ولا نداءاتِ إعجاباتٍ**:
+ * الصفُّ لا يعرض رقماً فلا يسأل عنه (D-205).
+ *
+ * ⚠️ **والعملُ الواحد مرّةً واحدة** ولو تحرّك عند ثلاثة — **صفٌّ فيه
+ * البطاقةُ نفسُها ثلاث مرّات يُقرأ عطلاً** (D-299). **وبلا ملصقٍ لا
+ * بطاقة** (D-063)، **وأنا لستُ صديقَ نفسي** فصفّي يسقط.
+ */
+export interface FriendWatchRow {
+  tmdb_id: number;
+  media_type: "tv" | "movie";
+  title: string;
+  poster_path: string | null;
+  at: string;
+}
+
+export async function getFriendsWatching(limit = 12): Promise<FriendWatchRow[]> {
+  try {
+    const supabase = await createClient();
+    const me = await getUser();
+    if (!me) return [];
+    const { data, error } = await supabase.rpc("following_activity_v2");
+    if (error || !data) return [];
+    const out: FriendWatchRow[] = [];
+    const seen = new Set<string>();
+    for (const r of data as {
+      id: string;
+      tmdb_id: number;
+      media_type: "tv" | "movie";
+      title: string | null;
+      poster_path: string | null;
+      at?: string;
+      updated_at?: string;
+    }[]) {
+      if (r.id === me.id) continue;
+      if (!r.tmdb_id || !r.title || !r.poster_path) continue;
+      const key = `${r.media_type}-${r.tmdb_id}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push({
+        tmdb_id: r.tmdb_id,
+        media_type: r.media_type === "tv" ? "tv" : "movie",
+        title: r.title,
+        poster_path: r.poster_path,
+        at: r.at ?? r.updated_at ?? "",
+      });
+      if (out.length >= limit) break;
+    }
+    return out;
   } catch {
     return [];
   }
@@ -3332,6 +3434,8 @@ export async function getList(listId: string): Promise<{
     cover_backdrop?: string | null;
     cover_tmdb_id?: number | null;
     cover_media_type?: "tv" | "movie" | null;
+    /** 🆕 هويّةُ قائمةِ لوبز — الاسمُ يُترجَم عند العرض (دَينُ D-328) */
+    source_slug?: string | null;
   };
   items: ListItem[];
   ratings: Record<string, number>;
@@ -3339,7 +3443,7 @@ export async function getList(listId: string): Promise<{
   if (!/^[0-9a-f-]{36}$/i.test(listId)) return null;
   try {
     const supabase = await createClient();
-    const BASE = "id, name, subtitle, is_public, user_id, kind";
+    const BASE = "id, name, subtitle, is_public, user_id, kind, source_slug";
     /* أعمدةُ الغلاف تُطلب أوّلاً، **والسقوطُ إلى الأساس لا إلى الخطأ**:
        قبل تشغيل هجرة ٦٣ يردّ PostgREST «عمودٌ مجهول» فتصير الصفحةُ ٤٠٤
        — وصفحةُ قائمةٍ تختفي لأن ميزةَ زينةٍ لم تُهاجَر بعدُ عطلٌ لا
@@ -3480,6 +3584,19 @@ export interface PublicListCard {
      دائرة صغيرة واسمه») — من `public_profiles` فمخفي الاسم يصل صورتُه
      `null` من الباب نفسِه (D-011). */
   owner_avatar?: string | null;
+  /* 🆕 **هويّةُ قائمةِ لوبز** (دَينُ D-328) — بها يُترجَم الاسمُ عند
+     العرض بلغة القارئ (`curatedName`)، **والنصُّ المخزَّن يبقى كما هو**.
+     غيابُها = قائمةُ عضوٍ عاديّة. */
+  source_slug?: string | null;
+  /* 🆕 **الحفظُ من البطاقة نفسِها** (بلاغُ أحمد: «زر الحفظ ونجمة التقييم
+     وينهم؟» — بطاقةُ لوبز لها علامةُ حفظٍ في الزاوية وبطاقةُ العضو لا).
+     **وحكمان لا واحد**: `can_save` تقول «هذه ليست قائمتي وأنا مسجَّل»
+     (نفسُ شرط `list_saves`)، و`saved` حالتُها الابتدائية — **وكلاهما
+     يُقرأ في `shapeListCards` مرّةً للصفحة لا لكلِّ بطاقة** (D-206). */
+  can_save?: boolean;
+  /** ⚠️ `saved_by_me` لا `saved` — و`saves` فوقها عددُ الناس: **اسمان
+      متقاربان لمعنيين متباعدين هو كيف يُقرأ عدّادٌ حالةً** (D-219). */
+  saved_by_me?: boolean;
 }
 
 /**
@@ -3489,12 +3606,19 @@ export interface PublicListCard {
  * بطاقةٌ واحدة تعني منطقاً واحداً لا ثلاث نسخٍ تتباعد.
  */
 async function shapeListCards(
-  lists: { id: string; user_id: string; name: string; kind: string | null }[],
+  lists: {
+    id: string;
+    user_id: string;
+    name: string;
+    kind: string | null;
+    source_slug?: string | null;
+  }[],
   withOwner: boolean,
 ): Promise<PublicListCard[]> {
   const supabase = await createClient();
+  const me = await getUser().catch(() => null);
   const ids = lists.map((l) => l.id);
-  const [items, owners, stats] = await Promise.all([
+  const [items, owners, stats, savedRows] = await Promise.all([
     supabase
       .from("user_list_items")
       .select("list_id, poster_path, added_at")
@@ -3515,7 +3639,16 @@ async function shapeListCards(
       (r) => r,
       () => ({ data: null }),
     ),
+    /* 🆕 **«أحفظتُها أنا؟» — استعلامٌ واحدٌ لبطاقات الصفحة كلِّها**:
+       سياسةُ `list_saves` «صفوفي أنا» فالقراءةُ مقصورةٌ عليّ أصلاً،
+       **وبطاقةٌ تسأل عن نفسها هي ستّون استعلاماً** (D-205/D-206). */
+    me
+      ? supabase.from("list_saves").select("list_id").eq("user_id", me.id).in("list_id", ids)
+      : Promise.resolve({ data: [] as { list_id: string }[] }),
   ]);
+  const savedSet = new Set(
+    ((savedRows?.data ?? []) as { list_id: string }[]).map((r) => String(r.list_id)),
+  );
   const statOf = new Map(
     ((stats?.data ?? []) as {
       list_id: string;
@@ -3564,6 +3697,12 @@ async function shapeListCards(
         owner_avatar: withOwner ? (faceOf.get(l.user_id) ?? null) : null,
         item_count: e.count,
         posters: e.posters,
+        source_slug: l.source_slug ?? null,
+        /* **الحفظُ فعلُ من لا يملكها وحدَه** — نفسُ شرط `list_saves`
+           حرفاً (قائمةٌ ليست لي)، **وحدٌّ في الواجهة وحدَها ليس حدّاً**
+           (D-302) فالقاعدةُ تحرسه أيضاً. وزائرٌ بلا حساب لا زرَّ له. */
+        can_save: !!me && l.user_id !== me.id,
+        saved_by_me: savedSet.has(l.id),
       };
     })
     /* قائمةٌ فارغة لا تُكتشف — لا تعرض شيئاً ولا تدعو لشيء */
@@ -3587,7 +3726,7 @@ export async function searchPublicLists(q: string, limit = 40): Promise<PublicLi
     if (!user) return [];
     const { data: lists } = await supabase
       .from("user_lists")
-      .select("id, user_id, name, kind, updated_at")
+      .select("id, user_id, name, kind, source_slug, updated_at")
       .eq("is_public", true)
       .neq("user_id", user.id)
       .ilike("name", `%${needle}%`)
@@ -3619,7 +3758,7 @@ export async function getFollowedPublicLists(limit = 15): Promise<PublicListCard
     if (ids.length === 0) return [];
     const { data: lists } = await supabase
       .from("user_lists")
-      .select("id, user_id, name, kind, updated_at")
+      .select("id, user_id, name, kind, source_slug, updated_at")
       .eq("is_public", true)
       .in("user_id", ids)
       .order("updated_at", { ascending: false })
@@ -3656,7 +3795,7 @@ export async function getPublicListsContaining(
     if (!ids.length) return [];
     const { data: lists } = await supabase
       .from("user_lists")
-      .select("id, user_id, name, kind, updated_at")
+      .select("id, user_id, name, kind, source_slug, updated_at")
       .in("id", ids)
       .eq("is_public", true)
       .order("updated_at", { ascending: false })
@@ -3675,7 +3814,7 @@ export async function getPublicListsFeed(limit = 15): Promise<PublicListCard[]> 
     if (!user) return [];
     const { data: lists } = await supabase
       .from("user_lists")
-      .select("id, user_id, name, kind, updated_at")
+      .select("id, user_id, name, kind, source_slug, updated_at")
       .eq("is_public", true)
       .neq("user_id", user.id)
       .order("updated_at", { ascending: false })
@@ -3704,6 +3843,60 @@ export async function getCuratedListIds(): Promise<Map<string, string>> {
       (data as { source_slug: string; list_id: string }[]).map((r) => [
         String(r.source_slug),
         String(r.list_id),
+      ]),
+    );
+  } catch {
+    return new Map();
+  }
+}
+
+/**
+ * 🆕 **كم عملاً في قائمةِ لوبز فعلاً** (الهجرة ١٠٧ — بلاغُ أحمد: بطاقةُ
+ * «أفضل ٢٥٠ أنمي» تقول ٢٥٠ **وفيها مئةٌ وأربعون**).
+ *
+ * **والرقمُ كان يُقرأ من الاسم لا من القائمة**: `u.topLimit ?? 250` وعدٌ
+ * لا عدّ — **وعتبةُ العشرين ألف صوت** (D-323) أسقطت من الأنمي مئةً وعشرة
+ * فصار العنوانُ يَعِد ما لا يجده من يفتح. **ورقمٌ يكذب أسوأُ من لا رقم**
+ * (D-219) — وهو نفسُ حكم D-216 في المقام.
+ *
+ * ⚠️ **ولماذا دالّةٌ لا عدٌّ في الكود:** الصفوفُ اثنتان وأربعون قائمةً
+ * فيها آلافُ العناصر — **وجلبُها كلِّها لرسم رقمٍ على بطاقةٍ إسراف**
+ * (D-205). **والغيابُ يعيد السلوكَ القديم** (رقمُ القاموس) فلا تسقط
+ * بطاقةٌ قبل تشغيل الهجرة (D-028).
+ */
+/**
+ * 🆕 **هويّةُ قائمةٍ واحدة للزائر بلا حساب** (دَينُ D-328، الهجرة ١٠٧).
+ *
+ * **القارئُ المسجَّل يأخذ `source_slug` مع صفّ القائمة** (`getList`)،
+ * **والزائرُ يقرأ عبر `public_list` وحدَها** (D-053) — **وهي لا تحمله**.
+ * فرابطُ «Top 250 Movies» المُشارَك كان يفتح صفحةً عنوانُها عربيٌّ لقارئٍ
+ * إنجليزيّ. **ونداءٌ خفيفٌ واحدٌ في التوازي أرخصُ من تعديل دالّةِ قراءةٍ
+ * مُشغَّلة** (قاعدة «سياساتُ القراءة في `security*.sql` وحدها»).
+ *
+ * **والغيابُ يعني «ليست منسّقة»** فيبقى الاسمُ المخزَّن (D-063).
+ */
+export async function getCuratedSlug(listId: string): Promise<string | null> {
+  try {
+    if (!/^[0-9a-f-]{36}$/i.test(listId)) return null;
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("curated_slug_of", { p_id: listId });
+    if (error || !data) return null;
+    return String(data) || null;
+  } catch {
+    return null;
+  }
+}
+
+export async function getCuratedCounts(ids: string[]): Promise<Map<string, number>> {
+  try {
+    if (!ids.length) return new Map();
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("curated_list_counts", { p_ids: ids });
+    if (error || !data) return new Map();
+    return new Map(
+      (data as { list_id: string; items: number }[]).map((r) => [
+        String(r.list_id),
+        Number(r.items) || 0,
       ]),
     );
   } catch {
@@ -3859,7 +4052,7 @@ export async function getListCardsByIds(ids: string[]): Promise<PublicListCard[]
     const supabase = await createClient();
     const { data: lists } = await supabase
       .from("user_lists")
-      .select("id, user_id, name, kind")
+      .select("id, user_id, name, kind, source_slug")
       .in("id", ids.slice(0, 30))
       .eq("is_public", true);
     if (!lists?.length) return [];
@@ -3904,7 +4097,7 @@ export async function getPublicListsOf(userId: string, limit = 15): Promise<Publ
     const supabase = await createClient();
     const { data: lists } = await supabase
       .from("user_lists")
-      .select("id, user_id, name, kind, updated_at")
+      .select("id, user_id, name, kind, source_slug, updated_at")
       .eq("is_public", true)
       .eq("user_id", userId)
       /* المفضّلة قسمٌ بذاته في البروفايل (D-152) — ولولا هذا السطر
@@ -3942,7 +4135,7 @@ export async function getSavedLists(limit = 30): Promise<PublicListCard[]> {
 
     const { data: lists } = await supabase
       .from("user_lists")
-      .select("id, user_id, name, kind")
+      .select("id, user_id, name, kind, source_slug")
       .in("id", saves.map((s) => s.list_id))
       .eq("is_public", true);
     if (!lists?.length) return [];

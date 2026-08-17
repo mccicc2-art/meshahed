@@ -56,7 +56,11 @@ const ar = {
   // تلميحات لمرة واحدة (م٣) + رقاقة النية في البحث
   hintDiscover:
     "زر Filters يخفي فلاتر اللغة والحقبة والمنصة والتقييم — وأزرار أسبوع/شهر/سنة فوق صفوف أفضل ١٠.",
-  hintDismiss: "اضغط مطولاً على أي بطاقة لإخفاء اقتراحها نهائياً.",
+  /* 🔧 **النصُّ يصف ما يحدث الآن لا ما كان يحدث** (D-322): الضغطُ
+     المطوّل صار يفتح قائمةً فيها التقييمُ والقوائمُ و«غير مهتم» —
+     **وتلميحٌ يَعِد إخفاءً فوريّاً يُعلّم إيماءةً لا وجودَ لها** (D-219). */
+  hintDismiss:
+    "اضغط مطولاً على أي بطاقة: تقييمٌ سريع، وإضافةٌ لقوائمك، و«غير مهتم» فلا تُقترح مجدداً.",
   searchIntentChip: (what: string) => `تصفّح ${what} في اكتشف`,
   pickGenresHint:
     "حدّد أنواعك المفضّلة في الملف الشخصي لتظهر لك اقتراحات على ذوقك ←",
@@ -443,7 +447,6 @@ const ar = {
   listsCurated: "قوائم منسّقة",
   listsFilterWorld: "العالم",
   listsFilterSource: "المصدر",
-  listPeekOpen: "افتح صفحة القائمة",
   listsFriendsRail: "ممن تتابعهم",
   listsFriendsEmpty: "لا قوائم معلنة ممن تتابعهم بعد.",
   listsStoryOrder: "بترتيب الأحداث",
@@ -625,6 +628,12 @@ const ar = {
      **والجملةُ تسمّي المكان لأن الضغطةَ ستُدخِلك إليه.** */
   notifTalkReply: (who: string, title: string) =>
     title ? `ردّ ${who} عليك في نقاش «${title}»` : `ردّ ${who} عليك في النقاش`,
+  /* 🆕 **قيّم أحدٌ قائمتَك** (الهجرة ١٠٦ — الخيطُ الثالث): **الجملةُ
+     تسمّي القائمة لأن الضغطةَ تفتحها** — **ولا رقمَ فيها**: الرقمُ
+     يُقرأ في صفحتها، **وعمودٌ يُضاف إلى دالّةٍ لأجل زينةٍ في سطر ليس
+     ثمناً** (D-301: أرخصُ دالّةٍ هي التي لا تُكتب). */
+  notifListReview: (who: string, list: string) =>
+    list ? `قيّم ${who} قائمتك «${list}»` : `قيّم ${who} إحدى قوائمك`,
   // مرشِّح نوع الحدث في «مجتمعي» (D-123ب)
   feedFilterGroup: "نوع النشاط",
   feedFilterAll: "الكل",
@@ -881,9 +890,6 @@ const ar = {
   myRowsRow: (n: string) => `الصف ${n}`,
   myRowsGenreOff: "بدون — الصف مطفأ",
   myRowsTagAny: "بدون موضوع",
-  /* 🆕 D-332 — رقاقةُ القفز إلى التقييمات من رأس القائمة (بلاغُ أحمد:
-     «ماينفع تشوف كل الأفلام وبعدها التعليق») */
-  listReviewsJump: "قيّم القائمة",
   listReviewReport: "أبلغ",
   listReviewReported: "وصلنا بلاغُك",
   listReviewSpoilerNote: "حدَّده كاتبُه",
@@ -1375,6 +1381,15 @@ const ar = {
   libraryGrantedToast: "مُنحت رؤية مكتبتك ✓",
   libraryRevokedToast: "سُحبت المنحة",
   libraryRevokeButton: "اسحب",
+  /* 🆕 **صفُّ «أعمالُ أصدقائك الآن»** (البند ٧): ما تحرّك في مكتبات من
+     تتابعهم هذا الأسبوع — **العملُ لا الجملة**: خطُّ النشاط يحكي، وهذا
+     الصفُّ يعرض ما يُشاهَد الآن ليُفتَح لا ليُقرأ (D-224: معنيان فسطحان). */
+  railFriendsNow: "أعمالُ أصدقائك الآن",
+  /* 🆕 **شارةُ «جديد» على صفٍّ تغيّر**: تظهر حين تبدّلت بطاقاتُ الصفّ منذ
+     آخر مرّةٍ رأيتَه فيها — **ولا تظهر في أوّل زيارة** (كلُّ شيءٍ جديدٌ
+     يومَها فالشارةُ لا تخبر بشيء). */
+  railNew: "جديد",
+  railNewAria: "تغيّرت محتوياتُ هذا الصفّ منذ زيارتك الأخيرة",
   listSaveBtn: "أضِفها إلى قوائمي",
   listSavedBtn: "محفوظة",
   listSavedToast: "أُضيفت إلى قوائمك — تبقى متصلةً بقائمة صاحبها ✓",
@@ -1606,7 +1621,8 @@ const en: Dict = {
   trendingWeek: "Trending this week",
   hintDiscover:
     "The Filters button hides language, era, platform and rating filters — and week/month/year chips sit on every Top 10 rail.",
-  hintDismiss: "Long-press any card to never see that suggestion again.",
+  hintDismiss:
+    "Long-press any card: rate it, add it to a list, or mark it \u201Cnot interested\u201D.",
   searchIntentChip: (what: string) => `Browse ${what} in Discover`,
   pickGenresHint:
     "Pick your favourite genres in your profile to get suggestions you'll like →",
@@ -1933,7 +1949,6 @@ const en: Dict = {
   listsCurated: "Curated lists",
   listsFilterWorld: "World",
   listsFilterSource: "Source",
-  listPeekOpen: "Open list page",
   listsFriendsRail: "From people you follow",
   listsFriendsEmpty: "No public lists from people you follow yet.",
   listsStoryOrder: "In story order",
@@ -2083,6 +2098,8 @@ const en: Dict = {
     title
       ? `${who} replied to you in the “${title}” discussion`
       : `${who} replied to you in a discussion`,
+  notifListReview: (who: string, list: string) =>
+    list ? `${who} rated your list “${list}”` : `${who} rated one of your lists`,
   feedFilterGroup: "Activity type",
   feedFilterAll: "All",
   feedFilterRatings: "Ratings",
@@ -2185,7 +2202,6 @@ const en: Dict = {
   myRowsRow: (n: string) => `Row ${n}`,
   myRowsGenreOff: "None — row off",
   myRowsTagAny: "No theme",
-  listReviewsJump: "Rate this list",
   listReviewReport: "Report",
   listReviewReported: "Report received",
   listReviewSpoilerNote: "marked by its author",
@@ -2575,6 +2591,9 @@ const en: Dict = {
   libraryGrantedToast: "Library access granted ✓",
   libraryRevokedToast: "Grant revoked",
   libraryRevokeButton: "Revoke",
+  railFriendsNow: "What your friends are watching",
+  railNew: "New",
+  railNewAria: "This row changed since your last visit",
   listSaveBtn: "Add to my lists",
   listSavedBtn: "Saved",
   listSavedToast: "Added to your lists — stays linked to its owner's list ✓",

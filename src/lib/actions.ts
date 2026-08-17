@@ -1175,7 +1175,16 @@ export type SignalKind =
    * **وهذا يفتح الغرفة**. **ونوعٌ واحدٌ بوجهتين كان سيرسل نصفَ الإشعارات
    * إلى صفحةٍ لا يوجد فيها ما رُدَّ عليه** — وهو بعينه ما صحّحته D-257.
    */
-  | "talk_reply";
+  | "talk_reply"
+  /**
+   * 🆕 **قيّم أحدٌ قائمتَك أو كتب عنها** (الهجرة ١٠٦ — الخيطُ الثالث).
+   *
+   * **ونوعٌ سابعٌ لا `like_review` بعَلَم**: النوعُ في هذا الجرس **وجهةٌ
+   * قبل أن يكون جملة** (D-218/D-259) — **وهذا وحدَه يفتح `/lists/<id>`**،
+   * ولا `tmdb_id` له أصلاً. **ونوعٌ واحدٌ بوجهتين يرسل نصفَ الإشعارات
+   * إلى صفحةٍ لا يوجد فيها ما أُشعِر به.**
+   */
+  | "list_review";
 
 export interface Signal {
   kind: SignalKind;
@@ -1185,6 +1194,10 @@ export interface Signal {
   title: string | null;
   at: string;
   isNew: boolean;
+  /** 🆕 وجهةُ إشعار القائمة (الهجرة ١٠٦) — تغيب لكلِّ نوعٍ آخر */
+  listId?: string | null;
+  /** slug قائمةِ لوبز — الاسمُ يُترجَم عند العرض (D-328) */
+  listSlug?: string | null;
 }
 
 /**
@@ -1209,6 +1222,9 @@ export async function mySignals(): Promise<Signal[]> {
     title: string | null;
     at: string;
     is_new: boolean;
+    /* 🆕 ذيلُ الهجرة ١٠٦ — يغيب قبلها فيُقرأ `null` (D-028) */
+    list_id?: string | null;
+    list_slug?: string | null;
   }[]).map((r) => ({
     kind: r.kind,
     person: {
@@ -1223,6 +1239,8 @@ export async function mySignals(): Promise<Signal[]> {
     title: r.title,
     at: r.at,
     isNew: r.is_new,
+    listId: r.list_id ?? null,
+    listSlug: r.list_slug ?? null,
   }));
 }
 

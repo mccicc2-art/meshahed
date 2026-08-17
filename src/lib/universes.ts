@@ -516,3 +516,26 @@ export function universeBySlug(slug: string): Universe | null {
 export function universeName(u: Universe, locale: "ar" | "en") {
   return locale === "en" ? u.en : u.ar;
 }
+
+/**
+ * 🆕 **اسمُ قائمةِ لوبز بلغة القارئ** (D-328، الدَّينُ المعلَن).
+ *
+ * **المولَّدُ يُترجَم عند العرض ولا يُخزَّن بلغتين** (D-147/D-273):
+ * `upsert_curated_list` تكتب الاسمَ العربيَّ صفّاً في `user_lists`
+ * **لأن للصفِّ عموداً واحداً للاسم**، **والهويّةُ في `source_slug` لا في
+ * النصّ** — فالقارئُ الإنجليزيُّ كان يرى «أفضل ٢٥٠ فيلماً» في كلِّ سطحٍ
+ * إلّا بطاقةَ الرفّ التي تبني اسمَها من القاموس.
+ *
+ * **فهذه بوّابةٌ واحدة يمرّ بها كلُّ سطحٍ يعرض اسمَ قائمة**،
+ * **وقائمةٌ بلا `source_slug` تعود باسمها كما هو** — فلا يتغيّر شيءٌ
+ * لقوائم الناس (D-063: الغيابُ يُقرأ «ليست منسّقة» لا خطأً).
+ */
+export function curatedName(
+  sourceSlug: string | null | undefined,
+  storedName: string,
+  locale: "ar" | "en",
+): string {
+  if (!sourceSlug) return storedName;
+  const u = universeBySlug(sourceSlug);
+  return u ? universeName(u, locale) : storedName;
+}
