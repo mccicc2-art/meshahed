@@ -31,6 +31,8 @@ import {
   yearOf,
   type SearchResult,
 } from "@/lib/tmdb";
+/* حارسُ الرفوف — نفسُ الملفّ الذي يحرس اكتشف، **لا نسخةٌ ثانية** (D-321) */
+import { railGuard } from "@/lib/topChart";
 import { getWatchedForShow, getNewsGenStale, refreshLoopzNews } from "@/lib/data";
 import { nextUnwatchedEpisode } from "@/lib/progress";
 import { getT, getLocale } from "@/lib/locale";
@@ -521,8 +523,16 @@ async function HomeBody({
         };
       }),
     ),
+    /* 🆕 **والحارسُ على فم «الرائج» هنا أيضاً** (D-321): هذا الصفُّ ينادي
+       `/trending` عارياً منذ أوّل يوم — **وليس عطلاً عاد، بل موضعٌ لم
+       يُعالَج قطّ**: حارسُ D-194 وُلد في `news/page.tsx` وحدَه فبقي الكوريُّ
+       والهنديُّ يدخلان من أوّل شاشةٍ تُفتح. و`anime: "keep"` مقصودة —
+       الرئيسيةُ ليست تبويبَ أفلامٍ ولا مسلسلات، ولم يطلب أحدٌ إخراجَ
+       الأنمي منها. */
     earlyShowTrending
-      ? trending().catch(() => [] as SearchResult[])
+      ? trending()
+          .then((rows) => railGuard(rows, { anime: "keep" }))
+          .catch(() => [] as SearchResult[])
       : Promise.resolve(null),
     // العناوين بلغة الواجهة لا بلغة يوم التقييم (قاعدة D-048)
     topRatedRaw.length
@@ -721,9 +731,16 @@ async function HomeBody({
   // «الرائج» احتياطٌ لمن لا شيء في يده الآن — جاء مع الموجة الثانية في
   // المسار الطبيعي، والاحتياط وحده يطلبه هنا
   const showTrending = empty || continueWatching.length === 0;
+  /* **والمساران يمرّان بالحارس نفسِه** (D-321): هذا هو المسار البطيء
+     (بلا موجةٍ أولى)، **ونسخةٌ واحدةٌ محروسةٌ من اثنتين تعني أن نصفَ
+     الزيارات ترى المكتوم** — وهو بالضبط ما كلّفنا D-175. */
   const trend: SearchResult[] =
     earlyTrend ??
-    (showTrending ? await trending().catch(() => [] as SearchResult[]) : []);
+    (showTrending
+      ? await trending()
+          .then((rows) => railGuard(rows, { anime: "keep" }))
+          .catch(() => [] as SearchResult[])
+      : []);
 
 
   // لزرّ الحفظ السريع على «الرائج»: ما تتابعه، وما أنهيته فعلاً
