@@ -2,7 +2,6 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
-  getMyListNames,
   getUser,
   getPublicListsFeed,
   getForYouLists,
@@ -12,6 +11,7 @@ import {
   getCuratedListIds,
   getListCardStats,
   getCuratedCounts,
+  getFeaturedListIds,
 } from "@/lib/data";
 import { getLibState } from "@/lib/libState";
 import { cookies } from "next/headers";
@@ -21,7 +21,7 @@ import { LOOPZ_PERSON } from "@/lib/loopz";
 import { Avatar } from "@/components/Avatar";
 import { PublicListsRail } from "@/components/PublicListsRail";
 import { ListsFilters } from "@/components/ListsFilters";
-import { AddWorksToList } from "@/components/AddWorksToList";
+import { ListSaveHeart } from "@/components/ListSaveHeart";
 import { PosterRail, RailItem } from "@/components/PosterRail";
 import { FRANCHISES, franchiseName, universeName, type Universe } from "@/lib/universes";
 import { awardBySlug, awardBody, awardWins } from "@/lib/awards";
@@ -374,7 +374,7 @@ async function ListsDiscovery({
      ⚠️ **وكلاهما يُخفي نفسَه فارغاً** (D-181): بحسابٍ بلا مكتبة لا
      «تناسبك»، وبقاعدةٍ فيها حفظان لا «الأكثر حفظاً» — **وصندوقٌ فارغٌ
      تحت عنوانٍ يَعِد أسوأ من غيابه.** */
-  const [forYouRows, savedRows, savedIds, me, curated] = await Promise.all([
+  const [forYouRows, savedRows, savedIds, me, curated, featuredIds] = await Promise.all([
     getForYouLists(12).catch(() => []),
     getTopSavedLists(30, 12).catch(() => []),
     getMySavedListIds().catch(() => new Set<string>()),
@@ -383,6 +383,9 @@ async function ListsDiscovery({
        بطاقة (D-205)، **والغائبُ يُفتح معاينةً كما كان**. **وصعدت إلى هنا
        في D-331** لأن الترشيحَ تحتها صار يحتاجها. */
     getCuratedListIds().catch(() => new Map<string, string>()),
+    /* 🆕 **قوائمُ الأسبوع المثبَّتة** (D-349) — معرّفاتٌ فقط، والبطاقاتُ
+       تُبنى بالمحوّل نفسِه أسفلَه (D-068). */
+    getFeaturedListIds().catch(() => [] as string[]),
   ]);
   /* 🔴 **وقوائمُ لوبز المنسّقة لا تُقترح في صفٍّ فوق صفوفها** (D-331).
      يومَ وُلِّدت الاثنتان والأربعون (D-330) صارت صفوفاً **حقيقيّةً** في
@@ -394,7 +397,14 @@ async function ListsDiscovery({
      ⚠️ **والترشيحُ في الصفحة لا في الدالّة**: `for_you_lists` و
      `top_saved_lists` صحيحتان حيث تُقرآن من سطحٍ لا صفوفَ منسّقةً فيه
      (نفسُ حجّة D-152 حرفاً). */
-  const isCurated = new Set(curated.values());
+  /* ⚖️ **ونُقض استثناءُ D-331 بحكم أحمد** («صفحة الليست البيك فور يو
+     يعرض بعد من لستات لوبز»). **يومَ كُتب كان صحيحاً وسببُه مكتوب**:
+     القائمةُ تظهر في «تناسبك» **وهي مرسومةٌ بعينها بعد ثلاثة صفوف** —
+     تكرارٌ يُقرأ عطلاً (D-299). **والذي تغيّر أن العلاجَ كان في الجهة
+     الخطأ:** أن تُمنع من الصفِّ الشخصيّ يعني أن أغنى محتوانا لا يُقترح
+     أبداً على من يناسبه. **فالمنعُ انتقل إلى الجهة الأخرى** — الشخصيُّ
+     يسبق والعامُّ يتنازل، وهو حرفاً حكمُ D-326 المطبَّق هنا أيضاً. */
+
   /* 🔴 **ما حفظتَه لا يُقترح عليك، ولا يظهر مرّتين** (D-326، بلاغُ أحمد:
      «هذي أنا حافظها عندي، المفروض ما تظهر وتتكرّر»).
 
@@ -406,30 +416,31 @@ async function ListsDiscovery({
         `top_saved_lists` نفسَها ولا تتغيّر (D-152).
      ٢) **وصفٌّ يعرض ما عرضه جارُه فوقه تكرارٌ يُقرأ عطلاً** (D-257/D-299)
         — **والشخصيُّ يسبق العامّ** فيحتفظ بالبطاقة، والعامُّ يتنازل. */
+  /* **والمثبَّتُ يسبق الجميع** فلا يُعرض مرّتين تحت عنوانين */
+  const featured = featuredIds.filter((id) => !savedIds.has(id));
+  const shown = new Set(featured);
   const forYouIds = forYouRows
     .map((r) => r.listId)
-    .filter((id) => !savedIds.has(id) && !isCurated.has(id));
-  const shown = new Set(forYouIds);
+    .filter((id) => !savedIds.has(id) && !shown.has(id));
+  forYouIds.forEach((id) => shown.add(id));
   const savedRailIds = savedRows
     .filter(
-      (r) =>
-        !savedIds.has(r.listId) &&
-        !shown.has(r.listId) &&
-        !isCurated.has(r.listId) &&
-        r.ownerId !== me?.id,
+      (r) => !savedIds.has(r.listId) && !shown.has(r.listId) && r.ownerId !== me?.id,
     )
     .map((r) => r.listId);
+  savedRailIds.forEach((id) => shown.add(id));
+  /* 🔴 **والقائمةُ التي ظهرت في صفٍّ شخصيٍّ تسقط من رفِّ عالَمِها** —
+     هذا هو موضعُ المنع بعد نقض D-331: **الشخصيُّ يحتفظ بالبطاقة والعامُّ
+     يتنازل** (D-326)، فلا تُقرأ الصفحةُ مرّتين ولا يُحرم أحدٌ اقتراحاً. */
+  const shownAbove = shown;
   /* **والبطاقاتُ من `shapeListCards` لا من محوّلٍ محليّ** (D-326): العدُّ
      الحقيقيُّ والملصقاتُ وسطرُ الصاحب من المصدر الذي تقرأ منه أخواتُها
      الثلاث — **وهو ما أنهى «Empty» فوق ثلاثة ملصقات.** */
-  const [forYou, mostSaved] = await Promise.all([
+  const [featuredCards, forYou, mostSaved] = await Promise.all([
+    getListCardsByIds(featured),
     getListCardsByIds(forYouIds),
     getListCardsByIds(savedRailIds),
   ]);
-  /* **قراءةٌ واحدة لعلامات الحفظ** (D-206): بطاقاتُ المجموعات عشراتٌ في هذا
-     التبويب، **ولو سألت كلُّ بطاقةٍ عن نفسها لصارت الصفحةُ عشرين استعلاماً**.
-     و`getMyListNames` مغلَّفةٌ بـ`cache` فالنداءُ واحدٌ للطلب كلِّه. */
-  const savedNames = await getMyListNames();
   /* 🆕 **أرقامُ بطاقات لوبز** (D-335): نداءُ `list_card_stats` واحدٌ
      للاثنتين والأربعين (D-205) — بعد خريطة `curated` لأنه يحتاج
      معرّفاتِها. */
@@ -458,6 +469,14 @@ async function ListsDiscovery({
       {!fr && lsrc !== "curated" && forYou.length > 0 && (
         <PublicListsRail lists={forYou} locale={locale} title={t.listsForYou} />
       )}
+      {/* 🆕 **«يرشّحها لوبز» بعد الشخصيِّ وقبل العامّ** (D-349، طلبُ
+          أحمد: «تحط بعد البيك فور يو تريندينج ليست»).
+          **والترتيبُ حجّةٌ لا ذوق**: ما يخصّك ← ما نختاره لهذه اللحظة ←
+          ما اجتمع عليه الناس ← الأرشيفُ الثابت ← قوائمُ المجتمع.
+          **من الأخصِّ إلى الأعمّ، ومن المتحرّك إلى المستقرّ.** */}
+      {!fr && lsrc !== "curated" && featuredCards.length > 0 && (
+        <PublicListsRail lists={featuredCards} locale={locale} title={t.listsFeatured} />
+      )}
       {!fr && lsrc !== "curated" && mostSaved.length > 0 && (
         <PublicListsRail lists={mostSaved} locale={locale} title={t.listsMostSaved} />
       )}
@@ -481,7 +500,10 @@ async function ListsDiscovery({
                 شيئاً أسوأ من غيابها (D-181) — ونداءُ `‎/api/curated`
                 واحدٌ يُظهرها. */}
             {f.sets
-              .filter((u) => curated.get(u.slug))
+              .filter((u) => {
+                const id = curated.get(u.slug);
+                return id && !shownAbove.has(id);
+              })
               .map((u) => (
                 /* wide لا الافتراضي: بطاقة القائمة أعرض من بطاقة الملصق،
                    وخانةٌ ضيّقة كانت تجعل البطاقات تتراكب (لقطة المالك) */
@@ -491,7 +513,8 @@ async function ListsDiscovery({
                       u={u}
                       locale={locale}
                       t={t}
-                      savedNames={savedNames}
+                      listId={curated.get(u.slug) ?? ""}
+                      saved={savedIds.has(curated.get(u.slug) ?? "")}
                       stats={curatedStats.get(curated.get(u.slug) ?? "") ?? null}
                       items={curatedCounts.get(curated.get(u.slug) ?? "")}
                       className="w-full"
@@ -588,7 +611,8 @@ async function CuratedCard({
   u,
   locale,
   t,
-  savedNames,
+  listId,
+  saved,
   stats,
   items,
   className = "w-full",
@@ -596,8 +620,17 @@ async function CuratedCard({
   u: Universe;
   locale: Locale;
   t: T;
-  /** أسماءُ قوائمي — تُقرأ مرّةً في الصفحة لا لكل بطاقة (D-206) */
-  savedNames?: Set<string>;
+  /**
+   * 🆕 **معرّفُ قائمتها المولَّدة وحالةُ حفظها** (D-347).
+   *
+   * **حلّا محلَّ `savedNames`** — ومعهما سقط النسخُ: كان الحفظُ هنا
+   * `createListFromUniverse` **ينسخ المجموعةَ قائمةً جديدةً باسمك**،
+   * والمطابقةُ بالاسم بلغتيه. **وذاك وُلد يومَ لم تكن «Top 250» قائمةً
+   * أصلاً** (تُولَّد عند الضغط، بلا صفٍّ يُحفَظ) — **والسببُ مات في
+   * D-328**، فصار لكلِّ مجموعةٍ صفٌّ ومعرّفٌ وصفحة.
+   */
+  listId?: string;
+  saved?: boolean;
   /** 🆕 أرقامُ قائمة لوبز المولَّدة (D-335) — غيابُها يعني قائمةً بلا
       رقمٍ بعد، **والصفرُ لا يُطبع** (D-219) */
   stats?: { saves: number; rating: number | null } | null;
@@ -614,10 +647,6 @@ async function CuratedCard({
   className?: string;
 }) {
   const loc = locale === "en" ? ("en" as const) : ("ar" as const);
-  /* **الاسمان معاً** (D-206): الحفظُ يسمّي القائمةَ بلغة الواجهة وقتَها
-     (D-130)، فمن حفظ بالعربية ثم قرأ بالإنجليزية يجب أن يرى علامتَه. */
-  const names = [universeName(u, "ar"), universeName(u, "en")];
-  const saved = names.some((n) => savedNames?.has(n.trim()));
   /* مجموعات TOP 250: العدد ثابتٌ معلوم والملصقات من صفحة top_rated
      الأولى وحدها — جلبُ ٢٥٠ عملاً لبطاقةٍ تعرض أربعة ملصقات إسراف.
      وسائر المجموعات كما كانت: تُحلّ معرّفاتها ثم أربعة ملصقات */
@@ -662,15 +691,16 @@ async function CuratedCard({
             «احفظها في قوائمي» — **فيُقرأ الفعلَ الأوّل وهو ليس كذلك**:
             الأوّلُ فتحُها. والرمزُ عُرفٌ يُقرأ بلا كلمة، ويترك مساحةَ
             الصورة للصورة. */}
-        <AddWorksToList
-          source="universe"
-          id={u.slug}
-          locale={locale}
-          label={t.curatedSaveBtn}
-          iconOnly
-          names={names}
-          saved={saved}
-        />
+        {/* 🔴 **القلبُ وحدَه — وسقط البوك‑مارك ومعه النسخ** (D-347،
+            حكمُ أحمد بعد أن عُرضت عليه الحالتان: «القلب وحده»).
+            **ولم يكن رمزين لفعلٍ واحد، بل رمزين لفعلين**: البوك‑مارك
+            **ينسخ** المجموعةَ قائمةً مجمّدةً باسمك، والقلبُ **يحفظ
+            مرجعاً حيّاً** في `list_saves` (D-068/D-324).
+            **والنسخُ وُلد لأن المجموعةَ لم تكن قائمةً** — وصارت قائمةً
+            حقيقيةً في D-328، **فبقي الفعلُ الأقدمُ يعمل بلا سببه.**
+            **وثمنُه كان الأرقامَ كلَّها**: من ضغط البوك‑مارك لم يُكتب له
+            صفُّ حفظ، **فبقي ♥ صفراً و★ مخفيّةً** على أغنى بطاقاتنا. */}
+        {listId && <ListSaveHeart listId={listId} saved={saved} locale={locale} />}
       </span>
 
       {/* 🆕 **وجهُ لوبز والأرقامُ سطراً ثانياً بعرض البطاقة** (D-335→D-336،
