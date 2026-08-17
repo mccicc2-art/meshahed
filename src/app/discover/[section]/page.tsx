@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
-import { getFollows, getUser } from "@/lib/data";
+import { getUser } from "@/lib/data";
+import { getLibState } from "@/lib/libState";
 import { getT, getWatchRegion } from "@/lib/locale";
 import { eraRange, parseBrowse, seasonRange, browseHref } from "@/lib/browse";
 import { keywordId, companyId, titleOf, yearOf, ANIME_KEYWORD, type DiscoverFilter } from "@/lib/tmdb";
@@ -164,9 +165,10 @@ export default async function SectionPage({
    * **وسقوطُها لا يُسقط الزرّ**: مجموعةٌ فارغة تعني «لم يُضَف بعد»،
    * وأوّلُ لمسٍ يُصلح الحقيقة (`upsert` لا `insert`) — نفس عقد D-205.
    */
-  const following = new Set(
-    (await getFollows().catch(() => [])).map((f) => `${f.media_type}-${f.tmdb_id}`),
-  );
+  /* 🆕 **والمصدرُ صار `getLibState`** (D-322): الشبكةُ تعرض ما تعرضه
+     الرفوف، **فخيطُها يجب أن يقول ما يقوله خيطُها** — ومجموعةُ المتابعات
+     وحدَها تعرف السماويَّ ولا تعرف الأخضرَ ولا الأصفرَ ولا الأحمر. */
+  const lib = await getLibState();
 
   const cards = rows.map((r, i) => {
     const l = localized[i];
@@ -211,27 +213,16 @@ export default async function SectionPage({
               posterPath={r.poster}
               year={r.year}
               fallbackIcon={r.tv ? "tv" : "film"}
-              /* **الحفظُ من القائمة الكاملة لا من صفحة العمل** (D-207،
-                 مواصفةُ أحمد: «A quick + button can be displayed directly
-                 on the content card»). **ومن فتح «عرض الكل» هو أعمقُ من
-                 يتصفّح** — فحرمانُه من الزرِّ الذي في الرفّ يعني أن الطريقَ
-                 الأطول يعطي أدواتٍ أقلّ، وهو نقيضُ المقصود. */
-              quickAdd={{
-                tmdbId: r.id,
-                mediaType: r.tv ? "tv" : "movie",
-                added: following.has(`${r.tv ? "tv" : "movie"}-${r.id}`),
-                locale,
-              }}
-              /* **الضغطُ المطوَّل قاعدةٌ لا سطحٌ واحد** (D-229، طلبُ أحمد:
-                 «قاعدة طبّقها على أيّ بوستر في LOOPZ») — و«للمشاهدة» فيه
-                 هي `+` نفسُها، **فلا فعلَ يُزاد بل طريقٌ ثانٍ إليه**
-                 ومعه «شاهدته» و«ريفيو» اللذان لا زرَّ لهما هنا. */
-              saved={following.has(`${r.tv ? "tv" : "movie"}-${r.id}`)}
+              /* ⚖️ **زرُّ «+» غادر هنا أيضاً** (D-322): **الشبكةُ والرفُّ
+                 بابان لقائمةٍ واحدة، وأداةٌ في أحدهما دون الآخر تُعلّم
+                 القارئَ أن الطريقين مختلفان** — وهي بعينها حجّةُ D-207
+                 مقلوبةً. **والفعلُ باقٍ في قائمة الضغط المطوَّل.**
+                 والضغطُ المطوَّل قاعدةٌ لا سطحٌ واحد (D-229، طلبُ أحمد:
+                 «قاعدة طبّقها على أيّ بوستر في LOOPZ»). */
               hold={{
                 tmdbId: r.id,
                 mediaType: r.tv ? "tv" : "movie",
-                added: following.has(`${r.tv ? "tv" : "movie"}-${r.id}`),
-                watched: false,
+                ...lib.of(r.id, r.tv ? "tv" : "movie"),
                 locale,
               }}
             />
