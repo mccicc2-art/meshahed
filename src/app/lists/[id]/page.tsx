@@ -9,7 +9,9 @@ import {
   getListReviews,
   getListReviewStats,
   getMyListReview,
+  getCuratedSlug,
 } from "@/lib/data";
+import { curatedName } from "@/lib/universes";
 import { ListReviews } from "@/components/ListReviews";
 import { getT } from "@/lib/locale";
 import { BackCrumb } from "@/components/BackButton";
@@ -70,9 +72,16 @@ export default async function ListPage({ params }: { params: Promise<{ id: strin
   const { id } = await params;
   const user = await getUser();
 
+  /* 🆕 **واسمُ قائمةِ لوبز بلغة القارئ في كلِّ سطح** (دَينُ D-328):
+     الاسمُ المخزَّن عربيٌّ دائماً (`upsert_curated_list`) **والهويّةُ في
+     الـslug** — فتُترجَم عند العرض ولا تُخزَّن بلغتين (D-147/D-273). */
+  const loc = locale === "en" ? ("en" as const) : ("ar" as const);
+
   // زائرٌ بلا حساب: المعلنة تُعرض للقراءة، وغيرها لا وجود لها بالنسبة له
   if (!user) {
-    const pub = await getPublicList(id);
+    /* **والزائرُ لا يمرّ بصفّ القائمة** (D-053) فسلغُها نداءٌ خفيفٌ
+       موازٍ — لا انتظارَ متسلسل */
+    const [pub, slug] = await Promise.all([getPublicList(id), getCuratedSlug(id)]);
     if (!pub) notFound();
 
     const items = await localizeRows(pub.items, locale);
@@ -81,7 +90,7 @@ export default async function ListPage({ params }: { params: Promise<{ id: strin
       <div>
         <ListDetail
           listId={pub.id}
-          name={pub.name}
+          name={curatedName(slug, pub.name, loc)}
           subtitle={pub.subtitle}
           isPublic
           kind={pub.kind}
@@ -145,7 +154,7 @@ export default async function ListPage({ params }: { params: Promise<{ id: strin
       <BackCrumb label={t.listsTitle} fallback="/library?filter=list" className="mb-3" />
       <ListDetail
         listId={data.list.id}
-        name={data.list.name}
+        name={curatedName(data.list.source_slug, data.list.name, loc)}
         subtitle={data.list.subtitle}
         isPublic={data.list.is_public}
         kind={data.list.kind}
