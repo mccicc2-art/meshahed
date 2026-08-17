@@ -116,7 +116,15 @@ export function AddWorksToList({
     return (
       <button
         type="button"
-        onClick={run}
+        /* 🔧 **واللمسةُ الواحدة لا تعني فعلين**: البطاقةُ المنسّقة صارت
+           رابطاً كاملاً في D-334، **فضغطةُ علامة الحفظ كانت تحفظ ثم تغادر
+           الصفحةَ في نفس اللمسة** — والقارئُ يرى انتقالاً ولا يرى علامتَه
+           تمتلئ. (نفسُ الحارس في `ListSaveHeart`.) */
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          run();
+        }}
         disabled={pending}
         aria-pressed={on}
         aria-label={on ? t.listUnsaveLabel : text}

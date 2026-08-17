@@ -5,6 +5,7 @@ import { LOOPZ_ID, LOOPZ_USERNAME, LOOPZ_PERSON } from "@/lib/loopz";
 import { displayNameOf, type FeedItem, type LoopzNewsItem } from "@/lib/data";
 import { newsLine, newsSource } from "@/lib/newsLine";
 import { commentViewKey, newsViewKey } from "@/lib/postKeys";
+import { curatedName } from "@/lib/universes";
 import { Avatar } from "./Avatar";
 import { Icon } from "./Icon";
 import { LikeButton } from "./LikeButton";
@@ -271,7 +272,7 @@ export function ActivityFeed({
         const key = `${row.item.media_type}-${row.item.tmdb_id}`;
         return row.kind === "comment" ? (
           <CommentRow
-            key={`c-${row.item.person.id}-${key}-${row.item.day}`}
+            key={`c-${row.item.person.id}-${row.item.listId ?? key}-${row.item.day}`}
             a={row.item}
             meId={meId}
             added={followed.has(key)}
@@ -406,11 +407,24 @@ function CommentRow({
   locale: Locale;
 }) {
   const t = getDict(locale);
+  /* 🆕 **صفُّ قائمةٍ لا صفُّ عمل** (الهجرة ١٠٦ — الخيطُ الثالث): **كلُّ ما
+     في هذا الصفّ يتبدّل بحضور `listId`** — الوجهةُ والعنوانُ والذيل.
+     ⚠️ **وهذا هو الحارسُ الذي وُعد به**: صفُّ قائمةٍ بلا `tmdb_id` كان
+     سيُرسم رابطاً إلى `/movie/0` — **ورابطٌ ميّتٌ في خطٍّ اجتماعيّ أسوأُ
+     من صفٍّ غائب** (D-181/D-063). */
+  const isList = !!a.listId;
   /* **وضغطةُ الصفّ تفتح التعليقَ نفسَه لا غرفةَ العمل** (D-242، طلبُ
      أحمد: «وحتى طريقة الفتح نفس الصورة»). **كانت تفتح `/talk`** — فتضغط
-     كلامَ خالد فتصل إلى صفحةٍ فيها كلامُ عشرة وتبحث عن سطره. */
-  const reviewHref = `/review/${a.media_type}/${a.tmdb_id}/${a.person.id}`;
-  const titleHref = `/${a.media_type === "tv" ? "show" : "movie"}/${a.tmdb_id}`;
+     كلامَ خالد فتصل إلى صفحةٍ فيها كلامُ عشرة وتبحث عن سطره.
+     **ومراجعةُ القائمة ليس لها صفحةٌ خاصّة** (D-334: بابٌ واحدٌ للقائمة)
+     — **فالوجهتان واحدةٌ: صفحتُها وفيها تبويبُ التقييمات** (D-333). */
+  const listHref = a.listId ? `/lists/${a.listId}` : null;
+  const reviewHref = listHref ?? `/review/${a.media_type}/${a.tmdb_id}/${a.person.id}`;
+  const titleHref = listHref ?? `/${a.media_type === "tv" ? "show" : "movie"}/${a.tmdb_id}`;
+  /* **واسمُ قائمةِ لوبز بلغة القارئ** (دَينُ D-328) — البوّابةُ نفسُها */
+  const rowTitle = isList
+    ? curatedName(a.listSlug, a.title ?? "", locale === "en" ? "en" : "ar")
+    : a.title;
   const who = displayNameOf(a.person, t.anonymousUser);
   /** الملفُّ إن كان له `@handle`؛ وإلّا فالغرفة — **ولا صفَّ ملفٍّ بلا اسم** (D-063) */
   const whoHref = a.person.username ? `/u/${a.person.username}` : reviewHref;
@@ -419,7 +433,9 @@ function CommentRow({
     /* **`data-post-key` هي عقدُ العدّ** (D-237): `PostViews` تراقب هذه
        السِّمة وحدها — **فالصفُّ الذي لا يحملها لا يُعدّ**، والعقدُ ظاهرٌ
        في الترميز لا مخبوءٌ في مكوّن. */
-    <article className="py-4 first:pt-0 flex gap-3" data-post-key={viewKey}>
+    /* ⚠️ **وصفُّ القائمة لا يُعدّ**: مفتاحُ العدّ `(شخص، عمل)` **ولا عملَ
+       فيه** — فكلُّ صفوف القوائم كانت ستشترك في مفتاحٍ واحد (D-237). */
+    <article className="py-4 first:pt-0 flex gap-3" data-post-key={isList ? undefined : viewKey}>
       {/* **العمودُ الأيسر يحمل الصفَّ كلَّه، والملصقُ وحده خارجه** (D-228).
           **والنصُّ يمرّ تحت الوجه لا بجانبه** (بلاغُ أحمد: «المساحة تحت
           صورة الشخص نحتاجها ضمن مساحة التعليق») — **فالوجهُ يجاور
@@ -496,9 +512,13 @@ function CommentRow({
               <Link
                 href={titleHref}
                 prefetch={false}
-                className="min-w-0 truncate text-[13px] text-muted hover:text-accent transition"
+                className="min-w-0 flex items-center gap-1 truncate text-[13px] text-muted hover:text-accent transition"
               >
-                <bdi>{a.title}</bdi>
+                {/* **ورمزُ القائمة قبل اسمها** — السطرُ نفسُه يحمل عملاً
+                    مرّةً وقائمةً مرّة، **والقارئُ يجب أن يعرف أيّهما قبل
+                    أن يضغط** (D-294: رمزٌ واحدٌ لمعنًى واحد). */}
+                {isList && <Icon name="list" size={13} className="shrink-0" />}
+                <bdi className="truncate">{rowTitle}</bdi>
               </Link>
               {a.rating != null && (
                 <span
@@ -528,7 +548,10 @@ function CommentRow({
         <FeedReviewText
           href={reviewHref}
           review={a.review ?? ""}
-          translated={translated}
+          /* **وترجمةُ صفِّ القائمة تُتجاهَل**: خريطةُ الترجمات مفتاحُها
+             `(كاتب، عمل)` — **ومفتاحٌ يشترك فيه صفّان يعطي أحدَهما كلامَ
+             الآخر** (D-237). */
+          translated={isList ? null : translated}
           locale={locale}
           hasSpoiler={a.hasSpoiler}
         />
@@ -537,6 +560,11 @@ function CommentRow({
             الصفّ والمقبضَ يسكن شريطاً مسقوفاً — حالةٌ واحدة لعنصرين
             يحملها مكوّنٌ واحد (D-227). و`mt-auto` يُنزله إلى القاع فيثبت
             موضعُه بين الصفوف (D-224). */}
+        {/* ⚠️ **وذيلُ الأفعال لا يُرسم لصفِّ قائمة**: الإعجابُ والردُّ
+            مفتاحُهما `(كاتب، عمل، وسيط)` — **ولا عملَ هنا** (لا
+            `list_review_likes` اليوم)، **وزرٌّ لا يكتب شيئاً أسوأُ من
+            غيابه** (نصُّ D-123 حرفاً). */}
+        {!isList && (
         <div className="mt-auto">
           <RowComment
             reviewUserId={a.person.id}
@@ -563,16 +591,21 @@ function CommentRow({
             }
           />
         </div>
+        )}
       </div>
 
-      <RowPoster
-        tmdbId={a.tmdb_id}
-        mediaType={a.media_type}
-        title={a.title ?? ""}
-        posterPath={a.poster_path}
-        added={added}
-        locale={locale}
-      />
+      {/* **ولا عمودَ ملصقٍ لقائمة** — لا ملصقَ لها أصلاً، **وإطارٌ فارغٌ
+          بعرض ٨٤px يُقرأ صورةً لم تُحمَّل** (D-181). */}
+      {!isList && (
+        <RowPoster
+          tmdbId={a.tmdb_id}
+          mediaType={a.media_type}
+          title={a.title ?? ""}
+          posterPath={a.poster_path}
+          added={added}
+          locale={locale}
+        />
+      )}
     </article>
   );
 }

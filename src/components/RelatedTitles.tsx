@@ -1,4 +1,5 @@
 import { getCollection, relatedTitles, titleOf, yearOf } from "@/lib/tmdb";
+import { getLibState } from "@/lib/libState";
 import type { MediaType } from "@/lib/media";
 import { getDict, type Locale } from "@/lib/i18n";
 import { PosterRail, RailItem } from "./PosterRail";
@@ -35,12 +36,30 @@ export async function RelatedTitles({
 }) {
   const t = getDict(locale);
 
-  const [collection, related] = await Promise.all([
+  /* 🆕 **والضغطُ المطوّل هنا أيضاً** (بقيّةُ D-322، طلبُ أحمد): «الأعمالُ
+     المشابهة» **هي بعينها موضعُ الفعل** — القارئُ وصلها وقد قرأ الصفحةَ
+     كلَّها، **فالسؤالُ الذي يليها «أُضيفه؟» لا «أفتحه؟»**. وكانت الإيماءةُ
+     تعمل في رفوف اكتشف وتصمت هنا (D-277).
+     ⚠️ **والحالةُ من `getLibState` المخبّأة** — ثلاثةُ نداءاتٍ للصفحة
+     كلِّها تشاركها بقيّةُ رفوفها (D-205). */
+  const [collection, related, lib] = await Promise.all([
     collectionId ? getCollection(collectionId) : Promise.resolve(null),
     relatedTitles(mediaType, tmdbId),
+    getLibState().catch(() => null),
   ]);
 
   if (!collection && related.length === 0) return null;
+
+  /** حالةُ عملٍ في مكتبتك — تُمرَّر للضغط المطوّل، وتغيب للزائر */
+  const holdOf = (id: number, mt: MediaType | "person") =>
+    lib && mt !== "person"
+      ? {
+          tmdbId: id,
+          mediaType: (mt === "tv" ? "tv" : "movie") as "tv" | "movie",
+          locale,
+          ...lib.of(id, mt),
+        }
+      : undefined;
 
   const href = (r: { id: number; media_type: MediaType | "person" }) =>
     `/${r.media_type === "tv" ? "show" : "movie"}/${r.id}`;
@@ -60,11 +79,14 @@ export async function RelatedTitles({
         >
           {collection.parts.map((p) => (
             <RailItem key={p.id}>
+              {/* أجزاءُ السلسلة أفلامٌ دائماً (`belongs_to_collection` عند
+                  TMDB للأفلام وحدها) فلا تخمينَ في النوع */}
               <PosterCard
                 href={href(p)}
                 title={titleOf(p)}
                 posterPath={p.poster_path}
                 year={yearOf(p)}
+                hold={holdOf(p.id, "movie")}
               />
             </RailItem>
           ))}
@@ -84,6 +106,7 @@ export async function RelatedTitles({
                 title={titleOf(r)}
                 posterPath={r.poster_path}
                 year={yearOf(r)}
+                hold={holdOf(r.id, r.media_type)}
               />
             </RailItem>
           ))}

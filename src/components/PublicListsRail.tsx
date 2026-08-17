@@ -5,6 +5,8 @@ import { Icon } from "./Icon";
 import { PosterRail, RailItem } from "./PosterRail";
 import { posterUrl } from "@/lib/media";
 import { getDict, num, type Locale } from "@/lib/i18n";
+import { curatedName } from "@/lib/universes";
+import { ListSaveHeart } from "./ListSaveHeart";
 import type { PublicListCard } from "@/lib/data";
 
 /**
@@ -73,9 +75,26 @@ export function CommunityListCard({
 }) {
   const t = getDict(locale);
   const posters = l.posters.map((p) => posterUrl(p, "w185")).filter(Boolean) as string[];
+  /* 🆕 **اسمُ قائمةِ لوبز بلغة القارئ** (دَينُ D-328): الصفُّ مكتوبٌ
+     بالعربية في القاعدة **والهويّةُ في `source_slug`** — فالقارئُ
+     الإنجليزيُّ كان يرى «أفضل ٢٥٠ فيلماً» في «الأكثر حفظاً» بينما يراها
+     «Top 250 Movies» في رفّها. **واسمٌ واحدٌ بوجهين في صفحةٍ واحدة
+     يُقرأ قائمتين** (D-147/D-273). وقائمةُ العضو تعود باسمها كما هو. */
+  const name = curatedName(l.source_slug, l.name, locale === "en" ? "en" : "ar");
   const body = (
     <>
-      <span className="block text-[14px] font-bold truncate">{l.name}</span>
+      {/* **والاسمُ يترك للزاوية علامةَ حفظها** — نفسُ سطر بطاقة لوبز
+          حرفاً (D-204): الاسمُ يملأ السطر والرمزُ على الطرف، **فلا يقرأ
+          القارئُ إيقاعين لبطاقتين متجاورتين** (القاعدة ٦). */}
+      <span className="flex items-start gap-1.5">
+        <span className="min-w-0 flex-1 block text-[14px] font-bold truncate">{name}</span>
+        {/* ⚠️ **ولا يظهر لقائمتي أنا ولا لزائرٍ بلا حساب**: نفسُ شرط
+            `list_saves` حرفاً — **وزرٌّ لا يستطيع أن يكتب وعدٌ كاذب**
+            (D-217). */}
+        {l.can_save && (
+          <ListSaveHeart listId={l.id} saved={l.saved_by_me} locale={locale} />
+        )}
+      </span>
       {/* 🆕 **وجهُ الصاحب دائرةً قبل اسمه** (D-335، طلبُ أحمد: «صورة
           الشخص الي عملها تظهر دائرة صغيرة واسمه — بدون زيادة حجم
           الكارد»): الدائرةُ ١٤px داخل سطرِ الـ12px القائم **فلا يعلو

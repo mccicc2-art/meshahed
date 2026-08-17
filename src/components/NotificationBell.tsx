@@ -8,6 +8,7 @@ import { Icon } from "./Icon";
 import { Sheet, SheetHeader } from "./ui/Sheet";
 import { mySignals, markSignalsSeen, type Signal } from "@/lib/actions";
 import { getDict, num, type Locale } from "@/lib/i18n";
+import { curatedName } from "@/lib/universes";
 import { timeAgo } from "@/lib/when";
 import { tap } from "@/lib/haptics";
 import { sheetScroll } from "./ui/controls";
@@ -71,6 +72,12 @@ export function NotificationBell({
     if (s.kind === "reply") return t.notifReply(who, s.title ?? "");
     /* **وردُّ الغرفة جملتُه تسمّي المكان** (D-259) — انظر `notifTalkReply` */
     if (s.kind === "talk_reply") return t.notifTalkReply(who, s.title ?? "");
+    /* 🆕 **تقييمُ قائمتك** (الهجرة ١٠٦) — **والاسمُ بلغة القارئ** (D-328) */
+    if (s.kind === "list_review")
+      return t.notifListReview(
+        who,
+        curatedName(s.listSlug, s.title ?? "", locale === "en" ? "en" : "ar"),
+      );
     return t.notifLike(who, s.title ?? "");
   }
 
@@ -142,7 +149,15 @@ export function NotificationBell({
                   ? `/${s.mediaType === "tv" ? "show" : "movie"}/${s.tmdbId}`
                   : null;
                 const href =
-                  /* **ردُّ الغرفة يفتح الغرفة** (D-259) — ولا يحتاج اسمَك:
+                  /* 🆕 **وإشعارُ القائمة يفتح القائمة** (الهجرة ١٠٦):
+                     **الوجهةُ هي الشيءُ نفسُه لا صاحبُه** (D-218) —
+                     وتبويبُ التقييمات فيها هو ما أُشعِر به (D-333).
+                     ⚠️ **وأوّلاً في السلسلة**: لا `tmdb_id` لهذا النوع
+                     أصلاً، **فلو مرّ إلى فرعٍ يقرؤه لخرج `/movie/null`**
+                     — وهو العطلُ الذي حُذّر منه بنصّه. */
+                  s.kind === "list_review" && s.listId
+                    ? `/lists/${s.listId}`
+                    : /* **ردُّ الغرفة يفتح الغرفة** (D-259) — ولا يحتاج اسمَك:
                      الغرفةُ لا صاحبَ لها، ومسارُها العملُ نفسُه. */
                   s.kind === "talk_reply" && s.tmdbId
                     ? `/talk/${s.mediaType ?? "movie"}/${s.tmdbId}`
