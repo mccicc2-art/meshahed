@@ -8,7 +8,7 @@ import { deleteList, renameList, reorderList, setListKind, toggleInList, saveLis
 import { backdropUrl, posterUrl } from "@/lib/media";
 import { tap } from "@/lib/haptics";
 import { toast, flashError } from "@/lib/toast";
-import { getDict, type Locale } from "@/lib/i18n";
+import { getDict, num, type Locale } from "@/lib/i18n";
 import { Icon, type IconName } from "./Icon";
 import type { ListItem, ListKind } from "@/lib/data";
 import { Sheet, SheetHeader } from "./ui/Sheet";
@@ -52,6 +52,7 @@ export function ListDetail({
   locale,
   initialSaved,
   cover,
+  reviews,
 }: {
   listId: string;
   name: string;
@@ -74,6 +75,9 @@ export function ListDetail({
     tmdbId?: number | null;
     mediaType?: "tv" | "movie" | null;
   } | null;
+  /** 🆕 خلاصةُ التقييم لرقاقة الرأس (D-332) — الغيابُ يعني قائمةً خاصّة
+      أو صفحةً لا تعرض التقييمات فلا رقاقة */
+  reviews?: { avg: number | null; count: number } | null;
 }) {
   const t = getDict(locale);
   const router = useRouter();
@@ -347,6 +351,31 @@ export function ListDetail({
             {kind === "ranked" ? t.listTypeRanked : t.listTypeWatch}
           </span>
         )}
+        {/* 🆕 **رقاقةُ التقييم في الرأس** (D-332، بلاغُ أحمد: «ماينفع
+            تشوف كل الأفلام وبعدها التعليق»). القسمُ باقٍ في القاع —
+            **فالمحتوى أوّلاً** (حجّة D-327 نفسُها) — **والرقاقةُ مرساةٌ
+            تقفز إليه**: مئتان وخمسون ملصقاً لم تعد طريقاً إجباريّاً.
+            **وبلا رأيٍ بعدُ تصير دعوةً** لمن يحقّ له التقييم —
+            **ورقمٌ صفرٌ لا يُطبع** (D-219). */}
+        {reviews &&
+          (reviews.count > 0 ? (
+            <a
+              href="#list-reviews"
+              className="text-[11px] px-2 py-0.5 rounded-full border border-border text-foreground hover:border-accent/50 transition inline-flex items-center gap-1 tabular-nums"
+            >
+              <Icon name="star" size={11} className="text-accent" />
+              {reviews.avg !== null && <span dir="ltr">{num(reviews.avg, locale)}</span>}
+              <span className="text-muted">{t.listReviewCount(num(reviews.count, locale))}</span>
+            </a>
+          ) : !isOwner ? (
+            <a
+              href="#list-reviews"
+              className="text-[11px] px-2 py-0.5 rounded-full border border-border text-muted hover:border-accent/50 hover:text-foreground transition inline-flex items-center gap-1"
+            >
+              <Icon name="star" size={11} />
+              {t.listReviewsJump}
+            </a>
+          ) : null)}
         {isOwner ? (
           <button
             type="button"

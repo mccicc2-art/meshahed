@@ -110,7 +110,9 @@ export function ListReviews({
   }
 
   return (
-    <section className="mt-8 space-y-4">
+    /* **المعرّفُ مرساةُ رقاقة الرأس** (D-332) — و`scroll-mt` يترك مسافةً
+       للترويسة الملتصقة فلا يهبط العنوانُ تحتها */
+    <section id="list-reviews" className="mt-8 space-y-4 scroll-mt-20">
       <div className="flex items-center gap-2">
         <Icon name="star" size={18} className="text-accent shrink-0" />
         <h2 className="text-[15px] font-bold">{t.listReviewsTitle}</h2>
