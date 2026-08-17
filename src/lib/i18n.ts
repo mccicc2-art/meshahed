@@ -875,6 +875,9 @@ const ar = {
   listReviewDelete: "احذف رأيي",
   listReviewOwn: "قائمتك — تقييمُ نفسك لا يُحسب.",
   listReviewCount: (n: string) => `${n} رأي`,
+  /* 🆕 D-332 — رقاقةُ القفز إلى التقييمات من رأس القائمة (بلاغُ أحمد:
+     «ماينفع تشوف كل الأفلام وبعدها التعليق») */
+  listReviewsJump: "قيّم القائمة",
   listReviewReport: "أبلغ",
   listReviewReported: "وصلنا بلاغُك",
   listReviewSpoilerNote: "حدَّده كاتبُه",
@@ -2171,6 +2174,7 @@ const en: Dict = {
   listReviewDelete: "Delete mine",
   listReviewOwn: "Your list — rating yourself does not count.",
   listReviewCount: (n: string) => `${n} ratings`,
+  listReviewsJump: "Rate this list",
   listReviewReport: "Report",
   listReviewReported: "Report received",
   listReviewSpoilerNote: "marked by its author",
