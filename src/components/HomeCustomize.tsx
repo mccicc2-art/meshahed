@@ -69,6 +69,7 @@ export function HomeCustomize({
     ratings: { icon: "star", label: t.panelRatings },
     lists: { icon: "list", label: t.myLists },
     trending: { icon: "trending", label: t.trendingWeek },
+    friends: { icon: "people", label: t.railFriendsNow },
   };
 
   const statMeta: Record<HeaderStatKey, { icon: IconName; label: string }> = {
