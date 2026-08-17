@@ -30,7 +30,7 @@ import { tap } from "@/lib/haptics";
 import { Icon } from "./Icon";
 import { Sheet, SheetHeader } from "./ui/Sheet";
 import { buttonClass } from "./ui/Button";
-import { sheetScroll } from "./ui/controls";
+import { sheetScroll, segmentedTrackFull, segmentedItem } from "./ui/controls";
 /* القسم الثاني في هذه الورقة — نفسُ المكوّن في المكتبة والمجتمع (D-179) */
 import { TabsPrefs } from "./TabsPrefs";
 import type { TabPref } from "@/lib/tabPrefs";
@@ -124,6 +124,21 @@ export function DiscoverFilterSheet({
   const [draft, setDraft] = useState<FilterDraft>(initial);
   const showFilters = axes !== "none";
   /**
+   * 🆕 **الورقةُ تبويبان كورقة المجتمع** (D-325، طلبُ أحمد: «الفلتر اعمله
+   * ٢ تبويب مثل ما عملنا في الكومينتي»).
+   *
+   * **وهي بالضبط حجّةُ D-292/D-306 في سطحٍ ثانٍ**: سؤالان مختلفان في
+   * ورقةٍ واحدة تبويبان لا فاصلٌ رمادي — **«بماذا أصفّي؟» و«كيف تُرتَّب
+   * تبويباتي؟» لا يُقرآن معاً**، وكان القارئ يمرّر تسعَ منسدلاتٍ ليبلغ
+   * ترتيبَ التبويبات.
+   *
+   * **والافتراضُ «أدوات»** — من فتح رمزَ الفلتر جاء يصفّي (D-152: الافتراضُ
+   * هو السلوكُ القائم). **وحيث لا فلاتر أصلاً** (تبويب القوائم،
+   * `axes === "none"`) **لا تبويبَ يُرسم**: شريطُ تبويبٍ أحدُ طرفيه فارغٌ
+   * أداةٌ تكذب (D-075).
+   */
+  const [tab, setTab] = useState<"do" | "see">("do");
+  /**
    * **اللغةُ والجنسيةُ والجائزةُ صارت في التبويبات الثلاثة — نقضٌ صريح
    * لـD-180** (مواصفةُ أحمد ١٢ أغسطس: التبويبات الثلاثة تحمل
    * `Original Language` و`Country of Origin` و`Award`).
@@ -191,12 +206,46 @@ export function DiscoverFilterSheet({
         closeLabel={t.closeLabel}
         onClose={onClose}
       >
-        {showFilters && <p className="text-xs text-muted mt-0.5">{t.browseFiltersHint}</p>}
+        {showFilters && tab === "do" && (
+          <p className="text-xs text-muted mt-0.5">{t.browseFiltersHint}</p>
+        )}
       </SheetHeader>
 
+      {/* **شريطُ التبويبين — وصفةُ `CommunityTools` حرفاً** (D-292):
+          `segmentedTrackFull` + `segmentedItem`، **ولا عائلةَ تحكّمٍ ثالثة.**
+          ⚠️ **والمفتاحان مُعادان من ورقة المجتمع عمداً**: الكلمتان هما
+          الكلمتان («أدوات» و«عرض»)، **ومفتاحان مختلفا الاسم متطابقا
+          المعنى ضجيجٌ لا يمسكه `tsc`** (D-254/D-300). */}
+      {showFilters && (
+        <div className={segmentedTrackFull} role="tablist" aria-label={t.discoverToolsTitle}>
+          {(["do", "see"] as const).map((k) => (
+            <button
+              key={k}
+              type="button"
+              role="tab"
+              id={`disc-tools-tab-${k}`}
+              aria-selected={tab === k}
+              aria-controls={`disc-tools-panel-${k}`}
+              onClick={() => {
+                tap(6);
+                setTab(k);
+              }}
+              className={segmentedItem(tab === k, "flex-1")}
+            >
+              {k === "do" ? t.communityToolsTabDo : t.communityToolsTabSee}
+            </button>
+          ))}
+        </div>
+      )}
+
       <div className={`${sheetScroll} py-4 space-y-5`}>
-        {showFilters && (
-        <div className="px-5 space-y-4">
+        {showFilters && tab === "do" && (
+        <div
+          className="px-5 space-y-4"
+          role="tabpanel"
+          id="disc-tools-panel-do"
+          aria-labelledby="disc-tools-tab-do"
+        >
           <p className="text-[13px] font-bold text-muted">{t.browseFiltersGroup}</p>
         {/* نافذة الترتيب غادرت الورقة (D-099) والجهة لحقت بها (تبويبات
             الرأس — طلب أحمد 9 Aug): أداتان على نفس السؤال لبس */}
@@ -413,8 +462,11 @@ export function DiscoverFilterSheet({
       </div>
         )}
 
-        {/* القسم الثاني — `TabsPrefs` المشترك، بلا أصنافٍ جانبية: صفوفُه
-            تمتدّ إلى حافّتَي الورقة كصفوف أوراق «المزيد» */}
+        {/* **القسمُ الثاني صار تبويباً** (D-325) — `TabsPrefs` المشترك بلا
+            أصنافٍ جانبية: صفوفُه تمتدّ إلى حافّتَي الورقة كصفوف أوراق
+            «المزيد». **وحيث لا فلاتر يُعرض وحدَه بلا شريط تبويب.** */}
+        {(!showFilters || tab === "see") && (
+        <div role="tabpanel" id="disc-tools-panel-see" aria-labelledby="disc-tools-tab-see">
         <TabsPrefs
           locale={locale}
           surface="discover"
@@ -422,6 +474,8 @@ export function DiscoverFilterSheet({
           labels={tabLabels}
           title={t.tabsPrefsGroup}
         />
+        </div>
+        )}
       </div>
       {/* ===== الأفعال =====
           ملتصقةٌ بأسفل الورقة لا في نهاية التمرير: الورقة قد تُمرَّر على
@@ -429,7 +483,10 @@ export function DiscoverFilterSheet({
       {/* **وتغيب مع الفلاتر:** «مسح الكل» و«عرض النتائج» فعلا فلترة،
           وتفضيلاتُ التبويبات تُحفظ عند اللمس بلا زرّ تطبيق — فشريطٌ
           يقول «عرض النتائج» في ورقةٍ بلا فلاتر يَعِد بفعلٍ لا يقع */}
-      {showFilters && (
+      {/* 🆕 **وتغيب في تبويب «عرض» أيضاً** (D-325): شريطٌ يقول «عرض
+          النتائج» فوق ترتيبِ تبويباتٍ يَعِد بفعلٍ لا يقع — **وهو نفسُ
+          الحكم الذي أغابه في ورقةٍ بلا فلاتر أصلاً.** */}
+      {showFilters && tab === "do" && (
       <div className="shrink-0 flex items-center gap-3 px-5 py-3 border-t border-[color:var(--divider)] bg-[color:var(--elevated)]">
         <button
           type="button"
