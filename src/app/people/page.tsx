@@ -24,6 +24,7 @@ import {
   getNewsReplyCounts,
   getReviewReplyCounts,
   getPostViewCounts,
+  getListReviewSocial,
   getPeopleFeatured,
   getPeopleLeaderboard,
   getPeopleTopReviews,
@@ -539,6 +540,18 @@ export default async function PeoplePage({
       )
     : new Map<string, number>();
 
+  /* 🆕 **قلوبُ آراء القوائم وعددُ ردودها** (D-370، الهجرة ١١٣): **نداءٌ
+     واحدٌ لقوائم الخطّ كلِّها** لا رحلةٌ لكلِّ صفّ (D-205) — **وهذا ما كان
+     محجوزاً عليه ذيلُ صفِّ القائمة** منذ ١٠٦ («لا `list_review_likes`
+     اليوم، **وزرٌّ لا يكتب شيئاً أسوأُ من غيابه**» — D-123).
+     **وسقوطُه صامتٌ قبل الهجرة**: خريطةٌ فارغة، **فيُقرأ الذيلُ صفراً
+     ويبقى الخطُّ** (D-063). */
+  const listSocial = pagerTab
+    ? await getListReviewSocial(
+        [...new Set(localized.map((a) => a.listId).filter(Boolean) as string[])],
+      )
+    : new Map();
+
   /* **مشاهداتُ منشورات الخطّ** (D-237): نداءٌ واحد لمفاتيح النوعين معاً
      — **والمفاتيحُ تُبنى هنا بنفس دالّتَي `postKeys`** التي تكتبها
      الواجهةُ في `data-post-key`، فلا صيغتان تفترقان.
@@ -635,6 +648,8 @@ export default async function PeoplePage({
               newsReplies={newsReplies}
               /* ✅ **والنصفُ الثاني من الترجيح** (D-289، الهجرة ٨٩) */
               reviewReplies={reviewReplies}
+              /* 🆕 **وذيلُ صفِّ القائمة** (D-370) — قلبٌ ورقمُ ردود */
+              listSocial={listSocial}
               /* **مفتاحُ «من يظهر»** (D-255) — يُقرأ من الكوكي على الخادم
                  **وهو الشخصنةُ الباقية وحدَها** بعد D-280. */
               showStrangers={showStrangers}
