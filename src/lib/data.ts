@@ -2497,6 +2497,48 @@ export async function getTopSavedLists(days = 7, limit = 3): Promise<SavedListRo
   }
 }
 
+/**
+ * 🆕 **قوائمُ تناسبك — التقاطعُ مع مكتبتك** (D-324، الهجرة ١٠٢).
+ *
+ * **ونفسُ شكل `getTopSavedLists` حرفاً** (D-145): الدالّتان تُغذّيان صفَّين
+ * متجاورين في تبويبٍ واحد، **وشكلان مختلفان لصفّين متجاورين هما كيف
+ * يفترق مكوّناهما يوماً**. والعددُ في `saves` هنا معناه «كم منها عندك»،
+ * **والعنوانُ فوق الصفّ هو ما يقول ذلك** (D-219).
+ *
+ * ⚠️ **وسقوطُها صامتٌ**: قبل تشغيل الهجرة يعود الصفُّ فارغاً فلا يُرسم —
+ * **ولا شاشةَ خطأٍ لأجل صفٍّ زينة** (درسُ ٥٨/٦٠).
+ */
+export async function getForYouLists(limit = 12): Promise<SavedListRow[]> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("for_you_lists", { p_limit: limit });
+    if (error || !data) return [];
+    return (data as {
+      list_id: string;
+      name: string;
+      owner_id: string;
+      nickname: string | null;
+      username: string | null;
+      avatar_url: string | null;
+      hide_name: boolean;
+      saves: number;
+      posters: string[] | null;
+    }[]).map((r) => ({
+      listId: String(r.list_id),
+      name: String(r.name ?? ""),
+      ownerId: String(r.owner_id),
+      nickname: r.nickname,
+      username: r.username,
+      avatarUrl: r.avatar_url,
+      hideName: Boolean(r.hide_name),
+      saves: Number(r.saves) || 0,
+      posters: (r.posters ?? []).filter(Boolean),
+    }));
+  } catch {
+    return [];
+  }
+}
+
 export async function getPostLikes(
   ids: string[],
 ): Promise<{ counts: Record<string, number>; mine: string[] }> {

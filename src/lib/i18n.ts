@@ -741,6 +741,13 @@ const ar = {
   /* 🆕 **قسمُ القوائم** (D-289، طلبُ أحمد: «أكثر الليستات إضافةً
      للمكاتب أو حفظاً»). **والعنوانُ يقول ما يقيسه**: الحفظُ لا الإنشاء. */
   peopleBoardSavedLists: "ما يحفظه الناس",
+  /* 🆕 D-324 — صفّا تبويب القوائم. **«تناسبك» لا «مختار لك»**: الثانية
+     محجوزةٌ لصفّ الأعمال، **ولفظان لمعنيين مختلفين خيرٌ من لفظٍ لمعنيين**
+     (D-002/D-292). و«الأكثر حفظاً» تصف الفعلَ الذي يقيسه العدّاد، لا
+     «الأكثر شعبية» التي لا مقياسَ لها في الشاشة (D-219). */
+  listsForYou: "قوائم تناسبك",
+  listsForYouNote: (n: string) => `${n} من أعمالك فيها`,
+  listsMostSaved: "الأكثر حفظاً",
   /* 🆕 **العملُ الذي يدور حوله الكلام** (D-291).
      ⚠️ **ولا «هذا الأسبوع» فيه** رغم أن الاقتراح كتبها: الرقمُ تحته
      **عدُّ المشاركات كلِّه** لا عدُّ الأسبوع، **وعنوانٌ يعِد بنافذةٍ لا
@@ -2105,6 +2112,9 @@ const en: Dict = {
     `${num(now, "en")} this week · ${num(prev, "en")} last week`,
   peopleBoardTopReview: "Most liked comments",
   peopleBoardSavedLists: "What people are saving",
+  listsForYou: "Lists for you",
+  listsForYouNote: (n: string) => `${n} from your library`,
+  listsMostSaved: "Most saved",
   // "this week" returned in D-311: the number is truly weekly now (mig. 96)
   peopleBoardTalked: "The work people are talking about this week",
   peopleBoardSaves: (n: number) => `${num(n, "en")} ${n === 1 ? "save" : "saves"}`,
