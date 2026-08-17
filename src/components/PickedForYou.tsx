@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { PosterRail, RailItem } from "./PosterRail";
 import { PosterCard } from "./PosterCard";
-import { LongPressable } from "./LongPressable";
 import { OneTimeHint } from "./OneTimeHint";
 import { Icon } from "./Icon";
 import { getDict, type Locale } from "@/lib/i18n";
@@ -19,6 +18,13 @@ export interface PickedItem {
   posterPath: string | null;
   year?: string;
   note: string;
+  /* 🆕 **حالةُ العمل في مكتبة القارئ** (D-322) — تُحسب على الخادم
+     وتُسلسَل مع البطاقة: **هذا مكوّنُ عميلٍ لا يقرأ القاعدة**، والقراءةُ
+     واحدةٌ للصفّ كلِّه لا واحدةٌ لكل ملصق (D-205). */
+  added?: boolean;
+  watched?: boolean;
+  progress?: number;
+  dropped?: boolean;
 }
 
 /** كم بطاقةً تُعرض من البِركة في كل صفحة */
@@ -131,26 +137,39 @@ export function PickedForYou({
               الصفوف نفسه في D-138: **أداةٌ لا تُرى لا توجد**.
               والعلاج علاجُه: ٦٥٪ في السكون وكاملٌ عند المرور أو التركيز
               — ظاهرٌ لمن لا يدري، وخافتٌ فلا يزاحم الملصق. */}
-          <LongPressable onLongPress={() => dismiss(s)}>
-            <div className="relative group/pk">
-              <PosterCard
-                href={`/${s.mediaType === "movie" ? "movie" : "show"}/${s.tmdbId}`}
-                title={s.title}
-                posterPath={s.posterPath}
-                year={s.year}
-                note={s.note}
-              />
-              <button
-                type="button"
-                onClick={() => dismiss(s)}
-                aria-label={t.notInterestedAria(s.title)}
-                title={t.notInterested}
-                className="absolute top-1.5 end-1.5 z-10 grid place-items-center w-7 h-7 rounded-full bg-black/55 text-white/85 opacity-65 group-hover/pk:opacity-100 focus-visible:opacity-100 hover:bg-black/75 hover:text-white active:scale-95 transition backdrop-blur-sm"
-              >
-                <Icon name="eye-off" size={14} strokeWidth={2} />
-              </button>
-            </div>
-          </LongPressable>
+          {/* ⚖️ **زرُّ الزاوية غادر، و«غير مهتم» صارت صفّاً في قائمة
+              الضغط المطوَّل** (D-322، طلبُ أحمد: «أخفِ العلامات التي على
+              البوستر»). **ونقضُ ما كُتب هنا في ١٠ أغسطس مسجَّلٌ بحجّته**:
+              أُعيد الزرُّ يومها لأن إخفاءه تركَ الفعلَ بلا بابٍ يُرى
+              (D-138: أداةٌ لا تُرى لا توجد) — **واليومَ له بابٌ يُرى:
+              صفٌّ باسمه في قائمةٍ يفتحها الضغطُ المطوَّل نفسُه.**
+              **فالفعلُ لم يُحذف، وإنما انتقل من وجه العمل إلى قائمته.**
+
+              ⚠️ **وإيماءةٌ واحدةٌ لمالكٍ واحد** (D-277): كان الضغطُ
+              المطوَّل هنا يعني «غير مهتم» وحدَها، **ولو بقي كذلك مع
+              القائمة لصار للإيماءة الواحدة معنيان في سطحٍ واحد.** فصار
+              مالكُها `PosterHold`، و«غير مهتم» أحدَ صفوفها. */}
+          <PosterCard
+            href={`/${s.mediaType === "movie" ? "movie" : "show"}/${s.tmdbId}`}
+            title={s.title}
+            posterPath={s.posterPath}
+            year={s.year}
+            note={s.note}
+            hold={{
+              tmdbId: s.tmdbId,
+              mediaType: s.mediaType,
+              added: !!s.added,
+              watched: !!s.watched,
+              progress: s.progress,
+              dropped: s.dropped,
+              locale,
+            }}
+            holdExtra={{
+              icon: "eye-off",
+              label: t.notInterested,
+              run: () => dismiss(s),
+            }}
+          />
         </RailItem>
       ))}
     </PosterRail>

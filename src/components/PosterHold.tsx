@@ -10,6 +10,7 @@ import { getDict, type Locale } from "@/lib/i18n";
 import { Icon, type IconName } from "./Icon";
 import { LongPressable } from "./LongPressable";
 import { Dropdown, dropdownItem } from "./ui/Dropdown";
+import { StatusThread } from "./StatusThread";
 
 /**
  * **الضغطُ المطوَّل على أيّ ملصق** (D-229، طلبُ أحمد: «أيّ أحد يضغط HOLD
@@ -79,6 +80,9 @@ export function PosterHold({
   posterPath,
   added,
   watched,
+  progress = 0,
+  dropped = false,
+  extra,
   locale,
   children,
 }: {
@@ -90,6 +94,27 @@ export function PosterHold({
   added: boolean;
   /** شوهد كاملاً؟ — يقلب صفَّ «شاهدته» إلى حالته المُنجَزة */
   watched: boolean;
+  /**
+   * 🆕 **التقدّمُ والإيقاف** (D-322): كان هذا الخيطُ يعرف حالتين
+   * (عندك · انتهيت) **وأخوه في المكتبة أربعاً** — فرفُّ اكتشف كان يعرض
+   * سماويّاً لمسلسلٍ أنت في منتصفه، **ولا أحمرَ لموقوفٍ إطلاقاً.**
+   * **وهما حقيقتا خادمٍ لا تُقلبان من هذه القائمة**: «شاهدته» تُنهيه
+   * فيغلبها الأخضرُ بحكم الأولوية، **ولا فعلَ هنا يرفع بطاقةً حمراء**
+   * (الإيقافُ فعلُ من يتابع، ومن يتابع في المكتبة — نصُّ D-229).
+   */
+  progress?: number;
+  dropped?: boolean;
+  /**
+   * 🆕 **صفٌّ رابعٌ يملكه السطح** (D-322، طلبُ أحمد: «غير مهتم» انتقلت
+   * إلى قائمة الضغط المطوّل بعد أن غادر زرُّها وجهَ الملصق).
+   *
+   * **ولماذا فتحةٌ لا صفٌّ ثابت:** «غير مهتم» تكتب في `dismissed_titles`
+   * وهي **حقيقةُ سطحٍ واحد** («مقترح لك») — **وصفٌّ يظهر في ثمانية
+   * أسطحٍ ليفعل شيئاً في واحدٍ خيارٌ لا ينطبق، وهو أسوأ من غيابه**
+   * (D-217). **ولا تُفتح «لمن يحتاجها لاحقاً»** (D-214/D-303): قارئُها
+   * يصل في الدفعة نفسِها.
+   */
+  extra?: { icon: IconName; label: string; run: () => void };
   locale: Locale;
   children: React.ReactNode;
 }) {
@@ -266,19 +291,18 @@ export function PosterHold({
           فوقه — فيقف حيث يقف خيطُ `PosterCard` بالضبط.
           ⚠️ **وهو ليس أخاً للقائمة**: القاصُّ يلفّ الخيطَ وحده، **ولو
           لفّ الطبقةَ كلَّها لقصّ المنسدلةَ معه.** */}
-      {(seen || inList) && (
-        <span
-          aria-hidden
-          className="pointer-events-none absolute inset-px rounded-poster overflow-hidden"
-        >
-          <span className="absolute inset-x-0 bottom-0 h-1.5 bg-black/50">
-            <span
-              className="block h-full w-full transition-colors"
-              style={{ background: seen ? "var(--success)" : "var(--info)" }}
-            />
-          </span>
-        </span>
-      )}
+      {/* 🆕 **والوصفةُ واحدةٌ مستخرَجة** (D-322): كانت نسخةً ثانيةً هنا،
+          **فصار الأصلُ سماويّاً وبقيت هي رماديّةً سبعةَ أيام** (D-289).
+          **والحالةُ تفاؤليّةٌ في الأوّلَين وحقيقةُ خادمٍ في الأخيرين.** */}
+      <StatusThread
+        inset
+        saved={inList}
+        watched={seen}
+        /* **المُشاهَدُ لا يُعرض «نصفَه»**: ضغطةُ «شاهدته» تُنهيه، ورقمُ
+           التقدّم الآتي من الخادم صار قديماً في اللحظة نفسِها. */
+        progress={seen ? 100 : progress}
+        dropped={dropped}
+      />
 
       <Dropdown open={open} onClose={() => setOpen(false)} align="end" caret>
         <HoldRow
@@ -302,6 +326,19 @@ export function PosterHold({
           onClick={seen ? (canUndo ? undoWatched : goToTitle) : markWatched}
         />
         <HoldRow icon="star" label={t.reviewSectionTitle} onClick={goToTitle} />
+        {/* 🆕 **وصفُّ السطح آخِراً** (D-322): «غير مهتم» فعلٌ يُخفي
+            البطاقةَ من تحت إصبعك، **فلا يجاور فعلاً يُبقيها** — والأخيرُ
+            موضعُ ما لا رجعةَ سهلةَ فيه (وله «تراجع» في التوست، D-019). */}
+        {extra && (
+          <HoldRow
+            icon={extra.icon}
+            label={extra.label}
+            onClick={() => {
+              setOpen(false);
+              extra.run();
+            }}
+          />
+        )}
       </Dropdown>
     </div>
   );

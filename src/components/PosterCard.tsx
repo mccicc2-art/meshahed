@@ -5,6 +5,7 @@ import { MarqueeText } from "./MarqueeText";
 import { Icon, type IconName } from "./Icon";
 import { QuickAdd } from "./QuickAdd";
 import { PosterHold } from "./PosterHold";
+import { StatusThread } from "./StatusThread";
 import type { Locale } from "@/lib/i18n";
 
 type BadgeTone = "neutral" | "progress" | "watched" | "rating" | "dropped";
@@ -35,6 +36,7 @@ export function PosterCard({
   saved = false,
   watched = false,
   hold,
+  holdExtra,
   quickAdd,
 }: {
   href: string;
@@ -95,8 +97,18 @@ export function PosterCard({
     mediaType: "tv" | "movie";
     added: boolean;
     watched: boolean;
+    /** 🆕 D-322: التقدّمُ والإيقافُ يعبران معه — الخيطُ هناك لا هنا */
+    progress?: number;
+    dropped?: boolean;
     locale: Locale;
   };
+  /**
+   * 🆕 **صفٌّ رابعٌ في قائمة الضغط المطوَّل يملكه السطح** (D-322) —
+   * «غير مهتم» في «مقترح لك». **ولا يمرّ إلا من مكوّن عميل** (فيه دالّة)،
+   * ولذلك هو منفصلٌ عن `hold` المسلسَل: **لا يُغري خادماً بتمرير دالّة
+   * عبر الحدّ** (D-235).
+   */
+  holdExtra?: { icon: IconName; label: string; run: () => void };
   /**
    * **زرُّ «+ للمشاهدة» على هذه البطاقة** (D-207 — امتدادُ D-205).
    *
@@ -182,36 +194,14 @@ export function PosterCard({
 
         {/* الحالة كلها في خيط اللون: أخضر مكتمل، أصفر قيد المشاهدة،
             **سماويّ في مكتبتك**، أحمر موقوف — وما لم يبدأ لا خيط له إطلاقاً */}
-        {(dropped || (!hold && (watched || saved)) || (progress ?? 0) > 0) && (
-          <div className="absolute inset-x-0 bottom-0 h-1.5 bg-black/50">
-            <div
-              className="h-full transition-colors"
-              style={{
-                /* **الأولوية: موقوفٌ ثم منتهٍ ثم جارٍ ثم محفوظ** — وأخصُّ
-                   الحالات يغلب أعمَّها، فعملٌ منتهٍ محفوظٌ يُقرأ منتهياً */
-                width:
-                  dropped || watched || (saved && (progress ?? 0) <= 0)
-                    ? "100%"
-                    : `${Math.max(0, Math.min(100, progress ?? 0))}%`,
-                background: dropped
-                  ? "var(--error)"
-                  : watched || (progress ?? 0) >= 100
-                    ? "var(--success)"
-                    : (progress ?? 0) > 0
-                      ? "var(--accent)"
-                      : /* **«عندك» سماويّ لا رماديّ** (بلاغُ أحمد: «هذا
-                           خلّه سماوي، الرصاصي ما هو واضح»). **والحجّةُ
-                           الأولى انقلبت على نفسها**: اخترتُ الرماديَّ لأنه
-                           «حالةٌ لا تُلحّ»، **فصار حدَّ الملصق نفسَه فلا
-                           يُرى** — وخيطٌ لا يُرى ليس حالةً هادئة، هو خيطٌ
-                           غائب. **ولا لونَ خامس يُخترع**: `--info` موجودٌ
-                           في اللوحة (`Alert` و`LibraryAnalysis` والرئيسية
-                           تقرؤه)، **وهو دلاليٌّ لا يتبدّل مع الثيم** فيبقى
-                           واضحاً في `daylight` كما في الليل. */
-                        "var(--info)",
-              }}
-            />
-          </div>
+        {/* **والوصفةُ صارت في `StatusThread` وحدَها** (D-322): كانت هنا
+            ونسخةٌ ثانيةٌ في `PosterHold`، **فصُحّح الأصلُ وبقيت النسخةُ
+            رماديّةً سبعةَ أيام** (D-289). **ودفعةٌ تضيف حالتين جديدتين
+            إلى النسختين معاً هي أرخصُ لحظةٍ للاستخراج.**
+            **و`hold` يُسكتها هنا** لأنه يرسمها بحالته التفاؤليّة
+            (D-235) — **خيطان لحالةٍ واحدة يفترقان عند أوّل ضغطة.** */}
+        {!hold && (
+          <StatusThread saved={saved} watched={watched} progress={progress} dropped={dropped} />
         )}
       </div>
     </Link>
@@ -227,6 +217,9 @@ export function PosterCard({
       posterPath={posterPath}
       added={hold.added}
       watched={hold.watched}
+      progress={hold.progress}
+      dropped={hold.dropped}
+      extra={holdExtra}
       locale={hold.locale}
     >
       {card}

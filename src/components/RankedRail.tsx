@@ -4,7 +4,8 @@ import { Icon, type IconName } from "./Icon";
 import Image from "next/image";
 import { posterUrl, titleOf, type SearchResult } from "@/lib/tmdb";
 import { ImdbMark, TmdbMark } from "./RatingMarks";
-import { QuickAdd } from "./QuickAdd";
+import { PosterHold } from "./PosterHold";
+import type { LibState } from "@/lib/libState";
 import type { Locale } from "@/lib/i18n";
 
 /**
@@ -24,7 +25,7 @@ export function RankedRail({
   emptyText,
   href,
   seeAllLabel,
-  quickAdd,
+  lib,
 }: {
   title: string;
   icon?: IconName;
@@ -32,17 +33,25 @@ export function RankedRail({
   /** نصّ صغير تحت العنوان — يشرح مصدر الترتيب أو نطاقه */
   note?: string;
   /**
-   * **زرُّ «+ للمشاهدة» على كل ملصق** (D-205) — يُفعَّل بتمرير لغةِ القارئ
-   * ومجموعةِ ما يتابعه (`${media}-${id}`).
+   * 🆕 **حالةُ المكتبة على كل ملصق: الضغطُ المطوَّل والخيط** (D-322،
+   * طلبُ أحمد: «أخفِ العلامات التي على البوستر، وفعّل الضغط المطوّل،
+   * والخط السماوي والأخضر تحت البوستر والأحمر كذلك — نفس المكتبة»).
    *
-   * **ولماذا خيارٌ لا سلوكٌ دائم:** الصفوفُ ليست كلُّها اكتشافاً — رفٌّ في
-   * صفحة عملٍ يعرض «مشابهاً» أو «من فنّانيك» في سياقٍ آخر، **وزرُّ حفظٍ
-   * على كل ملصقٍ في التطبيق كلّه يجعله زينةً تُتجاهَل**. فمن يريده يطلبه.
+   * **⚖️ ويحلّ محلَّ `quickAdd` ولا يجاوره** — نقضٌ لموضع زرِّ D-205/D-207
+   * لا لفعله: **الزرُّ كان يشغل زاويةَ الملصق دائماً**، **والضغطُ المطوَّل
+   * يعطي الفعلَ نفسَه ومعه «شاهدته» و«ريفيو» بلا أن يأكل بكسلاً من وجه
+   * العمل** — **والتعرّفُ على العمل أغلى ما تملكه البطاقة** (D-131).
    *
-   * ⚠️ **والمجموعةُ تُقرأ مرّةً في الصفحة لا مرّةً لكل بطاقة** — وإلا
-   * صارت رسمةُ اكتشف مئةَ استعلام.
+   * ⚠️ **والحالةُ تُقرأ مرّةً للصفحة لا مرّةً لكل بطاقة** (D-205) —
+   * `getLibState` ثلاثةُ نداءاتٍ مغلَّفةٍ بـ`cache` للطلب كلِّه.
    */
-  quickAdd?: { locale: Locale; following: Set<string> };
+  lib?: { locale: Locale; state: LibState };
+  /**
+   * ⏳ **معاملٌ مقبولٌ ومُهمَلٌ يسقط في الدفعة التالية** (D-028): الصفحةُ
+   * التي تنادي هذا الرفَّ تُرفع في دفعةٍ **بعد** هذه، **وحذفُ المعامل هنا
+   * يكسر بناءها في النافذة بينهما** — **ومفتاحٌ يُحذف يُرفع ملفُّه مرّتين.**
+   */
+  quickAdd?: unknown;
   /** إخفاء الأرقام: بعض الصفوف قائمة لا ترتيب */
   ranked?: boolean;
   /** أداةٌ في طرف العنوان — رقائق نافذة الصفّ (D-099) */
@@ -110,13 +119,14 @@ export function RankedRail({
           {items.map((r, i) => {
             const img = posterUrl(r.poster_path, "w342");
             const href = `/${r.media_type === "tv" ? "show" : "movie"}/${r.id}`;
-            return (
-              <Link
-                key={`${r.media_type}-${r.id}`}
-                href={href}
-                prefetch={false}
-                className="group w-[112px] sm:w-[132px] shrink-0"
-              >
+            /* 🆕 **حالةُ العمل عندك** (D-322) — تُسأل هنا لأن الرفَّ يعرف
+               صفَّه، **والسؤالُ قراءةُ خريطةٍ في الذاكرة لا نداء.** */
+            const st =
+              lib && (r.media_type === "tv" || r.media_type === "movie")
+                ? lib.state.of(r.id, r.media_type)
+                : null;
+            const card = (
+              <>
                 <div className="relative aspect-[2/3] rounded-poster overflow-hidden bg-surface-2 border border-border">
                   {img ? (
                     <Image
@@ -130,18 +140,11 @@ export function RankedRail({
                     <div className="w-full h-full grid place-items-center text-muted"><Icon name="film" size={22} /></div>
                   )}
 
-                  {/* الزرُّ داخل الملصق لا تحته: تحتَه سطرٌ لكل بطاقة
-                      يطيل الصفَّ (نفسُ سبب وضع الرقم داخله) */}
-                  {quickAdd && (r.media_type === "tv" || r.media_type === "movie") && (
-                    <QuickAdd
-                      tmdbId={r.id}
-                      mediaType={r.media_type}
-                      title={titleOf(r)}
-                      posterPath={r.poster_path}
-                      added={quickAdd.following.has(`${r.media_type}-${r.id}`)}
-                      locale={quickAdd.locale}
-                    />
-                  )}
+                  {/* ⚖️ **زرُّ «+» غادر وجهَ الملصق** (D-322، طلبُ أحمد:
+                      «أخفِ العلامات التي على البوستر») — **والفعلُ لم
+                      يغادر**: هو أوّلُ صفٍّ في قائمة الضغط المطوَّل.
+                      **وحجّةُ «داخل الملصق لا تحته» كانت تختار بين موضعين
+                      سيّئين، والثالثُ ألّا يُرسم شيءٌ أصلاً.** */}
 
                   {/* الرقم على تعتيم سفلي حتى يُقرأ فوق أي ملصق */}
                   <div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-black/90 to-transparent" />
@@ -184,11 +187,60 @@ export function RankedRail({
                     </span>
                   ) : null}
                 </div>
+              </>
+            );
 
-                <p className="text-xs font-medium leading-tight line-clamp-2 mt-1.5 group-hover:text-accent transition">
-                  {titleOf(r)}
-                </p>
-              </Link>
+            /* **بلا حالةٍ: البطاقةُ كما كانت حرفاً** — رابطٌ واحدٌ يلفّ
+               الملصقَ واسمَه، ولا عقدةَ زائدةً في الشجرة (D-229). */
+            if (!st || !lib) {
+              return (
+                <Link
+                  key={`${r.media_type}-${r.id}`}
+                  href={href}
+                  prefetch={false}
+                  className="group w-[112px] sm:w-[132px] shrink-0"
+                >
+                  {card}
+                  <p className="text-xs font-medium leading-tight line-clamp-2 mt-1.5 group-hover:text-accent transition">
+                    {titleOf(r)}
+                  </p>
+                </Link>
+              );
+            }
+
+            /* 🔴 **ورابطان لا رابطٌ واحد حين يوجد الضغطُ المطوَّل** —
+               والسببُ فحصٌ من فحوصنا الخضراء: **قائمةُ `PosterHold` أزرارٌ،
+               وزرٌّ داخل رابطٍ عطلٌ يمسكه `button.closest('a')`** (D-155/
+               D-301). فالحاملُ يلفّ الملصقَ وحدَه، **والاسمُ تحته رابطٌ
+               ثانٍ إلى الوجهة نفسِها** — والوجهةُ واحدةٌ فلا لبس.
+               **و`group` صعد إلى الحاوية** فبقي التكبيرُ عند المرور
+               وتلوينُ الاسم يعملان كما كانا. */
+            return (
+              <div
+                key={`${r.media_type}-${r.id}`}
+                className="group w-[112px] sm:w-[132px] shrink-0"
+              >
+                <PosterHold
+                  tmdbId={r.id}
+                  mediaType={r.media_type === "tv" ? "tv" : "movie"}
+                  title={titleOf(r)}
+                  posterPath={r.poster_path}
+                  added={st.added}
+                  watched={st.watched}
+                  progress={st.progress}
+                  dropped={st.dropped}
+                  locale={lib.locale}
+                >
+                  <Link href={href} prefetch={false} className="block">
+                    {card}
+                  </Link>
+                </PosterHold>
+                <Link href={href} prefetch={false} className="block">
+                  <p className="text-xs font-medium leading-tight line-clamp-2 mt-1.5 group-hover:text-accent transition">
+                    {titleOf(r)}
+                  </p>
+                </Link>
+              </div>
             );
           })}
       </RailScroll>
