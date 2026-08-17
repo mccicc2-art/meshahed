@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import {
   addReviewReply,
   addNewsReply,
@@ -119,6 +120,9 @@ export function ThreadReplies({
   /* 🆕 **قياسٌ واحدٌ للكيبورد يقرؤه المرسى والقلم** (D-359) — خرج إلى
      `lib/useKeyboard` عند قارئه الثاني (D-002). */
   const kbOpen = useKeyboardOpen();
+  /* 🆕 **مسارُ الصفحة الحيّ** (D-361) — يسافر مع الصوت ليُبطل نسخةَ هذه
+     الصفحة وحدَها لا صفحةً مسمّرةً في الفعل. */
+  const pathname = usePathname();
   /**
    * 🆕 **الفروعُ مطويّةٌ حتى تُفتح** (D-284، طلبُ أحمد: «الردود الي في ردّ
    * الشخص المفروض ما تظهر على طول، لازم فيه سهم توسيع»).
@@ -186,7 +190,11 @@ export function ThreadReplies({
     const was = myVoteOf(id) as -1 | 0 | 1;
     tap(8);
     setVoteNow((d) => ({ ...d, [id]: v }));
-    void votePost(id, v).catch(() => {
+    /* 🆕 **والمسارُ يسافر مع الصوت** (D-361): الفعلُ يعرف الصفَّ ولا يعرف
+       الصفحةَ التي يُقرأ فيها — **والصفوفُ الثلاثة تُقرأ من ثلاثة مسارات**
+       (الغرفة · النشرة · الريفيو) — **فيُمرَّر المسارُ الحيُّ ويُحرَس في
+       الخادم** (D-257: هدفٌ ثالثٌ وسيطٌ لا نسخة). */
+    void votePost(id, v, pathname).catch(() => {
       setVoteNow((d) => ({ ...d, [id]: was }));
       setError(t.errorTitle);
     });
