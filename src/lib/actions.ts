@@ -2815,6 +2815,115 @@ export async function reportListReview(input: { listId: string; reviewUserId: st
   if (error) fail(error);
 }
 
+/**
+ * 🆕 **إعجابٌ بمراجعة قائمة، أو سحبُه** (D-370، الهجرة ١١٣).
+ *
+ * **توأمُ `toggleReviewLike` بجدولٍ آخر ومفتاحٍ فيه قائمةٌ بدل عمل** —
+ * والحراسةُ كلُّها في القاعدة كسابقتها: المفتاحُ الأساسيُّ يمنع التكرار،
+ * والسياسةُ تمنع الكتابةَ باسم غيرك والإعجابَ برأي نفسك.
+ *
+ * **و`revalidatePath` لصفحة القائمة وحدَها**: القلبُ يُنقر من تبويب
+ * تقييماتها ومن خطّ المجتمع، **والزرُّ متفائلٌ يملك عدّادَه** — فتجديدُ
+ * `/people` مع كلِّ قلبٍ يعيد بناءَ خطٍّ من ستّين صفّاً ثمناً لرقمٍ رُسم
+ * أصلاً (نصُّ `toggleActivityLike`).
+ */
+export async function toggleListReviewLike(
+  reviewUserId: string,
+  listId: string,
+  liked: boolean,
+) {
+  reviewUserId = uuid(reviewUserId);
+  listId = uuid(listId);
+  const { supabase, user } = await requireUser();
+  const key = { review_user_id: reviewUserId, list_id: listId, liker_id: user.id };
+
+  const { error } = liked
+    ? await supabase.from("list_review_likes").delete().match(key)
+    : await supabase.from("list_review_likes").insert(key);
+
+  if (error) fail(error);
+  revalidatePath(`/lists/${listId}`);
+}
+
+/**
+ * 🆕 **ردٌّ على مراجعة قائمة** (D-370) — **نفسُ دلوِ `addReviewReply`
+ * وحدودِه حرفاً**: خمسةَ عشرَ في الدقيقة وألفُ حرف، **فلا يتعلّم
+ * المستخدمُ قاعدتين لفعلٍ واحد.**
+ *
+ * **والمعرّفُ يعود مع الكتابة** (D-241) لتُصالَح النسخةُ التفاؤلية.
+ */
+export async function addListReviewReply(input: {
+  reviewUserId: string;
+  listId: string;
+  body: string;
+  parentId?: string | null;
+}): Promise<NewReply | null> {
+  const reviewUserId = uuid(input.reviewUserId);
+  const listId = uuid(input.listId);
+  const parentId = input.parentId ? uuid(input.parentId) : null;
+
+  const { supabase, user } = await requireUser("reply", 15, 60_000);
+
+  const body = String(input.body ?? "").replace(/\s{3,}/g, "  ").trim().slice(0, 1000);
+  if (!body) return null;
+
+  const { data, error } = await supabase
+    .from("list_review_replies")
+    .insert({
+      review_user_id: reviewUserId,
+      list_id: listId,
+      user_id: user.id,
+      body,
+      parent_id: parentId,
+    })
+    .select("id, created_at")
+    .single();
+  if (error) fail(error);
+
+  revalidatePath(`/lists/${listId}`);
+
+  const who = await replyAuthor(supabase, user.id);
+  return { replyId: String(data!.id), createdAt: String(data!.created_at), ...who };
+}
+
+/** 🆕 **حذفُ ردّي أنا** (D-370) — توأمُ `deleteMyReply`، والسياسةُ تحرسه */
+export async function deleteMyListReviewReply(input: {
+  replyId: string;
+  listId: string;
+}): Promise<void> {
+  const replyId = uuid(input.replyId);
+  const listId = uuid(input.listId);
+
+  const { supabase, user } = await requireUser();
+  const { error } = await supabase
+    .from("list_review_replies")
+    .delete()
+    .match({ id: replyId, user_id: user.id });
+  if (error) fail(error);
+
+  revalidatePath(`/lists/${listId}`);
+}
+
+/**
+ * 🆕 **الإبلاغُ عن ردٍّ على مراجعة قائمة** (D-370) — توأمُ `reportReply`
+ * بحرفيّته: صامتٌ، لا يعود بعدّاد، **والإخفاءُ عند العاشر في مُشغِّل SQL
+ * لا هنا**، وتكرارُه بلا أثر.
+ */
+export async function reportListReviewReply(input: {
+  replyId: string;
+  reason?: string;
+}): Promise<void> {
+  const replyId = uuid(input.replyId);
+  const { supabase, user } = await requireUser("report", 10, 60_000);
+
+  const reason = (input.reason ?? "").replace(/\s+/g, " ").trim().slice(0, 300);
+  const { error } = await supabase.from("list_reply_reports").upsert(
+    { reply_id: replyId, reporter_id: user.id, reason: reason || null },
+    { onConflict: "reply_id,reporter_id", ignoreDuplicates: true },
+  );
+  if (error) fail(error);
+}
+
 /** مجتمعاتي — غلاف فعلٍ لورقة «انشرها في مجتمعي» (rpc القائمة نفسها) */
 export async function myCommunitiesList(): Promise<CommunityLite[]> {
   const { supabase } = await requireUser();

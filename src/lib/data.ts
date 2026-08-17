@@ -4079,6 +4079,107 @@ export async function getMyListReview(
 }
 
 /**
+ * 🆕 **قلوبُ مراجعات القوائم وردودُها — عدداً وحالة** (D-370، الهجرة ١١٣).
+ *
+ * **مصفوفةٌ لا معرّفٌ واحد** (D-205): صفحةُ القائمة تمرّر واحدةً،
+ * **وخطُّ المجتمع يمرّر قوائمَ صفوفِه كلَّها في نداءٍ واحد** — وهو ما
+ * يجعل ذيلَ صفِّ القائمة ممكناً بلا رحلةٍ لكلِّ صفّ.
+ *
+ * **والمفتاحُ `listId|userId`** لأن الرأيَ نفسَه مفتاحُه اثنان (D-327)،
+ * **وخريطةٌ بمفتاحٍ ناقصٍ تعطي صفّاً كلامَ صفٍّ آخر** (D-237).
+ *
+ * **والسقوطُ صامتٌ قبل الهجرة**: خريطةٌ فارغة تعني «لا قلوبَ ولا ردود»
+ * — **والذيلُ يُرسم بصفرٍ لا بشاشة خطأ** (D-063).
+ */
+export interface ListReviewSocial {
+  likes: number;
+  replies: number;
+  likedByMe: boolean;
+}
+
+export function listReviewKey(listId: string, reviewUserId: string): string {
+  return `${listId}|${reviewUserId}`;
+}
+
+export async function getListReviewSocial(
+  listIds: string[],
+): Promise<Map<string, ListReviewSocial>> {
+  try {
+    const ids = [...new Set(listIds.filter(Boolean))];
+    if (!ids.length) return new Map();
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("list_review_social", { p_lists: ids });
+    if (error || !data) return new Map();
+    return new Map(
+      (data as {
+        list_id: string;
+        review_user_id: string;
+        likes: number;
+        replies: number;
+        liked_by_me: boolean;
+      }[]).map((r) => [
+        listReviewKey(String(r.list_id), String(r.review_user_id)),
+        {
+          likes: Number(r.likes) || 0,
+          replies: Number(r.replies) || 0,
+          likedByMe: Boolean(r.liked_by_me),
+        },
+      ]),
+    );
+  } catch {
+    return new Map();
+  }
+}
+
+/**
+ * 🆕 **ردودُ مراجعات قائمةٍ واحدة** (D-370) — **نداءٌ واحدٌ للقائمة
+ * كلِّها لا لكلِّ رأي** (D-205)، **والترشيحُ في الذاكرة** كما في صفحة
+ * التعليق (`getTitleReplies` بحرفها).
+ *
+ * **والنوعُ `ReviewReply` نفسُه** لأن الصفَّ الذي يرسمه واحد
+ * (`ThreadReplies`) — **ونوعٌ ثانٍ بحقولٍ متطابقة يفترق عند أوّل تعديل.**
+ */
+export async function getListReviewReplies(listId: string): Promise<ReviewReply[]> {
+  try {
+    const supabase = await createClient();
+    const [{ data, error }, me] = await Promise.all([
+      supabase.rpc("list_review_replies_of", { p_list: listId }),
+      getUser(),
+    ]);
+    if (error || !data) return [];
+    return (data as {
+      id: string;
+      review_user_id: string;
+      parent_id: string | null;
+      author_id: string;
+      nickname: string | null;
+      username: string | null;
+      avatar_url: string | null;
+      hide_name: boolean;
+      body: string;
+      created_at: string;
+    }[]).map((r) => ({
+      /* ⚠️ **و`id` معرّفُ الكاتب لا معرّفُ الردّ** — نفسُ حجّة
+         `getTitleReplies`: `PersonLite.id` معناه «صاحبُ الصفّ» في كلِّ
+         مكوّنٍ يقرؤه. */
+      id: r.author_id,
+      nickname: r.nickname,
+      username: r.username,
+      avatar_url: r.avatar_url,
+      hide_name: r.hide_name,
+      replyId: r.id,
+      reviewUserId: r.review_user_id,
+      parentId: r.parent_id,
+      body: r.body,
+      createdAt: r.created_at,
+      isMine: !!me && me.id === r.author_id,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+/**
  * 🆕 **بطاقاتُ قوائمَ بمعرّفاتها، بترتيبها كما جاءت** (D-326).
  *
  * **ولماذا وُلدت:** رفّا «تناسبك» و«الأكثر حفظاً» يأتيان من دالّتَي
