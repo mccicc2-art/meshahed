@@ -3647,6 +3647,63 @@ export async function getPublicListsFeed(limit = 15): Promise<PublicListCard[]> 
 }
 
 /**
+ * 🆕 **بطاقاتُ قوائمَ بمعرّفاتها، بترتيبها كما جاءت** (D-326).
+ *
+ * **ولماذا وُلدت:** رفّا «تناسبك» و«الأكثر حفظاً» يأتيان من دالّتَي
+ * ترتيبٍ لا تحملان عددَ الأعمال — **فبنيتُ لهما محوّلاً يضع صفراً في
+ * خانة العدّ، فطبعت البطاقةُ «Empty» فوق ثلاثة ملصقات** (بلاغُ أحمد).
+ * **ورقمٌ يقول «فارغة» فوق صورةٍ تقول العكس يكذب مرّتين** (D-219).
+ *
+ * **والعلاجُ ليس تمريرَ العدد في الدالّتين** بل أن تمرّ البطاقةُ من
+ * `shapeListCards` كأخواتها الثلاث (D-068: بطاقةٌ واحدة تعني منطقاً
+ * واحداً لا أربع نسخٍ تتباعد) — **العددُ والملصقاتُ وسطرُ الصاحب من
+ * مصدرٍ واحد.**
+ *
+ * ⚠️ **والترتيبُ يُحفظ كما وصل**: ترتيبُ الرفِّ هو معناه («الأكثر حفظاً»
+ * و«الأقربُ إلى مكتبتك»)، **و`in (...)` عند Postgres لا يَعِد بترتيب**.
+ */
+export async function getListCardsByIds(ids: string[]): Promise<PublicListCard[]> {
+  if (!ids.length) return [];
+  try {
+    const supabase = await createClient();
+    const { data: lists } = await supabase
+      .from("user_lists")
+      .select("id, user_id, name, kind")
+      .in("id", ids.slice(0, 30))
+      .eq("is_public", true);
+    if (!lists?.length) return [];
+    const cards = await shapeListCards(lists, true);
+    const byId = new Map(cards.map((c) => [c.id, c]));
+    return ids.map((id) => byId.get(id)).filter(Boolean) as PublicListCard[];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * 🆕 **معرّفاتُ ما حفظتَه** (D-326، بلاغُ أحمد: «هذي أنا حافظها عندي،
+ * المفروض ما تظهر»).
+ *
+ * **وحجّتُه حجّةُ الصفّ نفسِه:** «تناسبك» و«الأكثر حفظاً» **سطحا اكتشاف**،
+ * **وما حفظتَه صار عندك** — بابُه «قوائمي» في المكتبة. **واقتراحُ ما
+ * تملكه ليس اكتشافاً** (نفسُ حجّة إخراج قوائمك من `for_you_lists`).
+ */
+export async function getMySavedListIds(): Promise<Set<string>> {
+  try {
+    const supabase = await createClient();
+    const user = await getUser();
+    if (!user) return new Set();
+    const { data } = await supabase
+      .from("list_saves")
+      .select("list_id")
+      .eq("user_id", user.id);
+    return new Set((data ?? []).map((r) => String(r.list_id)));
+  } catch {
+    return new Set();
+  }
+}
+
+/**
  * قوائم شخصٍ المعلنة — لصفّها في ملفّه العام (D-068).
  * القراءة عبر سياسة `is_public` العالمية نفسها؛ بلا سطر صاحبٍ — الصفحة
  * كلّها صفحته أصلاً.
