@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import { Avatar } from "./Avatar";
 import { Icon } from "./Icon";
 import { PosterRail, RailItem } from "./PosterRail";
 import { posterUrl } from "@/lib/media";
@@ -75,9 +76,20 @@ export function CommunityListCard({
   const body = (
     <>
       <span className="block text-[14px] font-bold truncate">{l.name}</span>
-      <span className="block text-[12px] text-muted truncate mt-0.5">
-        {countLabel ?? t.listCount(l.item_count)}
-        {l.owner ? ` · ${t.listByOwner(l.owner)}` : ""}
+      {/* 🆕 **وجهُ الصاحب دائرةً قبل اسمه** (D-335، طلبُ أحمد: «صورة
+          الشخص الي عملها تظهر دائرة صغيرة واسمه — بدون زيادة حجم
+          الكارد»): الدائرةُ ١٤px داخل سطرِ الـ12px القائم **فلا يعلو
+          السطرُ ولا البطاقة**. ومخفي الاسم بلا وجهٍ ولا اسمٍ أصلاً —
+          الغيابُ أصدق (D-011). */}
+      <span className="mt-0.5 flex items-center gap-1 text-[12px] text-muted min-w-0">
+        {l.owner && (
+          <>
+            <Avatar src={l.owner_avatar} name={l.owner} size={14} className="shrink-0" />
+            <span className="truncate">{l.owner}</span>
+            <span aria-hidden>·</span>
+          </>
+        )}
+        <span className="shrink-0">{countLabel ?? t.listCount(l.item_count)}</span>
       </span>
       {/* 🆕 **سطرُ الأرقام** (D-329، طلبُ أحمد: «أهم شي من هنا أشوف عدد
           العاملين لها مفضلة وتقييمها»).
