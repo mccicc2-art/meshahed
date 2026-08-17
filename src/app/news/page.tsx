@@ -4,6 +4,10 @@ import {
   getMyListNames,
   getUser,
   getPublicListsFeed,
+  getForYouLists,
+  getTopSavedLists,
+  type SavedListRow,
+  type PublicListCard,
 } from "@/lib/data";
 import { getLibState } from "@/lib/libState";
 import { PublicListsRail } from "@/components/PublicListsRail";
@@ -297,6 +301,26 @@ export default async function NewsPage({
  * الفرعيات (سبايدر-مان، آيرون مان…) — ثم صفّا من تتابعهم والمجتمع.
  */
 
+/**
+ * 🆕 **من صفِّ الدالّة إلى بطاقة الصفّ** (D-324) — محوّلٌ لا مكوّنٌ ثانٍ:
+ * `PublicListsRail` يعرض ثلاثة أبوابٍ منذ D-068، **وبابٌ رابعٌ يمرّ من
+ * نفس الشكل أرخصُ من بطاقةٍ خامسة** (D-002/D-266).
+ * **والعدُّ يبقى عدَّ الأعمال لا عدَّ الحفظ**: البطاقةُ تطبعه تحت الاسم
+ * بلفظ «عمل»، **ورقمٌ يقول شيئاً وسطرٌ يسمّيه شيئاً آخر يكذب** (D-219) —
+ * والملصقاتُ الثلاثةُ هي ما يعرّف بالقائمة هنا.
+ */
+function savedToCards(rows: SavedListRow[]): PublicListCard[] {
+  return rows.map((r) => ({
+    id: r.listId,
+    name: r.name,
+    kind: null,
+    /* اسمُ الصاحب أو لا سطر — **ومخفي الاسم بلا بديل** (D-011) */
+    owner: r.hideName ? null : (r.nickname ?? r.username ?? null),
+    item_count: 0,
+    posters: r.posters,
+  }));
+}
+
 /** خصائص فلاتر القوائم — يبنيها الخادم مرةً للزرّ (في سطر التبويبات) والرقائق */
 function listsFiltersProps(
   fr: string | null,
@@ -348,6 +372,20 @@ async function ListsDiscovery({
      صارت قوائمُهم تُعرض في خطّ المجتمع **كسائر الناس** — فلا تكرار،
      ولا استبعاد، **ولا نداء**. */
   const community = (await getPublicListsFeed(25).catch(() => [])).slice(0, 15);
+  /* 🆕 **صفّان جديدان فوق المنسّقة** (D-324، طلبُ أحمد: «هل بالإمكان
+     تحسين اللستات بحيث يكون فيها for you والأكثر شعبية؟»).
+
+     **والأوّلُ وحدَه احتاج هجرة**: «الأكثر حفظاً» تقرأ `top_saved_lists`
+     المبنيّةَ منذ D-289 — **كانت تعمل في لوحة الأعضاء ولا تُقرأ هنا**،
+     **وأرخصُ ميزةٍ هي التي بُنيت ولم تُوصَل** (D-262).
+
+     ⚠️ **وكلاهما يُخفي نفسَه فارغاً** (D-181): بحسابٍ بلا مكتبة لا
+     «تناسبك»، وبقاعدةٍ فيها حفظان لا «الأكثر حفظاً» — **وصندوقٌ فارغٌ
+     تحت عنوانٍ يَعِد أسوأ من غيابه.** */
+  const [forYou, mostSaved] = await Promise.all([
+    getForYouLists(12).catch(() => []),
+    getTopSavedLists(30, 12).catch(() => []),
+  ]);
   /* **قراءةٌ واحدة لعلامات الحفظ** (D-206): بطاقاتُ المجموعات عشراتٌ في هذا
      التبويب، **ولو سألت كلُّ بطاقةٍ عن نفسها لصارت الصفحةُ عشرين استعلاماً**.
      و`getMyListNames` مغلَّفةٌ بـ`cache` فالنداءُ واحدٌ للطلب كلِّه. */
@@ -368,6 +406,26 @@ async function ListsDiscovery({
       {/* الزرّ صعد إلى سطر التبويبات (داخل DiscoverFilters) — هنا
           رقائق المختار وحدها، كصفّ رقائق تبويب الأعمال (طلب أحمد) */}
       <ListsFilters variant="chips" {...listsFiltersProps(fr, lsrc, loc, t)} />
+
+      {/* **الشخصيُّ يسبق العامّ** — نفسُ ترتيب تبويب الأعمال حرفاً
+          («مقترح لك» ثم «من فنّانيك» ثم الرفوف العامّة). **ولا يظهران مع
+          فلتر عالَمٍ مختار**: من ضغط «مارفل» يريد مارفل لا اقتراحاً. */}
+      {!fr && lsrc !== "curated" && forYou.length > 0 && (
+        <PublicListsRail
+          lists={savedToCards(forYou)}
+          locale={locale}
+          title={t.listsForYou}
+          peekLabels={peekLabels}
+        />
+      )}
+      {!fr && lsrc !== "curated" && mostSaved.length > 0 && (
+        <PublicListsRail
+          lists={savedToCards(mostSaved)}
+          locale={locale}
+          title={t.listsMostSaved}
+          peekLabels={peekLabels}
+        />
+      )}
 
       {(lsrc === "all" || lsrc === "curated") &&
         rows.map((f) => (
