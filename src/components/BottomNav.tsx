@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import { getDict, type Locale } from "@/lib/i18n";
+import { useKeyboardOpen } from "@/lib/useKeyboard";
 import { Icon, type IconName } from "./Icon";
 import { TitleSearchSheet } from "./TitleSearchSheet";
 
@@ -94,6 +95,19 @@ export function BottomNav({
   const t = getDict(locale);
   // الحالة قبل أي خروجٍ مبكّر: ترتيب الخطّافات لا يتغيّر بين تصييرين
   const [searchOpen, setSearchOpen] = useState(false);
+  /* 🔴 🆕 **والشريطُ يغيب ما دام الكيبوردُ مفتوحاً** (D-359، بلاغُ أحمد:
+     «إذا ضغطت على خيار رد ليه يطلع الدوك الي تحت الى فوق الكيبورد»).
+
+     **عناصرُ `fixed` مربوطةٌ بنافذة التخطيط، والكيبوردُ يقصّ النافذة
+     المرئيّة** — فيرتفع الشريطُ فوق الكيبورد ويجلس بين إصبعك وما تكتبه.
+     **وخمسُ وجهاتِ سفرٍ لن تُضغط وأنت تكتب** (D-138 من جهتها الثانية:
+     أداةٌ تُرى ولا تُستعمل الآن تُزاحم ما يُستعمل) — **والمساحةُ فوق
+     الكيبورد ملكُ صندوق الكتابة وأدواته وحدَهما.**
+
+     ⚠️ **والغيابُ رسمٌ لا حذفٌ للحالة**: `hidden` يُبقي الخطّافات
+     وترتيبَها كما هي (نفسُ حجّة السطر أعلاه)، **ويعود الشريطُ بإغلاق
+     الكيبورد بلا رحلةٍ ولا إعادةِ رسمٍ للصفحة.** */
+  const kbOpen = useKeyboardOpen();
   /* الزائر غير المسجّل لا شريط له (D-122): تبويباته الخمسة كلها خلف
      تسجيل الدخول، فكلّ ضغطةٍ فيها تردّه — وهو فوق صفحة هبوطٍ تعرّفه
      بالمنتج، لا داخل تطبيقٍ يتنقّل فيه */
@@ -135,7 +149,9 @@ export function BottomNav({
            كانت** فلا يظهر شقٌّ.
            ⚠️ **والأرضيةُ تبقى** (`0.375rem`) للمتصفّح حيث `env` صفر —
            **وشريطٌ ملاصقٌ للحافّة بلا هامشٍ يُقرأ مقصوصاً.** */
-        className="md:hidden fixed bottom-0 inset-x-0 z-40 grid grid-cols-5 border-t border-[color:var(--divider)] bg-[color:var(--background)] backdrop-blur-xl pt-1.5 pb-[max(0.375rem,calc(env(safe-area-inset-bottom)*0.5))]"
+        className={`${
+          kbOpen ? "hidden" : "grid"
+        } md:hidden fixed bottom-0 inset-x-0 z-40 grid-cols-5 border-t border-[color:var(--divider)] bg-[color:var(--background)] backdrop-blur-xl pt-1.5 pb-[max(0.375rem,calc(env(safe-area-inset-bottom)*0.5))]`}
         style={{ background: "color-mix(in srgb, var(--background) 76%, transparent)" }}
       >
         {TABS.map(({ href, key, icon, iconOn }) => {
