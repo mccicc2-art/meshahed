@@ -170,6 +170,9 @@ export default async function ListPage({ params }: { params: Promise<{ id: strin
           tmdbId: data.list.cover_tmdb_id ?? null,
           mediaType: data.list.cover_media_type ?? null,
         }}
+        /* 🆕 **خلاصةُ التقييم لرقاقة الرأس** (D-332) — نفسُ النداء الذي
+           يقرؤه القسمُ في القاع، لا نداءَ ثانياً */
+        reviews={data.list.is_public ? reviewStats : null}
       />
 
       {/* 🆕 **التقييماتُ تحت القائمة لا فوقها** (D-327): من فتح رابطَ
