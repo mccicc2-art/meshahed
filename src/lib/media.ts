@@ -86,3 +86,22 @@ export const GENRES: { id: number; ar: string; en: string; emoji: string }[] = [
 export function genreName(g: { ar: string; en: string }, locale: "ar" | "en") {
   return locale === "en" ? g.en : g.ar;
 }
+
+/**
+ * 🆕 **رابطُ الـGIF يُركَّب من معرّفه** (D-362).
+ *
+ * 🔴 **ولا يُخزَّن رابطٌ في القاعدة أبداً**: ما يصل من العميل معرّفٌ من
+ * حروفٍ وأرقام، **والعنوانُ يُبنى هنا من قالبٍ ثابت** — **فرابطٌ يرسله
+ * عميلٌ ونرسمه `<img>` للناس هو ما تمنعه D-298/D-302**، وهذا يقطع البابَ
+ * من أصله لا يحرسه.
+ *
+ * **وهو في `media.ts` لأن قارئيه ضفّتان**: بحثُ الخادم (`lib/gif.ts`)
+ * ورسمُ الصفّ في المتصفّح — **وملفٌّ `server-only` لا يُقرأ من العميل**
+ * (D-002: القالبُ واحدٌ ومكانُه حيث يراه الاثنان).
+ */
+export const GIF_ID_RE = /^[A-Za-z0-9]{1,64}$/;
+
+export function gifUrl(id: string | null | undefined, size: "small" | "full" = "full"): string | null {
+  if (!id || !GIF_ID_RE.test(id)) return null;
+  return `https://media.giphy.com/media/${id}/${size === "small" ? "200w.gif" : "giphy.gif"}`;
+}

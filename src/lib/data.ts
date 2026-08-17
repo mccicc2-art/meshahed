@@ -2262,6 +2262,9 @@ export interface TalkPost {
    * تُرجع `coalesce`** فصفوفُ النافذة الانتقالية لا تفقد صورتَها.
    */
   imagePath: string | null;
+  /** 🆕 **معرّفُ Giphy وحدَه — لا رابط** (D-362): الرابطُ يُركَّب من قالبٍ
+      ثابتٍ في الواجهة، **فما يُخزَّن حروفٌ وأرقامٌ لا عنوان.** */
+  gifId: string | null;
 }
 
 /**
@@ -2321,6 +2324,8 @@ export async function getTitleThread(
       spoiler: r.spoiler ?? null,
       hasSpoiler: Boolean(r.has_spoiler),
       imagePath: r.image_path ?? null,
+      /* 🆕 D-362 — **يُقرأ متسامحاً وغيابُه `null`** (D-179) */
+      gifId: (r as { gif_id?: string | null }).gif_id ?? null,
     }));
   } catch {
     return [];

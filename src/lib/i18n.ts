@@ -275,6 +275,15 @@ const ar = {
   /* 🆕 **رفعُ صورةٍ في النقاش** (D-298، طلبُ أحمد: «نحتاج نحطّ خيار
      رفع صورة»). **والرمزُ يقول الفعل، والكلمةُ لقارئ الشاشة** (D-177). */
   talkAddImage: "أضف صورة",
+  /* 🆕 D-362 — **خيارُ GIF جنبَ الصور** (طلبُ أحمد) */
+  talkAddGif: "أضف GIF",
+  talkRemoveGif: "أزل الـGIF",
+  gifTitle: "اختر GIF",
+  gifSearch: "ابحث عن GIF…",
+  gifNone: "لا نتيجة لهذا البحث",
+  gifOff: "خدمةُ الـGIF غير مفعّلة الآن",
+  gifLoading: "جارٍ الجلب…",
+  gifCredit: "مدعوم بـGIPHY",
   /* 🆕 **تثبيتُ الغرفة** (D-301، طلبُ أحمد: «إذا ضغطت عليها يتثبّت»).
      **وفعلان مختلفان كلمتان مختلفتان** (D-223/D-224)، **والمعنى في
      `aria-label` لأن الرمزَ وحدَه هو الزرّ** (D-177). */
@@ -1812,6 +1821,14 @@ const en: Dict = {
   savedOk: "✓ Saved",
   errPickImage: "Please choose an image file.",
   talkAddImage: "Add a photo",
+  talkAddGif: "Add a GIF",
+  talkRemoveGif: "Remove the GIF",
+  gifTitle: "Pick a GIF",
+  gifSearch: "Search GIFs…",
+  gifNone: "Nothing matched that search",
+  gifOff: "GIFs are not enabled right now",
+  gifLoading: "Loading…",
+  gifCredit: "Powered by GIPHY",
   talkPin: "Pin this room",
   talkUnpin: "Unpin",
   talkPinAll: "Pin for everyone",

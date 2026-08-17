@@ -23,6 +23,7 @@ import {
 import { allow } from "@/lib/ratelimit";
 import { isViewKey } from "@/lib/postKeys";
 import { intId, intIn, asMediaType, uuid, dateOrNull } from "@/lib/validate";
+import { searchGifs, type GifHit } from "@/lib/gif";
 import { IMPORT_CAPS, type ImportPayload, type ResolveRequest, type ResolveResult } from "@/lib/importer";
 import type { PersonLite, CommunityLite } from "@/lib/data";
 
@@ -2184,6 +2185,20 @@ export async function togglePostLike(postId: string, liked: boolean) {
  * **و`upsert` بمفتاح الصفّ**: تبديلُ الرأي تعديلٌ في مكانه،
  * **وضغطتان على شبكةٍ بطيئة لا ترفعان خطأَ مفتاحٍ مكرَّر** (D-301).
  */
+/**
+ * 🆕 **بحثُ الـGIF من الخادم** (D-362) — **والمفتاحُ لا يعبر إلى المتصفّح
+ * أبداً** (القاعدة ١٤): الطلبُ يخرج من خادمنا، **والعائدُ معرّفاتٌ لا
+ * روابطُ استعلام.**
+ *
+ * ⚠️ **ومعدّلٌ كأيِّ فعل**: البحثُ يُنادى مع كلِّ سكونِ كتابة، **وسطحٌ
+ * يفتح خدمةً خارجيّةً بلا سقفٍ هو ما يُحرق به المفتاح** — والحدُّ في
+ * `requireUser` نفسِه لا في الواجهة (D-193).
+ */
+export async function findGifs(query: string): Promise<GifHit[]> {
+  await requireUser("gif", 40, 60_000);
+  return searchGifs(String(query ?? "").slice(0, 60));
+}
+
 export async function votePost(postId: string, vote: -1 | 0 | 1, path?: string) {
   postId = uuid(postId);
   const { supabase, user } = await requireUser("vote", 60, 60_000);
@@ -3900,6 +3915,17 @@ export async function addTalkPost(input: {
    * **والرفعُ يقع في المتصفّح** (نمطُ صورة الملف حرفاً)، **ويصل هنا رابطاً.**
    */
   imageUrl?: string | null;
+  /**
+   * 🆕 **معرّفُ Giphy — لا رابط** (D-362، طلبُ أحمد: «خيار جنب الصور
+   * GIF، سريع وبديل عن الصور»).
+   *
+   * 🔴 **ولماذا معرّفٌ لا رابط**: حارسُ D-298 يشترط بادئةَ مخزننا لأن
+   * **رابطاً يصل من عميلٍ ونرسمه `<img>` للناس خطرٌ** — **والـGIF لا
+   * يسكن مخزننا بحكم أنه «سريع» بلا رفع.** **فلا يعبر حدودَنا عنوانٌ
+   * أصلاً**: يعبر معرّفٌ من حروفٍ وأرقام، **والرابطُ يُركَّب من قالبٍ
+   * ثابتٍ عندنا** — **وحارسُه في القاعدة كذلك** (`check` في ١١١).
+   */
+  gifId?: string | null;
 }): Promise<NewReply | null> {
   const tmdbId = intId(input.tmdbId);
   const mediaType = asMediaType(input.mediaType);
@@ -3932,10 +3958,18 @@ export async function addTalkPost(input: {
       ? raw
       : null;
 
+  /* 🆕 **والمعرّفُ يُحرَس بشكله لا بالثقة** (D-362) — طبقةٌ أولى هنا،
+     **والثانيةُ قيدُ القاعدة في الهجرة ١١١**: **حارسان طبقتان لا
+     بديلان** (D-066/D-221/D-298). */
+  const rawGif = typeof input.gifId === "string" ? input.gifId.trim() : "";
+  const gifId = /^[A-Za-z0-9]{1,64}$/.test(rawGif) ? rawGif : null;
+
   /* **ومشاركةٌ بصورةٍ بلا نصٍّ مشاركة** (D-298): **الصورةُ متنٌ كالمتن** —
      **وشرطٌ يطلب نصّاً بعد أن صار للمتن شكلان يرفض نصفَ ما يُرسَل**
-     (D-214: الشرطُ يُوسَّع يومَ يُضاف إليه). */
-  if (!body && !imageUrl) return null;
+     (D-214: الشرطُ يُوسَّع يومَ يُضاف إليه).
+     🆕 **والشكلُ الثالث GIF** — **وتُوسَّع كلُّ حراساته لا حراسةُ طبقةٍ
+     واحدة** (D-302 بنصّها: الواجهةُ والفعلُ والقاعدةُ معاً). */
+  if (!body && !imageUrl && !gifId) return null;
 
   const { data, error } = await supabase
     .from("title_posts")
@@ -3957,6 +3991,8 @@ export async function addTalkPost(input: {
          **واليومَ أُذن فدارت الصفوفُ القديمة وكُتب الجديدُ في بيته**:
          `data` عادت حقيبةَ النشراتِ وحدَها (D-224: حقلٌ لمعنًى واحد). */
       image_path: imageUrl,
+      /* 🆕 **والـGIF في عموده** (D-362، الهجرة ١١١) — **معرّفٌ لا رابط** */
+      gif_id: gifId,
       /* **ولا `depth` هنا**: المُشغِّل يحسبه ويقيّده — **ورقمٌ يكتبه
          العميل يكذب**، وقيدُ العمق في القاعدة لا في الواجهة (D-193). */
     })
