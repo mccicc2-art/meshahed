@@ -60,6 +60,8 @@ export function CommunityListCard({
   locale,
   className = "w-full",
   countLabel,
+  cover,
+  action,
 }: {
   list: PublicListCard;
   locale: Locale;
@@ -71,6 +73,19 @@ export function CommunityListCard({
    * واحدةٌ لأربعة أبواب).
    */
   countLabel?: string;
+  /**
+   * 🆕 **غلافُ صاحبها إن اختاره** (D-364/D-208) — **يحلّ محلَّ صفِّ
+   * الملصقات لا فوقه**: بطاقةٌ تحمل غلافاً **و**ثلاثةَ ملصقات تقول
+   * الشيءَ مرّتين بارتفاعٍ مضاعف (نصُّ `ListManager` حرفاً).
+   * ⚠️ **وغيابُه هو السلوكُ القائم** لبقيّة قرّاء البطاقة (D-152).
+   */
+  cover?: string | null;
+  /**
+   * 🆕 **فتحةٌ في عمود الزاوية** (D-364) — **حيث يجلس ♥ و★**. مكتبتُك
+   * لا تعرض الاثنين على قوائمك (لا تحفظ ما تملك ولا تقيّمه — D-217)،
+   * **فالعمودُ فارغٌ هناك وبابُ المشاركة يسكنه** بدل صفٍّ ثالث.
+   */
+  action?: React.ReactNode;
   /** عرض البطاقة — ثابتٌ في الصفّ الممرَّر، كاملٌ في الشبكة */
   className?: string;
 }) {
@@ -159,8 +174,18 @@ export function CommunityListCard({
               </span>
             )
           )}
+          {/* 🆕 **وبابُ المشاركة آخرَ العمود** (D-364) — **بعد الحكم لا
+              قبله**: الأرقامُ تُقرأ أوّلاً والفعلُ يليها (D-294 بروحها:
+              الموضعُ يُحفظ بالإصبع). */}
+          {action}
         </span>
       </span>
+      {/* 🆕 **والغلافُ المختار يحلّ محلَّ الملصقات** (D-364/D-208) */}
+      {cover ? (
+        <span className="mt-2 block relative aspect-[16/9] rounded-lg overflow-hidden bg-surface-2 border border-[color:var(--background)]">
+          <Image src={cover} alt="" fill sizes="(max-width: 640px) 50vw, 260px" className="object-cover" />
+        </span>
+      ) : (
       <span className="mt-2 flex gap-1.5">
         {/* **ثلاثةٌ لا أربعة — نفسُ بطاقات المجموعات المنسّقة** (D-206، طلب
             أحمد: «حتى الليست من الكميونتي تُعرض بنفس الطريقة»). **وبطاقتان
@@ -181,6 +206,7 @@ export function CommunityListCard({
           </span>
         )}
       </span>
+      )}
     </>
   );
 
