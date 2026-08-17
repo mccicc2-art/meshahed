@@ -6,6 +6,7 @@ import { num, getDict, type Locale } from "@/lib/i18n";
 import { displayNameOf } from "@/lib/people";
 import { timeAgoShort } from "@/lib/when";
 import { dirOf } from "@/lib/dir";
+import { gifUrl } from "@/lib/media";
 import { tap } from "@/lib/haptics";
 import { bulletinLine, bulletinFacts, bulletinSpoiler } from "@/lib/bulletinLine";
 import { Avatar } from "../Avatar";
@@ -68,6 +69,8 @@ export type ThreadReply = {
    * `data.img` (D-298)، **والقراءةُ تُبقي ذلك السقفَ حزاماً** (D-179).
    */
   imagePath?: string | null;
+  /** 🆕 **معرّفُ GIF لا رابطُه** (D-362) — الرابطُ يُركَّب من قالبٍ ثابت */
+  gifId?: string | null;
 };
 
 /** ردٌّ محليٌّ لم يُقرأ من القاعدة بعد — **معرّفُه مؤقّتٌ فيُرسم باهتاً** */
@@ -186,6 +189,11 @@ export function ReplyItem({
     ? (reply.imagePath ?? (reply.data as Record<string, unknown> | null)?.img)
     : null;
   const image = typeof raw === "string" && raw.startsWith("https://") ? raw : null;
+  /* 🆕 **والـGIF حمولةٌ ثالثةٌ بنفس البيت** (D-362): **عارضٌ واحدٌ لا
+     ثانٍ** — `PostImage` نفسُها بحاجبها وورقتها (D-002)، **والرابطُ
+     يُبنى من المعرّف هنا فلا يُخزَّن عنوانٌ في القاعدة أبداً**
+     (D-298/D-302). **ولا تُقرأ لصفِّ نشرة** كأختها. */
+  const gif = !bulletin ? gifUrl(reply.gifId) : null;
 
   return (
     /* 🆕 **الصفُّ صار طابقين لا عمودين** (D-296، طلبُ أحمد بلقطةٍ مرجعية:
@@ -335,6 +343,8 @@ export function ReplyItem({
                 صورتَه ليس حاجباً.** */}
             <SpoilerText text={shownBody} locale={locale}>
               {image && <PostImage src={image} alt={t.talkImageAlt} locale={locale} />}
+              {/* 🆕 **والـGIF خلف الحاجب نفسِه** (D-362/D-298 حرفاً) */}
+              {gif && <PostImage src={gif} alt={t.talkImageAlt} locale={locale} />}
             </SpoilerText>
           </div>
         ) : (
@@ -370,6 +380,13 @@ export function ReplyItem({
         {image && !reply.hasSpoiler && (
           <div className="mt-2">
             <PostImage src={image} alt={t.talkImageAlt} locale={locale} />
+          </div>
+        )}
+        {/* 🆕 **والـGIF مكانَ الصورة ووصفتَها** (D-362) — **عارضٌ واحدٌ
+            لحمولةٍ بصريّة، ولا ثانٍ** (D-002). */}
+        {gif && !reply.hasSpoiler && (
+          <div className="mt-2">
+            <PostImage src={gif} alt={t.talkImageAlt} locale={locale} />
           </div>
         )}
 

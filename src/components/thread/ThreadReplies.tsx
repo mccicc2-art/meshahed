@@ -324,8 +324,11 @@ export function ThreadReplies({
               allowSpoiler={nested}
               /* **والصورةُ حيث تُخزَّن وحدَها** — `title_posts.data` (D-298) */
               allowImage={nested}
+              /* 🆕 **وGIF حيث تُقبل الصورة** (D-362) — نفسُ الشرط، فالنقاشُ
+                 وحدَه يخزّن حمولةً بصريّة (D-298/قرارُ ١٦ أغسطس). */
+              allowGif={nested}
               onCancel={() => setOpen(null)}
-              onSend={(b, sp, img) => send(b, null, sp, img)}
+              onSend={(b, sp, img, gif) => send(b, null, sp, img, gif)}
             />
           </KeyboardDock>
         ) : (
@@ -471,8 +474,11 @@ export function ThreadReplies({
               allowSpoiler={nested}
               /* **والصورةُ حيث تُخزَّن وحدَها** — النقاشُ اليوم (D-298) */
               allowImage={nested}
+              /* 🆕 **وGIF حيث تُقبل الصورة** (D-362) — نفسُ الشرط، فالنقاشُ
+                 وحدَه يخزّن حمولةً بصريّة (D-298/قرارُ ١٦ أغسطس). */
+              allowGif={nested}
               onCancel={() => setOpen(null)}
-              onSend={(b, sp, img) => send(b, r.replyId, sp, img)}
+              onSend={(b, sp, img, gif) => send(b, r.replyId, sp, img, gif)}
             />
           </div>
         )}
@@ -497,6 +503,8 @@ export function ThreadReplies({
     parentId: string | null,
     hasSpoiler = false,
     imageUrl?: string | null,
+    /* 🆕 **معرّفُ GIF لا رابطُه** (D-362) */
+    gifId?: string | null,
   ) {
     const temp = `${TEMP}${parentId ?? ""}:${body.length}:${all.length}`;
     setAdded((a) => [
@@ -520,6 +528,9 @@ export function ThreadReplies({
            صورةً ثم لم يرها في الحال ظنَّ الرفعَ سقط — **والرابطُ بيدنا
            أصلاً فلا انتظارَ لمصالحة.** **وفي حقلها الحقيقيّ** (D-312). */
         imagePath: imageUrl ?? null,
+        /* 🆕 **والنسخةُ التفاؤليّةُ تحمله كما سيقرؤه الصفُّ الحقيقيّ**
+           (D-241/D-312 حرفاً) */
+        gifId: gifId ?? null,
       },
     ]);
     setOpen(null);
@@ -543,6 +554,7 @@ export function ThreadReplies({
                   parentId,
                   hasSpoiler,
                   imageUrl,
+                  gifId,
                   title: target.title,
                   posterPath: target.posterPath,
                   backdropPath: target.backdropPath,
