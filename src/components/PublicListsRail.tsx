@@ -3,7 +3,7 @@ import Image from "next/image";
 import { Icon } from "./Icon";
 import { PosterRail, RailItem } from "./PosterRail";
 import { posterUrl } from "@/lib/media";
-import { getDict, type Locale } from "@/lib/i18n";
+import { getDict, num, type Locale } from "@/lib/i18n";
 import type { PublicListCard } from "@/lib/data";
 import { ListPeekTrigger } from "./ListPeek";
 
@@ -89,6 +89,29 @@ export function CommunityListCard({
         {countLabel ?? t.listCount(l.item_count)}
         {l.owner ? ` · ${t.listByOwner(l.owner)}` : ""}
       </span>
+      {/* 🆕 **سطرُ الأرقام** (D-329، طلبُ أحمد: «أهم شي من هنا أشوف عدد
+          العاملين لها مفضلة وتقييمها»).
+          **وسطرٌ ثانٍ لا ذيلٌ للأوّل**: الأوّلُ يعرّف بالقائمة (حجمُها
+          وصاحبُها) **وهذا حكمُ الناس عليها** — معنيان فسطران (D-224).
+          🔴 **والصفرُ يُخفى ولا يُطبع**: «★ — · ♥ 0» تحت قائمةٍ جديدة
+          **تُقرأ حكماً لا فراغاً** (D-219/D-134)، **فالسطرُ كلُّه يغيب
+          حتى يوجد رقمٌ حقيقيّ.** */}
+      {((l.rating ?? null) !== null || (l.saves ?? 0) > 0) && (
+        <span className="block text-[12px] mt-0.5 flex items-center gap-2.5 tabular-nums">
+          {(l.rating ?? null) !== null && (
+            <span className="flex items-center gap-1 font-bold" dir="ltr">
+              <Icon name="star" size={12} className="text-accent" />
+              {num(l.rating as number, locale)}
+            </span>
+          )}
+          {(l.saves ?? 0) > 0 && (
+            <span className="flex items-center gap-1 text-muted" dir="ltr">
+              <Icon name="heart-filled" size={12} className="fill-current" />
+              {num(l.saves as number, locale)}
+            </span>
+          )}
+        </span>
+      )}
       <span className="mt-2 flex gap-1.5">
         {/* **ثلاثةٌ لا أربعة — نفسُ بطاقات المجموعات المنسّقة** (D-206، طلب
             أحمد: «حتى الليست من الكميونتي تُعرض بنفس الطريقة»). **وبطاقتان
