@@ -34,6 +34,7 @@ import { ListsFilters, type ListsFiltersProps } from "./ListsFilters";
 import { DiscoverFilterSheet, type FilterDraft } from "./DiscoverFilterSheet";
 import { PageTabs } from "./ui/PageTabs";
 import { applyTabPrefs, type TabPref } from "@/lib/tabPrefs";
+import type { MyRow } from "@/lib/myRows";
 
 /**
  * رأس «اكتشف».
@@ -84,10 +85,13 @@ export function DiscoverFilters({
   studio,
   listsFilters,
   tabPrefs,
+  myRows = [],
 }: {
   locale: Locale;
   /** ترتيبُ تبويبات اكتشف وإظهارها — من الكوكي على الخادم (D-014) */
   tabPrefs: TabPref[];
+  /** 🆕 صفوفُك الخاصة (D-337) — تمرّ إلى الورقة؛ اختياريّةٌ كي تُنشر الدفعات بترتيب D-028 */
+  myRows?: MyRow[];
   /** فلاتر تبويب القوائم — يرسم زرّها في خانة زرّ الأعمال نفسها
       (طلب أحمد: «مكان الفلتر مثل الأفلام والمسلسلات») */
   listsFilters?: ListsFiltersProps;
@@ -475,6 +479,7 @@ export function DiscoverFilters({
           region={region}
           axes={axes}
           tabPrefs={tabPrefs}
+          myRows={myRows}
           tabLabels={tabLabels}
           onClose={() => setSheet(false)}
           onApply={(next) => {

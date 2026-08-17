@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { getDict, num, type Locale } from "@/lib/i18n";
 import {
   BROWSE_COUNTRIES,
@@ -34,6 +35,8 @@ import { sheetScroll, segmentedTrackFull, segmentedItem } from "./ui/controls";
 /* القسم الثاني في هذه الورقة — نفسُ المكوّن في المكتبة والمجتمع (D-179) */
 import { TabsPrefs } from "./TabsPrefs";
 import type { TabPref } from "@/lib/tabPrefs";
+import { setMyRows } from "@/lib/actions";
+import { serializeMyRows, MY_ROWS_MAX, type MyRow } from "@/lib/myRows";
 
 export interface FilterDraft {
   /** slug النوع الدرامي — انتقل من صفّ التبويبات إلى قائمةٍ هنا (طلب المالك).
@@ -85,6 +88,7 @@ export function DiscoverFilterSheet({
   region,
   axes,
   tabPrefs,
+  myRows: initialMyRows = [],
   tabLabels,
   onApply,
   onClose,
@@ -115,6 +119,8 @@ export function DiscoverFilterSheet({
   axes: "full" | "anime" | "none";
   /** تفضيلات تبويبات اكتشف — القسم الثاني في هذه الورقة */
   tabPrefs: TabPref[];
+  /** 🆕 صفوفُك الخاصة (D-337) — القيمةُ الحاليّة من الكوكيز */
+  myRows?: MyRow[];
   tabLabels: Record<string, string>;
   onApply: (next: FilterDraft) => void;
   onClose: () => void;
@@ -138,6 +144,22 @@ export function DiscoverFilterSheet({
    * أداةٌ تكذب (D-075).
    */
   const [tab, setTab] = useState<"do" | "see">("do");
+  /* 🆕 حالةُ صفوفك تفاؤليّةٌ محليّاً ثم كوكيز + تحديثُ الخادم (D-337) */
+  const router = useRouter();
+  const [myRows, setMyRowsState] = useState<MyRow[]>(initialMyRows);
+  const [, startRows] = useTransition();
+  function saveMyRow(i: number, genre: string | null, tagSlug: string | null) {
+    tap(8);
+    const next = [...myRows];
+    if (!genre) next.splice(i, 1);
+    else next[i] = { genre, tag: tagSlug };
+    const clean = next.filter(Boolean).slice(0, MY_ROWS_MAX);
+    setMyRowsState(clean);
+    startRows(async () => {
+      await setMyRows(serializeMyRows(clean)).catch(() => {});
+      router.refresh();
+    });
+  }
   /**
    * **اللغةُ والجنسيةُ والجائزةُ صارت في التبويبات الثلاثة — نقضٌ صريح
    * لـD-180** (مواصفةُ أحمد ١٢ أغسطس: التبويبات الثلاثة تحمل
@@ -467,6 +489,52 @@ export function DiscoverFilterSheet({
             «المزيد». **وحيث لا فلاتر يُعرض وحدَه بلا شريط تبويب.** */}
         {(!showFilters || tab === "see") && (
         <div role="tabpanel" id="disc-tools-panel-see" aria-labelledby="disc-tools-tab-see">
+        {/* 🆕 **صفوفُك الخاصة — فوق التبويبات** (D-337، طلبُ أحمد بنصّه:
+            «ميزة جديدة تحطها فوق التاب: يحدّد genre إجباريّاً ومعه ثيم
+            اختياريّاً فيطلع عنوان مثل Drama zombies»).
+            **القاموسان قاموسا الفلتر نفسُهما** (D-145) والحفظُ عند اللمس
+            كتفضيلات التبويبات — لا زرَّ تطبيق. */}
+        <section className="px-5 pb-5">
+          <h3 className="text-xs font-bold text-muted mb-1">{t.myRowsTitle}</h3>
+          <p className="text-[12px] text-muted mb-3">{t.myRowsHint}</p>
+          <div className="space-y-3">
+            {Array.from({ length: MY_ROWS_MAX }, (_, i) => {
+              const row = myRows[i] ?? null;
+              return (
+                <div key={i} className="grid grid-cols-2 gap-3">
+                  <SelectField
+                    id={`myrow-genre-${i}`}
+                    label={t.myRowsRow(num(i + 1, locale))}
+                    active={!!row}
+                    value={row?.genre ?? ""}
+                    onChange={(v) => saveMyRow(i, v || null, row?.tag ?? null)}
+                  >
+                    <option value="">{t.myRowsGenreOff}</option>
+                    {BROWSE_GENRES.map((g) => (
+                      <option key={g.slug} value={g.slug}>
+                        {browseGenreName(g, lang)}
+                      </option>
+                    ))}
+                  </SelectField>
+                  <SelectField
+                    id={`myrow-tag-${i}`}
+                    label={t.browseTagGroup}
+                    active={!!row?.tag}
+                    value={row?.tag ?? ""}
+                    onChange={(v) => row && saveMyRow(i, row.genre, v || null)}
+                  >
+                    <option value="">{t.myRowsTagAny}</option>
+                    {BROWSE_TAGS.map((x) => (
+                      <option key={x.slug} value={x.slug}>
+                        {browseTagName(x, lang)}
+                      </option>
+                    ))}
+                  </SelectField>
+                </div>
+              );
+            })}
+          </div>
+        </section>
         <TabsPrefs
           locale={locale}
           surface="discover"
