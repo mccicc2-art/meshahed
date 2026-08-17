@@ -5,10 +5,6 @@ import { PosterRail, RailItem } from "./PosterRail";
 import { posterUrl } from "@/lib/media";
 import { getDict, num, type Locale } from "@/lib/i18n";
 import type { PublicListCard } from "@/lib/data";
-import { ListPeekTrigger } from "./ListPeek";
-
-/** تسميات ورقة المعاينة — تُمرَّر من الخادم لأن مكوّن المعاينة عميل */
-export type PeekLabels = { close: string; openList: string; failed: string; watchedMark: string };
 
 /**
  * صفّ «قوائم من المجتمع» — اكتشاف القوائم المعلنة في اكتشف.
@@ -28,14 +24,11 @@ export function PublicListsRail({
   lists,
   locale,
   title,
-  peekLabels,
 }: {
   lists: PublicListCard[];
   locale: Locale;
   /** عنوان الصفّ — يغيب فيحلّ عنوان «قوائم من المجتمع» */
   title?: string;
-  /** حاضرةً تجعل ضغطة البطاقة معاينةً منبثقة بدل الانتقال (تبويب القوائم) */
-  peekLabels?: PeekLabels;
 }) {
   const t = getDict(locale);
   if (!lists.length) return null;
@@ -46,7 +39,7 @@ export function PublicListsRail({
         /* wide لا الافتراضي: خانة الملصق (118px) لبطاقةٍ أعرض منها كانت
            تجعل البطاقات تتراكب فوق بعضها (لقطة المالك — D-084) */
         <RailItem key={l.id} wide>
-          <CommunityListCard list={l} locale={locale} className="w-full" peekLabels={peekLabels} />
+          <CommunityListCard list={l} locale={locale} className="w-full" />
         </RailItem>
       ))}
     </PosterRail>
@@ -62,7 +55,6 @@ export function CommunityListCard({
   list: l,
   locale,
   className = "w-full",
-  peekLabels,
   countLabel,
 }: {
   list: PublicListCard;
@@ -77,8 +69,6 @@ export function CommunityListCard({
   countLabel?: string;
   /** عرض البطاقة — ثابتٌ في الصفّ الممرَّر، كاملٌ في الشبكة */
   className?: string;
-  /** حاضرةً: البطاقة تفتح معاينةً منبثقة (طلب أحمد)؛ غائبةً تبقى رابطاً */
-  peekLabels?: PeekLabels;
 }) {
   const t = getDict(locale);
   const posters = l.posters.map((p) => posterUrl(p, "w185")).filter(Boolean) as string[];
@@ -135,16 +125,16 @@ export function CommunityListCard({
     </>
   );
 
-  const cardClass = `block rounded-2xl border border-border bg-surface p-2.5 hover:bg-surface-2 transition ${className}`;
-  if (peekLabels) {
-    return (
-      <ListPeekTrigger kind="list" refId={l.id} title={l.name} labels={peekLabels}>
-        <span className={cardClass}>{body}</span>
-      </ListPeekTrigger>
-    );
-  }
+  /* **رابطٌ دائماً — وسقطت المعاينةُ المنبثقة** (D-334، طلبُ أحمد:
+     «وهذي المنبثقة إلغيها»): صفحةُ القائمة صارت تعطي كلَّ ما كانت
+     الورقةُ تعطيه وفوقَه التقييمُ والتبويبات (D-327/D-333) — **وبابان
+     لمحتوًى واحدٍ عطلٌ** (D-068). */
   return (
-    <Link href={`/lists/${l.id}`} prefetch={false} className={cardClass}>
+    <Link
+      href={`/lists/${l.id}`}
+      prefetch={false}
+      className={`block rounded-2xl border border-border bg-surface p-2.5 hover:bg-surface-2 transition ${className}`}
+    >
       {body}
     </Link>
   );
