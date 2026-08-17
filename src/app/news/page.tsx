@@ -364,12 +364,27 @@ async function ListsDiscovery({
      ⚠️ **وكلاهما يُخفي نفسَه فارغاً** (D-181): بحسابٍ بلا مكتبة لا
      «تناسبك»، وبقاعدةٍ فيها حفظان لا «الأكثر حفظاً» — **وصندوقٌ فارغٌ
      تحت عنوانٍ يَعِد أسوأ من غيابه.** */
-  const [forYouRows, savedRows, savedIds, me] = await Promise.all([
+  const [forYouRows, savedRows, savedIds, me, curated] = await Promise.all([
     getForYouLists(12).catch(() => []),
     getTopSavedLists(30, 12).catch(() => []),
     getMySavedListIds().catch(() => new Set<string>()),
     getUser().catch(() => null),
+    /* **خريطةُ المجموعات المولَّدة** (D-328) — نداءٌ واحدٌ لاثنتين وأربعين
+       بطاقة (D-205)، **والغائبُ يُفتح معاينةً كما كان**. **وصعدت إلى هنا
+       في D-331** لأن الترشيحَ تحتها صار يحتاجها. */
+    getCuratedListIds().catch(() => new Map<string, string>()),
   ]);
+  /* 🔴 **وقوائمُ لوبز المنسّقة لا تُقترح في صفٍّ فوق صفوفها** (D-331).
+     يومَ وُلِّدت الاثنتان والأربعون (D-330) صارت صفوفاً **حقيقيّةً** في
+     `user_lists` — **فالتقطها «تناسبك» و«الأكثر حفظاً» فوراً**، وظهرت
+     «توي ستوري» في صدر الصفحة **وهي مرسومةٌ بعينها بعد ثلاثة صفوف**.
+     **وهو حرفاً عطلُ D-326** الذي أبلغ عنه أحمد («المفروض ماتظهر
+     وتتكرّر») بمصدرٍ ثانٍ — **وصفٌّ يعرض ما يعرضه جارُه أسفله تكرارٌ
+     يُقرأ عطلاً** (D-299).
+     ⚠️ **والترشيحُ في الصفحة لا في الدالّة**: `for_you_lists` و
+     `top_saved_lists` صحيحتان حيث تُقرآن من سطحٍ لا صفوفَ منسّقةً فيه
+     (نفسُ حجّة D-152 حرفاً). */
+  const isCurated = new Set(curated.values());
   /* 🔴 **ما حفظتَه لا يُقترح عليك، ولا يظهر مرّتين** (D-326، بلاغُ أحمد:
      «هذي أنا حافظها عندي، المفروض ما تظهر وتتكرّر»).
 
@@ -381,10 +396,18 @@ async function ListsDiscovery({
         `top_saved_lists` نفسَها ولا تتغيّر (D-152).
      ٢) **وصفٌّ يعرض ما عرضه جارُه فوقه تكرارٌ يُقرأ عطلاً** (D-257/D-299)
         — **والشخصيُّ يسبق العامّ** فيحتفظ بالبطاقة، والعامُّ يتنازل. */
-  const forYouIds = forYouRows.map((r) => r.listId).filter((id) => !savedIds.has(id));
+  const forYouIds = forYouRows
+    .map((r) => r.listId)
+    .filter((id) => !savedIds.has(id) && !isCurated.has(id));
   const shown = new Set(forYouIds);
   const savedRailIds = savedRows
-    .filter((r) => !savedIds.has(r.listId) && !shown.has(r.listId) && r.ownerId !== me?.id)
+    .filter(
+      (r) =>
+        !savedIds.has(r.listId) &&
+        !shown.has(r.listId) &&
+        !isCurated.has(r.listId) &&
+        r.ownerId !== me?.id,
+    )
     .map((r) => r.listId);
   /* **والبطاقاتُ من `shapeListCards` لا من محوّلٍ محليّ** (D-326): العدُّ
      الحقيقيُّ والملصقاتُ وسطرُ الصاحب من المصدر الذي تقرأ منه أخواتُها
@@ -397,9 +420,6 @@ async function ListsDiscovery({
      التبويب، **ولو سألت كلُّ بطاقةٍ عن نفسها لصارت الصفحةُ عشرين استعلاماً**.
      و`getMyListNames` مغلَّفةٌ بـ`cache` فالنداءُ واحدٌ للطلب كلِّه. */
   const savedNames = await getMyListNames();
-  /* **خريطةُ المجموعات المولَّدة** (D-328) — نداءٌ واحدٌ لثلاثٍ وستّين
-     بطاقة (D-205)، **والغائبُ يُفتح معاينةً كما كان.** */
-  const curated = await getCuratedListIds().catch(() => new Map<string, string>());
 
   const loc = locale === "en" ? ("en" as const) : ("ar" as const);
   const rows = fr ? FRANCHISES.filter((f) => f.slug === fr) : FRANCHISES;
