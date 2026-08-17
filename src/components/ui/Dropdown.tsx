@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { Icon, type IconName } from "../Icon";
 
 /**
  * **قائمةٌ منسدلة مربوطةٌ بمقبضها** (D-226، طلبُ أحمد: «مثل تويتر — قائمةٌ
@@ -152,3 +153,61 @@ export const dropdownItem =
   "hover:bg-surface-2 active:bg-surface-2 disabled:opacity-50 transition";
 
 export const dropdownDivider = "my-1 h-px bg-[color:var(--divider)]";
+
+/**
+ * 🆕 **صفُّ فعلٍ في المنسدلة — مكوّنٌ عند قارئه الثاني** (D-002/D-376).
+ *
+ * **وُلد محليّاً في `PosterHold` باسم `HoldRow`** حين كانت المنسدلةُ
+ * سطحَ ضغطٍ واحداً. **وجاء قارئُه الثاني** يومَ صارت شبكةُ المكتبة
+ * تفتح المنسدلةَ نفسَها (D-376) — **ونسخُه كان سيعني صفَّين يفترقان في
+ * الحشوة أو في لون الحالة النشطة بعد أوّل تعديل** (D-145: وصفةٌ تُنسخ
+ * ثم يُصلَح أصلُها وحدَه يعود عطلُها من بابٍ آخر).
+ *
+ * **وبيتُه هنا لا هناك**: الصفُّ جزءٌ من عائلة المنسدلة، **ووصفةُ
+ * `dropdownItem` تحته مباشرةً** — فمن قرأ الملفَّ رأى الاثنين معاً.
+ *
+ * ⚠️ **والحدثُ يُوقَف عن أبيه**: المنسدلةُ قد تُفتح داخل بطاقةٍ هي رابط،
+ * **ومن ضغط صفَّاً في قائمةٍ لم يقصد أن يفتح ما تحتها** (D-155/D-339).
+ */
+export function DropdownRow({
+  icon,
+  label,
+  active = false,
+  disabled = false,
+  tone,
+  onClick,
+}: {
+  icon: IconName;
+  label: string;
+  /** الفعلُ قائمٌ الآن — فيلبس لون التمييز */
+  active?: boolean;
+  disabled?: boolean;
+  /** لونُ الرمز حين يحمل حالةً بعينها (نجاحٌ أو خطر) — **والافتراضُ محايد** */
+  tone?: "success" | "danger";
+  onClick: () => void;
+}) {
+  const color =
+    tone === "success"
+      ? "text-[color:var(--success)]"
+      : tone === "danger"
+        ? "text-[color:var(--error)]"
+        : active
+          ? "text-accent"
+          : "text-muted";
+  return (
+    <button
+      type="button"
+      role="menuitem"
+      disabled={disabled}
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onClick();
+      }}
+      className={dropdownItem}
+    >
+      <Icon name={icon} size={18} className={`${color} shrink-0`} />
+      <span className={active ? "text-accent" : undefined}>{label}</span>
+    </button>
+  );
+}
