@@ -266,7 +266,18 @@ export function ListDetail({
                 : "border-accent bg-accent text-[color:var(--on-accent)] hover:brightness-110"
             }`}
           >
-            <Icon name={saved ? "check-line" : "plus"} size={14} strokeWidth={2.2} />
+            {/* 🆕 **القلبُ هو الحفظ — لا فعلَ ثانٍ** (D-324، قرارُ أحمد بعد
+                عرضِ البديل): `list_saves` هو حرفيّاً «تعجبني وأريدها»،
+                **وقلبٌ ثانٍ بجانبه رمزان لمعنًى واحد** — وهو ما تمنعه
+                D-294 («رمزٌ واحدٌ لفعلٍ واحد»). **فتبدّل الرمزُ ولم يُبنَ
+                جدولٌ ولا عدّادٌ ثانٍ**، والممتلئُ يقول «عندك» كما في كلِّ
+                سطحٍ آخر (وصفةُ `LikeButton` حرفاً). */}
+            <Icon
+              name={saved ? "heart-filled" : "heart"}
+              size={14}
+              strokeWidth={2.2}
+              className={saved ? "fill-current" : undefined}
+            />
             {saved ? t.listSavedBtn : t.listSaveBtn}
           </button>
         )}
