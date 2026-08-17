@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
   getMyListNames,
@@ -8,6 +9,7 @@ import {
   getTopSavedLists,
   getMySavedListIds,
   getListCardsByIds,
+  getCuratedListIds,
 } from "@/lib/data";
 import { getLibState } from "@/lib/libState";
 import { PublicListsRail } from "@/components/PublicListsRail";
@@ -395,6 +397,9 @@ async function ListsDiscovery({
      التبويب، **ولو سألت كلُّ بطاقةٍ عن نفسها لصارت الصفحةُ عشرين استعلاماً**.
      و`getMyListNames` مغلَّفةٌ بـ`cache` فالنداءُ واحدٌ للطلب كلِّه. */
   const savedNames = await getMyListNames();
+  /* **خريطةُ المجموعات المولَّدة** (D-328) — نداءٌ واحدٌ لثلاثٍ وستّين
+     بطاقة (D-205)، **والغائبُ يُفتح معاينةً كما كان.** */
+  const curated = await getCuratedListIds().catch(() => new Map<string, string>());
 
   const loc = locale === "en" ? ("en" as const) : ("ar" as const);
   const rows = fr ? FRANCHISES.filter((f) => f.slug === fr) : FRANCHISES;
@@ -445,16 +450,34 @@ async function ListsDiscovery({
               /* wide لا الافتراضي: بطاقة القائمة أعرض من بطاقة الملصق،
                  وخانةٌ ضيّقة كانت تجعل البطاقات تتراكب (لقطة المالك) */
               <RailItem key={u.slug} wide>
-                {/* ضغطة جسد البطاقة تفتح المعاينة الكاملة؛ زرّ الحفظ يمرّ لصاحبه */}
-                <ListPeekTrigger kind="set" refId={u.slug} title={universeName(u, loc)} labels={peekLabels}>
-                  <CuratedCard
-                    u={u}
-                    locale={locale}
-                    t={t}
-                    savedNames={savedNames}
-                    className="w-full"
-                  />
-                </ListPeekTrigger>
+                {/* 🆕 **صفحةٌ إن وُلّدت، ومعاينةٌ إن لم تُولَّد بعد** (D-328،
+                    طلبُ أحمد: «أي ليست أقدر أقسمها وأقدر أكتب عليها
+                    تعليق»). **والصفحةُ تعطي ما لا تعطيه الورقةُ أبداً**:
+                    عنواناً في المتصفّح يُشارَك، وصفّاً في القاعدة يُعلَّق
+                    عليه ويُقيَّم (D-327).
+                    ⚠️ **والمعاينةُ تبقى للمولَّدة بعد**: بطاقةٌ لا تفتح
+                    شيئاً أسوأ من بطاقةٍ تفتح ورقة (D-181/D-262). */}
+                {curated.get(u.slug) ? (
+                  <Link href={`/lists/${curated.get(u.slug)}`} className="block">
+                    <CuratedCard
+                      u={u}
+                      locale={locale}
+                      t={t}
+                      savedNames={savedNames}
+                      className="w-full"
+                    />
+                  </Link>
+                ) : (
+                  <ListPeekTrigger kind="set" refId={u.slug} title={universeName(u, loc)} labels={peekLabels}>
+                    <CuratedCard
+                      u={u}
+                      locale={locale}
+                      t={t}
+                      savedNames={savedNames}
+                      className="w-full"
+                    />
+                  </ListPeekTrigger>
+                )}
               </RailItem>
             ))}
           </PosterRail>
