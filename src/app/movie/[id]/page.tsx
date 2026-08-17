@@ -16,6 +16,8 @@ import {
   getTitleCircle,
   getMyArtFor,
   getMyFavorites,
+  getCuratedListIds,
+  getMySavedListIds,
   artKey,
 } from "@/lib/data";
 import { getMovie, getTrailer, getWatchProviders, backdropUrl, posterUrl } from "@/lib/tmdb";
@@ -23,7 +25,7 @@ import { displayWorkTitle } from "@/lib/wikidata";
 import { universeOf } from "@/lib/universes";
 import { getT, getWatchRegion } from "@/lib/locale";
 import { type Locale } from "@/lib/i18n";
-import { AddWorksToList } from "@/components/AddWorksToList";
+import { UniverseSaveRow } from "@/components/UniverseSaveRow";
 import { PublicListsRail } from "@/components/PublicListsRail";
 import { HeroRatings, HeroRatingsSkeleton } from "@/components/HeroRatings";
 import { RatingBox } from "@/components/RatingBox";
@@ -102,6 +104,17 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
   const poster = posterUrl(myArt?.poster_path ?? movie.poster_path, "w342");
   /* العالم فحصٌ محليّ في القاموس — زرّه صعد إلى الترويسة (طلب المالك) */
   const universe = universeOf(movieId);
+  /* 🆕 **ومعرّفُ قائمته المولَّدة وحالةُ حفظها** (D-347): نداءان مخبّآن
+     **ولا يقعان إلا لفيلمٍ له عالَم** — ومن لا عالَمَ له لا يدفع شيئاً
+     (D-152). **والغيابُ يعني «لم تُولَّد بعد» فلا زرَّ** (D-181). */
+  const [curatedMap, mySaved] = universe
+    ? await Promise.all([
+        getCuratedListIds().catch(() => new Map<string, string>()),
+        getMySavedListIds().catch(() => new Set<string>()),
+      ])
+    : [new Map<string, string>(), new Set<string>()];
+  const universeListId = universe ? curatedMap.get(universe.slug) ?? null : null;
+  const universeSaved = !!universeListId && mySaved.has(universeListId);
 
   return (
     <div>
@@ -213,8 +226,19 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
                 (`RelatedTitles`)، فلا شيء صار غير ممكن — صار أطولَ خطوة.
                 وزرُّ الكون (`universe`) باقٍ: مجموعاتُ الأكوان لا يعرضها
                 تبويبٌ آخر. */}
-            {universe && (
-              <AddWorksToList source="universe" id={universe.slug} locale={locale} />
+            {/* 🔴 **وهذا البابُ الثاني للفعل نفسِه — فتبع الحكمَ** (D-347):
+                كان ينسخ عالَمَ الفيلم قائمةً جديدةً باسمك، **بينما بطاقتُه
+                في اكتشف وصفحتُه صارتا تحفظانه مرجعاً حيّاً**. **وبابان
+                لفعلٍ واحد بمعنيين مختلفين هو العطل بعينه** (D-068/D-294).
+                ⚠️ **وقبل التوليد لا زرَّ أصلاً**: مجموعةٌ بلا صفٍّ لا
+                تُحفظ — **وزرٌّ لا يكتب شيئاً أسوأ من غيابه** (D-217). */}
+            {universe && universeListId && (
+              <UniverseSaveRow
+                listId={universeListId}
+                saved={universeSaved}
+                label={t.curatedSaveBtn}
+                locale={locale}
+              />
             )}
           </div>
         )}
