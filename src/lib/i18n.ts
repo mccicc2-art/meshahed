@@ -165,6 +165,14 @@ const ar = {
   libMoviesGroup: "الأفلام",
   libraryEmptyCta: "اكتشف أعمالاً",
   libraryEmpty: "مكتبتك فارغة — ابحث عن عمل وتابعه ليظهر هنا.",
+  /* 🔴 **ثلاثُ حالاتٍ لا حالة** (D-350، مراجعةُ المكتبة بند ١): كان
+     `items.length === 0` يقول «مكتبتك فارغة» **لمن مكتبتُه ممتلئة**
+     — في تبويب الأنمي بلا عملٍ مصنَّف، وفي أيّ بحثٍ لا يطابق. **ونصٌّ
+     يكذب أسوأُ من فراغ** (D-063)، **وكلُّ حالةٍ بابُها غيرُ باب**. */
+  libSearchEmpty: (q: string) => `لا عملَ باسم «${q}» في هذا التبويب.`,
+  libSearchEmptyCta: "امسح البحث",
+  libAnimeEmpty: "لا أنمي في مكتبتك بعد — تابِع عملاً ليظهر هنا.",
+  libAnimeEmptyCta: "تصفّح الأنمي",
   searchPlaceholder: "ابحث عن مسلسل أو فيلم…",
   /* أوضاع ورقة البحث الثلاثة — كلمةٌ واحدة لكلٍّ: ثلاث خاناتٍ في ترويسة
      ورقةٍ على ٣٦٠px لا تحتمل «البحث عن الأشخاص» */
@@ -1124,6 +1132,10 @@ const ar = {
   sortSmart: "ذكي",
   sortTitle: "الاسم",
   sortProgress: "التقدّم",
+  /* 🆕 **الأحدثُ إضافةً** (D-350، بند ٥): `getFollows` تعود مرتَّبةً
+     بـ`added_at` تنازلياً **أصلاً** والفرزُ الذكيُّ يخلطها — **فالسؤالُ
+     اليوميُّ «ما أضفتُه أخيراً؟» كان بلا جواب وثمنُه حقلٌ واحد.** */
+  sortAdded: "الأحدث",
   shortMovies: "أفلام",
   /* تبويب المكتبة الرابع (D-128) — كلمةٌ واحدة كإخوته: أربعة عناوين
      عربية في صفٍّ واحد على ٣٦٠px لا تحتمل «الفنانون المفضّلون» */
@@ -1715,6 +1727,10 @@ const en: Dict = {
   libMoviesGroup: "Movies",
   libraryEmptyCta: "Discover titles",
   libraryEmpty: "Your library is empty — search for a title and follow it.",
+  libSearchEmpty: (q: string) => `Nothing named “${q}” in this tab.`,
+  libSearchEmptyCta: "Clear search",
+  libAnimeEmpty: "No anime in your library yet — follow one and it shows up here.",
+  libAnimeEmptyCta: "Browse anime",
   searchPlaceholder: "Search for a show or a movie…",
   agoNow: "just now",
   agoMinutes: (n: number) => (n === 1 ? "1 min ago" : `${n} min ago`),
@@ -2371,6 +2387,7 @@ const en: Dict = {
   sortSmart: "Smart",
   sortTitle: "Title",
   sortProgress: "Progress",
+  sortAdded: "Recently added",
   shortMovies: "Movies",
   shortArtists: "Artists",
   artistWorksWatched: (n: number) =>
