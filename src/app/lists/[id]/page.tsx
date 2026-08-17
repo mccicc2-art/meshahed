@@ -170,27 +170,29 @@ export default async function ListPage({ params }: { params: Promise<{ id: strin
           tmdbId: data.list.cover_tmdb_id ?? null,
           mediaType: data.list.cover_media_type ?? null,
         }}
-        /* 🆕 **خلاصةُ التقييم لرقاقة الرأس** (D-332) — نفسُ النداء الذي
-           يقرؤه القسمُ في القاع، لا نداءَ ثانياً */
+        /* 🆕 **خلاصةُ التقييم لسطر الرأس** (D-332) — نفسُ النداء الذي
+           يقرؤه التبويب، لا نداءَ ثانياً */
         reviews={data.list.is_public ? reviewStats : null}
+        /* 🆕 **التقييماتُ تبويبٌ لا ذيلٌ** (D-333، طلبُ أحمد: «شي يشبه
+           صفحة العمل — تبويب قائمة الأفلام وتبويب التعليقات»): كانت تحت
+           آخر ملصقٍ فكانت في «TOP 250» خلف مئتين وخمسين صورة.
+           ⚠️ **ولا تُرسم لقائمةٍ خاصّة**: لا تُقرأ أصلاً فلا رأيَ فيها،
+           **وصندوقٌ لا يستطيع أحدٌ رؤيةَ ناتجه وعدٌ كاذب** (D-217) —
+           وغيابُها يُسقط التبويبات كلَّها فتبقى الشبكةُ وحدَها. */
+        reviewsSlot={
+          data.list.is_public ? (
+            <ListReviews
+              listId={data.list.id}
+              locale={locale}
+              isOwner={isOwner}
+              canReview={!isOwner}
+              reviews={reviews}
+              mine={myReview}
+              stats={reviewStats}
+            />
+          ) : undefined
+        }
       />
-
-      {/* 🆕 **التقييماتُ تحت القائمة لا فوقها** (D-327): من فتح رابطَ
-          قائمةٍ جاء ليراها، **ورأيُ الناس فيها سياقٌ بعدها لا قبلها**
-          (نفسُ ترتيب دعوة الزائر في القاع أعلاه).
-          ⚠️ **ولا تُرسم لقائمةٍ خاصّة**: لا تُقرأ أصلاً فلا رأيَ فيها،
-          **وصندوقٌ لا يستطيع أحدٌ رؤيةَ ناتجه وعدٌ كاذب** (D-217). */}
-      {data.list.is_public && (
-        <ListReviews
-          listId={data.list.id}
-          locale={locale}
-          isOwner={isOwner}
-          canReview={!isOwner}
-          reviews={reviews}
-          mine={myReview}
-          stats={reviewStats}
-        />
-      )}
     </div>
   );
 }
