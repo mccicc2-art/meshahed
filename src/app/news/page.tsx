@@ -5,7 +5,6 @@ import {
   getUser,
   getPublicListsFeed,
   getForYouLists,
-  getTopSavedLists,
   getMySavedListIds,
   getListCardsByIds,
   getCuratedListIds,
@@ -376,9 +375,10 @@ async function ListsDiscovery({
      ⚠️ **وكلاهما يُخفي نفسَه فارغاً** (D-181): بحسابٍ بلا مكتبة لا
      «تناسبك»، وبقاعدةٍ فيها حفظان لا «الأكثر حفظاً» — **وصندوقٌ فارغٌ
      تحت عنوانٍ يَعِد أسوأ من غيابه.** */
-  const [forYouRows, savedRows, savedIds, me, curated, featuredIds] = await Promise.all([
+  /* 🆕 **وسقط `getTopSavedLists` من هذه الصفحة مع رفّه** (D-363) —
+     **ونداءٌ بلا قارئٍ يُحذف لا يُترك يدور** (D-214/D-257). */
+  const [forYouRows, savedIds, me, curated, featuredIds] = await Promise.all([
     getForYouLists(12).catch(() => []),
-    getTopSavedLists(30, 12).catch(() => []),
     getMySavedListIds().catch(() => new Set<string>()),
     getUser().catch(() => null),
     /* **خريطةُ المجموعات المولَّدة** (D-328) — نداءٌ واحدٌ لاثنتين وأربعين
@@ -425,12 +425,6 @@ async function ListsDiscovery({
     .map((r) => r.listId)
     .filter((id) => !savedIds.has(id) && !shown.has(id));
   forYouIds.forEach((id) => shown.add(id));
-  const savedRailIds = savedRows
-    .filter(
-      (r) => !savedIds.has(r.listId) && !shown.has(r.listId) && r.ownerId !== me?.id,
-    )
-    .map((r) => r.listId);
-  savedRailIds.forEach((id) => shown.add(id));
   /* 🔴 **والقائمةُ التي ظهرت في صفٍّ شخصيٍّ تسقط من رفِّ عالَمِها** —
      هذا هو موضعُ المنع بعد نقض D-331: **الشخصيُّ يحتفظ بالبطاقة والعامُّ
      يتنازل** (D-326)، فلا تُقرأ الصفحةُ مرّتين ولا يُحرم أحدٌ اقتراحاً. */
@@ -438,10 +432,13 @@ async function ListsDiscovery({
   /* **والبطاقاتُ من `shapeListCards` لا من محوّلٍ محليّ** (D-326): العدُّ
      الحقيقيُّ والملصقاتُ وسطرُ الصاحب من المصدر الذي تقرأ منه أخواتُها
      الثلاث — **وهو ما أنهى «Empty» فوق ثلاثة ملصقات.** */
-  const [featuredCards, forYou, mostSaved] = await Promise.all([
+  /* 🆕 **وسقط رفُّ «الأكثر حفظاً»** (D-363، طلبُ أحمد: «احذف الأكثر
+     حفظاً») — **ومعه نداؤه وحسابُ معرّفاته** (D-214: يُفحص المستهلك ثم
+     يُحذف ما بقي بلا قارئ). **وأثرٌ ثانٍ مقصود**: القوائمُ التي كانت
+     تُحجز له تعود إلى رفِّ عالَمِها بدل أن تسقط من الاثنين. */
+  const [featuredCards, forYou] = await Promise.all([
     getListCardsByIds(featured),
     getListCardsByIds(forYouIds),
-    getListCardsByIds(savedRailIds),
   ]);
   /* 🆕 **أرقامُ بطاقات لوبز** (D-335): نداءُ `list_card_stats` واحدٌ
      للاثنتين والأربعين (D-205) — بعد خريطة `curated` لأنه يحتاج
@@ -481,12 +478,23 @@ async function ListsDiscovery({
       {!fr && lsrc !== "curated" && featuredCards.length > 0 && (
         <PublicListsRail lists={featuredCards} locale={locale} title={t.listsFeatured} />
       )}
-      {!fr && lsrc !== "curated" && mostSaved.length > 0 && (
-        <PublicListsRail lists={mostSaved} locale={locale} title={t.listsMostSaved} />
-      )}
 
       {(lsrc === "all" || lsrc === "curated") &&
-        rows.map((f) => (
+        rows.map((f) => {
+          /* 🔴 🆕 **والرفُّ الفارغ لا يُرسم رأسَه** (D-363، بلاغُ أحمد
+             بلقطتين: «TOP 250» و«Disney & Pixar» ترويسةٌ وسهمان بلا
+             بطاقةٍ واحدة).
+             **والقصُّ كان يقع داخل الرفّ**: المجموعةُ التي لم تُولَّد
+             بعد تسقط، **والتي ظهرت في صفٍّ شخصيٍّ تسقط** (D-348) —
+             **فيبقى الرأسُ يَعِد بما لا يأتي.** **ويُقاس القسمُ بما
+             يعرضه هو لا بما نُودي له** (D-181/D-264): **يُحسب المعروضُ
+             أوّلاً، ثم يُرسم الرأسُ إن بقي منه شيء.** */
+          const sets = f.sets.filter((u) => {
+            const id = curated.get(u.slug);
+            return id && !shownAbove.has(id);
+          });
+          if (sets.length === 0) return null;
+          return (
           <PosterRail
             key={f.slug}
             title={franchiseName(f, loc)}
@@ -503,12 +511,7 @@ async function ListsDiscovery({
                 ⚠️ **ومجموعةٌ لم تُولَّد بعدُ لا تُرسم**: بطاقةٌ لا تفتح
                 شيئاً أسوأ من غيابها (D-181) — ونداءُ `‎/api/curated`
                 واحدٌ يُظهرها. */}
-            {f.sets
-              .filter((u) => {
-                const id = curated.get(u.slug);
-                return id && !shownAbove.has(id);
-              })
-              .map((u) => (
+            {sets.map((u) => (
                 /* wide لا الافتراضي: بطاقة القائمة أعرض من بطاقة الملصق،
                    وخانةٌ ضيّقة كانت تجعل البطاقات تتراكب (لقطة المالك) */
                 <RailItem key={u.slug} wide>
@@ -529,7 +532,8 @@ async function ListsDiscovery({
                 </RailItem>
             ))}
           </PosterRail>
-        ))}
+          );
+        })}
 
       {(lsrc === "all" || lsrc === "community") && !fr && community.length > 0 && (
         <PublicListsRail lists={community} locale={locale} />
