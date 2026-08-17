@@ -110,9 +110,10 @@ export function ListReviews({
   }
 
   return (
-    /* **المعرّفُ مرساةُ رقاقة الرأس** (D-332) — و`scroll-mt` يترك مسافةً
-       للترويسة الملتصقة فلا يهبط العنوانُ تحتها */
-    <section id="list-reviews" className="mt-8 space-y-4 scroll-mt-20">
+    /* **صار القسمُ لوحَ تبويبٍ** (D-333) — فسقطت مرساةُ D-332 وهامشُ
+       القاع: لوحُ `DetailTabs` يعطي المسافةَ، **ومرساةٌ إلى لوحٍ مخفيٍّ
+       رابطٌ ميّت** */
+    <section className="space-y-4">
       <div className="flex items-center gap-2">
         <Icon name="star" size={18} className="text-accent shrink-0" />
         <h2 className="text-[15px] font-bold">{t.listReviewsTitle}</h2>

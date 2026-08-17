@@ -12,6 +12,7 @@ import { getDict, num, type Locale } from "@/lib/i18n";
 import { Icon, type IconName } from "./Icon";
 import type { ListItem, ListKind } from "@/lib/data";
 import { Sheet, SheetHeader } from "./ui/Sheet";
+import { DetailTabs } from "./DetailTabs";
 import { buttonClass } from "./ui/Button";
 import { sheetScroll } from "./ui/controls";
 import { ShareListSheet } from "./ShareListSheet";
@@ -53,6 +54,7 @@ export function ListDetail({
   initialSaved,
   cover,
   reviews,
+  reviewsSlot,
 }: {
   listId: string;
   name: string;
@@ -75,9 +77,14 @@ export function ListDetail({
     tmdbId?: number | null;
     mediaType?: "tv" | "movie" | null;
   } | null;
-  /** 🆕 خلاصةُ التقييم لرقاقة الرأس (D-332) — الغيابُ يعني قائمةً خاصّة
-      أو صفحةً لا تعرض التقييمات فلا رقاقة */
+  /** 🆕 خلاصةُ التقييم لسطر الرأس (D-332) — الغيابُ يعني قائمةً خاصّة
+      أو صفحةً لا تعرض التقييمات فلا رقم */
   reviews?: { avg: number | null; count: number } | null;
+  /** 🆕 **قسمُ التقييمات تبويباً** (D-333، طلبُ أحمد: «أبغاها شي يشبه
+      صفحة العمل — تبويب قائمة الأفلام وتبويب التعليقات»). يُرسم في
+      الصفحة ويُمرَّر جاهزاً — **والغيابُ يعني شبكةً بلا تبويبات** كما
+      كانت (قائمةٌ خاصّة أو زائرٌ بلا حساب). */
+  reviewsSlot?: React.ReactNode;
 }) {
   const t = getDict(locale);
   const router = useRouter();
@@ -351,31 +358,19 @@ export function ListDetail({
             {kind === "ranked" ? t.listTypeRanked : t.listTypeWatch}
           </span>
         )}
-        {/* 🆕 **رقاقةُ التقييم في الرأس** (D-332، بلاغُ أحمد: «ماينفع
-            تشوف كل الأفلام وبعدها التعليق»). القسمُ باقٍ في القاع —
-            **فالمحتوى أوّلاً** (حجّة D-327 نفسُها) — **والرقاقةُ مرساةٌ
-            تقفز إليه**: مئتان وخمسون ملصقاً لم تعد طريقاً إجباريّاً.
-            **وبلا رأيٍ بعدُ تصير دعوةً** لمن يحقّ له التقييم —
-            **ورقمٌ صفرٌ لا يُطبع** (D-219). */}
-        {reviews &&
-          (reviews.count > 0 ? (
-            <a
-              href="#list-reviews"
-              className="text-[11px] px-2 py-0.5 rounded-full border border-border text-foreground hover:border-accent/50 transition inline-flex items-center gap-1 tabular-nums"
-            >
-              <Icon name="star" size={11} className="text-accent" />
-              {reviews.avg !== null && <span dir="ltr">{num(reviews.avg, locale)}</span>}
-              <span className="text-muted">{t.listReviewCount(num(reviews.count, locale))}</span>
-            </a>
-          ) : !isOwner ? (
-            <a
-              href="#list-reviews"
-              className="text-[11px] px-2 py-0.5 rounded-full border border-border text-muted hover:border-accent/50 hover:text-foreground transition inline-flex items-center gap-1"
-            >
-              <Icon name="star" size={11} />
-              {t.listReviewsJump}
-            </a>
-          ) : null)}
+        {/* 🆕 **رقمُ التقييم في الرأس** (D-332→D-333). كان مرساةً تقفز
+            إلى القاع، **وصار القسمُ تبويباً على بُعد نظرة** (طلبُ أحمد:
+            «شي يشبه صفحة العمل») — فبقي الرقمُ هنا هويّةً كما IMDb في
+            ترويسة الفيلم، **وسقط الرابطُ لأن البابَ صار تحته مباشرة**.
+            **ورقمٌ صفرٌ لا يُطبع** (D-219): تبويبُ التقييمات نفسُه هو
+            الدعوة. */}
+        {reviews && reviews.count > 0 && (
+          <span className="text-[11px] px-2 py-0.5 rounded-full border border-border inline-flex items-center gap-1 tabular-nums">
+            <Icon name="star" size={11} className="text-accent" />
+            {reviews.avg !== null && <span dir="ltr">{num(reviews.avg, locale)}</span>}
+            <span className="text-muted">{t.listReviewCount(num(reviews.count, locale))}</span>
+          </span>
+        )}
         {isOwner ? (
           <button
             type="button"
@@ -406,28 +401,48 @@ export function ListDetail({
         )}
       </div>
 
-      {visible.length === 0 ? (
-        <div className="flex flex-col items-center gap-4 py-16">
-          <p className="text-sm text-muted text-center">{t.listItemsEmpty}</p>
-          {/* والبابُ في حالة الفراغ أيضاً: هنا يقف من لا يملك شيئاً يفعله
-              غيرَ الإضافة — فالنصّ وحده كان يتركه واقفاً */}
-          {isOwner && addButton}
-        </div>
-      ) : (
-        <div className="grid gap-3 sm:gap-4 grid-cols-[repeat(auto-fill,minmax(102px,1fr))] sm:grid-cols-[repeat(auto-fill,minmax(136px,1fr))]">
-          {visible.map((it, i) => (
-            <PosterTile
-              key={keyOf(it)}
-              item={it}
-              n={numbered ? i + 1 : null}
-              rating={ratings[keyOf(it)] ?? null}
-              canRemove={isOwner}
-              onRemove={() => remove(it)}
-              t={t}
-            />
-          ))}
-        </div>
-      )}
+      {/* 🆕 **تبويبان كصفحة العمل** (D-333، طلبُ أحمد بنصّه: «لا أبغاها
+          شي يشبه صفحة العمل — تبويب قائمة الأفلام وتبويب التعليقات»).
+          **والوصفةُ `DetailTabs` حرفاً لا نسخةٌ منها** (D-145): نفسُ
+          الشريط الملتصق ونفسُ الأسهم ونفسُ الرسم المسبق المخفيّ بـCSS —
+          فتعليقٌ نصفُ مكتوبٍ في تبويبه لا يضيع بالتبديل.
+          ⚠️ **وبلا قسمِ تقييماتٍ لا تبويبات أصلاً** (قائمةٌ خاصّة أو
+          زائر): شريطُ تبويبٍ واحدٍ سؤالٌ بلا خيار (D-181). */}
+      {(() => {
+        const itemsPanel =
+          visible.length === 0 ? (
+            <div className="flex flex-col items-center gap-4 py-16">
+              <p className="text-sm text-muted text-center">{t.listItemsEmpty}</p>
+              {/* والبابُ في حالة الفراغ أيضاً: هنا يقف من لا يملك شيئاً
+                  يفعله غيرَ الإضافة — فالنصّ وحده كان يتركه واقفاً */}
+              {isOwner && addButton}
+            </div>
+          ) : (
+            <div className="grid gap-3 sm:gap-4 grid-cols-[repeat(auto-fill,minmax(102px,1fr))] sm:grid-cols-[repeat(auto-fill,minmax(136px,1fr))]">
+              {visible.map((it, i) => (
+                <PosterTile
+                  key={keyOf(it)}
+                  item={it}
+                  n={numbered ? i + 1 : null}
+                  rating={ratings[keyOf(it)] ?? null}
+                  canRemove={isOwner}
+                  onRemove={() => remove(it)}
+                  t={t}
+                />
+              ))}
+            </div>
+          );
+        return reviewsSlot ? (
+          <DetailTabs
+            tabs={[
+              { key: "items", label: t.searchModeTitles, icon: "grid", content: itemsPanel },
+              { key: "reviews", label: t.listReviewsTitle, icon: "star", content: reviewsSlot },
+            ]}
+          />
+        ) : (
+          itemsPanel
+        );
+      })()}
 
       {sheet === "add" && (
         <TitleSearchSheet
