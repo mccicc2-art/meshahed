@@ -3817,6 +3817,17 @@ export async function getPublicListsFeed(limit = 15): Promise<PublicListCard[]> 
       .select("id, user_id, name, kind, source_slug, updated_at")
       .eq("is_public", true)
       .neq("user_id", user.id)
+      /* 🔴 🆕 **وقوائمُ لوبز ليست «من المجتمع»** (D-367، بلاغُ أحمد
+         بلقطة: «Top 250 Shows · Loopz» تحت عنوان «قوائم من المجتمع»).
+         **المجتمعُ هم الأعضاء** — **وعنوانٌ يَعِد بناسٍ فيأتي بنا كذبٌ
+         صغير** (D-219/D-181). **ولا تُفقد البطاقة**: للوبز رفوفُها
+         الثلاثة فوقُ، فهي تعود إلى بيتها لا إلى العدم.
+         ⚠️ **وهذا ترشيحٌ في الدالّة لا في الصفحة — عكسَ D-152 وبحجّتها
+         نفسِها**: ذاك كان حكمَ سطحٍ («رآها هذا القارئُ فوق»)، **وهذا
+         حكمُ هويّة**: `source_slug` يعني «مولَّدةٌ لا كتبها عضو» —
+         **وما تكونه القائمةُ يسكن المصدر، وما يراه القارئُ يسكن
+         الصفحة.** */
+      .is("source_slug", null)
       .order("updated_at", { ascending: false })
       .limit(limit);
     if (!lists?.length) return [];
