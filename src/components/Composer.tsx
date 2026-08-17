@@ -6,6 +6,8 @@ import { createClient } from "@/lib/supabase/client";
 import { buttonClass } from "./ui/Button";
 import { getDict, type Locale } from "@/lib/i18n";
 import { Icon } from "./Icon";
+import { GifPicker } from "./GifPicker";
+import { gifUrl } from "@/lib/media";
 
 /**
  * **صندوقُ الكتابة — واحدٌ لكل ردّ في التطبيق** (D-227).
@@ -26,6 +28,7 @@ export function Composer({
   autoFocus = true,
   allowSpoiler = false,
   allowImage = false,
+  allowGif = false,
   onSend,
   onCancel,
 }: {
@@ -48,21 +51,38 @@ export function Composer({
    * زرٍّ غائب** (D-217).
    */
   allowImage?: boolean;
+  /**
+   * 🆕 **خيارُ GIF جنبَ الصورة** (D-362، طلبُ أحمد: «خيار سريع وبديل عن
+   * الصور») — **ولا يظهر إلا حيث يُقبل** كحجّة `allowImage` حرفاً
+   * (D-217: لا زرَّ يَعِد بما يمنعه الفعل).
+   */
+  allowGif?: boolean;
   /** **والعَلَمُ يصحب المتن** — لا حالةٌ ثانيةٌ عند المستدعي تفترق عنه */
-  onSend: (body: string, hasSpoiler: boolean, imageUrl?: string | null) => void;
+  /* 🆕 **ووسيطٌ رابعٌ للـGIF** (D-362) — **اختياريٌّ فالقرّاءُ الثلاثة
+     القدامى يبقون على توقيعهم** (D-028: الحقلُ الجديد اختياريٌّ حتى يصل
+     مستهلكُه). */
+  onSend: (
+    body: string,
+    hasSpoiler: boolean,
+    imageUrl?: string | null,
+    gifId?: string | null,
+  ) => void;
   onCancel: () => void;
 }) {
   const t = getDict(locale);
   const [body, setBody] = useState("");
   const [spoiler, setSpoiler] = useState(false);
   const [img, setImg] = useState<string | null>(null);
+  /* 🆕 **معرّفُ الـGIF لا رابطُه** (D-362) — والرابطُ يُركَّب للعرض وحدَه */
+  const [gif, setGif] = useState<string | null>(null);
+  const [gifOpen, setGifOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const file = useRef<HTMLInputElement>(null);
   const [pending, start] = useTransition();
   /* **وصورةٌ وحدَها مشاركة** (D-298): **الصورةُ متنٌ كالمتن**، **وشرطٌ
      يطلب نصّاً بعد أن صار للمتن شكلان يرفض نصفَ ما يُرسَل.** */
-  const ready = body.trim().length > 0 || !!img;
+  const ready = body.trim().length > 0 || !!img || !!gif;
 
   /**
    * 🆕 **الرفعُ في المتصفّح إلى مخزننا القائم** (D-298).
@@ -147,13 +167,31 @@ export function Composer({
           </button>
         </div>
       )}
+      {/* 🆕 **ومعاينةُ الـGIF بوصفةِ معاينة الصورة حرفاً** (D-362) —
+          **ما يُرسل يُرى قبل أن يُرسل، وزرُّ إزالته عليه** (D-047)،
+          **ولا وصفةَ ثانيةً لمعنًى واحد** (D-002). */}
+      {gif && (
+        <div className="mt-2 relative w-28 h-28 rounded-xl overflow-hidden border border-border bg-surface-2">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={gifUrl(gif, "small") ?? ""} alt="" className="w-full h-full object-cover" />
+          <button
+            type="button"
+            onClick={() => setGif(null)}
+            aria-label={t.talkRemoveGif}
+            title={t.talkRemoveGif}
+            className="absolute top-1 end-1 w-7 h-7 rounded-full bg-black/60 grid place-items-center text-white drop-shadow active:scale-95 transition"
+          >
+            <Icon name="close" size={14} />
+          </button>
+        </div>
+      )}
       {err && <p role="alert" className="mt-1.5 text-[12px] text-[color:var(--error)]">{err}</p>}
 
       <div className="mt-1.5 flex items-center gap-2">
         <button
           type="button"
           disabled={!ready || pending || busy}
-          onClick={() => start(() => onSend(body.trim(), spoiler, img))}
+          onClick={() => start(() => onSend(body.trim(), spoiler, img, gif))}
           className={buttonClass({ size: "sm" })}
         >
           {t.shareReplySend}
@@ -209,6 +247,24 @@ export function Composer({
             </button>
           </>
         )}
+        {/* 🆕 **وGIF جنبَ الصورة في الصفّ نفسِه** (D-362، طلبُ أحمد:
+            «خيار جنب الصور… سريع وبديل عن الصور») — **صفٌّ واحدٌ لأفعال
+            هذا الصندوق** (D-288)، **ووصفةُ الزرّ وصفةُ أخيه حرفاً**
+            (D-002). **والكلمةُ مكتوبةٌ لأن الرمزَ وحدَه لا عُرفَ له**
+            (D-138/D-177: رمزٌ بلا عُرفٍ يحتاج كلمة). */}
+        {allowGif && (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => setGifOpen(true)}
+            aria-label={t.talkAddGif}
+            title={t.talkAddGif}
+            aria-haspopup="dialog"
+            className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-[12px] font-bold text-muted transition hover:text-foreground disabled:opacity-50"
+          >
+            GIF
+          </button>
+        )}
         <button
           type="button"
           onClick={onCancel}
@@ -217,6 +273,14 @@ export function Composer({
           {t.cancelLabel}
         </button>
       </div>
+      {allowGif && (
+        <GifPicker
+          open={gifOpen}
+          onClose={() => setGifOpen(false)}
+          onPick={(id) => setGif(id)}
+          locale={locale}
+        />
+      )}
     </div>
   );
 }
