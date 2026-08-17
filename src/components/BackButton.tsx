@@ -60,3 +60,44 @@ export function BackButton({
     </button>
   );
 }
+
+/**
+ * 🆕 **فتاتُ الرجوع النصّية — رجوعٌ حقيقيٌّ لا قفزةٌ ثابتة** (D-336،
+ * بلاغُ أحمد: «بعد ما أفتح اللستة وأعمل رجوع، ما يرجعني على ديسكفري —
+ * أحصل نفسي في الليست تبع المكتبة»).
+ *
+ * كانت فتاتُ صفحةِ القائمة رابطاً مسمَّراً إلى `/library?filter=list` —
+ * **صحيحاً لبابٍ واحدٍ من ثلاثة**: من جاء من اكتشف أو من ملفِّ شخصٍ
+ * يُرمى في المكتبة. **والرجوعُ معناه «من حيث أتيت»** — وهو ما يفعله
+ * `router.back()` في هذا الملفّ منذ D-288، **فالبابُ واحدٌ والهيئةُ
+ * ثانية** (نصٌّ لا سهمَ غلاف).
+ *
+ * ⚠️ **والرابطُ المفتوحُ مباشرةً (مشاركة) لا تاريخَ له**: `history.length`
+ * واحدٌ في اللسان الجديد، **فيسقط إلى `fallback`** — ولا زرَّ يضغطه
+ * المستخدمُ فلا يحدث شيء (D-181).
+ */
+export function BackCrumb({
+  label,
+  fallback,
+  className = "",
+}: {
+  label: string;
+  /** وجهةُ من لا تاريخَ له — رابطٌ عميقٌ من مشاركة */
+  fallback: string;
+  className?: string;
+}) {
+  const router = useRouter();
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        if (window.history.length > 1) router.back();
+        else router.push(fallback);
+      }}
+      className={`inline-flex items-center gap-1 text-xs text-muted hover:text-foreground transition -ms-1 px-1 py-1 ${className}`}
+    >
+      <span aria-hidden>‹</span>
+      {label}
+    </button>
+  );
+}
