@@ -2,6 +2,7 @@ import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import type { PersonLite } from "./people";
 import { episodeKey } from "@/lib/keys";
+import { LOOPZ_ID } from "@/lib/loopz";
 
 export { episodeKey };
 
@@ -3824,10 +3825,15 @@ export async function getPublicListsFeed(limit = 15): Promise<PublicListCard[]> 
          الثلاثة فوقُ، فهي تعود إلى بيتها لا إلى العدم.
          ⚠️ **وهذا ترشيحٌ في الدالّة لا في الصفحة — عكسَ D-152 وبحجّتها
          نفسِها**: ذاك كان حكمَ سطحٍ («رآها هذا القارئُ فوق»)، **وهذا
-         حكمُ هويّة**: `source_slug` يعني «مولَّدةٌ لا كتبها عضو» —
+         حكمُ هويّة**: صاحبُ القائمة هو حسابُ لوبز النظاميّ —
          **وما تكونه القائمةُ يسكن المصدر، وما يراه القارئُ يسكن
-         الصفحة.** */
-      .is("source_slug", null)
+         الصفحة.**
+         ⚠️ **والمالكُ لا `source_slug`**: أوّلُ محاولةٍ رشّحت المولَّدةَ
+         وحدَها **فبقيت «طريقك إلى Avengers: Doomsday» في الخطّ** — قائمةُ
+         لوبز كُتبت بيدٍ لا بمولِّد (D-317) **فلا `source_slug` لها**.
+         **والصفةُ العارضة تُخطئ حيث تصيب الهويّة** (D-144): يُسأل «مَن
+         صاحبُها؟» لا «كيف وُلدت؟». */
+      .neq("user_id", LOOPZ_ID)
       .order("updated_at", { ascending: false })
       .limit(limit);
     if (!lists?.length) return [];
