@@ -17,6 +17,7 @@ import {
 import { getDict, type Locale } from "@/lib/i18n";
 import { displayNameOf } from "@/lib/people";
 import { tap } from "@/lib/haptics";
+import { useKeyboardInset, useKeyboardOpen, KEYBOARD_MIN } from "@/lib/useKeyboard";
 import { Icon } from "../Icon";
 import { Composer } from "../Composer";
 import { ReplyItem, TEMP, type ThreadReply } from "./ReplyItem";
@@ -115,6 +116,9 @@ export function ThreadReplies({
   /** الصندوقُ المفتوح: `""` للمنشور نفسِه، أو معرّفُ ردٍّ يُردّ عليه */
   const [open, setOpen] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  /* 🆕 **قياسٌ واحدٌ للكيبورد يقرؤه المرسى والقلم** (D-359) — خرج إلى
+     `lib/useKeyboard` عند قارئه الثاني (D-002). */
+  const kbOpen = useKeyboardOpen();
   /**
    * 🆕 **الفروعُ مطويّةٌ حتى تُفتح** (D-284، طلبُ أحمد: «الردود الي في ردّ
    * الشخص المفروض ما تظهر على طول، لازم فيه سهم توسيع»).
@@ -330,10 +334,18 @@ export function ThreadReplies({
              تطبيقٍ نسخنا شكلَه (D-150).
              **والفراغُ `h-14` قبله يبقى في التدفق** كي لا يختفي ذيلُ
              آخرِ صفٍّ خلف القلم (D-138: أداةٌ تخفي أخرى أسوأُ من
-             غائبة). */
+             غائبة).
+             🔴 🆕 **ويغيب ما دام الكيبوردُ مفتوحاً** (D-359): من فتح
+             ردّاً على صفٍّ بعينه **يكتب الآن**، **ودعوةٌ إلى كتابةٍ ثانية
+             فوق كيبورده تُزاحم ما يكتبه** — **والفراغُ يبقى في التدفق**
+             فلا يقفز ما تحته (D-046). */
           <>
             <div aria-hidden className="h-14" />
-            <div className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+4rem)] md:bottom-6 end-4 md:end-8 z-20 pointer-events-none">
+            <div
+              className={`${
+                kbOpen ? "hidden" : ""
+              } fixed bottom-[calc(env(safe-area-inset-bottom,0px)+4rem)] md:bottom-6 end-4 md:end-8 z-20 pointer-events-none`}
+            >
             <button
               type="button"
               onClick={() => {
@@ -629,33 +641,33 @@ export function ThreadReplies({
  */
 function KeyboardDock({ children }: { children: React.ReactNode }) {
   const anchor = useRef<HTMLDivElement | null>(null);
-  const [box, setBox] = useState<{ left: number; width: number; kb: number } | null>(null);
+  const [box, setBox] = useState<{ left: number; width: number } | null>(null);
+  /* 🆕 **والقياسُ صار مشتركاً** (D-359): الارتفاعُ المحجوب من
+     `useKeyboardInset` — **والعرضُ وحدَه يبقى هنا لأنه يُقاس من فاصل هذا
+     المكوّن لا من النافذة** (D-282). */
+  const kb = useKeyboardInset();
   useEffect(() => {
     const read = () => {
       const el = anchor.current;
       if (!el) return;
       const r = el.getBoundingClientRect();
       const bleed = window.innerWidth >= 640 ? 24 : 16;
-      const vv = window.visualViewport;
-      const kb = vv ? Math.max(0, window.innerHeight - vv.height - vv.offsetTop) : 0;
       setBox({
         left: Math.max(0, r.left - bleed),
         width: Math.min(window.innerWidth, r.width + bleed * 2),
-        kb,
       });
     };
     read();
-    const vv = window.visualViewport;
     window.addEventListener("resize", read);
-    vv?.addEventListener("resize", read);
-    vv?.addEventListener("scroll", read);
+    window.visualViewport?.addEventListener("resize", read);
+    window.visualViewport?.addEventListener("scroll", read);
     return () => {
       window.removeEventListener("resize", read);
-      vv?.removeEventListener("resize", read);
-      vv?.removeEventListener("scroll", read);
+      window.visualViewport?.removeEventListener("resize", read);
+      window.visualViewport?.removeEventListener("scroll", read);
     };
   }, []);
-  const kbOpen = (box?.kb ?? 0) > 60;
+  const kbOpen = kb > KEYBOARD_MIN;
   return (
     <>
       <div ref={anchor} aria-hidden className="h-40" />
@@ -666,7 +678,7 @@ function KeyboardDock({ children }: { children: React.ReactNode }) {
         style={{
           left: box ? box.left : 0,
           width: box ? box.width : "100%",
-          ...(kbOpen && box ? { bottom: box.kb + 6 } : null),
+          ...(kbOpen ? { bottom: kb + 6 } : null),
         }}
       >
         <div className="px-4 sm:px-6 py-3 border-t border-[color:var(--divider)] bg-[color:var(--background)]">
