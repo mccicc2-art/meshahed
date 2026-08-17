@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getUser } from "@/lib/data";
+import { getLibState } from "@/lib/libState";
 import { searchMulti, searchPeople, titleOf, yearOf } from "@/lib/tmdb";
 import { getT } from "@/lib/locale";
 import { PosterCard } from "@/components/PosterCard";
@@ -85,6 +86,14 @@ async function SearchResults({
     }
   }
 
+  /* 🆕 **والضغطُ المطوّل يعمّ البحثَ أيضاً** (بقيّةُ D-322): الإيماءةُ
+     صارت في كلِّ رفوف اكتشف، **ونتائجُ البحث سطحُ اكتشافٍ كسائرها** —
+     **وإيماءةٌ تعمل في نصف الأسطح تُنسى في كلِّها** (D-277: إيماءةٌ واحدةٌ
+     لمالكٍ واحد، وسطحٌ يخالف يُعلّم القارئَ ألّا يجرّبها).
+     ⚠️ **وثلاثةُ نداءاتٍ للصفحة كلِّها لا لكلِّ ملصق** — `getLibState`
+     مغلَّفةٌ بـ`cache` (D-205)، **وسقوطُها يعني «ليس عندك» لا شاشةَ خطأ**. */
+  const lib = q && !failed ? await getLibState().catch(() => null) : null;
+
   return (
     <>
       {failed && (
@@ -143,6 +152,16 @@ async function SearchResults({
               posterPath={r.poster_path}
               year={yearOf(r)}
               badge={r.media_type === "tv" ? t.typeSeries : t.typeMovie}
+              hold={
+                lib
+                  ? {
+                      tmdbId: r.id,
+                      mediaType: r.media_type === "tv" ? "tv" : "movie",
+                      locale,
+                      ...lib.of(r.id, r.media_type),
+                    }
+                  : undefined
+              }
             />
           ))}
         </PosterGrid>
