@@ -1,11 +1,11 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import {
-  getFollows,
   getMyListNames,
   getUser,
   getPublicListsFeed,
 } from "@/lib/data";
+import { getLibState } from "@/lib/libState";
 import { PublicListsRail } from "@/components/PublicListsRail";
 import { ListPeekTrigger } from "@/components/ListPeek";
 import { ListsFilters } from "@/components/ListsFilters";
@@ -644,10 +644,12 @@ async function CuratedRails({
    * **وسقوطُها لا يُسقط الزرّ**: مجموعةٌ فارغة تعني «لم يُضَف بعد»،
    * وأوّلُ لمسٍ يُصلح الحقيقة (`upsert` لا `insert`).
    */
-  const following = new Set(
-    (await getFollows().catch(() => [])).map((f) => `${f.media_type}-${f.tmdb_id}`),
-  );
-  const quickAdd = { locale, following };
+  /* ⚖️ **`following` وحدَها لم تعد تكفي** (D-322): كانت تجيب سؤالاً
+     واحداً («هل هو عندك؟») لأن الزرَّ لم يكن يسأل غيرَه — **والخيطُ يسأل
+     أربعة**: عندك · انتهيتَ · أين أنت منه · أموقوفٌ هو. **فصار المصدرُ
+     `getLibState` واحداً للأسئلة الأربعة** (D-145: أربعُ مجموعاتٍ تُمرَّر
+     جنباً إلى جنبٍ هي كيف يفترق اثنان منها يوماً). */
+  const lib = { locale, state: await getLibState() };
   /* **`needsDiscover` غادر هذه الصفحة إلى `sections.ts` (D-199):** هو
      السؤالُ «هل يتجاوز الفلترُ ما تقدر عليه قوائمُ TMDB الجاهزة؟»، وقد
      صار جوابُه داخلَ بناءِ القسم حيث يُستعمل — **لا هنا حيث كان يُحسب
@@ -969,7 +971,7 @@ async function CuratedRails({
       {inCinemas && inCinemas.results.length > 0 && (
         <RankedRail
           title={t.inCinemas}
-          quickAdd={quickAdd}
+          lib={lib}
           icon="film"
           items={inCinemas.results}
           href={sectionHref("in-cinemas", "movie", qs)}
@@ -988,7 +990,7 @@ async function CuratedRails({
       {popular.length > 0 && (
         <RankedRail
           title={wantMovies ? t.mostPopularMovies : t.mostPopularSeries}
-          quickAdd={quickAdd}
+          lib={lib}
           icon="trending"
           items={popular}
           href={sectionHref("most-popular", wantMovies ? "movie" : "tv", qs)}
@@ -1004,7 +1006,7 @@ async function CuratedRails({
       {(topMovies.length > 0 || rails.m !== "week") && (
         <RankedRail
           title={t.top10Movies}
-          quickAdd={quickAdd}
+          lib={lib}
           icon="film"
           items={topMovies}
           href={sectionHref("top-ten", "movie", `${qs}${qs ? "&" : ""}w=${rails.m}`)}
@@ -1015,7 +1017,7 @@ async function CuratedRails({
       {(topSeries.length > 0 || rails.s !== "week") && (
         <RankedRail
           title={t.top10Series}
-          quickAdd={quickAdd}
+          lib={lib}
           icon="tv"
           items={topSeries}
           href={sectionHref("top-ten", "tv", `${qs}${qs ? "&" : ""}w=${rails.s}`)}
@@ -1040,7 +1042,7 @@ async function CuratedRails({
           title={t.top50Movies}
           icon="film"
           items={top50Movies}
-          quickAdd={quickAdd}
+          lib={lib}
         />
       )}
       {top50Series.length > 0 && (
@@ -1048,7 +1050,7 @@ async function CuratedRails({
           title={t.top50Series}
           icon="tv"
           items={top50Series}
-          quickAdd={quickAdd}
+          lib={lib}
         />
       )}
 
@@ -1111,14 +1113,9 @@ async function AnimeRails({
   const animeKeywords = [ANIME_KEYWORD, ...(tagId ? [tagId] : [])];
 
   const eraR = eraRange(era);
-  /* نفسُ مجموعة المتابعات — و`getFollows` مغلَّفةٌ بـ`cache` فلا نداءَ ثانٍ
-     ولو استُدعيت من تبويبين (D-205) */
-  const quickAdd = {
-    locale,
-    following: new Set(
-      (await getFollows().catch(() => [])).map((f) => `${f.media_type}-${f.tmdb_id}`),
-    ),
-  };
+  /* نفسُ حالة المكتبة — ونداءاتُها مغلَّفةٌ بـ`cache` فلا نداءَ ثانٍ ولو
+     استُدعيت من تبويبين (D-205) */
+  const lib = { locale, state: await getLibState() };
   /* **معرّفُ الاستوديو يُسأل عنه TMDB ولا يُكتب** — نفسُ نمط الوسم أعلاه،
      ونفسُ سبب D-144. وما تعذّر حلُّه يسقط وحده بلا إفراغِ الصفحة. */
   const studioId = studio ? await companyId(studio.name) : null;
@@ -1282,7 +1279,7 @@ async function AnimeRails({
       {cinemas && cinemas.results.length > 0 && (
         <RankedRail
           title={t.animeInCinemas}
-          quickAdd={quickAdd}
+          lib={lib}
           icon="film"
           items={cinemas.results}
           note={t.inCinemasRegion(regionName(cinemas.region, locale === "en" ? "en" : "ar"))}
@@ -1296,7 +1293,7 @@ async function AnimeRails({
       {airing.length > 0 && (
         <RankedRail
           title={t.airingNowAnime}
-          quickAdd={quickAdd}
+          lib={lib}
           icon="tv"
           items={airing}
           ranked={false}
@@ -1308,7 +1305,7 @@ async function AnimeRails({
       {popular.length > 0 && (
         <RankedRail
           title={t.mostPopularAnime}
-          quickAdd={quickAdd}
+          lib={lib}
           icon="trending"
           items={popular}
           ranked={false}
@@ -1320,7 +1317,7 @@ async function AnimeRails({
       {(topMovies.length > 0 || rails.am !== "week") && (
         <RankedRail
           title={t.top10AnimeMovies}
-          quickAdd={quickAdd}
+          lib={lib}
           icon="film"
           items={topMovies}
           control={<RailWindowChips param="wam" value={rails.am} locale={locale} />}
@@ -1330,7 +1327,7 @@ async function AnimeRails({
       {(topSeries.length > 0 || rails.a !== "week") && (
         <RankedRail
           title={t.top10AnimeSeries}
-          quickAdd={quickAdd}
+          lib={lib}
           icon="sparkle-star"
           items={topSeries}
           control={<RailWindowChips param="wa" value={rails.a} locale={locale} />}
@@ -1343,7 +1340,7 @@ async function AnimeRails({
       {soon.length > 0 && (
         <RankedRail
           title={t.upcomingAnime}
-          quickAdd={quickAdd}
+          lib={lib}
           icon="calendar"
           items={soon}
           ranked={false}
@@ -1394,7 +1391,10 @@ async function PersonalRails({
   browse?: BrowseQuery;
 }) {
   const wantMovies = type !== "tv";
-  const [pool, artistWorks] = await Promise.all([
+  /* 🆕 **وحالةُ المكتبة تُقرأ هنا لا تُمرَّر** (D-322): نداءاتُها مغلَّفةٌ
+     بـ`cache` **فهي مجّانيّةٌ بعد قراءة الصفحة**، وتمريرُها معاملاً عبر
+     `Suspense` كان سيربط رسمَ هذا الصفّ برسمِ الصفحة فيُفقده استقلالَه. */
+  const [pool, artistWorks, libState] = await Promise.all([
     getSuggestions(300, locale).catch(() => []),
     /* «من فنّانيك» أفلامٌ فقط — TMDB لا يدعم `with_people` في
        `/discover/tv`. فصفٌّ من الأفلام تحت تبويب «مسلسلات» هو الخطأ
@@ -1406,7 +1406,9 @@ async function PersonalRails({
     wantMovies && !anime
       ? buildSection("from-artists", { media: "movie", base: {}, active: false }, 20)
       : Promise.resolve([] as SearchResult[]),
+    getLibState(),
   ]);
+  const lib = { locale, state: libState };
 
   /* قرعةُ خادمٍ عند كل طلب (D-073): البِركة مخبّأة ساعةً فكانت العشرة
      الأولى تتجمّد معها — فتح «اكتشف» مرتين يعرض الوجوه نفسها. الخلطُ هنا
@@ -1456,6 +1458,9 @@ async function PersonalRails({
             title: titleOf(s.result),
             posterPath: s.result.poster_path,
             year: yearOf(s.result),
+            /* 🆕 **الحالةُ تُحسب هنا وتُسلسَل مع البطاقة** (D-322): المكوّنُ
+               عميلٌ فلا يقرأ القاعدة، **والقراءةُ واحدةٌ للصفّ كلِّه** */
+            ...libState.of(s.result.id, s.result.media_type === "movie" ? "movie" : "tv"),
             note:
               s.source === "rated" && s.seedTitle
                 ? t.recoBecauseRated(s.seedTitle)
@@ -1476,6 +1481,7 @@ async function PersonalRails({
           icon="people"
           items={artistRows}
           ranked={false}
+          lib={lib}
           href={sectionHref("from-artists", "movie")}
           seeAllLabel={t.seeAll}
         />
