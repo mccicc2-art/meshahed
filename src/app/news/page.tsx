@@ -231,14 +231,6 @@ export default async function NewsPage({
         <OneTimeHint id="discover-power" text={t.hintDiscover} closeLabel={t.closeLabel} />
       )}
 
-      {/* 🆕 **صفوفُك الخاصة تتصدّر التبويب** (D-337): شخصيّةٌ فتسبق
-          العامّ (نفسُ حكم «مختار لك»)، **وتغيب ما دام فلترٌ مفعّلاً** —
-          صفٌّ يتجاهل ما اخترتَه يكذب عليك (D-075). */}
-      {tab !== "lists" && !browse.active && myRows.length > 0 && (
-        <Suspense fallback={<RailSkeleton count={6} />}>
-          <MyRowsRails rows={myRows} tab={tab} locale={locale} />
-        </Suspense>
-      )}
 
       {tab === "anime" ? (
         /* ===== تبويب الأنمي (D-169، ثم الفلتر بطلب أحمد ١١ أغسطس) =====
@@ -261,7 +253,7 @@ export default async function NewsPage({
             </div>
           }
         >
-          <AnimeRails locale={locale} t={t} rails={rails} browse={browse} region={region} />
+          <AnimeRails locale={locale} t={t} rails={rails} browse={browse} region={region} myRows={myRows} />
         </Suspense>
       ) : tab === "lists" ? (
         /* ===== تبويب «القوائم» — صفوفٌ كصفوف الأعمال (D-084) =====
@@ -305,7 +297,7 @@ export default async function NewsPage({
             </div>
           }
         >
-          <CuratedRails locale={locale} t={t} browse={browse} rails={rails} region={region} />
+          <CuratedRails locale={locale} t={t} browse={browse} rails={rails} region={region} myRows={myRows} />
         </Suspense>
       )}
     </div>
@@ -560,7 +552,10 @@ async function MyRowsRails({
         "popularity.desc",
       ).catch(() => []);
       /* الأنمي «فقط» في تبويبه و«يسقط» خارجه — نصُّ D-321 */
-      const rows2 = railGuard(items, { anime: anime ? "only" : "drop" }).slice(0, 12);
+      /* 🆕 **وتقييمُ IMDb على الملصق** (D-338، طلبُ أحمد) — `withImdbRatings`
+         نفسُها التي تخدم «الأكثر شهرةً»، مخبّأةً في مخزن OMDb المتدرّج */
+      const guarded = railGuard(items, { anime: anime ? "only" : "drop" }).slice(0, 12);
+      const rows2 = await withImdbRatings(guarded).catch(() => guarded);
       if (rows2.length < 4) return null;
       const title =
         browseGenreName(g, lang) + (tagDef ? ` · ${browseTagName(tagDef, lang)}` : "");
@@ -796,6 +791,7 @@ async function CuratedRails({
   browse,
   rails,
   region,
+  myRows = [],
 }: {
   locale: Locale;
   t: T;
@@ -804,6 +800,8 @@ async function CuratedRails({
   rails: { m: RailWin; s: RailWin; a: RailWin; am: RailWin };
   /** بلد المشاهدة — يُقاس عليه فلتر المنصّات */
   region: string;
+  /** 🆕 صفوفُك الخاصة (D-338) — تمرّ إلى `PersonalRails` */
+  myRows?: MyRow[];
 }) {
   const { type, genre, lang, country, provider, era, rate, tag, status, active } = browse;
   /* ===== فلتر الجائزة (طلب أحمد 9 Aug) =====
@@ -1165,7 +1163,7 @@ async function CuratedRails({
       {(!active || localAxesOnly(browse)) && (
         <Suspense fallback={<RailSkeleton count={6} />}>
           {/* الجهة تُمرَّر: التبويب وعدٌ، والصفّ الذي لا يعرف تبويبه يخلفه */}
-          <PersonalRails locale={locale} t={t} type={type} browse={active ? browse : undefined} />
+          <PersonalRails locale={locale} t={t} type={type} browse={active ? browse : undefined} myRows={myRows} tab={type === "tv" ? "shows" : "movies"} />
         </Suspense>
       )}
 
@@ -1291,6 +1289,7 @@ async function AnimeRails({
   rails,
   browse,
   region,
+  myRows = [],
 }: {
   locale: Locale;
   t: T;
@@ -1298,6 +1297,7 @@ async function AnimeRails({
   /** فلترُ الأنمي الأربعة — النوع والحقبة والتقييم والمنصّة (طلب أحمد) */
   browse: BrowseQuery;
   region: string;
+  myRows?: MyRow[];
 }) {
   const { genre, lang, country, provider, era, rate, tag, season, studio, active } = browse;
   const y = new Date().getUTCFullYear();
@@ -1475,6 +1475,8 @@ async function AnimeRails({
             type="movie"
             anime
             browse={active ? browse : undefined}
+            myRows={myRows}
+            tab="anime"
           />
         </Suspense>
       )}
@@ -1579,6 +1581,8 @@ async function PersonalRails({
   type,
   anime = false,
   browse,
+  myRows = [],
+  tab = "",
 }: {
   locale: Locale;
   t: T;
@@ -1592,6 +1596,9 @@ async function PersonalRails({
    * تُبنى كلٌّ وحدها، وغيابُه = «لا فلتر» — وهو السلوكُ القائم حرفاً بحرف.
    */
   browse?: BrowseQuery;
+  /** 🆕 صفوفُك الخاصة (D-337→D-338، تصحيحُ أحمد: «تكون بعد picked for you») */
+  myRows?: MyRow[];
+  tab?: string;
 }) {
   const wantMovies = type !== "tv";
   /* 🆕 **وحالةُ المكتبة تُقرأ هنا لا تُمرَّر** (D-322): نداءاتُها مغلَّفةٌ
@@ -1646,7 +1653,8 @@ async function PersonalRails({
 
   /* **الفراغُ يُخفي ولا يُعلن** (قرارُ أحمد): صندوقٌ فارغٌ تحت عنوانٍ
      شخصيّ يُقرأ «لا أحد يعرفك» لا «لا نتيجةَ لهذا الفلتر». */
-  if (suggested.length === 0 && artistRows.length === 0) return null;
+  const showMyRows = myRows.length > 0 && !browse;
+  if (suggested.length === 0 && artistRows.length === 0 && !showMyRows) return null;
 
   return (
     <div className="space-y-6">
@@ -1674,6 +1682,15 @@ async function PersonalRails({
                     : t.recoBecauseGenre,
           }))}
         />
+      )}
+
+      {/* 🆕 **صفوفُك الخاصة بعد «مختار لك» مباشرةً** (D-338، تصحيحُ أحمد
+          على D-337): كلاهما شخصيٌّ، **والمقترَحُ المحسوبُ لك يسبق
+          المُعرَّفَ منك** — وتغيب مع فلترٍ مفعّل (D-075). */}
+      {showMyRows && (
+        <Suspense fallback={<RailSkeleton count={6} />}>
+          <MyRowsRails rows={myRows} tab={tab} locale={locale} />
+        </Suspense>
       )}
 
       {/* «من فنّانيك» بعد المقترحات مباشرة: كلاهما صفٌّ شخصيّ، والشخصيّ
