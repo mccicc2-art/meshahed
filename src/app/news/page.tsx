@@ -13,6 +13,9 @@ import {
   getListCardStats,
 } from "@/lib/data";
 import { getLibState } from "@/lib/libState";
+import { cookies } from "next/headers";
+import { parseMyRows, MY_ROWS_COOKIE, type MyRow } from "@/lib/myRows";
+import { BROWSE_GENRES, BROWSE_TAGS, browseGenreName, browseTagName } from "@/lib/browse";
 import { LOOPZ_PERSON } from "@/lib/loopz";
 import { Avatar } from "@/components/Avatar";
 import { PublicListsRail } from "@/components/PublicListsRail";
@@ -131,6 +134,8 @@ export default async function NewsPage({
      صعدت من ورقة الفلاتر إلى الرأس، فتُفرض هنا على التصفح من التبويب
      (وروابط ?type القديمة يهديها parseDiscoverTab لتبويبها) */
   const tabPrefs = await getTabPrefs("discover");
+  /* 🆕 صفوفُك الخاصة (D-337) — كوكيزٌ كتفضيلات التبويبات */
+  const myRows = parseMyRows((await cookies()).get(MY_ROWS_COOKIE)?.value);
   /* الرابط الأعزل يعني «افتح على تبويبي الأوّل» لا «افتح على الأفلام»
      (D-179): الافتراضُ صار يخصّ صاحبه، فيُقرأ من الكوكي لا من الشيفرة */
   const tab =
@@ -190,6 +195,7 @@ export default async function NewsPage({
         locale={locale}
         tab={tab}
         tabPrefs={tabPrefs}
+        myRows={myRows}
         type={browse.type}
         genre={browse.genre?.slug ?? null}
         lang={browse.lang?.code ?? null}
@@ -223,6 +229,15 @@ export default async function NewsPage({
           النوافذ تُقال مرةً ثم تصمت للأبد */}
       {tab !== "lists" && (
         <OneTimeHint id="discover-power" text={t.hintDiscover} closeLabel={t.closeLabel} />
+      )}
+
+      {/* 🆕 **صفوفُك الخاصة تتصدّر التبويب** (D-337): شخصيّةٌ فتسبق
+          العامّ (نفسُ حكم «مختار لك»)، **وتغيب ما دام فلترٌ مفعّلاً** —
+          صفٌّ يتجاهل ما اخترتَه يكذب عليك (D-075). */}
+      {tab !== "lists" && !browse.active && myRows.length > 0 && (
+        <Suspense fallback={<RailSkeleton count={6} />}>
+          <MyRowsRails rows={myRows} tab={tab} locale={locale} />
+        </Suspense>
       )}
 
       {tab === "anime" ? (
@@ -499,6 +514,71 @@ async function ListsDiscovery({
  * الملصقات الأربعة من `moviesByIds` — أربعة طلباتٍ مخبّأة ساعةً لكل
  * مجموعة، داخل Suspense فلا ترهن الرأس.
  */
+/**
+ * 🆕 **صفوفُك الخاصة** (D-337، طلبُ أحمد: «genre إجباريّ وثيم اختياريّ،
+ * فيطلع عنوان مثل Drama zombies — نفّذها»).
+ *
+ * **بمفردات البيت كلِّها ولا جديدَ فيها**: النوعُ من `BROWSE_GENRES`
+ * بمعرّفاتِ جهةِ التبويب، والموضوعُ يُحلّ بـ`keywordId` عند الطلب لا
+ * برقمٍ مخمَّن (D-144)، والجلبُ `topByFilter` نفسُه، والحارسُ `railGuard`
+ * (D-321)، والحالةُ `getLibState` (D-322). **والاسمُ يُركَّب بلغة القارئ
+ * عند العرض** — «دراما · زومبي» / «Drama · Zombie» (D-147).
+ *
+ * ⚠️ **وتبويبُ الأنمي يبقى أنمي**: مفتاحُ الأنمي يُضاف شرطاً بـ«و»
+ * (حجّةُ `DiscoverFilter.keywords` حرفاً)، **ونوعٌ لا معرّفَ له في جهةٍ
+ * يسقط صفُّه فيها صامتاً** — لا صفَّ فارغاً تحت عنوانٍ يَعِد (D-181).
+ */
+async function MyRowsRails({
+  rows,
+  tab,
+  locale,
+}: {
+  rows: MyRow[];
+  tab: string;
+  locale: Locale;
+}) {
+  const media = tab === "movies" ? ("movie" as const) : ("tv" as const);
+  const lang = locale === "en" ? ("en" as const) : ("ar" as const);
+  const anime = tab === "anime";
+  const lib = { locale, state: await getLibState() };
+
+  const built = await Promise.all(
+    rows.map(async (r) => {
+      const g = BROWSE_GENRES.find((x) => x.slug === r.genre);
+      const ids = g ? (media === "movie" ? g.movie : g.tv) : [];
+      if (!g || !ids.length) return null;
+      const tagDef = r.tag ? BROWSE_TAGS.find((x) => x.slug === r.tag) : null;
+      const tagId = tagDef ? await keywordId(tagDef.q).catch(() => null) : null;
+      const keywords = [
+        ...(anime ? [ANIME_KEYWORD] : []),
+        ...(tagId ? [tagId] : []),
+      ];
+      const items = await topByFilter(
+        media,
+        { genreIds: ids, ...(keywords.length ? { keywords } : {}) },
+        18,
+        "popularity.desc",
+      ).catch(() => []);
+      /* الأنمي «فقط» في تبويبه و«يسقط» خارجه — نصُّ D-321 */
+      const rows2 = railGuard(items, { anime: anime ? "only" : "drop" }).slice(0, 12);
+      if (rows2.length < 4) return null;
+      const title =
+        browseGenreName(g, lang) + (tagDef ? ` · ${browseTagName(tagDef, lang)}` : "");
+      return { key: r.genre + (r.tag ?? ""), title, items: rows2 };
+    }),
+  );
+
+  const live = built.filter(Boolean) as { key: string; title: string; items: SearchResult[] }[];
+  if (!live.length) return null;
+  return (
+    <div className="space-y-6">
+      {live.map((b) => (
+        <RankedRail key={b.key} title={b.title} icon="sparkle-star" items={b.items} ranked={false} lib={lib} />
+      ))}
+    </div>
+  );
+}
+
 async function CuratedCard({
   u,
   locale,
