@@ -3470,6 +3470,12 @@ export interface PublicListCard {
   owner: string | null;
   item_count: number;
   posters: string[];
+  /* 🆕 **أرقامُ البطاقة** (D-329، الهجرة ١٠٥ — طلبُ أحمد: «أهم شي من هنا
+     أشوف عدد العاملين لها مفضلة وتقييمها»). **اختياريّةٌ لأن مستدعياً
+     قديماً قد يصل قبل الهجرة** (D-028)، **والصفرُ لا يُطبع** (D-219). */
+  saves?: number;
+  reviews?: number;
+  rating?: number | null;
 }
 
 /**
@@ -3484,7 +3490,7 @@ async function shapeListCards(
 ): Promise<PublicListCard[]> {
   const supabase = await createClient();
   const ids = lists.map((l) => l.id);
-  const [items, owners] = await Promise.all([
+  const [items, owners, stats] = await Promise.all([
     supabase
       .from("user_list_items")
       .select("list_id, poster_path, added_at")
@@ -3497,7 +3503,30 @@ async function shapeListCards(
           .select("id, nickname, username, hide_name")
           .in("id", [...new Set(lists.map((l) => l.user_id))])
       : Promise.resolve({ data: [] as { id: string; nickname: string | null; username: string | null; hide_name: boolean | null }[] }),
+    /* 🆕 **نداءٌ واحدٌ لأرقام البطاقات كلِّها** (D-329/D-205): الحفظُ
+       والتقييمُ لثلاثٍ وستّين بطاقةً في استدعاءٍ واحد، **لا استعلامين
+       لكلِّ واحدة**. وسقوطُه لا يُسقط البطاقة — **الرقمُ الغائبُ لا
+       يُطبع** (D-063). */
+    supabase.rpc("list_card_stats", { p_ids: ids }).then(
+      (r) => r,
+      () => ({ data: null }),
+    ),
   ]);
+  const statOf = new Map(
+    ((stats?.data ?? []) as {
+      list_id: string;
+      saves: number;
+      reviews: number;
+      avg_rating: number | null;
+    }[]).map((r) => [
+      String(r.list_id),
+      {
+        saves: Number(r.saves) || 0,
+        reviews: Number(r.reviews) || 0,
+        rating: r.avg_rating === null ? null : Number(r.avg_rating),
+      },
+    ]),
+  );
 
   const byList = new Map<string, { count: number; posters: string[] }>();
   for (const r of items.data ?? []) {
@@ -3516,7 +3545,11 @@ async function shapeListCards(
   return lists
     .map((l) => {
       const e = byList.get(l.id) ?? { count: 0, posters: [] };
+      const st = statOf.get(l.id);
       return {
+        saves: st?.saves ?? 0,
+        reviews: st?.reviews ?? 0,
+        rating: st?.rating ?? null,
         id: l.id,
         name: l.name,
         kind: l.kind ?? null,
