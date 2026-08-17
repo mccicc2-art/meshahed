@@ -9,7 +9,7 @@ import { NewListForm } from "./NewListForm";
 import { TabsPrefs } from "./TabsPrefs";
 import type { TabPref } from "@/lib/tabPrefs";
 
-export type LibrarySort = "smart" | "title" | "progress";
+export type LibrarySort = "smart" | "title" | "progress" | "added";
 
 /**
  * أدوات المكتبة خلف رمزٍ واحد (D-177، طلب أحمد).
@@ -59,8 +59,12 @@ export function LibraryToolsSheet({
 }) {
   const t = getDict(locale);
 
+  /* 🆕 **أربعةٌ لا ثلاثة** (D-350): «الأحدث» رابعاً — **والمقسّمُ يحتمل
+     الرابع** لأن `flex-1 basis-0` يقسّم العرضَ بالتساوي و`truncate` يمنع
+     الأطولَ من توسيع خانته (نصُّ D-076 نفسُه)، **والكلماتُ قصيرةٌ عمداً.** */
   const sorts: { id: LibrarySort; label: string }[] = [
     { id: "smart", label: t.sortSmart },
+    { id: "added", label: t.sortAdded },
     { id: "title", label: t.sortTitle },
     { id: "progress", label: t.sortProgress },
   ];

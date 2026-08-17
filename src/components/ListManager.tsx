@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { backdropUrl, posterUrl } from "@/lib/media";
-import { getDict, type Locale } from "@/lib/i18n";
+import { getDict, num, type Locale } from "@/lib/i18n";
 import { Icon } from "./Icon";
 import type { UserList } from "@/lib/data";
 import { ShareListSheet } from "./ShareListSheet";
@@ -23,7 +23,22 @@ import { NewListForm } from "./NewListForm";
  * الحدّ لونُ خلفية الثيم لا رماديٌّ ثابت: صلبٌ بلا تدرّج، أسود في الداكن
  * يطابق هوية التطبيق، وفاتحٌ في `daylight` — فلا يكسر الثيم الفاتح.
  */
-export function ListManager({ lists, locale }: { lists: UserList[]; locale: Locale }) {
+export function ListManager({
+  lists,
+  stats,
+  locale,
+}: {
+  lists: UserList[];
+  /**
+   * 🆕 **أرقامُ قائمتك العامّة** (D-350، بند ٣): كانت بطاقةُ «قوائمي» بلا
+   * ★/♥ **وبطاقةُ «المحفوظة» تحتها في اللوح نفسِه تحملهما** — **بطاقتان
+   * بإيقاعين لمعنًى واحد** (القاعدة ٦)، وهو بابٌ آخرُ لعطل D-347.
+   * **والصفرُ يُخفى** (D-219)، **والخاصّةُ بلا أرقامٍ أصلاً** (لا تُقرأ
+   * فلا تُقيَّم — نصُّ الهجرة ١٠٥).
+   */
+  stats?: Map<string, { saves: number; rating: number | null }>;
+  locale: Locale;
+}) {
   const t = getDict(locale);
   const router = useRouter();
   /* المشاركة من صفحة القوائم نفسها (طلب المالك): زرٌّ على البطاقة يفتح
@@ -70,6 +85,30 @@ export function ListManager({ lists, locale }: { lists: UserList[]; locale: Loca
                         {countLine}
                       </span>
                     )}
+                    {/* 🆕 **سطرُ حكم الناس** — نفسُ سطر `CommunityListCard`
+                        حرفاً (D-329): ★ متوسّطُهم و♥ عددُ من حفظها،
+                        **وسطرٌ ثانٍ لا ذيلٌ للأوّل** (الأوّلُ يعرّف بها
+                        وهذا حكمُهم عليها — D-224)، **والصفرُ يغيب.** */}
+                    {(() => {
+                      const st = stats?.get(l.id);
+                      if (!st || ((st.rating ?? null) === null && st.saves <= 0)) return null;
+                      return (
+                        <span className="mt-0.5 flex items-center gap-2.5 text-[12px] tabular-nums">
+                          {(st.rating ?? null) !== null && (
+                            <span className="flex items-center gap-1 font-bold" dir="ltr">
+                              <Icon name="star" size={12} className="text-accent" />
+                              {num(st.rating as number, locale)}
+                            </span>
+                          )}
+                          {st.saves > 0 && (
+                            <span className="flex items-center gap-1 text-muted" dir="ltr">
+                              <Icon name="heart-filled" size={12} className="fill-current" />
+                              {num(st.saves, locale)}
+                            </span>
+                          )}
+                        </span>
+                      );
+                    })()}
                   </Link>
                   <button
                     type="button"

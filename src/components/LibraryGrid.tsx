@@ -20,6 +20,8 @@ import { posterGrid } from "./ui/controls";
 import { PageTabs } from "./ui/PageTabs";
 import { FilterIconButton } from "./ui/FilterIconButton";
 import { LibraryToolsSheet } from "./LibraryToolsSheet";
+import { OneTimeHint } from "./OneTimeHint";
+import { normalizeSearch, byTitle } from "@/lib/arabic";
 import { applyTabPrefs, type TabPref } from "@/lib/tabPrefs";
 import { buttonClass } from "./ui/Button";
 
@@ -37,6 +39,9 @@ export interface GridItem {
   completed?: boolean;
   /** حالة المشاهدة — تغذّي رقائق التقسيم (طلب المالك)؛ الصفحة تحسبها */
   status?: LibraryStatus;
+  /** 🆕 **متى أُضيف** (D-350) — لترتيب «الأحدث»؛ الصفحةُ تمرّره من
+      `follows.added_at`، **وغيابُه يعني «لا أعرف» فيهبط إلى الذيل** */
+  addedAt?: string;
   /** للإجراءات السريعة بالضغطة المطوّلة */
   tmdbId?: number;
   mediaType?: "tv" | "movie";
@@ -81,6 +86,7 @@ export function LibraryGrid({
   artists,
   artistCount,
   lists,
+  listStats,
   locale,
   initialTab = "shows", tabPrefs,
   listsExtra,
@@ -100,6 +106,9 @@ export function LibraryGrid({
   /** عدّاد التبويب: نداءُ Supabase خفيفٌ يجري دائماً، بلا نداءات TMDB */
   artistCount: number;
   lists: UserList[];
+  /** 🆕 **أرقامُ قوائمي العامّة** (D-350) — تُقرأ في الصفحة مرّةً لا لكلِّ
+      بطاقة (D-206)، **وغيابُها يعيد البطاقةَ كما كانت** (D-152) */
+  listStats?: Map<string, { saves: number; rating: number | null }>;
   locale: Locale;
   initialTab?: LibraryTab; /** ترتيبُ تبويبات المكتبة وإظهارها — من الكوكي (D-179) */ tabPrefs: TabPref[];
   /** ما يلي قوائمي في اللوح (القوائم المحفوظة — طلب أحمد: بيتها
@@ -130,7 +139,7 @@ export function LibraryGrid({
     router.push(f ? `/library?filter=${f}` : "/library", { scroll: false });
   }
   const [q, setQ] = useState("");
-  const [sort, setSort] = useState<"smart" | "title" | "progress">("smart");
+  const [sort, setSort] = useState<"smart" | "title" | "progress" | "added">("smart");
   /* ورقةُ الأدوات (D-177): البحث والترتيب وإنشاء القائمة خلف رمزٍ واحد */
   const [tools, setTools] = useState(false);
   /* رقاقة الحالة (طلب المالك): «الكل» افتراضاً، والترشيح محليّ كالبحث */
@@ -143,11 +152,22 @@ export function LibraryGrid({
     /* صفُّ رقائق الحالة حُذف بطلب المالك (نقض جزئي لـ D-078) —
        الفواصل المسمّاة بقيت، والشبكة تعرض الكل دائماً */
     const byStatus = base;
-    const needle = q.trim().toLowerCase();
+    /* 🆕 **البحثُ يعرف العربية** (D-350): «الاب» تجد «الأب» و«قصه» تجد
+       «قصّة» — **والمقارنةُ على مفتاحٍ مطبَّعٍ لا على النصّ المعروض**،
+       فالعنوانُ يبقى كما كتبه أهلُه (D-048). */
+    const needle = normalizeSearch(q);
     const filtered = needle
-      ? byStatus.filter((x) => x.title.toLowerCase().includes(needle))
+      ? byStatus.filter((x) => normalizeSearch(x.title).includes(needle))
       : byStatus;
-    if (sort === "title") return [...filtered].sort((a, b) => a.title.localeCompare(b.title));
+    /* 🆕 **الأحدثُ إضافةً** (D-350) — **وما لا تاريخَ له يهبط** لا يتصدّر
+       (D-063: الغيابُ لا يُقرأ «اليوم»). */
+    if (sort === "added")
+      return [...filtered].sort((a, b) => (b.addedAt ?? "").localeCompare(a.addedAt ?? ""));
+    /* **والترتيبُ بلغة الواجهة لا بلغة الجهاز** (القاعدة ١٧) */
+    if (sort === "title") {
+      const cmp = byTitle(locale === "en" ? "en" : "ar");
+      return [...filtered].sort((a, b) => cmp(a.title, b.title));
+    }
     if (sort === "progress")
       /* غير المكتمل أولاً (طلب أحمد 9 Aug): من يفرز بالتقدم يبحث عمّا
          يُكمله لا عمّا أنهاه — المكتمل ١٠٠٪ ذيلٌ، والباقي أعلاه تنازلياً */
@@ -159,7 +179,7 @@ export function LibraryGrid({
         return aDone - bDone || bp - ap;
       });
     return filtered;
-  }, [tab, shows, movies, anime, q, sort]);
+  }, [tab, shows, movies, anime, q, sort, locale]);
 
   /* عدّاد كل رقاقةٍ من التبويب الحاليّ — الرقم يجيب «كم عندي؟» قبل الضغط */
 
@@ -271,7 +291,7 @@ export function LibraryGrid({
            يبقى قائماً للروابط المباشرة، وهذا اللوح يعرض المكوّنين
            نفسيهما (قوائمي ثم القوائم المحفوظة) */
         <div className="space-y-8">
-          <ListManager lists={lists} locale={locale} />
+          <ListManager lists={lists} stats={listStats} locale={locale} />
           {listsExtra}
         </div>
       ) : tab === "artists" ? (
@@ -300,18 +320,45 @@ export function LibraryGrid({
         )
       ) : (
       <>
-      <p className="text-[10px] text-muted/80 mb-4">{t.longPressHint}</p>
+      {/* 🔧 **تلميحٌ يُعلّم ثم يختفي** (D-350، بند ٦): كان سطراً دائماً فوق
+          الشبكة **في كلِّ زيارةٍ إلى الأبد** — **وسطرٌ لا يُقرأ بعد
+          الثالثة يصير ضجيجاً فوق جواب الصفحة** (D-006). والمكوّنُ مبنيٌّ
+          لهذا بالضبط منذ م٣، **ولا ثالثَ يُخترع** (القاعدة ٦). */}
+      <div className="mb-4">
+        <OneTimeHint id="library-hold" text={t.longPressHint} closeLabel={t.closeLabel} />
+      </div>
 
       {items.length === 0 ? (
-        /* حالة موجهة لا جملة تشخّص (نمط D-106): الزر يحمل أول خطوة */
+        /* 🔴 **ثلاثُ حالاتٍ لا حالة** (D-350، بند ١): الشرطُ واحدٌ
+            **والأسبابُ ثلاثة** — بحثٌ لا يطابق · تبويبُ أنمي لم يُصنَّف
+            فيه شيء · مكتبةٌ فارغةٌ حقّاً. **وكان يقول «مكتبتك فارغة»
+            للثلاثة**، فيكذب على اثنين (D-063).
+            **والزرُّ يحمل أوّلَ خطوةٍ لكلِّ حالةٍ بابَها** (D-106):
+            مسحُ البحث · تصفّحُ الأنمي · اكتشف. */
         <div className="text-center py-16 space-y-4">
-          <p className="text-muted">{t.libraryEmpty}</p>
+          <p className="text-muted">
+            {q.trim()
+              ? t.libSearchEmpty(q.trim())
+              : tab === "anime"
+                ? t.libAnimeEmpty
+                : t.libraryEmpty}
+          </p>
           <button
             type="button"
-            onClick={() => router.push("/news")}
+            onClick={() => {
+              if (q.trim()) {
+                setQ("");
+                return;
+              }
+              router.push(tab === "anime" ? "/news?tab=anime" : "/news");
+            }}
             className={buttonClass({ size: "sm" })}
           >
-            {t.libraryEmptyCta}
+            {q.trim()
+              ? t.libSearchEmptyCta
+              : tab === "anime"
+                ? t.libAnimeEmptyCta
+                : t.libraryEmptyCta}
           </button>
         </div>
       ) : (
