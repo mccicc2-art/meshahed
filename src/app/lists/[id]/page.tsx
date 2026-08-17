@@ -9,6 +9,9 @@ import {
   getListReviews,
   getListReviewStats,
   getMyListReview,
+  getListReviewSocial,
+  getListReviewReplies,
+  getMyProfileLite,
   getCuratedSlug,
   getAmAdmin,
   getFeaturedListIds,
@@ -140,7 +143,21 @@ export default async function ListPage({ params }: { params: Promise<{ id: strin
   const isOwner = data.list.user_id === user.id;
   // صاحب القائمة يُقرأ من الباب العامّ نفسه — لا استعلام ثانٍ على الملفات؛
   // وحالة الحفظ لغير المالك وحده (D-068)
-  const [pub, saved, reviews, reviewStats, myReview, amAdmin, featuredIds] = await Promise.all([
+  const [
+    pub,
+    saved,
+    reviews,
+    reviewStats,
+    myReview,
+    amAdmin,
+    featuredIds,
+    /* 🆕 **قلوبُ الآراء وردودُها ووجهي** (D-370، الهجرة ١١٣) — **ثلاثةُ
+       نداءاتٍ في نفس الرزمة المتوازية**، ولا ينتظر أحدُها ناتجَ الآخر.
+       **وكلُّها للمعلنة وحدَها**: قائمةٌ خاصّة لا رأيَ فيها أصلاً. */
+    social,
+    replies,
+    meProfile,
+  ] = await Promise.all([
     isOwner ? Promise.resolve(null) : getPublicList(id),
     isOwner ? Promise.resolve(false) : isListSaved(id),
     /* **ثلاثةُ نداءاتٍ متوازية** (D-327): كلامُ الناس ومتوسّطُهم ورأيي —
@@ -153,6 +170,9 @@ export default async function ListPage({ params }: { params: Promise<{ id: strin
        إلا لقائمةٍ عامّة. */
     getAmAdmin().catch(() => false),
     data.list.is_public ? getFeaturedListIds().catch(() => [] as string[]) : Promise.resolve([]),
+    data.list.is_public ? getListReviewSocial([id]) : Promise.resolve(new Map()),
+    data.list.is_public ? getListReviewReplies(id) : Promise.resolve([]),
+    getMyProfileLite().catch(() => null),
   ]);
 
   /* العناوين مخزّنة بلغة يوم الإضافة — تُترجَم عند العرض وحده (D-048)،
@@ -212,6 +232,11 @@ export default async function ListPage({ params }: { params: Promise<{ id: strin
               reviews={reviews}
               mine={myReview}
               stats={reviewStats}
+              /* 🆕 **أنا — للقلب وللنسخة التفاؤلية في الخيط** (D-370) */
+              meId={user.id}
+              me={meProfile}
+              social={social}
+              replies={replies}
             />
           ) : undefined
         }
