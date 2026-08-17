@@ -13,7 +13,6 @@ import {
 } from "@/lib/data";
 import { getLibState } from "@/lib/libState";
 import { PublicListsRail } from "@/components/PublicListsRail";
-import { ListPeekTrigger } from "@/components/ListPeek";
 import { ListsFilters } from "@/components/ListsFilters";
 import { AddWorksToList } from "@/components/AddWorksToList";
 import { PosterRail, RailItem } from "@/components/PosterRail";
@@ -424,13 +423,6 @@ async function ListsDiscovery({
   const loc = locale === "en" ? ("en" as const) : ("ar" as const);
   const rows = fr ? FRANCHISES.filter((f) => f.slug === fr) : FRANCHISES;
 
-  const peekLabels = {
-    close: t.closeLabel,
-    openList: t.listPeekOpen,
-    failed: t.showLoadFailed,
-    watchedMark: t.watchedBadge,
-  };
-
   return (
     <div className="space-y-6">
       {/* الزرّ صعد إلى سطر التبويبات (داخل DiscoverFilters) — هنا
@@ -441,20 +433,10 @@ async function ListsDiscovery({
           («مقترح لك» ثم «من فنّانيك» ثم الرفوف العامّة). **ولا يظهران مع
           فلتر عالَمٍ مختار**: من ضغط «مارفل» يريد مارفل لا اقتراحاً. */}
       {!fr && lsrc !== "curated" && forYou.length > 0 && (
-        <PublicListsRail
-          lists={forYou}
-          locale={locale}
-          title={t.listsForYou}
-          peekLabels={peekLabels}
-        />
+        <PublicListsRail lists={forYou} locale={locale} title={t.listsForYou} />
       )}
       {!fr && lsrc !== "curated" && mostSaved.length > 0 && (
-        <PublicListsRail
-          lists={mostSaved}
-          locale={locale}
-          title={t.listsMostSaved}
-          peekLabels={peekLabels}
-        />
+        <PublicListsRail lists={mostSaved} locale={locale} title={t.listsMostSaved} />
       )}
 
       {(lsrc === "all" || lsrc === "curated") &&
@@ -466,18 +448,21 @@ async function ListsDiscovery({
             /* اسم العالم بابه: ضغطة «مارفل» تعرض عالمه وحده (فلتر fr) */
             href={`/news?tab=lists&fr=${f.slug}`}
           >
-            {f.sets.map((u) => (
-              /* wide لا الافتراضي: بطاقة القائمة أعرض من بطاقة الملصق،
-                 وخانةٌ ضيّقة كانت تجعل البطاقات تتراكب (لقطة المالك) */
-              <RailItem key={u.slug} wide>
-                {/* 🆕 **صفحةٌ إن وُلّدت، ومعاينةٌ إن لم تُولَّد بعد** (D-328،
-                    طلبُ أحمد: «أي ليست أقدر أقسمها وأقدر أكتب عليها
-                    تعليق»). **والصفحةُ تعطي ما لا تعطيه الورقةُ أبداً**:
-                    عنواناً في المتصفّح يُشارَك، وصفّاً في القاعدة يُعلَّق
-                    عليه ويُقيَّم (D-327).
-                    ⚠️ **والمعاينةُ تبقى للمولَّدة بعد**: بطاقةٌ لا تفتح
-                    شيئاً أسوأ من بطاقةٍ تفتح ورقة (D-181/D-262). */}
-                {curated.get(u.slug) ? (
+            {/* 🆕 **البطاقةُ بابُ الصفحة وحدَها — وسقطت المعاينةُ** (D-334،
+                طلبُ أحمد على لقطة الورقة: «وهذي المنبثقة إلغيها»).
+                يومَ وُلدت الورقةُ كانت المنسّقةُ بلا صفحةٍ أصلاً، **وصار
+                لكلِّ مجموعةٍ صفحةٌ حقيقية منذ D-330** — فبابان لمحتوًى
+                واحدٍ عطلٌ (D-068)، **والورقةُ تعطي أقلَّ ممّا تعطيه
+                الصفحة** (لا تقييمَ ولا مشاركةَ ولا تبويبات D-333).
+                ⚠️ **ومجموعةٌ لم تُولَّد بعدُ لا تُرسم**: بطاقةٌ لا تفتح
+                شيئاً أسوأ من غيابها (D-181) — ونداءُ `‎/api/curated`
+                واحدٌ يُظهرها. */}
+            {f.sets
+              .filter((u) => curated.get(u.slug))
+              .map((u) => (
+                /* wide لا الافتراضي: بطاقة القائمة أعرض من بطاقة الملصق،
+                   وخانةٌ ضيّقة كانت تجعل البطاقات تتراكب (لقطة المالك) */
+                <RailItem key={u.slug} wide>
                   <Link href={`/lists/${curated.get(u.slug)}`} className="block">
                     <CuratedCard
                       u={u}
@@ -487,24 +472,13 @@ async function ListsDiscovery({
                       className="w-full"
                     />
                   </Link>
-                ) : (
-                  <ListPeekTrigger kind="set" refId={u.slug} title={universeName(u, loc)} labels={peekLabels}>
-                    <CuratedCard
-                      u={u}
-                      locale={locale}
-                      t={t}
-                      savedNames={savedNames}
-                      className="w-full"
-                    />
-                  </ListPeekTrigger>
-                )}
-              </RailItem>
+                </RailItem>
             ))}
           </PosterRail>
         ))}
 
       {(lsrc === "all" || lsrc === "community") && !fr && community.length > 0 && (
-        <PublicListsRail lists={community} locale={locale} peekLabels={peekLabels} />
+        <PublicListsRail lists={community} locale={locale} />
       )}
     </div>
   );
