@@ -3,6 +3,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { getT } from "@/lib/locale";
 import { trending, type SearchResult } from "@/lib/tmdb";
+import { railGuard } from "@/lib/topChart";
 import { posterUrl } from "@/lib/media";
 import { GoogleButton } from "@/components/GoogleButton";
 
@@ -121,7 +122,13 @@ export async function LandingHero({
 /** جدار الرائج — يجلب ملصقاته بنفسه بعد رسم البطل */
 async function PosterWall() {
   // اثنا عشر ملصقاً رائجاً لصفّي الجدار — بصورٍ موجودة فقط
-  const trend = await trending().catch(() => [] as SearchResult[]);
+  /* 🆕 **وجدارُ الهبوط محروسٌ كسائر الرفوف** (D-321): **هذه أوّلُ اثنَي عشرَ
+     ملصقاً يراها من لا يعرف لوبز بعد** — وهي وعدُ الكتالوج قبل أن يُقرأ
+     سطرٌ واحد. **والقاعدةُ التي تحكم الرفَّ الداخليَّ تحكم واجهةَ المتجر
+     من بابٍ أولى.** */
+  const trend = await trending()
+    .then((rows) => railGuard(rows, { anime: "keep" }))
+    .catch(() => [] as SearchResult[]);
   // w185 تكفي: الملصق يُعرض بأقل من ١١٠ بكسل — كانت w342 تُحمِّل ضعف اللازم
   const posters = trend
     .filter((r) => r.poster_path)
