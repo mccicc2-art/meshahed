@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getUser, getFollows, getProfile } from "@/lib/data";
 import { trending } from "@/lib/tmdb";
+import { railGuard } from "@/lib/topChart";
 import { getT } from "@/lib/locale";
 import { Onboarding, type SeedTitle } from "@/components/Onboarding";
 
@@ -20,7 +21,14 @@ export default async function WelcomePage() {
   // من عنده مكتبة أصلاً لا يحتاج هذه الشاشة
   if (follows.length > 0) redirect("/");
 
-  const popular = await trending().catch(() => []);
+  /* 🆕 **وبذورُ التهيئة تمرّ بالحارس** (D-321): **هذه الشاشةُ لا تُفتح إلا
+     لمن مكتبتُه فارغة** (السطران أعلاه) — فلا شيءَ «يتابعه» بعد، **وقاعدةُ
+     أحمد «لا يظهرون إلا لمن يتابعهم» تعني هنا: لا يظهرون**. وأسوأُ من
+     ظهورهم أنّ الضغطةَ هنا **تكتب مكتبته**، فبذرةٌ مكتومةٌ تُختار تصير
+     ذوقاً يولّد أمثالَه في «مقترح لك» إلى الأبد. */
+  const popular = await trending()
+    .then((rows) => railGuard(rows, { anime: "keep" }))
+    .catch(() => []);
   const seeds: SeedTitle[] = popular
     .filter((r) => r.poster_path && (r.media_type === "tv" || r.media_type === "movie"))
     .slice(0, 24)
