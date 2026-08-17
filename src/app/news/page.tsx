@@ -6,8 +6,8 @@ import {
   getPublicListsFeed,
   getForYouLists,
   getTopSavedLists,
-  type SavedListRow,
-  type PublicListCard,
+  getMySavedListIds,
+  getListCardsByIds,
 } from "@/lib/data";
 import { getLibState } from "@/lib/libState";
 import { PublicListsRail } from "@/components/PublicListsRail";
@@ -301,26 +301,6 @@ export default async function NewsPage({
  * الفرعيات (سبايدر-مان، آيرون مان…) — ثم صفّا من تتابعهم والمجتمع.
  */
 
-/**
- * 🆕 **من صفِّ الدالّة إلى بطاقة الصفّ** (D-324) — محوّلٌ لا مكوّنٌ ثانٍ:
- * `PublicListsRail` يعرض ثلاثة أبوابٍ منذ D-068، **وبابٌ رابعٌ يمرّ من
- * نفس الشكل أرخصُ من بطاقةٍ خامسة** (D-002/D-266).
- * **والعدُّ يبقى عدَّ الأعمال لا عدَّ الحفظ**: البطاقةُ تطبعه تحت الاسم
- * بلفظ «عمل»، **ورقمٌ يقول شيئاً وسطرٌ يسمّيه شيئاً آخر يكذب** (D-219) —
- * والملصقاتُ الثلاثةُ هي ما يعرّف بالقائمة هنا.
- */
-function savedToCards(rows: SavedListRow[]): PublicListCard[] {
-  return rows.map((r) => ({
-    id: r.listId,
-    name: r.name,
-    kind: null,
-    /* اسمُ الصاحب أو لا سطر — **ومخفي الاسم بلا بديل** (D-011) */
-    owner: r.hideName ? null : (r.nickname ?? r.username ?? null),
-    item_count: 0,
-    posters: r.posters,
-  }));
-}
-
 /** خصائص فلاتر القوائم — يبنيها الخادم مرةً للزرّ (في سطر التبويبات) والرقائق */
 function listsFiltersProps(
   fr: string | null,
@@ -382,9 +362,34 @@ async function ListsDiscovery({
      ⚠️ **وكلاهما يُخفي نفسَه فارغاً** (D-181): بحسابٍ بلا مكتبة لا
      «تناسبك»، وبقاعدةٍ فيها حفظان لا «الأكثر حفظاً» — **وصندوقٌ فارغٌ
      تحت عنوانٍ يَعِد أسوأ من غيابه.** */
-  const [forYou, mostSaved] = await Promise.all([
+  const [forYouRows, savedRows, savedIds, me] = await Promise.all([
     getForYouLists(12).catch(() => []),
     getTopSavedLists(30, 12).catch(() => []),
+    getMySavedListIds().catch(() => new Set<string>()),
+    getUser().catch(() => null),
+  ]);
+  /* 🔴 **ما حفظتَه لا يُقترح عليك، ولا يظهر مرّتين** (D-326، بلاغُ أحمد:
+     «هذي أنا حافظها عندي، المفروض ما تظهر وتتكرّر»).
+
+     **وهما حكمان لا حكم:**
+     ١) **المحفوظُ صار عندك** — بابُه «قوائمي» في المكتبة، **واقتراحُ ما
+        تملكه ليس اكتشافاً** (نفسُ حجّة إخراج قوائمك من `for_you_lists`).
+        **ويشمل «الأكثر حفظاً»**: هو سطحُ اكتشافٍ هنا لا لوحةَ إحصاء —
+        **ولذلك رُشِّح في الصفحة لا في الدالّة**، فلوحةُ الأعضاء تقرأ
+        `top_saved_lists` نفسَها ولا تتغيّر (D-152).
+     ٢) **وصفٌّ يعرض ما عرضه جارُه فوقه تكرارٌ يُقرأ عطلاً** (D-257/D-299)
+        — **والشخصيُّ يسبق العامّ** فيحتفظ بالبطاقة، والعامُّ يتنازل. */
+  const forYouIds = forYouRows.map((r) => r.listId).filter((id) => !savedIds.has(id));
+  const shown = new Set(forYouIds);
+  const savedRailIds = savedRows
+    .filter((r) => !savedIds.has(r.listId) && !shown.has(r.listId) && r.ownerId !== me?.id)
+    .map((r) => r.listId);
+  /* **والبطاقاتُ من `shapeListCards` لا من محوّلٍ محليّ** (D-326): العدُّ
+     الحقيقيُّ والملصقاتُ وسطرُ الصاحب من المصدر الذي تقرأ منه أخواتُها
+     الثلاث — **وهو ما أنهى «Empty» فوق ثلاثة ملصقات.** */
+  const [forYou, mostSaved] = await Promise.all([
+    getListCardsByIds(forYouIds),
+    getListCardsByIds(savedRailIds),
   ]);
   /* **قراءةٌ واحدة لعلامات الحفظ** (D-206): بطاقاتُ المجموعات عشراتٌ في هذا
      التبويب، **ولو سألت كلُّ بطاقةٍ عن نفسها لصارت الصفحةُ عشرين استعلاماً**.
@@ -412,7 +417,7 @@ async function ListsDiscovery({
           فلتر عالَمٍ مختار**: من ضغط «مارفل» يريد مارفل لا اقتراحاً. */}
       {!fr && lsrc !== "curated" && forYou.length > 0 && (
         <PublicListsRail
-          lists={savedToCards(forYou)}
+          lists={forYou}
           locale={locale}
           title={t.listsForYou}
           peekLabels={peekLabels}
@@ -420,7 +425,7 @@ async function ListsDiscovery({
       )}
       {!fr && lsrc !== "curated" && mostSaved.length > 0 && (
         <PublicListsRail
-          lists={savedToCards(mostSaved)}
+          lists={mostSaved}
           locale={locale}
           title={t.listsMostSaved}
           peekLabels={peekLabels}
