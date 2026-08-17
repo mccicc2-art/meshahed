@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { Icon } from "./Icon";
 import { saveList } from "@/lib/actions";
-import { getDict, type Locale } from "@/lib/i18n";
+import { getDict, num, type Locale } from "@/lib/i18n";
 import { toast, flashError } from "@/lib/toast";
 import { tap } from "@/lib/haptics";
 
@@ -37,15 +37,30 @@ import { tap } from "@/lib/haptics";
 export function ListSaveHeart({
   listId,
   saved = false,
+  count,
   locale,
 }: {
   listId: string;
   saved?: boolean;
+  /**
+   * 🆕 **عددُ من حفظها — يجاور رمزَه** (D-357، طلبُ أحمد: «رقم القلب
+   * يكون جنب القلب»). **والرقمُ يخصّ ما تحته ويجاور صاحبَه**
+   * (D-223/D-237) — **وكان في سطرٍ ثالثٍ أسفل البطاقة**، فيقرأ القارئُ
+   * رمزاً في الزاوية ورقماً في القاع ولا يجمع بينهما.
+   *
+   * ⚠️ **والصفرُ يُخفى** (D-219)، **ويظهر أوّلَ حفظٍ لأن الحالة تفاؤليّة.**
+   */
+  count?: number | null;
   locale: Locale;
 }) {
   const t = getDict(locale);
   const [on, setOn] = useState(saved);
   const [pending, start] = useTransition();
+
+  /* 🆕 **والرقمُ فرقٌ لا قيمةٌ مطلقة** (D-241): عددُ الخادم يحوي حفظي إن
+     كنتُ حافظاً، **فالمعروضُ عددُه مضافاً إليه ما بدّلتُه أنا وحدي** —
+     فلا يُحسب حفظي مرّتين ولا يبقى الرقمُ ساكناً تحت إصبعي. */
+  const shown = (count ?? 0) + (on === saved ? 0 : on ? 1 : -1);
 
   return (
     <button
@@ -73,10 +88,14 @@ export function ListSaveHeart({
         });
       }}
       /* الهدفُ ٣٢px مرسومٌ داخل هامشٍ سالب فلا يعلو السطر — نفسُ هندسة
-         علامة الحفظ في بطاقة لوبز حرفاً (`AddWorksToList` بـ`iconOnly`) */
-      className={`shrink-0 grid place-items-center w-8 h-8 -me-1 -mt-0.5 rounded-full active:scale-90 disabled:opacity-50 transition ${
+         علامة الحفظ في بطاقة لوبز حرفاً (`AddWorksToList` بـ`iconOnly`).
+         🆕 **والرقمُ داخل الزرّ لا بجانبه**: هدفُ اللمس يشملهما معاً
+         فيكبر ولا يصغر (D-033/D-168)، **والرمزُ ورقمُه شيءٌ واحدٌ
+         يُقرأ ويُضغط.** و`ltr` لأن الرقمَ يتبع رمزَه في اللغتين. */
+      className={`shrink-0 flex items-center gap-1 h-8 -mt-0.5 rounded-full px-1 text-[12px] font-bold tabular-nums active:scale-90 disabled:opacity-50 transition ${
         on ? "text-accent" : "text-muted hover:text-accent"
       }`}
+      dir="ltr"
     >
       <Icon
         name={on ? "heart-filled" : "heart"}
@@ -84,6 +103,7 @@ export function ListSaveHeart({
         strokeWidth={2}
         className={on ? "fill-current" : ""}
       />
+      {shown > 0 && <span>{num(shown, locale)}</span>}
     </button>
   );
 }
