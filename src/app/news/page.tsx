@@ -11,6 +11,7 @@ import {
   getListCardsByIds,
   getCuratedListIds,
   getListCardStats,
+  getCuratedCounts,
 } from "@/lib/data";
 import { getLibState } from "@/lib/libState";
 import { cookies } from "next/headers";
@@ -432,7 +433,15 @@ async function ListsDiscovery({
   /* 🆕 **أرقامُ بطاقات لوبز** (D-335): نداءُ `list_card_stats` واحدٌ
      للاثنتين والأربعين (D-205) — بعد خريطة `curated` لأنه يحتاج
      معرّفاتِها. */
-  const curatedStats = await getListCardStats([...curated.values()]);
+  /* 🆕 **والعدُّ من القائمة المولَّدة لا من اسمها** (البند ٢، بلاغُ أحمد:
+     بطاقةُ «أفضل ٢٥٠ أنمي» تقول ٢٥٠ وفيها ١٤٠): **نداءان متوازيان
+     لاثنتين وأربعين بطاقة** — الأرقامُ والعدد — **لا استعلامٌ لكلِّ
+     بطاقة** (D-205). **وغيابُ الدالّة يعيد رقمَ القاموس** فلا تسقط
+     بطاقةٌ قبل تشغيل الهجرة ١٠٧ (D-028). */
+  const [curatedStats, curatedCounts] = await Promise.all([
+    getListCardStats([...curated.values()]),
+    getCuratedCounts([...curated.values()]),
+  ]);
 
   const loc = locale === "en" ? ("en" as const) : ("ar" as const);
   const rows = fr ? FRANCHISES.filter((f) => f.slug === fr) : FRANCHISES;
@@ -484,6 +493,7 @@ async function ListsDiscovery({
                       t={t}
                       savedNames={savedNames}
                       stats={curatedStats.get(curated.get(u.slug) ?? "") ?? null}
+                      items={curatedCounts.get(curated.get(u.slug) ?? "")}
                       className="w-full"
                     />
                   </Link>
@@ -580,6 +590,7 @@ async function CuratedCard({
   t,
   savedNames,
   stats,
+  items,
   className = "w-full",
 }: {
   u: Universe;
@@ -590,6 +601,16 @@ async function CuratedCard({
   /** 🆕 أرقامُ قائمة لوبز المولَّدة (D-335) — غيابُها يعني قائمةً بلا
       رقمٍ بعد، **والصفرُ لا يُطبع** (D-219) */
   stats?: { saves: number; rating: number | null } | null;
+  /**
+   * 🆕 **العدُّ الحقيقيُّ من القائمة المولَّدة** (البند ٢).
+   *
+   * **كان الرقمُ يُقرأ من الاسم**: `u.topLimit ?? 250` — **وعدٌ لا عدّ**.
+   * **وعتبةُ العشرين ألف صوت** (D-323) أسقطت من الأنمي مئةً وعشرة،
+   * **فصار العنوانُ يَعِد ما لا يجده من يفتح** — وهو حرفاً ما تمنعه
+   * D-219 (رقمٌ يكذب أسوأُ من لا رقم) و D-216 (المقامُ من البسط نفسِه).
+   * **وغيابُه يعيد رقمَ القاموس** — قبل الهجرة ١٠٧ (D-028).
+   */
+  items?: number;
   className?: string;
 }) {
   const loc = locale === "en" ? ("en" as const) : ("ar" as const);
@@ -607,7 +628,9 @@ async function CuratedCard({
   const topRows = u.top ? await topRatedRows(u.top, 8).catch(() => []) : null;
   const ids = topRows || awardFour ? [] : await resolveSetIds(u).catch(() => [] as number[]);
   const four = awardFour ?? (topRows ? topRows.slice(0, 4) : await moviesByIds(ids.slice(0, 4)).catch(() => []));
-  const count = award ? awardWins(award).length : topRows ? (u.topLimit ?? 250) : ids.length;
+  const count =
+    items ??
+    (award ? awardWins(award).length : topRows ? (u.topLimit ?? 250) : ids.length);
   const posters = four
     .map((m) => posterUrl(m.poster_path, "w185"))
     .filter(Boolean) as string[];
