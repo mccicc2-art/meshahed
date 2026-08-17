@@ -7,6 +7,7 @@ import {
   getDismissedTitles,
 } from "@/lib/data";
 import { discoverByGenres, recommendationsFor, type SearchResult } from "@/lib/tmdb";
+import { railGuard } from "@/lib/topChart";
 import { localizeRows } from "@/lib/localize";
 import type { Locale } from "@/lib/i18n";
 import { blendRecommendations, type Candidate, type Recommendation } from "@/lib/recommend";
@@ -70,8 +71,16 @@ export async function getSuggestions(
   const favGenres = profile?.favorite_genres ?? [];
 
   const [genreDiscover, followRecs, recentRecs, ratedRecs] = await Promise.all([
+    /* 🆕 **وهذا المصدرُ وحدَه يُحرَس من بين الأربعة** (D-321، قاعدةُ أحمد
+       «لا يظهرون إلا للشخص الذي يتابعهم»): الثلاثةُ تحته بذرتُها **عملٌ في
+       مكتبته أو تقييمٌ كتبه** — فما تُرجعه امتدادُ ذوقه، وكتمُه تجاهلٌ له
+       (D-194). **وهذا بذرتُه نوعٌ في ملفّه لا عملٌ يتابعه**، فكان يُدخل
+       الكوريَّ والهنديَّ إلى صفٍّ شخصيٍّ **لمن لا يتابع منهما شيئاً** —
+       **و«الشخصيّ» صفةُ المصدر لا صفةُ العنوان.** */
     favGenres.length
-      ? discoverByGenres(favGenres, "tv").catch(() => [] as SearchResult[])
+      ? discoverByGenres(favGenres, "tv")
+          .then((rows) => railGuard(rows, { anime: "keep" }))
+          .catch(() => [] as SearchResult[])
       : Promise.resolve([] as SearchResult[]),
     Promise.all(
       followSeeds.map((f) =>
