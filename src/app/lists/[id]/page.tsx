@@ -13,8 +13,6 @@ import {
   getListReviewReplies,
   getMyProfileLite,
   getCuratedSlug,
-  getAmAdmin,
-  getFeaturedListIds,
 } from "@/lib/data";
 import { curatedName, curatedBlurb } from "@/lib/universes";
 import { ListReviews } from "@/components/ListReviews";
@@ -151,8 +149,6 @@ export default async function ListPage({ params }: { params: Promise<{ id: strin
     reviews,
     reviewStats,
     myReview,
-    amAdmin,
-    featuredIds,
     /* 🆕 **قلوبُ الآراء وردودُها ووجهي** (D-370، الهجرة ١١٣) — **ثلاثةُ
        نداءاتٍ في نفس الرزمة المتوازية**، ولا ينتظر أحدُها ناتجَ الآخر.
        **وكلُّها للمعلنة وحدَها**: قائمةٌ خاصّة لا رأيَ فيها أصلاً. */
@@ -167,11 +163,9 @@ export default async function ListPage({ params }: { params: Promise<{ id: strin
     data.list.is_public ? getListReviews(id) : Promise.resolve([]),
     data.list.is_public ? getListReviewStats(id) : Promise.resolve({ avg: null, count: 0 }),
     data.list.is_public && !isOwner ? getMyListReview(id) : Promise.resolve(null),
-    /* 🆕 **دبّوسُ «يرشّحها لوبز»** (D-349) — **للرسم لا للحراسة** (D-011):
-       الحارسُ `am_admin()` في جسم `set_featured_list`. ولا يُقرأ التثبيتُ
-       إلا لقائمةٍ عامّة. */
-    getAmAdmin().catch(() => false),
-    data.list.is_public ? getFeaturedListIds().catch(() => [] as string[]) : Promise.resolve([]),
+    /* ⚖️ 🆕 **وسقط نداءا التثبيت والإدارة مع رفِّهما ودبّوسِهما** (D-386):
+       **نداءٌ بلا قارئٍ يُحذف لا يُترك يدور** (D-214/D-257) — **وكانا
+       يُفتحان مع كلِّ قائمةٍ عامّة.** */
     data.list.is_public ? getListReviewSocial([id]) : Promise.resolve(new Map()),
     data.list.is_public ? getListReviewReplies(id) : Promise.resolve([]),
     getMyProfileLite().catch(() => null),
@@ -201,7 +195,6 @@ export default async function ListPage({ params }: { params: Promise<{ id: strin
         items={items}
         ratings={data.ratings}
         isOwner={isOwner}
-        featured={amAdmin && data.list.is_public ? featuredIds.includes(id) : undefined}
         owner={
           pub
             ? {
