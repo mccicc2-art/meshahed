@@ -7,7 +7,7 @@ import { getDict, type Locale } from "@/lib/i18n";
 import { tap } from "@/lib/haptics";
 import type { TabPref } from "@/lib/tabPrefs";
 import { Icon, type IconName } from "./Icon";
-import { Sheet, SheetHeader } from "./ui/Sheet";
+import { Sheet, SheetHeader, SheetTabs } from "./ui/Sheet";
 import {
   sheetScroll,
   sheetMenuItem,
@@ -179,25 +179,16 @@ export function CommunityTools({
             closeLabel={t.closeLabel}
             onClose={close}
           />
-          <div className={segmentedTrackFull} role="tablist" aria-label={t.communityToolsTitle}>
-            {(["do", "see"] as const).map((k) => (
-              <button
-                key={k}
-                type="button"
-                role="tab"
-                id={`comm-tools-tab-${k}`}
-                aria-selected={tab === k}
-                aria-controls={`comm-tools-panel-${k}`}
-                onClick={() => {
-                  tap(6);
-                  setTab(k);
-                }}
-                className={segmentedItem(tab === k, "flex-1")}
-              >
-                {k === "do" ? t.communityToolsTabDo : t.communityToolsTabSee}
-              </button>
-            ))}
-          </div>
+          {/* 🆕 **الشريطُ من `SheetTabs`** (D-397) — كان مكتوباً هنا وفي
+              اكتشف بيدين، **والثالثةُ (المكتبة) كانت ستكون نسخةً ثالثة.** */}
+          <SheetTabs
+            prefix="comm-tools"
+            label={t.communityToolsTitle}
+            tab={tab}
+            onTab={setTab}
+            doLabel={t.communityToolsTabDo}
+            seeLabel={t.communityToolsTabSee}
+          />
 
           <div className={`${sheetScroll} pb-4`}>
             {tab === "do" ? (

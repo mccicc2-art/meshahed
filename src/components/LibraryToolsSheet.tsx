@@ -1,7 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { getDict, type Locale } from "@/lib/i18n";
-import { Sheet, SheetHeader } from "./ui/Sheet";
+import { Sheet, SheetHeader, SheetTabs } from "./ui/Sheet";
 import { segmentedItem, segmentedTrackFull, sheetScroll } from "./ui/controls";
 import { Icon } from "./Icon";
 import { NewListForm } from "./NewListForm";
@@ -28,6 +29,13 @@ export type LibrarySort = "smart" | "title" | "progress" | "added";
  *
  * **و`variant="top"` لا `bottom`:** فيها حقلا كتابة، ولوحةُ المفاتيح تأكل
  * نصفَ الشاشة السفليّ (D-018).
+ *
+ * 🆕 **وتبويبان لا تمريرةٌ واحدة** (D-397، بلاغُ أحمد: «رتّبه بشكل
+ * أفضل وافصل التاب مثل الكومينتي والديسكفري»): **أربعةُ أقسامٍ في
+ * تمريرةٍ واحدة تُقصّ آخرَها عند حافّة الشاشة** — في لقطته كان «Artists»
+ * نصفَ سطر. **والقسمةُ قسمةُ أختيها حرفاً**: «أدوات» ما تفعله الآن
+ * (بحثٌ وترتيبٌ وإنشاءُ قائمة) · «عرض» ما يبقى بعد أن تُغلق الورقة
+ * (ترتيبُ التبويبات وإظهارُها). **وثلاثُ أوراقٍ بإيقاعٍ واحد** (القاعدة ٦).
  *
  * **والورقة تُغلق نفسها عند أوّل حرفٍ يُكتب في البحث** — وهذا هو الفرق
  * بين ورقةٍ نافعة وورقةٍ تحجب ما تبحث عنه: تكتب فتُغلق فترى النتائج
@@ -58,6 +66,9 @@ export function LibraryToolsSheet({
   tabLabels: Record<string, string>;
 }) {
   const t = getDict(locale);
+  /* **وتفتح على «أدوات» دائماً** — وهي التي جئتَ لأجلها؛ **و«عرض»
+     إعدادٌ يُضبط مرّةً ويُنسى** (نصُّ `CommunityTools` حرفاً). */
+  const [tab, setTab] = useState<"do" | "see">("do");
 
   /* 🆕 **أربعةٌ لا ثلاثة** (D-350): «الأحدث» رابعاً — **والمقسّمُ يحتمل
      الرابع** لأن `flex-1 basis-0` يقسّم العرضَ بالتساوي و`truncate` يمنع
@@ -83,7 +94,23 @@ export function LibraryToolsSheet({
         closeLabel={t.closeLabel}
         onClose={onClose}
       />
+      <SheetTabs
+        prefix="lib-tools"
+        label={t.libraryToolsTitle}
+        tab={tab}
+        onTab={setTab}
+        doLabel={t.communityToolsTabDo}
+        seeLabel={t.communityToolsTabSee}
+      />
+
       <div className={`${sheetScroll} px-4 pb-5 space-y-5`}>
+        {tab === "do" && (
+        <div
+          role="tabpanel"
+          id="lib-tools-panel-do"
+          aria-labelledby="lib-tools-tab-do"
+          className="space-y-5"
+        >
         {showFilters && (
           <>
             <div>
@@ -148,12 +175,20 @@ export function LibraryToolsSheet({
           </span>
           <NewListForm locale={locale} onCreated={onClose} />
         </div>
+        </div>
+        )}
 
-        {/* القسم الرابع — نفس `TabsPrefs` التي في اكتشف والمجتمع.
-            و`-mx-4` يردّ حشو الجسم: صفوفُ القسم تحمل حشوها بنفسها
-            كصفوف أوراق «المزيد»، فتصطفّ في الأوراق الأربع عند البكسل
-            نفسه بدل أن تُزاح في واحدةٍ منها */}
-        <div className="-mx-4 pt-1 border-t border-[color:var(--divider)]">
+        {/* **«عرض»: ما يبقى بعد أن تُغلق الورقة** — نفسُ `TabsPrefs`
+            التي في اكتشف والمجتمع (D-179). و`-mx-4` يردّ حشو الجسم:
+            صفوفُ القسم تحمل حشوها بنفسها فتصطفّ في الأوراق الثلاث عند
+            البكسل نفسِه. */}
+        {tab === "see" && (
+        <div
+          role="tabpanel"
+          id="lib-tools-panel-see"
+          aria-labelledby="lib-tools-tab-see"
+          className="-mx-4"
+        >
           <TabsPrefs
             locale={locale}
             surface="library"
@@ -162,6 +197,7 @@ export function LibraryToolsSheet({
             title={t.tabsPrefsGroup}
           />
         </div>
+        )}
       </div>
     </Sheet>
   );

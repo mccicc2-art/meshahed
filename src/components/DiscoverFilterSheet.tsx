@@ -29,9 +29,9 @@ import { AWARDS, awardName } from "@/lib/awards";
 import { regionName } from "@/lib/region";
 import { tap } from "@/lib/haptics";
 import { Icon } from "./Icon";
-import { Sheet, SheetHeader } from "./ui/Sheet";
+import { Sheet, SheetHeader, SheetTabs } from "./ui/Sheet";
 import { buttonClass } from "./ui/Button";
-import { sheetScroll, segmentedTrackFull, segmentedItem } from "./ui/controls";
+import { sheetScroll } from "./ui/controls";
 /* القسم الثاني في هذه الورقة — نفسُ المكوّن في المكتبة والمجتمع (D-179) */
 import { TabsPrefs } from "./TabsPrefs";
 import type { TabPref } from "@/lib/tabPrefs";
@@ -239,25 +239,14 @@ export function DiscoverFilterSheet({
           الكلمتان («أدوات» و«عرض»)، **ومفتاحان مختلفا الاسم متطابقا
           المعنى ضجيجٌ لا يمسكه `tsc`** (D-254/D-300). */}
       {showFilters && (
-        <div className={segmentedTrackFull} role="tablist" aria-label={t.discoverToolsTitle}>
-          {(["do", "see"] as const).map((k) => (
-            <button
-              key={k}
-              type="button"
-              role="tab"
-              id={`disc-tools-tab-${k}`}
-              aria-selected={tab === k}
-              aria-controls={`disc-tools-panel-${k}`}
-              onClick={() => {
-                tap(6);
-                setTab(k);
-              }}
-              className={segmentedItem(tab === k, "flex-1")}
-            >
-              {k === "do" ? t.communityToolsTabDo : t.communityToolsTabSee}
-            </button>
-          ))}
-        </div>
+        <SheetTabs
+          prefix="disc-tools"
+          label={t.discoverToolsTitle}
+          tab={tab}
+          onTab={setTab}
+          doLabel={t.communityToolsTabDo}
+          seeLabel={t.communityToolsTabSee}
+        />
       )}
 
       <div className={`${sheetScroll} py-4 space-y-5`}>
