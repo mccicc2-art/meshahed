@@ -2125,6 +2125,9 @@ export async function buildCuratedList(slug: string): Promise<{ slug: string; li
     }));
   } else {
     const ids = await resolveSetIds(u);
+    /* 🆕 **والقائمةُ المشهورة مرتَّبةٌ لا مسارُ مشاهدة** (D-388): رتبتُها
+       معناها، **فتُحفظ `ranked` كالجوائز و«أفضل ٢٥٠»** لا `watch_order`. */
+    if (u.titles?.length) kind = "ranked";
     const movies = await moviesByIds(ids);
     items = movies.map((m) => ({
       tmdbId: m.id,

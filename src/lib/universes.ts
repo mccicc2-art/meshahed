@@ -1,4 +1,5 @@
 import { AWARDS } from "./awards";
+import { AFI_100, SIGHT_SOUND_100 } from "./famousLists";
 import { minChartVotes } from "./chartFloor";
 
 // العوالم السينمائية — قاموسٌ منسَّق لا بحث (روح D-050).
@@ -43,6 +44,19 @@ export interface Universe {
    * صدر كل صفّ. لا معرّفات مكتوبة هنا: القاموس أسماءٌ وسنوات.
    */
   award?: string;
+  /**
+   * 🆕 **قائمةٌ مشهورةٌ مكتوبةٌ بالأسماء والسنوات** (D-388، طلبُ أحمد:
+   * «ابحث عن الليستات المشهورة في النت وضيفها»).
+   *
+   * **الاسمُ والسنةُ لا المعرّف** — **معرّفاتُ TMDB لا تُكتب باليد لمئة
+   * عملٍ بلا خطأ** (نصُّ `awards.ts` حرفاً)، **ومن لا يُطابَق يسقط
+   * بصمتٍ بدل أن يكسر القائمة.**
+   *
+   * ⚠️ **والفرقُ عن `award`**: تلك مفتاحُها **سنة** وتُرتَّب بها (لأن
+   * السنةَ معناها)، **وهذه رتبتُها ترتيبُ القاموس نفسِه** — **فلا
+   * تُفرز.** والسنةُ هنا **للبحث لا للعرض** (D-144).
+   */
+  titles?: { title: string; year: number }[];
 }
 
 export const UNIVERSES: Universe[] = [
@@ -412,6 +426,29 @@ export const TOP_LISTS: Universe[] = [
   { slug: "top250-anime", ar: "أفضل ٢٥٠ أنمي", en: "Top 250 Anime", top: "anime" },
 ];
 
+/**
+ * 🆕 **القوائمُ المشهورة** (D-388، طلبُ أحمد: «ابحث عن الليستات المشهورة
+ * في النت وضيفها»).
+ *
+ * **مرجعان لا خوارزميّتان**: «أفضل ٢٥٠» عندنا يُبنى من أصوات IMDb —
+ * **وهذه أحكامُ مؤسّستين**، والفرقُ يُقال في نبذتها لا يُخفى.
+ * **وترتيبُها ترتيبُ رتبتها لا سنتها.**
+ */
+export const FAMOUS_LISTS: Universe[] = [
+  {
+    slug: "afi-100",
+    ar: "AFI — أعظم ١٠٠ فيلم أمريكي",
+    en: "AFI's 100 Greatest American Films",
+    titles: AFI_100,
+  },
+  {
+    slug: "sight-sound-100",
+    ar: "Sight & Sound — أعظم ١٠٠ فيلم",
+    en: "Sight & Sound — 100 Greatest Films",
+    titles: SIGHT_SOUND_100,
+  },
+];
+
 export interface Franchise {
   slug: string;
   ar: string;
@@ -420,7 +457,9 @@ export interface Franchise {
 }
 
 const bySlug = (slug: string): Universe =>
-  [...TOP_LISTS, ...AWARD_SETS, ...UNIVERSES, ...CURATED, ...SUBLISTS, ...SUBLISTS2].find((u) => u.slug === slug)!;
+  [...TOP_LISTS, ...FAMOUS_LISTS, ...AWARD_SETS, ...UNIVERSES, ...CURATED, ...SUBLISTS, ...SUBLISTS2].find(
+    (u) => u.slug === slug,
+  )!;
 
 export const FRANCHISES: Franchise[] = [
   /* TOP 250 أول الصفوف (طلب أحمد): مرجعُ الجودة قبل صفوف العوالم */
@@ -429,6 +468,15 @@ export const FRANCHISES: Franchise[] = [
     ar: "TOP 250",
     en: "TOP 250",
     sets: ["top250-movies", "top250-shows", "top250-anime"].map(bySlug),
+  },
+  /* 🆕 **صفُّ القوائم المشهورة** (D-388) — **بعد TOP 250 وقبل الجوائز**:
+     الثلاثةُ أرففُ مرجعٍ للجودة، **وترتيبُها من الآليِّ إلى التحريريِّ
+     إلى المُحكَّم**: أصواتُ IMDb ← أحكامُ مؤسّستين ← جوائزُ لجانٍ بسنواتها. */
+  {
+    slug: "famous",
+    ar: "قوائم مشهورة",
+    en: "Famous lists",
+    sets: FAMOUS_LISTS,
   },
   /* صفّ الجوائز (طلب أحمد): بطاقة لكل جائزة — الفائزون من ١٩٩٠ مرتّبين
      بالأحدث، وسنة الفوز مكتوبة في صدر كل صفّ */
@@ -585,6 +633,21 @@ export function curatedBlurb(
     return en
       ? `Ranked from IMDb ratings, with a floor of ${floor.toLocaleString("en")} votes so a high score on a handful of votes cannot climb it.`
       : `مرتَّبةٌ بتقييمات IMDb، وبعتبة ${floor.toLocaleString("ar-EG")} صوتٍ فأكثر — فلا يعلوها عملٌ نال درجةً عاليةً من أصواتٍ قليلة.`;
+  }
+
+  /* 🆕 **القوائمُ المشهورة** (D-388) — **النبذةُ تسمّي الجهةَ والسنة**،
+     **لأن قيمةَ هذه القائمة أنها حكمُ فلانٍ في سنةٍ بعينها لا رقمٌ
+     محسوب** — **ورقمُ العدد يغيب** (D-340/D-219: ٩٦ فيلماً بعد ما لم
+     تعرفه TMDB لا «١٠٠»). */
+  if (u.slug === "afi-100") {
+    return en
+      ? `The American Film Institute's ranking of the greatest American films, tenth-anniversary edition — in its own order, not ours.`
+      : `ترتيبُ معهد الفيلم الأمريكي لأعظم الأفلام الأمريكية، طبعةُ العشرين عاماً — برتبته هو لا برتبتنا.`;
+  }
+  if (u.slug === "sight-sound-100") {
+    return en
+      ? `The BFI's Sight & Sound critics' poll, taken once a decade — the 2022 edition, in its own order.`
+      : `استفتاءُ نقّاد Sight & Sound من معهد الفيلم البريطاني، يُجرى مرّةً كلَّ عقد — نسخةُ ٢٠٢٢ برتبتها.`;
   }
 
   /* **الجوائز** — الفائزون بأسمائهم وسنواتهم */

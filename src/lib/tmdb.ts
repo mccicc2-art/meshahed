@@ -617,14 +617,44 @@ export async function getCollection(id: number): Promise<Collection | null> {
  * collectionId تُحلّ من سلسلة TMDB بترتيب الإصدار — فتتحدّث بالأجزاء
  * الجديدة وحدها بلا صيانة قاموسٍ يدوي.
  */
-export async function resolveSetIds(u: {
-  movieIds?: number[];
-  collectionId?: number;
-}): Promise<number[]> {
-  if (u.movieIds?.length) return u.movieIds;
+export async function resolveSetIds(
+  u: {
+    movieIds?: number[];
+    collectionId?: number;
+    titles?: { title: string; year: number }[];
+  },
+  /**
+   * 🆕 **حدُّ البطاقة** (D-388): بطاقةُ الرفّ تعرض ثلاثةَ ملصقات،
+   * **وحلُّ مئةِ عنوانٍ لأجلها مئةُ نداءٍ لثلاث صور** — نفسُ حجّة `limit`
+   * في `awardWinners` حرفاً. **والقائمةُ الكاملة تُحلّ عند الفتح أو
+   * البناء.**
+   */
+  limit?: number,
+): Promise<number[]> {
+  if (u.movieIds?.length) return limit ? u.movieIds.slice(0, limit) : u.movieIds;
+  /* 🆕 **قائمةٌ مشهورةٌ مكتوبةٌ بالأسماء** (D-388): **الاسمُ والسنةُ لا
+     المعرّف** — **ومعرّفاتُ TMDB لا تُكتب باليد لمئة عملٍ بلا خطأ**
+     (نصُّ `awards.ts` حرفاً)، **ومن لا يُطابَق يسقط بصمتٍ بدل أن يكسر
+     القائمة.** ⚠️ **والترتيبُ ترتيبُ القاموس** — هو رتبةُ القائمة نفسُها،
+     **فلا يُفرز بالسنة كالجوائز** (تلك تُرتَّب بالسنة لأن السنةَ معناها). */
+  if (u.titles?.length) {
+    const want = limit ? u.titles.slice(0, limit) : u.titles;
+    const out: number[] = [];
+    const CHUNK = 20;
+    for (let i = 0; i < want.length; i += CHUNK) {
+      const found = await Promise.all(
+        want.slice(i, i + CHUNK).map((w) =>
+          searchByName(w.title, "movie", w.year).catch(() => null),
+        ),
+      );
+      for (const r of found) if (r) out.push(r.id);
+    }
+    return out;
+  }
   if (!u.collectionId) return [];
   const c = await getCollection(u.collectionId).catch(() => null);
-  return (c?.parts ?? []).map((p) => p.id);
+  const ids = (c?.parts ?? []).map((p) => p.id);
+  return limit ? ids.slice(0, limit) : ids;
 }
 
 /**
