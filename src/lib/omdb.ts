@@ -181,6 +181,13 @@ export async function imdbIdByName(
      لم يتغيّر شيء**: اسمٌ بلا `al/el` لا يُبحث مرّتين. */
   const stripped = want !== q.toLowerCase() ? want : null;
   const rows = await searchOmdb(key, q, kind);
+  /* ⚠️ **ومن أين جاء الصفُّ يقرّر كم نتشدّد** (D-432، قِيس على الحيّ):
+     **البحثُ بالاسم كما هو يعود بنتائجَ قريبةٍ منه**، فاتّفاقُ النوع
+     والسنة كافٍ — **وهو ما كان يعمل منذ D-414 فلا يُمَسّ** (D-152).
+     🔴 **والبحثُ منزوعَ الأداة يفتح البابَ أوسع** فيدخل منه غريب —
+     **فيُشترط عليه تطابقُ الاسم بعد التسوية.** **ورقمٌ من عملٍ آخر
+     أسوأُ من لا رقم** (نصُّ نقضِ D-027 حرفاً). */
+  const loose = rows.length > 0;
   const all = rows.length ? rows : stripped ? await searchOmdb(key, stripped, kind) : [];
   if (!all.length) return null;
 
@@ -197,6 +204,7 @@ export async function imdbIdByName(
   for (const hit of all) {
     if (inYear(hit) && normalizeTitle(hit.Title ?? "") === want) return hit.imdbID;
   }
+  if (!loose) return null;
   for (const hit of all) {
     if (inYear(hit)) return hit.imdbID;
   }
