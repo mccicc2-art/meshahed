@@ -282,7 +282,13 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
                 أحمد: «التصنيف العمري حطها في كل صفحات المسلسلات والأفلام»).
                 **ولا نداءَ ثالثاً له** — يصل في ردّ OMDb نفسِه. */}
             <Suspense fallback={<HeroRatingsSkeleton />}>
-              <HeroRatings tvId={tvId} ageLabel={t.ageRating} />
+              <HeroRatings
+                tvId={tvId}
+                /* 🆕 D-414 — جسرُ الاسم والسنة حين لا يعرف TMDB معرّفَ IMDb */
+                name={tv.name}
+                year={tv.first_air_date ? Number(tv.first_air_date.slice(0, 4)) : null}
+                ageLabel={t.ageRating}
+              />
             </Suspense>
 
             {/* 🆕 **ونبضُنا تحت نبض العالم** (D-408) — الحجّةُ كاملةً في
