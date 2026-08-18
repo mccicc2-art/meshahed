@@ -13,8 +13,34 @@
  */
 const RTL_FIRST = /^[^\p{L}]*[\p{Script=Arabic}\p{Script=Hebrew}]/u;
 
+/** حروفُ كلِّ جهة — تُعدّ لا تُلمح */
+const RTL_LETTERS = /[\p{Script=Arabic}\p{Script=Hebrew}]/gu;
+const LTR_LETTERS = /[\p{Script=Latin}\p{Script=Cyrillic}\p{Script=Greek}]/gu;
+
+/**
+ * 🔴 🆕 **الجهةُ لأكثر الحروف، والتعادلُ لأوّلِ حرفٍ قويّ** (D-421،
+ * بلاغُ أحمد على مؤلّف المراجعة: «إذا كتبت بالعربي في مربع الكتابة خلّ
+ * الكلام يبدأ RTL»).
+ *
+ * **وما كان قبله: أوّلُ حرفٍ قويٍّ وحدَه.** **وهو صحيحٌ لسطرٍ واحد
+ * وخاطئٌ لنصٍّ طويل**: مراجعةُ أحمد تبدأ بكلمة `Test` ثم ستُّ فقراتٍ
+ * عربية — **فحرفٌ لاتينيٌّ واحدٌ كان يقلب النصَّ كلَّه إلى اليسار**،
+ * **في المؤلّف وفي البطاقة معاً.**
+ *
+ * **والقاعدةُ الجديدة تُعمَّم ولا تُستثنى**: العدُّ يجيب في الحالة
+ * الغالبة، **والأوّلُ يبقى حَكَماً عند التعادل** — فما كان يعمل يبقى
+ * يعمل (اسمٌ لاتينيٌّ يبقى يساراً، وعربيٌّ يميناً)، **وما كان يفشل صار
+ * يعمل.** **ودالّةٌ واحدةٌ للعرض والكتابة** — لا قاعدتان تفترقان
+ * (قاعدة ٦).
+ */
 export function dirOf(text: string | null | undefined): "rtl" | "ltr" {
-  return text && RTL_FIRST.test(text) ? "rtl" : "ltr";
+  if (!text) return "ltr";
+  const rtl = (text.match(RTL_LETTERS) ?? []).length;
+  if (rtl === 0) return "ltr";
+  const ltr = (text.match(LTR_LETTERS) ?? []).length;
+  if (ltr === 0) return "rtl";
+  if (rtl === ltr) return RTL_FIRST.test(text) ? "rtl" : "ltr";
+  return rtl > ltr ? "rtl" : "ltr";
 }
 
 /**
