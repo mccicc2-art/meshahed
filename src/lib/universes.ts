@@ -549,7 +549,19 @@ export function franchiseName(f: Franchise, locale: "ar" | "en") {
 
 /** كل المجموعات المنسّقة معاً — قاموس `universeBySlug` (محرّك حفظٍ واحد) */
 export function allCuratedSets(): Universe[] {
-  return [...TOP_LISTS, ...AWARD_SETS, ...UNIVERSES, ...CURATED, ...SUBLISTS, ...SUBLISTS2];
+  /* ⚠️ **وكلُّ مجموعةٍ جديدةٍ تُضاف هنا وفي `bySlug` معاً** (D-388):
+     أُضيفت `FAMOUS_LISTS` إلى الثاني وحدَه أوّلَ مرّة، **فرُسمت بطاقتاها
+     في الرفّ ثم قال التوليدُ «عالمٌ غير معروف»** — **قائمةٌ تُعرض ولا
+     تُبنى** (D-181). **وموضعان لمعنًى واحدٍ يُنسى ثانيهما** (D-220). */
+  return [
+    ...TOP_LISTS,
+    ...FAMOUS_LISTS,
+    ...AWARD_SETS,
+    ...UNIVERSES,
+    ...CURATED,
+    ...SUBLISTS,
+    ...SUBLISTS2,
+  ];
 }
 
 /** أي عالمٍ ينتمي إليه هذا الفيلم؟ — فحصٌ محليّ بلا طلب شبكة (العوالم وحدها) */
