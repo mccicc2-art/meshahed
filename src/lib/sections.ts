@@ -79,7 +79,17 @@ export type SectionKey =
   | "upcoming"
   | "in-cinemas"
   | "airing-now"
-  | "from-artists";
+  | "from-artists"
+  /**
+   * 🆕 **صفُّك أنت، كاملاً** (D-378، بلاغُ أحمد: «أضغط على دراما وأنزل
+   * وأشوف الأفلام وأضغط المزيد»): صفوفُ `myRows` كانت **بلا عنوانٍ
+   * يُضغط أصلاً** — **وصفٌّ لا بابَ له يقول إن ما تراه هو كلُّ ما هناك**
+   * (D-198 من جهتها الثانية).
+   *
+   * **ومصدرُه مصدرُ الصفّ حرفاً** (`topByFilter` بالشعبية): **لو فتح
+   * العنوانُ قسماً آخرَ لصار ما يُضغط غيرَ ما يُرى** (D-199).
+   */
+  | "my-row";
 
 /** جهةُ المحتوى التي يبنيها القسم — الأنمي جهتان معاً */
 export type SectionMedia = "movie" | "tv" | "anime";
@@ -130,6 +140,9 @@ export const SECTION_TITLE_KEY: Record<
   "in-cinemas": { movie: "inCinemas", tv: "inCinemas", anime: "animeInCinemas" },
   "airing-now": { movie: "airingNowAnime", tv: "airingNowAnime", anime: "airingNowAnime" },
   "from-artists": { movie: "artistsRail", tv: "artistsRail", anime: "artistsRail" },
+  /* **وعنوانُ صفِّك يُركَّب من نوعه ووسمه في الصفحة نفسِها** — لا مفتاحَ
+     قاموسٍ له، **فالاسمُ من اختيارك لا من قاموسنا** (D-337/D-147). */
+  "my-row": { movie: "navNews", tv: "navNews", anime: "navNews" },
 };
 
 /**
@@ -229,7 +242,19 @@ export async function buildSection(
           Promise.all(
             sides(media).map((mt) =>
               /* الأنمي `/discover` دائماً: `/popular` لا يقبل مفتاحاً */
-              popularWellKnown(mt, { ...base, genreIds }, wantMix ? 2 : 3),
+              /* 🆕 **والصفحاتُ تكبر مع الحدّ** (D-378): صفحةُ القسم تطلب
+                 ستّين ثم مئةً وعشرين عند «المزيد» — **وصفحتان تعطيان
+                 أربعين مهما طلبتَ**، فيقف الترقيمُ عند أوّل ضغطة.
+                 **و`want` يفتح سُلَّمَ الحواجز** حين لا تكفي البِركةُ
+                 المضيَّقة بالفلتر (بلاغُ العربية). */
+              popularWellKnown(
+                mt,
+                { ...base, genreIds },
+                Math.max(wantMix ? 2 : 3, Math.ceil(limit / 20)),
+                undefined,
+                undefined,
+                limit,
+              ),
             ),
           ).then((r) => r.flat()),
           /* 🔴 **`topChartRail` لا `getImdbChart` — وهذا خطأٌ وقع وقِيس على
@@ -361,6 +386,20 @@ export async function buildSection(
           "tv",
           { ...base, genreIds, from: base.from ?? q, to: base.to ?? now.toISOString().slice(0, 10) },
           limit * 2,
+          "popularity.desc",
+        );
+        return guard(rows);
+      }
+
+      case "my-row": {
+        /* **نفسُ نداء `MyRowsRails` بحرفه**: `topByFilter` بالشعبية،
+           **والوسمُ والأنمي يصلان في `base.keywords`** كما تبنيهما
+           الصفحة — **فما يفتحه العنوانُ هو ما يعرضه الصفّ، أعمقَ لا
+           أغيرَ** (D-199). */
+        const rows = await topByFilter(
+          media === "movie" ? "movie" : "tv",
+          { ...base, genreIds },
+          limit,
           "popularity.desc",
         );
         return guard(rows);

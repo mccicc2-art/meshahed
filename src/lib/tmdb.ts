@@ -1030,29 +1030,62 @@ export async function popularWellKnown(
   pages = 2,
   minVotes = 1500,
   minRate = 6.5,
+  /**
+   * 🆕 **كم صفّاً يكفي قبل النزول درجةً؟** (D-378) — الحدُّ الذي يطلبه
+   * المستدعي؛ **وصفرٌ يعني «لا تنزل»** (السلوكُ القديم حرفاً).
+   */
+  want = 0,
 ): Promise<SearchResult[]> {
-  const out: SearchResult[] = [];
-  for (let page = 1; page <= Math.max(1, pages); page++) {
-    try {
-      const data = await tmdb<{ results: SearchResult[] }>(`/discover/${mediaType}`, {
-        ...discoverParams(mediaType, f),
-        sort_by: "popularity.desc",
-        "vote_count.gte": String(minVotes),
-        /* **ولا يُدهس حاجزُ المستخدم إن كان أعلى**: من اختار «٨ فأعلى» في
-           الفلتر لا يُخفَّض له إلى ٦٫٥ (`discoverParams` كتبها قبلنا). */
-        ...(f.minRate && f.minRate >= minRate ? {} : { "vote_average.gte": String(minRate) }),
-        page: String(page),
-      });
-      out.push(
-        ...(data.results ?? [])
-          .filter((r) => r.poster_path)
-          .map((r) => ({ ...r, media_type: mediaType })),
-      );
-    } catch {
-      break;
+  /**
+   * 🆕 **سُلَّمُ حواجز، لا حاجزٌ واحد** (D-378، بلاغُ أحمد: «مو معقول
+   * أفلتر على العربية ويجيب لي top 10 فقط»).
+   *
+   * **المقيس:** الحاجزان ١٥٠٠ صوتاً و٦٫٥ **مكتوبان لبِركةٍ عالميّة**
+   * (D-202: «Paradise Hotel» بأصواتٍ قليلة). **وبِركةُ لغةٍ بعينها لا
+   * تبلغهما**: العربيُّ والكوريُّ القديم وأيُّ نوعٍ ضيّق — **فيعود الصفُّ
+   * فارغاً، ويقرأ القارئُ «لا يوجد» بينما الجواب موجودٌ تحت الحاجز.**
+   *
+   * **والعلاجُ هو علاجُ `topByFilter` نفسُه** (السطور أدناه): يُجرَّب
+   * الأعلى، **فإن لم يبلغ المطلوبَ نزلنا درجةً** — **فالصفُّ يبقى
+   * «الأكثرَ شعبيةً فيما اخترتَه» لا فيما اخترناه نحن.**
+   * ⚠️ **ولا يُدهس حاجزُ المستخدم إن كان أعلى** في أيّ درجة.
+   */
+  const rungs: { votes: number; rate: number }[] = [
+    { votes: minVotes, rate: minRate },
+    { votes: 300, rate: 6 },
+    { votes: 50, rate: 0 },
+  ];
+
+  let best: SearchResult[] = [];
+  for (const rung of rungs) {
+    const out: SearchResult[] = [];
+    for (let page = 1; page <= Math.max(1, pages); page++) {
+      try {
+        const data = await tmdb<{ results: SearchResult[] }>(`/discover/${mediaType}`, {
+          ...discoverParams(mediaType, f),
+          sort_by: "popularity.desc",
+          "vote_count.gte": String(rung.votes),
+          /* **ولا يُدهس حاجزُ المستخدم إن كان أعلى**: من اختار «٨ فأعلى» في
+             الفلتر لا يُخفَّض له إلى ٦٫٥ (`discoverParams` كتبها قبلنا). */
+          ...(rung.rate && !(f.minRate && f.minRate >= rung.rate)
+            ? { "vote_average.gte": String(rung.rate) }
+            : {}),
+          page: String(page),
+        });
+        out.push(
+          ...(data.results ?? [])
+            .filter((r) => r.poster_path)
+            .map((r) => ({ ...r, media_type: mediaType })),
+        );
+      } catch {
+        break;
+      }
     }
+    if (out.length > best.length) best = out;
+    /* **الدرجةُ الأولى تكفي في البِركة العالميّة فلا يُدفع نداءٌ ثانٍ** */
+    if (!want || best.length >= want) break;
   }
-  return out;
+  return best;
 }
 
 // ============================================================
@@ -1468,8 +1501,12 @@ export async function topByFilter(
   sort: "vote_average.desc" | "popularity.desc" | "vote_count.desc" = "vote_average.desc",
 ): Promise<SearchResult[]> {
   let best: SearchResult[] = [];
-  /* 🆕 **وصفحتان حين يُطلب أكثرُ من صفحة** (D-322) — نفسُ حجّة الرائج */
-  const pages = limit > 20 ? [1, 2] : [1];
+  /* 🆕 **والصفحاتُ بقدر ما يُطلب لا صفحتان** (D-378، طلبُ أحمد: «اضغط
+     المزيد إلى أن ترضى، ما يوقفني»): كان السقفُ صفحتين (٤٠ صفّاً) **فأيُّ
+     طلبٍ فوقها يعود ناقصاً بصمت** — وصفحةُ القسم تطلب ستّين. **والحدُّ
+     عشرُ صفحاتٍ** (٢٠٠ صفّاً) — **سقفٌ يُقال ولا يُخفى**، وTMDB يقبل
+     أكثرَ منه لكنّ صفحةً تعرض مئتين هي عشرُ شاشاتٍ تمريراً. */
+  const pages = Array.from({ length: Math.min(10, Math.max(1, Math.ceil(limit / 20))) }, (_, i) => i + 1);
   for (const floor of [200, 50, 10]) {
     try {
       const got = await Promise.all(
