@@ -326,6 +326,31 @@ export function ListDetail({
             </span>
           </button>
         )}
+        {/* 🔴 🆕 **وللزائر زرُّ مشاركة** (D-426، بلاغُ أحمد: «ما فيه زر
+            مشاركة للسته إذا فتحت اللستة»).
+            **والقائمةُ التي تُفتح للناس هي أوّلُ ما يُشارَك** — **وبابُ
+            المشاركة كان محبوساً في قائمة النقاط، والنقاطُ للمالك وحدَه**
+            (السطرُ فوقَه)، **فمن فتح قائمةَ غيره لم يجد للرابط بابا.**
+            ⚠️ **ولا ورقةَ ثانيةً**: `ShareListSheet` نفسُها بمقاسها
+            (D-002/قاعدة ٣) — **وفعلُ «اجعلها معلنة» داخلَها لا يُرسم
+            لمعلنةٍ أصلاً**، **وغيرُ المالك لا يبلغ إلّا معلنة.** */}
+        {!isOwner && isPublic && (
+          <button
+            type="button"
+            onClick={() => {
+              tap(8);
+              setSheet("share");
+            }}
+            aria-label={t.listShare}
+            title={t.listShare}
+            aria-haspopup="dialog"
+            className="shrink-0 -m-1 p-1 grid place-items-center"
+          >
+            <span className="grid place-items-center w-9 h-9 rounded-full border border-border bg-surface text-muted transition active:scale-95 hover:border-accent hover:text-foreground">
+              <Icon name="share" size={16} />
+            </span>
+          </button>
+        )}
       </div>
 
       {/* الوصف امتدادٌ للاسم لا منافسٌ له: نصف وزنه ولونٌ خافت وسطران على

@@ -12,6 +12,7 @@ import {
 import { newsLine, newsSource } from "@/lib/newsLine";
 import { commentViewKey, newsViewKey } from "@/lib/postKeys";
 import { curatedName } from "@/lib/universes";
+import { backdropUrl } from "@/lib/media";
 import { Avatar } from "./Avatar";
 import { Icon } from "./Icon";
 import { LikeButton } from "./LikeButton";
@@ -652,8 +653,16 @@ function CommentRow({
       </div>
 
       {/* **ولا عمودَ ملصقٍ لقائمة** — لا ملصقَ لها أصلاً، **وإطارٌ فارغٌ
-          بعرض ٨٤px يُقرأ صورةً لم تُحمَّل** (D-181). */}
-      {!isList && (
+          بعرض ٨٤px يُقرأ صورةً لم تُحمَّل** (D-181).
+          🔴 🆕 **وللقائمة غلافُها اليوم** (D-425، بلاغُ أحمد: «Mesh علّقت
+          على لسته المفروض صورة اللستة تطلع هنا»): **الحجّةُ أعلاه ماتت
+          يومَ صار للقائمة غلافٌ مختار** (D-208) — **والفراغُ لم يعد
+          صدقاً، صار بياناً عندنا لا نعرضه.**
+          **وشكلُه عريضٌ لا ملصق**: الغلافُ ١٦:٩ **وقصُّه إلى ٢:٣ يأكل
+          ثلثيه**، **واختلافُ الشكل نفسُه يقول «هذه قائمةٌ لا عمل»** —
+          فرقٌ يُقرأ بلا كلمة (D-002 معكوسةً: مقاسان لأن المعنيين اثنان).
+          **وقائمةٌ بلا غلافٍ تبقى بلا عمود** حرفاً كما كانت. */}
+      {!isList ? (
         <RowPoster
           tmdbId={a.tmdb_id}
           mediaType={a.media_type}
@@ -662,6 +671,21 @@ function CommentRow({
           added={added}
           locale={locale}
         />
+      ) : (
+        a.listCover && (
+          <Link
+            href={listHref ?? "#"}
+            className={`${POSTER_W} shrink-0 block rounded-xl overflow-hidden border border-border bg-surface-2 relative aspect-video active:scale-[.98] transition`}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={backdropUrl(a.listCover, "w300") ?? ""}
+              alt=""
+              loading="lazy"
+              className="w-full h-full object-cover"
+            />
+          </Link>
+        )
       )}
     </article>
   );
