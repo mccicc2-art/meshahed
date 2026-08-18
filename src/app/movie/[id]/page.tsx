@@ -9,7 +9,6 @@ import {
   getMyLists,
   getListsContaining,
   getPublicListsContaining,
-  getTitleCircle,
   getMyArtFor,
   getTitlePulse,
   getMyFavorites,
@@ -35,7 +34,6 @@ import { WatchChip } from "@/components/WatchChip";
 import { TitleActions } from "@/components/TitleActions";
 import { TitlePulse } from "@/components/TitlePulse";
 import { DetailTopBar } from "@/components/DetailTopBar";
-import { CircleNote } from "@/components/CircleNote";
 import { ReadMore } from "@/components/ReadMore";
 import { buttonClass } from "@/components/ui/Button";
 
@@ -52,15 +50,13 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
   // وانتظار الأولى قبل الثانية كان يضيف رحلة كاملة إلى الخادم
   // بيانات أول رسمة فقط — الترايلر والتعليقات تُبثّ لاحقاً عبر Suspense
   const userRegion = await getWatchRegion();
-  const [movie, followState, watched, watchWhere, myLists, inLists, circle, myArt, favs, pulse] = await Promise.all([
+  const [movie, followState, watched, watchWhere, myLists, inLists, myArt, favs, pulse] = await Promise.all([
     getMovie(movieId).catch(() => null),
     getFollowState(movieId, "movie"),
     isMovieWatched(movieId),
     getWatchProviders("movie", movieId),
     getMyLists(),
     getListsContaining(movieId, "movie"),
-    /* نشاط دائرتك (D-127) — داخل الموجة نفسها؛ انظر تعليق صفحة المسلسل */
-    getTitleCircle(movieId, "movie"),
     /* غلافي المختار لهذا العمل (D-131) — قراءةٌ من خريطةٍ مخبّأة لكل طلب */
     getMyArtFor(movieId, "movie"),
     /* مفضّلاتي (D-130) — نداءٌ واحد مخبّأ للطلب، لا سؤالٌ لكل عمل */
@@ -195,15 +191,25 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
               الفاتح، **فتُقرأ لطخةً لا رفعاً.** و`color-mix` تشتقّها من
               `--background` نفسِها: **سوداءُ في الليل وبيضاءُ في النهار
               بلا متغيّرٍ جديد ولا فرعٍ في الشيفرة.** */}
-            <h1
-              className="text-xl sm:text-3xl font-extrabold leading-tight tracking-tight"
-              style={{
-                filter:
-                  "drop-shadow(0 2px 10px color-mix(in srgb, var(--background) 70%, transparent))",
-              }}
-            >
-              {title}
-            </h1>
+            {/* 🆕 **ونبضُنا على سطر الاسم** (D-418، طلبُ أحمد بسهمٍ من
+                السطر إلى الفراغ جنب الاسم: «القلب والنجمة في صف اسم
+                العمل»): **كان سطراً رابعاً تحت التقييمات**، **والفراغُ
+                جنبَ الاسم أوسعُ ما في الترويسة** — **ورقمان صغيران في
+                فراغٍ قائمٍ خيرٌ من سطرٍ يُضاف.** */}
+            <div className="flex items-start gap-3">
+              <h1
+                className="text-xl sm:text-3xl font-extrabold leading-tight tracking-tight"
+                style={{
+                  filter:
+                    "drop-shadow(0 2px 10px color-mix(in srgb, var(--background) 70%, transparent))",
+                }}
+              >
+                {title}
+              </h1>
+              <span className="ms-auto shrink-0 -mt-0.5">
+                <TitlePulse hearts={pulse.hearts} votes={pulse.votes} avg={pulse.avg} locale={locale} />
+              </span>
+            </div>
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs sm:text-sm text-muted mt-1">
               {movie.release_date && <span>{movie.release_date.slice(0, 4)}</span>}
               {movie.runtime ? (
@@ -230,13 +236,14 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
               />
             </Suspense>
 
-            {/* 🆕 **ونبضُنا تحت نبض العالم** (D-408): ما يقوله IMDb
-                أوّلاً، **وما يقوله أهلُ Loopz بعده مباشرة** — والحجّةُ
-                كاملةً في رأس المكوّن. */}
-            <TitlePulse hearts={pulse.hearts} votes={pulse.votes} avg={pulse.avg} locale={locale} />
 
-            {/* «٣ ممن تتابعهم شاهدوه» (D-127) — انظر تعليق صفحة المسلسل */}
-            <CircleNote circle={circle} locale={locale} />
+            {/* ⚖️ 🆕 **وسطرُ الدائرة حُذف** (D-419، شطبَه أحمد بخطٍّ على
+                اللقطة): «٤ ممن تتابعهم شاهدوه · ويقيّمونه ٩٫٨» —
+                **جملةٌ من سطرين تحت أربعة أسطرٍ من الأرقام**، **وقد صار
+                فوقها نبضُنا يقول العددَ والمتوسّطَ في ستّة رموز**
+                (D-408). **وحقيقةٌ تُقال مرّتين بصيغتين تُقرأ زحاماً**
+                (D-222). **والنصُّ باقٍ في خطّ النشاط حيث لكلِّ صاحبٍ
+                اسمُه** — **ولم يُحذف المعنى، حُذف تكرارُه.** */}
 
             {/* الأنواع صعدت من تبويب «معلومات» إلى جنب الملصق (طلب المالك):
                 هوية الفيلم تُقرأ قبل قصّته لا بعدها */}
