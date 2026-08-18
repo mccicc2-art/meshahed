@@ -1288,8 +1288,8 @@ const ar = {
   topTenSeries: "أفضل ١٠ مسلسلات هذا الأسبوع",
   topTenAnime: "أفضل ١٠ أنمي هذا الأسبوع",
   // نافذة كل صفّ «أفضل ١٠» — أزرار خفيفة في عنوانه (D-099)
-  top10Movies: "أفضل ١٠ أفلام",
-  top10Series: "أفضل ١٠ مسلسلات",
+  top10Movies: "أفضل ١٠ أفلام هذا الأسبوع",
+  top10Series: "أفضل ١٠ مسلسلات هذا الأسبوع",
   top10Anime: "أفضل ١٠ أنمي",
   /* تبويب الأنمي يفصل الفيلم عن المسلسل (D-169، طلب أحمد): «أنمي»
      وحدها كانت تعني المسلسلات فقط، والأفلام لم يكن لها صفٌّ قطّ. */
@@ -1304,8 +1304,8 @@ const ar = {
   railWinYear: "سنة",
   railWinEmpty: "لا أعمال تكفي في هذه النافذة بعد",
   // ٢٥ لا ٥٠ (طلب أحمد): الذيل أخفّ، والعمق كله في قوائم TOP 250
-  top50Movies: "أفضل ٥٠ فيلماً على الإطلاق",
-  top50Series: "أفضل ٥٠ مسلسلاً على الإطلاق",
+  top50Movies: "أفضل ٢٥ فيلماً هذي السنة",
+  top50Series: "أفضل ٢٥ مسلسلاً هذي السنة",
   top50Anime: "أفضل ٥٠ أنمي على الإطلاق",
   pickedRefresh: "اقتراحات أخرى",
   pickedRefreshAria: "عرض عشرة اقتراحاتٍ أخرى",
@@ -2558,8 +2558,8 @@ const en: Dict = {
   topTenMovies: "Top 10 movies this week",
   topTenSeries: "Top 10 shows this week",
   topTenAnime: "Top 10 anime this week",
-  top10Movies: "Top 10 movies",
-  top10Series: "Top 10 shows",
+  top10Movies: "Top 10 movies this week",
+  top10Series: "Top 10 shows this week",
   top10Anime: "Top 10 anime",
   top10AnimeMovies: "Top 10 anime movies",
   top10AnimeSeries: "Top 10 anime shows",
@@ -2571,8 +2571,8 @@ const en: Dict = {
   railWinMonth: "Month",
   railWinYear: "Year",
   railWinEmpty: "Nothing here for this window yet",
-  top50Movies: "Top 50 movies of all time",
-  top50Series: "Top 50 shows of all time",
+  top50Movies: "Top 25 films this year",
+  top50Series: "Top 25 shows this year",
   top50Anime: "Top 50 anime of all time",
   pickedRefresh: "More picks",
   pickedRefreshAria: "Show ten more picks",
