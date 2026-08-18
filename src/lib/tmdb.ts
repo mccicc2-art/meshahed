@@ -1260,6 +1260,18 @@ export interface WatchOptions {
   buy: Provider[];
   /** مجاني بإعلانات */
   free: Provider[];
+  /**
+   * 🔴 🆕 **الطبقةُ الخامسة: مجّانيٌّ بإعلانات عند JustWatch** (D-415،
+   * بلاغُ أحمد بثلاث لقطات: Google وJustWatch كلاهما يقول «شاهد —
+   * مجّاناً» لعملٍ صفحتُنا تقول عنه لا شيء).
+   *
+   * **وTMDB تفصل `free` عن `ads`**: الأولى بلا مقابلٍ ولا إعلان،
+   * **والثانية مجّانيّةٌ بفواصلَ إعلانيّة** — **وهي التي تعيش فيها أكثرُ
+   * المنصّات العربيّة** (شاهد · Yango Play). **وقارئُنا كان يقرأ أربعاً
+   * من خمس**، **فعملٌ كلُّ مشاهديه يجدونه مجّاناً كان يُقرأ عندنا بلا
+   * منصّة.**
+   */
+  ads: Provider[];
   /** رابط JustWatch الرسمي — TMDB تشترط عرضه مع البيانات */
   link: string | null;
 }
@@ -1282,7 +1294,14 @@ export async function getWatchProviders(
     const data = await tmdb<{
       results: Record<
         string,
-        { link?: string; flatrate?: Provider[]; rent?: Provider[]; buy?: Provider[]; free?: Provider[] }
+        {
+          link?: string;
+          flatrate?: Provider[];
+          rent?: Provider[];
+          buy?: Provider[];
+          free?: Provider[];
+          ads?: Provider[];
+        }
       >;
     }>(`/${mediaType}/${id}/watch/providers`);
 
@@ -1294,10 +1313,15 @@ export async function getWatchProviders(
         rent: r.rent ?? [],
         buy: r.buy ?? [],
         free: r.free ?? [],
+        ads: r.ads ?? [],
         link: r.link ?? null,
       };
       const any =
-        options.flatrate.length || options.rent.length || options.buy.length || options.free.length;
+        options.flatrate.length ||
+        options.rent.length ||
+        options.buy.length ||
+        options.free.length ||
+        options.ads.length;
       if (any) return { region, options };
     }
     return null;

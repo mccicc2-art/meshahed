@@ -96,6 +96,66 @@ export async function externalRatings(imdbId: string | null | undefined): Promis
 }
 
 /**
+ * 🔴 🆕 **جسرٌ ثانٍ إلى IMDb: الاسمُ والسنة** (D-414، بلاغُ أحمد بثلاث
+ * لقطات — IMDb وGoogle وJustWatch كلُّها تعرف «في ال لا لا لاند»:
+ * «كلّهم يعرفونه، أنت اللي ما عرفت تسحب بياناته»).
+ *
+ * ================= والمقيسُ يقول إنه محقّ =================
+ *
+ * **الجسرُ الوحيد إلى IMDb عندنا كان `tmdb.external_ids.imdb_id`**.
+ * **وصفحةُ TMDB لهذا المسلسل بلا رابطِ IMDb أصلاً** (قِيس على
+ * `themoviedb.org/tv/72337`: **لا `imdb.com/title` في صفحتها**) —
+ * **فالمعرّفُ فارغٌ، فلا نداءَ لـOMDb، فلا تقييمَ ولا تصنيفَ عمريّ.**
+ * **والعملُ في IMDb بـ٦٫٦ من ٨٨٦ صوتاً.**
+ *
+ * **⚠️ والدرسُ أكبرُ من الحالة**: **مصدرٌ واحدٌ لحقيقةٍ يملكها العالمُ
+ * كلُّه هو نقطةُ سقوطٍ واحدة** — **وثغرةٌ في بياناتِ طرفٍ ثالثٍ تصير
+ * عندنا «العملُ لا يُعرف»**، **وهو ما قرأه أحمد على الشاشة.**
+ *
+ * ================= والبحثُ يُقبل بشرطين لا واحد =================
+ *
+ * **OMDb تبحث بالاسم** (`s=`) وتُرجع قائمةً فيها `imdbID` و`Year`
+ * و`Type`. **والقبولُ يشترط**: النوعُ نفسُه (`series`/`movie`)
+ * **والسنةُ تطابق ±١** — **واسمٌ يطابق تقريباً ليس دليلاً**، وأسماءُ
+ * الأعمال العربيّة تُنقل حرفيّاً بأكثر من صورة (`Fi El` مقابل `Fi Al`)
+ * **فالسنةُ هي الحكم.** **ولا يُقبل ترشيحٌ بلا سنة.**
+ *
+ * ⚠️ **ولا يقع هذا النداءُ إلا حين يسقط الجسرُ الأوّل** — **وأكثرُ
+ * الأعمال يصلها معرّفُها من TMDB** (D-152: الافتراضُ هو ما كان).
+ */
+export async function imdbIdByName(
+  name: string,
+  year: number | null,
+  kind: "series" | "movie",
+): Promise<string | null> {
+  const key = process.env.OMDB_API_KEY;
+  const q = (name ?? "").trim();
+  if (!key || q.length < 3 || !year) return null;
+  try {
+    const res = await fetch(
+      `https://www.omdbapi.com/?apikey=${key}&s=${encodeURIComponent(q)}&type=${kind}`,
+      { next: { revalidate: 86400 } },
+    );
+    if (!res.ok) return null;
+    const j = (await res.json()) as {
+      Response?: string;
+      Search?: { Title: string; Year: string; imdbID: string; Type: string }[];
+    };
+    if (j.Response === "False" || !j.Search?.length) return null;
+    for (const hit of j.Search) {
+      if (hit.Type !== kind) continue;
+      /* «2017» أو «2017–2018» — أوّلُ أربعة أرقام هي سنةُ البدء */
+      const y = Number((hit.Year ?? "").slice(0, 4));
+      if (!Number.isFinite(y)) continue;
+      if (Math.abs(y - year) <= 1 && /^tt\d+$/.test(hit.imdbID)) return hit.imdbID;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * تقييمات IMDb لحلقات موسمٍ كامل — طلبٌ واحد للموسم كلّه.
  *
  * OMDb يعيد الموسم بحلقاته في ردٍّ واحد (`&Season=n`)، فالكلفة حلقة
