@@ -187,6 +187,7 @@ export async function TitleCommunityTab({
     <div>
       <TitleJoinCard
         talkHref={talkHref}
+        title={title}
         locale={locale}
         composer={
           <RatingBox

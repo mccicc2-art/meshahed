@@ -3,6 +3,7 @@
 import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { Icon } from "./Icon";
+import { Sheet } from "./ui/Sheet";
 import { getDict, type Locale } from "@/lib/i18n";
 import { tap } from "@/lib/haptics";
 
@@ -34,10 +35,13 @@ import { tap } from "@/lib/haptics";
  */
 export function TitleJoinCard({
   talkHref,
+  title,
   locale,
   composer,
 }: {
   talkHref: string;
+  /** اسمُ العمل — عنوانُ ورقة الكتابة، كما تفعل بطاقةُ Letterboxd */
+  title: string;
   locale: Locale;
   /** مؤلّفُ الرأي — يُرسم على الخادم ويُفتح هنا */
   composer: ReactNode;
@@ -76,11 +80,30 @@ export function TitleJoinCard({
         </Link>
       </div>
 
-      {/* **المؤلّفُ يُخفى بـ`hidden` لا يُحذف**: ما كُتب فيه قبل الطيّ
-          يبقى — نفسُ حجّة `DetailTabs`. */}
-      <div hidden={!open} className="px-3.5 pb-3.5 pt-1">
-        {composer}
-      </div>
+      {/* 🔴 🆕 **والمؤلّفُ صار ورقةً لا طيّةً في البطاقة** (D-411، حكمُ
+          أحمد على تجربتنا مقابل Letterboxd): **كان يُفتح تحت البطاقة
+          داخل تبويبٍ داخل صفحة** — **فيدفعه لوحُ المفاتيح خارجَ النظر
+          ويكتب المرءُ في نافذةٍ من ثلاثة أسطر.** **والورقةُ العلويّة هي
+          ما تستعمله كتابةُ النقاش أصلاً** (`TalkCompose`) — **فلا عائلةَ
+          ثالثة، والسطحان صارا واحداً.**
+          ⚠️ **وحالةُ المسودّة تُفقد بالإغلاق**: `Sheet` يُزيل محتواه —
+          **وهو ما كان `hidden` يشتريه.** **والثمنُ مقبولٌ لأن الحفظَ
+          صار على بُعد زرٍّ ملتصقٍ بالقاع لا مدفونٍ تحت اللوح** — ومن
+          أغلق الورقة أغلقها قاصداً. */}
+      <Sheet
+        open={open}
+        onClose={() => setOpen(false)}
+        closeLabel={t.closeLabel}
+        variant="top"
+        labelledBy="write-review-title"
+      >
+        <div className="flex flex-col min-h-0 p-3.5 sm:p-4">
+          <p id="write-review-title" className="font-bold text-[15px] mb-2.5 px-1 truncate">
+            {title}
+          </p>
+          {composer}
+        </div>
+      </Sheet>
     </div>
   );
 }

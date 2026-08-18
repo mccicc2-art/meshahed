@@ -143,10 +143,40 @@ export function RatingBox({
   );
 
   if (variant === "review") {
-    // مؤلّف مضغوط: كان صندوقاً بارتفاع شاشة — عنوان وسطران ونجوم كبيرة
-    // وحقل بخمسة أسطر. صار سطرَ عنوانٍ ونجوماً وثلاثة أسطر كتابة.
+    /**
+     * 🔴 🆕 **سطحُ كتابةٍ لا حقلٌ في بطاقة** (D-411، حكمُ أحمد بأربع
+     * لقطات: تجربتُنا مقابل Letterboxd — «فرق كبير جدًّا، شوفه واحكم»).
+     *
+     * ================= والفرقُ الذي رآه، بالأرقام =================
+     *
+     * **حقلُنا كان ثلاثةَ أسطر** (`rows={3}`) داخل بطاقةٍ داخل تبويب.
+     * **ومراجعتُه التي أرسلها ستُّ فقرات** — **فكان يكتبها في نافذةٍ
+     * ترى منها ثلاثةَ أسطر**، وما كُتب يصعد خارج النظر كلَّما تابع.
+     * **وLetterboxd يفتح ورقةً بارتفاع الشاشة**: الملصقُ والاسمُ فوق،
+     * والنجومُ، **ثم مساحةُ كتابةٍ تملأ ما بقي.** **والفرقُ ليس ذوقاً:
+     * الكتابةُ الطويلة تحتاج أن ترى ما كتبتَه.**
+     *
+     * **١ · فصار الحقلُ يملأ ما تحته** (`min-h-[38svh]` و`flex-1`):
+     * **`svh` لا `vh`** — على الجوال يفتح لوحُ المفاتيح فيقصّ `vh`
+     * ثلثَها، **والوحدةُ الصغرى هي الصادقةُ حين يكون اللوحُ مفتوحاً**
+     * (نفسُ حجّة `Sheet`).
+     *
+     * **٢ · وصفُّ الأفعال يلتصق بالقاع** (`sticky bottom-0`): **زرُّ
+     * الحفظ كان يهرب تحت لوح المفاتيح** كلَّما طال النصّ — **وفعلٌ لا
+     * يُرى لا يقع** (D-142).
+     *
+     * **٣ · والعدّادُ يظهر عند الطرف وحدَه** (آخرُ ٢٠٠ حرف): **سقفُ
+     * الألفين حقيقةٌ لا تُقال إلا حين تقترب** (D-222) — **وعدّادٌ يعدّ من
+     * الحرف الأوّل يُشعر الكاتبَ أنه مراقَب.**
+     *
+     * ⚠️ **ولا قلبَ هنا وإن كان عند Letterboxd**: «أعجبني» فعلٌ له بابُه
+     * في ترويسة العمل (D-130)، **وبابان لفعلٍ واحد هو ما تمنعه القاعدة
+     * ٦** — **والنجمةُ والقلبُ ليسا شيئاً واحداً عندنا** (تقييمٌ ورأيٌ
+     * في مقابل تفضيل).
+     */
+    const near = review.length > 1800;
     return (
-      <div className="bg-surface border border-border rounded-2xl p-4">
+      <div className="flex flex-col min-h-0">
         <div className="flex items-baseline justify-between gap-3 mb-2.5">
           <h3 className="font-bold text-[15px]">{t.reviewSectionTitle}</h3>
           {saved && (
@@ -167,10 +197,16 @@ export function RatingBox({
             setSaved(false);
           }}
           maxLength={2000}
-          rows={3}
+          rows={8}
           placeholder={t.reviewPlaceholder}
-          className="w-full rounded-xl bg-surface-2 border border-border px-3.5 py-2.5 outline-none focus:border-accent transition text-sm leading-relaxed resize-y"
+          className="w-full flex-1 min-h-[38svh] rounded-xl bg-surface-2 border border-border px-3.5 py-3 outline-none focus:border-accent transition text-[15px] leading-[1.9] resize-none"
         />
+
+        {near && (
+          <p className="mt-1 text-end text-[11px] text-muted tabular-nums" aria-live="polite">
+            {2000 - review.length}
+          </p>
+        )}
 
         {error && (
           <Alert inline className="mt-2.5">
@@ -178,7 +214,7 @@ export function RatingBox({
           </Alert>
         )}
 
-        <div className="flex items-center gap-2 flex-wrap mt-2.5">
+        <div className="sticky bottom-0 -mx-1 px-1 pt-2.5 pb-1 bg-[color:var(--elevated)] flex items-center gap-2 flex-wrap">
           <button
             onClick={save}
             disabled={pending}
@@ -209,7 +245,7 @@ export function RatingBox({
               type="button"
               onClick={remove}
               disabled={pending}
-              className="text-[13px] text-muted hover:text-red-300 px-2.5 py-2 rounded-lg hover:bg-surface-2 transition"
+              className="ms-auto text-[13px] text-muted hover:text-[color:var(--error)] px-2.5 py-2 rounded-lg hover:bg-surface-2 transition"
             >
               {t.deleteRating}
             </button>
