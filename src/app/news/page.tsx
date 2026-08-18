@@ -19,7 +19,7 @@ import { parseMyRows, MY_ROWS_COOKIE, type MyRow } from "@/lib/myRows";
 import { BROWSE_GENRES, BROWSE_TAGS, browseGenreName, browseTagName } from "@/lib/browse";
 import { LOOPZ_PERSON } from "@/lib/loopz";
 import { Avatar } from "@/components/Avatar";
-import { PublicListsRail } from "@/components/PublicListsRail";
+import { PublicListsRail, ListCardShell } from "@/components/PublicListsRail";
 import { ListsFilters } from "@/components/ListsFilters";
 import { ListSaveHeart } from "@/components/ListSaveHeart";
 import { ListRateStar } from "@/components/ListRateStar";
@@ -27,7 +27,6 @@ import { PosterRail, RailItem } from "@/components/PosterRail";
 import { FRANCHISES, franchiseName, universeName, type Universe } from "@/lib/universes";
 import { awardBySlug, awardBody, awardWins } from "@/lib/awards";
 import { Icon } from "@/components/Icon";
-import Image from "next/image";
 import {
   topTenAnimeThisWeek,
   topTenAnimeMoviesThisWeek,
@@ -763,93 +762,78 @@ async function CuratedCard({
 
   return (
     <div className={`rounded-2xl border border-border bg-surface p-2.5 ${className}`}>
-      <span className="flex items-center gap-1.5 text-[14px] font-bold">
-        <Icon
-          name={award ? "star" : "sparkle-star"}
-          size={14}
-          className="text-accent shrink-0"
-        />
-        <span className="min-w-0 flex-1 truncate">{universeName(u, loc)}</span>
-        {/* **رمزُ الحفظ في الزاوية** (D-204): كان زرّاً بعرض البطاقة يقول
-            «احفظها في قوائمي» — **فيُقرأ الفعلَ الأوّل وهو ليس كذلك**:
-            الأوّلُ فتحُها. والرمزُ عُرفٌ يُقرأ بلا كلمة، ويترك مساحةَ
-            الصورة للصورة. */}
-        {/* 🔴 **القلبُ وحدَه — وسقط البوك‑مارك ومعه النسخ** (D-347،
-            حكمُ أحمد بعد أن عُرضت عليه الحالتان: «القلب وحده»).
-            **ولم يكن رمزين لفعلٍ واحد، بل رمزين لفعلين**: البوك‑مارك
-            **ينسخ** المجموعةَ قائمةً مجمّدةً باسمك، والقلبُ **يحفظ
-            مرجعاً حيّاً** في `list_saves` (D-068/D-324).
-            **والنسخُ وُلد لأن المجموعةَ لم تكن قائمةً** — وصارت قائمةً
-            حقيقيةً في D-328، **فبقي الفعلُ الأقدمُ يعمل بلا سببه.**
-            **وثمنُه كان الأرقامَ كلَّها**: من ضغط البوك‑مارك لم يُكتب له
-            صفُّ حفظ، **فبقي ♥ صفراً و★ مخفيّةً** على أغنى بطاقاتنا. */}
-        {/* 🆕 **النجمةُ يسارَ القلب وظاهرةٌ دائماً** (D-352) — نفسُ
-            بطاقة العضو حرفاً، **فلا إيقاعان لبطاقتين متجاورتين.** */}
-        {listId && canReview && (
-          <ListRateStar
-            listId={listId}
-            listName={universeName(u, loc)}
-            rating={stats?.rating ?? null}
-            mine={mine ?? null}
-            locale={locale}
+      {/* 🆕 **الهيكلُ من `ListCardShell`** (D-383) — **بطاقةُ لوبز وبطاقةُ
+          العضو صارتا شيئاً واحداً**: كان هذا الملفُّ يرسم السطرين
+          والملصقاتِ بيده، **وبطاقةُ المجتمع ترسمهما بعمودٍ في الزاوية**،
+          **فقُرئ صفُّ «القوائم» صفَّين بإيقاعين** (بلاغُ أحمد على لقطتين).
+          **ولا شيءَ هنا سقط**: الرمزُ قبل الاسم، والنجمةُ والقلبُ في
+          سطره، ووعدُ الترتيب ذيلاً للعدّ. */}
+      <ListCardShell
+        name={universeName(u, loc)}
+        icon={
+          <Icon
+            name={award ? "star" : "sparkle-star"}
+            size={14}
+            className="text-accent shrink-0"
           />
-        )}
-        {listId && <ListSaveHeart listId={listId} saved={saved} locale={locale} />}
-      </span>
-
-      {/* 🆕 **وجهُ لوبز والأرقامُ سطراً ثانياً بعرض البطاقة** (D-335→D-336،
-          طلبُ أحمد على اللقطة: «السطر الثاني تحطه تحت وينكتب من بداية
-          السطر بحيث الأيقونة تكون موازية للنجمة»): كان السطرُ محشوراً
-          داخل عمود العنوان **فتَبدأ الدائرةُ بعد مسافةِ النجمة** — وصار
-          صفّاً مستقلّاً يبدأ من بداية البطاقة، **فالدائرةُ تحت النجمة
-          حرفاً**. الارتفاعُ كما هو: سطران قبلُ وسطران بعد.
-          **والعدُّ يتنازل عند الضيق لا الأرقامُ** (D-219). */}
-      <span className="mt-1 flex items-center gap-1 text-[12px] font-normal text-muted min-w-0">
-        <Avatar
-          src={LOOPZ_PERSON.avatar_url}
-          name={LOOPZ_PERSON.nickname}
-          size={14}
-          className="shrink-0"
-        />
-        <span className="shrink-0">{LOOPZ_PERSON.nickname}</span>
-        {!canReview && (stats?.rating ?? null) !== null && (
-          <span
-            className="flex items-center gap-0.5 shrink-0 font-bold text-foreground tabular-nums"
-            dir="ltr"
-          >
-            <Icon name="star" size={11} className="text-accent" />
-            {num(stats!.rating as number, locale)}
-          </span>
-        )}
-        {(stats?.saves ?? 0) > 0 && (
-          <span className="flex items-center gap-0.5 shrink-0 tabular-nums" dir="ltr">
-            <Icon name="heart-filled" size={11} className="fill-current" />
-            {num(stats!.saves, locale)}
-          </span>
-        )}
-        <span aria-hidden>·</span>
-        <span className="truncate">
-          {t.listCount(count)}
-          {award ? ` · ${awardBody(award, loc)}` : u.storyOrder ? ` · ${t.listsStoryOrder}` : ""}
-        </span>
-      </span>
-
-      {posters.length === 0 ? (
-        <span className="mt-2 grid place-items-center w-14 aspect-[2/3] rounded-lg border border-dashed border-border text-muted">
-          <Icon name="list" size={16} />
-        </span>
-      ) : (
-        <span className="mt-2 flex gap-1.5">
-          {posters.slice(0, 3).map((url, i) => (
-            <span
-              key={i}
-              className="relative w-[calc(33.333%-4px)] aspect-[2/3] rounded-lg overflow-hidden bg-surface-2 border border-[color:var(--background)]"
-            >
-              <Image src={url} alt="" fill sizes="80px" className="object-cover" />
-            </span>
-          ))}
-        </span>
-      )}
+        }
+        /* 🆕 **النجمةُ ظاهرةٌ دائماً ورقمُها معها** (D-352/D-383) —
+           **ومن لا حساب له يرى الرقمَ ساكناً** (D-217). */
+        star={
+          listId && canReview ? (
+            <ListRateStar
+              listId={listId}
+              listName={universeName(u, loc)}
+              rating={stats?.rating ?? null}
+              mine={mine ?? null}
+              locale={locale}
+            />
+          ) : (
+            (stats?.rating ?? null) !== null && (
+              <span
+                className="shrink-0 flex items-center gap-1 px-1 text-[12px] font-bold text-accent tabular-nums"
+                dir="ltr"
+              >
+                <Icon name="star" size={16} />
+                {num(stats!.rating as number, locale)}
+              </span>
+            )
+          )
+        }
+        /* 🔴 **القلبُ وحدَه — وسقط البوك‑مارك ومعه النسخ** (D-347) */
+        heart={
+          listId ? (
+            <ListSaveHeart
+              listId={listId}
+              saved={saved}
+              count={stats?.saves ?? 0}
+              locale={locale}
+            />
+          ) : (
+            (stats?.saves ?? 0) > 0 && (
+              <span
+                className="shrink-0 flex items-center gap-1 px-1 text-[12px] text-muted tabular-nums"
+                dir="ltr"
+              >
+                <Icon name="heart-filled" size={16} className="fill-current" />
+                {num(stats!.saves, locale)}
+              </span>
+            )
+          )
+        }
+        ownerAvatar={
+          <Avatar
+            src={LOOPZ_PERSON.avatar_url}
+            name={LOOPZ_PERSON.nickname}
+            size={14}
+            className="shrink-0"
+          />
+        }
+        ownerName={LOOPZ_PERSON.nickname}
+        countText={t.listCount(count)}
+        extra={award ? ` · ${awardBody(award, loc)}` : u.storyOrder ? ` · ${t.listsStoryOrder}` : ""}
+        posters={posters}
+      />
     </div>
   );
 }
