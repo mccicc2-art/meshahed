@@ -413,8 +413,7 @@ export function PeopleLeaderboard({
  * (D-002).
  */
 export function TopSavedLists({
-  cards = [],
-  rows,
+  cards,
   locale,
   seeAllHref,
 }: {
@@ -429,19 +428,11 @@ export function TopSavedLists({
    * **والآن `shapeListCards` تشكّلها كما تشكّل بطاقةَ اكتشف والمكتبة
    * وصفحةِ الشخص** — **مكانٌ واحدٌ تُبنى فيه البطاقة.**
    */
-  cards?: PublicListCard[];
-  /**
-   * ⚠️ **حزامُ نافذةِ النشر وحدَه** (D-028): هذا الملفُّ يُرفع في دفعةٍ
-   * وصفحةُ الأعضاء في أخرى، **وبينهما كوميتٌ تبنيه Vercel** —
-   * **ومعاملٌ يختفي في الأولى يُحمِّر البناءَ في الثانية.** فيُقبل الاسمُ
-   * القديم ولا يُقرأ، **ويُحذف في الرفعة التالية للملفّ نفسِه**
-   * («يُرفع الملفُّ مرّتين» — D-028/D-299). **ولا يبقى بعدها** (D-214).
-   */
-  rows?: unknown;
+  /* ✅ **وحزامُ النشر (`rows`) سقط في الرفعة التالية كما وُعد** (D-028/D-214) */
+  cards: PublicListCard[];
   locale: Locale;
   seeAllHref?: string;
 }) {
-  void rows;
   const t = getDict(locale);
   /* **ومن لا شيءَ له لا يُعرض في لوحة** (D-181) — والقسمُ يغيب كلَّه */
   if (!cards.length) return null;
