@@ -1,5 +1,5 @@
 import { externalRatings, imdbIdByName } from "@/lib/omdb";
-import { tvImdbId } from "@/lib/tmdb";
+import { altTitles, tvImdbId } from "@/lib/tmdb";
 
 /**
  * سطر التقييمات في ترويسة العمل — IMDb وطماطم فقط، بشعاراتهما.
@@ -60,6 +60,7 @@ export async function HeroRatings({
   tvId,
   name,
   year,
+  movieId,
   ageLabel,
   compact = false,
 }: {
@@ -75,6 +76,13 @@ export async function HeroRatings({
    */
   name?: string | null;
   year?: number | null;
+  /**
+   * 🔴 🆕 **الجسرُ الثالث — صيغُ الاسم كلُّها** (D-430، دَينُ D-414).
+   * **معرّفُ الفيلم في TMDB** ليُسأل `/alternative_titles` حين يسقط
+   * الجسران. **اختياريٌّ**: من لا يمرّره يبقى على جسرين حرفاً (D-152).
+   * **والمسلسلُ لا يحتاجه**: `tvId` هو معرّفُه أصلاً.
+   */
+  movieId?: number;
   /** اسمُ «التصنيف العمري» بلغة القارئ — لقارئ الشاشة وحدَه (D-177) */
   ageLabel?: string;
   /**
@@ -85,10 +93,29 @@ export async function HeroRatings({
   compact?: boolean;
 }) {
   const first = imdbId ?? (tvId ? await tvImdbId(tvId) : null);
+  const kind = tvId ? ("series" as const) : ("movie" as const);
   /* **ولا يُبحث بالاسم إلا بعد أن يسقط المعرّف** (D-414) — نداءٌ لا يقع
      لأكثر الأعمال، **وردُّه مخبّأٌ يوماً كردِّ التقييم نفسِه.** */
-  const iid =
-    first ?? (name ? await imdbIdByName(name, year ?? null, tvId ? "series" : "movie") : null);
+  const second = first ?? (name && year ? await imdbIdByName(name, year, kind) : null);
+  /* 🔴 🆕 **والجسرُ الثالثُ صيغُ الاسم** (D-430، دَينُ D-414 المعلَن):
+     **الاسمُ المنقولُ عن العربيّة لا صيغةَ واحدةَ له** — TMDB تكتب
+     `Fi El` وIMDb تكتب `Fi Al` — **وحرفٌ يمنع المطابقة.** **وTMDB تحمل
+     الصيغَ كلَّها ولم نكن نسألها.**
+     ⚠️ **ولا يقع إلّا بعد سقوط الجسرين** (D-152)، **ويتوقّف عند أوّل
+     صيغةٍ تطابق** فلا يستنفد السقفَ بلا داعٍ. */
+  let iid = second;
+  const altId = tvId ?? movieId;
+  if (!iid && altId && year) {
+    for (const alt of await altTitles(kind === "series" ? "tv" : "movie", altId)) {
+      /* **والاسمُ الذي جرّبناه لا يُجرَّب ثانيةً** */
+      if (name && alt.toLowerCase() === name.trim().toLowerCase()) continue;
+      const hit = await imdbIdByName(alt, year, kind);
+      if (hit) {
+        iid = hit;
+        break;
+      }
+    }
+  }
   const ext = await externalRatings(iid);
   /* `externalRatings` صارت تُميّز «لا تقييم» عن «لم نصل» (D-172)، فتعود
      بكائنٍ فارغ بدل `null`. والترويسة لا ترسم صفّاً فارغاً.
