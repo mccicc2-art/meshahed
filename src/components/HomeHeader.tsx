@@ -50,13 +50,21 @@ export function HomeHeader({
   const t = getDict(locale);
 
   return (
-    <header className="space-y-4">
+    <header className="space-y-3">
       {/* ===== الصفُّ الأوّل: العلامةُ وأدواتُها =====
           **على الجوال وحدَه**: `HeaderShell` يُخفي الشريط العلويّ في
           الرئيسية على الجوال، **فهذا الصفُّ بديلُه هناك** — وعلى الشاشة
           الواسعة الشريطُ قائمٌ بالجرس وصورة الحساب، **ورأسان في شاشةٍ
           واحدة تكرارٌ لا اتّساق** (قاعدة ٦). */}
-      <div className="md:hidden flex items-center justify-between gap-3 pt-[var(--safe-top)]">
+      {/* 🔴 🆕 **والحشوتان كانتا تُجمعان** (D-437، بلاغُ أحمد بلقطةٍ
+          معلَّمة: «هامش كبير بين لوبز والإعدادات والساعة والبطارية»):
+          `main` يحمل `py-6` **و`--safe-top` يُضاف فوقه** — **فسبعون
+          بكسلاً فارغةً فوق العلامة في التطبيق المثبَّت** (٤٧ للشريط
+          و٢٤ للحشوة). **والصوابُ أن يُلغى حشوُ الصفحة ثم يُحجز موضعُ
+          شريط النظام وحدَه**: `-mt-6` تُعيد الصفَّ إلى رأس النافذة،
+          و`safe-top + 0.5rem` تُنزله تحت الساعة بثمانية بكسلات لا أكثر.
+          ⚠️ **ولا شيء يتغيّر في المتصفّح** حيث `env()` صفر. */}
+      <div className="md:hidden -mt-6 flex items-center justify-between gap-2 pt-[calc(var(--safe-top)+0.5rem)]">
         <Link href="/" aria-label={t.brand} className="shrink-0">
           <LogoWordmark size={30} />
         </Link>
@@ -119,7 +127,7 @@ export function HomeHeader({
               <Link
                 key={s.key}
                 href={s.href ?? "/library"}
-                className={`flex items-center justify-center gap-2.5 py-4 transition active:opacity-70 ${
+                className={`flex items-center justify-center gap-2 py-3.5 transition active:opacity-70 ${
                   i > 0 ? "border-s border-[color:var(--divider)]" : ""
                 }`}
               >
@@ -138,7 +146,7 @@ export function HomeHeader({
               <Link
                 key={s.key}
                 href={s.href ?? "/library"}
-                className="flex items-center justify-center gap-2.5 rounded-2xl border border-border bg-surface py-4 transition hover:border-accent/40 active:scale-[0.99]"
+                className="flex items-center justify-center gap-2 rounded-2xl border border-border bg-surface py-3.5 transition hover:border-accent/40 active:scale-[0.99]"
               >
                 <StatFace stat={s} />
               </Link>
@@ -153,20 +161,21 @@ export function HomeHeader({
 
 /** وجهُ الخانة — **رسمٌ واحدٌ للوضعين**، والذي يتبدّل هو الإطار حولَه */
 function StatFace({ stat }: { stat: HeaderStat }) {
+  /* 🆕 **سطرٌ واحدٌ لا سطران** (D-437، بلاغُ أحمد: «الرقم طالع فوق
+     الكلمة، صلّحه بحيث يكون سطر واحد») — **وارتفاعُ البطاقة نزل الثلث**
+     بلا أن يسقط منها حرف. */
   return (
     <>
       <Icon
         name={stat.icon}
-        size={22}
+        size={20}
         style={{ color: stat.color ?? "var(--accent)" }}
       />
-      <span className="min-w-0">
-        <span className="block text-[22px] font-extrabold leading-none tabular-nums">
-          {stat.value}
-        </span>
-        <span className="block text-[12px] text-muted truncate mt-1">
-          {stat.label}
-        </span>
+      <span className="text-[20px] font-extrabold leading-none tabular-nums">
+        {stat.value}
+      </span>
+      <span className="min-w-0 truncate text-[13px] text-muted leading-none">
+        {stat.label}
       </span>
     </>
   );

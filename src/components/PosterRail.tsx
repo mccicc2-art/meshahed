@@ -59,8 +59,8 @@ export function PosterRail({
 }) {
   return (
     <section className={className}>
-      <div className="flex items-center justify-between gap-3 mb-1">
-        <h2 className="flex items-center gap-2.5 text-[19px] font-bold">
+      <div className="flex items-center justify-between gap-3 mb-0.5">
+        <h2 className="flex items-center gap-2 text-[18px] font-bold">
           {icon && (
             <Icon
               name={icon}
@@ -93,8 +93,8 @@ export function PosterRail({
               </Link>
             )}
       </div>
-      {subtitle && <p className="text-xs text-muted mb-3">{subtitle}</p>}
-      {!subtitle && <div className="mb-3" />}
+      {subtitle && <p className="text-xs text-muted mb-2">{subtitle}</p>}
+      {!subtitle && <div className="mb-2" />}
 
       {/* الهوامش السالبة تجعل الصفّ يلامس حافة الشاشة فيبدو أنه يكمل خلفها.
           overscroll-x-contain: التمرير الزائد على iOS كان يفعّل «رجوع»
@@ -146,9 +146,15 @@ export function PosterRail({
  */
 export type RailSize = "poster" | "backdrop" | "list";
 
+/* 🆕 **والغلافُ ضاق** (D-437، طلبُ أحمد: «بوستر Continue Watching صغّره
+   بحيث يظهر بوستران ونصف ومنها يقلّ الارتفاع»): **٢٦٠ كانت تعرض بطاقةً
+   ونصفاً على شاشة ٣٩٠** — **والصفُّ الذي لا يُظهر جارَه لا يُقرأ صفّاً
+   بل بطاقةً**، فلا يعرف القارئُ أن وراءه شيئاً يُسحب.
+   **و١٧٦ تعطي بطاقتين وثُلثاً**، **والارتفاعُ يتبع العرض** لأن النسبة
+   محفوظة في البطاقة نفسِها لا هنا. */
 const RAIL_W: Record<RailSize, string> = {
   poster: "w-[118px] sm:w-[138px]",
-  backdrop: "w-[260px] sm:w-[320px]",
+  backdrop: "w-[176px] sm:w-[240px]",
   list: "w-[280px] sm:w-[420px] lg:w-[520px]",
 };
 

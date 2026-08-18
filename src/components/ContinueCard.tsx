@@ -283,8 +283,11 @@ export function ContinueCard({
       </Link>
       ) : (
       <Link href={href} prefetch={false} className="group block active:scale-[0.98] transition">
-        {/* نسبة 7/5 بدل 16/10: العرض نقص ~١٢٪ (بطاقات أخفّ وأكثر ظهوراً) والارتفاع بقي مريحاً كما هو */}
-        <div className="relative aspect-[7/5] rounded-poster overflow-hidden bg-surface border border-border">
+        {/* 🆕 **والنسبة صارت ١٦:٩** (D-437، طلبُ أحمد: «صغّره بحيث يظهر
+            بوستران ونصف ومنها يقلّ الارتفاع»): **٧:٥ على عرضٍ ١٧٦ تعطي
+            ١٢٦px ارتفاعاً، و١٦:٩ تعطي ٩٩** — **وهي نسبةُ لقطة المشهد
+            الحقيقيّة** التي يرسلها TMDB أصلاً، **فلا يُقصّ منها شيء.** */}
+        <div className="relative aspect-[16/9] rounded-poster overflow-hidden bg-surface border border-border">
           {url ? (
             <Image
               src={url}
@@ -302,13 +305,13 @@ export function ContinueCard({
           {/* حجاب سفليّ يحمل النصّ: يبقي الصورة مرئية ويضمن قراءة الاسم */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-black/10" />
 
-          <div className="absolute inset-x-0 bottom-0 p-3 pb-3.5">
-            <p className="text-[15px] font-bold leading-tight text-white line-clamp-1 drop-shadow pe-10">
+          <div className="absolute inset-x-0 bottom-0 p-2 pb-2.5">
+            <p className="text-[13.5px] font-bold leading-tight text-white line-clamp-1 drop-shadow pe-9">
               {title}
             </p>
             {/* سطر المعلومات: الحلقة · الباقي — والنسبة في طرفه لا فوق الصورة */}
-            <div className="flex items-baseline justify-between gap-2 mt-1">
-              <span className="text-[12px] font-semibold text-white/75 truncate">
+            <div className="flex items-baseline justify-between gap-2 mt-0.5">
+              <span className="text-[11px] font-semibold text-white/75 truncate">
                 {ep ? (
                   <span dir="ltr">{`S${ep.s} E${ep.e}`}</span>
                 ) : (
@@ -317,7 +320,7 @@ export function ContinueCard({
                 {(ep || episodeLabel) && left > 0 && <span className="text-white/45"> · </span>}
                 {left > 0 && t.leftEps(left)}
               </span>
-              <span className="shrink-0 text-[11px] font-bold text-white/70 tabular-nums" dir="ltr">
+              <span className="shrink-0 text-[10.5px] font-bold text-white/70 tabular-nums" dir="ltr">
                 {pct}%
               </span>
             </div>
@@ -348,7 +351,7 @@ export function ContinueCard({
           aria-label={t.markWatchedAria}
           title={t.markWatchedAria}
           className={`absolute z-10 grid place-items-center w-11 h-11 rounded-full border transition-all duration-200 active:scale-90 ${
-            variant === "row" ? "top-1/2 -translate-y-1/2 end-3" : "top-2.5 end-2.5"
+            variant === "row" ? "top-1/2 -translate-y-1/2 end-3" : "top-1 end-1"
           } ${
             slide !== "idle" || celebrate
               ? "border-transparent text-white scale-105"

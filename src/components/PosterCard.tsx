@@ -35,6 +35,7 @@ export function PosterCard({
   hideTitle = false,
   titleBelow = false,
   saved = false,
+  savedMark = true,
   watched = false,
   hold,
   holdExtra,
@@ -97,6 +98,16 @@ export function PosterCard({
    * «انتهيت»** — بلا كلمةٍ ولا شارة.
    */
   saved?: boolean;
+  /**
+   * 🆕 **هل يُرسم خيطُ «عندك»؟** (D-437).
+   *
+   * **الخيطُ أربعُ حالاتٍ، وثلاثٌ منها تفرّق**: منتهٍ · قيد المشاهدة ·
+   * موقوف. **والرابعة — «في مكتبتك» — تفرّق في أسطح الاكتشاف وحدَها**؛
+   * **وفي صفٍّ عنوانُه «للمشاهدة» أو شبكةٍ اسمُها «مكتبتي» هي تكرارٌ
+   * لعنوان القسم على كلِّ بطاقةٍ فيه** (نفسُ حكم شارة «ما بدأته»،
+   * D-434). **والافتراضيُّ `true` فلا يتغيّر سطرٌ عند أحد** (D-152).
+   */
+  savedMark?: boolean;
   watched?: boolean;
   /* ⚠️ **ويُتجاهلان حين يُمرَّر `hold`** — هناك تسكن الحالةُ التفاؤلية،
      **وخيطان لحالةٍ واحدة يفترقان عند أوّل ضغطة** (D-235). **والحدُّ
@@ -216,7 +227,12 @@ export function PosterCard({
             **و`hold` يُسكتها هنا** لأنه يرسمها بحالته التفاؤليّة
             (D-235) — **خيطان لحالةٍ واحدة يفترقان عند أوّل ضغطة.** */}
         {!hold && (
-          <StatusThread saved={saved} watched={watched} progress={progress} dropped={dropped} />
+          <StatusThread
+            saved={savedMark && saved}
+            watched={watched}
+            progress={progress}
+            dropped={dropped}
+          />
         )}
       </div>
 
@@ -255,6 +271,7 @@ export function PosterCard({
       progress={hold.progress}
       dropped={hold.dropped}
       titleBelow={titleBelow}
+      savedMark={savedMark}
       extra={holdExtra}
       locale={hold.locale}
     >

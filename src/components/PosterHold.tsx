@@ -83,6 +83,7 @@ export function PosterHold({
   progress = 0,
   dropped = false,
   titleBelow = false,
+  savedMark = true,
   extra,
   locale,
   children,
@@ -107,6 +108,8 @@ export function PosterHold({
   dropped?: boolean;
   /** الاسمُ تحت الملصق؟ يُمرَّر إلى خيط الحالة كي يقف على الصورة لا على السطر */
   titleBelow?: boolean;
+  /** 🆕 هل يُرسم خيطُ «عندك»؟ انظر حجّتَه في `PosterCard` (D-437) */
+  savedMark?: boolean;
   /**
    * 🆕 **صفٌّ رابعٌ يملكه السطح** (D-322، طلبُ أحمد: «غير مهتم» انتقلت
    * إلى قائمة الضغط المطوّل بعد أن غادر زرُّها وجهَ الملصق).
@@ -300,7 +303,7 @@ export function PosterHold({
       <StatusThread
         inset
         posterOnly={titleBelow}
-        saved={inList}
+        saved={savedMark && inList}
         watched={seen}
         /* **المُشاهَدُ لا يُعرض «نصفَه»**: ضغطةُ «شاهدته» تُنهيه، ورقمُ
            التقدّم الآتي من الخادم صار قديماً في اللحظة نفسِها. */
