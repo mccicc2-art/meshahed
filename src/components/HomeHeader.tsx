@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Avatar } from "@/components/Avatar";
-import { getDict, type Locale } from "@/lib/i18n";
 import type { HomeView } from "@/lib/homePrefs";
+import { getDict, type Locale } from "@/lib/i18n";
 import { Icon } from "./Icon";
 import { LogoWordmark } from "./Logo";
 import { NotificationBell } from "./NotificationBell";
@@ -33,6 +33,7 @@ export function HomeHeader({
   myUsername,
   stats,
   showStats,
+  levelPercent = 0,
   view,
   locale,
 }: {
@@ -44,6 +45,9 @@ export function HomeHeader({
   /** خاناتُ بطاقة الأرقام — من التخصيص، اثنتان إلى أربع (D-152) */
   stats: HeaderStat[];
   showStats: boolean;
+  /** ٠–١٠٠ — طولُ قوس المستوى حول الصورة (D-439) */
+  levelPercent?: number;
+  /** وضعُ العرض — للمبدّل وحدَه بعد D-439، فبطاقةُ الأرقام لم تعد تتبعه */
   view: HomeView;
   locale: Locale;
 }) {
@@ -91,9 +95,20 @@ export function HomeHeader({
         {/* الصورةُ بابُ ملفّك العامّ — **ما تراه أنت هو ما يراه الناس**،
             ولا نسخةَ خاصّةً منه (قاعدة ٦) */}
         <Link href="/profile" className="shrink-0 md:hidden" aria-label={t.profile}>
+          {/* 🆕 **الهلالُ الذهبيُّ حول الصورة** (D-439، طلبُ أحمد) —
+              **وهو قوسُ مستواك لا زينة**: `conic-gradient` يرسم من
+              التقدّم نسبتَه ذهباً والباقي خافتاً، **فيصير الهلالُ رقماً
+              يُقرأ من طرف العين.**
+              **⚖️ وبه يعود المستوى إلى الرئيسية بعد D-434** — **لا
+              كشريطٍ يأخذ سطراً، بل كحدٍّ حول صورةٍ قائمةٍ أصلاً**:
+              **معلومةٌ بلا بكسلٍ واحدٍ من الارتفاع.**
+              ⚠️ **ولا نداءَ له**: المستوى محسوبٌ من عدّادَي الحلقات
+              والأفلام المقروءَين في الموجة الأولى. */}
           <span
-            className="block rounded-full p-[2px]"
-            style={{ background: "var(--gradient-brand)" }}
+            className="block rounded-full p-[2.5px]"
+            style={{
+              background: `conic-gradient(var(--accent) ${Math.max(0, Math.min(100, levelPercent))}%, color-mix(in srgb, var(--foreground) 14%, transparent) 0)`,
+            }}
           >
             <Avatar
               src={avatarUrl}
@@ -117,42 +132,30 @@ export function HomeHeader({
           **والشكلُ يتبع الوضع**: بطاقةٌ واحدةٌ بفواصلَ رفيعة في المختصر —
           **سطرٌ أقلُّ ارتفاعاً لمن طلب الضغط** — وبطاقةٌ لكلِّ رقمٍ في
           البصريّ. **والمحتوى واحدٌ في الاثنين** فلا يفقد أحدُهما رقماً. */}
+      {/* ===== الصفُّ الثالث: بطاقةُ الأرقام =====
+          ⚖️ 🆕 **وبطاقةٌ واحدةٌ في الوضعين** (D-439، حكمُ أحمد بلقطةٍ
+          للبطاقة: «خلّها بنفس هذا التصميم، **لا تقسمها**»). **كانت
+          بطاقتين منفصلتين في البصريّ وواحدةً في المختصر** — **وشكلان
+          لشيءٍ واحدٍ يتبدّلان بتبدّل وضع العرض يجعلان الترويسةَ نفسَها
+          تُقرأ ترويستين** (القاعدة ٦). **والفاصلُ الرفيع يفرّق الخانات
+          بلا أن يفصل البطاقة.** */}
       {showStats && stats.length > 0 && (
-        view === "compact" ? (
-          <div
-            className="grid rounded-2xl border border-border bg-surface"
-            style={{ gridTemplateColumns: `repeat(${stats.length}, minmax(0,1fr))` }}
-          >
-            {stats.map((s, i) => (
-              <Link
-                key={s.key}
-                href={s.href ?? "/library"}
-                className={`flex items-center justify-center gap-2 py-3.5 transition active:opacity-70 ${
-                  i > 0 ? "border-s border-[color:var(--divider)]" : ""
-                }`}
-              >
-                <StatFace stat={s} />
-              </Link>
-            ))}
-          </div>
-        ) : (
-          <div
-            className="grid gap-3"
-            style={{
-              gridTemplateColumns: `repeat(${Math.min(stats.length, 2)}, minmax(0,1fr))`,
-            }}
-          >
-            {stats.map((s) => (
-              <Link
-                key={s.key}
-                href={s.href ?? "/library"}
-                className="flex items-center justify-center gap-2 rounded-2xl border border-border bg-surface py-3.5 transition hover:border-accent/40 active:scale-[0.99]"
-              >
-                <StatFace stat={s} />
-              </Link>
-            ))}
-          </div>
-        )
+        <div
+          className="grid rounded-2xl border border-border bg-surface"
+          style={{ gridTemplateColumns: `repeat(${stats.length}, minmax(0,1fr))` }}
+        >
+          {stats.map((s, i) => (
+            <Link
+              key={s.key}
+              href={s.href ?? "/library"}
+              className={`flex items-center justify-center gap-2 py-3.5 transition active:opacity-70 ${
+                i > 0 ? "border-s border-[color:var(--divider)]" : ""
+              }`}
+            >
+              <StatFace stat={s} />
+            </Link>
+          ))}
+        </div>
       )}
 
     </header>

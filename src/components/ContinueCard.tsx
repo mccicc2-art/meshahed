@@ -238,9 +238,15 @@ export function ContinueCard({
         prefetch={false}
         className="group flex items-center gap-3 rounded-2xl border border-border bg-surface p-2 pe-16 active:scale-[0.99] transition"
       >
-        <span className="relative w-[104px] shrink-0 aspect-[16/10] rounded-xl overflow-hidden bg-surface-2">
+        {/* 🆕 **والصورةُ كبرت إلى ١٤٤** (D-439، بلاغُ أحمد: «كبّر بوستر
+            أكمل المشاهدة، شكله صغير غير متناسق»): **١٠٤×٦٥ كانت أقصرَ من
+            كتلة النصّ بجانبها** — سطران وخيطُ تقدّمٍ ونسبة — **فيُقرأ
+            الصفُّ نصفَه صورةً ونصفَه فراغاً حولها.** **و١٤٤×٩٠ تساوي
+            الكتلةَ ارتفاعاً** فيصير الصفُّ مستطيلين متجاورين لا صورةً
+            صغيرةً في سطر. */}
+        <span className="relative w-[144px] shrink-0 aspect-[16/10] rounded-xl overflow-hidden bg-surface-2">
           {url ? (
-            <Image src={url} alt="" fill sizes="104px" className="object-cover" />
+            <Image src={url} alt="" fill sizes="144px" className="object-cover" />
           ) : (
             <span className="absolute inset-0 grid place-items-center text-muted">
               <Icon name="film" size={20} />
