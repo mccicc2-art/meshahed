@@ -39,6 +39,7 @@ export function ProfileMenu({
   follow,
   variant = "cover",
   system = false,
+  messageButton = false,
   locale,
 }: {
   person: PersonLite;
@@ -69,6 +70,16 @@ export function ProfileMenu({
    * حساب». **والمكوّنُ واحدٌ بصفوفٍ مرشَّحة لا توأمٌ له** (D-145).
    */
   system?: boolean;
+  /**
+   * 🆕 **زرُّ «رسالة» ظاهرٌ بجانب النقاط** (D-438، خطّةُ أحمد: «Following
+   * وMessage وShare»).
+   *
+   * **ولا مكوّنٌ ثانٍ ولا ورقةٌ ثانية**: الورقةُ (`StartConversationSheet`)
+   * وحارسُها (المتابعةُ المتبادلة، D-051) **يسكنان هنا أصلاً** — **وزرٌّ
+   * خارجيٌّ كان سيعيد كتابة الحارس والتوست ثم يفترقان عند أوّل تعديل**
+   * (القاعدة ٦). **فالمقبضُ يُضاف، والفعلُ في مكانه.**
+   */
+  messageButton?: boolean;
   locale: Locale;
 }) {
   const t = getDict(locale);
@@ -209,6 +220,19 @@ export function ProfileMenu({
           الصندوقَ الأطول فيعلو الزرُّ عن النصّ بمقدار ذلك الفراغ.
           **`inline-flex` تُلغي صندوقَ السطر، و`align-middle` تُلغي
           الجلوسَ على خطّ القاعدة.** */}
+      {/* 🆕 **والمقبضُ الظاهر أوّلاً** (D-438) — ويغيب عن حساب النظام
+          كما تغيب صفُّه في القائمة. */}
+      {messageButton && !system && (
+        <button
+          type="button"
+          onClick={openMessage}
+          className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-3.5 h-9 text-[13px] font-bold transition hover:border-accent/50 active:scale-95"
+        >
+          <Icon name="comment" size={15} className={mutual ? "text-accent" : "text-muted"} />
+          {t.msgUserOption}
+        </button>
+      )}
+
       {variant === "plain" ? (
         <span className="relative inline-flex items-center align-middle">
           <button

@@ -138,7 +138,8 @@ export function ToWatchStat({
   icon,
   color,
   items,
-  divider,
+  divider = false,
+  inline = false,
   labels,
 }: {
   value: number;
@@ -146,25 +147,46 @@ export function ToWatchStat({
   icon: IconName;
   color: string;
   items: ToWatchItem[];
-  divider: boolean;
+  divider?: boolean;
+  /**
+   * 🆕 **مقبضٌ في سطرٍ لا خانةٌ في بطاقة** (D-438): الورقةُ نفسُها
+   * ومحتواها نفسُه — **والذي تبدّل موضعُها**، فبطاقةُ الأرقام صارت
+   * أربعَ خاناتٍ محدّدةً بخطّة أحمد (Shows · Movies · Ratings · Lists)
+   * **وبابُ «وش باقي يتفرج» نزل إلى سطر العدّادات.**
+   * **ولا نسخةٌ ثانيةٌ من الورقة** (القاعدة ٦) — **معامِلُ شكلٍ واحد.**
+   */
+  inline?: boolean;
   labels: { close: string; empty: string };
 }) {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <button
-        type="button"
-        className="relative flex flex-col items-center justify-center px-1 py-2.5 w-full hover:bg-surface/60 rounded-xl transition"
-        aria-haspopup="dialog"
-        onClick={() => setOpen(true)}
-      >
-        {divider && <span className="absolute inset-y-1 end-0 w-px bg-[color:var(--divider)]" aria-hidden />}
-        <span className="flex items-center gap-2">
-          <Icon name={icon} size={20} style={{ color }} className="shrink-0" />
-          <span className="text-[17px] font-bold leading-none tabular-nums">{value}</span>
-        </span>
-        <span className="block text-[11px] text-muted mt-1.5 leading-[1.25]">{label}</span>
-      </button>
+      {inline ? (
+        <button
+          type="button"
+          className="shrink-0 inline-flex items-center gap-1.5 text-muted hover:text-foreground transition"
+          aria-haspopup="dialog"
+          onClick={() => setOpen(true)}
+        >
+          <Icon name={icon} size={14} style={{ color }} className="shrink-0" />
+          <span className="font-bold text-foreground tabular-nums">{value}</span>
+          <span>{label}</span>
+        </button>
+      ) : (
+        <button
+          type="button"
+          className="relative flex flex-col items-center justify-center px-1 py-2.5 w-full hover:bg-surface/60 rounded-xl transition"
+          aria-haspopup="dialog"
+          onClick={() => setOpen(true)}
+        >
+          {divider && <span className="absolute inset-y-1 end-0 w-px bg-[color:var(--divider)]" aria-hidden />}
+          <span className="flex items-center gap-2">
+            <Icon name={icon} size={20} style={{ color }} className="shrink-0" />
+            <span className="text-[17px] font-bold leading-none tabular-nums">{value}</span>
+          </span>
+          <span className="block text-[11px] text-muted mt-1.5 leading-[1.25]">{label}</span>
+        </button>
+      )}
 
       {/* بلا بوّابةٍ هنا (D-166): `Sheet` تُرسم في `document.body` منذ D-159 —
           وهذا اللفّ من ٨ أغسطس كان علاجَ العَرَض عند المستدعي قبل أن يُعرف

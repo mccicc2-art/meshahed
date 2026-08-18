@@ -25,12 +25,15 @@ export function ShareTitleButton({
   path,
   title,
   locale,
+  label,
   className = "",
 }: {
   /** مسارُ العمل عندنا — `/show/123` أو `/movie/456` */
   path: string;
   title: string;
   locale: Locale;
+  /** 🆕 نصٌّ بجانب الرمز — لصفوف الأفعال حيث الرمزُ وحدَه سؤالٌ (D-138) */
+  label?: string;
   className?: string;
 }) {
   const t = getDict(locale);
@@ -60,9 +63,10 @@ export function ShareTitleButton({
       onClick={run}
       aria-label={t.shareLinkLabel}
       title={t.shareLinkLabel}
-      className={`inline-flex items-center rounded-full px-2.5 py-1.5 text-muted hover:text-accent transition active:scale-90 ${className}`}
+      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-muted hover:text-accent transition active:scale-90 ${className}`}
     >
       <Icon name="share" size={15} />
+      {label && <span className="text-[13px] font-bold">{label}</span>}
     </button>
   );
 }
