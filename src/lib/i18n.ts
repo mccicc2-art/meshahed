@@ -822,7 +822,6 @@ const ar = {
   /* علامةُ الحفظ على بطاقة مجموعة (D-206) — الضغطةُ الثانية تُزيل.
      **و`listUnsavedToast` موجودةٌ أصلاً** (حفظُ قائمةِ غيرك، D-068) فتُعاد
      استعمالاً: **نصٌّ واحد لمعنًى واحد** — ونسختان تفترقان عند أوّل تعديل. */
-  listUnsaveLabel: "أزِلها من قوائمي",
   quickAddLabel: "أضِفه إلى «للمشاهدة»",
   quickAddRemove: "أزِله من «للمشاهدة»",
   quickAddDone: "أُضيف إلى «للمشاهدة»",
@@ -1056,8 +1055,6 @@ const ar = {
   shareLoadingPeople: "جارٍ التحميل…",
   // قائمة من أعمال فنان أو أجزاء سلسلة
   worksToListBtn: "أضِف أعماله إلى قائمة",
-  partsToListBtn: "احفظ الأجزاء في قائمة",
-  universeToListBtn: "احفظ العالم كاملاً في قائمة",
   universeHint:
     "كل أفلام العالم بترتيب الأحداث — تعرف من أين تبدأ، وتلحق ما فاتك قبل أي فيلمٍ جديد.",
   listMadeToast: (name: string) => `أُنشئت قائمة «${name}» ✓`,
@@ -1420,7 +1417,6 @@ const ar = {
      يحمل معرفةً سابقةً للبيانات (فيلمٌ يُعرض بعد شهرٍ يجعل قائمتَه مهمّةً
      قبل أن يحفظها أحد). **والاسمُ يقول من اختار**: «رائجة» تَعِد عدّاً،
      و«يرشّحها لوبز» تقول الحقيقة (D-219). */
-  listsFeatured: "يرشّحها لوبز",
   /* 🆕 **صفُّ الرائجة** (D-386، طلبُ أحمد: «احذف Picked by Loopz واعمل
      ترندينج ليست») — **مرتَّبٌ بالحفظ في آخر ثلاثين يوماً**. */
   listsTrending: "الرائجة الآن",
@@ -1433,6 +1429,7 @@ const ar = {
      يومَها فالشارةُ لا تخبر بشيء). */
   railNew: "جديد",
   railNewAria: "تغيّرت محتوياتُ هذا الصفّ منذ زيارتك الأخيرة",
+  listUnsaveLabel: "إزالة من قوائمي",
   listSaveBtn: "أضِفها إلى قوائمي",
   listSavedBtn: "محفوظة",
   listSavedToast: "أُضيفت إلى قوائمك — تبقى متصلةً بقائمة صاحبها ✓",
@@ -2224,7 +2221,6 @@ const en: Dict = {
   communityTabComments: "Comments",
   // Talk page and replies (D-193)
   worksAvgHint: "Average rating of the people talking about it",
-  listUnsaveLabel: "Remove from my lists",
   quickAddLabel: "Add to To watch",
   quickAddRemove: "Remove from To watch",
   quickAddDone: "Added to To watch",
@@ -2344,8 +2340,6 @@ const en: Dict = {
   shareLoadingPeople: "Loading…",
   // A list from a person's filmography or a franchise's parts
   worksToListBtn: "Add filmography to a list",
-  partsToListBtn: "Save all parts as a list",
-  universeToListBtn: "Save the whole universe as a list",
   universeHint:
     "Every film in the universe, in story order — know where to start and catch up before any new release.",
   listMadeToast: (name: string) => `Created “${name}” ✓`,
@@ -2656,7 +2650,6 @@ const en: Dict = {
   libraryRevokedToast: "Grant revoked",
   libraryRevokeButton: "Revoke",
   railFriendsNow: "What your friends are watching",
-  listsFeatured: "Picked by Loopz",
   listsTrending: "Trending lists",
   listFeature: "Feature in “Picked by Loopz”",
   listUnfeature: "Remove from featured",
@@ -2664,6 +2657,7 @@ const en: Dict = {
   listUnfeaturedToast: "No longer featured",
   railNew: "New",
   railNewAria: "This row changed since your last visit",
+  listUnsaveLabel: "Remove from my lists",
   listSaveBtn: "Add to my lists",
   listSavedBtn: "Saved",
   listSavedToast: "Added to your lists — stays linked to its owner's list ✓",

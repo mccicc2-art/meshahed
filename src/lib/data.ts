@@ -4221,23 +4221,6 @@ export async function getListCardsByIds(ids: string[]): Promise<PublicListCard[]
  * **وما حفظتَه صار عندك** — بابُه «قوائمي» في المكتبة. **واقتراحُ ما
  * تملكه ليس اكتشافاً** (نفسُ حجّة إخراج قوائمك من `for_you_lists`).
  */
-/**
- * 🆕 **قوائمُ الأسبوع المثبَّتة تحريريّاً** (D-349، الهجرة ١٠٨).
- *
- * **معرّفاتٌ ورتبةٌ فقط** — البطاقاتُ تُبنى بـ`getListCardsByIds` كأخواتها
- * (D-068: بطاقةٌ واحدةٌ لكلِّ الأبواب)، **فلا محوّلَ ثانٍ ولا شكلَ ثانٍ.**
- * **والغيابُ يعني «لا صفَّ»** لا شاشةَ خطأ (D-181).
- */
-export async function getFeaturedListIds(): Promise<string[]> {
-  try {
-    const supabase = await createClient();
-    const { data, error } = await supabase.rpc("featured_list_ids");
-    if (error || !data) return [];
-    return (data as { list_id: string }[]).map((r) => String(r.list_id));
-  } catch {
-    return [];
-  }
-}
 
 export async function getMySavedListIds(): Promise<Set<string>> {
   try {
@@ -4287,7 +4270,12 @@ export async function getPublicListsOf(userId: string, limit = 15): Promise<Publ
  * تعديلٍ منه ينعكس هنا بلا مزامنة. قائمةٌ أعادها صاحبها خاصةً تسقط من
  * القراءة بسياسة SQL نفسها — فتختفي من هنا بصدقٍ بدل بطاقةٍ لا تُفتح.
  */
-export async function getSavedLists(limit = 30): Promise<PublicListCard[]> {
+/* ⚖️ 🆕 **والسقفُ ٥٠٠ لا ثلاثين** (D-394، دَينُ D-374 المعلَن): كان
+   الرفُّ يعرض ثلاثين **والعدّادُ فوقه يعدّ الكلَّ** — **فيتفارقان عند
+   الحادية والثلاثين**، وهو رقمٌ يبلغه مستخدمٌ نشطٌ في شهر. **والصفوفُ
+   خفيفةٌ** (اسمٌ وعدٌّ وثلاثةُ ملصقات) **فالسقفُ الجديد حارسُ عقلٍ لا
+   حدُّ عرض** — **والدَّينُ يُشطب لا يُنقل.** */
+export async function getSavedLists(limit = 500): Promise<PublicListCard[]> {
   try {
     const supabase = await createClient();
     const user = await getUser();
