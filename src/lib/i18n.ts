@@ -1346,6 +1346,14 @@ const ar = {
      (وعنوانُ القسم نفسُه في `CastRail` بمفتاحه الخاصّ.) */
   tabSimilar: "مشابه",
   tabEpisodes: "الحلقات",
+  /* 🆕 **تبويبُ المجتمع الواحد** (D-398) — الأخبارُ والنقاشُ والآراء
+     في قائمةٍ واحدةٍ برقائقَ تُرشِّحها. **والرقائقُ تُسمّى بأسماء
+     التبويبات التي حلَّت محلَّها** فلا يفقد القارئُ ما كان يعرفه. */
+  communityJoin: "انضمّ إلى الحديث",
+  communityWriteReview: "اكتب رأيك",
+  communityStartTalk: "ابدأ نقاشاً",
+  communityFilterTalks: "النقاشات",
+  communityFeedEmpty: "لا شيءَ هنا بعد — كن أوّلَ من يكتب.",
   storyTitle: "القصة",
   libAnalysisBtn: "تحليل مكتبتك",
   diaryTitle: "اليوميات",
@@ -2590,6 +2598,11 @@ const en: Dict = {
   tabCommunity: "Community",
   tabSimilar: "Similar",
   tabEpisodes: "Episodes",
+  communityJoin: "Join the conversation",
+  communityWriteReview: "Write a review",
+  communityStartTalk: "Start a discussion",
+  communityFilterTalks: "Discussions",
+  communityFeedEmpty: "Nothing here yet — be the first to write.",
   storyTitle: "Story",
   libAnalysisBtn: "Analyse your library",
   diaryTitle: "Journal",
