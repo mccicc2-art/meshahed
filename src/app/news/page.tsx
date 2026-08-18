@@ -11,7 +11,7 @@ import {
   getListCardStats,
   getCuratedCounts,
   getMyListReviews,
-  getFeaturedListIds,
+  getTopSavedListCards,
 } from "@/lib/data";
 import { getLibState } from "@/lib/libState";
 import { cookies } from "next/headers";
@@ -376,7 +376,7 @@ async function ListsDiscovery({
      تحت عنوانٍ يَعِد أسوأ من غيابه.** */
   /* 🆕 **وسقط `getTopSavedLists` من هذه الصفحة مع رفّه** (D-363) —
      **ونداءٌ بلا قارئٍ يُحذف لا يُترك يدور** (D-214/D-257). */
-  const [forYouRows, savedIds, me, curated, featuredIds] = await Promise.all([
+  const [forYouRows, savedIds, me, curated, trending] = await Promise.all([
     getForYouLists(12).catch(() => []),
     getMySavedListIds().catch(() => new Set<string>()),
     getUser().catch(() => null),
@@ -384,9 +384,15 @@ async function ListsDiscovery({
        بطاقة (D-205)، **والغائبُ يُفتح معاينةً كما كان**. **وصعدت إلى هنا
        في D-331** لأن الترشيحَ تحتها صار يحتاجها. */
     getCuratedListIds().catch(() => new Map<string, string>()),
-    /* 🆕 **قوائمُ الأسبوع المثبَّتة** (D-349) — معرّفاتٌ فقط، والبطاقاتُ
-       تُبنى بالمحوّل نفسِه أسفلَه (D-068). */
-    getFeaturedListIds().catch(() => [] as string[]),
+    /* ⚖️ 🆕 **وحلَّ الحفظُ محلَّ الترشيح اليدويّ** (D-386، طلبُ أحمد:
+       «احذف Picked by Loopz واعمل ترندينج ليست»): `getTopSavedListCards`
+       المبنيّةُ في D-375 — **بطاقاتٌ كاملةٌ من `shapeListCards` لا
+       معرّفات**، **فسقط نداءُ `getListCardsByIds` لهذا الصفّ** (D-262:
+       أرخصُ ميزةٍ ما بُني ولم يُوصَل — وهذه بُنيت ووُصِلت لبابٍ ثانٍ).
+       ⚠️ **ونافذتُه ثلاثون يوماً لا سبعة**: بسبعةٍ يفرغ الصفُّ في أسبوعٍ
+       هادئ، **وصفٌّ يظهر ويختفي بلا سببٍ يراه القارئ أسوأُ من صفٍّ
+       أبطأ.** */
+    getTopSavedListCards(30, 12).catch(() => []),
   ]);
   /* 🔴 **وقوائمُ لوبز المنسّقة لا تُقترح في صفٍّ فوق صفوفها** (D-331).
      يومَ وُلِّدت الاثنتان والأربعون (D-330) صارت صفوفاً **حقيقيّةً** في
@@ -424,8 +430,7 @@ async function ListsDiscovery({
      يقول «عندك» **في مكانها** — **وحالةٌ تُعرض أصدقُ من صفٍّ يُحذف**
      (D-217). **والتكرارُ الباقي الوحيدُ ممنوع**: صفّان شخصيّان متجاوران
      لا يحملان البطاقةَ نفسَها — وذاك حكمُ جوارٍ لا حكمُ ملكيّة. */
-  const featured = featuredIds;
-  const shown = new Set(featured);
+  const shown = new Set(trending.map((c) => c.id));
   const forYouIds = forYouRows.map((r) => r.listId).filter((id) => !shown.has(id));
   /* **والبطاقاتُ من `shapeListCards` لا من محوّلٍ محليّ** (D-326): العدُّ
      الحقيقيُّ والملصقاتُ وسطرُ الصاحب من المصدر الذي تقرأ منه أخواتُها
@@ -434,10 +439,7 @@ async function ListsDiscovery({
      حفظاً») — **ومعه نداؤه وحسابُ معرّفاته** (D-214: يُفحص المستهلك ثم
      يُحذف ما بقي بلا قارئ). **وأثرٌ ثانٍ مقصود**: القوائمُ التي كانت
      تُحجز له تعود إلى رفِّ عالَمِها بدل أن تسقط من الاثنين. */
-  const [featuredCards, forYou] = await Promise.all([
-    getListCardsByIds(featured),
-    getListCardsByIds(forYouIds),
-  ]);
+  const forYou = await getListCardsByIds(forYouIds);
   /* 🆕 **أرقامُ بطاقات لوبز** (D-335): نداءُ `list_card_stats` واحدٌ
      للاثنتين والأربعين (D-205) — بعد خريطة `curated` لأنه يحتاج
      معرّفاتِها. */
@@ -468,13 +470,19 @@ async function ListsDiscovery({
       {!fr && lsrc !== "curated" && forYou.length > 0 && (
         <PublicListsRail lists={forYou} locale={locale} title={t.listsForYou} />
       )}
-      {/* 🆕 **«يرشّحها لوبز» بعد الشخصيِّ وقبل العامّ** (D-349، طلبُ
-          أحمد: «تحط بعد البيك فور يو تريندينج ليست»).
-          **والترتيبُ حجّةٌ لا ذوق**: ما يخصّك ← ما نختاره لهذه اللحظة ←
-          ما اجتمع عليه الناس ← الأرشيفُ الثابت ← قوائمُ المجتمع.
-          **من الأخصِّ إلى الأعمّ، ومن المتحرّك إلى المستقرّ.** */}
-      {!fr && lsrc !== "curated" && featuredCards.length > 0 && (
-        <PublicListsRail lists={featuredCards} locale={locale} title={t.listsFeatured} />
+      {/* ⚖️ 🆕 **«الرائجة الآن» مكانَ «يرشّحها لوبز»** (D-386، طلبُ أحمد:
+          «احذف Picked by Loopz واعمل ترندينج ليست»).
+          **والموضعُ لم يتغيّر ولا حجّتُه** (D-349/D-368): ما يخصّك ← ما
+          يتحرّك الآن ← قوائمُ المجتمع ← الأرشيفُ الثابت. **الذي تغيّر
+          مصدرُ الصفِّ الثاني**: كان حكماً تحريريّاً بيدِ الإدارة، **وصار
+          عدّاً من `list_saves`.**
+          🔴 **والثمنُ قيل قبل أن يُدفع** (D-219/D-349): القاعدةُ اليومَ
+          فيها **ستُّ حفظاتٍ فقط**، **وأعلى القوائم حفظةٌ واحدة** — فالصفُّ
+          يعرض خمساً متساويةً لا ترتيباً حقيقيّاً. **قِيس وعُرض على أحمد
+          فاختار: «اشحنه كما هو — ويظهر بخمستها»** — **ويصير الاسمُ صادقاً
+          حين يكثر الحفظ.** */}
+      {!fr && lsrc !== "curated" && trending.length > 0 && (
+        <PublicListsRail lists={trending} locale={locale} title={t.listsTrending} />
       )}
 
       {/* 🔴 🆕 **وقوائمُ المجتمع صعدت إلى المرتبة الثالثة** (D-368، طلبُ
