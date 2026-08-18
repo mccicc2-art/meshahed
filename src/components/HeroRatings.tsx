@@ -1,4 +1,4 @@
-import { externalRatings } from "@/lib/omdb";
+import { externalRatings, imdbIdByName } from "@/lib/omdb";
 import { tvImdbId } from "@/lib/tmdb";
 
 /**
@@ -58,6 +58,8 @@ function AgeMark({ rated, label, compact }: { rated: string; label: string; comp
 export async function HeroRatings({
   imdbId,
   tvId,
+  name,
+  year,
   ageLabel,
   compact = false,
 }: {
@@ -65,6 +67,14 @@ export async function HeroRatings({
   imdbId?: string | null;
   /** مسلسل؟ يُحلّ معرّفه من /external_ids هنا — خارج مسار الترويسة الحرج */
   tvId?: number;
+  /**
+   * 🔴 🆕 **الجسرُ الثاني حين يسقط الأوّل** (D-414): اسمُ العمل وسنتُه
+   * **يُبحث بهما في OMDb إن لم تعرف TMDB معرّفَ IMDb** — وهي حالُ كثيرٍ
+   * من الأعمال العربيّة. **اختياريّان**: من لا يمرّرهما يبقى على
+   * السلوك القديم حرفاً (D-152).
+   */
+  name?: string | null;
+  year?: number | null;
   /** اسمُ «التصنيف العمري» بلغة القارئ — لقارئ الشاشة وحدَه (D-177) */
   ageLabel?: string;
   /**
@@ -74,7 +84,11 @@ export async function HeroRatings({
    */
   compact?: boolean;
 }) {
-  const iid = imdbId ?? (tvId ? await tvImdbId(tvId) : null);
+  const first = imdbId ?? (tvId ? await tvImdbId(tvId) : null);
+  /* **ولا يُبحث بالاسم إلا بعد أن يسقط المعرّف** (D-414) — نداءٌ لا يقع
+     لأكثر الأعمال، **وردُّه مخبّأٌ يوماً كردِّ التقييم نفسِه.** */
+  const iid =
+    first ?? (name ? await imdbIdByName(name, year ?? null, tvId ? "series" : "movie") : null);
   const ext = await externalRatings(iid);
   /* `externalRatings` صارت تُميّز «لا تقييم» عن «لم نصل» (D-172)، فتعود
      بكائنٍ فارغ بدل `null`. والترويسة لا ترسم صفّاً فارغاً.

@@ -41,7 +41,7 @@ export function WatchProviders({
   const t = getDict(locale);
 
   const groups: { key: string; label: string; rows: Provider[] }[] = [
-    { key: "free", label: t.watchFree, rows: options.free },
+    { key: "free", label: t.watchFree, rows: [...options.free, ...(options.ads ?? [])] },
     { key: "flatrate", label: t.watchFlatrate, rows: options.flatrate },
     { key: "rent", label: t.watchRent, rows: options.rent },
     { key: "buy", label: t.watchBuy, rows: options.buy },

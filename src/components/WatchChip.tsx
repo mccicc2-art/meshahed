@@ -55,10 +55,15 @@ export function WatchChip({
 }) {
   const t = getDict(locale);
 
-  /* الطبقةُ الأولى غيرُ الفارغة وحدها — بهذا الترتيب حرفياً */
+  /* الطبقةُ الأولى غيرُ الفارغة وحدها — بهذا الترتيب حرفياً.
+     🆕 **و`ads` مع `free` في الطبقة الأولى** (D-415): «مجّاناً بفواصل
+     إعلانيّة» **جوابٌ عن سؤال «أقدر أشاهده؟» تماماً كالاشتراك** —
+     **والفرقُ بينهما ثمنُ وقتٍ لا ثمنُ مال**، وأكثرُ المنصّات العربيّة
+     تعيش هناك. */
+  const firstTier = [...options.flatrate, ...options.free, ...(options.ads ?? [])];
   const tier =
-    [...options.flatrate, ...options.free].length > 0
-      ? [...options.flatrate, ...options.free]
+    firstTier.length > 0
+      ? firstTier
       : options.rent.length > 0
         ? options.rent
         : options.buy;
