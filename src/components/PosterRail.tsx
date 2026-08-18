@@ -14,6 +14,7 @@ export function PosterRail({
   icon,
   iconColor,
   href,
+  onTitle,
   seeAllLabel,
   subtitle,
   action,
@@ -25,6 +26,13 @@ export function PosterRail({
   /** لون أيقونة العنوان — ثابت لا يتبع الثيم، فالقسم يُعرف بلونه */
   iconColor?: string;
   href?: string;
+  /**
+   * 🆕 **والعنوانُ زرٌّ حين تكون الوجهةُ في مكانها** (D-422، مكتبةُ
+   * الرفوف): **العنوانُ بابٌ منذ أن طلبه أحمد** («أقدر أضغط على
+   * الاسم») — **والبابُ رابطٌ حين تكون الوجهةُ صفحةً، وزرٌّ حين تكون
+   * الوجهةُ فتحَ الصفِّ نفسِه.** **ولا يجتمعان**: `href` أوّلاً.
+   */
+  onTitle?: () => void;
   seeAllLabel?: string;
   subtitle?: string;
   /** عنصرٌ في طرف العنوان (زرّ إجراء) — بديلٌ عن رابط «الكل» في هذا الصفّ */
@@ -55,6 +63,10 @@ export function PosterRail({
             <Link href={href} className="hover:text-accent transition">
               {title}
             </Link>
+          ) : onTitle ? (
+            <button type="button" onClick={onTitle} className="hover:text-accent transition">
+              {title}
+            </button>
           ) : (
             title
           )}

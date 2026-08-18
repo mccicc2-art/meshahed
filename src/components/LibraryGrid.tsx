@@ -12,11 +12,11 @@ import type { UserList } from "@/lib/data";
 import type { ArtistShelfItem } from "@/lib/artists";
 import { ArtistsGrid } from "./ArtistsGrid";
 import { PosterCard } from "./PosterCard";
-import { SectionDivider } from "./SectionDivider";
 import { LongPressable } from "./LongPressable";
 import { ListManager } from "./ListManager";
 import { Dropdown, DropdownRow } from "./ui/Dropdown";
 import { posterGrid } from "./ui/controls";
+import { PosterRail, RailItem } from "./PosterRail";
 import { PageTabs } from "./ui/PageTabs";
 import { FilterIconButton } from "./ui/FilterIconButton";
 import { LibraryToolsSheet } from "./LibraryToolsSheet";
@@ -190,6 +190,71 @@ export function LibraryGrid({
       });
     return filtered;
   }, [tab, shows, movies, anime, q, sort, locale]);
+
+  /* 🆕 **مجموعاتُ الرفوف** (D-422): الترتيبُ الذكيّ يرصف الحالاتِ
+     متجاورةً أصلاً — **فالتجميعُ قراءةٌ لترتيبٍ قائم لا فرزٌ ثانٍ**،
+     وهو ما كان يفعله الفاصلُ المسمّى قبله. **ولا تجميعَ في بحثٍ ولا في
+     فرزٍ يدويّ**: هناك تختلط المجموعات فيصير العنوانُ كذبة. */
+  const grouped = sort === "smart" && !q.trim() && items.length > 0;
+  const groups = useMemo(() => {
+    if (!grouped) return [] as { status: LibraryStatus; items: typeof items }[];
+    const out: { status: LibraryStatus; items: typeof items }[] = [];
+    for (const x of items) {
+      const st = (x.status ?? "watching") as LibraryStatus;
+      const last = out[out.length - 1];
+      if (last && last.status === st) last.items.push(x);
+      else out.push({ status: st, items: [x] });
+    }
+    return out;
+  }, [grouped, items]);
+
+  /** الرفُّ المفتوحُ يصير شبكةً — والمفتوحُ يبقى مفتوحاً حتى يُغلق */
+  const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
+  const toggleGroup = (st: string) =>
+    setOpenGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(st)) next.delete(st);
+      else next.add(st);
+      return next;
+    });
+
+  /**
+   * **خليّةُ المكتبة — بطاقةٌ بضغطةٍ مطوّلة** (انتُزعت في D-422 ليقرأها
+   * الرفُّ والشبكة معاً). **ولم يتغيّر منها حرفٌ** — نُقلت كما هي.
+   */
+  function Cell({ x }: { x: (typeof items)[number] }) {
+    return (
+      <div
+        className="relative"
+        style={
+          hold === x.key
+            ? { contentVisibility: "visible", containIntrinsicSize: "auto" }
+            : undefined
+        }
+      >
+        <LongPressable onLongPress={() => setHold(x.key)}>
+          <PosterCard
+            href={x.href}
+            title={x.title}
+            posterPath={x.posterPath}
+            progress={x.progress}
+            badge={x.badge}
+            badgeTone={x.badgeTone}
+            count={x.count}
+            dropped={x.dropped}
+          />
+        </LongPressable>
+        {hold === x.key && (
+          <HoldMenu
+            item={x}
+            t={t}
+            onClose={() => setHold(null)}
+            onDone={() => coalescedRefresh(router)}
+          />
+        )}
+      </div>
+    );
+  }
 
   /* عدّاد كل رقاقةٍ من التبويب الحاليّ — الرقم يجيب «كم عندي؟» قبل الضغط */
 
@@ -378,74 +443,66 @@ export function LibraryGrid({
           </button>
         </div>
       ) : (
-        /* الشبكة وصفتُها في `ui/controls` منذ صار للمكتبة شبكتان (D-128) */
+        /* 🆕 **المكتبةُ صارت رفوفاً كالاكتشاف** (D-422، طلبُ أحمد:
+           «المكتبة أحتاجها تشبه الاكسبلورر… أحتاج البوسترات داخله تكون
+           سطر واحد وأقدر أضغط على الكلمة وتظهر القائمة كاملة»).
+
+           **وما كان قبله شبكةٌ واحدةٌ بفواصلَ مسمّاة**: أربعُ مجموعاتٍ
+           في عمودٍ واحد، **فمن عنده ثلاثون فيلماً في «مكتمل» لا يرى
+           «لم يبدأ» إلا بعد عشر تمريرات** — **وهي بعينها الحجّةُ التي
+           وُلد لأجلها `PosterRail`** (مكتوبةٌ في رأسه منذ يومه).
+
+           **والعنوانُ يفتح المجموعة في مكانها** لا في صفحةٍ ثانية:
+           **الوجهةُ هنا، فالبابُ زرٌّ لا رابط** (D-422 في `PosterRail`).
+
+           ⚠️ **ولا تجميعَ في البحث ولا في الفرز اليدويّ**: الفواصلُ
+           كانت تُخفى في الحالتين لأن الترتيبَ يخلط المجموعات
+           **فيصير الفاصلُ كذبة** — **والرفُّ يرث الحكمَ نفسَه.** */
+        grouped ? (
+          <div className="space-y-7">
+            {groups.map((g) => {
+              const open = openGroups.has(g.status);
+              return (
+                <PosterRail
+                  key={g.status}
+                  title={statusLabel(g.status, t)}
+                  onTitle={() => toggleGroup(g.status)}
+                  action={
+                    <button
+                      type="button"
+                      onClick={() => toggleGroup(g.status)}
+                      className="text-[13px] text-muted hover:text-accent transition shrink-0 tabular-nums"
+                    >
+                      {open ? t.closeLabel : `${g.items.length}`}
+                    </button>
+                  }
+                >
+                  {open ? (
+                    /* **والمفتوحُ شبكةٌ لا صفٌّ أطول**: من طلب الكلَّ
+                       يريد أن يراه دفعةً، **لا أن يسحب ثلاثين بطاقة.** */
+                    <div className={`${posterGrid} w-full`}>
+                      {g.items.map((x) => (
+                        <Cell key={x.key} x={x} />
+                      ))}
+                    </div>
+                  ) : (
+                    g.items.map((x) => (
+                      <RailItem key={x.key}>
+                        <Cell x={x} />
+                      </RailItem>
+                    ))
+                  )}
+                </PosterRail>
+              );
+            })}
+          </div>
+        ) : (
         <div className={posterGrid}>
-          {items.map((x, i) => (
-            <Fragment key={x.key}>
-              {/* فاصلٌ مسمّى عند تبدّل المجموعة (طلب المالك): الترتيب الذكي
-                  يرصف الحالات متجاورةً أصلاً، فالحدّ بينها سطرُ عنوانٍ
-                  بعرض الشبكة. يظهر في «الكل» بالترتيب الذكي وحده — الفرز
-                  بالاسم أو التقدّم يخلط المجموعات فيصير الفاصل كذبة */}
-              {sort === "smart" &&
-                i > 0 &&
-                x.status !== items[i - 1].status &&
-                x.status && (
-                  /* الكلمة في منتصف السطر لا في أوّله (طلب المالك) — المكوّن
-                     المشترك SectionDivider. ويُستثنى من content-visibility
-                     الموروثة: حجزُ ٢٤٠ بكسل لفاصلٍ ارتفاعه ٢٠ يجعل شريط
-                     التمرير يقفز */
-                  <SectionDivider
-                    label={statusLabel(x.status, t)}
-                    className="col-span-full pt-1"
-                    style={{ contentVisibility: "visible", containIntrinsicSize: "auto" }}
-                  />
-                )}
-              {/* 🆕 **المنسدلةُ تخرج من الملصق نفسِه** (D-376، طلبُ أحمد:
-                  «القائمة بعد ما اعمل hold ما هي واضحة… في المكتبة ما
-                  أبغى هذي المنبثقة، أبغى نفس تبع الاكسبلورر»).
-                  **والغلافُ نسبيٌّ لأن المنسدلةَ مطلقةٌ فيه** — وهو
-                  تركيبُ `PosterHold` حرفاً. */}
-              <div
-                className="relative"
-                /* 🔴 **والحاويةُ تخرج من `content-visibility` ما دامت
-                   قائمتُها مفتوحة** (D-376): شبكةُ المكتبة تضع
-                   `content-visibility:auto` على كلِّ خليّةٍ لأن ثلاثمئة
-                   بطاقةٍ كانت تُنسَّق دفعةً واحدة — **وهي تُورث احتواءَ
-                   الرسم، فيُقصّ كلُّ ما خرج عن حدود الخليّة**،
-                   **ومنسدلةٌ عرضُها ٢٠٨px فوق ملصقٍ عرضُه ٩٢ كانت
-                   ستُقصّ نصفَها.** **والاستثناءُ للمفتوحة وحدَها**
-                   فلا يضيع المكسبُ في الشبكة كلِّها — **وهو الاستثناءُ
-                   نفسُه المكتوب للفاصل أعلاه.** */
-                style={
-                  hold === x.key
-                    ? { contentVisibility: "visible", containIntrinsicSize: "auto" }
-                    : undefined
-                }
-              >
-                <LongPressable onLongPress={() => setHold(x.key)}>
-                  <PosterCard
-                    href={x.href}
-                    title={x.title}
-                    posterPath={x.posterPath}
-                    progress={x.progress}
-                    badge={x.badge}
-                    badgeTone={x.badgeTone}
-                    count={x.count}
-                    dropped={x.dropped}
-                  />
-                </LongPressable>
-                {hold === x.key && (
-                  <HoldMenu
-                    item={x}
-                    t={t}
-                    onClose={() => setHold(null)}
-                    onDone={() => coalescedRefresh(router)}
-                  />
-                )}
-              </div>
-            </Fragment>
+          {items.map((x) => (
+            <Cell key={x.key} x={x} />
           ))}
         </div>
+        )
       )}
       </>
       )}

@@ -8,6 +8,7 @@ import { tap } from "@/lib/haptics";
 import { Alert } from "./ui/Alert";
 import { buttonClass } from "./ui/Button";
 import { Icon } from "./Icon";
+import { dirOf } from "@/lib/dir";
 
 export function RatingBox({
   tmdbId,
@@ -198,6 +199,11 @@ export function RatingBox({
           }}
           maxLength={2000}
           rows={8}
+          /* 🆕 **والاتّجاهُ يتبع ما تكتبه** (D-421): `dirOf` تعدّ الحروفَ
+             فتُقلَب الكتلةُ إلى اليمين متى غلبت العربية — **ولا
+             `dir="auto"`** لأنها تقرأ أوّلَ حرفٍ قويٍّ وحدَه، **ونصٌّ
+             يبدأ بكلمةٍ إنجليزيّة كان يبقى يساراً إلى آخره.** */
+          dir={dirOf(review)}
           placeholder={t.reviewPlaceholder}
           className="w-full flex-1 min-h-[38svh] rounded-xl bg-surface-2 border border-border px-3.5 py-3 outline-none focus:border-accent transition text-[15px] leading-[1.9] resize-none"
         />
