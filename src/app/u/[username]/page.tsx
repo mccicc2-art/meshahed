@@ -452,7 +452,7 @@ export default async function PublicProfilePage({
               ) : (
                 <div key={s.key} className="relative flex flex-col items-center justify-center px-1 py-2.5">
                   {i < headerStats.length - 1 && (
-                    <span className="absolute inset-y-1 end-0 w-px bg-white/10" aria-hidden />
+                    <span className="absolute inset-y-1 end-0 w-px bg-[color:var(--divider)]" aria-hidden />
                   )}
                   <span className="flex items-center gap-2">
                     <Icon name={s.icon} size={20}  style={{ color: s.color }} className="shrink-0" />
