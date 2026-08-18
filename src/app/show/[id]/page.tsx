@@ -174,110 +174,138 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
           صفٍّ من المحتوى في الشاشة الأولى. **والملصقُ يبقى مطلّاً
           على الغلاف بنفس المقدار** (`-mt-24`) فلا ينقطع التداخلُ
           الذي يصنع العمق. */}
-      <div className="relative -mx-4 -mt-6 h-36 sm:h-60 mb-3">
-        {backdrop && (
-          <Image
-            src={backdrop}
-            alt=""
-            fill
-            priority
-            sizes="(max-width: 640px) 100vw, 1152px"
-            className="object-cover opacity-45"
-          />
-        )}
-        <div className="absolute inset-0 bg-gradient-to-t from-[color:var(--background)] via-[color:var(--background)]/35 to-transparent" />
-        <DetailTopBar
-          title={title}
-          locale={locale}
-          tmdbId={tvId}
-          mediaType="tv"
-          posterPath={tv.poster_path}
-          initialDropped={followState.dropped}
-          art={myArt}
-        />
-      </div>
+      {/* 🆕 **الغلافُ ينزل خلف الملصق كلِّه** (D-403، لقطةُ أحمد
+          بمستطيلين: «الغلاف حالياً ماخذ المساحة الحمراء فقط، أحتاجه ينزل
+          وياخذ المساحة الخضراء كاملة، بحيث يكون البوستر فوقه مو مشكلة»).
 
-      <div className="flex gap-4 -mt-24 sm:-mt-28 relative px-1">
-        <div className="w-28 sm:w-40 shrink-0">
-          <div className="relative aspect-[2/3] rounded-poster overflow-hidden ring-1 ring-white/10 bg-surface-2 shadow-[0_18px_44px_rgba(0,0,0,0.55)]">
-            {poster && <Image src={poster} alt={title} fill sizes="160px" className="object-cover" />}
-          </div>
+          **وما كان قبله:** صندوقٌ بارتفاعٍ ثابت يحمل الصورة، **وصفُّ
+          الملصق يُسحب إليه بهامشٍ سالب** — **فالصورةُ تنتهي عند منتصف
+          الملصق** والثلثُ الأسفل منه يجلس على خلفيّة الصفحة. **صورةٌ
+          مقطوعةٌ في منتصف عنصرٍ يعلوها تُقرأ عطلاً لا عمقاً.**
+
+          **والآن طبقتان لا صندوق**: الغلافُ `absolute inset-0` **يغطّي
+          الترويسة كلَّها** — الفراغَ العلويَّ وصفَّ الملصق معاً —
+          **والمحتوى فوقه `relative`**. **وارتفاعُ الترويسة صار ارتفاعَ
+          ما فيها** لا رقماً يُضبط بيده: الفراغُ العلويّ (`h-36 sm:h-60`)
+          زائداً صفَّ الملصق ناقصاً سحبَه. **فلا رقمَ ثالثاً يُصان.**
+
+          ⚠️ **والتدرّجُ صار بمحطّةٍ ثالثة**: القاعُ خلفيّةٌ صافية (فلا
+          حدَّ حادّاً فوق الأزرار)، **وعند ٤٠٪ يخفّ إلى ٢٠٪** فتُرى
+          الصورةُ خلف الملصق، **والقمّةُ شفّافة.** والنصُّ حيث كان يُقرأ
+          يبقى كما كان.
+
+          ⚠️ **و`px-5` لا `px-1`**: الصفُّ صار داخل حاويةٍ ملغيةٍ لحشوة
+          التخطيط (`-mx-4`)، **فحشوتُه تُعاد هنا** — ١٦ + ٤ = ٢٠،
+          **وهي نفسُها إلى البكسل.** */}
+      <div className="relative -mx-4 -mt-6 mb-3">
+        <div className="absolute inset-0 overflow-hidden">
+          {backdrop && (
+            <Image
+              src={backdrop}
+              alt=""
+              fill
+              priority
+              sizes="(max-width: 640px) 100vw, 1152px"
+              className="object-cover opacity-45"
+            />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-[color:var(--background)] via-[color:var(--background)]/20 via-40% to-transparent" />
         </div>
 
-        {/* العنوان من قمّة الملصق لا من قاعه — نفس نقلة صفحة الفيلم
-            (طلب المالك)، والأنواع صعدت إلى المساحة تحته */}
-        <div className="flex-1 min-w-0 self-start pt-0.5">
-          <h1 className="text-xl sm:text-3xl font-extrabold leading-tight tracking-tight drop-shadow-[0_2px_10px_rgba(0,0,0,0.65)]">
-            {title}
-          </h1>
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs sm:text-sm text-muted mt-1.5">
-            {/* وسم الأنمي: يعرفه المستخدم من الشارة لا من قراءة الأنواع */}
-            {isAnime(tv) && (
-              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-accent bg-accent/12 border border-accent/35 px-2 py-0.5 rounded-full">
-                <Icon name="sparkle-star" size={12} />
-                {t.animeBadge}
-              </span>
-            )}
-            {tv.first_air_date && <span>{tv.first_air_date.slice(0, 4)}</span>}
-            <span aria-hidden>·</span>
-            <span>{t.seasonsCount(tv.number_of_seasons)}</span>
+        <div className="relative h-36 sm:h-60">
+          <DetailTopBar
+            title={title}
+            locale={locale}
+            tmdbId={tvId}
+            mediaType="tv"
+            posterPath={tv.poster_path}
+            initialDropped={followState.dropped}
+            art={myArt}
+          />
+        </div>
+
+        <div className="relative flex gap-4 -mt-24 sm:-mt-28 px-5">
+          <div className="w-28 sm:w-40 shrink-0">
+            <div className="relative aspect-[2/3] rounded-poster overflow-hidden ring-1 ring-white/10 bg-surface-2 shadow-[0_18px_44px_rgba(0,0,0,0.55)]">
+              {poster && <Image src={poster} alt={title} fill sizes="160px" className="object-cover" />}
+            </div>
           </div>
 
-          {/* المصدر والاستوديو من AniList (D-173) — لِما ثبت أنه أنمي وحده،
-              وخلف Suspense خاصّته: السلسلة نداءان إلى خدمتين لا نملكهما،
-              فلا تُرهن بهما ترويسةُ الصفحة (D-071). وغيابُهما لا يترك فراغاً
-              محجوزاً — السطر إمّا يُرسم كاملاً أو لا يوجد أصلاً. */}
-          {isAnime(tv) && (
-            <Suspense fallback={null}>
-              <AnimeFacts tmdbId={tvId} t={t} />
-            </Suspense>
-          )}
-
-          {/* التقييم سطرٌ مستقلّ تحت البيانات، بشعارَي IMDb وطماطم لا
-              بأسمائهما، ومن هذين المصدرين فقط — لا نجمة TMDB (قرار أحمد
-              ٨ أغسطس، يُتمّ نقض D-027) */}
-          {/* 🆕 **والتصنيفُ العمريُّ يذيّل السطرَ نفسَه** (D-286، طلبُ
-              أحمد: «التصنيف العمري حطها في كل صفحات المسلسلات والأفلام»).
-              **ولا نداءَ ثالثاً له** — يصل في ردّ OMDb نفسِه. */}
-          <Suspense fallback={<HeroRatingsSkeleton />}>
-            <HeroRatings tvId={tvId} ageLabel={t.ageRating} />
-          </Suspense>
-
-          {/* «٣ ممن تتابعهم شاهدوه» (D-127) — تحت تقييم العالم مباشرة:
-              الرأي العام أولاً ثم رأي من تثق بهم. ولا يُرسم شيء تحت
-              الثلاثة — الكتم في SQL لا هنا */}
-          <CircleNote circle={circle} locale={locale} />
-
-          {/* الأنواع صعدت من «معلومات» إلى جنب الملصق — كصفحة الفيلم */}
-          {tv.genres.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 mt-2">
-              {tv.genres.slice(0, 4).map((g) => (
-                <span
-                  key={g.id}
-                  className="text-[11px] font-medium bg-surface-2 border border-border px-2.5 py-1 rounded-full"
-                >
-                  {g.name}
-                </span>
-              ))}
-            </div>
-          )}
-
-          {(next?.air_date || watchWhere) && (
-            <div className="mt-2.5 flex flex-wrap items-center gap-2">
-              {next && next.air_date && (
-                <span className="inline-block text-[11px] text-accent-2 bg-accent-2/10 border border-accent-2/30 px-2.5 py-1 rounded-lg">
-                  {t.nextEpisodeOn(formatDate(next.air_date, t))}
+          {/* العنوان من قمّة الملصق لا من قاعه — نفس نقلة صفحة الفيلم
+              (طلب المالك)، والأنواع صعدت إلى المساحة تحته */}
+          <div className="flex-1 min-w-0 self-start pt-0.5">
+            <h1 className="text-xl sm:text-3xl font-extrabold leading-tight tracking-tight drop-shadow-[0_2px_10px_rgba(0,0,0,0.65)]">
+              {title}
+            </h1>
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs sm:text-sm text-muted mt-1.5">
+              {/* وسم الأنمي: يعرفه المستخدم من الشارة لا من قراءة الأنواع */}
+              {isAnime(tv) && (
+                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-accent bg-accent/12 border border-accent/35 px-2 py-0.5 rounded-full">
+                  <Icon name="sparkle-star" size={12} />
+                  {t.animeBadge}
                 </span>
               )}
-              {/* أين يُبثّ — هنا في الترويسة، وقسم المنصّات في «معلومات» حُذف */}
-              {watchWhere && <WatchChip
-                options={watchWhere.options}
-                region={watchWhere.region}
-                userRegion={userRegion}
-                locale={locale}
-              />}
+              {tv.first_air_date && <span>{tv.first_air_date.slice(0, 4)}</span>}
+              <span aria-hidden>·</span>
+              <span>{t.seasonsCount(tv.number_of_seasons)}</span>
             </div>
-          )}
+
+            {/* المصدر والاستوديو من AniList (D-173) — لِما ثبت أنه أنمي وحده،
+                وخلف Suspense خاصّته: السلسلة نداءان إلى خدمتين لا نملكهما،
+                فلا تُرهن بهما ترويسةُ الصفحة (D-071). وغيابُهما لا يترك فراغاً
+                محجوزاً — السطر إمّا يُرسم كاملاً أو لا يوجد أصلاً. */}
+            {isAnime(tv) && (
+              <Suspense fallback={null}>
+                <AnimeFacts tmdbId={tvId} t={t} />
+              </Suspense>
+            )}
+
+            {/* التقييم سطرٌ مستقلّ تحت البيانات، بشعارَي IMDb وطماطم لا
+                بأسمائهما، ومن هذين المصدرين فقط — لا نجمة TMDB (قرار أحمد
+                ٨ أغسطس، يُتمّ نقض D-027) */}
+            {/* 🆕 **والتصنيفُ العمريُّ يذيّل السطرَ نفسَه** (D-286، طلبُ
+                أحمد: «التصنيف العمري حطها في كل صفحات المسلسلات والأفلام»).
+                **ولا نداءَ ثالثاً له** — يصل في ردّ OMDb نفسِه. */}
+            <Suspense fallback={<HeroRatingsSkeleton />}>
+              <HeroRatings tvId={tvId} ageLabel={t.ageRating} />
+            </Suspense>
+
+            {/* «٣ ممن تتابعهم شاهدوه» (D-127) — تحت تقييم العالم مباشرة:
+                الرأي العام أولاً ثم رأي من تثق بهم. ولا يُرسم شيء تحت
+                الثلاثة — الكتم في SQL لا هنا */}
+            <CircleNote circle={circle} locale={locale} />
+
+            {/* الأنواع صعدت من «معلومات» إلى جنب الملصق — كصفحة الفيلم */}
+            {tv.genres.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {tv.genres.slice(0, 4).map((g) => (
+                  <span
+                    key={g.id}
+                    className="text-[11px] font-medium bg-surface-2 border border-border px-2.5 py-1 rounded-full"
+                  >
+                    {g.name}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {(next?.air_date || watchWhere) && (
+              <div className="mt-2.5 flex flex-wrap items-center gap-2">
+                {next && next.air_date && (
+                  <span className="inline-block text-[11px] text-accent-2 bg-accent-2/10 border border-accent-2/30 px-2.5 py-1 rounded-lg">
+                    {t.nextEpisodeOn(formatDate(next.air_date, t))}
+                  </span>
+                )}
+                {/* أين يُبثّ — هنا في الترويسة، وقسم المنصّات في «معلومات» حُذف */}
+                {watchWhere && <WatchChip
+                  options={watchWhere.options}
+                  region={watchWhere.region}
+                  userRegion={userRegion}
+                  locale={locale}
+                />}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
