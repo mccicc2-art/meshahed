@@ -905,6 +905,10 @@ export interface FeedItem {
   listId?: string | null;
   /** slug قائمةِ لوبز إن كانت منسّقة — الاسمُ يُترجَم عند العرض (D-328) */
   listSlug?: string | null;
+  /* 🆕 **غلافُ القائمة — عريضٌ لا ملصق** (D-425، الهجرة ١١٩): مسارُ
+     `backdrop` من TMDB، **وحقلٌ باسمه لا `poster_path` يحمل مقاسين**
+     (D-224/D-312). **وغيابُه يعيد الصفَّ إلى فراغه القديم حرفاً.** */
+  listCover?: string | null;
 }
 
 /**
@@ -977,6 +981,8 @@ export async function getCommunityFeed(
       list_id?: string | null;
       list_name?: string | null;
       list_slug?: string | null;
+      /* 🆕 **ذيلُ الهجرة ١١٩** — يغيب قبلها فيُقرأ `null` (D-179) */
+      list_cover?: string | null;
     };
     // صفٌّ بلا عنوان لا يُرسم — الملصق والعنوان يأتيان من `follows`، فإن
     // غاب الصفّ هناك (استيرادٌ ناقص مثلاً) لم يبقَ ما يُعرض
@@ -1074,6 +1080,8 @@ export async function getCommunityFeed(
         /* 🆕 الهجرة ١٠٦ — الوجهةُ والاسمُ المترجَم يسافران مع الصفّ */
         listId: r.list_id ?? null,
         listSlug: r.list_slug ?? null,
+        /* 🆕 الهجرة ١١٩ — غلافُ القائمة يسافر مع صفِّها (D-425) */
+        listCover: r.list_cover ?? null,
       };
     });
   } catch {

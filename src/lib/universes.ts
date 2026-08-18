@@ -582,6 +582,54 @@ export function universeBySlug(slug: string): Universe | null {
   return allCuratedSets().find((u) => u.slug === slug) ?? null;
 }
 
+/**
+ * 🔴 🆕 **القوائمُ التحريريّة — اسمٌ ونبذةٌ بلغتين بلا مولِّد** (D-427،
+ * بلاغُ أحمد بلقطة: «طريقك إلى… المفروض تكون بالإنجلش لأن الحساب
+ * بالإنجلش»).
+ *
+ * ================= لماذا قاموسٌ ثانٍ لا صفٌّ في `CURATED` =================
+ *
+ * **`allCuratedSets()` ليست قاموسَ أسماء، هي قاموسُ بناء**: كلُّ صفٍّ
+ * فيها **يولِّد قائمةً** من مجموعةٍ أو جائزةٍ أو صدارة — **وصفٌّ بلا
+ * مولِّدٍ يدخلها يصير بطاقةً فارغةً في «اكتشف» تَعِد بقائمةٍ لا تُبنى**
+ * (D-217: زرٌّ لا يستطيع أن يكتب وعدٌ كاذب).
+ *
+ * **وقائمةُ «طريقك إلى Avengers: Doomsday» كُتبت بيدٍ** (D-317، الهجرة
+ * ١٠١) — **ولذلك لا `source_slug` لها**، **ولذلك بقي اسمُها عربيّاً في
+ * حسابٍ إنجليزيّ**: بوّابةُ D-328 تترجم من عرفت هويّته، **ومن لا هويّةَ
+ * له يمرّ بنصّه المخزَّن.**
+ *
+ * **فالإصلاحُ شطران**: `source_slug` يُكتب لها في القاعدة (الهجرة ١٢٠)،
+ * **وهذا القاموسُ يعطيه معنًى** — **والبوّابةُ لم تتغيّر** (D-216: موضعٌ
+ * واحدٌ للحقيقة، وُسِّع مصدرُه لا نُسخ).
+ *
+ * ⚠️ **ونبذتُها تُترجَم معها**: طلبُه بنصّه «**حتى الوصف بالداخل**
+ * المفروض يماثل لغة الحساب» — **واسمٌ يُترجَم فوق وصفٍ لا يُترجَم تحته
+ * أسوأ من ألّا يُترجَم أيٌّ منهما** (D-214: الشرطُ يُوسَّع يومَ يُضاف
+ * إليه).
+ */
+export interface EditorialList {
+  slug: string;
+  ar: string;
+  en: string;
+  blurbAr: string;
+  blurbEn: string;
+}
+
+export const EDITORIAL: EditorialList[] = [
+  {
+    slug: "doomsday-road",
+    ar: "طريقك إلى Avengers: Doomsday",
+    en: "Your Road to Avengers: Doomsday",
+    blurbAr: "ترتيب المشاهدة الذي أوصت به ديزني قبل الفيلم.",
+    blurbEn: "The watch order Disney recommended before the film.",
+  },
+];
+
+function editorialBySlug(slug: string): EditorialList | null {
+  return EDITORIAL.find((e) => e.slug === slug) ?? null;
+}
+
 export function universeName(u: Universe, locale: "ar" | "en") {
   return locale === "en" ? u.en : u.ar;
 }
@@ -606,7 +654,11 @@ export function curatedName(
 ): string {
   if (!sourceSlug) return storedName;
   const u = universeBySlug(sourceSlug);
-  return u ? universeName(u, locale) : storedName;
+  if (u) return universeName(u, locale);
+  /* 🆕 **والتحريريّةُ تمرّ بنفس البوّابة** (D-427) — **ومن لا يعرفه
+     القاموسان يعود بنصّه المخزَّن حرفاً** (D-063). */
+  const e = editorialBySlug(sourceSlug);
+  return e ? (locale === "en" ? e.en : e.ar) : storedName;
 }
 
 /**
@@ -638,7 +690,13 @@ export function curatedBlurb(
 ): string | null {
   if (!sourceSlug) return null;
   const u = universeBySlug(sourceSlug);
-  if (!u) return null;
+  if (!u) {
+    /* 🆕 **ونبذةُ التحريريّة مكتوبةٌ لا مصوغة** (D-427): **القاموسُ يصوغ
+       لأنه يعرف طريقةَ البناء** (رأسُ هذه الدالّة) — **وقائمةٌ كتبها
+       إنسانٌ طريقتُها رأيُه، فلا صياغةَ تستنبطه.** */
+    const e = editorialBySlug(sourceSlug);
+    return e ? (locale === "en" ? e.blurbEn : e.blurbAr) : null;
+  }
   const name = universeName(u, locale);
   const en = locale === "en";
 
