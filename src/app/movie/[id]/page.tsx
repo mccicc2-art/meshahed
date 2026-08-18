@@ -216,7 +216,16 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
             الواسعة عمود ثالث متوسّط عمودياً في نهاية الصفّ، وعلى الضيّقة —
             حيث لا طرف فارغ أصلاً — يلتفّان سطراً كاملاً تحت الترويسة.
             نسخة واحدة تتنقّل بالتخطيط لا نسختان (بابٌ واحد لكل فعل) */}
-        {(movie.belongs_to_collection || universe) && (
+        {/* 🔴 🆕 **والشرطُ صار شرطَ ما يُرسم فعلاً** (D-402، لقطةُ أحمد
+            بثلاثة خطوطٍ حمراء): كان `belongs_to_collection || universe`
+            **يفتح صفّاً كاملاً لفيلمٍ له مجموعة** — **وداخلَه لا يُرسم
+            شيءٌ إلا إذا وُلِّدت قائمةُ عالَمه.** **وحاويةٌ فارغةٌ ليست بلا
+            كلفة**: `basis-full` تكسر سطراً في `flex-wrap`، **فتأخذ
+            `gap-4` الصفِّ (١٦) و`mt-3` نفسِها (١٢) — ٢٨px من فراغٍ لا
+            يحمل شيئاً**، وهو الخطُّ الأحمر الأوّل حرفاً.
+            **والقاعدة: الشرطُ يسأل عمّا سيُرسم، لا عمّا قد يُرسم**
+            (D-217/D-266: أرخصُ عنصرٍ هو الذي لا يُرسم). */}
+        {universe && universeListId && (
           <div className="basis-full sm:basis-auto sm:self-center flex flex-wrap sm:flex-col gap-2 mt-3 sm:mt-0 sm:ms-2">
             {/* **زرُّ «احفظ كل الأجزاء كقائمة» حُذف** (D-190، شطبه أحمد
                 بلقطة). كان يُنشئ قائمةً من مجموعة الفيلم بضغطةٍ — فعلٌ
@@ -232,14 +241,12 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
                 لفعلٍ واحد بمعنيين مختلفين هو العطل بعينه** (D-068/D-294).
                 ⚠️ **وقبل التوليد لا زرَّ أصلاً**: مجموعةٌ بلا صفٍّ لا
                 تُحفظ — **وزرٌّ لا يكتب شيئاً أسوأ من غيابه** (D-217). */}
-            {universe && universeListId && (
-              <UniverseSaveRow
-                listId={universeListId}
-                saved={universeSaved}
-                label={t.curatedSaveBtn}
-                locale={locale}
-              />
-            )}
+            <UniverseSaveRow
+              listId={universeListId}
+              saved={universeSaved}
+              label={t.curatedSaveBtn}
+              locale={locale}
+            />
           </div>
         )}
       </div>
@@ -331,7 +338,7 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
             label: t.tabSimilar,
             icon: "grid",
             content: (
-              <div className="space-y-7">
+              <div className="space-y-5">
                 <Suspense fallback={null}>
                   <RelatedTitles
                     mediaType="movie"
