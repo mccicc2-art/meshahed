@@ -4337,10 +4337,22 @@ export async function getSavedListsCount(): Promise<number> {
     const supabase = await createClient();
     const user = await getUser();
     if (!user) return 0;
-    const { count } = await supabase
+    const { data: saves } = await supabase
       .from("list_saves")
-      .select("list_id", { count: "exact", head: true })
-      .eq("user_id", user.id);
+      .select("list_id")
+      .eq("user_id", user.id)
+      .limit(200);
+    if (!saves?.length) return 0;
+    /* 🔴 **والمعلنةُ وحدَها تُعدّ** — **وهذا ما قِيس على الموقع الحيّ**:
+       أوّلُ نسخةٍ عدّت صفوفَ `list_saves` كلَّها فقالت «٤» فوق لوحٍ يعرض
+       ثلاثاً، **لأن `getSavedLists` تُسقط ما لم يعد عامّاً** (صاحبُها
+       أخفاه بعد حفظك إيّاه). **وشرطُ العدّاد شرطُ العرض حرفاً وإلّا
+       انتقل الكذبُ من جهةٍ إلى جهة** (D-219). */
+    const { count } = await supabase
+      .from("user_lists")
+      .select("id", { count: "exact", head: true })
+      .in("id", saves.map((s) => s.list_id))
+      .eq("is_public", true);
     return count ?? 0;
   } catch {
     /* **والصفرُ عند السقوط يُبقي العدّادَ كما كان** — لا شاشةَ خطأ (D-063) */
