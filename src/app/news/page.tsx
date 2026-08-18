@@ -745,11 +745,27 @@ async function CuratedCard({
      فائزين وحدهم — تثبيت الخمسة والثلاثين يقع عند الفتح لا هنا */
   const awardFour = u.award ? await awardWinners(u.award, 4).catch(() => []) : null;
   const topRows = u.top ? await topRatedRows(u.top, 8).catch(() => []) : null;
-  const ids = topRows || awardFour ? [] : await resolveSetIds(u).catch(() => [] as number[]);
+  /* 🆕 **وحدُّ البطاقة ثلاثةُ ملصقات** (D-388): قائمةٌ مكتوبةٌ بالأسماء
+     تُحلّ باسمٍ باسم، **فحلُّ مئةٍ لأجل ثلاثِ صورٍ مئةُ نداء** — نفسُ
+     حجّة `limit` في `awardWinners`. **والكاملةُ تُحلّ عند الفتح أو
+     البناء.** */
+  const ids =
+    topRows || awardFour
+      ? []
+      : await resolveSetIds(u, u.titles ? 4 : undefined).catch(() => [] as number[]);
   const four = awardFour ?? (topRows ? topRows.slice(0, 4) : await moviesByIds(ids.slice(0, 4)).catch(() => []));
+  /* ⚠️ **وعدُّ القائمة المكتوبة من قاموسها لا من المحلول** (D-388):
+     البطاقةُ حلّت ثلاثةً فقط، **وعددُ القائمة مئة** — **والعدُّ الحقيقيُّ
+     بعد التوليد من `curated_list_counts`** (١٠٧) كأخواتها. */
   const count =
     items ??
-    (award ? awardWins(award).length : topRows ? (u.topLimit ?? 250) : ids.length);
+    (award
+      ? awardWins(award).length
+      : topRows
+        ? (u.topLimit ?? 250)
+        : u.titles
+          ? u.titles.length
+          : ids.length);
   const posters = four
     .map((m) => posterUrl(m.poster_path, "w185"))
     .filter(Boolean) as string[];
