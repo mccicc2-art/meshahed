@@ -651,6 +651,16 @@ const ar = {
      ثمناً** (D-301: أرخصُ دالّةٍ هي التي لا تُكتب). */
   notifListReview: (who: string, list: string) =>
     list ? `قيّم ${who} قائمتك «${list}»` : `قيّم ${who} إحدى قوائمك`,
+  /* 🆕 **أعجبه رأيُك في قائمة** (الهجرة ١١٤): **الجملةُ تسمّي القائمة لا
+     الرأي** — لأن الضغطةَ تفتح القائمة، **والرأيُ يُقرأ فيها** (D-218). */
+  notifListReviewLike: (who: string, list: string) =>
+    list
+      ? `أعجب ${who} برأيك في «${list}»`
+      : `أعجب ${who} برأيك في إحدى القوائم`,
+  /* 🆕 **ردَّ عليك في قائمة** (الهجرة ١١٤): **جملةُ الردّ لا جملةُ
+     الإعجاب** — وهما نوعان لأن الفعلين مختلفان وإن اتّحدت الوجهة. */
+  notifListReply: (who: string, list: string) =>
+    list ? `ردّ ${who} عليك في «${list}»` : `ردّ ${who} عليك في إحدى القوائم`,
   // مرشِّح نوع الحدث في «مجتمعي» (D-123ب)
   feedFilterGroup: "نوع النشاط",
   feedFilterAll: "الكل",
@@ -2142,6 +2152,14 @@ const en: Dict = {
       : `${who} replied to you in a discussion`,
   notifListReview: (who: string, list: string) =>
     list ? `${who} rated your list “${list}”` : `${who} rated one of your lists`,
+  notifListReviewLike: (who: string, list: string) =>
+    list
+      ? `${who} liked your review of “${list}”`
+      : `${who} liked your list review`,
+  notifListReply: (who: string, list: string) =>
+    list
+      ? `${who} replied to you about “${list}”`
+      : `${who} replied to you on a list`,
   feedFilterGroup: "Activity type",
   feedFilterAll: "All",
   feedFilterRatings: "Ratings",
