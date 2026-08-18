@@ -1259,6 +1259,16 @@ const ar = {
   cardsFull: "كامل",
   /* «مفضّلاتي» قسماً في البروفايل (D-152) */
   profileFavoritesRail: "مفضّلاتي",
+
+  /* تبويباتُ الملفّ العامّ وأقسامُه (D-438) — والمراجعاتُ والنشاطُ
+     يستعيران مفاتيحَ المجتمع نفسَها فلا كلمةَ ثانيةٌ لمعنًى واحد */
+  profileTabOverview: "نظرة عامة",
+  profileTabLists: "القوائم",
+  profileRecent: "النشاط الأخير",
+  profileTopRated: "الأعلى تقييماً",
+  profileEmptyActivity: "لا نشاط بعد.",
+  profileEmptyReviews: "لا مراجعات بعد.",
+  profileEmptyLists: "لا قوائم معلنة بعد.",
   /* القسم المخفيّ يبقى مرئياً **لصاحبه وحده** بعلامةٍ صريحة — وبلا
      محتوى: ما أخفيتَه لا يُجلب (قاعدة D-129) */
   profileHiddenBadge: "مخفي عن الزائر",
@@ -2548,6 +2558,14 @@ const en: Dict = {
   cardsMedium: "Medium",
   cardsFull: "Full",
   profileFavoritesRail: "My favourites",
+
+  profileTabOverview: "Overview",
+  profileTabLists: "Lists",
+  profileRecent: "Recent activity",
+  profileTopRated: "Top rated",
+  profileEmptyActivity: "No activity yet.",
+  profileEmptyReviews: "No reviews yet.",
+  profileEmptyLists: "No public lists yet.",
   profileHiddenBadge: "Hidden from visitors",
   profileHiddenHint: "Only you can see this. Turn it back on under Customise.",
   settingsNavProfile: "Profile",
