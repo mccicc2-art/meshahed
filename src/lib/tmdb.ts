@@ -929,6 +929,69 @@ export async function movieImdbId(id: number): Promise<string | null> {
   }
 }
 
+/**
+ * 🔴 🆕 **صيغُ اسمِ العمل كلُّها — الجسرُ الثالثُ إلى IMDb** (D-430،
+ * دَينُ D-414 المعلَن).
+ *
+ * ================= لماذا احتجناه =================
+ *
+ * **جسران سقطا على عملٍ عربيٍّ واحد**: TMDB لا تحمل له `imdb_id`
+ * (الجسرُ الأوّل)، **والبحثُ بالاسم في OMDb لا يطابق** (الجسرُ الثاني)
+ * **لأن الحرفَ يختلف**: TMDB تكتبه `Fi El La La Land` وIMDb تكتبه
+ * `Fi Al La La Land` — **وحرفٌ واحدٌ يمنع المطابقة.**
+ *
+ * **والاسمُ المنقولُ عن العربيّة لا صيغةَ واحدةَ له أصلاً** (`El`/`Al`،
+ * `Ain`/`Ayn`، `Mohamed`/`Muhammad`) — **فالبحثُ بصيغةٍ واحدةٍ رهانٌ
+ * على أن يكون اختيارُ TMDB هو اختيارَ IMDb**، وهو رهانٌ يخسر كثيراً.
+ *
+ * **وTMDB تحمل الصيغَ كلَّها** في `/alternative_titles` — **بيانٌ عندنا
+ * لم نكن نسأل عنه** (سيرةُ `Rated` في D-286 و`votes` في D-132).
+ *
+ * ================= وحدودُه =================
+ *
+ * ⚠️ **ولا يقع هذا النداءُ إلّا بعد سقوط الجسرين** (D-152): أكثرُ
+ * الأعمال يصلها معرّفُها من TMDB مباشرةً، **فالكلفةُ صفرٌ لها.**
+ * ⚠️ **والمسارُ يختلف بين فيلمٍ ومسلسل**: الفيلمُ يعيد `titles` والمسلسلُ
+ * يعيد `results` — **وقارئٌ يفترض مفتاحاً واحداً يعود فارغاً بصمت.**
+ * ⚠️ **وسقفٌ على الصيغ**: كلُّ صيغةٍ رحلةُ OMDb، **وعملٌ بأربعين صيغةً
+ * أربعون رحلة** — **فالسقفُ ستٌّ**، وتُرتَّب الإنجليزيّةُ أوّلاً لأن
+ * IMDb تكتب بالحروف اللاتينيّة.
+ * **والمكرَّرُ يسقط** (حسّاسيّةُ الحالة ملغاة) فلا نسأل مرّتين عن اسمٍ
+ * واحد.
+ */
+export async function altTitles(
+  mediaType: "tv" | "movie",
+  id: number,
+  limit = 6,
+): Promise<string[]> {
+  try {
+    const data = await tmdb<{
+      titles?: { iso_3166_1?: string; title?: string }[];
+      results?: { iso_3166_1?: string; title?: string }[];
+    }>(`/${mediaType}/${id}/alternative_titles`);
+    const rows = data.titles ?? data.results ?? [];
+    /* **الإنجليزيّةُ أوّلاً**: IMDb عنوانُها لاتينيٌّ، **وصيغةٌ عربيّةٌ
+       تُبحث في OMDb رحلةٌ ضائعة** — لكنها لا تُحذف، تُؤخَّر (D-063). */
+    const en = rows.filter((r) => /^(US|GB|CA|AU)$/i.test(r.iso_3166_1 ?? ""));
+    const rest = rows.filter((r) => !en.includes(r));
+    const out: string[] = [];
+    const seen = new Set<string>();
+    for (const r of [...en, ...rest]) {
+      const t = (r.title ?? "").trim();
+      if (t.length < 3) continue;
+      const k = t.toLowerCase();
+      if (seen.has(k)) continue;
+      seen.add(k);
+      out.push(t);
+      if (out.length >= limit) break;
+    }
+    return out;
+  } catch {
+    /* **الغيابُ يعني «لا صيغةَ أخرى» لا عطلاً** (D-063) */
+    return [];
+  }
+}
+
 export function getSeason(tvId: number, seasonNumber: number): Promise<SeasonDetails> {
   return tmdb<SeasonDetails>(`/tv/${tvId}/season/${seasonNumber}`);
 }
