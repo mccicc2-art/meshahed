@@ -3,7 +3,15 @@ import { redirect, notFound } from "next/navigation";
 import { getUser } from "@/lib/data";
 import { getLibState } from "@/lib/libState";
 import { getT, getWatchRegion } from "@/lib/locale";
-import { eraRange, parseBrowse, seasonRange, browseHref } from "@/lib/browse";
+import {
+  eraRange,
+  parseBrowse,
+  seasonRange,
+  browseHref,
+  browseGenreName,
+  browseTagName,
+  BROWSE_TAGS,
+} from "@/lib/browse";
 import { keywordId, companyId, titleOf, yearOf, ANIME_KEYWORD, type DiscoverFilter } from "@/lib/tmdb";
 import { localizeRows } from "@/lib/localize";
 import {
@@ -40,7 +48,22 @@ export const dynamic = "force-dynamic";
  * فهي «القائمة الكاملة» بمعنى «كلُّ ما يستحقّ العرض في هذا القسم»، وحين
  * يُطلب أكثر يُبنى الترقيم بندًا مستقلاً لا اليوم.
  */
+/**
+ * ⚖️ **🆕 والحدُّ صار قابلاً للتمديد** (D-378، طلبُ أحمد: «ضروري فيه زرّ
+ * المزيد… اضغط المزيد إلى أن ترضى، ما يوقفني»).
+ *
+ * **وما كان مكتوباً هنا يبقى صحيحاً في نصفه**: «الترقيمُ يحتاج حالةً في
+ * الرابط ومسارَ جلبٍ ثانياً» — **والحالةُ في الرابط هي كلُّ ما احتاجه
+ * فعلاً** (`?p=`)، **ولا مسارَ جلبٍ ثانياً**: نفسُ `buildSection` بحدٍّ
+ * أكبر، **فالصفحةُ الثانية هي الأولى وقد طالت** — لا قائمةٌ ثانيةٌ
+ * تُلصَق بها فتكرّر أو تُسقط.
+ * **والزرُّ رابطٌ لا حالةُ عميل**: الصفحةُ خادمٌ بحتٌ بلا جافاسكربت،
+ * **ومن شارك الرابط شارك ما وصل إليه** (D-063/D-095).
+ * **والسقفُ يُقال**: خمسُ ضغطاتٍ (٣٠٠ عملاً) — **وما فوقها يقف الزرُّ
+ * ولا يَعِد بما لا يأتي** (D-181).
+ */
 const LIMIT = 60;
+const MAX_PAGES = 5;
 
 export default async function SectionPage({
   params,
@@ -99,6 +122,10 @@ export default async function SectionPage({
         : undefined
     : undefined;
 
+  /* **صفحةُ التمديد من الرابط** — والمجهولُ يسقط إلى الأولى (D-179) */
+  const page = Math.min(MAX_PAGES, Math.max(1, Number(sp.p) || 1));
+  const want = LIMIT * page;
+
   const win = sp.w === "month" || sp.w === "year" ? sp.w : "week";
   const y = new Date().getUTCFullYear();
   const todayStr = new Date().toISOString().slice(0, 10);
@@ -116,14 +143,22 @@ export default async function SectionPage({
     /* **بلا `sample`** — الصفحةُ جردٌ مرتَّب، والقرعةُ للصفّ وحده (D-202):
        قرعةٌ في صفحةٍ تُمرَّر تكرّر وتُسقط. و`locale` لمصدر الكلاسيكيّات. */
     { media, base, genreIds, active: browse.active, win, winRange, locale },
-    LIMIT,
+    want,
   );
 
   /* العنوانُ من نفس مفاتيح القاموس التي يستعملها الصفّ — **لا نصَّ ثانياً
      لقسمٍ واحد** (وإلا صار للقسم اسمان يفترقان عند أوّل تعديل). */
-  const title = String(
-    (t as unknown as Record<string, string>)[SECTION_TITLE_KEY[section][media]] ?? "",
-  );
+  /* 🆕 **وعنوانُ صفِّك من اختيارك** (D-378): النوعُ ومعه الوسمُ إن كان —
+     **بنفس التركيب الذي يبني به الصفُّ عنوانَه** (لا اسمان لصفٍّ واحد). */
+  const lang = locale === "en" ? ("en" as const) : ("ar" as const);
+  const tagDef = browse.tag ? BROWSE_TAGS.find((x) => x.slug === browse.tag?.slug) : null;
+  const title =
+    section === "my-row" && browse.genre
+      ? browseGenreName(browse.genre, lang) +
+        (tagDef ? ` · ${browseTagName(tagDef, lang)}` : "")
+      : String(
+          (t as unknown as Record<string, string>)[SECTION_TITLE_KEY[section][media]] ?? "",
+        );
   const dict = t as Dict;
   /* رابطُ الرجوع يحمل الفلتر نفسَه إلى تبويبه — لا إلى «اكتشف» عارياً */
   const backHref = browseHref({
@@ -228,6 +263,23 @@ export default async function SectionPage({
             />
           ))}
         </PosterGrid>
+      )}
+
+      {/* 🆕 **«المزيد» — رابطٌ لا زرّ** (D-378): يظهر ما دام المصدرُ يملأ
+          ما طُلب منه، **ويغيب حين ينقص فيقول الغيابُ «هذا كلُّ ما هناك»**
+          — **وزرٌّ يَعِد بصفحةٍ فارغةٍ أسوأُ من غيابه** (D-181/D-217).
+          **والمفتاحُ `showMore` القائم** — لا مفتاحَ جديداً لفعلٍ قديم. */}
+      {rows.length >= want && page < MAX_PAGES && (
+        <div className="mt-8 text-center">
+          <Link
+            href={`?${new URLSearchParams({ ...sp, p: String(page + 1) } as Record<string, string>).toString()}`}
+            scroll={false}
+            prefetch={false}
+            className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-5 py-2.5 text-[14px] font-semibold text-foreground hover:border-[color:var(--divider)] active:scale-95 transition"
+          >
+            {dict.showMore}
+          </Link>
+        </div>
       )}
     </main>
   );
