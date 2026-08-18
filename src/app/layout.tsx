@@ -5,7 +5,6 @@ import "./globals.css";
 import { Navbar } from "@/components/Navbar";
 import { PullToRefresh } from "@/components/PullToRefresh";
 import { BottomNav } from "@/components/BottomNav";
-import { Footer } from "@/components/Footer";
 import { OfflineSync } from "@/components/OfflineSync";
 import { ToastHost } from "@/components/ToastHost";
 import { SwRegister } from "@/components/SwRegister";
@@ -135,10 +134,24 @@ export default async function RootLayout({
             مرّة — **وإيماءةٌ تعمل أحياناً أسوأ من إيماءةٍ لا توجد.**
             وهو خفيف: مستمعُ لمسٍ واحد، ولا يُركَّب على غير اللمس أصلاً. */}
         <PullToRefresh />
-        <main id="main" className="flex-1 w-full max-w-6xl mx-auto px-4 py-6">
+        {/* 🆕 **وذيلُ الصفحة صار مسؤوليّةَ التخطيط** (D-437): كان التذييل
+            يحمل `pb-28` فيبعد المحتوى عن الشريط السفليّ، **فلمّا سقط
+            سقطت معه المسافة** — **والمساحةُ تُحجز حيث تُستعمل لا في
+            عنصرٍ يصادف أن يكون آخر ما في الصفحة.** */}
+        <main
+          id="main"
+          className="flex-1 w-full max-w-6xl mx-auto px-4 pt-6 pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-8"
+        >
           {children}
         </main>
-        <Footer text={t.footer} />
+        {/* 🗑️ 🆕 **وسطرُ «Every story matters» سقط من التطبيق** (D-437،
+            طلبُ أحمد: «احذف عبارة every story matters المكتوب تحت»):
+            **شعارٌ يُعاد تحت كلِّ شاشةٍ يُقرأ مرّةً ثم لا يُقرأ**،
+            **وثمنُه ٩٠px من ذيل كلِّ صفحةٍ على الجوّال** (`pb-28`) —
+            وهي بالضبط المساحةُ التي طُلبت للمحتوى.
+            **والسطرُ باقٍ في مكانٍ واحدٍ يُقرأ فيه**: صفحةُ الهبوط تحت
+            زرِّ الدخول (`LandingHero`) — **فالعلامةُ تُعرَّف مرّةً لمن
+            لا يعرفها، لا في كلِّ شاشةٍ لمن يستعملها كلَّ يوم.** */}
                 {/* نقطةُ «جديد» تُبثّ خلف Suspense: عدُّها نداءُ قاعدة، ولو انتظرته
             الصفحة لتأخّر أوّل بايت في كل مسار (نفس سبب Suspense للترويسة) */}
         <BottomNav

@@ -249,6 +249,12 @@ export default async function HomePage() {
       ).length,
   );
 
+  /* ⚖️ 🆕 **أصفرٌ واحدٌ لكلِّ الرموز** (D-437، طلبُ أحمد: «طبّق نفس
+     اللون الأصفر في كل الأيقونات»). **ونقضٌ مسجَّل**: كان لكلِّ خانةٍ
+     لونُها «فتُعرف قبل أن تُقرأ» — **وثمنُه أن الشاشةَ الواحدة فيها
+     خمسةُ ألوانِ تمييزٍ فلا يبقى للأصفر معنى «هنا الفعل».**
+     **واللونُ الدلاليُّ باقٍ حيث يقول حالةً** (أخضرُ الاكتمال وأحمرُ
+     الإيقاف في خيط الملصق) — **الذي سقط هو التلوينُ التزيينيّ.** */
   const allHeaderStats: Record<HeaderStatKey, HeaderStat> = {
     shows: {
       key: "shows",
@@ -264,7 +270,7 @@ export default async function HomePage() {
       value: String(rawMovies.length),
       label: t.shortMovies,
       href: "/library?filter=movie",
-      color: "var(--accent-2)",
+      color: "var(--accent)",
     },
     towatch: {
       key: "towatch",
@@ -272,7 +278,7 @@ export default async function HomePage() {
       value: String(toWatchCount),
       label: t.libToWatch,
       href: "/library",
-      color: "var(--brand-3)",
+      color: "var(--accent)",
     },
     time: {
       key: "time",
@@ -288,7 +294,7 @@ export default async function HomePage() {
       value: String(watchedEpisodeTotal),
       label: t.shortEpisodes,
       href: "/stats",
-      color: "var(--info)",
+      color: "var(--accent)",
     },
     upcoming: {
       key: "upcoming",
@@ -296,7 +302,7 @@ export default async function HomePage() {
       value: String(upcomingCount),
       label: t.libUpcoming,
       href: "/library",
-      color: "var(--brand-3)",
+      color: "var(--accent)",
     },
     completed: {
       key: "completed",
@@ -304,7 +310,7 @@ export default async function HomePage() {
       value: String(finishedShowsCount + finishedMoviesCount),
       label: t.libTabFinished,
       href: "/library",
-      color: "var(--success)",
+      color: "var(--accent)",
     },
     dropped: {
       key: "dropped",
@@ -312,7 +318,7 @@ export default async function HomePage() {
       value: String(droppedCount),
       label: t.droppedBadge,
       href: "/library",
-      color: "var(--error)",
+      color: "var(--accent)",
     },
     // خانة «تقييماتي» في بطاقة الأرقام (طلب أحمد 9 Aug)
     ratings: {
@@ -321,7 +327,7 @@ export default async function HomePage() {
       value: String(myRatingsCount),
       label: t.panelRatings,
       href: "/ratings",
-      color: "var(--verified)",
+      color: "var(--accent)",
     },
   };
   const headerStats: HeaderStat[] = prefs.statsPick.map(
@@ -336,7 +342,11 @@ export default async function HomePage() {
      المكتبة وتفاصيل TMDB وكل الصفوف — خلف Suspense يصل حين يجهز.
      الهيكل يحجز ارتفاع صفّين (D-046). نمطُ /news نفسه (D-071). */
   return (
-    <div className="space-y-8 sm:space-y-10">
+    /* **الإيقاعُ ضاق درجتين** (D-437، طلبُ أحمد: «ودّي كل شي في صفحة
+       وحدة، ما احتاج انزل، فقط أمرّر يمين»): **الفراغُ بين الأقسام هو
+       أرخصُ ما يُشترى به سطرٌ رابع** — **ولا حجمَ نصٍّ نزل ولا قسمٌ
+       سقط.** */
+    <div className="space-y-5 sm:space-y-8">
       {/* تسخين بقية التبويبات بعد هدوء الرئيسية (طلب أحمد) — أول ضغطة
           تبويب تُعاد من كاش الراوتر لحظياً. البحث ليس بينها: تبويبه
           ورقةٌ تنبثق لا صفحةٌ تُجلب */}
@@ -796,6 +806,8 @@ async function HomeBody({
     badgeTone?: "neutral" | "progress" | "watched" | "rating";
     /** سطرُ الوضع المختصر — النوعُ وعددُ الحلقات أو الموعد */
     subtitle?: string;
+    /** «الحلقة ٥» — للقادم وحدَه، ويغيب إن لم يعرفه TMDB */
+    ep?: string;
   };
 
   const toWatchRow: MixedItem[] = [
@@ -881,6 +893,42 @@ async function HomeBody({
   ]
     .sort((a, b) => (a as { date: string }).date.localeCompare((b as { date: string }).date))
     .slice(0, 16);
+
+  /* ===== رقمُ الحلقة القادمة (D-437، طلبُ أحمد: «وأظهر رقم الحلقة في
+     القادم») =====
+
+     **ولا هجرةَ ولا عمود**: صفُّ المتابعة يحمل `next_air_date` وحدَه،
+     **والرقمُ في `next_episode_to_air` من TMDB** — **وهو نداءٌ مخبّأٌ
+     ساعةً** (`revalidate: 3600`) **لأعمالٍ يتابعها صاحبُ الحساب أصلاً
+     فأكثرُها مجلوبٌ في الطلب نفسِه.**
+
+     ⚠️ **والسقفُ عشرة**: القادمُ قد يكون ستّةَ عشر، **ونداءٌ لكلِّ صفٍّ
+     بلا سقفٍ هو بالضبط ما أسقط شارةَ تقييم الحلقة** (D-384).
+     **والغائبُ يغيب صامتاً** — **ولا يُخمَّن رقم** (D-432). */
+  const upcomingTvIds = upcomingRow
+    .filter((x) => x.key.startsWith("up-tv-"))
+    .map((x) => Number(x.key.slice("up-tv-".length)))
+    .filter((n) => Number.isFinite(n))
+    .slice(0, 10);
+  if (upcomingTvIds.length > 0) {
+    const eps = await Promise.all(
+      upcomingTvIds.map((id) =>
+        getTv(id)
+          .then((tv) => tv.next_episode_to_air?.episode_number ?? null)
+          .catch(() => null),
+      ),
+    );
+    const epById = new Map<number, number>();
+    upcomingTvIds.forEach((id, n) => {
+      const e = eps[n];
+      if (e != null) epById.set(id, e);
+    });
+    for (const x of upcomingRow) {
+      if (!x.key.startsWith("up-tv-")) continue;
+      const e = epById.get(Number(x.key.slice("up-tv-".length)));
+      if (e != null) x.ep = t.episodeNo(e);
+    }
+  }
 
   // ===== ملخّص أسبوعك — قسمٌ اختياري يطيع نظام التخصيص كأي قسم =====
   // لا يُقرأ السجلّ إلا لمن فعّله، ولا يُرسم إن كان الأسبوع صفراً
@@ -1017,7 +1065,7 @@ async function HomeBody({
                 key="towatch"
                 title={t.libToWatch}
                 icon="bookmark"
-                iconColor="var(--brand-3)"
+                iconColor="var(--accent)"
                 href="/library"
                 seeAll={t.seeAll}
                 view={view}
@@ -1049,7 +1097,20 @@ async function HomeBody({
                       posterPath={x.posterPath}
                       progress={x.progress}
                       badge={x.badge}
-                      titleBelow
+                      /* ⚖️ 🆕 **والاسمُ عاد فوق الملصق هنا** (D-437،
+                         حكمُ أحمد: «إذا احتجت مساحة في To Watch حط اسم
+                         الفلم على البوستر»). **وهو ثمنٌ اختاره بنفسه
+                         ليجمع الصفحةَ في شاشة**، **والاسمُ يبقى مرّةً
+                         واحدة** فلا يُنقض شرطُه الأوّل. **و`titleBelow`
+                         باقٍ في العقد** لأن المكتبةَ والاستكشاف ينتظرانه
+                         (D-435). */
+                      /* 🆕 **ولا خيطَ «عندك» في صفٍّ كلُّه عندك**
+                         (D-437، بلاغُه: «اللون السماوي على الفيلم ما هو
+                         فيت»): **الخيطُ يقول ما يقوله عنوانُ القسم** —
+                         **وهو نفسُ حكم شارة «ما بدأته»** (D-434).
+                         **والتقدّمُ والاكتمالُ والإيقاف تبقى** لأنها
+                         تفرّق بين بطاقةٍ وأخرى في الصفّ نفسِه. */
+                      savedMark={false}
                       hold={{
                         tmdbId: x.tmdbId!,
                         mediaType: x.mediaType!,
@@ -1086,13 +1147,13 @@ async function HomeBody({
                       href={x.href}
                       chip={x.badge}
                       title={x.title}
-                      subtitle={x.subtitle}
+                      subtitle={x.ep ?? x.subtitle}
                     />
                   ) : (
                     <CompactMediaRow
                       key={x.key}
                       href={x.href}
-                      title={x.badge ?? x.title}
+                      title={[x.badge, x.ep].filter(Boolean).join(" · ")}
                       subtitle={x.title}
                       posterPath={x.posterPath}
                     />
@@ -1138,7 +1199,7 @@ async function HomeBody({
                 key="movies"
                 title={t.myMovies}
                 icon="film"
-                iconColor="var(--accent-2)"
+                iconColor="var(--accent)"
                 href="/library?filter=movie"
                 seeAll={t.seeAll}
               >
@@ -1209,7 +1270,7 @@ async function HomeBody({
                 key="ratings"
                 title={t.ratingsListTitle}
                 icon="star"
-                iconColor="var(--verified)"
+                iconColor="var(--accent)"
                 href="/ratings"
                 seeAll={t.seeAll}
               >
