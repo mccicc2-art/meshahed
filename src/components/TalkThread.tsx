@@ -77,105 +77,142 @@ export function TalkThread({
 
   return (
     <div className="divide-y divide-[color:var(--divider)]">
-      {shown.map((r) => {
-        const who = displayNameOf(r, t.anonymousUser);
-        const href = `/review/${mediaType}/${tmdbId}/${r.id}`;
-        const n = counts.get(r.id) ?? 0;
-        return (
-          /* **صفُّ خطّ النشاط نفسُه** (D-232): وجهٌ يجاور الترويسة، والنصُّ
-             يمرّ تحته بعرض العمود، والذيلُ في القاع. **عائلةٌ واحدة لصفّ
-             الكلام في التطبيق كلِّه.** */
-          <article key={r.id} id={`review-${r.id}`} className="py-4 first:pt-0 flex gap-3">
-            <Link href={href} prefetch={false} className="shrink-0 active:opacity-80 transition">
-              <Avatar src={r.hide_name ? null : r.avatar_url} name={who} size={44} alt="" />
-            </Link>
-
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1.5">
-                <Link
-                  href={r.username ? `/u/${r.username}` : href}
-                  prefetch={false}
-                  className="min-w-0 truncate font-bold text-[14px] leading-tight hover:text-accent transition"
-                >
-                  <bdi>{who}</bdi>
-                </Link>
-                <span aria-hidden className="shrink-0 text-muted text-[12px]">
-                  ·
-                </span>
-                {/* **العمرُ بابٌ إلى الخيط** — عادةُ تويتر (D-239/D-242) */}
-                <Link
-                  href={href}
-                  prefetch={false}
-                  className="shrink-0 text-[12px] text-muted tabular-nums hover:text-accent transition"
-                >
-                  {timeAgoShort(r.updated_at, t)}
-                </Link>
-                {/* **والتقييمُ بشكلٍ واحد في التطبيق** (D-241): `10.0`
-                    لا `10/10` — **والمقامُ يُكتب حيث يتغيّر لا حيث يثبت.** */}
-                <span
-                  className="ms-auto shrink-0 text-[13px] font-bold text-accent tabular-nums"
-                  title={t.rateOutOf(r.rating)}
-                >
-                  ★ <span dir="ltr">{r.rating.toFixed(1)}</span>
-                </span>
-              </div>
-
-              {r.review?.trim() &&
-                /* 🆕 **إعلانُ الحرق يحجب المتنَ نفسَه** (D-315، الهجرة
-                   ١٠٠) — **والحاجبُ خارج الرابط**: زرُّ الكشف داخلَ رابطٍ
-                   هو عطلُ D-155 بعينه، **ومن ضغط «اعرض الحرق» لم يقصد أن
-                   يفتح صفحة.** */
-                (r.has_spoiler ? (
-                  /* **ولا سطرَ شرحٍ بجانب الزرّ** — حكمُ D-287/D-289 قائم */
-                  <SpoilerText text={r.review} locale={locale} />
-                ) : (
-                  /* **اتّجاهُ الرأي من الرأي** (D-241)، **ولونُه لون المتن**:
-                     أخفتُ نصٍّ في صفحةٍ لا يصحّ أن يكون سببَ وجودها. */
-                  <Link
-                    href={href}
-                    prefetch={false}
-                    /* **الاتّجاه على الرابط لا على المقصوص** — D-282 */
-                    dir={dirOf(r.review)}
-                    className={`block mt-2 ${alignOf(r.review)}`}
-                  >
-                    <p className="text-[14px] leading-relaxed text-foreground/90 whitespace-pre-line line-clamp-6">
-                      {r.review}
-                    </p>
-                  </Link>
-                ))}
-
-              {/* **الذيل: إعجابٌ · عدّادُ ردودٍ يفتح الخيط** — وشكلُه شكلُ
-                  ذيلِ خطّ النشاط حرفاً (D-234): بإزاحة `-mx-0.5` نفسِها.
-                  **ولا بلاغَ هنا**: البلاغُ فعلٌ نادرٌ يسكن صفحةَ الكلام،
-                  **وقائمةٌ من عشرة صفوفٍ فيها عشرةُ أزرارِ بلاغ تُخيف.** */}
-              <div className="mt-2 -mx-0.5 flex items-center gap-1">
-                <LikeButton
-                  reviewUserId={r.id}
-                  tmdbId={tmdbId}
-                  mediaType={mediaType}
-                  likes={r.likes}
-                  likedByMe={r.likedByMe}
-                  isMine={r.isMine}
-                  /* **الزائرُ يقرأ الرقم ولا يضغطه** (D-221) */
-                  readOnly={!signedIn}
-                  locale={locale}
-                />
-                <Link
-                  href={href}
-                  prefetch={false}
-                  aria-label={t.talkReply}
-                  title={t.talkReply}
-                  className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[12px] tabular-nums text-muted hover:text-accent transition"
-                >
-                  <Icon name="comment" size={15} />
-                  {/* **والصفرُ لا يُرسم** (D-222) */}
-                  {n > 0 && n}
-                </Link>
-              </div>
-            </div>
-          </article>
-        );
-      })}
+      {shown.map((r) => (
+        <TalkReviewRow
+          key={r.id}
+          r={r}
+          count={counts.get(r.id) ?? 0}
+          tmdbId={tmdbId}
+          mediaType={mediaType}
+          locale={locale}
+          signedIn={signedIn}
+        />
+      ))}
     </div>
+  );
+}
+
+/**
+ * **صفُّ الرأي الواحد — انتُزع ليقرأه ثانٍ** (D-398، وقاعدةُ D-002:
+ * الانتزاعُ عند القارئ الثاني لا عند الأوّل).
+ *
+ * **والقارئُ الثاني هو خطُّ المجتمع في صفحة العمل** (`TitleCommunityTab`):
+ * صار الرأيُ والنقاشُ والخبرُ صفوفاً في قائمةٍ واحدةٍ مرتّبةٍ بالزمن،
+ * **فلا يملك أحدُها قائمتَه**. ولو نسخنا شكلَ الصفّ هناك لصار للرأي
+ * رسمان ينحرفان عند أوّل تعديل (قاعدة ٦).
+ *
+ * **ولم يتغيّر من الصفّ حرفٌ واحد** — نُقل كما هو.
+ */
+export function TalkReviewRow({
+  r,
+  count,
+  tmdbId,
+  mediaType,
+  locale,
+  signedIn,
+}: {
+  r: TitleReview;
+  /** عددُ ردودِ هذا الرأي — **يُحسب مرّةً في القائمة لا في الصفّ** */
+  count: number;
+  tmdbId: number;
+  mediaType: "tv" | "movie";
+  locale: Locale;
+  signedIn: boolean;
+}) {
+  const t = getDict(locale);
+  const who = displayNameOf(r, t.anonymousUser);
+  const href = `/review/${mediaType}/${tmdbId}/${r.id}`;
+  const n = count;
+
+  return (
+    <article key={r.id} id={`review-${r.id}`} className="py-4 first:pt-0 flex gap-3">
+      <Link href={href} prefetch={false} className="shrink-0 active:opacity-80 transition">
+        <Avatar src={r.hide_name ? null : r.avatar_url} name={who} size={44} alt="" />
+      </Link>
+
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-1.5">
+          <Link
+            href={r.username ? `/u/${r.username}` : href}
+            prefetch={false}
+            className="min-w-0 truncate font-bold text-[14px] leading-tight hover:text-accent transition"
+          >
+            <bdi>{who}</bdi>
+          </Link>
+          <span aria-hidden className="shrink-0 text-muted text-[12px]">
+            ·
+          </span>
+          {/* **العمرُ بابٌ إلى الخيط** — عادةُ تويتر (D-239/D-242) */}
+          <Link
+            href={href}
+            prefetch={false}
+            className="shrink-0 text-[12px] text-muted tabular-nums hover:text-accent transition"
+          >
+            {timeAgoShort(r.updated_at, t)}
+          </Link>
+          {/* **والتقييمُ بشكلٍ واحد في التطبيق** (D-241): `10.0`
+              لا `10/10` — **والمقامُ يُكتب حيث يتغيّر لا حيث يثبت.** */}
+          <span
+            className="ms-auto shrink-0 text-[13px] font-bold text-accent tabular-nums"
+            title={t.rateOutOf(r.rating)}
+          >
+            ★ <span dir="ltr">{r.rating.toFixed(1)}</span>
+          </span>
+        </div>
+
+        {r.review?.trim() &&
+          /* 🆕 **إعلانُ الحرق يحجب المتنَ نفسَه** (D-315، الهجرة
+             ١٠٠) — **والحاجبُ خارج الرابط**: زرُّ الكشف داخلَ رابطٍ
+             هو عطلُ D-155 بعينه، **ومن ضغط «اعرض الحرق» لم يقصد أن
+             يفتح صفحة.** */
+          (r.has_spoiler ? (
+            /* **ولا سطرَ شرحٍ بجانب الزرّ** — حكمُ D-287/D-289 قائم */
+            <SpoilerText text={r.review} locale={locale} />
+          ) : (
+            /* **اتّجاهُ الرأي من الرأي** (D-241)، **ولونُه لون المتن**:
+               أخفتُ نصٍّ في صفحةٍ لا يصحّ أن يكون سببَ وجودها. */
+            <Link
+              href={href}
+              prefetch={false}
+              /* **الاتّجاه على الرابط لا على المقصوص** — D-282 */
+              dir={dirOf(r.review)}
+              className={`block mt-2 ${alignOf(r.review)}`}
+            >
+              <p className="text-[14px] leading-relaxed text-foreground/90 whitespace-pre-line line-clamp-6">
+                {r.review}
+              </p>
+            </Link>
+          ))}
+
+        {/* **الذيل: إعجابٌ · عدّادُ ردودٍ يفتح الخيط** — وشكلُه شكلُ
+            ذيلِ خطّ النشاط حرفاً (D-234): بإزاحة `-mx-0.5` نفسِها.
+            **ولا بلاغَ هنا**: البلاغُ فعلٌ نادرٌ يسكن صفحةَ الكلام،
+            **وقائمةٌ من عشرة صفوفٍ فيها عشرةُ أزرارِ بلاغ تُخيف.** */}
+        <div className="mt-2 -mx-0.5 flex items-center gap-1">
+          <LikeButton
+            reviewUserId={r.id}
+            tmdbId={tmdbId}
+            mediaType={mediaType}
+            likes={r.likes}
+            likedByMe={r.likedByMe}
+            isMine={r.isMine}
+            /* **الزائرُ يقرأ الرقم ولا يضغطه** (D-221) */
+            readOnly={!signedIn}
+            locale={locale}
+          />
+          <Link
+            href={href}
+            prefetch={false}
+            aria-label={t.talkReply}
+            title={t.talkReply}
+            className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[12px] tabular-nums text-muted hover:text-accent transition"
+          >
+            <Icon name="comment" size={15} />
+            {/* **والصفرُ لا يُرسم** (D-222) */}
+            {n > 0 && n}
+          </Link>
+        </div>
+      </div>
+    </article>
   );
 }
