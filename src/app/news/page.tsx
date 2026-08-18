@@ -575,15 +575,43 @@ async function MyRowsRails({
   rows,
   tab,
   locale,
+  browse,
+  region,
+  seeAllLabel,
 }: {
   rows: MyRow[];
   tab: string;
   locale: Locale;
+  /**
+   * 🆕 **وصفوفُك تطيع الفلتر** (D-378، بلاغُ أحمد: «مو معقول أفلتر على
+   * العربية ويجيب لي top 10 فقط»): كانت تغيب مع أيِّ فلتر (D-075) —
+   * **والغيابُ كان يُفقر الصفحةَ المُصفّاة بينما الصفُّ يستطيع الطاعة**:
+   * مصدرُه `/discover` وهو يقبل اللغةَ والبلدَ والحقبةَ والتقييم.
+   * **والصفُّ الذي يفرغ بعد التصفية يُخفي نفسَه** كما كان.
+   */
+  browse?: BrowseQuery;
+  region?: string;
+  /** نصُّ «عرض الكل» — من قاموس المستدعي، فلا قاموسَ ثانٍ في هذا المكوّن */
+  seeAllLabel?: string;
 }) {
   const media = tab === "movies" ? ("movie" as const) : ("tv" as const);
   const lang = locale === "en" ? ("en" as const) : ("ar" as const);
   const anime = tab === "anime";
   const lib = { locale, state: await getLibState() };
+  /* محاورُ الفلتر التي يقدر عليها المصدر — والوسمُ يُضاف مع وسم الصفّ */
+  const eraR = eraRange(browse?.era ?? null);
+  const filterTagId = browse?.tag ? await keywordId(browse.tag.q).catch(() => null) : null;
+  const filterBase: DiscoverFilter = {
+    lang: browse?.lang?.code ?? null,
+    country: browse?.country?.code ?? null,
+    provider: browse?.provider ?? null,
+    watchRegion: region,
+    from: eraR.from,
+    to: eraR.to,
+    minRate: browse?.rate ?? null,
+    status: browse?.status?.code ?? null,
+  };
+  const qs = browse ? filterQs(browse) : "";
 
   const built = await Promise.all(
     rows.map(async (r) => {
@@ -595,31 +623,62 @@ async function MyRowsRails({
       const keywords = [
         ...(anime ? [ANIME_KEYWORD] : []),
         ...(tagId ? [tagId] : []),
+        ...(filterTagId && filterTagId !== tagId ? [filterTagId] : []),
       ];
       const items = await topByFilter(
         media,
-        { genreIds: ids, ...(keywords.length ? { keywords } : {}) },
+        { ...filterBase, genreIds: ids, ...(keywords.length ? { keywords } : {}) },
         18,
         "popularity.desc",
       ).catch(() => []);
       /* الأنمي «فقط» في تبويبه و«يسقط» خارجه — نصُّ D-321 */
       /* 🆕 **وتقييمُ IMDb على الملصق** (D-338، طلبُ أحمد) — `withImdbRatings`
          نفسُها التي تخدم «الأكثر شهرةً»، مخبّأةً في مخزن OMDb المتدرّج */
-      const guarded = railGuard(items, { anime: anime ? "only" : "drop" }).slice(0, 12);
+      /* 🆕 **والكتمُ يسقط بلغةٍ أو بلد** (D-194 حرفاً): من اختار «كوريّ»
+         طلبه بنفسه، **وحارسٌ يكتم ما طُلب صراحةً يُفرغ الصفَّ ويكذب** */
+      const guarded = railGuard(items, {
+        anime: anime ? "only" : "drop",
+        unmute: !!browse?.lang || !!browse?.country,
+      }).slice(0, 12);
       const rows2 = await withImdbRatings(guarded).catch(() => guarded);
       if (rows2.length < 4) return null;
       const title =
         browseGenreName(g, lang) + (tagDef ? ` · ${browseTagName(tagDef, lang)}` : "");
-      return { key: r.genre + (r.tag ?? ""), title, items: rows2 };
+      /* 🆕 **وللصفِّ بابٌ يُفتح** (D-378): محاورُ الفلتر كما هي **ومحورا
+         الصفِّ فوقها** — فما يفتحه العنوانُ هو ما يعرضه الصفّ أعمقَ. */
+      const p = new URLSearchParams(qs);
+      p.set("g", r.genre);
+      if (r.tag) p.set("tag", r.tag);
+      else p.delete("tag");
+      return {
+        key: r.genre + (r.tag ?? ""),
+        title,
+        items: rows2,
+        href: sectionHref("my-row", anime ? "anime" : media, p.toString()),
+      };
     }),
   );
 
-  const live = built.filter(Boolean) as { key: string; title: string; items: SearchResult[] }[];
+  const live = built.filter(Boolean) as {
+    key: string;
+    title: string;
+    items: SearchResult[];
+    href: string;
+  }[];
   if (!live.length) return null;
   return (
     <div className="space-y-6">
       {live.map((b) => (
-        <RankedRail key={b.key} title={b.title} icon="sparkle-star" items={b.items} ranked={false} lib={lib} />
+        <RankedRail
+          key={b.key}
+          title={b.title}
+          icon="sparkle-star"
+          items={b.items}
+          ranked={false}
+          lib={lib}
+          href={b.href}
+          seeAllLabel={seeAllLabel}
+        />
       ))}
     </div>
   );
@@ -1251,7 +1310,7 @@ async function CuratedRails({
       {(!active || localAxesOnly(browse)) && (
         <Suspense fallback={<RailSkeleton count={6} />}>
           {/* الجهة تُمرَّر: التبويب وعدٌ، والصفّ الذي لا يعرف تبويبه يخلفه */}
-          <PersonalRails locale={locale} t={t} type={type} browse={active ? browse : undefined} myRows={myRows} tab={type === "tv" ? "shows" : "movies"} />
+          <PersonalRails locale={locale} t={t} type={type} browse={active ? browse : undefined} myRows={myRows} tab={type === "tv" ? "shows" : "movies"} region={region} />
         </Suspense>
       )}
 
@@ -1565,6 +1624,7 @@ async function AnimeRails({
             browse={active ? browse : undefined}
             myRows={myRows}
             tab="anime"
+            region={region}
           />
         </Suspense>
       )}
@@ -1671,6 +1731,7 @@ async function PersonalRails({
   browse,
   myRows = [],
   tab = "",
+  region,
 }: {
   locale: Locale;
   t: T;
@@ -1687,6 +1748,8 @@ async function PersonalRails({
   /** 🆕 صفوفُك الخاصة (D-337→D-338، تصحيحُ أحمد: «تكون بعد picked for you») */
   myRows?: MyRow[];
   tab?: string;
+  /** بلدُ المشاهدة — يلزم محورَ المنصّة وحدَه (D-378) */
+  region?: string;
 }) {
   const wantMovies = type !== "tv";
   /* 🆕 **وحالةُ المكتبة تُقرأ هنا لا تُمرَّر** (D-322): نداءاتُها مغلَّفةٌ
@@ -1741,7 +1804,9 @@ async function PersonalRails({
 
   /* **الفراغُ يُخفي ولا يُعلن** (قرارُ أحمد): صندوقٌ فارغٌ تحت عنوانٍ
      شخصيّ يُقرأ «لا أحد يعرفك» لا «لا نتيجةَ لهذا الفلتر». */
-  const showMyRows = myRows.length > 0 && !browse;
+  /* ⚖️ **وصفوفُك تبقى مع الفلتر** (D-378، نقضُ تطبيق D-075 عليها):
+     **الصفُّ يستطيع الطاعة فيطيع** — والذي يُخفيه فراغُه لا وجودُ فلتر. */
+  const showMyRows = myRows.length > 0;
   if (suggested.length === 0 && artistRows.length === 0 && !showMyRows) return null;
 
   return (
@@ -1777,7 +1842,14 @@ async function PersonalRails({
           المُعرَّفَ منك** — وتغيب مع فلترٍ مفعّل (D-075). */}
       {showMyRows && (
         <Suspense fallback={<RailSkeleton count={6} />}>
-          <MyRowsRails rows={myRows} tab={tab} locale={locale} />
+          <MyRowsRails
+            rows={myRows}
+            tab={tab}
+            locale={locale}
+            browse={browse}
+            region={region}
+            seeAllLabel={t.seeAll}
+          />
         </Suspense>
       )}
 
