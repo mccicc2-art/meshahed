@@ -33,6 +33,7 @@ export function PosterCard({
   posterSize = "w342",
   fallbackIcon = "film",
   hideTitle = false,
+  titleBelow = false,
   saved = false,
   watched = false,
   hold,
@@ -72,6 +73,20 @@ export function PosterCard({
    * ⚠️ **ولا يُطفأ إلا مع بديل:** ملصقٌ بلا اسمٍ في سياقٍ بلا اسم لغزٌ.
    */
   hideTitle?: boolean;
+  /**
+   * 🆕 **الاسمُ تحت الملصق لا عليه** (D-435، الهويّةُ الجديدة).
+   *
+   * **والحجّةُ القديمة كانت صحيحةً في زمنها**: حجابٌ متدرّجٌ يجمع الصورةَ
+   * والاسمَ في مستطيلٍ واحد. **وثمنُها ثلثُ الملصق مطموسٌ في كلِّ بطاقة**
+   * — وملصقُ العمل هو ما يتعرّف عليه القارئ قبل أن يقرأ، **فطمسُه لكتابة
+   * ما تقوله الصورةُ نفسُها إنفاقٌ من رأس المال.**
+   *
+   * ⚠️ **ومعامِلٌ مؤقّتٌ لا وجهان دائمان**: الأسطحُ تنتقل قسماً قسماً
+   * (الرئيسيةُ أوّلاً، ثم المكتبةُ فالاستكشاف)، **ويسقط المعامِلُ ويصير
+   * السلوكَ الوحيد يومَ لا يبقى مستدعٍ للحجاب** — نفسُ نمط «الاسم القديم
+   * يُقبل مؤقّتاً ثم يُحذف» (D-433).
+   */
+  titleBelow?: boolean;
   /**
    * **خيطُ الحالة تحت الملصق** (D-229، طلبُ أحمد: «خطّ تحت البوستر — أخضر
    * شفته، رصاصي معناه في «للمشاهدة»، مثل ما احنا مسوّين في المكتبة»).
@@ -178,7 +193,7 @@ export function PosterCard({
             والعين تقرأ الصورة والاسم في حركةٍ واحدة.
             **ويُطفأ كلُّه بـ`hideTitle`** — الحجابُ يذهب مع النصّ، فحجابٌ
             بلا نصٍّ ظلٌّ بلا سبب. */}
-        {!hideTitle && (
+        {!hideTitle && !titleBelow && (
         <div className="absolute inset-x-0 bottom-0 p-2 pt-7 bg-gradient-to-t from-black/90 via-black/60 to-transparent">
           <p className="text-[12px] font-semibold leading-tight text-white line-clamp-2 drop-shadow">
             {title}
@@ -204,6 +219,26 @@ export function PosterCard({
           <StatusThread saved={saved} watched={watched} progress={progress} dropped={dropped} />
         )}
       </div>
+
+      {/* **سطرُ الاسم تحت الملصق** — سطران بحدٍّ أقصى ثم قصّ، **ولا سنةٌ
+          ولا نبذةٌ معه في الرئيسية**: الصفُّ يُقرأ عمودياً، **وسطرٌ ثالث
+          يجعل بطاقاتِ الصفّ الواحد متفاوتةَ الارتفاع.** و`dir="auto"`
+          للعناوين المختلطة. */}
+      {!hideTitle && titleBelow && (
+        <div className="mt-2 px-0.5">
+          <p
+            className="text-[13px] font-semibold leading-snug line-clamp-2"
+            dir="auto"
+          >
+            {title}
+          </p>
+          {year && <p className="text-[11px] text-muted mt-0.5">{year}</p>}
+          {/* النبذةُ تتبع الاسمَ حيث ذهب — **ولا تُترك في الحجاب الذاهب** */}
+          {note && (
+            <MarqueeText text={note} className="text-[11px] text-accent-2/90 mt-0.5" />
+          )}
+        </div>
+      )}
     </Link>
   );
 

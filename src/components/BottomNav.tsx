@@ -167,7 +167,7 @@ export function BottomNav({
              خمسةُ أزرارٍ بلا معنى** (D-177: الرمزُ عُرفٌ يُقرأ بالعين،
              والمعنى في `aria-label`). */
           const face = (
-            <span className="relative">
+            <span className="relative flex flex-col items-center gap-1">
               {/* **٢٨ لا ٢٥** (D-260، بلاغُ أحمد: «الأيقونات تحتاج تكبر»):
                   **الخانةُ خُمسُ الشاشة والرمزُ وحده فيها** بعد سقوط
                   الكلمة — **ورمزٌ يرث خانةً كاملة يرث حجمَها.**
@@ -175,10 +175,25 @@ export function BottomNav({
                   وحده، **وسمكٌ على شكلٍ مصمتٍ يزيده وزناً بلا معنى.** */}
               <Icon
                 name={active ? iconOn : icon}
-                size={28}
+                size={24}
                 strokeWidth={1.8}
                 style={{ color: active ? "var(--accent)" : "var(--disabled)" }}
               />
+              {/* ⚖️ 🆕 **والكلمةُ عادت تحت الرمز** (D-436، تصاميمُ أحمد
+                  الجديدة تكتبها في التبويبات الخمسة). **ونقضٌ مسجَّلٌ
+                  لـD-258** الذي نقلها إلى منتصف الشريط العلويّ:
+                  **وعنوانُ الشريط العلويّ يقول أين أنت، والكلمةُ هنا تقول
+                  إلى أين تذهب** — **وهما سؤالان لا سؤالٌ واحدٌ مكرَّر.**
+                  **والرمزُ وحدَه يفترض عُرفاً محفوظاً**، وخمسةُ رموزٍ بلا
+                  أسماء تُقرأ صحيحةً بعد التعوّد لا قبله (D-177).
+                  **والارتفاعُ لم يزد**: الرمزُ نزل من ٢٨ إلى ٢٤ فابتلع
+                  السطرُ فرقَه. */}
+              <span
+                className="text-[10px] font-semibold leading-none truncate max-w-full"
+                style={{ color: active ? "var(--accent)" : "var(--disabled)" }}
+              >
+                {label[key]}
+              </span>
               {/* ⚖️ 🆕 **وسقطت نقطةُ «جديد» من هنا** (D-392، حكمُ أحمد):
                   **رقمُها كان رقمَ الجرس** (`unread_signals`) — **فتشير
                   إلى تبويبٍ ليس فيه الخبر**، ولا تختفي إلّا بفتح الجرس.
@@ -193,7 +208,7 @@ export function BottomNav({
              (D-260 بعد أن كبرت الأيقونة) — **والهدفُ اكتمل في الخانة
              نفسِها، فلم يعد يستعير من حشو الشريط.** */
           const face_cls =
-            "relative flex min-w-0 items-center justify-center rounded-2xl px-1 py-2 transition active:bg-surface-2";
+            "relative flex min-w-0 items-center justify-center rounded-2xl px-1 py-1.5 transition active:bg-surface-2";
 
           // البحث يفتح ورقةً في مكانه؛ وبقية التبويبات وجهاتٌ تُزار
           return isSearch ? (

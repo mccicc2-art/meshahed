@@ -40,6 +40,7 @@ export function ContinueCard({
   season,
   episode,
   runtime,
+  variant = "card",
   locale,
 }: {
   tmdbId: number;
@@ -56,6 +57,17 @@ export function ContinueCard({
   season?: number | null;
   episode?: number | null;
   runtime?: number | null;
+  /**
+   * **وجهان لبطاقةٍ واحدة** (D-434): `card` بطاقةُ مشهدٍ عريضة للوضع
+   * البصريّ، و`row` صفٌّ مضغوط للوضع المختصر.
+   *
+   * **ولماذا معامِلٌ لا مكوّنٌ ثانٍ:** كلُّ ما في هذا الملفّ من منطق —
+   * التأشيرُ المتفائل والانزلاقُ والتراجعُ وورقةُ الإنجاز والتقييم —
+   * **مشتركٌ بين الوجهين حرفاً بحرف**، **ونسخةٌ ثانيةٌ منه كانت ستفترق
+   * عند أوّل إصلاح** (قاعدة ٦، ودرسُ D-289: نسخةٌ بقيت رماديّةً سبعةَ
+   * أيام). **والذي يتبدّل هو الرسمُ وحدَه.**
+   */
+  variant?: "card" | "row";
   locale: Locale;
 }) {
   const t = getDict(locale);
@@ -220,6 +232,56 @@ export function ContinueCard({
   return (
     <div className="relative">
       <div className={`relative ${slideCls}`}>
+      {variant === "row" ? (
+      <Link
+        href={href}
+        prefetch={false}
+        className="group flex items-center gap-3 rounded-2xl border border-border bg-surface p-2 pe-16 active:scale-[0.99] transition"
+      >
+        <span className="relative w-[104px] shrink-0 aspect-[16/10] rounded-xl overflow-hidden bg-surface-2">
+          {url ? (
+            <Image src={url} alt="" fill sizes="104px" className="object-cover" />
+          ) : (
+            <span className="absolute inset-0 grid place-items-center text-muted">
+              <Icon name="film" size={20} />
+            </span>
+          )}
+        </span>
+
+        <span className="min-w-0 flex-1">
+          <span className="block text-[15px] font-bold leading-tight truncate" dir="auto">
+            {title}
+          </span>
+          <span className="block text-[12px] text-muted leading-tight truncate mt-1">
+            {ep ? (
+              <span dir="ltr">{`S${ep.s} E${ep.e}`}</span>
+            ) : (
+              episodeLabel && <span dir="ltr">{episodeLabel}</span>
+            )}
+            {(ep || episodeLabel) && left > 0 && <span className="opacity-50"> · </span>}
+            {left > 0 && t.leftEps(left)}
+          </span>
+          {/* الخيطُ والنسبةُ في سطرٍ واحد — نفسُ معنى شريط البطاقة، بمقاسِ صفّ */}
+          <span className="mt-2 flex items-center gap-2">
+            <span className="h-1 flex-1 rounded-full bg-[color:var(--divider)] overflow-hidden">
+              <span
+                className="block h-full w-full origin-left rtl:origin-right transition-transform duration-500"
+                style={{
+                  transform: `scaleX(${pct / 100})`,
+                  background: "var(--gradient-brand-x)",
+                }}
+              />
+            </span>
+            <span
+              className="shrink-0 text-[11px] font-bold text-muted tabular-nums"
+              dir="ltr"
+            >
+              {pct}%
+            </span>
+          </span>
+        </span>
+      </Link>
+      ) : (
       <Link href={href} prefetch={false} className="group block active:scale-[0.98] transition">
         {/* نسبة 7/5 بدل 16/10: العرض نقص ~١٢٪ (بطاقات أخفّ وأكثر ظهوراً) والارتفاع بقي مريحاً كما هو */}
         <div className="relative aspect-[7/5] rounded-poster overflow-hidden bg-surface border border-border">
@@ -274,6 +336,7 @@ export function ContinueCard({
           </span>
         </div>
       </Link>
+      )}
 
       {/* دائرة ✓ الزجاجية — شقيقة الرابط لا ابنته، فلا ضغطة تفتح الصفحة خطأً.
           تمتلئ لحظة التأشير ثم تعود زجاجيةً للحلقة التالية */}
@@ -284,7 +347,9 @@ export function ContinueCard({
           disabled={!canMark}
           aria-label={t.markWatchedAria}
           title={t.markWatchedAria}
-          className={`absolute top-2.5 end-2.5 z-10 grid place-items-center w-11 h-11 rounded-full border transition-all duration-200 active:scale-90 ${
+          className={`absolute z-10 grid place-items-center w-11 h-11 rounded-full border transition-all duration-200 active:scale-90 ${
+            variant === "row" ? "top-1/2 -translate-y-1/2 end-3" : "top-2.5 end-2.5"
+          } ${
             slide !== "idle" || celebrate
               ? "border-transparent text-white scale-105"
               : "bg-black/40 backdrop-blur-md border-white/25 text-white/90 hover:bg-black/55"

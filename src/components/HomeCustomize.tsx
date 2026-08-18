@@ -7,6 +7,7 @@ import { getDict, type Locale } from "@/lib/i18n";
 import {
   DEFAULT_HOME_PREFS,
   HOME_SECTIONS,
+  HOME_VIEWS,
   HEADER_STATS,
   STATS_PICK_MIN,
   STATS_PICK_MAX,
@@ -19,6 +20,7 @@ import { type IconName } from "./Icon";
 import { Alert } from "./ui/Alert";
 import { buttonClass } from "./ui/Button";
 import { CardCountRow, SectionOrderList, ToggleRow } from "./ui/SectionOrderList";
+import { segmentedItem, segmentedTrackFull } from "./ui/controls";
 
 /**
  * تخصيص الرئيسية.
@@ -51,11 +53,16 @@ export function HomeCustomize({
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
-  const toggles: { key: "level" | "stats" | "followers" | "social"; label: string }[] = [
+  /* ⚖️ 🆕 **وثلاثةُ مفاتيحَ سقطت من هنا** (D-434): «المستوى» و«المتابعون»
+     و«التعليقات والتقييمات» **كانت تتحكّم في ترويسة الحساب**، **وقد
+     غادرت الرئيسيةَ إلى الملفّ العامّ** — **ومفتاحٌ لا يغيّر ما يراه
+     صاحبُه أسوأ من مفتاحٍ غائب** (D-346: زرٌّ لا أثرَ له). **وقيمُها
+     باقيةٌ في العمود بلا مساس** فلا تُفقد إن عادت.
+
+     ⬜ **ومكانُها الطبيعيُّ تبويبُ «الملفّ» في صفحة التخصيص الموحَّدة**
+     (المرحلة ٤ من خطّة أحمد) — **دَينٌ مكتوبٌ لا سهو.** */
+  const toggles: { key: "stats"; label: string }[] = [
     { key: "stats", label: t.custStatsCard },
-    { key: "level", label: t.custLevel },
-    { key: "followers", label: t.custFollowers },
-    { key: "social", label: t.custSocial },
   ];
 
   const sectionMeta: Record<HomeSection, { icon: IconName; label: string }> = {
@@ -129,6 +136,27 @@ export function HomeCustomize({
               checked={prefs[key]}
               onChange={() => set({ ...prefs, [key]: !prefs[key] })}
             />
+          ))}
+        </div>
+      </section>
+
+      {/* ===== وضعُ العرض (D-434) =====
+          **والمبدّلُ في الرئيسية هو المبدّلُ نفسُه**: هذا بابُه في
+          الإعدادات، **والقيمةُ واحدةٌ في العمود** — فلا يفترق ما يراه
+          صاحبُ الحساب هنا عمّا يراه هناك (قاعدة ٦). */}
+      <section className="bg-surface border border-border rounded-2xl p-3.5 sm:p-5">
+        <h2 className="text-sm font-bold mb-1">{t.viewSwitchAria}</h2>
+        <div className={segmentedTrackFull}>
+          {HOME_VIEWS.map((k) => (
+            <button
+              key={k}
+              type="button"
+              aria-pressed={prefs.view === k}
+              onClick={() => set({ ...prefs, view: k })}
+              className={segmentedItem(prefs.view === k, "flex-1 basis-0 min-w-0")}
+            >
+              {k === "visual" ? t.viewVisual : t.viewCompact}
+            </button>
           ))}
         </div>
       </section>
