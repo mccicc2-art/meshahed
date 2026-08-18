@@ -226,7 +226,7 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
 
         <div className="relative flex gap-4 -mt-24 sm:-mt-28 px-5">
           <div className="w-28 sm:w-40 shrink-0">
-            <div className="relative aspect-[2/3] rounded-poster overflow-hidden ring-1 ring-white/10 bg-surface-2 shadow-[0_18px_44px_rgba(0,0,0,0.55)]">
+            <div className="relative aspect-[2/3] rounded-poster overflow-hidden ring-1 ring-[color:var(--divider)] bg-surface-2 shadow-[0_18px_44px_rgba(0,0,0,0.55)]">
               {poster && <Image src={poster} alt={title} fill sizes="160px" className="object-cover" />}
             </div>
           </div>
@@ -234,7 +234,18 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
           {/* العنوان من قمّة الملصق لا من قاعه — نفس نقلة صفحة الفيلم
               (طلب المالك)، والأنواع صعدت إلى المساحة تحته */}
           <div className="flex-1 min-w-0 self-start pt-0.5">
-            <h1 className="text-xl sm:text-3xl font-extrabold leading-tight tracking-tight drop-shadow-[0_2px_10px_rgba(0,0,0,0.65)]">
+            {/* 🆕 **وهالةُ العنوان من اللوحة لا من الأسود** (D-405): كانت
+              `rgba(0,0,0,0.65)` — **هالةٌ سوداء خلف نصٍّ أسود** في الثيم
+              الفاتح، **فتُقرأ لطخةً لا رفعاً.** و`color-mix` تشتقّها من
+              `--background` نفسِها: **سوداءُ في الليل وبيضاءُ في النهار
+              بلا متغيّرٍ جديد ولا فرعٍ في الشيفرة.** */}
+            <h1
+              className="text-xl sm:text-3xl font-extrabold leading-tight tracking-tight"
+              style={{
+                filter:
+                  "drop-shadow(0 2px 10px color-mix(in srgb, var(--background) 70%, transparent))",
+              }}
+            >
               {title}
             </h1>
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs sm:text-sm text-muted mt-1.5">
