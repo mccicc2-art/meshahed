@@ -245,7 +245,7 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
       </div>
 
       {/* الإجراء الرئيسي: أضف لقائمة + دائرة «شاهدتُه» — نفس لغة صفحة المسلسل */}
-      <div className="mt-5 px-1">
+      <div className="mt-4 px-1">
         <TitleActions
           tmdbId={movieId}
           mediaType="movie"
@@ -275,7 +275,7 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
             label: t.tabInfo,
             icon: "info",
             content: (
-              <div className="space-y-7">
+              <div className="space-y-5">
                 {/* **«أين أشاهده» حُذف من هنا كاملاً** (D-190، طلب أحمد).
                     الشارةُ في الترويسة صارت الجوابَ الوحيد: رموزُ منصّات
                     الطبقة الأولى بلا أسماء، والضغطُ يفتح JustWatch بكلّ
@@ -284,7 +284,7 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
                     «أقدر أشاهده؟» لا جدولَ أسعارٍ لا نملكه أصلاً (D-150). */}
                 {movie.overview && (
                   <section>
-                    <SectionTitle icon="info" className="mb-2.5">
+                    <SectionTitle icon="info" className="mb-2">
                       {t.storyTitle}
                     </SectionTitle>
                     <ReadMore text={movie.overview} locale={locale} />
