@@ -669,6 +669,41 @@ export async function getRatingsOf(userId: string): Promise<RatingRow[]> {
 /** متوسط تقييمات كل المستخدمين لعمل معيّن — رقمان مجمّعان من دالة
  *  definer، بلا أي صفّ خام (جدول التقييمات لم يعد مفتوح القراءة).
  *  المراجعات نفسها تأتي من getTitleReviews. */
+/**
+ * 🆕 **نبضُ العمل — قلوبٌ وتقييماتٌ في نداءٍ واحد** (D-408، الهجرة ١١٨).
+ *
+ * **والقلوبُ هي ما لم يكن يُقرأ**: المفضّلةُ قائمةٌ في `user_lists`
+ * بعلامة `kind='favorites'` (هجرة ٥٥)، **وسياساتُها تُظهر قوائمَ صاحبها
+ * وحدَه** — فالعدُّ من العميل يعود واحداً دائماً. **فالدالّةُ `definer`،
+ * وتُرجع عدداً لا أسماء.**
+ *
+ * **والسقوطُ صامتٌ بأصفار** (D-179): قبل تشغيل الهجرة يغيب السطرُ من
+ * الترويسة ولا تظهر شاشةُ خطأ.
+ */
+export async function getTitlePulse(
+  tmdbId: number,
+  mediaType: "tv" | "movie",
+): Promise<{ hearts: number; votes: number; avg: number }> {
+  const empty = { hearts: 0, votes: 0, avg: 0 };
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("title_pulse", {
+      t_id: tmdbId,
+      m_type: mediaType,
+    });
+    if (error || !data) return empty;
+    const row = (data as { hearts: number; votes: number; avg_rating: number }[])[0];
+    if (!row) return empty;
+    return {
+      hearts: Number(row.hearts) || 0,
+      votes: Number(row.votes) || 0,
+      avg: Number(row.avg_rating) || 0,
+    };
+  } catch {
+    return empty;
+  }
+}
+
 export async function getCommunityRating(
   tmdbId: number,
   mediaType: "tv" | "movie",

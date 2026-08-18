@@ -146,6 +146,8 @@ export interface TvDetails {
   last_episode_to_air: Episode | null;
   networks: { id: number; name: string; logo_path: string | null }[];
   origin_country?: string[];
+  /** 🆕 D-410 — لغةُ العمل الأصلية: تُرتّب بها «الأعمال المرتبطة» */
+  original_language?: string;
 }
 
 export interface MovieDetails {
@@ -167,6 +169,8 @@ export interface MovieDetails {
   } | null;
   /** معرّف IMDb (tt…) — جسر تقييمات OMDb (طلب أحمد: IMDb/طماطم) */
   imdb_id?: string | null;
+  /** 🆕 D-410 — لغةُ العمل الأصلية: تُرتّب بها «الأعمال المرتبطة» */
+  original_language?: string;
 }
 
 export interface SeasonDetails {
@@ -692,24 +696,80 @@ export async function relatedTitles(
   mediaType: MediaType,
   id: number,
   limit = 20,
+  /**
+   * 🆕 **بصمةُ العمل نفسِه — لغتُه وأنواعُه** (D-410، بلاغُ أحمد على
+   * مسلسلٍ مصريّ: «هذي القائمة أبداً ما لها علاقة بالفلم»).
+   *
+   * **والمستدعي يملكها ولا تُجلب هنا**: تفاصيلُ العمل مقروءةٌ أصلاً في
+   * الصفحة، **ونداءٌ ثانٍ لجلب ما بين يديها إسرافٌ** (D-198).
+   */
+  like?: { language?: string | null; genreIds?: number[] },
 ): Promise<SearchResult[]> {
   const seen = new Set<number>([id]);
-  const out: SearchResult[] = [];
+  const pool: SearchResult[] = [];
 
   for (const path of ["recommendations", "similar"] as const) {
-    if (out.length >= limit) break;
     try {
       const data = await tmdb<{ results: SearchResult[] }>(`/${mediaType}/${id}/${path}`);
       for (const r of data.results ?? []) {
         if (!r.poster_path || seen.has(r.id)) continue;
         seen.add(r.id);
-        out.push({ ...r, media_type: mediaType });
-        if (out.length >= limit) break;
+        pool.push({ ...r, media_type: mediaType });
       }
     } catch {
       /* المصدر التالي */
     }
   }
+
+  const lang = (like?.language ?? "").toLowerCase();
+  /* **والإنجليزيّةُ تُترك على حالها**: TMDB يخدمها بسلوكِ ملايين
+     المشاهدين، **وترتيبُنا فوق ترتيبِه لا يزيده صحّةً** — والعطلُ
+     المُبلَّغُ عنه في غيرها. */
+  if (!lang || lang === "en") return pool.slice(0, limit);
+
+  const genres = new Set(like?.genreIds ?? []);
+  const langOf = (r: SearchResult) => (r.original_language ?? "").toLowerCase();
+  const score = (r: SearchResult) => {
+    const shared = (r.genre_ids ?? []).filter((g) => genres.has(g)).length;
+    /* **اللغةُ أوّلُ الفرز لا آخرُه**: من يشاهد عملاً مصريّاً يبحث عن
+       عملٍ يفهمه، **وكوميديا أمريكيّةٌ تشترك في «النوع» لا في شيءٍ آخر.** */
+    return (langOf(r) === lang ? 1000 : 0) + shared * 10 + Math.min(r.popularity ?? 0, 100) / 100;
+  };
+  const ranked = [...pool].sort((a, b) => score(b) - score(a));
+  const same = ranked.filter((r) => langOf(r) === lang);
+
+  /* **وإن جفّت لغتُه في نتائج TMDB نستدعي من `/discover` بلغته وأنواعه**
+     — **وهو ما يفعله قارئٌ عاقلٌ حين لا يجد جواباً**: يوسّع السؤال ولا
+     يقبل جواباً عن سؤالٍ آخر. **والسقفُ نداءٌ واحد.** */
+  if (same.length < 6) {
+    try {
+      const params: Record<string, string> = {
+        with_original_language: lang,
+        sort_by: "popularity.desc",
+        "vote_count.gte": "5",
+        page: "1",
+      };
+      if (genres.size) params.with_genres = [...genres].slice(0, 3).join(",");
+      const data = await tmdb<{ results: SearchResult[] }>(`/discover/${mediaType}`, params);
+      for (const r of data.results ?? []) {
+        if (!r.poster_path || seen.has(r.id)) continue;
+        seen.add(r.id);
+        same.push({ ...r, media_type: mediaType });
+      }
+    } catch {
+      /* يبقى ما جُمع */
+    }
+  }
+
+  /* **ثم البقيّةُ خلفَهم لا مكانَهم**: نتائجُ TMDB ليست خطأً، **هي جوابُ
+     سؤالٍ أعمّ** — فتُؤخَّر ولا تُحذف، فلا يعود الصفُّ فارغاً. */
+  const rest = ranked.filter((r) => langOf(r) !== lang);
+  const out: SearchResult[] = [];
+  const push = (r: SearchResult) => {
+    if (out.length < limit && !out.some((x) => x.id === r.id)) out.push(r);
+  };
+  same.forEach(push);
+  rest.forEach(push);
   return out;
 }
 

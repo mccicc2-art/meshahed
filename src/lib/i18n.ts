@@ -1352,8 +1352,13 @@ const ar = {
   communityJoin: "انضمّ إلى الحديث",
   communityWriteReview: "اكتب رأيك",
   communityStartTalk: "ابدأ نقاشاً",
-  communityFilterTalks: "النقاشات",
   communityFeedEmpty: "لا شيءَ هنا بعد — كن أوّلَ من يكتب.",
+  /* 🆕 D-407 — سطرُ النوع في بطاقات الخطّ: صنفان لا يفرّقهما الوجهُ
+     وحدَه عند التمرير السريع */
+  communityKindReview: "مراجعة",
+  communityKindNews: "نشرة",
+  /* 🆕 D-408 — نبضُ العمل في الترويسة */
+  titlePulseHearts: (n: string) => `${n} أضافوه إلى مفضّلاتهم`,
   storyTitle: "القصة",
   libAnalysisBtn: "تحليل مكتبتك",
   diaryTitle: "اليوميات",
@@ -2601,8 +2606,10 @@ const en: Dict = {
   communityJoin: "Join the conversation",
   communityWriteReview: "Write a review",
   communityStartTalk: "Start a discussion",
-  communityFilterTalks: "Discussions",
   communityFeedEmpty: "Nothing here yet — be the first to write.",
+  communityKindReview: "Review",
+  communityKindNews: "News",
+  titlePulseHearts: (n: string) => `${n} added it to their favourites`,
   storyTitle: "Story",
   libAnalysisBtn: "Analyse your library",
   diaryTitle: "Journal",
