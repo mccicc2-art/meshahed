@@ -6,10 +6,6 @@ import {
   getUser,
   getFollowState,
   isMovieWatched,
-  getMyRating,
-  getCommunityRating,
-  getTitleReviews,
-  getTitleReplies,
   getMyLists,
   getListsContaining,
   getPublicListsContaining,
@@ -28,11 +24,8 @@ import { type Locale } from "@/lib/i18n";
 import { UniverseSaveRow } from "@/components/UniverseSaveRow";
 import { PublicListsRail } from "@/components/PublicListsRail";
 import { HeroRatings, HeroRatingsSkeleton } from "@/components/HeroRatings";
-import { RatingBox } from "@/components/RatingBox";
-import { CommunityReviews } from "@/components/CommunityReviews";
 import { DetailTabs } from "@/components/DetailTabs";
-import { TitleNewsTab } from "@/components/TitleNewsTab";
-import { TitleRoomTab } from "@/components/TitleRoomTab";
+import { TitleCommunityTab } from "@/components/TitleCommunityTab";
 import { RelatedTitles } from "@/components/RelatedTitles";
 import { CastRail } from "@/components/CastRail";
 import { SectionTitle } from "@/components/Icon";
@@ -120,7 +113,14 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
     <div>
       {/* الترويسة: الملصق والعنوان والأزرار فقط — القصة والترايلر والآراء
           انتقلت إلى تبويبات، فالصفحة تبدأ من شاشة واحدة لا من عمود طويل */}
-      <div className="relative -mx-4 -mt-6 h-44 sm:h-72 mb-4">
+      {/* 🆕 **الغلافُ ارتفع والملصقُ معه** (D-399، طلبُ أحمد:
+          «والهيدر ارفعه والبوستر كذلك»). **١٧٦px صارت ١٤٤** على
+          الجوال و**٢٨٨ صارت ٢٤٠** على العريض، **والفجوةُ تحته ١٢
+          لا ١٦** — **فالعنوانُ والأزرارُ صعدت ٣٦px** ودخل أوّلُ
+          صفٍّ من المحتوى في الشاشة الأولى. **والملصقُ يبقى مطلّاً
+          على الغلاف بنفس المقدار** (`-mt-24`) فلا ينقطع التداخلُ
+          الذي يصنع العمق. */}
+      <div className="relative -mx-4 -mt-6 h-36 sm:h-60 mb-3">
         {backdrop && (
           <Image
             src={backdrop}
@@ -349,67 +349,40 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
           },
           {
             /**
-             * 🆕 **تبويبُ «الأخبار»** (D-300، طلبُ أحمد: «يُفضّل في صفحة
-             * الفلم يكون فيه تبويب أخبار أو تحديث ويُكتب فيه»).
+             * 🆕 **تبويبُ المجتمع — ثلاثةٌ صارت واحداً** (D-398، طلبُ أحمد
+             * بأربع صور: «اجمع الأخبار والنقاش والراوي في مكان واحد
+             * وصممه مثل الصورة»).
              *
-             * **وموضعُه بعد «معلومات» وقبل «التعليقات»**: الأوّلُ حقائقُ
-             * العمل الثابتة، **وهذا حقائقُه المتحرّكة**، **والتعليقاتُ
-             * كلامُ الناس عنه** — **فالترتيبُ من الأثبت إلى الأكثر
-             * تغيّراً إلى الرأي** (D-222: صاحبُ الكلام في صدر صفّه،
-             * والحقيقةُ قبل الرأي).
+             * **نقضٌ مزدوجٌ يُقال باسمه:** «الأخبار» (D-300) و«التعليقات»
+             * و«المجتمع» (D-191) — **ثلاثةُ تبويباتٍ جوابُها سؤالٌ واحد**:
+             * «ما الذي يُقال عن هذا العمل؟». **وصار الجوابُ قائمةً واحدةً
+             * مرتّبةً بالزمن، ورقائقُ ترشّحها.** والحجّةُ كاملةً في رأس
+             * `TitleCommunityTab`، **وأثرُها هنا أن الشريطَ صار ثلاثةً
+             * لا خمسة** — **وخمسُ خاناتٍ على هاتفٍ خمسُ كلماتٍ مقصوصة.**
              *
-             * **وخلف `Suspense`**: قراءتُه ترشيحٌ فوق ثلاثمئة صفّ
-             * (انظر `getTitleLoopzNews`) — **فلا يؤخّر رسمَ الصفحة**
-             * (D-071/D-087).
+             * **وخلف `Suspense`**: ستُّ قراءاتٍ في دفعةٍ واحدة، **فلا
+             * تؤخّر رسمَ الترويسة ولا الحلقات** (D-071/D-087).
              */
-            key: "news",
-            label: t.communityTabNews,
-            icon: "newspaper",
-            content: (
-              <Suspense fallback={<div className="skeleton h-40 rounded-2xl" aria-hidden />}>
-                <TitleNewsTab tmdbId={movieId} mediaType="movie" locale={locale} />
-              </Suspense>
-            ),
-          },
-          {
-            key: "reviews",
-            label: t.tabReviews,
-            icon: "comment",
-            content: (
-              <Suspense
-                fallback={
-                  <div className="space-y-4" aria-hidden>
-                    <div className="skeleton h-44 rounded-2xl" />
-                    <div className="skeleton h-24 rounded-2xl" />
-                  </div>
-                }
-              >
-                <MovieReviewsTab
-                  movieId={movieId}
-                  title={movie.title}
-                  posterPath={movie.poster_path}
-                  backdropPath={movie.backdrop_path}
-                  locale={locale}
-                />
-              </Suspense>
-            ),
-          },
-          {
-            /* **تبويبُ المجتمع — الغرفةُ نفسها لا رابطٌ إليها** (D-191،
-               طلب أحمد: «تبويب اسمه كوميونيتي مربوط بغرفة الكوميونيتي
-               الخاصة فيه»). وموضعُه **ثالثاً** كما طلب: الحديثُ عن العمل
-               أقربُ إلى العمل من «مشابه»، وغرفُ الأعمال (D-140) كانت أثمنَ
-               ما في المجتمع وأخفاه — سطراً في تبويبٍ رابع.
-               والسطرُ القديم (`TitleRoomLink`) حُذف من «التعليقات» مع
-               النقل: **لا بابان لغرفةٍ واحدة.** */
             key: "community",
             label: t.tabCommunity,
             icon: "people",
             content: (
               <Suspense
-                fallback={<div className="skeleton h-64 rounded-2xl" aria-hidden />}
+                fallback={
+                  <div className="space-y-4" aria-hidden>
+                    <div className="skeleton h-28 rounded-2xl" />
+                    <div className="skeleton h-44 rounded-2xl" />
+                  </div>
+                }
               >
-                <TitleRoomTab tmdbId={movieId} mediaType="movie" locale={locale} />
+                <TitleCommunityTab
+                  tmdbId={movieId}
+                  mediaType="movie"
+                  title={movie.title}
+                  posterPath={movie.poster_path}
+                  backdropPath={movie.backdrop_path}
+                  locale={locale}
+                />
               </Suspense>
             ),
           },
@@ -442,55 +415,4 @@ async function MovieTrailerSection({
   const trailer = await getTrailer("movie", movieId);
   if (!trailer) return null;
   return <Trailer videoKey={trailer.key} title={title} thumbnail={backdrop} locale={locale} />;
-}
-
-/** تبويب التعليقات يُبثّ لاحقاً — لا يؤخّر الترويسة */
-async function MovieReviewsTab({
-  movieId,
-  title,
-  posterPath,
-  backdropPath,
-  locale,
-}: {
-  movieId: number;
-  title: string;
-  posterPath: string | null;
-  /** 🆕 D-313 — يمرّ إلى صندوق التقييم فيُكتب مع الحفظ */
-  backdropPath?: string | null;
-  locale: Awaited<ReturnType<typeof getT>>["locale"];
-}) {
-  const [myRating, community, titleReviews, titleReplies] = await Promise.all([
-    getMyRating(movieId, "movie"),
-    getCommunityRating(movieId, "movie"),
-    getTitleReviews(movieId, "movie"),
-    /* الردودُ مع الآراء في نفس الدفعة (D-193): نداءٌ ثانٍ متسلسلٌ كان
-       يضيف رحلةً كاملة إلى تبويبٍ يُبثّ أصلاً */
-    getTitleReplies(movieId, "movie"),
-  ]);
-  return (
-    <div className="space-y-4">
-      {/* غرفة النقاش قبل التقييم — نفس ترتيب صفحة المسلسل (D-140) */}
-      <RatingBox
-        variant="review"
-        tmdbId={movieId}
-        mediaType="movie"
-        title={title}
-        posterPath={posterPath}
-        backdropPath={backdropPath}
-        locale={locale}
-        initialRating={myRating?.rating ?? null}
-        initialReview={myRating?.review ?? null}
-        initialHasSpoiler={Boolean(myRating?.has_spoiler)}
-      />
-      <CommunityReviews
-        tmdbId={movieId}
-        mediaType="movie"
-        locale={locale}
-        avg={community.avg}
-        count={community.count}
-        reviews={titleReviews}
-        replies={titleReplies}
-      />
-    </div>
-  );
 }
