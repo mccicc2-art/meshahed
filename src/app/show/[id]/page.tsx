@@ -12,6 +12,7 @@ import {
   getListsContaining,
   getTitleCircle,
   getMyArtFor,
+  getTitlePulse,
   getMyFavorites,
   artKey,
 } from "@/lib/data";
@@ -35,6 +36,7 @@ import { Icon, SectionTitle } from "@/components/Icon";
 import { Trailer } from "@/components/Trailer";
 import { WatchChip } from "@/components/WatchChip";
 import { TitleActions } from "@/components/TitleActions";
+import { TitlePulse } from "@/components/TitlePulse";
 import { DetailTopBar } from "@/components/DetailTopBar";
 import { CircleNote } from "@/components/CircleNote";
 import { ReadMore } from "@/components/ReadMore";
@@ -56,7 +58,7 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
   // بيانات أول رسمة فقط في الموجة الحاسمة — الترايلر والتعليقات تُبثّ
   // لاحقاً عبر Suspense فلا تؤخّر ترويسة الصفحة وتبويب الحلقات
   const userRegion = await getWatchRegion();
-  const [tv, followState, watched, watchWhere, myLists, inLists, circle, epRatings, myArt, favs] =
+  const [tv, followState, watched, watchWhere, myLists, inLists, circle, epRatings, myArt, favs, pulse] =
     await Promise.all([
     getTv(tvId).catch(() => null),
     getFollowState(tvId, "tv"),
@@ -76,6 +78,8 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
     getMyArtFor(tvId, "tv"),
     /* مفضّلاتي (D-130) — نداءٌ واحد مخبّأ للطلب، لا سؤالٌ لكل عمل */
     getMyFavorites(),
+    /* 🆕 **نبضُ العمل** (D-408) — انظر تعليقَ صفحة الفيلم */
+    getTitlePulse(tvId, "tv"),
   ]);
   const following = followState.following;
 
@@ -281,6 +285,10 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
               <HeroRatings tvId={tvId} ageLabel={t.ageRating} />
             </Suspense>
 
+            {/* 🆕 **ونبضُنا تحت نبض العالم** (D-408) — الحجّةُ كاملةً في
+                رأس المكوّن، ونظيرُه في صفحة الفيلم. */}
+            <TitlePulse hearts={pulse.hearts} votes={pulse.votes} avg={pulse.avg} locale={locale} />
+
             {/* «٣ ممن تتابعهم شاهدوه» (D-127) — تحت تقييم العالم مباشرة:
                 الرأي العام أولاً ثم رأي من تثق بهم. ولا يُرسم شيء تحت
                 الثلاثة — الكتم في SQL لا هنا */}
@@ -458,7 +466,14 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
       {/* **والمسافةُ من هنا لا من داخله** (D-402) — انظر رأسَ المكوّن */}
       <div className="mt-6">
         <Suspense fallback={null}>
-          <RelatedTitles mediaType="tv" tmdbId={tvId} locale={locale} />
+          <RelatedTitles
+            mediaType="tv"
+            tmdbId={tvId}
+            /* 🆕 D-410 — بصمةُ العمل تُرتّب المرتبطاتِ بلغته */
+            language={tv.original_language}
+            genreIds={tv.genres.map((g) => g.id)}
+            locale={locale}
+          />
         </Suspense>
       </div>
     </div>
