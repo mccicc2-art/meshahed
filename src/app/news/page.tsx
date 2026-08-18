@@ -573,7 +573,7 @@ async function ListsDiscovery({
             {sets.map((u) => (
                 /* wide لا الافتراضي: بطاقة القائمة أعرض من بطاقة الملصق،
                    وخانةٌ ضيّقة كانت تجعل البطاقات تتراكب (لقطة المالك) */
-                <RailItem key={u.slug} wide>
+                <RailItem key={u.slug} size="list">
                   <Link href={`/lists/${curated.get(u.slug)}`} className="block">
                     <CuratedCard
                       u={u}
