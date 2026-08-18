@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import { getDict, type Locale } from "@/lib/i18n";
 import { useKeyboardOpen } from "@/lib/useKeyboard";
 import { Icon, type IconName } from "./Icon";
@@ -84,12 +84,9 @@ const TABS: {
 export function BottomNav({
   locale,
   signedIn = true,
-  peopleDot,
 }: {
   locale: Locale;
   signedIn?: boolean;
-  /** نقطةُ «جديد» على تبويب المجتمع — عقدةُ خادمٍ تصل خلف Suspense */
-  peopleDot?: ReactNode;
 }) {
   const pathname = usePathname();
   const t = getDict(locale);
@@ -182,8 +179,11 @@ export function BottomNav({
                 strokeWidth={1.8}
                 style={{ color: active ? "var(--accent)" : "var(--disabled)" }}
               />
-              {/* «هناك جديدٌ هناك» — وتسقط على التبويب المفتوح: أنت فيه */}
-              {key === "people" && !active && peopleDot}
+              {/* ⚖️ 🆕 **وسقطت نقطةُ «جديد» من هنا** (D-392، حكمُ أحمد):
+                  **رقمُها كان رقمَ الجرس** (`unread_signals`) — **فتشير
+                  إلى تبويبٍ ليس فيه الخبر**، ولا تختفي إلّا بفتح الجرس.
+                  **ورمزان لخبرٍ واحدٍ في شريطٍ واحد تكرار** (القاعدة ٦)،
+                  **والجرسُ يحمل شارةً رقميّةً أصلاً** فهي أدقُّ منها. */}
             </span>
           );
           /* **والحشوُ يعوّض ارتفاعَ السطر الذاهب**: هدفُ اللمس ٤٤px
