@@ -113,7 +113,10 @@ export function TitleReviewRow({
               dir={dirOf(r.review)}
               className={`block mt-2 ${alignOf(r.review)}`}
             >
-              <p className="text-[14px] leading-relaxed text-foreground/90 whitespace-pre-line line-clamp-6">
+              {/* 🆕 **ولا قصَّ هنا أيضاً** (D-429): **القاعدةُ واحدةٌ في
+                  الأسطح الأربعة** — من رتّب متنَه يُقرأ مرتَّباً كاملاً،
+                  **وستّةُ أسطرٍ هنا وثلاثةٌ في الخطّ حدّان لسببٍ واحد.** */}
+              <p className="text-[14px] leading-relaxed text-foreground/90 whitespace-pre-line">
                 {r.review}
               </p>
             </Link>
