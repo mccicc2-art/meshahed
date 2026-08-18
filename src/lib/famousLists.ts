@@ -222,9 +222,10 @@ export const SIGHT_SOUND_100: FamousTitle[] = [
   { title: "Sunset Boulevard", year: 1950 },
   { title: "Modern Times", year: 1936 },
   { title: "A Matter of Life and Death", year: 1946 },
-  { title: "Blue Velvet", year: 1986 },
+  { title: "Histoire(s) du cinema", year: 1998 },
   { title: "Pierrot le Fou", year: 1965 },
   { title: "The Spirit of the Beehive", year: 1973 },
+  { title: "Blue Velvet", year: 1986 },
   { title: "Chungking Express", year: 1994 },
   { title: "The Shining", year: 1980 },
   { title: "The Earrings of Madame de...", year: 1953 },
@@ -238,5 +239,4 @@ export const SIGHT_SOUND_100: FamousTitle[] = [
   { title: "The General", year: 1926 },
   { title: "A Man Escaped", year: 1956 },
   { title: "Once Upon a Time in the West", year: 1968 },
-  { title: "Le Mepris", year: 1963 },
 ];
