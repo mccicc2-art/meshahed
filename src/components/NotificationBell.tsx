@@ -60,6 +60,11 @@ export function NotificationBell({
     });
   }
 
+  /** اسمُ القائمة بلغة القارئ — **بوّابةٌ واحدةٌ لثلاثة أنواع** (D-343) */
+  function listName(s: Signal): string {
+    return curatedName(s.listSlug, s.title ?? "", locale === "en" ? "en" : "ar");
+  }
+
   /** نصُّ السطر — الفاعل ثم فعلُه ثم العمل إن كان له عمل */
   function line(s: Signal): string {
     const who = s.person.hide_name
@@ -74,10 +79,13 @@ export function NotificationBell({
     if (s.kind === "talk_reply") return t.notifTalkReply(who, s.title ?? "");
     /* 🆕 **تقييمُ قائمتك** (الهجرة ١٠٦) — **والاسمُ بلغة القارئ** (D-328) */
     if (s.kind === "list_review")
-      return t.notifListReview(
-        who,
-        curatedName(s.listSlug, s.title ?? "", locale === "en" ? "en" : "ar"),
-      );
+      return t.notifListReview(who, listName(s));
+    /* 🆕 **الإعجابُ والردُّ على رأيك في قائمة** (الهجرة ١١٤) — **جملتان
+       لا جملةٌ واحدة**: الفعلان مختلفان وإن اتّحدت الوجهة، **والاسمُ
+       يمرّ بالبوّابة نفسِها** (D-328/D-343). */
+    if (s.kind === "like_list_review")
+      return t.notifListReviewLike(who, listName(s));
+    if (s.kind === "list_reply") return t.notifListReply(who, listName(s));
     return t.notifLike(who, s.title ?? "");
   }
 
@@ -155,7 +163,13 @@ export function NotificationBell({
                      ⚠️ **وأوّلاً في السلسلة**: لا `tmdb_id` لهذا النوع
                      أصلاً، **فلو مرّ إلى فرعٍ يقرؤه لخرج `/movie/null`**
                      — وهو العطلُ الذي حُذّر منه بنصّه. */
-                  s.kind === "list_review" && s.listId
+                  /* 🆕 **وثلاثةُ أنواعٍ تفتح القائمة لا نوعٌ واحد**
+                     (الهجرة ١١٤): الإعجابُ والردُّ على رأيٍ فيها وجهتُهما
+                     وجهةُ الرأي نفسِه — **ولا `tmdb_id` لأيٍّ منها**. */
+                  (s.kind === "list_review" ||
+                    s.kind === "like_list_review" ||
+                    s.kind === "list_reply") &&
+                  s.listId
                     ? `/lists/${s.listId}`
                     : /* **ردُّ الغرفة يفتح الغرفة** (D-259) — ولا يحتاج اسمَك:
                      الغرفةُ لا صاحبَ لها، ومسارُها العملُ نفسُه. */
