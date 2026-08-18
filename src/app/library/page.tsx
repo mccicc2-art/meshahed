@@ -254,10 +254,11 @@ export default async function LibraryPage({
           <PublicListsRail
             lists={saved}
             locale={locale}
+            /* 🆕 **ورقمُ اللوح ورقمُ التبويب مصدرُهما واحد** (D-374):
+               كانا `saved.length` و`savedCount` — **ورقمان لشيءٍ واحدٍ
+               في شاشةٍ واحدة يفترقان يومَ يفترق حدُّهما** (D-219). */
             title={
-              saved.length > 0
-                ? `${t.savedListsSection} · ${saved.length}`
-                : t.savedListsSection
+              savedCount > 0 ? `${t.savedListsSection} · ${savedCount}` : t.savedListsSection
             }
           />
         }
