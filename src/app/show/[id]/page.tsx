@@ -416,9 +416,12 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
 
       {/* الأعمال المرتبطة خارج التبويبات — كصفحة الفيلم. ولا «أجزاء»
           للمسلسلات: `belongs_to_collection` حقلُ أفلامٍ عند TMDB وحدها */}
-      <Suspense fallback={null}>
-        <RelatedTitles mediaType="tv" tmdbId={tvId} locale={locale} />
-      </Suspense>
+      {/* **والمسافةُ من هنا لا من داخله** (D-402) — انظر رأسَ المكوّن */}
+      <div className="mt-6">
+        <Suspense fallback={null}>
+          <RelatedTitles mediaType="tv" tmdbId={tvId} locale={locale} />
+        </Suspense>
+      </div>
     </div>
   );
 }
