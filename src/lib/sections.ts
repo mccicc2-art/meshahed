@@ -168,7 +168,8 @@ export function isSectionKey(v: string): v is SectionKey {
     v === "upcoming" ||
     v === "in-cinemas" ||
     v === "airing-now" ||
-    v === "from-artists"
+    v === "from-artists" ||
+    v === "my-row"
   );
 }
 
