@@ -92,10 +92,24 @@ export function DetailTopBar({
     }
   }
 
-  // ٤٤ بكسلاً — الحدّ الأدنى المريح لهدف لمسٍ في زاوية الشاشة
+  /**
+   * 🆕 **ونقاطُ «المزيد» عارية كأخيها** (D-412، طلبُ أحمد على لقطةٍ
+   * محوَّطة: «الثلاث نقاط شيل منها الدائرة وخلّها فوق شوي تكون موازية
+   * لسهم اليسار المقابل له»).
+   *
+   * **ونقضٌ لسطرٍ كتبتُه أمس بيدي** (D-406): قلتُ «والمزيد يبقى مطوَّقاً،
+   * هو فعلٌ لا يعرفه العرف». **والحجّةُ كانت صحيحةً في الفراغ وخاطئةً على
+   * الشاشة**: **زرّان في طرفَي صفٍّ واحد أحدُهما عارٍ والآخرُ مطوَّق
+   * يُقرآن رتبتين مختلفتين** — **والصفُّ الواحد لغةٌ واحدة** (قاعدة ٣).
+   * **والنقاطُ الثلاث عُرفٌ لا يقلّ رسوخاً عن سهم الرجوع** (D-150).
+   *
+   * ⚠️ **وهدفُ اللمس ٤٤ محفوظٌ بـ`before`** كما في `BackButton` حرفاً —
+   * **المرئيُّ ٢٤ والملموسُ ٤٤** (D-281/D-033).
+   */
   const btn =
-    "w-11 h-11 rounded-full bg-black/35 backdrop-blur-md border border-white/15 " +
-    "grid place-items-center text-white/90 active:scale-95 transition";
+    "relative w-6 h-6 grid place-items-center text-white " +
+    "drop-shadow-[0_1px_4px_rgba(0,0,0,0.85)] active:scale-90 transition " +
+    "before:content-[''] before:absolute before:-inset-[10px] before:rounded-full";
 
   return (
     <>
@@ -120,7 +134,7 @@ export function DetailTopBar({
           title={t.moreMenuTitle}
           className={btn}
         >
-          <Icon name="dots" size={18} />
+          <Icon name="dots" size={24} strokeWidth={2.5} />
         </button>
       </div>
 
