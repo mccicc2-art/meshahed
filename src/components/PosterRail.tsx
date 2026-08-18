@@ -154,19 +154,10 @@ const RAIL_W: Record<RailSize, string> = {
 
 export function RailItem({
   children,
-  size,
-  /**
-   * ⚠️ **اسمٌ قديمٌ يعيش دفعةً واحدةً ثم يُحذف** (D-028): **رفعُ ملفٍّ
-   * واحدٍ في كلِّ عمليّة يعني أن نداءات `wide` تبقى دقائقَ بلا تعريف** —
-   * **وكلُّ عمليّةٍ يجب أن تُترجَم وحدَها.** **يُحذف في آخر عمليّةٍ من
-   * هذه الدفعة.**
-   */
-  wide,
+  size = "poster",
 }: {
   children: React.ReactNode;
   size?: RailSize;
-  wide?: boolean;
 }) {
-  const s: RailSize = size ?? (wide ? "backdrop" : "poster");
-  return <div className={`shrink-0 snap-start ${RAIL_W[s]}`}>{children}</div>;
+  return <div className={`shrink-0 snap-start ${RAIL_W[size]}`}>{children}</div>;
 }
