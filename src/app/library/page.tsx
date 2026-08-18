@@ -281,7 +281,7 @@ export default async function LibraryPage({
             <Icon name={icon} size={18} />
             <span className="text-[11px] leading-tight text-center">{label}</span>
             {i < 1 && (
-              <span className="absolute inset-y-2 end-0 w-px bg-white/10" aria-hidden />
+              <span className="absolute inset-y-2 end-0 w-px bg-[color:var(--divider)]" aria-hidden />
             )}
           </Link>
         ))}
