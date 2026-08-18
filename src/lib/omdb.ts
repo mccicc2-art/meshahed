@@ -123,6 +123,50 @@ export async function externalRatings(imdbId: string | null | undefined): Promis
  * ⚠️ **ولا يقع هذا النداءُ إلا حين يسقط الجسرُ الأوّل** — **وأكثرُ
  * الأعمال يصلها معرّفُها من TMDB** (D-152: الافتراضُ هو ما كان).
  */
+/**
+ * 🔴 🆕 **تسويةُ النقل عن العربيّة** (D-431): **الاسمُ المنقولُ لا صيغةَ
+ * واحدةَ له** — TMDB تكتب `Fi El La La Land` وIMDb تكتب
+ * `Fi Al La La Land` — **وحرفٌ واحدٌ كان يمنع المطابقة.**
+ *
+ * **وأداةُ التعريف وحدَها تسقط، ككلمةٍ قائمةٍ بذاتها** (`al` · `el`):
+ * **ولا تُمسّ `la`** — **«La La Land» اسمٌ لا أداة**، **وتنظيفٌ يبتلع
+ * أسماءً حقيقيّةً يكسر أكثرَ ممّا يصلح.**
+ *
+ * **وتُطبَّق على الطرفين معاً** فتبقى المقارنةُ متكافئة: اسمٌ إنجليزيٌّ
+ * فيه «Al» علماً (Weird: The Al Yankovic Story) يُنظَّف هنا وهناك سواءً.
+ */
+function normalizeTitle(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .split(/\s+/)
+    .filter((w) => w && w !== "al" && w !== "el")
+    .join(" ")
+    .trim();
+}
+
+async function searchOmdb(
+  key: string,
+  q: string,
+  kind: "series" | "movie",
+): Promise<{ Title: string; Year: string; imdbID: string; Type: string }[]> {
+  try {
+    const res = await fetch(
+      `https://www.omdbapi.com/?apikey=${key}&s=${encodeURIComponent(q)}&type=${kind}`,
+      { next: { revalidate: 86400 } },
+    );
+    if (!res.ok) return [];
+    const j = (await res.json()) as {
+      Response?: string;
+      Search?: { Title: string; Year: string; imdbID: string; Type: string }[];
+    };
+    if (j.Response === "False" || !j.Search?.length) return [];
+    return j.Search;
+  } catch {
+    return [];
+  }
+}
+
 export async function imdbIdByName(
   name: string,
   year: number | null,
@@ -131,28 +175,32 @@ export async function imdbIdByName(
   const key = process.env.OMDB_API_KEY;
   const q = (name ?? "").trim();
   if (!key || q.length < 3 || !year) return null;
-  try {
-    const res = await fetch(
-      `https://www.omdbapi.com/?apikey=${key}&s=${encodeURIComponent(q)}&type=${kind}`,
-      { next: { revalidate: 86400 } },
-    );
-    if (!res.ok) return null;
-    const j = (await res.json()) as {
-      Response?: string;
-      Search?: { Title: string; Year: string; imdbID: string; Type: string }[];
-    };
-    if (j.Response === "False" || !j.Search?.length) return null;
-    for (const hit of j.Search) {
-      if (hit.Type !== kind) continue;
-      /* «2017» أو «2017–2018» — أوّلُ أربعة أرقام هي سنةُ البدء */
-      const y = Number((hit.Year ?? "").slice(0, 4));
-      if (!Number.isFinite(y)) continue;
-      if (Math.abs(y - year) <= 1 && /^tt\d+$/.test(hit.imdbID)) return hit.imdbID;
-    }
-    return null;
-  } catch {
-    return null;
+
+  const want = normalizeTitle(q);
+  /* 🆕 **ومحاولةٌ ثانيةٌ بالاسم منزوعَ الأداة** (D-431) — **ولا تقع إن
+     لم يتغيّر شيء**: اسمٌ بلا `al/el` لا يُبحث مرّتين. */
+  const stripped = want !== q.toLowerCase() ? want : null;
+  const rows = await searchOmdb(key, q, kind);
+  const all = rows.length ? rows : stripped ? await searchOmdb(key, stripped, kind) : [];
+  if (!all.length) return null;
+
+  const inYear = (hit: { Year: string; Type: string; imdbID: string }) => {
+    if (hit.Type !== kind || !/^tt\d+$/.test(hit.imdbID)) return false;
+    /* «2017» أو «2017–2018» — أوّلُ أربعة أرقام هي سنةُ البدء */
+    const y = Number((hit.Year ?? "").slice(0, 4));
+    return Number.isFinite(y) && Math.abs(y - year) <= 1;
+  };
+
+  /* 🆕 **والاسمُ المطابقُ بعد التسوية يسبق مجرّدَ اتّفاق السنة** (D-431):
+     **السنةُ وحدَها تقبل أوّلَ عملٍ صدر في سنته**، **والاسمُ يقول إنه
+     هو.** **والقديمُ يبقى ارتداداً** فلا يخسر أحدٌ ما كان يجده (D-152). */
+  for (const hit of all) {
+    if (inYear(hit) && normalizeTitle(hit.Title ?? "") === want) return hit.imdbID;
   }
+  for (const hit of all) {
+    if (inYear(hit)) return hit.imdbID;
+  }
+  return null;
 }
 
 /**
