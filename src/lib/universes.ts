@@ -1,4 +1,5 @@
 import { AWARDS } from "./awards";
+import { minChartVotes } from "./chartFloor";
 
 // العوالم السينمائية — قاموسٌ منسَّق لا بحث (روح D-050).
 //
@@ -573,11 +574,17 @@ export function curatedBlurb(
   const name = universeName(u, locale);
   const en = locale === "en";
 
-  /* **الأعلى تقييماً** — تُبنى من تقييمات IMDb بعتبة D-323/D-365 */
+  /* **الأعلى تقييماً** — تُبنى من تقييمات IMDb بعتبة D-323/D-365/D-385.
+     🔴 **والعتبةُ تُقرأ من مصدرها لا تُكتب في الجملة** (D-385): نزلت
+     عتبةُ الأنمي إلى عشرة آلافٍ **فصارت النبذةُ تقول عشرين** — **ونبذةٌ
+     تصف طريقةَ البناء تكذب يومَ تتغيّر الطريقةُ ولا تتغيّر هي** (D-219).
+     **فالرقمُ من `minChartVotes` نفسِها التي يقرأ بها `topChartRows`** —
+     موضعٌ واحدٌ للحقيقة (D-216). */
   if (u.top) {
+    const floor = minChartVotes(u.top);
     return en
-      ? `Ranked from IMDb ratings, with a floor of 20,000 votes so a high score on a handful of votes cannot climb it.`
-      : `مرتَّبةٌ بتقييمات IMDb، وبعتبة عشرين ألف صوتٍ فأكثر — فلا يعلوها عملٌ نال درجةً عاليةً من أصواتٍ قليلة.`;
+      ? `Ranked from IMDb ratings, with a floor of ${floor.toLocaleString("en")} votes so a high score on a handful of votes cannot climb it.`
+      : `مرتَّبةٌ بتقييمات IMDb، وبعتبة ${floor.toLocaleString("ar-EG")} صوتٍ فأكثر — فلا يعلوها عملٌ نال درجةً عاليةً من أصواتٍ قليلة.`;
   }
 
   /* **الجوائز** — الفائزون بأسمائهم وسنواتهم */
