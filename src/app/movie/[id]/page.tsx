@@ -221,7 +221,13 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
                 أحمد: «التصنيف العمري حطها في كل صفحات المسلسلات والأفلام»).
                 **ولا نداءَ ثالثاً له** — يصل في ردّ OMDb نفسِه. */}
             <Suspense fallback={<HeroRatingsSkeleton />}>
-              <HeroRatings imdbId={movie.imdb_id} ageLabel={t.ageRating} />
+              <HeroRatings
+                imdbId={movie.imdb_id}
+                /* 🆕 D-414 — جسرُ الاسم والسنة حين لا يعرف TMDB معرّفَ IMDb */
+                name={movie.title}
+                year={movie.release_date ? Number(movie.release_date.slice(0, 4)) : null}
+                ageLabel={t.ageRating}
+              />
             </Suspense>
 
             {/* 🆕 **ونبضُنا تحت نبض العالم** (D-408): ما يقوله IMDb
@@ -362,34 +368,22 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
                   />
                 </Suspense>
 
-                {/* **الطاقمُ عاد إلى «عن العمل» — ثالثاً لا أوّلاً** (D-203،
-                    طلب أحمد بنصّه: «تيوب cast احذف وضيف كاست ضمن تبويب
-                    أباوت، لكن ما يكون أوّل شيء: الأوّل القصة بعده الفيديو
-                    بعده كاست»).
+                {/* 🆕 ⚖️ **والمرتبطاتُ حلّت محلَّ الطاقم تحت الفيديو**
+                    (D-416، طلبُ أحمد: «سمايلر في الأفلام فقط تكون cast،
+                    و Related titles يكون في أباوت تحت الفيديو بدل كاست»).
 
-                    **ونقضٌ صريحٌ لقرارٍ سابق:** كان الطاقمُ داخل «معلومات»
-                    منذ D-080، ثم خرج تبويباً بطلبه (D-090) لأن التبويبَ
-                    طال. **وقد عاد لأن السببَ زال:** «أين أشاهده» غادرت في
-                    D-190، والأنواعُ صعدت إلى الترويسة — **فالتبويبُ الذي
-                    كان طويلاً صار سطرَ قصّةٍ ومقطعاً**.
+                    **ونقضٌ ثالثٌ لموضع الطاقم يُقال باسمه**: D-080 وضعه
+                    في «معلومات»، وD-090 أخرجه تبويباً، **وD-203 أعاده
+                    ثالثاً تحت الفيديو** — **واليوم يخرج تبويباً مرّةً
+                    ثانية.** **والسببُ الذي أعاده في D-203 كان أن التبويبَ
+                    قصُر** («سطرُ قصّةٍ ومقطع»)، **والسببُ الذي يُخرجه
+                    اليوم أن «مشابه» صار تبويباً بلا اسمٍ صادق**: يحمل
+                    المرتبطاتِ والقوائمَ، **وكلاهما جوابُ «وبعد؟» لا جوابُ
+                    «من فيه؟».**
 
-                    **والترتيبُ الذي طلبه هو ترتيبُ السؤال:** «عن ماذا؟» ثم
-                    «كيف يبدو؟» ثم «من فيه؟» — والوجوهُ آخرُ ما يُسأل عنه
-                    قبل المشاهدة لا أوّلُه. **وخمسةُ تبويباتٍ على ٣٦٠px
-                    كانت تُقصّ أسماءها** («Epis…» · «Com…» · «Revi…» في
-                    لقطته) — فحذفُ واحدٍ يشتري قراءةَ الأربعة الباقية. */}
-                <Suspense fallback={null}>
-                  <CastRail mediaType="movie" tmdbId={movieId} locale={locale} />
-                </Suspense>
-              </div>
-            ),
-          },
-          {
-            key: "similar",
-            label: t.tabSimilar,
-            icon: "grid",
-            content: (
-              <div className="space-y-5">
+                    **والترتيبُ يبقى ترتيبَ السؤال** (حجّةُ D-203 نفسُها):
+                    «عن ماذا؟» ثم «كيف يبدو؟» **ثم «وماذا يشبهه؟»** —
+                    **والوجوهُ سؤالٌ قائمٌ بذاته فصار له بابُه.** */}
                 <Suspense fallback={null}>
                   <RelatedTitles
                     mediaType="movie"
@@ -406,6 +400,19 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
                   <ListsWithMovie movieId={movieId} locale={locale} />
                 </Suspense>
               </div>
+            ),
+          },
+          {
+            /* 🆕 **تبويبُ الطاقم — الاسمُ صار صادقاً** (D-416): كان
+               «مشابه» يحمل المرتبطاتِ والقوائم، **فحمل اسماً لا يصفه
+               وحدَه** — **والآن يحمل الوجوهَ ويُسمّى بها.** */
+            key: "cast",
+            label: t.castTitle,
+            icon: "people",
+            content: (
+              <Suspense fallback={null}>
+                <CastRail mediaType="movie" tmdbId={movieId} locale={locale} />
+              </Suspense>
             ),
           },
           {
