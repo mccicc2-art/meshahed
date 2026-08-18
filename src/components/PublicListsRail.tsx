@@ -28,22 +28,56 @@ export function PublicListsRail({
   lists,
   locale,
   title,
+  grid = false,
 }: {
   lists: PublicListCard[];
   locale: Locale;
   /** عنوان الصفّ — يغيب فيحلّ عنوان «قوائم من المجتمع» */
   title?: string;
+  /**
+   * 🔴 🆕 **شبكةٌ لا صفّ — حيث تجاورها شبكة** (D-433، طلبُ أحمد: «في
+   * المكتبة كل البطائق أبغاها بالمقاس الجديد»).
+   *
+   * **مكتبتُه ترسم قوائمَه شبكةَ عمودين، ورفُّ «المحفوظة» تحتها
+   * مباشرةً يرسم البطاقةَ نفسَها صفّاً أضيق** — **بطاقةٌ واحدةٌ بمقاسين
+   * في شاشةٍ واحدة، والقارئُ يقرأ الفرقَ معنًى لا وجود له.**
+   *
+   * ⚠️ **ولا ترويسةٌ ثانيةٌ ولا شبكةٌ ثانية**: `PosterRail bare` (D-428)
+   * يعطي الرأسَ نفسَه، **والشبكةُ هي شبكةُ `ListManager` حرفاً**
+   * (`grid-cols-2 gap-2.5`) — **ورقمان أو صنفان لشيءٍ واحدٍ في صفحةٍ
+   * واحدة هو العطلُ بعينه** (القاعدة ٦).
+   */
+  grid?: boolean;
 }) {
   const t = getDict(locale);
   if (!lists.length) return null;
 
+  const cards = lists.map((l) => (
+    <CommunityListCard key={l.id} list={l} locale={locale} className="w-full h-full" />
+  ));
+
+  if (grid) {
+    return (
+      <PosterRail title={title ?? t.publicListsRail} icon="list" iconColor="var(--accent-2)" bare>
+        <ul className="grid grid-cols-2 gap-2.5">
+          {lists.map((l, i) => (
+            <li key={l.id} className="min-w-0">
+              {cards[i]}
+            </li>
+          ))}
+        </ul>
+      </PosterRail>
+    );
+  }
+
   return (
     <PosterRail title={title ?? t.publicListsRail} icon="list" iconColor="var(--accent-2)">
-      {lists.map((l) => (
-        /* wide لا الافتراضي: خانة الملصق (118px) لبطاقةٍ أعرض منها كانت
-           تجعل البطاقات تتراكب فوق بعضها (لقطة المالك — D-084) */
-        <RailItem key={l.id} wide>
-          <CommunityListCard list={l} locale={locale} className="w-full" />
+      {lists.map((l, i) => (
+        /* `size="list"` لا الافتراض: خانة الملصق (118px) لبطاقةٍ أعرض
+           منها كانت تجعل البطاقات تتراكب فوق بعضها (لقطة المالك — D-084)،
+           🆕 **والمقاسُ كبر في D-433 ليساوي بطاقةَ الشبكة.** */
+        <RailItem key={l.id} size="list">
+          {cards[i]}
         </RailItem>
       ))}
     </PosterRail>
