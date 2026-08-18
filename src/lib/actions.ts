@@ -7,7 +7,7 @@ import { LOCALE_COOKIE, normalizeLocale } from "@/lib/i18n";
 import { REGION_COOKIE, normalizeRegion } from "@/lib/region";
 import { GENRES, type MediaType } from "@/lib/media";
 import { THEMES } from "@/lib/themes";
-import { sanitizeHomePrefs, type HomePrefs } from "@/lib/homePrefs";
+import { sanitizeHomePrefs, type HomePrefs, type HomeView } from "@/lib/homePrefs";
 import { sanitizeProfilePrefs, type ProfilePrefs } from "@/lib/profilePrefs";
 import {
   FEED_STRANGERS_COOKIE,
@@ -173,6 +173,38 @@ export async function updateProfile(input: {
   }
 
   revalidatePath("/", "layout");
+}
+
+/**
+ * **وضعُ عرض الرئيسية وحدَه** (D-434).
+ *
+ * **ولماذا فعلٌ مستقلٌّ لا `updateProfile`**: ذاك يطلب الاسمَ والصورةَ
+ * والأنواعَ المفضّلة في كل نداء — **فمبدّلٌ بضغطةٍ واحدة كان سيرسل
+ * ملفَّك كلَّه ليقلب كلمة**، وأيُّ حقلٍ نسيه المُرسِل يُكتب فارغاً.
+ * **وهنا حقلٌ واحدٌ يُدمج في `home_prefs` القائم** فلا يمسّ سواه.
+ *
+ * **والقراءةُ قبل الكتابة لازمة**: العمودُ JSON واحد، **والكتابةُ فوقه
+ * بكائنٍ فيه `view` وحدَه تمحو الترتيبَ والخانات** — نفسُ درسِ
+ * `create or replace` (D-380): يُقرأ الحيُّ ثم يُبنى فوقه.
+ */
+export async function setHomeView(value: string) {
+  const { supabase, user } = await requireUser("homeview", 20, 10_000);
+  const view: HomeView = value === "compact" ? "compact" : "visual";
+
+  const { data } = await supabase
+    .from("profiles")
+    .select("home_prefs")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  const prefs = sanitizeHomePrefs(data?.home_prefs);
+  const { error } = await supabase
+    .from("profiles")
+    .upsert({ id: user.id, home_prefs: { ...prefs, view } }, { onConflict: "id" });
+  if (error) fail(error);
+
+  revalidatePath("/");
+  return view;
 }
 
 /** مزامنة كوكي الثيم لمن اختار ثيمه قبل اعتماد الكوكي — تُستدعى مرة من العميل */

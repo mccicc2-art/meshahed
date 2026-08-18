@@ -1218,7 +1218,10 @@ export async function getFeedSeenAt(): Promise<number | null> {
   }
 }
 
-export async function getUnreadSignals(): Promise<number> {
+/* 🆕 **مغلَّفةٌ بـ`cache()`** (D-434): صارت لها قارئان في الطلب الواحد —
+   الشريطُ العلويّ وترويسةُ الرئيسية الجديدة — **ونداءان لرقمٍ واحد في
+   الصفحة نفسِها كذبٌ على الميزانية لا اقتصادٌ فيها.** */
+export const getUnreadSignals = cache(async (): Promise<number> => {
   try {
     const supabase = await createClient();
     const { data, error } = await supabase.rpc("unread_signals");
@@ -1227,7 +1230,7 @@ export async function getUnreadSignals(): Promise<number> {
   } catch {
     return 0;
   }
-}
+});
 
 // ============================================================
 //  المحادثات — رسالة واحدة لكل شخص (لا خيطٌ لكل مشاركة)

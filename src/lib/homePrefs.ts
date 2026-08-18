@@ -37,6 +37,17 @@ export const HEADER_STATS = [
 ] as const;
 export type HeaderStatKey = (typeof HEADER_STATS)[number];
 
+/**
+ * **وضعُ العرض في الرئيسية — بصريٌّ أو مضغوط** (D-434).
+ *
+ * **وهو وضعُ رسمٍ لا صفحةٌ ثانية**: نفسُ البيانات ونفسُ الترتيب ونفسُ
+ * النداءات، **والذي يتبدّل هو الشكل وحده** — فمن أراد ملصقاتٍ كبيرة
+ * رآها، ومن أراد أكبرَ قدرٍ من مكتبته في شاشةٍ واحدة ضغطها. **وصفحتان
+ * لبياناتٍ واحدة كانتا ستفترقان عند أوّل تعديل** (قاعدة ٦).
+ */
+export const HOME_VIEWS = ["visual", "compact"] as const;
+export type HomeView = (typeof HOME_VIEWS)[number];
+
 export const STATS_PICK_MIN = 2;
 export const STATS_PICK_MAX = 4;
 
@@ -55,6 +66,8 @@ export interface HomePrefs {
   statsPick: HeaderStatKey[];
   /** سقفُ بطاقات الصفّ — يقصّ ولا يمدّ (D-152) */
   cards: CardCount;
+  /** وضعُ العرض — بصريٌّ (ملصقات) أو مضغوط (صفوف) */
+  view: HomeView;
 }
 
 export const DEFAULT_HOME_PREFS: HomePrefs = {
@@ -67,6 +80,7 @@ export const DEFAULT_HOME_PREFS: HomePrefs = {
   order: ["continue", "week", "towatch", "friends", "upcoming", "trending"],
   statsPick: ["shows", "movies", "towatch", "time"],
   cards: "full",
+  view: "visual",
 };
 
 /**
@@ -118,5 +132,9 @@ export function sanitizeHomePrefs(raw: unknown): HomePrefs {
     order,
     statsPick,
     cards: sanitizeCardCount(o.cards),
+    view:
+      typeof o.view === "string" && (HOME_VIEWS as readonly string[]).includes(o.view)
+        ? (o.view as HomeView)
+        : d.view,
   };
 }
