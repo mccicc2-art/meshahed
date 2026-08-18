@@ -70,7 +70,7 @@ export function TitleCommunityFeed({
   const shown = kind === "all" ? items : items.filter((i) => i.kind === kind);
 
   return (
-    <div className="mt-4">
+    <div className="mt-3">
       {/* **صفُّ الرقائق يظهر حين يكون هناك ما يُرشَّح** — صنفٌ واحدٌ
           يعني أن «الكل» و«هو» شيءٌ واحد، **ومرشِّحٌ بخيارٍ واحد زينة.** */}
       {chips.length > 2 && (

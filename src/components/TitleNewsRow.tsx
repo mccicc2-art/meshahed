@@ -1,35 +1,47 @@
 import Link from "next/link";
-import { newsLine, newsSource } from "@/lib/newsLine";
-import type { LoopzNewsItem } from "@/lib/data";
 import { getDict, type Locale } from "@/lib/i18n";
-import { timeAgo } from "@/lib/when";
+import { timeAgoShort } from "@/lib/when";
 import { Icon } from "./Icon";
 
 /**
- * **صفُّ نشرةِ Loopz داخل خطّ المجتمع** (D-398).
+ * **صفُّ خبرٍ داخل خطّ المجتمع** (D-398، ووسِّع في D-400).
  *
- * **وهو جسدُ `TitleNewsTab` نفسُه** الذي كان تبويباً مستقلاً (D-300) —
- * **لم يتغيّر منه حرفٌ في الشكل**، وإنما فقد قائمتَه: الأخبارُ صارت
- * رقاقةً في قائمةٍ واحدةٍ مع الآراء والنقاش، **فمن يملك القائمة هو
- * الخطُّ لا الخبر** (نفسُ حجّة انتزاع `TalkReviewRow`).
+ * **وهو يرسم جملةً جاهزة لا يركّبها**: مصدرا الخبر في صفحة العمل اثنان
+ * وصيغتاهما مختلفتان — **نشرةُ `loopz_news` تُصاغ بـ`newsLine`،
+ * ونشرةُ الغرفة (`title_posts.kind`) تُصاغ بـ`bulletinLine`** — **ودالّةُ
+ * الصياغة تملكها وحدةٌ واحدة** (D-211/D-261). **فلو عرف الصفُّ المصدرين
+ * لصار فيه فرعان يعرفان القاعدة**، ولو نُسخ الصفُّ لصار للخبر رسمان.
+ * **فالصفُّ يأخذ السطرَ والزمنَ والوجهة، ولا يسأل من أين جاء.**
  *
- * ⚠️ **ولا ملصقَ في الصفّ**: نحن **داخل** صفحة العمل وصورتُه في ترويستها
- * فوق (D-223/D-257).
+ * ⚠️ **ولا ملصقَ فيه**: نحن **داخل** صفحة العمل وصورتُه في ترويستها فوق
+ * (D-223/D-257).
  *
  * **والوجهُ مكانَه ختمٌ**: صفوفُ الخطّ الأخرى تبدأ بوجهِ قائلها، **وللخبر
  * قائلٌ أيضاً — نحن** (D-213)، فرمزُ النشرة يجلس حيث يجلس الوجه ليبقى
  * إيقاعُ العمود واحداً.
  */
-export function TitleNewsRow({ n, locale }: { n: LoopzNewsItem; locale: Locale }) {
+export function TitleNewsRow({
+  line,
+  at,
+  href,
+  source,
+  replies = 0,
+  locale,
+}: {
+  /** الجملةُ مركّبةً بلغة القارئ — **المستدعي يملك صيغتَها** */
+  line: string;
+  at: string;
+  href: string;
+  /** اسمُ المصدر إن كان للخبر مصدرٌ خارجيّ */
+  source?: string | null;
+  /** ردودُ الغرفة على هذه النشرة — **والصفرُ لا يُرسم** (D-222) */
+  replies?: number;
+  locale: Locale;
+}) {
   const t = getDict(locale);
-  const line = newsLine(n, t, locale);
-  /* **ونشرةٌ بلا صيغةٍ تسقط هنا لا في الرسم** — نفسُ حارس `ActivityFeed`
-     و`/post` حرفاً (D-179: القراءةُ متسامحة). */
-  if (!line) return null;
-  const src = newsSource(n);
 
   return (
-    <article className="py-4 first:pt-0 flex gap-3">
+    <article className="py-3.5 first:pt-0 flex gap-3">
       <span
         aria-hidden
         className="shrink-0 size-11 rounded-full bg-accent/12 border border-accent/25 flex items-center justify-center"
@@ -38,16 +50,25 @@ export function TitleNewsRow({ n, locale }: { n: LoopzNewsItem; locale: Locale }
       </span>
 
       <div className="min-w-0 flex-1">
-        <Link href={`/post/${encodeURIComponent(n.key)}`} prefetch={false} className="block group">
+        <Link href={href} prefetch={false} className="block group">
           <p className="text-[14px] leading-relaxed font-semibold group-hover:text-accent transition">
             {line}
           </p>
           <p className="mt-1 flex items-center gap-2 text-[12px] text-muted">
-            <span>{timeAgo(n.published_at, t)}</span>
-            {src && (
+            <span className="tabular-nums">{timeAgoShort(at, t)}</span>
+            {source && (
               <>
                 <span aria-hidden>·</span>
-                <span className="truncate">{t.newsPerSource(src.name)}</span>
+                <span className="truncate">{t.newsPerSource(source)}</span>
+              </>
+            )}
+            {replies > 0 && (
+              <>
+                <span aria-hidden>·</span>
+                <span className="inline-flex items-center gap-1 tabular-nums">
+                  <Icon name="comment" size={13} />
+                  {replies}
+                </span>
               </>
             )}
           </p>

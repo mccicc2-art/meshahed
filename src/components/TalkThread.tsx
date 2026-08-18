@@ -125,7 +125,7 @@ export function TalkReviewRow({
   const n = count;
 
   return (
-    <article key={r.id} id={`review-${r.id}`} className="py-4 first:pt-0 flex gap-3">
+    <article id={`review-${r.id}`} className="py-3.5 first:pt-0 flex gap-3">
       <Link href={href} prefetch={false} className="shrink-0 active:opacity-80 transition">
         <Avatar src={r.hide_name ? null : r.avatar_url} name={who} size={44} alt="" />
       </Link>

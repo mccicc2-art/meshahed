@@ -49,7 +49,7 @@ export function TitleJoinCard({
   const rounded = Math.round(avg * 10) / 10;
 
   return (
-    <div className="bg-surface border border-border rounded-2xl p-4">
+    <div className="bg-surface border border-border rounded-2xl p-3.5">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <h3 className="font-bold text-[15px]">{t.communityJoin}</h3>
         {count > 0 && (

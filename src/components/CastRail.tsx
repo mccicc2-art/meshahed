@@ -30,7 +30,7 @@ export async function CastRail({
   if (cast.length === 0 && crew.length === 0) return null;
 
   return (
-    <section className="space-y-6">
+    <section className="space-y-5">
       {cast.length > 0 && (
         <PosterRail title={t.castTitle} icon="people">
           {cast.map((p) => (

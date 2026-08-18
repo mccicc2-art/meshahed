@@ -69,7 +69,7 @@ export async function RelatedTitles({
        تحتها بعد الانزلاق فيبدو أن شيئاً لم يحدث */
     <div
       id="related"
-      className="mt-10 space-y-8 scroll-mt-[calc(var(--header-h)+1rem)]"
+      className="mt-6 space-y-6 scroll-mt-[calc(var(--header-h)+1rem)]"
     >
       {collection && (
         <PosterRail

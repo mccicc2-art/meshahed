@@ -38,7 +38,7 @@ export function TitleTalkRow({
   const who = displayNameOf(p, t.anonymousUser);
 
   return (
-    <article className="py-4 first:pt-0 flex gap-3">
+    <article className="py-3.5 first:pt-0 flex gap-3">
       <Link href={href} prefetch={false} className="shrink-0 active:opacity-80 transition">
         <Avatar src={p.hide_name ? null : p.avatar_url} name={who} size={44} alt="" />
       </Link>

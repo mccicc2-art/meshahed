@@ -27,14 +27,19 @@ export function DetailTabs({ tabs }: { tabs: DetailTab[] }) {
   if (!available.length) return null;
 
   return (
-    <div className="mt-6">
+    /* 🆕 **والإيقاعُ ضاق درجةً** (D-401، طلبُ أحمد: «كمّل تصغير الأشياء
+       مثل التصاميم»): `mt-5` لا `mt-6`، وحشوةُ الشريط `py-1.5` لا `py-2`،
+       والخانةُ `pt-1.5 pb-2.5` لا `pt-2 pb-3`، واللوحُ `pt-3` لا `pt-4`.
+       **٢٠px تُشترى من فوق كلِّ لوحٍ في التطبيق** — والشريطُ نفسُه لم
+       يتغيّر شكلُه، **ضاق فحسب.** */
+    <div className="mt-5">
       {/* شريط مقسّم واحد: خانات متساوية فوق خطٍّ فاصلٍ سفليّ، والمختار
           عليه خطٌّ بلون التمييز — أخفّ من كبسولةٍ بحدّ. والأسهم تنقل بين
           التبويبات (مقلوبةً في RTL) كما يتوقّع مستخدم لوحة المفاتيح وقارئ
           الشاشة */}
       {/* `--sticky-top` لا `--header-h` وحده: الترويسة تحمل شريط الحالة
           في وضع التثبيت، فالالتصاق عليه وحده يُدخل الشريط تحتها */}
-      <div className="sticky top-[var(--sticky-top)] z-10 bg-[color:var(--background)] py-2">
+      <div className="sticky top-[var(--sticky-top)] z-10 bg-[color:var(--background)] py-1.5">
         <div
           role="tablist"
           className="grid border-b border-[color:var(--divider)]"
@@ -68,7 +73,7 @@ export function DetailTabs({ tabs }: { tabs: DetailTab[] }) {
                 onClick={() => setActive(tab.key)}
                 className={segmentedItem(
                   on,
-                  "flex items-center justify-center gap-1.5 px-2 pt-2 pb-3 text-[13px]",
+                  "flex items-center justify-center gap-1.5 px-2 pt-1.5 pb-2.5 text-[13px]",
                   false,
                 )}
               >
@@ -91,7 +96,7 @@ export function DetailTabs({ tabs }: { tabs: DetailTab[] }) {
           role="tabpanel"
           aria-labelledby={`tab-${tab.key}`}
           hidden={tab.key !== active}
-          className={`pt-4 ${tab.key === active ? "tab-fade" : ""}`}
+          className={`pt-3 ${tab.key === active ? "tab-fade" : ""}`}
         >
           {tab.content}
         </div>

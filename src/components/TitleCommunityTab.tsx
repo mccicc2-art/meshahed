@@ -6,7 +6,9 @@ import {
   getTitleReviews,
   getTitleThread,
 } from "@/lib/data";
-import { type Locale } from "@/lib/i18n";
+import { getDict, type Locale } from "@/lib/i18n";
+import { bulletinLine } from "@/lib/bulletinLine";
+import { newsLine, newsSource } from "@/lib/newsLine";
 import { RatingBox } from "./RatingBox";
 import { TalkReviewRow } from "./TalkThread";
 import { TitleCommunityFeed, type FeedItem } from "./TitleCommunityFeed";
@@ -41,9 +43,10 @@ import { TitleTalkRow } from "./TitleTalkRow";
  * محلَّهما) — **فالحسابُ متعادلٌ تقريباً**، **والمكسبُ أن رزمةَ
  * `CommunityRoom` العميلة لم تعد تُحمَّل مع كلِّ صفحةِ عمل.**
  *
- * ⚠️ **ونشراتُ Loopz داخل الخيط تُستبعد من النقاشات** (`kind !== null`):
- * **هي أخبارٌ وبيتُها رقاقةُ الأخبار**، **وصفٌّ يظهر مرّتين في قائمةٍ
- * واحدة عطلٌ لا وفرة.**
+ * ⚠️ **ونشراتُ Loopz داخل الخيط أخبارٌ لا نقاشات** (`kind !== null`):
+ * **تدخل رقاقةَ الأخبار لا رقاقةَ النقاشات** (D-400، حكمُ أحمد: «نشرات
+ * لوبز تدخل مع المراجعة») — **فالخبرُ خبرٌ من أيِّ بابٍ وصل**، **وردودُ
+ * الغرفة عليه تُعدُّ على صفّه** فلا يضيع أنه صار حواراً.
  */
 export async function TitleCommunityTab({
   tmdbId,
@@ -101,6 +104,8 @@ export async function TitleCommunityTab({
   };
 
   const talkHref = `/talk/${mediaType}/${tmdbId}`;
+  /* **صيغةُ الجملة تُقرأ مرّةً هنا** — الصفُّ يرسم ولا يركّب */
+  const t = getDict(locale);
 
   /* **الرأيُ يظهر إن كان مكتوباً أو إن كان له ردود** — حارسُ `TalkThread`
      نفسُه: **تقييمٌ بلا كلامٍ رقمٌ لا صفّ**، وقد أُخذ متوسّطُه في
@@ -141,11 +146,47 @@ export async function TitleCommunityTab({
           />
         ),
       })),
-    ...news.map((n) => ({
-      kind: "news" as const,
-      at: n.published_at,
-      node: <TitleNewsRow key={`news-${n.key}`} n={n} locale={locale} />,
-    })),
+    /* **نشرةُ الغرفة خبرٌ أيضاً** (D-400): صفٌّ في `title_posts` بـ`kind`،
+       **جملتُه من `bulletinLine` ووجهتُه الغرفةُ نفسُها** — وردودُه
+       تُعدُّ عليه كما تُعدُّ على أيّ مشاركة. **وبلا صيغةٍ يسقط الصفّ**
+       (D-179). */
+    ...thread
+      .filter((p) => !p.parentId && p.kind)
+      .map((p) => ({ p, line: bulletinLine(p.kind, p.data, t, locale) }))
+      .filter((x): x is { p: (typeof thread)[number]; line: string } => !!x.line)
+      .map(({ p, line }) => ({
+        kind: "news" as const,
+        at: p.createdAt,
+        node: (
+          <TitleNewsRow
+            key={`bulletin-${p.postId}`}
+            line={line}
+            at={p.createdAt}
+            href={talkHref}
+            replies={descendants(p.postId)}
+            locale={locale}
+          />
+        ),
+      })),
+    /* **ونشرتُنا المولَّدة** (`loopz_news`) — **جملتُها `newsLine`
+       ووجهتُها `‎/post/[key]`**. */
+    ...news
+      .map((n) => ({ n, line: newsLine(n, t, locale) }))
+      .filter((x): x is { n: (typeof news)[number]; line: string } => !!x.line)
+      .map(({ n, line }) => ({
+        kind: "news" as const,
+        at: n.published_at,
+        node: (
+          <TitleNewsRow
+            key={`news-${n.key}`}
+            line={line}
+            at={n.published_at}
+            href={`/post/${encodeURIComponent(n.key)}`}
+            source={newsSource(n)?.name ?? null}
+            locale={locale}
+          />
+        ),
+      })),
   ]
     /* **الأحدثُ أوّلاً، والمقارنةُ نصّيةٌ لا زمنيّة**: الطوابعُ كلُّها
        ISO من الخادم نفسِه، **فترتيبُ حروفها هو ترتيبُ زمنها** ولا
