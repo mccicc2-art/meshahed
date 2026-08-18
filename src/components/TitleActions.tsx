@@ -311,10 +311,17 @@ export function TitleActions({
       <div className="flex items-center gap-3">
         {/* أضف لقائمة: أبيض قبل الإضافة، وبلون الهوية بعدها — اللون هو
             الإشارة لا رقمٌ يحتاج تفسيراً، والعلامة تمتلئ معه */}
+        {/* 🆕 **وارتفاعُ الصفّ ٤٤ لا ٤٨** (D-404، طلبُ أحمد على لقطة
+            الصفّ: «صغّر ارتفاعها شوي»). **و٤٤ قاعٌ لا اختيار**: هو حدُّ
+            هدف اللمس الذي يقيس به هذا التطبيق أزراره كلَّها (زرّا
+            الترويسة الزجاجيّان، وصفوفُ ورقة «المزيد») — **فالنزولُ درجةً
+            يقف عنده ولا يتجاوزه**، وأيُّ رقمٍ أصغر يشتري ٤px بثمنِ ضغطةٍ
+            تُخطئ. **والدائرتان تنزلان معه** فيبقى الصفُّ صفّاً واحداً لا
+            ثلاثةَ ارتفاعات. */}
         <button
           onClick={() => setSheetOpen(true)}
           aria-pressed={badge > 0}
-          className={`flex-1 h-12 rounded-full font-bold text-[15px] flex items-center justify-center gap-2.5 active:scale-[0.98] transition ${
+          className={`flex-1 h-11 rounded-full font-bold text-[15px] flex items-center justify-center gap-2.5 active:scale-[0.98] transition ${
             badge > 0
               ? "bg-accent text-[color:var(--on-accent)] shadow-[0_10px_28px_rgba(124,58,237,0.35)] hover:brightness-110"
               : "bg-[color:var(--surface-inverse)] text-[color:var(--on-surface-inverse)] shadow-[0_10px_28px_rgba(0,0,0,0.28)] hover:brightness-95"
@@ -337,7 +344,7 @@ export function TitleActions({
           aria-pressed={fav}
           aria-label={t.favAria}
           title={t.favAria}
-          className={`w-12 h-12 shrink-0 rounded-full grid place-items-center border-[1.5px] active:scale-95 transition ${
+          className={`w-11 h-11 shrink-0 rounded-full grid place-items-center border-[1.5px] active:scale-95 transition ${
             fav
               ? "border-transparent bg-[color:var(--error)]/12 text-[color:var(--error)]"
               : "border-border text-foreground/85 hover:border-accent/60"
@@ -353,7 +360,7 @@ export function TitleActions({
           aria-pressed={done}
           aria-label={watchLabel}
           title={watchLabel}
-          className={`w-12 h-12 shrink-0 rounded-full grid place-items-center border-[1.5px] active:scale-95 transition ${
+          className={`w-11 h-11 shrink-0 rounded-full grid place-items-center border-[1.5px] active:scale-95 transition ${
             done
               ? "border-transparent bg-[color:var(--success)]/15 text-[color:var(--success)]"
               : "border-border text-foreground/85 hover:border-accent/60"
