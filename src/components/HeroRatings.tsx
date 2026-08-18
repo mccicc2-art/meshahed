@@ -1,4 +1,5 @@
 import { externalRatings, imdbIdByName } from "@/lib/omdb";
+import { imdbOverride } from "@/lib/imdbOverrides";
 import { altTitles, tvImdbId } from "@/lib/tmdb";
 
 /**
@@ -92,8 +93,14 @@ export async function HeroRatings({
    */
   compact?: boolean;
 }) {
-  const first = imdbId ?? (tvId ? await tvImdbId(tvId) : null);
   const kind = tvId ? ("series" as const) : ("movie" as const);
+  const altId = tvId ?? movieId;
+  /* 🔴 🆕 **والخريطةُ المكتوبةُ بيدٍ تُسأل أوّلاً** (D-431): **سطرٌ نعرفه
+     أوثقُ من ثلاث رحلاتِ شبكةٍ وأرخصُ منها** — **فما نعرفه لا يُدفع ثمنُ
+     البحث عنه**، **وسقوطُها يعني «لا أعرفه» فتمشي الجسورُ الثلاثة**
+     (D-063). */
+  const pinned = altId ? imdbOverride(kind === "series" ? "tv" : "movie", altId) : null;
+  const first = pinned ?? imdbId ?? (tvId ? await tvImdbId(tvId) : null);
   /* **ولا يُبحث بالاسم إلا بعد أن يسقط المعرّف** (D-414) — نداءٌ لا يقع
      لأكثر الأعمال، **وردُّه مخبّأٌ يوماً كردِّ التقييم نفسِه.** */
   const second = first ?? (name && year ? await imdbIdByName(name, year, kind) : null);
@@ -104,7 +111,6 @@ export async function HeroRatings({
      ⚠️ **ولا يقع إلّا بعد سقوط الجسرين** (D-152)، **ويتوقّف عند أوّل
      صيغةٍ تطابق** فلا يستنفد السقفَ بلا داعٍ. */
   let iid = second;
-  const altId = tvId ?? movieId;
   if (!iid && altId && year) {
     for (const alt of await altTitles(kind === "series" ? "tv" : "movie", altId)) {
       /* **والاسمُ الذي جرّبناه لا يُجرَّب ثانيةً** */
