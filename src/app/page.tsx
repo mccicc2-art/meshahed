@@ -57,6 +57,7 @@ import {
   type HomeView,
 } from "@/lib/homePrefs";
 import { capCards } from "@/lib/cardCount";
+import { getLevel, levelPoints } from "@/lib/level";
 import { WeekStrip, type WeekEntry } from "@/components/WeekStrip";
 import { ShowStatsSync, type ShowStat } from "@/components/ShowStatsSync";
 import { FollowMetaSync, MovieStatsSync } from "@/components/MetaSync";
@@ -334,6 +335,11 @@ export default async function HomePage() {
     (k) => allHeaderStats[k],
   );
 
+  /* 🆕 **المستوى يعود بلا نداء** (D-439): محسوبٌ من عدّادَي الحلقات
+     والأفلام المقروءَين أعلاه — **ورسمُه قوسٌ حول الصورة لا شريطٌ يأخذ
+     سطراً**، فلا يكلّف بكسلاً من الارتفاع. */
+  const level = getLevel(levelPoints(watchedEpisodeTotal, watchedMovieIds.size));
+
   const displayName = profile?.nickname || user.email?.split("@")[0] || "";
 
   /* ===== D-087: الترويسة فوراً والجسدُ يتدفق =====
@@ -359,6 +365,7 @@ export default async function HomePage() {
         myUsername={profile?.username ?? null}
         stats={headerStats}
         showStats={prefs.stats}
+        levelPercent={level.percent}
         view={prefs.view}
         locale={locale}
       />
@@ -1030,6 +1037,8 @@ async function HomeBody({
                 href="/library"
                 seeAll={t.seeAll}
                 view={view}
+                /* ثلاثةُ صفوفٍ من مقاس «تابِع المشاهدة» (١٠٦ + فجوة ٨) */
+                peek={334}
                 wide
               >
                 {continueTop.map((i, n) => (
@@ -1069,6 +1078,8 @@ async function HomeBody({
                 href="/library"
                 seeAll={t.seeAll}
                 view={view}
+                /* ثلاثةُ صفوفٍ من مقاس الملصق الصغير (٧٦ + فجوة ٨) */
+                peek={244}
               >
                 {toWatchRow.slice(0, cap(toWatchRow.length)).map((x) =>
                   view === "compact" ? (
@@ -1134,6 +1145,7 @@ async function HomeBody({
                 href="/library"
                 seeAll={t.seeAll}
                 view={view}
+                peek={244}
                 wide
               >
                 {/* **القادمُ موعدٌ قبل أن يكون عملاً** (D-434): الصدرُ في
@@ -1405,6 +1417,7 @@ function Section({
   seeAll,
   wide = false,
   view = "visual",
+  peek,
   children,
 }: {
   title: string;
@@ -1422,6 +1435,23 @@ function Section({
    * مرّتين كانا سيفترقان** (قاعدة ٦).
    */
   view?: HomeView;
+  /**
+   * 🆕 **سقفُ الصندوق المضغوط بالبكسل** (D-439، طلبُ أحمد: «أقصى يبان من
+   * أي قائمة ٣ بوسترات، وتكون داخل بوكس مخفي أقدر أمرّر بأصابعي وأستعرض
+   * الباقي بدون ما أنزل بكامل الصفحة»).
+   *
+   * **والوضعُ المضغوط كان يطيل الصفحة لا يقصّرها**: عشرةُ صفوفٍ في
+   * «للمشاهدة» تعني تمريرةً كاملةً قبل الوصول إلى «القادم» — **وهو نقيضُ
+   * ما وُجد له** (D-437: كلُّ شيءٍ في شاشة).
+   *
+   * ⚠️ **والرقمُ بالبكسل لا بعدد الصفوف**: الصفوفُ ليست بارتفاعٍ واحد
+   * (صفُّ «تابِع المشاهدة» أطولُ من صفِّ ملصق)، **وCSS لا تعرف كم
+   * ارتفاعُ ثلاثةِ أبناءٍ قبل أن ترسمهم** — **فيُكتب السقفُ حيث يُعرف
+   * المحتوى.**
+   * ⚠️ **و`overscroll-contain` شرطٌ لا زينة**: بدونها يبتلع الصندوقُ
+   * تمريرتَك ثم يمرّر الصفحةَ خلفه عند حافّته.
+   */
+  peek?: number;
   children: React.ReactNode;
 }) {
   const items = (Array.isArray(children) ? children.flat() : [children]).filter(
@@ -1440,7 +1470,14 @@ function Section({
       bare={view === "compact"}
     >
       {view === "compact" ? (
-        <div className="space-y-2">
+        <div
+          className={`space-y-2 ${
+            peek
+              ? "overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              : ""
+          }`}
+          style={peek ? { maxHeight: peek } : undefined}
+        >
           {items.map((child, i) => (
             <div key={i}>{child}</div>
           ))}
