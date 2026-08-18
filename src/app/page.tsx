@@ -20,9 +20,7 @@ import {
   getMyRatings,
   getMyLists,
   getFriendsWatching,
-  getFollowLists,
-  getIncomingFollowRequests,
-  getReceivedLikes,
+  getUnreadSignals,
 } from "@/lib/data";
 import {
   getTv,
@@ -42,7 +40,6 @@ import { localizeFollows, localizeRows } from "@/lib/localize";
 import { airedEpisodeCount, percentOf } from "@/lib/progress";
 import { PosterCard } from "@/components/PosterCard";
 import { ContinueCard } from "@/components/ContinueCard";
-import { ToWatchCard } from "@/components/ToWatchCard";
 import { QuickSaveCard } from "@/components/QuickSaveCard";
 import { PosterRail, RailItem } from "@/components/PosterRail";
 import { RailNewBadge } from "@/components/RailNewBadge";
@@ -50,12 +47,14 @@ import { PublicListsRail } from "@/components/PublicListsRail";
 import { Icon, type IconName } from "@/components/Icon";
 import { posterUrl } from "@/lib/media";
 import { getWatchHistory } from "@/lib/data";
-import { ProfileHeader, type HeaderStat } from "@/components/ProfileHeader";
-import { getLevel, levelPoints } from "@/lib/level";
+import { type HeaderStat } from "@/components/ProfileHeader";
+import { HomeHeader } from "@/components/HomeHeader";
+import { CompactMediaRow } from "@/components/CompactMediaRow";
 import {
   sanitizeHomePrefs,
   type HomeSection,
   type HeaderStatKey,
+  type HomeView,
 } from "@/lib/homePrefs";
 import { capCards } from "@/lib/cardCount";
 import { WeekStrip, type WeekEntry } from "@/components/WeekStrip";
@@ -124,9 +123,7 @@ export default async function HomePage() {
     profile,
     movieProgress,
     myRatings,
-    receivedLikes,
-    followLists,
-    followRequests,
+    unreadSignals,
   ] = await Promise.all([
     getFollows(),
     getWatchSummary(),
@@ -134,12 +131,13 @@ export default async function HomePage() {
     getProfile(),
     getAllMovieProgress(),
     getMyRatings(),
-    getReceivedLikes(user.id),
-    /* قائمتا المتابعة وطلباتها — انتقل عدّاداهما إلى الترويسة (D-133)،
-       والقائمتان تُقرآن معهما لأن الورقتين تُفتحان من هنا. استعلاماتٌ
-       ثلاثة سقطت عن `/people` مقابل هذه، فالميزان لم يتغيّر */
-    getFollowLists(user.id),
-    getIncomingFollowRequests(),
+    /* ⚖️ 🆕 **وثلاثةُ استعلاماتٍ سقطت هنا** (D-434): الإعجاباتُ المستلمة
+       وقائمتا المتابعة وطلباتُها **كانت كلُّها لترويسة الحساب**، **وقد
+       غادرت الرئيسيةَ إلى الملفّ العامّ** — **واستعلامٌ لا يرسم شيئاً
+       ضريبةٌ تُدفع في كلِّ فتحةٍ للتطبيق.** ومكانَها **عدّادُ الجرس**
+       وحدَه، **وهو محسوبٌ أصلاً للشريط العلويّ** فصار `cache()`
+       يجعلهما نداءً واحداً. */
+    getUnreadSignals(),
   ]);
 
   // مستخدم بلا مكتبة يذهب لشاشة الانضمام — قبل أي رسمٍ أو جلبٍ آخر
@@ -157,7 +155,6 @@ export default async function HomePage() {
   const prefs = sanitizeHomePrefs(profile?.home_prefs);
 
   const myRatingsCount = myRatings.length;
-  const myComments = myRatings.filter((r) => r.review?.trim()).length;
 
   const today = new Date().toISOString().slice(0, 10);
 
@@ -234,10 +231,6 @@ export default async function HomePage() {
     (a, n) => a + n,
     0,
   );
-  const level = getLevel(
-    levelPoints(watchedEpisodeTotal, watchedMovieIds.size),
-  );
-
   const totalMinutes =
     (summary ?? []).reduce((a, r) => a + (r.minutes ?? 0), 0) + movieMinutes;
   const hours = Math.round(totalMinutes / 60);
@@ -348,24 +341,15 @@ export default async function HomePage() {
           تبويب تُعاد من كاش الراوتر لحظياً. البحث ليس بينها: تبويبه
           ورقةٌ تنبثق لا صفحةٌ تُجلب */}
       <RoutePrewarm routes={["/news", "/library", "/people"]} />
-      <ProfileHeader
+      <HomeHeader
         displayName={displayName}
-        bioText={profile?.bio ?? null}
-        username={profile?.username ?? null}
         avatarUrl={profile?.avatar_url ?? null}
-        coverUrl={profile?.cover_url ?? null}
-        coverPos={profile?.cover_pos ?? null}
         avatarPos={profile?.avatar_pos ?? null}
-        level={level}
+        unread={unreadSignals}
+        myUsername={profile?.username ?? null}
         stats={headerStats}
-        followingList={followLists.following}
-        followersList={followLists.followers}
-        followRequests={followRequests}
-        comments={myComments}
-        ratings={myRatingsCount}
-        likes={receivedLikes}
-        show={prefs}
-        verified
+        showStats={prefs.stats}
+        view={prefs.view}
         locale={locale}
       />
       <Suspense
@@ -810,6 +794,8 @@ async function HomeBody({
     progress?: number;
     badge?: string;
     badgeTone?: "neutral" | "progress" | "watched" | "rating";
+    /** سطرُ الوضع المختصر — النوعُ وعددُ الحلقات أو الموعد */
+    subtitle?: string;
   };
 
   const toWatchRow: MixedItem[] = [
@@ -831,7 +817,13 @@ async function HomeBody({
         title: i.name,
         posterPath: i.posterPath,
         progress: i.progress,
-        badge: i.watched === 0 ? t.notStartedBadge : undefined,
+        /* ⚖️ 🆕 **وشارةُ «ما بدأته» سقطت من هذا الصفّ** (D-434، طلبُ
+           أحمد بنصّه: «لا تعرض Not started داخل قسم معروف مسبقاً بأنه To
+           Watch»). **وهو محقّ: القسمُ كلُّه ما لم يُبدأ**، **وشارةٌ تعيد
+           عنوانَ قسمها على كلِّ بطاقةٍ فيه ضجيجٌ لا خبر** — والشارةُ
+           باقيةٌ حيث تُفرِّق فعلاً (صفُّ «مسلسلاتي» والمكتبة). */
+        subtitle:
+          i.aired > 0 ? `${t.typeSeries} · ${t.epsCount(i.aired)}` : t.typeSeries,
       })),
     ...myMovies
       .filter((m) => m.progress < 100)
@@ -844,7 +836,11 @@ async function HomeBody({
         title: m.title,
         posterPath: m.posterPath,
         progress: m.progress,
-        badge: m.progress === 0 ? t.typeMovie : m.badge,
+        /* **والشارةُ تبقى حين تحمل خبراً**: «٤٥ د» موضعُك في الفيلم —
+           **وأمّا «فيلم» فنوعُه، ومكانُه السطرُ الثاني في المختصر لا
+           رقاقةٌ فوق الملصق.** */
+        badge: m.progress === 0 ? undefined : m.badge,
+        subtitle: t.typeMovie,
       })),
   ].slice(0, 16);
 
@@ -867,6 +863,7 @@ async function HomeBody({
       title: u.title,
       posterPath: u.posterPath,
       badge: whenLabel(u.date, t),
+      subtitle: t.typeSeries,
       date: u.date,
     })),
     ...upcomingMovieCandidates
@@ -878,6 +875,7 @@ async function HomeBody({
         title: f.title,
         posterPath: f.poster_path,
         badge: whenLabel(d!, t),
+        subtitle: t.typeMovie,
         date: d!,
       })),
   ]
@@ -966,6 +964,11 @@ async function HomeBody({
            لا يمسّ سطراً واحداً. */
         const cap = (n: number) => capCards(n, prefs.cards);
 
+        /* **وضعُ العرض يُقرأ مرّةً هنا** (D-434) — **والبياناتُ أعلاه
+           واحدةٌ للوضعين**: لا نداءَ ثانٍ ولا فرعَ جلبٍ ثانٍ، **والفرقُ
+           في آخر خطوةٍ وحدَها.** */
+        const view = prefs.view;
+
         /* أقسام المحتوى تُرسم بترتيب التفضيلات: قائمة أسماء من التخصيص
            تُترجم إلى قوالب هنا، والغائب عن القائمة لا يُرسم أصلاً */
         const sections: Record<HomeSection, React.ReactNode> = {
@@ -978,6 +981,7 @@ async function HomeBody({
                 iconColor="var(--accent)"
                 href="/library"
                 seeAll={t.seeAll}
+                view={view}
                 wide
               >
                 {continueTop.map((i, n) => (
@@ -995,6 +999,7 @@ async function HomeBody({
                     season={continueExtra[n]?.season ?? null}
                     episode={continueExtra[n]?.episode ?? null}
                     runtime={continueExtra[n]?.runtime ?? null}
+                    variant={view === "compact" ? "row" : "card"}
                     locale={locale}
                   />
                 ))}
@@ -1015,24 +1020,47 @@ async function HomeBody({
                 iconColor="var(--brand-3)"
                 href="/library"
                 seeAll={t.seeAll}
+                view={view}
               >
-                {toWatchRow.slice(0, cap(toWatchRow.length)).map((x) => (
-                  <ToWatchCard
-                    key={x.key}
-                    tmdbId={x.tmdbId!}
-                    mediaType={x.mediaType!}
-                    runtime={x.runtime ?? null}
-                    locale={locale}
-                  >
+                {toWatchRow.slice(0, cap(toWatchRow.length)).map((x) =>
+                  view === "compact" ? (
+                    <CompactMediaRow
+                      key={x.key}
+                      href={x.href}
+                      title={x.title}
+                      subtitle={x.subtitle}
+                      posterPath={x.posterPath}
+                      progress={x.progress}
+                    />
+                  ) : (
+                    /* ⚖️ 🆕 **والزرّان العائمان سقطا** (D-434، طلبُ أحمد:
+                       «لا تعرض أزراراً عائمة كثيرة فوق البوسترات»).
+                       **والفعلان لم يسقطا**: «شاهدته» في قائمة الضغط
+                       المطوّل نفسِها (D-376)، **وهي البابُ الموحَّد لأفعال
+                       الملصق في كلّ سطح** — **وبابان لفعلٍ واحد كانا
+                       يزاحمان الصورةَ ويختلفان في السلوك.**
+                       ⚠️ **و«البطاقة الحمراء» ليست في هذه القائمة بعد**
+                       — بابُها اليومَ صفحةُ العمل وشبكةُ المكتبة، **وهو
+                       دَينٌ مكتوبٌ في `docs/UI_STATUS.md` لا سهوٌ.** */
                     <PosterCard
+                      key={x.key}
                       href={x.href}
                       title={x.title}
                       posterPath={x.posterPath}
                       progress={x.progress}
                       badge={x.badge}
+                      titleBelow
+                      hold={{
+                        tmdbId: x.tmdbId!,
+                        mediaType: x.mediaType!,
+                        added: true,
+                        watched: false,
+                        progress: x.progress,
+                        locale,
+                      }}
                     />
-                  </ToWatchCard>
-                ))}
+                  ),
+                )}
               </Section>
             ) : null,
           upcoming:
@@ -1044,16 +1072,32 @@ async function HomeBody({
                 iconColor="var(--accent)"
                 href="/library"
                 seeAll={t.seeAll}
+                view={view}
+                wide
               >
-                {upcomingRow.slice(0, cap(upcomingRow.length)).map((x) => (
-                  <PosterCard
-                    key={x.key}
-                    href={x.href}
-                    title={x.title}
-                    posterPath={x.posterPath}
-                    badge={x.badge}
-                  />
-                ))}
+                {/* **القادمُ موعدٌ قبل أن يكون عملاً** (D-434): الصدرُ في
+                    السطر الأوّل هو التاريخ، واسمُ العمل تحته — **فالقارئ
+                    يسأل «متى» ثم «ماذا»، لا العكس.** وفي المختصر يصير
+                    التاريخُ رقاقةً في صدر الصفّ بدل الملصق. */}
+                {upcomingRow.slice(0, cap(upcomingRow.length)).map((x) =>
+                  view === "compact" ? (
+                    <CompactMediaRow
+                      key={x.key}
+                      href={x.href}
+                      chip={x.badge}
+                      title={x.title}
+                      subtitle={x.subtitle}
+                    />
+                  ) : (
+                    <CompactMediaRow
+                      key={x.key}
+                      href={x.href}
+                      title={x.badge ?? x.title}
+                      subtitle={x.title}
+                      posterPath={x.posterPath}
+                    />
+                  ),
+                )}
               </Section>
             ) : null,
           shows:
@@ -1299,6 +1343,7 @@ function Section({
   href,
   seeAll,
   wide = false,
+  view = "visual",
   children,
 }: {
   title: string;
@@ -1309,6 +1354,13 @@ function Section({
   seeAll?: string;
   /** بطاقات عريضة بصورة المشهد بدل الملصق */
   wide?: boolean;
+  /**
+   * 🆕 **وضعُ العرض** (D-434): **الرأسُ واحدٌ في الوضعين** — نفسُ
+   * العنوان ونفسُ الرمز ونفسُ «الكلّ» — **والذي يتبدّل هو جسدُه**:
+   * صفٌّ أفقيٌّ يُمرَّر، أو عمودٌ من صفوفٍ مضغوطة. **ورأسان مكتوبان
+   * مرّتين كانا سيفترقان** (قاعدة ٦).
+   */
+  view?: HomeView;
   children: React.ReactNode;
 }) {
   const items = (Array.isArray(children) ? children.flat() : [children]).filter(
@@ -1323,12 +1375,22 @@ function Section({
       subtitle={subtitle}
       href={href}
       seeAllLabel={seeAll}
+      /* المختصر بلا مجالِ تمرير: **قائمةٌ تُقرأ لا صفٌّ يُسحب** */
+      bare={view === "compact"}
     >
-      {items.map((child, i) => (
-        <RailItem key={i} size={wide ? "backdrop" : "poster"}>
-          {child}
-        </RailItem>
-      ))}
+      {view === "compact" ? (
+        <div className="space-y-2">
+          {items.map((child, i) => (
+            <div key={i}>{child}</div>
+          ))}
+        </div>
+      ) : (
+        items.map((child, i) => (
+          <RailItem key={i} size={wide ? "backdrop" : "poster"}>
+            {child}
+          </RailItem>
+        ))
+      )}
     </PosterRail>
   );
 }
