@@ -283,7 +283,7 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
 
       {/* الإجراء الرئيسي: أضف لقائمة + دائرة «شاهدتُه كله» — زرّ المتابعة
           الكبير حُذف، فالمتابعة صارت أول صفٍّ داخل ورقة القوائم */}
-      <div className="mt-5 px-1">
+      <div className="mt-4 px-1">
         <TitleActions
           tmdbId={tvId}
           mediaType="tv"
@@ -329,7 +329,7 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
             label: t.tabInfo,
             icon: "info",
             content: (
-              <div className="space-y-7">
+              <div className="space-y-5">
                 {/* **«أين أشاهده» حُذف من هنا كاملاً** (D-190، طلب أحمد).
                     الشارةُ في الترويسة صارت الجوابَ الوحيد: رموزُ منصّات
                     الطبقة الأولى بلا أسماء، والضغطُ يفتح JustWatch بكلّ
@@ -338,7 +338,7 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
                     «أقدر أشاهده؟» لا جدولَ أسعارٍ لا نملكه أصلاً (D-150). */}
                 {tv.overview && (
                   <section>
-                    <SectionTitle icon="info" className="mb-2.5">
+                    <SectionTitle icon="info" className="mb-2">
                       {t.storyTitle}
                     </SectionTitle>
                     <ReadMore text={tv.overview} locale={locale} />
