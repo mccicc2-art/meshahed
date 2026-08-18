@@ -16,7 +16,7 @@ import {
   getAmAdmin,
   getFeaturedListIds,
 } from "@/lib/data";
-import { curatedName } from "@/lib/universes";
+import { curatedName, curatedBlurb } from "@/lib/universes";
 import { ListReviews } from "@/components/ListReviews";
 import { getT } from "@/lib/locale";
 import { BackCrumb } from "@/components/BackButton";
@@ -104,7 +104,9 @@ export default async function ListPage({ params }: { params: Promise<{ id: strin
         <ListDetail
           listId={pub.id}
           name={curatedName(slug, pub.name, loc)}
-          subtitle={pub.subtitle}
+          /* 🆕 **ونبذةُ قائمةِ لوبز تُصاغ من القاموس** (D-373) —
+             **وقائمةُ العضو تعود بوصفها الذي كتبه صاحبُه** (D-063). */
+          subtitle={curatedBlurb(slug, loc) ?? pub.subtitle}
           isPublic
           kind={pub.kind}
           items={items}
@@ -190,7 +192,10 @@ export default async function ListPage({ params }: { params: Promise<{ id: strin
       <ListDetail
         listId={data.list.id}
         name={curatedName(data.list.source_slug, data.list.name, loc)}
-        subtitle={data.list.subtitle}
+        /* 🆕 **ونبذةُ قائمةِ لوبز** (D-373، بلاغُ أحمد: «ليستات لوبز
+           لازم يكون لها شرح ونبذة مثل ليستة مشعل») — **مصاغةٌ من
+           القاموس بلغة القارئ لا مخزَّنةً بلغةٍ واحدة** (D-147/D-343). */
+        subtitle={curatedBlurb(data.list.source_slug, loc) ?? data.list.subtitle}
         isPublic={data.list.is_public}
         kind={data.list.kind}
         items={items}
