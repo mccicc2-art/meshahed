@@ -120,135 +120,163 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
           صفٍّ من المحتوى في الشاشة الأولى. **والملصقُ يبقى مطلّاً
           على الغلاف بنفس المقدار** (`-mt-24`) فلا ينقطع التداخلُ
           الذي يصنع العمق. */}
-      <div className="relative -mx-4 -mt-6 h-36 sm:h-60 mb-3">
-        {backdrop && (
-          <Image
-            src={backdrop}
-            alt=""
-            fill
-            priority
-            sizes="(max-width: 640px) 100vw, 1152px"
-            className="object-cover opacity-45"
-          />
-        )}
-        <div className="absolute inset-0 bg-gradient-to-t from-[color:var(--background)] via-[color:var(--background)]/35 to-transparent" />
-        <DetailTopBar
-          title={title}
-          locale={locale}
-          tmdbId={movieId}
-          mediaType="movie"
-          posterPath={movie.poster_path}
-          initialDropped={followState.dropped}
-          art={myArt}
-        />
-      </div>
+      {/* 🆕 **الغلافُ ينزل خلف الملصق كلِّه** (D-403، لقطةُ أحمد
+          بمستطيلين: «الغلاف حالياً ماخذ المساحة الحمراء فقط، أحتاجه ينزل
+          وياخذ المساحة الخضراء كاملة، بحيث يكون البوستر فوقه مو مشكلة»).
 
-      <div className="flex flex-wrap gap-4 -mt-24 sm:-mt-28 relative px-1">
-        <div className="w-32 sm:w-44 shrink-0">
-          <div className="relative aspect-[2/3] rounded-poster overflow-hidden ring-1 ring-white/10 bg-surface-2 shadow-[0_18px_44px_rgba(0,0,0,0.55)]">
-            {poster && <Image src={poster} alt={title} fill sizes="176px" className="object-cover" />}
-          </div>
+          **وما كان قبله:** صندوقٌ بارتفاعٍ ثابت يحمل الصورة، **وصفُّ
+          الملصق يُسحب إليه بهامشٍ سالب** — **فالصورةُ تنتهي عند منتصف
+          الملصق** والثلثُ الأسفل منه يجلس على خلفيّة الصفحة. **صورةٌ
+          مقطوعةٌ في منتصف عنصرٍ يعلوها تُقرأ عطلاً لا عمقاً.**
+
+          **والآن طبقتان لا صندوق**: الغلافُ `absolute inset-0` **يغطّي
+          الترويسة كلَّها** — الفراغَ العلويَّ وصفَّ الملصق معاً —
+          **والمحتوى فوقه `relative`**. **وارتفاعُ الترويسة صار ارتفاعَ
+          ما فيها** لا رقماً يُضبط بيده: الفراغُ العلويّ (`h-36 sm:h-60`)
+          زائداً صفَّ الملصق ناقصاً سحبَه. **فلا رقمَ ثالثاً يُصان.**
+
+          ⚠️ **والتدرّجُ صار بمحطّةٍ ثالثة**: القاعُ خلفيّةٌ صافية (فلا
+          حدَّ حادّاً فوق الأزرار)، **وعند ٤٠٪ يخفّ إلى ٢٠٪** فتُرى
+          الصورةُ خلف الملصق، **والقمّةُ شفّافة.** والنصُّ حيث كان يُقرأ
+          يبقى كما كان.
+
+          ⚠️ **و`px-5` لا `px-1`**: الصفُّ صار داخل حاويةٍ ملغيةٍ لحشوة
+          التخطيط (`-mx-4`)، **فحشوتُه تُعاد هنا** — ١٦ + ٤ = ٢٠،
+          **وهي نفسُها إلى البكسل.** */}
+      <div className="relative -mx-4 -mt-6 mb-3">
+        <div className="absolute inset-0 overflow-hidden">
+          {backdrop && (
+            <Image
+              src={backdrop}
+              alt=""
+              fill
+              priority
+              sizes="(max-width: 640px) 100vw, 1152px"
+              className="object-cover opacity-45"
+            />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-[color:var(--background)] via-[color:var(--background)]/20 via-40% to-transparent" />
         </div>
 
-        {/* ===== عمود البيانات — من قمّة الملصق لا من قاعه (طلب المالك) =====
-            كان `self-end` يلصق العنوان بأسفل الملصق ويترك المساحة جنبه
-            فارغة. الآن العنوان يوازي بداية الملصق، والمساحة تحته تحمل
-            البيانات كلّها: السنة والمدّة والتقييم، فالأنواع، فالمنصّة،
-            فأزرار السلسلة والعالم — التي كانت تسكن ذيل الصفحة. */}
-        <div className="flex-1 min-w-0 self-start pt-0.5">
-          <h1 className="text-xl sm:text-3xl font-extrabold leading-tight tracking-tight drop-shadow-[0_2px_10px_rgba(0,0,0,0.65)]">
-            {title}
-          </h1>
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs sm:text-sm text-muted mt-1">
-            {movie.release_date && <span>{movie.release_date.slice(0, 4)}</span>}
-            {movie.runtime ? (
-              <>
-                <span aria-hidden>·</span>
-                <span>{t.minutesCount(movie.runtime)}</span>
-              </>
-            ) : null}
+        <div className="relative h-36 sm:h-60">
+          <DetailTopBar
+            title={title}
+            locale={locale}
+            tmdbId={movieId}
+            mediaType="movie"
+            posterPath={movie.poster_path}
+            initialDropped={followState.dropped}
+            art={myArt}
+          />
+        </div>
+
+        <div className="relative flex flex-wrap gap-4 -mt-24 sm:-mt-28 px-5">
+          <div className="w-32 sm:w-44 shrink-0">
+            <div className="relative aspect-[2/3] rounded-poster overflow-hidden ring-1 ring-white/10 bg-surface-2 shadow-[0_18px_44px_rgba(0,0,0,0.55)]">
+              {poster && <Image src={poster} alt={title} fill sizes="176px" className="object-cover" />}
+            </div>
           </div>
 
-          {/* التقييم سطرٌ مستقلّ تحت البيانات، بشعارَي IMDb وطماطم لا
-              بأسمائهما، ومن هذين المصدرين فقط — لا نجمة TMDB (قرار أحمد
-              ٨ أغسطس، يُتمّ نقض D-027) */}
-          {/* 🆕 **والتصنيفُ العمريُّ يذيّل السطرَ نفسَه** (D-286، طلبُ
-              أحمد: «التصنيف العمري حطها في كل صفحات المسلسلات والأفلام»).
-              **ولا نداءَ ثالثاً له** — يصل في ردّ OMDb نفسِه. */}
-          <Suspense fallback={<HeroRatingsSkeleton />}>
-            <HeroRatings imdbId={movie.imdb_id} ageLabel={t.ageRating} />
-          </Suspense>
-
-          {/* «٣ ممن تتابعهم شاهدوه» (D-127) — انظر تعليق صفحة المسلسل */}
-          <CircleNote circle={circle} locale={locale} />
-
-          {/* الأنواع صعدت من تبويب «معلومات» إلى جنب الملصق (طلب المالك):
-              هوية الفيلم تُقرأ قبل قصّته لا بعدها */}
-          {movie.genres.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 mt-1.5">
-              {movie.genres.slice(0, 3).map((g) => (
-                <span
-                  key={g.id}
-                  className="text-[11px] font-medium bg-surface-2 border border-border px-2.5 py-1 rounded-full"
-                >
-                  {g.name}
-                </span>
-              ))}
+          {/* ===== عمود البيانات — من قمّة الملصق لا من قاعه (طلب المالك) =====
+              كان `self-end` يلصق العنوان بأسفل الملصق ويترك المساحة جنبه
+              فارغة. الآن العنوان يوازي بداية الملصق، والمساحة تحته تحمل
+              البيانات كلّها: السنة والمدّة والتقييم، فالأنواع، فالمنصّة،
+              فأزرار السلسلة والعالم — التي كانت تسكن ذيل الصفحة. */}
+          <div className="flex-1 min-w-0 self-start pt-0.5">
+            <h1 className="text-xl sm:text-3xl font-extrabold leading-tight tracking-tight drop-shadow-[0_2px_10px_rgba(0,0,0,0.65)]">
+              {title}
+            </h1>
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs sm:text-sm text-muted mt-1">
+              {movie.release_date && <span>{movie.release_date.slice(0, 4)}</span>}
+              {movie.runtime ? (
+                <>
+                  <span aria-hidden>·</span>
+                  <span>{t.minutesCount(movie.runtime)}</span>
+                </>
+              ) : null}
             </div>
-          )}
 
-          {/* أين يُبثّ — في الترويسة، وقسم المنصّات في «معلومات» حُذف */}
-          {watchWhere && (
-            <div className="mt-2">
-              <WatchChip
-                options={watchWhere.options}
-                region={watchWhere.region}
-                userRegion={userRegion}
+            {/* التقييم سطرٌ مستقلّ تحت البيانات، بشعارَي IMDb وطماطم لا
+                بأسمائهما، ومن هذين المصدرين فقط — لا نجمة TMDB (قرار أحمد
+                ٨ أغسطس، يُتمّ نقض D-027) */}
+            {/* 🆕 **والتصنيفُ العمريُّ يذيّل السطرَ نفسَه** (D-286، طلبُ
+                أحمد: «التصنيف العمري حطها في كل صفحات المسلسلات والأفلام»).
+                **ولا نداءَ ثالثاً له** — يصل في ردّ OMDb نفسِه. */}
+            <Suspense fallback={<HeroRatingsSkeleton />}>
+              <HeroRatings imdbId={movie.imdb_id} ageLabel={t.ageRating} />
+            </Suspense>
+
+            {/* «٣ ممن تتابعهم شاهدوه» (D-127) — انظر تعليق صفحة المسلسل */}
+            <CircleNote circle={circle} locale={locale} />
+
+            {/* الأنواع صعدت من تبويب «معلومات» إلى جنب الملصق (طلب المالك):
+                هوية الفيلم تُقرأ قبل قصّته لا بعدها */}
+            {movie.genres.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mt-1.5">
+                {movie.genres.slice(0, 3).map((g) => (
+                  <span
+                    key={g.id}
+                    className="text-[11px] font-medium bg-surface-2 border border-border px-2.5 py-1 rounded-full"
+                  >
+                    {g.name}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* أين يُبثّ — في الترويسة، وقسم المنصّات في «معلومات» حُذف */}
+            {watchWhere && (
+              <div className="mt-2">
+                <WatchChip
+                  options={watchWhere.options}
+                  region={watchWhere.region}
+                  userRegion={userRegion}
+                  locale={locale}
+                />
+              </div>
+            )}
+
+          </div>
+
+          {/* زرّا السلسلة والعالم (D-052/D-074) — خرجا من عمود البيانات إلى
+              طرف الترويسة الفارغ (طلب المالك من لقطة الشاشة): على الشاشات
+              الواسعة عمود ثالث متوسّط عمودياً في نهاية الصفّ، وعلى الضيّقة —
+              حيث لا طرف فارغ أصلاً — يلتفّان سطراً كاملاً تحت الترويسة.
+              نسخة واحدة تتنقّل بالتخطيط لا نسختان (بابٌ واحد لكل فعل) */}
+          {/* 🔴 🆕 **والشرطُ صار شرطَ ما يُرسم فعلاً** (D-402، لقطةُ أحمد
+              بثلاثة خطوطٍ حمراء): كان `belongs_to_collection || universe`
+              **يفتح صفّاً كاملاً لفيلمٍ له مجموعة** — **وداخلَه لا يُرسم
+              شيءٌ إلا إذا وُلِّدت قائمةُ عالَمه.** **وحاويةٌ فارغةٌ ليست بلا
+              كلفة**: `basis-full` تكسر سطراً في `flex-wrap`، **فتأخذ
+              `gap-4` الصفِّ (١٦) و`mt-3` نفسِها (١٢) — ٢٨px من فراغٍ لا
+              يحمل شيئاً**، وهو الخطُّ الأحمر الأوّل حرفاً.
+              **والقاعدة: الشرطُ يسأل عمّا سيُرسم، لا عمّا قد يُرسم**
+              (D-217/D-266: أرخصُ عنصرٍ هو الذي لا يُرسم). */}
+          {universe && universeListId && (
+            <div className="basis-full sm:basis-auto sm:self-center flex flex-wrap sm:flex-col gap-2 mt-3 sm:mt-0 sm:ms-2">
+              {/* **زرُّ «احفظ كل الأجزاء كقائمة» حُذف** (D-190، شطبه أحمد
+                  بلقطة). كان يُنشئ قائمةً من مجموعة الفيلم بضغطةٍ — فعلٌ
+                  نادرٌ يأخذ أوّلَ صفٍّ في الترويسة فوق «أضف إلى قائمة»
+                  نفسه، **وزرّان متجاوران يبدأان بـ«أضف/احفظ» يجعلان الأهمَّ
+                  يُقرأ ثانياً**. ومجموعةُ الفيلم ما زالت في تبويب «مشابه»
+                  (`RelatedTitles`)، فلا شيء صار غير ممكن — صار أطولَ خطوة.
+                  وزرُّ الكون (`universe`) باقٍ: مجموعاتُ الأكوان لا يعرضها
+                  تبويبٌ آخر. */}
+              {/* 🔴 **وهذا البابُ الثاني للفعل نفسِه — فتبع الحكمَ** (D-347):
+                  كان ينسخ عالَمَ الفيلم قائمةً جديدةً باسمك، **بينما بطاقتُه
+                  في اكتشف وصفحتُه صارتا تحفظانه مرجعاً حيّاً**. **وبابان
+                  لفعلٍ واحد بمعنيين مختلفين هو العطل بعينه** (D-068/D-294).
+                  ⚠️ **وقبل التوليد لا زرَّ أصلاً**: مجموعةٌ بلا صفٍّ لا
+                  تُحفظ — **وزرٌّ لا يكتب شيئاً أسوأ من غيابه** (D-217). */}
+              <UniverseSaveRow
+                listId={universeListId}
+                saved={universeSaved}
+                label={t.curatedSaveBtn}
                 locale={locale}
               />
             </div>
           )}
-
         </div>
-
-        {/* زرّا السلسلة والعالم (D-052/D-074) — خرجا من عمود البيانات إلى
-            طرف الترويسة الفارغ (طلب المالك من لقطة الشاشة): على الشاشات
-            الواسعة عمود ثالث متوسّط عمودياً في نهاية الصفّ، وعلى الضيّقة —
-            حيث لا طرف فارغ أصلاً — يلتفّان سطراً كاملاً تحت الترويسة.
-            نسخة واحدة تتنقّل بالتخطيط لا نسختان (بابٌ واحد لكل فعل) */}
-        {/* 🔴 🆕 **والشرطُ صار شرطَ ما يُرسم فعلاً** (D-402، لقطةُ أحمد
-            بثلاثة خطوطٍ حمراء): كان `belongs_to_collection || universe`
-            **يفتح صفّاً كاملاً لفيلمٍ له مجموعة** — **وداخلَه لا يُرسم
-            شيءٌ إلا إذا وُلِّدت قائمةُ عالَمه.** **وحاويةٌ فارغةٌ ليست بلا
-            كلفة**: `basis-full` تكسر سطراً في `flex-wrap`، **فتأخذ
-            `gap-4` الصفِّ (١٦) و`mt-3` نفسِها (١٢) — ٢٨px من فراغٍ لا
-            يحمل شيئاً**، وهو الخطُّ الأحمر الأوّل حرفاً.
-            **والقاعدة: الشرطُ يسأل عمّا سيُرسم، لا عمّا قد يُرسم**
-            (D-217/D-266: أرخصُ عنصرٍ هو الذي لا يُرسم). */}
-        {universe && universeListId && (
-          <div className="basis-full sm:basis-auto sm:self-center flex flex-wrap sm:flex-col gap-2 mt-3 sm:mt-0 sm:ms-2">
-            {/* **زرُّ «احفظ كل الأجزاء كقائمة» حُذف** (D-190، شطبه أحمد
-                بلقطة). كان يُنشئ قائمةً من مجموعة الفيلم بضغطةٍ — فعلٌ
-                نادرٌ يأخذ أوّلَ صفٍّ في الترويسة فوق «أضف إلى قائمة»
-                نفسه، **وزرّان متجاوران يبدأان بـ«أضف/احفظ» يجعلان الأهمَّ
-                يُقرأ ثانياً**. ومجموعةُ الفيلم ما زالت في تبويب «مشابه»
-                (`RelatedTitles`)، فلا شيء صار غير ممكن — صار أطولَ خطوة.
-                وزرُّ الكون (`universe`) باقٍ: مجموعاتُ الأكوان لا يعرضها
-                تبويبٌ آخر. */}
-            {/* 🔴 **وهذا البابُ الثاني للفعل نفسِه — فتبع الحكمَ** (D-347):
-                كان ينسخ عالَمَ الفيلم قائمةً جديدةً باسمك، **بينما بطاقتُه
-                في اكتشف وصفحتُه صارتا تحفظانه مرجعاً حيّاً**. **وبابان
-                لفعلٍ واحد بمعنيين مختلفين هو العطل بعينه** (D-068/D-294).
-                ⚠️ **وقبل التوليد لا زرَّ أصلاً**: مجموعةٌ بلا صفٍّ لا
-                تُحفظ — **وزرٌّ لا يكتب شيئاً أسوأ من غيابه** (D-217). */}
-            <UniverseSaveRow
-              listId={universeListId}
-              saved={universeSaved}
-              label={t.curatedSaveBtn}
-              locale={locale}
-            />
-          </div>
-        )}
       </div>
 
       {/* الإجراء الرئيسي: أضف لقائمة + دائرة «شاهدتُه» — نفس لغة صفحة المسلسل */}
