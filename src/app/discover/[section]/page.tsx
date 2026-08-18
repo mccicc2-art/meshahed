@@ -122,8 +122,13 @@ export default async function SectionPage({
         : undefined
     : undefined;
 
-  /* **صفحةُ التمديد من الرابط** — والمجهولُ يسقط إلى الأولى (D-179) */
-  const page = Math.min(MAX_PAGES, Math.max(1, Number(sp.p) || 1));
+  /* **صفحةُ التمديد من الرابط** — والمجهولُ يسقط إلى الأولى (D-179).
+     🔴 **واسمُها `pg` لا `p`** — **قِيس على الموقع الحيّ**: أوّلُ نسخةٍ
+     سمّتها `p`، **و`p` في نحو روابطنا هي المنصّة** (`parseBrowse`)،
+     **فصار «المزيد» يعني «مزوّد رقم ٢» وأعادت الصفحةُ صفراً.**
+     **ومحورٌ جديدٌ يُسمّى بعد قراءة نحو الرابط لا قبله** (D-224: حقلٌ
+     قائمٌ لا يُعاد استعماله لمعنًى ثانٍ وإن تشابه الاسم). */
+  const page = Math.min(MAX_PAGES, Math.max(1, Number(sp.pg) || 1));
   const want = LIMIT * page;
 
   const win = sp.w === "month" || sp.w === "year" ? sp.w : "week";
@@ -278,7 +283,7 @@ export default async function SectionPage({
       {page < MAX_PAGES && rows.length - LIMIT * (page - 1) >= LIMIT / 2 && (
         <div className="mt-8 text-center">
           <Link
-            href={`?${new URLSearchParams({ ...sp, p: String(page + 1) } as Record<string, string>).toString()}`}
+            href={`?${new URLSearchParams({ ...sp, pg: String(page + 1) } as Record<string, string>).toString()}`}
             scroll={false}
             prefetch={false}
             className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-5 py-2.5 text-[14px] font-semibold text-foreground hover:border-[color:var(--divider)] active:scale-95 transition"
