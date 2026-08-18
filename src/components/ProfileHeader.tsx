@@ -211,7 +211,8 @@ export function ProfileHeader({
             **والظلُّ يبقى** لأن الوردمارك أبيضُ وقد يقف فوق غلافٍ فاتح —
             وهو ما يفصله عنه بلا إطار. */}
         <span className="absolute top-[calc(2*var(--safe-top)+0.9rem)] start-4 opacity-90 drop-shadow-[0_2px_6px_rgba(0,0,0,0.6)]">
-          <LogoWordmark size={26} />
+          {/* 🆕 D-405 — تقف على الغلاف لا على الورق، فتبقى بيضاء */}
+          <LogoWordmark size={26} on="art" />
         </span>
 
         {/* أداة الغلاف الوحيدة: الإعدادات */}
@@ -355,7 +356,7 @@ export function ProfileHeader({
               );
               const rule = i < stats.length - 1 && (
                 <span
-                  className="absolute inset-y-1 end-0 w-px bg-white/10"
+                  className="absolute inset-y-1 end-0 w-px bg-[color:var(--divider)]"
                   aria-hidden
                 />
               );
@@ -365,7 +366,7 @@ export function ProfileHeader({
                 <Link
                   key={s.key}
                   href={s.href}
-                  className={`${box} hover:bg-white/5 transition`}
+                  className={`${box} hover:bg-surface-2 transition`}
                 >
                   {rule}
                   {cell}

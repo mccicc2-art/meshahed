@@ -158,7 +158,7 @@ export function ToWatchStat({
         aria-haspopup="dialog"
         onClick={() => setOpen(true)}
       >
-        {divider && <span className="absolute inset-y-1 end-0 w-px bg-white/10" aria-hidden />}
+        {divider && <span className="absolute inset-y-1 end-0 w-px bg-[color:var(--divider)]" aria-hidden />}
         <span className="flex items-center gap-2">
           <Icon name={icon} size={20} style={{ color }} className="shrink-0" />
           <span className="text-[17px] font-bold leading-none tabular-nums">{value}</span>

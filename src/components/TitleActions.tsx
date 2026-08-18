@@ -322,8 +322,14 @@ export function TitleActions({
           onClick={() => setSheetOpen(true)}
           aria-pressed={badge > 0}
           className={`flex-1 h-11 rounded-full font-bold text-[15px] flex items-center justify-center gap-2.5 active:scale-[0.98] transition ${
+            /* 🆕 **وظلٌّ واحدٌ لزرٍّ واحد** (D-405): كانت حالةُ
+               «محفوظ» تحمل هالةً **بنفسجيّة** (`rgba(124,58,237,…)`) —
+               **لونٌ لا وجود له في كتيّب الهويّة**، بقيّةُ لوحةٍ سابقة،
+               **ويُقرأ ضباباً ليلكيّاً على الورق الأبيض.** **واللونُ هو
+               الإشارة أصلاً** (السطر فوق)، فالهالةُ كانت تقول ما قيل
+               مرّتين — **وارتفاعٌ محايدٌ يكفي الحالتين.** */
             badge > 0
-              ? "bg-accent text-[color:var(--on-accent)] shadow-[0_10px_28px_rgba(124,58,237,0.35)] hover:brightness-110"
+              ? "bg-accent text-[color:var(--on-accent)] shadow-[0_10px_28px_rgba(0,0,0,0.28)] hover:brightness-110"
               : "bg-[color:var(--surface-inverse)] text-[color:var(--on-surface-inverse)] shadow-[0_10px_28px_rgba(0,0,0,0.28)] hover:brightness-95"
           }`}
         >

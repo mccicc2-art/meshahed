@@ -18,20 +18,38 @@ import Image from "next/image";
  * مسنّنةً على كل خلفيةٍ غير سوداء.**
  *
  * ⚠️ **وهما أبيضان بالألفا لا ملوّنان**: يقفان على الأسطح الداكنة كما
- * تقول الهويّة. **وفي الثيم الفاتح (`daylight`) يحتاجان قلباً** —
- * **دَينٌ يُعلَن ولا يُخفى** (بندٌ في `05`): `invert` سطرٌ واحد، **لكنه
- * لا يُشحن قبل أن يُرى الثيمُ الفاتح حيّاً** (D-220).
+ * تقول الهويّة.
+ *
+ * **✅ 🆕 ودَينُ الثيم الفاتح سُدَّ** (D-405، بعد أن رُئي حيّاً — شرطُ
+ * D-220): `filter: invert(var(--logo-invert))`، **والمتغيّرُ صفرٌ في كلِّ
+ * ثيمٍ داكن وواحدٌ في `daylight` وحدَه** — **فالقرارُ في اللوحة لا في
+ * المكوّن**، ولو وُلد ثيمٌ فاتحٌ ثانٍ ورث السلوكَ بسطرٍ في `themes.ts`.
+ *
+ * 🔴 **ولا يُقلب ما يقف على صورة**: العلامةُ فوق غلافِ الملفّ الشخصيّ
+ * بيضاءُ في الثيمين لأنها تقف على فنٍّ لا على ورق. **فالمعاملُ `on`
+ * يقول أين تقف**: `"surface"` (الافتراض) تتبع الثيم، و`"art"` تبقى
+ * بيضاء. **والافتراضُ هو الحالة الغالبة** — الشريطُ وصفحةُ الخطأ.
  */
+
+/** أين تقف العلامة: على سطحِ الثيم (تتبعه) أم على فنٍّ (تبقى بيضاء) */
+export type LogoOn = "surface" | "art";
+
+/** الفلترُ نفسُه للرمز وللكلمة — **قاعدةٌ واحدة لا نسختان** (D-145) */
+function logoFilter(on: LogoOn) {
+  return on === "art" ? undefined : "invert(var(--logo-invert))";
+}
 
 /** **الرمزُ وحده** — مربّعٌ يقف في الشريط وفي أيّ موضعٍ ضيّق */
 export function Logo({
   size = 32,
   className = "",
+  on = "surface",
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   gradientId = "loopz-mark",
 }: {
   size?: number;
   className?: string;
+  on?: LogoOn;
   gradientId?: string;
 }) {
   return (
@@ -42,7 +60,7 @@ export function Logo({
       height={size}
       priority
       className={`inline-block select-none ${className}`}
-      style={{ width: size, height: size }}
+      style={{ width: size, height: size, filter: logoFilter(on) }}
     />
   );
 }
@@ -56,6 +74,7 @@ export function Logo({
 export function LogoWordmark({
   size = 28,
   className = "",
+  on = "surface",
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   showName = true,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -63,6 +82,7 @@ export function LogoWordmark({
 }: {
   size?: number;
   className?: string;
+  on?: LogoOn;
   showName?: boolean;
   gradientId?: string;
 }) {
@@ -76,7 +96,7 @@ export function LogoWordmark({
       height={h}
       priority
       className={`inline-block select-none ${className}`}
-      style={{ width: w, height: h }}
+      style={{ width: w, height: h, filter: logoFilter(on) }}
     />
   );
 }
