@@ -32,6 +32,13 @@ export interface Theme {
     success?: string;
     error?: string;
     verified?: string;
+    /**
+     * 🆕 **قلبُ الشعار** (D-405): ملفّا العلامة أبيضان بالألفا — يقفان
+     * على الأسطح الداكنة كما تقول الهويّة، **ويختفيان على الفاتحة.**
+     * `0` لا قلب · `1` قلبٌ كامل. **والغيابُ يعني صفراً** فلا يُكتب
+     * المتغيّر أصلاً (نفسُ عرف الدلاليات فوق).
+     */
+    "logo-invert"?: string;
   };
   glowA: string;
   glowB: string;
@@ -217,6 +224,10 @@ export const THEMES: Theme[] = [
       success: "#15803d",
       error: "#b91c1c",
       verified: "#8a6d00",
+      /* 🆕 **والعلامةُ تُقلب** (D-405): البيضاءُ بالألفا على ورقٍ أبيض
+         لا تُرى — **وهذا دَينٌ أُعلن يومَ وُلد الشعار صورةً** (D-256)
+         **وسُدَّ اليومَ بعد أن رُئي الثيمُ الفاتح حيّاً** (شرطُ D-220). */
+      "logo-invert": "1",
     },
     glowA: "rgba(255, 210, 0, 0.14)",
     glowB: "rgba(245, 158, 11, 0.07)",
@@ -255,6 +266,7 @@ export function themeCss(t: Theme) {
   const semantic =
     (v.success ? `--success:${v.success};` : "") +
     (v.error ? `--error:${v.error};` : "") +
-    (v.verified ? `--verified:${v.verified};` : "");
+    (v.verified ? `--verified:${v.verified};` : "") +
+    (v["logo-invert"] ? `--logo-invert:${v["logo-invert"]};` : "");
   return `:root{--background:${v.background};--surface:${v.surface};--surface-2:${v["surface-2"]};--foreground:${v.foreground};--muted:${v.muted};--accent:${v.accent};--accent-2:${v["accent-2"]};--border:${v.border};--on-accent:${v["on-accent"]};--on-accent-2:${v["on-accent-2"]};--glow-a:${t.glowA};--glow-b:${t.glowB};--brand-1:${b[0]};--brand-2:${b[1]};--brand-3:${b[2]};--elevated:${v.elevated};--divider:${v.divider};--surface-inverse:${v["surface-inverse"]};--on-surface-inverse:${v["on-surface-inverse"]};${semantic}}`;
 }
