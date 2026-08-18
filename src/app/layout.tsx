@@ -5,7 +5,6 @@ import "./globals.css";
 import { Navbar } from "@/components/Navbar";
 import { PullToRefresh } from "@/components/PullToRefresh";
 import { BottomNav } from "@/components/BottomNav";
-import { NavSignalDot } from "@/components/NavSignalDot";
 import { Footer } from "@/components/Footer";
 import { OfflineSync } from "@/components/OfflineSync";
 import { ToastHost } from "@/components/ToastHost";
@@ -145,13 +144,6 @@ export default async function RootLayout({
         <BottomNav
           locale={locale}
           signedIn={signedIn}
-          peopleDot={
-            signedIn ? (
-              <Suspense fallback={null}>
-                <NavSignalDot />
-              </Suspense>
-            ) : null
-          }
         />
         <OfflineSync />
         <ToastHost />
