@@ -1421,6 +1421,9 @@ const ar = {
      قبل أن يحفظها أحد). **والاسمُ يقول من اختار**: «رائجة» تَعِد عدّاً،
      و«يرشّحها لوبز» تقول الحقيقة (D-219). */
   listsFeatured: "يرشّحها لوبز",
+  /* 🆕 **صفُّ الرائجة** (D-386، طلبُ أحمد: «احذف Picked by Loopz واعمل
+     ترندينج ليست») — **مرتَّبٌ بالحفظ في آخر ثلاثين يوماً**. */
+  listsTrending: "الرائجة الآن",
   listFeature: "ثبّتها في «يرشّحها لوبز»",
   listUnfeature: "أزِل التثبيت",
   listFeaturedToast: "ثُبّتت في «يرشّحها لوبز» ✓",
@@ -2654,6 +2657,7 @@ const en: Dict = {
   libraryRevokeButton: "Revoke",
   railFriendsNow: "What your friends are watching",
   listsFeatured: "Picked by Loopz",
+  listsTrending: "Trending lists",
   listFeature: "Feature in “Picked by Loopz”",
   listUnfeature: "Remove from featured",
   listFeaturedToast: "Featured ✓",
