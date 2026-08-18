@@ -224,16 +224,19 @@ export function ListCardShell({
       <span className="flex items-center gap-1.5 text-[14px] font-bold">
         {icon}
         <span className="min-w-0 flex-1 truncate">{name}</span>
-        {star}
+        {heart}
         {action}
       </span>
-      {/* 🆕 **والقلبُ آخرَ السطر الثاني لا في سطر الاسم** (D-387، حكمُ
-          أحمد بعد أن رآهما معاً: «سطر ١: الاسم + ★ برقمها · سطر ٢: وجهُ
-          الصاحب واسمُه · عددُ الأعمال + ♥ برقمه — خلّها كذا أفضل»).
-          **والحجّة التي يراها القارئ**: سطرُ الاسم صار سطرَ **الحكم**
-          (اسمٌ ونجمة)، **والسطرُ الثاني سطرَ الحجم** (صاحبٌ وعددٌ
-          وحفظات) — **وطرفا السطرين لعمودٍ واحدٍ من الأرقام**، فالعينُ
-          تنزل بخطٍّ مستقيمٍ لا بزيجزاج. **والارتفاعُ سطران كما هو.** */}
+      {/* 🆕 **والنجمةُ آخرَ السطر الثاني والقلبُ في سطر الاسم** (D-387،
+          **حكمُ أحمد الثاني بعد أن رأى الأوّل حيّاً**: «سطر ١: الاسم +
+          ♥ برقمه · سطر ٢: وجهُ الصاحب واسمُه · عددُ الأعمال + ★ برقمها
+          — خلّها كذا أفضل»).
+          **⚖️ وهو تبديلٌ لموضعَي الرمزين لا نقضٌ لبنية السطرين**:
+          الشكلُ سطران وبوستر كما استقرّ في D-383، **وطرفا السطرين
+          عمودٌ واحدٌ من الأرقام** — **والذي تبدّل أيُّهما فوق.**
+          **وحجّتُه أقربُ إلى الفعل**: القلبُ زرُّك أنت (تحفظ أو لا)،
+          **فيجاور الاسمَ الذي تضغطه**، **والنجمةُ حكمُ الناس فتجاور
+          عددَهم.** **والارتفاعُ سطران كما هو** (D-046). */}
       <span className="mt-1 flex items-center gap-1 text-[12px] font-normal text-muted min-w-0">
         {ownerAvatar}
         {ownerName && (
@@ -246,7 +249,7 @@ export function ListCardShell({
           {countText}
           {extra ?? ""}
         </span>
-        {heart && <span className="ms-auto shrink-0 flex items-center">{heart}</span>}
+        {star && <span className="ms-auto shrink-0 flex items-center">{star}</span>}
       </span>
       {cover ? (
         <span className="mt-2 block relative aspect-[16/9] rounded-lg overflow-hidden bg-surface-2 border border-[color:var(--background)]">
