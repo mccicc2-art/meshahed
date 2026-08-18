@@ -1325,7 +1325,7 @@ function Section({
       seeAllLabel={seeAll}
     >
       {items.map((child, i) => (
-        <RailItem key={i} wide={wide}>
+        <RailItem key={i} size={wide ? "backdrop" : "poster"}>
           {child}
         </RailItem>
       ))}
