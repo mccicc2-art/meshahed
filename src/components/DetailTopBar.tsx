@@ -6,6 +6,7 @@ import { getDict, type Locale } from "@/lib/i18n";
 import { siteUrl } from "@/lib/site";
 import type { MediaType } from "@/lib/media";
 import { Icon } from "./Icon";
+import { BackButton } from "./BackButton";
 import { Sheet } from "./ui/Sheet";
 import { sheetMenuItem } from "./ui/controls";
 import { SendShareSheet } from "./SendShareSheet";
@@ -98,10 +99,20 @@ export function DetailTopBar({
 
   return (
     <>
-      <div className="absolute inset-x-0 top-0 z-20 flex items-center justify-between px-3 pt-3">
-        <button onClick={() => router.back()} aria-label={t.backAria} className={btn}>
-          <Icon name="chevron-down" size={18} className="rotate-90 rtl:-rotate-90" />
-        </button>
+      <div className="absolute inset-x-0 top-0 z-20 flex items-start justify-between px-4 pt-5">
+        {/* 🆕 **سهمُ الرجوع بلا دائرة — في كلِّ مكان** (D-406، طلبُ أحمد
+            بلقطتين: شطبَ المطوَّق وحوّط العاري: «زر الرجوع في أي مكان
+            خليها مثل هذا بدون دائرة»).
+            **وهذا تعميمُ D-288 لا نقضُه**: الحجّةُ كُتبت هناك كاملةً
+            (الدائرةُ `black/35` **شفّافةٌ**، فعلى غلافٍ فاتح تصير رماديّةً
+            والسهمُ داخلها رماديّ) — **وطُبِّقت على `TitleHero` وحدَها**،
+            فبقيت صفحةُ العمل بالدائرة **شهراً**. **ووصفةٌ تُصلَح في
+            سطحٍ وتُترك في أخيه هي D-145 بعينها.**
+            🔴 **ولا نسخةَ ثانية من السهم**: `BackButton` هو صاحبُه منذ
+            D-288 بهدفِ لمسه ٤٤ وظلِّه — **فاستُدعي، ولم يُنسخ صنفُه.**
+            ⚠️ **و«المزيد» يبقى مطوَّقاً**: هو فعلٌ لا يعرفه العرف
+            (D-217)، **والاستثناءُ لسهم الرجوع وحدَه.** */}
+        <BackButton locale={locale} variant="bare" />
 
         <button
           onClick={() => setMenu(true)}

@@ -5,7 +5,7 @@ import { chipClass, chipRow } from "./ui/controls";
 import { getDict, type Locale } from "@/lib/i18n";
 import { tap } from "@/lib/haptics";
 
-export type FeedKind = "review" | "talk" | "news";
+export type FeedKind = "review" | "news";
 
 export interface FeedItem {
   kind: FeedKind;
@@ -52,7 +52,6 @@ export function TitleCommunityFeed({
   const chips: { key: FeedKind | "all"; label: string }[] = [
     { key: "all", label: t.feedFilterAll },
     ...(has("review") ? [{ key: "review" as const, label: t.tabReviews }] : []),
-    ...(has("talk") ? [{ key: "talk" as const, label: t.communityFilterTalks }] : []),
     ...(has("news") ? [{ key: "news" as const, label: t.communityTabNews }] : []),
   ];
 
@@ -94,7 +93,9 @@ export function TitleCommunityFeed({
         </div>
       )}
 
-      <div className="mt-1 divide-y divide-[color:var(--divider)]">
+      {/* 🆕 **بطاقاتٌ لا قائمةٌ مفصولةٌ بخطوط** (D-407): عناصرُ الخطّ
+          مستقلّةٌ لا يردّ بعضُها على بعض، **والفراغُ بينها هو الفاصل.** */}
+      <div className="mt-2 space-y-2.5">
         {/* **ولا غلافَ حول الصفّ**: `first:pt-0` فيه يقيس أوّلَ ابنٍ
             لأبيه — **وغلافٌ لكلِّ صفٍّ يجعل كلَّ صفٍّ أوّلاً** فتنهار
             حشوةُ العمود. **فالمفتاحُ يُركَّب على الصفّ عند صناعته** في

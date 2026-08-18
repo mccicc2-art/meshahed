@@ -26,12 +26,22 @@ export async function RelatedTitles({
   mediaType,
   tmdbId,
   collectionId,
+  language,
+  genreIds,
   locale,
 }: {
   mediaType: MediaType;
   tmdbId: number;
   /** معرّف السلسلة — للأفلام وحدها، و`null` لما لا سلسلة له */
   collectionId?: number | null;
+  /**
+   * 🆕 **بصمةُ العمل — لغتُه وأنواعُه** (D-410): تمرّ إلى `relatedTitles`
+   * فترتّب نتائجَ TMDB بلغة العمل أوّلاً. **والصفحةُ تملكها أصلاً**
+   * فلا نداءَ جديد (D-198). **واختياريّةٌ** فلا تنكسر رفعةٌ قبل أختها
+   * (عرفُ النشر مجلّداً مجلّداً).
+   */
+  language?: string | null;
+  genreIds?: number[];
   locale: Locale;
 }) {
   const t = getDict(locale);
@@ -44,7 +54,7 @@ export async function RelatedTitles({
      كلِّها تشاركها بقيّةُ رفوفها (D-205). */
   const [collection, related, lib] = await Promise.all([
     collectionId ? getCollection(collectionId) : Promise.resolve(null),
-    relatedTitles(mediaType, tmdbId),
+    relatedTitles(mediaType, tmdbId, 20, { language, genreIds }),
     getLibState().catch(() => null),
   ]);
 

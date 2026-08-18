@@ -3,87 +3,82 @@
 import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { Icon } from "./Icon";
-import { buttonClass } from "./ui/Button";
 import { getDict, type Locale } from "@/lib/i18n";
 import { tap } from "@/lib/haptics";
 
 /**
- * **بطاقةُ «انضمّ إلى الحديث» — رأسُ تبويب المجتمع** (D-398، طلبُ أحمد
- * بصورة: «اجمع الأخبار والنقاش والآراء في مكان واحد»).
+ * **بطاقةُ «انضمّ إلى الحديث» — رأسُ تبويب المجتمع** (D-398، وأُعيد
+ * تصميمُها في D-407 على لقطة أحمد).
  *
  * ================= لماذا فعلان لا صندوقٌ مفتوح =================
  *
- * **كان مؤلّفُ الرأي (`RatingBox`) يفتتح تبويبَ «التعليقات» مبسوطاً**:
- * عنوانٌ ونجومٌ وحقلُ كتابةٍ بثلاثة أسطر وزرّان — **نصفُ الشاشة الأولى
- * لفعلٍ يقوم به واحدٌ من كلِّ عشرين زائراً**، ومن جاء ليقرأ ما قاله الناس
- * يمرّ عليه أوّلاً. **وصفحةُ العمل صفحةُ قراءةٍ قبل أن تكون صفحةَ كتابة.**
+ * **كان مؤلّفُ الرأي (`RatingBox`) يفتتح التبويبَ مبسوطاً**: عنوانٌ
+ * ونجومٌ وحقلُ كتابةٍ وزرّان — **نصفُ الشاشة الأولى لفعلٍ يقوم به واحدٌ
+ * من كلِّ عشرين زائراً**، ومن جاء ليقرأ يمرّ عليه أوّلاً. **وصفحةُ
+ * العمل صفحةُ قراءةٍ قبل أن تكون صفحةَ كتابة.**
  *
- * **فصار الفعلان سطراً واحداً**: «اكتب رأيك» يفتح المؤلّفَ في مكانه —
- * **ولا يُخرجك إلى صفحةٍ أخرى** (D-167) — و«ابدأ نقاشاً» بابُ الغرفة.
- * **والقائمةُ تبدأ من الشاشة الأولى.**
+ * ================= وشكلُها بعد D-407 =================
  *
- * **والتقييمُ في صدر البطاقة لا في قسمٍ خاصّ**: «★ ٨٫٢ من ١٤٣» جملةٌ
- * واحدة، **وكان عنواناً وسطراً وعدّاداً في ثلاث كتل** (D-222).
+ * **رمزٌ مطوَّقٌ ثم العنوان، ثم خطٌّ، ثم فعلان يقتسمان العرض** بفاصلٍ
+ * رأسيّ. **والقسمةُ بالنصف مقصودة**: الفعلان **ندّان لا رئيسٌ وتابع** —
+ * رأيٌ في العمل، وحديثٌ عنه — **فزرٌّ ممتلئٌ وآخرُ مفرَّغ كان يرتّبهما
+ * ترتيباً لا نملك دليلَه.**
  *
- * ⚠️ **والمؤلّفُ يُرسم على الخادم ويصل طفلاً**: هذا المكوّن لا يعرف عنه
- * شيئاً ولا يستورده — **فحالةُ الفتح عميلٌ خفيف، والكتابةُ تبقى حيث
- * كانت** (لا نسخةَ ثانية من `RatingBox`، قاعدة ٦).
+ * 🔴 **وهي البابُ الوحيد إلى النقاش** (D-407، نصُّ أحمد: «النقاشات مو
+ * لازم تكون هنا في الكوميونتي، يكفي الصندوق اللي فوق اللي يوصل لها»):
+ * **صفوفُ النقاش خرجت من الخطّ** — **والخطُّ صار آراءَ الناس ونشراتِنا
+ * وحدَها.**
+ *
+ * ⚠️ **والمؤلّفُ يُرسم على الخادم ويصل طفلاً**: هذا المكوّن لا يستورده —
+ * **فحالةُ الفتح عميلٌ خفيف، ولا نسخةَ ثانية من `RatingBox`** (قاعدة ٦).
  */
 export function TitleJoinCard({
   talkHref,
-  avg,
-  count,
   locale,
   composer,
 }: {
   talkHref: string;
-  /** متوسّطُ تقييم المجتمع — **يُقرأ ولا يُرسم إن لم يقيّمه أحد** */
-  avg: number;
-  count: number;
   locale: Locale;
   /** مؤلّفُ الرأي — يُرسم على الخادم ويُفتح هنا */
   composer: ReactNode;
 }) {
   const t = getDict(locale);
   const [open, setOpen] = useState(false);
-  const rounded = Math.round(avg * 10) / 10;
+
+  const action =
+    "flex-1 min-w-0 inline-flex items-center justify-center gap-2 px-3 py-2.5 text-[13px] font-bold " +
+    "text-foreground hover:text-accent active:scale-[0.98] transition";
 
   return (
-    <div className="bg-surface border border-border rounded-2xl p-3.5">
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <h3 className="font-bold text-[15px]">{t.communityJoin}</h3>
-        {count > 0 && (
-          <p className="text-[13px] text-muted tabular-nums">
-            <span className="font-bold text-accent">
-              ★ <span dir="ltr">{rounded.toFixed(1)}</span>
-            </span>{" "}
-            <span aria-hidden>·</span> {t.communityCount(count)}
-          </p>
-        )}
+    <div className="rounded-2xl border border-border bg-surface overflow-hidden">
+      <div className="flex items-center gap-3 px-4 pt-3.5 pb-3">
+        <span
+          aria-hidden
+          className="shrink-0 size-9 rounded-full border border-[color:var(--divider)] grid place-items-center text-accent"
+        >
+          <Icon name="comment" size={17} />
+        </span>
+        <h3 className="min-w-0 font-bold text-[15px]">{t.communityJoin}</h3>
       </div>
 
-      <div className="mt-3 flex items-center gap-2 flex-wrap">
-        <button
-          type="button"
-          aria-expanded={open}
-          onClick={() => {
-            tap(10);
-            setOpen((v) => !v);
-          }}
-          className={buttonClass({ size: "sm" })}
-        >
-          <Icon name="star" size={15} className="shrink-0" />
-          {t.communityWriteReview}
+      <div className="h-px bg-[color:var(--divider)] mx-4" />
+
+      <div className="flex items-stretch">
+        <button type="button" aria-expanded={open} onClick={() => { tap(10); setOpen((v) => !v); }} className={action}>
+          <Icon name="star" size={15} className="shrink-0 text-accent" />
+          <span className="truncate">{t.communityWriteReview}</span>
         </button>
-        <Link href={talkHref} className={buttonClass({ variant: "surface", size: "sm" })}>
+        {/* **فاصلٌ رأسيٌّ مقصوصٌ من طرفيه** — نفسُ وصفةِ فاصل المقسّم */}
+        <span aria-hidden className="my-2 w-px bg-[color:var(--divider)]" />
+        <Link href={talkHref} className={action}>
           <Icon name="comment" size={15} className="shrink-0 text-accent" />
-          {t.communityStartTalk}
+          <span className="truncate">{t.communityStartTalk}</span>
         </Link>
       </div>
 
       {/* **المؤلّفُ يُخفى بـ`hidden` لا يُحذف**: ما كُتب فيه قبل الطيّ
-          يبقى، **ونفسُ حجّة `DetailTabs`** — الحالةُ لا تُفقد بالإخفاء. */}
-      <div hidden={!open} className="mt-3">
+          يبقى — نفسُ حجّة `DetailTabs`. */}
+      <div hidden={!open} className="px-3.5 pb-3.5 pt-1">
         {composer}
       </div>
     </div>

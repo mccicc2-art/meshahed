@@ -1,5 +1,4 @@
 import {
-  getCommunityRating,
   getMyRating,
   getTitleLoopzNews,
   getTitleReplies,
@@ -10,11 +9,10 @@ import { getDict, type Locale } from "@/lib/i18n";
 import { bulletinLine } from "@/lib/bulletinLine";
 import { newsLine, newsSource } from "@/lib/newsLine";
 import { RatingBox } from "./RatingBox";
-import { TalkReviewRow } from "./TalkThread";
+import { TitleReviewRow } from "./TitleReviewRow";
 import { TitleCommunityFeed, type FeedItem } from "./TitleCommunityFeed";
 import { TitleJoinCard } from "./TitleJoinCard";
 import { TitleNewsRow } from "./TitleNewsRow";
-import { TitleTalkRow } from "./TitleTalkRow";
 
 /**
  * **تبويبُ المجتمع — بيتٌ واحدٌ للأخبار والنقاش والآراء** (D-398، طلبُ
@@ -43,6 +41,14 @@ import { TitleTalkRow } from "./TitleTalkRow";
  * محلَّهما) — **فالحسابُ متعادلٌ تقريباً**، **والمكسبُ أن رزمةَ
  * `CommunityRoom` العميلة لم تعد تُحمَّل مع كلِّ صفحةِ عمل.**
  *
+ * 🔴 **والنقاشاتُ خرجت من الخطّ** (D-407، نصُّ أحمد: «النقاشات مو لازم
+ * تكون هنا في الكوميونتي، يكفي الصندوق اللي فوق اللي يوصل لها»).
+ * **وحجّتُه أقوى من حجّةِ الجمع**: مشاركةُ الغرفة **نصفُ حوارٍ لا يُقرأ
+ * خارج سياقه** — ردٌّ على ردٍّ على سؤال — **وسطرٌ منها في قائمةِ آراءٍ
+ * يبدو كلاماً بلا رأس.** **والغرفةُ لها بابٌ في البطاقة فوق**، وهو
+ * البابُ الوحيد. **فالخطُّ صار: آراءُ الناس ونشراتُنا** — **وكلاهما
+ * يُقرأ وحدَه.**
+ *
  * ⚠️ **ونشراتُ Loopz داخل الخيط أخبارٌ لا نقاشات** (`kind !== null`):
  * **تدخل رقاقةَ الأخبار لا رقاقةَ النقاشات** (D-400، حكمُ أحمد: «نشرات
  * لوبز تدخل مع المراجعة») — **فالخبرُ خبرٌ من أيِّ بابٍ وصل**، **وردودُ
@@ -64,11 +70,10 @@ export async function TitleCommunityTab({
   backdropPath?: string | null;
   locale: Locale;
 }) {
-  /* **الستُّ معاً**: لا شيء منها يعتمد على الآخر، **والتسلسلُ كان يضيف
+  /* **الخمسُ معاً**: لا شيء منها يعتمد على الآخر، **والتسلسلُ كان يضيف
      رحلةً لكلِّ واحدة** (D-071). */
-  const [myRating, community, reviews, replies, thread, news] = await Promise.all([
+  const [myRating, reviews, replies, thread, news] = await Promise.all([
     getMyRating(tmdbId, mediaType),
-    getCommunityRating(tmdbId, mediaType),
     getTitleReviews(tmdbId, mediaType),
     getTitleReplies(tmdbId, mediaType),
     getTitleThread(tmdbId, mediaType).catch(() => []),
@@ -120,7 +125,7 @@ export async function TitleCommunityTab({
         kind: "review" as const,
         at: r.updated_at,
         node: (
-          <TalkReviewRow
+          <TitleReviewRow
             key={`review-${r.id}`}
             r={r}
             count={replyCounts.get(r.id) ?? 0}
@@ -128,21 +133,6 @@ export async function TitleCommunityTab({
             mediaType={mediaType}
             locale={locale}
             signedIn
-          />
-        ),
-      })),
-    ...thread
-      .filter((p) => !p.parentId && !p.kind && p.body?.trim())
-      .map((p) => ({
-        kind: "talk" as const,
-        at: p.createdAt,
-        node: (
-          <TitleTalkRow
-            key={`talk-${p.postId}`}
-            p={p}
-            count={descendants(p.postId)}
-            href={talkHref}
-            locale={locale}
           />
         ),
       })),
@@ -197,8 +187,6 @@ export async function TitleCommunityTab({
     <div>
       <TitleJoinCard
         talkHref={talkHref}
-        avg={community.avg}
-        count={community.count}
         locale={locale}
         composer={
           <RatingBox

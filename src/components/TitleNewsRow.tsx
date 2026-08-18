@@ -41,7 +41,7 @@ export function TitleNewsRow({
   const t = getDict(locale);
 
   return (
-    <article className="py-3.5 first:pt-0 flex gap-3">
+    <article className="rounded-2xl border border-border bg-surface p-3.5 flex gap-3">
       <span
         aria-hidden
         className="shrink-0 size-11 rounded-full bg-accent/12 border border-accent/25 flex items-center justify-center"
@@ -51,7 +51,12 @@ export function TitleNewsRow({
 
       <div className="min-w-0 flex-1">
         <Link href={href} prefetch={false} className="block group">
-          <p className="text-[14px] leading-relaxed font-semibold group-hover:text-accent transition">
+          {/* **وسطرُ النوع كأخيه في بطاقة الرأي** (D-407): الخطُّ فيه
+              صنفان، **والختمُ وحدَه لا يُقرأ عند التمرير السريع.** */}
+          <p className="text-[10px] font-bold tracking-[0.08em] uppercase text-accent">
+            {t.communityKindNews}
+          </p>
+          <p className="mt-0.5 text-[14px] leading-relaxed font-semibold group-hover:text-accent transition">
             {line}
           </p>
           <p className="mt-1 flex items-center gap-2 text-[12px] text-muted">
