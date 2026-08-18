@@ -497,8 +497,12 @@ export function titleCandidates(headline: string): string[] {
   const head3 = headline.split(/\s+/).slice(0, 3).join(" ");
   if (head3) out.push(head3);
 
+  /* 🆕 **والمرشّحُ الأطولُ يُجرَّب أوّلاً** (D-396): «RuPaul's Drag Race»
+     قبل «RuPaul» — **فالأخصُّ يسأل TMDB قبل الأعمّ**، ولو أجاب سقط
+     الأعمُّ قبل أن يُسأل. **والترتيبُ داخل الشريحة يحرس ما بقي.** */
   const seen = new Set<string>();
   return out
+    .sort((a, b) => b.length - a.length)
     .map((s) => s.replace(/\s+/g, " ").replace(/[:،,.\-–—]+$/, "").trim())
     .filter((s) => s.length >= 3 && !seen.has(s) && seen.add(s))
     .slice(0, 3);
@@ -534,6 +538,21 @@ export async function matchTitle(
     } catch {
       return null;
     }
+    /* 🔴 🆕 **وأطولُ اسمٍ يطابق يفوز، لا أوّلُ اسم** (D-396، بلاغُ أحمد:
+       خبرٌ واحدٌ يُنسب إلى عملين).
+
+       **المقيس**: صفّان في `news_posts` —
+       `report:renewed:tv:8514` («RuPaul's Drag Race»)
+       و`report:renewed:tv:90287` («RuPaul») — **خبرُ تجديدٍ واحدٌ صار
+       عملين**، لأن الشرطَ «العنوانُ يحوي اسمَ العمل» **يصدُق على الاسم
+       الأقصر كلَّما كان الأطولُ هو المقصود**: كلُّ عنوانٍ عن «RuPaul's
+       Drag Race» يحوي «RuPaul» أيضاً.
+
+       **والعلاجُ ترتيبٌ لا شرطٌ جديد**: تُجمع كلُّ المطابقات في الشريحة
+       **ويُختار صاحبُ أطولِ اسمٍ مُطابق** — **فالأخصُّ يغلب الأعمّ**
+       حين يحويهما العنوانُ معاً. **ولا يسقط شيءٌ كان يُطابق**، وإنّما
+       يُرتَّب المتنافسون. */
+    let best: { tmdbId: number; mediaType: "tv" | "movie"; len: number } | null = null;
     for (const r of (rows ?? []).slice(0, 3)) {
       if (r.media_type !== "tv" && r.media_type !== "movie") continue;
       /* **الاسمان معاً: المترجَمُ والأصليّ.** خبرٌ عربيّ قد يسمّي العمل
@@ -543,11 +562,17 @@ export async function matchTitle(
         .map((v) => norm(String(v ?? "")))
         /* اسمٌ من كلمةٍ قصيرة يطابق أيَّ شيء — «Up» و«It» و«صدفة» */
         .filter((v) => v.length >= 4);
-      if (names.some((n) => flat.includes(n))) {
-        const hit = { tmdbId: r.id, mediaType: r.media_type };
-        memo?.set(key, hit);
-        return hit;
+      const hitLen = names
+        .filter((n) => flat.includes(n))
+        .reduce((m, n) => Math.max(m, n.length), 0);
+      if (hitLen && (!best || hitLen > best.len)) {
+        best = { tmdbId: r.id, mediaType: r.media_type, len: hitLen };
       }
+    }
+    if (best) {
+      const hit = { tmdbId: best.tmdbId, mediaType: best.mediaType };
+      memo?.set(key, hit);
+      return hit;
     }
     memo?.set(key, null);
   }
