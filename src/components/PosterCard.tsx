@@ -254,6 +254,7 @@ export function PosterCard({
       watched={hold.watched}
       progress={hold.progress}
       dropped={hold.dropped}
+      titleBelow={titleBelow}
       extra={holdExtra}
       locale={hold.locale}
     >

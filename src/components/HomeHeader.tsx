@@ -82,7 +82,7 @@ export function HomeHeader({
       <div className="flex items-center gap-3">
         {/* الصورةُ بابُ ملفّك العامّ — **ما تراه أنت هو ما يراه الناس**،
             ولا نسخةَ خاصّةً منه (قاعدة ٦) */}
-        <Link href="/profile" className="shrink-0" aria-label={t.profile}>
+        <Link href="/profile" className="shrink-0 md:hidden" aria-label={t.profile}>
           <span
             className="block rounded-full p-[2px]"
             style={{ background: "var(--gradient-brand)" }}

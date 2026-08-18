@@ -36,6 +36,14 @@ export interface StatusThreadProps {
    * خارجه.**
    */
   inset?: boolean;
+  /**
+   * 🆕 **البطاقةُ صارت أطولَ من ملصقها** (D-435): يومَ نزل الاسمُ تحت
+   * الملصق صار `bottom-0` في غلافٍ يضمّ الاثنين **يجلس على السطر لا على
+   * الصورة** — **فيمرّ الخيطُ في وسط الاسم.**
+   * **والعلاجُ نسبةٌ لا رقم**: الطبقةُ تأخذ عرضَ البطاقة و`aspect-[2/3]`
+   * **فتغطّي الملصقَ بالضبط مهما طال الاسمُ تحته.**
+   */
+  posterOnly?: boolean;
 }
 
 /** هل ثمّة حالةٌ تُقال أصلاً؟ — وما لم يبدأ ولا حُفظ لا خيطَ له إطلاقاً */
@@ -49,6 +57,7 @@ export function StatusThread({
   progress = 0,
   dropped = false,
   inset = false,
+  posterOnly = false,
 }: StatusThreadProps) {
   if (!hasStatus({ saved, watched, progress, dropped })) return null;
 
@@ -80,7 +89,9 @@ export function StatusThread({
   return inset ? (
     <span
       aria-hidden
-      className="pointer-events-none absolute inset-px rounded-poster overflow-hidden"
+      className={`pointer-events-none absolute rounded-poster overflow-hidden ${
+        posterOnly ? "inset-x-px top-px aspect-[2/3]" : "inset-px"
+      }`}
     >
       {bar}
     </span>
