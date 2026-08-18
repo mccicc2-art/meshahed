@@ -232,6 +232,8 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
                 /* 🆕 D-414 — جسرُ الاسم والسنة حين لا يعرف TMDB معرّفَ IMDb */
                 name={movie.title}
                 year={movie.release_date ? Number(movie.release_date.slice(0, 4)) : null}
+                /* 🆕 D-430 — والجسرُ الثالث: صيغُ الاسم من TMDB نفسِها */
+                movieId={movieId}
                 ageLabel={t.ageRating}
               />
             </Suspense>
