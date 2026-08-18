@@ -11,6 +11,7 @@ import {
   getPublicListsContaining,
   getTitleCircle,
   getMyArtFor,
+  getTitlePulse,
   getMyFavorites,
   getCuratedListIds,
   getMySavedListIds,
@@ -32,6 +33,7 @@ import { SectionTitle } from "@/components/Icon";
 import { Trailer } from "@/components/Trailer";
 import { WatchChip } from "@/components/WatchChip";
 import { TitleActions } from "@/components/TitleActions";
+import { TitlePulse } from "@/components/TitlePulse";
 import { DetailTopBar } from "@/components/DetailTopBar";
 import { CircleNote } from "@/components/CircleNote";
 import { ReadMore } from "@/components/ReadMore";
@@ -50,7 +52,7 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
   // وانتظار الأولى قبل الثانية كان يضيف رحلة كاملة إلى الخادم
   // بيانات أول رسمة فقط — الترايلر والتعليقات تُبثّ لاحقاً عبر Suspense
   const userRegion = await getWatchRegion();
-  const [movie, followState, watched, watchWhere, myLists, inLists, circle, myArt, favs] = await Promise.all([
+  const [movie, followState, watched, watchWhere, myLists, inLists, circle, myArt, favs, pulse] = await Promise.all([
     getMovie(movieId).catch(() => null),
     getFollowState(movieId, "movie"),
     isMovieWatched(movieId),
@@ -63,6 +65,11 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
     getMyArtFor(movieId, "movie"),
     /* مفضّلاتي (D-130) — نداءٌ واحد مخبّأ للطلب، لا سؤالٌ لكل عمل */
     getMyFavorites(),
+    /* 🆕 **نبضُ العمل** (D-408) — نداءُ `definer` واحدٌ مفهرسٌ داخل
+       الموجة نفسِها لا خلف حاجز: **سطرٌ يظهر متأخّراً يدفع الأنواعَ
+       تحته** (D-046)، **والصفحةُ تنتظر TMDB على كل حال** (حجّةُ
+       `getTitleCircle` حرفاً). */
+    getTitlePulse(movieId, "movie"),
   ]);
 
   if (!movie) {
@@ -216,6 +223,11 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
             <Suspense fallback={<HeroRatingsSkeleton />}>
               <HeroRatings imdbId={movie.imdb_id} ageLabel={t.ageRating} />
             </Suspense>
+
+            {/* 🆕 **ونبضُنا تحت نبض العالم** (D-408): ما يقوله IMDb
+                أوّلاً، **وما يقوله أهلُ Loopz بعده مباشرة** — والحجّةُ
+                كاملةً في رأس المكوّن. */}
+            <TitlePulse hearts={pulse.hearts} votes={pulse.votes} avg={pulse.avg} locale={locale} />
 
             {/* «٣ ممن تتابعهم شاهدوه» (D-127) — انظر تعليق صفحة المسلسل */}
             <CircleNote circle={circle} locale={locale} />
@@ -383,6 +395,9 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
                     mediaType="movie"
                     tmdbId={movieId}
                     collectionId={movie.belongs_to_collection?.id ?? null}
+                    /* 🆕 D-410 — بصمةُ العمل تُرتّب المرتبطاتِ بلغته */
+                    language={movie.original_language}
+                    genreIds={movie.genres.map((g) => g.id)}
                     locale={locale}
                   />
                 </Suspense>
