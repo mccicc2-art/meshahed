@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 import { Icon, type IconName } from "../Icon";
 
 /**
@@ -116,6 +116,32 @@ export function Dropdown({
       document.removeEventListener("pointerdown", onDown, true);
     };
   }, [open, onClose]);
+
+  /**
+   * 🔴 🆕 **ولا تخرج اللوحةُ عن حافّة الشاشة** (D-377، قياسٌ على الموقع
+   * الحيّ بعد D-376): اللوحةُ ٢٠٨px والملصقُ في شبكة المكتبة ١١٠px على
+   * هاتف — **فمنسدلةُ العمود الأوّل تبدأ خارج الشاشة** (قِيس `left = -4`
+   * على عرضِ مكتبٍ، والفارقُ يتضاعف على الهاتف).
+   *
+   * **والإزاحةُ بالهامش لا بـ`transform`**: حركةُ `menu-pop` تحرّك
+   * `transform` بملء `both` — **فتغلب أيَّ قيمةٍ سطريّة بعد انتهائها**،
+   * **وقاعدةٌ تكتبها الحركةُ لا يُنازعها السطر** (D-278 بروحها).
+   *
+   * **والسنُّ لا يُزاح معها** (D-233): هو مربوطٌ بالمقبض ويشير إليه،
+   * **واللوحةُ وحدَها تتزحزح لتبقى مقروءة** — فتبقى العلاقةُ ظاهرة.
+   */
+  useLayoutEffect(() => {
+    const el = panel.current;
+    if (!open || !el) return;
+    el.style.marginInlineEnd = "0px";
+    const r = el.getBoundingClientRect();
+    const pad = 8;
+    /* موجبٌ = أزِح يميناً (بالبكسل الفيزيائيّ) */
+    const dx = r.left < pad ? pad - r.left : r.right > window.innerWidth - pad ? window.innerWidth - pad - r.right : 0;
+    if (!dx) return;
+    const rtl = getComputedStyle(el).direction === "rtl";
+    el.style.marginInlineEnd = `${rtl ? dx : -dx}px`;
+  }, [open]);
 
   if (!open) return null;
 
