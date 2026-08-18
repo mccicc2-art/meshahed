@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { Icon, type IconName } from "../Icon";
 
 /**
@@ -79,6 +80,9 @@ export function Dropdown({
   children: React.ReactNode;
 }) {
   const panel = useRef<HTMLDivElement>(null);
+  /** **علامةٌ صفريّةُ الحجم تبقى في مكان المقبض** — بها يُقاس بعد الخروج */
+  const marker = useRef<HTMLSpanElement>(null);
+  const caretEl = useRef<HTMLSpanElement>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -130,63 +134,119 @@ export function Dropdown({
    * **والسنُّ لا يُزاح معها** (D-233): هو مربوطٌ بالمقبض ويشير إليه،
    * **واللوحةُ وحدَها تتزحزح لتبقى مقروءة** — فتبقى العلاقةُ ظاهرة.
    */
+  /**
+   * 🔴 🆕 **اللوحةُ تُرسم في `body` بموضعٍ ثابت** (D-409، بلاغُ أحمد:
+   * «إذا ضغطت هولد على أي بوستر القائمة ما تظهر كاملة في الديسكفري»).
+   *
+   * ================= والسببُ ليس المنسدلةَ ولا الملصق =================
+   *
+   * **كانت اللوحةُ `absolute` داخل مقبضها**، **والمقبضُ في اكتشف يعيش
+   * داخل رفٍّ يُمرَّر أفقياً** (`overflow-x-auto`). **وحاويةُ تمريرٍ تقصّ
+   * كلَّ ما يخرج عنها** — **وأفقيّةُ التمرير تجرّ العموديّةَ معها في
+   * CSS** (`overflow-x: auto` يجعل `overflow-y` غيرَ `visible` ضمناً).
+   * **فالقائمةُ تُرسم كاملةً ثم تُقصّ عند حافّة الرفّ** — وهو ما رآه
+   * أحمد: نصفُ صفٍّ واحد.
+   *
+   * **⚠️ وهو عطلٌ عمرُه عمرُ D-322** (الضغطُ المطوّل في رفوف اكتشف):
+   * **يعمل في المكتبة لأن شبكتَها لا تُمرَّر أفقياً**، **ويُقصّ في
+   * الرفوف** — **ونفسُ المكوّن في سطحين، والفارقُ في أبٍ بعيد.**
+   *
+   * ================= والعلاجُ خروجٌ من الشجرة لا رقمٌ آخر =================
+   *
+   * **لا `overflow: visible`** — يقتل التمرير. **ولا `z-index` أعلى** —
+   * القصُّ ليس تكديساً (وهذا درسُ D-293 نفسُه: العلاجُ عند السبب لا
+   * برقم). **بل تُرسم اللوحةُ في `body`** عبر `createPortal` **بموضعٍ
+   * `fixed` محسوبٍ من مستطيل المقبض** — **فلا أبَ يقصّها أصلاً.**
+   *
+   * **والحسابُ يفعل ثلاثة:** يحاذي الجهةَ المطلوبة · **ويحبس اللوحةَ
+   * داخل الشاشة أفقياً** (وهو ما كان يفعله هامشُ D-377، وقد صار جزءاً
+   * من الموضع) · **ويقلبها فوق المقبض إن ضاق ما تحته** — **وقائمةٌ
+   * تخرج من أسفل الشاشة عطلٌ كالقصّ.**
+   *
+   * ⚠️ **وتُعاد الحسبةُ مع كل تمريرٍ وتغييرِ قياس**: الموضعُ الثابت لا
+   * يتبع مقبضَه، **فلوحةٌ معلّقةٌ في الهواء بعد تمريرةٍ أسوأُ من
+   * مقصوصة.** والاستماعُ بالتقاطٍ (`capture`) ليصل تمريرُ الرفّ نفسِه
+   * لا تمريرُ النافذة وحدَه.
+   */
   useLayoutEffect(() => {
+    if (!open) return;
     const el = panel.current;
-    const anchor = el?.parentElement;
-    if (!open || !el || !anchor) return;
-    el.style.marginInlineEnd = "0px";
+    const anchor = marker.current?.parentElement;
+    if (!el || !anchor) return;
 
-    /* 🔴 **ولا يُقاس المستطيلُ الحيُّ هنا**: حركةُ `menu-pop` تبدأ من
-       `scale(0.94)` بمنشأٍ عند المقبض — **فأوّلُ إطارٍ يُرجع لوحةً أضيقَ
-       بـ١٢px وحافّتُها داخلَ الشاشة**، فيُحسب أنها لا تخرج ثم تكبر
-       فتخرج. **قِيس على الموقع: `left = -4` والهامشُ صفر.**
-       **فالقياسُ من الهندسة لا من الرسم**: مستطيلُ المقبض (غيرُ
-       متحرّك) وعرضُ اللوحة `offsetWidth` (لا يتأثّر بـ`transform`)
-       — **وحسابٌ لا يرث حالةَ إطارٍ عابر** (D-250/D-304 بروحهما). */
-    const a = anchor.getBoundingClientRect();
-    const w = el.offsetWidth;
-    const rtl = getComputedStyle(el).direction === "rtl";
-    /* `end` منطقيّة: يمينٌ في LTR ويسارٌ في RTL (D-216) */
-    const endAtRight = !rtl;
-    const anchoredRight = align === "end" ? endAtRight : !endAtRight;
-    const left = anchoredRight ? a.right - w : a.left;
-    const right = left + w;
+    function place() {
+      const el = panel.current;
+      const anchor = marker.current?.parentElement;
+      if (!el || !anchor) return;
+      const a = anchor.getBoundingClientRect();
+      const w = el.offsetWidth;
+      const h = el.offsetHeight;
+      const rtl = getComputedStyle(el).direction === "rtl";
+      /* `end` منطقيّة: يمينٌ في LTR ويسارٌ في RTL (D-216) */
+      const anchoredRight = align === "end" ? !rtl : rtl;
 
-    const pad = 8;
-    /* موجبٌ = أزِح يميناً (بالبكسل الفيزيائيّ) */
-    const dx =
-      left < pad
-        ? pad - left
-        : right > window.innerWidth - pad
-          ? window.innerWidth - pad - right
-          : 0;
-    if (!dx) return;
-    el.style.marginInlineEnd = `${rtl ? dx : -dx}px`;
+      const pad = 8;
+      let left = anchoredRight ? a.right - w : a.left;
+      left = Math.min(Math.max(left, pad), Math.max(pad, window.innerWidth - w - pad));
+
+      const gap = 6;
+      let top = a.bottom + gap;
+      if (top + h > window.innerHeight - pad) {
+        const above = a.top - h - gap;
+        top = above >= pad ? above : Math.max(pad, window.innerHeight - h - pad);
+      }
+
+      el.style.left = `${Math.round(left)}px`;
+      el.style.top = `${Math.round(top)}px`;
+
+      const c = caretEl.current;
+      if (c) {
+        const cx = Math.min(Math.max(a.left + a.width / 2 - 6, left + 12), left + w - 24);
+        c.style.left = `${Math.round(cx)}px`;
+        c.style.top = `${Math.round(a.bottom - 1)}px`;
+        c.style.visibility = top > a.bottom ? "visible" : "hidden";
+      }
+    }
+
+    place();
+    window.addEventListener("scroll", place, true);
+    window.addEventListener("resize", place);
+    return () => {
+      window.removeEventListener("scroll", place, true);
+      window.removeEventListener("resize", place);
+    };
   }, [open, align]);
 
   if (!open) return null;
 
-  return (
+  const menu = (
     <>
       {caret && (
         <span
+          ref={caretEl}
           aria-hidden
           /* مربّعٌ مُدارٌ نصفُه تحت البطاقة — **حدٌّ على ضلعين فقط** حتى لا
              يُرسم خطٌّ عبر جسم القائمة */
-          className={`absolute ${align === "end" ? "end-4" : "start-4"} top-full mt-0.5 z-50 w-3 h-3 rotate-45 rounded-[3px] border-s border-t border-border bg-[color:var(--elevated)] menu-pop`}
+          className="fixed z-[60] w-3 h-3 rotate-45 rounded-[3px] border-s border-t border-border bg-[color:var(--elevated)] menu-pop"
         />
       )}
       <div
         ref={panel}
         role="menu"
         aria-labelledby={labelledBy}
-        /* `end-0`/`start-0` منطقيّتان فتنقلبان في RTL بلا شرط (D-216)،
-           و`--menu-origin` يجعل الحركة تخرج من المقبض لا من الوسط */
         style={{ ["--menu-origin" as string]: align === "end" ? "100% 0" : "0 0" }}
-        className={`absolute ${align === "end" ? "end-0" : "start-0"} top-full mt-1.5 z-50 min-w-52 rounded-2xl border border-border bg-[color:var(--elevated)]/95 backdrop-blur-xl shadow-2xl overflow-hidden py-1 menu-pop ${className}`}
+        className={`fixed z-[60] min-w-52 rounded-2xl border border-border bg-[color:var(--elevated)]/95 backdrop-blur-xl shadow-2xl overflow-hidden py-1 menu-pop ${className}`}
       >
         {children}
       </div>
+    </>
+  );
+
+  return (
+    <>
+      {/* **العلامةُ تبقى في الشجرة** ليُقاس منها المقبض — ولا ترسم شيئاً */}
+      <span ref={marker} aria-hidden className="hidden" />
+      {typeof document === "undefined" ? null : createPortal(menu, document.body)}
     </>
   );
 }
