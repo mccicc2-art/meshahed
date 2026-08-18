@@ -69,7 +69,12 @@ export async function RelatedTitles({
        تحتها بعد الانزلاق فيبدو أن شيئاً لم يحدث */
     <div
       id="related"
-      className="mt-6 space-y-6 scroll-mt-[calc(var(--header-h)+1rem)]"
+      /* 🆕 **ولا هامشَ علويّاً من عنده** (D-402): يُقرأ داخل لوح تبويبٍ
+         له حشوتُه (صفحة الفيلم) **وخارجَ التبويبات في صفحة المسلسل** —
+         **وهامشٌ مثبَّتٌ هنا يُجمع إلى حشوة اللوح فيصير فراغاً مضاعفاً**
+         (الخطُّ الأحمر الثالث في لقطة أحمد). **فالمسافةُ لمن يضع، لا لمن
+         يُوضَع.** */
+      className="space-y-6 scroll-mt-[calc(var(--header-h)+1rem)]"
     >
       {collection && (
         <PosterRail
