@@ -3,6 +3,8 @@
 import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "../Icon";
+import { segmentedItem, segmentedTrackFull } from "./controls";
+import { tap } from "@/lib/haptics";
 
 /**
  * الورقة المنبثقة الموحّدة.
@@ -275,6 +277,59 @@ export function SheetHeader({
           <Icon name="close" size={16} strokeWidth={2.2} />
         </button>
       )}
+    </div>
+  );
+}
+
+/**
+ * 🆕 **شريطُ تبويبَي ورقةِ الأدوات — واحدٌ لثلاث أوراق** (D-397، بلاغُ
+ * أحمد: «تفصل التاب مثل الكومينتي والديسكفري»).
+ *
+ * **كان مكتوباً بيده مرّتين** — في `CommunityTools` و`DiscoverFilterSheet`
+ * — **بنفس الأصناف ونفس مفتاحَي `do`/`see` ونفس الاهتزازة**، **والثالثةُ
+ * كانت ستكون نسخةً ثالثة** (D-002/D-145). **وورقةُ المكتبة لم تكن
+ * تحملُه أصلاً**: أربعةُ أقسامٍ في تمريرةٍ واحدة، **وآخرُها يُقصّ عند
+ * حافّة الشاشة** (لقطةُ أحمد: «Artists» نصفُ سطر).
+ *
+ * **والقسمةُ نفسُها في الثلاث**: «أدوات» ما تفعله الآن · «عرض» ما
+ * يبقى بعد أن تغلق الورقة. **ومعنًى واحدٌ في ثلاثة أسطحٍ يُقرأ مرّةً
+ * واحدة** (القاعدة ٦).
+ */
+export function SheetTabs({
+  prefix,
+  label,
+  tab,
+  onTab,
+  doLabel,
+  seeLabel,
+}: {
+  /** بادئةُ المعرّفات — `comm-tools` · `disc-tools` · `lib-tools` */
+  prefix: string;
+  label: string;
+  tab: "do" | "see";
+  onTab: (t: "do" | "see") => void;
+  doLabel: string;
+  seeLabel: string;
+}) {
+  return (
+    <div className={segmentedTrackFull} role="tablist" aria-label={label}>
+      {(["do", "see"] as const).map((k) => (
+        <button
+          key={k}
+          type="button"
+          role="tab"
+          id={`${prefix}-tab-${k}`}
+          aria-selected={tab === k}
+          aria-controls={`${prefix}-panel-${k}`}
+          onClick={() => {
+            tap(6);
+            onTab(k);
+          }}
+          className={segmentedItem(tab === k, "flex-1")}
+        >
+          {k === "do" ? doLabel : seeLabel}
+        </button>
+      ))}
     </div>
   );
 }
