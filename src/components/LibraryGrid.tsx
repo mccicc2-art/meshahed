@@ -467,6 +467,9 @@ export function LibraryGrid({
                   key={g.status}
                   title={statusLabel(g.status, t)}
                   onTitle={() => toggleGroup(g.status)}
+                  /* 🔴 **والمفتوحُ يخرج من جاري الصفّ** (D-428): شبكةٌ
+                     داخل `RailScroll` تُرسم فارغةً — قِيس حيّاً. */
+                  bare={open}
                   action={
                     <button
                       type="button"
@@ -480,7 +483,7 @@ export function LibraryGrid({
                   {open ? (
                     /* **والمفتوحُ شبكةٌ لا صفٌّ أطول**: من طلب الكلَّ
                        يريد أن يراه دفعةً، **لا أن يسحب ثلاثين بطاقة.** */
-                    <div className={`${posterGrid} w-full`}>
+                    <div className={posterGrid}>
                       {g.items.map((x) => (
                         <Cell key={x.key} x={x} />
                       ))}

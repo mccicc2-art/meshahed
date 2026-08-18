@@ -19,6 +19,7 @@ export function PosterRail({
   subtitle,
   action,
   className,
+  bare = false,
   children,
 }: {
   title: string;
@@ -44,6 +45,16 @@ export function PosterRail({
    * يتحرّك قارئٌ آخر (D-152).
    */
   className?: string;
+  /**
+   * 🔴 🆕 **والمحتوى يُرسم كما هو حين لا يكون صفّاً** (D-428، عطلٌ قِيس
+   * على الموقع الحيّ بعد D-422): **مجموعةُ المكتبة المفتوحةُ شبكةٌ**،
+   * **وشبكةٌ داخل `RailScroll` تنهار** — الحاويةُ صفٌّ أفقيٌّ بعناصرَ
+   * `shrink-0`، **فالشبكةُ تدخله بعرضٍ صفريٍّ وتُرسم فارغةً بسهمين.**
+   * **والرأسُ هو المشترَك لا الجاري**: العنوانُ والعدّادُ والزرُّ واحدٌ
+   * في الحالتين، **والذي يتبدّل ما تحته** — **فمعاملٌ واحدٌ أصدق من
+   * ترويسةٍ ثانيةٍ تُنسخ** (القاعدة ٣/D-002).
+   */
+  bare?: boolean;
   children: React.ReactNode;
 }) {
   return (
@@ -96,9 +107,13 @@ export function PosterRail({
           الواحدة. تعليم الحشوة للالتقاط يعيد الجميع إلى خطٍّ واحد. */}
       {/* أسهم سطح المكتب داخل RailScroll — التعليق التاريخي عن الهوامش
           والالتقاط انتقل معه إلى المكوّن نفسه */}
-      <RailScroll prevLabel="السابق / Previous" nextLabel="التالي / Next">
-        {children}
-      </RailScroll>
+      {bare ? (
+        children
+      ) : (
+        <RailScroll prevLabel="السابق / Previous" nextLabel="التالي / Next">
+          {children}
+        </RailScroll>
+      )}
     </section>
   );
 }
