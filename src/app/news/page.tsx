@@ -50,7 +50,8 @@ import {
 import { ScrollMemory } from "@/components/ScrollMemory";
 import { animeMovieRail, topChartRail, looksAnime, railGuard } from "@/lib/topChart";
 import { buildSection, sectionHref } from "@/lib/sections";
-import { attachImdbRatings, withImdbRatings } from "@/lib/omdb";
+import { attachImdbRatings, withImdbRatings, rankByImdb } from "@/lib/omdb";
+import { localizeRows } from "@/lib/localize";
 import { getT, getWatchRegion, getTabPrefs } from "@/lib/locale";
 import { defaultTab } from "@/lib/tabPrefs";
 import { regionName } from "@/lib/region";
@@ -68,7 +69,6 @@ import {
 } from "@/lib/browse";
 import { RankedRail } from "@/components/RankedRail";
 import { OneTimeHint } from "@/components/OneTimeHint";
-import { RailWindowChips } from "@/components/RailWindowChips";
 import { CountdownRail, type CountdownItem } from "@/components/CountdownRail";
 import { PickedForYou } from "@/components/PickedForYou";
 import { RailSkeleton } from "@/components/Skeletons";
@@ -98,6 +98,46 @@ function dateOf(r: SearchResult) {
  * الفلاتر ترسم فوراً، والصفوف خلف Suspense تجلب بياناتها بنفسها — فلا
  * تنتظر الصفحة كلّها أبطأ طلب TMDB.
  */
+/**
+ * 🆕 **أفضلُ ما صدر هذا العام — بِركةٌ من TMDB وحكمٌ من IMDb** (D-420).
+ *
+ * **ولماذا لا يُقرأ من `imdb_chart`**: جدولُه بلا عمود سنة (انظر
+ * `imdb_chart.sql`) — **فسؤالُ «هذي السنة» لا يُجاب منه** بلا هجرةٍ
+ * تضيف العمودَ وتُعيد بناءَ القائمة. **والبِركةُ من `/discover` بمدى
+ * السنة مرتَّبةً بعدد الأصوات** (أكثرُها مشاهدةً)، **ثم `rankByImdb`
+ * يفرزها بتقييم IMDb بعتبةِ أصواتٍ تحرسها** — **وهي القسمةُ نفسُها في
+ * كلِّ رفٍّ مرتَّب منذ D-164.**
+ */
+async function bestOfYear(kind: "movie" | "tv", locale: Locale): Promise<SearchResult[]> {
+  const y = new Date().getFullYear();
+  const rows = await topByFilter(
+    kind,
+    { from: `${y}-01-01`, to: `${y}-12-31` },
+    60,
+    "vote_count.desc",
+  );
+  const rated = await withImdbRatings(rows);
+  const ranked = rankByImdb(rated, { want: 25 });
+  /* **والعناوينُ بلغة القارئ كأيّ رفّ** — نفسُ `localizeRows` التي
+     يستعملها `topChartRail`، ولا نسخةَ ثانية. */
+  const l = await localizeRows(
+    ranked.map((r) => ({
+      tmdb_id: r.id,
+      media_type: (r.media_type === "tv" ? "tv" : "movie") as "tv" | "movie",
+      title: r.title ?? r.name ?? null,
+      poster_path: r.poster_path,
+    })),
+    locale,
+    ranked.length,
+  );
+  return ranked.map((r, i) => ({
+    ...r,
+    title: l[i]?.title ?? r.title,
+    name: l[i]?.title ?? r.name,
+    poster_path: l[i]?.poster_path ?? r.poster_path,
+  }));
+}
+
 export default async function NewsPage({
   searchParams,
 }: {
@@ -1234,11 +1274,21 @@ async function CuratedRails({
          **والمكسبُ الذي يعود معها:** ترتيبُ IMDb الحقيقيّ لا ترتيبُ جمهور
          TMDB — فتعود Band of Brothers وThe Wire وThe Sopranos إلى مواضعها،
          **وتُملأ الخمسون من التالين لا تنقص** (هامش `DOC_MARGIN`). */
+      /* 🆕 ⚖️ **«أفضل ٢٥ هذي السنة» بدل «أعلى ٥٠ على الإطلاق»** (D-420،
+         طلبُ أحمد: «قائمة ٥٠ تصير أفضل ٢٥ هذي السنة»).
+         **ونقضٌ لمصدرها لا لفكرتها**: القائمةُ الثابتة كانت من
+         `imdb_chart` — **وجدولُها بلا عمود سنة** (انظر `imdb_chart.sql`)،
+         **فسؤالُ «هذي السنة» لا يُجاب منه أصلاً.** فصار المصدرُ
+         `/discover` بمدى السنة، **والترتيبُ تقييمَ IMDb كما هو الشرطُ
+         منذ D-164** (`withImdbRatings` ثم فرزٌ تنازليّ) — **فالبِركةُ من
+         TMDB والحكمُ من IMDb**، وهي القسمةُ نفسُها في كلِّ رفٍّ مرتَّب.
+         ⚠️ **وثمنُه يُقال**: عملٌ صدر هذا العامَ ولم يبلغ ألفَ صوتٍ في
+         IMDb قد يتصدّر برقمٍ هشّ — **فالعتبةُ في `minVotes` تحرسه.** */
       !active && wantMovies
-        ? topChartRail("movie", 50, locale).catch(() => [] as SearchResult[])
+        ? bestOfYear("movie", locale).catch(() => [] as SearchResult[])
         : Promise.resolve([] as SearchResult[]),
       !active && wantSeries
-        ? topChartRail("tv", 50, locale).catch(() => [] as SearchResult[])
+        ? bestOfYear("tv", locale).catch(() => [] as SearchResult[])
         : Promise.resolve([] as SearchResult[]),
     ]);
 
@@ -1359,36 +1409,29 @@ async function CuratedRails({
 
       {/* رقائق النافذة (D-099): الصفّ لا يختفي في نافذةٍ فارغة —
           رسالةٌ مكانه وإلا ضاع طريق العودة لنافذةٍ فيها نتائج */}
-      {(topMovies.length > 0 || rails.m !== "week") && (
+      {/* 🆕 ⚖️ **ورقائقُ النافذة سقطت** (D-420، شطبَها أحمد على اللقطة:
+          «احذف فلتر أسبوع وشهر وسنة»). **وحجّةُ D-099 كانت أن للرفّ ثلاثَ
+          نوافذ فيحتاج مبدّلاً** — **واليوم صار للرفّ نافذةٌ واحدةٌ يقولها
+          عنوانُه** («أفضل ١٠ هذا الأسبوع»)، **ومبدّلٌ بخيارٍ واحد زينة**
+          (نفسُ حكم رقائق المجتمع في D-398). **والنافذةُ الثابتة تُغني عن
+          `emptyText` أيضاً**: رفٌّ بلا نافذةٍ فارغةٍ لا يحتاج رسالةً
+          تشرحها. */}
+      {topMovies.length > 0 && (
         <RankedRail
           title={t.top10Movies}
           lib={lib}
           icon="film"
           items={topMovies}
-          href={sectionHref("top-ten", "movie", `${qs}${qs ? "&" : ""}w=${rails.m}`)}
-          control={<RailWindowChips param="wm" value={rails.m} locale={locale} />}
-          emptyText={t.railWinEmpty}
+          href={sectionHref("top-ten", "movie", qs)}
         />
       )}
-      {(topSeries.length > 0 || rails.s !== "week") && (
+      {topSeries.length > 0 && (
         <RankedRail
           title={t.top10Series}
           lib={lib}
           icon="tv"
           items={topSeries}
-          href={sectionHref("top-ten", "tv", `${qs}${qs ? "&" : ""}w=${rails.s}`)}
-          control={<RailWindowChips param="ws" value={rails.s} locale={locale} />}
-          emptyText={t.railWinEmpty}
-        />
-      )}
-      {soon.length > 0 && (
-        <CountdownRail
-          title={t.comingSoon}
-          icon="calendar"
-          items={soon}
-          locale={locale}
-          href={sectionHref("upcoming", wantMovies ? "movie" : "tv", qs)}
-          seeAllLabel={t.seeAll}
+          href={sectionHref("top-ten", "tv", qs)}
         />
       )}
 
@@ -1407,6 +1450,20 @@ async function CuratedRails({
           icon="tv"
           items={top50Series}
           lib={lib}
+        />
+      )}
+
+      {/* 🆕 **و«قريباً» آخرَ الصفحة** (D-420، طلبُ أحمد): **ما لم يصدر
+          بعدُ ليس جواباً عن «ماذا أشاهد الآن؟»** — **فيُذيَّل به التصفّحُ
+          ولا يقطعه.** */}
+      {soon.length > 0 && (
+        <CountdownRail
+          title={t.comingSoon}
+          icon="calendar"
+          items={soon}
+          locale={locale}
+          href={sectionHref("upcoming", wantMovies ? "movie" : "tv", qs)}
+          seeAllLabel={t.seeAll}
         />
       )}
 
@@ -1675,24 +1732,20 @@ async function AnimeRails({
         />
       )}
 
-      {(topMovies.length > 0 || rails.am !== "week") && (
+      {topMovies.length > 0 && (
         <RankedRail
           title={t.top10AnimeMovies}
           lib={lib}
           icon="film"
           items={topMovies}
-          control={<RailWindowChips param="wam" value={rails.am} locale={locale} />}
-          emptyText={t.railWinEmpty}
         />
       )}
-      {(topSeries.length > 0 || rails.a !== "week") && (
+      {topSeries.length > 0 && (
         <RankedRail
           title={t.top10AnimeSeries}
           lib={lib}
           icon="sparkle-star"
           items={topSeries}
-          control={<RailWindowChips param="wa" value={rails.a} locale={locale} />}
-          emptyText={t.railWinEmpty}
         />
       )}
 
