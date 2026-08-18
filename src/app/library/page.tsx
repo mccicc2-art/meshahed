@@ -8,6 +8,7 @@ import {
   getWatchedMovieIds,
   getMyLists,
   getSavedLists,
+  getSavedListsCount,
   getListCardStats,
   getFollowedArtists,
   getMyTitleArt,
@@ -65,7 +66,7 @@ export default async function LibraryPage({
   // والقوائم في الموجة نفسها: استدعاءٌ واحد (`my_lists`) يرجع الاسم والعدد
   // وثلاثة ملصقات، ويجري بالتوازي فلا يزيد زمن الصفحة إلا بأبطأ استدعاء —
   // وهذا ثمن أن يفتح تبويب «القوائم» فوراً بلا دوّارة ولا رحلة شبكة.
-  const [followRows, summary, watchedMovieIds, lists, saved, artistRows] = await Promise.all([
+  const [followRows, summary, watchedMovieIds, lists, saved, savedCount, artistRows] = await Promise.all([
     getFollows(),
     getWatchSummary(),
     getWatchedMovieIds(),
@@ -78,6 +79,11 @@ export default async function LibraryPage({
        سقط منها سهواً. **والعدّادُ لا يحتاجها** — عدّادُ التبويب من
        `getMyLists`. */
     initialTab === "lists" ? getSavedLists() : Promise.resolve([]),
+    /* 🆕 **وعدّادُها يجري دائماً** (D-374، بلاغُ أحمد: «وفوق List
+       المفروض ٣ بدل صفر»): **الثقيلُ مشروطٌ بتبويبه والعدّادُ لا** —
+       نفسُ قسمة `getFollowedArtists` تحته (D-128). **وكان العدّادُ
+       `lists.length` وحدَها فقال صفراً فوق لوحٍ يعرض ثلاثاً.** */
+    getSavedListsCount(),
     // عدّاد تبويب الفنانين وحده (D-128): نداء Supabase خفيف، بلا TMDB
     getFollowedArtists(60),
   ]);
@@ -240,6 +246,7 @@ export default async function LibraryPage({
         artistCount={artistRows.length}
         lists={lists}
         listStats={listStats}
+        savedCount={savedCount}
         locale={locale}
         initialTab={initialTab}
         tabPrefs={tabPrefs}
