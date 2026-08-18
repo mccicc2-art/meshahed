@@ -139,7 +139,6 @@ export default async function PersonPage({
             className="w-full justify-center mt-4"
           />
           <AddWorksToList
-            source="person"
             id={personId}
             locale={locale}
             className="w-full justify-center mt-2"
