@@ -372,16 +372,21 @@ export function EpisodeTracker({
       <div className="mb-5">
         <div className="flex items-center justify-between text-sm mb-2">
           <span className="text-muted">{t.watchedOf(watchedAired, airedTotal)}</span>
+          {/* 🆕 **والعمودُ الخاتم واحدٌ من أعلى الصفحة إلى أسفلها** (D-413،
+              طلبُ أحمد: «القلم والنجمة خلّهم تحت الثلاث نقاط»): كانت
+              النجمةُ تسبق النسبةَ فتقع على بُعد ٦٧px من الحافّة **ونقاطُ
+              «المزيد» على ٢٦** — **ثلاثةُ محاورَ في طرفٍ واحد.**
+              **فصارت النجمةُ آخرَ الصفّ** وبإزاحةٍ سالبةٍ تُلغي حشوَها،
+              **فمركزُها على محور النقاط بالضبط.** */}
           <span className="flex items-center gap-1.5">
-            {/* زرّ كشف تقييمات الحلقات (طلب أحمد): مخفية افتراضياً لأن
-                رقم حلقةٍ قادمة قد يحرق — النجمة تمتلئ لوناً وهي مكشوفة */}
+            <span className="font-semibold text-accent-2">{progress}%</span>
             <button
               type="button"
               onClick={toggleRatings}
               aria-pressed={showRatings}
               aria-label={showRatings ? t.epRatingsHide : t.epRatingsShow}
               title={showRatings ? t.epRatingsHide : t.epRatingsShow}
-              className={`grid place-items-center w-9 h-9 -my-2 rounded-full transition ${
+              className={`grid place-items-center w-9 h-9 -my-2 -me-1.5 rounded-full transition ${
                 showRatings
                   ? "text-accent bg-accent/10"
                   : "text-muted hover:text-foreground hover:bg-surface-2"
@@ -389,7 +394,6 @@ export function EpisodeTracker({
             >
               <Icon name="star" size={16} />
             </button>
-            <span className="font-semibold text-accent-2">{progress}%</span>
           </span>
         </div>
         <div className="h-1.5 rounded-full bg-surface-2 overflow-hidden">
@@ -614,7 +618,12 @@ export function EpisodeTracker({
                                   });
                                 }}
                                 aria-label={t.epRateAria(s.season_number, e.episode_number)}
-                                className="shrink-0 inline-flex items-center gap-1 text-[12px] font-bold tabular-nums px-1.5 py-1 rounded-lg hover:bg-surface-2 transition"
+                                /* 🆕 **على محور النقاط، وعلى سطر اسم
+                                   الحلقة** (D-413): كانت في وسط الصفّ
+                                   رأسياً وعلى بُعد ٤١px من الحافّة —
+                                   **فلا هي تحت النقاط ولا هي بمحاذاة
+                                   الاسم.** */
+                                className="shrink-0 self-start mt-0.5 -me-2 inline-flex items-center gap-1 text-[12px] font-bold tabular-nums px-1.5 py-1 rounded-lg hover:bg-surface-2 transition"
                                 dir="ltr"
                               >
                                 {(() => {
