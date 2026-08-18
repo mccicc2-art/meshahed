@@ -10,7 +10,6 @@ import {
   getEpisodeRatings,
   getMyLists,
   getListsContaining,
-  getTitleCircle,
   getMyArtFor,
   getTitlePulse,
   getMyFavorites,
@@ -38,7 +37,6 @@ import { WatchChip } from "@/components/WatchChip";
 import { TitleActions } from "@/components/TitleActions";
 import { TitlePulse } from "@/components/TitlePulse";
 import { DetailTopBar } from "@/components/DetailTopBar";
-import { CircleNote } from "@/components/CircleNote";
 import { ReadMore } from "@/components/ReadMore";
 import { formatDate } from "@/lib/when";
 import { ShowStatsSync } from "@/components/ShowStatsSync";
@@ -58,7 +56,7 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
   // بيانات أول رسمة فقط في الموجة الحاسمة — الترايلر والتعليقات تُبثّ
   // لاحقاً عبر Suspense فلا تؤخّر ترويسة الصفحة وتبويب الحلقات
   const userRegion = await getWatchRegion();
-  const [tv, followState, watched, watchWhere, myLists, inLists, circle, epRatings, myArt, favs, pulse] =
+  const [tv, followState, watched, watchWhere, myLists, inLists, epRatings, myArt, favs, pulse] =
     await Promise.all([
     getTv(tvId).catch(() => null),
     getFollowState(tvId, "tv"),
@@ -69,7 +67,6 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
     /* نشاط دائرتك (D-127) — نداء definer واحد داخل الموجة نفسها لا خلف
        Suspense: كلفتُه استعلامٌ محليّ (~50ms من الرياض) والصفحة تنتظر
        TMDB على كل حال، فحاجزُ تعليقٍ ثانٍ يشتري وميضاً لا سرعة */
-    getTitleCircle(tvId, "tv"),
     /* تقييماتي للحلقات (D-139) — في الموجة نفسها لا خلف حاجز: نداء
        definer واحد على فهرسٍ يخدمه المفتاح الأوّليّ، والصفحة تنتظر TMDB
        على كل حال */
@@ -243,15 +240,25 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
               الفاتح، **فتُقرأ لطخةً لا رفعاً.** و`color-mix` تشتقّها من
               `--background` نفسِها: **سوداءُ في الليل وبيضاءُ في النهار
               بلا متغيّرٍ جديد ولا فرعٍ في الشيفرة.** */}
-            <h1
-              className="text-xl sm:text-3xl font-extrabold leading-tight tracking-tight"
-              style={{
-                filter:
-                  "drop-shadow(0 2px 10px color-mix(in srgb, var(--background) 70%, transparent))",
-              }}
-            >
-              {title}
-            </h1>
+            {/* 🆕 **ونبضُنا على سطر الاسم** (D-418، طلبُ أحمد بسهمٍ من
+                السطر إلى الفراغ جنب الاسم: «القلب والنجمة في صف اسم
+                العمل»): **كان سطراً رابعاً تحت التقييمات**، **والفراغُ
+                جنبَ الاسم أوسعُ ما في الترويسة** — **ورقمان صغيران في
+                فراغٍ قائمٍ خيرٌ من سطرٍ يُضاف.** */}
+            <div className="flex items-start gap-3">
+              <h1
+                className="text-xl sm:text-3xl font-extrabold leading-tight tracking-tight"
+                style={{
+                  filter:
+                    "drop-shadow(0 2px 10px color-mix(in srgb, var(--background) 70%, transparent))",
+                }}
+              >
+                {title}
+              </h1>
+              <span className="ms-auto shrink-0 -mt-0.5">
+                <TitlePulse hearts={pulse.hearts} votes={pulse.votes} avg={pulse.avg} locale={locale} />
+              </span>
+            </div>
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs sm:text-sm text-muted mt-1.5">
               {/* وسم الأنمي: يعرفه المستخدم من الشارة لا من قراءة الأنواع */}
               {isAnime(tv) && (
@@ -291,14 +298,14 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
               />
             </Suspense>
 
-            {/* 🆕 **ونبضُنا تحت نبض العالم** (D-408) — الحجّةُ كاملةً في
-                رأس المكوّن، ونظيرُه في صفحة الفيلم. */}
-            <TitlePulse hearts={pulse.hearts} votes={pulse.votes} avg={pulse.avg} locale={locale} />
 
-            {/* «٣ ممن تتابعهم شاهدوه» (D-127) — تحت تقييم العالم مباشرة:
-                الرأي العام أولاً ثم رأي من تثق بهم. ولا يُرسم شيء تحت
-                الثلاثة — الكتم في SQL لا هنا */}
-            <CircleNote circle={circle} locale={locale} />
+            {/* ⚖️ 🆕 **وسطرُ الدائرة حُذف** (D-419، شطبَه أحمد بخطٍّ على
+                اللقطة): «٤ ممن تتابعهم شاهدوه · ويقيّمونه ٩٫٨» —
+                **جملةٌ من سطرين تحت أربعة أسطرٍ من الأرقام**، **وقد صار
+                فوقها نبضُنا يقول العددَ والمتوسّطَ في ستّة رموز**
+                (D-408). **وحقيقةٌ تُقال مرّتين بصيغتين تُقرأ زحاماً**
+                (D-222). **والنصُّ باقٍ في خطّ النشاط حيث لكلِّ صاحبٍ
+                اسمُه** — **ولم يُحذف المعنى، حُذف تكرارُه.** */}
 
             {/* الأنواع صعدت من «معلومات» إلى جنب الملصق — كصفحة الفيلم */}
             {tv.genres.length > 0 && (
