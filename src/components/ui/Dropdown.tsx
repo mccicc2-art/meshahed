@@ -132,16 +132,37 @@ export function Dropdown({
    */
   useLayoutEffect(() => {
     const el = panel.current;
-    if (!open || !el) return;
+    const anchor = el?.parentElement;
+    if (!open || !el || !anchor) return;
     el.style.marginInlineEnd = "0px";
-    const r = el.getBoundingClientRect();
+
+    /* 🔴 **ولا يُقاس المستطيلُ الحيُّ هنا**: حركةُ `menu-pop` تبدأ من
+       `scale(0.94)` بمنشأٍ عند المقبض — **فأوّلُ إطارٍ يُرجع لوحةً أضيقَ
+       بـ١٢px وحافّتُها داخلَ الشاشة**، فيُحسب أنها لا تخرج ثم تكبر
+       فتخرج. **قِيس على الموقع: `left = -4` والهامشُ صفر.**
+       **فالقياسُ من الهندسة لا من الرسم**: مستطيلُ المقبض (غيرُ
+       متحرّك) وعرضُ اللوحة `offsetWidth` (لا يتأثّر بـ`transform`)
+       — **وحسابٌ لا يرث حالةَ إطارٍ عابر** (D-250/D-304 بروحهما). */
+    const a = anchor.getBoundingClientRect();
+    const w = el.offsetWidth;
+    const rtl = getComputedStyle(el).direction === "rtl";
+    /* `end` منطقيّة: يمينٌ في LTR ويسارٌ في RTL (D-216) */
+    const endAtRight = !rtl;
+    const anchoredRight = align === "end" ? endAtRight : !endAtRight;
+    const left = anchoredRight ? a.right - w : a.left;
+    const right = left + w;
+
     const pad = 8;
     /* موجبٌ = أزِح يميناً (بالبكسل الفيزيائيّ) */
-    const dx = r.left < pad ? pad - r.left : r.right > window.innerWidth - pad ? window.innerWidth - pad - r.right : 0;
+    const dx =
+      left < pad
+        ? pad - left
+        : right > window.innerWidth - pad
+          ? window.innerWidth - pad - right
+          : 0;
     if (!dx) return;
-    const rtl = getComputedStyle(el).direction === "rtl";
     el.style.marginInlineEnd = `${rtl ? dx : -dx}px`;
-  }, [open]);
+  }, [open, align]);
 
   if (!open) return null;
 
