@@ -9,7 +9,6 @@ import { NavTitle } from "./NavTitle";
 import { Logo } from "./Logo";
 import { LangFlagMenu } from "./LangFlagMenu";
 import { ThemeCookieSync } from "./ThemeCookieSync";
-import { NotificationBell } from "./NotificationBell";
 import { MessagesLink } from "./MessagesLink";
 import { buttonClass } from "./ui/Button";
 
@@ -82,7 +81,7 @@ export async function Navbar() {
             صورة الحساب) — **فلا زحامَ هناك، ولا عنوانَ يُوسَّط.** */}
         {user && (
           <div className="md:hidden shrink-0">
-            <MessagesLink unread={unreadMessages} locale={locale} />
+            <MessagesLink unread={unreadMessages + unreadSignals} locale={locale} />
           </div>
         )}
 
@@ -95,18 +94,13 @@ export async function Navbar() {
                 </Suspense>
               </div>
 
+              {/* 🆕 **بابٌ واحدٌ للبريد كلِّه** (D-463): الجرسُ سقط
+                  **وصارت الإشعاراتُ تبويباً في `‎/messages`** — والعدُّ
+                  هنا مجموعُهما، **وتفصيلُه على تبويبَي الصفحة** فلا
+                  تعود الشارةُ الواحدةُ تعني ثلاثة أشياء (حجّةُ D-187). */}
               <div className="hidden md:block">
-                <MessagesLink unread={unreadMessages} locale={locale} />
+                <MessagesLink unread={unreadMessages + unreadSignals} locale={locale} />
               </div>
-
-              {/* **واسمُك يُمرَّر معه** (D-257): إشعارُ الردّ يفتح صفحةَ
-                  **تعليقِك** — ومسارُها `‎/review/<type>/<id>/<username>`،
-                  ولا يعرف الجرسُ اسمَك من الإشارة وحدها. */}
-              <NotificationBell
-                unread={unreadSignals}
-                myUsername={profile?.username ?? null}
-                locale={locale}
-              />
 
               {/* تختفي في الرئيسية وحدها — ترويسة الرئيسية تعرضها كبيرة */}
               <Suspense fallback={null}>

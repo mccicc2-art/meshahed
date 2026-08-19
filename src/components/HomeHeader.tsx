@@ -4,7 +4,8 @@ import type { HomeView } from "@/lib/homePrefs";
 import { getDict, type Locale } from "@/lib/i18n";
 import { Icon } from "./Icon";
 import { LogoWordmark } from "./Logo";
-import { NotificationBell } from "./NotificationBell";
+import { MessagesLink } from "./MessagesLink";
+import { StickyHeadOffset } from "./StickyHeadOffset";
 import { HomeGreeting } from "./HomeGreeting";
 import { HomeViewSwitch } from "./HomeViewSwitch";
 import type { HeaderStat } from "./ProfileHeader";
@@ -30,7 +31,6 @@ export function HomeHeader({
   avatarUrl,
   avatarPos,
   unread,
-  myUsername,
   stats,
   showStats,
   levelPercent = 0,
@@ -40,8 +40,11 @@ export function HomeHeader({
   displayName: string;
   avatarUrl: string | null;
   avatarPos?: number | null;
+  /** مجموعُ الرسائل والإشعارات — **شارةُ بابٍ واحد** (D-463) */
   unread: number;
-  myUsername: string | null;
+  /** ⚠️ **يُقبل ولا يُقرأ — لعمرِ ترقيةٍ واحدة** (D-028): الصفحةُ ترسله
+      اليوم، ونزعُه من النوع قبل أن يكفَّ المرسِلُ يكسر الرفعةَ الوسيطة */
+  myUsername?: string | null;
   /** خاناتُ بطاقة الأرقام — من التخصيص، اثنتان إلى أربع (D-152) */
   stats: HeaderStat[];
   showStats: boolean;
@@ -74,7 +77,10 @@ export function HomeHeader({
        **وعلى الشاشة الواسعة تلتصق تحت الشريط العلويّ** (`--sticky-top`)
        لا فوقه — **والمقدارُ محسوبٌ هناك مرّةً واحدة** فلا يُجمع
        `--safe-top` مرّتين (تعليقُه في `globals.css`). */
-    <header className="sticky top-0 md:top-[var(--sticky-top)] z-30 -mx-4 px-4 -mt-6 pt-[calc(var(--safe-top)+0.5rem)] md:pt-3 pb-3 space-y-3 bg-[color:var(--background)]">
+    <header id="home-head" className="sticky top-0 md:top-[var(--sticky-top)] z-30 -mx-4 px-4 -mt-6 pt-[calc(var(--safe-top)+0.5rem)] md:pt-3 pb-3 space-y-3 bg-[color:var(--background)]">
+      {/* حافّةُ اللصق تُقاس هنا لا تُخمَّن — انظر `StickyHeadOffset` */}
+      <StickyHeadOffset id="home-head" />
+
       {/* ===== الصفُّ الأوّل: العلامةُ وأدواتُها =====
           **على الجوال وحدَه**: `HeaderShell` يُخفي الشريط العلويّ في
           الرئيسية على الجوال، **فهذا الصفُّ بديلُه هناك** — وعلى الشاشة
@@ -94,11 +100,8 @@ export function HomeHeader({
         </Link>
 
         <div className="flex items-center gap-1">
-          <NotificationBell
-            unread={unread}
-            myUsername={myUsername}
-            locale={locale}
-          />
+          {/* 🆕 **الظرفُ مكانَ الجرس** (D-463) — بابٌ واحدٌ للبريد كلِّه */}
+          <MessagesLink unread={unread} locale={locale} />
           <Link
             href="/profile/settings"
             aria-label={t.headerSettings}

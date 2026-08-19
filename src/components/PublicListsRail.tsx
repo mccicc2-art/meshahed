@@ -29,6 +29,7 @@ export function PublicListsRail({
   locale,
   title,
   grid = false,
+  stickyHead = false,
 }: {
   lists: PublicListCard[];
   locale: Locale;
@@ -48,6 +49,8 @@ export function PublicListsRail({
    * واحدة هو العطلُ بعينه** (القاعدة ٦).
    */
   grid?: boolean;
+  /** يمرَّر إلى `PosterRail` — رأسٌ لاصقٌ في الرئيسيّة (D-464) */
+  stickyHead?: boolean;
 }) {
   const t = getDict(locale);
   if (!lists.length) return null;
@@ -58,7 +61,13 @@ export function PublicListsRail({
 
   if (grid) {
     return (
-      <PosterRail title={title ?? t.publicListsRail} icon="list" iconColor="var(--accent-2)" bare>
+      <PosterRail
+        title={title ?? t.publicListsRail}
+        icon="list"
+        iconColor="var(--accent-2)"
+        stickyHead={stickyHead}
+        bare
+      >
         {/* 🆕 ⚖️ **عمودٌ واحدٌ على الجوّال** (D-461، حكمُ أحمد: «أحجام
               الليستات في المكتبة تكون مثل أحجامها في الديسكفري»).
 
@@ -86,7 +95,12 @@ export function PublicListsRail({
   }
 
   return (
-    <PosterRail title={title ?? t.publicListsRail} icon="list" iconColor="var(--accent-2)">
+    <PosterRail
+      title={title ?? t.publicListsRail}
+      icon="list"
+      iconColor="var(--accent-2)"
+      stickyHead={stickyHead}
+    >
       {lists.map((l, i) => (
         /* `size="list"` لا الافتراض: خانة الملصق (118px) لبطاقةٍ أعرض
            منها كانت تجعل البطاقات تتراكب فوق بعضها (لقطة المالك — D-084)،

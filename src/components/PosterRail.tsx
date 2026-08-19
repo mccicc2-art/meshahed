@@ -20,6 +20,7 @@ export function PosterRail({
   action,
   className,
   bare = false,
+  stickyHead = false,
   children,
 }: {
   title: string;
@@ -55,11 +56,36 @@ export function PosterRail({
    * ترويسةٍ ثانيةٍ تُنسخ** (القاعدة ٣/D-002).
    */
   bare?: boolean;
+  /**
+   * 🆕 **رأسٌ يقف والملصقُ يمرّ تحته** (D-464، طلبُ أحمد: «إذا رفعتها من
+   * تحت، كلمة كونتنيو توقف قبل الكارد والبوستر يدخل تحتها، وإذا وصلت
+   * القائمةُ التي بعدها توقف عندها ويدخل بوسترُها تحت اسمها»).
+   *
+   * **وصندوقُ اللصق هو `section` نفسُه**: الرأسُ يقف ما دام قسمُه في
+   * الشاشة، **ويُدفَع خارجَها حين يصل رأسُ القسم التالي** — **فلا
+   * عنوانان في الشاشة ولا عنوانٌ يبقى فوق محتوى غيره.**
+   *
+   * ⚠️ **واختياريٌّ لا افتراضيّ**: هذا الصفُّ يسكن ستّ صفحات، **ولكلٍّ
+   * منها شريطٌ لاصقٌ بارتفاعٍ آخر** (تبويبات المكتبة، فلاتر اكتشف) —
+   * **ورأسٌ يلتصق عند رقم الرئيسيّة في صفحةٍ أخرى يقف في الهواء أو
+   * يختفي تحت شريطها.**
+   */
+  stickyHead?: boolean;
   children: React.ReactNode;
 }) {
   return (
     <section className={className}>
-      <div className="flex items-center justify-between gap-3 mb-0.5">
+      <div
+        className={
+          stickyHead
+            ? /* **الخلفيّةُ صلبةٌ وتمتدُّ إلى الحافّة**: الملصقُ يمرّ
+                 تحت الرأس، **وخلفيّةٌ شفّافةٌ تجعله يمرّ فوق الحروف**
+                 — **وخلفيّةٌ تقف عند الهامش تترك شريطين عاريين** على
+                 الجانبين (نفسُ علّة الترويسة). */
+              "sticky top-[var(--sticky-head,0px)] z-20 -mx-4 px-4 pt-1.5 pb-1 -mb-0.5 bg-[color:var(--background)] flex items-center justify-between gap-3"
+            : "flex items-center justify-between gap-3 mb-0.5"
+        }
+      >
         {/* 🆕 **٢٢px/٧٠٠ — «عنوان القسم» في سلّم النصّ** (D-454) */}
         <h2 className="flex flex-wrap items-center gap-2 text-[22px] font-bold">
           {icon && (

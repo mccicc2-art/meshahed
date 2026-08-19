@@ -4,24 +4,18 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { updateProfile } from "@/lib/actions";
 import { getDict, type Locale } from "@/lib/i18n";
-import { LanguageSwitch } from "./LanguageSwitch";
 import { Alert } from "./ui/Alert";
 import { buttonClass } from "./ui/Button";
 
-export type AccountSection =
-  | "language"
-  | "hideName"
-  | "privateAccount"
-  | "followLists"
-  | "username"
-  | "displayName"
-  | "email"
-  | "signout";
+/**
+ * **ثلاثةُ أقسامٍ لا ثمانية** (D-462): اللغةُ إلى «المظهر»، والاسمُ
+ * واسمُ المستخدم إلى `EditProfileForm`، والبريدُ والخروجُ إلى صفحتيهما
+ * — **وبقي هنا ما يكتب حقولَ الخصوصيّة وحدَه.**
+ */
+export type AccountSection = "hideName" | "privateAccount" | "followLists";
 
 export function AccountSettings({
-  email,
   locale,
-  initialUsername,
   initialNickname,
   avatarUrl,
   genres,
@@ -30,9 +24,11 @@ export function AccountSettings({
   initialHideFollowLists = false,
   only,
 }: {
-  email: string;
+  /* ⚠️ **يُقبلان ولا يُقرآن — لعمرِ ترقيةٍ واحدة** (D-028) */
+  email?: string;
+  initialUsername?: string;
   locale: Locale;
-  initialUsername: string;
+  /** يُمرَّر ولا يُعرض — `updateProfile` يكتب `nickname` في كل نداء */
   initialNickname: string;
   avatarUrl: string | null;
   genres: number[];
@@ -46,8 +42,6 @@ export function AccountSettings({
   const t = getDict(locale);
   const show = (k: AccountSection) => !only || only.includes(k);
   const router = useRouter();
-  const [username, setUsername] = useState(initialUsername);
-  const [nickname, setNickname] = useState(initialNickname);
   const [hideName, setHideName] = useState(initialHideName);
   const [isPrivate, setIsPrivate] = useState(initialIsPrivate);
   const [hideFollowLists, setHideFollowLists] = useState(initialHideFollowLists);
@@ -55,21 +49,17 @@ export function AccountSettings({
   const [saved, setSaved] = useState(false);
   const [pending, start] = useTransition();
 
-  const cleaned = username.trim().toLowerCase().replace(/[^a-z0-9_]/g, "");
-  const usernameInvalid = cleaned.length > 0 && cleaned.length < 3;
-
   function save() {
     setError(null);
     setSaved(false);
-    if (usernameInvalid) {
-      setError(t.usernameShort);
-      return;
-    }
     start(async () => {
       try {
         await updateProfile({
-          nickname,
-          username: cleaned,
+          /* ⚠️ **الاسمُ يُعاد كما جاء ولا يُرسَل اسمُ المستخدم**:
+             `updateProfile` يكتب `nickname` دائماً، **و`username`
+             غيابُه يعني «اتركه»** — **فصفحةُ خصوصيّةٍ لا تملك الحقلَ لا
+             يجوز أن تكتبه** (D-462). */
+          nickname: initialNickname,
           avatarUrl,
           favoriteGenres: genres,
           hideName,
@@ -86,21 +76,6 @@ export function AccountSettings({
 
   return (
     <div className="space-y-4">
-      {/* لغة الواجهة */}
-      {show("language") && (
-  <section className="bg-surface border border-border rounded-2xl p-3.5 sm:p-5">
-          <h2 className="text-sm font-bold mb-1">{t.languageSection}</h2>
-          <p className="text-xs text-muted leading-relaxed mb-3">{t.languageHint}</p>
-          <LanguageSwitch locale={locale} />
-          {/* نسبة البيانات إلى TMDB — انتقلت من تذييل كل صفحة إلى هنا.
-              شروط استخدام TMDB تُلزم بذكرها في مكانٍ ظاهر من المنتج، ولا
-              تُلزم بأن تكون تحت كل شاشة. وموضعها هنا مقصود: هذا القسم
-              نفسه يشرح أن لغة الواجهة تُغيّر لغة بيانات TMDB. */}
-          <p className="text-[12px] text-muted/70 mt-4 pt-3 border-t border-[color:var(--divider)] leading-relaxed">
-            {t.tmdbAttribution}
-          </p>
-        </section>
-        )}
 
       {/* الخصوصية: إخفاء الاسم في التقييمات والمراجعات */}
       {show("hideName") && (
@@ -215,58 +190,8 @@ export function AccountSettings({
         </section>
         )}
 
-      {show("username") && (
-  <section className="bg-surface border border-border rounded-2xl p-3.5 sm:p-5">
-          <h2 className="text-sm font-bold mb-1">{t.usernameSection}</h2>
-          <p className="text-xs text-muted leading-relaxed mb-3">{t.usernameHint}</p>
-          <div className="relative" dir="ltr">
-            <span className="absolute top-1/2 -translate-y-1/2 start-3 text-muted">@</span>
-            <input
-              value={username}
-              onChange={(e) => {
-                setUsername(e.target.value);
-                setSaved(false);
-              }}
-              maxLength={24}
-              placeholder="ahmed_92"
-              dir="ltr"
-              className="w-full rounded-xl bg-surface-2 border border-border ps-8 pe-3 py-2.5 text-sm outline-none focus:border-accent transition text-left"
-            />
-          </div>
-          {cleaned !== username.trim().toLowerCase() && username.trim() !== "" && (
-            <p className="text-xs text-muted mt-2" dir="ltr">
-              {t.willSaveAs(cleaned || "—")}
-            </p>
-          )}
-        </section>
-        )}
 
-      {show("displayName") && (
-  <section className="bg-surface border border-border rounded-2xl p-3.5 sm:p-5">
-          <h2 className="text-sm font-bold mb-1">{t.displayNameSection}</h2>
-          <p className="text-xs text-muted leading-relaxed mb-3">{t.displayNameHint}</p>
-          <input
-            value={nickname}
-            onChange={(e) => {
-              setNickname(e.target.value);
-              setSaved(false);
-            }}
-            maxLength={40}
-            placeholder={t.displayNamePlaceholder}
-            className="w-full rounded-xl bg-surface-2 border border-border px-3 py-2.5 text-sm outline-none focus:border-accent transition"
-          />
-        </section>
-        )}
 
-      {show("email") && (
-  <section className="bg-surface border border-border rounded-2xl p-3.5 sm:p-5">
-          <h2 className="text-sm font-bold mb-1">{t.emailSection}</h2>
-          <p className="text-xs text-muted leading-relaxed mb-3">{t.emailHint}</p>
-          <p className="rounded-xl bg-surface-2 border border-border px-3 py-2.5 text-sm text-muted" dir="ltr">
-            {email}
-          </p>
-        </section>
-        )}
 
       {error && (
         <Alert>{error}</Alert>
@@ -287,13 +212,6 @@ export function AccountSettings({
         )}
       </div>
 
-      {show("signout") && (
-        <form action="/auth/signout" method="post" className="pt-4 border-t border-border">
-          <button className="text-sm text-muted hover:text-red-300 transition">
-            {t.signOutAccount}
-          </button>
-        </form>
-      )}
     </div>
   );
 }
