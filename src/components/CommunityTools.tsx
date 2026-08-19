@@ -16,6 +16,7 @@ import {
   segmentedItem,
 } from "./ui/controls";
 import { FilterIconButton } from "./ui/FilterIconButton";
+import { buttonClass } from "./ui/Button";
 import { TabsPrefs } from "./TabsPrefs";
 
 /**
@@ -168,11 +169,47 @@ export function CommunityTools({
      فقط» مطفأة · والترجمةُ تعمل. **وما خالف افتراضَه يُعدّ.**
      ⚠️ **ويُقرأ من الحالة المحلّية لا من الخاصّيّة**: الورقةُ تُبدّل
      تفاؤليّاً، **وعدّادٌ ينتظر رحلةَ الخادم يتخلّف عن المفتاح تحته.** */
-  const toolsOn =
-    (strangers ? 0 : 1) +
-    (feedSort !== "smart" ? 1 : 0) +
-    (followedOnly ? 1 : 0) +
-    (translate ? 0 : 1);
+  /* 🔴 🆕 **والعدُّ لتبويبه لا للأربعة** (D-457، **تصحيحُ D-452 قبل أن
+     يُشتكى منه**): الورقةُ **سياقيّة** — تعرض أدواتِ التبويب المفتوح
+     وحدَه (D-306) — **وعدٌّ يشمل الأربعة كان يقول «٢» ثم تُفتح الورقةُ
+     فلا يُرى إلا واحد.** **ورقمٌ يشير إلى ما لا تعرضه الشاشةُ أسوأ من
+     لا رقم**: النقطةُ كانت تقول «هناك شيء» بلا وعدٍ، والرقمُ يَعِد بعدد.
+     **فالمحاورُ تُجمع لهذا التبويب**، والمسحُ يقع عليها وحدَها. */
+  const axes: boolean[] =
+    activeTab === "activity"
+      ? [!strangers, feedSort !== "smart", !translate]
+      : activeTab === "talk"
+        ? [followedOnly, !translate]
+        : [];
+  const toolsOn = axes.filter(Boolean).length;
+
+  /**
+   * 🆕 **«مسح الكل» — البابُ الراجع** (D-457، توحيدُ المرحلة ٨).
+   *
+   * **وكان في اكتشف وحدَه**: من قلّب ثلاثةَ مفاتيحَ هنا يعيدها **واحداً
+   * واحداً**، **ويتذكّر أيَّها بدّل أصلاً** — وهو ما يعرفه العدّادُ ولا
+   * يعرفه صاحبُه. **وزرٌّ يعرف الافتراضَ أصدقُ من ذاكرة.**
+   *
+   * ⚠️ **ولا يُكتب إلا ما تبدّل**: كلُّ مفتاحٍ كوكي ورحلةُ خادم،
+   * **ومسحٌ يكتب أربعةً ليُعيد واحداً يدفع ثمنَ ثلاثةٍ بلا أثر.**
+   */
+  function clearAll() {
+    tap(8);
+    const jobs: Promise<unknown>[] = [];
+    if (activeTab === "activity") {
+      if (!strangers) { setStrangers(true); jobs.push(setFeedStrangers(true)); }
+      if (feedSort !== "smart") { setFeedSortLocal("smart"); jobs.push(setFeedSort("smart")); }
+      if (!translate) { setTranslate(true); jobs.push(setTranslateEnabled(true)); }
+    } else if (activeTab === "talk") {
+      if (followedOnly) { setFollowedOnly(false); jobs.push(setTalkFollowedOnly(false)); }
+      if (!translate) { setTranslate(true); jobs.push(setTranslateEnabled(true)); }
+    }
+    if (!jobs.length) return;
+    save(async () => {
+      await Promise.all(jobs);
+      router.refresh();
+    });
+  }
 
   return (
     <>
@@ -373,6 +410,24 @@ export function CommunityTools({
               </div>
             )}
           </div>
+          {/* **شريطُ المسح — نفسُ وصفة ورقة اكتشف بالبكسل** (D-457):
+              حدٌّ علويّ وسطحٌ مرتفعٌ وزرٌّ شبحيّ. **ويغيب حين لا شيءَ
+              يُمسح** — **وزرٌّ لا يفعل شيئاً يُقرأ معطّلاً** (D-044).
+              ⚠️ **وفي «أدوات» وحدَها**: تبويبُ «عرض» ترتيبُ تبويباتٍ لا
+              فلاتر، **و«مسح الكل» فوقه يَعِد بفعلٍ لا يقع** (D-325). */}
+          {tab === "do" && toolsOn > 0 && (
+            <div className="shrink-0 flex items-center gap-3 px-5 py-3 border-t border-[color:var(--divider)] bg-[color:var(--elevated)]">
+              <button
+                type="button"
+                disabled={saving}
+                onClick={clearAll}
+                className={buttonClass({ variant: "ghost", size: "md" })}
+              >
+                {t.browseClearAll}
+              </button>
+            </div>
+          )}
+
         </Sheet>
       )}
     </>

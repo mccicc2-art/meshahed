@@ -9,7 +9,7 @@ import { Button } from "./ui/Button";
 import { chipClass } from "./ui/controls";
 /* تبويب القوائم له بابُه هنا لا في ورقة اكتشف — رمزٌ واحد لكل تبويب (D-179) */
 import { TabsPrefs } from "./TabsPrefs";
-import { num, type Locale } from "@/lib/i18n";
+import { getDict, num, type Locale } from "@/lib/i18n";
 import type { TabPref } from "@/lib/tabPrefs";
 
 /**
@@ -200,10 +200,26 @@ export function ListsFilters({
             ]}
           />
         </div>
-        <div className="px-5 pt-2 pb-1">
+        {/* 🆕 **«مسح الكل» بجوار «تطبيق»** (D-457، توحيدُ المرحلة ٨) —
+            **نفسُ ترتيب ورقة اكتشف**: الشبحيُّ يسبق والأوّليُّ يمتدّ.
+            **ويغيب حين لا شيءَ مختار** (D-044)، **ويمسح المسوّدةَ لا
+            الرابط** — فالمسحُ اختيارٌ يُراجَع، **و«تطبيق» هو الذي
+            يُنفّذ** (وإلا صار للورقة فعلان يكتبان الرابط). */}
+        <div className="px-5 pt-2 pb-1 flex items-center gap-3">
+          {locale && (draftFr || draftSrc !== "all") && (
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setDraftFr("");
+                setDraftSrc("all");
+              }}
+            >
+              {getDict(locale).browseClearAll}
+            </Button>
+          )}
           <Button
             variant="primary"
-            className="w-full"
+            className="flex-1"
             onClick={() => {
               push(draftFr, draftSrc);
               setOpen(false);

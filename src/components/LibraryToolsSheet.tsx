@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import { getDict, type Locale } from "@/lib/i18n";
+import { tap } from "@/lib/haptics";
 import { Sheet, SheetHeader, SheetTabs } from "./ui/Sheet";
 import { segmentedItem, segmentedTrackFull, sheetScroll } from "./ui/controls";
+import { buttonClass } from "./ui/Button";
 import { Icon } from "./Icon";
 import { NewListForm } from "./NewListForm";
 /* القسم الرابع في هذه الورقة — نفسُ المكوّن في اكتشف والمجتمع (D-179) */
@@ -199,6 +201,28 @@ export function LibraryToolsSheet({
         </div>
         )}
       </div>
+
+      {/* 🆕 **«مسح الكل» — نفسُ وصفة ورقة اكتشف بالبكسل** (D-457، توحيدُ
+          المرحلة ٨). **ومحوراه هما اللذان يَعُدّهما الزرُّ فوقها**
+          (D-452): بحثٌ وترتيب — **فما يقوله العدّادُ هو ما يمسحه الزرّ**،
+          ولا رقمٌ يشير إلى ما لا يُمسح.
+          **ويغيب حين لا شيءَ يُمسح** (D-044)، **وفي «أدوات» وحدَها**:
+          تبويبُ «عرض» ترتيبُ تبويباتٍ لا فلاتر (D-325). */}
+      {showFilters && tab === "do" && (q.trim().length > 0 || sort !== "smart") && (
+        <div className="shrink-0 flex items-center gap-3 px-5 py-3 border-t border-[color:var(--divider)] bg-[color:var(--elevated)]">
+          <button
+            type="button"
+            onClick={() => {
+              tap(6);
+              onQ("");
+              onSort("smart");
+            }}
+            className={buttonClass({ variant: "ghost", size: "md" })}
+          >
+            {t.browseClearAll}
+          </button>
+        </div>
+      )}
     </Sheet>
   );
 }
