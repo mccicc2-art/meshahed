@@ -1853,7 +1853,10 @@ export interface AwardRow extends SearchResult {
 }
 
 export async function awardWinners(slug: string, limit?: number): Promise<AwardRow[]> {
-  const { awardBySlug, awardWins } = await import("./awards");
+  const [{ awardBySlug }, { awardWins }] = await Promise.all([
+    import("./awards"),
+    import("./awardsWins"),
+  ]);
   const award = awardBySlug(slug);
   if (!award) return [];
   /* `limit` للبطاقة وحدها (أربعة ملصقات): تثبيت خمسةٍ وثلاثين فائزاً

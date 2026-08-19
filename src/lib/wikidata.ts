@@ -53,6 +53,10 @@ export async function arabicPersonName(tmdbPersonId: number): Promise<string | n
   try {
     const res = await fetch(`${SPARQL}?format=json&query=${encodeURIComponent(query)}`, {
       headers: { Accept: "application/sparql-results+json", "User-Agent": UA },
+      /* سقفُ انتظارٍ ١٫٥ث: هذا النداء يجري قبل أوّل بايت في صفحات العمل
+         والشخص، والنقطةُ العامّة تتباطأ إلى ثوانٍ تحت الضغط — والفشلُ هنا
+         صامتٌ أصلاً (يبقى اسمُ TMDB)، فتحسينٌ جماليٌّ لا يُرهَن به TTFB. */
+      signal: AbortSignal.timeout(1500),
       /* أسبوعٌ كامل: اسمُ الشخص بالعربية **لا يتغيّر**. وهذه أطول تخبئةٍ في
          التطبيق عن عمد — الغرض ألّا نُثقل نقطةً عامّةً مجانية بطلبٍ لجوابٍ
          ثابت. وأيُّ نشرةٍ جديدة تبدأ من صفر، وهو مقبولٌ لأن الفشل صامت. */
@@ -120,6 +124,10 @@ export async function arabicWorkTitles(
   try {
     const res = await fetch(`${SPARQL}?format=json&query=${encodeURIComponent(query)}`, {
       headers: { Accept: "application/sparql-results+json", "User-Agent": UA },
+      /* سقفُ انتظارٍ ١٫٥ث: هذا النداء يجري قبل أوّل بايت في صفحات العمل
+         والشخص، والنقطةُ العامّة تتباطأ إلى ثوانٍ تحت الضغط — والفشلُ هنا
+         صامتٌ أصلاً (يبقى اسمُ TMDB)، فتحسينٌ جماليٌّ لا يُرهَن به TTFB. */
+      signal: AbortSignal.timeout(1500),
       /* أسبوعٌ كامل، كما في اسم الشخص: عنوانُ عملٍ بالعربية لا يتغيّر،
          والمفتاح هو الرابط نفسه — فمجموعةُ المعرّفات ذاتها لا تُسأل مرّتين */
       next: { revalidate: 604_800 },

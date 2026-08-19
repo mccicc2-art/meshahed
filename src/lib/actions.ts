@@ -1619,54 +1619,69 @@ export async function applyOnboardingProgress(
   const { getTv, getSeason } = await import("@/lib/tmdb");
   const { airedPerSeason } = await import("@/lib/progress");
 
-  for (const it of items.slice(0, 24)) {
-    if (it.progress !== "done") continue;
+  const done = items.filter((it) => it.progress === "done");
 
-    if (it.mediaType === "movie") {
-      await supabase
-        .from("watched_movies")
-        .upsert(
-          { user_id: user.id, movie_tmdb_id: it.tmdbId, runtime: null },
-          { onConflict: "user_id,movie_tmdb_id" },
-        );
-      continue;
-    }
+  /* الأفلام كلُّها upsert واحد لا رحلةً لكلِّ فيلم: الصفوفُ مستقلّة
+     والمفتاحُ فريد، فالدفعةُ تكافئ الأفراد أثراً وتوفّر الرحلات. */
+  const movieRows = done
+    .filter((it) => it.mediaType === "movie")
+    .map((it) => ({ user_id: user.id, movie_tmdb_id: it.tmdbId, runtime: null }));
+  if (movieRows.length) {
+    await supabase
+      .from("watched_movies")
+      .upsert(movieRows, { onConflict: "user_id,movie_tmdb_id" });
+  }
 
-    try {
-      const tv = await getTv(it.tmdbId);
-      const aired = airedPerSeason(tv);
-      const rows: {
-        user_id: string;
-        show_tmdb_id: number;
-        season_number: number;
-        episode_number: number;
-        runtime: number | null;
-      }[] = [];
+  /* المسلسلاتُ كانت تسلسلاً خالصاً: ٢٤ عملاً في كلٍّ منها `getTv` ثم
+     `getSeason` **لكلِّ موسمٍ على حدة** — مئتا رحلة TMDB متعاقبة تجعل
+     شاشةَ الانضمام تنتظر دقائق. الآن مواسمُ المسلسل تُجلب معاً،
+     والمسلسلاتُ خمسةً خمسة (سقفُ تهذيبٍ لنقطة TMDB لا سقفُ صحّة —
+     الأفعال upsert مستقلّة). وفشلُ الواحد لا يوقف البقيّة كما كان. */
+  const shows = done.filter((it) => it.mediaType === "tv");
+  const SHOWS_AT_ONCE = 5;
+  for (let s = 0; s < shows.length; s += SHOWS_AT_ONCE) {
+    await Promise.all(
+      shows.slice(s, s + SHOWS_AT_ONCE).map(async (it) => {
+        try {
+          const tv = await getTv(it.tmdbId);
+          const aired = airedPerSeason(tv);
+          const seasons = [...aired].filter(([, count]) => count > 0);
+          const details = await Promise.all(
+            seasons.map(([season]) => getSeason(it.tmdbId, season).catch(() => null)),
+          );
 
-      for (const [season, count] of aired) {
-        if (count <= 0) continue;
-        const detail = await getSeason(it.tmdbId, season).catch(() => null);
-        for (let e = 1; e <= count; e++) {
-          const ep = detail?.episodes.find((x) => x.episode_number === e);
-          rows.push({
-            user_id: user.id,
-            show_tmdb_id: it.tmdbId,
-            season_number: season,
-            episode_number: e,
-            runtime: ep?.runtime ?? tv.episode_run_time?.[0] ?? null,
+          const rows: {
+            user_id: string;
+            show_tmdb_id: number;
+            season_number: number;
+            episode_number: number;
+            runtime: number | null;
+          }[] = [];
+          seasons.forEach(([season, count], i) => {
+            const detail = details[i];
+            for (let e = 1; e <= count; e++) {
+              const ep = detail?.episodes.find((x) => x.episode_number === e);
+              rows.push({
+                user_id: user.id,
+                show_tmdb_id: it.tmdbId,
+                season_number: season,
+                episode_number: e,
+                runtime: ep?.runtime ?? tv.episode_run_time?.[0] ?? null,
+              });
+            }
           });
-        }
-      }
 
-      // دفعات حتى لا يُرفض الطلب لضخامته
-      for (let i = 0; i < rows.length; i += 500) {
-        await supabase.from("watched_episodes").upsert(rows.slice(i, i + 500), {
-          onConflict: "user_id,show_tmdb_id,season_number,episode_number",
-        });
-      }
-    } catch {
-      // مسلسل واحد فشل لا يوقف البقية
-    }
+          // دفعات حتى لا يُرفض الطلب لضخامته
+          for (let i = 0; i < rows.length; i += 500) {
+            await supabase.from("watched_episodes").upsert(rows.slice(i, i + 500), {
+              onConflict: "user_id,show_tmdb_id,season_number,episode_number",
+            });
+          }
+        } catch {
+          // مسلسل واحد فشل لا يوقف البقية
+        }
+      }),
+    );
   }
 
   revalidatePath("/");
@@ -3353,96 +3368,132 @@ export async function applyImportChunk(payload: ImportPayload): Promise<{
   const movies = (payload?.movies ?? []).slice(0, 60);
   let epCount = 0;
 
-  for (const sh of shows) {
-    const tmdbId = intId(sh.tmdbId);
-    const title = String(sh.title ?? "").slice(0, 300);
+  /* 🆕 **الدفعةُ صفوفٌ لا حلقة**: كانت الدفعةُ (٥ مسلسلات + ٦٠ فيلماً)
+     تُكتب رحلةً رحلةً — حتى ١٨٠ رحلةً متعاقبةً للأفلام وحدَها — والأفعال
+     كلُّها upsert على مفاتيحَ فريدةٍ فالمصفوفةُ تكافئها أثراً.
+     **والتكرارُ داخل الدفعة يُطوى أوّلاً**: Postgres يرفض إصابةَ الصفِّ
+     مرّتين في أمرٍ واحد («cannot affect row a second time») — والحلقةُ
+     القديمة كانت تبتلعه بالكتابة الأخيرة، فالطيُّ يحفظ ذلك الأثر. */
+  const dedupe = <T,>(rows: T[], key: (r: T) => string | number): T[] => {
+    const m = new Map<string | number, T>();
+    for (const r of rows) m.set(key(r), r); // الأخيرُ يكسب كما في الحلقة
+    return [...m.values()];
+  };
 
-    await supabase.from("follows").upsert(
-      {
+  const showFollowRows = dedupe(
+    shows.map((sh) => ({
+      user_id: user.id,
+      tmdb_id: intId(sh.tmdbId),
+      media_type: "tv" as const,
+      title: String(sh.title ?? "").slice(0, 300),
+      poster_path: safeImagePath(sh.posterPath),
+    })),
+    (r) => r.tmdb_id,
+  );
+  const movieFollowRows = dedupe(
+    movies.map((mv) => ({
+      user_id: user.id,
+      tmdb_id: intId(mv.tmdbId),
+      media_type: "movie" as const,
+      title: String(mv.title ?? "").slice(0, 300),
+      poster_path: safeImagePath(mv.posterPath),
+    })),
+    (r) => r.tmdb_id,
+  );
+  const watchedMovieRows = dedupe(
+    movies
+      .filter((mv) => mv.watched)
+      .map((mv) => ({
         user_id: user.id,
-        tmdb_id: tmdbId,
-        media_type: "tv",
-        title,
-        poster_path: safeImagePath(sh.posterPath),
-      },
-      { onConflict: "user_id,tmdb_id,media_type" },
-    );
+        movie_tmdb_id: intId(mv.tmdbId),
+        runtime: null as number | null,
+        watched_at: mv.at ?? stamp,
+      })),
+    (r) => r.movie_tmdb_id,
+  );
+  const ratingRows = dedupe(
+    [
+      ...shows
+        .filter((sh) => sh.rating != null)
+        .map((sh) => ({
+          user_id: user.id,
+          tmdb_id: intId(sh.tmdbId),
+          media_type: "tv" as string,
+          rating: intIn(Math.round(sh.rating as number), 1, 10),
+          review: null as string | null,
+          title: String(sh.title ?? "").slice(0, 300),
+          poster_path: safeImagePath(sh.posterPath),
+          updated_at: stamp,
+        })),
+      ...movies
+        .filter((mv) => mv.rating != null)
+        .map((mv) => ({
+          user_id: user.id,
+          tmdb_id: intId(mv.tmdbId),
+          media_type: "movie" as string,
+          rating: intIn(Math.round(mv.rating as number), 1, 10),
+          review: null as string | null,
+          title: String(mv.title ?? "").slice(0, 300),
+          poster_path: safeImagePath(mv.posterPath),
+          updated_at: stamp,
+        })),
+    ],
+    (r) => `${r.media_type}-${r.tmdb_id}`,
+  );
 
-    const rows = (sh.episodes ?? [])
-      .slice(0, IMPORT_CAPS.episodesPerShow)
-      .map((ep) => ({
+  /* المتابعاتُ أوّلاً (جداول الحلقات والتقييمات تُعرض من فوقها)، ثم
+     الجداولُ الثلاثةُ الباقية معاً — مستقلّةٌ تماماً بعضُها عن بعض. */
+  const followRows = [...showFollowRows, ...movieFollowRows];
+  if (followRows.length) {
+    await supabase
+      .from("follows")
+      .upsert(followRows, { onConflict: "user_id,tmdb_id,media_type" });
+  }
+
+  const episodeRows = dedupe(
+    shows.flatMap((sh) =>
+      (sh.episodes ?? []).slice(0, IMPORT_CAPS.episodesPerShow).map((ep) => ({
         user_id: user.id,
-        show_tmdb_id: tmdbId,
+        show_tmdb_id: intId(sh.tmdbId),
         season_number: intIn(ep.s, 0, 100),
         episode_number: intIn(ep.e, 0, 20_000),
         runtime: null as number | null,
         watched_at: ep.at ?? stamp,
-      }));
+      })),
+    ),
+    (r) => `${r.show_tmdb_id}-${r.season_number}-${r.episode_number}`,
+  );
 
-    for (let i = 0; i < rows.length; i += 500) {
-      const { error } = await supabase
-        .from("watched_episodes")
-        .upsert(rows.slice(i, i + 500), {
-          onConflict: "user_id,show_tmdb_id,season_number,episode_number",
-        });
-      if (!error) epCount += rows.slice(i, i + 500).length;
-    }
-
-    if (sh.rating != null) {
-      await supabase.from("ratings").upsert(
-        {
-          user_id: user.id,
-          tmdb_id: tmdbId,
-          media_type: "tv",
-          rating: intIn(Math.round(sh.rating), 1, 10),
-          review: null,
-          title,
-          poster_path: safeImagePath(sh.posterPath),
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "user_id,tmdb_id,media_type" },
-      );
-    }
-  }
-
-  for (const mv of movies) {
-    const tmdbId = intId(mv.tmdbId);
-    const title = String(mv.title ?? "").slice(0, 300);
-    const poster = safeImagePath(mv.posterPath);
-
-    await supabase.from("follows").upsert(
-      { user_id: user.id, tmdb_id: tmdbId, media_type: "movie", title, poster_path: poster },
-      { onConflict: "user_id,tmdb_id,media_type" },
+  const writes: PromiseLike<unknown>[] = [];
+  if (watchedMovieRows.length) {
+    writes.push(
+      supabase
+        .from("watched_movies")
+        .upsert(watchedMovieRows, { onConflict: "user_id,movie_tmdb_id" }),
     );
-
-    if (mv.watched) {
-      await supabase.from("watched_movies").upsert(
-        {
-          user_id: user.id,
-          movie_tmdb_id: tmdbId,
-          runtime: null,
-          watched_at: mv.at ?? stamp,
-        },
-        { onConflict: "user_id,movie_tmdb_id" },
-      );
-    }
-
-    if (mv.rating != null) {
-      await supabase.from("ratings").upsert(
-        {
-          user_id: user.id,
-          tmdb_id: tmdbId,
-          media_type: "movie",
-          rating: intIn(Math.round(mv.rating), 1, 10),
-          review: null,
-          title,
-          poster_path: poster,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "user_id,tmdb_id,media_type" },
-      );
-    }
   }
+  if (ratingRows.length) {
+    writes.push(
+      supabase
+        .from("ratings")
+        .upsert(ratingRows, { onConflict: "user_id,tmdb_id,media_type" }),
+    );
+  }
+  // دفعات حتى لا يُرفض الطلب لضخامته — كما كان
+  for (let i = 0; i < episodeRows.length; i += 500) {
+    const slice = episodeRows.slice(i, i + 500);
+    writes.push(
+      supabase
+        .from("watched_episodes")
+        .upsert(slice, {
+          onConflict: "user_id,show_tmdb_id,season_number,episode_number",
+        })
+        .then(({ error }) => {
+          if (!error) epCount += slice.length;
+        }),
+    );
+  }
+  await Promise.all(writes);
 
   return { shows: shows.length, episodes: epCount, movies: movies.length };
 }

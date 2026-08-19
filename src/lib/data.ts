@@ -167,16 +167,23 @@ export const getFollows = cache(async (): Promise<FollowRow[]> => {
 
   // فلترة صريحة بالمستخدم: سياسات القراءة العامة على الجدول (لصفحات البروفايل)
   // تعني أن الاستعلام غير المفلتر يرجع صفوف الجميع، لا صفوف صاحب الحساب فقط.
-  const { data, error } = await supabase
-    .from("follows")
-    .select(
-      "tmdb_id, media_type, title, poster_path, added_at, total_episodes, aired_episodes, next_air_date, dropped, rewatch_count, rewatch_started_at, stats_updated_at",
-    )
-    .eq("user_id", user.id)
-    .order("added_at", { ascending: false });
-
-  // احتياط: لو أعمدة الإحصاءات لسه ما انضافت، اقرأ الأعمدة الأساسية فقط
-  if (error) {
+  // وبـ`pageAll` كأشقّائه: PostgREST يقصّ عند ألف صفٍّ **بصمت** — فمكتبةُ
+  // ألفِ عملٍ وواحد كانت ستفقد أقدمَ أعمالها بلا خطأٍ يُرى.
+  try {
+    const data = await pageAll<FollowRow>((from, to) =>
+      supabase
+        .from("follows")
+        .select(
+          "tmdb_id, media_type, title, poster_path, added_at, total_episodes, aired_episodes, next_air_date, dropped, rewatch_count, rewatch_started_at, stats_updated_at",
+        )
+        .eq("user_id", user.id)
+        .order("added_at", { ascending: false })
+        .range(from, to)
+        .throwOnError(),
+    );
+    return data;
+  } catch {
+    // احتياط: لو أعمدة الإحصاءات لسه ما انضافت، اقرأ الأعمدة الأساسية فقط
     const base = await supabase
       .from("follows")
       .select("tmdb_id, media_type, title, poster_path, added_at")
@@ -184,8 +191,6 @@ export const getFollows = cache(async (): Promise<FollowRow[]> => {
       .order("added_at", { ascending: false });
     return base.data ?? [];
   }
-
-  return data ?? [];
 });
 
 /**
@@ -433,7 +438,9 @@ export interface WatchSummaryRow {
  * لمن يتابع مسلسلات طويلة — لمجرّد حساب العدّادات. الآن يجمع Postgres.
  * لو لم تُشغَّل دالة SQL بعد، نرجع للطريقة القديمة تلقائياً.
  */
-export async function getWatchSummary(): Promise<WatchSummaryRow[] | null> {
+/* `cache()`: getLibState غيرُ مخبّأةٍ وتتداخل استدعاءاتُها في /news ثلاث
+   مرّاتٍ في الطلب الواحد — فكان ملخّصُ المشاهدة يُحسب ثلاثاً. */
+export const getWatchSummary = cache(async (): Promise<WatchSummaryRow[] | null> => {
   try {
     const supabase = await createClient();
     const { data, error } = await supabase.rpc("watch_summary");
@@ -446,7 +453,7 @@ export async function getWatchSummary(): Promise<WatchSummaryRow[] | null> {
   } catch {
     return null;
   }
-}
+});
 
 export async function getAllWatchedEpisodes(): Promise<WatchedEpisodeRow[]> {
   const supabase = await createClient();
@@ -551,7 +558,9 @@ export async function getReactions(ids: number[] = []): Promise<ReactionInfo> {
   }
 }
 
-export async function getWatchedMovieIds(): Promise<Set<number>> {
+/* `cache()`: نفسُ علّة getWatchSummary — مسحُ watched_movies المُرقَّم كان
+   يتكرّر بعدد استدعاءات getLibState في الطلب. */
+export const getWatchedMovieIds = cache(async (): Promise<Set<number>> => {
   const supabase = await createClient();
   const user = await getUser();
   if (!user) return new Set();
@@ -564,7 +573,7 @@ export async function getWatchedMovieIds(): Promise<Set<number>> {
       .range(from, to),
   );
   return new Set(rows.map((r) => r.movie_tmdb_id));
-}
+});
 
 /**
  * الأفلام المُشاهَدة بمدّة كلٍّ منها — لحساب ساعات المشاهدة بدقّة.
@@ -1181,7 +1190,10 @@ export async function getDismissedTitles(): Promise<Set<number>> {
 }
 
 /** عدد الرسائل الواردة غير المقروءة — لشارة تبويب «الرسائل» */
-export async function getUnreadShares(): Promise<number> {
+/* `cache()`: يُستدعى من الشريط العلويّ ومن الرئيسية ومن البريد في الطلب
+   الواحد — كان RPC يُدفع مرّتين لكلّ فتحةٍ للرئيسية (شقيقُه getUnreadSignals
+   مغلَّفٌ أصلاً للسبب نفسه). */
+export const getUnreadShares = cache(async (): Promise<number> => {
   try {
     const supabase = await createClient();
     const { data, error } = await supabase.rpc("unread_shares");
@@ -1190,7 +1202,7 @@ export async function getUnreadShares(): Promise<number> {
   } catch {
     return 0;
   }
-}
+});
 
 /**
  * عدّاد شارة الجرس وحده (**D-125**).
@@ -1342,14 +1354,25 @@ export async function getConversations(): Promise<Conversation[]> {
     }
 
     const shareIds = shareRows.map((s) => s.id);
-    const { data: replyRows } = shareIds.length
-      ? await supabase
-          .from("share_replies")
-          .select("id, share_id, author_id, body, created_at")
-          .in("share_id", shareIds)
-          .order("created_at", { ascending: true })
-          .limit(2000)
-      : { data: [] };
+    /* هويّاتُ الأطراف تُعرف من صفوف المشاركات نفسها لا من الردود — فطلبُ
+       الردود وطلبُ الملفّات مستقلّان ويخرجان معاً: موجتان لا ثلاث. */
+    const ids = new Set<string>();
+    for (const s of shareRows) ids.add(otherOf.get(s.id)!);
+    for (const s of listShareRows) ids.add(s.sender_id === me.id ? s.recipient_id : s.sender_id);
+    const [{ data: replyRows }, { data: people }] = await Promise.all([
+      shareIds.length
+        ? supabase
+            .from("share_replies")
+            .select("id, share_id, author_id, body, created_at")
+            .in("share_id", shareIds)
+            .order("created_at", { ascending: true })
+            .limit(2000)
+        : Promise.resolve({ data: [] }),
+      supabase
+        .from("public_profiles")
+        .select("id, nickname, username, avatar_url, hide_name")
+        .in("id", [...ids]),
+    ]);
     type ReplyRow = {
       id: string;
       share_id: string;
@@ -1358,14 +1381,6 @@ export async function getConversations(): Promise<Conversation[]> {
       created_at: string;
     };
     const replies = (replyRows ?? []) as ReplyRow[];
-
-    const ids = new Set<string>();
-    for (const s of shareRows) ids.add(otherOf.get(s.id)!);
-    for (const s of listShareRows) ids.add(s.sender_id === me.id ? s.recipient_id : s.sender_id);
-    const { data: people } = await supabase
-      .from("public_profiles")
-      .select("id, nickname, username, avatar_url, hide_name")
-      .in("id", [...ids]);
     const byId = new Map((people ?? []).map((p) => [p.id, p as PersonLite]));
 
     const convs = new Map<string, Conversation>();
@@ -1828,13 +1843,15 @@ export interface ChartRow {
  * غائب؟ مصفوفةٌ فارغة** — والمستدعي يسقط إلى مسار D-132 القديم، فلا
  * تنكسر القوائم قبل أن تُشغَّل الهجرة أو تُملأ المسوّدة.
  */
-export async function getImdbChart(
+/* `cache()`: يُطلب من أكثر من رفٍّ في /news بنفس المعاملات — ٢٥٠ صفّاً لا
+   تُنقل مرّتين. (التخبئة بالمعاملات، فاختلافُها لا يخلط النتائج.) */
+export const getImdbChart = cache(async (
   kind: "movie" | "tv" | "anime",
   limit = 250,
   /** جهةٌ داخل الصنف — للأنمي وحده اليوم: صنفُه يحمل أفلاماً ومسلسلاتٍ
       معاً منذ الهجرة ٦٠، ورفّاه منفصلان في الواجهة (D-169). */
   media?: "tv" | "movie",
-): Promise<ChartRow[]> {
+): Promise<ChartRow[]> => {
   try {
     const supabase = await createClient();
     let q = supabase
@@ -1848,7 +1865,7 @@ export async function getImdbChart(
   } catch {
     return [];
   }
-}
+});
 
 export interface SuggestedPerson extends PersonLite {
   /** كم عملاً من بذرتك في مكتبته — صفرٌ يعني «اقتراح احتياطي بلا سبب» */
@@ -2930,10 +2947,11 @@ export async function getPostViewCounts(keys: string[]): Promise<Map<string, num
 }
 
 /** مراجعات عمل معيّن مع أصحابها */
-export async function getTitleReviews(
+/* `cache()`: generateMetadata وصفحةُ المراجعة يطلبانها معاً — ٤ RPC بدل ٢. */
+export const getTitleReviews = cache(async (
   tmdbId: number,
   mediaType: "tv" | "movie",
-): Promise<TitleReview[]> {
+): Promise<TitleReview[]> => {
   try {
     const supabase = await createClient();
     const [{ data, error }, me] = await Promise.all([
@@ -2970,7 +2988,7 @@ export async function getTitleReviews(
   } catch {
     return [];
   }
-}
+});
 
 /** يسجّل زيارة للملف (يتجاهل زيارة صاحبه ويتجاهل التكرار اليومي) */
 export async function recordProfileView(targetId: string): Promise<void> {
@@ -3280,32 +3298,9 @@ export interface LeaderRow {
   score?: number | null;
 }
 
-/**
- * الأعلى تقييماً في مجتمع مشاهد خلال مدة.
- * days = 0 تعني «كل الوقت».
- */
-export async function getTopRated(days = 7): Promise<LeaderRow[]> {
-  try {
-    const supabase = await createClient();
-    const { data, error } = await supabase.rpc("top_rated_period", { days });
-    if (error || !data) return [];
-    return data as LeaderRow[];
-  } catch {
-    return [];
-  }
-}
-
-/** الأكثر مشاهدة في مجتمع مشاهد خلال مدة (متابعات + حلقات مؤشّرة) */
-export async function getMostWatched(days = 7): Promise<LeaderRow[]> {
-  try {
-    const supabase = await createClient();
-    const { data, error } = await supabase.rpc("most_watched_period", { days });
-    if (error || !data) return [];
-    return data as LeaderRow[];
-  } catch {
-    return [];
-  }
-}
+/* 🗑️ سقطت `getTopRated` و`getMostWatched`: نداءان بلا قارئٍ واحدٍ في
+   الشيفرة كلِّها (قاعدةُ D-214) — ودالّتا SQL (`top_rated_period`،
+   `most_watched_period`) باقيتان في القاعدة لمن يعيد البابَ يوماً. */
 
 // ============================================================
 //  سجلّ المشاهدة
@@ -3530,7 +3525,9 @@ export interface PublicList {
   items: ListItem[];
 }
 
-export async function getPublicList(listId: string): Promise<PublicList | null> {
+/* `cache()`: generateMetadata والصفحةُ يجريان في الطلب نفسه، وكلاهما يطلب
+   القائمة — وحمولةُ items كاملةً كانت تُنقل مرّتين. */
+export const getPublicList = cache(async (listId: string): Promise<PublicList | null> => {
   if (!/^[0-9a-f-]{36}$/i.test(listId)) return null;
   try {
     const supabase = await createClient();
@@ -3545,7 +3542,7 @@ export async function getPublicList(listId: string): Promise<PublicList | null> 
   } catch {
     return null;
   }
-}
+});
 
 /** أي قوائمي تحتوي هذا العمل — لتعليم الأزرار في صفحة العمل */
 export async function getListsContaining(
@@ -3897,7 +3894,8 @@ export async function getPublicListsFeed(limit = 15): Promise<PublicListCard[]> 
  * وستّين استعلاماً.** **والغيابُ يعني «لم تُولَّد بعد»** فتُفتح معاينتُها
  * كما كانت — **ولا شاشةَ خطأٍ لبطاقةٍ تعمل** (D-181).
  */
-export async function getCuratedListIds(): Promise<Map<string, string>> {
+/* `cache()`: خريطةٌ عامّةٌ تُطلب من أكثر من رفٍّ في /news في الطلب الواحد. */
+export const getCuratedListIds = cache(async (): Promise<Map<string, string>> => {
   try {
     const supabase = await createClient();
     const { data, error } = await supabase.rpc("curated_list_ids");
@@ -3911,7 +3909,7 @@ export async function getCuratedListIds(): Promise<Map<string, string>> {
   } catch {
     return new Map();
   }
-}
+});
 
 /**
  * 🆕 **كم عملاً في قائمةِ لوبز فعلاً** (الهجرة ١٠٧ — بلاغُ أحمد: بطاقةُ
@@ -3938,7 +3936,8 @@ export async function getCuratedListIds(): Promise<Map<string, string>> {
  *
  * **والغيابُ يعني «ليست منسّقة»** فيبقى الاسمُ المخزَّن (D-063).
  */
-export async function getCuratedSlug(listId: string): Promise<string | null> {
+/* `cache()`: generateMetadata وصفحةُ القائمة يسألانها معاً. */
+export const getCuratedSlug = cache(async (listId: string): Promise<string | null> => {
   try {
     if (!/^[0-9a-f-]{36}$/i.test(listId)) return null;
     const supabase = await createClient();
@@ -3948,7 +3947,7 @@ export async function getCuratedSlug(listId: string): Promise<string | null> {
   } catch {
     return null;
   }
-}
+});
 
 /**
  * 🆕 **رأيي أنا في قوائمَ بمعرّفاتها** (D-352) — لبطاقات لوبز التي تبني
@@ -4481,7 +4480,8 @@ export interface LoopzNewsItem {
  * والقراءةُ بدالّة `definer` لا بسياسةٍ مفتوحة — **فالسياساتُ المفتوحة
  * تبقى أربعاً**. والسقوطُ صامت: قبل تشغيل الهجرة قائمةٌ فارغة، لا خطأ.
  */
-export async function getLoopzNews(limit = 30): Promise<LoopzNewsItem[]> {
+/* `cache()`: getNewsPost وصفحةُ الخبر يسحبان ٣٠٠ صفٍّ مرّتين للطلب الواحد. */
+export const getLoopzNews = cache(async (limit = 30): Promise<LoopzNewsItem[]> => {
   try {
     const supabase = await createClient();
     const { data, error } = await supabase.rpc("loopz_news", { p_limit: limit });
@@ -4490,7 +4490,7 @@ export async function getLoopzNews(limit = 30): Promise<LoopzNewsItem[]> {
   } catch {
     return [];
   }
-}
+});
 
 /** «هل حان الرصدُ التالي؟» — يُسأل في القاعدة لا على ساعة الرسم */
 export async function getNewsGenStale(minutes = 30): Promise<boolean> {
