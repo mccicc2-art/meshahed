@@ -491,7 +491,7 @@ export default async function PublicProfilePage({
             </>
           ) : (
             <Link
-              href="/profile/settings?s=profile"
+              href="/profile/edit"
               className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-3.5 h-9 text-[14px] font-bold transition hover:border-accent/50 active:scale-95"
             >
               <Icon name="edit" size={15} style={{ color: "var(--accent)" }} />
