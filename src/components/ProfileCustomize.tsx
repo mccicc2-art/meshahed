@@ -14,6 +14,9 @@ import {
 import { Alert } from "./ui/Alert";
 import { buttonClass } from "./ui/Button";
 import { CardCountRow, SectionOrderList, ToggleRow } from "./ui/SectionOrderList";
+import { CustomizePreview } from "./CustomizePreview";
+import { segmentedItem, segmentedTrackFull } from "./ui/controls";
+import { DENSITIES, type Density } from "@/lib/density";
 
 /**
  * تخصيص البروفايل (D-129) — **توأم `HomeCustomize` لا نسخته**.
@@ -87,9 +90,25 @@ export function ProfileCustomize({
     });
   }
 
+  const densityLabel: Record<Density, string> = {
+    compact: t.densityCompact,
+    comfortable: t.densityComfortable,
+    large: t.densityLarge,
+  };
+
   return (
     <div className="space-y-4">
       <p className="text-xs text-muted leading-relaxed">{t.custProfileHint}</p>
+
+      <CustomizePreview
+        kind="profile"
+        title={t.custPreview}
+        name={nickname}
+        avatarUrl={avatarUrl}
+        showStats={prefs.stats}
+        rows={prefs.order.map((k) => ({ key: k, ...sectionMeta[k] }))}
+        density={prefs.density}
+      />
 
       <section className="bg-surface border border-border rounded-2xl p-3.5 sm:p-5">
         <h2 className="text-sm font-bold mb-3">{t.custProfileHeader}</h2>
@@ -113,7 +132,13 @@ export function ProfileCustomize({
           all={PROFILE_SECTIONS}
           picked={prefs.order}
           meta={sectionMeta}
-          labels={{ up: t.custMoveUp, down: t.custMoveDown, hide: t.custHide, show: t.custShow }}
+          labels={{
+            up: t.custMoveUp,
+            down: t.custMoveDown,
+            hide: t.custHide,
+            show: t.custShow,
+            drag: t.custReorder,
+          }}
           onChange={(order) => set({ ...prefs, order })}
         />
 
@@ -130,6 +155,24 @@ export function ProfileCustomize({
         >
           {t.custReset}
         </button>
+      </section>
+
+      <section className="bg-surface border border-border rounded-2xl p-3.5 sm:p-5">
+        <h2 className="text-sm font-bold mb-1">{t.custDensity}</h2>
+        <p className="text-xs text-muted leading-relaxed mb-3">{t.custDensityHint}</p>
+        <div className={segmentedTrackFull}>
+          {DENSITIES.map((k) => (
+            <button
+              key={k}
+              type="button"
+              aria-pressed={prefs.density === k}
+              onClick={() => set({ ...prefs, density: k })}
+              className={segmentedItem(prefs.density === k, "flex-1 basis-0 min-w-0")}
+            >
+              {densityLabel[k]}
+            </button>
+          ))}
+        </div>
       </section>
 
       <section className="bg-surface border border-border rounded-2xl p-3.5 sm:p-5">

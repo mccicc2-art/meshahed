@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { claimGesture, releaseGesture, gestureTakenBy } from "@/lib/tabDrag";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 /**
  * **السحبُ للتحديث** (D-243، طلبُ أحمد: «أحتاج إذا سحبت يعمل تحديث مثل
@@ -70,6 +70,21 @@ function shift(px: number, animate: boolean) {
 
 export function PullToRefresh() {
   const router = useRouter();
+  /* ⚖️ 🆕 **ولا سحبَ للتحديث في الرئيسية** (D-440، طلبُ أحمد بلقطةٍ
+     عليها دائرةُ التحميل: «ألغِ تحديث صفحة الهوم لأنه يلخبطني مع
+     compact»).
+
+     **والسببُ عطلٌ صنعتُه أمس**: الوضعُ المضغوط صار صناديقَ تُمرَّر في
+     مكانها (D-439)، **وأعلى الصفحة هو بالضبط حيث تجلس تلك الصناديق** —
+     **فكلُّ سحبةٍ داخل صندوقٍ عند رأسه تُقرأ سحبةَ تحديثٍ للصفحة.**
+     **و`overscroll-contain` يمنع تسلسلَ التمرير ولا يمنع مستمعَ لمسٍ من
+     أن يقرأ الإصبع.**
+
+     **والرئيسيةُ أقلُّ الصفحات حاجةً إليه أصلاً**: بياناتُها تُجدَّد عند
+     كلِّ تأشيرةٍ (`coalescedRefresh`) وعند كلِّ عودةٍ إلى التبويب.
+     **والإيماءةُ باقيةٌ في بقيّة الأسطح** حيث لا صناديقَ داخليّةً في
+     رأس الصفحة. */
+  const pathname = usePathname();
   const [pull, setPull] = useState(0);
   const [busy, setBusy] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -81,9 +96,27 @@ export function PullToRefresh() {
   useEffect(() => {
     /* **لا لمسَ لا مستمع** — انظر الحدّ ٢ */
     if (typeof window === "undefined" || !("ontouchstart" in window)) return;
+    if (pathname === "/") return;
+
+    /* 🆕 **وسحبةٌ تبدأ داخل صندوقٍ يمرَّر ليست سحبةَ صفحة** (D-440):
+       **الحارسُ العامُّ لا يخصّ الرئيسية** — **أيُّ سطحٍ يضع صندوقاً
+       داخليّاً في رأسه يقع في العطل نفسِه** (`overscroll-contain` يمنع
+       التسلسل ولا يمنع القراءة). **والفحصُ صعودٌ في الأجداد حتى `main`**:
+       عنصرٌ يفيض رأسيّاً ويُسمح له بالتمرير هو صاحبُ الإصبع لا الصفحة. */
+    function insideScroller(node: EventTarget | null): boolean {
+      let el = node instanceof Element ? node : null;
+      while (el && el.id !== "main") {
+        const oy = getComputedStyle(el).overflowY;
+        if ((oy === "auto" || oy === "scroll") && el.scrollHeight > el.clientHeight + 2)
+          return true;
+        el = el.parentElement;
+      }
+      return false;
+    }
 
     function onStart(e: TouchEvent) {
       if (window.scrollY > 0 || busyRef.current) return;
+      if (insideScroller(e.target)) return;
       start.current = e.touches[0]?.clientY ?? null;
     }
     function onMove(e: TouchEvent) {
@@ -151,7 +184,7 @@ export function PullToRefresh() {
       shift(0, false);
     };
     /* ⚠️ **ولا `busy` هنا** — انظر العيب الأول */
-  }, [router, startTransition]);
+  }, [router, startTransition, pathname]);
 
   /**
    * **الإفراجُ حدثٌ لا مؤقّت**: ينتهي الجلبُ (`pending` تسقط) فتُحسب

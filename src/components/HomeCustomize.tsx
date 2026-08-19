@@ -21,6 +21,8 @@ import { Alert } from "./ui/Alert";
 import { buttonClass } from "./ui/Button";
 import { CardCountRow, SectionOrderList, ToggleRow } from "./ui/SectionOrderList";
 import { segmentedItem, segmentedTrackFull } from "./ui/controls";
+import { CustomizePreview } from "./CustomizePreview";
+import { DENSITIES, type Density } from "@/lib/density";
 
 /**
  * تخصيص الرئيسية.
@@ -96,6 +98,13 @@ export function HomeCustomize({
     down: t.custMoveDown,
     hide: t.custHide,
     show: t.custShow,
+    drag: t.custReorder,
+  };
+
+  const densityLabel: Record<Density, string> = {
+    compact: t.densityCompact,
+    comfortable: t.densityComfortable,
+    large: t.densityLarge,
   };
 
   function set(next: HomePrefs) {
@@ -123,6 +132,21 @@ export function HomeCustomize({
 
   return (
     <div className="space-y-4">
+      {/* 🆕 **المعاينةُ أوّلَ الشاشة** (D-441): **ما تُغيّره يُرى قبل أن
+          تحفظ**، **وشاشةُ إعداداتٍ تصف أثرَها بالكلمات تجعل الحفظَ
+          تخميناً.** */}
+      <CustomizePreview
+        kind="home"
+        title={t.custPreview}
+        name={nickname}
+        avatarUrl={avatarUrl}
+        greeting={t.greetNeutral + "،"}
+        showStats={prefs.stats}
+        stats={prefs.statsPick.map((k) => ({ key: k, ...statMeta[k] }))}
+        rows={prefs.order.map((k) => ({ key: k, ...sectionMeta[k] }))}
+        density={prefs.density}
+      />
+
       {/* ===== عناصر الترويسة ===== */}
       <section className="bg-surface border border-border rounded-2xl p-3.5 sm:p-5">
         <h2 className="text-sm font-bold mb-1">{t.custHeaderSection}</h2>
@@ -197,6 +221,25 @@ export function HomeCustomize({
         >
           {t.custReset}
         </button>
+      </section>
+
+      {/* ===== الكثافة وحجم الملصق (D-441) ===== */}
+      <section className="bg-surface border border-border rounded-2xl p-3.5 sm:p-5">
+        <h2 className="text-sm font-bold mb-1">{t.custDensity}</h2>
+        <p className="text-xs text-muted leading-relaxed mb-3">{t.custDensityHint}</p>
+        <div className={segmentedTrackFull}>
+          {DENSITIES.map((k) => (
+            <button
+              key={k}
+              type="button"
+              aria-pressed={prefs.density === k}
+              onClick={() => set({ ...prefs, density: k })}
+              className={segmentedItem(prefs.density === k, "flex-1 basis-0 min-w-0")}
+            >
+              {densityLabel[k]}
+            </button>
+          ))}
+        </div>
       </section>
 
       {/* ===== عدد البطاقات (D-152) ===== */}
