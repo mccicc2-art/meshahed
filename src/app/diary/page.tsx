@@ -5,6 +5,7 @@ import { getT } from "@/lib/locale";
 import { localizeFollows } from "@/lib/localize";
 import { posterUrl } from "@/lib/media";
 import { formatDate } from "@/lib/when";
+import { OneTimeHint } from "@/components/OneTimeHint";
 import {
   DiaryList,
   type DiaryDay,
@@ -169,6 +170,7 @@ export default async function DiaryPage() {
         </Link>
       </div>
 
+      <OneTimeHint id="diary-intro" text={t.hintDiary} closeLabel={t.closeLabel} />
       {days.length === 0 ? (
         <p className="text-center text-muted py-20 text-sm">{t.diaryEmpty}</p>
       ) : (
