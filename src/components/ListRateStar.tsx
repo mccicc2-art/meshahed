@@ -66,7 +66,7 @@ export function ListRateStar({
           tap(8);
           setOpen(true);
         }}
-        className={`shrink-0 flex items-center gap-1 h-8 -mt-0.5 rounded-full px-1 text-[12px] font-bold tabular-nums transition active:scale-90 ${
+        className={`shrink-0 flex items-center gap-1 h-8 -mt-0.5 rounded-full px-1 text-12 font-bold tabular-nums transition active:scale-90 ${
           mine ? "text-accent" : "text-muted hover:text-accent"
         }`}
         dir="ltr"

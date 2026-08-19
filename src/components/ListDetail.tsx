@@ -247,7 +247,7 @@ export function ListDetail({
         setSheet("add");
       }}
       aria-haspopup="dialog"
-      className="shrink-0 inline-flex items-center gap-1.5 rounded-full border border-accent bg-accent px-3 py-1.5 text-[14px] font-semibold text-[color:var(--on-accent)] hover:brightness-110 active:scale-95 transition"
+      className="shrink-0 inline-flex items-center gap-1.5 rounded-full border border-accent bg-accent px-3 py-1.5 text-14 font-semibold text-[color:var(--on-accent)] hover:brightness-110 active:scale-95 transition"
     >
       <Icon name="plus" size={14} strokeWidth={2.2} />
       {t.listAddTitles}
@@ -275,7 +275,7 @@ export function ListDetail({
       {/* الترويسة: الاسم يملأ السطر وزرّ الخيارات وحده على الطرف — كان
           القلم يزاحم الاسم على شاشةٍ ضيّقة فيقصّه بلا داعٍ */}
       <div className="flex items-start gap-3 mb-1.5">
-        <h1 className="flex-1 min-w-0 text-[22px] leading-tight font-bold break-words">{name}</h1>
+        <h1 className="flex-1 min-w-0 text-22 leading-tight font-bold break-words">{name}</h1>
         {/* «أضِفها إلى قوائمي» مكانَ نقاط المالك: مرجعٌ حيٌّ إلى قائمة
             صاحبها — تعديلاتُه تنعكس عندك لأنها القائمة نفسها (D-068) */}
         {canSave && (
@@ -283,7 +283,7 @@ export function ListDetail({
             type="button"
             onClick={toggleSave}
             aria-pressed={saved}
-            className={`shrink-0 flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[14px] font-semibold transition active:scale-95 ${
+            className={`shrink-0 flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-14 font-semibold transition active:scale-95 ${
               saved
                 ? "border-accent/50 bg-accent/10 text-accent"
                 : "border-accent bg-accent text-[color:var(--on-accent)] hover:brightness-110"
@@ -363,7 +363,7 @@ export function ListDetail({
       {/* الوصف امتدادٌ للاسم لا منافسٌ له: نصف وزنه ولونٌ خافت وسطران على
           الأكثر ثم قصّ. وحين لا وصف لا يبقى فراغه — لا هامش ولا عنصر أصلاً */}
       {subtitle && (
-        <p className="mt-2 text-[14px] font-normal leading-snug text-muted line-clamp-2 max-w-[46ch]">
+        <p className="mt-2 text-14 font-normal leading-snug text-muted line-clamp-2 max-w-[46ch]">
           {subtitle}
         </p>
       )}
@@ -385,12 +385,12 @@ export function ListDetail({
           {owner.username ? (
             <Link
               href={`/u/${owner.username}`}
-              className="text-[12px] text-muted hover:text-foreground transition min-w-0 truncate"
+              className="text-12 text-muted hover:text-foreground transition min-w-0 truncate"
             >
               {owner.nickname || `@${owner.username}`}
             </Link>
           ) : (
-            <span className="text-[12px] text-muted min-w-0 truncate">{owner.nickname}</span>
+            <span className="text-12 text-muted min-w-0 truncate">{owner.nickname}</span>
           )}
         </div>
       )}
@@ -398,7 +398,7 @@ export function ListDetail({
       <div className="flex items-center flex-wrap gap-2 mt-3.5 mb-5">
         <span className="text-xs text-muted">{t.listCount(visible.length)}</span>
         {numbered && (
-          <span className="text-[12px] px-2 py-0.5 rounded-full border border-accent/40 text-accent">
+          <span className="text-12 px-2 py-0.5 rounded-full border border-accent/40 text-accent">
             {kind === "ranked" ? t.listTypeRanked : t.listTypeWatch}
           </span>
         )}
@@ -409,7 +409,7 @@ export function ListDetail({
             **ورقمٌ صفرٌ لا يُطبع** (D-219): تبويبُ التقييمات نفسُه هو
             الدعوة. */}
         {reviews && reviews.count > 0 && (
-          <span className="text-[12px] px-2 py-0.5 rounded-full border border-border inline-flex items-center gap-1 tabular-nums">
+          <span className="text-12 px-2 py-0.5 rounded-full border border-border inline-flex items-center gap-1 tabular-nums">
             <Icon name="star" size={11} className="text-accent" />
             {reviews.avg !== null && <span dir="ltr">{num(reviews.avg, locale)}</span>}
             <span className="text-muted">{t.listReviewCount(num(reviews.count, locale))}</span>
@@ -429,7 +429,7 @@ export function ListDetail({
               })
             }
             disabled={pending}
-            className={`text-[12px] px-2 py-0.5 rounded-full border transition disabled:opacity-50 ${
+            className={`text-12 px-2 py-0.5 rounded-full border transition disabled:opacity-50 ${
               isPublic
                 ? "border-accent/50 bg-accent/10 text-accent"
                 : "border-border text-muted hover:border-accent/50"
@@ -439,7 +439,7 @@ export function ListDetail({
             {isPublic ? t.listPublic : t.listPrivate}
           </button>
         ) : (
-          <span className="text-[12px] px-2 py-0.5 rounded-full border border-border text-muted">
+          <span className="text-12 px-2 py-0.5 rounded-full border border-border text-muted">
             {t.listOwnerOther}
           </span>
         )}
@@ -627,7 +627,7 @@ export function ListDetail({
               />
               <span className="min-w-0 flex-1">
                 <span className="block text-sm font-semibold">{o.label}</span>
-                <span className="block text-[12px] text-muted mt-0.5 leading-snug">{o.hint}</span>
+                <span className="block text-12 text-muted mt-0.5 leading-snug">{o.hint}</span>
               </span>
               {kind === o.id && (
                 <Icon name="check" size={18} className="shrink-0 text-accent" strokeWidth={2.4} />
@@ -666,10 +666,10 @@ export function ListDetail({
           labelledBy="list-del-title"
         >
           <div className="p-5">
-            <h3 id="list-del-title" className="text-[15px] font-bold mb-1.5">
+            <h3 id="list-del-title" className="text-15 font-bold mb-1.5">
               {t.listDeleteThis}
             </h3>
-            <p className="text-[12px] text-muted leading-relaxed mb-5">{t.listDeleteBody}</p>
+            <p className="text-12 text-muted leading-relaxed mb-5">{t.listDeleteBody}</p>
             <div className="flex gap-2">
               <button
                 type="button"
@@ -735,7 +735,7 @@ function MenuRow({
       <span className={`flex-1 min-w-0 truncate ${danger ? "text-[color:var(--error)]" : ""}`}>
         {label}
       </span>
-      {value && <span className="shrink-0 text-[12px] font-normal text-muted">{value}</span>}
+      {value && <span className="shrink-0 text-12 font-normal text-muted">{value}</span>}
     </button>
   );
 }
@@ -793,7 +793,7 @@ function RenameSheet({
         {/* ١٦ بكسل لا أصغر في كل حقل: سفاري iOS يكبّر الصفحة عند التركيز
             على أي حقلٍ أصغر ولا يتراجع عن التكبير (D-033) */}
         <label className="block">
-          <span className="block text-[12px] font-semibold text-muted mb-1.5">{t.listNameLabel}</span>
+          <span className="block text-12 font-semibold text-muted mb-1.5">{t.listNameLabel}</span>
           <input
             autoFocus
             value={draft}
@@ -807,7 +807,7 @@ function RenameSheet({
         </label>
 
         <label className="block">
-          <span className="block text-[12px] font-semibold text-muted mb-1.5">
+          <span className="block text-12 font-semibold text-muted mb-1.5">
             {t.listSubtitleLabel}
           </span>
           {/* سطرٌ واحد لا منطقة نصّ: السقف ١٢٠ حرفاً وجملةٌ واحدة، ومنطقة
@@ -822,7 +822,7 @@ function RenameSheet({
             }}
             className={field}
           />
-          <span className="block text-[12px] text-muted/70 mt-1 tabular-nums" dir="ltr">
+          <span className="block text-12 text-muted/70 mt-1 tabular-nums" dir="ltr">
             {sub.length}/120
           </span>
         </label>
@@ -973,7 +973,7 @@ function ReorderSheet({
           </button>
         }
       >
-        <p className="text-[12px] text-muted mt-0.5">{t.listReorderHint}</p>
+        <p className="text-12 text-muted mt-0.5">{t.listReorderHint}</p>
       </SheetHeader>
 
       {/* `min-h-0` ليست زينة: ابنُ الفليكس لا ينكمش تحت ارتفاع محتواه بلا
@@ -1009,10 +1009,10 @@ function ReorderSheet({
                 </span>
 
                 <span className="min-w-0 flex-1">
-                  <span className="block text-[14px] font-semibold leading-tight line-clamp-2">
+                  <span className="block text-14 font-semibold leading-tight line-clamp-2">
                     {it.title ?? `#${it.tmdb_id}`}
                   </span>
-                  <span className="block text-[12px] text-muted tabular-nums mt-0.5" dir="ltr">
+                  <span className="block text-12 text-muted tabular-nums mt-0.5" dir="ltr">
                     {i + 1}
                   </span>
                 </span>
@@ -1134,7 +1134,7 @@ function PosterTile({
             </>
           )}
         </div>
-        <p className="mt-1.5 text-[12px] leading-tight line-clamp-2">
+        <p className="mt-1.5 text-12 leading-tight line-clamp-2">
           {item.title ?? `#${item.tmdb_id}`}
         </p>
       </Link>

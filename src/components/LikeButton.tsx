@@ -101,7 +101,7 @@ export function LikeButton({
        تُحذف من الصفّ** (D-138/D-142) */
     if (count === 0) return null;
     return (
-      <span className="flex items-center gap-1.5 text-[12px] text-muted" title={t.likesLabel}>
+      <span className="flex items-center gap-1.5 text-12 text-muted" title={t.likesLabel}>
         <Icon name="heart" size={16} />
         <span className="tabular-nums">{count}</span>
       </span>
@@ -143,7 +143,7 @@ export function LikeButton({
       aria-pressed={liked}
       aria-label={t.likesLabel}
       title={t.likesLabel}
-      className={`flex items-center gap-1.5 rounded-full -mx-2 px-2 py-1.5 text-[12px] transition ${
+      className={`flex items-center gap-1.5 rounded-full -mx-2 px-2 py-1.5 text-12 transition ${
         liked ? "text-accent" : "text-muted hover:text-foreground"
       }`}
     >

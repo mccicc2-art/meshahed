@@ -116,7 +116,7 @@ export function ListCoverSheet({
                   tap(6);
                   setPick(null);
                 }}
-                className="inline-flex items-center gap-2 rounded-full border border-border px-3.5 py-2 text-[12px] font-semibold text-muted hover:text-foreground transition"
+                className="inline-flex items-center gap-2 rounded-full border border-border px-3.5 py-2 text-12 font-semibold text-muted hover:text-foreground transition"
               >
                 <Icon
                   name="chevron-down"
@@ -134,7 +134,7 @@ export function ListCoverSheet({
                   tap(8);
                   save(null, null);
                 }}
-                className="inline-flex items-center gap-2 rounded-full border border-border px-3.5 py-2 text-[12px] font-semibold text-muted hover:text-foreground transition disabled:opacity-50"
+                className="inline-flex items-center gap-2 rounded-full border border-border px-3.5 py-2 text-12 font-semibold text-muted hover:text-foreground transition disabled:opacity-50"
               >
                 <Icon name="repeat" size={14} />
                 {t.artUseDefault}

@@ -124,11 +124,11 @@ export function ListReviews({
     <section className="space-y-4">
       <div className="flex items-center gap-2">
         <Icon name="star" size={18} className="text-accent shrink-0" />
-        <h2 className="text-[15px] font-bold">{t.listReviewsTitle}</h2>
+        <h2 className="text-15 font-bold">{t.listReviewsTitle}</h2>
         {/* **الرقمُ يجاور صاحبَه، والمقامُ معه** (D-216/D-219) — ولا يُرسم
             متوسّطٌ بلا رأيٍ واحد: **صفرٌ يُقرأ حكماً لا فراغاً.** */}
         {stats.count > 0 && stats.avg !== null && (
-          <span className="ms-auto flex items-center gap-1.5 text-[12px] font-bold tabular-nums">
+          <span className="ms-auto flex items-center gap-1.5 text-12 font-bold tabular-nums">
             <span dir="ltr">★ {num(stats.avg, locale)}</span>
             <span className="text-muted font-medium">
               {t.listReviewCount(num(stats.count, locale))}
@@ -138,7 +138,7 @@ export function ListReviews({
       </div>
 
       {isOwner ? (
-        <p className="text-[12px] text-muted">{t.listReviewOwn}</p>
+        <p className="text-12 text-muted">{t.listReviewOwn}</p>
       ) : canReview ? (
         /* 🔧 **الصندوقُ خرج مكوّناً عند قارئه الثاني** (D-352):
             النجمةُ على بطاقة القائمة تفتحه ورقةً، **ونسخُه كان سيعني
@@ -163,15 +163,15 @@ export function ListReviews({
               <div className="flex items-center gap-2">
                 <Avatar src={r.avatarUrl} name={r.nickname ?? r.username ?? ""} size={28} />
                 {/* **ومخفي الاسم بلا بديل** — الغيابُ أصدق (D-011) */}
-                <span className="text-[14px] font-semibold truncate">
+                <span className="text-14 font-semibold truncate">
                   {r.hideName ? "" : (r.nickname ?? r.username ?? "")}
                 </span>
-                <span className="ms-auto text-[14px] font-bold tabular-nums" dir="ltr">
+                <span className="ms-auto text-14 font-bold tabular-nums" dir="ltr">
                   ★ {num(r.rating, locale)}
                 </span>
               </div>
               {r.body && (
-                <div className="mt-2 text-[15px] leading-relaxed">
+                <div className="fs-content mt-2 text-15 leading-relaxed">
                   {r.hasSpoiler ? (
                     <SpoilerText text={r.body} locale={locale} note={t.listReviewSpoilerNote} />
                   ) : (
@@ -205,7 +205,7 @@ export function ListReviews({
                     tap(8);
                     setOpenThread(open ? null : r.userId);
                   }}
-                  className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[12px] tabular-nums transition ${
+                  className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-12 tabular-nums transition ${
                     open ? "text-accent" : "text-muted hover:text-accent"
                   }`}
                 >
@@ -222,7 +222,7 @@ export function ListReviews({
                     type="button"
                     disabled={reported.has(r.userId)}
                     onClick={() => report(r.userId)}
-                    className="ms-auto text-[12px] text-muted hover:text-foreground disabled:opacity-50"
+                    className="ms-auto text-12 text-muted hover:text-foreground disabled:opacity-50"
                   >
                     {reported.has(r.userId) ? t.listReviewReported : t.listReviewReport}
                   </button>
