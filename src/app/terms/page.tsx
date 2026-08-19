@@ -101,7 +101,7 @@ export default async function TermsPage() {
           </a>
         </p>
 
-        <p className="text-[13px] pt-4 border-t border-[color:var(--divider)]">
+        <p className="text-[12px] pt-4 border-t border-[color:var(--divider)]">
           <Link href="/privacy" className="text-muted hover:text-foreground transition">
             {ar ? "سياسة الخصوصية ←" : "Privacy Policy →"}
           </Link>
@@ -115,7 +115,7 @@ export default async function TermsPage() {
 function Block({ title, body }: { title: string; body: string }) {
   return (
     <section>
-      <h2 className="text-base font-bold mb-1.5">{title}</h2>
+      <h2 className="text-[20px] font-bold mb-1.5">{title}</h2>
       <p className="text-muted">{body}</p>
     </section>
   );
