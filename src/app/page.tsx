@@ -21,6 +21,7 @@ import {
   getMyLists,
   getFriendsWatching,
   getUnreadSignals,
+  getUnreadShares,
 } from "@/lib/data";
 import {
   getTv,
@@ -126,6 +127,7 @@ export default async function HomePage() {
     movieProgress,
     myRatings,
     unreadSignals,
+    unreadMessages,
   ] = await Promise.all([
     getFollows(),
     getWatchSummary(),
@@ -140,6 +142,10 @@ export default async function HomePage() {
        وحدَه، **وهو محسوبٌ أصلاً للشريط العلويّ** فصار `cache()`
        يجعلهما نداءً واحداً. */
     getUnreadSignals(),
+    /* 🆕 **وعدُّ الرسائل معه** (D-463): الظرفُ في ترويسة الرئيسية صار
+       بابَ البريد كلِّه بعد سقوط الجرس — **وشارتُه مجموعُ العدّين**،
+       **وكلاهما `cache()` محسوبٌ أصلاً للشريط العلويّ.** */
+    getUnreadShares(),
   ]);
 
   // مستخدم بلا مكتبة يذهب لشاشة الانضمام — قبل أي رسمٍ أو جلبٍ آخر
@@ -362,7 +368,7 @@ export default async function HomePage() {
         displayName={displayName}
         avatarUrl={profile?.avatar_url ?? null}
         avatarPos={profile?.avatar_pos ?? null}
-        unread={unreadSignals}
+        unread={unreadSignals + unreadMessages}
         myUsername={profile?.username ?? null}
         stats={headerStats}
         showStats={prefs.stats}
@@ -1303,7 +1309,12 @@ async function HomeBody({
           lists:
             myListCards.length > 0 ? (
               <div key="lists">
-                <PublicListsRail lists={myListCards} locale={locale} title={t.myLists} />
+                <PublicListsRail
+                  lists={myListCards}
+                  locale={locale}
+                  title={t.myLists}
+                  stickyHead
+                />
               </div>
             ) : null,
           /* 🆕 **صفُّ «أعمالُ أصدقائك الآن» + شارةُ «جديد»** (البند ٧).
@@ -1320,6 +1331,7 @@ async function HomeBody({
                 icon="people"
                 href="/people"
                 seeAllLabel={t.seeAll}
+                stickyHead
                 action={
                   <RailNewBadge
                     id="friends"
@@ -1496,6 +1508,8 @@ function Section({
       seeAllLabel={seeAll}
       /* المختصر بلا مجالِ تمرير: **قائمةٌ تُقرأ لا صفٌّ يُسحب** */
       bare={view === "compact" || solo}
+      /* 🆕 **رأسُ القسم يقف تحت الترويسة** (D-464) — والملصقُ يمرّ تحته */
+      stickyHead
     >
       {/* 🆕 **وصفٌّ ببطاقةٍ واحدة ليس صفّاً** (D-440، طلبُ أحمد بدائرةٍ
           حمراء حول بطاقة «أكمل المشاهدة»: «كبّر بوستر أكمل المشاهدة»).
