@@ -4,6 +4,7 @@ import { getT } from "@/lib/locale";
 import { SettingsPageLayout } from "@/components/settings/SettingsPageLayout";
 import { SettingsGroup } from "@/components/settings/SettingsGroup";
 import { SettingsRow } from "@/components/settings/SettingsRow";
+import { HelpTourRows } from "@/components/settings/HelpTourRows";
 
 /**
  * المساعدةُ والملاحظات — **بابٌ واحدٌ لأنه الباب الوحيد الموجود**
@@ -17,10 +18,17 @@ import { SettingsRow } from "@/components/settings/SettingsRow";
 export default async function Page() {
   const user = await getUser();
   if (!user) redirect("/login");
-  const { t } = await getT();
+  const { locale, t } = await getT();
 
   return (
     <SettingsPageLayout title={t.setHelp}>
+      {/* التعرّف على التطبيق — الجولة تُعاد من هنا في أي وقت (شرطها)،
+          والتلميحاتُ المطفأة تُعاد من جارتها. سطحان لا سطح: الجولة
+          رحلةٌ عبر الصفحات، والتلميح سطرٌ في صفحته. */}
+      <SettingsGroup label={t.helpLearnGroup}>
+        <HelpTourRows locale={locale} />
+      </SettingsGroup>
+
       <SettingsGroup>
         <SettingsRow
           href="mailto:alharbiahmed3bd@gmail.com"
