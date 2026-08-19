@@ -60,11 +60,11 @@ export default async function SettingsPage() {
             posY={profile?.avatar_pos ?? 50}
           />
           <span className="min-w-0 flex-1">
-            <span className="block text-[15px] font-bold truncate" dir="auto">
+            <span className="block text-15 font-bold truncate" dir="auto">
               {displayName}
             </span>
             {username && (
-              <span className="block text-[12px] font-medium text-muted truncate" dir="ltr">
+              <span className="block text-12 font-medium text-muted truncate" dir="ltr">
                 @{username}
               </span>
             )}
@@ -73,7 +73,7 @@ export default async function SettingsPage() {
               هذا يفتح التحرير، والسهمُ يفتح ما يراه الناس. */}
           <Link
             href="/profile/edit"
-            className="shrink-0 rounded-2xl border border-border px-3.5 h-9 inline-flex items-center text-[12px] font-semibold hover:border-accent/50 active:scale-95 transition"
+            className="shrink-0 rounded-2xl border border-border px-3.5 h-9 inline-flex items-center text-12 font-semibold hover:border-accent/50 active:scale-95 transition"
           >
             {t.setEditProfile}
           </Link>
@@ -99,14 +99,14 @@ export default async function SettingsPage() {
           <Icon name="sparkle-star" size={22} style={{ color: "var(--accent)" }} />
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block text-[15px] font-bold truncate">{t.setPlanFree}</span>
-          <span className="block text-[12px] font-medium text-muted truncate">
+          <span className="block text-15 font-bold truncate">{t.setPlanFree}</span>
+          <span className="block text-12 font-medium text-muted truncate">
             {t.setPlanFreeSub}
           </span>
         </span>
         <Link
           href="/features"
-          className="shrink-0 rounded-2xl border border-accent text-accent px-3.5 h-9 inline-flex items-center text-[12px] font-semibold hover:bg-accent/10 active:scale-95 transition"
+          className="shrink-0 rounded-2xl border border-accent text-accent px-3.5 h-9 inline-flex items-center text-12 font-semibold hover:bg-accent/10 active:scale-95 transition"
         >
           {t.setViewPlans}
         </Link>
