@@ -249,7 +249,7 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
                 فراغٍ قائمٍ خيرٌ من سطرٍ يُضاف.** */}
             <div className="flex items-start gap-3">
               <h1
-                className="text-[22px] sm:text-3xl font-bold leading-tight tracking-tight"
+                className="text-22 sm:text-3xl font-bold leading-tight tracking-tight"
                 style={{
                   filter:
                     "drop-shadow(0 2px 10px color-mix(in srgb, var(--background) 70%, transparent))",
@@ -264,7 +264,7 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs sm:text-sm text-muted mt-1.5">
               {/* وسم الأنمي: يعرفه المستخدم من الشارة لا من قراءة الأنواع */}
               {isAnime(tv) && (
-                <span className="inline-flex items-center gap-1 text-[12px] font-bold text-accent bg-accent/12 border border-accent/35 px-2 py-0.5 rounded-full">
+                <span className="inline-flex items-center gap-1 text-12 font-bold text-accent bg-accent/12 border border-accent/35 px-2 py-0.5 rounded-full">
                   <Icon name="sparkle-star" size={12} />
                   {t.animeBadge}
                 </span>
@@ -315,7 +315,7 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
                 {tv.genres.slice(0, 4).map((g) => (
                   <span
                     key={g.id}
-                    className="text-[12px] font-medium bg-surface-2 border border-border px-2.5 py-1 rounded-full"
+                    className="text-12 font-medium bg-surface-2 border border-border px-2.5 py-1 rounded-full"
                   >
                     {g.name}
                   </span>
@@ -326,7 +326,7 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
             {(next?.air_date || watchWhere) && (
               <div className="mt-2.5 flex flex-wrap items-center gap-2">
                 {next && next.air_date && (
-                  <span className="inline-block text-[12px] text-accent-2 bg-accent-2/10 border border-accent-2/30 px-2.5 py-1 rounded-lg">
+                  <span className="inline-block text-12 text-accent-2 bg-accent-2/10 border border-accent-2/30 px-2.5 py-1 rounded-lg">
                     {t.nextEpisodeOn(formatDate(next.air_date, t))}
                   </span>
                 )}
