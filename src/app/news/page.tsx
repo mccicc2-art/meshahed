@@ -872,7 +872,7 @@ async function CuratedCard({
           ) : (
             (stats?.rating ?? null) !== null && (
               <span
-                className="shrink-0 flex items-center gap-1 px-1 text-[12px] font-bold text-accent tabular-nums"
+                className="shrink-0 flex items-center gap-1 px-1 text-12 font-bold text-accent tabular-nums"
                 dir="ltr"
               >
                 <Icon name="star" size={16} />
@@ -893,7 +893,7 @@ async function CuratedCard({
           ) : (
             (stats?.saves ?? 0) > 0 && (
               <span
-                className="shrink-0 flex items-center gap-1 px-1 text-[12px] text-muted tabular-nums"
+                className="shrink-0 flex items-center gap-1 px-1 text-12 text-muted tabular-nums"
                 dir="ltr"
               >
                 <Icon name="heart-filled" size={16} className="fill-current" />
