@@ -12,7 +12,7 @@ export const maxDuration = 300;
 /** عودة Trakt — يجلب المكتبة ويكتبها ثم يعيد المستخدم بملخّصٍ في الرابط */
 export async function GET(request: Request) {
   const url = new URL(request.url);
-  const back = (q: string) => NextResponse.redirect(new URL(`/profile/settings?s=import&${q}`, request.url));
+  const back = (q: string) => NextResponse.redirect(new URL(`/profile/settings/import?${q}`, request.url));
 
   const user = await getUser();
   if (!user) return NextResponse.redirect(new URL("/login", request.url));
