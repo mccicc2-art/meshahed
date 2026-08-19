@@ -1262,6 +1262,15 @@ const ar = {
 
   /* تبويباتُ الملفّ العامّ وأقسامُه (D-438) — والمراجعاتُ والنشاطُ
      يستعيران مفاتيحَ المجتمع نفسَها فلا كلمةَ ثانيةٌ لمعنًى واحد */
+  /* المرحلة ٤ — التخصيص الموحَّد (D-441) */
+  custReorder: "اسحب لإعادة الترتيب",
+  custPreview: "معاينة حيّة",
+  custDensity: "الكثافة وحجم الملصق",
+  custDensityHint: "يحدّد عرض الملصقات في صفوف الرئيسية وملفّك.",
+  densityCompact: "مضغوط",
+  densityComfortable: "مريح",
+  densityLarge: "كبير",
+
   profileTabOverview: "نظرة عامة",
   profileTabLists: "القوائم",
   profileRecent: "النشاط الأخير",
@@ -2558,6 +2567,14 @@ const en: Dict = {
   cardsMedium: "Medium",
   cardsFull: "Full",
   profileFavoritesRail: "My favourites",
+
+  custReorder: "Drag to reorder",
+  custPreview: "Live preview",
+  custDensity: "Density & poster size",
+  custDensityHint: "Sets how wide posters are in your home and profile rows.",
+  densityCompact: "Compact",
+  densityComfortable: "Comfortable",
+  densityLarge: "Large",
 
   profileTabOverview: "Overview",
   profileTabLists: "Lists",

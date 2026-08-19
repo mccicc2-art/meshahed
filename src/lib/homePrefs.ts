@@ -1,6 +1,7 @@
 // تفضيلات الصفحة الرئيسية — ماذا يظهر وبأي ترتيب
 
 import { sanitizeCardCount, type CardCount } from "./cardCount";
+import { sanitizeDensity, type Density } from "./density";
 
 /** أقسام الرئيسية القابلة للترتيب */
 export const HOME_SECTIONS = [
@@ -68,6 +69,8 @@ export interface HomePrefs {
   cards: CardCount;
   /** وضعُ العرض — بصريٌّ (ملصقات) أو مضغوط (صفوف) */
   view: HomeView;
+  /** عرضُ الملصق — مضغوط/مريح/كبير (D-441) */
+  density: Density;
 }
 
 export const DEFAULT_HOME_PREFS: HomePrefs = {
@@ -81,6 +84,7 @@ export const DEFAULT_HOME_PREFS: HomePrefs = {
   statsPick: ["shows", "movies", "towatch", "time"],
   cards: "full",
   view: "visual",
+  density: "comfortable",
 };
 
 /**
@@ -136,5 +140,6 @@ export function sanitizeHomePrefs(raw: unknown): HomePrefs {
       typeof o.view === "string" && (HOME_VIEWS as readonly string[]).includes(o.view)
         ? (o.view as HomeView)
         : d.view,
+    density: sanitizeDensity(o.density),
   };
 }

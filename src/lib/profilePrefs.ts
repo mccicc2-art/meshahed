@@ -1,6 +1,7 @@
 // تفضيلات البروفايل — ماذا يرى زائرُ صفحتك وبأي ترتيب (D-129)
 
 import { sanitizeCardCount, type CardCount } from "./cardCount";
+import { sanitizeDensity, type Density } from "./density";
 import type { Dict } from "./i18n";
 import type { IconName } from "@/components/Icon";
 
@@ -62,6 +63,8 @@ export interface ProfilePrefs {
   visits: boolean;
   /** ترتيب الأقسام، والغائب عن القائمة مخفيّ */
   order: ProfileSection[];
+  /** عرضُ الملصق — مضغوط/مريح/كبير (D-441) */
+  density: Density;
   /** سقفُ بطاقات الصفّ — يقصّ ولا يمدّ (D-152) */
   cards: CardCount;
 }
@@ -72,6 +75,7 @@ export const DEFAULT_PROFILE_PREFS: ProfilePrefs = {
   visits: true,
   // ما تعرضه الصفحة اليوم حرفياً — فمن لم يخصّص لا يرى شيئاً تغيّر
   order: ["shows", "movies", "lists", "ratings"],
+  density: "comfortable",
   cards: "full",
 };
 
@@ -108,5 +112,6 @@ export function sanitizeProfilePrefs(raw: unknown): ProfilePrefs {
     visits: bool("visits"),
     order,
     cards: sanitizeCardCount(o.cards),
+    density: sanitizeDensity(o.density),
   };
 }
