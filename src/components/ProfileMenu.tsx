@@ -7,7 +7,11 @@ import { Sheet } from "./ui/Sheet";
 import { Dropdown, dropdownItem, dropdownDivider } from "./ui/Dropdown";
 import { buttonClass } from "./ui/Button";
 import { sheetMenuItem, sheetMenuDivider } from "./ui/controls";
-import { StartConversationSheet } from "./StartConversationSheet";
+import dynamic from "next/dynamic";
+/* الورقةُ تُحمَّل عند أوّل فتحٍ لا مع الصفحة (نمطُ TitleSearchSheet في
+   الشريط السفليّ): لا تُرسم إلا بضغطةٍ، فشحنُها مع أوّل رسمةٍ ثمنٌ بلا
+   قارئ — و`ssr: false` لأن لا HTML لها قبل الضغطة. */
+const StartConversationSheet = dynamic(() => import("./StartConversationSheet").then((m) => m.StartConversationSheet), { ssr: false });
 import { BlockConfirmSheet } from "./BlockConfirmSheet";
 import { reportUser, requestOrFollowUser, unfollowUser } from "@/lib/actions";
 import { toast, flashError } from "@/lib/toast";

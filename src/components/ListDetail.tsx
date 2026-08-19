@@ -15,8 +15,15 @@ import { Sheet, SheetHeader } from "./ui/Sheet";
 import { DetailTabs } from "./DetailTabs";
 import { buttonClass } from "./ui/Button";
 import { sheetScroll } from "./ui/controls";
-import { ShareListSheet } from "./ShareListSheet";
-import { ListCoverSheet } from "./ListCoverSheet";
+import dynamic from "next/dynamic";
+/* الورقةُ تُحمَّل عند أوّل فتحٍ لا مع الصفحة (نمطُ TitleSearchSheet في
+   الشريط السفليّ): لا تُرسم إلا بضغطةٍ، فشحنُها مع أوّل رسمةٍ ثمنٌ بلا
+   قارئ — و`ssr: false` لأن لا HTML لها قبل الضغطة. */
+const ShareListSheet = dynamic(() => import("./ShareListSheet").then((m) => m.ShareListSheet), { ssr: false });
+/* الورقةُ تُحمَّل عند أوّل فتحٍ لا مع الصفحة (نمطُ TitleSearchSheet في
+   الشريط السفليّ): لا تُرسم إلا بضغطةٍ، فشحنُها مع أوّل رسمةٍ ثمنٌ بلا
+   قارئ — و`ssr: false` لأن لا HTML لها قبل الضغطة. */
+const ListCoverSheet = dynamic(() => import("./ListCoverSheet").then((m) => m.ListCoverSheet), { ssr: false });
 import { TitleSearchSheet, type PickedTitle } from "./TitleSearchSheet";
 
 type Dict = ReturnType<typeof getDict>;

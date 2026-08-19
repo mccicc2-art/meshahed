@@ -11,7 +11,12 @@ import { IMG } from "@/lib/media";
 import { Icon } from "./Icon";
 import { ImdbMark } from "./RatingMarks";
 import { Alert } from "./ui/Alert";
-import { EpisodeRateSheet, type EpisodeTarget } from "./EpisodeRateSheet";
+import dynamic from "next/dynamic";
+import type { EpisodeTarget } from "./EpisodeRateSheet";
+/* الورقةُ تُحمَّل عند أوّل فتحٍ لا مع الصفحة (نمطُ TitleSearchSheet في
+   الشريط السفليّ): لا تُرسم إلا بضغطةٍ، فشحنُها مع أوّل رسمةٍ ثمنٌ بلا
+   قارئ — و`ssr: false` لأن لا HTML لها قبل الضغطة. */
+const EpisodeRateSheet = dynamic(() => import("./EpisodeRateSheet").then((m) => m.EpisodeRateSheet), { ssr: false });
 import type { EpisodeRatingRow } from "@/lib/data";
 
 export interface TrackerEpisode {
@@ -89,6 +94,13 @@ export function EpisodeTracker({
       ),
   );
   const [rateTarget, setRateTarget] = useState<EpisodeTarget | null>(null);
+  /* ورقةُ التقييم لا تُركَّب قبل أوّل طلبٍ لها — فلا تُجلب كتلتُها مع
+     الصفحة. وبعد أوّل فتحٍ تبقى مركَّبةً حتى لا تُقصّ حركةُ إغلاقها
+     (البابُ الداخليُّ `open={!!target}` هو من يفتح ويغلق). */
+  const [rateSheetMounted, setRateSheetMounted] = useState(false);
+  /* تثبيتُ حالةٍ أثناء الرسم — النمطُ الموثَّق لاشتقاق حالةٍ من أخرى
+     (لا `useEffect`، فذلك المنهيُّ عنه في D-434). */
+  if (rateTarget !== null && !rateSheetMounted) setRateSheetMounted(true);
   const [, start] = useTransition();
 
   // وصلت لقطة خادمٍ جديدة (مثلاً بعد «شفته كله» من الترويسة)؟ تُعتمد هي —
@@ -671,6 +683,7 @@ export function EpisodeTracker({
         })}
       </div>
 
+      {(rateTarget !== null || rateSheetMounted) && (
       <EpisodeRateSheet
         showTmdbId={showTmdbId}
         target={rateTarget}
@@ -691,6 +704,7 @@ export function EpisodeTracker({
           }
         }}
       />
+      )}
     </div>
   );
 }

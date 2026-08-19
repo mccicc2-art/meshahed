@@ -31,7 +31,12 @@ import { tap } from "@/lib/haptics";
 import { Icon } from "./Icon";
 import { FilterIconButton } from "./ui/FilterIconButton";
 import { ListsFilters, type ListsFiltersProps } from "./ListsFilters";
-import { DiscoverFilterSheet, type FilterDraft } from "./DiscoverFilterSheet";
+import dynamic from "next/dynamic";
+import type { FilterDraft } from "./DiscoverFilterSheet";
+/* الورقةُ تُحمَّل عند أوّل فتحٍ لا مع الصفحة (نمطُ TitleSearchSheet في
+   الشريط السفليّ): لا تُرسم إلا بضغطةٍ، فشحنُها مع أوّل رسمةٍ ثمنٌ بلا
+   قارئ — و`ssr: false` لأن لا HTML لها قبل الضغطة. */
+const DiscoverFilterSheet = dynamic(() => import("./DiscoverFilterSheet").then((m) => m.DiscoverFilterSheet), { ssr: false });
 import { PageTabs } from "./ui/PageTabs";
 import { applyTabPrefs, type TabPref } from "@/lib/tabPrefs";
 import type { MyRow } from "@/lib/myRows";

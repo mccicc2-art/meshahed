@@ -6,7 +6,16 @@ import { useState } from "react";
 import { getDict, type Locale } from "@/lib/i18n";
 import { useKeyboardOpen } from "@/lib/useKeyboard";
 import { Icon, type IconName } from "./Icon";
-import { TitleSearchSheet } from "./TitleSearchSheet";
+import dynamic from "next/dynamic";
+
+/* ورقةُ البحث تُحمَّل عند أوّل فتحٍ لا مع كلِّ صفحة: الشريطُ السفليُّ في
+   التخطيط فكان يشحنها (~8KB gz) إلى كلِّ مسارٍ في التطبيق — وثمنُ التأجيل
+   لحظةُ جلبٍ واحدة عند أوّل ضغطةِ بحث، ثم تبقى في الذاكرة. `ssr: false`
+   لأنها لا تُرسم إلا بضغطةٍ فلا HTML لها أصلاً. */
+const TitleSearchSheet = dynamic(
+  () => import("./TitleSearchSheet").then((m) => m.TitleSearchSheet),
+  { ssr: false },
+);
 
 /**
  * شريط التبويبات السفلي.

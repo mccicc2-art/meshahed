@@ -18,7 +18,11 @@ import { Sheet } from "./ui/Sheet";
 import { sheetMenuItem, sheetMenuDivider } from "./ui/controls";
 import { BlockConfirmSheet } from "./BlockConfirmSheet";
 import { replyToShare, markConversationRead, hideConversation } from "@/lib/actions";
-import { StartConversationSheet } from "./StartConversationSheet";
+import dynamic from "next/dynamic";
+/* الورقةُ تُحمَّل عند أوّل فتحٍ لا مع الصفحة (نمطُ TitleSearchSheet في
+   الشريط السفليّ): لا تُرسم إلا بضغطةٍ، فشحنُها مع أوّل رسمةٍ ثمنٌ بلا
+   قارئ — و`ssr: false` لأن لا HTML لها قبل الضغطة. */
+const StartConversationSheet = dynamic(() => import("./StartConversationSheet").then((m) => m.StartConversationSheet), { ssr: false });
 import type { Conversation, ConvEvent } from "@/lib/data";
 import { displayNameOf, type PersonLite } from "@/lib/people";
 

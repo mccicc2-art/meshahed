@@ -7,7 +7,11 @@ import { getDict, type Locale } from "@/lib/i18n";
 import { Icon } from "./Icon";
 import { CommunityListCard } from "./PublicListsRail";
 import type { UserList } from "@/lib/data";
-import { ShareListSheet } from "./ShareListSheet";
+import dynamic from "next/dynamic";
+/* الورقةُ تُحمَّل عند أوّل فتحٍ لا مع الصفحة (نمطُ TitleSearchSheet في
+   الشريط السفليّ): لا تُرسم إلا بضغطةٍ، فشحنُها مع أوّل رسمةٍ ثمنٌ بلا
+   قارئ — و`ssr: false` لأن لا HTML لها قبل الضغطة. */
+const ShareListSheet = dynamic(() => import("./ShareListSheet").then((m) => m.ShareListSheet), { ssr: false });
 import { NewListForm } from "./NewListForm";
 
 /**

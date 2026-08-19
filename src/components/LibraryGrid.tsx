@@ -20,7 +20,11 @@ import { PosterRail, RailItem } from "./PosterRail";
 import { CompactMediaRow } from "./CompactMediaRow";
 import { PageTabs } from "./ui/PageTabs";
 import { FilterIconButton } from "./ui/FilterIconButton";
-import { LibraryToolsSheet } from "./LibraryToolsSheet";
+import dynamic from "next/dynamic";
+/* الورقةُ تُحمَّل عند أوّل فتحٍ لا مع الصفحة (نمطُ TitleSearchSheet في
+   الشريط السفليّ): لا تُرسم إلا بضغطةٍ، فشحنُها مع أوّل رسمةٍ ثمنٌ بلا
+   قارئ — و`ssr: false` لأن لا HTML لها قبل الضغطة. */
+const LibraryToolsSheet = dynamic(() => import("./LibraryToolsSheet").then((m) => m.LibraryToolsSheet), { ssr: false });
 import { OneTimeHint } from "./OneTimeHint";
 import { normalizeSearch, byTitle } from "@/lib/arabic";
 import { applyTabPrefs, type TabPref } from "@/lib/tabPrefs";

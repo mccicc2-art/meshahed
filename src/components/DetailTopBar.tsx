@@ -9,8 +9,15 @@ import { Icon } from "./Icon";
 import { BackButton } from "./BackButton";
 import { Sheet } from "./ui/Sheet";
 import { sheetMenuItem } from "./ui/controls";
-import { SendShareSheet } from "./SendShareSheet";
-import { TitleArtSheet } from "./TitleArtSheet";
+import dynamic from "next/dynamic";
+/* الورقةُ تُحمَّل عند أوّل فتحٍ لا مع الصفحة (نمطُ TitleSearchSheet في
+   الشريط السفليّ): لا تُرسم إلا بضغطةٍ، فشحنُها مع أوّل رسمةٍ ثمنٌ بلا
+   قارئ — و`ssr: false` لأن لا HTML لها قبل الضغطة. */
+const SendShareSheet = dynamic(() => import("./SendShareSheet").then((m) => m.SendShareSheet), { ssr: false });
+/* الورقةُ تُحمَّل عند أوّل فتحٍ لا مع الصفحة (نمطُ TitleSearchSheet في
+   الشريط السفليّ): لا تُرسم إلا بضغطةٍ، فشحنُها مع أوّل رسمةٍ ثمنٌ بلا
+   قارئ — و`ssr: false` لأن لا HTML لها قبل الضغطة. */
+const TitleArtSheet = dynamic(() => import("./TitleArtSheet").then((m) => m.TitleArtSheet), { ssr: false });
 import { stopWatching } from "@/lib/actions";
 import { coalescedRefresh } from "@/lib/refresh";
 import { tap } from "@/lib/haptics";

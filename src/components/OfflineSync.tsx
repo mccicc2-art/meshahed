@@ -41,10 +41,33 @@ export function OfflineSync() {
       flush();
     }
 
-    bind();
+    /* زائرٌ بلا كوكي جلسة لا يدفع supabase-js إطلاقاً (~66KB gz كانت
+       تُجلب وتُفسَّر في **كل** فتحةِ صفحةٍ لمجرّد معرفة صاحب الطابور):
+       الكوكي نفسُه الذي يقرؤه التخطيط (`sb-*auth-token`)، ولا طابورَ
+       لمن لا حساب له. والمسجَّلُ يدفعها **عند سكون المتصفّح** لا في
+       زحمة أوّل رسمة — فلا تُنافس LCP ولا أوّلَ لمسة، والربطُ يتمّ قبل
+       أيّ انقطاعٍ واقعيٍّ بثوانٍ. */
+    const signedIn = document.cookie
+      .split("; ")
+      .some((c) => c.startsWith("sb-") && c.includes("auth-token"));
+
+    let idleId: number | null = null;
+    let timerId: ReturnType<typeof setTimeout> | null = null;
+    if (signedIn) {
+      if ("requestIdleCallback" in window) {
+        idleId = window.requestIdleCallback(() => bind(), { timeout: 4000 });
+      } else {
+        timerId = setTimeout(bind, 2000);
+      }
+    } else {
+      setOfflineUser(null); // يطهّر طوابير حساباتٍ سابقة على نفس الجهاز
+    }
+
     window.addEventListener("online", flush);
     return () => {
       alive = false;
+      if (idleId !== null && "cancelIdleCallback" in window) window.cancelIdleCallback(idleId);
+      if (timerId !== null) clearTimeout(timerId);
       window.removeEventListener("online", flush);
     };
   }, [router]);
