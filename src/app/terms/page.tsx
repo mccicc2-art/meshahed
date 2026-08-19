@@ -28,7 +28,7 @@ export default async function TermsPage() {
         {ar ? "آخر تحديث: ٧ أغسطس ٢٠٢٦" : "Last updated: 7 August 2026"}
       </p>
 
-      <div className="mt-7 space-y-7 text-[15px] leading-relaxed">
+      <div className="mt-7 space-y-7 text-15 leading-relaxed">
         <Block
           title={ar ? "ما هو Loopz" : "What Loopz is"}
           body={
@@ -92,7 +92,7 @@ export default async function TermsPage() {
           }
         />
 
-        <p className="text-[15px]" dir="ltr">
+        <p className="text-15" dir="ltr">
           <a
             href="mailto:alharbiahmed3bd@gmail.com"
             className="text-accent hover:brightness-110 transition"
@@ -101,7 +101,7 @@ export default async function TermsPage() {
           </a>
         </p>
 
-        <p className="text-[12px] pt-4 border-t border-[color:var(--divider)]">
+        <p className="text-12 pt-4 border-t border-[color:var(--divider)]">
           <Link href="/privacy" className="text-muted hover:text-foreground transition">
             {ar ? "سياسة الخصوصية ←" : "Privacy Policy →"}
           </Link>
@@ -115,7 +115,7 @@ export default async function TermsPage() {
 function Block({ title, body }: { title: string; body: string }) {
   return (
     <section>
-      <h2 className="text-[20px] font-bold mb-1.5">{title}</h2>
+      <h2 className="text-20 font-bold mb-1.5">{title}</h2>
       <p className="text-muted">{body}</p>
     </section>
   );
