@@ -77,12 +77,16 @@ export function RankedRail({
           وأداة) — والتوزيعُ كان سيفصل الرمزَ عن اسمه. */}
       <h2 className="flex flex-wrap items-center gap-2 text-[22px] font-bold mb-1">
         {icon && <Icon name={icon} size={18} className="text-muted" />}
+        {/* 🆕 **يلتفّ ولا يُقصّ** (D-456): بعد أن صار عنوانُ القسم ٢٢px
+            (D-454) **لم يعد `truncate` رحمةً** — سطرٌ واحدٌ بحجم ٢٢ على
+            ٣٦٠px يسع ثلاثَ عشرة كلمةً لاتينيّةً قصيرة، **وما زاد يُقصّ في
+            منتصف الكلمة.** **وسطران يُقرآن، ونصفُ كلمةٍ لا يُقرأ.** */}
         {href ? (
-          <Link href={href} className="truncate hover:text-accent transition">
+          <Link href={href} className="min-w-0 line-clamp-2 leading-tight hover:text-accent transition">
             {title}
           </Link>
         ) : (
-          <span className="truncate">{title}</span>
+          <span className="min-w-0 line-clamp-2 leading-tight">{title}</span>
         )}
         {/* الأداةُ تُقدَّم على «الكل» في الطرف: رقائقُ النافذة تُلمس أكثر،
             **ولا يجتمعان** — طرفٌ فيه شيئان على ٣٦٠px يتزاحمان */}
