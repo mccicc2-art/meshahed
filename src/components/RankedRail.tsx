@@ -68,7 +68,14 @@ export function RankedRail({
 
   return (
     <section>
-      <h2 className="flex items-center gap-2 text-base font-bold mb-1">
+      {/* 🆕 **ويلتفّ الرأسُ حين لا يتّسع** (D-450، قِيس على المنشور بعد
+          D-445): مبدِّلُ النافذة ١٧٩ بكسلاً، **والرأسُ على شاشة ٣٦٠ لا
+          يملك إلا ٣٢٨** — فكان العنوانُ يُقصّ إلى «Top 10 anime mo…».
+          **وعنوانٌ مقصوصٌ في منتصفه أسوأ من سطرٍ ثانٍ**، والالتفافُ لا
+          يقع إلا حيث يضيق: على سطح المكتب يبقيان في سطرٍ واحد.
+          ⚠️ **ولا `justify-between`**: الرأسُ ثلاثةُ أبناءٍ (رمزٌ واسمٌ
+          وأداة) — والتوزيعُ كان سيفصل الرمزَ عن اسمه. */}
+      <h2 className="flex flex-wrap items-center gap-2 text-base font-bold mb-1">
         {icon && <Icon name={icon} size={18} className="text-muted" />}
         {href ? (
           <Link href={href} className="truncate hover:text-accent transition">
