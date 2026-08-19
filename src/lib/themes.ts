@@ -32,6 +32,8 @@ export interface Theme {
     success?: string;
     error?: string;
     verified?: string;
+    /** 🆕 النصُّ الخافت — الدرجةُ الثالثة بعد الأساسيّ والثانويّ (D-454) */
+    disabled?: string;
     /**
      * 🆕 **قلبُ الشعار** (D-405): ملفّا العلامة أبيضان بالألفا — يقفان
      * على الأسطح الداكنة كما تقول الهويّة، **ويختفيان على الفاتحة.**
@@ -58,25 +60,41 @@ export const THEMES: Theme[] = [
     // ألوان الكتيّب الثانوية حرفياً.
     ar: "لوبز (الرسمي)",
     en: "Loopz (Official)",
+    /* 🆕 ⚖️ **لوحةُ نظام التصميم الجديد** (D-454، مواصفةُ أحمد بالقيم
+       الستّ). **والثيمُ الرسميُّ وحدَه يتبدّل**: البقيّةُ ألوانٌ اختارها
+       صاحبُها، **ولوحةٌ تُفرض على ثيمٍ اسمُه «نهاريّ» تلغيه لا تحدّثه.**
+
+       ⚠️ **وهذه هي «المواضع الثلاثة» التي حذّرتُ منها في
+       `DECISIONS_NEEDED` بند ١**: اللونُ مكتوبٌ هنا وفي `globals.css`
+       وفي الكتيّب — **ومن غيّر واحداً وحدَه صنع لونين في التطبيق.**
+       **والثلاثةُ تتحرّك في هذه الدفعة والتي تليها.** */
     vars: {
-      background: "#0D0D0D",
-      surface: "#141414",
-      "surface-2": "#1A1A1A",
-      foreground: "#FFFFFF",
-      muted: "#BDBDBD",
-      // نصٌّ أسود على الأصفر لا أبيض: الأبيض على #FFD200 لا يُقرأ أصلاً
+      // #050505 لا #0D0D0D: أعمقُ درجتين على OLED، **والحدُّ بين الخلفية
+      // والبطاقة يُرى بفارق الإضاءة لا بفارق اللون** (حجّةُ D-001 نفسُها،
+      // وقد صارت أوضحَ لا أضعف)
+      background: "#050505",
+      surface: "#111111",
+      "surface-2": "#181818",
+      // #F7F7F7 لا #FFFFFF: **الأبيضُ الخالص على أسودٍ عميقٍ يهتزّ**
+      // (halation)، ودرجةٌ تحته تُريح العينَ بلا أن تفقد التباين (≈18:1)
+      foreground: "#F7F7F7",
+      muted: "#B5B5B5",
+      // نصٌّ أسود على الأصفر لا أبيض: الأبيض على #FFD400 لا يُقرأ أصلاً
       // (تباين ~1.6)، والأسود عليه ~14 — لهذا وُجد رمز on-accent
-      accent: "#FFD200",
+      accent: "#FFD400",
       "accent-2": "#F59E0B",
-      border: "#2A2A2A",
-      "on-accent": "#0D0D0D",
-      "on-accent-2": "#0D0D0D",
-      elevated: "#1A1A1A",
+      border: "#292929",
+      "on-accent": "#050505",
+      "on-accent-2": "#050505",
+      elevated: "#181818",
       divider: "rgba(255, 255, 255, 0.08)",
-      "surface-inverse": "#FFFFFF",
-      "on-surface-inverse": "#0D0D0D",
+      "surface-inverse": "#F7F7F7",
+      "on-surface-inverse": "#050505",
+      // النصُّ الخافت — الدرجةُ الثالثة في سلّم النصّ (#777777)
+      disabled: "#777777",
+      verified: "#FFD400",
     },
-    glowA: "rgba(255, 210, 0, 0.10)",
+    glowA: "rgba(255, 212, 0, 0.10)",
     glowB: "rgba(245, 158, 11, 0.05)",
     brand: ["#FFD200", "#FBBF24", "#F59E0B"],
   },
@@ -236,7 +254,11 @@ export const THEMES: Theme[] = [
 
 // تدرّج الهوية صار سُلَّماً أصفرَ واحداً لا ثلاثةَ ألوان: الكتيّب الرسمي
 // لونان لا غير — أصفر وأسود — فالتدرّج درجات الأصفر نفسه
-export const DEFAULT_BRAND: [string, string, string] = ["#FFD200", "#FBBF24", "#F59E0B"];
+/* 🆕 **وسلّمُ العلامة يتبع الأصفرَ الجديد** (D-454): `--brand-1` هو
+   `--accent` نفسُه في كلِّ تدرّجٍ في التطبيق — **ولو بقي `#FFD200`
+   لجرى في شريط التقدّم لونٌ وفي الأيقونة فوقه لونٌ آخر**، وهو فارقٌ
+   لا يُسمّى فيُقرأ خطأَ عرضٍ لا لونين. */
+export const DEFAULT_BRAND: [string, string, string] = ["#FFD400", "#FBBF24", "#F59E0B"];
 
 export const DEFAULT_THEME = THEMES[0];
 
@@ -267,6 +289,9 @@ export function themeCss(t: Theme) {
     (v.success ? `--success:${v.success};` : "") +
     (v.error ? `--error:${v.error};` : "") +
     (v.verified ? `--verified:${v.verified};` : "") +
+    /* 🆕 والخافتُ كأخواته: **يُكتب إن وُجد ويسقط إن غاب** (D-454) —
+       فالثيمُ الذي لم يعلن درجتَه يرث افتراضَ `globals.css` */
+    (v.disabled ? `--disabled:${v.disabled};` : "") +
     (v["logo-invert"] ? `--logo-invert:${v["logo-invert"]};` : "");
   return `:root{--background:${v.background};--surface:${v.surface};--surface-2:${v["surface-2"]};--foreground:${v.foreground};--muted:${v.muted};--accent:${v.accent};--accent-2:${v["accent-2"]};--border:${v.border};--on-accent:${v["on-accent"]};--on-accent-2:${v["on-accent-2"]};--glow-a:${t.glowA};--glow-b:${t.glowB};--brand-1:${b[0]};--brand-2:${b[1]};--brand-3:${b[2]};--elevated:${v.elevated};--divider:${v.divider};--surface-inverse:${v["surface-inverse"]};--on-surface-inverse:${v["on-surface-inverse"]};${semantic}}`;
 }
