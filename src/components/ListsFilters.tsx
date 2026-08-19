@@ -9,7 +9,7 @@ import { Button } from "./ui/Button";
 import { chipClass } from "./ui/controls";
 /* تبويب القوائم له بابُه هنا لا في ورقة اكتشف — رمزٌ واحد لكل تبويب (D-179) */
 import { TabsPrefs } from "./TabsPrefs";
-import type { Locale } from "@/lib/i18n";
+import { num, type Locale } from "@/lib/i18n";
 import type { TabPref } from "@/lib/tabPrefs";
 
 /**
@@ -62,7 +62,12 @@ export function ListsFilters({
   labels,
   variant = "full",
   tabsPrefs,
+  locale,
 }: ListsFiltersProps & {
+  /** 🆕 لغةُ القارئ — **لرقم العدّاد وحدَه** (D-452). **اختياريّةٌ لأن
+      صيغة `chips` لا زرَّ فيها**، ولأن الدفعات تُرفع مجلّداً مجلّداً
+      (D-028): الصفحةُ التي تمرّرها تُبنى بعد هذا المجلَّد. */
+  locale?: Locale;
   /** button: الزرّ وورقته في سطر التبويبات (طلب أحمد: مكان زرّ الأفلام
       نفسه) · chips: المختار وحده فوق الصفوف · full: الاثنان معاً */
   variant?: "full" | "button" | "chips";
@@ -106,8 +111,12 @@ export function ListsFilters({
 
   /* **نفس زرّ اكتشف والمكتبة والمجتمع (D-177، طلب أحمد):** كان هنا زرٌّ
      بكلمةٍ وعدّاد — «الاختلاف في التصميم في كل موقع لازم ما يتكرّر، هذي
-     هوية ولازم تكون موحّدة». والعدّاد سقط مع الكلمة: نقطةُ الحالة تقول
-     «هناك شيءٌ مفعَّل»، والتفصيل في الرقائق تحته. */
+     هوية ولازم تكون موحّدة».
+     🆕 ⚖️ **والعدّادُ عاد بلا الكلمة** (D-452، امتدادُ D-447 إلى الأسطح
+     الأربعة): **`count` كان محسوباً هنا منذ اليوم الأوّل ويُلقى** —
+     `active={count > 0}` تعرف الرقمَ ثم تنساه. **وهويّةٌ موحَّدة تعني
+     أن يقول الزرُّ الشيءَ نفسَه في الأربعة**، لا أن يصمت في ثلاثةٍ
+     ويتكلّم في واحد. */
   const filterButton = (
     <FilterIconButton
       onClick={() => {
@@ -117,6 +126,7 @@ export function ListsFilters({
       }}
       label={labels.button}
       active={count > 0}
+      count={count > 0 && locale ? num(count, locale) : null}
       expanded={open}
     />
   );

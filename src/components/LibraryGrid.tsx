@@ -5,7 +5,7 @@ import { flashError } from "@/lib/toast";
 import { runOrQueue } from "@/lib/offline";
 import { coalescedRefresh } from "@/lib/refresh";
 import { useRouter } from "next/navigation";
-import { getDict, type Locale } from "@/lib/i18n";
+import { getDict, num, type Locale } from "@/lib/i18n";
 import { startRewatch, classifyMyFollows } from "@/lib/actions";
 import { tap } from "@/lib/haptics";
 import type { UserList } from "@/lib/data";
@@ -288,6 +288,9 @@ export function LibraryGrid({
      (الاسم/التقدّم) بلا معنى فيها: ترتيبُها **بعدد ما شاهدتَه** وهو
      معناها. فالصفّ كلّه يغيب في تبويبها كما يغيب في القوائم. */
   const showSearchRow = tab === "shows" || tab === "movies" || tab === "anime";
+  /** كم أداةً مفعَّلةٌ خلف الرمز — **المحاورُ التي تُصفّي فعلاً وحدَها** */
+  const toolsOn =
+    (q.trim().length > 0 ? 1 : 0) + (showSearchRow && sort !== "smart" ? 1 : 0);
 
   /* **تصنيفُ ما لم يُصنَّف — مرّةً، عند من فتح التبويب** (D-182).
      ولماذا من المتصفّح لا من الخادم: الصفحة تُرسم على الخادم، والكتابةُ
@@ -342,7 +345,11 @@ export function LibraryGrid({
           <FilterIconButton
             onClick={() => setTools(true)}
             label={t.libraryToolsTitle}
-            active={q.trim().length > 0 || (showSearchRow && sort !== "smart")}
+            active={toolsOn > 0}
+            /* 🆕 **والرقمُ هنا محوران لا واحد** (D-452): بحثٌ وترتيب —
+               **وكانا يُجمعان في نقطةٍ واحدةٍ تقول «شيءٌ ما»**، فمن
+               نسي كلمةَ بحثٍ كتبها لا يعرف أنها ما زالت تُصفّي. */
+            count={toolsOn > 0 ? num(toolsOn, locale) : null}
             expanded={tools}
           />
         }

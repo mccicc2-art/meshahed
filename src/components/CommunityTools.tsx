@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { setFeedStrangers, setFeedSort, setTalkFollowedOnly, setTranslateEnabled } from "@/lib/actions";
-import { getDict, type Locale } from "@/lib/i18n";
+import { getDict, num, type Locale } from "@/lib/i18n";
 import { tap } from "@/lib/haptics";
 import type { TabPref } from "@/lib/tabPrefs";
 import { Icon, type IconName } from "./Icon";
@@ -157,11 +157,30 @@ export function CommunityTools({
   /** عنوانُ قسم الأدوات = اسمُ التبويب المفتوح في الرأس (D-292/D-306) */
   const sectionTitle = labels[activeTab] ?? t.communityToolsTitle;
 
+  /* 🔴 🆕 **وزرُّ المجتمع كان صامتاً وحدَه من بين الأربعة** (D-452):
+     `active` لم تُمرَّر إليه قطّ — **فأربعةُ مفاتيحَ خلفه تُبدَّل ولا
+     يتغيّر فيه شيء.** ومن أطفأ «إظهار الغرباء» ثم عاد بعد يومٍ يرى خطّاً
+     أقصرَ **ولا شيءَ في الشاشة يقول لماذا** (وهو حرفياً عطلُ D-030:
+     زرٌّ يُخفي أثراً بلا علامةٍ ظاهرة يكذب).
+
+     **والافتراضاتُ من `tabPrefs.ts` لا مخمَّنةٌ هنا**: الغرباءُ ظاهرون
+     (`parseFeedStrangers`: الغيابُ إظهار) · الترتيبُ «ذكيّ» · «متابَعون
+     فقط» مطفأة · والترجمةُ تعمل. **وما خالف افتراضَه يُعدّ.**
+     ⚠️ **ويُقرأ من الحالة المحلّية لا من الخاصّيّة**: الورقةُ تُبدّل
+     تفاؤليّاً، **وعدّادٌ ينتظر رحلةَ الخادم يتخلّف عن المفتاح تحته.** */
+  const toolsOn =
+    (strangers ? 0 : 1) +
+    (feedSort !== "smart" ? 1 : 0) +
+    (followedOnly ? 1 : 0) +
+    (translate ? 0 : 1);
+
   return (
     <>
       <FilterIconButton
         onClick={() => setOpen(true)}
         label={t.communityToolsTitle}
+        active={toolsOn > 0}
+        count={toolsOn > 0 ? num(toolsOn, locale) : null}
         expanded={open}
       />
 

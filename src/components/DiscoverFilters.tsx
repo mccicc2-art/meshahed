@@ -394,6 +394,9 @@ export function DiscoverFilters({
              نفسُه (`TabsPrefs`) في الورقتين، فلا نسخةَ ثانية (D-145) */
           <ListsFilters
             {...listsFilters}
+            /* 🆕 لغةُ القارئ لعدّاد الزرّ (D-452) — **ومصدرُها الرأسُ
+               نفسُه**، فلا تُطلب من الصفحة مرّةً ثانية */
+            locale={locale}
             variant="button"
             tabsPrefs={{
               locale,
