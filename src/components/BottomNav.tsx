@@ -110,7 +110,17 @@ export function BottomNav({
      بالمنتج، لا داخل تطبيقٍ يتنقّل فيه */
   if (!signedIn) return null;
   // شاشات مركّزة: لا شريط تبويبات يزاحم زر الإجراء
-  if (pathname === "/login" || pathname === "/welcome") return null;
+  /* 🆕 **ويغيب في الإعدادات** (D-462، مواصفةُ أحمد): **الإعداداتُ رحلةٌ
+     لها بدايةٌ ونهاية** — دخلتَ لتضبط شيئاً وتخرج — **وشريطُ تنقّلٍ
+     بخمسة أبوابٍ أسفلها يدعوك إلى مغادرتها قبل أن تُتمّها.**
+     **وبابُ الخروج واحدٌ: سهمُ الرجوع في ترويستها.** */
+  if (
+    pathname === "/login" ||
+    pathname === "/welcome" ||
+    pathname === "/profile/edit" ||
+    pathname.startsWith("/profile/settings")
+  )
+    return null;
 
   const label: Record<string, string> = {
     home: t.navHome,

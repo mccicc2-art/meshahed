@@ -15,7 +15,22 @@ import { buttonClass } from "./ui/Button";
  * تنفّذ — التأكيد في الزرّ نفسه لا في نافذةٍ يُنقر «موافق» فيها بلا
  * قراءة، وخمس ثوانٍ من الصمت تُعيده لحاله.
  */
-export function PrivacyData({ locale }: { locale: Locale }) {
+/** أيُّ نصفَي البطاقة يُعرض — **والغيابُ يعني الاثنين** (نمطُ `only`
+    في `ProfileForm` و`AccountSettings` حرفياً، فلا عرفٌ ثالث) */
+export type PrivacyDataSection = "export" | "delete";
+
+export function PrivacyData({
+  locale,
+  only,
+}: {
+  locale: Locale;
+  /** 🆕 **التصديرُ والحذفُ افترقا صفحتين** (D-462): **التصديرُ بياناتٌ
+      تُنقل** فمكانُه «الاستيراد والتصدير»، **والحذفُ نهايةُ حساب** فمكانُه
+      «الحساب» في منطقة خطرٍ معلَّمة — **وفعلٌ يومئٌ وفعلٌ لا رجعةَ فيه لا
+      يجلسان متلاصقين** (مواصفةُ أحمد). */
+  only?: PrivacyDataSection[];
+}) {
+  const show = (k: PrivacyDataSection) => !only || only.includes(k);
   const t = getDict(locale);
   const [busy, startBusy] = useTransition();
   const [deleting, startDelete] = useTransition();
@@ -64,6 +79,7 @@ export function PrivacyData({ locale }: { locale: Locale }) {
   return (
     <div className="space-y-4">
       {/* التصدير */}
+      {show("export") && (
       <section className="bg-surface border border-border rounded-2xl p-3.5 sm:p-5">
         <h2 className="text-sm font-bold mb-1">{t.dataExportTitle}</h2>
         <p className="text-xs text-muted leading-relaxed mb-3">{t.dataExportDesc}</p>
@@ -76,8 +92,10 @@ export function PrivacyData({ locale }: { locale: Locale }) {
           {busy ? t.dataExportBusy : t.dataExportBtn}
         </button>
       </section>
+      )}
 
       {/* الحذف */}
+      {show("delete") && (
       <section className="bg-surface border border-[color:var(--error)]/30 rounded-2xl p-3.5 sm:p-5">
         <h2 className="text-sm font-bold mb-1 text-[color:var(--error)]">
           {t.deleteAccountTitle}
@@ -97,6 +115,7 @@ export function PrivacyData({ locale }: { locale: Locale }) {
           {deleting ? t.deleteAccountBusy : armed ? t.deleteAccountConfirm : t.deleteAccountBtn}
         </button>
       </section>
+      )}
 
       {error && <Alert inline>{error}</Alert>}
     </div>

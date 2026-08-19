@@ -225,7 +225,7 @@ export function ProfileHeader({
           سطراً واحداً. قرارُ المالك، وهو ما تفعله كل شبكة تواصل. */}
       <div className="flex items-center gap-3 pe-16 -mt-[5.25rem] sm:-mt-[5.75rem] relative z-10">
         {/* حلقة متدرّجة حول الصورة: تفصلها عن الغلاف وتعطيها ثقل المرجع */}
-        <Link href="/profile/settings?s=profile" className="shrink-0">
+        <Link href="/profile/edit" className="shrink-0">
           <span
             className="block rounded-full p-[3px]"
             style={{

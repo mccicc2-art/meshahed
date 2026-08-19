@@ -36,7 +36,14 @@ export function HeaderShell({
   /* الإخفاء على الجوال للمسجَّل وحده (D-122): الجذر صار صفحة هبوطٍ للزائر
      غير المسجّل، وشريطُ الزائر يحمل مبدّل اللغة — إخفاؤه كان سيحبس زائر
      الجوال في لغةٍ واحدة بلا مخرج. أما المسجَّل فترويسةُ صفحته تُغني. */
+  /* 🆕 **والإعداداتُ تُخفيه على كلِّ مقاس** (D-462): لها ترويستُها
+     الداخليّة برجوعٍ واسمٍ وبحث — **وترويستان في شاشةٍ واحدة تجعلان
+     سهمَي رجوعٍ وعنوانين**، ولا يعرف القارئُ أيَّهما يخرج به. */
+  const inSettings =
+    pathname === "/profile/edit" || pathname.startsWith("/profile/settings");
   const hideOnMobile = signedIn && pathname === "/";
+
+  if (inSettings) return null;
 
   return (
     <div className={hideOnMobile ? "hidden md:contents" : "contents"}>{children}</div>
