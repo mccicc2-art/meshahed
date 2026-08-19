@@ -65,9 +65,11 @@ import {
   seasonRange,
   browseHref,
   type BrowseQuery,
+  type DiscoverTab,
   type RailWin,
 } from "@/lib/browse";
 import { RankedRail } from "@/components/RankedRail";
+import { RailWindow, type RailWinKey } from "@/components/RailWindow";
 import { OneTimeHint } from "@/components/OneTimeHint";
 import { CountdownRail, type CountdownItem } from "@/components/CountdownRail";
 import { PickedForYou } from "@/components/PickedForYou";
@@ -108,11 +110,25 @@ function dateOf(r: SearchResult) {
  * يفرزها بتقييم IMDb بعتبةِ أصواتٍ تحرسها** — **وهي القسمةُ نفسُها في
  * كلِّ رفٍّ مرتَّب منذ D-164.**
  */
-async function bestOfYear(kind: "movie" | "tv", locale: Locale): Promise<SearchResult[]> {
+/* 🆕 **ويطيع الفلترَ الآن** (D-449، مواصفةُ المرحلة ٦: «تطبيق الفلاتر
+   المختارة على جميع الأقسام ذات الصلة»). **وكان آخرَ رفٍّ يختفي عند أوّل
+   لمسةِ فلتر وهو يستطيع الطاعة**: مصدرُه `/discover` أصلاً، **فما كان
+   ينقصه إلا أن تُمرَّر إليه المحاور** — تماماً كحجّة D-378 في الصفوف
+   الشخصية. **ورفٌّ يغيب بلا عجزٍ يُقرأ عطلاً لا قراراً.** */
+async function bestOfYear(
+  kind: "movie" | "tv",
+  locale: Locale,
+  /** محاورُ الفلتر — والمدى الزمنيّ يعلو عليها: عنوانُ الرفّ «هذي السنة» */
+  base: DiscoverFilter = {},
+  genreIds?: number[],
+): Promise<SearchResult[]> {
   const y = new Date().getFullYear();
   const rows = await topByFilter(
     kind,
-    { from: `${y}-01-01`, to: `${y}-12-31` },
+    /* **والحقبةُ المختارة تسقط أمام السنة** (`from`/`to` بعد النشر): من
+       اختار «التسعينات» ثم قرأ عنواناً يقول «هذي السنة» ينتظر هذي السنة
+       — **وصفٌّ يخالف عنوانَه أسوأ من صفٍّ يتجاهل محوراً واحداً** (D-141). */
+    { ...base, genreIds, from: `${y}-01-01`, to: `${y}-12-31` },
     60,
     "vote_count.desc",
   );
@@ -944,6 +960,51 @@ function filterQs(b: BrowseQuery): string {
   return i === -1 ? "" : href.slice(i + 1);
 }
 
+/** مفاتيحُ نوافذ الرفوف في الرابط — رفٌّ واحدٌ لكلِّ مفتاح */
+const WIN_PARAM = { m: "wm", s: "ws", a: "wa", am: "wam" } as const;
+type RailWins = { m: RailWin; s: RailWin; a: RailWin; am: RailWin };
+
+/**
+ * وجهاتُ مبدِّلِ نافذةِ رفٍّ — **ثلاثةُ روابطَ تُبنى على الخادم** (D-445).
+ *
+ * **ولماذا تُبنى هنا لا في المكوّن:** المبدِّلُ مكوّنُ خادمٍ بلا حالة،
+ * **ورابطُه يجب أن يحمل الفلترَ كلَّه ونوافذَ الرفوف الأخرى** — وإلا
+ * أسقطت لمسةٌ على «شهر» في رفِّ الأفلام نافذةَ رفِّ المسلسلات ومعها
+ * التصنيفَ واللغة. **والذي يعرف هذه كلَّها هو الصفحة.**
+ *
+ * **والافتراضُ لا يُكتب** (`week`): رابطٌ نظيفٌ يعني الأسبوع، وهو نفسُ
+ * قاعدة `browseHref` — **ولا معنيان لرابطٍ واحد.**
+ */
+function winHrefs(
+  tab: DiscoverTab,
+  qs: string,
+  rails: RailWins,
+  key: keyof RailWins,
+): Record<RailWinKey, string> {
+  const build = (w: RailWinKey) => {
+    const p = new URLSearchParams(qs);
+    p.set("tab", tab);
+    for (const k of ["m", "s", "a", "am"] as const) {
+      const v = k === key ? w : rails[k];
+      if (v !== "week") p.set(WIN_PARAM[k], v);
+    }
+    return `/news?${p.toString()}`;
+  };
+  return { week: build("week"), month: build("month"), all: build("all") };
+}
+
+/**
+ * **والنافذةُ تُحمل إلى صفحة القسم مع الفلتر** — وإلا كذب العنوانُ الذي
+ * ضُغط: من فتح «أفضل ١٠ أفلام على الإطلاق» يتوقّع الجردَ نفسَه موسَّعاً،
+ * **لا أسبوعاً بعنوانٍ ثانٍ** (نفسُ وعدِ D-198، ونفسُ ثمنِ نقضه).
+ */
+function winQs(qs: string, w: RailWin): string {
+  if (w === "week") return qs;
+  const p = new URLSearchParams(qs);
+  p.set("w", w);
+  return p.toString();
+}
+
 /**
  * **هل يطابق هذا الصفُّ الفلتر — بحقول الصفّ وحدها، بلا نداء؟** (D-197،
  * قرارُ أحمد: «يطيعان الفلتر، وإن فرغا يُخفيان».)
@@ -1079,11 +1140,10 @@ async function CuratedRails({
     status: status?.code ?? null,
   };
 
-  /* أعلى ١٠ حسب نافذة الصفّ (D-099): أسبوع = الرائج (أو discover
-     المُصفّى)، شهر = آخر ثلاثين يوماً (لا الشهر التقويمي — أوّلُه
-     بِركةٌ من أيامٍ معدودة)، سنة = هذه السنة التقويمية — كلاهما
-     discover بالشعبية. و«كل الأوقات» القديمة يمثّلها ذيل Top 50. */
-  const y = new Date().getUTCFullYear();
+  /* أعلى ١٠ حسب نافذة الصفّ (D-099 ثم D-445): أسبوع = الرائج (أو
+     discover المُصفّى)، شهر = آخر ثلاثين يوماً (لا الشهر التقويمي —
+     أوّلُه بِركةٌ من أيامٍ معدودة)، **وكلُّ الأوقات = discover بلا حدٍّ
+     زمنيّ** مرتَّباً بعدد الأصوات ثم بتقييم IMDb. */
   const todayStr = new Date().toISOString().slice(0, 10);
   const back30 = new Date();
   back30.setUTCDate(back30.getUTCDate() - 30);
@@ -1097,12 +1157,11 @@ async function CuratedRails({
    * العنوان يفتح **نفسَ النافذة** موسَّعةً — فلو اختلف الفرعُ بين الملفّين
    * لرأى شهراً في الصفحة وأسبوعاً في الصفّ، **وهو لا يعرف أنه رأى شيئين**.
    */
+  /* 🆕 **و«كل الأوقات» بلا مدىً — لا بمدى السنة** (D-445): المدى الغائب
+     يعني «لا تحدّ التاريخ»، **وهو نصُّ النافذة**. وفرعُ «سنة» سقط معها
+     (يجيبه ذيلُ «أفضل ٢٥ هذي السنة» في الصفحة نفسِها). */
   const winRangeOf = (w: RailWin) =>
-    w === "year"
-      ? { from: `${y}-01-01`, to: `${y}-12-31` }
-      : w === "month"
-        ? { from: monthFrom, to: todayStr }
-        : null;
+    w === "month" ? { from: monthFrom, to: todayStr } : null;
   const topFor = (mt: "movie" | "tv", genreIds: number[] | undefined, w: RailWin) =>
     buildSection(
       "top-ten",
@@ -1119,6 +1178,9 @@ async function CuratedRails({
   const unmute = !!browse.lang || !!browse.country;
   /** يُحمل إلى صفحات الأقسام مع عناوينها (D-198) */
   const qs = filterQs(browse);
+  /** أسماءُ النوافذ الثلاث — واحدةٌ للتبويب كلِّه لا نسخةٌ لكلِّ رفّ */
+  const winLabels = { week: t.railWinWeek, month: t.railWinMonth, all: t.railWinAll };
+  const tab: DiscoverTab = wantMovies ? "movies" : "shows";
 
   const [
     topMovies,
@@ -1284,11 +1346,11 @@ async function CuratedRails({
          TMDB والحكمُ من IMDb**، وهي القسمةُ نفسُها في كلِّ رفٍّ مرتَّب.
          ⚠️ **وثمنُه يُقال**: عملٌ صدر هذا العامَ ولم يبلغ ألفَ صوتٍ في
          IMDb قد يتصدّر برقمٍ هشّ — **فالعتبةُ في `minVotes` تحرسه.** */
-      !active && wantMovies
-        ? bestOfYear("movie", locale).catch(() => [] as SearchResult[])
+      wantMovies
+        ? bestOfYear("movie", locale, base, genre?.movie).catch(() => [] as SearchResult[])
         : Promise.resolve([] as SearchResult[]),
-      !active && wantSeries
-        ? bestOfYear("tv", locale).catch(() => [] as SearchResult[])
+      wantSeries
+        ? bestOfYear("tv", locale, base, genre?.tv).catch(() => [] as SearchResult[])
         : Promise.resolve([] as SearchResult[]),
     ]);
 
@@ -1418,20 +1480,36 @@ async function CuratedRails({
           تشرحها. */}
       {topMovies.length > 0 && (
         <RankedRail
-          title={t.top10Movies}
+          title={t.top10Win(t.top10Movies, rails.m)}
           lib={lib}
           icon="film"
           items={topMovies}
-          href={sectionHref("top-ten", "movie", qs)}
+          href={sectionHref("top-ten", "movie", winQs(qs, rails.m))}
+          control={
+            <RailWindow
+              value={rails.m}
+              hrefs={winHrefs(tab, qs, rails, "m")}
+              labels={winLabels}
+              ariaLabel={t.railWinGroup}
+            />
+          }
         />
       )}
       {topSeries.length > 0 && (
         <RankedRail
-          title={t.top10Series}
+          title={t.top10Win(t.top10Series, rails.s)}
           lib={lib}
           icon="tv"
           items={topSeries}
-          href={sectionHref("top-ten", "tv", qs)}
+          href={sectionHref("top-ten", "tv", winQs(qs, rails.s))}
+          control={
+            <RailWindow
+              value={rails.s}
+              hrefs={winHrefs(tab, qs, rails, "s")}
+              labels={winLabels}
+              ariaLabel={t.railWinGroup}
+            />
+          }
         />
       )}
 
@@ -1517,10 +1595,12 @@ async function AnimeRails({
   const back30 = new Date();
   back30.setUTCDate(back30.getUTCDate() - 30);
   const monthFrom = back30.toISOString().slice(0, 10);
+  /* **والمدى للشهر وحدَه** (D-445): الأسبوعُ مصدرُه الرائج، **و«كل
+     الأوقات» تغادر هذا المسارَ أصلاً** إلى `/discover` بلا حدٍّ زمنيّ —
+     ومدىً غائبٌ هنا كان سيعني «هذا الأسبوع» فيعرض الزرُّ الثالثُ نتيجةَ
+     الأوّل. */
   const winRange = (w: RailWin) =>
-    w === "week"
-      ? undefined
-      : { from: w === "month" ? monthFrom : `${y}-01-01`, to: todayStr };
+    w === "month" ? { from: monthFrom, to: todayStr } : undefined;
 
   /* مفتاحُ الأنمي شرطٌ لا خيار، ووسمُ الموضوع يُضاف إليه بـ«و» — انظر
      تعليق `keywords` في `tmdb.ts`. والوسمُ الذي تعذّر حلُّه يسقط وحده */
@@ -1542,6 +1622,7 @@ async function AnimeRails({
     ? seasonRange(season, eraR.to ? Number(eraR.to.slice(0, 4)) : y)
     : null;
   const qs = filterQs(browse);
+  const winLabels = { week: t.railWinWeek, month: t.railWinMonth, all: t.railWinAll };
   const base: DiscoverFilter = {
     /* **اللغةُ والجنسيةُ صارتا هنا أيضاً (D-196)** — ومحورٌ يُعرض في
        الورقة ولا يصل إلى الاستعلام **كذبٌ في الواجهة**: المستخدم يختار
@@ -1562,23 +1643,26 @@ async function AnimeRails({
      أن تُمرَّر إليه المحاور. والنافذة تظلّ فوق الحقبة كما في تبويبَي
      الأعمال: من اختار «هذه السنة» يقصد السنة لا الحقبة المحفوظة */
   const animeTop = (mt: "movie" | "tv", genreIds: number[] | undefined, w: RailWin) => {
-    if (!active) {
+    if (!active && w !== "all") {
       const r = winRange(w);
       return mt === "movie"
         ? topTenAnimeMoviesThisWeek(10, r)
         : topTenAnimeThisWeek(10, r);
     }
-    const win =
-      w === "year"
-        ? { from: `${y}-01-01`, to: `${y}-12-31` }
-        : w === "month"
-          ? { from: monthFrom, to: todayStr }
-          : null;
+    const win = w === "month" ? { from: monthFrom, to: todayStr } : null;
+    /* **وترتيبُ «كل الأوقات» بعدد الأصوات** — نفسُ حجّة `sections.ts`
+       حرفياً: هذا اختيارُ بِركةٍ لا حكمٌ نهائيّ، **و`withImdbRatings` بعده
+       يفرزها بالتقييم**. و`popularity` كانت ستجعل «كل الأوقات» تعرض
+       أنميَ هذا الموسم مثلَ نافذة الشهر. */
     return topByFilter(
       mt,
       { ...base, ...(win ?? {}), genreIds },
       10,
-      w === "week" ? "vote_average.desc" : "popularity.desc",
+      w === "week"
+        ? "vote_average.desc"
+        : w === "month"
+          ? "popularity.desc"
+          : "vote_count.desc",
     );
   };
 
@@ -1732,20 +1816,39 @@ async function AnimeRails({
         />
       )}
 
+      {/* 🆕 **ورفّا الأنمي أخذا المبدِّلَ نفسَه** (D-445): نوافذُهما
+          (`wa`/`wam`) كانت تُقرأ من الرابط منذ D-099 **ولا بابَ إليها في
+          الواجهة** — أي محورٌ حيٌّ في الخادم لا يعرف به أحد. */}
       {topMovies.length > 0 && (
         <RankedRail
-          title={t.top10AnimeMovies}
+          title={t.top10Win(t.top10AnimeMovies, rails.am)}
           lib={lib}
           icon="film"
           items={topMovies}
+          control={
+            <RailWindow
+              value={rails.am}
+              hrefs={winHrefs("anime", qs, rails, "am")}
+              labels={winLabels}
+              ariaLabel={t.railWinGroup}
+            />
+          }
         />
       )}
       {topSeries.length > 0 && (
         <RankedRail
-          title={t.top10AnimeSeries}
+          title={t.top10Win(t.top10AnimeSeries, rails.a)}
           lib={lib}
           icon="sparkle-star"
           items={topSeries}
+          control={
+            <RailWindow
+              value={rails.a}
+              hrefs={winHrefs("anime", qs, rails, "a")}
+              labels={winLabels}
+              ariaLabel={t.railWinGroup}
+            />
+          }
         />
       )}
 
