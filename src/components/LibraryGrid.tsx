@@ -520,7 +520,13 @@ export function LibraryGrid({
                             <CompactMediaRow
                               href={x.href}
                               title={x.title}
-                              subtitle={x.badge ?? undefined}
+                              /* **الباقي أوّلَ ما يُسأل عنه في «قيد
+                                 المشاهدة»** — والشارةُ احتياطُه */
+                              subtitle={
+                                x.count && x.count > 0
+                                  ? t.leftEps(x.count)
+                                  : (x.badge ?? undefined)
+                              }
                               posterPath={x.posterPath}
                               progress={x.progress}
                               wide

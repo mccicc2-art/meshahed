@@ -83,6 +83,11 @@ export function CompactMediaRow({
               fill
               sizes={wide ? "124px" : "40px"}
               className="object-cover"
+              /* ⚠️ **والقصُّ من أعلى الثلث لا من الوسط** في الصدر العريض
+                 (D-443): **ملصقٌ ٢:٣ مقصوصٌ إلى ١٦:١٠ يفقد ثلثيه**،
+                 **ومنتصفُ الملصق أغلبُه خلفيّةٌ داكنة** بينما الوجهُ
+                 والعنوانُ في ثلثه الأعلى. */
+              style={wide ? { objectPosition: "50% 28%" } : undefined}
             />
           ) : (
             <span className="absolute inset-0 grid place-items-center text-muted">
