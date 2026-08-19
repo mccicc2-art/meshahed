@@ -21,7 +21,7 @@ export default async function Page() {
   return (
     <SettingsPageLayout title={t.setNotifications}>
       <SettingsSoon title={t.settingsSoonTitle} body={t.setNotifSoonBody} icon="bell" />
-      <p className="text-[12px] text-muted text-center">{t.setNotifBellHint}</p>
+      <p className="text-12 text-muted text-center">{t.setNotifBellHint}</p>
     </SettingsPageLayout>
   );
 }
