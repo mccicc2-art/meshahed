@@ -245,12 +245,12 @@ export default async function SectionPage({
             ولا تاريخَ عنده يرجع إليه */}
         <BackButton locale={locale} />
         <div className="min-w-0">
-          <h1 className="font-bold text-[20px] leading-tight truncate">{title}</h1>
-          <Link href={backHref} className="text-[12px] text-muted hover:text-accent transition">
+          <h1 className="font-bold text-20 leading-tight truncate">{title}</h1>
+          <Link href={backHref} className="text-12 text-muted hover:text-accent transition">
             {dict.navNews}
           </Link>
         </div>
-        <span className="ms-auto shrink-0 text-[12px] text-muted tabular-nums">{rows.length}</span>
+        <span className="ms-auto shrink-0 text-12 text-muted tabular-nums">{rows.length}</span>
       </div>
 
       {rows.length === 0 ? (
@@ -300,7 +300,7 @@ export default async function SectionPage({
             href={`?${new URLSearchParams({ ...sp, pg: String(page + 1) } as Record<string, string>).toString()}`}
             scroll={false}
             prefetch={false}
-            className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-5 py-2.5 text-[14px] font-semibold text-foreground hover:border-[color:var(--divider)] active:scale-95 transition"
+            className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-5 py-2.5 text-14 font-semibold text-foreground hover:border-[color:var(--divider)] active:scale-95 transition"
           >
             {dict.showMore}
           </Link>
