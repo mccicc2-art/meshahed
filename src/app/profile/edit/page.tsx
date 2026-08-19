@@ -1,11 +1,38 @@
 import { redirect } from "next/navigation";
+import { getUser, getProfile } from "@/lib/data";
+import { getT } from "@/lib/locale";
+import { EditProfileForm } from "@/components/settings/EditProfileForm";
 
 /**
- * الباب القديم لتعديل الملف.
+ * تعديلُ الملفّ — **صفحةٌ حقيقيّةٌ بعد أن كانت تحويلاً** (D-462).
  *
- * صار قسماً داخل صفحة الإعدادات، فبقي المسار محوِّلاً إليه: الروابط
- * القديمة — قلم الترويسة والصورة الشخصية — تصل إلى المكان نفسه.
+ * **وكان المسارُ يُحوّل إلى `?s=profile`** داخل لوح التبويبات — **فقلمُ
+ * الترويسة كان يفتح الإعداداتِ كلَّها ثم يبحث المستخدمُ عن قسمه.**
+ * **والآن يفتح ما وعد به**، وروابطُ القلم والصورة القديمة تصل إلى
+ * الشاشة نفسِها بلا تغييرٍ فيها.
  */
-export default function EditProfileRedirect() {
-  redirect("/profile/settings?s=profile");
+export default async function EditProfilePage() {
+  const user = await getUser();
+  if (!user) redirect("/login");
+  const { locale } = await getT();
+  const p = await getProfile();
+
+  return (
+    <EditProfileForm
+      userId={user.id}
+      email={user.email ?? ""}
+      locale={locale}
+      isPrivate={!!p?.is_private}
+      genres={p?.favorite_genres ?? []}
+      initial={{
+        nickname: p?.nickname ?? "",
+        username: p?.username ?? "",
+        bio: p?.bio ?? "",
+        avatarUrl: p?.avatar_url ?? null,
+        coverUrl: p?.cover_url ?? null,
+        coverPos: p?.cover_pos ?? 30,
+        avatarPos: p?.avatar_pos ?? 50,
+      }}
+    />
+  );
 }
