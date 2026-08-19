@@ -265,17 +265,17 @@ export default async function TalkPage({
               className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-3 py-1.5 active:scale-95 transition hover:border-accent"
             >
               <Icon name="comment" size={13} className="shrink-0 text-accent" />
-              <span className="text-[12px] font-bold">{t.talkSignInToWrite}</span>
+              <span className="text-12 font-bold">{t.talkSignInToWrite}</span>
             </Link>
           )}
           {watchedIt && (
-            <span className="inline-flex items-center gap-1.5 text-[12px] text-muted">
+            <span className="inline-flex items-center gap-1.5 text-12 text-muted">
               <Icon name="check" size={13} className="text-accent" />
               {t.talkWatchedIt}
             </span>
           )}
           {!watchedIt && follow.following && (
-            <span className="inline-flex items-center gap-1.5 text-[12px] text-muted">
+            <span className="inline-flex items-center gap-1.5 text-12 text-muted">
               <Icon name="bookmark" size={13} className="text-accent" />
               {t.talkInLibrary}
             </span>
