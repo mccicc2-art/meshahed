@@ -14,6 +14,7 @@ import { Inbox } from "@/components/Inbox";
 import { NotificationList } from "@/components/NotificationList";
 import { MarkSignalsSeen } from "@/components/MarkSignalsSeen";
 import { PageTabs, type PageTab } from "@/components/ui/PageTabs";
+import { OneTimeHint } from "@/components/OneTimeHint";
 
 export const dynamic = "force-dynamic";
 
@@ -77,6 +78,7 @@ export default async function MessagesPage({
 
   return (
     <div className="space-y-4">
+      <OneTimeHint id="messages-intro" text={t.hintMessages} closeLabel={t.closeLabel} />
       <PageTabs
         items={tabs}
         active={alerts ? "alerts" : "inbox"}
