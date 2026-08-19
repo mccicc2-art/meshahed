@@ -59,7 +59,7 @@ export function BlockedList({ locale }: { locale: Locale }) {
         /* هيكلٌ بهندسة الصفّ الحقيقي (D-046): لا قفزة حين تصل القائمة */
         <div className="h-12 rounded-xl bg-surface-2 animate-pulse" />
       ) : items.length === 0 ? (
-        <p className="text-[12px] text-muted">{t.blockedEmpty}</p>
+        <p className="text-12 text-muted">{t.blockedEmpty}</p>
       ) : (
         <ul className="divide-y divide-[color:var(--divider)]">
           {items.map((p) => {
@@ -68,9 +68,9 @@ export function BlockedList({ locale }: { locale: Locale }) {
               <li key={p.id} className="flex items-center gap-3 py-2.5">
                 <Avatar src={p.avatar_url} name={name} size={36} alt="" />
                 <div className="min-w-0 flex-1">
-                  <p className="text-[14px] font-semibold truncate">{name}</p>
+                  <p className="text-14 font-semibold truncate">{name}</p>
                   {p.username && !p.hide_name && (
-                    <p className="text-[12px] text-muted truncate" dir="ltr">
+                    <p className="text-12 text-muted truncate" dir="ltr">
                       @{p.username}
                     </p>
                   )}

@@ -76,7 +76,7 @@ export function CommunityDirectory({
       {/* ===== دعواتي — فوق مجتمعاتي: قرارٌ ينتظرك قبل ما تملكه ===== */}
       {invites.length > 0 && (
         <section>
-          <p className="text-[12px] font-semibold text-muted uppercase tracking-wide mb-1.5">
+          <p className="text-12 font-semibold text-muted uppercase tracking-wide mb-1.5">
             {t.commInvitesSection}
           </p>
           <ul className="divide-y divide-[color:var(--divider)]">
@@ -89,7 +89,7 @@ export function CommunityDirectory({
 
       {/* ===== مجتمعاتي ===== */}
       <section>
-          <p className="text-[12px] font-semibold text-muted uppercase tracking-wide mb-1.5">
+          <p className="text-12 font-semibold text-muted uppercase tracking-wide mb-1.5">
             {t.commMineSection}
           </p>
           {mine.length === 0 ? (
@@ -134,7 +134,7 @@ export function CommunityDirectory({
            هنا؛ بابُها صفحةُ العمل وحدها ===== */}
       {titleRooms.length > 0 && (
         <section>
-          <p className="text-[12px] font-semibold text-muted uppercase tracking-wide mb-1.5">
+          <p className="text-12 font-semibold text-muted uppercase tracking-wide mb-1.5">
             {t.titleRoomsSection}
           </p>
           <ul className="divide-y divide-[color:var(--divider)]">
@@ -290,7 +290,7 @@ function InviteRow({ c, t, locale }: { c: CommunityLite; t: Dict; locale: Locale
         type="button"
         disabled={pending}
         onClick={() => decide(true)}
-        className="shrink-0 px-3 h-8 rounded-full bg-accent text-[color:var(--on-accent)] text-[12px] font-bold hover:brightness-110 active:scale-95 transition disabled:opacity-50"
+        className="shrink-0 px-3 h-8 rounded-full bg-accent text-[color:var(--on-accent)] text-12 font-bold hover:brightness-110 active:scale-95 transition disabled:opacity-50"
       >
         {t.requestAccept}
       </button>
@@ -298,7 +298,7 @@ function InviteRow({ c, t, locale }: { c: CommunityLite; t: Dict; locale: Locale
         type="button"
         disabled={pending}
         onClick={() => decide(false)}
-        className="shrink-0 px-3 h-8 rounded-full border border-border text-[12px] font-semibold text-muted hover:text-foreground transition disabled:opacity-50"
+        className="shrink-0 px-3 h-8 rounded-full border border-border text-12 font-semibold text-muted hover:text-foreground transition disabled:opacity-50"
       >
         {t.requestReject}
       </button>
@@ -545,7 +545,7 @@ export function CommunityRoom({
       {/* ===== طلبات الانضمام — للمالك، فوق الدردشة ===== */}
       {room.isOwner && reqs.length > 0 && (
         <section className="border-b border-[color:var(--divider)] py-2">
-          <p className="text-[12px] font-semibold text-muted uppercase tracking-wide mb-1">
+          <p className="text-12 font-semibold text-muted uppercase tracking-wide mb-1">
             {t.commJoinRequests}
           </p>
           {reqs.map((p) => {
@@ -557,14 +557,14 @@ export function CommunityRoom({
                 <button
                   type="button"
                   onClick={() => decide(p, true)}
-                  className="shrink-0 px-3 h-8 rounded-full bg-accent text-[color:var(--on-accent)] text-[12px] font-bold hover:brightness-110 active:scale-95 transition"
+                  className="shrink-0 px-3 h-8 rounded-full bg-accent text-[color:var(--on-accent)] text-12 font-bold hover:brightness-110 active:scale-95 transition"
                 >
                   {t.requestAccept}
                 </button>
                 <button
                   type="button"
                   onClick={() => decide(p, false)}
-                  className="shrink-0 px-3 h-8 rounded-full border border-border text-[12px] font-semibold text-muted hover:text-foreground transition"
+                  className="shrink-0 px-3 h-8 rounded-full border border-border text-12 font-semibold text-muted hover:text-foreground transition"
                 >
                   {t.requestReject}
                 </button>
@@ -587,10 +587,10 @@ export function CommunityRoom({
                   className={`flex flex-col max-w-[80%] ${m.mine ? "ms-auto items-end" : "me-auto items-start"}`}
                 >
                   {!m.mine && (
-                    <span className="text-[12px] text-muted mb-0.5 px-1">{nameOf(m.author)}</span>
+                    <span className="text-12 text-muted mb-0.5 px-1">{nameOf(m.author)}</span>
                   )}
                   <span
-                    className={`rounded-2xl px-3.5 py-2 text-[14px] leading-relaxed whitespace-pre-line break-words ${
+                    className={`fs-content rounded-2xl px-3.5 py-2 text-14 leading-relaxed whitespace-pre-line break-words ${
                       m.mine
                         ? "bg-accent text-[color:var(--on-accent)]"
                         : "bg-surface-2 text-foreground"
@@ -695,7 +695,7 @@ export function CommunityRoom({
                   <Avatar src={p.hide_name ? null : p.avatar_url} name={name} size={40} alt={t.avatarAlt} />
                   <span className="min-w-0 flex-1 text-sm font-semibold truncate">{name}</span>
                   {p.id === room.owner_id && (
-                    <span className="shrink-0 text-[12px] font-bold text-accent">{t.commOwnerBadge}</span>
+                    <span className="shrink-0 text-12 font-bold text-accent">{t.commOwnerBadge}</span>
                   )}
                 </Link>
               );
@@ -888,7 +888,7 @@ function InviteSheet({
                 <Avatar src={p.hide_name ? null : p.avatar_url} name={name} size={40} alt={t.avatarAlt} />
                 <span className="min-w-0 flex-1 text-sm font-semibold truncate">{name}</span>
                 {isMember ? (
-                  <span className="shrink-0 text-[12px] font-bold text-muted">
+                  <span className="shrink-0 text-12 font-bold text-muted">
                     {t.commAlreadyMember}
                   </span>
                 ) : (
@@ -897,8 +897,8 @@ function InviteSheet({
                     onClick={() => toggle(p)}
                     className={
                       isInvited
-                        ? "shrink-0 px-3 h-8 rounded-full border border-border text-[12px] font-semibold text-muted hover:text-foreground transition"
-                        : "shrink-0 px-3 h-8 rounded-full bg-accent text-[color:var(--on-accent)] text-[12px] font-bold hover:brightness-110 active:scale-95 transition"
+                        ? "shrink-0 px-3 h-8 rounded-full border border-border text-12 font-semibold text-muted hover:text-foreground transition"
+                        : "shrink-0 px-3 h-8 rounded-full bg-accent text-[color:var(--on-accent)] text-12 font-bold hover:brightness-110 active:scale-95 transition"
                     }
                   >
                     {isInvited ? t.commInvited : t.commInviteAction}
@@ -946,7 +946,7 @@ function MessageBox({ t, onSend }: { t: Dict; onSend: (body: string) => void }) 
         type="button"
         onClick={submit}
         disabled={!value.trim() || pending}
-        className="shrink-0 px-4 h-9 rounded-full bg-accent text-[color:var(--on-accent)] text-[12px] font-bold disabled:opacity-40 hover:brightness-110 active:scale-95 transition"
+        className="shrink-0 px-4 h-9 rounded-full bg-accent text-[color:var(--on-accent)] text-12 font-bold disabled:opacity-40 hover:brightness-110 active:scale-95 transition"
       >
         {t.commMsgSend}
       </button>

@@ -58,7 +58,7 @@ export function BlockConfirmSheet({
       className="p-5"
     >
       <>
-        <p id="block-confirm-title" className="font-bold text-[15px] mb-1.5">
+        <p id="block-confirm-title" className="font-bold text-15 mb-1.5">
           {t.blockConfirmTitle}
         </p>
         <p className="text-xs text-muted leading-relaxed mb-4">{t.blockConfirmBody}</p>

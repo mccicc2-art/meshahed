@@ -391,7 +391,7 @@ function StatChip({ icon, n, label }: { icon: "chart"; n: number; label: string 
   const has = n > 0;
   return (
     <span
-      className={`inline-flex items-center gap-1 px-2.5 text-[12px] tabular-nums ${
+      className={`inline-flex items-center gap-1 px-2.5 text-12 tabular-nums ${
         has ? "text-muted" : "text-muted/35"
       }`}
       title={has ? label : undefined}
@@ -486,7 +486,7 @@ function CommentRow({
               <Link
                 href={whoHref}
                 prefetch={false}
-                className="min-w-0 truncate font-bold text-[14px] leading-tight text-foreground hover:text-accent transition"
+                className="min-w-0 truncate font-bold text-14 leading-tight text-foreground hover:text-accent transition"
               >
                 <bdi>{who}</bdi>
               </Link>
@@ -498,7 +498,7 @@ function CommentRow({
               <Link
                 href={reviewHref}
                 prefetch={false}
-                className="ms-auto shrink-0 text-[12px] text-muted tabular-nums hover:text-accent transition"
+                className="ms-auto shrink-0 text-12 text-muted tabular-nums hover:text-accent transition"
               >
                 {timeAgoShort(a.updated_at, t)}
               </Link>
@@ -533,7 +533,7 @@ function CommentRow({
               <Link
                 href={titleHref}
                 prefetch={false}
-                className="min-w-0 flex items-center gap-1 truncate text-[12px] text-muted hover:text-accent transition"
+                className="min-w-0 flex items-center gap-1 truncate text-12 text-muted hover:text-accent transition"
               >
                 {/* **ورمزُ القائمة قبل اسمها** — السطرُ نفسُه يحمل عملاً
                     مرّةً وقائمةً مرّة، **والقارئُ يجب أن يعرف أيّهما قبل
@@ -543,7 +543,7 @@ function CommentRow({
               </Link>
               {a.rating != null && (
                 <span
-                  className="shrink-0 text-[14px] font-bold text-accent tabular-nums"
+                  className="shrink-0 text-14 font-bold text-accent tabular-nums"
                   title={t.rateOutOf(a.rating)}
                 >
                   ★ <span dir="ltr">{a.rating.toFixed(1)}</span>
@@ -612,7 +612,7 @@ function CommentRow({
               prefetch={false}
               aria-label={t.talkReply}
               title={t.talkReply}
-              className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[12px] tabular-nums text-muted hover:text-accent transition"
+              className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-12 tabular-nums text-muted hover:text-accent transition"
             >
               <Icon name="comment" size={15} />
               {/* **والصفرُ لا يُرسم** (D-222) */}
@@ -755,7 +755,7 @@ function NewsRow({
               <Link
                 href={`/u/${LOOPZ_USERNAME}`}
                 prefetch={false}
-                className="shrink-0 font-bold text-[14px] leading-tight text-foreground hover:text-accent transition"
+                className="shrink-0 font-bold text-14 leading-tight text-foreground hover:text-accent transition"
                 dir="ltr"
               >
                 Loopz
@@ -765,7 +765,7 @@ function NewsRow({
               <Link
                 href={postHref}
                 prefetch={false}
-                className="ms-auto shrink-0 text-[12px] text-muted tabular-nums hover:text-accent transition"
+                className="ms-auto shrink-0 text-12 text-muted tabular-nums hover:text-accent transition"
               >
                 {timeAgoShort(n.published_at, t)}
               </Link>
@@ -794,14 +794,14 @@ function NewsRow({
               <Link
                 href={titleHref}
                 prefetch={false}
-                className="min-w-0 truncate text-[12px] text-muted hover:text-accent transition"
+                className="min-w-0 truncate text-12 text-muted hover:text-accent transition"
               >
                 <bdi>{n.title}</bdi>
               </Link>
-              <span aria-hidden className="shrink-0 text-muted text-[12px]">
+              <span aria-hidden className="shrink-0 text-muted text-12">
                 ·
               </span>
-              <span className="shrink-0 text-[12px] text-muted">
+              <span className="shrink-0 text-12 text-muted">
                 {n.media_type === "tv" ? t.typeSeries : t.typeMovie}
               </span>
             </div>
@@ -824,14 +824,14 @@ function NewsRow({
         <Link
           href={postHref}
           prefetch={false}
-          className="block mt-2 text-[14px] leading-relaxed font-semibold hover:text-accent transition line-clamp-3"
+          className="block mt-2 text-14 leading-relaxed font-semibold hover:text-accent transition line-clamp-3"
         >
           {text}
         </Link>
 
         {/* **سطرُ النسبة** (D-213): الحدثُ من الصحافة والجملةُ من عندنا */}
         {src && (
-          <p className="mt-1 text-[12px] text-muted">
+          <p className="mt-1 text-12 text-muted">
             {src.url ? (
               <a
                 href={src.url}
@@ -855,7 +855,7 @@ function NewsRow({
           <Link
             href={postHref}
             prefetch={false}
-            className="mt-1 inline-block text-[12px] font-semibold text-accent hover:underline"
+            className="mt-1 inline-block text-12 font-semibold text-accent hover:underline"
           >
             {t.postOpenReplies}
           </Link>
