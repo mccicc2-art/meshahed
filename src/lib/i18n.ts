@@ -1245,7 +1245,7 @@ const ar = {
   newsArtistAnon: "جديد فنانٍ تتابعه",
   // تخصيص البروفايل (D-129) — نفس المحرّك، سجلٌّ ثانٍ
   custTabHome: "الرئيسية",
-  custTabProfile: "بروفايلي",
+  custTabProfile: "الملف",
   custProfileHint:
     "هذه صفحتك كما يراها غيرك. ما تخفيه هنا يختفي عن الزائر — أما الحساب الخاص فمكانه «الخصوصية».",
   custProfileHeader: "أعلى البروفايل",
@@ -1268,6 +1268,7 @@ const ar = {
   custPreview: "معاينة حيّة",
   /* ═══ شاشةُ التخصيص كما في تصميم أحمد (D-465) ═══ */
   custTitle: "التخصيص",
+  custHomeView: "عرض الرئيسية",
   custResetShort: "استعادة",
   custSectionsTitle: "الأقسام",
   custSectionsHint: "اسحب لترتيبها · واضغط العين لإظهارها أو إخفائها",
@@ -2628,7 +2629,7 @@ const en: Dict = {
   newsArtist: (name: string) => `New from ${name}`,
   newsArtistAnon: "New from an artist you follow",
   custTabHome: "Home",
-  custTabProfile: "My profile",
+  custTabProfile: "Profile",
   custProfileHint:
     "This is your page as others see it. What you hide here disappears for visitors — a private account lives under Privacy.",
   custProfileHeader: "Top of the profile",
@@ -2645,6 +2646,7 @@ const en: Dict = {
   custReorder: "Drag to reorder",
   custPreview: "Live preview",
   custTitle: "Customize",
+  custHomeView: "Home view",
   custResetShort: "Reset",
   custSectionsTitle: "Sections",
   custSectionsHint: "Drag to reorder · Tap to show or hide",
