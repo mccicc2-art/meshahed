@@ -59,7 +59,13 @@ export async function GET(request: Request) {
     // سقفٌ ١٢: تسعة أعمال كحدٍّ أقصى والأشخاص يكمّلون الباقي —
     // وحين تشحّ الأعمال (اسمٌ لا يطابق إلا أشخاصاً) يملؤون المكان
     const results = [...titleItems, ...peopleItems].slice(0, 12);
-    return NextResponse.json({ results });
+    /* دقيقةٌ في متصفّح السائل وحده (سابقة `api/season`): من يمسح حرفاً
+       ويعيد كتابته كان يدفع الرحلةَ كلَّها من جديد لسؤالٍ أُجيب للتوّ —
+       و`private` لأن النتائج بلغة صاحب الكوكي. */
+    return NextResponse.json(
+      { results },
+      { headers: { "Cache-Control": "private, max-age=60" } },
+    );
   } catch {
     return NextResponse.json({ results: [] });
   }
