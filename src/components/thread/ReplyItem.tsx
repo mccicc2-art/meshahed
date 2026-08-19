@@ -369,7 +369,7 @@ export function ReplyItem({
           <button
             type="button"
             onClick={() => setShowOriginal((v) => !v)}
-            className="mt-1 text-[11px] font-bold text-muted hover:text-accent transition"
+            className="mt-1 text-[12px] font-bold text-muted hover:text-accent transition"
           >
             {showOriginal ? t.showTranslation : t.showOriginalText}
           </button>

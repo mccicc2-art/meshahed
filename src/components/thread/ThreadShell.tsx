@@ -56,7 +56,7 @@ export function ThreadDateLine({
         year: "numeric",
       }).format(d);
   return (
-    <div className="py-3 border-y border-[color:var(--divider)] flex items-center gap-1.5 text-[13px] text-muted">
+    <div className="py-3 border-y border-[color:var(--divider)] flex items-center gap-1.5 text-[12px] text-muted">
       <span dir="ltr">{stamp}</span>
       {/* **والصفرُ لا يُرسم** (D-222): «٠ مشاهدة» تحت منشورٍ تقرؤه أنت
           الآن تناقضٌ ظاهر — والعدُّ يبدأ بعد الهجرة ٧٤. */}
