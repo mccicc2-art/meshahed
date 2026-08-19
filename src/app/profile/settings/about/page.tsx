@@ -28,10 +28,10 @@ export default async function Page() {
       </SettingsGroup>
 
       <section>
-        <h2 className="px-1 mb-2 text-[12px] font-semibold uppercase tracking-wide text-muted">
+        <h2 className="px-1 mb-2 text-12 font-semibold uppercase tracking-wide text-muted">
           {t.setAboutSources}
         </h2>
-        <div className="rounded-2xl border border-border bg-surface p-4 text-[12px] text-muted/80 leading-relaxed space-y-1.5">
+        <div className="rounded-2xl border border-border bg-surface p-4 text-12 text-muted/80 leading-relaxed space-y-1.5">
           <p>{t.tmdbAttribution}</p>
           <p>{t.justwatchAttribution}</p>
         </div>
