@@ -150,7 +150,7 @@ export function ProfileCustomize({
 
       {/* ===== أعلى البروفايل ===== */}
       <section className="rounded-2xl border border-border bg-surface overflow-hidden">
-        <h2 className="px-4 pt-3.5 pb-1 text-[15px] font-bold">{t.custProfileHeader}</h2>
+        <h2 className="px-4 pt-3.5 pb-1 text-15 font-bold">{t.custProfileHeader}</h2>
         <ToggleRow
           icon="chart"
           label={t.custStatsShort}
@@ -181,7 +181,7 @@ export function ProfileCustomize({
                 onChange={(e) =>
                   set({ ...prefs, visitsWho: e.target.value as VisitAudience })
                 }
-                className="appearance-none rounded-full border border-border bg-surface-2 ps-3 pe-7 h-8 text-[12px] font-medium outline-none focus:border-accent disabled:opacity-40 transition"
+                className="appearance-none rounded-full border border-border bg-surface-2 ps-3 pe-7 h-8 text-12 font-medium outline-none focus:border-accent disabled:opacity-40 transition"
               >
                 {VISIT_AUDIENCES.map((k) => (
                   <option key={k} value={k}>
@@ -199,8 +199,8 @@ export function ProfileCustomize({
 
       {/* ===== الأقسام — **عنوانٌ خارج البطاقة** كما في التصميم ===== */}
       <section>
-        <h2 className="px-1 text-[15px] font-bold">{t.custSectionsTitle}</h2>
-        <p className="px-1 mt-0.5 mb-2 text-[12px] text-muted leading-relaxed">
+        <h2 className="px-1 text-15 font-bold">{t.custSectionsTitle}</h2>
+        <p className="px-1 mt-0.5 mb-2 text-12 text-muted leading-relaxed">
           {t.custSectionsHint}
         </p>
 
@@ -219,20 +219,20 @@ export function ProfileCustomize({
         />
 
         {/* **إخراجٌ لا خصوصية** — والسطرُ يقولها كي لا يظنّ أن الإخفاء قفل */}
-        <p className="px-1 mt-2 text-[12px] text-muted leading-relaxed">
+        <p className="px-1 mt-2 text-12 text-muted leading-relaxed">
           {t.custProfileHint}
         </p>
 
         {/* الفراغ مسموحٌ هنا بخلاف الرئيسية — لكنه يُقال بصوتٍ عالٍ */}
         {prefs.order.length === 0 && (
-          <p className="px-1 mt-1 text-[12px] text-muted">{t.custProfileEmpty}</p>
+          <p className="px-1 mt-1 text-12 text-muted">{t.custProfileEmpty}</p>
         )}
       </section>
 
       {/* ===== التنسيق وحجم الملصق — **بطاقةٌ واحدةٌ بصفّين** ===== */}
       <section className="rounded-2xl border border-border bg-surface overflow-hidden">
         <div className="flex items-center gap-3 min-h-14 px-4 py-2.5 border-b border-[color:var(--divider)]">
-          <span className="shrink-0 text-[15px] font-bold">{t.custLayout}</span>
+          <span className="shrink-0 text-15 font-bold">{t.custLayout}</span>
           <span className="min-w-0 flex-1">
             <CardCountRow
               value={prefs.cards}
@@ -246,7 +246,7 @@ export function ProfileCustomize({
           </span>
         </div>
         <div className="flex items-center gap-3 min-h-14 px-4 py-2.5">
-          <span className="min-w-0 flex-1 text-[15px] font-bold">{t.custPosterSize}</span>
+          <span className="min-w-0 flex-1 text-15 font-bold">{t.custPosterSize}</span>
           <PosterSizeRow
             value={prefs.density}
             labels={posterLabel}
@@ -266,7 +266,7 @@ export function ProfileCustomize({
           {pending ? t.saving : t.saveChanges}
         </button>
         {saved && (
-          <p role="status" className="text-center text-[14px] text-[color:var(--success)]">
+          <p role="status" className="text-center text-14 text-[color:var(--success)]">
             {t.savedOk}
           </p>
         )}

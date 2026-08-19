@@ -87,7 +87,7 @@ export function PosterRail({
         }
       >
         {/* 🆕 **٢٢px/٧٠٠ — «عنوان القسم» في سلّم النصّ** (D-454) */}
-        <h2 className="flex flex-wrap items-center gap-2 text-[22px] font-bold">
+        <h2 className="flex flex-wrap items-center gap-2 text-22 font-bold">
           {icon && (
             <Icon
               name={icon}
@@ -116,7 +116,7 @@ export function PosterRail({
                 href={href}
                 /* 🆕 ١٢ لا ١٣ (D-459): **«الكلّ» ثانويٌّ كسائر الثانويّ** —
                    **ودرجةٌ ثالثةٌ بين ١٢ و١٥ لدورٍ واحدٍ ليست درجة.** */
-                className="text-[12px] font-medium text-muted hover:text-accent transition shrink-0"
+                className="text-12 font-medium text-muted hover:text-accent transition shrink-0"
               >
                 {seeAllLabel}
               </Link>

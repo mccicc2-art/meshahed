@@ -189,14 +189,14 @@ export function PosterCard({
         )}
         {badge && (
           <span
-            className="absolute top-2 start-2 text-[12px] font-semibold px-2.5 py-1 rounded-full text-white"
+            className="absolute top-2 start-2 text-12 font-semibold px-2.5 py-1 rounded-full text-white"
             style={{ background: BADGE_BG[badgeTone] }}
           >
             {badge}
           </span>
         )}
         {typeof count === "number" && count > 0 && (
-          <span className="absolute top-2 end-2 grid place-items-center min-w-6 h-6 px-1.5 rounded-full bg-accent text-[color:var(--on-accent)] text-[12px] font-bold tabular-nums">
+          <span className="absolute top-2 end-2 grid place-items-center min-w-6 h-6 px-1.5 rounded-full bg-accent text-[color:var(--on-accent)] text-12 font-bold tabular-nums">
             {count}
           </span>
         )}
@@ -206,7 +206,7 @@ export function PosterCard({
             بلا نصٍّ ظلٌّ بلا سبب. */}
         {!hideTitle && !titleBelow && (
         <div className="absolute inset-x-0 bottom-0 p-2 pt-7 bg-gradient-to-t from-black/90 via-black/60 to-transparent">
-          <p className="text-[12px] font-semibold leading-tight text-white line-clamp-2 drop-shadow">
+          <p className="text-12 font-semibold leading-tight text-white line-clamp-2 drop-shadow">
             {title}
           </p>
           {year && <p className="text-[10px] text-white/60 mt-0.5">{year}</p>}
@@ -246,15 +246,15 @@ export function PosterCard({
               **و١٢px للثانويّ.** كان ١٣/١١ — **رقمان خارج السلّم**،
               وسطرُ الاسم تحت الملصق هو أكثرُ نصٍّ يُقرأ في التطبيق. */}
           <p
-            className="text-[15px] font-semibold leading-snug line-clamp-2"
+            className="text-15 font-semibold leading-snug line-clamp-2"
             dir="auto"
           >
             {title}
           </p>
-          {year && <p className="text-[12px] font-medium text-muted mt-0.5">{year}</p>}
+          {year && <p className="text-12 font-medium text-muted mt-0.5">{year}</p>}
           {/* النبذةُ تتبع الاسمَ حيث ذهب — **ولا تُترك في الحجاب الذاهب** */}
           {note && (
-            <MarqueeText text={note} className="text-[12px] text-accent-2/90 mt-0.5" />
+            <MarqueeText text={note} className="text-12 text-accent-2/90 mt-0.5" />
           )}
         </div>
       )}

@@ -181,7 +181,7 @@ export function CommunityListCard({
         ) : (
           (l.rating ?? null) !== null && (
             <span
-              className="shrink-0 flex items-center gap-1 px-1 text-[12px] font-bold text-accent tabular-nums"
+              className="shrink-0 flex items-center gap-1 px-1 text-12 font-bold text-accent tabular-nums"
               dir="ltr"
             >
               <Icon name="star" size={16} />
@@ -201,7 +201,7 @@ export function CommunityListCard({
         ) : (
           (l.saves ?? 0) > 0 && (
             <span
-              className="shrink-0 flex items-center gap-1 px-1 text-[12px] text-muted tabular-nums"
+              className="shrink-0 flex items-center gap-1 px-1 text-12 text-muted tabular-nums"
               dir="ltr"
             >
               <Icon name="heart-filled" size={16} className="fill-current" />
@@ -284,7 +284,7 @@ export function ListCardShell({
 }) {
   return (
     <>
-      <span className="flex items-center gap-1.5 text-[14px] font-bold">
+      <span className="flex items-center gap-1.5 text-14 font-bold">
         {icon}
         {/* 🆕 **سطران بحدٍّ أقصى و`dir="auto"`** (D-443، المرحلة ٥:
             «معالجة العناوين العربية والإنجليزية · حد أقصى سطران»):
@@ -307,7 +307,7 @@ export function ListCardShell({
           **وحجّتُه أقربُ إلى الفعل**: القلبُ زرُّك أنت (تحفظ أو لا)،
           **فيجاور الاسمَ الذي تضغطه**، **والنجمةُ حكمُ الناس فتجاور
           عددَهم.** **والارتفاعُ سطران كما هو** (D-046). */}
-      <span className="mt-1 flex items-center gap-1 text-[12px] font-normal text-muted min-w-0">
+      <span className="mt-1 flex items-center gap-1 text-12 font-normal text-muted min-w-0">
         {ownerAvatar}
         {ownerName && (
           <>

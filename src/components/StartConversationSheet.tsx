@@ -173,7 +173,7 @@ export function StartConversationSheet({
             </span>
             <span className="min-w-0 flex-1">
               <span className="block text-sm font-semibold truncate">{picked.title}</span>
-              <span className="block text-[12px] text-muted">
+              <span className="block text-12 text-muted">
                 {picked.kind === "tv" ? t.typeSeries : t.typeMovie}
                 {picked.year ? ` · ${picked.year}` : ""}
               </span>
@@ -201,7 +201,7 @@ export function StartConversationSheet({
             type="button"
             onClick={submit}
             disabled={pending}
-            className="w-full h-12 rounded-full bg-accent text-[color:var(--on-accent)] font-bold text-[15px] disabled:opacity-40 hover:brightness-110 active:scale-[0.98] transition"
+            className="w-full h-12 rounded-full bg-accent text-[color:var(--on-accent)] font-bold text-15 disabled:opacity-40 hover:brightness-110 active:scale-[0.98] transition"
           >
             {t.shareSendButton}
           </button>
@@ -256,13 +256,13 @@ export function StartConversationSheet({
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block text-sm font-semibold truncate">{s.title}</span>
-                    <span className="block text-[12px] text-muted truncate">
+                    <span className="block text-12 text-muted truncate">
                       {s.kind === "tv" ? t.typeSeries : t.typeMovie}
                       {s.year ? ` · ${s.year}` : ""}
                     </span>
                   </span>
                   {s.rating != null && s.rating > 0 && (
-                    <span className="text-[12px] font-bold text-accent tabular-nums shrink-0" dir="ltr">
+                    <span className="text-12 font-bold text-accent tabular-nums shrink-0" dir="ltr">
                       ★ {s.rating}
                     </span>
                   )}

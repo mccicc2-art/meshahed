@@ -92,9 +92,9 @@ export function FollowCountButton({
                   <span className="flex items-center gap-3 rounded-xl px-1.5 py-1.5 hover:bg-surface-2 transition">
                     <Avatar src={p.avatar_url} name={name} size={40} alt="" />
                     <span className="min-w-0">
-                      <span className="block text-[14px] font-semibold truncate">{name}</span>
+                      <span className="block text-14 font-semibold truncate">{name}</span>
                       {p.username && (
-                        <span className="block text-[12px] text-muted truncate" dir="ltr">
+                        <span className="block text-12 text-muted truncate" dir="ltr">
                           @{p.username}
                         </span>
                       )}
@@ -182,9 +182,9 @@ export function ToWatchStat({
           {divider && <span className="absolute inset-y-1 end-0 w-px bg-[color:var(--divider)]" aria-hidden />}
           <span className="flex items-center gap-2">
             <Icon name={icon} size={20} style={{ color }} className="shrink-0" />
-            <span className="text-[20px] font-bold leading-none tabular-nums">{value}</span>
+            <span className="text-20 font-bold leading-none tabular-nums">{value}</span>
           </span>
-          <span className="block text-[12px] text-muted mt-1.5 leading-[1.25]">{label}</span>
+          <span className="block text-12 text-muted mt-1.5 leading-[1.25]">{label}</span>
         </button>
       )}
 
@@ -211,9 +211,9 @@ export function ToWatchStat({
                       {x.poster && <Image src={x.poster} alt="" fill sizes="40px" className="object-cover" />}
                     </span>
                     <span className="min-w-0">
-                      <span className="block text-[14px] font-semibold truncate">{x.title}</span>
+                      <span className="block text-14 font-semibold truncate">{x.title}</span>
                       {x.remainingLabel && (
-                        <span className="block text-[12px] text-muted truncate">{x.remainingLabel}</span>
+                        <span className="block text-12 text-muted truncate">{x.remainingLabel}</span>
                       )}
                     </span>
                   </Link>

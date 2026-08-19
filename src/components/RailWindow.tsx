@@ -57,7 +57,7 @@ export function RailWindow({
                تبديل، **والدلالةُ تتبع العنصرَ لا الشكلَ** (`controls.ts`:
                «وصفاتٌ لا مكوّنات» لهذا السبب بعينه). */
             aria-current={on ? "true" : undefined}
-            className={segmentedItem(on, "px-2.5 pt-1 pb-2 text-[12px]", false)}
+            className={segmentedItem(on, "px-2.5 pt-1 pb-2 text-12", false)}
           >
             {labels[w]}
           </Link>

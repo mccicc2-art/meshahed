@@ -230,7 +230,7 @@ export function ProfileMenu({
         <button
           type="button"
           onClick={openMessage}
-          className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-3.5 h-9 text-[12px] font-bold transition hover:border-accent/50 active:scale-95"
+          className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-3.5 h-9 text-12 font-bold transition hover:border-accent/50 active:scale-95"
         >
           <Icon name="comment" size={15} className={mutual ? "text-accent" : "text-muted"} />
           {t.msgUserOption}
@@ -283,7 +283,7 @@ export function ProfileMenu({
         variant="bottom"
         labelledBy="profile-menu-title"
       >
-        <p id="profile-menu-title" className="text-center font-bold text-[15px] pt-5 pb-2">
+        <p id="profile-menu-title" className="text-center font-bold text-15 pt-5 pb-2">
           {t.moreMenuTitle}
         </p>
         {/* **المتابعة أوّلاً حين تكون هنا** — الأخفُّ أثراً في الصدر
@@ -301,7 +301,7 @@ export function ProfileMenu({
         className="p-5"
       >
         <>
-          <p id="report-user-title" className="font-bold text-[15px] mb-1.5">
+          <p id="report-user-title" className="font-bold text-15 mb-1.5">
             {t.reportUserTitle}
           </p>
           <p className="text-xs text-muted leading-relaxed mb-3">{t.reportUserBody}</p>
