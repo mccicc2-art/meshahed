@@ -5,6 +5,7 @@ import { claimGesture, releaseGesture } from "@/lib/tabDrag";
 import { tap } from "@/lib/haptics";
 import { Icon, type IconName } from "../Icon";
 import { CARD_COUNTS, type CardCount } from "@/lib/cardCount";
+import { DENSITIES, type Density } from "@/lib/density";
 import { segmentedItem, segmentedTrackFull } from "./controls";
 
 /**
@@ -99,10 +100,13 @@ export function SectionOrderList<K extends string>({
     releaseGesture("y");
   }
 
+  /* 🆕 **الصفُّ ٥٦ بكسلاً كصفِّ الإعدادات** (D-465، تصميمُ أحمد):
+     **رمزٌ فاسمٌ فعينٌ فمقبض** — **والمقبضُ في الطرف لا في الصدر**،
+     **لأن العينَ هي الفعلُ الأكثرُ استعمالاً** وقد كانت خلف المقبض. */
   const rowCls =
-    "flex items-center justify-between gap-3 px-3.5 py-3 border-b border-[color:var(--divider)] last:border-b-0";
+    "flex items-center gap-3 min-h-14 px-4 py-2.5 border-b border-[color:var(--divider)] last:border-b-0";
   const iconBtn =
-    "grid place-items-center w-9 h-9 rounded-lg text-muted hover:text-foreground hover:bg-surface-2 disabled:opacity-30 disabled:pointer-events-none transition";
+    "grid place-items-center w-9 h-9 rounded-lg hover:bg-surface-2 disabled:opacity-30 disabled:pointer-events-none transition";
 
   function move(k: K, dir: -1 | 1) {
     const next = [...picked];
@@ -133,55 +137,53 @@ export function SectionOrderList<K extends string>({
             dragKey === k ? "bg-surface-2 relative z-10 shadow-lg" : ""
           } transition-colors`}
         >
-          <span className="flex items-center gap-2.5 min-w-0 text-sm">
-            {/* **المقبضُ أوّلُ الصفّ** — عُرفُ كلِّ قائمةٍ تُرتَّب،
-                **ولوحةُ المفاتيح تحرّكه بالأسهم** فلا يُحرم من الترتيب
-                من لا يسحب (D-177: ما سقط رسمُه لا يسقط نطقُه، وهنا ما
-                سقط زرُّه لا يسقط فعلُه). */}
-            <button
-              type="button"
-              aria-label={labels.drag ?? labels.up}
-              title={labels.drag ?? labels.up}
-              onPointerDown={(e) => onHandleDown(e, k)}
-              onPointerMove={(e) => onHandleMove(e, k)}
-              onPointerUp={endDrag}
-              onPointerCancel={endDrag}
-              onKeyDown={(e) => {
-                if (e.key === "ArrowUp") {
-                  e.preventDefault();
-                  move(k, -1);
-                } else if (e.key === "ArrowDown") {
-                  e.preventDefault();
-                  move(k, 1);
-                }
-              }}
-              className="grid place-items-center w-8 h-9 -ms-1.5 shrink-0 rounded-lg text-muted hover:text-foreground hover:bg-surface-2 transition touch-none cursor-grab active:cursor-grabbing"
-            >
-              <Icon name="grip" size={16} />
-            </button>
-            <Icon name={meta[k].icon} size={18} className="text-muted shrink-0" />
-            <span className="truncate">{meta[k].label}</span>
+          <Icon name={meta[k].icon} size={20} className="shrink-0 text-foreground" />
+          <span className="min-w-0 flex-1 truncate text-[15px] font-medium">
+            {meta[k].label}
           </span>
-          <span className="flex items-center gap-1 shrink-0">
-            <button
-              type="button"
-              onClick={() => toggle(k)}
-              disabled={atMin}
-              aria-label={labels.hide}
-              title={labels.hide}
-              className={iconBtn}
-            >
-              <Icon name="eye" size={16} />
-            </button>
-          </span>
+          {/* **العينُ مضاءةٌ حين يكون القسمُ ظاهراً** — **حالةٌ تُقرأ من
+              لونها قبل شكلها**، والمخفيُّ عينٌ مشطوبةٌ خافتة. */}
+          <button
+            type="button"
+            onClick={() => toggle(k)}
+            disabled={atMin}
+            aria-label={labels.hide}
+            title={labels.hide}
+            className={`${iconBtn} shrink-0 text-accent`}
+          >
+            <Icon name="eye" size={18} />
+          </button>
+          {/* **والمقبضُ آخرُ الصفّ** — **ولوحةُ المفاتيح تحرّكه بالأسهم**
+              فلا يُحرم من الترتيب من لا يسحب (D-177/D-441). */}
+          <button
+            type="button"
+            aria-label={labels.drag ?? labels.up}
+            title={labels.drag ?? labels.up}
+            onPointerDown={(e) => onHandleDown(e, k)}
+            onPointerMove={(e) => onHandleMove(e, k)}
+            onPointerUp={endDrag}
+            onPointerCancel={endDrag}
+            onKeyDown={(e) => {
+              if (e.key === "ArrowUp") {
+                e.preventDefault();
+                move(k, -1);
+              } else if (e.key === "ArrowDown") {
+                e.preventDefault();
+                move(k, 1);
+              }
+            }}
+            className="grid place-items-center w-9 h-9 -me-1 shrink-0 rounded-lg text-muted hover:text-foreground hover:bg-surface-2 transition touch-none cursor-grab active:cursor-grabbing"
+          >
+            <Icon name="grip" size={18} />
+          </button>
         </div>
       ))}
 
       {hidden.map((k) => (
-        <div key={k} className={`${rowCls} opacity-50`}>
-          <span className="flex items-center gap-2.5 min-w-0 text-sm">
-            <Icon name={meta[k].icon} size={18} className="text-muted shrink-0" />
-            <span className="truncate line-through">{meta[k].label}</span>
+        <div key={k} className={rowCls}>
+          <Icon name={meta[k].icon} size={20} className="shrink-0 text-[color:var(--disabled)]" />
+          <span className="min-w-0 flex-1 truncate text-[15px] font-medium text-[color:var(--disabled)]">
+            {meta[k].label}
           </span>
           <button
             type="button"
@@ -189,10 +191,14 @@ export function SectionOrderList<K extends string>({
             disabled={atMax}
             aria-label={labels.show}
             title={labels.show}
-            className={`${iconBtn} shrink-0`}
+            className={`${iconBtn} shrink-0 text-[color:var(--disabled)] hover:text-foreground`}
           >
-            <Icon name="eye-off" size={16} />
+            <Icon name="eye-off" size={18} />
           </button>
+          {/* ⚠️ **خانةٌ فارغةٌ بعرض المقبض لا مقبضٌ معطَّل**: المخفيُّ
+              خارجَ الترتيب فلا شيءَ يُسحب — **ومقبضٌ لا يسحب يَعِد بفعلٍ
+              لا يقع** (D-217)، **والخانةُ تحفظ استقامةَ العمود.** */}
+          <span aria-hidden className="w-9 h-9 -me-1 shrink-0" />
         </div>
       ))}
     </div>
@@ -244,16 +250,28 @@ export function CardCountRow({
  */
 export function ToggleRow({
   label,
+  icon,
+  trailing,
   checked,
   onChange,
 }: {
   label: string;
+  /** رمزُ الصدر — يغيب فلا يُحجَز له مكان (D-044) */
+  icon?: IconName;
+  /**
+   * 🆕 **ما يجلس قبل المفتاح** (D-465) — قائمةُ «من يراه» بجانب مفتاح
+   * الزيارات. **⚠️ خارج الـ`label`**: عنصرُ تحكّمٍ داخل `label` يقلب
+   * المفتاحَ عند كلِّ ضغطةٍ عليه.
+   */
+  trailing?: React.ReactNode;
   checked: boolean;
   onChange: () => void;
 }) {
   return (
-    <label className="flex items-center justify-between gap-3 px-3.5 py-3 border-b border-[color:var(--divider)] last:border-b-0 cursor-pointer">
-      <span className="text-sm">{label}</span>
+    <div className="flex items-center gap-3 min-h-14 px-4 py-2.5 border-b border-[color:var(--divider)] last:border-b-0">
+      {icon && <Icon name={icon} size={20} className="shrink-0 text-foreground" />}
+      <label className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer">
+      <span className="flex-1 min-w-0 truncate text-[15px] font-medium">{label}</span>
       <input type="checkbox" checked={checked} onChange={onChange} className="sr-only peer" />
       {/* مفتاح iOS: المسار يتلوّن والقرص ينزلق */}
       <span
@@ -266,6 +284,64 @@ export function ToggleRow({
           }`}
         />
       </span>
-    </label>
+      </label>
+      {trailing}
+    </div>
+  );
+}
+
+/**
+ * 🆕 **حجمُ الملصق — ثلاثةُ مستطيلاتٍ لا ثلاثُ كلمات** (D-465، تصميمُ
+ * أحمد: صفُّ «Poster size» بثلاثة رموز).
+ *
+ * **والرمزُ هنا أصدقُ من الكلمة**: السؤالُ «كم يكبر الملصق»، **والجوابُ
+ * مقاسٌ يُرى لا صفةٌ تُقرأ** — **و«مضغوط» تعني شيئاً مختلفاً في كلِّ
+ * تطبيقٍ استعمله القارئ.**
+ *
+ * ⚠️ **وهو غيرُ صفِّ «التنسيق» فوقه**: ذاك **كم بطاقةً يُظهر الصفّ**
+ * (`cards` — سقفٌ يقصّ)، وهذا **كم تكبر الواحدة** (`density` — عرضٌ).
+ * **⚖️ ونقضُ D-441 مسجَّلٌ باسمه**: جمعتُهما هناك في مفتاحٍ واحد لأنهما
+ * بدَوا سؤالاً واحداً، **وهما سؤالان يجيبهما رقمان مخزَّنان أصلاً.**
+ */
+export function PosterSizeRow({
+  value,
+  labels,
+  onChange,
+}: {
+  value: Density;
+  labels: Record<Density, string>;
+  onChange: (next: Density) => void;
+}) {
+  /** ارتفاعٌ ثابتٌ وعرضٌ يتدرّج — **الفرقُ يُقاس بالعين لا بالتخمين** */
+  const W: Record<Density, string> = { compact: "w-3", comfortable: "w-4", large: "w-5" };
+
+  return (
+    <div className="flex items-center gap-2 shrink-0">
+      {DENSITIES.map((k) => {
+        const on = value === k;
+        return (
+          <button
+            key={k}
+            type="button"
+            aria-pressed={on}
+            aria-label={labels[k]}
+            title={labels[k]}
+            onClick={() => onChange(k)}
+            className={`grid place-items-center w-11 h-10 rounded-xl border transition active:scale-95 ${
+              on
+                ? "border-accent bg-accent/10"
+                : "border-border bg-surface-2 hover:border-accent/40"
+            }`}
+          >
+            <span
+              aria-hidden
+              className={`${W[k]} h-6 rounded-[3px] border ${
+                on ? "border-accent" : "border-[color:var(--disabled)]"
+              }`}
+            />
+          </button>
+        );
+      })}
+    </div>
   );
 }
