@@ -451,7 +451,7 @@ export function EpisodeTracker({
                     size={16}
                     className={`text-muted transition-transform duration-300 ${isOpen ? "" : "-rotate-90 rtl:rotate-90"}`}
                   />
-                  <span className="font-semibold text-[15px]">
+                  <span className="font-semibold text-15">
                     {s.name || t.seasonLabel(s.season_number)}
                   </span>
                   <span className="text-xs text-muted tabular-nums" dir="ltr">
@@ -582,13 +582,13 @@ export function EpisodeTracker({
                             </span>
 
                             <div className="flex-1 min-w-0">
-                              <p className="text-[12px] font-semibold truncate leading-tight">
+                              <p className="text-12 font-semibold truncate leading-tight">
                                 <span className="text-muted font-medium tabular-nums">
                                   {e.episode_number}.
                                 </span>{" "}
                                 {e.name}
                               </p>
-                              <p className="text-[12px] text-muted mt-1 truncate sm:hidden">
+                              <p className="text-12 text-muted mt-1 truncate sm:hidden">
                                 {metaLine(e, epAired, t)}
                               </p>
                             </div>
@@ -597,7 +597,7 @@ export function EpisodeTracker({
                                 شعار IMDb نفسه (D-093: لا رقم بلا مصدره) */}
                             {showRatings && typeof e.imdb_rating === "number" && (
                               <span
-                                className="shrink-0 inline-flex items-center gap-1 text-[12px] font-bold tabular-nums"
+                                className="shrink-0 inline-flex items-center gap-1 text-12 font-bold tabular-nums"
                                 dir="ltr"
                                 aria-label={`IMDb ${e.imdb_rating.toFixed(1)}`}
                               >
@@ -635,7 +635,7 @@ export function EpisodeTracker({
                                    رأسياً وعلى بُعد ٤١px من الحافّة —
                                    **فلا هي تحت النقاط ولا هي بمحاذاة
                                    الاسم.** */
-                                className="shrink-0 self-start mt-0.5 -me-2 inline-flex items-center gap-1 text-[12px] font-bold tabular-nums px-1.5 py-1 rounded-lg hover:bg-surface-2 transition"
+                                className="shrink-0 self-start mt-0.5 -me-2 inline-flex items-center gap-1 text-12 font-bold tabular-nums px-1.5 py-1 rounded-lg hover:bg-surface-2 transition"
                                 dir="ltr"
                               >
                                 {(() => {
@@ -668,7 +668,7 @@ export function EpisodeTracker({
                             onClick={() =>
                               setShownAll((prev) => new Set(prev).add(s.season_number))
                             }
-                            className="w-full py-3 text-[14px] font-bold text-accent hover:bg-surface-2 transition"
+                            className="w-full py-3 text-14 font-bold text-accent hover:bg-surface-2 transition"
                           >
                             {t.showRestEps(episodes.length - CHUNK)}
                           </button>

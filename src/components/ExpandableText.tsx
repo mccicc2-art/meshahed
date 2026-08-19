@@ -36,12 +36,12 @@ export function ExpandableText({
   const t = getDict(locale);
   const [open, setOpen] = useState(false);
   const dir = dirOf(text);
-  const btn = "shrink-0 text-[12px] font-bold text-accent hover:underline";
+  const btn = "shrink-0 text-12 font-bold text-accent hover:underline";
 
   if (!open) {
     return (
       <div dir={dir} className={`mt-2 flex items-baseline gap-2 ${alignOf(text)}`}>
-        <p className="min-w-0 flex-1 text-[12px] leading-relaxed text-muted truncate">{text}</p>
+        <p className="min-w-0 flex-1 text-12 leading-relaxed text-muted truncate">{text}</p>
         <button type="button" onClick={() => setOpen(true)} aria-expanded={false} className={btn}>
           {t.showMore}
         </button>
@@ -50,7 +50,7 @@ export function ExpandableText({
   }
 
   return (
-    <p dir={dir} className={`mt-2 text-[12px] leading-relaxed text-muted ${alignOf(text)}`}>
+    <p dir={dir} className={`mt-2 text-12 leading-relaxed text-muted ${alignOf(text)}`}>
       {text}{" "}
       <button
         type="button"

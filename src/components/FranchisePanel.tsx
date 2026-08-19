@@ -127,12 +127,12 @@ export function FranchisePanel({
           وحده لا يقول ماذا يفعل في أوّل مرّة */}
       <div className="flex items-center gap-2 mb-3 flex-wrap">
         <Icon name="film" size={16} className="text-accent shrink-0" />
-        <h3 className="text-[12px] font-bold me-auto">{t.franchiseTitle}</h3>
-        <span className="inline-flex items-center gap-1 text-[12px] text-muted">
+        <h3 className="text-12 font-bold me-auto">{t.franchiseTitle}</h3>
+        <span className="inline-flex items-center gap-1 text-12 text-muted">
           <Icon name="check-line" size={12} strokeWidth={2.4} />
           {t.markWatchedBtn}
         </span>
-        <span className="inline-flex items-center gap-1 text-[12px] text-muted">
+        <span className="inline-flex items-center gap-1 text-12 text-muted">
           <Icon name="bookmark" size={12} strokeWidth={2.4} />
           {t.libToWatch}
         </span>
@@ -171,7 +171,7 @@ export function FranchisePanel({
                     </span>
                   )}
                   <span className="absolute inset-x-0 bottom-0 p-1.5 pt-6 bg-gradient-to-t from-black/90 to-transparent">
-                    <span className="block text-[12px] font-semibold leading-tight text-white line-clamp-2">
+                    <span className="block text-12 font-semibold leading-tight text-white line-clamp-2">
                       {p.title}
                     </span>
                     {p.year && (

@@ -68,13 +68,13 @@ export function FeedReviewText({
         dir={dirOf(shown)}
         className={`block mt-2 ${alignOf(shown)}`}
       >
-        <p className="text-[14px] leading-relaxed text-foreground/85 whitespace-pre-line">{shown}</p>
+        <p className="fs-content text-14 leading-relaxed text-foreground/85 whitespace-pre-line">{shown}</p>
       </Link>
       {translated && (
         <button
           type="button"
           onClick={() => setShowOriginal((v) => !v)}
-          className="mt-1 text-[12px] font-bold text-muted hover:text-accent transition"
+          className="mt-1 text-12 font-bold text-muted hover:text-accent transition"
         >
           {showOriginal ? t.showTranslation : t.showOriginalText}
         </button>

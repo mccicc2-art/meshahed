@@ -210,7 +210,7 @@ export function GoogleButton({ locale }: { locale: Locale }) {
         <button
           onClick={redirectSignIn}
           disabled={loading}
-          className="mt-3 w-full text-[12px] text-muted/60 hover:text-muted transition disabled:opacity-50"
+          className="mt-3 w-full text-12 text-muted/60 hover:text-muted transition disabled:opacity-50"
         >
           {t.loginOtherWay}
         </button>

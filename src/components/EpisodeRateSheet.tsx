@@ -137,7 +137,7 @@ export function EpisodeRateSheet({
                   onClick={() => setRating(n)}
                   aria-label={t.rateStars(n)}
                   aria-pressed={rating === n}
-                  className={`text-[22px] leading-none px-0.5 py-1 transition ${
+                  className={`text-22 leading-none px-0.5 py-1 transition ${
                     n <= shown ? "text-accent scale-110" : "text-muted/40 hover:text-muted"
                   }`}
                 >
@@ -145,7 +145,7 @@ export function EpisodeRateSheet({
                 </button>
               ))}
               {rating > 0 && (
-                <span className="text-[12px] text-muted ms-2 tabular-nums">
+                <span className="text-12 text-muted ms-2 tabular-nums">
                   {t.rateOutOf(rating)}
                 </span>
               )}
@@ -157,7 +157,7 @@ export function EpisodeRateSheet({
               rows={3}
               maxLength={2000}
               placeholder={t.epReviewPlaceholder}
-              className="w-full bg-surface-2 border border-border rounded-xl px-3.5 py-2.5 text-[14px] leading-relaxed outline-none focus:border-accent/60 transition resize-none"
+              className="w-full bg-surface-2 border border-border rounded-xl px-3.5 py-2.5 text-14 leading-relaxed outline-none focus:border-accent/60 transition resize-none"
             />
 
             {error && <Alert>{error}</Alert>}
@@ -171,7 +171,7 @@ export function EpisodeRateSheet({
                   type="button"
                   onClick={remove}
                   disabled={pending}
-                  className="text-[12px] text-muted hover:text-foreground transition"
+                  className="text-12 text-muted hover:text-foreground transition"
                 >
                   {t.epRateRemove}
                 </button>

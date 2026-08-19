@@ -462,7 +462,7 @@ export function SectionTitle({
   className?: string;
 }) {
   return (
-    <h2 className={`flex items-center gap-2 text-[22px] font-bold ${className}`}>
+    <h2 className={`flex items-center gap-2 text-22 font-bold ${className}`}>
       <Icon name={icon} size={18} className="text-muted" />
       {children}
     </h2>

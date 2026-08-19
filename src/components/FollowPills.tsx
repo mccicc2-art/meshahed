@@ -224,7 +224,7 @@ function FollowersSheet({
       <div className={`${sheetScroll} pb-[env(safe-area-inset-bottom)]`}>
         {reqs.length > 0 && (
           <section className="border-b border-[color:var(--divider)]">
-            <p className="text-[12px] font-semibold text-muted uppercase tracking-wide px-5 pt-3 pb-1">
+            <p className="text-12 font-semibold text-muted uppercase tracking-wide px-5 pt-3 pb-1">
               {t.followRequestsTitle}
             </p>
             {reqs.map((p) => {
@@ -243,14 +243,14 @@ function FollowersSheet({
                   <button
                     type="button"
                     onClick={() => decide(p, true)}
-                    className="shrink-0 px-3.5 h-9 rounded-full bg-accent text-[color:var(--on-accent)] text-[14px] font-bold hover:brightness-110 active:scale-95 transition"
+                    className="shrink-0 px-3.5 h-9 rounded-full bg-accent text-[color:var(--on-accent)] text-14 font-bold hover:brightness-110 active:scale-95 transition"
                   >
                     {t.requestAccept}
                   </button>
                   <button
                     type="button"
                     onClick={() => decide(p, false)}
-                    className="shrink-0 px-3.5 h-9 rounded-full border border-border text-[12px] font-semibold text-muted hover:text-foreground hover:border-accent/50 active:scale-95 transition"
+                    className="shrink-0 px-3.5 h-9 rounded-full border border-border text-12 font-semibold text-muted hover:text-foreground hover:border-accent/50 active:scale-95 transition"
                   >
                     {t.requestReject}
                   </button>
