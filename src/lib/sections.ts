@@ -17,6 +17,7 @@ import {
 import { getFollowedArtists } from "./data";
 import { railGuard, topChartRail } from "./topChart";
 import type { Locale } from "./i18n";
+import type { RailWin } from "./browse";
 
 /**
  * خلطٌ عشوائيّ — **قرعةُ خادمٍ لا دالّةُ عرض** (نمط D-073 حرفياً).
@@ -102,8 +103,11 @@ export interface SectionCtx {
   genreIds?: number[];
   /** هل الفلترُ مفعَّل؟ بعضُ المصادر لا تقبل محاورَه فتتبدّل */
   active: boolean;
-  /** نافذةُ صفّ «أفضل ١٠» — أسبوع/شهر/سنة (D-099) */
-  win?: "week" | "month" | "year";
+  /** نافذةُ صفّ «أفضل ١٠» — أسبوع/شهر/كل الأوقات (D-099 ثم D-445).
+      **والنوعُ من `browse.ts` لا نسخةٌ مكتوبةٌ هنا**: كان اتحاداً حرفياً
+      في الملفّين، **فاتّساعُ أحدهما وحدَه هو بالضبط ما يجعل نافذةً
+      تُرسَل ولا تُقرأ.** */
+  win?: RailWin;
   /** مدى النافذة محسوباً — يُمرَّر كي لا يُحسب التاريخ مرّتين */
   winRange?: { from: string; to: string } | null;
   /**
@@ -319,9 +323,27 @@ export async function buildSection(
            أو يكذب العنوان.** */
         const pool = Math.min(60, Math.round(limit * 2.5));
         const w = ctx.win ?? "week";
+        /* 🆕 **ونافذةُ «كل الأوقات» تُرتَّب بعدد الأصوات لا بالشعبية**
+           (D-445). **والسببُ أن الترتيبَ هنا اختيارُ بِركةٍ لا حكمٌ
+           نهائيّ**: المستدعي يمرّر الصفَّ على `withImdbRatings` فيفرزه
+           بتقييم IMDb تنازلياً — **فوظيفةُ هذا السطر أن يقرّر مَن يدخل
+           العشرة لا مَن يتقدّمها**. و«الأكثرُ أصواتاً» بِركةُ ما شاهده
+           الناسُ فعلاً عبر التاريخ، **بينما `popularity` حركةُ هذا
+           الأسبوع** — فترتيبُها كان سيجعل «كل الأوقات» تعرض أفلامَ
+           السنةِ نفسَها التي تعرضها نافذةُ الشهر. */
+        const sortFor =
+          w === "week"
+            ? ("vote_average.desc" as const)
+            : w === "month"
+              ? ("popularity.desc" as const)
+              : ("vote_count.desc" as const);
         const rows = await Promise.all(
           sides(media).map((mt) => {
-            if (media === "anime" && !active) {
+            /* ⚠️ **و«كل الأوقات» تغادر مسارَ الأنمي السريع**: ذاك يُبنى
+               من الرائج بمدىً اختياريّ، **ومدىً غائبٌ فيه يعني «هذا
+               الأسبوع» لا «كل الأوقات»** — فكان الزرُّ الثالث سيعرض
+               نتيجةَ الأوّل بالضبط. */
+            if (media === "anime" && !active && w !== "all") {
               const r = ctx.winRange ?? undefined;
               return mt === "movie"
                 ? topTenAnimeMoviesThisWeek(pool, r)
@@ -332,7 +354,7 @@ export async function buildSection(
                 mt,
                 { ...base, genreIds, ...(ctx.winRange ?? {}) },
                 pool,
-                w === "week" ? "vote_average.desc" : "popularity.desc",
+                sortFor,
               );
             }
             return genreIds?.length

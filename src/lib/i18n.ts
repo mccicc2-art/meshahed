@@ -1,3 +1,4 @@
+import type { RailWin } from "./browse";
 // قاموس الواجهة — عربي/إنجليزي. آمن للاستيراد في الخادم والمتصفح.
 
 export type Locale = "ar" | "en";
@@ -48,10 +49,16 @@ const ar = {
   suggestedForYou: "مقترح لك",
   /* عبارات السبب قصيرة عمداً: خانة الملصق ضيّقة، والاسم وحده يحمل المعنى
      في سياق «مقترح لك» — القصير يظهر كاملاً بلا حاجة للحركة أصلاً */
-  recoBecauseFollow: (title: string) => `تتابع «${title}»`,
-  recoBecauseWatched: (title: string) => `شاهدت «${title}»`,
-  recoBecauseRated: (title: string) => `أحببت «${title}»`,
-  recoBecauseGenre: "من أنواعك المفضّلة",
+  /* 🆕 **«لأنك…» لا «شاهدت…»** (D-446، مواصفةُ المرحلة ٦: «Because you
+     loved… / Because you watched…»). **والحرفان يغيّران معنى السطر لا
+     نبرتَه**: «شاهدت فلاناً» تحت ملصقٍ آخرَ خبرٌ عن ماضيك — **يُقرأ
+     أوّلَ وهلةٍ أنه اسمُ العمل أو أنك شاهدتَ هذا** — و«لأنك شاهدت
+     فلاناً» **علّةُ وجود هذا الملصق هنا**، وهي وحدَها ما يبرّر سطراً
+     ثالثاً تحت البطاقة. */
+  recoBecauseFollow: (title: string) => `لأنك تتابع «${title}»`,
+  recoBecauseWatched: (title: string) => `لأنك شاهدت «${title}»`,
+  recoBecauseRated: (title: string) => `لأنك أحببت «${title}»`,
+  recoBecauseGenre: "لأنها من أنواعك المفضّلة",
   trendingWeek: "رائج هذا الأسبوع",
   // تلميحات لمرة واحدة (م٣) + رقاقة النية في البحث
   hintDiscover:
@@ -1317,12 +1324,13 @@ const ar = {
   /** «يُعرض الآن» للأنمي — نظيرُ «في السينما» في تبويب الأفلام */
   airingNowAnime: "يُعرض الآن",
   upcomingAnime: "أنميٌ قادم",
-  topTenMovies: "أفضل ١٠ أفلام هذا الأسبوع",
-  topTenSeries: "أفضل ١٠ مسلسلات هذا الأسبوع",
-  topTenAnime: "أفضل ١٠ أنمي هذا الأسبوع",
-  // نافذة كل صفّ «أفضل ١٠» — أزرار خفيفة في عنوانه (D-099)
-  top10Movies: "أفضل ١٠ أفلام هذا الأسبوع",
-  top10Series: "أفضل ١٠ مسلسلات هذا الأسبوع",
+  /* 🆕 **أسماءُ الرفوف صارت جذوعاً بلا نافذة** (D-445): النافذةُ تُركَّب
+     عليها بـ`top10Win` — **فاسمُ الرفّ يتبع مبدِّلَه ولا يكذّبه**، وكان
+     مكتوباً فيه «هذا الأسبوع» أبداً ولو عُرض الشهر.
+     ⚠️ **وسقطت `topTenMovies/Series/Anime`**: ثلاثةُ مفاتيح بلا قارئٍ
+     منذ أن وُحِّدت الأسماءُ في `top10*` (D-214). */
+  top10Movies: "أفضل ١٠ أفلام",
+  top10Series: "أفضل ١٠ مسلسلات",
   top10Anime: "أفضل ١٠ أنمي",
   /* تبويب الأنمي يفصل الفيلم عن المسلسل (D-169، طلب أحمد): «أنمي»
      وحدها كانت تعني المسلسلات فقط، والأفلام لم يكن لها صفٌّ قطّ. */
@@ -1334,8 +1342,15 @@ const ar = {
   railWinGroup: "نافذة الترتيب",
   railWinWeek: "أسبوع",
   railWinMonth: "شهر",
-  railWinYear: "سنة",
-  railWinEmpty: "لا أعمال تكفي في هذه النافذة بعد",
+  railWinAll: "كل الأوقات",
+  /* **جملةُ العنوان تُركَّب هنا لا في الصفحة** (D-445): الرفُّ والصفحةُ
+     الكاملة يناديان نفسَ الدالّة، **فلا اسمان لرفٍّ واحد** يفترقان عند
+     أوّل تعديل — وهو درسُ D-198 نفسُه مطبَّقاً على الاسم لا على المصدر.
+     ⚠️ **ولاحقةٌ لكل نافذةٍ بصيغتين**: القصيرةُ فوق زرِّ المبدِّل
+     (`railWin*`) والطويلةُ في الجملة — **زرٌّ عرضُه ٤٠ بكسلاً لا يسع
+     «هذا الأسبوع»، وعنوانٌ يقول «أسبوع» ليس جملة.** */
+  top10Win: (base: string, w: RailWin) =>
+    `${base} ${w === "week" ? "هذا الأسبوع" : w === "month" ? "هذا الشهر" : "على الإطلاق"}`,
   // ٢٥ لا ٥٠ (طلب أحمد): الذيل أخفّ، والعمق كله في قوائم TOP 250
   top50Movies: "أفضل ٢٥ فيلماً هذي السنة",
   top50Series: "أفضل ٢٥ مسلسلاً هذي السنة",
@@ -1700,10 +1715,10 @@ const en: Dict = {
   continueWatching: "Continue Watching",
   comingSoon: "Coming soon",
   suggestedForYou: "Picked for you",
-  recoBecauseFollow: (title: string) => `You follow “${title}”`,
-  recoBecauseWatched: (title: string) => `You watched “${title}”`,
-  recoBecauseRated: (title: string) => `You loved “${title}”`,
-  recoBecauseGenre: "From your genres",
+  recoBecauseFollow: (title: string) => `Because you follow “${title}”`,
+  recoBecauseWatched: (title: string) => `Because you watched “${title}”`,
+  recoBecauseRated: (title: string) => `Because you loved “${title}”`,
+  recoBecauseGenre: "Because it's from your genres",
   trendingWeek: "Trending this week",
   hintDiscover:
     "The Filters button hides language, era, platform and rating filters — and week/month/year chips sit on every Top 10 rail.",
@@ -2617,11 +2632,8 @@ const en: Dict = {
   mostPopularAnime: "Most popular anime",
   airingNowAnime: "Airing now",
   upcomingAnime: "Upcoming anime",
-  topTenMovies: "Top 10 movies this week",
-  topTenSeries: "Top 10 shows this week",
-  topTenAnime: "Top 10 anime this week",
-  top10Movies: "Top 10 movies this week",
-  top10Series: "Top 10 shows this week",
+  top10Movies: "Top 10 movies",
+  top10Series: "Top 10 shows",
   top10Anime: "Top 10 anime",
   top10AnimeMovies: "Top 10 anime movies",
   top10AnimeSeries: "Top 10 anime shows",
@@ -2631,8 +2643,9 @@ const en: Dict = {
   railWinGroup: "Ranking window",
   railWinWeek: "Week",
   railWinMonth: "Month",
-  railWinYear: "Year",
-  railWinEmpty: "Nothing here for this window yet",
+  railWinAll: "All time",
+  top10Win: (base: string, w: RailWin) =>
+    `${base} ${w === "week" ? "this week" : w === "month" ? "this month" : "of all time"}`,
   top50Movies: "Top 25 films this year",
   top50Series: "Top 25 shows this year",
   top50Anime: "Top 50 anime of all time",
