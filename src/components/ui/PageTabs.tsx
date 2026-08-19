@@ -89,7 +89,7 @@ export function PageTabs({
        يبتلع الحروف. وهو ما تفعله كلُّ التطبيقات على الجوال. */
     const cls = segmentedItem(
       on,
-      "flex-1 shrink-0 flex items-center justify-center gap-1.5 px-3 pt-2 pb-3 text-[14px] whitespace-nowrap",
+      "flex-1 shrink-0 flex items-center justify-center gap-1.5 px-3 pt-2 pb-3 text-14 whitespace-nowrap",
       false,
     );
     const body = (
@@ -104,7 +104,7 @@ export function PageTabs({
         <span>{tb.label}</span>
         {typeof tb.count === "number" && (
           <span
-            className={`shrink-0 tabular-nums text-[12px] transition-colors ${
+            className={`shrink-0 tabular-nums text-12 transition-colors ${
               on ? "text-accent" : "text-muted/70"
             }`}
             dir="ltr"
@@ -115,7 +115,7 @@ export function PageTabs({
         {typeof tb.badge === "number" && tb.badge > 0 && (
           <span
             aria-label={tb.badgeLabel}
-            className="shrink-0 grid place-items-center min-w-[18px] h-[18px] px-1 rounded-full bg-accent text-[color:var(--on-accent)] text-[12px] font-bold tabular-nums"
+            className="shrink-0 grid place-items-center min-w-[18px] h-[18px] px-1 rounded-full bg-accent text-[color:var(--on-accent)] text-12 font-bold tabular-nums"
             dir="ltr"
           >
             {tb.badge}

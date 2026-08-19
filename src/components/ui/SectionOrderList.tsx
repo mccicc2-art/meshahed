@@ -138,7 +138,7 @@ export function SectionOrderList<K extends string>({
           } transition-colors`}
         >
           <Icon name={meta[k].icon} size={20} className="shrink-0 text-foreground" />
-          <span className="min-w-0 flex-1 truncate text-[15px] font-medium">
+          <span className="min-w-0 flex-1 truncate text-15 font-medium">
             {meta[k].label}
           </span>
           {/* **العينُ مضاءةٌ حين يكون القسمُ ظاهراً** — **حالةٌ تُقرأ من
@@ -182,7 +182,7 @@ export function SectionOrderList<K extends string>({
       {hidden.map((k) => (
         <div key={k} className={rowCls}>
           <Icon name={meta[k].icon} size={20} className="shrink-0 text-[color:var(--disabled)]" />
-          <span className="min-w-0 flex-1 truncate text-[15px] font-medium text-[color:var(--disabled)]">
+          <span className="min-w-0 flex-1 truncate text-15 font-medium text-[color:var(--disabled)]">
             {meta[k].label}
           </span>
           <button
@@ -274,7 +274,7 @@ export function ToggleRow({
     <div className="flex items-center gap-3 min-h-14 px-4 py-2.5 border-b border-[color:var(--divider)] last:border-b-0">
       {icon && <Icon name={icon} size={20} className="shrink-0 text-foreground" />}
       <label className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer">
-      <span className="flex-1 min-w-0 truncate text-[15px] font-medium">{label}</span>
+      <span className="flex-1 min-w-0 truncate text-15 font-medium">{label}</span>
       <input type="checkbox" checked={checked} onChange={onChange} className="sr-only peer" />
       {/* مفتاح iOS: المسار يتلوّن والقرص ينزلق */}
       <span

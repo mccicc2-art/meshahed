@@ -272,7 +272,7 @@ export function SheetHeader({
   return (
     <div className="flex items-start justify-between gap-3 px-5 pt-4 pb-3 border-b border-[color:var(--divider)]">
       <div className="min-w-0">
-        <h3 id={id} className="text-[15px] font-bold truncate">
+        <h3 id={id} className="text-15 font-bold truncate">
           {title}
         </h3>
         {children}

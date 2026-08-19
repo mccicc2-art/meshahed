@@ -85,7 +85,7 @@ export const segmentedTrackBare = "inline-flex items-stretch";
 export function segmentedItem(active: boolean, className = "", pad = true) {
   const rule =
     "before:pointer-events-none before:absolute before:inset-y-2 before:start-0 before:w-px before:bg-[color:var(--divider)] first:before:hidden";
-  return `${pad ? "px-4 pt-2 pb-3 text-[14px] " : ""}relative font-semibold whitespace-nowrap transition-colors ${rule} ${
+  return `${pad ? "px-4 pt-2 pb-3 text-14 " : ""}relative font-semibold whitespace-nowrap transition-colors ${rule} ${
     active
       ? "text-foreground after:pointer-events-none after:absolute after:-bottom-px after:inset-x-0 after:h-[3px] after:rounded-t-full after:bg-accent"
       : "text-muted hover:text-foreground"
@@ -95,7 +95,7 @@ export function segmentedItem(active: boolean, className = "", pad = true) {
 export type ChipSize = "sm" | "md";
 
 const CHIP_SIZE: Record<ChipSize, string> = {
-  sm: "px-2.5 py-1 text-[12px]",
+  sm: "px-2.5 py-1 text-12",
   md: "px-3.5 py-2 text-sm",
 };
 
@@ -149,7 +149,7 @@ export const posterGrid =
  * ٥٤ بكسلاً ارتفاعاً تقريباً (`py-3.5` + نصٌّ ١٥) — فوق حدّ هدف اللمس.
  */
 export const sheetMenuItem =
-  "w-full flex items-center gap-3 px-5 py-3.5 text-start text-[15px] hover:bg-surface-2 transition";
+  "w-full flex items-center gap-3 px-5 py-3.5 text-start text-15 hover:bg-surface-2 transition";
 
 /** فاصلٌ رفيع بين مجموعتَي صفوفٍ في ورقة «المزيد» */
 export const sheetMenuDivider = "h-px bg-[color:var(--divider)] mx-5 my-1";

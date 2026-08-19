@@ -256,7 +256,7 @@ export function Dropdown({
  * وبعضُها `Link`، فالمشترك سلسلةُ الأصناف لا الوسم.
  */
 export const dropdownItem =
-  "w-full flex items-center gap-3 px-4 py-2.5 text-start text-[14px] text-foreground " +
+  "w-full flex items-center gap-3 px-4 py-2.5 text-start text-14 text-foreground " +
   "hover:bg-surface-2 active:bg-surface-2 disabled:opacity-50 transition";
 
 export const dropdownDivider = "my-1 h-px bg-[color:var(--divider)]";
