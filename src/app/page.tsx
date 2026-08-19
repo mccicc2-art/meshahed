@@ -57,6 +57,7 @@ import {
   type HomeView,
 } from "@/lib/homePrefs";
 import { capCards } from "@/lib/cardCount";
+import { densityVars } from "@/lib/density";
 import { getLevel, levelPoints } from "@/lib/level";
 import { WeekStrip, type WeekEntry } from "@/components/WeekStrip";
 import { ShowStatsSync, type ShowStat } from "@/components/ShowStatsSync";
@@ -352,7 +353,7 @@ export default async function HomePage() {
        وحدة، ما احتاج انزل، فقط أمرّر يمين»): **الفراغُ بين الأقسام هو
        أرخصُ ما يُشترى به سطرٌ رابع** — **ولا حجمَ نصٍّ نزل ولا قسمٌ
        سقط.** */
-    <div className="space-y-5 sm:space-y-8">
+    <div className="space-y-5 sm:space-y-8" style={densityVars(prefs.density)}>
       {/* تسخين بقية التبويبات بعد هدوء الرئيسية (طلب أحمد) — أول ضغطة
           تبويب تُعاد من كاش الراوتر لحظياً. البحث ليس بينها: تبويبه
           ورقةٌ تنبثق لا صفحةٌ تُجلب */}
@@ -1469,7 +1470,17 @@ function Section({
       /* المختصر بلا مجالِ تمرير: **قائمةٌ تُقرأ لا صفٌّ يُسحب** */
       bare={view === "compact"}
     >
-      {view === "compact" ? (
+      {/* 🆕 **وصفٌّ ببطاقةٍ واحدة ليس صفّاً** (D-440، طلبُ أحمد بدائرةٍ
+          حمراء حول بطاقة «أكمل المشاهدة»: «كبّر بوستر أكمل المشاهدة»).
+          **والعطلُ في العدد لا في المقاس**: ١٧٦px تُظهر بطاقتين وثُلثاً
+          حين تكون البطاقاتُ كثيرة — **وهو ما طُلب** (D-437) — **لكنها
+          حين تكون واحدةً تترك ستّين بالمئة من الصفّ فراغاً**، فتُقرأ
+          البطاقةُ ضائعةً لا مضغوطة.
+          **فالواحدةُ تأخذ العرضَ كلَّه**، **والاثنتان فصاعداً تبقيان
+          صفّاً يُمرَّر** — **ولا رقمَ ثالثٌ يُخترع.** */}
+      {view === "visual" && wide && items.length === 1 ? (
+        <div>{items[0]}</div>
+      ) : view === "compact" ? (
         <div
           className={`space-y-2 ${
             peek
