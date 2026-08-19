@@ -25,7 +25,8 @@ import { ListSaveHeart } from "@/components/ListSaveHeart";
 import { ListRateStar } from "@/components/ListRateStar";
 import { PosterRail, RailItem } from "@/components/PosterRail";
 import { FRANCHISES, franchiseName, universeName, type Universe } from "@/lib/universes";
-import { awardBySlug, awardBody, awardWins } from "@/lib/awards";
+import { awardBySlug, awardBody } from "@/lib/awards";
+import { awardWins } from "@/lib/awardsWins";
 import { Icon } from "@/components/Icon";
 import {
   topTenAnimeThisWeek,
