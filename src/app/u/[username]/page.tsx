@@ -442,7 +442,7 @@ export default async function PublicProfilePage({
           </span>
 
           <div className="min-w-0 flex-1 pb-1">
-            <h1 className="text-[22px] sm:text-xl font-bold truncate drop-shadow-[0_2px_6px_rgba(0,0,0,0.7)]">
+            <h1 className="text-22 sm:text-xl font-bold truncate drop-shadow-[0_2px_6px_rgba(0,0,0,0.7)]">
               {displayName}
             </h1>
             {/* ⚖️ 🆕 **والمعرّف عاد** (D-438، خطّةُ أحمد: «الاسم والـusername
@@ -494,7 +494,7 @@ export default async function PublicProfilePage({
           ) : (
             <Link
               href="/profile/edit"
-              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-3.5 h-9 text-[14px] font-bold transition hover:border-accent/50 active:scale-95"
+              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-3.5 h-9 text-14 font-bold transition hover:border-accent/50 active:scale-95"
             >
               <Icon name="edit" size={15} style={{ color: "var(--accent)" }} />
               {t.headerSettings}
@@ -512,7 +512,7 @@ export default async function PublicProfilePage({
         </div>
 
         {/* ===== المتابعون · المتابَعون · الزيارات · المستوى ===== */}
-        <div className="relative z-10 mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-[14px] leading-tight">
+        <div className="relative z-10 mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-14 leading-tight">
           <FollowCountButton
             targetId={profile.id}
             dir="followers"
@@ -549,7 +549,7 @@ export default async function PublicProfilePage({
               معه فلا يضيع التقدّم.** */}
           {canView && prefs.level && (
             <span
-              className="shrink-0 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[12px] font-bold"
+              className="shrink-0 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-12 font-bold"
               style={{
                 borderColor: "color-mix(in srgb, var(--accent) 45%, transparent)",
                 color: "var(--accent)",
@@ -583,8 +583,8 @@ export default async function PublicProfilePage({
         {!canView && (
           <div className="relative z-10 mt-6 bg-surface border border-border rounded-2xl px-6 py-10 text-center">
             <Icon name="eye-off" size={28} className="mx-auto text-muted" />
-            <p className="font-bold text-[15px] mt-3">{t.privateCoverTitle}</p>
-            <p className="text-[12px] text-muted leading-relaxed mt-1 max-w-[36ch] mx-auto">
+            <p className="font-bold text-15 mt-3">{t.privateCoverTitle}</p>
+            <p className="text-12 text-muted leading-relaxed mt-1 max-w-[36ch] mx-auto">
               {t.privateCoverHint}
             </p>
           </div>
@@ -607,11 +607,11 @@ export default async function PublicProfilePage({
                   )}
                   <span className="flex items-center gap-2">
                     <Icon name={s.icon} size={20} style={{ color: s.color }} className="shrink-0" />
-                    <span className="text-[20px] font-bold leading-none tabular-nums">
+                    <span className="text-20 font-bold leading-none tabular-nums">
                       {s.value}
                     </span>
                   </span>
-                  <span className="block text-[12px] text-muted mt-1.5 leading-[1.25]">
+                  <span className="block text-12 text-muted mt-1.5 leading-[1.25]">
                     {s.label}
                   </span>
                 </div>
@@ -669,20 +669,20 @@ export default async function PublicProfilePage({
                 <div className="flex items-center justify-between gap-3">
                   <Link
                     href={`/${r.media_type === "tv" ? "show" : "movie"}/${r.tmdb_id}`}
-                    className="min-w-0 truncate text-[15px] font-bold hover:text-accent transition"
+                    className="min-w-0 truncate text-15 font-bold hover:text-accent transition"
                     dir="auto"
                   >
                     {r.title ?? "—"}
                   </Link>
                   <span
-                    className="shrink-0 text-[14px] font-bold tabular-nums"
+                    className="shrink-0 text-14 font-bold tabular-nums"
                     style={{ color: "var(--accent)" }}
                     dir="ltr"
                   >
                     ★ {r.rating}/10
                   </span>
                 </div>
-                <div className="mt-2 text-[14px] leading-relaxed whitespace-pre-line" dir="auto">
+                <div className="fs-content mt-2 text-14 leading-relaxed whitespace-pre-line" dir="auto">
                   {r.has_spoiler ? (
                     <SpoilerText text={r.review ?? ""} locale={locale} />
                   ) : (
@@ -717,9 +717,9 @@ export default async function PublicProfilePage({
                   <Icon name={hiddenMeta[sec].icon} size={16} className="shrink-0" />
                   <span className="truncate">{hiddenMeta[sec].label}</span>
                 </span>
-                <span className="block text-[12px] text-muted mt-0.5">{t.profileHiddenHint}</span>
+                <span className="block text-12 text-muted mt-0.5">{t.profileHiddenHint}</span>
               </span>
-              <span className="shrink-0 text-[12px] text-muted border border-border rounded-full px-2.5 py-1">
+              <span className="shrink-0 text-12 text-muted border border-border rounded-full px-2.5 py-1">
                 {t.profileHiddenBadge}
               </span>
             </div>
