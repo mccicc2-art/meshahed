@@ -237,6 +237,30 @@ export default async function LibraryPage({
       {/* العنوان مخفيٌّ بصريًّا وباقٍ لقارئ الشاشة — أُزيلت الترويسة وسطر الملخّص */}
       <h1 className="sr-only">{t.libraryTitle}</h1>
 
+      {/* 🆕 **الاختصاران فوق المحتوى لا تحته** (D-443، المرحلة ٥:
+          «اختصارات Stats و Journal أعلى المحتوى»). **وكانا في ذيل
+          الصفحة** — **ورابطٌ تحت مكتبةٍ من ثلاثين ملصقاً لا يُرى إلا
+          بعد عشر تمريرات**، **وهو بعينه سببُ سقوط التذييل** (D-437).
+          **والشكلُ زرّان مطوّقان لا صفٌّ بفواصل**: هما فعلان يُضغطان،
+          **ورمزٌ عارٍ في ذيلٍ يُقرأ زينةً** (D-138). */}
+      <div className="grid grid-cols-2 gap-2.5 mb-4">
+        {(
+          [
+            { href: "/stats", icon: "chart", label: t.libAnalysisBtn },
+            { href: "/diary", icon: "book", label: t.diaryTitle },
+          ] as const
+        ).map(({ href, icon, label }) => (
+          <Link
+            key={href}
+            href={href}
+            className="flex items-center justify-center gap-2 rounded-2xl border border-border bg-surface py-3 text-[13px] font-bold transition hover:border-accent/40 active:scale-[0.99]"
+          >
+            <Icon name={icon} size={17} style={{ color: "var(--accent)" }} />
+            {label}
+          </Link>
+        ))}
+      </div>
+
       <LibraryGrid
         shows={shows}
         movies={movies}
@@ -267,28 +291,6 @@ export default async function LibraryPage({
         }
       />
 
-      {/* روابط الأدوات — بلا إطار، على نمط صفوف الرئيسية: فواصل رأسية فقط */}
-      {/* عمودان لا ثلاثة: «القوائم» صعدت إلى صفّ التبويبات — قرارُ المالك */}
-      <div className="mt-8 grid grid-cols-2 border-t border-[color:var(--divider)] pt-1">
-        {(
-          [
-            { href: "/stats", icon: "chart", label: t.libAnalysisBtn },
-            { href: "/diary", icon: "book", label: t.diaryTitle },
-          ] as const
-        ).map(({ href, icon, label }, i) => (
-          <Link
-            key={href}
-            href={href}
-            className="relative flex flex-col items-center gap-1.5 py-3.5 text-muted hover:text-foreground active:bg-surface-2 transition"
-          >
-            <Icon name={icon} size={18} />
-            <span className="text-[11px] leading-tight text-center">{label}</span>
-            {i < 1 && (
-              <span className="absolute inset-y-2 end-0 w-px bg-[color:var(--divider)]" aria-hidden />
-            )}
-          </Link>
-        ))}
-      </div>
     </div>
   );
 }
