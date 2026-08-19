@@ -74,6 +74,11 @@ export interface Profile {
   is_private?: boolean | null;
   /** قفل قائمتَي المتابعة (هجرة 43) */
   hide_follow_lists?: boolean | null;
+  /** حجم خطّ الواجهة والمحتوى (هجرة 121) — `null` قبل تشغيلها */
+  font_ui?: string | null;
+  font_content?: string | null;
+  /** التلميحات المقروءة وتقدّم الجولة (هجرة 121) — `null` قبلها */
+  ui_state?: unknown;
 }
 
 /** الملف الشخصي — يُقرأ في التخطيط والشريط العلوي والصفحة، فيُخزَّن لكل طلب */
@@ -87,7 +92,7 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
     let { data, error } = await supabase
       .from("profiles")
       .select(
-        "id, nickname, username, avatar_url, cover_url, cover_pos, avatar_pos, theme, favorite_genres, hide_name, home_prefs, bio, is_private, hide_follow_lists, profile_prefs",
+        "id, nickname, username, avatar_url, cover_url, cover_pos, avatar_pos, theme, favorite_genres, hide_name, home_prefs, bio, is_private, hide_follow_lists, profile_prefs, font_ui, font_content, ui_state",
       )
       .eq("id", user.id)
       .maybeSingle();
@@ -105,7 +110,7 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
         .maybeSingle();
       if (mid.data) {
         // عمودا التموضع أحدث من هذه الدرجة — يسقطان إلى سلوكهما القديم
-        data = { ...mid.data, cover_pos: null, avatar_pos: null, home_prefs: null, bio: null, is_private: null, hide_follow_lists: null, profile_prefs: null };
+        data = { ...mid.data, cover_pos: null, avatar_pos: null, home_prefs: null, bio: null, is_private: null, hide_follow_lists: null, profile_prefs: null, font_ui: null, font_content: null, ui_state: null };
       } else {
         const legacy = await supabase
           .from("profiles")
@@ -125,6 +130,9 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
             is_private: null,
             hide_follow_lists: null,
             profile_prefs: null,
+            font_ui: null,
+            font_content: null,
+            ui_state: null,
           };
         }
       }

@@ -21,6 +21,18 @@ import {
   type TabPref,
 } from "@/lib/tabPrefs";
 import { allow } from "@/lib/ratelimit";
+import {
+  FONT_UI_COOKIE,
+  FONT_CONTENT_COOKIE,
+  sanitizeFontSize,
+} from "@/lib/fontPrefs";
+import {
+  mergeHints,
+  sanitizeTourState,
+  sanitizeUiState,
+  type TourState,
+  type UiState,
+} from "@/lib/uiState";
 import { isViewKey } from "@/lib/postKeys";
 import { intId, intIn, asMediaType, uuid, dateOrNull } from "@/lib/validate";
 import { searchGifs, type GifHit } from "@/lib/gif";
@@ -217,6 +229,86 @@ export async function syncThemeCookie(value: string) {
     sameSite: "lax",
     secure: true,
   });
+}
+
+/**
+ * حجم الخطّ — تفضيلان مستقلّان: واجهة النظام ومحتوى المستخدم.
+ *
+ * على نمط الثيم حرفاً: الكوكي للرسمة الأولى (يقرؤه layout قبل أول
+ * بكسل)، والعمودان في `profiles` (هجرة 121) ليتبع الاختيارُ الحسابَ بين
+ * الأجهزة. الزائر غير المسجَّل يكتفي بالكوكي — وهذا معنى «محلياً للزائر».
+ *
+ * الكتابة في القاعدة هنا وحدها (قاعدة D-462: حقلٌ واحد لا يملك كاتبَين
+ * — `updateProfile` لا يعرف هذين العمودين عمداً)، وفشلُها لا يُسقط
+ * الفعل: الكوكي كُتب والواجهة استجابت، والمزامنة بين الأجهزة رفاهية
+ * تعود مع أول حفظٍ ناجح.
+ */
+export async function setFontPrefs(ui: string, content: string) {
+  const fontUi = sanitizeFontSize(ui);
+  const fontContent = sanitizeFontSize(content);
+  const store = await cookies();
+  const opts = { path: "/", maxAge: 60 * 60 * 24 * 365, sameSite: "lax" as const, secure: true };
+  store.set(FONT_UI_COOKIE, fontUi, opts);
+  store.set(FONT_CONTENT_COOKIE, fontContent, opts);
+
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (user) {
+      await supabase
+        .from("profiles")
+        .update({ font_ui: fontUi, font_content: fontContent })
+        .eq("id", user.id);
+    }
+  } catch {
+    /* عمودٌ لم يُهاجَر بعد أو انقطاع — الكوكي يكفي لهذا الجهاز */
+  }
+}
+
+/**
+ * حالة الواجهة التعليمية — التلميحات المقروءة وتقدّم الجولة.
+ *
+ * ⚖️ بطلب أحمد (١٩ أغسطس): تُحفظ في الحساب (`profiles.ui_state`، هجرة
+ * 121) لتتبع صاحبها بين أجهزته — وlocalStorage يبقى ذاكرةَ الجهاز
+ * وذاكرةَ الزائر. الكاتب الوحيد للعمود هذا الفعل (قاعدة D-462: حقلٌ
+ * واحدٌ لا يملك كاتبَين).
+ *
+ * قراءةٌ ثم دمجٌ ثم كتابة لا استبدال أعمى: جهازان متزامنان يكتبان
+ * تلميحاتٍ مختلفة يجب ألّا يمحو أحدُهما قراءة الآخر — الاتحاد يضمن
+ * «مقروءٌ في أي مكان مقروءٌ في كل مكان». والفشل صامتٌ عمداً: قبل
+ * تشغيل الهجرة يعمل كلُّ شيء بـlocalStorage وحده، وسطرٌ إرشاديٌّ لا
+ * يستحق شاشةَ خطأ.
+ */
+export async function updateUiState(patch: {
+  /** تلميحات تُضاف إلى المقروء (اتحاد) */
+  addHints?: string[];
+  /** إفراغ قائمة المقروء — زرّ «إعادة عرض التلميحات» وحده */
+  resetHints?: boolean;
+  /** حالة الجولة الجديدة — تستبدل المخزنة (التقدم الخطي شأن الجهاز الفعال) */
+  tour?: TourState;
+}) {
+  try {
+    const { supabase, user } = await requireUser("uistate", 30, 60_000);
+    const { data } = await supabase
+      .from("profiles")
+      .select("ui_state")
+      .eq("id", user.id)
+      .maybeSingle();
+    const current = sanitizeUiState(data?.ui_state);
+    const next: UiState = {
+      hints: patch.resetHints
+        ? []
+        : patch.addHints
+          ? mergeHints(current.hints, sanitizeUiState({ hints: patch.addHints }).hints)
+          : current.hints,
+      tour: patch.tour !== undefined ? sanitizeTourState(patch.tour) : current.tour,
+    };
+    await supabase.from("profiles").update({ ui_state: next }).eq("id", user.id);
+  } catch {
+    /* زائرٌ، أو عمودٌ لم يُهاجَر، أو انقطاع — localStorage يكفي للجهاز */
+  }
 }
 
 /**
