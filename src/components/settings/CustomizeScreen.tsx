@@ -4,7 +4,7 @@ import { useCallback, useRef, useState } from "react";
 import { getDict, type Locale } from "@/lib/i18n";
 import { HomeCustomize } from "../HomeCustomize";
 import { ProfileCustomize } from "../ProfileCustomize";
-import { chipClass } from "../ui/controls";
+import { chipClass, pillTrack } from "../ui/controls";
 import { SettingsPageLayout } from "./SettingsPageLayout";
 
 /**
@@ -77,7 +77,7 @@ export function CustomizeScreen({
       <div
         role="tablist"
         aria-label={t.custTitle}
-        className="flex items-center gap-1.5 p-1 rounded-full bg-surface border border-border"
+        className={pillTrack}
       >
         {(
           [
