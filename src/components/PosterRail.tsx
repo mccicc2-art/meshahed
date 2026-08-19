@@ -60,7 +60,8 @@ export function PosterRail({
   return (
     <section className={className}>
       <div className="flex items-center justify-between gap-3 mb-0.5">
-        <h2 className="flex items-center gap-2 text-[18px] font-bold">
+        {/* 🆕 **٢٢px/٧٠٠ — «عنوان القسم» في سلّم النصّ** (D-454) */}
+        <h2 className="flex flex-wrap items-center gap-2 text-[22px] font-bold">
           {icon && (
             <Icon
               name={icon}

@@ -54,7 +54,27 @@ export function HomeHeader({
   const t = getDict(locale);
 
   return (
-    <header className="space-y-3">
+    /* 🆕 ⚖️ **ترويسةٌ لاصقة** (D-455، طلبُ أحمد بلقطةٍ معلَّمة: «هذا
+       الهيدر خلّيه ثابت والقوائم اللي تحت إذا رفعتها تكون تحته»).
+
+       **والذي يجعلها ممكنةً اليوم هو أنها خفّت**: كانت ترويسةَ حسابٍ
+       بغلافٍ ١٦٠px (D-434)، **وسطحٌ بذلك الطول لا يُثبَّت** — يأكل نصفَ
+       الشاشة في كلِّ تمريرة. **وبعد D-437 وD-451 صارت ثلاثةَ صفوفٍ
+       قصيرة**، فالتثبيتُ يكلّف ما يستحقّه.
+
+       ⚠️ **والحشوةُ العلويّة انتقلت من الصفِّ الداخليّ إلى الترويسة
+       نفسِها** — **وهذا شرطُ صحّةٍ لا ترتيب**: `-mt-6` كانت على الابن،
+       **فصندوقُ اللصق يبدأ حيث تبدأ حشوةُ الصفحة** ويُقصّ أعلاه ٢٤
+       بكسلاً عند الالتصاق. **واللاصقُ يلصق حدَّه لا حدَّ ابنِه.**
+
+       **و`-mx-4 px-4` كي تمتدّ الخلفيّةُ إلى حافّة الشاشة**: الصفحةُ
+       تحمل `px-4`، **وخلفيّةٌ تقف عند الهامش تترك شريطين يمرّ تحتهما
+       الملصقُ عارياً** على جانبَي الترويسة الثابتة.
+
+       **وعلى الشاشة الواسعة تلتصق تحت الشريط العلويّ** (`--sticky-top`)
+       لا فوقه — **والمقدارُ محسوبٌ هناك مرّةً واحدة** فلا يُجمع
+       `--safe-top` مرّتين (تعليقُه في `globals.css`). */
+    <header className="sticky top-0 md:top-[var(--sticky-top)] z-30 -mx-4 px-4 -mt-6 pt-[calc(var(--safe-top)+0.5rem)] md:pt-3 pb-3 space-y-3 bg-[color:var(--background)]">
       {/* ===== الصفُّ الأوّل: العلامةُ وأدواتُها =====
           **على الجوال وحدَه**: `HeaderShell` يُخفي الشريط العلويّ في
           الرئيسية على الجوال، **فهذا الصفُّ بديلُه هناك** — وعلى الشاشة
@@ -68,7 +88,7 @@ export function HomeHeader({
           شريط النظام وحدَه**: `-mt-6` تُعيد الصفَّ إلى رأس النافذة،
           و`safe-top + 0.5rem` تُنزله تحت الساعة بثمانية بكسلات لا أكثر.
           ⚠️ **ولا شيء يتغيّر في المتصفّح** حيث `env()` صفر. */}
-      <div className="md:hidden -mt-6 flex items-center justify-between gap-2 pt-[calc(var(--safe-top)+0.5rem)]">
+      <div className="md:hidden flex items-center justify-between gap-2">
         <Link href="/" aria-label={t.brand} className="shrink-0">
           <LogoWordmark size={30} />
         </Link>
@@ -174,10 +194,14 @@ function StatFace({ stat }: { stat: HeaderStat }) {
         size={20}
         style={{ color: stat.color ?? "var(--accent)" }}
       />
-      <span className="text-[20px] font-extrabold leading-none tabular-nums">
+      {/* 🆕 **٢٤px/٧٠٠ — «الأرقام الكبيرة» في سلّم النصّ** (D-454)،
+          **والكلمةُ تحتها ١٢ ثانويّاً.** و`font-bold` لا `extrabold`:
+          السلّمُ يقول ٧٠٠، **ووزنٌ ثامنُ مئةٍ لرقمٍ في بطاقةٍ يجعله
+          يصرخ فوق عنوان القسم الذي يليه.** */}
+      <span className="text-[24px] font-bold leading-none tabular-nums">
         {stat.value}
       </span>
-      <span className="min-w-0 truncate text-[13px] text-muted leading-none">
+      <span className="min-w-0 truncate text-[12px] text-muted leading-none">
         {stat.label}
       </span>
     </>

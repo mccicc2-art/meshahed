@@ -242,16 +242,19 @@ export function PosterCard({
           للعناوين المختلطة. */}
       {!hideTitle && titleBelow && (
         <div className="mt-2 px-0.5">
+          {/* 🆕 **١٥px/٦٠٠ — «عنوان الكارد» في سلّم النصّ** (D-454)،
+              **و١٢px للثانويّ.** كان ١٣/١١ — **رقمان خارج السلّم**،
+              وسطرُ الاسم تحت الملصق هو أكثرُ نصٍّ يُقرأ في التطبيق. */}
           <p
-            className="text-[13px] font-semibold leading-snug line-clamp-2"
+            className="text-[15px] font-semibold leading-snug line-clamp-2"
             dir="auto"
           >
             {title}
           </p>
-          {year && <p className="text-[11px] text-muted mt-0.5">{year}</p>}
+          {year && <p className="text-[12px] text-muted mt-0.5">{year}</p>}
           {/* النبذةُ تتبع الاسمَ حيث ذهب — **ولا تُترك في الحجاب الذاهب** */}
           {note && (
-            <MarqueeText text={note} className="text-[11px] text-accent-2/90 mt-0.5" />
+            <MarqueeText text={note} className="text-[12px] text-accent-2/90 mt-0.5" />
           )}
         </div>
       )}

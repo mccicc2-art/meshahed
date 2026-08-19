@@ -75,7 +75,7 @@ export function RankedRail({
           يقع إلا حيث يضيق: على سطح المكتب يبقيان في سطرٍ واحد.
           ⚠️ **ولا `justify-between`**: الرأسُ ثلاثةُ أبناءٍ (رمزٌ واسمٌ
           وأداة) — والتوزيعُ كان سيفصل الرمزَ عن اسمه. */}
-      <h2 className="flex flex-wrap items-center gap-2 text-base font-bold mb-1">
+      <h2 className="flex flex-wrap items-center gap-2 text-[22px] font-bold mb-1">
         {icon && <Icon name={icon} size={18} className="text-muted" />}
         {href ? (
           <Link href={href} className="truncate hover:text-accent transition">

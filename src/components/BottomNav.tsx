@@ -148,7 +148,7 @@ export function BottomNav({
            **وشريطٌ ملاصقٌ للحافّة بلا هامشٍ يُقرأ مقصوصاً.** */
         className={`${
           kbOpen ? "hidden" : "grid"
-        } md:hidden fixed bottom-0 inset-x-0 z-40 grid-cols-5 border-t border-[color:var(--divider)] bg-[color:var(--background)] backdrop-blur-xl pt-1.5 pb-[max(0.375rem,calc(env(safe-area-inset-bottom)*0.5))]`}
+        } md:hidden fixed bottom-0 inset-x-0 z-40 grid-cols-5 rounded-t-[22px] border-t border-[color:var(--divider)] bg-[color:var(--background)] backdrop-blur-xl pt-1.5 pb-[max(0.375rem,calc(env(safe-area-inset-bottom)*0.5))]`}
         style={{ background: "color-mix(in srgb, var(--background) 76%, transparent)" }}
       >
         {TABS.map(({ href, key, icon, iconOn }) => {
