@@ -208,7 +208,7 @@ export function TalkRoomCard({
               **والاسمُ نفسُه صار يُترجَم قبل أن يصل** (`localizeTalkRooms`). */}
           <h3
             className={`font-bold leading-snug line-clamp-2 group-hover:text-accent transition ${
-              hero ? "text-[20px]" : "text-[15px]"
+              hero ? "text-20" : "text-15"
             }`}
           >
             {t.talkRoomTitle(title, r.mediaType === "tv")}
@@ -221,7 +221,7 @@ export function TalkRoomCard({
               الأفلامُ لا حلقاتِ لها أصلاً، **وسطرٌ يظهر أحياناً خيرٌ
               من سطرٍ يقول «—» دائماً.** */}
           {episode && (
-            <p className="mt-1.5 text-[12px] text-accent/90 line-clamp-1">{episode}</p>
+            <p className="mt-1.5 text-12 text-accent/90 line-clamp-1">{episode}</p>
           )}
 
           {/* **والقاعُ صفٌّ واحد: الوجوهُ في البداية والعدّادُ في
@@ -250,7 +250,7 @@ export function TalkRoomCard({
                 </span>
               ))}
             </div>
-            <div className="ms-auto shrink-0 text-[12px] text-muted text-end leading-tight">
+            <div className="ms-auto shrink-0 text-12 text-muted text-end leading-tight">
               <span className="tabular-nums">
                 {weekly ? t.talkRoomPostsWeek(r.postsWeek) : t.talkRoomPosts(r.posts)}
               </span>
