@@ -6,6 +6,7 @@ import { getT, getWatchRegion } from "@/lib/locale";
 import {
   eraRange,
   parseBrowse,
+  parseRailWin,
   seasonRange,
   browseHref,
   browseGenreName,
@@ -131,17 +132,17 @@ export default async function SectionPage({
   const page = Math.min(MAX_PAGES, Math.max(1, Number(sp.pg) || 1));
   const want = LIMIT * page;
 
-  const win = sp.w === "month" || sp.w === "year" ? sp.w : "week";
-  const y = new Date().getUTCFullYear();
+  /* 🆕 **والنافذةُ تُقرأ بـ`parseRailWin` لا بشرطٍ مكتوبٍ هنا** (D-445):
+     كان الشرطُ نسخةً ثالثةً من قائمة النوافذ (`browse.ts` و`sections.ts`
+     والصفحة) — **وثلاثُ نسخٍ لقائمةٍ واحدة تفترق عند إضافة نافذة**، وقد
+     افترقت فعلاً: «كل الأوقات» تصل من الرفّ فتهبط هنا على الأسبوع. */
+  const win = parseRailWin(sp.w);
   const todayStr = new Date().toISOString().slice(0, 10);
   const back30 = new Date();
   back30.setUTCDate(back30.getUTCDate() - 30);
+  /* **و«كل الأوقات» بلا مدى** — نفسُ حسابِ الرفّ حرفياً (D-198) */
   const winRange =
-    win === "week"
-      ? null
-      : win === "month"
-        ? { from: back30.toISOString().slice(0, 10), to: todayStr }
-        : { from: `${y}-01-01`, to: todayStr };
+    win === "month" ? { from: back30.toISOString().slice(0, 10), to: todayStr } : null;
 
   const rows = await buildSection(
     section,
@@ -161,9 +162,16 @@ export default async function SectionPage({
     section === "my-row" && browse.genre
       ? browseGenreName(browse.genre, lang) +
         (tagDef ? ` · ${browseTagName(tagDef, lang)}` : "")
-      : String(
-          (t as unknown as Record<string, string>)[SECTION_TITLE_KEY[section][media]] ?? "",
-        );
+      : (() => {
+          const base = String(
+            (t as unknown as Record<string, string>)[SECTION_TITLE_KEY[section][media]] ?? "",
+          );
+          /* 🆕 **ونافذةُ «أفضل ١٠» تدخل العنوان** (D-445): الرفُّ يقول
+             «على الإطلاق» **فالصفحةُ التي يفتحها يجب أن تقول مثلَه** —
+             **وجملةٌ واحدةٌ تركّبها `top10Win` للاثنين**، فلا اسمان
+             لقسمٍ واحد (D-198). وسائرُ الأقسام بلا نافذةٍ فبلا لاحقة. */
+          return section === "top-ten" ? (t as Dict).top10Win(base, win) : base;
+        })();
   const dict = t as Dict;
   /* رابطُ الرجوع يحمل الفلتر نفسَه إلى تبويبه — لا إلى «اكتشف» عارياً */
   const backHref = browseHref({
