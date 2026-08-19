@@ -94,7 +94,7 @@ export default async function RatingsPage({
                       <span className="text-muted">{"★".repeat(Math.max(0, 5 - r.rating))}</span>
                     </span>
                     {r.review?.trim() && (
-                      <span className="block text-[12px] text-muted mt-1 line-clamp-3 leading-relaxed">
+                      <span className="block text-12 text-muted mt-1 line-clamp-3 leading-relaxed">
                         {r.review}
                       </span>
                     )}
