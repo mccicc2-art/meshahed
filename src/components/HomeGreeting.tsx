@@ -49,7 +49,10 @@ export function HomeGreeting({
             : t.greetNight;
 
   return (
-    <p className="min-w-0 truncate text-[17px] leading-tight">
+    /* 🆕 **١٥ بدل ١٧** (D-451، طلبُ أحمد على لقطة: «صغّر الخط»):
+       **التحيّةُ ترحيبٌ لا عنوانُ صفحة** — والعنوانُ الحقيقيُّ لهذه
+       الشاشة هو أوّلُ رفٍّ تحتها. **وسطرٌ بحجم العناوين يتنافس معها.** */
+    <p className="min-w-0 truncate text-[15px] leading-tight">
       <span className="text-muted">{word}</span>
       <span className="text-muted">{locale === "ar" ? "، " : ", "}</span>
       <span className="font-extrabold">{name}</span>

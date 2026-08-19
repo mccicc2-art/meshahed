@@ -62,12 +62,22 @@ export function HomeViewSwitch({
       disabled={pending}
       aria-label={t.viewSwitchAria}
       title={t.viewSwitchAria}
-      className="shrink-0 inline-flex items-center gap-2 rounded-full border border-border bg-surface ps-3.5 pe-4 h-11 text-[13px] font-bold transition hover:border-accent/50 active:scale-95 disabled:opacity-60"
+      /* 🆕 **زاويةٌ من سلّم البطاقات لا قرصٌ كامل** (D-451، طلبُ أحمد:
+         «الزوايا خلّيها مثل التصميم»). **وبطاقةُ الأرقام تحته مباشرةً
+         `rounded-2xl`** — **وقرصٌ فوق بطاقةٍ في صفَّين متلاصقين لغتا
+         استدارةٍ في ثلاثة سنتيمترات** (القاعدة ٣: سلّمُ زوايا واحد).
+         ⚠️ **ولا قيمةَ جديدة**: نفسُ `2xl` المكتوبة تحته بالضبط.
+
+         🆕 **والخطُّ ١٢ والرمزُ ١٥** («صغّر الخط… وكومباكت») —
+         **والارتفاعُ ٤٤ كما هو**: قاعدتُك «اجعل مناطق الضغط مناسبة
+         للجوال»، **وخطٌّ أصغر لا يعني هدفاً أصغر**. الذي ضاق هو الحشو
+         فضاق الزرُّ عرضاً — وهو ما يُرى. */
+      className="shrink-0 inline-flex items-center gap-2 rounded-2xl border border-border bg-surface ps-3 pe-3.5 h-11 text-[12px] font-bold transition hover:border-accent/50 active:scale-95 disabled:opacity-60"
     >
       {/* الرمزُ يصف الوجهةَ كما يصفها النصّ: شبكةٌ للبصريّ وقائمةٌ للمختصر */}
       <Icon
         name={next === "compact" ? "list" : "grid"}
-        size={17}
+        size={15}
         strokeWidth={2}
         style={{ color: "var(--accent)" }}
       />
