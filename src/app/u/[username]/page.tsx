@@ -43,6 +43,7 @@ import {
   type ProfileSection,
 } from "@/lib/profilePrefs";
 import { capCards } from "@/lib/cardCount";
+import { densityVars } from "@/lib/density";
 
 /**
  * صفحة المستخدم العامة — بهيئة الرئيسية نفسها.
@@ -385,7 +386,10 @@ export default async function PublicProfilePage({
     ) : null;
 
   return (
-    <div className="space-y-5">
+    /* 🆕 **كثافةُ صاحب الصفحة تُكتب على جذرها** (D-441) — **فملصقاتُ
+       ملفّه بمقاسه هو لا بمقاس قارئه**: الصفحةُ صفحتُه، **ومن يزورك يرى
+       ما اخترتَه أنت.** */
+    <div className="space-y-5" style={densityVars(prefs.density)}>
       {/* ===== الغلاف ===== */}
       <section>
         <div className="relative h-[9.5rem] sm:h-[15rem] -mx-4 -mt-6 sm:mx-0 sm:mt-0 sm:rounded-3xl overflow-hidden">
