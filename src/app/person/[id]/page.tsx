@@ -117,7 +117,7 @@ export default async function PersonPage({
         </div>
 
         <div className="flex-1 min-w-0 pt-1">
-          <h1 className="text-xl sm:text-3xl font-extrabold leading-tight tracking-tight">
+          <h1 className="text-[22px] sm:text-3xl font-bold leading-tight tracking-tight">
             {name}
           </h1>
           <div className="mt-2 space-y-1">
@@ -233,12 +233,12 @@ async function PersonWorks({
             scroll={false}
             className={segmentedItem(
               worksTab === id,
-              "flex-1 basis-0 min-w-0 flex items-center justify-center gap-1.5 px-2 pt-1.5 pb-3 text-[13px]",
+              "flex-1 basis-0 min-w-0 flex items-center justify-center gap-1.5 px-2 pt-1.5 pb-3 text-[14px]",
               false,
             )}
           >
             <span className="truncate">{label}</span>
-            <span className="text-[11px] tabular-nums opacity-75" dir="ltr">{n}</span>
+            <span className="text-[12px] tabular-nums opacity-75" dir="ltr">{n}</span>
           </Link>
         ))}
       </div>
