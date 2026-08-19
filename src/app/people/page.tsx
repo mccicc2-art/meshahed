@@ -690,7 +690,7 @@ export default async function PeoplePage({
                 <Link
                   href="/people?tab=people"
                   prefetch={false}
-                  className="inline-block mb-4 text-[13px] text-muted hover:text-accent transition"
+                  className="inline-block mb-4 text-[12px] text-muted hover:text-accent transition"
                 >
                   ‹ {t.backAria}
                 </Link>
