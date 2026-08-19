@@ -527,7 +527,15 @@ export default async function PublicProfilePage({
             locked={!isMe && !!profile.hide_follow_lists}
             labels={{ close: t.closeLabel, empty: t.followListEmpty, anonymous: t.anonymousUser }}
           />
-          {prefs.visits && (
+          {/* 🆕 **والجمهورُ يُطبَّق هنا لا في شاشة التخصيص** (D-465):
+              **المفتاحُ يُطفئ الرقمَ عن الجميع بمن فيهم صاحبُه**،
+              **والقائمةُ تختار من يراه حين يكون مضاءً** — **وصاحبُ
+              الصفحة يراه دائماً** وإلّا ضبط رقماً لا يقع عليه بصرُه.
+              ⚠️ **وهذا إخراجٌ لا قفلٌ في SQL** — كسائر `profile_prefs`. */}
+          {prefs.visits &&
+            (isMe ||
+              prefs.visitsWho === "everyone" ||
+              (prefs.visitsWho === "followers" && relation.following)) && (
             <span className="shrink-0 text-muted">
               <span className="font-bold text-foreground tabular-nums">{visits}</span>{" "}
               {t.visitsLabel}
