@@ -41,10 +41,10 @@ export default async function Page() {
             **وحقلٌ يُكتب فيه ولا يُحفظ أسوأُ من نصٍّ ساكن** (D-217) */}
         <SettingsRow icon="mail" title={t.emailSection} subtitle={user.email ?? ""} />
       </SettingsGroup>
-      <p className="px-1 -mt-4 text-[12px] text-muted leading-relaxed">{t.emailHint}</p>
+      <p className="px-1 -mt-4 text-12 text-muted leading-relaxed">{t.emailHint}</p>
 
       <div>
-        <h2 className="px-1 mb-2 text-[12px] font-semibold uppercase tracking-wide text-[color:var(--error)]">
+        <h2 className="px-1 mb-2 text-12 font-semibold uppercase tracking-wide text-[color:var(--error)]">
           {t.setDangerZone}
         </h2>
         <PrivacyData locale={locale} only={["delete"]} />
