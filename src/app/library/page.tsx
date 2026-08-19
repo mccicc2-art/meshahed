@@ -66,7 +66,10 @@ export default async function LibraryPage({
   // والقوائم في الموجة نفسها: استدعاءٌ واحد (`my_lists`) يرجع الاسم والعدد
   // وثلاثة ملصقات، ويجري بالتوازي فلا يزيد زمن الصفحة إلا بأبطأ استدعاء —
   // وهذا ثمن أن يفتح تبويب «القوائم» فوراً بلا دوّارة ولا رحلة شبكة.
-  const [followRows, summary, watchedMovieIds, lists, saved, savedCount, artistRows] = await Promise.all([
+  /* 🆕 وأغلفتي وأعلامُ الأنمي في الموجة نفسِها: كان كلٌّ منهما `await`
+     منفرداً بعدها — رحلتا قاعدةٍ متسلسلتان فوق صفحةٍ بلا Suspense —
+     وكلاهما لا يعتمد على شيءٍ من الموجة. */
+  const [followRows, summary, watchedMovieIds, lists, saved, savedCount, artistRows, myArt, animeFlags] = await Promise.all([
     getFollows(),
     getWatchSummary(),
     getWatchedMovieIds(),
@@ -86,13 +89,14 @@ export default async function LibraryPage({
     getSavedListsCount(),
     // عدّاد تبويب الفنانين وحده (D-128): نداء Supabase خفيف، بلا TMDB
     getFollowedArtists(60),
+    getMyTitleArt(),
+    getMyAnimeFlags(),
   ]);
   const follows = await localizeFollows(followRows, locale);
 
   /* الأغلفة المختارة (D-131) — تُطبَّق هنا على مصدرٍ واحد: كل بطاقةٍ في
      المكتبة تقرأ من `follows`، فاستبدالُ الملصق مرّةً هنا يغطّي التبويبات
      كلَّها بلا لمس بطاقةٍ واحدة. وهذا سطحُ صاحبها، فلا تسريب (ق٨). */
-  const myArt = await getMyTitleArt();
   for (const f of follows) {
     const art = myArt.get(artKey(f.media_type, f.tmdb_id));
     if (art?.poster_path) f.poster_path = art.poster_path;
@@ -216,8 +220,8 @@ export default async function LibraryPage({
      «أفضل الأعمال»: بِركةُ `imdb_pool` أربعةُ آلاف مرشّح فوق عتبة خمسة
      آلاف صوت، **فأنميك متوسّطُ التقييم ليس فيها**، وتبويبٌ يُخفي نصفَ
      مكتبتك ويدّعي الاكتمال أسوأُ من غيابه.
-     وترتيبُ المسلسلات ثم الأفلام محفوظٌ لأن كلَّ مصفوفةٍ وصلت مرتَّبة. */
-  const animeFlags = await getMyAnimeFlags();
+     وترتيبُ المسلسلات ثم الأفلام محفوظٌ لأن كلَّ مصفوفةٍ وصلت مرتَّبة.
+     (والأعلامُ نفسُها تُجلب في موجة الصفحة الأولى — انظر أعلاه.) */
   const anime = [...shows, ...movies].filter(
     (x) => animeFlags.get(`${x.mediaType}-${x.tmdbId}`) === true,
   );
