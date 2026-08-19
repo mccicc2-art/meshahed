@@ -97,6 +97,7 @@ export default async function PublicProfilePage({
     publicLists,
     artists,
     rawFavorites,
+    profileArt,
   ] = await Promise.all([
       getRatingsOf(profile.id),
       getFollowStats(profile.id),
@@ -110,19 +111,20 @@ export default async function PublicProfilePage({
       getPublicListsOf(profile.id),
       wants("artists") ? getProfileArtists(profile.id) : Promise.resolve([]),
       wants("favorites") ? getProfileFavorites(profile.id) : Promise.resolve([]),
+      /* أغلفة صاحب البروفايل (D-131) — لا تحتاج إلا معرّفَه، فمكانُها
+         الموجةُ الأولى لا الثانية (كانت تُنتظر مع الترجمة بلا سبب).
+         والدالّة تمرّ بـ`can_view_profile` فالحارس واحد لا اثنان. */
+      getProfileArt(profile.id),
       isMe ? Promise.resolve() : recordProfileView(profile.id),
     ]);
 
   /* ملفّ غيرك قد يكون كُتب بلغةٍ غير لغتك — العناوين تُترجَم عند العرض
      (D-048) فلا تُقرأ صفحةٌ نصفها عربي ونصفها إنجليزي */
-  const [ratings, follows, favorites, profileArt] = await Promise.all([
+  const [ratings, follows, favorites] = await Promise.all([
     localizeRows(rawRatings, locale),
     localizeRows(rawFollows, locale),
     /* المفضّلة عناوينُها مخزّنةٌ كبقية الصفوف، فتُترجَم عند العرض (D-048) */
     localizeRows(rawFavorites, locale),
-    /* أغلفة صاحب البروفايل (D-131) — بروفايله من سطوحه (ق٨)، والدالّة
-       تمرّ بـ`can_view_profile` فالحارس واحد لا اثنان */
-    getProfileArt(profile.id),
   ]);
 
   /* استبدالٌ في مصدرٍ واحد: كل أقسام البروفايل تُبنى من هذين الصفّين،
