@@ -407,6 +407,11 @@ export function DiscoverFilters({
             onClick={() => setSheet(true)}
             label={t.discoverToolsTitle}
             active={chips.length > 0}
+            /* 🆕 **عددُ ما هو مفعَّل على الزرّ** (D-447، مواصفةُ المرحلة ٦).
+               **ورقائقُ ما اختير هي العدّاد نفسُه**: كلُّ محورٍ مفعَّلٍ له
+               رقاقة، **فلا حسابَ ثانياً** يفترق عن الرقائق عند إضافة محور
+               غداً (وهو ما وقع لبانيَي الرابط في D-174). */
+            count={chips.length > 0 ? num(chips.length, locale) : null}
             expanded={sheet}
           />
         )}
