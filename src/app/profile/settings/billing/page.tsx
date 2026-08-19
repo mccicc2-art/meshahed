@@ -23,7 +23,7 @@ export default async function Page() {
       <SettingsSoon title={t.settingsSoonTitle} body={t.settingsBillingHint} icon="card" />
       <Link
         href="/features"
-        className="inline-flex items-center gap-2 text-[14px] font-medium text-accent hover:underline"
+        className="inline-flex items-center gap-2 text-14 font-medium text-accent hover:underline"
       >
         <Icon name="sparkle-star" size={16} />
         {t.featuresLink}
