@@ -6,7 +6,7 @@ import { tap } from "@/lib/haptics";
 import { Icon, type IconName } from "../Icon";
 import { CARD_COUNTS, type CardCount } from "@/lib/cardCount";
 import { DENSITIES, type Density } from "@/lib/density";
-import { segmentedItem, segmentedTrackFull } from "./controls";
+import { chipClass, pillTrack } from "./controls";
 
 /**
  * قائمة ترتيبٍ وإخفاء — **محرّك واحد لشاشتَي التخصيص** (D-129).
@@ -225,15 +225,18 @@ export function CardCountRow({
   labels: Record<CardCount, string>;
   onChange: (next: CardCount) => void;
 }) {
+  /* 🆕 **رقائقُ ممتلئةٌ في مسار** (D-466) — **لا مقسَّمٌ بخطٍّ سفليّ**:
+     **الخطُّ السفليُّ يقول «هذه تبويبةٌ تُبدّل ما تحتها»**، **وهذا خيارُ
+     إعدادٍ داخل بطاقةٍ لا شيءَ تحته يتبدّل.** */
   return (
-    <div className={segmentedTrackFull}>
+    <div className={pillTrack}>
       {CARD_COUNTS.map((k) => (
         <button
           key={k}
           type="button"
           aria-pressed={value === k}
           onClick={() => onChange(k)}
-          className={segmentedItem(value === k, "flex-1 basis-0 min-w-0")}
+          className={chipClass(value === k, "sm", "flex-1 basis-0 min-w-0 h-8")}
         >
           {labels[k]}
         </button>

@@ -107,6 +107,20 @@ export function chipClass(active: boolean, size: ChipSize = "md", className = ""
   }${className ? ` ${className}` : ""}`;
 }
 
+/**
+ * 🆕 **مسارُ الرقائق الممتلئة** (D-466، تصميمُ أحمد) — **ليس عائلةً ثالثة**.
+ *
+ * **هو صندوقٌ لعائلة `chip` لا شكلٌ جديدٌ للمختار**: الرقاقةُ تمتلئ بلون
+ * الهوية كما كانت، **والمسارُ يجمع خيارين أو ثلاثةً في كتلةٍ واحدة**
+ * فتُقرأ اختياراً من مجموعةٍ مغلقة.
+ *
+ * ⚠️ **ولا يُستعمل للتبويبات التي تُغيّر الصفحة** — تلك `segmented`
+ * بخطِّها السفليّ (قرارُ المالك ١٢ أغسطس). **هذا لخيارِ إعدادٍ داخل
+ * بطاقة**، حيث لا خطَّ سفليَّ يُبنى عليه.
+ */
+export const pillTrack =
+  "flex items-center gap-1 p-1 rounded-full bg-surface-2 border border-border";
+
 /** صفٌّ أفقي من الرقائق يلامس حافّة الشاشة ويُمرَّر بالسحب */
 export const chipRow =
   "-mx-4 px-4 overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden";
