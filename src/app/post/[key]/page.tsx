@@ -150,7 +150,7 @@ export default async function PostPage({
             <Link
               href={`/u/${LOOPZ_USERNAME}`}
               prefetch={false}
-              className="block font-bold text-[15px] leading-tight hover:text-accent transition"
+              className="block font-bold text-15 leading-tight hover:text-accent transition"
               dir="ltr"
             >
               Loopz
@@ -165,10 +165,10 @@ export default async function PostPage({
         {/* **النصُّ بعرض الصفحة كلِّها لا بجانب الوجه** — تشريحُ تويتر:
             الترويسةُ تجاور الوجه، **والمنشورُ يأخذ العرضَ كلَّه** لأنه
             المقصود. */}
-        <p className="mt-3 text-[15px] leading-relaxed font-semibold">{line}</p>
+        <p className="mt-3 text-15 leading-relaxed font-semibold">{line}</p>
 
         {src && (
-          <p className="mt-2 text-[12px] text-muted">
+          <p className="mt-2 text-12 text-muted">
             {src.url ? (
               <a
                 href={src.url}
