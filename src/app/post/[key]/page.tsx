@@ -165,7 +165,7 @@ export default async function PostPage({
         {/* **النصُّ بعرض الصفحة كلِّها لا بجانب الوجه** — تشريحُ تويتر:
             الترويسةُ تجاور الوجه، **والمنشورُ يأخذ العرضَ كلَّه** لأنه
             المقصود. */}
-        <p className="mt-3 text-[17px] leading-relaxed font-semibold">{line}</p>
+        <p className="mt-3 text-[15px] leading-relaxed font-semibold">{line}</p>
 
         {src && (
           <p className="mt-2 text-[12px] text-muted">
