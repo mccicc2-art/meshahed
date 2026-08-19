@@ -68,11 +68,15 @@ export function HomeViewSwitch({
          استدارةٍ في ثلاثة سنتيمترات** (القاعدة ٣: سلّمُ زوايا واحد).
          ⚠️ **ولا قيمةَ جديدة**: نفسُ `2xl` المكتوبة تحته بالضبط.
 
+         🆕 ⚖️ **والوزنُ ٦٠٠ لا ٧٠٠** (D-459): **كان آخرَ ٧٠٠ عند مقاس
+         ١٢ في الصفحة** — **ووزنٌ لعنصرٍ واحدٍ استثناءٌ لا درجة**،
+         والزرُّ له حدُّه وسطحُه ورمزُه يحملونه.
+
          🆕 **والخطُّ ١٢ والرمزُ ١٥** («صغّر الخط… وكومباكت») —
          **والارتفاعُ ٤٤ كما هو**: قاعدتُك «اجعل مناطق الضغط مناسبة
          للجوال»، **وخطٌّ أصغر لا يعني هدفاً أصغر**. الذي ضاق هو الحشو
          فضاق الزرُّ عرضاً — وهو ما يُرى. */
-      className="shrink-0 inline-flex items-center gap-2 rounded-2xl border border-border bg-surface ps-3 pe-3.5 h-11 text-[12px] font-bold transition hover:border-accent/50 active:scale-95 disabled:opacity-60"
+      className="shrink-0 inline-flex items-center gap-2 rounded-2xl border border-border bg-surface ps-3 pe-3.5 h-11 text-[12px] font-semibold transition hover:border-accent/50 active:scale-95 disabled:opacity-60"
     >
       {/* الرمزُ يصف الوجهةَ كما يصفها النصّ: شبكةٌ للبصريّ وقائمةٌ للمختصر */}
       <Icon
