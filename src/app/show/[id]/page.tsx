@@ -55,9 +55,11 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
 
   // بيانات أول رسمة فقط في الموجة الحاسمة — الترايلر والتعليقات تُبثّ
   // لاحقاً عبر Suspense فلا تؤخّر ترويسة الصفحة وتبويب الحلقات
-  const userRegion = await getWatchRegion();
-  const [tv, followState, watched, watchWhere, myLists, inLists, epRatings, myArt, favs, pulse] =
+  const [userRegion, tv, followState, watched, watchWhere, myLists, inLists, epRatings, myArt, favs, pulse] =
     await Promise.all([
+    /* قراءةُ كوكي البلد كانت `await` منفرداً قبل الموجة — رحلةً لا يعتمد
+       عليها أحدٌ فيها، فدخلتها. */
+    getWatchRegion(),
     getTv(tvId).catch(() => null),
     getFollowState(tvId, "tv"),
     getWatchedForShow(tvId),
