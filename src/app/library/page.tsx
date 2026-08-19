@@ -237,30 +237,6 @@ export default async function LibraryPage({
       {/* العنوان مخفيٌّ بصريًّا وباقٍ لقارئ الشاشة — أُزيلت الترويسة وسطر الملخّص */}
       <h1 className="sr-only">{t.libraryTitle}</h1>
 
-      {/* 🆕 **الاختصاران فوق المحتوى لا تحته** (D-443، المرحلة ٥:
-          «اختصارات Stats و Journal أعلى المحتوى»). **وكانا في ذيل
-          الصفحة** — **ورابطٌ تحت مكتبةٍ من ثلاثين ملصقاً لا يُرى إلا
-          بعد عشر تمريرات**، **وهو بعينه سببُ سقوط التذييل** (D-437).
-          **والشكلُ زرّان مطوّقان لا صفٌّ بفواصل**: هما فعلان يُضغطان،
-          **ورمزٌ عارٍ في ذيلٍ يُقرأ زينةً** (D-138). */}
-      <div className="grid grid-cols-2 gap-2.5 mb-4">
-        {(
-          [
-            { href: "/stats", icon: "chart", label: t.libAnalysisBtn },
-            { href: "/diary", icon: "book", label: t.diaryTitle },
-          ] as const
-        ).map(({ href, icon, label }) => (
-          <Link
-            key={href}
-            href={href}
-            className="flex items-center justify-center gap-2 rounded-2xl border border-border bg-surface py-3 text-[13px] font-bold transition hover:border-accent/40 active:scale-[0.99]"
-          >
-            <Icon name={icon} size={17} style={{ color: "var(--accent)" }} />
-            {label}
-          </Link>
-        ))}
-      </div>
-
       <LibraryGrid
         shows={shows}
         movies={movies}
@@ -274,6 +250,38 @@ export default async function LibraryPage({
         locale={locale}
         initialTab={initialTab}
         tabPrefs={tabPrefs}
+        /* 🆕 **الاختصاران نزلا تحت الشريط** (D-453، طلبُ أحمد بلقطةٍ
+           معلَّمة: «هذي نزّلها تحت الشريط»).
+
+           **وحجّةُ D-443 تبقى قائمةً كما هي**: كانا في ذيل الصفحة
+           **فلا يُريان إلا بعد عشر تمريرات** (وهو سببُ سقوط التذييل في
+           D-437) — **والذي تبدّل موضعُهما لا وجودُهما.** فوقَ التبويبات
+           كانا **يدفعان الشريطَ ومعه أوّلَ ملصقٍ تحت منتصف الشاشة**،
+           **وأوّلُ ما يُرى في صفحةٍ اسمُها «مكتبتي» يجب أن يكون
+           مكتبتَك** — وهو نصُّ طلبك في جولة الضغط (D-437).
+           **وتحتَه يبقيان في الشاشة الأولى بلا أن يزاحما التبويبات.**
+
+           **والشكلُ زرّان مطوّقان لا صفٌّ بفواصل**: هما فعلان يُضغطان،
+           **ورمزٌ عارٍ يُقرأ زينةً** (D-138). */
+        underTabs={
+          <div className="grid grid-cols-2 gap-2.5">
+            {(
+              [
+                { href: "/stats", icon: "chart", label: t.libAnalysisBtn },
+                { href: "/diary", icon: "book", label: t.diaryTitle },
+              ] as const
+            ).map(({ href, icon, label }) => (
+              <Link
+                key={href}
+                href={href}
+                className="flex items-center justify-center gap-2 rounded-2xl border border-border bg-surface py-3 text-[13px] font-bold transition hover:border-accent/40 active:scale-[0.99]"
+              >
+                <Icon name={icon} size={17} style={{ color: "var(--accent)" }} />
+                {label}
+              </Link>
+            ))}
+          </div>
+        }
         listsExtra={
           <PublicListsRail
             lists={saved}
