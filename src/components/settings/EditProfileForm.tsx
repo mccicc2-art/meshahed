@@ -1,0 +1,500 @@
+"use client";
+
+/* eslint-disable @next/next/no-img-element */
+
+import { useRef, useState, useTransition } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
+import { updateProfile } from "@/lib/actions";
+import { getDict, type Locale } from "@/lib/i18n";
+import { SITE_URL } from "@/lib/site";
+import { Avatar } from "../Avatar";
+import { Icon } from "../Icon";
+import { Alert } from "../ui/Alert";
+import { SettingsPageLayout } from "./SettingsPageLayout";
+import { SettingsRow } from "./SettingsRow";
+import { UnsavedChangesDialog } from "./UnsavedChangesDialog";
+
+/** حدُّ النبذة في هذه الشاشة (مواصفةُ أحمد) — والقاعدةُ تقبل ١٦٠ */
+const BIO_MAX = 120;
+
+type Snapshot = {
+  nickname: string;
+  username: string;
+  bio: string;
+  avatarUrl: string | null;
+  coverUrl: string | null;
+  coverPos: number;
+  avatarPos: number;
+};
+
+/**
+ * تعديلُ الملفّ — **صفحةٌ واحدةٌ لهويّتك وحدَها** (D-462، مواصفةُ أحمد).
+ *
+ * **وكانت الهويّةُ موزّعةً على نموذجين**: الصورةُ والاسمُ المستعار في
+ * `ProfileForm`، **واسمُ المستخدم في `AccountSettings`** — **ونموذجان
+ * يكتبان صفَّ `profiles` نفسَه لا يجوز أن يظهرا معاً**: حفظُ أحدهما
+ * يكتب قيمَ الآخر الابتدائيّة فوق تعديلٍ لم يُحفظ. **فصار الكاتبُ
+ * واحداً هنا**، وذهب الثيمُ والأنواعُ وبلدُ المشاهدة إلى صفحاتِ
+ * التفضيلات، والبريدُ إلى «الحساب».
+ *
+ * ⚠️ **و«حفظ» في الترويسة لا تحت كلِّ بطاقة**: أربعةُ حقولٍ وصورتان
+ * بزرِّ حفظٍ واحدٍ **يُرى دائماً ولا يُمرَّر إليه** — **ولا يستيقظ إلّا
+ * حين يوجد ما يُحفظ** (`dirty`)، **فزرٌّ حيٌّ بلا تغييرٍ يَعِد بفعلٍ لا
+ * يقع** (D-217).
+ *
+ * ⚠️ **والصورتان معاينةٌ واحدةٌ لا بطاقتان**: الغلافُ والصورةُ يظهران
+ * للناس متراكبين — **وضبطُهما في صندوقين متباعدين يجعل النتيجةَ تُخمَّن
+ * لا تُرى.**
+ */
+export function EditProfileForm({
+  userId,
+  email,
+  locale,
+  isPrivate,
+  genres,
+  initial,
+}: {
+  userId: string;
+  email: string;
+  locale: Locale;
+  /** لعرضِ حالةِ الظهور — تُضبط في «الخصوصية»، وتُقرأ هنا فقط */
+  isPrivate: boolean;
+  /** تمرُّ كما هي: `updateProfile` يطلب الأنواعَ في كلِّ نداء */
+  genres: number[];
+  initial: Snapshot;
+}) {
+  const t = getDict(locale);
+  const router = useRouter();
+
+  const [base, setBase] = useState<Snapshot>(initial);
+  const [nickname, setNickname] = useState(initial.nickname);
+  const [username, setUsername] = useState(initial.username);
+  const [bio, setBio] = useState(initial.bio);
+  const [avatarUrl, setAvatarUrl] = useState(initial.avatarUrl);
+  const [coverUrl, setCoverUrl] = useState(initial.coverUrl);
+  const [coverPos, setCoverPos] = useState(initial.coverPos);
+  const [avatarPos, setAvatarPos] = useState(initial.avatarPos);
+
+  const [uploading, setUploading] = useState<"avatar" | "cover" | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [toast, setToast] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [ask, setAsk] = useState(false);
+  const [pending, start] = useTransition();
+
+  const avatarRef = useRef<HTMLInputElement>(null);
+  const coverRef = useRef<HTMLInputElement>(null);
+
+  const cleaned = username.trim().toLowerCase().replace(/[^a-z0-9_]/g, "");
+  const usernameInvalid = cleaned.length > 0 && cleaned.length < 3;
+
+  const dirty =
+    nickname !== base.nickname ||
+    username !== base.username ||
+    bio !== base.bio ||
+    avatarUrl !== base.avatarUrl ||
+    coverUrl !== base.coverUrl ||
+    coverPos !== base.coverPos ||
+    avatarPos !== base.avatarPos;
+
+  /* ===== الرفع ===== منقولٌ بحرفه من `ProfileForm`: نفسُ المخزن ونفسُ
+     الحدّ (٢ ميجابايت) ونفسُ حذفِ السابق — **وملفٌّ قديمٌ يبقى في المخزن
+     مع كلِّ تغييرٍ يملأ السعةَ بصورٍ لا يراها أحد.** */
+  function storagePathOf(url: string | null, uid: string): string | null {
+    if (!url) return null;
+    const marker = "/storage/v1/object/public/avatars/";
+    const at = url.indexOf(marker);
+    if (at < 0) return null;
+    const path = decodeURIComponent(url.slice(at + marker.length).split("?")[0]);
+    return path.startsWith(`${uid}/`) ? path : null;
+  }
+
+  async function upload(file: File, kind: "avatar" | "cover") {
+    setError(null);
+    if (!file.type.startsWith("image/")) return setError(t.errPickImage);
+    if (file.size > 2 * 1024 * 1024) return setError(t.errTooLarge);
+
+    setUploading(kind);
+    try {
+      const supabase = await createClient();
+      const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
+      const path = `${userId}/${kind}-${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from("avatars")
+        .upload(path, file, { upsert: true, contentType: file.type });
+      if (upErr) throw new Error(upErr.message);
+
+      const { data } = supabase.storage.from("avatars").getPublicUrl(path);
+      if (kind === "avatar") setAvatarUrl(data.publicUrl);
+      else setCoverUrl(data.publicUrl);
+
+      const previous = kind === "avatar" ? avatarUrl : coverUrl;
+      const oldPath = storagePathOf(previous, userId);
+      if (oldPath && oldPath !== path) {
+        await supabase.storage.from("avatars").remove([oldPath]);
+      }
+    } catch (e) {
+      setError(t.errUpload + (e as Error).message);
+    } finally {
+      setUploading(null);
+    }
+  }
+
+  /* ===== السحبُ لضبط التموضع ===== المحورُ الرأسيُّ وحدَه: الغلافُ يملأ
+     العرضَ دائماً، **وشكوى الصورة الدائرية وجهٌ مقصوصٌ من أعلى أو أسفل.** */
+  const drag = useRef<{ kind: "avatar" | "cover"; startY: number; startPos: number; h: number } | null>(
+    null,
+  );
+
+  function dragStart(e: React.PointerEvent, kind: "avatar" | "cover") {
+    const el = e.currentTarget as HTMLElement;
+    el.setPointerCapture(e.pointerId);
+    drag.current = {
+      kind,
+      startY: e.clientY,
+      startPos: kind === "cover" ? coverPos : avatarPos,
+      h: el.clientHeight || 1,
+    };
+  }
+
+  function dragMove(e: React.PointerEvent) {
+    const d = drag.current;
+    if (!d) return;
+    const delta = ((e.clientY - d.startY) / d.h) * 100;
+    const next = Math.round(Math.min(100, Math.max(0, d.startPos - delta)));
+    if (d.kind === "cover") setCoverPos(next);
+    else setAvatarPos(next);
+  }
+
+  function dragEnd() {
+    drag.current = null;
+  }
+
+  function save() {
+    setError(null);
+    if (usernameInvalid) return setError(t.usernameShort);
+    const next: Snapshot = { nickname, username, bio, avatarUrl, coverUrl, coverPos, avatarPos };
+    start(async () => {
+      try {
+        await updateProfile({
+          nickname,
+          username: cleaned,
+          bio,
+          avatarUrl,
+          coverUrl,
+          coverPos,
+          avatarPos,
+          favoriteGenres: genres,
+        });
+        /* **الخطُّ الأساسُ يتقدّم بعد النجاح وحدَه**: لو تقدّم قبله لأطفأ
+           زرَّ الحفظ على تعديلٍ لم يصل — **وأسوأُ من فشلٍ ظاهرٍ فشلٌ
+           يبدو نجاحاً.** */
+        setBase(next);
+        setToast(true);
+        window.setTimeout(() => setToast(false), 2400);
+        router.refresh();
+      } catch (e) {
+        setError(t.errSave + (e as Error).message);
+      }
+    });
+  }
+
+  function leave() {
+    setAsk(false);
+    if (typeof window !== "undefined" && window.history.length > 1) router.back();
+    else router.push("/profile/settings");
+  }
+
+  async function copyLink() {
+    try {
+      await navigator.clipboard.writeText(`${SITE_URL}/u/${cleaned}`);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1600);
+    } catch {
+      /* لا رسالةَ خطأ لنسخةٍ فاشلة: الرابطُ ظاهرٌ في السطر فيُحدَّد يدوياً */
+    }
+  }
+
+  return (
+    <SettingsPageLayout
+      title={t.setEditProfile}
+      onBack={() => {
+        if (dirty) {
+          setAsk(true);
+          return false;
+        }
+      }}
+      action={
+        <button
+          type="button"
+          onClick={save}
+          disabled={!dirty || pending || uploading !== null}
+          className="h-11 px-2 -me-2 text-[14px] font-bold text-accent disabled:text-[color:var(--disabled)] transition active:scale-95 disabled:active:scale-100"
+        >
+          {pending ? t.saving : t.setSave}
+        </button>
+      }
+    >
+      {/* ===== المعاينةُ المدمجة ===== */}
+      <section className="rounded-2xl border border-border bg-surface overflow-hidden">
+        <div
+          className={`relative h-32 sm:h-40 bg-surface-2 ${
+            coverUrl ? "cursor-grab active:cursor-grabbing touch-none select-none" : ""
+          }`}
+          role={coverUrl ? "slider" : undefined}
+          aria-label={coverUrl ? t.repositionAria : undefined}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={coverUrl ? coverPos : undefined}
+          onPointerDown={coverUrl ? (e) => dragStart(e, "cover") : undefined}
+          onPointerMove={coverUrl ? dragMove : undefined}
+          onPointerUp={dragEnd}
+          onPointerCancel={dragEnd}
+        >
+          {coverUrl ? (
+            <img
+              src={coverUrl}
+              alt=""
+              draggable={false}
+              className="w-full h-full object-cover pointer-events-none"
+              style={{ objectPosition: `50% ${coverPos}%` }}
+            />
+          ) : (
+            <span className="absolute inset-0 grid place-items-center text-[14px] text-muted">
+              {t.noCover}
+            </span>
+          )}
+
+          <input
+            ref={coverRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) upload(f, "cover");
+              e.target.value = "";
+            }}
+          />
+          <button
+            type="button"
+            disabled={uploading !== null}
+            onClick={() => coverRef.current?.click()}
+            aria-label={t.setEditCover}
+            title={t.setEditCover}
+            className="absolute top-2 end-2 grid place-items-center w-9 h-9 rounded-full bg-black/55 text-white backdrop-blur-sm hover:bg-black/70 active:scale-95 transition disabled:opacity-60"
+          >
+            <Icon name={uploading === "cover" ? "hourglass" : "image"} size={16} />
+          </button>
+          {coverUrl && (
+            <button
+              type="button"
+              onClick={() => setCoverUrl(null)}
+              aria-label={t.removeCover}
+              title={t.removeCover}
+              className="absolute top-2 end-12 grid place-items-center w-9 h-9 rounded-full bg-black/55 text-white backdrop-blur-sm hover:bg-black/70 active:scale-95 transition"
+            >
+              <Icon name="trash" size={16} />
+            </button>
+          )}
+        </div>
+
+        <div className="px-4 pb-3.5 flex items-end gap-3 -mt-9">
+          <span
+            className={`relative shrink-0 ${
+              avatarUrl ? "cursor-grab active:cursor-grabbing touch-none select-none" : ""
+            }`}
+            role={avatarUrl ? "slider" : undefined}
+            aria-label={avatarUrl ? t.repositionAria : undefined}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={avatarUrl ? avatarPos : undefined}
+            onPointerDown={avatarUrl ? (e) => dragStart(e, "avatar") : undefined}
+            onPointerMove={avatarUrl ? dragMove : undefined}
+            onPointerUp={dragEnd}
+            onPointerCancel={dragEnd}
+          >
+            <Avatar
+              src={avatarUrl}
+              name={nickname || email}
+              size={76}
+              alt={t.avatarAlt}
+              posY={avatarPos}
+              className="pointer-events-none ring-4 ring-[color:var(--surface)]"
+            />
+            <input
+              ref={avatarRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) upload(f, "avatar");
+                e.target.value = "";
+              }}
+            />
+            <button
+              type="button"
+              disabled={uploading !== null}
+              onClick={() => avatarRef.current?.click()}
+              aria-label={t.setEditAvatar}
+              title={t.setEditAvatar}
+              className="absolute bottom-0 end-0 grid place-items-center w-8 h-8 rounded-full bg-accent text-[color:var(--on-accent)] ring-2 ring-[color:var(--surface)] active:scale-95 transition disabled:opacity-60"
+            >
+              <Icon name={uploading === "avatar" ? "hourglass" : "image"} size={14} />
+            </button>
+          </span>
+
+          <span className="flex-1 min-w-0 flex justify-end pb-1">
+            {cleaned.length >= 3 && (
+              <Link
+                href={`/u/${cleaned}`}
+                className="rounded-2xl border border-border px-3.5 h-9 inline-flex items-center text-[12px] font-semibold hover:border-accent/50 active:scale-95 transition"
+              >
+                {t.setPreviewProfile}
+              </Link>
+            )}
+          </span>
+        </div>
+
+        {/* **السطرُ يُكتب حين يمكن السحبُ فقط** — **وتلميحٌ فوق صندوقٍ
+            فارغٍ يشرح فعلاً لا يقع** (D-044) */}
+        {(coverUrl || avatarUrl) && (
+          <p className="px-4 pb-3.5 text-[12px] text-muted leading-relaxed">{t.repositionHint}</p>
+        )}
+      </section>
+
+      {/* ===== بطاقةُ التفاصيل ===== */}
+      <section>
+        <h2 className="px-1 mb-2 text-[12px] font-semibold uppercase tracking-wide text-muted">
+          {t.setProfileDetails}
+        </h2>
+        <div className="rounded-2xl border border-border bg-surface divide-y divide-[color:var(--divider)] overflow-hidden">
+          {/* الاسمُ الظاهر — **واحدٌ لا اثنان**: كان «الاسم المستعار» في
+              نموذجٍ و«الاسم الظاهر» في آخر لعمود `nickname` نفسِه
+              (مواصفةُ أحمد: احذف المكرَّر). */}
+          <div className="px-4 py-3.5">
+            <label className="block text-[12px] font-semibold text-muted mb-1.5" htmlFor="ep-name">
+              {t.displayNameSection}
+            </label>
+            <input
+              id="ep-name"
+              value={nickname}
+              onChange={(e) => setNickname(e.target.value)}
+              maxLength={40}
+              placeholder={t.displayNamePlaceholder}
+              /* ١٦ بكسلاً استثناءٌ موثَّق: أصغرُ منها يجعل سفاري يقرّب الصفحة عند التركيز */
+              className="w-full bg-transparent text-[16px] outline-none placeholder:text-[color:var(--disabled)]"
+            />
+          </div>
+
+          <div className="px-4 py-3.5">
+            <label className="block text-[12px] font-semibold text-muted mb-1.5" htmlFor="ep-user">
+              {t.usernameSection}
+            </label>
+            <div className="flex items-center gap-1" dir="ltr">
+              <span className="text-[16px] text-muted">@</span>
+              <input
+                id="ep-user"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                maxLength={24}
+                placeholder="ahmed_92"
+                dir="ltr"
+                className="flex-1 min-w-0 bg-transparent text-[16px] outline-none text-left placeholder:text-[color:var(--disabled)]"
+              />
+            </div>
+            {cleaned !== username.trim().toLowerCase() && username.trim() !== "" && (
+              <p className="text-[12px] text-muted mt-1.5" dir="ltr">
+                {t.willSaveAs(cleaned || "—")}
+              </p>
+            )}
+          </div>
+
+          <div className="px-4 py-3.5">
+            <div className="flex items-baseline justify-between gap-2 mb-1.5">
+              <label className="text-[12px] font-semibold text-muted" htmlFor="ep-bio">
+                {t.bioSection}
+              </label>
+              {/* **العدّادُ يُقرأ عدّاً لا تحذيراً** حتى الحرف الأخير */}
+              <span
+                className={`text-[12px] tabular-nums ${
+                  bio.length >= BIO_MAX ? "text-[color:var(--error)]" : "text-muted"
+                }`}
+                dir="ltr"
+              >
+                {t.setBioCount(String(bio.length), String(BIO_MAX))}
+              </span>
+            </div>
+            <textarea
+              id="ep-bio"
+              value={bio}
+              onChange={(e) => setBio(e.target.value.slice(0, BIO_MAX))}
+              maxLength={BIO_MAX}
+              rows={2}
+              placeholder={t.bioPlaceholder}
+              className="w-full bg-transparent text-[16px] leading-relaxed outline-none resize-none placeholder:text-[color:var(--disabled)]"
+            />
+          </div>
+
+          {/* رابطُ الملفّ — **يُعرض حين يوجد اسمُ مستخدمٍ صالحٌ فقط**:
+              **رابطٌ يُنسخ ولا يُفتح أسوأُ من غيابه** (D-217) */}
+          {cleaned.length >= 3 && (
+            <SettingsRow
+              icon="share"
+              title={t.setProfileLink}
+              subtitle={`${SITE_URL.replace(/^https?:\/\//, "")}/u/${cleaned}`}
+              trailing={
+                <button
+                  type="button"
+                  onClick={copyLink}
+                  className="shrink-0 rounded-2xl border border-border px-3 h-8 inline-flex items-center gap-1.5 text-[12px] font-semibold hover:border-accent/50 active:scale-95 transition"
+                >
+                  <Icon name={copied ? "check" : "bookmark"} size={13} />
+                  {copied ? t.setCopied : t.setCopyLink}
+                </button>
+              }
+            />
+          )}
+
+          {/* **الظهورُ يُعرض هنا ويُضبط هناك**: مفتاحان لقيمةٍ واحدةٍ في
+              صفحتين يجعلان الحفظَين يتسابقان (القاعدة ٦) */}
+          <SettingsRow
+            href="/profile/settings/privacy"
+            icon="eye"
+            title={t.setProfileVisibility}
+            value={isPrivate ? t.setVisibilityPrivate : t.setVisibilityPublic}
+          />
+        </div>
+      </section>
+
+      {error && <Alert>{error}</Alert>}
+
+      {/* **بشارةُ الحفظ تمرّ ولا تُقيم**: سطرٌ ثابتٌ «حُفظ» يبقى صادقاً
+          بعد تعديلٍ جديدٍ فيكذب (D-030) */}
+      {toast && (
+        <div
+          role="status"
+          className="fixed inset-x-0 bottom-[calc(1.5rem+env(safe-area-inset-bottom))] z-50 flex justify-center pointer-events-none px-4"
+        >
+          <span className="rounded-2xl bg-[color:var(--surface-inverse)] text-[color:var(--on-surface-inverse)] px-4 py-2.5 text-[14px] font-semibold shadow-[0_10px_28px_rgba(0,0,0,0.35)]">
+            {t.setSaved}
+          </span>
+        </div>
+      )}
+
+      <UnsavedChangesDialog
+        open={ask}
+        title={t.setUnsavedTitle}
+        body={t.setUnsavedBody}
+        discardLabel={t.setDiscard}
+        keepLabel={t.setKeepEditing}
+        closeLabel={t.setKeepEditing}
+        onDiscard={leave}
+        onKeep={() => setAsk(false)}
+      />
+    </SettingsPageLayout>
+  );
+}
