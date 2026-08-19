@@ -206,13 +206,13 @@ export default async function ReviewPage({
               <Link
                 href={titleHref}
                 prefetch={false}
-                className="min-w-0 truncate text-[13px] text-muted hover:text-accent transition"
+                className="min-w-0 truncate text-[12px] text-muted hover:text-accent transition"
               >
                 <bdi>{work}</bdi>
               </Link>
               {r.rating != null && (
                 <span
-                  className="shrink-0 text-[13px] font-bold text-accent tabular-nums"
+                  className="shrink-0 text-[14px] font-bold text-accent tabular-nums"
                   title={t.rateOutOf(r.rating)}
                 >
                   ★ <span dir="ltr">{r.rating.toFixed(1)}</span>
@@ -230,7 +230,7 @@ export default async function ReviewPage({
           ) : (
             <p
               dir={dirOf(r.review)}
-              className="mt-3 text-[17px] leading-relaxed text-foreground whitespace-pre-line"
+              className="mt-3 text-[15px] leading-relaxed text-foreground whitespace-pre-line"
             >
               {r.review}
             </p>
