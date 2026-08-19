@@ -5,6 +5,7 @@ import { getUser } from "@/lib/data";
 import { getT } from "@/lib/locale";
 import { LibraryAnalysis, LibraryAnalysisSkeleton } from "@/components/LibraryAnalysis";
 import { ShareCard } from "@/components/ShareCard";
+import { OneTimeHint } from "@/components/OneTimeHint";
 
 /**
  * الإحصائيات.
@@ -27,6 +28,9 @@ export default async function StatsPage() {
         <Link href="/library" className="text-xs text-accent hover:brightness-110 transition">
           {t.libraryTitle} ›
         </Link>
+      </div>
+      <div className="mb-4">
+        <OneTimeHint id="stats-intro" text={t.hintStats} closeLabel={t.closeLabel} />
       </div>
 
       {/* المشاركة قبل التحليل لا بعده: التحليل طويل، ومن يريد المشاركة
