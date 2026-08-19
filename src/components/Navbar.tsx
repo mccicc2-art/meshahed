@@ -9,6 +9,8 @@ import { NavTitle } from "./NavTitle";
 import { Logo } from "./Logo";
 import { LangFlagMenu } from "./LangFlagMenu";
 import { ThemeCookieSync } from "./ThemeCookieSync";
+import { FontPrefsSync } from "./FontPrefsSync";
+import { UiStateSync } from "./UiStateSync";
 import { MessagesLink } from "./MessagesLink";
 import { buttonClass } from "./ui/Button";
 
@@ -32,7 +34,7 @@ export async function Navbar() {
       <header className="sticky top-0 z-30 bg-[color:var(--background)]/80 backdrop-blur pt-[var(--safe-top)]">
         {/* dir=ltr: الاسم يساراً والعلم يميناً بثبات، مهما كانت لغة الصفحة */}
         <div className="max-w-6xl mx-auto px-5 h-16 flex items-center justify-between" dir="ltr">
-          <span className="font-extrabold text-[22px] tracking-tight">{t.brand}</span>
+          <span className="font-extrabold text-22 tracking-tight">{t.brand}</span>
           <LangFlagMenu locale={locale} />
         </div>
       </header>
@@ -48,6 +50,13 @@ export async function Navbar() {
     <header className="sticky top-0 z-30 border-b border-border bg-[color:var(--background)]/80 backdrop-blur pt-[var(--safe-top)]">
       {/* يهاجر ثيم الحساب إلى الكوكي مرة واحدة — ثم لا يفعل شيئاً */}
       {profile?.theme && <ThemeCookieSync theme={profile.theme} />}
+      {/* وحجمُ الخطّ سواء — ولا يُركَّب قبل الهجرة 121 (العمود null) */}
+      {profile?.font_ui && profile?.font_content && (
+        <FontPrefsSync fontUi={profile.font_ui} fontContent={profile.font_content} />
+      )}
+      {/* والتلميحاتُ والجولة سواء (طلب أحمد ١٩ أغسطس): الحسابُ ينزل إلى
+          الجهاز والجهازُ يصعد إليه مرةً — ولا يُركَّب قبل الهجرة */}
+      {profile?.ui_state != null && <UiStateSync uiState={profile.ui_state} />}
       <div className="relative max-w-6xl mx-auto px-4 h-16 flex items-center gap-2 sm:gap-3">
         <Link href="/" className="shrink-0" aria-label={t.brand}>
           {/* **الرمزُ وحده في الشريط** (D-256، طلبُ أحمد: «الأيقونة في كل

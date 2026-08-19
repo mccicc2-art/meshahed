@@ -74,7 +74,7 @@ export function NewsComment({
           aria-expanded={open}
           aria-label={label}
           title={label}
-          className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[12px] tabular-nums transition ${
+          className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-12 tabular-nums transition ${
             open ? "text-accent" : "text-muted hover:text-accent"
           }`}
         >

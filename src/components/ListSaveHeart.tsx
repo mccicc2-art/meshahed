@@ -92,7 +92,7 @@ export function ListSaveHeart({
          🆕 **والرقمُ داخل الزرّ لا بجانبه**: هدفُ اللمس يشملهما معاً
          فيكبر ولا يصغر (D-033/D-168)، **والرمزُ ورقمُه شيءٌ واحدٌ
          يُقرأ ويُضغط.** و`ltr` لأن الرقمَ يتبع رمزَه في اللغتين. */
-      className={`shrink-0 flex items-center gap-1 h-8 -mt-0.5 rounded-full px-1 text-[12px] font-bold tabular-nums active:scale-90 disabled:opacity-50 transition ${
+      className={`shrink-0 flex items-center gap-1 h-8 -mt-0.5 rounded-full px-1 text-12 font-bold tabular-nums active:scale-90 disabled:opacity-50 transition ${
         on ? "text-accent" : "text-muted hover:text-accent"
       }`}
       dir="ltr"

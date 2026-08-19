@@ -65,7 +65,7 @@ export function NavTitle({ locale }: { locale: Locale }) {
       className="md:hidden pointer-events-none absolute inset-0 flex items-center justify-center px-28"
       aria-hidden
     >
-      <span className="truncate text-[15px] font-bold leading-none">{label}</span>
+      <span className="truncate text-15 font-bold leading-none">{label}</span>
     </span>
   );
 }

@@ -92,8 +92,8 @@ export function NotificationList({
               size={40}
             />
             <span className="min-w-0 flex-1">
-              <span className="block text-[14px] leading-snug">{line(s)}</span>
-              <span className="block text-[12px] text-muted mt-0.5">{timeAgo(s.at, t)}</span>
+              <span className="block text-14 leading-snug">{line(s)}</span>
+              <span className="block text-12 text-muted mt-0.5">{timeAgo(s.at, t)}</span>
             </span>
             {/* النقطة تقول «هذا وصل بعد آخر فتحة» — لا لونٌ يغرق السطر */}
             {s.isNew && <span className="shrink-0 w-2 h-2 rounded-full bg-accent" aria-hidden />}

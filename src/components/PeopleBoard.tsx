@@ -125,7 +125,7 @@ export function BoardSection({
     >
       <header className="flex items-start justify-between gap-3 mb-3">
         <div className="min-w-0">
-          <h2 className="flex items-center gap-2 text-[15px] font-bold min-w-0">
+          <h2 className="flex items-center gap-2 text-15 font-bold min-w-0">
             <Icon name={icon} size={17} className={`shrink-0 ${tone ?? "text-accent"}`} />
             <span className="truncate">{title}</span>
           </h2>
@@ -134,7 +134,7 @@ export function BoardSection({
           <Link
             href={seeAllHref}
             prefetch={false}
-            className="shrink-0 mt-0.5 text-[12px] text-muted hover:text-accent transition"
+            className="shrink-0 mt-0.5 text-12 text-muted hover:text-accent transition"
           >
             {seeAllLabel}
           </Link>
@@ -186,7 +186,7 @@ function RankBadge({ rank, locale }: { rank: number; locale: Locale }) {
   return (
     <span
       aria-hidden
-      className={`absolute -bottom-1 -start-1 w-[22px] h-[22px] rounded-full grid place-items-center text-[12px] font-extrabold tabular-nums ${tone}`}
+      className={`absolute -bottom-1 -start-1 w-[22px] h-[22px] rounded-full grid place-items-center text-12 font-extrabold tabular-nums ${tone}`}
     >
       {num(rank, locale)}
     </span>
@@ -331,7 +331,7 @@ export function PeopleLeaderboard({
               sub={
                 <>
                   <span
-                    className={`block text-[12px] font-bold tabular-nums ${
+                    className={`block text-12 font-bold tabular-nums ${
                       mode === "rising" ? "text-success" : "text-accent"
                     }`}
                   >
@@ -602,7 +602,7 @@ export function TopReviews({
                       <Link
                         href={reviewHref}
                         prefetch={false}
-                        className="text-[12px] text-muted tabular-nums hover:text-accent transition"
+                        className="text-12 text-muted tabular-nums hover:text-accent transition"
                       >
                         {timeAgoShort(row.createdAt, t)}
                       </Link>
@@ -613,14 +613,14 @@ export function TopReviews({
                           <Link
                             href={titleHref}
                             prefetch={false}
-                            className="min-w-0 truncate text-[14px] hover:text-accent transition"
+                            className="min-w-0 truncate text-14 hover:text-accent transition"
                           >
                             <bdi>{title}</bdi>
                           </Link>
                         )}
                         {row.rating > 0 && (
                           <span
-                            className="shrink-0 text-[14px] font-bold text-accent tabular-nums"
+                            className="shrink-0 text-14 font-bold text-accent tabular-nums"
                             title={t.rateOutOf(row.rating)}
                           >
                             ★ <span dir="ltr">{row.rating.toFixed(1)}</span>
@@ -643,7 +643,7 @@ export function TopReviews({
                       dir={dirOf(row.review)}
                       className={`block mt-2 ${alignOf(row.review)}`}
                     >
-                      <p className="text-[14px] leading-relaxed text-foreground/85 line-clamp-3">
+                      <p className="text-14 leading-relaxed text-foreground/85 line-clamp-3">
                         {row.review}
                       </p>
                     </Link>
@@ -658,7 +658,7 @@ export function TopReviews({
                       البطاقات مهما قصُر الكلام (D-224) — **والملصقُ أطولُ
                       من النصّ في أكثر البطاقات، فبلا هذا يطفو الرقمُ في
                       وسط فراغ.** */}
-                  <p className="mt-auto pt-2 inline-flex items-center gap-1.5 text-[12px] text-muted">
+                  <p className="mt-auto pt-2 inline-flex items-center gap-1.5 text-12 text-muted">
                     <Icon name="heart-filled" size={13} className="shrink-0" />
                     <span className="tabular-nums">{t.peopleBoardLikes(row.likes)}</span>
                   </p>

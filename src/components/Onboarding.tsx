@@ -222,7 +222,7 @@ export function Onboarding({
                     </span>
                   )}
                 </span>
-                <span className="block text-[12px] mt-1.5 line-clamp-2 leading-snug">
+                <span className="block text-12 mt-1.5 line-clamp-2 leading-snug">
                   {s.title}
                 </span>
               </button>
@@ -342,7 +342,7 @@ export function Onboarding({
                   <span className="flex-1 min-w-0">
                     <span className="block text-sm font-semibold truncate">{name}</span>
                     {reason && (
-                      <span className="block text-[12px] text-muted truncate">{reason}</span>
+                      <span className="block text-12 text-muted truncate">{reason}</span>
                     )}
                   </span>
                   <span

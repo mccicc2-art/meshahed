@@ -103,7 +103,7 @@ export function PersonName({
         </span>
         {door(nameText, "block min-w-0 w-full")}
         {sub && (
-          <span className="block w-full text-[12px] text-muted leading-tight">{sub}</span>
+          <span className="block w-full text-12 text-muted leading-tight">{sub}</span>
         )}
       </span>
     );
@@ -120,7 +120,7 @@ export function PersonName({
           {door(nameText, "min-w-0")}
           {end && <span className="ms-auto shrink-0">{end}</span>}
         </div>
-        {sub && <div className="min-w-0 text-[12px] text-muted">{sub}</div>}
+        {sub && <div className="min-w-0 text-12 text-muted">{sub}</div>}
       </div>
     </div>
   );

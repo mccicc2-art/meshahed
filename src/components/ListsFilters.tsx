@@ -275,7 +275,7 @@ function SelectField({
 }) {
   return (
     <label className="block">
-      <span className="block text-[12px] font-semibold text-muted mb-1">{label}</span>
+      <span className="block text-12 font-semibold text-muted mb-1">{label}</span>
       <span className="relative block">
         <select
           value={value}
