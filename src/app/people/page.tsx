@@ -50,6 +50,7 @@ import { getTitleNews } from "@/lib/titleNews";
 import { ScrollMemory } from "@/components/ScrollMemory";
 import { TabPager } from "@/components/TabPager";
 import { getBatchTranslations } from "@/lib/translate";
+import { OneTimeHint } from "@/components/OneTimeHint";
 
 
 /**
@@ -703,7 +704,7 @@ export default async function PeoplePage({
                 <Link
                   href="/people?tab=people"
                   prefetch={false}
-                  className="inline-block mb-4 text-[12px] text-muted hover:text-accent transition"
+                  className="inline-block mb-4 text-12 text-muted hover:text-accent transition"
                 >
                   ‹ {t.backAria}
                 </Link>
@@ -856,6 +857,7 @@ export default async function PeoplePage({
           المرئية، وانتقل عدّادا المتابعة وزرّ الإضافة إلى صفّ الترتيب أسفل
           التبويبات (طلب المالك) */}
       <h1 className="sr-only">{t.peopleTitle}</h1>
+      <OneTimeHint id="people-intro" text={t.hintPeople} closeLabel={t.closeLabel} />
 
       {/* ===== رأس التبويبات =====
           `PageTabs` المشترك (D-134): نفس الموضع الرأسيّ في المكتبة
@@ -891,7 +893,7 @@ export default async function PeoplePage({
            يُفتح بالرابط فلا يموت رابطٌ مشارَك، ولا يُدفع ثمنُ نداءات
            TMDB في التبويب الافتراضيّ. */
         <div>
-          <h2 className="text-[15px] font-bold mb-2">{t.communityTabNews}</h2>
+          <h2 className="text-15 font-bold mb-2">{t.communityTabNews}</h2>
           <TitleNews items={news} locale={locale} />
         </div>
       ) : tab === "all" ? (
