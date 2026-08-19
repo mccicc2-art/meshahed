@@ -351,7 +351,7 @@ export default async function FeaturesPage() {
       <div className="mt-8 space-y-9">
         {SECTIONS.map((s) => (
           <section key={s.en}>
-            <h2 className="flex items-center gap-2 text-[20px] font-bold mb-3">
+            <h2 className="flex items-center gap-2 text-20 font-bold mb-3">
               <Icon name={s.icon} size={18} className="text-muted" />
               {ar ? s.ar : s.en}
             </h2>
@@ -364,7 +364,7 @@ export default async function FeaturesPage() {
                   <Icon name={f.icon} size={18} className="text-accent shrink-0 mt-0.5" />
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-bold leading-tight">{ar ? f.ar : f.en}</p>
-                    <p className="text-[12px] text-muted leading-relaxed mt-0.5">
+                    <p className="text-12 text-muted leading-relaxed mt-0.5">
                       {ar ? f.arBody : f.enBody}
                     </p>
                   </div>
@@ -373,7 +373,7 @@ export default async function FeaturesPage() {
                       ويوم يأتي الاشتراك يتبدّل وسم بنودٍ بعينها إلى «بريميوم»
                       في نفس الخانة، فلا يُعاد بناء شيء. */}
                   <span
-                    className={`shrink-0 text-[12px] font-bold rounded-full px-2.5 py-1 border ${
+                    className={`shrink-0 text-12 font-bold rounded-full px-2.5 py-1 border ${
                       f.soon
                         ? "text-accent border-accent/35 bg-accent/10"
                         : "text-[color:var(--success)] border-[color:var(--success)]/35 bg-[color:var(--success)]/10"
