@@ -49,8 +49,14 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
   // بيانات TMDB وبيانات المستخدم تُطلب معاً: لا شيء منها يعتمد على الآخر،
   // وانتظار الأولى قبل الثانية كان يضيف رحلة كاملة إلى الخادم
   // بيانات أول رسمة فقط — الترايلر والتعليقات تُبثّ لاحقاً عبر Suspense
-  const userRegion = await getWatchRegion();
-  const [movie, followState, watched, watchWhere, myLists, inLists, myArt, favs, pulse] = await Promise.all([
+  /* العالم فحصٌ محليّ في القاموس — يُحسب قبل الموجة حتى يدخل نداءا
+     قائمته **الموجةَ نفسَها** بدل موجةٍ ثانيةٍ متسلسلةٍ بعدها (كانا
+     رحلتَي قاعدةٍ إضافيّتين لكلّ فيلمٍ له عالَم). */
+  const universe = universeOf(movieId);
+  const [userRegion, movie, followState, watched, watchWhere, myLists, inLists, myArt, favs, pulse, curatedMap, mySaved] = await Promise.all([
+    /* قراءةُ كوكي البلد كانت `await` منفرداً قبل الموجة — رحلةً لا تلزم
+       أحداً قبلها، فدخلت الموجة. */
+    getWatchRegion(),
     getMovie(movieId).catch(() => null),
     getFollowState(movieId, "movie"),
     isMovieWatched(movieId),
@@ -66,6 +72,15 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
        تحته** (D-046)، **والصفحةُ تنتظر TMDB على كل حال** (حجّةُ
        `getTitleCircle` حرفاً). */
     getTitlePulse(movieId, "movie"),
+    /* 🆕 **معرّفُ قائمة العالم وحالةُ حفظها** (D-347) — **ولا يقعان إلا
+       لفيلمٍ له عالَم** (D-152)، والغيابُ يعني «لم تُولَّد بعد» فلا زرّ
+       (D-181). كانا موجةً ثانيةً بعد هذه — فدخلاها. */
+    universe
+      ? getCuratedListIds().catch(() => new Map<string, string>())
+      : Promise.resolve(new Map<string, string>()),
+    universe
+      ? getMySavedListIds().catch(() => new Set<string>())
+      : Promise.resolve(new Set<string>()),
   ]);
 
   if (!movie) {
@@ -98,17 +113,8 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
      (ق٨). النقطة واحدة هنا فلا تتفرّق على البطاقات. */
   const backdrop = backdropUrl(myArt?.backdrop_path ?? movie.backdrop_path);
   const poster = posterUrl(myArt?.poster_path ?? movie.poster_path, "w342");
-  /* العالم فحصٌ محليّ في القاموس — زرّه صعد إلى الترويسة (طلب المالك) */
-  const universe = universeOf(movieId);
-  /* 🆕 **ومعرّفُ قائمته المولَّدة وحالةُ حفظها** (D-347): نداءان مخبّآن
-     **ولا يقعان إلا لفيلمٍ له عالَم** — ومن لا عالَمَ له لا يدفع شيئاً
-     (D-152). **والغيابُ يعني «لم تُولَّد بعد» فلا زرَّ** (D-181). */
-  const [curatedMap, mySaved] = universe
-    ? await Promise.all([
-        getCuratedListIds().catch(() => new Map<string, string>()),
-        getMySavedListIds().catch(() => new Set<string>()),
-      ])
-    : [new Map<string, string>(), new Set<string>()];
+  /* زرُّ العالم في الترويسة (طلب المالك) — نداءاه جُلبا في موجة الصفحة
+     الأولى أعلاه. */
   const universeListId = universe ? curatedMap.get(universe.slug) ?? null : null;
   const universeSaved = !!universeListId && mySaved.has(universeListId);
 
