@@ -68,18 +68,18 @@ export function TitleReviewRow({
               <Link
                 href={r.username ? `/u/${r.username}` : href}
                 prefetch={false}
-                className="min-w-0 truncate font-bold text-[14px] leading-tight hover:text-accent transition"
+                className="min-w-0 truncate font-bold text-14 leading-tight hover:text-accent transition"
               >
                 <bdi>{who}</bdi>
               </Link>
-              <span aria-hidden className="shrink-0 text-muted text-[12px]">
+              <span aria-hidden className="shrink-0 text-muted text-12">
                 ·
               </span>
               {/* **العمرُ بابٌ إلى الخيط** — عادةُ تويتر (D-239/D-242) */}
               <Link
                 href={href}
                 prefetch={false}
-                className="shrink-0 text-[12px] text-muted tabular-nums hover:text-accent transition"
+                className="shrink-0 text-12 text-muted tabular-nums hover:text-accent transition"
               >
                 {timeAgoShort(r.updated_at, t)}
               </Link>
@@ -93,7 +93,7 @@ export function TitleReviewRow({
               `10/10` — **ولا خمسُ نجماتٍ تترجم عشرةً** فتصير للتقييم
               لغتان في شاشةٍ واحدة. */}
           <span
-            className="ms-auto shrink-0 text-[14px] font-bold text-accent tabular-nums"
+            className="ms-auto shrink-0 text-14 font-bold text-accent tabular-nums"
             title={t.rateOutOf(r.rating)}
           >
             ★ <span dir="ltr">{r.rating.toFixed(1)}</span>
@@ -116,7 +116,7 @@ export function TitleReviewRow({
               {/* 🆕 **ولا قصَّ هنا أيضاً** (D-429): **القاعدةُ واحدةٌ في
                   الأسطح الأربعة** — من رتّب متنَه يُقرأ مرتَّباً كاملاً،
                   **وستّةُ أسطرٍ هنا وثلاثةٌ في الخطّ حدّان لسببٍ واحد.** */}
-              <p className="text-[14px] leading-relaxed text-foreground/90 whitespace-pre-line">
+              <p className="fs-content text-14 leading-relaxed text-foreground/90 whitespace-pre-line">
                 {r.review}
               </p>
             </Link>
@@ -140,7 +140,7 @@ export function TitleReviewRow({
             prefetch={false}
             aria-label={t.talkReply}
             title={t.talkReply}
-            className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[12px] tabular-nums text-muted hover:text-accent transition"
+            className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-12 tabular-nums text-muted hover:text-accent transition"
           >
             <Icon name="comment" size={15} />
             {/* **والصفرُ لا يُرسم** (D-222) */}

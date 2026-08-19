@@ -54,9 +54,9 @@ export function TitleNews({ items, locale }: { items: NewsItem[]; locale: Locale
                 أخباراً. صفُّ النشاط لا يعاني هذا لأن صورته ١٦:٩. */}
             <div className="flex items-center justify-between gap-4">
               <div className="min-w-0 flex-1">
-                <p className="text-[12px] font-semibold text-accent">{label(n)}</p>
-                <p className="mt-1.5 text-[15px] leading-snug font-semibold">{n.title}</p>
-                <p className="mt-1 text-[12px] text-muted">
+                <p className="text-12 font-semibold text-accent">{label(n)}</p>
+                <p className="mt-1.5 text-15 leading-snug font-semibold">{n.title}</p>
+                <p className="mt-1 text-12 text-muted">
                   {when(n)} · {n.mediaType === "tv" ? t.typeSeries : t.typeMovie}
                 </p>
               </div>

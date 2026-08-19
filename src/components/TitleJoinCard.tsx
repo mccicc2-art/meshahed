@@ -50,7 +50,7 @@ export function TitleJoinCard({
   const [open, setOpen] = useState(false);
 
   const action =
-    "flex-1 min-w-0 inline-flex items-center justify-center gap-2 px-3 py-2.5 text-[14px] font-bold " +
+    "flex-1 min-w-0 inline-flex items-center justify-center gap-2 px-3 py-2.5 text-14 font-bold " +
     "text-foreground hover:text-accent active:scale-[0.98] transition";
 
   return (
@@ -62,7 +62,7 @@ export function TitleJoinCard({
         >
           <Icon name="comment" size={17} />
         </span>
-        <h3 className="min-w-0 font-bold text-[15px]">{t.communityJoin}</h3>
+        <h3 className="min-w-0 font-bold text-15">{t.communityJoin}</h3>
       </div>
 
       <div className="h-px bg-[color:var(--divider)] mx-4" />
@@ -98,7 +98,7 @@ export function TitleJoinCard({
         labelledBy="write-review-title"
       >
         <div className="flex flex-col min-h-0 p-3.5 sm:p-4">
-          <p id="write-review-title" className="font-bold text-[15px] mb-2.5 px-1 truncate">
+          <p id="write-review-title" className="font-bold text-15 mb-2.5 px-1 truncate">
             {title}
           </p>
           {composer}

@@ -91,13 +91,13 @@ export function WatchChip({
           />
         ) : (
           /* بلا شعار؟ اسمُه — **فالبديل عن الرمز الاسمُ لا الفراغ** */
-          <span key={p.provider_id} className="text-[12px] font-semibold text-foreground/90">
+          <span key={p.provider_id} className="text-12 font-semibold text-foreground/90">
             {p.provider_name}
           </span>
         ),
       )}
       {elsewhere && (
-        <span className="text-[12px] text-muted font-normal">
+        <span className="text-12 text-muted font-normal">
           {regionName(region, locale === "en" ? "en" : "ar")}
         </span>
       )}

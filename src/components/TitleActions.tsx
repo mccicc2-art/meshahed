@@ -321,7 +321,7 @@ export function TitleActions({
         <button
           onClick={() => setSheetOpen(true)}
           aria-pressed={badge > 0}
-          className={`flex-1 h-11 rounded-full font-bold text-[15px] flex items-center justify-center gap-2.5 active:scale-[0.98] transition ${
+          className={`flex-1 h-11 rounded-full font-bold text-15 flex items-center justify-center gap-2.5 active:scale-[0.98] transition ${
             /* 🆕 **وظلٌّ واحدٌ لزرٍّ واحد** (D-405): كانت حالةُ
                «محفوظ» تحمل هالةً **بنفسجيّة** (`rgba(124,58,237,…)`) —
                **لونٌ لا وجود له في كتيّب الهويّة**، بقيّةُ لوحةٍ سابقة،
@@ -390,7 +390,7 @@ export function TitleActions({
         labelledBy="lists-sheet-title"
       >
         <>
-          <p id="lists-sheet-title" className="text-center font-bold text-[15px] pt-5 pb-3">
+          <p id="lists-sheet-title" className="text-center font-bold text-15 pt-5 pb-3">
             {t.listAddTo}
           </p>
 
@@ -401,7 +401,7 @@ export function TitleActions({
             className="w-full flex items-center gap-3 px-5 py-3 text-start hover:bg-surface-2 transition"
           >
             <CheckBox on={following} />
-            <span className="text-[14px] font-semibold flex items-center gap-2">
+            <span className="text-14 font-semibold flex items-center gap-2">
               <Icon name="bookmark" size={16} className="text-muted" />
               {t.libToWatch}
             </span>
@@ -427,7 +427,7 @@ export function TitleActions({
                       className="w-full flex items-center gap-3 px-5 py-2.5 text-start hover:bg-surface-2 transition"
                     >
                       <CheckBox on={on} />
-                      <span className="text-[14px] truncate">{l.name}</span>
+                      <span className="text-14 truncate">{l.name}</span>
                     </button>
                   </li>
                 );
@@ -463,7 +463,7 @@ export function TitleActions({
             التقييم يحمل عنوانه بنفسه («قيّم هذا العمل»)، فسؤالٌ فوقه
             يقول الشيء مرّتين في شبرٍ واحد. */}
         <div className="p-3.5 sm:p-4">
-          <p id="rate-now-title" className="font-bold text-[15px] mb-2.5 px-1 truncate">
+          <p id="rate-now-title" className="font-bold text-15 mb-2.5 px-1 truncate">
             {title}
           </p>
           <RatingBox

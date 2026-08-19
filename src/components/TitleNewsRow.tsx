@@ -56,10 +56,10 @@ export function TitleNewsRow({
           <p className="text-[10px] font-bold tracking-[0.08em] uppercase text-accent">
             {t.communityKindNews}
           </p>
-          <p className="mt-0.5 text-[14px] leading-relaxed font-semibold group-hover:text-accent transition">
+          <p className="mt-0.5 text-14 leading-relaxed font-semibold group-hover:text-accent transition">
             {line}
           </p>
-          <p className="mt-1 flex items-center gap-2 text-[12px] text-muted">
+          <p className="mt-1 flex items-center gap-2 text-12 text-muted">
             <span className="tabular-nums">{timeAgoShort(at, t)}</span>
             {source && (
               <>

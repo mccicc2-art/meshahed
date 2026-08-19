@@ -168,7 +168,7 @@ export function TitleHero({
                 لونٌ صلب**. في الثيمات الداكنة `foreground` أبيضُ عمليّاً
                 فلا يتغيّر بكسل، **وفي النهاريّ كان الأبيضُ يموت على
                 القاع الفاتح.** */}
-            <h1 className="font-bold text-[22px] leading-tight line-clamp-1 text-foreground drop-shadow">
+            <h1 className="font-bold text-22 leading-tight line-clamp-1 text-foreground drop-shadow">
               {title}
             </h1>
             {typeof avg === "number" && typeof count === "number" && count > 0 && (
@@ -177,7 +177,7 @@ export function TitleHero({
                  **الخطُّ نفسُه والرقمُ نفسُه، وإنما سقط الفراغُ الذي لا
                  يحمل معنًى.** */
               <p
-                className="text-[12px] font-bold leading-none text-accent tabular-nums"
+                className="text-12 font-bold leading-none text-accent tabular-nums"
                 title={ratingLabel}
               >
                 ★ <span dir="ltr">{avg}</span>
