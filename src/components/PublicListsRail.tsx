@@ -257,7 +257,14 @@ export function ListCardShell({
     <>
       <span className="flex items-center gap-1.5 text-[14px] font-bold">
         {icon}
-        <span className="min-w-0 flex-1 truncate">{name}</span>
+        {/* 🆕 **سطران بحدٍّ أقصى و`dir="auto"`** (D-443، المرحلة ٥:
+            «معالجة العناوين العربية والإنجليزية · حد أقصى سطران»):
+            **القصُّ في سطرٍ واحد يبتلع نصفَ الاسم العربيّ** لأنه أعرضُ
+            حرفاً، **والاتجاهُ المستنتَج يمنع قلبَ علامات اسمٍ إنجليزيٍّ
+            في صفحةٍ عربيّة.** */}
+        <span className="min-w-0 flex-1 line-clamp-2 leading-tight" dir="auto">
+          {name}
+        </span>
         {heart}
         {action}
       </span>

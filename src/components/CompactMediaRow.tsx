@@ -26,6 +26,7 @@ export function CompactMediaRow({
   posterPath,
   chip,
   progress,
+  wide = false,
   fallbackIcon = "film",
 }: {
   href: string;
@@ -38,6 +39,18 @@ export function CompactMediaRow({
   chip?: string | null;
   /** ٠–١٠٠ — خيطٌ رفيع تحت السطرين، ويغيب عند الصفر */
   progress?: number;
+  /**
+   * 🆕 **صدرٌ عريضٌ بدل الملصق الصغير** (D-443، المرحلة ٥: «Watching
+   * كبطاقة Landscape مضغوطة»).
+   *
+   * **وهو مقاسٌ لا مكوّنٌ ثانٍ**: الصفُّ نفسُه بسطريه وخيطه وسهمه —
+   * **والذي يتبدّل صدرُه** — **وصفٌّ ثانٍ لشكلٍ واحد كان سيفترق عند
+   * أوّل تعديل** (القاعدة ٦).
+   * **والصورةُ ملصقٌ مقصوصٌ لا لقطةُ مشهد**: صفوفُ المكتبة لا تحمل
+   * `backdrop_path` — **وقصُّ ما نملكه أصدقُ من نداءٍ لكلِّ صفّ**
+   * (D-384).
+   */
+  wide?: boolean;
   fallbackIcon?: IconName;
 }) {
   const url = posterUrl(posterPath ?? null, "w185");
@@ -58,9 +71,19 @@ export function CompactMediaRow({
           </span>
         </span>
       ) : (
-        <span className="relative shrink-0 w-10 h-[60px] rounded-lg overflow-hidden bg-surface-2">
+        <span
+          className={`relative shrink-0 rounded-lg overflow-hidden bg-surface-2 ${
+            wide ? "w-[124px] aspect-[16/10]" : "w-10 h-[60px]"
+          }`}
+        >
           {url ? (
-            <Image src={url} alt="" fill sizes="40px" className="object-cover" />
+            <Image
+              src={url}
+              alt=""
+              fill
+              sizes={wide ? "124px" : "40px"}
+              className="object-cover"
+            />
           ) : (
             <span className="absolute inset-0 grid place-items-center text-muted">
               <Icon name={fallbackIcon} size={16} />

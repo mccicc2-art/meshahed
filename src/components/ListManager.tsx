@@ -48,8 +48,9 @@ export function ListManager({
     <div>
       {/* نموذجُ الإنشاء صار مكوّناً مشتركاً (D-177): بابُه الثاني ورقةُ
           أدوات المكتبة، **وتحصينات D-168 لا تُنسخ** */}
-      <div className="mb-5">
-        <NewListForm locale={locale} />
+      {/* 🆕 **زرٌّ لا حقلٌ دائم** (D-443) — انظر حجّتَه في `NewListForm` */}
+      <div className="mb-4">
+        <NewListForm locale={locale} collapsed />
       </div>
 
       {lists.length === 0 ? (

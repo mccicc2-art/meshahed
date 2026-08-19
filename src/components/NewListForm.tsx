@@ -29,16 +29,30 @@ export function NewListForm({
   locale,
   /** يُنادى بعد نجاح الإنشاء — الورقة تُغلق نفسها به */
   onCreated,
+  collapsed = false,
 }: {
   locale: Locale;
   onCreated?: () => void;
-}) {
+  /**
+   * 🆕 **زرٌّ يفتح النموذجَ بدل حقلٍ دائمٍ فوق القوائم** (D-443، المرحلة
+   * ٥: «إزالة حقل الإنشاء الكبير الدائم، واستخدام زر Create list»).
+   *
+   * **والحقلُ الدائم كان يقول «اكتب» لمن جاء ليقرأ**: تبويبُ القوائم
+   * يُفتح لتُفتح قائمة، **والإنشاءُ فعلٌ يقع مرّةً في الشهر** — **وأداةٌ
+   * تُرى ولا تُستعمل الآن تزاحم ما يُستعمل** (D-138).
+   * **ولا نموذجٌ ثانٍ**: هو هو، **والذي أُضيف بابُه** — وتحصيناتُ D-168
+   * الخمسةُ فوقه كما هي.
+   * ⚠️ **وبابُ ورقة الأدوات يبقى مفتوحاً** (`collapsed = false`): من فتح
+   * ورقةً اسمُها «قائمة جديدة» لا يُطلب منه ضغطةٌ ثانية.
+   */
+  collapsed?: boolean;}) {
   const t = getDict(locale);
   const router = useRouter();
   const [name, setName] = useState("");
   const [subtitle, setSubtitle] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  const [open, setOpen] = useState(false);
 
   const nameRef = useRef<HTMLInputElement>(null);
   const subRef = useRef<HTMLInputElement>(null);
@@ -78,6 +92,21 @@ export function NewListForm({
     if (now - firedAt.current < 700) return;
     firedAt.current = now;
     add();
+  }
+
+  if (collapsed && !open) {
+    return (
+      <button
+        type="button"
+        onClick={() => {
+          tap(6);
+          setOpen(true);
+        }}
+        className={buttonClass({ size: "sm" })}
+      >
+        + {t.listNewGroup}
+      </button>
+    );
   }
 
   return (
