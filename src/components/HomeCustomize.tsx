@@ -25,7 +25,7 @@ import {
   SectionOrderList,
   ToggleRow,
 } from "./ui/SectionOrderList";
-import { segmentedItem, segmentedTrackFull } from "./ui/controls";
+import { chipClass, pillTrack } from "./ui/controls";
 import { CustomizePreview } from "./CustomizePreview";
 import { type Density } from "@/lib/density";
 
@@ -177,31 +177,12 @@ export function HomeCustomize({
         ))}
       </section>
 
-      {/* ===== وضعُ العرض (D-434) =====
-          **والمبدّلُ في الرئيسية هو المبدّلُ نفسُه**: هذا بابُه في
-          الإعدادات، **والقيمةُ واحدةٌ في العمود** — فلا يفترق ما يراه
-          صاحبُ الحساب هنا عمّا يراه هناك (قاعدة ٦). */}
-      <section className="bg-surface border border-border rounded-2xl p-3.5 sm:p-5">
-        <h2 className="text-sm font-bold mb-1">{t.viewSwitchAria}</h2>
-        <div className={segmentedTrackFull}>
-          {HOME_VIEWS.map((k) => (
-            <button
-              key={k}
-              type="button"
-              aria-pressed={prefs.view === k}
-              onClick={() => set({ ...prefs, view: k })}
-              className={segmentedItem(prefs.view === k, "flex-1 basis-0 min-w-0")}
-            >
-              {k === "visual" ? t.viewVisual : t.viewCompact}
-            </button>
-          ))}
-        </div>
-      </section>
-
-      {/* ===== خانات بطاقة الأرقام ===== */}
-      <section className="bg-surface border border-border rounded-2xl p-3.5 sm:p-5">
-        <h2 className="text-sm font-bold mb-1">{t.custStatsCard}</h2>
-        <p className="text-xs text-muted leading-relaxed mb-3">{t.custStatsPickHint}</p>
+      {/* ===== خانات بطاقة الأرقام — **عنوانٌ خارج البطاقة** كأختِها ===== */}
+      <section>
+        <h2 className="px-1 text-[15px] font-bold">{t.custStatsCard}</h2>
+        <p className="px-1 mt-0.5 mb-2 text-[12px] text-muted leading-relaxed">
+          {t.custStatsPickHint}
+        </p>
 
         <SectionOrderList
           all={HEADER_STATS}
@@ -236,6 +217,29 @@ export function HomeCustomize({
           **وهما رقمان مخزَّنان أصلاً** (`cards` سقفٌ يقصّ، و`density`
           عرضٌ يكبّر)، **وتصميمُ أحمد يفصلهما فصار الحقُّ معه.** */}
       <section className="rounded-2xl border border-border bg-surface overflow-hidden">
+        {/* **وضعُ العرض صفٌّ لا بطاقة** (D-466): **البصريُّ والمختصرُ
+            والتنسيقُ وحجمُ الملصق أوجهٌ لسؤالٍ واحد — «كيف تُرسم
+            الرئيسية»** — **وثلاثُ بطاقاتٍ لسؤالٍ واحد تُقرأ ثلاثةَ
+            أقسام.** **والمبدّلُ في الرئيسية هو المبدّلُ نفسُه**،
+            والقيمةُ واحدةٌ في العمود (قاعدة ٦). */}
+        <div className="flex items-center gap-3 min-h-14 px-4 py-2.5 border-b border-[color:var(--divider)]">
+          <span className="shrink-0 text-[15px] font-bold">{t.custHomeView}</span>
+          <span className="min-w-0 flex-1">
+            <span className={pillTrack}>
+              {HOME_VIEWS.map((k) => (
+                <button
+                  key={k}
+                  type="button"
+                  aria-pressed={prefs.view === k}
+                  onClick={() => set({ ...prefs, view: k })}
+                  className={chipClass(prefs.view === k, "sm", "flex-1 basis-0 min-w-0 h-8")}
+                >
+                  {k === "visual" ? t.viewVisual : t.viewCompact}
+                </button>
+              ))}
+            </span>
+          </span>
+        </div>
         <div className="flex items-center gap-3 min-h-14 px-4 py-2.5 border-b border-[color:var(--divider)]">
           <span className="shrink-0 text-[15px] font-bold">{t.custLayout}</span>
           <span className="min-w-0 flex-1">
