@@ -228,13 +228,13 @@ export function ReplyItem({
           ) : (
             <Avatar src={reply.avatar_url} name={name} size={34} alt="" className="shrink-0" />
           )}
-          <span className="min-w-0 truncate font-bold text-[14px] leading-tight">
+          <span className="min-w-0 truncate font-bold text-14 leading-tight">
             <bdi>{name}</bdi>
           </span>
-          <span aria-hidden className="shrink-0 text-muted text-[12px]">
+          <span aria-hidden className="shrink-0 text-muted text-12">
             ·
           </span>
-          <span className="shrink-0 text-[12px] text-muted tabular-nums">
+          <span className="shrink-0 text-12 text-muted tabular-nums">
             {timeAgoShort(reply.createdAt, t)}
           </span>
 
@@ -304,14 +304,14 @@ export function ReplyItem({
             {/* **الحقائقُ ظاهرةٌ بلا حرق** — بخطّ المتن لا الحاشية (D-241) */}
             <p
               dir={dirOf(bulletin)}
-              className="text-[14px] leading-relaxed text-foreground/90 whitespace-pre-line"
+              className="fs-content text-14 leading-relaxed text-foreground/90 whitespace-pre-line"
             >
               {bulletin}
               {/* 🆕 **★ في سطر العنوان** (D-308، طلبُ أحمد: «احذف الوقت
                   وخلّ التقييم بعد العنوان مباشرة عشان ما تخسر سطر على
                   الفاضي») — والصفرُ يُخفى (D-219)، والرقمُ `ltr`. */}
               {facts.vote && (
-                <span className="inline-flex items-center gap-1 ms-2 text-[12px] text-muted align-middle">
+                <span className="inline-flex items-center gap-1 ms-2 text-12 text-muted align-middle">
                   <Icon name="star" size={12} className="shrink-0 text-accent" />
                   <span dir="ltr">{facts.vote}</span>
                 </span>
@@ -355,7 +355,7 @@ export function ReplyItem({
           shownBody.trim() && (
             <p
               dir={dirOf(shownBody)}
-              className="mt-1.5 text-[14px] leading-relaxed text-foreground/90 whitespace-pre-line"
+              className="mt-1.5 fs-content text-14 leading-relaxed text-foreground/90 whitespace-pre-line"
             >
               {shownBody}
             </p>
@@ -369,7 +369,7 @@ export function ReplyItem({
           <button
             type="button"
             onClick={() => setShowOriginal((v) => !v)}
-            className="mt-1 text-[12px] font-bold text-muted hover:text-accent transition"
+            className="mt-1 text-12 font-bold text-muted hover:text-accent transition"
           >
             {showOriginal ? t.showTranslation : t.showOriginalText}
           </button>
@@ -433,7 +433,7 @@ export function ReplyItem({
                   <Icon name="chevron-up" size={16} strokeWidth={2.4} />
                 </button>
                 <span
-                  className={`min-w-[1ch] text-center text-[12px] tabular-nums ${
+                  className={`min-w-[1ch] text-center text-12 tabular-nums ${
                     myVote === 1 ? "text-accent" : myVote === -1 ? "text-muted" : "text-muted"
                   }`}
                 >
@@ -462,7 +462,7 @@ export function ReplyItem({
                 aria-pressed={likedByMe}
                 aria-label={t.likesLabel}
                 title={t.likesLabel}
-                className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[12px] transition ${
+                className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-12 transition ${
                   likedByMe ? "text-accent" : "text-muted"
                 } ${onLike ? "hover:text-accent active:scale-95" : "cursor-default"}`}
               >
@@ -476,7 +476,7 @@ export function ReplyItem({
                 onClick={onReply}
                 aria-label={t.talkReply}
                 title={t.talkReply}
-                className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[12px] text-muted hover:text-accent transition"
+                className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-12 text-muted hover:text-accent transition"
               >
                 <Icon name="comment" size={15} />
                 {replyCount > 0 && (

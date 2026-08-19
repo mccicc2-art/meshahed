@@ -56,7 +56,7 @@ export function ThreadDateLine({
         year: "numeric",
       }).format(d);
   return (
-    <div className="py-3 border-y border-[color:var(--divider)] flex items-center gap-1.5 text-[12px] text-muted">
+    <div className="py-3 border-y border-[color:var(--divider)] flex items-center gap-1.5 text-12 text-muted">
       <span dir="ltr">{stamp}</span>
       {/* **والصفرُ لا يُرسم** (D-222): «٠ مشاهدة» تحت منشورٍ تقرؤه أنت
           الآن تناقضٌ ظاهر — والعدُّ يبدأ بعد الهجرة ٧٤. */}
@@ -96,7 +96,7 @@ export function ThreadActionBar({ children }: { children: React.ReactNode }) {
 export function ReplyingTo({ name, locale }: { name: string; locale: Locale }) {
   const t = getDict(locale);
   return (
-    <p className="text-[12px] text-muted mb-0.5">
+    <p className="text-12 text-muted mb-0.5">
       <bdi>{t.talkReplyingTo(name)}</bdi>
     </p>
   );

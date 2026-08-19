@@ -427,7 +427,7 @@ export function ThreadReplies({
                   });
                 }}
                 aria-expanded={kidsOpen}
-                className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[12px] font-bold text-muted hover:text-accent transition"
+                className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-12 font-bold text-muted hover:text-accent transition"
               >
                 <Icon
                   name="chevron-down"
