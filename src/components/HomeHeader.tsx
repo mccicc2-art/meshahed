@@ -77,7 +77,7 @@ export function HomeHeader({
        **وعلى الشاشة الواسعة تلتصق تحت الشريط العلويّ** (`--sticky-top`)
        لا فوقه — **والمقدارُ محسوبٌ هناك مرّةً واحدة** فلا يُجمع
        `--safe-top` مرّتين (تعليقُه في `globals.css`). */
-    <header id="home-head" className="sticky top-0 md:top-[var(--sticky-top)] z-30 -mx-4 px-4 -mt-6 pt-[calc(var(--safe-top)+0.5rem)] md:pt-3 pb-3 space-y-3 bg-[color:var(--background)]">
+    <header id="home-head" className="sticky top-0 md:top-[var(--sticky-top)] z-30 -mx-4 px-4 -mt-6 pt-[calc(var(--safe-top)+0.5rem)] md:pt-3 pb-2 space-y-2.5 bg-[color:var(--background)]">
       {/* حافّةُ اللصق تُقاس هنا لا تُخمَّن — انظر `StickyHeadOffset` */}
       <StickyHeadOffset id="home-head" />
 

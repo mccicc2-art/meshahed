@@ -82,7 +82,7 @@ export function PosterRail({
                  تحت الرأس، **وخلفيّةٌ شفّافةٌ تجعله يمرّ فوق الحروف**
                  — **وخلفيّةٌ تقف عند الهامش تترك شريطين عاريين** على
                  الجانبين (نفسُ علّة الترويسة). */
-              "sticky top-[var(--sticky-head,0px)] z-20 -mx-4 px-4 pt-1.5 pb-1 -mb-0.5 bg-[color:var(--background)] flex items-center justify-between gap-3"
+              "sticky top-[var(--sticky-head,0px)] z-20 -mx-4 px-4 pt-1 pb-0.5 -mb-0.5 bg-[color:var(--background)] flex items-center justify-between gap-3"
             : "flex items-center justify-between gap-3 mb-0.5"
         }
       >
@@ -122,8 +122,12 @@ export function PosterRail({
               </Link>
             )}
       </div>
-      {subtitle && <p className="text-xs text-muted mb-2">{subtitle}</p>}
-      {!subtitle && <div className="mb-2" />}
+      {/* 🆕 **الفاصلُ بين الرأس وجسده ٤ لا ٨** (D-467، بلاغُ أحمد بثلاثة
+          خطوطٍ خضراءَ على اللقطة: «فيه هوامش مسافات هنا احذفها»).
+          **والعنوانُ ٢٢px له سطرُ ارتفاعٍ يحمل فراغَه معه**، فثمانيةٌ
+          فوقه تُقرأ فجوةً لا فصلاً. */}
+      {subtitle && <p className="text-xs text-muted mb-1">{subtitle}</p>}
+      {!subtitle && <div className="mb-1" />}
 
       {/* الهوامش السالبة تجعل الصفّ يلامس حافة الشاشة فيبدو أنه يكمل خلفها.
           overscroll-x-contain: التمرير الزائد على iOS كان يفعّل «رجوع»
