@@ -271,7 +271,7 @@ export function TitleSearchSheet({
                 setTouched(false);
                 inputRef.current?.focus();
               }}
-              className={segmentedItem(mode === m, "px-3 pt-1.5 pb-2.5 text-[13px]", false)}
+              className={segmentedItem(mode === m, "px-3 pt-1.5 pb-2.5 text-[14px]", false)}
             >
               {label}
             </button>
@@ -429,7 +429,7 @@ function ResultRow({
 
       <span className="min-w-0 flex-1">
         <span className="block text-sm font-semibold truncate">{s.title}</span>
-        <span className="block text-[11px] text-muted truncate">
+        <span className="block text-[12px] text-muted truncate">
           {person
             ? s.subtitle || t.searchPeopleTitle
             : s.subtitle
@@ -439,7 +439,7 @@ function ResultRow({
       </span>
 
       {!person && s.rating != null && s.rating > 0 && (
-        <span className="text-[11px] font-bold text-accent tabular-nums shrink-0" dir="ltr">
+        <span className="text-[12px] font-bold text-accent tabular-nums shrink-0" dir="ltr">
           ★ {s.rating}
         </span>
       )}

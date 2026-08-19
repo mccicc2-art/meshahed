@@ -173,7 +173,7 @@ export function StartConversationSheet({
             </span>
             <span className="min-w-0 flex-1">
               <span className="block text-sm font-semibold truncate">{picked.title}</span>
-              <span className="block text-[11px] text-muted">
+              <span className="block text-[12px] text-muted">
                 {picked.kind === "tv" ? t.typeSeries : t.typeMovie}
                 {picked.year ? ` · ${picked.year}` : ""}
               </span>
@@ -256,13 +256,13 @@ export function StartConversationSheet({
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block text-sm font-semibold truncate">{s.title}</span>
-                    <span className="block text-[11px] text-muted truncate">
+                    <span className="block text-[12px] text-muted truncate">
                       {s.kind === "tv" ? t.typeSeries : t.typeMovie}
                       {s.year ? ` · ${s.year}` : ""}
                     </span>
                   </span>
                   {s.rating != null && s.rating > 0 && (
-                    <span className="text-[11px] font-bold text-accent tabular-nums shrink-0" dir="ltr">
+                    <span className="text-[12px] font-bold text-accent tabular-nums shrink-0" dir="ltr">
                       ★ {s.rating}
                     </span>
                   )}

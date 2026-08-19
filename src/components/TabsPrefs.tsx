@@ -79,7 +79,7 @@ export function TabsPrefs({
   return (
     <div>
       {title && (
-        <p className="px-5 pt-3 pb-2 text-[13px] font-bold text-muted">{title}</p>
+        <p className="px-5 pt-3 pb-2 text-[12px] font-bold text-muted">{title}</p>
       )}
       <ul>
         {local.map((pref, i) => {

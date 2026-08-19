@@ -93,7 +93,7 @@ export function TitleReviewRow({
               `10/10` — **ولا خمسُ نجماتٍ تترجم عشرةً** فتصير للتقييم
               لغتان في شاشةٍ واحدة. */}
           <span
-            className="ms-auto shrink-0 text-[13px] font-bold text-accent tabular-nums"
+            className="ms-auto shrink-0 text-[14px] font-bold text-accent tabular-nums"
             title={t.rateOutOf(r.rating)}
           >
             ★ <span dir="ltr">{r.rating.toFixed(1)}</span>

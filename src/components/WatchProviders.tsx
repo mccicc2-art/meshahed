@@ -67,7 +67,7 @@ export function WatchProviders({
         <h2 className="text-[15px] font-bold">{t.watchWhereTitle}</h2>
         {/* البلد يُسمّى دائماً هنا لا حين يختلف وحده: القائمة الكاملة قرارُ
             شراء، ومن يقرأ سعراً يجب أن يعرف لأيّ سوقٍ هو */}
-        <span className="text-[11px] text-muted">
+        <span className="text-[12px] text-muted">
           {regionName(region, locale === "en" ? "en" : "ar")}
           {elsewhere ? ` · ${t.watchElsewhere}` : ""}
         </span>
@@ -82,7 +82,7 @@ export function WatchProviders({
                 <span
                   key={p.provider_id}
                   title={p.provider_name}
-                  className="inline-flex items-center gap-1.5 text-[11px] font-semibold bg-surface-2 border border-border ps-1 pe-2 py-1 rounded-lg"
+                  className="inline-flex items-center gap-1.5 text-[12px] font-semibold bg-surface-2 border border-border ps-1 pe-2 py-1 rounded-lg"
                 >
                   {p.logo_path && (
                     <Image

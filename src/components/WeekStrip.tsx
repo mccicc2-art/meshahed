@@ -36,11 +36,11 @@ export function WeekStrip({
 
   return (
     <section>
-      <h2 className="flex items-center gap-2 text-base font-bold mb-1">
+      <h2 className="flex items-center gap-2 text-[22px] font-bold mb-1">
         <Icon name="calendar" size={18} className="text-muted" />
         {t.weekTitle}
       </h2>
-      <p className="text-[11px] text-muted mb-3">{t.weekSub}</p>
+      <p className="text-[12px] text-muted mb-3">{t.weekSub}</p>
 
       <div className="grid grid-cols-7 gap-1">
         {days.map((d, i) => {
@@ -88,7 +88,7 @@ export function WeekStrip({
       </div>
 
       {entries.length === 0 && (
-        <p className="text-[11px] text-muted mt-2 text-center">{t.weekNothing}</p>
+        <p className="text-[12px] text-muted mt-2 text-center">{t.weekNothing}</p>
       )}
     </section>
   );

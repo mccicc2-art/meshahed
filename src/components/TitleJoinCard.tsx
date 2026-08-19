@@ -50,7 +50,7 @@ export function TitleJoinCard({
   const [open, setOpen] = useState(false);
 
   const action =
-    "flex-1 min-w-0 inline-flex items-center justify-center gap-2 px-3 py-2.5 text-[13px] font-bold " +
+    "flex-1 min-w-0 inline-flex items-center justify-center gap-2 px-3 py-2.5 text-[14px] font-bold " +
     "text-foreground hover:text-accent active:scale-[0.98] transition";
 
   return (

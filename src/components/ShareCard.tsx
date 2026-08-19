@@ -69,7 +69,7 @@ export function ShareCard({ locale }: { locale: Locale }) {
         <div className="flex items-center gap-3 mt-3">
           <span className="min-w-0 flex-1">
             <span className="block text-sm font-bold">{t.shareTitle}</span>
-            <span className="block text-[11px] text-muted mt-0.5">
+            <span className="block text-[12px] text-muted mt-0.5">
               {error ?? t.shareSub}
             </span>
           </span>

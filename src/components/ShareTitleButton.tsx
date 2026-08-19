@@ -66,7 +66,7 @@ export function ShareTitleButton({
       className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-muted hover:text-accent transition active:scale-90 ${className}`}
     >
       <Icon name="share" size={15} />
-      {label && <span className="text-[13px] font-bold">{label}</span>}
+      {label && <span className="text-[14px] font-bold">{label}</span>}
     </button>
   );
 }

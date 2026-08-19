@@ -64,7 +64,7 @@ export function ReportButton({
   if (sent) {
     return (
       <span
-        className="inline-flex items-center gap-1 text-[11px] text-muted"
+        className="inline-flex items-center gap-1 text-[12px] text-muted"
         title={t.reportDone}
       >
         <Icon name="check-line" size={13} strokeWidth={2.2} />

@@ -131,7 +131,7 @@ export function TitleArtSheet({
                 type="button"
                 disabled={pending}
                 onClick={() => choose(chosen)}
-                className="mb-4 inline-flex items-center gap-2 rounded-full border border-border px-3.5 py-2 text-[13px] font-semibold text-muted hover:text-foreground transition disabled:opacity-50"
+                className="mb-4 inline-flex items-center gap-2 rounded-full border border-border px-3.5 py-2 text-[12px] font-semibold text-muted hover:text-foreground transition disabled:opacity-50"
               >
                 <Icon name="repeat" size={14} />
                 {t.artUseDefault}

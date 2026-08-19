@@ -208,7 +208,7 @@ export function TalkRoomCard({
               **والاسمُ نفسُه صار يُترجَم قبل أن يصل** (`localizeTalkRooms`). */}
           <h3
             className={`font-bold leading-snug line-clamp-2 group-hover:text-accent transition ${
-              hero ? "text-[18px]" : "text-[16px]"
+              hero ? "text-[20px]" : "text-[15px]"
             }`}
           >
             {t.talkRoomTitle(title, r.mediaType === "tv")}
@@ -250,7 +250,7 @@ export function TalkRoomCard({
                 </span>
               ))}
             </div>
-            <div className="ms-auto shrink-0 text-[11px] text-muted text-end leading-tight">
+            <div className="ms-auto shrink-0 text-[12px] text-muted text-end leading-tight">
               <span className="tabular-nums">
                 {weekly ? t.talkRoomPostsWeek(r.postsWeek) : t.talkRoomPosts(r.posts)}
               </span>

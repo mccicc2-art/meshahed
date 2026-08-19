@@ -168,7 +168,7 @@ export function SettingsShell({
                   لا يُمرَّر إليه `language` أبداً — أي أنها لم تكن
                   تُعرض لأحد. موضعها هنا: القسم الذي يشرح فعلاً من أين
                   تأتي هذه البيانات. */}
-              <div className="text-[11px] text-muted/70 mt-4 pt-3 border-t border-[color:var(--divider)] leading-relaxed space-y-1.5">
+              <div className="text-[12px] text-muted/70 mt-4 pt-3 border-t border-[color:var(--divider)] leading-relaxed space-y-1.5">
                 <p>{t.tmdbAttribution}</p>
                 <p>{t.justwatchAttribution}</p>
               </div>
@@ -259,7 +259,7 @@ export function SettingsShell({
                   type="button"
                   onClick={() => setActive(n.key)}
                   aria-current={on ? "page" : undefined}
-                  className={chipClass(on, "md", "w-full flex items-center gap-2.5 !rounded-xl !text-[13px] !px-3 !py-2.5")}
+                  className={chipClass(on, "md", "w-full flex items-center gap-2.5 !rounded-xl !text-[14px] !px-3 !py-2.5")}
                 >
                   <Icon name={n.icon} size={16} className="shrink-0" />
                   <span className="truncate">{n.label}</span>

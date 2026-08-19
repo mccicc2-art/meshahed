@@ -69,7 +69,7 @@ export function SpoilerText({
       {/* **السببُ بجانب الزرّ لا فوق النصّ** — ويسقط متى ظهر النصّ،
           **ويسقط كلَّه متى لم يكن للحجب سببٌ يُقال** (D-287) */}
       {!shown && note && (
-        <span className="ms-2 align-middle text-[11px] text-muted/70">{note}</span>
+        <span className="ms-2 align-middle text-[12px] text-muted/70">{note}</span>
       )}
 
       {/* ⚠️ **غيرُ مُصيَّرٍ حتى يُطلب** — لا `hidden` ولا `blur` */}

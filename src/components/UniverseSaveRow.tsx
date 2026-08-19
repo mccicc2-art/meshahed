@@ -28,7 +28,7 @@ export function UniverseSaveRow({
   locale: Locale;
 }) {
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface ps-2.5 pe-1 h-9 text-[13px] font-semibold text-foreground/85">
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface ps-2.5 pe-1 h-9 text-[14px] font-semibold text-foreground/85">
       <span className="truncate">{label}</span>
       <ListSaveHeart listId={listId} saved={saved} locale={locale} />
     </span>
