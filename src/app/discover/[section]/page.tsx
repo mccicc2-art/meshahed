@@ -144,6 +144,12 @@ export default async function SectionPage({
   const winRange =
     win === "month" ? { from: back30.toISOString().slice(0, 10), to: todayStr } : null;
 
+  /* 🆕 حالةُ المكتبة تنطلق **قبل** رحلة TMDB لا بعدها: الاثنتان مستقلّتان
+     تماماً، وانتظارُهما بالتسلسل كان يضيف موجةَ قاعدةٍ كاملةً إلى أوّل
+     بايتٍ في أبرد مسارٍ شائع (الصفحةُ force-dynamic). تُنتظر تحت عند
+     الحاجة إليها. */
+  const libPromise = getLibState();
+
   const rows = await buildSection(
     section,
     /* **بلا `sample`** — الصفحةُ جردٌ مرتَّب، والقرعةُ للصفّ وحده (D-202):
@@ -216,7 +222,7 @@ export default async function SectionPage({
   /* 🆕 **والمصدرُ صار `getLibState`** (D-322): الشبكةُ تعرض ما تعرضه
      الرفوف، **فخيطُها يجب أن يقول ما يقوله خيطُها** — ومجموعةُ المتابعات
      وحدَها تعرف السماويَّ ولا تعرف الأخضرَ ولا الأصفرَ ولا الأحمر. */
-  const lib = await getLibState();
+  const lib = await libPromise;
 
   const cards = rows.map((r, i) => {
     const l = localized[i];
