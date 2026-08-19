@@ -15,6 +15,7 @@ import { browseHref } from "@/lib/browse";
 import { roleName, type Locale } from "@/lib/i18n";
 import { SearchBox } from "@/components/SearchBox";
 import { Alert } from "@/components/ui/Alert";
+import { OneTimeHint } from "@/components/OneTimeHint";
 
 export default async function SearchPage({
   searchParams,
@@ -38,6 +39,9 @@ export default async function SearchPage({
         <Suspense fallback={null}>
           <SearchBox big locale={locale} />
         </Suspense>
+        <div className="mt-3">
+          <OneTimeHint id="search-intro" text={t.hintSearch} closeLabel={t.closeLabel} />
+        </div>
       </div>
 
       <Suspense
