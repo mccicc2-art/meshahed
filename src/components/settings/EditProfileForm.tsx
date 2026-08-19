@@ -231,7 +231,7 @@ export function EditProfileForm({
           type="button"
           onClick={save}
           disabled={!dirty || pending || uploading !== null}
-          className="h-11 px-2 -me-2 text-[14px] font-bold text-accent disabled:text-[color:var(--disabled)] transition active:scale-95 disabled:active:scale-100"
+          className="h-11 px-2 -me-2 text-14 font-bold text-accent disabled:text-[color:var(--disabled)] transition active:scale-95 disabled:active:scale-100"
         >
           {pending ? t.saving : t.setSave}
         </button>
@@ -262,7 +262,7 @@ export function EditProfileForm({
               style={{ objectPosition: `50% ${coverPos}%` }}
             />
           ) : (
-            <span className="absolute inset-0 grid place-items-center text-[14px] text-muted">
+            <span className="absolute inset-0 grid place-items-center text-14 text-muted">
               {t.noCover}
             </span>
           )}
@@ -351,7 +351,7 @@ export function EditProfileForm({
             {cleaned.length >= 3 && (
               <Link
                 href={`/u/${cleaned}`}
-                className="rounded-2xl border border-border px-3.5 h-9 inline-flex items-center text-[12px] font-semibold hover:border-accent/50 active:scale-95 transition"
+                className="rounded-2xl border border-border px-3.5 h-9 inline-flex items-center text-12 font-semibold hover:border-accent/50 active:scale-95 transition"
               >
                 {t.setPreviewProfile}
               </Link>
@@ -362,13 +362,13 @@ export function EditProfileForm({
         {/* **السطرُ يُكتب حين يمكن السحبُ فقط** — **وتلميحٌ فوق صندوقٍ
             فارغٍ يشرح فعلاً لا يقع** (D-044) */}
         {(coverUrl || avatarUrl) && (
-          <p className="px-4 pb-3.5 text-[12px] text-muted leading-relaxed">{t.repositionHint}</p>
+          <p className="px-4 pb-3.5 text-12 text-muted leading-relaxed">{t.repositionHint}</p>
         )}
       </section>
 
       {/* ===== بطاقةُ التفاصيل ===== */}
       <section>
-        <h2 className="px-1 mb-2 text-[12px] font-semibold uppercase tracking-wide text-muted">
+        <h2 className="px-1 mb-2 text-12 font-semibold uppercase tracking-wide text-muted">
           {t.setProfileDetails}
         </h2>
         <div className="rounded-2xl border border-border bg-surface divide-y divide-[color:var(--divider)] overflow-hidden">
@@ -376,7 +376,7 @@ export function EditProfileForm({
               نموذجٍ و«الاسم الظاهر» في آخر لعمود `nickname` نفسِه
               (مواصفةُ أحمد: احذف المكرَّر). */}
           <div className="px-4 py-3.5">
-            <label className="block text-[12px] font-semibold text-muted mb-1.5" htmlFor="ep-name">
+            <label className="block text-12 font-semibold text-muted mb-1.5" htmlFor="ep-name">
               {t.displayNameSection}
             </label>
             <input
@@ -391,7 +391,7 @@ export function EditProfileForm({
           </div>
 
           <div className="px-4 py-3.5">
-            <label className="block text-[12px] font-semibold text-muted mb-1.5" htmlFor="ep-user">
+            <label className="block text-12 font-semibold text-muted mb-1.5" htmlFor="ep-user">
               {t.usernameSection}
             </label>
             <div className="flex items-center gap-1" dir="ltr">
@@ -407,7 +407,7 @@ export function EditProfileForm({
               />
             </div>
             {cleaned !== username.trim().toLowerCase() && username.trim() !== "" && (
-              <p className="text-[12px] text-muted mt-1.5" dir="ltr">
+              <p className="text-12 text-muted mt-1.5" dir="ltr">
                 {t.willSaveAs(cleaned || "—")}
               </p>
             )}
@@ -415,12 +415,12 @@ export function EditProfileForm({
 
           <div className="px-4 py-3.5">
             <div className="flex items-baseline justify-between gap-2 mb-1.5">
-              <label className="text-[12px] font-semibold text-muted" htmlFor="ep-bio">
+              <label className="text-12 font-semibold text-muted" htmlFor="ep-bio">
                 {t.bioSection}
               </label>
               {/* **العدّادُ يُقرأ عدّاً لا تحذيراً** حتى الحرف الأخير */}
               <span
-                className={`text-[12px] tabular-nums ${
+                className={`text-12 tabular-nums ${
                   bio.length >= BIO_MAX ? "text-[color:var(--error)]" : "text-muted"
                 }`}
                 dir="ltr"
@@ -450,7 +450,7 @@ export function EditProfileForm({
                 <button
                   type="button"
                   onClick={copyLink}
-                  className="shrink-0 rounded-2xl border border-border px-3 h-8 inline-flex items-center gap-1.5 text-[12px] font-semibold hover:border-accent/50 active:scale-95 transition"
+                  className="shrink-0 rounded-2xl border border-border px-3 h-8 inline-flex items-center gap-1.5 text-12 font-semibold hover:border-accent/50 active:scale-95 transition"
                 >
                   <Icon name={copied ? "check" : "bookmark"} size={13} />
                   {copied ? t.setCopied : t.setCopyLink}
@@ -479,7 +479,7 @@ export function EditProfileForm({
           role="status"
           className="fixed inset-x-0 bottom-[calc(1.5rem+env(safe-area-inset-bottom))] z-50 flex justify-center pointer-events-none px-4"
         >
-          <span className="rounded-2xl bg-[color:var(--surface-inverse)] text-[color:var(--on-surface-inverse)] px-4 py-2.5 text-[14px] font-semibold shadow-[0_10px_28px_rgba(0,0,0,0.35)]">
+          <span className="rounded-2xl bg-[color:var(--surface-inverse)] text-[color:var(--on-surface-inverse)] px-4 py-2.5 text-14 font-semibold shadow-[0_10px_28px_rgba(0,0,0,0.35)]">
             {t.setSaved}
           </span>
         </div>

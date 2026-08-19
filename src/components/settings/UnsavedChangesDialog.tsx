@@ -38,10 +38,10 @@ export function UnsavedChangesDialog({
     <Sheet open={open} onClose={onKeep} closeLabel={closeLabel} labelledBy="unsaved-title">
       <div className="px-5 pt-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] space-y-4">
         <div>
-          <h3 id="unsaved-title" className="text-[15px] font-bold">
+          <h3 id="unsaved-title" className="text-15 font-bold">
             {title}
           </h3>
-          <p className="text-[14px] text-muted leading-relaxed mt-1.5">{body}</p>
+          <p className="text-14 text-muted leading-relaxed mt-1.5">{body}</p>
         </div>
         <div className="flex flex-col gap-2">
           <button type="button" onClick={onKeep} className={buttonClass({ full: true })}>

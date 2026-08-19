@@ -68,7 +68,7 @@ export function CustomizeScreen({
         <button
           type="button"
           onClick={() => reset.current?.()}
-          className="h-11 px-2 -me-2 text-[14px] font-semibold text-muted hover:text-foreground transition active:scale-95"
+          className="h-11 px-2 -me-2 text-14 font-semibold text-muted hover:text-foreground transition active:scale-95"
         >
           {t.custResetShort}
         </button>

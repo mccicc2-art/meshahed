@@ -56,7 +56,7 @@ export function SettingsHeader({
           <Icon name="chevron-down" size={24} className="rotate-90 rtl:-rotate-90" />
         </button>
 
-        <h1 className="min-w-0 flex-1 text-center text-[15px] font-bold truncate">
+        <h1 className="min-w-0 flex-1 text-center text-15 font-bold truncate">
           {title}
         </h1>
 

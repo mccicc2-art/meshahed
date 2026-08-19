@@ -21,7 +21,7 @@ export function SignOutRow({ label }: { label: string }) {
         className="w-full flex items-center gap-3 min-h-14 px-4 py-3 text-start transition hover:bg-surface-2 active:opacity-80"
       >
         <Icon name="close" size={20} className="shrink-0 text-[color:var(--error)]" />
-        <span className="min-w-0 flex-1 text-[15px] font-semibold leading-tight truncate text-[color:var(--error)]">
+        <span className="min-w-0 flex-1 text-15 font-semibold leading-tight truncate text-[color:var(--error)]">
           {label}
         </span>
         <Icon

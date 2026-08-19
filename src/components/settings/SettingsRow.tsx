@@ -48,7 +48,7 @@ export function SettingsRow({
       )}
       <span className="min-w-0 flex-1">
         <span
-          className={`block text-[15px] font-semibold leading-tight truncate ${
+          className={`block text-15 font-semibold leading-tight truncate ${
             danger ? "text-[color:var(--error)]" : ""
           }`}
           dir="auto"
@@ -56,13 +56,13 @@ export function SettingsRow({
           {title}
         </span>
         {subtitle && (
-          <span className="block text-[12px] font-medium text-muted leading-tight truncate mt-0.5" dir="auto">
+          <span className="block text-12 font-medium text-muted leading-tight truncate mt-0.5" dir="auto">
             {subtitle}
           </span>
         )}
       </span>
       {value && (
-        <span className="shrink-0 text-[14px] text-muted truncate max-w-[40%]" dir="auto">
+        <span className="shrink-0 text-14 text-muted truncate max-w-[40%]" dir="auto">
           {value}
         </span>
       )}

@@ -25,8 +25,8 @@ export function SettingsSoon({
       <span className="inline-grid place-items-center w-12 h-12 rounded-2xl bg-surface-2 text-muted mb-3">
         <Icon name={icon} size={22} />
       </span>
-      <h2 className="text-[15px] font-bold">{title}</h2>
-      <p className="text-[14px] text-muted leading-relaxed mt-1.5 max-w-sm mx-auto">{body}</p>
+      <h2 className="text-15 font-bold">{title}</h2>
+      <p className="text-14 text-muted leading-relaxed mt-1.5 max-w-sm mx-auto">{body}</p>
     </section>
   );
 }
