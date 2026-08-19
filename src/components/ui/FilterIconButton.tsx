@@ -21,11 +21,28 @@ import { tap } from "@/lib/haptics";
  * **ونقطةُ الحالة لا عدّاد:** العدّاد الذي كان في اكتشف مات مع الكلمة —
  * الرقم على زرٍّ بعرض ٣٦ بكسلاً يزاحم الأيقونة. ونقطةٌ صغيرة تقول «هناك
  * شيءٌ مفعَّل» وهو كلُّ ما يحتاجه من ينظر، **والتفصيل في الرقائق تحته**.
+ *
+ * 🆕 ⚖️ **والعدّادُ عاد — لصاحبِ عددٍ وحدَه** (D-447، مواصفةُ المرحلة ٦:
+ * «زر الفلاتر مع عدد الفلاتر المفعلة»). **ونقضٌ لجملةٍ من D-177 لا
+ * لقرارها**: الزرُّ يبقى رمزاً بلا كلمة كما طلب أحمد، **والذي سقط هو
+ * الحجّةُ القائلة إن الرقم يزاحم الأيقونة** — الرقمُ لم يكن يزاحمها،
+ * **كان يجلس بجوارها في الصفّ**؛ وشارةٌ في زاوية الزرّ تحتلّ مكانَ
+ * النقطة نفسَه بالبكسل.
+ *
+ * **ولماذا يستحقّ الرقمُ مكانَ النقطة:** النقطةُ تقول «هناك شيء»
+ * **والرقائقُ تحتها تقول ماذا — ما دامت مرئيّة**؛ والرأسُ لاصقٌ يُمرَّر
+ * ولها سطرٌ يلتفّ، **فمن نزل في الصفوف يرى الزرَّ بلا رقائقه.** والرقمُ
+ * وحده يقول «ثلاثةٌ مفعّلة» بلا أن يفتح الورقة.
+ *
+ * ⚠️ **ويُمرَّر نصّاً لا رقماً**: أرقامُ الواجهة عربيّةٌ هنديّة في
+ * العربية (`num`)، **وهذا الملفُّ من `ui/` فلا يعرف لغةَ القارئ** —
+ * ولو أخذ `locale` لصار كلُّ عنصرٍ بدائيٍّ يأخذها. المستدعي يُنسّق.
  */
 export function FilterIconButton({
   onClick,
   label,
   active = false,
+  count = null,
   expanded,
   className = "",
 }: {
@@ -34,6 +51,9 @@ export function FilterIconButton({
   label: string;
   /** هل خلفه شيءٌ مفعَّل؟ — يضيء الحدّ ويرسم نقطة */
   active?: boolean;
+  /** 🆕 عددُ ما هو مفعَّل، **منسَّقاً بلغة القارئ** — يحلّ محلَّ النقطة.
+      يغيب فتبقى النقطة (المكتبةُ والمجتمعُ والقوائم لا تعدّ محاورَها) */
+  count?: string | null;
   expanded?: boolean;
   className?: string;
 }) {
@@ -46,7 +66,9 @@ export function FilterIconButton({
       }}
       aria-haspopup="dialog"
       aria-expanded={expanded}
-      aria-label={label}
+      /* الرقمُ يدخل التسمية لا يبقى زينةً بصرية: **الشارةُ `aria-hidden`
+         فلو لم يُقل العددُ هنا لسمع قارئُ الشاشة «فلاتر» ولم يعرف كم */
+      aria-label={count ? `${label} (${count})` : label}
       title={label}
       /* `self-center` لا تمدّدٌ رأسيّ: صفُّ التبويبات `items-stretch`
          ليمتدّ شريطُ التمييز الأصفر إلى الخطّ، والزرُّ ليس تبويباً.
@@ -58,12 +80,23 @@ export function FilterIconButton({
       }${className ? ` ${className}` : ""}`}
     >
       <Icon name="sliders" size={16} strokeWidth={1.9} />
-      {active && (
-        <span
-          aria-hidden
-          className="absolute top-1 end-1 h-1.5 w-1.5 rounded-full bg-accent"
-        />
-      )}
+      {active &&
+        (count ? (
+          /* خارجَ حدّ الزرّ قليلاً (`-top-1 -end-1`) لا داخلَه: **شارةٌ
+             داخل دائرةٍ قطرُها ٣٦ تلامس الأيقونة**، وهذه تجلس على الحافّة
+             كشارات الإشعارات في كل التطبيق — **ولا لغةَ ثانيةً لعدّاد**. */
+          <span
+            aria-hidden
+            className="absolute -top-1 -end-1 grid place-items-center min-w-[17px] h-[17px] px-1 rounded-full bg-accent text-[color:var(--on-accent)] text-[10px] font-extrabold tabular-nums leading-none"
+          >
+            {count}
+          </span>
+        ) : (
+          <span
+            aria-hidden
+            className="absolute top-1 end-1 h-1.5 w-1.5 rounded-full bg-accent"
+          />
+        ))}
     </button>
   );
 }
