@@ -14,7 +14,7 @@ export async function GET(request: Request) {
   const user = await getUser();
   if (!user) return NextResponse.redirect(new URL("/login", request.url));
   if (!traktConfigured()) {
-    return NextResponse.redirect(new URL("/profile/settings?s=import&trakt=off", request.url));
+    return NextResponse.redirect(new URL("/profile/settings/import?trakt=off", request.url));
   }
 
   const state = crypto.randomUUID();
