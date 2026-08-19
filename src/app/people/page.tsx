@@ -306,7 +306,16 @@ export default async function PeoplePage({
      **والغرفةُ صفٌّ واحدٌ يراه كل الناس** — **وهي حجّةُ D-147 نفسُها،
      وقد نُسي هذا السطحُ يومَها.** والصفحةُ هي من تملك `locale` لا طبقةُ
      البيانات (D-048). */
-  const roomsRaw = pagerTab ? await localizeTalkRooms(await getTalkRooms(40), locale) : [];
+  /* 🆕 **والموجاتُ الثلاث صارت واحدة**: الغرفُ والتثبيتاتُ ولوحاتُ الناس
+     لا تحتاج إحداها نتيجةَ الأخرى (التثبيتُ يرتّب في الذاكرة واللوحاتُ
+     تُقرأ من دوالَّ مستقلّة) — **فتسلسلُها كان يجمع أزمنتَها بلا سبب**
+     (نفسُ درس D-164/D-263). والترجمةُ وحدَها تتبع غرفَها فتُسلسل معها. */
+  const wantAll = allView !== null;
+  const need = (k: BoardAll) => !wantAll || allView === k;
+  const [roomsRaw, pinsWave, peopleTab, boardFollowing] = await Promise.all([
+    pagerTab
+      ? getTalkRooms(40).then((r) => localizeTalkRooms(r, locale))
+      : Promise.resolve([] as Awaited<ReturnType<typeof getTalkRooms>>),
 
   /* 🆕 **غرفي المثبَّتة، والترتيبُ يتبعها** (D-301، الهجرة ٩٢).
      **ولا نداءَ لزائر**: لا صفوفَ له أصلاً، **وسياسةُ «صفوفي أنا» كانت
@@ -320,21 +329,9 @@ export default async function PeoplePage({
      مستقرٌّ فيبقى الأحدثُ أوّلَ كلِّ طبقة. **ونداءان متوازيان**
      (D-164)، والعالميُّ يُقرأ حتى بلا `user`؟ لا — كلا السطحين خلف
      تسجيل الدخول (الدالّةُ تشترط `auth.uid()`). */
-  const [pins, globalPins, amAdmin] = pagerTab && user
-    ? await Promise.all([getMyRoomPins(), getGlobalRoomPins(), getAmAdmin()])
-    : [null, null, false];
-  const rooms =
-    pins || globalPins
-      ? [...roomsRaw].sort((a, b) => {
-          const rank = (r: (typeof roomsRaw)[number]) => {
-            const key = `${r.mediaType}-${r.tmdbId}`;
-            if (globalPins?.has(key)) return 2;
-            if (pins?.has(key)) return 1;
-            return 0;
-          };
-          return rank(b) - rank(a);
-        })
-      : roomsRaw;
+    pagerTab && user
+      ? Promise.all([getMyRoomPins(), getGlobalRoomPins(), getAmAdmin()])
+      : Promise.resolve([null, null, false] as const),
 
   /* ⚠️ **وأربعةُ نداءاتٍ متوازيةٌ لا متتابعة** (D-263): كلُّها دوالُّ
      `definer` خفيفةٌ تقرأ صفوفاً قائمة **ولا واحدةَ منها تحتاج نتيجةَ
@@ -351,10 +348,8 @@ export default async function PeoplePage({
      الأربعةُ الباقية لا تُرسم، **فنداؤها ثمنٌ بلا قارئ** (D-194).
      **ولوحةُ النشاط استثناءٌ مقصود**: نداؤها الواحد يخدم «الأكثر»
      و«الصاعدين» معاً (D-198). */
-  const wantAll = allView !== null;
-  const need = (k: BoardAll) => !wantAll || allView === k;
-  const peopleTab = pagerTab
-      ? await Promise.all([
+    pagerTab
+      ? Promise.all([
           /* **و٣ في القسم و١٠ في «عرض الكل»**: البطاقةُ تُقرأ بنظرة،
              **وصفٌّ من اثني عشر وجهاً في لوحةٍ ليس تمييزاً بل دليل.** */
           need("featured") ? getPeopleFeatured(90, wantAll ? 10 : 3) : [],
@@ -373,14 +368,32 @@ export default async function PeoplePage({
              كبقيّة الأقسام. */
           need("lists") ? getTopSavedListCards(7, wantAll ? 10 : 3) : [],
         ])
-      : null;
-  /* **ومن أتابعهم — نداءٌ واحدٌ مخزَّنٌ للتبويب** (D-275): الأقسامُ تعرض
-     الناسَ كلَّهم لا الغرباءَ وحدهم، **و«متابعة» تحت اسمِ من تتابعه كذبةٌ
-     يراها صاحبُها في الحال** (D-216). **ولا يُدفع في تبويبٍ آخر.**
-     ⚠️ **وخارجَ `Promise.all` عمداً**: `getFollowingIds` مخزَّنةٌ
-     (`cache`) ويقرؤها تبويبُ «النشاط» أيضاً، **فالنداءُ واحدٌ للصفحة لا
-     نداءان** (D-205/D-223). */
-  const boardFollowing = pagerTab ? await getFollowingIds() : new Set<string>();
+      : Promise.resolve(null),
+    /* **ومن أتابعهم — نداءٌ واحدٌ مخزَّنٌ للتبويب** (D-275): الأقسامُ تعرض
+       الناسَ كلَّهم لا الغرباءَ وحدهم، **و«متابعة» تحت اسمِ من تتابعه كذبةٌ
+       يراها صاحبُها في الحال** (D-216). **ولا يُدفع في تبويبٍ آخر.**
+       و`getFollowingIds` مخزَّنةٌ (`cache`) ويقرؤها تبويبُ «النشاط» أيضاً،
+       **فالنداءُ واحدٌ للصفحة لا نداءان** (D-205/D-223) — داخلَ الموجة أو
+       خارجَها سواء. */
+    pagerTab ? getFollowingIds() : Promise.resolve(new Set<string>()),
+  ]);
+  const [pins, globalPins, amAdmin] = pinsWave;
+
+  /* الترتيبُ بالتثبيت — في الذاكرة بعد وصول الموجة (انظر تعليقَي D-301
+     وD-314 أعلاه). */
+  const rooms =
+    pins || globalPins
+      ? [...roomsRaw].sort((a, b) => {
+          const rank = (r: (typeof roomsRaw)[number]) => {
+            const key = `${r.mediaType}-${r.tmdbId}`;
+            if (globalPins?.has(key)) return 2;
+            if (pins?.has(key)) return 1;
+            return 0;
+          };
+          return rank(b) - rank(a);
+        })
+      : roomsRaw;
+
   const featured = peopleTab?.[0] ?? [];
   const board = peopleTab?.[1] ?? [];
   const topReviews = peopleTab?.[2] ?? [];
