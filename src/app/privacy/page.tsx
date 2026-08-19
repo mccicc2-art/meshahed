@@ -38,7 +38,7 @@ export default async function PrivacyPage() {
         {ar ? "آخر تحديث: ١٤ أغسطس ٢٠٢٦" : "Last updated: 14 August 2026"}
       </p>
 
-      <div className="mt-7 space-y-7 text-[15px] leading-relaxed">
+      <div className="mt-7 space-y-7 text-15 leading-relaxed">
         <Block
           title={ar ? "الخلاصة" : "The short version"}
           body={
@@ -120,7 +120,7 @@ export default async function PrivacyPage() {
           }
         />
 
-        <p className="text-[15px]" dir="ltr">
+        <p className="text-15" dir="ltr">
           <a
             href="mailto:alharbiahmed3bd@gmail.com"
             className="text-accent hover:brightness-110 transition"
@@ -129,13 +129,13 @@ export default async function PrivacyPage() {
           </a>
         </p>
 
-        <p className="text-[12px] text-muted/70 leading-relaxed pt-4 border-t border-[color:var(--divider)]">
+        <p className="text-12 text-muted/70 leading-relaxed pt-4 border-t border-[color:var(--divider)]">
           {ar
             ? "هذا المنتج يستخدم واجهة TMDB البرمجية، وهو غير معتمَد ولا موثَّق من TMDB."
             : "This product uses the TMDB API but is not endorsed or certified by TMDB."}
         </p>
 
-        <p className="text-[12px]">
+        <p className="text-12">
           <Link href="/terms" className="text-muted hover:text-foreground transition">
             {ar ? "شروط الاستخدام ←" : "Terms of Use →"}
           </Link>
@@ -149,7 +149,7 @@ export default async function PrivacyPage() {
 function Block({ title, body }: { title: string; body: string }) {
   return (
     <section>
-      <h2 className="text-[20px] font-bold mb-1.5">{title}</h2>
+      <h2 className="text-20 font-bold mb-1.5">{title}</h2>
       <p className="text-muted">{body}</p>
     </section>
   );
