@@ -129,13 +129,13 @@ export default async function PrivacyPage() {
           </a>
         </p>
 
-        <p className="text-[11px] text-muted/70 leading-relaxed pt-4 border-t border-[color:var(--divider)]">
+        <p className="text-[12px] text-muted/70 leading-relaxed pt-4 border-t border-[color:var(--divider)]">
           {ar
             ? "هذا المنتج يستخدم واجهة TMDB البرمجية، وهو غير معتمَد ولا موثَّق من TMDB."
             : "This product uses the TMDB API but is not endorsed or certified by TMDB."}
         </p>
 
-        <p className="text-[13px]">
+        <p className="text-[12px]">
           <Link href="/terms" className="text-muted hover:text-foreground transition">
             {ar ? "شروط الاستخدام ←" : "Terms of Use →"}
           </Link>
@@ -149,7 +149,7 @@ export default async function PrivacyPage() {
 function Block({ title, body }: { title: string; body: string }) {
   return (
     <section>
-      <h2 className="text-base font-bold mb-1.5">{title}</h2>
+      <h2 className="text-[20px] font-bold mb-1.5">{title}</h2>
       <p className="text-muted">{body}</p>
     </section>
   );
