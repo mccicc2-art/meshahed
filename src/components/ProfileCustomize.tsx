@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { updateProfile } from "@/lib/actions";
 import { getDict, type Locale } from "@/lib/i18n";
@@ -9,27 +9,34 @@ import {
   PROFILE_SECTIONS,
   profileSectionMeta,
   sanitizeProfilePrefs,
+  VISIT_AUDIENCES,
   type ProfilePrefs,
+  type VisitAudience,
 } from "@/lib/profilePrefs";
 import { Alert } from "./ui/Alert";
 import { buttonClass } from "./ui/Button";
-import { CardCountRow, SectionOrderList, ToggleRow } from "./ui/SectionOrderList";
+import {
+  CardCountRow,
+  PosterSizeRow,
+  SectionOrderList,
+  ToggleRow,
+} from "./ui/SectionOrderList";
 import { CustomizePreview } from "./CustomizePreview";
-import { segmentedItem, segmentedTrackFull } from "./ui/controls";
-import { DENSITIES, type Density } from "@/lib/density";
+import type { Density } from "@/lib/density";
 
 /**
- * تخصيص البروفايل (D-129) — **توأم `HomeCustomize` لا نسخته**.
+ * تخصيص البروفايل (D-129 → D-465) — **توأم `HomeCustomize` لا نسخته**.
  *
  * نفس `SectionOrderList` ونفس `ToggleRow` ونفس `updateProfile`؛ الفرق
- * سجلُّ الأقسام وحده (ق٦ من بريف الهوية). ولو أضفنا يوماً قسماً ثالثاً
- * قابلاً للترتيب في مكانٍ ثالث، فالمكوّن جاهزٌ له بلا سطرٍ جديد.
+ * سجلُّ الأقسام وحده.
  *
- * **الفرق الجوهري عن شاشة الرئيسية، وهو مكتوبٌ للمستخدم لا لنا:** ما
- * يخفيه هنا يختفي **عن الزائر**. لذلك السطر الشارح يقول ذلك صراحةً
- * ويحيل «الحساب الخاص» إلى قسم الخصوصية — خلطُ الإخراج بالخصوصية أخطر
- * سوء فهمٍ ممكن في هذه الشاشة: من ظنّ أن إخفاء قسمٍ يقفله سيكتشف العكس
- * متأخراً.
+ * **والفرق الجوهري عن شاشة الرئيسية، وهو مكتوبٌ للمستخدم لا لنا:** ما
+ * يخفيه هنا يختفي **عن الزائر** — **وخلطُ الإخراج بالخصوصية أخطرُ سوء
+ * فهمٍ ممكنٍ في هذه الشاشة**، فالسطرُ الشارح يقولها صراحةً.
+ *
+ * 🆕 **والترتيبُ صار ترتيبَ تصميم أحمد** (D-465): معاينةٌ · «أعلى
+ * البروفايل» · «الأقسام» بعنوانٍ خارج البطاقة · بطاقةُ «التنسيق وحجم
+ * الملصق» · وزرُّ حفظٍ يملأ العرض.
  */
 export function ProfileCustomize({
   locale,
@@ -37,6 +44,13 @@ export function ProfileCustomize({
   avatarUrl,
   genres,
   initial,
+  username,
+  bio,
+  coverUrl,
+  coverPos,
+  avatarPos,
+  counters,
+  registerReset,
 }: {
   locale: Locale;
   /** يمرّران كما هما — `updateProfile` يكتب الصفّ كاملاً */
@@ -44,6 +58,14 @@ export function ProfileCustomize({
   avatarUrl: string | null;
   genres: number[];
   initial: unknown;
+  username?: string | null;
+  bio?: string | null;
+  coverUrl?: string | null;
+  coverPos?: number;
+  avatarPos?: number;
+  counters?: { followers: number; following: number; visits: number };
+  /** يسلّم زرَّ «استعادة» في الترويسة مقبضاً على هذا اللوح (D-465) */
+  registerReset?: (fn: () => void) => void;
 }) {
   const t = getDict(locale);
   const router = useRouter();
@@ -52,25 +74,23 @@ export function ProfileCustomize({
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
-  const toggles: { key: "stats" | "level" | "visits"; label: string }[] = [
-    { key: "stats", label: t.custStatsCard },
-    { key: "level", label: t.custLevel },
-    { key: "visits", label: t.custVisits },
-  ];
-
   /* سجلٌّ واحد تقرؤه هذه الشاشة وصفحةُ البروفايل معاً (D-152) */
   const sectionMeta = profileSectionMeta(t);
-
-  const cardLabels = {
-    compact: t.cardsCompact,
-    medium: t.cardsMedium,
-    full: t.cardsFull,
-  };
 
   function set(next: ProfilePrefs) {
     setSaved(false);
     setPrefs(next);
   }
+
+  /* **الاستعادةُ صعدت إلى الترويسة** (D-465): كانت زرَّ نصٍّ صغيراً داخل
+     بطاقة الأقسام **فتستعيد ترتيبَها وحدَه**، **والآن تستعيد اللوحَ
+     كلَّه** — وهو ما يقوله اسمُها في التصميم. */
+  useEffect(() => {
+    registerReset?.(() => {
+      setSaved(false);
+      setPrefs({ ...DEFAULT_PROFILE_PREFS });
+    });
+  }, [registerReset]);
 
   function save() {
     setError(null);
@@ -90,43 +110,99 @@ export function ProfileCustomize({
     });
   }
 
-  const densityLabel: Record<Density, string> = {
-    compact: t.densityCompact,
-    comfortable: t.densityComfortable,
-    large: t.densityLarge,
+  const whoLabel: Record<VisitAudience, string> = {
+    everyone: t.custWhoEveryone,
+    followers: t.custWhoFollowers,
+    me: t.custWhoMe,
+  };
+  const posterLabel: Record<Density, string> = {
+    compact: t.custPosterS,
+    comfortable: t.custPosterM,
+    large: t.custPosterL,
   };
 
   return (
-    <div className="space-y-4">
-      <p className="text-xs text-muted leading-relaxed">{t.custProfileHint}</p>
-
+    <div className="space-y-5">
       <CustomizePreview
         kind="profile"
         title={t.custPreview}
         name={nickname}
         avatarUrl={avatarUrl}
+        username={username}
+        bio={bio}
+        coverUrl={coverUrl}
+        coverPos={coverPos}
+        avatarPos={avatarPos}
+        counters={counters}
+        labels={{
+          followers: t.followersLabel,
+          following: t.followingLabel,
+          visits: t.visitsLabel,
+          level: t.custLevelShort,
+          follow: t.followingUser,
+        }}
         showStats={prefs.stats}
+        showLevel={prefs.level}
+        showVisits={prefs.visits}
         rows={prefs.order.map((k) => ({ key: k, ...sectionMeta[k] }))}
         density={prefs.density}
       />
 
-      <section className="bg-surface border border-border rounded-2xl p-3.5 sm:p-5">
-        <h2 className="text-sm font-bold mb-3">{t.custProfileHeader}</h2>
-        <div className="rounded-xl border border-border overflow-hidden">
-          {toggles.map(({ key, label }) => (
-            <ToggleRow
-              key={key}
-              label={label}
-              checked={prefs[key]}
-              onChange={() => set({ ...prefs, [key]: !prefs[key] })}
-            />
-          ))}
-        </div>
+      {/* ===== أعلى البروفايل ===== */}
+      <section className="rounded-2xl border border-border bg-surface overflow-hidden">
+        <h2 className="px-4 pt-3.5 pb-1 text-[15px] font-bold">{t.custProfileHeader}</h2>
+        <ToggleRow
+          icon="chart"
+          label={t.custStatsShort}
+          checked={prefs.stats}
+          onChange={() => set({ ...prefs, stats: !prefs.stats })}
+        />
+        <ToggleRow
+          icon="star"
+          label={t.custLevelShort}
+          checked={prefs.level}
+          onChange={() => set({ ...prefs, level: !prefs.level })}
+        />
+        <ToggleRow
+          icon="people"
+          label={t.custVisitsShort}
+          checked={prefs.visits}
+          onChange={() => set({ ...prefs, visits: !prefs.visits })}
+          trailing={
+            /* 🆕 **ومن يراه** (D-465) — **قائمةٌ أصليّةٌ لا منسدلةٌ ثانية**
+               (القاعدة ٦: منسدلةٌ واحدة، وهذه حقلُ نموذجٍ لا قائمةُ أفعال).
+               **وتُعطَّل حين يكون العدّادُ مطفأً**: خيارُ جمهورٍ لرقمٍ لا
+               يظهر لأحدٍ وعدٌ بفعلٍ لا يقع (D-217). */
+            <span className="relative shrink-0">
+              <select
+                value={prefs.visitsWho}
+                disabled={!prefs.visits}
+                aria-label={t.custWhoAria}
+                onChange={(e) =>
+                  set({ ...prefs, visitsWho: e.target.value as VisitAudience })
+                }
+                className="appearance-none rounded-full border border-border bg-surface-2 ps-3 pe-7 h-8 text-[12px] font-medium outline-none focus:border-accent disabled:opacity-40 transition"
+              >
+                {VISIT_AUDIENCES.map((k) => (
+                  <option key={k} value={k}>
+                    {whoLabel[k]}
+                  </option>
+                ))}
+              </select>
+              <span className="pointer-events-none absolute top-1/2 -translate-y-1/2 end-2 text-muted text-[10px]">
+                ▾
+              </span>
+            </span>
+          }
+        />
       </section>
 
-      <section className="bg-surface border border-border rounded-2xl p-3.5 sm:p-5">
-        <h2 className="text-sm font-bold mb-1">{t.custProfileOrder}</h2>
-        <p className="text-xs text-muted leading-relaxed mb-3">{t.custOrderHint}</p>
+      {/* ===== الأقسام — **عنوانٌ خارج البطاقة** كما في التصميم ===== */}
+      <section>
+        <h2 className="px-1 text-[15px] font-bold">{t.custSectionsTitle}</h2>
+        <p className="px-1 mt-0.5 mb-2 text-[12px] text-muted leading-relaxed">
+          {t.custSectionsHint}
+        </p>
 
         <SectionOrderList
           all={PROFILE_SECTIONS}
@@ -142,59 +218,57 @@ export function ProfileCustomize({
           onChange={(order) => set({ ...prefs, order })}
         />
 
-        {/* الفراغ مسموحٌ هنا بخلاف الرئيسية — لكنه يُقال بصوتٍ عالٍ حتى
-            لا يظنّ صاحبُه أن الصفحة عطلت */}
+        {/* **إخراجٌ لا خصوصية** — والسطرُ يقولها كي لا يظنّ أن الإخفاء قفل */}
+        <p className="px-1 mt-2 text-[12px] text-muted leading-relaxed">
+          {t.custProfileHint}
+        </p>
+
+        {/* الفراغ مسموحٌ هنا بخلاف الرئيسية — لكنه يُقال بصوتٍ عالٍ */}
         {prefs.order.length === 0 && (
-          <p className="text-xs text-muted mt-3">{t.custProfileEmpty}</p>
+          <p className="px-1 mt-1 text-[12px] text-muted">{t.custProfileEmpty}</p>
         )}
-
-        <button
-          type="button"
-          onClick={() => set({ ...DEFAULT_PROFILE_PREFS })}
-          className="mt-3 text-xs text-muted hover:text-foreground transition"
-        >
-          {t.custReset}
-        </button>
       </section>
 
-      <section className="bg-surface border border-border rounded-2xl p-3.5 sm:p-5">
-        <h2 className="text-sm font-bold mb-1">{t.custDensity}</h2>
-        <p className="text-xs text-muted leading-relaxed mb-3">{t.custDensityHint}</p>
-        <div className={segmentedTrackFull}>
-          {DENSITIES.map((k) => (
-            <button
-              key={k}
-              type="button"
-              aria-pressed={prefs.density === k}
-              onClick={() => set({ ...prefs, density: k })}
-              className={segmentedItem(prefs.density === k, "flex-1 basis-0 min-w-0")}
-            >
-              {densityLabel[k]}
-            </button>
-          ))}
+      {/* ===== التنسيق وحجم الملصق — **بطاقةٌ واحدةٌ بصفّين** ===== */}
+      <section className="rounded-2xl border border-border bg-surface overflow-hidden">
+        <div className="flex items-center gap-3 min-h-14 px-4 py-2.5 border-b border-[color:var(--divider)]">
+          <span className="shrink-0 text-[15px] font-bold">{t.custLayout}</span>
+          <span className="min-w-0 flex-1">
+            <CardCountRow
+              value={prefs.cards}
+              labels={{
+                compact: t.cardsCompact,
+                medium: t.cardsMedium,
+                full: t.cardsFull,
+              }}
+              onChange={(cards) => set({ ...prefs, cards })}
+            />
+          </span>
         </div>
-      </section>
-
-      <section className="bg-surface border border-border rounded-2xl p-3.5 sm:p-5">
-        <h2 className="text-sm font-bold mb-1">{t.custCards}</h2>
-        <p className="text-xs text-muted leading-relaxed mb-3">{t.custCardsHint}</p>
-        <CardCountRow
-          value={prefs.cards}
-          labels={cardLabels}
-          onChange={(cards) => set({ ...prefs, cards })}
-        />
+        <div className="flex items-center gap-3 min-h-14 px-4 py-2.5">
+          <span className="min-w-0 flex-1 text-[15px] font-bold">{t.custPosterSize}</span>
+          <PosterSizeRow
+            value={prefs.density}
+            labels={posterLabel}
+            onChange={(density) => set({ ...prefs, density })}
+          />
+        </div>
       </section>
 
       {error && <Alert>{error}</Alert>}
 
-      <div className="flex items-center gap-3">
-        <button onClick={save} disabled={pending} className={buttonClass()}>
+      <div className="space-y-2">
+        <button
+          onClick={save}
+          disabled={pending}
+          className={buttonClass({ size: "lg", full: true })}
+        >
           {pending ? t.saving : t.saveChanges}
         </button>
         {saved && (
-          <span role="status" className="text-sm text-[color:var(--success)]">
+          <p role="status" className="text-center text-[14px] text-[color:var(--success)]">
             {t.savedOk}
-          </span>
+          </p>
         )}
       </div>
     </div>

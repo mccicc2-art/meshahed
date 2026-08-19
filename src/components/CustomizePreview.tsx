@@ -1,5 +1,7 @@
 "use client";
 
+/* eslint-disable @next/next/no-img-element */
+
 import { Avatar } from "./Avatar";
 import { Icon, type IconName } from "./Icon";
 import { type Density } from "@/lib/density";
@@ -31,6 +33,15 @@ export function CustomizePreview({
   showStats,
   density,
   greeting,
+  username,
+  bio,
+  coverUrl,
+  coverPos,
+  avatarPos,
+  counters,
+  labels,
+  showLevel = false,
+  showVisits = false,
 }: {
   kind: "home" | "profile";
   /** عنوانُ الكتلة — «معاينة حيّة» */
@@ -45,47 +56,160 @@ export function CustomizePreview({
   density: Density;
   /** سطرُ الترحيب في الرئيسية — يُمرَّر جاهزاً فلا يُحسب هنا */
   greeting?: string;
+  /* ===== 🆕 وجهُ الملفّ كما في تصميم أحمد (D-465) =====
+     **وكلُّها بياناتٌ تملكها الصفحةُ أصلاً أو عدّادان رخيصان** —
+     **ولا صورةَ تُجلب من TMDB ولا خطُّ نشاطٍ يُقرأ**، فحجّةُ D-441 قائمة. */
+  username?: string | null;
+  bio?: string | null;
+  coverUrl?: string | null;
+  coverPos?: number;
+  avatarPos?: number;
+  /** أرقامُ السطر — **حقيقيّةٌ لأنها عدّاتٌ رخيصة** */
+  counters?: { followers: number; following: number; visits: number };
+  /** نصوصُ السطر بلغة الواجهة */
+  labels?: {
+    followers: string;
+    following: string;
+    visits: string;
+    level: string;
+    follow: string;
+  };
+  showLevel?: boolean;
+  showVisits?: boolean;
 }) {
   /** عرضُ الملصق المصغَّر — ثلثُ الحقيقيّ تقريباً، فالفرقُ يبقى مرئيّاً */
   const posterW =
     density === "compact" ? 30 : density === "large" ? 46 : 37;
 
   return (
-    <section className="bg-surface border border-border rounded-2xl p-3.5 sm:p-5">
-      <h2 className="text-sm font-bold mb-3">{title}</h2>
+    /* 🆕 **التسميةُ داخل البطاقة لا فوقها** (D-465، تصميمُ أحمد):
+       **عنوانٌ في سطرٍ مستقلٍّ فوق صندوقٍ يشبه شاشةً يجعلهما شيئين** —
+       **والكلمةُ على حافّة المعاينة تقول «هذه معاينة» بلا سطرٍ إضافيّ.** */
+    <section className="relative rounded-2xl border border-border bg-surface overflow-hidden">
+      <span className="absolute top-2.5 start-3 z-10 flex items-center gap-1.5 text-[12px] font-semibold text-foreground/90 drop-shadow">
+        <Icon name="grid" size={13} />
+        {title}
+      </span>
 
       <div
-        className="rounded-2xl border border-border bg-[color:var(--background)] p-3 overflow-hidden"
+        className="rounded-2xl bg-[color:var(--background)] p-3 pt-9 overflow-hidden"
         aria-hidden
       >
-        {kind === "profile" && (
-          <div
-            className="h-10 -mx-3 -mt-3 mb-1"
-            style={{
-              background:
-                "linear-gradient(120deg, var(--glow-a), transparent 55%), var(--surface-2)",
-            }}
-          />
-        )}
+        {kind === "profile" ? (
+          <>
+            {/* الغلافُ صورتُك أنت لا صورةٌ تُجلب — **مجّانيّة** */}
+            <div className="relative h-20 -mx-3 -mt-3 bg-surface-2 overflow-hidden">
+              {coverUrl ? (
+                <img
+                  src={coverUrl}
+                  alt=""
+                  className="w-full h-full object-cover"
+                  style={{ objectPosition: `50% ${coverPos ?? 30}%` }}
+                />
+              ) : (
+                <span
+                  className="block w-full h-full"
+                  style={{
+                    background:
+                      "linear-gradient(120deg, var(--glow-a), transparent 55%), var(--surface-2)",
+                  }}
+                />
+              )}
+              <span className="absolute inset-0 bg-gradient-to-t from-[color:var(--background)] to-transparent" />
+            </div>
 
-        <div className="flex items-center gap-2">
-          <span
-            className="block rounded-full p-[2px] shrink-0"
-            style={{ background: "var(--gradient-brand)" }}
-          >
-            <Avatar src={avatarUrl} name={name} size={26} alt="" />
-          </span>
-          <span className="min-w-0 truncate text-[12px]">
-            {kind === "home" ? (
-              <>
-                <span className="text-muted">{greeting} </span>
-                <span className="font-bold">{name}</span>
-              </>
-            ) : (
-              <span className="font-bold">{name}</span>
+            <div className="relative -mt-7 flex items-end gap-2.5">
+              <span
+                className="block rounded-full p-[2px] shrink-0"
+                style={{ background: "var(--gradient-brand)" }}
+              >
+                <Avatar
+                  src={avatarUrl}
+                  name={name}
+                  size={44}
+                  alt=""
+                  posY={avatarPos ?? 50}
+                  className="ring-2 ring-[color:var(--background)]"
+                />
+              </span>
+              <span className="min-w-0 flex-1 pb-0.5">
+                <span className="block text-[13px] font-bold truncate">{name}</span>
+                {username && (
+                  <span className="block text-[10px] text-muted truncate" dir="ltr">
+                    @{username}
+                  </span>
+                )}
+              </span>
+              {/* الفعلان كما يراهما الزائر — **رسمٌ لا زرّان يعملان** */}
+              <span className="shrink-0 flex items-center gap-1.5 pb-0.5">
+                <span className="rounded-full border border-border px-2 py-[3px] text-[10px] text-muted">
+                  {labels?.follow}
+                </span>
+                <span className="grid place-items-center w-[22px] h-[22px] rounded-full border border-border text-muted">
+                  <Icon name="mail" size={11} />
+                </span>
+              </span>
+            </div>
+
+            {bio && (
+              <p className="mt-1.5 text-[10px] text-muted line-clamp-1" dir="auto">
+                {bio}
+              </p>
             )}
-          </span>
-        </div>
+
+            {counters && labels && (
+              <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] text-muted">
+                <span>
+                  <b className="text-foreground tabular-nums">{counters.followers}</b>{" "}
+                  {labels.followers}
+                </span>
+                <span aria-hidden>·</span>
+                <span>
+                  <b className="text-foreground tabular-nums">{counters.following}</b>{" "}
+                  {labels.following}
+                </span>
+                {showVisits && (
+                  <>
+                    <span aria-hidden>·</span>
+                    <span>
+                      <b className="text-foreground tabular-nums">{counters.visits}</b>{" "}
+                      {labels.visits}
+                    </span>
+                  </>
+                )}
+                {/* ⚠️ **الرقاقةُ بلا رقمٍ عمداً**: المستوى يُحسب من ملخّص
+                    المشاهدة كلِّه — **واستعلامُ صفحةِ رئيسيةٍ كاملٍ داخل
+                    شاشة إعدادات ثمنٌ لا تستحقّه معاينة** (D-441).
+                    **والسؤالُ الذي يجيبه المفتاحُ فوقها هو: أتظهر أم لا.** */}
+                {showLevel && (
+                  <span
+                    className="inline-flex items-center gap-1 rounded-full border px-2 py-[2px] font-bold"
+                    style={{
+                      borderColor: "color-mix(in srgb, var(--accent) 45%, transparent)",
+                      color: "var(--accent)",
+                    }}
+                  >
+                    <Icon name="star" size={9} />
+                    {labels.level}
+                  </span>
+                )}
+              </p>
+            )}
+          </>
+        ) : (
+          <div className="flex items-center gap-2">
+            <span
+              className="block rounded-full p-[2px] shrink-0"
+              style={{ background: "var(--gradient-brand)" }}
+            >
+              <Avatar src={avatarUrl} name={name} size={26} alt="" />
+            </span>
+            <span className="min-w-0 truncate text-[12px]">
+              <span className="text-muted">{greeting} </span>
+              <span className="font-bold">{name}</span>
+            </span>
+          </div>
+        )}
 
         {showStats && stats && stats.length > 0 && (
           <div

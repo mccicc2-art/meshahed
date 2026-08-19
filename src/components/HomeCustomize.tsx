@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { updateProfile } from "@/lib/actions";
 import { getDict, type Locale } from "@/lib/i18n";
@@ -19,10 +19,15 @@ import {
 import { type IconName } from "./Icon";
 import { Alert } from "./ui/Alert";
 import { buttonClass } from "./ui/Button";
-import { CardCountRow, SectionOrderList, ToggleRow } from "./ui/SectionOrderList";
+import {
+  CardCountRow,
+  PosterSizeRow,
+  SectionOrderList,
+  ToggleRow,
+} from "./ui/SectionOrderList";
 import { segmentedItem, segmentedTrackFull } from "./ui/controls";
 import { CustomizePreview } from "./CustomizePreview";
-import { DENSITIES, type Density } from "@/lib/density";
+import { type Density } from "@/lib/density";
 
 /**
  * تخصيص الرئيسية.
@@ -40,6 +45,7 @@ export function HomeCustomize({
   avatarUrl,
   genres,
   initial,
+  registerReset,
 }: {
   locale: Locale;
   /** يمرّران كما هما — `updateProfile` يكتب الصفّ كاملاً */
@@ -47,6 +53,8 @@ export function HomeCustomize({
   avatarUrl: string | null;
   genres: number[];
   initial: unknown;
+  /** يسلّم زرَّ «استعادة» في الترويسة مقبضاً على هذا اللوح (D-465) */
+  registerReset?: (fn: () => void) => void;
 }) {
   const t = getDict(locale);
   const router = useRouter();
@@ -63,8 +71,8 @@ export function HomeCustomize({
 
      ⬜ **ومكانُها الطبيعيُّ تبويبُ «الملفّ» في صفحة التخصيص الموحَّدة**
      (المرحلة ٤ من خطّة أحمد) — **دَينٌ مكتوبٌ لا سهو.** */
-  const toggles: { key: "stats"; label: string }[] = [
-    { key: "stats", label: t.custStatsCard },
+  const toggles: { key: "stats"; label: string; icon: IconName }[] = [
+    { key: "stats", label: t.custStatsShort, icon: "chart" },
   ];
 
   const sectionMeta: Record<HomeSection, { icon: IconName; label: string }> = {
@@ -101,16 +109,24 @@ export function HomeCustomize({
     drag: t.custReorder,
   };
 
-  const densityLabel: Record<Density, string> = {
-    compact: t.densityCompact,
-    comfortable: t.densityComfortable,
-    large: t.densityLarge,
+  const posterLabel: Record<Density, string> = {
+    compact: t.custPosterS,
+    comfortable: t.custPosterM,
+    large: t.custPosterL,
   };
 
   function set(next: HomePrefs) {
     setSaved(false);
     setPrefs(next);
   }
+
+  /* **الاستعادةُ صعدت إلى الترويسة** (D-465) — وتستعيد اللوحَ كلَّه */
+  useEffect(() => {
+    registerReset?.(() => {
+      setSaved(false);
+      setPrefs({ ...DEFAULT_HOME_PREFS });
+    });
+  }, [registerReset]);
 
   function save() {
     setError(null);
@@ -131,7 +147,7 @@ export function HomeCustomize({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       {/* 🆕 **المعاينةُ أوّلَ الشاشة** (D-441): **ما تُغيّره يُرى قبل أن
           تحفظ**، **وشاشةُ إعداداتٍ تصف أثرَها بالكلمات تجعل الحفظَ
           تخميناً.** */}
@@ -148,20 +164,17 @@ export function HomeCustomize({
       />
 
       {/* ===== عناصر الترويسة ===== */}
-      <section className="bg-surface border border-border rounded-2xl p-3.5 sm:p-5">
-        <h2 className="text-sm font-bold mb-1">{t.custHeaderSection}</h2>
-        <p className="text-xs text-muted leading-relaxed mb-3">{t.custHeaderHint}</p>
-
-        <div className="rounded-xl border border-border overflow-hidden">
-          {toggles.map(({ key, label }) => (
-            <ToggleRow
-              key={key}
-              label={label}
-              checked={prefs[key]}
-              onChange={() => set({ ...prefs, [key]: !prefs[key] })}
-            />
-          ))}
-        </div>
+      <section className="rounded-2xl border border-border bg-surface overflow-hidden">
+        <h2 className="px-4 pt-3.5 pb-1 text-[15px] font-bold">{t.custHeaderSection}</h2>
+        {toggles.map(({ key, label, icon }) => (
+          <ToggleRow
+            key={key}
+            icon={icon}
+            label={label}
+            checked={prefs[key]}
+            onChange={() => set({ ...prefs, [key]: !prefs[key] })}
+          />
+        ))}
       </section>
 
       {/* ===== وضعُ العرض (D-434) =====
@@ -202,9 +215,11 @@ export function HomeCustomize({
       </section>
 
       {/* ===== ترتيب الأقسام ===== */}
-      <section className="bg-surface border border-border rounded-2xl p-3.5 sm:p-5">
-        <h2 className="text-sm font-bold mb-1">{t.custOrderSection}</h2>
-        <p className="text-xs text-muted leading-relaxed mb-3">{t.custOrderHint}</p>
+      <section>
+        <h2 className="px-1 text-[15px] font-bold">{t.custSectionsTitle}</h2>
+        <p className="px-1 mt-0.5 mb-2 text-[12px] text-muted leading-relaxed">
+          {t.custSectionsHint}
+        </p>
 
         <SectionOrderList
           all={HOME_SECTIONS}
@@ -213,62 +228,50 @@ export function HomeCustomize({
           labels={orderLabels}
           onChange={(order) => set({ ...prefs, order })}
         />
-
-        <button
-          type="button"
-          onClick={() => set({ ...DEFAULT_HOME_PREFS })}
-          className="mt-3 text-xs text-muted hover:text-foreground transition"
-        >
-          {t.custReset}
-        </button>
       </section>
 
-      {/* ===== الكثافة وحجم الملصق (D-441) ===== */}
-      <section className="bg-surface border border-border rounded-2xl p-3.5 sm:p-5">
-        <h2 className="text-sm font-bold mb-1">{t.custDensity}</h2>
-        <p className="text-xs text-muted leading-relaxed mb-3">{t.custDensityHint}</p>
-        <div className={segmentedTrackFull}>
-          {DENSITIES.map((k) => (
-            <button
-              key={k}
-              type="button"
-              aria-pressed={prefs.density === k}
-              onClick={() => set({ ...prefs, density: k })}
-              className={segmentedItem(prefs.density === k, "flex-1 basis-0 min-w-0")}
-            >
-              {densityLabel[k]}
-            </button>
-          ))}
+      {/* ===== التنسيق وحجم الملصق — **بطاقةٌ واحدةٌ بصفّين** (D-465) =====
+          ⚖️ **ونقضُ D-441 مسجَّلٌ باسمه**: جمعتُ هناك «كم بطاقةً في الصفّ»
+          و«كم يكبر الملصق» في مفتاحٍ واحدٍ لأنهما بدَوا سؤالاً واحداً —
+          **وهما رقمان مخزَّنان أصلاً** (`cards` سقفٌ يقصّ، و`density`
+          عرضٌ يكبّر)، **وتصميمُ أحمد يفصلهما فصار الحقُّ معه.** */}
+      <section className="rounded-2xl border border-border bg-surface overflow-hidden">
+        <div className="flex items-center gap-3 min-h-14 px-4 py-2.5 border-b border-[color:var(--divider)]">
+          <span className="shrink-0 text-[15px] font-bold">{t.custLayout}</span>
+          <span className="min-w-0 flex-1">
+            <CardCountRow
+              value={prefs.cards}
+              labels={{ compact: t.cardsCompact, medium: t.cardsMedium, full: t.cardsFull }}
+              onChange={(cards) => set({ ...prefs, cards })}
+            />
+          </span>
         </div>
-      </section>
-
-      {/* ===== عدد البطاقات (D-152) ===== */}
-      <section className="bg-surface border border-border rounded-2xl p-3.5 sm:p-5">
-        <h2 className="text-sm font-bold mb-1">{t.custCards}</h2>
-        <p className="text-xs text-muted leading-relaxed mb-3">{t.custCardsHint}</p>
-        <CardCountRow
-          value={prefs.cards}
-          labels={{ compact: t.cardsCompact, medium: t.cardsMedium, full: t.cardsFull }}
-          onChange={(cards) => set({ ...prefs, cards })}
-        />
+        <div className="flex items-center gap-3 min-h-14 px-4 py-2.5">
+          <span className="min-w-0 flex-1 text-[15px] font-bold">{t.custPosterSize}</span>
+          <PosterSizeRow
+            value={prefs.density}
+            labels={posterLabel}
+            onChange={(density) => set({ ...prefs, density })}
+          />
+        </div>
       </section>
 
       {error && (
         <Alert>{error}</Alert>
       )}
 
-      <div className="flex items-center gap-3">
+      <div className="space-y-2">
         <button
           onClick={save}
           disabled={pending}
-          className={buttonClass()}
+          className={buttonClass({ size: "lg", full: true })}
         >
           {pending ? t.saving : t.saveChanges}
         </button>
         {saved && (
-          <span role="status" className="text-sm text-[color:var(--success)]">
+          <p role="status" className="text-center text-[14px] text-[color:var(--success)]">
             {t.savedOk}
-          </span>
+          </p>
         )}
       </div>
     </div>
