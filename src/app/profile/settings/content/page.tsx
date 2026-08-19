@@ -37,8 +37,8 @@ export default async function Page() {
       />
 
       <section className="bg-surface border border-border rounded-2xl p-3.5 sm:p-5">
-        <h2 className="text-[15px] font-bold mb-1">{t.regionSection}</h2>
-        <p className="text-[12px] text-muted leading-relaxed mb-3">{t.regionHint}</p>
+        <h2 className="text-15 font-bold mb-1">{t.regionSection}</h2>
+        <p className="text-12 text-muted leading-relaxed mb-3">{t.regionHint}</p>
         <RegionSwitch locale={locale} region={region} />
       </section>
     </SettingsPageLayout>
