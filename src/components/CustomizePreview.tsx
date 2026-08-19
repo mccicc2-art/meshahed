@@ -86,7 +86,7 @@ export function CustomizePreview({
        **عنوانٌ في سطرٍ مستقلٍّ فوق صندوقٍ يشبه شاشةً يجعلهما شيئين** —
        **والكلمةُ على حافّة المعاينة تقول «هذه معاينة» بلا سطرٍ إضافيّ.** */
     <section className="relative rounded-2xl border border-border bg-surface overflow-hidden">
-      <span className="absolute top-2.5 start-3 z-10 flex items-center gap-1.5 text-[12px] font-semibold text-foreground/90 drop-shadow">
+      <span className="absolute top-2.5 start-3 z-10 flex items-center gap-1.5 text-12 font-semibold text-foreground/90 drop-shadow">
         <Icon name="grid" size={13} />
         {title}
       </span>
@@ -133,7 +133,7 @@ export function CustomizePreview({
                 />
               </span>
               <span className="min-w-0 flex-1 pb-0.5">
-                <span className="block text-[13px] font-bold truncate">{name}</span>
+                <span className="block text-12 font-bold truncate">{name}</span>
                 {username && (
                   <span className="block text-[10px] text-muted truncate" dir="ltr">
                     @{username}
@@ -204,7 +204,7 @@ export function CustomizePreview({
             >
               <Avatar src={avatarUrl} name={name} size={26} alt="" />
             </span>
-            <span className="min-w-0 truncate text-[12px]">
+            <span className="min-w-0 truncate text-12">
               <span className="text-muted">{greeting} </span>
               <span className="font-bold">{name}</span>
             </span>

@@ -42,7 +42,7 @@ export function CountdownRail({
 
   return (
     <section>
-      <h2 className="flex items-center gap-2 text-[22px] font-bold mb-3">
+      <h2 className="flex items-center gap-2 text-22 font-bold mb-3">
         {icon && <Icon name={icon} size={18} className="text-muted" />}
         {href ? (
           <Link href={href} className="truncate hover:text-accent transition">
@@ -54,7 +54,7 @@ export function CountdownRail({
         {href && seeAllLabel && (
           <Link
             href={href}
-            className="ms-auto shrink-0 text-[12px] text-muted hover:text-accent transition font-normal"
+            className="ms-auto shrink-0 text-12 text-muted hover:text-accent transition font-normal"
           >
             {seeAllLabel}
           </Link>
@@ -100,7 +100,7 @@ export function CountdownRail({
                 </p>
 
                 <p
-                  className={`text-[12px] font-bold mt-0.5 ${soon ? "text-accent" : "text-muted"}`}
+                  className={`text-12 font-bold mt-0.5 ${soon ? "text-accent" : "text-muted"}`}
                 >
                   {days === null
                     ? ""

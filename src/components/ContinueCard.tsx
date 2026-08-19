@@ -258,10 +258,10 @@ export function ContinueCard({
           {/* 🆕 **سلّمُ الرئيسية** (D-459): عنوانُ البطاقة ١٥/٦٠٠
               كنظيره تحت الملصق، **والثانويُّ ١٢** — **وسقطت ١١** التي
               كانت للنسبة وحدَها. */}
-          <span className="block text-[15px] font-semibold leading-tight truncate" dir="auto">
+          <span className="block text-15 font-semibold leading-tight truncate" dir="auto">
             {title}
           </span>
-          <span className="block text-[12px] font-medium text-muted leading-tight truncate mt-1">
+          <span className="block text-12 font-medium text-muted leading-tight truncate mt-1">
             {ep ? (
               <span dir="ltr">{`S${ep.s} E${ep.e}`}</span>
             ) : (
@@ -282,7 +282,7 @@ export function ContinueCard({
               />
             </span>
             <span
-              className="shrink-0 text-[12px] font-semibold text-muted tabular-nums"
+              className="shrink-0 text-12 font-semibold text-muted tabular-nums"
               dir="ltr"
             >
               {pct}%
@@ -314,12 +314,12 @@ export function ContinueCard({
           <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-black/10" />
 
           <div className="absolute inset-x-0 bottom-0 p-3 pb-3.5">
-            <p className="text-[15px] font-semibold leading-tight text-white line-clamp-1 drop-shadow pe-10">
+            <p className="text-15 font-semibold leading-tight text-white line-clamp-1 drop-shadow pe-10">
               {title}
             </p>
             {/* سطر المعلومات: الحلقة · الباقي — والنسبة في طرفه لا فوق الصورة */}
             <div className="flex items-baseline justify-between gap-2 mt-1">
-              <span className="text-[12px] font-semibold text-white/75 truncate">
+              <span className="text-12 font-semibold text-white/75 truncate">
                 {ep ? (
                   <span dir="ltr">{`S${ep.s} E${ep.e}`}</span>
                 ) : (
@@ -328,7 +328,7 @@ export function ContinueCard({
                 {(ep || episodeLabel) && left > 0 && <span className="text-white/45"> · </span>}
                 {left > 0 && t.leftEps(left)}
               </span>
-              <span className="shrink-0 text-[12px] font-semibold text-white/70 tabular-nums" dir="ltr">
+              <span className="shrink-0 text-12 font-semibold text-white/70 tabular-nums" dir="ltr">
                 {pct}%
               </span>
             </div>
@@ -417,14 +417,14 @@ export function ContinueCard({
               <p className="text-3xl mb-2" aria-hidden>
                 🎉
               </p>
-              <p className="text-[20px] font-bold leading-snug">
+              <p className="text-20 font-bold leading-snug">
                 {t.finishedShowTitle(title)}
               </p>
               <p className="text-xs text-muted mt-1.5">{t.finishedShowSub(aired)}</p>
 
               {/* التقييم داخل الورقة: عشر نجوم، لمسة واحدة تحفظ وتُغلق */}
               <p
-                className={`text-[14px] font-bold mt-5 transition ${
+                className={`text-14 font-bold mt-5 transition ${
                   rated ? "text-[color:var(--success)]" : ""
                 }`}
                 role="status"
@@ -442,7 +442,7 @@ export function ContinueCard({
                       disabled={rated}
                       onClick={() => rate(n)}
                       aria-label={`${n}/10`}
-                      className={`text-[20px] leading-none px-0.5 transition active:scale-125 ${
+                      className={`text-20 leading-none px-0.5 transition active:scale-125 ${
                         on ? "" : "opacity-30"
                       }`}
                       style={{ color: on ? "var(--verified)" : "var(--muted, #A3A3A3)" }}
@@ -453,7 +453,7 @@ export function ContinueCard({
                 })}
               </div>
               {stars > 0 && (
-                <p className="text-[12px] text-muted mt-1.5 tabular-nums" dir="ltr">
+                <p className="text-12 text-muted mt-1.5 tabular-nums" dir="ltr">
                   {stars}/10
                 </p>
               )}

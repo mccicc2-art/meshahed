@@ -76,7 +76,7 @@ export function DetailTabs({ tabs }: { tabs: DetailTab[] }) {
                 onClick={() => setActive(tab.key)}
                 className={segmentedItem(
                   on,
-                  "flex items-center justify-center gap-1.5 px-2 pt-1.5 pb-2.5 text-[14px]",
+                  "flex items-center justify-center gap-1.5 px-2 pt-1.5 pb-2.5 text-14",
                   false,
                 )}
               >

@@ -64,7 +64,7 @@ export function CompactMediaRow({
       {chip != null ? (
         <span className="grid place-items-center shrink-0 w-14 h-14 rounded-xl border border-border bg-surface-2 px-1">
           <span
-            className="text-[12px] font-extrabold uppercase leading-tight text-center text-accent"
+            className="text-12 font-extrabold uppercase leading-tight text-center text-accent"
             dir="auto"
           >
             {chip}
@@ -100,14 +100,14 @@ export function CompactMediaRow({
       <span className="min-w-0 flex-1">
         <span
           /* 🆕 ١٥/٦٠٠ كعنوان أيِّ بطاقة (D-459) */
-          className="block text-[15px] font-semibold leading-tight truncate"
+          className="block text-15 font-semibold leading-tight truncate"
           dir="auto"
         >
           {title}
         </span>
         {subtitle && (
           <span
-            className="block text-[12px] font-medium text-muted leading-tight truncate mt-1"
+            className="block text-12 font-medium text-muted leading-tight truncate mt-1"
             dir="auto"
           >
             {subtitle}

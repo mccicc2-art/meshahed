@@ -83,7 +83,7 @@ function SwitchRow({
       aria-checked={on}
       disabled={busy}
       onClick={onToggle}
-      className="w-full flex items-center justify-between gap-3 min-h-11 px-5 py-2 text-start text-[15px] hover:bg-surface-2 disabled:opacity-45 transition"
+      className="w-full flex items-center justify-between gap-3 min-h-11 px-5 py-2 text-start text-15 hover:bg-surface-2 disabled:opacity-45 transition"
     >
       <span className="min-w-0 flex items-center gap-3">
         <Icon name={icon} size={18} />
@@ -252,7 +252,7 @@ export function CommunityTools({
                 {/* ===== أدواتُ التبويب المفتوح (D-306) ===== */}
                 {activeTab === "activity" && (
                   <>
-                    <p className="px-5 pt-3 pb-2 text-[12px] font-bold text-muted">
+                    <p className="px-5 pt-3 pb-2 text-12 font-bold text-muted">
                       {sectionTitle}
                     </p>
                     <SwitchRow
@@ -270,7 +270,7 @@ export function CommunityTools({
                         });
                       }}
                     />
-                    <p className="px-5 pb-3 text-[12px] text-muted leading-relaxed">
+                    <p className="px-5 pb-3 text-12 text-muted leading-relaxed">
                       {t.feedShowStrangersHint}
                     </p>
                     {/* **والترتيبُ مقسّمٌ من عائلتنا لا مفتاحان** (D-016):
@@ -328,7 +328,7 @@ export function CommunityTools({
 
                 {activeTab === "talk" && (
                   <>
-                    <p className="px-5 pt-3 pb-2 text-[12px] font-bold text-muted">
+                    <p className="px-5 pt-3 pb-2 text-12 font-bold text-muted">
                       {sectionTitle}
                     </p>
                     {/* **«أعمالي المتابَعة فقط»** (D-306، نصُّ أحمد:
@@ -378,7 +378,7 @@ export function CommunityTools({
                 {(activeTab === "activity" || activeTab === "talk") && (
                   <div className={sheetMenuDivider} />
                 )}
-                <p className="px-5 pt-3 pb-2 text-[12px] font-bold text-muted">
+                <p className="px-5 pt-3 pb-2 text-12 font-bold text-muted">
                   {t.communityTabInbox}
                 </p>
                 <button

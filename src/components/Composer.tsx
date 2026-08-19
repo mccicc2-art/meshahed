@@ -138,7 +138,7 @@ export function Composer({
 
   return (
     <div className="mt-3">
-      {hint && <p className="text-[12px] text-muted mb-1">{hint}</p>}
+      {hint && <p className="text-12 text-muted mb-1">{hint}</p>}
       <textarea
         value={body}
         onChange={(e) => setBody(e.target.value.slice(0, 1000))}
@@ -185,7 +185,7 @@ export function Composer({
           </button>
         </div>
       )}
-      {err && <p role="alert" className="mt-1.5 text-[12px] text-[color:var(--error)]">{err}</p>}
+      {err && <p role="alert" className="mt-1.5 text-12 text-[color:var(--error)]">{err}</p>}
 
       <div className="mt-1.5 flex items-center gap-2">
         <button
@@ -209,8 +209,8 @@ export function Composer({
             aria-pressed={spoiler}
             className={
               spoiler
-                ? "inline-flex items-center gap-1.5 rounded-full border border-accent bg-accent/10 px-3 py-1.5 text-[12px] font-bold text-accent transition"
-                : "inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-[12px] text-muted transition hover:text-foreground"
+                ? "inline-flex items-center gap-1.5 rounded-full border border-accent bg-accent/10 px-3 py-1.5 text-12 font-bold text-accent transition"
+                : "inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-12 text-muted transition hover:text-foreground"
             }
           >
             <Icon name={spoiler ? "eye-off" : "eye"} size={14} className="shrink-0" />
@@ -241,7 +241,7 @@ export function Composer({
               onClick={() => file.current?.click()}
               aria-label={t.talkAddImage}
               title={t.talkAddImage}
-              className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-[12px] text-muted transition hover:text-foreground disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-12 text-muted transition hover:text-foreground disabled:opacity-50"
             >
               <Icon name="image" size={14} className="shrink-0" />
             </button>
@@ -260,7 +260,7 @@ export function Composer({
             aria-label={t.talkAddGif}
             title={t.talkAddGif}
             aria-haspopup="dialog"
-            className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-[12px] font-bold text-muted transition hover:text-foreground disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-12 font-bold text-muted transition hover:text-foreground disabled:opacity-50"
           >
             GIF
           </button>
@@ -268,7 +268,7 @@ export function Composer({
         <button
           type="button"
           onClick={onCancel}
-          className="text-[12px] text-muted hover:text-foreground transition px-2"
+          className="text-12 text-muted hover:text-foreground transition px-2"
         >
           {t.cancelLabel}
         </button>

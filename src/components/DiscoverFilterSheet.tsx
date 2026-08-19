@@ -257,7 +257,7 @@ export function DiscoverFilterSheet({
           id="disc-tools-panel-do"
           aria-labelledby="disc-tools-tab-do"
         >
-          <p className="text-[12px] font-bold text-muted">{t.browseFiltersGroup}</p>
+          <p className="text-12 font-bold text-muted">{t.browseFiltersGroup}</p>
         {/* نافذة الترتيب غادرت الورقة (D-099) والجهة لحقت بها (تبويبات
             الرأس — طلب أحمد 9 Aug): أداتان على نفس السؤال لبس */}
         {/* ===== شبكة المنسدلات — عمودان (طلب المالك، لقطة TMDB) =====
@@ -485,7 +485,7 @@ export function DiscoverFilterSheet({
             كتفضيلات التبويبات — لا زرَّ تطبيق. */}
         <section className="px-5 pb-5">
           <h3 className="text-xs font-bold text-muted mb-1">{t.myRowsTitle}</h3>
-          <p className="text-[12px] text-muted mb-3">{t.myRowsHint}</p>
+          <p className="text-12 text-muted mb-3">{t.myRowsHint}</p>
           <div className="space-y-3">
             {Array.from({ length: MY_ROWS_MAX }, (_, i) => {
               const row = myRows[i] ?? null;

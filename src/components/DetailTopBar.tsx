@@ -153,7 +153,7 @@ export function DetailTopBar({
         variant="bottom"
         labelledBy="more-menu-title"
       >
-        <p id="more-menu-title" className="text-center font-bold text-[15px] pt-5 pb-2">
+        <p id="more-menu-title" className="text-center font-bold text-15 pt-5 pb-2">
           {t.moreMenuTitle}
         </p>
         <div className="pb-3">
