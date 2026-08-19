@@ -191,12 +191,12 @@ export default async function ReviewPage({
               <Link
                 href={whoHref}
                 prefetch={false}
-                className="block min-w-0 truncate font-bold text-[15px] leading-tight hover:text-accent transition"
+                className="block min-w-0 truncate font-bold text-15 leading-tight hover:text-accent transition"
               >
                 <bdi>{who}</bdi>
               </Link>
             ) : (
-              <p className="min-w-0 truncate font-bold text-[15px] leading-tight">
+              <p className="min-w-0 truncate font-bold text-15 leading-tight">
                 <bdi>{who}</bdi>
               </p>
             )}
@@ -206,13 +206,13 @@ export default async function ReviewPage({
               <Link
                 href={titleHref}
                 prefetch={false}
-                className="min-w-0 truncate text-[12px] text-muted hover:text-accent transition"
+                className="min-w-0 truncate text-12 text-muted hover:text-accent transition"
               >
                 <bdi>{work}</bdi>
               </Link>
               {r.rating != null && (
                 <span
-                  className="shrink-0 text-[14px] font-bold text-accent tabular-nums"
+                  className="shrink-0 text-14 font-bold text-accent tabular-nums"
                   title={t.rateOutOf(r.rating)}
                 >
                   ★ <span dir="ltr">{r.rating.toFixed(1)}</span>
@@ -230,7 +230,7 @@ export default async function ReviewPage({
           ) : (
             <p
               dir={dirOf(r.review)}
-              className="mt-3 text-[15px] leading-relaxed text-foreground whitespace-pre-line"
+              className="fs-content mt-3 text-15 leading-relaxed text-foreground whitespace-pre-line"
             >
               {r.review}
             </p>
