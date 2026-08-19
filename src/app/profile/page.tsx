@@ -17,5 +17,5 @@ export default async function ProfilePage() {
   if (!user) redirect("/login");
 
   const profile = await getProfile();
-  redirect(profile?.username ? `/u/${profile.username}` : "/profile/settings?s=profile");
+  redirect(profile?.username ? `/u/${profile.username}` : "/profile/edit");
 }
