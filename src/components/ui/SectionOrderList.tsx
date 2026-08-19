@@ -1,5 +1,8 @@
 "use client";
 
+import { useRef, useState } from "react";
+import { claimGesture, releaseGesture } from "@/lib/tabDrag";
+import { tap } from "@/lib/haptics";
 import { Icon, type IconName } from "../Icon";
 import { CARD_COUNTS, type CardCount } from "@/lib/cardCount";
 import { segmentedItem, segmentedTrackFull } from "./controls";
@@ -31,7 +34,7 @@ export function SectionOrderList<K extends string>({
   /** المختار بترتيب عرضه */
   picked: readonly K[];
   meta: Record<K, { icon: IconName; label: string }>;
-  labels: { up: string; down: string; hide: string; show: string };
+  labels: { up: string; down: string; hide: string; show: string; drag?: string };
   /** أقلّ ما يبقى مختاراً — دونه يُعطَّل زرّ الإخفاء (خانات الأرقام) */
   min?: number;
   /** أكثر ما يُختار — فوقه يُعطَّل زرّ الإظهار */
@@ -41,6 +44,60 @@ export function SectionOrderList<K extends string>({
   const hidden = all.filter((k) => !picked.includes(k));
   const atMin = min !== undefined && picked.length <= min;
   const atMax = max !== undefined && picked.length >= max;
+
+  /* ===== السحبُ بمقبض (D-441، خطّةُ أحمد: «ترتيب الأقسام بالسحب Drag &
+     Drop، استخدم Drag Handle وليس أسهم أعلى وأسفل») =====
+
+     **ولماذا `PointerEvent` لا `dragstart`**: السحبُ الأصليُّ في HTML
+     **لا يعمل باللمس أصلاً** — فيصير الترتيبُ حكراً على الفأرة، **وهذه
+     شاشةٌ تُستعمل من الجوّال قبل غيره.**
+
+     **والقياسُ من ارتفاع الصفّ لا من موضع كلِّ صفّ**: الصفوفُ متساويةُ
+     الارتفاع هنا، **فإزاحةُ الإصبع مقسومةً على ارتفاع الصفّ هي عددُ
+     المواضع التي عبرها** — **ولا حاجةَ لقياس عشرة صناديقَ في كلِّ
+     إطار.**
+
+     ⚠️ **و`claimGesture("y")` شرطٌ لا زينة** (D-277/D-440): بدونه يقرأ
+     «السحبُ للتحديث» الإصبعَ نفسَه فتُحدَّث الصفحةُ وأنت ترتّب.
+     ⚠️ **و`touch-action: none` على المقبض وحدَه** — لو وُضع على الصفّ
+     كلِّه لَما استطاع القارئُ تمريرَ الشاشة بإصبعه فوق القائمة.
+     **والترتيبُ يُطبَّق أثناء السحب** فيرى يدَه تعمل، **ولا يُحفظ إلّا
+     بزرِّ الحفظ** كبقيّة الشاشة. */
+  const [dragKey, setDragKey] = useState<K | null>(null);
+  const drag = useRef<{ y: number; from: number; rowH: number } | null>(null);
+
+  function onHandleDown(e: React.PointerEvent, k: K) {
+    const row = (e.currentTarget as HTMLElement).closest("[data-row]") as HTMLElement | null;
+    if (!row || !claimGesture("y")) return;
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    drag.current = {
+      y: e.clientY,
+      from: picked.indexOf(k),
+      rowH: row.offsetHeight || 48,
+    };
+    setDragKey(k);
+    tap(6);
+  }
+
+  function onHandleMove(e: React.PointerEvent, k: K) {
+    const d = drag.current;
+    if (!d) return;
+    const steps = Math.round((e.clientY - d.y) / d.rowH);
+    const to = Math.max(0, Math.min(picked.length - 1, d.from + steps));
+    const at = picked.indexOf(k);
+    if (to === at) return;
+    const next = [...picked];
+    next.splice(at, 1);
+    next.splice(to, 0, k);
+    onChange(next);
+  }
+
+  function endDrag() {
+    if (!drag.current) return;
+    drag.current = null;
+    setDragKey(null);
+    releaseGesture("y");
+  }
 
   const rowCls =
     "flex items-center justify-between gap-3 px-3.5 py-3 border-b border-[color:var(--divider)] last:border-b-0";
@@ -68,33 +125,44 @@ export function SectionOrderList<K extends string>({
 
   return (
     <div className="rounded-xl border border-border overflow-hidden">
-      {picked.map((k, i) => (
-        <div key={k} className={rowCls}>
+      {picked.map((k) => (
+        <div
+          key={k}
+          data-row
+          className={`${rowCls} ${
+            dragKey === k ? "bg-surface-2 relative z-10 shadow-lg" : ""
+          } transition-colors`}
+        >
           <span className="flex items-center gap-2.5 min-w-0 text-sm">
+            {/* **المقبضُ أوّلُ الصفّ** — عُرفُ كلِّ قائمةٍ تُرتَّب،
+                **ولوحةُ المفاتيح تحرّكه بالأسهم** فلا يُحرم من الترتيب
+                من لا يسحب (D-177: ما سقط رسمُه لا يسقط نطقُه، وهنا ما
+                سقط زرُّه لا يسقط فعلُه). */}
+            <button
+              type="button"
+              aria-label={labels.drag ?? labels.up}
+              title={labels.drag ?? labels.up}
+              onPointerDown={(e) => onHandleDown(e, k)}
+              onPointerMove={(e) => onHandleMove(e, k)}
+              onPointerUp={endDrag}
+              onPointerCancel={endDrag}
+              onKeyDown={(e) => {
+                if (e.key === "ArrowUp") {
+                  e.preventDefault();
+                  move(k, -1);
+                } else if (e.key === "ArrowDown") {
+                  e.preventDefault();
+                  move(k, 1);
+                }
+              }}
+              className="grid place-items-center w-8 h-9 -ms-1.5 shrink-0 rounded-lg text-muted hover:text-foreground hover:bg-surface-2 transition touch-none cursor-grab active:cursor-grabbing"
+            >
+              <Icon name="grip" size={16} />
+            </button>
             <Icon name={meta[k].icon} size={18} className="text-muted shrink-0" />
             <span className="truncate">{meta[k].label}</span>
           </span>
           <span className="flex items-center gap-1 shrink-0">
-            <button
-              type="button"
-              onClick={() => move(k, -1)}
-              disabled={i === 0}
-              aria-label={labels.up}
-              title={labels.up}
-              className={iconBtn}
-            >
-              <Icon name="chevron-up" size={16} strokeWidth={2.2} />
-            </button>
-            <button
-              type="button"
-              onClick={() => move(k, 1)}
-              disabled={i === picked.length - 1}
-              aria-label={labels.down}
-              title={labels.down}
-              className={iconBtn}
-            >
-              <Icon name="chevron-down" size={16} strokeWidth={2.2} />
-            </button>
             <button
               type="button"
               onClick={() => toggle(k)}
