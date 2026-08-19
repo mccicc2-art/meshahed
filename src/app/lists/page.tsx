@@ -3,6 +3,7 @@ import { getUser, getMyLists, getSavedLists } from "@/lib/data";
 import { getT } from "@/lib/locale";
 import { ListManager } from "@/components/ListManager";
 import { PublicListsRail } from "@/components/PublicListsRail";
+import { OneTimeHint } from "@/components/OneTimeHint";
 
 /**
  * قوائمي.
@@ -25,6 +26,7 @@ export default async function ListsPage() {
     <div className="space-y-8">
       {/* العنوان مخفيٌّ بصريًّا وباقٍ لقارئ الشاشة — أُزيلت الترويسة والوصف */}
       <h1 className="sr-only">{t.listsTitle}</h1>
+      <OneTimeHint id="lists-intro" text={t.hintLists} closeLabel={t.closeLabel} />
       <ListManager lists={lists} locale={locale} />
       {/* العدّاد في العنوان (تدقيق 8 Aug م٣-١): القسم يسكن تحت قوائمك
           وخلف طيّة الجوال — الرقم يقول «عندك محفوظات» قبل أن تصل إليه */}
