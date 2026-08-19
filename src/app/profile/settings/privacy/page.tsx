@@ -15,7 +15,7 @@ export default async function Page() {
 
   return (
     <SettingsPageLayout title={t.setPrivacy}>
-      <p className="px-1 text-[12px] text-muted leading-relaxed">{t.settingsPrivacyHint}</p>
+      <p className="px-1 text-12 text-muted leading-relaxed">{t.settingsPrivacyHint}</p>
 
       <AccountSettings
         email={user.email ?? ""}
