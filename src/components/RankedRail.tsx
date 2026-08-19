@@ -157,8 +157,13 @@ export function RankedRail({
                       يقلب معنى start/end فينتقل الرقم للطرف المعاكس */}
                   {ranked && (
                     <span
-                      className={`absolute bottom-1 start-1.5 font-extrabold leading-none drop-shadow ${
-                        i < 3 ? "text-accent text-3xl" : "text-foreground/85 text-2xl"
+                      /* 🆕 **مقاسٌ واحدٌ للرقم واللونُ يرتّب** (D-460):
+                         كان الثلاثةُ الأوائل ٣٠px والبقيّةُ ٢٤ — **ومقاسان
+                         لرقمٍ واحدٍ في صفٍّ واحد**، و٣٠ خارجَ السلّم كلِّه.
+                         **والتمييزُ لم يسقط، انتقل إلى اللون وحده** —
+                         **والأصفرُ يكفي، وهو معناه في هذا التطبيق.** */
+                      className={`absolute bottom-1 start-1.5 font-bold leading-none drop-shadow text-2xl ${
+                        i < 3 ? "text-accent" : "text-foreground/85"
                       }`}
                     >
                       <span dir="ltr">{i + 1}</span>
