@@ -198,10 +198,17 @@ function StatFace({ stat }: { stat: HeaderStat }) {
           **والكلمةُ تحتها ١٢ ثانويّاً.** و`font-bold` لا `extrabold`:
           السلّمُ يقول ٧٠٠، **ووزنٌ ثامنُ مئةٍ لرقمٍ في بطاقةٍ يجعله
           يصرخ فوق عنوان القسم الذي يليه.** */}
-      <span className="text-[24px] font-bold leading-none tabular-nums">
+      {/* 🆕 ⚖️ **٢٠ لا ٢٤** (D-459، حكمُ أحمد: «أرقام الكارد كبيرة شوي»)
+          — **والعلّةُ هرميّةٌ لا مقاس**: عند ٢٤ كان **الرقمُ أكبرَ نصٍّ
+          في الشاشة**، أكبرَ من «تابِع المشاهدة» (٢٢) — **فتقع العينُ على
+          «١٠» قبل أن تقع على اسم القسم**، وشريطُ الأرقام اختصاراتٌ لا
+          عنوانُ الصفحة. **والعنوانُ يجب أن يبقى أعلى السلّم.**
+          ⚠️ **و٢٤/٧٠٠ تبقى في نظام التصميم** لسطحِ الأرقام الحقيقيّ
+          (`/stats`) — **الدرجةُ لم تُلغَ، إنما لم تكن هذه موضعَها.** */}
+      <span className="text-[20px] font-bold leading-none tabular-nums">
         {stat.value}
       </span>
-      <span className="min-w-0 truncate text-[12px] text-muted leading-none">
+      <span className="min-w-0 truncate text-[12px] font-medium text-muted leading-none">
         {stat.label}
       </span>
     </>

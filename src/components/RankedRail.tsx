@@ -97,7 +97,7 @@ export function RankedRail({
           seeAllLabel && (
             <Link
               href={href}
-              className="ms-auto shrink-0 text-[13px] text-muted hover:text-accent transition font-normal"
+              className="ms-auto shrink-0 text-[12px] font-medium text-muted hover:text-accent transition"
             >
               {seeAllLabel}
             </Link>

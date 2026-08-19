@@ -255,10 +255,13 @@ export function ContinueCard({
         </span>
 
         <span className="min-w-0 flex-1">
-          <span className="block text-[15px] font-bold leading-tight truncate" dir="auto">
+          {/* 🆕 **سلّمُ الرئيسية** (D-459): عنوانُ البطاقة ١٥/٦٠٠
+              كنظيره تحت الملصق، **والثانويُّ ١٢** — **وسقطت ١١** التي
+              كانت للنسبة وحدَها. */}
+          <span className="block text-[15px] font-semibold leading-tight truncate" dir="auto">
             {title}
           </span>
-          <span className="block text-[12px] text-muted leading-tight truncate mt-1">
+          <span className="block text-[12px] font-medium text-muted leading-tight truncate mt-1">
             {ep ? (
               <span dir="ltr">{`S${ep.s} E${ep.e}`}</span>
             ) : (
@@ -279,7 +282,7 @@ export function ContinueCard({
               />
             </span>
             <span
-              className="shrink-0 text-[11px] font-bold text-muted tabular-nums"
+              className="shrink-0 text-[12px] font-semibold text-muted tabular-nums"
               dir="ltr"
             >
               {pct}%
@@ -311,7 +314,7 @@ export function ContinueCard({
           <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-black/10" />
 
           <div className="absolute inset-x-0 bottom-0 p-3 pb-3.5">
-            <p className="text-[15px] font-bold leading-tight text-white line-clamp-1 drop-shadow pe-10">
+            <p className="text-[15px] font-semibold leading-tight text-white line-clamp-1 drop-shadow pe-10">
               {title}
             </p>
             {/* سطر المعلومات: الحلقة · الباقي — والنسبة في طرفه لا فوق الصورة */}
@@ -325,7 +328,7 @@ export function ContinueCard({
                 {(ep || episodeLabel) && left > 0 && <span className="text-white/45"> · </span>}
                 {left > 0 && t.leftEps(left)}
               </span>
-              <span className="shrink-0 text-[11px] font-bold text-white/70 tabular-nums" dir="ltr">
+              <span className="shrink-0 text-[12px] font-semibold text-white/70 tabular-nums" dir="ltr">
                 {pct}%
               </span>
             </div>

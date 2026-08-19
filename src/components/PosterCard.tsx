@@ -251,7 +251,7 @@ export function PosterCard({
           >
             {title}
           </p>
-          {year && <p className="text-[12px] text-muted mt-0.5">{year}</p>}
+          {year && <p className="text-[12px] font-medium text-muted mt-0.5">{year}</p>}
           {/* النبذةُ تتبع الاسمَ حيث ذهب — **ولا تُترك في الحجاب الذاهب** */}
           {note && (
             <MarqueeText text={note} className="text-[12px] text-accent-2/90 mt-0.5" />

@@ -99,14 +99,15 @@ export function CompactMediaRow({
 
       <span className="min-w-0 flex-1">
         <span
-          className="block text-[15px] font-bold leading-tight truncate"
+          /* 🆕 ١٥/٦٠٠ كعنوان أيِّ بطاقة (D-459) */
+          className="block text-[15px] font-semibold leading-tight truncate"
           dir="auto"
         >
           {title}
         </span>
         {subtitle && (
           <span
-            className="block text-[12px] text-muted leading-tight truncate mt-1"
+            className="block text-[12px] font-medium text-muted leading-tight truncate mt-1"
             dir="auto"
           >
             {subtitle}

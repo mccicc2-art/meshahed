@@ -55,7 +55,10 @@ export function HomeGreeting({
     <p className="min-w-0 truncate text-[15px] leading-tight">
       <span className="text-muted">{word}</span>
       <span className="text-muted">{locale === "ar" ? "، " : ", "}</span>
-      <span className="font-extrabold">{name}</span>
+      {/* 🆕 **٧٠٠ لا ٨٠٠** (D-459): **وزنٌ ثامنُ مئةٍ لا يظهر إلا هنا**،
+          وكلُّ غليظٍ في الصفحة ٧٠٠ — **ووزنٌ لكلمةٍ واحدةٍ استثناءٌ لا
+          درجة.** */}
+      <span className="font-bold">{name}</span>
     </p>
   );
 }

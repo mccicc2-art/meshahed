@@ -88,7 +88,9 @@ export function PosterRail({
           : href && seeAllLabel && (
               <Link
                 href={href}
-                className="text-[13px] text-muted hover:text-accent transition shrink-0"
+                /* 🆕 ١٢ لا ١٣ (D-459): **«الكلّ» ثانويٌّ كسائر الثانويّ** —
+                   **ودرجةٌ ثالثةٌ بين ١٢ و١٥ لدورٍ واحدٍ ليست درجة.** */
+                className="text-[12px] font-medium text-muted hover:text-accent transition shrink-0"
               >
                 {seeAllLabel}
               </Link>
