@@ -54,6 +54,21 @@ export function profileSectionMeta(t: Dict): Record<ProfileSection, { icon: Icon
   };
 }
 
+/**
+ * 🆕 **من يرى عدّاد الزيارات** (D-465، تصميمُ أحمد: قائمةٌ بجانب مفتاح
+ * «الزيارات»).
+ *
+ * **وقد رُفض هذا سابقاً بحجّةٍ صحيحةٍ في حينها** (D-061): «مفتاحُ
+ * الزيارات يُخفي الرقمَ عن الجميع وهو الخصوصيةُ نفسُها» — **والجوابُ
+ * كان: قل «أريد أن أختار من يراه» فيصير خياراً ثلاثيّاً.** **وقد قالها،
+ * فصار.**
+ *
+ * ⚠️ **والمفتاحُ يبقى فوق القائمة لا بدلاً منها**: الإطفاءُ يُخفي عنك
+ * أنت أيضاً — **وهو حالةٌ رابعةٌ لا تُعبَّر عنها بالجمهور.**
+ */
+export const VISIT_AUDIENCES = ["everyone", "followers", "me"] as const;
+export type VisitAudience = (typeof VISIT_AUDIENCES)[number];
+
 export interface ProfilePrefs {
   /** صفّ الأرقام الأربعة فوق المستوى */
   stats: boolean;
@@ -61,6 +76,8 @@ export interface ProfilePrefs {
   level: boolean;
   /** شارة عدد الزيارات على الغلاف */
   visits: boolean;
+  /** ومن يراها — **يُطبَّق في صفحة الملفّ لا هنا** (D-465) */
+  visitsWho: VisitAudience;
   /** ترتيب الأقسام، والغائب عن القائمة مخفيّ */
   order: ProfileSection[];
   /** عرضُ الملصق — مضغوط/مريح/كبير (D-441) */
@@ -73,6 +90,9 @@ export const DEFAULT_PROFILE_PREFS: ProfilePrefs = {
   stats: true,
   level: true,
   visits: true,
+  /* **والافتراضيُّ «الجميع»** — **وهو ما كانت تفعله الصفحةُ فعلاً قبل
+     وجود القائمة**، فلا يتبدّل شيءٌ لمن لم يختر (D-152). */
+  visitsWho: "everyone",
   // ما تعرضه الصفحة اليوم حرفياً — فمن لم يخصّص لا يرى شيئاً تغيّر
   order: ["shows", "movies", "lists", "ratings"],
   density: "comfortable",
@@ -106,10 +126,15 @@ export function sanitizeProfilePrefs(raw: unknown): ProfilePrefs {
     );
   }
 
+  const who = VISIT_AUDIENCES.includes(o.visitsWho as VisitAudience)
+    ? (o.visitsWho as VisitAudience)
+    : d.visitsWho;
+
   return {
     stats: bool("stats"),
     level: bool("level"),
     visits: bool("visits"),
+    visitsWho: who,
     order,
     cards: sanitizeCardCount(o.cards),
     density: sanitizeDensity(o.density),
