@@ -92,6 +92,7 @@ export function LibraryGrid({
   locale,
   initialTab = "shows", tabPrefs,
   listsExtra,
+  underTabs,
 }: {
   shows: GridItem[];
   movies: GridItem[];
@@ -124,6 +125,11 @@ export function LibraryGrid({
       المكتبة لا صفحة منفصلة): يُرسم على الخادم ويُمرَّر عقدةً جاهزة،
       فيبقى PublicListsRail مكوّن خادمٍ بلا JS كما وُلد (D-063) */
   listsExtra?: React.ReactNode;
+  /** 🆕 خانةُ ما يجلس **تحت الشريط اللاصق وفوق اللوح** (D-453).
+      اختياريّةٌ فالدفعاتُ تُرفع مجلّداً مجلّداً (D-028): الصفحةُ التي
+      تملؤها تصل بعد هذا المجلَّد، **وخانةٌ فارغةٌ لا تحجز مكاناً**
+      (D-044). */
+  underTabs?: React.ReactNode;
 }) {
   const t = getDict(locale);
   const router = useRouter();
@@ -366,6 +372,18 @@ export function LibraryGrid({
           showFilters={showSearchRow} tabPrefs={tabPrefs} tabLabels={tabLabels}
         />
       )}
+
+      {/* 🆕 **خانةٌ تحت الشريط اللاصق** (D-453، طلبُ أحمد بلقطةٍ معلَّمة:
+          «هذي نزّلها تحت الشريط»). **واختصارا «حلّل مكتبتك» و«اليوميّة»
+          كانا فوق التبويبات** (D-443) — **فيدفعان الشريطَ ومعه أوّلُ
+          ملصقٍ تحت منتصف الشاشة**، **وأوّلُ ما يُرى في صفحةٍ عنوانُها
+          «مكتبتي» يجب أن يكون مكتبتَك.**
+
+          ⚠️ **وخانةٌ لا نقلٌ للرسم إلى هنا**: الرابطان يبقيان في الصفحة
+          حيث تُقرأ ترجمتُهما ووجهتُهما، **وهذا المكوّنُ عميلٌ لا يعرف
+          القاموس** — **ولو رُسما هنا لصار للصفحة رأسان يعرف كلٌّ منهما
+          نصفَ الحقيقة** (نفسُ حجّة `listsExtra` فوقه). */}
+      {underTabs && <div className="mt-3">{underTabs}</div>}
 
       <div className="mt-3" />
 
