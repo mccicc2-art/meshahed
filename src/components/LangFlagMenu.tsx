@@ -97,7 +97,7 @@ export function LangFlagMenu({ locale }: { locale: Locale }) {
                   role="option"
                   aria-selected={active}
                   onClick={() => pick(o.id)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 text-start text-[14px] transition ${
+                  className={`w-full flex items-center gap-3 px-4 py-3 text-start text-14 transition ${
                     active
                       ? "font-bold text-foreground bg-surface-2"
                       : "text-muted hover:text-foreground hover:bg-surface-2"

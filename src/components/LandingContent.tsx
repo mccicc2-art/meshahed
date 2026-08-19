@@ -106,12 +106,12 @@ export function LandingContent({ locale }: { locale: Locale }) {
         <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight">
           {ar ? "ما هو Loopz؟" : "What is Loopz?"}
         </h2>
-        <p className="mt-3 text-sm sm:text-[15px] text-muted leading-relaxed">
+        <p className="mt-3 text-sm sm:text-15 text-muted leading-relaxed">
           {ar
             ? "Loopz منصّة لتتبّع كل ما تشاهده: المسلسلات والأفلام والأنمي في مكانٍ واحد. بدل أن تحاول تذكّر أين توقّفت في كل عمل، تعلّم ما شاهدته فيتولّى Loopz الباقي — يحسب تقدّمك، ويذكّرك بحلقتك القادمة، ويحفظ تقييماتك ويومياتك وقوائمك، ويريك ما يشاهده أصدقاؤك."
             : "Loopz is a platform for tracking everything you watch: shows, movies and anime in one place. Instead of trying to remember where you stopped in each title, you tick what you watched and Loopz does the rest — it computes your progress, surfaces your next episode, keeps your ratings, diary and lists, and shows you what your friends are watching."}
         </p>
-        <p className="mt-2.5 text-sm sm:text-[15px] text-muted leading-relaxed">
+        <p className="mt-2.5 text-sm sm:text-15 text-muted leading-relaxed">
           {ar
             ? "يعمل في المتصفّح على الجوال والحاسوب بلا تنزيل، ويمكن تثبيته على شاشتك الرئيسية. الكتالوج من TMDB وأرقام التقييم من IMDb وRotten Tomatoes. يعمل بالعربية والإنجليزية بالكامل — بواجهةٍ من اليمين إلى اليسار حين تلزم — ولغاتٌ أخرى في الطريق. وكل شيء فيه مجاني اليوم بلا إعلانات."
             : "It runs in the browser on phone and desktop with nothing to download, and installs to your home screen if you want it there. The catalogue comes from TMDB and the rating numbers from IMDb and Rotten Tomatoes. It runs fully in English and Arabic — right-to-left included — with more languages on the way. Everything is free today, with no ads."}
@@ -128,7 +128,7 @@ export function LandingContent({ locale }: { locale: Locale }) {
             <Icon name={h.icon} size={18} className="text-accent shrink-0 mt-0.5" />
             <div className="min-w-0">
               <h3 className="text-sm font-bold leading-tight">{ar ? h.ar : h.en}</h3>
-              <p className="text-[12px] text-muted leading-relaxed mt-1">
+              <p className="text-12 text-muted leading-relaxed mt-1">
                 {ar ? h.arBody : h.enBody}
               </p>
             </div>
@@ -136,7 +136,7 @@ export function LandingContent({ locale }: { locale: Locale }) {
         ))}
       </div>
 
-      <p className="mt-4 text-center text-[14px]">
+      <p className="mt-4 text-center text-14">
         <Link href="/features" className="text-accent hover:underline font-semibold">
           {ar ? "استعرض كل المميزات ←" : "See every feature →"}
         </Link>
@@ -150,7 +150,7 @@ export function LandingContent({ locale }: { locale: Locale }) {
         <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight">
           {ar ? "تنقل من تطبيقٍ آخر؟" : "Moving from another app?"}
         </h2>
-        <p className="mt-3 text-sm sm:text-[15px] text-muted leading-relaxed">
+        <p className="mt-3 text-sm sm:text-15 text-muted leading-relaxed">
           {ar
             ? "لا تبدأ من الصفر: صدّر سجلّ مشاهدتك من Letterboxd أو Simkl أو TV Time وارفع الملف في إعدادات Loopz — تُطابَق أعمالك مع الكتالوج وتنتقل مشاهداتك دفعةً واحدة، بحلقاتها وتواريخها."
             : "You do not start from zero: export your watch history from Letterboxd, Simkl or TV Time, upload the file in Loopz settings, and your titles are matched against the catalogue — episodes, dates and all — in one go."}
@@ -166,7 +166,7 @@ export function LandingContent({ locale }: { locale: Locale }) {
           {items.map((f) => (
             <div key={f.q} className="bg-surface-2/60 border border-border rounded-2xl px-4 py-3.5">
               <h3 className="text-sm font-bold leading-tight">{f.q}</h3>
-              <p className="text-[12px] text-muted leading-relaxed mt-1.5">{f.a}</p>
+              <p className="text-12 text-muted leading-relaxed mt-1.5">{f.a}</p>
             </div>
           ))}
         </div>
@@ -181,7 +181,7 @@ export function LandingContent({ locale }: { locale: Locale }) {
         >
           {ar ? "ابدأ مجاناً" : "Start free"}
         </Link>
-        <p className="mt-2.5 text-[12px] text-muted/70">
+        <p className="mt-2.5 text-12 text-muted/70">
           {ar
             ? "بحساب Google، بلا كلمة مرور — وبياناتك قابلة للتصدير أو الحذف متى شئت."
             : "With your Google account, no password — and your data can be exported or deleted whenever you want."}

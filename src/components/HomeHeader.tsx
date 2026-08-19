@@ -208,10 +208,10 @@ function StatFace({ stat }: { stat: HeaderStat }) {
           عنوانُ الصفحة. **والعنوانُ يجب أن يبقى أعلى السلّم.**
           ⚠️ **و٢٤/٧٠٠ تبقى في نظام التصميم** لسطحِ الأرقام الحقيقيّ
           (`/stats`) — **الدرجةُ لم تُلغَ، إنما لم تكن هذه موضعَها.** */}
-      <span className="text-[20px] font-bold leading-none tabular-nums">
+      <span className="text-20 font-bold leading-none tabular-nums">
         {stat.value}
       </span>
-      <span className="min-w-0 truncate text-[12px] font-medium text-muted leading-none">
+      <span className="min-w-0 truncate text-12 font-medium text-muted leading-none">
         {stat.label}
       </span>
     </>

@@ -165,7 +165,7 @@ export function HomeCustomize({
 
       {/* ===== عناصر الترويسة ===== */}
       <section className="rounded-2xl border border-border bg-surface overflow-hidden">
-        <h2 className="px-4 pt-3.5 pb-1 text-[15px] font-bold">{t.custHeaderSection}</h2>
+        <h2 className="px-4 pt-3.5 pb-1 text-15 font-bold">{t.custHeaderSection}</h2>
         {toggles.map(({ key, label, icon }) => (
           <ToggleRow
             key={key}
@@ -179,8 +179,8 @@ export function HomeCustomize({
 
       {/* ===== خانات بطاقة الأرقام — **عنوانٌ خارج البطاقة** كأختِها ===== */}
       <section>
-        <h2 className="px-1 text-[15px] font-bold">{t.custStatsCard}</h2>
-        <p className="px-1 mt-0.5 mb-2 text-[12px] text-muted leading-relaxed">
+        <h2 className="px-1 text-15 font-bold">{t.custStatsCard}</h2>
+        <p className="px-1 mt-0.5 mb-2 text-12 text-muted leading-relaxed">
           {t.custStatsPickHint}
         </p>
 
@@ -197,8 +197,8 @@ export function HomeCustomize({
 
       {/* ===== ترتيب الأقسام ===== */}
       <section>
-        <h2 className="px-1 text-[15px] font-bold">{t.custSectionsTitle}</h2>
-        <p className="px-1 mt-0.5 mb-2 text-[12px] text-muted leading-relaxed">
+        <h2 className="px-1 text-15 font-bold">{t.custSectionsTitle}</h2>
+        <p className="px-1 mt-0.5 mb-2 text-12 text-muted leading-relaxed">
           {t.custSectionsHint}
         </p>
 
@@ -223,7 +223,7 @@ export function HomeCustomize({
             أقسام.** **والمبدّلُ في الرئيسية هو المبدّلُ نفسُه**،
             والقيمةُ واحدةٌ في العمود (قاعدة ٦). */}
         <div className="flex items-center gap-3 min-h-14 px-4 py-2.5 border-b border-[color:var(--divider)]">
-          <span className="shrink-0 text-[15px] font-bold">{t.custHomeView}</span>
+          <span className="shrink-0 text-15 font-bold">{t.custHomeView}</span>
           <span className="min-w-0 flex-1">
             <span className={pillTrack}>
               {HOME_VIEWS.map((k) => (
@@ -241,7 +241,7 @@ export function HomeCustomize({
           </span>
         </div>
         <div className="flex items-center gap-3 min-h-14 px-4 py-2.5 border-b border-[color:var(--divider)]">
-          <span className="shrink-0 text-[15px] font-bold">{t.custLayout}</span>
+          <span className="shrink-0 text-15 font-bold">{t.custLayout}</span>
           <span className="min-w-0 flex-1">
             <CardCountRow
               value={prefs.cards}
@@ -251,7 +251,7 @@ export function HomeCustomize({
           </span>
         </div>
         <div className="flex items-center gap-3 min-h-14 px-4 py-2.5">
-          <span className="min-w-0 flex-1 text-[15px] font-bold">{t.custPosterSize}</span>
+          <span className="min-w-0 flex-1 text-15 font-bold">{t.custPosterSize}</span>
           <PosterSizeRow
             value={prefs.density}
             labels={posterLabel}
@@ -273,7 +273,7 @@ export function HomeCustomize({
           {pending ? t.saving : t.saveChanges}
         </button>
         {saved && (
-          <p role="status" className="text-center text-[14px] text-[color:var(--success)]">
+          <p role="status" className="text-center text-14 text-[color:var(--success)]">
             {t.savedOk}
           </p>
         )}
