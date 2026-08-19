@@ -60,7 +60,7 @@ export function SpoilerText({
         type="button"
         onClick={() => setShown((v) => !v)}
         aria-expanded={shown}
-        className="inline-flex items-center gap-1.5 rounded-full border border-[color:var(--divider)] px-3 py-1.5 text-[12px] text-muted transition hover:text-accent hover:border-[color:var(--accent)] active:bg-surface-2"
+        className="inline-flex items-center gap-1.5 rounded-full border border-[color:var(--divider)] px-3 py-1.5 text-12 text-muted transition hover:text-accent hover:border-[color:var(--accent)] active:bg-surface-2"
       >
         <Icon name={shown ? "eye-off" : "eye"} size={14} className="shrink-0" />
         <span>{shown ? t.spoilerHide : t.spoilerShow}</span>
@@ -69,7 +69,7 @@ export function SpoilerText({
       {/* **السببُ بجانب الزرّ لا فوق النصّ** — ويسقط متى ظهر النصّ،
           **ويسقط كلَّه متى لم يكن للحجب سببٌ يُقال** (D-287) */}
       {!shown && note && (
-        <span className="ms-2 align-middle text-[12px] text-muted/70">{note}</span>
+        <span className="ms-2 align-middle text-12 text-muted/70">{note}</span>
       )}
 
       {/* ⚠️ **غيرُ مُصيَّرٍ حتى يُطلب** — لا `hidden` ولا `blur` */}
@@ -78,7 +78,7 @@ export function SpoilerText({
           {text && (
             <p
               dir={dirOf(text)}
-              className="text-[14px] leading-relaxed text-foreground/80 whitespace-pre-line"
+              className="fs-content text-14 leading-relaxed text-foreground/80 whitespace-pre-line"
             >
               {text}
             </p>

@@ -157,7 +157,7 @@ export function SendShareSheet({
               type="button"
               onClick={submit}
               disabled={!selected || pending}
-              className="w-full h-12 rounded-full bg-accent text-[color:var(--on-accent)] font-bold text-[15px] disabled:opacity-40 hover:brightness-110 active:scale-[0.98] transition"
+              className="w-full h-12 rounded-full bg-accent text-[color:var(--on-accent)] font-bold text-15 disabled:opacity-40 hover:brightness-110 active:scale-[0.98] transition"
             >
               {t.shareSendButton}
             </button>

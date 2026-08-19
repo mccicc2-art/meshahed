@@ -79,7 +79,7 @@ export function TabsPrefs({
   return (
     <div>
       {title && (
-        <p className="px-5 pt-3 pb-2 text-[12px] font-bold text-muted">{title}</p>
+        <p className="px-5 pt-3 pb-2 text-12 font-bold text-muted">{title}</p>
       )}
       <ul>
         {local.map((pref, i) => {
@@ -93,7 +93,7 @@ export function TabsPrefs({
                 aria-checked={!pref.hidden}
                 disabled={lastVisible || pending}
                 onClick={() => commit(toggleTab(local, pref.key))}
-                className="min-w-0 flex-1 flex items-center justify-between gap-3 min-h-11 ps-5 pe-2 py-2 text-start text-[15px] rounded-e-xl hover:bg-surface-2 disabled:opacity-45 transition"
+                className="min-w-0 flex-1 flex items-center justify-between gap-3 min-h-11 ps-5 pe-2 py-2 text-start text-15 rounded-e-xl hover:bg-surface-2 disabled:opacity-45 transition"
               >
                 <span className="min-w-0 flex items-center gap-3">
                   <Icon name={pref.hidden ? "eye-off" : "eye"} size={18} />

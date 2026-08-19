@@ -114,7 +114,7 @@ export function ShareListSheet({
             <Icon name="chevron-down" size={18} className="rotate-90 rtl:-rotate-90" />
           </button>
         )}
-        <p id="list-share-title" className="text-center font-bold text-[15px] pt-5 pb-1">
+        <p id="list-share-title" className="text-center font-bold text-15 pt-5 pb-1">
           {view === "friend"
             ? t.listShareToFriend
             : view === "community"
@@ -294,7 +294,7 @@ function FriendPicker({
             type="button"
             onClick={submit}
             disabled={!selected || pending}
-            className="w-full h-12 rounded-full bg-accent text-[color:var(--on-accent)] font-bold text-[15px] disabled:opacity-40 hover:brightness-110 active:scale-[0.98] transition"
+            className="w-full h-12 rounded-full bg-accent text-[color:var(--on-accent)] font-bold text-15 disabled:opacity-40 hover:brightness-110 active:scale-[0.98] transition"
           >
             {t.shareSendButton}
           </button>

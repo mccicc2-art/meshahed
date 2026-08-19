@@ -130,7 +130,7 @@ export function RatingBox({
           }}
           aria-label={t.rateStars(n)}
           aria-pressed={rating === n}
-          className={`text-[22px] leading-none px-0.5 py-1 transition ${
+          className={`text-22 leading-none px-0.5 py-1 transition ${
             n <= shown ? "text-accent scale-110" : "text-muted/40 hover:text-muted"
           }`}
         >
@@ -138,7 +138,7 @@ export function RatingBox({
         </button>
       ))}
       {rating > 0 && (
-        <span className="text-[12px] text-muted ms-2 tabular-nums">{t.rateOutOf(rating)}</span>
+        <span className="text-12 text-muted ms-2 tabular-nums">{t.rateOutOf(rating)}</span>
       )}
     </div>
   );
@@ -179,7 +179,7 @@ export function RatingBox({
     return (
       <div className="flex flex-col min-h-0">
         <div className="flex items-baseline justify-between gap-3 mb-2.5">
-          <h3 className="font-bold text-[15px]">{t.reviewSectionTitle}</h3>
+          <h3 className="font-bold text-15">{t.reviewSectionTitle}</h3>
           {saved && (
             <span role="status" className="text-xs text-[color:var(--success)]">
               {t.savedOk}
@@ -205,11 +205,11 @@ export function RatingBox({
              يبدأ بكلمةٍ إنجليزيّة كان يبقى يساراً إلى آخره.** */
           dir={dirOf(review)}
           placeholder={t.reviewPlaceholder}
-          className="w-full flex-1 min-h-[38svh] rounded-xl bg-surface-2 border border-border px-3.5 py-3 outline-none focus:border-accent transition text-[15px] leading-[1.9] resize-none"
+          className="w-full flex-1 min-h-[38svh] rounded-xl bg-surface-2 border border-border px-3.5 py-3 outline-none focus:border-accent transition text-15 leading-[1.9] resize-none"
         />
 
         {near && (
-          <p className="mt-1 text-end text-[12px] text-muted tabular-nums" aria-live="polite">
+          <p className="mt-1 text-end text-12 text-muted tabular-nums" aria-live="polite">
             {2000 - review.length}
           </p>
         )}
@@ -239,8 +239,8 @@ export function RatingBox({
             aria-pressed={spoiler}
             className={
               spoiler
-                ? "inline-flex items-center gap-1.5 rounded-full border border-accent bg-accent/10 px-3 py-1.5 text-[12px] font-bold text-accent transition"
-                : "inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-[12px] text-muted transition hover:text-foreground"
+                ? "inline-flex items-center gap-1.5 rounded-full border border-accent bg-accent/10 px-3 py-1.5 text-12 font-bold text-accent transition"
+                : "inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-12 text-muted transition hover:text-foreground"
             }
           >
             <Icon name={spoiler ? "eye-off" : "eye"} size={14} className="shrink-0" />
@@ -251,7 +251,7 @@ export function RatingBox({
               type="button"
               onClick={remove}
               disabled={pending}
-              className="ms-auto text-[12px] text-muted hover:text-[color:var(--error)] px-2.5 py-2 rounded-lg hover:bg-surface-2 transition"
+              className="ms-auto text-12 text-muted hover:text-[color:var(--error)] px-2.5 py-2 rounded-lg hover:bg-surface-2 transition"
             >
               {t.deleteRating}
             </button>
@@ -297,7 +297,7 @@ export function RatingBox({
           </span>
         )}
         {/* التعليق انتقل إلى تبويب التعليقات — إشارة صغيرة تدلّ عليه */}
-        <span className="text-[12px] text-muted">{t.reviewMovedHint}</span>
+        <span className="text-12 text-muted">{t.reviewMovedHint}</span>
       </div>
     </div>
   );

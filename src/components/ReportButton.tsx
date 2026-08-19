@@ -64,7 +64,7 @@ export function ReportButton({
   if (sent) {
     return (
       <span
-        className="inline-flex items-center gap-1 text-[12px] text-muted"
+        className="inline-flex items-center gap-1 text-12 text-muted"
         title={t.reportDone}
       >
         <Icon name="check-line" size={13} strokeWidth={2.2} />
@@ -98,7 +98,7 @@ export function ReportButton({
         className="p-5"
       >
         <>
-          <p id="report-sheet-title" className="font-bold text-[15px] mb-1.5">
+          <p id="report-sheet-title" className="font-bold text-15 mb-1.5">
             {t.reportTitle}
           </p>
           <p className="text-xs text-muted leading-relaxed mb-3">{t.reportBody}</p>

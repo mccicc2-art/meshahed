@@ -75,7 +75,7 @@ export function RankedRail({
           يقع إلا حيث يضيق: على سطح المكتب يبقيان في سطرٍ واحد.
           ⚠️ **ولا `justify-between`**: الرأسُ ثلاثةُ أبناءٍ (رمزٌ واسمٌ
           وأداة) — والتوزيعُ كان سيفصل الرمزَ عن اسمه. */}
-      <h2 className="flex flex-wrap items-center gap-2 text-[22px] font-bold mb-1">
+      <h2 className="flex flex-wrap items-center gap-2 text-22 font-bold mb-1">
         {icon && <Icon name={icon} size={18} className="text-muted" />}
         {/* 🆕 **يلتفّ ولا يُقصّ** (D-456): بعد أن صار عنوانُ القسم ٢٢px
             (D-454) **لم يعد `truncate` رحمةً** — سطرٌ واحدٌ بحجم ٢٢ على
@@ -97,7 +97,7 @@ export function RankedRail({
           seeAllLabel && (
             <Link
               href={href}
-              className="ms-auto shrink-0 text-[12px] font-medium text-muted hover:text-accent transition"
+              className="ms-auto shrink-0 text-12 font-medium text-muted hover:text-accent transition"
             >
               {seeAllLabel}
             </Link>
@@ -107,7 +107,7 @@ export function RankedRail({
       {/* السطر الفرعي اختياري: مصدر التقييمات كان يتكرّر فوق كل صفّ فيزحم
           الصفحة بسطر يعرفه القارئ من أول مرة. يبقى حيث يضيف معلومة —
           كالمنطقة فوق «يعرض الآن في السينما». */}
-      {note ? <p className="text-[12px] text-muted mb-3">{note}</p> : <div className="mb-3" />}
+      {note ? <p className="text-12 text-muted mb-3">{note}</p> : <div className="mb-3" />}
 
       {!items.length && emptyText && (
         <p className="text-xs text-muted py-8 text-center bg-surface-2/40 border border-border rounded-2xl">
@@ -186,12 +186,12 @@ export function RankedRail({
                       الأولى أن الحال اليوم **عابرة**: أوّلُ سؤالٍ ينجح يخزّن
                       الرقم الحقيقي فيحلّ محلّه، والشعار مختلفٌ بيّن. */}
                   {typeof r.imdb_rating === "number" ? (
-                    <span className="absolute bottom-1.5 end-1.5 flex items-center gap-1 text-[12px] font-bold text-white bg-black/55 backdrop-blur rounded-md px-1.5 py-0.5">
+                    <span className="absolute bottom-1.5 end-1.5 flex items-center gap-1 text-12 font-bold text-white bg-black/55 backdrop-blur rounded-md px-1.5 py-0.5">
                       <ImdbMark className="text-[8px]" />
                       <span dir="ltr">{r.imdb_rating.toFixed(1)}</span>
                     </span>
                   ) : r.vote_average > 0 ? (
-                    <span className="absolute bottom-1.5 end-1.5 flex items-center gap-1 text-[12px] font-bold text-white bg-black/55 backdrop-blur rounded-md px-1.5 py-0.5">
+                    <span className="absolute bottom-1.5 end-1.5 flex items-center gap-1 text-12 font-bold text-white bg-black/55 backdrop-blur rounded-md px-1.5 py-0.5">
                       <TmdbMark className="text-[8px]" />
                       <span dir="ltr">{r.vote_average.toFixed(1)}</span>
                     </span>
