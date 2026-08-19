@@ -226,7 +226,7 @@ export function ProfileMenu({
         <button
           type="button"
           onClick={openMessage}
-          className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-3.5 h-9 text-[13px] font-bold transition hover:border-accent/50 active:scale-95"
+          className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-3.5 h-9 text-[12px] font-bold transition hover:border-accent/50 active:scale-95"
         >
           <Icon name="comment" size={15} className={mutual ? "text-accent" : "text-muted"} />
           {t.msgUserOption}

@@ -252,7 +252,7 @@ export function CommunityTools({
                 {/* ===== أدواتُ التبويب المفتوح (D-306) ===== */}
                 {activeTab === "activity" && (
                   <>
-                    <p className="px-5 pt-3 pb-2 text-[13px] font-bold text-muted">
+                    <p className="px-5 pt-3 pb-2 text-[12px] font-bold text-muted">
                       {sectionTitle}
                     </p>
                     <SwitchRow
@@ -328,7 +328,7 @@ export function CommunityTools({
 
                 {activeTab === "talk" && (
                   <>
-                    <p className="px-5 pt-3 pb-2 text-[13px] font-bold text-muted">
+                    <p className="px-5 pt-3 pb-2 text-[12px] font-bold text-muted">
                       {sectionTitle}
                     </p>
                     {/* **«أعمالي المتابَعة فقط»** (D-306، نصُّ أحمد:
@@ -378,7 +378,7 @@ export function CommunityTools({
                 {(activeTab === "activity" || activeTab === "talk") && (
                   <div className={sheetMenuDivider} />
                 )}
-                <p className="px-5 pt-3 pb-2 text-[13px] font-bold text-muted">
+                <p className="px-5 pt-3 pb-2 text-[12px] font-bold text-muted">
                   {t.communityTabInbox}
                 </p>
                 <button

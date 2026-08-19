@@ -182,9 +182,9 @@ export function ToWatchStat({
           {divider && <span className="absolute inset-y-1 end-0 w-px bg-[color:var(--divider)]" aria-hidden />}
           <span className="flex items-center gap-2">
             <Icon name={icon} size={20} style={{ color }} className="shrink-0" />
-            <span className="text-[17px] font-bold leading-none tabular-nums">{value}</span>
+            <span className="text-[20px] font-bold leading-none tabular-nums">{value}</span>
           </span>
-          <span className="block text-[11px] text-muted mt-1.5 leading-[1.25]">{label}</span>
+          <span className="block text-[12px] text-muted mt-1.5 leading-[1.25]">{label}</span>
         </button>
       )}
 

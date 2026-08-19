@@ -128,7 +128,7 @@ export function ListReviews({
         {/* **الرقمُ يجاور صاحبَه، والمقامُ معه** (D-216/D-219) — ولا يُرسم
             متوسّطٌ بلا رأيٍ واحد: **صفرٌ يُقرأ حكماً لا فراغاً.** */}
         {stats.count > 0 && stats.avg !== null && (
-          <span className="ms-auto flex items-center gap-1.5 text-[13px] font-bold tabular-nums">
+          <span className="ms-auto flex items-center gap-1.5 text-[12px] font-bold tabular-nums">
             <span dir="ltr">★ {num(stats.avg, locale)}</span>
             <span className="text-muted font-medium">
               {t.listReviewCount(num(stats.count, locale))}
@@ -138,7 +138,7 @@ export function ListReviews({
       </div>
 
       {isOwner ? (
-        <p className="text-[13px] text-muted">{t.listReviewOwn}</p>
+        <p className="text-[12px] text-muted">{t.listReviewOwn}</p>
       ) : canReview ? (
         /* 🔧 **الصندوقُ خرج مكوّناً عند قارئه الثاني** (D-352):
             النجمةُ على بطاقة القائمة تفتحه ورقةً، **ونسخُه كان سيعني
@@ -163,10 +163,10 @@ export function ListReviews({
               <div className="flex items-center gap-2">
                 <Avatar src={r.avatarUrl} name={r.nickname ?? r.username ?? ""} size={28} />
                 {/* **ومخفي الاسم بلا بديل** — الغيابُ أصدق (D-011) */}
-                <span className="text-[13px] font-semibold truncate">
+                <span className="text-[14px] font-semibold truncate">
                   {r.hideName ? "" : (r.nickname ?? r.username ?? "")}
                 </span>
-                <span className="ms-auto text-[13px] font-bold tabular-nums" dir="ltr">
+                <span className="ms-auto text-[14px] font-bold tabular-nums" dir="ltr">
                   ★ {num(r.rating, locale)}
                 </span>
               </div>

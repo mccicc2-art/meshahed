@@ -119,7 +119,7 @@ export function PickedForYou({
             type="button"
             onClick={refresh}
             aria-label={t.pickedRefreshAria}
-            className="shrink-0 flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-[13px] font-semibold text-muted hover:text-foreground hover:border-accent/50 active:scale-[0.97] transition"
+            className="shrink-0 flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-[12px] font-semibold text-muted hover:text-foreground hover:border-accent/50 active:scale-[0.97] transition"
           >
             <Icon name="repeat" size={15} strokeWidth={2} />
             <span>{t.pickedRefresh}</span>

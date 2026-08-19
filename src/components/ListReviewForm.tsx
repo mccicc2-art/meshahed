@@ -87,7 +87,7 @@ export function ListReviewForm({
 
   return (
     <div className="space-y-3">
-      <p className="text-[13px] font-semibold text-muted">{t.listReviewMine}</p>
+      <p className="text-[12px] font-semibold text-muted">{t.listReviewMine}</p>
       <div className={chipRow}>
         {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
           <button

@@ -515,7 +515,7 @@ export function LibraryGrid({
                     <button
                       type="button"
                       onClick={() => toggleGroup(g.status)}
-                      className="text-[13px] text-muted hover:text-accent transition shrink-0 tabular-nums"
+                      className="text-[12px] text-muted hover:text-accent transition shrink-0 tabular-nums"
                     >
                       {open ? t.closeLabel : `${g.items.length}`}
                     </button>

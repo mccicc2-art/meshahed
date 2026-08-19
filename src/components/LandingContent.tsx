@@ -128,7 +128,7 @@ export function LandingContent({ locale }: { locale: Locale }) {
             <Icon name={h.icon} size={18} className="text-accent shrink-0 mt-0.5" />
             <div className="min-w-0">
               <h3 className="text-sm font-bold leading-tight">{ar ? h.ar : h.en}</h3>
-              <p className="text-[13px] text-muted leading-relaxed mt-1">
+              <p className="text-[12px] text-muted leading-relaxed mt-1">
                 {ar ? h.arBody : h.enBody}
               </p>
             </div>
@@ -136,7 +136,7 @@ export function LandingContent({ locale }: { locale: Locale }) {
         ))}
       </div>
 
-      <p className="mt-4 text-center text-[13px]">
+      <p className="mt-4 text-center text-[14px]">
         <Link href="/features" className="text-accent hover:underline font-semibold">
           {ar ? "استعرض كل المميزات ←" : "See every feature →"}
         </Link>
@@ -166,7 +166,7 @@ export function LandingContent({ locale }: { locale: Locale }) {
           {items.map((f) => (
             <div key={f.q} className="bg-surface-2/60 border border-border rounded-2xl px-4 py-3.5">
               <h3 className="text-sm font-bold leading-tight">{f.q}</h3>
-              <p className="text-[13px] text-muted leading-relaxed mt-1.5">{f.a}</p>
+              <p className="text-[12px] text-muted leading-relaxed mt-1.5">{f.a}</p>
             </div>
           ))}
         </div>

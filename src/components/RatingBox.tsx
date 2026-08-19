@@ -138,7 +138,7 @@ export function RatingBox({
         </button>
       ))}
       {rating > 0 && (
-        <span className="text-[13px] text-muted ms-2 tabular-nums">{t.rateOutOf(rating)}</span>
+        <span className="text-[12px] text-muted ms-2 tabular-nums">{t.rateOutOf(rating)}</span>
       )}
     </div>
   );
@@ -209,7 +209,7 @@ export function RatingBox({
         />
 
         {near && (
-          <p className="mt-1 text-end text-[11px] text-muted tabular-nums" aria-live="polite">
+          <p className="mt-1 text-end text-[12px] text-muted tabular-nums" aria-live="polite">
             {2000 - review.length}
           </p>
         )}
@@ -251,7 +251,7 @@ export function RatingBox({
               type="button"
               onClick={remove}
               disabled={pending}
-              className="ms-auto text-[13px] text-muted hover:text-[color:var(--error)] px-2.5 py-2 rounded-lg hover:bg-surface-2 transition"
+              className="ms-auto text-[12px] text-muted hover:text-[color:var(--error)] px-2.5 py-2 rounded-lg hover:bg-surface-2 transition"
             >
               {t.deleteRating}
             </button>
@@ -297,7 +297,7 @@ export function RatingBox({
           </span>
         )}
         {/* التعليق انتقل إلى تبويب التعليقات — إشارة صغيرة تدلّ عليه */}
-        <span className="text-[11px] text-muted">{t.reviewMovedHint}</span>
+        <span className="text-[12px] text-muted">{t.reviewMovedHint}</span>
       </div>
     </div>
   );

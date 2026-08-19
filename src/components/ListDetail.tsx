@@ -240,7 +240,7 @@ export function ListDetail({
         setSheet("add");
       }}
       aria-haspopup="dialog"
-      className="shrink-0 inline-flex items-center gap-1.5 rounded-full border border-accent bg-accent px-3 py-1.5 text-[13px] font-semibold text-[color:var(--on-accent)] hover:brightness-110 active:scale-95 transition"
+      className="shrink-0 inline-flex items-center gap-1.5 rounded-full border border-accent bg-accent px-3 py-1.5 text-[14px] font-semibold text-[color:var(--on-accent)] hover:brightness-110 active:scale-95 transition"
     >
       <Icon name="plus" size={14} strokeWidth={2.2} />
       {t.listAddTitles}
@@ -276,7 +276,7 @@ export function ListDetail({
             type="button"
             onClick={toggleSave}
             aria-pressed={saved}
-            className={`shrink-0 flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[13px] font-semibold transition active:scale-95 ${
+            className={`shrink-0 flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[14px] font-semibold transition active:scale-95 ${
               saved
                 ? "border-accent/50 bg-accent/10 text-accent"
                 : "border-accent bg-accent text-[color:var(--on-accent)] hover:brightness-110"
@@ -378,12 +378,12 @@ export function ListDetail({
           {owner.username ? (
             <Link
               href={`/u/${owner.username}`}
-              className="text-[13px] text-muted hover:text-foreground transition min-w-0 truncate"
+              className="text-[12px] text-muted hover:text-foreground transition min-w-0 truncate"
             >
               {owner.nickname || `@${owner.username}`}
             </Link>
           ) : (
-            <span className="text-[13px] text-muted min-w-0 truncate">{owner.nickname}</span>
+            <span className="text-[12px] text-muted min-w-0 truncate">{owner.nickname}</span>
           )}
         </div>
       )}
@@ -391,7 +391,7 @@ export function ListDetail({
       <div className="flex items-center flex-wrap gap-2 mt-3.5 mb-5">
         <span className="text-xs text-muted">{t.listCount(visible.length)}</span>
         {numbered && (
-          <span className="text-[11px] px-2 py-0.5 rounded-full border border-accent/40 text-accent">
+          <span className="text-[12px] px-2 py-0.5 rounded-full border border-accent/40 text-accent">
             {kind === "ranked" ? t.listTypeRanked : t.listTypeWatch}
           </span>
         )}
@@ -402,7 +402,7 @@ export function ListDetail({
             **ورقمٌ صفرٌ لا يُطبع** (D-219): تبويبُ التقييمات نفسُه هو
             الدعوة. */}
         {reviews && reviews.count > 0 && (
-          <span className="text-[11px] px-2 py-0.5 rounded-full border border-border inline-flex items-center gap-1 tabular-nums">
+          <span className="text-[12px] px-2 py-0.5 rounded-full border border-border inline-flex items-center gap-1 tabular-nums">
             <Icon name="star" size={11} className="text-accent" />
             {reviews.avg !== null && <span dir="ltr">{num(reviews.avg, locale)}</span>}
             <span className="text-muted">{t.listReviewCount(num(reviews.count, locale))}</span>
@@ -422,7 +422,7 @@ export function ListDetail({
               })
             }
             disabled={pending}
-            className={`text-[11px] px-2 py-0.5 rounded-full border transition disabled:opacity-50 ${
+            className={`text-[12px] px-2 py-0.5 rounded-full border transition disabled:opacity-50 ${
               isPublic
                 ? "border-accent/50 bg-accent/10 text-accent"
                 : "border-border text-muted hover:border-accent/50"
@@ -432,7 +432,7 @@ export function ListDetail({
             {isPublic ? t.listPublic : t.listPrivate}
           </button>
         ) : (
-          <span className="text-[11px] px-2 py-0.5 rounded-full border border-border text-muted">
+          <span className="text-[12px] px-2 py-0.5 rounded-full border border-border text-muted">
             {t.listOwnerOther}
           </span>
         )}
@@ -620,7 +620,7 @@ export function ListDetail({
               />
               <span className="min-w-0 flex-1">
                 <span className="block text-sm font-semibold">{o.label}</span>
-                <span className="block text-[11px] text-muted mt-0.5 leading-snug">{o.hint}</span>
+                <span className="block text-[12px] text-muted mt-0.5 leading-snug">{o.hint}</span>
               </span>
               {kind === o.id && (
                 <Icon name="check" size={18} className="shrink-0 text-accent" strokeWidth={2.4} />
@@ -659,10 +659,10 @@ export function ListDetail({
           labelledBy="list-del-title"
         >
           <div className="p-5">
-            <h3 id="list-del-title" className="text-base font-bold mb-1.5">
+            <h3 id="list-del-title" className="text-[15px] font-bold mb-1.5">
               {t.listDeleteThis}
             </h3>
-            <p className="text-[13px] text-muted leading-relaxed mb-5">{t.listDeleteBody}</p>
+            <p className="text-[12px] text-muted leading-relaxed mb-5">{t.listDeleteBody}</p>
             <div className="flex gap-2">
               <button
                 type="button"
@@ -786,7 +786,7 @@ function RenameSheet({
         {/* ١٦ بكسل لا أصغر في كل حقل: سفاري iOS يكبّر الصفحة عند التركيز
             على أي حقلٍ أصغر ولا يتراجع عن التكبير (D-033) */}
         <label className="block">
-          <span className="block text-[11px] font-semibold text-muted mb-1.5">{t.listNameLabel}</span>
+          <span className="block text-[12px] font-semibold text-muted mb-1.5">{t.listNameLabel}</span>
           <input
             autoFocus
             value={draft}
@@ -800,7 +800,7 @@ function RenameSheet({
         </label>
 
         <label className="block">
-          <span className="block text-[11px] font-semibold text-muted mb-1.5">
+          <span className="block text-[12px] font-semibold text-muted mb-1.5">
             {t.listSubtitleLabel}
           </span>
           {/* سطرٌ واحد لا منطقة نصّ: السقف ١٢٠ حرفاً وجملةٌ واحدة، ومنطقة
@@ -815,7 +815,7 @@ function RenameSheet({
             }}
             className={field}
           />
-          <span className="block text-[11px] text-muted/70 mt-1 tabular-nums" dir="ltr">
+          <span className="block text-[12px] text-muted/70 mt-1 tabular-nums" dir="ltr">
             {sub.length}/120
           </span>
         </label>
@@ -966,7 +966,7 @@ function ReorderSheet({
           </button>
         }
       >
-        <p className="text-[11px] text-muted mt-0.5">{t.listReorderHint}</p>
+        <p className="text-[12px] text-muted mt-0.5">{t.listReorderHint}</p>
       </SheetHeader>
 
       {/* `min-h-0` ليست زينة: ابنُ الفليكس لا ينكمش تحت ارتفاع محتواه بلا
@@ -1002,10 +1002,10 @@ function ReorderSheet({
                 </span>
 
                 <span className="min-w-0 flex-1">
-                  <span className="block text-[13px] font-semibold leading-tight line-clamp-2">
+                  <span className="block text-[14px] font-semibold leading-tight line-clamp-2">
                     {it.title ?? `#${it.tmdb_id}`}
                   </span>
-                  <span className="block text-[11px] text-muted tabular-nums mt-0.5" dir="ltr">
+                  <span className="block text-[12px] text-muted tabular-nums mt-0.5" dir="ltr">
                     {i + 1}
                   </span>
                 </span>

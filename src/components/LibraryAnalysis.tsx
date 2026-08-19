@@ -46,7 +46,7 @@ function Bar({
     <div>
       <div className="flex items-baseline justify-between gap-2 mb-1">
         <span className="text-xs truncate">{label}</span>
-        <span className="text-[11px] text-muted shrink-0 tabular-nums">
+        <span className="text-[12px] text-muted shrink-0 tabular-nums">
           {num(value, locale)}
           {suffix ? ` ${suffix}` : ""} · {p}%
         </span>
@@ -88,7 +88,7 @@ function Split({
       </div>
       <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2">
         {segments.map((s) => (
-          <span key={s.label} className="flex items-center gap-1.5 text-[11px] text-muted">
+          <span key={s.label} className="flex items-center gap-1.5 text-[12px] text-muted">
             <span className={`w-2.5 h-2.5 rounded-full ${s.color}`} aria-hidden />
             {s.label}
             <b className="text-foreground tabular-nums">{num(s.value, locale)}</b>
@@ -104,7 +104,7 @@ function Card({ title, hint, children }: { title: string; hint?: string; childre
   return (
     <section className="bg-surface border border-border rounded-2xl p-4 sm:p-5">
       <h3 className="text-sm font-bold">{title}</h3>
-      {hint && <p className="text-[11px] text-muted mt-0.5 mb-4 leading-relaxed">{hint}</p>}
+      {hint && <p className="text-[12px] text-muted mt-0.5 mb-4 leading-relaxed">{hint}</p>}
       {!hint && <div className="mb-4" />}
       {children}
     </section>
@@ -289,10 +289,10 @@ export async function LibraryAnalysis({ locale }: { locale: Locale }) {
         {headline.map((h) => (
           <div key={h.label} className="bg-surface border border-border rounded-2xl p-3 sm:p-4">
             <Icon name={h.icon} size={18} style={{ color: h.color }} />
-            <div className="text-lg sm:text-2xl font-extrabold mt-1.5 leading-none tabular-nums">
+            <div className="text-[20px] sm:text-2xl font-rabold mt-1.5 leading-none tabular-nums">
               {h.value}
             </div>
-            <div className="text-[11px] text-muted mt-1 leading-tight">{h.label}</div>
+            <div className="text-[12px] text-muted mt-1 leading-tight">{h.label}</div>
           </div>
         ))}
       </div>
@@ -336,7 +336,7 @@ export async function LibraryAnalysis({ locale }: { locale: Locale }) {
                     </span>
                     {titleByShow.get(id)}
                   </span>
-                  <span className="text-[11px] text-muted shrink-0 tabular-nums">
+                  <span className="text-[12px] text-muted shrink-0 tabular-nums">
                     {t.diaryEpsGrouped(n)}
                   </span>
                 </div>

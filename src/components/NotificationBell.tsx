@@ -102,7 +102,7 @@ export function NotificationBell({
         {count > 0 && (
           <span
             aria-label={t.notifUnreadAria(count)}
-            className="absolute -top-0.5 -end-0.5 grid place-items-center min-w-[18px] h-[18px] px-1 rounded-full bg-accent text-[color:var(--on-accent)] text-[11px] font-bold tabular-nums"
+            className="absolute -top-0.5 -end-0.5 grid place-items-center min-w-[18px] h-[18px] px-1 rounded-full bg-accent text-[color:var(--on-accent)] text-[12px] font-bold tabular-nums"
             dir="ltr"
           >
             {num(count, locale)}
@@ -190,8 +190,8 @@ export function NotificationBell({
                       size={36}
                     />
                     <span className="min-w-0 flex-1">
-                      <span className="block text-[13px] leading-snug">{line(s)}</span>
-                      <span className="block text-[11px] text-muted mt-0.5">
+                      <span className="block text-[12px] leading-snug">{line(s)}</span>
+                      <span className="block text-[12px] text-muted mt-0.5">
                         {timeAgo(s.at, t)}
                       </span>
                     </span>

@@ -61,7 +61,7 @@ export function AddWorksToList({
       type="button"
       onClick={run}
       disabled={pending}
-      className={`inline-flex items-center gap-1.5 shrink-0 rounded-full border border-border bg-surface px-3.5 h-9 text-[13px] font-semibold text-foreground/85 hover:text-accent hover:border-accent/50 active:scale-95 disabled:opacity-50 transition ${className}`}
+      className={`inline-flex items-center gap-1.5 shrink-0 rounded-full border border-border bg-surface px-3.5 h-9 text-[12px] font-semibold text-foreground/85 hover:text-accent hover:border-accent/50 active:scale-95 disabled:opacity-50 transition ${className}`}
     >
       <Icon name="plus" size={16} strokeWidth={2.2} />
       {text}

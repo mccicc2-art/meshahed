@@ -105,12 +105,12 @@ export function Inbox({
               <span className="min-w-0 flex-1">
                 <span className="flex items-center gap-2">
                   <span className="text-sm font-semibold truncate flex-1">{name}</span>
-                  <span className="text-[11px] text-muted shrink-0">
+                  <span className="text-[12px] text-muted shrink-0">
                     {formatDateShort(c.lastAt, t)}
                   </span>
                 </span>
                 <span
-                  className={`block text-[13px] truncate ${
+                  className={`block text-[12px] truncate ${
                     c.unread > 0 ? "text-foreground font-medium" : "text-muted"
                   }`}
                 >
@@ -120,7 +120,7 @@ export function Inbox({
               {c.unread > 0 && (
                 <span
                   aria-label={t.communityUnreadAria(c.unread)}
-                  className="shrink-0 grid place-items-center min-w-[18px] h-[18px] px-1 rounded-full bg-accent text-[color:var(--on-accent)] text-[11px] font-bold tabular-nums"
+                  className="shrink-0 grid place-items-center min-w-[18px] h-[18px] px-1 rounded-full bg-accent text-[color:var(--on-accent)] text-[12px] font-bold tabular-nums"
                   dir="ltr"
                 >
                   {num(c.unread, locale)}
@@ -138,7 +138,7 @@ export function Inbox({
           الضغط يفتح ورقةَ اختيار عمل، فتبدأ المحادثة بمشاركةٍ (D-051 قائمة) */}
       {startShown.length > 0 && (
         <section className="mt-5">
-          <p className="text-[11px] font-semibold text-muted uppercase tracking-wide px-1 mb-1.5">
+          <p className="text-[12px] font-semibold text-muted uppercase tracking-wide px-1 mb-1.5">
             {t.convStartSection}
           </p>
           <ul className="divide-y divide-[color:var(--divider)]">
@@ -163,7 +163,7 @@ export function Inbox({
                     />
                     <span className="min-w-0 flex-1">
                       <span className="block text-sm font-semibold truncate">{name}</span>
-                      <span className="block text-[13px] text-muted truncate">
+                      <span className="block text-[12px] text-muted truncate">
                         {t.convStartRowHint}
                       </span>
                     </span>
@@ -433,10 +433,10 @@ function ConvBubble({ event, locale }: { event: ConvEvent; locale: Locale }) {
             <Icon name="list" size={15} />
           </span>
           <span className="min-w-0 flex-1">
-            <span className="block text-[13px] font-semibold truncate group-hover:text-accent transition">
+            <span className="block text-[14px] font-semibold truncate group-hover:text-accent transition">
               {event.list_name ?? "—"}
             </span>
-            <span className="block text-[11px] text-muted">
+            <span className="block text-[12px] text-muted">
               {event.item_count
                 ? `${t.convListBadge} · ${t.personWorksCount(event.item_count)}`
                 : t.convListBadge}
@@ -476,10 +476,10 @@ function ConvBubble({ event, locale }: { event: ConvEvent; locale: Locale }) {
           )}
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block text-[13px] font-semibold truncate group-hover:text-accent transition">
+          <span className="block text-[14px] font-semibold truncate group-hover:text-accent transition">
             {event.title ?? "—"}
           </span>
-          <span className="block text-[11px] text-muted">
+          <span className="block text-[12px] text-muted">
             {event.media_type === "tv" ? t.typeSeries : t.typeMovie}
           </span>
         </span>
@@ -546,7 +546,7 @@ function ReplyBox({
         type="button"
         onClick={submit}
         disabled={!value.trim() || pending}
-        className="shrink-0 px-4 h-9 rounded-full bg-accent text-[color:var(--on-accent)] text-[13px] font-bold disabled:opacity-40 hover:brightness-110 active:scale-95 transition"
+        className="shrink-0 px-4 h-9 rounded-full bg-accent text-[color:var(--on-accent)] text-[12px] font-bold disabled:opacity-40 hover:brightness-110 active:scale-95 transition"
       >
         {t.shareReplySend}
       </button>

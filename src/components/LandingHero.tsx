@@ -52,7 +52,7 @@ export async function LandingHero({
             style={{ background: "var(--gradient-brand)" }}
             aria-hidden
           />
-          <span className="text-[13px] font-semibold text-muted" dir="ltr">
+          <span className="text-[12px] font-semibold text-muted" dir="ltr">
             {t.taglineEn}
           </span>
         </div>
@@ -87,7 +87,7 @@ export async function LandingHero({
               في الجذر يُخفى لأن التذييل العام يظهر هناك في آخر الصفحة،
               فلا يتكرّر السطر مرّتين. */}
           {showWordmark && (
-            <p className="mt-3.5 text-[13px] tracking-wide text-muted/70" dir="ltr">
+            <p className="mt-3.5 text-[12px] tracking-wide text-muted/70" dir="ltr">
               {t.footer}
             </p>
           )}
@@ -95,7 +95,7 @@ export async function LandingHero({
           {/* الوثيقتان تحت زرّ الدخول لا في الإعدادات: هذا هو الموضع الذي
               يبحث فيه من لم يسجّل بعد، وهو الرابط الذي تطلبه شاشة موافقة
               Google ويفتحه المراجع بلا حساب. */}
-          <p className="mt-2.5 text-[11px] text-muted/50 flex items-center justify-center gap-2">
+          <p className="mt-2.5 text-[12px] text-muted/50 flex items-center justify-center gap-2">
             <Link href="/privacy" className="hover:text-muted transition">
               {locale === "ar" ? "الخصوصية" : "Privacy"}
             </Link>

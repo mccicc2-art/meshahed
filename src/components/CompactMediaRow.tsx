@@ -64,7 +64,7 @@ export function CompactMediaRow({
       {chip != null ? (
         <span className="grid place-items-center shrink-0 w-14 h-14 rounded-xl border border-border bg-surface-2 px-1">
           <span
-            className="text-[11px] font-extrabold uppercase leading-tight text-center text-accent"
+            className="text-[12px] font-extrabold uppercase leading-tight text-center text-accent"
             dir="auto"
           >
             {chip}

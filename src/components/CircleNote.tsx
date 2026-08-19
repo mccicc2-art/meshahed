@@ -29,7 +29,7 @@ export function CircleNote({ circle, locale }: { circle: TitleCircle; locale: Lo
       : null;
 
   return (
-    <p className="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs sm:text-[13px] text-muted">
+    <p className="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs sm:text-[12px] text-muted">
       <Icon name="people" size={14} />
       <span>{t.circleWatched(circle.watchers)}</span>
       {avg && (

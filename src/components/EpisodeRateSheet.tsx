@@ -145,7 +145,7 @@ export function EpisodeRateSheet({
                 </button>
               ))}
               {rating > 0 && (
-                <span className="text-[13px] text-muted ms-2 tabular-nums">
+                <span className="text-[12px] text-muted ms-2 tabular-nums">
                   {t.rateOutOf(rating)}
                 </span>
               )}
@@ -171,7 +171,7 @@ export function EpisodeRateSheet({
                   type="button"
                   onClick={remove}
                   disabled={pending}
-                  className="text-[13px] text-muted hover:text-foreground transition"
+                  className="text-[12px] text-muted hover:text-foreground transition"
                 >
                   {t.epRateRemove}
                 </button>

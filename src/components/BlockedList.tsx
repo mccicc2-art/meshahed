@@ -59,7 +59,7 @@ export function BlockedList({ locale }: { locale: Locale }) {
         /* هيكلٌ بهندسة الصفّ الحقيقي (D-046): لا قفزة حين تصل القائمة */
         <div className="h-12 rounded-xl bg-surface-2 animate-pulse" />
       ) : items.length === 0 ? (
-        <p className="text-[13px] text-muted">{t.blockedEmpty}</p>
+        <p className="text-[12px] text-muted">{t.blockedEmpty}</p>
       ) : (
         <ul className="divide-y divide-[color:var(--divider)]">
           {items.map((p) => {

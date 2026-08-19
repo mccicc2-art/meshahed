@@ -417,14 +417,14 @@ export function ContinueCard({
               <p className="text-3xl mb-2" aria-hidden>
                 🎉
               </p>
-              <p className="text-base font-extrabold leading-snug">
+              <p className="text-[20px] font-bold leading-snug">
                 {t.finishedShowTitle(title)}
               </p>
               <p className="text-xs text-muted mt-1.5">{t.finishedShowSub(aired)}</p>
 
               {/* التقييم داخل الورقة: عشر نجوم، لمسة واحدة تحفظ وتُغلق */}
               <p
-                className={`text-[13px] font-bold mt-5 transition ${
+                className={`text-[14px] font-bold mt-5 transition ${
                   rated ? "text-[color:var(--success)]" : ""
                 }`}
                 role="status"
@@ -442,7 +442,7 @@ export function ContinueCard({
                       disabled={rated}
                       onClick={() => rate(n)}
                       aria-label={`${n}/10`}
-                      className={`text-[21px] leading-none px-0.5 transition active:scale-125 ${
+                      className={`text-[20px] leading-none px-0.5 transition active:scale-125 ${
                         on ? "" : "opacity-30"
                       }`}
                       style={{ color: on ? "var(--verified)" : "var(--muted, #A3A3A3)" }}
@@ -453,7 +453,7 @@ export function ContinueCard({
                 })}
               </div>
               {stars > 0 && (
-                <p className="text-[11px] text-muted mt-1.5 tabular-nums" dir="ltr">
+                <p className="text-[12px] text-muted mt-1.5 tabular-nums" dir="ltr">
                   {stars}/10
                 </p>
               )}

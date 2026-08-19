@@ -436,7 +436,7 @@ export function DiscoverFilters({
                   /* الرقاقة هنا زرُّ إلغاءٍ لا زرُّ اختيار، ولذلك لم تأخذ
                      `chipClass`: الممتلئة بلون الهوية تعني «مختار، المسني
                      لتُلغيه» — وهذه معناها الإلغاء وحده. حدٌّ خفيف و× ظاهرة */
-                  className="flex items-center gap-1.5 rounded-full border border-accent/40 bg-accent/10 text-accent px-3 py-1.5 text-[13px] font-semibold hover:bg-accent/20 active:scale-[0.97] transition"
+                  className="flex items-center gap-1.5 rounded-full border border-accent/40 bg-accent/10 text-accent px-3 py-1.5 text-[14px] font-semibold hover:bg-accent/20 active:scale-[0.97] transition"
                 >
                   <span>{c.label}</span>
                   <Icon name="close" size={13} strokeWidth={2.4} />
@@ -466,7 +466,7 @@ export function DiscoverFilters({
                       std: null,
                     })
                   }
-                  className="rounded-full border border-border text-muted hover:text-foreground hover:border-accent/50 px-3 py-1.5 text-[13px] font-semibold transition"
+                  className="rounded-full border border-border text-muted hover:text-foreground hover:border-accent/50 px-3 py-1.5 text-[12px] font-semibold transition"
                 >
                   {t.browseClearAll}
                 </button>

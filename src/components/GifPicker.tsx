@@ -109,9 +109,9 @@ export function GifPicker({
         {/* **ولكلِّ فراغٍ نصُّه** (D-350): «لا نتيجة» غيرُ «الخدمةُ
             معطَّلة» — **وغيابُ المفتاح تعطيلٌ صامتٌ لا عطل** (D-077). */}
         {loaded && rows.length === 0 && (
-          <p className="mt-4 text-[13px] text-muted text-center">{q ? t.gifNone : t.gifOff}</p>
+          <p className="mt-4 text-[12px] text-muted text-center">{q ? t.gifNone : t.gifOff}</p>
         )}
-        {!loaded && <p className="mt-4 text-[13px] text-muted text-center">{t.gifLoading}</p>}
+        {!loaded && <p className="mt-4 text-[12px] text-muted text-center">{t.gifLoading}</p>}
         {/* **والإسنادُ شرطٌ تعاقديّ** كإسناد TMDB — **ومن يعطينا محتوًى
             يُذكر** (a01). */}
         <p className="mt-3 text-[10px] text-muted text-center">{t.gifCredit}</p>

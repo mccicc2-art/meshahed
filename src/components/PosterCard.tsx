@@ -189,14 +189,14 @@ export function PosterCard({
         )}
         {badge && (
           <span
-            className="absolute top-2 start-2 text-[11px] font-semibold px-2.5 py-1 rounded-full text-white"
+            className="absolute top-2 start-2 text-[12px] font-semibold px-2.5 py-1 rounded-full text-white"
             style={{ background: BADGE_BG[badgeTone] }}
           >
             {badge}
           </span>
         )}
         {typeof count === "number" && count > 0 && (
-          <span className="absolute top-2 end-2 grid place-items-center min-w-6 h-6 px-1.5 rounded-full bg-accent text-[color:var(--on-accent)] text-[11px] font-bold tabular-nums">
+          <span className="absolute top-2 end-2 grid place-items-center min-w-6 h-6 px-1.5 rounded-full bg-accent text-[color:var(--on-accent)] text-[12px] font-bold tabular-nums">
             {count}
           </span>
         )}

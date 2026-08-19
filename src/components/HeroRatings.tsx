@@ -47,8 +47,8 @@ function AgeMark({ rated, label, compact }: { rated: string; label: string; comp
              الأسطرُ تقف على قاعٍ يذوب في `from-background` — أرضيّةٌ
              تتبع الثيم، **والأبيضُ الصلبُ كان يموت عليها في النهاريّ.**
              في الثيمات الداكنة `foreground` أبيضُ عمليّاً فلا يتغيّر شيء. */
-          ? "border-foreground/70 text-foreground px-2 py-[3px] text-[11px]"
-          : "border-border text-muted px-1.5 py-1 text-[11px]"
+          ? "border-foreground/70 text-foreground px-2 py-[3px] text-[12px]"
+          : "border-border text-muted px-1.5 py-1 text-[12px]"
       }`}
     >
       {rated}

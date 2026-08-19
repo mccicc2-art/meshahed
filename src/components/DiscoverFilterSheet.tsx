@@ -257,7 +257,7 @@ export function DiscoverFilterSheet({
           id="disc-tools-panel-do"
           aria-labelledby="disc-tools-tab-do"
         >
-          <p className="text-[13px] font-bold text-muted">{t.browseFiltersGroup}</p>
+          <p className="text-[12px] font-bold text-muted">{t.browseFiltersGroup}</p>
         {/* نافذة الترتيب غادرت الورقة (D-099) والجهة لحقت بها (تبويبات
             الرأس — طلب أحمد 9 Aug): أداتان على نفس السؤال لبس */}
         {/* ===== شبكة المنسدلات — عمودان (طلب المالك، لقطة TMDB) =====

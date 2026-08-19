@@ -221,7 +221,7 @@ export function ProfileForm({
             )}
           </div>
           {coverUrl && (
-            <p className="text-[11px] text-muted mt-1.5">{t.repositionHint}</p>
+            <p className="text-[12px] text-muted mt-1.5">{t.repositionHint}</p>
           )}
 
           <input
@@ -409,7 +409,7 @@ export function ProfileForm({
             {/* العدّاد يظهر عند الاقتراب من الحدّ فقط: رقمٌ دائمٌ تحت حقلٍ
                 يكتب فيه المرء سطراً واحداً ضجيجٌ لا إرشاد */}
             {bio.length >= 130 && (
-              <span className="text-[11px] text-muted tabular-nums shrink-0" dir="ltr">
+              <span className="text-[12px] text-muted tabular-nums shrink-0" dir="ltr">
                 {bio.length}/160
               </span>
             )}

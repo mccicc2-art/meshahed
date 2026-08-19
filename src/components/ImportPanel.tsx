@@ -361,7 +361,7 @@ export function ImportPanel({
                 </button>
               )}
             </div>
-            <p className="text-[11px] text-muted mt-2">{src.fileHint}</p>
+            <p className="text-[12px] text-muted mt-2">{src.fileHint}</p>
 
             {busy && mine && (
               <div className="mt-4">
@@ -398,8 +398,8 @@ export function ImportPanel({
                     <p className="text-xs font-bold mb-1">
                       {t.importUnmatchedTitle(num(result.unmatched.length, locale))}
                     </p>
-                    <p className="text-[11px] text-muted mb-2">{t.importUnmatchedHint}</p>
-                    <p className="text-[11px] text-muted leading-relaxed break-words">
+                    <p className="text-[12px] text-muted mb-2">{t.importUnmatchedHint}</p>
+                    <p className="text-[12px] text-muted leading-relaxed break-words">
                       {result.unmatched.join(" · ")}
                     </p>
                   </div>

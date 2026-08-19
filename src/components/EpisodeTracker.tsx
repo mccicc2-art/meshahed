@@ -570,13 +570,13 @@ export function EpisodeTracker({
                             </span>
 
                             <div className="flex-1 min-w-0">
-                              <p className="text-[13px] font-semibold truncate leading-tight">
+                              <p className="text-[12px] font-semibold truncate leading-tight">
                                 <span className="text-muted font-medium tabular-nums">
                                   {e.episode_number}.
                                 </span>{" "}
                                 {e.name}
                               </p>
-                              <p className="text-[11px] text-muted mt-1 truncate sm:hidden">
+                              <p className="text-[12px] text-muted mt-1 truncate sm:hidden">
                                 {metaLine(e, epAired, t)}
                               </p>
                             </div>
@@ -585,7 +585,7 @@ export function EpisodeTracker({
                                 شعار IMDb نفسه (D-093: لا رقم بلا مصدره) */}
                             {showRatings && typeof e.imdb_rating === "number" && (
                               <span
-                                className="shrink-0 inline-flex items-center gap-1 text-[11px] font-bold tabular-nums"
+                                className="shrink-0 inline-flex items-center gap-1 text-[12px] font-bold tabular-nums"
                                 dir="ltr"
                                 aria-label={`IMDb ${e.imdb_rating.toFixed(1)}`}
                               >
@@ -656,7 +656,7 @@ export function EpisodeTracker({
                             onClick={() =>
                               setShownAll((prev) => new Set(prev).add(s.season_number))
                             }
-                            className="w-full py-3 text-[13px] font-bold text-accent hover:bg-surface-2 transition"
+                            className="w-full py-3 text-[14px] font-bold text-accent hover:bg-surface-2 transition"
                           >
                             {t.showRestEps(episodes.length - CHUNK)}
                           </button>

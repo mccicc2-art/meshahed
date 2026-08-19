@@ -118,7 +118,7 @@ export function LibraryToolsSheet({
             <div>
               <label
                 htmlFor="lib-q"
-                className="block text-[13px] font-bold text-muted mb-2"
+                className="block text-[12px] font-bold text-muted mb-2"
               >
                 {t.librarySearchGroup}
               </label>
@@ -143,7 +143,7 @@ export function LibraryToolsSheet({
             </div>
 
             <div>
-              <span className="block text-[13px] font-bold text-muted mb-2">
+              <span className="block text-[12px] font-bold text-muted mb-2">
                 {t.librarySortGroup}
               </span>
               {/* ثلاثة خياراتٍ ظاهرة = مقسّم لا قائمة منسدلة (D-076) */}
@@ -159,7 +159,7 @@ export function LibraryToolsSheet({
                     }}
                     className={segmentedItem(
                       sort === id,
-                      "flex-1 basis-0 min-w-0 px-2 py-2.5 text-[13px]",
+                      "flex-1 basis-0 min-w-0 px-2 py-2.5 text-[14px]",
                       false,
                     )}
                   >
@@ -172,7 +172,7 @@ export function LibraryToolsSheet({
         )}
 
         <div>
-          <span className="block text-[13px] font-bold text-muted mb-2">
+          <span className="block text-[12px] font-bold text-muted mb-2">
             {t.listNewGroup}
           </span>
           <NewListForm locale={locale} onCreated={onClose} />

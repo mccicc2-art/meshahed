@@ -498,7 +498,7 @@ function CommentRow({
               <Link
                 href={reviewHref}
                 prefetch={false}
-                className="ms-auto shrink-0 text-[11px] text-muted tabular-nums hover:text-accent transition"
+                className="ms-auto shrink-0 text-[12px] text-muted tabular-nums hover:text-accent transition"
               >
                 {timeAgoShort(a.updated_at, t)}
               </Link>
@@ -533,7 +533,7 @@ function CommentRow({
               <Link
                 href={titleHref}
                 prefetch={false}
-                className="min-w-0 flex items-center gap-1 truncate text-[13px] text-muted hover:text-accent transition"
+                className="min-w-0 flex items-center gap-1 truncate text-[12px] text-muted hover:text-accent transition"
               >
                 {/* **ورمزُ القائمة قبل اسمها** — السطرُ نفسُه يحمل عملاً
                     مرّةً وقائمةً مرّة، **والقارئُ يجب أن يعرف أيّهما قبل
@@ -543,7 +543,7 @@ function CommentRow({
               </Link>
               {a.rating != null && (
                 <span
-                  className="shrink-0 text-[13px] font-bold text-accent tabular-nums"
+                  className="shrink-0 text-[14px] font-bold text-accent tabular-nums"
                   title={t.rateOutOf(a.rating)}
                 >
                   ★ <span dir="ltr">{a.rating.toFixed(1)}</span>
@@ -765,7 +765,7 @@ function NewsRow({
               <Link
                 href={postHref}
                 prefetch={false}
-                className="ms-auto shrink-0 text-[11px] text-muted tabular-nums hover:text-accent transition"
+                className="ms-auto shrink-0 text-[12px] text-muted tabular-nums hover:text-accent transition"
               >
                 {timeAgoShort(n.published_at, t)}
               </Link>
@@ -794,14 +794,14 @@ function NewsRow({
               <Link
                 href={titleHref}
                 prefetch={false}
-                className="min-w-0 truncate text-[13px] text-muted hover:text-accent transition"
+                className="min-w-0 truncate text-[12px] text-muted hover:text-accent transition"
               >
                 <bdi>{n.title}</bdi>
               </Link>
               <span aria-hidden className="shrink-0 text-muted text-[12px]">
                 ·
               </span>
-              <span className="shrink-0 text-[13px] text-muted">
+              <span className="shrink-0 text-[12px] text-muted">
                 {n.media_type === "tv" ? t.typeSeries : t.typeMovie}
               </span>
             </div>
@@ -824,14 +824,14 @@ function NewsRow({
         <Link
           href={postHref}
           prefetch={false}
-          className="block mt-2 text-[13px] leading-relaxed font-semibold hover:text-accent transition line-clamp-3"
+          className="block mt-2 text-[14px] leading-relaxed font-semibold hover:text-accent transition line-clamp-3"
         >
           {text}
         </Link>
 
         {/* **سطرُ النسبة** (D-213): الحدثُ من الصحافة والجملةُ من عندنا */}
         {src && (
-          <p className="mt-1 text-[11px] text-muted">
+          <p className="mt-1 text-[12px] text-muted">
             {src.url ? (
               <a
                 href={src.url}

@@ -104,7 +104,7 @@ export function DiaryList({
             >
               <span className="min-w-0 flex-1">
                 <span className="block text-sm font-bold">{label}</span>
-                <span className="block text-[11px] text-muted mt-0.5">{countLabel}</span>
+                <span className="block text-[12px] text-muted mt-0.5">{countLabel}</span>
               </span>
               {/* السهم يدور عند الفتح — إشارة الحالة الوحيدة اللازمة */}
               <Icon
@@ -145,10 +145,10 @@ export function DiaryList({
                         </span>
 
                         <span className="min-w-0 flex-1">
-                          <span className="block text-[13px] font-medium truncate leading-tight">
+                          <span className="block text-[14px] font-medium truncate leading-tight">
                             {e.title}
                           </span>
-                          <span className="block text-[11px] text-muted mt-0.5">
+                          <span className="block text-[12px] text-muted mt-0.5">
                             {e.label}
                             {e.minutes > 0 ? ` · ${t.runtimeMin(e.minutes)}` : ""}
                           </span>

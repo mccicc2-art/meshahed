@@ -26,7 +26,7 @@ export function ReadMore({ text, locale }: { text: string; locale: Locale }) {
       {long && (
         <button
           onClick={() => setOpen((v) => !v)}
-          className="mt-1.5 text-[13px] font-bold text-accent hover:brightness-110 transition"
+          className="mt-1.5 text-[14px] font-bold text-accent hover:brightness-110 transition"
         >
           {open ? t.readLess : t.readMore}
         </button>

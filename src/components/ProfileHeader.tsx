@@ -246,7 +246,7 @@ export function ProfileHeader({
 
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 min-w-0">
-            <h1 className="text-lg sm:text-xl font-bold truncate drop-shadow-[0_2px_6px_rgba(0,0,0,0.7)]">
+            <h1 className="text-[22px] sm:text-xl font-bold truncate drop-shadow-[0_2px_6px_rgba(0,0,0,0.7)]">
               {displayName}
             </h1>
             {verified && <VerifiedMark size={17} title={t.verifiedTitle} />}
@@ -270,7 +270,7 @@ export function ProfileHeader({
               فلا يتكسّر مستدعٍ، والعرضُ وحده سقط.) */}
 
           {(show.followers || show.social) && (
-            <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[13px] text-white/75 leading-tight mt-1 drop-shadow">
+            <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[12px] text-white/75 leading-tight mt-1 drop-shadow">
               {/* عدّادا المتابعة **انتقلا من `/people` إلى هنا** (طلب
                   أحمد 9 Aug مساءً). كان هنا رقمٌ واحد يقود إلى الصفحة،
                   فصار رقمين يفتحان قائمتيهما في مكانهما — لأن هذا
@@ -345,11 +345,11 @@ export function ProfileHeader({
                       style={s.color ? { color: s.color } : undefined}
                       className={`shrink-0 ${s.color ? "" : "text-muted"}`}
                     />
-                    <span className="text-[17px] font-bold leading-none tabular-nums">
+                    <span className="text-[20px] font-bold leading-none tabular-nums">
                       {s.value}
                     </span>
                   </span>
-                  <span className="block text-[11px] text-muted mt-1.5 leading-[1.25]">
+                  <span className="block text-[12px] text-muted mt-1.5 leading-[1.25]">
                     {s.label}
                   </span>
                 </>
@@ -387,7 +387,7 @@ export function ProfileHeader({
           يختفي تحت حافّة الصورة على الشاشة العريضة. */}
       {show.level && (
         <div className="relative z-10 mt-5 px-0.5">
-          <p className="text-[13px] font-bold">
+          <p className="text-[14px] font-bold">
             {t.levelLabel(level.level)} ·{" "}
             <span className="text-accent">{levelName(level.level, t)}</span>
           </p>

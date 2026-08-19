@@ -138,7 +138,7 @@ export function Composer({
 
   return (
     <div className="mt-3">
-      {hint && <p className="text-[11px] text-muted mb-1">{hint}</p>}
+      {hint && <p className="text-[12px] text-muted mb-1">{hint}</p>}
       <textarea
         value={body}
         onChange={(e) => setBody(e.target.value.slice(0, 1000))}

@@ -101,7 +101,7 @@ export function LibraryAccessList({ locale }: { locale: Locale }) {
       {picker === "loading" ? (
         <div className="h-12 rounded-xl bg-surface-2 animate-pulse mb-3" />
       ) : picker && candidates.length === 0 ? (
-        <p className="text-[13px] text-muted mb-3">{t.libraryAccessNoCandidates}</p>
+        <p className="text-[12px] text-muted mb-3">{t.libraryAccessNoCandidates}</p>
       ) : picker && candidates.length > 0 ? (
         <ul className="divide-y divide-[color:var(--divider)] border border-border rounded-xl px-3 mb-3 max-h-64 overflow-y-auto">
           {candidates.map((p) => {
@@ -129,7 +129,7 @@ export function LibraryAccessList({ locale }: { locale: Locale }) {
         /* هيكلٌ بهندسة الصفّ الحقيقي (D-046) */
         <div className="h-12 rounded-xl bg-surface-2 animate-pulse" />
       ) : items.length === 0 ? (
-        <p className="text-[13px] text-muted">{t.libraryAccessEmpty}</p>
+        <p className="text-[12px] text-muted">{t.libraryAccessEmpty}</p>
       ) : (
         <ul className="divide-y divide-[color:var(--divider)]">
           {items.map((p) => {

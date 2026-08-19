@@ -68,7 +68,7 @@ export function RailNewBadge({
   return (
     <span
       title={t.railNewAria}
-      className="shrink-0 inline-flex items-center gap-1 rounded-full border border-accent/40 bg-accent/10 px-2 py-0.5 text-[11px] font-bold text-accent"
+      className="shrink-0 inline-flex items-center gap-1 rounded-full border border-accent/40 bg-accent/10 px-2 py-0.5 text-[12px] font-bold text-accent"
     >
       <Icon name="sparkles" size={11} />
       {t.railNew}

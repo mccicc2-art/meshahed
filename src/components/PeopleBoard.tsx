@@ -186,7 +186,7 @@ function RankBadge({ rank, locale }: { rank: number; locale: Locale }) {
   return (
     <span
       aria-hidden
-      className={`absolute -bottom-1 -start-1 w-[22px] h-[22px] rounded-full grid place-items-center text-[11px] font-extrabold tabular-nums ${tone}`}
+      className={`absolute -bottom-1 -start-1 w-[22px] h-[22px] rounded-full grid place-items-center text-[12px] font-extrabold tabular-nums ${tone}`}
     >
       {num(rank, locale)}
     </span>
@@ -602,7 +602,7 @@ export function TopReviews({
                       <Link
                         href={reviewHref}
                         prefetch={false}
-                        className="text-[11px] text-muted tabular-nums hover:text-accent transition"
+                        className="text-[12px] text-muted tabular-nums hover:text-accent transition"
                       >
                         {timeAgoShort(row.createdAt, t)}
                       </Link>
@@ -613,14 +613,14 @@ export function TopReviews({
                           <Link
                             href={titleHref}
                             prefetch={false}
-                            className="min-w-0 truncate text-[13px] hover:text-accent transition"
+                            className="min-w-0 truncate text-[14px] hover:text-accent transition"
                           >
                             <bdi>{title}</bdi>
                           </Link>
                         )}
                         {row.rating > 0 && (
                           <span
-                            className="shrink-0 text-[13px] font-bold text-accent tabular-nums"
+                            className="shrink-0 text-[14px] font-bold text-accent tabular-nums"
                             title={t.rateOutOf(row.rating)}
                           >
                             ★ <span dir="ltr">{row.rating.toFixed(1)}</span>
@@ -643,7 +643,7 @@ export function TopReviews({
                       dir={dirOf(row.review)}
                       className={`block mt-2 ${alignOf(row.review)}`}
                     >
-                      <p className="text-[13px] leading-relaxed text-foreground/85 line-clamp-3">
+                      <p className="text-[14px] leading-relaxed text-foreground/85 line-clamp-3">
                         {row.review}
                       </p>
                     </Link>
