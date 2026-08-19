@@ -1478,9 +1478,21 @@ async function CuratedRails({
           (نفسُ حكم رقائق المجتمع في D-398). **والنافذةُ الثابتة تُغني عن
           `emptyText` أيضاً**: رفٌّ بلا نافذةٍ فارغةٍ لا يحتاج رسالةً
           تشرحها. */}
+      {/* 🆕 ⚖️ **والنافذةُ غادرت اسمَ الرفّ إلى مبدِّله** (D-456، **نقضٌ
+          جزئيٌّ لـD-445 بقياسٍ لا برأي**): بعد أن صار عنوانُ القسم ٢٢px
+          (D-454) **قِيس رأسُ رفِّ الأنمي على ٣٦٠px فبلغ ١٢٧ بكسلاً
+          والعنوانُ ما زال مقصوصاً** — ثلاثةُ أسطرٍ لعنوانٍ واحد.
+
+          **وحجّةُ D-445 تبقى محفوظةً بحرفها**: كان العطلُ أن الرفَّ يقول
+          «هذا الأسبوع» وهو يعرض الشهر — **وجذعٌ بلا نافذةٍ لا يكذب**،
+          **والمبدِّلُ الملاصقُ له يقول أيَّ نافذةٍ أنت فيها.**
+          **والجملةُ الكاملةُ تبقى في صفحة القسم** حيث لا مبدِّل يقولها.
+
+          🔑 **والدرسُ**: **سلّمُ الخطّ يفرض ما يسعه الرأس** — ومن رفع
+          العنوانَ أربعةَ بكسلات فليَعُدّ ما بجواره. */}
       {topMovies.length > 0 && (
         <RankedRail
-          title={t.top10Win(t.top10Movies, rails.m)}
+          title={t.top10Movies}
           lib={lib}
           icon="film"
           items={topMovies}
@@ -1497,7 +1509,7 @@ async function CuratedRails({
       )}
       {topSeries.length > 0 && (
         <RankedRail
-          title={t.top10Win(t.top10Series, rails.s)}
+          title={t.top10Series}
           lib={lib}
           icon="tv"
           items={topSeries}
@@ -1821,7 +1833,7 @@ async function AnimeRails({
           الواجهة** — أي محورٌ حيٌّ في الخادم لا يعرف به أحد. */}
       {topMovies.length > 0 && (
         <RankedRail
-          title={t.top10Win(t.top10AnimeMovies, rails.am)}
+          title={t.top10AnimeMovies}
           lib={lib}
           icon="film"
           items={topMovies}
@@ -1837,7 +1849,7 @@ async function AnimeRails({
       )}
       {topSeries.length > 0 && (
         <RankedRail
-          title={t.top10Win(t.top10AnimeSeries, rails.a)}
+          title={t.top10AnimeSeries}
           lib={lib}
           icon="sparkle-star"
           items={topSeries}
