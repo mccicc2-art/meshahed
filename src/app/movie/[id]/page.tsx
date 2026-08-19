@@ -204,7 +204,7 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
                 فراغٍ قائمٍ خيرٌ من سطرٍ يُضاف.** */}
             <div className="flex items-start gap-3">
               <h1
-                className="text-[22px] sm:text-3xl font-bold leading-tight tracking-tight"
+                className="text-22 sm:text-3xl font-bold leading-tight tracking-tight"
                 style={{
                   filter:
                     "drop-shadow(0 2px 10px color-mix(in srgb, var(--background) 70%, transparent))",
@@ -260,7 +260,7 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
                 {movie.genres.slice(0, 3).map((g) => (
                   <span
                     key={g.id}
-                    className="text-[12px] font-medium bg-surface-2 border border-border px-2.5 py-1 rounded-full"
+                    className="text-12 font-medium bg-surface-2 border border-border px-2.5 py-1 rounded-full"
                   >
                     {g.name}
                   </span>
