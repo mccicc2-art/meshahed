@@ -278,7 +278,7 @@ export default async function LibraryPage({
               <Link
                 key={href}
                 href={href}
-                className="flex items-center justify-center gap-2 rounded-2xl border border-border bg-surface py-3 text-[14px] font-bold transition hover:border-accent/40 active:scale-[0.99]"
+                className="flex items-center justify-center gap-2 rounded-2xl border border-border bg-surface py-3 text-14 font-bold transition hover:border-accent/40 active:scale-[0.99]"
               >
                 <Icon name={icon} size={17} style={{ color: "var(--accent)" }} />
                 {label}
