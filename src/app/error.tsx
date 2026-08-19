@@ -44,7 +44,7 @@ export default function Error({
       </div>
 
       {error.digest && (
-        <p className="text-[12px] text-muted/70 mt-6" dir="ltr">
+        <p className="text-12 text-muted/70 mt-6" dir="ltr">
           {t.errorCode(error.digest)}
         </p>
       )}

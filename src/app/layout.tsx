@@ -7,11 +7,13 @@ import { PullToRefresh } from "@/components/PullToRefresh";
 import { BottomNav } from "@/components/BottomNav";
 import { OfflineSync } from "@/components/OfflineSync";
 import { ToastHost } from "@/components/ToastHost";
+import { TourMount } from "@/components/TourMount";
 import { SwRegister } from "@/components/SwRegister";
 import { cookies } from "next/headers";
 import { getT } from "@/lib/locale";
 import { getDict, isRtl } from "@/lib/i18n";
 import { themeById, themeCss } from "@/lib/themes";
+import { FONT_UI_COOKIE, FONT_CONTENT_COOKIE, fontAttr, sanitizeFontSize } from "@/lib/fontPrefs";
 import { HeaderShell } from "@/components/HeaderShell";
 import { getLocale } from "@/lib/locale";
 import { seoKeywords } from "@/lib/seo";
@@ -80,6 +82,11 @@ export default async function RootLayout({
   const cookieStore = await cookies();
   const theme = themeById(cookieStore.get("theme")?.value);
 
+  /* حجم الخطّ من كوكي كالثيم سواء: الخادم يكتب `data-fs-*` على الجذر
+     قبل أول رسمة فلا وميضَ ولا فرقَ ترطيب. الافتراضي بلا سمةٍ أصلاً. */
+  const fsUi = fontAttr(sanitizeFontSize(cookieStore.get(FONT_UI_COOKIE)?.value));
+  const fsContent = fontAttr(sanitizeFontSize(cookieStore.get(FONT_CONTENT_COOKIE)?.value));
+
   /* هل الزائر مسجَّل؟ فحصُ كوكي الجلسة لا `getUser()` (D-122).
      الجذر صار يعرض صفحة هبوطٍ للزائر غير المسجّل، وشريطُ تبويبات التطبيق
      فوق صفحة تعريفٍ بالمنتج يقود إلى صفحاتٍ كلّها تردّه إلى الدخول.
@@ -96,6 +103,8 @@ export default async function RootLayout({
       lang={locale}
       dir={isRtl(locale) ? "rtl" : "ltr"}
       className="h-full antialiased"
+      data-fs-ui={fsUi}
+      data-fs-content={fsContent}
       suppressHydrationWarning
     >
       <head>
@@ -160,6 +169,9 @@ export default async function RootLayout({
         />
         <OfflineSync />
         <ToastHost />
+        {/* بوّابة الجولة التعريفية — تصمت في الحالة الشائعة، والمحرّك
+            يُحمَّل عند الحاجة وحدها (D-469) */}
+        <TourMount locale={locale} signedIn={signedIn} />
         {/* بصمة البناء تُخبز في الصفحة: بها يعرف التبويب المُستأنَف أنه
             عتيق فيُبدّل نفسه فوراً (علاج وميض «تسجيل الدخول القديم») */}
         <SwRegister build={process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"} />

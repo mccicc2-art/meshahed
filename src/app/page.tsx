@@ -68,6 +68,7 @@ import { LandingHero } from "@/components/LandingHero";
 import { LandingContent } from "@/components/LandingContent";
 import { JsonLd } from "@/components/JsonLd";
 import { siteGraph, faqGraph, seoKeywords } from "@/lib/seo";
+import { OneTimeHint } from "@/components/OneTimeHint";
 
 /**
  * الجذر يعرض صفحة الهبوط للزائر غير المسجّل بدل أن يحوّله (D-122).
@@ -385,6 +386,8 @@ export default async function HomePage() {
         view={prefs.view}
         locale={locale}
       />
+      {/* تلميح أول فتح — يظهر مرةً ثم يصمت (سابقة hintDiscover) */}
+      <OneTimeHint id="home-customize" text={t.hintHome} closeLabel={t.closeLabel} />
       <Suspense
         fallback={
           <div className="space-y-8" aria-hidden>
@@ -1251,7 +1254,7 @@ async function HomeBody({
           recap: recap ? (
             <div key="recap">
               <div className="flex items-center justify-between gap-3 mb-3">
-                <h2 className="flex items-center gap-2 text-[22px] font-bold">
+                <h2 className="flex items-center gap-2 text-22 font-bold">
                   <Icon name="book" size={20} style={{ color: "var(--accent)" }} />
                   {t.recapTitle}
                 </h2>
@@ -1267,7 +1270,7 @@ async function HomeBody({
                 prefetch={false}
                 className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-surface p-4 hover:border-accent/50 active:scale-[0.99] transition"
               >
-                <span className="text-[15px] font-bold leading-snug">
+                <span className="text-15 font-bold leading-snug">
                   {recap.line}
                 </span>
                 <span className="flex shrink-0 -space-x-3 rtl:space-x-reverse">
