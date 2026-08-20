@@ -141,6 +141,16 @@ export default async function RootLayout({
       suppressHydrationWarning
     >
       <head>
+        {/* 🔴 **الوسمُ الذي بلا وجودِه لا تُقرأ صورُ الإقلاع أصلاً** (D-500،
+            بلاغُ أحمد بعد إعادة التثبيت: «ما زالت سوداء»): سفاري لا يقرأ
+            `apple-touch-startup-image` **إلا إذا وُجد
+            `apple-mobile-web-app-capable`** — والمانيفست لا يُغني عنه مهما
+            قال `display: standalone`. **وNext أسقطه من `appleWebApp.capable`
+            وأبقى البديلَ القياسيَّ `mobile-web-app-capable` وحدَه**، فصارت
+            الاثنتا عشرة صورةً مكتوبةً في `<head>` **ولا يقرؤها أحد**،
+            وiOS يرسم خلفيّةَ النظام السوداء. **يُكتب بيدٍ هنا لأن واجهةَ
+            `metadata` لم تعد تكتبه.** */}
+        <meta name="apple-mobile-web-app-capable" content="yes" />
         {/* ألوان الثيم متغيّرات CSS مبنية من قائمة ثابتة في themes.ts — لا مدخلات مستخدم */}
         <style dangerouslySetInnerHTML={{ __html: themeCss(theme) }} />
         {/* هل نحن داخل تطبيقٍ مثبّت؟ سطرٌ واحد قبل أول رسمة.

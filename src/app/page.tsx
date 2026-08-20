@@ -21,8 +21,6 @@ import {
   getMyRatings,
   getMyLists,
   getFriendsWatching,
-  getUnreadSignals,
-  getUnreadShares,
 } from "@/lib/data";
 import {
   getTv,
@@ -62,7 +60,6 @@ import {
 } from "@/lib/homePrefs";
 import { capCards } from "@/lib/cardCount";
 import { densityVars } from "@/lib/density";
-import { getLevel, levelPoints } from "@/lib/level";
 import { WeekStrip, type WeekEntry } from "@/components/WeekStrip";
 import { ShowStatsSync, type ShowStat } from "@/components/ShowStatsSync";
 import { FollowMetaSync, MovieStatsSync } from "@/components/MetaSync";
@@ -135,8 +132,6 @@ export default async function HomePage() {
     profile,
     movieProgress,
     myRatings,
-    unreadSignals,
-    unreadMessages,
   ] = await Promise.all([
     getFollows(),
     getWatchSummary(),
@@ -144,17 +139,11 @@ export default async function HomePage() {
     getProfile(),
     getAllMovieProgress(),
     getMyRatings(),
-    /* ⚖️ 🆕 **وثلاثةُ استعلاماتٍ سقطت هنا** (D-434): الإعجاباتُ المستلمة
-       وقائمتا المتابعة وطلباتُها **كانت كلُّها لترويسة الحساب**، **وقد
-       غادرت الرئيسيةَ إلى الملفّ العامّ** — **واستعلامٌ لا يرسم شيئاً
-       ضريبةٌ تُدفع في كلِّ فتحةٍ للتطبيق.** ومكانَها **عدّادُ الجرس**
-       وحدَه، **وهو محسوبٌ أصلاً للشريط العلويّ** فصار `cache()`
-       يجعلهما نداءً واحداً. */
-    getUnreadSignals(),
-    /* 🆕 **وعدُّ الرسائل معه** (D-463): الظرفُ في ترويسة الرئيسية صار
-       بابَ البريد كلِّه بعد سقوط الجرس — **وشارتُه مجموعُ العدّين**،
-       **وكلاهما `cache()` محسوبٌ أصلاً للشريط العلويّ.** */
-    getUnreadShares(),
+    /* ⚖️ 🆕 **وعدّادا البريد سقطا من هنا** (D-502): كانا للظرف في
+       ترويسة الرئيسية، **وقد صار الظرفُ في الشريط العلويّ الذي يُرسم
+       الآن في الرئيسية أيضاً** — **والشريطُ يعدّهما لنفسه**، فبقي هنا
+       نداءان لا يرسمان شيئاً. (وسبقهما ثلاثةٌ سقطت في D-434 للسبب
+       نفسِه: **استعلامٌ لا يرسم شيئاً ضريبةٌ تُدفع في كلِّ فتحة.**) */
   ]);
 
   // مستخدم بلا مكتبة يذهب لشاشة الانضمام — قبل أي رسمٍ أو جلبٍ آخر
@@ -351,10 +340,10 @@ export default async function HomePage() {
     (k) => allHeaderStats[k],
   );
 
-  /* 🆕 **المستوى يعود بلا نداء** (D-439): محسوبٌ من عدّادَي الحلقات
-     والأفلام المقروءَين أعلاه — **ورسمُه قوسٌ حول الصورة لا شريطٌ يأخذ
-     سطراً**، فلا يكلّف بكسلاً من الارتفاع. */
-  const level = getLevel(levelPoints(watchedEpisodeTotal, watchedMovieIds.size));
+  /* 🗑️ **وحسابُ المستوى سقط معه** (D-502): كان مدخلَ الهلال حول صورة
+     الترحيب وحدَها — **وقد غادرت الصورةُ إلى الشريط العلويّ.** ورقمُه
+     رخيصٌ (من عدّادَين مقروءَين أصلاً) **فيعود بسطرٍ متى عادت له
+     واجهةٌ تعرضه.** */
 
   const displayName = profile?.nickname || user.email?.split("@")[0] || "";
 
@@ -386,12 +375,8 @@ export default async function HomePage() {
       />
       <HomeHeader
         displayName={displayName}
-        avatarUrl={profile?.avatar_url ?? null}
-        avatarPos={profile?.avatar_pos ?? null}
-        unread={unreadSignals + unreadMessages}
         stats={headerStats}
         showStats={prefs.stats}
-        levelPercent={level.percent}
         view={prefs.view}
         locale={locale}
       />
