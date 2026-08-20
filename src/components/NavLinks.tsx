@@ -3,10 +3,13 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { getDict, type Locale } from "@/lib/i18n";
+import { usePrefetchOnIntent } from "@/lib/prefetchIntent";
 
 export function NavLinks({ locale }: { locale: Locale }) {
   const pathname = usePathname();
   const t = getDict(locale);
+  // تسخينُ الوجهة عند حومان المؤشّر أو تركيز الكيبورد — نفس صمّامات الشريط السفليّ
+  const prewarm = usePrefetchOnIntent();
 
   const links = [
     { href: "/", label: t.navHome },
@@ -23,6 +26,8 @@ export function NavLinks({ locale }: { locale: Locale }) {
           <Link
             key={l.href}
             href={l.href}
+            onPointerEnter={() => prewarm(l.href)}
+            onFocus={() => prewarm(l.href)}
             aria-current={active ? "page" : undefined}
             className={`px-2.5 sm:px-3 py-2 rounded-lg transition ${
               active

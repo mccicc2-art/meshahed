@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { getDict, type Locale } from "@/lib/i18n";
 import { useKeyboardOpen } from "@/lib/useKeyboard";
+import { usePrefetchOnIntent } from "@/lib/prefetchIntent";
 import { Icon, type IconName } from "./Icon";
 import dynamic from "next/dynamic";
 
@@ -103,6 +104,10 @@ export function BottomNav({
   const t = getDict(locale);
   // الحالة قبل أي خروجٍ مبكّر: ترتيب الخطّافات لا يتغيّر بين تصييرين
   const [searchOpen, setSearchOpen] = useState(false);
+  /* تسخينُ الوجهة لحظةَ النيّة (جولة ٢٠ أغسطس، بديل موجات D-483):
+     `touchstart` يسبق الضغطة بنحو ١٠٠م.ث — تكفي لبدء جلب الوجهة
+     المقصودة وحدها بدل تسخين الخمس جميعاً عند الفتح */
+  const prewarm = usePrefetchOnIntent();
   /* 🔴 🆕 **والشريطُ يغيب ما دام الكيبوردُ مفتوحاً** (D-359، بلاغُ أحمد:
      «إذا ضغطت على خيار رد ليه يطلع الدوك الي تحت الى فوق الكيبورد»).
 
@@ -261,6 +266,9 @@ export function BottomNav({
               aria-label={label[key]}
               title={label[key]}
               className={face_cls}
+              onTouchStart={() => prewarm(href)}
+              onPointerEnter={() => prewarm(href)}
+              onFocus={() => prewarm(href)}
             >
               {face}
             </Link>

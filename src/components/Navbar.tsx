@@ -13,15 +13,19 @@ import { buttonClass } from "./ui/Button";
 
 export async function Navbar() {
   const { locale, t } = await getT();
-  const user = await getUser();
-  const profile = user ? await getProfile() : null;
-  /* عدّاد الجرس مع بيانات الترويسة نفسها (D-125): نداءُ عدٍّ واحد خفيف،
-     والأسطر لا تُحمَّل إلا لمن فتح. الجرس في الترويسة لا في الشريط
-     السفليّ — ذاك أربعة تبويبات لا خامس لها (قاعدة 7، D-051). */
-  const unreadSignals = user ? await getUnreadSignals() : 0;
-  /* عدّادُ الرسائل مع نفس الموجة (D-187): نداءٌ خفيف بجانب نداء الجرس،
-     ولا يُحمَّل خيطٌ واحد لرسم رقم — نفسُ تقسيم D-125. */
-  const unreadMessages = user ? await getUnreadShares() : 0;
+  /* موجةٌ واحدة لا أربعُ رحلاتٍ متسلسلة (جولة ٢٠ أغسطس): كانت
+     `getUser` ثم البروفايل ثم العدّادان تتوالى — أربعُ رحلاتٍ قبل أن
+     يكتمل الشريط في كلِّ تحميل مستند. كلُّها ذاتيّةُ الحراسة (تعود
+     null/0 للزائر عبر RLS)، فتنطلق معاً ويحكم أبطؤها وحده.
+     عدّاد الجرس مع بيانات الترويسة نفسها (D-125)، وعدّادُ الرسائل مع
+     الموجة نفسها (D-187) — الأسطرُ لا تُحمَّل إلا لمن فتح، والجرس في
+     الترويسة لا في الشريط السفليّ (قاعدة 7، D-051). */
+  const [user, profile, unreadSignals, unreadMessages] = await Promise.all([
+    getUser(),
+    getProfile(),
+    getUnreadSignals(),
+    getUnreadShares(),
+  ]);
   const displayName = profile?.nickname || user?.email?.split("@")[0] || "";
 
   // زائرٌ غير مسجّل: اسمُ المنتج وحده وعلمُ اللغة في الطرف — لا شعار
