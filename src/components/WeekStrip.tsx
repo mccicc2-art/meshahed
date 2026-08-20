@@ -11,18 +11,35 @@ export interface WeekEntry {
 }
 
 /**
- * شريط الأيام السبعة القادمة.
+ * شريطُ الأيام القادمة.
  *
- * سبعة أعمدة ثابتة تملأ العرض بلا تمرير — التقويم يُقرأ بالنظرة لا
- * بالسحب. واليوم الذي فيه حلقة يُلوَّن، والفارغ يبقى باهتاً: الفراغ نفسه
- * معلومة («ما فيه شيء الأربعاء»)، ولو أخفيناه لضاع معناه.
+ * اليومُ الذي فيه حلقة يُلوَّن، والفارغ يبقى باهتاً: **الفراغُ نفسُه
+ * معلومة** («ما فيه شيء الأربعاء»)، ولو أخفيناه لضاع معناه.
+ *
+ * ⚖️ 🆕 **وصار يُمرَّر بأسبوعين لا يقف عند سبعة** (D-491، طلبُ أحمد:
+ * «أحتاج أقدر أكرّره بيدي وأشوف الأسبوع اللي بعده — يكون سموث أقدر
+ * أمرّر وأوقف براحتي على أي يوم»).
+ *
+ * **ونقضُ «سبعةُ أعمدةٍ ثابتةٍ بلا تمرير» مسجَّل** — وحجّتُها كانت
+ * «التقويمُ يُقرأ بالنظرة لا بالسحب». **وهي تصحّ للأسبوع الجاري
+ * وتسكت عمّا بعده**: من رأى «الأحد فيه حلقة» سأل مباشرةً «وبعده؟»،
+ * **وسؤالٌ بلا جوابٍ في الشاشة هو سببُ السحب.**
+ *
+ * **والسبعةُ تبقى هي المرئيّة**: عرضُ الخانة `(100% - الفجوات) / 7`،
+ * **فالأسبوعُ الأوّلُ يملأ الشاشة كما كان** والثاني خلفه — **فلا
+ * يتغيّر شيءٌ لمن لا يسحب** (D-152).
+ *
+ * **و«يقف براحته على أي يوم»** = `snap-x` بـ`snap-start` على كلِّ
+ * خانة: **الالتقاطُ على اليوم لا على الأسبوع** — فيقف حيث رفع إصبعه.
+ * **و`overscroll-x-contain`** كي لا يبتلع السحبُ الأفقيُّ إيماءةَ
+ * الرجوع في iPhone (عُرفُ صفوف التطبيق كلِّها).
  */
 export function WeekStrip({
   days,
   entries,
   locale,
 }: {
-  /** سبعة تواريخ متتابعة تبدأ من اليوم */
+  /** تواريخُ متتابعةٌ تبدأ من اليوم — أربعةَ عشرَ اليوم (D-491) */
   days: { date: string; weekday: string; dayNum: string }[];
   entries: WeekEntry[];
   locale: Locale;
@@ -42,7 +59,8 @@ export function WeekStrip({
       </h2>
       <p className="text-12 text-muted mb-3">{t.weekSub}</p>
 
-      <div className="grid grid-cols-7 gap-1">
+      {/* الحشوةُ السفليّةُ للالتقاط: بلا `pb` يُقصّ ظلُّ الحدّ المضيء */}
+      <div className="flex gap-1 overflow-x-auto overscroll-x-contain snap-x snap-mandatory scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {days.map((d, i) => {
           const list = byDay.get(d.date) ?? [];
           const has = list.length > 0;
@@ -66,20 +84,26 @@ export function WeekStrip({
             </>
           );
 
+          /* **سبعةٌ في الشاشة والباقي خلفها**: العرضُ نسبةٌ من مجال
+             التمرير لا رقمٌ ثابت، **فيصحّ على كلِّ مقاس** — وستُّ
+             فجواتٍ بـ4px بين السبع المرئيّة (`1.5rem`). */
+          const cell =
+            "snap-start shrink-0 w-[calc((100%-1.5rem)/7)] rounded-xl px-1 py-2 text-center";
+
           return has ? (
             <Link
               key={d.date}
               href={`/show/${first.showTmdbId}`}
               prefetch={false}
               title={list.map((e) => `${e.title} — ${e.label}`).join("\n")}
-              className="rounded-xl border border-accent-2/35 bg-accent-2/[0.06] px-1 py-2 text-center hover:border-accent-2 transition"
+              className={`${cell} border border-accent-2/35 bg-accent-2/[0.06] hover:border-accent-2 transition`}
             >
               {body}
             </Link>
           ) : (
             <div
               key={d.date}
-              className="rounded-xl border border-border bg-surface px-1 py-2 text-center opacity-60"
+              className={`${cell} border border-border bg-surface opacity-60`}
             >
               {body}
             </div>

@@ -8,6 +8,7 @@ import { getDict, num, type Locale } from "@/lib/i18n";
 import { curatedName } from "@/lib/universes";
 import { ListSaveHeart } from "./ListSaveHeart";
 import { ListRateStar } from "./ListRateStar";
+import { MarqueeText } from "./MarqueeText";
 import type { PublicListCard } from "@/lib/data";
 
 /**
@@ -286,14 +287,22 @@ export function ListCardShell({
     <>
       <span className="flex items-center gap-1.5 text-14 font-bold">
         {icon}
-        {/* 🆕 **سطران بحدٍّ أقصى و`dir="auto"`** (D-443، المرحلة ٥:
-            «معالجة العناوين العربية والإنجليزية · حد أقصى سطران»):
-            **القصُّ في سطرٍ واحد يبتلع نصفَ الاسم العربيّ** لأنه أعرضُ
-            حرفاً، **والاتجاهُ المستنتَج يمنع قلبَ علامات اسمٍ إنجليزيٍّ
-            في صفحةٍ عربيّة.** */}
-        <span className="min-w-0 flex-1 line-clamp-2 leading-tight" dir="auto">
-          {name}
-        </span>
+        {/* ⚖️ 🆕 **سطرٌ واحدٌ يمشي لا سطران يُقصّان** (D-486 امتداداً،
+            طلبُ أحمد ٢٠ أغسطس: «حتى في اللستات في كل مكان — العنوان ما
+            أبغاه ياخذ سطرين، هو سطر واحد وإذا ما يكفي يتحرّك الكلام»).
+            **ونقضُ «حدّ أقصى سطران» من D-443** — **وحجّتُها كانت أنّ
+            القصَّ في سطرٍ واحد يبتلع نصفَ الاسم العربيّ**، **والمشيُ
+            هو الجوابُ لا سطرٌ ثانٍ**: الاسمُ يُقرأ كاملاً ولا تتفاوت
+            البطاقاتُ في الارتفاع. **و`dir="auto"` باقٍ بحرفه** (القاعدة
+            ١٧) — وهو الآن معامِلٌ في `MarqueeText`.
+            **وبطاقةُ القائمة واحدةٌ في كلِّ سطح** (D-375/D-383)،
+            **فسطحٌ واحدٌ يُعدَّل يغيّر اكتشفَ والمجتمعَ والمكتبةَ
+            والملفَّ معاً** — وهو ما طلبه بنصّه «في كل مكان». */}
+        <MarqueeText
+          text={name}
+          dir="auto"
+          className="min-w-0 flex-1 leading-tight"
+        />
         {heart}
         {action}
       </span>
