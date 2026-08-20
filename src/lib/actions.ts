@@ -593,6 +593,61 @@ export async function follow(input: {
   revalidatePath(`/${input.mediaType === "tv" ? "show" : "movie"}/${input.tmdbId}`);
 }
 
+/**
+ * 🆕 **«أضف الكلَّ إلى للمشاهدة» — قائمةٌ كاملةٌ في فعلٍ واحد** (D-495،
+ * طلبُ أحمد: «خيار أضف اللستة تو واتش»).
+ *
+ * 🔑 **والعناصرُ تُقرأ هنا بمعرّف القائمة، لا تُستقبل من العميل**:
+ * فعلٌ يقبل مصفوفةَ أعمالٍ من المتصفّح يقبل أيَّ مصفوفة — **والقائمةُ
+ * المعلنةُ مقروءةٌ بسياستها، والخاصّةُ لصاحبها**، فالقاعدةُ نفسُها هي
+ * التي تقرّر ماذا يُضاف (D-011: الحارسُ في SQL لا في الزرّ).
+ *
+ * **والكتابةُ صفوفٌ لا حلقة** (D-471): قائمةُ خمسة عشر عملاً كانت
+ * ستكون خمسَ عشرةَ رحلة، **وهي `upsert` على مفتاحٍ فريدٍ فالمصفوفةُ
+ * تكافئها أثراً** — **والتكرارُ داخل الدفعة يُطوى أوّلاً** لأن Postgres
+ * يرفض إصابةَ الصفِّ مرّتين في أمرٍ واحد.
+ *
+ * ⚠️ **وسقفُ ثلاثمئة**: قائمةُ «أفضل ٢٥٠» موجودةٌ فعلاً، **وفعلٌ بلا
+ * سقفٍ يكتب آلافَ الصفوف بضغطةٍ واحدة.**
+ *
+ * ⚠️ **ولا يمسّ ما شُوهد ولا ما أُوقف**: `upsert` يكتب المتابعةَ وحدَها،
+ * **فعملٌ عندك أصلاً يبقى بحالته** ولا يُعاد إلى «لم يبدأ».
+ */
+export async function followListTitles(listId: string): Promise<number> {
+  const id = String(listId ?? "").slice(0, 64);
+  const { supabase, user } = await requireUser("list-add-all", 8, 60_000);
+
+  const { data } = await supabase
+    .from("user_list_items")
+    .select("tmdb_id, media_type, title, poster_path")
+    .eq("list_id", id)
+    .limit(300);
+
+  const items = (data ?? []) as {
+    tmdb_id: number;
+    media_type: MediaType;
+    title: string | null;
+    poster_path: string | null;
+  }[];
+  if (items.length === 0) return 0;
+
+  const byKey = new Map<string, (typeof items)[number]>();
+  for (const it of items) byKey.set(`${it.media_type}-${it.tmdb_id}`, it);
+
+  const rows = [...byKey.values()].map((it) => ({
+    user_id: user.id,
+    tmdb_id: intId(it.tmdb_id),
+    media_type: asMediaType(it.media_type),
+    title: String(it.title ?? "").slice(0, 300),
+    poster_path: safeImagePath(it.poster_path),
+  }));
+
+  await supabase.from("follows").upsert(rows, { onConflict: "user_id,tmdb_id,media_type" });
+  revalidatePath("/");
+  revalidatePath("/library");
+  return rows.length;
+}
+
 export async function unfollow(input: { tmdbId: number; mediaType: MediaType }) {
   input = { tmdbId: intId(input.tmdbId), mediaType: asMediaType(input.mediaType) };
   const { supabase, user } = await requireUser();

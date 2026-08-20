@@ -49,16 +49,27 @@ const ar = {
   suggestedForYou: "مقترح لك",
   /* عبارات السبب قصيرة عمداً: خانة الملصق ضيّقة، والاسم وحده يحمل المعنى
      في سياق «مقترح لك» — القصير يظهر كاملاً بلا حاجة للحركة أصلاً */
-  /* 🆕 **«لأنك…» لا «شاهدت…»** (D-446، مواصفةُ المرحلة ٦: «Because you
-     loved… / Because you watched…»). **والحرفان يغيّران معنى السطر لا
-     نبرتَه**: «شاهدت فلاناً» تحت ملصقٍ آخرَ خبرٌ عن ماضيك — **يُقرأ
-     أوّلَ وهلةٍ أنه اسمُ العمل أو أنك شاهدتَ هذا** — و«لأنك شاهدت
-     فلاناً» **علّةُ وجود هذا الملصق هنا**، وهي وحدَها ما يبرّر سطراً
-     ثالثاً تحت البطاقة. */
-  recoBecauseFollow: (title: string) => `لأنك تتابع «${title}»`,
-  recoBecauseWatched: (title: string) => `لأنك شاهدت «${title}»`,
-  recoBecauseRated: (title: string) => `لأنك أحببت «${title}»`,
-  recoBecauseGenre: "لأنها من أنواعك المفضّلة",
+  /* ⚖️ 🆕 **«من ‹فلان›» لا «لأنك شاهدت ‹فلان›»** (D-494، طلبُ أحمد ٢٠
+     أغسطس: «كلمة because you watched أو you follow اختصرها From»).
+     **ونقضٌ لصياغةِ D-446 لا لفكرتها**: السطرُ ما زال يقول من أين جاء
+     هذا الترشيح — **والذي سقط هو شرحُ العلاقة** (شاهدت/تتابع/أحببت).
+     **وثلاثُ صيغٍ لسطرٍ عرضُه ملصق كانت تُنفق نصفَه على النحو قبل أن
+     تصل إلى الاسم** — **والاسمُ هو الخبر.**
+     ⚠️ **ومفتاحٌ واحدٌ بدل ثلاثة**: النواتجُ صارت متطابقةً حرفاً،
+     **وثلاثةُ مفاتيحَ تُنتج نصّاً واحداً تتباعد يوم يُعدَّل أحدُها**
+     (D-002). **والتمييزُ باقٍ في البيانات** (`source`) لمن احتاجه. */
+  recoFrom: (title: string) => `من «${title}»`,
+  recoFromGenre: "من أنواعك المفضّلة",
+  /** ⚠️ **مقبولةٌ ولا تُقرأ — لعمرِ التزامٍ واحد** (D-028): مستدعيها في
+      `src/app` يسقط في الرفعة التالية، ثم تُحذف. */
+  recoBecauseFollow: (title: string) => `من «${title}»`,
+  recoBecauseWatched: (title: string) => `من «${title}»`,
+  recoBecauseRated: (title: string) => `من «${title}»`,
+  recoBecauseGenre: "من أنواعك المفضّلة",
+  listAddAll: "أضف الكل",
+  listAddAllAria: "أضف كل أعمال القائمة إلى «للمشاهدة»",
+  listAddAllDone: (n: number) => `أُضيف ${n} إلى «للمشاهدة»`,
+  listAddAllNone: "كلُّها عندك أصلاً",
   trendingWeek: "رائج هذا الأسبوع",
   // تلميحات لمرة واحدة (م٣) + رقاقة النية في البحث
   hintDiscover:
@@ -1842,10 +1853,16 @@ const en: Dict = {
   continueWatching: "Continue Watching",
   comingSoon: "Coming soon",
   suggestedForYou: "Picked for you",
-  recoBecauseFollow: (title: string) => `Because you follow “${title}”`,
-  recoBecauseWatched: (title: string) => `Because you watched “${title}”`,
-  recoBecauseRated: (title: string) => `Because you loved “${title}”`,
-  recoBecauseGenre: "Because it's from your genres",
+  recoFrom: (title: string) => `From “${title}”`,
+  recoFromGenre: "From your genres",
+  recoBecauseFollow: (title: string) => `From “${title}”`,
+  recoBecauseWatched: (title: string) => `From “${title}”`,
+  recoBecauseRated: (title: string) => `From “${title}”`,
+  recoBecauseGenre: "From your genres",
+  listAddAll: "Add all",
+  listAddAllAria: "Add every title in this list to To watch",
+  listAddAllDone: (n: number) => `${n} added to To watch`,
+  listAddAllNone: "You already have them all",
   trendingWeek: "Trending this week",
   hintDiscover:
     "The Filters button hides language, era, platform and rating filters — and week/month/year chips sit on every Top 10 rail.",
