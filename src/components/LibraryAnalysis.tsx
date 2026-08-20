@@ -355,7 +355,13 @@ export async function LibraryAnalysis({
             <Icon name="sparkles" size={20} className="text-accent" />
             {t.analysisTaste}
           </h2>
-          <div className="grid gap-4 sm:gap-6 sm:grid-cols-2">
+          {/* 🆕 **وعمودان على كلِّ مقاسٍ لا من `sm` فصاعداً** (D-503،
+              لقطةُ أحمد بدائرةٍ حمراء على اللوح: «خلّها مثل كذا عشان
+              تصير في صفحة وحدة»): **الأنواعُ الثلاثةُ فوق الحالة**
+              كانت تُنزل ذيلَ التقييمات خارج الشاشة — **ونصفُ عرضٍ يكفي
+              اسمَ نوعٍ ونسبتَه**، والشريطُ الأفقيُّ للحالة أصلاً يعمل
+              في أيِّ عرض. */}
+          <div className="grid grid-cols-2 gap-4 sm:gap-6">
             <div className="space-y-2.5">
               {topGenres.map(([name, count]) => (
                 <div key={name}>
@@ -378,7 +384,7 @@ export async function LibraryAnalysis({
             </div>
 
             {statusTotal > 0 && (
-              <div className={`sm:border-s ${divider} sm:ps-6`}>
+              <div className={`border-s ${divider} ps-4 sm:ps-6`}>
                 <div className="flex h-2.5 rounded-full overflow-hidden bg-surface-2">
                   {[
                     { v: done, c: "bg-[color:var(--success)]" },
@@ -408,21 +414,24 @@ export async function LibraryAnalysis({
               </div>
             )}
           </div>
+          {/* 🆕 ⚖️ **وذيلُ التقييمات دخل اللوحَ نفسَه** (D-503): كان
+              قسماً مستقلّاً تحته بخطٍّ فاصل، **فيقع خارج الشاشة في
+              لقطة أحمد ويُقرأ نصفَ سطر.** **وهو جملةٌ عن ذوقك لا قسمٌ
+              قائمٌ بذاته** — **وسطرٌ واحدٌ لا يستحقّ عنواناً ولا
+              فاصلاً.** */}
+          {ratedTotal > 0 && (
+            <div className={`mt-3 flex items-center gap-3 border-t ${divider} pt-3`}>
+              <span className="flex gap-0.5 shrink-0" aria-hidden>
+                {[0, 1, 2].map((i) => (
+                  <Icon key={i} name="star" size={16} style={{ color: "var(--verified)" }} />
+                ))}
+              </span>
+              <span className="text-12 text-muted">
+                {t.ratedCount(ratedTotal)} · {t.avgRatingLabel(avgAll.toFixed(1))}
+              </span>
+            </div>
+          )}
         </section>
-      )}
-
-      {/* ===== ذيلُ التقييمات ===== */}
-      {ratedTotal > 0 && (
-        <div className={`flex items-center gap-3 border-t ${divider} pt-4`}>
-          <span className="flex gap-0.5 shrink-0" aria-hidden>
-            {[0, 1, 2].map((i) => (
-              <Icon key={i} name="star" size={16} style={{ color: "var(--verified)" }} />
-            ))}
-          </span>
-          <span className="text-12 text-muted">
-            {t.ratedCount(ratedTotal)} · {t.avgRatingLabel(avgAll.toFixed(1))}
-          </span>
-        </div>
       )}
     </div>
   );
