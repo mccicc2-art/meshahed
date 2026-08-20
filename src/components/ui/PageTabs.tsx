@@ -161,7 +161,7 @@ export function PageTabs({
        في التطبيق بما فيها ما لا تبويبات لها، وهذا يمسّ من استعمل المكوّن
        وحده. و`pt-1` باقيةٌ — أربعةُ بكسلات تمنع لصقَ الحروف بالترويسة. */
     <div
-      className={`sticky top-[var(--sticky-top)] z-20 -mt-6 -mx-4 px-4 pt-1 bg-[color:var(--background)]${className ? ` ${className}` : ""}`}
+      className={`chrome-sub sticky top-[var(--sticky-top)] z-20 -mt-6 -mx-4 px-4 pt-1 bg-[color:var(--background)]${className ? ` ${className}` : ""}`}
     >
       <div className="-mx-4 px-4 flex items-stretch gap-2 border-b border-[color:var(--divider)]">
         {/* صمّامُ الأمان: يُمرَّر أفقياً حين لا يسع الصفُّ أسماءه — وبلا
