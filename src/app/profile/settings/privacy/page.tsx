@@ -18,8 +18,6 @@ export default async function Page() {
       <p className="px-1 text-12 text-muted leading-relaxed">{t.settingsPrivacyHint}</p>
 
       <AccountSettings
-        email={user.email ?? ""}
-        initialUsername={p?.username ?? ""}
         locale={locale}
         initialNickname={p?.nickname ?? ""}
         avatarUrl={p?.avatar_url ?? null}
