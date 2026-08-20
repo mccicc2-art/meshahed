@@ -1950,6 +1950,27 @@ export async function setListKind(listId: string, kind: string) {
  * عموديه وتبحث عنه في المصفوفة، فالمفتاح المشوَّه لا يطابق شيئاً — والنخل
  * يمنع وصوله أصلاً. والملكية تحرسها RLS داخل الدالّة لا شرطٌ هنا.
  */
+/**
+ * 🆕 **رايةُ قائمة التشغيل** (D-505، طلبُ أحمد: «يعمل لليست بلاي ليست
+ * وتظهر في كنتنيو واتش»). **كاتبٌ واحدٌ للعمود** (D-462)، وشرطُ
+ * الملكية صريحٌ في الاستعلام كأشقّائه — تعديلٌ لم يصب شيئاً يفشل بصوت.
+ */
+export async function setListPlaylist(listId: string, on: boolean) {
+  listId = uuid(listId);
+  const { supabase, user } = await requireUser();
+  const { data, error } = await supabase
+    .from("user_lists")
+    .update({ is_playlist: !!on, updated_at: new Date().toISOString() })
+    .eq("id", listId)
+    .eq("user_id", user.id)
+    .select("id");
+  if (error) fail(error);
+  if (!data?.length) throw new Error("القائمة غير موجودة / List not found");
+  revalidatePath(`/lists/${listId}`);
+  /* البطاقةُ تسكن الرئيسيةَ — فتتجدّد في الضغطة نفسِها لا في زيارةٍ لاحقة */
+  revalidatePath("/");
+}
+
 export async function reorderList(listId: string, keys: string[]) {
   listId = uuid(listId);
   const clean = (Array.isArray(keys) ? keys : [])

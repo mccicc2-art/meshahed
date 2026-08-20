@@ -3455,6 +3455,8 @@ export async function getList(listId: string): Promise<{
     cover_media_type?: "tv" | "movie" | null;
     /** 🆕 هويّةُ قائمةِ لوبز — الاسمُ يُترجَم عند العرض (دَينُ D-328) */
     source_slug?: string | null;
+    /** 🆕 قائمةُ تشغيلٍ في «تابِع المشاهدة» (D-505) — غائبٌ قبل هجرة ١٢٢ */
+    is_playlist?: boolean | null;
   };
   items: ListItem[];
   ratings: Record<string, number>;
@@ -3469,7 +3471,7 @@ export async function getList(listId: string): Promise<{
        تدرّج. الاستعلامُ الثاني لا يقع إلا في تلك الحالة وحدها. */
     let { data: list } = await supabase
       .from("user_lists")
-      .select(`${BASE}, cover_backdrop, cover_tmdb_id, cover_media_type`)
+      .select(`${BASE}, cover_backdrop, cover_tmdb_id, cover_media_type, is_playlist`)
       .eq("id", listId)
       .maybeSingle();
     if (!list) {
@@ -4358,6 +4360,104 @@ export async function getSavedListsBrief(limit = 6): Promise<SavedListBrief[]> {
       .filter((l) => l.items.length > 0);
   } catch {
     return [];
+  }
+}
+
+/**
+ * 🆕 **قوائمُ التشغيل — قوائمُك أنت التي رفعتَ عليها الراية** (D-505،
+ * طلبُ أحمد: «يعمل لليست بلاي ليست وتظهر في كنتنيو واتش»).
+ *
+ * **ولماذا دالّةٌ ثانيةٌ لا معامِلٌ في `getSavedListsBrief`:** تلك تقرأ
+ * **المحفوظَ من قوائم الآخرين** وتُرشَّح بحدسٍ (٦٠٪ في مكتبتك)، وهذه
+ * تقرأ **قوائمَك أنت برايةٍ صريحة** — **والصريحُ لا يمرّ بحدسِ
+ * الضمنيّ**: من رفع الرايةَ قال «أريدها هناك» فلا تُحجب عنه بنسبة.
+ *
+ * **وتحتمل الهجرةَ غائبة**: قبل ١٢٢ يعيد `eq("is_playlist")` خطأَ
+ * عمودٍ مجهول، فتعود المصفوفةُ فارغةً ولا بطاقة — بلا شاشة خطأ.
+ */
+export async function getMyPlaylistsBrief(limit = 4): Promise<SavedListBrief[]> {
+  try {
+    const supabase = await createClient();
+    const user = await getUser();
+    if (!user) return [];
+
+    const { data: lists } = await supabase
+      .from("user_lists")
+      .select("id, name, source_slug")
+      .eq("user_id", user.id)
+      .eq("is_playlist", true)
+      .order("updated_at", { ascending: false })
+      .limit(limit);
+    if (!lists?.length) return [];
+
+    const ids = lists.map((l) => String(l.id));
+    const { data: items } = await supabase
+      .from("user_list_items")
+      .select("list_id, tmdb_id, media_type, title, poster_path, added_at, sort_order")
+      .in("list_id", ids)
+      .limit(400);
+
+    const byList = new Map<string, ListItem[]>();
+    for (const r of (items ?? []) as (ListItem & { list_id: string })[]) {
+      const arr = byList.get(r.list_id) ?? [];
+      arr.push(r);
+      byList.set(r.list_id, arr);
+    }
+
+    return (lists as { id: string; name: string; source_slug: string | null }[])
+      .map((l) => ({
+        id: l.id,
+        name: l.name,
+        sourceSlug: l.source_slug,
+        /* ترتيبُ القائمة هو ترتيبُ تشغيلها (D-390) — وبابُ تعديله قائمٌ
+           أصلاً: «أعد الترتيب» في صفحة القائمة (`reorderList`). */
+        items: (byList.get(l.id) ?? []).sort(
+          (a, b) =>
+            (a.sort_order ?? 1e9) - (b.sort_order ?? 1e9) ||
+            a.added_at.localeCompare(b.added_at),
+        ),
+      }))
+      .filter((l) => l.items.length > 0);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * 🆕 **معرّفاتُ أفلامك التي تسكن قائمةً — لاستثنائها من «للمشاهدة»
+ * الآليّة** (D-505، طلبُ أحمد بنصّه: «ليست اسمها تو واتش تدخل فيها كل
+ * الأفلام اللي بدون ليست»). **فما وضعتَه في قائمةٍ قد أعلنتَ سياقَه** —
+ * وطابورُ «بلا قائمة» لِما لم يُعلَن له سياق.
+ *
+ * استعلامان مهما كثرت القوائم (D-205)، **وقراءةُ العناصر بـ`pageAll`**
+ * (D-470): مكتبةُ قوائمَ نشطةٌ تتجاوز ألفَ صفٍّ وPostgREST يقصّ بصمت.
+ */
+export async function getMyListedMovieIds(): Promise<Set<number>> {
+  try {
+    const supabase = await createClient();
+    const user = await getUser();
+    if (!user) return new Set();
+
+    const { data: lists } = await supabase
+      .from("user_lists")
+      .select("id")
+      .eq("user_id", user.id)
+      .limit(200);
+    const ids = (lists ?? []).map((l) => String(l.id));
+    if (ids.length === 0) return new Set();
+
+    const rows = await pageAll<{ tmdb_id: number }>((from, to) =>
+      supabase
+        .from("user_list_items")
+        .select("tmdb_id")
+        .in("list_id", ids)
+        .eq("media_type", "movie")
+        .order("tmdb_id", { ascending: true })
+        .range(from, to),
+    );
+    return new Set(rows.map((r) => r.tmdb_id));
+  } catch {
+    return new Set();
   }
 }
 

@@ -1649,6 +1649,11 @@ const ar = {
   listCancel: "تراجع",
   listReorder: "أعد الترتيب",
   listReorderHint: "اسحب من المقبض، ثم «تمّ» لحفظ الترتيب.",
+  /** 🆕 قائمةُ التشغيل (D-505) — صفُّ القلب في قائمة أدوات المالك */
+  listPlaylist: "قائمة تشغيل في «تابِع المشاهدة»",
+  listPlaylistOnState: "تُعرض",
+  listPlaylistOnToast: "صارت تظهر في «تابِع المشاهدة»",
+  listPlaylistOffToast: "أُزيلت من «تابِع المشاهدة»",
   // غلاف القائمة (D-208) — نصوصُ الاختيار والحفظ مشتركةٌ مع D-131
   listCover: "غلاف القائمة",
   listCoverHint:
@@ -3034,6 +3039,10 @@ const en: Dict = {
   listCancel: "Cancel",
   listReorder: "Reorder",
   listReorderHint: "Drag by the handle, then press Done to save the order.",
+  listPlaylist: "Playlist in Continue Watching",
+  listPlaylistOnState: "On",
+  listPlaylistOnToast: "Now showing in Continue Watching",
+  listPlaylistOffToast: "Removed from Continue Watching",
   listCover: "List cover",
   listCoverHint:
     "Pick a title from the list, then one of its backdrops — it becomes the list's face.",
