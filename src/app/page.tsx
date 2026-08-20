@@ -373,7 +373,14 @@ export default async function HomePage() {
       {/* تسخين بقية التبويبات بعد هدوء الرئيسية (طلب أحمد) — أول ضغطة
           تبويب تُعاد من كاش الراوتر لحظياً. البحث ليس بينها: تبويبه
           ورقةٌ تنبثق لا صفحةٌ تُجلب */}
-      <RoutePrewarm routes={["/news", "/library", "/people"]} />
+      <RoutePrewarm
+        routes={["/library", "/news", "/people", "/search"]}
+        laterRoutes={[
+          "/messages",
+          "/profile/settings",
+          ...(profile?.username ? [`/u/${profile.username}`] : []),
+        ]}
+      />
       <HomeHeader
         displayName={displayName}
         avatarUrl={profile?.avatar_url ?? null}
@@ -1060,8 +1067,6 @@ async function HomeBody({
                 href="/library"
                 seeAll={t.seeAll}
                 view={view}
-                /* ثلاثةُ صفوفٍ من مقاس «تابِع المشاهدة» (١٠٦ + فجوة ٨) */
-                peek={334}
                 wide
               >
                 {continueTop.map((i, n) => (
@@ -1101,8 +1106,6 @@ async function HomeBody({
                 href="/library"
                 seeAll={t.seeAll}
                 view={view}
-                /* ثلاثةُ صفوفٍ من مقاس الملصق الصغير (٧٦ + فجوة ٨) */
-                peek={244}
               >
                 {toWatchRow.slice(0, cap(toWatchRow.length)).map((x) =>
                   view === "compact" ? (
@@ -1168,7 +1171,6 @@ async function HomeBody({
                 href="/library"
                 seeAll={t.seeAll}
                 view={view}
-                peek={244}
                 soloFull
                 wide
               >
@@ -1329,7 +1331,6 @@ async function HomeBody({
                   lists={myListCards}
                   locale={locale}
                   title={t.myLists}
-                  stickyHead
                 />
               </div>
             ) : null,
@@ -1347,7 +1348,6 @@ async function HomeBody({
                 icon="people"
                 href="/people"
                 seeAllLabel={t.seeAll}
-                stickyHead
                 action={
                   <RailNewBadge
                     id="friends"
@@ -1447,7 +1447,6 @@ function Section({
   seeAll,
   wide = false,
   view = "visual",
-  peek,
   soloFull = false,
   children,
 }: {
@@ -1466,23 +1465,12 @@ function Section({
    * مرّتين كانا سيفترقان** (قاعدة ٦).
    */
   view?: HomeView;
-  /**
-   * 🆕 **سقفُ الصندوق المضغوط بالبكسل** (D-439، طلبُ أحمد: «أقصى يبان من
-   * أي قائمة ٣ بوسترات، وتكون داخل بوكس مخفي أقدر أمرّر بأصابعي وأستعرض
-   * الباقي بدون ما أنزل بكامل الصفحة»).
-   *
-   * **والوضعُ المضغوط كان يطيل الصفحة لا يقصّرها**: عشرةُ صفوفٍ في
-   * «للمشاهدة» تعني تمريرةً كاملةً قبل الوصول إلى «القادم» — **وهو نقيضُ
-   * ما وُجد له** (D-437: كلُّ شيءٍ في شاشة).
-   *
-   * ⚠️ **والرقمُ بالبكسل لا بعدد الصفوف**: الصفوفُ ليست بارتفاعٍ واحد
-   * (صفُّ «تابِع المشاهدة» أطولُ من صفِّ ملصق)، **وCSS لا تعرف كم
-   * ارتفاعُ ثلاثةِ أبناءٍ قبل أن ترسمهم** — **فيُكتب السقفُ حيث يُعرف
-   * المحتوى.**
-   * ⚠️ **و`overscroll-contain` شرطٌ لا زينة**: بدونها يبتلع الصندوقُ
-   * تمريرتَك ثم يمرّر الصفحةَ خلفه عند حافّته.
-   */
-  peek?: number;
+  /* ⚖️ 🆕 وسقط «صندوقُ الثلاثة صفوف» (peek/D-439) — نقضٌ بطلب أحمد ١٩
+     أغسطس ليلاً بنصّه: «لا تستخدم max-height لتقييد القوائم، لا يوجد
+     تمرير رأسي داخلي، الصفحة نفسها هي منطقة التمرير الرأسية الوحيدة» —
+     **فمنطقتا تمريرٍ رأسيّتان تجعلان الإصبعَ لا يعرف ماذا يحرّك**،
+     وهي نفسُها التي لخبطت السحبَ للتحديث يومَها (D-440). والقوائمُ
+     تبقى مقصوصةً بسقف التفضيلات (`capCards`) لا بصندوق. */
   /**
    * ⚖️ 🆕 **هل تأخذ البطاقةُ الوحيدة العرضَ كلَّه؟** (D-444).
    *
@@ -1524,8 +1512,6 @@ function Section({
       seeAllLabel={seeAll}
       /* المختصر بلا مجالِ تمرير: **قائمةٌ تُقرأ لا صفٌّ يُسحب** */
       bare={view === "compact" || solo}
-      /* 🆕 **رأسُ القسم يقف تحت الترويسة** (D-464) — والملصقُ يمرّ تحته */
-      stickyHead
     >
       {/* 🆕 **وصفٌّ ببطاقةٍ واحدة ليس صفّاً** (D-440، طلبُ أحمد بدائرةٍ
           حمراء حول بطاقة «أكمل المشاهدة»: «كبّر بوستر أكمل المشاهدة»).
@@ -1538,14 +1524,10 @@ function Section({
       {solo ? (
         <div className="w-full">{items[0]}</div>
       ) : view === "compact" ? (
-        <div
-          className={`space-y-2 ${
-            peek
-              ? "overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-              : ""
-          }`}
-          style={peek ? { maxHeight: peek } : undefined}
-        >
+        /* ⚖️ عمودٌ يجري مع الصفحة — لا `max-height` ولا تمريرَ داخليّاً
+           (نقضُ D-439 بطلب أحمد ١٩ أغسطس: «الصفحة نفسها هي منطقة
+           التمرير الرأسية الوحيدة») */
+        <div className="space-y-2">
           {items.map((child, i) => (
             <div key={i}>{child}</div>
           ))}

@@ -194,6 +194,77 @@
   --safe-top: max(env(safe-area-inset-top, 0px), 47px);
 }
 
+/* ============================================================
+   شاشةُ الإقلاع (جولة ١٩ أغسطس ليلاً — «شعار Loopz فور الفتح، لا شاشة
+   سوداء فارغة»). عنصرٌ في HTML الأوّل نفسِه: يُرسم مع أوّل بايتٍ يصل،
+   قبل أيّ جافاسكربت — وسكربتٌ مضمَّنٌ في ذيل القشرة يذيبه لحظةَ اكتمال
+   الهيكل (الترويسة والشريط والهيكل العظميّ كلُّها فوق الشاشة حينها).
+   التنقّلُ الداخليُّ لا يعيد رسمَ التخطيط فلا تظهر فيه إطلاقاً.
+   والخلفيّةُ خلفيّةُ الثيم نفسُها والشعارُ يتبع `--logo-invert` —
+   فالفاتحُ لا يُفاجأ بلوحٍ أسود. ============================================================ */
+#lz-launch {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: grid;
+  place-items: center;
+  background: var(--background);
+  transition: opacity 220ms ease;
+  /* صمّامُ أمان: لو مُنع السكربتُ المضمَّن لأيّ سببٍ تذوب الشاشةُ بعد
+     عشر ثوانٍ بدل أن تحبس الصفحةَ إلى الأبد */
+  animation: lz-failsafe 0.3s ease 10s forwards;
+}
+#lz-launch.lz-out {
+  opacity: 0;
+  pointer-events: none;
+}
+#lz-launch img {
+  width: 148px;
+  height: auto;
+  filter: invert(var(--logo-invert));
+}
+@keyframes lz-failsafe {
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+
+/* ============================================================
+   الكسوةُ الذكيّة — الترويسةُ والشريطُ السفليُّ يختبئان مع النزول
+   ويعودان مع الرجوع (نمطُ X/يوتيوب). `ChromeAutoHide` يكتب السمةَ على
+   الجذر وCSS وحدها تحرّك — لا تصييرَ React مع التمرير.
+   `transform` خالص: لا يتغيّر ارتفاعُ شيءٍ فلا قفزةَ محتوًى ولا فراغَ
+   أسود ولا انزياحَ تمرير.
+   - `.chrome-top`: ما يلتصق برأس النافذة (الترويسة) — يصعد بارتفاعه.
+   - `.chrome-sub`: ما يلتصق تحت الترويسة (تبويبات الصفحات) — يصعد
+     بارتفاعه **وبمسافة مرساته** (`--sticky-top`) معاً وإلا بقي ذيلُه.
+   - `.chrome-bottom`: الشريطُ السفليُّ — يهبط بارتفاعه.
+   ولا `will-change`: تُنشئ صندوقَ احتواءٍ يكسر `fixed` في أبناء
+   الترويسة (قوائم اللغة والبحث). ============================================================ */
+.chrome-top,
+.chrome-sub,
+.chrome-bottom {
+  transition: transform 200ms ease;
+}
+html[data-chrome="hidden"] .chrome-top {
+  transform: translateY(-100%);
+}
+html[data-chrome="hidden"] .chrome-sub {
+  transform: translateY(calc(-100% - var(--sticky-top)));
+}
+html[data-chrome="hidden"] .chrome-bottom {
+  transform: translateY(100%);
+}
+@media (prefers-reduced-motion: reduce) {
+  #lz-launch,
+  .chrome-top,
+  .chrome-sub,
+  .chrome-bottom {
+    transition: none;
+  }
+}
+
 /* سُلَّم الحواف — ثلاث درجات لا ثلاث عشرة قيمة مرتجلة: البطاقة والحقل
    والورقة المنبثقة. الهياكل العظمية تستعمل نفس التوكن فلا يقفز الشكل
    عند وصول المحتوى. (`rounded-card` و`rounded-control` و`rounded-sheet`)

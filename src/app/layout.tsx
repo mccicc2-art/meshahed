@@ -15,8 +15,30 @@ import { getDict, isRtl } from "@/lib/i18n";
 import { themeById, themeCss } from "@/lib/themes";
 import { FONT_UI_COOKIE, FONT_CONTENT_COOKIE, fontAttr, sanitizeFontSize } from "@/lib/fontPrefs";
 import { HeaderShell } from "@/components/HeaderShell";
+import { ChromeAutoHide } from "@/components/ChromeAutoHide";
 import { getLocale } from "@/lib/locale";
 import { seoKeywords } from "@/lib/seo";
+
+/* شاشاتُ إقلاع iOS المثبَّت (جولة ١٩ أغسطس ليلاً): بدونها يفتح تطبيقُ
+   الشاشة الرئيسية على سوادٍ فارغٍ حتى يصل أوّلُ بايت — وهذه هي «الشاشة
+   السوداء» التي بلّغ عنها أحمد بعينها. iOS لا يقبل إلا صورةً بمقاس
+   الجهاز بالضبط، فالقائمةُ تغطّي أجهزةَ iPhone القائمة، والصورةُ نفسُها
+   مطابقةٌ لواجهة `#lz-launch` (خلفيّةٌ سوداء وشعارٌ في المنتصف) —
+   **فالانتقالُ من إقلاع النظام إلى شاشتنا لا يُرى أصلاً.**
+   (w وh بالبكسل الفعليّ، وr كثافةُ الشاشة — يُشتقّ منها استعلامُ الوسائط.) */
+const IOS_SPLASH: { w: number; h: number; r: number }[] = [
+  { w: 750, h: 1334, r: 2 }, // SE2/SE3/8
+  { w: 828, h: 1792, r: 2 }, // XR/11
+  { w: 1080, h: 2340, r: 3 }, // 12/13 mini
+  { w: 1125, h: 2436, r: 3 }, // X/XS/11 Pro
+  { w: 1170, h: 2532, r: 3 }, // 12/13/14
+  { w: 1179, h: 2556, r: 3 }, // 14 Pro/15/16
+  { w: 1206, h: 2622, r: 3 }, // 16 Pro
+  { w: 1242, h: 2688, r: 3 }, // XS Max/11 Pro Max
+  { w: 1284, h: 2778, r: 3 }, // 12/13 Pro Max/14 Plus
+  { w: 1290, h: 2796, r: 3 }, // 14 Pro Max/15 Plus/16 Plus
+  { w: 1320, h: 2868, r: 3 }, // 16 Pro Max
+];
 
 export const viewport: Viewport = {
   themeColor: "#0D0D0D",
@@ -49,7 +71,16 @@ export async function generateMetadata(): Promise<Metadata> {
     category: "entertainment",
     creator: t.brand,
     publisher: t.brand,
-    appleWebApp: { capable: true, title: t.brand, statusBarStyle: "black-translucent" },
+    appleWebApp: {
+      capable: true,
+      title: t.brand,
+      statusBarStyle: "black-translucent",
+      /* شعارُ Loopz من أوّل إطارٍ في التطبيق المثبَّت — انظر IOS_SPLASH */
+      startupImage: IOS_SPLASH.map(({ w, h, r }) => ({
+        url: `/splash/launch-${w}x${h}.png`,
+        media: `(device-width: ${w / r}px) and (device-height: ${h / r}px) and (-webkit-device-pixel-ratio: ${r}) and (orientation: portrait)`,
+      })),
+    },
     icons: {
       icon: [{ url: "/icon-192.png", sizes: "192x192", type: "image/png" }],
       apple: [{ url: "/apple-icon.png", sizes: "180x180", type: "image/png" }],
@@ -122,8 +153,23 @@ export default async function RootLayout({
               "document.documentElement.setAttribute('data-standalone','1')}catch(e){}",
           }}
         />
+        {/* جافاسكربت معطّلة؟ شاشةُ الإقلاع لن تجد من يذيبها — فلا تُرسم */}
+        <noscript>
+          <style>{`#lz-launch{display:none}`}</style>
+        </noscript>
       </head>
       <body className="min-h-full flex flex-col">
+        {/* شاشةُ الإقلاع — في HTML الأوّل نفسِه فتُرسم مع أوّل بايت،
+            قبل أيّ جافاسكربت أو شبكة. سكربتُ الإذابة في ذيل القشرة
+            أدناه، وأنماطُها في globals.css. التنقّلُ الداخليُّ لا يعيد
+            رسمَ التخطيط فلا تظهر فيه. ولمن عطّل جافاسكربت: تُخفى فوراً
+            (noscript في الرأس) فلا تحبس الصفحة. */}
+        <div id="lz-launch" aria-hidden="true">
+          {/* img خام لا next/image: لا وسيطَ تحسينٍ بين الشعار وأوّل
+              إطار، والملفُّ نفسُه مسبَقُ التخزين في الـsw */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/loopz-wordmark.png" alt="" width={720} height={247} />
+        </div>
         {/* رابط تخطّي للتنقّل بلوحة المفاتيح — يظهر عند التركيز فقط */}
         <a
           href="#main"
@@ -167,6 +213,21 @@ export default async function RootLayout({
           locale={locale}
           signedIn={signedIn}
         />
+        {/* إذابةُ شاشة الإقلاع — هنا في ذيل القشرة عمداً: هذا السطرُ لا
+            يُنفَّذ إلا وقد تحلّلت الترويسةُ والشريطُ وهيكلُ الصفحة
+            (loading.tsx) فوق الشاشة — **فالإذابةُ تكشف هيكلاً لا
+            سواداً**، ولا مدّةَ انتظارٍ مكتوبةً بيد. rAF مزدوجة: إطارُ
+            رسمٍ واحدٌ للهيكل تحتها قبل أن تبدأ بالذوبان. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "(function(){var l=document.getElementById('lz-launch');if(!l)return;" +
+              "requestAnimationFrame(function(){requestAnimationFrame(function(){" +
+              "l.classList.add('lz-out');setTimeout(function(){l.remove()},260)})})})();",
+          }}
+        />
+        {/* الكسوةُ الذكيّة — مستمعُ التمرير المركزيّ (chromeRules) */}
+        <ChromeAutoHide />
         <OfflineSync />
         <ToastHost />
         {/* بوّابة الجولة التعريفية — تصمت في الحالة الشائعة، والمحرّك
