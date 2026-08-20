@@ -60,12 +60,6 @@ const ar = {
      (D-002). **والتمييزُ باقٍ في البيانات** (`source`) لمن احتاجه. */
   recoFrom: (title: string) => `من «${title}»`,
   recoFromGenre: "من أنواعك المفضّلة",
-  /** ⚠️ **مقبولةٌ ولا تُقرأ — لعمرِ التزامٍ واحد** (D-028): مستدعيها في
-      `src/app` يسقط في الرفعة التالية، ثم تُحذف. */
-  recoBecauseFollow: (title: string) => `من «${title}»`,
-  recoBecauseWatched: (title: string) => `من «${title}»`,
-  recoBecauseRated: (title: string) => `من «${title}»`,
-  recoBecauseGenre: "من أنواعك المفضّلة",
   listAddAll: "أضف الكل",
   listAddAllAria: "أضف كل أعمال القائمة إلى «للمشاهدة»",
   listAddAllDone: (n: number) => `أُضيف ${n} إلى «للمشاهدة»`,
@@ -1855,10 +1849,6 @@ const en: Dict = {
   suggestedForYou: "Picked for you",
   recoFrom: (title: string) => `From “${title}”`,
   recoFromGenre: "From your genres",
-  recoBecauseFollow: (title: string) => `From “${title}”`,
-  recoBecauseWatched: (title: string) => `From “${title}”`,
-  recoBecauseRated: (title: string) => `From “${title}”`,
-  recoBecauseGenre: "From your genres",
   listAddAll: "Add all",
   listAddAllAria: "Add every title in this list to To watch",
   listAddAllDone: (n: number) => `${n} added to To watch`,
