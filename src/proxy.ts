@@ -1,5 +1,31 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { decodeSessionCookie, sessionCookieParts } from "@/lib/sessionCookie";
+
+/**
+ * ترويسةُ «مالك الردّ» — تسميةُ تقسيمٍ لكاش الصفحات في الـsw (D-514).
+ *
+ * الـService Worker يخزّن HTML شخصيّاً لاحتياط الانقطاع والشبكة
+ * الزاحفة، ولا يستطيع قراءة الكوكي ليعرف صاحبَه. فالخادم يسمّي كلَّ
+ * ردٍّ بثمانية أحرفٍ من `sub` (أو `anon` للزائر، و`opaque` لكوكي
+ * موجودٍ لا يُفكّ) — والـsw يمسح كاشَ الصفحات كلَّه أوّلَ ما يرى
+ * التسميةَ تتغيّر. **تسميةٌ لا سرٌّ ولا صلاحية**: تُرى فقط في متصفّح
+ * صاحبها، وقيمةٌ مزوَّرة أسوأُ ما تفعله مسحُ كاشِ جهازها نفسِه.
+ */
+const OWNER_HEADER = "x-lz-owner";
+
+function ownerLabel(request: NextRequest): string {
+  try {
+    const parts = sessionCookieParts(request.cookies.getAll());
+    if (parts.length === 0) return "anon";
+    const claims = decodeSessionCookie(parts);
+    // كوكي موجودٌ لا يُفكّ: تسميةٌ خاصةٌ به — تخالف أيَّ sub سابقٍ
+    // فتمسح، وهي الجهة الآمنة من الخطأ
+    return claims ? claims.sub.slice(0, 8) : "opaque";
+  } catch {
+    return "opaque";
+  }
+}
 
 // Next.js 16 renamed Middleware to Proxy.
 // وظيفته الوحيدة هنا: تجديد كوكي جلسة Supabase قبل انتهائها.
@@ -39,6 +65,10 @@ function needsRefresh(cookieValue: string | undefined): boolean {
 
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
+  /* تسميةُ المالك على كلِّ ردٍّ يمرّ بالوسيط — انظر D-514 أعلاه.
+     تُكتب هنا وعلى نسخة الردّ التي قد يعيد التجديدُ إنشاءها أدناه. */
+  const owner = ownerLabel(request);
+  response.headers.set(OWNER_HEADER, owner);
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -70,6 +100,8 @@ export async function proxy(request: NextRequest) {
       setAll(cookiesToSet) {
         cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
         response = NextResponse.next({ request });
+        // الردُّ أُعيد إنشاؤه — التسميةُ تُعاد معه وإلا سقطت عن ردود التجديد
+        response.headers.set(OWNER_HEADER, owner);
         cookiesToSet.forEach(({ name, value, options }) =>
           response.cookies.set(name, value, options),
         );
