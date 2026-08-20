@@ -36,6 +36,7 @@ const IOS_SPLASH: { w: number; h: number; r: number }[] = [
   { w: 1179, h: 2556, r: 3 }, // 14 Pro/15/16
   { w: 1206, h: 2622, r: 3 }, // 16 Pro
   { w: 1242, h: 2688, r: 3 }, // XS Max/11 Pro Max
+  { w: 1260, h: 2736, r: 3 }, // Air — ٤٢٠×٩١٢ نقطة، ولا مقاسَ آخرَ يقاربه
   { w: 1284, h: 2778, r: 3 }, // 12/13 Pro Max/14 Plus
   { w: 1290, h: 2796, r: 3 }, // 14 Pro Max/15 Plus/16 Plus
   { w: 1320, h: 2868, r: 3 }, // 16 Pro Max
