@@ -17,10 +17,13 @@
 
 // رقم النسخة يُرفع مع أي تغييرٍ في قشرة التطبيق: مُعالج `activate` يمسح
 // كل كاشٍ لا يبدأ به، فالتطبيق المثبّت لا يبقى على قشرةٍ قديمة.
-const VER = "loopz-v5";
+const VER = "loopz-v6";
 const STATIC_CACHE = `${VER}-static`;
 const PAGE_CACHE = `${VER}-pages`;
 const IMG_CACHE = `${VER}-img`;
+/* 🆕 v6: كاشٌ صغيرٌ لبياناتٍ وصفية — اليوم مدخلٌ واحد: «مالكُ كاش
+   الصفحات» (تسمية `x-lz-owner` من الخادم — D-514). */
+const META_CACHE = `${VER}-meta`;
 const IMG_LIMIT = 300;
 
 /* أصولُ شاشة الإقلاع تُخزَّن مسبقاً عند التثبيت: الشعارُ يجب أن يظهر
@@ -89,19 +92,74 @@ async function staleWhileRevalidate(request, cacheName) {
    نفسِها محفوظة. الآن: إن لم يصل أول بايت خلال المهلة **وعندنا نسخة
    لنفس الرابط بالضبط** نعرضها فوراً، ويكمل الجلبُ في الخلفية ليجدّد
    الكاش للفتحة التالية. لا مهلة لمن لا نسخة عنده — الانتظار حينها
-   خير من خطأ. ولا نسخةَ مستخدمٍ آخر أبداً: الكاش يُمحى عند الخروج. */
+   خير من خطأ. */
 const NAV_TIMEOUT_MS = 3500;
 
+/* ===== 🆕 v6 — «مالكُ الكاش» (D-514): كاشُ الصفحات لا يخدم إلا صاحبَه =====
+
+   🔴 العطل الذي أغلقه (بلاغُ أحمد بقراءة الكود، وثبت بالفحص): مسحُ
+   الكاش عند الخروج كان فرعاً ميّتاً — تسجيلُ الخروج **POST** ومعالجُ
+   fetch كان يبدأ بـ`if (method !== "GET") return` قبل فحص المسار،
+   فبقيت صفحاتُ الحساب السابق محفوظةً بعد خروجه.
+
+   والإصلاح طبقتان لا واحدة:
+   ١) فرعُ الخروج صعد **فوق** حارس الطريقة في معالج fetch — فأيُّ
+      طلبٍ لمسار الخروج، بأيِّ طريقة، يمسح كاشَ الصفحات والمالك.
+   ٢) **حزامُ الهويّة** — لا اعتمادَ على رابطٍ واحد: الوسيطُ يسمّي كلَّ
+      ردٍّ بمالكه (`x-lz-owner`: بادئة sub أو anon)، ونحفظ آخرَ تسميةٍ
+      هنا؛ فأوّلُ ردٍّ ناجحٍ بتسميةٍ مختلفة (دخولُ حسابٍ آخر، انتهاءُ
+      جلسةٍ، أيُّ طريقِ خروجٍ مستقبليّ) يمسح كاشَ الصفحات كلَّه قبل أن
+      يُكتب فيه سطر. وتبديلُ الحساب يقتضي شبكةً (OAuth) — فبحلول أيِّ
+      لحظة أوفلاين يكون الحزامُ قد نظّف ما ليس لصاحب الجلسة الحاليّ. */
+const OWNER_HEADER = "x-lz-owner";
+const OWNER_KEY = "/__lz-owner";
+
+async function currentOwner() {
+  try {
+    const c = await caches.open(META_CACHE);
+    const r = await c.match(OWNER_KEY);
+    return r ? await r.text() : null;
+  } catch {
+    return null;
+  }
+}
+
+async function purgePersonalCaches() {
+  await Promise.all([caches.delete(PAGE_CACHE), caches.delete(META_CACHE)]);
+}
+
+/* يُستدعى على كلِّ ردِّ تنقّلٍ وصل من الشبكة — قبل أيِّ كتابةٍ للكاش */
+async function reconcileOwner(res) {
+  try {
+    const owner = res.headers.get(OWNER_HEADER);
+    if (!owner) return; // ردٌّ بلا تسمية (نشرة أقدم/كاش CDN) — لا حكم
+    const prev = await currentOwner();
+    if (prev === owner) return;
+    if (prev !== null) await purgePersonalCaches();
+    const c = await caches.open(META_CACHE);
+    await c.put(OWNER_KEY, new Response(owner));
+  } catch {
+    /* الحزامُ احتياطٌ — فشلُه لا يمسّ الردّ نفسه */
+  }
+}
+
 async function pageNetworkFirst(event) {
-  const cache = await caches.open(PAGE_CACHE);
   const fetching = (async () => {
     const preload = await event.preloadResponse;
     const res = preload ?? (await fetch(event.request));
-    if (res && res.ok) cache.put(event.request, res.clone());
+    if (res) {
+      /* المصالحةُ قبل الكتابة: لو تغيّر المالكُ يُمسح القديم أولاً،
+         ثم يُفتح الكاشُ من جديد فلا نكتب في مقبضٍ محذوف */
+      await reconcileOwner(res);
+      if (res.ok) {
+        const cache = await caches.open(PAGE_CACHE);
+        cache.put(event.request, res.clone());
+      }
+    }
     return res;
   })();
 
-  const same = await cache.match(event.request);
+  const same = await (await caches.open(PAGE_CACHE)).match(event.request);
   if (same) {
     // نسخةٌ موجودة: الشبكة أولاً حتى المهلة، وبعدها المحفوظ فوراً
     const timer = new Promise((resolve) =>
@@ -118,7 +176,7 @@ async function pageNetworkFirst(event) {
     return await fetching;
   } catch {
     // انقطاع بلا نسخةٍ لنفس الصفحة: الرئيسية المحفوظة، وإلا خطأ الشبكة
-    const home = await cache.match("/");
+    const home = await (await caches.open(PAGE_CACHE)).match("/");
     if (home) return home;
     return Response.error();
   }
@@ -126,10 +184,20 @@ async function pageNetworkFirst(event) {
 
 self.addEventListener("fetch", (event) => {
   const req = event.request;
-  if (req.method !== "GET") return;
-
   const url = new URL(req.url);
   const sameOrigin = url.origin === self.location.origin;
+
+  /* 🔴 v6: تسجيلُ الخروج **قبل** حارس الطريقة — الخروجُ POST (نموذجُ
+     `SignOutRow`)، وكان الحارسُ يعيدنا قبل بلوغ هذا الفرع فلا يُمسح
+     شيء (البلاغُ الذي فتح D-514). لا `respondWith` هنا: الطلبُ يمضي
+     إلى الخادم كما هو، وتحويلةُ `/login` لا تُمسّ — نمسح في الظلّ
+     كاشَ الصفحات الشخصيّ وتسميةَ مالكه معاً. */
+  if (sameOrigin && url.pathname === "/auth/signout") {
+    event.waitUntil(purgePersonalCaches());
+    return;
+  }
+
+  if (req.method !== "GET") return;
 
   if (sameOrigin && url.pathname.startsWith("/_next/static/")) {
     event.respondWith(cacheFirst(req, STATIC_CACHE));
@@ -146,13 +214,6 @@ self.addEventListener("fetch", (event) => {
       LAUNCH_ASSETS.includes(url.pathname))
   ) {
     event.respondWith(cacheFirst(req, STATIC_CACHE));
-    return;
-  }
-
-  /* تسجيلُ الخروج يمحو كاشَ الصفحات الشخصيّ: HTML محفوظٌ لحسابٍ خرجت
-     منه يجب ألّا يظهر لحسابٍ يدخل بعده — ولا اختلاطَ بين مستخدمين. */
-  if (sameOrigin && url.pathname === "/auth/signout") {
-    event.waitUntil(caches.delete(PAGE_CACHE));
     return;
   }
 
