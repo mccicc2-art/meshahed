@@ -1006,9 +1006,14 @@ async function HomeBody({
     }
   }
 
-  // ===== الأيام السبعة القادمة — لشريط التقويم إن كان ظاهراً =====
+  /* ===== الأيامُ الأربعةَ عشرَ القادمة — لشريط التقويم إن كان ظاهراً
+     🆕 **أسبوعان لا أسبوع** (D-491، طلبُ أحمد: «أحتاج أقدر أكرّره بيدي
+     وأشوف الأسبوع اللي بعده»): **الشريطُ صار يُمرَّر**، فسبعةُ أيامٍ
+     تُظهر أسبوعاً وتترك الإصبعَ بلا ما يسحبه. **وأربعةَ عشرَ يومٍ سقفٌ
+     لا اعتباطاً**: `upcoming` مبنيٌّ أصلاً، **فلا نداءَ جديدٌ ولا صفٌّ
+     إضافيٌّ يُجلب** — الفلترةُ وحدَها اتّسعت. ===== */
   const nowTs = new Date();
-  const weekDays = Array.from({ length: 7 }, (_, i) => {
+  const weekDays = Array.from({ length: 14 }, (_, i) => {
     const d = new Date(nowTs.getTime() + i * 86400000);
     return {
       date: d.toISOString().slice(0, 10),
@@ -1019,7 +1024,7 @@ async function HomeBody({
       dayNum: new Intl.DateTimeFormat("en-GB", { day: "numeric", timeZone: "UTC" }).format(d),
     };
   });
-  const weekEnd = weekDays[6].date;
+  const weekEnd = weekDays[weekDays.length - 1].date;
   const weekEntries: WeekEntry[] = upcoming
     .filter((u) => u.date >= weekDays[0].date && u.date <= weekEnd && u.key.startsWith("tv-"))
     .map((u) => ({
