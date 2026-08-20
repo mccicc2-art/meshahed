@@ -11,6 +11,8 @@ import {
   getFollows,
   getMyTitleArt,
   getSavedListsBrief,
+  getMyPlaylistsBrief,
+  getMyListedMovieIds,
   artKey,
   getAllWatchedEpisodes,
   getWatchSummary,
@@ -515,6 +517,8 @@ async function HomeBody({
     friendsRows,
     homeArt,
     savedLists,
+    myPlaylists,
+    listedMovieIds,
   ] = await Promise.all([
     // أسماء المكتبة وملصقاتها بلغة الواجهة لا بلغة يوم المتابعة
     localizeFollows(followRows, locale),
@@ -575,6 +579,15 @@ async function HomeBody({
     prefs.order.includes("continue")
       ? getSavedListsBrief().catch(() => [])
       : Promise.resolve([]),
+    /* 🆕 **قوائمُ تشغيلك الصريحة** (D-505) — نفسُ شرط «تابِع المشاهدة» */
+    prefs.order.includes("continue")
+      ? getMyPlaylistsBrief().catch(() => [])
+      : Promise.resolve([]),
+    /* 🆕 **وأفلامُك الساكنةُ قائمةً — لاستثنائها من طابور «بلا قائمة»**
+       (D-505): ما وضعتَه في قائمةٍ قد أعلنتَ سياقَه هناك. */
+    prefs.order.includes("continue")
+      ? getMyListedMovieIds().catch(() => new Set<number>())
+      : Promise.resolve(new Set<number>()),
   ]);
 
   /* استبدالُ الأغلفة في مصدرٍ واحد بعد الترجمة: بطاقات «أكمل» و«ابدأ»
@@ -797,7 +810,54 @@ async function HomeBody({
 
      ⚠️ **وسقفُ اثنتين**: الصفُّ صفُّ أعمالٍ أوّلاً، **والقوائمُ ضيفٌ
      فيه لا صاحبُ دار.** */
+  /* 🆕 ===== D-505: قوائمُ التشغيل الصريحة، وطابورُ «بلا قائمة» =====
+
+     **ثلاثُ عائلاتٍ لبطاقة القائمة في هذا الصفّ، من الأصرح إلى الأحدس:**
+     **١ · طابورُ أفلامك التي بلا قائمة** (طلبُ أحمد بنصّه: «ليست اسمها
+     تو واتش تدخل فيها كل الأفلام اللي بدون ليست وتنعرض كplay list») —
+     يُحسب من مكتبتك ولا يسكن القاعدة: **فيلمٌ يدخل قائمةً يخرج منه
+     وحدَه**، بترتيب الإضافة (الأقدمُ وعدُك الأقدم).
+     **٢ · قوائمُك برايةِ التشغيل** (هجرة ١٢٢) — **الصريحُ لا يمرّ بحدسِ
+     المحفوظ**: لا نسبةَ ٦٠٪ ولا سقفَ ٤٠، من رفع الرايةَ قال أريدها.
+     **٣ · المحفوظُ من قوائم الآخرين بحدس D-496** — كما كان. */
+  const seenIt = (it: { media_type: "tv" | "movie"; tmdb_id: number }) =>
+    it.media_type === "movie"
+      ? watchedMovieIds.has(it.tmdb_id)
+      : doneShowIds.has(it.tmdb_id);
+
+  const unlistedQueue = movieFollows
+    .filter((f) => !listedMovieIds.has(f.tmdb_id))
+    .sort((a, b) => a.added_at.localeCompare(b.added_at));
+  const unlistedNext = unlistedQueue.find((f) => !watchedMovieIds.has(f.tmdb_id)) ?? null;
+  const toWatchCard = unlistedNext
+    ? {
+        name: t.libToWatch,
+        next: {
+          tmdb_id: unlistedNext.tmdb_id,
+          media_type: "movie" as const,
+          title: unlistedNext.title,
+          poster_path: unlistedNext.poster_path,
+        },
+        watched: unlistedQueue.filter((f) => watchedMovieIds.has(f.tmdb_id)).length,
+        total: unlistedQueue.length,
+      }
+    : null;
+
+  const playlistCards = myPlaylists
+    .map((l) => ({
+      list: l,
+      watched: l.items.filter(seenIt).length,
+      next: l.items.find((it) => !seenIt(it)) ?? null,
+      total: l.items.length,
+    }))
+    /* المكتملةُ ليست «تابِع المشاهدة» — الرايةُ باقيةٌ والبطاقةُ تغيب */
+    .filter((c) => c.next !== null)
+    .slice(0, 3);
+  const playlistIds = new Set(myPlaylists.map((l) => l.id));
+
   const listCards = savedLists
+    /* قائمةٌ رُفعت عليها الرايةُ لا تدخل من باب الحدس ثانيةً (قاعدة ٦) */
+    .filter((l) => !playlistIds.has(l.id))
     .filter((l) => l.items.length > 0 && l.items.length <= 40)
     .map((l) => {
       const seen = (it: (typeof l.items)[number]) =>
@@ -1088,7 +1148,10 @@ async function HomeBody({
            تُترجم إلى قوالب هنا، والغائب عن القائمة لا يُرسم أصلاً */
         const sections: Record<HomeSection, React.ReactNode> = {
           continue:
-            continueTop.length > 0 || listCards.length > 0 ? (
+            continueTop.length > 0 ||
+            listCards.length > 0 ||
+            playlistCards.length > 0 ||
+            toWatchCard ? (
               <Section
                 key="continue"
                 title={t.continueWatching}
@@ -1102,6 +1165,41 @@ async function HomeBody({
                 {/* 🆕 **والقوائمُ أوّلَ الصفّ** (D-496): **الأقربُ إلى
                     الاستئناف أوّلاً هو ترتيبُ هذا الصفّ منذ نشأته**،
                     **وقائمةٌ دخلتَها للتوّ هي أحدثُ نيّةٍ أعلنتَها.** */}
+                {/* 🆕 **طابورُ «بلا قائمة» أوّلَ الأبواب** (D-505): هو
+                    جوابُ «الأفلام ما تروح كنتنيو واتش» نفسُه — صحٌّ على
+                    الفيلم يقلب البطاقةَ إلى الذي بعده. */}
+                {toWatchCard && (
+                  <ListContinueCard
+                    key="lc-towatch"
+                    listName={toWatchCard.name}
+                    next={{
+                      tmdbId: toWatchCard.next.tmdb_id,
+                      mediaType: toWatchCard.next.media_type,
+                      title: toWatchCard.next.title,
+                      posterPath: toWatchCard.next.poster_path,
+                    }}
+                    watched={toWatchCard.watched}
+                    total={toWatchCard.total}
+                    locale={locale}
+                  />
+                )}
+                {/* 🆕 **ثم قوائمُ تشغيلك الصريحة** (D-505) — الرايةُ
+                    التي رفعتَها بنفسك تسبق حدسَ المحفوظ */}
+                {playlistCards.map((c) => (
+                  <ListContinueCard
+                    key={`pl-${c.list.id}`}
+                    listName={curatedName(c.list.sourceSlug, c.list.name, locale)}
+                    next={{
+                      tmdbId: c.next!.tmdb_id,
+                      mediaType: c.next!.media_type,
+                      title: c.next!.title,
+                      posterPath: c.next!.poster_path,
+                    }}
+                    watched={c.watched}
+                    total={c.total}
+                    locale={locale}
+                  />
+                ))}
                 {listCards.map((c) => (
                   <ListContinueCard
                     key={`lc-${c.list.id}`}
