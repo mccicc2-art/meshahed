@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import { hidesAppHeader } from "@/lib/chromeRules";
 
 /**
  * غلاف الشريط العلوي.
@@ -39,11 +40,13 @@ export function HeaderShell({
   /* 🆕 **والإعداداتُ تُخفيه على كلِّ مقاس** (D-462): لها ترويستُها
      الداخليّة برجوعٍ واسمٍ وبحث — **وترويستان في شاشةٍ واحدة تجعلان
      سهمَي رجوعٍ وعنوانين**، ولا يعرف القارئُ أيَّهما يخرج به. */
-  const inSettings =
-    pathname === "/profile/edit" || pathname.startsWith("/profile/settings");
+  /* ⚖️ 🆕 **والشرطُ صار سؤالاً مركزيّاً** (D-493): `hidesAppHeader` في
+     `chromeRules` — **ومسارٌ رابعٌ يُخفيه غداً يُكتب هناك مرّةً**، لا
+     في هذا الملفّ وفي `BottomNav` وفي ثالثٍ يُنسى. **و`/stats` انضمّت
+     لأن لها ترويستَها الداخليّة.** */
   const hideOnMobile = signedIn && pathname === "/";
 
-  if (inSettings) return null;
+  if (hidesAppHeader(pathname)) return null;
 
   return (
     <div className={hideOnMobile ? "hidden md:contents" : "contents"}>{children}</div>

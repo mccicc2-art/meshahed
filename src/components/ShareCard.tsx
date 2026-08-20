@@ -12,7 +12,14 @@ import { buttonClass } from "./ui/Button";
  * يطلب من المستلم تسجيل دخول. وعلى المتصفّحات التي لا تدعمها تُنزَّل الصورة،
  * وهذا هو المسار الآمن دائماً: التوليد على الخادم والصورة ملفٌّ عادي بعده.
  */
-export function ShareCard({ locale }: { locale: Locale }) {
+/**
+ * 🆕 **وجهان لبابٍ واحد** (D-493): البطاقةُ الكاملةُ بمعاينتها، **ورمزٌ
+ * وحدَه** لترويسةٍ لا تتّسع لبطاقة (`/stats` بعد إعادة تصميمها).
+ * **ولا زرَّ مشاركةٍ ثانٍ يُكتب**: نفسُ الدالّة ونفسُ حالة الانشغال
+ * ونفسُ رسالة الفشل — **ولو نُسخ الزرُّ لافترقا عند أوّل تعديل**
+ * (القاعدة ٦).
+ */
+export function ShareCard({ locale, icon = false }: { locale: Locale; icon?: boolean }) {
   const t = getDict(locale);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -45,6 +52,21 @@ export function ShareCard({ locale }: { locale: Locale }) {
     } finally {
       setBusy(false);
     }
+  }
+
+  if (icon) {
+    return (
+      <button
+        type="button"
+        onClick={share}
+        disabled={busy}
+        aria-label={t.shareBtn}
+        title={error ?? t.shareBtn}
+        className="grid place-items-center w-11 h-11 rounded-full text-foreground hover:text-accent active:scale-95 transition disabled:opacity-50"
+      >
+        <Icon name="share" size={20} />
+      </button>
+    );
   }
 
   return (
