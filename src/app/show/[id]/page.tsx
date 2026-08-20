@@ -228,9 +228,13 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
         </div>
 
         <div className="relative flex gap-4 -mt-24 sm:-mt-28 px-5">
-          <div className="w-28 sm:w-40 shrink-0">
+          {/* 🆕 **والملصقُ كبر درجةً** (D-501، طلبُ أحمد: «البوستر كبّره
+              شوي»): ١١٢ → ١٢٨ على الجوّال و١٦٠ → ١٧٦ على الواسع —
+              **والارتفاعُ يتبعه بنسبة ٢:٣ فيقضم من فراغ الترويسة لا من
+              سطرٍ فيها**، والأسطرُ إلى جانبه لم تتغيّر. */}
+          <div className="w-32 sm:w-44 shrink-0">
             <div className="relative aspect-[2/3] rounded-poster overflow-hidden ring-1 ring-[color:var(--divider)] bg-surface-2 shadow-[0_18px_44px_rgba(0,0,0,0.55)]">
-              {poster && <Image src={poster} alt={title} fill sizes="160px" className="object-cover" />}
+              {poster && <Image src={poster} alt={title} fill sizes="(max-width: 640px) 128px, 176px" className="object-cover" />}
             </div>
           </div>
 
@@ -248,20 +252,19 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
                 جنبَ الاسم أوسعُ ما في الترويسة** — **ورقمان صغيران في
                 فراغٍ قائمٍ خيرٌ من سطرٍ يُضاف.** */}
             <div className="flex items-start gap-3">
-              <h1
-                className="text-22 sm:text-3xl font-bold leading-tight tracking-tight"
-                style={{
-                  filter:
-                    "drop-shadow(0 2px 10px color-mix(in srgb, var(--background) 70%, transparent))",
-                }}
-              >
+              <h1 className="hero-halo text-22 sm:text-3xl font-bold leading-tight tracking-tight">
                 {title}
               </h1>
               <span className="ms-auto shrink-0 -mt-0.5">
                 <TitlePulse hearts={pulse.hearts} votes={pulse.votes} avg={pulse.avg} locale={locale} />
               </span>
             </div>
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs sm:text-sm text-muted mt-1.5">
+            {/* 🆕 **ولونُ السطر `foreground/85` لا `muted`** (D-501): هذا
+                السطرُ يقف على اللوحة لا على خلفيّة الصفحة — **و`muted`
+                مصمَّمٌ لنصٍّ ثانويٍّ على سطحٍ هادئ**، فيذوب فوق صورةٍ
+                ملوّنة. **والهالةُ معه لا بدلَه**: اللونُ يرفع والظلُّ
+                يفصل. */}
+            <div className="hero-halo flex flex-wrap items-center gap-x-2 gap-y-1 text-xs sm:text-sm text-foreground/85 mt-1.5">
               {/* وسم الأنمي: يعرفه المستخدم من الشارة لا من قراءة الأنواع */}
               {isAnime(tv) && (
                 <span className="inline-flex items-center gap-1 text-12 font-bold text-accent bg-accent/12 border border-accent/35 px-2 py-0.5 rounded-full">
@@ -279,9 +282,11 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
                 فلا تُرهن بهما ترويسةُ الصفحة (D-071). وغيابُهما لا يترك فراغاً
                 محجوزاً — السطر إمّا يُرسم كاملاً أو لا يوجد أصلاً. */}
             {isAnime(tv) && (
-              <Suspense fallback={null}>
-                <AnimeFacts tmdbId={tvId} t={t} />
-              </Suspense>
+              <div className="hero-halo">
+                <Suspense fallback={null}>
+                  <AnimeFacts tmdbId={tvId} t={t} />
+                </Suspense>
+              </div>
             )}
 
             {/* التقييم سطرٌ مستقلّ تحت البيانات، بشعارَي IMDb وطماطم لا
@@ -290,6 +295,7 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
             {/* 🆕 **والتصنيفُ العمريُّ يذيّل السطرَ نفسَه** (D-286، طلبُ
                 أحمد: «التصنيف العمري حطها في كل صفحات المسلسلات والأفلام»).
                 **ولا نداءَ ثالثاً له** — يصل في ردّ OMDb نفسِه. */}
+            <div className="hero-halo">
             <Suspense fallback={<HeroRatingsSkeleton />}>
               <HeroRatings
                 tvId={tvId}
@@ -299,6 +305,7 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
                 ageLabel={t.ageRating}
               />
             </Suspense>
+            </div>
 
 
             {/* ⚖️ 🆕 **وسطرُ الدائرة حُذف** (D-419، شطبَه أحمد بخطٍّ على
@@ -310,33 +317,53 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
                 اسمُه** — **ولم يُحذف المعنى، حُذف تكرارُه.** */}
 
             {/* الأنواع صعدت من «معلومات» إلى جنب الملصق — كصفحة الفيلم */}
-            {tv.genres.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 mt-2">
-                {tv.genres.slice(0, 4).map((g) => (
-                  <span
-                    key={g.id}
-                    className="text-12 font-medium bg-surface-2 border border-border px-2.5 py-1 rounded-full"
-                  >
-                    {g.name}
-                  </span>
-                ))}
+            {/* 🆕 ⚖️ **والأنواعُ سطرٌ واحدٌ لا يلتفّ، والقنواتُ في طرفِه**
+                (D-501، طلبُ أحمد بدائرتين على اللقطة: «نص الجينر فقط
+                يكون سطر واحد وممنوع ينزل ويبدأ سطر ثاني، صغّر النص ·
+                رموز القنوات خلّها في نفس صف التصنيف»).
+
+                **والالتفافُ كان يكلّف سطراً كاملاً لكلمةٍ واحدة**
+                («Animation» وحدَها في سطرٍ ثانٍ) — **وسطرٌ لكلمةٍ في
+                ترويسةٍ مزدحمةٍ أغلى من نوعٍ لا يُقرأ.**
+
+                🔑 **وحارسان يجعلان «سطراً واحداً» صحيحاً لا أمنية**:
+                الأنواعُ في صندوقٍ `min-w-0 overflow-hidden` **فتُقصّ هي
+                عند الضيق**، **والقنواتُ `shrink-0` خارجَه فلا تُقصّ
+                أبداً** — **والأولويّةُ لما يقول أين تُشاهِد، لا لما يقول
+                إنه كوميديا.** */}
+            {(tv.genres.length > 0 || watchWhere) && (
+              <div className="mt-2 flex items-center gap-2">
+                {tv.genres.length > 0 && (
+                  <div className="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
+                    {tv.genres.slice(0, 4).map((g) => (
+                      <span
+                        key={g.id}
+                        className="shrink-0 whitespace-nowrap text-[10px] leading-none font-medium bg-surface-2 border border-border px-2 py-1 rounded-full"
+                      >
+                        {g.name}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {/* أين يُبثّ — هنا في الترويسة، وقسم المنصّات في «معلومات» حُذف */}
+                {watchWhere && (
+                  <div className={tv.genres.length > 0 ? "shrink-0" : "shrink-0 ms-auto"}>
+                    <WatchChip
+                      options={watchWhere.options}
+                      region={watchWhere.region}
+                      userRegion={userRegion}
+                      locale={locale}
+                    />
+                  </div>
+                )}
               </div>
             )}
 
-            {(next?.air_date || watchWhere) && (
-              <div className="mt-2.5 flex flex-wrap items-center gap-2">
-                {next && next.air_date && (
-                  <span className="inline-block text-12 text-accent-2 bg-accent-2/10 border border-accent-2/30 px-2.5 py-1 rounded-lg">
-                    {t.nextEpisodeOn(formatDate(next.air_date, t))}
-                  </span>
-                )}
-                {/* أين يُبثّ — هنا في الترويسة، وقسم المنصّات في «معلومات» حُذف */}
-                {watchWhere && <WatchChip
-                  options={watchWhere.options}
-                  region={watchWhere.region}
-                  userRegion={userRegion}
-                  locale={locale}
-                />}
+            {next?.air_date && (
+              <div className="mt-2">
+                <span className="inline-block text-12 text-accent-2 bg-accent-2/10 border border-accent-2/30 px-2.5 py-1 rounded-lg">
+                  {t.nextEpisodeOn(formatDate(next.air_date, t))}
+                </span>
               </div>
             )}
           </div>
