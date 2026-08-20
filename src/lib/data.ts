@@ -53,6 +53,62 @@ export const getUser = cache(async () => {
   }
 });
 
+/**
+ * معرّف المستخدم من كوكي الجلسة مباشرةً — بلا رحلة تحقّق.
+ *
+ * جولة أداء ٢٠ أغسطس: كل قارئٍ كان ينتظر `getUser()` (رحلة شبكةٍ إلى
+ * خادم Auth) قبل أن يبدأ استعلامه، فصار أول استعلامٍ في كل طلبٍ رحلتين
+ * متسلسلتين. وهذه الرحلة **ليست هي الحارس أصلاً**: الاستعلام يحمل توكن
+ * الجلسة نفسه، وPostgres يتحقّق من توقيعه وصلاحيته في RLS مع كل صفّ —
+ * فتوكنٌ مزوَّر أو منتهٍ يعيد صفراً من الصفوف لا صفوفَ غيره، سواءٌ
+ * تحقّقنا هنا أم لا. القراءة هنا فكُّ حمولة الـJWT محلياً (كما يفعل
+ * الوسيط في `proxy.ts`) لأخذ `sub` وحده — قيمته تُستعمل **للفلترة
+ * والعرض فقط**، والصلاحيات كلها تبقى عند RLS.
+ *
+ * حدّان مقصودان:
+ *  - توكن منتهٍ أو مشوَّه → نسقط إلى `getUser()` الكامل الذي يجدّد
+ *    الجلسة، فلا يظهر «حسابٌ فارغ» لمن طالت جلسته.
+ *  - **الكتابات والقرارات الحسّاسة لا تستعمله**: `requireUser` وأفعال
+ *    الخادم كلها تبقى على التحقّق الكامل.
+ */
+export const getUserId = cache(async (): Promise<string | null> => {
+  try {
+    const { cookies } = await import("next/headers");
+    const store = await cookies();
+    const parts = store
+      .getAll()
+      .filter(
+        (c) =>
+          c.name.startsWith("sb-") &&
+          c.name.includes("auth-token") &&
+          !c.name.includes("code-verifier"),
+      )
+      .sort((a, b) => a.name.localeCompare(b.name));
+    if (parts.length === 0) return null; // زائر — بلا رحلةٍ أصلاً
+
+    let raw = parts.map((c) => c.value).join("");
+    if (raw.startsWith("base64-"))
+      raw = Buffer.from(raw.slice(7), "base64").toString("utf8");
+    const token: string | undefined = JSON.parse(raw)?.access_token;
+    if (!token) return (await getUser())?.id ?? null;
+
+    const payload = JSON.parse(
+      Buffer.from(
+        token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"),
+        "base64",
+      ).toString("utf8"),
+    );
+    const sub: string | undefined = payload?.sub;
+    const exp: number | undefined = payload?.exp;
+    // منتهٍ أو على وشك؟ التحقّق الكامل يجدّدها — لا نستعلم بتوكنٍ ميّت
+    if (!sub || !exp || exp * 1000 <= Date.now() + 5000)
+      return (await getUser())?.id ?? null;
+    return sub;
+  } catch {
+    return (await getUser())?.id ?? null;
+  }
+});
+
 export interface Profile {
   id: string;
   nickname: string | null;
@@ -85,8 +141,11 @@ export interface Profile {
 export const getProfile = cache(async (): Promise<Profile | null> => {
   try {
     const supabase = await createClient();
-    const user = await getUser();
-    if (!user) return null;
+    /* المعرّف من الكوكي مباشرةً (جولة ٢٠ أغسطس): الاستعلام محميٌّ بـRLS،
+       والتحقّق الكامل يبقى في الفرع الاحتياطي وحده حيث نحتاج بيانات
+       حساب Google نفسها */
+    const uid = await getUserId();
+    if (!uid) return null;
 
     // eslint-disable-next-line prefer-const
     let { data, error } = await supabase
@@ -94,7 +153,7 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
       .select(
         "id, nickname, username, avatar_url, cover_url, cover_pos, avatar_pos, theme, favorite_genres, hide_name, home_prefs, bio, is_private, hide_follow_lists, profile_prefs, font_ui, font_content, ui_state",
       )
-      .eq("id", user.id)
+      .eq("id", uid)
       .maybeSingle();
 
     // الاحتياط لعمودٍ ناقص لا لصفٍّ غير موجود: الحساب الجديد بلا صفّ يُرجع
@@ -106,7 +165,7 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
       const mid = await supabase
         .from("profiles")
         .select("id, nickname, username, avatar_url, cover_url, theme, favorite_genres, hide_name")
-        .eq("id", user.id)
+        .eq("id", uid)
         .maybeSingle();
       if (mid.data) {
         // عمودا التموضع أحدث من هذه الدرجة — يسقطان إلى سلوكهما القديم
@@ -115,7 +174,7 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
         const legacy = await supabase
           .from("profiles")
           .select("id, nickname, username, avatar_url, favorite_genres")
-          .eq("id", user.id)
+          .eq("id", uid)
           .maybeSingle();
         if (legacy.data) {
           data = {
@@ -140,6 +199,10 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
 
     // احتياط أخير: لو الجدول لسه ما اتنشأ أو الصف ناقص، استخدم بيانات حساب Google
     if (!data) {
+      // هنا وحدها نحتاج كائن المستخدم كاملاً (بيانات Google) — حسابٌ جديد
+      // أو جدولٌ ناقص، فالرحلة الكاملة ثمنها مقبول في هذه الندرة
+      const user = await getUser();
+      if (!user) return null;
       return {
         id: user.id,
         nickname: (user.user_metadata?.full_name as string | undefined) ?? null,
@@ -170,8 +233,8 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
  */
 export const getFollows = cache(async (): Promise<FollowRow[]> => {
   const supabase = await createClient();
-  const user = await getUser();
-  if (!user) return [];
+  const uid = await getUserId();
+  if (!uid) return [];
 
   // فلترة صريحة بالمستخدم: سياسات القراءة العامة على الجدول (لصفحات البروفايل)
   // تعني أن الاستعلام غير المفلتر يرجع صفوف الجميع، لا صفوف صاحب الحساب فقط.
@@ -184,7 +247,7 @@ export const getFollows = cache(async (): Promise<FollowRow[]> => {
         .select(
           "tmdb_id, media_type, title, poster_path, added_at, total_episodes, aired_episodes, next_air_date, dropped, rewatch_count, rewatch_started_at, stats_updated_at",
         )
-        .eq("user_id", user.id)
+        .eq("user_id", uid)
         .order("added_at", { ascending: false })
         .range(from, to)
         .throwOnError(),
@@ -195,7 +258,7 @@ export const getFollows = cache(async (): Promise<FollowRow[]> => {
     const base = await supabase
       .from("follows")
       .select("tmdb_id, media_type, title, poster_path, added_at")
-      .eq("user_id", user.id)
+      .eq("user_id", uid)
       .order("added_at", { ascending: false });
     return base.data ?? [];
   }
@@ -218,12 +281,12 @@ export const getMyAnimeFlags = cache(
     const out = new Map<string, boolean | null>();
     try {
       const supabase = await createClient();
-      const user = await getUser();
-      if (!user) return out;
+      const uid = await getUserId();
+      if (!uid) return out;
       const { data, error } = await supabase
         .from("follows")
         .select("tmdb_id, media_type, is_anime")
-        .eq("user_id", user.id);
+        .eq("user_id", uid);
       if (error || !data) return out;
       for (const r of data as { tmdb_id: number; media_type: string; is_anime: boolean | null }[]) {
         out.set(`${r.media_type}-${r.tmdb_id}`, r.is_anime ?? null);
@@ -257,12 +320,12 @@ export const getMyTitleArt = cache(async (): Promise<Map<string, TitleArt>> => {
   const out = new Map<string, TitleArt>();
   try {
     const supabase = await createClient();
-    const user = await getUser();
-    if (!user) return out;
+    const uid = await getUserId();
+    if (!uid) return out;
     const { data, error } = await supabase
       .from("title_art")
       .select("tmdb_id, media_type, poster_path, backdrop_path")
-      .eq("user_id", user.id);
+      .eq("user_id", uid);
     if (error || !data) return out;
     for (const r of data) {
       out.set(artKey(r.media_type as string, r.tmdb_id as number), {
@@ -359,8 +422,8 @@ export async function getWatchedForShow(
   rewatchSince?: string | null,
 ): Promise<Set<string>> {
   const supabase = await createClient();
-  const user = await getUser();
-  if (!user) return new Set();
+  const uid = await getUserId();
+  if (!uid) return new Set();
 
   // إعادة المشاهدة: ما أُشِّر قبل لحظة البدء لا يُحسب تقدّماً في الدورة الحالية
   let since: string | null = rewatchSince ?? null;
@@ -369,7 +432,7 @@ export async function getWatchedForShow(
       const { data: fr } = await supabase
         .from("follows")
         .select("rewatch_started_at")
-        .eq("user_id", user.id)
+        .eq("user_id", uid)
         .eq("tmdb_id", showTmdbId)
         .eq("media_type", "tv")
         .maybeSingle();
@@ -383,7 +446,7 @@ export async function getWatchedForShow(
     let q = supabase
       .from("watched_episodes")
       .select("season_number, episode_number")
-      .eq("user_id", user.id)
+      .eq("user_id", uid)
       .eq("show_tmdb_id", showTmdbId);
     if (since) q = q.gte("watched_at", since);
     return q
@@ -465,13 +528,13 @@ export const getWatchSummary = cache(async (): Promise<WatchSummaryRow[] | null>
 
 export async function getAllWatchedEpisodes(): Promise<WatchedEpisodeRow[]> {
   const supabase = await createClient();
-  const user = await getUser();
-  if (!user) return [];
+  const uid = await getUserId();
+  if (!uid) return [];
   return pageAll<WatchedEpisodeRow>((from, to) =>
     supabase
       .from("watched_episodes")
       .select("show_tmdb_id, season_number, episode_number, watched_at, runtime")
-      .eq("user_id", user.id)
+      .eq("user_id", uid)
       .order("show_tmdb_id", { ascending: true })
       .order("season_number", { ascending: true })
       .order("episode_number", { ascending: true })
@@ -507,12 +570,12 @@ export async function getMovieProgress(movieTmdbId: number): Promise<MovieProgre
 export async function getAllMovieProgress(): Promise<MovieProgressRow[]> {
   try {
     const supabase = await createClient();
-    const user = await getUser();
-    if (!user) return [];
+    const uid = await getUserId();
+    if (!uid) return [];
     const { data } = await supabase
       .from("movie_progress")
       .select("movie_tmdb_id, position_minutes, runtime_minutes, title, poster_path")
-      .eq("user_id", user.id)
+      .eq("user_id", uid)
       .order("updated_at", { ascending: false });
     return (data as MovieProgressRow[]) ?? [];
   } catch {
@@ -570,13 +633,13 @@ export async function getReactions(ids: number[] = []): Promise<ReactionInfo> {
    يتكرّر بعدد استدعاءات getLibState في الطلب. */
 export const getWatchedMovieIds = cache(async (): Promise<Set<number>> => {
   const supabase = await createClient();
-  const user = await getUser();
-  if (!user) return new Set();
+  const uid = await getUserId();
+  if (!uid) return new Set();
   const rows = await pageAll<{ movie_tmdb_id: number }>((from, to) =>
     supabase
       .from("watched_movies")
       .select("movie_tmdb_id")
-      .eq("user_id", user.id)
+      .eq("user_id", uid)
       .order("movie_tmdb_id", { ascending: true })
       .range(from, to),
   );
@@ -593,13 +656,13 @@ export const getWatchedMovieIds = cache(async (): Promise<Set<number>> => {
  */
 export async function getWatchedMovies(): Promise<{ id: number; runtime: number | null }[]> {
   const supabase = await createClient();
-  const user = await getUser();
-  if (!user) return [];
+  const uid = await getUserId();
+  if (!uid) return [];
   const rows = await pageAll<{ movie_tmdb_id: number; runtime: number | null }>((from, to) =>
     supabase
       .from("watched_movies")
       .select("movie_tmdb_id, runtime")
-      .eq("user_id", user.id)
+      .eq("user_id", uid)
       .order("movie_tmdb_id", { ascending: true })
       .range(from, to),
   );
@@ -632,14 +695,14 @@ export async function getMyRating(
 ): Promise<RatingRow | null> {
   try {
     const supabase = await createClient();
-    const user = await getUser();
-    if (!user) return null;
+    const uid = await getUserId();
+    if (!uid) return null;
     const { data } = await supabase
       .from("ratings")
       .select(
         "user_id, tmdb_id, media_type, rating, review, title, poster_path, updated_at, has_spoiler",
       )
-      .eq("user_id", user.id)
+      .eq("user_id", uid)
       .eq("tmdb_id", tmdbId)
       .eq("media_type", mediaType)
       .maybeSingle();
@@ -653,14 +716,14 @@ export async function getMyRating(
 export async function getMyRatings(): Promise<RatingRow[]> {
   try {
     const supabase = await createClient();
-    const user = await getUser();
-    if (!user) return [];
+    const uid = await getUserId();
+    if (!uid) return [];
     const { data } = await supabase
       .from("ratings")
       .select(
         "user_id, tmdb_id, media_type, rating, review, title, poster_path, updated_at, has_spoiler",
       )
-      .eq("user_id", user.id)
+      .eq("user_id", uid)
       .order("rating", { ascending: false })
       .order("updated_at", { ascending: false })
       .limit(200);
@@ -1138,8 +1201,8 @@ export interface FriendWatchRow {
 export async function getFriendsWatching(limit = 12): Promise<FriendWatchRow[]> {
   try {
     const supabase = await createClient();
-    const me = await getUser();
-    if (!me) return [];
+    const uid = await getUserId();
+    if (!uid) return [];
     const { data, error } = await supabase.rpc("following_activity_v2");
     if (error || !data) return [];
     const out: FriendWatchRow[] = [];
@@ -1153,7 +1216,7 @@ export async function getFriendsWatching(limit = 12): Promise<FriendWatchRow[]> 
       at?: string;
       updated_at?: string;
     }[]) {
-      if (r.id === me.id) continue;
+      if (r.id === uid) continue;
       if (!r.tmdb_id || !r.title || !r.poster_path) continue;
       const key = `${r.media_type}-${r.tmdb_id}`;
       if (seen.has(key)) continue;
@@ -1732,12 +1795,12 @@ export async function isFollowingArtist(personId: number): Promise<boolean> {
 export async function getFollowedArtists(limit = 20): Promise<ArtistLite[]> {
   try {
     const supabase = await createClient();
-    const user = await getUser();
-    if (!user) return [];
+    const uid = await getUserId();
+    if (!uid) return [];
     const { data } = await supabase
       .from("person_follows")
       .select("person_id, name, profile_path")
-      .eq("user_id", user.id)
+      .eq("user_id", uid)
       .order("created_at", { ascending: false })
       .limit(limit);
     return (data ?? []) as ArtistLite[];
@@ -3333,8 +3396,8 @@ export interface HistoryRow {
 export async function getWatchHistory(limit = 400): Promise<HistoryRow[]> {
   try {
     const supabase = await createClient();
-    const user = await getUser();
-    if (!user) return [];
+    const uid = await getUserId();
+    if (!uid) return [];
     // شرط المستخدم صريح في الاستعلام: RLS يحمي فعلاً، لكن الاستعلام الذي
     // «يقرأ الجدول كله ويثق أن السياسة سترشّح» ينكسر بصمتٍ كارثي لو
     // تبدّلت سياسة يوماً — الدفاع طبقتان لا واحدة
@@ -3342,13 +3405,13 @@ export async function getWatchHistory(limit = 400): Promise<HistoryRow[]> {
       supabase
         .from("watched_episodes")
         .select("show_tmdb_id, season_number, episode_number, watched_at, runtime")
-        .eq("user_id", user.id)
+        .eq("user_id", uid)
         .order("watched_at", { ascending: false })
         .limit(limit),
       supabase
         .from("watched_movies")
         .select("movie_tmdb_id, watched_at, runtime")
-        .eq("user_id", user.id)
+        .eq("user_id", uid)
         .order("watched_at", { ascending: false })
         .limit(limit),
     ]);
@@ -4317,13 +4380,13 @@ export interface SavedListBrief {
 export async function getSavedListsBrief(limit = 6): Promise<SavedListBrief[]> {
   try {
     const supabase = await createClient();
-    const user = await getUser();
-    if (!user) return [];
+    const uid = await getUserId();
+    if (!uid) return [];
 
     const { data: saves } = await supabase
       .from("list_saves")
       .select("list_id")
-      .eq("user_id", user.id)
+      .eq("user_id", uid)
       .limit(limit);
     const ids = [...new Set((saves ?? []).map((r) => String(r.list_id)))];
     if (ids.length === 0) return [];
@@ -4378,13 +4441,13 @@ export async function getSavedListsBrief(limit = 6): Promise<SavedListBrief[]> {
 export async function getMyPlaylistsBrief(limit = 4): Promise<SavedListBrief[]> {
   try {
     const supabase = await createClient();
-    const user = await getUser();
-    if (!user) return [];
+    const uid = await getUserId();
+    if (!uid) return [];
 
     const { data: lists } = await supabase
       .from("user_lists")
       .select("id, name, source_slug")
-      .eq("user_id", user.id)
+      .eq("user_id", uid)
       .eq("is_playlist", true)
       .order("updated_at", { ascending: false })
       .limit(limit);
@@ -4435,13 +4498,13 @@ export async function getMyPlaylistsBrief(limit = 4): Promise<SavedListBrief[]> 
 export async function getMyListedMovieIds(): Promise<Set<number>> {
   try {
     const supabase = await createClient();
-    const user = await getUser();
-    if (!user) return new Set();
+    const uid = await getUserId();
+    if (!uid) return new Set();
 
     const { data: lists } = await supabase
       .from("user_lists")
       .select("id")
-      .eq("user_id", user.id)
+      .eq("user_id", uid)
       .limit(200);
     const ids = (lists ?? []).map((l) => String(l.id));
     if (ids.length === 0) return new Set();
@@ -4547,12 +4610,12 @@ export async function getSavedLists(limit = 500): Promise<PublicListCard[]> {
 export async function getSavedListsCount(): Promise<number> {
   try {
     const supabase = await createClient();
-    const user = await getUser();
-    if (!user) return 0;
+    const uid = await getUserId();
+    if (!uid) return 0;
     const { data: saves } = await supabase
       .from("list_saves")
       .select("list_id")
-      .eq("user_id", user.id)
+      .eq("user_id", uid)
       .limit(200);
     if (!saves?.length) return 0;
     /* 🔴 **والمعلنةُ وحدَها تُعدّ** — **وهذا ما قِيس على الموقع الحيّ**:

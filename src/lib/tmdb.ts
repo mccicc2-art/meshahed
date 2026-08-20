@@ -48,6 +48,48 @@ async function watchRegion(): Promise<string> {
   }
 }
 
+/* ================= صمود TMDB (جولة أداء ٢٠ أغسطس) =================
+
+   سجلّات الإنتاج كانت تحمل ECONNRESET وsocket errors متقطّعة من TMDB،
+   وكلُّ واحدةٍ كانت ترمي فوراً — فيسقط قسمٌ (أو صفحةٌ في المسار الذي لا
+   يلتقط) بسبب عطلٍ عابرٍ كان سيصلح نفسه بمحاولةٍ ثانية. ثلاثةُ صمّامات،
+   كلُّها داخل `tmdb()` وحدها فلا يتغيّر مستدعٍ واحد:
+
+   ١) **مهلة**: نداءٌ بلا سقفٍ يحبس الرسم كلَّه خلف اتصالٍ معلّق —
+      و`AbortSignal.timeout` يقطعه ويحوّله إلى خطأٍ قابلٍ للمحاولة.
+   ٢) **محاولةٌ ثانية واحدة، للقابل وحده**: أعطال الشبكة و5xx و429 فقط.
+      4xx حقيقيٌّ (عملٌ محذوف، مفتاحٌ خاطئ) يُرمى فوراً — إعادةُ سؤالٍ
+      جوابُه «لا» ضغطٌ بلا أمل. والفاصل ٢٥٠م.ث + عشوائيةٌ صغيرة حتى لا
+      تعيد موجةُ طلباتٍ متزامنةٌ نفسَها في اللحظة نفسها (retry storm).
+   ٣) **آخرُ جوابٍ صالح**: خريطةٌ في ذاكرة الدالّة (بياناتُ كتالوج عامّة،
+      لا شيءَ شخصيٌّ فيها) تُجيب حين تفشل كلُّ المحاولات — فبياناتٌ عمرها
+      ساعاتٌ خيرٌ من قسمٍ فارغ. سقفُها يمنع نموّ الذاكرة.
+
+   ورابعٌ: **دمجُ الطلبات المتزامنة** — عشرُ بطاقاتٍ تسأل عن العمل نفسِه
+   في اللحظة نفسِها تدفع رحلةً واحدة. (كاشُ fetch في Next يغطّي أغلب هذا،
+   لكنه لا يدمج المتوازيَين حين يكون الكاش بارداً.) */
+
+const TMDB_TIMEOUT_MS = 5000;
+const TMDB_RETRY_TIMEOUT_MS = 8000;
+const LAST_GOOD_LIMIT = 400;
+const lastGood = new Map<string, unknown>();
+const inFlight = new Map<string, Promise<unknown>>();
+
+function rememberGood(key: string, value: unknown) {
+  // الأقدم يخرج أولاً — إعادة الإدخال تجدّد الموضع
+  if (lastGood.has(key)) lastGood.delete(key);
+  lastGood.set(key, value);
+  if (lastGood.size > LAST_GOOD_LIMIT) {
+    const oldest = lastGood.keys().next().value;
+    if (oldest !== undefined) lastGood.delete(oldest);
+  }
+}
+
+/** خطأٌ تُجدى معه محاولةٌ ثانية: شبكة/مهلة (لا status) أو 5xx أو 429 */
+function retryable(status: number | null): boolean {
+  return status === null || status === 429 || status >= 500;
+}
+
 async function tmdb<T>(path: string, params: Record<string, string> = {}): Promise<T> {
   const key = process.env.TMDB_API_KEY;
   if (!key) throw new Error("TMDB_API_KEY is not set");
@@ -55,15 +97,51 @@ async function tmdb<T>(path: string, params: Record<string, string> = {}): Promi
   url.searchParams.set("api_key", key);
   url.searchParams.set("language", await tmdbLanguage());
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
+  const href = url.toString();
 
-  const res = await fetch(url.toString(), {
-    // Cache TMDB responses for an hour; content changes slowly.
-    next: { revalidate: 3600 },
-  });
-  if (!res.ok) {
-    throw new Error(`TMDB ${path} failed: ${res.status}`);
+  // نفس السؤال وهو في الطريق؟ انتظر جوابه بدل رحلةٍ ثانية
+  const pending = inFlight.get(href);
+  if (pending) return pending as Promise<T>;
+
+  const run = (async (): Promise<T> => {
+    let lastError: unknown = null;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      let status: number | null = null;
+      try {
+        const res = await fetch(href, {
+          // Cache TMDB responses for an hour; content changes slowly.
+          next: { revalidate: 3600 },
+          signal: AbortSignal.timeout(
+            attempt === 0 ? TMDB_TIMEOUT_MS : TMDB_RETRY_TIMEOUT_MS,
+          ),
+        });
+        status = res.status;
+        if (res.ok) {
+          const json = (await res.json()) as T;
+          rememberGood(href, json);
+          return json;
+        }
+        lastError = new Error(`TMDB ${path} failed: ${res.status}`);
+        if (!retryable(status)) throw lastError;
+      } catch (e) {
+        lastError = e;
+        // خطأٌ لا تنفع معه الإعادة (4xx) يخرج فوراً
+        if (status !== null && !retryable(status)) throw e;
+      }
+      if (attempt === 0)
+        await new Promise((r) => setTimeout(r, 250 + Math.random() * 250));
+    }
+    const stale = lastGood.get(href);
+    if (stale !== undefined) return stale as T;
+    throw lastError;
+  })();
+
+  inFlight.set(href, run);
+  try {
+    return await run;
+  } finally {
+    inFlight.delete(href);
   }
-  return res.json() as Promise<T>;
 }
 
 export interface SearchResult {
