@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toggleMovieWatched } from "@/lib/actions";
-import { posterUrl } from "@/lib/media";
+import { posterUrl, backdropUrl } from "@/lib/media";
 import { getDict, num, type Locale } from "@/lib/i18n";
 import { tap } from "@/lib/haptics";
 import { flashError } from "@/lib/toast";
@@ -48,6 +48,8 @@ export function ListContinueCard({
     mediaType: "tv" | "movie";
     title: string | null;
     posterPath: string | null;
+    /** 🆕 صورةُ المشهد (D-507) — الغيابُ يسقط إلى الملصق */
+    backdropPath?: string | null;
     runtime?: number | null;
   };
   watched: number;
@@ -61,7 +63,12 @@ export function ListContinueCard({
 
   const href =
     next.mediaType === "movie" ? `/movie/${next.tmdbId}` : `/show/${next.tmdbId}`;
-  const url = posterUrl(next.posterPath, "w342");
+  /* 🆕 **غلافٌ لا ملصق** (D-507، حكمُ أحمد بلقطة: «الحجم كبير!! اعملها
+     غلاف وحجمه يكون مثل المسلسل»): صورةُ المشهد كبطاقة الحلقة سواء —
+     **والملصقُ سقوطٌ لمن لا مشهدَ له**، يُقصّ في ٧:٥ ولا يترك فراغاً. */
+  const url = next.backdropPath
+    ? backdropUrl(next.backdropPath, "w780")
+    : posterUrl(next.posterPath, "w342");
   const pct = total > 0 ? Math.round((watched / total) * 100) : 0;
 
   function mark(e: React.MouseEvent) {
@@ -90,34 +97,39 @@ export function ListContinueCard({
     });
   }
 
+  /* ⚖️ 🆕 **الهندسةُ هندسةُ بطاقة الحلقة حرفاً بحرف** (D-507، حكمُ
+     أحمد: «الحجم كبير!! اعملها غلاف وحجمه يكون مثل المسلسل»): كانت
+     ملصقاً ٢:٣ في مقعدِ صفٍّ عريض — **فطالت بطاقتُها ضعفَ جاراتها
+     وقُرئ الصفُّ مكسوراً.** الآن ٧:٥ بصورة مشهدٍ وحجابٍ سفليٍّ وشريطِ
+     حافّةٍ — **نفسُ أصناف `ContinueCard` البصريّة** (قاعدة ٦: بطاقتان
+     في صفٍّ واحدٍ لا تملكان هندستين). */
   return (
     <Link
       href={href}
       prefetch={false}
-      className="group relative block overflow-hidden rounded-card border border-border bg-surface"
+      className="group relative block active:scale-[0.98] transition"
     >
-      <div className="relative aspect-[2/3]">
+      <div className="relative aspect-[7/5] rounded-poster overflow-hidden bg-surface border border-border">
         {url ? (
           <Image
             src={url}
             alt=""
             fill
-            sizes="(max-width: 640px) 45vw, 220px"
-            className="object-cover transition duration-300 group-hover:scale-[1.03]"
+            sizes="(max-width: 640px) 70vw, 320px"
+            className="object-cover group-hover:scale-105 transition duration-300"
           />
         ) : (
           <span className="absolute inset-0 grid place-items-center text-muted">
-            <Icon name="list" size={24} />
+            <Icon name="list" size={26} />
           </span>
         )}
 
-        <span
-          aria-hidden
-          className="absolute inset-x-0 bottom-0 h-3/5 pointer-events-none"
-          style={{ background: "linear-gradient(to top, rgba(0,0,0,0.92), transparent)" }}
-        />
+        {/* الحجابُ حجابُ بطاقة الحلقة نفسُه — يبقي المشهدَ ويضمن الاسم */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-black/10" />
 
-        {/* علامةُ «شاهدته» — للأفلام وحدَها، انظر أعلاه */}
+        {/* علامةُ «شاهدته» — للأفلام وحدَها، انظر أعلاه.
+            والمقاسُ ٤٤px كدائرة بطاقة الحلقة (D-507) — كانت ٣٦ فتفترق
+            الدائرتان في الصفّ الواحد. */}
         {next.mediaType === "movie" && (
           <button
             type="button"
@@ -125,34 +137,45 @@ export function ListContinueCard({
             disabled={done || pending}
             aria-label={t.markWatchedAria}
             title={t.markWatchedAria}
-            className={`absolute top-2 end-2 z-10 grid place-items-center w-9 h-9 rounded-full border backdrop-blur-md transition active:scale-90 disabled:opacity-70 ${
+            className={`absolute top-2.5 end-2.5 z-10 grid place-items-center w-11 h-11 rounded-full border backdrop-blur-md transition active:scale-90 disabled:opacity-70 ${
               done
                 ? "border-[color:var(--success)] bg-[color:var(--success)] text-black"
-                : "border-white/25 bg-black/50 text-white hover:border-accent"
+                : "border-white/25 bg-black/40 text-white/90 hover:bg-black/55"
             }`}
           >
-            <Icon name="check" size={16} strokeWidth={2.4} />
+            <Icon name="check" size={18} strokeWidth={2.4} />
           </button>
         )}
 
-        <span className="absolute inset-x-0 bottom-0 p-2.5">
+        <div className="absolute inset-x-0 bottom-0 p-3 pb-3.5">
           {/* اسمُ القائمة سياقٌ لا عنوان — خافتٌ فوق اسم العمل */}
           <span className="flex items-center gap-1 text-[10px] font-semibold text-accent leading-none">
             <Icon name="list" size={11} strokeWidth={2.2} />
             <span className="truncate">{listName}</span>
           </span>
-          <span className="mt-1 block text-12 font-bold text-white leading-tight truncate" dir="auto">
+          <p className="mt-1 text-15 font-semibold leading-tight text-white line-clamp-1 drop-shadow pe-10" dir="auto">
             {next.title ?? "—"}
-          </span>
-          <span className="mt-1 block text-[10px] text-white/70 tabular-nums leading-none" dir="ltr">
-            {num(watched, locale)} / {num(total, locale)}
-          </span>
-          <span className="mt-1.5 block h-1 rounded-full bg-white/20 overflow-hidden">
-            <span
-              className="block h-full rounded-full bg-accent"
-              style={{ width: `${Math.max(pct, 2)}%` }}
-            />
-          </span>
+          </p>
+          {/* سطرُ المعلومات كبطاقة الحلقة: العدُّ يساراً والنسبةُ طرفاً */}
+          <div className="flex items-baseline justify-between gap-2 mt-1">
+            <span className="text-12 font-semibold text-white/75 truncate tabular-nums" dir="ltr">
+              {num(watched, locale)} / {num(total, locale)}
+            </span>
+            <span className="shrink-0 text-12 font-semibold text-white/70 tabular-nums" dir="ltr">
+              {pct}%
+            </span>
+          </div>
+        </div>
+
+        {/* شريطُ التقدّم على حافّة البطاقة — كبطاقة الحلقة سواء */}
+        <span className="absolute inset-x-0 bottom-0 h-1 bg-[color:var(--divider)]">
+          <span
+            className="block h-full w-full origin-left rtl:origin-right transition-transform duration-500"
+            style={{
+              transform: `scaleX(${pct / 100})`,
+              background: "var(--gradient-brand-x)",
+            }}
+          />
         </span>
       </div>
     </Link>
