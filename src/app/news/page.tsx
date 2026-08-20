@@ -181,8 +181,12 @@ export default async function NewsPage({
     lsrc?: string;
   }>;
 }) {
-  const user = await getUser();
-  if (!user) redirect("/login");
+  /* جولة /news (D-515): بوّابةُ الدخول تبقى `getUser()` الموثوقة —
+     **لا `getUserId` هنا: قرارُ redirect قرارُ أمنٍ لا يُبنى على فكٍّ
+     محليٍّ بلا تحقّق** — لكنّ رحلتها تنطلق أوّلاً وتُنتظر مع رحلة
+     المنصّات بدل أن تقف وحدها بوّابةً أمام قراءاتٍ محليّةٍ من الكوكي
+     (اللغة والتبويبات وصفوفك) لا تحتاجها. */
+  const userPromise = getUser();
 
   const { locale, t } = await getT();
   const sp = await searchParams;
@@ -224,7 +228,8 @@ export default async function NewsPage({
      في طبقة fetch، ورأس الصفحة يبقى يرسم فوراً لأن الصفوف وحدها خلف
      Suspense. وفشلُ الجلب يُخفي المحور بدل أن يعرض خانةً فارغة.
      وتبويب «القوائم» لا يطلبها أصلاً — ورقة الفلاتر لا تُفتح فيه */
-  const [providers, region] = await Promise.all([
+  const [user, providers, region] = await Promise.all([
+    userPromise,
     /* والأنمي صار يطلبها معهما: صار له فلترُه بأربعة محاور، والمنصّة
        أحدُها — «وش متاح على اشتراكي؟» سؤالٌ يُسأل عن الأنمي كما يُسأل عن
        غيره. تبويبُ القوائم وحده لا يطلبها (ورقة فلاتره أخرى تماماً) */
@@ -233,6 +238,8 @@ export default async function NewsPage({
       : Promise.resolve([] as { id: number; name: string }[]),
     getWatchRegion(),
   ]);
+  /* البوّابةُ قبل أيِّ رسمٍ كما كانت — تقدّمت رحلتُها لا حكمُها */
+  if (!user) redirect("/login");
 
   return (
     /* **الإيقاعُ الرأسيّ ضُيّق (D-200، لقطةُ أحمد بخطوطٍ زرقاء على الفراغ):**
@@ -1078,7 +1085,6 @@ async function CuratedRails({
      أربعة**: عندك · انتهيتَ · أين أنت منه · أموقوفٌ هو. **فصار المصدرُ
      `getLibState` واحداً للأسئلة الأربعة** (D-145: أربعُ مجموعاتٍ تُمرَّر
      جنباً إلى جنبٍ هي كيف يفترق اثنان منها يوماً). */
-  const lib = { locale, state: await getLibState() };
   /* **`needsDiscover` غادر هذه الصفحة إلى `sections.ts` (D-199):** هو
      السؤالُ «هل يتجاوز الفلترُ ما تقدر عليه قوائمُ TMDB الجاهزة؟»، وقد
      صار جوابُه داخلَ بناءِ القسم حيث يُستعمل — **لا هنا حيث كان يُحسب
@@ -1112,26 +1118,12 @@ async function CuratedRails({
     status: status?.code ?? null,
   };
 
-  /* أعلى ١٠ حسب نافذة الصفّ (D-099 ثم D-445): أسبوع = الرائج (أو
-     discover المُصفّى)، شهر = آخر ثلاثين يوماً (لا الشهر التقويمي —
-     أوّلُه بِركةٌ من أيامٍ معدودة)، **وكلُّ الأوقات = discover بلا حدٍّ
-     زمنيّ** مرتَّباً بعدد الأصوات ثم بتقييم IMDb. */
+  /* أعلى ١٠ حسب نافذة الصفّ (D-099 ثم D-445) — انظر تعليقَي
+     `winRangeOf`/`topFor` التاريخيّين في نسخ ما قبل D-515 للتفصيل */
   const todayStr = new Date().toISOString().slice(0, 10);
   const back30 = new Date();
   back30.setUTCDate(back30.getUTCDate() - 30);
   const monthFrom = back30.toISOString().slice(0, 10);
-  /**
-   * **صار غلافاً على السجلّ (D-199)** — ثلاثةُ فروعٍ للنوافذ كانت مكتوبةً
-   * هنا **وثلاثةٌ مثلها في `sections.ts`**. والمدى وحده يُحسب هنا لأنه
-   * تاريخٌ يخصّ هذه الصفحة، **والقرارُ الذي يليه ملكُ السجلّ**.
-   *
-   * **ولماذا يهمّ العميل:** رقائقُ «أسبوع/شهر/سنة» تعِد بأنّ الضغط على
-   * العنوان يفتح **نفسَ النافذة** موسَّعةً — فلو اختلف الفرعُ بين الملفّين
-   * لرأى شهراً في الصفحة وأسبوعاً في الصفّ، **وهو لا يعرف أنه رأى شيئين**.
-   */
-  /* 🆕 **و«كل الأوقات» بلا مدىً — لا بمدى السنة** (D-445): المدى الغائب
-     يعني «لا تحدّ التاريخ»، **وهو نصُّ النافذة**. وفرعُ «سنة» سقط معها
-     (يجيبه ذيلُ «أفضل ٢٥ هذي السنة» في الصفحة نفسِها). */
   const winRangeOf = (w: RailWin) =>
     w === "month" ? { from: monthFrom, to: todayStr } : null;
   const topFor = (mt: "movie" | "tv", genreIds: number[] | undefined, w: RailWin) =>
@@ -1141,195 +1133,242 @@ async function CuratedRails({
       10,
     );
 
-  /* **ولا صفَّ أنمي هنا بعد اليوم (D-169):** صار له تبويبه بستّة صفوف،
-     فبقاؤه هنا يعني الصفَّ نفسه في بابين — ونسخةٌ ثانية من معنًى واحد
-     هي بالضبط ما تمنعه D-145. وتبويب المسلسلات يوفّر معها نداءَين. */
-  /* **«خلّها تظهر إذا شخص حدّد جنسيتهم فقط» — طلب أحمد بنصّه** (D-194).
-     فالكتمُ يسقط لحظةَ يختار لغةً أو بلداً، ويعود إن أزالهما. **والنوعُ
-     والحقبةُ لا يفكّانه**: من طلب «جريمة ٢٠٢٠» لم يطلب دراما كورية. */
   const unmute = !!browse.lang || !!browse.country;
   /** يُحمل إلى صفحات الأقسام مع عناوينها (D-198) */
   const qs = filterQs(browse);
+  const today = todayStr;
 
-  const [
-    topMovies,
-    topSeries,
-    popular,
-    cinemas,
-    soonMovies,
-    soonSeries,
-    top50Movies,
-    top50Series,
-  ] = await Promise.all([
-      /* الصفوف المرتّبة كلّها تُعاد بترتيب IMDb وتحمل تقييمه (قرار أحمد:
-         «الترتيب بأعلى تقييم حسب IMDb والتقييم فقط من IMDb») — TMDB يبقى
-         مصدر التجميع (من يدخل الصفّ)، وIMDb مصدر الترتيب والرقم */
-      /* **والأنمي يغادر رفَّي «أفضل ١٠» كليهما — بحارسٍ واحد (D-170 ثم
-         D-175، طلب أحمد):** «الأنمي يغادر تبويب الأفلام والمسلسلات
-         كليهما». كان رفُّ الأفلام يُصفّى هنا ورفُّ المسلسلات يُصفّى
-         **داخل `topTenThisWeek`** — أي **في مسارٍ واحدٍ من ثلاثة**، فيعود
-         الأنمي بمجرّد اختيار نوعٍ أو نافذةِ شهر. `topFor` هو الفم الذي
-         تصبّ فيه المسارات الثلاثة، فالحارسُ عليه لا داخل أحدها.
-         و`looksAnime` تشترط **اللغة اليابانية** مع نوع الرسوم — فيبقى
-         «ريك آند مورتي» كما طلب أحمد. */
-      wantMovies && !upcoming
-        ? topFor("movie", genre?.movie, rails.m)
-            .then((rows) => railGuard(rows, { unmute }))
-            .then(withImdbRatings)
-            .catch(() => [] as SearchResult[])
-        : Promise.resolve([] as SearchResult[]),
-      wantSeries && !upcoming
-        ? topFor("tv", genre?.tv, rails.s)
-            .then((rows) => railGuard(rows, { unmute }))
-            .then(withImdbRatings)
-            .catch(() => [] as SearchResult[])
-        : Promise.resolve([] as SearchResult[]),
-      /* **«الأكثر شعبية» — صفٌّ جديد (D-195، مواصفةُ أحمد).**
+  /* ===== 🆕 D-515: المواعيدُ تُنشأ مرّةً — وتفترق طريقتا انتظارها =====
 
-         **ولماذا ليس تكراراً لـ«أفضل ١٠ هذا الأسبوع»:** ذاك `/trending`
-         — **حركةُ الأسبوع**، تتغيّر كل يوم وتُرتَّب عندنا بتقييم IMDb.
-         وهذا `/popular` — **مخزونُ شعبيةٍ تراكميّ** يتغيّر ببطء ويحتفظ
-         بترتيب TMDB نفسه. **الأوّل يسأل «ما الجديد؟» والثاني «ما الذي
-         يعرفه الناس؟»**، فالجواران يفيدان.
+     النداءاتُ الثمانية أدناه هي أعضاءُ `Promise.all` القديمة **حرفاً
+     حرفاً** (بحُرّاسها: railGuard على أفواه «أفضل ١٠» — D-170/D-175،
+     و`attachImdbRatings` لا `withImdbRatings` للشعبيّة والسينما لأن
+     ترتيبَهما معناهما، والأنمي لا يدخل من بابٍ خلفيّ — D-194/D-202).
+     **قِيس على المنشور قبل التغيير** (١٧ عيّنة دافئة + ٦ باردة):
+     القشرةُ تصل مع أوّل بايت، **وكلُّ الرفوف تُبثّ في لحظةٍ واحدة هي
+     لحظةُ أبطئها** — «الأكثر شعبية» وسيطُها 401م.ث دافئةً و1220 باردةً
+     تحكم في رفوفٍ جاهزةٍ منذ 30م.ث. فالحاجزُ هو العطل، لا النداءات. */
+  const pTopMovies: Promise<SearchResult[]> =
+    wantMovies && !upcoming
+      ? topFor("movie", genre?.movie, rails.m)
+          .then((rows) => railGuard(rows, { unmute }))
+          .then(withImdbRatings)
+          .catch(() => [] as SearchResult[])
+      : Promise.resolve([] as SearchResult[]);
+  const pTopSeries: Promise<SearchResult[]> =
+    wantSeries && !upcoming
+      ? topFor("tv", genre?.tv, rails.s)
+          .then((rows) => railGuard(rows, { unmute }))
+          .then(withImdbRatings)
+          .catch(() => [] as SearchResult[])
+      : Promise.resolve([] as SearchResult[]);
+  /* «الأكثر شعبية» (D-195/D-202) — حاجزان ومزجٌ بالخالد وقرعةٌ للصفّ،
+     كلُّه في `buildSection` (D-198/D-199)، والإلحاقُ بلا إعادة ترتيبٍ
+     لأن عنوانَه الشعبيةُ لا الجودة (درسُ D-202 المقيس) */
+  const pPopular: Promise<SearchResult[]> = buildSection(
+    "most-popular",
+    {
+      media: wantMovies ? "movie" : "tv",
+      base,
+      genreIds: wantMovies ? genre?.movie : genre?.tv,
+      active,
+      sample: true,
+      locale,
+    },
+    20,
+  ).then(attachImdbRatings);
+  /* «في السينما» بتقييم IMDb بلا إعادة ترتيب — ترتيبُ دور العرض توقيتٌ
+     لا جودة، والأنمي حُرس في `buildSection` (طلب أحمد ١٢ أغسطس) */
+  const pCinemas: Promise<{ region: string; results: SearchResult[] } | null> =
+    wantMovies
+      ? Promise.all([
+          buildSection("in-cinemas", { media: "movie", base, genreIds: genre?.movie, active }, 20),
+          nowPlayingMovies().catch(() => null),
+        ])
+          .then(async ([results, c]) =>
+            results.length && c
+              ? { region: c.region, results: await attachImdbRatings(results) }
+              : null,
+          )
+          .catch(() => null)
+      : Promise.resolve(null);
+  /* «القادم» من السجلّ (D-199) — ما يفتحه العنوانُ هو ما يعرضه الصفّ */
+  const pSoonMovies: Promise<SearchResult[]> = wantMovies
+    ? buildSection("upcoming", { media: "movie", base, genreIds: genre?.movie, active }, 20)
+    : Promise.resolve([] as SearchResult[]);
+  const pSoonSeries: Promise<SearchResult[]> = wantSeries
+    ? buildSection("upcoming", { media: "tv", base, genreIds: genre?.tv, active }, 20)
+    : Promise.resolve([] as SearchResult[]);
+  /* «أفضل ٢٥ هذي السنة» (D-420) — البِركةُ من TMDB والحكمُ من IMDb،
+     وتاريخُ المصادر كاملاً في تعليق `bestOfYear` أعلى الملفّ */
+  const pTop25Movies: Promise<SearchResult[]> = wantMovies
+    ? bestOfYear("movie", locale, base, genre?.movie).catch(() => [] as SearchResult[])
+    : Promise.resolve([] as SearchResult[]);
+  const pTop25Series: Promise<SearchResult[]> = wantSeries
+    ? bestOfYear("tv", locale, base, genre?.tv).catch(() => [] as SearchResult[])
+    : Promise.resolve([] as SearchResult[]);
 
-         **والفلترُ يطاع هنا كما في أخيه** (مواصفة أحمد: الفلتر عامٌّ داخل
-         التبويب): مع الفلتر يصير المصدر `/discover` بـ`popularity.desc`
-         — نفس المعنى بمصدرٍ يقبل المحاور. **ولا ترتيبَ بتقييم IMDb:**
-         الصفُّ عنوانُه الشعبية، وترتيبُه بالجودة كان سيكذّب اسمه.
+  const promises: CuratedPromises = {
+    topMovies: pTopMovies,
+    topSeries: pTopSeries,
+    popular: pPopular,
+    cinemas: pCinemas,
+    soonMovies: pSoonMovies,
+    soonSeries: pSoonSeries,
+    top25Movies: pTop25Movies,
+    top25Series: pTop25Series,
+  };
+  const ctx: CuratedCtx = { locale, t, browse, eraR, qs, rails, today, unmute, wantMovies, wantSeries };
 
-         ⚠️ **والحارسُ عليه كسائر الرفوف** (D-194) — وإلا صار البابَ
-         الجديد الذي يعود منه ما أُخرج من الأبواب الأخرى. */
-      /* **ومنها إلى `buildSection` لا استعلامٌ هنا (D-198):** الصفُّ
-         والصفحةُ الكاملة يناديان **نفسَ الدالّة** بحدَّين مختلفين — فلا
-         مصدرٌ ثانٍ لقسمٍ واحد، وهو العطلُ الذي كلّفنا D-135/D-164/D-183. */
-      buildSection(
-        "most-popular",
-        {
-          media: wantMovies ? "movie" : "tv",
-          base,
-          genreIds: wantMovies ? genre?.movie : genre?.tv,
-          active,
-          /* **قرعةٌ للصفّ لا للصفحة** (D-202، طلب أحمد: «عشوائية مثل بيكد
-             فور يو»): الصفُّ عشرون من بِركةٍ أوسع، فلا يتجمّد على نفس
-             الوجوه. **والصفحةُ الكاملة لا تُقرع** — من فتحها يريد الجردَ
-             مرتَّباً، وقرعةٌ فيها تجعل التمرير يكرّر ويُسقط. */
-          sample: true,
-          /* لغةُ القارئ لمصدر الكلاسيكيّات — يترجم صفوفَ القائمة (D-147) */
-          locale,
-        },
-        20,
-      )
-        /* 🔴 **`attachImdbRatings` لا `withImdbRatings` — وهذا عطلٌ قِيس على
-           الإنتاج قبل أن يُصلَح:** الثانيةُ **تُعيد ترتيب الصفّ بتقييم
-           IMDb تنازلياً**، فكانت تمحو ترتيبَ الشعبية **وتمحو القرعةَ
-           نفسها**: عضويةُ الصفّ تتغيّر كل زيارة (فالقرعةُ تعمل) **وترتيبُه
-           ثابتٌ أبداً** — شاوشانك ٩٫٣ ثم الأب الروحي ٩٫٢ ثم فارس الظلام
-           ٩٫٠… فيُقرأ الصفُّ «أفضل تقييماً» تحت عنوانٍ يقول «الأكثر شعبية».
+  /* الصفّان الشخصيّان — Suspense مستقلّ منذ م٧/D-071، بشرطَي D-197 */
+  const personal =
+    (!active || localAxesOnly(browse)) ? (
+      <Suspense fallback={<RailSkeleton count={6} />}>
+        {/* الجهة تُمرَّر: التبويب وعدٌ، والصفّ الذي لا يعرف تبويبه يخلفه */}
+        <PersonalRails locale={locale} t={t} type={type} browse={active ? browse : undefined} myRows={myRows} tab={type === "tv" ? "shows" : "movies"} region={region} />
+      </Suspense>
+    ) : null;
 
-           **والدالّةُ الصحيحة موجودةٌ منذ D-132 ومكتوبٌ في رأسها هذا
-           المعنى حرفياً:** «يُلحق التقييم **بلا إعادة ترتيب** — لصفٍّ
-           ترتيبُه هو معناه». **فالعطلُ كان في اختيار الدالّة لا في
-           غيابها.** */
-        .then(attachImdbRatings),
-      /* «في السينما» بتقييم IMDb كسائر الصفوف (طلب أحمد 9 Aug مساءً:
-         «أعمال السينما تكون مقيَّمة من IMDb»). كان الصفّ الوحيد الذي
-         يعرض ملصقاتٍ بلا رقم — والفيلم الذي تفكّر في حجز تذكرةٍ له هو
-         **أحوج** ما يكون إلى تقييم، لا أقلّها. الترتيب يبقى ترتيب دور
-         العرض: «ما يُعرض الآن» سؤالُ توقيتٍ لا سؤال جودة. */
-      /* **والأنمي يغادر هذا الصفَّ أيضاً (طلب أحمد ١٢ أغسطس):** «الأنمي
-         ما زال في الأفلام والمسلسلات، المفروض فقط في الأنمي». والتصفية
-         هنا لا في `fitsCinema`: تلك تُطبَّق **حين يكون الفلتر مفعّلاً
-         وحده** (انظر `inCinemas` أدناه)، فحارسٌ فيها يترك الصفَّ الافتراضيّ
-         — وهو ما يراه أكثرُ الناس — بلا حراسة. */
-      /* **ومنها إلى `buildSection` (D-199):** الصفوفُ من السجلّ، **والمنطقةُ
-         وحدها تبقى هنا** — لأن اسمَ البلد يُطبع في سطرٍ تحت العنوان
-         (D-150: من يقرأ سعراً يجب أن يعرف لأيّ سوق). فالسجلُّ يملك
-         «ما يُعرض»، والصفحةُ تملك «أين». */
-      wantMovies
-        ? Promise.all([
-            buildSection("in-cinemas", { media: "movie", base, genreIds: genre?.movie, active }, 20),
-            nowPlayingMovies().catch(() => null),
-          ])
-            .then(async ([results, c]) =>
-              results.length && c
-                ? { region: c.region, results: await attachImdbRatings(results) }
-                : null,
-            )
-            .catch(() => null)
-        : Promise.resolve(null),
-      /* «القادم» يفتح صفّ العدّ التنازلي في كل النوافذ — هو النتيجة كلّها
-         هناك. **ومصدرُه صار السجلَّ (D-199):** كان يُبنى هنا بثلاثة فروع
-         (فلتر · نوع · قائمةٌ جاهزة) **وفي `sections.ts` بثلاثةٍ مثلها** —
-         ففرعٌ يتغيّر في أحدهما يجعل الصفحةَ تعرض غيرَ ما وعد الصفّ.
-         **والعميلُ هو من يدفع ذلك الفرق**: يضغط «القادم قريباً» فيرى
-         قائمةً أخرى، فيقرؤها عطلاً لا اختلافَ نطاق. */
-      wantMovies
-        ? buildSection("upcoming", { media: "movie", base, genreIds: genre?.movie, active }, 20)
-        : Promise.resolve([] as SearchResult[]),
-      wantSeries
-        ? buildSection("upcoming", { media: "tv", base, genreIds: genre?.tv, active }, 20)
-        : Promise.resolve([] as SearchResult[]),
-      /* ذيول «أفضل ٥٠» — **من نفس بِركة «أفضل ٢٥٠» لا من بِركةٍ ثانية**
-         (D-164، بلاغ أحمد ١١ أغسطس).
+  if (active) {
+    /* ===== الفلترُ مفعَّل: الحاجزُ القديم كما هو حرفاً (D-515) =====
+       مع الفلتر تكثر الرفوفُ الفارغة، وهيكلٌ يظهر ثم ينهار إلى لا شيء
+       قفزةٌ بصريّة — فيبقى سلوكُ «تصل كلُّها معاً» الذي يعرفه المستخدم،
+       ورسالةُ الفراغ تُحسب من الكلّ كما كانت. والفلترُ يُقاس أصلاً
+       بمفتاح Suspense الصفحة (`browseKey`) فهيكلُه ظاهرٌ من أوّل لمسة. */
+    const lib = { locale, state: await getLibState() };
+    const [topMovies, topSeries, popular, cinemas, soonMovies, soonSeries, top25Movies, top25Series] =
+      await Promise.all([
+        promises.topMovies,
+        promises.topSeries,
+        promises.popular,
+        promises.cinemas,
+        promises.soonMovies,
+        promises.soonSeries,
+        promises.top25Movies,
+        promises.top25Series,
+      ]);
+    const inCinemas = computeInCinemas(cinemas, ctx);
+    const soon = buildSoonItems(soonMovies, soonSeries, ctx);
+    const empty =
+      topMovies.length === 0 &&
+      topSeries.length === 0 &&
+      soon.length === 0 &&
+      top25Movies.length === 0 &&
+      top25Series.length === 0 &&
+      popular.length === 0 &&
+      !inCinemas?.results.length;
 
-         كانت تُبنى من `/discover` مرتَّبةً بـ`vote_count.desc` — أي
-         **الأكثر تصويتاً لا الأفضل**. فسقط «الأب الروحي ٢» و«اثنا عشر
-         رجلاً غاضباً» و«الأخوة في السلاح» و«ذا واير» و«الأسرة» — كلُّها
-         أعلى تقييماً وأقلُّ أصواتاً من كتلة الجماهير — **بينما قائمة
-         الـ٢٥٠ تحملها كلَّها**، لأنها تُبنى في القاعدة بالصيغة البايزيّة
-         من ملفّات IMDb (D-135).
+    return (
+      <div className="space-y-6">
+        {personal}
+        <CinemasView inCinemas={inCinemas} lib={lib} ctx={ctx} />
+        <PopularView popular={popular} lib={lib} ctx={ctx} />
+        <TopTenView mt="movie" rows={topMovies} lib={lib} ctx={ctx} />
+        <TopTenView mt="tv" rows={topSeries} lib={lib} ctx={ctx} />
+        <Top25View mt="movie" rows={top25Movies} lib={lib} ctx={ctx} />
+        <Top25View mt="tv" rows={top25Series} lib={lib} ctx={ctx} />
+        <SoonView soon={soon} ctx={ctx} />
+        {empty && (
+          <p className="text-center text-muted py-20">{t.browseEmpty}</p>
+        )}
+      </div>
+    );
+  }
 
-         **وقائمتان لنفس السؤال تفترقان، وهذا نصّ قاعدة D-135 نفسها**:
-         «مصدرٌ واحد لمكانين» — وقد كان هنا مكانٌ ثالث نُسي.
+  /* ===== 🆕 D-515: بلا فلترٍ — كلُّ رفٍّ يُبثّ لحظةَ جاهزيّته =====
+     نفسُ المواعيد أعلاه، ونفسُ المشاهد (`*View` — مصدرُ ترميزٍ واحد
+     للفرعين)، والذي تغيّر موضعُ `await` وحدَه: من حاجزٍ واحدٍ يحكمه
+     أبطأُ upstream إلى Suspense لكلِّ رفّ — فـ«أفضل ١٠» الجاهز في
+     ~30م.ث لا ينتظر «الأكثر شعبية» (~400م.ث دافئةً و~1.2ث باردةً).
+     والصفحةُ غيرُ المُصفّاة رفوفُها ممتلئةٌ دائماً عمليّاً، فهيكلُ
+     كلِّ رفٍّ يُستبدل بمحتواه لا يذوب إلى فراغ. ورسالةُ «لا شيء»
+     (النادرة هنا) يحملها ذيلٌ يبثّ وحده حين تفرغ الرفوفُ كلُّها —
+     **بلا نداءٍ ثانٍ: يعيد انتظارَ المواعيد نفسِها.** */
+  return (
+    <div className="space-y-6">
+      {personal}
+      {wantMovies && (
+        <Suspense fallback={<RailSkeleton count={6} />}>
+          <CinemasRail promises={promises} ctx={ctx} />
+        </Suspense>
+      )}
+      <Suspense fallback={<RailSkeleton count={6} />}>
+        <PopularRail promises={promises} ctx={ctx} />
+      </Suspense>
+      {wantMovies && (
+        <Suspense fallback={<RailSkeleton count={6} />}>
+          <TopTenRail mt="movie" promises={promises} ctx={ctx} />
+        </Suspense>
+      )}
+      {wantSeries && (
+        <Suspense fallback={<RailSkeleton count={6} />}>
+          <TopTenRail mt="tv" promises={promises} ctx={ctx} />
+        </Suspense>
+      )}
+      {wantMovies && (
+        <Suspense fallback={<RailSkeleton count={6} />}>
+          <Top25Rail mt="movie" promises={promises} ctx={ctx} />
+        </Suspense>
+      )}
+      {wantSeries && (
+        <Suspense fallback={<RailSkeleton count={6} />}>
+          <Top25Rail mt="tv" promises={promises} ctx={ctx} />
+        </Suspense>
+      )}
+      <Suspense fallback={<RailSkeleton count={6} />}>
+        <SoonRail promises={promises} ctx={ctx} />
+      </Suspense>
+      <Suspense fallback={null}>
+        <CuratedEmptyNotice promises={promises} ctx={ctx} />
+      </Suspense>
+    </div>
+  );
+}
 
-         **وتفريقُ الأنمي يأتي مجاناً:** الدالّة في القاعدة تصنّف
-         `movie | anime | tv` بـ`is_anime` (رسومٌ متحرّكة بلغةٍ أصلية
-         يابانية)، فصفُّ المسلسلات يخلو من الأنمي **بلا سطرِ ترشيحٍ
-         واحد** — وهو طلب أحمد حرفياً، ويُبقي «ريك ومورتي» في مكانه لأنه
-         ليس يابانياً.
+/* ================= 🆕 D-515 — عُدّةُ رفوف اكتشف المبثوثة =================
+   المشاهدُ (`*View`) مصدرُ الترميز الوحيدُ لفرعَي الانتظار، والمنتظِرون
+   (`*Rail`) يغلّفونها بانتظار موعدِ رفِّهم وحده. لا نداءَ يُنشأ هنا —
+   المواعيدُ تُنشأ مرّةً في `CuratedRails` وتُمرَّر. */
 
-         **وثمنُها أرخص لا أغلى:** ثلاثة صفوفٍ كانت تكلّف ٢٤٠ نداء OMDb
-         (٨٠ لكلٍّ) فصارت **ثلاث قراءاتٍ من القاعدة**، والتقييم يصل مع
-         الصفّ نفسه. */
-      /* 🔴 **ورجعا إلى قائمة IMDb — للمرّة الثانية وبقرارٍ ثالث (D-189).**
-         التاريخُ كلُّه يُقال لأن من يقرأ سطراً واحداً لا يفهم لماذا:
-         D-164 نقلتهما من `/discover` إلى `imdb_chart` (فعادت الأسماء
-         الساقطة) · **D-183 أرجعتهما إلى TMDB** لأن القائمة حملت ١٤ عملاً
-         هندياً من ٥٠ · ثم قِيس رفُّ TMDB فحمل **١٠ أعمالٍ كورية** (D-188).
-         فتبيّن أن **المشكلة لم تكن المصدر بل غيابَ الترشيح**.
+/** مواعيدُ الرفوف الثمانية — تُنشأ مرّةً وتُستهلك من فرعَي الانتظار */
+type CuratedPromises = {
+  topMovies: Promise<SearchResult[]>;
+  topSeries: Promise<SearchResult[]>;
+  popular: Promise<SearchResult[]>;
+  cinemas: Promise<{ region: string; results: SearchResult[] } | null>;
+  soonMovies: Promise<SearchResult[]>;
+  soonSeries: Promise<SearchResult[]>;
+  top25Movies: Promise<SearchResult[]>;
+  top25Series: Promise<SearchResult[]>;
+};
 
-         **وقرار أحمد الأخير حسمها بجملة: «TOP 50 وTOP 250 أبغاها مثل IMDb
-         بالضبط»، ثم اختار «قائمة IMDb مع الفلترين»** — فصار المصدر قائمةَ
-         IMDb وترتيبَها (وهو ما لا يُنازع فيه أحد)، **والتصفيةُ ثلاثيّة في
-         `filterRail`**: وثائقيّ · أنمي · لغةٌ مكتومة.
-         **والمكسبُ الذي يعود معها:** ترتيبُ IMDb الحقيقيّ لا ترتيبُ جمهور
-         TMDB — فتعود Band of Brothers وThe Wire وThe Sopranos إلى مواضعها،
-         **وتُملأ الخمسون من التالين لا تنقص** (هامش `DOC_MARGIN`). */
-      /* 🆕 ⚖️ **«أفضل ٢٥ هذي السنة» بدل «أعلى ٥٠ على الإطلاق»** (D-420،
-         طلبُ أحمد: «قائمة ٥٠ تصير أفضل ٢٥ هذي السنة»).
-         **ونقضٌ لمصدرها لا لفكرتها**: القائمةُ الثابتة كانت من
-         `imdb_chart` — **وجدولُها بلا عمود سنة** (انظر `imdb_chart.sql`)،
-         **فسؤالُ «هذي السنة» لا يُجاب منه أصلاً.** فصار المصدرُ
-         `/discover` بمدى السنة، **والترتيبُ تقييمَ IMDb كما هو الشرطُ
-         منذ D-164** (`withImdbRatings` ثم فرزٌ تنازليّ) — **فالبِركةُ من
-         TMDB والحكمُ من IMDb**، وهي القسمةُ نفسُها في كلِّ رفٍّ مرتَّب.
-         ⚠️ **وثمنُه يُقال**: عملٌ صدر هذا العامَ ولم يبلغ ألفَ صوتٍ في
-         IMDb قد يتصدّر برقمٍ هشّ — **فالعتبةُ في `minVotes` تحرسه.** */
-      wantMovies
-        ? bestOfYear("movie", locale, base, genre?.movie).catch(() => [] as SearchResult[])
-        : Promise.resolve([] as SearchResult[]),
-      wantSeries
-        ? bestOfYear("tv", locale, base, genre?.tv).catch(() => [] as SearchResult[])
-        : Promise.resolve([] as SearchResult[]),
-    ]);
+/** سياقُ الرسم المشترك — يُحسب مرّةً في الصفحة ويُمرَّر كما هو */
+type CuratedCtx = {
+  locale: Locale;
+  t: T;
+  browse: BrowseQuery;
+  eraR: ReturnType<typeof eraRange>;
+  qs: string;
+  rails: { m: RailWin; s: RailWin; a: RailWin; am: RailWin };
+  today: string;
+  unmute: boolean;
+  wantMovies: boolean;
+  wantSeries: boolean;
+};
 
-  const today = new Date().toISOString().slice(0, 10);
+type LibCtx = { locale: Locale; state: Awaited<ReturnType<typeof getLibState>> };
 
-  /* «في السينما» لا يقبل من TMDB تصنيفاً ولا لغةً ولا تقييماً — يقبل
-     المنطقة وحدها. فيُصفّى هنا على النتائج نفسها: أرخص من طلبٍ ثانٍ،
-     والصفّ خمسة عشر عملاً لا أكثر. والحقبة تُطبَّق أيضاً وإن كانت تُفرغه
-     غالباً — من اختار التسعينات لا ينتظر أن يجدها في دور العرض اليوم،
-     وصفٌّ فارغ أصدق من صفٍّ يتجاهل ما اختاره. */
+/* «في السينما» لا يقبل من TMDB تصنيفاً ولا لغةً ولا تقييماً — يقبل
+   المنطقة وحدها. فيُصفّى على النتائج نفسها: أرخص من طلبٍ ثانٍ. والحقبة
+   تُطبَّق وإن كانت تُفرغه غالباً — صفٌّ فارغ أصدق من صفٍّ يتجاهل ما
+   اختير. ويسقط كلُّه عند اختيار منصّةٍ أو وسم: الصفُّ عن دور العرض،
+   وما لا يُصفّى بما اختير يكذب على الفلتر. */
+function computeInCinemas(
+  cinemas: { region: string; results: SearchResult[] } | null,
+  ctx: CuratedCtx,
+): { region: string; results: SearchResult[] } | null {
+  const { browse, eraR } = ctx;
+  const { genre, lang, country, rate, era, provider, tag, active } = browse;
   const fitsCinema = (r: SearchResult) => {
     if (genre && !(r.genre_ids ?? []).some((id) => genre.movie.includes(id))) return false;
     if (lang && r.original_language !== lang.code) return false;
@@ -1337,33 +1376,28 @@ async function CuratedRails({
     if (rate && r.vote_average < rate) return false;
     if (era) {
       const d = dateOf(r);
-      // المدى المحسوب لا الخام: «القادم» يُفرغ صفّ دور العرض بحقّ —
-      // ما يُعرض اليوم ليس قادماً
+      // المدى المحسوب لا الخام: «القادم» يُفرغ صفّ دور العرض بحقّ
       if (d && eraR.from && d < eraR.from) return false;
       if (d && eraR.to && d > eraR.to) return false;
     }
     return true;
   };
-
-  /* «في السينما» يسقط كلّه عند اختيار منصّة: الصفّ عن دور العرض، والسؤال
-     «ما المتاح على اشتراكي» نقيضه — وصفٌّ لا يمكن تصفيته بما اختير يكذب
-     على الفلتر */
-  /* **والوسمُ يُسقطه أيضاً:** كلماتُ TMDB المفتاحية لا تأتي في نتيجة
-     `/now_playing`، فلا سبيل لتصفيته بها هنا — وصفٌّ لا يُصفّى بما اختير
-     يكذب على الفلتر تماماً كصفّ المنصّة */
-  const inCinemas = provider || tag
+  return provider || tag
     ? null
     : cinemas && active
       ? { region: cinemas.region, results: cinemas.results.filter(fitsCinema) }
       : cinemas;
+}
 
-  // القادم فقط في صفّ العدّ التنازلي — ما صدر أمس ليس «قادماً»
-  /* **والأنمي يغادر «القادم قريباً» كذلك** (نفس طلب ١٢ أغسطس): صفُّ
-     العدّ التنازليّ كان آخرَ بابٍ يدخل منه إلى تبويبَي الأعمال، وهو
-     أظهرُها لأنه يفتح كلَّ النوافذ. **وحارسٌ واحد على الفم المشترك**
-     (`soon`) لا على المسارين قبله — نفسُ درسِ D-175: الترشيح في موضع
-     النداء لا في أحد فروعه. */
-  const soon: CountdownItem[] = railGuard([...soonMovies, ...soonSeries], { unmute })
+/* القادم فقط في صفّ العدّ التنازلي — ما صدر أمس ليس «قادماً».
+   **والأنمي يغادره كذلك بحارسٍ واحدٍ على الفم المشترك** (درسُ D-175). */
+function buildSoonItems(
+  soonMovies: SearchResult[],
+  soonSeries: SearchResult[],
+  ctx: CuratedCtx,
+): CountdownItem[] {
+  const { t, today, unmute } = ctx;
+  return railGuard([...soonMovies, ...soonSeries], { unmute })
     .filter((r) => r.media_type === "tv" || r.media_type === "movie")
     .filter((r) => dateOf(r) >= today)
     .sort((a, b) => dateOf(a).localeCompare(dateOf(b)))
@@ -1376,147 +1410,187 @@ async function CuratedRails({
       date: dateOf(r),
       badge: r.media_type === "tv" ? t.typeSeries : t.typeMovie,
     }));
+}
 
+function CinemasView({
+  inCinemas,
+  lib,
+  ctx,
+}: {
+  inCinemas: { region: string; results: SearchResult[] } | null;
+  lib: LibCtx;
+  ctx: CuratedCtx;
+}) {
+  const { t, qs, locale } = ctx;
+  if (!inCinemas || inCinemas.results.length === 0) return null;
+  return (
+    <RankedRail
+      title={t.inCinemas}
+      lib={lib}
+      icon="film"
+      items={inCinemas.results}
+      href={sectionHref("in-cinemas", "movie", qs)}
+      seeAllLabel={t.seeAll}
+      /* اسم البلد من `region.ts` لا من خريطةٍ محلية — «MA» لمن اختار المغرب */
+      note={t.inCinemasRegion(regionName(inCinemas.region, locale === "en" ? "en" : "ar"))}
+      ranked={false}
+    />
+  );
+}
+
+/* «الأكثر شعبية» بعد دور العرض وقبل «أفضل ١٠» (ترتيبُ مواصفة أحمد) —
+   غيرُ مرقَّم: الترتيبُ شعبيةٌ لا حكمٌ بالجودة */
+function PopularView({
+  popular,
+  lib,
+  ctx,
+}: {
+  popular: SearchResult[];
+  lib: LibCtx;
+  ctx: CuratedCtx;
+}) {
+  const { t, qs, wantMovies } = ctx;
+  if (popular.length === 0) return null;
+  return (
+    <RankedRail
+      title={wantMovies ? t.mostPopularMovies : t.mostPopularSeries}
+      lib={lib}
+      icon="trending"
+      items={popular}
+      href={sectionHref("most-popular", wantMovies ? "movie" : "tv", qs)}
+      seeAllLabel={t.seeAll}
+      ranked={false}
+    />
+  );
+}
+
+/* «أفضل ١٠» — النافذةُ ثبتت على الأسبوع (D-504، نقضُ D-445) والعنوانُ
+   يقولها؛ تاريخُ الرقائق والمبدّلات في نسخ ما قبل D-515 */
+function TopTenView({
+  mt,
+  rows,
+  lib,
+  ctx,
+}: {
+  mt: "movie" | "tv";
+  rows: SearchResult[];
+  lib: LibCtx;
+  ctx: CuratedCtx;
+}) {
+  const { t, qs, rails } = ctx;
+  if (rows.length === 0) return null;
+  return (
+    <RankedRail
+      title={t.top10Win(mt === "movie" ? t.top10Movies : t.top10Series, "week")}
+      lib={lib}
+      icon={mt === "movie" ? "film" : "tv"}
+      items={rows}
+      href={sectionHref("top-ten", mt, winQs(qs, mt === "movie" ? rails.m : rails.s))}
+    />
+  );
+}
+
+/* ذيل «أفضل ٢٥ هذي السنة» — مرجعٌ في الحالة غير المُصفّاة (D-420) */
+function Top25View({
+  mt,
+  rows,
+  lib,
+  ctx,
+}: {
+  mt: "movie" | "tv";
+  rows: SearchResult[];
+  lib: LibCtx;
+  ctx: CuratedCtx;
+}) {
+  const { t } = ctx;
+  if (rows.length === 0) return null;
+  return (
+    <RankedRail
+      title={mt === "movie" ? t.top50Movies : t.top50Series}
+      icon={mt === "movie" ? "film" : "tv"}
+      items={rows}
+      lib={lib}
+    />
+  );
+}
+
+/* «قريباً» آخرَ الصفحة (D-420): ما لم يصدر ليس جواباً عن «ماذا أشاهد
+   الآن؟» — فيُذيَّل به التصفّحُ ولا يقطعه */
+function SoonView({ soon, ctx }: { soon: CountdownItem[]; ctx: CuratedCtx }) {
+  const { t, locale, qs, wantMovies } = ctx;
+  if (soon.length === 0) return null;
+  return (
+    <CountdownRail
+      title={t.comingSoon}
+      icon="calendar"
+      items={soon}
+      locale={locale}
+      href={sectionHref("upcoming", wantMovies ? "movie" : "tv", qs)}
+      seeAllLabel={t.seeAll}
+    />
+  );
+}
+
+/* ===== المنتظِرون: كلٌّ ينتظر موعدَ رفِّه (وحالةَ المكتبة المخبّأة) =====
+   `getLibState` مغلَّفةٌ بـ`cache` فهي رحلةٌ واحدةٌ مهما تنازعها الرفوف */
+
+async function CinemasRail({ promises, ctx }: { promises: CuratedPromises; ctx: CuratedCtx }) {
+  const [cinemas, state] = await Promise.all([promises.cinemas, getLibState()]);
+  return <CinemasView inCinemas={computeInCinemas(cinemas, ctx)} lib={{ locale: ctx.locale, state }} ctx={ctx} />;
+}
+
+async function PopularRail({ promises, ctx }: { promises: CuratedPromises; ctx: CuratedCtx }) {
+  const [popular, state] = await Promise.all([promises.popular, getLibState()]);
+  return <PopularView popular={popular} lib={{ locale: ctx.locale, state }} ctx={ctx} />;
+}
+
+async function TopTenRail({ mt, promises, ctx }: { mt: "movie" | "tv"; promises: CuratedPromises; ctx: CuratedCtx }) {
+  const [rows, state] = await Promise.all([
+    mt === "movie" ? promises.topMovies : promises.topSeries,
+    getLibState(),
+  ]);
+  return <TopTenView mt={mt} rows={rows} lib={{ locale: ctx.locale, state }} ctx={ctx} />;
+}
+
+async function Top25Rail({ mt, promises, ctx }: { mt: "movie" | "tv"; promises: CuratedPromises; ctx: CuratedCtx }) {
+  const [rows, state] = await Promise.all([
+    mt === "movie" ? promises.top25Movies : promises.top25Series,
+    getLibState(),
+  ]);
+  return <Top25View mt={mt} rows={rows} lib={{ locale: ctx.locale, state }} ctx={ctx} />;
+}
+
+async function SoonRail({ promises, ctx }: { promises: CuratedPromises; ctx: CuratedCtx }) {
+  const [m, s] = await Promise.all([promises.soonMovies, promises.soonSeries]);
+  return <SoonView soon={buildSoonItems(m, s, ctx)} ctx={ctx} />;
+}
+
+/* رسالةُ «لا شيء» حين تفرغ الرفوفُ كلُّها — تنتظر المواعيدَ نفسَها فلا
+   نداءَ ثانٍ، وتبثّ آخرَ ما تبثّ لأنها بطبيعتها تعرف بعد الجميع */
+async function CuratedEmptyNotice({ promises, ctx }: { promises: CuratedPromises; ctx: CuratedCtx }) {
+  const [topMovies, topSeries, popular, cinemas, soonMovies, soonSeries, top25Movies, top25Series] =
+    await Promise.all([
+      promises.topMovies,
+      promises.topSeries,
+      promises.popular,
+      promises.cinemas,
+      promises.soonMovies,
+      promises.soonSeries,
+      promises.top25Movies,
+      promises.top25Series,
+    ]);
+  const inCinemas = computeInCinemas(cinemas, ctx);
+  const soon = buildSoonItems(soonMovies, soonSeries, ctx);
   const empty =
     topMovies.length === 0 &&
     topSeries.length === 0 &&
     soon.length === 0 &&
-    top50Movies.length === 0 &&
-    top50Series.length === 0 &&
+    top25Movies.length === 0 &&
+    top25Series.length === 0 &&
     popular.length === 0 &&
     !inCinemas?.results.length;
-
-  return (
-    <div className="space-y-6">
-      {/* ===== الصفّان الشخصيّان — Suspense مستقلّ (م٧/D-071) =====
-          المقترحات وحدها ~٤٠ طلب TMDB في أول تحميل، وكانت داخل
-          Promise.all الصفوف كلّها فيرهن أبطأُ طلبٍ رسمَ الصفحة بأكملها.
-          فصلُهما يجعل «أفضل ١٠» ودور العرض تظهر فور جاهزيتها، ويلحق
-          الشخصيّ حين يكتمل — والهيكل يحجز ارتفاعه (D-046) */}
-      {/* **صار يظهر مع الفلتر أيضاً — بشرطين** (D-197، قرارُ أحمد
-          «يطيعان الفلتر»): أن تكون المحاورُ المختارة ممّا يستطيعه الصفّ
-          (`localAxesOnly`)، وأن يبقى فيه شيءٌ بعد التصفية (يُخفي نفسه). */}
-      {(!active || localAxesOnly(browse)) && (
-        <Suspense fallback={<RailSkeleton count={6} />}>
-          {/* الجهة تُمرَّر: التبويب وعدٌ، والصفّ الذي لا يعرف تبويبه يخلفه */}
-          <PersonalRails locale={locale} t={t} type={type} browse={active ? browse : undefined} myRows={myRows} tab={type === "tv" ? "shows" : "movies"} region={region} />
-        </Suspense>
-      )}
-
-      {/* فواصل الأقسام المسمّاة (م١/D-103) أُزيلت — «ما عجبتني» (قرار
-          أحمد 9 Aug): الصفوف تتوالى بلا عناوين قسمية كما كانت */}
-      {inCinemas && inCinemas.results.length > 0 && (
-        <RankedRail
-          title={t.inCinemas}
-          lib={lib}
-          icon="film"
-          items={inCinemas.results}
-          href={sectionHref("in-cinemas", "movie", qs)}
-          seeAllLabel={t.seeAll}
-          /* اسم البلد من `region.ts` لا من خريطةٍ محلية: صفّ السينما
-             صار يبدأ من بلد المستخدم، وخريطةٌ من أربعة بلدان كانت
-             ستطبع «MA» لمن اختار المغرب */
-          note={t.inCinemasRegion(regionName(inCinemas.region, locale === "en" ? "en" : "ar"))}
-          ranked={false}
-        />
-      )}
-
-      {/* «الأكثر شعبية» بعد دور العرض وقبل «أفضل ١٠» (ترتيبُ مواصفة
-          أحمد): الشخصيُّ أوّلاً، ثم ما يُعرض اليوم، ثم الشعبيّ، ثم
-          المرتَّب بالجودة، ثم القادم — من الآنِ إلى الغد. */}
-      {popular.length > 0 && (
-        <RankedRail
-          title={wantMovies ? t.mostPopularMovies : t.mostPopularSeries}
-          lib={lib}
-          icon="trending"
-          items={popular}
-          href={sectionHref("most-popular", wantMovies ? "movie" : "tv", qs)}
-          seeAllLabel={t.seeAll}
-          /* غيرُ مرقَّم: الترتيبُ ترتيبُ TMDB للشعبية لا حكمٌ بالجودة،
-             ورقمٌ أمام الملصق يُقرأ «الأفضل» فيكذب العنوان */
-          ranked={false}
-        />
-      )}
-
-      {/* رقائق النافذة (D-099): الصفّ لا يختفي في نافذةٍ فارغة —
-          رسالةٌ مكانه وإلا ضاع طريق العودة لنافذةٍ فيها نتائج */}
-      {/* 🆕 ⚖️ **ورقائقُ النافذة سقطت** (D-420، شطبَها أحمد على اللقطة:
-          «احذف فلتر أسبوع وشهر وسنة»). **وحجّةُ D-099 كانت أن للرفّ ثلاثَ
-          نوافذ فيحتاج مبدّلاً** — **واليوم صار للرفّ نافذةٌ واحدةٌ يقولها
-          عنوانُه** («أفضل ١٠ هذا الأسبوع»)، **ومبدّلٌ بخيارٍ واحد زينة**
-          (نفسُ حكم رقائق المجتمع في D-398). **والنافذةُ الثابتة تُغني عن
-          `emptyText` أيضاً**: رفٌّ بلا نافذةٍ فارغةٍ لا يحتاج رسالةً
-          تشرحها. */}
-      {/* 🆕 ⚖️ **والنافذةُ غادرت اسمَ الرفّ إلى مبدِّله** (D-456، **نقضٌ
-          جزئيٌّ لـD-445 بقياسٍ لا برأي**): بعد أن صار عنوانُ القسم ٢٢px
-          (D-454) **قِيس رأسُ رفِّ الأنمي على ٣٦٠px فبلغ ١٢٧ بكسلاً
-          والعنوانُ ما زال مقصوصاً** — ثلاثةُ أسطرٍ لعنوانٍ واحد.
-
-          **وحجّةُ D-445 تبقى محفوظةً بحرفها**: كان العطلُ أن الرفَّ يقول
-          «هذا الأسبوع» وهو يعرض الشهر — **وجذعٌ بلا نافذةٍ لا يكذب**،
-          **والمبدِّلُ الملاصقُ له يقول أيَّ نافذةٍ أنت فيها.**
-          **والجملةُ الكاملةُ تبقى في صفحة القسم** حيث لا مبدِّل يقولها.
-
-          🔑 **والدرسُ**: **سلّمُ الخطّ يفرض ما يسعه الرأس** — ومن رفع
-          العنوانَ أربعةَ بكسلات فليَعُدّ ما بجواره. */}
-      {topMovies.length > 0 && (
-        <RankedRail
-          title={t.top10Win(t.top10Movies, "week")}
-          lib={lib}
-          icon="film"
-          items={topMovies}
-          href={sectionHref("top-ten", "movie", winQs(qs, rails.m))}
-        />
-      )}
-      {topSeries.length > 0 && (
-        <RankedRail
-          title={t.top10Win(t.top10Series, "week")}
-          lib={lib}
-          icon="tv"
-          items={topSeries}
-          href={sectionHref("top-ten", "tv", winQs(qs, rails.s))}
-        />
-      )}
-
-      {/* ذيل «أعلى ٢٥ على الإطلاق» — مرجعٌ ثابت في الحالة غير المُصفّاة */}
-      {top50Movies.length > 0 && (
-        <RankedRail
-          title={t.top50Movies}
-          icon="film"
-          items={top50Movies}
-          lib={lib}
-        />
-      )}
-      {top50Series.length > 0 && (
-        <RankedRail
-          title={t.top50Series}
-          icon="tv"
-          items={top50Series}
-          lib={lib}
-        />
-      )}
-
-      {/* 🆕 **و«قريباً» آخرَ الصفحة** (D-420، طلبُ أحمد): **ما لم يصدر
-          بعدُ ليس جواباً عن «ماذا أشاهد الآن؟»** — **فيُذيَّل به التصفّحُ
-          ولا يقطعه.** */}
-      {soon.length > 0 && (
-        <CountdownRail
-          title={t.comingSoon}
-          icon="calendar"
-          items={soon}
-          locale={locale}
-          href={sectionHref("upcoming", wantMovies ? "movie" : "tv", qs)}
-          seeAllLabel={t.seeAll}
-        />
-      )}
-
-      {empty && (
-        <p className="text-center text-muted py-20">
-          {active ? t.browseEmpty : t.newsEmpty}
-        </p>
-      )}
-    </div>
-  );
+  if (!empty) return null;
+  return <p className="text-center text-muted py-20">{ctx.t.newsEmpty}</p>;
 }
 
 /**
