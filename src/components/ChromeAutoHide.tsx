@@ -45,6 +45,14 @@ import { allowsAutoHideChrome } from "@/lib/chromeRules";
 export function ChromeAutoHide() {
   const pathname = usePathname();
 
+  /* حزامُ أمانِ شاشة الإقلاع (عطلُ آيفون ٢٠ أغسطس): الأثرُ يعمل بعد
+     الترطيب حتماً — فلو أعاد React رسمَ الجذر وأعاد معه `#lz-launch`
+     بلا صنفِ الإذابة، أذابه هذا النداءُ بدل أن يعلق فوق التطبيق.
+     والدالّةُ يعرّفها سكربتُ القشرة (`window.__lzMelt`) وهي idempotent. */
+  useEffect(() => {
+    (window as Window & { __lzMelt?: () => void }).__lzMelt?.();
+  }, []);
+
   useEffect(() => {
     const root = document.documentElement;
 
