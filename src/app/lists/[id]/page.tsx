@@ -19,6 +19,7 @@ import { ListReviews } from "@/components/ListReviews";
 import { getT } from "@/lib/locale";
 import { BackCrumb } from "@/components/BackButton";
 import { ListDetail } from "@/components/ListDetail";
+import { getLibState } from "@/lib/libState";
 import { localizeRows } from "@/lib/localize";
 import { buttonClass } from "@/components/ui/Button";
 
@@ -175,6 +176,21 @@ export default async function ListPage({ params }: { params: Promise<{ id: strin
      فلا تظهر قائمةٌ عربية داخل واجهةٍ إنجليزية */
   const items = await localizeRows(data.items, locale);
 
+  /* 🆕 **حالةُ المكتبة لهذه القائمة — نداءٌ واحدٌ لا نداءٌ لكلِّ ملصق**
+     (D-495/D-205): `getLibState` يقرأ المتابعاتِ والمشاهَداتِ مرّةً،
+     **ونُسلسِل منها بولياناً واحداً لكلِّ عنصر** — المكوّنُ عميلٌ فلا
+     يعبر الحدَّ إلا ما يُسلسَل (D-235).
+     ⚠️ **ولصاحب القائمة لا يُحسب**: زاويةُ ملصقه فيها علامةُ الإزالة. */
+  const inLibrary = isOwner
+    ? undefined
+    : await (async () => {
+        const lib = await getLibState().catch(() => null);
+        if (!lib) return undefined;
+        const map: Record<string, boolean> = {};
+        for (const it of items) map[`${it.media_type}-${it.tmdb_id}`] = lib.of(it.tmdb_id, it.media_type).added;
+        return map;
+      })();
+
   return (
     <div>
       {/* 🆕 **الرجوعُ من حيث أتيت** (D-336، بلاغُ أحمد: فتح قائمةً من
@@ -206,6 +222,7 @@ export default async function ListPage({ params }: { params: Promise<{ id: strin
         }
         locale={locale}
         initialSaved={isOwner ? null : saved}
+        inLibrary={inLibrary}
         cover={{
           backdrop: data.list.cover_backdrop ?? null,
           tmdbId: data.list.cover_tmdb_id ?? null,
