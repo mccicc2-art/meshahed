@@ -874,6 +874,35 @@ async function HomeBody({
     .filter((c) => c.next !== null && c.mine / c.total >= 0.6)
     .slice(0, 2);
 
+  /* 🆕 **مشهدُ «التالي» لبطاقات القوائم** (D-507، حكمُ أحمد: «اعملها
+     غلاف وحجمه يكون مثل المسلسل»): البطاقةُ صارت بهندسة بطاقة الحلقة،
+     **وبطاقةُ الحلقة صورتُها مشهدٌ لا ملصق** — والمشهدُ لا يسكن صفوفَ
+     القوائم فيُجلب هنا لعنصرٍ واحدٍ من كلِّ بطاقة (سقفُ البطاقات ستٌّ،
+     والنداءاتُ متوازيةٌ ومعظمُها في كاش TMDB أصلاً). **وبعد الموجة
+     عمداً**: البطاقاتُ نفسُها تُبنى من نتائجها (D-470 لا ينهى عن تابعٍ
+     صادق). والفشلُ يسقط إلى الملصق بلا شاشة خطأ. */
+  const cardNexts = [
+    ...(toWatchCard ? [toWatchCard.next] : []),
+    ...playlistCards.map((c) => c.next!),
+    ...listCards.map((c) => c.next!),
+  ];
+  const nextBackdrops = new Map(
+    await Promise.all(
+      cardNexts.map(async (n) => {
+        const key = `${n.media_type}-${n.tmdb_id}`;
+        try {
+          const d =
+            n.media_type === "movie" ? await getMovie(n.tmdb_id) : await getTv(n.tmdb_id);
+          return [key, d?.backdrop_path ?? null] as const;
+        } catch {
+          return [key, null] as const;
+        }
+      }),
+    ),
+  );
+  const backdropOf = (n: { media_type: "tv" | "movie"; tmdb_id: number }) =>
+    nextBackdrops.get(`${n.media_type}-${n.tmdb_id}`) ?? null;
+
   // ===== مسلسلاتي: كل ما تتابعه، الأقرب إلى الاستئناف أولاً =====
   const myShows = [...items].sort((a, b) => {
     const rank = (i: typeof a) =>
@@ -1177,6 +1206,7 @@ async function HomeBody({
                       mediaType: toWatchCard.next.media_type,
                       title: toWatchCard.next.title,
                       posterPath: toWatchCard.next.poster_path,
+                      backdropPath: backdropOf(toWatchCard.next),
                     }}
                     watched={toWatchCard.watched}
                     total={toWatchCard.total}
@@ -1194,6 +1224,7 @@ async function HomeBody({
                       mediaType: c.next!.media_type,
                       title: c.next!.title,
                       posterPath: c.next!.poster_path,
+                      backdropPath: backdropOf(c.next!),
                     }}
                     watched={c.watched}
                     total={c.total}
@@ -1209,6 +1240,7 @@ async function HomeBody({
                       mediaType: c.next!.media_type,
                       title: c.next!.title,
                       posterPath: c.next!.poster_path,
+                      backdropPath: backdropOf(c.next!),
                     }}
                     watched={c.watched}
                     total={c.total}
