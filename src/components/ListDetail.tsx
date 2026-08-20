@@ -176,7 +176,13 @@ export function ListDetail({
         toast(n > 0 ? t.listAddAllDone(n) : t.listAddAllNone, {
           tone: n > 0 ? "success" : "info",
         });
-        if (n > 0) router.refresh();
+        /* **والقلبُ يمتلئ لأن القائمةَ دخلت فعلاً** (D-496): الفعلُ
+           يحفظها على الخادم، **وحالةُ الزرّ هنا لا تُعاد تهيئتُها من
+           المعامل بعد التجديد** — فتُقال هنا مرّةً بلا كذب. */
+        if (n > 0) {
+          setSaved(true);
+          router.refresh();
+        }
       })
       .catch((e) => flashError((e as Error).message))
       .finally(() => setAddingAll(false));
