@@ -208,7 +208,7 @@ export default async function RootLayout({
             عنصرٍ يصادف أن يكون آخر ما في الصفحة.** */}
         <main
           id="main"
-          className="flex-1 w-full max-w-6xl mx-auto px-4 pt-6 pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-8"
+          className="flex-1 w-full max-w-6xl mx-auto px-4 pt-6 pb-[calc(5.75rem+env(safe-area-inset-bottom))] md:pb-8"
         >
           {children}
         </main>
