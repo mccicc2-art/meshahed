@@ -4290,6 +4290,77 @@ export async function getMySavedListIds(): Promise<Set<string>> {
   }
 }
 
+/** قائمةٌ محفوظةٌ بعناصرها — لبطاقة «تابِع المشاهدة» (D-496) */
+export interface SavedListBrief {
+  id: string;
+  name: string;
+  sourceSlug: string | null;
+  items: ListItem[];
+}
+
+/**
+ * 🆕 **القوائمُ المحفوظةُ بعناصرها — لمتابعتها كما يُتابَع المسلسل**
+ * (D-496، طلبُ أحمد: «تظهر في كونتنيو واتشينج مثل المسلسل»).
+ *
+ * **ثلاثةُ استعلاماتٍ مهما كثرت القوائم**: المحفوظةُ، ثم أسماؤها، ثم
+ * عناصرُها دفعةً واحدة (`in`) — **لا استعلامَ لكلِّ قائمة** (D-205).
+ *
+ * ⚠️ **وسقفان يمنعان هذا من أن يصير استعلامَ كتالوج**: ستُّ قوائمَ
+ * وأربعُمئةِ عنصرٍ إجمالاً. **و«أفضل ٢٥٠» ليست شيئاً «تُتابعه» فيلماً
+ * فيلماً** — والمرشِّحُ في الرئيسية يُسقط الطويلةَ صراحةً.
+ *
+ * ⚠️ **وتُستدعى في الجسم المتدفّق لا في الموجة الأولى**: أوّلُ بايتٍ
+ * للرئيسية لا ينتظر قائمةً محفوظة.
+ */
+export async function getSavedListsBrief(limit = 6): Promise<SavedListBrief[]> {
+  try {
+    const supabase = await createClient();
+    const user = await getUser();
+    if (!user) return [];
+
+    const { data: saves } = await supabase
+      .from("list_saves")
+      .select("list_id")
+      .eq("user_id", user.id)
+      .limit(limit);
+    const ids = [...new Set((saves ?? []).map((r) => String(r.list_id)))];
+    if (ids.length === 0) return [];
+
+    const [listsRes, itemsRes] = await Promise.all([
+      supabase.from("user_lists").select("id, name, source_slug").in("id", ids),
+      supabase
+        .from("user_list_items")
+        .select("list_id, tmdb_id, media_type, title, poster_path, added_at, sort_order")
+        .in("list_id", ids)
+        .limit(400),
+    ]);
+
+    const byList = new Map<string, ListItem[]>();
+    for (const r of (itemsRes.data ?? []) as (ListItem & { list_id: string })[]) {
+      const arr = byList.get(r.list_id) ?? [];
+      arr.push(r);
+      byList.set(r.list_id, arr);
+    }
+
+    return ((listsRes.data ?? []) as { id: string; name: string; source_slug: string | null }[])
+      .map((l) => ({
+        id: l.id,
+        name: l.name,
+        sourceSlug: l.source_slug,
+        /* **ترتيبُ القائمة هو ترتيبُ مشاهدتها** (D-390): `sort_order`
+           أوّلاً، **والغائبُ يتبع تاريخَ الإضافة** كما في صفحتها. */
+        items: (byList.get(l.id) ?? []).sort(
+          (a, b) =>
+            (a.sort_order ?? 1e9) - (b.sort_order ?? 1e9) ||
+            a.added_at.localeCompare(b.added_at),
+        ),
+      }))
+      .filter((l) => l.items.length > 0);
+  } catch {
+    return [];
+  }
+}
+
 /**
  * قوائم شخصٍ المعلنة — لصفّها في ملفّه العام (D-068).
  * القراءة عبر سياسة `is_public` العالمية نفسها؛ بلا سطر صاحبٍ — الصفحة

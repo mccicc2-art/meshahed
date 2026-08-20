@@ -643,8 +643,21 @@ export async function followListTitles(listId: string): Promise<number> {
   }));
 
   await supabase.from("follows").upsert(rows, { onConflict: "user_id,tmdb_id,media_type" });
+
+  /* 🆕 **والقائمةُ نفسُها تدخل** (D-496، طلبُ أحمد: «أضف اللستة تو واتش
+     **و تدخل** وتظهر في كونتنيو واتشينج»): **العلامةُ هي الحفظ**، وهي
+     ما تقرؤه الرئيسيةُ لترسم بطاقةَ «القائمةُ التي تتابعها».
+     **ولا عمودَ جديدٌ ولا هجرة**: الحفظُ قائمٌ منذ D-068، **وما تقوله
+     البياناتُ أصلاً لا يُخترع له عمودٌ ثانٍ** (D-217 معكوسةً).
+     ⚠️ **ولا يُلغيه شيءٌ هنا**: من ألغى الحفظ بيده أخرج القائمةَ من
+     الصفّ — **والزرُّ يُضيف ولا يقرّر بالنيابة مرّتين.** */
+  await supabase
+    .from("list_saves")
+    .upsert({ user_id: user.id, list_id: id }, { onConflict: "user_id,list_id" });
+
   revalidatePath("/");
   revalidatePath("/library");
+  revalidatePath(`/lists/${id}`);
   return rows.length;
 }
 
