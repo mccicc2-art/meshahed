@@ -17,7 +17,7 @@
 
 // رقم النسخة يُرفع مع أي تغييرٍ في قشرة التطبيق: مُعالج `activate` يمسح
 // كل كاشٍ لا يبدأ به، فالتطبيق المثبّت لا يبقى على قشرةٍ قديمة.
-const VER = "loopz-v4";
+const VER = "loopz-v5";
 const STATIC_CACHE = `${VER}-static`;
 const PAGE_CACHE = `${VER}-pages`;
 const IMG_CACHE = `${VER}-img`;
@@ -83,17 +83,41 @@ async function staleWhileRevalidate(request, cacheName) {
   return hit ?? (await refresh) ?? Response.error();
 }
 
+/* 🆕 v5 (جولة أداء ٢٠ أغسطس): سقفُ انتظارٍ للشبكة البطيئة.
+   الشبكة تبقى أولاً — البيانات الشخصية طازجة — لكن اتصالاً يزحف
+   (3G مثقل، شبكة فندق) كان يحبس الفتح بلا سقف رغم أن نسخة الصفحة
+   نفسِها محفوظة. الآن: إن لم يصل أول بايت خلال المهلة **وعندنا نسخة
+   لنفس الرابط بالضبط** نعرضها فوراً، ويكمل الجلبُ في الخلفية ليجدّد
+   الكاش للفتحة التالية. لا مهلة لمن لا نسخة عنده — الانتظار حينها
+   خير من خطأ. ولا نسخةَ مستخدمٍ آخر أبداً: الكاش يُمحى عند الخروج. */
+const NAV_TIMEOUT_MS = 3500;
+
 async function pageNetworkFirst(event) {
   const cache = await caches.open(PAGE_CACHE);
-  try {
+  const fetching = (async () => {
     const preload = await event.preloadResponse;
     const res = preload ?? (await fetch(event.request));
     if (res && res.ok) cache.put(event.request, res.clone());
     return res;
+  })();
+
+  const same = await cache.match(event.request);
+  if (same) {
+    // نسخةٌ موجودة: الشبكة أولاً حتى المهلة، وبعدها المحفوظ فوراً
+    const timer = new Promise((resolve) =>
+      setTimeout(() => resolve(null), NAV_TIMEOUT_MS),
+    );
+    const res = await Promise.race([fetching.catch(() => null), timer]);
+    if (res) return res;
+    // الجلبُ يكمل في الخلفية فيتجدّد الكاش دون أن ننتظره
+    event.waitUntil(fetching.catch(() => {}));
+    return same;
+  }
+
+  try {
+    return await fetching;
   } catch {
-    // انقطاع: نفس الصفحة من الكاش، وإلا الرئيسية، وإلا خطأ الشبكة الأصلي
-    const same = await cache.match(event.request);
-    if (same) return same;
+    // انقطاع بلا نسخةٍ لنفس الصفحة: الرئيسية المحفوظة، وإلا خطأ الشبكة
     const home = await cache.match("/");
     if (home) return home;
     return Response.error();
