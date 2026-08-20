@@ -51,3 +51,20 @@ export function allowsAutoHideChrome(pathname: string): boolean {
     pathname.startsWith("/profile/settings")
   );
 }
+
+/**
+ * 🆕 **أين يُخفى شريطُ التطبيق العلويّ** (D-493) — لأن للصفحة ترويستَها
+ * الداخليّة برجوعٍ واسمٍ وفعل. **وترويستان في شاشةٍ واحدة تجعلان سهمَي
+ * رجوعٍ وعنوانين**، ولا يعرف القارئُ أيَّهما يخرج به (حجّةُ D-462).
+ *
+ * ⚠️ **والشريطُ السفليُّ لا يتبع هذه القاعدة**: الإعداداتُ رحلةٌ تُغلق
+ * فيُحذف (D-462)، **و`/stats` وجهةٌ داخل المكتبة** — يبقى الدوك فيها
+ * ليعود منها القارئُ إلى حيث كان.
+ */
+export function hidesAppHeader(pathname: string): boolean {
+  return (
+    pathname === "/profile/edit" ||
+    pathname === "/stats" ||
+    pathname.startsWith("/profile/settings")
+  );
+}
