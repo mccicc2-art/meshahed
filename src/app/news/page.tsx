@@ -60,17 +60,15 @@ import { num, type Locale } from "@/lib/i18n";
 import {
   parseBrowse,
   parseDiscoverTab,
-  parseRailWin,
+
   browseKey,
   eraRange,
   seasonRange,
   browseHref,
   type BrowseQuery,
-  type DiscoverTab,
   type RailWin,
 } from "@/lib/browse";
 import { RankedRail } from "@/components/RankedRail";
-import { RailWindow, type RailWinKey } from "@/components/RailWindow";
 import { OneTimeHint } from "@/components/OneTimeHint";
 import { CountdownRail, type CountdownItem } from "@/components/CountdownRail";
 import { PickedForYou } from "@/components/PickedForYou";
@@ -210,10 +208,17 @@ export default async function NewsPage({
   });
   /* نوافذ صفوف «أفضل ١٠» — لكل صفٍّ نافذته (D-099): أفلام/مسلسلات/أنمي */
   const rails = {
-    m: parseRailWin(sp.wm),
-    s: parseRailWin(sp.ws),
-    a: parseRailWin(sp.wa),
-    am: parseRailWin(sp.wam),
+    /* ⚖️ 🆕 **والنوافذُ ثبتت على الأسبوع** (D-504، طلبُ أحمد بلقطةٍ على
+       رأس الرفّ: «احذف الفلاتر ما احتاجها هنا، وهذي خلّها في كل مكان —
+       Top 10 Movies This week»). **نقضُ D-445** الذي أعطى الرفوفَ
+       مبدِّلاً: **ثلاثةُ أزرارٍ في رأس كلِّ رفٍّ من أربعة = اثنا عشر
+       زرّاً في صفحةٍ واحدة**، **وقارئُ «أفضل ١٠» يسأل عن الحاضر لا عن
+       أرشيف.** **والعمقُ باقٍ في «أفضل ٢٥ هذي السنة» و«أفضل ٥٠ على
+       الإطلاق»** — فلم يسقط محورٌ، سقط مبدِّلٌ يكرّره. */
+    m: "week" as RailWin,
+    s: "week" as RailWin,
+    a: "week" as RailWin,
+    am: "week" as RailWin,
   };
   /* قائمة المنصّات تُجلب على الخادم وتُمرَّر للورقة: طلبٌ واحد مخبَّأ ساعةً
      في طبقة fetch، ورأس الصفحة يبقى يرسم فوراً لأن الصفوف وحدها خلف
@@ -288,7 +293,6 @@ export default async function NewsPage({
       {tab !== "lists" && (
         <OneTimeHint id="discover-power" text={t.hintDiscover} closeLabel={t.closeLabel} />
       )}
-
 
       {tab === "anime" ? (
         /* ===== تبويب الأنمي (D-169، ثم الفلتر بطلب أحمد ١١ أغسطس) =====
@@ -961,39 +965,6 @@ function filterQs(b: BrowseQuery): string {
   return i === -1 ? "" : href.slice(i + 1);
 }
 
-/** مفاتيحُ نوافذ الرفوف في الرابط — رفٌّ واحدٌ لكلِّ مفتاح */
-const WIN_PARAM = { m: "wm", s: "ws", a: "wa", am: "wam" } as const;
-type RailWins = { m: RailWin; s: RailWin; a: RailWin; am: RailWin };
-
-/**
- * وجهاتُ مبدِّلِ نافذةِ رفٍّ — **ثلاثةُ روابطَ تُبنى على الخادم** (D-445).
- *
- * **ولماذا تُبنى هنا لا في المكوّن:** المبدِّلُ مكوّنُ خادمٍ بلا حالة،
- * **ورابطُه يجب أن يحمل الفلترَ كلَّه ونوافذَ الرفوف الأخرى** — وإلا
- * أسقطت لمسةٌ على «شهر» في رفِّ الأفلام نافذةَ رفِّ المسلسلات ومعها
- * التصنيفَ واللغة. **والذي يعرف هذه كلَّها هو الصفحة.**
- *
- * **والافتراضُ لا يُكتب** (`week`): رابطٌ نظيفٌ يعني الأسبوع، وهو نفسُ
- * قاعدة `browseHref` — **ولا معنيان لرابطٍ واحد.**
- */
-function winHrefs(
-  tab: DiscoverTab,
-  qs: string,
-  rails: RailWins,
-  key: keyof RailWins,
-): Record<RailWinKey, string> {
-  const build = (w: RailWinKey) => {
-    const p = new URLSearchParams(qs);
-    p.set("tab", tab);
-    for (const k of ["m", "s", "a", "am"] as const) {
-      const v = k === key ? w : rails[k];
-      if (v !== "week") p.set(WIN_PARAM[k], v);
-    }
-    return `/news?${p.toString()}`;
-  };
-  return { week: build("week"), month: build("month"), all: build("all") };
-}
-
 /**
  * **والنافذةُ تُحمل إلى صفحة القسم مع الفلتر** — وإلا كذب العنوانُ الذي
  * ضُغط: من فتح «أفضل ١٠ أفلام على الإطلاق» يتوقّع الجردَ نفسَه موسَّعاً،
@@ -1179,9 +1150,6 @@ async function CuratedRails({
   const unmute = !!browse.lang || !!browse.country;
   /** يُحمل إلى صفحات الأقسام مع عناوينها (D-198) */
   const qs = filterQs(browse);
-  /** أسماءُ النوافذ الثلاث — واحدةٌ للتبويب كلِّه لا نسخةٌ لكلِّ رفّ */
-  const winLabels = { week: t.railWinWeek, month: t.railWinMonth, all: t.railWinAll };
-  const tab: DiscoverTab = wantMovies ? "movies" : "shows";
 
   const [
     topMovies,
@@ -1493,36 +1461,20 @@ async function CuratedRails({
           العنوانَ أربعةَ بكسلات فليَعُدّ ما بجواره. */}
       {topMovies.length > 0 && (
         <RankedRail
-          title={t.top10Movies}
+          title={t.top10Win(t.top10Movies, "week")}
           lib={lib}
           icon="film"
           items={topMovies}
           href={sectionHref("top-ten", "movie", winQs(qs, rails.m))}
-          control={
-            <RailWindow
-              value={rails.m}
-              hrefs={winHrefs(tab, qs, rails, "m")}
-              labels={winLabels}
-              ariaLabel={t.railWinGroup}
-            />
-          }
         />
       )}
       {topSeries.length > 0 && (
         <RankedRail
-          title={t.top10Series}
+          title={t.top10Win(t.top10Series, "week")}
           lib={lib}
           icon="tv"
           items={topSeries}
           href={sectionHref("top-ten", "tv", winQs(qs, rails.s))}
-          control={
-            <RailWindow
-              value={rails.s}
-              hrefs={winHrefs(tab, qs, rails, "s")}
-              labels={winLabels}
-              ariaLabel={t.railWinGroup}
-            />
-          }
         />
       )}
 
@@ -1635,7 +1587,6 @@ async function AnimeRails({
     ? seasonRange(season, eraR.to ? Number(eraR.to.slice(0, 4)) : y)
     : null;
   const qs = filterQs(browse);
-  const winLabels = { week: t.railWinWeek, month: t.railWinMonth, all: t.railWinAll };
   const base: DiscoverFilter = {
     /* **اللغةُ والجنسيةُ صارتا هنا أيضاً (D-196)** — ومحورٌ يُعرض في
        الورقة ولا يصل إلى الاستعلام **كذبٌ في الواجهة**: المستخدم يختار
@@ -1834,34 +1785,18 @@ async function AnimeRails({
           الواجهة** — أي محورٌ حيٌّ في الخادم لا يعرف به أحد. */}
       {topMovies.length > 0 && (
         <RankedRail
-          title={t.top10AnimeMovies}
+          title={t.top10Win(t.top10AnimeMovies, "week")}
           lib={lib}
           icon="film"
           items={topMovies}
-          control={
-            <RailWindow
-              value={rails.am}
-              hrefs={winHrefs("anime", qs, rails, "am")}
-              labels={winLabels}
-              ariaLabel={t.railWinGroup}
-            />
-          }
         />
       )}
       {topSeries.length > 0 && (
         <RankedRail
-          title={t.top10AnimeSeries}
+          title={t.top10Win(t.top10AnimeSeries, "week")}
           lib={lib}
           icon="sparkle-star"
           items={topSeries}
-          control={
-            <RailWindow
-              value={rails.a}
-              hrefs={winHrefs("anime", qs, rails, "a")}
-              labels={winLabels}
-              ariaLabel={t.railWinGroup}
-            />
-          }
         />
       )}
 
