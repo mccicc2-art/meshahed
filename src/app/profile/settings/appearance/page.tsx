@@ -36,8 +36,6 @@ export default async function Page() {
           الجدول** (حجّةُ `only` الأصليّة: نموذجان معاً يكتب حفظُ أحدهما
           قيمَ الآخر الابتدائية فوق تعديلٍ لم يُحفظ). */}
       <ProfileForm
-        userId={user.id}
-        email={user.email ?? ""}
         locale={locale}
         initialNickname={p?.nickname ?? ""}
         initialAvatarUrl={p?.avatar_url ?? null}
