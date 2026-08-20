@@ -1,0 +1,33 @@
+-- ============================================================
+-- 123 — حذفُ الفهرس المكرَّر على watched_episodes (جولة P1-A · ٢٠ أغسطس ٢٠٢٦)
+--
+-- المقيسُ قبلها على الإنتاج (pg_index/pg_opclass/pg_constraint):
+--   watched_ep_user_time_idx        (من performance.sql — الملف ١٤)
+--   watched_episodes_user_time_idx  (من activity_v2.sql)
+-- متطابقان في كلِّ بُعد: الأعمدةُ (user_id, watched_at DESC) ·
+-- opclasses (uuid_ops, timestamptz_ops) · لا predicate · لا include ·
+-- غيرُ فريدَين · ولا يخدم أيٌّ منهما قيداً (constraint_name = null).
+-- فهما فهرسٌ واحدٌ يُصان مرّتين على أسخن جدول كتابةٍ في التطبيق
+-- (كلُّ «صحّ» على حلقةٍ يحدّثهما معاً) — 328KB + 256KB.
+--
+-- الباقي: watched_episodes_user_time_idx — لأنه المذكورُ في فحص
+-- activity_v2 الصحّي، وأخوةُ اسمه (watched_movies_user_time_idx …)
+-- على النسق نفسه. ولا اسمَ منهما مكتوبٌ في شيفرة التطبيق أصلاً.
+-- وسطرُ الإنشاء القديم في performance.sql عُلِّق بإشارةٍ إلى هنا،
+-- فإعادةُ تشغيل الملفّات القديمة لا تعيد المحذوف.
+--
+-- rollback (التعريف الأصلي حرفاً):
+--   create index if not exists watched_ep_user_time_idx
+--     on public.watched_episodes (user_id, watched_at desc);
+-- ============================================================
+
+drop index if exists public.watched_ep_user_time_idx;
+
+-- تحقُّقها:
+--   select count(*) as remaining from pg_indexes
+--    where schemaname='public'
+--      and indexname in ('watched_ep_user_time_idx','watched_episodes_user_time_idx');
+--   -- المتوقَّع: remaining = 1
+--   select tablename, policyname from pg_policies
+--    where schemaname='public' and qual='true';
+--   -- المتوقَّع: أربعٌ بالضبط (لا يمسّ هذا الملف سياسة)

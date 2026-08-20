@@ -8,5 +8,8 @@
 -- ============================================================
 
 -- فهرس يخدم الترتيب الزمني في «آخر ما شاهدت»
-create index if not exists watched_ep_user_time_idx
-  on public.watched_episodes (user_id, watched_at desc);
+-- ⚖️ عُلِّق في الهجرة 123 (٢٠ أغسطس ٢٠٢٦): كان توأمَ
+-- watched_episodes_user_time_idx (من activity_v2) بايتاً بايتاً،
+-- فحُذف هناك — وإبقاءُ الإنشاء هنا كان سيعيد المكرَّر مع كل إعادة تشغيل.
+-- create index if not exists watched_ep_user_time_idx
+--   on public.watched_episodes (user_id, watched_at desc);
