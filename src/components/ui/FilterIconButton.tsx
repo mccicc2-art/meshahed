@@ -73,11 +73,17 @@ export function FilterIconButton({
       /* `self-center` لا تمدّدٌ رأسيّ: صفُّ التبويبات `items-stretch`
          ليمتدّ شريطُ التمييز الأصفر إلى الخطّ، والزرُّ ليس تبويباً.
          و`mb-1` يرفعه عن الخطّ قليلاً فلا يلامسه. */
-      className={`relative shrink-0 self-center mb-1 grid place-items-center h-9 w-9 rounded-full border transition ${
-        active
-          ? "border-accent text-accent bg-accent/10"
-          : "border-border text-muted hover:text-foreground hover:border-accent/50"
-      }${className ? ` ${className}` : ""}`}
+      /* ⚖️ 🆕 **والزرُّ لا يتلوّن أبداً** (D-492، حكمُ أحمد بدائرةٍ
+         حمراء حوله: «الفلتر مزعج لا يتلوّن»). **وهو محقّ**: الأصفرُ في
+         هذا التطبيق يعني «أنت هنا» أو «افعل هذا» — والفلترُ المفعَّل
+         **حالةٌ اخترتَها أنت**، لا دعوةً ولا موضعاً. **وزرٌّ أصفرُ
+         مضيءٌ ملاصقٌ لتبويبٍ أصفرَ نشط يجعل في الرأس صفراوين يتنازعان
+         العين** — وهي شكواه بعينها.
+         **والمعلومةُ لم تسقط**: العدّادُ باقٍ (D-447) **بلونٍ هادئ** —
+         **يُقرأ حين يُنظر إليه ولا يصيح حين لا يُنظر.** */
+      className={`relative shrink-0 self-center mb-1 grid place-items-center h-9 w-9 rounded-full border transition border-border ${
+        active ? "text-foreground" : "text-muted"
+      } hover:text-foreground hover:border-accent/50${className ? ` ${className}` : ""}`}
     >
       <Icon name="sliders" size={16} strokeWidth={1.9} />
       {active &&
@@ -87,14 +93,14 @@ export function FilterIconButton({
              كشارات الإشعارات في كل التطبيق — **ولا لغةَ ثانيةً لعدّاد**. */
           <span
             aria-hidden
-            className="absolute -top-1 -end-1 grid place-items-center min-w-[17px] h-[17px] px-1 rounded-full bg-accent text-[color:var(--on-accent)] text-[10px] font-extrabold tabular-nums leading-none"
+            className="absolute -top-1 -end-1 grid place-items-center min-w-[17px] h-[17px] px-1 rounded-full bg-elevated border border-border text-foreground text-[10px] font-extrabold tabular-nums leading-none"
           >
             {count}
           </span>
         ) : (
           <span
             aria-hidden
-            className="absolute top-1 end-1 h-1.5 w-1.5 rounded-full bg-accent"
+            className="absolute top-1 end-1 h-1.5 w-1.5 rounded-full bg-[color:var(--foreground)]"
           />
         ))}
     </button>
