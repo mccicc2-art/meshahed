@@ -44,7 +44,10 @@ export function SettingsHeader({
   return (
     /* لاصقةٌ فوق المحتوى: صفحةُ الإعدادات تُمرَّر طويلاً، **وبابُ الرجوع
        الذي يغيب عند التمرير يجعل الخروجَ رحلةً ثانية.** */
-    <header className="sticky top-0 z-30 -mx-4 px-4 -mt-6 pt-[calc(var(--safe-top)+0.5rem)] pb-2 bg-[color:var(--background)]">
+    /* 🆕 `chrome-top` (D-493): **لا أثرَ لها في الإعدادات** — `ChromeAutoHide`
+       لا يُركِّب مستمعاً هناك أصلاً (`chromeRules`) — **وتعمل في `/stats`**
+       حيث الكسوةُ الذكيّةُ مطلوبة كبقيّة الصفحات. */
+    <header className="chrome-top sticky top-0 z-30 -mx-4 px-4 -mt-6 pt-[calc(var(--safe-top)+0.5rem)] pb-2 bg-[color:var(--background)]">
       <div className="flex items-center gap-2 min-h-11">
         <button
           type="button"
