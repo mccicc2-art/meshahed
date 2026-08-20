@@ -16,6 +16,7 @@ import { themeById, themeCss } from "@/lib/themes";
 import { FONT_UI_COOKIE, FONT_CONTENT_COOKIE, fontAttr, sanitizeFontSize } from "@/lib/fontPrefs";
 import { HeaderShell } from "@/components/HeaderShell";
 import { ChromeAutoHide } from "@/components/ChromeAutoHide";
+import { AccountSync } from "@/components/AccountSync";
 import { getLocale } from "@/lib/locale";
 import { seoKeywords } from "@/lib/seo";
 
@@ -194,6 +195,12 @@ export default async function RootLayout({
           <HeaderShell signedIn={signedIn}>
             <Navbar />
           </HeaderShell>
+        </Suspense>
+        {/* 🆕 **مزامنةُ تفضيلات الحساب — خارج الشريط لا داخله** (D-498):
+            الشريطُ يُلغى في الإعدادات، **والتفضيلُ يجب أن ينزل هناك
+            بالذات.** لا ترسم شيئاً، وتُبثّ فلا تحبس أوّل بايت. */}
+        <Suspense fallback={null}>
+          <AccountSync />
         </Suspense>
         {/* مساحة سفلية على الجوال حتى لا يغطي شريط التبويبات المحتوى */}
         {/* **السحبُ للتحديث في التخطيط لا في كل صفحة** (D-243، طلبُ

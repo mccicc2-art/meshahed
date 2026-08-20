@@ -52,8 +52,7 @@ import { PublicListsRail } from "@/components/PublicListsRail";
 import { Icon, type IconName } from "@/components/Icon";
 import { posterUrl } from "@/lib/media";
 import { getWatchHistory } from "@/lib/data";
-import { type HeaderStat } from "@/components/ProfileHeader";
-import { HomeHeader } from "@/components/HomeHeader";
+import { HomeHeader, type HeaderStat } from "@/components/HomeHeader";
 import { CompactMediaRow } from "@/components/CompactMediaRow";
 import {
   sanitizeHomePrefs,
@@ -390,7 +389,6 @@ export default async function HomePage() {
         avatarUrl={profile?.avatar_url ?? null}
         avatarPos={profile?.avatar_pos ?? null}
         unread={unreadSignals + unreadMessages}
-        myUsername={profile?.username ?? null}
         stats={headerStats}
         showStats={prefs.stats}
         levelPercent={level.percent}
