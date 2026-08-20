@@ -53,6 +53,24 @@ function b64ToUtf8(b64ish: string): string {
  * لا يرمي أبداً؛ المشوَّهُ والغائبُ سواء، والحكمُ على `exp` (منتهٍ أم
  * لا) مسؤوليةُ المستدعي لأن سياسة كلِّ مستدعٍ تختلف.
  */
+/**
+ * تسميةُ «مالك الكاش» من `sub` — SHA-256 كاملةً (D-514، تشديدُ أحمد:
+ * «لا collision ولو كان منخفضًا»). كانت بادئةَ ثمانية أحرفٍ من `sub`
+ * نفسِه؛ الآن بصمةٌ كاملةٌ ٢٥٦-بت: لا تصادمَ عمليّاً، ولا يُرى
+ * المعرّفُ الخامُ في الترويسة أصلاً. `crypto.subtle` متوافرة في Edge
+ * وNode معاً، **وبلا أيِّ رحلة شبكة** — وهي حتميّة: نفسُ `sub` نفسُ
+ * التسمية في كلِّ طلبٍ وكلِّ نشرة، وإلا انمسح الكاشُ عبثاً كلَّ مرّة.
+ */
+export async function ownerHash(sub: string): Promise<string> {
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(sub),
+  );
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
 export function decodeSessionCookie(
   orderedParts: string[],
 ): SessionClaims | null {
