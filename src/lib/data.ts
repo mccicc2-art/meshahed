@@ -1,5 +1,6 @@
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
+import { decodeSessionCookie, sessionCookieParts } from "@/lib/sessionCookie";
 import type { PersonLite } from "./people";
 import { episodeKey } from "@/lib/keys";
 import { LOOPZ_ID } from "@/lib/loopz";
@@ -75,35 +76,15 @@ export const getUserId = cache(async (): Promise<string | null> => {
   try {
     const { cookies } = await import("next/headers");
     const store = await cookies();
-    const parts = store
-      .getAll()
-      .filter(
-        (c) =>
-          c.name.startsWith("sb-") &&
-          c.name.includes("auth-token") &&
-          !c.name.includes("code-verifier"),
-      )
-      .sort((a, b) => a.name.localeCompare(b.name));
+    const parts = sessionCookieParts(store.getAll());
     if (parts.length === 0) return null; // زائر — بلا رحلةٍ أصلاً
 
-    let raw = parts.map((c) => c.value).join("");
-    if (raw.startsWith("base64-"))
-      raw = Buffer.from(raw.slice(7), "base64").toString("utf8");
-    const token: string | undefined = JSON.parse(raw)?.access_token;
-    if (!token) return (await getUser())?.id ?? null;
-
-    const payload = JSON.parse(
-      Buffer.from(
-        token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"),
-        "base64",
-      ).toString("utf8"),
-    );
-    const sub: string | undefined = payload?.sub;
-    const exp: number | undefined = payload?.exp;
-    // منتهٍ أو على وشك؟ التحقّق الكامل يجدّدها — لا نستعلم بتوكنٍ ميّت
-    if (!sub || !exp || exp * 1000 <= Date.now() + 5000)
+    const claims = decodeSessionCookie(parts);
+    // مشوَّهٌ أو منتهٍ أو على وشك؟ التحقّق الكامل يجدّد الجلسة —
+    // لا نستعلم بتوكنٍ ميّت فيظهر «حسابٌ فارغ»
+    if (!claims || !claims.exp || claims.exp * 1000 <= Date.now() + 5000)
       return (await getUser())?.id ?? null;
-    return sub;
+    return claims.sub;
   } catch {
     return (await getUser())?.id ?? null;
   }
