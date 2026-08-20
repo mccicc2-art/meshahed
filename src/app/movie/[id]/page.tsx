@@ -203,20 +203,15 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
                 جنبَ الاسم أوسعُ ما في الترويسة** — **ورقمان صغيران في
                 فراغٍ قائمٍ خيرٌ من سطرٍ يُضاف.** */}
             <div className="flex items-start gap-3">
-              <h1
-                className="text-22 sm:text-3xl font-bold leading-tight tracking-tight"
-                style={{
-                  filter:
-                    "drop-shadow(0 2px 10px color-mix(in srgb, var(--background) 70%, transparent))",
-                }}
-              >
+              <h1 className="hero-halo text-22 sm:text-3xl font-bold leading-tight tracking-tight">
                 {title}
               </h1>
               <span className="ms-auto shrink-0 -mt-0.5">
                 <TitlePulse hearts={pulse.hearts} votes={pulse.votes} avg={pulse.avg} locale={locale} />
               </span>
             </div>
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs sm:text-sm text-muted mt-1">
+            {/* 🆕 **لونٌ أقوى وهالة** (D-501) — نفسُ حجّة صفحة المسلسل */}
+            <div className="hero-halo flex flex-wrap items-center gap-x-2 gap-y-1 text-xs sm:text-sm text-foreground/85 mt-1">
               {movie.release_date && <span>{movie.release_date.slice(0, 4)}</span>}
               {movie.runtime ? (
                 <>
@@ -232,6 +227,7 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
             {/* 🆕 **والتصنيفُ العمريُّ يذيّل السطرَ نفسَه** (D-286، طلبُ
                 أحمد: «التصنيف العمري حطها في كل صفحات المسلسلات والأفلام»).
                 **ولا نداءَ ثالثاً له** — يصل في ردّ OMDb نفسِه. */}
+            <div className="hero-halo">
             <Suspense fallback={<HeroRatingsSkeleton />}>
               <HeroRatings
                 imdbId={movie.imdb_id}
@@ -243,6 +239,7 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
                 ageLabel={t.ageRating}
               />
             </Suspense>
+            </div>
 
 
             {/* ⚖️ 🆕 **وسطرُ الدائرة حُذف** (D-419، شطبَه أحمد بخطٍّ على
@@ -255,28 +252,35 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
 
             {/* الأنواع صعدت من تبويب «معلومات» إلى جنب الملصق (طلب المالك):
                 هوية الفيلم تُقرأ قبل قصّته لا بعدها */}
-            {movie.genres.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 mt-1.5">
-                {movie.genres.slice(0, 3).map((g) => (
-                  <span
-                    key={g.id}
-                    className="text-12 font-medium bg-surface-2 border border-border px-2.5 py-1 rounded-full"
-                  >
-                    {g.name}
-                  </span>
-                ))}
-              </div>
-            )}
-
-            {/* أين يُبثّ — في الترويسة، وقسم المنصّات في «معلومات» حُذف */}
-            {watchWhere && (
-              <div className="mt-2">
-                <WatchChip
-                  options={watchWhere.options}
-                  region={watchWhere.region}
-                  userRegion={userRegion}
-                  locale={locale}
-                />
+            {/* 🆕 ⚖️ **سطرٌ واحدٌ للأنواع والقنواتُ في طرفِه** (D-501) —
+                **نفسُ الصفِّ في صفحة المسلسل حرفاً بحرف**: الأنواعُ في
+                صندوقٍ يُقصّ، والقنواتُ `shrink-0` لا تُقصّ. (قاعدة ٦:
+                صفحتا العمل ترويسةٌ واحدةٌ بمحتويين لا ترويستان.) */}
+            {(movie.genres.length > 0 || watchWhere) && (
+              <div className="mt-1.5 flex items-center gap-2">
+                {movie.genres.length > 0 && (
+                  <div className="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
+                    {movie.genres.slice(0, 3).map((g) => (
+                      <span
+                        key={g.id}
+                        className="shrink-0 whitespace-nowrap text-[10px] leading-none font-medium bg-surface-2 border border-border px-2 py-1 rounded-full"
+                      >
+                        {g.name}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {/* أين يُبثّ — في الترويسة، وقسم المنصّات في «معلومات» حُذف */}
+                {watchWhere && (
+                  <div className={movie.genres.length > 0 ? "shrink-0" : "shrink-0 ms-auto"}>
+                    <WatchChip
+                      options={watchWhere.options}
+                      region={watchWhere.region}
+                      userRegion={userRegion}
+                      locale={locale}
+                    />
+                  </div>
+                )}
               </div>
             )}
 
