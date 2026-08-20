@@ -22,8 +22,6 @@ export default async function Page() {
   return (
     <SettingsPageLayout title={t.setContent}>
       <ProfileForm
-        userId={user.id}
-        email={user.email ?? ""}
         locale={locale}
         initialNickname={p?.nickname ?? ""}
         initialAvatarUrl={p?.avatar_url ?? null}
