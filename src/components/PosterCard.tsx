@@ -206,9 +206,16 @@ export function PosterCard({
             بلا نصٍّ ظلٌّ بلا سبب. */}
         {!hideTitle && !titleBelow && (
         <div className="absolute inset-x-0 bottom-0 p-2 pt-7 bg-gradient-to-t from-black/90 via-black/60 to-transparent">
-          <p className="text-12 font-semibold leading-tight text-white line-clamp-2 drop-shadow">
-            {title}
-          </p>
+          {/* 🆕 **سطرٌ واحدٌ يمشي لا سطران يُقصّان** (D-486، طلبُ أحمد
+              ٢٠ أغسطس: «أسماء كل الأفلام والمسلسلات خلّها سطر واحد يمشي
+              مثل عبارة لأنك شاهدت»). **وهي الوصفةُ التي أثبتت نفسَها
+              في السبب** (D-100): القصيرُ ساكنٌ تماماً، **والفائضُ وحدَه
+              يذهب ويعود** — فيُقرأ كاملاً بدل أن يُبتر بـ`…`. */}
+          <MarqueeText
+            text={title}
+            dir="auto"
+            className="text-12 font-semibold leading-tight text-white drop-shadow"
+          />
           {year && <p className="text-[10px] text-white/60 mt-0.5">{year}</p>}
           {note && (
             /* السبب يتحرك ليُقرأ كاملاً حين يفيض (ملاحظة صديق أحمد —
@@ -216,6 +223,19 @@ export function PosterCard({
             <MarqueeText text={note} className="text-[10px] text-accent-2/90 mt-0.5" />
           )}
         </div>
+        )}
+
+        {/* 🆕 ⚖️ **والسببُ يعود داخل الملصق حتى حين ينزل الاسمُ تحته**
+            (D-486، نقضُ شطرٍ من D-448 بطلب أحمد: «عبارة because you
+            حطّها داخل البوستر بالأسفل مثل قبل»). **وحجّةُ D-448 كانت
+            أنّ سطراً بحجم ١٠ فوق صورةٍ مجهولةِ الألوان لا يُقرأ** —
+            **والحجابُ المتدرّجُ هو جوابُ ذلك لا نزولُ السطر**، وهو
+            قائمٌ هنا كما كان. **والمكسبُ أنّ البطاقةَ تعود سطرين تحت
+            الملصق بدل ثلاثة**، فيقصر الصفُّ ويستوي مع بقيّة الرفوف. */}
+        {titleBelow && note && (
+          <div className="absolute inset-x-0 bottom-0 p-2 pt-7 bg-gradient-to-t from-black/90 via-black/55 to-transparent">
+            <MarqueeText text={note} className="text-[10px] text-accent-2/90" />
+          </div>
         )}
 
         {/* الحالة كلها في خيط اللون: أخضر مكتمل، أصفر قيد المشاهدة،
@@ -241,21 +261,21 @@ export function PosterCard({
           يجعل بطاقاتِ الصفّ الواحد متفاوتةَ الارتفاع.** و`dir="auto"`
           للعناوين المختلطة. */}
       {!hideTitle && titleBelow && (
-        <div className="mt-2 px-0.5">
-          {/* 🆕 **١٥px/٦٠٠ — «عنوان الكارد» في سلّم النصّ** (D-454)،
-              **و١٢px للثانويّ.** كان ١٣/١١ — **رقمان خارج السلّم**،
-              وسطرُ الاسم تحت الملصق هو أكثرُ نصٍّ يُقرأ في التطبيق. */}
-          <p
-            className="text-15 font-semibold leading-snug line-clamp-2"
+        <div className="mt-1.5 px-0.5">
+          {/* ⚖️ 🆕 **١٢px/٥٠٠ — مقاسُ اسمِ البطاقة في كلِّ رفٍّ** (D-486،
+              طلبُ أحمد بلقطةٍ تجمع الرفّين: «خط اسم الفلم في بيكيد فور
+              يو خلّه مثل خط الأفلام تحت»). **ونقضُ الدرجة ١٥ من D-454
+              مسجَّلٌ بسببه**: `RankedRail` كان يكتب اسمَه بـ١٢ وهذا
+              بـ١٥، **فرفّان متجاوران في شاشةٍ واحدة باسمين بمقاسين** —
+              **وذلك بعينه ما تمنعه القاعدة ٦**، وحكمُ المالك أن الأصغر
+              هو الصحيح. */}
+          <MarqueeText
+            text={title}
             dir="auto"
-          >
-            {title}
-          </p>
-          {year && <p className="text-12 font-medium text-muted mt-0.5">{year}</p>}
-          {/* النبذةُ تتبع الاسمَ حيث ذهب — **ولا تُترك في الحجاب الذاهب** */}
-          {note && (
-            <MarqueeText text={note} className="text-12 text-accent-2/90 mt-0.5" />
-          )}
+            className="text-12 font-medium leading-tight"
+          />
+          {year && <p className="text-12 text-muted mt-0.5">{year}</p>}
+          {/* ⚠️ **والسببُ ليس هنا** — عاد إلى الحجاب داخل الملصق أعلاه */}
         </div>
       )}
     </Link>

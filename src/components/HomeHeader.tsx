@@ -161,24 +161,42 @@ export function HomeHeader({
           لشيءٍ واحدٍ يتبدّلان بتبدّل وضع العرض يجعلان الترويسةَ نفسَها
           تُقرأ ترويستين** (القاعدة ٦). **والفاصلُ الرفيع يفرّق الخانات
           بلا أن يفصل البطاقة.** */}
-      {showStats && stats.length > 0 && (
+      {showStats && stats.length > 0 && (() => {
+        /* 🆕 **أربعُ خاناتٍ تنزل صفّين** (D-487، لقطةُ أحمد على البطاقة:
+           «هذي إذا كاتب أربعة خلّها بنظام ٢ وتحتها ٢ grid»).
+
+           **والعلّةُ مقيسةٌ في لقطته**: أربعُ خاناتٍ على عرض هاتفٍ تعني
+           ~٩٠px للخانة، **والخانةُ رمزٌ ورقمٌ واسم** — **فيُقصّ الاسمُ
+           إلى «To w…» و«Movi…»**، **واسمٌ مقصوصٌ لا يقول ما يعدّه**،
+           فيصير الرقمُ بلا معنى. **وبعمودين يصير للخانة ~١٨٠px** فيظهر
+           الاسمُ كاملاً بلا أن يصغر الخطّ (`02`: لا تصغير).
+
+           ⚠️ **والثلاثةُ تبقى صفّاً واحداً**: ١٢٠px تكفي، **وصفٌّ ونصفٌ
+           أسوأُ من صفٍّ ممتلئ.** */
+        const cols = stats.length === 4 ? 2 : stats.length;
+        return (
         <div
           className="grid rounded-2xl border border-border bg-surface"
-          style={{ gridTemplateColumns: `repeat(${stats.length}, minmax(0,1fr))` }}
+          style={{ gridTemplateColumns: `repeat(${cols}, minmax(0,1fr))` }}
         >
           {stats.map((s, i) => (
             <Link
               key={s.key}
               href={s.href ?? "/library"}
+              /* **الفاصلُ يُحسب من موضع الخانة في الشبكة لا من ترتيبها**:
+                 خطٌّ رأسيٌّ لكلِّ خانةٍ ليست أوّلَ عمودها، **وأفقيٌّ لكلِّ
+                 خانةٍ في صفٍّ ثانٍ** — ومن أخذ `i > 0` وحدَها رسم خطّاً
+                 رأسيّاً في رأس السطر الثاني. */
               className={`flex items-center justify-center gap-2 py-3.5 transition active:opacity-70 ${
-                i > 0 ? "border-s border-[color:var(--divider)]" : ""
-              }`}
+                i % cols !== 0 ? "border-s border-[color:var(--divider)] " : ""
+              }${i >= cols ? "border-t border-[color:var(--divider)]" : ""}`}
             >
               <StatFace stat={s} />
             </Link>
           ))}
         </div>
-      )}
+        );
+      })()}
     </div>
     </>
   );

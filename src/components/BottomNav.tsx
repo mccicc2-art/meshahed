@@ -80,7 +80,9 @@ const TABS: {
   iconOn: IconName;
 }[] = [
   { href: "/", key: "home", icon: "home", iconOn: "home-filled" },
-  { href: "/library", key: "library", icon: "film", iconOn: "film-filled" },
+  /* 🆕 **كتابٌ بشريط تعليمٍ لا شريطَ فيلم** (D-489) — انظر حجّتَه في
+     `Icon.tsx`: المكتبةُ ليست أفلاماً وحدَها. */
+  { href: "/library", key: "library", icon: "library", iconOn: "library-filled" },
   { href: "/news", key: "news", icon: "compass", iconOn: "compass-filled" },
   { href: "/people", key: "people", icon: "people", iconOn: "people-filled" },
   /* البحث في الطرف: فعلٌ لا وجهةَ تصفّح، والأطراف أسهل ما تصله الإبهام.
@@ -167,7 +169,7 @@ export function BottomNav({
            **وشريطٌ ملاصقٌ للحافّة بلا هامشٍ يُقرأ مقصوصاً.** */
         className={`${
           kbOpen ? "hidden" : "grid"
-        } chrome-bottom md:hidden fixed bottom-0 inset-x-0 z-40 grid-cols-5 rounded-t-[22px] border-t border-[color:var(--divider)] bg-[color:var(--background)] backdrop-blur-xl pt-1.5 pb-[max(0.375rem,calc(env(safe-area-inset-bottom)*0.5))]`}
+        } chrome-bottom md:hidden fixed bottom-0 inset-x-0 z-40 grid-cols-5 rounded-t-[22px] border-t border-[color:var(--divider)] bg-[color:var(--background)] backdrop-blur-xl pt-2.5 pb-[max(0.5rem,calc(env(safe-area-inset-bottom)*0.5))]`}
         style={{ background: "color-mix(in srgb, var(--background) 76%, transparent)" }}
       >
         {TABS.map(({ href, key, icon, iconOn }) => {
@@ -226,8 +228,16 @@ export function BottomNav({
              **و`py-2` لا `py-2.5`** (D-259): ٢٨+١٦ = ٤٤px بالضبط
              (D-260 بعد أن كبرت الأيقونة) — **والهدفُ اكتمل في الخانة
              نفسِها، فلم يعد يستعير من حشو الشريط.** */
+          /* 🆕 **والشريطُ أعلى ١٥٪** (D-489، طلبُ أحمد: «زِد ارتفاعها
+             ١٥٪»). **والزيادةُ حشوٌ لا رمزٌ أكبر**: الرمزُ ٢٤ والكلمةُ
+             ١٠ كما ضُبطا بالقياس (D-260/D-436) — **وتكبيرُهما يغيّر
+             الإيقاع، وتوسيعُ الحشو يغيّر المساحةَ وحدَها.**
+             **المقيسُ في المتصفّح: ٦٢px → ٧٢px** (‏+١٦٪) — ٤ من حشو
+             الشريط العلويّ، و٤ من حشو الخانة، و٢ من أرضيّة السفليّ.
+             ⚠️ **وذيلُ `main` كبر معه** في التخطيط، **وإلّا اختفى آخرُ
+             عنصرٍ خلف الشريط.** */
           const face_cls =
-            "relative flex min-w-0 items-center justify-center rounded-2xl px-1 py-1.5 transition active:bg-surface-2";
+            "relative flex min-w-0 items-center justify-center rounded-2xl px-1 py-2 transition active:bg-surface-2";
 
           // البحث يفتح ورقةً في مكانه؛ وبقية التبويبات وجهاتٌ تُزار
           return isSearch ? (

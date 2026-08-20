@@ -16,7 +16,17 @@ import { useEffect, useRef, useState } from "react";
  * الحركة (prefers-reduced-motion) لا حركة له — يبقى السطر مقصوصاً
  * كما قبل، صادقاً مع تفضيله.
  */
-export function MarqueeText({ text, className = "" }: { text: string; className?: string }) {
+export function MarqueeText({
+  text,
+  className = "",
+  dir,
+}: {
+  text: string;
+  className?: string;
+  /** 🆕 `auto` للعناوين المختلطة (D-017): الاتجاهُ يُحسم من أوّل حرفٍ
+      قويّ، **والقياسُ يقرأ الاتجاهَ المحسوب** فيمشي السطرُ في جهته. */
+  dir?: "auto" | "rtl" | "ltr";
+}) {
   const ref = useRef<HTMLSpanElement>(null);
   const [shift, setShift] = useState<string | null>(null);
 
@@ -44,7 +54,7 @@ export function MarqueeText({ text, className = "" }: { text: string; className?
   }, [text]);
 
   return (
-    <span className={`block overflow-hidden whitespace-nowrap ${className}`}>
+    <span dir={dir} className={`block overflow-hidden whitespace-nowrap ${className}`}>
       <span
         ref={ref}
         className="inline-block will-change-transform"

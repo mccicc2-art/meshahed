@@ -5,6 +5,7 @@ import Image from "next/image";
 import { posterUrl, titleOf, type SearchResult } from "@/lib/tmdb";
 import { ImdbMark, TmdbMark } from "./RatingMarks";
 import { PosterHold } from "./PosterHold";
+import { MarqueeText } from "./MarqueeText";
 import type { LibState } from "@/lib/libState";
 import type { Locale } from "@/lib/i18n";
 
@@ -211,9 +212,11 @@ export function RankedRail({
                   className="group w-[112px] sm:w-[132px] shrink-0"
                 >
                   {card}
-                  <p className="text-xs font-medium leading-tight line-clamp-2 mt-1.5 group-hover:text-accent transition">
-                    {titleOf(r)}
-                  </p>
+                  <MarqueeText
+                    text={titleOf(r)}
+                    dir="auto"
+                    className="text-12 font-medium leading-tight mt-1.5 group-hover:text-accent transition"
+                  />
                 </Link>
               );
             }
@@ -246,9 +249,11 @@ export function RankedRail({
                   </Link>
                 </PosterHold>
                 <Link href={href} prefetch={false} className="block">
-                  <p className="text-xs font-medium leading-tight line-clamp-2 mt-1.5 group-hover:text-accent transition">
-                    {titleOf(r)}
-                  </p>
+                  <MarqueeText
+                    text={titleOf(r)}
+                    dir="auto"
+                    className="text-12 font-medium leading-tight mt-1.5 group-hover:text-accent transition"
+                  />
                 </Link>
               </div>
             );
