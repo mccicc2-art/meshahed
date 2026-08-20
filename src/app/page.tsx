@@ -10,6 +10,7 @@ import {
   getUser,
   getFollows,
   getMyTitleArt,
+  getSavedListsBrief,
   artKey,
   getAllWatchedEpisodes,
   getWatchSummary,
@@ -41,6 +42,9 @@ import { localizeFollows, localizeRows } from "@/lib/localize";
 import { airedEpisodeCount, percentOf } from "@/lib/progress";
 import { PosterCard } from "@/components/PosterCard";
 import { ContinueCard } from "@/components/ContinueCard";
+import { ListContinueCard } from "@/components/ListContinueCard";
+/* اسمُ قائمةِ لوبز يُترجَم عند العرض لا يُخزَّن (D-328/D-373) */
+import { curatedName } from "@/lib/universes";
 import { QuickSaveCard } from "@/components/QuickSaveCard";
 import { PosterRail, RailItem } from "@/components/PosterRail";
 import { RailNewBadge } from "@/components/RailNewBadge";
@@ -527,6 +531,7 @@ async function HomeBody({
     myListsRaw,
     friendsRows,
     homeArt,
+    savedLists,
   ] = await Promise.all([
     // أسماء المكتبة وملصقاتها بلغة الواجهة لا بلغة يوم المتابعة
     localizeFollows(followRows, locale),
@@ -582,6 +587,11 @@ async function HomeBody({
        لا تعتمد على شيءٍ منها: رحلةُ قاعدةٍ كاملة تُدفع وحدَها على أسخن
        مسارٍ في التطبيق. الاستبدالُ نفسُه بعد الموجة كما كان. */
     getMyTitleArt(),
+    /* 🆕 **قوائمُك المحفوظة بعناصرها** (D-496) — **في الموجة المتدفّقة
+       لا الأولى**: أوّلُ بايتٍ للرئيسية لا ينتظر قائمة. */
+    prefs.order.includes("continue")
+      ? getSavedListsBrief().catch(() => [])
+      : Promise.resolve([]),
   ]);
 
   /* استبدالُ الأغلفة في مصدرٍ واحد بعد الترجمة: بطاقات «أكمل» و«ابدأ»
@@ -788,6 +798,38 @@ async function HomeBody({
   const doneShowIds = new Set(
     items.filter((i) => i.aired > 0 && i.watched >= i.aired).map((i) => i.id),
   );
+
+  /* ===== 🆕 القوائمُ التي تتابعها كما تتابع مسلسلاً (D-496) =====
+     **والعلامةُ ليست عموداً جديداً بل ما تقوله بياناتُك أصلاً**:
+     **قائمةٌ حفظتَها وأعمالُها في مكتبتك = قائمةٌ أضفتَها لتشاهدها.**
+     **و«أضف الكل» تفعل الاثنين معاً** (D-495) فتدخل من أوّل ضغطة.
+
+     **وثلاثةُ حدودٍ تمنعها من أن تصير رفّاً ثانياً:**
+     **١ · القصيرةُ وحدَها** (≤٤٠): «أفضل ٢٥٠» ليست شيئاً يُتابَع
+     فيلماً فيلماً — **وقائمةٌ بمئتَي عنصرٍ في «تابِع المشاهدة» تُقرأ
+     كتالوجاً لا استئنافاً.**
+     **٢ · وأكثرُها في مكتبتك** (≥٦٠٪): قائمةٌ تصادف أن عندك ثلاثةً
+     منها ليست قائمةً «دخلتَها».
+     **٣ · وفيها ما لم يُشاهَد**: المكتملةُ ليست «تابِع المشاهدة».
+
+     ⚠️ **وسقفُ اثنتين**: الصفُّ صفُّ أعمالٍ أوّلاً، **والقوائمُ ضيفٌ
+     فيه لا صاحبُ دار.** */
+  const listCards = savedLists
+    .filter((l) => l.items.length > 0 && l.items.length <= 40)
+    .map((l) => {
+      const seen = (it: (typeof l.items)[number]) =>
+        it.media_type === "movie"
+          ? watchedMovieIds.has(it.tmdb_id)
+          : doneShowIds.has(it.tmdb_id);
+      const mine = l.items.filter((it) =>
+        followedKeys.has(`${it.media_type}-${it.tmdb_id}`),
+      ).length;
+      const watched = l.items.filter(seen).length;
+      const next = l.items.find((it) => !seen(it)) ?? null;
+      return { list: l, mine, watched, next, total: l.items.length };
+    })
+    .filter((c) => c.next !== null && c.mine / c.total >= 0.6)
+    .slice(0, 2);
 
   // ===== مسلسلاتي: كل ما تتابعه، الأقرب إلى الاستئناف أولاً =====
   const myShows = [...items].sort((a, b) => {
@@ -1063,7 +1105,7 @@ async function HomeBody({
            تُترجم إلى قوالب هنا، والغائب عن القائمة لا يُرسم أصلاً */
         const sections: Record<HomeSection, React.ReactNode> = {
           continue:
-            continueTop.length > 0 ? (
+            continueTop.length > 0 || listCards.length > 0 ? (
               <Section
                 key="continue"
                 title={t.continueWatching}
@@ -1074,6 +1116,24 @@ async function HomeBody({
                 view={view}
                 wide
               >
+                {/* 🆕 **والقوائمُ أوّلَ الصفّ** (D-496): **الأقربُ إلى
+                    الاستئناف أوّلاً هو ترتيبُ هذا الصفّ منذ نشأته**،
+                    **وقائمةٌ دخلتَها للتوّ هي أحدثُ نيّةٍ أعلنتَها.** */}
+                {listCards.map((c) => (
+                  <ListContinueCard
+                    key={`lc-${c.list.id}`}
+                    listName={curatedName(c.list.sourceSlug, c.list.name, locale)}
+                    next={{
+                      tmdbId: c.next!.tmdb_id,
+                      mediaType: c.next!.media_type,
+                      title: c.next!.title,
+                      posterPath: c.next!.poster_path,
+                    }}
+                    watched={c.watched}
+                    total={c.total}
+                    locale={locale}
+                  />
+                ))}
                 {continueTop.map((i, n) => (
                   <ContinueCard
                     key={`c-${i.id}`}
