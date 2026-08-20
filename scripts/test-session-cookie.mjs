@@ -19,7 +19,7 @@ execSync(
   `npx -y esbuild src/lib/sessionCookie.ts --format=esm --outfile=${out}`,
   { stdio: "pipe" },
 );
-const { decodeSessionCookie, sessionCookieParts } = await import(
+const { decodeSessionCookie, sessionCookieParts, ownerHash } = await import(
   `file://${out}`
 );
 
@@ -80,6 +80,19 @@ check("unicode claims survive decoding", decodeSessionCookie([cookieValue(jwt({ 
 // ١٢ — sub «مزوَّر»: يُفكّ كقيمة — **وليس صلاحية**. الاستعلام يُفلتر به
 // وRLS يفلتر بالتوكن الموقَّع؛ تزويرُ sub مع توكن حسابٍ آخر = تقاطعٌ صفر صفوف.
 check("forged sub decodes as a value (never an authorization)", decodeSessionCookie([cookieValue(jwt({ sub: "attacker-chosen", exp: future }))]), { sub: "attacker-chosen", exp: future });
+
+// ١٣+ — تسميةُ مالك الكاش (D-514، تشديدُ التصادم): بصمةٌ كاملة لا بادئة
+{
+  const a = await ownerHash("aaaaaaaa-1111-1111-1111-111111111111");
+  const a2 = await ownerHash("aaaaaaaa-1111-1111-1111-111111111111");
+  const b = await ownerHash("bbbbbbbb-2222-2222-2222-222222222222");
+  // نفسُ البادئة الثمانية التي كانت تتصادم قبل التعديل — sub مختلف
+  const samePrefix = await ownerHash("aaaaaaaa-9999-9999-9999-999999999999");
+  check("ownerHash deterministic across calls", a === a2, true);
+  check("ownerHash is full sha256 hex (64 chars)", /^[0-9a-f]{64}$/.test(a), true);
+  check("different subs -> different owners", a !== b, true);
+  check("same 8-char prefix no longer collides", a !== samePrefix, true);
+}
 
 console.log(failed === 0 ? "\nALL PASS" : `\n${failed} FAILURES`);
 process.exit(failed === 0 ? 0 : 1);
