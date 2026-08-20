@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { claimGesture, releaseGesture, gestureTakenBy } from "@/lib/tabDrag";
 import { usePathname, useRouter } from "next/navigation";
+import { allowsPullToRefresh } from "@/lib/chromeRules";
 
 /**
  * **السحبُ للتحديث** (D-243، طلبُ أحمد: «أحتاج إذا سحبت يعمل تحديث مثل
@@ -96,7 +97,17 @@ export function PullToRefresh() {
   useEffect(() => {
     /* **لا لمسَ لا مستمع** — انظر الحدّ ٢ */
     if (typeof window === "undefined" || !("ontouchstart" in window)) return;
-    if (pathname === "/") return;
+    /* ⚖️ 🆕 **السحبُ للتحديث في المجتمع واكتشف وحدَهما** (جولة ١٩
+       أغسطس ليلاً، طلبُ أحمد بنصّه: «احصر Pull to Refresh حصريًا في
+       Community وDiscover… احذف الحركة ومؤشرها بالكامل من» البقيّة) —
+       **نقضٌ مسجَّلٌ لعموم D-243** («في التخطيط لا في كل صفحة»)
+       ولاستثناء D-440 الأحاديّ: **الخلاصتان الاجتماعيّتان هما ما
+       يتجدّد بفعل الآخرين**، والرئيسيةُ والمكتبةُ تتجدّدان عند كلِّ
+       تأشيرةٍ وعودةٍ أصلاً. **والقائمةُ مركزيّةٌ في `chromeRules`**
+       فلا يتوزّع الشرطُ في المكوّنات (طلبُه: «قواعد مسارات مركزية»).
+       والمستمعاتُ لا تُركَّب أصلاً خارجها، **وتُنظَّف عند كلِّ تنقّلٍ**
+       (`pathname` في الاعتماد) فلا يرث مسارٌ سلوكَ غيره. */
+    if (!allowsPullToRefresh(pathname)) return;
 
     /* 🆕 **وسحبةٌ تبدأ داخل صندوقٍ يمرَّر ليست سحبةَ صفحة** (D-440):
        **الحارسُ العامُّ لا يخصّ الرئيسية** — **أيُّ سطحٍ يضع صندوقاً
@@ -203,7 +214,9 @@ export function PullToRefresh() {
   }, [busy, pending]);
 
   const shown = busy ? THRESHOLD : pull;
-  if (shown <= 0) return null;
+  /* حارسُ الرسم فوق حارسِ المستمع: تنقّلٌ في منتصف سحبةٍ يُبقي حالةً
+     عالقة — **فلا يُرسم المؤشّرُ خارج المسموح مهما قالت الحالة.** */
+  if (!allowsPullToRefresh(pathname) || shown <= 0) return null;
 
   /* **مشدودةٌ = تجاوز الإصبعُ العتبةَ ولم يُفلت بعد** — تدور كما لو بدأت */
   const armed = !busy && pull >= THRESHOLD;

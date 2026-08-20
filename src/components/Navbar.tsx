@@ -31,7 +31,7 @@ export async function Navbar() {
   // ولا زرّ دخول، فالصفحة نفسها هي الدخول
   if (!user) {
     return (
-      <header className="sticky top-0 z-30 bg-[color:var(--background)]/80 backdrop-blur pt-[var(--safe-top)]">
+      <header className="chrome-top sticky top-0 z-30 bg-[color:var(--background)]/80 backdrop-blur pt-[var(--safe-top)]">
         {/* dir=ltr: الاسم يساراً والعلم يميناً بثبات، مهما كانت لغة الصفحة */}
         <div className="max-w-6xl mx-auto px-5 h-16 flex items-center justify-between" dir="ltr">
           <span className="font-extrabold text-22 tracking-tight">{t.brand}</span>
@@ -47,7 +47,7 @@ export async function Navbar() {
        الساعة حرفياً (D-040 عالج ترويسة الغلاف في الرئيسية وحدها، وكلّ
        صفحةٍ أخرى تحمل هذا الشريط). المتغيّر صفرٌ في المتصفّح فلا شيء
        يتغيّر هناك، و`max(env(), 47px)` في الوضع المثبّت. */
-    <header className="sticky top-0 z-30 border-b border-border bg-[color:var(--background)]/80 backdrop-blur pt-[var(--safe-top)]">
+    <header className="chrome-top sticky top-0 z-30 border-b border-border bg-[color:var(--background)]/80 backdrop-blur pt-[var(--safe-top)]">
       {/* يهاجر ثيم الحساب إلى الكوكي مرة واحدة — ثم لا يفعل شيئاً */}
       {profile?.theme && <ThemeCookieSync theme={profile.theme} />}
       {/* وحجمُ الخطّ سواء — ولا يُركَّب قبل الهجرة 121 (العمود null) */}

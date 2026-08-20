@@ -42,7 +42,7 @@ export function DetailTabs({ tabs }: { tabs: DetailTab[] }) {
           الشاشة */}
       {/* `--sticky-top` لا `--header-h` وحده: الترويسة تحمل شريط الحالة
           في وضع التثبيت، فالالتصاق عليه وحده يُدخل الشريط تحتها */}
-      <div className="sticky top-[var(--sticky-top)] z-10 bg-[color:var(--background)] py-1.5">
+      <div className="chrome-sub sticky top-[var(--sticky-top)] z-10 bg-[color:var(--background)] py-1.5">
         <div
           role="tablist"
           className="grid border-b border-[color:var(--divider)]"

@@ -26,7 +26,21 @@ import { usePathname, useRouter } from "next/navigation";
 
 let warmed = false;
 
-export function RoutePrewarm({ routes }: { routes: string[] }) {
+/**
+ * 🆕 **موجتان لا واحدة** (جولة ١٩ أغسطس ليلاً): `routes` وجهاتُ الشريط
+ * بترتيب الاحتمال (المكتبة ← اكتشف ← المجتمع)، و`laterRoutes` وجهاتُ
+ * المسجَّل الثانوية (البريد ← الإعدادات ← الملفّ) — **تبدأ بعد اكتمال
+ * الأولى وبفواصلَ أطول**، فالثانويُّ لا يزاحم المرجَّح.
+ * **والتسخينُ متسلسلٌ واحداً فواحداً** (فاصل ٧٠٠م.ث/١٢٠٠م.ث) — دون
+ * سقف «طلبَين بالتوازي» الذي اشترطه أحمد، وأهدأ منه.
+ */
+export function RoutePrewarm({
+  routes,
+  laterRoutes = [],
+}: {
+  routes: string[];
+  laterRoutes?: string[];
+}) {
   const router = useRouter();
   const pathname = usePathname();
 
@@ -41,7 +55,9 @@ export function RoutePrewarm({ routes }: { routes: string[] }) {
     if (conn?.saveData || (conn?.effectiveType ?? "").includes("2g")) return;
 
     warmed = true;
-    const targets = routes.filter((r) => r !== pathname);
+    const seen = new Set<string>([pathname]);
+    const targets = routes.filter((r) => !seen.has(r) && (seen.add(r), true));
+    const later = laterRoutes.filter((r) => !seen.has(r) && (seen.add(r), true));
     const timers: ReturnType<typeof setTimeout>[] = [];
 
     const start = () => {
@@ -50,6 +66,16 @@ export function RoutePrewarm({ routes }: { routes: string[] }) {
           setTimeout(() => {
             if (!document.hidden) router.prefetch(href);
           }, i * 700),
+        );
+      });
+      /* الموجةُ الثانية تبدأ بعد نهاية الأولى بثانيةٍ ونصف، وبفواصلَ
+         أوسع — **وتصمت مثلَها إن غاب التبويبُ عن الواجهة.** */
+      const offset = targets.length * 700 + 1500;
+      later.forEach((href, i) => {
+        timers.push(
+          setTimeout(() => {
+            if (!document.hidden) router.prefetch(href);
+          }, offset + i * 1200),
         );
       });
     };
@@ -68,7 +94,7 @@ export function RoutePrewarm({ routes }: { routes: string[] }) {
       clearTimeout(t);
       timers.forEach(clearTimeout);
     };
-  }, [router, pathname, routes]);
+  }, [router, pathname, routes, laterRoutes]);
 
   return null;
 }
