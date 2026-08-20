@@ -17,7 +17,6 @@ import { ListManager } from "./ListManager";
 import { Dropdown, DropdownRow } from "./ui/Dropdown";
 import { posterGrid } from "./ui/controls";
 import { PosterRail, RailItem } from "./PosterRail";
-import { CompactMediaRow } from "./CompactMediaRow";
 import { PageTabs } from "./ui/PageTabs";
 import { FilterIconButton } from "./ui/FilterIconButton";
 import dynamic from "next/dynamic";
@@ -492,21 +491,24 @@ export function LibraryGrid({
           <div className="space-y-7">
             {groups.map((g) => {
               const open = openGroups.has(g.status);
-              /* 🆕 **«قيد المشاهدة» صفوفٌ عريضةٌ لا ملصقات** (D-443،
-                 المرحلة ٥: «Watching كبطاقة Landscape مضغوطة»).
-                 **والسببُ أنّ سؤالَ المجموعة يختلف**: بقيّةُ المجموعات
-                 تسأل «ماذا عندي» فيكفيها ملصق، **وهذه تسأل «أين
-                 وصلت»** — **ونسبةٌ ورقمُ حلقةٍ لا يُكتبان على ملصقٍ
-                 عرضُه ١١٨px.**
-                 ⚠️ **والصفُّ نفسُه صفُّ الرئيسية المضغوط** بصدرٍ عريض
-                 (القاعدة ٦)، **والضغطُ المطوّل يبقى فوقه** فلا يفقد
-                 هذا القسمُ أفعالَه. */
-              const asRows = g.status === "watching";
-              /* 🆕 **ومجموعةٌ بعنصرٍ واحدٍ لا تُسحب** (D-442/D-443،
-                 بلاغُ أحمد: «إزالة الفراغ الكبير عند وجود عمل واحد»):
-                 **صفٌّ بعنصرٍ واحد يترك أغلبَ عرضه فراغاً**، **والعنصرُ
-                 وحدَه يأخذ العرضَ كلَّه.** */
-              const solo = asRows || g.items.length === 1;
+              /* ⚖️ 🆕 **و«قيد المشاهدة» عادت ملصقاتٍ كبقيّة المجموعات**
+                 (نقضُ D-443، طلبُ أحمد ٢٠ أغسطس بلقطةٍ للقسمين:
+                 «طريقة عرض واتشينغ في المكتبة رجّعها مثل الشكل القديم
+                 الي تحتها»).
+
+                 **وحجّةُ D-443 كانت أنّ سؤالَ المجموعة يختلف** — «أين
+                 وصلتُ» لا «ماذا عندي» — **وثمنُها الذي لم يُحسب أنّ
+                 صفّين عريضين يأكلان الشاشةَ كلَّها** قبل أن يبدأ «لم
+                 يبدأ»، **فتُقرأ المكتبةُ قائمتين لا مكتبةً**، وهو نقيضُ
+                 ما بُنيت له الرفوف (D-422).
+                 **والرقمان اللذان بُرِّر بهما الصفُّ لم يسقطا**:
+                 `Cell` تمرّر `progress` و`count` إلى الملصق أصلاً —
+                 **فالذي تغيّر الإطارُ لا المعلومة.** */
+              /* **ومجموعةٌ بعنصرٍ واحدٍ لا تُسحب** (D-442/D-443، بلاغُ
+                 أحمد: «إزالة الفراغ الكبير عند وجود عمل واحد»): **صفٌّ
+                 بعنصرٍ واحد يترك أغلبَ عرضه فراغاً**، **والعنصرُ وحدَه
+                 يأخذ العرضَ كلَّه.** */
+              const solo = g.items.length === 1;
               return (
                 <PosterRail
                   key={g.status}
@@ -531,37 +533,6 @@ export function LibraryGrid({
                     <div className={posterGrid}>
                       {g.items.map((x) => (
                         <Cell key={x.key} x={x} />
-                      ))}
-                    </div>
-                  ) : asRows ? (
-                    <div className="space-y-2">
-                      {g.items.map((x) => (
-                        <div
-                          key={x.key}
-                          className="relative"
-                          style={
-                            hold === x.key
-                              ? { contentVisibility: "visible", containIntrinsicSize: "auto" }
-                              : undefined
-                          }
-                        >
-                          <LongPressable onLongPress={() => setHold(x.key)}>
-                            <CompactMediaRow
-                              href={x.href}
-                              title={x.title}
-                              /* **الباقي أوّلَ ما يُسأل عنه في «قيد
-                                 المشاهدة»** — والشارةُ احتياطُه */
-                              subtitle={
-                                x.count && x.count > 0
-                                  ? t.leftEps(x.count)
-                                  : (x.badge ?? undefined)
-                              }
-                              posterPath={x.posterPath}
-                              progress={x.progress}
-                              wide
-                            />
-                          </LongPressable>
-                        </div>
                       ))}
                     </div>
                   ) : solo ? (
