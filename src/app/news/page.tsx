@@ -2002,14 +2002,10 @@ async function PersonalRails({
             /* 🆕 **الحالةُ تُحسب هنا وتُسلسَل مع البطاقة** (D-322): المكوّنُ
                عميلٌ فلا يقرأ القاعدة، **والقراءةُ واحدةٌ للصفّ كلِّه** */
             ...libState.of(s.result.id, s.result.media_type === "movie" ? "movie" : "tv"),
-            note:
-              s.source === "rated" && s.seedTitle
-                ? t.recoBecauseRated(s.seedTitle)
-                : s.source === "follows" && s.seedTitle
-                  ? t.recoBecauseFollow(s.seedTitle)
-                  : s.source === "recent" && s.seedTitle
-                    ? t.recoBecauseWatched(s.seedTitle)
-                    : t.recoBecauseGenre,
+            /* **الاسمُ هو الخبر** (D-494): البذرةُ إن وُجدت، وإلا
+               فالأنواع — **ولا فرعَ ثالثٌ للعلاقة** بعد أن صارت
+               الصيغةُ واحدة. */
+            note: s.seedTitle ? t.recoFrom(s.seedTitle) : t.recoFromGenre,
           }))}
         />
       )}
