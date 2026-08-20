@@ -17,13 +17,24 @@
 
 // رقم النسخة يُرفع مع أي تغييرٍ في قشرة التطبيق: مُعالج `activate` يمسح
 // كل كاشٍ لا يبدأ به، فالتطبيق المثبّت لا يبقى على قشرةٍ قديمة.
-const VER = "loopz-v3";
+const VER = "loopz-v4";
 const STATIC_CACHE = `${VER}-static`;
 const PAGE_CACHE = `${VER}-pages`;
 const IMG_CACHE = `${VER}-img`;
 const IMG_LIMIT = 300;
 
-self.addEventListener("install", () => {
+/* أصولُ شاشة الإقلاع تُخزَّن مسبقاً عند التثبيت: الشعارُ يجب أن يظهر
+   من الكاش قبل أن تصل الشبكةُ أصلاً — وهو معنى «شاشة إقلاعٍ فوريّة».
+   القائمةُ قصيرةٌ عمداً: ما يلزم أوّلَ إطارٍ لا أكثر. */
+const LAUNCH_ASSETS = ["/loopz-wordmark.png", "/loopz-mark.png", "/icon-192.png"];
+
+self.addEventListener("install", (event) => {
+  event.waitUntil(
+    caches
+      .open(STATIC_CACHE)
+      .then((c) => c.addAll(LAUNCH_ASSETS))
+      .catch(() => {}),
+  );
   self.skipWaiting();
 });
 
@@ -98,6 +109,26 @@ self.addEventListener("fetch", (event) => {
 
   if (sameOrigin && url.pathname.startsWith("/_next/static/")) {
     event.respondWith(cacheFirst(req, STATIC_CACHE));
+    return;
+  }
+
+  /* الخطوطُ وأصولُ الإقلاع والعلامة: cache-first — لا تتغيّر إلا مع
+     نشرةٍ ترفع رقمَ النسخة أعلاه فيمسحها `activate` كلَّها. وبها يرتسم
+     شعارُ الإقلاع والخطُّ العربيُّ بلا رحلة شبكةٍ واحدة في كل فتحة. */
+  if (
+    sameOrigin &&
+    (url.pathname.startsWith("/fonts/") ||
+      url.pathname.startsWith("/splash/") ||
+      LAUNCH_ASSETS.includes(url.pathname))
+  ) {
+    event.respondWith(cacheFirst(req, STATIC_CACHE));
+    return;
+  }
+
+  /* تسجيلُ الخروج يمحو كاشَ الصفحات الشخصيّ: HTML محفوظٌ لحسابٍ خرجت
+     منه يجب ألّا يظهر لحسابٍ يدخل بعده — ولا اختلاطَ بين مستخدمين. */
+  if (sameOrigin && url.pathname === "/auth/signout") {
+    event.waitUntil(caches.delete(PAGE_CACHE));
     return;
   }
 
