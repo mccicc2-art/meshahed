@@ -9,6 +9,7 @@ import {
   renameList,
   reorderList,
   setListKind,
+  setListPlaylist,
   toggleInList,
   saveList,
   followListTitles,
@@ -72,6 +73,7 @@ export function ListDetail({
   reviews,
   reviewsSlot,
   inLibrary,
+  initialPlaylist,
 }: {
   listId: string;
   name: string;
@@ -114,6 +116,8 @@ export function ListDetail({
    * **والغيابُ يعني زائراً بلا حساب** — فلا زرَّ إضافةٍ أصلاً.
    */
   inLibrary?: Record<string, boolean>;
+  /** 🆕 رايةُ قائمة التشغيل (D-505) — الغيابُ يعني هجرةً لم تُشغَّل فلا صفّ */
+  initialPlaylist?: boolean | null;
 }) {
   const t = getDict(locale);
   const router = useRouter();
@@ -121,6 +125,20 @@ export function ListDetail({
   /* حفظ القائمة مرجعاً حيّاً — متفائلٌ مع تراجُع (D-007) */
   const [saved, setSaved] = useState(initialSaved ?? false);
   const canSave = !isOwner && initialSaved !== undefined && initialSaved !== null;
+  /* 🆕 رايةُ قائمة التشغيل (D-505) — متفائلةٌ مع تراجُع كالحفظ سواء */
+  const [playlist, setPlaylist] = useState(!!initialPlaylist);
+
+  function togglePlaylist() {
+    const next = !playlist;
+    tap(next ? [12, 30] : 8);
+    setPlaylist(next);
+    setListPlaylist(listId, next)
+      .then(() => toast(next ? t.listPlaylistOnToast : t.listPlaylistOffToast))
+      .catch((err) => {
+        setPlaylist(!next);
+        flashError((err as Error).message);
+      });
+  }
 
   function toggleSave() {
     const next = !saved;
@@ -619,6 +637,23 @@ export function ListDetail({
               مرئيّ هو وعدٌ كاذب — ومن أراده غيّر النوع أوّلاً */}
           {numbered && visible.length > 1 && (
             <MenuRow icon="grip" label={t.listReorder} onClick={() => setSheet("reorder")} />
+          )}
+          {/* 🆕 **قائمةُ التشغيل** (D-505): تُعرض في «تابِع المشاهدة»
+              وكلُّ صحٍّ على فيلمٍ يقلبها إلى الذي بعده. **الصفُّ يظهر
+              فقط حين وصلت الرايةُ من الخادم** — غيابُها يعني هجرةً لم
+              تُشغَّل، **وصفٌّ يَعِد بما لا تحفظه القاعدة وعدٌ كاذب**
+              (D-217/D-462). والفعلُ يقلب فوراً ويغلق الورقةَ بلا
+              تأكيدٍ ثانٍ — راية، لا عمليّة. */}
+          {initialPlaylist !== undefined && initialPlaylist !== null && visible.length > 0 && (
+            <MenuRow
+              icon="play"
+              label={t.listPlaylist}
+              value={playlist ? t.listPlaylistOnState : undefined}
+              onClick={() => {
+                togglePlaylist();
+                setSheet(null);
+              }}
+            />
           )}
           <MenuRow icon="trash" label={t.listDeleteThis} danger onClick={() => setSheet("delete")} />
         </Sheet>
