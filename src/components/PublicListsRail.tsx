@@ -30,12 +30,13 @@ export function PublicListsRail({
   locale,
   title,
   grid = false,
-  stickyHead = false,
 }: {
   lists: PublicListCard[];
   locale: Locale;
   /** عنوان الصفّ — يغيب فيحلّ عنوان «قوائم من المجتمع» */
   title?: string;
+  /** ⚠️ **مقبولٌ ولا يُقرأ — لعمرِ رفعةٍ واحدة** (D-028): مستدعيه في `src/app` يسقط في الرفعة التالية، ثم يُنزع. */
+  stickyHead?: boolean;
   /**
    * 🔴 🆕 **شبكةٌ لا صفّ — حيث تجاورها شبكة** (D-433، طلبُ أحمد: «في
    * المكتبة كل البطائق أبغاها بالمقاس الجديد»).
@@ -50,8 +51,6 @@ export function PublicListsRail({
    * واحدة هو العطلُ بعينه** (القاعدة ٦).
    */
   grid?: boolean;
-  /** يمرَّر إلى `PosterRail` — رأسٌ لاصقٌ في الرئيسيّة (D-464) */
-  stickyHead?: boolean;
 }) {
   const t = getDict(locale);
   if (!lists.length) return null;
@@ -66,7 +65,6 @@ export function PublicListsRail({
         title={title ?? t.publicListsRail}
         icon="list"
         iconColor="var(--accent-2)"
-        stickyHead={stickyHead}
         bare
       >
         {/* 🆕 ⚖️ **عمودٌ واحدٌ على الجوّال** (D-461، حكمُ أحمد: «أحجام
@@ -100,7 +98,6 @@ export function PublicListsRail({
       title={title ?? t.publicListsRail}
       icon="list"
       iconColor="var(--accent-2)"
-      stickyHead={stickyHead}
     >
       {lists.map((l, i) => (
         /* `size="list"` لا الافتراض: خانة الملصق (118px) لبطاقةٍ أعرض

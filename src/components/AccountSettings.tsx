@@ -25,9 +25,10 @@ export function AccountSettings({
   only,
 }: {
   /* ⚠️ **يُقبلان ولا يُقرآن — لعمرِ ترقيةٍ واحدة** (D-028) */
+  locale: Locale;
+  /** ⚠️ **مقبولٌ ولا يُقرأ — لعمرِ رفعةٍ واحدة** (D-028): مستدعيه في `src/app` يسقط في الرفعة التالية، ثم يُنزع. */
   email?: string;
   initialUsername?: string;
-  locale: Locale;
   /** يُمرَّر ولا يُعرض — `updateProfile` يكتب `nickname` في كل نداء */
   initialNickname: string;
   avatarUrl: string | null;

@@ -2,12 +2,25 @@ import Link from "next/link";
 import { Avatar } from "@/components/Avatar";
 import type { HomeView } from "@/lib/homePrefs";
 import { getDict, type Locale } from "@/lib/i18n";
-import { Icon } from "./Icon";
+import { Icon, type IconName } from "./Icon";
 import { LogoWordmark } from "./Logo";
 import { MessagesLink } from "./MessagesLink";
 import { HomeGreeting } from "./HomeGreeting";
 import { HomeViewSwitch } from "./HomeViewSwitch";
-import type { HeaderStat } from "./ProfileHeader";
+/**
+ * 🆕 **خانةُ بطاقة الأرقام — تسكن مع راسمها** (D-497): كانت تُستورد
+ * نوعاً من `ProfileHeader`، **وتلك بلا قارئٍ منذ D-438 وحكمُها الحذف**
+ * (D-214) — **والنوعُ يُنقل أوّلاً ثم يُحذف الملفّ.**
+ */
+export interface HeaderStat {
+  key: string;
+  icon: IconName;
+  value: string;
+  label: string;
+  href?: string;
+  /** لون الأيقونة — ثابت لا يتبع الثيم، فالخانة تُعرف بلونها قبل كلمتها */
+  color?: string;
+}
 
 /**
  * ترويسةُ الرئيسية — **الرئيسيةُ صفحةُ مكتبتك لا صفحةُ حسابك** (D-434).
@@ -41,8 +54,7 @@ export function HomeHeader({
   avatarPos?: number | null;
   /** مجموعُ الرسائل والإشعارات — **شارةُ بابٍ واحد** (D-463) */
   unread: number;
-  /** ⚠️ **يُقبل ولا يُقرأ — لعمرِ ترقيةٍ واحدة** (D-028): الصفحةُ ترسله
-      اليوم، ونزعُه من النوع قبل أن يكفَّ المرسِلُ يكسر الرفعةَ الوسيطة */
+  /** ⚠️ **مقبولٌ ولا يُقرأ — لعمرِ رفعةٍ واحدة** (D-028): مستدعيه في `src/app` يسقط في الرفعة التالية، ثم يُنزع. */
   myUsername?: string | null;
   /** خاناتُ بطاقة الأرقام — من التخصيص، اثنتان إلى أربع (D-152) */
   stats: HeaderStat[];
