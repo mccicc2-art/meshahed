@@ -37,7 +37,18 @@ export function usePrefetchOnIntent() {
       ).connection;
       if (conn?.saveData || (conn?.effectiveType ?? "").includes("2g")) return;
       done.current.add(href);
-      router.prefetch(href);
+      /* `kind: "full"` صراحةً — قيس على المنشور: بلا تحديدٍ يُحسب الطلب
+         `auto` فيلتقي بمدخل الـLink الموجود أصلاً (هيكلٌ بلا بيانات)
+         ولا يخرج طلبٌ واحد — أي أن النيّة كانت تُهدر بصمت. والقيمة
+         حرفيّةٌ مطابقة لعضو enum الراوتر، والتحويل لأن النوع المعلَن
+         لا يقبل الحرفيّ مباشرة. */
+      router.prefetch(href, {
+        kind: "full" as Parameters<typeof router.prefetch>[1] extends
+          | { kind: infer K }
+          | undefined
+          ? K
+          : never,
+      });
     },
     [router],
   );
