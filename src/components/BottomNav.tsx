@@ -108,6 +108,19 @@ export function BottomNav({
      `touchstart` يسبق الضغطة بنحو ١٠٠م.ث — تكفي لبدء جلب الوجهة
      المقصودة وحدها بدل تسخين الخمس جميعاً عند الفتح */
   const prewarm = usePrefetchOnIntent();
+  /* والوجهةُ المرجَّحة الوحيدة — المكتبة — تُسخَّن كاملةً من الرؤية لا
+     من النيّة (`prefetch={true}` على رابطها): قيس على المنشور أن
+     `router.prefetch` اليدويّ يُدمج مع مدخل الـLink الهيكليّ فلا يجلب
+     شيئاً، وطريقُ الجلب الكامل الذي يعمل فعلاً هو الـLink نفسه.
+     وموفّرُ البيانات وشبكات 2G تُحترمان كما في الموجات القديمة. */
+  const conn = (
+    typeof navigator === "undefined"
+      ? undefined
+      : (navigator as Navigator & {
+          connection?: { saveData?: boolean; effectiveType?: string };
+        }).connection
+  );
+  const fullOk = !conn?.saveData && !(conn?.effectiveType ?? "").includes("2g");
   /* 🔴 🆕 **والشريطُ يغيب ما دام الكيبوردُ مفتوحاً** (D-359، بلاغُ أحمد:
      «إذا ضغطت على خيار رد ليه يطلع الدوك الي تحت الى فوق الكيبورد»).
 
@@ -262,6 +275,7 @@ export function BottomNav({
             <Link
               key={href}
               href={href}
+              prefetch={key === "library" && fullOk ? true : undefined}
               aria-current={active ? "page" : undefined}
               aria-label={label[key]}
               title={label[key]}

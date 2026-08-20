@@ -10,6 +10,16 @@ export function NavLinks({ locale }: { locale: Locale }) {
   const t = getDict(locale);
   // تسخينُ الوجهة عند حومان المؤشّر أو تركيز الكيبورد — نفس صمّامات الشريط السفليّ
   const prewarm = usePrefetchOnIntent();
+  /* والمكتبةُ — الوجهةُ المرجَّحة — تُسخَّن كاملةً من الرؤية
+     (`prefetch={true}`)؛ انظر الحجّة في `BottomNav` */
+  const conn = (
+    typeof navigator === "undefined"
+      ? undefined
+      : (navigator as Navigator & {
+          connection?: { saveData?: boolean; effectiveType?: string };
+        }).connection
+  );
+  const fullOk = !conn?.saveData && !(conn?.effectiveType ?? "").includes("2g");
 
   const links = [
     { href: "/", label: t.navHome },
@@ -26,6 +36,7 @@ export function NavLinks({ locale }: { locale: Locale }) {
           <Link
             key={l.href}
             href={l.href}
+            prefetch={l.href === "/library" && fullOk ? true : undefined}
             onPointerEnter={() => prewarm(l.href)}
             onFocus={() => prewarm(l.href)}
             aria-current={active ? "page" : undefined}
