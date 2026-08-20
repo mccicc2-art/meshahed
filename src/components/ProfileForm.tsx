@@ -29,9 +29,6 @@ export function ProfileForm({
      ترسلهما اليوم، **ونزعُ العضوِ من النوع قبل أن يكفَّ المرسِلُ عن
      إرساله يكسر العمليّةَ الوسيطة.** يُحذفان في الرفعة التالية. */
   locale: Locale;
-  /** ⚠️ **مقبولٌ ولا يُقرأ — لعمرِ رفعةٍ واحدة** (D-028): مستدعيه في `src/app` يسقط في الرفعة التالية، ثم يُنزع. */
-  userId?: string;
-  email?: string;
   initialNickname: string;
   /** النبذة الحالية — فارغةٌ قبل تشغيل profile_bio.sql */
   initialBio?: string | null;

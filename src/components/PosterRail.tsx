@@ -55,8 +55,6 @@ export function PosterRail({
    * ترويسةٍ ثانيةٍ تُنسخ** (القاعدة ٣/D-002).
    */
   bare?: boolean;
-  /** ⚠️ **مقبولٌ ولا يُقرأ — لعمرِ رفعةٍ واحدة** (D-028): مستدعيه في `src/app` يسقط في الرفعة التالية، ثم يُنزع. */
-  stickyHead?: boolean;
   children: React.ReactNode;
 }) {
   return (

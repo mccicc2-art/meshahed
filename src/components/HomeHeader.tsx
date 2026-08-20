@@ -54,8 +54,6 @@ export function HomeHeader({
   avatarPos?: number | null;
   /** مجموعُ الرسائل والإشعارات — **شارةُ بابٍ واحد** (D-463) */
   unread: number;
-  /** ⚠️ **مقبولٌ ولا يُقرأ — لعمرِ رفعةٍ واحدة** (D-028): مستدعيه في `src/app` يسقط في الرفعة التالية، ثم يُنزع. */
-  myUsername?: string | null;
   /** خاناتُ بطاقة الأرقام — من التخصيص، اثنتان إلى أربع (D-152) */
   stats: HeaderStat[];
   showStats: boolean;
