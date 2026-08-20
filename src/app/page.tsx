@@ -67,7 +67,6 @@ import { densityVars } from "@/lib/density";
 import { WeekStrip, type WeekEntry } from "@/components/WeekStrip";
 import { ShowStatsSync, type ShowStat } from "@/components/ShowStatsSync";
 import { FollowMetaSync, MovieStatsSync } from "@/components/MetaSync";
-import { RoutePrewarm } from "@/components/RoutePrewarm";
 import { LandingHero } from "@/components/LandingHero";
 import { LandingContent } from "@/components/LandingContent";
 import { JsonLd } from "@/components/JsonLd";
@@ -372,12 +371,13 @@ export default async function HomePage() {
        القارئُ قسماً إضافيّاً في الشاشة (حجّةُ D-437 نفسُها: **يُنفَق من
        الفراغ لا من حجم النصّ**). */
     <div className="space-y-3 sm:space-y-6" style={densityVars(prefs.density)}>
-      {/* ⚖️ تسخينُ **الوجهة المرجَّحة وحدها** بعد هدوء الرئيسية (جولة
-          ٢٠ أغسطس — نقضٌ جزئيٌّ لموجتَي D-483 بطلب أحمد: «لا prefetch
-          لكل الصفحات بشكل أعمى»). بقيّةُ الوجهات تُسخَّن لحظةَ النيّة
-          نفسِها: لمسةُ الإصبع على تبويبها (`usePrefetchOnIntent` في
-          الشريطين) — فلا يدفع أحدٌ كلفةَ صفحةٍ لن يفتحها. */}
-      <RoutePrewarm likely="/library" />
+      {/* ⚖️ **وسقطت موجاتُ التسخين الأعمى** (جولة ٢٠ أغسطس — نقضُ
+          D-483 بطلب أحمد: «لا prefetch لكل الصفحات بشكل أعمى»).
+          البديل في الشريطين لا هنا: المكتبةُ — الوجهةُ المرجَّحة —
+          `prefetch={true}` على رابطها فتُجلب كاملةً من الرؤية، وبقيّةُ
+          الوجهات تُسخَّن لحظةَ النيّة (لمسة/حومان/تركيز عبر
+          `usePrefetchOnIntent`) — فلا يدفع أحدٌ كلفةَ صفحةٍ لن يفتحها.
+          و`RoutePrewarm` حُذف بحذف آخرِ مستدعيه. */}
       <HomeHeader
         displayName={displayName}
         stats={headerStats}
