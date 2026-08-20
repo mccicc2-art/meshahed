@@ -222,6 +222,11 @@ export default async function ListPage({ params }: { params: Promise<{ id: strin
         }
         locale={locale}
         initialSaved={isOwner ? null : saved}
+        /* 🆕 رايةُ قائمة التشغيل (D-505) — للمالك وحدَه، وغيابُ العمود
+           (قبل هجرة ١٢٢) يصل `undefined` فلا يُرسم الصفُّ أصلاً */
+        initialPlaylist={
+          isOwner && data.list.is_playlist !== undefined ? !!data.list.is_playlist : null
+        }
         inLibrary={inLibrary}
         cover={{
           backdrop: data.list.cover_backdrop ?? null,
