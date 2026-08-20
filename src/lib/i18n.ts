@@ -1720,7 +1720,7 @@ const ar = {
   analysisSub: "ممّ تتكوّن مكتبتك، وماذا يقول ذوقك عنك.",
   analysisMix: "توزيع المكتبة",
   analysisStatus: "أين وصلت",
-  analysisTaste: "خريطة ذوقك",
+  analysisTaste: "ذوقك",
   analysisTasteSub:
     "الأنواع الأكثر تكراراً فيما تتابعه — النسبة من مجموع الأنواع لا من عدد الأعمال.",
   analysisRatings: "توزيع تقييماتك",
@@ -3108,7 +3108,7 @@ const en: Dict = {
     "What your library is made of, and what your taste says about you.",
   analysisMix: "Library mix",
   analysisStatus: "Where you stand",
-  analysisTaste: "Taste map",
+  analysisTaste: "Your taste",
   analysisTasteSub:
     "The genres that recur most in what you follow — as a share of all genre tags, not of titles.",
   analysisRatings: "Your ratings",

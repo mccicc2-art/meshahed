@@ -96,7 +96,13 @@ export const DEFAULT_HOME_PREFS: HomePrefs = {
   stats: true,
   followers: true,
   social: true,
-  order: ["week", "continue", "towatch"],
+  /* ⚠️ **و«الرائج» آخرَ الترتيب — لا في تصميمك بل في علاجِ ثمنه**
+     (D-497): الثلاثةُ فوقه كلُّها تُرسم من مكتبتك، **ومكتبةُ الحساب
+     الجديد فارغة** — فمن تخطّى الترحيبَ فتح رئيسيّةً بيضاء.
+     🔑 **وهو لا يظهر لك أنت**: `showTrending` مشروطٌ بأن تكون «تابِع
+     المشاهدة» فارغة — **فيملأ الفراغَ لمن لا شيءَ عنده ويختفي وحدَه
+     عند أوّل حلقة**، ولا يزحم رئيسيّتك بسطرٍ واحد. */
+  order: ["week", "continue", "towatch", "trending"],
   statsPick: ["towatch", "upcoming"],
   cards: "full",
   view: "visual",
