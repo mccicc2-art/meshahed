@@ -1298,10 +1298,15 @@ export async function popularWellKnown(
 
   let best: SearchResult[] = [];
   for (const rung of rungs) {
-    const out: SearchResult[] = [];
-    for (let page = 1; page <= Math.max(1, pages); page++) {
-      try {
-        const data = await tmdb<{ results: SearchResult[] }>(`/discover/${mediaType}`, {
+    /* 🆕 **صفحاتُ الدرجة الواحدة تُجلب معاً لا واحدةً فواحدة** (جولة
+       /news، D-515): كانت `await` داخل الحلقة — ثلاثُ رحلاتٍ متتاليات
+       في المسار البارد لبياناتٍ مستقلّةٍ تماماً. **النتيجةُ نفسُها
+       حرفاً**: الترتيبُ ترتيبُ الصفحات (الدمجُ بالفهرس)، **وفشلُ صفحةٍ
+       يُسقطها وما بعدها** كما كان يفعل `break` — لا أقلَّ ولا أكثر.
+       والدرجاتُ تبقى سلّماً متتالياً: نزولُها قرارٌ لا يوازى. */
+    const fetched = await Promise.all(
+      Array.from({ length: Math.max(1, pages) }, (_, i) => i + 1).map((page) =>
+        tmdb<{ results: SearchResult[] }>(`/discover/${mediaType}`, {
           ...discoverParams(mediaType, f),
           sort_by: "popularity.desc",
           "vote_count.gte": String(rung.votes),
@@ -1311,15 +1316,17 @@ export async function popularWellKnown(
             ? { "vote_average.gte": String(rung.rate) }
             : {}),
           page: String(page),
-        });
-        out.push(
-          ...(data.results ?? [])
-            .filter((r) => r.poster_path)
-            .map((r) => ({ ...r, media_type: mediaType })),
-        );
-      } catch {
-        break;
-      }
+        }).catch(() => null),
+      ),
+    );
+    const out: SearchResult[] = [];
+    for (const data of fetched) {
+      if (data === null) break; // صفحةٌ سقطت: ما بعدها يسقط كسلوك break القديم
+      out.push(
+        ...(data.results ?? [])
+          .filter((r) => r.poster_path)
+          .map((r) => ({ ...r, media_type: mediaType })),
+      );
     }
     if (out.length > best.length) best = out;
     /* **الدرجةُ الأولى تكفي في البِركة العالميّة فلا يُدفع نداءٌ ثانٍ** */
