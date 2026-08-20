@@ -163,13 +163,26 @@ export default async function RootLayout({
             قبل أيّ جافاسكربت أو شبكة. سكربتُ الإذابة في ذيل القشرة
             أدناه، وأنماطُها في globals.css. التنقّلُ الداخليُّ لا يعيد
             رسمَ التخطيط فلا تظهر فيه. ولمن عطّل جافاسكربت: تُخفى فوراً
-            (noscript في الرأس) فلا تحبس الصفحة. */}
-        <div id="lz-launch" aria-hidden="true">
-          {/* img خام لا next/image: لا وسيطَ تحسينٍ بين الشعار وأوّل
-              إطار، والملفُّ نفسُه مسبَقُ التخزين في الـsw */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/loopz-wordmark.png" alt="" width={720} height={247} />
-        </div>
+            (noscript في الرأس) فلا تحبس الصفحة.
+
+            🔴 **ولماذا `dangerouslySetInnerHTML` لا JSX مباشر** (عطلُ
+            ٢٠ أغسطس، لقطةُ أحمد من الآيفون: global-error يبتلع التطبيق
+            كلَّه): النسخةُ الأولى كانت عنصرَ JSX يديره React، وسكربتُ
+            الإذابة كان **يحذف العقدةَ من DOM قبل اكتمال الترطيب** —
+            فيجد React شجرةً غيرَ التي أرسلها الخادم. كروم سطحِ المكتب
+            يرطّب قبل أن يعمل السكربت فلا يرى شيئاً، **وسفاري iOS أبطأُ
+            ترطيباً فيُرطِّب بعد الحذف وينهار إلى global-error.**
+            **فالقاعدة: عقدةٌ يلمسها سكربتٌ مضمَّنٌ لا يجوز أن يديرها
+            React** — هنا React يملك الغلافَ وحدَه ولا يقرأ ما بداخله،
+            **والإذابةُ صنفُ CSS يُضاف ولا عقدةَ تُحذف أبداً.** */}
+        <div
+          suppressHydrationWarning
+          dangerouslySetInnerHTML={{
+            __html:
+              '<div id="lz-launch" aria-hidden="true">' +
+              '<img src="/loopz-wordmark.png" alt="" width="720" height="247"></div>',
+          }}
+        />
         {/* رابط تخطّي للتنقّل بلوحة المفاتيح — يظهر عند التركيز فقط */}
         <a
           href="#main"
@@ -217,13 +230,18 @@ export default async function RootLayout({
             يُنفَّذ إلا وقد تحلّلت الترويسةُ والشريطُ وهيكلُ الصفحة
             (loading.tsx) فوق الشاشة — **فالإذابةُ تكشف هيكلاً لا
             سواداً**، ولا مدّةَ انتظارٍ مكتوبةً بيد. rAF مزدوجة: إطارُ
-            رسمٍ واحدٌ للهيكل تحتها قبل أن تبدأ بالذوبان. */}
+            رسمٍ واحدٌ للهيكل تحتها قبل أن تبدأ بالذوبان.
+            **والإذابةُ صنفٌ يُضاف لا عقدةٌ تُحذف** (عطلُ الآيفون أعلاه)
+            — والدالّةُ تُعلَّق على `window.__lzMelt` **فيعيد نداءَها
+            `ChromeAutoHide` بعد الترطيب**: لو أعاد React رسمَ الجذر
+            لأيّ سببٍ وأعاد معه الشاشةَ، أذابها الأثرُ ثانيةً بدل أن
+            تعلق فوق التطبيق. */}
         <script
           dangerouslySetInnerHTML={{
             __html:
-              "(function(){var l=document.getElementById('lz-launch');if(!l)return;" +
-              "requestAnimationFrame(function(){requestAnimationFrame(function(){" +
-              "l.classList.add('lz-out');setTimeout(function(){l.remove()},260)})})})();",
+              "(function(){var go=function(){try{var l=document.getElementById('lz-launch');" +
+              "if(l)l.classList.add('lz-out')}catch(e){}};window.__lzMelt=go;" +
+              "requestAnimationFrame(function(){requestAnimationFrame(go)})})();",
           }}
         />
         {/* الكسوةُ الذكيّة — مستمعُ التمرير المركزيّ (chromeRules) */}
