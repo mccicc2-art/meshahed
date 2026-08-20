@@ -23,6 +23,8 @@ import {
   getMyRatings,
   getMyLists,
   getFriendsWatching,
+  type SavedListBrief,
+  type ListItem,
 } from "@/lib/data";
 import {
   getTv,
@@ -90,8 +92,37 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function HomePage() {
-  const user = await getUser();
   const { locale, t } = await getT();
+
+  /* ===== الموجة الأولى — والتحقّقُ معها لا قبلها (جولة ٢٠ أغسطس) =====
+     كان `getUser()` يقف وحده أوّلاً (رحلة تحقّقٍ كاملة إلى خادم Auth)
+     ثم تنطلق الاستعلامات الست — رحلتين متسلسلتين في أسخن مسار. القرّاء
+     صاروا يأخذون المعرّف من الكوكي مباشرةً (`getUserId` — وRLS هو
+     الحارس الحقيقي كما كان)، فالتحقّقُ الكامل ينضمّ إلى الموجة عضواً
+     لا حارسَ بوابة: الكلُّ ينطلق معاً ويحكم أبطؤها وحده.
+     ملخّص مجمّع: صف لكل مسلسل بدل صف لكل حلقة (آلاف الصفوف سابقاً).
+     صفوف الحلقات التفصيلية تُقرأ لاحقاً لمسلسل واحد فقط — صاحب
+     «الحلقة التالية». والزائر بلا كوكي لا يدفع استعلاماً واحداً:
+     القرّاء يعودون فارغين قبل أي رحلة. */
+  const [
+    user,
+    followRows,
+    summary,
+    watchedMovies,
+    profile,
+    movieProgress,
+    myRatings,
+  ] = await Promise.all([
+    getUser(),
+    getFollows(),
+    getWatchSummary(),
+    getWatchedMovies(),
+    getProfile(),
+    getAllMovieProgress(),
+    getMyRatings(),
+    /* ⚖️ وعدّادا البريد سقطا من هنا (D-502): الشريطُ العلويّ يعدّهما
+       لنفسه — استعلامٌ لا يرسم شيئاً ضريبةٌ تُدفع في كلِّ فتحة. */
+  ]);
 
   /* **بابٌ ثانٍ لتجديد الأخبار** (D-215): كان التجديدُ لا يقع إلا حين
      يُفتح تبويبُ الأخبار — **وهو أقلُّ أسطح التطبيق زيارةً**، فبقيت
@@ -124,29 +155,6 @@ export default async function HomePage() {
       </>
     );
   }
-
-  // ملخّص مجمّع: صف لكل مسلسل بدل صف لكل حلقة (آلاف الصفوف سابقاً).
-  // صفوف الحلقات التفصيلية تُقرأ لاحقاً لمسلسل واحد فقط — صاحب «الحلقة التالية».
-  const [
-    followRows,
-    summary,
-    watchedMovies,
-    profile,
-    movieProgress,
-    myRatings,
-  ] = await Promise.all([
-    getFollows(),
-    getWatchSummary(),
-    getWatchedMovies(),
-    getProfile(),
-    getAllMovieProgress(),
-    getMyRatings(),
-    /* ⚖️ 🆕 **وعدّادا البريد سقطا من هنا** (D-502): كانا للظرف في
-       ترويسة الرئيسية، **وقد صار الظرفُ في الشريط العلويّ الذي يُرسم
-       الآن في الرئيسية أيضاً** — **والشريطُ يعدّهما لنفسه**، فبقي هنا
-       نداءان لا يرسمان شيئاً. (وسبقهما ثلاثةٌ سقطت في D-434 للسبب
-       نفسِه: **استعلامٌ لا يرسم شيئاً ضريبةٌ تُدفع في كلِّ فتحة.**) */
-  ]);
 
   // مستخدم بلا مكتبة يذهب لشاشة الانضمام — قبل أي رسمٍ أو جلبٍ آخر
   if (followRows.length === 0) redirect("/welcome");
@@ -364,17 +372,12 @@ export default async function HomePage() {
        القارئُ قسماً إضافيّاً في الشاشة (حجّةُ D-437 نفسُها: **يُنفَق من
        الفراغ لا من حجم النصّ**). */
     <div className="space-y-3 sm:space-y-6" style={densityVars(prefs.density)}>
-      {/* تسخين بقية التبويبات بعد هدوء الرئيسية (طلب أحمد) — أول ضغطة
-          تبويب تُعاد من كاش الراوتر لحظياً. البحث ليس بينها: تبويبه
-          ورقةٌ تنبثق لا صفحةٌ تُجلب */}
-      <RoutePrewarm
-        routes={["/library", "/news", "/people", "/search"]}
-        laterRoutes={[
-          "/messages",
-          "/profile/settings",
-          ...(profile?.username ? [`/u/${profile.username}`] : []),
-        ]}
-      />
+      {/* ⚖️ تسخينُ **الوجهة المرجَّحة وحدها** بعد هدوء الرئيسية (جولة
+          ٢٠ أغسطس — نقضٌ جزئيٌّ لموجتَي D-483 بطلب أحمد: «لا prefetch
+          لكل الصفحات بشكل أعمى»). بقيّةُ الوجهات تُسخَّن لحظةَ النيّة
+          نفسِها: لمسةُ الإصبع على تبويبها (`usePrefetchOnIntent` في
+          الشريطين) — فلا يدفع أحدٌ كلفةَ صفحةٍ لن يفتحها. */}
+      <RoutePrewarm likely="/library" />
       <HomeHeader
         displayName={displayName}
         stats={headerStats}
@@ -413,6 +416,37 @@ export default async function HomePage() {
 }
 
 type T = Awaited<ReturnType<typeof getT>>["t"];
+
+/* المسلسل كما تحتاجه هذه الصفحة (اسمُه ومقياسُ تقدّمه من صفّ المتابعة
+   المخزّن، لا من TMDB) — على مستوى الملفّ لأن قسم «تابِع المشاهدة» صار
+   مكوّناً مستقلاً (جولة ٢٠ أغسطس) ويشاركه النوع */
+type Item = {
+  id: number;
+  name: string;
+  posterPath: string | null;
+  watched: number;
+  aired: number;
+  progress: number;
+};
+
+/* نوعُ عناصر «للمشاهدة» و«القادم» — على مستوى الملفّ لأن قسم «القادم»
+   صار مكوّناً مستقلاً (جولة ٢٠ أغسطس) ويشاركه النوع */
+type MixedItem = {
+  key: string;
+  mediaType?: "tv" | "movie";
+  tmdbId?: number;
+  runtime?: number | null;
+  href: string;
+  title: string;
+  posterPath: string | null;
+  progress?: number;
+  badge?: string;
+  badgeTone?: "neutral" | "progress" | "watched" | "rating";
+  /** سطرُ الوضع المختصر — النوعُ وعددُ الحلقات أو الموعد */
+  subtitle?: string;
+  /** «الحلقة ٥» — للقادم وحدَه، ويغيب إن لم يعرفه TMDB */
+  ep?: string;
+};
 
 /**
  * جسد الرئيسية — كل ما تحت الترويسة (D-087).
@@ -485,9 +519,6 @@ async function HomeBody({
         .map((i) => i.id)
     : [];
 
-  // «الرائج» يظهر فقط لمن لا يشاهد شيئاً الآن — معروفٌ مسبقاً مع الملخّص
-  const earlyShowTrending = summary ? earlyContinueIds.length === 0 : false;
-
   // مواعيد الأفلام: المخزّن في صفّ المتابعة يغني عن TMDB، والناقص يُطلب
   // مرة واحدة ثم يُخزَّن عبر MovieStatsSync
   const upcomingMovieCandidates = rawMovies
@@ -511,7 +542,6 @@ async function HomeBody({
     fetchedMovieDetails,
     recapHist,
     earlyExtra,
-    earlyTrend,
     topRated,
     myListsRaw,
     friendsRows,
@@ -546,17 +576,11 @@ async function HomeBody({
         };
       }),
     ),
-    /* 🆕 **والحارسُ على فم «الرائج» هنا أيضاً** (D-321): هذا الصفُّ ينادي
-       `/trending` عارياً منذ أوّل يوم — **وليس عطلاً عاد، بل موضعٌ لم
-       يُعالَج قطّ**: حارسُ D-194 وُلد في `news/page.tsx` وحدَه فبقي الكوريُّ
-       والهنديُّ يدخلان من أوّل شاشةٍ تُفتح. و`anime: "keep"` مقصودة —
-       الرئيسيةُ ليست تبويبَ أفلامٍ ولا مسلسلات، ولم يطلب أحدٌ إخراجَ
-       الأنمي منها. */
-    earlyShowTrending
-      ? trending()
-          .then((rows) => railGuard(rows, { anime: "keep" }))
-          .catch(() => [] as SearchResult[])
-      : Promise.resolve(null),
+    /* ⚖️ **و«الرائج» غادر هذه الموجة** (جولة ٢٠ أغسطس): كان أبطأ عضوٍ
+       فيها — نداءَ TMDB الوحيد الذي لا يخصّ مكتبتك فلا يكون في الكاش
+       غالباً — **فيحكم وحدَه متى تظهر بطاقاتُ «تابِع المشاهدة» كلُّها.**
+       صار قسماً مستقلاً (`TrendingSection`) يبثّ حين يجهز، وحارسُ
+       D-321 معه حيث ذهب. */
     // العناوين بلغة الواجهة لا بلغة يوم التقييم (قاعدة D-048)
     topRatedRaw.length
       ? localizeRows(topRatedRaw, locale).catch(() => topRatedRaw)
@@ -651,15 +675,6 @@ async function HomeBody({
    * بقيت للحالتين اللتين تحتاجانها فعلاً: بطاقة «الحلقة التالية»، وصفٌّ
    * جديد لم يُحسب له عدد بعد.
    */
-  type Item = {
-    id: number;
-    name: string;
-    posterPath: string | null;
-    watched: number;
-    aired: number;
-    progress: number;
-  };
-
   const items: Item[] = [];
   const upcoming: UpcomingItem[] = [];
 
@@ -774,19 +789,9 @@ async function HomeBody({
 
   const favGenres = profile?.favorite_genres ?? [];
 
-  // «الرائج» احتياطٌ لمن لا شيء في يده الآن — جاء مع الموجة الثانية في
-  // المسار الطبيعي، والاحتياط وحده يطلبه هنا
+  // «الرائج» احتياطٌ لمن لا شيء في يده الآن — شرطُه معروفٌ هنا مسبقاً،
+  // وجلبُه في قسمه المستقلّ وحده (TrendingSection) فلا يحبس غيرَه
   const showTrending = empty || continueWatching.length === 0;
-  /* **والمساران يمرّان بالحارس نفسِه** (D-321): هذا هو المسار البطيء
-     (بلا موجةٍ أولى)، **ونسخةٌ واحدةٌ محروسةٌ من اثنتين تعني أن نصفَ
-     الزيارات ترى المكتوم** — وهو بالضبط ما كلّفنا D-175. */
-  const trend: SearchResult[] =
-    earlyTrend ??
-    (showTrending
-      ? await trending()
-          .then((rows) => railGuard(rows, { anime: "keep" }))
-          .catch(() => [] as SearchResult[])
-      : []);
 
 
   // لزرّ الحفظ السريع على «الرائج»: ما تتابعه، وما أنهيته فعلاً
@@ -874,34 +879,11 @@ async function HomeBody({
     .filter((c) => c.next !== null && c.mine / c.total >= 0.6)
     .slice(0, 2);
 
-  /* 🆕 **مشهدُ «التالي» لبطاقات القوائم** (D-507، حكمُ أحمد: «اعملها
-     غلاف وحجمه يكون مثل المسلسل»): البطاقةُ صارت بهندسة بطاقة الحلقة،
-     **وبطاقةُ الحلقة صورتُها مشهدٌ لا ملصق** — والمشهدُ لا يسكن صفوفَ
-     القوائم فيُجلب هنا لعنصرٍ واحدٍ من كلِّ بطاقة (سقفُ البطاقات ستٌّ،
-     والنداءاتُ متوازيةٌ ومعظمُها في كاش TMDB أصلاً). **وبعد الموجة
-     عمداً**: البطاقاتُ نفسُها تُبنى من نتائجها (D-470 لا ينهى عن تابعٍ
-     صادق). والفشلُ يسقط إلى الملصق بلا شاشة خطأ. */
-  const cardNexts = [
-    ...(toWatchCard ? [toWatchCard.next] : []),
-    ...playlistCards.map((c) => c.next!),
-    ...listCards.map((c) => c.next!),
-  ];
-  const nextBackdrops = new Map(
-    await Promise.all(
-      cardNexts.map(async (n) => {
-        const key = `${n.media_type}-${n.tmdb_id}`;
-        try {
-          const d =
-            n.media_type === "movie" ? await getMovie(n.tmdb_id) : await getTv(n.tmdb_id);
-          return [key, d?.backdrop_path ?? null] as const;
-        } catch {
-          return [key, null] as const;
-        }
-      }),
-    ),
-  );
-  const backdropOf = (n: { media_type: "tv" | "movie"; tmdb_id: number }) =>
-    nextBackdrops.get(`${n.media_type}-${n.tmdb_id}`) ?? null;
+  /* ⚖️ **ومشهدُ «التالي» لبطاقات القوائم (D-507) غادر إلى قسمه**
+     (جولة ٢٠ أغسطس): كان `await` منفرداً هنا بعد الموجة — رحلةَ TMDB
+     إضافيةً تقف في وجه كلِّ الأقسام، ونتيجتُها لا يقرؤها إلا صفُّ
+     «تابِع المشاهدة». صار داخل `ContinueSection` خلف Suspense خاصّته:
+     البطاقاتُ تبثّ حين تجهز صورُها، والرفوفُ لا تنتظرها. */
 
   // ===== مسلسلاتي: كل ما تتابعه، الأقرب إلى الاستئناف أولاً =====
   const myShows = [...items].sort((a, b) => {
@@ -944,23 +926,6 @@ async function HomeBody({
   // ===== «للمشاهدة» و«القادم» في الرئيسية: مسلسلات وأفلام معاً =====
   // للمشاهدة: كل ما لم يكتمل — المسلسلات غير المنتهية والأفلام غير
   // المشاهَدة — بترتيب الأقرب إلى الاستئناف. القادم: ما له موعدٌ آتٍ.
-  type MixedItem = {
-    key: string;
-    mediaType?: "tv" | "movie";
-    tmdbId?: number;
-    runtime?: number | null;
-    href: string;
-    title: string;
-    posterPath: string | null;
-    progress?: number;
-    badge?: string;
-    badgeTone?: "neutral" | "progress" | "watched" | "rating";
-    /** سطرُ الوضع المختصر — النوعُ وعددُ الحلقات أو الموعد */
-    subtitle?: string;
-    /** «الحلقة ٥» — للقادم وحدَه، ويغيب إن لم يعرفه TMDB */
-    ep?: string;
-  };
-
   const toWatchRow: MixedItem[] = [
     ...myShows
       /* لا تكرار بين الصفّين: ما بدأته مكانه «أكمل المشاهدة» وحدها،
@@ -1056,30 +1021,11 @@ async function HomeBody({
      ⚠️ **والسقفُ عشرة**: القادمُ قد يكون ستّةَ عشر، **ونداءٌ لكلِّ صفٍّ
      بلا سقفٍ هو بالضبط ما أسقط شارةَ تقييم الحلقة** (D-384).
      **والغائبُ يغيب صامتاً** — **ولا يُخمَّن رقم** (D-432). */
-  const upcomingTvIds = upcomingRow
-    .filter((x) => x.key.startsWith("up-tv-"))
-    .map((x) => Number(x.key.slice("up-tv-".length)))
-    .filter((n) => Number.isFinite(n))
-    .slice(0, 10);
-  if (upcomingTvIds.length > 0) {
-    const eps = await Promise.all(
-      upcomingTvIds.map((id) =>
-        getTv(id)
-          .then((tv) => tv.next_episode_to_air?.episode_number ?? null)
-          .catch(() => null),
-      ),
-    );
-    const epById = new Map<number, number>();
-    upcomingTvIds.forEach((id, n) => {
-      const e = eps[n];
-      if (e != null) epById.set(id, e);
-    });
-    for (const x of upcomingRow) {
-      if (!x.key.startsWith("up-tv-")) continue;
-      const e = epById.get(Number(x.key.slice("up-tv-".length)));
-      if (e != null) x.ep = t.episodeNo(e);
-    }
-  }
+  /* ⚖️ **وجلبُ الرقم غادر إلى قسم «القادم» نفسِه** (جولة ٢٠ أغسطس):
+     كان `await` هنا يجعل عشرَ رحلات TMDB — زينةَ رقمٍ في صفٍّ واحد —
+     تقف في وجه الرفوف كلِّها. `UpcomingSection` أدناه يجلبه خلف
+     Suspense خاصّته، وقواعدُ D-437/D-432 معه بحرفها: السقفُ عشرة،
+     والغائبُ يغيب صامتاً ولا يُخمَّن رقم. */
 
   // ===== ملخّص أسبوعك — قسمٌ اختياري يطيع نظام التخصيص كأي قسم =====
   // لا يُقرأ السجلّ إلا لمن فعّله، ولا يُرسم إن كان الأسبوع صفراً
@@ -1181,92 +1127,22 @@ async function HomeBody({
             listCards.length > 0 ||
             playlistCards.length > 0 ||
             toWatchCard ? (
-              <Section
-                key="continue"
-                title={t.continueWatching}
-                icon="play"
-                iconColor="var(--accent)"
-                href="/library"
-                seeAll={t.seeAll}
-                view={view}
-                wide
-              >
-                {/* 🆕 **والقوائمُ أوّلَ الصفّ** (D-496): **الأقربُ إلى
-                    الاستئناف أوّلاً هو ترتيبُ هذا الصفّ منذ نشأته**،
-                    **وقائمةٌ دخلتَها للتوّ هي أحدثُ نيّةٍ أعلنتَها.** */}
-                {/* 🆕 **طابورُ «بلا قائمة» أوّلَ الأبواب** (D-505): هو
-                    جوابُ «الأفلام ما تروح كنتنيو واتش» نفسُه — صحٌّ على
-                    الفيلم يقلب البطاقةَ إلى الذي بعده. */}
-                {toWatchCard && (
-                  <ListContinueCard
-                    key="lc-towatch"
-                    listName={toWatchCard.name}
-                    next={{
-                      tmdbId: toWatchCard.next.tmdb_id,
-                      mediaType: toWatchCard.next.media_type,
-                      title: toWatchCard.next.title,
-                      posterPath: toWatchCard.next.poster_path,
-                      backdropPath: backdropOf(toWatchCard.next),
-                    }}
-                    watched={toWatchCard.watched}
-                    total={toWatchCard.total}
-                    locale={locale}
-                  />
-                )}
-                {/* 🆕 **ثم قوائمُ تشغيلك الصريحة** (D-505) — الرايةُ
-                    التي رفعتَها بنفسك تسبق حدسَ المحفوظ */}
-                {playlistCards.map((c) => (
-                  <ListContinueCard
-                    key={`pl-${c.list.id}`}
-                    listName={curatedName(c.list.sourceSlug, c.list.name, locale)}
-                    next={{
-                      tmdbId: c.next!.tmdb_id,
-                      mediaType: c.next!.media_type,
-                      title: c.next!.title,
-                      posterPath: c.next!.poster_path,
-                      backdropPath: backdropOf(c.next!),
-                    }}
-                    watched={c.watched}
-                    total={c.total}
-                    locale={locale}
-                  />
-                ))}
-                {listCards.map((c) => (
-                  <ListContinueCard
-                    key={`lc-${c.list.id}`}
-                    listName={curatedName(c.list.sourceSlug, c.list.name, locale)}
-                    next={{
-                      tmdbId: c.next!.tmdb_id,
-                      mediaType: c.next!.media_type,
-                      title: c.next!.title,
-                      posterPath: c.next!.poster_path,
-                      backdropPath: backdropOf(c.next!),
-                    }}
-                    watched={c.watched}
-                    total={c.total}
-                    locale={locale}
-                  />
-                ))}
-                {continueTop.map((i, n) => (
-                  <ContinueCard
-                    key={`c-${i.id}`}
-                    tmdbId={i.id}
-                    href={`/show/${i.id}`}
-                    title={i.name}
-                    backdropPath={continueExtra[n]?.backdropPath ?? null}
-                    posterPath={i.posterPath}
-                    progress={i.progress}
-                    watched={i.watched}
-                    aired={i.aired}
-                    episodeLabel={continueExtra[n]?.episodeLabel}
-                    season={continueExtra[n]?.season ?? null}
-                    episode={continueExtra[n]?.episode ?? null}
-                    runtime={continueExtra[n]?.runtime ?? null}
-                    variant={view === "compact" ? "row" : "card"}
-                    locale={locale}
-                  />
-                ))}
-              </Section>
+              /* ⚖️ **القسمُ صار يبثّ وحده** (جولة ٢٠ أغسطس): جلبُ مشاهد
+                 D-507 كان `await` في جسد الصفحة يقف في وجه الرفوف كلِّها.
+                 الشرطُ يبقى هنا (معروفٌ من الموجة) فلا هيكلَ لقسمٍ لن
+                 يُرسم — والهيكلُ يظهر لقسمٍ سيأتي يقيناً. */
+              <Suspense key="continue" fallback={<RailSkeleton count={4} />}>
+                <ContinueSection
+                  toWatchCard={toWatchCard}
+                  playlistCards={playlistCards}
+                  listCards={listCards}
+                  continueTop={continueTop}
+                  continueExtra={continueExtra}
+                  view={view}
+                  locale={locale}
+                  t={t}
+                />
+              </Suspense>
             ) : null,
           week: (
             <div key="week">
@@ -1341,41 +1217,18 @@ async function HomeBody({
             ) : null,
           upcoming:
             upcomingRow.length > 0 ? (
-              <Section
-                key="upcoming"
-                title={t.libUpcoming}
-                icon="hourglass"
-                iconColor="var(--accent)"
-                href="/library"
-                seeAll={t.seeAll}
-                view={view}
-                soloFull
-                wide
-              >
-                {/* **القادمُ موعدٌ قبل أن يكون عملاً** (D-434): الصدرُ في
-                    السطر الأوّل هو التاريخ، واسمُ العمل تحته — **فالقارئ
-                    يسأل «متى» ثم «ماذا»، لا العكس.** وفي المختصر يصير
-                    التاريخُ رقاقةً في صدر الصفّ بدل الملصق. */}
-                {upcomingRow.slice(0, cap(upcomingRow.length)).map((x) =>
-                  view === "compact" ? (
-                    <CompactMediaRow
-                      key={x.key}
-                      href={x.href}
-                      chip={x.badge}
-                      title={x.title}
-                      subtitle={x.ep ?? x.subtitle}
-                    />
-                  ) : (
-                    <CompactMediaRow
-                      key={x.key}
-                      href={x.href}
-                      title={[x.badge, x.ep].filter(Boolean).join(" · ")}
-                      subtitle={x.title}
-                      posterPath={x.posterPath}
-                    />
-                  ),
-                )}
-              </Section>
+              /* ⚖️ **قسمٌ يبثّ وحده** (جولة ٢٠ أغسطس): رقمُ الحلقة
+                 (D-437) عشرُ رحلات TMDB كانت تقف في وجه الصفحة كلِّها —
+                 صارت خلف Suspense خاصّته، والصفُّ معروفُ الوجود مسبقاً
+                 فلا هيكلَ يظهر ثم ينهار. */
+              <Suspense key="upcoming" fallback={<RailSkeleton count={4} />}>
+                <UpcomingSection
+                  row={upcomingRow}
+                  cards={prefs.cards}
+                  view={view}
+                  t={t}
+                />
+              </Suspense>
             ) : null,
           shows:
             myShows.length > 0 ? (
@@ -1554,41 +1407,22 @@ async function HomeBody({
               </PosterRail>
             ) : null,
           trending:
-            showTrending && trend.length > 0 ? (
-              <Section key="trending" title={t.trendingWeek} icon="trending">
-                {trend.slice(0, cap(12)).map((r) => {
-                  const mt = r.media_type === "tv" ? "tv" : "movie";
-                  const seen =
-                    mt === "movie"
-                      ? watchedMovieIds.has(r.id)
-                      : doneShowIds.has(r.id);
-                  return (
-                    <QuickSaveCard
-                      key={`${r.media_type}-${r.id}`}
-                      tmdbId={r.id}
-                      mediaType={mt}
-                      title={titleOf(r)}
-                      posterPath={r.poster_path}
-                      state={
-                        seen
-                          ? "watched"
-                          : followedKeys.has(`${mt}-${r.id}`)
-                            ? "saved"
-                            : "none"
-                      }
-                      locale={locale}
-                    >
-                      <PosterCard
-                        href={`/${mt === "tv" ? "show" : "movie"}/${r.id}`}
-                        title={titleOf(r)}
-                        posterPath={r.poster_path}
-                        year={yearOf(r)}
-                        badge={mt === "tv" ? t.typeSeries : t.typeMovie}
-                      />
-                    </QuickSaveCard>
-                  );
-                })}
-              </Section>
+            showTrending ? (
+              /* ⚖️ **«الرائج» يبثّ وحده** (جولة ٢٠ أغسطس): نداءُ TMDB
+                 الوحيد الذي لا يخصّ مكتبتك — كان أبطأَ عضوٍ في الموجة
+                 فيحكم في ظهور كلِّ الأقسام. شرطُ الظهور (`showTrending`)
+                 معروفٌ مسبقاً؛ وسقوطُ الجلب كلِّه يُسقط القسمَ صامتاً
+                 كما كان (`catch` إلى صفوفٍ صفر). */
+              <Suspense key="trending" fallback={<RailSkeleton count={6} />}>
+                <TrendingSection
+                  watchedMovieIds={watchedMovieIds}
+                  doneShowIds={doneShowIds}
+                  followedKeys={followedKeys}
+                  cards={prefs.cards}
+                  locale={locale}
+                  t={t}
+                />
+              </Suspense>
             ) : null,
         };
         return prefs.order.map((k) => sections[k]);
@@ -1718,5 +1552,343 @@ function Section({
         ))
       )}
     </PosterRail>
+  );
+}
+
+/* ================= أقسامٌ تبثّ وحدها (جولة أداء ٢٠ أغسطس) =================
+
+   كانت الموجة الثانية `Promise.all` واحدةً ضخمة: أبطأُ عضوٍ فيها —
+   وغالباً نداءُ TMDB الذي ليس في الكاش — يحكم متى تظهر الأقسامُ كلُّها.
+   القاعدة الجديدة: **ما يخصّ قسماً واحداً يُجلب في قسمه خلف Suspense
+   خاصّته** — فالرفوف المبنية من صفوف مكتبتك تظهر بسرعة قاعدة البيانات،
+   وTMDB يجمّل ما يخصّه حين يصل. وشرطُ ظهور كلِّ قسمٍ يبقى محسوباً في
+   الصفحة قبل البثّ، فلا هيكلَ يظهر ثم ينهار إلى لا شيء. */
+
+/** ما يعرفه صفُّ «تابِع المشاهدة» عن بطاقة مسلسلٍ فوق صفّ المتابعة */
+type ContinueExtra = {
+  id: number;
+  backdropPath: string | null;
+  episodeLabel: string | null;
+  season: number | null;
+  episode: number | null;
+  runtime: number | null;
+};
+
+/** بطاقةُ قائمةٍ في «تابِع المشاهدة» — محفوظةٌ أو قائمةُ تشغيلٍ صريحة */
+type BriefListCard = {
+  list: SavedListBrief;
+  watched: number;
+  next: ListItem | null;
+  total: number;
+};
+
+/** بطاقةُ طابور «بلا قائمة» (D-505) */
+type ToWatchQueueCard = {
+  name: string;
+  next: {
+    tmdb_id: number;
+    media_type: "movie";
+    title: string;
+    poster_path: string | null;
+  };
+  watched: number;
+  total: number;
+};
+
+/**
+ * قسم «تابِع المشاهدة» — يجلب مشاهد «التالي» لبطاقات القوائم بنفسه.
+ *
+ * 🆕 **مشهدُ «التالي» لبطاقات القوائم** (D-507، حكمُ أحمد: «اعملها
+ * غلاف وحجمه يكون مثل المسلسل»): البطاقةُ بهندسة بطاقة الحلقة، وصورتُها
+ * مشهدٌ لا ملصق — والمشهدُ لا يسكن صفوفَ القوائم فيُجلب هنا لعنصرٍ
+ * واحدٍ من كلِّ بطاقة (سقفُ البطاقات ستٌّ، والنداءاتُ متوازيةٌ ومعظمُها
+ * في كاش TMDB أصلاً). والفشلُ يسقط إلى الملصق بلا شاشة خطأ.
+ */
+async function ContinueSection({
+  toWatchCard,
+  playlistCards,
+  listCards,
+  continueTop,
+  continueExtra,
+  view,
+  locale,
+  t,
+}: {
+  toWatchCard: ToWatchQueueCard | null;
+  playlistCards: BriefListCard[];
+  listCards: BriefListCard[];
+  continueTop: Item[];
+  continueExtra: ContinueExtra[];
+  view: HomeView;
+  locale: Locale;
+  t: T;
+}) {
+  const cardNexts = [
+    ...(toWatchCard ? [toWatchCard.next] : []),
+    ...playlistCards.map((c) => c.next!),
+    ...listCards.map((c) => c.next!),
+  ];
+  const nextBackdrops = new Map(
+    await Promise.all(
+      cardNexts.map(async (n) => {
+        const key = `${n.media_type}-${n.tmdb_id}`;
+        try {
+          const d =
+            n.media_type === "movie" ? await getMovie(n.tmdb_id) : await getTv(n.tmdb_id);
+          return [key, d?.backdrop_path ?? null] as const;
+        } catch {
+          return [key, null] as const;
+        }
+      }),
+    ),
+  );
+  const backdropOf = (n: { media_type: "tv" | "movie"; tmdb_id: number }) =>
+    nextBackdrops.get(`${n.media_type}-${n.tmdb_id}`) ?? null;
+
+  return (
+    <Section
+      key="continue"
+      title={t.continueWatching}
+      icon="play"
+      iconColor="var(--accent)"
+      href="/library"
+      seeAll={t.seeAll}
+      view={view}
+      wide
+    >
+      {/* 🆕 **والقوائمُ أوّلَ الصفّ** (D-496): **الأقربُ إلى الاستئناف
+          أوّلاً هو ترتيبُ هذا الصفّ منذ نشأته**، **وقائمةٌ دخلتَها
+          للتوّ هي أحدثُ نيّةٍ أعلنتَها.** */}
+      {/* 🆕 **طابورُ «بلا قائمة» أوّلَ الأبواب** (D-505): هو جوابُ
+          «الأفلام ما تروح كنتنيو واتش» نفسُه — صحٌّ على الفيلم يقلب
+          البطاقةَ إلى الذي بعده. */}
+      {toWatchCard && (
+        <ListContinueCard
+          key="lc-towatch"
+          listName={toWatchCard.name}
+          next={{
+            tmdbId: toWatchCard.next.tmdb_id,
+            mediaType: toWatchCard.next.media_type,
+            title: toWatchCard.next.title,
+            posterPath: toWatchCard.next.poster_path,
+            backdropPath: backdropOf(toWatchCard.next),
+          }}
+          watched={toWatchCard.watched}
+          total={toWatchCard.total}
+          locale={locale}
+        />
+      )}
+      {/* 🆕 **ثم قوائمُ تشغيلك الصريحة** (D-505) — الرايةُ التي رفعتَها
+          بنفسك تسبق حدسَ المحفوظ */}
+      {playlistCards.map((c) => (
+        <ListContinueCard
+          key={`pl-${c.list.id}`}
+          listName={curatedName(c.list.sourceSlug, c.list.name, locale)}
+          next={{
+            tmdbId: c.next!.tmdb_id,
+            mediaType: c.next!.media_type,
+            title: c.next!.title,
+            posterPath: c.next!.poster_path,
+            backdropPath: backdropOf(c.next!),
+          }}
+          watched={c.watched}
+          total={c.total}
+          locale={locale}
+        />
+      ))}
+      {listCards.map((c) => (
+        <ListContinueCard
+          key={`lc-${c.list.id}`}
+          listName={curatedName(c.list.sourceSlug, c.list.name, locale)}
+          next={{
+            tmdbId: c.next!.tmdb_id,
+            mediaType: c.next!.media_type,
+            title: c.next!.title,
+            posterPath: c.next!.poster_path,
+            backdropPath: backdropOf(c.next!),
+          }}
+          watched={c.watched}
+          total={c.total}
+          locale={locale}
+        />
+      ))}
+      {continueTop.map((i, n) => (
+        <ContinueCard
+          key={`c-${i.id}`}
+          tmdbId={i.id}
+          href={`/show/${i.id}`}
+          title={i.name}
+          backdropPath={continueExtra[n]?.backdropPath ?? null}
+          posterPath={i.posterPath}
+          progress={i.progress}
+          watched={i.watched}
+          aired={i.aired}
+          episodeLabel={continueExtra[n]?.episodeLabel}
+          season={continueExtra[n]?.season ?? null}
+          episode={continueExtra[n]?.episode ?? null}
+          runtime={continueExtra[n]?.runtime ?? null}
+          variant={view === "compact" ? "row" : "card"}
+          locale={locale}
+        />
+      ))}
+    </Section>
+  );
+}
+
+/**
+ * قسم «القادم» — يجلب رقم الحلقة القادمة بنفسه.
+ *
+ * ===== رقمُ الحلقة القادمة (D-437، طلبُ أحمد: «وأظهر رقم الحلقة في
+ * القادم») =====
+ * **ولا هجرةَ ولا عمود**: صفُّ المتابعة يحمل `next_air_date` وحدَه،
+ * **والرقمُ في `next_episode_to_air` من TMDB** — **وهو نداءٌ مخبّأٌ
+ * ساعةً** (`revalidate: 3600`) **لأعمالٍ يتابعها صاحبُ الحساب أصلاً
+ * فأكثرُها مجلوبٌ في الطلب نفسِه.**
+ * ⚠️ **والسقفُ عشرة**: القادمُ قد يكون ستّةَ عشر، **ونداءٌ لكلِّ صفٍّ
+ * بلا سقفٍ هو بالضبط ما أسقط شارةَ تقييم الحلقة** (D-384).
+ * **والغائبُ يغيب صامتاً** — **ولا يُخمَّن رقم** (D-432).
+ */
+async function UpcomingSection({
+  row,
+  cards,
+  view,
+  t,
+}: {
+  row: MixedItem[];
+  cards: ReturnType<typeof sanitizeHomePrefs>["cards"];
+  view: HomeView;
+  t: T;
+}) {
+  const upcomingTvIds = row
+    .filter((x) => x.key.startsWith("up-tv-"))
+    .map((x) => Number(x.key.slice("up-tv-".length)))
+    .filter((n) => Number.isFinite(n))
+    .slice(0, 10);
+  const epById = new Map<number, number>();
+  if (upcomingTvIds.length > 0) {
+    const eps = await Promise.all(
+      upcomingTvIds.map((id) =>
+        getTv(id)
+          .then((tv) => tv.next_episode_to_air?.episode_number ?? null)
+          .catch(() => null),
+      ),
+    );
+    upcomingTvIds.forEach((id, n) => {
+      const e = eps[n];
+      if (e != null) epById.set(id, e);
+    });
+  }
+  /* نسخٌ لا تعديلُ خاصيّة: `row` معاملُ مكوّنٍ والمعاملات لا تُمسّ —
+     الرقمُ يُركَّب على نسخةٍ محليّة */
+  const rows: MixedItem[] = row.map((x) => {
+    if (!x.key.startsWith("up-tv-")) return x;
+    const e = epById.get(Number(x.key.slice("up-tv-".length)));
+    return e != null ? { ...x, ep: t.episodeNo(e) } : x;
+  });
+
+  const cap = (n: number) => capCards(n, cards);
+  return (
+    <Section
+      key="upcoming"
+      title={t.libUpcoming}
+      icon="hourglass"
+      iconColor="var(--accent)"
+      href="/library"
+      seeAll={t.seeAll}
+      view={view}
+      soloFull
+      wide
+    >
+      {/* **القادمُ موعدٌ قبل أن يكون عملاً** (D-434): الصدرُ في السطر
+          الأوّل هو التاريخ، واسمُ العمل تحته — **فالقارئ يسأل «متى» ثم
+          «ماذا»، لا العكس.** وفي المختصر يصير التاريخُ رقاقةً في صدر
+          الصفّ بدل الملصق. */}
+      {rows.slice(0, cap(rows.length)).map((x) =>
+        view === "compact" ? (
+          <CompactMediaRow
+            key={x.key}
+            href={x.href}
+            chip={x.badge}
+            title={x.title}
+            subtitle={x.ep ?? x.subtitle}
+          />
+        ) : (
+          <CompactMediaRow
+            key={x.key}
+            href={x.href}
+            title={[x.badge, x.ep].filter(Boolean).join(" · ")}
+            subtitle={x.title}
+            posterPath={x.posterPath}
+          />
+        ),
+      )}
+    </Section>
+  );
+}
+
+/**
+ * قسم «الرائج» — احتياطُ من لا شيء في يده الآن، يجلب صفّه بنفسه.
+ *
+ * 🆕 **والحارسُ على فم «الرائج» هنا أيضاً** (D-321): هذا الصفُّ كان
+ * ينادي `/trending` عارياً منذ أوّل يوم — حارسُ D-194 وُلد في
+ * `news/page.tsx` وحدَه. و`anime: "keep"` مقصودة — الرئيسيةُ ليست
+ * تبويبَ أفلامٍ ولا مسلسلات، ولم يطلب أحدٌ إخراجَ الأنمي منها.
+ * **والمساران صارا مساراً واحداً** بعد أن غادر «الرائج» الموجةَ إلى
+ * هذا القسم — نسخةٌ واحدةٌ محروسةٌ لا اثنتان (درسُ D-175).
+ */
+async function TrendingSection({
+  watchedMovieIds,
+  doneShowIds,
+  followedKeys,
+  cards,
+  locale,
+  t,
+}: {
+  watchedMovieIds: Set<number>;
+  doneShowIds: Set<number>;
+  followedKeys: Set<string>;
+  cards: ReturnType<typeof sanitizeHomePrefs>["cards"];
+  locale: Locale;
+  t: T;
+}) {
+  const trend: SearchResult[] = await trending()
+    .then((rows) => railGuard(rows, { anime: "keep" }))
+    .catch(() => [] as SearchResult[]);
+  if (trend.length === 0) return null;
+
+  const cap = (n: number) => capCards(n, cards);
+  return (
+    <Section key="trending" title={t.trendingWeek} icon="trending">
+      {trend.slice(0, cap(12)).map((r) => {
+        const mt = r.media_type === "tv" ? "tv" : "movie";
+        const seen =
+          mt === "movie" ? watchedMovieIds.has(r.id) : doneShowIds.has(r.id);
+        return (
+          <QuickSaveCard
+            key={`${r.media_type}-${r.id}`}
+            tmdbId={r.id}
+            mediaType={mt}
+            title={titleOf(r)}
+            posterPath={r.poster_path}
+            state={
+              seen
+                ? "watched"
+                : followedKeys.has(`${mt}-${r.id}`)
+                  ? "saved"
+                  : "none"
+            }
+            locale={locale}
+          >
+            <PosterCard
+              href={`/${mt === "tv" ? "show" : "movie"}/${r.id}`}
+              title={titleOf(r)}
+              posterPath={r.poster_path}
+              year={yearOf(r)}
+              badge={mt === "tv" ? t.typeSeries : t.typeMovie}
+            />
+          </QuickSaveCard>
+        );
+      })}
+    </Section>
   );
 }
