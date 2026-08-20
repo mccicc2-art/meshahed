@@ -4,7 +4,15 @@ import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { deleteList, renameList, reorderList, setListKind, toggleInList, saveList } from "@/lib/actions";
+import {
+  deleteList,
+  renameList,
+  reorderList,
+  setListKind,
+  toggleInList,
+  saveList,
+  followListTitles,
+} from "@/lib/actions";
 import { backdropUrl, posterUrl } from "@/lib/media";
 import { tap } from "@/lib/haptics";
 import { toast, flashError } from "@/lib/toast";
@@ -14,6 +22,7 @@ import type { ListItem, ListKind } from "@/lib/data";
 import { Sheet, SheetHeader } from "./ui/Sheet";
 import { DetailTabs } from "./DetailTabs";
 import { buttonClass } from "./ui/Button";
+import { QuickAdd } from "./QuickAdd";
 import { sheetScroll } from "./ui/controls";
 import dynamic from "next/dynamic";
 /* الورقةُ تُحمَّل عند أوّل فتحٍ لا مع الصفحة (نمطُ TitleSearchSheet في
@@ -62,6 +71,7 @@ export function ListDetail({
   cover,
   reviews,
   reviewsSlot,
+  inLibrary,
 }: {
   listId: string;
   name: string;
@@ -97,6 +107,13 @@ export function ListDetail({
       الصفحة ويُمرَّر جاهزاً — **والغيابُ يعني شبكةً بلا تبويبات** كما
       كانت (قائمةٌ خاصّة أو زائرٌ بلا حساب). */
   reviewsSlot?: React.ReactNode;
+  /**
+   * 🆕 **ما في مكتبتك من هذه القائمة** (D-495) — `"tv-123"` → `true`.
+   * **يُحسب في الصفحة مرّةً للقائمة كلِّها ويُسلسَل** (D-205): **ولو
+   * سأل كلُّ ملصقٍ عن نفسه لصارت القائمةُ خمسةَ عشرَ استعلاماً.**
+   * **والغيابُ يعني زائراً بلا حساب** — فلا زرَّ إضافةٍ أصلاً.
+   */
+  inLibrary?: Record<string, boolean>;
 }) {
   const t = getDict(locale);
   const router = useRouter();
@@ -144,6 +161,26 @@ export function ListDetail({
      ثم يلحق `router.refresh()` بالتأكيد. الانتظار كان سيجعل أهم لحظةٍ في
      الميزة تبدو معطّلة نصف ثانية. */
   const [order, setOrder] = useState<string[] | null>(null);
+
+  /* 🆕 **«أضف الكل»** (D-495) — **ولا حالةَ تفاؤليّةٍ هنا**: الفعلُ
+     يمسّ خمسةَ عشرَ ملصقاً لا واحداً، **وقلبُها كلَّها قبل الجواب
+     يجعل الفشلَ يتراجع عن خمسةَ عشرَ شيئاً أمام العين.** فالانتظارُ
+     ظاهرٌ في الزرّ، **والتجديدُ بعده يقلب علاماتِ الملصقات من الحقيقة.** */
+  const [addingAll, setAddingAll] = useState(false);
+  function addAll() {
+    if (addingAll) return;
+    tap(10);
+    setAddingAll(true);
+    followListTitles(listId)
+      .then((n) => {
+        toast(n > 0 ? t.listAddAllDone(n) : t.listAddAllNone, {
+          tone: n > 0 ? "success" : "info",
+        });
+        if (n > 0) router.refresh();
+      })
+      .catch((e) => flashError((e as Error).message))
+      .finally(() => setAddingAll(false));
+  }
 
   const visible = useMemo(() => {
     const seen = new Set(items.map(keyOf));
@@ -371,26 +408,53 @@ export function ListDetail({
       {/* نسبة القائمة إلى صاحبها: صفٌّ واحدٌ تحت الوصف يظهر لغير المالك
           وحده. من أخفى اسمه لا اسم له هنا ولا رابط — القرار محفوظٌ في
           SQL لا في هذا السطر (D-011) */}
-      {!isOwner && owner && (owner.nickname || owner.username) && (
+      {/* 🆕 **وصفُّ الصاحب يحمل «أضف الكل» في طرفه** (D-495، طلبُ أحمد:
+          «فوق في نفس سطر لوبز أقصى اليمين خيار أضف اللستة تو واتش»).
+          **ولماذا هذا الصفّ لا صفُّ الأزرار فوقه**: ذاك صفُّ القائمة
+          نفسِها (حفظٌ ومشاركة)، **وهذا فعلٌ على محتواها** — والفرقُ
+          يُقرأ من الموضع قبل أن يُقرأ من الاسم.
+          **والصفُّ يُرسم إن وُجد أحدُهما**: قائمةٌ بلا صاحبٍ ظاهر
+          تحتفظ بزرّها، **وزرٌّ يختفي لأن اسماً غاب عطلٌ لا ترتيب.** */}
+      {!isOwner && ((owner && (owner.nickname || owner.username)) || !!inLibrary) && (
         <div className="flex items-center gap-2 mt-3.5">
-          <span className="relative w-6 h-6 rounded-full overflow-hidden bg-surface-2 border border-border shrink-0">
-            {owner.avatar ? (
-              <Image src={owner.avatar} alt="" fill sizes="24px" className="object-cover" />
-            ) : (
-              <span className="absolute inset-0 grid place-items-center text-muted">
-                <Icon name="people" size={12} />
+          {owner && (owner.nickname || owner.username) && (
+            <>
+              <span className="relative w-6 h-6 rounded-full overflow-hidden bg-surface-2 border border-border shrink-0">
+                {owner.avatar ? (
+                  <Image src={owner.avatar} alt="" fill sizes="24px" className="object-cover" />
+                ) : (
+                  <span className="absolute inset-0 grid place-items-center text-muted">
+                    <Icon name="people" size={12} />
+                  </span>
+                )}
               </span>
-            )}
-          </span>
-          {owner.username ? (
-            <Link
-              href={`/u/${owner.username}`}
-              className="text-12 text-muted hover:text-foreground transition min-w-0 truncate"
+              {owner.username ? (
+                <Link
+                  href={`/u/${owner.username}`}
+                  className="text-12 text-muted hover:text-foreground transition min-w-0 truncate"
+                >
+                  {owner.nickname || `@${owner.username}`}
+                </Link>
+              ) : (
+                <span className="text-12 text-muted min-w-0 truncate">{owner.nickname}</span>
+              )}
+            </>
+          )}
+
+          {inLibrary && (
+            <button
+              type="button"
+              onClick={addAll}
+              disabled={addingAll}
+              aria-label={t.listAddAllAria}
+              title={t.listAddAllAria}
+              /* **ms-auto لا `justify-between`**: الصفُّ قد يخلو من اسمٍ،
+                 **و`justify-between` بعنصرٍ واحد تضعه في البداية** */
+              className="ms-auto shrink-0 inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-12 font-semibold text-muted transition hover:text-foreground hover:border-accent/50 active:scale-[0.97] disabled:opacity-60"
             >
-              {owner.nickname || `@${owner.username}`}
-            </Link>
-          ) : (
-            <span className="text-12 text-muted min-w-0 truncate">{owner.nickname}</span>
+              <Icon name="bookmark" size={14} strokeWidth={2} />
+              {t.listAddAll}
+            </button>
           )}
         </div>
       )}
@@ -471,6 +535,15 @@ export function ListDetail({
                   rating={ratings[keyOf(it)] ?? null}
                   canRemove={isOwner}
                   onRemove={() => remove(it)}
+                  /* **زرُّ «+» على الملصق** (D-495): `undefined` تعني
+                     «لا زرّ» — للزائر بلا حساب، **ولصاحب القائمة**
+                     الذي تسكن زاويتُه علامةُ الإزالة (زرّان في زاويةٍ
+                     واحدة يجعلان الملصقَ لوحةَ أزرار — D-205). */
+                  quickAdd={
+                    inLibrary && !isOwner
+                      ? { added: !!inLibrary[keyOf(it)], locale }
+                      : undefined
+                  }
                   t={t}
                 />
               ))}
@@ -1068,6 +1141,7 @@ function PosterTile({
   rating,
   canRemove,
   onRemove,
+  quickAdd,
   t,
 }: {
   item: ListItem;
@@ -1075,6 +1149,8 @@ function PosterTile({
   rating: number | null;
   canRemove: boolean;
   onRemove: () => void;
+  /** 🆕 D-495 — حالةُ الإضافة ولغةُ القارئ؛ الغيابُ يعني لا زرّ */
+  quickAdd?: { added: boolean; locale: Locale };
   t: Dict;
 }) {
   const url = posterUrl(item.poster_path, "w342");
@@ -1138,6 +1214,20 @@ function PosterTile({
           {item.title ?? `#${item.tmdb_id}`}
         </p>
       </Link>
+
+      {/* 🆕 **خارج الرابط** (D-155/D-347): زرٌّ داخل رابطٍ عطلٌ يمسكه
+          `button.closest('a')` — و`QuickAdd` مطلقُ الموضع فيجلس فوق
+          الملصق بلا أن يسكن رابطَه. */}
+      {quickAdd && (
+        <QuickAdd
+          tmdbId={item.tmdb_id}
+          mediaType={item.media_type}
+          title={item.title ?? ""}
+          posterPath={item.poster_path}
+          added={quickAdd.added}
+          locale={quickAdd.locale}
+        />
+      )}
 
       {canRemove && (
         <button
