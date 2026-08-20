@@ -57,7 +57,17 @@ export function RoutePrewarm({
 
     warmed = true;
     const start = () => {
-      if (!document.hidden) router.prefetch(likely);
+      /* `kind: "full"` صراحةً — بلا تحديدٍ يُحسب `auto` فيلتقي بمدخل
+         الـLink الهيكليّ ولا يجلب البيانات، فيدفع أوّلُ ضغطةٍ الرحلةَ
+         كاملةً رغم «التسخين» (قيس على المنشور). */
+      if (!document.hidden)
+        router.prefetch(likely, {
+          kind: "full" as Parameters<typeof router.prefetch>[1] extends
+            | { kind: infer K }
+            | undefined
+            ? K
+            : never,
+        });
     };
 
     // مهلة قصوى ٤ ثوانٍ: صفحةٌ لا تهدأ أبداً لا يجوز أن تلغي التسخين كلياً
