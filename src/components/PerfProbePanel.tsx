@@ -8,16 +8,26 @@
  * • **لا يغادر الرقمُ الجهاز**: لا `fetch` ولا `sendBeacon` ولا تخزينَ
  *   نتائج. كلُّه في الذاكرة، والنقلُ بزرِّ نسخٍ بيدِ صاحب الجهاز.
  * • **لا هويّةَ ولا سرّ**: لا `user_id` ولا كوكي ولا توكن ولا نصَّ
- *   محتوى. المسارُ `pathname` وحدَه — **و`search`/`hash` تُقصّان دائماً**
- *   لأنهما قد يحملان معرّفات.
+ *   محتوى. المسارُ `pathname` وحدَه — **و`search`/`hash` تُقصّان دائماً**.
  * • **ولا رقمَ مخترع**: كلُّ نوعٍ يُفحص بـ`supportedEntryTypes`، وغيرُ
- *   المدعوم يُكتب **«غير مدعوم»** نصّاً — لا صفراً، لأن صفراً يُقرأ
- *   «قِيس فكان ممتازاً» وهو كذب.
+ *   المدعوم يُكتب **«غير مدعوم»** نصّاً — لا صفراً.
+ *
+ * ⚖️ **وثلاثةُ قيودٍ تمنع المسبارَ من تلويث ما يقيسه** (طلبُ أحمد):
+ * ١) **لا لوحةَ تُرسم تلقائيّاً** — نقطةٌ صغيرةٌ `fixed` وحدَها، بلا نصٍّ
+ *    ولا صورةٍ ولا خلفيّةٍ مصوَّرة، **فلا تصلح مرشَّحاً لـLCP أصلاً**،
+ *    و`fixed` لا يحجز مساحةً فلا إزاحةَ تخطيط.
+ * ٢) **لمسُ المسبار ليس «أوّلَ لمسة»** — كلُّ حدثٍ منشؤه داخل جذر
+ *    المسبار يُتجاهل، فتبقى أوّلُ لمسةٍ لمسةَ واجهة Loopz وحدَها.
+ * ٣) **حِملُ المسبار يُطرح من أرقام الموارد** — ولا يُخمَّن باسمِ حزمةٍ
+ *    مُجزّأةٍ أبداً، بل يُعزل بخطِّ أساسٍ التُقط قبل تحرّكه، ويُعرض
+ *    خاماً ومطروحاً ومحسوماً معاً لا رقماً واحداً.
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { ProbeBaseline } from "./PerfProbe";
 
 const FLAG = "lz_perf";
+const NA = "غير مدعوم في هذا المتصفّح";
 
 /** ما يدعمه هذا المتصفّح فعلاً — لا افتراضَ مسبقاً عن Safari */
 function supported(type: string): boolean {
@@ -42,13 +52,14 @@ function leaf(url: string): string {
   }
 }
 
-const NA = "غير مدعوم في هذا المتصفّح";
-
-export default function PerfProbePanel({ hydratedAt }: { hydratedAt: number }) {
-  const [open, setOpen] = useState(true);
+export default function PerfProbePanel({ base }: { base: ProbeBaseline }) {
+  const { hydratedAt, probeStartMs, baselineJs } = base;
+  const [shown, setShown] = useState(false); // 🔑 اللوحةُ لا تُعرض إلا بطلبك
   const [view, setView] = useState<Record<string, unknown> | null>(null);
+  const [tapped, setTapped] = useState(false);
   const [gone, setGone] = useState(false);
   const acc = useRef<Record<string, unknown>>({});
+  const rootRef = useRef<HTMLDivElement | null>(null);
 
   const build = useCallback((): Record<string, unknown> => {
     const d = acc.current;
@@ -58,25 +69,44 @@ export default function PerfProbePanel({ hydratedAt }: { hydratedAt: number }) {
     const paint = performance
       .getEntriesByType("paint")
       .find((p) => p.name === "first-contentful-paint");
-    const res = performance.getEntriesByType("resource") as PerformanceResourceTiming[];
-    const js = res.filter((r) => leaf(r.name).endsWith(".js"));
 
-    /* RSC: تنقّلُ App Router يجلب الحمولةَ من المسار نفسِه لا من ملفّ —
-       فتُعدّ الطلباتُ التي ليست أصولاً ساكنةً ولا صوراً. تقديرٌ يُسمّى
-       تقديراً: `_rsc` في الاستعلام لا يظهر في `name` دائماً. */
+    /* إزالةُ التكرار بالاسم: القراءةُ نفسُها قد تُسجَّل مرّتين */
+    const seen = new Set<string>();
+    const res = (performance.getEntriesByType("resource") as PerformanceResourceTiming[]).filter(
+      (r) => (seen.has(r.name) ? false : (seen.add(r.name), true)),
+    );
+
+    /* ── عزلُ حِمل المسبار ─────────────────────────────────────────
+       **بلا تخمينِ اسم**: حزمُ JS التي لم تكن في خطِّ الأساس وظهرت بعد
+       لحظة تحرّك المسبار. وإن ظهرت حزمةُ تطبيقٍ في تلك النافذة صُنّفت
+       معها — **ولذلك تُسرد بأسمائها وأحجامها** فيراها القارئُ ويحكم،
+       ولا يُخفى شيءٌ خلف رقمٍ واحد. */
+    const base0 = new Set(baselineJs);
+    const jsAll = res.filter((r) => leaf(r.name).endsWith(".js"));
+    const probeJs = jsAll.filter((r) => !base0.has(r.name) && r.startTime >= probeStartMs);
+    const probeUrls = new Set(probeJs.map((r) => r.name));
+
+    const kb = (list: PerformanceResourceTiming[]) =>
+      +(list.reduce((a, r) => a + (r.decodedBodySize || 0), 0) / 1024).toFixed(1);
+
+    const rawKB = kb(jsAll);
+    const probeKB = kb(probeJs);
+
+    /* RSC: تنقّلُ App Router يجلب حمولتَه من المسار نفسِه لا من ملفّ.
+       تقديرٌ يُسمّى تقديراً — ولا يُحسب منه شيءٌ من موارد المسبار. */
     const rsc = res.filter(
       (r) =>
         r.initiatorType === "fetch" &&
         !r.name.includes("/_next/static/") &&
-        !r.name.includes("/_next/image"),
+        !r.name.includes("/_next/image") &&
+        !probeUrls.has(r.name),
     ).length;
 
-    /* شبكةٌ أم كاش؟ `deliveryType` صريحٌ حيث يوجد — وحيث لا يوجد نقول
-       **إنه استدلال** ولا ندّعي يقيناً: نقلٌ صفريٌّ وجسمٌ غيرُ صفريّ. */
     const explicit = res.some(
       (r) => typeof (r as unknown as { deliveryType?: string }).deliveryType === "string",
     );
     const cached = res.filter((r) => {
+      if (probeUrls.has(r.name)) return false;
       const dt = (r as unknown as { deliveryType?: string }).deliveryType;
       if (typeof dt === "string") return dt === "cache";
       return r.transferSize === 0 && r.decodedBodySize > 0;
@@ -108,21 +138,34 @@ export default function PerfProbePanel({ hydratedAt }: { hydratedAt: number }) {
       أبطأ_حدث:
         typeof d["event"] === "string"
           ? d["event"]
-          : { ms: d.slowestEventMs ?? null, نوع: d.slowestEventName ?? null, ملحوظة: "أقصى ما رُصد — ليس INP الرسميّ" },
+          : {
+              ms: d.slowestEventMs ?? null,
+              نوع: d.slowestEventName ?? null,
+              ملحوظة: "أقصى ما رُصد — ليس INP الرسميّ",
+            },
       اكتمال_الترطيب_ms: ms(hydratedAt),
       أول_لمسة: d.firstTap ?? "لم تقع بعد",
       أول_تمرير: d.firstScroll ?? "لم يقع بعد",
       عودات_من_الخلفية: d.resumes ?? "لم تقع بعد",
-      طلبات: {
-        الكل: res.length,
-        js: js.length,
-        js_decoded_KB: +(js.reduce((a, r) => a + (r.decodedBodySize || 0), 0) / 1024).toFixed(0),
+      موارد: {
+        "١_خام": { js_حزم: jsAll.length, js_decoded_KB: rawKB, كل_الطلبات: res.length },
+        "٢_حِمل_المسبار": {
+          js_حزم: probeJs.length,
+          js_decoded_KB: probeKB,
+          الحزم: probeJs.map((r) => `${leaf(r.name)} (${Math.round((r.decodedBodySize || 0) / 1024)}KB)`),
+          طريقةُ_العزل: "خطُّ أساسٍ التُقط قبل تحرّك المسبار — لا تخمينَ اسم",
+        },
+        "٣_التطبيق_بعد_الطرح": {
+          js_حزم: jsAll.length - probeJs.length,
+          js_decoded_KB: +(rawKB - probeKB).toFixed(1),
+          كل_الطلبات: res.length - probeJs.length,
+        },
         RSC_تقديراً: rsc,
         من_الكاش: cached,
         مصدر_الحكم: explicit ? "deliveryType (صريح)" : "استدلالٌ من transferSize=0",
       },
     };
-  }, [hydratedAt]);
+  }, [hydratedAt, probeStartMs, baselineJs]);
 
   const refresh = useCallback(() => setView(build()), [build]);
 
@@ -134,10 +177,7 @@ export default function PerfProbePanel({ hydratedAt }: { hydratedAt: number }) {
         return;
       }
       try {
-        const o = new PerformanceObserver((l) => {
-          cb(l.getEntries());
-          refresh();
-        });
+        const o = new PerformanceObserver((l) => cb(l.getEntries()));
         o.observe({ type, buffered: true } as PerformanceObserverInit);
         obs.push(o);
       } catch {
@@ -184,11 +224,16 @@ export default function PerfProbePanel({ hydratedAt }: { hydratedAt: number }) {
       acc.current.slowestEventName = name;
     });
 
-    /* أوّلُ لمسة: تأخّرُ المعالج · الزمنُ حتى الرسم · **وهل سبقت الترطيب**
-       (أي: ضغطتَ فلم يستجب شيء) — وهذا أدقُّ جوابٍ متاحٍ على سؤال
-       «هل تنفيذُ الـJS يؤلم؟» ما دام `longtask` غائباً عن iOS. */
+    /** حدثٌ منشؤه داخل المسبار؟ إذاً ليس تفاعلاً مع Loopz */
+    const mine = (ev: Event) => {
+      const t = ev.target;
+      return !!rootRef.current && t instanceof Node && rootRef.current.contains(t);
+    };
+
+    /* أوّلُ لمسةٍ على **واجهة Loopz** — ولمسُ المسبار لا يُحتسب ولا
+       يُنهي الرصد، فيبقى المستمعُ حتى تقع اللمسةُ الحقيقيّة. */
     const onTap = (ev: Event) => {
-      if (acc.current.firstTap) return;
+      if (acc.current.firstTap || mine(ev)) return;
       const t = performance.now();
       const started = ev.timeStamp;
       requestAnimationFrame(() =>
@@ -200,15 +245,15 @@ export default function PerfProbePanel({ hydratedAt }: { hydratedAt: number }) {
             قبل_الترطيب: t < hydratedAt,
             ثوان_بعد_الترطيب: +((t - hydratedAt) / 1000).toFixed(2),
           };
-          refresh();
+          setTapped(true);
         }),
       );
       window.removeEventListener("pointerdown", onTap, true);
     };
     window.addEventListener("pointerdown", onTap, true);
 
-    const onScroll = () => {
-      if (acc.current.firstScroll) return;
+    const onScroll = (ev: Event) => {
+      if (acc.current.firstScroll || mine(ev)) return; // تمريرُ اللوحة ليس تمريرَ الصفحة
       const t = performance.now();
       requestAnimationFrame(() => {
         acc.current.firstScroll = {
@@ -216,14 +261,11 @@ export default function PerfProbePanel({ hydratedAt }: { hydratedAt: number }) {
           حتى_الرسم_ms: ms(performance.now() - t),
           ثوان_بعد_الترطيب: +((t - hydratedAt) / 1000).toFixed(2),
         };
-        refresh();
       });
       window.removeEventListener("scroll", onScroll, true);
     };
     window.addEventListener("scroll", onScroll, true);
 
-    /* الرحلةُ ٢: العودةُ من الخلفيّة — لا تنقّلَ جديداً، فالمقياسُ
-       الصادقُ متى صارت الشاشةُ مرئيّةً ومتى رُسم أوّلُ إطارٍ بعدها */
     const onVis = () => {
       if (document.visibilityState !== "visible") {
         acc.current.hiddenAt = performance.now();
@@ -238,74 +280,100 @@ export default function PerfProbePanel({ hydratedAt }: { hydratedAt: number }) {
           مكثت_في_الخلفية_ث: hidden ? +((t - hidden) / 1000).toFixed(1) : null,
         });
         acc.current.resumes = list.slice(-6);
-        refresh();
       });
     };
     document.addEventListener("visibilitychange", onVis);
 
-    const first = requestAnimationFrame(refresh);
-
     return () => {
-      cancelAnimationFrame(first);
       obs.forEach((o) => o.disconnect());
       window.removeEventListener("pointerdown", onTap, true);
       window.removeEventListener("scroll", onScroll, true);
       document.removeEventListener("visibilitychange", onVis);
     };
-  }, [refresh, hydratedAt]);
+  }, [hydratedAt]);
 
-  if (gone || !view) return null;
+  if (gone) return null;
 
   return (
-    <div dir="rtl" style={box}>
-      <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 8 }}>
-        <strong style={{ color: "#7dd3fc" }}>مسبار مؤقّت</strong>
-        <button onClick={() => setOpen((v) => !v)} style={btn}>
-          {open ? "طيّ" : "فتح"}
-        </button>
+    <div ref={rootRef}>
+      {/* النقطة: `fixed` فلا تحجز مساحةً ولا تُزيح شيئاً · بلا نصٍّ ولا
+          صورةٍ ولا خلفيّةٍ مصوَّرة · ١٤px — **فلا تصلح مرشَّحاً لـLCP**.
+          لونُها وحدَه يقول: باهتةٌ حتى تُلتقط أوّلُ لمسة، ثم تُضيء. */}
+      {!shown && (
         <button
+          aria-label="فتح تقرير المسبار"
           onClick={() => {
-            const txt = JSON.stringify(build(), null, 1);
-            navigator.clipboard?.writeText(txt).catch(() => {
-              const ta = document.createElement("textarea");
-              ta.value = txt;
-              document.body.appendChild(ta);
-              ta.select();
-              document.execCommand("copy");
-              ta.remove();
-            });
+            refresh();
+            setShown(true);
           }}
-          style={{ ...btn, background: "#0e7490" }}
-        >
-          نسخ
-        </button>
-        <button
-          onClick={() => {
-            const n = window.prompt("اسم الرحلة (١..٧):", "");
-            if (n !== null) {
-              acc.current.label = n;
-              refresh();
-            }
+          style={{
+            position: "fixed",
+            insetInlineStart: 10,
+            bottom: 10,
+            zIndex: 2147483647,
+            width: 14,
+            height: 14,
+            padding: 0,
+            borderRadius: "50%",
+            border: "1px solid rgba(255,255,255,.35)",
+            background: tapped ? "#22d3ee" : "#6b7280",
+            opacity: 0.85,
           }}
-          style={btn}
-        >
-          تسمية
-        </button>
-        <button
-          onClick={() => {
-            try {
-              localStorage.removeItem(FLAG);
-            } catch {
-              /* لا شيء */
-            }
-            setGone(true);
-          }}
-          style={{ ...btn, background: "#7f1d1d" }}
-        >
-          إيقاف
-        </button>
-      </div>
-      {open && <pre style={pre}>{JSON.stringify(view, null, 1)}</pre>}
+        />
+      )}
+
+      {shown && view && (
+        <div dir="rtl" style={box}>
+          <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 8 }}>
+            <strong style={{ color: "#7dd3fc" }}>مسبار</strong>
+            <button
+              onClick={() => {
+                const txt = JSON.stringify(build(), null, 1);
+                navigator.clipboard?.writeText(txt).catch(() => {
+                  const ta = document.createElement("textarea");
+                  ta.value = txt;
+                  document.body.appendChild(ta);
+                  ta.select();
+                  document.execCommand("copy");
+                  ta.remove();
+                });
+              }}
+              style={{ ...btn, background: "#0e7490" }}
+            >
+              نسخ
+            </button>
+            <button
+              onClick={() => {
+                const n = window.prompt("اسم الرحلة (١..٧):", "");
+                if (n !== null) {
+                  acc.current.label = n;
+                  refresh();
+                }
+              }}
+              style={btn}
+            >
+              تسمية
+            </button>
+            <button onClick={() => setShown(false)} style={btn}>
+              إغلاق
+            </button>
+            <button
+              onClick={() => {
+                try {
+                  localStorage.removeItem(FLAG);
+                } catch {
+                  /* لا شيء */
+                }
+                setGone(true);
+              }}
+              style={{ ...btn, background: "#7f1d1d" }}
+            >
+              إيقاف
+            </button>
+          </div>
+          <pre style={pre}>{JSON.stringify(view, null, 1)}</pre>
+        </div>
+      )}
     </div>
   );
 }

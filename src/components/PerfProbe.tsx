@@ -22,8 +22,16 @@ const PerfProbePanel = dynamic(() => import("./PerfProbePanel"), { ssr: false })
 
 const FLAG = "lz_perf";
 
+export interface ProbeBaseline {
+  hydratedAt: number;
+  /** لحظةُ ما قبل بدء جلبِ حزمة اللوحة — بها يُعزل حِملُ المسبار */
+  probeStartMs: number;
+  /** أسماءُ حزم JS الموجودة **قبل** أن يتحرّك المسبار — خطُّ الأساس */
+  baselineJs: string[];
+}
+
 export function PerfProbe() {
-  const [state, setState] = useState<{ on: boolean; hydratedAt: number } | null>(null);
+  const [base, setBase] = useState<ProbeBaseline | null>(null);
 
   useEffect(() => {
     /* ⏱️ لحظةُ الترطيب تُلتقط هنا في الحزمة الرئيسيّة — **لا في اللوحة
@@ -43,12 +51,22 @@ export function PerfProbe() {
       } catch {
         on = false; // تصفّحٌ خاصٌّ يمنع التخزين — المسبارُ ببساطةٍ لا يعمل
       }
-      if (on) setState({ on, hydratedAt });
+      if (!on) return;
+
+      /* 🔑 خطُّ الأساس يُلتقط **قبل** أن يبدأ جلبُ حزمة اللوحة (الجلبُ
+         يبدأ بالرسم أدناه). كلُّ حزمةٍ جديدةٍ بعد هذه اللحظة مرشّحةٌ
+         لأن تكون حِملَ المسبار — وبها يُطرح من أرقام التطبيق. */
+      const baselineJs = performance
+        .getEntriesByType("resource")
+        .filter((r) => r.name.endsWith(".js"))
+        .map((r) => r.name);
+
+      setBase({ hydratedAt, probeStartMs: performance.now(), baselineJs });
     });
 
     return () => cancelAnimationFrame(id);
   }, []);
 
-  if (!state?.on) return null;
-  return <PerfProbePanel hydratedAt={state.hydratedAt} />;
+  if (!base) return null;
+  return <PerfProbePanel base={base} />;
 }
