@@ -294,6 +294,12 @@ export default function PerfProbePanel({ hydratedAt }: { hydratedAt: number }) {
           صورةٍ ولا خلفيّةٍ مصوَّرة · ١٤px — **فلا تصلح مرشَّحاً لـLCP**.
           لونُها وحدَه يقول: باهتةٌ حتى تُلتقط أوّلُ لمسة، ثم تُضيء. */}
       {!shown && (
+        /* 🔑 **مساحةُ لمسٍ ٤٤px شفّافة، ونقطةٌ مرئيّةٌ ١٤px داخلها.**
+           النقطةُ وحدَها كانت أصغرَ من أدنى هدفِ لمسٍ في iOS (٤٤px)
+           وفي ركنٍ يزاحمه مؤشّرُ الشاشة الرئيسيّة — **فكانت لا تُلمس
+           بإصبع.** الحدُّ الشفّافُ يحلُّ ذلك بلا أن يكبر المرئيّ:
+           لا نصَّ ولا صورةَ ولا خلفيّةً مصوَّرة **فلا مرشَّحَ لـLCP**،
+           و`fixed` فلا مساحةَ محجوزةٌ ولا إزاحةَ تخطيط. */
         <button
           type="button"
           aria-label="فتح تقرير المسبار"
@@ -303,18 +309,31 @@ export default function PerfProbePanel({ hydratedAt }: { hydratedAt: number }) {
           }}
           style={{
             position: "fixed",
-            insetInlineStart: 10,
-            bottom: 10,
+            insetInlineStart: 0,
+            bottom: "calc(env(safe-area-inset-bottom, 0px) + 18px)",
             zIndex: 2147483647,
-            width: 14,
-            height: 14,
+            width: 44,
+            height: 44,
             padding: 0,
-            borderRadius: "50%",
-            border: "1px solid rgba(255,255,255,.35)",
-            background: tapped ? "#22d3ee" : "#6b7280",
-            opacity: 0.85,
+            border: 0,
+            background: "transparent",
+            display: "grid",
+            placeItems: "center",
           }}
-        />
+        >
+          <span
+            aria-hidden
+            style={{
+              display: "block",
+              width: 14,
+              height: 14,
+              borderRadius: "50%",
+              border: "1px solid rgba(255,255,255,.35)",
+              background: tapped ? "#22d3ee" : "#6b7280",
+              opacity: 0.85,
+            }}
+          />
+        </button>
       )}
 
       {shown && view && (
