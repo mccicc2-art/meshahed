@@ -12,22 +12,27 @@
  * • **ولا رقمَ مخترع**: كلُّ نوعٍ يُفحص بـ`supportedEntryTypes`، وغيرُ
  *   المدعوم يُكتب **«غير مدعوم»** نصّاً — لا صفراً.
  *
- * ⚖️ **وثلاثةُ قيودٍ تمنع المسبارَ من تلويث ما يقيسه** (طلبُ أحمد):
- * ١) **لا لوحةَ تُرسم تلقائيّاً** — نقطةٌ صغيرةٌ `fixed` وحدَها، بلا نصٍّ
- *    ولا صورةٍ ولا خلفيّةٍ مصوَّرة، **فلا تصلح مرشَّحاً لـLCP أصلاً**،
- *    و`fixed` لا يحجز مساحةً فلا إزاحةَ تخطيط.
+ * ⚖️ **وثلاثةُ قيودٍ تمنع المسبارَ من تلويث ما يقيسه:**
+ * ١) **لا لوحةَ تُرسم تلقائيّاً** — نقطةٌ `fixed` وحدَها، بلا نصٍّ ولا
+ *    صورةٍ ولا خلفيّةٍ مصوَّرة، **فلا تصلح مرشَّحاً لـLCP**، و`fixed` لا
+ *    يحجز مساحةً فلا إزاحةَ تخطيط.
  * ٢) **لمسُ المسبار ليس «أوّلَ لمسة»** — كلُّ حدثٍ منشؤه داخل جذر
- *    المسبار يُتجاهل، فتبقى أوّلُ لمسةٍ لمسةَ واجهة Loopz وحدَها.
- * ٣) **حِملُ المسبار يُطرح من أرقام الموارد** — ولا يُخمَّن باسمِ حزمةٍ
- *    مُجزّأةٍ أبداً، بل يُعزل بخطِّ أساسٍ التُقط قبل تحرّكه، ويُعرض
- *    خاماً ومطروحاً ومحسوماً معاً لا رقماً واحداً.
+ *    المسبار يُتجاهل **ولا يُنهي الرصد**، فتبقى أوّلُ لمسةٍ لمسةَ Loopz.
+ * ٣) 🔴 **ولا طرحَ آليّاً لحِمل المسبار.** جُرِّبت ثلاثُ طرقٍ للتحديد
+ *    (نافذةٌ زمنيّة · `import.meta.url` — يُسقطه المُجمِّع · قوسٌ حول
+ *    الاستيراد) **وكلُّها التقطت حزمةَ تطبيقٍ ٢٤٧ك.ب وسكربتَ Speed
+ *    Insights معها**: الثلاثةُ تبدأ في ٦ مللي ثانيةٍ متجاورة
+ *    و`initiatorType` فيها جميعاً `script` — فلا إشارةَ تفصل. **فيُعرض
+ *    الخامُ كما هو، ويُذكر حِملُ اللوحة رقماً معلَناً من مخرجات البناء،
+ *    ولا يُعرض «صافٍ» لا يمكن إثباتُه.** رقمٌ خاطئٌ أسوأُ من رقمٍ غائب.
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { ProbeBaseline } from "./PerfProbe";
 
 const FLAG = "lz_perf";
 const NA = "غير مدعوم في هذا المتصفّح";
+/** حجمُ حزمة هذه اللوحة — **من مخرجات `next build`**، لا من تخمينِ اسم */
+const PANEL_CHUNK_KB = 8;
 
 /** ما يدعمه هذا المتصفّح فعلاً — لا افتراضَ مسبقاً عن Safari */
 function supported(type: string): boolean {
@@ -52,8 +57,7 @@ function leaf(url: string): string {
   }
 }
 
-export default function PerfProbePanel({ base }: { base: ProbeBaseline }) {
-  const { hydratedAt, probeChunks, exact } = base;
+export default function PerfProbePanel({ hydratedAt }: { hydratedAt: number }) {
   const [shown, setShown] = useState(false); // 🔑 اللوحةُ لا تُعرض إلا بطلبك
   const [view, setView] = useState<Record<string, unknown> | null>(null);
   const [tapped, setTapped] = useState(false);
@@ -70,49 +74,28 @@ export default function PerfProbePanel({ base }: { base: ProbeBaseline }) {
       .getEntriesByType("paint")
       .find((p) => p.name === "first-contentful-paint");
 
-    /* إزالةُ التكرار بالاسم: القراءةُ نفسُها قد تُسجَّل مرّتين */
+    /* إزالةُ التكرار بالاسم: المورد نفسُه قد يُسجَّل مرّتين */
     const seen = new Set<string>();
     const res = (performance.getEntriesByType("resource") as PerformanceResourceTiming[]).filter(
       (r) => (seen.has(r.name) ? false : (seen.add(r.name), true)),
     );
-
-    /* ── عزلُ حِمل المسبار ─────────────────────────────────────────
-       🔴 **جُرِّبت ثلاثُ طرقٍ للتحديد التلقائيّ وكلُّها أخطأت**: نافذةٌ
-       زمنيّة، ثم `import.meta.url` (يُسقطه المُجمِّع)، ثم قوسٌ محكمٌ حول
-       الاستيراد — والثلاثةُ التقطت معها حزمةَ تطبيقٍ ٢٤٧ك.ب وسكربتَ
-       Speed Insights، لأن الثلاثةَ تبدأ في ٦ مللي ثانيةٍ متجاورة
-       و`initiatorType` فيها جميعاً `script`. **فلا إشارةَ تفصل.**
-
-       ولذلك **لا يُطرح شيءٌ تلقائيّاً** (شرطُ أحمد: لا تخمينَ حزمةٍ
-       مُجزّأةٍ بالاسم). يُعرض الخامُ كما هو، ويُذكر أنّ حزمةَ اللوحة
-       وحدَها ≈٨ ك.ب — **رقمٌ من مخرجات البناء لا من تخمينِ اسم** —
-       وتُسرد الحزمُ التي رافقت الاستيرادَ **بوصفها مرشَّحين للفحص لا
-       مطروحين**. رقمٌ خاطئٌ أسوأُ من رقمٍ غائب. */
-    const probeSet = new Set(probeChunks);
     const jsAll = res.filter((r) => leaf(r.name).endsWith(".js"));
-    const companions = jsAll.filter((r) => probeSet.has(r.name));
-    const probeUrls = new Set<string>();
-
-    const kb = (list: PerformanceResourceTiming[]) =>
-      +(list.reduce((a, r) => a + (r.decodedBodySize || 0), 0) / 1024).toFixed(1);
-
-    const rawKB = kb(jsAll);
 
     /* RSC: تنقّلُ App Router يجلب حمولتَه من المسار نفسِه لا من ملفّ.
-       تقديرٌ يُسمّى تقديراً — ولا يُحسب منه شيءٌ من موارد المسبار. */
+       تقديرٌ يُسمّى تقديراً. */
     const rsc = res.filter(
       (r) =>
         r.initiatorType === "fetch" &&
         !r.name.includes("/_next/static/") &&
-        !r.name.includes("/_next/image") &&
-        !probeUrls.has(r.name),
+        !r.name.includes("/_next/image"),
     ).length;
 
+    /* شبكةٌ أم كاش؟ `deliveryType` صريحٌ حيث يوجد — وحيث لا يوجد نقول
+       **إنه استدلال** ولا ندّعي يقيناً: نقلٌ صفريٌّ وجسمٌ غيرُ صفريّ. */
     const explicit = res.some(
       (r) => typeof (r as unknown as { deliveryType?: string }).deliveryType === "string",
     );
     const cached = res.filter((r) => {
-      if (probeUrls.has(r.name)) return false;
       const dt = (r as unknown as { deliveryType?: string }).deliveryType;
       if (typeof dt === "string") return dt === "cache";
       return r.transferSize === 0 && r.decodedBodySize > 0;
@@ -153,28 +136,23 @@ export default function PerfProbePanel({ base }: { base: ProbeBaseline }) {
       أول_لمسة: d.firstTap ?? "لم تقع بعد",
       أول_تمرير: d.firstScroll ?? "لم يقع بعد",
       عودات_من_الخلفية: d.resumes ?? "لم تقع بعد",
-      موارد: {
-        "١_خام": { js_حزم: jsAll.length, js_decoded_KB: rawKB, كل_الطلبات: res.length },
-        "٢_حِمل_المسبار": {
-          حزمةُ_اللوحة_KB: 8,
-          مصدرُ_الرقم: "مخرجاتُ البناء — لا تخمينَ اسمٍ مُجزّأ",
-          رافقت_الاستيراد_مرشَّحون_لا_مطروحون: companions.map(
-            (r) => `${leaf(r.name)} (${Math.round((r.decodedBodySize || 0) / 1024)}KB)`,
-          ),
-          تحذير:
-            "أكثرُ هؤلاء من التطبيق نفسِه (حزمةٌ متأخّرة + سكربت Speed Insights) — **لا تُطرح**",
-        },
-        "٣_التطبيق_تقريباً": {
-          js_decoded_KB: +(rawKB - 8).toFixed(1),
-          الحساب: "الخام ناقص ٨ ك.ب (حزمةُ اللوحة وحدَها)",
-          موثوقيّة: exact ? "تقريبٌ معلَنٌ لا طرحٌ تلقائيّ" : "تقريبٌ معلَنٌ لا طرحٌ تلقائيّ",
-        },
+      موارد_خام: {
+        js_حزم: jsAll.length,
+        js_decoded_KB: +(jsAll.reduce((a, r) => a + (r.decodedBodySize || 0), 0) / 1024).toFixed(1),
+        كل_الطلبات: res.length,
         RSC_تقديراً: rsc,
         من_الكاش: cached,
         مصدر_الحكم: explicit ? "deliveryType (صريح)" : "استدلالٌ من transferSize=0",
+        ملحوظة: "خامٌ غيرُ منقوص — يشمل حزمةَ المسبار أدناه",
+      },
+      حِمل_المسبار_معلَن: {
+        حزمةُ_اللوحة_KB: PANEL_CHUNK_KB,
+        مصدرُ_الرقم: "مخرجاتُ next build — لا تخمينَ اسمِ حزمةٍ مُجزّأة",
+        لماذا_لا_يُطرح_آليّاً:
+          "لا إشارةَ زمنٍ ولا نوعِ مُنشئٍ تفصل حزمةَ المسبار عن حزم التطبيق المتأخّرة — والطرحُ بالتخمين يفسد الرقم",
       },
     };
-  }, [hydratedAt, probeChunks, exact]);
+  }, [hydratedAt]);
 
   const refresh = useCallback(() => setView(build()), [build]);
 
@@ -239,16 +217,13 @@ export default function PerfProbePanel({ base }: { base: ProbeBaseline }) {
       return !!rootRef.current && t instanceof Node && rootRef.current.contains(t);
     };
 
-    /* أوّلُ لمسةٍ على **واجهة Loopz** — ولمسُ المسبار لا يُحتسب ولا
-       يُنهي الرصد، فيبقى المستمعُ حتى تقع اللمسةُ الحقيقيّة. */
     const onTap = (ev: Event) => {
       if (acc.current.firstTap || mine(ev)) return;
       const t = performance.now();
       const started = ev.timeStamp;
       /* 🔑 يُسجَّل **فوراً** لا داخل إطار: المستمعُ يُرفع في السطر التالي،
-         فلو انتظرنا إطاراً لا يأتي (تبويبٌ خلفيّ · انتقالٌ يوقف الرسم)
-         ضاع القياسُ بلا رجعة ولا حدثَ ثانٍ يعوّضه. زمنُ الرسم وحدَه
-         يُضاف لاحقاً إن جاء الإطار، وإلا بقي مكتوباً أنه لم يُرسم. */
+         فلو انتظرنا إطاراً لا يأتي ضاع القياسُ بلا رجعة ولا حدثَ ثانٍ
+         يعوّضه. زمنُ الرسم وحدَه يُضاف إن جاء الإطار. */
       const rec: Record<string, unknown> = {
         عند_ms: ms(t),
         تأخر_المعالج_ms: ms(t - started),
@@ -275,7 +250,7 @@ export default function PerfProbePanel({ base }: { base: ProbeBaseline }) {
         حتى_الرسم_ms: "لم يصل إطارٌ بعد",
         ثوان_بعد_الترطيب: +((t - hydratedAt) / 1000).toFixed(2),
       };
-      acc.current.firstScroll = rec; // يُسجَّل فوراً — انظر تعليقَ اللمسة
+      acc.current.firstScroll = rec;
       window.removeEventListener("scroll", onScroll, true);
       requestAnimationFrame(() => {
         rec.حتى_الرسم_ms = ms(performance.now() - t);
@@ -295,7 +270,7 @@ export default function PerfProbePanel({ base }: { base: ProbeBaseline }) {
         مكثت_في_الخلفية_ث: hidden ? +((t - hidden) / 1000).toFixed(1) : null,
       };
       const list = (acc.current.resumes as unknown[]) ?? [];
-      list.push(rec); // يُسجَّل فوراً — انظر تعليقَ اللمسة
+      list.push(rec);
       acc.current.resumes = list.slice(-6);
       requestAnimationFrame(() => {
         rec.أول_رسم_بعد_العودة_ms = ms(performance.now() - t);
@@ -320,9 +295,10 @@ export default function PerfProbePanel({ base }: { base: ProbeBaseline }) {
           لونُها وحدَه يقول: باهتةٌ حتى تُلتقط أوّلُ لمسة، ثم تُضيء. */}
       {!shown && (
         <button
+          type="button"
           aria-label="فتح تقرير المسبار"
           onClick={() => {
-            refresh();
+            setView(build());
             setShown(true);
           }}
           style={{
@@ -346,6 +322,7 @@ export default function PerfProbePanel({ base }: { base: ProbeBaseline }) {
           <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 8 }}>
             <strong style={{ color: "#7dd3fc" }}>مسبار</strong>
             <button
+              type="button"
               onClick={() => {
                 const txt = JSON.stringify(build(), null, 1);
                 navigator.clipboard?.writeText(txt).catch(() => {
@@ -362,6 +339,7 @@ export default function PerfProbePanel({ base }: { base: ProbeBaseline }) {
               نسخ
             </button>
             <button
+              type="button"
               onClick={() => {
                 const n = window.prompt("اسم الرحلة (١..٧):", "");
                 if (n !== null) {
@@ -373,10 +351,11 @@ export default function PerfProbePanel({ base }: { base: ProbeBaseline }) {
             >
               تسمية
             </button>
-            <button onClick={() => setShown(false)} style={btn}>
+            <button type="button" onClick={() => setShown(false)} style={btn}>
               إغلاق
             </button>
             <button
+              type="button"
               onClick={() => {
                 try {
                   localStorage.removeItem(FLAG);
