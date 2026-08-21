@@ -49,9 +49,24 @@ export function PerfProbe() {
         const v = new URLSearchParams(window.location.search).get("perf");
         if (v === "on") localStorage.setItem(FLAG, "1");
         else if (v === "off") localStorage.removeItem(FLAG);
-        on = localStorage.getItem(FLAG) === "1";
+
+        /*
+         * iOS Home Screen Web Apps لا تشارك localStorage مع Safari،
+         * والـmanifest يفتح التطبيق على `/` بلا query. لذلك تفعيل
+         * `?perf=on` في Safari لا يصل إلى الـPWA المثبّت أصلًا.
+         * خلال جولة القياس المؤقّتة فقط: الـstandalone نفسه يفتح البوابة
+         * تلقائيًا. Safari/التصفح العادي يبقى خلف الراية كما كان.
+         */
+        const standalone =
+          (window.navigator as Navigator & { standalone?: boolean }).standalone === true ||
+          window.matchMedia("(display-mode: standalone)").matches;
+
+        on = standalone || localStorage.getItem(FLAG) === "1";
       } catch {
-        on = false; // تصفّحٌ خاصٌّ يمنع التخزين — المسبارُ ببساطةٍ لا يعمل
+        /* حتى لو منع iOS التخزين، الـstandalone نفسه يكفي لتفعيل المسبار */
+        on =
+          (window.navigator as Navigator & { standalone?: boolean }).standalone === true ||
+          window.matchMedia("(display-mode: standalone)").matches;
       }
       if (on) setGate({ hydratedAt });
     }, 0);
