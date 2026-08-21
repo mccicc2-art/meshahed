@@ -275,7 +275,18 @@ export function BottomNav({
             <Link
               key={href}
               href={href}
-              prefetch={key === "library" && fullOk ? true : undefined}
+              /* 🔴 **`false` صريحةٌ لا `undefined`** (تصحيحُ تسريبِ D-510):
+                 `undefined` تعني `auto` — **وNext يسخّن عندها من الرؤية
+                 في الإنتاج**، فكانت قشرةُ التطبيق الدائمةُ تجلب
+                 `/news` و`/people` وغيرَهما لكلِّ مستخدمٍ لم يقصدها،
+                 **وهو نقضُ قاعدة D-510 نفسِها** («لا يدفع مستخدمٌ كلفةَ
+                 صفحةٍ لن يفتحها»). و`false` وحدَها توقف الرؤيةَ والحومان
+                 معاً (توثيقُ Next 16.3). **والمكتبةُ تبقى الاستثناءَ
+                 المقصود**، ومعها صمّامُ save-data/2G كما كان.
+                 ⚖️ **والنيّةُ لا تتأثّر**: `usePrefetchOnIntent` أدناه
+                 نداءٌ إجرائيٌّ مستقلٌّ عن هذه الرايةِ — بل يتحرّر بها
+                 من ازدواجٍ مقيس (لمسةٌ واحدة كانت تُخرج طلبَي RSC). */
+              prefetch={key === "library" && fullOk}
               aria-current={active ? "page" : undefined}
               aria-label={label[key]}
               title={label[key]}

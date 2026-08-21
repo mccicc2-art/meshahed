@@ -36,7 +36,9 @@ export function NavLinks({ locale }: { locale: Locale }) {
           <Link
             key={l.href}
             href={l.href}
-            prefetch={l.href === "/library" && fullOk ? true : undefined}
+            /* `false` صريحةٌ لغير المكتبة — انظر الحجّة الكاملة في
+               `BottomNav`: `undefined` = `auto` = تسخينٌ من الرؤية. */
+            prefetch={l.href === "/library" && fullOk}
             onPointerEnter={() => prewarm(l.href)}
             onFocus={() => prewarm(l.href)}
             aria-current={active ? "page" : undefined}

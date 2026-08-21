@@ -30,6 +30,7 @@ export function MessagesLink({ unread, locale }: { unread: number; locale: Local
   return (
     <Link
       href="/messages"
+      prefetch={false}
       aria-label={has ? t.messagesUnreadAria(unread) : t.communityTabInbox}
       title={t.communityTabInbox}
       className="relative grid place-items-center w-10 h-10 rounded-full text-foreground/80 hover:text-foreground hover:bg-surface-2 active:scale-95 transition"

@@ -35,6 +35,7 @@ export function NavAvatar({
   return (
     <Link
       href="/profile/edit"
+      prefetch={false}
       title={title}
       aria-label={ariaLabel}
       className="shrink-0 rounded-full ring-2 ring-transparent hover:ring-accent transition"

@@ -54,7 +54,7 @@ export async function Navbar() {
           **فكان تفضيلُ الحساب لا ينزل إلى جهازٍ جديد في الصفحة التي
           فُتحت لضبطه.** **والمضيفُ الآن تخطيطُ الجذر** — لا يُلغى. */}
       <div className="relative max-w-6xl mx-auto px-4 h-16 flex items-center gap-2 sm:gap-3">
-        <Link href="/" className="shrink-0" aria-label={t.brand}>
+        <Link href="/" prefetch={false} className="shrink-0" aria-label={t.brand}>
           {/* **الرمزُ وحده في الشريط** (D-256، طلبُ أحمد: «الأيقونة في كل
               الصفحات بدل كلمة لوبز اللي فوق»). **ونقضٌ يُسجَّل**: كان
               السطرُ هنا يقول «الرمزُ سقط من الهوية فالكلمة هي الشعار» —
