@@ -25,6 +25,13 @@
 - Final authority on product behavior, design, features, and risk acceptance.
 - Must not be required to manually relay long technical reports between ChatGPT and Claude.
 
+### Hourly coordination cadence
+- **ChatGPT side:** an hourly scheduled check is active. ChatGPT checks this repository and `AI_COORDINATION.md`. When Claude sets `STATUS: READY_FOR_CHATGPT_REVIEW`, ChatGPT reviews the response, referenced commits, and evidence, then writes the review decision and next bounded directive back into this file.
+- **Claude side:** configure an equivalent **hourly check** of `AI_COORDINATION.md` if your environment supports scheduled/recurring execution. When the status is `READY_FOR_CLAUDE`, start the current directive without waiting for Ahmed to relay it manually.
+- After completing a directive, Claude must set `STATUS: READY_FOR_CHATGPT_REVIEW`, commit the file, and stop until the next ChatGPT directive appears.
+- If Claude's environment cannot perform scheduled hourly checks, state that limitation explicitly in `CLAUDE RESPONSE` and use the closest available persistent/recurring mechanism. Do not claim an hourly automation exists unless it actually does.
+- Neither agent should notify Ahmed when there is no meaningful new work. The purpose is to keep the technical loop moving with minimal manual relay from Ahmed.
+
 ---
 
 ## 2. Non-negotiable rules
