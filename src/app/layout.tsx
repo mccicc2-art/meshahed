@@ -1,7 +1,6 @@
 import { Suspense } from "react";
 import type { Metadata, Viewport } from "next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
-import { PerfProbe } from "@/components/PerfProbe"; // 🔴 مؤقّت — يُحذف بعد جولة الأيفون
 import "./globals.css";
 import { Navbar } from "@/components/Navbar";
 import { PullToRefresh } from "@/components/PullToRefresh";
@@ -287,11 +286,6 @@ export default async function RootLayout({
             ويرسل لنطاقنا نفسه (/_vercel/speed-insights) فلا يوسّع CSP.
             به تُلتقط أي نكسة أداءٍ قادمة بالأرقام لا بالشكوى. */}
         <SpeedInsights />
-        {/* 🔴 مؤقّت — جولةُ قياس الأيفون/PWA. **يُحذف هو وملفّاه بانتهائها.**
-            بوّابةٌ صِرفة: بلا راية `?perf=on` لا مراقبَ ولا مستمعَ ولا
-            عقدةَ DOM ولا طلبَ شبكة، ولوحةُ القياس حزمةٌ كسولةٌ لا تُجلب
-            أصلاً — فلا يتلوّث ما نقيسه بوزن أداة القياس. */}
-        <PerfProbe />
       </body>
     </html>
   );
