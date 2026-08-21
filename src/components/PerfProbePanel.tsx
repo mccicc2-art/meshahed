@@ -236,33 +236,41 @@ export default function PerfProbePanel({ base }: { base: ProbeBaseline }) {
       if (acc.current.firstTap || mine(ev)) return;
       const t = performance.now();
       const started = ev.timeStamp;
+      /* 🔑 يُسجَّل **فوراً** لا داخل إطار: المستمعُ يُرفع في السطر التالي،
+         فلو انتظرنا إطاراً لا يأتي (تبويبٌ خلفيّ · انتقالٌ يوقف الرسم)
+         ضاع القياسُ بلا رجعة ولا حدثَ ثانٍ يعوّضه. زمنُ الرسم وحدَه
+         يُضاف لاحقاً إن جاء الإطار، وإلا بقي مكتوباً أنه لم يُرسم. */
+      const rec: Record<string, unknown> = {
+        عند_ms: ms(t),
+        تأخر_المعالج_ms: ms(t - started),
+        حتى_الرسم_ms: "لم يصل إطارٌ بعد",
+        قبل_الترطيب: t < hydratedAt,
+        ثوان_بعد_الترطيب: +((t - hydratedAt) / 1000).toFixed(2),
+      };
+      acc.current.firstTap = rec;
+      window.removeEventListener("pointerdown", onTap, true);
       requestAnimationFrame(() =>
         requestAnimationFrame(() => {
-          acc.current.firstTap = {
-            عند_ms: ms(t),
-            تأخر_المعالج_ms: ms(t - started),
-            حتى_الرسم_ms: ms(performance.now() - t),
-            قبل_الترطيب: t < hydratedAt,
-            ثوان_بعد_الترطيب: +((t - hydratedAt) / 1000).toFixed(2),
-          };
+          rec.حتى_الرسم_ms = ms(performance.now() - t);
           setTapped(true);
         }),
       );
-      window.removeEventListener("pointerdown", onTap, true);
     };
     window.addEventListener("pointerdown", onTap, true);
 
     const onScroll = (ev: Event) => {
       if (acc.current.firstScroll || mine(ev)) return; // تمريرُ اللوحة ليس تمريرَ الصفحة
       const t = performance.now();
-      requestAnimationFrame(() => {
-        acc.current.firstScroll = {
-          عند_ms: ms(t),
-          حتى_الرسم_ms: ms(performance.now() - t),
-          ثوان_بعد_الترطيب: +((t - hydratedAt) / 1000).toFixed(2),
-        };
-      });
+      const rec: Record<string, unknown> = {
+        عند_ms: ms(t),
+        حتى_الرسم_ms: "لم يصل إطارٌ بعد",
+        ثوان_بعد_الترطيب: +((t - hydratedAt) / 1000).toFixed(2),
+      };
+      acc.current.firstScroll = rec; // يُسجَّل فوراً — انظر تعليقَ اللمسة
       window.removeEventListener("scroll", onScroll, true);
+      requestAnimationFrame(() => {
+        rec.حتى_الرسم_ms = ms(performance.now() - t);
+      });
     };
     window.addEventListener("scroll", onScroll, true);
 
@@ -272,14 +280,16 @@ export default function PerfProbePanel({ base }: { base: ProbeBaseline }) {
         return;
       }
       const t = performance.now();
+      const hidden = acc.current.hiddenAt as number | undefined;
+      const rec: Record<string, unknown> = {
+        أول_رسم_بعد_العودة_ms: "لم يصل إطارٌ بعد",
+        مكثت_في_الخلفية_ث: hidden ? +((t - hidden) / 1000).toFixed(1) : null,
+      };
+      const list = (acc.current.resumes as unknown[]) ?? [];
+      list.push(rec); // يُسجَّل فوراً — انظر تعليقَ اللمسة
+      acc.current.resumes = list.slice(-6);
       requestAnimationFrame(() => {
-        const hidden = acc.current.hiddenAt as number | undefined;
-        const list = (acc.current.resumes as unknown[]) ?? [];
-        list.push({
-          أول_رسم_بعد_العودة_ms: ms(performance.now() - t),
-          مكثت_في_الخلفية_ث: hidden ? +((t - hidden) / 1000).toFixed(1) : null,
-        });
-        acc.current.resumes = list.slice(-6);
+        rec.أول_رسم_بعد_العودة_ms = ms(performance.now() - t);
       });
     };
     document.addEventListener("visibilitychange", onVis);
