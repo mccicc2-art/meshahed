@@ -53,7 +53,7 @@ function leaf(url: string): string {
 }
 
 export default function PerfProbePanel({ base }: { base: ProbeBaseline }) {
-  const { hydratedAt, probeStartMs, baselineJs } = base;
+  const { hydratedAt, probeChunks, exact } = base;
   const [shown, setShown] = useState(false); // 🔑 اللوحةُ لا تُعرض إلا بطلبك
   const [view, setView] = useState<Record<string, unknown> | null>(null);
   const [tapped, setTapped] = useState(false);
@@ -77,27 +77,14 @@ export default function PerfProbePanel({ base }: { base: ProbeBaseline }) {
     );
 
     /* ── عزلُ حِمل المسبار ─────────────────────────────────────────
-       🔑 **بالهويّة لا بالنافذة الزمنيّة.** المحاولةُ الأولى كانت «كلُّ
-       حزمةٍ ظهرت بعد تحرّك المسبار» — فالتقطت حزمةَ تطبيقٍ متأخّرةً
-       (٢٤٧ك.ب) وسكربتَ Speed Insights معها، **فطرحت من التطبيق ما هو
-       من التطبيق.** والصحيحُ أن تعرّف اللوحةُ حزمتَها بنفسها عبر
-       `import.meta.url` — عنوانٌ واحدٌ يقينيّ لا تخمينَ فيه.
-       وإن تعذّر (بناءٌ لا يمرّره) **لا نطرح شيئاً ونقول ذلك صراحةً**،
-       ولا نطرح رقماً قد يكون خاطئاً. */
-    const selfUrl = (() => {
-      try {
-        return typeof import.meta.url === "string" ? import.meta.url : null;
-      } catch {
-        return null;
-      }
-    })();
-
-    const base0 = new Set(baselineJs);
+       🔑 **بهويّةٍ قاطعةٍ لا بنافذةٍ ولا باسمٍ مخمَّن**: البوّابةُ استوردت
+       هذه اللوحةَ بنفسها وسجّلت فرقَ قائمةِ الحزم قبل الاستيراد وبعده،
+       فما وصلنا في `probeChunks` هو ما جلبه ذلك الاستيرادُ وحدَه.
+       وإن خرجت القائمةُ فارغةً **لا يُطرح شيءٌ ويُقال ذلك صراحةً** —
+       رقمٌ خاطئٌ أسوأُ من رقمٍ غائب. */
+    const probeSet = new Set(probeChunks);
     const jsAll = res.filter((r) => leaf(r.name).endsWith(".js"));
-    const candidates = jsAll.filter((r) => !base0.has(r.name) && r.startTime >= probeStartMs);
-    const identified = selfUrl ? jsAll.filter((r) => r.name === selfUrl) : [];
-    const exact = identified.length > 0;
-    const probeJs = exact ? identified : [];
+    const probeJs = jsAll.filter((r) => probeSet.has(r.name));
     const probeUrls = new Set(probeJs.map((r) => r.name));
 
     const kb = (list: PerformanceResourceTiming[]) =>
@@ -170,16 +157,14 @@ export default function PerfProbePanel({ base }: { base: ProbeBaseline }) {
               الحزم: probeJs.map(
                 (r) => `${leaf(r.name)} (${Math.round((r.decodedBodySize || 0) / 1024)}KB)`,
               ),
-              طريقةُ_العزل: "import.meta.url — هويّةٌ يقينيّة، لا نافذةَ زمنٍ ولا اسمَ مخمَّن",
+              طريقةُ_العزل:
+                "فرقُ قائمةِ الحزم حول استيرادِ اللوحة نفسِه — هويّةٌ قاطعة، لا نافذةَ زمنٍ ولا اسمَ مخمَّن",
             }
           : {
-              js_حزم: "غير محدَّد بدقّة",
-              js_decoded_KB: "غير محدَّد بدقّة",
-              مرشَّحون_لم_يُطرحوا: candidates.map(
-                (r) => `${leaf(r.name)} (${Math.round((r.decodedBodySize || 0) / 1024)}KB)`,
-              ),
+              js_حزم: "غير محدَّد",
+              js_decoded_KB: "غير محدَّد",
               طريقةُ_العزل:
-                "تعذّر `import.meta.url` — **لم يُطرح شيء**، والرقمُ ٣ يساوي الخام. المرشَّحون أعلاه للفحص اليدويّ لا للطرح.",
+                "لم يُرجع الاستيرادُ حزمةً جديدة (مدموجةٌ سلفاً؟) — **لم يُطرح شيء**، والرقمُ ٣ يساوي الخام.",
             },
         "٣_التطبيق_بعد_الطرح": {
           js_حزم: jsAll.length - probeJs.length,
@@ -192,7 +177,7 @@ export default function PerfProbePanel({ base }: { base: ProbeBaseline }) {
         مصدر_الحكم: explicit ? "deliveryType (صريح)" : "استدلالٌ من transferSize=0",
       },
     };
-  }, [hydratedAt, probeStartMs, baselineJs]);
+  }, [hydratedAt, probeChunks, exact]);
 
   const refresh = useCallback(() => setView(build()), [build]);
 

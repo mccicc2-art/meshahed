@@ -13,24 +13,26 @@
  * `localStorage` مرّةً ثم ينتهي، والمكوّنُ يعود `null`.
  */
 
-import { useEffect, useState } from "react";
-import dynamic from "next/dynamic";
-
-/* ssr:false — لا يُرسم على الخادم فلا يتغيّر HTML لأحدٍ إطلاقاً.
-   والاستيرادُ كسولٌ: حزمتُه لا تُجلب إلا حين يُرسم فعلاً. */
-const PerfProbePanel = dynamic(() => import("./PerfProbePanel"), { ssr: false });
+import { useEffect, useState, type ComponentType } from "react";
 
 const FLAG = "lz_perf";
 
 export interface ProbeBaseline {
   hydratedAt: number;
-  /** لحظةُ ما قبل بدء جلبِ حزمة اللوحة — بها يُعزل حِملُ المسبار */
-  probeStartMs: number;
-  /** أسماءُ حزم JS الموجودة **قبل** أن يتحرّك المسبار — خطُّ الأساس */
-  baselineJs: string[];
+  /** عناوينُ الحزم التي جلبها استيرادُ اللوحة **وحدَه** — انظر أدناه */
+  probeChunks: string[];
+  /** هل نجح التحديدُ القاطع؟ إن لا، لا يُطرح شيءٌ ويُقال ذلك */
+  exact: boolean;
 }
 
+const jsUrls = () =>
+  performance
+    .getEntriesByType("resource")
+    .filter((r) => r.name.endsWith(".js"))
+    .map((r) => r.name);
+
 export function PerfProbe() {
+  const [Panel, setPanel] = useState<ComponentType<{ base: ProbeBaseline }> | null>(null);
   const [base, setBase] = useState<ProbeBaseline | null>(null);
 
   useEffect(() => {
@@ -38,13 +40,13 @@ export function PerfProbe() {
        الكسولة**: تلك تصل بعد جلبِ حزمتها فتقيس زمنَ نفسِها لا زمنَ
        التطبيق. رقمٌ واحدٌ من `performance.now()`، بلا مستمعٍ ولا مراقب. */
     const hydratedAt = performance.now();
+    let alive = true;
 
-    /* لا setState في جسم التأثير (قاعدةُ React): مؤقّتٌ صفريٌّ يؤجّلها،
-       ويُلغى عند التفكيك فلا يبقى أثرٌ إن رُفع المكوّن باكراً.
+    /* لا setState في جسم التأثير (قاعدةُ React): مؤقّتٌ صفريٌّ يؤجّلها.
        ⚠️ **مؤقّتٌ لا `requestAnimationFrame` عمداً**: الإطاراتُ لا تُرسم
-       في تبويبٍ خلفيّ، فبها كانت البوّابةُ لا تفتح أصلاً إن أُقلع
-       التطبيقُ في الخلفيّة — والمؤقّتُ يجري في الحالين. */
-    const id = window.setTimeout(() => {
+       في تبويبٍ خلفيّ، فبها كانت البوّابةُ لا تفتح إن أُقلع التطبيقُ في
+       الخلفيّة — والمؤقّتُ يجري في الحالين. */
+    const id = window.setTimeout(async () => {
       let on = false;
       try {
         const v = new URLSearchParams(window.location.search).get("perf");
@@ -54,22 +56,35 @@ export function PerfProbe() {
       } catch {
         on = false; // تصفّحٌ خاصٌّ يمنع التخزين — المسبارُ ببساطةٍ لا يعمل
       }
-      if (!on) return;
+      if (!on || !alive) return;
 
-      /* 🔑 خطُّ الأساس يُلتقط **قبل** أن يبدأ جلبُ حزمة اللوحة (الجلبُ
-         يبدأ بالرسم أدناه). كلُّ حزمةٍ جديدةٍ بعد هذه اللحظة مرشّحةٌ
-         لأن تكون حِملَ المسبار — وبها يُطرح من أرقام التطبيق. */
-      const baselineJs = performance
-        .getEntriesByType("resource")
-        .filter((r) => r.name.endsWith(".js"))
-        .map((r) => r.name);
+      /* 🔑 **تحديدُ حِمل المسبار بقوسٍ محكم، لا بنافذةٍ ولا باسمٍ مخمَّن.**
+         نستوردُ اللوحةَ بأنفسنا بدل `next/dynamic` لنملك اللحظتين:
+         قائمةُ الحزم قبل الاستيراد مباشرةً، ثم بعد أن يَعِدَ بالحلّ —
+         **والفرقُ بينهما هو ما جلبه هذا الاستيرادُ وحدَه.**
+         (المحاولةُ الأولى كانت «كلُّ ما ظهر بعد لحظةٍ ما» فالتقطت حزمةَ
+         تطبيقٍ ٢٤٧ك.ب وسكربتَ Speed Insights، ثم `import.meta.url`
+         فأسقطه المُجمِّع — وهذا القوسُ يعمل في كلِّ الأحوال.) */
+      const before = new Set(jsUrls());
+      let mod: { default: ComponentType<{ base: ProbeBaseline }> } | null = null;
+      try {
+        mod = await import("./PerfProbePanel");
+      } catch {
+        return; // تعذّر جلبُ اللوحة — لا مسبارَ ولا أثر
+      }
+      const probeChunks = jsUrls().filter((u) => !before.has(u));
+      if (!alive) return;
 
-      setBase({ hydratedAt, probeStartMs: performance.now(), baselineJs });
+      setBase({ hydratedAt, probeChunks, exact: probeChunks.length > 0 });
+      setPanel(() => mod!.default);
     }, 0);
 
-    return () => window.clearTimeout(id);
+    return () => {
+      alive = false;
+      window.clearTimeout(id);
+    };
   }, []);
 
-  if (!base) return null;
-  return <PerfProbePanel base={base} />;
+  if (!Panel || !base) return null;
+  return <Panel base={base} />;
 }
