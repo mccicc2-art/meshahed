@@ -39,9 +39,12 @@ export function PerfProbe() {
        التطبيق. رقمٌ واحدٌ من `performance.now()`، بلا مستمعٍ ولا مراقب. */
     const hydratedAt = performance.now();
 
-    /* لا setState في جسم التأثير (قاعدةُ React): إطارٌ واحدٌ يؤجّلها،
-       ويُلغى عند التفكيك فلا يبقى أثرٌ إن رُفع المكوّن باكراً. */
-    const id = requestAnimationFrame(() => {
+    /* لا setState في جسم التأثير (قاعدةُ React): مؤقّتٌ صفريٌّ يؤجّلها،
+       ويُلغى عند التفكيك فلا يبقى أثرٌ إن رُفع المكوّن باكراً.
+       ⚠️ **مؤقّتٌ لا `requestAnimationFrame` عمداً**: الإطاراتُ لا تُرسم
+       في تبويبٍ خلفيّ، فبها كانت البوّابةُ لا تفتح أصلاً إن أُقلع
+       التطبيقُ في الخلفيّة — والمؤقّتُ يجري في الحالين. */
+    const id = window.setTimeout(() => {
       let on = false;
       try {
         const v = new URLSearchParams(window.location.search).get("perf");
@@ -62,9 +65,9 @@ export function PerfProbe() {
         .map((r) => r.name);
 
       setBase({ hydratedAt, probeStartMs: performance.now(), baselineJs });
-    });
+    }, 0);
 
-    return () => cancelAnimationFrame(id);
+    return () => window.clearTimeout(id);
   }, []);
 
   if (!base) return null;
