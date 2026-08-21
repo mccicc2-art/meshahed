@@ -77,13 +77,27 @@ export default function PerfProbePanel({ base }: { base: ProbeBaseline }) {
     );
 
     /* ── عزلُ حِمل المسبار ─────────────────────────────────────────
-       **بلا تخمينِ اسم**: حزمُ JS التي لم تكن في خطِّ الأساس وظهرت بعد
-       لحظة تحرّك المسبار. وإن ظهرت حزمةُ تطبيقٍ في تلك النافذة صُنّفت
-       معها — **ولذلك تُسرد بأسمائها وأحجامها** فيراها القارئُ ويحكم،
-       ولا يُخفى شيءٌ خلف رقمٍ واحد. */
+       🔑 **بالهويّة لا بالنافذة الزمنيّة.** المحاولةُ الأولى كانت «كلُّ
+       حزمةٍ ظهرت بعد تحرّك المسبار» — فالتقطت حزمةَ تطبيقٍ متأخّرةً
+       (٢٤٧ك.ب) وسكربتَ Speed Insights معها، **فطرحت من التطبيق ما هو
+       من التطبيق.** والصحيحُ أن تعرّف اللوحةُ حزمتَها بنفسها عبر
+       `import.meta.url` — عنوانٌ واحدٌ يقينيّ لا تخمينَ فيه.
+       وإن تعذّر (بناءٌ لا يمرّره) **لا نطرح شيئاً ونقول ذلك صراحةً**،
+       ولا نطرح رقماً قد يكون خاطئاً. */
+    const selfUrl = (() => {
+      try {
+        return typeof import.meta.url === "string" ? import.meta.url : null;
+      } catch {
+        return null;
+      }
+    })();
+
     const base0 = new Set(baselineJs);
     const jsAll = res.filter((r) => leaf(r.name).endsWith(".js"));
-    const probeJs = jsAll.filter((r) => !base0.has(r.name) && r.startTime >= probeStartMs);
+    const candidates = jsAll.filter((r) => !base0.has(r.name) && r.startTime >= probeStartMs);
+    const identified = selfUrl ? jsAll.filter((r) => r.name === selfUrl) : [];
+    const exact = identified.length > 0;
+    const probeJs = exact ? identified : [];
     const probeUrls = new Set(probeJs.map((r) => r.name));
 
     const kb = (list: PerformanceResourceTiming[]) =>
@@ -149,16 +163,29 @@ export default function PerfProbePanel({ base }: { base: ProbeBaseline }) {
       عودات_من_الخلفية: d.resumes ?? "لم تقع بعد",
       موارد: {
         "١_خام": { js_حزم: jsAll.length, js_decoded_KB: rawKB, كل_الطلبات: res.length },
-        "٢_حِمل_المسبار": {
-          js_حزم: probeJs.length,
-          js_decoded_KB: probeKB,
-          الحزم: probeJs.map((r) => `${leaf(r.name)} (${Math.round((r.decodedBodySize || 0) / 1024)}KB)`),
-          طريقةُ_العزل: "خطُّ أساسٍ التُقط قبل تحرّك المسبار — لا تخمينَ اسم",
-        },
+        "٢_حِمل_المسبار": exact
+          ? {
+              js_حزم: probeJs.length,
+              js_decoded_KB: probeKB,
+              الحزم: probeJs.map(
+                (r) => `${leaf(r.name)} (${Math.round((r.decodedBodySize || 0) / 1024)}KB)`,
+              ),
+              طريقةُ_العزل: "import.meta.url — هويّةٌ يقينيّة، لا نافذةَ زمنٍ ولا اسمَ مخمَّن",
+            }
+          : {
+              js_حزم: "غير محدَّد بدقّة",
+              js_decoded_KB: "غير محدَّد بدقّة",
+              مرشَّحون_لم_يُطرحوا: candidates.map(
+                (r) => `${leaf(r.name)} (${Math.round((r.decodedBodySize || 0) / 1024)}KB)`,
+              ),
+              طريقةُ_العزل:
+                "تعذّر `import.meta.url` — **لم يُطرح شيء**، والرقمُ ٣ يساوي الخام. المرشَّحون أعلاه للفحص اليدويّ لا للطرح.",
+            },
         "٣_التطبيق_بعد_الطرح": {
           js_حزم: jsAll.length - probeJs.length,
           js_decoded_KB: +(rawKB - probeKB).toFixed(1),
           كل_الطلبات: res.length - probeJs.length,
+          موثوقيّة: exact ? "مطروحٌ بهويّةٍ يقينيّة" : "يساوي الخام — لم يُطرح شيءٌ لتعذّر التحديد",
         },
         RSC_تقديراً: rsc,
         من_الكاش: cached,
