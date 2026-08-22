@@ -1582,6 +1582,28 @@ const ar = {
   diaryToday: "اليوم",
   diaryYesterday: "أمس",
   diaryEpisode: (s: number, e: number) => `م${s} · ح${e}`,
+  /* 🆕 **صفحةُ النشاط** (D-537، تصميمُ أحمد) — **بديلةُ اليوميات لا
+     جارتُها**: تلك كانت تعرض المشاهدةَ وحدَها، **وهذه تعرض ما فعلتَه
+     كلَّه** بأربع رقائق. **والفعلُ فعلٌ والاسمُ اسم**: الكلماتُ هنا
+     أفعالٌ مجرّدةٌ يليها الاسمُ غليظاً في الرسم — **ولا جملةَ مركّبةً في
+     `i18n`** كي يبقى العنوانُ قابلاً للتغليظ والربط (سابقةُ D-123). */
+  activityTitle: "النشاط",
+  activityTabWatched: "مشاهدة",
+  activityTabRatings: "تقييمات",
+  activityTabReviews: "آراء",
+  activityThisWeek: "هذا الأسبوع",
+  activityCount: (n: number) =>
+    n === 1 ? "نشاط واحد" : n === 2 ? "نشاطان" : n <= 10 ? `${num(n, "ar")} أنشطة` : `${num(n, "ar")} نشاطاً`,
+  activityEmpty: "ما سجّلتَ شيئاً بعد — أشّر حلقةً أو قيّم عملاً وبيظهر هنا.",
+  actVerbFinished: "أنهيت",
+  actVerbWatched: "شاهدت",
+  actVerbRated: "قيّمت",
+  actVerbReviewed: "راجعت",
+  actVerbAdded: "أضفت",
+  actVerbTo: "إلى",
+  /** مدى الحلقات في يومٍ واحد — «م٢ · ح٣–٧» */
+  actEpisodeRange: (s: number, from: number, to: number) =>
+    from === to ? `م${s} · ح${from}` : `م${s} · ح${from}–${to}`,
   diaryDayCount: (n: number) =>
     n === 1 ? "عمل واحد" : n === 2 ? "عملان" : `${n} أعمال`,
   listsTitle: "القوائم",
@@ -3000,6 +3022,21 @@ const en: Dict = {
   diaryToday: "Today",
   diaryYesterday: "Yesterday",
   diaryEpisode: (s: number, e: number) => `S${s} \u00b7 E${e}`,
+  activityTitle: "Activity",
+  activityTabWatched: "Watched",
+  activityTabRatings: "Ratings",
+  activityTabReviews: "Reviews",
+  activityThisWeek: "This week",
+  activityCount: (n: number) => `${num(n, "en")} ${n === 1 ? "activity" : "activities"}`,
+  activityEmpty: "Nothing logged yet \u2014 tick an episode or rate a title and it lands here.",
+  actVerbFinished: "Finished",
+  actVerbWatched: "Watched",
+  actVerbRated: "Rated",
+  actVerbReviewed: "Reviewed",
+  actVerbAdded: "Added",
+  actVerbTo: "to",
+  actEpisodeRange: (s: number, from: number, to: number) =>
+    from === to ? `S${s} \u00b7 E${from}` : `S${s} \u00b7 E${from}\u2013${to}`,
   diaryDayCount: (n: number) => `${n} title${n === 1 ? "" : "s"}`,
   listsTitle: "Lists",
   listsSub: "Group your titles however you like \u2014 a list for every mood.",
