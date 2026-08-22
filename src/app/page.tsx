@@ -425,6 +425,9 @@ export default async function HomePage() {
              خامسٌ لأجل ترويسة. */
           avatarUrl={profile?.avatar_url ?? null}
           avatarPos={profile?.avatar_pos ?? null}
+          /* 🆕 **والغلافُ من الصفِّ نفسِه** (D-540) — لا نداءَ خامس */
+          coverUrl={profile?.cover_url ?? null}
+          coverPos={profile?.cover_pos ?? null}
           unreadSignals={unreadSignals}
           unreadShares={unreadShares}
           levelPercent={level.percent}
