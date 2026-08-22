@@ -191,6 +191,20 @@ export function TabPager({
    */
   const pager = useCommunityPager();
   const index = pager ? pager.index : -1;
+  /**
+   * 🔴 **الدوالُّ لا الكائن، في الاعتمادات** (D-526).
+   *
+   * **عطلٌ قِيس لحظةَ ولادته**: قيمةُ السياق كائنٌ جديدٌ مع كلِّ تبدّل،
+   * **ومنذ صار فيه `aimed` صار يتبدّل في منتصف الرحلة** — **فيُعاد تركيبُ
+   * أثرَي هذا المكوّن، ويُصفَّر التحويلُ قبل الرسم، فتُقصف الحركةُ في
+   * منتصفها وتُنزع الجارات.** (رُئي في القياس: المسارُ عاد إلى الصفر بعد
+   * إطارٍ من بدء الرحلة، والسحبةُ لم تلتزم.)
+   * **والدوالُّ ثابتةُ الهويّة** (`useCallback`) — **فيُعتمد على ما
+   * يُستعمل فعلاً لا على كلِّ ما في السياق.**
+   */
+  const pagerGo = pager?.go;
+  const pagerAim = pager?.aim;
+  const pagerTakeTop = pager?.takeTopOnCommit;
   const viewport = useRef<HTMLDivElement>(null);
 
   /* **يُعلن للشريط أن اللوحاتِ مركَّبة** — **فلا يَعِد الشريطُ بتبديلٍ
@@ -283,8 +297,8 @@ export function TabPager({
        بكسل** — **ولا حركةَ رأسيّةً تُرى أصلاً.**
        ⚠️ **ولا يقع إلا لتبديلٍ نحن أمرنا به**: الرجوعُ بزرِّ المتصفّح لا
        يرفع الراية، **فلا تُسرق منه استعادةُ الموضع** (D-132). */
-    if (pager?.takeTopOnCommit()) window.scrollTo(0, 0);
-  }, [index, pager]);
+    if (pagerTakeTop?.()) window.scrollTo(0, 0);
+  }, [index, pagerTakeTop]);
 
   useEffect(() => {
     const vp = viewport.current;
@@ -454,7 +468,7 @@ export function TabPager({
       /* ⚠️ **وبلا تصفير**: الإصبعُ على الشاشة يبدأ سحبةً ثانية،
          **وتصفيرُ المستند تحته يقلب موضعَ القراءة في منتصف إيماءة** —
          **والتصفيرُ يقع في نهاية السحبة التالية حيث موضعُه.** */
-      pager?.go(p.i, { scroll: false });
+      pagerGo?.(p.i, { scroll: false });
     };
 
     const onStart = (e: TouchEvent) => {
@@ -577,7 +591,7 @@ export function TabPager({
          في الحركة من الكسوة — عدّادُ الأدوات — يقرأ الوجهة**، **فقيمتُه
          النهائيّة جاهزةٌ قبل أوّل إطارٍ مستقرّ.** (اللوحاتُ والشريطُ
          الأصفر يبقيان على `index`؛ هما في الحركة.) */
-      pager?.aim(target);
+      pagerAim?.(target);
 
       let flipped = false;
       const flip = () => {
@@ -592,7 +606,7 @@ export function TabPager({
         pending.current = null;
         idxRef.current = target;
         /* **والتصفيرُ يُطلب هنا ويقع في الالتزام قبل الرسم** (D-523) */
-        pager?.go(target);
+        pagerGo?.(target);
       };
       /**
        * 🆕 ⚡ **والقلبةُ تقع على نهاية الحركة نفسِها لا على مؤقّتٍ يوازيها**
@@ -666,7 +680,7 @@ export function TabPager({
       releaseGesture("x");
       publish(0);
     };
-  }, [index, hrefsKey, rtl, panes.length, pager]);
+  }, [index, hrefsKey, rtl, panes.length, pagerGo, pagerAim]);
 
   /* **خارجَ الصفّ لا pager**: `?tab=all` و`?tab=news` سطحا رابطٍ بلا
      شريحة (D-219) — **وسحبٌ منهما يقفز بالقارئ إلى مكانٍ لم يدخل منه.** */
