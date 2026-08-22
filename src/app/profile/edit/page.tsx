@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getUser, getProfile } from "@/lib/data";
 import { getT } from "@/lib/locale";
+import { sanitizeSocials } from "@/lib/socials";
 import { EditProfileForm } from "@/components/settings/EditProfileForm";
 
 /**
@@ -32,6 +33,9 @@ export default async function EditProfilePage() {
         coverUrl: p?.cover_url ?? null,
         coverPos: p?.cover_pos ?? 30,
         avatarPos: p?.avatar_pos ?? 50,
+        /* 🆕 **روابطُ التواصل** (D-546) — **منقّاةً عند القراءة أيضاً**:
+           صفٌّ كُتب قبل مصفاةٍ صحّت، أو حُرّر بيدٍ، لا يصل الحقلَ خاماً. */
+        socials: sanitizeSocials(p?.socials),
       }}
     />
   );
