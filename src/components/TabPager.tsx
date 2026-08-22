@@ -283,7 +283,10 @@ export function TabPager({
     const track = vp?.firstElementChild as HTMLElement | null;
     if (!vp || !track) return;
     track.style.transition = "none";
-    track.style.transform = "translate3d(0,0,0)";
+    /* 🆕 **`""` لا `translate3d(0,0,0)`** (D-527): الصفرُ الصريح يُبقي
+       المسارَ طبقةً مركَّبةً في السكون — وهي علّةُ الإطار الأسود أعلاه */
+    track.style.transform = "";
+    track.style.willChange = "";
     vp.style.minHeight = "";
     for (const el of [...track.children] as HTMLElement[]) {
       el.style.top = "";
@@ -355,6 +358,8 @@ export function TabPager({
          **و`top = scrollY` هي بالضبط ما يضعها عند `C` أثناء السحب**
          (‏`vp.rect.top = C − scrollY`، فالمجموعُ `C`). **رقمٌ واحدٌ
          يُشتقّ ولا يُقاس من شيءٍ يتحرّك.** */
+      /* 🆕 **الترقيةُ هنا — مع النيّة لا مع التركيب** (D-527) */
+      track.style.willChange = "transform";
       const top = Math.max(0, Math.round(window.scrollY));
       vp.style.minHeight = `${top + window.innerHeight}px`;
       sides.forEach((el, i) => {
@@ -395,6 +400,12 @@ export function TabPager({
     };
     const disarm = () => {
       vp.style.minHeight = "";
+      /* 🆕 **وتُردّ الترقيةُ مع السكون** (D-527) — إلا إذا كانت إيماءةٌ
+         جديدةٌ قد بدأت قبل أن يُطلق هذا المؤقّت */
+      if (!drag.current || drag.current.lock !== "x") {
+        track.style.transform = "";
+        track.style.willChange = "";
+      }
       sides.forEach((el) => {
         if (getComputedStyle(el).position === "absolute") el.style.visibility = "hidden";
       });
@@ -438,7 +449,8 @@ export function TabPager({
      */
     const reset = () => {
       track.style.transition = "none";
-      track.style.transform = "translate3d(0,0,0)";
+      track.style.transform = "";
+      track.style.willChange = "";
       vp.style.minHeight = "";
       sides.forEach((el) => {
         el.style.top = "";
@@ -701,7 +713,15 @@ export function TabPager({
        **والقصُّ على المحورين يُنهيه** — ولا يخسر شيئاً: لا شيءَ في
        اللوحات يحتاج أن يفيض. */
     <div ref={viewport} className="relative [overflow:clip]">
-      <div className="relative will-change-transform">
+      {/* 🔴 🆕 **ولا `will-change` دائمة** (D-527): كانت تُبقي طبقةً
+          مركَّبةً بارتفاع اللوحة كلِّها (~٧٠٠٠px) **طوال عمر الصفحة** —
+          **وطبقةٌ بهذا الحجم تستنزف ذاكرةَ بلاطات iOS**، فإذا نزل القارئُ
+          عميقاً ثمّ قُلب الفهرسُ وقفز التمريرُ في إطارٍ واحد **رُسمت
+          طبقةُ المستند خلفيّةً سوداءَ إطارين** (مقيسٌ من تسجيل أحمد:
+          الهيدرُ اللاصق يختفي والدوكُ الثابت يبقى — بصمةُ المؤلِّف لا
+          بصمةُ DOM). **والترقيةُ تُطلب عند قفل الإيماءة وتُردّ عند
+          الاستقرار** — الحركةُ لا تخسر شيئاً، والسكونُ لا يدفع شيئاً. */}
+      <div className="relative">
         {panes.map((pane, i) => (
           <div
             key={i}
