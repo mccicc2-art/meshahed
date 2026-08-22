@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useCommunityPager } from "./CommunityPager";
 import { useRouter } from "next/navigation";
 import { setFeedStrangers, setFeedSort, setTalkFollowedOnly, setTranslateEnabled } from "@/lib/actions";
 import { getDict, num, type Locale } from "@/lib/i18n";
@@ -109,7 +110,7 @@ export function CommunityTools({
   locale,
   prefs,
   labels,
-  activeTab = "activity",
+  activeTab: activeTabProp = "activity",
   strangers: strangersInitial,
   feedSort: feedSortInitial = "smart",
   talkFollowedOnly: followedInitial = false,
@@ -156,6 +157,15 @@ export function CommunityTools({
   }
 
   /** عنوانُ قسم الأدوات = اسمُ التبويب المفتوح في الرأس (D-292/D-306) */
+  /* 🆕 **والأدواتُ تتبع التبويبَ المرئيَّ لا قيمةَ الخادم** (D-522):
+     التبويباتُ الثلاثة تُبدَّل في العميل الآن، **وأدواتٌ تصف تبويباً
+     غادره القارئُ تَعِد بما لا تفعل** (D-217). والقيمةُ من الخادم تبقى
+     احتياطاً لِمن لا مزوّدَ له (`?tab=news` و`?tab=all`). */
+  const pager = useCommunityPager();
+  const activeTab =
+    pager && pager.ready && pager.index >= 0
+      ? (pager.keys[pager.index] ?? activeTabProp)
+      : activeTabProp;
   const sectionTitle = labels[activeTab] ?? t.communityToolsTitle;
 
   /* 🔴 🆕 **وزرُّ المجتمع كان صامتاً وحدَه من بين الأربعة** (D-452):
