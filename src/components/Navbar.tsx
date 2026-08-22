@@ -8,8 +8,7 @@ import { NavAvatar } from "./NavAvatar";
 import { NavTitle } from "./NavTitle";
 import { Logo } from "./Logo";
 import { LangFlagMenu } from "./LangFlagMenu";
-import { MessagesLink } from "./MessagesLink";
-import { SignalsLink } from "./SignalsLink";
+import { HeaderTrailing } from "./HeaderTrailing";
 import { buttonClass } from "./ui/Button";
 
 export async function Navbar() {
@@ -107,20 +106,25 @@ export async function Navbar() {
               {/* ⚖️ 🆕 **والجرسُ عاد بجانبه** (D-536، تصميمُ أحمد):
                   **الشارةُ الواحدةُ انقسمت رقمين** — الإشعاراتُ هنا
                   والرسائلُ هناك — **وكلُّ رقمٍ يفتح على ما يعدّه.**
-                  **والترتيبُ جرسٌ ثمّ ظرفٌ ثمّ صورة** كما في تصميمه. */}
-              <SignalsLink unread={unreadSignals} locale={locale} />
-              <MessagesLink unread={unreadMessages} locale={locale} />
-
-              {/* تختفي في الرئيسية وحدها — ترويسة الرئيسية تعرضها كبيرة */}
-              <Suspense fallback={null}>
-                <NavAvatar
-                  src={profile?.avatar_url}
-                  name={displayName}
-                  title={displayName || t.profile}
-                  alt={t.avatarAlt}
-                  ariaLabel={t.profile}
-                />
-              </Suspense>
+                  **والترتيبُ جرسٌ ثمّ ظرفٌ ثمّ صورة** كما في تصميمه.
+                  🆕 **والصفُّ صار مكوّناً واحداً** (D-541): **المسافةُ
+                  والمقاسُ يُكتبان في `HeaderTrailing` مرّةً**، فلا يقفز
+                  الجرسُ ولا الظرفُ بين هذا الشريط وشريط الرئيسية. */}
+              <HeaderTrailing
+                unreadSignals={unreadSignals}
+                unreadShares={unreadMessages}
+                locale={locale}
+              >
+                <Suspense fallback={<span className="w-11 h-11" />}>
+                  <NavAvatar
+                    src={profile?.avatar_url}
+                    name={displayName}
+                    title={displayName || t.profile}
+                    alt={t.avatarAlt}
+                    ariaLabel={t.profile}
+                  />
+                </Suspense>
+              </HeaderTrailing>
 
               {/* زر الخروج صار داخل إعدادات الحساب فقط */}
             </>

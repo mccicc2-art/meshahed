@@ -153,6 +153,7 @@ export function SearchScreen({
             id: r.id,
             mediaType: r.kind === "tv" ? "tv" : "movie",
             title: r.title,
+            titleSecondary: r.titleSecondary,
             year: r.year ?? null,
             poster: r.poster,
             reason: r.reason,
@@ -487,7 +488,16 @@ function TitleRow({ r, t, note }: { r: SearchTitle; t: Dict; note?: string }) {
     <Row href={`/${r.mediaType === "tv" ? "show" : "movie"}/${r.id}`}>
       <Thumb src={r.poster} shape="poster" icon={r.mediaType === "tv" ? "tv" : "film"} />
       <span className="min-w-0 flex-1">
-        <span className="block text-sm font-semibold truncate">{r.title}</span>
+        <span className="block text-sm font-semibold truncate" dir="auto">
+          {r.title}
+        </span>
+        {/* 🆕 **الاسمُ الأصليُّ تحته** (D-544) — **قبل سطرِ السنةِ
+            والنوع** لأنه اسمٌ لا وصف. */}
+        {r.titleSecondary && (
+          <span className="block text-[10px] text-muted truncate" dir="auto">
+            {r.titleSecondary}
+          </span>
+        )}
         <span className="block text-12 text-muted truncate">
           {note ??
             `${r.year ? `${r.year} · ` : ""}${r.mediaType === "tv" ? t.typeSeries : t.typeMovie}`}

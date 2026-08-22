@@ -20,6 +20,8 @@ import { toast, flashError } from "@/lib/toast";
 import { getDict, num, type Locale } from "@/lib/i18n";
 import { Icon, type IconName } from "./Icon";
 import type { ListItem, ListKind } from "@/lib/data";
+import type { TitleState } from "@/lib/libState";
+import { StatusThread } from "./StatusThread";
 import { Sheet, SheetHeader } from "./ui/Sheet";
 import { DetailTabs } from "./DetailTabs";
 import { buttonClass } from "./ui/Button";
@@ -72,6 +74,7 @@ export function ListDetail({
   cover,
   reviews,
   reviewsSlot,
+  libState,
   inLibrary,
   initialPlaylist,
 }: {
@@ -110,16 +113,42 @@ export function ListDetail({
       كانت (قائمةٌ خاصّة أو زائرٌ بلا حساب). */
   reviewsSlot?: React.ReactNode;
   /**
-   * 🆕 **ما في مكتبتك من هذه القائمة** (D-495) — `"tv-123"` → `true`.
+   * ⚖️ 🆕 **حالةُ كلِّ عملٍ عندك لا بولياناً واحداً** (D-542، طلبُ أحمد
+   * بلقطةٍ للقائمة: «البوسترات في اللستات حطّ تحتها خط الأخضر والأزرق
+   * بحيث أعرف موجود عندي أو لا وهل شاهدته أو لا»).
+   *
+   * **كان `Record<string, boolean>` يجيب سؤالاً واحداً** («عندك؟»)
+   * **لأن قارئَه كان زرَّ «+» وحدَه** (D-495). **والسؤالان الآن
+   * أربعة** — وهي بعينها حقولُ `TitleState` التي يقرؤها كلُّ رفٍّ في
+   * التطبيق (D-322). **ونداءُ `getLibState` هو النداءُ نفسُه**، **وما
+   * كان يُرمى بعد قراءة `added` صار يُسلسَل كلُّه**: لا استعلامَ زائد.
+   *
    * **يُحسب في الصفحة مرّةً للقائمة كلِّها ويُسلسَل** (D-205): **ولو
    * سأل كلُّ ملصقٍ عن نفسه لصارت القائمةُ خمسةَ عشرَ استعلاماً.**
-   * **والغيابُ يعني زائراً بلا حساب** — فلا زرَّ إضافةٍ أصلاً.
+   * **والغيابُ يعني نداءً سقط** — فلا خيطَ ولا زرّ (D-063).
+   */
+  libState?: Record<string, TitleState>;
+  /**
+   * ⚠️ **جسرُ دفعةٍ واحدة — يُحذف في كوميتٍ لاحقٍ من هذه الدفعة**
+   * (D-028): **المكوّنُ والصفحةُ في دليلين فكوميتان**، **وكلُّ كوميتٍ
+   * يجب أن يترجم وحدَه** — **والصفحةُ لا تزال تمرّر الاسمَ القديم.**
    */
   inLibrary?: Record<string, boolean>;
   /** 🆕 رايةُ قائمة التشغيل (D-505) — الغيابُ يعني هجرةً لم تُشغَّل فلا صفّ */
   initialPlaylist?: boolean | null;
 }) {
   const t = getDict(locale);
+  /* ⚠️ **جسرُ الدفعة** (D-028) — يُحذف مع البند أعلاه في كوميتٍ لاحق */
+  const lib: Record<string, TitleState> | undefined =
+    libState ??
+    (inLibrary
+      ? Object.fromEntries(
+          Object.entries(inLibrary).map(([k, v]) => [
+            k,
+            { added: v, watched: false, progress: 0, dropped: false },
+          ]),
+        )
+      : undefined);
   const router = useRouter();
   const [pending, start] = useTransition();
   /* حفظ القائمة مرجعاً حيّاً — متفائلٌ مع تراجُع (D-007) */
@@ -456,7 +485,7 @@ export function ListDetail({
           يُقرأ من الموضع قبل أن يُقرأ من الاسم.
           **والصفُّ يُرسم إن وُجد أحدُهما**: قائمةٌ بلا صاحبٍ ظاهر
           تحتفظ بزرّها، **وزرٌّ يختفي لأن اسماً غاب عطلٌ لا ترتيب.** */}
-      {!isOwner && ((owner && (owner.nickname || owner.username)) || !!inLibrary) && (
+      {!isOwner && ((owner && (owner.nickname || owner.username)) || !!lib) && (
         <div className="flex items-center gap-2 mt-3.5">
           {owner && (owner.nickname || owner.username) && (
             <>
@@ -482,7 +511,7 @@ export function ListDetail({
             </>
           )}
 
-          {inLibrary && (
+          {lib && (
             /* ⚖️ 🆕 **زرٌّ ممتلئٌ محلَّ الرقاقة المفرَّغة** (D-538): **هو
                الفعلُ الذي جاء القارئُ لأجله** في قائمةٍ بترتيبِ مشاهدة —
                **والمفرَّغُ يُقرأ خياراً ثانوياً** (D-217). **وms-auto لا
@@ -586,10 +615,15 @@ export function ListDetail({
                      الذي تسكن زاويتُه علامةُ الإزالة (زرّان في زاويةٍ
                      واحدة يجعلان الملصقَ لوحةَ أزرار — D-205). */
                   quickAdd={
-                    inLibrary && !isOwner
-                      ? { added: !!inLibrary[keyOf(it)], locale }
+                    lib && !isOwner
+                      ? { added: !!lib[keyOf(it)]?.added, locale }
                       : undefined
                   }
+                  /* 🆕 **وخيطُ الحالة لصاحب القائمة أيضاً** (D-542):
+                     **زرُّ «+» يُمنع عنه** لأن زاويته فيها علامةُ
+                     الإزالة، **والخيطُ ليس زرّاً** — **وسؤالُ «هل
+                     شاهدتُه؟» يُسأل عن قائمتك كما عن قائمة غيرك.** */
+                  state={lib?.[keyOf(it)]}
                   t={t}
                 />
               ))}
@@ -1205,6 +1239,7 @@ function PosterTile({
   canRemove,
   onRemove,
   quickAdd,
+  state,
   t,
 }: {
   item: ListItem;
@@ -1214,6 +1249,8 @@ function PosterTile({
   onRemove: () => void;
   /** 🆕 D-495 — حالةُ الإضافة ولغةُ القارئ؛ الغيابُ يعني لا زرّ */
   quickAdd?: { added: boolean; locale: Locale };
+  /** 🆕 D-542 — حالُ العمل عندك؛ الغيابُ يعني لا خيط */
+  state?: TitleState;
   t: Dict;
 }) {
   const url = posterUrl(item.poster_path, "w342");
@@ -1271,6 +1308,32 @@ function PosterTile({
                 )}
               </div>
             </>
+          )}
+
+          {/* ===== 🆕 خيطُ الحالة تحت الملصق (D-542) =====
+
+              **طلبُ أحمد: «خط الأخضر والأزرق — موجود عندي أو لا، وهل
+              شاهدته أو لا».** **وهو خيطٌ مبنيٌّ منذ D-229 ومستخرَجٌ
+              منذ D-322**، يرسمه كلُّ رفٍّ في المكتبة واكتشف —
+              **والذي كان ناقصاً أنّ شبكةَ القائمة لا تعرف ما تعرفه
+              المكتبة**: كانت تُمرَّر بولياناً واحداً («عندك؟») لأجل
+              زرِّ «+» وحدَه.
+
+              **ولا وصفةَ ثانية**: `StatusThread` حرفاً — **سماويٌّ
+              عندك، وأخضرُ انتهيت، وأصفرُ بمقدار ما شاهدت، وأحمرُ
+              موقوف** (القاعدة ٣: لونُ نجاحٍ واحد، ولا عائلةَ ألوانٍ
+              ثانية). **وطلبُه لونان لأن سؤالَيه اثنان** — **والخيطُ
+              يجيبهما ويزيد**، بلا استعلامٍ زائد.
+
+              ⚠️ **وبلا `inset`**: هذا الصندوقُ `overflow-hidden`
+              بحوافِّه أصلاً فيقصُّ الخيطَ بنفسه (D-238). ===== */}
+          {state && (
+            <StatusThread
+              saved={state.added}
+              watched={state.watched}
+              progress={state.progress}
+              dropped={state.dropped}
+            />
           )}
         </div>
         <p className="mt-1.5 text-12 leading-tight line-clamp-2">

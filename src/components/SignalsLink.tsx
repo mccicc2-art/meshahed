@@ -32,9 +32,15 @@ export function SignalsLink({ unread, locale }: { unread: number; locale: Locale
       prefetch={false}
       aria-label={has ? t.notifUnreadAria(unread) : t.notifTitle}
       title={t.notifTitle}
-      className="relative grid place-items-center w-10 h-10 rounded-full text-foreground/80 hover:text-foreground hover:bg-surface-2 active:scale-95 transition"
+      /* 🆕 **٤٤ للّمس و٢٤ للعين** (D-543، طلبُ أحمد بالأرقام):
+         **٤٠ كانت تحت الحدّ الأدنى للمسة في إرشادات آبل** (٤٤)،
+         **والأيقونةُ ٢٠ في شريطٍ ارتفاعُه ٦٤ تُقرأ صغيرة.**
+         ⚠️ **والمقاسُ يُكتب هنا لا في شريطٍ بعينه**: هذا المكوّنُ
+         يقرؤه شريطُ الرئيسية والشريطُ العامّ معاً (D-541) —
+         **فتغييرُه هنا يغيّرهما معاً، وهو المطلوب.** */
+      className="relative grid place-items-center w-11 h-11 rounded-full text-foreground/80 hover:text-foreground hover:bg-surface-2 active:scale-95 transition"
     >
-      <Icon name="bell" size={20} />
+      <Icon name="bell" size={24} />
       {has && (
         /* **شارةُ الظرف نفسُها شكلاً وموضعاً** — عائلةٌ واحدة لمعنًى
            واحد («عندك جديدٌ هنا»)، فلا يتعلّم القارئُ لغتين لشيءٍ واحد

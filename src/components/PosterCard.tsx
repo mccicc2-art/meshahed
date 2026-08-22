@@ -22,6 +22,7 @@ const BADGE_BG: Record<BadgeTone, string> = {
 export function PosterCard({
   href,
   title,
+  titleSecondary = null,
   posterPath,
   year,
   badge,
@@ -43,6 +44,12 @@ export function PosterCard({
 }: {
   href: string;
   title: string;
+  /**
+   * 🆕 **السطرُ الثاني في وضع «المحلّي + الأصلي»** (D-544) — **`null`
+   * في الأوضاع الثلاثة الأخرى وحين يتطابق الاسمان**، **فالقرارُ قرارُ
+   * `resolveMediaTitle` لا قرارُ البطاقة** (لا شرطَ متفرّقٌ هنا).
+   */
+  titleSecondary?: string | null;
   posterPath: string | null;
   year?: string;
   badge?: string;
@@ -274,6 +281,18 @@ export function PosterCard({
             dir="auto"
             className="text-12 font-medium leading-tight"
           />
+          {/* 🆕 **الاسمُ الأصليُّ تحته بحجمٍ أصغر** (D-544) — **ولا
+              `MarqueeText` له**: سطرٌ ثانٍ متحرّكٌ فوق سطرٍ متحرّك حركةٌ
+              مزدوجةٌ في كلِّ بطاقةٍ في الشبكة، **والثانويُّ يُقصّ.**
+              **و`dir="auto"` عليه وحدَه** لأنه قد يخالف الأوّل اتّجاهاً. */}
+          {titleSecondary && (
+            <p
+              dir="auto"
+              className="text-[10px] text-muted leading-tight mt-0.5 truncate"
+            >
+              {titleSecondary}
+            </p>
+          )}
           {year && <p className="text-12 text-muted mt-0.5">{year}</p>}
           {/* ⚠️ **والسببُ ليس هنا** — عاد إلى الحجاب داخل الملصق أعلاه */}
         </div>

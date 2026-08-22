@@ -38,7 +38,12 @@ export function NavAvatar({
       prefetch={false}
       title={title}
       aria-label={ariaLabel}
-      className="shrink-0 rounded-full ring-2 ring-transparent hover:ring-accent transition"
+      /* 🆕 **صندوقُها ٤٤ وصورتُها ٣٦** (D-541 ثمّ D-543): **الجرسُ والظرفُ
+         صندوقُهما ٤٠**، **وخانةٌ أخيرةٌ أضيقُ تسحب ما قبلها إلى الطرف**
+         — فيقفز الظرفُ عند كلِّ انتقالٍ من الرئيسية وإليها.
+         **والحلقةُ `ring` لا تدخل الحساب** (ظلٌّ لا هامش) — فالمقاسُ
+         الظاهرُ باقٍ كما كان. */
+      className="shrink-0 grid place-items-center w-11 h-11 rounded-full ring-2 ring-transparent hover:ring-accent transition"
     >
       <Avatar src={src} name={name} size={36} alt={alt} />
     </Link>

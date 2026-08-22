@@ -5,14 +5,23 @@ import { Icon, type IconName } from "./Icon";
 import { Avatar } from "./Avatar";
 import { HomeGreeting } from "./HomeGreeting";
 import { HomeViewSwitch } from "./HomeViewSwitch";
+import { HeaderTrailing } from "./HeaderTrailing";
 import { LogoWordmark } from "./Logo";
-import { MessagesLink } from "./MessagesLink";
-import { SignalsLink } from "./SignalsLink";
 /**
  * 🆕 **خانةُ بطاقة الأرقام — تسكن مع راسمها** (D-497): كانت تُستورد
  * نوعاً من `ProfileHeader`، **وتلك بلا قارئٍ منذ D-438 وحكمُها الحذف**
  * (D-214) — **والنوعُ يُنقل أوّلاً ثم يُحذف الملفّ.**
  */
+/* ===== 🆕 وصفةُ الغلاف — رقمان مكتوبان مرّةً (D-543) =====
+   **حجابُ أحمد بنصِّه**: أسودُ شفّافٌ يمتدّ من رأس الشاشة إلى ما بعد
+   الشريط ثمّ يختفي قبل صفِّ الترحيب. **ولا لونَ ثيميٌّ فيه**: ما فوقه
+   أبيضُ صريحٌ في الثيمين (D-501). */
+const COVER_SCRIM =
+  "linear-gradient(180deg, rgba(0,0,0,0.96) 0%, rgba(0,0,0,0.82) 46%, rgba(0,0,0,0.42) 74%, rgba(0,0,0,0) 100%)";
+
+/** **قناعُ ذوبان الصورة** — تامّةٌ إلى ٦٢٪ (تحت صفِّ الترحيب) ثمّ تتلاشى، فلا حافّةَ قاطعة */
+const COVER_FADE = "linear-gradient(180deg, #000 0%, #000 62%, transparent 100%)";
+
 export interface HeaderStat {
   key: string;
   icon: IconName;
@@ -122,8 +131,17 @@ export function HomeHeader({
            تُغطّي الصورةَ تغطيةً كاملة** والشجرةُ تقول إنها موجودةٌ
            ومحمَّلة. **فالطبقةُ في مستواها الطبيعيّ، وما فوقها يُرفع
            بـ`relative`** — وهو ما تفعله الترويسةُ أصلاً بـ`z-30`. */
-        className="pointer-events-none absolute inset-x-0 top-0 h-[13.5rem] overflow-hidden"
+        /* 🆕 **الارتفاعُ يتبع المنطقةَ الآمنة لا رقماً ثابتاً** (D-543):
+           الشريطُ نفسُه ارتفاعُه `--safe-top + 64px`، **فغلافٌ بارتفاعٍ
+           ثابتٍ يقع تحته على الآيفون ويفيض عنه في المتصفّح.** */
+        className="pointer-events-none absolute inset-x-0 top-0 overflow-hidden"
+        style={{ height: "calc(var(--safe-top) + 12rem)" }}
       >
+        {/* 🆕 **والصورةُ تذوب بقناعٍ لا بطبقةٍ فوقها** (D-543): **حجابٌ
+            ثانٍ إلى لون الخلفية كان يجتمع مع الحجاب الأوّل عند صفِّ
+            الترحيب فيُظلمه مرّتين** — **والقناعُ يُنقص شفافيّةَ الصورة
+            نفسِها** فيظهر ما تحتها بلا أن يُضاف سواد. **وليس مرشّحاً**
+            (`filter`) ولا تغبيشاً: لا خلطَ ألوانٍ ولا تشويه. */}
         <Image
           src={coverUrl}
           alt=""
@@ -131,10 +149,23 @@ export function HomeHeader({
           priority
           sizes="100vw"
           className="object-cover"
-          style={{ objectPosition: `50% ${coverPos ?? 30}%` }}
+          style={{
+            objectPosition: `50% ${coverPos ?? 30}%`,
+            maskImage: COVER_FADE,
+            WebkitMaskImage: COVER_FADE,
+          }}
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/25 via-black/35 to-black/45" />
-        <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-b from-transparent to-[color:var(--background)]" />
+        {/* **حجابٌ واحدٌ أسودُ شفّاف — بنصِّ أرقام أحمد** (D-543): يبدأ
+            ٩٦٪ فوق ساعة النظام، **ويبقى ٨٢٪ إلى ما بعد الشريط**، ثمّ
+            **٤٢٪ عند صفِّ الترحيب فتُقرأ الصورةُ تحته**، ثمّ صفرٌ.
+            **ولا خلفيّةَ للشريط ولا خطَّ سفليٌّ ولا وهج.** */}
+        <div
+          className="absolute inset-x-0 top-0"
+          /* **ينتهي عند `--safe-top + 152px`** — أي بعد قاع الشريط
+             (`--safe-top + 64`) بنحو ثمانية وثمانين بكسلاً: **٨٢٪ لا تزال قائمةً
+             عند قاعه، و٤٢٪ عند سطر الترحيب، وصفرٌ تحته.** */
+          style={{ height: "calc(var(--safe-top) + 9.5rem)", background: COVER_SCRIM }}
+        />
       </div>
     )}
 
@@ -154,20 +185,30 @@ export function HomeHeader({
         **و`chrome-top` كي يختبئ مع النزول** كبقيّة الأشرطة (D-479)،
         **وحشوةُ `--safe-top`** لأنه أوّلُ ما تحت ساعة النظام في
         التطبيق المثبَّت (D-040). ===== */}
-    {/* 🆕 **وخلفيّةُ الشريط تتبع وجودَ الغلاف** (D-540): **صمّاءُ بلا
-        صورة** كما كانت، **وشفّافةٌ بضبابٍ فوقها** — **وهي وصفةُ الشريط
-        السفليّ نفسُها** (لونٌ ممزوجٌ + `backdrop-blur`)، **فلا عائلةَ
-        ثانيةً لسطحٍ يمرّ تحته محتوى.** **والضبابُ يبقيه مقروءاً حين
-        يعود بالتمرير فوق الملصقات** — وهو ما كانت الصمّاءُ تشتريه. */}
+    {/* ⚖️ 🆕 **وخلفيّةُ الشريط تتبع وجودَ الغلاف** (D-540 ثمّ D-543):
+        **صمّاءُ بلا صورة** كما كانت، **ولا شيءَ إطلاقاً فوق الغلاف** —
+        **والحجابُ الذي يجعل أيقوناتِه مقروءةً يرسمه الغلافُ نفسُه**
+        (٩٦٪ عند الحافّة العليا)، **لا سطحٌ ثانٍ تحت الشريط.** */}
     <header
-      className={`chrome-top md:hidden sticky top-0 z-30 -mx-4 px-4 -mt-6 pt-[calc(var(--safe-top)+0.5rem)] pb-2.5 ${
-        coverUrl ? "backdrop-blur-xl" : "bg-[color:var(--background)]"
+      /* ⚖️ 🆕 **ولا تغبيشَ ولا خلفيّةَ فوق الغلاف** (D-543، طلبُ أحمد
+         بالنصّ: «احذف backdrop-filter وblur وأيّ طبقة تسبّب خلط أو
+         تشويه ألوان الغلاف»). **وكان `backdrop-blur-xl` مع لونٍ ممزوج
+         يشتري وضوحَ الأيقونات حين يعود الشريطُ بالتمرير فوق الملصقات**
+         — **والثمنُ أنّ الغلافَ يُرى مغبَّشاً مشوَّهَ اللون في رأس
+         الصفحة، وهو أوّلُ ما تقع عليه العين.** **والمالك رأى الاثنين
+         واختار.**
+         ⚠️ **وما سقط معه يُقال**: الشريطُ الآن شفّافٌ تماماً، **فإن
+         عاد بالتمرير فوق صورةٍ فاتحة صارت أيقوناتُه البيضاءُ على
+         فاتح.** **و`chrome-top` يُخفيه مع النزول** فالنافذةُ ضيّقة —
+         **لكنها ليست معدومة.** */
+      /* 🆕 **وارتفاعُه ارتفاعُ الشريط العامّ بالضبط** (D-543):
+         `10 + 44 + 10 = 64` — **وهو `h-16` في `Navbar` حرفاً.**
+         **فمركزُ الأيقونة `--safe-top + 32` في الشريطين**، ولا يقفز
+         شيءٌ رأسيّاً في الانتقال. **وكانت `0.5rem` تعطي ٣٠ فيزيح
+         بكسلين.** */
+      className={`chrome-top md:hidden sticky top-0 z-30 -mx-4 px-4 -mt-6 pt-[calc(var(--safe-top)+0.625rem)] pb-2.5 ${
+        coverUrl ? "" : "bg-[color:var(--background)]"
       }`}
-      style={
-        coverUrl
-          ? { background: "color-mix(in srgb, var(--background) 40%, transparent)" }
-          : undefined
-      }
     >
       <div className="flex items-center gap-1">
         <Link href="/" prefetch={false} aria-label={t.brand} className="shrink-0 -ms-0.5">
@@ -180,21 +221,33 @@ export function HomeHeader({
           <LogoWordmark size={30} on={coverUrl ? "art" : "surface"} />
         </Link>
 
-        {/* **الأدواتُ في الطرف بترتيب التصميم**: جرسٌ · ظرفٌ · ترس */}
-        <div className="ms-auto flex items-center gap-0.5">
-          <SignalsLink unread={unreadSignals} locale={locale} />
-          <MessagesLink unread={unreadShares} locale={locale} />
-          <Link
-            href="/profile/settings"
-            prefetch={false}
-            aria-label={t.settingsNavHeading}
-            title={t.settingsNavHeading}
-            className={`grid place-items-center w-10 h-10 rounded-full hover:bg-surface-2 active:scale-95 transition ${
-              coverUrl ? "text-white/90 hover:text-white" : "text-foreground/80 hover:text-foreground"
-            }`}
+        {/* 🆕 **والطرفُ صفٌّ واحدٌ مشترك** (D-541، بلاغُ أحمد بلقطتين:
+            «مكان الرسالة والجرس لازم يطابق موقعها في كل الصفحات»):
+            **المسافةُ والمقاسُ يُكتبان في `HeaderTrailing` مرّةً**،
+            **وهذا الشريطُ و`Navbar` يقرآن منها** — **فلا يقفز الجرسُ
+            ٥px ولا الظرفُ ٣ في الانتقال.** **والخانةُ الأخيرة وحدَها
+            تختلف معنًى** (ترسٌ هنا، صورةٌ هناك) **وصندوقُها ٤٠×٤٠
+            في الحالين وإلّا انكسر التطابق.** */}
+        <div className="ms-auto">
+          <HeaderTrailing
+            unreadSignals={unreadSignals}
+            unreadShares={unreadShares}
+            locale={locale}
           >
-            <Icon name="settings" size={20} />
-          </Link>
+            <Link
+              href="/profile/settings"
+              prefetch={false}
+              aria-label={t.settingsNavHeading}
+              title={t.settingsNavHeading}
+              /* 🆕 **٤٤×٤٤ و٢٤ للأيقونة** (D-543) — **نفسُ مقاسِ الجرس
+                 والظرف بالضبط**، فالخانةُ الأخيرة تختلف معنًى لا مقاساً. */
+              className={`shrink-0 grid place-items-center w-11 h-11 rounded-full hover:bg-surface-2 active:scale-95 transition ${
+                coverUrl ? "text-white/90 hover:text-white" : "text-foreground/80 hover:text-foreground"
+              }`}
+            >
+              <Icon name="settings" size={24} />
+            </Link>
+          </HeaderTrailing>
         </div>
       </div>
     </header>
