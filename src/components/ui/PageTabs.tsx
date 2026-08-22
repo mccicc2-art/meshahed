@@ -14,7 +14,14 @@ export interface PageTab {
   /** أيقونةٌ تظهر من `sm:` فصاعداً — تُحذف على الضيّق كي لا يُقصّ النصّ */
   icon?: IconName;
   href?: string;
-  onClick?: () => void;
+  /**
+   * 🆕 **ويُستدعى مع الرابط أيضاً لا بدلاً منه** (D-522): تبويبٌ يبدّل
+   * لوحةً مركّبةً سلفاً **لا يحتاج رحلةَ خادم**، **ولا يجوز أن يفقد
+   * مرساتَه من أجل ذلك** — فتحٌ في تبويبٍ جديد، وضغطةُ الزرّ الأوسط،
+   * ونسخُ العنوان. **فالمرساةُ تبقى، والمعالجُ يمنع الافتراضيَّ حين
+   * يستطيع أن يفعل ما هو أسرع.**
+   */
+  onClick?: (e: React.MouseEvent) => void;
 }
 
 /**
@@ -125,7 +132,13 @@ export function PageTabs({
     );
 
     return tb.href ? (
-      <Link key={tb.key} href={tb.href} aria-current={on ? "page" : undefined} className={cls}>
+      <Link
+        key={tb.key}
+        href={tb.href}
+        aria-current={on ? "page" : undefined}
+        className={cls}
+        onClick={tb.onClick}
+      >
         {body}
       </Link>
     ) : (
