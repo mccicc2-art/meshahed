@@ -243,6 +243,11 @@ export function TabPager({
    */
   const idxRef = useRef(index);
   /**
+   * 🆕 **مُنهي الانزلاق المعوَّض** (D-533) — يحمل دالّةَ إنهاءٍ فوريٍّ
+   * للانزلاق الجاري: لمسةٌ جديدةٌ أو تفكيكٌ ينهيانه في إطارٍ واحد.
+   */
+  const glideCancel = useRef<(() => void) | null>(null);
+  /**
    * ⚠️ **مفتاحٌ نصّيٌّ لا المصفوفة نفسُها** (D-278): الروابطُ تُبنى في كل
    * رسمةٍ فهويّتُها جديدةٌ دائماً — **فالتأثيرُ كان يُعاد تركيبه مع كل
    * رسمة.** ولو وقعت رسمةٌ من مكوّنٍ أبٍ **أثناء** سحبٍ جارٍ لانقطعت
@@ -282,25 +287,89 @@ export function TabPager({
     const vp = viewport.current;
     const track = vp?.firstElementChild as HTMLElement | null;
     if (!vp || !track) return;
+    /* انزلاقٌ سابقٌ لم يكتمل؟ يُنهى فوراً قبل أيِّ حسابٍ جديد */
+    glideCancel.current?.();
     track.style.transition = "none";
-    /* 🆕 **`""` لا `translate3d(0,0,0)`** (D-527): الصفرُ الصريح يُبقي
-       المسارَ طبقةً مركَّبةً في السكون — وهي علّةُ الإطار الأسود أعلاه */
-    track.style.transform = "";
-    track.style.willChange = "";
-    vp.style.minHeight = "";
     for (const el of [...track.children] as HTMLElement[]) {
       el.style.top = "";
       el.style.visibility = "";
     }
     setTabDrag(0);
-    /* 🆕 ⚡ **والتمريرُ يُصفَّر هنا — في التزام القلب نفسِه** (D-523):
-       اللوحةُ الجاية كانت طوال الرحلة عند الموضع الذي ستشغله بعد القلب
-       بالضبط (انظر `armNeighbours`)، **فتصفيرُ المستند في هذا الالتزام
-       يجعل آخرَ إطارٍ من الحركة وأوّلَ إطارٍ بعدها متطابقين بكسلاً
-       بكسل** — **ولا حركةَ رأسيّةً تُرى أصلاً.**
-       ⚠️ **ولا يقع إلا لتبديلٍ نحن أمرنا به**: الرجوعُ بزرِّ المتصفّح لا
-       يرفع الراية، **فلا تُسرق منه استعادةُ الموضع** (D-132). */
-    if (pagerTakeTop?.()) window.scrollTo(0, 0);
+
+    /**
+     * 🔴 🆕 ⚡ **التطبيعُ المنزلقُ المعوَّض — بدل القفزة الصامتة**
+     * (D-533، أمرُ أحمد بعد إقفال تحقيق D-532: «نفّذه»).
+     *
+     * ================= لماذا سقطت القفزةُ نهائيّاً =================
+     *
+     * 📏 **برهانُ الحذف عبر إحدى عشرةَ محاولة** (D-532): كلُّ
+     * `scrollTo` بمئات البكسلات في إطارٍ واحدٍ يرمش حزامُ الشريطين
+     * اللاصقين على iOS — **مهما تبدّل توقيتُها ووجهتُها وطبقاتُها.**
+     * **والذي لم يرمش قطُّ في تاريخ التطبيق كلِّه: التمريرُ المتدرّج.**
+     *
+     * ================= فالتطبيعُ صار تمريراً متدرّجاً — معوَّضاً =================
+     *
+     * في كلِّ إطارٍ يُكتب أمران معاً قبل رسمه: `scrollTo(0, y)`
+     * **و`translateY(y)` على المسار** — **فمجموعُهما ثابتٌ والصورةُ لا
+     * يتحرّك فيها بكسل**، بينما ينزل `y` من العمق إلى الصفر في ~٢٤٠م.ث
+     * بخطواتٍ صغيرةٍ كخطوات إصبعٍ حقيقيّ: **البلاطاتُ تُرسم تدريجيّاً،
+     * والشريطان يبقيان ملتصقَين حتى الخطوة الأخيرة الصغيرة — وهي مسارُ
+     * «قارئٍ يمرّر إلى الرأس» الذي لم يرمش يوماً.**
+     *
+     * - **`minHeight` يُمدّ هنا ويبقى طوالَ الانزلاق** — وإلا قصّ
+     *   المتصفّحُ `scrollY` قسراً لحظةَ قصر اللوحة الجديدة، **وتلك
+     *   قفزةٌ لا نملكها.** (يغطّي السحبَ وضغطةَ الشريط من عمقٍ معاً.)
+     * - **لمسةٌ جديدةٌ تُنهيه فوراً** (`glideCancel` في `onStart`) —
+     *   والحالتان متطابقتان بصريّاً فالإنهاءُ لا يُرى.
+     * - **و`prefers-reduced-motion` يأخذ القفزةَ القديمة**: لا حركةَ
+     *   عنده أصلاً، والرمشةُ النادرة أهونُ من حركةٍ لم يطلبها.
+     * - **والرجوعُ بزرِّ المتصفّح لا يمرّ من هنا** (الرايةُ لا تُرفع)
+     *   **فلا تُسرق استعادةُ الموضع** (D-132).
+     * - **و`""` لا `translate3d(0,0,0)` عند الفراغ** (D-527 بحرفها):
+     *   السكونُ بلا طبقة.
+     */
+    const wantTop = pagerTakeTop?.() === true;
+    const y0 = wantTop ? Math.max(0, Math.round(window.scrollY)) : -1;
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (y0 > 0 && !reduced) {
+      vp.style.minHeight = `${y0 + window.innerHeight}px`;
+      track.style.willChange = "transform";
+      track.style.transform = `translate3d(0,${y0}px,0)`;
+      const D = 240;
+      let start = 0;
+      let raf = 0;
+      const ease = (t: number) => 1 - Math.pow(1 - t, 3);
+      const done = () => {
+        glideCancel.current = null;
+        track.style.transform = "";
+        track.style.willChange = "";
+        vp.style.minHeight = "";
+      };
+      const step = (ts: number) => {
+        if (!start) start = ts;
+        const p = Math.min(1, (ts - start) / D);
+        const y = Math.round(y0 * (1 - ease(p)));
+        /* **الكتابتان في الإطار نفسِه قبل رسمه — فالصورةُ مسمَّرة** */
+        window.scrollTo(0, y);
+        if (p < 1) {
+          track.style.transform = `translate3d(0,${y}px,0)`;
+          raf = requestAnimationFrame(step);
+        } else {
+          done();
+        }
+      };
+      raf = requestAnimationFrame(step);
+      glideCancel.current = () => {
+        cancelAnimationFrame(raf);
+        window.scrollTo(0, 0);
+        done();
+      };
+    } else {
+      track.style.transform = "";
+      track.style.willChange = "";
+      vp.style.minHeight = "";
+      if (y0 >= 0) window.scrollTo(0, 0);
+    }
   }, [index, pagerTakeTop]);
 
   useEffect(() => {
@@ -484,6 +553,10 @@ export function TabPager({
     };
 
     const onStart = (e: TouchEvent) => {
+      /* **انزلاقُ تطبيعٍ جارٍ؟ يُنهى في إطارٍ واحد** (D-533) — الحالتان
+         متطابقتان بصريّاً فلا يُرى الإنهاء، والإيماءةُ تبدأ من مستندٍ
+         مستقرٍّ عند رأسه */
+      glideCancel.current?.();
       flushPending();
       drag.current = null;
       if (e.touches.length !== 1) return;
@@ -682,6 +755,7 @@ export function TabPager({
        الثلاثة — **وتسخينُ ما لا يُجلب نداءٌ بلا قارئ** (D-510). */
 
     return () => {
+      glideCancel.current?.();
       pending.current?.cancel?.();
       timers.forEach((id) => window.clearTimeout(id));
       timers.clear();
