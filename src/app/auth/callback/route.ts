@@ -24,6 +24,13 @@ export async function GET(request: Request) {
     const supabase = await createClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
+      /* 🆕 **تفضيلاتُ الزائر تُدمج هنا لا في أوّل صفحة** (D-545):
+         **قبل أن يرى شاشةً واحدة** — فلا يلمح توصياتٍ بلا تفضيلاته ثمّ
+         تتبدّل تحت عينه. **وسقوطُها لا يُسقط الدخول**، والكوكي يبقى
+         فتُعاد المحاولةُ في الدخول التالي. */
+      const { absorbGuestContentPrefs } = await import("@/lib/actions");
+      await absorbGuestContentPrefs().catch(() => {});
+
       // الوجهة من متغيّر بيئةٍ نتحكّم به لا من ترويسة x-forwarded-host:
       // الترويسات يكتبها العميل، وبناء إعادة التوجيه عليها يفتح باب
       // التوجيه لمضيفٍ يختاره المهاجم بعد نجاح الدخول مباشرةً
