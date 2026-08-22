@@ -66,12 +66,6 @@ const ar = {
      «تابِع المشاهدة»، **ثمّ يفتح أوّلَ عنوان.** **وزرّان يفعلان الشيءَ
      نفسَه إلا خطوةً أخيرة هما بابان لفعلٍ واحد** (القاعدة ٦). */
   listStartWatching: "ابدأ المشاهدة",
-  /* ⚠️ **وهذه الثلاثُ بلا قارئٍ منذ D-538 وتسقط في الرفعة التالية**
-     (D-028/D-214): **المفتاحُ يُحذف بعد قارئه لا معه**، وإلّا سقط
-     الالتزامُ الذي بينهما. */
-  listAddAll: "أضف الكل",
-  listAddAllAria: "أضف كل أعمال القائمة إلى «للمشاهدة»",
-  listAddAllNone: "كلُّها عندك أصلاً",
   listStartWatchingAria: "أضف القائمة إلى «تابِع المشاهدة» وافتح أوّل عنوان",
   trendingWeek: "رائج هذا الأسبوع",
   // تلميحات لمرة واحدة (م٣) + رقاقة النية في البحث
@@ -1935,9 +1929,6 @@ const en: Dict = {
   recoFromGenre: "From your genres",
   listAddAllDone: (n: number) => `${n} added to To watch`,
   listStartWatching: "Start Watching",
-  listAddAll: "Add all",
-  listAddAllAria: "Add every title in this list to To watch",
-  listAddAllNone: "You already have them all",
   listStartWatchingAria: "Add this list to Continue Watching and open the first title",
   trendingWeek: "Trending this week",
   hintDiscover:
