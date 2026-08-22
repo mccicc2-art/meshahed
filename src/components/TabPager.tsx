@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import { tap } from "@/lib/haptics";
 import { setTabDrag, claimGesture, releaseGesture, gestureTakenBy } from "@/lib/tabDrag";
 import { useBeforePaint } from "@/lib/useBeforePaint";
-import { coverChromeAcrossScroll, revealChrome } from "./ChromeAutoHide";
+import { revealChrome } from "./ChromeAutoHide";
 import { useCommunityPager } from "./CommunityPager";
 
 /**
@@ -162,6 +162,90 @@ function warmPane(pane: HTMLElement) {
   }
 }
 
+/**
+ * iOS rasterizes a transformed element to the element's full paint bounds.
+ * Community activity can be thousands of pixels tall, so promoting the normal
+ * track during a swipe exhausts compositor tiles and tears unrelated fixed UI.
+ * During the gesture the track becomes a viewport-sized fixed stage; the
+ * document keeps its original height in the inert viewport underneath.
+ */
+function enterViewportStage(
+  vp: HTMLElement,
+  stage: HTMLElement,
+  track: HTMLElement,
+  sides: HTMLElement[],
+  active: number,
+) {
+  const scrollY = Math.max(0, Math.round(window.scrollY));
+  const rect = vp.getBoundingClientRect();
+  const documentTop = Math.round(rect.top + scrollY);
+  const stageHeight = window.innerHeight;
+
+  vp.style.height = `${Math.max(vp.offsetHeight, scrollY + stageHeight)}px`;
+  vp.style.minHeight = "";
+
+  stage.style.position = "fixed";
+  stage.style.top = "0";
+  stage.style.left = `${rect.left}px`;
+  stage.style.width = `${rect.width}px`;
+  stage.style.height = `${stageHeight}px`;
+  stage.style.overflow = "hidden";
+  stage.style.zIndex = "1";
+
+  track.style.height = `${stageHeight}px`;
+
+  sides.forEach((el, i) => {
+    el.style.position = "absolute";
+    el.style.left = "0";
+    el.style.right = "0";
+    el.style.width = "auto";
+    el.style.top = "0";
+    el.style.height = `${stageHeight}px`;
+    el.style.overflow = "hidden";
+    el.style.contain = "strict";
+    const content = el.firstElementChild as HTMLElement | null;
+    if (content) {
+      content.style.display = "block";
+      content.style.position = "relative";
+      content.style.top = `${i === active ? rect.top : documentTop}px`;
+    }
+  });
+}
+
+function leaveViewportStage(
+  vp: HTMLElement,
+  stage: HTMLElement,
+  track: HTMLElement,
+  sides: HTMLElement[],
+) {
+  vp.style.height = "";
+  vp.style.minHeight = "";
+  stage.style.position = "";
+  stage.style.top = "";
+  stage.style.left = "";
+  stage.style.width = "";
+  stage.style.height = "";
+  stage.style.overflow = "";
+  stage.style.zIndex = "";
+  track.style.height = "";
+  sides.forEach((el) => {
+    el.style.position = "";
+    el.style.left = "";
+    el.style.right = "";
+    el.style.width = "";
+    el.style.top = "";
+    el.style.height = "";
+    el.style.overflow = "";
+    el.style.contain = "";
+    const content = el.firstElementChild as HTMLElement | null;
+    if (content) {
+      content.style.display = "";
+      content.style.position = "";
+      content.style.top = "";
+    }
+  });
+}
+
 /** هل بدأت اللمسةُ داخل شيءٍ يمرّر أفقيّاً؟ (D-274) */
 function insideXScroller(node: Element | null): boolean {
   for (let n: Element | null = node; n && n !== document.body; n = n.parentElement) {
@@ -206,6 +290,8 @@ export function TabPager({
   const pagerAim = pager?.aim;
   const pagerTakeTop = pager?.takeTopOnCommit;
   const viewport = useRef<HTMLDivElement>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
+  const trackRef = useRef<HTMLDivElement>(null);
 
   /* **يُعلن للشريط أن اللوحاتِ مركَّبة** — **فلا يَعِد الشريطُ بتبديلٍ
      محلّيٍّ قبل أن يكون له ما يبدّله** (D-217). */
@@ -280,24 +366,21 @@ export function TabPager({
   useBeforePaint(() => {
     idxRef.current = index;
     const vp = viewport.current;
-    const track = vp?.firstElementChild as HTMLElement | null;
-    if (!vp || !track) return;
+    const stage = stageRef.current;
+    const track = trackRef.current;
+    if (!vp || !stage || !track) return;
     track.style.transition = "none";
     /* 🆕 **`""` لا `translate3d(0,0,0)`** (D-527): الصفرُ الصريح يُبقي
        المسارَ طبقةً مركَّبةً في السكون — وهي علّةُ الإطار الأسود أعلاه */
     track.style.transform = "";
     track.style.willChange = "";
-    vp.style.minHeight = "";
-    for (const el of [...track.children] as HTMLElement[]) {
-      el.style.top = "";
+    const sides = [...track.children] as HTMLElement[];
+    leaveViewportStage(vp, stage, track, sides);
+    for (const el of sides) {
       el.style.visibility = "";
     }
     setTabDrag(0);
-    /* The destination is already rendered in this layout commit. Snapshot its
-       chrome before the document jump, so WebKit can rerasterize the sticky
-       bars underneath without exposing a blank compositor frame. */
     if (pagerTakeTop?.()) {
-      if (Math.round(window.scrollY) > 0) coverChromeAcrossScroll();
       window.scrollTo(0, 0);
     }
   }, [index, pagerTakeTop]);
@@ -306,12 +389,25 @@ export function TabPager({
     const vp = viewport.current;
     if (!vp || index < 0 || panes.length < 2) return;
 
-    const track = vp.firstElementChild as HTMLElement | null;
-    if (!track) return;
+    const stage = stageRef.current;
+    const track = trackRef.current;
+    if (!stage || !track) return;
     const list = hrefsKey.split("|");
     const sides = [...track.children] as HTMLElement[];
     const sign = rtl ? 1 : -1;
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    /* The effect can be recreated without an index change (locale/direction or
+       pane metadata). Restore every imperative gesture style before attaching
+       the new listener set; the layout effect owns the same reset on flips. */
+    track.style.transition = "none";
+    track.style.transform = "";
+    track.style.willChange = "";
+    leaveViewportStage(vp, stage, track, sides);
+    sides.forEach((el) => {
+      el.style.visibility = "";
+    });
+    setTabDrag(0);
 
     /** **الشريطُ يمشي مع اللوحة** — رقمٌ واحدٌ يقرؤه رأسُ التبويبات */
     const publish = setTabDrag;
@@ -353,17 +449,16 @@ export function TabPager({
          في آخر إطار.**
 
          **والعلاجُ أن يكون الموضعان واحداً**: بعد القلب يكون المستندُ
-         عند الصفر واللوحةُ في التدفّق، **فرأسُها عند `C`** —
-         **و`top = scrollY` هي بالضبط ما يضعها عند `C` أثناء السحب**
-         (‏`vp.rect.top = C − scrollY`، فالمجموعُ `C`). **رقمٌ واحدٌ
-         يُشتقّ ولا يُقاس من شيءٍ يتحرّك.** */
-      /* 🆕 **الترقيةُ هنا — مع النيّة لا مع التركيب** (D-527) */
+         عند الصفر واللوحةُ في التدفّق، **فرأسُها عند `C`**. وفي مسرح
+         النافذة المحدود أدناه تُعاد كتابة المعادلة نفسها مباشرةً:
+         `documentTop = vp.rect.top + scrollY = C` — بلا اعتماد على
+         عنصرٍ متحوّل ولا رقم ثابت. */
+      /* 🆕 **الترقيةُ هنا — مع النيّة لا مع التركيب** (D-527)، لكن
+         حدودها صارت نافذة الهاتف لا ارتفاع الصفحة كلها. */
+      enterViewportStage(vp, stage, track, sides, idxRef.current);
       track.style.willChange = "transform";
-      const top = Math.max(0, Math.round(window.scrollY));
-      vp.style.minHeight = `${top + window.innerHeight}px`;
       sides.forEach((el, i) => {
         if (i === idxRef.current) return;
-        el.style.top = `${top}px`;
         el.style.visibility = "visible";
         /* 🆕 ⚡ **ومع التسليح تُسخَّن صورُ شاشته الأولى** (D-525): **هذه
            هي اللحظةُ التي صار فيها السحبُ نيّةً لا احتمالاً**، **وأمامها
@@ -398,12 +493,12 @@ export function TabPager({
       timers.add(id);
     };
     const disarm = () => {
-      vp.style.minHeight = "";
       /* 🆕 **وتُردّ الترقيةُ مع السكون** (D-527) — إلا إذا كانت إيماءةٌ
          جديدةٌ قد بدأت قبل أن يُطلق هذا المؤقّت */
       if (!drag.current || drag.current.lock !== "x") {
         track.style.transform = "";
         track.style.willChange = "";
+        leaveViewportStage(vp, stage, track, sides);
       }
       sides.forEach((el) => {
         if (getComputedStyle(el).position === "absolute") el.style.visibility = "hidden";
@@ -429,35 +524,6 @@ export function TabPager({
       track.style.transition = ms ? `transform ${ms}ms ${EASE}` : "none";
       track.style.transform = `translate3d(${dx}px,0,0)`;
     };
-
-    /**
-     * **الصفرُ الأوّل — وهو ما كان ناقصاً** (D-278، بلاغُ أحمد: «بعض
-     * الأحيان تختفي»).
-     *
-     * **العطل:** حين ينجح السحبُ **يطير المسارُ بعرض شاشةٍ كاملة** ثم
-     * تُفتح الصفحة. **وReact يعيد استعمالَ العُقَد نفسِها** (نفسُ
-     * الصفحة، تبويبٌ آخر) — **والأنماطُ التي كتبتُها بيدي على `style`
-     * ليست ملكَه فلا يمسحها.** فتبقى `translate3d(-390px)` على مسارٍ
-     * محتواه الجديد سليم: **صفحةٌ مرسومةٌ بالكامل خارج الشاشة** — وهي
-     * «تختفي» التي رآها أحمد. **ولا تقع دائماً**: حين تُبنى العُقَد من
-     * جديد تولد نظيفة، فالعطلُ متقطّعٌ بطبعه — **وهذا أخطرُ من عطلٍ
-     * ثابت.**
-     *
-     * **والقاعدة:** ما يُكتب على `style` بيدٍ خارج React **يُمسح بيدٍ
-     * عند كل تبدّل** — **ولا يُنتظر منه أن يُنظّف نفسَه.**
-     */
-    const reset = () => {
-      track.style.transition = "none";
-      track.style.transform = "";
-      track.style.willChange = "";
-      vp.style.minHeight = "";
-      sides.forEach((el) => {
-        el.style.top = "";
-        el.style.visibility = "";
-      });
-      setTabDrag(0);
-    };
-    reset();
 
     /**
      * 🆕 **قلبةٌ معلَّقةٌ تُفرَغ قبل أن تبدأ لمسةٌ جديدة** (D-522).
@@ -718,33 +784,39 @@ export function TabPager({
           عميقاً ثمّ قُلب الفهرسُ وقفز التمريرُ في إطارٍ واحد **رُسمت
           طبقةُ المستند خلفيّةً سوداءَ إطارين** (مقيسٌ من تسجيل أحمد:
           الهيدرُ اللاصق يختفي والدوكُ الثابت يبقى — بصمةُ المؤلِّف لا
-          بصمةُ DOM). **والترقيةُ تُطلب عند قفل الإيماءة وتُردّ عند
-          الاستقرار** — الحركةُ لا تخسر شيئاً، والسكونُ لا يدفع شيئاً. */}
-      <div className="relative">
-        {panes.map((pane, i) => (
-          <div
-            key={i}
-            aria-hidden={i !== index}
-            /* **المفتوحةُ في التدفّق وحدَها** فهي التي تعطي الصفحةَ
+          بصمةُ DOM). والتسجيل اللاحق أثبت أن ترقيتها المؤقتة بقيت كبيرة
+          أثناء الرحلة نفسها فمزقت شرائط من الشاشة كلها. لذلك الترقية
+          الآن داخل مسرح ثابت بارتفاع النافذة؛ تُطلب عند قفل الإيماءة
+          وتُرد عند الاستقرار، ولا تُركّب صفحة طويلة في المؤلف أصلاً. */}
+      <div ref={stageRef} className="relative" data-pager-stage>
+        <div ref={trackRef} className="relative" data-pager-track>
+          {panes.map((pane, i) => (
+            <div
+              key={i}
+              aria-hidden={i !== index}
+              /* **المفتوحةُ في التدفّق وحدَها** فهي التي تعطي الصفحةَ
                ارتفاعَها، **والجاراتُ مطلقاتٌ مخفيّاتٌ حتى تُلمَس** —
                ولا صندوقَ تمريرٍ ثانٍ في الصفحة (انظر رأس الملفّ). */
-            className={i === index ? "" : "absolute inset-x-0 top-0 invisible"}
-            /* **`calc` لأن الإزاحةَ عرضٌ وفجوة** (D-281): النسبةُ تُقاس
+              className={i === index ? "" : "absolute inset-x-0 top-0 invisible"}
+              /* **`calc` لأن الإزاحةَ عرضٌ وفجوة** (D-281): النسبةُ تُقاس
                على عرض العنصر نفسِه، **والفجوةُ بكسلاتٌ ثابتةٌ فوقها** —
                فلا تنكمش الفجوةُ على الضيّق ولا تتضخّم على العريض. */
-            style={
-              i === index
-                ? undefined
-                : {
-                    transform: `translate3d(calc(${(i - index) * (rtl ? -100 : 100)}% + ${
-                      (i - index) * (rtl ? -GAP : GAP)
-                    }px),0,0)`,
-                  }
-            }
-          >
-            {pane}
-          </div>
-        ))}
+              style={
+                i === index
+                  ? undefined
+                  : {
+                      transform: `translate3d(calc(${(i - index) * (rtl ? -100 : 100)}% + ${
+                        (i - index) * (rtl ? -GAP : GAP)
+                      }px),0,0)`,
+                    }
+              }
+            >
+              <div className="contents" data-pager-content>
+                {pane}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
