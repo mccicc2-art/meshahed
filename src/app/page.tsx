@@ -1361,14 +1361,14 @@ async function HomeBody({
                   {t.recapTitle}
                 </h2>
                 <Link
-                  href="/diary"
+                  href="/activity"
                   className="text-xs text-accent hover:brightness-110 transition"
                 >
                   {t.seeAll}
                 </Link>
               </div>
               <Link
-                href="/diary"
+                href="/activity"
                 prefetch={false}
                 className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-surface p-4 hover:border-accent/50 active:scale-[0.99] transition"
               >
