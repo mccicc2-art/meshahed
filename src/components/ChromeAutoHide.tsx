@@ -67,14 +67,12 @@ let revealNow: (() => void) | null = null;
 export function revealChrome() {
   revealNow?.();
 }
-
 export function ChromeAutoHide() {
   const pathname = usePathname();
 
-  /* حزامُ أمانِ شاشة الإقلاع في المتصفّح (عطلُ آيفون ٢٠ أغسطس): التطبيق
-     المثبّت يخفيها قبل أول رسم لأن iOS يملك splash أصلية. الأثر يعمل بعد
-     الترطيب حتماً — فلو أعاد React في المتصفّح رسم `#lz-launch`
-     بلا صنف الإذابة، أذابه هذا النداء بدل أن يعلق فوق الصفحة.
+  /* حزامُ أمانِ شاشة الإقلاع (عطلُ آيفون ٢٠ أغسطس): الأثرُ يعمل بعد
+     الترطيب حتماً — فلو أعاد React رسمَ الجذر وأعاد معه `#lz-launch`
+     بلا صنفِ الإذابة، أذابه هذا النداءُ بدل أن يعلق فوق التطبيق.
      والدالّةُ يعرّفها سكربتُ القشرة (`window.__lzMelt`) وهي idempotent. */
   useEffect(() => {
     (window as Window & { __lzMelt?: () => void }).__lzMelt?.();
