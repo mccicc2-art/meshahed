@@ -11,6 +11,7 @@ import { getDict, type Locale } from "@/lib/i18n";
 import { SITE_URL } from "@/lib/site";
 import { Avatar } from "../Avatar";
 import { Icon } from "../Icon";
+import { SOCIALS, cleanHandle, type Socials } from "@/lib/socials";
 import { Alert } from "../ui/Alert";
 import { SettingsPageLayout } from "./SettingsPageLayout";
 import { SettingsRow } from "./SettingsRow";
@@ -23,6 +24,16 @@ type Snapshot = {
   nickname: string;
   username: string;
   bio: string;
+  /**
+   * 🆕 **روابطُ التواصل** (D-546) — **داخل اللقطة لا خارجها**: زرُّ
+   * الحفظ يستيقظ بتغيّرها كما يستيقظ بتغيّر الاسم، **وحوارُ «تعديلاتٌ
+   * لم تُحفظ» يحرسها** — **وحقلٌ خارج اللقطة يُفقد بلا إنذار.**
+   *
+   * ⚠️ **واختياريّةٌ في النوع** (D-028): **النموذجُ في `settings`
+   * والصفحةُ في `app/profile/edit` — دليلان فكوميتان**، **والكوميتُ
+   * الأوّل تقرؤه الصفحةُ القديمةُ التي لا تمرّرها.**
+   */
+  socials?: Socials;
   avatarUrl: string | null;
   coverUrl: string | null;
   coverPos: number;
@@ -72,6 +83,7 @@ export function EditProfileForm({
   const [nickname, setNickname] = useState(initial.nickname);
   const [username, setUsername] = useState(initial.username);
   const [bio, setBio] = useState(initial.bio);
+  const [socials, setSocials] = useState<Socials>(initial.socials ?? {});
   const [avatarUrl, setAvatarUrl] = useState(initial.avatarUrl);
   const [coverUrl, setCoverUrl] = useState(initial.coverUrl);
   const [coverPos, setCoverPos] = useState(initial.coverPos);
@@ -97,7 +109,9 @@ export function EditProfileForm({
     avatarUrl !== base.avatarUrl ||
     coverUrl !== base.coverUrl ||
     coverPos !== base.coverPos ||
-    avatarPos !== base.avatarPos;
+    avatarPos !== base.avatarPos ||
+    /* **مقارنةٌ بالقيمة لا بالمرجع** — الكائنُ يُعاد بناؤه مع كلِّ حرف */
+    SOCIALS.some((sp) => (socials[sp.key] ?? "") !== (base.socials?.[sp.key] ?? ""));
 
   /* ===== الرفع ===== منقولٌ بحرفه من `ProfileForm`: نفسُ المخزن ونفسُ
      الحدّ (٢ ميجابايت) ونفسُ حذفِ السابق — **وملفٌّ قديمٌ يبقى في المخزن
@@ -175,7 +189,7 @@ export function EditProfileForm({
   function save() {
     setError(null);
     if (usernameInvalid) return setError(t.usernameShort);
-    const next: Snapshot = { nickname, username, bio, avatarUrl, coverUrl, coverPos, avatarPos };
+    const next: Snapshot = { nickname, username, bio, avatarUrl, coverUrl, coverPos, avatarPos, socials };
     start(async () => {
       try {
         await updateProfile({
@@ -187,6 +201,13 @@ export function EditProfileForm({
           coverPos,
           avatarPos,
           favoriteGenres: genres,
+          /* **يُرسل خاماً ويُنقّى في الفعل** (D-177): الواجهةُ تُعين
+             وتُنبّه، **والكاتبُ هو الحارس** — ومن لصق رابطاً كاملاً
+             يُقشَّر هناك لا هنا. */
+          socials: SOCIALS.reduce<Record<string, string>>((acc, sp) => {
+            acc[sp.key] = socials[sp.key] ?? "";
+            return acc;
+          }, {}),
         });
         /* **الخطُّ الأساسُ يتقدّم بعد النجاح وحدَه**: لو تقدّم قبله لأطفأ
            زرَّ الحفظ على تعديلٍ لم يصل — **وأسوأُ من فشلٍ ظاهرٍ فشلٌ
@@ -412,6 +433,78 @@ export function EditProfileForm({
               </p>
             )}
           </div>
+
+          {/* ===== 🆕 حساباتُ التواصل (D-546) =====
+
+              **طلبُ أحمد: «تحت كتابة النِّك نيم أماكنُ مخصّصةٌ لكتابة
+              حساب تويتر وسناب شات وإنستقرام وفيسبوك».** **وموضعُها
+              بعد المعرّف مباشرةً** — **هي معرّفاتُك في أماكنَ أخرى**،
+              فتسكن مع معرّفك هنا لا مع النبذة ولا في صفحةٍ ثالثة.
+
+              **وصفٌّ لكلِّ منصّةٍ بنفس شكلِ صفِّ المعرّف** (اسمُ المنصّة
+              مكانَ العنوان، و`@` بادئةً ثابتة) — **ولا عائلةَ حقولٍ
+              ثانية** (القاعدة ٣). **وسقفُ الحروف سقفُ المنصّة نفسِها**
+              فلا يُكتب ما لا يقبله موقعُها.
+
+              ⚠️ **ولا أيقوناتِ علاماتٍ تجاريّة هنا**: مجموعةُ الأيقونات
+              واحدةٌ في التطبيق (القاعدة ٣) **وليست فيها شعاراتُ منصّات**
+              — **وإضافةُ أربعةِ شعاراتٍ لأجل نموذجٍ مكتوبِ التسميات
+              عائلةٌ ثانيةٌ بلا مكسب.** **ومكانُها صفُّ الملفّ حين يصل
+              تصميمُه.**
+
+              ⚠️ **و`dir="ltr"` على الحقل**: المعرّفاتُ لاتينيّةٌ دائماً،
+              **وحقلٌ يتبع اتّجاهَ الصفحة يقفز فيه المؤشّرُ عند أوّل
+              حرف** (وهو نفسُ سببِ `dir="ltr"` في حقل المعرّف أعلاه). ===== */}
+          {SOCIALS.map((sp) => {
+            const value = socials[sp.key] ?? "";
+            /* **تنبيهٌ لا منع**: الحقلُ يقبل ما يُكتب، **ويقول إن كان
+               لا يصلح** — **ومنعُ الكتابة حرفاً بحرفٍ يمنع اللصق نفسَه**
+               (رابطٌ ملصوقٌ يمرّ بحالاتٍ غير صالحةٍ قبل أن يكتمل). */
+            const bad = value.trim() !== "" && cleanHandle(sp.key, value) === null;
+            return (
+              <div key={sp.key} className="px-4 py-3.5">
+                <label
+                  className="block text-12 font-semibold text-muted mb-1.5"
+                  htmlFor={`ep-social-${sp.key}`}
+                >
+                  {sp.label}
+                </label>
+                <div className="flex items-center gap-1" dir="ltr">
+                  <span className="text-[16px] text-muted">@</span>
+                  <input
+                    id={`ep-social-${sp.key}`}
+                    value={value}
+                    onChange={(e) =>
+                      setSocials((prev) => ({ ...prev, [sp.key]: e.target.value }))
+                    }
+                    maxLength={120}
+                    placeholder={sp.placeholder}
+                    dir="ltr"
+                    inputMode="text"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    className="flex-1 min-w-0 bg-transparent text-[16px] outline-none text-left placeholder:text-[color:var(--disabled)]"
+                  />
+                </div>
+                {bad ? (
+                  <p className="text-12 text-[color:var(--error)] mt-1.5" dir="ltr">
+                    {t.socialInvalid}
+                  </p>
+                ) : (
+                  /* **ما سيُحفظ فعلاً، حين يختلف عمّا كُتب** — نفسُ
+                     وصفةِ `willSaveAs` في حقل المعرّف: **من لصق رابطاً
+                     يرى المعرّفَ الذي استُخرج منه قبل أن يحفظ.** */
+                  value.trim() !== "" &&
+                  cleanHandle(sp.key, value) !== value.trim() && (
+                    <p className="text-12 text-muted mt-1.5" dir="ltr">
+                      {t.willSaveAs(cleanHandle(sp.key, value) ?? "—")}
+                    </p>
+                  )
+                )}
+              </div>
+            );
+          })}
 
           <div className="px-4 py-3.5">
             <div className="flex items-baseline justify-between gap-2 mb-1.5">
