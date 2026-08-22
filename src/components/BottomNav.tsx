@@ -154,7 +154,9 @@ export function BottomNav({
 
   /* صفحات التفاصيل والسجلّ تُنسب إلى المكتبة: المستخدم في عمق التطبيق
      يحتاج مرساةً — تبويبٌ لا يضيء يقرأ وكأن الشريط تعطّل */
-  const LIBRARY_PREFIXES = ["/library", "/show/", "/movie/", "/stats", "/diary", "/lists", "/ratings"];
+  /* 🆕 **و`/activity` وجهةٌ داخل المكتبة** (D-537) — **والمرساةُ تضيء
+   حيث جاء القارئُ منه**؛ و`/diary` يبقى لأنه تحويلةٌ حيّة. */
+const LIBRARY_PREFIXES = ["/library", "/show/", "/movie/", "/stats", "/activity", "/diary", "/lists", "/ratings"];
   // للبحث تبويبه الآن، فصفحته لم تعد تُنسب إلى «اكتشف»
   const isActive = (href: string) =>
     href === "/"

@@ -30,11 +30,15 @@ import { getDict, type Locale } from "@/lib/i18n";
  * باسم العمل. **فما لا يُطابِق يبقى بلا عنوان** — والصفحاتُ العميقة تحمل
  * أسماءها بنفسها (`ThreadTopBar` · `DetailTopBar` · ترويسةُ الغلاف).
  */
-const TITLES: Record<string, "library" | "news" | "people" | "search"> = {
+const TITLES: Record<string, "library" | "news" | "people" | "search" | "activity"> = {
   "/library": "library",
   "/news": "news",
   "/people": "people",
   "/search": "search",
+  /* 🆕 **والنشاطُ صفحةٌ باسمها** (D-537) — **ولها فتاتُ رجوعٍ إلى
+     المكتبة تحت الشريط**، فالشريطُ يقول أين أنت والفتاتُ يقول من أين
+     جئت. **وهما سؤالان لا سؤالٌ مكرّر** (حجّةُ D-258). */
+  "/activity": "activity",
 };
 
 export function NavTitle({ locale }: { locale: Locale }) {
@@ -50,7 +54,9 @@ export function NavTitle({ locale }: { locale: Locale }) {
         ? t.navNews
         : key === "people"
           ? t.navPeople
-          : t.navSearch;
+          : key === "activity"
+            ? t.activityTitle
+            : t.navSearch;
 
   return (
     /* **مركزةٌ بالمطلق لا بالتدفّق**: طرفا الشريط غيرُ متساويي العرض
