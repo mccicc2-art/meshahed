@@ -293,5 +293,15 @@ export function themeCss(t: Theme) {
        فالثيمُ الذي لم يعلن درجتَه يرث افتراضَ `globals.css` */
     (v.disabled ? `--disabled:${v.disabled};` : "") +
     (v["logo-invert"] ? `--logo-invert:${v["logo-invert"]};` : "");
-  return `:root{--background:${v.background};--surface:${v.surface};--surface-2:${v["surface-2"]};--foreground:${v.foreground};--muted:${v.muted};--accent:${v.accent};--accent-2:${v["accent-2"]};--border:${v.border};--on-accent:${v["on-accent"]};--on-accent-2:${v["on-accent-2"]};--glow-a:${t.glowA};--glow-b:${t.glowB};--brand-1:${b[0]};--brand-2:${b[1]};--brand-3:${b[2]};--elevated:${v.elevated};--divider:${v.divider};--surface-inverse:${v["surface-inverse"]};--on-surface-inverse:${v["on-surface-inverse"]};${semantic}}`;
+  /* 🔴 🆕 **`color-scheme` — قماشُ المتصفّح نفسُه** (D-532، برقُ الإقلاع
+     والدخول الأبيض): iOS يرسم «قماشَ الوكيل» — لا صفحتَنا — في الفجوات
+     التي لا HTML مرسوماً فيها: بين انقضاء splash النظام وأوّل رسم، وبين
+     مستندٍ ومستندٍ في التنقّل الكامل، وعند العودة من دخول Google.
+     **ولونُه الافتراضيُّ أبيض** — وهو البرقُ بعينه، **ولا تصميمَ شاشةِ
+     إقلاعٍ يستطيع تغطيتَه لأنه يظهر قبل أن يوجد HTML أصلاً** (ولهذا نجا
+     من تصميمَي الشاشة كليهما). **و`color-scheme` هي أداةُ المنصّة
+     المخصَّصةُ لهذا القماش بالذات** — فيصير داكناً مع الثيمات الداكنة
+     وفاتحاً مع النهاريّ. */
+  const scheme = t.id === "daylight" ? "light" : "dark";
+  return `:root{color-scheme:${scheme};--background:${v.background};--surface:${v.surface};--surface-2:${v["surface-2"]};--foreground:${v.foreground};--muted:${v.muted};--accent:${v.accent};--accent-2:${v["accent-2"]};--border:${v.border};--on-accent:${v["on-accent"]};--on-accent-2:${v["on-accent-2"]};--glow-a:${t.glowA};--glow-b:${t.glowB};--brand-1:${b[0]};--brand-2:${b[1]};--brand-3:${b[2]};--elevated:${v.elevated};--divider:${v.divider};--surface-inverse:${v["surface-inverse"]};--on-surface-inverse:${v["on-surface-inverse"]};${semantic}}`;
 }
