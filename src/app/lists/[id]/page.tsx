@@ -19,7 +19,7 @@ import { ListReviews } from "@/components/ListReviews";
 import { getT } from "@/lib/locale";
 import { BackCrumb } from "@/components/BackButton";
 import { ListDetail } from "@/components/ListDetail";
-import { getLibState } from "@/lib/libState";
+import { getLibState, type TitleState } from "@/lib/libState";
 import { localizeRows } from "@/lib/localize";
 import { buttonClass } from "@/components/ui/Button";
 
@@ -178,18 +178,21 @@ export default async function ListPage({ params }: { params: Promise<{ id: strin
 
   /* 🆕 **حالةُ المكتبة لهذه القائمة — نداءٌ واحدٌ لا نداءٌ لكلِّ ملصق**
      (D-495/D-205): `getLibState` يقرأ المتابعاتِ والمشاهَداتِ مرّةً،
-     **ونُسلسِل منها بولياناً واحداً لكلِّ عنصر** — المكوّنُ عميلٌ فلا
-     يعبر الحدَّ إلا ما يُسلسَل (D-235).
-     ⚠️ **ولصاحب القائمة لا يُحسب**: زاويةُ ملصقه فيها علامةُ الإزالة. */
-  const inLibrary = isOwner
-    ? undefined
-    : await (async () => {
-        const lib = await getLibState().catch(() => null);
-        if (!lib) return undefined;
-        const map: Record<string, boolean> = {};
-        for (const it of items) map[`${it.media_type}-${it.tmdb_id}`] = lib.of(it.tmdb_id, it.media_type).added;
-        return map;
-      })();
+     **ونُسلسِل منها حالَ كلِّ عنصر** — المكوّنُ عميلٌ فلا يعبر الحدَّ
+     إلا ما يُسلسَل (D-235).
+
+     ⚖️ 🆕 **والحالُ كاملةٌ لا بوليان، وللمالك أيضاً** (D-542، طلبُ
+     أحمد: «خط الأخضر والأزرق تحت البوستر»): **كان يُرمى كلُّ شيءٍ إلا
+     `added` ولا يُحسب للمالك أصلاً** — **وحجّةُ استثنائه كانت زرَّ
+     «+»** الذي لا يُرسم له، **والخيطُ ليس زرّاً.** **والنداءُ هو
+     النداءُ نفسُه** فلا استعلامَ زائد. */
+  const libState = await (async () => {
+    const lib = await getLibState().catch(() => null);
+    if (!lib) return undefined;
+    const map: Record<string, TitleState> = {};
+    for (const it of items) map[`${it.media_type}-${it.tmdb_id}`] = lib.of(it.tmdb_id, it.media_type);
+    return map;
+  })();
 
   return (
     <div>
@@ -227,7 +230,7 @@ export default async function ListPage({ params }: { params: Promise<{ id: strin
         initialPlaylist={
           isOwner && data.list.is_playlist !== undefined ? !!data.list.is_playlist : null
         }
-        inLibrary={inLibrary}
+        libState={libState}
         cover={{
           backdrop: data.list.cover_backdrop ?? null,
           tmdbId: data.list.cover_tmdb_id ?? null,
