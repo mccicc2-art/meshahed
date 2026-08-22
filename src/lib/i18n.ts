@@ -280,6 +280,10 @@ const ar = {
   searchByDesc: "بحث بالوصف",
   searchByDescSub: "صِف قصةً أو جوّاً أو مشهداً",
   searchMemberRole: "عضو",
+  /* **و«عرض الكل» بنصّها لا بـ`seeAll` العامّة**: تلك «الكل ←»،
+     **ورقاقةٌ اسمُها «الكل» تقف فوقها بثلاثة أسطر** — **وكلمتان
+     متطابقتان لفعلين مختلفين في شاشةٍ واحدة تُقرآن واحداً** (القاعدة ٦). */
+  searchSeeAll: "عرض الكل",
   searchClear: "مسح البحث",
   searchAllResults: (q: string) => `عرض كل النتائج عن «${q}» ←`,
   searchResultsFor: (q: string, n: number) =>
@@ -2039,6 +2043,7 @@ const en: Dict = {
   searchByDesc: "Search by description",
   searchByDescSub: "Describe a story, mood, or scene",
   searchMemberRole: "Member",
+  searchSeeAll: "See all",
   searchClear: "Clear search",
   searchAllResults: (q: string) => `See all results for “${q}” →`,
   searchResultsFor: (q: string, n: number) => `Results for “${q}” — ${n} found`,
