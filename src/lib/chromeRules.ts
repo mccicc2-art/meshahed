@@ -65,6 +65,11 @@ export function hidesAppHeader(pathname: string): boolean {
   return (
     pathname === "/profile/edit" ||
     pathname === "/stats" ||
+    /* 🆕 **والبحثُ صفحةٌ كاملة تُفتح فوق التطبيق** (D-534، تصميمُ أحمد):
+       ترويستُها رجوعٌ واسم (`SettingsHeader`)، **وشريطُ التطبيق يحمل حقلَ
+       بحثٍ ثانياً وجرساً وصورة** — **حقلا بحثٍ في شاشةِ بحثٍ واحدة هو
+       العطلُ بعينه** (القاعدة ٦، وحجّةُ D-462/D-493 بحرفها). */
+    pathname === "/search" ||
     pathname.startsWith("/profile/settings")
   );
 }
