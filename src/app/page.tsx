@@ -103,13 +103,24 @@ export default async function HomePage() {
      صفوف الحلقات التفصيلية تُقرأ لاحقاً لمسلسل واحد فقط — صاحب
      «الحلقة التالية». والزائر بلا كوكي لا يدفع استعلاماً واحداً:
      القرّاء يعودون فارغين قبل أي رحلة. */
+  /* ⚖️ 🆕 **وموضعُ الأفلام غادر الموجةَ الحاجبة — لا نداءَه** (جولة ٢٢
+     أغسطس): **`movie_progress` كان العضوَ الوحيدَ في هذه الموجة الذي
+     لا تقرأه القشرةُ أصلاً** — لا عدّادَ رأسٍ ولا اسمَ ولا بوّابةَ
+     تحويل، **وقارئُه الوحيدُ `HomeBody` خلف Suspense**. فالنداءُ
+     يُطلَق هنا في اللحظة نفسِها — **فلا رحلةَ تتأخّر ولا تُكرَّر** —
+     ثمّ يُمرَّر وعداً يُنتظر حيث يُقرأ.
+     🔑 **وهو آمنٌ بلا `catch` هنا لأن الدالّة لا ترفض أصلاً**:
+     `getAllMovieProgress` تلفّ جسمَها بـ`try/catch` وتعيد `[]` —
+     فوعدٌ غيرُ مُنتظَرٍ لحظةَ `redirect` أو صفحةِ الزائر لا يُخلّف
+     رفضاً معلّقاً. **ولو صارت ترمي يوماً، هذا السطرُ هو ما ينكسر.** */
+  const movieProgressPromise = getAllMovieProgress();
+
   const [
     user,
     followRows,
     summary,
     watchedMovies,
     profile,
-    movieProgress,
     myRatings,
   ] = await Promise.all([
     getUser(),
@@ -117,7 +128,6 @@ export default async function HomePage() {
     getWatchSummary(),
     getWatchedMovies(),
     getProfile(),
-    getAllMovieProgress(),
     getMyRatings(),
     /* ⚖️ وعدّادا البريد سقطا من هنا (D-502): الشريطُ العلويّ يعدّهما
        لنفسه — استعلامٌ لا يرسم شيئاً ضريبةٌ تُدفع في كلِّ فتحة. */
@@ -400,7 +410,7 @@ export default async function HomePage() {
           summary={summary}
           watchedMovieIds={watchedMovieIds}
           profile={profile}
-          movieProgress={movieProgress}
+          movieProgress={movieProgressPromise}
           prefs={prefs}
           watchedByShow={watchedByShow}
           lastWatchedOrder={lastWatchedOrder}
@@ -474,7 +484,8 @@ async function HomeBody({
   summary: Awaited<ReturnType<typeof getWatchSummary>>;
   watchedMovieIds: Set<number>;
   profile: Awaited<ReturnType<typeof getProfile>>;
-  movieProgress: Awaited<ReturnType<typeof getAllMovieProgress>>;
+  /** وعدٌ لا مصفوفة: أُطلق في `HomePage` وانتُظر هنا (جولة ٢٢ أغسطس) */
+  movieProgress: ReturnType<typeof getAllMovieProgress>;
   prefs: ReturnType<typeof sanitizeHomePrefs>;
   watchedByShow: Map<number, number>;
   lastWatchedOrder: number[];
@@ -549,6 +560,7 @@ async function HomeBody({
     savedLists,
     myPlaylists,
     listedMovieIds,
+    movieProgressRows,
   ] = await Promise.all([
     // أسماء المكتبة وملصقاتها بلغة الواجهة لا بلغة يوم المتابعة
     localizeFollows(followRows, locale),
@@ -612,6 +624,9 @@ async function HomeBody({
     prefs.order.includes("continue")
       ? getMyListedMovieIds().catch(() => new Set<number>())
       : Promise.resolve(new Set<number>()),
+    /* 🆕 **موضعُ الأفلام يُنتظر هنا** — والنداءُ انطلق في `HomePage`
+       قبل الموجة الأولى، **فهذا انتظارُ وعدٍ طائرٍ لا رحلةٌ جديدة.** */
+    movieProgress,
   ]);
 
   /* استبدالُ الأغلفة في مصدرٍ واحد بعد الترجمة: بطاقات «أكمل» و«ابدأ»
@@ -898,7 +913,7 @@ async function HomeBody({
   });
 
   // ===== أفلامي: الموضع المحفوظ يصير شريط تقدّم، والمشاهَد يمتلئ =====
-  const progressById = new Map(movieProgress.map((m) => [m.movie_tmdb_id, m]));
+  const progressById = new Map(movieProgressRows.map((m) => [m.movie_tmdb_id, m]));
   const myMovies = movieFollows
     .map((f) => {
       const prog = progressById.get(f.tmdb_id);
