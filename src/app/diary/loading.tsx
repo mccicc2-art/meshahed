@@ -1,5 +1,4 @@
-import { ListPageSkeleton } from "@/components/Skeletons";
-
+/** تحويلةٌ لا صفحة — **وهيكلٌ لِما لا يُرسم يومضُ بلا سبب** (D-046) */
 export default function Loading() {
-  return <ListPageSkeleton rows={7} />;
+  return null;
 }
