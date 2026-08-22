@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { getDict, type Locale } from "@/lib/i18n";
 import { Icon, type IconName } from "./Icon";
 import { Avatar } from "./Avatar";
@@ -42,6 +43,8 @@ export function HomeHeader({
   displayName,
   avatarUrl,
   avatarPos,
+  coverUrl,
+  coverPos,
   unreadSignals = 0,
   unreadShares = 0,
   stats,
@@ -53,6 +56,17 @@ export function HomeHeader({
   /** ⚖️ 🆕 **يُقرأ مرّةً أخرى** (D-536): الصورةُ عادت إلى صفّ الترحيب */
   avatarUrl?: string | null;
   avatarPos?: number | null;
+  /**
+   * 🆕 **غلافُ ملفّك خلفَ ترويسة الرئيسية** (D-540، طلبُ أحمد: «صورة
+   * الخلفية في البروفايل أبغاها تكون هنا أيضاً»).
+   *
+   * **ولا نداءَ جديد**: `profiles` تُقرأ للصفحة أصلاً وفيها العمودان
+   * (D-470). **وغيابُه يعني ألّا شيء** — لا تدرّجَ بديلاً ولا سطحاً
+   * رماديّاً (D-034/D-222): **ترويسةُ الرئيسية تعمل بلا صورةٍ منذ
+   * D-434، فلا تُخترع لها خلفيّة.**
+   */
+  coverUrl?: string | null;
+  coverPos?: number | null;
   /** 🆕 **عدّادان لا مجموع** (D-536) — لكلِّ بابٍ رقمُه */
   unreadSignals?: number;
   unreadShares?: number;
@@ -81,6 +95,43 @@ export function HomeHeader({
 
        **والباقي هنا محتوًى يجري مع الصفحة** كما ثبّت D-479. */
     <>
+    {/* ===== 🆕 الغلافُ خلفَ الترويسة (D-540) =====
+
+        **ولماذا طبقةٌ مطلقةٌ بلا غلافٍ يحملها:** صفُّ العلامة `sticky`،
+        **وأيُّ حاويةٍ بارتفاعه تصير سقفاً لالتصاقه** (قاعدةُ
+        `HeaderShell` بحرفها). **وهذه الطبقةُ لا أبَ موضوعاً لها**،
+        فتُرسى إلى صندوق الاحتواء الابتدائيّ — **أي رأسُ المستند بعرض
+        الشاشة** — **وهو بالضبط ما يريده غلافٌ يخرج عن الهوامش**، ولا
+        يمسّ التصاقَ الشريط بحرف.
+
+        **والوصفةُ وصفةُ غلاف الملفّ نفسُها** (`‎/u/[username]`): صورةٌ
+        `fill` بموضعٍ رأسيٍّ يختاره صاحبُها، **ثمّ حجابٌ متدرّج**،
+        **ثمّ ذوبانٌ إلى لون الخلفية في الأسفل**. **ولا نظامَ بصريٌّ
+        ثانٍ لغلافٍ واحد** (القاعدة ٦).
+
+        ⚠️ **والذوبانُ يقع قبل صفِّ الترحيب لا بعده**: تحته نصٌّ بألوان
+        الثيم (وثيمُ النهار فاتح)، **ونصٌّ ثيميٌّ على صورةٍ يُقرأ في
+        ثيمٍ ويختفي في آخر** (D-501). **فما يقف على الصورة هو الشريطُ
+        وحدَه، وهو أبيضُ صريحٌ في الثيمين.** ===== */}
+    {coverUrl && (
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[13.5rem] overflow-hidden"
+      >
+        <Image
+          src={coverUrl}
+          alt=""
+          fill
+          priority
+          sizes="100vw"
+          className="object-cover"
+          style={{ objectPosition: `50% ${coverPos ?? 30}%` }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/25 via-black/35 to-black/45" />
+        <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-b from-transparent to-[color:var(--background)]" />
+      </div>
+    )}
+
     {/* ===== ⚖️ 🆕 صفُّ العلامة وأدواتُها — عادَ إلى الرئيسية (D-536)
         =====
 
@@ -97,13 +148,30 @@ export function HomeHeader({
         **و`chrome-top` كي يختبئ مع النزول** كبقيّة الأشرطة (D-479)،
         **وحشوةُ `--safe-top`** لأنه أوّلُ ما تحت ساعة النظام في
         التطبيق المثبَّت (D-040). ===== */}
-    <header className="chrome-top md:hidden sticky top-0 z-30 -mx-4 px-4 -mt-6 pt-[calc(var(--safe-top)+0.5rem)] pb-2.5 bg-[color:var(--background)]">
+    {/* 🆕 **وخلفيّةُ الشريط تتبع وجودَ الغلاف** (D-540): **صمّاءُ بلا
+        صورة** كما كانت، **وشفّافةٌ بضبابٍ فوقها** — **وهي وصفةُ الشريط
+        السفليّ نفسُها** (لونٌ ممزوجٌ + `backdrop-blur`)، **فلا عائلةَ
+        ثانيةً لسطحٍ يمرّ تحته محتوى.** **والضبابُ يبقيه مقروءاً حين
+        يعود بالتمرير فوق الملصقات** — وهو ما كانت الصمّاءُ تشتريه. */}
+    <header
+      className={`chrome-top md:hidden sticky top-0 z-30 -mx-4 px-4 -mt-6 pt-[calc(var(--safe-top)+0.5rem)] pb-2.5 ${
+        coverUrl ? "backdrop-blur-xl" : "bg-[color:var(--background)]"
+      }`}
+      style={
+        coverUrl
+          ? { background: "color-mix(in srgb, var(--background) 40%, transparent)" }
+          : undefined
+      }
+    >
       <div className="flex items-center gap-1">
         <Link href="/" prefetch={false} aria-label={t.brand} className="shrink-0 -ms-0.5">
           {/* **الكلمةُ المرسومة لا الرمز** — هي علامةُ الرئيسية في
               تصميم أحمد، **والرمزُ يبقى للشريط الضيّق في بقيّة
               الصفحات** حيث يجاوره عنوانُ الصفحة. */}
-          <LogoWordmark size={30} />
+          {/* **والعلامةُ على فنٍّ لا تتبع الثيم** (D-405): `on="art"`
+              يمنع قلبَها في الثيم النهاريّ — **فوق الصورة هي بيضاءُ
+              دائماً**، وبلا صورةٍ تتبع الثيم كما كانت. */}
+          <LogoWordmark size={30} on={coverUrl ? "art" : "surface"} />
         </Link>
 
         {/* **الأدواتُ في الطرف بترتيب التصميم**: جرسٌ · ظرفٌ · ترس */}
@@ -115,7 +183,9 @@ export function HomeHeader({
             prefetch={false}
             aria-label={t.settingsNavHeading}
             title={t.settingsNavHeading}
-            className="grid place-items-center w-10 h-10 rounded-full text-foreground/80 hover:text-foreground hover:bg-surface-2 active:scale-95 transition"
+            className={`grid place-items-center w-10 h-10 rounded-full hover:bg-surface-2 active:scale-95 transition ${
+              coverUrl ? "text-white/90 hover:text-white" : "text-foreground/80 hover:text-foreground"
+            }`}
           >
             <Icon name="settings" size={20} />
           </Link>
