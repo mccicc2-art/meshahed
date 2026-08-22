@@ -4,6 +4,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { redirect } from "next/navigation";
 import { after } from "next/server";
+/* 🔴 مؤقّت — جولةُ قياسِ حاجز HomeBody. يُحذف في نفس الجولة. */
+import { headers } from "next/headers";
 import { getDict, type Locale } from "@/lib/i18n";
 import { RailSkeleton } from "@/components/Skeletons";
 import {
@@ -547,6 +549,27 @@ async function HomeBody({
         .slice(0, 16)
     : [];
 
+  /* ═══════════ 🔴 مسبارٌ مؤقّت — يُحذف في نفس الجولة ═══════════
+     **بوّابةُ ترويسةٍ لا رابط**: الطلبُ العاديُّ لا يحملها أبداً، ولا
+     متصفّحٌ يرسلها بتنقّلٍ عاديّ — فلا مستخدمَ يسجّل شيئاً ولو صادف
+     الرابط. ولا يُسجَّل إلا **اسمُ العضو وأزمنتُه**: لا معرّف، لا عنوان،
+     لا بيانات حساب. ولا كتابةَ ولا استعلامَ جديد. */
+  const __m: { n: string; s: number; d?: number; e?: number; ok?: number; c?: number; k?: number; p?: number }[] | null =
+    (await headers()).get("x-lz-m") === "1" ? [] : null;
+  // eslint-disable-next-line react-hooks/purity -- 🔴 مسبارٌ مؤقّت (يُحذف في نفس الجولة)
+  const __t0 = performance.now();
+  const __tag = <T,>(n: string, q: Promise<T>, meta?: { c?: number; k?: number; p?: number }): Promise<T> => {
+    if (!__m) return q;
+    // eslint-disable-next-line react-hooks/purity -- 🔴 مسبارٌ مؤقّت
+    const rec = { n, s: +(performance.now() - __t0).toFixed(1), ...meta };
+    __m.push(rec);
+    return q.then(
+      (v) => { const now = performance.now(); Object.assign(rec, { d: +(now - __t0 - rec.s).toFixed(1), e: +(now - __t0).toFixed(1), ok: 1 }); return v; },
+      (err) => { const now = performance.now(); Object.assign(rec, { d: +(now - __t0 - rec.s).toFixed(1), e: +(now - __t0).toFixed(1), ok: 0 }); throw err; },
+    );
+  };
+  /* ═══════════════════ نهايةُ المسبار المؤقّت ═══════════════════ */
+
   const [
     follows,
     bootstrapDetails,
@@ -563,13 +586,13 @@ async function HomeBody({
     movieProgressRows,
   ] = await Promise.all([
     // أسماء المكتبة وملصقاتها بلغة الواجهة لا بلغة يوم المتابعة
-    localizeFollows(followRows, locale),
-    Promise.all(bootstrapIds.map((id) => getTv(id).catch(() => null))),
-    Promise.all(movieIdsNeedingDate.map((id) => getMovie(id).catch(() => null))),
-    prefs.order.includes("recap")
+    __tag("localizeFollows", localizeFollows(followRows, locale)),
+    __tag("bootstrapDetails", Promise.all(bootstrapIds.map((id) => getTv(id).catch(() => null))), { k: bootstrapIds.length }),
+    __tag("fetchedMovieDetails", Promise.all(movieIdsNeedingDate.map((id) => getMovie(id).catch(() => null))), { k: movieIdsNeedingDate.length }),
+    __tag("recapHist", prefs.order.includes("recap")
       ? getWatchHistory(300).catch(() => [])
-      : Promise.resolve(null),
-    Promise.all(
+      : Promise.resolve(null), { c: prefs.order.includes("recap") ? 1 : 0 }),
+    __tag("earlyExtra", Promise.all(
       earlyContinueIds.map(async (id) => {
         const [tv, keys] = await Promise.all([
           getTv(id).catch(() => null),
@@ -587,47 +610,50 @@ async function HomeBody({
           runtime: tv?.episode_run_time?.[0] ?? null,
         };
       }),
-    ),
+    ), { k: earlyContinueIds.length }),
     /* ⚖️ **و«الرائج» غادر هذه الموجة** (جولة ٢٠ أغسطس): كان أبطأ عضوٍ
        فيها — نداءَ TMDB الوحيد الذي لا يخصّ مكتبتك فلا يكون في الكاش
        غالباً — **فيحكم وحدَه متى تظهر بطاقاتُ «تابِع المشاهدة» كلُّها.**
        صار قسماً مستقلاً (`TrendingSection`) يبثّ حين يجهز، وحارسُ
        D-321 معه حيث ذهب. */
     // العناوين بلغة الواجهة لا بلغة يوم التقييم (قاعدة D-048)
-    topRatedRaw.length
+    __tag("topRated", topRatedRaw.length
       ? localizeRows(topRatedRaw, locale).catch(() => topRatedRaw)
-      : Promise.resolve(topRatedRaw),
-    prefs.order.includes("lists")
+      : Promise.resolve(topRatedRaw), { c: topRatedRaw.length ? 1 : 0 }),
+    __tag("myListsRaw", prefs.order.includes("lists")
       ? getMyLists().catch(() => [])
-      : Promise.resolve([]),
+      : Promise.resolve([]), { c: prefs.order.includes("lists") ? 1 : 0 }),
     /* 🆕 **«أعمالُ أصدقائك الآن»** (البند ٧) — **ولا يدفع كلفتَه إلا من
        أظهره** (قاعدةُ «recap» و«قوائمي» نفسُها)، **وهو نداءُ الخطّ نفسِه
        بلا إعجاباتٍ ولا ترجمة** (D-205). */
-    prefs.order.includes("friends")
+    __tag("friendsRows", prefs.order.includes("friends")
       ? getFriendsWatching(12).catch(() => [])
-      : Promise.resolve([]),
+      : Promise.resolve([]), { c: prefs.order.includes("friends") ? 1 : 0 }),
     /* أغلفتي المختارة (D-131) — كانت `await` منفرداً بعد الموجة رغم أنها
        لا تعتمد على شيءٍ منها: رحلةُ قاعدةٍ كاملة تُدفع وحدَها على أسخن
        مسارٍ في التطبيق. الاستبدالُ نفسُه بعد الموجة كما كان. */
-    getMyTitleArt(),
+    __tag("homeArt", getMyTitleArt()),
     /* 🆕 **قوائمُك المحفوظة بعناصرها** (D-496) — **في الموجة المتدفّقة
        لا الأولى**: أوّلُ بايتٍ للرئيسية لا ينتظر قائمة. */
-    prefs.order.includes("continue")
+    __tag("savedLists", prefs.order.includes("continue")
       ? getSavedListsBrief().catch(() => [])
-      : Promise.resolve([]),
+      : Promise.resolve([]), { c: prefs.order.includes("continue") ? 1 : 0 }),
     /* 🆕 **قوائمُ تشغيلك الصريحة** (D-505) — نفسُ شرط «تابِع المشاهدة» */
-    prefs.order.includes("continue")
+    __tag("myPlaylists", prefs.order.includes("continue")
       ? getMyPlaylistsBrief().catch(() => [])
-      : Promise.resolve([]),
+      : Promise.resolve([]), { c: prefs.order.includes("continue") ? 1 : 0 }),
     /* 🆕 **وأفلامُك الساكنةُ قائمةً — لاستثنائها من طابور «بلا قائمة»**
        (D-505): ما وضعتَه في قائمةٍ قد أعلنتَ سياقَه هناك. */
-    prefs.order.includes("continue")
+    __tag("listedMovieIds", prefs.order.includes("continue")
       ? getMyListedMovieIds().catch(() => new Set<number>())
-      : Promise.resolve(new Set<number>()),
+      : Promise.resolve(new Set<number>()), { c: prefs.order.includes("continue") ? 1 : 0 }),
     /* 🆕 **موضعُ الأفلام يُنتظر هنا** — والنداءُ انطلق في `HomePage`
        قبل الموجة الأولى، **فهذا انتظارُ وعدٍ طائرٍ لا رحلةٌ جديدة.** */
-    movieProgress,
+    __tag("movieProgressRows", movieProgress, { p: 1 }),
   ]);
+  /* 🔴 مؤقّت: نهايةُ الحاجز */
+  // eslint-disable-next-line react-hooks/purity -- 🔴 مسبارٌ مؤقّت
+  const __end = __m ? +(performance.now() - __t0).toFixed(1) : 0;
 
   /* استبدالُ الأغلفة في مصدرٍ واحد بعد الترجمة: بطاقات «أكمل» و«ابدأ»
      و«للمشاهدة» كلّها تُبنى من `follows`، والرئيسية سطحي أنا فلا تسريب
@@ -1111,6 +1137,14 @@ async function HomeBody({
 
   return (
     <>
+      {/* 🔴 مؤقّت — لا يُرسم إلا لطلبٍ يحمل ترويسةَ القياس */}
+      {__m && (
+        <script
+          type="application/json"
+          id="lz-m"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify({ end: __end, m: __m }) }}
+        />
+      )}
       <ShowStatsSync stats={statsToCache} />
       <FollowMetaSync rows={metaToCache} />
       <MovieStatsSync rows={movieDatesToCache} />
