@@ -39,7 +39,6 @@ export function HomeHeader({
   displayName,
   stats,
   showStats,
-  view,
   locale,
 }: {
   displayName: string;
@@ -55,8 +54,12 @@ export function HomeHeader({
   showStats: boolean;
   /** ⚠️ **مقبولٌ ولا يُقرأ** (D-502) — سقط الهلالُ بسقوط صورته */
   levelPercent?: number;
-  /** وضعُ العرض — للمبدّل وحدَه بعد D-439، فبطاقةُ الأرقام لم تعد تتبعه */
-  view: HomeView;
+  /**
+   * ⚠️ **مقبولٌ ولا يُقرأ لعمرِ رفعةٍ واحدة** (D-028): وضعُ العرض صار
+   * حالةَ عميلٍ في `HomeViewProvider` **يقرؤها المبدّلُ بنفسه** —
+   * **والرئيسيةُ تسقط تمريرَه في الرفعة التالية ثم يسقط العقد.**
+   */
+  view?: HomeView;
   locale: Locale;
 }) {
 
@@ -95,7 +98,7 @@ export function HomeHeader({
           <HomeGreeting name={displayName} locale={locale} />
         </div>
 
-        <HomeViewSwitch view={view} locale={locale} />
+        <HomeViewSwitch locale={locale} />
       </div>
 
       {/* ===== الصفُّ الثالث: بطاقةُ الأرقام =====

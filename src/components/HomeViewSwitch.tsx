@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useRef } from "react";
 import { setHomeView } from "@/lib/actions";
 import { getDict, type Locale } from "@/lib/i18n";
 import { tap } from "@/lib/haptics";
 import { flashError } from "@/lib/toast";
 import type { HomeView } from "@/lib/homePrefs";
+import { useHomeView } from "./HomeViewProvider";
 import { Icon } from "./Icon";
 
 /**
@@ -21,45 +21,57 @@ import { Icon } from "./Icon";
  * يظهر آخر View اختاره المستخدم»): كوكيٌّ يضيع بتبديل الجهاز أو المتصفّح،
  * **والاختيارُ صفةُ حسابٍ لا صفةُ متصفّح.**
  *
- * ⚠️ **والاسمُ يتبدّل قبل ردّ الخادم** (`optimistic`): الحفظُ رحلةُ شبكة،
- * **وزرٌّ لا يتغيّر تحت الإصبع يُقرأ معطّلاً فيُضغط مرّتين.** ويعود إلى
- * حاله إن سقط النداء، **مع رسالةٍ صريحة** — لا صمت.
+ * ⚖️ 🆕 **والتبديلُ صار محلّيّاً بحتاً** (جولة ٢٢ أغسطس): **كان
+ * `await setHomeView` ثم `router.refresh()`** — **رحلةُ خادمٍ كاملة
+ * لتغيير شكل**، **ورسمتان لا واحدة** (`revalidatePath` في الفعل ثم
+ * التحديث في الزرّ). 📏 **المقيسُ في الإنتاج**: ١١٠ ك.ب و**خمسُ رحلات**
+ * لضغطةٍ واحدة. **الآن**: `setView` يبدّل الشجرةَ المرسومةَ سلفاً
+ * (`ByHomeView`) **في الإطار نفسِه**، والحفظُ يمشي خلفَه.
+ *
+ * ⚠️ **والزرُّ لا يُعطَّل أثناء الحفظ**: لا شيءَ ينتظره — **وزرٌّ
+ * معطَّلٌ بعد ضغطةٍ فوريّةٍ يقول إنّ شيئاً يجري ولا شيءَ يجري.**
+ *
+ * 🔑 **وإن سقط الحفظ: الشكلُ يبقى ولا يُرجَع** — **إرجاعُ الرسم تحت
+ * إصبع من ضغط للتوّ عقوبةٌ على عطلٍ ليس منه**، **والرسالةُ تقول الثمنَ
+ * صراحةً**: يعود الوضعُ السابق عند إعادة الفتح (`errViewSave`).
  */
 export function HomeViewSwitch({
-  view,
   locale,
 }: {
-  view: HomeView;
+  /**
+   * ⚠️ **مقبولٌ ولا يُقرأ لعمرِ رفعةٍ واحدة** (D-028): القيمةُ الحيّة
+   * صارت في `HomeViewProvider`، **والمستدعي يسقطها في الرفعة التالية**
+   * — والعقدُ يبقى اختياريّاً حتى ذلك فلا ينكسر ترتيبُ الرفع.
+   */
+  view?: HomeView;
   locale: Locale;
 }) {
   const t = getDict(locale);
-  const router = useRouter();
-  const [optimistic, setOptimistic] = useState<HomeView | null>(null);
-  const [pending, start] = useTransition();
+  const { view: current, setView } = useHomeView();
 
-  const current = optimistic ?? view;
+  /* **سلسلةُ وعودٍ لا نداءٌ متوازٍ**: ضغطتان متلاحقتان تكتبان العمودَ
+     نفسَه، **والمتوازيتان قد تصلان مقلوبتين فيُحفظ غيرُ ما يُرى.** */
+  const queue = useRef<Promise<unknown>>(Promise.resolve());
+
   const next: HomeView = current === "visual" ? "compact" : "visual";
   const label = next === "compact" ? t.viewCompact : t.viewVisual;
 
   function switchTo() {
     tap(8);
-    setOptimistic(next);
-    start(async () => {
-      try {
-        await setHomeView(next);
-        router.refresh();
-      } catch (e) {
-        setOptimistic(null);
-        flashError(t.errSave + (e as Error).message);
-      }
-    });
+    /* الرسمُ أوّلاً — الشجرتان مرسومتان أصلاً فالتبديلُ اختيارُ فرع */
+    setView(next);
+    /* ثمّ الحفظُ في `profiles.home_prefs` خلفَ الرسم — **وهو ما يجعل
+       الاختيارَ يعبر الأجهزةَ وإعادةَ الفتح** */
+    queue.current = queue.current
+      .catch(() => {})
+      .then(() => setHomeView(next))
+      .catch(() => flashError(t.errViewSave));
   }
 
   return (
     <button
       type="button"
       onClick={switchTo}
-      disabled={pending}
       aria-label={t.viewSwitchAria}
       title={t.viewSwitchAria}
       /* 🆕 **زاويةٌ من سلّم البطاقات لا قرصٌ كامل** (D-451، طلبُ أحمد:
@@ -76,7 +88,7 @@ export function HomeViewSwitch({
          **والارتفاعُ ٤٤ كما هو**: قاعدتُك «اجعل مناطق الضغط مناسبة
          للجوال»، **وخطٌّ أصغر لا يعني هدفاً أصغر**. الذي ضاق هو الحشو
          فضاق الزرُّ عرضاً — وهو ما يُرى. */
-      className="shrink-0 inline-flex items-center gap-2 rounded-2xl border border-border bg-surface ps-3 pe-3.5 h-11 text-12 font-semibold transition hover:border-accent/50 active:scale-95 disabled:opacity-60"
+      className="shrink-0 inline-flex items-center gap-2 rounded-2xl border border-border bg-surface ps-3 pe-3.5 h-11 text-12 font-semibold transition hover:border-accent/50 active:scale-95"
     >
       {/* الرمزُ يصف الوجهةَ كما يصفها النصّ: شبكةٌ للبصريّ وقائمةٌ للمختصر */}
       <Icon

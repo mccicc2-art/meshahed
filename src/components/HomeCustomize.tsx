@@ -27,6 +27,8 @@ import {
 } from "./ui/SectionOrderList";
 import { chipClass, pillTrack } from "./ui/controls";
 import { CustomizePreview } from "./CustomizePreview";
+/* **بابٌ ثانٍ للوضع نفسِه** — فيُخبَر مخزنُ التبويب بما حُفظ هنا */
+import { rememberHomeView } from "./HomeViewProvider";
 import { type Density } from "@/lib/density";
 
 /**
@@ -138,6 +140,10 @@ export function HomeCustomize({
           favoriteGenres: genres,
           homePrefs: prefs,
         });
+        /* **الرئيسيةُ تحمل وضعَ العرض في ذاكرة التبويب** (D-434):
+           **ومن غيّره من هنا تغييرٌ صريح** — فلولا هذا السطر لبقيت
+           الرئيسيةُ على اختيارٍ سابقٍ من مبدّلها حتى إعادة الفتح. */
+        rememberHomeView(prefs.view);
         setSaved(true);
         router.refresh();
       } catch (e) {
