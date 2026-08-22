@@ -39,7 +39,12 @@ export function NavLinks({ locale }: { locale: Locale }) {
             /* `false` صريحةٌ لغير المكتبة — انظر الحجّة الكاملة في
                `BottomNav`: `undefined` = `auto` = تسخينٌ من الرؤية. */
             prefetch={l.href === "/library" && fullOk}
-            onPointerEnter={() => prewarm(l.href)}
+            /* حارسُ نوع المؤشّر — انظر الحجّة الكاملة في `BottomNav`:
+               **هذا الشريطُ `md:` فما فوق، ولوحٌ لمسيٌّ في العرض يراه**،
+               **فيدفع الطلبَ الزائد نفسَه لو تُرك عارياً.** */
+            onPointerEnter={(e) => {
+              if (e.pointerType !== "touch") prewarm(l.href);
+            }}
             onFocus={() => prewarm(l.href)}
             aria-current={active ? "page" : undefined}
             className={`px-2.5 sm:px-3 py-2 rounded-lg transition ${
