@@ -123,13 +123,6 @@ export function TabPager({
 }: {
   /** لوحاتُ التبويبات بترتيب الصفّ الظاهر — **مكوّناتُ خادمٍ تمرّ كأبناء** */
   panes: React.ReactNode[];
-  /**
-   * ⚠️ **مقبولان ولا يُقرآن لعمرِ رفعةٍ واحدة** (D-028): الفهرسُ والروابطُ
-   * صارا في `CommunityPagerProvider`، **والصفحةُ تسقط تمريرَهما في
-   * الرفعة التالية ثم يسقط العقد.**
-   */
-  index?: number;
-  hrefs?: string[];
   rtl: boolean;
   /** بديلٌ حين لا يكون التبويبُ من الصفّ (`?tab=all` و`?tab=news`) */
   children?: React.ReactNode;
