@@ -382,6 +382,10 @@ const ar = {
   errTooLarge: "حجم الصورة كبير — الحد الأقصى ٢ ميجابايت.",
   errUpload: "تعذّر رفع الصورة: ",
   errSave: "تعذّر الحفظ: ",
+  /* **الحفظُ فشل والشكلُ باقٍ** — الرسالةُ تقول الأمرين معاً: **إرجاعُ
+     الشكل تحت إصبع من ضغط للتوّ أسوأُ من حفظٍ لم يثبت**، **لكنّ
+     الصمتَ يجعل العودةَ غداً مفاجأة.** */
+  errViewSave: "تعذّر حفظ وضع العرض — الشكل باقٍ الآن، ويعود إلى السابق عند إعادة فتح لوبز.",
 
   // الاستيراد من الخدمات الأخرى
   importSection: "استيراد مكتبتك",
@@ -2111,6 +2115,8 @@ const en: Dict = {
   errTooLarge: "Image too large — 2 MB maximum.",
   errUpload: "Couldn't upload the image: ",
   errSave: "Couldn't save: ",
+  errViewSave:
+    "Couldn't save the layout — it stays this way for now, and reverts when you reopen Loopz.",
 
   importSection: "Import your library",
   importHint:
