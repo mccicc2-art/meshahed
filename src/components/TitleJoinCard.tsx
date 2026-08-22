@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { Icon } from "./Icon";
 import { Sheet } from "./ui/Sheet";
 import { getDict, type Locale } from "@/lib/i18n";
 import { tap } from "@/lib/haptics";
+import { WRITE_REVIEW_EVENT } from "./TitleRatingsCard";
 
 /**
  * **بطاقةُ «انضمّ إلى الحديث» — رأسُ تبويب المجتمع** (D-398، وأُعيد
@@ -49,20 +50,37 @@ export function TitleJoinCard({
   const t = getDict(locale);
   const [open, setOpen] = useState(false);
 
+  /* 🆕 **وقلمُ بطاقة التقييمات يفتح هذه الورقةَ نفسَها** (D-538):
+     **مؤلّفٌ واحدٌ في الشاشة لا اثنان** (القاعدة ٦) — **والحدثُ على
+     النافذة هو الوصلةُ لأن البطاقتين شقيقتان لا أمٌّ وابنة**، ورفعُ
+     الحالة إلى تبويبٍ خادميٍّ فوقهما يجعله عميلاً كلَّه.
+     **وسابقتُه `HelpTourRows`** التي تبثّ حدثاً ولا تركّب الجولة. */
+  useEffect(() => {
+    const onAsk = () => setOpen(true);
+    window.addEventListener(WRITE_REVIEW_EVENT, onAsk);
+    return () => window.removeEventListener(WRITE_REVIEW_EVENT, onAsk);
+  }, []);
+
   const action =
     "flex-1 min-w-0 inline-flex items-center justify-center gap-2 px-3 py-2.5 text-14 font-bold " +
     "text-foreground hover:text-accent active:scale-[0.98] transition";
 
   return (
     <div className="rounded-2xl border border-border bg-surface overflow-hidden">
-      <div className="flex items-center gap-3 px-4 pt-3.5 pb-3">
+      {/* ⚖️ 🆕 **والصفُّ الأعلى صار بارتفاع الأسفل** (D-538، تصميمُ
+          أحمد: «تقليل ارتفاع صف Join the conversation ليطابق الصف
+          السفلي»). **كان ٥٧px والصفُّ تحته ٤٢** — **وصفّان في بطاقةٍ
+          واحدةٍ بارتفاعين يُقرآن رأساً وذيلاً لا صفّين** — **والرمزُ
+          المطوَّقُ ٣٦px هو ما كان يفرضهما.** فالطوقُ ٢٨ والحشوُ `py-2.5`
+          **والعنوانُ ١٤ كأخويه تحته**، فيستوي الصفّان إلى البكسل. */}
+      <div className="flex items-center gap-2.5 px-4 py-2.5">
         <span
           aria-hidden
-          className="shrink-0 size-9 rounded-full border border-[color:var(--divider)] grid place-items-center text-accent"
+          className="shrink-0 size-7 rounded-full border border-[color:var(--divider)] grid place-items-center text-accent"
         >
-          <Icon name="comment" size={17} />
+          <Icon name="comment" size={14} />
         </span>
-        <h3 className="min-w-0 font-bold text-15">{t.communityJoin}</h3>
+        <h3 className="min-w-0 font-bold text-14">{t.communityJoin}</h3>
       </div>
 
       <div className="h-px bg-[color:var(--divider)] mx-4" />

@@ -11,6 +11,7 @@ import {
   unfollow,
   toggleInList,
   markShowWatched,
+  unmarkShow,
   unmarkEpisodes,
   toggleMovieWatched,
   toggleFavorite,
@@ -219,7 +220,42 @@ export function TitleActions({
         undoWatch({ movie: true, unfollow: false });
         return;
       }
-      toast(t.seriesWatchedHint, { tone: "info" });
+      /* ⚖️ 🆕 **والمسلسلُ يُلغى من هنا أيضاً** (D-538، تصميمُ أحمد:
+         «اضغط زر الصح مرة ثانية لإلغاء التحديد»).
+         **كان الردُّ تلميحاً** («ألغِ أي موسم من تبويب الحلقات») —
+         **وزرٌّ يردّ بتعليماتٍ ليس زرّاً**، **وعلامةٌ تُضغط فتضيء ولا
+         تنطفئ نصفُ مفتاح** (D-238: فعلٌ واحدٌ باتّجاهيه).
+         **والفيلمُ كان يفعلها منذ يومه** — فالشكلان استويا.
+         **والتراجعُ إعادةُ الوسم كاملاً**: الزرُّ لا يُرى إلا
+         والمسلسلُ مُشاهَدٌ كلُّه، **فما يعود هو ما ذهب بالضبط.** */
+      setDone(false);
+      tap(10);
+      start(async () => {
+        try {
+          await unmarkShow(tmdbId);
+          coalescedRefresh(router);
+          toast(t.unwatchShowDone, {
+            action: {
+              label: t.undoWatched,
+              run: () => {
+                setDone(true);
+                start(async () => {
+                  try {
+                    await markShowWatched(tmdbId);
+                    coalescedRefresh(router);
+                  } catch (e) {
+                    flashError((e as Error).message);
+                    setDone(false);
+                  }
+                });
+              },
+            },
+          });
+        } catch (e) {
+          flashError((e as Error).message);
+          setDone(true);
+        }
+      });
       return;
     }
 
@@ -296,8 +332,13 @@ export function TitleActions({
   /* اسم الزرّ يحمل العدد للمسلسل: هو الرقم الذي كانت ورقة التأكيد تعرضه،
      منقولاً إلى `title` و`aria-label` — يصل إلى قارئ الشاشة وإلى من يتحوّم
      بالفأرة، ولا يعترض طريق أحد */
+  /* 🆕 **واسمُ الزرِّ يقول ما تفعله الضغطةُ التالية** (D-538/D-238):
+     **كان يقول «مُشاهَد» وهو حال، والضغطةُ صارت فعلاً** — **واسمٌ يصف
+     الحالَ فوق زرٍّ يغيّره يُقرأ خطأً.** */
   const watchLabel = done
-    ? t.allWatchedShort
+    ? mediaType === "tv"
+      ? t.unwatchShowAria
+      : t.undoNotWatched
     : mediaType === "tv" && episodesTotal
       ? `${t.markAllTitle} · ${t.markAllCount(episodesTotal)}`
       : t.markAllTitle;

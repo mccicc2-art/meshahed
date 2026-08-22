@@ -185,27 +185,6 @@ export function ListDetail({
      يجعل الفشلَ يتراجع عن خمسةَ عشرَ شيئاً أمام العين.** فالانتظارُ
      ظاهرٌ في الزرّ، **والتجديدُ بعده يقلب علاماتِ الملصقات من الحقيقة.** */
   const [addingAll, setAddingAll] = useState(false);
-  function addAll() {
-    if (addingAll) return;
-    tap(10);
-    setAddingAll(true);
-    followListTitles(listId)
-      .then((n) => {
-        toast(n > 0 ? t.listAddAllDone(n) : t.listAddAllNone, {
-          tone: n > 0 ? "success" : "info",
-        });
-        /* **والقلبُ يمتلئ لأن القائمةَ دخلت فعلاً** (D-496): الفعلُ
-           يحفظها على الخادم، **وحالةُ الزرّ هنا لا تُعاد تهيئتُها من
-           المعامل بعد التجديد** — فتُقال هنا مرّةً بلا كذب. */
-        if (n > 0) {
-          setSaved(true);
-          router.refresh();
-        }
-      })
-      .catch((e) => flashError((e as Error).message))
-      .finally(() => setAddingAll(false));
-  }
-
   const visible = useMemo(() => {
     const seen = new Set(items.map(keyOf));
     const live = [...items, ...added.filter((a) => !seen.has(keyOf(a)))].filter(
@@ -215,6 +194,44 @@ export function ListDetail({
     const rank = new Map(order.map((k, i) => [k, i]));
     return [...live].sort((a, b) => (rank.get(keyOf(a)) ?? 1e9) - (rank.get(keyOf(b)) ?? 1e9));
   }, [items, added, removed, order]);
+
+  /**
+   * ⚖️ 🆕 **«ابدأ المشاهدة» — وهي «أضف الكل» وقد أُتمّت** (D-538، تصميمُ
+   * أحمد: «يضيف القائمة بالترتيب إلى متابعة المشاهدة كقائمة تشغيل،
+   * ويبدأ من أول عنوان»).
+   *
+   * **ولماذا حلّت محلَّها ولم تُضَف بجانبها:** الفعلُ هو الفعلُ نفسُه
+   * (‏`followListTitles` — تتبع أعمالَ القائمة كلَّها وتحفظها فتدخل
+   * «تابِع المشاهدة»)، **والذي يزيد خطوةٌ أخيرة: يفتح أوّلَ عنوان.**
+   * **وزرّان يفعلان الشيءَ نفسَه إلا خطوةً بابان لفعلٍ واحد** (القاعدة
+   * ٦) — **ومن أراد الإضافةَ بلا فتحٍ يرجع بزرِّ الرجوع.**
+   *
+   * ⚠️ **والفتحُ بعد نجاح الإضافة لا قبله** (D-158): من غادر الصفحةَ
+   * ثمّ فشلت الكتابةُ لا يرى الخطأ أصلاً. **والانتقالُ يقع حتى لو كانت
+   * كلُّها عنده أصلاً** (`n = 0`) — **الطلبُ «ابدأ»، والبدءُ لا يشترط
+   * أن يُضاف شيء.**
+   */
+  function startWatching() {
+    if (addingAll) return;
+    const first = visible[0];
+    tap(10);
+    setAddingAll(true);
+    followListTitles(listId)
+      .then((n) => {
+        if (n > 0) {
+          setSaved(true);
+          toast(t.listAddAllDone(n), { tone: "success" });
+        }
+        if (first) {
+          router.push(`/${first.media_type === "tv" ? "show" : "movie"}/${first.tmdb_id}`);
+        } else {
+          router.refresh();
+        }
+      })
+      .catch((e) => flashError((e as Error).message))
+      .finally(() => setAddingAll(false));
+  }
+
 
   const numbered = NUMBERED.includes(kind);
   /* `w780` لا الأصل: الغلافُ يُرسم بعرض الصفحة على الجوال، والأصلُ ملفٌّ
@@ -466,18 +483,23 @@ export function ListDetail({
           )}
 
           {inLibrary && (
+            /* ⚖️ 🆕 **زرٌّ ممتلئٌ محلَّ الرقاقة المفرَّغة** (D-538): **هو
+               الفعلُ الذي جاء القارئُ لأجله** في قائمةٍ بترتيبِ مشاهدة —
+               **والمفرَّغُ يُقرأ خياراً ثانوياً** (D-217). **وms-auto لا
+               `justify-between`**: الصفُّ قد يخلو من اسم. */
             <button
               type="button"
-              onClick={addAll}
+              onClick={startWatching}
               disabled={addingAll}
-              aria-label={t.listAddAllAria}
-              title={t.listAddAllAria}
-              /* **ms-auto لا `justify-between`**: الصفُّ قد يخلو من اسمٍ،
-                 **و`justify-between` بعنصرٍ واحد تضعه في البداية** */
-              className="ms-auto shrink-0 inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-12 font-semibold text-muted transition hover:text-foreground hover:border-accent/50 active:scale-[0.97] disabled:opacity-60"
+              aria-label={t.listStartWatchingAria}
+              title={t.listStartWatchingAria}
+              className={buttonClass({
+                size: "sm",
+                className: "ms-auto shrink-0 disabled:opacity-60",
+              })}
             >
-              <Icon name="bookmark" size={14} strokeWidth={2} />
-              {t.listAddAll}
+              <Icon name="play" size={15} strokeWidth={2} />
+              {t.listStartWatching}
             </button>
           )}
         </div>

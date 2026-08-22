@@ -12,6 +12,7 @@ import { RatingBox } from "./RatingBox";
 import { TitleReviewRow } from "./TitleReviewRow";
 import { TitleCommunityFeed, type FeedItem } from "./TitleCommunityFeed";
 import { TitleJoinCard } from "./TitleJoinCard";
+import { TitleRatingsCard } from "./TitleRatingsCard";
 import { TitleNewsRow } from "./TitleNewsRow";
 
 /**
@@ -203,6 +204,28 @@ export async function TitleCommunityTab({
             initialHasSpoiler={Boolean(myRating?.has_spoiler)}
           />
         }
+      />
+
+      {/* 🆕 **ومن قيّم يُرى باسمه** (D-538) — **بطاقةٌ فوق الخطّ لا
+          صفوفٌ فيه**: الخطُّ مجرى قراءةٍ لآراءٍ مكتوبة، **وسطرٌ بلا كلامٍ
+          بينها يقطعه** (وهي حجّةُ الترشيح أعلاه، وتبقى). **والصفوفُ هي
+          `reviews` نفسُها بلا نداءٍ ثانٍ** (D-205). */}
+      <TitleRatingsCard
+        tmdbId={tmdbId}
+        mediaType={mediaType}
+        title={title}
+        posterPath={posterPath}
+        raters={reviews.map((r) => ({
+          id: r.id,
+          nickname: r.nickname,
+          username: r.username,
+          avatar_url: r.avatar_url,
+          hide_name: r.hide_name,
+          rating: r.rating,
+          review: r.review,
+          isMine: r.isMine,
+        }))}
+        locale={locale}
       />
 
       <TitleCommunityFeed items={items} locale={locale} />
