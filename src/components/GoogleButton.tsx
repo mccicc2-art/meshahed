@@ -45,6 +45,26 @@ declare global {
   }
 }
 
+/**
+ * 🔴 iOS/iPadOS يدخلان من باب التحويل لا من نافذة GIS.
+ *
+ * العطلُ المثبت (بلاغ أحمد، iPhone Safari): بعد اختيار الحساب تبقى
+ * `accounts.google.com` شاشةً بيضاء. السببُ سياسةُ ITP في WebKit —
+ * تعزلُ كوكيز الطرف الثالث فلا تستطيع نافذةُ GIS إتمام التسليم،
+ * وتوثيقُ Google نفسُه يوجّه iOS إلى Redirect Mode.
+ *
+ * والكشفُ لا يكتفي بـ`iPhone` في الوكيل: **iPadOS يقدّم نفسَه
+ * كـMacintosh** منذ iPadOS 13، والفارقُ الصادق أن ماك الحقيقي
+ * `maxTouchPoints === 0` واللوحيّ يبلّغ 5. والفحصُ في دالةٍ تُستدعى
+ * داخل التأثير فقط — فلا `navigator` على الخادم ولا فرقَ ترطيب.
+ */
+function isIOS(): boolean {
+  if (typeof navigator === "undefined") return false;
+  if (/iP(hone|od|ad)/.test(navigator.userAgent)) return true;
+  return /Macintosh|MacIntel/.test(navigator.userAgent + navigator.platform) &&
+    navigator.maxTouchPoints > 1;
+}
+
 /** بصمتان لرقمٍ عشوائي: المُعمّاة تذهب لـGoogle والخام تبقى معنا */
 async function makeNonce(): Promise<[raw: string, hashed: string]> {
   const bytes = crypto.getRandomValues(new Uint8Array(32));
@@ -85,6 +105,11 @@ export function GoogleButton({ locale }: { locale: Locale }) {
 
   useEffect(() => {
     if (!CLIENT_ID || done.current) return;
+    /* iOS/iPadOS: لا `initialize` ولا `renderButton` أصلاً — يبقى
+       `gsiReady` خامداً فيظهر زرُّ الموقع نفسُه (تصميمُ الشاشة الأصلي)
+       وضغطتُه `redirectSignIn` المجرَّبة. بابٌ واحدٌ صالحٌ خيرٌ من
+       بابين أحدُهما أبيض. */
+    if (isIOS()) return;
     let cancelled = false;
 
     async function boot() {
