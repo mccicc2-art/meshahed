@@ -75,7 +75,6 @@ export function ListDetail({
   reviews,
   reviewsSlot,
   libState,
-  inLibrary,
   initialPlaylist,
 }: {
   listId: string;
@@ -128,27 +127,10 @@ export function ListDetail({
    * **والغيابُ يعني نداءً سقط** — فلا خيطَ ولا زرّ (D-063).
    */
   libState?: Record<string, TitleState>;
-  /**
-   * ⚠️ **جسرُ دفعةٍ واحدة — يُحذف في كوميتٍ لاحقٍ من هذه الدفعة**
-   * (D-028): **المكوّنُ والصفحةُ في دليلين فكوميتان**، **وكلُّ كوميتٍ
-   * يجب أن يترجم وحدَه** — **والصفحةُ لا تزال تمرّر الاسمَ القديم.**
-   */
-  inLibrary?: Record<string, boolean>;
   /** 🆕 رايةُ قائمة التشغيل (D-505) — الغيابُ يعني هجرةً لم تُشغَّل فلا صفّ */
   initialPlaylist?: boolean | null;
 }) {
   const t = getDict(locale);
-  /* ⚠️ **جسرُ الدفعة** (D-028) — يُحذف مع البند أعلاه في كوميتٍ لاحق */
-  const lib: Record<string, TitleState> | undefined =
-    libState ??
-    (inLibrary
-      ? Object.fromEntries(
-          Object.entries(inLibrary).map(([k, v]) => [
-            k,
-            { added: v, watched: false, progress: 0, dropped: false },
-          ]),
-        )
-      : undefined);
   const router = useRouter();
   const [pending, start] = useTransition();
   /* حفظ القائمة مرجعاً حيّاً — متفائلٌ مع تراجُع (D-007) */
@@ -485,7 +467,7 @@ export function ListDetail({
           يُقرأ من الموضع قبل أن يُقرأ من الاسم.
           **والصفُّ يُرسم إن وُجد أحدُهما**: قائمةٌ بلا صاحبٍ ظاهر
           تحتفظ بزرّها، **وزرٌّ يختفي لأن اسماً غاب عطلٌ لا ترتيب.** */}
-      {!isOwner && ((owner && (owner.nickname || owner.username)) || !!lib) && (
+      {!isOwner && ((owner && (owner.nickname || owner.username)) || !!libState) && (
         <div className="flex items-center gap-2 mt-3.5">
           {owner && (owner.nickname || owner.username) && (
             <>
@@ -511,7 +493,7 @@ export function ListDetail({
             </>
           )}
 
-          {lib && (
+          {libState && (
             /* ⚖️ 🆕 **زرٌّ ممتلئٌ محلَّ الرقاقة المفرَّغة** (D-538): **هو
                الفعلُ الذي جاء القارئُ لأجله** في قائمةٍ بترتيبِ مشاهدة —
                **والمفرَّغُ يُقرأ خياراً ثانوياً** (D-217). **وms-auto لا
@@ -615,15 +597,15 @@ export function ListDetail({
                      الذي تسكن زاويتُه علامةُ الإزالة (زرّان في زاويةٍ
                      واحدة يجعلان الملصقَ لوحةَ أزرار — D-205). */
                   quickAdd={
-                    lib && !isOwner
-                      ? { added: !!lib[keyOf(it)]?.added, locale }
+                    libState && !isOwner
+                      ? { added: !!libState[keyOf(it)]?.added, locale }
                       : undefined
                   }
                   /* 🆕 **وخيطُ الحالة لصاحب القائمة أيضاً** (D-542):
                      **زرُّ «+» يُمنع عنه** لأن زاويته فيها علامةُ
                      الإزالة، **والخيطُ ليس زرّاً** — **وسؤالُ «هل
                      شاهدتُه؟» يُسأل عن قائمتك كما عن قائمة غيرك.** */
-                  state={lib?.[keyOf(it)]}
+                  state={libState?.[keyOf(it)]}
                   t={t}
                 />
               ))}
