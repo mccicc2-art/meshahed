@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -58,6 +59,14 @@ type PagerState = {
   setReady: (v: boolean) => void;
   /** يبدّل التبويبَ محلّيّاً ويكتب العنوان */
   go: (i: number, opts?: { scroll?: boolean }) => void;
+  /**
+   * 🆕 **«هل يُصفَّر التمريرُ في التزام هذا التبديل؟»** (D-523) — تُقرأ
+   * مرّةً وتُمحى. **والتصفيرُ لا يقع هنا بل في التزام قلبِ الفهرس قبل
+   * الرسم** (`TabPager`)، **فيتطابق آخرُ إطارٍ من الحركة وأوّلُ إطارٍ
+   * بعدها** بدل أن يقعا في لحظتين. **والرجوعُ بزرِّ المتصفّح لا يرفعها**
+   * فلا تُسرق استعادةُ الموضع (D-132).
+   */
+  takeTopOnCommit: () => boolean;
 };
 
 const Ctx = createContext<PagerState | null>(null);
@@ -92,19 +101,26 @@ export function CommunityPagerProvider({
   const hrefsKey = hrefs.join("|");
   const keysKey = keys.join("|");
 
+  /* **رايةُ التصفير — تُرفع هنا وتُستهلك في التزام القلب** (D-523) */
+  const topFlag = useRef(false);
   const go = useCallback(
     (i: number, opts?: { scroll?: boolean }) => {
       const list = hrefsKey.split("|");
       const href = list[i];
       if (!href) return;
+      /* **كلُّ تبويبٍ يبدأ من رأسه** (D-295 بحرفه) — **والتصفيرُ يقع مع
+         قلب الفهرس في التزامٍ واحدٍ قبل الرسم، لا قبله بإطار.** */
+      if (opts?.scroll !== false) topFlag.current = true;
       setIndex(i);
-      /* **كلُّ تبويبٍ يبدأ من رأسه** (D-295 بحرفه) — والسحبةُ صفّرت
-         المستندَ عند الالتزام، **فلا تُصفَّر مرّتين.** */
-      if (opts?.scroll !== false) window.scrollTo(0, 0);
       window.history.pushState(null, "", href);
     },
     [hrefsKey],
   );
+  const takeTopOnCommit = useCallback(() => {
+    const v = topFlag.current;
+    topFlag.current = false;
+    return v;
+  }, []);
 
   /* **والرجوعُ والتقدّمُ يُقرآن من العنوان نفسِه.** أسطرُنا مكتوبةٌ
      بـ`pushState` فتُطابق `hrefs` حرفاً، **والرابطُ العميق بمعاملاتٍ
@@ -132,8 +148,9 @@ export function CommunityPagerProvider({
       ready,
       setReady,
       go,
+      takeTopOnCommit,
     }),
-    [index, keysKey, hrefsKey, ready, go],
+    [index, keysKey, hrefsKey, ready, go, takeTopOnCommit],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
