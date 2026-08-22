@@ -73,7 +73,7 @@ export function TabUnderline({ index }: { index: number }) {
       /* **المنحنى منحنى اللوحة حرفاً** (D-279) — والقيمةُ صفرٌ تحت
          الإصبع فيتبعه بلا تأخير */
       el.style.transition = ms
-        ? `transform ${ms}ms ${EASE}, width ${ms}ms ${EASE}`
+        ? `left ${ms}ms ${EASE}, width ${ms}ms ${EASE}`
         : "none";
       const from = rects[index];
       if (!from) return;
@@ -83,7 +83,7 @@ export function TabUnderline({ index }: { index: number }) {
       const k = Math.min(1, Math.abs(p));
       const x = from.x + (to.x - from.x) * k;
       const w = from.w + (to.w - from.w) * k;
-      el.style.transform = `translate3d(${x}px,0,0)`;
+      el.style.left = `${x}px`;
       el.style.width = `${w}px`;
     };
 
@@ -104,7 +104,7 @@ export function TabUnderline({ index }: { index: number }) {
       /* **جالسٌ على الخطّ لا طائرٌ فوقه** — نفسُ `-bottom-px` و`h-[3px]`
          و`rounded-t-full` التي في `segmentedItem`، **فالشكلُ واحدٌ
          والمتحرّكُ جسمُه** (D-016، وبلاغُ أحمد ٩ أغسطس: «لا تحط خط ثاني»). */
-      className="pointer-events-none absolute -bottom-px start-0 h-[3px] w-0 rounded-t-full bg-accent"
+      className="pointer-events-none absolute -bottom-px left-0 h-[3px] w-0 rounded-t-full bg-accent"
     />
   );
 }

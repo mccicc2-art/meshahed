@@ -98,6 +98,7 @@ export function PageTabs({
       on,
       "flex-1 shrink-0 flex items-center justify-center gap-1.5 px-3 pt-2 pb-3 text-14 whitespace-nowrap",
       false,
+      !swipe,
     );
     const body = (
       <>
@@ -105,13 +106,13 @@ export function PageTabs({
           <Icon
             name={tb.icon}
             size={16}
-            className={`shrink-0 hidden sm:block transition-colors ${on ? "text-accent" : ""}`}
+            className={`shrink-0 hidden sm:block ${swipe ? "" : "transition-colors "}${on ? "text-accent" : ""}`}
           />
         )}
         <span>{tb.label}</span>
         {typeof tb.count === "number" && (
           <span
-            className={`shrink-0 tabular-nums text-12 transition-colors ${
+            className={`shrink-0 tabular-nums text-12 ${swipe ? "" : "transition-colors "}${
               on ? "text-accent" : "text-muted/70"
             }`}
             dir="ltr"
