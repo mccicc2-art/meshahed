@@ -2578,6 +2578,39 @@ export async function unmarkEpisodes(input: {
 }
 
 /**
+ * 🆕 **إلغاءُ مشاهدة المسلسل كلِّه** (D-538، تصميمُ أحمد: «اضغط زر الصح
+ * مرة ثانية لإلغاء التحديد»).
+ *
+ * **ولماذا فعلٌ مستقلٌّ لا `unmarkEpisodes` بقائمة**: القائمةُ تُبنى
+ * بقراءةِ ما شُوهد أوّلاً — **رحلةٌ كاملةٌ قبل الحذف، وسقفُ خمسةِ آلافٍ
+ * قد يُجاوَز في مسلسلٍ طويل.** **وهنا شرطُ الحذف هو المسلسلُ نفسُه**،
+ * فجملةٌ واحدة.
+ *
+ * **وتُرجع ما حذفته** كي يصحّ التراجع: **الزرُّ لا يظهر إلا والمسلسلُ
+ * مُشاهَدٌ بالكامل**، **فإعادةُ الوسم تُعيد الحالَ كما كان بالضبط**
+ * (D-047: «تراجَع بعد» لا «أكِّد قبل»).
+ *
+ * ⚠️ **ولا تمسّ المتابعة**: من ألغى تأشيرَ المشاهدة لم يقل إنه لا يتابع
+ * — **وفعلٌ يفعل شيئين يُفاجئ صاحبَه** (D-238).
+ */
+export async function unmarkShow(showTmdbIdRaw: number): Promise<number> {
+  const showTmdbId = intId(showTmdbIdRaw);
+  const { supabase, user } = await requireUser("ep", 120, 60_000);
+
+  const { data, error } = await supabase
+    .from("watched_episodes")
+    .delete()
+    .match({ user_id: user.id, show_tmdb_id: showTmdbId })
+    .select("episode_number");
+  if (error) fail(error);
+
+  revalidatePath("/");
+  revalidatePath("/library");
+  revalidatePath(`/show/${showTmdbId}`);
+  return (data ?? []).length;
+}
+
+/**
  * الإبلاغ عن مراجعة.
  *
  * بديلٌ عن «عدم الإعجاب» لا مكمّلٌ له (review_reports.sql): الديسلايك يقع

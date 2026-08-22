@@ -60,10 +60,19 @@ const ar = {
      (D-002). **والتمييزُ باقٍ في البيانات** (`source`) لمن احتاجه. */
   recoFrom: (title: string) => `من «${title}»`,
   recoFromGenre: "من أنواعك المفضّلة",
+  listAddAllDone: (n: number) => `أُضيف ${n} إلى «للمشاهدة»`,
+  /* 🆕 **«ابدأ المشاهدة»** (D-538، تصميمُ أحمد): **فعلٌ واحدٌ محلَّ
+     «أضف الكل»** — يتبع أعمالَ القائمة كلَّها بترتيبها ويحفظها فتدخل
+     «تابِع المشاهدة»، **ثمّ يفتح أوّلَ عنوان.** **وزرّان يفعلان الشيءَ
+     نفسَه إلا خطوةً أخيرة هما بابان لفعلٍ واحد** (القاعدة ٦). */
+  listStartWatching: "ابدأ المشاهدة",
+  /* ⚠️ **وهذه الثلاثُ بلا قارئٍ منذ D-538 وتسقط في الرفعة التالية**
+     (D-028/D-214): **المفتاحُ يُحذف بعد قارئه لا معه**، وإلّا سقط
+     الالتزامُ الذي بينهما. */
   listAddAll: "أضف الكل",
   listAddAllAria: "أضف كل أعمال القائمة إلى «للمشاهدة»",
-  listAddAllDone: (n: number) => `أُضيف ${n} إلى «للمشاهدة»`,
   listAddAllNone: "كلُّها عندك أصلاً",
+  listStartWatchingAria: "أضف القائمة إلى «تابِع المشاهدة» وافتح أوّل عنوان",
   trendingWeek: "رائج هذا الأسبوع",
   // تلميحات لمرة واحدة (م٣) + رقاقة النية في البحث
   hintDiscover:
@@ -646,6 +655,20 @@ const ar = {
   watchedMarkedCount: (n: number) => `أُشّرت ${n} حلقة كمُشاهَدة`,
   // مسلسلٌ اكتمل: الدائرة لا تمحو سجلّه — تدلّ على مكان الإلغاء
   seriesWatchedHint: "مُشاهَد بالكامل — ألغِ أي موسم من تبويب الحلقات",
+  /* ⚖️ 🆕 **والصحُّ صار يُلغى بضغطةٍ ثانية** (D-538، تصميمُ أحمد):
+     **`seriesWatchedHint` كانت جوابَ الضغطة الثانية** — تقول «اذهب إلى
+     تبويبٍ آخر» — **وزرٌّ يردّ بتعليماتٍ ليس زرّاً.** وتبقى الكلمةُ
+     لأنها ما زالت تصف الحال في مواضعَ أخرى. */
+  unwatchShowDone: "أُلغيت المشاهدة",
+  unwatchShowAria: "إلغاء تأشير مشاهدة المسلسل كلِّه",
+  /* 🆕 **قائمةُ المقيّمين** (D-538): **الرقمُ في الرأس يقول «كم»،
+     والقائمةُ تقول «من»** — **وسطحٌ اجتماعيٌّ يخفي الناسَ خلف متوسّط**
+     (D-371). */
+  ratingsHeading: "التقييمات",
+  ratingsYou: "أنت",
+  ratingEditAria: "عدّل تقييمك",
+  ratingDeleteAria: "احذف تقييمك",
+  ratingDeleted: "حُذف تقييمك",
   franchiseTitle: "بقيّة السلسلة",
   // الإبلاغ — فعلٌ صامت بلا عدّاد
   reportLabel: "إبلاغ",
@@ -1910,10 +1933,12 @@ const en: Dict = {
   suggestedForYou: "Picked for you",
   recoFrom: (title: string) => `From “${title}”`,
   recoFromGenre: "From your genres",
+  listAddAllDone: (n: number) => `${n} added to To watch`,
+  listStartWatching: "Start Watching",
   listAddAll: "Add all",
   listAddAllAria: "Add every title in this list to To watch",
-  listAddAllDone: (n: number) => `${n} added to To watch`,
   listAddAllNone: "You already have them all",
+  listStartWatchingAria: "Add this list to Continue Watching and open the first title",
   trendingWeek: "Trending this week",
   hintDiscover:
     "The Filters button hides language, era, platform and rating filters — and week/month/year chips sit on every Top 10 rail.",
@@ -2404,6 +2429,13 @@ const en: Dict = {
   watchedUnmarked: "Watched removed",
   watchedMarkedCount: (n: number) => `Marked ${n} episodes watched`,
   seriesWatchedHint: "All watched — clear a season from the episodes tab",
+  unwatchShowDone: "Watched cleared",
+  unwatchShowAria: "Clear watched for the whole series",
+  ratingsHeading: "Ratings",
+  ratingsYou: "You",
+  ratingEditAria: "Edit your rating",
+  ratingDeleteAria: "Delete your rating",
+  ratingDeleted: "Your rating was deleted",
   franchiseTitle: "The rest of the series",
   reportLabel: "Report",
   reportTitle: "Report this review",
