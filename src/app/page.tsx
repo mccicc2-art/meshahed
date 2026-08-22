@@ -23,6 +23,8 @@ import {
   getMyRatings,
   getMyLists,
   getFriendsWatching,
+  getUnreadSignals,
+  getUnreadShares,
   type SavedListBrief,
   type ListItem,
 } from "@/lib/data";
@@ -65,6 +67,7 @@ import {
   type HomeView,
 } from "@/lib/homePrefs";
 import { capCards } from "@/lib/cardCount";
+import { getLevel, levelPoints } from "@/lib/level";
 import { densityVars } from "@/lib/density";
 import { WeekStrip, type WeekEntry } from "@/components/WeekStrip";
 import { ShowStatsSync, type ShowStat } from "@/components/ShowStatsSync";
@@ -361,10 +364,29 @@ export default async function HomePage() {
     (k) => allHeaderStats[k],
   );
 
-  /* 🗑️ **وحسابُ المستوى سقط معه** (D-502): كان مدخلَ الهلال حول صورة
-     الترحيب وحدَها — **وقد غادرت الصورةُ إلى الشريط العلويّ.** ورقمُه
-     رخيصٌ (من عدّادَين مقروءَين أصلاً) **فيعود بسطرٍ متى عادت له
-     واجهةٌ تعرضه.** */
+  /* ⚖️ 🆕 **وحسابُ المستوى عاد بسطرين** (D-536) — **كما وُعد في D-502
+     حرفاً**: «رقمُه رخيصٌ من عدّادَين مقروءَين أصلاً، فيعود متى عادت له
+     واجهةٌ تعرضه». **والواجهةُ عادت** (الهلالُ حول صورة الترحيب).
+     **ولا نداءَ جديد**: الحلقاتُ من `summary` والأفلامُ من
+     `watchedMovies` — **كلاهما في يد الصفحة قبل هذا السطر.**
+     ⚠️ **ومصدرُ الأرقام هنا غيرُ مصدرِها في الملفّ العامّ**
+     (`watch_summary` مقابل `user_watch_overview`) — **والجدولان
+     واحد**، **فإن اختلف الرقمان يوماً فالعطلُ في أحد المصدرين لا في
+     الرسم** (D-219: رقمان لشيءٍ واحد). */
+  const level = getLevel(
+    levelPoints(
+      (summary ?? []).reduce((n, r) => n + r.watched, 0),
+      new Set(watchedMovies.map((m) => m.id)).size,
+    ),
+  );
+
+  /* **والعدّادان يُقرآن هنا أيضاً بلا ثمن**: كلاهما مغلَّفٌ بـ`cache()`
+     (D-470) **والشريطُ العلويُّ قرأهما في الطلب نفسِه** — فالنداءُ
+     محفوظٌ لا مُكرَّر. */
+  const [unreadSignals, unreadShares] = await Promise.all([
+    getUnreadSignals(),
+    getUnreadShares(),
+  ]);
 
   const displayName = profile?.nickname || user.email?.split("@")[0] || "";
 
@@ -396,6 +418,16 @@ export default async function HomePage() {
             و`RoutePrewarm` حُذف بحذف آخرِ مستدعيه. */}
         <HomeHeader
           displayName={displayName}
+          /* ⚖️ 🆕 **الصورةُ والهلالُ والعدّادان عادوا** (D-536): كانت
+             الثلاثةُ معاملاتٍ تُقبل ولا تُقرأ منذ D-502 — **وقد سقطت
+             من المستدعي في D-503** — **فتعود من بابها الأوّل.**
+             **والأرقامُ كلُّها من جلبِ الصفحة نفسِه** (D-470): لا نداءَ
+             خامسٌ لأجل ترويسة. */
+          avatarUrl={profile?.avatar_url ?? null}
+          avatarPos={profile?.avatar_pos ?? null}
+          unreadSignals={unreadSignals}
+          unreadShares={unreadShares}
+          levelPercent={level.percent}
           stats={headerStats}
           showStats={prefs.stats}
           locale={locale}
