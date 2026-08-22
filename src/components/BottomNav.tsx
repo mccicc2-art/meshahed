@@ -2,21 +2,16 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
 import { getDict, type Locale } from "@/lib/i18n";
 import { useKeyboardOpen } from "@/lib/useKeyboard";
 import { usePrefetchOnIntent } from "@/lib/prefetchIntent";
 import { Icon, type IconName } from "./Icon";
-import dynamic from "next/dynamic";
 
-/* ورقةُ البحث تُحمَّل عند أوّل فتحٍ لا مع كلِّ صفحة: الشريطُ السفليُّ في
-   التخطيط فكان يشحنها (~8KB gz) إلى كلِّ مسارٍ في التطبيق — وثمنُ التأجيل
-   لحظةُ جلبٍ واحدة عند أوّل ضغطةِ بحث، ثم تبقى في الذاكرة. `ssr: false`
-   لأنها لا تُرسم إلا بضغطةٍ فلا HTML لها أصلاً. */
-const TitleSearchSheet = dynamic(
-  () => import("./TitleSearchSheet").then((m) => m.TitleSearchSheet),
-  { ssr: false },
-);
+/* ⚖️ 🆕 **وورقةُ البحث غادرت هذا الملفّ** (D-534): البحثُ صار صفحةً
+   كاملةً (`/search`) بترويستها ورقائقها وأقسامها — **فالخانةُ رابطٌ
+   كسائر الخانات، ولا حالةَ ولا حوارَ ولا حزمةً مؤجَّلةً هنا.**
+   **والورقةُ باقيةٌ لقارئها الآخر** — التقاطُ عملٍ إلى قائمة
+   (`onPick`) — **وذاك اختيارٌ لا انتقال.** */
 
 /**
  * شريط التبويبات السفلي.
@@ -102,8 +97,6 @@ export function BottomNav({
 }) {
   const pathname = usePathname();
   const t = getDict(locale);
-  // الحالة قبل أي خروجٍ مبكّر: ترتيب الخطّافات لا يتغيّر بين تصييرين
-  const [searchOpen, setSearchOpen] = useState(false);
   /* تسخينُ الوجهة لحظةَ النيّة (جولة ٢٠ أغسطس، بديل موجات D-483):
      `touchstart` يسبق الضغطة بنحو ١٠٠م.ث — تكفي لبدء جلب الوجهة
      المقصودة وحدها بدل تسخين الخمس جميعاً عند الفتح */
@@ -191,8 +184,7 @@ export function BottomNav({
         style={{ background: "color-mix(in srgb, var(--background) 76%, transparent)" }}
       >
         {TABS.map(({ href, key, icon, iconOn }) => {
-          const isSearch = key === "search";
-          const active = isSearch ? searchOpen : isActive(href);
+          const active = isActive(href);
           /* **أيقونةٌ بلا كلمة** (D-258، طلبُ أحمد: «اخفِ الكلمات في
              الشريط السفلي واكتبها فوق»). **والاسمُ لم يُحذف بل انتقل**
              إلى منتصف الشريط العلويّ (`NavTitle`) — انظر حجّتَه هناك.
@@ -257,21 +249,11 @@ export function BottomNav({
           const face_cls =
             "relative flex min-w-0 items-center justify-center rounded-2xl px-1 py-2 transition active:bg-surface-2";
 
-          // البحث يفتح ورقةً في مكانه؛ وبقية التبويبات وجهاتٌ تُزار
-          return isSearch ? (
-            <button
-              key={href}
-              type="button"
-              onClick={() => setSearchOpen(true)}
-              aria-expanded={searchOpen}
-              aria-haspopup="dialog"
-              aria-label={label[key]}
-              title={label[key]}
-              className={face_cls}
-            >
-              {face}
-            </button>
-          ) : (
+          /* ⚖️ 🆕 **والخمسُ وجهاتٌ اليوم** (D-534) — كان البحثُ زرّاً
+             يفتح ورقةً، **فصار رابطاً كأخواته**: خانةٌ تفتح حواراً
+             وخانةٌ تنتقل في شريطٍ واحد تعلّمان الإصبعَ قاعدتين
+             (D-150). **والرجوعُ من الصفحة يعيدك إلى حيث كنت.** */
+          return (
             <Link
               key={href}
               href={href}
@@ -331,11 +313,6 @@ export function BottomNav({
         })}
       </nav>
 
-      {/* الورقة خارج الشريط عمداً: الشريط `z-40` ويصنع سياق تكديسٍ يحبس
-          ما بداخله — فورقةٌ بداخله لا تعلو غيرها مهما رُفع رقمها */}
-      {searchOpen && (
-        <TitleSearchSheet onClose={() => setSearchOpen(false)} locale={locale} />
-      )}
     </>
   );
 }
