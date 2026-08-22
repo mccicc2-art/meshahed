@@ -196,7 +196,7 @@ export function SearchScreen({
             aria-label={t.aiSearchPlaceholder}
             rows={3}
             /* ١٦ بكسلاً: أصغرُ منها يكبّر سفاري الصفحةَ عند التركيز */
-            className="w-full rounded-xl bg-surface-2 border border-border px-4 py-3 text-base outline-none focus:border-accent transition resize-none"
+            className="no-focus-ring w-full rounded-xl bg-surface-2 border border-border px-4 py-3 text-base outline-none transition resize-none"
           />
           <button
             type="button"
@@ -238,7 +238,12 @@ export function SearchScreen({
                 type="search"
                 enterKeyHint="search"
                 autoComplete="off"
-                className="w-full rounded-xl bg-surface-2 border border-border ps-10 pe-11 py-3 text-base outline-none focus:border-accent transition"
+                /* 🆕 **ولا حدَّ ذهبيّاً عند التركيز** (D-539، بلاغُ أحمد):
+                  **حلقةُ المتصفّح وحدُّ الحقل كانا ذهبيَّين معاً** —
+                  **إطارٌ داخل إطار** — **والحقلُ يُركَّز برمجيّاً عند
+                  فتح الصفحة فيومضان بلا أن يلمس أحد.** **والمؤشّرُ
+                  النابضُ يقول ما كانا يقولانه.** */
+                className="no-focus-ring w-full rounded-xl bg-surface-2 border border-border ps-10 pe-11 py-3 text-base outline-none transition"
               />
               {/* **والمسحُ لا يُرسم على حقلٍ فارغ** (D-222) — وهدفُ اللمس
                   ٤٤ وإن كان الرمزُ ١٨ (D-033/D-168). */}
