@@ -82,15 +82,10 @@ export const segmentedTrackBare = "inline-flex items-stretch";
  * `pad=false` لمن يحتاج حشواً خاصاً: تمرير `px-2` في `className` لا يكفي —
  * الغلبة في CSS لترتيب التوليد لا لترتيب النصّ. فمن يريد حشوه يمرّر `false`.
  */
-export function segmentedItem(
-  active: boolean,
-  className = "",
-  pad = true,
-  animateColor = true,
-) {
+export function segmentedItem(active: boolean, className = "", pad = true) {
   const rule =
     "before:pointer-events-none before:absolute before:inset-y-2 before:start-0 before:w-px before:bg-[color:var(--divider)] first:before:hidden";
-  return `${pad ? "px-4 pt-2 pb-3 text-14 " : ""}relative font-semibold whitespace-nowrap ${animateColor ? "transition-colors " : ""}${rule} ${
+  return `${pad ? "px-4 pt-2 pb-3 text-14 " : ""}relative font-semibold whitespace-nowrap transition-colors ${rule} ${
     active
       ? "text-foreground after:pointer-events-none after:absolute after:-bottom-px after:inset-x-0 after:h-[3px] after:rounded-t-full after:bg-accent"
       : "text-muted hover:text-foreground"
