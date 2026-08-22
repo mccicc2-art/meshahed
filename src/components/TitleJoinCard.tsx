@@ -71,14 +71,15 @@ export function TitleJoinCard({
           أحمد: «تقليل ارتفاع صف Join the conversation ليطابق الصف
           السفلي»). **كان ٥٧px والصفُّ تحته ٤٢** — **وصفّان في بطاقةٍ
           واحدةٍ بارتفاعين يُقرآن رأساً وذيلاً لا صفّين** — **والرمزُ
-          المطوَّقُ ٣٦px هو ما كان يفرضهما.** فالطوقُ ٢٨ والحشوُ `py-2.5`
-          **والعنوانُ ١٤ كأخويه تحته**، فيستوي الصفّان إلى البكسل. */}
-      <div className="flex items-center gap-2.5 px-4 py-2.5">
+          المطوَّقُ ٣٦px هو ما كان يفرضهما.** 📏 **وقِيس بعد أوّل محاولة:
+          ٤٨ مقابل ٤١ — أقربَ ولم يستوِ** — **فالطوقُ ٢٤ والحشوُ `py-2`
+          والعنوانُ ١٤ كأخويه تحته**، فيستوي الصفّان. */}
+      <div className="flex items-center gap-2.5 px-4 py-2">
         <span
           aria-hidden
-          className="shrink-0 size-7 rounded-full border border-[color:var(--divider)] grid place-items-center text-accent"
+          className="shrink-0 size-6 rounded-full border border-[color:var(--divider)] grid place-items-center text-accent"
         >
-          <Icon name="comment" size={14} />
+          <Icon name="comment" size={13} />
         </span>
         <h3 className="min-w-0 font-bold text-14">{t.communityJoin}</h3>
       </div>
