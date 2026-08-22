@@ -538,16 +538,20 @@ export function ThreadReplies({
    * ذرّيّتُه** فيبقى «إخفاء الردود» يعني ما يقوله.
    */
   function branch(
-    rootId: string,
+    parentId: string,
+    /** **جذرُ الفرع لا أبو الصفّ** — والفرقُ بينهما هو السطر نفسُه:
+        من أبوه الجذرُ يراه فوقه بعينه، ومن أبوه صفٌّ في القائمة لا
+        يميّزه شيء. **ونداءٌ متكرّرٌ يمرّر أباه مكانَ جذره يُسكت السطرَ
+        في كلِّ درجةٍ بعد الأولى** — وقد وقع، ورُئي على المنشور. */
+    topId: string,
     out: { r: ThreadReply; toName: string | null }[] = [],
   ) {
-    for (const c of kids.get(rootId) ?? []) {
-      /* **ولا سطرَ «ردّاً على» لمن أبوه الجذرُ فوقه** — العينُ تراه */
+    for (const c of kids.get(parentId) ?? []) {
       out.push({
         r: c,
-        toName: c.parentId === rootId ? null : (nameOf.get(c.parentId ?? "") ?? null),
+        toName: c.parentId === topId ? null : (nameOf.get(c.parentId ?? "") ?? null),
       });
-      if (isOpen(c)) branch(c.replyId, out);
+      if (isOpen(c)) branch(c.replyId, topId, out);
     }
     return out;
   }
@@ -570,7 +574,7 @@ export function ThreadReplies({
    * صفحةٌ ثالثةٌ للخيط بابٌ ثالثٌ للحديث نفسِه.
    */
   function node(r: ThreadReply) {
-    const flat = nested ? branch(r.replyId) : [];
+    const flat = nested ? branch(r.replyId, r.replyId) : [];
     const all3 = expanded.has(r.replyId);
     const shown = all3 ? flat : flat.slice(0, PEEK);
     const rest = flat.length - shown.length;
