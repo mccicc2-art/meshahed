@@ -272,7 +272,12 @@ export default async function LibraryPage({
             {(
               [
                 { href: "/stats", icon: "chart", label: t.libAnalysisBtn },
-                { href: "/diary", icon: "book", label: t.diaryTitle },
+                /* ⚖️ 🆕 **«اليوميات» صارت «النشاط»** (D-537، تصميمُ
+                   أحمد): **الوجهةُ تعرض الأربعةَ لا المشاهدةَ وحدَها**،
+                   **والاسمُ يتبع ما تجده هناك** (D-030). **والساعةُ
+                   بسهمها ترمز إلى سجلٍّ يُرجَع فيه**، والكتابُ كان
+                   يرمز إلى يوميّاتٍ تُكتب. */
+                { href: "/activity", icon: "clock", label: t.activityTitle },
               ] as const
             ).map(({ href, icon, label }) => (
               <Link
