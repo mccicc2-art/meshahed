@@ -266,6 +266,21 @@ const ar = {
   searchModeTitles: "أعمال",
   searchModePeople: "أشخاص",
   searchModeAi: "وصف قصة",
+  /* 🆕 **رقائقُ صفحة البحث الخمس** (D-534) — **مرشِّحُ نوعٍ فوق قائمةٍ
+     واحدة لا خمسُ صفحات**: «الكل» هي القائمة نفسُها مجمَّعةً بأقسام،
+     وكلُّ رقاقةٍ تقصر العرضَ على قسمها. **و«أعمال» تُعيد استعمال
+     `searchModeTitles`** فلا كلمتان لمعنًى واحد. */
+  searchTabAll: "الكل",
+  searchTabArtists: "فنانون",
+  searchTabMembers: "أعضاء",
+  searchTabLists: "قوائم",
+  /* **والبحثُ بالوصف بابٌ لا رقاقة** — يقلب الشاشةَ إلى وضعٍ آخر
+     (حقلُ وصفٍ وزرُّ تشغيل)، **ورقاقةٌ بجانب أنواعٍ تعِد بترشيحٍ لا
+     بوضعٍ ثانٍ** (تصميمُ أحمد ٢٢ أغسطس). */
+  searchByDesc: "بحث بالوصف",
+  searchByDescSub: "صِف قصةً أو جوّاً أو مشهداً",
+  searchMemberRole: "عضو",
+  searchClear: "مسح البحث",
   searchAllResults: (q: string) => `عرض كل النتائج عن «${q}» ←`,
   searchResultsFor: (q: string, n: number) =>
     `نتائج البحث عن «${q}» — ${n} نتيجة`,
@@ -2017,6 +2032,14 @@ const en: Dict = {
   searchModeTitles: "Titles",
   searchModePeople: "People",
   searchModeAi: "Describe",
+  searchTabAll: "All",
+  searchTabArtists: "Artists",
+  searchTabMembers: "Members",
+  searchTabLists: "Lists",
+  searchByDesc: "Search by description",
+  searchByDescSub: "Describe a story, mood, or scene",
+  searchMemberRole: "Member",
+  searchClear: "Clear search",
   searchAllResults: (q: string) => `See all results for “${q}” →`,
   searchResultsFor: (q: string, n: number) => `Results for “${q}” — ${n} found`,
   searchNoResults: "No results.",
