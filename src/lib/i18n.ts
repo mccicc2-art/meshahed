@@ -1072,6 +1072,17 @@ const ar = {
      وين الزرُّ الي قفلها؟»). **زرٌّ يفتح ولا يُغلق ليس مفتاحاً، هو بابٌ
      بلا مقبضٍ من الداخل** — **و«تراجَع بعد» لا «أكِّد قبل»** (D-047). */
   talkHideReplies: "إخفاء الردود",
+  /* 🆕 **وسقفُ ثلاثةٍ ثم زرُّ المزيد** (D-535، تصميمُ أحمد): **الفرقُ
+     بينه وبين `talkShowReplies` أنّ ذاك يفتح فرعاً مطويّاً كلَّه، وهذا
+     يُكمل قائمةً بدأت** — **وكلمتان لفعلين لا كلمةٌ لفعلين** (D-224). */
+  talkMoreReplies: (n: number) =>
+    n === 1
+      ? "عرض ردّ آخر"
+      : n === 2
+        ? "عرض ردَّين آخرَين"
+        : n <= 10
+          ? `عرض ${num(n, "ar")} ردود أخرى`
+          : `عرض ${num(n, "ar")} ردّاً آخر`,
   talkReply: "ردّ",
   /* **«تعليق» في ذيل خطّ النشاط** (D-224، طلبُ أحمد: «ريبلي غيّرها كومنت»).
      **وهي غيرُ `talkReply` عمداً وإن تجاورتا:** داخل الغرفة أنت **تردّ على
@@ -2573,6 +2584,8 @@ const en: Dict = {
       : `Average of ${num(n, "en")} people talking about it`,
   talkShowReplies: (n: number) => (n === 1 ? "Show 1 reply" : `Show ${num(n, "en")} replies`),
   talkHideReplies: "Hide replies",
+  talkMoreReplies: (n: number) =>
+    n === 1 ? "View 1 more reply" : `View ${num(n, "en")} more replies`,
   talkReply: "Reply",
   actionComment: "Comment",
   replySentToast: "Reply sent",
