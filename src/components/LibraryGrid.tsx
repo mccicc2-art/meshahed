@@ -75,6 +75,27 @@ export const TAB_FILTER: Record<LibraryTab, string | null> = {
   lists: "list",
 };
 
+/**
+ * 🆕 **التبويباتُ الثلاثةُ التي بياناتُها في الصفحة سلفاً** (D-521).
+ *
+ * **«مسلسلاتي» و«أفلامي» و«الأنمي» ثلاثةُ مناظرَ لمجموعةٍ واحدة**:
+ * الصفحةُ تجلب `shows` و`movies` في كلِّ حال، **والأنمي مبنيٌّ من
+ * الاثنين بـ`animeFlags`** — **فلا بايتَ يُنتظر من الخادم لتبديلها.**
+ * ⚠️ **و«القوائم» و«الفنانون» ليسا منها**: جلبُهما مشروطٌ بـ`initialTab`
+ * على الخادم (`getSavedLists` · `getArtistShelf` · `getListCardStats`)،
+ * **فتبديلُهما محلّيّاً كان سيعرض فراغاً ويسمّيه محتوى** (D-217).
+ */
+const CORE_TABS: readonly LibraryTab[] = ["shows", "movies", "anime"];
+
+/** `?filter=` ↔ التبويب — عكسُ الجدول أعلاه، لقراءة الرابط عند الرجوع */
+const FILTER_TAB: Record<string, LibraryTab> = {
+  tv: "shows",
+  movie: "movies",
+  anime: "anime",
+  person: "artists",
+  list: "lists",
+};
+
 /** حالات التقسيم — «أشاهدها» للمسلسلات وحدها؛ الفيلم يُشاهد أو لا */
 export type LibraryStatus = "watching" | "unstarted" | "completed" | "dropped";
 
@@ -150,12 +171,52 @@ export function LibraryGrid({
     setPendingTab(null);
   }
   const tab = pendingTab ?? initialTab;
+
+  /**
+   * 🆕 ⚡ **والتبويباتُ الثلاثةُ الأساسيّة تُبدَّل في العميل وحدَه**
+   * (D-521، بلاغُ أحمد: «الرمشة عند التنقّل»).
+   *
+   * **كان كلُّ تبديلٍ — حتى بين منظرين لنفس البيانات — يمرّ بـ
+   * `router.push`**: رحلةُ RSC ورسمةُ صفحةٍ كاملة، **فيصل `initialTab`
+   * جديدٌ فيُصفّر التفاؤل وتُعاد الشجرةُ** — **وعقدُ `<img>` تخرج من
+   * الشجرة وتعود** (وهو ما أمسكه المسبار: `det`). **والبياناتُ نفسُها
+   * كانت في الصفحة طوال الوقت.**
+   *
+   * **فالآن**: الحالةُ المحلّيّة هي الحقيقة، **والرابطُ يُكتب بـ
+   * History API** — الطريقُ الذي يوصي به Next 16 لتحديث العنوان بلا
+   * تنقّل: **`usePathname`/`useSearchParams` تتزامنان ولا يُطلَق طلبُ
+   * خادمٍ واحد.**
+   *
+   * ⚠️ **و«القوائم» و«الفنانون» يبقيان على `router.push`** — بياناتُهما
+   * مشروطةٌ بالخادم، **وتبديلٌ محلّيٌّ لهما يعرض فراغاً.**
+   */
   function goTab(id: LibraryTab) {
     if (id === tab) return;
-    setPendingTab(id);
     const f = TAB_FILTER[id];
-    router.push(f ? `/library?filter=${f}` : "/library", { scroll: false });
+    const href = f ? `/library?filter=${f}` : "/library";
+    setPendingTab(id);
+    if (CORE_TABS.includes(id)) {
+      /* بلا `router.push`: لا RSC ولا إعادةَ تركيبٍ لِما لم يتبدّل */
+      window.history.pushState(null, "", href);
+      return;
+    }
+    router.push(href, { scroll: false });
   }
+
+  /* **والرجوعُ والتقدّمُ يُقرآن من الرابط** — الأسطرُ التي كتبناها
+     بـ`pushState` لا يعرف الراوترُ محتواها، **فنقرأ `?filter=` بأنفسنا
+     ونضع التبويبَ فوراً.** ولو أعاد الراوترُ رسمَ الصفحة أيضاً وصل
+     `initialTab` جديدٌ فصفّر التفاؤلَ إلى القيمة نفسِها — **الطريقان
+     يلتقيان على تبويبٍ واحد.** */
+  useEffect(() => {
+    const onPop = () => {
+      const f = new URLSearchParams(window.location.search).get("filter") ?? "";
+      const id = FILTER_TAB[f] ?? initialTab;
+      setPendingTab(id === initialTab ? null : id);
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, [initialTab]);
   const [q, setQ] = useState("");
   const [sort, setSort] = useState<"smart" | "title" | "progress" | "added">("smart");
   /* ورقةُ الأدوات (D-177): البحث والترتيب وإنشاء القائمة خلف رمزٍ واحد */
