@@ -17,6 +17,16 @@ export interface SearchTitle {
   id: number;
   mediaType: "tv" | "movie";
   title: string;
+  /**
+   * 🆕 **السطرُ الثاني في وضع «المحلّي + الأصلي»** (D-544) — `null` في
+   * الأوضاع الثلاثة الأخرى، **وأيضاً حين يتطابق الاسمان.**
+   */
+  /**
+   * ⚠️ **اختياريّةٌ عمداً لا سهواً** (D-028): **الأنواعُ في `src/lib`
+   * والمسارُ في `src/app/api/search` — دليلان فكوميتان**، **وحقلٌ
+   * إجباريٌّ يكسر الكوميتَ الذي بينهما.**
+   */
+  titleSecondary?: string | null;
   year: string | null;
   /** رابطٌ جاهزٌ لا مسارٌ خام — المتصفّح لا يعرف قاعدة صور TMDB */
   poster: string | null;

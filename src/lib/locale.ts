@@ -1,6 +1,7 @@
 import { cookies, headers } from "next/headers";
 import { LOCALE_COOKIE, normalizeLocale, getDict, type Locale, type Dict } from "@/lib/i18n";
 import { REGION_COOKIE, DEFAULT_REGION, normalizeRegion } from "@/lib/region";
+import { TITLE_MODE_COOKIE, parseTitleMode, type TitleMode } from "@/lib/titleMode";
 import {
   TAB_SURFACES,
   parseTabPrefs,
@@ -119,5 +120,26 @@ export async function getTabPrefs(surface: TabSurface): Promise<TabPref[]> {
     );
   } catch {
     return parseTabPrefs(surface, null);
+  }
+}
+
+/**
+ * 🆕 **طريقةُ عرض أسماء الأعمال** (D-544) — **تُقرأ على الخادم قبل أوّل
+ * رسمة**، **فلا يومض اسمٌ بطريقةٍ ثمّ يُستبدل** ولا يختلف ما يرسمه
+ * الخادمُ عمّا يرسمه العميل (`hydration mismatch`).
+ *
+ * **وكوكيٌّ لا عمود** — نفسُ حجّة `setWatchRegion` (D-014): **تفضيلُ
+ * عرضٍ يعمل للزائر بلا حساب**، ولا يستحقّ هجرةً ولا صفّاً.
+ *
+ * ⚠️ **واللغةُ تدخل في القراءة**: الصوتيّةُ للعربية وحدَها، **فقارئٌ
+ * إنجليزيٌّ يحمل كوكيَّها يقع على الافتراض** (`parseTitleMode`).
+ */
+export async function getTitleMode(): Promise<TitleMode> {
+  const locale = await getLocale();
+  try {
+    const store = await cookies();
+    return parseTitleMode(store.get(TITLE_MODE_COOKIE)?.value, locale);
+  } catch {
+    return "localized";
   }
 }

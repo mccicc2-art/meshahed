@@ -4,6 +4,13 @@ import { decodeSessionCookie, sessionCookieParts } from "@/lib/sessionCookie";
 import type { PersonLite } from "./people";
 import { episodeKey } from "@/lib/keys";
 import { LOOPZ_ID } from "@/lib/loopz";
+import {
+  CONTENT_PREFS_COOKIE,
+  EMPTY_CONTENT_PREFS,
+  parseContentPrefs,
+  sanitizeContentPrefs,
+  type ContentPrefs,
+} from "@/lib/contentPrefs";
 
 export { episodeKey };
 
@@ -101,6 +108,16 @@ export interface Profile {
   avatar_pos?: number | null;
   theme: string | null;
   favorite_genres: number[];
+  /* 🆕 **تفضيلاتُ المحتوى** (D-545، الهجرة ١٢٦) — **أعمدةٌ على `profiles`
+     لا جدولٌ ثانٍ**: `favorite_genres` هو «المفضَّل» أصلاً، **وصفُّ
+     الملفّ يُقرأ مرّةً مخبَّأةً لكلِّ صفحة فلا استعلامَ إضافيّ.**
+     **وغيابُها (قبل تشغيل الهجرة) يعني الفراغَ لا العطل.** */
+  unwanted_genres?: number[] | null;
+  /** **مرتَّبةٌ**: الأولى أعلى أولويّة (ISO 639-1) */
+  preferred_languages?: string[] | null;
+  excluded_languages?: string[] | null;
+  /** 🆕 **روابطُ التواصل** (D-546، الهجرة ١٢٧) — معرّفاتٌ لا روابط */
+  socials?: unknown;
   hide_name?: boolean | null;
   home_prefs?: unknown;
   /** تخصيص البروفايل — توأم `home_prefs` (هجرة 51، D-129) */
@@ -132,7 +149,7 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
     let { data, error } = await supabase
       .from("profiles")
       .select(
-        "id, nickname, username, avatar_url, cover_url, cover_pos, avatar_pos, theme, favorite_genres, hide_name, home_prefs, bio, is_private, hide_follow_lists, profile_prefs, font_ui, font_content, ui_state",
+        "id, nickname, username, avatar_url, cover_url, cover_pos, avatar_pos, theme, favorite_genres, unwanted_genres, preferred_languages, excluded_languages, socials, hide_name, home_prefs, bio, is_private, hide_follow_lists, profile_prefs, font_ui, font_content, ui_state",
       )
       .eq("id", uid)
       .maybeSingle();
@@ -150,7 +167,9 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
         .maybeSingle();
       if (mid.data) {
         // عمودا التموضع أحدث من هذه الدرجة — يسقطان إلى سلوكهما القديم
-        data = { ...mid.data, cover_pos: null, avatar_pos: null, home_prefs: null, bio: null, is_private: null, hide_follow_lists: null, profile_prefs: null, font_ui: null, font_content: null, ui_state: null };
+        /* 🆕 **وأعمدةُ ١٢٦ تسقط إلى الفراغ في هذه الدرجة** — **والفراغُ
+           يعني «بلا تفضيلات» أي السلوكَ القديم بالضبط** (D-063). */
+        data = { ...mid.data, cover_pos: null, avatar_pos: null, home_prefs: null, bio: null, is_private: null, hide_follow_lists: null, profile_prefs: null, font_ui: null, font_content: null, ui_state: null, unwanted_genres: null, preferred_languages: null, excluded_languages: null, socials: null };
       } else {
         const legacy = await supabase
           .from("profiles")
@@ -164,6 +183,10 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
             cover_pos: null,
             avatar_pos: null,
             theme: null,
+            unwanted_genres: null,
+            preferred_languages: null,
+            excluded_languages: null,
+            socials: null,
             hide_name: false,
             home_prefs: null,
             bio: null,
@@ -4790,3 +4813,46 @@ export async function refreshTalkBulletins(): Promise<number> {
     return 0;
   }
 }
+
+/**
+ * 🆕 **تفضيلاتُ المحتوى — قراءةٌ واحدةٌ للصفحة كلِّها** (D-545).
+ *
+ * ================= لماذا لا استعلامَ جديداً =================
+ *
+ * **بنصِّ المواصفة: «لا تستخدم استعلاماً منفصلاً لكلّ كارد؛ حمّل
+ * التفضيلات مرّة واحدة».** **و`getProfile` مغلَّفةٌ بـ`cache`** فصفُّ
+ * الملفّ يُقرأ مرّةً في الطلب مهما سأله من سأل — **والأعمدةُ الثلاثةُ
+ * الجديدة تركب معه** (الهجرة ١٢٦). **فثمنُ هذه الدالّة صفر.**
+ *
+ * ================= والزائرُ يختار أيضاً =================
+ *
+ * **بلا حسابٍ فالكوكي** — نفسُ عائلة بقيّة التفضيلات (D-014)،
+ * **ويُقرأ على الخادم قبل أوّل رسمة** فلا وميضَ ولا `hydration
+ * mismatch`. **وعند الدخول يُدمج ولا يُفقد** (`mergeContentPrefs`،
+ * تُنادى في `setContentPrefs`).
+ *
+ * ⚠️ **ولا يُخبَّأ ناتجُ توصيةٍ عبر المستخدمين**: **هذه الدالّة لا
+ * تخبّئ شيئاً بذاتها**، و`getProfile` مخبَّأةٌ **بـ`cache()` من React
+ * وهو تخبئةُ طلبٍ واحدٍ لا تخبئةٌ عامّة** — **فلا يعبر تفضيلُ أحدٍ إلى
+ * طلبِ غيره** (شرطُ المواصفة: «امنع تسرّب كاش توصيات مستخدم إلى آخر»).
+ */
+export const getContentPrefs = cache(async (): Promise<ContentPrefs> => {
+  const profile = await getProfile().catch(() => null);
+
+  if (profile) {
+    return sanitizeContentPrefs({
+      genres: profile.favorite_genres ?? [],
+      unwantedGenres: profile.unwanted_genres ?? [],
+      languages: profile.preferred_languages ?? [],
+      excludedLanguages: profile.excluded_languages ?? [],
+    });
+  }
+
+  try {
+    const { cookies } = await import("next/headers");
+    const store = await cookies();
+    return parseContentPrefs(store.get(CONTENT_PREFS_COOKIE)?.value);
+  } catch {
+    return EMPTY_CONTENT_PREFS;
+  }
+});

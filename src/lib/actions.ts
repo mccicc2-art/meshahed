@@ -5,7 +5,19 @@ import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { LOCALE_COOKIE, normalizeLocale } from "@/lib/i18n";
 import { REGION_COOKIE, normalizeRegion } from "@/lib/region";
+import { TITLE_MODE_COOKIE, parseTitleMode } from "@/lib/titleMode";
+import {
+  CONTENT_PREFS_COOKIE,
+  hasAnyPrefs,
+  mergeContentPrefs,
+  parseContentPrefs,
+  sanitizeContentPrefs,
+  serializeContentPrefs,
+} from "@/lib/contentPrefs";
+import { getLocale } from "@/lib/locale";
 import { GENRES, type MediaType } from "@/lib/media";
+import { BROWSE_GENRES } from "@/lib/browse";
+import { sanitizeSocials } from "@/lib/socials";
 import { THEMES } from "@/lib/themes";
 import { sanitizeHomePrefs, type HomePrefs, type HomeView } from "@/lib/homePrefs";
 import { sanitizeProfilePrefs, type ProfilePrefs } from "@/lib/profilePrefs";
@@ -117,6 +129,12 @@ export async function updateProfile(input: {
   isPrivate?: boolean;
   /** قفل قائمتَي المتابعة في الملف العام (هجرة 43) */
   hideFollowLists?: boolean;
+  /**
+   * 🆕 **روابطُ التواصل** (D-546، الهجرة ١٢٧) — **غيابُها يعني «اتركها
+   * كما هي» لا «امحُها»**، كالنبذة: **نموذجٌ لا يعرض الحقلَ لا يجوز أن
+   * يمسحه** (وهو عطلُ النموذجين الذي عالجته D-462).
+   */
+  socials?: Record<string, string>;
 }) {
   const { supabase, user } = await requireUser("profile", 10, 60_000);
 
@@ -127,16 +145,31 @@ export async function updateProfile(input: {
     .replace(/[^a-z0-9_]/g, "")
     .slice(0, 24);
 
-  // الأنواع تُقصر على المعرّفات المعروفة، والصور على مخزن المشروع
+  /* الأنواع تُقصر على المعرّفات المعروفة، والصور على مخزن المشروع.
+     ⚖️ 🆕 **والمعروفُ صار أوسع** (D-546، إصلاحُ أثرٍ جانبيٍّ لـD-545):
+     **«المحتوى المفضّل» صار يكتب معرّفاتِ `BROWSE_GENRES`** (رعبٌ ٢٧،
+     رومانسيٌّ ١٠٧٤٩، إثارةٌ ٥٣…) **وهذه المصفاةُ كانت تعرف `GENRES`
+     الاثني عشر وحدَها** — **فأوّلُ حفظٍ في «تعديل الملفّ» كان يمحو
+     كلَّ نوعٍ اختاره من الجديد**، **وهو محوٌ صامتٌ في نموذجٍ لا يعرض
+     الحقلَ أصلاً.** **والمصفاةُ الآن اتّحادُ السجلّين، والسقفُ ٢٠
+     كسقف `contentPrefs`.** */
+  const knownGenre = (g: number) =>
+    GENRES.some((k) => k.id === g) ||
+    BROWSE_GENRES.some((k) => k.movie.includes(g) || k.tv.includes(g));
   const genres = [...new Set(input.favoriteGenres)]
-    .filter((g) => Number.isInteger(g) && GENRES.some((k) => k.id === g))
-    .slice(0, 12);
+    .filter((g) => Number.isInteger(g) && knownGenre(g))
+    .slice(0, 20);
 
   const payload: Record<string, unknown> = {
     id: user.id,
     nickname: nickname || null,
     avatar_url: safeImageUrl(input.avatarUrl),
     favorite_genres: genres,
+    /* 🆕 **روابطُ التواصل** (D-546) — **منقّاةً لا كما وصلت**: المفتاحُ
+       المجهولُ يسقط، والمعرّفُ الذي لا يطابق مصفاةَ منصّته يسقط،
+       **والرابطُ الملصوق يُقشَّر إلى معرّف.** **وما يُخزَّن معرّفٌ لا
+       رابط.** */
+    ...(input.socials === undefined ? {} : { socials: sanitizeSocials(input.socials) }),
     updated_at: new Date().toISOString(),
   };
   if (input.username !== undefined) payload.username = username || null;
@@ -334,6 +367,135 @@ export async function updateUiState(patch: {
  * كوكي فقط، بلا عمودٍ في قاعدة البيانات: هذا تفضيل عرضٍ كالثيم واللغة
  * (D-014)، يقرؤه الخادم قبل أوّل رسمة، ولا يستحقّ هجرةً ولا صفّاً.
  */
+/**
+ * 🆕 **طريقةُ عرض أسماء الأعمال** (D-544) — **كوكيٌّ واحدٌ بلا زرِّ حفظ**،
+ * نفسُ شكلِ `setWatchRegion` حرفاً (D-014).
+ *
+ * ⚠️ **ولا يُصدَّق ما يصل**: القيمةُ تمرّ بـ`parseTitleMode` نفسِها التي
+ * يمرّ بها الكوكيُّ المقروء — **فالمجهولُ يسقط إلى الافتراض**، **والصوتيّةُ
+ * لا تُكتب لواجهةٍ إنجليزيّة** (حارسٌ على طرفٍ واحد ليس حارساً — D-177).
+ */
+export async function setTitleMode(value: string) {
+  const locale = await getLocale();
+  const mode = parseTitleMode(value, locale);
+  const store = await cookies();
+  store.set(TITLE_MODE_COOKIE, mode, {
+    path: "/",
+    maxAge: 60 * 60 * 24 * 365,
+    sameSite: "lax",
+  });
+}
+
+/**
+ * 🆕 **حفظُ تفضيلات المحتوى** (D-545) — **صفُّ الملفّ للمسجَّل، والكوكي
+ * للزائر.**
+ *
+ * ⚠️ **والتنقيةُ قبل الكتابة لا بعدها** (ثلاثيّةُ D-177): `sanitize`
+ * تُسقط ما ليس في السجلّات، وتزيل التكرار، **وتحسم التعارض بأن يغلب
+ * المفضَّل** — **ولولاها لرفض قيدُ الهجرة ١٢٦ الصفَّ كلَّه** فيصير
+ * الحفظُ خطأً صامتاً بدل تصحيحٍ صامت.
+ *
+ * ⚠️ **ولا `revalidatePath`**: التوصياتُ تُقرأ على الخادم في كلِّ فتحةِ
+ * صفحة، **و`router.refresh()` من الواجهة تكفي** — **وإبطالُ مسارٍ عامٍّ
+ * لأجل تفضيلٍ شخصيّ يُسقط تخبئةَ غيره** (وهو نصُّ «امنع تسرّب كاش
+ * توصيات مستخدم إلى مستخدم آخر» من الجهة الأخرى).
+ */
+export async function setContentPrefs(raw: {
+  genres?: unknown;
+  unwantedGenres?: unknown;
+  languages?: unknown;
+  excludedLanguages?: unknown;
+}) {
+  const clean = sanitizeContentPrefs(raw ?? {});
+  const supabase = await createClient();
+  const { data: auth } = await supabase.auth.getUser();
+
+  if (!auth?.user) {
+    /* **الزائرُ يختار أيضاً** — كوكيٌّ سنةً كبقيّة التفضيلات (D-014) */
+    const store = await cookies();
+    store.set(CONTENT_PREFS_COOKIE, serializeContentPrefs(clean), {
+      path: "/",
+      maxAge: 60 * 60 * 24 * 365,
+      sameSite: "lax",
+    });
+    return;
+  }
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({
+      favorite_genres: clean.genres,
+      unwanted_genres: clean.unwantedGenres,
+      preferred_languages: clean.languages,
+      excluded_languages: clean.excludedLanguages,
+    })
+    .eq("id", auth.user.id);
+  if (error) throw new Error(error.message);
+
+  /* **وكوكيُّ الزائر يُمحى بعد أن يصير للحساب صفّ** — **وإلّا عاد
+     يُدمج في كلِّ دخول** فيُحيي خياراً حذفه صاحبُه من حسابه. */
+  const store = await cookies();
+  if (store.get(CONTENT_PREFS_COOKIE)) {
+    store.set(CONTENT_PREFS_COOKIE, "", { path: "/", maxAge: 0 });
+  }
+}
+
+/**
+ * 🆕 **دمجُ تفضيلات الزائر في الحساب عند أوّل دخول** (D-545، شرطُ
+ * المواصفة: «ادعم الزائر غير المسجّل محليّاً، ثمّ ادمج تفضيلاته مع
+ * الحساب بعد تسجيل الدخول دون فقدها»).
+ *
+ * **تُنادى من مسار OAuth بعد تبديل الرمز بجلسة** — **قبل أن يرى
+ * المستخدمُ أوّلَ صفحة**، فلا يلمح توصياتٍ بلا تفضيلاته ثمّ تتبدّل.
+ *
+ * ⚠️ **وسقوطُها لا يُسقط الدخول**: من دخل دخل، **وتفضيلاتُ الزائر
+ * أهونُ من جلسةٍ تُرفض** — والكوكي يبقى فتُدمج في المحاولة التالية.
+ */
+export async function absorbGuestContentPrefs(): Promise<void> {
+  try {
+    const store = await cookies();
+    const raw = store.get(CONTENT_PREFS_COOKIE)?.value;
+    if (!raw) return;
+    const guest = parseContentPrefs(raw);
+    if (!hasAnyPrefs(guest)) {
+      store.set(CONTENT_PREFS_COOKIE, "", { path: "/", maxAge: 0 });
+      return;
+    }
+
+    const supabase = await createClient();
+    const { data: auth } = await supabase.auth.getUser();
+    if (!auth?.user) return;
+
+    const { data: row } = await supabase
+      .from("profiles")
+      .select("favorite_genres, unwanted_genres, preferred_languages, excluded_languages")
+      .eq("id", auth.user.id)
+      .maybeSingle();
+
+    const account = sanitizeContentPrefs({
+      genres: row?.favorite_genres ?? [],
+      unwantedGenres: row?.unwanted_genres ?? [],
+      languages: row?.preferred_languages ?? [],
+      excludedLanguages: row?.excluded_languages ?? [],
+    });
+    const merged = mergeContentPrefs(account, guest);
+
+    await supabase
+      .from("profiles")
+      .update({
+        favorite_genres: merged.genres,
+        unwanted_genres: merged.unwantedGenres,
+        preferred_languages: merged.languages,
+        excluded_languages: merged.excludedLanguages,
+      })
+      .eq("id", auth.user.id);
+
+    store.set(CONTENT_PREFS_COOKIE, "", { path: "/", maxAge: 0 });
+  } catch {
+    /* الكوكي باقٍ — تُعاد المحاولةُ في الدخول التالي */
+  }
+}
+
 export async function setWatchRegion(value: string) {
   const region = normalizeRegion(value);
   const store = await cookies();
@@ -3744,6 +3906,9 @@ export interface AiSearchResult {
   kind: "movie" | "tv";
   id: number;
   title: string;
+  /** 🆕 **السطرُ الثاني في وضع «المحلّي + الأصلي»** (D-544) — و`null` فيما سواه.
+   *  ⚠️ **اختياريّةٌ لأجل ترتيب الكوميتات** (D-028) كأختها في `searchTypes`. */
+  titleSecondary?: string | null;
   year?: string;
   poster: string | null;
   rating?: number | null;
@@ -3808,18 +3973,57 @@ export async function aiStorySearch(
 
   const { searchByName, searchMulti, keywordDiscover, topByFilter, titleOf, yearOf, posterUrl } =
     await import("@/lib/tmdb");
+  const { originalTitleOf } = await import("@/lib/media");
 
   const seen = new Set<string>();
   const results: AiSearchResult[] = [];
+  /** الاسمُ الأصليُّ لكلِّ نتيجة — يُلتقط عند الدفع ويُقرأ عند الخروج (D-544) */
+  const originals = new Map<string, string | null>();
+
+  /**
+   * 🆕 **حلُّ الأسماء مرّةً واحدةً قبل الخروج** (D-544).
+   *
+   * **بابُ الوصف يتبع طريقةَ العرض كبقيّة الأبواب** — **وقائمةُ نتائجٍ
+   * باسمين مختلفين حسب البابِ الذي دخلتَ منه عطلٌ لا ميزة** (القاعدة ٦).
+   * **ونداءٌ واحدٌ مجمَّعٌ للكتابات الصوتيّة** لا نداءٌ لكلِّ نتيجة،
+   * **ولا نداءَ إطلاقاً في الأوضاع الثلاثة الأخرى.**
+   */
+  const finish = async (rows: AiSearchResult[]): Promise<AiSearchResult[]> => {
+    const [{ getTitleMode }, { resolveMediaTitle, needsTranslit }] = await Promise.all([
+      import("@/lib/locale"),
+      import("@/lib/titleMode"),
+    ]);
+    const mode = await getTitleMode();
+    if (mode === "localized") return rows;
+    const { getTranslits } = await import("@/lib/titleAliases");
+    const translits = needsTranslit(mode)
+      ? await getTranslits(rows.map((r) => ({ tmdb_id: r.id, media_type: r.kind })))
+      : new Map<string, string>();
+    return rows.map((r) => {
+      const key = `${r.kind}-${r.id}`;
+      const out = resolveMediaTitle(
+        { localized: r.title, original: originals.get(key) ?? null, translit: translits.get(key) ?? null },
+        mode,
+        r.title,
+      );
+      return { ...r, title: out.primary, titleSecondary: out.secondary };
+    });
+  };
   const push = (r: import("@/lib/tmdb").SearchResult, reason?: string) => {
     const kind = r.media_type === "tv" ? ("tv" as const) : ("movie" as const);
     const key = `${kind}-${r.id}`;
     if (seen.has(key)) return;
     seen.add(key);
+    /* 🆕 **والاسمُ الأصليُّ يُلتقط هنا ويُحلُّ عند الخروج** (D-544):
+       **`push` متزامنةٌ والكتابةُ الصوتيّةُ نداءٌ** — **ونداءٌ داخل
+       حلقةِ دفعٍ هو استعلامٌ لكلِّ نتيجة**، وهو ما تمنعه المواصفة.
+       **فتُجمع الأصولُ هنا، ويُحلُّ الكلُّ مرّةً واحدةً في `finish`.** */
+    originals.set(key, originalTitleOf(r));
     results.push({
       kind,
       id: r.id,
       title: titleOf(r),
+      titleSecondary: null,
       year: yearOf(r) || undefined,
       poster: posterUrl(r.poster_path, "w185"),
       rating: r.vote_average ? Math.round(r.vote_average * 10) / 10 : null,
@@ -3836,7 +4040,7 @@ export async function aiStorySearch(
       ),
     );
     for (const g of grounded) if (g) push(g.row, g.reason);
-    if (results.length) return { ok: true, results };
+    if (results.length) return { ok: true, results: await finish(results) };
   }
 
   /* ===== المسار البديل — بلا نموذج (إصلاح 9 Aug) =====
@@ -3876,7 +4080,7 @@ export async function aiStorySearch(
   }
 
   if (results.length === 0) return { ok: false, reason: "empty" };
-  return { ok: true, results: results.slice(0, 12), fallback: true };
+  return { ok: true, results: await finish(results.slice(0, 12)), fallback: true };
 }
 
 // ============================================================

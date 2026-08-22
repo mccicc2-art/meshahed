@@ -1,3 +1,5 @@
+import { getContentPrefs } from "@/lib/data";
+import { EMPTY_CONTENT_PREFS, isExcludedLanguage } from "@/lib/contentPrefs";
 import type { SearchResult } from "./tmdb";
 import {
   airingTv,
@@ -205,8 +207,33 @@ export async function buildSection(
   const anime = media === "anime" ? ("only" as const) : ("drop" as const);
   /* «خلّها تظهر إذا شخص حدّد جنسيتهم فقط» (D-194) — والكتمُ يسقط بلغةٍ أو بلد */
   const unmute = !!base.lang || !!base.country;
+
+  /* ===== 🆕 اللغاتُ المستبعدة تُحذف من الاستكشاف (D-545) =====
+
+     **ومكانُها هنا بالضبط**: `guard` هو الحلقُ الذي تمرّ به **كلُّ**
+     أقسام الاكتشاف بلا استثناء — **فقاعدةٌ واحدةٌ تُكتب مرّةً**، ولا
+     شرطٌ متفرّقٌ في خمسة عشر فرعاً (`switch` أدناه).
+
+     ⚠️ **حذفٌ لا إعادةَ ترتيب** (شرطُ المواصفة: «لا تغيّر ترتيب
+     الأقسام الموضوعية مثل Top 10 إلّا لإزالة اللغات المستبعدة»):
+     **الترتيبُ الداخليُّ يبقى كما أنتجه القسم**، والذي يقع هو سقوطُ
+     صفوفٍ من الوسط.
+
+     ⚠️ **ولا تعزيزَ هنا ولا تخفيض**: **الاستكشافُ تصفّحٌ لا توصية** —
+     **وتعزيزُ لغةٍ في «الأكثر شعبيّة» يجعل القسمَ يكذب على اسمه.**
+     التعزيزُ في `blendRecommendations` وحدَها.
+
+     ⚠️ **وبلا استبعادٍ لا يُنادى شيء**: `hasAnyPrefs` تُفحص أوّلاً،
+     **والقراءةُ مخبَّأةٌ للطلب** (`getContentPrefs`) فلا استعلامَ
+     لكلِّ قسم. */
+  const prefs = await getContentPrefs().catch(() => EMPTY_CONTENT_PREFS);
+  const dropExcluded =
+    prefs.excludedLanguages.length > 0
+      ? (rows: SearchResult[]) => rows.filter((r) => !isExcludedLanguage(r, prefs))
+      : (rows: SearchResult[]) => rows;
+
   const guard = (rows: SearchResult[]) =>
-    railGuard(rows, { anime, unmute }).slice(0, limit);
+    dropExcluded(railGuard(rows, { anime, unmute })).slice(0, limit);
 
   try {
     switch (key) {

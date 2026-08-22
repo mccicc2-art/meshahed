@@ -1,5 +1,12 @@
 // محرّك الاقتراحات — يمزج أربع إشارات بنِسَب ثابتة مع مكافأة للتوافق بين المصادر
 import type { SearchResult } from "@/lib/tmdb";
+import {
+  EMPTY_CONTENT_PREFS,
+  hasAnyPrefs,
+  isExcludedLanguage,
+  prefFactor,
+  type ContentPrefs,
+} from "@/lib/contentPrefs";
 
 export type Source = "rated" | "follows" | "recent" | "genres";
 
@@ -61,10 +68,30 @@ function baseScore(c: Candidate) {
  * يدمج المرشّحين، يحذف المكرر والمتابَع والمشاهَد، ثم يوزّع الأماكن حسب النِّسَب.
  * أي حصة غير مكتملة تُملأ من المصادر الأخرى حتى لا يقصر عدد النتائج.
  */
+/**
+ * 🆕 **تفضيلاتُ المحتوى عاملٌ يُضرب لا خوارزميّةٌ تُستبدل** (D-545،
+ * شرطُ المواصفة حرفاً: «لا تستبدل خوارزمية التوصيات الحالية؛ استخدم
+ * التفضيلات كعوامل إضافية»).
+ *
+ * **وترتيبُ التطبيق ترتيبُ الطلب:**
+ *  ١) **الاستبعادُ حذفٌ** — قبل أن يدخل المرشّحُ الخريطةَ أصلاً، فلا
+ *     يزاحم ولا يأكل حصّةَ مصدرٍ ثمّ يُرمى.
+ *  ٢–٤) **التخفيضُ ثمّ اللغةُ ثمّ النوع** — معاملٌ واحدٌ من
+ *     `prefFactor` يُضرب في الدرجة **بعد** حسابها بالخوارزميّة القائمة،
+ *     **وقبل مكافأة التوافق** فتبقى نسبتُها كما هي.
+ *  ٥) **الجودةُ والشعبيّةُ كما هي** — `MIN_RATING` و`baseScore`
+ *     و`MIX` و`CONSENSUS_BONUS` **لم يُمسّ منها حرف.**
+ *
+ * ⚠️ **ومن لا تفضيلاتِ له يخرج من الفرع كلِّه**: `hasAnyPrefs` تُفحص
+ * مرّةً، **والمسارُ حينها هو المسارُ القديمُ بايتاً ببايت** — وهو شرطُ
+ * «السلوكُ الحالي مطابقٌ تماماً».
+ */
 export function blendRecommendations(
   candidates: Candidate[],
-  opts: { exclude: Set<number>; limit: number },
+  opts: { exclude: Set<number>; limit: number; prefs?: ContentPrefs },
 ): Recommendation[] {
+  const prefs = opts.prefs ?? EMPTY_CONTENT_PREFS;
+  const personalize = hasAnyPrefs(prefs);
   const byId = new Map<number, { best: Candidate; sources: Set<Source>; score: number }>();
 
   for (const c of candidates) {
@@ -73,8 +100,11 @@ export function blendRecommendations(
     if (opts.exclude.has(c.result.id)) continue;
     // ما دون الأرضية لا يدخل أصلاً — اقتراح عملٍ ضعيف أسوأ من اقتراحٍ أقل
     if ((c.result.vote_average ?? 0) <= MIN_RATING) continue;
+    /* **(١) الاستبعاد** — عملٌ لغتُه الأصليّةُ مستبعدةٌ لا يدخل القائمة */
+    if (personalize && isExcludedLanguage(c.result, prefs)) continue;
 
-    const score = baseScore(c);
+    /* **(٢)(٣)(٤)** — معاملٌ يُضرب في درجةِ الخوارزميّة القائمة */
+    const score = personalize ? baseScore(c) * prefFactor(c.result, prefs) : baseScore(c);
     const prev = byId.get(c.result.id);
     if (!prev) {
       byId.set(c.result.id, { best: c, sources: new Set([c.source]), score });

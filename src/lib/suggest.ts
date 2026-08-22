@@ -1,6 +1,7 @@
 import {
   getFollows,
   getProfile,
+  getContentPrefs,
   getMyRatings,
   getWatchedMovieIds,
   getWatchSummary,
@@ -122,5 +123,13 @@ export async function getSuggestions(
     ...dismissed,
   ]);
 
-  return blendRecommendations(candidates, { exclude: excluded, limit });
+  /* 🆕 **تفضيلاتُ المحتوى تدخل هنا وحدها** (D-545): **قراءةٌ واحدةٌ
+     مخبَّأةٌ للطلب** (`getContentPrefs` تقرأ صفَّ الملفّ المقروءَ أعلاه
+     نفسَه) — **ولا استعلامَ لكلِّ مرشّح.** **ومن لا تفضيلاتِ له يمرّ
+     بالمسار القديم بايتاً ببايت.** */
+  return blendRecommendations(candidates, {
+    exclude: excluded,
+    limit,
+    prefs: await getContentPrefs(),
+  });
 }

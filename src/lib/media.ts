@@ -1,4 +1,5 @@
 // أدوات آمنة للاستخدام في الخادم والمتصفح معاً (لا تستورد next/headers)
+import { resolveMediaTitle, type ResolvedTitle, type TitleMode } from "@/lib/titleMode";
 
 export const IMG = "https://image.tmdb.org/t/p";
 
@@ -60,6 +61,48 @@ export function normalizeTerm(s: string): string {
 
 export function titleOf(r: { title?: string; name?: string }): string {
   return r.title ?? r.name ?? "—";
+}
+
+/**
+ * 🆕 **الاسمُ الأصليُّ من صفِّ TMDB** (D-544) — `original_title` للأفلام
+ * و`original_name` للمسلسلات.
+ *
+ * ⚠️ **وهو مجّانيٌّ حيث يُقرأ**: كلُّ ردٍّ من TMDB (بحثاً كان أو قائمةً
+ * أو تفصيلاً) **يحمل العمودين أصلاً** — **فلا نداءَ ثانياً لأجل الوضع
+ * «الأصلي»** في كلِّ سطحٍ يقرأ من TMDB مباشرةً (الاكتشاف، الرفوف،
+ * البحث، صفحةُ العمل). **والذي يدفع ثمناً هو الصفوفُ المخزَّنةُ في
+ * قاعدتنا وحدَها** (المكتبة والقوائم)، **وثمنُها في `localize.ts`.**
+ */
+export function originalTitleOf(r: {
+  original_title?: string | null;
+  original_name?: string | null;
+}): string | null {
+  return r.original_title ?? r.original_name ?? null;
+}
+
+/**
+ * 🆕 **حلُّ اسمِ صفٍّ آتٍ من TMDB مباشرةً** (D-544) — الاكتشافُ والرفوفُ
+ * والبحثُ وصفحةُ العمل.
+ *
+ * **ولا نداءَ زائدٌ هنا إطلاقاً**: الاسمان في الصفِّ نفسِه، **والكتابةُ
+ * الصوتيّةُ تصل مُجمَّعةً من الصفحة** (`titleAliases.getTranslits`) —
+ * **لا استعلامَ لكلِّ بطاقة** (شرطُ المواصفة).
+ */
+export function resolveTmdbTitle(
+  r: {
+    title?: string;
+    name?: string;
+    original_title?: string | null;
+    original_name?: string | null;
+  },
+  mode: TitleMode,
+  translit: string | null = null,
+): ResolvedTitle {
+  return resolveMediaTitle(
+    { localized: titleOf(r), original: originalTitleOf(r), translit },
+    mode,
+    titleOf(r),
+  );
 }
 
 export function yearOf(r: { first_air_date?: string | null; release_date?: string | null }): string {

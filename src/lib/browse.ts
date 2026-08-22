@@ -122,15 +122,69 @@ export interface BrowseLang {
   en: string;
 }
 
-export const BROWSE_LANGS: BrowseLang[] = [
+/**
+ * 🆕 **سجلُّ اللغات الكامل** (D-545) — **وBROWSE_LANGS مشتقٌّ منه لا
+ * نسخةٌ ثانيةٌ عنه.**
+ *
+ * **ولماذا سجلّان في واقع الأمر واحد:** حجّةُ القِصَر أعلاه **حجّةُ
+ * رفِّ رقائقَ في الاكتشاف** — «قائمةٌ بثمانين لغةً تُقرأ جداراً لا
+ * خياراً» — **وهي باقيةٌ هناك بحرفها.** **وصفحةُ الإعدادات ليست رفَّ
+ * رقائق**: فيها حقلُ بحثٍ داخل القائمة (مواصفةُ أحمد)، **والبحثُ هو
+ * الذي يجعل الطولَ مقدوراً عليه.**
+ *
+ * **فالسجلُّ واحدٌ ومنظوران** — **ولو كُتبت قائمتان لافترقتا عند أوّل
+ * إضافة** (D-145): لغةٌ تُضاف للإعدادات ولا يعرفها الاكتشاف، أو اسمٌ
+ * يُصحَّح في واحدةٍ ويبقى في الأخرى.
+ *
+ * ⚠️ **والرموزُ ISO 639-1 كما تكتبها TMDB في `original_language`** —
+ * **لا لغةُ الواجهة ولا لغةُ ترجمة العنوان** (قاعدةُ اللغة في مواصفة
+ * D-545 بنصِّها).
+ */
+export const ALL_LANGS: BrowseLang[] = [
   { code: "ar", ar: "عربي", en: "Arabic" },
-  { code: "tr", ar: "تركي", en: "Turkish" },
   { code: "en", ar: "إنجليزي", en: "English" },
+  { code: "tr", ar: "تركي", en: "Turkish" },
   { code: "ko", ar: "كوري", en: "Korean" },
-  { code: "es", ar: "إسباني", en: "Spanish" },
-  { code: "hi", ar: "هندي", en: "Hindi" },
   { code: "ja", ar: "ياباني", en: "Japanese" },
+  { code: "hi", ar: "هندي", en: "Hindi" },
+  { code: "es", ar: "إسباني", en: "Spanish" },
+  { code: "fr", ar: "فرنسي", en: "French" },
+  { code: "de", ar: "ألماني", en: "German" },
+  { code: "it", ar: "إيطالي", en: "Italian" },
+  { code: "pt", ar: "برتغالي", en: "Portuguese" },
+  { code: "ru", ar: "روسي", en: "Russian" },
+  { code: "zh", ar: "صيني", en: "Chinese" },
+  { code: "cn", ar: "صيني (كانتوني)", en: "Chinese (Cantonese)" },
+  { code: "th", ar: "تايلندي", en: "Thai" },
+  { code: "id", ar: "إندونيسي", en: "Indonesian" },
+  { code: "fa", ar: "فارسي", en: "Persian" },
+  { code: "ur", ar: "أردو", en: "Urdu" },
+  { code: "he", ar: "عبري", en: "Hebrew" },
+  { code: "nl", ar: "هولندي", en: "Dutch" },
+  { code: "sv", ar: "سويدي", en: "Swedish" },
+  { code: "da", ar: "دنماركي", en: "Danish" },
+  { code: "no", ar: "نرويجي", en: "Norwegian" },
+  { code: "fi", ar: "فنلندي", en: "Finnish" },
+  { code: "pl", ar: "بولندي", en: "Polish" },
+  { code: "uk", ar: "أوكراني", en: "Ukrainian" },
+  { code: "ta", ar: "تاميلي", en: "Tamil" },
+  { code: "te", ar: "تيلوغو", en: "Telugu" },
+  { code: "ml", ar: "ماليالامي", en: "Malayalam" },
+  { code: "vi", ar: "فيتنامي", en: "Vietnamese" },
 ];
+
+/** **رقائقُ الاكتشاف — سبعُ لغاتٍ بعينها**، والترتيبُ ترتيبُها الأصليّ */
+const DISCOVER_LANG_ORDER = ["ar", "tr", "en", "ko", "es", "hi", "ja"];
+
+export const BROWSE_LANGS: BrowseLang[] = DISCOVER_LANG_ORDER.map(
+  (c) => ALL_LANGS.find((l) => l.code === c)!,
+);
+
+/** اسمُ لغةٍ برمزها — **مترجَمٌ حسب لغة الواجهة** (شرطُ المواصفة) */
+export function langName(code: string, locale: "ar" | "en"): string {
+  const l = ALL_LANGS.find((x) => x.code === code);
+  return l ? (locale === "en" ? l.en : l.ar) : code.toUpperCase();
+}
 
 export function browseLangName(l: BrowseLang, locale: "ar" | "en") {
   return locale === "en" ? l.en : l.ar;
@@ -418,6 +472,36 @@ export const BROWSE_RATES = [7, 8, 9] as const;
 export type BrowseRate = (typeof BROWSE_RATES)[number];
 
 /** هل لهذا النوع الدرامي مقابلٌ في جهة المحتوى المختارة؟ */
+/**
+ * 🆕 **المفهومُ الذي ينتمي إليه رقمُ نوعٍ من TMDB** (D-545).
+ *
+ * **ولماذا يلزم أصلاً:** **أرقامُ الأنواع تختلف بين الفيلم والمسلسل**
+ * — «أكشن» في الأفلام `28` و`12` وفي المسلسلات `10759` — **فمقارنةُ
+ * رقمٍ برقمٍ تُخطئ نصفَ الوقت.** **والمخزَّنُ في `favorite_genres`
+ * رقمٌ واحد** (من منتقي الملفّ ومن التهيئة الأولى)، **فيُوسَّع إلى
+ * مفهومه ثمّ يُقارن بكلِّ أرقامه.**
+ */
+export function browseGenreForId(id: number): BrowseGenre | null {
+  return BROWSE_GENRES.find((g) => g.movie.includes(id) || g.tv.includes(id)) ?? null;
+}
+
+/** **كلُّ أرقام مفاهيمِ مجموعةٍ من الأرقام** — مجموعةٌ واحدةٌ تُقارن مرّةً */
+export function expandGenreIds(ids: readonly number[]): Set<number> {
+  const out = new Set<number>();
+  for (const id of ids) {
+    const g = browseGenreForId(id);
+    if (g) {
+      for (const x of g.movie) out.add(x);
+      for (const x of g.tv) out.add(x);
+    } else {
+      /* **رقمٌ لا مفهومَ له يبقى نفسَه** — لا يُرمى (D-063): `10766`
+         (دراما يوميّة) في منتقي الملفّ ولا رفَّ له في الاكتشاف. */
+      out.add(id);
+    }
+  }
+  return out;
+}
+
 export function genreFitsType(g: BrowseGenre, type: BrowseType): boolean {
   if (type === "movie") return g.movie.length > 0;
   if (type === "tv") return g.tv.length > 0;
