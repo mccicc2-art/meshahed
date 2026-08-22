@@ -93,6 +93,9 @@ export type ReplyTarget =
 /** أقصى إزاحةٍ بصريّة — وحارسُ القاعدة يقف عندها أيضاً (الهجرة ٧٨) */
 const MAX_DEPTH = 3;
 
+/** 🆕 **كم ردّاً يُعرض تحت الجذر قبل «عرض المزيد»** (D-535) */
+const PEEK = 3;
+
 export function ThreadReplies({
   target,
   replies,
@@ -159,6 +162,13 @@ export function ThreadReplies({
    * كانت ستمنع أحمد من طيّ فرعه هو**، وهو بالضبط الفرعُ الذي في لقطته.
    */
   const [toggled, setToggled] = useState<Set<string>>(new Set());
+
+  /**
+   * 🆕 **الجذورُ التي فُتحت ذرّيّتُها كاملةً** (D-535) — **ولا طيَّ
+   * بعدها**: «عرض المزيد» يُكمل قائمةً، **ومن قرأ لا يُطلب منه أن
+   * يُخفي ما قرأ** — والطيُّ الكاملُ باقٍ في «إخفاء الردود» فوقها.
+   */
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   /**
    * 🆕 **قلبُ الإعجاب تفاؤليّاً** (D-289/D-241): الخريطةُ تحمل **الفرقَ
@@ -257,13 +267,20 @@ export function ThreadReplies({
   const byId = new Set(all.map((r) => r.replyId));
   const kids = new Map<string, ThreadReply[]>();
   const roots: ThreadReply[] = [];
+  /* 🆕 **وعمقُ الحوار يُحسب هنا لا يُشتقّ من الرسم** (D-535): الرسمُ
+     صار درجةً واحدة، **وحارسُ القاعدة (الهجرة ٧٨) ما زال يعدّ ثلاثاً**
+     — **ورقمٌ يخدم سؤالين مختلفين يُخطئ أحدَهما.** والأبُ يسبق ابنَه
+     في `all` (الترتيبُ زمنيّ، ولا يُكتب ردٌّ قبل من يردّ عليه). */
+  const depthOf = new Map<string, number>();
   for (const r of all) {
     if (nested && r.parentId && byId.has(r.parentId)) {
       const list = kids.get(r.parentId);
       if (list) list.push(r);
       else kids.set(r.parentId, [r]);
+      depthOf.set(r.replyId, (depthOf.get(r.parentId) ?? 0) + 1);
     } else {
       roots.push(r);
+      depthOf.set(r.replyId, 0);
     }
   }
 
@@ -281,7 +298,7 @@ export function ThreadReplies({
           {nested ? t.talkRoomEmpty : t.postNoReplies}
         </p>
       ) : (
-        roots.map((r) => node(r, 0))
+        roots.map((r) => node(r))
       )}
 
       {/* ===== صفُّ الكتابة — في قاع الصفحة (D-284) =====
@@ -390,24 +407,19 @@ export function ThreadReplies({
   );
 
   /**
-   * صفٌّ واحدٌ ومن تحته — **ودالّةٌ واحدة للحالتين**: العمقُ صفرٌ دائماً
-   * في المسطَّح، **فلا فرعَ ثانٍ في الرسم** (نفسُ درسِ D-242).
+   * **صفٌّ واحدٌ مرسوماً** — بلا إزاحةٍ ولا ذرّيّة.
+   *
+   * ⚖️ 🆕 **وسقطت منه الشجرةُ المرسومة** (D-535): كان يرسم أبناءَه
+   * داخل صندوقِه فتتراكم الإزاحاتُ درجةً بعد درجة، **والرسمُ صار
+   * مسطَّحاً بدرجةٍ واحدة** — انظر `node` أدناه. **وهو الآن يرسم صفَّه
+   * وصندوقَ كتابته وحدَهما**، ويقول عمقَه الحقيقيَّ في `real` لأن
+   * حارسَ القاعدة يعدّ الحوارَ لا البكسلات.
    */
-  function node(r: ThreadReply, depth: number) {
+  function line(r: ThreadReply, toName: string | null, real: number) {
     const kid = nested ? (kids.get(r.replyId) ?? []) : [];
-    /* **الافتراضُ: مفتوحٌ إن كان فيه ردُّك** (D-284/D-251) — **وقلبُ
-       القارئ يغلب الافتراضَ في الاتّجاهين** (D-287). */
-    const autoOpen = kid.some((c) => c.isMine);
-    const kidsOpen = toggled.has(r.replyId) ? !autoOpen : autoOpen;
+    const kidsOpen = isOpen(r);
     return (
-      <div
-        key={r.replyId}
-        /* **الخطُّ الرأسيُّ على حافّة البداية** — هو ما يقول «تابعةٌ لما
-           فوقها»، و`ps-3` تفصل النصَّ عنه. **ولا خطَّ للجذر**: خطٌّ بلا
-           أبٍ يعد بشيءٍ فوقه وليس فوقه شيء. */
-        className={depth > 0 ? "border-s border-[color:var(--divider)] ps-3" : undefined}
-        style={depth > 0 ? { marginInlineStart: 20 } : undefined}
-      >
+      <div key={r.replyId}>
         <ReplyItem
           reply={r}
           /* 🆕 **وسهمُ الطيّ يركب صفَّ الأفعال** (D-288): كان سطراً
@@ -438,14 +450,20 @@ export function ThreadReplies({
               </button>
             ) : null
           }
-          /* **و«ردّاً على فلان» للمسطَّح وحده**: في الشجرة الأبُ فوقها
-             بعينه — **وسطرٌ يقول ما تراه العينُ يأكل سطراً بلا معنى.** */
+          /* ⚖️ 🆕 **و«ردّاً على فلان» صارت للاثنين** (D-535): كانت
+             للمسطَّح وحدَه بحجّةِ أنّ «الأبَ فوقها بعينه في الشجرة» —
+             **وقد سقطت الحجّةُ يومَ سقطت درجاتُ الإزاحة**: في عمودٍ
+             بدرجةٍ واحدة **لا تقول العينُ لمن هذا الردّ**، فتقوله
+             الكلمات. **والمستدعي يقرّر** لأنه وحدَه يعرف من فوقها. */
           translatedBody={translations?.[r.replyId] ?? null}
-          replyingToName={!nested && r.parentId ? (nameOf.get(r.parentId) ?? null) : null}
+          replyingToName={toName}
           locale={locale}
           signedIn={signedIn}
           /* **وحدُّ الردّ حدُّ القاعدة نفسُه** — فلا زرَّ يعد بما تمنعه */
-          canReply={nested ? depth < MAX_DEPTH : !r.parentId}
+          /* **وحدُّ الردّ حدُّ القاعدة لا حدُّ الرسم** (الهجرة ٧٨):
+             `real` عمقُ الحوار، **والرسمُ صار درجةً واحدةً لا ثلاثاً** —
+             **وزرٌّ يعِد بما تمنعه القاعدة وعدٌ كاذب** (D-217). */
+          canReply={nested ? real < MAX_DEPTH : !r.parentId}
           /* **والعددُ بجانب علامته** (D-284) — كلُّ الفرع لا أبناؤه وحدهم */
           replyCount={nested ? countUnder(r.replyId) : 0}
           /* **الإعجابُ في الغرفة وحدَها** (D-289): الجدولُ يشير إلى
@@ -495,7 +513,98 @@ export function ThreadReplies({
             />
           </div>
         )}
-        {kidsOpen && kid.map((c) => node(c, depth + 1))}
+      </div>
+    );
+  }
+
+  /**
+   * **مفتوحٌ أم مطويّ؟** — **الافتراضُ: مفتوحٌ إن كان فيه ردُّك**
+   * (D-284/D-251)، **وقلبُ القارئ يغلب الافتراضَ في الاتّجاهين**
+   * (D-287). **وسؤالٌ واحدٌ في موضعٍ واحد** لأن ثلاثةَ مواضعَ تسأله
+   * الآن: الصفُّ، والتسطيح، والجذر.
+   */
+  function isOpen(r: ThreadReply) {
+    const kid = kids.get(r.replyId) ?? [];
+    const auto = kid.some((c) => c.isMine);
+    return toggled.has(r.replyId) ? !auto : auto;
+  }
+
+  /**
+   * **ذرّيّةُ الجذر مسطَّحةً بترتيب الحوار** (D-535).
+   *
+   * **الشجرةُ باقيةٌ في البيانات وسقطت من الرسم**: `parentId` هو الذي
+   * يبني هذا الترتيب، **فابنُ الابن يقع تحت أبيه مباشرةً** كما كان —
+   * **والذي تغيّر أنّه لا يُزاح عنه.** **ومن طُوي فرعُه لا تنزل
+   * ذرّيّتُه** فيبقى «إخفاء الردود» يعني ما يقوله.
+   */
+  function branch(
+    rootId: string,
+    out: { r: ThreadReply; toName: string | null }[] = [],
+  ) {
+    for (const c of kids.get(rootId) ?? []) {
+      /* **ولا سطرَ «ردّاً على» لمن أبوه الجذرُ فوقه** — العينُ تراه */
+      out.push({
+        r: c,
+        toName: c.parentId === rootId ? null : (nameOf.get(c.parentId ?? "") ?? null),
+      });
+      if (isOpen(c)) branch(c.replyId, out);
+    }
+    return out;
+  }
+
+  /**
+   * **جذرٌ ومن تحته — درجةُ إزاحةٍ واحدةٌ مهما عمُق الحوار** (D-535،
+   * تصميمُ أحمد بلقطة).
+   *
+   * ⚖️ **ونقضٌ مسجَّلٌ لشطرٍ من D-257** («الإزاحةُ ثلاثُ درجاتٍ ثم
+   * تقف»): **حجّتُها أنّ الخطَّ الرأسيَّ يقول «هذه تتبع تلك»** —
+   * **وهي صحيحةٌ على شاشةٍ عريضة.** **والمقيسُ على الهاتف أنّ الدرجة
+   * الثالثة تترك للكلمة سطراً**، فيُقرأ الحوارُ العميق عموداً من
+   * الحروف. **والدرجةُ الواحدة تقول «هذه ردود» وتكفي**، **واسمُ من
+   * يُردّ عليه يقول الباقي** — وهو عُرفُ تويتر الذي نُسخ في D-242.
+   * **والشجرةُ في القاعدة لم تُمسّ** (الهجرة ٧٨ وحارسُها).
+   *
+   * **وسقفُ ثلاثةٍ ثم «عرض المزيد»**: **حوارٌ من ثلاثين ردّاً تحت ردٍّ
+   * واحدٍ يدفن الردَّ الذي بعده** — والقارئُ يفقد موضعَه من الخيط.
+   * **والتوسيعُ في مكانه لا في صفحةٍ ثانية** (اختيارُ أحمد ٢٢ أغسطس):
+   * صفحةٌ ثالثةٌ للخيط بابٌ ثالثٌ للحديث نفسِه.
+   */
+  function node(r: ThreadReply) {
+    const flat = nested ? branch(r.replyId) : [];
+    const all3 = expanded.has(r.replyId);
+    const shown = all3 ? flat : flat.slice(0, PEEK);
+    const rest = flat.length - shown.length;
+    return (
+      <div key={r.replyId}>
+        {line(r, !nested && r.parentId ? (nameOf.get(r.parentId) ?? null) : null, 0)}
+        {isOpen(r) && flat.length > 0 && (
+          /* **الخطُّ الرأسيُّ على حافّة البداية** — هو ما يقول «تابعةٌ لما
+             فوقها»، و`ps-3` تفصل النصَّ عنه. **ولا خطَّ للجذر**: خطٌّ بلا
+             أبٍ يعد بشيءٍ فوقه وليس فوقه شيء. **وهو الآن صندوقٌ واحدٌ
+             للفرع كلِّه لا صندوقٌ لكلِّ درجة.** */
+          <div
+            className="border-s border-[color:var(--divider)] ps-3"
+            style={{ marginInlineStart: 20 }}
+          >
+            {shown.map((x) => line(x.r, x.toName, depthOf.get(x.r.replyId) ?? 1))}
+            {rest > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  tap(6);
+                  setExpanded((s2) => new Set(s2).add(r.replyId));
+                }}
+                className="w-full flex items-center gap-2 py-2.5 text-12 font-bold text-accent hover:opacity-80 transition"
+              >
+                <Icon name="comment" size={16} className="shrink-0" />
+                {t.talkMoreReplies(rest)}
+                <span className="ms-auto shrink-0" aria-hidden>
+                  <Icon name="chevron-down" size={14} className="-rotate-90 rtl:rotate-90" />
+                </span>
+              </button>
+            )}
+          </div>
+        )}
       </div>
     );
   }
