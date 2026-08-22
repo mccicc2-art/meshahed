@@ -1,8 +1,12 @@
 import Link from "next/link";
-import type { Locale } from "@/lib/i18n";
+import { getDict, type Locale } from "@/lib/i18n";
 import { Icon, type IconName } from "./Icon";
+import { Avatar } from "./Avatar";
 import { HomeGreeting } from "./HomeGreeting";
 import { HomeViewSwitch } from "./HomeViewSwitch";
+import { LogoWordmark } from "./Logo";
+import { MessagesLink } from "./MessagesLink";
+import { SignalsLink } from "./SignalsLink";
 /**
  * 🆕 **خانةُ بطاقة الأرقام — تسكن مع راسمها** (D-497): كانت تُستورد
  * نوعاً من `ProfileHeader`، **وتلك بلا قارئٍ منذ D-438 وحكمُها الحذف**
@@ -36,25 +40,30 @@ export interface HeaderStat {
  */
 export function HomeHeader({
   displayName,
+  avatarUrl,
+  avatarPos,
+  unreadSignals = 0,
+  unreadShares = 0,
   stats,
   showStats,
+  levelPercent,
   locale,
 }: {
   displayName: string;
-  /** ⚠️ **مقبولٌ ولا يُقرأ** (D-502) — الصورةُ في الشريط العلويّ */
+  /** ⚖️ 🆕 **يُقرأ مرّةً أخرى** (D-536): الصورةُ عادت إلى صفّ الترحيب */
   avatarUrl?: string | null;
   avatarPos?: number | null;
-  /** مجموعُ الرسائل والإشعارات — **شارةُ بابٍ واحد** (D-463) */
-  /** ⚠️ **مقبولٌ ولا يُقرأ لعمرِ رفعةٍ واحدة** (D-028/D-502): الظرفُ
-   * صار في `Navbar` وحدَه — يسقط المستدعي في الرفعة التالية ثم يسقط. */
-  unread?: number;
+  /** 🆕 **عدّادان لا مجموع** (D-536) — لكلِّ بابٍ رقمُه */
+  unreadSignals?: number;
+  unreadShares?: number;
   /** خاناتُ بطاقة الأرقام — من التخصيص، اثنتان إلى أربع (D-152) */
   stats: HeaderStat[];
   showStats: boolean;
-  /** ⚠️ **مقبولٌ ولا يُقرأ** (D-502) — سقط الهلالُ بسقوط صورته */
+  /** ⚖️ 🆕 **والهلالُ عاد معها** (D-536/D-439) — **٠ يعني «لا هلال»** */
   levelPercent?: number;
   locale: Locale;
 }) {
+  const t = getDict(locale);
 
   return (
     /* ⚖️ 🆕 **وترويسةُ الرئيسية الخاصّةُ سقطت** (D-502، طلبُ أحمد
@@ -72,21 +81,92 @@ export function HomeHeader({
 
        **والباقي هنا محتوًى يجري مع الصفحة** كما ثبّت D-479. */
     <>
+    {/* ===== ⚖️ 🆕 صفُّ العلامة وأدواتُها — عادَ إلى الرئيسية (D-536)
+        =====
+
+        **طلبُ أحمد بلقطتين: «رجّع التصميم إلى الهوم».** **وهو نقضٌ
+        مسجَّلٌ لـD-502** التي حذفت هذا الصفَّ لتوحيد الشريط —
+        **وحجّتُها كانت ثبات موضع الظرف والعلامة بين الصفحات**،
+        **والذي تبدّل أنّ المالك رأى الشكلين واختار.** **والثمنُ
+        يُقال**: وردماركٌ هنا ورمزٌ هناك، وترسٌ هنا وصورةٌ هناك.
+
+        **وعلى الجوّال وحدَه** (`md:hidden`) — **والشريطُ الواسع باقٍ
+        كما هو** بروابطه وبحثه (`hidesAppHeaderOnMobile` في
+        `chromeRules`)، **فالقرارُ في ملفِّ القواعد لا في مكوّنين.**
+
+        **و`chrome-top` كي يختبئ مع النزول** كبقيّة الأشرطة (D-479)،
+        **وحشوةُ `--safe-top`** لأنه أوّلُ ما تحت ساعة النظام في
+        التطبيق المثبَّت (D-040). ===== */}
+    <header className="chrome-top md:hidden sticky top-0 z-30 -mx-4 px-4 -mt-6 pt-[calc(var(--safe-top)+0.5rem)] pb-2.5 bg-[color:var(--background)]">
+      <div className="flex items-center gap-1">
+        <Link href="/" prefetch={false} aria-label={t.brand} className="shrink-0 -ms-0.5">
+          {/* **الكلمةُ المرسومة لا الرمز** — هي علامةُ الرئيسية في
+              تصميم أحمد، **والرمزُ يبقى للشريط الضيّق في بقيّة
+              الصفحات** حيث يجاوره عنوانُ الصفحة. */}
+          <LogoWordmark size={30} />
+        </Link>
+
+        {/* **الأدواتُ في الطرف بترتيب التصميم**: جرسٌ · ظرفٌ · ترس */}
+        <div className="ms-auto flex items-center gap-0.5">
+          <SignalsLink unread={unreadSignals} locale={locale} />
+          <MessagesLink unread={unreadShares} locale={locale} />
+          <Link
+            href="/profile/settings"
+            prefetch={false}
+            aria-label={t.settingsNavHeading}
+            title={t.settingsNavHeading}
+            className="grid place-items-center w-10 h-10 rounded-full text-foreground/80 hover:text-foreground hover:bg-surface-2 active:scale-95 transition"
+          >
+            <Icon name="settings" size={20} />
+          </Link>
+        </div>
+      </div>
+    </header>
+
     {/* ===== ما بقي محتوًى عاديّاً يتحرّك مع الصفحة (طلبُ أحمد ١٩
         أغسطس): التحيّةُ والصورةُ والأرقامُ ومبدّلُ العرض تُقرأ عند
         الدخول وتغادر بالتمرير — **لا سقفَ يتكرّر في كلِّ شاشة.** ===== */}
     <div className="space-y-2.5">
       {/* ===== التحيّةُ ومبدّلُ العرض ===== */}
       <div className="flex items-center gap-3">
-        {/* ⚖️ 🆕 **وصورةُ الترحيب سقطت معها** (D-502): **الصورةُ الآن في
-            الشريط العلويّ في كلِّ صفحةٍ بما فيها الرئيسية** — **وبابٌ
-            واحدٌ لا يُرسم مرّتين في شاشةٍ واحدة** (قاعدة ٦).
-            🔴 **والثمنُ يُقال ولا يُخبَّأ**: **هلالُ المستوى (D-439) سقط
-            معها** — كان يُرسم حول هذه الصورة وحدَها، **ورسمُه حول صورة
-            الشريط يقتضي حسابَ المستوى في كلِّ صفحة** (نداءا عدٍّ
-            إضافيّان في كلِّ مسار) **وذلك ثمنُ أداءٍ لا يُدفع لزينة**
-            (D-470). **يعود رقاقةً في صفِّ الترحيب بكلمةٍ منك** — الرقمُ
-            محسوبٌ أصلاً في الصفحة ولا يكلّف نداءً. */}
+        {/* ⚖️ 🆕 **وصورةُ الترحيب عادت ومعها الهلال** (D-536/D-439،
+            لقطةُ أحمد) — **بعد أن أسقطتهما D-502.**
+
+            **والهلالُ مجّانيٌّ هنا وحدَه**: نسبةُ المستوى تُحسب من
+            أرقامٍ تقرؤها هذه الصفحةُ أصلاً (`watch_summary` والأفلام
+            المشاهَدة)، **ورسمُه حول صورة الشريط العلويّ كان سيكلّف
+            نداءَي عدٍّ في كلِّ مسار** — **وهذا هو نصُّ ثمنِ D-502**،
+            **والموضعُ الذي لا يدفعه هو هذا.**
+
+            **ودائرةٌ واحدةٌ بتدرّجٍ مخروطيّ** لا حلقةُ SVG: قوسٌ بلونِ
+            الهوية إلى النسبة ثم رماديُّ الحدّ — **ولا مكوّنَ جديد.**
+            **و`0` تعني ألّا هلال** فلا تُرسم حلقةٌ فارغةٌ تعد بشيء
+            (D-222). */}
+        <Link
+          href="/profile"
+          prefetch={false}
+          aria-label={t.profile}
+          title={displayName || t.profile}
+          className="shrink-0 rounded-full p-[2px] active:scale-95 transition"
+          style={
+            levelPercent && levelPercent > 0
+              ? {
+                  background: `conic-gradient(var(--accent) ${levelPercent}%, var(--border) 0)`,
+                }
+              : undefined
+          }
+        >
+          <span className="block rounded-full p-[2px] bg-[color:var(--background)]">
+            <Avatar
+              src={avatarUrl}
+              name={displayName}
+              size={44}
+              posY={avatarPos}
+              alt={t.avatarAlt}
+            />
+          </span>
+        </Link>
+
         <div className="min-w-0 flex-1">
           <HomeGreeting name={displayName} locale={locale} />
         </div>

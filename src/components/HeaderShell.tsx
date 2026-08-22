@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { hidesAppHeader } from "@/lib/chromeRules";
+import { hidesAppHeader, hidesAppHeaderOnMobile } from "@/lib/chromeRules";
 
 /**
  * غلاف الشريط العلوي.
@@ -56,6 +56,17 @@ export function HeaderShell({
   void signedIn;
 
   if (hidesAppHeader(pathname)) return null;
+
+  /* ⚖️ 🆕 **والرئيسيةُ تخفيه على الجوّال وحدَه** (D-536) — **وهذا عودةُ
+     D-122 بعد نقضها في D-502**، بطلب أحمد وبلقطته.
+     **و`hidden md:contents` لا `return null`**: الشريطُ الواسع يحمل
+     الروابطَ والبحث، **وحذفُه على اللوح يقطع التنقّل** — **و`display`
+     يعمل فوق `contents` بلا تعارض** (حرفُ D-122).
+     ⚠️ **والغلافُ يبقى `contents` على اللوح** وإلّا صار سقفاً لالتصاق
+     `Navbar` كما في الحجّة أعلاه. */
+  if (hidesAppHeaderOnMobile(pathname)) {
+    return <div className="hidden md:contents">{children}</div>;
+  }
 
   return <div className="contents">{children}</div>;
 }

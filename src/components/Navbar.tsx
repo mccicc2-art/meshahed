@@ -9,6 +9,7 @@ import { NavTitle } from "./NavTitle";
 import { Logo } from "./Logo";
 import { LangFlagMenu } from "./LangFlagMenu";
 import { MessagesLink } from "./MessagesLink";
+import { SignalsLink } from "./SignalsLink";
 import { buttonClass } from "./ui/Button";
 
 export async function Navbar() {
@@ -103,7 +104,12 @@ export async function Navbar() {
                   تعود الشارةُ الواحدةُ تعني ثلاثة أشياء (حجّةُ D-187). */}
               {/* **موضعٌ واحدٌ في كلِّ مقاسٍ وكلِّ صفحة** — بجوار صورة
                   الحساب كما في ترويسة الرئيسية بالضبط (D-488) */}
-              <MessagesLink unread={unreadMessages + unreadSignals} locale={locale} />
+              {/* ⚖️ 🆕 **والجرسُ عاد بجانبه** (D-536، تصميمُ أحمد):
+                  **الشارةُ الواحدةُ انقسمت رقمين** — الإشعاراتُ هنا
+                  والرسائلُ هناك — **وكلُّ رقمٍ يفتح على ما يعدّه.**
+                  **والترتيبُ جرسٌ ثمّ ظرفٌ ثمّ صورة** كما في تصميمه. */}
+              <SignalsLink unread={unreadSignals} locale={locale} />
+              <MessagesLink unread={unreadMessages} locale={locale} />
 
               {/* تختفي في الرئيسية وحدها — ترويسة الرئيسية تعرضها كبيرة */}
               <Suspense fallback={null}>
