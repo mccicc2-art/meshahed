@@ -194,11 +194,25 @@
   --safe-top: max(env(safe-area-inset-top, 0px), 47px);
 }
 
+/* The installed iOS app already has a native startup image. A second HTML
+   wordmark makes WebKit cross-fade two white logos during the native-to-web
+   handoff. Browser loads keep the HTML launch cover; standalone loads hand
+   off directly from their single native splash to the server-rendered shell. */
+@media (display-mode: standalone) {
+  #lz-launch {
+    display: none !important;
+  }
+}
+
+:root[data-standalone="1"] #lz-launch {
+  display: none !important;
+}
+
 /* ============================================================
-   شاشةُ الإقلاع (جولة ١٩ أغسطس ليلاً — «شعار Loopz فور الفتح، لا شاشة
-   سوداء فارغة»). عنصرٌ في HTML الأوّل نفسِه: يُرسم مع أوّل بايتٍ يصل،
-   قبل أيّ جافاسكربت — وسكربتٌ مضمَّنٌ في ذيل القشرة يذيبه لحظةَ اكتمال
-   الهيكل (الترويسة والشريط والهيكل العظميّ كلُّها فوق الشاشة حينها).
+   شاشةُ الإقلاع للمتصفّح العادي فقط (جولة ١٩ أغسطس ليلاً — «شعار Loopz
+   فور الفتح، لا شاشة سوداء فارغة»). التطبيق المثبّت يملك صورة إقلاع iOS
+   الأصلية، لذلك تُمنع هذه النسخة الثانية فيه بالقواعد أعلاه. في المتصفّح
+   يُرسم العنصر مع أوّل بايتٍ ويزيله سكربت القشرة بعد اكتمال الهيكل.
    التنقّلُ الداخليُّ لا يعيد رسمَ التخطيط فلا تظهر فيه إطلاقاً.
    والخلفيّةُ خلفيّةُ الثيم نفسُها والشعارُ يتبع `--logo-invert` —
    فالفاتحُ لا يُفاجأ بلوحٍ أسود. ============================================================ */

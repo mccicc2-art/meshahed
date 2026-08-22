@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import { tap } from "@/lib/haptics";
 import { setTabDrag, claimGesture, releaseGesture, gestureTakenBy } from "@/lib/tabDrag";
 import { useBeforePaint } from "@/lib/useBeforePaint";
-import { revealChrome } from "./ChromeAutoHide";
+import { coverChromeAcrossScroll, revealChrome } from "./ChromeAutoHide";
 import { useCommunityPager } from "./CommunityPager";
 
 /**
@@ -293,27 +293,13 @@ export function TabPager({
       el.style.visibility = "";
     }
     setTabDrag(0);
-    /* 🆕 ⚡ **والتمريرُ يُصفَّر هنا — في التزام القلب نفسِه** (D-523):
-       اللوحةُ الجاية كانت طوال الرحلة عند الموضع الذي ستشغله بعد القلب
-       بالضبط (انظر `armNeighbours`)، **فتصفيرُ المستند في هذا الالتزام
-       يجعل آخرَ إطارٍ من الحركة وأوّلَ إطارٍ بعدها متطابقين بكسلاً
-       بكسل** — **ولا حركةَ رأسيّةً تُرى أصلاً.**
-       🔴 🆕 **والهبوطُ عند `1` لا عند الصفر** (D-531، أمرُ أحمد: «امنع
-       انتقالَ الهيدر من sticky إلى موضعه الطبيعيّ أثناء القفزة، بدل
-       إجباره على طبقةٍ دائمة»):
-       📏 **رمشةُ الهيدر المفكَّكةُ بالإطار** (تسجيلُ ٦٠ إطار/ث): عند
-       هبوط القفزة على الصفر ينتقل الشريطان اللاصقان من «ملتصقَين» إلى
-       «موضعهما الطبيعيّ»، **وiOS تهدم طبقتَيهما لحظتَها وتعيد رسمَهما
-       في إطارٍ يحمل أصلاً قلبَ اللوحات كلَّه** — فيُرسمان خلفيّةً
-       إطارين (**والدوكُ `fixed` لم يرمش قطّ — وهو الشاهد**).
-       **وعند `scrollY = 1` القيدُ اللاصق ما زال مشدوداً** — فالقفزةُ
-       ٨٠٠→١ لا تُخرجهما من حال الالتصاق أصلاً، **ولا طبقةَ تُهدم ولا
-       رسمَ يُعاد.** والبكسلُ الواحد يبتلعه تسليحُ الجار (`- 1` في
-       `armNeighbours`) فيبقى التطابقُ تامّاً. **ومن كان عند الرأس
-       (`y ≤ 1`) لا يُمسّ تمريرُه** — فلا انتقالَ عكسيّاً يُفتعل.
-       ⚠️ **ولا يقع إلا لتبديلٍ نحن أمرنا به**: الرجوعُ بزرِّ المتصفّح لا
-       يرفع الراية، **فلا تُسرق منه استعادةُ الموضع** (D-132). */
-    if (pagerTakeTop?.() && Math.round(window.scrollY) > 1) window.scrollTo(0, 1);
+    /* The destination is already rendered in this layout commit. Snapshot its
+       chrome before the document jump, so WebKit can rerasterize the sticky
+       bars underneath without exposing a blank compositor frame. */
+    if (pagerTakeTop?.()) {
+      if (Math.round(window.scrollY) > 0) coverChromeAcrossScroll();
+      window.scrollTo(0, 0);
+    }
   }, [index, pagerTakeTop]);
 
   useEffect(() => {
@@ -373,11 +359,7 @@ export function TabPager({
          يُشتقّ ولا يُقاس من شيءٍ يتحرّك.** */
       /* 🆕 **الترقيةُ هنا — مع النيّة لا مع التركيب** (D-527) */
       track.style.willChange = "transform";
-      /* 🆕 **و`- 1` هي بكسلُ D-531**: المستندُ سيستقرّ بعد القلب عند
-         `1` لا عند الصفر (حتى لا يُفَكَّ قيدُ الشريطين اللاصقين —
-         انظر التزامَ القلب أعلاه)، **فمستقرُّ اللوحة `C − 1` — والجارُ
-         يُوضع حيث سيستقرّ** (قاعدةُ D-523 نفسُها، بثابتها الجديد). */
-      const top = Math.max(0, Math.round(window.scrollY) - 1);
+      const top = Math.max(0, Math.round(window.scrollY));
       vp.style.minHeight = `${top + window.innerHeight}px`;
       sides.forEach((el, i) => {
         if (i === idxRef.current) return;

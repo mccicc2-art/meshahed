@@ -126,12 +126,7 @@ export function PullToRefresh() {
     }
 
     function onStart(e: TouchEvent) {
-      /* 🆕 **و`1` رأسٌ أيضاً** (D-531): سحبةُ تبويبات المجتمع تهبط عند
-         `scrollY = 1` عمداً — كي لا يُفَكَّ قيدُ الشريطين اللاصقين
-         فتُرى رمشةُ الهيدر (التفصيلُ في `TabPager`). **وبكسلٌ واحدٌ لا
-         يجعل الصفحةَ «منزّلة»** — فمن سحب للتحديث بعد تبديل تبويبٍ
-         وجد الإيماءةَ تعمل من أوّل مرّة، لا من ثانيها. */
-      if (window.scrollY > 1 || busyRef.current) return;
+      if (window.scrollY > 0 || busyRef.current) return;
       if (insideScroller(e.target)) return;
       start.current = e.touches[0]?.clientY ?? null;
     }
