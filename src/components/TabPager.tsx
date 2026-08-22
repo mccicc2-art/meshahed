@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { tap } from "@/lib/haptics";
 import { setTabDrag, claimGesture, releaseGesture, gestureTakenBy } from "@/lib/tabDrag";
+import { useBeforePaint } from "@/lib/useBeforePaint";
+import { revealChrome } from "./ChromeAutoHide";
 import { useCommunityPager } from "./CommunityPager";
 
 /**
@@ -102,19 +104,6 @@ function insideXScroller(node: Element | null): boolean {
   }
   return false;
 }
-
-/**
- * 🆕 **تأثيرٌ يقع قبل الرسم — والفرقُ هنا هو العطلُ كلُّه** (D-295).
- *
- * `useLayoutEffect` **يُنفَّذ بعد التركيب وقبل أن يرسم المتصفّح إطاراً**،
- * و`useEffect` **يُنفَّذ بعد الرسم** — **فإطارٌ واحدٌ يُرى بينهما.**
- * **وذلك الإطارُ الواحد هو «القلتش» الذي رآه أحمد.**
- *
- * ⚠️ **والاسمُ المستعار لأن المكوّن يُرسم على الخادم أيضاً**: React تحذّر
- * من `useLayoutEffect` في SSR، **والحارسُ ثابتٌ على مستوى الوحدة فلا
- * يتبدّل الخطّافُ بين رسمتين** (وهو شرطُ الخطّافات).
- */
-const useBeforePaint = typeof window === "undefined" ? useEffect : useLayoutEffect;
 
 export function TabPager({
   panes,
@@ -477,6 +466,15 @@ export function TabPager({
       }
 
       tap(6);
+      /* 🆕 ⚡ **والكسوةُ تعود إلى حال الرأس مع بدء الرحلة لا بعدها**
+         (D-524): الوجهةُ ستُفتح عند رأسها (`scrollTo(0,0)` في التزام
+         القلب — D-523)، **ورأسُ صفحةٍ بلا ترويسةٍ ولا شريطٍ حالٌ لا
+         تُرسم.** **ولو تُركت لمستمع التمرير لوصلها الحدثُ بعد الرسم
+         فانزلقت ٢٠٠م.ث بعد أن سكن كلُّ شيء** — وهي الرمشة.
+         **وهنا تنزلق داخل زمن الحركة فلا تُرى**، ولا رقمَ من أرقام
+         الحركة مُسّ. **والسحبةُ الملغاة لا تمرّ من هنا** فيبقى القارئُ
+         المنزّلُ على كسوته المختبئة. */
+      revealChrome();
       /* **تُكمل الرحلةَ ثمّ يُقلب الفهرس** — **ولا انتظارَ لأحد** بعد
          D-522: الحدثُ هو نهايةُ الحركة نفسُها (D-250). */
       const ms = reduced ? 0 : FLY_MS;
