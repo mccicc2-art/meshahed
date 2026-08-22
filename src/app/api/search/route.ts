@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
 import { getUser, searchPeople as searchMembers, searchPublicLists } from "@/lib/data";
-import { searchMulti, searchPeople, titleOf, yearOf } from "@/lib/tmdb";
+import { searchMulti, searchPeople, yearOf, getTv, getMovie } from "@/lib/tmdb";
+import { resolveTmdbTitle } from "@/lib/media";
 import { posterUrl, profileUrl } from "@/lib/media";
-import { getT } from "@/lib/locale";
+import { getT, getTitleMode } from "@/lib/locale";
 import { roleName } from "@/lib/i18n";
 import { curatedName } from "@/lib/universes";
 import { allow, retryAfter } from "@/lib/ratelimit";
+import { getTranslits, searchTranslits } from "@/lib/titleAliases";
+import { needsTranslit } from "@/lib/titleMode";
 import type { SearchPayload, SearchScope } from "@/lib/searchTypes";
 
 /**
@@ -48,6 +51,7 @@ export async function GET(request: Request) {
   const scope = asScope(url.searchParams.get("type"));
   const want = (s: SearchScope) => (scope === "all" ? PEEK : scope === s ? FULL : 0);
   const { locale, t } = await getT();
+  const mode = await getTitleMode();
 
   try {
     const [titles, artists, members, lists] = await Promise.all([
@@ -57,14 +61,54 @@ export async function GET(request: Request) {
       want("lists") ? searchPublicLists(q, want("lists")).catch(() => []) : [],
     ]);
 
+    /* ===== 🆕 البحثُ يعرف الأسماءَ الثلاثةَ مهما كان وضعُ العرض (D-544)
+       =====
+
+       **بنصِّ المواصفة: «اجعل البحث يتعرّف على الاسم المحلّي والأصلي
+       والكتابة الصوتيّة مهما كان خيار العرض».**
+
+       **والاثنان الأوّلان مجّانيّان**: بحثُ TMDB نفسُه يطابق الاسمَ
+       الأصليَّ والمترجَم معاً — **وهو ما جعل «Game of Thrones» تجد
+       «صراع العروش» قبل هذه الميزة.** **والذي لا يعرفه أحدٌ هو الكتابةُ
+       الصوتيّة** («جيم أوف ثرونز»)، **فتُسأل قاعدتُنا عنها.**
+
+       ⚠️ **ولا يُسأل إلّا حين يُحتمل الجواب**: الطلبُ لا يحمل حرفاً
+       عربيّاً؟ **لا كتابةَ صوتيّةً تطابقه أصلاً** (D-510). **وحين
+       يُسأل فاستعلامٌ واحدٌ لا استعلامٌ لكلِّ نتيجة.** */
+    const wantTitles = want("titles");
+    /* **وما وجدَته الكتابةُ الصوتيّةُ يُثبَّت بـTMDB قبل أن يُعرض**
+       (سابقةُ `ai.ts`: النموذجُ يقترح وTMDB هو الحقيقة) — **فلا يُبنى
+       رابطٌ على صفٍّ في جدولنا وحدَه.** **ويُقدَّم على نتائج TMDB**:
+       من كتب «جيم أوف ثرونز» يقصد هذا العمل بعينه. */
+    const extra = wantTitles ? await byTranslit(q, wantTitles) : [];
+    const known = new Set(titles.map((r) => `${r.media_type}-${r.id}`));
+    const merged = [
+      ...extra.filter((r) => !known.has(`${r.media_type}-${r.id}`)),
+      ...titles,
+    ];
+
+    /* **وخريطةُ الكتابات الصوتيّة للعرض** — نداءٌ واحدٌ مجمَّعٌ للنتائج
+       كلِّها، **ولا يُنادى إلّا في وضع الكتابة الصوتيّة.** */
+    const shown = merged.slice(0, wantTitles);
+    const translits = needsTranslit(mode)
+      ? await getTranslits(
+          shown.map((r) => ({ tmdb_id: r.id, media_type: r.media_type === "tv" ? "tv" : "movie" })),
+        )
+      : new Map<string, string>();
+
     const payload: SearchPayload = {
-      titles: titles.slice(0, want("titles")).map((r) => ({
-        id: r.id,
-        mediaType: r.media_type === "tv" ? "tv" : "movie",
-        title: titleOf(r),
-        year: yearOf(r) ?? null,
-        poster: posterUrl(r.poster_path ?? null, "w185"),
-      })),
+      titles: shown.map((r) => {
+        const mediaType = r.media_type === "tv" ? "tv" : "movie";
+        const name = resolveTmdbTitle(r, mode, translits.get(`${mediaType}-${r.id}`) ?? null);
+        return {
+          id: r.id,
+          mediaType,
+          title: name.primary,
+          titleSecondary: name.secondary,
+          year: yearOf(r) ?? null,
+          poster: posterUrl(r.poster_path ?? null, "w185"),
+        };
+      }),
       artists: artists.slice(0, want("artists")).map((p) => ({
         id: p.id,
         name: p.name,
@@ -84,7 +128,7 @@ export async function GET(request: Request) {
       /* **والأعدادُ تقول «هل من مزيد؟»** — بها يُرسم «عرض الكل» ولا
          يُرسم فوق قسمٍ لا شيءَ خلفه (D-222: الصفرُ لا يُرسم). */
       more: {
-        titles: titles.length > want("titles"),
+        titles: merged.length > want("titles"),
         artists: artists.length > want("artists"),
         members: members.length > want("members"),
         lists: lists.length > want("lists"),
@@ -99,6 +143,34 @@ export async function GET(request: Request) {
   } catch {
     return NextResponse.json(empty());
   }
+}
+
+/**
+ * **أعمالُ الكتابة الصوتيّة، مثبَّتةً بـTMDB** — تُعاد بنفس شكل نتيجة
+ * البحث كي تدخل الخلّاط بلا فرعٍ ثانٍ في الرسم (D-145).
+ */
+async function byTranslit(q: string, limit: number) {
+  const hits = await searchTranslits(q, limit).catch(() => []);
+  if (!hits.length) return [];
+  const rows = await Promise.all(
+    hits.map(async (h) => {
+      try {
+        const d = (await (h.media_type === "tv" ? getTv(h.tmdb_id) : getMovie(h.tmdb_id))) as {
+          name?: string;
+          title?: string;
+          original_name?: string;
+          original_title?: string;
+          poster_path?: string | null;
+          first_air_date?: string | null;
+          release_date?: string | null;
+        };
+        return { ...d, id: h.tmdb_id, media_type: h.media_type };
+      } catch {
+        return null;
+      }
+    }),
+  );
+  return rows.filter((r): r is NonNullable<typeof r> => r !== null);
 }
 
 function asScope(raw: string | null): SearchScope {
