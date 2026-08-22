@@ -1,5 +1,4 @@
 import Link from "next/link";
-import type { HomeView } from "@/lib/homePrefs";
 import type { Locale } from "@/lib/i18n";
 import { Icon, type IconName } from "./Icon";
 import { HomeGreeting } from "./HomeGreeting";
@@ -54,12 +53,6 @@ export function HomeHeader({
   showStats: boolean;
   /** ⚠️ **مقبولٌ ولا يُقرأ** (D-502) — سقط الهلالُ بسقوط صورته */
   levelPercent?: number;
-  /**
-   * ⚠️ **مقبولٌ ولا يُقرأ لعمرِ رفعةٍ واحدة** (D-028): وضعُ العرض صار
-   * حالةَ عميلٍ في `HomeViewProvider` **يقرؤها المبدّلُ بنفسه** —
-   * **والرئيسيةُ تسقط تمريرَه في الرفعة التالية ثم يسقط العقد.**
-   */
-  view?: HomeView;
   locale: Locale;
 }) {
 

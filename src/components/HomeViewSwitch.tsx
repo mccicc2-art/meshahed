@@ -38,12 +38,6 @@ import { Icon } from "./Icon";
 export function HomeViewSwitch({
   locale,
 }: {
-  /**
-   * ⚠️ **مقبولٌ ولا يُقرأ لعمرِ رفعةٍ واحدة** (D-028): القيمةُ الحيّة
-   * صارت في `HomeViewProvider`، **والمستدعي يسقطها في الرفعة التالية**
-   * — والعقدُ يبقى اختياريّاً حتى ذلك فلا ينكسر ترتيبُ الرفع.
-   */
-  view?: HomeView;
   locale: Locale;
 }) {
   const t = getDict(locale);
