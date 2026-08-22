@@ -919,7 +919,7 @@ export default async function PeoplePage({
            **المفتوحةُ وحدَها في التدفّق وجاراتُها مطلقاتٌ مخفيّات** —
            فلا صندوقَ تمريرٍ ثانٍ، **وينجو الرأسُ اللاصق والسحبُ للتحديث
            وذاكرةُ التمرير والشريطُ السفليّ بلا سطرٍ يمسّها.** */
-        <TabPager panes={panes} index={swipeIndex} hrefs={swipeHrefs} rtl={locale !== "en"} />
+        <TabPager panes={panes} rtl={locale !== "en"} />
       )}
       </CommunityPagerProvider>
     </div>
