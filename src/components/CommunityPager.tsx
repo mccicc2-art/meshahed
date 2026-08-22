@@ -60,6 +60,17 @@ type PagerState = {
   /** يبدّل التبويبَ محلّيّاً ويكتب العنوان */
   go: (i: number, opts?: { scroll?: boolean }) => void;
   /**
+   * 🆕 **الفهرسُ الذي تصفه الكسوة — لا الذي تعرضه اللوحات** (D-526).
+   *
+   * **يتطابقان دائماً إلا في زمن الرحلة**: **السحبةُ التي التزمت تُعلن
+   * وجهتَها فوراً**، **واللوحاتُ تصل بعد `FLY_MS`.** **وما ليس متحرّكاً
+   * من الكسوة (عدّادُ الأدوات) يقرأ هذا** — **فقيمتُه النهائيّة جاهزةٌ
+   * قبل أوّل إطارٍ مستقرّ، لا بعده بثلاثة.**
+   */
+  aimed: number;
+  /** يُعلن وجهةَ رحلةٍ بدأت — **بلا مساسٍ باللوحات ولا بالعنوان** */
+  aim: (i: number) => void;
+  /**
    * 🆕 **«هل يُصفَّر التمريرُ في التزام هذا التبديل؟»** (D-523) — تُقرأ
    * مرّةً وتُمحى. **والتصفيرُ لا يقع هنا بل في التزام قلبِ الفهرس قبل
    * الرسم** (`TabPager`)، **فيتطابق آخرُ إطارٍ من الحركة وأوّلُ إطارٍ
@@ -88,6 +99,8 @@ export function CommunityPagerProvider({
   children: ReactNode;
 }) {
   const [index, setIndex] = useState(initialIndex);
+  /* 🆕 **وجهةُ الرحلة** (D-526) — تسبق `index` بزمن الحركة، وتساويه فيما عداه */
+  const [aimed, setAimed] = useState(initialIndex);
   const [ready, setReady] = useState(false);
 
   /* **قيمةُ الخادم إن تبدّلت** — تنقّلٌ حقيقيّ أو رابطٌ عميق. (نمطُ
@@ -96,6 +109,7 @@ export function CommunityPagerProvider({
   if (seen !== initialIndex) {
     setSeen(initialIndex);
     setIndex(initialIndex);
+    setAimed(initialIndex);
   }
 
   const hrefsKey = hrefs.join("|");
@@ -112,10 +126,13 @@ export function CommunityPagerProvider({
          قلب الفهرس في التزامٍ واحدٍ قبل الرسم، لا قبله بإطار.** */
       if (opts?.scroll !== false) topFlag.current = true;
       setIndex(i);
+      /* **والوجهةُ تلحق بالوصول** — ضغطةُ شريطٍ أو رجوعٌ بلا رحلة (D-526) */
+      setAimed(i);
       window.history.pushState(null, "", href);
     },
     [hrefsKey],
   );
+  const aim = useCallback((i: number) => setAimed(i), []);
   const takeTopOnCommit = useCallback(() => {
     const v = topFlag.current;
     topFlag.current = false;
@@ -134,7 +151,10 @@ export function CommunityPagerProvider({
         const p = new URLSearchParams(window.location.search).get("tab");
         i = p ? keysKey.split("|").indexOf(p) : initialIndex;
       }
-      if (i >= 0) setIndex(i);
+      if (i >= 0) {
+        setIndex(i);
+        setAimed(i);
+      }
     };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
@@ -148,9 +168,11 @@ export function CommunityPagerProvider({
       ready,
       setReady,
       go,
+      aimed,
+      aim,
       takeTopOnCommit,
     }),
-    [index, keysKey, hrefsKey, ready, go, takeTopOnCommit],
+    [index, aimed, aim, keysKey, hrefsKey, ready, go, takeTopOnCommit],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

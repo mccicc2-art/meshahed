@@ -81,6 +81,12 @@ const SNAP_MS = 360;
 /** والذهابُ حين يبلغه */
 const FLY_MS = 520;
 /**
+ * 🆕 **مهلةُ الحارس بعد نهاية الحركة** (D-526) — **ليست زمنَ حركةٍ ولا
+ * تُرى**: القلبةُ تقع على `transitionend`، **وهذا ما يقع إن لم يقع هو**
+ * (حركةٌ قُطعت · تفضيلُ تقليل الحركة · متصفّحٌ ابتلع الحدث).
+ */
+const GUARD = 120;
+/**
  * 🆕 **الفجوةُ بين اللوحتين** (D-281، بلاغُ أحمد بلقطةٍ في منتصف السحب:
  * «هذي مو المفروض تلصق في بعض أو تكون فوق بعض، لازم فيه مسافة بينهم»).
  *
@@ -214,7 +220,7 @@ export function TabPager({
    * — **فالسحبةُ التالية تُحسب من التبويب الذي تراه العين لا من الذي
    * تركه التزامٌ لم يُطبَّق بعد.** (وهي حالةُ «التبديل السريع المتكرّر».)
    */
-  const pending = useRef<{ i: number; timer: number } | null>(null);
+  const pending = useRef<{ i: number; timer: number; cancel?: () => void } | null>(null);
   /**
    * 🆕 **الفهرسُ الحيُّ في مرجعٍ أيضاً** (D-522): مستمعاتُ اللمس تعيش في
    * إغلاق التأثير، **وإعادةُ تركيبها تقع بعد الرسم** — **فلمسةٌ ثانيةٌ
@@ -438,6 +444,9 @@ export function TabPager({
     const flushPending = () => {
       const p = pending.current;
       if (!p) return;
+      /* 🆕 **ويُنزع مستمعُ نهاية الحركة معه** (D-526) — **مستمعٌ ينجو من
+         قلبته يقلب مرّةً ثانية باسمها** (نفسُ درس المؤقّتات في D-278). */
+      p.cancel?.();
       window.clearTimeout(p.timer);
       timers.delete(p.timer);
       pending.current = null;
@@ -564,14 +573,56 @@ export function TabPager({
        * اللحظة نفسِها بـHistory API** — بلا خادم.
        */
       const target = next;
+      /* 🔴 🆕 **والوجهةُ تُعلَن الآن، لا عند الوصول** (D-526): **ما ليس
+         في الحركة من الكسوة — عدّادُ الأدوات — يقرأ الوجهة**، **فقيمتُه
+         النهائيّة جاهزةٌ قبل أوّل إطارٍ مستقرّ.** (اللوحاتُ والشريطُ
+         الأصفر يبقيان على `index`؛ هما في الحركة.) */
+      pager?.aim(target);
+
+      let flipped = false;
       const flip = () => {
+        if (flipped) return;
+        flipped = true;
+        const p = pending.current;
+        if (p) {
+          window.clearTimeout(p.timer);
+          timers.delete(p.timer);
+        }
+        track.removeEventListener("transitionend", onEnd);
         pending.current = null;
         idxRef.current = target;
         /* **والتصفيرُ يُطلب هنا ويقع في الالتزام قبل الرسم** (D-523) */
         pager?.go(target);
       };
-      const id = window.setTimeout(flip, ms);
-      pending.current = { i: target, timer: id };
+      /**
+       * 🆕 ⚡ **والقلبةُ تقع على نهاية الحركة نفسِها لا على مؤقّتٍ يوازيها**
+       * (D-526).
+       *
+       * **العطلُ المقيس على جهاز أحمد (٣٠ إطاراً/ث)**: اللوحةُ تستقرّ عند
+       * الإطار ٣٧ **والقلبةُ تقع عند ٤٠** — **ثلاثةُ إطاراتٍ من صفحةٍ
+       * ساكنةٍ ثمّ تبدّلٌ فيها.** **والسببُ ساعتان**: الحركةُ يديرها
+       * المؤلِّف وينتهي عند `FLY_MS` بالضبط، **والمؤقّتُ يديره الخيطُ
+       * الرئيسيُّ فيتأخّر بقدر ما يشغله.**
+       *
+       * **فالحدثُ هو الساعة**: `transitionend` للتحويل على المسار نفسِه.
+       * ⚠️ **والمؤقّتُ يبقى حارساً لا مُشغِّلاً** (`+GUARD`): حركةٌ
+       * تُقطع، أو `prefers-reduced-motion` فلا حركةَ ولا حدث — **ومن
+       * علّق قلبةً على حدثٍ قد لا يقع علّق الصفحةَ كلَّها.**
+       */
+      const onEnd = (ev: TransitionEvent) => {
+        if (ev.target !== track || ev.propertyName !== "transform") return;
+        flip();
+      };
+      if (ms) track.addEventListener("transitionend", onEnd);
+      const id = window.setTimeout(flip, ms ? ms + GUARD : 0);
+      pending.current = {
+        i: target,
+        timer: id,
+        cancel: () => {
+          flipped = true;
+          track.removeEventListener("transitionend", onEnd);
+        },
+      };
       timers.add(id);
     };
 
@@ -605,6 +656,7 @@ export function TabPager({
        الثلاثة — **وتسخينُ ما لا يُجلب نداءٌ بلا قارئ** (D-510). */
 
     return () => {
+      pending.current?.cancel?.();
       timers.forEach((id) => window.clearTimeout(id));
       timers.clear();
       document.removeEventListener("touchstart", onStart);
