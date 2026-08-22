@@ -17,8 +17,6 @@ import { FONT_UI_COOKIE, FONT_CONTENT_COOKIE, fontAttr, sanitizeFontSize } from 
 import { HeaderShell } from "@/components/HeaderShell";
 import { ChromeAutoHide } from "@/components/ChromeAutoHide";
 import { AccountSync } from "@/components/AccountSync";
-/* 🔬 **مسبارٌ مؤقّتٌ يُحذف بانتهاء جولة الرمشة** — صامتٌ بلا `?diag=nav` */
-import { NavDiag } from "@/components/NavDiag";
 import { getLocale } from "@/lib/locale";
 import { seoKeywords } from "@/lib/seo";
 
@@ -288,8 +286,6 @@ export default async function RootLayout({
             ويرسل لنطاقنا نفسه (/_vercel/speed-insights) فلا يوسّع CSP.
             به تُلتقط أي نكسة أداءٍ قادمة بالأرقام لا بالشكوى. */}
         <SpeedInsights />
-        {/* 🔬 مؤقّت — يُحذف مع ملفّه بعد تحديد سبب الرمشة */}
-        <NavDiag />
       </body>
     </html>
   );
