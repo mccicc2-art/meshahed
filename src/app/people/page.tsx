@@ -43,12 +43,12 @@ import { commentViewKey, newsViewKey } from "@/lib/postKeys";
 import { applyTabPrefs, defaultTab } from "@/lib/tabPrefs";
 import { localizeRows, localizeTitleRooms, localizeTalkRooms } from "@/lib/localize";
 import { CommunityDirectory, CommunityRoom } from "@/components/Communities";
-import { PageTabs } from "@/components/ui/PageTabs";
 import { CommunityTools } from "@/components/CommunityTools";
 import { TitleNews } from "@/components/TitleNews";
 import { getTitleNews } from "@/lib/titleNews";
 import { ScrollMemory } from "@/components/ScrollMemory";
 import { TabPager } from "@/components/TabPager";
+import { CommunityPagerProvider, CommunityTabs } from "@/components/CommunityPager";
 import { getBatchTranslations } from "@/lib/translate";
 import { OneTimeHint } from "@/components/OneTimeHint";
 
@@ -624,8 +624,14 @@ export default async function PeoplePage({
      ⚠️ **و`-1` تعني «لا سحبَ هنا»**: `?tab=all` و`?tab=news` سطحان
      يُفتحان بالرابط بلا شريحة (D-219)، **وسحبٌ منهما كان سيقفز بالقارئ
      إلى مكانٍ لم يدخل منه.** */
-  const swipeHrefs = visibleTabs.map((x) => x.href).filter((h): h is string => !!h);
-  const swipeIndex = visibleTabs.findIndex((x) => x.key === tab);
+  const swipeTabs = visibleTabs.filter((x): x is (typeof visibleTabs)[number] & { href: string } =>
+    !!x.href,
+  );
+  const swipeHrefs = swipeTabs.map((x) => x.href);
+  /* 🆕 **والمفاتيحُ بجانب الروابط** (D-522): المزوّدُ يقرأ `?tab=` عند
+     الرجوع، **ولا يعرف أيَّ مفتاحٍ يقابل أيَّ فهرس إلا بهذا الصفّ.** */
+  const swipeKeys = swipeTabs.map((x) => x.key);
+  const swipeIndex = swipeTabs.findIndex((x) => x.key === tab);
 
   /* ⚠️ **ولا صفَّ رقاقاتٍ في الرأس بعد اليوم** (D-280): خانةُ `extra` في
      `PageTabs` باقيةٌ لصفّ بحث المكتبة، **ولا يُمرَّر إليها من هنا شيء**
@@ -863,13 +869,14 @@ export default async function PeoplePage({
           `PageTabs` المشترك (D-134): نفس الموضع الرأسيّ في المكتبة
           واكتشف، وخطٌّ فاصلٌ **واحد**. وصفُّ الفرز والمرشِّح الذي كان
           تحته **حُذف** بطلب أحمد — انظر تعليق `newest`/`kind`. */}
-      <PageTabs
+      {/* 🆕 **والفهرسُ يملكه العميلُ من هنا** (D-522): الشريطُ واللوحاتُ
+          يقرآن رقماً واحداً، **فتبديلُ التبويبات الثلاثة لا يمسّ الخادمَ
+          أصلاً** — والحجّةُ كاملةً في `CommunityPager`. */}
+      <CommunityPagerProvider initialIndex={swipeIndex} keys={swipeKeys} hrefs={swipeHrefs}>
+      <CommunityTabs
         items={visibleTabs}
-        active={tab}
+        fallbackActive={tab}
         ariaLabel={t.communityTabsGroup}
-        asNav
-        /* **الشريطُ يمشي مع اللوحة** (D-276) — ولا يُطلب إلا حيث تنزلق */
-        swipe={swipeIndex >= 0}
         /* رمزُ الأدوات (D-177) — نفس الزرّ ونفس المقاس في المكتبة واكتشف */
         action={
           <CommunityTools
@@ -914,6 +921,7 @@ export default async function PeoplePage({
            وذاكرةُ التمرير والشريطُ السفليّ بلا سطرٍ يمسّها.** */
         <TabPager panes={panes} index={swipeIndex} hrefs={swipeHrefs} rtl={locale !== "en"} />
       )}
+      </CommunityPagerProvider>
     </div>
   );
 }
