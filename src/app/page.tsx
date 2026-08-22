@@ -398,7 +398,6 @@ export default async function HomePage() {
           displayName={displayName}
           stats={headerStats}
           showStats={prefs.stats}
-          view={prefs.view}
           locale={locale}
         />
         {/* تلميح أول فتح — يظهر مرةً ثم يصمت (سابقة hintDiscover) */}
