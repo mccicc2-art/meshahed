@@ -406,7 +406,7 @@ function Section({
             }}
             className="ms-auto shrink-0 text-12 font-bold text-accent hover:opacity-80 transition"
           >
-            {t.seeAll}
+            {t.searchSeeAll}
           </button>
         )}
       </div>
