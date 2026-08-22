@@ -55,6 +55,8 @@ import { Icon, type IconName } from "@/components/Icon";
 import { posterUrl } from "@/lib/media";
 import { getWatchHistory } from "@/lib/data";
 import { HomeHeader, type HeaderStat } from "@/components/HomeHeader";
+/* **الشكلان يُرسمان معاً والعميلُ يختار** — لا رحلةَ خادمٍ لتبديل شكل */
+import { ByHomeView, HomeViewProvider } from "@/components/HomeViewProvider";
 import { CompactMediaRow } from "@/components/CompactMediaRow";
 import {
   sanitizeHomePrefs,
@@ -381,46 +383,51 @@ export default async function HomePage() {
        القارئُ قسماً إضافيّاً في الشاشة (حجّةُ D-437 نفسُها: **يُنفَق من
        الفراغ لا من حجم النصّ**). */
     <div className="space-y-3 sm:space-y-6" style={densityVars(prefs.density)}>
-      {/* ⚖️ **وسقطت موجاتُ التسخين الأعمى** (جولة ٢٠ أغسطس — نقضُ
-          D-483 بطلب أحمد: «لا prefetch لكل الصفحات بشكل أعمى»).
-          البديل في الشريطين لا هنا: المكتبةُ — الوجهةُ المرجَّحة —
-          `prefetch={true}` على رابطها فتُجلب كاملةً من الرؤية، وبقيّةُ
-          الوجهات تُسخَّن لحظةَ النيّة (لمسة/حومان/تركيز عبر
-          `usePrefetchOnIntent`) — فلا يدفع أحدٌ كلفةَ صفحةٍ لن يفتحها.
-          و`RoutePrewarm` حُذف بحذف آخرِ مستدعيه. */}
-      <HomeHeader
-        displayName={displayName}
-        stats={headerStats}
-        showStats={prefs.stats}
-        view={prefs.view}
-        locale={locale}
-      />
-      {/* تلميح أول فتح — يظهر مرةً ثم يصمت (سابقة hintDiscover) */}
-      <OneTimeHint id="home-customize" text={t.hintHome} closeLabel={t.closeLabel} />
-      <Suspense
-        fallback={
-          <div className="space-y-8" aria-hidden>
-            <RailSkeleton count={6} />
-            <RailSkeleton count={6} />
-          </div>
-        }
-      >
-        <HomeBody
-          followRows={followRows}
-          summary={summary}
-          watchedMovieIds={watchedMovieIds}
-          profile={profile}
-          movieProgress={movieProgressPromise}
-          prefs={prefs}
-          watchedByShow={watchedByShow}
-          lastWatchedOrder={lastWatchedOrder}
-          rewatchSinceMap={rewatchSinceMap}
-          myRatings={myRatings}
+      {/* **مزوّدُ وضع العرض** — يحمل الاختيارَ في العميل فيقرأه المبدّلُ
+          والأقسامُ معاً، **فتبديلُ الشكل إعادةُ رسمٍ محليّة لا رحلةُ خادم.**
+          والقيمةُ الابتدائيّة من `profiles.home_prefs` كما كانت. */}
+      <HomeViewProvider initial={prefs.view}>
+        {/* ⚖️ **وسقطت موجاتُ التسخين الأعمى** (جولة ٢٠ أغسطس — نقضُ
+            D-483 بطلب أحمد: «لا prefetch لكل الصفحات بشكل أعمى»).
+            البديل في الشريطين لا هنا: المكتبةُ — الوجهةُ المرجَّحة —
+            `prefetch={true}` على رابطها فتُجلب كاملةً من الرؤية، وبقيّةُ
+            الوجهات تُسخَّن لحظةَ النيّة (لمسة/حومان/تركيز عبر
+            `usePrefetchOnIntent`) — فلا يدفع أحدٌ كلفةَ صفحةٍ لن يفتحها.
+            و`RoutePrewarm` حُذف بحذف آخرِ مستدعيه. */}
+        <HomeHeader
+          displayName={displayName}
+          stats={headerStats}
+          showStats={prefs.stats}
+          view={prefs.view}
           locale={locale}
-          t={t}
-          today={today}
         />
-      </Suspense>
+        {/* تلميح أول فتح — يظهر مرةً ثم يصمت (سابقة hintDiscover) */}
+        <OneTimeHint id="home-customize" text={t.hintHome} closeLabel={t.closeLabel} />
+        <Suspense
+          fallback={
+            <div className="space-y-8" aria-hidden>
+              <RailSkeleton count={6} />
+              <RailSkeleton count={6} />
+            </div>
+          }
+        >
+          <HomeBody
+            followRows={followRows}
+            summary={summary}
+            watchedMovieIds={watchedMovieIds}
+            profile={profile}
+            movieProgress={movieProgressPromise}
+            prefs={prefs}
+            watchedByShow={watchedByShow}
+            lastWatchedOrder={lastWatchedOrder}
+            rewatchSinceMap={rewatchSinceMap}
+            myRatings={myRatings}
+            locale={locale}
+            t={t}
+            today={today}
+          />
+        </Suspense>
+      </HomeViewProvider>
     </div>
   );
 }
@@ -1131,8 +1138,83 @@ async function HomeBody({
 
         /* **وضعُ العرض يُقرأ مرّةً هنا** (D-434) — **والبياناتُ أعلاه
            واحدةٌ للوضعين**: لا نداءَ ثانٍ ولا فرعَ جلبٍ ثانٍ، **والفرقُ
-           في آخر خطوةٍ وحدَها.** */
-        const view = prefs.view;
+           في آخر خطوةٍ وحدَها.**
+
+           ⚖️ 🆕 **والخطوةُ الأخيرةُ صارت تُرسم مرّتين** (جولة ٢٢
+           أغسطس): **الشكلان يخرجان من الجلب نفسِه**، و`ByHomeView`
+           يركّب المختار في العميل — **فالتبديلُ لا يمسّ الخادم.**
+           **والفرعُ غيرُ المختار لا يدخل الـDOM** فلا ملصقَ يُجلب له.
+           📏 **وثمنُه نصٌّ في الحمولة** مقابل **صفرِ رحلاتٍ** بدل
+           رحلتين (٥٥ ك.ب × ٢) في كلِّ ضغطة. */
+
+        /* **«للمشاهدة» هو القسمُ الوحيد الذي يتبدّل عنصرُه لا
+           غلافُه**: ملصقٌ في البصريّ وصفٌّ في المختصر — **فيُرسم
+           بدالّةٍ واحدةٍ تأخذ الوضع**، لا بنسختين تفترقان عند أوّل
+           تعديل (القاعدة ٦). */
+        const toWatchSection = (view: HomeView) => (
+          <Section
+            key="towatch"
+            title={t.libToWatch}
+            icon="bookmark"
+            iconColor="var(--accent)"
+            href="/library"
+            seeAll={t.seeAll}
+            view={view}
+          >
+            {toWatchRow.slice(0, cap(toWatchRow.length)).map((x) =>
+              view === "compact" ? (
+                <CompactMediaRow
+                  key={x.key}
+                  href={x.href}
+                  title={x.title}
+                  subtitle={x.subtitle}
+                  posterPath={x.posterPath}
+                  progress={x.progress}
+                />
+              ) : (
+                /* ⚖️ 🆕 **والزرّان العائمان سقطا** (D-434، طلبُ أحمد:
+                   «لا تعرض أزراراً عائمة كثيرة فوق البوسترات»).
+                   **والفعلان لم يسقطا**: «شاهدته» في قائمة الضغط
+                   المطوّل نفسِها (D-376)، **وهي البابُ الموحَّد لأفعال
+                   الملصق في كلّ سطح** — **وبابان لفعلٍ واحد كانا
+                   يزاحمان الصورةَ ويختلفان في السلوك.**
+                   ⚠️ **و«البطاقة الحمراء» ليست في هذه القائمة بعد**
+                   — بابُها اليومَ صفحةُ العمل وشبكةُ المكتبة، **وهو
+                   دَينٌ مكتوبٌ في `docs/UI_STATUS.md` لا سهوٌ.** */
+                <PosterCard
+                  key={x.key}
+                  href={x.href}
+                  title={x.title}
+                  posterPath={x.posterPath}
+                  progress={x.progress}
+                  badge={x.badge}
+                  /* ⚖️ 🆕 **والاسمُ عاد فوق الملصق هنا** (D-437،
+                     حكمُ أحمد: «إذا احتجت مساحة في To Watch حط اسم
+                     الفلم على البوستر»). **وهو ثمنٌ اختاره بنفسه
+                     ليجمع الصفحةَ في شاشة**، **والاسمُ يبقى مرّةً
+                     واحدة** فلا يُنقض شرطُه الأوّل. **و`titleBelow`
+                     باقٍ في العقد** لأن المكتبةَ والاستكشاف ينتظرانه
+                     (D-435). */
+                  /* 🆕 **ولا خيطَ «عندك» في صفٍّ كلُّه عندك**
+                     (D-437، بلاغُه: «اللون السماوي على الفيلم ما هو
+                     فيت»): **الخيطُ يقول ما يقوله عنوانُ القسم** —
+                     **وهو نفسُ حكم شارة «ما بدأته»** (D-434).
+                     **والتقدّمُ والاكتمالُ والإيقاف تبقى** لأنها
+                     تفرّق بين بطاقةٍ وأخرى في الصفّ نفسِه. */
+                  savedMark={false}
+                  hold={{
+                    tmdbId: x.tmdbId!,
+                    mediaType: x.mediaType!,
+                    added: true,
+                    watched: false,
+                    progress: x.progress,
+                    locale,
+                  }}
+                />
+              ),
+            )}
+          </Section>
+        );
 
         /* أقسام المحتوى تُرسم بترتيب التفضيلات: قائمة أسماء من التخصيص
            تُترجم إلى قوالب هنا، والغائب عن القائمة لا يُرسم أصلاً */
@@ -1153,7 +1235,6 @@ async function HomeBody({
                   listCards={listCards}
                   continueTop={continueTop}
                   continueExtra={continueExtra}
-                  view={view}
                   locale={locale}
                   t={t}
                 />
@@ -1167,68 +1248,11 @@ async function HomeBody({
           ),
           towatch:
             toWatchRow.length > 0 ? (
-              <Section
+              <ByHomeView
                 key="towatch"
-                title={t.libToWatch}
-                icon="bookmark"
-                iconColor="var(--accent)"
-                href="/library"
-                seeAll={t.seeAll}
-                view={view}
-              >
-                {toWatchRow.slice(0, cap(toWatchRow.length)).map((x) =>
-                  view === "compact" ? (
-                    <CompactMediaRow
-                      key={x.key}
-                      href={x.href}
-                      title={x.title}
-                      subtitle={x.subtitle}
-                      posterPath={x.posterPath}
-                      progress={x.progress}
-                    />
-                  ) : (
-                    /* ⚖️ 🆕 **والزرّان العائمان سقطا** (D-434، طلبُ أحمد:
-                       «لا تعرض أزراراً عائمة كثيرة فوق البوسترات»).
-                       **والفعلان لم يسقطا**: «شاهدته» في قائمة الضغط
-                       المطوّل نفسِها (D-376)، **وهي البابُ الموحَّد لأفعال
-                       الملصق في كلّ سطح** — **وبابان لفعلٍ واحد كانا
-                       يزاحمان الصورةَ ويختلفان في السلوك.**
-                       ⚠️ **و«البطاقة الحمراء» ليست في هذه القائمة بعد**
-                       — بابُها اليومَ صفحةُ العمل وشبكةُ المكتبة، **وهو
-                       دَينٌ مكتوبٌ في `docs/UI_STATUS.md` لا سهوٌ.** */
-                    <PosterCard
-                      key={x.key}
-                      href={x.href}
-                      title={x.title}
-                      posterPath={x.posterPath}
-                      progress={x.progress}
-                      badge={x.badge}
-                      /* ⚖️ 🆕 **والاسمُ عاد فوق الملصق هنا** (D-437،
-                         حكمُ أحمد: «إذا احتجت مساحة في To Watch حط اسم
-                         الفلم على البوستر»). **وهو ثمنٌ اختاره بنفسه
-                         ليجمع الصفحةَ في شاشة**، **والاسمُ يبقى مرّةً
-                         واحدة** فلا يُنقض شرطُه الأوّل. **و`titleBelow`
-                         باقٍ في العقد** لأن المكتبةَ والاستكشاف ينتظرانه
-                         (D-435). */
-                      /* 🆕 **ولا خيطَ «عندك» في صفٍّ كلُّه عندك**
-                         (D-437، بلاغُه: «اللون السماوي على الفيلم ما هو
-                         فيت»): **الخيطُ يقول ما يقوله عنوانُ القسم** —
-                         **وهو نفسُ حكم شارة «ما بدأته»** (D-434).
-                         **والتقدّمُ والاكتمالُ والإيقاف تبقى** لأنها
-                         تفرّق بين بطاقةٍ وأخرى في الصفّ نفسِه. */
-                      savedMark={false}
-                      hold={{
-                        tmdbId: x.tmdbId!,
-                        mediaType: x.mediaType!,
-                        added: true,
-                        watched: false,
-                        progress: x.progress,
-                        locale,
-                      }}
-                    />
-                  ),
-                )}
-              </Section>
+                visual={toWatchSection("visual")}
+                compact={toWatchSection("compact")}
+              />
             ) : null,
           upcoming:
             upcomingRow.length > 0 ? (
@@ -1240,7 +1264,6 @@ async function HomeBody({
                 <UpcomingSection
                   row={upcomingRow}
                   cards={prefs.cards}
-                  view={view}
                   t={t}
                 />
               </Suspense>
@@ -1625,7 +1648,6 @@ async function ContinueSection({
   listCards,
   continueTop,
   continueExtra,
-  view,
   locale,
   t,
 }: {
@@ -1634,7 +1656,6 @@ async function ContinueSection({
   listCards: BriefListCard[];
   continueTop: Item[];
   continueExtra: ContinueExtra[];
-  view: HomeView;
   locale: Locale;
   t: T;
 }) {
@@ -1660,94 +1681,99 @@ async function ContinueSection({
   const backdropOf = (n: { media_type: "tv" | "movie"; tmdb_id: number }) =>
     nextBackdrops.get(`${n.media_type}-${n.tmdb_id}`) ?? null;
 
-  return (
-    <Section
-      key="continue"
-      title={t.continueWatching}
-      icon="play"
-      iconColor="var(--accent)"
-      href="/library"
-      seeAll={t.seeAll}
-      view={view}
-      wide
-    >
-      {/* 🆕 **والقوائمُ أوّلَ الصفّ** (D-496): **الأقربُ إلى الاستئناف
-          أوّلاً هو ترتيبُ هذا الصفّ منذ نشأته**، **وقائمةٌ دخلتَها
-          للتوّ هي أحدثُ نيّةٍ أعلنتَها.** */}
-      {/* 🆕 **طابورُ «بلا قائمة» أوّلَ الأبواب** (D-505): هو جوابُ
-          «الأفلام ما تروح كنتنيو واتش» نفسُه — صحٌّ على الفيلم يقلب
-          البطاقةَ إلى الذي بعده. */}
-      {toWatchCard && (
-        <ListContinueCard
-          key="lc-towatch"
-          listName={toWatchCard.name}
-          next={{
-            tmdbId: toWatchCard.next.tmdb_id,
-            mediaType: toWatchCard.next.media_type,
-            title: toWatchCard.next.title,
-            posterPath: toWatchCard.next.poster_path,
-            backdropPath: backdropOf(toWatchCard.next),
-          }}
-          watched={toWatchCard.watched}
-          total={toWatchCard.total}
-          locale={locale}
-        />
-      )}
-      {/* 🆕 **ثم قوائمُ تشغيلك الصريحة** (D-505) — الرايةُ التي رفعتَها
-          بنفسك تسبق حدسَ المحفوظ */}
-      {playlistCards.map((c) => (
-        <ListContinueCard
-          key={`pl-${c.list.id}`}
-          listName={curatedName(c.list.sourceSlug, c.list.name, locale)}
-          next={{
-            tmdbId: c.next!.tmdb_id,
-            mediaType: c.next!.media_type,
-            title: c.next!.title,
-            posterPath: c.next!.poster_path,
-            backdropPath: backdropOf(c.next!),
-          }}
-          watched={c.watched}
-          total={c.total}
-          locale={locale}
-        />
-      ))}
-      {listCards.map((c) => (
-        <ListContinueCard
-          key={`lc-${c.list.id}`}
-          listName={curatedName(c.list.sourceSlug, c.list.name, locale)}
-          next={{
-            tmdbId: c.next!.tmdb_id,
-            mediaType: c.next!.media_type,
-            title: c.next!.title,
-            posterPath: c.next!.poster_path,
-            backdropPath: backdropOf(c.next!),
-          }}
-          watched={c.watched}
-          total={c.total}
-          locale={locale}
-        />
-      ))}
-      {continueTop.map((i, n) => (
-        <ContinueCard
-          key={`c-${i.id}`}
-          tmdbId={i.id}
-          href={`/show/${i.id}`}
-          title={i.name}
-          backdropPath={continueExtra[n]?.backdropPath ?? null}
-          posterPath={i.posterPath}
-          progress={i.progress}
-          watched={i.watched}
-          aired={i.aired}
-          episodeLabel={continueExtra[n]?.episodeLabel}
-          season={continueExtra[n]?.season ?? null}
-          episode={continueExtra[n]?.episode ?? null}
-          runtime={continueExtra[n]?.runtime ?? null}
-          variant={view === "compact" ? "row" : "card"}
-          locale={locale}
-        />
-      ))}
-    </Section>
+  /* **الرسمان من الجلب نفسِه** (جولة ٢٢ أغسطس): مشاهدُ «التالي» فوقُ
+     تُجلب مرّةً واحدة، **والذي يتبدّل بالوضع غلافُ القسم وشكلُ بطاقة
+     «تابِع المشاهدة» وحدَهما** — فيُرسمان معاً ويختار العميل. */
+  const rail = (view: HomeView) => (
+      <Section
+        key="continue"
+        title={t.continueWatching}
+        icon="play"
+        iconColor="var(--accent)"
+        href="/library"
+        seeAll={t.seeAll}
+        view={view}
+        wide
+      >
+        {/* 🆕 **والقوائمُ أوّلَ الصفّ** (D-496): **الأقربُ إلى الاستئناف
+            أوّلاً هو ترتيبُ هذا الصفّ منذ نشأته**، **وقائمةٌ دخلتَها
+            للتوّ هي أحدثُ نيّةٍ أعلنتَها.** */}
+        {/* 🆕 **طابورُ «بلا قائمة» أوّلَ الأبواب** (D-505): هو جوابُ
+            «الأفلام ما تروح كنتنيو واتش» نفسُه — صحٌّ على الفيلم يقلب
+            البطاقةَ إلى الذي بعده. */}
+        {toWatchCard && (
+          <ListContinueCard
+            key="lc-towatch"
+            listName={toWatchCard.name}
+            next={{
+              tmdbId: toWatchCard.next.tmdb_id,
+              mediaType: toWatchCard.next.media_type,
+              title: toWatchCard.next.title,
+              posterPath: toWatchCard.next.poster_path,
+              backdropPath: backdropOf(toWatchCard.next),
+            }}
+            watched={toWatchCard.watched}
+            total={toWatchCard.total}
+            locale={locale}
+          />
+        )}
+        {/* 🆕 **ثم قوائمُ تشغيلك الصريحة** (D-505) — الرايةُ التي رفعتَها
+            بنفسك تسبق حدسَ المحفوظ */}
+        {playlistCards.map((c) => (
+          <ListContinueCard
+            key={`pl-${c.list.id}`}
+            listName={curatedName(c.list.sourceSlug, c.list.name, locale)}
+            next={{
+              tmdbId: c.next!.tmdb_id,
+              mediaType: c.next!.media_type,
+              title: c.next!.title,
+              posterPath: c.next!.poster_path,
+              backdropPath: backdropOf(c.next!),
+            }}
+            watched={c.watched}
+            total={c.total}
+            locale={locale}
+          />
+        ))}
+        {listCards.map((c) => (
+          <ListContinueCard
+            key={`lc-${c.list.id}`}
+            listName={curatedName(c.list.sourceSlug, c.list.name, locale)}
+            next={{
+              tmdbId: c.next!.tmdb_id,
+              mediaType: c.next!.media_type,
+              title: c.next!.title,
+              posterPath: c.next!.poster_path,
+              backdropPath: backdropOf(c.next!),
+            }}
+            watched={c.watched}
+            total={c.total}
+            locale={locale}
+          />
+        ))}
+        {continueTop.map((i, n) => (
+          <ContinueCard
+            key={`c-${i.id}`}
+            tmdbId={i.id}
+            href={`/show/${i.id}`}
+            title={i.name}
+            backdropPath={continueExtra[n]?.backdropPath ?? null}
+            posterPath={i.posterPath}
+            progress={i.progress}
+            watched={i.watched}
+            aired={i.aired}
+            episodeLabel={continueExtra[n]?.episodeLabel}
+            season={continueExtra[n]?.season ?? null}
+            episode={continueExtra[n]?.episode ?? null}
+            runtime={continueExtra[n]?.runtime ?? null}
+            variant={view === "compact" ? "row" : "card"}
+            locale={locale}
+          />
+        ))}
+      </Section>
   );
+
+  return <ByHomeView visual={rail("visual")} compact={rail("compact")} />;
 }
 
 /**
@@ -1766,12 +1792,10 @@ async function ContinueSection({
 async function UpcomingSection({
   row,
   cards,
-  view,
   t,
 }: {
   row: MixedItem[];
   cards: ReturnType<typeof sanitizeHomePrefs>["cards"];
-  view: HomeView;
   t: T;
 }) {
   const upcomingTvIds = row
@@ -1802,43 +1826,47 @@ async function UpcomingSection({
   });
 
   const cap = (n: number) => capCards(n, cards);
-  return (
-    <Section
-      key="upcoming"
-      title={t.libUpcoming}
-      icon="hourglass"
-      iconColor="var(--accent)"
-      href="/library"
-      seeAll={t.seeAll}
-      view={view}
-      soloFull
-      wide
-    >
-      {/* **القادمُ موعدٌ قبل أن يكون عملاً** (D-434): الصدرُ في السطر
-          الأوّل هو التاريخ، واسمُ العمل تحته — **فالقارئ يسأل «متى» ثم
-          «ماذا»، لا العكس.** وفي المختصر يصير التاريخُ رقاقةً في صدر
-          الصفّ بدل الملصق. */}
-      {rows.slice(0, cap(rows.length)).map((x) =>
-        view === "compact" ? (
-          <CompactMediaRow
-            key={x.key}
-            href={x.href}
-            chip={x.badge}
-            title={x.title}
-            subtitle={x.ep ?? x.subtitle}
-          />
-        ) : (
-          <CompactMediaRow
-            key={x.key}
-            href={x.href}
-            title={[x.badge, x.ep].filter(Boolean).join(" · ")}
-            subtitle={x.title}
-            posterPath={x.posterPath}
-          />
-        ),
-      )}
-    </Section>
+  /* **الرسمان من الجلب نفسِه**: أرقامُ الحلقات فوقُ تُجلب مرّةً،
+     **والذي يتبدّل صدرُ الصفّ وغلافُ القسم** — لا نداءَ ثانٍ. */
+  const rail = (view: HomeView) => (
+      <Section
+        key="upcoming"
+        title={t.libUpcoming}
+        icon="hourglass"
+        iconColor="var(--accent)"
+        href="/library"
+        seeAll={t.seeAll}
+        view={view}
+        soloFull
+        wide
+      >
+        {/* **القادمُ موعدٌ قبل أن يكون عملاً** (D-434): الصدرُ في السطر
+            الأوّل هو التاريخ، واسمُ العمل تحته — **فالقارئ يسأل «متى» ثم
+            «ماذا»، لا العكس.** وفي المختصر يصير التاريخُ رقاقةً في صدر
+            الصفّ بدل الملصق. */}
+        {rows.slice(0, cap(rows.length)).map((x) =>
+          view === "compact" ? (
+            <CompactMediaRow
+              key={x.key}
+              href={x.href}
+              chip={x.badge}
+              title={x.title}
+              subtitle={x.ep ?? x.subtitle}
+            />
+          ) : (
+            <CompactMediaRow
+              key={x.key}
+              href={x.href}
+              title={[x.badge, x.ep].filter(Boolean).join(" · ")}
+              subtitle={x.title}
+              posterPath={x.posterPath}
+            />
+          ),
+        )}
+      </Section>
   );
+
+  return <ByHomeView visual={rail("visual")} compact={rail("compact")} />;
 }
 
 /**
