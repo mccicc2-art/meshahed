@@ -95,12 +95,19 @@ export function HomeViewSwitch({
          ⚠️ **والخطُّ لم يُمسّ**: `text-12` والرمزُ ١٥ كما هما بالضبط
          (شرطُه الصريح) — **والذي ضاق هو الحشوُ الرأسيّ وحدَه.**
 
-         ⚠️ **والتمويهُ ينتقل بـ`group`**: الحدُّ على الابن والمؤشّرُ
-         على الأب، **فلو تُرك `hover:` على الابن لما استجاب لحافّة
-         هدف اللمس.** */
-      className="group shrink-0 inline-flex items-center h-11 transition active:scale-95"
+         ⚖️ **ثمّ سقط الإطارُ وحدَه ونزلت الحلّةُ إلى ٣٦** (طلبُه
+         الثاني: «احذف الإطار فقط منها وصغّر الارتفاع قليلاً»):
+         **السطحُ والزاويةُ باقيان** — **هو قال «الإطار فقط»** —
+         **وهدفُ اللمس ٤٤ كما هو.**
+
+         ⚠️ **وسقط معه تمويهُ الحدّ**: `group-hover:border-accent/50`
+         كان يلوّن حدّاً لم يعد موجوداً. **ولا يُخترع له بديلٌ**
+         (وميضُ سطحٍ أو ظلّ) — **صنفٌ جديدٌ لحالةِ مؤشّرٍ لا يراها
+         الجوّالُ أصلاً** (القاعدة ٣)، **والضغطةُ لها `active:scale-95`
+         وهي التي تُحسّ باليد.** */
+      className="shrink-0 inline-flex items-center h-11 transition active:scale-95"
     >
-      <span className="inline-flex items-center gap-2 rounded-2xl border border-border bg-surface ps-3 pe-3.5 h-10 text-12 font-semibold transition group-hover:border-accent/50">
+      <span className="inline-flex items-center gap-2 rounded-2xl bg-surface ps-3 pe-3.5 h-9 text-12 font-semibold">
         {/* الرمزُ يصف الوجهةَ كما يصفها النصّ: شبكةٌ للبصريّ وقائمةٌ للمختصر */}
         <Icon
           name={next === "compact" ? "list" : "grid"}
