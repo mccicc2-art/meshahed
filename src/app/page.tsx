@@ -890,7 +890,12 @@ async function HomeBody({
     .filter((f) => !listedMovieIds.has(f.tmdb_id))
     .sort((a, b) => a.added_at.localeCompare(b.added_at));
   const unlistedNext = unlistedQueue.find((f) => !watchedMovieIds.has(f.tmdb_id)) ?? null;
-  const toWatchCard = unlistedNext
+  /* ⚖️ 🆕 **ورايةٌ فوقه** (D-559، بلاغُ أحمد: «ما أبغى أشوفها، أبغى
+     الليست الي جنبها فقط وهي جات معها»): **كان الطابورُ الوحيدَ في
+     هذا الصفّ بلا مفتاح** — قوائمُك الحقيقيّةُ تدخله برايةٍ ترفعها
+     (`is_playlist`، D-505) **وهذا يدخل بحكم الحساب.** **ومفتاحُه
+     بطاقتُه في تبويب «القوائم» بالمكتبة**، حيث تُرفع الرايات. */
+  const toWatchCard = prefs.toWatch && unlistedNext
     ? {
         name: t.libToWatch,
         next: {
