@@ -1,6 +1,25 @@
 import type { ReactNode } from "react";
 
 /**
+ * **وصفةُ بطاقةِ الإعدادات — مكتوبةٌ هنا مرّةً واحدة** (D-555).
+ *
+ * **وكانت مكتوبةً بيدها في تسعة مواضع**: الفهرسُ ثلاثَ مرّات، و«عن
+ * Loopz» مرّتين، و«المظهر» و«المحتوى» و«الاستيراد» — **وتسعُ نسخٍ من
+ * سطرٍ واحد تفترق عند أوّل تعديل** (D-145). **والذي يوحَّد هو السطحُ
+ * والحدُّ والانحناء**، لا معناها.
+ *
+ * ⚠️ **و`rounded-2xl` هنا ليست ١٦ بكسلاً**: السلّمُ أُعيد ضبطه في
+ * D-454 فصارت **١٤** — **وهي القيمةُ التي تطلبها المواصفة بنصّها.**
+ * **فالذي يجعل الإعدادات تبدو «دائريّةً أكثر من اللازم» ليس الرقم بل
+ * بطاقةٌ داخل بطاقة**: انحناءان متداخلان يُقرآن انحناءً مضاعفاً.
+ */
+export const settingsCard =
+  "rounded-2xl border border-border bg-surface overflow-hidden";
+
+/** البطاقةُ نفسُها وفيها خيطٌ بين كلِّ صفّين — لا فوق الأوّل ولا تحت الأخير */
+export const settingsCardRows = `${settingsCard} divide-y divide-[color:var(--divider)]`;
+
+/**
  * مجموعةُ إعداداتٍ — **عنوانٌ صغيرٌ خارج البطاقة وصفوفٌ داخلها** (D-462).
  *
  * **والعنوانُ خارجها لا داخلها**: عنوانٌ داخل البطاقة يصير **صفّاً أوّلَ
@@ -28,9 +47,7 @@ export function SettingsGroup({
           {label}
         </h2>
       )}
-      <div className="rounded-2xl border border-border bg-surface overflow-hidden divide-y divide-[color:var(--divider)]">
-        {children}
-      </div>
+      <div className={settingsCardRows}>{children}</div>
     </section>
   );
 }
