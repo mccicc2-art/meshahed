@@ -111,6 +111,7 @@ export function LibraryGrid({
   artists,
   artistCount,
   lists,
+  toWatch,
   listStats,
   savedCount = 0,
   locale,
@@ -133,6 +134,8 @@ export function LibraryGrid({
   /** عدّاد التبويب: نداءُ Supabase خفيفٌ يجري دائماً، بلا نداءات TMDB */
   artistCount: number;
   lists: UserList[];
+  /** 🆕 طابورُ «للمشاهدة» بطاقةً في تبويب القوائم (D-559) */
+  toWatch?: { on: boolean; count: number; posters: (string | null)[] } | null;
   /** 🆕 **أرقامُ قوائمي العامّة** (D-350) — تُقرأ في الصفحة مرّةً لا لكلِّ
       بطاقة (D-206)، **وغيابُها يعيد البطاقةَ كما كانت** (D-152) */
   listStats?: Map<string, { saves: number; rating: number | null }>;
@@ -462,7 +465,7 @@ export function LibraryGrid({
            يبقى قائماً للروابط المباشرة، وهذا اللوح يعرض المكوّنين
            نفسيهما (قوائمي ثم القوائم المحفوظة) */
         <div className="space-y-8">
-          <ListManager lists={lists} stats={listStats} locale={locale} />
+          <ListManager lists={lists} stats={listStats} locale={locale} toWatch={toWatch} />
           {listsExtra}
         </div>
       ) : tab === "artists" ? (
