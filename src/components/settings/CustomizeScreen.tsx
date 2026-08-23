@@ -6,6 +6,8 @@ import { HomeCustomize } from "../HomeCustomize";
 import { ProfileCustomize } from "../ProfileCustomize";
 import { chipClass, pillTrack } from "../ui/controls";
 import { SettingsPageLayout } from "./SettingsPageLayout";
+import { SettingsGroup } from "./SettingsGroup";
+import { SettingsRow } from "./SettingsRow";
 
 /**
  * شاشةُ التخصيص — **سطحان لا صفحتان** (D-129)، **وترويستُها تحمل
@@ -20,6 +22,16 @@ import { SettingsPageLayout } from "./SettingsPageLayout";
  * ⚠️ **والاستعادةُ لا تكتب في القاعدة**: تُعيد الشاشةَ إلى الافتراضيّ
  * **وتنتظر «حفظ التغييرات»** — **وفعلٌ لا رجعةَ فيه لا يُطلق بضغطةٍ في
  * زاوية.**
+ *
+ * ================= 🆕 و«استعادة» نزلت من الترويسة (D-555) =================
+ *
+ * **كانت في الطرف الآخر من العنوان** (D-465) — **بجوار زرِّ الرجوع
+ * حيث يقع الإبهامُ وهو يمرّر** — **وهي الفعلُ الوحيدُ في الشاشة الذي
+ * يمحو عملَ عشرِ ضغطات.** **وفعلٌ متلفٌ في أعلى الشاشة يُضغط سهواً.**
+ * **ومكانُه الآن قاعُ الصفحة في صفٍّ هادئ**، حيث يُقصد قصداً.
+ *
+ * ⚠️ **ولا يكتب في القاعدة**: يُعيد الشاشةَ إلى الافتراضيّ **وينتظر
+ * شريطَ الحفظ** (حجّةُ D-465 قائمةٌ بحرفها).
  *
  * **والمبدِّلُ رقاقتان لا مقسَّم** (تصميمُ أحمد: خانةٌ ممتلئةٌ بالأصفر):
  * **عائلةُ الرقاقة هي شكلُ «المختار ممتلئ» في هذا التطبيق** — والمقسَّمُ
@@ -62,18 +74,7 @@ export function CustomizeScreen({
   }, []);
 
   return (
-    <SettingsPageLayout
-      title={t.custTitle}
-      action={
-        <button
-          type="button"
-          onClick={() => reset.current?.()}
-          className="h-11 px-2 -me-2 text-14 font-semibold text-muted hover:text-foreground transition active:scale-95"
-        >
-          {t.custResetShort}
-        </button>
-      }
-    >
+    <SettingsPageLayout title={t.custTitle}>
       <div
         role="tablist"
         aria-label={t.custTitle}
@@ -123,6 +124,15 @@ export function CustomizeScreen({
           registerReset={registerReset}
         />
       )}
+
+      <SettingsGroup>
+        <SettingsRow
+          icon="repeat"
+          title={t.custResetShort}
+          subtitle={t.custResetHint}
+          onClick={() => reset.current?.()}
+        />
+      </SettingsGroup>
     </SettingsPageLayout>
   );
 }

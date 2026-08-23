@@ -4,7 +4,9 @@ import { useState, useTransition } from "react";
 import { setFontPrefs } from "@/lib/actions";
 import { getDict, type Locale } from "@/lib/i18n";
 import { FONT_SIZES, type FontSize } from "@/lib/fontPrefs";
-import { chipClass, pillTrack } from "../ui/controls";
+import { SettingsSection } from "./SettingsSection";
+import { settingsCard } from "./SettingsGroup";
+import { SettingsOptionRow, SettingsOptionList } from "./SettingsOptionRow";
 
 /**
  * «العرض وحجم الخط» — تحكّمان مستقلّان (طلب أحمد ١٩ أغسطس): حجم واجهة
@@ -14,12 +16,20 @@ import { chipClass, pillTrack } from "../ui/controls";
  * المعاينة مباشرةٌ على التطبيق كلِّه لا في صندوقٍ معزول: الضغط يكتب
  * `data-fs-*` على جذر الصفحة فوراً — فالشاشة التي تقف فيها هي المعاينة
  * — ثم يثبَّت الاختيار في الكوكي (وللمسجَّل في حسابه) عبر `setFontPrefs`.
- * لا زرَّ حفظ: تفضيلُ عرضٍ يُطبَّق لحظةَ اختياره كالثيم واللغة، وزرُّ
- * حفظٍ بينهما كان سيجعل لفعلٍ واحدٍ خطوتين (D-462: زرُّ حفظٍ لا يستيقظ
- * بلا تغيير — وهنا لا «تغييرَ معلَّق» أصلاً).
+ * لا زرَّ حفظ: تفضيلُ عرضٍ يُطبَّق لحظةَ اختياره كالثيم واللغة.
  *
- * الرقاقات الممتلئة في مسارٍ (D-466): خيارُ إعدادٍ داخل بطاقة، لا
- * تبويبٌ يغيّر الصفحة.
+ * ================= 🆕 والرقائقُ صارت عموداً (D-555) =================
+ *
+ * **كانت أربعَ رقائقَ في مسارٍ أفقيّ لكلِّ تحكّم.** **و«كبيرٌ جدّاً»
+ * و«Very large» في مسارٍ عرضُه نصفُ شاشةِ ٣٩٠ بكسلاً** — **ثمّ تكبر
+ * هي نفسُها حين يختار المستخدمُ «كبير»** — **فالمسارُ الذي يضبط حجمَ
+ * الخطّ يخرج عن الحافّة بسبب حجمِ الخطّ الذي ضُبط فيه.** **وهو
+ * الانفجارُ الذي تحذّر منه المواصفةُ بالاسم** («خيارات قد تتجاوز عرض
+ * الجوّال»). **والعمودُ لا يتجاوز عرضاً أبداً مهما كبر الخطّ.**
+ *
+ * **وبطاقتان بدل بطاقةٍ تضمّ بطاقتين**: كان القسمُ لوحاً واحداً بحدٍّ
+ * وانحناء، **وفي داخله مساران وبطاقةُ معاينةٍ لها حدُّها** — **إطارٌ
+ * داخل إطار**، وهو ما تشكوه المواصفةُ بالاسم.
  */
 export function FontSizeSection({
   locale,
@@ -53,58 +63,46 @@ export function FontSizeSection({
     start(() => setFontPrefs(nextUi, nextContent).catch(() => {}));
   }
 
-  function group(
-    label: string,
-    hint: string,
-    value: FontSize,
-    pick: (s: FontSize) => void,
-  ) {
+  function list(label: string, value: FontSize, pick: (s: FontSize) => void) {
     return (
-      <div>
-        <h3 className="text-14 font-bold">{label}</h3>
-        <p className="text-12 text-muted leading-relaxed mt-0.5 mb-2">{hint}</p>
-        <div role="group" aria-label={label} className={`${pillTrack} w-fit max-w-full`}>
-          {FONT_SIZES.map((s) => (
-            <button
-              key={s}
-              type="button"
-              aria-pressed={s === value}
-              onClick={() => pick(s)}
-              className={chipClass(s === value, "md")}
-            >
-              {labels[s]}
-            </button>
-          ))}
-        </div>
-      </div>
+      <SettingsOptionList label={label}>
+        {FONT_SIZES.map((s) => (
+          <SettingsOptionRow
+            key={s}
+            selected={s === value}
+            title={labels[s]}
+            onSelect={() => pick(s)}
+          />
+        ))}
+      </SettingsOptionList>
     );
   }
 
   return (
-    <section className="bg-surface border border-border rounded-2xl p-3.5 sm:p-5 space-y-5">
-      <div>
-        <h2 className="text-15 font-bold mb-1">{t.fontSection}</h2>
-        <p className="text-12 text-muted leading-relaxed">{t.fontSectionHint}</p>
-      </div>
+    <>
+      <SettingsSection boxed label={t.fontContentLabel} hint={t.fontContentHint}>
+        {list(t.fontContentLabel, content, (s) => {
+          setContent(s);
+          apply(ui, s);
+        })}
+      </SettingsSection>
 
-      {group(t.fontContentLabel, t.fontContentHint, content, (s) => {
-        setContent(s);
-        apply(ui, s);
-      })}
-      {group(t.fontUiLabel, t.fontUiHint, ui, (s) => {
-        setUi(s);
-        apply(s, content);
-      })}
+      <SettingsSection boxed label={t.fontUiLabel} hint={t.fontUiHint}>
+        {list(t.fontUiLabel, ui, (s) => {
+          setUi(s);
+          apply(s, content);
+        })}
+      </SettingsSection>
 
-      {/* معاينةٌ تلخّص الفرق بين المعاملين في بطاقةٍ واحدة: سطرُ واجهةٍ
-          يتبع معامل الواجهة، وفقرةُ «كلام الناس» تحمل `fs-content`
-          فتتبع معامل المحتوى — نفس الآلية التي تعمل في الصفحات فعلاً */}
-      <div className="rounded-control border border-border bg-surface-2 p-3">
-        <p className="text-12 font-semibold text-muted mb-1.5">{t.fontPreviewUi}</p>
+      {/* **معاينةٌ واحدةٌ قصيرة** (شرطُ المواصفة): سطرُ واجهةٍ يتبع معاملَ
+          الواجهة، وفقرةُ «كلام الناس» تحمل `fs-content` فتتبع معاملَ
+          المحتوى — **نفسُ الآليّة التي تعمل في الصفحات فعلاً.** */}
+      <div className={`${settingsCard} p-3.5`}>
+        <p className="text-12 text-muted mb-1.5">{t.fontPreviewUi}</p>
         <p className="fs-content text-14 leading-relaxed" dir="auto">
           {t.fontPreviewContent}
         </p>
       </div>
-    </section>
+    </>
   );
 }

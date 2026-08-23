@@ -10,14 +10,26 @@ import {
   titleModeAllowed,
   type TitleMode,
 } from "@/lib/titleMode";
-import { chipClass, pillTrack } from "../ui/controls";
+import { SettingsOptionRow, SettingsOptionList } from "./SettingsOptionRow";
 
 /**
  * **«عرض عناوين الأعمال»** (D-544، مواصفةُ أحمد المكتوبة).
  *
- * **ونفسُ عائلةِ `FontSizeSection` حرفاً** (D-466): بطاقةٌ فيها عنوانٌ
- * وشرحٌ ورقاقاتٌ ممتلئةٌ في مسار، **ثمّ معاينة** — **ولا عائلةَ تحكّمٍ
- * ثالثة** (القاعدة ٣).
+ * **ونفسُ عائلةِ `FontSizeSection` حرفاً** (D-466 → D-555): **خياراتٌ
+ * رأسيّةٌ بعرضٍ كامل**، **ثمّ معاينة** — **ولا عائلةَ تحكّمٍ ثالثة**
+ * (القاعدة ٣).
+ *
+ * 🆕 **والرقائقُ صارت عموداً** (مواصفةُ أحمد: «خيارات رأسيّة بعرض
+ * كامل»): **أربعةُ خياراتٍ أسماؤها «حسب لغة التطبيق» و«الاسم الأصلي»
+ * و«نطق عربي» و«المحلّي والأصلي معاً»** — **ومسارٌ أفقيٌّ يحملها في
+ * شاشةِ ٣٩٠ بكسلاً يدفع نصفَها خلف الحافّة.**
+ *
+ * ⚖️ 🆕 **وسطورُ الشرح تحت كلِّ خيارٍ سقطت** (D-557، تصميمُ أحمد):
+ * **في تصميمه سطرٌ واحدٌ فقط — «موصى به» تحت الخيار الافتراضيّ**،
+ * **وما عداه اسمٌ مجرَّد.** **وكنتُ في D-555 أضعُ تحت كلِّ خيارٍ
+ * مثالَه** (`صراع العروش · Hidden Secret`) — **وهو تكرارٌ لِما تقوله
+ * المعاينةُ تحتها بالمحرّك نفسِه**، **ومثالان لشيءٍ واحدٍ في شاشةٍ
+ * واحدة يجعل القارئ يقارنهما بدل أن يختار.**
  *
  * ⚠️ **والمعاينةُ ترسمها `resolveMediaTitle` نفسُها** لا نصٌّ مكتوبٌ
  * بيدٍ لكلِّ خيار: **جدولُ أمثلةٍ يُكتب مرّتين يفترق مرّةً** (D-145)،
@@ -53,13 +65,6 @@ export function TitleModeSection({
     translit: t.titleModeTranslit,
     both: t.titleModeBoth,
   };
-  const hint: Record<TitleMode, string> = {
-    localized: t.titleModeLocalizedHint,
-    original: t.titleModeOriginalHint,
-    translit: t.titleModeTranslitHint,
-    both: t.titleModeBothHint,
-  };
-
   /* **الصوتيّةُ تُسقط من القائمة في الواجهة الإنجليزية** — بنصِّ
      المواصفة، **والحارسُ مكرَّرٌ في الكاتب والقارئ** (D-177) فلا يكفي
      إخفاؤها هنا. */
@@ -82,40 +87,28 @@ export function TitleModeSection({
   }
 
   return (
-    <section className="bg-surface border border-border rounded-2xl p-3.5 sm:p-5 space-y-4">
-      <div>
-        <h2 className="text-15 font-bold mb-1">{t.titleModeSection}</h2>
-        <p className="text-12 text-muted leading-relaxed">{t.titleModeHint}</p>
-      </div>
-
-      <div
-        role="group"
-        aria-label={t.titleModeSection}
-        className={`${pillTrack} w-fit max-w-full ${pending ? "opacity-60" : ""}`}
-      >
+    <>
+      <SettingsOptionList label={t.titleModeSection}>
         {options.map((m) => (
-          <button
+          <SettingsOptionRow
             key={m}
-            type="button"
-            aria-pressed={m === mode}
-            onClick={() => pick(m)}
-            className={chipClass(m === mode, "md")}
-          >
-            {label[m]}
-            {m === "localized" && (
-              <span className="text-[10px] opacity-70"> · {t.titleModeDefault}</span>
-            )}
-          </button>
+            selected={m === mode}
+            title={label[m]}
+            subtitle={m === "localized" ? t.titleModeRecommended : undefined}
+            onSelect={() => pick(m)}
+            disabled={pending}
+          />
         ))}
-      </div>
-
-      <p className="text-12 text-muted leading-relaxed">{hint[mode]}</p>
+      </SettingsOptionList>
 
       {/* ===== المعاينة — بالمحرّك نفسِه =====
           **سطرٌ رئيسٌ وسطرٌ ثانٍ اختياريّ**، بنفس المقاسين اللذين
           ترسمهما `MediaTitle` في البطاقات. **و`dir="auto"` لأن السطر
-          قد يكون عربيّاً في واجهةٍ إنجليزيّة والعكس.** */}
-      <div className="rounded-control border border-border bg-surface-2 p-3 space-y-2.5">
+          قد يكون عربيّاً في واجهةٍ إنجليزيّة والعكس.**
+          🆕 **وعليها كلمةُ «معاينة»** (تصميمُ أحمد): **صندوقٌ فيه
+          اسمُ عملٍ بلا عنوانٍ يُقرأ عملاً مقترحاً لا مثالاً.** */}
+      <div className="mt-3.5 rounded-control border border-border bg-surface-2 p-3.5 space-y-2.5">
+        <p className="text-12 text-muted">{t.cpPreview}</p>
         {SAMPLES.map((s, i) => {
           const r = resolveMediaTitle(
             /* **الواجهةُ الإنجليزيّةُ تقلب أيَّ الاسمين «محلّيّ»** —
@@ -139,6 +132,6 @@ export function TitleModeSection({
           );
         })}
       </div>
-    </section>
+    </>
   );
 }
