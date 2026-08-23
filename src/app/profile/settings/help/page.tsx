@@ -29,7 +29,7 @@ export default async function Page() {
         <HelpTourRows locale={locale} />
       </SettingsGroup>
 
-      <SettingsGroup>
+      <SettingsGroup label={t.helpSupportGroup}>
         <SettingsRow
           href="mailto:alharbiahmed3bd@gmail.com"
           icon="mail"
