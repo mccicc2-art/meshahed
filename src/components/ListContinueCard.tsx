@@ -39,6 +39,7 @@ export function ListContinueCard({
   next,
   watched,
   total,
+  variant = "card",
   locale,
 }: {
   listName: string;
@@ -54,12 +55,49 @@ export function ListContinueCard({
   };
   watched: number;
   total: number;
+  /**
+   * ⚖️ 🆕 **والشكلُ يتبع وضعَ الرئيسية** (D-552، بلاغُ أحمد بلقطة:
+   * «إذا غيّرته كومباكت البوستر كبير جدّاً، يحتاج يكون متوازن ويصغر»).
+   *
+   * 🔴 **والعلّةُ أنّ هذه البطاقةَ لم تكن تعرف الوضعَ أصلاً**:
+   * `ContinueCard` تأخذ `variant` منذ نشأتها، **وهذه لا** — **فكان
+   * الصفُّ في المختصر يخلط غلافاً بعرض ٧٠٪ من الشاشة بصفوفٍ ارتفاعُها
+   * ١٠٦px**، **وهو بعينه كسرُ الصفِّ الذي عالجته D-507 في الاتّجاه
+   * الآخر.**
+   *
+   * **والافتراضُ `card`** فمن لا يمرّره لا يتغيّر عنده شيء (شرطُ
+   * ترتيب الالتزامات — D-028).
+   */
+  variant?: "card" | "row";
   locale: Locale;
 }) {
   const t = getDict(locale);
   const router = useRouter();
-  const [done, setDone] = useState(false);
   const [pending, start] = useTransition();
+
+  /* ===== 🔴 عطلٌ مبلَّغٌ عنه: الصحُّ يبقى أخضرَ ولا يُضغط ثانيةً =====
+
+     **بلاغُ أحمد: «إذا ضغطت صح يستمرّ أخضر ما يتغيّر، فما أقدر أضغط
+     صح مرّة ثانية».** **وسببان اجتمعا:**
+
+     ١) **`done` حالةٌ محلّيّةٌ لا تعرف أنّ البطاقةَ تبدّلت**: الفعلُ
+        ينجح ثمّ `router.refresh()` يجلب **الفيلمَ التالي في القائمة**
+        — **والبطاقةُ هي هي، والحالةُ باقيةٌ `true`** — **فيظهر
+        التالي وعليه صحٌّ أخضرُ معطَّلٌ وهو لم يُشاهَد بعد.**
+     ٢) **والزرُّ كان طريقاً واحداً**: `watched: true` دائماً، و
+        `disabled={done}` — **فلا رجعةَ ولو أخطأ.**
+
+     **والعلاجُ الأوّل هو وصفةُ `ContinueCard` نفسُها** (تصحيحُ الحالة
+     أثناء الرسم عند تبدّل الخاصيّة، لا في `useEffect` — D-434):
+     **مفتاحُ العملِ يُحرَس، ومتى تبدّل عاد الصحُّ زجاجيّاً.**
+     **والثاني مفتاحٌ ذو اتّجاهين** — وهو ما قرّرته D-538 للمسلسل:
+     **فعلٌ واحدٌ باتّجاهيه مفتاحٌ لا تعليمات.** */
+  const [seen, setSeen] = useState(next.tmdbId);
+  const [done, setDone] = useState(false);
+  if (seen !== next.tmdbId) {
+    setSeen(next.tmdbId);
+    setDone(false);
+  }
 
   const href =
     next.mediaType === "movie" ? `/movie/${next.tmdbId}` : `/show/${next.tmdbId}`;
@@ -76,22 +114,24 @@ export function ListContinueCard({
        (D-347: لا زرَّ داخل رابطٍ بلا `preventDefault`) */
     e.preventDefault();
     e.stopPropagation();
-    if (done || pending) return;
+    if (pending) return;
+    const to = !done;
     tap([10, 20]);
-    setDone(true);
+    setDone(to);
     start(async () => {
       try {
         await toggleMovieWatched({
           movieTmdbId: next.tmdbId,
           runtime: next.runtime ?? null,
-          watched: true,
+          watched: to,
         });
         /* **والتجديدُ هنا شرطٌ لا زينة**: البطاقةُ كلُّها تتبدّل —
            الملصقُ والاسمُ والعدّاد — **فالانقلابُ إلى التالي هو الفعل
            نفسُه** (وهو نصُّ الطلب). */
         router.refresh();
       } catch (err) {
-        setDone(false);
+        /* **والرجوعُ إلى ما كان لا إلى الصفر** — الاتّجاهُ صار اتّجاهين */
+        setDone(!to);
         flashError((err as Error).message);
       }
     });
@@ -103,7 +143,88 @@ export function ListContinueCard({
      وقُرئ الصفُّ مكسوراً.** الآن ٧:٥ بصورة مشهدٍ وحجابٍ سفليٍّ وشريطِ
      حافّةٍ — **نفسُ أصناف `ContinueCard` البصريّة** (قاعدة ٦: بطاقتان
      في صفٍّ واحدٍ لا تملكان هندستين). */
+  /** الصحُّ — رسمٌ واحدٌ للشكلين، والذي يتبدّل موضعُه (وصفةُ `ContinueCard`) */
+  const tick = next.mediaType === "movie" && (
+    <button
+      type="button"
+      onClick={mark}
+      disabled={pending}
+      aria-label={t.markWatchedAria}
+      title={t.markWatchedAria}
+      className={`absolute z-10 grid place-items-center w-11 h-11 rounded-full border backdrop-blur-md transition active:scale-90 disabled:opacity-70 ${
+        variant === "row" ? "top-1/2 -translate-y-1/2 end-3" : "top-2.5 end-2.5"
+      } ${
+        done
+          ? "border-[color:var(--success)] bg-[color:var(--success)] text-black"
+          : "border-white/25 bg-black/40 text-white/90 hover:bg-black/55"
+      }`}
+    >
+      <Icon name="check" size={18} strokeWidth={2.4} />
+    </button>
+  );
+
+  /* ===== 🆕 صفٌّ للوضع المختصر — بهندسة `ContinueCard` حرفاً (D-552) =====
+
+     **الصورةُ ١٤٤ بنسبة ١٦:١٠، والحشوُ `p-2 pe-16`، والعنوانُ ١٥/٦٠٠،
+     والثانويُّ ١٢، والخيطُ وحده مع النسبة** — **أرقامٌ منسوخةٌ من
+     جارتها عمداً، لأن الصفَّ الواحدَ لا يملك هندستين** (القاعدة ٦).
+     **ولو كُتبت هنا أرقامٌ من عندي لافترق الصفّان عند أوّل تعديل.**
+
+     **والذي يختلف سطرُ السياق**: هناك «S2 E4 · باقي ٥»، **وهنا اسمُ
+     القائمة والعدّ** — **وهو الفرقُ الذي وُلدت هذه البطاقةُ لأجله.** */
+  if (variant === "row") {
+    return (
+      <div className="relative">
+        <Link
+          href={href}
+          prefetch={false}
+          className="group flex items-center gap-3 rounded-2xl border border-border bg-surface p-2 pe-16 active:scale-[0.99] transition"
+        >
+          <span className="relative w-[144px] shrink-0 aspect-[16/10] rounded-xl overflow-hidden bg-surface-2">
+            {url ? (
+              <Image src={url} alt="" fill sizes="144px" className="object-cover" />
+            ) : (
+              <span className="absolute inset-0 grid place-items-center text-muted">
+                <Icon name="list" size={20} />
+              </span>
+            )}
+          </span>
+
+          <span className="min-w-0 flex-1">
+            <span className="block text-15 font-semibold leading-tight truncate" dir="auto">
+              {next.title ?? "—"}
+            </span>
+            <span className="block text-12 font-medium text-muted leading-tight truncate mt-1">
+              <span className="text-accent">{listName}</span>
+              <span className="opacity-50"> · </span>
+              <span className="tabular-nums" dir="ltr">
+                {num(watched, locale)} / {num(total, locale)}
+              </span>
+            </span>
+            <span className="mt-2 flex items-center gap-2">
+              <span className="h-1 flex-1 rounded-full bg-[color:var(--divider)] overflow-hidden">
+                <span
+                  className="block h-full w-full origin-left rtl:origin-right transition-transform duration-500"
+                  style={{
+                    transform: `scaleX(${pct / 100})`,
+                    background: "var(--gradient-brand-x)",
+                  }}
+                />
+              </span>
+              <span className="shrink-0 text-12 font-semibold text-muted tabular-nums" dir="ltr">
+                {pct}%
+              </span>
+            </span>
+          </span>
+        </Link>
+        {/* **شقيقُ الرابط لا ابنُه** — فلا ضغطةٌ على الصحّ تفتح الصفحة (D-347) */}
+        {tick}
+      </div>
+    );
+  }
+
   return (
+    <div className="relative">
     <Link
       href={href}
       prefetch={false}
@@ -126,26 +247,6 @@ export function ListContinueCard({
 
         {/* الحجابُ حجابُ بطاقة الحلقة نفسُه — يبقي المشهدَ ويضمن الاسم */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-black/10" />
-
-        {/* علامةُ «شاهدته» — للأفلام وحدَها، انظر أعلاه.
-            والمقاسُ ٤٤px كدائرة بطاقة الحلقة (D-507) — كانت ٣٦ فتفترق
-            الدائرتان في الصفّ الواحد. */}
-        {next.mediaType === "movie" && (
-          <button
-            type="button"
-            onClick={mark}
-            disabled={done || pending}
-            aria-label={t.markWatchedAria}
-            title={t.markWatchedAria}
-            className={`absolute top-2.5 end-2.5 z-10 grid place-items-center w-11 h-11 rounded-full border backdrop-blur-md transition active:scale-90 disabled:opacity-70 ${
-              done
-                ? "border-[color:var(--success)] bg-[color:var(--success)] text-black"
-                : "border-white/25 bg-black/40 text-white/90 hover:bg-black/55"
-            }`}
-          >
-            <Icon name="check" size={18} strokeWidth={2.4} />
-          </button>
-        )}
 
         <div className="absolute inset-x-0 bottom-0 p-3 pb-3.5">
           {/* اسمُ القائمة سياقٌ لا عنوان — خافتٌ فوق اسم العمل */}
@@ -179,5 +280,8 @@ export function ListContinueCard({
         </span>
       </div>
     </Link>
+    {/* **الصحُّ شقيقُ الرابط في الشكلين** — نفسُ الحجّة (D-347) */}
+    {tick}
+    </div>
   );
 }
