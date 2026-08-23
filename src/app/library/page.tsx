@@ -13,8 +13,11 @@ import {
   getFollowedArtists,
   getMyTitleArt,
   getMyAnimeFlags,
+  getMyListedMovieIds,
+  getProfile,
   artKey,
 } from "@/lib/data";
+import { sanitizeHomePrefs } from "@/lib/homePrefs";
 import { getT, getTabPrefs } from "@/lib/locale";
 import { defaultTab } from "@/lib/tabPrefs";
 import { localizeFollows } from "@/lib/localize";
@@ -69,7 +72,19 @@ export default async function LibraryPage({
   /* 🆕 وأغلفتي وأعلامُ الأنمي في الموجة نفسِها: كان كلٌّ منهما `await`
      منفرداً بعدها — رحلتا قاعدةٍ متسلسلتان فوق صفحةٍ بلا Suspense —
      وكلاهما لا يعتمد على شيءٍ من الموجة. */
-  const [followRows, summary, watchedMovieIds, lists, saved, savedCount, artistRows, myArt, animeFlags] = await Promise.all([
+  const [
+    followRows,
+    summary,
+    watchedMovieIds,
+    lists,
+    saved,
+    listedMovieIds,
+    profileRow,
+    savedCount,
+    artistRows,
+    myArt,
+    animeFlags,
+  ] = await Promise.all([
     getFollows(),
     getWatchSummary(),
     getWatchedMovieIds(),
@@ -82,6 +97,13 @@ export default async function LibraryPage({
        سقط منها سهواً. **والعدّادُ لا يحتاجها** — عدّادُ التبويب من
        `getMyLists`. */
     initialTab === "lists" ? getSavedLists() : Promise.resolve([]),
+    /* 🆕 **وطابورُ «للمشاهدة» لا يُحسب إلا في تبويبه** (D-559): نداءان
+       (أفلامُ قوائمك · ملفُّك) **لا يدفعهما من فتح «مسلسلاتي»** —
+       نفسُ شرطِ `getSavedLists` فوقه حرفاً. */
+    initialTab === "lists"
+      ? getMyListedMovieIds().catch(() => new Set<number>())
+      : Promise.resolve(new Set<number>()),
+    initialTab === "lists" ? getProfile().catch(() => null) : Promise.resolve(null),
     /* 🆕 **وعدّادُها يجري دائماً** (D-374، بلاغُ أحمد: «وفوق List
        المفروض ٣ بدل صفر»): **الثقيلُ مشروطٌ بتبويبه والعدّادُ لا** —
        نفسُ قسمة `getFollowedArtists` تحته (D-128). **وكان العدّادُ
@@ -222,6 +244,30 @@ export default async function LibraryPage({
      مكتبتك ويدّعي الاكتمال أسوأُ من غيابه.
      وترتيبُ المسلسلات ثم الأفلام محفوظٌ لأن كلَّ مصفوفةٍ وصلت مرتَّبة.
      (والأعلامُ نفسُها تُجلب في موجة الصفحة الأولى — انظر أعلاه.) */
+  /* 🆕 ===== طابورُ «للمشاهدة» بطاقةً بين قوائمك (D-559) =====
+     **الحسابُ هو حسابُ الرئيسية حرفاً** (D-505): أفلامُ مكتبتك التي لا
+     قائمةَ لها، بترتيب الإضافة. **ولا دالّةَ مشتركةٌ ثالثة** لأن
+     المدخلَين مختلفان (هناك `movieFollows` وهنا `follows`) **والسطران
+     أقصرُ من الغلاف الذي يوحّدهما** — ⬜ **وتُستخرج يومَ يوجد قارئٌ
+     ثالث** (D-002: عند القارئ الثاني يُستخرج، وهذا ثانيها فبقي بحدّه).
+
+     ⚠️ **والفارغُ لا بطاقةَ له**: **بطاقةُ قائمةٍ تقول صفراً أسوأُ من
+     غياب** (D-219) — **ومن لا فيلمَ له بلا قائمةٍ لا يرى مفتاحاً
+     لطابورٍ لا وجودَ له.** */
+  const toWatchQueue =
+    initialTab === "lists"
+      ? follows
+          .filter((f) => f.media_type === "movie" && !listedMovieIds.has(f.tmdb_id))
+          .sort((a, b) => a.added_at.localeCompare(b.added_at))
+      : [];
+  const toWatchCard = toWatchQueue.length
+    ? {
+        on: sanitizeHomePrefs(profileRow?.home_prefs).toWatch,
+        count: toWatchQueue.length,
+        posters: toWatchQueue.slice(0, 3).map((f) => f.poster_path ?? null),
+      }
+    : null;
+
   const anime = [...shows, ...movies].filter(
     (x) => animeFlags.get(`${x.mediaType}-${x.tmdbId}`) === true,
   );
@@ -249,6 +295,7 @@ export default async function LibraryPage({
         artists={artists}
         artistCount={artistRows.length}
         lists={lists}
+        toWatch={toWatchCard}
         listStats={listStats}
         savedCount={savedCount}
         locale={locale}
