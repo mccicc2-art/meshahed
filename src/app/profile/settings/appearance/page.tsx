@@ -1,14 +1,34 @@
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { getUser, getProfile } from "@/lib/data";
 import { getT } from "@/lib/locale";
-import { cookies } from "next/headers";
 import { SettingsPageLayout } from "@/components/settings/SettingsPageLayout";
-import { LanguageSwitch } from "@/components/LanguageSwitch";
-import { ProfileForm } from "@/components/ProfileForm";
+import { SettingsSection } from "@/components/settings/SettingsSection";
+import { LanguageRow } from "@/components/settings/LanguageRow";
+import { ThemeSection } from "@/components/settings/ThemeSection";
 import { FontSizeSection } from "@/components/settings/FontSizeSection";
 import { FONT_UI_COOKIE, FONT_CONTENT_COOKIE, sanitizeFontSize } from "@/lib/fontPrefs";
 
-/** المظهرُ واللغة — **الثيمُ ولغةُ الواجهة** (D-462). */
+/**
+ * المظهرُ واللغة — **الثيمُ ولغةُ الواجهة وحجمُ الخطّ** (D-462).
+ *
+ * 🆕 **وأربعةُ ألواحٍ صارت أربعةَ أقسام** (D-555): كان كلُّ إعدادٍ
+ * **لوحاً بحدٍّ وانحناءٍ وحشوٍ داخليّ، وفي جوفه بطاقةٌ أخرى** —
+ * **إطارٌ داخل إطار في كلِّ صفّ.** **والآن بطاقةٌ واحدةٌ فيها عنوانُها
+ * ثمّ محتواها، بلا جوفٍ ثانٍ.**
+ *
+ * 🆕 **والإيقاعُ إيقاعُ «تفضيلات المحتوى»** (D-557): **أحمد رسم تلك
+ * الصفحةَ ولم يرسم هذه** — **وصفحتان متجاورتان بإيقاعين هما بعينهما
+ * الشكوى التي وُلدت هذه الجولةُ منها** («أنماط تحكّم مختلفة لنفس نوع
+ * الإعداد»). **فالمرسومُ يحكم غيرَ المرسوم ما دام يجيب السؤالَ
+ * نفسَه.**
+ *
+ * ⚠️ **و`ProfileForm` خرجت من هذه الصفحة ولم تُحذف**: كانت تُستدعى
+ * بـ`only={["theme"]}` **وتجرّ معها زرَّ حفظٍ ورسالةَ نجاحٍ مقيمة**
+ * لخيارٍ واحد — **و`ThemeSection` تستدعي الفعلَ نفسَه لحظةَ الضغط.**
+ * **والمكوّنُ باقٍ بشيفرته** لمن يستدعيه لاحقاً (شرطُ «لا تحذف
+ * القديم»).
+ */
 export default async function Page() {
   const user = await getUser();
   if (!user) redirect("/login");
@@ -23,30 +43,28 @@ export default async function Page() {
 
   return (
     <SettingsPageLayout title={t.setAppearance}>
-      <section className="bg-surface border border-border rounded-2xl p-3.5 sm:p-5">
-        <h2 className="text-15 font-bold mb-1">{t.languageSection}</h2>
-        <p className="text-12 text-muted leading-relaxed mb-3">{t.languageHint}</p>
-        <LanguageSwitch locale={locale} />
-      </section>
+      <SettingsSection boxed label={t.themeSection} hint={t.themeHint}>
+        <ThemeSection
+          locale={locale}
+          initialTheme={p?.theme ?? "amber"}
+          carry={{
+            nickname: p?.nickname ?? "",
+            bio: p?.bio ?? "",
+            avatarUrl: p?.avatar_url ?? null,
+            coverUrl: p?.cover_url ?? null,
+            coverPos: p?.cover_pos ?? 30,
+            avatarPos: p?.avatar_pos ?? 50,
+            favoriteGenres: p?.favorite_genres ?? [],
+          }}
+        />
+      </SettingsSection>
 
-      {/* «العرض وحجم الخط» (١٩ أغسطس) — تحكّمان مستقلّان بمعاينة حيّة */}
+      {/* **بلا عنوانِ قسم**: الصفُّ نفسُه يقول «لغة الواجهة» ويقول
+          قيمتَها في طرفه — **وعنوانٌ فوقه يكرّر الكلمةَ مرّتين
+          متلاصقتين.** */}
+      <LanguageRow locale={locale} />
+
       <FontSizeSection locale={locale} initialUi={fsUi} initialContent={fsContent} />
-
-      {/* الثيمُ من `ProfileForm` بحدِّه — **ولا نموذجٌ ثانٍ يكتب في نفس
-          الجدول** (حجّةُ `only` الأصليّة: نموذجان معاً يكتب حفظُ أحدهما
-          قيمَ الآخر الابتدائية فوق تعديلٍ لم يُحفظ). */}
-      <ProfileForm
-        locale={locale}
-        initialNickname={p?.nickname ?? ""}
-        initialAvatarUrl={p?.avatar_url ?? null}
-        initialCoverUrl={p?.cover_url ?? null}
-        initialCoverPos={p?.cover_pos ?? 30}
-        initialAvatarPos={p?.avatar_pos ?? 50}
-        initialTheme={p?.theme ?? "amber"}
-        initialGenres={p?.favorite_genres ?? []}
-        initialBio={p?.bio ?? null}
-        only={["theme"]}
-      />
     </SettingsPageLayout>
   );
 }
