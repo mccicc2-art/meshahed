@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useCommunityPager } from "./CommunityPager";
 import { useRouter } from "next/navigation";
 import { setFeedStrangers, setFeedSort, setTalkFollowedOnly, setTranslateEnabled } from "@/lib/actions";
-import { getDict, num, type Locale } from "@/lib/i18n";
+import { getDict, type Locale } from "@/lib/i18n";
 import { tap } from "@/lib/haptics";
 import type { TabPref } from "@/lib/tabPrefs";
 import { Icon, type IconName } from "./Icon";
@@ -240,7 +240,21 @@ export function CommunityTools({
         onClick={() => setOpen(true)}
         label={t.communityToolsTitle}
         active={toolsOn > 0}
-        count={toolsOn > 0 ? num(toolsOn, locale) : null}
+        /* ⚖️ 🆕 **ولا رقمَ في المجتمع** (D-554، حكمُ أحمد بلقطةٍ للزرّ:
+           «هذا في الكوميونيتي دائماً لا يظهر رقم لأنه مزعج»).
+
+           **ونقطةٌ تبقى مكانَه**: `FilterIconButton` يرسم النقطةَ متى
+           غاب العدُّ وكان الزرُّ مفعَّلاً — **فالمعلومةُ «هناك شيءٌ
+           مشتغل» باقية، والذي سقط كمُّه لا وجودُه.**
+
+           ⚠️ **وهذا ما كان مكتوباً في المكوّن أصلاً** («يغيب فتبقى
+           النقطة — المكتبةُ والمجتمعُ والقوائم لا تعدّ محاورَها»)
+           **والكودُ كان يخالف توثيقَه منذ D-447** — **فالتصحيحُ
+           يُعيدهما إلى قولٍ واحد.**
+
+           **واكتشفُ وحدَه يبقى بعدّاده**: محاورُه سبعةٌ تُجمع، **وثلاثةٌ
+           مفعّلةٌ هناك خبرٌ يستحقّ رقماً** — وهو الفرقُ الذي وُلد
+           العدّادُ لأجله (D-447). */
         expanded={open}
       />
 
