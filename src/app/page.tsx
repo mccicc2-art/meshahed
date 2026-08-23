@@ -1748,6 +1748,12 @@ async function ContinueSection({
             }}
             watched={toWatchCard.watched}
             total={toWatchCard.total}
+            /* 🆕 **وبطاقةُ القائمة تتبع الوضعَ كأختها** (D-552، بلاغُ
+               أحمد: «إذا غيّرته كومباكت البوستر كبير جدّاً»): **كانت
+               `ContinueCard` وحدَها تأخذ الوضع**، **فيخلط المختصرُ
+               غلافاً بعرض ٧٠٪ بصفوفٍ ارتفاعُها ١٠٦** — **صفٌّ واحدٌ
+               بهندستين.** */
+            variant={view === "compact" ? "row" : "card"}
             locale={locale}
           />
         )}
@@ -1766,6 +1772,7 @@ async function ContinueSection({
             }}
             watched={c.watched}
             total={c.total}
+            variant={view === "compact" ? "row" : "card"}
             locale={locale}
           />
         ))}
@@ -1782,6 +1789,7 @@ async function ContinueSection({
             }}
             watched={c.watched}
             total={c.total}
+            variant={view === "compact" ? "row" : "card"}
             locale={locale}
           />
         ))}
