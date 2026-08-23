@@ -269,6 +269,46 @@ export async function setHomeView(value: string) {
   return view;
 }
 
+/**
+ * 🆕 **رايةُ طابور «للمشاهدة»** (D-559، بلاغُ أحمد: «أقدر أشغّلها
+ * وأوقفها وقت ما أبغى»).
+ *
+ * **وهي أختُ `setListPlaylist` بالمعنى** (D-505): تلك ترفع الرايةَ على
+ * قائمةٍ في `user_lists`، **وهذه على الطابور المحسوب** — **ومكانُ
+ * رايته `home_prefs` لأنه لا صفَّ له في جدول القوائم** (الحجّةُ
+ * كاملةً عند `HomePrefs.toWatch`).
+ *
+ * **والقراءةُ قبل الكتابة لازمة** — نفسُ درسِ `setHomeView` فوقه:
+ * العمودُ JSON واحد، **وكتابةٌ فوقه بكائنٍ فيه `toWatch` وحدَه تمحو
+ * الترتيبَ والخانات.**
+ *
+ * ⚠️ **و`revalidatePath("/")` هنا تلزم** — بخلاف `setHomeView`:
+ * **هذه تُغيّر ما تحمله الرئيسيةُ من بيانات لا شكلَ رسمها** — بطاقةٌ
+ * تظهر أو تسقط من صفّ «تابِع المشاهدة»، **ولا نسخةَ منها في العميل
+ * يختار بينها.**
+ */
+export async function setToWatchQueue(on: boolean) {
+  const { supabase, user } = await requireUser("towatch", 20, 10_000);
+
+  const { data } = await supabase
+    .from("profiles")
+    .select("home_prefs")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  const prefs = sanitizeHomePrefs(data?.home_prefs);
+  const { error } = await supabase
+    .from("profiles")
+    .upsert({ id: user.id, home_prefs: { ...prefs, toWatch: !!on } }, { onConflict: "id" });
+  if (error) fail(error);
+
+  revalidatePath("/");
+  revalidatePath("/library");
+  /* **وبابُ البطاقة الثاني** — `/lists` يرسم `ListManager` نفسَه (D-559) */
+  revalidatePath("/lists");
+  return !!on;
+}
+
 /** مزامنة كوكي الثيم لمن اختار ثيمه قبل اعتماد الكوكي — تُستدعى مرة من العميل */
 export async function syncThemeCookie(value: string) {
   const theme = THEMES.some((t) => t.id === value) ? value : "amber";

@@ -71,3 +71,22 @@ export function regionChain(region: string): string[] {
   const rest = ["SA", "AE", "EG", "US"].filter((r) => r !== base);
   return [base, ...rest];
 }
+
+/**
+ * 🆕 **علمُ البلد من رمزه** (D-557، تصميمُ أحمد: مربّعُ علمٍ قبل الاسم).
+ *
+ * **ولا صورةَ ولا مكتبة**: حرفا ISO-2 يُزاحان إلى نطاق «مؤشّرات
+ * الأقاليم» في يونيكود فيرسمهما النظامُ علماً — **صفرُ بايتٍ على
+ * الشبكة، وصفرُ أصلٍ يُصان.**
+ *
+ * ⚠️ **وما لا يعرفه النظامُ يُرسم حرفين** لا مربّعاً فارغاً — **وهو
+ * أسوأُ ما يمكن أن يقع، ويبقى مقروءاً.**
+ */
+export function regionFlag(code: string): string {
+  const c = code.trim().toUpperCase();
+  if (!/^[A-Z]{2}$/.test(c)) return "";
+  return String.fromCodePoint(
+    0x1f1e6 + c.charCodeAt(0) - 65,
+    0x1f1e6 + c.charCodeAt(1) - 65,
+  );
+}
