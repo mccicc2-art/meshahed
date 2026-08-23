@@ -87,6 +87,38 @@ const WRAP: Record<SheetVariant, string> = {
   bare: "fixed inset-0 z-50 flex items-center justify-center px-8",
 };
 
+/**
+ * ⚖️ 🆕 **مرساةٌ سفليّةٌ لأوراق الإعدادات وحدَها** (D-558، قرارُ أحمد
+ * بعد أن رأى التصميمين: «أوراق الإعدادات وحدها من الأسفل»).
+ *
+ * **وهذا نقضٌ محدودٌ لـD-177 يُقال بحدّه لا بأكثرَ منه.** حجّةُ D-177
+ * كانت — وتبقى — أن **المستخدم يتعلّم «أين تظهر النوافذ في هذا
+ * التطبيق» مرّةً واحدة**، وأن **الاتّساق هوية**. **ولم تسقط الحجّة،
+ * بل حُصر مداها**: أوراقُ التطبيق (البحثُ · الجرسُ · فلاترُ المكتبة ·
+ * التقييمُ · المشاركة) **تبقى كلُّها من الأعلى كما هي** — **والذي نزل
+ * سطحٌ واحدٌ له عرفُه**: **الإعداداتُ رحلةٌ لها بدايةٌ ونهاية**
+ * (تعليقُ `SettingsHeader` بنصّه)، **وورقتُها تُجمَّع فيها تعديلاتٌ
+ * ثمّ تُثبَّت بـ«تمّ» أو تُرمى بـ«إلغاء»** — **وهي حوارُ التزامٍ لا
+ * لوحةُ تصفّح**، وعرفُ النظام لهذا الصنف أن يصعد من القاع تحت
+ * الإبهام.
+ *
+ * ⚠️ **والثمنُ يُقال ولا يُخبَّأ**: **موضعان للأوراق في التطبيق بعد
+ * اليوم** — **وهو بالضبط ما منعته D-177.** **والذي يمنعه من أن يصير
+ * ثلاثةً أنّ المرساةَ خاصّيّةٌ في المصدر لا صنفٌ يُكتب عند المستدعي**:
+ * `SettingsBottomSheet` وحدَها تمرّرها، **ولا سطحَ ثالثٌ يستطيع أن
+ * يخترع موضعاً بلا أن يمرّ من هنا.**
+ */
+export type SheetAnchor = "top" | "bottom";
+
+/** يرتفع من القاع، مستديرُ الأعلى وحدَه — أسفلُه ملتصقٌ بحافّة الشاشة */
+const BOTTOM_WRAP =
+  "fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:px-0";
+
+const BOTTOM_PANEL =
+  "sheet-pop relative flex flex-col w-full sm:max-w-md max-h-[88svh] sm:max-h-[76svh]" +
+  " rounded-t-sheet rounded-b-none sm:rounded-b-sheet border border-border border-b-0 sm:border-b" +
+  " bg-[color:var(--elevated)] shadow-2xl overflow-hidden";
+
 const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
@@ -95,9 +127,11 @@ export function Sheet({
   onClose,
   closeLabel,
   variant = "bottom",
+  anchor = "top",
   dismissible = true,
   labelledBy,
   className = "",
+  panelStyle,
   children,
 }: {
   open: boolean;
@@ -105,12 +139,19 @@ export function Sheet({
   /** وصف زرّ الحجاب لقارئ الشاشة */
   closeLabel: string;
   variant?: SheetVariant;
+  /** **الأعلى لكلِّ التطبيق، والقاعُ لأوراق الإعدادات وحدَها** (D-558) */
+  anchor?: SheetAnchor;
   /** ورقةٌ لا تُغلق باللمس خارجها ولا بمفتاح Escape — للحظةٍ تنتهي بفعلٍ
       لا بتجاهل (بطاقة الإنجاز تنتظر تقييمك) */
   dismissible?: boolean;
   /** معرّف العنوان داخل الورقة — يربطه قارئ الشاشة بالنافذة */
   labelledBy?: string;
   className?: string;
+  /** **إزاحةُ السحب الحيّة** — تُكتب على اللوح نفسِه لا على محتواه
+      (D-558). ⚠️ **ومع `[animation:none]`**: `sheet-pop` تملأ قيمتَها
+      بعد انتهائها (`both`)، **والحركةُ تغلب النمطَ السطريّ في الترتيب**
+      — فلو بقيت لَما تحرّك اللوحُ بكسلاً واحداً. */
+  panelStyle?: React.CSSProperties;
   children: React.ReactNode;
 }) {
   const panel = useRef<HTMLDivElement>(null);
@@ -218,7 +259,7 @@ export function Sheet({
    */
   return createPortal(
     <div
-      className={WRAP[variant]}
+      className={anchor === "bottom" ? BOTTOM_WRAP : WRAP[variant]}
       onClick={(e) => e.stopPropagation()}
       onPointerDown={(e) => e.stopPropagation()}
       onMouseDown={(e) => e.stopPropagation()}
@@ -240,7 +281,10 @@ export function Sheet({
         aria-modal="true"
         aria-labelledby={labelledBy}
         tabIndex={-1}
-        className={`${PANEL[variant]}${className ? ` ${className}` : ""} outline-none`}
+        className={`${anchor === "bottom" ? BOTTOM_PANEL : PANEL[variant]}${
+          className ? ` ${className}` : ""
+        } outline-none`}
+        style={panelStyle}
       >
         {children}
       </div>

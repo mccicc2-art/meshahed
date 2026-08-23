@@ -253,12 +253,20 @@ export function CardCountRow({
  */
 export function ToggleRow({
   label,
+  hint,
   icon,
   trailing,
   checked,
   onChange,
 }: {
   label: string;
+  /**
+   * 🆕 **سطرٌ تحت الاسم** (D-555) — **ومفاتيحُ الخصوصيّة لا تُفهم بلا
+   * سطرها**: «قفل قائمتَي المتابعة» لا يقول أن العدّادين يبقيان
+   * ظاهرين. **وكان الشرحُ فقرةً فوق بطاقةٍ لكلِّ مفتاح**، **وثلاثُ
+   * بطاقاتٍ لثلاثة مفاتيح تُقرأ ثلاثةَ أقسام.**
+   */
+  hint?: string;
   /** رمزُ الصدر — يغيب فلا يُحجَز له مكان (D-044) */
   icon?: IconName;
   /**
@@ -274,7 +282,14 @@ export function ToggleRow({
     <div className="flex items-center gap-3 min-h-14 px-4 py-2.5 border-b border-[color:var(--divider)] last:border-b-0">
       {icon && <Icon name={icon} size={20} className="shrink-0 text-foreground" />}
       <label className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer">
-      <span className="flex-1 min-w-0 truncate text-15 font-medium">{label}</span>
+      <span className="flex-1 min-w-0">
+        <span className="block truncate text-15 font-medium">{label}</span>
+        {hint && (
+          <span className="block text-12 text-muted leading-tight mt-0.5" dir="auto">
+            {hint}
+          </span>
+        )}
+      </span>
       <input type="checkbox" checked={checked} onChange={onChange} className="sr-only peer" />
       {/* مفتاح iOS: المسار يتلوّن والقرص ينزلق */}
       <span
