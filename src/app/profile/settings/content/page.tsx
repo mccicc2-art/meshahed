@@ -2,9 +2,14 @@ import { redirect } from "next/navigation";
 import { getUser, getContentPrefs } from "@/lib/data";
 import { getT, getWatchRegion, getTitleMode } from "@/lib/locale";
 import { SettingsPageLayout } from "@/components/settings/SettingsPageLayout";
+import { SettingsSection } from "@/components/settings/SettingsSection";
 import { RegionSwitch } from "@/components/RegionSwitch";
 import { TitleModeSection } from "@/components/settings/TitleModeSection";
-import { ContentPrefsSection } from "@/components/settings/ContentPrefsSection";
+import {
+  ContentPrefsSection,
+  ContentPrefsReset,
+} from "@/components/settings/ContentPrefsSection";
+import { SettingsDoneAction } from "@/components/settings/SettingsDoneAction";
 
 /**
  * تفضيلاتُ المحتوى — **الأنواعُ وبلدُ المشاهدة** (D-462، مواصفةُ أحمد:
@@ -22,7 +27,15 @@ export default async function Page() {
   const contentPrefs = await getContentPrefs();
 
   return (
-    <SettingsPageLayout title={t.setContent}>
+    <SettingsPageLayout title={t.setContent} action={<SettingsDoneAction locale={locale} />}>
+      {/* 🆕 **عنوانُ الصفحة داخل التمرير لا في الترويسة** (D-557، تصميمُ
+          أحمد): **الترويسةُ تقول أين أنت وأنت تمرّر**، **وهذا يقول ما
+          الذي تضبطه** — **وسطرٌ واحدٌ لا يفعل الاثنين.** */}
+      <header className="px-1 pt-1">
+        <h2 className="text-24 font-black tracking-tight">{t.cpSection}</h2>
+        <p className="text-14 text-muted leading-relaxed mt-1.5">{t.cpHint}</p>
+      </header>
+
       {/* ⚖️ 🆕 **ومنتقي الأنواع القديم سقط من هذه الصفحة** (D-545).
 
           **ولماذا سقط ولم يبقَ بجانبه:** كان يكتب `favorite_genres`
@@ -42,13 +55,15 @@ export default async function Page() {
           عليّ» (D-462)، **واسمُ العمل محتوًى لا مظهر.** **وقبل بلد
           المشاهدة** لأنه يمسّ كلَّ سطحٍ في التطبيق وذاك يمسّ صفَّ
           المنصّات. */}
-      <TitleModeSection locale={locale} initialMode={titleMode} />
+      <SettingsSection boxed label={t.titleNamesTitle} hint={t.titleNamesHint}>
+        <TitleModeSection locale={locale} initialMode={titleMode} />
+      </SettingsSection>
 
-      <section className="bg-surface border border-border rounded-2xl p-3.5 sm:p-5">
-        <h2 className="text-15 font-bold mb-1">{t.regionSection}</h2>
-        <p className="text-12 text-muted leading-relaxed mb-3">{t.regionHint}</p>
-        <RegionSwitch locale={locale} region={region} />
-      </section>
+      {/* 🆕 **بلا لوحٍ يلفّها** (D-555): كان القسمان لوحين بحدٍّ وانحناءٍ
+          وفي جوفهما بطاقةُ معاينةٍ ومسارُ رقائق — **إطارٌ داخل إطار.** */}
+      <RegionSwitch locale={locale} region={region} />
+
+      <ContentPrefsReset locale={locale} />
     </SettingsPageLayout>
   );
 }
