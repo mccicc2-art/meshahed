@@ -415,7 +415,18 @@ export default async function PublicProfilePage({
             />
           )}
           <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/25 to-black/40" />
-          <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-b from-transparent to-[color:var(--background)]" />
+          {/* ⚖️ 🆕 **والذوبانُ قصُر من ٩٦px إلى ٤٠** (D-547، طلبُ أحمد
+              بخطّين على لقطته: «يصل الغلافُ للخطّ الأخضر — منتصفُ
+              الدائرة تكون في الخلفية»).
+
+              **والعلّةُ كانت هنا لا في الهوامش**: الغلافُ صندوقُه ينتهي
+              عند حافّةٍ معلومة، **لكنّ آخرَ ٩٦px منه كانت تذوب إلى لون
+              الخلفية** — **فالفنُّ يختفي قبل الحافّة بمسافةٍ تزيد على
+              ارتفاع الصورة الشخصيّة كلِّها**، ويبدو الغلافُ منتهياً عند
+              رأس الدائرة. **والحدُّ الحادُّ يبقى ممنوعاً** (خطٌّ أفقيٌّ
+              يقطع الصورة)، **فبقي الذوبانُ وقصُر إلى ٤٠** — يكفي لإخفاء
+              الحافّة ولا يأكل الصورة. */}
+          <div className="absolute inset-x-0 bottom-0 h-10 bg-gradient-to-b from-transparent to-[color:var(--background)]" />
 
           {/* ⚖️ 🆕 **وأدواتُ الغلاف نزلت إلى صفِّ الأفعال** (D-438): زرُّ
               المتابعة والنقاط كانا يطفوان على الصورة، **وصفُّ الأفعال
@@ -426,7 +437,20 @@ export default async function PublicProfilePage({
         </div>
 
         {/* ===== كتلة الهوية ===== */}
-        <div className="flex items-end gap-3 pe-4 -mt-[4.25rem] sm:-mt-[5rem] relative z-10">
+        {/* ⚖️ 🆕 **`items-start` لا `items-end`** (D-547، طلبُ أحمد:
+            «الاسمُ تكون بدايتُه موازيةً لرأس الدائرة»): **كان الصفُّ
+            يُحاذي القيعان** فيجلس الاسمُ عند أسفل الصورة **ويبقى فوقه
+            فراغٌ بارتفاع الفرق**. **والمحاذاةُ من الأعلى تجعل رأسَ
+            الاسم ورأسَ الدائرة على خطٍّ واحد** — وهو ما رسمه بالأزرق.
+
+            ⚖️ 🆕 **والتراكبُ صار ٤٠px لا ٦٨** (طلبُه بالأخضر):
+            **الهامشُ السالبُ هو المسافةُ التي يعلوها الصفُّ فوق حافّة
+            الغلاف، وهي نفسُها النقطةُ التي تقطع فيها الحافّةُ الدائرة**
+            — **والدائرةُ ٨٠px (٧٤ + حلقةُ التدرّج)، فنصفُها ٤٠.**
+            **٦٨ كانت تقطعها قربَ قاعها، و٨٠ في الشاشة الواسعة كانت
+            تُغرقها كلَّها.** **والرقمُ مشتقٌّ من المقاس لا مذوق**:
+            يتغيّر مقاسُ الصورة يوماً فيتغيّر معه. */}
+        <div className="flex items-start gap-3 pe-4 -mt-10 relative z-10">
           <span
             className="block rounded-full p-[3px] shrink-0"
             style={{ background: "var(--gradient-brand)" }}
@@ -441,8 +465,12 @@ export default async function PublicProfilePage({
             />
           </span>
 
-          <div className="min-w-0 flex-1 pb-1">
-            <h1 className="text-22 sm:text-xl font-bold truncate drop-shadow-[0_2px_6px_rgba(0,0,0,0.7)]">
+          {/* **و`pb-1` سقطت مع `items-end`** — كانت ترفع النصَّ عن قاع
+              الصفّ، **ولا قاعَ يُحاذى بعد اليوم.** **و`leading-tight`
+              تُقلّل الرصاصةَ داخل السطر** فتعلو حروفُ الاسم إلى رأس
+              صندوقه، **وإلّا بقيت ثلاثةُ بكسلاتٍ فراغاً يكسر التوازي.** */}
+          <div className="min-w-0 flex-1">
+            <h1 className="text-22 sm:text-xl font-bold leading-tight truncate drop-shadow-[0_2px_6px_rgba(0,0,0,0.7)]">
               {displayName}
             </h1>
             {/* ⚖️ 🆕 **والمعرّف عاد** (D-438، خطّةُ أحمد: «الاسم والـusername
@@ -467,7 +495,11 @@ export default async function PublicProfilePage({
         </div>
 
         {/* ===== صفُّ الأفعال (D-438) ===== */}
-        <div className="relative z-10 mt-3 flex items-center gap-2 flex-wrap">
+        {/* 🆕 **والفواصلُ ضاقت** (D-547، طلبُ أحمد: «صفُّ التبويب
+            والمحتوى السفليّ ارفعه كذلك»): **٣ → ٢٫٥ هنا ومثلُها في صفِّ
+            الأرقام، و٤ → ٣ قبل البطاقة** — **أربعةَ عشرَ بكسلاً تصعد
+            بها التبويباتُ وكلُّ ما تحتها**، **بلا أن يلتصق صفٌّ بصفّ.** */}
+        <div className="relative z-10 mt-2.5 flex items-center gap-2 flex-wrap">
           {!isMe ? (
             <>
               <FollowUserButton
@@ -512,7 +544,7 @@ export default async function PublicProfilePage({
         </div>
 
         {/* ===== المتابعون · المتابَعون · الزيارات · المستوى ===== */}
-        <div className="relative z-10 mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-14 leading-tight">
+        <div className="relative z-10 mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-2 text-14 leading-tight">
           <FollowCountButton
             targetId={profile.id}
             dir="followers"
@@ -592,7 +624,7 @@ export default async function PublicProfilePage({
 
         {/* ===== بطاقةُ الأرقام الأربعة ===== */}
         {canView && prefs.stats && (
-          <div className="relative z-10 mt-4">
+          <div className="relative z-10 mt-3">
             <div className="grid grid-cols-4">
               {headerStats.map((s, i) => (
                 <div
