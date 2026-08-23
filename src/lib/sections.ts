@@ -226,14 +226,28 @@ export async function buildSection(
      ⚠️ **وبلا استبعادٍ لا يُنادى شيء**: `hasAnyPrefs` تُفحص أوّلاً،
      **والقراءةُ مخبَّأةٌ للطلب** (`getContentPrefs`) فلا استعلامَ
      لكلِّ قسم. */
-  const prefs = await getContentPrefs().catch(() => EMPTY_CONTENT_PREFS);
-  const dropExcluded =
-    prefs.excludedLanguages.length > 0
-      ? (rows: SearchResult[]) => rows.filter((r) => !isExcludedLanguage(r, prefs))
-      : (rows: SearchResult[]) => rows;
+  /* 🔴 **ولا يُنتظر هنا** (D-549، تراجعٌ مقيسٌ أدخلته D-545 في يومها):
+     **كُتب أوّلاً `await getContentPrefs()` قبل `switch`** — **فصار كلُّ
+     رفٍّ في «اكتشف» ينتظر قراءةَ صفِّ الملفّ من Supabase قبل أن يُطلق
+     نداءَ TMDB الأوّل.** **و`getProfile` مخبَّأةٌ للطلب فالقراءةُ واحدة،
+     لكنّ الرفوفَ الثمانية تنطلق بعدها لا معها** — **حاجزٌ متسلسلٌ أمام
+     صفحةٍ معمارُها كلُّه بثٌّ متوازٍ** (D-515).
 
-  const guard = (rows: SearchResult[]) =>
-    dropExcluded(railGuard(rows, { anime, unmute })).slice(0, limit);
+     **والعلاجُ أن يُطلق الوعدُ ولا يُنتظر**: النداءُ يبدأ الآن مع
+     أوّل سطر، **ويُنتظر داخل `guard` بعد أن يعود جلبُ الرفّ** — **فيقع
+     في ظلِّ نداء TMDB بدل أن يقف أمامه.** **والناتجُ حرفٌ بحرفٍ كما
+     كان.** */
+  const prefsP = getContentPrefs().catch(() => EMPTY_CONTENT_PREFS);
+
+  const guard = async (rows: SearchResult[]) => {
+    const kept = railGuard(rows, { anime, unmute });
+    const prefs = await prefsP;
+    return (
+      prefs.excludedLanguages.length > 0
+        ? kept.filter((r) => !isExcludedLanguage(r, prefs))
+        : kept
+    ).slice(0, limit);
+  };
 
   try {
     switch (key) {
@@ -313,7 +327,9 @@ export async function buildSection(
             : Promise.resolve([] as SearchResult[]),
         ]);
 
-        const byPopularity = guard(
+        /* **و`guard` صارت مؤجَّلة** (D-549) — والقارئُ الوحيدُ الذي
+           يستعمل ناتجَها متزامناً ينتظرها هنا صراحةً. */
+        const byPopularity = await guard(
           fresh.sort((a, b) => (b.popularity ?? 0) - (a.popularity ?? 0)),
         );
         /* **الثلثُ خالدٌ والثلثان رائج** — ونصيبُ الخالد يُحسب من الحدّ لا
