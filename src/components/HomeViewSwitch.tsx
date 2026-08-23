@@ -82,16 +82,34 @@ export function HomeViewSwitch({
          **والارتفاعُ ٤٤ كما هو**: قاعدتُك «اجعل مناطق الضغط مناسبة
          للجوال»، **وخطٌّ أصغر لا يعني هدفاً أصغر**. الذي ضاق هو الحشو
          فضاق الزرُّ عرضاً — وهو ما يُرى. */
-      className="shrink-0 inline-flex items-center gap-2 rounded-2xl border border-border bg-surface ps-3 pe-3.5 h-11 text-12 font-semibold transition hover:border-accent/50 active:scale-95"
+      /* ⚖️ 🆕 **والحلّةُ قصُرت ٤٤ → ٤٠، وهدفُ اللمس بقي ٤٤** (D-550،
+         طلبُ أحمد: «الإطار في كلمة compact صغّر ارتفاعه شويّ مع عدم
+         المساس بحجم الخط»).
+
+         🔑 **وصندوقان لا واحد، عمداً**: **الزرُّ نفسُه يبقى ٤٤ شفّافاً**
+         — **وهو قاعدتُك التي كتبتَها اليوم بنفسك في D-543** («مساحة
+         اللمس ٤٤×٤٤»)، **ولا تُنقض بعد ساعات لأجل أربعة بكسلات** —
+         **والحلّةُ المرئيّةُ داخله ٤٠**: الحدُّ والسطحُ والزاويةُ
+         عليها هي. **فما رآه أحمد قصُر، وما تلمسه إصبعُه لم يتغيّر.**
+
+         ⚠️ **والخطُّ لم يُمسّ**: `text-12` والرمزُ ١٥ كما هما بالضبط
+         (شرطُه الصريح) — **والذي ضاق هو الحشوُ الرأسيّ وحدَه.**
+
+         ⚠️ **والتمويهُ ينتقل بـ`group`**: الحدُّ على الابن والمؤشّرُ
+         على الأب، **فلو تُرك `hover:` على الابن لما استجاب لحافّة
+         هدف اللمس.** */
+      className="group shrink-0 inline-flex items-center h-11 transition active:scale-95"
     >
-      {/* الرمزُ يصف الوجهةَ كما يصفها النصّ: شبكةٌ للبصريّ وقائمةٌ للمختصر */}
-      <Icon
-        name={next === "compact" ? "list" : "grid"}
-        size={15}
-        strokeWidth={2}
-        style={{ color: "var(--accent)" }}
-      />
-      {label}
+      <span className="inline-flex items-center gap-2 rounded-2xl border border-border bg-surface ps-3 pe-3.5 h-10 text-12 font-semibold transition group-hover:border-accent/50">
+        {/* الرمزُ يصف الوجهةَ كما يصفها النصّ: شبكةٌ للبصريّ وقائمةٌ للمختصر */}
+        <Icon
+          name={next === "compact" ? "list" : "grid"}
+          size={15}
+          strokeWidth={2}
+          style={{ color: "var(--accent)" }}
+        />
+        {label}
+      </span>
     </button>
   );
 }

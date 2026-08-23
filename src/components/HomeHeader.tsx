@@ -331,7 +331,15 @@ export function HomeHeader({
         const cols = stats.length === 4 ? 2 : stats.length;
         return (
         <div
-          className="grid rounded-2xl border border-border bg-surface"
+          /* ⚖️ 🆕 **والإطارُ سقط** (D-550، طلبُ أحمد بلقطةٍ معلَّمة:
+             «الإطار في الكارد احذفه، أبغى أشوفها بدون إطار»).
+
+             **والذي سقط هو الحدُّ وحدَه**: السطحُ باقٍ (`bg-surface`)
+             والزاويةُ باقيةٌ (`rounded-2xl`) **والفاصلُ بين الخانتين
+             باقٍ** — **فالبطاقةُ تبقى تُقرأ خانتين، وما ذهب هو الخطُّ
+             المحيط.** **وسطحٌ بلا حدٍّ عائلةٌ قائمةٌ في التطبيق** (بطاقةُ
+             «تابِع المشاهدة» تحتها) فلا سطحَ جديدٌ يُخترع. */
+          className="grid rounded-2xl bg-surface"
           style={{ gridTemplateColumns: `repeat(${cols}, minmax(0,1fr))` }}
         >
           {stats.map((s, i) => (
