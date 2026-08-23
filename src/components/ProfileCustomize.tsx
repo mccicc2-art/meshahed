@@ -14,13 +14,12 @@ import {
   type VisitAudience,
 } from "@/lib/profilePrefs";
 import { Alert } from "./ui/Alert";
-import { buttonClass } from "./ui/Button";
-import {
-  CardCountRow,
-  PosterSizeRow,
-  SectionOrderList,
-  ToggleRow,
-} from "./ui/SectionOrderList";
+import { CardCountRow, PosterSizeRow, ToggleRow } from "./ui/SectionOrderList";
+import { SettingsGroup } from "./settings/SettingsGroup";
+import { SettingsRow } from "./settings/SettingsRow";
+import { SettingsSaveBar } from "./settings/SettingsSaveBar";
+import { SettingsArrangeSheet } from "./settings/SettingsArrangeSheet";
+import { toast } from "@/lib/toast";
 import { CustomizePreview } from "./CustomizePreview";
 import type { Density } from "@/lib/density";
 
@@ -70,15 +69,18 @@ export function ProfileCustomize({
   const t = getDict(locale);
   const router = useRouter();
   const [prefs, setPrefs] = useState<ProfilePrefs>(() => sanitizeProfilePrefs(initial));
-  const [saved, setSaved] = useState(false);
+  /** **ما هو محفوظٌ فعلاً** — به وحده يستيقظ شريطُ الحفظ (D-555) */
+  const [base, setBase] = useState<ProfilePrefs>(() => sanitizeProfilePrefs(initial));
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  const [arrange, setArrange] = useState(false);
+
+  const dirty = JSON.stringify(prefs) !== JSON.stringify(base);
 
   /* سجلٌّ واحد تقرؤه هذه الشاشة وصفحةُ البروفايل معاً (D-152) */
   const sectionMeta = profileSectionMeta(t);
 
   function set(next: ProfilePrefs) {
-    setSaved(false);
     setPrefs(next);
   }
 
@@ -87,7 +89,6 @@ export function ProfileCustomize({
      كلَّه** — وهو ما يقوله اسمُها في التصميم. */
   useEffect(() => {
     registerReset?.(() => {
-      setSaved(false);
       setPrefs({ ...DEFAULT_PROFILE_PREFS });
     });
   }, [registerReset]);
@@ -102,7 +103,8 @@ export function ProfileCustomize({
           favoriteGenres: genres,
           profilePrefs: prefs,
         });
-        setSaved(true);
+        setBase(prefs);
+        toast(t.savedToast, { tone: "success" });
         router.refresh();
       } catch (e) {
         setError(t.errSave + (e as Error).message);
@@ -148,9 +150,8 @@ export function ProfileCustomize({
         density={prefs.density}
       />
 
-      {/* ===== أعلى البروفايل ===== */}
-      <section className="rounded-2xl border border-border bg-surface overflow-hidden">
-        <h2 className="px-4 pt-3.5 pb-1 text-15 font-bold">{t.custProfileHeader}</h2>
+      {/* ===== ١) أعلى البروفايل ===== */}
+      <SettingsGroup label={t.custProfileHeader}>
         <ToggleRow
           icon="chart"
           label={t.custStatsShort}
@@ -195,44 +196,30 @@ export function ProfileCustomize({
             </span>
           }
         />
-      </section>
+      </SettingsGroup>
 
-      {/* ===== الأقسام — **عنوانٌ خارج البطاقة** كما في التصميم ===== */}
-      <section>
-        <h2 className="px-1 text-15 font-bold">{t.custSectionsTitle}</h2>
-        <p className="px-1 mt-0.5 mb-2 text-12 text-muted leading-relaxed">
-          {t.custSectionsHint}
-        </p>
-
-        <SectionOrderList
-          all={PROFILE_SECTIONS}
-          picked={prefs.order}
-          meta={sectionMeta}
-          labels={{
-            up: t.custMoveUp,
-            down: t.custMoveDown,
-            hide: t.custHide,
-            show: t.custShow,
-            drag: t.custReorder,
-          }}
-          onChange={(order) => set({ ...prefs, order })}
+      {/* ===== ٢) الأقسام — **السجلُّ خرج إلى ورقة** (D-555) ===== */}
+      <SettingsGroup label={t.custSectionsTitle}>
+        <SettingsRow
+          icon="grip"
+          title={t.custArrange}
+          subtitle={t.custSectionsHint}
+          value={t.custShownN(prefs.order.length)}
+          onClick={() => setArrange(true)}
         />
+      </SettingsGroup>
 
-        {/* **إخراجٌ لا خصوصية** — والسطرُ يقولها كي لا يظنّ أن الإخفاء قفل */}
-        <p className="px-1 mt-2 text-12 text-muted leading-relaxed">
-          {t.custProfileHint}
-        </p>
-
+      {/* **إخراجٌ لا خصوصية** — والسطرُ يقولها كي لا يظنّ أن الإخفاء قفل */}
+      <p className="px-1 -mt-4 text-12 text-muted leading-relaxed">
+        {t.custProfileHint}
         {/* الفراغ مسموحٌ هنا بخلاف الرئيسية — لكنه يُقال بصوتٍ عالٍ */}
-        {prefs.order.length === 0 && (
-          <p className="px-1 mt-1 text-12 text-muted">{t.custProfileEmpty}</p>
-        )}
-      </section>
+        {prefs.order.length === 0 && ` — ${t.custProfileEmpty}`}
+      </p>
 
-      {/* ===== التنسيق وحجم الملصق — **بطاقةٌ واحدةٌ بصفّين** ===== */}
-      <section className="rounded-2xl border border-border bg-surface overflow-hidden">
-        <div className="flex items-center gap-3 min-h-14 px-4 py-2.5 border-b border-[color:var(--divider)]">
-          <span className="shrink-0 text-15 font-bold">{t.custLayout}</span>
+      {/* ===== ٣) العرض ===== */}
+      <SettingsGroup label={t.custDisplay}>
+        <div className="flex items-center gap-3 min-h-14 px-4 py-2.5">
+          <span className="shrink-0 text-15 font-semibold">{t.custLayout}</span>
           <span className="min-w-0 flex-1">
             <CardCountRow
               value={prefs.cards}
@@ -246,31 +233,47 @@ export function ProfileCustomize({
           </span>
         </div>
         <div className="flex items-center gap-3 min-h-14 px-4 py-2.5">
-          <span className="min-w-0 flex-1 text-15 font-bold">{t.custPosterSize}</span>
+          <span className="min-w-0 flex-1 text-15 font-semibold">{t.custPosterSize}</span>
           <PosterSizeRow
             value={prefs.density}
             labels={posterLabel}
             onChange={(density) => set({ ...prefs, density })}
           />
         </div>
-      </section>
+      </SettingsGroup>
+
+      <SettingsArrangeSheet
+        open={arrange}
+        title={t.custArrange}
+        hint={t.custOrderHint}
+        all={PROFILE_SECTIONS}
+        picked={prefs.order}
+        meta={sectionMeta}
+        labels={{
+          up: t.custMoveUp,
+          down: t.custMoveDown,
+          hide: t.custHide,
+          show: t.custShow,
+          drag: t.custReorder,
+        }}
+        onCancel={() => setArrange(false)}
+        onDone={(order) => {
+          set({ ...prefs, order });
+          setArrange(false);
+        }}
+        cancelLabel={t.cancelLabel}
+        doneLabel={t.doneLabel}
+      />
 
       {error && <Alert>{error}</Alert>}
 
-      <div className="space-y-2">
-        <button
-          onClick={save}
-          disabled={pending}
-          className={buttonClass({ size: "lg", full: true })}
-        >
-          {pending ? t.saving : t.saveChanges}
-        </button>
-        {saved && (
-          <p role="status" className="text-center text-14 text-[color:var(--success)]">
-            {t.savedOk}
-          </p>
-        )}
-      </div>
+      <SettingsSaveBar
+        visible={dirty}
+        pending={pending}
+        onSave={save}
+        saveLabel={t.saveChanges}
+        savingLabel={t.saving}
+      />
     </div>
   );
 }

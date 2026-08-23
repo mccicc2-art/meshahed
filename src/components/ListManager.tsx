@@ -6,6 +6,7 @@ import { backdropUrl } from "@/lib/media";
 import { getDict, type Locale } from "@/lib/i18n";
 import { Icon } from "./Icon";
 import { CommunityListCard } from "./PublicListsRail";
+import { ToWatchListCard } from "./ToWatchListCard";
 import type { UserList } from "@/lib/data";
 import dynamic from "next/dynamic";
 /* الورقةُ تُحمَّل عند أوّل فتحٍ لا مع الصفحة (نمطُ TitleSearchSheet في
@@ -30,8 +31,16 @@ export function ListManager({
   lists,
   stats,
   locale,
+  toWatch,
 }: {
   lists: UserList[];
+  /**
+   * 🆕 **طابورُ «للمشاهدة» بطاقةً أولى** (D-559): **يسبق قوائمك
+   * المكتوبة لأنه ليس واحدةً منها** — **وهو مبنيٌّ من مكتبتك كلِّها،
+   * فموضعُه الصدر لا الذيل.** **والغيابُ يعني طابوراً فارغاً** —
+   * **وبطاقةٌ تقول صفراً أسوأُ من غياب** (D-219).
+   */
+  toWatch?: { on: boolean; count: number; posters: (string | null)[] } | null;
   /**
    * 🆕 **أرقامُ قائمتك العامّة** (D-350، بند ٣): كانت بطاقةُ «قوائمي» بلا
    * ★/♥ **وبطاقةُ «المحفوظة» تحتها في اللوح نفسِه تحملهما** — **بطاقتان
@@ -57,7 +66,7 @@ export function ListManager({
         <NewListForm locale={locale} collapsed />
       </div>
 
-      {lists.length === 0 ? (
+      {lists.length === 0 && !toWatch ? (
         <p className="text-sm text-muted text-center py-16">{t.listsEmpty}</p>
       ) : (
         /* 🔴 🆕 **وقوائمُك تلبس بطاقةَ الاكسبلورر** (D-364، طلبُ أحمد:
@@ -80,6 +89,16 @@ export function ListManager({
            `PublicListsRail` بالبكسل**: قوائمي والمحفوظةُ تحتها بطاقةٌ
            واحدةٌ في صفحةٍ واحدة، **وشبكتان بعرضين تُقرآن صنفين**. */
         <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          {toWatch && (
+            <li key="lm-towatch" className="min-w-0">
+              <ToWatchListCard
+                locale={locale}
+                initialOn={toWatch.on}
+                count={toWatch.count}
+                posters={toWatch.posters}
+              />
+            </li>
+          )}
           {lists.map((l) => {
             const st = stats?.get(l.id);
             return (

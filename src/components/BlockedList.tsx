@@ -7,6 +7,10 @@ import { myBlocksList, unblockUser } from "@/lib/actions";
 import { toast, flashError } from "@/lib/toast";
 import { tap } from "@/lib/haptics";
 import { getDict, type Locale } from "@/lib/i18n";
+import { settingsCardRows } from "./settings/SettingsGroup";
+import { SettingsRow } from "./settings/SettingsRow";
+import { SettingsBottomSheet } from "./settings/SettingsBottomSheet";
+import { sheetScroll } from "./ui/controls";
 import type { PersonLite } from "@/lib/data";
 
 /**
@@ -19,6 +23,15 @@ import type { PersonLite } from "@/lib/data";
  *
  * رفع الحظر متفائل (D-007) مع تراجُعٍ عند الخطأ — والمتابعة لا تعود
  * تلقائياً معه، وهذا مكتوبٌ في تلميح القسم كي لا يُفهم الزرّ وعداً.
+ *
+ * 🆕 **وصار صفّاً يقول العدد وورقةً تفتح القائمة** (D-555، مواصفةُ
+ * أحمد: «صفّ المحظورين مع العدد»). **وأكثرُ الحسابات لا محظورَ فيها** —
+ * **وبطاقةٌ بعنوانٍ وشرحٍ وسطرِ «لا أحد» تحتلّ ثلث شاشةٍ لتقول لا شيء.**
+ * **والصفُّ يقول «٠» في سطرٍ واحد.**
+ *
+ * ⚠️ **والجلبُ باقٍ عند التركيب لا عند فتح الورقة**: **العددُ نفسُه هو
+ * ما يُعرض في الصفّ** — **وصفٌّ لا يقول عددَه لا يستحقّ أن يُقرأ.**
+ * **والكلفةُ هي كلفةُ اليوم بعينها** فلا انحدارَ في الأداء.
  */
 export function BlockedList({ locale }: { locale: Locale }) {
   const t = getDict(locale);
@@ -50,42 +63,62 @@ export function BlockedList({ locale }: { locale: Locale }) {
     });
   }
 
-  return (
-    <section className="bg-surface border border-border rounded-2xl p-3.5 sm:p-5">
-      <h2 className="text-sm font-bold mb-1">{t.blockedListTitle}</h2>
-      <p className="text-xs text-muted leading-relaxed mb-3">{t.blockedListHint}</p>
+  const [open, setOpen] = useState(false);
 
-      {items === null ? (
-        /* هيكلٌ بهندسة الصفّ الحقيقي (D-046): لا قفزة حين تصل القائمة */
-        <div className="h-12 rounded-xl bg-surface-2 animate-pulse" />
-      ) : items.length === 0 ? (
-        <p className="text-12 text-muted">{t.blockedEmpty}</p>
-      ) : (
-        <ul className="divide-y divide-[color:var(--divider)]">
-          {items.map((p) => {
-            const name = p.hide_name ? t.anonymousUser : p.nickname || p.username || "—";
-            return (
-              <li key={p.id} className="flex items-center gap-3 py-2.5">
-                <Avatar src={p.avatar_url} name={name} size={36} alt="" />
-                <div className="min-w-0 flex-1">
-                  <p className="text-14 font-semibold truncate">{name}</p>
-                  {p.username && !p.hide_name && (
-                    <p className="text-12 text-muted truncate" dir="ltr">
-                      @{p.username}
-                    </p>
-                  )}
-                </div>
-                <button
-                  onClick={() => unblock(p)}
-                  className={buttonClass({ variant: "surface", size: "sm" })}
-                >
-                  {t.unblockButton}
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-    </section>
+  return (
+    <>
+      <div className={settingsCardRows}>
+        <SettingsRow
+          icon="shield"
+          title={t.blockedListTitle}
+          subtitle={t.blockedListHint}
+          value={items === null ? undefined : String(items.length)}
+          onClick={() => setOpen(true)}
+        />
+      </div>
+
+      <SettingsBottomSheet
+        open={open}
+        title={t.blockedListTitle}
+        onCancel={() => setOpen(false)}
+        onDone={() => setOpen(false)}
+        cancelLabel={t.cancelLabel}
+        doneLabel={t.doneLabel}
+      >
+        <div className={`${sheetScroll} px-4 py-3 pb-[calc(1rem+env(safe-area-inset-bottom))]`}>
+          {items === null ? (
+            /* هيكلٌ بهندسة الصفّ الحقيقي (D-046): لا قفزة حين تصل القائمة */
+            <div className="h-12 rounded-control bg-surface-2 animate-pulse" />
+          ) : items.length === 0 ? (
+            <p className="text-12 text-muted">{t.blockedEmpty}</p>
+          ) : (
+            <ul className="divide-y divide-[color:var(--divider)]">
+              {items.map((p) => {
+                const name = p.hide_name ? t.anonymousUser : p.nickname || p.username || "—";
+                return (
+                  <li key={p.id} className="flex items-center gap-3 py-2.5">
+                    <Avatar src={p.avatar_url} name={name} size={36} alt="" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-14 font-semibold truncate">{name}</p>
+                      {p.username && !p.hide_name && (
+                        <p className="text-12 text-muted truncate" dir="ltr">
+                          @{p.username}
+                        </p>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => unblock(p)}
+                      className={buttonClass({ variant: "surface", size: "sm" })}
+                    >
+                      {t.unblockButton}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      </SettingsBottomSheet>
+    </>
   );
 }

@@ -6,6 +6,7 @@ import { getDict, type Locale } from "@/lib/i18n";
 import { Icon } from "./Icon";
 import { Alert } from "./ui/Alert";
 import { buttonClass } from "./ui/Button";
+import { settingsCard } from "./settings/SettingsGroup";
 
 /**
  * قسم «بياناتك» في الخصوصية: تصديرٌ وحذف.
@@ -78,37 +79,45 @@ export function PrivacyData({
 
   return (
     <div className="space-y-4">
-      {/* التصدير */}
+      {/* التصدير — 🆕 **والعنوانُ خارج البطاقة كبقيّة الإعدادات**
+          (D-555): **عنوانٌ داخلها يجعلها قسماً ثانياً بإيقاعٍ ثانٍ في
+          صفحةٍ إيقاعُها «عنوانٌ صغيرٌ ثمّ بطاقة».** */}
       {show("export") && (
-      <section className="bg-surface border border-border rounded-2xl p-3.5 sm:p-5">
-        <h2 className="text-sm font-bold mb-1">{t.dataExportTitle}</h2>
-        <p className="text-xs text-muted leading-relaxed mb-3">{t.dataExportDesc}</p>
+      <section>
+        <h2 className="px-1 mb-2 text-12 font-semibold uppercase tracking-wide text-muted">
+          {t.dataExportTitle}
+        </h2>
+        <div className={`${settingsCard} p-3.5`}>
+        <p className="text-12 text-muted leading-relaxed mb-3">{t.dataExportDesc}</p>
         <button
           onClick={download}
           disabled={busy}
-          className={buttonClass({ variant: "surface" })}
+          className={buttonClass({ variant: "surface", className: "h-11" })}
         >
           <Icon name="download" size={16} />
           {busy ? t.dataExportBusy : t.dataExportBtn}
         </button>
+        </div>
       </section>
       )}
 
-      {/* الحذف */}
+      {/* الحذف — ⚠️ **وحدُها تحتفظ بحدٍّ أحمرَ خافت**: **إطارٌ يقول
+          «هنا شيءٌ آخر» قبل أن يُقرأ النصّ** — وهي المنطقةُ الوحيدةُ في
+          الإعدادات التي لا رجعةَ في فعلها. */}
       {show("delete") && (
-      <section className="bg-surface border border-[color:var(--error)]/30 rounded-2xl p-3.5 sm:p-5">
-        <h2 className="text-sm font-bold mb-1 text-[color:var(--error)]">
+      <section className="bg-surface border border-[color:var(--error)]/30 rounded-2xl p-3.5">
+        <h2 className="text-15 font-bold mb-1 text-[color:var(--error)]">
           {t.deleteAccountTitle}
         </h2>
-        <p className="text-xs text-muted leading-relaxed mb-3">{t.deleteAccountDesc}</p>
+        <p className="text-12 text-muted leading-relaxed mb-3">{t.deleteAccountDesc}</p>
         <button
           onClick={onDelete}
           disabled={deleting}
           className={buttonClass({
             variant: armed ? "danger" : "surface",
             className: armed
-              ? ""
-              : "border-[color:var(--error)]/40 text-[color:var(--error)] hover:border-[color:var(--error)] hover:bg-[color:var(--error)]/10",
+              ? "h-11"
+              : "h-11 border-[color:var(--error)]/40 text-[color:var(--error)] hover:border-[color:var(--error)] hover:bg-[color:var(--error)]/10",
           })}
         >
           <Icon name="trash" size={16} />

@@ -17,6 +17,10 @@ import { resolveImportItems, applyImportChunk, finishImport } from "@/lib/action
 import { Alert } from "./ui/Alert";
 import { buttonClass } from "./ui/Button";
 import { Icon } from "./Icon";
+import { SettingsGroup } from "./settings/SettingsGroup";
+import { SettingsRow } from "./settings/SettingsRow";
+import { SettingsBottomSheet } from "./settings/SettingsBottomSheet";
+import { sheetScroll } from "./ui/controls";
 
 type Phase = "idle" | "reading" | "matching" | "writing" | "done";
 
@@ -68,6 +72,12 @@ export function ImportPanel({
   const [phase, setPhase] = useState<Phase>("idle");
   /** أيُّ مصدرٍ يعمل الآن — الشريط والنتيجة يظهران تحت قسمه وحده */
   const [active, setActive] = useState<SourceId | null>(null);
+  /** أيُّ مصدرٍ ورقتُه مفتوحة — والمصادرُ صفوفٌ لا بطاقات (D-555) */
+  /* **وتُفتح على Trakt إن عاد الرابطُ برسالة**: المستخدمُ عاد للتوّ من
+     موقعٍ خارجيّ — **ونتيجةُ رحلته لا يجوز أن تكون خلف صفٍّ يُضغط.** */
+  const [open, setOpen] = useState<SourceId | "trakt" | null>(() =>
+    params.get("trakt") ? "trakt" : null,
+  );
   const [pct, setPct] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<{
@@ -283,166 +293,200 @@ export function ImportPanel({
           ? t.importWriting
           : "";
 
+  const sources = [
+    {
+      id: "letterboxd" as const,
+      title: t.importLetterboxdTitle,
+      hint: t.importLetterboxdHint,
+      fileHint: t.importLetterboxdFileHint,
+    },
+    {
+      id: "simkl" as const,
+      title: t.importSimklTitle,
+      hint: t.importSimklHint,
+      fileHint: t.importSimklFileHint,
+    },
+    {
+      id: "tvtime" as const,
+      title: t.importTvTimeTitle,
+      hint: t.importTvTimeHint,
+      fileHint: t.importFileHint,
+    },
+  ];
+
   return (
-    <div className="space-y-4">
-      <section className="bg-surface border border-border rounded-2xl p-3.5 sm:p-5">
-        <h2 className="text-sm font-bold mb-1">{t.importSection}</h2>
-        <p className="text-xs text-muted leading-relaxed">{t.importHint}</p>
-      </section>
+    <>
+      {/* ===== المصادرُ صفوفٌ ===== */}
+      <SettingsGroup label={t.importSection}>
+        {sources.map((src) => (
+          <SettingsRow
+            key={src.id}
+            icon="download"
+            title={src.title}
+            subtitle={src.hint}
+            onClick={() => setOpen(src.id)}
+          />
+        ))}
+        {/* **وTrakt صفٌّ في السجلِّ نفسِه** — **وبابٌ مغلقٌ في مكانه
+            أصدقُ من بابٍ محذوف** (D-155). **ويُعطَّل حين لا مفاتيح**
+            فلا يُفتح ليُقال له «غير متاح». */}
+        <SettingsRow
+          icon="share"
+          title={t.importTraktTitle}
+          subtitle={traktReady ? t.importTraktHint : t.importTraktWhy}
+          onClick={traktReady || traktMsg ? () => setOpen("trakt") : undefined}
+          value={traktReady ? undefined : t.settingsSoonTitle}
+        />
+      </SettingsGroup>
+      <p className="px-1 -mt-4 text-12 text-muted leading-relaxed">{t.importHint}</p>
 
-      {/* ===== المصادر: بطاقةٌ واحدة تُرسم مرّتين (D-153) =====
-          نسخُ القسم لكل خدمةٍ كان سيعني شريطَ تقدّمٍ ورسالةَ نتيجةٍ
-          وقائمةَ «لم تُطابَق» تتكرّر — ثم تفترق عند أوّل إصلاح. */}
-      {(
-        [
-          {
-            id: "letterboxd" as const,
-            ref: letterboxdRef,
-            title: t.importLetterboxdTitle,
-            hint: t.importLetterboxdHint,
-            fileHint: t.importLetterboxdFileHint,
-          },
-          {
-            id: "simkl" as const,
-            ref: simklRef,
-            title: t.importSimklTitle,
-            hint: t.importSimklHint,
-            fileHint: t.importSimklFileHint,
-          },
-          {
-            id: "tvtime" as const,
-            ref: tvtimeRef,
-            title: t.importTvTimeTitle,
-            hint: t.importTvTimeHint,
-            fileHint: t.importFileHint,
-          },
-        ] as const
-      ).map((src) => {
+      {/* ===== ورقةُ كلِّ مصدر — **مصنعٌ واحدٌ يرسمها الثلاث** (D-153) ===== */}
+      {sources.map((src) => {
         const mine = active === src.id;
+        /* **المرجعُ يُختار هنا لا يُخزَّن في السجلّ**: مرجعٌ داخل مصفوفةٍ
+           تُبنى في كلِّ رسمة يقرؤه المدقّقُ «قراءةَ مرجعٍ أثناء الرسم» */
+        const inputRef =
+          src.id === "letterboxd" ? letterboxdRef : src.id === "simkl" ? simklRef : tvtimeRef;
         return (
-          <section key={src.id} className="bg-surface border border-border rounded-2xl p-3.5 sm:p-5">
-            <h3 className="text-sm font-bold mb-1" dir="ltr">
-              {src.title}
-            </h3>
-            <p className="text-xs text-muted leading-relaxed mb-3">{src.hint}</p>
+          <SettingsBottomSheet
+            key={src.id}
+            open={open === src.id}
+            title={src.title}
+            onCancel={() => setOpen(null)}
+            onDone={() => setOpen(null)}
+            cancelLabel={t.cancelLabel}
+            doneLabel={t.doneLabel}
+          >
+            <div className={`${sheetScroll} px-4 py-3 pb-[calc(1rem+env(safe-area-inset-bottom))]`}>
+              <p className="text-12 text-muted leading-relaxed mb-3">{src.hint}</p>
 
-            <input
-              ref={src.ref}
-              type="file"
-              multiple
-              accept={SOURCES[src.id].accept}
-              className="hidden"
-              onChange={(e) => {
-                const f = e.target.files;
-                if (f && f.length) run(f, src.id);
-                e.target.value = "";
-              }}
-            />
+              <input
+                ref={inputRef}
+                type="file"
+                multiple
+                accept={SOURCES[src.id].accept}
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files;
+                  if (f && f.length) run(f, src.id);
+                  e.target.value = "";
+                }}
+              />
 
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => src.ref.current?.click()}
-                className={buttonClass({ variant: "surface", size: "md" })}
-              >
-                <Icon name="download" size={16} />
-                {t.importPickFile}
-              </button>
-              {busy && mine && (
+              <div className="flex flex-wrap items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => {
-                    stop.current = true;
-                  }}
-                  className={buttonClass({ variant: "ghost", size: "md" })}
+                  disabled={busy}
+                  onClick={() => inputRef.current?.click()}
+                  className={buttonClass({ variant: "surface", size: "md", className: "h-11" })}
                 >
-                  {t.importCancel}
+                  <Icon name="download" size={16} />
+                  {t.importPickFile}
                 </button>
-              )}
-            </div>
-            <p className="text-12 text-muted mt-2">{src.fileHint}</p>
-
-            {busy && mine && (
-              <div className="mt-4">
-                <p className="text-xs text-muted mb-1.5">{phaseLabel}</p>
-                {/* `scaleX` لا `width` — انظر D-022 */}
-                <div className="h-1.5 rounded-full bg-surface-2 overflow-hidden">
-                  <div
-                    className="h-full bg-accent origin-left rtl:origin-right transition-transform duration-300"
-                    style={{ transform: `scaleX(${Math.max(0.02, pct / 100)})` }}
-                  />
-                </div>
-              </div>
-            )}
-
-            {error && mine && (
-              <div className="mt-3">
-                <Alert tone="error">{error}</Alert>
-              </div>
-            )}
-
-            {phase === "done" && result && mine && (
-              <div className="mt-4 space-y-3">
-                <Alert tone="success">
-                  <b className="block">{t.importDone}</b>
-                  {t.importDoneBody(
-                    num(result.shows, locale),
-                    num(result.episodes, locale),
-                    num(result.movies, locale),
-                  )}
-                </Alert>
-
-                {result.unmatched.length > 0 && (
-                  <div className="rounded-xl border border-border bg-surface-2 p-3">
-                    <p className="text-xs font-bold mb-1">
-                      {t.importUnmatchedTitle(num(result.unmatched.length, locale))}
-                    </p>
-                    <p className="text-12 text-muted mb-2">{t.importUnmatchedHint}</p>
-                    <p className="text-12 text-muted leading-relaxed break-words">
-                      {result.unmatched.join(" · ")}
-                    </p>
-                  </div>
+                {busy && mine && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      stop.current = true;
+                    }}
+                    className={buttonClass({ variant: "ghost", size: "md", className: "h-11" })}
+                  >
+                    {t.importCancel}
+                  </button>
                 )}
               </div>
-            )}
-          </section>
+              <p className="text-12 text-muted mt-2">{src.fileHint}</p>
+
+              {busy && mine && (
+                <div className="mt-4">
+                  <p className="text-12 text-muted mb-1.5">{phaseLabel}</p>
+                  {/* `scaleX` لا `width` — انظر D-022 */}
+                  <div className="h-1.5 rounded-full bg-surface-2 overflow-hidden">
+                    <div
+                      className="h-full bg-accent origin-left rtl:origin-right transition-transform duration-300"
+                      style={{ transform: `scaleX(${Math.max(0.02, pct / 100)})` }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {error && mine && (
+                <div className="mt-3">
+                  <Alert tone="error">{error}</Alert>
+                </div>
+              )}
+
+              {phase === "done" && result && mine && (
+                <div className="mt-4 space-y-3">
+                  <Alert tone="success">
+                    <b className="block">{t.importDone}</b>
+                    {t.importDoneBody(
+                      num(result.shows, locale),
+                      num(result.episodes, locale),
+                      num(result.movies, locale),
+                    )}
+                  </Alert>
+
+                  {result.unmatched.length > 0 && (
+                    <div className="rounded-control border border-border bg-surface-2 p-3">
+                      <p className="text-12 font-bold mb-1">
+                        {t.importUnmatchedTitle(num(result.unmatched.length, locale))}
+                      </p>
+                      <p className="text-12 text-muted mb-2">{t.importUnmatchedHint}</p>
+                      <p className="text-12 text-muted leading-relaxed break-words">
+                        {result.unmatched.join(" · ")}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </SettingsBottomSheet>
         );
       })}
 
-      {/* ===== Trakt ===== */}
-      <section className="bg-surface border border-border rounded-2xl p-3.5 sm:p-5">
-        <h3 className="text-sm font-bold mb-1" dir="ltr">
-          {t.importTraktTitle}
-        </h3>
-        {/* D-155: الوصفُ يتبع الحال. حين لا مفاتيح، وعدُ «نجلب مشاهداتك
-            مباشرةً» كذبٌ يقرؤه المستخدم فوق سطرٍ يقول إنه غير متاح. */}
-        <p className="text-xs text-muted leading-relaxed mb-3">
-          {traktReady ? t.importTraktHint : t.importTraktWhy}
-        </p>
+      {/* ===== ورقةُ Trakt ===== */}
+      <SettingsBottomSheet
+        open={open === "trakt"}
+        title={t.importTraktTitle}
+        onCancel={() => setOpen(null)}
+        onDone={() => setOpen(null)}
+        cancelLabel={t.cancelLabel}
+        doneLabel={t.doneLabel}
+      >
+        <div className={`${sheetScroll} px-4 py-3 pb-[calc(1rem+env(safe-area-inset-bottom))]`}>
+          {/* D-155: الوصفُ يتبع الحال. حين لا مفاتيح، وعدُ «نجلب مشاهداتك
+              مباشرةً» كذبٌ يقرؤه المستخدم فوق سطرٍ يقول إنه غير متاح. */}
+          <p className="text-12 text-muted leading-relaxed mb-3">
+            {traktReady ? t.importTraktHint : t.importTraktWhy}
+          </p>
 
-        {traktReady ? (
-          /* رابطٌ لا زرّ فعل: الوجهة خارجية ويجب أن تُرى في شريط العنوان
-             ويقبل الفتح في تبويبٍ جديد كأي رابط */
-          <a href="/api/trakt/start" className={buttonClass({ variant: "surface", size: "md" })}>
-            <Icon name="share" size={16} />
-            {t.importTraktConnect}
-          </a>
-        ) : (
-          <>
-            <Alert tone="info">{t.importTraktOff}</Alert>
-            {/* البابُ المغلق يُشار منه إلى بابٍ يفتح: قارئ D-154 يقرأ تصدير
-                تراكت نفسه إن حمل `tmdb` — بلا سطرٍ إضافي في الشيفرة. */}
-            <p className="text-xs text-muted leading-relaxed mt-3">{t.importTraktAlt}</p>
-          </>
-        )}
+          {traktReady ? (
+            /* رابطٌ لا زرّ فعل: الوجهة خارجية ويجب أن تُرى في شريط العنوان
+               ويقبل الفتح في تبويبٍ جديد كأي رابط */
+            <a
+              href="/api/trakt/start"
+              className={buttonClass({ variant: "surface", size: "md", className: "h-11" })}
+            >
+              <Icon name="share" size={16} />
+              {t.importTraktConnect}
+            </a>
+          ) : (
+            <>
+              <Alert tone="info">{t.importTraktOff}</Alert>
+              {/* البابُ المغلق يُشار منه إلى بابٍ يفتح: قارئ D-154 يقرأ تصدير
+                  تراكت نفسه إن حمل `tmdb` — بلا سطرٍ إضافي في الشيفرة. */}
+              <p className="text-12 text-muted leading-relaxed mt-3">{t.importTraktAlt}</p>
+            </>
+          )}
 
-        {traktMsg && (
-          <div className="mt-3">
-            <Alert tone={trakt === "ok" ? "success" : "error"}>{traktMsg}</Alert>
-          </div>
-        )}
-      </section>
-    </div>
+          {traktMsg && (
+            <div className="mt-3">
+              <Alert tone={trakt === "ok" ? "success" : "error"}>{traktMsg}</Alert>
+            </div>
+          )}
+        </div>
+      </SettingsBottomSheet>
+    </>
   );
 }

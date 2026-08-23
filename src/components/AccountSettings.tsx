@@ -4,13 +4,36 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { updateProfile } from "@/lib/actions";
 import { getDict, type Locale } from "@/lib/i18n";
-import { Alert } from "./ui/Alert";
-import { buttonClass } from "./ui/Button";
+import { toast } from "@/lib/toast";
+import { settingsCardRows } from "./settings/SettingsGroup";
+import { ToggleRow } from "./ui/SectionOrderList";
 
 /**
  * **ثلاثةُ أقسامٍ لا ثمانية** (D-462): اللغةُ إلى «المظهر»، والاسمُ
  * واسمُ المستخدم إلى `EditProfileForm`، والبريدُ والخروجُ إلى صفحتيهما
  * — **وبقي هنا ما يكتب حقولَ الخصوصيّة وحدَه.**
+ *
+ * ================= 🆕 ثلاثُ بطاقاتٍ صارت بطاقةً (D-555) =================
+ *
+ * **كان كلُّ مفتاحٍ بطاقةً بحدٍّ وانحناءٍ وعنوانٍ وفقرةِ شرح، وفي جوفها
+ * زرٌّ بحدٍّ وانحناءٍ وخلفيّةٍ صفراءَ شفّافةٍ حين يُفتح** — **إطارٌ داخل
+ * إطار، ثلاثَ مرّات** — **ثمّ زرُّ حفظٍ في القاع.**
+ *
+ * ⚠️ **والأهمّ: كان مفتاحاً ثالثاً في التطبيق.** `ToggleRow` مفتاحُ iOS
+ * (مسارٌ يتلوّن وقرصٌ ينزلق) **وهو الذي في «الرئيسية والملفّ»**؛ وهذا
+ * صندوقٌ يمتلئ بالأصفر وفيه مفتاحٌ مرسومٌ بيدٍ بـ`translateX` حرفيّ.
+ * **ومفتاحان لمعنًى واحدٍ في تطبيقٍ واحد بلاغٌ لا خيار** (القاعدة ٣) —
+ * **والآن `ToggleRow` وحدَه في السطحين.**
+ *
+ * ⚠️ **والحفظُ صار لحظيّاً**: **زرُّ حفظٍ لثلاثة مفاتيح** — **ومفتاحٌ
+ * يُقلَب ثمّ يُنسى الحفظُ يعني حساباً ظنّ صاحبُه أنه أقفله وهو مفتوح.**
+ * **وفي الخصوصيّة خاصّةً، التأخيرُ خطرٌ لا احتكاك.** **والفعلُ نفسُه لم
+ * يتبدّل** (`updateProfile` بالحقول الثلاثة معاً) — تبدّلت لحظةُ ندائه.
+ *
+ * ⚠️ **والحقولُ الثلاثة تُرسَل معاً في كلِّ نداء**: `updateProfile`
+ * يكتب الصفَّ — **وإرسالُ واحدٍ منها وحدَه يكتب الآخرَين بقيمتهما
+ * الافتراضيّة** (وهي العلّةُ التي أخرجت هذا اللوحَ من صفحة «الحساب»
+ * أصلاً).
  */
 export type AccountSection = "hideName" | "privateAccount" | "followLists";
 
@@ -43,13 +66,17 @@ export function AccountSettings({
   const [hideName, setHideName] = useState(initialHideName);
   const [isPrivate, setIsPrivate] = useState(initialIsPrivate);
   const [hideFollowLists, setHideFollowLists] = useState(initialHideFollowLists);
-  const [error, setError] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
   const [pending, start] = useTransition();
 
-  function save() {
-    setError(null);
-    setSaved(false);
+  function commit(next: {
+    hideName: boolean;
+    isPrivate: boolean;
+    hideFollowLists: boolean;
+  }) {
+    const prev = { hideName, isPrivate, hideFollowLists };
+    setHideName(next.hideName);
+    setIsPrivate(next.isPrivate);
+    setHideFollowLists(next.hideFollowLists);
     start(async () => {
       try {
         await updateProfile({
@@ -60,156 +87,57 @@ export function AccountSettings({
           nickname: initialNickname,
           avatarUrl,
           favoriteGenres: genres,
-          hideName,
-          isPrivate,
-          hideFollowLists,
+          ...next,
         });
-        setSaved(true);
         router.refresh();
-      } catch (e) {
-        setError((e as Error).message);
+      } catch {
+        /* **الرجوعُ إلى ما كان**: مفتاحُ خصوصيّةٍ يبقى مقلوباً بعد فشلِ
+           الكتابة **يقول للمستخدم إن حسابه أُقفل وهو مفتوح.** */
+        setHideName(prev.hideName);
+        setIsPrivate(prev.isPrivate);
+        setHideFollowLists(prev.hideFollowLists);
+        toast(t.errSaveShort, { tone: "error" });
       }
     });
   }
 
   return (
-    <div className="space-y-4">
-
+    <div className={`${settingsCardRows} ${pending ? "opacity-70" : ""}`}>
       {/* الخصوصية: إخفاء الاسم في التقييمات والمراجعات */}
       {show("hideName") && (
-  <section className="bg-surface border border-border rounded-2xl p-3.5 sm:p-5">
-          <h2 className="text-sm font-bold mb-1">{t.hideNameSection}</h2>
-          <p className="text-xs text-muted leading-relaxed mb-3">{t.hideNameHint}</p>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={hideName}
-            onClick={() => {
-              setHideName((v) => !v);
-              setSaved(false);
-            }}
-            className={`flex items-center gap-3 w-full rounded-xl border px-3 py-2.5 transition ${
-              hideName
-                ? "border-accent bg-accent/10"
-                : "border-border bg-surface-2 hover:border-accent/50"
-            }`}
-          >
-            <span
-              className={`shrink-0 w-11 h-6 rounded-full p-0.5 transition ${
-                hideName ? "bg-accent" : "bg-border"
-              }`}
-            >
-              <span
-                className={`block w-5 h-5 rounded-full bg-white transition-transform ${
-                  hideName ? "translate-x-0" : ""
-                }`}
-                style={{ transform: hideName ? "translateX(-20px)" : "translateX(0)" }}
-              />
-            </span>
-            <span className="text-sm font-semibold">
-              {hideName ? t.hideNameOn : t.hideNameOff}
-            </span>
-          </button>
-        </section>
-        )}
+        <ToggleRow
+          icon="eye-off"
+          label={t.hideNameSection}
+          hint={t.hideNameHint}
+          checked={hideName}
+          onChange={() => commit({ hideName: !hideName, isPrivate, hideFollowLists })}
+        />
+      )}
 
-      {/* الحساب الخاص: المتابعة بطلبٍ يُقبل (follow_requests.sql) —
-          نفس مفتاح إخفاء الاسم شكلاً، والحفظ بزرّ الحفظ نفسه */}
+      {/* الحساب الخاص: المتابعة بطلبٍ يُقبل (follow_requests.sql) */}
       {show("privateAccount") && (
-  <section className="bg-surface border border-border rounded-2xl p-3.5 sm:p-5">
-          <h2 className="text-sm font-bold mb-1">{t.privateSection}</h2>
-          <p className="text-xs text-muted leading-relaxed mb-3">{t.privateHint}</p>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={isPrivate}
-            onClick={() => {
-              setIsPrivate((v) => !v);
-              setSaved(false);
-            }}
-            className={`flex items-center gap-3 w-full rounded-xl border px-3 py-2.5 transition ${
-              isPrivate
-                ? "border-accent bg-accent/10"
-                : "border-border bg-surface-2 hover:border-accent/50"
-            }`}
-          >
-            <span
-              className={`shrink-0 w-11 h-6 rounded-full p-0.5 transition ${
-                isPrivate ? "bg-accent" : "bg-border"
-              }`}
-            >
-              <span
-                className="block w-5 h-5 rounded-full bg-white transition-transform"
-                style={{ transform: isPrivate ? "translateX(-20px)" : "translateX(0)" }}
-              />
-            </span>
-            <span className="text-sm font-semibold">
-              {isPrivate ? t.privateOn : t.privateOff}
-            </span>
-          </button>
-        </section>
-        )}
-
+        <ToggleRow
+          icon="shield"
+          label={t.privateSection}
+          hint={t.privateHint}
+          checked={isPrivate}
+          onChange={() => commit({ hideName, isPrivate: !isPrivate, hideFollowLists })}
+        />
+      )}
 
       {/* قفل قائمتَي المتابعة (هجرة 43): العددان يبقيان ظاهرين في الملف —
           هما هويةٌ كزر المتابعة — والمقفول هو ورقتا الأسماء لغير صاحبها */}
       {show("followLists") && (
-  <section className="bg-surface border border-border rounded-2xl p-3.5 sm:p-5">
-          <h2 className="text-sm font-bold mb-1">{t.followListsSection}</h2>
-          <p className="text-xs text-muted leading-relaxed mb-3">{t.followListsHint}</p>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={hideFollowLists}
-            onClick={() => {
-              setHideFollowLists((v) => !v);
-              setSaved(false);
-            }}
-            className={`flex items-center gap-3 w-full rounded-xl border px-3 py-2.5 transition ${
-              hideFollowLists
-                ? "border-accent bg-accent/10"
-                : "border-border bg-surface-2 hover:border-accent/50"
-            }`}
-          >
-            <span
-              className={`shrink-0 w-11 h-6 rounded-full p-0.5 transition ${
-                hideFollowLists ? "bg-accent" : "bg-border"
-              }`}
-            >
-              <span
-                className="block w-5 h-5 rounded-full bg-white transition-transform"
-                style={{ transform: hideFollowLists ? "translateX(-20px)" : "translateX(0)" }}
-              />
-            </span>
-            <span className="text-sm font-semibold">
-              {hideFollowLists ? t.followListsOn : t.followListsOff}
-            </span>
-          </button>
-        </section>
-        )}
-
-
-
-
-      {error && (
-        <Alert>{error}</Alert>
+        <ToggleRow
+          icon="people"
+          label={t.followListsSection}
+          hint={t.followListsHint}
+          checked={hideFollowLists}
+          onChange={() =>
+            commit({ hideName, isPrivate, hideFollowLists: !hideFollowLists })
+          }
+        />
       )}
-
-      <div className="flex items-center gap-3">
-        <button
-          onClick={save}
-          disabled={pending}
-          className={buttonClass()}
-        >
-          {pending ? t.saving : t.saveSettings}
-        </button>
-        {saved && (
-          <span role="status" className="text-sm text-[color:var(--success)]">
-            {t.savedOk}
-          </span>
-        )}
-      </div>
-
     </div>
   );
 }

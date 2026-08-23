@@ -18,14 +18,13 @@ import {
 } from "@/lib/homePrefs";
 import { type IconName } from "./Icon";
 import { Alert } from "./ui/Alert";
-import { buttonClass } from "./ui/Button";
-import {
-  CardCountRow,
-  PosterSizeRow,
-  SectionOrderList,
-  ToggleRow,
-} from "./ui/SectionOrderList";
+import { CardCountRow, PosterSizeRow, ToggleRow } from "./ui/SectionOrderList";
 import { chipClass, pillTrack } from "./ui/controls";
+import { SettingsGroup } from "./settings/SettingsGroup";
+import { SettingsRow } from "./settings/SettingsRow";
+import { SettingsSaveBar } from "./settings/SettingsSaveBar";
+import { SettingsArrangeSheet } from "./settings/SettingsArrangeSheet";
+import { toast } from "@/lib/toast";
 import { CustomizePreview } from "./CustomizePreview";
 /* **بابٌ ثانٍ للوضع نفسِه** — فيُخبَر مخزنُ التبويب بما حُفظ هنا */
 import { rememberHomeView } from "./HomeViewProvider";
@@ -61,9 +60,17 @@ export function HomeCustomize({
   const t = getDict(locale);
   const router = useRouter();
   const [prefs, setPrefs] = useState<HomePrefs>(() => sanitizeHomePrefs(initial));
-  const [saved, setSaved] = useState(false);
+  /** **ما هو محفوظٌ فعلاً في القاعدة** — به وحده يُعرف «هل هناك ما يُحفظ» */
+  const [base, setBase] = useState<HomePrefs>(() => sanitizeHomePrefs(initial));
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  /** أيُّ سجلٍّ مفتوحٌ في ورقة الترتيب — ولا اثنان معاً */
+  const [arrange, setArrange] = useState<"sections" | "stats" | null>(null);
+
+  /* **المقارنةُ نصّاً لا حقلاً حقلاً**: `HomePrefs` كائنٌ من قيمٍ أوّليّةٍ
+     ومصفوفاتٍ مرتَّبة — **والترتيبُ معنًى فيه**، فالنصُّ يقارنه كلَّه
+     بسطرٍ واحد، **ومقارنةٌ يدويّةٌ تنسى حقلاً عند أوّل حقلٍ يُضاف.** */
+  const dirty = JSON.stringify(prefs) !== JSON.stringify(base);
 
   /* ⚖️ 🆕 **وثلاثةُ مفاتيحَ سقطت من هنا** (D-434): «المستوى» و«المتابعون»
      و«التعليقات والتقييمات» **كانت تتحكّم في ترويسة الحساب**، **وقد
@@ -118,14 +125,12 @@ export function HomeCustomize({
   };
 
   function set(next: HomePrefs) {
-    setSaved(false);
     setPrefs(next);
   }
 
   /* **الاستعادةُ صعدت إلى الترويسة** (D-465) — وتستعيد اللوحَ كلَّه */
   useEffect(() => {
     registerReset?.(() => {
-      setSaved(false);
       setPrefs({ ...DEFAULT_HOME_PREFS });
     });
   }, [registerReset]);
@@ -144,7 +149,10 @@ export function HomeCustomize({
            **ومن غيّره من هنا تغييرٌ صريح** — فلولا هذا السطر لبقيت
            الرئيسيةُ على اختيارٍ سابقٍ من مبدّلها حتى إعادة الفتح. */
         rememberHomeView(prefs.view);
-        setSaved(true);
+        /* **الخطُّ الأساسُ يلحق بما حُفظ** — فيختفي شريطُ الحفظ لأنه لم
+           يعد هناك ما يُحفظ، **ورشّةٌ تقول ثمّ تمضي** (D-555) */
+        setBase(prefs);
+        toast(t.savedToast, { tone: "success" });
         router.refresh();
       } catch (e) {
         setError(t.errSave + (e as Error).message);
@@ -169,9 +177,8 @@ export function HomeCustomize({
         density={prefs.density}
       />
 
-      {/* ===== عناصر الترويسة ===== */}
-      <section className="rounded-2xl border border-border bg-surface overflow-hidden">
-        <h2 className="px-4 pt-3.5 pb-1 text-15 font-bold">{t.custHeaderSection}</h2>
+      {/* ===== ١) الترويسة ===== */}
+      <SettingsGroup label={t.custHeaderSection}>
         {toggles.map(({ key, label, icon }) => (
           <ToggleRow
             key={key}
@@ -181,55 +188,41 @@ export function HomeCustomize({
             onChange={() => set({ ...prefs, [key]: !prefs[key] })}
           />
         ))}
-      </section>
-
-      {/* ===== خانات بطاقة الأرقام — **عنوانٌ خارج البطاقة** كأختِها ===== */}
-      <section>
-        <h2 className="px-1 text-15 font-bold">{t.custStatsCard}</h2>
-        <p className="px-1 mt-0.5 mb-2 text-12 text-muted leading-relaxed">
-          {t.custStatsPickHint}
-        </p>
-
-        <SectionOrderList
-          all={HEADER_STATS}
-          picked={prefs.statsPick}
-          meta={statMeta}
-          labels={orderLabels}
-          min={STATS_PICK_MIN}
-          max={STATS_PICK_MAX}
-          onChange={(statsPick) => set({ ...prefs, statsPick })}
+        {/* 🆕 **سجلُّ الأرقام خرج إلى ورقة** (D-555): **تسعُ خاناتٍ
+            تُسحب داخل صفحةٍ تُمرَّر** — والصفُّ يقول كم منها ظاهرٌ الآن
+            **فلا يُفتح ليُعرف.** */}
+        <SettingsRow
+          icon="chart"
+          title={t.custStatsCard}
+          value={t.custShownN(prefs.statsPick.length)}
+          onClick={() => setArrange("stats")}
         />
-      </section>
+      </SettingsGroup>
 
-      {/* ===== ترتيب الأقسام ===== */}
-      <section>
-        <h2 className="px-1 text-15 font-bold">{t.custSectionsTitle}</h2>
-        <p className="px-1 mt-0.5 mb-2 text-12 text-muted leading-relaxed">
-          {t.custSectionsHint}
-        </p>
-
-        <SectionOrderList
-          all={HOME_SECTIONS}
-          picked={prefs.order}
-          meta={sectionMeta}
-          labels={orderLabels}
-          onChange={(order) => set({ ...prefs, order })}
+      {/* ===== ٢) الأقسام ===== */}
+      <SettingsGroup label={t.custSectionsTitle}>
+        <SettingsRow
+          icon="grip"
+          title={t.custArrange}
+          subtitle={t.custSectionsHint}
+          value={t.custShownN(prefs.order.length)}
+          onClick={() => setArrange("sections")}
         />
-      </section>
+      </SettingsGroup>
 
-      {/* ===== التنسيق وحجم الملصق — **بطاقةٌ واحدةٌ بصفّين** (D-465) =====
+      {/* ===== ٣) العرض =====
           ⚖️ **ونقضُ D-441 مسجَّلٌ باسمه**: جمعتُ هناك «كم بطاقةً في الصفّ»
           و«كم يكبر الملصق» في مفتاحٍ واحدٍ لأنهما بدَوا سؤالاً واحداً —
           **وهما رقمان مخزَّنان أصلاً** (`cards` سقفٌ يقصّ، و`density`
           عرضٌ يكبّر)، **وتصميمُ أحمد يفصلهما فصار الحقُّ معه.** */}
-      <section className="rounded-2xl border border-border bg-surface overflow-hidden">
+      <SettingsGroup label={t.custDisplay}>
         {/* **وضعُ العرض صفٌّ لا بطاقة** (D-466): **البصريُّ والمختصرُ
             والتنسيقُ وحجمُ الملصق أوجهٌ لسؤالٍ واحد — «كيف تُرسم
             الرئيسية»** — **وثلاثُ بطاقاتٍ لسؤالٍ واحد تُقرأ ثلاثةَ
             أقسام.** **والمبدّلُ في الرئيسية هو المبدّلُ نفسُه**،
             والقيمةُ واحدةٌ في العمود (قاعدة ٦). */}
-        <div className="flex items-center gap-3 min-h-14 px-4 py-2.5 border-b border-[color:var(--divider)]">
-          <span className="shrink-0 text-15 font-bold">{t.custHomeView}</span>
+        <div className="flex items-center gap-3 min-h-14 px-4 py-2.5">
+          <span className="shrink-0 text-15 font-semibold">{t.custHomeView}</span>
           <span className="min-w-0 flex-1">
             <span className={pillTrack}>
               {HOME_VIEWS.map((k) => (
@@ -246,8 +239,8 @@ export function HomeCustomize({
             </span>
           </span>
         </div>
-        <div className="flex items-center gap-3 min-h-14 px-4 py-2.5 border-b border-[color:var(--divider)]">
-          <span className="shrink-0 text-15 font-bold">{t.custLayout}</span>
+        <div className="flex items-center gap-3 min-h-14 px-4 py-2.5">
+          <span className="shrink-0 text-15 font-semibold">{t.custLayout}</span>
           <span className="min-w-0 flex-1">
             <CardCountRow
               value={prefs.cards}
@@ -257,33 +250,65 @@ export function HomeCustomize({
           </span>
         </div>
         <div className="flex items-center gap-3 min-h-14 px-4 py-2.5">
-          <span className="min-w-0 flex-1 text-15 font-bold">{t.custPosterSize}</span>
+          <span className="min-w-0 flex-1 text-15 font-semibold">{t.custPosterSize}</span>
           <PosterSizeRow
             value={prefs.density}
             labels={posterLabel}
             onChange={(density) => set({ ...prefs, density })}
           />
         </div>
-      </section>
+      </SettingsGroup>
+
+      {/* ===== أوراقُ الترتيب — واحدةٌ مفتوحةٌ لا اثنتان ===== */}
+      <SettingsArrangeSheet
+        open={arrange === "stats"}
+        title={t.custArrangeStats}
+        hint={t.custStatsPickHint}
+        all={HEADER_STATS}
+        picked={prefs.statsPick}
+        meta={statMeta}
+        labels={orderLabels}
+        min={STATS_PICK_MIN}
+        max={STATS_PICK_MAX}
+        onCancel={() => setArrange(null)}
+        onDone={(statsPick) => {
+          set({ ...prefs, statsPick });
+          setArrange(null);
+        }}
+        cancelLabel={t.cancelLabel}
+        doneLabel={t.doneLabel}
+      />
+      <SettingsArrangeSheet
+        open={arrange === "sections"}
+        title={t.custArrange}
+        hint={t.custOrderHint}
+        all={HOME_SECTIONS}
+        picked={prefs.order}
+        meta={sectionMeta}
+        labels={orderLabels}
+        onCancel={() => setArrange(null)}
+        onDone={(order) => {
+          set({ ...prefs, order });
+          setArrange(null);
+        }}
+        cancelLabel={t.cancelLabel}
+        doneLabel={t.doneLabel}
+      />
 
       {error && (
         <Alert>{error}</Alert>
       )}
 
-      <div className="space-y-2">
-        <button
-          onClick={save}
-          disabled={pending}
-          className={buttonClass({ size: "lg", full: true })}
-        >
-          {pending ? t.saving : t.saveChanges}
-        </button>
-        {saved && (
-          <p role="status" className="text-center text-14 text-[color:var(--success)]">
-            {t.savedOk}
-          </p>
-        )}
-      </div>
+      {/* **شريطُ الحفظ يستيقظ عند وجود ما يُحفظ** (D-555): **زرٌّ مقيمٌ
+          في قاع صفحةٍ طولُها ثلاثُ شاشاتٍ يُقرأ نهايةَ الصفحة لا فعلاً
+          معلَّقاً** — **ويُضغط على صفحةٍ لم يتبدّل فيها شيء.** */}
+      <SettingsSaveBar
+        visible={dirty}
+        pending={pending}
+        onSave={save}
+        saveLabel={t.saveChanges}
+        savingLabel={t.saving}
+      />
     </div>
   );
 }
