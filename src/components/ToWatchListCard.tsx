@@ -89,7 +89,10 @@ export function ToWatchListCard({
            إنها قائمةٌ تُبنى وحدَها لا واحدةً أنشأتَها** */
         icon={<Icon name="bookmark" size={15} style={{ color: "var(--accent)" }} />}
         countText={t.listCount(count)}
-        extra={t.toWatchAutoNote}
+        /* **الفاصلُ على عاتق المستدعي** — عُرفُ `extra` في الهيكل
+           (قارئُ `/news` يمرّره بفاصله)، **ومقيسٌ على المنشور بدونه:
+           «34 titlesBuilt from…» ملتصقتين.** */
+        extra={` · ${t.toWatchAutoNote}`}
         posters={posters.map((p) => posterUrl(p, "w185")).filter(Boolean) as string[]}
         action={
           <span
