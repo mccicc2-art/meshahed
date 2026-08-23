@@ -5,7 +5,7 @@ import { getT } from "@/lib/locale";
 import { Avatar } from "@/components/Avatar";
 import { Icon } from "@/components/Icon";
 import { SettingsPageLayout } from "@/components/settings/SettingsPageLayout";
-import { SettingsGroup } from "@/components/settings/SettingsGroup";
+import { SettingsGroup, settingsCardRows } from "@/components/settings/SettingsGroup";
 import { SettingsRow } from "@/components/settings/SettingsRow";
 import { SignOutRow } from "@/components/settings/SignOutRow";
 
@@ -19,9 +19,37 @@ import { SignOutRow } from "@/components/settings/SignOutRow";
  * **والآن صفحةٌ لكلِّ قسم**: الرابطُ يقول أين أنت، **وزرُّ الرجوع يعني
  * الرجوع**، **والفهرسُ يُقرأ كلُّه في شاشةٍ واحدة** بدل أن يُسحب.
  *
- * ⚠️ **ولا شيءَ سقط**: كلُّ ما كان في التبويبات انتقل إلى صفحته —
- * **والأقسامُ ثلاثٌ لأن الأسئلة ثلاثة**: كيف يبدو التطبيقُ لك · من يراك ·
- * وأين بياناتُك.
+ * ================= 🆕 ثلاثةٌ سقطت من الفهرس (D-555) =================
+ *
+ * **١) زرُّ البحث في الترويسة.** **كان يفتح البحثَ العامّ** — **رمزُ
+ * عدسةٍ في ترويسةِ الإعدادات يَعِد ببحثٍ في الإعدادات ويُخرجك منها إلى
+ * الأفلام.** **ووعدٌ يُخلَف أسوأُ من غيابٍ صريح** (D-030/D-138).
+ * **ووعدُه لا يُنقذه أن البحثَ العامَّ نافع**: البابُ الذي يقول شيئاً
+ * ويفعل غيرَه يُفقد الثقةَ في بقيّة الأبواب.
+ *
+ * **٢) بطاقةُ «Loopz مجّاني».** **لا جدولَ اشتراكاتٍ في القاعدة** —
+ * **فالبطاقةُ تعرض حالةً لا مصدرَ لها وزرَّها يفتح صفحةَ المميزات**،
+ * **وبطاقةٌ كاملةٌ لرابطٍ واحدٍ إلى صفحةٍ تعريفيّة** تحتلّ أثمنَ موضعٍ
+ * في الفهرس (تحت الحساب مباشرة).
+ *
+ * **٣) صفُّ «الاشتراك والفوترة».** **بابُه لوحُ «لم يُبنَ بعد» نفسُه**
+ * — **وهو والبطاقةُ يقولان الشيءَ ذاته مرّتين** (القاعدة ٦).
+ *
+ * **٤) صفُّ «الإشعارات».** **بابُه لوحُ «لم يُبنَ بعد» أيضاً.** **ولم
+ * يُترك صفّاً معطّلاً بشارة «قريباً»** — **وهو الخيارُ الثاني في
+ * المواصفة** — **لأن `SettingsGroup` نفسَها تقول لِمَ**: «قائمةٌ فيها
+ * صفٌّ ميّتٌ تُجرَّب قبل أن تُفهم». **والجرسُ في كلِّ صفحةٍ يبقى مصدرَ
+ * ما وصل**، فلا شيءَ يُفقد.
+ *
+ * ⚠️ **ولا مسارَ حُذف**: `/billing` و`/notifications` قائمتان بشيفرتهما
+ * — **والذي سقط أبوابُها من الفهرس** (شرطُ المواصفة بنصّه). **يومَ
+ * تُبنى القناةُ أو جدولُ الاشتراكات يعود السطر.**
+ *
+ * **وبطاقةُ الحساب صارت صفّين لا صفّاً فيه أزرار** (المواصفة: «بطاقة
+ * حساب واحدة»): **كان فيها زرٌّ بحدٍّ وانحناءٍ داخلَ بطاقةٍ بحدٍّ
+ * وانحناء** — **إطارٌ داخل إطار**، وهو ما تشكوه المواصفةُ بالاسم.
+ * **والآن: صفٌّ يفتح ملفَّك كما يراه الناس، وصفٌّ يفتح تحريرَه** —
+ * **بابان لغرفتين، كلٌّ بصفّه.**
  */
 export default async function SettingsPage() {
   const user = await getUser();
@@ -33,25 +61,14 @@ export default async function SettingsPage() {
   const displayName = profile?.nickname || username || (user.email ?? "").split("@")[0];
 
   return (
-    <SettingsPageLayout
-      title={t.settingsNavHeading}
-      fallbackHref="/"
-      action={
-        /* البحثُ في الإعدادات — **بابُه صفحةُ البحث العامّة حتى يُبنى
-           بحثٌ خاصٌّ بها**: **رمزٌ لا يفعل شيئاً أسوأ من رمزٍ غائب**
-           (D-138)، ولا يُدَّعى بحثٌ لم يُكتب. */
-        <Link
-          href="/search"
-          aria-label={t.setSearchAria}
-          className="grid place-items-center w-11 h-11 -me-2 rounded-full text-foreground hover:text-accent active:scale-95 transition"
-        >
-          <Icon name="search" size={20} />
-        </Link>
-      }
-    >
+    <SettingsPageLayout title={t.settingsNavHeading} fallbackHref="/">
       {/* ===== بطاقةُ الحساب ===== */}
-      <div className="rounded-2xl border border-border bg-surface overflow-hidden">
-        <div className="flex items-center gap-3 p-3.5">
+      <div className={settingsCardRows}>
+        <Link
+          href={username ? `/u/${username}` : "/profile"}
+          aria-label={t.setOpenProfile}
+          className="flex items-center gap-3 p-3.5 transition hover:bg-surface-2 active:opacity-80"
+        >
           <Avatar
             src={profile?.avatar_url ?? null}
             name={displayName}
@@ -69,47 +86,13 @@ export default async function SettingsPage() {
               </span>
             )}
           </span>
-          {/* **زرُّ التعديل وسهمُ الملفّ بابان لغرفتين لا لغرفةٍ واحدة**:
-              هذا يفتح التحرير، والسهمُ يفتح ما يراه الناس. */}
-          <Link
-            href="/profile/edit"
-            className="shrink-0 rounded-2xl border border-border px-3.5 h-9 inline-flex items-center text-12 font-semibold hover:border-accent/50 active:scale-95 transition"
-          >
-            {t.setEditProfile}
-          </Link>
-          {username && (
-            <Link
-              href={`/u/${username}`}
-              aria-label={t.setOpenProfile}
-              className="shrink-0 grid place-items-center w-9 h-9 rounded-full text-muted hover:text-accent active:scale-95 transition"
-            >
-              <Icon name="chevron-down" size={18} className="-rotate-90 rtl:rotate-90" />
-            </Link>
-          )}
-        </div>
-      </div>
-
-      {/* ===== بطاقةُ الخطّة =====
-          ⚠️ **«مجّاني» ليست قيمةً ثابتة بل حالةَ الحساب الحقيقيّة**:
-          **لا جدولَ اشتراكاتٍ في القاعدة بعد**، فكلُّ حسابٍ مجّانيٌّ
-          فعلاً — **والاسمُ يصير من البيانات يومَ توجد** (مسجَّلٌ في
-          `DECISIONS_NEEDED`). */}
-      <div className="rounded-2xl border border-border bg-surface p-3.5 flex items-center gap-3">
-        <span className="shrink-0 grid place-items-center w-10 h-10 rounded-2xl bg-surface-2">
-          <Icon name="sparkle-star" size={22} style={{ color: "var(--accent)" }} />
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block text-15 font-bold truncate">{t.setPlanFree}</span>
-          <span className="block text-12 font-medium text-muted truncate">
-            {t.setPlanFreeSub}
-          </span>
-        </span>
-        <Link
-          href="/features"
-          className="shrink-0 rounded-2xl border border-accent text-accent px-3.5 h-9 inline-flex items-center text-12 font-semibold hover:bg-accent/10 active:scale-95 transition"
-        >
-          {t.setViewPlans}
+          <Icon
+            name="chevron-down"
+            size={18}
+            className="shrink-0 text-muted -rotate-90 rtl:rotate-90"
+          />
         </Link>
+        <SettingsRow href="/profile/edit" icon="edit" title={t.setEditProfile} />
       </div>
 
       <SettingsGroup label={t.setGroupPersonalize}>
@@ -146,12 +129,6 @@ export default async function SettingsPage() {
           title={t.setPrivacy}
           subtitle={t.setPrivacySub}
         />
-        <SettingsRow
-          href="/profile/settings/notifications"
-          icon="bell"
-          title={t.setNotifications}
-          subtitle={t.setNotificationsSub}
-        />
       </SettingsGroup>
 
       <SettingsGroup label={t.setGroupData}>
@@ -161,7 +138,6 @@ export default async function SettingsPage() {
           title={t.setImport}
           subtitle={t.setImportSub}
         />
-        <SettingsRow href="/profile/settings/billing" icon="card" title={t.setBilling} />
         <SettingsRow href="/profile/settings/help" icon="comment" title={t.setHelp} />
         <SettingsRow href="/profile/settings/about" icon="info" title={t.setAbout} />
       </SettingsGroup>
