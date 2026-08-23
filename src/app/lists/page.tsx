@@ -1,5 +1,13 @@
 import { redirect } from "next/navigation";
-import { getUser, getMyLists, getSavedLists } from "@/lib/data";
+import {
+  getUser,
+  getMyLists,
+  getSavedLists,
+  getFollows,
+  getMyListedMovieIds,
+  getProfile,
+} from "@/lib/data";
+import { sanitizeHomePrefs } from "@/lib/homePrefs";
 import { getT } from "@/lib/locale";
 import { ListManager } from "@/components/ListManager";
 import { PublicListsRail } from "@/components/PublicListsRail";
@@ -14,20 +22,46 @@ import { OneTimeHint } from "@/components/OneTimeHint";
  * وتحت قوائمي: «قوائم محفوظة» (D-068) — مراجعُ حيّة إلى قوائم أصحابها،
  * بطاقتها بطاقة اكتشف نفسها بسطر صاحبها: هي قوائم غيرك لا قوائمك، وموضعها
  * بعد صنعك لا بينه.
+ *
+ * 🆕 **وبطاقةُ «للمشاهدة» هنا أيضاً** (D-559): **هذا المسارُ ولوحُ
+ * القوائم في المكتبة يرسمان المكوّنَ نفسَه** (تعليقُ `LibraryGrid`:
+ * «نفس تركيبة صفحة `/lists` حرفياً — لا نسخة ثانية منها») — **ولوحان
+ * يرسمان المكوّنَ نفسَه ويعرضان قائمتين مختلفتين هما بعينهما ما تمنعه
+ * القاعدة ٦.** **والمفتاحُ الذي يُرى في بابٍ ولا يُرى في الآخر يُبحث
+ * عنه.**
  */
 export default async function ListsPage() {
   const user = await getUser();
   if (!user) redirect("/login");
 
   const { locale, t } = await getT();
-  const [lists, saved] = await Promise.all([getMyLists(), getSavedLists()]);
+  const [lists, saved, follows, listedMovieIds, profileRow] = await Promise.all([
+    getMyLists(),
+    getSavedLists(),
+    getFollows(),
+    getMyListedMovieIds().catch(() => new Set<number>()),
+    getProfile().catch(() => null),
+  ]);
+
+  /* **الحسابُ حسابُ المكتبة والرئيسية حرفاً** (D-505): أفلامُك التي لا
+     قائمةَ لها، بترتيب الإضافة. **والفارغُ لا بطاقةَ له** (D-219). */
+  const queue = follows
+    .filter((f) => f.media_type === "movie" && !listedMovieIds.has(f.tmdb_id))
+    .sort((a, b) => a.added_at.localeCompare(b.added_at));
+  const toWatch = queue.length
+    ? {
+        on: sanitizeHomePrefs(profileRow?.home_prefs).toWatch,
+        count: queue.length,
+        posters: queue.slice(0, 3).map((f) => f.poster_path ?? null),
+      }
+    : null;
 
   return (
     <div className="space-y-8">
       {/* العنوان مخفيٌّ بصريًّا وباقٍ لقارئ الشاشة — أُزيلت الترويسة والوصف */}
       <h1 className="sr-only">{t.listsTitle}</h1>
       <OneTimeHint id="lists-intro" text={t.hintLists} closeLabel={t.closeLabel} />
-      <ListManager lists={lists} locale={locale} />
+      <ListManager lists={lists} locale={locale} toWatch={toWatch} />
       {/* العدّاد في العنوان (تدقيق 8 Aug م٣-١): القسم يسكن تحت قوائمك
           وخلف طيّة الجوال — الرقم يقول «عندك محفوظات» قبل أن تصل إليه */}
       <PublicListsRail
