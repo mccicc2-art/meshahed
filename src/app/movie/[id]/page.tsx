@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Suspense } from "react";
+import { Fragment, Suspense } from "react";
 import { redirect, notFound } from "next/navigation";
 import Image from "next/image";
 import {
@@ -20,6 +20,7 @@ import { getMovie, getTrailer, getWatchProviders, backdropUrl, posterUrl } from 
 import { displayWorkTitle } from "@/lib/wikidata";
 import { universeOf } from "@/lib/universes";
 import { getT, getWatchRegion } from "@/lib/locale";
+import { originAdjectives } from "@/lib/region";
 import { type Locale } from "@/lib/i18n";
 import { UniverseSaveRow } from "@/components/UniverseSaveRow";
 import { PublicListsRail } from "@/components/PublicListsRail";
@@ -108,6 +109,13 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
   /* العنوان بالعربية إن لم تترجمه TMDB (D-176) — نفس شرطَي `displayPersonName`
      ونفس صمته، وبعد حارس `!movie` لا قبله. */
   const title = await displayWorkTitle(movieId, "movie", movie.title, locale);
+
+  /* 🆕 **نسبةُ العمل** (D-562) — **حسابٌ محليٌّ من الردّ نفسِه**: لا
+     نداءَ ولا خدمة، **والحقلان كانا يصلان ولا يُقرآن.** */
+  const origins = originAdjectives(
+    { origin: movie.origin_country, production: movie.production_countries },
+    locale,
+  );
 
   /* غلافي المختار (D-131) يسبق غلاف TMDB — **في صفحتي أنا وحدها**
      (ق٨). النقطة واحدة هنا فلا تتفرّق على البطاقات. */
@@ -219,6 +227,23 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
                   <span>{t.minutesCount(movie.runtime)}</span>
                 </>
               ) : null}
+              {/* 🆕 **نسبةُ العمل إلى بلده** (D-562، طلبُ أحمد: «أبغاك
+                  تكتب أعمال تركية أو أعمال مصرية بحيث الشخص يعرف اللهجة
+                  المستخدمة في الفلم»).
+
+                  **ومكانُها سطرُ الهوية لا سطرٌ جديد**: **الجنسيّةُ من
+                  رتبةِ السنة والمدّة** — تُقرأ معهما في نظرةٍ واحدة —
+                  **وسطرٌ رابعٌ في ترويسةٍ فيها أربعةُ أسطرٍ يدفع القصّةَ
+                  خارج الشاشة الأولى** (حجّةُ D-419 و D-501 بحرفها).
+
+                  ⚠️ **والأوّلُ هو اللهجة**: بلدُ المنشأ يتقدّم، **وما
+                  بعده شراكةُ إنتاجٍ لا لسان.** */}
+              {origins.map((o) => (
+                <Fragment key={o}>
+                  <span aria-hidden>·</span>
+                  <span>{o}</span>
+                </Fragment>
+              ))}
             </div>
 
             {/* التقييم سطرٌ مستقلّ تحت البيانات، بشعارَي IMDb وطماطم لا
