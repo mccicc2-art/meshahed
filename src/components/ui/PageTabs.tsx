@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Icon, type IconName } from "../Icon";
 import { segmentedItem } from "./controls";
 import { TabUnderline } from "./TabUnderline";
+import { StickyStuck } from "./StickyStuck";
 
 export interface PageTab {
   key: string;
@@ -94,6 +95,12 @@ export function PageTabs({
    * **وبديلُ الاختفاء طبقةٌ صمّاءُ فوق الشريط** بارتفاع المرساة: حين
    * تكون الترويسةُ ظاهرةً تختفي خلفها، **وحين تنزوي تسدّ الشريطَ الذي
    * تركته** — **فلا يمرّ المحتوى في شقٍّ شفّاف.**
+   *
+   * 🔴 ⚖️ 🆕 **والطبقةُ لا تُرسم إلا وهو ملتصقٌ فعلاً** (D-570، بلاغُ
+   * أحمد بلقطة): **كانت تُرسم دائماً** — **وشريطُ البروفايل يجلس في
+   * وسط الصفحة**، **فطبقةٌ تسدّ شقّاً فوق شريطٍ ملتصق كانت تغطّي
+   * بطاقةَ الأرقام وسطرَ اللقب ونصفَ الصورة الشخصيّة فوق شريطٍ غير
+   * ملتصق.** **والحالةُ تُقاس في `StickyStuck` ولا تُفترض.**
    */
   autoHide?: boolean;
   /**
@@ -179,6 +186,11 @@ export function PageTabs({
     );
   });
 
+  /* **الغلافُ يتبدّل والأصنافُ لا**: من يُخفي شريطَه مع الكسوة لا
+     يحتاج قياساً ولا جافاسكربت — **و`div` عاديّةٌ أرخصُ من مراقبٍ لا
+     يقرؤه أحد.** */
+  const Shell = autoHide ? ("div" as const) : StickyStuck;
+
   return (
     /* الخلفية صمّاء لا شفافة: الملصقات وصور الأعمال تمرّ خلف الرأس.
        والهوامش السالبة تمدّ الخلفية والخطّ إلى حافّتَي الشاشة.
@@ -197,12 +209,9 @@ export function PageTabs({
        **والهامش السالب هنا لا حذفُ `py-6` من `main`:** ذاك يمسّ كلَّ صفحةٍ
        في التطبيق بما فيها ما لا تبويبات لها، وهذا يمسّ من استعمل المكوّن
        وحده. و`pt-1` باقيةٌ — أربعةُ بكسلات تمنع لصقَ الحروف بالترويسة. */
-    <div
+    <Shell
       className={`${
-        autoHide
-          ? "chrome-sub"
-          : /* **الطبقةُ الصمّاءُ فوقه** — بديلُ الاختفاء (D-564) */
-            "relative before:content-[''] before:absolute before:inset-x-0 before:bottom-full before:h-[var(--sticky-top)] before:bg-[color:var(--background)]"
+        autoHide ? "chrome-sub" : "relative"
       } sticky top-[var(--sticky-top)] z-20 -mt-6 -mx-4 px-4 pt-1 bg-[color:var(--background)]${className ? ` ${className}` : ""}`}
     >
       <div className="-mx-4 px-4 flex items-stretch gap-2 border-b border-[color:var(--divider)]">
@@ -237,6 +246,6 @@ export function PageTabs({
       {/* ما تحت الخطّ يبقى داخل الرأس اللاصق ويمرّر معه — والحشو
           السفليّ هنا لا على الحاوية، وإلا فصل الخطَّ عن التبويبات */}
       {extra ? <div className="pt-3 pb-2">{extra}</div> : <div className="pb-2" />}
-    </div>
+    </Shell>
   );
 }
