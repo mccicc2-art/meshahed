@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { HeroRatings, HeroRatingsSkeleton } from "@/components/HeroRatings";
-import { Suspense } from "react";
+import { Fragment, Suspense } from "react";
 import { redirect, notFound } from "next/navigation";
 import Image from "next/image";
 import {
@@ -27,6 +27,7 @@ import { animeExtras } from "@/lib/anilist";
 import { displayWorkTitle } from "@/lib/wikidata";
 import { EpisodeTracker, type SeasonSummary } from "@/components/EpisodeTracker";
 import { getT, getWatchRegion } from "@/lib/locale";
+import { originAdjectives } from "@/lib/region";
 import { DetailTabs } from "@/components/DetailTabs";
 import { TitleCommunityTab } from "@/components/TitleCommunityTab";
 import { RelatedTitles } from "@/components/RelatedTitles";
@@ -109,6 +110,13 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
      في الحالة الغالبة. وبعد حارس `!tv` لا قبله: لا يُسأل عن عملٍ لم يُجلب.
      والفشل صامتٌ فيبقى عنوان TMDB. */
   const title = await displayWorkTitle(tvId, "tv", tv.name, locale);
+
+  /* 🆕 **نسبةُ العمل** (D-562) — **الصفحتان بصفٍّ واحدٍ لا صفَّين**
+     (القاعدة ٦): نفسُ الدالّة ونفسُ الموضع ونفسُ السقف. */
+  const origins = originAdjectives(
+    { origin: tv.origin_country, production: tv.production_countries },
+    locale,
+  );
 
   // كانت الصفحة تجلب حلقات كل المواسم دفعة واحدة — مسلسل بثلاثين موسماً يعني
   // ثلاثين طلب TMDB وآلاف الحلقات تُرسل للمتصفح. الآن: رؤوس المواسم فقط،
@@ -275,6 +283,15 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
               {tv.first_air_date && <span>{tv.first_air_date.slice(0, 4)}</span>}
               <span aria-hidden>·</span>
               <span>{t.seasonsCount(tv.number_of_seasons)}</span>
+              {/* 🆕 **نسبةُ العمل** (D-562، طلبُ أحمد: «بحيث الشخص يعرف
+                  اللهجة المستخدمة») — **في سطر الهوية لا في سطرٍ رابع**،
+                  **والأوّلُ هو اللهجة** وما بعده شراكةُ إنتاج. */}
+              {origins.map((o) => (
+                <Fragment key={o}>
+                  <span aria-hidden>·</span>
+                  <span>{o}</span>
+                </Fragment>
+              ))}
             </div>
 
             {/* المصدر والاستوديو من AniList (D-173) — لِما ثبت أنه أنمي وحده،
