@@ -24,6 +24,8 @@ export function FollowCountButton({
   label,
   locked,
   labels,
+  compact = false,
+  className = "",
 }: {
   targetId: string;
   dir: "followers" | "following";
@@ -32,6 +34,21 @@ export function FollowCountButton({
   /** صاحب الصفحة أقفل قائمتيه (هجرة 43) — العدد يبقى والباب يُقفل */
   locked: boolean;
   labels: { close: string; empty: string; anonymous: string };
+  /**
+   * 🆕 **رمزٌ ورقمٌ بلا كلمة** (D-572، طلبُ أحمد لترويسة الرئيسية:
+   * «خلّها أيقونتين — المتابعين والمتابَعين — ومكتوب العدد، ونفس
+   * النظام القديم: اضغط عليها تطلع صفحة منبثقة»).
+   *
+   * **وفي الملفّ تبقى الكلمةُ**: هناك سطرٌ كاملٌ تحت الاسم، **والكلمةُ
+   * تقول أيَّ عدٍّ هذا بلا تخمين.** **وهنا صفٌّ فيه الاسمُ ومبدّلُ
+   * العرض** — **وكلمتان في هذا الضيق تدفعان الاسمَ إلى القصّ.**
+   *
+   * ⚠️ **والمعنى لا يسقط بسقوط الكلمة**: `aria-label` يحمل «١٢
+   * متابِعاً» كاملةً، **و`title` يقولها لمن حام** — **ورمزٌ عاريان
+   * بلا اسمٍ لقارئ الشاشة عطلٌ لا اختصار** (D-138).
+   */
+  compact?: boolean;
+  className?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [people, setPeople] = useState<PersonLite[] | null>(null);
@@ -48,22 +65,42 @@ export function FollowCountButton({
      على الغلاف إلى خلفيّة الصفحة (D-547)، **فبقي أبيضَ على أبيضَ في
      `daylight`** — **ولونٌ مكتوبٌ بيده ينجو من كلِّ فحصٍ إلا فحصَ
      السمة الثانية.** */
-  const body = (
+  const body = compact ? (
+    <>
+      {/* **رمزان مختلفان لعدَّين مختلفَين** (D-572): **من أتابعهم شخصٌ
+          عليه صحّ** — أنا فعلتُ ذلك — **ومن يتابعونني جماعة.**
+          **ورمزان متطابقان لعدَّين متجاورين لا يقولان أيُّهما أيّ.** */}
+      <Icon name={dir === "followers" ? "people" : "person-check"} size={17} />
+      <span className="font-bold tabular-nums">{count}</span>
+    </>
+  ) : (
     <>
       <span className="font-bold text-foreground tabular-nums">{count}</span>
       <span className="text-muted">{label}</span>
     </>
   );
 
+  const cls = compact
+    ? `shrink-0 inline-flex items-center gap-1 text-14 ${className}`
+    : `shrink-0 flex items-center gap-1 hover:brightness-110 transition ${className}`;
+  /** **المعنى في الوصف حين يغيب من النصّ** — `aria-label` لا زينة */
+  const aria = compact ? `${count} ${label}` : undefined;
+
   if (locked) {
-    return <span className="shrink-0 flex items-center gap-1">{body}</span>;
+    return (
+      <span className={cls} aria-label={aria} title={compact ? label : undefined}>
+        {body}
+      </span>
+    );
   }
 
   return (
     <>
       <button
         type="button"
-        className="shrink-0 flex items-center gap-1 hover:brightness-110 transition"
+        className={`${cls} hover:brightness-110 active:scale-95 transition`}
+        aria-label={aria}
+        title={compact ? label : undefined}
         aria-haspopup="dialog"
         onClick={() => {
           setOpen(true);

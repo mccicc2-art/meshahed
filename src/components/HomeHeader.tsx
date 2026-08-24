@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { getDict, type Locale } from "@/lib/i18n";
 import { Icon, type IconName } from "./Icon";
+import { FollowCountButton } from "./ProfilePeeks";
 import { Avatar } from "./Avatar";
 import { HomeViewSwitch } from "./HomeViewSwitch";
 import { HeaderTrailing } from "./HeaderTrailing";
@@ -116,6 +117,10 @@ export function HomeHeader({
   stats,
   showStats,
   levelPercent,
+  userId,
+  followers = 0,
+  following = 0,
+  hideFollowLists = false,
   locale,
 }: {
   displayName: string;
@@ -141,6 +146,18 @@ export function HomeHeader({
   showStats: boolean;
   /** ⚖️ 🆕 **والهلالُ عاد معها** (D-536/D-439) — **٠ يعني «لا هلال»** */
   levelPercent?: number;
+  /**
+   * 🆕 **عدّادا المتابعة** (D-572، طلبُ أحمد) — **اختياريّةٌ في النوع**
+   * (D-028): **المكوّنُ في `components` والصفحةُ في `app`، دليلان
+   * فكوميتان** — **والكوميتُ الأوّل تقرؤه الصفحةُ القديمةُ التي لا
+   * تمرّرها.** **وغيابُ `userId` يعني ألّا عدّاد** فلا يُرسم رقمٌ
+   * بابُه معطّل (D-217).
+   */
+  userId?: string;
+  followers?: number;
+  following?: number;
+  /** قفلُ قائمتَي المتابعة (هجرة ٤٣) — الرقمُ يبقى والبابُ يُقفل */
+  hideFollowLists?: boolean;
   locale: Locale;
 }) {
   const t = getDict(locale);
@@ -366,28 +383,47 @@ export function HomeHeader({
           {displayName}
         </p>
 
-        {/* 🆕 **بابُ المتابعات** (D-565، طلبُ أحمد بمستطيلٍ على الفراغ
-            بجانب الاسم: «مكان المربّع أحتاج أيقونةً واحدةً للمتابعين
-            وتفتح صفحةً كاملة»).
+        {/* ⚖️ 🆕 **والأيقونةُ الواحدةُ صارت عدّادَين** (D-572، طلبُ
+            أحمد: «خلّها أيقونتين — المتابعين والمتابَعين — ومكتوب
+            العدد، ونفس النظام القديم: اضغط عليها تطلع صفحة منبثقة»).
 
-            **ولماذا أيقونةٌ واحدةٌ لا رقمان**: **الرقمان يسكنان الملفَّ
-            العامّ** (D-561) **حيث يُقرآن عن صاحبهما** — **وهنا بابٌ
-            يُقصد لا حقيقةٌ تُقرأ**، **ورقمان في ترويسةٍ فيها بطاقةُ
-            أرقامٍ تحتها زحامٌ** (D-222).
+            ⚖️ **ونقضٌ مُعلَنٌ لـD-565** بحكمه بعد أن رآها: **رمزٌ
+            أصمُّ لا يقول كم**، **ورقمان يقولان حالتَك قبل أن تضغط** —
+            **وبابٌ يُفتح لمعرفةِ رقمٍ كان يسع الترويسةَ نفسَها.**
 
-            ⚠️ **و٤٤×٤٤ كأخواتها** (D-033/D-168) — **وهي في صفِّ
-            المحتوى لا في الشريط**، فتغادر بالتمرير كبقيّة الصفّ. */}
-        <Link
-          href="/follows"
-          prefetch={false}
-          aria-label={t.followsTitle}
-          title={t.followsTitle}
-          className={`shrink-0 grid place-items-center w-11 h-11 rounded-full active:scale-95 transition ${
-            coverUrl ? "text-white/90 hover:text-white" : "text-foreground/80 hover:text-foreground"
-          }`}
-        >
-          <Icon name="people" size={24} />
-        </Link>
+            **والورقةُ هي ورقةُ الملفّ نفسُها** (`FollowCountButton`،
+            D-561) — **لا مكوّنَ ثانٍ ولا قارئَ ثانٍ** (القاعدة ٦):
+            **نفسُ الحارس** (قفلُ قائمتَي المتابعة، هجرة ٤٣)
+            **ونفسُ السقف.**
+
+            🟡 **ودَينٌ مُعلَن**: صفحةُ `/follows` فقدت بابَها الوحيد —
+            **تُحذف في رفعةٍ لاحقة لا مع بابها** (D-538/D-028)، **ومعها
+            مفتاحاها `followsTabFollowing` و`followsTabFollowers`.**
+            **وتعود بكلمةٍ إن أرادها.** */}
+        {userId && (
+          <span className="shrink-0 flex items-center gap-2.5">
+            <FollowCountButton
+              targetId={userId}
+              dir="following"
+              count={following}
+              label={t.followingLabel}
+              locked={hideFollowLists}
+              compact
+              className={coverUrl ? "text-white/90" : "text-foreground/80"}
+              labels={{ close: t.closeLabel, empty: t.followListEmpty, anonymous: t.anonymousUser }}
+            />
+            <FollowCountButton
+              targetId={userId}
+              dir="followers"
+              count={followers}
+              label={t.followersLabel}
+              locked={hideFollowLists}
+              compact
+              className={coverUrl ? "text-white/90" : "text-foreground/80"}
+              labels={{ close: t.closeLabel, empty: t.followListEmpty, anonymous: t.anonymousUser }}
+            />
+          </span>
+        )}
 
         <HomeViewSwitch locale={locale} />
       </div>
