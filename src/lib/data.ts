@@ -4463,6 +4463,37 @@ export async function getSavedListsBrief(limit = 6): Promise<SavedListBrief[]> {
 }
 
 /**
+ * 🆕 **أيُّ قوائمك رايتُها مرفوعة** (D-563، بلاغُ أحمد: «عجبني زر On
+ * و Off، أبغاه موجود في كل اللستات — مو لازم أدخل بالداخل وأعمل
+ * ستارت واتشينج»).
+ *
+ * **معرِّفاتٌ لا صفوف**: البطاقةُ مرسومةٌ أصلاً من `my_lists()`،
+ * **والناقصُ حرفٌ واحدٌ لكلِّ قائمة** — **فمجموعةُ معرِّفاتٍ أرخصُ من
+ * تغيير نوعِ إرجاعِ دالّةٍ حيّة** (وتغييرُ نوعِ الإرجاع يوجب
+ * `drop function` — وهو ما رفضناه في D-561 لنفس السبب).
+ *
+ * **وتحتمل الهجرةَ غائبة**: قبل ١٢٢ يردّ `eq("is_playlist")` عمودًا
+ * مجهولاً **فتعود المجموعةُ فارغة** — فتُقرأ كلُّ البطاقات «متوقّفة»
+ * ولا تنكسر صفحة.
+ */
+export const getMyPlaylistIds = cache(async (): Promise<string[]> => {
+  try {
+    const supabase = await createClient();
+    const uid = await getUserId();
+    if (!uid) return [];
+    const { data, error } = await supabase
+      .from("user_lists")
+      .select("id")
+      .eq("user_id", uid)
+      .eq("is_playlist", true);
+    if (error || !data) return [];
+    return (data as { id: string }[]).map((r) => String(r.id));
+  } catch {
+    return [];
+  }
+});
+
+/**
  * 🆕 **قوائمُ التشغيل — قوائمُك أنت التي رفعتَ عليها الراية** (D-505،
  * طلبُ أحمد: «يعمل لليست بلاي ليست وتظهر في كنتنيو واتش»).
  *

@@ -2188,6 +2188,11 @@ export async function setListPlaylist(listId: string, on: boolean) {
   revalidatePath(`/lists/${listId}`);
   /* البطاقةُ تسكن الرئيسيةَ — فتتجدّد في الضغطة نفسِها لا في زيارةٍ لاحقة */
   revalidatePath("/");
+  /* 🆕 **وصار للرايةِ مفتاحٌ على البطاقة نفسِها** (D-563) — **فالسطحان
+     اللذان يعرضانه يتجدّدان معه**: تبويبُ القوائم في المكتبة وصفحةُ
+     `/lists`. **ومفتاحٌ يُقلَب ولا يتبدّل جارُه عند الرجوع يُقرأ عطلاً.** */
+  revalidatePath("/library");
+  revalidatePath("/lists");
 }
 
 export async function reorderList(listId: string, keys: string[]) {
