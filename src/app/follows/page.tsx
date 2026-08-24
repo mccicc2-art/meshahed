@@ -4,7 +4,8 @@ import { getUser, getProfile, getFollowStats, displayNameOf } from "@/lib/data";
 import { getT } from "@/lib/locale";
 import { SettingsHeader } from "@/components/settings/SettingsHeader";
 import { segmentedTrackFull, segmentedItem } from "@/components/ui/controls";
-import { PeopleFollowList } from "@/components/PeopleFollowList";
+import { PersonRowLink } from "@/components/PeopleFollowList";
+import { peopleFollowsOf } from "@/lib/actions";
 import { ShareTitleButton } from "@/components/ShareTitleButton";
 import { Icon } from "@/components/Icon";
 import { num } from "@/lib/i18n";
@@ -46,9 +47,20 @@ export default async function FollowsPage({
   const { tab } = await searchParams;
   const dir: "followers" | "following" = tab === "followers" ? "followers" : "following";
 
-  const [profile, stats] = await Promise.all([
+  /* 🔴 🆕 **والأسماءُ تُقرأ على الخادم لا في المتصفّح** (D-565، إصلاحٌ
+     في الجولة نفسِها بعد قياسٍ على الإنتاج): **الصفحةُ الأولى وصلت
+     بهيكلٍ عظميٍّ لا يتبدّل** — **وفعلُ خادمٍ يُستدعى من `useEffect`
+     يشترط ترطيباً ثمّ رحلةَ POST ثمّ رسمةً ثالثة**، **وثلاثُ خطواتٍ
+     لِما يعرفه الخادمُ قبل أوّل بايت ثمنٌ بلا مقابل** (وهو نفسُ درسِ
+     D-515: ما يعرفه الخادمُ يُرسل مع القشرة).
+
+     **والكاتبُ لم يتبدّل**: `peopleFollowsOf` هي الدالّةُ نفسُها
+     بحارسها وسقفها — **تُنادى من هنا بلا رحلةِ شبكة** لأن الصفحةَ
+     خادميّةٌ أصلاً (القاعدة ٦: قارئٌ واحدٌ لا اثنان). */
+  const [profile, stats, people] = await Promise.all([
     getProfile().catch(() => null),
     getFollowStats(user.id),
+    peopleFollowsOf(user.id, dir).catch(() => []),
   ]);
 
   const displayName = displayNameOf(
@@ -128,9 +140,19 @@ export default async function FollowsPage({
         ))}
       </nav>
 
-      {/* **والمفتاحُ هو الاتّجاه** — فلا تبقى أسماءُ التبويب السابق
-          معروضةً بينما يُجلب الجديد (نمطُ `Suspense key` في `/stats`). */}
-      <PeopleFollowList key={dir} targetId={user.id} dir={dir} locale={locale} />
+      {/* **ولا هيكلَ عظميّاً**: الأسماءُ تصل مع أوّل بايت — **والتبويبُ
+          رابطٌ فيُعاد بناءُ الصفحة بأسمائها لا بفراغٍ ينتظر.** */}
+      {people.length === 0 ? (
+        <p className="text-center text-muted py-16 text-sm">{t.followListEmpty}</p>
+      ) : (
+        <ul className="space-y-1 py-1">
+          {people.map((p) => (
+            <li key={p.id}>
+              <PersonRowLink person={p} anonymous={t.anonymousUser} />
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
