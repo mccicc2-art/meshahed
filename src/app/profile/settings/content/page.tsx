@@ -28,12 +28,12 @@ export default async function Page() {
 
   return (
     <SettingsPageLayout title={t.setContent} action={<SettingsDoneAction locale={locale} />}>
-      {/* 🆕 **عنوانُ الصفحة داخل التمرير لا في الترويسة** (D-557، تصميمُ
-          أحمد): **الترويسةُ تقول أين أنت وأنت تمرّر**، **وهذا يقول ما
-          الذي تضبطه** — **وسطرٌ واحدٌ لا يفعل الاثنين.** */}
+      {/* 🆕 **عنوانُ الصفحة داخل التمرير لا في الترويسة** (D-557) —
+          ⚖️ **وبمقاس بقيّة العناوين لا أكبر** (D-560): كان ٢٤/١٤
+          فطغى على الصفحة، **وسلّمُ الإعدادات كلِّه ١٥ · ١٤ · ١٢.** */}
       <header className="px-1 pt-1">
-        <h2 className="text-24 font-black tracking-tight">{t.cpSection}</h2>
-        <p className="text-14 text-muted leading-relaxed mt-1.5">{t.cpHint}</p>
+        <h2 className="text-15 font-bold">{t.cpSection}</h2>
+        <p className="text-12 text-muted leading-relaxed mt-1">{t.cpHint}</p>
       </header>
 
       {/* ⚖️ 🆕 **ومنتقي الأنواع القديم سقط من هذه الصفحة** (D-545).
