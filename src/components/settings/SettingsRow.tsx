@@ -24,6 +24,7 @@ export function SettingsRow({
   value,
   danger = false,
   trailing,
+  expanded,
 }: {
   href?: string;
   onClick?: () => void;
@@ -36,6 +37,12 @@ export function SettingsRow({
   danger?: boolean;
   /** بديلُ السهم — مفتاحٌ أو زرُّ نسخ */
   trailing?: React.ReactNode;
+  /**
+   * 🆕 **صفٌّ يفتح لوحاً تحته** (D-569) — **`aria-expanded` لا زينة**:
+   * **قارئُ الشاشة يقول «مطويّ/مفتوح» فيعرف أن الضغطة تُظهر ولا
+   * تُغادر.** **والغيابُ يعني صفّاً عاديّاً** فلا يتغيّر مستدعٍ قائم.
+   */
+  expanded?: boolean;
 }) {
   const body = (
     <>
@@ -90,7 +97,7 @@ export function SettingsRow({
   }
   if (onClick) {
     return (
-      <button type="button" onClick={onClick} className={cls}>
+      <button type="button" onClick={onClick} aria-expanded={expanded} className={cls}>
         {body}
       </button>
     );

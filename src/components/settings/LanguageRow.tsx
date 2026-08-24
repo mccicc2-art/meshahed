@@ -3,13 +3,13 @@
 import { useState, useTransition } from "react";
 import { setLocale } from "@/lib/actions";
 import { getDict, type Locale } from "@/lib/i18n";
-import { SettingsBottomSheet } from "./SettingsBottomSheet";
 import { SettingsOptionRow, SettingsOptionList } from "./SettingsOptionRow";
-import { SettingsRow } from "./SettingsRow";
+import { SettingsExpandRow } from "./SettingsExpandRow";
 
 /**
- * لغةُ الواجهة — **صفٌّ يقول اللغةَ الحاليّة، وورقةٌ تبدّلها** (D-555،
- * مواصفةُ أحمد: «صفّ واحد يفتح ورقة سفليّة»).
+ * لغةُ الواجهة — **صفٌّ يقول اللغةَ الحاليّة، ولوحٌ تحته يبدّلها**
+ * (D-555، ثمّ ⚖️ D-569: **الورقةُ السفليّةُ صارت توسّعاً في المكان**
+ * بطلب أحمد — الحجّةُ في `SettingsExpandRow`).
  *
  * **وكان مقسَّماً بخطٍّ سفليّ داخل بطاقةٍ فيها عنوانٌ وفقرةُ شرح**:
  * **أربعةُ أسطرٍ لتبديلٍ بين لغتين** — **ولا تقول الصفحةُ في سطرِها
@@ -43,35 +43,25 @@ export function LanguageRow({ locale }: { locale: Locale }) {
   }
 
   return (
-    <>
-      <SettingsRow
-        icon="compass"
-        title={t.languageSection}
-        value={current}
-        onClick={() => setOpen(true)}
-      />
-
-      <SettingsBottomSheet
-        open={open}
-        title={t.languageSection}
-        onCancel={() => setOpen(false)}
-        onDone={() => setOpen(false)}
-        cancelLabel={t.cancelLabel}
-        doneLabel={t.doneLabel}
-      >
-        <div className={`p-4 ${pending ? "opacity-60 pointer-events-none" : ""}`}>
-          <SettingsOptionList label={t.languageSection}>
-            {options.map((o) => (
-              <SettingsOptionRow
-                key={o.id}
-                selected={o.id === locale}
-                title={o.label}
-                onSelect={() => pick(o.id)}
-              />
-            ))}
-          </SettingsOptionList>
-        </div>
-      </SettingsBottomSheet>
-    </>
+    <SettingsExpandRow
+      icon="compass"
+      title={t.languageSection}
+      value={current}
+      open={open}
+      onToggle={() => setOpen((v) => !v)}
+    >
+      <div className={pending ? "opacity-60 pointer-events-none" : ""}>
+        <SettingsOptionList label={t.languageSection}>
+          {options.map((o) => (
+            <SettingsOptionRow
+              key={o.id}
+              selected={o.id === locale}
+              title={o.label}
+              onSelect={() => pick(o.id)}
+            />
+          ))}
+        </SettingsOptionList>
+      </div>
+    </SettingsExpandRow>
   );
 }

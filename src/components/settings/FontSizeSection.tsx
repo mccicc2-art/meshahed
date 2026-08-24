@@ -5,8 +5,7 @@ import { setFontPrefs } from "@/lib/actions";
 import { getDict, type Locale } from "@/lib/i18n";
 import { FONT_SIZES, type FontSize } from "@/lib/fontPrefs";
 import { SettingsOptionRow, SettingsOptionList } from "./SettingsOptionRow";
-import { SettingsRow } from "./SettingsRow";
-import { SettingsBottomSheet } from "./SettingsBottomSheet";
+import { SettingsExpandRow } from "./SettingsExpandRow";
 
 /**
  * «العرض وحجم الخط» — تحكّمان مستقلّان (طلب أحمد ١٩ أغسطس): حجم واجهة
@@ -80,53 +79,37 @@ export function FontSizeSection({
   }
 
   return (
+    /* ⚖️ 🆕 **والورقتان السفليّتان صارتا توسّعاً في المكان** (D-569،
+       طلبُ أحمد بلقطتين) — **وهذا الصفُّ أحوجُ ما يكون إليه**:
+       **الخياراتُ تغيّر حجمَ الخطّ في التطبيق كلِّه لحظةَ اللمس**،
+       **والورقةُ كانت تحجب الصفحةَ التي هي المعاينة.** **والآن يتبدّل
+       ما حولك وأنت تنظر إليه.** */
     <>
-      <SettingsRow
+      <SettingsExpandRow
         icon="sliders"
         title={t.fontUiLabel}
         value={labels[ui]}
-        onClick={() => setOpen("ui")}
-      />
-      <SettingsRow
+        open={open === "ui"}
+        onToggle={() => setOpen((v) => (v === "ui" ? null : "ui"))}
+      >
+        {list(t.fontUiLabel, ui, (s) => {
+          setUi(s);
+          apply(s, content);
+        })}
+      </SettingsExpandRow>
+
+      <SettingsExpandRow
         icon="comment"
         title={t.fontContentLabel}
         value={labels[content]}
-        onClick={() => setOpen("content")}
-      />
-
-      <SettingsBottomSheet
-        open={open === "ui"}
-        title={t.fontUiLabel}
-        onCancel={() => setOpen(null)}
-        onDone={() => setOpen(null)}
-        cancelLabel={t.cancelLabel}
-        doneLabel={t.doneLabel}
-      >
-        <div className="p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
-          {list(t.fontUiLabel, ui, (s) => {
-            setUi(s);
-            apply(s, content);
-            setOpen(null);
-          })}
-        </div>
-      </SettingsBottomSheet>
-
-      <SettingsBottomSheet
         open={open === "content"}
-        title={t.fontContentLabel}
-        onCancel={() => setOpen(null)}
-        onDone={() => setOpen(null)}
-        cancelLabel={t.cancelLabel}
-        doneLabel={t.doneLabel}
+        onToggle={() => setOpen((v) => (v === "content" ? null : "content"))}
       >
-        <div className="p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
-          {list(t.fontContentLabel, content, (s) => {
-            setContent(s);
-            apply(ui, s);
-            setOpen(null);
-          })}
-        </div>
-      </SettingsBottomSheet>
+        {list(t.fontContentLabel, content, (s) => {
+          setContent(s);
+          apply(ui, s);
+        })}
+      </SettingsExpandRow>
     </>
   );
 }
