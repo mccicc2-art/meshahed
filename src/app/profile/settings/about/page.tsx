@@ -34,7 +34,9 @@ export default async function Page() {
       {/* الرأس: الاسمُ ورقمُ البناء — **بلا بطاقةٍ ولا حدّ**، فليس فيه
           ما يُضغط */}
       <div className="text-center pt-2 pb-1">
-        <p className="text-24 font-black tracking-tight">Loopz</p>
+        {/* ⚖️ **الاستثناءُ الوحيد فوق ١٥** (D-560): وردماركٌ لا نصّ —
+            **ونُزل من ٢٤ إلى ٢٠** ليهدأ مع السلّم دون أن يفقد هويّته */}
+        <p className="text-20 font-black tracking-tight">Loopz</p>
         <p className="mt-1 text-12 text-muted" dir="ltr">
           {t.setAboutBuild} {build}
         </p>
