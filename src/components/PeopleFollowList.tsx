@@ -1,10 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Avatar } from "./Avatar";
-import { peopleFollowsOf } from "@/lib/actions";
-import { getDict, type Locale } from "@/lib/i18n";
 import type { PersonLite } from "@/lib/data";
 
 /**
@@ -59,62 +56,5 @@ export function PeopleListSkeleton() {
         </div>
       ))}
     </div>
-  );
-}
-
-/**
- * 🆕 **قائمةُ المتابعات في صفحةٍ كاملة** (D-565، طلبُ أحمد: «أيقونةٌ
- * واحدةٌ للمتابعين تفتح صفحةً كاملة، فيها تبويبان: واحدٌ للتالين
- * والثاني للمتابعين، وفيه زرُّ مشاركة ملفّي وزرُّ إضافة»).
- *
- * **ولماذا تُجلب في العميل والصفحةُ خادميّة:** **`peopleFollowsOf` هي
- * الكاتبُ الوحيدُ لهذا السؤال منذ D-193** — وفيها حارسُ «أخفى قائمتيه»
- * (الهجرة ٤٣) وسقفُ المئتين. **وقارئٌ ثانٍ في `data.ts` كان سيعني
- * حارسَين يفترقان عند أوّل تعديل** (القاعدة ٦). **والصفحةُ تصل بقشرتها
- * فوراً** — الترويسةُ والتبويبان والزرّان — **والأسماءُ تلحق**، وهو
- * ترتيبٌ أفضلُ من قشرةٍ تنتظر مئتَي صفّ.
- *
- * ⚠️ **والمفتاحُ هو الاتّجاه**: تبديلُ التبويب يمرّ بالخادم (رابطٌ لا
- * حالةُ عميل، D-438) **فيُعاد تركيبُ المكوّن بمفتاحٍ جديد** — ولا
- * تبقى أسماءُ التبويب السابق معروضةً بينما يُجلب الجديد.
- */
-export function PeopleFollowList({
-  targetId,
-  dir,
-  locale,
-}: {
-  targetId: string;
-  dir: "followers" | "following";
-  locale: Locale;
-}) {
-  const t = getDict(locale);
-  const [people, setPeople] = useState<PersonLite[] | null>(null);
-
-  useEffect(() => {
-    let alive = true;
-    peopleFollowsOf(targetId, dir)
-      .then((rows) => {
-        if (alive) setPeople(rows);
-      })
-      .catch(() => {
-        if (alive) setPeople([]);
-      });
-    return () => {
-      alive = false;
-    };
-  }, [targetId, dir]);
-
-  if (people === null) return <PeopleListSkeleton />;
-  if (people.length === 0) {
-    return <p className="text-center text-muted py-16 text-sm">{t.followListEmpty}</p>;
-  }
-  return (
-    <ul className="space-y-1 py-1">
-      {people.map((p) => (
-        <li key={p.id}>
-          <PersonRowLink person={p} anonymous={t.anonymousUser} />
-        </li>
-      ))}
-    </ul>
   );
 }
