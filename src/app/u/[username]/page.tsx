@@ -193,6 +193,24 @@ export default async function PublicProfilePage({
   const favShows = favRest.filter((f) => f.media_type === "tv");
   const favMovies = favRest.filter((f) => f.media_type === "movie");
 
+  /* 🆕 **وأيُّهما أوّلاً — بترتيبِ صاحب الصفحة** (D-564، طلبُ أحمد:
+     «أبغى أرتّب الأفلام والمسلسلات وش يظهر أوّل»).
+
+     **ولا مفتاحَ جديد**: **`prefs.order` هو مكانُ هذا السؤال منذ
+     D-129** — قائمةُ السحب في «تخصيص الصفحات ← البروفايل». **وثاني
+     إعدادٍ لترتيبٍ واحدٍ خللٌ** (القاعدة ٦)، **ومن رتّب أقسامَه مرّةً
+     يتوقّع أن يُطاع في كلِّ مكانٍ تُعرض فيه.**
+
+     ⚠️ **والأنمي يذيّلهما دائماً**: **ليس قسماً في السجلّ** (لا مفتاحَ
+     له في `PROFILE_SECTIONS`)، **وإقحامُه فيه كان سيُخفيه عن كلِّ من
+     رتّب أقسامَه قبل اليوم** — ترتيبُه المحفوظُ لا يحوي المفتاحَ
+     الجديد، **فيُقرأ الغيابُ إخفاءً** (D-152). */
+  const favOrder = (["shows", "movies"] as const).slice().sort((a, b) => {
+    const ia = prefs.order.indexOf(a);
+    const ib = prefs.order.indexOf(b);
+    return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
+  });
+
   /* ⚖️ 🆕 **البطاقةُ صارت ثلاثَ خاناتٍ داخل إطار** (D-561، تصميمُ
      أحمد: «Movies · Shows · Full statistics ›»، ونقضٌ مُعلَنٌ لأربعةِ
      D-438).
@@ -694,8 +712,13 @@ export default async function PublicProfilePage({
         )}
       </section>
 
+      {/* 🔴 🆕 **وشريطُ هذه الصفحة لا يختفي مع الكسوة** (D-564، بلاغُ
+          أحمد): **هو الشريطُ الوحيدُ في التطبيق الذي يجلس في وسط
+          الصفحة** — **فتحويلُ `chrome-sub` يرفعه فوق موضعه ويطفو على
+          الصورة الشخصيّة، ويترك مكانَه فراغاً.** الحجّةُ كاملةً في
+          `PageTabs`. */}
       {canView && (
-        <PageTabs items={tabItems} active={tab} ariaLabel={t.profile} asNav />
+        <PageTabs items={tabItems} active={tab} ariaLabel={t.profile} asNav autoHide={false} />
       )}
 
       {/* ===== المفضّلة — ثلاثةُ صفوفٍ ثم صفوفُه بترتيب صاحبها (D-129) =====
@@ -706,24 +729,25 @@ export default async function PublicProfilePage({
           ⚠️ **وتحتها صفوفُه المرتّبة كما هي** (D-129): **الترتيبُ
           إعدادٌ ضبطه صاحبُه ولا يُلغى لأن تبويباً تسمّى باسمٍ آخر** —
           **والتصميمُ لا يعرض ما تحت «Anime» أصلاً**، فلا تناقض. */}
-      {canView && tab === "overview" && favShows.length > 0 && (
-        <PosterRail title={t.shortShows}>
-          {favShows.slice(0, cap(favShows.length)).map((f) => (
-            <RailItem key={`fs-${f.tmdb_id}`}>
-              <PosterCard href={`/show/${f.tmdb_id}`} title={f.title ?? "—"} posterPath={f.poster_path} />
-            </RailItem>
-          ))}
-        </PosterRail>
-      )}
-      {canView && tab === "overview" && favMovies.length > 0 && (
-        <PosterRail title={t.shortMovies}>
-          {favMovies.slice(0, cap(favMovies.length)).map((f) => (
-            <RailItem key={`fm-${f.tmdb_id}`}>
-              <PosterCard href={`/movie/${f.tmdb_id}`} title={f.title ?? "—"} posterPath={f.poster_path} />
-            </RailItem>
-          ))}
-        </PosterRail>
-      )}
+      {canView &&
+        tab === "overview" &&
+        favOrder.map((k) => {
+          const rows = k === "shows" ? favShows : favMovies;
+          if (rows.length === 0) return null;
+          return (
+            <PosterRail key={`fav-${k}`} title={k === "shows" ? t.shortShows : t.shortMovies}>
+              {rows.slice(0, cap(rows.length)).map((f) => (
+                <RailItem key={`fav-${f.media_type}-${f.tmdb_id}`}>
+                  <PosterCard
+                    href={`/${f.media_type === "tv" ? "show" : "movie"}/${f.tmdb_id}`}
+                    title={f.title ?? "—"}
+                    posterPath={f.poster_path}
+                  />
+                </RailItem>
+              ))}
+            </PosterRail>
+          );
+        })}
       {canView && tab === "overview" && favAnime.length > 0 && (
         <PosterRail title={t.discoverTabAnime}>
           {favAnime.slice(0, cap(favAnime.length)).map((f) => (
@@ -737,12 +761,33 @@ export default async function PublicProfilePage({
           ))}
         </PosterRail>
       )}
+      {/* 🔴 🆕 **وصفّان بعنوانٍ واحد في شاشةٍ واحدة** (D-564، بلاغُ
+          أحمد: «و shows مكرّر»).
+
+          **والعطلُ كان لي**: D-561 رفعت المفضّلةَ إلى رأس التبويب
+          **وأبقيت صفوفَه المرتّبة تحتها** — **وأحمد كان قد اختار
+          إسقاطَها وأنا خالفتُه.** **والنتيجةُ صفَّان اسمُهما
+          «مسلسلات»**، **وأوّلُهما جزءٌ من ثانيهما حرفيّاً** (المفضّلةُ
+          مأخوذةٌ من المكتبة نفسِها) — **فالملصقاتُ تتكرّر لا العناوينُ
+          وحدَها.**
+
+          **والقصُّ جراحيّ**: **يسقط قسمُ المكتبة الذي رسمته المفضّلةُ
+          فعلاً** — لا كلُّ الأقسام. **فمن لا مفضّلةَ له في نوعٍ ما
+          يبقى قسمُ مكتبته فيه كما كان** (D-152: لا يتحرّك ما لم
+          يُطلب)، **و«فنّانوك» و«الأعلى تقييماً» و«قوائمه» لا يمسّها
+          شيءٌ** لأنها لا تُكرَّر. */}
       {canView &&
         tab === "overview" &&
-        prefs.order.map((sec) => {
-          const node = sections[sec];
-          return node ? <div key={sec}>{node}</div> : null;
-        })}
+        prefs.order
+          .filter(
+            (sec) =>
+              !(sec === "shows" && favShows.length > 0) &&
+              !(sec === "movies" && favMovies.length > 0),
+          )
+          .map((sec) => {
+            const node = sections[sec];
+            return node ? <div key={sec}>{node}</div> : null;
+          })}
       {/* **وتبويبٌ لا شيءَ فيه يقول ذلك** (D-374): من أخفى كلَّ أقسامه
           ولا مفضّلةَ له كان يرى صفحةً تنتهي عند التبويبات بلا كلمة. */}
       {canView &&
