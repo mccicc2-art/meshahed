@@ -407,6 +407,7 @@ export function HomeHeader({
               dir="following"
               count={following}
               label={t.followingLabel}
+              sheetTitle={t.followsTabFollowing}
               locked={hideFollowLists}
               compact
               className={coverUrl ? "text-white/90" : "text-foreground/80"}
@@ -417,6 +418,7 @@ export function HomeHeader({
               dir="followers"
               count={followers}
               label={t.followersLabel}
+              sheetTitle={t.followsTabFollowers}
               locked={hideFollowLists}
               compact
               className={coverUrl ? "text-white/90" : "text-foreground/80"}

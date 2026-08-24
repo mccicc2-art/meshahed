@@ -26,6 +26,7 @@ export function FollowCountButton({
   labels,
   compact = false,
   className = "",
+  sheetTitle,
 }: {
   targetId: string;
   dir: "followers" | "following";
@@ -49,6 +50,13 @@ export function FollowCountButton({
    */
   compact?: boolean;
   className?: string;
+  /**
+   * 🆕 **عنوانُ الورقة حين يكون `label` لاحقةَ عدٍّ لا اسماً** (D-572):
+   * **«يتابع» تُقرأ صحيحةً بعد رقم** («٥ يتابع») **وتُقرأ خطأً عنواناً
+   * لورقة.** **والغيابُ يعني أن اللاحقةَ تصلح عنواناً** (الإنجليزيّة
+   * غالباً) فلا يتغيّر مستدعٍ قائم.
+   */
+  sheetTitle?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [people, setPeople] = useState<PersonLite[] | null>(null);
@@ -119,7 +127,7 @@ export function FollowCountButton({
           السبب، فبقي بعد أن عولج السبب. */}
       {open && (
       <Sheet open={open} onClose={() => setOpen(false)} closeLabel={labels.close} labelledBy={`fp-${dir}`}>
-        <SheetHeader id={`fp-${dir}`} title={label} closeLabel={labels.close} onClose={() => setOpen(false)} />
+        <SheetHeader id={`fp-${dir}`} title={sheetTitle ?? label} closeLabel={labels.close} onClose={() => setOpen(false)} />
         <div className={`${sheetScroll} pb-2`}>
           {/* ⚖️ 🆕 **والصفُّ والهيكلُ خرجا إلى مكانٍ يقرؤه اثنان**
               (D-565): صفحةُ المتابعات تعرض القائمةَ نفسَها،
