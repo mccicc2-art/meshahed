@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getUser, getProfile } from "@/lib/data";
 import { getT } from "@/lib/locale";
 import { sanitizeSocials } from "@/lib/socials";
+import { sanitizeProfilePrefs } from "@/lib/profilePrefs";
 import { EditProfileForm } from "@/components/settings/EditProfileForm";
 
 /**
@@ -17,6 +18,10 @@ export default async function EditProfilePage() {
   if (!user) redirect("/login");
   const { locale } = await getT();
   const p = await getProfile();
+  /* 🆕 **سجلُّ التخصيص يمرّ كاملاً** (D-561): **اللقبُ يسكنه**، **وحفظُه
+     يستبدل العمودَ كلَّه** — **فالنموذجُ يحتاج ما لا يعرضه كي لا
+     يمحوَه** (D-462). */
+  const prefs = sanitizeProfilePrefs(p?.profile_prefs);
 
   return (
     <EditProfileForm
@@ -25,10 +30,12 @@ export default async function EditProfilePage() {
       locale={locale}
       isPrivate={!!p?.is_private}
       genres={p?.favorite_genres ?? []}
+      prefs={prefs}
       initial={{
         nickname: p?.nickname ?? "",
         username: p?.username ?? "",
         bio: p?.bio ?? "",
+        title: prefs.title,
         avatarUrl: p?.avatar_url ?? null,
         coverUrl: p?.cover_url ?? null,
         coverPos: p?.cover_pos ?? 30,
