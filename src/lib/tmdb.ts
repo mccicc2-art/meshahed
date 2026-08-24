@@ -224,6 +224,14 @@ export interface TvDetails {
   last_episode_to_air: Episode | null;
   networks: { id: number; name: string; logo_path: string | null }[];
   origin_country?: string[];
+  /**
+   * 🆕 **بلدانُ الإنتاج** (D-562) — **يرسلها TMDB في تفاصيل العمل منذ
+   * البداية ولم تكن تُقرأ** (D-261 من جهتها الثانية: حقلٌ موجودٌ لا
+   * يُطلب ولا يُدفع ثمنُه).
+   * ⚠️ **واختياريٌّ لأنه كذلك في المصدر** — **وحقلٌ قد يغيب يُكتب
+   * غائباً** (D-167).
+   */
+  production_countries?: { iso_3166_1: string; name: string }[];
   /** 🆕 D-410 — لغةُ العمل الأصلية: تُرتّب بها «الأعمال المرتبطة» */
   original_language?: string;
 }
@@ -247,6 +255,17 @@ export interface MovieDetails {
   } | null;
   /** معرّف IMDb (tt…) — جسر تقييمات OMDb (طلب أحمد: IMDb/طماطم) */
   imdb_id?: string | null;
+  /** 🆕 **بلدُ المنشأ** (D-562) — **أحدثُ من `production_countries` في
+      واجهة TMDB وقد يغيب**، **وهو الأصدقُ في اللهجة** فيتقدّم عليها. */
+  origin_country?: string[];
+  /**
+   * 🆕 **بلدانُ الإنتاج** (D-562) — **يرسلها TMDB في تفاصيل العمل منذ
+   * البداية ولم تكن تُقرأ** (D-261 من جهتها الثانية: حقلٌ موجودٌ لا
+   * يُطلب ولا يُدفع ثمنُه).
+   * ⚠️ **واختياريٌّ لأنه كذلك في المصدر** — **وحقلٌ قد يغيب يُكتب
+   * غائباً** (D-167).
+   */
+  production_countries?: { iso_3166_1: string; name: string }[];
   /** 🆕 D-410 — لغةُ العمل الأصلية: تُرتّب بها «الأعمال المرتبطة» */
   original_language?: string;
 }
