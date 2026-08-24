@@ -5,9 +5,9 @@ import Link from "next/link";
 import Image from "next/image";
 import { Sheet, SheetHeader } from "./ui/Sheet";
 import { sheetScroll } from "./ui/controls";
-import { Avatar } from "./Avatar";
 import { Icon, type IconName } from "./Icon";
 import { peopleFollowsOf } from "@/lib/actions";
+import { PersonRowLink, PeopleListSkeleton } from "./PeopleFollowList";
 import type { PersonLite } from "@/lib/data";
 
 /**
@@ -84,47 +84,25 @@ export function FollowCountButton({
       <Sheet open={open} onClose={() => setOpen(false)} closeLabel={labels.close} labelledBy={`fp-${dir}`}>
         <SheetHeader id={`fp-${dir}`} title={label} closeLabel={labels.close} onClose={() => setOpen(false)} />
         <div className={`${sheetScroll} pb-2`}>
+          {/* ⚖️ 🆕 **والصفُّ والهيكلُ خرجا إلى مكانٍ يقرؤه اثنان**
+              (D-565): صفحةُ المتابعات تعرض القائمةَ نفسَها،
+              **ونسخُ صفٍّ بصورةٍ واسمٍ ومعرّف كان سيفترق عند أوّل
+              تعديل** (القاعدة ٣/D-145). */}
           {people === null ? (
-            <div className="space-y-2 py-1" aria-hidden>
-              {Array.from({ length: 5 }, (_, i) => (
-                <div key={i} className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-surface-2 animate-pulse" />
-                  <div className="h-3.5 w-1/2 rounded bg-surface-2 animate-pulse" />
-                </div>
-              ))}
-            </div>
+            <PeopleListSkeleton />
           ) : people.length === 0 ? (
             <p className="text-center text-muted py-10 text-sm">{labels.empty}</p>
           ) : (
             <ul className="space-y-1 py-1">
-              {people.map((p) => {
-                const name = p.nickname || p.username || labels.anonymous;
-                const row = (
-                  <span className="flex items-center gap-3 rounded-xl px-1.5 py-1.5 hover:bg-surface-2 transition">
-                    <Avatar src={p.avatar_url} name={name} size={40} alt="" />
-                    <span className="min-w-0">
-                      <span className="block text-14 font-semibold truncate">{name}</span>
-                      {p.username && (
-                        <span className="block text-12 text-muted truncate" dir="ltr">
-                          @{p.username}
-                        </span>
-                      )}
-                    </span>
-                  </span>
-                );
-                return (
-                  <li key={p.id}>
-                    {/* مخفي الاسم بلا صفحةٍ تُقصد (D-011) — صفٌّ بلا رابط */}
-                    {p.username || p.nickname ? (
-                      <Link href={`/u/${p.username ?? p.id}`} prefetch={false} onClick={() => setOpen(false)}>
-                        {row}
-                      </Link>
-                    ) : (
-                      row
-                    )}
-                  </li>
-                );
-              })}
+              {people.map((p) => (
+                <li key={p.id}>
+                  <PersonRowLink
+                    person={p}
+                    anonymous={labels.anonymous}
+                    onNavigate={() => setOpen(false)}
+                  />
+                </li>
+              ))}
             </ul>
           )}
         </div>

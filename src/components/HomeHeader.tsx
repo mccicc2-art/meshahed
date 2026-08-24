@@ -3,7 +3,6 @@ import Image from "next/image";
 import { getDict, type Locale } from "@/lib/i18n";
 import { Icon, type IconName } from "./Icon";
 import { Avatar } from "./Avatar";
-import { HomeGreeting } from "./HomeGreeting";
 import { HomeViewSwitch } from "./HomeViewSwitch";
 import { HeaderTrailing } from "./HeaderTrailing";
 import { LogoWordmark } from "./Logo";
@@ -53,11 +52,25 @@ import { LogoWordmark } from "./Logo";
    ⚠️ **والصندوقُ لم يُمسّ**: `--safe-top + 9.5rem` — **منتصفُ بطاقة
    الأرقام، وهو خطُّ أحمد الأحمر من D-553** ولم يشكُ منه. */
 
-/** **الحجاب**: ظلامُ السقف، تامٌّ عند الساعة، يتدرّج من صفِّ الأيقونات */
+/** **الحجاب**: ظلامُ السقف، تامٌّ عند الساعة، يتدرّج من صفِّ الأيقونات
+ *
+ * ⚖️ 🆕 **والإنارةُ ارتفعت** (D-565، طلبُ أحمد بخطٍّ أزرقَ تحت صفِّ
+ * الوردمارك: «هنا الإنارة ارفعها شوي»).
+ *
+ * **وخطُّه عند `--safe-top + 41` تقريباً** — **أوّلُ ما تحت صفِّ
+ * الأيقونات مباشرةً.** **وكان الحجابُ هناك ٠٫٧٩** لأن انحداره يمتدّ
+ * إلى `+97`. **فارتفعت العقدةُ الثالثةُ إلى `+72` وخفّت إلى ٠٫٣٤** —
+ * **فيصير عند خطّه ٠٫٦ لا ٠٫٧٩**، ويستعيد الفنُّ نفسَه بعده بسرعة.
+ *
+ * ⚠️ **والعقدتان الأوليان لم تُمسّا** (٠٫٩٦ عند الساعة و٠٫٨٢ عند مركز
+ * صفِّ الأيقونات): **هما ما يجعل الوردماركَ والجرسَ مقروءَين على أيِّ
+ * فنّ** — **وهو الثمنُ الذي دُفع في D-556 حين عاد الحجاب.**
+ * **والمطلوبُ رفعُ الإنارة تحتهما لا كشفُ السقف.**
+ */
 const COVER_SCRIM =
   "linear-gradient(180deg, rgba(0,0,0,0.96) 0," +
   " rgba(0,0,0,0.82) calc(var(--safe-top) + 32px)," +
-  " rgba(0,0,0,0.42) calc(var(--safe-top) + 97px)," +
+  " rgba(0,0,0,0.34) calc(var(--safe-top) + 72px)," +
   " rgba(0,0,0,0) 100%)";
 
 /** **القناع**: الصورةُ تامّةٌ إلى خطِّه الثاني، ثمّ تذوب إلى العدم */
@@ -341,9 +354,40 @@ export function HomeHeader({
           </span>
         </Link>
 
-        <div className="min-w-0 flex-1">
-          <HomeGreeting name={displayName} locale={locale} />
-        </div>
+        {/* ⚖️ 🆕 **والتحيّةُ سقطت، وبقي الاسم** (D-565، طلبُ أحمد:
+            «وكذلك جود مورنينج وصباح الخير احذفها»).
+
+            **وسطرٌ يتبدّل بالساعة يقول شيئاً لا يفعله القارئ** —
+            **والاسمُ وحدَه يكفي للتعريف بمن سجّل دخولَه**، وهو مرسومٌ
+            من الخادم بلا انتظار. ⚠️ **و`HomeGreeting` فقدت قارئها
+            الوحيد** — تُحذف في رفعةٍ لاحقة لا مع قارئها (D-538/D-028)،
+            **ومعها مفاتيحُ `greet*` الخمسة.** */}
+        <p className="min-w-0 flex-1 truncate text-15 font-bold leading-tight">
+          {displayName}
+        </p>
+
+        {/* 🆕 **بابُ المتابعات** (D-565، طلبُ أحمد بمستطيلٍ على الفراغ
+            بجانب الاسم: «مكان المربّع أحتاج أيقونةً واحدةً للمتابعين
+            وتفتح صفحةً كاملة»).
+
+            **ولماذا أيقونةٌ واحدةٌ لا رقمان**: **الرقمان يسكنان الملفَّ
+            العامّ** (D-561) **حيث يُقرآن عن صاحبهما** — **وهنا بابٌ
+            يُقصد لا حقيقةٌ تُقرأ**، **ورقمان في ترويسةٍ فيها بطاقةُ
+            أرقامٍ تحتها زحامٌ** (D-222).
+
+            ⚠️ **و٤٤×٤٤ كأخواتها** (D-033/D-168) — **وهي في صفِّ
+            المحتوى لا في الشريط**، فتغادر بالتمرير كبقيّة الصفّ. */}
+        <Link
+          href="/follows"
+          prefetch={false}
+          aria-label={t.followsTitle}
+          title={t.followsTitle}
+          className={`shrink-0 grid place-items-center w-11 h-11 rounded-full active:scale-95 transition ${
+            coverUrl ? "text-white/90 hover:text-white" : "text-foreground/80 hover:text-foreground"
+          }`}
+        >
+          <Icon name="people" size={24} />
+        </Link>
 
         <HomeViewSwitch locale={locale} />
       </div>
