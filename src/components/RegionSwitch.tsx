@@ -70,7 +70,7 @@ export function RegionSwitch({ locale, region }: { locale: Locale; region: strin
             {regionFlag(current)}
           </span>
           <span className="min-w-0 flex-1">
-            <span className="block text-15 font-bold truncate" dir="auto">
+            <span className="block text-15 font-semibold truncate" dir="auto">
               {regionName(current, loc)}
             </span>
             <span className="block text-12 text-muted truncate mt-0.5" dir="auto">
