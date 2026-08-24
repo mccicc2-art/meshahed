@@ -334,6 +334,32 @@ export async function getProfileAnimeFlags(userId: string): Promise<Map<string, 
   }
 }
 
+/**
+ * 🆕 **معرّفُ قائمة مفضّلتي** (D-567) — **صفٌّ واحدٌ بعلامةٍ واحدة.**
+ *
+ * **ولا يُقرأ من `getMyLists`**: تلك تُرجع صفوفاً بملصقاتها وعدّاداتها،
+ * **والمطلوبُ هنا معرّفٌ واحد** — **ونداءٌ بعمودٍ واحدٍ أرخصُ من قراءةِ
+ * قوائمك كلِّها لأجل حرفٍ منها.** **والغيابُ يعني أنك لم تقلب قلباً
+ * بعد** (القائمةُ تُولد عند أوّل قلب، D-130) — **فلا زرَّ ترتيب.**
+ */
+export const getMyFavoritesListId = cache(async (): Promise<string | null> => {
+  try {
+    const supabase = await createClient();
+    const uid = await getUserId();
+    if (!uid) return null;
+    const { data, error } = await supabase
+      .from("user_lists")
+      .select("id")
+      .eq("user_id", uid)
+      .eq("kind", "favorites")
+      .maybeSingle();
+    if (error || !data) return null;
+    return String((data as { id: string }).id);
+  } catch {
+    return null;
+  }
+});
+
 /** مفتاح خريطة الأغلفة — نوعٌ ومعرّف، لا نصٌّ حرّ */
 export function artKey(mediaType: string, tmdbId: number) {
   return `${mediaType}-${tmdbId}`;
