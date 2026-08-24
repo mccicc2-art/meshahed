@@ -7,6 +7,7 @@ import { getDict, type Locale } from "@/lib/i18n";
 import { Icon } from "./Icon";
 import { CommunityListCard } from "./PublicListsRail";
 import { ToWatchListCard } from "./ToWatchListCard";
+import { ListPlayToggle } from "./ListPlayToggle";
 import type { UserList } from "@/lib/data";
 import dynamic from "next/dynamic";
 /* الورقةُ تُحمَّل عند أوّل فتحٍ لا مع الصفحة (نمطُ TitleSearchSheet في
@@ -32,6 +33,7 @@ export function ListManager({
   stats,
   locale,
   toWatch,
+  playlistIds,
 }: {
   lists: UserList[];
   /**
@@ -49,6 +51,13 @@ export function ListManager({
    * فلا تُقيَّم — نصُّ الهجرة ١٠٥).
    */
   stats?: Map<string, { saves: number; rating: number | null }>;
+  /**
+   * 🆕 **أيُّ قوائمك رايتُها مرفوعة** (D-563) — **والغيابُ يعني «لا
+   * مفتاح»** لا «كلُّها متوقّفة**: **مستدعٍ لم يمرّرها لا يجوز أن
+   * يرسم مفتاحاً يكذب** (D-217)، **وهو أيضاً ما يجعل هذا الكوميت
+   * يُبنى وحدَه قبل أن تمرّرها الصفحتان** (D-028).
+   */
+  playlistIds?: string[];
   locale: Locale;
 }) {
   const t = getDict(locale);
@@ -56,6 +65,9 @@ export function ListManager({
   /* المشاركة من صفحة القوائم نفسها (طلب المالك): زرٌّ على البطاقة يفتح
      نفس ورقة مشاركة صفحة القائمة — مكوّنٌ واحد لا نسختان */
   const [shareFor, setShareFor] = useState<UserList | null>(null);
+  /* **مجموعةٌ لا مصفوفة**: البحثُ يقع مرّةً لكلِّ بطاقة، **و`includes`
+     على مصفوفةٍ داخل `map` مسحٌ داخل مسح.** */
+  const playlists = playlistIds ? new Set(playlistIds) : null;
 
   return (
     <div>
@@ -130,6 +142,23 @@ export function ListManager({
                   action={
                     /* ⚠️ **زرٌّ داخل بطاقةٍ رابط** — فالحدثُ يُوقَف عنده
                        (D-339/D-155)، **وإلّا شارك وفتح الصفحة في لمسة.** */
+                    <span className="shrink-0 flex items-center gap-1">
+                    {/* 🆕 **مفتاحُ التشغيل قبل المشاركة** (D-563، طلبُ
+                        أحمد): **حالةٌ تُقرأ قبل فعلٍ يُفعل** —
+                        **والرقاقةُ تحمل كلمتَها فتُقرأ بلا ضغطة**،
+                        والمشاركةُ رمزٌ يُقصد قصداً.
+                        ⚠️ **ولا مفتاحَ لقائمةٍ فارغة**: رايةٌ على قائمةٍ
+                        بلا أعمالٍ **لا تُظهر شيئاً في «تابِع
+                        المشاهدة»** — **ومفتاحٌ يَعِد بما لا يقع يكذب**
+                        (D-217)، وهو نفسُ شرطِ الصفِّ في ورقة الأدوات
+                        (`visible.length > 0`). */}
+                    {playlists && l.item_count > 0 && (
+                      <ListPlayToggle
+                        listId={l.id}
+                        locale={locale}
+                        initialOn={playlists.has(l.id)}
+                      />
+                    )}
                     <button
                       type="button"
                       onClick={(e) => {
@@ -143,6 +172,7 @@ export function ListManager({
                     >
                       <Icon name="share" size={16} />
                     </button>
+                    </span>
                   }
                 />
               </li>

@@ -8,6 +8,7 @@ import { tap } from "@/lib/haptics";
 import { toast, flashError } from "@/lib/toast";
 import { Icon } from "./Icon";
 import { ListCardShell } from "./PublicListsRail";
+import { PlayPill } from "./ListPlayToggle";
 
 /**
  * **«للمشاهدة» بطاقةً في قوائم المكتبة** (D-559، بلاغُ أحمد: «تو واتش
@@ -94,18 +95,12 @@ export function ToWatchListCard({
            «34 titlesBuilt from…» ملتصقتين.** */
         extra={` · ${t.toWatchAutoNote}`}
         posters={posters.map((p) => posterUrl(p, "w185")).filter(Boolean) as string[]}
-        action={
-          <span
-            className={`shrink-0 inline-flex items-center gap-1 rounded-full px-2 h-7 text-12 font-bold ${
-              on
-                ? "bg-accent text-[color:var(--on-accent)]"
-                : "bg-surface-2 text-muted border border-border"
-            }`}
-          >
-            <Icon name={on ? "play" : "pause"} size={13} />
-            {on ? t.toWatchOn : t.toWatchOff}
-          </span>
-        }
+        /* ⚖️ 🆕 **والرقاقةُ خرجت إلى `PlayPill`** (D-563): طلبها أحمد
+           على كلِّ بطاقةٍ لا على هذه وحدَها — **ونسخُها هناك كان سيصنع
+           رقاقتين تفترقان عند أوّل تعديل** (القاعدة ٣/D-145). **الشكلُ
+           واحدٌ والفعلُ مختلف**: هذه تكتب تفضيلَ الرئيسية، وتلك رايةَ
+           قائمة. */
+        action={<PlayPill on={on} locale={locale} />}
       />
     </button>
   );
