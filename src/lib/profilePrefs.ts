@@ -84,6 +84,18 @@ export interface ProfilePrefs {
   density: Density;
   /** سقفُ بطاقات الصفّ — يقصّ ولا يمدّ (D-152) */
   cards: CardCount;
+  /**
+   * 🆕 **لقبٌ قصيرٌ تحت الصورة** (D-561، تصميمُ أحمد: «Story lover»).
+   *
+   * **ولماذا هنا لا عموداً في `profiles`:** هذا السجلُّ **هو ما يراه
+   * زائرُك** بنصِّ رأسِ هذا الملفّ، **واللقبُ سطرٌ لا يُكتب إلا ليُقرأ
+   * من الخارج** — **وعمودٌ جديد يعني هجرةً وإعادةَ بناءِ `public_profiles`
+   * لأجل أربعةٍ وعشرين حرفاً** (نفسُ حجّة `home_prefs.toWatch` في D-559).
+   *
+   * ⚠️ **والفراغُ ليس غياباً بل ارتدادٌ إلى اسم المستوى** — تُقرَّر في
+   * الصفحة لا هنا، **فالسجلُّ يحفظ ما كُتب لا ما يُعرض.**
+   */
+  title: string;
 }
 
 export const DEFAULT_PROFILE_PREFS: ProfilePrefs = {
@@ -97,6 +109,8 @@ export const DEFAULT_PROFILE_PREFS: ProfilePrefs = {
   order: ["shows", "movies", "lists", "ratings"],
   density: "comfortable",
   cards: "full",
+  /** **والفراغُ هو الافتراضي** — من لم يكتب لقباً يُعرض اسمُ مستواه */
+  title: "",
 };
 
 /**
@@ -138,5 +152,12 @@ export function sanitizeProfilePrefs(raw: unknown): ProfilePrefs {
     order,
     cards: sanitizeCardCount(o.cards),
     density: sanitizeDensity(o.density),
+    /* **المسافاتُ تُطوى والحدُّ أربعةٌ وعشرون** — كنبذةِ `updateProfile`
+       حرفاً: **سطرٌ يجلس بين الاسم والعدّادات لا يحتمل فقرةً**، **والقصُّ
+       هنا لا في الرسم** فلا يُخزَّن ما لا يُعرض. */
+    title:
+      typeof o.title === "string"
+        ? o.title.replace(/\s+/g, " ").trim().slice(0, 24)
+        : d.title,
   };
 }

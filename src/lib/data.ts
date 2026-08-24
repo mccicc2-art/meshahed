@@ -302,6 +302,38 @@ export const getMyAnimeFlags = cache(
   },
 );
 
+/**
+ * 🆕 **علَمُ الأنمي لصاحبِ ملفٍّ أزوره** (D-561) — **توأمُ
+ * `getMyAnimeFlags` لا نسخته**: نفسُ الخريطة بمفتاحها نفسِه،
+ * **والمختلفُ المعيار** (صاحبُ الصفحة لا أنا) **والبوّابةُ**
+ * (`can_view_profile` داخل الدالّة).
+ *
+ * **ولماذا دالّةٌ ثالثةٌ صغيرة لا عمودٌ يُضاف إلى `user_public_follows`:**
+ * **تغييرُ نوعِ إرجاعِ دالّةٍ قائمةٍ يوجب إسقاطَها أوّلاً** — وإسقاطُ
+ * دالّةٍ تقرؤها صفحةٌ حيّةٌ يعني ثوانيَ تكون فيها مكتبةُ كلِّ زائرٍ
+ * فارغة. **وهذه إضافةٌ خالصة**: تُشغَّل فيظهر صفُّ الأنمي، ولا تُشغَّل
+ * فيبقى كلُّ شيءٍ كما هو اليوم (**خريطةٌ فارغة، ولا صفَّ أنمي، ولا
+ * عطل**) — وهي حجّةُ D-182 بحرفها.
+ *
+ * ⚠️ **وتُقرأ المفضّلةُ بها أيضاً**: صفوفُ المفضّلة عناوينُ في
+ * `user_list_items` **ولا علَمَ فيها** — **والعلَمُ في `follows`
+ * وحدَها**، فالخريطةُ واحدةٌ لقارئَين.
+ */
+export async function getProfileAnimeFlags(userId: string): Promise<Map<string, boolean>> {
+  const out = new Map<string, boolean>();
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("profile_anime_flags", { p_user: userId });
+    if (error || !data) return out;
+    for (const r of data as { tmdb_id: number; media_type: string; is_anime: boolean | null }[]) {
+      if (r.is_anime) out.set(`${r.media_type}-${r.tmdb_id}`, true);
+    }
+    return out;
+  } catch {
+    return out;
+  }
+}
+
 /** مفتاح خريطة الأغلفة — نوعٌ ومعرّف، لا نصٌّ حرّ */
 export function artKey(mediaType: string, tmdbId: number) {
   return `${mediaType}-${tmdbId}`;

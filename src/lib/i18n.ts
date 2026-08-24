@@ -1460,6 +1460,13 @@ const ar = {
   custPosterL: "ملصقٌ كبير",
 
   profileTabOverview: "نظرة عامة",
+  /* 🆕 تصميمُ البروفايل (D-561) */
+  profileTabFavorites: "المفضّلة",
+  profileFullStats: "الإحصائيات الكاملة",
+  profileEmptyFavorites: "لا مفضّلات بعد",
+  profileTitleLabel: "اللقب",
+  profileTitlePlaceholder: "محبٌّ للقصص",
+  profileTitleHint: "سطرٌ قصير يظهر تحت صورتك — ٢٤ حرفاً. اتركه فارغاً ليظهر اسمُ مستواك.",
   profileTabLists: "القوائم",
   profileRecent: "النشاط الأخير",
   profileTopRated: "الأعلى تقييماً",
@@ -3017,6 +3024,12 @@ const en: Dict = {
   custPosterL: "Large poster",
 
   profileTabOverview: "Overview",
+  profileTabFavorites: "Favorites",
+  profileFullStats: "Full statistics",
+  profileEmptyFavorites: "No favourites yet",
+  profileTitleLabel: "Title",
+  profileTitlePlaceholder: "Story lover",
+  profileTitleHint: "A short line under your picture — 24 characters. Leave it empty to show your level name.",
   profileTabLists: "Lists",
   profileRecent: "Recent activity",
   profileTopRated: "Top rated",
