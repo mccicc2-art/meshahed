@@ -5,6 +5,7 @@ import {
   getSavedLists,
   getFollows,
   getMyListedMovieIds,
+  getMyPlaylistIds,
   getProfile,
 } from "@/lib/data";
 import { sanitizeHomePrefs } from "@/lib/homePrefs";
@@ -35,12 +36,16 @@ export default async function ListsPage() {
   if (!user) redirect("/login");
 
   const { locale, t } = await getT();
-  const [lists, saved, follows, listedMovieIds, profileRow] = await Promise.all([
+  const [lists, saved, follows, listedMovieIds, profileRow, playlistIds] = await Promise.all([
     getMyLists(),
     getSavedLists(),
     getFollows(),
     getMyListedMovieIds().catch(() => new Set<number>()),
     getProfile().catch(() => null),
+    /* 🆕 **رايةُ التشغيل لكلِّ قائمة** (D-563) — **داخل الموجة نفسِها**:
+       نداءٌ واحدٌ بعمودٍ واحدٍ لصاحب الجلسة، **وموجةٌ ثانيةٌ لحرفٍ في
+       بطاقةٍ ثمنٌ بلا مقابل.** */
+    getMyPlaylistIds(),
   ]);
 
   /* **الحسابُ حسابُ المكتبة والرئيسية حرفاً** (D-505): أفلامُك التي لا
@@ -61,7 +66,12 @@ export default async function ListsPage() {
       {/* العنوان مخفيٌّ بصريًّا وباقٍ لقارئ الشاشة — أُزيلت الترويسة والوصف */}
       <h1 className="sr-only">{t.listsTitle}</h1>
       <OneTimeHint id="lists-intro" text={t.hintLists} closeLabel={t.closeLabel} />
-      <ListManager lists={lists} locale={locale} toWatch={toWatch} />
+      <ListManager
+        lists={lists}
+        locale={locale}
+        toWatch={toWatch}
+        playlistIds={playlistIds}
+      />
       {/* العدّاد في العنوان (تدقيق 8 Aug م٣-١): القسم يسكن تحت قوائمك
           وخلف طيّة الجوال — الرقم يقول «عندك محفوظات» قبل أن تصل إليه */}
       <PublicListsRail
