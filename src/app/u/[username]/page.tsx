@@ -16,6 +16,7 @@ import {
   getProfileFavorites,
   getProfileArt,
   getProfileAnimeFlags,
+  getMyFavoritesListId,
   artKey,
   displayNameOf,
 } from "@/lib/data";
@@ -36,6 +37,7 @@ import { PageTabs, type PageTab } from "@/components/ui/PageTabs";
 import { ShareTitleButton } from "@/components/ShareTitleButton";
 import { SpoilerText } from "@/components/SpoilerText";
 import { FollowCountButton } from "@/components/ProfilePeeks";
+import { FavoritesRail } from "@/components/FavoritesRail";
 import {
   PROFILE_SECTIONS,
   profileSectionMeta,
@@ -99,6 +101,7 @@ export default async function PublicProfilePage({
     rawFavorites,
     profileArt,
     animeFlags,
+    favListId,
   ] = await Promise.all([
       getRatingsOf(profile.id),
       getFollowStats(profile.id),
@@ -120,6 +123,10 @@ export default async function PublicProfilePage({
          الأنمي**، **وقبل تشغيل الهجرة ١٢٩ يُرجع فراغاً** فيغيب صفُّ
          الأنمي ولا ينكسر شيء. */
       getProfileAnimeFlags(profile.id),
+      /* 🆕 **معرّفُ قائمة مفضّلتي** (D-567) — **لصاحب الصفحة وحدَه**:
+         **زرُّ ترتيبٍ في صفحةِ غيرك يكتب في قائمته** (ق٨/D-217)،
+         **ونداءٌ لا يُقرأ ثمنٌ بلا مقابل** (D-152). */
+      isMe ? getMyFavoritesListId() : Promise.resolve(null),
       isMe ? Promise.resolve() : recordProfileView(profile.id),
     ]);
 
@@ -192,6 +199,10 @@ export default async function PublicProfilePage({
   const favRest = favorites.filter((f) => !animeFlags.get(artKey(f.media_type, f.tmdb_id)));
   const favShows = favRest.filter((f) => f.media_type === "tv");
   const favMovies = favRest.filter((f) => f.media_type === "movie");
+  /* **وعاءُ الدمج** (D-567): مفاتيحُ المفضّلة كلِّها **بترتيبها الحاليّ
+     كما جاءت من `profile_favorites`** (`sort_order` أوّلاً) — **فورقةُ
+     نوعٍ واحدٍ تُعيد ترتيبَه داخل خاناته ولا تمسّ جيرانه.** */
+  const favKeys = favorites.map((f) => `${f.media_type}-${f.tmdb_id}`);
 
   /* 🆕 **وأيُّهما أوّلاً — بترتيبِ صاحب الصفحة** (D-564، طلبُ أحمد:
      «أبغى أرتّب الأفلام والمسلسلات وش يظهر أوّل»).
@@ -762,7 +773,14 @@ export default async function PublicProfilePage({
           const rows = k === "shows" ? favShows : favMovies;
           if (rows.length === 0) return null;
           return (
-            <PosterRail key={`fav-${k}`} title={k === "shows" ? t.shortShows : t.shortMovies}>
+            <FavoritesRail
+              key={`fav-${k}`}
+              title={k === "shows" ? t.shortShows : t.shortMovies}
+              listId={favListId}
+              fullKeys={favKeys}
+              items={rows}
+              locale={locale}
+            >
               {rows.slice(0, cap(rows.length)).map((f) => (
                 <RailItem key={`fav-${f.media_type}-${f.tmdb_id}`}>
                   <PosterCard
@@ -772,11 +790,17 @@ export default async function PublicProfilePage({
                   />
                 </RailItem>
               ))}
-            </PosterRail>
+            </FavoritesRail>
           );
         })}
       {canView && tab === "overview" && favAnime.length > 0 && (
-        <PosterRail title={t.discoverTabAnime}>
+        <FavoritesRail
+          title={t.discoverTabAnime}
+          listId={favListId}
+          fullKeys={favKeys}
+          items={favAnime}
+          locale={locale}
+        >
           {favAnime.slice(0, cap(favAnime.length)).map((f) => (
             <RailItem key={`fa-${f.media_type}-${f.tmdb_id}`}>
               <PosterCard
@@ -786,7 +810,7 @@ export default async function PublicProfilePage({
               />
             </RailItem>
           ))}
-        </PosterRail>
+        </FavoritesRail>
       )}
       {/* 🔴 🆕 **وصفّان بعنوانٍ واحد في شاشةٍ واحدة** (D-564، بلاغُ
           أحمد: «و shows مكرّر»).
