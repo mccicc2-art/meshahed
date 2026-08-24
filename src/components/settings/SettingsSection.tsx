@@ -36,6 +36,15 @@ import { settingsCard } from "./SettingsGroup";
  * **والفرقُ عمليٌّ لا لفظيّ**: `SettingsGroup` تُستعمل للفهرس
  * و«الحساب» و«عن Loopz»، **و`boxed` لصفحةٍ واحدةٍ رسمها أحمد** —
  * **ولا ثالثَ بينهما.**
+ *
+ * ⚖️ 🆕 **ومقاسُ عنوان `boxed` نُقض في يومه** (D-560، بلاغُ أحمد بعد
+ * أن رأى الصفحاتِ على جهازه: «الصفحة الرئيسية مقاس الخط فيه ممتاز،
+ * لكن باقي الصفحات مقاس الخط جداً سيّئ وكبير ومتفاوت — احتاج كل
+ * الصفحات مقاس الخطوط يكون مثل بعض»). **كان العنوانُ ٢٠ والتلميحُ ١٤
+ * اقتفاءً لصورته** — **والحكمُ على الجهاز غلب الصورةَ**: الفهرسُ الذي
+ * أحبّه يقرأ سلّمَ `SettingsRow` (١٥ · ١٤ · ١٢)، **وصفحتان بسلّمين
+ * تُقرآن تطبيقين.** **فالعنوانُ ١٥ والتلميحُ ١٢ في `boxed` وغيرِها
+ * سواء** — **والذي يفرّق الشكلين البطاقةُ لا حجمُ الحرف.**
  */
 export function SettingsSection({
   label,
@@ -61,14 +70,14 @@ export function SettingsSection({
       <section className={`${settingsCard} p-4 ${className}`}>
         <div className="flex items-start gap-2">
           <div className="min-w-0 flex-1">
-            {label && <h2 className="text-20 font-bold truncate">{label}</h2>}
+            {label && <h2 className="text-15 font-bold truncate">{label}</h2>}
             {hint && (
-              <p className="text-14 text-muted leading-relaxed mt-1">{hint}</p>
+              <p className="text-12 text-muted leading-relaxed mt-1">{hint}</p>
             )}
           </div>
           {action}
         </div>
-        <div className={label || hint ? "mt-3.5" : ""}>{children}</div>
+        <div className={label || hint ? "mt-3" : ""}>{children}</div>
       </section>
     );
   }

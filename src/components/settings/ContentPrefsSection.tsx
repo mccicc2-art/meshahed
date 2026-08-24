@@ -136,11 +136,11 @@ function TasteRow({
       </span>
 
       <span className="min-w-0 flex-1">
-        <span className="block text-15 font-bold" dir="auto">
+        <span className="block text-15 font-semibold" dir="auto">
           {title}
         </span>
         {picked.length === 0 ? (
-          <span className="block text-13 text-muted mt-1">{emptyLabel}</span>
+          <span className="block text-12 text-muted mt-1">{emptyLabel}</span>
         ) : (
           <span className="flex flex-wrap gap-2 mt-2">
             {picked.map((label) => (
@@ -153,7 +153,7 @@ function TasteRow({
       <button
         type="button"
         onClick={onManage}
-        className="shrink-0 inline-flex items-center gap-0.5 h-11 -my-1.5 -me-1 ps-2 text-14 font-bold text-accent hover:brightness-110 transition active:scale-95"
+        className="shrink-0 inline-flex items-center gap-0.5 h-11 -my-1.5 -me-1 ps-2 text-14 font-semibold text-accent hover:brightness-110 transition active:scale-95"
       >
         {manageLabel}
         <Icon name="chevron-down" size={16} className="-rotate-90 rtl:rotate-90" />
@@ -287,7 +287,9 @@ export function ContentPrefsSection({
       {/* ===== ٢) اللغات ===== */}
       <SettingsSection boxed label={t.cpLangsTitle} hint={t.cpLangsHint}>
         <div className="flex items-center gap-2 mb-2.5">
-          <h3 className="min-w-0 flex-1 text-15 font-semibold truncate">
+          {/* **بأسلوب عناوين مجموعات الفهرس** (D-560): عنوانٌ داخليٌّ
+              بمقاس عنوان البطاقة يُقرأ بطاقةً ثانية */}
+          <h3 className="min-w-0 flex-1 text-12 font-semibold uppercase tracking-wide text-muted truncate">
             {t.cpPreferred}
           </h3>
           {prefs.languages.length > 1 && (
@@ -297,7 +299,7 @@ export function ContentPrefsSection({
                 tap(6);
                 setReordering((v) => !v);
               }}
-              className="shrink-0 h-11 px-2 -me-2 text-14 font-bold text-accent hover:brightness-110 transition active:scale-95"
+              className="shrink-0 h-11 px-2 -me-2 text-14 font-semibold text-accent hover:brightness-110 transition active:scale-95"
             >
               {reordering ? t.doneLabel : t.cpReorder}
             </button>
@@ -370,7 +372,7 @@ export function ContentPrefsSection({
           <button
             type="button"
             onClick={() => setSheet("languages")}
-            className="w-full inline-flex items-center justify-center gap-2 min-h-14 rounded-control border border-border text-14 font-bold text-accent hover:border-accent/50 transition active:scale-[0.99]"
+            className="w-full inline-flex items-center justify-center gap-2 min-h-14 rounded-control border border-border text-14 font-semibold text-accent hover:border-accent/50 transition active:scale-[0.99]"
           >
             <Icon name="plus" size={16} strokeWidth={2.4} />
             {t.cpAddLang}
@@ -379,20 +381,20 @@ export function ContentPrefsSection({
 
         <div className="mt-4 pt-4 border-t border-[color:var(--divider)]">
           <div className="flex items-center gap-2">
-            <h3 className="min-w-0 flex-1 text-15 font-semibold truncate">
+            <h3 className="min-w-0 flex-1 text-12 font-semibold uppercase tracking-wide text-muted truncate">
               {t.cpExcluded}
             </h3>
             <button
               type="button"
               onClick={() => setSheet("excludedLanguages")}
-              className="shrink-0 inline-flex items-center gap-0.5 h-11 -me-1 ps-2 text-14 font-bold text-accent hover:brightness-110 transition active:scale-95"
+              className="shrink-0 inline-flex items-center gap-0.5 h-11 -me-1 ps-2 text-14 font-semibold text-accent hover:brightness-110 transition active:scale-95"
             >
               {t.manageLabel}
               <Icon name="chevron-down" size={16} className="-rotate-90 rtl:rotate-90" />
             </button>
           </div>
           {prefs.excludedLanguages.length === 0 ? (
-            <p className="text-13 text-muted">{t.cpNone}</p>
+            <p className="text-12 text-muted">{t.cpNone}</p>
           ) : (
             <div className="flex flex-wrap gap-2 mt-1">
               {prefs.excludedLanguages.map((c) => (
@@ -497,7 +499,7 @@ export function ContentPrefsReset({
           }
         });
       }}
-      className="w-full min-h-14 text-15 font-semibold text-[color:var(--error)] hover:brightness-110 transition active:scale-[0.99]"
+      className="w-full min-h-14 text-14 font-semibold text-[color:var(--error)] hover:brightness-110 transition active:scale-[0.99]"
     >
       {t.cpResetAll}
     </button>
