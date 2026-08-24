@@ -13,6 +13,7 @@ import {
   getFollowedArtists,
   getMyTitleArt,
   getMyAnimeFlags,
+  getMyPlaylistIds,
   getMyListedMovieIds,
   getProfile,
   artKey,
@@ -84,6 +85,7 @@ export default async function LibraryPage({
     artistRows,
     myArt,
     animeFlags,
+    playlistIds,
   ] = await Promise.all([
     getFollows(),
     getWatchSummary(),
@@ -113,6 +115,10 @@ export default async function LibraryPage({
     getFollowedArtists(60),
     getMyTitleArt(),
     getMyAnimeFlags(),
+    /* 🆕 **رايةُ التشغيل لكلِّ قائمة** (D-563) — **ومشروطةٌ بتبويبها**
+       كأخواتها فوقها (D-350/D-559): **المفتاحُ لا يُرسم إلا في تبويب
+       «القوائم»**، **فمن فتح «مسلسلاتي» لا يدفع نداءً لا يراه.** */
+    initialTab === "lists" ? getMyPlaylistIds() : Promise.resolve([] as string[]),
   ]);
   const follows = await localizeFollows(followRows, locale);
 
@@ -296,6 +302,7 @@ export default async function LibraryPage({
         artistCount={artistRows.length}
         lists={lists}
         toWatch={toWatchCard}
+        playlistIds={playlistIds}
         listStats={listStats}
         savedCount={savedCount}
         locale={locale}
