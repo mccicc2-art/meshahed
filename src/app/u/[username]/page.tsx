@@ -686,6 +686,7 @@ export default async function PublicProfilePage({
             dir="following"
             count={stats.following}
             label={t.followingLabel}
+            sheetTitle={t.followsTabFollowing}
             locked={!isMe && !!profile.hide_follow_lists}
             labels={{ close: t.closeLabel, empty: t.followListEmpty, anonymous: t.anonymousUser }}
           />
@@ -694,6 +695,7 @@ export default async function PublicProfilePage({
             dir="followers"
             count={stats.followers}
             label={t.followersLabel}
+            sheetTitle={t.followsTabFollowers}
             locked={!isMe && !!profile.hide_follow_lists}
             labels={{ close: t.closeLabel, empty: t.followListEmpty, anonymous: t.anonymousUser }}
           />
