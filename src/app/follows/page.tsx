@@ -1,20 +1,20 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getUser, getProfile, getFollowStats, displayNameOf } from "@/lib/data";
+import { getUser, getFollowStats } from "@/lib/data";
 import { getT } from "@/lib/locale";
 import { SettingsHeader } from "@/components/settings/SettingsHeader";
 import { segmentedTrackFull, segmentedItem } from "@/components/ui/controls";
 import { PersonRowLink } from "@/components/PeopleFollowList";
 import { peopleFollowsOf } from "@/lib/actions";
-import { ShareTitleButton } from "@/components/ShareTitleButton";
-import { Icon } from "@/components/Icon";
 import { num } from "@/lib/i18n";
 
 /**
  * 🆕 **صفحةُ المتابعات** (D-565، طلبُ أحمد بمستطيلٍ على ترويسة
  * الرئيسية: «أحتاج أيقونةً واحدةً للمتابعين وتفتحها صفحةً كاملة، فيها
- * تبويبان — واحدٌ للتالين والثاني للمتابعين — وفيه زرُّ مشاركة ملفّي
- * وفيه زرُّ إضافة»).
+ * تبويبان — واحدٌ للتالين والثاني للمتابعين»).
+ *
+ * ⚖️ **وزرّا «مشاركة ملفّي» و«إضافة» كانا في الطلب نفسِه ثمّ سقطا
+ * بحكمه بعد أن رآهما** (D-568) — **والحجّةُ في موضعهما أدناه.**
  *
  * ================= لماذا صفحةٌ والوَرَقةُ قائمة =================
  *
@@ -57,20 +57,16 @@ export default async function FollowsPage({
      **والكاتبُ لم يتبدّل**: `peopleFollowsOf` هي الدالّةُ نفسُها
      بحارسها وسقفها — **تُنادى من هنا بلا رحلةِ شبكة** لأن الصفحةَ
      خادميّةٌ أصلاً (القاعدة ٦: قارئٌ واحدٌ لا اثنان). */
-  const [profile, stats, people] = await Promise.all([
-    getProfile().catch(() => null),
+  /* 🆕 **والأسماءُ تُقرأ على الخادم لا في المتصفّح** (D-565، إصلاحٌ
+     قِيس على الإنتاج): **فعلُ خادمٍ يُستدعى من `useEffect` يشترط ترطيباً
+     ثمّ رحلةَ POST ثمّ رسمةً ثالثة** — **وثلاثُ خطواتٍ لِما يعرفه
+     الخادمُ قبل أوّل بايت ثمنٌ بلا مقابل** (درسُ D-515).
+     **والكاتبُ لم يتبدّل**: `peopleFollowsOf` بحارسها وسقفها — **يُنادى
+     من هنا بلا رحلةِ شبكة** (القاعدة ٦: قارئٌ واحدٌ لا اثنان). */
+  const [stats, people] = await Promise.all([
     getFollowStats(user.id),
     peopleFollowsOf(user.id, dir).catch(() => []),
   ]);
-
-  const displayName = displayNameOf(
-    { nickname: profile?.nickname ?? null, username: profile?.username ?? null },
-    t.anonymousUser,
-  );
-  /* **رابطُ ملفّي هو ما يُشارَك** — **ومن لا اسمَ مستخدمٍ له لا صفحةَ
-     عامّةَ له بعد** (D-434)، **فبابُه تعديلُ الملفّ لا رابطٌ ميّت**
-     (D-030). */
-  const myPath = profile?.username ? `/u/${profile.username}` : null;
 
   const tabs = [
     { key: "following" as const, label: t.followsTabFollowing, count: stats.following },
@@ -81,42 +77,18 @@ export default async function FollowsPage({
     <div className="max-w-2xl mx-auto">
       <SettingsHeader title={t.followsTitle} fallbackHref="/" />
 
-      {/* ===== الفعلان =====
-          **مشاركةُ ملفّي أوّلاً**: هي ما يجلب متابِعاً جديداً فعلاً،
-          **و«إضافة» بحثٌ عن آخرين** — **والأوّلُ فعلٌ يخرج مني،
-          والثاني رحلةٌ تبدأ.**
-          ⚠️ **ولا زرَّ مشاركةٍ لمن لا اسمَ مستخدمٍ له**: **زرٌّ يشارك
-          رابطاً لا يفتح شيئاً يكذب** (D-217) — **ومكانَه بابُ اختيار
-          الاسم.** */}
-      <div className="flex items-center gap-2 mb-4">
-        {myPath ? (
-          <ShareTitleButton
-            path={myPath}
-            title={displayName}
-            label={t.shareMyProfile}
-            locale={locale}
-            className="border border-border bg-surface h-9 px-3.5"
-          />
-        ) : (
-          <Link
-            href="/profile/edit"
-            className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-3.5 h-9 text-14 font-bold transition hover:border-accent/50 active:scale-95"
-          >
-            <Icon name="edit" size={15} style={{ color: "var(--accent)" }} />
-            {t.shareMyProfile}
-          </Link>
-        )}
-        {/* **و«إضافة» تفتح بحثَ الأعضاء** — **البابُ القائمُ لا بابٌ
-            ثانٍ** (`/search?type=members`، D-534). */}
-        <Link
-          href="/search?type=members"
-          className="inline-flex items-center gap-1.5 rounded-full bg-accent text-[color:var(--on-accent)] px-3.5 h-9 text-14 font-bold transition hover:brightness-110 active:scale-95"
-        >
-          <Icon name="plus" size={15} />
-          {t.findPeople}
-        </Link>
-      </div>
+      {/* ⚖️ 🆕 **والفعلان سقطا** (D-568، طلبُ أحمد بلقطةٍ للزرّين:
+          «احذفهم ما يحتاج») — **وهما طلبُه نفسُه أمس** (D-565).
+          **والذي تبدّل أنه رآهما فوق قائمةٍ من خمسة أسماء**:
+          **زرّان دائمان فوق محتوًى يُقرأ في نظرة يأخذان سطراً كاملاً
+          من الشاشة الأولى** — **ومشاركةُ الملفّ بابُها الملفُّ نفسُه**
+          (زرُّ المشاركة على غلافه، D-561)، **وإضافةُ الناس بابُها
+          البحث.** **فلا بابَ فُقد، سقط تكرارُه** (نفسُ حجّة D-563 مع
+          بابِ «وش باقي يتفرج»).
 
+          ⚠️ **ودَينٌ مُعلَن**: مفتاحا `shareMyProfile` و`findPeople`
+          بلا قارئ — **يُحذفان في رفعةٍ لاحقة لا مع قارئهما**
+          (D-538/D-028)، **و`i18n.ts` لا تُمسّ في هذه الدفعة.** */}
       {/* ===== التبويبان =====
           **عائلةُ الشرائح المقسَّمة** (`02`: قسمان لا ثالث) — **نفسُ
           مسار `/stats` حرفاً** (D-493): روابطُ لا أزرار، **فالتبويبُ
