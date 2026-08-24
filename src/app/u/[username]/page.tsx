@@ -520,19 +520,56 @@ export default async function PublicProfilePage({
             تُغرقها كلَّها.** **والرقمُ مشتقٌّ من المقاس لا مذوق**:
             يتغيّر مقاسُ الصورة يوماً فيتغيّر معه. */}
         <div className="flex items-start gap-3 pe-4 -mt-10 relative z-10">
-          <span
-            className="block rounded-full p-[3px] shrink-0"
-            style={{ background: "var(--gradient-brand)" }}
-          >
-            <Avatar
-              src={profile.avatar_url}
-              name={displayName}
-              size={74}
-              posY={profile.avatar_pos ?? null}
-              alt={t.avatarAlt}
-              className="ring-[3px] ring-[color:var(--background)]"
-            />
-          </span>
+          {/* 🆕 **وصورةُ ملفّي بابُ تعديله** (D-571، طلبُ أحمد: «وصورة
+              البروفايل توديني على إعدادات البروفايل»).
+
+              **وهي ثالثةُ ثلاثٍ لكلٍّ وجهتُها**: **صورةُ الشريط ←
+              الإعدادات** (رفيقةُ كلِّ صفحة، فوجهتُها عامّة) · **صورةُ
+              الرئيسية ← ملفّي العامّ** (ترحيبٌ بي، فتُريني نفسي كما
+              يراني الناس) · **وهذه ← تعديلُ ملفّي**: **أنا فيه أصلاً،
+              فالباقي أن أغيّره.**
+
+              ⚠️ **ولزائري لا رابط**: **صورةُ غيري لا تفتح تعديلاً ولا
+              صفحةً أنا فيها** — **ورابطٌ يعيدك إلى مكانك بابٌ معطّل**
+              (حجّةُ D-434 بحرفها). **والغلافُ يبقى غلافاً.**
+
+              🟡 **ودَينٌ مُعلَن**: قلمُ الغلاف يفتح الوجهةَ نفسَها —
+              **بابان لفعلٍ واحد** (القاعدة ٣). **أُبقيا لأن الصورةَ
+              عُرفٌ لا يُعلَّم والقلمَ باب يُرى**، **ويسقط أحدُهما
+              بكلمةٍ من أحمد.** */}
+          {isMe ? (
+            <Link
+              href="/profile/edit"
+              prefetch={false}
+              aria-label={t.headerSettings}
+              title={t.headerSettings}
+              className="block rounded-full p-[3px] shrink-0 active:scale-95 transition"
+              style={{ background: "var(--gradient-brand)" }}
+            >
+              <Avatar
+                src={profile.avatar_url}
+                name={displayName}
+                size={74}
+                posY={profile.avatar_pos ?? null}
+                alt={t.avatarAlt}
+                className="ring-[3px] ring-[color:var(--background)]"
+              />
+            </Link>
+          ) : (
+            <span
+              className="block rounded-full p-[3px] shrink-0"
+              style={{ background: "var(--gradient-brand)" }}
+            >
+              <Avatar
+                src={profile.avatar_url}
+                name={displayName}
+                size={74}
+                posY={profile.avatar_pos ?? null}
+                alt={t.avatarAlt}
+                className="ring-[3px] ring-[color:var(--background)]"
+              />
+            </span>
+          )}
 
           {/* **و`pb-1` سقطت مع `items-end`** — كانت ترفع النصَّ عن قاع
               الصفّ، **ولا قاعَ يُحاذى بعد اليوم.** **و`leading-tight`
