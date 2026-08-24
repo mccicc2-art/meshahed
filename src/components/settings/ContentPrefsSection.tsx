@@ -14,9 +14,9 @@ import {
 import { sanitizeContentPrefs, type ContentPrefs } from "@/lib/contentPrefs";
 import { tap } from "@/lib/haptics";
 import { toast } from "@/lib/toast";
-import { Icon } from "../Icon";
-import { SettingsSection } from "./SettingsSection";
 import { SettingsPickerSheet } from "./SettingsPickerSheet";
+import { SettingsGroup } from "./SettingsGroup";
+import { SettingsRow } from "./SettingsRow";
 
 /**
  * **تخصيصُ ما يظهر لك** (D-545، مواصفةُ أحمد المكتوبة).
@@ -86,82 +86,6 @@ import { SettingsPickerSheet } from "./SettingsPickerSheet";
  * - **«إعادة ضبط كل التفضيلات» في القاع، وسطاً، بالأحمر.**
  */
 
-/** رقاقةُ عرضٍ — **تقول ما اخترتَ ولا تُحرّره** (تصميمُ D-557) */
-function ShownChip({ label }: { label: string }) {
-  return (
-    <span
-      dir="auto"
-      className="inline-flex items-center max-w-full truncate rounded-control border border-border bg-surface-2 px-2.5 py-1.5 text-12 font-semibold"
-    >
-      {label}
-    </span>
-  );
-}
-
-/**
- * صفُّ ذوقٍ — **رمزٌ مطوَّقٌ واسمٌ و«إدارة»، والمختارُ تحته.**
- *
- * **ومصنعٌ واحدٌ للصفّين** (المزيد والأقلّ): **نسختان من نفس الرسم
- * تفترقان عند أوّل تعديل** (D-145).
- */
-function TasteRow({
-  sign,
-  title,
-  manageLabel,
-  emptyLabel,
-  picked,
-  onManage,
-}: {
-  sign: "plus" | "minus";
-  title: string;
-  manageLabel: string;
-  emptyLabel: string;
-  picked: string[];
-  onManage: () => void;
-}) {
-  return (
-    <div className="flex items-start gap-3 py-3">
-      {/* **الطوقُ يحمل المعنى قبل الكلمة**: `+` بلونِ الهويّة لِما
-          يُزاد، و`−` رماديٌّ لِما يُنقَص — **ولا أحمرَ**، فالإنقاصُ
-          ليس خطأً ولا حذفاً. */}
-      <span
-        aria-hidden
-        className={`shrink-0 grid place-items-center w-8 h-8 rounded-full border ${
-          sign === "plus"
-            ? "border-accent text-accent"
-            : "border-[color:var(--border)] text-muted"
-        }`}
-      >
-        <Icon name={sign === "plus" ? "plus" : "check-line"} size={16} strokeWidth={2.4} />
-      </span>
-
-      <span className="min-w-0 flex-1">
-        <span className="block text-15 font-semibold" dir="auto">
-          {title}
-        </span>
-        {picked.length === 0 ? (
-          <span className="block text-12 text-muted mt-1">{emptyLabel}</span>
-        ) : (
-          <span className="flex flex-wrap gap-2 mt-2">
-            {picked.map((label) => (
-              <ShownChip key={label} label={label} />
-            ))}
-          </span>
-        )}
-      </span>
-
-      <button
-        type="button"
-        onClick={onManage}
-        className="shrink-0 inline-flex items-center gap-0.5 h-11 -my-1.5 -me-1 ps-2 text-14 font-semibold text-accent hover:brightness-110 transition active:scale-95"
-      >
-        {manageLabel}
-        <Icon name="chevron-down" size={16} className="-rotate-90 rtl:rotate-90" />
-      </button>
-    </div>
-  );
-}
-
 export function ContentPrefsSection({
   locale,
   initial,
@@ -180,8 +104,6 @@ export function ContentPrefsSection({
   const [sheet, setSheet] = useState<
     "genres" | "unwantedGenres" | "languages" | "excludedLanguages" | null
   >(null);
-  /** وضعُ الترتيب — **المقبضُ يصير سهمين، و«إعادة ترتيب» تصير «تمّ»** */
-  const [reordering, setReordering] = useState(false);
 
   /** **رقمُ المفهوم القانونيّ** — أوّلُ أرقامه، وبه يُخزَّن (D-545) */
   const idOf = (g: BrowseGenre) => (g.movie[0] ?? g.tv[0])!;
@@ -228,14 +150,6 @@ export function ContentPrefsSection({
     } as ContentPrefs);
   }
 
-  const move = (i: number, delta: -1 | 1) => {
-    const arr = [...prefs.languages];
-    const j = i + delta;
-    if (j < 0 || j >= arr.length) return;
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-    commit({ ...prefs, languages: arr });
-  };
-
   /** كلُّ الأنواع — **والمقابلُ مطروحٌ فلا يُعرض خيارٌ يصنع تعارضاً** */
   const genreOptions = (exclude: number[]) =>
     BROWSE_GENRES.map((g) => ({ key: String(idOf(g)), label: browseGenreName(g, loc), id: idOf(g) }))
@@ -258,152 +172,47 @@ export function ContentPrefsSection({
     noMatch: t.cpNoMatch,
     remove: t.cpRemoveAria,
     add: t.cpAddAria,
+    moveUp: (name: string) => `${t.cpLangUp} — ${name}`,
+    moveDown: (name: string) => `${t.cpLangDown} — ${name}`,
+  };
+
+  const short = (items: string[]) => {
+    if (items.length === 0) return t.cpNone;
+    if (items.length === 1) return items[0];
+    return `${items[0]} · +${items.length - 1}`;
   };
 
   return (
     <>
-      {/* ===== ١) ذوقك ===== */}
-      <SettingsSection boxed label={t.cpTaste}>
-        <div className="divide-y divide-[color:var(--divider)] -my-3">
-          <TasteRow
-            sign="plus"
-            title={t.cpShowMore}
-            manageLabel={t.manageLabel}
-            emptyLabel={t.cpNoCategories}
-            picked={prefs.genres.map(nameOf)}
-            onManage={() => setSheet("genres")}
-          />
-          <TasteRow
-            sign="minus"
-            title={t.cpShowLess}
-            manageLabel={t.manageLabel}
-            emptyLabel={t.cpNoCategories}
-            picked={prefs.unwantedGenres.map(nameOf)}
-            onManage={() => setSheet("unwantedGenres")}
-          />
-        </div>
-      </SettingsSection>
+      <SettingsGroup label={t.cpTaste}>
+        <SettingsRow
+          icon="plus"
+          title={t.cpShowMore}
+          value={short(prefs.genres.map(nameOf))}
+          onClick={() => setSheet("genres")}
+        />
+        <SettingsRow
+          icon="eye-off"
+          title={t.cpShowLess}
+          value={short(prefs.unwantedGenres.map(nameOf))}
+          onClick={() => setSheet("unwantedGenres")}
+        />
+      </SettingsGroup>
 
-      {/* ===== ٢) اللغات ===== */}
-      <SettingsSection boxed label={t.cpLangsTitle} hint={t.cpLangsHint}>
-        <div className="flex items-center gap-2 mb-2.5">
-          {/* **بأسلوب عناوين مجموعات الفهرس** (D-560): عنوانٌ داخليٌّ
-              بمقاس عنوان البطاقة يُقرأ بطاقةً ثانية */}
-          <h3 className="min-w-0 flex-1 text-12 font-semibold uppercase tracking-wide text-muted truncate">
-            {t.cpPreferred}
-          </h3>
-          {prefs.languages.length > 1 && (
-            <button
-              type="button"
-              onClick={() => {
-                tap(6);
-                setReordering((v) => !v);
-              }}
-              className="shrink-0 h-11 px-2 -me-2 text-14 font-semibold text-accent hover:brightness-110 transition active:scale-95"
-            >
-              {reordering ? t.doneLabel : t.cpReorder}
-            </button>
-          )}
-        </div>
-
-        <div className="space-y-2">
-          {prefs.languages.map((code, i) => (
-            <div
-              key={code}
-              className="flex items-center gap-3 min-h-14 pe-2 rounded-control border border-border bg-surface-2 overflow-hidden"
-            >
-              {/* **الرقمُ هو المعنى**: الأولى أعلى أولويّة (D-545) */}
-              <span className="shrink-0 self-stretch grid place-items-center w-12 bg-[color:var(--surface)] text-14 font-bold">
-                {i + 1}
-              </span>
-              <span className="min-w-0 flex-1 text-15 font-semibold truncate" dir="auto">
-                {langName(code, loc)}
-              </span>
-
-              {reordering ? (
-                <span className="shrink-0 flex items-center">
-                  <button
-                    type="button"
-                    onClick={() => move(i, -1)}
-                    disabled={i === 0}
-                    aria-label={`${t.cpLangUp} — ${langName(code, loc)}`}
-                    className="grid place-items-center w-11 h-11 text-muted hover:text-foreground disabled:opacity-30 transition"
-                  >
-                    <Icon name="chevron-up" size={16} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => move(i, 1)}
-                    disabled={i === prefs.languages.length - 1}
-                    aria-label={`${t.cpLangDown} — ${langName(code, loc)}`}
-                    className="grid place-items-center w-11 h-11 text-muted hover:text-foreground disabled:opacity-30 transition"
-                  >
-                    <Icon name="chevron-down" size={16} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      applyLangs("languages", prefs.languages.filter((x) => x !== code))
-                    }
-                    aria-label={t.cpRemoveAria(langName(code, loc))}
-                    className="grid place-items-center w-11 h-11 text-muted hover:text-[color:var(--error)] transition"
-                  >
-                    <Icon name="close" size={16} />
-                  </button>
-                </span>
-              ) : (
-                /* **المقبضُ يقول «هذا يُرتَّب» ويفتح الوضعَ باللمس** —
-                   **ورمزٌ لا يفعل شيئاً أسوأُ من رمزٍ غائب** (D-138) */
-                <button
-                  type="button"
-                  onClick={() => {
-                    tap(6);
-                    setReordering(true);
-                  }}
-                  aria-label={t.cpReorder}
-                  className="shrink-0 grid place-items-center w-11 h-11 text-muted hover:text-foreground transition"
-                >
-                  <Icon name="grip" size={18} />
-                </button>
-              )}
-            </div>
-          ))}
-
-          <button
-            type="button"
-            onClick={() => setSheet("languages")}
-            className="w-full inline-flex items-center justify-center gap-2 min-h-14 rounded-control border border-border text-14 font-semibold text-accent hover:border-accent/50 transition active:scale-[0.99]"
-          >
-            <Icon name="plus" size={16} strokeWidth={2.4} />
-            {t.cpAddLang}
-          </button>
-        </div>
-
-        <div className="mt-4 pt-4 border-t border-[color:var(--divider)]">
-          <div className="flex items-center gap-2">
-            <h3 className="min-w-0 flex-1 text-12 font-semibold uppercase tracking-wide text-muted truncate">
-              {t.cpExcluded}
-            </h3>
-            <button
-              type="button"
-              onClick={() => setSheet("excludedLanguages")}
-              className="shrink-0 inline-flex items-center gap-0.5 h-11 -me-1 ps-2 text-14 font-semibold text-accent hover:brightness-110 transition active:scale-95"
-            >
-              {t.manageLabel}
-              <Icon name="chevron-down" size={16} className="-rotate-90 rtl:rotate-90" />
-            </button>
-          </div>
-          {prefs.excludedLanguages.length === 0 ? (
-            <p className="text-12 text-muted">{t.cpNone}</p>
-          ) : (
-            <div className="flex flex-wrap gap-2 mt-1">
-              {prefs.excludedLanguages.map((c) => (
-                <ShownChip key={c} label={langName(c, loc)} />
-              ))}
-            </div>
-          )}
-        </div>
-      </SettingsSection>
+      <SettingsGroup label={t.cpLangsTitle}>
+        <SettingsRow
+          icon="compass"
+          title={t.cpPreferred}
+          value={short(prefs.languages.map((code) => langName(code, loc)))}
+          onClick={() => setSheet("languages")}
+        />
+        <SettingsRow
+          icon="eye-off"
+          title={t.cpExcluded}
+          value={short(prefs.excludedLanguages.map((code) => langName(code, loc)))}
+          onClick={() => setSheet("excludedLanguages")}
+        />
+      </SettingsGroup>
 
       {!signedIn && (
         <p className="px-1 text-12 text-muted leading-relaxed">{t.cpGuestNote}</p>
@@ -439,6 +248,7 @@ export function ContentPrefsSection({
         title={t.cpPreferred}
         options={langOptions(prefs.excludedLanguages)}
         picked={prefs.languages}
+        ordered
         onCancel={() => setSheet(null)}
         onDone={(next) => {
           applyLangs("languages", next);

@@ -59,6 +59,7 @@ export function SettingsPickerSheet({
   options,
   picked,
   multi = true,
+  ordered = false,
   max,
   onCancel,
   onDone,
@@ -71,6 +72,8 @@ export function SettingsPickerSheet({
   picked: string[];
   /** خيارٌ واحدٌ يُغلق الورقةَ فوراً — قائمةُ الدول واللغة */
   multi?: boolean;
+  /** يعرض المختار كقائمة أولوية قابلة للرفع والخفض. */
+  ordered?: boolean;
   max?: number;
   onCancel: () => void;
   onDone: (next: string[]) => void;
@@ -90,6 +93,8 @@ export function SettingsPickerSheet({
     noMatch: string;
     remove: (name: string) => string;
     add: (name: string) => string;
+    moveUp?: (name: string) => string;
+    moveDown?: (name: string) => string;
   };
 }) {
   const [draft, setDraft] = useState<string[]>(picked);
@@ -135,6 +140,17 @@ export function SettingsPickerSheet({
           ? d
           : [...d, key],
     );
+  }
+
+  function move(key: string, delta: -1 | 1) {
+    setDraft((current) => {
+      const from = current.indexOf(key);
+      const to = from + delta;
+      if (from < 0 || to < 0 || to >= current.length) return current;
+      const next = [...current];
+      [next[from], next[to]] = [next[to], next[from]];
+      return next;
+    });
   }
 
   const clearable = multi && draft.length > 0;
@@ -191,6 +207,48 @@ export function SettingsPickerSheet({
             </div>
             {draft.length === 0 ? (
               <p className="text-12 text-muted">{labels.empty}</p>
+            ) : ordered ? (
+              <div className="divide-y divide-[color:var(--divider)] rounded-lg bg-surface-2 px-2">
+                {draft.map((key, index) => {
+                  const name = label.get(key) ?? key;
+                  return (
+                    <div key={key} className="flex items-center min-h-12 gap-1.5">
+                      <span className="grid place-items-center w-7 h-7 rounded-full bg-surface text-12 font-bold text-muted">
+                        {index + 1}
+                      </span>
+                      <span className="min-w-0 flex-1 text-14 font-semibold truncate" dir="auto">
+                        {name}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => move(key, -1)}
+                        disabled={index === 0}
+                        aria-label={labels.moveUp?.(name)}
+                        className="grid place-items-center w-10 h-10 text-muted disabled:opacity-25"
+                      >
+                        <Icon name="chevron-up" size={15} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => move(key, 1)}
+                        disabled={index === draft.length - 1}
+                        aria-label={labels.moveDown?.(name)}
+                        className="grid place-items-center w-10 h-10 text-muted disabled:opacity-25"
+                      >
+                        <Icon name="chevron-down" size={15} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => toggle(key)}
+                        aria-label={labels.remove(name)}
+                        className="grid place-items-center w-10 h-10 text-muted hover:text-[color:var(--error)]"
+                      >
+                        <Icon name="close" size={14} />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
             ) : (
               <div className="flex flex-wrap gap-2">
                 {draft.map((k) => (

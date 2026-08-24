@@ -36,7 +36,6 @@ export default async function Page() {
           title={t.setHelpContact}
           subtitle={t.setHelpContactSub}
         />
-        <SettingsRow href="/profile/settings/about" icon="info" title={t.setHelpDocs} />
       </SettingsGroup>
     </SettingsPageLayout>
   );

@@ -92,52 +92,52 @@ export default async function SettingsPage() {
             className="shrink-0 text-muted -rotate-90 rtl:rotate-90"
           />
         </Link>
-        <SettingsRow href="/profile/edit" icon="edit" title={t.setEditProfile} />
       </div>
+
+      <SettingsGroup label={t.setGroupAccount}>
+        <SettingsRow href="/profile/edit" icon="edit" title={t.setEditProfile} />
+        <SettingsRow href="/profile/settings/account" icon="person-check" title={t.setAccount} />
+        <SettingsRow
+          href="/profile/settings/billing"
+          icon="card"
+          title={t.setBilling}
+          value={t.setPlanFree}
+        />
+      </SettingsGroup>
 
       <SettingsGroup label={t.setGroupPersonalize}>
         <SettingsRow
           href="/profile/settings/home"
           icon="home"
           title={t.setHomeProfile}
-          subtitle={t.setHomeProfileSub}
         />
         <SettingsRow
           href="/profile/settings/appearance"
           icon="palette"
           title={t.setAppearance}
-          subtitle={t.setAppearanceSub}
         />
         <SettingsRow
           href="/profile/settings/content"
           icon="film"
           title={t.setContent}
-          subtitle={t.setContentSub}
-        />
-      </SettingsGroup>
-
-      <SettingsGroup label={t.setGroupAccount}>
-        <SettingsRow
-          href="/profile/settings/account"
-          icon="person-check"
-          title={t.setAccount}
-          subtitle={t.setAccountSub}
-        />
-        <SettingsRow
-          href="/profile/settings/privacy"
-          icon="shield"
-          title={t.setPrivacy}
-          subtitle={t.setPrivacySub}
         />
       </SettingsGroup>
 
       <SettingsGroup label={t.setGroupData}>
         <SettingsRow
+          href="/profile/settings/privacy"
+          icon="shield"
+          title={t.setPrivacy}
+        />
+        <SettingsRow href="/profile/settings/notifications" icon="bell" title={t.setNotifications} />
+        <SettingsRow
           href="/profile/settings/import"
           icon="download"
           title={t.setImport}
-          subtitle={t.setImportSub}
         />
+      </SettingsGroup>
+
+      <SettingsGroup label={t.setGroupSupport}>
         <SettingsRow href="/profile/settings/help" icon="comment" title={t.setHelp} />
         <SettingsRow href="/profile/settings/about" icon="info" title={t.setAbout} />
       </SettingsGroup>

@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { getUser, getProfile } from "@/lib/data";
 import { getT } from "@/lib/locale";
 import { SettingsPageLayout } from "@/components/settings/SettingsPageLayout";
-import { SettingsSection } from "@/components/settings/SettingsSection";
+import { SettingsGroup } from "@/components/settings/SettingsGroup";
 import { AccountSettings } from "@/components/AccountSettings";
 import { LibraryAccessList } from "@/components/LibraryAccessList";
 import { BlockedList } from "@/components/BlockedList";
@@ -41,14 +41,10 @@ export default async function Page() {
         only={["hideName", "privateAccount", "followLists"]}
       />
 
-      <SettingsSection label={t.setGroupPeople}>
-        <div className="space-y-3">
-          {/* استثناءُ «حساب خاص» الفرديّ: منحةُ رؤية المكتبة (D-070) */}
-          <LibraryAccessList locale={locale} />
-          {/* بابُ الرجوع الوحيد عن الحظر */}
-          <BlockedList locale={locale} />
-        </div>
-      </SettingsSection>
+      <SettingsGroup label={t.setGroupPeople}>
+        <LibraryAccessList locale={locale} />
+        <BlockedList locale={locale} />
+      </SettingsGroup>
     </SettingsPageLayout>
   );
 }

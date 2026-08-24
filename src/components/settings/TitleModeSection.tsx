@@ -11,6 +11,8 @@ import {
   type TitleMode,
 } from "@/lib/titleMode";
 import { SettingsOptionRow, SettingsOptionList } from "./SettingsOptionRow";
+import { SettingsRow } from "./SettingsRow";
+import { SettingsBottomSheet } from "./SettingsBottomSheet";
 
 /**
  * **«عرض عناوين الأعمال»** (D-544، مواصفةُ أحمد المكتوبة).
@@ -57,6 +59,7 @@ export function TitleModeSection({
   const t = getDict(locale);
   const router = useRouter();
   const [mode, setMode] = useState<TitleMode>(initialMode);
+  const [open, setOpen] = useState(false);
   const [pending, start] = useTransition();
 
   const label: Record<TitleMode, string> = {
@@ -88,50 +91,67 @@ export function TitleModeSection({
 
   return (
     <>
-      <SettingsOptionList label={t.titleModeSection}>
-        {options.map((m) => (
-          <SettingsOptionRow
-            key={m}
-            selected={m === mode}
-            title={label[m]}
-            subtitle={m === "localized" ? t.titleModeRecommended : undefined}
-            onSelect={() => pick(m)}
-            disabled={pending}
-          />
-        ))}
-      </SettingsOptionList>
+      <SettingsRow
+        icon="film"
+        title={t.titleNamesTitle}
+        value={label[mode]}
+        onClick={() => setOpen(true)}
+      />
 
-      {/* ===== المعاينة — بالمحرّك نفسِه =====
-          **سطرٌ رئيسٌ وسطرٌ ثانٍ اختياريّ**، بنفس المقاسين اللذين
-          ترسمهما `MediaTitle` في البطاقات. **و`dir="auto"` لأن السطر
-          قد يكون عربيّاً في واجهةٍ إنجليزيّة والعكس.**
-          🆕 **وعليها كلمةُ «معاينة»** (تصميمُ أحمد): **صندوقٌ فيه
-          اسمُ عملٍ بلا عنوانٍ يُقرأ عملاً مقترحاً لا مثالاً.** */}
-      <div className="mt-3.5 rounded-control border border-border bg-surface-2 p-3.5 space-y-2.5">
-        <p className="text-12 text-muted">{t.cpPreview}</p>
-        {SAMPLES.map((s, i) => {
-          const r = resolveMediaTitle(
-            /* **الواجهةُ الإنجليزيّةُ تقلب أيَّ الاسمين «محلّيّ»** —
-               وهذا هو معنى «حسب لغة التطبيق» في المثال الثاني. */
-            locale === "en"
-              ? { localized: i === 0 ? s.original : s.localized, original: s.original, translit: s.translit }
-              : { localized: s.localized, original: s.original, translit: s.translit },
-            mode,
-          );
-          return (
-            <div key={s.original}>
-              <p className="text-14 font-semibold leading-tight" dir="auto">
-                {r.primary}
-              </p>
-              {r.secondary && (
-                <p className="text-[10px] text-muted leading-tight mt-0.5" dir="auto">
-                  {r.secondary}
-                </p>
-              )}
-            </div>
-          );
-        })}
-      </div>
+      <SettingsBottomSheet
+        open={open}
+        title={t.titleNamesTitle}
+        onCancel={() => setOpen(false)}
+        onDone={() => setOpen(false)}
+        cancelLabel={t.cancelLabel}
+        doneLabel={t.doneLabel}
+      >
+        <div className={`p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] ${pending ? "opacity-60" : ""}`}>
+          <SettingsOptionList label={t.titleModeSection}>
+            {options.map((m) => (
+              <SettingsOptionRow
+                key={m}
+                selected={m === mode}
+                title={label[m]}
+                subtitle={m === "localized" ? t.titleModeRecommended : undefined}
+                onSelect={() => {
+                  pick(m);
+                  setOpen(false);
+                }}
+                disabled={pending}
+              />
+            ))}
+          </SettingsOptionList>
+
+          <div className="mt-3 rounded-lg bg-surface-2 p-3 space-y-2">
+            <p className="text-12 text-muted">{t.cpPreview}</p>
+            {SAMPLES.map((sample, index) => {
+              const result = resolveMediaTitle(
+                locale === "en"
+                  ? {
+                      localized: index === 0 ? sample.original : sample.localized,
+                      original: sample.original,
+                      translit: sample.translit,
+                    }
+                  : sample,
+                mode,
+              );
+              return (
+                <div key={sample.original}>
+                  <p className="text-14 font-semibold leading-tight" dir="auto">
+                    {result.primary}
+                  </p>
+                  {result.secondary ? (
+                    <p className="text-12 text-muted leading-tight mt-0.5" dir="auto">
+                      {result.secondary}
+                    </p>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </SettingsBottomSheet>
     </>
   );
 }

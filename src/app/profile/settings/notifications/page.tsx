@@ -2,7 +2,8 @@ import { redirect } from "next/navigation";
 import { getUser } from "@/lib/data";
 import { getT } from "@/lib/locale";
 import { SettingsPageLayout } from "@/components/settings/SettingsPageLayout";
-import { SettingsSoon } from "@/components/settings/SettingsSoon";
+import { SettingsGroup } from "@/components/settings/SettingsGroup";
+import { SettingsRow } from "@/components/settings/SettingsRow";
 
 /**
  * الإشعارات — **حالةٌ مُعلنة لا مفاتيحُ كاذبة** (D-462).
@@ -20,8 +21,16 @@ export default async function Page() {
 
   return (
     <SettingsPageLayout title={t.setNotifications}>
-      <SettingsSoon title={t.settingsSoonTitle} body={t.setNotifSoonBody} icon="bell" />
-      <p className="text-12 text-muted text-center">{t.setNotifBellHint}</p>
+      <SettingsGroup>
+        <SettingsRow
+          icon="bell"
+          title={t.setNotifInApp}
+          subtitle={t.setNotifInAppSub}
+          value={t.setPlanActive}
+        />
+        <SettingsRow icon="bell" title={t.setNotifPush} value={t.settingsSoonShort} />
+        <SettingsRow icon="mail" title={t.setNotifEmail} value={t.settingsSoonShort} />
+      </SettingsGroup>
     </SettingsPageLayout>
   );
 }

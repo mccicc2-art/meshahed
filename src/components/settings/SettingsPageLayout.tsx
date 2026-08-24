@@ -30,7 +30,7 @@ export function SettingsPageLayout({
       <SettingsHeader title={title} fallbackHref={fallbackHref} action={action} onBack={onBack} />
       {/* المسافةُ السفليّة تعوّض غيابَ الشريط السفليّ هنا (D-462): بلا
           شريطٍ لا حاجةَ لحجزِ ارتفاعه، **ويبقى هامشُ الإيماءة وحده.** */}
-      <div className="space-y-6 pt-2 pb-[calc(2rem+env(safe-area-inset-bottom))]">
+      <div className="space-y-4 pt-1 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
         {children}
       </div>
     </div>

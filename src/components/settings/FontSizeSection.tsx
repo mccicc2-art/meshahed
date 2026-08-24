@@ -4,9 +4,9 @@ import { useState, useTransition } from "react";
 import { setFontPrefs } from "@/lib/actions";
 import { getDict, type Locale } from "@/lib/i18n";
 import { FONT_SIZES, type FontSize } from "@/lib/fontPrefs";
-import { SettingsSection } from "./SettingsSection";
-import { settingsCard } from "./SettingsGroup";
 import { SettingsOptionRow, SettingsOptionList } from "./SettingsOptionRow";
+import { SettingsRow } from "./SettingsRow";
+import { SettingsBottomSheet } from "./SettingsBottomSheet";
 
 /**
  * «العرض وحجم الخط» — تحكّمان مستقلّان (طلب أحمد ١٩ أغسطس): حجم واجهة
@@ -43,6 +43,7 @@ export function FontSizeSection({
   const t = getDict(locale);
   const [ui, setUi] = useState<FontSize>(initialUi);
   const [content, setContent] = useState<FontSize>(initialContent);
+  const [open, setOpen] = useState<"ui" | "content" | null>(null);
   const [, start] = useTransition();
 
   const labels: Record<FontSize, string> = {
@@ -80,29 +81,52 @@ export function FontSizeSection({
 
   return (
     <>
-      <SettingsSection boxed label={t.fontContentLabel} hint={t.fontContentHint}>
-        {list(t.fontContentLabel, content, (s) => {
-          setContent(s);
-          apply(ui, s);
-        })}
-      </SettingsSection>
+      <SettingsRow
+        icon="sliders"
+        title={t.fontUiLabel}
+        value={labels[ui]}
+        onClick={() => setOpen("ui")}
+      />
+      <SettingsRow
+        icon="comment"
+        title={t.fontContentLabel}
+        value={labels[content]}
+        onClick={() => setOpen("content")}
+      />
 
-      <SettingsSection boxed label={t.fontUiLabel} hint={t.fontUiHint}>
-        {list(t.fontUiLabel, ui, (s) => {
-          setUi(s);
-          apply(s, content);
-        })}
-      </SettingsSection>
+      <SettingsBottomSheet
+        open={open === "ui"}
+        title={t.fontUiLabel}
+        onCancel={() => setOpen(null)}
+        onDone={() => setOpen(null)}
+        cancelLabel={t.cancelLabel}
+        doneLabel={t.doneLabel}
+      >
+        <div className="p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+          {list(t.fontUiLabel, ui, (s) => {
+            setUi(s);
+            apply(s, content);
+            setOpen(null);
+          })}
+        </div>
+      </SettingsBottomSheet>
 
-      {/* **معاينةٌ واحدةٌ قصيرة** (شرطُ المواصفة): سطرُ واجهةٍ يتبع معاملَ
-          الواجهة، وفقرةُ «كلام الناس» تحمل `fs-content` فتتبع معاملَ
-          المحتوى — **نفسُ الآليّة التي تعمل في الصفحات فعلاً.** */}
-      <div className={`${settingsCard} p-3.5`}>
-        <p className="text-12 text-muted mb-1.5">{t.fontPreviewUi}</p>
-        <p className="fs-content text-14 leading-relaxed" dir="auto">
-          {t.fontPreviewContent}
-        </p>
-      </div>
+      <SettingsBottomSheet
+        open={open === "content"}
+        title={t.fontContentLabel}
+        onCancel={() => setOpen(null)}
+        onDone={() => setOpen(null)}
+        cancelLabel={t.cancelLabel}
+        doneLabel={t.doneLabel}
+      >
+        <div className="p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+          {list(t.fontContentLabel, content, (s) => {
+            setContent(s);
+            apply(ui, s);
+            setOpen(null);
+          })}
+        </div>
+      </SettingsBottomSheet>
     </>
   );
 }

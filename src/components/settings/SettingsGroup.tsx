@@ -14,7 +14,7 @@ import type { ReactNode } from "react";
  * بطاقةٌ داخل بطاقة**: انحناءان متداخلان يُقرآن انحناءً مضاعفاً.
  */
 export const settingsCard =
-  "rounded-2xl border border-border bg-surface overflow-hidden";
+  "rounded-xl bg-surface overflow-hidden";
 
 /** البطاقةُ نفسُها وفيها خيطٌ بين كلِّ صفّين — لا فوق الأوّل ولا تحت الأخير */
 export const settingsCardRows = `${settingsCard} divide-y divide-[color:var(--divider)]`;
@@ -43,7 +43,7 @@ export function SettingsGroup({
   return (
     <section className={className}>
       {label && (
-        <h2 className="px-1 mb-2 text-12 font-semibold uppercase tracking-wide text-muted">
+        <h2 className="px-1 mb-1.5 text-12 font-semibold text-muted">
           {label}
         </h2>
       )}

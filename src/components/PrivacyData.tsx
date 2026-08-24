@@ -6,7 +6,9 @@ import { getDict, type Locale } from "@/lib/i18n";
 import { Icon } from "./Icon";
 import { Alert } from "./ui/Alert";
 import { buttonClass } from "./ui/Button";
-import { settingsCard } from "./settings/SettingsGroup";
+import { SettingsGroup } from "./settings/SettingsGroup";
+import { SettingsRow } from "./settings/SettingsRow";
+import { SettingsBottomSheet } from "./settings/SettingsBottomSheet";
 
 /**
  * قسم «بياناتك» في الخصوصية: تصديرٌ وحذف.
@@ -36,6 +38,7 @@ export function PrivacyData({
   const [busy, startBusy] = useTransition();
   const [deleting, startDelete] = useTransition();
   const [armed, setArmed] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const disarm = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -79,51 +82,61 @@ export function PrivacyData({
 
   return (
     <div className="space-y-4">
-      {/* التصدير — 🆕 **والعنوانُ خارج البطاقة كبقيّة الإعدادات**
-          (D-555): **عنوانٌ داخلها يجعلها قسماً ثانياً بإيقاعٍ ثانٍ في
-          صفحةٍ إيقاعُها «عنوانٌ صغيرٌ ثمّ بطاقة».** */}
       {show("export") && (
-      <section>
-        <h2 className="px-1 mb-2 text-12 font-semibold uppercase tracking-wide text-muted">
-          {t.dataExportTitle}
-        </h2>
-        <div className={`${settingsCard} p-3.5`}>
-        <p className="text-12 text-muted leading-relaxed mb-3">{t.dataExportDesc}</p>
-        <button
-          onClick={download}
-          disabled={busy}
-          className={buttonClass({ variant: "surface", className: "h-11" })}
-        >
-          <Icon name="download" size={16} />
-          {busy ? t.dataExportBusy : t.dataExportBtn}
-        </button>
-        </div>
-      </section>
+        <SettingsGroup>
+          <SettingsRow
+            icon="download"
+            title={t.dataExportTitle}
+            value={busy ? t.dataExportBusy : undefined}
+            onClick={download}
+          />
+        </SettingsGroup>
       )}
 
-      {/* الحذف — ⚠️ **وحدُها تحتفظ بحدٍّ أحمرَ خافت**: **إطارٌ يقول
-          «هنا شيءٌ آخر» قبل أن يُقرأ النصّ** — وهي المنطقةُ الوحيدةُ في
-          الإعدادات التي لا رجعةَ في فعلها. */}
       {show("delete") && (
-      <section className="bg-surface border border-[color:var(--error)]/30 rounded-2xl p-3.5">
-        <h2 className="text-15 font-bold mb-1 text-[color:var(--error)]">
-          {t.deleteAccountTitle}
-        </h2>
-        <p className="text-12 text-muted leading-relaxed mb-3">{t.deleteAccountDesc}</p>
-        <button
-          onClick={onDelete}
-          disabled={deleting}
-          className={buttonClass({
-            variant: armed ? "danger" : "surface",
-            className: armed
-              ? "h-11"
-              : "h-11 border-[color:var(--error)]/40 text-[color:var(--error)] hover:border-[color:var(--error)] hover:bg-[color:var(--error)]/10",
-          })}
-        >
-          <Icon name="trash" size={16} />
-          {deleting ? t.deleteAccountBusy : armed ? t.deleteAccountConfirm : t.deleteAccountBtn}
-        </button>
-      </section>
+        <>
+          <SettingsGroup label={t.setDangerZone}>
+            <SettingsRow
+              icon="trash"
+              title={t.deleteAccountTitle}
+              danger
+              onClick={() => setDeleteOpen(true)}
+            />
+          </SettingsGroup>
+
+          <SettingsBottomSheet
+            open={deleteOpen}
+            title={t.deleteAccountTitle}
+            onCancel={() => {
+              setDeleteOpen(false);
+              setArmed(false);
+            }}
+            onDone={() => {
+              setDeleteOpen(false);
+              setArmed(false);
+            }}
+            cancelLabel={t.cancelLabel}
+            doneLabel={t.doneLabel}
+          >
+            <div className="p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+              <p className="text-12 text-muted leading-relaxed mb-4">{t.deleteAccountDesc}</p>
+              <button
+                onClick={onDelete}
+                disabled={deleting}
+                className={buttonClass({
+                  variant: armed ? "danger" : "surface",
+                  full: true,
+                  className: armed
+                    ? "h-11"
+                    : "h-11 text-[color:var(--error)] hover:bg-[color:var(--error)]/10",
+                })}
+              >
+                <Icon name="trash" size={16} />
+                {deleting ? t.deleteAccountBusy : armed ? t.deleteAccountConfirm : t.deleteAccountBtn}
+              </button>
+            </div>
+          </SettingsBottomSheet>
+        </>
       )}
 
       {error && <Alert inline>{error}</Alert>}

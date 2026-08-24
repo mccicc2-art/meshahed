@@ -67,17 +67,17 @@ export function SettingsSection({
 }) {
   if (boxed) {
     return (
-      <section className={`${settingsCard} p-4 ${className}`}>
-        <div className="flex items-start gap-2">
+      <section className={className}>
+        <div className="flex items-start gap-2 px-1 mb-1.5">
           <div className="min-w-0 flex-1">
-            {label && <h2 className="text-15 font-bold truncate">{label}</h2>}
+            {label && <h2 className="text-12 font-semibold text-muted truncate">{label}</h2>}
             {hint && (
-              <p className="text-12 text-muted leading-relaxed mt-1">{hint}</p>
+              <p className="text-12 text-muted leading-relaxed mt-0.5">{hint}</p>
             )}
           </div>
           {action}
         </div>
-        <div className={label || hint ? "mt-3" : ""}>{children}</div>
+        <div className={`${settingsCard} p-2`}>{children}</div>
       </section>
     );
   }
@@ -85,8 +85,8 @@ export function SettingsSection({
   return (
     <section className={className}>
       {(label || action) && (
-        <div className="flex items-center gap-2 px-1 mb-2">
-          <h2 className="min-w-0 flex-1 text-12 font-semibold uppercase tracking-wide text-muted truncate">
+        <div className="flex items-center gap-2 px-1 mb-1.5">
+          <h2 className="min-w-0 flex-1 text-12 font-semibold text-muted truncate">
             {label}
           </h2>
           {action}

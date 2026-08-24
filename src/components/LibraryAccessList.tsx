@@ -8,7 +8,6 @@ import { myLibraryGrants, myFollowersList, setLibraryGrant } from "@/lib/actions
 import { toast, flashError } from "@/lib/toast";
 import { tap } from "@/lib/haptics";
 import { getDict, type Locale } from "@/lib/i18n";
-import { settingsCardRows } from "./settings/SettingsGroup";
 import { SettingsRow } from "./settings/SettingsRow";
 import { SettingsBottomSheet } from "./settings/SettingsBottomSheet";
 import { sheetScroll } from "./ui/controls";
@@ -95,15 +94,12 @@ export function LibraryAccessList({ locale }: { locale: Locale }) {
 
   return (
     <>
-      <div className={settingsCardRows}>
-        <SettingsRow
-          icon="library"
-          title={t.libraryAccessTitle}
-          subtitle={t.libraryAccessHint}
-          value={items === null ? undefined : String(items.length)}
-          onClick={() => setOpen(true)}
-        />
-      </div>
+      <SettingsRow
+        icon="library"
+        title={t.libraryAccessTitle}
+        value={items === null ? undefined : String(items.length)}
+        onClick={() => setOpen(true)}
+      />
 
       <SettingsBottomSheet
         open={open}

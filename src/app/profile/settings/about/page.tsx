@@ -49,7 +49,7 @@ export default async function Page() {
       </SettingsGroup>
 
       <SettingsSection label={t.setAboutSources}>
-        <div className="rounded-2xl border border-border bg-surface p-4 text-12 text-muted/80 leading-relaxed space-y-1.5">
+        <div className="rounded-xl bg-surface p-3.5 text-12 text-muted/80 leading-relaxed space-y-1.5">
           <p>{t.tmdbAttribution}</p>
           <p>{t.justwatchAttribution}</p>
         </div>

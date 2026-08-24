@@ -1,10 +1,9 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getUser } from "@/lib/data";
 import { getT } from "@/lib/locale";
-import { Icon } from "@/components/Icon";
 import { SettingsPageLayout } from "@/components/settings/SettingsPageLayout";
-import { SettingsSoon } from "@/components/settings/SettingsSoon";
+import { SettingsGroup } from "@/components/settings/SettingsGroup";
+import { SettingsRow } from "@/components/settings/SettingsRow";
 
 /**
  * الاشتراكُ والفوترة — **منقولٌ كما هو من تبويب `billing`** (D-462).
@@ -20,14 +19,15 @@ export default async function Page() {
 
   return (
     <SettingsPageLayout title={t.setBilling}>
-      <SettingsSoon title={t.settingsSoonTitle} body={t.settingsBillingHint} icon="card" />
-      <Link
-        href="/features"
-        className="inline-flex items-center gap-2 text-14 font-medium text-accent hover:underline"
-      >
-        <Icon name="sparkle-star" size={16} />
-        {t.featuresLink}
-      </Link>
+      <SettingsGroup>
+        <SettingsRow icon="card" title={t.setPlanFree} value={t.setPlanActive} />
+        <SettingsRow
+          href="/features"
+          icon="sparkle-star"
+          title={t.setViewPlans}
+          subtitle={t.setPlanComing}
+        />
+      </SettingsGroup>
     </SettingsPageLayout>
   );
 }

@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import { getUser, getProfile } from "@/lib/data";
 import { getT } from "@/lib/locale";
 import { SettingsPageLayout } from "@/components/settings/SettingsPageLayout";
-import { SettingsSection } from "@/components/settings/SettingsSection";
+import { SettingsGroup } from "@/components/settings/SettingsGroup";
 import { LanguageRow } from "@/components/settings/LanguageRow";
 import { ThemeSection } from "@/components/settings/ThemeSection";
 import { FontSizeSection } from "@/components/settings/FontSizeSection";
@@ -43,7 +43,8 @@ export default async function Page() {
 
   return (
     <SettingsPageLayout title={t.setAppearance}>
-      <SettingsSection boxed label={t.themeSection} hint={t.themeHint}>
+      <SettingsGroup>
+        <LanguageRow locale={locale} />
         <ThemeSection
           locale={locale}
           initialTheme={p?.theme ?? "amber"}
@@ -57,14 +58,8 @@ export default async function Page() {
             favoriteGenres: p?.favorite_genres ?? [],
           }}
         />
-      </SettingsSection>
-
-      {/* **بلا عنوانِ قسم**: الصفُّ نفسُه يقول «لغة الواجهة» ويقول
-          قيمتَها في طرفه — **وعنوانٌ فوقه يكرّر الكلمةَ مرّتين
-          متلاصقتين.** */}
-      <LanguageRow locale={locale} />
-
-      <FontSizeSection locale={locale} initialUi={fsUi} initialContent={fsContent} />
+        <FontSizeSection locale={locale} initialUi={fsUi} initialContent={fsContent} />
+      </SettingsGroup>
     </SettingsPageLayout>
   );
 }

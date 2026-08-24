@@ -79,7 +79,7 @@ export function SettingsRow({
   );
 
   const cls =
-    "w-full flex items-center gap-3 min-h-14 px-4 py-3 text-start transition hover:bg-surface-2 active:opacity-80";
+    "w-full flex items-center gap-3 min-h-14 px-3.5 py-2.5 text-start transition hover:bg-surface-2 active:opacity-80";
 
   if (href) {
     return (

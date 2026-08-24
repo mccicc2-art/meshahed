@@ -6,7 +6,6 @@ import { getDict, type Locale } from "@/lib/i18n";
 import { SettingsBottomSheet } from "./SettingsBottomSheet";
 import { SettingsOptionRow, SettingsOptionList } from "./SettingsOptionRow";
 import { SettingsRow } from "./SettingsRow";
-import { settingsCardRows } from "./SettingsGroup";
 
 /**
  * لغةُ الواجهة — **صفٌّ يقول اللغةَ الحاليّة، وورقةٌ تبدّلها** (D-555،
@@ -45,13 +44,12 @@ export function LanguageRow({ locale }: { locale: Locale }) {
 
   return (
     <>
-      <div className={settingsCardRows}>
-        <SettingsRow
-          title={t.languageSection}
-          value={current}
-          onClick={() => setOpen(true)}
-        />
-      </div>
+      <SettingsRow
+        icon="compass"
+        title={t.languageSection}
+        value={current}
+        onClick={() => setOpen(true)}
+      />
 
       <SettingsBottomSheet
         open={open}
@@ -72,7 +70,6 @@ export function LanguageRow({ locale }: { locale: Locale }) {
               />
             ))}
           </SettingsOptionList>
-          <p className="px-1 mt-2 text-12 text-muted leading-relaxed">{t.languageHint}</p>
         </div>
       </SettingsBottomSheet>
     </>

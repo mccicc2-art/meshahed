@@ -6,9 +6,8 @@ import { setWatchRegion } from "@/lib/actions";
 import { getDict, type Locale } from "@/lib/i18n";
 import { WATCH_REGIONS, regionName, regionFlag } from "@/lib/region";
 import { tap } from "@/lib/haptics";
-import { Icon } from "./Icon";
-import { SettingsSection } from "./settings/SettingsSection";
 import { SettingsPickerSheet } from "./settings/SettingsPickerSheet";
+import { SettingsRow } from "./settings/SettingsRow";
 
 /**
  * اختيار بلد المشاهدة.
@@ -53,37 +52,12 @@ export function RegionSwitch({ locale, region }: { locale: Locale; region: strin
 
   return (
     <>
-      <SettingsSection boxed label={t.regionSection}>
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          disabled={pending}
-          className="w-full flex items-center gap-3 min-h-14 -mx-1 px-1 text-start transition rounded-control hover:bg-surface-2 active:opacity-80 disabled:opacity-60"
-        >
-          {/* **مربّعُ العلم قبل الاسم** (تصميمُ أحمد): **العينُ تلتقط
-              العلمَ قبل أن تقرأ الكلمة**، وهو ما يجعل الصفَّ يُقرأ من
-              طرف العين في قائمةٍ تُمرَّر. */}
-          <span
-            aria-hidden
-            className="shrink-0 grid place-items-center w-10 h-10 rounded-control bg-surface-2 border border-border text-20 leading-none"
-          >
-            {regionFlag(current)}
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block text-15 font-semibold truncate" dir="auto">
-              {regionName(current, loc)}
-            </span>
-            <span className="block text-12 text-muted truncate mt-0.5" dir="auto">
-              {t.regionCardSub}
-            </span>
-          </span>
-          <Icon
-            name="chevron-down"
-            size={18}
-            className="shrink-0 text-muted -rotate-90 rtl:rotate-90"
-          />
-        </button>
-      </SettingsSection>
+      <SettingsRow
+        icon="compass"
+        title={t.regionSection}
+        value={`${regionFlag(current)} ${regionName(current, loc)}`}
+        onClick={() => setOpen(true)}
+      />
 
       {/* **خيارٌ واحد: الاختيارُ هو «تمّ»** — والورقةُ تُغلق بما اختير */}
       <SettingsPickerSheet
