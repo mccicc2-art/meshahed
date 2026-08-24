@@ -25,6 +25,7 @@ import {
   getFriendsWatching,
   getUnreadSignals,
   getUnreadShares,
+  getFollowStats,
   type SavedListBrief,
   type ListItem,
 } from "@/lib/data";
@@ -383,9 +384,14 @@ export default async function HomePage() {
   /* **والعدّادان يُقرآن هنا أيضاً بلا ثمن**: كلاهما مغلَّفٌ بـ`cache()`
      (D-470) **والشريطُ العلويُّ قرأهما في الطلب نفسِه** — فالنداءُ
      محفوظٌ لا مُكرَّر. */
-  const [unreadSignals, unreadShares] = await Promise.all([
+  const [unreadSignals, unreadShares, followStats] = await Promise.all([
     getUnreadSignals(),
     getUnreadShares(),
+    /* 🆕 **عدّادا المتابعة في الترويسة** (D-572) — **في الموجة القائمة
+       لا في موجةٍ ثالثة**: **رقمان يُرسمان فوق الطيّة**، **وعدّان
+       بـ`head: true` لا يجلبان صفّاً واحداً.** **والفشلُ يعني صفرين لا
+       صفحةً مكسورة.** */
+    getFollowStats(user.id).catch(() => ({ followers: 0, following: 0 })),
   ]);
 
   const displayName = profile?.nickname || user.email?.split("@")[0] || "";
@@ -431,6 +437,10 @@ export default async function HomePage() {
           unreadSignals={unreadSignals}
           unreadShares={unreadShares}
           levelPercent={level.percent}
+          userId={user.id}
+          followers={followStats.followers}
+          following={followStats.following}
+          hideFollowLists={!!profile?.hide_follow_lists}
           stats={headerStats}
           showStats={prefs.stats}
           locale={locale}
