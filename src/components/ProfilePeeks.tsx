@@ -36,11 +36,22 @@ export function FollowCountButton({
   const [open, setOpen] = useState(false);
   const [people, setPeople] = useState<PersonLite[] | null>(null);
 
+  /* ⚖️ 🆕 **الرمزُ سقط والألوانُ صارت رموزَ سمة** (D-561، تصميمُ أحمد:
+     «13 Following · 12 Followers» **بلا أيقونةٍ ولا حدّ**).
+
+     **والرمزُ كان يقول ما يقوله النصُّ بعده** — «متابِعون» بجانب رمز
+     ناسٍ حشوٌ (D-138 من جهته المقابلة: **الرمزُ يُضاف حين يختصر لا حين
+     يكرّر**). **والصفُّ صار عدّادَين متجاورَين، فرمزان متطابقان في سطرٍ
+     واحدٍ ضجيجٌ خالص.**
+
+     ⚠️ **و`text-white` كان عطلاً في السمة النهاريّة**: الصفُّ نزل من
+     على الغلاف إلى خلفيّة الصفحة (D-547)، **فبقي أبيضَ على أبيضَ في
+     `daylight`** — **ولونٌ مكتوبٌ بيده ينجو من كلِّ فحصٍ إلا فحصَ
+     السمة الثانية.** */
   const body = (
     <>
-      <Icon name="people-filled" size={16} />
-      <span className="font-bold text-white tabular-nums">{count}</span>
-      <span className="text-white/75">{label}</span>
+      <span className="font-bold text-foreground tabular-nums">{count}</span>
+      <span className="text-muted">{label}</span>
     </>
   );
 

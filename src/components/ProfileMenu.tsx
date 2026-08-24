@@ -269,7 +269,11 @@ export function ProfileMenu({
           }}
           aria-label={t.profileMenuAria}
           title={t.profileMenuAria}
-          className="w-10 h-10 rounded-full bg-black/35 backdrop-blur-md border border-white/15 grid place-items-center text-white/90 active:scale-95 transition"
+          /* ⚖️ 🆕 **٤٤ لا ٤٠** (D-561): **هو الحدُّ الأدنى للمسِ الإصبع**
+             (D-033/D-168)، **وهو مقاسُ `BackButton` في الزاوية المقابلة
+             ومقاسُ قرصِ المشاركة بجانبه** — **وثلاثةُ أقراصٍ في صفٍّ
+             واحدٍ بمقاسين تُقرأ رتبتين وهي رتبةٌ واحدة.** */
+          className="w-11 h-11 rounded-full bg-black/35 backdrop-blur-md border border-white/15 grid place-items-center text-white/90 active:scale-95 transition"
         >
           <Icon name="dots" size={18} />
         </button>

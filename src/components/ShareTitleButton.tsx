@@ -26,6 +26,7 @@ export function ShareTitleButton({
   title,
   locale,
   label,
+  variant = "plain",
   className = "",
 }: {
   /** مسارُ العمل عندنا — `/show/123` أو `/movie/456` */
@@ -34,6 +35,15 @@ export function ShareTitleButton({
   locale: Locale;
   /** 🆕 نصٌّ بجانب الرمز — لصفوف الأفعال حيث الرمزُ وحدَه سؤالٌ (D-138) */
   label?: string;
+  /**
+   * 🆕 **قرصٌ زجاجيٌّ فوق الغلاف** (D-561) — **`variant` لا مكوّنٌ ثانٍ**
+   * (نفسُ عقد `ProfileMenu` و`BackButton` و`FollowUserButton`).
+   *
+   * **والمقاسُ ٤٤ لا ٤٠**: هو الحدُّ الأدنى للمسِ الإصبع (D-033/D-168)،
+   * **وهو مقاسُ `BackButton` في الزاوية المقابلة** — **وقرصان متجاوران
+   * بمقاسين يُقرآن رتبتين مختلفتين وهما رتبةٌ واحدة.**
+   */
+  variant?: "plain" | "cover";
   className?: string;
 }) {
   const t = getDict(locale);
@@ -57,16 +67,22 @@ export function ShareTitleButton({
     }
   }
 
+  const cover = variant === "cover";
   return (
     <button
       type="button"
       onClick={run}
       aria-label={t.shareLinkLabel}
       title={t.shareLinkLabel}
-      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-muted hover:text-accent transition active:scale-90 ${className}`}
+      className={
+        (cover
+          ? "inline-grid place-items-center w-11 h-11 rounded-full bg-black/35 backdrop-blur-md border border-white/15 text-white/90 active:scale-95 transition"
+          : "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-muted hover:text-accent transition active:scale-90") +
+        ` ${className}`
+      }
     >
-      <Icon name="share" size={15} />
-      {label && <span className="text-14 font-bold">{label}</span>}
+      <Icon name="share" size={cover ? 18 : 15} />
+      {!cover && label && <span className="text-14 font-bold">{label}</span>}
     </button>
   );
 }

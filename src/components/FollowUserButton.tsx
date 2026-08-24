@@ -122,18 +122,30 @@ export function FollowUserButton({
     );
   }
 
+  /* ⚖️ 🆕 **و«أتابعه» صار أصفرَ بعلامة صحّ** (D-561، تصميمُ أحمد:
+     رقاقةٌ صفراء «✓ Following» بجانب الاسم).
+
+     **والأصفرُ هنا حالةٌ مختارةٌ لا فعلٌ رئيسيّ** — وهو أحدُ معنيَيه
+     المسموحَين في `02` («الأصفرُ للمختار أو للفعل الأوّل»)، **والصحُّ
+     هو ما يفرّقه عن «تابِع»**: **الكلمةُ تتبدّل والعلامةُ تظهر**،
+     فالحالتان لا تُقرآن واحدةً.
+
+     ⚠️ **و«طلبتَ المتابعة» يبقى سطحاً رماديّاً** — **حالةٌ معلّقةٌ ليست
+     مختارةً**، **ولونٌ يعِد بما لم يقع يكذب** (D-217). */
+  const chosen = state === "following";
   return (
     <button
       disabled={pending}
       onClick={act}
       className={buttonClass({
-        variant: state === "none" ? "primary" : "surface",
+        variant: state === "requested" ? "surface" : "primary",
         className:
-          state === "none"
-            ? ""
-            : "hover:border-[color:var(--error)]/60 hover:text-[color:var(--error)]",
+          state === "requested"
+            ? "hover:border-[color:var(--error)]/60 hover:text-[color:var(--error)]"
+            : "",
       })}
     >
+      {chosen && <Icon name="check" size={15} strokeWidth={3} />}
       {label}
     </button>
   );
