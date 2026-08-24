@@ -15,6 +15,7 @@ import {
   getProfileArtists,
   getProfileFavorites,
   getProfileArt,
+  getProfileAnimeFlags,
   artKey,
   displayNameOf,
 } from "@/lib/data";
@@ -34,8 +35,7 @@ import { CompactMediaRow } from "@/components/CompactMediaRow";
 import { PageTabs, type PageTab } from "@/components/ui/PageTabs";
 import { ShareTitleButton } from "@/components/ShareTitleButton";
 import { SpoilerText } from "@/components/SpoilerText";
-import { FollowCountButton, ToWatchStat } from "@/components/ProfilePeeks";
-import { posterUrl } from "@/lib/media";
+import { FollowCountButton } from "@/components/ProfilePeeks";
 import {
   PROFILE_SECTIONS,
   profileSectionMeta,
@@ -98,6 +98,7 @@ export default async function PublicProfilePage({
     artists,
     rawFavorites,
     profileArt,
+    animeFlags,
   ] = await Promise.all([
       getRatingsOf(profile.id),
       getFollowStats(profile.id),
@@ -115,6 +116,10 @@ export default async function PublicProfilePage({
          الموجةُ الأولى لا الثانية (كانت تُنتظر مع الترجمة بلا سبب).
          والدالّة تمرّ بـ`can_view_profile` فالحارس واحد لا اثنان. */
       getProfileArt(profile.id),
+      /* 🆕 **علَمُ الأنمي** (D-561) — **نداءٌ خفيفٌ لا يُرجع إلا صفوفَ
+         الأنمي**، **وقبل تشغيل الهجرة ١٢٩ يُرجع فراغاً** فيغيب صفُّ
+         الأنمي ولا ينكسر شيء. */
+      getProfileAnimeFlags(profile.id),
       isMe ? Promise.resolve() : recordProfileView(profile.id),
     ]);
 
@@ -159,45 +164,54 @@ export default async function PublicProfilePage({
   const movieFollows = follows.filter((f) => f.media_type === "movie" && !f.dropped);
   const level = getLevel(levelPoints(watched.episodes, watched.movies.size));
 
-  /* «للمشاهدة» بدل عدّاد الحلقات (طلب أحمد) — ونفس عناصره تُمرَّر لورقة
-     «وش باقي يتفرج»: محسوبة من صفوفه المقروءة أصلاً، فلا طلب إضافي */
-  const toWatchItems = [
-    ...tvFollows
-      .map((f) => {
-        const aired = f.aired_episodes ?? f.total_episodes ?? 0;
-        const w = Math.min(watched.byShow.get(f.tmdb_id) ?? 0, aired || Infinity);
-        return { f, aired, w };
-      })
-      .filter(({ aired, w }) => aired === 0 || w < aired)
-      .map(({ f, aired, w }) => ({
-        key: `tw-tv-${f.tmdb_id}`,
-        href: `/show/${f.tmdb_id}`,
-        title: f.title,
-        poster: posterUrl(f.poster_path, "w185"),
-        remainingLabel: aired > 0 ? t.remainingEps(aired - w) : null,
-      })),
-    ...movieFollows
-      .filter((f) => !watched.movies.has(f.tmdb_id))
-      .map((f) => ({
-        key: `tw-mv-${f.tmdb_id}`,
-        href: `/movie/${f.tmdb_id}`,
-        title: f.title,
-        poster: posterUrl(f.poster_path, "w185"),
-        remainingLabel: null,
-      })),
-  ].slice(0, 60);
+  /* 🆕 **سطرُ اللقب** (D-561) — **ما كتبه صاحبُه، وإلّا اسمُ مستواه.**
+     **والارتدادُ ليس زينةً**: **مفتاحُ «المستوى» في شاشة التخصيص كان
+     يحكم رقاقةً صفراءَ سقطت**، **فلو لم يرث شيئاً لصار مفتاحاً لا
+     يفعل** (D-217) — **وهو الآن يحكم هذا السطر.**
+     ⚠️ **ويتبع الاسمَ في الإخفاء**: من أخفى اسمَه أخفى نبذتَه، **ولقبٌ
+     يكتبه بيده يكشفه كما تكشفه نبذتُه.** */
+  const metaTitle = profile.hide_name
+    ? null
+    : prefs.title || (canView && prefs.level ? levelName(level.level, t) : null);
 
-  /* 🆕 **أربعُ خاناتٍ بأصفرٍ واحد** (D-438، وخطّةُ أحمد: «Shows · Movies ·
-     Ratings · Lists»): **«واتش ليست» غادرت البطاقة** — وهي رقمٌ عن حالةِ
-     مكتبةٍ لا عن صنعِ صاحبها، **والقوائمُ حلّت مكانها** لأنها ما يصنعه
-     ويعلنه. **وورقةُ «وش باقي يتفرج» لم تسقط**: بابُها صفُّ «للمشاهدة»
-     في مكتبته وصفحتُه، **والبابُ الذي سقط هو الرقمُ في الترويسة.**
-     **واللونُ واحدٌ في الأربع** (D-437). */
+  /* ⚖️ 🆕 **بابُ «وش باقي يتفرج» غادر البروفايل** (D-561، نقضٌ مُعلَنٌ
+     لبقيّةِ D-438).
+
+     **وD-438 أبقته بحجّةٍ صحيحةٍ في حينها**: «بابٌ يُفتح لا يُحذف لأن
+     مكانَه تبدّل» — **يومَ لم يكن له مكانٌ آخر.** **وD-559 أعطته
+     مكاناً دائماً**: «للمشاهدة» صارت **بطاقةً في قائمة الليستات**
+     يُشغّلها صاحبُها ويُطفئها. **فصار البابُ الثاني نسخةً**، **ونسخةٌ
+     ثانيةٌ لفعلٍ واحدٍ خللٌ** (القاعدة ٣). **والصفُّ الذي كان يحمله
+     صار ثلاثةَ عناصرَ كما رسمها أحمد: اللقب · متابَعون · متابِعون.**
+
+     🆕 **ومكانَه: المفضّلةُ تنقسم ثلاثةَ صفوفٍ** (تصميمُ أحمد:
+     «Shows · Movies · Anime»). **والأنمي ليس نوعَ وسيطٍ ثالثاً عندنا**
+     بل **علَمٌ على المتابعة** (D-182) — **فالقسمةُ بالعلَم أوّلاً ثم
+     بالنوع**، **وعملٌ واحدٌ لا يظهر في صفَّين.** */
+  const favAnime = favorites.filter((f) => animeFlags.get(artKey(f.media_type, f.tmdb_id)));
+  const favRest = favorites.filter((f) => !animeFlags.get(artKey(f.media_type, f.tmdb_id)));
+  const favShows = favRest.filter((f) => f.media_type === "tv");
+  const favMovies = favRest.filter((f) => f.media_type === "movie");
+
+  /* ⚖️ 🆕 **البطاقةُ صارت ثلاثَ خاناتٍ داخل إطار** (D-561، تصميمُ
+     أحمد: «Movies · Shows · Full statistics ›»، ونقضٌ مُعلَنٌ لأربعةِ
+     D-438).
+
+     **ولماذا سقط رقمان:** «تقييمات» و«قوائم» **صارا عدّادَين على
+     تبويبَيهما** (`PageTabs.count`) — **والرقمُ مرّتين في شاشةٍ
+     واحدةٍ لا يقول ضعفَ ما يقوله مرّةً** (D-374 من جهته المقابلة).
+     **وما بقي هو ما لا تبويبَ له**: مسلسلاتُه وأفلامُه.
+
+     ⚠️ **والخانةُ الثالثةُ بابٌ لا رقم** — **و`/stats` تقرأ صاحبَ
+     الجلسة لا صاحبَ الصفحة**، **فبابٌ يفتح إحصائياتي في صفحةِ غيري
+     يكذب** (D-217). **فهو لي وحدي، ولزائرِ ملفّي رقمُ تقييماتِه
+     مكانَه** — **رقمٌ لا بابَ له في صفحته.** */
   const headerStats = [
-    { key: "shows", icon: "tv" as const, color: "var(--accent)", value: tvFollows.length, label: t.shortShows },
-    { key: "movies", icon: "film" as const, color: "var(--accent)", value: movieFollows.length, label: t.shortMovies },
-    { key: "ratings", icon: "star" as const, color: "var(--accent)", value: ratings.length, label: t.panelRatings },
-    { key: "lists", icon: "list" as const, color: "var(--accent)", value: publicLists.length, label: t.profileTabLists },
+    { key: "movies", icon: "film" as const, value: movieFollows.length, label: t.shortMovies },
+    { key: "shows", icon: "tv" as const, value: tvFollows.length, label: t.shortShows },
+    ...(isMe
+      ? []
+      : [{ key: "ratings", icon: "star" as const, value: ratings.length, label: t.panelRatings }]),
   ];
 
   /* ===== ترتيبان من نفس الصفوف — بلا نداءٍ ثانٍ (D-438) =====
@@ -235,7 +249,7 @@ export default async function PublicProfilePage({
   const sections: Record<ProfileSection, React.ReactNode> = {
     shows:
       shows.length > 0 ? (
-        <PosterRail title={t.shortShows} icon="tv" iconColor="var(--accent)">
+        <PosterRail title={t.shortShows}>
           {shows.slice(0, cap(shows.length)).map((i) => (
             <RailItem key={`s-${i.id}`}>
               <PosterCard
@@ -251,7 +265,7 @@ export default async function PublicProfilePage({
 
     movies:
       movieFollows.length > 0 ? (
-        <PosterRail title={t.shortMovies} icon="film" iconColor="var(--accent)">
+        <PosterRail title={t.shortMovies}>
           {movieFollows.slice(0, cap(movieFollows.length)).map((f) => (
             <RailItem key={`m-${f.tmdb_id}`}>
               {/* بلا شارة «شوهد» وبلا خيط التقدم الأخضر (طلب أحمد) —
@@ -268,7 +282,7 @@ export default async function PublicProfilePage({
        غيرك كذبٌ صريح، وحسابُه له ثلاثون نداءً لا تُدفع في صفحةٍ عامة */
     artists:
       artists.length > 0 ? (
-        <PosterRail title={t.shortArtists} icon="people" iconColor="var(--accent)">
+        <PosterRail title={t.shortArtists}>
           {artists.slice(0, cap(artists.length)).map((a) => (
             <RailItem key={`a-${a.person_id}`}>
               <PosterCard
@@ -286,30 +300,19 @@ export default async function PublicProfilePage({
     /* قوائمه المعلنة (D-068) — صنعُه بعد متابعاته وقبل أحكامه. بطاقة
        اكتشف نفسها بلا سطر صاحبٍ (الصفحة كلّها صفحته)، والرابط إلى
        /lists/[id] حيث زرّ «أضِفها إلى قوائمي» */
-    /* «مفضّلاتي» (D-152): القائمة المثبّتة من D-130 صفّاً في البروفايل.
-       بلا شارةٍ ولا خيط تقدّم — الملصق وحده، كصفّ الأفلام تماماً: القلبُ
-       رأيٌ في العمل لا حالةُ مشاهدةٍ له. وترتيبُها ترتيبُ صاحبها اليدويّ
-       (يأتي مرتَّباً من الدالّة، فلا فرزَ هنا) */
-    favorites:
-      favorites.length > 0 ? (
-        <PosterRail title={t.profileFavoritesRail} icon="heart" iconColor="var(--accent)">
-          {favorites.slice(0, cap(favorites.length)).map((f) => (
-            <RailItem key={`fav-${f.media_type}-${f.tmdb_id}`}>
-              <PosterCard
-                href={`/${f.media_type === "tv" ? "show" : "movie"}/${f.tmdb_id}`}
-                title={f.title ?? "—"}
-                posterPath={f.poster_path}
-              />
-            </RailItem>
-          ))}
-        </PosterRail>
-      ) : null,
+    /* ⚖️ 🆕 **«مفضّلاتي» غادرت سجلَّ الأقسام إلى رأس التبويب**
+       (D-561): **صارت هي التبويبَ نفسَه** بثلاثة صفوفٍ مصنّفة، **وقسمٌ
+       يُرسم مرّتين في صفحةٍ واحدة خللٌ** (D-374). **والمفتاحُ يبقى في
+       السجلّ** لأن شاشةَ التخصيص تُظهره وتُخفيه — **والإخفاءُ يُسكت
+       الصفوفَ الثلاثة كما كان يُسكت الصفَّ الواحد** (D-152: إظهارُه هو
+       الإعلانُ نفسُه). */
+    favorites: null,
 
     lists: <PublicListsRail lists={publicLists} locale={locale} title={t.profileListsRail} />,
 
     ratings:
       topRated.length > 0 ? (
-        <PosterRail title={t.profileTopRated} icon="star" iconColor="var(--accent)">
+        <PosterRail title={t.profileTopRated}>
           {topRated.slice(0, cap(16)).map((r) => (
             <RailItem key={`r-${r.media_type}-${r.tmdb_id}`}>
               <PosterCard
@@ -339,7 +342,16 @@ export default async function PublicProfilePage({
     : "overview";
   const base = `/u/${encodeURIComponent(profile.username ?? username)}`;
   const tabItems: PageTab[] = [
-    { key: "overview", label: t.profileTabOverview, icon: "grid", href: base },
+    /* ⚖️ 🆕 **الأوّلُ صار «المفضّلة»** (D-561، تصميمُ أحمد) — **والاسمُ
+       يرتدّ إلى «نظرة عامة» لمن أخفى مفضّلته**: **تبويبٌ يَعِد بمفضّلةٍ
+       أخفاها صاحبُه يكذب** (D-217)، **وما تحته حينئذٍ صفوفُه المرتّبة
+       فعلاً** — **فالاسمُ يتبع المحتوى لا العكس.** */
+    {
+      key: "overview",
+      label: wants("favorites") ? t.profileTabFavorites : t.profileTabOverview,
+      icon: wants("favorites") ? "heart" : "grid",
+      href: base,
+    },
     {
       key: "activity",
       label: t.communityTabMine,
@@ -363,29 +375,14 @@ export default async function PublicProfilePage({
     },
   ];
 
-  /* 🆕 **«النشاط الأخير» كتلةٌ ثابتةٌ في «نظرة عامة» لا قسمٌ يُرتَّب**
-     (D-438). **وخطّةُ أحمد تصفّ محتوى التبويب بترتيبه** («Favorites ·
-     Recent activity · Top rated») — **فهو تركيبُ التبويب لا تفضيلُ
-     صاحبه**، ونظامُ الترتيب يبقى لصفوف المكتبة كما هو (D-129).
-     ⚠️ **وبلا نداءٍ جديد**: التقييماتُ مقروءةٌ أعلاه، **والصفُّ يفرزها
-     بالزمن.** **و`CompactMediaRow` هو صفُّ الرئيسية المضغوط نفسُه**
-     (D-434) — **ولا شكلَ ثانٍ لمعنًى واحد.** */
-  const recentBlock =
-    recent.length > 0 ? (
-      <PosterRail title={t.profileRecent} icon="clock" iconColor="var(--accent)" bare>
-        <div className="space-y-2">
-          {recent.slice(0, cap(6)).map((r) => (
-            <CompactMediaRow
-              key={`rc-${r.media_type}-${r.tmdb_id}`}
-              href={`/${r.media_type === "tv" ? "show" : "movie"}/${r.tmdb_id}`}
-              title={r.title ?? "—"}
-              subtitle={`★ ${r.rating}/10`}
-              posterPath={r.poster_path}
-            />
-          ))}
-        </div>
-      </PosterRail>
-    ) : null;
+  /* ⚖️ 🆕 **«النشاط الأخير» غادر التبويبَ الأوّل** (D-561، نقضُ
+     كتلةِ D-438 الثابتة).
+
+     **وحجّتُها يومَها كانت خطّةَ أحمد نفسَها** («Favorites · Recent
+     activity · Top rated») — **وتصميمُه اليوم يبدأ التبويبَ بـ«Shows»
+     مباشرةً**، **وتبويبُ «النشاط» على بُعد ضغطةٍ بنفس الصفوف
+     بالضبط.** **فالكتلةُ كانت نسخةً مختصرةً من تبويبٍ مجاور**
+     (القاعدة ٣)، **والمختصرُ يسقط والكاملُ يبقى.** */
 
   return (
     /* 🆕 **كثافةُ صاحب الصفحة تُكتب على جذرها** (D-441) — **فملصقاتُ
@@ -428,12 +425,55 @@ export default async function PublicProfilePage({
               الحافّة ولا يأكل الصورة. */}
           <div className="absolute inset-x-0 bottom-0 h-10 bg-gradient-to-b from-transparent to-[color:var(--background)]" />
 
-          {/* ⚖️ 🆕 **وأدواتُ الغلاف نزلت إلى صفِّ الأفعال** (D-438): زرُّ
-              المتابعة والنقاط كانا يطفوان على الصورة، **وصفُّ الأفعال
-              الثلاثة (متابعة · رسالة · مشاركة) لا يسع زاويةً** — **والفعلُ
-              الذي يُقرأ باسمه أوضحُ من قرصٍ زجاجيّ** (D-138).
-              **وزرُّ الرجوع وحدَه يبقى** لأن موضعَه عُرفٌ لا خيار. */}
+          {/* ⚖️ 🆕 **وأدواتُ الغلاف عادت إلى الزاوية** (D-561، تصميمُ
+              أحمد: ثلاثةُ أقراصٍ زجاجيّةٍ على الغلاف — رجوعٌ في زاوية
+              البداية، مشاركةٌ ونقاطٌ في زاوية النهاية؛ **ونقضٌ مُعلَنٌ
+              لـD-438**).
+
+              **وحجّةُ D-438 كانت العدد لا الموضع**: «صفُّ الأفعال
+              الثلاثة (متابعة · رسالة · مشاركة) لا يسع زاويةً». **والعددُ
+              تبدّل**: **المتابعةُ صعدت إلى صفِّ الهوية بجانب الاسم**،
+              **و«رسالة» رجعت إلى داخل ورقة النقاط** حيث حارسُها
+              (D-051) يسكن أصلاً — **فبقي فعلان، وزاويةٌ تسعهما.**
+
+              ⚠️ **والأقراصُ الثلاثةُ ٤٤×٤٤ سواءً** (D-033/D-168):
+              **رجوعٌ ٤٤ ومشاركةٌ ٤٤ ونقاطٌ كانت ٤٠ فصارت ٤٤** —
+              **ورتبةٌ واحدةٌ بمقاسين تُقرأ رتبتين.** */}
           <BackButton locale={locale} className="absolute top-3 start-3" />
+          <div className="absolute top-3 end-3 z-10 flex items-center gap-2">
+            <ShareTitleButton
+              path={base}
+              title={displayName}
+              locale={locale}
+              variant="cover"
+            />
+            {isMe ? (
+              /* **وصاحبُ الصفحة يجد قلمَه مكانَ النقاط**: النقاطُ
+                 بلاغٌ وحظرٌ ورسالة — **ثلاثتُها عن غيرك** — **وبابُ
+                 صاحبها تعديلُ ملفِّه.** */
+              <Link
+                href="/profile/edit"
+                aria-label={t.headerSettings}
+                title={t.headerSettings}
+                className="w-11 h-11 rounded-full bg-black/35 backdrop-blur-md border border-white/15 grid place-items-center text-white/90 active:scale-95 transition"
+              >
+                <Icon name="edit" size={18} />
+              </Link>
+            ) : (
+              <ProfileMenu
+                person={{
+                  id: profile.id,
+                  nickname: profile.nickname,
+                  username: profile.username,
+                  avatar_url: profile.avatar_url,
+                  hide_name: profile.hide_name ?? false,
+                }}
+                mutual={relation.following && relation.followsMe}
+                system={isLoopz(profile.id)}
+                locale={locale}
+              />
+            )}
+          </div>
         </div>
 
         {/* ===== كتلة الهوية ===== */}
@@ -470,7 +510,12 @@ export default async function PublicProfilePage({
               تُقلّل الرصاصةَ داخل السطر** فتعلو حروفُ الاسم إلى رأس
               صندوقه، **وإلّا بقيت ثلاثةُ بكسلاتٍ فراغاً يكسر التوازي.** */}
           <div className="min-w-0 flex-1">
-            <h1 className="text-22 sm:text-xl font-bold leading-tight truncate drop-shadow-[0_2px_6px_rgba(0,0,0,0.7)]">
+            {/* 🔴 🆕 **والهالةُ صنفُ اللوحة لا ظلٌّ أسودُ مكتوبٌ بيد**
+                (D-561، إصلاحُ عطلٍ في `daylight`): `.hero-halo` تشتقّ
+                لونَها من `--background` (D-501) — **سوداءُ في الليل
+                وبيضاءُ في النهار** — **والظلُّ الأسودُ الثابتُ كان
+                لطخةً خلف نصٍّ أسودَ في السمة الفاتحة.** */}
+            <h1 className="hero-halo text-22 sm:text-xl font-bold leading-tight truncate">
               {displayName}
             </h1>
             {/* ⚖️ 🆕 **والمعرّف عاد** (D-438، خطّةُ أحمد: «الاسم والـusername
@@ -480,84 +525,83 @@ export default async function PublicProfilePage({
                 لأن المعرّفَ يكشفه. */}
             {profile.username && !profile.hide_name && (
               <p
-                className="text-[12.5px] text-white/60 leading-tight truncate drop-shadow"
+                /* 🔴 **و`text-white` كان عطلاً صامتاً في `daylight`**:
+                   المعرّفُ والنبذةُ يسقطان **تحت** حافّة الغلاف
+                   (`-mt-10` يرفع السطر الأوّل وحدَه)، **فيقفان على
+                   `--background`** — **وأبيضُ ٦٠٪ على ‎#f5f5f3 لا
+                   يُرى.** **و`--muted` يُقرأ على السمتين.** */
+                className="hero-halo text-[12.5px] text-muted leading-tight truncate"
                 dir="ltr"
               >
                 @{profile.username}
               </p>
             )}
             {bioText && (
-              <p className="text-[12.5px] text-white/70 leading-snug mt-1 drop-shadow line-clamp-2 max-w-[46ch]">
+              <p className="hero-halo text-[12.5px] text-muted leading-snug mt-1 line-clamp-2 max-w-[46ch]">
                 {bioText}
               </p>
             )}
           </div>
-        </div>
 
-        {/* ===== صفُّ الأفعال (D-438) ===== */}
-        {/* 🆕 **والفواصلُ ضاقت** (D-547، طلبُ أحمد: «صفُّ التبويب
-            والمحتوى السفليّ ارفعه كذلك»): **٣ → ٢٫٥ هنا ومثلُها في صفِّ
-            الأرقام، و٤ → ٣ قبل البطاقة** — **أربعةَ عشرَ بكسلاً تصعد
-            بها التبويباتُ وكلُّ ما تحتها**، **بلا أن يلتصق صفٌّ بصفّ.** */}
-        <div className="relative z-10 mt-2.5 flex items-center gap-2 flex-wrap">
-          {!isMe ? (
-            <>
+          {/* ⚖️ 🆕 **وزرُّ المتابعة صعد إلى صفِّ الهوية** (D-561، تصميمُ
+              أحمد: رقاقةٌ صفراء «✓ Following» بمحاذاة الاسم؛ **ونقضُ
+              صفِّ الأفعال في D-438**).
+
+              **ولماذا هنا لا في سطرٍ تحته:** **المتابعةُ فعلٌ على
+              الشخص لا على الصفحة** — **فمكانُها بجانب وجهه**، وهي
+              أوّلُ ما يقصده الزائر. **وسطرٌ ثالثٌ يحمل زرّاً واحداً
+              يدفع كلَّ ما تحته ستّةً وثلاثين بكسلاً بلا مقابل.**
+
+              **و`self-center` لا `items-center` على الصفّ**: الصفُّ
+              يُحاذي رؤوسَه (D-547 — رأسُ الاسم برأس الدائرة)،
+              **والزرُّ وحدَه يتوسّط ارتفاعَ الصورة** — وهو ما رسمه. */}
+          {!isMe && (
+            <div className="shrink-0 self-center">
               <FollowUserButton
                 targetId={profile.id}
                 locale={locale}
                 initialFollowing={relation.following}
                 initialRequested={relation.requested}
               />
-              <ProfileMenu
-                person={{
-                  id: profile.id,
-                  nickname: profile.nickname,
-                  username: profile.username,
-                  avatar_url: profile.avatar_url,
-                  hide_name: profile.hide_name ?? false,
-                }}
-                mutual={relation.following && relation.followsMe}
-                system={isLoopz(profile.id)}
-                messageButton
-                variant="plain"
-                locale={locale}
-              />
-            </>
-          ) : (
-            <Link
-              href="/profile/edit"
-              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-3.5 h-9 text-14 font-bold transition hover:border-accent/50 active:scale-95"
-            >
-              <Icon name="edit" size={15} style={{ color: "var(--accent)" }} />
-              {t.headerSettings}
-            </Link>
+            </div>
           )}
-          {/* **والمشاركةُ للاثنين**: صفحةٌ عامّةٌ تُشارَك سواءٌ كانت لك أو
-              لغيرك — **ونفسُ زرِّ المشاركة لا نسخةٌ منه** (القاعدة ٦). */}
-          <ShareTitleButton
-            path={base}
-            title={displayName}
-            label={t.shareLinkLabel}
-            locale={locale}
-            className="border border-border bg-surface h-9 px-3.5"
-          />
         </div>
 
         {/* ===== المتابعون · المتابَعون · الزيارات · المستوى ===== */}
-        <div className="relative z-10 mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-2 text-14 leading-tight">
-          <FollowCountButton
-            targetId={profile.id}
-            dir="followers"
-            count={stats.followers}
-            label={t.followersLabel}
-            locked={!isMe && !!profile.hide_follow_lists}
-            labels={{ close: t.closeLabel, empty: t.followListEmpty, anonymous: t.anonymousUser }}
-          />
+        {/* ⚖️ 🆕 **ثلاثةٌ في سطرٍ واحد: اللقب · متابَعون · متابِعون**
+            (D-561، تصميمُ أحمد بحرفه: «Story lover — 13 Following · 12
+            Followers»).
+
+            **والترتيبُ انعكس**: كان «متابِعون» أوّلاً وصار «متابَعون» —
+            **وهو ترتيبُ تصميمه**، ولا حجّةَ لأحدهما على الآخر غير
+            الصورة.
+
+            ⚖️ 🆕 **ورقاقةُ المستوى الصفراء سقطت** (نقضُ D-438):
+            **صارت اسمَ المستوى في خانة اللقب** — **والاسمُ يقول ما
+            يقوله الرقمُ وزيادة** («خبير» أفصحُ من «المستوى ٥»)،
+            **والنسبةُ المئويّةُ رقمٌ ثالثٌ في سطرٍ فيه رقمان**.
+            **ومفتاحُ `prefs.level` يبقى حاكماً** فلا يفقد أحدٌ إعداداً
+            ضبطه. **وأصفرُ الصفحة صار للمتابعة وحدها** — **ولونٌ يعني
+            شيئين لا يعني أحدَهما** (`02`). */}
+        <div className="relative z-10 mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-14 leading-tight">
+          {/* **واللقبُ يتبع النبذةَ في الإخفاء**: من أخفى اسمَه أخفى
+              سطرَه (نفسُ حارس `bioText`) — **ونصٌّ كتبه بيده يكشفه.** */}
+          {metaTitle && (
+            <span className="shrink-0 text-muted truncate max-w-[22ch]">{metaTitle}</span>
+          )}
           <FollowCountButton
             targetId={profile.id}
             dir="following"
             count={stats.following}
             label={t.followingLabel}
+            locked={!isMe && !!profile.hide_follow_lists}
+            labels={{ close: t.closeLabel, empty: t.followListEmpty, anonymous: t.anonymousUser }}
+          />
+          <FollowCountButton
+            targetId={profile.id}
+            dir="followers"
+            count={stats.followers}
+            label={t.followersLabel}
             locked={!isMe && !!profile.hide_follow_lists}
             labels={{ close: t.closeLabel, empty: t.followListEmpty, anonymous: t.anonymousUser }}
           />
@@ -575,40 +619,6 @@ export default async function PublicProfilePage({
               {t.visitsLabel}
             </span>
           )}
-          {/* 🆕 **والمستوى صار رقاقةً** (D-438، خطّةُ أحمد: «Level pill»):
-              **الشريطُ العريض كان سطراً كاملاً لرقمٍ لا يُقرأ إلا مرّةً**،
-              **والرقاقةُ تقوله في مكانه بين الأرقام الأخرى** — **والنسبةُ
-              معه فلا يضيع التقدّم.** */}
-          {canView && prefs.level && (
-            <span
-              className="shrink-0 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-12 font-bold"
-              style={{
-                borderColor: "color-mix(in srgb, var(--accent) 45%, transparent)",
-                color: "var(--accent)",
-              }}
-              title={`${t.levelLabel(level.level)} · ${levelName(level.level, t)}`}
-            >
-              <Icon name="sparkle-star" size={13} />
-              {t.levelLabel(level.level)}
-              <span className="text-muted tabular-nums" dir="ltr">
-                {level.percent}%
-              </span>
-            </span>
-          )}
-          {/* **وورقةُ «وش باقي يتفرج» بقيت** (D-438) — **غادرت بطاقةَ
-              الأرقام ولم تغادر الصفحة**: **بابٌ يُفتح لا يُحذف لأن مكانَه
-              تبدّل** (D-346 من جهته الثانية). */}
-          {canView && toWatchItems.length > 0 && (
-            <ToWatchStat
-              value={toWatchItems.length}
-              label={t.profileWatchlist}
-              icon="bookmark"
-              color="var(--accent)"
-              items={toWatchItems}
-              inline
-              labels={{ close: t.closeLabel, empty: t.toWatchEmpty }}
-            />
-          )}
         </div>
 
         {/* ===== غلاف «حساب خاص» ===== */}
@@ -622,32 +632,63 @@ export default async function PublicProfilePage({
           </div>
         )}
 
-        {/* ===== بطاقةُ الأرقام الأربعة ===== */}
+        {/* ⚖️ 🆕 **البطاقةُ صارت إطاراً حقيقيّاً بثلاث خانات**
+            (D-561، تصميمُ أحمد).
+
+            **وكانت شبكةً عاريةً بأربع خانات وخطوطٍ فاصلة**: **أرقامٌ
+            تطفو على الخلفية بلا حدٍّ يجمعها** — **والتصميمُ يضعها في
+            بطاقةٍ واحدةٍ بحدٍّ ونصف قطرٍ ١٤** (نفسُ `settingsCard` في
+            D-555)، **فتُقرأ كتلةً واحدةً لا أربعةَ أعمدةٍ متجاورة.**
+
+            ⚠️ **والخانةُ الثالثةُ بابٌ لصاحبها ورقمٌ لزائره** — **وهي
+            رابطٌ حقيقيٌّ لا `div` يُضغط** (D-217). */}
         {canView && prefs.stats && (
-          <div className="relative z-10 mt-3">
-            <div className="grid grid-cols-4">
-              {headerStats.map((s, i) => (
+          <div className="relative z-10 mt-3 rounded-2xl border border-border bg-surface overflow-hidden">
+            <div className="grid grid-cols-3">
+              {headerStats.map((c, i) => (
                 <div
-                  key={s.key}
-                  className="relative flex flex-col items-center justify-center px-1 py-2.5"
+                  key={c.key}
+                  className="relative flex items-center justify-center gap-2 px-2 py-2.5"
                 >
-                  {i < headerStats.length - 1 && (
+                  {/* **والخطُّ بين خانتين لا بعد آخرِها**: خانةُ
+                      «الإحصائيات الكاملة» تلي الأخيرةَ لصاحب الصفحة
+                      وحدَه، **فالشرطُ يعرف الحالتين** — **وخطٌّ على
+                      حافّة البطاقة يُقرأ حدّاً مزدوجاً.** */}
+                  {(i < headerStats.length - 1 || isMe) && (
                     <span
-                      className="absolute inset-y-1 end-0 w-px bg-[color:var(--divider)]"
+                      className="absolute inset-y-2 end-0 w-px bg-[color:var(--divider)]"
                       aria-hidden
                     />
                   )}
-                  <span className="flex items-center gap-2">
-                    <Icon name={s.icon} size={20} style={{ color: s.color }} className="shrink-0" />
-                    <span className="text-20 font-bold leading-none tabular-nums">
-                      {s.value}
+                  <Icon
+                    name={c.icon}
+                    size={20}
+                    style={{ color: "var(--accent)" }}
+                    className="shrink-0"
+                  />
+                  <span className="min-w-0">
+                    <span className="block text-15 font-bold leading-none tabular-nums">
+                      {c.value}
                     </span>
-                  </span>
-                  <span className="block text-12 text-muted mt-1.5 leading-[1.25]">
-                    {s.label}
+                    <span className="block text-12 text-muted mt-1 leading-[1.25] truncate">
+                      {c.label}
+                    </span>
                   </span>
                 </div>
               ))}
+              {isMe && (
+                <Link
+                  href="/stats"
+                  className="flex items-center justify-center gap-1 px-2 py-2.5 text-14 font-semibold text-muted hover:text-accent transition"
+                >
+                  <span className="truncate">{t.profileFullStats}</span>
+                  <Icon
+                    name="chevron-down"
+                    size={16}
+                    className="shrink-0 -rotate-90 rtl:rotate-90"
+                  />
+                </Link>
+              )}
             </div>
           </div>
         )}
@@ -657,14 +698,59 @@ export default async function PublicProfilePage({
         <PageTabs items={tabItems} active={tab} ariaLabel={t.profile} asNav />
       )}
 
-      {/* ===== نظرة عامة — الكتلةُ الثابتة ثم صفوفُه بترتيب صاحبها (D-129) ===== */}
-      {canView && tab === "overview" && recentBlock}
+      {/* ===== المفضّلة — ثلاثةُ صفوفٍ ثم صفوفُه بترتيب صاحبها (D-129) =====
+          🆕 **رأسُ التبويب مفضّلتُه مقسومةً** (D-561، تصميمُ أحمد):
+          **Shows · Movies · Anime** — **والصفُّ الفارغُ لا يُرسم**،
+          فمن لا أنمي عنده لا يرى عنواناً بلا ملصقات.
+
+          ⚠️ **وتحتها صفوفُه المرتّبة كما هي** (D-129): **الترتيبُ
+          إعدادٌ ضبطه صاحبُه ولا يُلغى لأن تبويباً تسمّى باسمٍ آخر** —
+          **والتصميمُ لا يعرض ما تحت «Anime» أصلاً**، فلا تناقض. */}
+      {canView && tab === "overview" && favShows.length > 0 && (
+        <PosterRail title={t.shortShows}>
+          {favShows.slice(0, cap(favShows.length)).map((f) => (
+            <RailItem key={`fs-${f.tmdb_id}`}>
+              <PosterCard href={`/show/${f.tmdb_id}`} title={f.title ?? "—"} posterPath={f.poster_path} />
+            </RailItem>
+          ))}
+        </PosterRail>
+      )}
+      {canView && tab === "overview" && favMovies.length > 0 && (
+        <PosterRail title={t.shortMovies}>
+          {favMovies.slice(0, cap(favMovies.length)).map((f) => (
+            <RailItem key={`fm-${f.tmdb_id}`}>
+              <PosterCard href={`/movie/${f.tmdb_id}`} title={f.title ?? "—"} posterPath={f.poster_path} />
+            </RailItem>
+          ))}
+        </PosterRail>
+      )}
+      {canView && tab === "overview" && favAnime.length > 0 && (
+        <PosterRail title={t.discoverTabAnime}>
+          {favAnime.slice(0, cap(favAnime.length)).map((f) => (
+            <RailItem key={`fa-${f.media_type}-${f.tmdb_id}`}>
+              <PosterCard
+                href={`/${f.media_type === "tv" ? "show" : "movie"}/${f.tmdb_id}`}
+                title={f.title ?? "—"}
+                posterPath={f.poster_path}
+              />
+            </RailItem>
+          ))}
+        </PosterRail>
+      )}
       {canView &&
         tab === "overview" &&
         prefs.order.map((sec) => {
           const node = sections[sec];
           return node ? <div key={sec}>{node}</div> : null;
         })}
+      {/* **وتبويبٌ لا شيءَ فيه يقول ذلك** (D-374): من أخفى كلَّ أقسامه
+          ولا مفضّلةَ له كان يرى صفحةً تنتهي عند التبويبات بلا كلمة. */}
+      {canView &&
+        tab === "overview" &&
+        favorites.length === 0 &&
+        !prefs.order.some((sec) => sections[sec]) && (
+          <p className="text-center text-muted py-16 text-sm">{t.profileEmptyFavorites}</p>
+        )}
 
       {/* ===== النشاط — تقييماتُه بالزمن ===== */}
       {canView && tab === "activity" && (
