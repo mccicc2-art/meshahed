@@ -467,8 +467,12 @@ export function LibraryGrid({
         }
         /* 🆕 **وصفُّ «ما اخترتَه» داخل الرأس اللاصق لا تحته** — **فيبقى
             مرئيّاً ما دام يُصفّي**، وهو نفسُ موضعِه في «اكتشف» بالبكسل
-            (D-134). **ونفسُ المكوّن** — لا نسخةَ ثانية. */
+            (D-134). **ونفسُ المكوّن** — لا نسخةَ ثانية.
+            🆕 **وبلا فلترٍ لا يُمرَّر `extra` أصلاً** (D-591): العنصرُ
+            الذي يرسم `null` يبقى صادقاً في شرط `extra ?`، **فكان غلافُ
+            `pt-3 pb-2` يُرسم فارغاً** — والشرطُ عند من يملك العدّ. */
         extra={
+          filterChips.length > 0 ? (
           <ActiveFilterChips
             chips={filterChips}
             groupLabel={t.browseActiveFilters}
@@ -479,6 +483,7 @@ export function LibraryGrid({
               setSort("smart");
             }}
           />
+          ) : undefined
         }
       />
 
