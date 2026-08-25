@@ -6,22 +6,21 @@ import { setWatchRegion } from "@/lib/actions";
 import { getDict, type Locale } from "@/lib/i18n";
 import { WATCH_REGIONS, regionName, regionFlag } from "@/lib/region";
 import { tap } from "@/lib/haptics";
-import { SettingsPickerSheet } from "./settings/SettingsPickerSheet";
-import { SettingsRow } from "./settings/SettingsRow";
+import { SettingsPickerPanel } from "./settings/SettingsPickerPanel";
+import { SettingsExpandRow } from "./settings/SettingsExpandRow";
 
 /**
  * اختيار بلد المشاهدة.
  *
- * 🆕 **صفٌّ يقول البلدَ وورقةٌ فيها بحث** (D-555، مواصفةُ أحمد: «احذف
- * قائمة الدول الأفقيّة»).
+ * **صفٌّ يقول البلدَ في طرفه** (D-555، مواصفةُ أحمد: «احذف قائمة الدول
+ * الأفقيّة») — **وصفحةُ إعداداتٍ لا تُعلن قيمتَها الحاليّة تُفتح لتُقرأ
+ * لا لتُغيَّر.**
  *
- * ⚖️ **ونقضُ D-016 مسجَّلٌ باسمه**: كانت خمسةَ عشرَ رقاقةً في مسارٍ
- * **يُمرَّر أفقيّاً** — وهو تعريفُ عائلة الرقائق بحقّ. **لكنّ الشكوى
- * ليست في العائلة بل في التمرير الأفقيّ نفسِه**: **البلدُ المختارُ قد
- * يكون خلف الحافّة، فلا تقول الصفحةُ في سطرها الأوّل أين أنت** —
- * **وصفحةُ إعداداتٍ لا تُعلن قيمتَها الحاليّة تُفتح لتُقرأ لا لتُغيَّر.**
- * **والصفُّ يقولها في طرفه كبقيّة صفوف الإعدادات**، والورقةُ تحمل
- * الخمسةَ عشرَ وفيها بحث.
+ * 🆕 **والورقةُ صارت توسّعاً في المكان** (D-590، حكمُ أحمد: «كل
+ * الإعدادات خلّها تضغط وتنزل مكانها») — **وكان هذا الصفُّ مؤجَّلاً
+ * بالاسم في D-569 §4، وهذه كلمتُه.** الخمسةَ عشرَ بلداً بلاطاتٌ تحت
+ * الصفّ وفيها بحث — **والاختيارُ يطوي اللوحَ بنفسه**: خيارٌ واحدٌ لا
+ * يبقى ما يُفعل بعده (حجّةُ «الاختيارُ هو تمّ» من الورقة، بلا ورقة).
  *
  * والتغيير يُطبَّق فوراً بلا زرّ حفظ: هو كوكي واحد، ونتيجته تظهر في الشاشة
  * التالية التي تُفتح — وزرُّ حفظٍ لخيارٍ واحد احتكاكٌ بلا مقابل.
@@ -51,32 +50,25 @@ export function RegionSwitch({ locale, region }: { locale: Locale; region: strin
   const [open, setOpen] = useState(false);
 
   return (
-    <>
-      <SettingsRow
-        icon="compass"
-        title={t.regionSection}
-        value={`${regionFlag(current)} ${regionName(current, loc)}`}
-        onClick={() => setOpen(true)}
-      />
-
-      {/* **خيارٌ واحد: الاختيارُ هو «تمّ»** — والورقةُ تُغلق بما اختير */}
-      <SettingsPickerSheet
-        open={open}
-        title={t.regionSection}
+    <SettingsExpandRow
+      icon="compass"
+      title={t.regionSection}
+      value={`${regionFlag(current)} ${regionName(current, loc)}`}
+      open={open}
+      onToggle={() => setOpen((v) => !v)}
+    >
+      <SettingsPickerPanel
         multi={false}
         options={WATCH_REGIONS.map((r) => ({
           key: r.code,
           label: `${regionFlag(r.code)}  ${regionName(r.code, loc)}`,
         }))}
-        picked={[current]}
-        onCancel={() => setOpen(false)}
-        onDone={(next) => {
+        value={[current]}
+        onChange={(next) => {
           setOpen(false);
           if (next[0]) pick(next[0]);
         }}
         labels={{
-          cancel: t.cancelLabel,
-          done: t.doneLabel,
           search: t.regionSection,
           selected: t.cpSelected,
           clear: t.cpClear,
@@ -87,6 +79,6 @@ export function RegionSwitch({ locale, region }: { locale: Locale; region: strin
           add: (n) => n,
         }}
       />
-    </>
+    </SettingsExpandRow>
   );
 }
