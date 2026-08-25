@@ -335,6 +335,42 @@ export async function getProfileAnimeFlags(userId: string): Promise<Map<string, 
 }
 
 /**
+ * 🆕 **قلوبُ مراجعات ملفٍّ واحد** (D-583) — لتبويب «مراجعات» وقد لبس
+ * بطاقةَ المجتمع.
+ *
+ * **الدالّةُ هي دالّةُ الخطِّ نفسُها** (`feed_review_likes`، definer):
+ * تُنادى بمعرّفٍ واحدٍ بدل مصفوفة الخطّ — **فتُرجع أعدادَ إعجابات
+ * مراجعاته كلِّها و«هل أعجبتُ أنا» في نداءٍ واحدٍ للصفحة** (D-205)،
+ * **ولا قارئَ جديدَ في القاعدة.** والمفتاحُ `(عمل، وسيط)` لأن صاحبَ
+ * الصفحة واحد.
+ */
+export async function getReviewLikesOf(
+  userId: string,
+): Promise<Map<string, { likes: number; likedByMe: boolean }>> {
+  const out = new Map<string, { likes: number; likedByMe: boolean }>();
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("feed_review_likes", { uids: [userId] });
+    if (error || !data) return out;
+    for (const l of data as {
+      review_user_id: string;
+      tmdb_id: number;
+      media_type: string;
+      likes: number;
+      liked_by_me: boolean;
+    }[]) {
+      out.set(`${l.media_type}-${l.tmdb_id}`, {
+        likes: Number(l.likes),
+        likedByMe: !!l.liked_by_me,
+      });
+    }
+    return out;
+  } catch {
+    return out;
+  }
+}
+
+/**
  * 🆕 **معرّفُ قائمة مفضّلتي** (D-567) — **صفٌّ واحدٌ بعلامةٍ واحدة.**
  *
  * **ولا يُقرأ من `getMyLists`**: تلك تُرجع صفوفاً بملصقاتها وعدّاداتها،
