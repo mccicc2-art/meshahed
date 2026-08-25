@@ -29,6 +29,7 @@ import { Icon } from "@/components/Icon";
 import { PosterCard } from "@/components/PosterCard";
 import { PosterRail, RailItem } from "@/components/PosterRail";
 import { FollowUserButton } from "@/components/FollowUserButton";
+import { PlusBadge } from "@/components/PlusBadge";
 import { ProfileMenu } from "@/components/ProfileMenu";
 import { isLoopz } from "@/lib/loopz";
 import { BackButton } from "@/components/BackButton";
@@ -771,6 +772,10 @@ export default async function PublicProfilePage({
               <h1 className="hero-halo min-w-0 flex-1 text-22 sm:text-xl font-bold leading-tight truncate">
                 {displayName}
               </h1>
+              {/* 🆕 **شارةُ Loopz+ بجانب الاسم** (D-633، بحكمه) —
+                  **خارجَ `truncate`**: اسمٌ طويلٌ يُقصّ ولا تُقصّ معه
+                  الشارة، **وشارةٌ تختفي بطول اسمٍ ليست شارة.** */}
+              <PlusBadge profile={profile} locale={locale} size={16} />
               {!isMe && (
                 <span className="shrink-0">
                   <FollowUserButton
