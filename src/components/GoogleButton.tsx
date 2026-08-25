@@ -76,7 +76,13 @@ async function makeNonce(): Promise<[raw: string, hashed: string]> {
   return [raw, hashed];
 }
 
-export function GoogleButton({ locale }: { locale: Locale }) {
+/**
+ * 🆕 `next` (D-627 مرحلة ٢): الصفحةُ التي يُعاد إليها بعد الدخول —
+ * بوّابةُ الزائر تفتح الدخولَ من منتصف صفحةٍ يقرأها، وإرجاعُه إلى
+ * الجذر يُضيّع مكانَه. المسارُ يُفحص في `auth/callback` (`safeNext`)
+ * فلا يخرج عن الموقع، والافتراضُ الجذرُ كما كان دائماً.
+ */
+export function GoogleButton({ locale, next = "/" }: { locale: Locale; next?: string }) {
   const t = getDict(locale);
   const [loading, setLoading] = useState(false);
   const [gsiReady, setGsiReady] = useState(false);
@@ -100,13 +106,15 @@ export function GoogleButton({ locale }: { locale: Locale }) {
     const siteUrl = resolveAuthBase(window.location.origin);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${siteUrl}/auth/callback` },
+      options: {
+        redirectTo: `${siteUrl}/auth/callback${next !== "/" ? `?next=${encodeURIComponent(next)}` : ""}`,
+      },
     });
     if (error) {
       setLoading(false);
       alert(t.loginFailed + error.message);
     }
-  }, [t]);
+  }, [t, next]);
 
   useEffect(() => {
     if (!CLIENT_ID || done.current) return;
@@ -161,7 +169,7 @@ export function GoogleButton({ locale }: { locale: Locale }) {
                الرأس يظهر رأسَ زائرٍ (علمُ اللغة بلا صورة) حتى يحدَّث
                يدوياً. تحميل المستند من الصفر يجعل الخادم يقرأ الجلسة
                الجديدة في كل شيء — كلفةُ تحميلٍ واحدة عند الدخول فقط. */
-            window.location.assign("/");
+            window.location.assign(next);
           } catch (e) {
             setLoading(false);
             setFailed(true);
@@ -205,7 +213,7 @@ export function GoogleButton({ locale }: { locale: Locale }) {
     return () => {
       cancelled = true;
     };
-  }, [locale, t]);
+  }, [locale, t, next]);
 
   return (
     <div className="w-full">
