@@ -8,7 +8,6 @@ import {
   getFollowStats,
   getFollowRelation,
   recordProfileView,
-  getProfileViewCount,
   getFollowsOf,
   getWatchedOf,
   getPublicListsOf,
@@ -101,7 +100,6 @@ export default async function PublicProfilePage({
     rawRatings,
     stats,
     relation,
-    visits,
     rawFollows,
     watched,
     publicLists,
@@ -116,7 +114,9 @@ export default async function PublicProfilePage({
       getRatingsOf(profile.id),
       getFollowStats(profile.id),
       getFollowRelation(profile.id),
-      getProfileViewCount(profile.id),
+      /* ⚖️ **وقراءةُ العدّاد سقطت مع عرضه** (D-584) — **نداءٌ لا يُقرأ
+         ثمنٌ بلا مقابل** (D-152)؛ والتسجيلُ (`recordProfileView`) باقٍ
+         أدناه. */
       getFollowsOf(profile.id),
       getWatchedOf(profile.id),
       /* 🆕 **القوائمُ تُقرأ دائماً** (D-438): صارت تبويباً وعدّاداً في
@@ -694,9 +694,28 @@ export default async function PublicProfilePage({
                 لونَها من `--background` (D-501) — **سوداءُ في الليل
                 وبيضاءُ في النهار** — **والظلُّ الأسودُ الثابتُ كان
                 لطخةً خلف نصٍّ أسودَ في السمة الفاتحة.** */}
-            <h1 className="hero-halo text-22 sm:text-xl font-bold leading-tight truncate">
-              {displayName}
-            </h1>
+            {/* ⚖️ 🆕 **والزرُّ صغيرٌ على سطر الاسم نفسِه** (D-584، بلاغُ
+                أحمد: «كلمة فولوينغ جداً كبيرة، خلّها صغيرة ومكانها على
+                نفس سطر الاسم») — **نقضُ توسيطِ D-561 بحكم صاحبه**:
+                `self-center` كان يوسّطه على ارتفاع الصورة كلِّها،
+                **وصار جارَ الاسم بمقاس `sm`**، والاسمُ يحتفظ بأولويّة
+                العرض (`flex-1` له والزرُّ `shrink-0`). */}
+            <div className="flex items-center gap-2.5">
+              <h1 className="hero-halo min-w-0 flex-1 text-22 sm:text-xl font-bold leading-tight truncate">
+                {displayName}
+              </h1>
+              {!isMe && (
+                <span className="shrink-0">
+                  <FollowUserButton
+                    targetId={profile.id}
+                    locale={locale}
+                    initialFollowing={relation.following}
+                    initialRequested={relation.requested}
+                    size="sm"
+                  />
+                </span>
+              )}
+            </div>
             {/* ⚖️ 🆕 **والمعرّف عاد** (D-438، خطّةُ أحمد: «الاسم والـusername
                 والنبذة»): **كان قد سقط بحكمٍ سابق لأنه يكرّر الاسم** —
                 **وهو في الملفّ العامّ ليس تكراراً بل عنوانٌ يُكتب ويُشارَك**،
@@ -722,28 +741,7 @@ export default async function PublicProfilePage({
             )}
           </div>
 
-          {/* ⚖️ 🆕 **وزرُّ المتابعة صعد إلى صفِّ الهوية** (D-561، تصميمُ
-              أحمد: رقاقةٌ صفراء «✓ Following» بمحاذاة الاسم؛ **ونقضُ
-              صفِّ الأفعال في D-438**).
 
-              **ولماذا هنا لا في سطرٍ تحته:** **المتابعةُ فعلٌ على
-              الشخص لا على الصفحة** — **فمكانُها بجانب وجهه**، وهي
-              أوّلُ ما يقصده الزائر. **وسطرٌ ثالثٌ يحمل زرّاً واحداً
-              يدفع كلَّ ما تحته ستّةً وثلاثين بكسلاً بلا مقابل.**
-
-              **و`self-center` لا `items-center` على الصفّ**: الصفُّ
-              يُحاذي رؤوسَه (D-547 — رأسُ الاسم برأس الدائرة)،
-              **والزرُّ وحدَه يتوسّط ارتفاعَ الصورة** — وهو ما رسمه. */}
-          {!isMe && (
-            <div className="shrink-0 self-center">
-              <FollowUserButton
-                targetId={profile.id}
-                locale={locale}
-                initialFollowing={relation.following}
-                initialRequested={relation.requested}
-              />
-            </div>
-          )}
         </div>
 
         {/* ===== المتابعون · المتابَعون · الزيارات · المستوى ===== */}
@@ -812,20 +810,12 @@ export default async function PublicProfilePage({
             locked={!isMe && !!profile.hide_follow_lists}
             labels={{ close: t.closeLabel, empty: t.followListEmpty, anonymous: t.anonymousUser }}
           />
-          {/* 🆕 **والجمهورُ يُطبَّق هنا لا في شاشة التخصيص** (D-465):
-              **المفتاحُ يُطفئ الرقمَ عن الجميع بمن فيهم صاحبُه**،
-              **والقائمةُ تختار من يراه حين يكون مضاءً** — **وصاحبُ
-              الصفحة يراه دائماً** وإلّا ضبط رقماً لا يقع عليه بصرُه.
-              ⚠️ **وهذا إخراجٌ لا قفلٌ في SQL** — كسائر `profile_prefs`. */}
-          {prefs.visits &&
-            (isMe ||
-              prefs.visitsWho === "everyone" ||
-              (prefs.visitsWho === "followers" && relation.following)) && (
-            <span className="shrink-0 text-muted">
-              <span className="font-bold text-foreground tabular-nums">{visits}</span>{" "}
-              {t.visitsLabel}
-            </span>
-          )}
+          {/* ⚖️ 🆕 **وعدّادُ الزيارات سقط** (D-584، حكمُ أحمد: «احذف
+              visit، غير مهمّة») — **نقضُ عرضِ D-465** (المفتاحُ
+              والجمهور)، **والتسجيلُ باقٍ**: `record_profile_view` تكتب
+              كما كانت، **فعودتُه يوماً عرضٌ بلا هجرةٍ ولا فجوةِ
+              بيانات.** ومفتاحا `visits`/`visitsWho` في `profile_prefs`
+              بقيا في النوع فلا ينكسر مخزونٌ قديم. */}
           </div>
         </div>
 
