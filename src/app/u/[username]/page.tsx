@@ -786,19 +786,49 @@ export default async function PublicProfilePage({
                 **وهو في الملفّ العامّ ليس تكراراً بل عنوانٌ يُكتب ويُشارَك**،
                 وهو ما يفرّق بين متشابهَي الاسم. **ويغيب لمن أخفى اسمَه**
                 لأن المعرّفَ يكشفه. */}
-            {profile.username && !profile.hide_name && (
-              <p
-                /* 🔴 **و`text-white` كان عطلاً صامتاً في `daylight`**:
-                   المعرّفُ والنبذةُ يسقطان **تحت** حافّة الغلاف
-                   (`-mt-10` يرفع السطر الأوّل وحدَه)، **فيقفان على
-                   `--background`** — **وأبيضُ ٦٠٪ على ‎#f5f5f3 لا
-                   يُرى.** **و`--muted` يُقرأ على السمتين.** */
-                className="hero-halo text-[12.5px] text-muted leading-tight truncate"
-                dir="ltr"
-              >
-                @{profile.username}
-              </p>
-            )}
+            {/* ⚖️ 🆕 **والعدّان لحقا بسطر المعرّف** (D-622، حكمُه بلقطةٍ
+                محوَّطة على «@ahmed»: «وهنا نفس الشي — يكونون في نفس
+                سطر الاسم @») — **نفسُ سطر الرئيسية حرفاً** (D-621):
+                رمزان وعدّان بلا كلمات، المتابِعون أوّلاً. **نقضٌ جزئيٌّ
+                لموضعِ D-566/D-561** (صفُّ اللقب والعدّادَين) بيد
+                صاحبه — واللقبُ بقي في صفّه وحدَه. */}
+            <p className="hero-halo mt-0.5 flex items-center gap-1.5 text-[12.5px] text-muted leading-tight">
+              {profile.username && !profile.hide_name && (
+                <>
+                  {/* 🔴 و`text-white` كان عطلاً صامتاً في `daylight` —
+                      **و`--muted` يُقرأ على السمتين.** والاتّجاهُ LTR
+                      للمعرّف وحدَه فلا ينقلب @ في RTL. */}
+                  <span dir="ltr" className="min-w-0 truncate">
+                    @{profile.username}
+                  </span>
+                  <span aria-hidden className="shrink-0 opacity-60">
+                    •
+                  </span>
+                </>
+              )}
+              <span className="shrink-0 inline-flex items-center gap-2">
+                <FollowCountButton
+                  targetId={profile.id}
+                  dir="followers"
+                  count={stats.followers}
+                  label={t.followersLabel}
+                  sheetTitle={t.followsTabFollowers}
+                  locked={!isMe && !!profile.hide_follow_lists}
+                  compact
+                  labels={{ close: t.closeLabel, empty: t.followListEmpty, anonymous: t.anonymousUser }}
+                />
+                <FollowCountButton
+                  targetId={profile.id}
+                  dir="following"
+                  count={stats.following}
+                  label={t.followingLabel}
+                  sheetTitle={t.followsTabFollowing}
+                  locked={!isMe && !!profile.hide_follow_lists}
+                  compact
+                  labels={{ close: t.closeLabel, empty: t.followListEmpty, anonymous: t.anonymousUser }}
+                />
+              </span>
+            </p>
             {/* 🆕 **و`dir="auto"` على النبذة** (D-601، حكمُه: «البايو
                 خلّه يبدأ من يمين RTL»): نبذةٌ عربيّةٌ في واجهةٍ
                 إنجليزيّةٍ كانت تبدأ من اليسار — **والاتّجاهُ يتبع
@@ -855,46 +885,20 @@ export default async function PublicProfilePage({
             ⚠️ **و`items-start` لا `items-center`**: **لقبٌ من سطرين
             كان سيُنزل العدّادَين إلى منتصفه** — **والمطلوب أن يبقى
             رأساهما على خطٍّ واحد.** */}
-        <div className="relative z-10 mt-2.5 flex items-start gap-3 text-14 leading-tight">
-          {/* **واللقبُ يتبع النبذةَ في الإخفاء**: من أخفى اسمَه أخفى
-              سطرَه (نفسُ حارس `bioText`) — **ونصٌّ كتبه بيده يكشفه.** */}
-          {/* 🆕 **واللقبُ يتوسّط عمودَ الصورة ويعلو درجةً** (D-601،
-              حكمُه: «اللقب خلّه يتوسّط الصورة من تحت وارفعه فوق شوي —
-              لا يكون في نفس سطر الفولورز»): `w-20` هي عرضُ الصورة
-              فالتوسيطُ فيها توسيطٌ تحتها، **و`-mt-1` درجتُه الخفيفة**
-              فيرتفع رأسُه عن خطِّ العدّادَين بلا كسرِ العمودين. */}
-          <div className="w-20 shrink-0 -mt-1 text-center">
-            {metaTitle && (
+        {/* ⚖️ 🆕 **والعدّادان غادرا هذا الصفَّ إلى سطر المعرّف** (D-622)
+            — فبقي اللقبُ وحدَه في عموده (D-601: يتوسّط الصورةَ من تحت)
+            **والصفُّ لا يُرسم أصلاً لمن لا لقبَ له** (D-152). **وعدّادُ
+            الزيارات كان قد سقط قبلهما** (D-584: «احذف visit، غير
+            مهمّة» — نقضُ عرضِ D-465، والتسجيلُ `record_profile_view`
+            باقٍ فعودتُه يوماً عرضٌ بلا فجوةِ بيانات، ومفتاحاه في
+            `profile_prefs` بقيا في النوع). */}
+        {metaTitle && (
+          <div className="relative z-10 mt-2.5 flex items-start gap-3 text-14 leading-tight">
+            <div className="w-20 shrink-0 -mt-1 text-center">
               <span className="block text-muted leading-snug break-words">{metaTitle}</span>
-            )}
+            </div>
           </div>
-          <div className="min-w-0 flex-1 flex flex-wrap items-center gap-x-3 gap-y-1.5">
-          <FollowCountButton
-            targetId={profile.id}
-            dir="following"
-            count={stats.following}
-            label={t.followingLabel}
-            sheetTitle={t.followsTabFollowing}
-            locked={!isMe && !!profile.hide_follow_lists}
-            labels={{ close: t.closeLabel, empty: t.followListEmpty, anonymous: t.anonymousUser }}
-          />
-          <FollowCountButton
-            targetId={profile.id}
-            dir="followers"
-            count={stats.followers}
-            label={t.followersLabel}
-            sheetTitle={t.followsTabFollowers}
-            locked={!isMe && !!profile.hide_follow_lists}
-            labels={{ close: t.closeLabel, empty: t.followListEmpty, anonymous: t.anonymousUser }}
-          />
-          {/* ⚖️ 🆕 **وعدّادُ الزيارات سقط** (D-584، حكمُ أحمد: «احذف
-              visit، غير مهمّة») — **نقضُ عرضِ D-465** (المفتاحُ
-              والجمهور)، **والتسجيلُ باقٍ**: `record_profile_view` تكتب
-              كما كانت، **فعودتُه يوماً عرضٌ بلا هجرةٍ ولا فجوةِ
-              بيانات.** ومفتاحا `visits`/`visitsWho` في `profile_prefs`
-              بقيا في النوع فلا ينكسر مخزونٌ قديم. */}
-          </div>
-        </div>
+        )}
 
         {/* ===== غلاف «حساب خاص» ===== */}
         {!canView && (
