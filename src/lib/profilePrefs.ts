@@ -96,6 +96,46 @@ export interface ProfilePrefs {
    * الصفحة لا هنا، **فالسجلُّ يحفظ ما كُتب لا ما يُعرض.**
    */
   title: string;
+  /**
+   * 🆕 **ترتيبٌ يدويٌّ لصفوف الأقسام** (D-581، طلبُ أحمد بلقطةٍ على
+   * مقبض «Shows»: «هذي العلامة حطّها في كل شي في المفضّلة — وكل شي
+   * أقدر أرتّبه»).
+   *
+   * **مفاتيحُ صفوفٍ لكلِّ قسمٍ قابلٍ للترتيب** — `tv-123` · `movie-456`
+   * · `p-789` (فنّان) · `l-<uuid>` (قائمة). **والغائبُ عن القائمة يُذيَّل
+   * بترتيبه الطبيعيّ** فلا يختفي عملٌ أُضيف بعد الترتيب.
+   *
+   * **ولماذا هنا لا عموداً في جداول المصدر**: `follows` و`user_artists`
+   * ترتيبُهما ترتيبُ الإضافة بمعناه (D-350)، **وهذا ترتيبُ عرضٍ في
+   * صفحتك أنت** — إخراجٌ يقرؤه الزائر، وهو نصُّ رأسِ هذا الملفّ.
+   * **وقسمُ «الأعلى تقييماً» ليس هنا عمداً**: ترتيبُه هو تقييمُك،
+   * **وصفٌّ عنوانُه «الأعلى تقييماً» ورُتِّب يدويّاً يكذب** (D-217) —
+   * من أراد رفعَ عملٍ فيه يرفع تقييمَه.
+   */
+  sectionOrder: Partial<Record<SortableSection, string[]>>;
+}
+
+/** الأقسامُ التي تقبل ترتيباً يدويّاً — والمفضّلةُ لها بابُها القائم (D-567) */
+export const SORTABLE_SECTIONS = ["shows", "movies", "artists", "lists"] as const;
+export type SortableSection = (typeof SORTABLE_SECTIONS)[number];
+
+/**
+ * تطبيقُ الترتيب المحفوظ على صفوف قسم: **المحفوظُ أوّلاً بترتيبه، وما
+ * ليس فيه يُذيَّل بترتيبه الطبيعيّ** — فعملٌ أُضيف بعد آخرِ ترتيبٍ يظهر
+ * آخرَ الصفّ لا يختفي، **ومفتاحٌ محفوظٌ لعملٍ أُزيل يُهمَل بصمت.**
+ */
+export function applySectionOrder<T>(
+  rows: T[],
+  saved: string[] | undefined,
+  keyOf: (r: T) => string,
+): T[] {
+  if (!saved || saved.length === 0 || rows.length < 2) return rows;
+  const pos = new Map(saved.map((k, i) => [k, i]));
+  const ranked: T[] = [];
+  const rest: T[] = [];
+  for (const r of rows) (pos.has(keyOf(r)) ? ranked : rest).push(r);
+  ranked.sort((a, b) => (pos.get(keyOf(a)) ?? 0) - (pos.get(keyOf(b)) ?? 0));
+  return [...ranked, ...rest];
 }
 
 export const DEFAULT_PROFILE_PREFS: ProfilePrefs = {
@@ -111,6 +151,8 @@ export const DEFAULT_PROFILE_PREFS: ProfilePrefs = {
   cards: "full",
   /** **والفراغُ هو الافتراضي** — من لم يكتب لقباً يُعرض اسمُ مستواه */
   title: "",
+  /** **والفراغُ يعني الترتيبَ الطبيعيّ** — لا شيء يتبدّل لمن لم يرتّب */
+  sectionOrder: {},
 };
 
 /**
@@ -159,5 +201,25 @@ export function sanitizeProfilePrefs(raw: unknown): ProfilePrefs {
       typeof o.title === "string"
         ? o.title.replace(/\s+/g, " ").trim().slice(0, 24)
         : d.title,
+    sectionOrder: sanitizeSectionOrder(o.sectionOrder),
   };
+}
+
+/** تنقيةُ خريطة الترتيب — أقسامٌ معروفة، مفاتيحُ نصّيّةٌ قصيرة، وبسقف */
+function sanitizeSectionOrder(raw: unknown): ProfilePrefs["sectionOrder"] {
+  if (!raw || typeof raw !== "object") return {};
+  const out: ProfilePrefs["sectionOrder"] = {};
+  for (const sec of SORTABLE_SECTIONS) {
+    const v = (raw as Record<string, unknown>)[sec];
+    if (!Array.isArray(v)) continue;
+    const seen = new Set<string>();
+    const keys = v.filter(
+      (k): k is string =>
+        typeof k === "string" && k.length <= 64 && !seen.has(k) && !!seen.add(k),
+    );
+    /* **سقفٌ يمنع jsonb من التضخّم** — ٨٠٠ مفتاحٍ تكفي أضخمَ مكتبة،
+       وما فاض يسقط من الذيل فيرث الترتيبَ الطبيعيّ */
+    if (keys.length > 0) out[sec] = keys.slice(0, 800);
+  }
+  return out;
 }

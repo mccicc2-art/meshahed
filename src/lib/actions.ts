@@ -20,7 +20,7 @@ import { BROWSE_GENRES } from "@/lib/browse";
 import { sanitizeSocials } from "@/lib/socials";
 import { THEMES } from "@/lib/themes";
 import { sanitizeHomePrefs, type HomePrefs, type HomeView } from "@/lib/homePrefs";
-import { sanitizeProfilePrefs, type ProfilePrefs } from "@/lib/profilePrefs";
+import { sanitizeProfilePrefs, SORTABLE_SECTIONS, type ProfilePrefs } from "@/lib/profilePrefs";
 import {
   FEED_STRANGERS_COOKIE,
   FEED_SORT_COOKIE,
@@ -2205,6 +2205,42 @@ export async function reorderList(listId: string, keys: string[]) {
   const { error } = await supabase.rpc("reorder_list", { p_list: listId, p_keys: clean });
   if (error) fail(error);
   revalidatePath(`/lists/${listId}`);
+}
+
+/**
+ * 🆕 **ترتيبُ صفوف قسمٍ في ملفّك** (D-581، طلبُ أحمد: «هذي العلامة
+ * حطّها في كل شي في المفضّلة — وكل شي أقدر أرتّبه»).
+ *
+ * **الكتابةُ في `profile_prefs.sectionOrder` لا في جداول المصدر** —
+ * الحجّةُ عند الحقل في `profilePrefs.ts`. **وقراءةٌ ثم دمجٌ ثم كتابة**
+ * لأن العمود jsonb واحدٌ يحمل تفضيلاتٍ أخرى، **وكتابةُ المفتاح وحدَه
+ * كانت ستمحو أخوتَه.** والتنقيةُ بمرشِّح القراءة نفسِه
+ * (`sanitizeProfilePrefs`) — **قيمةٌ تمرّ عبر الشبكة تُنقّى قبل الكتابة
+ * كما تُنقّى بعد القراءة** (عُرفُ `updateProfile` بحرفه).
+ */
+export async function saveProfileSectionOrder(section: string, keys: string[]) {
+  if (!(SORTABLE_SECTIONS as readonly string[]).includes(section))
+    throw new Error("قسمٌ غير معروف / Unknown section");
+  const { supabase, user } = await requireUser("profile", 30, 60_000);
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("profile_prefs")
+    .eq("id", user.id)
+    .maybeSingle();
+  if (error) fail(error);
+
+  const prefs = sanitizeProfilePrefs(data?.profile_prefs);
+  prefs.sectionOrder = sanitizeProfilePrefs({
+    ...prefs,
+    sectionOrder: { ...prefs.sectionOrder, [section]: keys },
+  }).sectionOrder;
+
+  const { error: writeError } = await supabase
+    .from("profiles")
+    .update({ profile_prefs: prefs })
+    .eq("id", user.id);
+  if (writeError) fail(writeError);
 }
 
 /**
