@@ -20,14 +20,24 @@ type Dict = ReturnType<typeof getDict>;
  * مستدعٍ قائم.
  */
 export interface ReorderItem {
-  tmdb_id: number;
-  media_type: "tv" | "movie";
+  tmdb_id?: number;
+  media_type?: "tv" | "movie";
   title: string | null;
   poster_path: string | null;
+  /**
+   * 🆕 **مفتاحٌ صريحٌ لما ليس عملاً** (D-581): صفوفُ الأقسام صارت
+   * تُرتَّب أيضاً — **وفنّانٌ أو قائمةٌ لا نوعَ وسائطَ له** فيسمّي
+   * مفتاحَه بنفسه (`p-789` · `l-<uuid>`). **والعملُ يبقى بلا مفتاحٍ
+   * صريح** فيشتقّه `listItemKey` كما كان — **لا مستدعٍ قائمٌ يتغيّر.**
+   */
+  key?: string;
+  /** أيقونةُ الغياب حين لا صورة — فنّانٌ `people` وقائمةٌ `list` */
+  fallbackIcon?: "film" | "tv" | "people" | "list";
 }
 
-/** مفتاحُ صفٍّ في قائمة — **نوعٌ ومعرّف، ولا نصَّ حرّ** */
-export const listItemKey = (i: ReorderItem) => `${i.media_type}-${i.tmdb_id}`;
+/** مفتاحُ صفٍّ — الصريحُ أوّلاً، وإلّا نوعٌ ومعرّف، **ولا نصَّ حرّ** */
+export const listItemKey = (i: ReorderItem) =>
+  i.key ?? `${i.media_type ?? "movie"}-${i.tmdb_id ?? 0}`;
 
 const ROW = 68;
 
@@ -190,14 +200,17 @@ export function ReorderSheet({
                     <Image src={url} alt="" fill sizes="36px" className="object-cover" />
                   ) : (
                     <span className="absolute inset-0 grid place-items-center text-muted">
-                      <Icon name={it.media_type === "movie" ? "film" : "tv"} size={14} />
+                      <Icon
+                        name={it.fallbackIcon ?? (it.media_type === "movie" ? "film" : "tv")}
+                        size={14}
+                      />
                     </span>
                   )}
                 </span>
 
                 <span className="min-w-0 flex-1">
                   <span className="block text-14 font-semibold leading-tight line-clamp-2">
-                    {it.title ?? `#${it.tmdb_id}`}
+                    {it.title ?? (it.tmdb_id ? `#${it.tmdb_id}` : "—")}
                   </span>
                   <span className="block text-12 text-muted tabular-nums mt-0.5" dir="ltr">
                     {i + 1}

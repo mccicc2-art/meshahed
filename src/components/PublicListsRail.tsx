@@ -30,11 +30,17 @@ export function PublicListsRail({
   locale,
   title,
   grid = false,
+  action,
 }: {
   lists: PublicListCard[];
   locale: Locale;
   /** عنوان الصفّ — يغيب فيحلّ عنوان «قوائم من المجتمع» */
   title?: string;
+  /**
+   * 🆕 **عنصرٌ في طرف العنوان** (D-581) — يُمرَّر إلى `PosterRail` كما
+   * هو: **مقبضُ ترتيبٍ في ملفّ صاحبها**، ولا شيءَ في سائر الأبواب.
+   */
+  action?: React.ReactNode;
   /**
    * 🔴 🆕 **شبكةٌ لا صفّ — حيث تجاورها شبكة** (D-433، طلبُ أحمد: «في
    * المكتبة كل البطائق أبغاها بالمقاس الجديد»).
@@ -96,6 +102,7 @@ export function PublicListsRail({
       title={title ?? t.publicListsRail}
       icon="list"
       iconColor="var(--accent-2)"
+      action={action}
     >
       {lists.map((l, i) => (
         /* `size="list"` لا الافتراض: خانة الملصق (118px) لبطاقةٍ أعرض
