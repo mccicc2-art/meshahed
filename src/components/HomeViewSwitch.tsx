@@ -48,6 +48,11 @@ export function HomeViewSwitch({
   const queue = useRef<Promise<unknown>>(Promise.resolve());
 
   const next: HomeView = current === "visual" ? "compact" : "visual";
+  /* ⚖️ 🆕 **والكلمةُ سقطت وبقي الرمز** (D-589، بلاغُ أحمد بلقطة: «هذي
+     خلّها رمز فقط بدون نص») — **نقضُ شطرِ «الزرُّ يحمل اسمَ الوجهة» من
+     D-434 بيد صاحبه**: **الرمزُ ما زال يحمل الوجهةَ لا الحال** (شبكةٌ
+     للبصريّ وقائمةٌ للمختصر)، **والاسمُ الكامل في `aria-label`
+     و`title`** — فالعُرفُ باقٍ والكلمةُ وحدَها غادرت. */
   const label = next === "compact" ? t.viewCompact : t.viewVisual;
 
   function switchTo() {
@@ -66,8 +71,8 @@ export function HomeViewSwitch({
     <button
       type="button"
       onClick={switchTo}
-      aria-label={t.viewSwitchAria}
-      title={t.viewSwitchAria}
+      aria-label={`${t.viewSwitchAria} — ${label}`}
+      title={label}
       /* 🆕 **زاويةٌ من سلّم البطاقات لا قرصٌ كامل** (D-451، طلبُ أحمد:
          «الزوايا خلّيها مثل التصميم»). **وبطاقةُ الأرقام تحته مباشرةً
          `rounded-2xl`** — **وقرصٌ فوق بطاقةٍ في صفَّين متلاصقين لغتا
@@ -105,17 +110,19 @@ export function HomeViewSwitch({
          (وميضُ سطحٍ أو ظلّ) — **صنفٌ جديدٌ لحالةِ مؤشّرٍ لا يراها
          الجوّالُ أصلاً** (القاعدة ٣)، **والضغطةُ لها `active:scale-95`
          وهي التي تُحسّ باليد.** */
-      className="shrink-0 inline-flex items-center h-11 transition active:scale-95"
+      className="shrink-0 inline-flex items-center justify-center w-11 h-11 transition active:scale-95"
     >
-      <span className="inline-flex items-center gap-2 rounded-2xl bg-surface ps-3 pe-3.5 h-9 text-12 font-semibold">
-        {/* الرمزُ يصف الوجهةَ كما يصفها النصّ: شبكةٌ للبصريّ وقائمةٌ للمختصر */}
+      {/* **الحلّةُ المرئيّةُ ٣٦ وهدفُ اللمس ٤٤** — عقدُ D-550 كما هو،
+          والحشوُ الأفقيُّ ذهب مع الكلمة فصارت مربّعاً */}
+      <span className="grid place-items-center rounded-2xl bg-surface w-9 h-9">
+        {/* الرمزُ يصف الوجهةَ كما كانت تصفها الكلمة: شبكةٌ للبصريّ
+            وقائمةٌ للمختصر — **والرمزُ كبر ١٥ → ١٧** ليحمل المعنى وحدَه */}
         <Icon
           name={next === "compact" ? "list" : "grid"}
-          size={15}
+          size={17}
           strokeWidth={2}
           style={{ color: "var(--accent)" }}
         />
-        {label}
       </span>
     </button>
   );
