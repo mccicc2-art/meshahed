@@ -11,6 +11,7 @@ import {
 import { getDict, type Locale } from "@/lib/i18n";
 import { tap } from "@/lib/haptics";
 import { Icon } from "./Icon";
+import { actionTailItem } from "./ui/controls";
 
 /**
  * إعجابٌ بمراجعة، أو **بحدثِ مشاهدة** (D-124).
@@ -103,6 +104,9 @@ export function LikeButton({
     return (
       <span className="flex items-center gap-1.5 text-12 text-muted" title={t.likesLabel}>
         <Icon name="heart" size={16} />
+        {/* ⚖️ 🆕 **والكلمةُ عادت هنا أيضاً** (نقضُ D-294) — **الرقمُ
+            الصامتُ في صفٍّ فيه رقمُ ردودٍ مثلُه لا يقول أيَّهما هو.** */}
+        <span>{t.likesLabel}</span>
         <span className="tabular-nums">{count}</span>
       </span>
     );
@@ -143,17 +147,17 @@ export function LikeButton({
       aria-pressed={liked}
       aria-label={t.likesLabel}
       title={t.likesLabel}
-      className={`flex items-center gap-1.5 rounded-full -mx-2 px-2 py-1.5 text-12 transition ${
-        liked ? "text-accent" : "text-muted hover:text-foreground"
-      }`}
+      className={actionTailItem(liked)}
     >
       {/* 🆕 **القلبُ لا الإبهام** (D-294، طلبُ أحمد: «ماتبغى علامة لايك
           ولا كلمة لايك، فقط نستخدم القلب عشان نوحّد»). **ورمزان لفعلٍ
           واحدٍ في صفحةٍ واحدة هو ما تمنعه القاعدة ٣** — الخطُّ كان
-          بالإبهام والغرفةُ بالقلب. **ولا كلمةَ بجانبه**: الرمزُ عُرفٌ
-          يُقرأ بلا نصّ، والمعنى في `aria-label` (D-177/D-204). */}
+          بالإبهام والغرفةُ بالقلب. ⚖️ 🆕 **وشطرُ «لا كلمةَ بجانبه» نُقض
+          بحكم أحمد** («رجّعها») — **الرمزُ باقٍ واحداً، وعادت كلمتُه**؛
+          الحجّةُ كاملةً في وصفة `actionTailItem`. */}
       <Icon name={liked ? "heart-filled" : "heart"} size={16} />
-      {/* **والزرُّ يبقى وإن غاب رقمُه** — الرمزُ وحده فعلٌ مفهوم */}
+      <span>{t.likesLabel}</span>
+      {/* **والزرُّ يبقى وإن غاب رقمُه** — الكلمةُ وحدَها فعلٌ مفهوم */}
       {count > 0 && <span className="tabular-nums">{count}</span>}
     </button>
   );

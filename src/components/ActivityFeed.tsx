@@ -23,6 +23,7 @@ import { RowComment } from "./RowComment";
 import { FeedReviewText } from "./FeedReviewText";
 import { NewsComment } from "./NewsComment";
 import { PostViews } from "./PostViews";
+import { actionTailItem } from "./ui/controls";
 
 /**
  * **تبويب «النشاط»** — التعليقاتُ وأخبارُنا في خطٍّ واحدٍ مرتَّبٍ بالزمن
@@ -612,12 +613,16 @@ function CommentRow({
               prefetch={false}
               aria-label={t.talkReply}
               title={t.talkReply}
-              className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-12 tabular-nums text-muted hover:text-accent transition"
+              className={actionTailItem(false)}
             >
               <Icon name="comment" size={15} />
+              <span>{t.talkReply}</span>
               {/* **والصفرُ لا يُرسم** (D-222) */}
-              {(listSocial?.get(listReviewKey(a.listId, a.person.id))?.replies ?? 0) > 0 &&
-                listSocial!.get(listReviewKey(a.listId, a.person.id))!.replies}
+              {(listSocial?.get(listReviewKey(a.listId, a.person.id))?.replies ?? 0) > 0 && (
+                <span className="tabular-nums">
+                  {listSocial!.get(listReviewKey(a.listId, a.person.id))!.replies}
+                </span>
+              )}
             </Link>
           </div>
         )}

@@ -8,6 +8,7 @@ import { Avatar } from "./Avatar";
 import { Icon } from "./Icon";
 import { LikeButton } from "./LikeButton";
 import { SpoilerText } from "./SpoilerText";
+import { actionTailItem } from "./ui/controls";
 
 /**
  * **بطاقةُ الرأي في خطّ المجتمع** (D-407، لقطةُ أحمد بمستطيلين أحمرين:
@@ -140,11 +141,12 @@ export function TitleReviewRow({
             prefetch={false}
             aria-label={t.talkReply}
             title={t.talkReply}
-            className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-12 tabular-nums text-muted hover:text-accent transition"
+            className={actionTailItem(false)}
           >
             <Icon name="comment" size={15} />
+            <span>{t.talkReply}</span>
             {/* **والصفرُ لا يُرسم** (D-222) */}
-            {count > 0 && count}
+            {count > 0 && <span className="tabular-nums">{count}</span>}
           </Link>
         </div>
       </div>

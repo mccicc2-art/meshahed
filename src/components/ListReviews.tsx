@@ -12,6 +12,7 @@ import { getDict, num, type Locale } from "@/lib/i18n";
 import { LikeButton } from "./LikeButton";
 import { ThreadReplies } from "./thread/ThreadReplies";
 import type { ListReviewRow, ListReviewSocial, ReviewReply } from "@/lib/data";
+import { actionTailItem } from "./ui/controls";
 
 /**
  * **تقييمُ قائمةٍ ومراجعتُها** (D-327، طلبُ أحمد: «نفّذ المراجعات وتقييم
@@ -205,13 +206,15 @@ export function ListReviews({
                     tap(8);
                     setOpenThread(open ? null : r.userId);
                   }}
-                  className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-12 tabular-nums transition ${
-                    open ? "text-accent" : "text-muted hover:text-accent"
-                  }`}
+                  className={actionTailItem(open)}
                 >
                   <Icon name="comment" size={15} />
-                  {(s?.replies ?? mineReplies.length) > 0 &&
-                    num(s?.replies ?? mineReplies.length, locale)}
+                  <span>{t.talkReply}</span>
+                  {(s?.replies ?? mineReplies.length) > 0 && (
+                    <span className="tabular-nums">
+                      {num(s?.replies ?? mineReplies.length, locale)}
+                    </span>
+                  )}
                 </button>
                 {/* **بابُ البلاغ على كلِّ رأي** (D-193) — ويُقفل بعد الضغط
                     فلا يُبلَّغ مرّتين، **والقاعدةُ تمنع الثاني بمفتاحها.**

@@ -7,6 +7,7 @@ import { tap } from "@/lib/haptics";
 import { getDict, type Locale } from "@/lib/i18n";
 import { Icon } from "./Icon";
 import { Composer } from "./Composer";
+import { actionTailItem } from "./ui/controls";
 
 /**
  * **ذيلُ صفّ التعليق — و«تعليق» يفتح صندوقاً في مكانه لا صفحةً جديدة**
@@ -88,11 +89,10 @@ export function RowComment({
           aria-expanded={open}
           aria-label={label}
           title={label}
-          className={`inline-flex items-center rounded-full px-2.5 py-1.5 transition ${
-            open ? "text-accent" : "text-muted hover:text-accent"
-          }`}
+          className={actionTailItem(open)}
         >
           <Icon name="comment" size={15} />
+          <span>{label}</span>
         </button>
         {after}
       </div>
