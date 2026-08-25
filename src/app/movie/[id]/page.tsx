@@ -1,9 +1,8 @@
 import Link from "next/link";
 import { Fragment, Suspense } from "react";
-import { redirect, notFound } from "next/navigation";
+import { notFound } from "next/navigation";
 import Image from "next/image";
 import {
-  getUser,
   getFollowState,
   isMovieWatched,
   getMyLists,
@@ -41,9 +40,9 @@ import { ReadMore } from "@/components/ReadMore";
 import { buttonClass } from "@/components/ui/Button";
 
 export default async function MoviePage({ params }: { params: Promise<{ id: string }> }) {
-  const user = await getUser();
-  if (!user) redirect("/login");
-
+  /* 🆕 **صفحةُ العمل مفتوحةٌ للزائر** (D-627): البوّابةُ سقطت —
+     الكتالوجُ عامٌّ، وكلُّ القراءات الشخصيّة أدناه ذاتيّةُ الحراسة
+     تعود فارغةً للزائر، وأزرارُ الكتابة يردّها `requireUser`. */
   const { locale, t } = await getT();
   const { id } = await params;
   const movieId = Number(id);
