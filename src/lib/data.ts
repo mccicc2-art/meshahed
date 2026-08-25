@@ -1115,13 +1115,17 @@ export async function getCommunityFeed(
   try {
     const supabase = await createClient();
     const me = await getUser();
-    if (!me) return [];
+    /* 🆕 **والزائرُ يقرأ نشاطَ المجتمع كلِّه** (D-628، طلبُ أحمد: «يشوف
+       كل الأنشطة»): كان `!me → []` فيرى الزائرُ تبويباً ميتاً — وخطُّ
+       «المتابَعين» وحدَه ما يحتاج هويّةً، فيُقلب الزائرُ إلى «الكل»
+       (الهجرة ١٣٥ فتحت `community_activity` له). */
+    const effMode = me ? mode : "all";
 
     // نشاط المتابَعين أو المجتمع من دالة definer — الجداول ليست مفتوحة
     // القراءة، والدالّة تُرجع الأعمدة العامة وحدها مع إخفاء الاسم منفَّذاً
     // في SQL (supabase/activity_v2.sql و supabase/community_feed.sql)
     let { data: actRows, error } = await supabase.rpc(
-      mode === "all" ? "community_activity" : "following_activity_v2",
+      effMode === "all" ? "community_activity" : "following_activity_v2",
     );
     /* **ارتدادٌ حين تكون الدالّة غائبةً لا حين يفشل الاستعلام** (D-187):
        `community_activity` مكتوبةٌ في `supabase/community_feed.sql` منذ
