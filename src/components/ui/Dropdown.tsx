@@ -57,6 +57,7 @@ export function Dropdown({
   labelledBy,
   align = "end",
   caret = false,
+  narrow = false,
   className = "",
   children,
 }: {
@@ -76,6 +77,14 @@ export function Dropdown({
    * يربطها بحافته**، ومعه إطارٌ يُضيء الملصقَ نفسَه (انظر `PosterHold`).
    */
   caret?: boolean;
+  /**
+   * 🆕 **لوحةٌ ضيّقة** (D-625، حكمُ أحمد على قائمة الصورة: «ممتاز —
+   * صغّر العرض فقط»): `min-w-36` بدل `min-w-52` — **خاصيّةٌ هنا لا
+   * صنفٌ عند المستدعي**: `min-width` ثانيةٌ في `className` لا تغلب
+   * الأولى (الحسمُ لترتيب ورقة الأنماط لا لترتيب الأصناف)، فالعرضُ
+   * يُختار من مصدره الواحد.
+   */
+  narrow?: boolean;
   className?: string;
   children: React.ReactNode;
 }) {
@@ -235,7 +244,7 @@ export function Dropdown({
         role="menu"
         aria-labelledby={labelledBy}
         style={{ ["--menu-origin" as string]: align === "end" ? "100% 0" : "0 0" }}
-        className={`fixed z-[60] min-w-52 rounded-2xl border border-border bg-[color:var(--elevated)]/95 backdrop-blur-xl shadow-2xl overflow-hidden py-1 menu-pop ${className}`}
+        className={`fixed z-[60] ${narrow ? "min-w-36" : "min-w-52"} rounded-2xl border border-border bg-[color:var(--elevated)]/95 backdrop-blur-xl shadow-2xl overflow-hidden py-1 menu-pop ${className}`}
       >
         {children}
       </div>
