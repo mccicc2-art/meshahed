@@ -64,8 +64,14 @@ function Ring({ share, label, value }: { share: number; label: string; value: st
           className="stroke-[color:var(--accent)]"
         />
       </svg>
-      <div className="text-center leading-none">
-        <div className="text-24 font-extrabold tabular-nums">{value}</div>
+      {/* 🔴 🆕 **قيدُ عرضِ القلب شرطُ الالتفاف** (D-606، بلاغُ أحمد
+          بلقطةٍ عربيّة: «125 يوم و 18 س» تفيض خارج الحلقة والشاشة):
+          عنصرُ الشبكة الموسَّط يأخذ عرضَ محتواه الأقصى **فسطرٌ أطولُ
+          من الحلقة لا يلتفّ بل يفيض** — والإنجليزيّة «125d 18h» أقصرُ
+          فلم يُرَ العطل. **والقيدُ قطرُ الحلقة الداخليُّ نفسُه**
+          (2×(66−5.5) ≈ 121) فالنصُّ الطويل يلتفّ سطرين وسطَها. */}
+      <div className="text-center leading-none max-w-[120px]">
+        <div className="text-24 font-extrabold tabular-nums leading-tight">{value}</div>
         <div className="text-12 text-muted mt-1.5">{label}</div>
         <Icon name="clock" size={18} className="mx-auto mt-2 text-accent" />
       </div>
