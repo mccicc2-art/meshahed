@@ -1342,7 +1342,7 @@ async function HomeBody({
             href="/library"
             action={
               toWatchOrdered.length > 1 ? (
-                <QueueOrderButton row="towatch" label={t.listReorder} />
+                <QueueOrderButton row="towatch" label={t.listReorder} word={t.allWord} />
               ) : undefined
             }
             view={view}
@@ -1435,7 +1435,7 @@ async function HomeBody({
                 days={weekDays}
                 entries={weekEntries}
                 locale={locale}
-                action={<HomeOrderButton label={t.custReorder} />}
+                action={<HomeOrderButton label={t.custReorder} word={t.allWord} />}
               />
             </div>
           ),
@@ -1470,7 +1470,7 @@ async function HomeBody({
                 iconColor="var(--accent)"
                 href="/library?filter=tv"
                 seeAll={t.seeAll}
-                action={<HomeOrderButton label={t.custReorder} />}
+                action={<HomeOrderButton label={t.custReorder} word={t.allWord} />}
               >
                 {myShows.slice(0, cap(myShows.length)).map((i) => (
                   <PosterCard
@@ -1503,7 +1503,7 @@ async function HomeBody({
                 iconColor="var(--accent)"
                 href="/library?filter=movie"
                 seeAll={t.seeAll}
-                action={<HomeOrderButton label={t.custReorder} />}
+                action={<HomeOrderButton label={t.custReorder} word={t.allWord} />}
               >
                 {myMovies.slice(0, cap(myMovies.length)).map((m) => (
                   <PosterCard
@@ -1526,7 +1526,7 @@ async function HomeBody({
                 </h2>
                 {/* 🆕 مقبضُ الترتيب بجوار «الكلّ» — كسائر الأقسام (D-595) */}
                 <span className="shrink-0 flex items-center gap-2.5">
-                  <HomeOrderButton label={t.custReorder} />
+                  <HomeOrderButton label={t.custReorder} word={t.allWord} />
                   <Link
                     href="/activity"
                     className="text-xs text-accent hover:brightness-110 transition"
@@ -1579,7 +1579,7 @@ async function HomeBody({
                 iconColor="var(--accent)"
                 href="/ratings"
                 seeAll={t.seeAll}
-                action={<HomeOrderButton label={t.custReorder} />}
+                action={<HomeOrderButton label={t.custReorder} word={t.allWord} />}
               >
                 {topRated.slice(0, cap(topRated.length)).map((r) => (
                   <PosterCard
@@ -1605,7 +1605,7 @@ async function HomeBody({
                      وبطاقةٌ واحدةٌ لا تُرتَّب فلا زرَّ لها (D-217) */
                   action={
                     homeListCards.length > 1 ? (
-                      <QueueOrderButton row="lists" label={t.listReorder} />
+                      <QueueOrderButton row="lists" label={t.listReorder} word={t.allWord} />
                     ) : undefined
                   }
                 />
@@ -1632,7 +1632,7 @@ async function HomeBody({
                       sig={friendsRows.map((r) => `${r.media_type}${r.tmdb_id}`).join(",")}
                       locale={locale}
                     />
-                    <HomeOrderButton label={t.custReorder} />
+                    <HomeOrderButton label={t.custReorder} word={t.allWord} />
                   </>
                 }
               >
@@ -1922,7 +1922,7 @@ async function ContinueSection({
         iconColor="var(--accent)"
         href="/library"
         action={
-          canReorder ? <QueueOrderButton row="continue" label={t.listReorder} /> : undefined
+          canReorder ? <QueueOrderButton row="continue" label={t.listReorder} word={t.allWord} /> : undefined
         }
         view={view}
         wide
@@ -2094,7 +2094,7 @@ async function UpcomingSection({
         iconColor="var(--accent)"
         href="/library"
         seeAll={t.seeAll}
-        action={<HomeOrderButton label={t.custReorder} />}
+        action={<HomeOrderButton label={t.custReorder} word={t.allWord} />}
         view={view}
         soloFull
         wide
@@ -2160,7 +2160,7 @@ async function TrendingSection({
 
   const cap = (n: number) => capCards(n, cards);
   return (
-    <Section key="trending" title={t.trendingWeek} icon="trending" action={<HomeOrderButton label={t.custReorder} />}>
+    <Section key="trending" title={t.trendingWeek} icon="trending" action={<HomeOrderButton label={t.custReorder} word={t.allWord} />}>
       {trend.slice(0, cap(12)).map((r) => {
         const mt = r.media_type === "tv" ? "tv" : "movie";
         const seen =
