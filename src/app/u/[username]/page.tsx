@@ -33,7 +33,9 @@ import { ProfileMenu } from "@/components/ProfileMenu";
 import { isLoopz } from "@/lib/loopz";
 import { BackButton } from "@/components/BackButton";
 import { PublicListsRail } from "@/components/PublicListsRail";
-import { CompactMediaRow } from "@/components/CompactMediaRow";
+import { ActivityScreen, type ActivityItem } from "@/components/ActivityScreen";
+import { getProfileActivity } from "@/lib/myActivity";
+import { posterUrl } from "@/lib/media";
 import { PageTabs, type PageTab } from "@/components/ui/PageTabs";
 import { ShareTitleButton } from "@/components/ShareTitleButton";
 import { FeedReviewText } from "@/components/FeedReviewText";
@@ -110,6 +112,7 @@ export default async function PublicProfilePage({
     favListId,
     reviewLikes,
     myLibRows,
+    activityRows,
   ] = await Promise.all([
       getRatingsOf(profile.id),
       getFollowStats(profile.id),
@@ -143,6 +146,10 @@ export default async function PublicProfilePage({
          يُقال صدقاً لا يُفترض** (D-217). */
       getReviewLikesOf(profile.id),
       getFollows(),
+      /* 🆕 **النشاطُ الكامل** (D-586) — دالّةُ definer واحدةٌ محروسةٌ
+         بـ`can_view_profile` (الهجرة ١٣٠)؛ **وتُقرأ في الموجة لأن
+         عدّادَ التبويب منها** (D-374: العدّادُ يعدّ ما يعرضه جسمُه). */
+      getProfileActivity(profile.id),
       isMe ? Promise.resolve() : recordProfileView(profile.id),
     ]);
 
@@ -180,6 +187,35 @@ export default async function PublicProfilePage({
   const displayName = displayNameOf(profile, t.anonymousUser);
   /* «عندك» على ملصق المراجعة — مفاتيحُ مكتبة **القارئ** لا صاحبِ الصفحة */
   const myLibKeys = new Set(myLibRows.map((f) => `${f.media_type}-${f.tmdb_id}`));
+
+  /* 🆕 **صفوفُ النشاط بلبوس شاشة `/activity`** (D-586) — **الإثراءُ
+     وصفةُ صفحة النشاط حرفاً**: كلُّ صفٍّ يحمل اسمَه يتبرّع به لغيره،
+     **والمتابعاتُ والتقييماتُ هنا مترجمةٌ أصلاً** (D-048) فيتقدّم
+     اسمُها على المخزَّن في الصفّ. */
+  const actMeta = new Map<string, { title: string; poster: string | null }>();
+  for (const f of follows) {
+    actMeta.set(`${f.media_type}-${f.tmdb_id}`, { title: f.title, poster: f.poster_path });
+  }
+  for (const r of ratings) {
+    const key = `${r.media_type}-${r.tmdb_id}`;
+    if (!actMeta.has(key) && r.title) actMeta.set(key, { title: r.title, poster: r.poster_path });
+  }
+  const activityItems: ActivityItem[] = activityRows.map((r, i) => {
+    const info = actMeta.get(`${r.mediaType}-${r.tmdbId}`);
+    return {
+      id: `${r.kind}-${r.mediaType}-${r.tmdbId}-${r.at}-${i}`,
+      kind: r.kind,
+      at: r.at,
+      mediaType: r.mediaType,
+      tmdbId: r.tmdbId,
+      title: info?.title ?? r.title ?? `#${r.tmdbId}`,
+      poster: posterUrl(info?.poster ?? r.posterPath ?? null, "w185"),
+      season: r.season ?? null,
+      episode: r.episode ?? null,
+      rating: r.rating ?? null,
+      listName: r.listName ?? null,
+    };
+  });
   /* النبذة تتبع الاسم في الإخفاء — والقطع منفَّذٌ في `public_profiles`
      نفسه لا هنا (profile_bio.sql)؛ هذا السطر حارسٌ ثانٍ لا أوّل */
   const bioText = profile.hide_name ? null : (profile.bio ?? null);
@@ -290,9 +326,9 @@ export default async function PublicProfilePage({
      `ratings` نفسُه** المقروءُ أعلاه. **ونسخةٌ قبل الفرز** لأن `sort`
      تُبدّل المصفوفةَ في مكانها ويقرؤها قسمان. */
   const topRated = [...ratings].sort((a, b) => b.rating - a.rating);
-  const recent = [...ratings].sort((a, b) =>
-    (b.updated_at ?? "").localeCompare(a.updated_at ?? ""),
-  );
+  /* ⚖️ **و«النشاط الأخير» المشتقُّ من التقييمات سقط** (D-586): التبويبُ
+     صار يقرأ السجلَّ الكاملَ من `profile_activity` — **وترتيبان لشيءٍ
+     واحدٍ خلل** (D-152). */
   const reviewsNewest = [...withReview].sort((a, b) =>
     (b.updated_at ?? "").localeCompare(a.updated_at ?? ""),
   );
@@ -498,7 +534,7 @@ export default async function PublicProfilePage({
       key: "activity",
       label: t.communityTabMine,
       icon: "clock",
-      count: recent.length,
+      count: activityItems.length,
       href: `${base}?tab=activity`,
     },
     {
@@ -994,22 +1030,18 @@ export default async function PublicProfilePage({
       )}
 
       {/* ===== النشاط — تقييماتُه بالزمن ===== */}
+      {/* ⚖️ 🆕 **التبويبُ صار سجلَّ `/activity` نفسَه** (D-586، طلبُ أحمد:
+          «الاكتيفتي حطّ فيه كامل الاكتيفتي، نفس طريقة العرض الي
+          بالمكتبة») — **سدادُ الدَّين المعلَن D-438 §12** («النشاطُ
+          تقييماتٌ لا كلُّ فعل»). **والشاشةُ تُستورد لا تُنسخ** (القاعدة
+          ٦): `ActivityScreen` بعينها — رقائقُها وقسمةُ الأيام بساعة
+          القارئ ودمجُ الحلقات، **بلا فتاتِ «المكتبة»** (`crumb=false`). */}
       {canView && tab === "activity" && (
-        <div className="space-y-2">
-          {recent.length === 0 ? (
-            <p className="text-center text-muted py-16 text-sm">{t.profileEmptyActivity}</p>
-          ) : (
-            recent.slice(0, 60).map((r) => (
-              <CompactMediaRow
-                key={`ac-${r.media_type}-${r.tmdb_id}`}
-                href={`/${r.media_type === "tv" ? "show" : "movie"}/${r.tmdb_id}`}
-                title={r.title ?? "—"}
-                subtitle={`★ ${r.rating}/10`}
-                posterPath={r.poster_path}
-              />
-            ))
-          )}
-        </div>
+        activityItems.length === 0 ? (
+          <p className="text-center text-muted py-16 text-sm">{t.profileEmptyActivity}</p>
+        ) : (
+          <ActivityScreen items={activityItems} locale={locale} crumb={false} />
+        )
       )}
 
       {/* ===== المراجعات — بطاقةُ المجتمع نفسُها =====
