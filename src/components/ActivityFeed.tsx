@@ -160,7 +160,9 @@ export function ActivityFeed({
    * ذكي مثل الحالي»). **و«آخر منشور» تخطٍّ للساعة المصحَّحة لا صيغةٌ
    * ثانية**: الصفوفُ مرتّبةٌ بالزمن أصلاً عند بنائها.
    */
-  sort?: "smart" | "latest";
+  /* 🆕 و«الأفضل» (`top`) وجهُ الزائر وحدَه (D-629) — لا خيارَ ثالثاً
+     في ورقة العضو: الصفحةُ تمرّره ولا أحدَ ينتقيه */
+  sort?: "smart" | "latest" | "top";
   /** 🆕 **ترجماتُ المراجعات بلغة القارئ** (D-307) — بمفتاح `commentViewKey` */
   translations?: Record<string, string>;
   /** ردودُ نشراتنا — بمفتاح المنشور، نداءٌ واحد للخطّ كلِّه (D-236) */
@@ -275,6 +277,23 @@ export function ActivityFeed({
   /* 🆕 **والذكيُّ اختيارٌ لا قدَر** (D-306): «آخر منشور» يُبقي ترتيبَ
      الزمن الذي بُنيت به الصفوف — **فلا فرزَ ثانياً أصلاً.** */
   if (sort === "smart") shown = [...shown].sort((a, b) => effAt(b) - effAt(a));
+  /* 🆕 **و«الأفضل» للزائر: التقييماتُ أوّلاً لا الساعة** (D-629، طلبُ
+     أحمد: «المراجعات تطلع له أفضل المراجعات اللي عليها تقييمات»):
+     الغريبُ عن لوبز لا يعرف أحداً فالزمنُ وحدَه يريه آخرَ من كتب لا
+     أحسنَ ما كُتب — **فتتصدّر المراجعةُ الأكثرُ إعجاباً وردوداً،
+     والأحدثُ يفصل التعادل.** والوزنُ عدٌّ خالص لا صيغةُ `smart`
+     الزمنيّة: هنا الجودةُ هي المحور لا النشاط. */
+  if (sort === "top") {
+    const heat = (r: Row): number => {
+      if (r.kind === "comment") {
+        const ck = commentViewKey(r.item.person.id, r.item.media_type, r.item.tmdb_id);
+        return (r.item.likes ?? 0) + (reviewReplies?.get(ck) ?? 0);
+      }
+      const key = `${r.item.media_type}-${r.item.tmdb_id}`;
+      return (postLikes?.counts[key] ?? 0) + (newsReplies?.get(r.item.key) ?? 0);
+    };
+    shown = [...shown].sort((a, b) => heat(b) - heat(a) || b.at - a.at);
+  }
 
   if (shown.length === 0) {
     return (
