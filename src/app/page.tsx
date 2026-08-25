@@ -725,10 +725,15 @@ async function HomeBody({
      وحدَها يقول الفرقَ** فلا تُنسب إليه قائمةُ غيره. والتكرارُ يُسقَط
      بالمعرّف — قائمةٌ يملكها وأعجب بها لا تُرسم مرّتين. */
   const ownedIds = new Set(myListCards.map((c) => c.id));
-  const homeListCards = [
-    ...myListCards,
-    ...savedListCards.filter((c) => c.item_count > 0 && !ownedIds.has(c.id)),
-  ];
+  /* 🆕 **وأولويّتُه تسبق العرفَ** (D-615، حكمُ أحمد: «والليست في الهوم
+     احتاج أقدر أرتّبهم كذلك مثل الأفلام والمسلسلات»): ترتيبُ D-597
+     (قوائمُه ثمّ محفوظاتُه) يبقى للمَن لم يرتّب — ومَن رتّب فترتيبُه
+     المحفوظ يتقدّم والجديدُ يلحق بذيله (نمطُ الصفَّين حرفاً). */
+  const homeListCards = applyQueueOrder(
+    [...myListCards, ...savedListCards.filter((c) => c.item_count > 0 && !ownedIds.has(c.id))],
+    (c) => c.id,
+    prefs.listsOrder,
+  );
 
   // ما تغيّر اسمه بالترجمة يُكتب مرة واحدة في قاعدة البيانات
   const metaToCache = follows
@@ -1142,6 +1147,14 @@ async function HomeBody({
     poster_path: x.posterPath,
     media_type: x.mediaType,
   }));
+  /* 🆕 وبذرةُ «قوائمي» (D-615) — البطاقاتُ مرتَّبةً كما تُعرض، ومفتاحُها
+     معرّفُ القائمة نفسُه فالحفظُ يعيد ما رُتِّب بلا ترجمة */
+  const listsQueueItems: ReorderItem[] = homeListCards.map((c) => ({
+    key: c.id,
+    title: c.name,
+    poster_path: c.posters[0] ?? null,
+    fallbackIcon: "list" as const,
+  }));
 
   // مواعيد الأفلام: المخزّن يُقرأ من صفّ المتابعة، والمجلوب حديثاً يُكتب
   // عبر MovieStatsSync فلا يُطلب مرتين
@@ -1275,11 +1288,13 @@ async function HomeBody({
           في `Suspense` خاصّته، وتمريرُ الترتيب لكلِّ واحدٍ خيطٌ يُجرّ
           عبر عشرة مكوّنات — والحدثُ يقطعه. */}
       <HomeOrderSheetHost locale={locale} order={prefs.order} />
-      {/* 🆕 مضيفُ أولويّة الصفَّين (D-605) — واحدٌ للزرَّين */}
+      {/* 🆕 مضيفُ أولويّة الصفوف (D-605، وثالثُها «قوائمي» بـD-615) —
+          واحدٌ للأزرار الثلاثة */}
       <HomeQueueSheetHost
         locale={locale}
         cont={continueQueueItems}
         towatch={toWatchQueueItems}
+        lists={listsQueueItems}
       />
 
       {empty && (
@@ -1583,7 +1598,14 @@ async function HomeBody({
                   lists={homeListCards}
                   locale={locale}
                   title={t.myLists}
-                  action={<HomeOrderButton label={t.custReorder} />}
+                  /* 🆕 مقبضُ الصفِّ يرتّب **بطاقاتِه** (D-615) لا الأقسام —
+                     نقضُ D-595 المحصورُ نفسُه الذي مضى في الصفَّين (D-605)،
+                     وبطاقةٌ واحدةٌ لا تُرتَّب فلا زرَّ لها (D-217) */
+                  action={
+                    homeListCards.length > 1 ? (
+                      <QueueOrderButton row="lists" label={t.listReorder} />
+                    ) : undefined
+                  }
                 />
               </div>
             ) : null,
