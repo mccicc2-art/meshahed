@@ -63,7 +63,15 @@ export function WeekStrip({
         </h2>
         {action}
       </div>
-      <p className="text-12 text-muted mb-3">{t.weekSub}</p>
+      {/* ⚖️ 🆕 **السطران صارا سطراً واحداً** (D-596، حكمُ أحمد بلقطةٍ
+          دوّر فيها الاثنين: «هذي خلّهم سطر واحد مع بعض»): كان الوصفُ
+          فوق الشريط وسطرُ «لا حلقات» تحته وسطاً — **سطران باهتان
+          لرسالةٍ واحدةٍ حين يكون الأسبوعُ فارغاً**، يفصل بينهما
+          الشريطُ كلُّه. **والفراغُ يلحق بالوصف في سطره** ويسقط سطرُ
+          القاع — وحين توجد حلقاتٌ يبقى الوصفُ وحدَه كما كان. */}
+      <p className="text-12 text-muted mb-3" dir="auto">
+        {entries.length === 0 ? `${t.weekSub} ${t.weekNothing}` : t.weekSub}
+      </p>
 
       {/* الحشوةُ السفليّةُ للالتقاط: بلا `pb` يُقصّ ظلُّ الحدّ المضيء */}
       <div className="flex gap-1 overflow-x-auto overscroll-x-contain snap-x snap-mandatory scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -117,9 +125,6 @@ export function WeekStrip({
         })}
       </div>
 
-      {entries.length === 0 && (
-        <p className="text-12 text-muted mt-2 text-center">{t.weekNothing}</p>
-      )}
     </section>
   );
 }
