@@ -320,20 +320,21 @@ export default async function PublicProfilePage({
      الجلسة لا صاحبَ الصفحة**، **فبابٌ يفتح إحصائياتي في صفحةِ غيري
      يكذب** (D-217). **فهو لي وحدي، ولزائرِ ملفّي رقمُ تقييماتِه
      مكانَه** — **رقمٌ لا بابَ له في صفحته.** */
-  /* ⚖️ 🆕 **والبطاقةُ صارت أربعَ خاناتٍ للجميع** (D-601، حكمُه بلقطة:
-     «ليه ما فيه كامل الإحصائيات؟»): أفلامٌ · مسلسلاتٌ · حلقاتٌ ·
-     تقييماتٌ — **نقضٌ جزئيٌّ لحجّة D-561** («الرقمُ مرّتين لا يقول
-     ضعفَه») بأمر صاحبها: رقمُ التقييمات يعود هنا وعلى تبويبه معاً.
-     **وبابُ «الإحصائيات الكاملة» صار سطرَه لصاحب الصفحة** — `/stats`
-     تقرأ صاحبَ الجلسة، فبابُها في صفحةِ غيري يكذب (D-217). */
-  /* ⚖️ 🆕 **والمسلسلاتُ قبل الأفلام** (D-602، حكمُه: «مسلسلات ثم أفلام
-     — الكل») — كانت أفلامٌ-أوّلاً من صورة تصميم D-561، **والمعيارُ
-     الموحَّدُ اليوم غلبها بأمر صاحبها.** */
+  /* ⚖️ 🆕 ~~والبطاقةُ صارت أربعَ خاناتٍ للجميع (D-601)~~ — **نُقضت
+     بحكمه بعد يومٍ واحد** (D-610، بلقطاتٍ ثلاث: «هذي رجّعها مثل
+     التصميم الي قبل: مسلسلات · أفلام · جميع الإحصائيات»): **البطاقةُ
+     عادت بطاقةَ D-561 بعينها** — ثلاثُ خاناتٍ في إطار، والخانةُ
+     الثالثةُ بابُ «الإحصائيات الكاملة» لصاحبها ورقمُ التقييمات
+     لزائره (`/stats` تقرأ صاحبَ الجلسة — D-217)، **والحلقاتُ عادت
+     إلى صفحة الإحصائيات وحدَها.** */
+  /* ⚖️ **والمسلسلاتُ قبل الأفلام باقيةٌ** (D-602، حكمُه: «مسلسلات ثم
+     أفلام — الكل») — العائدُ شكلُ D-561 لا ترتيبُها. */
   const headerStats = [
     { key: "shows", icon: "tv" as const, value: tvFollows.length, label: t.shortShows },
     { key: "movies", icon: "film" as const, value: movieFollows.length, label: t.shortMovies },
-    { key: "episodes", icon: "play" as const, value: watched.episodes, label: t.statsWatchedEpisodes },
-    { key: "ratings", icon: "star" as const, value: ratings.length, label: t.panelRatings },
+    ...(isMe
+      ? []
+      : [{ key: "ratings", icon: "star" as const, value: ratings.length, label: t.panelRatings }]),
   ];
 
   /* ===== ترتيبان من نفس الصفوف — بلا نداءٍ ثانٍ (D-438) =====
@@ -908,22 +909,24 @@ export default async function PublicProfilePage({
 
             ⚠️ **والخانةُ الثالثةُ بابٌ لصاحبها ورقمٌ لزائره** — **وهي
             رابطٌ حقيقيٌّ لا `div` يُضغط** (D-217). */}
-        {/* ⚖️ 🆕 **والإطارُ سقط والأيقوناتُ كبرت** (D-601، حكمُه:
-            «كبّر الأيقونات وخلّها بدون إطار») — **وهو علاجُ D-550
-            نفسُه على بطاقة الرئيسية**: شبكةٌ عاريةٌ بلا حدٍّ ولا سطحٍ
-            ولا نصفِ قطر، **والفاصلُ الداخليُّ وحدَه يبقى** — فوصفةُ
-            بطاقة الأرقام صارت واحدةً في الصفحتين (القاعدة ٦). والخانةُ
-            صارت عموداً (أيقونةٌ فوق الرقم) — **أربعُ خاناتٍ أفقيّةٌ
-            بأيقونةٍ جانبيّةٍ لا تسعها شاشةُ ٣٩٠.** */}
+        {/* ⚖️ 🆕 ~~والإطارُ سقط والأيقوناتُ كبرت (D-601)~~ — **نُقضت
+            بحكمه** (D-610): **الإطارُ عاد والأيقونةُ إلى جانب الرقم
+            كما صمّمها في D-561** — بطاقةٌ واحدةٌ بحدٍّ ونصفِ قطر،
+            ثلاثُ خاناتٍ أفقيّة، وبابُ «الإحصائيات الكاملة» خانتُها
+            الثالثةُ لصاحبها (رابطٌ حقيقيٌّ لا سطرٌ تحتها). */}
         {canView && prefs.stats && (
-          <div className="relative z-10 mt-3">
-            <div className="grid grid-cols-4">
+          <div className="relative z-10 mt-3 rounded-2xl border border-border bg-surface overflow-hidden">
+            <div className="grid grid-cols-3">
               {headerStats.map((c, i) => (
                 <div
                   key={c.key}
-                  className="relative flex flex-col items-center justify-center gap-1.5 px-2 py-2.5"
+                  className="relative flex items-center justify-center gap-2 px-2 py-2.5"
                 >
-                  {i < headerStats.length - 1 && (
+                  {/* **والخطُّ بين خانتين لا بعد آخرِها**: خانةُ
+                      «الإحصائيات الكاملة» تلي الأخيرةَ لصاحب الصفحة
+                      وحدَه، **فالشرطُ يعرف الحالتين** — **وخطٌّ على
+                      حافّة البطاقة يُقرأ حدّاً مزدوجاً.** */}
+                  {(i < headerStats.length - 1 || isMe) && (
                     <span
                       className="absolute inset-y-2 end-0 w-px bg-[color:var(--divider)]"
                       aria-hidden
@@ -931,11 +934,11 @@ export default async function PublicProfilePage({
                   )}
                   <Icon
                     name={c.icon}
-                    size={24}
+                    size={20}
                     style={{ color: "var(--accent)" }}
                     className="shrink-0"
                   />
-                  <span className="min-w-0 text-center">
+                  <span className="min-w-0">
                     <span className="block text-15 font-bold leading-none tabular-nums">
                       {c.value}
                     </span>
@@ -945,22 +948,20 @@ export default async function PublicProfilePage({
                   </span>
                 </div>
               ))}
+              {isMe && (
+                <Link
+                  href="/stats"
+                  className="flex items-center justify-center gap-1 px-2 py-2.5 text-14 font-semibold text-muted hover:text-accent transition"
+                >
+                  <span className="truncate">{t.profileFullStats}</span>
+                  <Icon
+                    name="chevron-down"
+                    size={16}
+                    className="shrink-0 -rotate-90 rtl:rotate-90"
+                  />
+                </Link>
+              )}
             </div>
-            {/* **بابُ صاحب الصفحة سطرُه** — `/stats` تقرأ صاحبَ الجلسة
-                فلا يُرسم في صفحةِ غيره (D-217) */}
-            {isMe && (
-              <Link
-                href="/stats"
-                className="mt-1 flex items-center justify-center gap-1 py-1.5 text-13 font-semibold text-muted hover:text-accent transition"
-              >
-                <span className="truncate">{t.profileFullStats}</span>
-                <Icon
-                  name="chevron-down"
-                  size={15}
-                  className="shrink-0 -rotate-90 rtl:rotate-90"
-                />
-              </Link>
-            )}
           </div>
         )}
       </section>
