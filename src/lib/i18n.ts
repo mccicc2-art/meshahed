@@ -2498,7 +2498,7 @@ const en: Dict = {
   toWatchEmpty: "Nothing left — all caught up!",
   remainingEps: (n: number) => `${n} episodes left`,
   verifiedTitle: "Verified account",
-  likesLabel: "Likes",
+  likesLabel: "Like",
   shortShows: "Shows",
   markAllWatched: "Watched it all",
   markAllTitle: "Mark all watched",
