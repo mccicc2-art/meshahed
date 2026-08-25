@@ -64,6 +64,7 @@ import { ByHomeView, HomeViewProvider } from "@/components/HomeViewProvider";
 import { CompactMediaRow } from "@/components/CompactMediaRow";
 import {
   sanitizeHomePrefs,
+  applyQueueOrder,
   type HomeSection,
   type HeaderStatKey,
   type HomeView,
@@ -73,6 +74,8 @@ import { getLevel, levelPoints } from "@/lib/level";
 import { densityVars } from "@/lib/density";
 import { WeekStrip, type WeekEntry } from "@/components/WeekStrip";
 import { HomeOrderButton, HomeOrderSheetHost } from "@/components/HomeSectionsOrder";
+import { QueueOrderButton, HomeQueueSheetHost } from "@/components/HomeQueueOrder";
+import type { ReorderItem } from "@/components/ReorderSheet";
 import { ShowStatsSync, type ShowStat } from "@/components/ShowStatsSync";
 import { FollowMetaSync, MovieStatsSync } from "@/components/MetaSync";
 import { LandingHero } from "@/components/LandingHero";
@@ -821,11 +824,18 @@ async function HomeBody({
   // ===== أكمل المشاهدة =====
   // ما أنت في وسطه، الأحدث مشاهدةً أولاً — صفٌّ واحد حلّ محلّ البطاقة
   // العريضة التي كانت تعرض عملاً واحداً وتأخذ ثلث الشاشة
-  const continueRow = [...continueWatching].sort((a, b) => {
-    const ai = lastWatchedOrder.indexOf(a.id);
-    const bi = lastWatchedOrder.indexOf(b.id);
-    return (ai < 0 ? 9999 : ai) - (bi < 0 ? 9999 : bi);
-  });
+  /* 🆕 **وأولويّةُ صاحبها فوق الحداثة** (D-605): ما رتّبه بيده من ورقة
+     الصفِّ يتقدّم بترتيبه، **قبل القصّ** — فعملٌ قدّمه وهو خارج أحدث
+     المشاهدات يدخل البطاقات، وما لم يرتّبه يبقى بالأحدث كما كان. */
+  const continueRow = applyQueueOrder(
+    [...continueWatching].sort((a, b) => {
+      const ai = lastWatchedOrder.indexOf(a.id);
+      const bi = lastWatchedOrder.indexOf(b.id);
+      return (ai < 0 ? 9999 : ai) - (bi < 0 ? 9999 : bi);
+    }),
+    (i) => `c-${i.id}`,
+    prefs.continueOrder,
+  );
 
   /* بطاقات «أكمل المشاهدة»: تفاصيلها جاءت مع الموجة الثانية أصلاً في
      المسار الطبيعي؛ الاحتياط (قبل performance.sql) وحده يطلبها هنا */
@@ -1038,7 +1048,10 @@ async function HomeBody({
   // ===== «للمشاهدة» و«القادم» في الرئيسية: مسلسلات وأفلام معاً =====
   // للمشاهدة: كل ما لم يكتمل — المسلسلات غير المنتهية والأفلام غير
   // المشاهَدة — بترتيب الأقرب إلى الاستئناف. القادم: ما له موعدٌ آتٍ.
-  const toWatchRow: MixedItem[] = [
+  /* 🆕 **الكاملُ قبل القصّ** (D-605): ورقةُ الترتيب تعرض القائمةَ
+     كلَّها («أشوف القائمة كاملة عندي في تو واتش») والصفُّ يقصّ للعرض
+     وحدَه — **وأولويّةُ صاحبها تُطبَّق قبل القصّ** فما قدّمه يظهر. */
+  const toWatchAll: MixedItem[] = [
     ...myShows
       /* لا تكرار بين الصفّين: ما بدأته مكانه «أكمل المشاهدة» وحدها،
          و«للمشاهدة» لِما لم يبدأ — عملٌ جديد، أو موسمٌ جديد ينتظر أوّل
@@ -1082,7 +1095,54 @@ async function HomeBody({
         badge: m.progress === 0 ? undefined : m.badge,
         subtitle: t.typeMovie,
       })),
-  ].slice(0, 16);
+  ];
+  const toWatchOrdered = applyQueueOrder(toWatchAll, (x) => x.key, prefs.towatchOrder);
+  const toWatchRow = toWatchOrdered.slice(0, 16);
+
+  /* 🆕 **بذرتا ورقة الأولويّة** (D-605) — قائمتا الصفَّين كاملتَين
+     بترتيب عرضهما الحاليّ، للمضيف الواحد `HomeQueueSheetHost`.
+     مفاتيحُ «تابِع المشاهدة» مفاتيحُ عناصره المرسومة بأعيانها
+     (`lc-towatch` · `pl-` · `lc-` · `c-`) فالحفظُ يعيد ما رُتِّب. */
+  const continueQueueItems: ReorderItem[] = applyQueueOrder(
+    [
+      ...(toWatchCard
+        ? [
+            {
+              key: "lc-towatch",
+              title: toWatchCard.name,
+              poster_path: toWatchCard.next.poster_path,
+              fallbackIcon: "list" as const,
+            },
+          ]
+        : []),
+      ...playlistCards.map((c) => ({
+        key: `pl-${c.list.id}`,
+        title: curatedName(c.list.sourceSlug, c.list.name, locale),
+        poster_path: c.next!.poster_path,
+        fallbackIcon: "list" as const,
+      })),
+      ...listCards.map((c) => ({
+        key: `lc-${c.list.id}`,
+        title: curatedName(c.list.sourceSlug, c.list.name, locale),
+        poster_path: c.next!.poster_path,
+        fallbackIcon: "list" as const,
+      })),
+      ...continueRow.map((i) => ({
+        key: `c-${i.id}`,
+        title: i.name,
+        poster_path: i.posterPath,
+        media_type: "tv" as const,
+      })),
+    ],
+    (x) => x.key,
+    prefs.continueOrder,
+  );
+  const toWatchQueueItems: ReorderItem[] = toWatchOrdered.map((x) => ({
+    key: x.key,
+    title: x.title,
+    poster_path: x.posterPath,
+    media_type: x.mediaType,
+  }));
 
   // مواعيد الأفلام: المخزّن يُقرأ من صفّ المتابعة، والمجلوب حديثاً يُكتب
   // عبر MovieStatsSync فلا يُطلب مرتين
@@ -1216,6 +1276,12 @@ async function HomeBody({
           في `Suspense` خاصّته، وتمريرُ الترتيب لكلِّ واحدٍ خيطٌ يُجرّ
           عبر عشرة مكوّنات — والحدثُ يقطعه. */}
       <HomeOrderSheetHost locale={locale} order={prefs.order} />
+      {/* 🆕 مضيفُ أولويّة الصفَّين (D-605) — واحدٌ للزرَّين */}
+      <HomeQueueSheetHost
+        locale={locale}
+        cont={continueQueueItems}
+        towatch={toWatchQueueItems}
+      />
 
       {empty && (
         <section className="text-center py-4">
@@ -1246,6 +1312,11 @@ async function HomeBody({
            غلافُه**: ملصقٌ في البصريّ وصفٌّ في المختصر — **فيُرسم
            بدالّةٍ واحدةٍ تأخذ الوضع**، لا بنسختين تفترقان عند أوّل
            تعديل (القاعدة ٦). */
+        /* ⚖️ 🆕 **زرٌّ واحدٌ في الرأس — أولويّةُ العناصر لا الأقسام**
+           (D-605، حكمُه: «خلها زرّ واحد، ما أبغاه يودّيني المكتبة أو
+           أرتّب عناوين الهوم») — مقبضُ D-595 و«الكلّ» سقطا من هذا
+           الرأس، **والعنوانُ بابُ المكتبة كما هو** (D-378) فما سقط
+           إلا التكرار. **وصفٌّ بعنصرٍ واحدٍ لا يُرتَّب** (D-217). */
         const toWatchSection = (view: HomeView) => (
           <Section
             key="towatch"
@@ -1253,8 +1324,11 @@ async function HomeBody({
             icon="bookmark"
             iconColor="var(--accent)"
             href="/library"
-            seeAll={t.seeAll}
-            action={<HomeOrderButton label={t.custReorder} />}
+            action={
+              toWatchOrdered.length > 1 ? (
+                <QueueOrderButton row="towatch" label={t.listReorder} />
+              ) : undefined
+            }
             view={view}
           >
             {toWatchRow.slice(0, cap(toWatchRow.length)).map((x) =>
@@ -1331,6 +1405,8 @@ async function HomeBody({
                   listCards={listCards}
                   continueTop={continueTop}
                   continueExtra={continueExtra}
+                  order={prefs.continueOrder}
+                  canReorder={continueQueueItems.length > 1}
                   locale={locale}
                   t={t}
                 />
@@ -1766,6 +1842,8 @@ async function ContinueSection({
   listCards,
   continueTop,
   continueExtra,
+  order,
+  canReorder,
   locale,
   t,
 }: {
@@ -1774,6 +1852,10 @@ async function ContinueSection({
   listCards: BriefListCard[];
   continueTop: Item[];
   continueExtra: ContinueExtra[];
+  /** 🆕 أولويّةُ صاحب الصفّ (D-605) — تُطبَّق على بطاقاته كلِّها */
+  order: string[];
+  /** وصفٌّ بعنصرٍ واحدٍ لا يُرتَّب (D-217) */
+  canReorder: boolean;
   locale: Locale;
   t: T;
 }) {
@@ -1802,105 +1884,129 @@ async function ContinueSection({
   /* **الرسمان من الجلب نفسِه** (جولة ٢٢ أغسطس): مشاهدُ «التالي» فوقُ
      تُجلب مرّةً واحدة، **والذي يتبدّل بالوضع غلافُ القسم وشكلُ بطاقة
      «تابِع المشاهدة» وحدَهما** — فيُرسمان معاً ويختار العميل. */
-  const rail = (view: HomeView) => (
+  /* ⚖️ 🆕 **بطاقاتُ الصفِّ عناصرُ مفاتيحَ تُفرز بأولويّة صاحبها**
+     (D-605): كانت المجموعاتُ تُرسم بترتيبٍ مقفول (طابورٌ فقوائمُ
+     فأعمال) — **وصارت قائمةً واحدةً يفرزها `applyQueueOrder`
+     بالمفاتيح نفسِها التي تعرضها ورقةُ الترتيب**، فما يسحبه فيها
+     هو ما يتقدّم هنا، عبر الأنواع لا داخل كلِّ نوع. */
+  const rail = (view: HomeView) => {
+    const nodes: { key: string; node: React.ReactNode }[] = [];
+    return (
       <Section
         key="continue"
         title={t.continueWatching}
         icon="play"
         iconColor="var(--accent)"
         href="/library"
-        seeAll={t.seeAll}
-        action={<HomeOrderButton label={t.custReorder} />}
+        action={
+          canReorder ? <QueueOrderButton row="continue" label={t.listReorder} /> : undefined
+        }
         view={view}
         wide
       >
-        {/* 🆕 **والقوائمُ أوّلَ الصفّ** (D-496): **الأقربُ إلى الاستئناف
-            أوّلاً هو ترتيبُ هذا الصفّ منذ نشأته**، **وقائمةٌ دخلتَها
-            للتوّ هي أحدثُ نيّةٍ أعلنتَها.** */}
-        {/* 🆕 **طابورُ «بلا قائمة» أوّلَ الأبواب** (D-505): هو جوابُ
-            «الأفلام ما تروح كنتنيو واتش» نفسُه — صحٌّ على الفيلم يقلب
-            البطاقةَ إلى الذي بعده. */}
-        {toWatchCard && (
-          <ListContinueCard
-            key="lc-towatch"
-            listName={toWatchCard.name}
-            next={{
-              tmdbId: toWatchCard.next.tmdb_id,
-              mediaType: toWatchCard.next.media_type,
-              title: toWatchCard.next.title,
-              posterPath: toWatchCard.next.poster_path,
-              backdropPath: backdropOf(toWatchCard.next),
-            }}
-            watched={toWatchCard.watched}
-            total={toWatchCard.total}
-            /* 🆕 **وبطاقةُ القائمة تتبع الوضعَ كأختها** (D-552، بلاغُ
-               أحمد: «إذا غيّرته كومباكت البوستر كبير جدّاً»): **كانت
-               `ContinueCard` وحدَها تأخذ الوضع**، **فيخلط المختصرُ
-               غلافاً بعرض ٧٠٪ بصفوفٍ ارتفاعُها ١٠٦** — **صفٌّ واحدٌ
-               بهندستين.** */
-            variant={view === "compact" ? "row" : "card"}
-            locale={locale}
-          />
-        )}
-        {/* 🆕 **ثم قوائمُ تشغيلك الصريحة** (D-505) — الرايةُ التي رفعتَها
-            بنفسك تسبق حدسَ المحفوظ */}
-        {playlistCards.map((c) => (
-          <ListContinueCard
-            key={`pl-${c.list.id}`}
-            listName={curatedName(c.list.sourceSlug, c.list.name, locale)}
-            next={{
-              tmdbId: c.next!.tmdb_id,
-              mediaType: c.next!.media_type,
-              title: c.next!.title,
-              posterPath: c.next!.poster_path,
-              backdropPath: backdropOf(c.next!),
-              followed: c.nextFollowed,
-            }}
-            watched={c.watched}
-            total={c.total}
-            variant={view === "compact" ? "row" : "card"}
-            locale={locale}
-          />
-        ))}
-        {listCards.map((c) => (
-          <ListContinueCard
-            key={`lc-${c.list.id}`}
-            listName={curatedName(c.list.sourceSlug, c.list.name, locale)}
-            next={{
-              tmdbId: c.next!.tmdb_id,
-              mediaType: c.next!.media_type,
-              title: c.next!.title,
-              posterPath: c.next!.poster_path,
-              backdropPath: backdropOf(c.next!),
-              followed: c.nextFollowed,
-            }}
-            watched={c.watched}
-            total={c.total}
-            variant={view === "compact" ? "row" : "card"}
-            locale={locale}
-          />
-        ))}
-        {continueTop.map((i, n) => (
-          <ContinueCard
-            key={`c-${i.id}`}
-            tmdbId={i.id}
-            href={`/show/${i.id}`}
-            title={i.name}
-            backdropPath={continueExtra[n]?.backdropPath ?? null}
-            posterPath={i.posterPath}
-            progress={i.progress}
-            watched={i.watched}
-            aired={i.aired}
-            episodeLabel={continueExtra[n]?.episodeLabel}
-            season={continueExtra[n]?.season ?? null}
-            episode={continueExtra[n]?.episode ?? null}
-            runtime={continueExtra[n]?.runtime ?? null}
-            variant={view === "compact" ? "row" : "card"}
-            locale={locale}
-          />
-        ))}
+        {/* الترتيبُ الافتراضيُّ ترتيبُ D-496/D-505 كما كان (طابورٌ
+            فقوائمُ فأعمال — الأقربُ إلى الاستئناف أوّلاً)، **وأولويّةُ
+            صاحبها فوقه** (D-605). */}
+        {(() => {
+          if (toWatchCard) {
+            nodes.push({
+              key: "lc-towatch",
+              node: (
+                <ListContinueCard
+                  key="lc-towatch"
+                  listName={toWatchCard.name}
+                  next={{
+                    tmdbId: toWatchCard.next.tmdb_id,
+                    mediaType: toWatchCard.next.media_type,
+                    title: toWatchCard.next.title,
+                    posterPath: toWatchCard.next.poster_path,
+                    backdropPath: backdropOf(toWatchCard.next),
+                  }}
+                  watched={toWatchCard.watched}
+                  total={toWatchCard.total}
+                  /* 🆕 **وبطاقةُ القائمة تتبع الوضعَ كأختها** (D-552) —
+                     صفٌّ واحدٌ لا يملك هندستين. */
+                  variant={view === "compact" ? "row" : "card"}
+                  locale={locale}
+                />
+              ),
+            });
+          }
+          for (const c of playlistCards) {
+            nodes.push({
+              key: `pl-${c.list.id}`,
+              node: (
+                <ListContinueCard
+                  key={`pl-${c.list.id}`}
+                  listName={curatedName(c.list.sourceSlug, c.list.name, locale)}
+                  next={{
+                    tmdbId: c.next!.tmdb_id,
+                    mediaType: c.next!.media_type,
+                    title: c.next!.title,
+                    posterPath: c.next!.poster_path,
+                    backdropPath: backdropOf(c.next!),
+                    followed: c.nextFollowed,
+                  }}
+                  watched={c.watched}
+                  total={c.total}
+                  variant={view === "compact" ? "row" : "card"}
+                  locale={locale}
+                />
+              ),
+            });
+          }
+          for (const c of listCards) {
+            nodes.push({
+              key: `lc-${c.list.id}`,
+              node: (
+                <ListContinueCard
+                  key={`lc-${c.list.id}`}
+                  listName={curatedName(c.list.sourceSlug, c.list.name, locale)}
+                  next={{
+                    tmdbId: c.next!.tmdb_id,
+                    mediaType: c.next!.media_type,
+                    title: c.next!.title,
+                    posterPath: c.next!.poster_path,
+                    backdropPath: backdropOf(c.next!),
+                    followed: c.nextFollowed,
+                  }}
+                  watched={c.watched}
+                  total={c.total}
+                  variant={view === "compact" ? "row" : "card"}
+                  locale={locale}
+                />
+              ),
+            });
+          }
+          continueTop.forEach((i, n) => {
+            nodes.push({
+              key: `c-${i.id}`,
+              node: (
+                <ContinueCard
+                  key={`c-${i.id}`}
+                  tmdbId={i.id}
+                  href={`/show/${i.id}`}
+                  title={i.name}
+                  backdropPath={continueExtra[n]?.backdropPath ?? null}
+                  posterPath={i.posterPath}
+                  progress={i.progress}
+                  watched={i.watched}
+                  aired={i.aired}
+                  episodeLabel={continueExtra[n]?.episodeLabel}
+                  season={continueExtra[n]?.season ?? null}
+                  episode={continueExtra[n]?.episode ?? null}
+                  runtime={continueExtra[n]?.runtime ?? null}
+                  variant={view === "compact" ? "row" : "card"}
+                  locale={locale}
+                />
+              ),
+            });
+          });
+          return applyQueueOrder(nodes, (x) => x.key, order).map((x) => x.node);
+        })()}
       </Section>
-  );
+    );
+  };
 
   return <ByHomeView visual={rail("visual")} compact={rail("compact")} />;
 }
