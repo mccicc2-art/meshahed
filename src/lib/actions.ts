@@ -14,7 +14,6 @@ import {
   sanitizeContentPrefs,
   serializeContentPrefs,
 } from "@/lib/contentPrefs";
-import { getLocale } from "@/lib/locale";
 import { GENRES, type MediaType } from "@/lib/media";
 import { BROWSE_GENRES } from "@/lib/browse";
 import { sanitizeSocials } from "@/lib/socials";
@@ -412,12 +411,12 @@ export async function updateUiState(patch: {
  * نفسُ شكلِ `setWatchRegion` حرفاً (D-014).
  *
  * ⚠️ **ولا يُصدَّق ما يصل**: القيمةُ تمرّ بـ`parseTitleMode` نفسِها التي
- * يمرّ بها الكوكيُّ المقروء — **فالمجهولُ يسقط إلى الافتراض**، **والصوتيّةُ
- * لا تُكتب لواجهةٍ إنجليزيّة** (حارسٌ على طرفٍ واحد ليس حارساً — D-177).
+ * يمرّ بها الكوكيُّ المقروء — **فالمجهولُ يسقط إلى الافتراض.**
+ * ⚖️ 🆕 **وقيدُ اللغة سقط من الطرفين معاً** (D-593 — الصوتيّةُ صارت
+ * للواجهتين بحكم أحمد، نقضاً لسطرِ مواصفة D-544).
  */
 export async function setTitleMode(value: string) {
-  const locale = await getLocale();
-  const mode = parseTitleMode(value, locale);
+  const mode = parseTitleMode(value);
   const store = await cookies();
   store.set(TITLE_MODE_COOKIE, mode, {
     path: "/",

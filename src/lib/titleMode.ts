@@ -33,20 +33,17 @@ export type TitleMode = "localized" | "original" | "translit" | "both";
 export const TITLE_MODES: readonly TitleMode[] = ["localized", "original", "translit", "both"];
 
 /**
- * ⚠️ **والصوتيّةُ للواجهة العربية وحدَها** (بنصِّ المواصفة: «يظهر هذا
- * الخيار عند استخدام الواجهة العربية فقط») — **وقارئٌ إنجليزيٌّ يحمل
- * كوكيَّها يقع على الافتراض**، فلا يرى «جيم أوف ثرونز» في واجهةٍ
- * إنجليزيّة لأنه بدّل اللغة بعد الاختيار.
+ * **قارئٌ متسامح** — كوكيٌّ مجهولٌ أو محرَّرٌ بيدٍ يسقط إلى الافتراض.
+ *
+ * ⚖️ 🆕 **ولم يعد للّغة رأيٌ هنا** (D-593، حكمُ أحمد: «هنا قلنا فيه
+ * خيار رابع الكتابة الصوتية») — **نقضٌ مسجَّلٌ لسطرِ مواصفة D-544**
+ * («الصوتيّةُ للواجهة العربية فقط»): كان `titleModeAllowed` يُسقط
+ * `translit` في الواجهة الإنجليزيّة **من القائمة والكوكي معاً** —
+ * **وصاحبُ الواجهة الإنجليزيّة قد يقرأ العربيّةَ ويريد أسماءَه بها.**
+ * **والدالّةُ حُذفت لا عُطِّلت**: حارسٌ يعيد `true` دائماً كذبةٌ باقية.
  */
-export function titleModeAllowed(mode: TitleMode, locale: string): boolean {
-  return mode !== "translit" || locale !== "en";
-}
-
-/** **قارئٌ متسامح** — كوكيٌّ مجهولٌ أو محرَّرٌ بيدٍ يسقط إلى الافتراض */
-export function parseTitleMode(v: string | undefined, locale: string): TitleMode {
-  const m = TITLE_MODES.find((x) => x === v);
-  if (!m) return "localized";
-  return titleModeAllowed(m, locale) ? m : "localized";
+export function parseTitleMode(v: string | undefined): TitleMode {
+  return TITLE_MODES.find((x) => x === v) ?? "localized";
 }
 
 /** الأسماءُ الثلاثةُ لعملٍ واحد — **وكلُّها قد تغيب** */

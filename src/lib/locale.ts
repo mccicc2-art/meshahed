@@ -131,14 +131,14 @@ export async function getTabPrefs(surface: TabSurface): Promise<TabPref[]> {
  * **وكوكيٌّ لا عمود** — نفسُ حجّة `setWatchRegion` (D-014): **تفضيلُ
  * عرضٍ يعمل للزائر بلا حساب**، ولا يستحقّ هجرةً ولا صفّاً.
  *
- * ⚠️ **واللغةُ تدخل في القراءة**: الصوتيّةُ للعربية وحدَها، **فقارئٌ
- * إنجليزيٌّ يحمل كوكيَّها يقع على الافتراض** (`parseTitleMode`).
+ * ⚖️ 🆕 **واللغةُ خرجت من القراءة** (D-593): كانت الصوتيّةُ تُردّ إلى
+ * الافتراض في الواجهة الإنجليزيّة — **وسقط القيدُ من الكاتب والقارئ
+ * معاً بحكم أحمد** (نقضُ سطرِ مواصفة D-544).
  */
 export async function getTitleMode(): Promise<TitleMode> {
-  const locale = await getLocale();
   try {
     const store = await cookies();
-    return parseTitleMode(store.get(TITLE_MODE_COOKIE)?.value, locale);
+    return parseTitleMode(store.get(TITLE_MODE_COOKIE)?.value);
   } catch {
     return "localized";
   }
