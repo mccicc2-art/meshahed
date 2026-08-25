@@ -687,7 +687,9 @@ export default async function PeoplePage({
               /* **مفتاحُ «من يظهر»** (D-255) — يُقرأ من الكوكي على الخادم
                  **وهو الشخصنةُ الباقية وحدَها** بعد D-280. */
               showStrangers={showStrangers}
-              sort={feedSort}
+              /* 🆕 والزائرُ على «الأفضل» (D-629): أعلى المراجعات
+                 تقييماً تتصدّر — وكوكي ترتيبِ العضو لا شأنَ له به */
+              sort={user ? feedSort : "top"}
               translations={feedTranslations}
               /* **وجملةُ الفراغ فعلٌ لا اعتذار** (D-181): تقول ماذا تفعل
                  ليمتلئ، **لا «لا يوجد شيء»**.
@@ -894,17 +896,23 @@ export default async function PeoplePage({
         fallbackActive={tab}
         ariaLabel={t.communityTabsGroup}
         /* رمزُ الأدوات (D-177) — نفس الزرّ ونفس المقاس في المكتبة واكتشف */
+        /* 🆕 وأدواتُ الصفحة للعضو وحدَه (D-629): كلُّها تفضيلاتُ حسابٍ —
+           ترتيبُ الخطّ صار مفروضاً «الأفضل» للزائر، والبقيّةُ كوكيزُ
+           عضوٍ لا معنى لها عنده — **وزرٌّ يفتح ورقةَ خياراتٍ لا تعمل
+           أسوأُ من غيابه** (D-217) */
         action={
-          <CommunityTools
-            locale={locale}
-            prefs={tabPrefs}
-            labels={Object.fromEntries(tabs.map((x) => [x.key, x.label]))}
-            activeTab={tab}
-            strangers={showStrangers}
-            feedSort={feedSort}
-            talkFollowedOnly={talkFollowedOnly}
-            translate={translateOn}
-          />
+          user ? (
+            <CommunityTools
+              locale={locale}
+              prefs={tabPrefs}
+              labels={Object.fromEntries(tabs.map((x) => [x.key, x.label]))}
+              activeTab={tab}
+              strangers={showStrangers}
+              feedSort={feedSort}
+              talkFollowedOnly={talkFollowedOnly}
+              translate={translateOn}
+            />
+          ) : undefined
         }
         /* ⚠️ **ولا `extra` هنا** — انظر D-280 أعلاه */
       />
