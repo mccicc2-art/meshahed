@@ -1,5 +1,3 @@
-import { redirect } from "next/navigation";
-import { getUser } from "@/lib/data";
 import { getT } from "@/lib/locale";
 import { SearchScreen } from "@/components/SearchScreen";
 import type { SearchScope } from "@/lib/searchTypes";
@@ -10,8 +8,10 @@ import type { SearchScope } from "@/lib/searchTypes";
  * **ولا نتيجةَ تُرسم على الخادم هنا، وهذا مقصود:** البحثُ يبدأ بحرفٍ
  * يُكتب لا برابطٍ يُفتح، **وكلُّ ضغطةِ زرٍّ بعده تسأل من جديد** — فرسمُ
  * الجولة الأولى على الخادم يشتري إطاراً واحداً بثمن رحلةٍ كاملة، **ثمّ
- * يتولّى العميلُ الجولاتِ العشرَ التالية على أيّ حال.** **والصفحةُ خلف
- * تسجيل الدخول** (`redirect`) فلا فهرسةَ تُخسر (D-221 بالعكس).
+ * يتولّى العميلُ الجولاتِ العشرَ التالية على أيّ حال.** ⚖️ **والصفحةُ صارت
+ * مفتوحةً للزائر** (D-627) — نقضُ سطر «خلف تسجيل الدخول» هنا: صار
+ * للزائر شريطُ بحثٍ في كرومه، وحجّةُ الفهرسة تُحلّ بأن الصفحة قشرةٌ
+ * بلا محتوى خادميٍّ أصلاً.
  *
  * **والرابطُ العميق يعمل كاملاً**: `‎/search?q=suits&type=lists` يصل
  * الشاشةَ مكتوباً ومُرشَّحاً، **وهو ما يكتبه العميلُ نفسُه في العنوان
@@ -22,9 +22,6 @@ export default async function SearchPage({
 }: {
   searchParams: Promise<{ q?: string; type?: string }>;
 }) {
-  const user = await getUser();
-  if (!user) redirect("/login");
-
   const { locale } = await getT();
   const { q = "", type } = await searchParams;
 
