@@ -73,12 +73,16 @@ export function FollowCountButton({
      السمة الثانية.** */
   const body = compact ? (
     <>
-      {/* **رمزان مختلفان لعدَّين مختلفَين** (D-572): **من أتابعهم شخصٌ
-          عليه صحّ** — أنا فعلتُ ذلك — **ومن يتابعونني جماعة.**
-          **ورمزان متطابقان لعدَّين متجاورين لا يقولان أيُّهما أيّ.** */}
-      {/* 🆕 درجةٌ واحدةٌ فوق (D-614) — مع اسم صفِّ الرئيسية سواء */}
-      <Icon name={dir === "followers" ? "people" : "person-check"} size={19} />
+      {/* ⚖️ 🆕 **الوجهُ المضغوطُ صار رمزاً وعدّاً وكلمةً** (D-618،
+          توزيعُ أحمد المرسوم: «@ahmed · 👥 5 Following») — **والكلمةُ
+          الظاهرةُ أسقطت حجّةَ رمزَي D-572**: رمزان مختلفان كانا
+          يفرّقان عدَّين بلا كلمة، **والكلمةُ الآن تقول أيُّ عدٍّ هذا**
+          فرمزُ الجماعة يكفي (وهو رمزُ لقطته). **ومقاسا D-614 (١٩/١٥)
+          كانا لعدّادٍ يجاور الاسمَ** — **وصفُّ التعريف تحت الاسم
+          درجةٌ ثانويّة** فالسطرُ يرثُ مقاسَ مستدعيه. */}
+      <Icon name="people" size={16} />
       <span className="font-bold tabular-nums">{count}</span>
+      <span>{label}</span>
     </>
   ) : (
     <>
@@ -88,7 +92,7 @@ export function FollowCountButton({
   );
 
   const cls = compact
-    ? `shrink-0 inline-flex items-center gap-1 text-15 ${className}`
+    ? `shrink-0 inline-flex items-center gap-1 ${className}`
     : `shrink-0 flex items-center gap-1 hover:brightness-110 transition ${className}`;
   /** **المعنى في الوصف حين يغيب من النصّ** — `aria-label` لا زينة */
   const aria = compact ? `${count} ${label}` : undefined;

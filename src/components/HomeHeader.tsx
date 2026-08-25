@@ -132,6 +132,7 @@ export interface HeaderStat {
  */
 export function HomeHeader({
   displayName,
+  username = null,
   avatarUrl,
   avatarPos,
   coverUrl,
@@ -142,12 +143,13 @@ export function HomeHeader({
   showStats,
   levelPercent,
   userId,
-  followers = 0,
   following = 0,
   hideFollowLists = false,
   locale,
 }: {
   displayName: string;
+  /** 🆕 سطرُ التعريف تحت الاسم (D-618): «@ahmed» — والغيابُ يعني ألّا سطر */
+  username?: string | null;
   /** ⚖️ 🆕 **يُقرأ مرّةً أخرى** (D-536): الصورةُ عادت إلى صفّ الترحيب */
   avatarUrl?: string | null;
   avatarPos?: number | null;
@@ -178,6 +180,11 @@ export function HomeHeader({
    * بابُه معطّل (D-217).
    */
   userId?: string;
+  /* ⚖️ 🆕 **وعدّادُ المتابِعين غادر الترويسةَ** (D-618، توزيعُ أحمد
+     المرسوم: تحت الاسم «@ahmed · 5 Following» وحدَها) — **نقضٌ محصورٌ
+     لثنائيّةِ D-572 بيد صاحبها**: العدّان في الملفّ كما هما، وهنا
+     عدُّ مَن تتابعهم وحدَه. **و`followers` تُقبل ولا تُقرأ** (D-028:
+     المستدعي القديم يمرّرها فلا يُكسر كوميتُه) — وعودتُها بكلمة. */
   followers?: number;
   following?: number;
   /** قفلُ قائمتَي المتابعة (هجرة ٤٣) — الرقمُ يبقى والبابُ يُقفل */
@@ -350,6 +357,11 @@ export function HomeHeader({
             >
               <Icon name="settings" size={24} />
             </Link>
+            {/* ⚖️ 🆕 **ومبدّلُ العرض صعد إلى صفِّ الأيقونات** (D-618،
+                توزيعُه المرسوم: ظرفٌ · جرسٌ · ترسٌ · مبدّلٌ أصفر) —
+                كان في صفِّ الترحيب منذ D-434، **وصفُّ الترحيب صار
+                للتعريف وحدَه.** */}
+            <HomeViewSwitch locale={locale} />
           </HeaderTrailing>
         </div>
       </div>
@@ -410,59 +422,46 @@ export function HomeHeader({
             التنظيف** بعد أن فقدت قارئَها الوحيد — **في رفعةٍ لاحقة لا
             مع قارئها** (D-538/D-028)، **ومفاتيحُ `greet*` الأربعةُ
             بعدها.** */}
-        {/* 🆕 **درجةٌ واحدةٌ فوق** (D-614، حكمُه بلقطةٍ حوَّط فيها الصفَّ:
-            «وهذي كبّرها درجة وحدة») — ١٥ → ١٧ من سلّم النصّ نفسِه
-            (D-473)، والعدّادان معه في `FollowCountButton compact`. */}
-        <p className="min-w-0 flex-1 truncate text-17 font-bold leading-tight">
-          {displayName}
-        </p>
-
-        {/* ⚖️ 🆕 **والأيقونةُ الواحدةُ صارت عدّادَين** (D-572، طلبُ
-            أحمد: «خلّها أيقونتين — المتابعين والمتابَعين — ومكتوب
-            العدد، ونفس النظام القديم: اضغط عليها تطلع صفحة منبثقة»).
-
-            ⚖️ **ونقضٌ مُعلَنٌ لـD-565** بحكمه بعد أن رآها: **رمزٌ
-            أصمُّ لا يقول كم**، **ورقمان يقولان حالتَك قبل أن تضغط** —
-            **وبابٌ يُفتح لمعرفةِ رقمٍ كان يسع الترويسةَ نفسَها.**
-
-            **والورقةُ هي ورقةُ الملفّ نفسُها** (`FollowCountButton`،
-            D-561) — **لا مكوّنَ ثانٍ ولا قارئَ ثانٍ** (القاعدة ٦):
-            **نفسُ الحارس** (قفلُ قائمتَي المتابعة، هجرة ٤٣)
-            **ونفسُ السقف.**
-
-            ✅ **والدَّينُ سُدّ**: صفحةُ `/follows` فقدت بابَها الوحيد
-            **فحُذفت في رفعةٍ لاحقة لا مع بابها** (D-538/D-028).
-            ⚠️ **ومفتاحاها `followsTabFollowing`/`followsTabFollowers`
-            بقيا** — **صارا عنوانَي الورقتين هنا وفي الملفّ**، **فالمفتاحُ
-            لم يُيتَّم، تبدّل قارئُه.** **وتعود الصفحةُ بكلمةٍ إن أرادها.** */}
-        {userId && (
-          <span className="shrink-0 flex items-center gap-2.5">
-            <FollowCountButton
-              targetId={userId}
-              dir="following"
-              count={following}
-              label={t.followingLabel}
-              sheetTitle={t.followsTabFollowing}
-              locked={hideFollowLists}
-              compact
-              className={coverUrl ? "text-white/90" : "text-foreground/80"}
-              labels={{ close: t.closeLabel, empty: t.followListEmpty, anonymous: t.anonymousUser }}
-            />
-            <FollowCountButton
-              targetId={userId}
-              dir="followers"
-              count={followers}
-              label={t.followersLabel}
-              sheetTitle={t.followsTabFollowers}
-              locked={hideFollowLists}
-              compact
-              className={coverUrl ? "text-white/90" : "text-foreground/80"}
-              labels={{ close: t.closeLabel, empty: t.followListEmpty, anonymous: t.anonymousUser }}
-            />
-          </span>
-        )}
-
-        <HomeViewSwitch locale={locale} />
+        {/* ⚖️ 🆕 **الاسمُ وتحته سطرُ التعريف** (D-618، توزيعُ أحمد
+            المرسوم): «AHMED» ثمّ «@ahmed · 5 Following» — **وما كان
+            صفّاً واحداً مزدحماً** (اسمٌ + عدّادان + مبدّل، D-572/D-614)
+            **صار عمودَين**: المبدّلُ صعد لصفِّ الأيقونات، وعدّادُ
+            المتابِعين غادر (نقضُ الثنائيّة محصوراً — الملفُّ بعدَّيه
+            كما هو)، **وعدُّ مَن تتابعهم بقي بورقته نفسِها**
+            (`FollowCountButton`/D-561 — نفسُ الحارس ونفسُ السقف). */}
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-17 font-bold leading-tight">{displayName}</p>
+          {(username || userId) && (
+            <p
+              className={`mt-0.5 flex items-center gap-1.5 text-13 leading-tight ${
+                coverUrl ? "text-white/70" : "text-muted"
+              }`}
+            >
+              {username && <span className="min-w-0 truncate">@{username}</span>}
+              {username && userId && (
+                <span aria-hidden className="shrink-0 opacity-60">
+                  •
+                </span>
+              )}
+              {userId && (
+                <FollowCountButton
+                  targetId={userId}
+                  dir="following"
+                  count={following}
+                  label={t.followingLabel}
+                  sheetTitle={t.followsTabFollowing}
+                  locked={hideFollowLists}
+                  compact
+                  labels={{
+                    close: t.closeLabel,
+                    empty: t.followListEmpty,
+                    anonymous: t.anonymousUser,
+                  }}
+                />
+              )}
+            </p>
+          )}
+        </div>
       </div>
 
       {/* ===== الصفُّ الثالث: بطاقةُ الأرقام =====
@@ -491,22 +490,13 @@ export function HomeHeader({
         const cols = stats.length === 4 ? 2 : stats.length;
         return (
         <div
-          /* ⚖️ 🆕 **والإطارُ سقط** (D-550، طلبُ أحمد بلقطةٍ معلَّمة:
-             «الإطار في الكارد احذفه، أبغى أشوفها بدون إطار»).
-
-             ⚖️ **ثمّ سقط السطحُ والزاويةُ معه** (طلبُه الثاني: «احذف
-             السطح والزاوية»): **لم يبقَ للبطاقة صندوقٌ إطلاقاً** —
-             **أرقامٌ على خلفيّة الصفحة مباشرةً**، وفوق الغلاف حين
-             يكون هناك غلاف.
-
-             ⚠️ **والفاصلُ بين الخانتين باقٍ**: هو ما يجعلها تُقرأ
-             خانتين لا سطراً واحداً، **وهو خطٌّ بين اثنين لا إطارٌ
-             حولهما** — **ولم يطلب حذفَه.**
-
-             ⚠️ **والحشوُ الرأسيُّ باقٍ في الخانات** (`py-3.5`): **حذفُ
-             الصندوق ليس حذفَ التنفّس** — ولو ضاق لالتصقت الأرقامُ
-             بالتحيّة فوقها وبالقسم تحتها. */
-          className="grid"
+          /* ⚖️ 🆕 **والصندوقُ عاد بحكم صاحبه** (D-618: «حط خلفية
+             للكاردات») — **نقضٌ مسجَّلٌ لـD-550 التي أسقطت الإطارَ
+             والسطحَ والزاويةَ بطلبه يومَها**: **والوصفةُ وصفةُ بطاقة
+             أرقام الملفّ حرفاً** (D-610: `rounded-2xl border
+             border-border bg-surface`) — لا وصفةَ بطاقةٍ ثانية
+             (القاعدة ٦). **والفاصلُ بين الخانتين باقٍ كما كان.** */
+          className="grid rounded-2xl border border-border bg-surface overflow-hidden"
           style={{ gridTemplateColumns: `repeat(${cols}, minmax(0,1fr))` }}
         >
           {stats.map((s, i) => (
@@ -517,7 +507,7 @@ export function HomeHeader({
                  خطٌّ رأسيٌّ لكلِّ خانةٍ ليست أوّلَ عمودها، **وأفقيٌّ لكلِّ
                  خانةٍ في صفٍّ ثانٍ** — ومن أخذ `i > 0` وحدَها رسم خطّاً
                  رأسيّاً في رأس السطر الثاني. */
-              className={`flex items-center justify-center gap-2 py-3.5 transition active:opacity-70 ${
+              className={`flex items-center justify-center gap-3 px-2 py-3.5 transition active:opacity-70 ${
                 i % cols !== 0 ? "border-s border-[color:var(--divider)] " : ""
               }${i >= cols ? "border-t border-[color:var(--divider)]" : ""}`}
             >
@@ -534,32 +524,26 @@ export function HomeHeader({
 
 /** وجهُ الخانة — **رسمٌ واحدٌ للوضعين**، والذي يتبدّل هو الإطار حولَه */
 function StatFace({ stat }: { stat: HeaderStat }) {
-  /* 🆕 **سطرٌ واحدٌ لا سطران** (D-437، بلاغُ أحمد: «الرقم طالع فوق
-     الكلمة، صلّحه بحيث يكون سطر واحد») — **وارتفاعُ البطاقة نزل الثلث**
-     بلا أن يسقط منها حرف. */
+  /* ⚖️ 🆕 **الرقمُ فوق الكلمة والرمزُ بجوارهما** (D-618، توزيعُ أحمد
+     المرسوم) — **نقضٌ محصورٌ لسطرِ D-437 الواحد بيد صاحبه**: يومَها
+     كان الرقمُ فوق الكلمة **بلا رمزٍ جانبيّ** فطلب سطراً واحداً،
+     **ولقطتُه اليوم ترسم الرمزَ عموداً والرقمَ والكلمةَ عموداً** —
+     شكلُ خانة بطاقةٍ لها صندوقُها. ⚠️ **والرقمُ ٢٠ كما حكم D-459**
+     (أعلى السلّم يبقى لعناوين الأقسام)، والكلمةُ ١٣ تحتَه. */
   return (
     <>
       <Icon
         name={stat.icon}
-        size={20}
+        size={22}
         style={{ color: stat.color ?? "var(--accent)" }}
       />
-      {/* 🆕 **٢٤px/٧٠٠ — «الأرقام الكبيرة» في سلّم النصّ** (D-454)،
-          **والكلمةُ تحتها ١٢ ثانويّاً.** و`font-bold` لا `extrabold`:
-          السلّمُ يقول ٧٠٠، **ووزنٌ ثامنُ مئةٍ لرقمٍ في بطاقةٍ يجعله
-          يصرخ فوق عنوان القسم الذي يليه.** */}
-      {/* 🆕 ⚖️ **٢٠ لا ٢٤** (D-459، حكمُ أحمد: «أرقام الكارد كبيرة شوي»)
-          — **والعلّةُ هرميّةٌ لا مقاس**: عند ٢٤ كان **الرقمُ أكبرَ نصٍّ
-          في الشاشة**، أكبرَ من «تابِع المشاهدة» (٢٢) — **فتقع العينُ على
-          «١٠» قبل أن تقع على اسم القسم**، وشريطُ الأرقام اختصاراتٌ لا
-          عنوانُ الصفحة. **والعنوانُ يجب أن يبقى أعلى السلّم.**
-          ⚠️ **و٢٤/٧٠٠ تبقى في نظام التصميم** لسطحِ الأرقام الحقيقيّ
-          (`/stats`) — **الدرجةُ لم تُلغَ، إنما لم تكن هذه موضعَها.** */}
-      <span className="text-20 font-bold leading-none tabular-nums">
-        {stat.value}
-      </span>
-      <span className="min-w-0 truncate text-12 font-medium text-muted leading-none">
-        {stat.label}
+      <span className="min-w-0 flex flex-col items-start gap-1">
+        <span className="text-20 font-bold leading-none tabular-nums">
+          {stat.value}
+        </span>
+        <span className="min-w-0 max-w-full truncate text-13 font-medium text-muted leading-none">
+          {stat.label}
+        </span>
       </span>
     </>
   );

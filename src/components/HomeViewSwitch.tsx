@@ -110,20 +110,20 @@ export function HomeViewSwitch({
          (وميضُ سطحٍ أو ظلّ) — **صنفٌ جديدٌ لحالةِ مؤشّرٍ لا يراها
          الجوّالُ أصلاً** (القاعدة ٣)، **والضغطةُ لها `active:scale-95`
          وهي التي تُحسّ باليد.** */
-      className="shrink-0 inline-flex items-center justify-center w-11 h-11 transition active:scale-95"
+      className="shrink-0 grid place-items-center w-11 h-11 rounded-full hover:bg-surface-2 active:scale-95 transition"
     >
-      {/* **الحلّةُ المرئيّةُ ٣٦ وهدفُ اللمس ٤٤** — عقدُ D-550 كما هو،
-          والحشوُ الأفقيُّ ذهب مع الكلمة فصارت مربّعاً */}
-      <span className="grid place-items-center rounded-2xl bg-surface w-9 h-9">
-        {/* الرمزُ يصف الوجهةَ كما كانت تصفها الكلمة: شبكةٌ للبصريّ
-            وقائمةٌ للمختصر — **والرمزُ كبر ١٥ → ١٧** ليحمل المعنى وحدَه */}
-        <Icon
-          name={next === "compact" ? "list" : "grid"}
-          size={17}
-          strokeWidth={2}
-          style={{ color: "var(--accent)" }}
-        />
-      </span>
+      {/* ⚖️ 🆕 **والحلّةُ سقطت والزرُّ صعد إلى صفِّ الأيقونات** (D-618،
+          توزيعُ أحمد المرسوم): جيرانُه الظرفُ والجرسُ والترسُ كلُّهم
+          رمزٌ عارٍ في ٤٤ — **وحلّةُ سطحٍ وحيدةٌ بينهم كانت ستقرأ
+          زرّاً من عائلةٍ ثانية** (القاعدة ٣). **والرمزُ ٢٤ كمقاسهم
+          حرفاً** (عقدُ D-543)، **ولونُ الهوية باقٍ يقول إنه مبدّلُك
+          لا باباً عامّاً.** والرمزُ ما زال يصف الوجهةَ لا الحال. */}
+      <Icon
+        name={next === "compact" ? "list" : "grid"}
+        size={24}
+        strokeWidth={2}
+        style={{ color: "var(--accent)" }}
+      />
     </button>
   );
 }

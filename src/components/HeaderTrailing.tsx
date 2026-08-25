@@ -40,8 +40,11 @@ export function HeaderTrailing({
 }) {
   return (
     <div className="flex items-center gap-0.5">
-      <SignalsLink unread={unreadSignals} locale={locale} />
+      {/* 🆕 **الظرفُ قبل الجرس** (D-618، توزيعُ أحمد المرسوم) — والقلبُ
+          هنا في المصدر الواحد فيتحرّك الشريطان معاً ولا ينكسر تطابقُ
+          المواضع بين الصفحات (قاعدةُ D-541 نفسُها) */}
       <MessagesLink unread={unreadShares} locale={locale} />
+      <SignalsLink unread={unreadSignals} locale={locale} />
       {children}
     </div>
   );
