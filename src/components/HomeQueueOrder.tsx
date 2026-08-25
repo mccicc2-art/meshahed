@@ -32,7 +32,9 @@ import { ReorderSheet, type ReorderItem } from "./ReorderSheet";
  */
 
 export const HOME_QUEUE_EVENT = "loopz:queue-order";
-export type QueueRow = "continue" | "towatch";
+/** 🆕 وصفُّ «قوائمي» ثالثُ الصفوف (D-615): «والليست في الهوم احتاج
+    أقدر أرتّبهم كذلك مثل الأفلام والمسلسلات» — نفسُ الزرِّ ونفسُ الورقة */
+export type QueueRow = "continue" | "towatch" | "lists";
 
 /** الزرُّ — وحيدُ الرأسِ في الصفَّين، بوصفة مقبض المفضّلة (D-567) حرفاً */
 export function QueueOrderButton({ row, label }: { row: QueueRow; label: string }) {
@@ -58,12 +60,17 @@ export function HomeQueueSheetHost({
   locale,
   cont,
   towatch,
+  lists = [],
 }: {
   locale: Locale;
   /** عناصرُ «تابِع المشاهدة» كلُّها بترتيب عرضها الحاليّ — بذرةُ الورقة */
   cont: ReorderItem[];
   /** عناصرُ «للمشاهدة» كلُّها بترتيب عرضها الحاليّ */
   towatch: ReorderItem[];
+  /** 🆕 بطاقاتُ «قوائمي» بترتيب عرضها الحاليّ (D-615) — اختياريٌّ
+      بفراغٍ لا واجبٌ: **رفعةُ المكوّنات تسبق رفعةَ الصفحة وتُبنى
+      وحدَها** (D-028)، والغائبُ بلا زرِّه لا يُفتح أصلاً */
+  lists?: ReorderItem[];
 }) {
   const t = getDict(locale);
   const router = useRouter();
@@ -73,7 +80,7 @@ export function HomeQueueSheetHost({
   useEffect(() => {
     const onOpen = (e: Event) => {
       const d = (e as CustomEvent).detail;
-      if (d === "continue" || d === "towatch") setRow(d);
+      if (d === "continue" || d === "towatch" || d === "lists") setRow(d);
     };
     window.addEventListener(HOME_QUEUE_EVENT, onOpen);
     return () => window.removeEventListener(HOME_QUEUE_EVENT, onOpen);
@@ -82,7 +89,7 @@ export function HomeQueueSheetHost({
   if (!row) return null;
   return (
     <ReorderSheet
-      items={row === "continue" ? cont : towatch}
+      items={row === "continue" ? cont : row === "lists" ? lists : towatch}
       t={t}
       onClose={() => setRow(null)}
       onDone={(keys) => {
