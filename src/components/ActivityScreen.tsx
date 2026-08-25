@@ -66,9 +66,16 @@ const serverFalse = () => false;
 export function ActivityScreen({
   items,
   locale,
+  crumb = true,
 }: {
   items: ActivityItem[];
   locale: Locale;
+  /**
+   * 🆕 **فتاتُ الرجوع اختياريّة** (D-586): الشاشةُ صارت تُرسم داخل
+   * تبويبٍ في ملفّ المستخدم أيضاً — **وفتاتُ «المكتبة» داخل ملفِّ
+   * شخصٍ كذبةُ موضع**، ورأسُ الصفحة هناك يملك زرَّ رجوعه.
+   */
+  crumb?: boolean;
 }) {
   const t = getDict(locale);
   const [scope, setScope] = useState<Scope>("all");
@@ -87,7 +94,7 @@ export function ActivityScreen({
 
   return (
     <div className="space-y-4">
-      <BackCrumb label={t.navLibrary} fallback="/library" />
+      {crumb && <BackCrumb label={t.navLibrary} fallback="/library" />}
 
       <div className={chipRow}>
         <div className="flex items-center gap-2">
