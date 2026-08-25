@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Icon, type IconName } from "./Icon";
 import { segmentedItem } from "./ui/controls";
+import { StickyStuck } from "./ui/StickyStuck";
 
 export interface DetailTab {
   key: string;
@@ -42,7 +43,14 @@ export function DetailTabs({ tabs }: { tabs: DetailTab[] }) {
           الشاشة */}
       {/* `--sticky-top` لا `--header-h` وحده: الترويسة تحمل شريط الحالة
           في وضع التثبيت، فالالتصاق عليه وحده يُدخل الشريط تحتها */}
-      <div className="chrome-sub sticky top-[var(--sticky-top)] z-10 bg-[color:var(--background)] py-1.5">
+      {/* 🔴 🆕 **و`chrome-sub` سقطت** (D-598، بلاغُ أحمد بلقطة: الشريطُ
+          طافٍ فوق الهيرو يقطع الملصقَ والعنوان): **هذا شريطٌ يجلس في
+          وسط الصفحة** — تحت الهيرو وصفِّ الأزرار — **و`chrome-sub`
+          ترفع غيرَ الملتصقِ بارتفاعه ومرساتِه** فيقفز مئةَ بكسلٍ فوق
+          موضعه. **وهو عطلُ D-564 بحرفه على صفحةٍ ثانية، وعلاجُه
+          علاجُها**: `StickyStuck` يقيس الالتصاقَ ولا يفترضه، وطبقتُه
+          تسدّ شقَّ الترويسة المنزوية **وهو ملتصقٌ فعلاً وحدَه** (D-570). */}
+      <StickyStuck className="relative sticky top-[var(--sticky-top)] z-10 bg-[color:var(--background)] py-1.5">
         <div
           role="tablist"
           className="grid border-b border-[color:var(--divider)]"
@@ -90,7 +98,7 @@ export function DetailTabs({ tabs }: { tabs: DetailTab[] }) {
             );
           })}
         </div>
-      </div>
+      </StickyStuck>
 
       {available.map((tab) => (
         <div
