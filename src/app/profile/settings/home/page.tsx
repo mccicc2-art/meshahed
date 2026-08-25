@@ -7,6 +7,7 @@ import {
 } from "@/lib/data";
 import { getT } from "@/lib/locale";
 import { CustomizeScreen } from "@/components/settings/CustomizeScreen";
+import { isPlus } from "@/lib/plan";
 
 /**
  * الرئيسيةُ والملفّ — **سطحان لا صفحتان** (D-129، ومكانُه الآن صفحتُه).
@@ -42,6 +43,8 @@ export default async function Page() {
       coverPos={p?.cover_pos ?? 30}
       avatarPos={p?.avatar_pos ?? 50}
       counters={{ followers: follow.followers, following: follow.following, visits }}
+      /* 🆕 D-633 — والحكمُ من `lib/plan.ts` وحدَه */
+      plus={isPlus(p)}
     />
   );
 }
