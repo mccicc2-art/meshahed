@@ -37,8 +37,11 @@ export async function Navbar() {
       <header className="chrome-top sticky top-0 z-30 bg-[color:var(--background)]/80 backdrop-blur pt-[var(--safe-top)]">
         {/* dir=ltr: الاسم يساراً والعلم يميناً بثبات، مهما كانت لغة الصفحة */}
         <div className="max-w-6xl mx-auto px-5 h-16 flex items-center justify-between" dir="ltr">
-          <Link href="/" prefetch={false} className="font-extrabold text-22 tracking-tight">
-            {t.brand}
+          {/* ⚖️ 🆕 الرمزُ لا الكلمة (D-628 — تطبيقُ D-256 على شريط الزائر:
+              «الأيقونة في كل الصفحات بدل كلمة لوبز») — شريطُ الزائر كان
+              الوحيدَ الذي بقي على الكلمة، وهويّتان في شريطٍ واحدٍ عطل */}
+          <Link href="/" prefetch={false} className="shrink-0" aria-label={t.brand}>
+            <Logo size={44} />
           </Link>
           <span className="flex items-center gap-2.5">
             <LangFlagMenu locale={locale} />
