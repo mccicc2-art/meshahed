@@ -946,12 +946,18 @@ async function HomeBody({
     : null;
 
   const playlistCards = myPlaylists
-    .map((l) => ({
-      list: l,
-      watched: l.items.filter(seenIt).length,
-      next: l.items.find((it) => !seenIt(it)) ?? null,
-      total: l.items.length,
-    }))
+    .map((l) => {
+      const next = l.items.find((it) => !seenIt(it)) ?? null;
+      return {
+        list: l,
+        watched: l.items.filter(seenIt).length,
+        next,
+        nextFollowed: next
+          ? followedKeys.has(`${next.media_type}-${next.tmdb_id}`)
+          : false,
+        total: l.items.length,
+      };
+    })
     /* المكتملةُ ليست «تابِع المشاهدة» — الرايةُ باقيةٌ والبطاقةُ تغيب */
     .filter((c) => c.next !== null)
     .slice(0, 3);
@@ -971,7 +977,16 @@ async function HomeBody({
       ).length;
       const watched = l.items.filter(seen).length;
       const next = l.items.find((it) => !seen(it)) ?? null;
-      return { list: l, mine, watched, next, total: l.items.length };
+      return {
+        list: l,
+        mine,
+        watched,
+        next,
+        nextFollowed: next
+          ? followedKeys.has(`${next.media_type}-${next.tmdb_id}`)
+          : false,
+        total: l.items.length,
+      };
     })
     .filter((c) => c.next !== null && c.mine / c.total >= 0.6)
     .slice(0, 2);
@@ -1718,6 +1733,8 @@ type BriefListCard = {
   list: SavedListBrief;
   watched: number;
   next: ListItem | null;
+  /** 🆕 هل «التالي» في مكتبتك؟ (D-604) — ختمُ المسلسل من البطاقة يتابعه أوّلاً إن لم يكن */
+  nextFollowed: boolean;
   total: number;
 };
 
@@ -1837,6 +1854,7 @@ async function ContinueSection({
               title: c.next!.title,
               posterPath: c.next!.poster_path,
               backdropPath: backdropOf(c.next!),
+              followed: c.nextFollowed,
             }}
             watched={c.watched}
             total={c.total}
@@ -1854,6 +1872,7 @@ async function ContinueSection({
               title: c.next!.title,
               posterPath: c.next!.poster_path,
               backdropPath: backdropOf(c.next!),
+              followed: c.nextFollowed,
             }}
             watched={c.watched}
             total={c.total}
