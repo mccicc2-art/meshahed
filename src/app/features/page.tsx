@@ -42,6 +42,10 @@ interface Feature {
   enBody: string;
   /** ميزةٌ لم تُشحن بعد — تحمل وسم «قريباً» بدل «مجاني» (D-122) */
   soon?: boolean;
+  /* 🆕 **وسمُ Loopz+** (D-633): **الخانةُ نفسُها والوسمُ الثالث** — كما
+     وُعد في تعليق الوسمين أدناه حرفاً: «يوم يأتي الاشتراك يتبدّل وسم
+     بنودٍ بعينها في نفس الخانة، فلا يُعاد بناء شيء». */
+  plus?: boolean;
 }
 
 interface Section {
@@ -114,6 +118,7 @@ const SECTIONS: Section[] = [
           "أظهِر الأقسام التي تهمّك وأخفِ ما لا يهمّك ورتّبها كما تحب: أكمل المشاهدة، للمشاهدة، تقييماتي، قوائمي، ملخّص أسبوعك…",
         enBody:
           "Show the sections you care about, hide the ones you do not, and order them your way: continue watching, to watch, my ratings, my lists, your week…",
+        plus: true,
       },
       {
         icon: "card",
@@ -121,13 +126,26 @@ const SECTIONS: Section[] = [
         en: "Card layout and header stats",
         arBody: "اختر ما يظهر على بطاقة العمل، وأي أرقامٍ تراها في ترويسة رئيسيتك.",
         enBody: "Choose what appears on a title card, and which numbers sit in your home header.",
+        plus: true,
       },
       {
         icon: "palette",
-        ar: "سبعة ثيمات ووضعٌ نهاري",
-        en: "Seven themes and a light mode",
-        arBody: "بدّل مظهر التطبيق كاملاً — ومنها «النهاري» الفاتح للقراءة تحت الشمس.",
-        enBody: "Switch the whole look — including a light “daylight” theme for reading in the sun.",
+        ar: "ثيمات ملوّنة",
+        en: "Colour themes",
+        arBody: "خمسة ثيمات تبدّل مظهر التطبيق كاملاً — لوبز، المحيط، البنفسجي، القرمزي، الغابة.",
+        enBody: "Five themes that change the whole look — Loopz, Ocean, Violet, Crimson, Forest.",
+        plus: true,
+      },
+      /* ⚖️ **والنهاريُّ وحجمُ الخطّ خارج البلس** (D-633، بموافقة أحمد على
+         الإتاحة): **من يكبّر الخطّ يفعلها لعينه لا لذوقه**، ومن يقرأ في
+         الشمس قارئٌ محبوسٌ لا مشترٍ محتمل — **وبيعُ الإتاحة يُقرأ ضدّ
+         المنتج لا معه.** */
+      {
+        icon: "eye",
+        ar: "الوضع النهاري وحجم الخط",
+        en: "Daylight mode and text size",
+        arBody: "ثيمٌ فاتحٌ للقراءة تحت الشمس، وحجمُ خطٍّ تختاره للواجهة وللنصوص — مجّاناً للجميع دائماً.",
+        enBody: "A light theme for reading in the sun, and your own text size for the interface and for content — free for everyone, always.",
       },
     ],
   },
@@ -279,6 +297,7 @@ const SECTIONS: Section[] = [
     items: [
       {
         icon: "repeat",
+        plus: true,
         ar: "تسجيلٌ تلقائي لما تشاهده",
         en: "Automatic watch tracking",
         arBody:
@@ -289,6 +308,7 @@ const SECTIONS: Section[] = [
       },
       {
         icon: "tv",
+        plus: true,
         ar: "ربط منصّات البثّ",
         en: "Streaming platform linking",
         arBody:
@@ -373,13 +393,25 @@ export default async function FeaturesPage() {
                       ويوم يأتي الاشتراك يتبدّل وسم بنودٍ بعينها إلى «بريميوم»
                       في نفس الخانة، فلا يُعاد بناء شيء. */}
                   <span
-                    className={`shrink-0 text-12 font-bold rounded-full px-2.5 py-1 border ${
-                      f.soon
+                    className={`shrink-0 text-12 font-bold rounded-full px-2.5 py-1 border whitespace-nowrap ${
+                      f.plus || f.soon
                         ? "text-accent border-accent/35 bg-accent/10"
                         : "text-[color:var(--success)] border-[color:var(--success)]/35 bg-[color:var(--success)]/10"
                     }`}
                   >
-                    {f.soon ? (ar ? "قريباً" : "Soon") : ar ? "مجاني" : "Free"}
+                    {f.plus
+                      ? f.soon
+                        ? ar
+                          ? "Loopz+ قريباً"
+                          : "Loopz+ soon"
+                        : "Loopz+"
+                      : f.soon
+                        ? ar
+                          ? "قريباً"
+                          : "Soon"
+                        : ar
+                          ? "مجاني"
+                          : "Free"}
                   </span>
                 </li>
               ))}
@@ -389,9 +421,12 @@ export default async function FeaturesPage() {
       </div>
 
       <p className="text-xs text-muted mt-10 leading-relaxed">
+        {/* ⚖️ 🆕 **والوعدُ وُفِّي في مكانه** (D-633): كان السطرُ يقول «لا
+            اشتراك اليوم، وإن جاء ستقول هذه الصفحةُ بوضوحٍ ما يبقى
+            مجّانيّاً» — **وقد جاء، فقالت.** */}
         {ar
-          ? "لا توجد اشتراكات مدفوعة في Loopz حالياً. إن أُضيفت مستقبلاً، ستجد هنا بوضوح ما هو مجاني وما يتطلب اشتراكاً."
-          : "Loopz has no paid subscription today. If one arrives, this page will show clearly what stays free and what needs it."}
+          ? "المتابعة والقوائم والمجتمع والبحث والترجمة مجّانيةٌ للجميع دائماً — و Loopz+ (٩٩ ريالاً سنويّاً) للثيمات الملوّنة وتنسيق صفحاتك. والاشتراك لم يُفتح بعد."
+          : "Tracking, lists, community, search and translation are free for everyone, always — Loopz+ (SAR 99 a year) covers colour themes and shaping your pages. Subscriptions are not open yet."}
       </p>
     </article>
   );
