@@ -1,9 +1,9 @@
 import { Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { redirect, notFound } from "next/navigation";
+import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { getUser, isFollowingArtist } from "@/lib/data";
+import { isFollowingArtist } from "@/lib/data";
 import { FollowArtistButton } from "@/components/FollowArtistButton";
 import { getPerson, getPersonCredits, isTvProgram, profileUrl, titleOf, yearOf } from "@/lib/tmdb";
 import { displayPersonName } from "@/lib/wikidata";
@@ -51,9 +51,9 @@ export default async function PersonPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ w?: string }>;
 }) {
-  const user = await getUser();
-  if (!user) redirect("/login");
-
+  /* 🆕 **صفحةُ العمل مفتوحةٌ للزائر** (D-627): البوّابةُ سقطت —
+     الكتالوجُ عامٌّ، وكلُّ القراءات الشخصيّة أدناه ذاتيّةُ الحراسة
+     تعود فارغةً للزائر، وأزرارُ الكتابة يردّها `requireUser`. */
   const { locale, t } = await getT();
   const { id } = await params;
   const { w } = await searchParams;
