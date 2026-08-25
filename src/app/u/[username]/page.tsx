@@ -767,9 +767,14 @@ export default async function PublicProfilePage({
                 نفس سطر الاسم») — **نقضُ توسيطِ D-561 بحكم صاحبه**:
                 `self-center` كان يوسّطه على ارتفاع الصورة كلِّها،
                 **وصار جارَ الاسم بمقاس `sm`**، والاسمُ يحتفظ بأولويّة
-                العرض (`flex-1` له والزرُّ `shrink-0`). */}
+                العرض (`min-w-0 truncate` له والزرُّ `shrink-0`).
+                ⚖️ 🆕 **ونُزع عنه `flex-1`** (D-633، إصلاحُ عطلٍ ظهر حيّاً):
+                الاسمُ حين يبتلع الفراغَ كلَّه **يدفع الشارةَ إلى حافّة
+                الصفحة** فتُقرأ زينةَ ركنٍ لا شارةَ اسم — **وشارةٌ بعيدةٌ عن
+                صاحبها لا تنسب إليه**. الانكماشُ محفوظٌ بلا `flex-1`
+                (`shrink` افتراضُ العنصر)، فأولويّةُ الاسم على الزرِّ باقية. */}
             <div className="flex items-center gap-2.5">
-              <h1 className="hero-halo min-w-0 flex-1 text-22 sm:text-xl font-bold leading-tight truncate">
+              <h1 className="hero-halo min-w-0 text-22 sm:text-xl font-bold leading-tight truncate">
                 {displayName}
               </h1>
               {/* 🆕 **شارةُ Loopz+ بجانب الاسم** (D-633، بحكمه) —
