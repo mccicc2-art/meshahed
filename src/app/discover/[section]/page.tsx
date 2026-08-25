@@ -1,6 +1,5 @@
 import Link from "next/link";
-import { redirect, notFound } from "next/navigation";
-import { getUser } from "@/lib/data";
+import { notFound } from "next/navigation";
 import { getLibState } from "@/lib/libState";
 import { getT, getWatchRegion } from "@/lib/locale";
 import {
@@ -73,9 +72,9 @@ export default async function SectionPage({
   params: Promise<{ section: string }>;
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
-  const user = await getUser();
-  if (!user) redirect("/login");
-
+  /* 🆕 **القسمُ مفتوحٌ للزائر** (D-627): البوّابةُ سقطت — الصفحةُ
+     كتالوجٌ عامٌّ بحت، و`getLibState` أدناه ذاتيّةُ الحراسة تعود
+     فارغةً للزائر فتُرسم البطاقات بلا شارات مكتبة. */
   const { locale, t } = await getT();
   const { section } = await params;
   const sp = await searchParams;
