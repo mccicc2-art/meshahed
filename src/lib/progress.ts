@@ -95,6 +95,27 @@ export function isAbsoluteNumbering(tv: TvDetails): boolean {
   return cap > 0 && (last.episode_number ?? 0) > cap;
 }
 
+/**
+ * 🔴 🆕 **أوّلُ رقمِ حلقةٍ في كلِّ موسم** (بقيّةُ D-603، انكشفت يومَ
+ * الهجرة ١٣٣): في الترقيم المطلق هو مجموعُ سعات المواسم قبله + ١
+ * («Elbaph» يبدأ من ١١٥٦)، وفي النسبيّ ١ دائماً. **قاعدةٌ واحدةٌ
+ * لقرّائها الأربعة** (D-145): الختمُ الكامل (`markShowWatched`)،
+ * و«+١» (`markNextEpisode`)، واستيرادُ الترحيب، وحاسبُ «الحلقة
+ * التالية» أدناه — **نسخةٌ خامسةٌ منها تفترق عند أوّل تعديل.**
+ */
+export function firstEpisodeOf(tv: TvDetails): Map<number, number> {
+  const absolute = isAbsoluteNumbering(tv);
+  const out = new Map<number, number>();
+  let prev = 0;
+  for (const s of (tv.seasons ?? [])
+    .filter((x) => x.season_number >= 1)
+    .sort((a, b) => a.season_number - b.season_number)) {
+    out.set(s.season_number, absolute ? prev + 1 : 1);
+    prev += s.episode_count ?? 0;
+  }
+  return out;
+}
+
 /** النسبة المئوية الموحّدة: مشاهَد ÷ معروض */
 export function percentOf(watched: number, aired: number): number {
   if (!aired || aired <= 0) return 0;
@@ -115,23 +136,20 @@ export function nextUnwatchedEpisode(
   tv: TvDetails,
   watchedKeys: Set<string>,
 ): { season: number; episode: number } | null {
-  const last = tv.last_episode_to_air;
-  const seasons = (tv.seasons ?? [])
-    .filter((s) => s.season_number >= 1 && (s.episode_count ?? 0) > 0)
-    .sort((a, b) => a.season_number - b.season_number);
-
-  for (const s of seasons) {
-    // لا تتجاوز الموسم الذي وصلت إليه الإذاعة
-    if (last?.season_number && s.season_number > last.season_number) break;
-
-    const ceiling =
-      last?.season_number === s.season_number
-        ? Math.min(s.episode_count, last.episode_number ?? s.episode_count)
-        : s.episode_count;
-
-    for (let e = 1; e <= ceiling; e++) {
-      if (!watchedKeys.has(`${s.season_number}:${e}`)) {
-        return { season: s.season_number, episode: e };
+  /* 🔴 🆕 **بقيّةُ D-603**: كان يعدّ من ١ في كلِّ موسم، ففي العمل
+     المطلق ظنّ «S2 E1» غيرَ مشاهَدةٍ ومفاتيحُ صاحبها 62–77 —
+     فاقترحت البطاقةُ حلقةً لا وجودَ لها. **صار يمشي على نافذة كلِّ
+     موسمٍ الحقيقيّة** (`firstEpisodeOf`)، **وسقفُ المعروض من
+     `airedPerSeason` نفسِها** (D-374: ما يُقترح هو ما يُعدّ) —
+     فمسلسلٌ لم يُذَع منه شيءٌ لا تُقترح حلقتُه الأولى بعد اليوم. */
+  const per = airedPerSeason(tv);
+  const firstOf = firstEpisodeOf(tv);
+  for (const [season, count] of per) {
+    const first = firstOf.get(season) ?? 1;
+    for (let i = 0; i < count; i++) {
+      const e = first + i;
+      if (!watchedKeys.has(`${season}:${e}`)) {
+        return { season, episode: e };
       }
     }
   }

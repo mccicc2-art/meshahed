@@ -2122,7 +2122,7 @@ export async function applyOnboardingProgress(
   }));
   const { supabase, user } = await requireUser("bulk", 8, 60_000);
   const { getTv, getSeason } = await import("@/lib/tmdb");
-  const { airedPerSeason } = await import("@/lib/progress");
+  const { airedPerSeason, firstEpisodeOf } = await import("@/lib/progress");
 
   const done = items.filter((it) => it.progress === "done");
 
@@ -2150,6 +2150,10 @@ export async function applyOnboardingProgress(
         try {
           const tv = await getTv(it.tmdbId);
           const aired = airedPerSeason(tv);
+          /* 🔴 🆕 بقيّةُ D-603 (انكشفت يومَ الهجرة ١٣٣): الاستيرادُ
+             كان يكتب من ١ في كلِّ موسم — ففي العمل المطلق كان سيزرع
+             أشباحاً نسبيّةً بسلالة صفوف خالد بعينها */
+          const firstOf = firstEpisodeOf(tv);
           const seasons = [...aired].filter(([, count]) => count > 0);
           const details = await Promise.all(
             seasons.map(([season]) => getSeason(it.tmdbId, season).catch(() => null)),
@@ -2164,7 +2168,11 @@ export async function applyOnboardingProgress(
           }[] = [];
           seasons.forEach(([season, count], i) => {
             const detail = details[i];
-            for (let e = 1; e <= count; e++) {
+            const first = firstOf.get(season) ?? 1;
+            for (let k = 0; k < count; k++) {
+              /* رقمُ النافذة الحقيقيّ — وتفاصيلُ الموسم في TMDB تحمل
+                 الأرقامَ نفسَها فبحثُ مدّة الحلقة يصيب في الحالين */
+              const e = first + k;
               const ep = detail?.episodes.find((x) => x.episode_number === e);
               rows.push({
                 user_id: user.id,
@@ -2888,7 +2896,7 @@ export async function markShowWatched(
   tmdbId = intId(tmdbId);
   const { supabase, user } = await requireUser("bulk", 8, 60_000);
   const { getTv } = await import("@/lib/tmdb");
-  const { airedPerSeason, airedEpisodeCount, isAbsoluteNumbering } = await import(
+  const { airedPerSeason, airedEpisodeCount, firstEpisodeOf } = await import(
     "@/lib/progress"
   );
 
@@ -2897,19 +2905,9 @@ export async function markShowWatched(
   /* 🔴 🆕 **الترقيمُ المطلق** (D-603): مواسمُ-الآركات تحمل حلقاتُها
      أرقامَ العمل كلِّه («Elbaph» ١١٥٦–١١٨١ لا ١–٢٦) — **والعدُّ من ١
      كان يكتب أشباحاً نسبيّةً لا يقابلها شيءٌ يُرسم** (سلالةُ بلاغ
-     خالد بعينها). أوّلُ حلقةِ كلِّ موسمٍ تُشتقّ من مجموع ما قبله،
-     كما في المتتبّع سواء. */
-  const absolute = isAbsoluteNumbering(tv);
-  const firstOf = new Map<number, number>();
-  {
-    let prevEps = 0;
-    for (const s of (tv.seasons ?? [])
-      .filter((x) => x.season_number >= 1)
-      .sort((a, b) => a.season_number - b.season_number)) {
-      firstOf.set(s.season_number, absolute ? prevEps + 1 : 1);
-      prevEps += s.episode_count ?? 0;
-    }
-  }
+     خالد بعينها). ⚖️ **والحسبةُ خرجت إلى `firstEpisodeOf` يومَ
+     الهجرة ١٣٣** — صار قرّاؤها أربعةً فالنسخُ الداخليُّ عطلٌ (D-145). */
+  const firstOf = firstEpisodeOf(tv);
   const runtime = tv.episode_run_time?.[0] ?? null;
   const now = new Date().toISOString();
 
@@ -3811,10 +3809,14 @@ export async function markNextEpisode(
   tmdbId = intId(tmdbId);
   const { supabase, user } = await requireUser("next", 20, 60_000);
   const { getTv } = await import("@/lib/tmdb");
-  const { airedPerSeason } = await import("@/lib/progress");
+  const { airedPerSeason, firstEpisodeOf } = await import("@/lib/progress");
 
   const tv = await getTv(tmdbId);
   const per = airedPerSeason(tv);
+  /* 🔴 🆕 بقيّةُ D-603 (انكشفت يومَ الهجرة ١٣٣): العدُّ من ١ كان
+     سيكتب في العمل المطلق شبحَ «S2 E1» من أوّل «+١» — النافذةُ
+     الحقيقيّةُ من `firstEpisodeOf` كسائر قرّائها */
+  const firstOf = firstEpisodeOf(tv);
 
   const { data: watched, error: readErr } = await supabase
     .from("watched_episodes")
@@ -3827,7 +3829,9 @@ export async function markNextEpisode(
   const seen = new Set((watched ?? []).map((w) => `${w.season_number}-${w.episode_number}`));
 
   for (const [season, count] of per) {
-    for (let ep = 1; ep <= count; ep++) {
+    const first = firstOf.get(season) ?? 1;
+    for (let i = 0; i < count; i++) {
+      const ep = first + i;
       if (seen.has(`${season}-${ep}`)) continue;
       const { error } = await supabase.from("watched_episodes").upsert(
         {
