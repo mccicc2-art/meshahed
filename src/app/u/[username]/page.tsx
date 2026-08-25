@@ -219,7 +219,6 @@ export default async function PublicProfilePage({
   /* النبذة تتبع الاسم في الإخفاء — والقطع منفَّذٌ في `public_profiles`
      نفسه لا هنا (profile_bio.sql)؛ هذا السطر حارسٌ ثانٍ لا أوّل */
   const bioText = profile.hide_name ? null : (profile.bio ?? null);
-  const withReview = ratings.filter((r) => r.review?.trim());
 
   /* 🆕 **وترتيبُ صاحب الصفحة يُطبَّق عند القراءة** (D-581): المحفوظُ في
      `profile_prefs.sectionOrder` أوّلاً بترتيبه، **وما أُضيف بعد آخرِ
@@ -329,9 +328,14 @@ export default async function PublicProfilePage({
   /* ⚖️ **و«النشاط الأخير» المشتقُّ من التقييمات سقط** (D-586): التبويبُ
      صار يقرأ السجلَّ الكاملَ من `profile_activity` — **وترتيبان لشيءٍ
      واحدٍ خلل** (D-152). */
-  const reviewsNewest = [...withReview].sort((a, b) =>
-    (b.updated_at ?? "").localeCompare(a.updated_at ?? ""),
-  );
+  /* ⚖️ 🆕 **والتبويبُ صار يعرض التقييمَ ولو بلا سطرٍ معه** (D-587، طلبُ
+     أحمد بلقطة: «وهنا اعرض كذلك التقييم حتى الي بدون تعليق») —
+     **المصدرُ `ratings` كلُّه**، والنجمةُ وحدَها فعلٌ يستحقّ صفَّه
+     (وهو عُرفُ خطِّ المجتمع نفسِه: صفُّ `rate` بلا متن). **والمتنُ
+     يُرسم لمن كتبه وحدَه** — لا فقرةَ فارغةً تحت النجمة. */
+  const reviewsNewest = [...ratings]
+    .filter((r) => r.rating != null || r.review?.trim())
+    .sort((a, b) => (b.updated_at ?? "").localeCompare(a.updated_at ?? ""));
 
   const shows = tvFollows.map((f) => {
     const aired = f.aired_episodes ?? f.total_episodes ?? 0;
@@ -1100,22 +1104,32 @@ export default async function PublicProfilePage({
                           >
                             <bdi className="truncate">{r.title ?? "—"}</bdi>
                           </Link>
-                          <span
-                            className="shrink-0 text-14 font-bold text-accent tabular-nums"
-                            title={t.rateOutOf(r.rating)}
-                          >
-                            ★ <span dir="ltr">{r.rating.toFixed(1)}</span>
-                          </span>
+                          {/* **والنجمةُ لمن قيّم** — رأيٌ بلا نجمةٍ (إن
+                              وُجد) لا يلبس صفراً كاذباً (D-219) */}
+                          {r.rating != null && (
+                            <span
+                              className="shrink-0 text-14 font-bold text-accent tabular-nums"
+                              title={t.rateOutOf(r.rating)}
+                            >
+                              ★ <span dir="ltr">{r.rating.toFixed(1)}</span>
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
 
-                    <FeedReviewText
-                      href={reviewHref}
-                      review={r.review ?? ""}
-                      locale={locale}
-                      hasSpoiler={!!r.has_spoiler}
-                    />
+                    {/* **المتنُ لمن كتبه** (D-587) — صفُّ نجمةٍ بلا نصٍّ
+                        يبقى ترويسةً وذيلاً، كصفِّ `rate` في الخطّ */}
+                    {r.review?.trim() ? (
+                      <FeedReviewText
+                        href={reviewHref}
+                        review={r.review}
+                        locale={locale}
+                        hasSpoiler={!!r.has_spoiler}
+                      />
+                    ) : (
+                      <div className="pb-2" />
+                    )}
 
                     <div className="mt-auto">
                       <RowComment
