@@ -343,6 +343,34 @@ export async function saveHomeSectionOrder(order: string[]) {
   revalidatePath("/");
 }
 
+/**
+ * 🆕 **أولويّةُ المشاهدة داخل صفَّي الرئيسية** (D-605، طلبُ أحمد:
+ * «أرتّب الأفلام نفسها نفس الي عامله في البروفايل») — كاتبُ
+ * `continueOrder`/`towatchOrder` في `home_prefs` القائم بلا هجرة،
+ * **بوصفة `saveHomeSectionOrder` حرفاً**: قراءةٌ فدمجٌ فتنقيةٌ بمرشِّح
+ * القراءة نفسِه (بابان لحقلٍ واحدٍ لا حقلان — D-462).
+ */
+export async function saveHomeQueueOrder(row: "continue" | "towatch", keys: string[]) {
+  const field = row === "continue" ? "continueOrder" : "towatchOrder";
+  const { supabase, user } = await requireUser("profile", 30, 60_000);
+
+  const { data } = await supabase
+    .from("profiles")
+    .select("home_prefs")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  const prefs = sanitizeHomePrefs(data?.home_prefs);
+  const next = sanitizeHomePrefs({ ...prefs, [field]: keys });
+
+  const { error } = await supabase
+    .from("profiles")
+    .upsert({ id: user.id, home_prefs: next }, { onConflict: "id" });
+  if (error) fail(error);
+
+  revalidatePath("/");
+}
+
 /** مزامنة كوكي الثيم لمن اختار ثيمه قبل اعتماد الكوكي — تُستدعى مرة من العميل */
 export async function syncThemeCookie(value: string) {
   const theme = THEMES.some((t) => t.id === value) ? value : "amber";

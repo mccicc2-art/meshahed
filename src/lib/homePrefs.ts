@@ -116,6 +116,19 @@ export interface HomePrefs {
    * (D-028: الغيابُ يعني السلوكَ القائم).
    */
   toWatch: boolean;
+  /**
+   * 🆕 **أولويّةُ المشاهدة داخل الصفَّين** (D-605، طلبُ أحمد: «أبغاها
+   * أقدر أرتّب الأفلام نفسها نفس الي عامله في البروفايل — أشوف القائمة
+   * كاملة في تو واتش بضغطة زر أو كنتنيو واتشينغ وأرتّب أولويّة
+   * المشاهدة»): مفاتيحُ عناصر الصفِّ بترتيبه — **ما ذُكر يتقدّم
+   * بترتيبه، وما لم يُذكر يبقى على ترتيبه المحسوب بعده** (فعنصرٌ جديدٌ
+   * لا يختفي ولا يُبعثر ما رتّبتَه). **والفارغُ هو السلوكُ القائم**
+   * (D-152). ⚠️ **وهنا لا في جدولٍ**: الصفّان محسوبان لا مخزَّنان
+   * (حجّةُ `toWatch` أعلاه نفسُها) — فالترتيبُ تفضيلُ عرضٍ على
+   * `home_prefs` القائم بلا هجرة.
+   */
+  continueOrder: string[];
+  towatchOrder: string[];
 }
 
 /**
@@ -153,6 +166,8 @@ export const DEFAULT_HOME_PREFS: HomePrefs = {
   view: "visual",
   density: "comfortable",
   toWatch: true,
+  continueOrder: [],
+  towatchOrder: [],
 };
 
 /**
@@ -196,6 +211,19 @@ export function sanitizeHomePrefs(raw: unknown): HomePrefs {
     if (clean.length >= STATS_PICK_MIN) statsPick = clean.slice(0, STATS_PICK_MAX);
   }
 
+  /* مفاتيحُ أولويّة الصفَّين (D-605): نصوصٌ قصيرةٌ بلا تكرار وبسقفٍ —
+     العمودُ JSON حرٌّ والمفتاحُ الغريبُ لا يُطابق شيئاً فيسقط أثرُه */
+  const keyList = (k: "continueOrder" | "towatchOrder"): string[] => {
+    if (!Array.isArray(o[k])) return d[k];
+    const seen = new Set<string>();
+    return (o[k] as unknown[])
+      .filter(
+        (s): s is string =>
+          typeof s === "string" && s.length > 0 && s.length <= 80 && !seen.has(s) && !!seen.add(s),
+      )
+      .slice(0, 500);
+  };
+
   return {
     level: bool("level") as boolean,
     stats: bool("stats") as boolean,
@@ -210,5 +238,28 @@ export function sanitizeHomePrefs(raw: unknown): HomePrefs {
         : d.view,
     density: sanitizeDensity(o.density),
     toWatch: bool("toWatch") as boolean,
+    continueOrder: keyList("continueOrder"),
+    towatchOrder: keyList("towatchOrder"),
   };
+}
+
+/**
+ * 🆕 **تطبيقُ أولويّة المشاهدة على صفٍّ محسوب** (D-605) — **قاعدةٌ
+ * واحدةٌ لقارئَيها** (الرسمُ وورقةُ الترتيب، D-145): ما ذُكر في
+ * الترتيب المحفوظ يتقدّم بترتيبه، **وما لم يُذكر يلحق به على ترتيبه
+ * المحسوب** — فعنصرٌ دخل الصفَّ بعد الحفظ لا يختفي ولا يُبعثر ما
+ * رتّبه صاحبُه.
+ */
+export function applyQueueOrder<T>(
+  rows: T[],
+  keyOf: (r: T) => string,
+  order: string[],
+): T[] {
+  if (order.length === 0) return rows;
+  const pos = new Map(order.map((k, i) => [k, i]));
+  const ranked: T[] = [];
+  const rest: T[] = [];
+  for (const r of rows) (pos.has(keyOf(r)) ? ranked : rest).push(r);
+  ranked.sort((a, b) => pos.get(keyOf(a))! - pos.get(keyOf(b))!);
+  return [...ranked, ...rest];
 }
