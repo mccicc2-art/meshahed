@@ -1,5 +1,7 @@
 "use client";
 
+import { hasAuthCookie, openLoginGate } from "@/lib/loginGate";
+
 /**
  * ناقل الرسائل العابرة.
  *
@@ -47,7 +49,16 @@ export function toast(
   }
 }
 
-/** اختصار الخطأ — أكثر الاستعمالات شيوعاً */
+/** اختصار الخطأ — أكثر الاستعمالات شيوعاً.
+ *
+ * 🆕 **وزائرٌ أخطأ فعلُه لا يُوبَّخ بل يُدعى** (D-627 مرحلة ٢): فشلُ
+ * فعلٍ من زائرٍ بلا جلسةٍ سببُه `requireUser` في عامّة الأحوال —
+ * فتُفتح ورقةُ الدخول بدل التوست. الحكمُ بالكوكي لا بنصِّ الرسالة:
+ * رسائلُ Server Actions قد تُقنَّع في الإنتاج، والكوكي لا يكذب. */
 export function flashError(message: string) {
+  if (!hasAuthCookie()) {
+    openLoginGate();
+    return;
+  }
   toast(message, { tone: "error" });
 }

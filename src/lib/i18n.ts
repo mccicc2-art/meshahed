@@ -1879,6 +1879,10 @@ const ar = {
   loginOtherWay: "طريقة دخولٍ أخرى",
   loginRedirecting: "جارٍ التحويل…",
   loginFailed: "تعذّر تسجيل الدخول: ",
+  /* 🆕 **بوّابةُ الزائر** (D-627 مرحلة ٢): الورقةُ التي تُفتح حين يلمس
+     زائرٌ فعلَ كتابةٍ — متابعة، تقييم، ردّ */
+  loginGateTitle: "سجّل دخولك للمتابعة",
+  loginGateHint: "التصفّح مفتوح للجميع — والمتابعة والتقييم والردود لأصحاب الحسابات.",
   loginNeedsKeys:
     "التطبيق يحتاج إعداد المفاتيح أولاً في إعدادات Vercel ثم أعد النشر.",
   avatarAlt: "الصورة الشخصية",
@@ -3394,6 +3398,8 @@ const en: Dict = {
   loginOtherWay: "Another way to sign in",
   loginRedirecting: "Redirecting…",
   loginFailed: "Sign-in failed: ",
+  loginGateTitle: "Sign in to continue",
+  loginGateHint: "Browsing is open to everyone — following, rating and replies need an account.",
   loginNeedsKeys:
     "The app needs its keys configured in Vercel settings, then redeploy.",
   avatarAlt: "Profile photo",
