@@ -129,6 +129,8 @@ export interface HomePrefs {
    */
   continueOrder: string[];
   towatchOrder: string[];
+  /** 🆕 وصفُّ «قوائمي» ثالثُها (D-615): معرّفاتُ القوائم بترتيبه */
+  listsOrder: string[];
 }
 
 /**
@@ -168,6 +170,7 @@ export const DEFAULT_HOME_PREFS: HomePrefs = {
   toWatch: true,
   continueOrder: [],
   towatchOrder: [],
+  listsOrder: [],
 };
 
 /**
@@ -213,7 +216,7 @@ export function sanitizeHomePrefs(raw: unknown): HomePrefs {
 
   /* مفاتيحُ أولويّة الصفَّين (D-605): نصوصٌ قصيرةٌ بلا تكرار وبسقفٍ —
      العمودُ JSON حرٌّ والمفتاحُ الغريبُ لا يُطابق شيئاً فيسقط أثرُه */
-  const keyList = (k: "continueOrder" | "towatchOrder"): string[] => {
+  const keyList = (k: "continueOrder" | "towatchOrder" | "listsOrder"): string[] => {
     if (!Array.isArray(o[k])) return d[k];
     const seen = new Set<string>();
     return (o[k] as unknown[])
@@ -240,6 +243,7 @@ export function sanitizeHomePrefs(raw: unknown): HomePrefs {
     toWatch: bool("toWatch") as boolean,
     continueOrder: keyList("continueOrder"),
     towatchOrder: keyList("towatchOrder"),
+    listsOrder: keyList("listsOrder"),
   };
 }
 

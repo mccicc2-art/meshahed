@@ -350,8 +350,12 @@ export async function saveHomeSectionOrder(order: string[]) {
  * **بوصفة `saveHomeSectionOrder` حرفاً**: قراءةٌ فدمجٌ فتنقيةٌ بمرشِّح
  * القراءة نفسِه (بابان لحقلٍ واحدٍ لا حقلان — D-462).
  */
-export async function saveHomeQueueOrder(row: "continue" | "towatch", keys: string[]) {
-  const field = row === "continue" ? "continueOrder" : "towatchOrder";
+export async function saveHomeQueueOrder(
+  row: "continue" | "towatch" | "lists",
+  keys: string[],
+) {
+  const field =
+    row === "continue" ? "continueOrder" : row === "lists" ? "listsOrder" : "towatchOrder";
   const { supabase, user } = await requireUser("profile", 30, 60_000);
 
   const { data } = await supabase
