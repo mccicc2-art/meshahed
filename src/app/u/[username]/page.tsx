@@ -17,6 +17,7 @@ import {
   getProfileAnimeFlags,
   getMyFavoritesListId,
   getReviewLikesOf,
+  getSavedListsOf,
   getFollows,
   artKey,
   displayNameOf,
@@ -113,6 +114,7 @@ export default async function PublicProfilePage({
     reviewLikes,
     myLibRows,
     activityRows,
+    savedLists,
   ] = await Promise.all([
       getRatingsOf(profile.id),
       getFollowStats(profile.id),
@@ -150,6 +152,8 @@ export default async function PublicProfilePage({
          بـ`can_view_profile` (الهجرة ١٣٠)؛ **وتُقرأ في الموجة لأن
          عدّادَ التبويب منها** (D-374: العدّادُ يعدّ ما يعرضه جسمُه). */
       getProfileActivity(profile.id),
+      /* 🆕 **محفوظاتُه** (D-588) — لتبويب «قوائم»، وعدّادُه منها (D-374) */
+      getSavedListsOf(profile.id),
       isMe ? Promise.resolve() : recordProfileView(profile.id),
     ]);
 
@@ -552,7 +556,7 @@ export default async function PublicProfilePage({
       key: "lists",
       label: t.profileTabLists,
       icon: "list",
-      count: publicLists.length,
+      count: publicLists.length + savedLists.length,
       href: `${base}?tab=lists`,
     },
   ];
@@ -1172,11 +1176,29 @@ export default async function PublicProfilePage({
       )}
 
       {/* ===== القوائم — شبكةٌ كأختها في المكتبة (D-433) ===== */}
+      {/* ⚖️ 🆕 **والتبويبُ صار قوائمَه كلَّها** (D-588، طلبُ أحمد:
+          «اعرض الليستات الموجودة عنده كاملة — حتى الي معطيها قلب وماهي
+          حقّته»): **قوائمُه المعلنةُ ثمّ محفوظاتُه** — **ترتيبُ صفحة
+          `/lists` والمكتبة نفسُه** (قوائمي ثمّ المحفوظة)، والبطاقةُ
+          والشبكةُ هما هما. **والعنوانان يفصلان الملكيّةَ عن الإعجاب**
+          فلا تُنسب إليه قائمةُ غيره. */}
       {canView && tab === "lists" && (
-        publicLists.length === 0 ? (
+        publicLists.length === 0 && savedLists.length === 0 ? (
           <p className="text-center text-muted py-16 text-sm">{t.profileEmptyLists}</p>
         ) : (
-          <PublicListsRail lists={listsOrdered} locale={locale} title={t.profileTabLists} grid />
+          <div className="space-y-6">
+            {publicLists.length > 0 && (
+              <PublicListsRail lists={listsOrdered} locale={locale} title={t.profileTabLists} grid />
+            )}
+            {savedLists.length > 0 && (
+              <PublicListsRail
+                lists={savedLists}
+                locale={locale}
+                title={t.savedListsSection}
+                grid
+              />
+            )}
+          </div>
         )
       )}
 
