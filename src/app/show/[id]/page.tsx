@@ -41,7 +41,7 @@ import { DetailTopBar } from "@/components/DetailTopBar";
 import { ReadMore } from "@/components/ReadMore";
 import { formatDate } from "@/lib/when";
 import { ShowStatsSync } from "@/components/ShowStatsSync";
-import { airedEpisodeCount, airedPerSeason } from "@/lib/progress";
+import { airedEpisodeCount, airedPerSeason, isAbsoluteNumbering } from "@/lib/progress";
 import { episodeKey } from "@/lib/keys";
 import { buttonClass } from "@/components/ui/Button";
 
@@ -132,19 +132,30 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
       aired_count: airedBySeason.get(s.season_number) ?? 0,
     }));
 
+  /* 🔴 🆕 **والترقيمُ المطلق يغيّر أرقامَ الفحص** (D-603): في One Piece
+     أوّلُ حلقات «Elbaph» هي ١١٥٦ لا ١ — **وفحصُ ١..aired كان يسأل عن
+     مفاتيحَ لا وجودَ لها** فيفتح موسماً خاطئاً. النافذةُ تُشتقّ من
+     مجموع سعات المواسم قبله. */
+  const absolute = isAbsoluteNumbering(tv);
+
   // الموسم المفتوح افتراضياً: أول موسم فيه حلقة معروضة لم تُشاهد بعد
   let openSeason = summaries[0]?.season_number ?? null;
-  for (const s of summaries) {
-    let firstUnwatched = 0;
-    for (let e = 1; e <= s.aired_count; e++) {
-      if (!watched.has(episodeKey(s.season_number, e))) {
-        firstUnwatched = e;
+  {
+    let prev = 0;
+    for (const s of summaries) {
+      const first = absolute ? prev + 1 : 1;
+      let firstUnwatched = 0;
+      for (let e = first; e < first + s.aired_count; e++) {
+        if (!watched.has(episodeKey(s.season_number, e))) {
+          firstUnwatched = e;
+          break;
+        }
+      }
+      prev += s.episode_count;
+      if (firstUnwatched) {
+        openSeason = s.season_number;
         break;
       }
-    }
-    if (firstUnwatched) {
-      openSeason = s.season_number;
-      break;
     }
   }
 
@@ -422,6 +433,7 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
                 showTmdbId={tvId}
                 summaries={summaries}
                 initialSeason={openSeason}
+                absolute={absolute}
                 airedTotal={airedExact}
                 defaultRuntime={tv.episode_run_time?.[0] ?? null}
                 initialWatched={[...watched]}
