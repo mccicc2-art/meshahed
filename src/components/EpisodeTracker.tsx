@@ -64,6 +64,7 @@ export function EpisodeTracker({
   defaultRuntime,
   initialWatched,
   initialEpisodeRatings = [],
+  absolute = false,
   locale,
 }: {
   showTmdbId: number;
@@ -75,6 +76,14 @@ export function EpisodeTracker({
   airedTotal: number;
   defaultRuntime: number | null;
   initialWatched: string[];
+  /**
+   * 🔴 🆕 **العملُ مرقَّمٌ ترقيماً مطلقاً** (D-603 — One Piece): حلقاتُ
+   * كلِّ موسمٍ تحمل أرقامَها في العمل كلِّه (١١٥٦..١١٨١) لا ١..٢٦.
+   * **ومع إعادةِ هيكلة TMDB تبقى في القاعدة صفوفٌ بأرقامٍ قديمةٍ لا
+   * تُعرض ولا تُلغى** — **فتُسقَط من كلِّ عدٍّ** (D-374: العدّادُ يعدّ
+   * ما يعرضه جسمُه): صفٌّ خارجَ نافذةِ موسمه شبحٌ لا مشاهدة.
+   */
+  absolute?: boolean;
   /** تقييماتي في هذا المسلسل (D-139) — مفتاحُها «موسم-حلقة» */
   initialEpisodeRatings?: EpisodeRatingRow[];
   locale: Locale;
@@ -123,7 +132,44 @@ export function EpisodeTracker({
   const [err, setErr] = useState<string | null>(null);
 
   // نفس قاعدة الرئيسية والمكتبة: ما أشّرته ÷ ما عُرض
-  const watchedAired = Math.min(watched.size, airedTotal || watched.size);
+  /* نوافذُ المواسم في الترقيم المطلق: موسمٌ سعتُه ٢٦ بعد ١١٥٥ حلقةً
+     حلقاتُه ١١٥٦..١١٨١ — تُشتقّ من الرؤوس بلا تحميلِ حلقة (D-603) */
+  const seasonBounds = useMemo(() => {
+    const m = new Map<number, { lo: number; hi: number }>();
+    let prev = 0;
+    for (const s of summaries) {
+      m.set(s.season_number, { lo: prev + 1, hi: prev + s.episode_count });
+      prev += s.episode_count;
+    }
+    return m;
+  }, [summaries]);
+
+  const watchedPerSeason = useMemo(() => {
+    const m = new Map<number, number>();
+    for (const key of watched) {
+      const [sStr, eStr] = key.split(":");
+      const s = Number(sStr);
+      /* 🔴 🆕 **الشبحُ لا يُعدّ** (D-603): صفٌّ برقمٍ خارجَ نافذةِ موسمه
+         بقيّةُ ترقيمٍ قديمٍ — لا يُعرض ولا يُلغى، **وعدُّه هو الذي جعل
+         موسماً فيه حلقتان غيرُ مشاهدتين يقول «مكتمل ✓»** (D-374). */
+      if (absolute) {
+        const b = seasonBounds.get(s);
+        const e = Number(eStr);
+        if (!b || e < b.lo || e > b.hi) continue;
+      }
+      m.set(s, (m.get(s) ?? 0) + 1);
+    }
+    return m;
+  }, [watched, absolute, seasonBounds]);
+
+  /* 🔴 🆕 **والعدّادُ الأعلى من الصفوف الصحيحة وحدَها** (D-603): في
+     الترقيم المطلق `watched.size` يحمل الأشباحَ فيقول «أنهيتَ كلَّ
+     شيء» وعملُك ناقص — **وهو الذي كان يُخفي العملَ من «أكمل
+     المشاهدة».** */
+  const validWatched = absolute
+    ? [...watchedPerSeason.values()].reduce((a, b) => a + b, 0)
+    : watched.size;
+  const watchedAired = Math.min(validWatched, airedTotal || validWatched);
   const progress = airedTotal ? Math.round((watchedAired / airedTotal) * 100) : 0;
 
   /* ===== تقييمات الحلقات — مخفية افتراضياً (طلب أحمد: «بعض الأحيان
@@ -226,9 +272,19 @@ export function EpisodeTracker({
         // فهرسة الحلقات المحمّلة مرة واحدة بدل بحثٍ خطّي داخل حلقة —
         // كانت O(n²) على مواسم الأنمي الطويلة
         const byNum = loaded ? new Map(loaded.map((x) => [x.episode_number, x])) : null;
-        const limit =
-          s.season_number === season ? episode : Math.min(s.aired_count, s.episode_count);
-        for (let e = 1; e <= limit; e++) {
+        /* 🔴 🆕 **وأرقامُ المواسم غير المحمّلة من نافذتها لا من ١**
+           (D-603): في الترقيم المطلق كان هذا المسارُ يكتب للمواسم
+           السابقة صفوفاً بأرقامٍ نسبيّةٍ (١..١٩٧ لوانو) **لا تطابق
+           حلقةً معروضةً أبداً** — **وهو بالضبط ما زرع أشباحَ بيانات
+           خالد.** النافذةُ من `seasonBounds`، والعدُّ كما كان. */
+        const b = seasonBounds.get(s.season_number);
+        const first = absolute && b ? b.lo : 1;
+        const count =
+          s.season_number === season
+            ? episode - first + 1
+            : Math.min(s.aired_count, s.episode_count);
+        for (let i = 0; i < count; i++) {
+          const e = first + i;
           const ep = byNum?.get(e);
           if (s.season_number === season && ep && !hasAired(ep.air_date)) continue;
           list.push({ season: s.season_number, episode: e, runtime: ep?.runtime ?? defaultRuntime });
@@ -236,7 +292,7 @@ export function EpisodeTracker({
       }
       return list;
     },
-    [summaries, episodesBySeason, defaultRuntime],
+    [summaries, episodesBySeason, defaultRuntime, absolute, seasonBounds],
   );
 
   // مواسم بمئات الحلقات لا تُرسم دفعة واحدة: ١٥٠ صفاً ثم زرّ للبقية
@@ -370,14 +426,6 @@ export function EpisodeTracker({
     });
   }
 
-  const watchedPerSeason = useMemo(() => {
-    const m = new Map<number, number>();
-    for (const key of watched) {
-      const s = Number(key.split(":")[0]);
-      m.set(s, (m.get(s) ?? 0) + 1);
-    }
-    return m;
-  }, [watched]);
 
   return (
     <div>
