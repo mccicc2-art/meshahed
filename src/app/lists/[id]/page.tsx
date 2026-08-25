@@ -89,59 +89,18 @@ export default async function ListPage({ params }: { params: Promise<{ id: strin
      الـslug** — فتُترجَم عند العرض ولا تُخزَّن بلغتين (D-147/D-273). */
   const loc = locale === "en" ? ("en" as const) : ("ar" as const);
 
-  // زائرٌ بلا حساب: المعلنة تُعرض للقراءة، وغيرها لا وجود لها بالنسبة له
-  if (!user) {
-    /* **والزائرُ لا يمرّ بصفّ القائمة** (D-053) فسلغُها نداءٌ خفيفٌ
-       موازٍ — لا انتظارَ متسلسل */
-    const [pub, slug] = await Promise.all([getPublicList(id), getCuratedSlug(id)]);
-    if (!pub) notFound();
-
-    const items = await localizeRows(pub.items, locale);
-
-    return (
-      <div>
-        <ListDetail
-          listId={pub.id}
-          name={curatedName(slug, pub.name, loc)}
-          /* 🆕 **ونبذةُ قائمةِ لوبز تُصاغ من القاموس** (D-373) —
-             **وقائمةُ العضو تعود بوصفها الذي كتبه صاحبُه** (D-063). */
-          subtitle={curatedBlurb(slug, loc) ?? pub.subtitle}
-          isPublic
-          kind={pub.kind}
-          items={items}
-          ratings={{}}
-          isOwner={false}
-          owner={{
-            nickname: pub.owner_nickname,
-            username: pub.owner_username,
-            avatar: pub.owner_avatar,
-          }}
-          locale={locale}
-          /* الغلافُ يسافر مع الرابط (D-208): من فُتح له رابطُ القائمة يرى
-             وجهَها الذي اختاره صاحبُها — ولا يبدّله لأنها ليست قائمته */
-          cover={pub.cover_backdrop ? { backdrop: pub.cover_backdrop } : null}
-        />
-
-        {/* دعوةٌ واحدة في القاع لا لافتةٌ فوق المحتوى: الزائر جاء ليرى
-            القائمة، فتُعرض أولاً ثم يُعرض عليه أن يبني مثلها */}
-        <div className="mt-12 pt-6 border-t border-[color:var(--divider)] text-center">
-          <p className="text-sm text-muted mb-3">
-            {locale === "ar"
-              ? "ابنِ قوائمك أنت، وتتبّع كل ما تشاهده."
-              : "Build your own lists, and track everything you watch."}
-          </p>
-          <Link href="/login" className={buttonClass({ size: "sm" })}>
-            {locale === "ar" ? "ابدأ مع Loopz" : "Start with Loopz"}
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
+  /* ⚖️ 🆕 **وفرعُ الزائر المستقلُّ سقط** (D-631، بلاغُ أحمد: «ما أقدر
+     أقرأ التعليقات اللي على اللستة»): كان للزائر **رسمٌ ثانٍ أنحف**
+     كُتب يومَ كانت القائمةُ المعلنة نافذتَه الوحيدة (D-053) — **بلا
+     تبويب مراجعات إطلاقاً**، فيرى الملصقاتِ ولا يرى كلمةً كُتبت عنها.
+     **وسطحان لنفس الصفحة يفترقان بمن يقرأ عطلٌ لا تصميم** (قاعدةُ
+     النظام: رسمٌ واحد) — **والمسارُ الواحدُ يحتمل `user` فارغاً** كما
+     في `/show` و`/u` بعد D-627: القراءاتُ الشخصيّةُ ذاتيّةُ الحراسة،
+     والكتابةُ يردّها `requireUser`. */
   const data = await getList(id);
   if (!data) notFound();
 
-  const isOwner = data.list.user_id === user.id;
+  const isOwner = !!user && data.list.user_id === user.id;
   // صاحب القائمة يُقرأ من الباب العامّ نفسه — لا استعلام ثانٍ على الملفات؛
   // وحالة الحفظ لغير المالك وحده (D-068)
   const [
@@ -256,7 +215,7 @@ export default async function ListPage({ params }: { params: Promise<{ id: strin
               mine={myReview}
               stats={reviewStats}
               /* 🆕 **أنا — للقلب وللنسخة التفاؤلية في الخيط** (D-370) */
-              meId={user.id}
+              meId={user?.id ?? ""}
               me={meProfile}
               social={social}
               replies={replies}
@@ -264,6 +223,22 @@ export default async function ListPage({ params }: { params: Promise<{ id: strin
           ) : undefined
         }
       />
+
+      {/* 🆕 **ودعوةُ القاع باقيةٌ للزائر** (D-631 — كانت في الفرع الساقط):
+          جاء ليرى القائمة، **فتُعرض كاملةً بمراجعاتها ثمّ يُعرض عليه أن
+          يبني مثلها** — لافتةٌ في القاع لا حاجزٌ فوق المحتوى. */}
+      {!user && (
+        <div className="mt-12 pt-6 border-t border-[color:var(--divider)] text-center">
+          <p className="text-sm text-muted mb-3">
+            {locale === "ar"
+              ? "ابنِ قوائمك أنت، وتتبّع كل ما تشاهده."
+              : "Build your own lists, and track everything you watch."}
+          </p>
+          <Link href="/login" className={buttonClass({ size: "sm" })}>
+            {locale === "ar" ? "ابدأ مع Loopz" : "Start with Loopz"}
+          </Link>
+        </div>
+      )}
     </div>
   );
 }
