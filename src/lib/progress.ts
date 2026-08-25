@@ -20,12 +20,22 @@ export function airedEpisodeCount(tv: TvDetails): number {
     return tv.next_episode_to_air ? 0 : total;
   }
 
-  let count = 0;
+  let prev = 0;
+  let lastCap = 0;
   for (const s of tv.seasons ?? []) {
     if (s.season_number < 1) continue;
-    if (s.season_number < last.season_number) count += s.episode_count ?? 0;
+    if (s.season_number < last.season_number) prev += s.episode_count ?? 0;
+    if (s.season_number === last.season_number) lastCap = s.episode_count ?? 0;
   }
-  count += last.episode_number ?? 0;
+  const lastEp = last.episode_number ?? 0;
+
+  /* 🔴 🆕 **الترقيمُ المطلق** (D-603، بلاغُ أحمد وخالد على One Piece):
+     TMDB تعيد هيكلةَ بعض الأعمال إلى مواسمَ-آركاتٍ **تحمل حلقاتُها
+     أرقامَها المطلقة** — حلقاتُ «Elbaph» أرقامُها ١١٥٦–١١٨١ لا ١–٢٦.
+     **فرقمُ آخرِ حلقةٍ أكبرُ من سعةِ موسمها = الرقمُ نفسُه هو عدّادُ
+     المعروض في العمل كلِّه** — وجمعُه فوق المواسم السابقة كان يفيض
+     فيُقصّ إلى المعلَن كلِّه، **فتُحسب حلقاتُ المستقبل معروضةً.** */
+  const count = lastCap > 0 && lastEp > lastCap ? lastEp : prev + lastEp;
 
   // لا تتجاوز العدد المعلن، ولا تنزل تحت الصفر
   return Math.max(0, Math.min(count, total || count));
@@ -40,21 +50,49 @@ export function airedPerSeason(tv: TvDetails): Map<number, number> {
   const last = tv.last_episode_to_air;
   const out = new Map<number, number>();
 
-  for (const s of tv.seasons ?? []) {
-    if (s.season_number < 1) continue;
+  /* الفرزُ لازمٌ لتجميع «ما قبل موسمِ آخر حلقة» — كشفُ الترقيم المطلق
+     (D-603) يحتاج مجموعَ المواسم السابقة ليحوّل الرقمَ إلى داخل الموسم */
+  const seasons = (tv.seasons ?? [])
+    .filter((s) => s.season_number >= 1)
+    .sort((a, b) => a.season_number - b.season_number);
+
+  let prev = 0;
+  for (const s of seasons) {
     const count = s.episode_count ?? 0;
 
     if (!last?.season_number) {
       out.set(s.season_number, tv.next_episode_to_air ? 0 : count);
     } else if (s.season_number < last.season_number) {
       out.set(s.season_number, count);
+      prev += count;
     } else if (s.season_number === last.season_number) {
-      out.set(s.season_number, Math.min(count, last.episode_number ?? count));
+      const lastEp = last.episode_number ?? count;
+      /* 🔴 🆕 **ترقيمٌ مطلق؟** (D-603): رقمٌ أكبرُ من سعة الموسم يعني
+         أنه مطلقٌ — **وداخلُ الموسم هو الرقمُ ناقصَ ما قبله**
+         (١١٧٥ − ١١٥٥ = ٢٠ من «Elbaph»)، لا ٢٦ التي كانت تُقصُّ إليها
+         فتُحسب حلقاتُ المستقبل معروضة. */
+      const within = count > 0 && lastEp > count ? lastEp - prev : lastEp;
+      out.set(s.season_number, Math.max(0, Math.min(count, within)));
     } else {
       out.set(s.season_number, 0);
     }
   }
   return out;
+}
+
+/**
+ * 🔴 🆕 **هل يرقّم العملُ حلقاتِه ترقيماً مطلقاً؟** (D-603 — One Piece):
+ * رقمُ آخرِ حلقةٍ مُذاعةٍ أكبرُ من سعةِ موسمها = الأرقامُ أرقامُ العمل
+ * كلِّه لا الموسم. **كاشفٌ واحدٌ يقرؤه الحاسبان والمتتبّعُ والصفحة**
+ * (D-145) — نسختان منه تفترقان عند أوّل تعديل.
+ */
+export function isAbsoluteNumbering(tv: TvDetails): boolean {
+  const last = tv.last_episode_to_air;
+  if (!last?.season_number || last.season_number < 1) return false;
+  const cap =
+    (tv.seasons ?? []).find((s) => s.season_number === last.season_number)
+      ?.episode_count ?? 0;
+  return cap > 0 && (last.episode_number ?? 0) > cap;
 }
 
 /** النسبة المئوية الموحّدة: مشاهَد ÷ معروض */
