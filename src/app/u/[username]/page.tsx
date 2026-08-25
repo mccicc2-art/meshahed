@@ -916,16 +916,22 @@ export default async function PublicProfilePage({
             الثالثةُ لصاحبها (رابطٌ حقيقيٌّ لا سطرٌ تحتها). */}
         {canView && prefs.stats && (
           <div className="relative z-10 mt-3 rounded-2xl border border-border bg-surface overflow-hidden">
-            <div className="grid grid-cols-3">
+            {/* 🆕 **الرقمُ واسمُه سطرٌ واحد، والبابُ على قدر كلمته**
+                (D-611، حكمُه: «الأفلام والمسلسلات تكون سطر واحد
+                والإحصائيات كلمة وحدة بحيث ياخذون راحتهم»): خانةُ
+                الإحصائيات `auto` تنكمش على كلمتها الواحدة **والعرضُ
+                الباقي كلُّه للخانتين** — ولزائرٍ ثلاثُ خاناتٍ أرقامٌ
+                فأثلاثٌ سواء. */}
+            <div className={isMe ? "grid grid-cols-[1fr_1fr_auto]" : "grid grid-cols-3"}>
               {headerStats.map((c, i) => (
                 <div
                   key={c.key}
-                  className="relative flex items-center justify-center gap-2 px-2 py-2.5"
+                  className="relative flex items-center justify-center gap-2 px-2 py-3"
                 >
                   {/* **والخطُّ بين خانتين لا بعد آخرِها**: خانةُ
-                      «الإحصائيات الكاملة» تلي الأخيرةَ لصاحب الصفحة
-                      وحدَه، **فالشرطُ يعرف الحالتين** — **وخطٌّ على
-                      حافّة البطاقة يُقرأ حدّاً مزدوجاً.** */}
+                      «الإحصائيات» تلي الأخيرةَ لصاحب الصفحة وحدَه،
+                      **فالشرطُ يعرف الحالتين** — **وخطٌّ على حافّة
+                      البطاقة يُقرأ حدّاً مزدوجاً.** */}
                   {(i < headerStats.length - 1 || isMe) && (
                     <span
                       className="absolute inset-y-2 end-0 w-px bg-[color:var(--divider)]"
@@ -938,11 +944,11 @@ export default async function PublicProfilePage({
                     style={{ color: "var(--accent)" }}
                     className="shrink-0"
                   />
-                  <span className="min-w-0">
-                    <span className="block text-15 font-bold leading-none tabular-nums">
+                  <span className="min-w-0 flex items-baseline gap-1.5">
+                    <span className="text-15 font-bold leading-none tabular-nums">
                       {c.value}
                     </span>
-                    <span className="block text-12 text-muted mt-1 leading-[1.25] truncate">
+                    <span className="text-12 text-muted leading-none truncate">
                       {c.label}
                     </span>
                   </span>
@@ -951,9 +957,9 @@ export default async function PublicProfilePage({
               {isMe && (
                 <Link
                   href="/stats"
-                  className="flex items-center justify-center gap-1 px-2 py-2.5 text-14 font-semibold text-muted hover:text-accent transition"
+                  className="flex items-center justify-center gap-1 px-4 py-3 text-14 font-semibold text-muted hover:text-accent transition"
                 >
-                  <span className="truncate">{t.profileFullStats}</span>
+                  <span className="whitespace-nowrap">{t.profileFullStats}</span>
                   <Icon
                     name="chevron-down"
                     size={16}
