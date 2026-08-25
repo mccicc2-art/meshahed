@@ -430,6 +430,9 @@ export default async function HomePage() {
           displayName={displayName}
           /* 🆕 سطرُ «@ahmed» تحت الاسم (D-618) — من صفِّ الملفّ المقروء أصلاً */
           username={profile?.username ?? null}
+          /* 🆕 شارةُ Loopz+ (D-633) — والقراءةُ من نداء البروفايل القائم */
+          plan={profile?.plan ?? null}
+          founder={profile?.founder ?? false}
           /* ⚖️ 🆕 **الصورةُ والهلالُ والعدّادان عادوا** (D-536): كانت
              الثلاثةُ معاملاتٍ تُقبل ولا تُقرأ منذ D-502 — **وقد سقطت
              من المستدعي في D-503** — **فتعود من بابها الأوّل.**

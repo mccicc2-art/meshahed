@@ -8,6 +8,7 @@ import { BottomNav } from "@/components/BottomNav";
 import { OfflineSync } from "@/components/OfflineSync";
 import { ToastHost } from "@/components/ToastHost";
 import { LoginGateHost } from "@/components/LoginGateHost";
+import { PlusGateHost } from "@/components/PlusGateHost";
 import { TourMount } from "@/components/TourMount";
 import { SwRegister } from "@/components/SwRegister";
 import { cookies } from "next/headers";
@@ -295,6 +296,9 @@ export default async function RootLayout({
         {/* 🆕 بوّابة الزائر (D-627 مرحلة ٢): تُفتح حين يلمس زائرٌ فعلَ
             كتابةٍ — عمارةُ التوست نفسُها، مضيفٌ واحدٌ وحدثُ نافذة */}
         <LoginGateHost locale={locale} />
+        {/* 🆕 وبوّابةُ Loopz+ (D-633) — العمارةُ نفسُها للمرّة الثالثة:
+            حدثُ نافذةٍ ومضيفٌ واحد، **ولا ورقةَ ثالثةَ الشكل** */}
+        <PlusGateHost locale={locale} />
         {/* بوّابة الجولة التعريفية — تصمت في الحالة الشائعة، والمحرّك
             يُحمَّل عند الحاجة وحدها (D-469) */}
         <TourMount locale={locale} signedIn={signedIn} />
