@@ -28,7 +28,6 @@ import {
 } from "@/lib/browse";
 import { AWARDS, awardName } from "@/lib/awards";
 import { tap } from "@/lib/haptics";
-import { Icon } from "./Icon";
 import { FilterIconButton } from "./ui/FilterIconButton";
 import { ListsFilters, type ListsFiltersProps } from "./ListsFilters";
 import dynamic from "next/dynamic";
@@ -38,6 +37,7 @@ import type { FilterDraft } from "./DiscoverFilterSheet";
    قارئ — و`ssr: false` لأن لا HTML لها قبل الضغطة. */
 const DiscoverFilterSheet = dynamic(() => import("./DiscoverFilterSheet").then((m) => m.DiscoverFilterSheet), { ssr: false });
 import { PageTabs } from "./ui/PageTabs";
+import { ActiveFilterChips } from "./ui/ActiveFilterChips";
 import { applyTabPrefs, type TabPref } from "@/lib/tabPrefs";
 import type { MyRow } from "@/lib/myRows";
 
@@ -426,57 +426,34 @@ export function DiscoverFilters({
           </>
         }
         extra={
-          tab !== "lists" && chips.length > 0 ? (
-            <div
-              role="group"
-              aria-label={t.browseActiveFilters}
-              className="-mx-4 px-4 flex flex-wrap items-center gap-2"
-            >
-              {chips.map((c) => (
-                <button
-                  key={c.key}
-                  type="button"
-                  onClick={c.clear}
-                  aria-label={t.browseRemoveFilter(c.label)}
-                  /* الرقاقة هنا زرُّ إلغاءٍ لا زرُّ اختيار، ولذلك لم تأخذ
-                     `chipClass`: الممتلئة بلون الهوية تعني «مختار، المسني
-                     لتُلغيه» — وهذه معناها الإلغاء وحده. حدٌّ خفيف و× ظاهرة */
-                  className="flex items-center gap-1.5 rounded-full border border-accent/40 bg-accent/10 text-accent px-3 py-1.5 text-14 font-semibold hover:bg-accent/20 active:scale-[0.97] transition"
-                >
-                  <span>{c.label}</span>
-                  <Icon name="close" size={13} strokeWidth={2.4} />
-                </button>
-              ))}
-              {/* رقاقةُ «تعديل الفلتر» حُذفت مع عودة الزرّ (D-177): بابان
-                  إلى ورقةٍ واحدة في شاشةٍ واحدة زيادةٌ لا خيار. */}
-              {chips.length > 1 && (
-                /* نفس هندسة الرقاقة لا نصٌّ عارٍ: الصفّ قد يلتفّ فيقع «مسح
-                   الكل» وحده في سطر — ونصٌّ وحده في سطرٍ يُقرأ عنواناً لا
-                   زرّاً. الحدُّ والحشو يبقيانه فعلاً، ولونه الرمادي يبقيه
-                   دون الرقائق في الصوت */
-                <button
-                  type="button"
-                  onClick={() =>
-                    go({
-                      g: null,
-                      lang: null,
-                      co: null,
-                      p: null,
-                      era: null,
-                      rate: null,
-                      tag: null,
-                      award: null,
-                      st: null,
-                      se: null,
-                      std: null,
-                    })
-                  }
-                  className="rounded-full border border-border text-muted hover:text-foreground hover:border-accent/50 px-3 py-1.5 text-12 font-semibold transition"
-                >
-                  {t.browseClearAll}
-                </button>
-              )}
-            </div>
+          /* 🆕 **والصفُّ صار مكوّناً مشتركاً** (تتمّةُ المرحلة ٨):
+             **المكتبةُ تطلب الصفَّ نفسَه**، **ونسخةٌ ثانيةٌ منه خطأٌ
+             بالقاعدة ٦** — فنُقل إلى `ActiveFilterChips` كما هو بحدِّه
+             وحشوه و«×» والحجّةِ المكتوبة فيه. **ولا بكسلَ تغيّر هنا.**
+             ⚠️ **ورقاقةُ «تعديل الفلتر» حُذفت مع عودة الزرّ** (D-177):
+             بابان إلى ورقةٍ واحدة في شاشةٍ واحدة زيادةٌ لا خيار. */
+          tab !== "lists" ? (
+            <ActiveFilterChips
+              chips={chips}
+              groupLabel={t.browseActiveFilters}
+              removeLabel={t.browseRemoveFilter}
+              clearAllLabel={t.browseClearAll}
+              onClearAll={() =>
+                go({
+                  g: null,
+                  lang: null,
+                  co: null,
+                  p: null,
+                  era: null,
+                  rate: null,
+                  tag: null,
+                  award: null,
+                  st: null,
+                  se: null,
+                  std: null,
+                })
+              }
+            />
           ) : undefined
         }
       />

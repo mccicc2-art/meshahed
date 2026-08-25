@@ -18,6 +18,7 @@ import { Dropdown, DropdownRow } from "./ui/Dropdown";
 import { posterGrid } from "./ui/controls";
 import { PosterRail, RailItem } from "./PosterRail";
 import { PageTabs } from "./ui/PageTabs";
+import { ActiveFilterChips, type FilterChip } from "./ui/ActiveFilterChips";
 import { FilterIconButton } from "./ui/FilterIconButton";
 import dynamic from "next/dynamic";
 /* الورقةُ تُحمَّل عند أوّل فتحٍ لا مع الصفحة (نمطُ TitleSearchSheet في
@@ -364,9 +365,44 @@ export function LibraryGrid({
      (الاسم/التقدّم) بلا معنى فيها: ترتيبُها **بعدد ما شاهدتَه** وهو
      معناها. فالصفّ كلّه يغيب في تبويبها كما يغيب في القوائم. */
   const showSearchRow = tab === "shows" || tab === "movies" || tab === "anime";
+  /**
+   * 🆕 **رقائقُ «ما اخترتَه» — والعدّادُ منها لا بجانبها** (تتمّةُ المرحلة ٨).
+   *
+   * **والمكتبةُ كانت تقول «شيئان مفعَّلان» ولا تقول ما هما**: نقطةٌ على
+   * الرمز ورقمٌ فيها — **ومن نسي كلمةَ بحثٍ كتبها قبل يومين يرى شبكةً
+   * ناقصةً ولا يعرف لماذا** (وهي علّةُ D-452 نفسُها، عولجت نصفَ علاج).
+   *
+   * ⚠️ **والعدُّ من الرقائق لا حسابٌ ثانٍ بجانبها** — **حسابان يفترقان
+   * عند إضافة محورٍ غداً** (وهو ما وقع لبانيَي الرابط في D-174)، وهي
+   * الحجّةُ المكتوبةُ في `DiscoverFilters` بحرفها.
+   *
+   * ⚠️ **ولا شيءَ يُرسم حين لا شيءَ يُصفّي** — **صفرُ رقائقٍ صفرُ بكسلات**،
+   * **وهذا هو الفرقُ بينه وبين الصفِّ الذي حُذف في D-280**: ذاك كان يأكل
+   * ٥٤px من الرأس اللاصق في كلِّ لحظةِ تمرير، مفعَّلاً أو لا.
+   */
+  const sortLabelOf = (k: typeof sort) =>
+    k === "title" ? t.sortTitle : k === "progress" ? t.sortProgress : t.sortAdded;
+  const filterChips: FilterChip[] = [];
+  if (q.trim().length > 0) {
+    filterChips.push({
+      key: "q",
+      /* **ما كتبتَه أنت لا اسمُ المحور وحدَه** — «البحث» تقول أن شيئاً
+         يُصفّي، **وكلمتُك تقول ما هو** فتُلغيه بمعرفة. */
+      label: `${t.librarySearchGroup}: ${q.trim()}`,
+      clear: () => setQ(""),
+    });
+  }
+  if (showSearchRow && sort !== "smart") {
+    filterChips.push({
+      key: "sort",
+      /* **اسمُ الترتيب وحدَه** — «الاسم» و«التقدّم» و«الأحدث» تصف نفسَها،
+         **وبادئةٌ تشرحها تطيل الرقاقة بلا أن تضيف** (D-222). */
+      label: sortLabelOf(sort),
+      clear: () => setSort("smart"),
+    });
+  }
   /** كم أداةً مفعَّلةٌ خلف الرمز — **المحاورُ التي تُصفّي فعلاً وحدَها** */
-  const toolsOn =
-    (q.trim().length > 0 ? 1 : 0) + (showSearchRow && sort !== "smart" ? 1 : 0);
+  const toolsOn = filterChips.length;
 
   /* **تصنيفُ ما لم يُصنَّف — مرّةً، عند من فتح التبويب** (D-182).
      ولماذا من المتصفّح لا من الخادم: الصفحة تُرسم على الخادم، والكتابةُ
@@ -427,6 +463,21 @@ export function LibraryGrid({
                نسي كلمةَ بحثٍ كتبها لا يعرف أنها ما زالت تُصفّي. */
             count={toolsOn > 0 ? num(toolsOn, locale) : null}
             expanded={tools}
+          />
+        }
+        /* 🆕 **وصفُّ «ما اخترتَه» داخل الرأس اللاصق لا تحته** — **فيبقى
+            مرئيّاً ما دام يُصفّي**، وهو نفسُ موضعِه في «اكتشف» بالبكسل
+            (D-134). **ونفسُ المكوّن** — لا نسخةَ ثانية. */
+        extra={
+          <ActiveFilterChips
+            chips={filterChips}
+            groupLabel={t.browseActiveFilters}
+            removeLabel={t.browseRemoveFilter}
+            clearAllLabel={t.browseClearAll}
+            onClearAll={() => {
+              setQ("");
+              setSort("smart");
+            }}
           />
         }
       />
