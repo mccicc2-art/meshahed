@@ -6,9 +6,11 @@ import { updateProfile } from "@/lib/actions";
 import { getDict, type Locale } from "@/lib/i18n";
 import {
   DEFAULT_PROFILE_PREFS,
+  HIDEABLE_PROFILE_TABS,
   PROFILE_SECTIONS,
   profileSectionMeta,
   sanitizeProfilePrefs,
+  type HideableProfileTab,
   type ProfilePrefs,
 } from "@/lib/profilePrefs";
 import { Alert } from "./ui/Alert";
@@ -164,8 +166,44 @@ export function ProfileCustomize({
             الميزة يوماً تعيد الصفوفَ كما كانت.** */}
       </SettingsGroup>
 
-      {/* ===== ٢) الأقسام — **السجلُّ خرج إلى ورقة** (D-555) ===== */}
-      <SettingsGroup label={t.custSectionsTitle}>
+      {/* ===== ٢) 🆕 التبويبات (D-617، حكمُ أحمد: «حدّث هذي — التخصيص
+          الحالي لا يناسب شكل البروفايل الحالي، بحيث أقدر أخفي تبويب
+          أو أخفي قسم داخل تبويب») — **الشاشةُ صارت بلغة الصفحة**:
+          البروفايلُ تبويباتٌ منذ D-438/D-561، والتحكّمُ كان ما زال
+          يخاطب صفحةً واحدةً قديمة. **و«نظرة عامة» بلا مفتاحٍ عمداً**
+          (انظر `HIDEABLE_PROFILE_TABS`). */}
+      <SettingsGroup label={t.custTabsTitle}>
+        {(
+          [
+            { key: "activity", icon: "clock", label: t.communityTabMine },
+            { key: "reviews", icon: "comment", label: t.communityTabReviews },
+            { key: "lists", icon: "list", label: t.profileTabLists },
+          ] as const
+        ).map((row) => (
+          <ToggleRow
+            key={row.key}
+            icon={row.icon}
+            label={row.label}
+            checked={!prefs.hiddenTabs.includes(row.key)}
+            onChange={() =>
+              set({
+                ...prefs,
+                hiddenTabs: prefs.hiddenTabs.includes(row.key)
+                  ? prefs.hiddenTabs.filter((k) => k !== row.key)
+                  : /* بترتيب السجلّ الثابت لا ترتيبِ الضغطات — فالمخزونُ قانونيٌّ دائماً */
+                    HIDEABLE_PROFILE_TABS.filter(
+                      (k): k is HideableProfileTab =>
+                        k === row.key || prefs.hiddenTabs.includes(k),
+                    ),
+              })
+            }
+          />
+        ))}
+      </SettingsGroup>
+      <p className="px-1 -mt-4 text-12 text-muted leading-relaxed">{t.custTabsHint}</p>
+
+      {/* ===== ٣) داخل «نظرة عامة» — **السجلُّ خرج إلى ورقة** (D-555) ===== */}
+      <SettingsGroup label={t.custOverviewTab}>
         <SettingsRow
           icon="grip"
           title={t.custArrange}
@@ -181,6 +219,18 @@ export function ProfileCustomize({
         {/* الفراغ مسموحٌ هنا بخلاف الرئيسية — لكنه يُقال بصوتٍ عالٍ */}
         {prefs.order.length === 0 && ` — ${t.custProfileEmpty}`}
       </p>
+
+      {/* ===== ٤) 🆕 داخل «القوائم» (D-617) — **مفتاحُ D-594 نفسُه من
+          بابٍ ثانٍ لا مفتاحٌ ثانٍ**: الرايةُ `savedLists` واحدةٌ، ورقاقةُ
+          «متوقّفة» على بطاقة القسم باقيةٌ كما حكم يومَها. */}
+      <SettingsGroup label={t.custListsTab}>
+        <ToggleRow
+          icon="bookmark"
+          label={t.savedListsSection}
+          checked={prefs.savedLists}
+          onChange={() => set({ ...prefs, savedLists: !prefs.savedLists })}
+        />
+      </SettingsGroup>
 
       {/* ===== ٣) العرض ===== */}
       <SettingsGroup label={t.custDisplay}>
