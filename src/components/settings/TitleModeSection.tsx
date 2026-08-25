@@ -7,7 +7,6 @@ import { getDict, type Locale } from "@/lib/i18n";
 import {
   TITLE_MODES,
   resolveMediaTitle,
-  titleModeAllowed,
   type TitleMode,
 } from "@/lib/titleMode";
 import { SettingsOptionRow, SettingsOptionList } from "./SettingsOptionRow";
@@ -64,10 +63,14 @@ export function TitleModeSection({
     translit: t.titleModeTranslit,
     both: t.titleModeBoth,
   };
-  /* **الصوتيّةُ تُسقط من القائمة في الواجهة الإنجليزية** — بنصِّ
-     المواصفة، **والحارسُ مكرَّرٌ في الكاتب والقارئ** (D-177) فلا يكفي
-     إخفاؤها هنا. */
-  const options = TITLE_MODES.filter((m) => titleModeAllowed(m, locale));
+  /* ⚖️ 🆕 **الصوتيّةُ صارت للواجهتين** (D-593، حكمُ أحمد بلقطةٍ للورقة
+     الإنجليزيّة: «هنا قلنا فيه خيار رابع الكتابة الصوتية») — **نقضٌ
+     مسجَّلٌ لسطرٍ من مواصفة D-544 نفسِها** («يظهر عند استخدام الواجهة
+     العربية فقط»): **صاحبُ الواجهة الإنجليزيّة قد يقرأ العربيّةَ ويريد
+     أسماءَه بها** — وأحمد نفسُه الشاهد. **والحارسُ سقط من الكاتب
+     والقارئ معاً** (D-177: حارسٌ على طرفٍ واحد ليس حارساً — وإسقاطُه
+     من طرفٍ واحدٍ كذبٌ مثله). */
+  const options = TITLE_MODES;
 
   function pick(next: TitleMode) {
     if (next === mode || pending) return;
