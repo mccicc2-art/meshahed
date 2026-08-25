@@ -1883,6 +1883,18 @@ const ar = {
      زائرٌ فعلَ كتابةٍ — متابعة، تقييم، ردّ */
   loginGateTitle: "سجّل دخولك للمتابعة",
   loginGateHint: "التصفّح مفتوح للجميع — والمتابعة والتقييم والردود لأصحاب الحسابات.",
+  /* 🆕 **Loopz+** (D-633، حكمُ أحمد): البلس زينةٌ وتنسيقٌ لا وظيفة —
+     ولذلك نصُّ البوّابة يقول ما تكسبه، لا ما مُنعتَ منه. */
+  plusName: "Loopz+",
+  plusGateTitle: "هذي من مزايا Loopz+",
+  plusGateHint:
+    "المتابعة والقوائم والمجتمع والبحث تبقى مجّانيةً للجميع — و Loopz+ للثيمات وتنسيق صفحاتك كما تحبّ.",
+  plusPrice: "٩٩ ريالاً سنويّاً",
+  plusSoon: "قريباً — والاشتراك لم يُفتح بعد",
+  plusBadge: "عضو Loopz+",
+  founderBadge: "مؤسِّس",
+  plusLocked: "ميزة Loopz+",
+  plusFreeTheme: "متاح للجميع",
   loginNeedsKeys:
     "التطبيق يحتاج إعداد المفاتيح أولاً في إعدادات Vercel ثم أعد النشر.",
   avatarAlt: "الصورة الشخصية",
@@ -3400,6 +3412,16 @@ const en: Dict = {
   loginFailed: "Sign-in failed: ",
   loginGateTitle: "Sign in to continue",
   loginGateHint: "Browsing is open to everyone — following, rating and replies need an account.",
+  plusName: "Loopz+",
+  plusGateTitle: "This is a Loopz+ feature",
+  plusGateHint:
+    "Tracking, lists, community and search stay free for everyone — Loopz+ is for themes and shaping your pages the way you like.",
+  plusPrice: "SAR 99 a year",
+  plusSoon: "Coming soon — subscriptions are not open yet",
+  plusBadge: "Loopz+ member",
+  founderBadge: "Founder",
+  plusLocked: "Loopz+ feature",
+  plusFreeTheme: "Free for everyone",
   loginNeedsKeys:
     "The app needs its keys configured in Vercel settings, then redeploy.",
   avatarAlt: "Profile photo",

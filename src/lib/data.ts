@@ -133,6 +133,13 @@ export interface Profile {
   font_content?: string | null;
   /** التلميحات المقروءة وتقدّم الجولة (هجرة 121) — `null` قبلها */
   ui_state?: unknown;
+  /* 🆕 **الخطّة** (D-633، الهجرة ١٤٠) — والحكمُ عليها في `lib/plan.ts`
+     وحدَه: **لا شرطَ `plan === "plus"` في مكوّن** (D-145). */
+  plan?: string | null;
+  /** `null` = بلا انتهاء (حالُ المؤسِّسين) */
+  plus_until?: string | null;
+  /** صفةٌ لا خطّة — تبقى بعد أيِّ تبدّلٍ في الاشتراك */
+  founder?: boolean | null;
 }
 
 /** الملف الشخصي — يُقرأ في التخطيط والشريط العلوي والصفحة، فيُخزَّن لكل طلب */
@@ -149,7 +156,7 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
     let { data, error } = await supabase
       .from("profiles")
       .select(
-        "id, nickname, username, avatar_url, cover_url, cover_pos, avatar_pos, theme, favorite_genres, unwanted_genres, preferred_languages, excluded_languages, socials, hide_name, home_prefs, bio, is_private, hide_follow_lists, profile_prefs, font_ui, font_content, ui_state",
+        "id, nickname, username, avatar_url, cover_url, cover_pos, avatar_pos, theme, favorite_genres, unwanted_genres, preferred_languages, excluded_languages, socials, hide_name, home_prefs, bio, is_private, hide_follow_lists, profile_prefs, font_ui, font_content, ui_state, plan, plus_until, founder",
       )
       .eq("id", uid)
       .maybeSingle();
@@ -169,7 +176,7 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
         // عمودا التموضع أحدث من هذه الدرجة — يسقطان إلى سلوكهما القديم
         /* 🆕 **وأعمدةُ ١٢٦ تسقط إلى الفراغ في هذه الدرجة** — **والفراغُ
            يعني «بلا تفضيلات» أي السلوكَ القديم بالضبط** (D-063). */
-        data = { ...mid.data, cover_pos: null, avatar_pos: null, home_prefs: null, bio: null, is_private: null, hide_follow_lists: null, profile_prefs: null, font_ui: null, font_content: null, ui_state: null, unwanted_genres: null, preferred_languages: null, excluded_languages: null, socials: null };
+        data = { ...mid.data, cover_pos: null, avatar_pos: null, home_prefs: null, bio: null, is_private: null, hide_follow_lists: null, profile_prefs: null, font_ui: null, font_content: null, ui_state: null, unwanted_genres: null, preferred_languages: null, excluded_languages: null, socials: null, plan: "free", plus_until: null, founder: false };
       } else {
         const legacy = await supabase
           .from("profiles")
@@ -196,6 +203,11 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
             font_ui: null,
             font_content: null,
             ui_state: null,
+            /* الدرجةُ الأقدم: بلا خطّةٍ = مجّانيّ — **والفراغُ يعني
+               السلوكَ القديم بالضبط** (D-063/D-179). */
+            plan: "free",
+            plus_until: null,
+            founder: false,
           };
         }
       }
@@ -921,6 +933,11 @@ export interface PublicProfile {
   hide_follow_lists?: boolean | null;
   /** تخصيص البروفايل (هجرة 51، D-129) — إخراجُ الصفحة للزائر */
   profile_prefs?: unknown;
+  /* 🆕 **الخطّةُ والصفةُ في العرض العامّ** (D-633، الهجرة ١٤٠): الشارةُ
+     تُرى على ملفِّ صاحبها، **و`plus_until` لا تدخل العرض** — الشارةُ
+     تُرى والتاريخُ لا يُرى، فلا يعرف الناسُ متى ينتهي اشتراكُ غيرهم. */
+  plan?: string | null;
+  founder?: boolean | null;
 }
 
 /** معرّف UUID كما يكتبه Postgres — يميّز رابط الهوية عن رابط المعرّف */
@@ -959,7 +976,7 @@ export async function getProfileByUsername(
          وغائبَين عن هذا السطر: العمودان أحدث من الاستعلام، فكان القفل
          لا يقفل والتخصيص لا يُقرأ. أُضيفا بعد تشغيل الهجرتين 43 و51،
          والاحتياط أدناه يمسكهما لو نُشر الكود قبل هجرةٍ لاحقة. */
-      .select("id, nickname, username, avatar_url, cover_url, cover_pos, avatar_pos, favorite_genres, hide_name, bio, is_private, hide_follow_lists, profile_prefs")
+      .select("id, nickname, username, avatar_url, cover_url, cover_pos, avatar_pos, favorite_genres, hide_name, bio, is_private, hide_follow_lists, profile_prefs, plan, founder")
       .eq(column, value)
       .maybeSingle();
 
