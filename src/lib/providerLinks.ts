@@ -105,6 +105,22 @@ export function providerSearchUrl(
   return text ? rule.search(text) : null;
 }
 
+/**
+ * عنوانُ البحث الأنسب: **الأصليُّ أوّلاً، والمعروضُ حين يكون الأصليُّ
+ * بحروفٍ لا يكتبها باحثُ المنطقة** («ワンピース» أصلُ One Piece —
+ * وفهارسُ المنصّات هنا تُسأل بالاسم اللاتينيّ أو العربيّ). قاعدةٌ
+ * واحدةٌ لصفحتَي العمل (D-145).
+ */
+export function bestSearchTitle(
+  original: string | null | undefined,
+  display: string,
+): string {
+  const o = (original ?? "").trim();
+  if (!o) return display;
+  // CJK وهانغل وكيريليّة — ما لا يُكتب في بحث منصّات المنطقة
+  return /[぀-ヿ㐀-鿿가-힯Ѐ-ӿ]/.test(o) ? display : o;
+}
+
 /** أسماءُ أحداث الاستخدام الأربعة — بلا بياناتٍ شخصيّة (D-608) */
 export type ProviderEvent =
   | "provider_open_direct"
