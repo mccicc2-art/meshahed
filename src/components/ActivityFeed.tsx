@@ -222,18 +222,25 @@ export function ActivityFeed({
      **غريبٌ يتكلّم عن مسلسلٍ تشاهده أقربُ إليك من صديقٍ يتكلّم عن عملٍ
      لا تعرفه.**
      **ونشرتُنا لا تُرشَّح** — تُلغى من قائمة حسابها (D-252). */
-  let shown = rows.filter(
-    (r) =>
-      r.kind === "news" ||
-      r.item.person.id === meId ||
-      (followingIds?.has(r.item.person.id) ?? false) ||
-      followed.has(`${r.item.media_type}-${r.item.tmdb_id}`),
-  );
+  /* 🆕 **والزائرُ خارج ترشيح الصلة كلِّه** (D-629): مرشِّحُ D-283 يجيب
+     سؤالَ عضوٍ — «ما صلةُ هذا الصفِّ بدائرتي ومكتبتي؟» — **والزائرُ بلا
+     دائرةٍ ولا مكتبة، فالجوابُ صفرٌ دائماً** وكان يُبقي له منشورات
+     لوبز وحدَها ويُسقط مراجعات الأعضاء التي فُتح التبويبُ لأجلها. */
+  const guestViewer = !meId;
+  let shown = guestViewer
+    ? rows
+    : rows.filter(
+        (r) =>
+          r.kind === "news" ||
+          r.item.person.id === meId ||
+          (followingIds?.has(r.item.person.id) ?? false) ||
+          followed.has(`${r.item.media_type}-${r.item.tmdb_id}`),
+      );
 
   /* **ومفتاحُ «من يظهر» يضيق فوق ذلك** (D-255): بعد D-283 صار يُسقط
      **الغريبَ الذي تكلّم عن عملٍ في مكتبتك** وحدَه — وهو بالضبط ما
      طلبه أحمد يومَ كتبه («حتى FOR YOU»). */
-  if (!showStrangers) {
+  if (!showStrangers && !guestViewer) {
     shown = shown.filter(
       (r) =>
         r.kind === "news" ||
