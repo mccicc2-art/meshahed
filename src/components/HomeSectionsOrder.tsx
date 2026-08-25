@@ -42,7 +42,14 @@ import { SettingsArrangeSheet } from "./settings/SettingsArrangeSheet";
 export const HOME_ORDER_EVENT = "loopz:home-order";
 
 /** المقبضُ — في `action` كلِّ قسمٍ بجوار «الكلّ» */
-export function HomeOrderButton({ label }: { label: string }) {
+export function HomeOrderButton({
+  label,
+  word,
+}: {
+  label: string;
+  /** ⚖️ 🆕 كلمةٌ بدل المقبض (D-624) — نفسُ عقد `QueueOrderButton` حرفاً */
+  word?: string;
+}) {
   return (
     <button
       type="button"
@@ -55,9 +62,13 @@ export function HomeOrderButton({ label }: { label: string }) {
       }}
       /* **وصفةُ مقبضِ الملفّ حرفاً** (D-581) — مقبضان بمظهرين لمعنًى
          واحدٍ هما العطلُ الذي تمنعه القاعدة ٦ */
-      className="shrink-0 grid place-items-center w-9 h-9 rounded-full text-muted hover:text-accent active:scale-90 transition"
+      className="shrink-0 grid place-items-center h-9 min-w-9 px-1 rounded-full text-muted hover:text-accent active:scale-90 transition"
     >
-      <Icon name="grip" size={18} />
+      {word ? (
+        <span className="text-13 font-semibold leading-none">{word}</span>
+      ) : (
+        <Icon name="grip" size={18} />
+      )}
     </button>
   );
 }

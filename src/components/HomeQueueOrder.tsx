@@ -37,7 +37,21 @@ export const HOME_QUEUE_EVENT = "loopz:queue-order";
 export type QueueRow = "continue" | "towatch" | "lists";
 
 /** الزرُّ — وحيدُ الرأسِ في الصفَّين، بوصفة مقبض المفضّلة (D-567) حرفاً */
-export function QueueOrderButton({ row, label }: { row: QueueRow; label: string }) {
+export function QueueOrderButton({
+  row,
+  label,
+  word,
+}: {
+  row: QueueRow;
+  label: string;
+  /**
+   * ⚖️ 🆕 **كلمةٌ بدل المقبض** (D-624، حكمُه على رؤوس الرئيسية الثلاثة:
+   * «خلّي مكتوب All بدال هذي العلامة وتعمل نفس عمل العلامة») —
+   * الفعلُ نفسُه بحرفه، والوجهُ وحدَه تبدّل. **اختياريّةٌ بسقوطٍ إلى
+   * المقبض** (D-028: رفعةُ المكوّنات تُبنى وحدَها قبل الصفحة).
+   */
+  word?: string;
+}) {
   return (
     <button
       type="button"
@@ -48,9 +62,13 @@ export function QueueOrderButton({ row, label }: { row: QueueRow; label: string 
         tap(6);
         window.dispatchEvent(new CustomEvent(HOME_QUEUE_EVENT, { detail: row }));
       }}
-      className="shrink-0 grid place-items-center w-9 h-9 rounded-full text-muted hover:text-accent active:scale-90 transition"
+      className="shrink-0 grid place-items-center h-9 min-w-9 px-1 rounded-full text-muted hover:text-accent active:scale-90 transition"
     >
-      <Icon name="grip" size={18} />
+      {word ? (
+        <span className="text-13 font-semibold leading-none">{word}</span>
+      ) : (
+        <Icon name="grip" size={18} />
+      )}
     </button>
   );
 }
