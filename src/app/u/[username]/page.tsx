@@ -326,9 +326,12 @@ export default async function PublicProfilePage({
      ضعفَه») بأمر صاحبها: رقمُ التقييمات يعود هنا وعلى تبويبه معاً.
      **وبابُ «الإحصائيات الكاملة» صار سطرَه لصاحب الصفحة** — `/stats`
      تقرأ صاحبَ الجلسة، فبابُها في صفحةِ غيري يكذب (D-217). */
+  /* ⚖️ 🆕 **والمسلسلاتُ قبل الأفلام** (D-602، حكمُه: «مسلسلات ثم أفلام
+     — الكل») — كانت أفلامٌ-أوّلاً من صورة تصميم D-561، **والمعيارُ
+     الموحَّدُ اليوم غلبها بأمر صاحبها.** */
   const headerStats = [
-    { key: "movies", icon: "film" as const, value: movieFollows.length, label: t.shortMovies },
     { key: "shows", icon: "tv" as const, value: tvFollows.length, label: t.shortShows },
+    { key: "movies", icon: "film" as const, value: movieFollows.length, label: t.shortMovies },
     { key: "episodes", icon: "play" as const, value: watched.episodes, label: t.statsWatchedEpisodes },
     { key: "ratings", icon: "star" as const, value: ratings.length, label: t.panelRatings },
   ];
