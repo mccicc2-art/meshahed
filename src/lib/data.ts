@@ -1667,6 +1667,22 @@ export async function getFollowStats(
 ): Promise<{ followers: number; following: number }> {
   try {
     const supabase = await createClient();
+    /* 🆕 **الرقمان من دالّة `definer` لا من الجدول** (D-631، بلاغُ أحمد:
+       «ما أقدر أشوف عدد المتابعين» من متصفّحٍ خفيّ): سياسةُ
+       `user_follows` لدور `authenticated` وحدَه، **ولا يُفتح الجدولُ
+       لـanon**: عدّادان يُعرضان علناً لا يبرّران تعدادَ شبكةِ المتابعات
+       كلِّها عبر REST. **والدالّةُ تُرجع الرقمين وحدَهما وتحترم
+       `can_view_profile`** — الهجرة ١٣٨. */
+    const { data, error } = await supabase.rpc("follow_stats", { target: userId });
+    const row = Array.isArray(data) ? data[0] : data;
+    if (!error && row) {
+      return {
+        followers: Number((row as { followers?: number }).followers) || 0,
+        following: Number((row as { following?: number }).following) || 0,
+      };
+    }
+    /* **قارئٌ متسامح** (D-179): قبل تشغيل ١٣٨ لا دالّةَ — فيرتدّ إلى
+       الاستعلام القديم، **وهو يعمل للعضو كما كان دائماً.** */
     const [a, b] = await Promise.all([
       supabase
         .from("user_follows")
