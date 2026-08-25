@@ -397,7 +397,10 @@ export function HomeHeader({
             التنظيف** بعد أن فقدت قارئَها الوحيد — **في رفعةٍ لاحقة لا
             مع قارئها** (D-538/D-028)، **ومفاتيحُ `greet*` الأربعةُ
             بعدها.** */}
-        <p className="min-w-0 flex-1 truncate text-15 font-bold leading-tight">
+        {/* 🆕 **درجةٌ واحدةٌ فوق** (D-614، حكمُه بلقطةٍ حوَّط فيها الصفَّ:
+            «وهذي كبّرها درجة وحدة») — ١٥ → ١٧ من سلّم النصّ نفسِه
+            (D-473)، والعدّادان معه في `FollowCountButton compact`. */}
+        <p className="min-w-0 flex-1 truncate text-17 font-bold leading-tight">
           {displayName}
         </p>
 

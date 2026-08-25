@@ -76,7 +76,8 @@ export function FollowCountButton({
       {/* **رمزان مختلفان لعدَّين مختلفَين** (D-572): **من أتابعهم شخصٌ
           عليه صحّ** — أنا فعلتُ ذلك — **ومن يتابعونني جماعة.**
           **ورمزان متطابقان لعدَّين متجاورين لا يقولان أيُّهما أيّ.** */}
-      <Icon name={dir === "followers" ? "people" : "person-check"} size={17} />
+      {/* 🆕 درجةٌ واحدةٌ فوق (D-614) — مع اسم صفِّ الرئيسية سواء */}
+      <Icon name={dir === "followers" ? "people" : "person-check"} size={19} />
       <span className="font-bold tabular-nums">{count}</span>
     </>
   ) : (
@@ -87,7 +88,7 @@ export function FollowCountButton({
   );
 
   const cls = compact
-    ? `shrink-0 inline-flex items-center gap-1 text-14 ${className}`
+    ? `shrink-0 inline-flex items-center gap-1 text-15 ${className}`
     : `shrink-0 flex items-center gap-1 hover:brightness-110 transition ${className}`;
   /** **المعنى في الوصف حين يغيب من النصّ** — `aria-label` لا زينة */
   const aria = compact ? `${count} ${label}` : undefined;
