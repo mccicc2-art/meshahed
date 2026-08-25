@@ -1,6 +1,5 @@
 import Image from "next/image";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import {
   getUser,
   getProfileByUsername,
@@ -76,8 +75,11 @@ export default async function PublicProfilePage({
   params: Promise<{ username: string }>;
   searchParams: Promise<{ tab?: string }>;
 }) {
+  /* 🆕 **البروفايلُ مفتوحٌ للزائر** (D-627): البوّابةُ سقطت — `me` يبقى
+     قابلاً للفراغ، وكلُّ القراءات الشخصيّة (علاقةُ المتابعة، إعجاباتي،
+     مكتبتي) ذاتيّةُ الحراسة تعود false/فارغةً للزائر عبر RLS، وأزرارُ
+     الكتابة يردّها `requireUser` حتى تأتي بوّابةُ المرحلة الثانية. */
   const me = await getUser();
-  if (!me) redirect("/login");
 
   const { locale, t } = await getT();
   const { username } = await params;
@@ -91,7 +93,7 @@ export default async function PublicProfilePage({
     return <p className="text-center text-muted py-24">{t.userNotFound}</p>;
   }
 
-  const isMe = profile.id === me.id;
+  const isMe = profile.id === me?.id;
 
   // تسجيل الزيارة كتابةُ تحليلاتٍ لا غير — يجري بالتوازي مع القراءات
   // بدل أن يضيف رحلة كتابةٍ كاملة قبل أول بايت من الصفحة
