@@ -1,10 +1,9 @@
 import Link from "next/link";
 import { HeroRatings, HeroRatingsSkeleton } from "@/components/HeroRatings";
 import { Fragment, Suspense } from "react";
-import { redirect, notFound } from "next/navigation";
+import { notFound } from "next/navigation";
 import Image from "next/image";
 import {
-  getUser,
   getFollowState,
   getWatchedForShow,
   getEpisodeRatings,
@@ -48,9 +47,9 @@ import { episodeKey } from "@/lib/keys";
 import { buttonClass } from "@/components/ui/Button";
 
 export default async function ShowPage({ params }: { params: Promise<{ id: string }> }) {
-  const user = await getUser();
-  if (!user) redirect("/login");
-
+  /* 🆕 **صفحةُ العمل مفتوحةٌ للزائر** (D-627): البوّابةُ سقطت —
+     الكتالوجُ عامٌّ، وكلُّ القراءات الشخصيّة أدناه ذاتيّةُ الحراسة
+     تعود فارغةً للزائر، وأزرارُ الكتابة يردّها `requireUser`. */
   const { locale, t } = await getT();
   const { id } = await params;
   const tvId = Number(id);
