@@ -536,11 +536,17 @@ export default async function PublicProfilePage({
      ⚠️ **والعدّادُ يعدّ ما يعرضه جسمُه** (D-374). */
   const TABS = ["overview", "activity", "reviews", "lists"] as const;
   type ProfileTab = (typeof TABS)[number];
-  const tab: ProfileTab = (TABS as readonly string[]).includes(rawTab ?? "")
+  /* 🆕 **تبويبٌ مخفيٌّ عن الزائر** (D-617): إخراجٌ لا قفلٌ — صاحبُ
+     الصفحة يرى تبويباتِه كلَّها، والزائرُ لا يرى المطفأ **ولا يبلغه
+     برابطٍ مباشر** (D-217: رأسٌ يسقط ومحتواه باقٍ بابٌ خلفيٌّ يكذب). */
+  const tabHidden = (k: string) =>
+    !isMe && (prefs.hiddenTabs as readonly string[]).includes(k);
+  const wantedTab: ProfileTab = (TABS as readonly string[]).includes(rawTab ?? "")
     ? (rawTab as ProfileTab)
     : "overview";
+  const tab: ProfileTab = tabHidden(wantedTab) ? "overview" : wantedTab;
   const base = `/u/${encodeURIComponent(profile.username ?? username)}`;
-  const tabItems: PageTab[] = [
+  const tabItemsAll: PageTab[] = [
     /* ⚖️ 🆕 **الأوّلُ صار «المفضّلة»** (D-561، تصميمُ أحمد) — **والاسمُ
        يرتدّ إلى «نظرة عامة» لمن أخفى مفضّلته**: **تبويبٌ يَعِد بمفضّلةٍ
        أخفاها صاحبُه يكذب** (D-217)، **وما تحته حينئذٍ صفوفُه المرتّبة
@@ -573,6 +579,8 @@ export default async function PublicProfilePage({
       href: `${base}?tab=lists`,
     },
   ];
+  /* 🆕 والمطفأ يسقط من الصفّ عند الزائر (D-617) — الرأسُ والمحتوى معاً */
+  const tabItems = tabItemsAll.filter((i) => !tabHidden(i.key));
 
   /* ⚖️ 🆕 **«النشاط الأخير» غادر التبويبَ الأوّل** (D-561، نقضُ
      كتلةِ D-438 الثابتة).
