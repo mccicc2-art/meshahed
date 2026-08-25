@@ -428,6 +428,8 @@ export default async function HomePage() {
             و`RoutePrewarm` حُذف بحذف آخرِ مستدعيه. */}
         <HomeHeader
           displayName={displayName}
+          /* 🆕 سطرُ «@ahmed» تحت الاسم (D-618) — من صفِّ الملفّ المقروء أصلاً */
+          username={profile?.username ?? null}
           /* ⚖️ 🆕 **الصورةُ والهلالُ والعدّادان عادوا** (D-536): كانت
              الثلاثةُ معاملاتٍ تُقبل ولا تُقرأ منذ D-502 — **وقد سقطت
              من المستدعي في D-503** — **فتعود من بابها الأوّل.**
