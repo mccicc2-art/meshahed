@@ -837,6 +837,11 @@ const ar = {
   /** علامة «لم تره بعد» في خطّ النشاط (D-149) */
   /** «أين أشاهده» بالتقسيم المتعارف عليه (D-150) */
   watchWhereTitle: "أين أشاهده",
+  /* 🆕 ورقةُ خيارات المنصّة (D-608) — حين لا رابطَ مباشراً موثَّقاً */
+  provSearchIn: (n: string) => `البحث في ${n}`,
+  provOtherOptions: "عرض خيارات مشاهدة أخرى",
+  provNoDirect: "لم يتوفر رابط مباشر لهذا العمل بعد",
+  provJustwatch: "بيانات التوفّر من JustWatch",
   watchFree: "مجاناً",
   watchFlatrate: "بالاشتراك",
   watchRent: "إيجار",
@@ -2654,6 +2659,10 @@ const en: Dict = {
   feedFilterRatings: "Ratings",
   feedFilterReviews: "Reviews",
   watchWhereTitle: "Where to watch",
+  provSearchIn: (n: string) => `Search on ${n}`,
+  provOtherOptions: "See other watch options",
+  provNoDirect: "No direct link for this title yet",
+  provJustwatch: "Availability data by JustWatch",
   watchFree: "Free",
   watchFlatrate: "Subscription",
   watchRent: "Rent",

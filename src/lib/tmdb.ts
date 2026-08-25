@@ -228,6 +228,8 @@ export interface Season {
 export interface TvDetails {
   id: number;
   name: string;
+  /** 🆕 الاسمُ الأصليُّ — يرسله TMDB منذ البداية؛ للبحث في المنصّات (D-608) */
+  original_name?: string;
   overview: string;
   poster_path: string | null;
   backdrop_path: string | null;
@@ -259,6 +261,8 @@ export interface TvDetails {
 export interface MovieDetails {
   id: number;
   title: string;
+  /** 🆕 الاسمُ الأصليُّ — يرسله TMDB منذ البداية؛ للبحث في المنصّات (D-608) */
+  original_title?: string;
   overview: string;
   poster_path: string | null;
   backdrop_path: string | null;

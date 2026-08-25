@@ -371,6 +371,66 @@ export async function saveHomeQueueOrder(row: "continue" | "towatch", keys: stri
   revalidatePath("/");
 }
 
+/**
+ * 🆕 **تسجيلُ حدثِ منصّةٍ — بلا هويّة** (D-608): أربعةُ أسماءٍ يحرسها
+ * جسمُ الدالّة في القاعدة، **ولا `requireUser`**: الزائرُ يضغط البطاقةَ
+ * أيضاً، والصفُّ لا يحمل من يكون. **والفشلُ صمتٌ** — تتبّعٌ لا يُفشل
+ * ضغطةَ مستخدمٍ ولا يؤخّرها.
+ */
+export async function logProviderEvent(input: {
+  event: string;
+  tmdbId: number;
+  mediaType: "tv" | "movie";
+  providerId: number;
+  country: string;
+}) {
+  try {
+    const supabase = await createClient();
+    await supabase.rpc("log_provider_event", {
+      p_event: String(input.event).slice(0, 40),
+      p_tmdb: intId(input.tmdbId),
+      p_media: input.mediaType === "movie" ? "movie" : "tv",
+      p_provider: intId(input.providerId),
+      p_country: String(input.country ?? "SA").slice(0, 2),
+    });
+  } catch {
+    // تحسينُ قياسٍ لا شرط
+  }
+}
+
+/**
+ * 🆕 **كاتبُ روابط المنصّات — للإدارة وحدها** (D-608): الحارسُ الحقيقيُّ
+ * `am_admin()` في جسم دالّة القاعدة (D-011)، **والتحقّقُ هنا للرسالة
+ * المقروءة**: https حصراً ونطاقٌ من قائمة المنصّة الموثوقة — **رابطٌ
+ * بنطاقٍ مزيّفٍ يُرفض قبل أن يبلغ القاعدة.**
+ */
+export async function adminSetProviderLink(input: {
+  tmdbId: number;
+  mediaType: "tv" | "movie";
+  providerId: number;
+  providerName: string;
+  country: string;
+  url: string;
+  status: "verified" | "pending" | "disabled";
+}) {
+  const { isTrustedProviderUrl } = await import("@/lib/providerLinks");
+  const url = String(input.url ?? "").trim();
+  if (!isTrustedProviderUrl(input.providerName, url)) {
+    throw new Error("الرابط مرفوض: https على نطاق المنصّة الموثوق فقط");
+  }
+  const { supabase } = await requireUser("profile", 30, 60_000);
+  const { error } = await supabase.rpc("admin_set_provider_link", {
+    p_tmdb: intId(input.tmdbId),
+    p_media: input.mediaType === "movie" ? "movie" : "tv",
+    p_provider: intId(input.providerId),
+    p_country: String(input.country ?? "SA").toUpperCase().slice(0, 2),
+    p_url: url,
+    p_status: input.status,
+  });
+  if (error) fail(error);
+  revalidatePath("/admin/links");
+}
+
 /** مزامنة كوكي الثيم لمن اختار ثيمه قبل اعتماد الكوكي — تُستدعى مرة من العميل */
 export async function syncThemeCookie(value: string) {
   const theme = THEMES.some((t) => t.id === value) ? value : "amber";

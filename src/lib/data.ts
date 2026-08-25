@@ -2658,6 +2658,37 @@ export async function getAmAdmin(): Promise<boolean> {
   }
 }
 
+/**
+ * 🆕 **روابطُ المنصّات المباشرة لعملٍ وبلد** (D-608) — نداءٌ واحدٌ يعيد
+ * كلَّ منصّات الصفحة (لا N+1)، والدالّةُ في القاعدة تعيد الموثَّقَ
+ * (`verified`) وحدَه — **فالمعطَّلُ يختفي في الطلب التالي بلا كاشٍ
+ * يُبطَل** (الصفحةُ ديناميكيّةٌ أصلاً والقراءةُ فهرسٌ فريد).
+ * **والفشلُ خريطةٌ فارغة**: بطاقةٌ بلا رابطٍ تفتح ورقةَ الخيارات،
+ * ولا شاشةَ خطأ لميزةٍ ثانويّة.
+ */
+export async function getProviderLinks(
+  tmdbId: number,
+  mediaType: "tv" | "movie",
+  country: string,
+): Promise<Record<number, string>> {
+  const out: Record<number, string> = {};
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("provider_links_for", {
+      p_tmdb: tmdbId,
+      p_media: mediaType,
+      p_country: country,
+    });
+    if (error || !data) return out;
+    for (const r of data as { provider_id: number; destination_url: string }[]) {
+      out[r.provider_id] = r.destination_url;
+    }
+    return out;
+  } catch {
+    return out;
+  }
+}
+
 export async function getMyRoomPins(): Promise<Set<string>> {
   const out = new Set<string>();
   try {
