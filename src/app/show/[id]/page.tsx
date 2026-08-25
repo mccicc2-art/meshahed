@@ -36,6 +36,7 @@ import { CastRail } from "@/components/CastRail";
 import { Icon, SectionTitle } from "@/components/Icon";
 import { Trailer } from "@/components/Trailer";
 import { WatchChip } from "@/components/WatchChip";
+import { bestSearchTitle } from "@/lib/providerLinks";
 import { TitleActions } from "@/components/TitleActions";
 import { TitlePulse } from "@/components/TitlePulse";
 import { DetailTopBar } from "@/components/DetailTopBar";
@@ -394,7 +395,7 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
                       /* الأصليُّ مع السنة للبحث، والعربيُّ لمنصّةٍ فهرسُها
                          عربيٌّ (شاهد) حين يكون الاسمُ عربيّاً فعلاً */
                       query={{
-                        q: `${tv.original_name || tv.name} ${(tv.first_air_date ?? "").slice(0, 4)}`.trim(),
+                        q: `${bestSearchTitle(tv.original_name, tv.name)} ${(tv.first_air_date ?? "").slice(0, 4)}`.trim(),
                         qAr: /[؀-ۿ]/.test(tv.name) ? tv.name : null,
                       }}
                       tmdbId={tvId}
