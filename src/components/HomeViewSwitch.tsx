@@ -110,7 +110,7 @@ export function HomeViewSwitch({
          (وميضُ سطحٍ أو ظلّ) — **صنفٌ جديدٌ لحالةِ مؤشّرٍ لا يراها
          الجوّالُ أصلاً** (القاعدة ٣)، **والضغطةُ لها `active:scale-95`
          وهي التي تُحسّ باليد.** */
-      className="shrink-0 grid place-items-center w-11 h-11 rounded-full hover:bg-surface-2 active:scale-95 transition"
+      className="shrink-0 grid place-items-center w-10 h-10 rounded-full hover:bg-surface-2 active:scale-95 transition"
     >
       {/* ⚖️ 🆕 **والحلّةُ سقطت والزرُّ صعد إلى صفِّ الأيقونات** (D-618،
           توزيعُ أحمد المرسوم): جيرانُه الظرفُ والجرسُ والترسُ كلُّهم
@@ -118,10 +118,10 @@ export function HomeViewSwitch({
           زرّاً من عائلةٍ ثانية** (القاعدة ٣). **والرمزُ ٢٤ كمقاسهم
           حرفاً** (عقدُ D-543)، **ولونُ الهوية باقٍ يقول إنه مبدّلُك
           لا باباً عامّاً.** والرمزُ ما زال يصف الوجهةَ لا الحال. */}
-      {/* ⚖️ 🆕 و٢٤ → ٢٠ مع الصفِّ كلِّه (D-619: «حتى الأيقونات كبيرة») */}
+      {/* ⚖️ 🆕 ٢٤ → ٢٠ (D-619) ثمّ ١٨ والصندوقُ ٤٠ مع الصفِّ كلِّه (D-620) */}
       <Icon
         name={next === "compact" ? "list" : "grid"}
-        size={20}
+        size={18}
         strokeWidth={2}
         style={{ color: "var(--accent)" }}
       />

@@ -3,7 +3,7 @@ import Image from "next/image";
 import { getDict, type Locale } from "@/lib/i18n";
 import { Icon, type IconName } from "./Icon";
 import { FollowCountButton } from "./ProfilePeeks";
-import { Avatar } from "./Avatar";
+import { HomeAvatarMenu } from "./HomeAvatarMenu";
 import { HomeViewSwitch } from "./HomeViewSwitch";
 import { HeaderTrailing } from "./HeaderTrailing";
 import { LogoWordmark } from "./Logo";
@@ -344,24 +344,11 @@ export function HomeHeader({
             unreadShares={unreadShares}
             locale={locale}
           >
-            <Link
-              href="/profile/settings"
-              prefetch={false}
-              aria-label={t.settingsNavHeading}
-              title={t.settingsNavHeading}
-              /* 🆕 **٤٤×٤٤ والأيقونةُ بمقاس الجرس والظرف بالضبط** (D-543)
-                 — فالخانةُ الأخيرة تختلف معنًى لا مقاساً.
-                 ⚖️ 🆕 و٢٤ → ٢٠ معهما (D-619: «حتى الأيقونات كبيرة») */
-              className={`shrink-0 grid place-items-center w-11 h-11 rounded-full hover:bg-surface-2 active:scale-95 transition ${
-                coverUrl ? "text-white/90 hover:text-white" : "text-foreground/80 hover:text-foreground"
-              }`}
-            >
-              <Icon name="settings" size={20} />
-            </Link>
-            {/* ⚖️ 🆕 **ومبدّلُ العرض صعد إلى صفِّ الأيقونات** (D-618،
-                توزيعُه المرسوم: ظرفٌ · جرسٌ · ترسٌ · مبدّلٌ أصفر) —
-                كان في صفِّ الترحيب منذ D-434، **وصفُّ الترحيب صار
-                للتعريف وحدَه.** */}
+            {/* ⚖️ 🆕 **وترسُ الإعدادات سقط من الصفّ** (D-620، حكمُه:
+                «الإعدادات احذف الأيقونة») — **بابُه صار قائمةَ صورة
+                الترحيب** (`HomeAvatarMenu`)، فلا بابَ ضائعاً ولا
+                بابَين في ترويسةٍ واحدة. والمبدّلُ باقٍ من D-618 —
+                صفُّ الترحيب للتعريف وحدَه. */}
             <HomeViewSwitch locale={locale} />
           </HeaderTrailing>
         </div>
@@ -389,30 +376,17 @@ export function HomeHeader({
             الهوية إلى النسبة ثم رماديُّ الحدّ — **ولا مكوّنَ جديد.**
             **و`0` تعني ألّا هلال** فلا تُرسم حلقةٌ فارغةٌ تعد بشيء
             (D-222). */}
-        <Link
-          href="/profile"
-          prefetch={false}
-          aria-label={t.profile}
-          title={displayName || t.profile}
-          className="shrink-0 rounded-full p-[2px] active:scale-95 transition"
-          style={
-            levelPercent && levelPercent > 0
-              ? {
-                  background: `conic-gradient(var(--accent) ${levelPercent}%, var(--border) 0)`,
-                }
-              : undefined
-          }
-        >
-          <span className="block rounded-full p-[2px] bg-[color:var(--background)]">
-            <Avatar
-              src={avatarUrl}
-              name={displayName}
-              size={44}
-              posY={avatarPos}
-              alt={t.avatarAlt}
-            />
-          </span>
-        </Link>
+        {/* ⚖️ 🆕 **والرابطُ صار مقبضَ قائمة** (D-620، حكمُه: «خلّ الشخص
+            إذا ضغط على الصورة تطلع قائمة صغيرة عند محل الضغط ويختار
+            إعدادات أو بروفايل») — `Dropdown` القائمةُ نفسُها (D-226)
+            بصفَّي بروفايل/إعدادات، والهلالُ ومداره كما هما. */}
+        <HomeAvatarMenu
+          locale={locale}
+          name={displayName}
+          avatarUrl={avatarUrl}
+          avatarPos={avatarPos}
+          levelPercent={levelPercent}
+        />
 
         {/* ⚖️ 🆕 **والتحيّةُ سقطت، وبقي الاسم** (D-565، طلبُ أحمد:
             «وكذلك جود مورنينج وصباح الخير احذفها»).
@@ -510,7 +484,7 @@ export function HomeHeader({
                  خطٌّ رأسيٌّ لكلِّ خانةٍ ليست أوّلَ عمودها، **وأفقيٌّ لكلِّ
                  خانةٍ في صفٍّ ثانٍ** — ومن أخذ `i > 0` وحدَها رسم خطّاً
                  رأسيّاً في رأس السطر الثاني. */
-              className={`flex items-center justify-center gap-2.5 px-2 py-3 transition active:opacity-70 ${
+              className={`flex items-center justify-center gap-2 px-2 py-3 transition active:opacity-70 ${
                 i % cols !== 0 ? "border-s border-[color:var(--divider)] " : ""
               }${i >= cols ? "border-t border-[color:var(--divider)]" : ""}`}
             >
@@ -532,24 +506,23 @@ function StatFace({ stat }: { stat: HeaderStat }) {
      كان الرقمُ فوق الكلمة **بلا رمزٍ جانبيّ** فطلب سطراً واحداً،
      **ولقطتُه اليوم ترسم الرمزَ عموداً والرقمَ والكلمةَ عموداً** —
      شكلُ خانة بطاقةٍ لها صندوقُها.
-     ⚖️ 🆕 **ثمّ نزلت الدرجاتُ كلُّها بلوحته** (D-619: «أحجام الخط
-     كبيرة وغير متناسقة — نفّذها مثل الصورة حتى الأيقونات كبيرة»):
-     الرقمُ ٢٠ → **١٧** (درجةُ الاسم في الترويسة نفسِها — فالسلّمُ
-     متناسقٌ بكلمته)، والكلمةُ ١٣ → **١٢**، والرمزُ ٢٢ → **١٨**. */
+     ⚖️ 🆕 **ثمّ نزلت الدرجاتُ كلُّها بلوحته** (D-619)، **ثمّ عاد
+     السطرُ الواحد بحكمه** (D-620، على اللقطة المحوَّطة: «وهذي صفّ
+     واحد وصغّر الخط شوي») — **عودةُ D-437 بعينها بعد نقضها في
+     D-618**: الرقمُ والكلمةُ جنباً إلى جنب، والرقمُ **١٥** والكلمةُ
+     **١٢** والرمزُ **١٦**. */
   return (
     <>
       <Icon
         name={stat.icon}
-        size={18}
+        size={16}
         style={{ color: stat.color ?? "var(--accent)" }}
       />
-      <span className="min-w-0 flex flex-col items-start gap-1">
-        <span className="text-17 font-bold leading-none tabular-nums">
-          {stat.value}
-        </span>
-        <span className="min-w-0 max-w-full truncate text-12 font-medium text-muted leading-none">
-          {stat.label}
-        </span>
+      <span className="text-15 font-bold leading-none tabular-nums">
+        {stat.value}
+      </span>
+      <span className="min-w-0 truncate text-12 font-medium text-muted leading-none">
+        {stat.label}
       </span>
     </>
   );

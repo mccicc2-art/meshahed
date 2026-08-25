@@ -38,12 +38,12 @@ export function SignalsLink({ unread, locale }: { unread: number; locale: Locale
          ⚠️ **والمقاسُ يُكتب هنا لا في شريطٍ بعينه**: هذا المكوّنُ
          يقرؤه شريطُ الرئيسية والشريطُ العامّ معاً (D-541) —
          **فتغييرُه هنا يغيّرهما معاً، وهو المطلوب.** */
-      className="relative grid place-items-center w-11 h-11 rounded-full text-foreground/80 hover:text-foreground hover:bg-surface-2 active:scale-95 transition"
+      className="relative grid place-items-center w-10 h-10 rounded-full text-foreground/80 hover:text-foreground hover:bg-surface-2 active:scale-95 transition"
     >
-      {/* ⚖️ 🆕 ٢٤ → ٢٠ (D-619، حكمُه على لقطته: «حتى الأيقونات كبيرة —
-          نفّذها مثل الصورة») — والهدفُ ٤٤ كما هو، وهنا في المصدر
+      {/* ⚖️ 🆕 ٢٤ → ٢٠ (D-619) **ثمّ ١٨ والصندوقُ ٤٤ → ٤٠** (D-620:
+          «الأيقونات صغّرها شوي وقرّبها من بعض») — هنا في المصدر
           الواحد فيتحرّك الشريطان معاً (D-541) */}
-      <Icon name="bell" size={20} />
+      <Icon name="bell" size={18} />
       {has && (
         /* **شارةُ الظرف نفسُها شكلاً وموضعاً** — عائلةٌ واحدة لمعنًى
            واحد («عندك جديدٌ هنا»)، فلا يتعلّم القارئُ لغتين لشيءٍ واحد
