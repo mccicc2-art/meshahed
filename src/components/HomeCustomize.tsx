@@ -4,6 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { updateProfile } from "@/lib/actions";
 import { getDict, type Locale } from "@/lib/i18n";
+import { openPlusGate } from "@/lib/plusGate";
 import {
   DEFAULT_HOME_PREFS,
   HOME_SECTIONS,
@@ -47,6 +48,7 @@ export function HomeCustomize({
   genres,
   initial,
   registerReset,
+  plus = false,
 }: {
   locale: Locale;
   /** يمرّران كما هما — `updateProfile` يكتب الصفّ كاملاً */
@@ -56,6 +58,8 @@ export function HomeCustomize({
   initial: unknown;
   /** يسلّم زرَّ «استعادة» في الترويسة مقبضاً على هذا اللوح (D-465) */
   registerReset?: (fn: () => void) => void;
+  /* 🆕 **الخطّة** (D-633) — افتراضٌ صامتٌ `false` (D-028) */
+  plus?: boolean;
 }) {
   const t = getDict(locale);
   const router = useRouter();
@@ -127,6 +131,15 @@ export function HomeCustomize({
   }, [registerReset]);
 
   function save() {
+    /* ⚖️ **والقفلُ عند الحفظ لا عند الرسم** (D-633، حكمُ أحمد: «تنسيقٌ
+       ثابتٌ للهوم والبروفايل، والي يدفع بنفتح له مزايا التنسيق»):
+       **اللوحُ كلُّه يبقى مفتوحاً يُجرَّب ويُعايَن** — من يرى صفحتَه
+       كما ستصير يشتريها، **ومن يُمنع من التجربة يخرج ولا يعرف ما فاته.**
+       **والحارسُ الحقيقيُّ في الخادم**: `updateProfile` هو من يرفض. */
+    if (!plus) {
+      openPlusGate();
+      return;
+    }
     setError(null);
     start(async () => {
       try {

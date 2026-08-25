@@ -4,6 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { updateProfile } from "@/lib/actions";
 import { getDict, type Locale } from "@/lib/i18n";
+import { openPlusGate } from "@/lib/plusGate";
 import {
   DEFAULT_PROFILE_PREFS,
   HIDEABLE_PROFILE_TABS,
@@ -50,6 +51,7 @@ export function ProfileCustomize({
   avatarPos,
   counters,
   registerReset,
+  plus = false,
 }: {
   locale: Locale;
   /** يمرّران كما هما — `updateProfile` يكتب الصفّ كاملاً */
@@ -65,6 +67,8 @@ export function ProfileCustomize({
   counters?: { followers: number; following: number; visits: number };
   /** يسلّم زرَّ «استعادة» في الترويسة مقبضاً على هذا اللوح (D-465) */
   registerReset?: (fn: () => void) => void;
+  /* 🆕 **الخطّة** (D-633) — افتراضٌ صامتٌ `false` (D-028) */
+  plus?: boolean;
 }) {
   const t = getDict(locale);
   const router = useRouter();
@@ -94,6 +98,13 @@ export function ProfileCustomize({
   }, [registerReset]);
 
   function save() {
+    /* ⚖️ **القفلُ عند الحفظ لا عند الرسم** (D-633) — الحجّةُ كاملةً في
+       `HomeCustomize`: المعاينةُ تُباع، والمنعُ من رؤيتها يُخرج الزائرَ
+       بلا معرفةِ ما فاته. */
+    if (!plus) {
+      openPlusGate();
+      return;
+    }
     setError(null);
     start(async () => {
       try {

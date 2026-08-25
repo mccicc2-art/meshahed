@@ -7,6 +7,7 @@ import { HomeAvatarMenu } from "./HomeAvatarMenu";
 import { HomeViewSwitch } from "./HomeViewSwitch";
 import { HeaderTrailing } from "./HeaderTrailing";
 import { LogoWordmark } from "./Logo";
+import { PlusBadge } from "./PlusBadge";
 /**
  * 🆕 **خانةُ بطاقة الأرقام — تسكن مع راسمها** (D-497): كانت تُستورد
  * نوعاً من `ProfileHeader`، **وتلك بلا قارئٍ منذ D-438 وحكمُها الحذف**
@@ -146,11 +147,17 @@ export function HomeHeader({
   followers = 0,
   following = 0,
   hideFollowLists = false,
+  plan = null,
+  founder = false,
   locale,
 }: {
   displayName: string;
   /** 🆕 سطرُ التعريف تحت الاسم (D-618): «@ahmed» — والغيابُ يعني ألّا سطر */
   username?: string | null;
+  /* 🆕 **شارةُ Loopz+** (D-633) — **اختياريّان بافتراضٍ صامت** (D-028):
+     مكوّنٌ قديمٌ لا يمرّرهما لا ينكسر، ولا شارةَ تُرسم. */
+  plan?: string | null;
+  founder?: boolean | null;
   /** ⚖️ 🆕 **يُقرأ مرّةً أخرى** (D-536): الصورةُ عادت إلى صفّ الترحيب */
   avatarUrl?: string | null;
   avatarPos?: number | null;
@@ -404,7 +411,12 @@ export function HomeHeader({
             كما هو)، **وعدُّ مَن تتابعهم بقي بورقته نفسِها**
             (`FollowCountButton`/D-561 — نفسُ الحارس ونفسُ السقف). */}
         <div className="min-w-0 flex-1">
-          <p className="truncate text-17 font-bold leading-tight">{displayName}</p>
+          {/* 🆕 **والشارةُ خارجَ `truncate`** (D-633): اسمٌ طويلٌ يُقصّ
+              ولا تُقصّ معه الشارة — **وشارةٌ تختفي بطول اسمٍ ليست شارة.** */}
+          <p className="flex items-center gap-1.5 text-17 font-bold leading-tight">
+            <span className="min-w-0 truncate">{displayName}</span>
+            <PlusBadge profile={{ plan, founder }} locale={locale} size={15} />
+          </p>
           {/* ⚖️ 🆕 ١٣ → ١٢ (D-619: «أحجام الخط كبيرة وغير متناسقة») —
               سطرُ تعريفٍ ثانويٌّ درجتُه درجةُ الثانويّ في السلّم */}
           {(username || userId) && (
