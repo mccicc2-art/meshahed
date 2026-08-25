@@ -14,6 +14,7 @@ import {
   getMyFavorites,
   getCuratedListIds,
   getMySavedListIds,
+  getProviderLinks,
   artKey,
 } from "@/lib/data";
 import { getMovie, getTrailer, getWatchProviders, backdropUrl, posterUrl } from "@/lib/tmdb";
@@ -83,6 +84,12 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
       ? getMySavedListIds().catch(() => new Set<string>())
       : Promise.resolve(new Set<string>()),
   ]);
+
+  /* 🆕 **روابطُ المنصّات المباشرة** (D-608) — نداءٌ واحدٌ لبلد الجواب
+     نفسِه (حجّةُ صفحة المسلسل حرفاً) */
+  const providerLinks = watchWhere
+    ? await getProviderLinks(movieId, "movie", watchWhere.region)
+    : {};
 
   if (!movie) {
     return (
@@ -303,6 +310,13 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
                       region={watchWhere.region}
                       userRegion={userRegion}
                       locale={locale}
+                      links={providerLinks}
+                      query={{
+                        q: `${movie.original_title || movie.title} ${(movie.release_date ?? "").slice(0, 4)}`.trim(),
+                        qAr: /[؀-ۿ]/.test(movie.title) ? movie.title : null,
+                      }}
+                      tmdbId={movieId}
+                      mediaType="movie"
                     />
                   </div>
                 )}
