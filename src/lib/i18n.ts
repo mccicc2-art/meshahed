@@ -134,10 +134,6 @@ const ar = {
   headerSettings: "الإعدادات",
 
   /* ترويسةُ الرئيسية الجديدة (D-434): تحيّةٌ بالوقت، ومبدّلُ وضع العرض */
-  greetMorning: "صباح الخير",
-  greetAfternoon: "طاب يومك",
-  greetEvening: "مساء الخير",
-  greetNight: "ليلة سعيدة",
   greetNeutral: "أهلاً",
   viewVisual: "بصري",
   viewCompact: "مختصر",
@@ -630,11 +626,8 @@ const ar = {
   followingLabel: "يتابع",
   followListEmpty: "لا أحد هنا بعد",
   /* 🆕 صفحةُ المتابعات (D-565) */
-  followsTitle: "المتابعات",
   followsTabFollowing: "أتابعهم",
   followsTabFollowers: "يتابعونني",
-  shareMyProfile: "مشاركة ملفّي",
-  findPeople: "إضافة",
   followListsSection: "قوائم المتابعة",
   followListsHint:
     "من يفتح ملفك يستطيع رؤية من يتابعك ومن تتابعهم. أقفلها فتبقى الأعداد وحدها.",
@@ -1550,7 +1543,6 @@ const ar = {
   setOpenProfile: "فتح ملفّك العامّ",
   setSearchAria: "ابحث في الإعدادات",
   setPlanFree: "Loopz مجّاني",
-  setPlanFreeSub: "افتح مزيداً من طرق التخصيص",
   setViewPlans: "الخطط",
   setDangerZone: "منطقة الخطر",
   setUnsavedTitle: "تغييراتٌ لم تُحفظ",
@@ -2092,10 +2084,6 @@ const en: Dict = {
   ],
   headerSettings: "Settings",
 
-  greetMorning: "Good morning",
-  greetAfternoon: "Good afternoon",
-  greetEvening: "Good evening",
-  greetNight: "Good night",
   greetNeutral: "Welcome",
   viewVisual: "Visual",
   viewCompact: "Compact",
@@ -2500,11 +2488,8 @@ const en: Dict = {
   profileWatchlist: "Watchlist",
   followingLabel: "following",
   followListEmpty: "Nobody here yet",
-  followsTitle: "Follows",
   followsTabFollowing: "Following",
   followsTabFollowers: "Followers",
-  shareMyProfile: "Share my profile",
-  findPeople: "Add",
   followListsSection: "Follow lists",
   followListsHint:
     "Visitors to your profile can see who follows you and who you follow. Lock it and only the counts remain.",
@@ -3118,7 +3103,6 @@ const en: Dict = {
   setOpenProfile: "Open your public profile",
   setSearchAria: "Search settings",
   setPlanFree: "Loopz Free",
-  setPlanFreeSub: "Unlock more ways to personalize",
   setViewPlans: "View plans",
   setDangerZone: "Danger zone",
   setUnsavedTitle: "Unsaved changes",
