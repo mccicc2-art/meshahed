@@ -4,7 +4,13 @@ import Link from "next/link";
 import Image from "next/image";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { toggleMovieWatched } from "@/lib/actions";
+import {
+  toggleMovieWatched,
+  markShowWatched,
+  unmarkEpisodes,
+  follow,
+  unfollow,
+} from "@/lib/actions";
 import { posterUrl, backdropUrl } from "@/lib/media";
 import { getDict, num, type Locale } from "@/lib/i18n";
 import { tap } from "@/lib/haptics";
@@ -30,9 +36,15 @@ import { Icon } from "./Icon";
  * **السؤالُ الذي تفتح به الرئيسيةَ هو «ماذا أشاهد الآن»**، والقائمةُ
  * سياقُ الجواب لا الجواب.
  *
- * ⚠️ **والتأشيرُ للأفلام وحدَها**: مسلسلٌ في قائمةٍ لا «يُنهى» بضغطة،
- * **فبطاقتُه تفتح صفحتَه ولا تكذب بعلامةِ صحٍّ لا تُتمّ شيئاً** (D-217:
- * لا زرَّ لفعلٍ لا يقع).
+ * ⚖️ 🆕 **والصحُّ للنوعين** (D-604، بلاغُ أحمد بلقطة: «تقدر تعمل صح
+ * للفلم الأوّل، الفلم الثانوي ما تطلع علامة صح فما تقدر توثّق المشاهدة
+ * ورا بعض») — **نقضٌ لقصر التأشير على الأفلام**: كان الظنُّ أن مسلسلاً
+ * لا «يُنهى» بضغطة (D-217)، **لكنّ D-538 أثبتت عكسَه من صفحة العمل**
+ * («شاهدتُه كلَّه» فعلٌ قائم) — **وعنصرٌ يصنّفه TMDB مسلسلاً وسطَ
+ * قائمةِ أفلامٍ كان يجمّد الطابورَ كلَّه**: لا صحَّ عليه فلا تقدُّمَ
+ * بعده («الست موناليزا» في قائمته الشاهد). فالضغطةُ على المسلسل تختم
+ * كلَّ المعروض بفعل D-538 نفسِه — **الزرُّ يفعل فعلاً حقيقيّاً فلا
+ * ينقض D-217 بل يحقّقه.**
  */
 export function ListContinueCard({
   listName,
@@ -52,6 +64,13 @@ export function ListContinueCard({
     /** 🆕 صورةُ المشهد (D-507) — الغيابُ يسقط إلى الملصق */
     backdropPath?: string | null;
     runtime?: number | null;
+    /**
+     * 🆕 هل «التالي» في مكتبتك أصلاً؟ (D-604) — ختمُ المسلسل يتابعه
+     * أوّلاً إن لم يكن (حكمُ «انتهى» يُقرأ من صفّ المتابعة)، **والرجعةُ
+     * لا تُبقي متابعةً لم تكن** (D-047). الافتراضُ «لا» فمن لا يمرّره
+     * يبقى على الأسلم.
+     */
+    followed?: boolean;
   };
   watched: number;
   total: number;
@@ -94,9 +113,13 @@ export function ListContinueCard({
      **فعلٌ واحدٌ باتّجاهيه مفتاحٌ لا تعليمات.** */
   const [seen, setSeen] = useState(next.tmdbId);
   const [done, setDone] = useState(false);
+  /* 🆕 ما أضافه ختمُ المسلسل في هذه الضغطة (D-604) — عهدةُ الرجعة
+     الصادقة: يُحذف هذا القدرُ بعينه لا سجلُّ صاحبه (D-047) */
+  const [added, setAdded] = useState<{ s: number; e: number }[] | null>(null);
   if (seen !== next.tmdbId) {
     setSeen(next.tmdbId);
     setDone(false);
+    setAdded(null);
   }
 
   const href =
@@ -120,11 +143,39 @@ export function ListContinueCard({
     setDone(to);
     start(async () => {
       try {
-        await toggleMovieWatched({
-          movieTmdbId: next.tmdbId,
-          runtime: next.runtime ?? null,
-          watched: to,
-        });
+        if (next.mediaType === "movie") {
+          await toggleMovieWatched({
+            movieTmdbId: next.tmdbId,
+            runtime: next.runtime ?? null,
+            watched: to,
+          });
+        } else if (to) {
+          /* 🆕 **المسلسلُ يُختم كما يُختم من صفحته** (D-604 بوصفة
+             D-538 حرفاً): متابعةٌ أوّلاً إن لم يكن — **حكمُ «انتهى»
+             في الرئيسية يُقرأ من صفِّ المتابعة فبدونها يُختم ولا
+             تنقلب البطاقة** — ثم كلُّ المعروض دفعةً. */
+          if (!next.followed) {
+            await follow({
+              tmdbId: next.tmdbId,
+              mediaType: "tv",
+              title: next.title ?? "",
+              posterPath: next.posterPath,
+            });
+          }
+          const res = await markShowWatched(next.tmdbId);
+          setAdded(res.added);
+        } else {
+          /* **والرجعةُ صادقة** (D-047): يُحذف ما أضافته الضغطةُ
+             وحدَها لا سجلُّ صاحبه، **ومن لم يكن متابعاً قبلها لا
+             يبقى متابعاً بعدها** (D-238: الفعلُ لا يفاجئ). */
+          if (added?.length) {
+            await unmarkEpisodes({ showTmdbId: next.tmdbId, episodes: added });
+          }
+          if (!next.followed) {
+            await unfollow({ tmdbId: next.tmdbId, mediaType: "tv" });
+          }
+          setAdded(null);
+        }
         /* **والتجديدُ هنا شرطٌ لا زينة**: البطاقةُ كلُّها تتبدّل —
            الملصقُ والاسمُ والعدّاد — **فالانقلابُ إلى التالي هو الفعل
            نفسُه** (وهو نصُّ الطلب). */
@@ -143,8 +194,8 @@ export function ListContinueCard({
      وقُرئ الصفُّ مكسوراً.** الآن ٧:٥ بصورة مشهدٍ وحجابٍ سفليٍّ وشريطِ
      حافّةٍ — **نفسُ أصناف `ContinueCard` البصريّة** (قاعدة ٦: بطاقتان
      في صفٍّ واحدٍ لا تملكان هندستين). */
-  /** الصحُّ — رسمٌ واحدٌ للشكلين، والذي يتبدّل موضعُه (وصفةُ `ContinueCard`) */
-  const tick = next.mediaType === "movie" && (
+  /** الصحُّ — رسمٌ واحدٌ للشكلين والنوعين (D-604)، والذي يتبدّل موضعُه (وصفةُ `ContinueCard`) */
+  const tick = (
     <button
       type="button"
       onClick={mark}
