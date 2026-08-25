@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { setContentPrefs } from "@/lib/actions";
 import { getDict, type Locale } from "@/lib/i18n";
@@ -14,9 +14,9 @@ import {
 import { sanitizeContentPrefs, type ContentPrefs } from "@/lib/contentPrefs";
 import { tap } from "@/lib/haptics";
 import { toast } from "@/lib/toast";
-import { SettingsPickerSheet } from "./SettingsPickerSheet";
+import { SettingsPickerPanel } from "./SettingsPickerPanel";
+import { SettingsExpandRow } from "./SettingsExpandRow";
 import { SettingsGroup } from "./SettingsGroup";
-import { SettingsRow } from "./SettingsRow";
 
 /**
  * **تخصيصُ ما يظهر لك** (D-545، مواصفةُ أحمد المكتوبة).
@@ -24,67 +24,38 @@ import { SettingsRow } from "./SettingsRow";
  * ================= أربعةُ حقولٍ ومصنعٌ واحد =================
  *
  * **الأقسامُ أربعةٌ والسلوكُ واحد**: قائمةٌ فيها بحث، ورقائقُ مختارةٌ
- * تُحذف بضغطة. **فمصنعٌ واحدٌ (`Picker`) يرسم الأربعة** — **ورابعُ
- * نسخةٍ من نفس الرسم هو كيف يفترق حقلٌ عن أخيه عند أوّل تعديل**
- * (D-145/القاعدة ٦).
+ * تُحذف بضغطة. **فمصنعٌ واحدٌ (`SettingsPickerPanel`) يرسم الأربعة** —
+ * **ورابعُ نسخةٍ من نفس الرسم هو كيف يفترق حقلٌ عن أخيه عند أوّل
+ * تعديل** (D-145/القاعدة ٦).
  *
  * ⚠️ **واللغاتُ المفضّلةُ وحدَها مرتَّبة**: **ترتيبُ المصفوفة معنًى**
  * (الأولى أعلى أولويّة)، **فلها سهما رفعٍ وخفض** — **والسحبُ الحرُّ
- * تُركَ عمداً**: `SectionOrderList` يسحب بمقبضٍ داخل بطاقةٍ ثابتة،
- * **ورقائقُ تُسحب داخل سطرٍ يلتفّ تنازعُ التمريرَ على الجوّال**
- * (وهو نفسُ سببِ فصلِ وضع الترتيب في `ListDetail`). **والسهمان يفعلان
- * ما يفعله السحبُ بلا هذا التنازع**، ولمسُهما ٤٤px.
+ * تُركَ عمداً** (تنازعُ التمرير على الجوّال — حجّةُ `ListDetail`).
  *
  * ⚠️ **ومنعُ التعارض في ثلاث طبقات** (D-177): **الواجهةُ تُخفي الخيارَ
  * من القائمة المقابلة**، **والفعلُ يُنقّي قبل الكتابة**، **والقاعدةُ
  * ترفض الصفَّ بقيدٍ** (الهجرة ١٢٦). **حارسٌ على طرفٍ واحد ليس حارساً.**
  *
- * ⚠️ **ولا زرَّ حفظ**: يُحفظ لحظةَ الاختيار كبقيّة الإعدادات، **ثمّ
- * `router.refresh()` لا إعادةَ تحميل** — **فلا رمشةَ ولا صفحةٌ بيضاء**
- * (شرطُ المواصفة).
+ * ================= 🆕 والأوراقُ صارت توسّعاً في المكان (D-590) =================
  *
- * ================= 🆕 والقوائمُ خرجت إلى أوراق (D-555) =================
+ * **طلبُ أحمد بلقطتين**: صحٌّ على «حجم الواجهة» المتوسّع في مكانه،
+ * وشطبٌ على ورقة «أظهر لي أقلّ» — **«كل الإعدادات خلّها مثل كذا: تضغط
+ * وتنزل مكانها».**
  *
- * **كانت الصفحةُ تعرض التسعين خياراً كلَّها مفتوحة**: خمسةَ عشرَ نوعاً،
- * ثمّ خمسةَ عشرَ آخر، ثمّ ثلاثين لغةً، ثمّ ثلاثين — **وكلٌّ منها بحقلِ
- * بحثٍ وصفِّ رقائقَ مختارة** — **فخمسُ شاشاتٍ تمريراً قبل أن يُرى
- * «بلد المشاهدة».** **والصفحةُ الآن تعرض ما اخترتَه وحدَه، و«إدارة»
- * تفتح الباقي.**
+ * ⚖️ **وهو نقضٌ لشطر قاعدة D-569 بحكمه** («المتعدّدُ الذي يُبحث فيه
+ * يبقى ورقةً») — **والصفوفُ الأربعةُ الآن تفتح لوحَها تحتها**:
+ * الصفُّ فوق خياراته، **وقيمتُه في طرفه تتبدّل تحت عينك مع كلِّ
+ * ضغطة** — وهو ما كانت الورقةُ تحجبه.
  *
- * ⚠️ **والتعديلُ في الورقة مسوّدةٌ حتى «تمّ»**: **الحفظُ الفوريُّ صحيحٌ
- * لمفتاحٍ واحدٍ وخاطئٌ لعشر ضغطات** — عشرُ كتاباتٍ إلى الخادم وعشرُ
- * إعاداتِ رسمٍ لقائمةٍ ما زلتَ تحرّرها. **والصفحةُ نفسُها ما زالت
- * تحفظ لحظةَ التغيير** (رفعُ لغةٍ درجةً · حذفُ رقاقة).
- *
- * ⚠️ **واللغاتُ المفضّلةُ صفوفٌ مرقَّمة لا رقائق** (تصميمُ أحمد):
- * **ترتيبُها معنًى** — والرقاقةُ لا تحمل رقماً ولا سهمين بحجمِ لمسةٍ
- * مقبول. **والصفُّ يحمل الثلاثة.**
- *
- * ================= 🆕 وطُوبقت على تصميم أحمد (D-557) =================
- *
- * **بُنيت في D-555 من نصِّ المواصفة وحدَه** لأن صورتَي التصميم خرجتا من
- * ذاكرة الجلسة عند الضغط — **ثمّ أرسلهما، فهذه مطابقتُها:**
- *
- * - **أربعُ بطاقاتٍ بعناوينَ داخلها** (`SettingsSection boxed`) لا أربعةُ
- *   أقسامٍ بعناوينَ فوقها.
- * - **«ذوقك» بطاقةٌ واحدةٌ فيها صفّان**: `+` مطوَّقٌ لـ«أظهر لي المزيد»
- *   و`−` مطوَّقٌ لـ«أظهر لي أقلّ»، **و«إدارة ›» في الطرف**، **والمختارُ
- *   رقائقُ محايدةٌ تحت الاسم.**
- *   ⚖️ **والرقائقُ في الصفحة لا تُحذف بضغطة** — **وهو نقضٌ لِما بنيتُه
- *   في D-555.** **وحجّةُ تصميمه أقوى**: **الصفحةُ تعرض، والورقةُ
- *   تحرّر** — **ورقاقةٌ تُحذف بلمسةٍ عابرةٍ في صفحةٍ تُمرَّر بالإبهام
- *   تفقد اختياراً بلا قصد**، **ولا «تراجُع» لها.**
- * - **«اللغات» بطاقةٌ واحدةٌ فيها المفضّلةُ والمستبعدة**: صفوفٌ مرقَّمةٌ
- *   بمقبض، ثمّ «+ أضف لغة» بعرضٍ كامل، ثمّ «المستبعدة» بـ«إدارة ›».
- * - **و«إعادة الترتيب» تُبدّل المقبضَ سهمين** بدل أن تكون سهمين دائمين:
- *   **الصفُّ في السكون اسمٌ ورقمٌ ومقبض**، **وسهمان مقيمان في كلِّ صفٍّ
- *   يجعلان القائمةَ لوحةَ تحكّمٍ لا قائمةَ لغات.**
- *   ⚠️ **ولم يُبنَ سحبٌ حقيقيّ**: `SectionOrderList` تملكه، **ولها
- *   شكلُها الذي لا يطابق هذا التصميم** — **ونسخةٌ ثانيةٌ من منطق
- *   السحب أسوأُ من سهمين** (D-145). **والمقبضُ يقول «هذا يُرتَّب»
- *   ويفتح الوضعَ باللمس.**
- * - **«إعادة ضبط كل التفضيلات» في القاع، وسطاً، بالأحمر.**
+ * ⚠️ **وسقوطُ المسوّدة لا يُسقط حجّتَها**: «عشرُ ضغطاتٍ عشرُ كتاباتٍ
+ * إلى الخادم» (D-555) **ما زالت صحيحة** — **فالكتابةُ مؤجَّلةٌ لا
+ * فوريّة**: كلُّ ضغطةٍ تُحدِّث الشاشةَ في لحظتها، **والخادمُ يُكتب
+ * مرّةً واحدةً بعد سكونٍ قصير** (والطيُّ والمغادرةُ يدفعانها فوراً).
+ * **فعينُ أحمد ترى كلَّ ضغطة، والخادمُ يرى حصيلتَها.**
  */
+
+/** سكونُ الكتابة — ضغطاتٌ متتابعةٌ تُجمع في كتابةٍ واحدة */
+const COMMIT_QUIET_MS = 800;
 
 export function ContentPrefsSection({
   locale,
@@ -100,10 +71,68 @@ export function ContentPrefsSection({
   const router = useRouter();
   const [prefs, setPrefs] = useState<ContentPrefs>(initial);
   const [, start] = useTransition();
-  /** أيُّ ورقةٍ مفتوحة — **واحدةٌ لا أربع** */
-  const [sheet, setSheet] = useState<
+  /** أيُّ لوحٍ مفتوح — **واحدٌ لا أربعة**، والفتحُ يطوي أخاه */
+  const [open, setOpen] = useState<
     "genres" | "unwantedGenres" | "languages" | "excludedLanguages" | null
   >(null);
+
+  /* ===== الكتابةُ المؤجَّلة — انظر رأسَ الملفّ =====
+     `latest` ما تراه العين، و`saved` ما أكّده الخادم — **والفشلُ يعيد
+     الشاشةَ إلى المؤكَّد** لا إلى ما قبل الضغطة الأخيرة وحدَها. */
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const latest = useRef<ContentPrefs>(initial);
+  const saved = useRef<ContentPrefs>(initial);
+
+  function flush() {
+    if (timer.current) {
+      clearTimeout(timer.current);
+      timer.current = null;
+    }
+    const next = latest.current;
+    if (next === saved.current) return;
+    start(async () => {
+      try {
+        await setContentPrefs(next);
+        saved.current = next;
+        router.refresh();
+      } catch {
+        latest.current = saved.current;
+        setPrefs(saved.current);
+        toast(t.errSaveShort, { tone: "error" });
+      }
+    });
+  }
+
+  function commit(next: ContentPrefs) {
+    const clean = sanitizeContentPrefs(next);
+    setPrefs(clean);
+    latest.current = clean;
+    tap(6);
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(flush, COMMIT_QUIET_MS);
+  }
+
+  /* مغادرةُ الصفحة قبل السكون — تُدفع الكتابةُ المعلَّقة، ولو بلا
+     انتظارِ ردٍّ: أفضلُ جهدٍ خيرٌ من ضياعِ الاختيار. */
+  useEffect(() => {
+    return () => {
+      if (timer.current) {
+        clearTimeout(timer.current);
+        if (latest.current !== saved.current) {
+          void setContentPrefs(latest.current).catch(() => {});
+        }
+      }
+    };
+  }, []);
+
+  function togglePanel(
+    key: "genres" | "unwantedGenres" | "languages" | "excludedLanguages",
+  ) {
+    /* الطيُّ أو الانتقالُ للوحٍ آخر يدفع المعلَّق — فلا كتابةَ تتأخّر
+       أكثرَ من عمرِ اللوح الذي وُلدت فيه */
+    flush();
+    setOpen((v) => (v === key ? null : key));
+  }
 
   /** **رقمُ المفهوم القانونيّ** — أوّلُ أرقامه، وبه يُخزَّن (D-545) */
   const idOf = (g: BrowseGenre) => (g.movie[0] ?? g.tv[0])!;
@@ -112,24 +141,6 @@ export function ContentPrefsSection({
       ?? BROWSE_GENRES.find((x) => x.movie.includes(id) || x.tv.includes(id));
     return g ? browseGenreName(g, loc) : String(id);
   };
-
-  /* **الحفظُ لحظةَ التغيير** — والتنقيةُ هنا أيضاً كي لا يُرسل تعارضٌ
-     أصلاً، **ثمّ يُنقّى مرّةً في الفعل ومرّةً في القاعدة** (D-177). */
-  function commit(next: ContentPrefs) {
-    const clean = sanitizeContentPrefs(next);
-    const prev = prefs;
-    setPrefs(clean);
-    tap(8);
-    start(async () => {
-      try {
-        await setContentPrefs(clean);
-        router.refresh();
-      } catch {
-        setPrefs(prev);
-        toast(t.errSaveShort, { tone: "error" });
-      }
-    });
-  }
 
   /** **الاختيارُ يطرد المقابل** — فلا يصل تعارضٌ إلى القاعدة أصلاً */
   function applyNums(list: "genres" | "unwantedGenres", ids: number[]) {
@@ -162,9 +173,7 @@ export function ContentPrefsSection({
       label: langName(l.code, loc),
     }));
 
-  const sheetLabels = {
-    cancel: t.cancelLabel,
-    done: t.doneLabel,
+  const panelLabels = {
     selected: t.cpSelected,
     clear: t.cpClear,
     all: t.cpAllCategories,
@@ -185,89 +194,71 @@ export function ContentPrefsSection({
   return (
     <>
       <SettingsGroup label={t.cpTaste}>
-        <SettingsRow
+        <SettingsExpandRow
           icon="plus"
           title={t.cpShowMore}
           value={short(prefs.genres.map(nameOf))}
-          onClick={() => setSheet("genres")}
-        />
-        <SettingsRow
+          open={open === "genres"}
+          onToggle={() => togglePanel("genres")}
+        >
+          <SettingsPickerPanel
+            options={genreOptions(prefs.unwantedGenres)}
+            value={prefs.genres.map(String)}
+            onChange={(next) => applyNums("genres", next.map(Number))}
+            labels={{ ...panelLabels, search: t.cpSearchGenres }}
+          />
+        </SettingsExpandRow>
+        <SettingsExpandRow
           icon="eye-off"
           title={t.cpShowLess}
           value={short(prefs.unwantedGenres.map(nameOf))}
-          onClick={() => setSheet("unwantedGenres")}
-        />
+          open={open === "unwantedGenres"}
+          onToggle={() => togglePanel("unwantedGenres")}
+        >
+          <SettingsPickerPanel
+            options={genreOptions(prefs.genres)}
+            value={prefs.unwantedGenres.map(String)}
+            onChange={(next) => applyNums("unwantedGenres", next.map(Number))}
+            labels={{ ...panelLabels, search: t.cpSearchGenres }}
+          />
+        </SettingsExpandRow>
       </SettingsGroup>
 
       <SettingsGroup label={t.cpLangsTitle}>
-        <SettingsRow
+        <SettingsExpandRow
           icon="compass"
           title={t.cpPreferred}
           value={short(prefs.languages.map((code) => langName(code, loc)))}
-          onClick={() => setSheet("languages")}
-        />
-        <SettingsRow
+          open={open === "languages"}
+          onToggle={() => togglePanel("languages")}
+        >
+          <SettingsPickerPanel
+            options={langOptions(prefs.excludedLanguages)}
+            value={prefs.languages}
+            ordered
+            onChange={(next) => applyLangs("languages", next)}
+            labels={{ ...panelLabels, search: t.cpSearchLangs }}
+          />
+        </SettingsExpandRow>
+        <SettingsExpandRow
           icon="eye-off"
           title={t.cpExcluded}
           value={short(prefs.excludedLanguages.map((code) => langName(code, loc)))}
-          onClick={() => setSheet("excludedLanguages")}
-        />
+          open={open === "excludedLanguages"}
+          onToggle={() => togglePanel("excludedLanguages")}
+        >
+          <SettingsPickerPanel
+            options={langOptions(prefs.languages)}
+            value={prefs.excludedLanguages}
+            onChange={(next) => applyLangs("excludedLanguages", next)}
+            labels={{ ...panelLabels, search: t.cpSearchLangs }}
+          />
+        </SettingsExpandRow>
       </SettingsGroup>
 
       {!signedIn && (
         <p className="px-1 text-12 text-muted leading-relaxed">{t.cpGuestNote}</p>
       )}
-
-      {/* ===== الأوراقُ الأربع — **مصنعٌ واحدٌ يرسمها** ===== */}
-      <SettingsPickerSheet
-        open={sheet === "genres"}
-        title={t.cpShowMore}
-        options={genreOptions(prefs.unwantedGenres)}
-        picked={prefs.genres.map(String)}
-        onCancel={() => setSheet(null)}
-        onDone={(next) => {
-          applyNums("genres", next.map(Number));
-          setSheet(null);
-        }}
-        labels={{ ...sheetLabels, search: t.cpSearchGenres }}
-      />
-      <SettingsPickerSheet
-        open={sheet === "unwantedGenres"}
-        title={t.cpShowLess}
-        options={genreOptions(prefs.genres)}
-        picked={prefs.unwantedGenres.map(String)}
-        onCancel={() => setSheet(null)}
-        onDone={(next) => {
-          applyNums("unwantedGenres", next.map(Number));
-          setSheet(null);
-        }}
-        labels={{ ...sheetLabels, search: t.cpSearchGenres }}
-      />
-      <SettingsPickerSheet
-        open={sheet === "languages"}
-        title={t.cpPreferred}
-        options={langOptions(prefs.excludedLanguages)}
-        picked={prefs.languages}
-        ordered
-        onCancel={() => setSheet(null)}
-        onDone={(next) => {
-          applyLangs("languages", next);
-          setSheet(null);
-        }}
-        labels={{ ...sheetLabels, search: t.cpSearchLangs }}
-      />
-      <SettingsPickerSheet
-        open={sheet === "excludedLanguages"}
-        title={t.cpExcluded}
-        options={langOptions(prefs.languages)}
-        picked={prefs.excludedLanguages}
-        onCancel={() => setSheet(null)}
-        onDone={(next) => {
-          applyLangs("excludedLanguages", next);
-          setSheet(null);
-        }}
-        labels={{ ...sheetLabels, search: t.cpSearchLangs }}
-      />
     </>
   );
 }
