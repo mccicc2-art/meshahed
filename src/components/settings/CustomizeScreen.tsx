@@ -50,6 +50,7 @@ export function CustomizeScreen({
   coverPos,
   avatarPos,
   counters,
+  plus = false,
 }: {
   locale: Locale;
   nickname: string;
@@ -63,6 +64,9 @@ export function CustomizeScreen({
   coverPos?: number;
   avatarPos?: number;
   counters?: { followers: number; following: number; visits: number };
+  /* 🆕 **الخطّة تمرّ ولا تُقرأ هنا** (D-633): الشاشةُ حاويةٌ، **والحكمُ
+     في `lib/plan.ts` والقفلُ في اللوحين** — ولا شرطَ ثالث. */
+  plus?: boolean;
 }) {
   const t = getDict(locale);
   const [tab, setTab] = useState<"home" | "profile">("home");
@@ -107,6 +111,7 @@ export function CustomizeScreen({
           genres={genres}
           initial={homePrefs}
           registerReset={registerReset}
+          plus={plus}
         />
       ) : (
         <ProfileCustomize
@@ -122,6 +127,7 @@ export function CustomizeScreen({
           avatarPos={avatarPos}
           counters={counters}
           registerReset={registerReset}
+          plus={plus}
         />
       )}
 

@@ -9,6 +9,8 @@ import { tap } from "@/lib/haptics";
 import { toast } from "@/lib/toast";
 import { Icon } from "../Icon";
 import { SettingsExpandRow } from "./SettingsExpandRow";
+import { themeNeedsPlus } from "@/lib/plan";
+import { openPlusGate } from "@/lib/plusGate";
 
 /**
  * الثيم — **شبكةٌ عمودان، وصحٌّ لا حلقة** (D-555، مواصفةُ أحمد).
@@ -40,10 +42,15 @@ import { SettingsExpandRow } from "./SettingsExpandRow";
 export function ThemeSection({
   locale,
   initialTheme,
+  plus = false,
   carry,
 }: {
   locale: Locale;
   initialTheme: string;
+  /* 🆕 **الخطّة** (D-633): الملوّنةُ للبلس، **و`amber` و`daylight`
+     للجميع** — الافتراضيُّ وإتاحةُ النهار (بموافقة أحمد على الإتاحة).
+     **وافتراضٌ صامتٌ `false`** فلا ينكسر قارئٌ لا يمرّرها (D-028). */
+  plus?: boolean;
   /** ما يجب أن يُعاد كتابتُه كما هو مع كلِّ نداء — انظر التحذير أعلاه */
   carry: {
     nickname: string;
@@ -62,6 +69,15 @@ export function ThemeSection({
   const [pending, start] = useTransition();
 
   function pick(id: string) {
+    /* ⚖️ **والقفلُ عند اللمس لا عند الرسم** (D-633): المربّعاتُ الملوّنةُ
+       تبقى **مرئيّةً كاملةً** — من يرى ما يشتريه يشتريه، ومن يُمنع من
+       الرؤية ينصرف. **والحارسُ الحقيقيُّ في الخادم** (`updateProfile`)،
+       وهذا تجربةٌ تشرح لا سياجٌ يحمي. */
+    if (!plus && themeNeedsPlus(id)) {
+      tap(8);
+      openPlusGate();
+      return;
+    }
     if (id === theme || pending) return;
     const prev = theme;
     setTheme(id);
@@ -121,7 +137,18 @@ export function ThemeSection({
               />
               <span className="flex items-center gap-1.5 px-2.5 min-h-10 text-12 font-semibold">
                 <span className="min-w-0 flex-1 truncate">{themeName(th, locale)}</span>
-                {on ? <Icon name="check" size={14} className="shrink-0 text-accent" /> : null}
+                {/* **الرمزُ يقول أيَّهما**: صحٌّ للمختار، ونجمةٌ لما يحتاج
+                    بلس — **ولا يجتمعان** لأن المختارَ مملوكٌ بالضرورة. */}
+                {on ? (
+                  <Icon name="check" size={14} className="shrink-0 text-accent" />
+                ) : !plus && themeNeedsPlus(th.id) ? (
+                  <Icon
+                    name="sparkle-star"
+                    size={13}
+                    className="shrink-0 text-accent/70"
+                    aria-label={t.plusLocked}
+                  />
+                ) : null}
               </span>
             </button>
           );
