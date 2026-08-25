@@ -31,11 +31,14 @@ const PEEK = 3;
 const FULL = 24;
 
 export async function GET(request: Request) {
+  /* 🆕 **البحثُ مفتوحٌ للزائر** (D-627): كان 401 — والنتائجُ كلُّها
+     كتالوجٌ وملفّاتٌ عامّة، فلا سرَّ يحرسه الرفض. **والحدُّ للزائر
+     بعنوانه** (أوّلُ `x-forwarded-for` — ما يثبّته Vercel) بدل معرّفِ
+     مستخدمٍ لا يملكه، فلا يتقاسم الزوّارُ كلُّهم سلّةً واحدة. */
   const user = await getUser();
-  if (!user) return NextResponse.json(empty(), { status: 401 });
-
+  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "anon";
   /* بحثٌ حيٌّ مع كلِّ ضغطةِ زرّ — والحدُّ حدُّ `suggest` نفسُه */
-  const key = `search:${user.id}`;
+  const key = `search:${user?.id ?? ip}`;
   if (!allow(key, 40, 60_000)) {
     return NextResponse.json(empty(), {
       status: 429,
