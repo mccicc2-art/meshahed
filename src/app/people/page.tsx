@@ -139,8 +139,11 @@ export default async function PeoplePage({
     with?: string;
   }>;
 }) {
+  /* ⚖️ 🆕 **البوّابةُ سقطت — الكوميونيتي مفتوحٌ للضيف** (D-627):
+     `user` يبقى يُقرأ وقد يكون null — التبويباتُ الشخصيّةُ محروسةٌ
+     بشرط `user` أدناه كما كانت، **و`meId` فارغةٌ للزائر فلا يطابق
+     صفَّ أحدٍ** (لا «أنا» قبل حساب)، والكتابةُ خلف `requireUser`. */
   const user = await getUser();
-  if (!user) redirect("/login");
 
   const { locale, t } = await getT();
   const tabPrefs = await getTabPrefs("community");
@@ -660,7 +663,7 @@ export default async function PeoplePage({
               /* 🆕 **المرشَّحةُ لا الخام** (D-360) — والخبرُ الذي لا يخصّك
                  لا يُرسَم، ولا يُعدّ في فراغ الخطّ. */
               news={newsForMe}
-              meId={user.id}
+              meId={user?.id ?? ""}
               followed={followed}
               postLikes={postLikes}
               views={viewCounts}
@@ -720,7 +723,7 @@ export default async function PeoplePage({
                     locale={locale}
                     mode="featured"
                     limit={10}
-                    meId={user.id}
+                    meId={user?.id ?? ""}
                     following={boardFollowing}
                     /* **والفعلُ هنا وحدَه** (D-281، حكمُ أحمد): المعاينةُ
                        تُقرأ و«عرض الكل» يُعمل فيه. */
@@ -733,7 +736,7 @@ export default async function PeoplePage({
                     locale={locale}
                     mode="top"
                     limit={10}
-                    meId={user.id}
+                    meId={user?.id ?? ""}
                     following={boardFollowing}
                     /* **والفعلُ هنا وحدَه** (D-281، حكمُ أحمد): المعاينةُ
                        تُقرأ و«عرض الكل» يُعمل فيه. */
@@ -748,7 +751,7 @@ export default async function PeoplePage({
                     locale={locale}
                     mode="rising"
                     limit={10}
-                    meId={user.id}
+                    meId={user?.id ?? ""}
                     following={boardFollowing}
                     /* **والفعلُ هنا وحدَه** (D-281، حكمُ أحمد): المعاينةُ
                        تُقرأ و«عرض الكل» يُعمل فيه. */
@@ -777,7 +780,7 @@ export default async function PeoplePage({
                   locale={locale}
                   mode="featured"
                   seeAllHref="/people?tab=people&all=featured"
-                  meId={user.id}
+                  meId={user?.id ?? ""}
                   following={boardFollowing}
                 />
                 <PeopleLeaderboard
@@ -785,7 +788,7 @@ export default async function PeoplePage({
                   locale={locale}
                   mode="top"
                   seeAllHref="/people?tab=people&all=top"
-                  meId={user.id}
+                  meId={user?.id ?? ""}
                   following={boardFollowing}
                 />
                 <TopReviews
@@ -815,7 +818,7 @@ export default async function PeoplePage({
                   locale={locale}
                   mode="rising"
                   seeAllHref="/people?tab=people&all=rising"
-                  meId={user.id}
+                  meId={user?.id ?? ""}
                   following={boardFollowing}
                 />
               </>
