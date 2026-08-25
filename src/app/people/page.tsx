@@ -431,7 +431,16 @@ export default async function PeoplePage({
      **وهو ردٌّ صحيح**: نفسُ الصفحة تُرسم مرّتين فتعطي نتيجتين.
      **والقاعدةُ التي تبقى: كلُّ ما يقرأ «الآن» يعيش خارج المكوّن** —
      **وهذا ما لا يمسكه `tsc` ويمسكه `eslint`** (D-289 بالعكس). */
-  const talkedAbout = wantAll ? null : pickTalkedAboutRoom(rooms);
+  /* 🆕 **وللزائر البطاقةُ لا تغيب** (D-630، طلبُ أحمد: «أكثر مناقشة
+     فيها حركة»): قاعدةُ D-291 أسبوعيّةٌ — وأسبوعٌ هادئ يُخفيها عن
+     الجميع، **والغريبُ عن لوبز يستحقّ أنشطَ غرفةٍ إجمالاً حين يصمت
+     الأسبوع** — والعضوُ على القاعدة الأسبوعيّة كما كُتبت. */
+  const talkedAboutWeekly = wantAll ? null : pickTalkedAboutRoom(rooms);
+  const talkedAbout =
+    talkedAboutWeekly ??
+    (!user && !wantAll && rooms.length
+      ? rooms.reduce((best, r) => (r.posts > best.posts ? r : best))
+      : null);
   /* **وفراغُ «الصاعدين» ليس فراغَ اللوحة**: النداءُ واحدٌ للقسمين، **فقد
      تعود اللوحةُ ممتلئةً ولا يكون فيها صاعدٌ واحد** — ولو قيس هذا القسمُ
      بطول `board` لبقي «عرض الكل» صفحةً فيها بابُ رجوعٍ ولا شيء تحته.
