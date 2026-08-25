@@ -1445,6 +1445,11 @@ const ar = {
   custResetHint: "يعيد هذا اللوح إلى الافتراضيّ — ولا يُحفظ حتى تضغط حفظ.",
   custSectionsTitle: "الأقسام",
   custSectionsHint: "اسحب لترتيبها · واضغط العين لإظهارها أو إخفائها",
+  /* 🆕 تخصيصٌ بشكل البروفايل الحالي (D-617): تبويباتٌ تُخفى وأقسامٌ داخلها */
+  custTabsTitle: "التبويبات",
+  custTabsHint: "التبويب المطفأ يختفي عن زائرك — و«نظرة عامة» تبقى باب الصفحة دائماً.",
+  custOverviewTab: "داخل تبويب النظرة العامة",
+  custListsTab: "داخل تبويب القوائم",
   /* 🆕 صفوفُ الترتيب (D-555) — السجلُّ خرج إلى ورقةٍ فصار له صفٌّ يفتحه */
   custArrange: "رتّب الأقسام",
   custArrangeStats: "رتّب الأرقام",
@@ -3021,6 +3026,10 @@ const en: Dict = {
   custResetHint: "Puts this panel back to its defaults — nothing is saved until you press save.",
   custSectionsTitle: "Sections",
   custSectionsHint: "Drag to reorder · Tap to show or hide",
+  custTabsTitle: "Tabs",
+  custTabsHint: "A hidden tab disappears for your visitors — Overview always stays the front door.",
+  custOverviewTab: "Inside the Overview tab",
+  custListsTab: "Inside the Lists tab",
   custArrange: "Arrange sections",
   custArrangeStats: "Arrange statistics",
   custShownN: (n: number) => `${n} shown`,

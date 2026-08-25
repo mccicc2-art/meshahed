@@ -126,11 +126,31 @@ export interface ProfilePrefs {
    * من أراد رفعَ عملٍ فيه يرفع تقييمَه.
    */
   sectionOrder: Partial<Record<SortableSection, string[]>>;
+  /**
+   * 🆕 **تبويباتٌ مخفيّةٌ عن الزائر** (D-617): الغائبُ عن هذه القائمة
+   * ظاهرٌ — **فالمخزونُ القديمُ بلا المفتاح لا يتبدّل له شيء** (D-152).
+   * وصاحبُ الصفحة يرى تبويباتِه كلَّها دائماً — الإخفاءُ إخراجٌ للزائر
+   * لا قفلٌ (نصُّ رأسِ هذا الملفّ).
+   */
+  hiddenTabs: HideableProfileTab[];
 }
 
 /** الأقسامُ التي تقبل ترتيباً يدويّاً — والمفضّلةُ لها بابُها القائم (D-567) */
 export const SORTABLE_SECTIONS = ["shows", "movies", "artists", "lists"] as const;
 export type SortableSection = (typeof SORTABLE_SECTIONS)[number];
+
+/**
+ * 🆕 **التبويباتُ القابلةُ للإخفاء عن الزائر** (D-617، حكمُ أحمد بلقطةِ
+ * شاشة التخصيص: «حدّث هذي — التخصيص الحالي لا يناسب شكل البروفايل
+ * الحالي، بحيث أقدر أخفي تبويب أو أخفي قسم داخل تبويب»).
+ *
+ * ⚠️ **و«نظرة عامة» ليست هنا عمداً**: هي بابُ الصفحة نفسِها (`href`
+ * الجذر) — **وصفُّ تبويباتٍ بلا أوّلٍ يقف عليه الزائرُ صفحةٌ بلا باب.**
+ * ومن أراد إفراغَها فأقسامُها الستّةُ تُخفى واحداً واحداً من ورقة
+ * الترتيب القائمة.
+ */
+export const HIDEABLE_PROFILE_TABS = ["activity", "reviews", "lists"] as const;
+export type HideableProfileTab = (typeof HIDEABLE_PROFILE_TABS)[number];
 
 /**
  * تطبيقُ الترتيب المحفوظ على صفوف قسم: **المحفوظُ أوّلاً بترتيبه، وما
@@ -168,6 +188,8 @@ export const DEFAULT_PROFILE_PREFS: ProfilePrefs = {
   title: "",
   /** **والفراغُ يعني الترتيبَ الطبيعيّ** — لا شيء يتبدّل لمن لم يرتّب */
   sectionOrder: {},
+  /** **والفراغُ يعني كلَّ التبويبات ظاهرة** — سلوكُ الصفحة القائم (D-152) */
+  hiddenTabs: [],
 };
 
 /**
@@ -218,6 +240,18 @@ export function sanitizeProfilePrefs(raw: unknown): ProfilePrefs {
         ? o.title.replace(/\s+/g, " ").trim().slice(0, 24)
         : d.title,
     sectionOrder: sanitizeSectionOrder(o.sectionOrder),
+    hiddenTabs: Array.isArray(o.hiddenTabs)
+      ? (() => {
+          const seen = new Set<string>();
+          return o.hiddenTabs.filter(
+            (s): s is HideableProfileTab =>
+              typeof s === "string" &&
+              (HIDEABLE_PROFILE_TABS as readonly string[]).includes(s) &&
+              !seen.has(s) &&
+              !!seen.add(s),
+          );
+        })()
+      : d.hiddenTabs,
   };
 }
 
