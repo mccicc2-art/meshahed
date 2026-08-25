@@ -1466,7 +1466,8 @@ const ar = {
   profileTabOverview: "نظرة عامة",
   /* 🆕 تصميمُ البروفايل (D-561) */
   profileTabFavorites: "المفضّلة",
-  profileFullStats: "الإحصائيات الكاملة",
+  /* 🆕 كلمةٌ واحدة (D-611): «بحيث الأفلام والمسلسلات يأخذون راحتهم» */
+  profileFullStats: "الإحصائيات",
   profileEmptyFavorites: "لا مفضّلات بعد",
   profileTitleLabel: "اللقب",
   profileTitlePlaceholder: "محبٌّ للقصص",
@@ -3039,7 +3040,7 @@ const en: Dict = {
 
   profileTabOverview: "Overview",
   profileTabFavorites: "Favorites",
-  profileFullStats: "Full statistics",
+  profileFullStats: "Statistics",
   profileEmptyFavorites: "No favourites yet",
   profileTitleLabel: "Title",
   profileTitlePlaceholder: "Story lover",
