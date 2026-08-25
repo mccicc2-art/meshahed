@@ -2796,10 +2796,28 @@ export async function markShowWatched(
   tmdbId = intId(tmdbId);
   const { supabase, user } = await requireUser("bulk", 8, 60_000);
   const { getTv } = await import("@/lib/tmdb");
-  const { airedPerSeason } = await import("@/lib/progress");
+  const { airedPerSeason, airedEpisodeCount, isAbsoluteNumbering } = await import(
+    "@/lib/progress"
+  );
 
   const tv = await getTv(tmdbId);
   const per = airedPerSeason(tv);
+  /* 🔴 🆕 **الترقيمُ المطلق** (D-603): مواسمُ-الآركات تحمل حلقاتُها
+     أرقامَ العمل كلِّه («Elbaph» ١١٥٦–١١٨١ لا ١–٢٦) — **والعدُّ من ١
+     كان يكتب أشباحاً نسبيّةً لا يقابلها شيءٌ يُرسم** (سلالةُ بلاغ
+     خالد بعينها). أوّلُ حلقةِ كلِّ موسمٍ تُشتقّ من مجموع ما قبله،
+     كما في المتتبّع سواء. */
+  const absolute = isAbsoluteNumbering(tv);
+  const firstOf = new Map<number, number>();
+  {
+    let prevEps = 0;
+    for (const s of (tv.seasons ?? [])
+      .filter((x) => x.season_number >= 1)
+      .sort((a, b) => a.season_number - b.season_number)) {
+      firstOf.set(s.season_number, absolute ? prevEps + 1 : 1);
+      prevEps += s.episode_count ?? 0;
+    }
+  }
   const runtime = tv.episode_run_time?.[0] ?? null;
   const now = new Date().toISOString();
 
@@ -2815,7 +2833,9 @@ export async function markShowWatched(
   const rows: Record<string, unknown>[] = [];
   const added: { s: number; e: number }[] = [];
   for (const [season, count] of per) {
-    for (let ep = 1; ep <= count; ep++) {
+    const first = firstOf.get(season) ?? 1;
+    for (let i = 0; i < count; i++) {
+      const ep = first + i;
       if (have.has(`${season}-${ep}`)) continue;
       rows.push({
         user_id: user.id,
@@ -2834,6 +2854,23 @@ export async function markShowWatched(
       .upsert(rows, { onConflict: "user_id,show_tmdb_id,season_number,episode_number" });
     if (error) fail(error);
   }
+
+  /* 🆕 **وإحصاءُ المتابعة يُكتب هنا لا يُنتظر** (D-604): الرئيسيةُ
+     تحكم «انتهى» بـ`aired_episodes` على صفِّ المتابعة، **وصفٌّ وُلد
+     للتوّ (متابعةُ صحِّ بطاقة القائمة) قيمتُه فارغةٌ حتى تُفتح صفحةُ
+     العمل** — فكان المسلسلُ يُختم ولا تنقلب البطاقة. البياناتُ في
+     اليد أصلاً (شكلُ `cacheShowStats` نفسُه)، والفشلُ لا يُفشل الختم
+     — تحسينُ قراءةٍ لا شرطُه. */
+  await supabase
+    .from("follows")
+    .update({
+      total_episodes: tv.number_of_episodes ?? 0,
+      aired_episodes: airedEpisodeCount(tv),
+      next_air_date: tv.next_episode_to_air?.air_date ?? null,
+      stats_updated_at: now,
+    })
+    .match({ user_id: user.id, tmdb_id: tmdbId, media_type: "tv" });
+
   revalidatePath("/");
   revalidatePath("/library");
   revalidatePath(`/show/${tmdbId}`);
