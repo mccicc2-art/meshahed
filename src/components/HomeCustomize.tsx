@@ -12,8 +12,8 @@ import {
   STATS_PICK_MIN,
   STATS_PICK_MAX,
   sanitizeHomePrefs,
+  homeSectionMeta,
   type HomePrefs,
-  type HomeSection,
   type HeaderStatKey,
 } from "@/lib/homePrefs";
 import { type IconName } from "./Icon";
@@ -84,19 +84,10 @@ export function HomeCustomize({
     { key: "stats", label: t.custStatsShort, icon: "chart" },
   ];
 
-  const sectionMeta: Record<HomeSection, { icon: IconName; label: string }> = {
-    continue: { icon: "play", label: t.continueWatching },
-    week: { icon: "calendar", label: t.custWeekStrip },
-    towatch: { icon: "bookmark", label: t.libToWatch },
-    upcoming: { icon: "hourglass", label: t.libUpcoming },
-    recap: { icon: "book", label: t.recapTitle },
-    shows: { icon: "tv", label: t.myShows },
-    movies: { icon: "film", label: t.myMovies },
-    ratings: { icon: "star", label: t.panelRatings },
-    lists: { icon: "list", label: t.myLists },
-    trending: { icon: "trending", label: t.trendingWeek },
-    friends: { icon: "people", label: t.railFriendsNow },
-  };
+  /* ⚖️ 🆕 **السجلُّ خرج إلى `homeSectionMeta`** (D-595): جاء قارئُه
+     الثاني (ورقةُ الترتيب من عناوين الرئيسية) فحانت لحظةُ الاستخراج
+     (D-376) — نظيرُ `profileSectionMeta` حرفاً. */
+  const sectionMeta = homeSectionMeta(t);
 
   const statMeta: Record<HeaderStatKey, { icon: IconName; label: string }> = {
     shows: { icon: "tv", label: t.shortShows },

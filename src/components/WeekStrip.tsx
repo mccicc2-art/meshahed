@@ -38,11 +38,14 @@ export function WeekStrip({
   days,
   entries,
   locale,
+  action,
 }: {
   /** تواريخُ متتابعةٌ تبدأ من اليوم — أربعةَ عشرَ اليوم (D-491) */
   days: { date: string; weekday: string; dayNum: string }[];
   entries: WeekEntry[];
   locale: Locale;
+  /** 🆕 عنصرٌ في طرف العنوان — مقبضُ ترتيب أقسام الرئيسية (D-595) */
+  action?: React.ReactNode;
 }) {
   const t = getDict(locale);
   const byDay = new Map<string, WeekEntry[]>();
@@ -53,10 +56,13 @@ export function WeekStrip({
 
   return (
     <section>
-      <h2 className="flex items-center gap-2 text-22 font-bold mb-1">
-        <Icon name="calendar" size={18} className="text-muted" />
-        {t.weekTitle}
-      </h2>
+      <div className="flex items-center justify-between gap-3 mb-1">
+        <h2 className="flex items-center gap-2 text-22 font-bold">
+          <Icon name="calendar" size={18} className="text-muted" />
+          {t.weekTitle}
+        </h2>
+        {action}
+      </div>
       <p className="text-12 text-muted mb-3">{t.weekSub}</p>
 
       {/* الحشوةُ السفليّةُ للالتقاط: بلا `pb` يُقصّ ظلُّ الحدّ المضيء */}
