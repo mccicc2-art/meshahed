@@ -43,6 +43,7 @@ export function FilterIconButton({
   label,
   active = false,
   count = null,
+  dot = true,
   expanded,
   className = "",
 }: {
@@ -52,8 +53,15 @@ export function FilterIconButton({
   /** هل خلفه شيءٌ مفعَّل؟ — يضيء الحدّ ويرسم نقطة */
   active?: boolean;
   /** 🆕 عددُ ما هو مفعَّل، **منسَّقاً بلغة القارئ** — يحلّ محلَّ النقطة.
-      يغيب فتبقى النقطة (المكتبةُ والمجتمعُ والقوائم لا تعدّ محاورَها) */
+      يغيب فتبقى النقطة (المكتبةُ والقوائمُ لا تعدّان محاورَهما) */
   count?: string | null;
+  /** 🆕 ⚖️ **هل تُرسم نقطةُ الحالة حين لا عدّاد؟** (D-592، حكمُ أحمد
+      بلقطةٍ للزرّ في المجتمع: «وهذي النقطة لا تظهر في المجتمع») —
+      **تتمّةُ مسار D-492 → D-554 على الزرّ نفسِه**: سقط اللونُ، ثمّ
+      الرقمُ، والآن النقطةُ في المجتمع وحدَه. **والحالةُ لا تُمحى**:
+      `active` يُبقي الأيقونةَ بلون الواجهة لا الباهت، **والتفصيلُ في
+      رقائق الورقة حين تُفتح.** الافتراضيُّ `true` فلا مستدعٍ آخرَ يتحرّك. */
+  dot?: boolean;
   expanded?: boolean;
   className?: string;
 }) {
@@ -97,12 +105,12 @@ export function FilterIconButton({
           >
             {count}
           </span>
-        ) : (
+        ) : dot ? (
           <span
             aria-hidden
             className="absolute top-1 end-1 h-1.5 w-1.5 rounded-full bg-[color:var(--foreground)]"
           />
-        ))}
+        ) : null)}
     </button>
   );
 }
