@@ -12,6 +12,16 @@ import { tap } from "@/lib/haptics";
  *
  * ٤٥٠ مللي ثانية بلا حركةٍ تُطلق الإجراء وتبتلع النقرة التالية حتى لا
  * يفتح الرابط. التحرّك أكثر من ١٠ بكسل يُلغي — فالتمرير يبقى تمريراً.
+ *
+ * 🔴 🆕 **والسحبُ الأصليُّ للصورة ميّت** (D-607، بلاغُ أحمد بلقطة:
+ * «إذا ضغطت مطوّل وبعدها سحبت أبغى أختار شي من القائمة — أحصل الصورة
+ * تتحرّك معاي. خلّ الصور أبداً ما تتحرّك بحيث الشخص بعد الهولد يقدر
+ * ينزل ويختار»): iOS يرفع **نسخةً شبحيّةً من الصورة أو الرابط تتبع
+ * الإصبع** إذا تحرّك بعد الضغطة المطوّلة — سلوكُ السحب والإفلات
+ * الأصليُّ، **و`WebkitTouchCallout` تكتم القائمةَ لا السحب.** فالغلافُ
+ * يلغي `dragstart` (يفقع من الصورة والرابط إليه فنقطةٌ واحدةٌ تكفي)
+ * **ويطفئ `-webkit-user-drag` عليه وعلى صورِه وروابطِه** (الخاصيّةُ
+ * لا تُورَّث) — فالإصبعُ بعد الهولد ينزل إلى القائمة والملصقُ ساكن.
  */
 export function LongPressable({
   onLongPress,
@@ -32,8 +42,9 @@ export function LongPressable({
 
   return (
     <div
-      className="select-none"
+      className="select-none [-webkit-user-drag:none] [&_img]:[-webkit-user-drag:none] [&_a]:[-webkit-user-drag:none]"
       style={{ WebkitTouchCallout: "none" }}
+      onDragStart={(e) => e.preventDefault()}
       onContextMenu={(e) => e.preventDefault()}
       onPointerDown={(e) => {
         fired.current = false;
