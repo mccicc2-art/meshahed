@@ -4691,6 +4691,43 @@ export async function getPublicListsOf(userId: string, limit = 15): Promise<Publ
    الحادية والثلاثين**، وهو رقمٌ يبلغه مستخدمٌ نشطٌ في شهر. **والصفوفُ
    خفيفةٌ** (اسمٌ وعدٌّ وثلاثةُ ملصقات) **فالسقفُ الجديد حارسُ عقلٍ لا
    حدُّ عرض** — **والدَّينُ يُشطب لا يُنقل.** */
+/**
+ * 🆕 **محفوظاتُ صاحبِ ملفٍّ أزوره** (D-588، طلبُ أحمد: «اعرض الليستات
+ * الموجودة عنده كاملة — حتى الي معطيها قلب وماهي حقّته»).
+ *
+ * **وصفةُ `getSavedLists` نفسُها بقارئِ معرّفاتٍ آخر**: صفوفُ الربط
+ * محجوبةٌ بسياسة «صفوفي أنا»، **فتُقرأ من `profile_saved_lists`
+ * (الهجرة ١٣١) المحروسةِ بـ`can_view_profile`** — **والبطاقاتُ من
+ * الطريق القائم** (`user_lists` المعلنة + `shapeListCards`)، فلا
+ * نسخةَ ثانيةً من التشكيل (القاعدة ٦).
+ */
+export async function getSavedListsOf(userId: string): Promise<PublicListCard[]> {
+  try {
+    const supabase = await createClient();
+    const { data: saves, error } = await supabase.rpc("profile_saved_lists", {
+      p_user: userId,
+    });
+    if (error || !saves?.length) return [];
+    const rows = saves as { list_id: string; saved_at: string }[];
+
+    const { data: lists } = await supabase
+      .from("user_lists")
+      .select("id, user_id, name, kind, source_slug")
+      .in("id", rows.map((s) => s.list_id))
+      .eq("is_public", true);
+    if (!lists?.length) return [];
+
+    // ترتيب الحفظ لا ترتيب القوائم — عُرفُ `getSavedLists` حرفاً
+    const rank = new Map(rows.map((s, i) => [s.list_id, i]));
+    const sorted = [...lists].sort(
+      (a, b) => (rank.get(a.id) ?? 1e9) - (rank.get(b.id) ?? 1e9),
+    );
+    return await shapeListCards(sorted, true);
+  } catch {
+    return [];
+  }
+}
+
 export async function getSavedLists(limit = 500): Promise<PublicListCard[]> {
   try {
     const supabase = await createClient();
