@@ -70,7 +70,8 @@ export function HomeAvatarMenu({
         </span>
       </button>
 
-      <Dropdown open={open} onClose={() => setOpen(false)} align="start" className="min-w-44">
+      {/* 🆕 ضيّقةٌ بحكمه (D-625: «صغّر العرض فقط») — من مصدر العرض الواحد */}
+      <Dropdown open={open} onClose={() => setOpen(false)} align="start" narrow>
         <DropdownRow icon="person-check" label={t.profile} onClick={() => go("/profile")} />
         <DropdownRow
           icon="settings"
