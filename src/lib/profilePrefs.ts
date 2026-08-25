@@ -78,6 +78,19 @@ export interface ProfilePrefs {
   visits: boolean;
   /** ومن يراها — **يُطبَّق في صفحة الملفّ لا هنا** (D-465) */
   visitsWho: VisitAudience;
+  /**
+   * 🆕 **هل يرى زائرُك قسمَ «القوائم المحفوظة»؟** (D-594، حكمُ أحمد
+   * بلقطةٍ على القسم: «حتى هذي حطّ لها on off»).
+   *
+   * **رايةٌ هنا لا صفٌّ ولا عمود** — نفسُ حجّة `home_prefs.toWatch`
+   * (D-559): إخراجُ صفحةٍ يقرؤه الزائر، وهو نصُّ رأسِ هذا الملفّ.
+   * **وليست عضواً في `order`**: ذاك يرتّب أقسامَ النظرة العامّة،
+   * وهذا قسمٌ داخل تبويب «قوائم» — **مفتاحُه على القسم نفسِه**
+   * (نموذجُ D-559: البطاقةُ سطحُ التحكّم). **والإطفاءُ يُخفيه عن
+   * الزائر ويُبقيه لصاحبه برقاقة «متوقّفة»** — وإلّا لم يجد بابَ
+   * العودة.
+   */
+  savedLists: boolean;
   /** ترتيب الأقسام، والغائب عن القائمة مخفيّ */
   order: ProfileSection[];
   /** عرضُ الملصق — مضغوط/مريح/كبير (D-441) */
@@ -145,6 +158,8 @@ export const DEFAULT_PROFILE_PREFS: ProfilePrefs = {
   /* **والافتراضيُّ «الجميع»** — **وهو ما كانت تفعله الصفحةُ فعلاً قبل
      وجود القائمة**، فلا يتبدّل شيءٌ لمن لم يختر (D-152). */
   visitsWho: "everyone",
+  /** **والافتراضيُّ الظهور** — هو ما تفعله الصفحةُ منذ D-588 (D-152) */
+  savedLists: true,
   // ما تعرضه الصفحة اليوم حرفياً — فمن لم يخصّص لا يرى شيئاً تغيّر
   order: ["shows", "movies", "lists", "ratings"],
   density: "comfortable",
@@ -167,7 +182,7 @@ export function sanitizeProfilePrefs(raw: unknown): ProfilePrefs {
   if (!raw || typeof raw !== "object") return d;
   const o = raw as Record<string, unknown>;
 
-  const bool = (k: "stats" | "level" | "visits") =>
+  const bool = (k: "stats" | "level" | "visits" | "savedLists") =>
     typeof o[k] === "boolean" ? (o[k] as boolean) : d[k];
 
   let order: ProfileSection[] = d.order;
@@ -191,6 +206,7 @@ export function sanitizeProfilePrefs(raw: unknown): ProfilePrefs {
     level: bool("level"),
     visits: bool("visits"),
     visitsWho: who,
+    savedLists: bool("savedLists"),
     order,
     cards: sanitizeCardCount(o.cards),
     density: sanitizeDensity(o.density),

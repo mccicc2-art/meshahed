@@ -2243,6 +2243,32 @@ export async function saveProfileSectionOrder(section: string, keys: string[]) {
 }
 
 /**
+ * 🆕 **رايةُ قسم «القوائم المحفوظة» في ملفّك** (D-594، حكمُ أحمد:
+ * «حتى هذي حطّ لها on off») — **قراءةٌ فدمجٌ فكتابة** كأختها أعلاه
+ * حرفاً: العمودُ jsonb واحدٌ يحمل تفضيلاتٍ أخرى، **وكتابةُ المفتاح
+ * وحدَه كانت ستمحو أخوتَه.**
+ */
+export async function setProfileSavedLists(on: boolean) {
+  const { supabase, user } = await requireUser("profile", 30, 60_000);
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("profile_prefs")
+    .eq("id", user.id)
+    .maybeSingle();
+  if (error) fail(error);
+
+  const prefs = sanitizeProfilePrefs(data?.profile_prefs);
+  prefs.savedLists = on === true;
+
+  const { error: writeError } = await supabase
+    .from("profiles")
+    .update({ profile_prefs: prefs })
+    .eq("id", user.id);
+  if (writeError) fail(writeError);
+}
+
+/**
  * غلافُ القائمة — خلفيّةُ عملٍ من داخلها (D-208).
  *
  * **ولماذا لا تُعيد استخدام `setTitleArt`:** تلك تكتب في `title_art`
