@@ -9,9 +9,7 @@ import {
   PROFILE_SECTIONS,
   profileSectionMeta,
   sanitizeProfilePrefs,
-  VISIT_AUDIENCES,
   type ProfilePrefs,
-  type VisitAudience,
 } from "@/lib/profilePrefs";
 import { Alert } from "./ui/Alert";
 import { CardCountRow, PosterSizeRow, ToggleRow } from "./ui/SectionOrderList";
@@ -112,11 +110,6 @@ export function ProfileCustomize({
     });
   }
 
-  const whoLabel: Record<VisitAudience, string> = {
-    everyone: t.custWhoEveryone,
-    followers: t.custWhoFollowers,
-    me: t.custWhoMe,
-  };
   const posterLabel: Record<Density, string> = {
     compact: t.custPosterS,
     comfortable: t.custPosterM,
@@ -145,7 +138,6 @@ export function ProfileCustomize({
         }}
         showStats={prefs.stats}
         showLevel={prefs.level}
-        showVisits={prefs.visits}
         rows={prefs.order.map((k) => ({ key: k, ...sectionMeta[k] }))}
         density={prefs.density}
       />
@@ -164,38 +156,12 @@ export function ProfileCustomize({
           checked={prefs.level}
           onChange={() => set({ ...prefs, level: !prefs.level })}
         />
-        <ToggleRow
-          icon="people"
-          label={t.custVisitsShort}
-          checked={prefs.visits}
-          onChange={() => set({ ...prefs, visits: !prefs.visits })}
-          trailing={
-            /* 🆕 **ومن يراه** (D-465) — **قائمةٌ أصليّةٌ لا منسدلةٌ ثانية**
-               (القاعدة ٦: منسدلةٌ واحدة، وهذه حقلُ نموذجٍ لا قائمةُ أفعال).
-               **وتُعطَّل حين يكون العدّادُ مطفأً**: خيارُ جمهورٍ لرقمٍ لا
-               يظهر لأحدٍ وعدٌ بفعلٍ لا يقع (D-217). */
-            <span className="relative shrink-0">
-              <select
-                value={prefs.visitsWho}
-                disabled={!prefs.visits}
-                aria-label={t.custWhoAria}
-                onChange={(e) =>
-                  set({ ...prefs, visitsWho: e.target.value as VisitAudience })
-                }
-                className="appearance-none rounded-full border border-border bg-surface-2 ps-3 pe-7 h-8 text-12 font-medium outline-none focus:border-accent disabled:opacity-40 transition"
-              >
-                {VISIT_AUDIENCES.map((k) => (
-                  <option key={k} value={k}>
-                    {whoLabel[k]}
-                  </option>
-                ))}
-              </select>
-              <span className="pointer-events-none absolute top-1/2 -translate-y-1/2 end-2 text-muted text-[10px]">
-                ▾
-              </span>
-            </span>
-          }
-        />
+        {/* ⚖️ 🆕 **ومفتاحُ الزيارات وجمهورُه سقطا** (D-584، حكمُ أحمد:
+            «احذف visit، غير مهمّة») — **العدّادُ لم يعد يُرسم في
+            الصفحة، ومفتاحٌ يضبط ما لا يظهر وعدٌ بفعلٍ لا يقع** (D-217،
+            وهي حجّةُ تعطيل الجمهور نفسِها وقد بلغت غايتَها). **والحقلان
+            باقيان في `profile_prefs`** فلا ينكسر مخزونٌ قديم، **وعودةُ
+            الميزة يوماً تعيد الصفوفَ كما كانت.** */}
       </SettingsGroup>
 
       {/* ===== ٢) الأقسام — **السجلُّ خرج إلى ورقة** (D-555) ===== */}

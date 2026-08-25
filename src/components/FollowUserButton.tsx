@@ -29,6 +29,7 @@ export function FollowUserButton({
   initialFollowing,
   initialRequested = false,
   variant = "button",
+  size = "md",
 }: {
   targetId: string;
   locale: Locale;
@@ -44,6 +45,12 @@ export function FollowUserButton({
    * من ثلاث يكذب على من ضغطه.**
    */
   variant?: "button" | "corner";
+  /**
+   * 🆕 **مقاسُ الزرّ** (D-584، بلاغُ أحمد: «كلمة فولوينغ جداً كبيرة،
+   * خلّها صغيرة ومكانها على نفس سطر الاسم») — **معامِلٌ لا مكوّنٌ
+   * ثانٍ**، والمقاسان من سلّم `buttonClass` نفسِه.
+   */
+  size?: "sm" | "md";
 }) {
   const t = getDict(locale);
   const router = useRouter();
@@ -132,12 +139,16 @@ export function FollowUserButton({
 
      ⚠️ **و«طلبتَ المتابعة» يبقى سطحاً رماديّاً** — **حالةٌ معلّقةٌ ليست
      مختارةً**، **ولونٌ يعِد بما لم يقع يكذب** (D-217). */
-  const chosen = state === "following";
+  /* ⚖️ 🆕 **وصحٌّ واحدٌ لا اثنان** (D-584، بلاغُ أحمد: «ليه فيها ٢ صح؟!
+     شيل الصح داخل الدائرة»): **الكلمةُ تحمل صحَّها أصلاً** («✓ تتابعه» —
+     نصُّ القاموس منذ D-561)، **وأيقونةُ `check` المدوَّرة بجانبها كانت
+     تقول الشيءَ نفسَه مرّتين** — والعلامةُ المكرّرة ضجيجٌ لا توكيد. */
   return (
     <button
       disabled={pending}
       onClick={act}
       className={buttonClass({
+        size,
         variant: state === "requested" ? "surface" : "primary",
         className:
           state === "requested"
@@ -145,7 +156,6 @@ export function FollowUserButton({
             : "",
       })}
     >
-      {chosen && <Icon name="check" size={15} strokeWidth={3} />}
       {label}
     </button>
   );
