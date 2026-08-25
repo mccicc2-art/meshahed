@@ -8,6 +8,7 @@ import { LanguageRow } from "@/components/settings/LanguageRow";
 import { ThemeSection } from "@/components/settings/ThemeSection";
 import { FontSizeSection } from "@/components/settings/FontSizeSection";
 import { FONT_UI_COOKIE, FONT_CONTENT_COOKIE, sanitizeFontSize } from "@/lib/fontPrefs";
+import { isPlus } from "@/lib/plan";
 
 /**
  * المظهرُ واللغة — **الثيمُ ولغةُ الواجهة وحجمُ الخطّ** (D-462).
@@ -48,6 +49,8 @@ export default async function Page() {
         <ThemeSection
           locale={locale}
           initialTheme={p?.theme ?? "amber"}
+          /* 🆕 D-633 — والحكمُ من `lib/plan.ts` وحدَه، لا شرطَ هنا */
+          plus={isPlus(p)}
           carry={{
             nickname: p?.nickname ?? "",
             bio: p?.bio ?? "",
