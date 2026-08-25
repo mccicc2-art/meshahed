@@ -320,12 +320,17 @@ export default async function PublicProfilePage({
      الجلسة لا صاحبَ الصفحة**، **فبابٌ يفتح إحصائياتي في صفحةِ غيري
      يكذب** (D-217). **فهو لي وحدي، ولزائرِ ملفّي رقمُ تقييماتِه
      مكانَه** — **رقمٌ لا بابَ له في صفحته.** */
+  /* ⚖️ 🆕 **والبطاقةُ صارت أربعَ خاناتٍ للجميع** (D-601، حكمُه بلقطة:
+     «ليه ما فيه كامل الإحصائيات؟»): أفلامٌ · مسلسلاتٌ · حلقاتٌ ·
+     تقييماتٌ — **نقضٌ جزئيٌّ لحجّة D-561** («الرقمُ مرّتين لا يقول
+     ضعفَه») بأمر صاحبها: رقمُ التقييمات يعود هنا وعلى تبويبه معاً.
+     **وبابُ «الإحصائيات الكاملة» صار سطرَه لصاحب الصفحة** — `/stats`
+     تقرأ صاحبَ الجلسة، فبابُها في صفحةِ غيري يكذب (D-217). */
   const headerStats = [
     { key: "movies", icon: "film" as const, value: movieFollows.length, label: t.shortMovies },
     { key: "shows", icon: "tv" as const, value: tvFollows.length, label: t.shortShows },
-    ...(isMe
-      ? []
-      : [{ key: "ratings", icon: "star" as const, value: ratings.length, label: t.panelRatings }]),
+    { key: "episodes", icon: "play" as const, value: watched.episodes, label: t.statsWatchedEpisodes },
+    { key: "ratings", icon: "star" as const, value: ratings.length, label: t.panelRatings },
   ];
 
   /* ===== ترتيبان من نفس الصفوف — بلا نداءٍ ثانٍ (D-438) =====
@@ -782,8 +787,15 @@ export default async function PublicProfilePage({
                 @{profile.username}
               </p>
             )}
+            {/* 🆕 **و`dir="auto"` على النبذة** (D-601، حكمُه: «البايو
+                خلّه يبدأ من يمين RTL»): نبذةٌ عربيّةٌ في واجهةٍ
+                إنجليزيّةٍ كانت تبدأ من اليسار — **والاتّجاهُ يتبع
+                الحروفَ لا لغةَ الواجهة** (عُرفُ `MediaTitle` في D-544). */}
             {bioText && (
-              <p className="hero-halo text-[12.5px] text-muted leading-snug mt-1 line-clamp-2 max-w-[46ch]">
+              <p
+                className="hero-halo text-[12.5px] text-muted leading-snug mt-1 line-clamp-2 max-w-[46ch]"
+                dir="auto"
+              >
                 {bioText}
               </p>
             )}
@@ -834,7 +846,12 @@ export default async function PublicProfilePage({
         <div className="relative z-10 mt-2.5 flex items-start gap-3 text-14 leading-tight">
           {/* **واللقبُ يتبع النبذةَ في الإخفاء**: من أخفى اسمَه أخفى
               سطرَه (نفسُ حارس `bioText`) — **ونصٌّ كتبه بيده يكشفه.** */}
-          <div className="w-20 shrink-0">
+          {/* 🆕 **واللقبُ يتوسّط عمودَ الصورة ويعلو درجةً** (D-601،
+              حكمُه: «اللقب خلّه يتوسّط الصورة من تحت وارفعه فوق شوي —
+              لا يكون في نفس سطر الفولورز»): `w-20` هي عرضُ الصورة
+              فالتوسيطُ فيها توسيطٌ تحتها، **و`-mt-1` درجتُه الخفيفة**
+              فيرتفع رأسُه عن خطِّ العدّادَين بلا كسرِ العمودين. */}
+          <div className="w-20 shrink-0 -mt-1 text-center">
             {metaTitle && (
               <span className="block text-muted leading-snug break-words">{metaTitle}</span>
             )}
@@ -888,19 +905,22 @@ export default async function PublicProfilePage({
 
             ⚠️ **والخانةُ الثالثةُ بابٌ لصاحبها ورقمٌ لزائره** — **وهي
             رابطٌ حقيقيٌّ لا `div` يُضغط** (D-217). */}
+        {/* ⚖️ 🆕 **والإطارُ سقط والأيقوناتُ كبرت** (D-601، حكمُه:
+            «كبّر الأيقونات وخلّها بدون إطار») — **وهو علاجُ D-550
+            نفسُه على بطاقة الرئيسية**: شبكةٌ عاريةٌ بلا حدٍّ ولا سطحٍ
+            ولا نصفِ قطر، **والفاصلُ الداخليُّ وحدَه يبقى** — فوصفةُ
+            بطاقة الأرقام صارت واحدةً في الصفحتين (القاعدة ٦). والخانةُ
+            صارت عموداً (أيقونةٌ فوق الرقم) — **أربعُ خاناتٍ أفقيّةٌ
+            بأيقونةٍ جانبيّةٍ لا تسعها شاشةُ ٣٩٠.** */}
         {canView && prefs.stats && (
-          <div className="relative z-10 mt-3 rounded-2xl border border-border bg-surface overflow-hidden">
-            <div className="grid grid-cols-3">
+          <div className="relative z-10 mt-3">
+            <div className="grid grid-cols-4">
               {headerStats.map((c, i) => (
                 <div
                   key={c.key}
-                  className="relative flex items-center justify-center gap-2 px-2 py-2.5"
+                  className="relative flex flex-col items-center justify-center gap-1.5 px-2 py-2.5"
                 >
-                  {/* **والخطُّ بين خانتين لا بعد آخرِها**: خانةُ
-                      «الإحصائيات الكاملة» تلي الأخيرةَ لصاحب الصفحة
-                      وحدَه، **فالشرطُ يعرف الحالتين** — **وخطٌّ على
-                      حافّة البطاقة يُقرأ حدّاً مزدوجاً.** */}
-                  {(i < headerStats.length - 1 || isMe) && (
+                  {i < headerStats.length - 1 && (
                     <span
                       className="absolute inset-y-2 end-0 w-px bg-[color:var(--divider)]"
                       aria-hidden
@@ -908,11 +928,11 @@ export default async function PublicProfilePage({
                   )}
                   <Icon
                     name={c.icon}
-                    size={20}
+                    size={24}
                     style={{ color: "var(--accent)" }}
                     className="shrink-0"
                   />
-                  <span className="min-w-0">
+                  <span className="min-w-0 text-center">
                     <span className="block text-15 font-bold leading-none tabular-nums">
                       {c.value}
                     </span>
@@ -922,20 +942,22 @@ export default async function PublicProfilePage({
                   </span>
                 </div>
               ))}
-              {isMe && (
-                <Link
-                  href="/stats"
-                  className="flex items-center justify-center gap-1 px-2 py-2.5 text-14 font-semibold text-muted hover:text-accent transition"
-                >
-                  <span className="truncate">{t.profileFullStats}</span>
-                  <Icon
-                    name="chevron-down"
-                    size={16}
-                    className="shrink-0 -rotate-90 rtl:rotate-90"
-                  />
-                </Link>
-              )}
             </div>
+            {/* **بابُ صاحب الصفحة سطرُه** — `/stats` تقرأ صاحبَ الجلسة
+                فلا يُرسم في صفحةِ غيره (D-217) */}
+            {isMe && (
+              <Link
+                href="/stats"
+                className="mt-1 flex items-center justify-center gap-1 py-1.5 text-13 font-semibold text-muted hover:text-accent transition"
+              >
+                <span className="truncate">{t.profileFullStats}</span>
+                <Icon
+                  name="chevron-down"
+                  size={15}
+                  className="shrink-0 -rotate-90 rtl:rotate-90"
+                />
+              </Link>
+            )}
           </div>
         )}
       </section>
