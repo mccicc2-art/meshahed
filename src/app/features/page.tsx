@@ -13,8 +13,8 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: ar ? "المميزات" : "Features",
     description: ar
-      ? "كل ما يقدر عليه Loopz في صفحة واحدة: تتبّع الحلقات والأفلام والأنمي، اليوميات والإحصاءات، القوائم والجوائز، الأصدقاء والرسائل — وكلّه مجاني."
-      : "Everything Loopz can do, in one honest page: episode, movie and anime tracking, diary and stats, lists and awards, friends and messages — all free.",
+      ? "كل ما يقدر عليه Loopz في صفحة واحدة: تتبّع الحلقات والأفلام والأنمي، اليوميات والإحصاءات، القوائم والجوائز، الأصدقاء والرسائل — مجاناً، وما يخصّ Loopz+ موسومٌ بجانبه."
+      : "Everything Loopz can do, in one honest page: episode, movie and anime tracking, diary and stats, lists and awards, friends and messages — free, with anything Loopz+ marked beside it.",
     keywords: seoKeywords(locale),
     alternates: { canonical: "/features" },
     openGraph: { type: "article", url: "/features" },
@@ -363,9 +363,13 @@ export default async function FeaturesPage() {
 
       <h1 className="text-2xl font-bold mt-3">{ar ? "مميزات Loopz" : "Loopz features"}</h1>
       <p className="text-sm text-muted mt-1.5 leading-relaxed">
+        {/* ⚖️ 🆕 **«كلُّ شيءٍ مجّانيٌّ اليوم» سطرٌ كذب بعد D-633** — والصفحةُ
+            اسمُها «صادقة»: **صفحةٌ تعِد بما نقضته وسومُها أسوأُ من صفحةٍ
+            بلا مقدّمة.** فصارت المقدّمةُ تشرح الوسومَ الثلاثةَ لا تَعِد
+            بمجّانيّةٍ شاملة. */}
         {ar
-          ? "كل ما يقدر عليه التطبيق، في صفحة واحدة صادقة — وكل شيء فيها مجاني اليوم. وفي آخرها ما هو قيد العمل، موسوماً بـ«قريباً» كي لا يختلط الوعد بالمتاح."
-          : "Everything the app can do, on one honest page — and all of it is free today. At the foot you will find what is still being built, marked “Soon”, so a promise never reads as a feature."}
+          ? "كل ما يقدر عليه التطبيق، في صفحة واحدة صادقة — وكلُّ بندٍ موسومٌ بما هو عليه: «مجاني» للجميع، و«Loopz+» لمن اشترك، و«قريباً» لما هو قيد العمل. كي لا يختلط الوعد بالمتاح."
+          : "Everything the app can do, on one honest page — and every line is marked for what it is: “Free” for everyone, “Loopz+” for subscribers, “Soon” for what is still being built, so a promise never reads as a feature."}
       </p>
 
       <div className="mt-8 space-y-9">
