@@ -33,6 +33,7 @@ import { CastRail } from "@/components/CastRail";
 import { SectionTitle } from "@/components/Icon";
 import { Trailer } from "@/components/Trailer";
 import { WatchChip } from "@/components/WatchChip";
+import { bestSearchTitle } from "@/lib/providerLinks";
 import { TitleActions } from "@/components/TitleActions";
 import { TitlePulse } from "@/components/TitlePulse";
 import { DetailTopBar } from "@/components/DetailTopBar";
@@ -312,7 +313,7 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
                       locale={locale}
                       links={providerLinks}
                       query={{
-                        q: `${movie.original_title || movie.title} ${(movie.release_date ?? "").slice(0, 4)}`.trim(),
+                        q: `${bestSearchTitle(movie.original_title, movie.title)} ${(movie.release_date ?? "").slice(0, 4)}`.trim(),
                         qAr: /[؀-ۿ]/.test(movie.title) ? movie.title : null,
                       }}
                       tmdbId={movieId}
