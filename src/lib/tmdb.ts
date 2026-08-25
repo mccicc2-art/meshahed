@@ -71,6 +71,16 @@ async function watchRegion(): Promise<string> {
 
 const TMDB_TIMEOUT_MS = 5000;
 const TMDB_RETRY_TIMEOUT_MS = 8000;
+/* 🆕 **وسقفُ الرفّ أقصر، بلا محاولةٍ ثانية** (D-580، بموافقة أحمد على
+   توصية تقرير D-579): **مهلةُ الانتظار تُشتقّ من قيمة ما تنتظره.**
+   رفوفُ الرئيسية و«اكتشف» اختياريّةٌ بتعريفها — `railGuard` يُسقط
+   الناقصَ و«آخرُ جوابٍ صالح» أدناه يسدّ الفراغ — **فانتظارُ ٥ ثوانٍ ثم
+   محاولةٌ ثانيةٌ بـ٨ (أسوأُ حالةٍ ١٣٫٥ث مع التراجع) يشتري ما نحن
+   مستعدّون لإسقاطه مجّاناً.** وقد رُصدت حيّاً صفحةٌ قشرتُها وصلت في
+   ٢٤٧م.ث وبثُّها توقّف ٥٫٣ث خلف نداءِ رفٍّ واحدٍ يعيد المحاولة.
+   **وصفحةُ العمل تبقى على ٥٠٠٠/٨٠٠٠** — بياناتُها هي الصفحة،
+   والانتظارُ هناك أصدقُ من صفحةٍ فارغة. */
+const TMDB_RAIL_TIMEOUT_MS = 2000;
 const LAST_GOOD_LIMIT = 400;
 const lastGood = new Map<string, unknown>();
 const inFlight = new Map<string, Promise<unknown>>();
@@ -90,7 +100,12 @@ function retryable(status: number | null): boolean {
   return status === null || status === 429 || status >= 500;
 }
 
-async function tmdb<T>(path: string, params: Record<string, string> = {}): Promise<T> {
+async function tmdb<T>(
+  path: string,
+  params: Record<string, string> = {},
+  /** نداءُ رفٍّ اختياريّ؟ سقفٌ قصيرٌ بلا محاولةٍ ثانية (الحجّة عند الثوابت) */
+  rail = false,
+): Promise<T> {
   const key = process.env.TMDB_API_KEY;
   if (!key) throw new Error("TMDB_API_KEY is not set");
   const url = new URL(`${BASE}${path}`);
@@ -105,14 +120,19 @@ async function tmdb<T>(path: string, params: Record<string, string> = {}): Promi
 
   const run = (async (): Promise<T> => {
     let lastError: unknown = null;
-    for (let attempt = 0; attempt < 2; attempt++) {
+    const attempts = rail ? 1 : 2;
+    for (let attempt = 0; attempt < attempts; attempt++) {
       let status: number | null = null;
       try {
         const res = await fetch(href, {
           // Cache TMDB responses for an hour; content changes slowly.
           next: { revalidate: 3600 },
           signal: AbortSignal.timeout(
-            attempt === 0 ? TMDB_TIMEOUT_MS : TMDB_RETRY_TIMEOUT_MS,
+            rail
+              ? TMDB_RAIL_TIMEOUT_MS
+              : attempt === 0
+                ? TMDB_TIMEOUT_MS
+                : TMDB_RETRY_TIMEOUT_MS,
           ),
         });
         status = res.status;
@@ -128,7 +148,7 @@ async function tmdb<T>(path: string, params: Record<string, string> = {}): Promi
         // خطأٌ لا تنفع معه الإعادة (4xx) يخرج فوراً
         if (status !== null && !retryable(status)) throw e;
       }
-      if (attempt === 0)
+      if (attempt < attempts - 1)
         await new Promise((r) => setTimeout(r, 250 + Math.random() * 250));
     }
     const stale = lastGood.get(href);
@@ -289,6 +309,13 @@ export interface SeasonDetails {
  * من يكتب «Breaking Bad» في واجهةٍ عربية يجب أن يجده وإن عُرض باسمٍ
  * عربي، والعكس.
  */
+/* نداءُ رفٍّ — نفسُ القمع، بسياسة المهلة القصيرة. ⚠️ **ودمجُ الطلبات
+   المتزامنة يتقاسم سياسةَ الواصل أوّلاً**: رفٌّ وصفحةُ عملٍ يسألان
+   السؤالَ نفسَه في اللحظة نفسِها يأخذان جوابَ من سبق — مقبولٌ لأن
+   الجواب واحد، والفارقُ سقفُ انتظارٍ لا صحّةُ بيانات. */
+const railTmdb = <T,>(path: string, params: Record<string, string> = {}) =>
+  tmdb<T>(path, params, true);
+
 function matchScore(names: string[], term: string) {
   let best = 0;
   for (const n of names) {
@@ -335,7 +362,7 @@ export async function searchMulti(query: string): Promise<SearchResult[]> {
 }
 
 export async function trending(): Promise<SearchResult[]> {
-  const data = await tmdb<{ results: SearchResult[] }>("/trending/all/week");
+  const data = await railTmdb<{ results: SearchResult[] }>("/trending/all/week");
   return data.results.filter(
     (r) => (r.media_type === "tv" || r.media_type === "movie") && r.poster_path,
   );
@@ -381,7 +408,7 @@ async function fillSoon(
 }
 
 export async function upcomingMovies(): Promise<SearchResult[]> {
-  const data = await tmdb<{ results: SearchResult[] }>("/movie/upcoming", {
+  const data = await railTmdb<{ results: SearchResult[] }>("/movie/upcoming", {
     region: await watchRegion(),
   });
   return fillSoon(
@@ -405,7 +432,7 @@ export async function nowPlayingMovies(
   const chain = regions ?? regionChain(await watchRegion());
   for (const region of chain) {
     try {
-      const data = await tmdb<{ results: SearchResult[] }>("/movie/now_playing", { region });
+      const data = await railTmdb<{ results: SearchResult[] }>("/movie/now_playing", { region });
       const rows = (data.results ?? [])
         .filter((r) => r.poster_path)
         .map((r) => ({ ...r, media_type: "movie" as const }));
@@ -418,7 +445,7 @@ export async function nowPlayingMovies(
 }
 
 export async function airingTv(): Promise<SearchResult[]> {
-  const data = await tmdb<{ results: SearchResult[] }>("/tv/on_the_air");
+  const data = await railTmdb<{ results: SearchResult[] }>("/tv/on_the_air");
   return fillSoon(
     "tv",
     data.results
@@ -436,7 +463,7 @@ export async function discoverByGenres(
   /* ثلاث صفحات (~٦٠) — الرافد العريض لبِركة الاقتراحات (D-064) */
   const fetched = await Promise.all(
     [1, 2, 3].map((page) =>
-      tmdb<{ results: SearchResult[] }>(`/discover/${mediaType}`, {
+      railTmdb<{ results: SearchResult[] }>(`/discover/${mediaType}`, {
         with_genres: genreIds.join("|"),
         sort_by: "popularity.desc",
         include_adult: "false",
@@ -466,7 +493,7 @@ export async function recommendationsFor(
 ): Promise<SearchResult[]> {
   const fetched = await Promise.all(
     Array.from({ length: Math.min(pages, 3) }, (_, i) =>
-      tmdb<{ results: SearchResult[] }>(`/${mediaType}/${id}/recommendations`, {
+      railTmdb<{ results: SearchResult[] }>(`/${mediaType}/${id}/recommendations`, {
         page: String(i + 1),
       }).catch(() => ({ results: [] as SearchResult[] })),
     ),
@@ -807,7 +834,7 @@ export async function relatedTitles(
 
   for (const path of ["recommendations", "similar"] as const) {
     try {
-      const data = await tmdb<{ results: SearchResult[] }>(`/${mediaType}/${id}/${path}`);
+      const data = await railTmdb<{ results: SearchResult[] }>(`/${mediaType}/${id}/${path}`);
       for (const r of data.results ?? []) {
         if (!r.poster_path || seen.has(r.id)) continue;
         seen.add(r.id);
@@ -847,7 +874,7 @@ export async function relatedTitles(
         page: "1",
       };
       if (genres.size) params.with_genres = [...genres].slice(0, 3).join(",");
-      const data = await tmdb<{ results: SearchResult[] }>(`/discover/${mediaType}`, params);
+      const data = await railTmdb<{ results: SearchResult[] }>(`/discover/${mediaType}`, params);
       for (const r of data.results ?? []) {
         if (!r.poster_path || seen.has(r.id)) continue;
         seen.add(r.id);
@@ -1139,7 +1166,7 @@ export async function topTenAnimeThisWeek(
       مرتّباً بالشعبية — نفس دلالة نافذتَي الأفلام والمسلسلات */
   range?: { from: string; to: string },
 ): Promise<SearchResult[]> {
-  const data = await tmdb<{ results: SearchResult[] }>("/discover/tv", {
+  const data = await railTmdb<{ results: SearchResult[] }>("/discover/tv", {
     with_keywords: ANIME_KEYWORD,
     sort_by: "popularity.desc",
     include_adult: "false",
@@ -1184,7 +1211,7 @@ export async function topTenAnimeMoviesThisWeek(
   limit = 10,
   range?: { from: string; to: string },
 ): Promise<SearchResult[]> {
-  const data = await tmdb<{ results: SearchResult[] }>("/discover/movie", {
+  const data = await railTmdb<{ results: SearchResult[] }>("/discover/movie", {
     with_keywords: ANIME_KEYWORD,
     sort_by: "popularity.desc",
     include_adult: "false",
@@ -1216,7 +1243,7 @@ export async function topTenThisWeek(
   const pages = limit > 20 ? [1, 2] : [1];
   const got = await Promise.all(
     pages.map((page) =>
-      tmdb<{ results: SearchResult[] }>(`/trending/${mediaType}/week`, {
+      railTmdb<{ results: SearchResult[] }>(`/trending/${mediaType}/week`, {
         page: String(page),
       }).catch(() => ({ results: [] as SearchResult[] })),
     ),
@@ -1325,7 +1352,7 @@ export async function popularWellKnown(
        والدرجاتُ تبقى سلّماً متتالياً: نزولُها قرارٌ لا يوازى. */
     const fetched = await Promise.all(
       Array.from({ length: Math.max(1, pages) }, (_, i) => i + 1).map((page) =>
-        tmdb<{ results: SearchResult[] }>(`/discover/${mediaType}`, {
+        railTmdb<{ results: SearchResult[] }>(`/discover/${mediaType}`, {
           ...discoverParams(mediaType, f),
           sort_by: "popularity.desc",
           "vote_count.gte": String(rung.votes),
@@ -1514,7 +1541,7 @@ export async function topTenGenreThisWeek(
 
   let picked: SearchResult[] = [];
   try {
-    const data = await tmdb<{ results: SearchResult[] }>(`/trending/${mediaType}/week`);
+    const data = await railTmdb<{ results: SearchResult[] }>(`/trending/${mediaType}/week`);
     picked = (data.results ?? [])
       .filter((r) => r.poster_path && r.vote_average > 0)
       .filter((r) => (r.genre_ids ?? []).some((id) => genreIds.includes(id)))
@@ -1526,7 +1553,7 @@ export async function topTenGenreThisWeek(
   if (picked.length >= limit) return picked.slice(0, limit);
 
   try {
-    const data = await tmdb<{ results: SearchResult[] }>(`/discover/${mediaType}`, {
+    const data = await railTmdb<{ results: SearchResult[] }>(`/discover/${mediaType}`, {
       with_genres: genreIds.join("|"),
       sort_by: "popularity.desc",
       include_adult: "false",
@@ -1570,7 +1597,7 @@ export async function upcomingByGenre(
   }
 
   try {
-    const data = await tmdb<{ results: SearchResult[] }>(`/discover/${mediaType}`, params);
+    const data = await railTmdb<{ results: SearchResult[] }>(`/discover/${mediaType}`, params);
     return (data.results ?? [])
       .filter((r) => r.poster_path)
       .map((r) => ({ ...r, media_type: mediaType }));
@@ -1641,7 +1668,7 @@ export interface DiscoverFilter {
  *
  * **يُحلّ عند الطلب ولا يُكتب في الشيفرة:** معرّفات كلمات TMDB لا تُنشر
  * في وثيقةٍ، وتخمينُ رقمٍ يعني صفّاً فارغاً بلا رسالة خطأ. والنداء مخبّأ
- * ساعةً في `tmdb()` كسائر النداءات، فثمنُه نداءٌ واحد لكل وسمٍ في الساعة.
+ * ساعةً في `railTmdb()` كسائر النداءات، فثمنُه نداءٌ واحد لكل وسمٍ في الساعة.
  *
  * **والمطابقة الحرفية أوّلاً:** `/search/keyword?query=space` يعيد
  * «space opera» و«space marine» قبل «space» أحياناً — والأوّلُ الأعمى
@@ -1649,7 +1676,7 @@ export interface DiscoverFilter {
  */
 export async function keywordId(q: string): Promise<string | null> {
   try {
-    const data = await tmdb<{ results?: { id: number; name: string }[] }>(
+    const data = await railTmdb<{ results?: { id: number; name: string }[] }>(
       "/search/keyword",
       { query: q },
     );
@@ -1676,7 +1703,7 @@ export async function keywordId(q: string): Promise<string | null> {
  */
 export async function companyId(name: string): Promise<string | null> {
   try {
-    const data = await tmdb<{ results?: { id: number; name: string }[] }>(
+    const data = await railTmdb<{ results?: { id: number; name: string }[] }>(
       "/search/company",
       { query: name },
     );
@@ -1726,7 +1753,7 @@ export async function listWatchProviders(
 ): Promise<ProviderOption[]> {
   try {
     const region = await watchRegion();
-    const data = await tmdb<{ results?: Provider[] }>(`/watch/providers/${mediaType}`, {
+    const data = await railTmdb<{ results?: Provider[] }>(`/watch/providers/${mediaType}`, {
       watch_region: region,
     });
     const rank = (p: Provider) =>
@@ -1801,7 +1828,7 @@ export async function topByFilter(
     try {
       const got = await Promise.all(
         pages.map((page) =>
-          tmdb<{ results: SearchResult[] }>(`/discover/${mediaType}`, {
+          railTmdb<{ results: SearchResult[] }>(`/discover/${mediaType}`, {
             ...discoverParams(mediaType, f),
             sort_by: sort,
             "vote_count.gte": String(floor),
@@ -1842,7 +1869,7 @@ export async function topByFilter(
  *
  * الأفلام والمسلسلات من قوائم TMDB الرسمية `top_rated` (عتبات أصواتها
  * مبنية فيها)، والأنمي — لا top_rated له — من `/discover` بمفتاح الأنمي
- * فوق عتبة أصوات. الصفحات متوازية ومخبّأة ساعةً في طبقة tmdb().
+ * فوق عتبة أصوات. الصفحات متوازية ومخبّأة ساعةً في طبقة railTmdb().
  */
 export async function topRatedRows(
   media: "movie" | "tv" | "anime" | "anime-movie",
@@ -2009,7 +2036,7 @@ export async function worksByPeople(personIds: number[], limit = 20): Promise<Se
   if (!personIds.length) return [];
   const today = new Date().toISOString().slice(0, 10);
   try {
-    const data = await tmdb<{ results: SearchResult[] }>("/discover/movie", {
+    const data = await railTmdb<{ results: SearchResult[] }>("/discover/movie", {
       with_people: personIds.slice(0, 20).join("|"),
       sort_by: "primary_release_date.desc",
       "vote_count.gte": "20",
@@ -2055,7 +2082,7 @@ export async function upcomingByFilter(
   if (mediaType === "tv") params.include_null_first_air_dates = "false";
 
   try {
-    const data = await tmdb<{ results: SearchResult[] }>(`/discover/${mediaType}`, params);
+    const data = await railTmdb<{ results: SearchResult[] }>(`/discover/${mediaType}`, params);
     return (data.results ?? [])
       .filter((r) => r.poster_path)
       .map((r) => ({ ...r, media_type: mediaType }));
