@@ -92,7 +92,12 @@ export function GoogleButton({ locale }: { locale: Locale }) {
     setLoading(true);
     // العميل يُجلب عند الضغطة — انظر لماذا في supabase/client.ts
     const supabase = await createClient();
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? window.location.origin;
+    /* 🔴 **أصلُ الزائر أوّلاً لا متغيّرُ البيئة** (D-623، بلاغُ مشعل:
+       خروجٌ من الحساب في كلِّ فتح): تطبيقٌ مثبَّتٌ من الأصل القديم كان
+       يُدخَل عبر loopztv.com فتهبط الكوكيز هناك **ولا تصل أصلَه أبداً**
+       — التفصيلُ والقائمةُ الموثوقة في `lib/siteOrigin.ts`. */
+    const { resolveAuthBase } = await import("@/lib/siteOrigin");
+    const siteUrl = resolveAuthBase(window.location.origin);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo: `${siteUrl}/auth/callback` },
