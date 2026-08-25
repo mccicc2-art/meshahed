@@ -13,6 +13,7 @@ import {
   getMyArtFor,
   getTitlePulse,
   getMyFavorites,
+  getProviderLinks,
   artKey,
 } from "@/lib/data";
 import {
@@ -82,6 +83,14 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
     getTitlePulse(tvId, "tv"),
   ]);
   const following = followState.following;
+
+  /* 🆕 **روابطُ المنصّات المباشرة** (D-608) — نداءٌ واحدٌ لبلد الجواب
+     نفسِه (البياناتُ قد تسقط إلى الجوار — الروابطُ تتبعها لا كوكي
+     المستخدم): فهرسٌ فريدٌ في قاعدتنا، بعد الموجة لأن بلدَ الجواب
+     لا يُعرف قبلها. */
+  const providerLinks = watchWhere
+    ? await getProviderLinks(tvId, "tv", watchWhere.region)
+    : {};
 
   if (!tv) {
     return (
@@ -381,6 +390,15 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
                       region={watchWhere.region}
                       userRegion={userRegion}
                       locale={locale}
+                      links={providerLinks}
+                      /* الأصليُّ مع السنة للبحث، والعربيُّ لمنصّةٍ فهرسُها
+                         عربيٌّ (شاهد) حين يكون الاسمُ عربيّاً فعلاً */
+                      query={{
+                        q: `${tv.original_name || tv.name} ${(tv.first_air_date ?? "").slice(0, 4)}`.trim(),
+                        qAr: /[؀-ۿ]/.test(tv.name) ? tv.name : null,
+                      }}
+                      tmdbId={tvId}
+                      mediaType="tv"
                     />
                   </div>
                 )}
