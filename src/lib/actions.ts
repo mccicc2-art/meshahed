@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { LOCALE_COOKIE, normalizeLocale } from "@/lib/i18n";
 import { REGION_COOKIE, normalizeRegion } from "@/lib/region";
@@ -3205,37 +3205,36 @@ export async function peopleFollowsOf(
   targetId: string,
   dir: "followers" | "following",
 ): Promise<PersonLite[]> {
-  const { supabase, user } = await requireUser();
   if (!/^[0-9a-f-]{36}$/i.test(targetId)) return [];
 
-  if (user.id !== targetId) {
-    try {
-      const { data: prof } = await supabase
-        .from("public_profiles")
-        .select("hide_follow_lists")
-        .eq("id", targetId)
-        .maybeSingle();
-      if ((prof as { hide_follow_lists?: boolean } | null)?.hide_follow_lists) return [];
-    } catch {
-      /* قبل تشغيل الهجرة 43 العمود غائب — الافتراض مفتوح كما كان دائماً */
-    }
-  }
+  /* ⚖️ 🆕 **والورقةُ تُفتح للزائر** (D-632، بحكم أحمد: «نعم يفتحها»):
+     كان الفعلُ يبدأ بـ`requireUser` **فيرى الزائرُ العددَ ولا يرى مَن**
+     — **وقائمةُ متابِعين ملفُّهم كلُّهم عامّ ليست سرّاً يُحرس بالتسجيل**
+     (D-627: ما يُقرأ يُفتح، وما يُكتب يُطلب له حساب).
 
-  const edge = dir === "followers" ? "follower_id" : "following_id";
-  const where = dir === "followers" ? "following_id" : "follower_id";
-  const { data } = await supabase
-    .from("user_follows")
-    .select(edge)
-    .eq(where, targetId)
-    .order("created_at", { ascending: false })
-    .limit(200);
-  const ids = [...new Set((data ?? []).map((r) => (r as Record<string, string>)[edge]))];
-  if (!ids.length) return [];
-  const { data: people } = await supabase
-    .from("public_profiles")
-    .select("id, nickname, username, avatar_url, hide_name")
-    .in("id", ids);
-  return ((people ?? []) as PersonLite[]);
+     🔑 **والقواعدُ الأربعُ انتقلت إلى القاعدة** (`follow_people` —
+     الهجرة ١٣٩، نمطُ D-145): القفلُ (`hide_follow_lists`) وخصوصيّةُ
+     الحساب والحظرُ وإخفاءُ الاسم **كانت موزّعةً بين هذا الفعل وسياسةِ
+     الجدول** — **ونصٌّ واحدٌ لا يفترق عن نفسه بين قارئَين.**
+     **والجدولُ `user_follows` يبقى مغلقاً على الزائر** (D-631). */
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  /* **وحدُّ الزائر بعنوانه** (سابقةُ `/api/search` في D-627): معرّفٌ لا
+     يملكه لا يصلح مفتاحَ سلّة، **وسلّةٌ واحدةٌ للزوّار كلِّهم تُقفل
+     الورقةَ على أوّل فضوليّ.** */
+  const ip =
+    (await headers()).get("x-forwarded-for")?.split(",")[0]?.trim() || "anon";
+  if (!allow(`${user?.id ?? ip}:follows`, 30, 10_000)) return [];
+
+  const { data, error } = await supabase.rpc("follow_people", {
+    target: targetId,
+    dir,
+  });
+  if (error) return [];
+  return ((data ?? []) as PersonLite[]);
 }
 
 export async function myFollowersList(): Promise<PersonLite[]> {
