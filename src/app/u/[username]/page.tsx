@@ -54,6 +54,7 @@ import {
   type ProfileSection,
 } from "@/lib/profilePrefs";
 import { SectionReorderButton, sectionKeyOf } from "@/components/SectionReorderButton";
+import { SavedListsToggle } from "@/components/SavedListsToggle";
 import { capCards } from "@/lib/cardCount";
 import { densityVars } from "@/lib/density";
 
@@ -152,8 +153,11 @@ export default async function PublicProfilePage({
          بـ`can_view_profile` (الهجرة ١٣٠)؛ **وتُقرأ في الموجة لأن
          عدّادَ التبويب منها** (D-374: العدّادُ يعدّ ما يعرضه جسمُه). */
       getProfileActivity(profile.id),
-      /* 🆕 **محفوظاتُه** (D-588) — لتبويب «قوائم»، وعدّادُه منها (D-374) */
-      getSavedListsOf(profile.id),
+      /* 🆕 **محفوظاتُه** (D-588) — لتبويب «قوائم»، وعدّادُه منها (D-374).
+         ⚖️ 🆕 **ولها رايةٌ الآن** (D-594): زائرٌ والرايةُ مطفأةٌ لا
+         يدفع النداءَ أصلاً (D-152/D-510) — **ففراغُ المصفوفة عنده يعني
+         أن القسمَ والعدّادَ يسقطان معاً بلا شرطٍ ثانٍ** (D-374). */
+      isMe || prefs.savedLists ? getSavedListsOf(profile.id) : Promise.resolve([]),
       isMe ? Promise.resolve() : recordProfileView(profile.id),
     ]);
 
@@ -1190,12 +1194,22 @@ export default async function PublicProfilePage({
             {publicLists.length > 0 && (
               <PublicListsRail lists={listsOrdered} locale={locale} title={t.profileTabLists} grid />
             )}
+            {/* ⚖️ 🆕 **وللقسم رقاقةُ On/Off لصاحبه** (D-594، حكمُه بلقطة:
+                «حتى هذي حطّ لها on off») — **نموذجُ D-559**: صاحبُه يراه
+                دائماً وعليه الرقاقة (وإلّا لم يجد بابَ العودة بعد
+                الإطفاء)، **والزائرُ لا يصله أصلاً حين تقول «متوقّفة»**
+                (النداءُ نفسُه يسقط في الموجة أعلاه). */}
             {savedLists.length > 0 && (
               <PublicListsRail
                 lists={savedLists}
                 locale={locale}
                 title={t.savedListsSection}
                 grid
+                action={
+                  isMe ? (
+                    <SavedListsToggle locale={locale} initialOn={prefs.savedLists} />
+                  ) : undefined
+                }
               />
             )}
           </div>
