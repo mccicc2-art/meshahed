@@ -40,10 +40,12 @@ import { FollowCountButton } from "@/components/ProfilePeeks";
 import { FavoritesRail } from "@/components/FavoritesRail";
 import {
   PROFILE_SECTIONS,
+  applySectionOrder,
   profileSectionMeta,
   sanitizeProfilePrefs,
   type ProfileSection,
 } from "@/lib/profilePrefs";
+import { SectionReorderButton, sectionKeyOf } from "@/components/SectionReorderButton";
 import { capCards } from "@/lib/cardCount";
 import { densityVars } from "@/lib/density";
 
@@ -167,8 +169,32 @@ export default async function PublicProfilePage({
   const bioText = profile.hide_name ? null : (profile.bio ?? null);
   const withReview = ratings.filter((r) => r.review?.trim());
 
-  const tvFollows = follows.filter((f) => f.media_type === "tv" && !f.dropped);
-  const movieFollows = follows.filter((f) => f.media_type === "movie" && !f.dropped);
+  /* 🆕 **وترتيبُ صاحب الصفحة يُطبَّق عند القراءة** (D-581): المحفوظُ في
+     `profile_prefs.sectionOrder` أوّلاً بترتيبه، **وما أُضيف بعد آخرِ
+     ترتيبٍ يُذيَّل بترتيبه الطبيعيّ** فلا يختفي. */
+  const secOrder = prefs.sectionOrder;
+  const tvFollows = applySectionOrder(
+    follows.filter((f) => f.media_type === "tv" && !f.dropped),
+    secOrder.shows,
+    (f) => sectionKeyOf.show(f.tmdb_id),
+  );
+  const movieFollows = applySectionOrder(
+    follows.filter((f) => f.media_type === "movie" && !f.dropped),
+    secOrder.movies,
+    (f) => sectionKeyOf.movie(f.tmdb_id),
+  );
+  const artistsOrdered = applySectionOrder(
+    artists,
+    secOrder.artists,
+    (a) => sectionKeyOf.artist(a.person_id),
+  );
+  /* **وقوائمُه بترتيبه في البابين** — قسمُ النظرة العامّة وتبويبُ
+     «قوائم» يقرآن المصفوفةَ نفسَها، **وترتيبان لشيءٍ واحدٍ خلل** (D-152) */
+  const listsOrdered = applySectionOrder(
+    publicLists,
+    secOrder.lists,
+    (l) => sectionKeyOf.list(l.id),
+  );
   const level = getLevel(levelPoints(watched.episodes, watched.movies.size));
 
   /* 🆕 **سطرُ اللقب** (D-561) — **ما كتبه صاحبُه، وإلّا اسمُ مستواه.**
@@ -278,7 +304,25 @@ export default async function PublicProfilePage({
   const sections: Record<ProfileSection, React.ReactNode> = {
     shows:
       shows.length > 0 ? (
-        <PosterRail title={t.shortShows}>
+        <PosterRail
+          title={t.shortShows}
+          /* 🆕 **مقبضُ الترتيب لصاحب الصفحة** (D-581) — نفسُ مقبض
+             المفضّلة بالبكسل، والكاتبُ `profile_prefs.sectionOrder` */
+          action={
+            isMe ? (
+              <SectionReorderButton
+                section="shows"
+                locale={locale}
+                items={tvFollows.map((f) => ({
+                  tmdb_id: f.tmdb_id,
+                  media_type: "tv" as const,
+                  title: f.title,
+                  poster_path: f.poster_path,
+                }))}
+              />
+            ) : undefined
+          }
+        >
           {shows.slice(0, cap(shows.length)).map((i) => (
             <RailItem key={`s-${i.id}`}>
               <PosterCard
@@ -294,7 +338,23 @@ export default async function PublicProfilePage({
 
     movies:
       movieFollows.length > 0 ? (
-        <PosterRail title={t.shortMovies}>
+        <PosterRail
+          title={t.shortMovies}
+          action={
+            isMe ? (
+              <SectionReorderButton
+                section="movies"
+                locale={locale}
+                items={movieFollows.map((f) => ({
+                  tmdb_id: f.tmdb_id,
+                  media_type: "movie" as const,
+                  title: f.title,
+                  poster_path: f.poster_path,
+                }))}
+              />
+            ) : undefined
+          }
+        >
           {movieFollows.slice(0, cap(movieFollows.length)).map((f) => (
             <RailItem key={`m-${f.tmdb_id}`}>
               {/* بلا شارة «شوهد» وبلا خيط التقدم الأخضر (طلب أحمد) —
@@ -310,9 +370,25 @@ export default async function PublicProfilePage({
        العدد يُحسب من سجلّ **مشاهدتك أنت** (D-128)، وكتابتُه في صفحة
        غيرك كذبٌ صريح، وحسابُه له ثلاثون نداءً لا تُدفع في صفحةٍ عامة */
     artists:
-      artists.length > 0 ? (
-        <PosterRail title={t.shortArtists}>
-          {artists.slice(0, cap(artists.length)).map((a) => (
+      artistsOrdered.length > 0 ? (
+        <PosterRail
+          title={t.shortArtists}
+          action={
+            isMe ? (
+              <SectionReorderButton
+                section="artists"
+                locale={locale}
+                items={artistsOrdered.map((a) => ({
+                  key: sectionKeyOf.artist(a.person_id),
+                  title: a.name ?? "—",
+                  poster_path: a.profile_path,
+                  fallbackIcon: "people" as const,
+                }))}
+              />
+            ) : undefined
+          }
+        >
+          {artistsOrdered.slice(0, cap(artistsOrdered.length)).map((a) => (
             <RailItem key={`a-${a.person_id}`}>
               <PosterCard
                 href={`/person/${a.person_id}`}
@@ -337,7 +413,28 @@ export default async function PublicProfilePage({
        الإعلانُ نفسُه). */
     favorites: null,
 
-    lists: <PublicListsRail lists={publicLists} locale={locale} title={t.profileListsRail} />,
+    lists: (
+      <PublicListsRail
+        lists={listsOrdered}
+        locale={locale}
+        title={t.profileListsRail}
+        action={
+          isMe ? (
+            <SectionReorderButton
+              section="lists"
+              locale={locale}
+              items={listsOrdered.map((l) => ({
+                key: sectionKeyOf.list(l.id),
+                title: l.name,
+                /* أوّلُ ملصقات البطاقة — الوجهُ الذي يعرفه من بطاقتها */
+                poster_path: l.posters[0] ?? null,
+                fallbackIcon: "list" as const,
+              }))}
+            />
+          ) : undefined
+        }
+      />
+    ),
 
     ratings:
       topRated.length > 0 ? (
@@ -953,7 +1050,7 @@ export default async function PublicProfilePage({
         publicLists.length === 0 ? (
           <p className="text-center text-muted py-16 text-sm">{t.profileEmptyLists}</p>
         ) : (
-          <PublicListsRail lists={publicLists} locale={locale} title={t.profileTabLists} grid />
+          <PublicListsRail lists={listsOrdered} locale={locale} title={t.profileTabLists} grid />
         )
       )}
 
