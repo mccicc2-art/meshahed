@@ -143,6 +143,7 @@ export function HomeHeader({
   showStats,
   levelPercent,
   userId,
+  followers = 0,
   following = 0,
   hideFollowLists = false,
   locale,
@@ -180,11 +181,9 @@ export function HomeHeader({
    * بابُه معطّل (D-217).
    */
   userId?: string;
-  /* ⚖️ 🆕 **وعدّادُ المتابِعين غادر الترويسةَ** (D-618، توزيعُ أحمد
-     المرسوم: تحت الاسم «@ahmed · 5 Following» وحدَها) — **نقضٌ محصورٌ
-     لثنائيّةِ D-572 بيد صاحبها**: العدّان في الملفّ كما هما، وهنا
-     عدُّ مَن تتابعهم وحدَه. **و`followers` تُقبل ولا تُقرأ** (D-028:
-     المستدعي القديم يمرّرها فلا يُكسر كوميتُه) — وعودتُها بكلمة. */
+  /* ⚖️ 🆕 **وعدّادُ المتابِعين غادر في D-618 ثمّ عاد بكلمة صاحبه**
+     (D-621: «ضيف المتابعون كذا») — الثنائيّةُ في سطر التعريف الآن،
+     رمزَين وعدَّين بلا كلمات. */
   followers?: number;
   following?: number;
   /** قفلُ قائمتَي المتابعة (هجرة ٤٣) — الرقمُ يبقى والبابُ يُقفل */
@@ -420,21 +419,40 @@ export function HomeHeader({
                   •
                 </span>
               )}
+              {/* ⚖️ 🆕 **والعدّان معاً بلا كلمات** (D-621): مَن يتابعونني
+                  أوّلاً ثمّ مَن أتابعهم — بترتيب كلمته («وحدة الي
+                  يتابعوني والثانية الي أتابعهم»)، والرمزان يفرّقان. */}
               {userId && (
-                <FollowCountButton
-                  targetId={userId}
-                  dir="following"
-                  count={following}
-                  label={t.followingLabel}
-                  sheetTitle={t.followsTabFollowing}
-                  locked={hideFollowLists}
-                  compact
-                  labels={{
-                    close: t.closeLabel,
-                    empty: t.followListEmpty,
-                    anonymous: t.anonymousUser,
-                  }}
-                />
+                <span className="inline-flex items-center gap-2">
+                  <FollowCountButton
+                    targetId={userId}
+                    dir="followers"
+                    count={followers}
+                    label={t.followersLabel}
+                    sheetTitle={t.followsTabFollowers}
+                    locked={hideFollowLists}
+                    compact
+                    labels={{
+                      close: t.closeLabel,
+                      empty: t.followListEmpty,
+                      anonymous: t.anonymousUser,
+                    }}
+                  />
+                  <FollowCountButton
+                    targetId={userId}
+                    dir="following"
+                    count={following}
+                    label={t.followingLabel}
+                    sheetTitle={t.followsTabFollowing}
+                    locked={hideFollowLists}
+                    compact
+                    labels={{
+                      close: t.closeLabel,
+                      empty: t.followListEmpty,
+                      anonymous: t.anonymousUser,
+                    }}
+                  />
+                </span>
               )}
             </p>
           )}
