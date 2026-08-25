@@ -51,7 +51,6 @@ import { ContinueCard } from "@/components/ContinueCard";
 import { ListContinueCard } from "@/components/ListContinueCard";
 /* اسمُ قائمةِ لوبز يُترجَم عند العرض لا يُخزَّن (D-328/D-373) */
 import { curatedName } from "@/lib/universes";
-import { QuickSaveCard } from "@/components/QuickSaveCard";
 import { PosterRail, RailItem } from "@/components/PosterRail";
 import { RailNewBadge } from "@/components/RailNewBadge";
 import { PublicListsRail } from "@/components/PublicListsRail";
@@ -2142,30 +2141,31 @@ async function TrendingSection({
         const mt = r.media_type === "tv" ? "tv" : "movie";
         const seen =
           mt === "movie" ? watchedMovieIds.has(r.id) : doneShowIds.has(r.id);
+        /* ⚖️ 🆕 **بطاقةُ «الرائج» صارت كسائر البطاقات** (D-609، حكمُ
+           أحمد بلقطة: «شيل علامة البوكمارك والصح وخلّها مثل الباقي —
+           أسوّي عليها هولد ويكون تحتها خطّ أخضر/أزرق حسب حالتها»):
+           زرُّ الحفظ السريع وصحُّه العائمان سقطا — **وهما بقيّةُ ما
+           منعته D-434 («لا أزرار عائمة فوق البوسترات») في صفٍّ واحدٍ
+           شذّ** — والحالةُ في خيط `StatusThread` (أخضرُ مُشاهَدٌ ·
+           سماويٌّ محفوظ) والأفعالُ في قائمة الضغط المطوّل (D-229:
+           بابٌ واحدٌ لأفعال الملصق في كلِّ سطح). */
         return (
-          <QuickSaveCard
+          <PosterCard
             key={`${r.media_type}-${r.id}`}
-            tmdbId={r.id}
-            mediaType={mt}
+            href={`/${mt === "tv" ? "show" : "movie"}/${r.id}`}
             title={titleOf(r)}
             posterPath={r.poster_path}
-            state={
-              seen
-                ? "watched"
-                : followedKeys.has(`${mt}-${r.id}`)
-                  ? "saved"
-                  : "none"
-            }
-            locale={locale}
-          >
-            <PosterCard
-              href={`/${mt === "tv" ? "show" : "movie"}/${r.id}`}
-              title={titleOf(r)}
-              posterPath={r.poster_path}
-              year={yearOf(r)}
-              badge={mt === "tv" ? t.typeSeries : t.typeMovie}
-            />
-          </QuickSaveCard>
+            year={yearOf(r)}
+            badge={mt === "tv" ? t.typeSeries : t.typeMovie}
+            hold={{
+              tmdbId: r.id,
+              mediaType: mt,
+              added: followedKeys.has(`${mt}-${r.id}`),
+              watched: seen,
+              progress: seen ? 100 : 0,
+              locale,
+            }}
+          />
         );
       })}
     </Section>
