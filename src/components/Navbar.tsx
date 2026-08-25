@@ -28,15 +28,24 @@ export async function Navbar() {
   ]);
   const displayName = profile?.nickname || user?.email?.split("@")[0] || "";
 
-  // زائرٌ غير مسجّل: اسمُ المنتج وحده وعلمُ اللغة في الطرف — لا شعار
-  // ولا زرّ دخول، فالصفحة نفسها هي الدخول
+  /* ⚖️ 🆕 **زائرٌ غير مسجّل: صار له زرُّ دخولٍ** (D-627) — كان الشريطُ
+     اسمَ المنتج والعلمَ وحدَهما «فالصفحةُ نفسُها هي الدخول»، **وماتت
+     الحجّةُ يومَ صار الزائرُ يتصفّح اكتشف والكوميونيتي والبروفايلات**:
+     في كلِّ صفحةٍ يقف فيها يحتاج بابَ الدخول أمامه لا في ذاكرته. */
   if (!user) {
     return (
       <header className="chrome-top sticky top-0 z-30 bg-[color:var(--background)]/80 backdrop-blur pt-[var(--safe-top)]">
         {/* dir=ltr: الاسم يساراً والعلم يميناً بثبات، مهما كانت لغة الصفحة */}
         <div className="max-w-6xl mx-auto px-5 h-16 flex items-center justify-between" dir="ltr">
-          <span className="font-extrabold text-22 tracking-tight">{t.brand}</span>
-          <LangFlagMenu locale={locale} />
+          <Link href="/" prefetch={false} className="font-extrabold text-22 tracking-tight">
+            {t.brand}
+          </Link>
+          <span className="flex items-center gap-2.5">
+            <LangFlagMenu locale={locale} />
+            <Link href="/login" prefetch={false} className={buttonClass({ size: "sm" })}>
+              {t.login}
+            </Link>
+          </span>
         </div>
       </header>
     );

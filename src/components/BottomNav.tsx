@@ -70,7 +70,7 @@ import { Icon, type IconName } from "./Icon";
  */
 const TABS: {
   href: string;
-  key: "home" | "library" | "news" | "search" | "people";
+  key: "home" | "library" | "news" | "search" | "people" | "login";
   icon: IconName;
   /** الوجهُ المصمت — يُرسم حين تكون في التبويب */
   iconOn: IconName;
@@ -86,6 +86,22 @@ const TABS: {
      فتظهر لوحة المفاتيح فوراً. الرابط يبقى مكتوباً لمن فتح `/search`
      برابطٍ مباشر أو بلا جافاسكربت. */
   { href: "/search", key: "search", icon: "search", iconOn: "search-filled" },
+];
+
+/**
+ * 🆕 **شريطُ الضيف** (D-627، مواصفةُ أحمد: «أي أحد يدخل لوبز حتى وهو
+ * ما هو مسجّل دخول يقدر يشوف الكوميونيتي والديسكفري ويدخل بروفايلات
+ * الأعضاء») — ⚖️ **نقضٌ محصورٌ لـD-122** («الزائرُ لا شريطَ له»)
+ * **بموت حجّتها**: كانت تبويباتُه الخمسةُ كلُّها خلف الدخول فكلُّ
+ * ضغطةٍ تردّه — **وصار له ثلاثُ وجهاتٍ حقيقيّة**، والرابعةُ بابُ
+ * الدخول نفسُه. **والرئيسيةُ والمكتبةُ ليستا هنا**: صفحتان شخصيّتان
+ * محضتان لا معنى لهما قبل حساب.
+ */
+const GUEST_TABS: typeof TABS = [
+  { href: "/news", key: "news", icon: "compass", iconOn: "compass-filled" },
+  { href: "/people", key: "people", icon: "people", iconOn: "people-filled" },
+  { href: "/search", key: "search", icon: "search", iconOn: "search-filled" },
+  { href: "/login", key: "login", icon: "person-check", iconOn: "person-check" },
 ];
 
 export function BottomNav({
@@ -127,10 +143,9 @@ export function BottomNav({
      وترتيبَها كما هي (نفسُ حجّة السطر أعلاه)، **ويعود الشريطُ بإغلاق
      الكيبورد بلا رحلةٍ ولا إعادةِ رسمٍ للصفحة.** */
   const kbOpen = useKeyboardOpen();
-  /* الزائر غير المسجّل لا شريط له (D-122): تبويباته الخمسة كلها خلف
-     تسجيل الدخول، فكلّ ضغطةٍ فيها تردّه — وهو فوق صفحة هبوطٍ تعرّفه
-     بالمنتج، لا داخل تطبيقٍ يتنقّل فيه */
-  if (!signedIn) return null;
+  /* ⚖️ 🆕 والزائرُ صار له شريطُه (D-627 — نقضُ D-122 بموت حجّتها،
+     انظر `GUEST_TABS` أعلاه) */
+  const tabs = signedIn ? TABS : GUEST_TABS;
   // شاشات مركّزة: لا شريط تبويبات يزاحم زر الإجراء
   /* 🆕 **ويغيب في الإعدادات** (D-462، مواصفةُ أحمد): **الإعداداتُ رحلةٌ
      لها بدايةٌ ونهاية** — دخلتَ لتضبط شيئاً وتخرج — **وشريطُ تنقّلٍ
@@ -150,6 +165,8 @@ export function BottomNav({
     news: t.navNews,
     search: t.navSearch,
     people: t.navPeople,
+    /* 🆕 خانةُ الضيف الرابعة (D-627) */
+    login: t.login,
   };
 
   /* صفحات التفاصيل والسجلّ تُنسب إلى المكتبة: المستخدم في عمق التطبيق
@@ -182,10 +199,12 @@ const LIBRARY_PREFIXES = ["/library", "/show/", "/movie/", "/stats", "/activity"
            **وشريطٌ ملاصقٌ للحافّة بلا هامشٍ يُقرأ مقصوصاً.** */
         className={`${
           kbOpen ? "hidden" : "grid"
-        } chrome-bottom md:hidden fixed bottom-0 inset-x-0 z-40 grid-cols-5 rounded-t-[22px] border-t border-[color:var(--divider)] bg-[color:var(--background)] backdrop-blur-xl pt-2.5 pb-[max(0.5rem,calc(env(safe-area-inset-bottom)*0.5))]`}
+        } chrome-bottom md:hidden fixed bottom-0 inset-x-0 z-40 ${
+          signedIn ? "grid-cols-5" : "grid-cols-4"
+        } rounded-t-[22px] border-t border-[color:var(--divider)] bg-[color:var(--background)] backdrop-blur-xl pt-2.5 pb-[max(0.5rem,calc(env(safe-area-inset-bottom)*0.5))]`}
         style={{ background: "color-mix(in srgb, var(--background) 76%, transparent)" }}
       >
-        {TABS.map(({ href, key, icon, iconOn }) => {
+        {tabs.map(({ href, key, icon, iconOn }) => {
           const active = isActive(href);
           /* **أيقونةٌ بلا كلمة** (D-258، طلبُ أحمد: «اخفِ الكلمات في
              الشريط السفلي واكتبها فوق»). **والاسمُ لم يُحذف بل انتقل**
