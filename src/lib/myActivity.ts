@@ -192,3 +192,57 @@ export async function getMyActivity(perSource = 200): Promise<ActivityRow[]> {
     return [];
   }
 }
+
+
+/**
+ * 🆕 **نشاطُ صاحبِ ملفٍّ أزوره** (D-586، طلبُ أحمد: «الاكتيفتي حطّ فيه
+ * كامل الاكتيفتي، نفس طريقة العرض الي بالمكتبة») — **سدادُ الدَّين
+ * المعلَن في D-438 §12.**
+ *
+ * **القارئُ دالّةُ definer واحدة** (`profile_activity`، الهجرة ١٣٠)
+ * **محروسةٌ بـ`can_view_profile`** — أربعةُ استعلامات `getMyActivity`
+ * تقرأ جداولَ «صفوفِ صاحبها وحدَه» **فتصلح لصاحبها ولا تصلح لملفِّ
+ * غيره.** والشكلُ `ActivityRow` نفسُه **فتلبسه شاشةُ `/activity` كما
+ * هي.**
+ *
+ * ⚠️ **وما يخرج للزائر أضيقُ مما يخرج لصاحبه بحكم الدالّة لا الشيفرة**:
+ * التقييماتُ غيرُ المحجوبة وحدَها، **وإضافاتُ القوائم المعلنةِ وحدَها**
+ * — إضافةٌ لقائمةٍ خاصّةٍ سرُّ صاحبها.
+ */
+export async function getProfileActivity(userId: string): Promise<ActivityRow[]> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("profile_activity", { p_user: userId });
+    if (error || !data) return [];
+    type Row = {
+      kind: string;
+      happened_at: string;
+      media_type: string;
+      tmdb_id: number;
+      season: number | null;
+      episode: number | null;
+      rating: number | null;
+      has_review: boolean;
+      title: string | null;
+      poster_path: string | null;
+      list_name: string | null;
+    };
+    return (data as Row[]).map((r) => ({
+      kind: (["watch", "rate", "review", "list"].includes(r.kind)
+        ? r.kind
+        : "watch") as ActivityKind,
+      at: r.happened_at,
+      mediaType: r.media_type === "tv" ? "tv" : "movie",
+      tmdbId: r.tmdb_id,
+      title: r.title,
+      posterPath: r.poster_path,
+      season: r.season,
+      episode: r.episode,
+      rating: r.rating,
+      listName: r.list_name,
+    }));
+  } catch {
+    /* **وسقوطُها شاشةٌ فارغةٌ لا شاشةُ خطأ** — عُرفُ الملفّ نفسُه */
+    return [];
+  }
+}
