@@ -69,6 +69,7 @@ export function PublicListsRail({
         title={title ?? t.publicListsRail}
         icon="list"
         iconColor="var(--accent-2)"
+        action={action}
         bare
       >
         {/* 🆕 ⚖️ **عمودٌ واحدٌ على الجوّال** (D-461، حكمُ أحمد: «أحجام
