@@ -1079,51 +1079,43 @@ export default async function PublicProfilePage({
               return (
                 <article key={`rv-${r.media_type}-${r.tmdb_id}`} className="py-4 first:pt-0 flex gap-3">
                   <div className="min-w-0 flex-1 flex flex-col min-h-[138px]">
-                    {/* الترويسة: وجهٌ · اسمٌ · عمرٌ — سطرُ الخطِّ حرفاً */}
-                    <div className="flex items-center gap-2.5">
-                      <Avatar
-                        src={profile.hide_name ? null : profile.avatar_url}
-                        name={displayName}
-                        size={44}
-                        alt=""
-                      />
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5">
-                          <span className="min-w-0 truncate font-bold text-14 leading-tight">
-                            <bdi>{displayName}</bdi>
-                          </span>
-                          {/* **والعمرُ بابٌ ثانٍ إلى صفحة المراجعة** — عادةُ
-                              الخطِّ نفسُها، **ولا يُرسم لصفٍّ بلا تاريخ** (D-222) */}
-                          {r.updated_at && (
-                            <Link
-                              href={reviewHref}
-                              prefetch={false}
-                              className="ms-auto shrink-0 text-12 text-muted tabular-nums hover:text-accent transition"
-                            >
-                              {timeAgoShort(r.updated_at, t)}
-                            </Link>
-                          )}
-                        </div>
-                        <div className="mt-px flex items-center gap-1.5">
-                          <Link
-                            href={titleHref}
-                            prefetch={false}
-                            className="min-w-0 flex items-center gap-1 truncate text-12 text-muted hover:text-accent transition"
-                          >
-                            <bdi className="truncate">{r.title ?? "—"}</bdi>
-                          </Link>
-                          {/* **والنجمةُ لمن قيّم** — رأيٌ بلا نجمةٍ (إن
-                              وُجد) لا يلبس صفراً كاذباً (D-219) */}
-                          {r.rating != null && (
-                            <span
-                              className="shrink-0 text-14 font-bold text-accent tabular-nums"
-                              title={t.rateOutOf(r.rating)}
-                            >
-                              ★ <span dir="ltr">{r.rating.toFixed(1)}</span>
-                            </span>
-                          )}
-                        </div>
-                      </div>
+                    {/* ⚖️ 🆕 **الترويسة بلا وجهِ صاحب الصفحة واسمِه**
+                        (D-600، حكمُه بلقطةٍ دوّر فيها الاسمين: «احذف
+                        اسمي وصورتي من هنا — ما يحتاج لأنها موجودة فوق»):
+                        **بطاقةُ المجتمع تعرّف بكاتبٍ وسطَ غرباء،
+                        وتبويبُ الملفّ كلُّه لكاتبٍ واحدٍ رأسُ الصفحة
+                        يقولُه** — فتكرارُه في كلِّ بطاقةٍ ضجيج (نقضٌ
+                        محصورٌ لشكل D-583 في هذا التبويب وحدَه).
+                        **والعملُ ونجمتُه صارا سطرَ الهويّة**، والعمرُ
+                        بابٌ ثانٍ إلى صفحة المراجعة كما كان — **ولا
+                        يُرسم لصفٍّ بلا تاريخ** (D-222). */}
+                    <div className="flex items-center gap-1.5">
+                      <Link
+                        href={titleHref}
+                        prefetch={false}
+                        className="min-w-0 flex items-center gap-1 truncate font-bold text-14 leading-tight hover:text-accent transition"
+                      >
+                        <bdi className="truncate">{r.title ?? "—"}</bdi>
+                      </Link>
+                      {/* **والنجمةُ لمن قيّم** — رأيٌ بلا نجمةٍ لا يلبس
+                          صفراً كاذباً (D-219) */}
+                      {r.rating != null && (
+                        <span
+                          className="shrink-0 text-14 font-bold text-accent tabular-nums"
+                          title={t.rateOutOf(r.rating)}
+                        >
+                          ★ <span dir="ltr">{r.rating.toFixed(1)}</span>
+                        </span>
+                      )}
+                      {r.updated_at && (
+                        <Link
+                          href={reviewHref}
+                          prefetch={false}
+                          className="ms-auto shrink-0 text-12 text-muted tabular-nums hover:text-accent transition"
+                        >
+                          {timeAgoShort(r.updated_at, t)}
+                        </Link>
+                      )}
                     </div>
 
                     {/* **المتنُ لمن كتبه** (D-587) — صفُّ نجمةٍ بلا نصٍّ
