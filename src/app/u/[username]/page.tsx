@@ -17,6 +17,8 @@ import {
   getProfileArt,
   getProfileAnimeFlags,
   getMyFavoritesListId,
+  getReviewLikesOf,
+  getFollows,
   artKey,
   displayNameOf,
 } from "@/lib/data";
@@ -35,7 +37,11 @@ import { PublicListsRail } from "@/components/PublicListsRail";
 import { CompactMediaRow } from "@/components/CompactMediaRow";
 import { PageTabs, type PageTab } from "@/components/ui/PageTabs";
 import { ShareTitleButton } from "@/components/ShareTitleButton";
-import { SpoilerText } from "@/components/SpoilerText";
+import { FeedReviewText } from "@/components/FeedReviewText";
+import { RowPoster } from "@/components/ActivityFeed";
+import { RowComment } from "@/components/RowComment";
+import { LikeButton } from "@/components/LikeButton";
+import { timeAgoShort } from "@/lib/when";
 import { FollowCountButton } from "@/components/ProfilePeeks";
 import { FavoritesRail } from "@/components/FavoritesRail";
 import {
@@ -104,6 +110,8 @@ export default async function PublicProfilePage({
     profileArt,
     animeFlags,
     favListId,
+    reviewLikes,
+    myLibRows,
   ] = await Promise.all([
       getRatingsOf(profile.id),
       getFollowStats(profile.id),
@@ -129,6 +137,12 @@ export default async function PublicProfilePage({
          **زرُّ ترتيبٍ في صفحةِ غيرك يكتب في قائمته** (ق٨/D-217)،
          **ونداءٌ لا يُقرأ ثمنٌ بلا مقابل** (D-152). */
       isMe ? getMyFavoritesListId() : Promise.resolve(null),
+      /* 🆕 **قلوبُ مراجعاته وذخيرةُ «عندك»** (D-583) — للبطاقة وقد لبست
+         شكلَ المجتمع: الأعدادُ من دالّة الخطّ نفسِها بنداءٍ واحد،
+         و«عندك» من مكتبة القارئ المخبّأة (`cache`) — **وحالُ الملصق
+         يُقال صدقاً لا يُفترض** (D-217). */
+      getReviewLikesOf(profile.id),
+      getFollows(),
       isMe ? Promise.resolve() : recordProfileView(profile.id),
     ]);
 
@@ -164,6 +178,8 @@ export default async function PublicProfilePage({
   const canView = isMe || !profile.is_private || relation.following;
 
   const displayName = displayNameOf(profile, t.anonymousUser);
+  /* «عندك» على ملصق المراجعة — مفاتيحُ مكتبة **القارئ** لا صاحبِ الصفحة */
+  const myLibKeys = new Set(myLibRows.map((f) => `${f.media_type}-${f.tmdb_id}`));
   /* النبذة تتبع الاسم في الإخفاء — والقطع منفَّذٌ في `public_profiles`
      نفسه لا هنا (profile_bio.sql)؛ هذا السطر حارسٌ ثانٍ لا أوّل */
   const bioText = profile.hide_name ? null : (profile.bio ?? null);
@@ -1003,44 +1019,115 @@ export default async function PublicProfilePage({
         </div>
       )}
 
-      {/* ===== المراجعات — ما كتب فيه سطراً =====
-          **والحرقُ محجوبٌ هنا كما يُحجب في كلِّ سطح** (D-315): البوّابةُ
-          `SpoilerText` نفسُها، **ولا نصَّ محجوبٌ يُرسم ثم يُغطّى.** */}
+      {/* ===== المراجعات — بطاقةُ المجتمع نفسُها =====
+          ⚖️ 🆕 **البطاقةُ العارية سقطت** (D-583، طلبُ أحمد بلقطة:
+          «الرفيو خلّي شكلَه نفس شكله في المجتمع مع البوستر وعدد القلوب
+          وكل شي»). **والشكلُ يُستورد لا يُنسخ** (القاعدة ٦): الترويسةُ
+          والمتنُ والذيلُ والعمودُ هي مكوّناتُ خطِّ المجتمع بأعيانها —
+          `FeedReviewText` (والحرقُ محجوبٌ فيها بالبوّابة نفسِها، D-315)
+          و`LikeButton` و`RowComment` و`RowPoster` — **فأوّلُ تحسينٍ
+          يصيب الخطَّ غداً يصيب هذا التبويبَ مجّاناً.**
+          ⚠️ **وما غاب غاب بحجّته**: لا نقاطَ قائمةٍ (بابُ المتابعة
+          والحظر في رأس الصفحة نفسِها — بابان لفعلٍ واحدٍ زيادة) **ولا
+          عدّادَ مشاهدات** (العدُّ عقدُ الخطِّ وحدَه — D-237). */}
       {canView && tab === "reviews" && (
-        <div className="space-y-3">
+        <div className="divide-y divide-border/60">
           {reviewsNewest.length === 0 ? (
             <p className="text-center text-muted py-16 text-sm">{t.profileEmptyReviews}</p>
           ) : (
-            reviewsNewest.map((r) => (
-              <article
-                key={`rv-${r.media_type}-${r.tmdb_id}`}
-                className="rounded-2xl border border-border bg-surface p-3.5"
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <Link
-                    href={`/${r.media_type === "tv" ? "show" : "movie"}/${r.tmdb_id}`}
-                    className="min-w-0 truncate text-15 font-bold hover:text-accent transition"
-                    dir="auto"
-                  >
-                    {r.title ?? "—"}
-                  </Link>
-                  <span
-                    className="shrink-0 text-14 font-bold tabular-nums"
-                    style={{ color: "var(--accent)" }}
-                    dir="ltr"
-                  >
-                    ★ {r.rating}/10
-                  </span>
-                </div>
-                <div className="fs-content mt-2 text-14 leading-relaxed whitespace-pre-line" dir="auto">
-                  {r.has_spoiler ? (
-                    <SpoilerText text={r.review ?? ""} locale={locale} />
-                  ) : (
-                    (r.review ?? "")
-                  )}
-                </div>
-              </article>
-            ))
+            reviewsNewest.map((r) => {
+              const titleHref = `/${r.media_type === "tv" ? "show" : "movie"}/${r.tmdb_id}`;
+              const reviewHref = `/review/${r.media_type}/${r.tmdb_id}/${profile.id}`;
+              const social = reviewLikes.get(`${r.media_type}-${r.tmdb_id}`);
+              return (
+                <article key={`rv-${r.media_type}-${r.tmdb_id}`} className="py-4 first:pt-0 flex gap-3">
+                  <div className="min-w-0 flex-1 flex flex-col min-h-[138px]">
+                    {/* الترويسة: وجهٌ · اسمٌ · عمرٌ — سطرُ الخطِّ حرفاً */}
+                    <div className="flex items-center gap-2.5">
+                      <Avatar
+                        src={profile.hide_name ? null : profile.avatar_url}
+                        name={displayName}
+                        size={44}
+                        alt=""
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className="min-w-0 truncate font-bold text-14 leading-tight">
+                            <bdi>{displayName}</bdi>
+                          </span>
+                          {/* **والعمرُ بابٌ ثانٍ إلى صفحة المراجعة** — عادةُ
+                              الخطِّ نفسُها، **ولا يُرسم لصفٍّ بلا تاريخ** (D-222) */}
+                          {r.updated_at && (
+                            <Link
+                              href={reviewHref}
+                              prefetch={false}
+                              className="ms-auto shrink-0 text-12 text-muted tabular-nums hover:text-accent transition"
+                            >
+                              {timeAgoShort(r.updated_at, t)}
+                            </Link>
+                          )}
+                        </div>
+                        <div className="mt-px flex items-center gap-1.5">
+                          <Link
+                            href={titleHref}
+                            prefetch={false}
+                            className="min-w-0 flex items-center gap-1 truncate text-12 text-muted hover:text-accent transition"
+                          >
+                            <bdi className="truncate">{r.title ?? "—"}</bdi>
+                          </Link>
+                          <span
+                            className="shrink-0 text-14 font-bold text-accent tabular-nums"
+                            title={t.rateOutOf(r.rating)}
+                          >
+                            ★ <span dir="ltr">{r.rating.toFixed(1)}</span>
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <FeedReviewText
+                      href={reviewHref}
+                      review={r.review ?? ""}
+                      locale={locale}
+                      hasSpoiler={!!r.has_spoiler}
+                    />
+
+                    <div className="mt-auto">
+                      <RowComment
+                        reviewUserId={profile.id}
+                        tmdbId={r.tmdb_id}
+                        mediaType={r.media_type}
+                        label={t.actionComment}
+                        locale={locale}
+                        before={
+                          <LikeButton
+                            reviewUserId={profile.id}
+                            tmdbId={r.tmdb_id}
+                            mediaType={r.media_type}
+                            likes={social?.likes ?? 0}
+                            likedByMe={social?.likedByMe ?? false}
+                            isMine={isMe}
+                            locale={locale}
+                          />
+                        }
+                        after={
+                          <ShareTitleButton path={titleHref} title={r.title ?? ""} locale={locale} />
+                        }
+                      />
+                    </div>
+                  </div>
+
+                  <RowPoster
+                    tmdbId={r.tmdb_id}
+                    mediaType={r.media_type}
+                    title={r.title ?? ""}
+                    posterPath={r.poster_path}
+                    added={myLibKeys.has(`${r.media_type}-${r.tmdb_id}`)}
+                    locale={locale}
+                  />
+                </article>
+              );
+            })
           )}
         </div>
       )}
