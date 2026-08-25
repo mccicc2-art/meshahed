@@ -34,6 +34,17 @@ import {
 
 const ARABIC = /[؀-ۿ]/;
 
+/**
+ * 🔴 🆕 **خطوطٌ ليست من لغتَي الواجهة** (ذيلُ D-603 الأخير، بلاغُ أحمد:
+ * «اسم ون بيس ما صحّح نفسه»): بطاقةُ One Piece عادت للرئيسية باسمها
+ * المخزّن «ワンピース» — **والكاشفُ كان يعرف العربيةَ وضدَّها فقط**:
+ * اليابانيّةُ ليست عربيةً فمرّت إنجليزيةً «سليمة» ولم يُسأل TMDB عنها
+ * قطّ. **عنوانٌ بحروفٍ يابانيّة/صينيّة/كوريّة/سيريليّة بائتٌ في
+ * الواجهتين معاً** (نطاقاتُ `bestSearchTitle` في `providerLinks`
+ * نفسُها — قارئان لفكرةٍ واحدة).
+ */
+const FOREIGN = /[぀-ヿ㐀-鿿가-힯Ѐ-ӿ]/;
+
 /** سقف الطلبات في النداء الواحد: ما بعده يبقى باسمه المخزّن */
 const LIMIT = 24;
 
@@ -64,7 +75,8 @@ async function localizeCore<T extends LocalizableRow>(
   // عملٌ يحتاج ترجمةً: خطّ اسمه يخالف لغة الواجهة، أو لا اسم له أصلاً
   const wanted = new Map<string, LocalizableRow>();
   for (const r of rows) {
-    const stale = !r.title || ARABIC.test(r.title) !== wantsArabic;
+    const stale =
+      !r.title || ARABIC.test(r.title) !== wantsArabic || FOREIGN.test(r.title);
     if (!stale) continue;
     const k = keyOf(r);
     if (!wanted.has(k)) wanted.set(k, r);
