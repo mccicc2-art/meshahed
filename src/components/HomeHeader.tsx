@@ -349,13 +349,14 @@ export function HomeHeader({
               prefetch={false}
               aria-label={t.settingsNavHeading}
               title={t.settingsNavHeading}
-              /* 🆕 **٤٤×٤٤ و٢٤ للأيقونة** (D-543) — **نفسُ مقاسِ الجرس
-                 والظرف بالضبط**، فالخانةُ الأخيرة تختلف معنًى لا مقاساً. */
+              /* 🆕 **٤٤×٤٤ والأيقونةُ بمقاس الجرس والظرف بالضبط** (D-543)
+                 — فالخانةُ الأخيرة تختلف معنًى لا مقاساً.
+                 ⚖️ 🆕 و٢٤ → ٢٠ معهما (D-619: «حتى الأيقونات كبيرة») */
               className={`shrink-0 grid place-items-center w-11 h-11 rounded-full hover:bg-surface-2 active:scale-95 transition ${
                 coverUrl ? "text-white/90 hover:text-white" : "text-foreground/80 hover:text-foreground"
               }`}
             >
-              <Icon name="settings" size={24} />
+              <Icon name="settings" size={20} />
             </Link>
             {/* ⚖️ 🆕 **ومبدّلُ العرض صعد إلى صفِّ الأيقونات** (D-618،
                 توزيعُه المرسوم: ظرفٌ · جرسٌ · ترسٌ · مبدّلٌ أصفر) —
@@ -431,9 +432,11 @@ export function HomeHeader({
             (`FollowCountButton`/D-561 — نفسُ الحارس ونفسُ السقف). */}
         <div className="min-w-0 flex-1">
           <p className="truncate text-17 font-bold leading-tight">{displayName}</p>
+          {/* ⚖️ 🆕 ١٣ → ١٢ (D-619: «أحجام الخط كبيرة وغير متناسقة») —
+              سطرُ تعريفٍ ثانويٌّ درجتُه درجةُ الثانويّ في السلّم */}
           {(username || userId) && (
             <p
-              className={`mt-0.5 flex items-center gap-1.5 text-13 leading-tight ${
+              className={`mt-0.5 flex items-center gap-1.5 text-12 leading-tight ${
                 coverUrl ? "text-white/70" : "text-muted"
               }`}
             >
@@ -507,7 +510,7 @@ export function HomeHeader({
                  خطٌّ رأسيٌّ لكلِّ خانةٍ ليست أوّلَ عمودها، **وأفقيٌّ لكلِّ
                  خانةٍ في صفٍّ ثانٍ** — ومن أخذ `i > 0` وحدَها رسم خطّاً
                  رأسيّاً في رأس السطر الثاني. */
-              className={`flex items-center justify-center gap-3 px-2 py-3.5 transition active:opacity-70 ${
+              className={`flex items-center justify-center gap-2.5 px-2 py-3 transition active:opacity-70 ${
                 i % cols !== 0 ? "border-s border-[color:var(--divider)] " : ""
               }${i >= cols ? "border-t border-[color:var(--divider)]" : ""}`}
             >
@@ -528,20 +531,23 @@ function StatFace({ stat }: { stat: HeaderStat }) {
      المرسوم) — **نقضٌ محصورٌ لسطرِ D-437 الواحد بيد صاحبه**: يومَها
      كان الرقمُ فوق الكلمة **بلا رمزٍ جانبيّ** فطلب سطراً واحداً،
      **ولقطتُه اليوم ترسم الرمزَ عموداً والرقمَ والكلمةَ عموداً** —
-     شكلُ خانة بطاقةٍ لها صندوقُها. ⚠️ **والرقمُ ٢٠ كما حكم D-459**
-     (أعلى السلّم يبقى لعناوين الأقسام)، والكلمةُ ١٣ تحتَه. */
+     شكلُ خانة بطاقةٍ لها صندوقُها.
+     ⚖️ 🆕 **ثمّ نزلت الدرجاتُ كلُّها بلوحته** (D-619: «أحجام الخط
+     كبيرة وغير متناسقة — نفّذها مثل الصورة حتى الأيقونات كبيرة»):
+     الرقمُ ٢٠ → **١٧** (درجةُ الاسم في الترويسة نفسِها — فالسلّمُ
+     متناسقٌ بكلمته)، والكلمةُ ١٣ → **١٢**، والرمزُ ٢٢ → **١٨**. */
   return (
     <>
       <Icon
         name={stat.icon}
-        size={22}
+        size={18}
         style={{ color: stat.color ?? "var(--accent)" }}
       />
       <span className="min-w-0 flex flex-col items-start gap-1">
-        <span className="text-20 font-bold leading-none tabular-nums">
+        <span className="text-17 font-bold leading-none tabular-nums">
           {stat.value}
         </span>
-        <span className="min-w-0 max-w-full truncate text-13 font-medium text-muted leading-none">
+        <span className="min-w-0 max-w-full truncate text-12 font-medium text-muted leading-none">
           {stat.label}
         </span>
       </span>

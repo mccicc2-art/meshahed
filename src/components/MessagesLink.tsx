@@ -41,7 +41,8 @@ export function MessagesLink({ unread, locale }: { unread: number; locale: Local
          **فتغييرُه هنا يغيّرهما معاً، وهو المطلوب.** */
       className="relative grid place-items-center w-11 h-11 rounded-full text-foreground/80 hover:text-foreground hover:bg-surface-2 active:scale-95 transition"
     >
-      <Icon name="mail" size={24} />
+      {/* ⚖️ 🆕 ٢٤ → ٢٠ (D-619) — كمقاس الجرس سواء، والهدفُ ٤٤ كما هو */}
+      <Icon name="mail" size={20} />
       {has && (
         /* نفسُ شارة الجرس شكلاً وموضعاً: عائلةٌ واحدة لمعنًى واحد
            («عندك جديدٌ هنا»)، فلا يتعلّم المستخدم لغتين للشيء نفسه. */

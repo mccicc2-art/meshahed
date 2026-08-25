@@ -80,7 +80,8 @@ export function FollowCountButton({
           فرمزُ الجماعة يكفي (وهو رمزُ لقطته). **ومقاسا D-614 (١٩/١٥)
           كانا لعدّادٍ يجاور الاسمَ** — **وصفُّ التعريف تحت الاسم
           درجةٌ ثانويّة** فالسطرُ يرثُ مقاسَ مستدعيه. */}
-      <Icon name="people" size={16} />
+      {/* ⚖️ 🆕 ١٦ → ١٤ (D-619) — رمزٌ في سطرٍ ثانويٍّ لا يعلو حرفَه */}
+      <Icon name="people" size={14} />
       <span className="font-bold tabular-nums">{count}</span>
       <span>{label}</span>
     </>
