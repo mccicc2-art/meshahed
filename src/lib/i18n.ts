@@ -1446,6 +1446,9 @@ const ar = {
   custSectionsTitle: "الأقسام",
   custSectionsHint: "اسحب لترتيبها · واضغط العين لإظهارها أو إخفائها",
   /* 🆕 تخصيصٌ بشكل البروفايل الحالي (D-617): تبويباتٌ تُخفى وأقسامٌ داخلها */
+  /* 🆕 كلمةُ مقبض الرأس (D-624): «الكل» بلا سهم — تفتح ورقةً لا صفحة،
+     وسهمُ `seeAll` وعدُ انتقالٍ فلا يُستعار هنا (D-217) */
+  allWord: "الكل",
   custTabsTitle: "التبويبات",
   custTabsHint: "التبويب المطفأ يختفي عن زائرك — و«نظرة عامة» تبقى باب الصفحة دائماً.",
   custOverviewTab: "داخل تبويب النظرة العامة",
@@ -3026,6 +3029,7 @@ const en: Dict = {
   custResetHint: "Puts this panel back to its defaults — nothing is saved until you press save.",
   custSectionsTitle: "Sections",
   custSectionsHint: "Drag to reorder · Tap to show or hide",
+  allWord: "All",
   custTabsTitle: "Tabs",
   custTabsHint: "A hidden tab disappears for your visitors — Overview always stays the front door.",
   custOverviewTab: "Inside the Overview tab",
