@@ -31,11 +31,15 @@ export async function GET(request: Request) {
       const { absorbGuestContentPrefs } = await import("@/lib/actions");
       await absorbGuestContentPrefs().catch(() => {});
 
-      // الوجهة من متغيّر بيئةٍ نتحكّم به لا من ترويسة x-forwarded-host:
-      // الترويسات يكتبها العميل، وبناء إعادة التوجيه عليها يفتح باب
-      // التوجيه لمضيفٍ يختاره المهاجم بعد نجاح الدخول مباشرةً
-      const base = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ?? origin;
-      return NextResponse.redirect(`${base}${next}`);
+      /* 🔴 **والعودةُ إلى الأصل الذي جرى عليه التبادل** (D-623): الكوكيز
+         كُتبت على هذا الأصل للتوّ، **وتحويلُه قسراً إلى نطاقٍ آخر يترك
+         الجلسةَ خلفه** — وهو عينُ ما كان يُخرج تطبيقَ مشعل المثبَّت من
+         الأصل القديم في كلِّ فتح. **وحجّةُ الأمن القديمة باقيةٌ بحرفها**
+         (لا بناءَ على ترويسات العميل): `origin` هنا أصلُ الخدمة نفسِها،
+         ويُقبل **فقط** إن كان في قائمة `TRUSTED_ORIGINS` المغلقة —
+         وإلا فالنطاقُ القانونيُّ من متغيّر البيئة كما كان. */
+      const { resolveAuthBase } = await import("@/lib/siteOrigin");
+      return NextResponse.redirect(`${resolveAuthBase(origin)}${next}`);
     }
   }
 
