@@ -184,7 +184,9 @@ export default async function PeoplePage({
      فحتى تُشغَّل، يرتدّ `getCommunityFeed` إلى خطّ المتابَعين (انظر
      تعليقه)، **ولا هجرةَ جديدة ولا سياسة قراءةٍ خامسة** حين تُشغَّل:
      الدالّة تُخفي الاسم في SQL وتستثني المبلَّغ عنه وصاحبَ الحساب. */
-  const scope: "all" | "following" = sParam === "following" ? "following" : "all";
+  /* 🆕 **والزائرُ على «الكل» دائماً** (D-628): «المتابَعون» نطاقُ هويّةٍ
+     لا يملكها — ورابطٌ محفوظٌ بـ`s=following` كان سيريه فراغاً كاذباً. */
+  const scope: "all" | "following" = user && sParam === "following" ? "following" : "all";
 
   /**
    * ⚠️ **ونُقضت D-240 كاملةً — الرقاقاتُ الثلاث حُذفت** (D-280، طلبُ أحمد:
@@ -491,10 +493,19 @@ export default async function PeoplePage({
      (`followed` فوقه — D-194/D-291: نداءٌ قائمٌ يحمل الجواب)، **ويخصّ
      قائمةَ التبويب وحدَها**: بطاقةُ لوحة الأعضاء ترتيبٌ عامٌّ فلا
      يرشَّح، **ومفتاحُ الورقة يقول ما يفعله في صفحته لا في غيرها.** */
-  const roomsShown =
+  const roomsFiltered =
     talkFollowedOnly && user
       ? rooms.filter((r) => followed.has(`${r.mediaType}-${r.tmdbId}`))
       : rooms;
+  /* 🆕 **والزائرُ يرى أفضلَ خمسِ نقاشاتٍ لا الأربعين** (D-628، طلبُ أحمد
+     بالحرف: «يقدر يشوف أفضل ٥ نقاشات»): «الأفضل» بالنشاط — أسبوعُ
+     السبتِ الجاري أوّلاً ثم الإجمالُ — **فأوّلُ ما يراه غريبٌ عن لوبز
+     أحياها لا أرشيفَها.** والعضوُ على قائمته الكاملة كما كان. */
+  const roomsShown = user
+    ? roomsFiltered
+    : [...roomsFiltered]
+        .sort((a, b) => b.postsWeek - a.postsWeek || b.posts - a.posts)
+        .slice(0, 5);
 
   /* **إعجاباتُ أخبارِنا** (D-224): `post_reactions` القائم منذ `news.sql`،
      **بنداءٍ واحدٍ للقائمة كلِّها** (`reaction_counts` — دالّة definer
@@ -866,7 +877,9 @@ export default async function PeoplePage({
           المرئية، وانتقل عدّادا المتابعة وزرّ الإضافة إلى صفّ الترتيب أسفل
           التبويبات (طلب المالك) */}
       <h1 className="sr-only">{t.peopleTitle}</h1>
-      <OneTimeHint id="people-intro" text={t.hintPeople} closeLabel={t.closeLabel} />
+      {/* 🆕 وللزائر يصمت (D-628): نصُّه وعدُ عضوٍ — «تابع لترى» — والزائرُ
+          يرى بلا متابعة، فالسطرُ عنده ضجيجٌ فوق ترويسةٍ مزدحمة أصلاً */}
+      {user && <OneTimeHint id="people-intro" text={t.hintPeople} closeLabel={t.closeLabel} />}
 
       {/* ===== رأس التبويبات =====
           `PageTabs` المشترك (D-134): نفس الموضع الرأسيّ في المكتبة
