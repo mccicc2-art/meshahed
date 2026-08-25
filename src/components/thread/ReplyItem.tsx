@@ -15,6 +15,7 @@ import { SpoilerText } from "../SpoilerText";
 import { Dropdown, dropdownItem } from "../ui/Dropdown";
 import { Sheet } from "../ui/Sheet";
 import { ReplyingTo } from "./ThreadShell";
+import { actionTailItem } from "../ui/controls";
 
 /**
  * **صفُّ الردّ بتشريح تويتر** (D-242).
@@ -462,11 +463,13 @@ export function ReplyItem({
                 aria-pressed={likedByMe}
                 aria-label={t.likesLabel}
                 title={t.likesLabel}
-                className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-12 transition ${
-                  likedByMe ? "text-accent" : "text-muted"
-                } ${onLike ? "hover:text-accent active:scale-95" : "cursor-default"}`}
+                className={actionTailItem(
+                  likedByMe,
+                  onLike ? "active:scale-95" : "cursor-default hover:text-muted",
+                )}
               >
                 <Icon name={likedByMe ? "heart-filled" : "heart"} size={15} />
+                <span>{t.likesLabel}</span>
                 {likes > 0 && <span className="tabular-nums">{num(likes, locale)}</span>}
               </button>
             )}
@@ -476,9 +479,10 @@ export function ReplyItem({
                 onClick={onReply}
                 aria-label={t.talkReply}
                 title={t.talkReply}
-                className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-12 text-muted hover:text-accent transition"
+                className={actionTailItem(false)}
               >
                 <Icon name="comment" size={15} />
+                <span>{t.talkReply}</span>
                 {replyCount > 0 && (
                   <span className="tabular-nums">{num(replyCount, locale)}</span>
                 )}
