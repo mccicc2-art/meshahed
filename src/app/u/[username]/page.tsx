@@ -901,6 +901,14 @@ export default async function PublicProfilePage({
         <PageTabs items={tabItems} active={tab} ariaLabel={t.profile} asNav autoHide={false} />
       )}
 
+      {/* ⚖️ 🆕 **وصفوفُ التبويب في حاويةٍ أضيقَ إيقاعاً** (D-585، بلاغُ
+          أحمد بلقطتين محوَّطتين: «فيه هامش كبير فاضي احذفه»): إيقاعُ
+          الصفحة `space-y-5` (٢٠px) صحيحٌ بين كتل الرأس، **ورفٌّ فوق رفٍّ
+          كلاهما عنوانٌ وملصقاتٌ لا يحتاجانه** — **فالحاويةُ الواحدةُ
+          تجعل الرفوفَ كتلةً واحدةً في عين الإيقاع الخارجيّ** (٢٠ تحت
+          التبويبات مرّةً واحدة)، **وبينها `space-y-3` (١٢px).** */}
+      {canView && tab === "overview" && (
+      <div className="space-y-3">
       {/* ===== المفضّلة — ثلاثةُ صفوفٍ ثم صفوفُه بترتيب صاحبها (D-129) =====
           🆕 **رأسُ التبويب مفضّلتُه مقسومةً** (D-561، تصميمُ أحمد):
           **Shows · Movies · Anime** — **والصفُّ الفارغُ لا يُرسم**،
@@ -909,9 +917,7 @@ export default async function PublicProfilePage({
           ⚠️ **وتحتها صفوفُه المرتّبة كما هي** (D-129): **الترتيبُ
           إعدادٌ ضبطه صاحبُه ولا يُلغى لأن تبويباً تسمّى باسمٍ آخر** —
           **والتصميمُ لا يعرض ما تحت «Anime» أصلاً**، فلا تناقض. */}
-      {canView &&
-        tab === "overview" &&
-        favOrder.map((k) => {
+        {favOrder.map((k) => {
           const rows = k === "shows" ? favShows : favMovies;
           if (rows.length === 0) return null;
           return (
@@ -935,7 +941,7 @@ export default async function PublicProfilePage({
             </FavoritesRail>
           );
         })}
-      {canView && tab === "overview" && favAnime.length > 0 && (
+        {favAnime.length > 0 && (
         <FavoritesRail
           title={t.discoverTabAnime}
           listId={favListId}
@@ -969,9 +975,7 @@ export default async function PublicProfilePage({
           يبقى قسمُ مكتبته فيه كما كان** (D-152: لا يتحرّك ما لم
           يُطلب)، **و«فنّانوك» و«الأعلى تقييماً» و«قوائمه» لا يمسّها
           شيءٌ** لأنها لا تُكرَّر. */}
-      {canView &&
-        tab === "overview" &&
-        prefs.order
+        {prefs.order
           .filter(
             (sec) =>
               !(sec === "shows" && favShows.length > 0) &&
@@ -983,12 +987,11 @@ export default async function PublicProfilePage({
           })}
       {/* **وتبويبٌ لا شيءَ فيه يقول ذلك** (D-374): من أخفى كلَّ أقسامه
           ولا مفضّلةَ له كان يرى صفحةً تنتهي عند التبويبات بلا كلمة. */}
-      {canView &&
-        tab === "overview" &&
-        favorites.length === 0 &&
-        !prefs.order.some((sec) => sections[sec]) && (
+        {favorites.length === 0 && !prefs.order.some((sec) => sections[sec]) && (
           <p className="text-center text-muted py-16 text-sm">{t.profileEmptyFavorites}</p>
         )}
+      </div>
+      )}
 
       {/* ===== النشاط — تقييماتُه بالزمن ===== */}
       {canView && tab === "activity" && (
