@@ -22,6 +22,7 @@ import {
   getAllMovieProgress,
   getMyRatings,
   getMyLists,
+  getSavedLists,
   getFriendsWatching,
   getUnreadSignals,
   getUnreadShares,
@@ -607,6 +608,7 @@ async function HomeBody({
     earlyExtra,
     topRated,
     myListsRaw,
+    savedListCards,
     friendsRows,
     homeArt,
     savedLists,
@@ -651,6 +653,14 @@ async function HomeBody({
       : Promise.resolve(topRatedRaw),
     prefs.order.includes("lists")
       ? getMyLists().catch(() => [])
+      : Promise.resolve([]),
+    /* 🆕 **ومحفوظاتُه معها** (D-597، حكمُه بلقطةٍ لصفّ «قوائمي»:
+       «اعرض كل الليست حتى الي معطيها قلب») — نظيرُ تبويب الملفّ
+       (D-588): **البطاقةُ `PublicListCard` نفسُها وسطرُ صاحبها يفصل
+       الإعجابَ عن الملكيّة**. ونفسُ شرط «قوائمي» فلا يدفع كلفتَها
+       من أخفى القسم. */
+    prefs.order.includes("lists")
+      ? getSavedLists().catch(() => [])
       : Promise.resolve([]),
     /* 🆕 **«أعمالُ أصدقائك الآن»** (البند ٧) — **ولا يدفع كلفتَه إلا من
        أظهره** (قاعدةُ «recap» و«قوائمي» نفسُها)، **وهو نداءُ الخطّ نفسِه
@@ -707,6 +717,16 @@ async function HomeBody({
       posters: l.posters ?? [],
     }))
     .filter((c) => c.item_count > 0);
+
+  /* 🆕 **قوائمُه ثمّ محفوظاتُه في الصفّ نفسِه** (D-597) — ترتيبُ
+     تبويب الملفّ والمكتبة نفسُه (D-588)، **وسطرُ الصاحب على المحفوظة
+     وحدَها يقول الفرقَ** فلا تُنسب إليه قائمةُ غيره. والتكرارُ يُسقَط
+     بالمعرّف — قائمةٌ يملكها وأعجب بها لا تُرسم مرّتين. */
+  const ownedIds = new Set(myListCards.map((c) => c.id));
+  const homeListCards = [
+    ...myListCards,
+    ...savedListCards.filter((c) => c.item_count > 0 && !ownedIds.has(c.id)),
+  ];
 
   // ما تغيّر اسمه بالترجمة يُكتب مرة واحدة في قاعدة البيانات
   const metaToCache = follows
@@ -1462,10 +1482,10 @@ async function HomeBody({
               </Section>
             ) : null,
           lists:
-            myListCards.length > 0 ? (
+            homeListCards.length > 0 ? (
               <div key="lists">
                 <PublicListsRail
-                  lists={myListCards}
+                  lists={homeListCards}
                   locale={locale}
                   title={t.myLists}
                   action={<HomeOrderButton label={t.custReorder} />}
