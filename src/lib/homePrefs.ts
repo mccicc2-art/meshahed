@@ -2,6 +2,8 @@
 
 import { sanitizeCardCount, type CardCount } from "./cardCount";
 import { sanitizeDensity, type Density } from "./density";
+import type { Dict } from "./i18n";
+import type { IconName } from "@/components/Icon";
 
 /** أقسام الرئيسية القابلة للترتيب */
 export const HOME_SECTIONS = [
@@ -23,6 +25,28 @@ export const HOME_SECTIONS = [
   "friends",
 ] as const;
 export type HomeSection = (typeof HOME_SECTIONS)[number];
+
+/**
+ * 🆕 أيقونةُ كلِّ قسمٍ واسمُه — **سجلٌّ واحدٌ لقارئَين** (D-595، نظيرُ
+ * `profileSectionMeta` حرفاً): كان مكتوباً داخل `HomeCustomize` وحدَها،
+ * **ثمّ احتاجته ورقةُ الترتيب التي تُفتح من عناوين الرئيسية نفسِها** —
+ * ونسخُه كان سيعني قسماً باسمَين عند أوّل تعديل (D-145).
+ */
+export function homeSectionMeta(t: Dict): Record<HomeSection, { icon: IconName; label: string }> {
+  return {
+    continue: { icon: "play", label: t.continueWatching },
+    week: { icon: "calendar", label: t.custWeekStrip },
+    towatch: { icon: "bookmark", label: t.libToWatch },
+    upcoming: { icon: "hourglass", label: t.libUpcoming },
+    recap: { icon: "book", label: t.recapTitle },
+    shows: { icon: "tv", label: t.myShows },
+    movies: { icon: "film", label: t.myMovies },
+    ratings: { icon: "star", label: t.panelRatings },
+    lists: { icon: "list", label: t.myLists },
+    trending: { icon: "trending", label: t.trendingWeek },
+    friends: { icon: "people", label: t.railFriendsNow },
+  };
+}
 
 /** خانات بطاقة الأرقام — خيارات يعرض المستخدم منها ٢ إلى ٤ */
 export const HEADER_STATS = [

@@ -308,6 +308,41 @@ export async function setToWatchQueue(on: boolean) {
   return !!on;
 }
 
+/**
+ * 🆕 **ترتيبُ أقسام الرئيسية من عناوينها** (D-595، حكمُ أحمد بلقطةٍ
+ * دوّر فيها عناوينَ الأقسام: «حتى في الهوم أي شي أضغط عليه من هذي
+ * يخلّيني أرتّبها — من الأوّل ومن الثاني وكذا»).
+ *
+ * **الكاتبُ نفسُه الذي تكتب به شاشةُ التخصيص** (`home_prefs.order`
+ * عبر التنقية نفسِها `sanitizeHomePrefs`) — **بابان لحقلٍ واحد لا
+ * حقلان** (D-462)، والقراءةُ قبل الكتابة لدرس `setHomeView` نفسِه:
+ * العمودُ JSON واحدٌ وكتابةُ `order` وحدَه تمحو أخوتَه.
+ *
+ * ⚠️ **و`revalidatePath("/")` تلزم** — الترتيبُ يقرؤه الخادمُ عند
+ * الرسم، والورقةُ تنادي `router.refresh()` بعده فيصل الترتيبُ الجديد.
+ */
+export async function saveHomeSectionOrder(order: string[]) {
+  const { supabase, user } = await requireUser("profile", 30, 60_000);
+
+  const { data } = await supabase
+    .from("profiles")
+    .select("home_prefs")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  const prefs = sanitizeHomePrefs(data?.home_prefs);
+  /* **التنقيةُ بمرشِّح القراءة نفسِه**: أقسامٌ معروفةٌ بلا تكرار —
+     وقيمةٌ عبرت الشبكةَ لا تُصدَّق (عُرفُ `updateProfile`) */
+  const next = sanitizeHomePrefs({ ...prefs, order });
+
+  const { error } = await supabase
+    .from("profiles")
+    .upsert({ id: user.id, home_prefs: next }, { onConflict: "id" });
+  if (error) fail(error);
+
+  revalidatePath("/");
+}
+
 /** مزامنة كوكي الثيم لمن اختار ثيمه قبل اعتماد الكوكي — تُستدعى مرة من العميل */
 export async function syncThemeCookie(value: string) {
   const theme = THEMES.some((t) => t.id === value) ? value : "amber";
