@@ -5,7 +5,6 @@ import { setListPlaylist, setSavedListPlaylist } from "@/lib/actions";
 import { getDict, type Locale } from "@/lib/i18n";
 import { tap } from "@/lib/haptics";
 import { toast, flashError } from "@/lib/toast";
-import { Icon } from "./Icon";
 
 /**
  * 🆕 **رقاقةُ التشغيل/الإيقاف — شكلٌ واحدٌ لمعنًى واحد** (D-563).
@@ -20,16 +19,23 @@ import { Icon } from "./Icon";
  */
 export function PlayPill({ on, locale }: { on: boolean; locale: Locale }) {
   const t = getDict(locale);
+  /* ⚖️ 🆕 **الكلمةُ وقرصُها بدل الرمز** (D-677، لقطتا أحمد: «On ●» /
+     «Off ○») — **الحالةُ ما زالت مكتوبةً بالكلمة** (D-142)، **والقرصُ
+     لبوسُ مفتاحٍ يُقرأ قابلاً للقلب** — ورمزُ التشغيل كان يُقرأ زرَّ
+     تشغيلِ محتوًى (D-030). */
   return (
     <span
-      className={`shrink-0 inline-flex items-center gap-1 rounded-full px-2 h-7 text-12 font-bold ${
+      className={`shrink-0 inline-flex items-center gap-1.5 rounded-full ps-3 pe-1.5 h-7 text-12 font-bold border transition ${
         on
-          ? "bg-accent text-[color:var(--on-accent)]"
-          : "bg-surface-2 text-muted border border-border"
+          ? "border-accent/60 bg-accent/10 text-accent"
+          : "border-border bg-surface-2 text-muted"
       }`}
     >
-      <Icon name={on ? "play" : "pause"} size={13} />
       {on ? t.toWatchOn : t.toWatchOff}
+      <span
+        aria-hidden
+        className={`w-4 h-4 rounded-full ${on ? "bg-accent" : "bg-[color:var(--divider)]"}`}
+      />
     </span>
   );
 }

@@ -9,7 +9,6 @@ import { curatedName } from "@/lib/universes";
 import { ListSaveHeart } from "./ListSaveHeart";
 import { ListPlayToggle } from "./ListPlayToggle";
 import { ListRateStar } from "./ListRateStar";
-import { MarqueeText } from "./MarqueeText";
 import type { PublicListCard } from "@/lib/data";
 
 /**
@@ -188,12 +187,11 @@ export function CommunityListCard({
     <ListCardShell
       name={name}
       play={play}
-      /* **النجمةُ والقلبُ في سطر الاسم** (D-383، طلبُ أحمد: «النجمة التي
-         تحت القلب تكون هي والاسم والتايتل في سطر واحد… تكون سطرين
-         وبوستر»). ⚠️ **ولا يظهر الزرّان لقائمتي أنا ولا لزائرٍ بلا
-         حساب**: نفسُ شرط `list_saves` و`list_reviews` حرفاً — **وزرٌّ لا
-         يستطيع أن يكتب وعدٌ كاذب** (D-217). **ومن لا زرَّ له يرى الرقمَ
-         ساكناً** فلا يفقد الحقيقةَ من لا يملك الفعل. */
+      /* **القلبُ والآراءُ والنجمةُ في شريط الحال** (D-677، تصميمُه) —
+         **والفاعلُ فاعلٌ والساكنُ ساكن**: من يملك الفعلَ يضغط زرَّه
+         (نفسُ شرط `list_saves` و`list_reviews` — D-217)، **ومن لا
+         يملكه يرى الرقمَ ساكناً بصفره** (نقضُ D-219 المحصورُ المسجَّل
+         في رأس الهيكل). */
       star={
         l.can_review ? (
           <ListRateStar
@@ -204,15 +202,13 @@ export function CommunityListCard({
             locale={locale}
           />
         ) : (
-          (l.rating ?? null) !== null && (
-            <span
-              className="shrink-0 flex items-center gap-1 px-1 text-12 font-bold text-accent tabular-nums"
-              dir="ltr"
-            >
-              <Icon name="star" size={16} />
-              {num(l.rating as number, locale)}
-            </span>
-          )
+          <span
+            className="shrink-0 flex items-center gap-1 text-12 font-bold text-accent tabular-nums"
+            dir="ltr"
+          >
+            <Icon name="star" size={15} />
+            {num(l.rating ?? 0, locale)}
+          </span>
         )
       }
       heart={
@@ -224,16 +220,23 @@ export function CommunityListCard({
             locale={locale}
           />
         ) : (
-          (l.saves ?? 0) > 0 && (
-            <span
-              className="shrink-0 flex items-center gap-1 px-1 text-12 text-muted tabular-nums"
-              dir="ltr"
-            >
-              <Icon name="heart-filled" size={16} className="fill-current" />
-              {num(l.saves as number, locale)}
-            </span>
-          )
+          <span
+            className="shrink-0 flex items-center gap-1 text-12 text-muted tabular-nums"
+            dir="ltr"
+          >
+            <Icon name="heart-filled" size={15} className="fill-current text-accent" />
+            {num(l.saves ?? 0, locale)}
+          </span>
         )
+      }
+      comments={
+        <span
+          className="shrink-0 flex items-center gap-1 text-12 text-muted tabular-nums"
+          dir="ltr"
+        >
+          <Icon name="comment" size={15} className="text-accent" />
+          {num(l.reviews ?? 0, locale)}
+        </span>
       }
       action={action}
       /* **وجهُ الصاحب دائرةً قبل اسمه** (D-335) — ومخفي الاسم بلا وجهٍ
@@ -256,7 +259,9 @@ export function CommunityListCard({
     <Link
       href={`/lists/${l.id}`}
       prefetch={false}
-      className={`block rounded-2xl border border-border bg-surface p-2.5 hover:bg-surface-2 transition ${className}`}
+      /* **البطاقةُ بلا حشوة** (D-677): الأرضيّةُ تملأها والهيكلُ يحشو
+         محتواه بنفسه — `overflow-hidden` يقصّ الملصقاتِ على زواياها. */
+      className={`block rounded-2xl border border-border bg-surface overflow-hidden hover:border-accent/40 transition ${className}`}
     >
       {body}
     </Link>
@@ -264,21 +269,27 @@ export function CommunityListCard({
 }
 
 /**
- * 🆕 **هيكلُ بطاقة القائمة — واحدٌ لكلِّ باب** (D-383، طلبُ أحمد على
- * لقطتين متجاورتين: «لاحظت في لستات تصميمها مختلفة، لازم الكل نفس
- * التصميم… يعني اللستة تكون عبارة عن سطرين وبوستر، وهذا تطبّقه في كل
- * مكان: الديسكفري والمكتبة والكوميونتي»).
+ * 🆕 **هيكلُ بطاقة القائمة — واحدٌ لكلِّ باب، بوجه D-677** (تصميمُ أحمد
+ * بلقطتين: «أبغاك تطبق هذا التصميم الجديد لليست، ويطبق في كل مكان:
+ * الديسكفري والهوم والمكتبة والبروفايل والكوميونتي — وسواءً الليست لي
+ * أو لا، التصميم يكون موحد»).
  *
- * **سطران وبوستر، لا أكثر:**
- *  ١) الاسمُ ومعه ★ و♥ **في سطرٍ واحد** — الرمزُ ورقمُه معاً (D-223).
- *  ٢) وجهُ الصاحب واسمُه · عددُ الأعمال (وذيلٌ اختياريٌّ كوعد الترتيب).
- *  ٣) ثلاثةُ ملصقات، أو الغلافُ المختار مكانَها (D-364/D-208).
+ * **تشريحُ البطاقة الجديد:**
+ *  ١) الملصقاتُ (أو الغلافُ المختار) **أرضيّةُ البطاقة كلِّها** من جهة
+ *     النهاية، وحجابٌ من جهة البداية يُقرأ عليه النصّ.
+ *  ٢) الاسمُ عريضاً **بسطرين يلتفّان** — ⚖️ **نقضٌ محصورٌ لمشي D-486
+ *     في هذه البطاقة بتصميمه**: لقطتُه تُظهر الاسمَ ملتفّاً لا ماشياً.
+ *  ٣) وجهُ الصاحب واسمُه، ثمّ عددُ الأعمال.
+ *  ٤) **شريطُ الحال في القاع**: ♥ عددُ الحفظ · 💬 عددُ الآراء · ★
+ *     التقييم · **ومفتاحُ التشغيل في طرفه** (D-674).
+ *     ⚖️ **والصفرُ يُطبع هنا** — **نقضٌ محصورٌ لتطبيق D-219 في هذا
+ *     الشريط بتصميمه** (لقطتُه: «♥ 0 · 💬 0 · ★ 0»): الشريطُ تشريحُ
+ *     البطاقة الثابت، **وغيابُ خانةٍ منه يُقرأ اختلافَ بطاقةٍ لا غيابَ
+ *     رقم** — وتوحيدُ الشكل هو نصُّ طلبه.
  *
- * **⚖️ وهذا نقضٌ مسجَّلٌ لعمودِ الزاوية في D-357** («القلب فوق والنجمة
- * تحته») — **بحكم صاحبه بعد أن رأى الشكلين متجاورين**: بطاقةُ المجموعة
- * المنسّقة بقيت على سطر الاسم، **فقُرئ الصفُّ صفَّين بإيقاعين** وهو
- * بعينه ما تمنعه القاعدة ٦. **والسببُ الأصليُّ لـD-357 لم يسقط**: الرقمُ
- * ما زال يجاور رمزَه — **وإنّما انتقل الرمزان معاً إلى حيث كان جارُهما.**
+ * **والبطاقةُ واحدةٌ في كلِّ سطح** (D-375/D-383): اكتشف والرئيسية
+ * والمكتبة والملفّ والمجتمع و`/news` — **فسطحٌ واحدٌ يُعدَّل يغيّرها
+ * كلَّها**، وهو حرفُ طلبه.
  */
 export function ListCardShell({
   name,
@@ -286,6 +297,7 @@ export function ListCardShell({
   star,
   play,
   heart,
+  comments,
   action,
   ownerAvatar,
   ownerName,
@@ -295,99 +307,93 @@ export function ListCardShell({
   cover,
 }: {
   name: string;
-  /** رمزٌ قبل الاسم — لقوائم لوبز وحدَها (✦/★) */
+  /** رمزٌ قبل الاسم — لقوائم لوبز وطابور «للمشاهدة» */
   icon?: React.ReactNode;
   star?: React.ReactNode;
-  /** 🆕 **رقاقةُ التشغيل/الإيقاف** (D-674) — تجلس يسار النجمة */
+  /** رقاقةُ التشغيل/الإيقاف (D-674) — طرفُ شريط الحال */
   play?: React.ReactNode;
   heart?: React.ReactNode;
+  /** 🆕 عدُّ الآراء (D-677) — خانةُ 💬 في شريط الحال */
+  comments?: React.ReactNode;
   action?: React.ReactNode;
   ownerAvatar?: React.ReactNode;
   ownerName?: string | null;
   countText: string;
-  /** ذيلُ السطر الثاني — «بترتيب الأحداث» أو جسمُ الجائزة */
+  /** ذيلُ سطر العدّ — «بترتيب الأحداث» أو جسمُ الجائزة */
   extra?: string;
   posters?: string[];
   cover?: string | null;
 }) {
+  const stats = [heart, comments, star].filter(
+    (x) => x !== undefined && x !== null && x !== false,
+  );
   return (
-    <>
-      <span className="flex items-center gap-1.5 text-14 font-bold">
-        {icon}
-        {/* ⚖️ 🆕 **سطرٌ واحدٌ يمشي لا سطران يُقصّان** (D-486 امتداداً،
-            طلبُ أحمد ٢٠ أغسطس: «حتى في اللستات في كل مكان — العنوان ما
-            أبغاه ياخذ سطرين، هو سطر واحد وإذا ما يكفي يتحرّك الكلام»).
-            **ونقضُ «حدّ أقصى سطران» من D-443** — **وحجّتُها كانت أنّ
-            القصَّ في سطرٍ واحد يبتلع نصفَ الاسم العربيّ**، **والمشيُ
-            هو الجوابُ لا سطرٌ ثانٍ**: الاسمُ يُقرأ كاملاً ولا تتفاوت
-            البطاقاتُ في الارتفاع. **و`dir="auto"` باقٍ بحرفه** (القاعدة
-            ١٧) — وهو الآن معامِلٌ في `MarqueeText`.
-            **وبطاقةُ القائمة واحدةٌ في كلِّ سطح** (D-375/D-383)،
-            **فسطحٌ واحدٌ يُعدَّل يغيّر اكتشفَ والمجتمعَ والمكتبةَ
-            والملفَّ معاً** — وهو ما طلبه بنصّه «في كل مكان». */}
-        <MarqueeText
-          text={name}
-          dir="auto"
-          className="min-w-0 flex-1 leading-tight"
-        />
-        {heart}
-        {action}
-      </span>
-      {/* 🆕 **والنجمةُ آخرَ السطر الثاني والقلبُ في سطر الاسم** (D-387،
-          **حكمُ أحمد الثاني بعد أن رأى الأوّل حيّاً**: «سطر ١: الاسم +
-          ♥ برقمه · سطر ٢: وجهُ الصاحب واسمُه · عددُ الأعمال + ★ برقمها
-          — خلّها كذا أفضل»).
-          **⚖️ وهو تبديلٌ لموضعَي الرمزين لا نقضٌ لبنية السطرين**:
-          الشكلُ سطران وبوستر كما استقرّ في D-383، **وطرفا السطرين
-          عمودٌ واحدٌ من الأرقام** — **والذي تبدّل أيُّهما فوق.**
-          **وحجّتُه أقربُ إلى الفعل**: القلبُ زرُّك أنت (تحفظ أو لا)،
-          **فيجاور الاسمَ الذي تضغطه**، **والنجمةُ حكمُ الناس فتجاور
-          عددَهم.** **والارتفاعُ سطران كما هو** (D-046). */}
-      <span className="mt-1 flex items-center gap-1 text-12 font-normal text-muted min-w-0">
-        {ownerAvatar}
-        {ownerName && (
-          <>
-            <span className="truncate">{ownerName}</span>
-            <span aria-hidden>·</span>
-          </>
+    <span className="relative block h-full min-h-[10.5rem] isolate">
+      {/* **الأرضيّة**: الغلافُ المختارُ كاملاً، وإلّا الملصقاتُ الثلاثة
+          من جهة النهاية — **والفراغُ أرضيّةُ السطح وحدَها** (D-063:
+          الغيابُ لا يُزخرف). */}
+      {cover ? (
+        <span aria-hidden className="absolute inset-0">
+          <Image src={cover} alt="" fill sizes="(max-width: 640px) 100vw, 320px" className="object-cover" />
+        </span>
+      ) : (
+        posters &&
+        posters.length > 0 && (
+          <span aria-hidden className="absolute inset-y-0 end-0 w-[78%] flex justify-end">
+            {posters.slice(0, 3).map((url, i) => (
+              <span key={i} className="relative h-full flex-1 min-w-0">
+                <Image src={url} alt="" fill sizes="120px" className="object-cover" />
+              </span>
+            ))}
+          </span>
+        )
+      )}
+      {/* **الحجابُ بلون السطح نفسِه** — فيصحّ في `daylight` بلا رقمٍ
+          أصمّ (رمزُ الثيم لا لونٌ مكتوب)، **واتّجاهُه اتّجاهُ القراءة**
+          (القاعدة ١٧). */}
+      <span
+        aria-hidden
+        className="absolute inset-0 bg-gradient-to-r rtl:bg-gradient-to-l from-[color:var(--surface)] from-[22%] via-[color:var(--surface)]/80 via-[55%] to-[color:var(--surface)]/10"
+      />
+      {/* وحزامٌ سفليٌّ يقرأ عليه شريطُ الحال فوق أيِّ ملصق */}
+      <span
+        aria-hidden
+        className="absolute inset-x-0 bottom-0 h-14 bg-gradient-to-t from-[color:var(--surface)] via-[color:var(--surface)]/70 to-transparent"
+      />
+
+      <span className="relative flex h-full min-h-[10.5rem] flex-col p-3.5">
+        <span className="flex items-start gap-1.5">
+          {icon && <span className="shrink-0 mt-0.5">{icon}</span>}
+          <span dir="auto" className="min-w-0 flex-1 text-15 font-bold leading-snug line-clamp-2 break-words">
+            {name}
+          </span>
+          {action && <span className="shrink-0">{action}</span>}
+        </span>
+        {(ownerAvatar || ownerName) && (
+          <span className="mt-1.5 flex items-center gap-1.5 text-12 text-muted min-w-0">
+            {ownerAvatar}
+            {ownerName && <span className="truncate">{ownerName}</span>}
+          </span>
         )}
-        <span className="truncate">
+        <span className="mt-1 text-12 text-muted min-w-0 truncate">
           {countText}
           {extra ?? ""}
         </span>
-        {(play || star) && (
-          /* 🆕 **مفتاحُ التشغيل يسار النجمة** (D-674، رسمُ أحمد بلقطتين
-             محوَّطتين): **طرفُ السطر عمودُ الحالة** — النجمةُ حكمُ
-             الناس والمفتاحُ حكمُك أنت، **ويقرآن معاً بلا سطرٍ ثالث.** */
-          <span className="ms-auto shrink-0 flex items-center gap-2">
-            {play}
-            {star}
+
+        {(stats.length > 0 || play) && (
+          <span className="mt-auto pt-3 flex items-center min-w-0">
+            {stats.map((node, i) => (
+              <span key={i} className="flex items-center shrink-0">
+                {i > 0 && (
+                  <span aria-hidden className="w-px h-4 bg-[color:var(--divider)] mx-2.5" />
+                )}
+                {node}
+              </span>
+            ))}
+            {play && <span className="ms-auto ps-2 shrink-0">{play}</span>}
           </span>
         )}
       </span>
-      {cover ? (
-        <span className="mt-2 block relative aspect-[16/9] rounded-lg overflow-hidden bg-surface-2 border border-[color:var(--background)]">
-          <Image src={cover} alt="" fill sizes="(max-width: 640px) 50vw, 260px" className="object-cover" />
-        </span>
-      ) : (
-        <span className="mt-2 flex gap-1.5">
-          {/* **ثلاثةٌ لا أربعة** (D-206) — والرابعُ يجعل كلَّ ملصقٍ ٥٦px */}
-          {posters && posters.length > 0 ? (
-            posters.slice(0, 3).map((url, i) => (
-              <span
-                key={i}
-                className="relative w-[calc(33.333%-4px)] aspect-[2/3] rounded-lg overflow-hidden bg-surface-2 border border-[color:var(--background)]"
-              >
-                <Image src={url} alt="" fill sizes="80px" className="object-cover" />
-              </span>
-            ))
-          ) : (
-            <span className="grid place-items-center w-14 aspect-[2/3] rounded-lg border border-dashed border-border text-muted">
-              <Icon name="list" size={16} />
-            </span>
-          )}
-        </span>
-      )}
-    </>
+    </span>
   );
 }

@@ -49,7 +49,7 @@ export function ListManager({
    * **والصفرُ يُخفى** (D-219)، **والخاصّةُ بلا أرقامٍ أصلاً** (لا تُقرأ
    * فلا تُقيَّم — نصُّ الهجرة ١٠٥).
    */
-  stats?: Map<string, { saves: number; rating: number | null }>;
+  stats?: Map<string, { saves: number; reviews?: number; rating: number | null }>;
   /**
    * 🆕 **أيُّ قوائمك رايتُها مرفوعة** (D-563) — **والغيابُ يعني «لا
    * مفتاح»** لا «كلُّها متوقّفة**: **مستدعٍ لم يمرّرها لا يجوز أن
@@ -128,6 +128,7 @@ export function ListManager({
                     item_count: l.item_count,
                     posters: l.posters ?? [],
                     saves: st?.saves ?? 0,
+                    reviews: st?.reviews ?? 0,
                     rating: st?.rating ?? null,
                     /* ⚖️ 🆕 **والمفتاحُ انتقل إلى البطاقة نفسِها**
                        (D-674): كان يُمرَّر في خانة `action` بجوار

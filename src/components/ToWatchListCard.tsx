@@ -80,7 +80,7 @@ export function ToWatchListCard({
       onClick={toggle}
       disabled={pending}
       aria-pressed={on}
-      className={`block w-full h-full text-start rounded-2xl border bg-surface p-2.5 transition hover:bg-surface-2 active:scale-[0.99] disabled:opacity-70 ${
+      className={`block w-full h-full text-start rounded-2xl border bg-surface overflow-hidden transition hover:border-accent/40 active:scale-[0.99] disabled:opacity-70 ${
         on ? "border-border" : "border-dashed border-border"
       }`}
     >
@@ -95,12 +95,12 @@ export function ToWatchListCard({
            «34 titlesBuilt from…» ملتصقتين.** */
         extra={` · ${t.toWatchAutoNote}`}
         posters={posters.map((p) => posterUrl(p, "w185")).filter(Boolean) as string[]}
-        /* ⚖️ 🆕 **والرقاقةُ خرجت إلى `PlayPill`** (D-563): طلبها أحمد
-           على كلِّ بطاقةٍ لا على هذه وحدَها — **ونسخُها هناك كان سيصنع
-           رقاقتين تفترقان عند أوّل تعديل** (القاعدة ٣/D-145). **الشكلُ
-           واحدٌ والفعلُ مختلف**: هذه تكتب تفضيلَ الرئيسية، وتلك رايةَ
-           قائمة. */
-        action={<PlayPill on={on} locale={locale} />}
+        /* ⚖️ 🆕 **والرقاقةُ في شريط الحال كأخواتها** (D-563/D-677) —
+           **بلا ♥ و💬 و★ عمداً**: الطابورُ ليس قائمةً في القاعدة فلا
+           حفظَ له ولا رأيَ ولا تقييمَ **أبداً** — **وخانةٌ لا يمكن أن
+           تتحرّك يوماً كذبةٌ لا توحيد** (D-217؛ استثناءٌ مُعلَنٌ من
+           لقطته التي رسمت أصفاراً عليه). */
+        play={<PlayPill on={on} locale={locale} />}
       />
     </button>
   );

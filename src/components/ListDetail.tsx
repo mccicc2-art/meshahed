@@ -10,6 +10,7 @@ import {
   reorderList,
   setListKind,
   setListPlaylist,
+  setSavedListPlaylist,
   toggleInList,
   saveList,
   followListTitles,
@@ -23,6 +24,7 @@ import { Icon, type IconName } from "./Icon";
 import type { ListItem, ListKind } from "@/lib/data";
 import type { TitleState } from "@/lib/libState";
 import { StatusThread } from "./StatusThread";
+import { PlayPill } from "./ListPlayToggle";
 import { Sheet, SheetHeader } from "./ui/Sheet";
 import { DetailTabs } from "./DetailTabs";
 import { buttonClass } from "./ui/Button";
@@ -79,6 +81,8 @@ export function ListDetail({
   reviewsSlot,
   libState,
   initialPlaylist,
+  saves,
+  initialSavedPlaylist,
 }: {
   listId: string;
   name: string;
@@ -138,6 +142,11 @@ export function ListDetail({
   libState?: Record<string, TitleState>;
   /** 🆕 رايةُ قائمة التشغيل (D-505) — الغيابُ يعني هجرةً لم تُشغَّل فلا صفّ */
   initialPlaylist?: boolean | null;
+  /** 🆕 **عددُ من حفظها** (D-677) — لخانة ♥ في شريط الحال؛ الغيابُ صفر */
+  saves?: number;
+  /** 🆕 **رايةُ تشغيلي على المحفوظة** (D-674/١٤٩) — لغير المالك؛
+      `null` = زائرٌ بلا حساب فلا مفتاح */
+  initialSavedPlaylist?: boolean | null;
 }) {
   const t = getDict(locale);
   const router = useRouter();
@@ -145,14 +154,18 @@ export function ListDetail({
   /* حفظ القائمة مرجعاً حيّاً — متفائلٌ مع تراجُع (D-007) */
   const [saved, setSaved] = useState(initialSaved ?? false);
   const canSave = !isOwner && initialSaved !== undefined && initialSaved !== null;
-  /* 🆕 رايةُ قائمة التشغيل (D-505) — متفائلةٌ مع تراجُع كالحفظ سواء */
-  const [playlist, setPlaylist] = useState(!!initialPlaylist);
-
+  /* 🆕 رايةُ قائمة التشغيل (D-505) — متفائلةٌ مع تراجُع كالحفظ سواء.
+     ⚖️ 🆕 **ولغير المالك رايتُه على صفِّ حفظه** (D-674/D-677): **حالةٌ
+     واحدةٌ وكاتبان لأن المالكَ اثنان** — `setListPlaylist` لقائمتك
+     و`setSavedListPlaylist` لمحفوظتك. */
+  const [playlist, setPlaylist] = useState(
+    isOwner ? !!initialPlaylist : !!initialSavedPlaylist,
+  );
   function togglePlaylist() {
     const next = !playlist;
     tap(next ? [12, 30] : 8);
     setPlaylist(next);
-    setListPlaylist(listId, next)
+    (isOwner ? setListPlaylist : setSavedListPlaylist)(listId, next)
       .then(() => toast(next ? t.listPlaylistOnToast : t.listPlaylistOffToast))
       .catch((err) => {
         setPlaylist(!next);
@@ -374,34 +387,11 @@ export function ListDetail({
           القلم يزاحم الاسم على شاشةٍ ضيّقة فيقصّه بلا داعٍ */}
       <div className="flex items-start gap-3 mb-1.5">
         <h1 className="flex-1 min-w-0 text-22 leading-tight font-bold break-words">{name}</h1>
-        {/* «أضِفها إلى قوائمي» مكانَ نقاط المالك: مرجعٌ حيٌّ إلى قائمة
-            صاحبها — تعديلاتُه تنعكس عندك لأنها القائمة نفسها (D-068) */}
-        {canSave && (
-          <button
-            type="button"
-            onClick={toggleSave}
-            aria-pressed={saved}
-            className={`shrink-0 flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-14 font-semibold transition active:scale-95 ${
-              saved
-                ? "border-accent/50 bg-accent/10 text-accent"
-                : "border-accent bg-accent text-[color:var(--on-accent)] hover:brightness-110"
-            }`}
-          >
-            {/* 🆕 **القلبُ هو الحفظ — لا فعلَ ثانٍ** (D-324، قرارُ أحمد بعد
-                عرضِ البديل): `list_saves` هو حرفيّاً «تعجبني وأريدها»،
-                **وقلبٌ ثانٍ بجانبه رمزان لمعنًى واحد** — وهو ما تمنعه
-                D-294 («رمزٌ واحدٌ لفعلٍ واحد»). **فتبدّل الرمزُ ولم يُبنَ
-                جدولٌ ولا عدّادٌ ثانٍ**، والممتلئُ يقول «عندك» كما في كلِّ
-                سطحٍ آخر (وصفةُ `LikeButton` حرفاً). */}
-            <Icon
-              name={saved ? "heart-filled" : "heart"}
-              size={14}
-              strokeWidth={2.2}
-              className={saved ? "fill-current" : undefined}
-            />
-            {saved ? t.listSavedBtn : t.listSaveBtn}
-          </button>
-        )}
+        {/* ⚖️ 🆕 **وزرُّ الحفظ الكبير غادر الترويسةَ إلى شريط الحال**
+            (D-677، تصميمُه: لا زرَّ في الرأس والقلبُ برقمه في الشريط) —
+            **الفعلُ واحدٌ والكاتبُ واحد** (`toggleSave`)، والذي تبدّل
+            مجلسُه: **قلبُ البطاقة في الخارج وقلبُ الشريط في الداخل
+            شكلٌ واحد** — وهو نصُّ طلبه «التصميم يكون موحد». */}
         {/* «أضِف أعمالاً» قبل النقاط لا داخلها: إضافةُ عملٍ هي الفعل الأوّل
             في قائمةٍ تملكها، ودفنُه في قائمةٍ يفتحها زرٌّ آخر هو بالضبط
             العطل الذي بلّغ عنه أحمد (D-167). */}
@@ -525,24 +515,20 @@ export function ListDetail({
         </div>
       )}
 
-      <div className="flex items-center flex-wrap gap-2 mt-3.5 mb-5">
-        <span className="text-xs text-muted">{t.listCount(visible.length)}</span>
+      {/* ⚖️ 🆕 **صفُّ التعريف كلماتٍ لا رقائق** (D-677، تصميمُه:
+          «🎬 15 titles · ☰ Watch order · 🌐 Public list»): رمزٌ وكلمةٌ
+          لكلِّ صفة — **والرقاقةُ لبوسُ فعلٍ لا صفة** (D-217)، فبقيت
+          لمفتاح العلانية وحدَه لأنه زرٌّ يقلبها.
+          **ورقاقةُ التقييم غادرت إلى شريط الحال** (أدناه). */}
+      <div className="flex items-center flex-wrap gap-x-3 gap-y-2 mt-3.5 mb-4">
+        <span className="inline-flex items-center gap-1.5 text-12 text-muted">
+          <Icon name="film" size={14} className="text-accent" />
+          {t.listCount(visible.length)}
+        </span>
         {numbered && (
-          <span className="text-12 px-2 py-0.5 rounded-full border border-accent/40 text-accent">
+          <span className="inline-flex items-center gap-1.5 text-12 text-muted">
+            <Icon name="list" size={14} className="text-accent" />
             {kind === "ranked" ? t.listTypeRanked : t.listTypeWatch}
-          </span>
-        )}
-        {/* 🆕 **رقمُ التقييم في الرأس** (D-332→D-333). كان مرساةً تقفز
-            إلى القاع، **وصار القسمُ تبويباً على بُعد نظرة** (طلبُ أحمد:
-            «شي يشبه صفحة العمل») — فبقي الرقمُ هنا هويّةً كما IMDb في
-            ترويسة الفيلم، **وسقط الرابطُ لأن البابَ صار تحته مباشرة**.
-            **ورقمٌ صفرٌ لا يُطبع** (D-219): تبويبُ التقييمات نفسُه هو
-            الدعوة. */}
-        {reviews && reviews.count > 0 && (
-          <span className="text-12 px-2 py-0.5 rounded-full border border-border inline-flex items-center gap-1 tabular-nums">
-            <Icon name="star" size={11} className="text-accent" />
-            {reviews.avg !== null && <span dir="ltr">{num(reviews.avg, locale)}</span>}
-            <span className="text-muted">{t.listReviewCount(num(reviews.count, locale))}</span>
           </span>
         )}
         {isOwner ? (
@@ -569,10 +555,75 @@ export function ListDetail({
             {isPublic ? t.listPublic : t.listPrivate}
           </button>
         ) : (
-          <span className="text-12 px-2 py-0.5 rounded-full border border-border text-muted">
-            {t.listOwnerOther}
+          isPublic && (
+            <span className="inline-flex items-center gap-1.5 text-12 text-muted">
+              <Icon name="eye" size={14} className="text-accent" />
+              {t.listOwnerOther}
+            </span>
+          )
+        )}
+      </div>
+
+      {/* 🆕 **شريطُ الحال** (D-677، تصميمُه): ♥ عددُ الحفظ · 💬 عددُ
+          الآراء · ★ المتوسّط · **ومفتاحُ التشغيل في طرفه** — **تشريحُ
+          بطاقة القائمة نفسُه من الداخل** (`ListCardShell`)، فالخارجُ
+          والداخلُ يقرآن واحداً. **والقلبُ هنا هو زرُّ الحفظ نفسُه**
+          (D-324: القلبُ هو الحفظ) — **وعدُّه يتبع ضغطتك في مكانه.**
+          ⚠️ **والمفتاحُ لمن يملك صفّاً يكتب فيه وحدَه** (D-217/D-674):
+          المالكُ في صفِّ قائمته، والحافظُ في صفِّ حفظه — **وزائرٌ
+          بلا حسابٍ يرى الأرقامَ ساكنة.** */}
+      <div className="flex items-center rounded-2xl border border-border bg-surface px-4 py-3 mb-5 min-w-0">
+        {canSave ? (
+          <button
+            type="button"
+            onClick={toggleSave}
+            aria-pressed={saved}
+            aria-label={saved ? t.listSavedBtn : t.listSaveBtn}
+            title={saved ? t.listSavedBtn : t.listSaveBtn}
+            className="flex items-center gap-1.5 text-13 font-bold tabular-nums text-accent transition active:scale-95"
+            dir="ltr"
+          >
+            <Icon
+              name={saved ? "heart-filled" : "heart"}
+              size={17}
+              className={saved ? "fill-current" : undefined}
+            />
+            {num(
+              Math.max(0, (saves ?? 0) + (saved ? 1 : 0) - (initialSaved ? 1 : 0)),
+              locale,
+            )}
+          </button>
+        ) : (
+          <span className="flex items-center gap-1.5 text-13 font-bold tabular-nums text-accent" dir="ltr">
+            <Icon name="heart-filled" size={17} className="fill-current" />
+            {num(saves ?? 0, locale)}
           </span>
         )}
+        <span aria-hidden className="w-px h-4 bg-[color:var(--divider)] mx-3" />
+        <span className="flex items-center gap-1.5 text-13 tabular-nums text-muted" dir="ltr">
+          <Icon name="comment" size={16} className="text-accent" />
+          {num(reviews?.count ?? 0, locale)}
+        </span>
+        <span aria-hidden className="w-px h-4 bg-[color:var(--divider)] mx-3" />
+        <span className="flex items-center gap-1.5 text-13 font-bold tabular-nums text-accent" dir="ltr">
+          <Icon name="star" size={16} />
+          {num(reviews?.avg ?? 0, locale)}
+        </span>
+        {(isOwner
+          ? initialPlaylist !== null && initialPlaylist !== undefined
+          : initialSavedPlaylist !== null && initialSavedPlaylist !== undefined && saved) &&
+          visible.length > 0 && (
+            <button
+              type="button"
+              onClick={togglePlaylist}
+              aria-pressed={playlist}
+              aria-label={t.listPlaylist}
+              title={t.listPlaylist}
+              className="ms-auto shrink-0 active:scale-95 transition"
+            >
+              <PlayPill on={playlist} locale={locale} />
+            </button>
+          )}
       </div>
 
       {/* 🆕 **تبويبان كصفحة العمل** (D-333، طلبُ أحمد بنصّه: «لا أبغاها
