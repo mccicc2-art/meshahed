@@ -19,6 +19,7 @@ import { FONT_UI_COOKIE, FONT_CONTENT_COOKIE, fontAttr, sanitizeFontSize } from 
 import { HeaderShell } from "@/components/HeaderShell";
 import { ChromeAutoHide } from "@/components/ChromeAutoHide";
 import { AccountSync } from "@/components/AccountSync";
+import { LangPing } from "@/components/LangPing";
 import { getLocale } from "@/lib/locale";
 import { seoKeywords } from "@/lib/seo";
 
@@ -220,6 +221,11 @@ export default async function RootLayout({
         <Suspense fallback={null}>
           <AccountSync />
         </Suspense>
+        {/* 🆕 **نبضةُ لغةِ الزائر** (D-666، طلبُ أحمد: «فعّل العدّاد»):
+            **لا ترسم شيئاً ولا ترسل شيئاً** — تنادي بابَها فارغاً بعد
+            الرسم مرّةً في الجلسة، **والترويسةُ تُقرأ على الخادم.**
+            ⚠️ **وليست في `Suspense`**: لا تجلب شيئاً ولا تُبثّ. */}
+        <LangPing />
         {/* مساحة سفلية على الجوال حتى لا يغطي شريط التبويبات المحتوى */}
         {/* **السحبُ للتحديث في التخطيط لا في كل صفحة** (D-243، طلبُ
             أحمد: «إذا سحبت يعمل تحديث مثل تويتر»). **وتويتر لا يحصره في
