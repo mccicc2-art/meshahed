@@ -1317,7 +1317,6 @@ const ar = {
   /* 🆕 تصميمُ البروفايل (D-561) */
   profileTabFavorites: "المفضّلة",
   /* 🆕 كلمةٌ واحدة (D-611): «بحيث الأفلام والمسلسلات يأخذون راحتهم» */
-  profileFullStats: "الإحصائيات",
   profileEmptyFavorites: "لا مفضّلات بعد",
   /* 🆕 **حالةُ «كلُّ التبويبات مطفأة»** (D-667) — صارت ممكنةً يومَ صارت
      «المفضّلة» تُطفأ. **والنصُّ يقول «أُخفيت» لا «انكسرت».** */
@@ -2659,7 +2658,6 @@ const en: Dict = {
 
   profileTabOverview: "Overview",
   profileTabFavorites: "Favorites",
-  profileFullStats: "Statistics",
   profileEmptyFavorites: "No favourites yet",
   profileNoTabs: "Nothing shown here",
   profileEmptyOverview: "No sections shown yet.",
