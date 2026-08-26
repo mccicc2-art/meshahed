@@ -1157,6 +1157,8 @@ const ar = {
   statsPageTitle: "الإحصائيات",
   statsRangeAll: "الكل",
   statsRangeMonth: "الشهر",
+  /* 🆕 D-682: تبويباتُ المدى غادرت وجهَ الصفحة إلى قائمة «⋯» في الترويسة */
+  statsRangeMenu: "المدى الزمني",
   statsSoFar: (y: number) => `${y} حتى الآن`,
   /* ⚖️ 🆕 **خاناتُ الإحصائيات تقول ماذا تعدّ** (D-664، بلاغُ أحمد على
      بطاقة ملفّ مشعل): **البطاقةُ تقول «٦٣ أفلام» (مكتبتُه) والإحصائياتُ
@@ -2544,6 +2546,7 @@ const en: Dict = {
   statsPageTitle: "Stats",
   statsRangeAll: "All time",
   statsRangeMonth: "Month",
+  statsRangeMenu: "Time range",
   statsSoFar: (y: number) => `${y} so far`,
   statsCellEpisodesWatched: "Episodes watched",
   statsCellMoviesWatched: "Movies watched",
