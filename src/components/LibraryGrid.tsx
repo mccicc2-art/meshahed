@@ -20,6 +20,7 @@ import { PosterRail, RailItem } from "./PosterRail";
 import { PageTabs } from "./ui/PageTabs";
 import { ActiveFilterChips, type FilterChip } from "./ui/ActiveFilterChips";
 import { FilterIconButton } from "./ui/FilterIconButton";
+import { FavFilterContext } from "./LibraryFavFilter";
 import dynamic from "next/dynamic";
 /* الورقةُ تُحمَّل عند أوّل فتحٍ لا مع الصفحة (نمطُ TitleSearchSheet في
    الشريط السفليّ): لا تُرسم إلا بضغطةٍ، فشحنُها مع أوّل رسمةٍ ثمنٌ بلا
@@ -120,6 +121,7 @@ export function LibraryGrid({
   initialTab = "shows", tabPrefs,
   listsExtra,
   underTabs,
+  favKeys,
 }: {
   shows: GridItem[];
   movies: GridItem[];
@@ -161,6 +163,10 @@ export function LibraryGrid({
       تملؤها تصل بعد هذا المجلَّد، **وخانةٌ فارغةٌ لا تحجز مكاناً**
       (D-044). */
   underTabs?: React.ReactNode;
+  /** 🆕 **مفاتيحُ مفضّلتك** `mediaType-tmdbId` (D-671) — **مِصفاةٌ لا
+      باب**. اختياريّةٌ فالدفعةُ تُصرَّف وحدَها (D-028)، **وغيابُها
+      يعني ألّا قلبَ يُرسم** لا شبكةً مكسورة. */
+  favKeys?: readonly string[];
 }) {
   const t = getDict(locale);
   const router = useRouter();
@@ -226,6 +232,10 @@ export function LibraryGrid({
   }, [initialTab]);
   const [q, setQ] = useState("");
   const [sort, setSort] = useState<"smart" | "title" | "progress" | "added">("smart");
+  /* 🆕 **مِصفاةُ المفضّلة** (D-671) — **محورٌ ثالثٌ كالبحث والترتيب**:
+     محلّيٌّ بلا رحلة شبكة، **ورقاقتُه تقول ما يُصفّي** (D-576). */
+  const [fav, setFav] = useState(false);
+  const favSet = useMemo(() => new Set(favKeys ?? []), [favKeys]);
   /* ورقةُ الأدوات (D-177): البحث والترتيب وإنشاء القائمة خلف رمزٍ واحد */
   const [tools, setTools] = useState(false);
   /* رقاقة الحالة (طلب المالك): «الكل» افتراضاً، والترشيح محليّ كالبحث */
@@ -240,13 +250,19 @@ export function LibraryGrid({
     /* صفُّ رقائق الحالة حُذف بطلب المالك (نقض جزئي لـ D-078) —
        الفواصل المسمّاة بقيت، والشبكة تعرض الكل دائماً */
     const byStatus = base;
+    /* 🆕 **والمفضّلةُ تُصفّي قبل البحث** (D-671): **مجموعةٌ في اليد
+       وفحصٌ واحدٌ للمفتاح** — ولا رحلةَ خادمٍ لمحورٍ بياناتُه معنا. */
+    const byFav =
+      fav && favSet.size > 0
+        ? byStatus.filter((x) => favSet.has(`${x.mediaType}-${x.tmdbId}`))
+        : byStatus;
     /* 🆕 **البحثُ يعرف العربية** (D-350): «الاب» تجد «الأب» و«قصه» تجد
        «قصّة» — **والمقارنةُ على مفتاحٍ مطبَّعٍ لا على النصّ المعروض**،
        فالعنوانُ يبقى كما كتبه أهلُه (D-048). */
     const needle = normalizeSearch(q);
     const filtered = needle
-      ? byStatus.filter((x) => normalizeSearch(x.title).includes(needle))
-      : byStatus;
+      ? byFav.filter((x) => normalizeSearch(x.title).includes(needle))
+      : byFav;
     /* 🆕 **الأحدثُ إضافةً** (D-350) — **وما لا تاريخَ له يهبط** لا يتصدّر
        (D-063: الغيابُ لا يُقرأ «اليوم»). */
     if (sort === "added")
@@ -267,7 +283,7 @@ export function LibraryGrid({
         return aDone - bDone || bp - ap;
       });
     return filtered;
-  }, [tab, shows, movies, anime, q, sort, locale]);
+  }, [tab, shows, movies, anime, q, sort, locale, fav, favSet]);
 
   /* 🆕 **مجموعاتُ الرفوف** (D-422): الترتيبُ الذكيّ يرصف الحالاتِ
      متجاورةً أصلاً — **فالتجميعُ قراءةٌ لترتيبٍ قائم لا فرزٌ ثانٍ**،
@@ -392,6 +408,16 @@ export function LibraryGrid({
       clear: () => setQ(""),
     });
   }
+  /* 🆕 **ورقاقتُها كرقاقة الترتيب حرفاً** (D-671/D-576): **في التبويبات
+     التي تُصفّيها وحدَها**، **و«×» تُلغيها** — فلا شبكةَ ناقصةٌ بلا
+     سببٍ مكتوب (علّةُ D-452 نفسُها). */
+  if (showSearchRow && fav) {
+    filterChips.push({
+      key: "fav",
+      label: t.profileFavoritesRail,
+      clear: () => setFav(false),
+    });
+  }
   if (showSearchRow && sort !== "smart") {
     filterChips.push({
       key: "sort",
@@ -509,7 +535,20 @@ export function LibraryGrid({
           حيث تُقرأ ترجمتُهما ووجهتُهما، **وهذا المكوّنُ عميلٌ لا يعرف
           القاموس** — **ولو رُسما هنا لصار للصفحة رأسان يعرف كلٌّ منهما
           نصفَ الحقيقة** (نفسُ حجّة `listsExtra` فوقه). */}
-      {underTabs && <div className="mt-3">{underTabs}</div>}
+      {/* 🆕 **والسياقُ يلفّ الخانةَ وحدَها** (D-671): الزرُّ يُرسم في
+          الصفحة ويُركَّب هنا، **فيقرأ الحالةَ من مالكها بلا حدثِ نافذةٍ
+          ولا نسخةٍ ثانيةٍ منها** (D-462). */}
+      {underTabs && (
+        <FavFilterContext.Provider
+          value={{
+            on: fav,
+            toggle: () => setFav((v) => !v),
+            enabled: showSearchRow && favSet.size > 0,
+          }}
+        >
+          <div className="mt-3">{underTabs}</div>
+        </FavFilterContext.Provider>
+      )}
 
       <div className="mt-3" />
 
