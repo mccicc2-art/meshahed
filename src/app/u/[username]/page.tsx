@@ -663,15 +663,29 @@ export default async function PublicProfilePage({
      برابطٍ مباشر** (D-217: رأسٌ يسقط ومحتواه باقٍ بابٌ خلفيٌّ يكذب). */
   const tabHidden = (k: string) =>
     !isMe && (prefs.hiddenTabs as readonly string[]).includes(k);
-  /* ⚠️ **والمهربُ صار «المفضّلة»** (D-658): **كان «نظرة عامة» وهي
-     تُطفأ الآن** — **ومهربٌ إلى بابٍ مغلقٍ ليس مهرباً.** */
-  const wantedTab: ProfileTab = (TABS as readonly string[]).includes(rawTab ?? "")
+  /* ⚖️ 🆕 **والمهربُ صار ترتيباً لا اسماً** (D-667، حكمُ أحمد: «هذا
+     خلّه مثل الباقي تقدر تطفيه وتشغّله»): **«المفضّلة» تُطفأ الآن
+     كغيرها**، **فلا يصلح اسمٌ بعينه مهرباً** — **ومهربٌ إلى بابٍ مغلقٍ
+     ليس مهرباً** (وهي علّةُ D-658 نفسُها وقد عادت من الجهة الأخرى).
+
+     🔑 **فالصفحةُ تفتح على أوّلِ تبويبٍ ظاهرٍ بترتيب الصفّ** — **وهو
+     تعريفٌ لا يسقط مهما أطفأ صاحبُه.**
+
+     ⚠️ **و`null` حالةٌ حقيقيّةٌ لأوّل مرّة**: من أطفأ تبويباتِه كلَّها
+     **لا يُرسم له صفٌّ ولا محتوى** — **ونصٌّ صريحٌ مكانَهما**، لا صفحةٌ
+     مبتورةٌ تُقرأ عطلاً. **وصاحبُ الصفحة يرى تبويباتِه كلَّها دائماً**
+     (`tabHidden` تشترط `!isMe`) **فلا يفقد بابَه إلى تخصيصه.** */
+  const visibleTabs = TABS.filter((k) => !tabHidden(k));
+  const firstVisible: ProfileTab | null = visibleTabs[0] ?? null;
+  const wantedTab: ProfileTab | null = (TABS as readonly string[]).includes(rawTab ?? "")
     ? (rawTab as ProfileTab)
-    : "favorites";
-  const tab: ProfileTab = tabHidden(wantedTab) ? "favorites" : wantedTab;
+    : firstVisible;
+  const tab: ProfileTab | null =
+    wantedTab && !tabHidden(wantedTab) ? wantedTab : firstVisible;
   const base = `/u/${encodeURIComponent(profile.username ?? username)}`;
   const tabItemsAll: PageTab[] = [
-    /* **بابُ الصفحة** — لا يُطفأ، وعنوانُه ثابتٌ لكلِّ حساب (D-658) */
+    /* **وعنوانُه ثابتٌ لكلِّ حساب** (D-658) — ⚖️ 🆕 **ويُطفأ كغيره
+       منذ D-667**، **والصفحةُ تفتح على أوّلِ ظاهرٍ لا على اسمٍ بعينه.** */
     {
       key: "favorites",
       label: t.profileTabFavorites,
@@ -1286,8 +1300,15 @@ export default async function PublicProfilePage({
           الصفحة** — **فتحويلُ `chrome-sub` يرفعه فوق موضعه ويطفو على
           الصورة الشخصيّة، ويترك مكانَه فراغاً.** الحجّةُ كاملةً في
           `PageTabs`. */}
-      {canView && (
+      {canView && tab && (
         <PageTabs items={tabItems} active={tab} ariaLabel={t.profile} asNav autoHide={false} />
+      )}
+
+      {/* 🆕 **وحالةُ «لا تبويبَ ظاهراً»** (D-667): **صفحةٌ تنتهي عند
+          البطاقة بلا كلمةٍ تُقرأ عطلاً في التطبيق** — **والنصُّ يقول إن
+          صاحبَها أخفاها، لا إن شيئاً انكسر.** */}
+      {canView && !tab && (
+        <p className="text-center text-muted text-14 py-10">{t.profileNoTabs}</p>
       )}
 
       {/* ⚖️ 🆕 **وصفوفُ التبويب في حاويةٍ أضيقَ إيقاعاً** (D-585، بلاغُ
