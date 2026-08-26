@@ -6,6 +6,9 @@ import {
   getMovieStatsOf,
   getWatchedOf,
   getProfileArt,
+  getProfileByUsername,
+  getFollowStats,
+  displayNameOf,
   artKey,
 } from "@/lib/data";
 import { localizeRows } from "@/lib/localize";
@@ -43,7 +46,7 @@ export async function MemberAnalysis({
 }) {
   const t = getDict(locale);
 
-  const [rawFollows, genres, ratings, epStats, mvStats, watched, art] = await Promise.all([
+  const [rawFollows, genres, ratings, epStats, mvStats, watched, art, pub, followStats] = await Promise.all([
     getFollowsOf(userId),
     getFollowGenresOf(userId),
     getRatingsOf(userId),
@@ -55,6 +58,10 @@ export async function MemberAnalysis({
        **و«الأكثر مشاهدة» بمربّعاتٍ سوداء كان أوّلَ ما ظهر في الفحص
        الحيّ.** **ومصدرُ الصورة واحدٌ في السطحين** (D-145). */
     getProfileArt(userId),
+    /* 🆕 **الهويّةُ للترويسة** (D-679) — العرضُ العامُّ نفسُه (فرعُ UUID
+       من D-655) ودالّةُ العدّادين المحروسة (١٣٨). */
+    getProfileByUsername(userId),
+    getFollowStats(userId).catch(() => null),
   ]);
 
   /* العناوين بلغة القارئ لا بلغة يوم المتابعة (D-048) */
@@ -106,6 +113,45 @@ export async function MemberAnalysis({
   const ratedTotal = ratings.length;
   const avgAll = ratedTotal ? ratings.reduce((n, r) => n + r.rating, 0) / ratedTotal : 0;
 
+  /* ===== 🆕 عقدُ D-679 — نفسُ تركيب `LibraryAnalysis` بقارئه العامّ ===== */
+  const hero = pub
+    ? {
+        name: displayNameOf(pub, t.anonymousUser),
+        avatarUrl: pub.avatar_url,
+        coverUrl: pub.cover_url,
+        /* **النبذةُ تتبع الاسمَ في الإخفاء** — والقطعُ في SQL أصلاً */
+        bio: pub.hide_name ? null : (pub.bio ?? null),
+        followers: followStats ? followStats.followers : null,
+      }
+    : null;
+
+  const sortedRatings = [...ratings].sort((a, b) => b.rating - a.rating);
+  const trioMap = new Map<string, { key: string; title: string; posterPath: string | null; href: string }>();
+  for (const r of sortedRatings) {
+    if (trioMap.size >= 3) break;
+    const key = `${r.media_type}-${r.tmdb_id}`;
+    if (!trioMap.has(key) && r.title) {
+      trioMap.set(key, {
+        key,
+        title: r.title,
+        posterPath: r.poster_path,
+        href: r.media_type === "movie" ? `/movie/${r.tmdb_id}` : `/show/${r.tmdb_id}`,
+      });
+    }
+  }
+  for (const w of topWatched) {
+    if (trioMap.size >= 3) break;
+    const key = `tv-${w.id}`;
+    if (!trioMap.has(key)) {
+      trioMap.set(key, { key, title: w.title, posterPath: w.posterPath, href: `/show/${w.id}` });
+    }
+  }
+
+  const buckets = [0, 0, 0, 0, 0];
+  for (const r of ratings) {
+    buckets[Math.min(4, Math.max(0, Math.ceil(r.rating / 2) - 1))]++;
+  }
+
   return (
     <AnalysisView
       locale={locale}
@@ -126,6 +172,9 @@ export async function MemberAnalysis({
         ratedTotal,
         avgAll,
         mine: false,
+        hero,
+        trio: [...trioMap.values()],
+        buckets,
       }}
     />
   );

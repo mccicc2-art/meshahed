@@ -6,10 +6,14 @@ import {
   getAllMovieProgress,
   getAllWatchedEpisodes,
   getWatchHistory,
+  getProfile,
+  getUser,
+  getFollowStats,
 } from "@/lib/data";
 import { getTv, getMovie } from "@/lib/tmdb";
-import { posterUrl } from "@/lib/media";
+import { posterUrl, backdropUrl } from "@/lib/media";
 import Image from "next/image";
+import Link from "next/link";
 import { getDict, num, type Locale } from "@/lib/i18n";
 import { isComplete } from "@/lib/progress";
 import { Icon, type IconName } from "./Icon";
@@ -31,75 +35,63 @@ function fmtWatchTime(minutes: number, t: ReturnType<typeof getDict>) {
 }
 
 /**
- * **حلقةُ وقت المشاهدة.**
- *
- * ⚠️ **والقوسُ رقمٌ لا زينة**: يرسم **نصيبَ المدى المختار من وقتك
- * كلِّه** — «٢٠٢٦» ثُلثُ الحلقة لأن ثلث ساعاتك فيها، **والكلُّ حلقةٌ
- * كاملة لأنه الكلّ.** **وقوسٌ يمتلئ بلا مقامٍ يُعرف زخرفةٌ تدّعي
- * المعنى** — وهو ما يمنعه هذا التطبيق في كل رسمٍ فيه.
+ * 🆕 **خانةُ شريط الأرقام** (D-679، تصميمُ أحمد): رمزٌ في قرصٍ مطوَّق،
+ * ورقمٌ عريضٌ فوق اسمه — **أربعُ خاناتٍ في صفٍّ واحدٍ بفواصل.**
+ * ⚖️ **وحلقةُ وقت المشاهدة (D-493) سقطت مع تصميمها**: الوقتُ صار رقمَ
+ * الترويسة الكبيرَ نفسَه — **وقوسان لرقمٍ واحدٍ زخرفة.**
  */
-function Ring({ share, label, value }: { share: number; label: string; value: string }) {
-  const R = 66;
-  const C = 2 * Math.PI * R;
-  const on = Math.max(0, Math.min(1, share)) * C;
-  return (
-    <div className="relative shrink-0 w-[164px] h-[164px] grid place-items-center">
-      <svg viewBox="0 0 164 164" className="absolute inset-0 -rotate-90" aria-hidden>
-        <circle
-          cx="82"
-          cy="82"
-          r={R}
-          fill="none"
-          strokeWidth="11"
-          className="stroke-[color:var(--accent)]"
-          opacity="0.18"
-        />
-        <circle
-          cx="82"
-          cy="82"
-          r={R}
-          fill="none"
-          strokeWidth="11"
-          strokeLinecap="round"
-          strokeDasharray={`${on} ${C - on}`}
-          className="stroke-[color:var(--accent)]"
-        />
-      </svg>
-      {/* 🔴 🆕 **قيدُ عرضِ القلب شرطُ الالتفاف** (D-606، بلاغُ أحمد
-          بلقطةٍ عربيّة: «125 يوم و 18 س» تفيض خارج الحلقة والشاشة):
-          عنصرُ الشبكة الموسَّط يأخذ عرضَ محتواه الأقصى **فسطرٌ أطولُ
-          من الحلقة لا يلتفّ بل يفيض** — والإنجليزيّة «125d 18h» أقصرُ
-          فلم يُرَ العطل. **والقيدُ قطرُ الحلقة الداخليُّ نفسُه**
-          (2×(66−5.5) ≈ 121) فالنصُّ الطويل يلتفّ سطرين وسطَها. */}
-      <div className="text-center leading-none max-w-[120px]">
-        <div className="text-24 font-extrabold tabular-nums leading-tight">{value}</div>
-        <div className="text-12 text-muted mt-1.5">{label}</div>
-        <Icon name="clock" size={18} className="mx-auto mt-2 text-accent" />
-      </div>
-    </div>
-  );
-}
-
-/** خانةٌ في شبكة الأرقام — رمزٌ ملوّن، رقمٌ عريض، اسمٌ خافت */
 function Cell({
   icon,
-  color,
   value,
   label,
   border,
 }: {
   icon: IconName;
-  color: string;
   value: string;
   label: string;
   border: string;
 }) {
   return (
-    <div className={`flex flex-col items-center justify-center gap-1 py-3 px-1 ${border}`}>
-      <Icon name={icon} size={20} style={{ color }} />
-      <span className="text-20 font-extrabold leading-none tabular-nums">{value}</span>
-      <span className="text-12 text-muted leading-none truncate max-w-full">{label}</span>
+    <div className={`flex items-center justify-center gap-2.5 py-3 px-1 min-w-0 ${border}`}>
+      <span className="shrink-0 grid place-items-center w-9 h-9 rounded-full border border-accent/50 text-accent">
+        <Icon name={icon} size={17} />
+      </span>
+      <span className="min-w-0">
+        <span className="block text-16 font-extrabold leading-none tabular-nums" dir="ltr">
+          {value}
+        </span>
+        <span className="block text-11 text-muted mt-1 truncate">{label}</span>
+      </span>
     </div>
+  );
+}
+
+/**
+ * 🆕 **قرصُ تقدّم المكتبة** (D-679) — `conic-gradient` بثلاثة رموزِ
+ * ثيمٍ لا ألوانٍ صمّاء، **والمركزُ نسبةُ المكتمل** كلقطته.
+ */
+function ProgressDonut({ done, watching, rest, pct: pctDone }: {
+  done: number;
+  watching: number;
+  rest: number;
+  pct: number;
+}) {
+  const total = Math.max(1, done + watching + rest);
+  const a = (done / total) * 100;
+  const b = a + (watching / total) * 100;
+  return (
+    <span
+      aria-hidden
+      className="shrink-0 grid place-items-center w-28 h-28 rounded-full"
+      style={{
+        background: `conic-gradient(var(--success) 0 ${a}%, var(--accent) ${a}% ${b}%, var(--disabled) ${b}% 100%)`,
+      }}
+    >
+      <span className="grid place-items-center w-[5.25rem] h-[5.25rem] rounded-full bg-surface text-20 font-extrabold tabular-nums">
+        {pctDone}
+        <span className="text-11 font-bold text-muted ms-0.5">%</span>
+      </span>
+    </span>
   );
 }
 
@@ -139,6 +131,21 @@ export interface AnalysisData {
   /** 🆕 **القارئُ صاحبُ الأرقام؟** (D-649) — **يقرّر ضميرَ النصّ وحدَه**:
       «ذوقك» في ملفِّ غيرك تخاطب القارئ عن أرقام سواه (D-217). */
   mine: boolean;
+  /** 🆕 **ترويسةُ الهويّة** (D-679، تصميمُ أحمد): وجهٌ واسمٌ ومتابِعون
+      ونبذةٌ وغلافٌ خلفَها — والغيابُ يعني قارئاً بلا ملفٍّ يُقرأ. */
+  hero?: {
+    name: string;
+    avatarUrl: string | null;
+    coverUrl: string | null;
+    bio: string | null;
+    followers: number | null;
+  } | null;
+  /** 🆕 **ثلاثيةُ الذوق** (D-679): أعلى ما قيّمه، وأكثرُ ما شاهده عند
+      النقص — **وأقلُّ من واحدةٍ يُسقط القسمَ لا يزخرفه.** */
+  trio?: { key: string; title: string; posterPath: string | null; href: string }[];
+  /** 🆕 **توزيعُ التقييمات في خمس سلالٍ** (D-679): ١–٢ · ٣–٤ · ٥–٦ ·
+      ٧–٨ · ٩–١٠ — من صفوف التقييم نفسِها بلا نداء. */
+  buckets?: number[];
 }
 
 /**
@@ -150,195 +157,188 @@ export interface AnalysisData {
 export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Locale }) {
   const t = getDict(locale);
   const {
-    share,
     minutes: rangeMinutes,
     episodes: rangeEpisodes,
     movies: rangeMovies,
     titles: rangeTitles,
     ratings: rangeRatings,
     avgRating: rangeAvg,
-    year,
-    topWatched,
     topGenres,
     genreTags,
     status,
     ratedTotal,
     avgAll,
     mine,
+    hero,
+    trio,
+    buckets,
   } = data;
   const { done, inProgress, notStarted } = status;
   const statusTotal = done + inProgress + notStarted;
-  const topMax = topWatched[0]?.watched ?? 0;
+  const donePct = statusTotal ? Math.round((done / statusTotal) * 100) : 0;
   const divider = "border-[color:var(--divider)]";
+  const bucketTotal = (buckets ?? []).reduce((a, b) => a + b, 0);
+  const heroCover = hero?.coverUrl ? backdropOrPoster(hero.coverUrl) : null;
+
+  /* **رقمُ الوقت الكبير** — كان حلقةً (D-493) وصار ترويسةَ الصفحة
+     بتصميم D-679؛ **والرقمُ رقمُ المدى المختار** فتبويباتُ المدى فوقه
+     تفسّره. */
+  const bigTime = (
+    <div className="relative mt-5">
+      <div className="text-[32px] font-extrabold leading-none tabular-nums" dir="ltr">
+        {fmtWatchTime(rangeMinutes, t)}
+      </div>
+      <div className="mt-2 flex items-center gap-1.5 text-13 text-muted">
+        <Icon name="clock" size={15} className="text-accent" />
+        {t.statWatchTime}
+      </div>
+    </div>
+  );
 
   return (
     <div className="space-y-6">
-      {/* ===== الحلقةُ وشبكةُ الأرقام =====
-
-          ⚖️ 🆕 **وكلُّ خانةٍ تقول ماذا تعدّ** (D-664، بلاغُ أحمد على
-          بطاقة ملفّ مشعل: «أعداد الأفلام والمسلسلات غير صحيحة»):
-          **البطاقةُ في الملفّ تقول «٦٣ أفلام» وهي مكتبتُه، وهذه الشاشةُ
-          — تُفتح من البطاقة نفسِها — كانت تقول «٦١ أفلام» وهي ما
-          شاهده.** **ولا خطأَ حسابيَّ في أيٍّ منهما؛ الخطأُ أنهما
-          يتشاركان الاسم** — **وعدّادٌ لا يقول قاعدتَه يُقرأ خطأً في
-          أوّل مقارنة** (D-374 من جهته المقابلة).
-
-          🔑 **والتسميةُ عولجت لا الأرقام** (حكمُ أحمد): **ثلاثُ خاناتٍ
-          هنا تعدّ المُشاهَد وواحدةٌ تعدّ المكتبة** — فصارت تقولها.
-          ⚠️ **ومفتاحُ `shortMovies` لم يُمسّ**: تقرؤه بطاقةُ الملفّ
-          وتبويباتُ المكتبة، **وتغييرُه كان سيبدّل معنى «أفلام» في كلِّ
-          سطحٍ لأجل خانةٍ واحدة** (D-145).
-          ⚠️ **وسطرُ السنة تحته لم يُمسّ**: عنوانُه «منذ يناير» يحمل
-          قاعدتَه، **وأربعُ خاناتٍ ضيّقةٌ تقصّ الكلمةَ الطويلة.** */}
-      <div className="flex items-center gap-3 sm:gap-6">
-        <Ring share={share} label={t.statWatchTime} value={fmtWatchTime(rangeMinutes, t)} />
-        <div className="grid grid-cols-2 flex-1 min-w-0">
-          <Cell
-            icon="play"
-            color="var(--info)"
-            value={num(rangeEpisodes, locale)}
-            label={t.statsCellEpisodesWatched}
-            border=""
-          />
-          <Cell
-            icon="film"
-            color="var(--accent-2)"
-            value={num(rangeMovies, locale)}
-            label={t.statsCellMoviesWatched}
-            border={`border-s ${divider}`}
-          />
-          <Cell
-            icon="star"
-            color="var(--accent-2)"
-            value={num(rangeTitles, locale)}
-            label={t.statsCellTitles}
-            border={`border-t ${divider}`}
-          />
-          <Cell
-            icon="sparkle-star"
-            color="var(--verified)"
-            value={rangeRatings ? rangeAvg.toFixed(1) : "—"}
-            label={t.statsCellRating}
-            border={`border-s border-t ${divider}`}
-          />
-        </div>
-      </div>
-
-      {/* ===== سطرُ السنة — «ما جمعتَه منذ يناير» في أربع خانات ===== */}
-      {year && (
-        <div className={`grid grid-cols-4 items-center border-y ${divider} py-3`}>
-          <span className="flex items-center gap-2 px-1 min-w-0">
-            <Icon name="calendar" size={18} className="text-accent shrink-0" />
-            <span className="text-12 font-bold leading-tight">{t.statsSoFar(year.year)}</span>
-          </span>
-          {[
-            { v: num(year.episodes, locale), l: t.statsWatchedEpisodes },
-            { v: num(year.movies, locale), l: t.shortMovies },
-            { v: fmtWatchTime(year.minutes, t), l: t.statWatchTime },
-          ].map((c) => (
-            <span key={c.l} className={`text-center border-s ${divider} px-1 min-w-0`}>
-              <b className="block text-14 font-extrabold tabular-nums leading-none">{c.v}</b>
-              <span className="block text-12 text-muted mt-1 truncate">{c.l}</span>
+      {/* ===== الترويسة: الهويّةُ والغلافُ والوقتُ الكبير (D-679) ===== */}
+      {hero ? (
+        <section className="relative -mx-4 px-4 pb-2 overflow-hidden isolate">
+          {heroCover && (
+            <>
+              <span aria-hidden className="absolute inset-y-0 end-0 w-[62%]">
+                <Image src={heroCover} alt="" fill sizes="60vw" className="object-cover" />
+              </span>
+              {/* **حجابُ البطاقة نفسُه** (D-677/D-678): بلون الخلفيّة،
+                  يذوب قبل الطرف فلا «غبار». */}
+              <span
+                aria-hidden
+                className="absolute inset-0 bg-gradient-to-r rtl:bg-gradient-to-l from-[color:var(--background)] from-[38%] via-[color:var(--background)]/70 via-[58%] to-[color:var(--background)]/15"
+              />
+            </>
+          )}
+          <div className="relative flex items-start gap-3">
+            <span className="shrink-0 relative w-16 h-16 rounded-full overflow-hidden bg-surface-2 ring-2 ring-accent/60 ring-offset-2 ring-offset-[color:var(--background)]">
+              {hero.avatarUrl ? (
+                <Image src={hero.avatarUrl} alt="" fill sizes="64px" className="object-cover" />
+              ) : (
+                <span className="absolute inset-0 grid place-items-center text-muted">
+                  <Icon name="people" size={22} />
+                </span>
+              )}
             </span>
-          ))}
-        </div>
+            <span className="min-w-0 pt-0.5">
+              <span className="flex items-center gap-1.5 text-17 font-extrabold min-w-0">
+                <span className="truncate" dir="auto">{hero.name}</span>
+                <Icon name="sparkle-star" size={14} className="shrink-0 text-accent" aria-hidden />
+              </span>
+              {hero.followers !== null && (
+                <span className="mt-1 flex items-center gap-1.5 text-12 text-muted">
+                  <Icon name="people" size={14} />
+                  {t.suggestFollowers(hero.followers)}
+                </span>
+              )}
+              {hero.bio && (
+                <span className="mt-1 block text-12 text-muted leading-snug line-clamp-2 max-w-[34ch]" dir="auto">
+                  {hero.bio}
+                </span>
+              )}
+            </span>
+          </div>
+          {bigTime}
+        </section>
+      ) : (
+        bigTime
       )}
 
-      {/* ===== الأكثر مشاهدة ===== */}
-      {topWatched.length > 0 && (
+      {/* ===== شريطُ الأرقام الأربعة (D-679) ===== */}
+      <div className={`grid grid-cols-2 sm:grid-cols-4 border-y ${divider}`}>
+        <Cell icon="play" value={num(rangeEpisodes, locale)} label={t.statsCellEpisodesWatched} border="" />
+        <Cell
+          icon="film"
+          value={num(rangeMovies, locale)}
+          label={t.statsCellMoviesWatched}
+          border={`border-s ${divider}`}
+        />
+        <Cell
+          icon="bookmark"
+          value={num(rangeTitles, locale)}
+          label={t.statsCellTitles}
+          border={`border-t sm:border-t-0 sm:border-s ${divider}`}
+        />
+        <Cell
+          icon="star"
+          value={rangeRatings ? rangeAvg.toFixed(1) : "—"}
+          label={t.statsCellRating}
+          border={`border-t sm:border-t-0 border-s ${divider}`}
+        />
+      </div>
+
+      {/* ===== ثلاثيةُ الذوق (D-679) ===== */}
+      {trio && trio.length > 0 && (
         <section>
-          <h2 className="flex items-center gap-2 text-22 font-bold mb-3">
-            <Icon name="film" size={20} className="text-accent" />
-            {t.statsTopShows}
+          <h2 className="flex items-center gap-2 text-18 font-bold mb-3">
+            <Icon name="sparkles" size={18} className="text-accent" />
+            {t.statsTasteTrio}
+            <Icon name="sparkle-star" size={13} className="text-accent" aria-hidden />
           </h2>
-          <div className="space-y-3">
-            {topWatched.map((row, i) => {
-              const url = posterUrl(row.posterPath, "w185");
+          <div className="grid grid-cols-3 gap-2.5">
+            {trio.slice(0, 3).map((x) => {
+              const url = posterUrl(x.posterPath, "w342");
               return (
-                <div key={row.id} className="flex items-center gap-3">
-                  <span className="relative shrink-0 w-12 h-12 rounded-xl overflow-hidden bg-surface-2 border border-border">
-                    {url && <Image src={url} alt="" fill sizes="48px" className="object-cover" />}
-                  </span>
-                  <span
-                    className="shrink-0 grid place-items-center w-6 h-6 rounded-full border border-border text-12 font-bold tabular-nums text-muted"
-                    dir="ltr"
-                  >
-                    {i + 1}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="flex items-baseline justify-between gap-2">
-                      <span className="text-14 font-semibold truncate" dir="auto">
-                        {row.title}
+                <Link key={x.key} href={x.href} prefetch={false} className="block rounded-xl border border-border bg-surface overflow-hidden p-1.5">
+                  <span className="relative block aspect-[2/3] rounded-lg overflow-hidden bg-surface-2">
+                    {url ? (
+                      <Image src={url} alt="" fill sizes="(max-width: 640px) 33vw, 200px" className="object-cover" />
+                    ) : (
+                      <span className="absolute inset-0 grid place-items-center text-muted">
+                        <Icon name="film" size={18} />
                       </span>
-                      <span className="shrink-0 text-end leading-tight">
-                        <b className="block text-14 font-extrabold tabular-nums">
-                          {num(row.watched, locale)}
-                        </b>
-                        <span className="block text-12 text-muted">{t.statsWatchedEpisodes}</span>
-                      </span>
-                    </span>
-                    <span className="mt-1.5 block h-1.5 rounded-full bg-surface-2 overflow-hidden">
-                      <span
-                        className="block h-full rounded-full bg-accent"
-                        style={{
-                          width: `${Math.max(Math.round((row.watched / topMax) * 100), 4)}%`,
-                        }}
-                      />
-                    </span>
+                    )}
                   </span>
-                </div>
+                  <span className="block text-center text-13 font-bold truncate py-2 px-1" dir="auto">
+                    {x.title}
+                  </span>
+                </Link>
               );
             })}
           </div>
         </section>
       )}
 
-      {/* ===== ذوقُك: الأنواع يساراً، وأين وقفت يميناً ===== */}
+      {/* ===== بطاقتا الذوق والتقدّم (D-679) ===== */}
       {(topGenres.length > 0 || statusTotal > 0) && (
-        <section>
-          <h2 className="flex items-center gap-2 text-22 font-bold mb-3">
-            <Icon name="sparkles" size={20} className="text-accent" />
-            {mine ? t.analysisTaste : t.analysisTasteOther}
-          </h2>
-          {/* **وعمودان على كلِّ مقاسٍ لا من `sm` فصاعداً** (D-503، لقطةُ
-              أحمد بدائرةٍ حمراء على اللوح): **الأنواعُ الثلاثةُ فوق
-              الحالة** كانت تُنزل ذيلَ التقييمات خارج الشاشة. */}
-          <div className="grid grid-cols-2 gap-4 sm:gap-6">
-            <div className="space-y-2.5">
-              {topGenres.map((g) => (
-                <div key={g.name}>
-                  <div className="flex items-baseline justify-between gap-2 mb-1">
-                    <span className="text-12 truncate" dir="auto">
-                      {g.name}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {topGenres.length > 0 && (
+            <section className="rounded-2xl border border-border bg-surface p-4">
+              <h3 className="text-15 font-bold mb-3">
+                {mine ? t.analysisTaste : t.analysisTasteOther}
+              </h3>
+              <div className="space-y-3">
+                {topGenres.map((g) => (
+                  <div key={g.name} className="flex items-center gap-3">
+                    <span className="flex-1 min-w-0">
+                      <span className="block text-12 truncate mb-1" dir="auto">
+                        {g.name}
+                      </span>
+                      <span className="block h-1.5 rounded-full bg-surface-2 overflow-hidden">
+                        <span
+                          className="block h-full rounded-full bg-accent"
+                          style={{ width: `${Math.max(pct(g.count, genreTags), 2)}%` }}
+                        />
+                      </span>
                     </span>
-                    <span className="text-12 text-muted shrink-0 tabular-nums">
+                    <span className="shrink-0 text-12 text-muted tabular-nums w-9 text-end">
                       {pct(g.count, genreTags)}%
                     </span>
                   </div>
-                  <div className="h-1.5 rounded-full bg-surface-2 overflow-hidden">
-                    <div
-                      className="h-full rounded-full bg-accent"
-                      style={{ width: `${Math.max(pct(g.count, genreTags), 2)}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            </section>
+          )}
 
-            {statusTotal > 0 && (
-              <div className={`border-s ${divider} ps-4 sm:ps-6`}>
-                <div className="flex h-2.5 rounded-full overflow-hidden bg-surface-2">
-                  {[
-                    { v: done, c: "bg-[color:var(--success)]" },
-                    { v: inProgress, c: "bg-accent" },
-                    { v: notStarted, c: "bg-[color:var(--disabled)]" },
-                  ].map((sg, i) =>
-                    sg.v > 0 ? (
-                      <div key={i} className={sg.c} style={{ width: `${pct(sg.v, statusTotal)}%` }} />
-                    ) : null,
-                  )}
-                </div>
-                <div className="mt-3 space-y-2">
+          {statusTotal > 0 && (
+            <section className="rounded-2xl border border-border bg-surface p-4">
+              <h3 className="text-15 font-bold mb-3">{t.statsLibraryProgress}</h3>
+              <div className="flex items-center gap-4">
+                <ProgressDonut done={done} watching={inProgress} rest={notStarted} pct={donePct} />
+                <div className="flex-1 min-w-0 space-y-2.5">
                   {[
                     { l: t.statusDone, v: done, c: "bg-[color:var(--success)]" },
                     { l: t.statusWatching, v: inProgress, c: "bg-accent" },
@@ -354,29 +354,59 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
                   ))}
                 </div>
               </div>
-            )}
+            </section>
+          )}
+        </div>
+      )}
+
+      {/* ===== بطاقةُ التقييمات: المتوسّطُ الكبيرُ وتوزيعُه (D-679) ===== */}
+      {ratedTotal > 0 && (
+        <section className="rounded-2xl border border-border bg-surface p-4 flex items-center gap-4">
+          <div className="shrink-0 flex items-center gap-3">
+            <span className="grid place-items-center w-16 h-16 rounded-full border border-accent/50 text-accent" aria-hidden>
+              <Icon name="star" size={26} />
+            </span>
+            <span>
+              <span className="block text-[26px] font-extrabold leading-none tabular-nums" dir="ltr">
+                {avgAll.toFixed(1)}
+              </span>
+              <span className="block text-12 text-muted mt-1">{t.statsAvgLabel}</span>
+              <span className="block text-11 text-muted mt-0.5">
+                {mine ? t.ratedCount(ratedTotal) : t.ratedCountOther(ratedTotal)}
+              </span>
+            </span>
           </div>
-          {/* **وذيلُ التقييمات في اللوح نفسِه** (D-503): سطرٌ واحدٌ لا
-              يستحقّ عنواناً ولا فاصلاً. */}
-          {ratedTotal > 0 && (
-            <div className={`mt-3 flex items-center gap-3 border-t ${divider} pt-3`}>
-              <span className="flex gap-0.5 shrink-0" aria-hidden>
-                {[0, 1, 2].map((i) => (
-                  <Icon key={i} name="star" size={16} style={{ color: "var(--verified)" }} />
-                ))}
-              </span>
-              <span className="text-12 text-muted">
-                {mine ? t.ratedCount(ratedTotal) : t.ratedCountOther(ratedTotal)} ·{" "}
-                {mine
-                  ? t.avgRatingLabel(avgAll.toFixed(1))
-                  : t.avgRatingOther(avgAll.toFixed(1))}
-              </span>
+          {buckets && bucketTotal > 0 && (
+            <div className={`flex-1 min-w-0 flex items-end justify-around gap-1 border-s ${divider} ps-4`}>
+              {buckets.map((n, i) => {
+                const share = pct(n, bucketTotal);
+                return (
+                  <span key={i} className="flex flex-col items-center gap-1 min-w-0">
+                    <span className="flex flex-col justify-end h-20 w-5 rounded-md bg-surface-2 overflow-hidden" aria-hidden>
+                      <span
+                        className="block w-full rounded-md bg-accent"
+                        style={{ height: `${Math.max(share, n > 0 ? 6 : 0)}%` }}
+                      />
+                    </span>
+                    <span className="text-[8px] leading-none text-accent tracking-tighter" aria-hidden>
+                      {"★".repeat(i + 1)}
+                    </span>
+                    <span className="text-10 text-muted tabular-nums">{share}%</span>
+                  </span>
+                );
+              })}
             </div>
           )}
         </section>
       )}
     </div>
   );
+}
+
+/** غلافُ الملفّ يُخزَّن مساراً أو رابطاً كاملاً — يُطبَّع لعرض `Image` */
+function backdropOrPoster(url: string): string | null {
+  if (url.startsWith("http")) return url;
+  return backdropUrl(url, "w780");
 }
 
 /**
@@ -439,14 +469,22 @@ export async function LibraryAnalysis({
 }) {
   const t = getDict(locale);
 
-  const [follows, ratings, episodes, watchedMovies, movieProgress, history] = await Promise.all([
-    getFollows(),
-    getMyRatings(),
-    getAllWatchedEpisodes(),
-    getWatchedMovies(),
-    getAllMovieProgress(),
-    getWatchHistory(1000),
-  ]);
+  const [follows, ratings, episodes, watchedMovies, movieProgress, history, profile, user] =
+    await Promise.all([
+      getFollows(),
+      getMyRatings(),
+      getAllWatchedEpisodes(),
+      getWatchedMovies(),
+      getAllMovieProgress(),
+      getWatchHistory(1000),
+      /* 🆕 **الهويّةُ للترويسة** (D-679) — `cache()` فلا رحلةَ جديدة */
+      getProfile(),
+      getUser(),
+    ]);
+  /* 🆕 **وعدُّ المتابِعين** (D-679) — دالّةُ `follow_stats` المحروسة (١٣٨) */
+  const followStats = user
+    ? await getFollowStats(user.id).catch(() => null)
+    : null;
 
   if (!follows.length) {
     return <p className="text-sm text-muted text-center py-10">{t.analysisEmpty}</p>;
@@ -562,6 +600,47 @@ export async function LibraryAnalysis({
   const ratedTotal = ratings.length;
   const avgAll = ratedTotal ? ratings.reduce((n, r) => n + r.rating, 0) / ratedTotal : 0;
 
+  /* ===== 🆕 عقدُ D-679: الترويسةُ والثلاثيةُ والسلال ===== */
+  const hero = profile
+    ? {
+        name: profile.nickname || t.anonymousUser,
+        avatarUrl: profile.avatar_url,
+        coverUrl: profile.cover_url,
+        /* **النبذةُ تتبع الاسمَ في الإخفاء** (profile_bio.sql) */
+        bio: profile.hide_name ? null : (profile.bio ?? null),
+        followers: followStats ? followStats.followers : null,
+      }
+    : null;
+
+  /* **أعلى ما قيّمتَه** (getMyRatings مرتّبةٌ تقييماً فالأحدث) —
+     **وأكثرُ ما شاهدتَه يسدّ النقصَ** لا يكرّر (المفتاحُ يمنع الثنائي) */
+  const trioMap = new Map<string, { key: string; title: string; posterPath: string | null; href: string }>();
+  for (const r of ratings) {
+    if (trioMap.size >= 3) break;
+    const key = `${r.media_type}-${r.tmdb_id}`;
+    if (!trioMap.has(key) && r.title) {
+      trioMap.set(key, {
+        key,
+        title: r.title,
+        posterPath: r.poster_path,
+        href: r.media_type === "movie" ? `/movie/${r.tmdb_id}` : `/show/${r.tmdb_id}`,
+      });
+    }
+  }
+  for (const w of topWatched) {
+    if (trioMap.size >= 3) break;
+    const key = `tv-${w.id}`;
+    if (!trioMap.has(key)) {
+      trioMap.set(key, { key, title: w.title, posterPath: w.posterPath, href: `/show/${w.id}` });
+    }
+  }
+
+  /* **خمسُ سلالٍ للتقييم** — `ceil(r/2)` تضع ١–٢ في الأولى و٩–١٠ في الأخيرة */
+  const buckets = [0, 0, 0, 0, 0];
+  for (const r of ratings) {
+    buckets[Math.min(4, Math.max(0, Math.ceil(r.rating / 2) - 1))]++;
+  }
+
   return (
     <AnalysisView
       locale={locale}
@@ -586,6 +665,9 @@ export async function LibraryAnalysis({
         ratedTotal,
         avgAll,
         mine: true,
+        hero,
+        trio: [...trioMap.values()],
+        buckets,
       }}
     />
   );
@@ -595,13 +677,25 @@ export async function LibraryAnalysis({
 export function LibraryAnalysisSkeleton() {
   return (
     <div className="space-y-6 animate-pulse">
-      <div className="flex items-center gap-4">
-        <div className="w-[164px] h-[164px] rounded-full bg-surface-2 shrink-0" />
-        <div className="flex-1 h-[164px] rounded-2xl bg-surface-2" />
+      <div className="flex items-start gap-3">
+        <div className="w-16 h-16 rounded-full bg-surface-2 shrink-0" />
+        <div className="flex-1 space-y-2 pt-1">
+          <div className="h-4 w-40 rounded bg-surface-2" />
+          <div className="h-3 w-28 rounded bg-surface-2" />
+        </div>
       </div>
+      <div className="h-9 w-44 rounded bg-surface-2" />
       <div className="h-16 rounded-2xl bg-surface-2" />
-      <div className="h-44 rounded-2xl bg-surface-2" />
-      <div className="h-40 rounded-2xl bg-surface-2" />
+      <div className="grid grid-cols-3 gap-2.5">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="aspect-[2/3] rounded-xl bg-surface-2" />
+        ))}
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="h-40 rounded-2xl bg-surface-2" />
+        <div className="h-40 rounded-2xl bg-surface-2" />
+      </div>
+      <div className="h-28 rounded-2xl bg-surface-2" />
     </div>
   );
 }
