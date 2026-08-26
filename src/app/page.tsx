@@ -23,6 +23,7 @@ import {
   getMyRatings,
   getMyLists,
   listsForDisplay,
+  getListCardStats,
   getSavedLists,
   getFriendsWatching,
   getUnreadSignals,
@@ -749,11 +750,37 @@ async function HomeBody({
      احتاج أقدر أرتّبهم كذلك مثل الأفلام والمسلسلات»): ترتيبُ D-597
      (قوائمُه ثمّ محفوظاتُه) يبقى للمَن لم يرتّب — ومَن رتّب فترتيبُه
      المحفوظ يتقدّم والجديدُ يلحق بذيله (نمطُ الصفَّين حرفاً). */
-  const homeListCards = applyQueueOrder(
+  const homeListCardsBase = applyQueueOrder(
     [...myListCards, ...savedListCards.filter((c) => c.item_count > 0 && !ownedIds.has(c.id))],
     (c) => c.id,
     prefs.listsOrder,
   );
+  /* 🔴 🆕 **وأرقامُ قوائمك كانت تسقط في الرئيسية وحدَها** (D-673، سؤالُ
+     أحمد بلقطةٍ حوّط فيها بطاقةَ «Best movies.»: «ليه الليستات القديمة
+     ما فيها نجمة وقلب وشكلها مو مثل الجديدة؟»).
+
+     🔍 **والسببُ ليس في البطاقة**: **المحفوظةُ تمرّ بـ`shapeListCards`
+     فتصلها الأرقام**، **وقوائمُك تُبنى بيدٍ هنا بستّة حقول** — ولا
+     `saves` ولا `rating` فيها. **وقسمُ «قوائمي» في المكتبة يمرّ
+     بـ`getListCardStats`** (D-350) **فيعرضها** — **فبطاقةٌ واحدةٌ
+     بشكلين في سطحين**، وهو نقضٌ صامتٌ لقاعدة «بطاقةُ القائمة مقاسُها
+     واحدٌ في كلِّ سطح» (D-375/D-433/D-461).
+
+     🔑 **والعلاجُ قارئٌ ثالثٌ للدالّة نفسِها لا حسابٌ جديد** (D-145).
+     ⚠️ **والعامّةُ وحدَها لها أرقام**: الخاصّةُ لا تُقرأ فلا تُحفظ ولا
+     تُقيَّم (نصُّ الهجرة ١٠٥ حرفاً).
+     ⚡ **والنداءُ يُطلق ولا يُنتظر هنا**: يُجمع بعد موجة TMDB لـ«تابِع
+     المشاهدة» أدناه — **فيركب رحلةً قائمةً ولا يضيف رحلةً إلى أسخن
+     مسارٍ في التطبيق** (D-470/D-511). */
+  const publicOwnIds = listsForDisplay(myListsRaw)
+    .filter((l) => l.is_public && (l.item_count ?? 0) > 0)
+    .map((l) => l.id);
+  const listStatsP: Promise<Map<string, { saves: number; rating: number | null }>> =
+    publicOwnIds.length > 0
+      ? getListCardStats(publicOwnIds).catch(
+          () => new Map<string, { saves: number; rating: number | null }>(),
+        )
+      : Promise.resolve(new Map<string, { saves: number; rating: number | null }>());
 
   // ما تغيّر اسمه بالترجمة يُكتب مرة واحدة في قاعدة البيانات
   const metaToCache = follows
@@ -905,6 +932,16 @@ async function HomeBody({
           };
         }),
       );
+
+  /* 🆕 **وهنا تُجمع أرقامُ قوائمك** (D-673) — **بعد موجة TMDB لا
+     قبلها**، فالرحلةُ تجري بجوارها لا في أثرها. **والصفرُ لا يُطبع**
+     (D-219): من لم يحفظها أحدٌ ولم يقيّمها تبقى بطاقتُها بلا رمزٍ —
+     **وهو الصدقُ لا نقصُ الشكل.** */
+  const listStats = await listStatsP;
+  const homeListCards = homeListCardsBase.map((c) => {
+    const st = listStats.get(c.id);
+    return st ? { ...c, saves: st.saves, rating: st.rating } : c;
+  });
 
   const empty = false;
 
