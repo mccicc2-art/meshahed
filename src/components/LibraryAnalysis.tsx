@@ -185,7 +185,9 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
      تفسّره. */
   const bigTime = (
     <div className="relative mt-5">
-      <div className="text-[32px] font-extrabold leading-none tabular-nums" dir="ltr">
+      {/* **بلا `dir` مفروض**: النصُّ عربيٌّ مركّب («٥٥ يوم و٢١ س»)
+          وفرضُ LTR كان يقلب ترتيبَ كلماته (قِيس على المنشور) */}
+      <div className="text-[32px] font-extrabold leading-none tabular-nums" dir="auto">
         {fmtWatchTime(rangeMinutes, t)}
       </div>
       <div className="mt-2 flex items-center gap-1.5 text-13 text-muted">
