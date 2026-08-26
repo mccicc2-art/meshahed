@@ -13,7 +13,6 @@ import {
   setSavedListPlaylist,
   toggleInList,
   saveList,
-  followListTitles,
 } from "@/lib/actions";
 import { backdropUrl, posterUrl } from "@/lib/media";
 import { profileHref } from "@/lib/people";
@@ -24,7 +23,8 @@ import { Icon, type IconName } from "./Icon";
 import type { ListItem, ListKind } from "@/lib/data";
 import type { TitleState } from "@/lib/libState";
 import { StatusThread } from "./StatusThread";
-import { PlayPill } from "./ListPlayToggle";
+import { BackCrumb } from "./BackButton";
+import { Logo } from "./Logo";
 import { Sheet, SheetHeader } from "./ui/Sheet";
 import { buttonClass } from "./ui/Button";
 import { QuickAdd } from "./QuickAdd";
@@ -216,7 +216,6 @@ export function ListDetail({
      يمسّ خمسةَ عشرَ ملصقاً لا واحداً، **وقلبُها كلَّها قبل الجواب
      يجعل الفشلَ يتراجع عن خمسةَ عشرَ شيئاً أمام العين.** فالانتظارُ
      ظاهرٌ في الزرّ، **والتجديدُ بعده يقلب علاماتِ الملصقات من الحقيقة.** */
-  const [addingAll, setAddingAll] = useState(false);
   const visible = useMemo(() => {
     const seen = new Set(items.map(keyOf));
     const live = [...items, ...added.filter((a) => !seen.has(keyOf(a)))].filter(
@@ -227,48 +226,16 @@ export function ListDetail({
     return [...live].sort((a, b) => (rank.get(keyOf(a)) ?? 1e9) - (rank.get(keyOf(b)) ?? 1e9));
   }, [items, added, removed, order]);
 
-  /**
-   * ⚖️ 🆕 **«ابدأ المشاهدة» — وهي «أضف الكل» وقد أُتمّت** (D-538، تصميمُ
-   * أحمد: «يضيف القائمة بالترتيب إلى متابعة المشاهدة كقائمة تشغيل،
-   * ويبدأ من أول عنوان»).
-   *
-   * **ولماذا حلّت محلَّها ولم تُضَف بجانبها:** الفعلُ هو الفعلُ نفسُه
-   * (‏`followListTitles` — تتبع أعمالَ القائمة كلَّها وتحفظها فتدخل
-   * «تابِع المشاهدة»)، **والذي يزيد خطوةٌ أخيرة: يفتح أوّلَ عنوان.**
-   * **وزرّان يفعلان الشيءَ نفسَه إلا خطوةً بابان لفعلٍ واحد** (القاعدة
-   * ٦) — **ومن أراد الإضافةَ بلا فتحٍ يرجع بزرِّ الرجوع.**
-   *
-   * ⚠️ **والفتحُ بعد نجاح الإضافة لا قبله** (D-158): من غادر الصفحةَ
-   * ثمّ فشلت الكتابةُ لا يرى الخطأ أصلاً. **والانتقالُ يقع حتى لو كانت
-   * كلُّها عنده أصلاً** (`n = 0`) — **الطلبُ «ابدأ»، والبدءُ لا يشترط
-   * أن يُضاف شيء.**
-   */
-  function startWatching() {
-    if (addingAll) return;
-    const first = visible[0];
-    tap(10);
-    setAddingAll(true);
-    followListTitles(listId)
-      .then((n) => {
-        if (n > 0) {
-          setSaved(true);
-          toast(t.listAddAllDone(n), { tone: "success" });
-        }
-        if (first) {
-          router.push(`/${first.media_type === "tv" ? "show" : "movie"}/${first.tmdb_id}`);
-        } else {
-          router.refresh();
-        }
-      })
-      .catch((e) => flashError((e as Error).message))
-      .finally(() => setAddingAll(false));
-  }
-
+  /* ⚖️ 🆕 **`startWatching` وزرُّها حُذفا** (D-681، حكمُ أحمد: «احذف
+     ستارت واتشينغ») — **نقضٌ صريحٌ لـD-538 بيد صاحب تصميمها**: مفتاحُ
+     التشغيل في شريط الحال (D-674) هو طريقُ «تابِع المشاهدة» الآن،
+     وأزرارُ «+» على الملصقات باقيةٌ لعملٍ بعينه. */
 
   const numbered = NUMBERED.includes(kind);
   /* `w780` لا الأصل: الغلافُ يُرسم بعرض الصفحة على الجوال، والأصلُ ملفٌّ
      بحجم ثلاثة أضعافه لا تراه العين (نفس مقاس منتقي D-131) */
   const coverUrl = backdropUrl(cover?.backdrop ?? null, "w780");
+
 
   function remove(it: ListItem) {
     setRemoved((prev) => new Set(prev).add(keyOf(it)));
@@ -382,53 +349,18 @@ export function ListDetail({
         </div>
       )}
 
-      {/* الترويسة: الاسم يملأ السطر وزرّ الخيارات وحده على الطرف — كان
-          القلم يزاحم الاسم على شاشةٍ ضيّقة فيقصّه بلا داعٍ */}
-      <div className="flex items-start gap-3 mb-1.5">
-        <h1 className="flex-1 min-w-0 text-22 leading-tight font-bold break-words">{name}</h1>
-        {/* ⚖️ 🆕 **وزرُّ الحفظ الكبير غادر الترويسةَ إلى شريط الحال**
-            (D-677، تصميمُه: لا زرَّ في الرأس والقلبُ برقمه في الشريط) —
-            **الفعلُ واحدٌ والكاتبُ واحد** (`toggleSave`)، والذي تبدّل
-            مجلسُه: **قلبُ البطاقة في الخارج وقلبُ الشريط في الداخل
-            شكلٌ واحد** — وهو نصُّ طلبه «التصميم يكون موحد». */}
-        {/* «أضِف أعمالاً» قبل النقاط لا داخلها: إضافةُ عملٍ هي الفعل الأوّل
-            في قائمةٍ تملكها، ودفنُه في قائمةٍ يفتحها زرٌّ آخر هو بالضبط
-            العطل الذي بلّغ عنه أحمد (D-167). */}
-        {/* ⚖️ 🆕 **وسقط دبّوسُ لوبز مع رفِّه** (D-386، طلبُ أحمد: «احذف
-            Picked by Loopz»): **زرٌّ يضع القائمةَ في صفٍّ لم يعد يُرسم
-            وعدٌ بلا مكان** — **وزرٌّ لا أثرَ له أسوأُ من غيابه** (D-346
-            حرفاً). **وحُجّةُ D-349 لم تسقط** (القرارُ يُتَّخذ حيث يُقرأ
-            الشيء) — **سقط الصفُّ الذي كان الزرُّ يكتب إليه.**
-            ⚠️ **والجدولُ ودالّتاه باقيةٌ في القاعدة** بلا قارئ — **دَينٌ
-            معلَنٌ في `05` يُحذف في دفعته** (D-214). */}
-        {isOwner && addButton}
-        {isOwner && (
-          /* هدف لمسٍ ٤٤×٤٤ كاملاً وإن بدت الدائرة ٣٦: أصغر من ذلك يُخطئه
-             الإبهام — وهو المقاس الذي توصي به آبل ولا نجادل فيه */
-          <button
-            type="button"
-            onClick={() => {
-              tap(8);
-              setSheet("menu");
-            }}
-            aria-label={t.listMenu}
-            aria-haspopup="dialog"
-            className="shrink-0 -m-1 p-1 grid place-items-center"
-          >
-            <span className="grid place-items-center w-9 h-9 rounded-full border border-border bg-surface text-muted transition active:scale-95 hover:border-accent hover:text-foreground">
-              <Icon name="dots" size={16} />
-            </span>
-          </button>
-        )}
-        {/* 🔴 🆕 **وللزائر زرُّ مشاركة** (D-426، بلاغُ أحمد: «ما فيه زر
-            مشاركة للسته إذا فتحت اللستة»).
-            **والقائمةُ التي تُفتح للناس هي أوّلُ ما يُشارَك** — **وبابُ
-            المشاركة كان محبوساً في قائمة النقاط، والنقاطُ للمالك وحدَه**
-            (السطرُ فوقَه)، **فمن فتح قائمةَ غيره لم يجد للرابط بابا.**
-            ⚠️ **ولا ورقةَ ثانيةً**: `ShareListSheet` نفسُها بمقاسها
-            (D-002/قاعدة ٣) — **وفعلُ «اجعلها معلنة» داخلَها لا يُرسم
-            لمعلنةٍ أصلاً**، **وغيرُ المالك لا يبلغ إلّا معلنة.** */}
-        {!isOwner && isPublic && (
+      {/* ⚖️ 🆕 **ترويسةُ الصفحة بتصميم D-681**: رجوعٌ في الطرف،
+          **الشعارُ وسطاً**، والمشاركةُ والنقاطُ في الطرف الآخر — وشريطُ
+          التطبيق مخفيٌّ (`chromeRules`) **فترويسةٌ واحدةٌ لا اثنتان**
+          (حجّةُ D-643 حرفاً). **وزرُّ «أضف أعمالاً» انتقل إلى قائمة
+          النقاط** — الترويسةُ ترويسةُ اللقطة، **والبابُ باقٍ في القائمة
+          وفي حالة الفراغ** (D-167 لا تُنقض: بابان قائمان). */}
+      <div className="flex items-center gap-2 mb-4">
+        <BackCrumb label={t.listsTitle} fallback="/library?filter=list" />
+        <span className="flex-1 grid place-items-center" aria-hidden>
+          <Logo size={26} />
+        </span>
+        {(isOwner || isPublic) && (
           <button
             type="button"
             onClick={() => {
@@ -445,7 +377,25 @@ export function ListDetail({
             </span>
           </button>
         )}
+        {isOwner && (
+          <button
+            type="button"
+            onClick={() => {
+              tap(8);
+              setSheet("menu");
+            }}
+            aria-label={t.listMenu}
+            aria-haspopup="dialog"
+            className="shrink-0 -m-1 p-1 grid place-items-center"
+          >
+            <span className="grid place-items-center w-9 h-9 rounded-full border border-border bg-surface text-muted transition active:scale-95 hover:border-accent hover:text-foreground">
+              <Icon name="dots" size={16} />
+            </span>
+          </button>
+        )}
       </div>
+
+      <h1 className="text-22 leading-tight font-bold break-words mb-1.5">{name}</h1>
 
       {/* الوصف امتدادٌ للاسم لا منافسٌ له: نصف وزنه ولونٌ خافت وسطران على
           الأكثر ثم قصّ. وحين لا وصف لا يبقى فراغه — لا هامش ولا عنصر أصلاً */}
@@ -465,7 +415,7 @@ export function ListDetail({
           يُقرأ من الموضع قبل أن يُقرأ من الاسم.
           **والصفُّ يُرسم إن وُجد أحدُهما**: قائمةٌ بلا صاحبٍ ظاهر
           تحتفظ بزرّها، **وزرٌّ يختفي لأن اسماً غاب عطلٌ لا ترتيب.** */}
-      {!isOwner && ((owner && (owner.nickname || owner.username)) || !!libState) && (
+      {!isOwner && owner && (owner.nickname || owner.username) && (
         <div className="flex items-center gap-2 mt-3.5">
           {owner && (owner.nickname || owner.username) && (
             <>
@@ -491,26 +441,11 @@ export function ListDetail({
             </>
           )}
 
-          {libState && (
-            /* ⚖️ 🆕 **زرٌّ ممتلئٌ محلَّ الرقاقة المفرَّغة** (D-538): **هو
-               الفعلُ الذي جاء القارئُ لأجله** في قائمةٍ بترتيبِ مشاهدة —
-               **والمفرَّغُ يُقرأ خياراً ثانوياً** (D-217). **وms-auto لا
-               `justify-between`**: الصفُّ قد يخلو من اسم. */
-            <button
-              type="button"
-              onClick={startWatching}
-              disabled={addingAll}
-              aria-label={t.listStartWatchingAria}
-              title={t.listStartWatchingAria}
-              className={buttonClass({
-                size: "sm",
-                className: "ms-auto shrink-0 disabled:opacity-60",
-              })}
-            >
-              <Icon name="play" size={15} strokeWidth={2} />
-              {t.listStartWatching}
-            </button>
-          )}
+          {/* ⚖️ 🆕 **وزرُّ «ابدأ المشاهدة» حُذف** (D-681، حكمُ أحمد:
+              «احذف ستارت واتشينغ») — **نقضٌ صريحٌ لـD-538/D-495 بيد
+              صاحبهما**: مفتاحُ التشغيل في شريط الحال (D-674) صار
+              الطريقَ إلى «تابِع المشاهدة»، وأزرارُ «+» على الملصقات
+              باقيةٌ لمن أراد عملاً بعينه. */}
         </div>
       )}
 
@@ -614,7 +549,7 @@ export function ListDetail({
           ⚠️ **والمفتاحُ لمن يملك صفّاً يكتب فيه وحدَه** (D-217/D-674):
           المالكُ في صفِّ قائمته، والحافظُ في صفِّ حفظه — **وزائرٌ
           بلا حسابٍ يرى الأرقامَ ساكنة.** */}
-      <div className="flex items-center rounded-2xl border border-border bg-surface px-4 py-3 mt-4 mb-6 min-w-0">
+      <div className="flex items-center gap-5 mt-4 mb-5 pb-4 border-b border-[color:var(--divider)] min-w-0">
         {canSave ? (
           <button
             type="button"
@@ -622,13 +557,13 @@ export function ListDetail({
             aria-pressed={saved}
             aria-label={saved ? t.listSavedBtn : t.listSaveBtn}
             title={saved ? t.listSavedBtn : t.listSaveBtn}
-            className="flex items-center gap-1.5 text-13 font-bold tabular-nums text-accent transition active:scale-95"
+            className="flex items-center gap-2 text-15 font-bold tabular-nums transition active:scale-95"
             dir="ltr"
           >
             <Icon
               name={saved ? "heart-filled" : "heart"}
-              size={17}
-              className={saved ? "fill-current" : undefined}
+              size={19}
+              className={`text-accent ${saved ? "fill-current" : ""}`}
             />
             {num(
               Math.max(0, (saves ?? 0) + (saved ? 1 : 0) - (initialSaved ? 1 : 0)),
@@ -636,34 +571,55 @@ export function ListDetail({
             )}
           </button>
         ) : (
-          <span className="flex items-center gap-1.5 text-13 font-bold tabular-nums text-accent" dir="ltr">
-            <Icon name="heart-filled" size={17} className="fill-current" />
+          <span className="flex items-center gap-2 text-15 font-bold tabular-nums" dir="ltr">
+            <Icon name="heart-filled" size={19} className="fill-current text-accent" />
             {num(saves ?? 0, locale)}
           </span>
         )}
-        <span aria-hidden className="w-px h-4 bg-[color:var(--divider)] mx-3" />
-        <span className="flex items-center gap-1.5 text-13 tabular-nums text-muted" dir="ltr">
-          <Icon name="comment" size={16} className="text-accent" />
+        <span className="flex items-center gap-2 text-15 font-bold tabular-nums" dir="ltr">
+          <Icon name="comment" size={18} className="text-accent" />
           {num(reviews?.count ?? 0, locale)}
         </span>
-        <span aria-hidden className="w-px h-4 bg-[color:var(--divider)] mx-3" />
-        <span className="flex items-center gap-1.5 text-13 font-bold tabular-nums text-accent" dir="ltr">
-          <Icon name="star" size={16} />
+        <span className="flex items-center gap-2 text-15 font-bold tabular-nums min-w-0" dir="ltr">
+          <Icon name="star" size={18} className="text-accent" />
           {num(reviews?.avg ?? 0, locale)}
+          {(reviews?.count ?? 0) > 0 && (
+            <span className="text-12 font-medium text-muted truncate">
+              · {t.listReviewCount(num(reviews!.count, locale))}
+            </span>
+          )}
         </span>
         {(isOwner
           ? initialPlaylist !== null && initialPlaylist !== undefined
           : initialSavedPlaylist !== null && initialSavedPlaylist !== undefined && saved) &&
           visible.length > 0 && (
+            /* 🆕 **مفتاحٌ بقرصٍ منزلق** (D-681، لقطتُه: «On ⬤——») —
+               **الكلمةُ باقيةٌ** (D-142) والكاتبُ كاتبُ D-674 نفسُه. */
             <button
               type="button"
               onClick={togglePlaylist}
               aria-pressed={playlist}
               aria-label={t.listPlaylist}
               title={t.listPlaylist}
-              className="ms-auto shrink-0 active:scale-95 transition"
+              className="ms-auto shrink-0 flex items-center gap-2 ps-4 border-s border-[color:var(--divider)] transition active:scale-95"
             >
-              <PlayPill on={playlist} locale={locale} />
+              <span className={`text-13 font-bold ${playlist ? "" : "text-muted"}`}>
+                {playlist ? t.toWatchOn : t.toWatchOff}
+              </span>
+              <span
+                aria-hidden
+                className={`relative w-11 h-6 rounded-full transition-colors ${
+                  playlist ? "bg-accent" : "bg-surface-2 border border-border"
+                }`}
+              >
+                <span
+                  className={`absolute top-0.5 start-0.5 w-5 h-5 rounded-full transition-transform ${
+                    playlist
+                      ? "bg-[color:var(--on-accent)] translate-x-5 rtl:-translate-x-5"
+                      : "bg-[color:var(--divider)]"
+                  }`}
+                />
+              </span>
             </button>
           )}
       </div>
@@ -696,6 +652,9 @@ export function ListDetail({
           {/* «عدّل القائمة» لا «غيّر الاسم»: الورقة تحمل الاسم والوصف معاً،
               فهما هويّة القائمة الواحدة — وصفٌّ لكلٍّ منهما بابان إلى ورقةٍ
               واحدة */}
+          {/* 🆕 **«أضف أعمالاً» أوّلَ القائمة** (D-681) — غادر الترويسةَ
+              مع تصميمها، **والبابُ لا يُغلق**: هنا وفي حالة الفراغ. */}
+          <MenuRow icon="plus" label={t.listAddTitles} onClick={() => setSheet("add")} />
           <MenuRow icon="edit" label={t.listEditTitle} onClick={() => setSheet("rename")} />
           {/* مشاركة القائمة — في المجتمع (تظهر في ملفّك العام) أو خارج
               التطبيق (رابط). بابٌ واحد لكل فعل، فمكانها هنا لا على البطاقة */}

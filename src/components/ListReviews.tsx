@@ -9,6 +9,7 @@ import { ListReviewForm } from "./ListReviewForm";
 import { toast, flashError } from "@/lib/toast";
 import { tap } from "@/lib/haptics";
 import { getDict, num, type Locale } from "@/lib/i18n";
+import { timeAgoShort } from "@/lib/when";
 import { LikeButton } from "./LikeButton";
 import { ThreadReplies } from "./thread/ThreadReplies";
 import type { ListReviewRow, ListReviewSocial, ReviewReply } from "@/lib/data";
@@ -101,6 +102,13 @@ export function ListReviews({
 }) {
   const t = getDict(locale);
   const [reported, setReported] = useState<ReadonlySet<string>>(new Set());
+  /* 🆕 **صندوقُ الكتابة يبدأ سطراً** (D-681، لقطتُه: «Write a review…»
+     حقلٌ واحدٌ بجوار وجهك) — **ويتّسع بضغطةٍ إلى النموذج القائم**:
+     الرتبةُ والنصُّ والكاتبُ كما هم (`ListReviewForm`)، **والذي تبدّل
+     بابُه.** ومن له رأيٌ قائمٌ يفتح على نموذجه (تعديل). */
+  const [writing, setWriting] = useState(false);
+  /* 🆕 **والقاعُ مطويٌّ بعد ثلاثة** (D-681): «عرض كل الآراء (N)» */
+  const [showAll, setShowAll] = useState(false);
   /** الخيطُ المفتوح — **واحدٌ لا غير** (علّةُ D-242) */
   const [openThread, setOpenThread] = useState<string | null>(null);
   const [, start] = useTransition();
@@ -123,51 +131,74 @@ export function ListReviews({
        القاع: لوحُ `DetailTabs` يعطي المسافةَ، **ومرساةٌ إلى لوحٍ مخفيٍّ
        رابطٌ ميّت** */
     <section className="space-y-4">
-      <div className="flex items-center gap-2">
-        <Icon name="star" size={18} className="text-accent shrink-0" />
-        <h2 className="text-15 font-bold">{t.listReviewsTitle}</h2>
-        {/* **الرقمُ يجاور صاحبَه، والمقامُ معه** (D-216/D-219) — ولا يُرسم
-            متوسّطٌ بلا رأيٍ واحد: **صفرٌ يُقرأ حكماً لا فراغاً.** */}
-        {stats.count > 0 && stats.avg !== null && (
-          <span className="ms-auto flex items-center gap-1.5 text-12 font-bold tabular-nums">
-            <span dir="ltr">★ {num(stats.avg, locale)}</span>
-            <span className="text-muted font-medium">
-              {t.listReviewCount(num(stats.count, locale))}
-            </span>
-          </span>
+      {/* ⚖️ 🆕 **العنوانُ «الآراء · N» بلا رمزٍ ولا متوسّط** (D-681):
+          المتوسّطُ صعد إلى شريط الحال — **ورقمان لشيءٍ واحدٍ في شاشةٍ
+          واحدة يفترقان** (D-219). */}
+      <h2 className="text-17 font-bold">
+        {t.listReviewsTitle}
+        {stats.count > 0 && (
+          <span className="text-muted font-medium"> · {num(stats.count, locale)}</span>
         )}
-      </div>
+      </h2>
 
       {isOwner ? (
         <p className="text-12 text-muted">{t.listReviewOwn}</p>
       ) : canReview ? (
-        /* 🔧 **الصندوقُ خرج مكوّناً عند قارئه الثاني** (D-352):
-            النجمةُ على بطاقة القائمة تفتحه ورقةً، **ونسخُه كان سيعني
-            سلّمين يفترقان يوماً** (القاعدة ٦). */
-        <div className="rounded-card border border-border bg-surface p-4">
-          <ListReviewForm listId={listId} locale={locale} mine={mine} />
-        </div>
+        mine || writing ? (
+          /* 🔧 **الصندوقُ خرج مكوّناً عند قارئه الثاني** (D-352) —
+             والنموذجُ نفسُه يفتح للتعديل حين لي رأيٌ قائم. */
+          <div className="rounded-card border border-border bg-surface p-4">
+            <ListReviewForm listId={listId} locale={locale} mine={mine} />
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => {
+              tap(6);
+              setWriting(true);
+            }}
+            className="w-full flex items-center gap-3 text-start"
+          >
+            <Avatar src={me?.avatar ?? null} name={me?.name ?? ""} size={34} className="shrink-0" />
+            <span className="flex-1 min-w-0 truncate rounded-full border border-border bg-surface-2 px-4 py-2.5 text-14 text-muted">
+              {t.reviewPlaceholder}
+            </span>
+          </button>
+        )
       ) : null}
 
       {/* 🔴 **وكلامُ الناس يُرسم دائماً** (D-371) — لا في فرعٍ لا يبلغه
           أحد. **ورأيي أنا يبقى في الخطّ** كما هو في صفحة العمل: من كتب
           يرى كلامَه حيث يراه الناس (D-251). */}
       {reviews.length > 0 && (
-        <ul className="space-y-3">
-          {reviews.map((r) => {
+        <ul className="space-y-5">
+          {(showAll ? reviews : reviews.slice(0, 3)).map((r) => {
             const s = social?.get(`${listId}|${r.userId}`);
             const isMine = !!meId && meId === r.userId;
             const mineReplies = (replies ?? []).filter((x) => x.reviewUserId === r.userId);
             const open = openThread === r.userId;
             return (
-            <li key={r.userId} className="rounded-card border border-border bg-surface p-3">
+            /* ⚖️ 🆕 **صفٌّ عارٍ بلا بطاقة** (D-681، لقطتُه): وجهٌ فاسمٌ
+               فعمرٌ، والنصُّ تحتهم — **والرتبةُ باقيةٌ في الطرف**:
+               آراؤنا تقييماتٌ قبل أن تكون كلاماً (فرقٌ مُعلَنٌ عن
+               اللقطة، الرقمُ حقيقةٌ لا تُحذف للشكل — D-217). */
+            <li key={r.userId} className="flex gap-3">
+              <Avatar
+                src={r.avatarUrl}
+                name={r.nickname ?? r.username ?? ""}
+                size={34}
+                className="shrink-0 mt-0.5"
+              />
+              <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <Avatar src={r.avatarUrl} name={r.nickname ?? r.username ?? ""} size={28} />
                 {/* **ومخفي الاسم بلا بديل** — الغيابُ أصدق (D-011) */}
-                <span className="text-14 font-semibold truncate">
+                <span className="text-14 font-bold truncate">
                   {r.hideName ? "" : (r.nickname ?? r.username ?? "")}
                 </span>
-                <span className="ms-auto text-14 font-bold tabular-nums" dir="ltr">
+                <span className="text-12 text-muted shrink-0">
+                  {timeAgoShort(r.updatedAt, t)}
+                </span>
+                <span className="ms-auto text-13 font-bold tabular-nums text-accent" dir="ltr">
                   ★ {num(r.rating, locale)}
                 </span>
               </div>
@@ -256,10 +287,27 @@ export function ListReviews({
                   />
                 </div>
               )}
+              </div>
             </li>
             );
           })}
         </ul>
+      )}
+
+      {/* 🆕 **«عرض كل الآراء»** (D-681) — يطوي لا يقصّ: العدُّ صادقٌ
+          في العنوان، والبقيّةُ ضغطةٌ في المكان. */}
+      {!showAll && reviews.length > 3 && (
+        <button
+          type="button"
+          onClick={() => {
+            tap(6);
+            setShowAll(true);
+          }}
+          className="flex items-center gap-1 text-14 font-bold text-accent"
+        >
+          {t.listReviewsViewAll(reviews.length)}
+          <Icon name="chevron-down" size={15} className="-rotate-90 rtl:rotate-90" />
+        </button>
       )}
     </section>
   );
