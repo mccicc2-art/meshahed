@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 import {
   getUser,
@@ -26,6 +25,7 @@ import { getT } from "@/lib/locale";
 import { localizeRows } from "@/lib/localize";
 import { getLevel, levelPoints, levelName } from "@/lib/level";
 import { Avatar } from "@/components/Avatar";
+import { CoverImage } from "@/components/CoverImage";
 import { Icon } from "@/components/Icon";
 import { PosterCard } from "@/components/PosterCard";
 import { PosterGrid } from "@/components/PosterGrid";
@@ -731,24 +731,19 @@ export default async function PublicProfilePage({
             الجزيرة). **وعلى الشاشة الواسعة `--safe-top` صفرٌ فلا شيء
             يتغيّر** — ولذلك بقي `sm:h-[15rem]` كما هو. */}
         <div className="relative h-[calc(9.5rem+var(--safe-top))] sm:h-[15rem] -mx-4 -mt-6 sm:mx-0 sm:mt-0 sm:rounded-3xl overflow-hidden">
-          {profile.cover_url ? (
-            <Image
-              src={profile.cover_url}
-              alt=""
-              fill
-              priority
-              sizes="(max-width: 640px) 100vw, 1152px"
-              className="object-cover"
-              style={{ objectPosition: `50% ${profile.cover_pos ?? 30}%` }}
-            />
-          ) : (
-            <div
-              className="absolute inset-0"
-              style={{
-                background:
-                  "linear-gradient(120deg, var(--glow-a), transparent 55%), linear-gradient(300deg, var(--glow-b), transparent 55%), var(--surface-2)",
-              }}
-            />
+          {/* 🆕 **والتدرّجُ أرضيّةٌ دائمةٌ لا فرعٌ مقابل** (D-657):
+              **صورةٌ تفشل بعد الرسم لا تعيد تشغيل الفرع** — فيجب أن
+              يكون تحتها أصلاً. **ومن سقط غلافُه يرى ما يراه من لا
+              غلافَ له**، لا أيقونةَ صورةٍ مكسورة. */}
+          <div
+            className="absolute inset-0"
+            style={{
+              background:
+                "linear-gradient(120deg, var(--glow-a), transparent 55%), linear-gradient(300deg, var(--glow-b), transparent 55%), var(--surface-2)",
+            }}
+          />
+          {profile.cover_url && (
+            <CoverImage src={profile.cover_url} posY={profile.cover_pos ?? null} />
           )}
           <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/25 to-black/40" />
           {/* 🆕 **وتدرّجٌ ثانٍ من الأعلى للأزرار العارية** (D-651، طلبُ
