@@ -1676,6 +1676,13 @@ const ar = {
   // تحليل المكتبة
   analysisTaste: "ذوقك",
   analysisEmpty: "تابع بعض الأعمال ليظهر تحليل مكتبتك هنا.",
+  /* 🆕 **صيغةُ الغائب لصفحة إحصائيات عضوٍ آخر** (D-649): الشاشةُ واحدةٌ
+     والقارئان اثنان — **و«ذوقك» في ملفِّ مشعل تخاطب القارئ عن أرقام
+     غيره** (D-217). **ولا ضميرَ مذكَّرٍ ولا مؤنَّث**: أسماءٌ محايدة. */
+  analysisTasteOther: "التصنيفات الأكثر",
+  analysisEmptyOther: "لا أعمال في هذه المكتبة بعد.",
+  avgRatingOther: (n: string) => `متوسط التقييم ${n} من ١٠`,
+  ratedCountOther: (n: number) => `${n} عملاً مقيَّماً`,
   statusDone: "أكملتها",
   statusWatching: "جارية",
   statusNotStarted: "ما بدأتها",
@@ -2932,6 +2939,10 @@ const en: Dict = {
   // Library analysis
   analysisTaste: "Your taste",
   analysisEmpty: "Follow a few titles and your library analysis appears here.",
+  analysisTasteOther: "Top genres",
+  analysisEmptyOther: "No titles in this library yet.",
+  avgRatingOther: (n: string) => `Averages ${n} out of 10`,
+  ratedCountOther: (n: number) => `${n} title${n === 1 ? "" : "s"} rated`,
   statusDone: "Finished",
   statusWatching: "In progress",
   statusNotStarted: "Not started",
