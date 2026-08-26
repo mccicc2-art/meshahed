@@ -173,7 +173,23 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
 
   return (
     <div className="space-y-6">
-      {/* ===== الحلقةُ وشبكةُ الأرقام ===== */}
+      {/* ===== الحلقةُ وشبكةُ الأرقام =====
+
+          ⚖️ 🆕 **وكلُّ خانةٍ تقول ماذا تعدّ** (D-664، بلاغُ أحمد على
+          بطاقة ملفّ مشعل: «أعداد الأفلام والمسلسلات غير صحيحة»):
+          **البطاقةُ في الملفّ تقول «٦٣ أفلام» وهي مكتبتُه، وهذه الشاشةُ
+          — تُفتح من البطاقة نفسِها — كانت تقول «٦١ أفلام» وهي ما
+          شاهده.** **ولا خطأَ حسابيَّ في أيٍّ منهما؛ الخطأُ أنهما
+          يتشاركان الاسم** — **وعدّادٌ لا يقول قاعدتَه يُقرأ خطأً في
+          أوّل مقارنة** (D-374 من جهته المقابلة).
+
+          🔑 **والتسميةُ عولجت لا الأرقام** (حكمُ أحمد): **ثلاثُ خاناتٍ
+          هنا تعدّ المُشاهَد وواحدةٌ تعدّ المكتبة** — فصارت تقولها.
+          ⚠️ **ومفتاحُ `shortMovies` لم يُمسّ**: تقرؤه بطاقةُ الملفّ
+          وتبويباتُ المكتبة، **وتغييرُه كان سيبدّل معنى «أفلام» في كلِّ
+          سطحٍ لأجل خانةٍ واحدة** (D-145).
+          ⚠️ **وسطرُ السنة تحته لم يُمسّ**: عنوانُه «منذ يناير» يحمل
+          قاعدتَه، **وأربعُ خاناتٍ ضيّقةٌ تقصّ الكلمةَ الطويلة.** */}
       <div className="flex items-center gap-3 sm:gap-6">
         <Ring share={share} label={t.statWatchTime} value={fmtWatchTime(rangeMinutes, t)} />
         <div className="grid grid-cols-2 flex-1 min-w-0">
@@ -181,14 +197,14 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
             icon="play"
             color="var(--info)"
             value={num(rangeEpisodes, locale)}
-            label={t.statsWatchedEpisodes}
+            label={t.statsCellEpisodesWatched}
             border=""
           />
           <Cell
             icon="film"
             color="var(--accent-2)"
             value={num(rangeMovies, locale)}
-            label={t.shortMovies}
+            label={t.statsCellMoviesWatched}
             border={`border-s ${divider}`}
           />
           <Cell
