@@ -7,6 +7,7 @@ import {
   getWatchSummary,
   getWatchedMovieIds,
   getMyLists,
+  listsForDisplay,
   getSavedLists,
   getSavedListsCount,
   getListCardStats,
@@ -285,6 +286,13 @@ export default async function LibraryPage({
     (f) => (animeFlags.get(`${f.media_type}-${f.tmdb_id}`) ?? null) === null,
   ).length;
 
+  /* 🆕 **بابُ «المفضّلة» ومصدرُه واحد** (D-654): **قائمةُ المفضّلة
+     مقروءةٌ أصلاً في `lists`** — **فلا نداءَ ثانٍ لمعرّفٍ في اليد**
+     (D-152). **وهي تخرج من العرض وتبقى وجهةً للقلب**: شيءٌ واحدٌ في
+     مكانين يُقرأ شيئين (القاعدة ٣/D-374). */
+  const favList = lists.find((l) => l.kind === "favorites") ?? null;
+  const shownLists = listsForDisplay(lists);
+
   return (
     <div>
       {/* ذاكرة موضع التمرير — العائد من عملٍ يهبط حيث كان (تدقيق 8 Aug م٢) */}
@@ -300,7 +308,7 @@ export default async function LibraryPage({
         animeUnknown={animeUnknown}
         artists={artists}
         artistCount={artistRows.length}
-        lists={lists}
+        lists={shownLists}
         toWatch={toWatchCard}
         playlistIds={playlistIds}
         listStats={listStats}
@@ -322,7 +330,19 @@ export default async function LibraryPage({
            **والشكلُ زرّان مطوّقان لا صفٌّ بفواصل**: هما فعلان يُضغطان،
            **ورمزٌ عارٍ يُقرأ زينةً** (D-138). */
         underTabs={
-          <div className="grid grid-cols-2 gap-2.5">
+          /* 🆕 **وثالثُ الصفِّ قلبٌ بلا كلمة** (D-654، طلبُ أحمد: «في نفس
+             هذا الصف حطّ أيقونة قلب — إذا ضغطته يظهر لي الأفلام
+             المفضّلة عندي»).
+
+             🔑 **والأعمدةُ `[1fr_1fr_auto]` كبطاقةِ الملفّ حرفاً**
+             (D-611/D-650): **فعلان يقرآن بكلمتيهما، وبابٌ ينكمش على
+             رمزه** — **ووصفةُ الشكل واحدةٌ في السطحين** (D-145).
+
+             ⚠️ **والقلبُ لا يُرسم لمن لا مفضّلةَ له**: القائمةُ تُنشأ
+             عند أوّل تفضيل، **و٢٤ من ٣١ عضواً لا قائمةَ لهم اليوم** —
+             **وبابٌ يَعِد بما لا يعطي أسوأُ من بابٍ غائب** (D-217).
+             **ويظهر من تلقائه أوّلَ ما يُفضّل عملاً.** */
+          <div className={favList ? "grid grid-cols-[1fr_1fr_auto] gap-2.5" : "grid grid-cols-2 gap-2.5"}>
             {(
               [
                 { href: "/stats", icon: "chart", label: t.libAnalysisBtn },
@@ -343,6 +363,16 @@ export default async function LibraryPage({
                 {label}
               </Link>
             ))}
+            {favList && (
+              <Link
+                href={`/lists/${favList.id}`}
+                aria-label={t.profileFavoritesRail}
+                title={t.profileFavoritesRail}
+                className="flex items-center justify-center px-4 rounded-2xl border border-border bg-surface transition hover:border-accent/40 active:scale-[0.99]"
+              >
+                <Icon name="heart" size={19} style={{ color: "var(--accent)" }} />
+              </Link>
+            )}
           </div>
         }
         listsExtra={
