@@ -39,7 +39,7 @@ export default async function Page() {
           title={t.setViewPlans}
           /* **والثمنُ يُقال لمن لا يملكها، ويصمت لمن يملكها** — عرضُ
              السعر على مشتركٍ إعلانٌ لما اشتراه. */
-          subtitle={plus ? t.setPlanComing : t.plusPrice}
+          subtitle={plus ? t.plusIncludes : t.plusPrice}
         />
       </SettingsGroup>
     </SettingsPageLayout>
