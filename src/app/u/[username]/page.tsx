@@ -1297,12 +1297,27 @@ export default async function PublicProfilePage({
                   **بما تسمح به دوالُّ `definer` وحدَه.** */}
               <Link
                 href={isMe ? "/stats" : `${base}/stats`}
-                className="flex items-center justify-center gap-1 px-4 py-3 text-14 font-semibold text-muted hover:text-accent transition"
+                /* ⚖️ 🆕 **وخطُّ الخانة الثالثة صار خطَّ أختيها** (D-676،
+                   حكمُ أحمد بلقطةٍ محوَّطة: «مقاس خط جميع الكارد لازم
+                   يكون واحد، هذا أكبر من الأفلام والمسلسلات — وازنهم»):
+                   كان `text-14` بينما كلمتا «مسلسلات» و«أفلام»
+                   `text-12` — **وثلاثُ خاناتٍ في بطاقةٍ واحدةٍ بمقاسين
+                   تُقرأ صفَّين** (D-046/D-639).
+                   🔑 **والوزنُ يبقى `font-semibold`**: هو الفرقُ بين
+                   **بابٍ يُضغط** وكلمةٍ تصف رقماً — **والمطلوبُ توحيدُ
+                   المقاس لا محوُ الفرق.** */
+                className="flex items-center justify-center gap-1 px-4 py-3 text-12 font-semibold text-muted hover:text-accent transition"
               >
-                <span className="whitespace-nowrap">{t.profileFullStats}</span>
+                {/* ⚖️ 🆕 **والكلمةُ أقصر، ومن الوجهة نفسِها** (D-676،
+                    ذيلُ حكمه: «ولو فيه كلمة أقصر اكتبها») — **نظيرُ
+                    D-675 في المكتبة حرفاً**: «Statistics» صارت
+                    `statsPageTitle` **وهو اسمُ الصفحة التي يفتحها**
+                    («الإحصائيات» / «Stats») — **ولا مفتاحَ جديد، ولا
+                    اسمانِ لوجهةٍ واحدة** (D-030/D-145). */}
+                <span className="whitespace-nowrap">{t.statsPageTitle}</span>
                 <Icon
                   name="chevron-down"
-                  size={16}
+                  size={14}
                   className="shrink-0 -rotate-90 rtl:rotate-90"
                 />
               </Link>
