@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { num, getDict, type Locale } from "@/lib/i18n";
-import { displayNameOf } from "@/lib/people";
+import { displayNameOf, profileHref } from "@/lib/people";
 import { timeAgoShort } from "@/lib/when";
 import { dirOf } from "@/lib/dir";
 import { gifUrl } from "@/lib/media";
@@ -168,7 +168,8 @@ export function ReplyItem({
   const [reported, setReported] = useState(false);
   const name = displayNameOf(reply, t.anonymousUser);
   const pending = reply.replyId.startsWith(TEMP);
-  const whoHref = reply.username ? `/u/${reply.username}` : null;
+  /* 🆕 **والمعرّفُ يكفي حين لا اسمَ مستخدم** (D-655) */
+  const whoHref = profileHref(reply);
 
   /* **متنُ النشرة يُركَّب هنا** (D-261) — و`bulletin === null` يعني
      «صفُّ إنسان»، **فالفرعُ واحدٌ لا ثلاثة أعلام.** */
