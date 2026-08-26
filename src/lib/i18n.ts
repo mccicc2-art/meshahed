@@ -1365,6 +1365,9 @@ const ar = {
   setVisibilityPrivate: "خاصّ",
   setPreviewProfile: "معاينة الملف",
   setProfileDetails: "تفاصيل الملف",
+  /* 🆕 **عنوانُ مجموعة حسابات التواصل** (D-641): خرجت من بطاقة الهويّة
+     فاحتاجت اسماً — **ومجموعةٌ بلا عنوانٍ صفوفٌ بلا سبب.** */
+  setSocialAccounts: "حسابات التواصل",
   setSave: "حفظ",
   setNameHandle: "الاسم واسم المستخدم",
   setEditCover: "تغيير صورة الغلاف",
@@ -2681,6 +2684,7 @@ const en: Dict = {
   setVisibilityPrivate: "Private",
   setPreviewProfile: "Preview profile",
   setProfileDetails: "Profile details",
+  setSocialAccounts: "Social accounts",
   setSave: "Save",
   setNameHandle: "Name and username",
   setEditCover: "Change cover image",
