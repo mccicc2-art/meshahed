@@ -1138,7 +1138,15 @@ const ar = {
   statsRangeAll: "الكل",
   statsRangeMonth: "الشهر",
   statsSoFar: (y: number) => `${y} حتى الآن`,
-  statsCellTitles: "أعمال",
+  /* ⚖️ 🆕 **خاناتُ الإحصائيات تقول ماذا تعدّ** (D-664، بلاغُ أحمد على
+     بطاقة ملفّ مشعل): **البطاقةُ تقول «٦٣ أفلام» (مكتبتُه) والإحصائياتُ
+     على بُعد ضغطةٍ تقول «٦١ أفلام» (ما شاهده)** — **كلمةٌ واحدةٌ
+     بمعنيين في شاشتين متجاورتين.** **والرقمان صحيحان، والاسمُ هو
+     الكاذب** — فصار كلُّ رقمٍ يحمل قاعدتَه في اسمه. */
+  statsCellEpisodesWatched: "حلقات شوهدت",
+  statsCellMoviesWatched: "أفلام شوهدت",
+  /* **وهذه وحدَها تعدّ المكتبة لا المُشاهَد** — فاسمُها يقول أين تسكن */
+  statsCellTitles: "في المكتبة",
   statsCellRating: "التقييم",
   statsTopShows: "الأكثر مشاهدة",
   diaryEpsGrouped: (n: number) =>
@@ -2513,7 +2521,9 @@ const en: Dict = {
   statsRangeAll: "All time",
   statsRangeMonth: "Month",
   statsSoFar: (y: number) => `${y} so far`,
-  statsCellTitles: "Titles",
+  statsCellEpisodesWatched: "Episodes watched",
+  statsCellMoviesWatched: "Movies watched",
+  statsCellTitles: "In library",
   statsCellRating: "Rating",
   statsTopShows: "Most watched",
   diaryEpsGrouped: (n: number) => `${n} episode${n === 1 ? "" : "s"}`,
