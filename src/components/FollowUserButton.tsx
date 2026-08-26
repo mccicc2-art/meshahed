@@ -50,7 +50,7 @@ export function FollowUserButton({
    * خلّها صغيرة ومكانها على نفس سطر الاسم») — **معامِلٌ لا مكوّنٌ
    * ثانٍ**، والمقاسان من سلّم `buttonClass` نفسِه.
    */
-  size?: "sm" | "md";
+  size?: "xs" | "sm" | "md";
 }) {
   const t = getDict(locale);
   const router = useRouter();
