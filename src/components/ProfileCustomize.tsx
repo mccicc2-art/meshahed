@@ -181,11 +181,17 @@ export function ProfileCustomize({
           الحالي لا يناسب شكل البروفايل الحالي، بحيث أقدر أخفي تبويب
           أو أخفي قسم داخل تبويب») — **الشاشةُ صارت بلغة الصفحة**:
           البروفايلُ تبويباتٌ منذ D-438/D-561، والتحكّمُ كان ما زال
-          يخاطب صفحةً واحدةً قديمة. **و«نظرة عامة» بلا مفتاحٍ عمداً**
-          (انظر `HIDEABLE_PROFILE_TABS`). */}
+          يخاطب صفحةً واحدةً قديمة.
+
+          ⚖️ 🆕 **و«نظرة عامة» دخلت القائمة مطفأةً افتراضاً، و«المفضّلة»
+          حلّت محلَّها باباً بلا مفتاح** (D-658، حكمُ أحمد: «هنا يكون فيه
+          أوفر فيو وفيفورت — وأوفر فيو يكون مقفل والي يبغاه يفعّله»).
+          **والبابُ باقٍ وإن تبدّلت هويّتُه** (حجّةُ D-617) — **والسطرُ
+          تحت القائمة يقول أيُّهما هو.** */}
       <SettingsGroup label={t.custTabsTitle}>
         {(
           [
+            { key: "overview", icon: "grid", label: t.profileTabOverview },
             { key: "activity", icon: "clock", label: t.communityTabMine },
             { key: "reviews", icon: "comment", label: t.communityTabReviews },
             { key: "lists", icon: "list", label: t.profileTabLists },
