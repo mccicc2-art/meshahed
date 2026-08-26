@@ -48,6 +48,7 @@ import { isViewKey } from "@/lib/postKeys";
 import { intId, intIn, asMediaType, uuid, dateOrNull } from "@/lib/validate";
 import { searchGifs, type GifHit } from "@/lib/gif";
 import { IMPORT_CAPS, type ImportPayload, type ResolveRequest, type ResolveResult } from "@/lib/importer";
+import { getTv, getMovie } from "@/lib/tmdb";
 import type { PersonLite, CommunityLite } from "@/lib/data";
 
 /**
@@ -910,6 +911,37 @@ export async function setFeaturedList(input: { listId: string; on: boolean }) {
   revalidatePath("/news");
 }
 
+/**
+ * 🆕 **معرّفاتُ تصنيفِ العملِ من TMDB** (D-648) — تُكتب في صفّ المتابعة.
+ *
+ * 🔑 **ولماذا هنا لا في وقت الرسم**: صفحةٌ فيها خمسون عملاً كانت
+ * ستطلب خمسين تفصيلاً في كلِّ فتحة (وهو ما تمنعه D-580) — **والمتابعةُ
+ * تقع مرّةً واحدةً في عمر الصفّ.**
+ *
+ * ⚠️ **والنداءُ مخبَّأٌ ساعةً** (`revalidate: 3600` في `tmdb()`)، **ومن
+ * تابَع من صفحة العمل فتفصيلُه في الكاش أصلاً** — فالكلفةُ صفرٌ غالباً.
+ *
+ * ⚠️ **والفشلُ `null` لا `[]`**: `null` تعني «لم تُقرأ بعد» فيلتقطها
+ * التعبئةُ الخلفيّة لاحقاً، **والفارغةُ تعني «قُرئت فلم يكن له نوع»**
+ * فلا تُعاد المحاولةُ إلى الأبد.
+ */
+async function genreIdsOf(tmdbId: number, mediaType: MediaType): Promise<number[] | null> {
+  try {
+    /* ⚠️ **ومهلةٌ صريحةٌ ثانيتين ونصف**: `fetch` بلا مهلةٍ يعلّق الفعلَ
+       كلَّه — **وزرُّ متابعةٍ يدور لأن TMDB بطيءٌ اليوم عطلٌ في الميزة
+       لا في الشبكة.** **والتصنيفُ زينةُ ترتيبٍ لا شرطُ متابعة**، فالصفُّ
+       مكتوبٌ قبل هذا السطر أصلاً **وتُكمله التعبئةُ الخلفيّة.** */
+    const d = await Promise.race([
+      mediaType === "tv" ? getTv(tmdbId) : getMovie(tmdbId),
+      new Promise<null>((r) => setTimeout(() => r(null), 2500)),
+    ]);
+    if (!d) return null;
+    return (d.genres ?? []).map((g) => g.id).filter((n) => Number.isInteger(n));
+  } catch {
+    return null;
+  }
+}
+
 export async function follow(input: {
   tmdbId: number;
   mediaType: MediaType;
@@ -933,6 +965,20 @@ export async function follow(input: {
     },
     { onConflict: "user_id,tmdb_id,media_type" },
   );
+
+  /* 🆕 **والتصنيفُ يُكتب بعد المتابعة لا معها** (D-648): **المتابعةُ هي
+     الفعلُ، والتصنيفُ أثرُه** — **وفشلُ نداءِ TMDB لا يجوز أن يمنع صفّاً
+     طلبه المستخدم.**
+     ⚠️ **و`is("genres", null)` تعبئةٌ لا استبدال**: من تابَع عملاً ثمّ
+     ألغى ثمّ عاد لا يُمسح تصنيفُه المقروءُ من قبل بنداءٍ فشل اليوم. */
+  const genres = await genreIdsOf(input.tmdbId, input.mediaType);
+  if (genres) {
+    await supabase
+      .from("follows")
+      .update({ genres })
+      .match({ user_id: user.id, tmdb_id: input.tmdbId, media_type: input.mediaType })
+      .is("genres", null);
+  }
   revalidatePath("/");
   revalidatePath("/library");
   revalidatePath(`/${input.mediaType === "tv" ? "show" : "movie"}/${input.tmdbId}`);

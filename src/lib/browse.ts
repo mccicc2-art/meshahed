@@ -502,6 +502,61 @@ export function expandGenreIds(ids: readonly number[]): Set<number> {
   return out;
 }
 
+/**
+ * 🆕 **مفهومُ العملِ الواحد من معرّفاتِ TMDB له** (D-648).
+ *
+ * 🔑 **وأوّلُ مفهومٍ يُعرَف لا كلُّها**: TMDB ترتّب أنواعَ العمل
+ * بالأهمّية — **فأوّلُها أقربُها إلى ما يقوله الناسُ عنه.**
+ * **وعملٌ في مجموعتين يُعدّ مرّتين ويُقرأ خطأً** في قائمةٍ عنوانُها
+ * «كلُّ أفلامه»: **مجموعُ المجموعات يجب أن يساوي المكتبة.**
+ *
+ * ⚠️ **و`null` تعني «لم تُقرأ بعد»**، **والمصفوفةُ الفارغةُ تعني
+ * «قرأناها فلم يكن له نوع»** — **وكلتاهما تسقطان في «أخرى»**،
+ * لكن الأولى تُملأ لاحقاً والثانيةُ لا. (`/api/genres/backfill`)
+ */
+export function genreConceptOf(ids: readonly number[] | null | undefined): BrowseGenre | null {
+  if (!ids?.length) return null;
+  for (const id of ids) {
+    const g = browseGenreForId(id);
+    if (g) return g;
+  }
+  return null;
+}
+
+/**
+ * 🆕 **تجميعُ صفوفٍ بالمفهوم، ثمّ بالأحرف داخلَ كلِّ مجموعة** (D-648،
+ * طلبُ أحمد: «مرتّبة حسب التصنيف والأحرف»).
+ *
+ * ⚠️ **وترتيبُ المجموعات ترتيبُ `BROWSE_GENRES` نفسُه** لا الأكثرَ
+ * عدداً: **رفُّ الاكتشافِ مرتَّبٌ بالأكثرِ طلباً أصلاً** (تعليقُه
+ * أعلاه)، **وترتيبان لشيءٍ واحدٍ خلل** (D-145). **و«أخرى» آخراً دوماً.**
+ */
+export function groupByGenre<T>(
+  rows: readonly T[],
+  genresOf: (row: T) => readonly number[] | null | undefined,
+  sortInGroup: (a: T, b: T) => number,
+): { genre: BrowseGenre | null; rows: T[] }[] {
+  const bySlug = new Map<string, T[]>();
+  const other: T[] = [];
+  for (const r of rows) {
+    const g = genreConceptOf(genresOf(r));
+    if (!g) {
+      other.push(r);
+      continue;
+    }
+    const bucket = bySlug.get(g.slug);
+    if (bucket) bucket.push(r);
+    else bySlug.set(g.slug, [r]);
+  }
+  const out: { genre: BrowseGenre | null; rows: T[] }[] = [];
+  for (const g of BROWSE_GENRES) {
+    const bucket = bySlug.get(g.slug);
+    if (bucket?.length) out.push({ genre: g, rows: bucket.sort(sortInGroup) });
+  }
+  if (other.length) out.push({ genre: null, rows: other.sort(sortInGroup) });
+  return out;
+}
+
 export function genreFitsType(g: BrowseGenre, type: BrowseType): boolean {
   if (type === "movie") return g.movie.length > 0;
   if (type === "tv") return g.tv.length > 0;

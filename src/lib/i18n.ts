@@ -568,6 +568,8 @@ const ar = {
     "من يفتح ملفك يستطيع رؤية من يتابعك ومن تتابعهم. أقفلها فتبقى الأعداد وحدها.",
   likesLabel: "إعجاب",
   shortShows: "مسلسلات",
+  /** مجموعةُ ما لا مفهومَ لتصنيفه — أو ما لم يُقرأ تصنيفُه بعد (D-648) */
+  genreOther: "أخرى",
   markAllWatched: "شاهدته كاملاً",
   markAllTitle: "أشّر الكل كمُشاهَد",
   markAllCount: (n: number) => `${n} حلقة`,
@@ -2191,6 +2193,7 @@ const en: Dict = {
     "Visitors to your profile can see who follows you and who you follow. Lock it and only the counts remain.",
   likesLabel: "Like",
   shortShows: "Shows",
+  genreOther: "Other",
   markAllWatched: "Watched it all",
   markAllTitle: "Mark all watched",
   markAllCount: (n: number) => `${n} episodes`,

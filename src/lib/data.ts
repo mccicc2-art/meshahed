@@ -31,6 +31,8 @@ export interface FollowRow {
   rewatch_started_at?: string | null;
   /** آخر تخزين للإحصاءات — غيابه يعني أن تاريخ الفيلم لم يُخبَّأ بعد */
   stats_updated_at?: string | null;
+  /** 🆕 معرّفات تصنيف TMDB للعمل (D-648) — `null` = لم تُقرأ بعد، لا «بلا نوع» */
+  genres?: number[] | null;
 }
 
 export interface WatchedEpisodeRow {
@@ -261,7 +263,7 @@ export const getFollows = cache(async (): Promise<FollowRow[]> => {
       supabase
         .from("follows")
         .select(
-          "tmdb_id, media_type, title, poster_path, added_at, total_episodes, aired_episodes, next_air_date, dropped, rewatch_count, rewatch_started_at, stats_updated_at",
+          "tmdb_id, media_type, title, poster_path, added_at, total_episodes, aired_episodes, next_air_date, dropped, rewatch_count, rewatch_started_at, stats_updated_at, genres",
         )
         .eq("user_id", uid)
         .order("added_at", { ascending: false })
@@ -1024,6 +1026,89 @@ export async function getFollowsOf(userId: string): Promise<FollowRow[]> {
     return (data as FollowRow[]) ?? [];
   } catch {
     return [];
+  }
+}
+
+/**
+ * 🆕 **تصنيفاتُ مكتبةِ عضوٍ أزوره** (D-648) — خريطةُ `media-tmdbId` ← معرّفات.
+ *
+ * 🔑 **واستعلامٌ ثانٍ لا عمودٌ في `user_public_follows`**: تغييرُ جدولِ
+ * عودةِ دالّةٍ قائمةٍ يوجب `drop`، **ولا `drop` بالإذن الدائم** — **وهي
+ * سابقةُ `is_anime` في هذا المستودع بعينها** (D-182: «عمودٌ جديدٌ لا
+ * يُقحم في استعلامٍ قائمٍ يحمل غيره»).
+ *
+ * ⚠️ **والفشلُ خريطةٌ فارغة** لا استثناء: **تجميعُ الشبكة زينةُ ترتيبٍ
+ * لا شرطُ عرض** — فتُقرأ أبجديّةً بلا مجموعاتٍ ولا تنكسر الصفحة.
+ */
+export async function getFollowGenresOf(userId: string): Promise<Map<string, number[]>> {
+  const out = new Map<string, number[]>();
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("user_follow_genres", { target: userId });
+    if (error || !data) return out;
+    for (const r of data as { tmdb_id: number; media_type: string; genres: number[] | null }[]) {
+      if (r.genres?.length) out.set(`${r.media_type}-${r.tmdb_id}`, r.genres);
+    }
+    return out;
+  } catch {
+    return out;
+  }
+}
+
+/**
+ * 🆕 **ملخّصُ مشاهدةِ عضوٍ أزوره بالدقائق** (D-649) — `user_watch_stats`.
+ *
+ * 🔴 **ولماذا دالّةٌ ثانيةٌ و`watch_summary` قائمة**: تلك تقرأ
+ * `auth.uid()` وحدَه — **فزائرٌ يفتح إحصائياتِ غيره كان سيرى أرقامَ
+ * نفسِه**، وهو بعينه ما تمنعه D-217. **وهذه تأخذ الهدفَ صراحةً
+ * وتحرسه بـ`can_view_profile`** (الهجرة ١٤٢).
+ *
+ * ⚠️ **والفشلُ أصفارٌ فارغة**: صفحةُ الإحصائيات تقول «لا شيء بعد» ولا
+ * تنكسر — **وحسابٌ خاصٌّ يمرّ من هنا بلا صفوفٍ أصلاً** (الحارسُ في SQL).
+ */
+export async function getWatchStatsOf(
+  userId: string,
+): Promise<{ byShow: Map<number, { watched: number; minutes: number }>; episodes: number; minutes: number }> {
+  const empty = { byShow: new Map<number, { watched: number; minutes: number }>(), episodes: 0, minutes: 0 };
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("user_watch_stats", { target: userId });
+    if (error || !data) return empty;
+    const byShow = new Map<number, { watched: number; minutes: number }>();
+    let episodes = 0;
+    let minutes = 0;
+    for (const r of data as { show_tmdb_id: number; watched: number; minutes: number }[]) {
+      const w = Number(r.watched);
+      const m = Number(r.minutes);
+      byShow.set(r.show_tmdb_id, { watched: w, minutes: m });
+      episodes += w;
+      minutes += m;
+    }
+    return { byShow, episodes, minutes };
+  } catch {
+    return empty;
+  }
+}
+
+/**
+ * 🆕 **أفلامُ عضوٍ أزوره: عدداً ودقائق** (D-649) — `user_movie_stats`.
+ *
+ * ⚠️ **و`user_watched_movie_ids` لا تكفي**: تُرجع معرّفاتٍ لا دقائق،
+ * **ووقتُ مشاهدةٍ بلا أفلامِه نصفُ رقمٍ يرتدي زيَّ كلٍّ** (D-217).
+ */
+export async function getMovieStatsOf(
+  userId: string,
+): Promise<{ watched: number; minutes: number }> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("user_movie_stats", { target: userId });
+    if (error || !data) return { watched: 0, minutes: 0 };
+    const row = (Array.isArray(data) ? data[0] : data) as
+      | { watched: number; minutes: number }
+      | undefined;
+    return { watched: Number(row?.watched ?? 0), minutes: Number(row?.minutes ?? 0) };
+  } catch {
+    return { watched: 0, minutes: 0 };
   }
 }
 
