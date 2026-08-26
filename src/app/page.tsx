@@ -24,6 +24,7 @@ import {
   getMyLists,
   listsForDisplay,
   getListCardStats,
+  getMyPlaylistIds,
   getSavedLists,
   getFriendsWatching,
   getUnreadSignals,
@@ -617,6 +618,7 @@ async function HomeBody({
     earlyExtra,
     topRated,
     myListsRaw,
+    myPlaylistIds,
     savedListCards,
     friendsRows,
     homeArt,
@@ -663,6 +665,14 @@ async function HomeBody({
     prefs.order.includes("lists")
       ? getMyLists().catch(() => [])
       : Promise.resolve([]),
+    /* 🆕 **ورايةُ التشغيل لكلِّ قائمةٍ من قوائمك** (D-674) — **نداءٌ
+       مخبَّأٌ خفيفٌ بشرط القسم نفسِه** (D-510)، **ومفتاحُ البطاقة لا
+       يُرسم بدونه** فلا يكذب (D-217).
+       ⚠️ **والمحفوظةُ لا تحتاجه**: رايتُها تصل مع بطاقتها من
+       `shapeListCards` في الاستعلام نفسِه. */
+    prefs.order.includes("lists")
+      ? getMyPlaylistIds().catch(() => [] as string[])
+      : Promise.resolve([] as string[]),
     /* 🆕 **ومحفوظاتُه معها** (D-597، حكمُه بلقطةٍ لصفّ «قوائمي»:
        «اعرض كل الليست حتى الي معطيها قلب») — نظيرُ تبويب الملفّ
        (D-588): **البطاقةُ `PublicListCard` نفسُها وسطرُ صاحبها يفصل
@@ -730,6 +740,7 @@ async function HomeBody({
      🔑 **ولا صفَّ يُحذف من القاعدة**: المفضّلةُ وعاءُ ما يعرضه القلبُ
      نفسُه (بابُها في صفِّ أفعال المكتبة — D-654)، **والحجبُ عرضٌ لا
      مصدر.** */
+  const playlistSet = new Set(myPlaylistIds);
   const myListCards = listsForDisplay(myListsRaw)
     .map((l) => ({
       id: l.id,
@@ -738,6 +749,10 @@ async function HomeBody({
       owner: null,
       item_count: l.item_count,
       posters: l.posters ?? [],
+      /* 🆕 **ومفتاحُ التشغيل معها** (D-674) — **الحالةُ تُقرأ ولا
+         تُفترض** (D-217)، والكاتبُ `setListPlaylist` لأنها قائمتك. */
+      mine: true,
+      playlist: playlistSet.has(l.id),
     }))
     .filter((c) => c.item_count > 0);
 
