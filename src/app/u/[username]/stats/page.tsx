@@ -52,7 +52,10 @@ export default async function MemberStatsPage({
 
   return (
     <div>
-      <SettingsHeader title={name} fallbackHref={`/u/${username}`} />
+      {/* 🆕 D-682: العنوانُ اسمُ الصفحة لا اسمُ العضو — الاسمُ صار في
+          البطاقة السينمائيّة نفسِها، **وتكرارُه في الترويسة يقول شيئاً
+          مرّتين ويترك الصفحةَ بلا اسم** (مواصفةُ أحمد: العنوان Statistics) */}
+      <SettingsHeader title={t.statsPageTitle} fallbackHref={`/u/${username}`} />
 
       <h1 className="sr-only">{`${t.statsPageTitle} — ${name}`}</h1>
 
