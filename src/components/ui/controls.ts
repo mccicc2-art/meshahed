@@ -251,3 +251,20 @@ export function actionTailItem(active: boolean, className = "") {
     active ? "text-accent" : "text-muted hover:text-accent"
   } ${className}`.trim();
 }
+
+/**
+ * 🆕 **أداةُ الغلاف العارية** (D-659) — **وصفةٌ واحدةٌ لثلاثة قرّاء**:
+ * المشاركةُ · النقاطُ · ترسُ الإعدادات.
+ *
+ * 🔴 **وكانت منسوخةً مرّتين حرفاً** منذ D-643 (`ShareTitleButton` و
+ * `ProfileMenu`) — **والثالثةُ هي التي كانت ستُظهر الفرق**: **ثلاثُ
+ * نسخٍ لوصفةٍ واحدةٍ تفترق عند أوّل تعديل** (D-145)، **ورتبةٌ واحدةٌ
+ * بثلاثة أشكالٍ تُقرأ ثلاثَ رتب.**
+ *
+ * ⚠️ **والمرئيُّ ٢٤ وهدفُ اللمس ٤٤** (D-033): `before` تمدّ المساحةَ
+ * القابلةَ للّمس عشرَ بكسلاتٍ في كلِّ اتّجاه **بلا أن يكبر الرمز.**
+ * ⚠️ **والظلُّ هو ما يفصل الأيقونةَ عن أيِّ صورة** — على الغلاف الفاتح
+ * والداكن معاً (حجّةُ D-288/D-643).
+ */
+export const coverBareControl =
+  "relative w-6 h-6 grid place-items-center text-white drop-shadow-[0_1px_4px_rgba(0,0,0,0.85)] active:scale-90 transition before:content-[''] before:absolute before:-inset-[10px] before:rounded-full";
