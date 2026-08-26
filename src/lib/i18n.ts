@@ -1715,6 +1715,10 @@ const ar = {
   statusDone: "أكملتها",
   statusWatching: "جارية",
   statusNotStarted: "ما بدأتها",
+  /* 🆕 صفحةُ الإحصائيات بتصميم أحمد (D-679) */
+  statsTasteTrio: "ثلاثية ذوقك",
+  statsLibraryProgress: "تقدّم المكتبة",
+  statsAvgLabel: "متوسط التقييم",
   avgRatingLabel: (n: string) => `متوسط تقييمك ${n} من ١٠`,
   ratedCount: (n: number) => `قيّمت ${n} عملاً`,
   errorTitle: "صار خلل غير متوقّع",
@@ -2977,6 +2981,10 @@ const en: Dict = {
   statusDone: "Finished",
   statusWatching: "In progress",
   statusNotStarted: "Not started",
+  /* 🆕 Stats page, Ahmed's design (D-679) */
+  statsTasteTrio: "Taste Trio",
+  statsLibraryProgress: "Library Progress",
+  statsAvgLabel: "Average rating",
   avgRatingLabel: (n: string) => `You average ${n} out of 10`,
   ratedCount: (n: number) => `${n} title${n === 1 ? "" : "s"} rated`,
   errorTitle: "Something went wrong",
