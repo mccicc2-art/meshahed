@@ -7,6 +7,7 @@ import { posterUrl } from "@/lib/media";
 import { getDict, num, type Locale } from "@/lib/i18n";
 import { curatedName } from "@/lib/universes";
 import { ListSaveHeart } from "./ListSaveHeart";
+import { ListPlayToggle } from "./ListPlayToggle";
 import { ListRateStar } from "./ListRateStar";
 import { MarqueeText } from "./MarqueeText";
 import type { PublicListCard } from "@/lib/data";
@@ -164,9 +165,29 @@ export function CommunityListCard({
      «Top 250 Movies» في رفّها. **واسمٌ واحدٌ بوجهين في صفحةٍ واحدة
      يُقرأ قائمتين** (D-147/D-273). وقائمةُ العضو تعود باسمها كما هو. */
   const name = curatedName(l.source_slug, l.name, locale === "en" ? "en" : "ar");
+  /* 🆕 **مفتاحُ التشغيل على كلِّ بطاقةٍ يملك قارئُها صفَّها** (D-674،
+     حكمُ أحمد: «نعم الكل له مفتاح تشغيل و إيقاف»): **قائمتُك برايتها
+     في صفِّها (١٢٢)، ومحفوظتُك برايتها في صفِّ حفظك (١٤٩)** —
+     **ورقاقةٌ واحدةٌ لا تعرف الفرقَ إلا عند الكتابة** (القاعدة ٣).
+     ⚠️ **ولا مفتاحَ حيث لا رايةَ نعرفها** (`playlist === undefined`):
+     بطاقةُ غريبٍ لم تحفظها **لا صفَّ لها تُكتب فيه** — **ومفتاحٌ
+     يفشل عند الضغط وعدٌ كاذب** (D-217) — **وسطحٌ لم يمرِّرها بعد
+     يبقى كما كان** (D-028).
+     ⚠️ **ولا مفتاحَ لقائمةٍ فارغة**: رايةٌ على قائمةٍ بلا أعمالٍ لا
+     تُظهر شيئاً في «تابِع المشاهدة» (شرطُ D-563 حرفاً). */
+  const play =
+    l.playlist === undefined || l.item_count <= 0 ? null : (
+      <ListPlayToggle
+        listId={l.id}
+        locale={locale}
+        initialOn={l.playlist}
+        saved={!l.mine}
+      />
+    );
   const body = (
     <ListCardShell
       name={name}
+      play={play}
       /* **النجمةُ والقلبُ في سطر الاسم** (D-383، طلبُ أحمد: «النجمة التي
          تحت القلب تكون هي والاسم والتايتل في سطر واحد… تكون سطرين
          وبوستر»). ⚠️ **ولا يظهر الزرّان لقائمتي أنا ولا لزائرٍ بلا
@@ -263,6 +284,7 @@ export function ListCardShell({
   name,
   icon,
   star,
+  play,
   heart,
   action,
   ownerAvatar,
@@ -276,6 +298,8 @@ export function ListCardShell({
   /** رمزٌ قبل الاسم — لقوائم لوبز وحدَها (✦/★) */
   icon?: React.ReactNode;
   star?: React.ReactNode;
+  /** 🆕 **رقاقةُ التشغيل/الإيقاف** (D-674) — تجلس يسار النجمة */
+  play?: React.ReactNode;
   heart?: React.ReactNode;
   action?: React.ReactNode;
   ownerAvatar?: React.ReactNode;
@@ -331,7 +355,15 @@ export function ListCardShell({
           {countText}
           {extra ?? ""}
         </span>
-        {star && <span className="ms-auto shrink-0 flex items-center">{star}</span>}
+        {(play || star) && (
+          /* 🆕 **مفتاحُ التشغيل يسار النجمة** (D-674، رسمُ أحمد بلقطتين
+             محوَّطتين): **طرفُ السطر عمودُ الحالة** — النجمةُ حكمُ
+             الناس والمفتاحُ حكمُك أنت، **ويقرآن معاً بلا سطرٍ ثالث.** */
+          <span className="ms-auto shrink-0 flex items-center gap-2">
+            {play}
+            {star}
+          </span>
+        )}
       </span>
       {cover ? (
         <span className="mt-2 block relative aspect-[16/9] rounded-lg overflow-hidden bg-surface-2 border border-[color:var(--background)]">

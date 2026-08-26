@@ -7,7 +7,6 @@ import { getDict, type Locale } from "@/lib/i18n";
 import { Icon } from "./Icon";
 import { CommunityListCard } from "./PublicListsRail";
 import { ToWatchListCard } from "./ToWatchListCard";
-import { ListPlayToggle } from "./ListPlayToggle";
 import type { UserList } from "@/lib/data";
 import dynamic from "next/dynamic";
 /* الورقةُ تُحمَّل عند أوّل فتحٍ لا مع الصفحة (نمطُ TitleSearchSheet في
@@ -130,6 +129,13 @@ export function ListManager({
                     posters: l.posters ?? [],
                     saves: st?.saves ?? 0,
                     rating: st?.rating ?? null,
+                    /* ⚖️ 🆕 **والمفتاحُ انتقل إلى البطاقة نفسِها**
+                       (D-674): كان يُمرَّر في خانة `action` بجوار
+                       المشاركة **فصار يسار النجمة كما رسم أحمد** —
+                       **والبطاقةُ ترسمه لكلِّ سطحٍ يمرّر الرايةَ**،
+                       فلا نسختان تفترقان (D-145). */
+                    mine: true,
+                    playlist: playlists ? playlists.has(l.id) : undefined,
                   }}
                   /* **العدُّ بتفصيله حين تعرفه القاعدة** (my_lists) —
                      **وقبل الهجرة يسقط إلى العدّ الكلّي** (D-028). */
@@ -152,13 +158,6 @@ export function ListManager({
                         المشاهدة»** — **ومفتاحٌ يَعِد بما لا يقع يكذب**
                         (D-217)، وهو نفسُ شرطِ الصفِّ في ورقة الأدوات
                         (`visible.length > 0`). */}
-                    {playlists && l.item_count > 0 && (
-                      <ListPlayToggle
-                        listId={l.id}
-                        locale={locale}
-                        initialOn={playlists.has(l.id)}
-                      />
-                    )}
                     <button
                       type="button"
                       onClick={(e) => {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { setListPlaylist } from "@/lib/actions";
+import { setListPlaylist, setSavedListPlaylist } from "@/lib/actions";
 import { getDict, type Locale } from "@/lib/i18n";
 import { tap } from "@/lib/haptics";
 import { toast, flashError } from "@/lib/toast";
@@ -60,10 +60,14 @@ export function ListPlayToggle({
   listId,
   locale,
   initialOn,
+  saved = false,
 }: {
   listId: string;
   locale: Locale;
   initialOn: boolean;
+  /** 🆕 **قائمةٌ حفظتُها من غيري** (D-674) — **الكاتبُ صفُّ حفظي لا
+      صفُّ القائمة**: **المعنى واحدٌ في العين والمالكُ اثنان في القاعدة.** */
+  saved?: boolean;
 }) {
   const t = getDict(locale);
   const [on, setOn] = useState(initialOn);
@@ -84,7 +88,7 @@ export function ListPlayToggle({
         setOn(next);
         start(async () => {
           try {
-            await setListPlaylist(listId, next);
+            await (saved ? setSavedListPlaylist : setListPlaylist)(listId, next);
             toast(next ? t.listPlaylistOnToast : t.listPlaylistOffToast);
           } catch (err) {
             setOn(!next);
