@@ -787,7 +787,7 @@ async function CuratedCard({
   canReview?: boolean;
   /** 🆕 أرقامُ قائمة لوبز المولَّدة (D-335) — غيابُها يعني قائمةً بلا
       رقمٍ بعد، **والصفرُ لا يُطبع** (D-219) */
-  stats?: { saves: number; rating: number | null } | null;
+  stats?: { saves: number; reviews?: number; rating: number | null } | null;
   /**
    * 🆕 **العدُّ الحقيقيُّ من القائمة المولَّدة** (البند ٢).
    *
@@ -849,7 +849,7 @@ async function CuratedCard({
      يجعل صفَّ «القوائم» يُقرأ صفّاً واحداً لا صفَّين بإيقاعين. */
 
   return (
-    <div className={`rounded-2xl border border-border bg-surface p-2.5 ${className}`}>
+    <div className={`rounded-2xl border border-border bg-surface overflow-hidden ${className}`}>
       {/* 🆕 **الهيكلُ من `ListCardShell`** (D-383) — **بطاقةُ لوبز وبطاقةُ
           العضو صارتا شيئاً واحداً**: كان هذا الملفُّ يرسم السطرين
           والملصقاتِ بيده، **وبطاقةُ المجتمع ترسمهما بعمودٍ في الزاوية**،
@@ -877,16 +877,23 @@ async function CuratedCard({
               locale={locale}
             />
           ) : (
-            (stats?.rating ?? null) !== null && (
-              <span
-                className="shrink-0 flex items-center gap-1 px-1 text-12 font-bold text-accent tabular-nums"
-                dir="ltr"
-              >
-                <Icon name="star" size={16} />
-                {num(stats!.rating as number, locale)}
-              </span>
-            )
+            <span
+              className="shrink-0 flex items-center gap-1 text-12 font-bold text-accent tabular-nums"
+              dir="ltr"
+            >
+              <Icon name="star" size={15} />
+              {num(stats?.rating ?? 0, locale)}
+            </span>
           )
+        }
+        comments={
+          <span
+            className="shrink-0 flex items-center gap-1 text-12 text-muted tabular-nums"
+            dir="ltr"
+          >
+            <Icon name="comment" size={15} className="text-accent" />
+            {num(stats?.reviews ?? 0, locale)}
+          </span>
         }
         /* 🔴 **القلبُ وحدَه — وسقط البوك‑مارك ومعه النسخ** (D-347) */
         heart={
@@ -898,15 +905,13 @@ async function CuratedCard({
               locale={locale}
             />
           ) : (
-            (stats?.saves ?? 0) > 0 && (
-              <span
-                className="shrink-0 flex items-center gap-1 px-1 text-12 text-muted tabular-nums"
-                dir="ltr"
-              >
-                <Icon name="heart-filled" size={16} className="fill-current" />
-                {num(stats!.saves, locale)}
-              </span>
-            )
+            <span
+              className="shrink-0 flex items-center gap-1 text-12 text-muted tabular-nums"
+              dir="ltr"
+            >
+              <Icon name="heart-filled" size={15} className="fill-current text-accent" />
+              {num(stats?.saves ?? 0, locale)}
+            </span>
           )
         }
         ownerAvatar={
