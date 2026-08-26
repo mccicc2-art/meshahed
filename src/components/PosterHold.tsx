@@ -129,6 +129,10 @@ export function PosterHold({
   const [open, setOpen] = useState(false);
   const [inList, setInList] = useState(added);
   const [seen, setSeen] = useState(watched);
+  /* 🆕 **والإيقافُ حالةٌ محلّيّةٌ كأخواته** (D-636): الخيطُ الأحمرُ يجب أن
+     يظهر تحت الإصبع لا بعد تنقّلٍ كامل — **وفعلٌ لا يُرى أثرُه يُظنّ أنه
+     سقط** (عطلُ D-289 نفسُه). */
+  const [isDropped, setIsDropped] = useState(dropped);
   const [, start] = useTransition();
 
   /**
@@ -262,6 +266,40 @@ export function PosterHold({
     });
   }
 
+  /**
+   * 🆕 **البطاقةُ الحمراء — صفٌّ مشروطٌ لا رابعٌ ثابت** (D-636، بحكم أحمد
+   * على الشكل الذي عُرض عليه).
+   *
+   * **وهي تحلّ D-229 وD-217 معاً بلا نقضٍ لأيّهما**: نصُّ D-229
+   * («الإيقافُ فعلُ من يتابع، ومن يتابع في المكتبة») كان صحيحاً في
+   * غايته لا في حدّه — **الشرطُ أن يكون العملُ متابَعاً، لا أن يكون
+   * السطحُ هو المكتبة.** فالصفُّ يظهر حين `inList` وحدَها، **ويغيب في
+   * رفوف الاكتشاف من نفسه** لأن ما لا تتابعه لا يُوقَف.
+   *
+   * 🔑 **والشرطُ حقيقةٌ لا سطح**: لو مُرّر عَلَمٌ من كلِّ مستدعٍ لاحتاج
+   * ثمانيةَ أسطحٍ أن تتذكّره، **وأوّلُ سطحٍ ينساه يُخفي فعلاً ينطبق** —
+   * **والحالةُ تُقاس ولا تُفترض** (قاعدةُ `StickyStuck`/D-570 نفسُها).
+   *
+   * **وصفٌّ واحدٌ باتّجاهين** كصفِّ «شاهدته» (D-238): موقوفٌ → «تابع من
+   * جديد»، ومتابَعٌ → «بطاقة حمراء». **وصفّان لهما يجعلان أحدَهما دائماً
+   * بلا معنى.**
+   */
+  function toggleDropped() {
+    const was = isDropped;
+    tap(was ? 8 : [12, 30]);
+    setIsDropped(!was);
+    setOpen(false);
+    start(async () => {
+      try {
+        await runOrQueue("setDropped", tmdbId, mediaType, !was);
+        toast(was ? t.resumedToast : t.stoppedToast);
+      } catch (e) {
+        setIsDropped(was);
+        flashError((e as Error).message);
+      }
+    });
+  }
+
   function goToTitle() {
     setOpen(false);
     router.push(titleHref);
@@ -308,7 +346,7 @@ export function PosterHold({
         /* **المُشاهَدُ لا يُعرض «نصفَه»**: ضغطةُ «شاهدته» تُنهيه، ورقمُ
            التقدّم الآتي من الخادم صار قديماً في اللحظة نفسِها. */
         progress={seen ? 100 : progress}
-        dropped={dropped}
+        dropped={isDropped}
       />
 
       <Dropdown open={open} onClose={() => setOpen(false)} align="end" caret>
@@ -333,6 +371,17 @@ export function PosterHold({
           onClick={seen ? (canUndo ? undoWatched : goToTitle) : markWatched}
         />
         <DropdownRow icon="star" label={t.reviewSectionTitle} onClick={goToTitle} />
+        {/* 🆕 **البطاقةُ الحمراء — تظهر لما تتابعه وحدَه** (D-636).
+            **وموضعُها قبل صفِّ السطح وبعد ما عداه**: فعلٌ له رجعةٌ
+            بضغطة، **فلا يسبق ما يُبقي البطاقةَ ولا يزاحم ما يُخفيها.** */}
+        {inList && (
+          <DropdownRow
+            icon={isDropped ? "play" : "card"}
+            label={isDropped ? t.resumeWatching : t.dropTitle}
+            tone={isDropped ? undefined : "danger"}
+            onClick={toggleDropped}
+          />
+        )}
         {/* 🆕 **وصفُّ السطح آخِراً** (D-322): «غير مهتم» فعلٌ يُخفي
             البطاقةَ من تحت إصبعك، **فلا يجاور فعلاً يُبقيها** — والأخيرُ
             موضعُ ما لا رجعةَ سهلةَ فيه (وله «تراجع» في التوست، D-019). */}

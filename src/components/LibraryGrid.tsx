@@ -766,10 +766,14 @@ function HoldMenu({
   return (
     <Dropdown open onClose={onClose} align="end" caret>
       {item.dropped ? (
-        /* عملٌ موقوف: الإجراء الوحيد المنطقي هو التراجع عن الإيقاف */
+        /* عملٌ موقوف: الإجراء الوحيد المنطقي هو التراجع عن الإيقاف.
+           🆕 **والكلمةُ صارت «تابع من جديد» لا «تراجع»** (D-636): الصفُّ
+           يستأنف متابعةً، **و«تراجع» كلمةٌ عامّةٌ تصف آلةً لا فعلاً** —
+           **والمفتاحُ قائمٌ ويقرؤه شريطُ صفحة العمل لنفس الفعل**، فصار
+           السطحان يقولان الشيءَ بكلمةٍ واحدة (D-145). */
         <DropdownRow
           icon="play"
-          label={t.undoWatched}
+          label={t.resumeWatching}
           disabled={pending}
           onClick={() =>
             run(() => runOrQueue("setDropped", item.tmdbId!, item.mediaType!, false))
