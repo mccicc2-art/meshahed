@@ -103,8 +103,10 @@ export function SectionOrderList<K extends string>({
   /* 🆕 **الصفُّ ٥٦ بكسلاً كصفِّ الإعدادات** (D-465، تصميمُ أحمد):
      **رمزٌ فاسمٌ فعينٌ فمقبض** — **والمقبضُ في الطرف لا في الصدر**،
      **لأن العينَ هي الفعلُ الأكثرُ استعمالاً** وقد كانت خلف المقبض. */
-  const rowCls =
-    "flex items-center gap-3 min-h-14 px-4 py-2.5 border-b border-[color:var(--divider)] last:border-b-0";
+  /* 🆕 **والوصفةُ من `switchRowShell`** (D-663): كانت مكتوبةً هنا حرفاً
+     بحرف كما في `ToggleRow` — **ونسختان لهندسةٍ واحدة تفترقان عند أوّل
+     تعديل** (D-145). */
+  const rowCls = switchRowShell;
   const iconBtn =
     "grid place-items-center w-9 h-9 rounded-lg hover:bg-surface-2 disabled:opacity-30 disabled:pointer-events-none transition";
 
@@ -246,6 +248,49 @@ export function CardCountRow({
 }
 
 /**
+ * 🆕 **هيكلُ صفِّ المفتاح — مكتوبٌ مرّةً ويقرؤه المقفلُ معه** (D-663).
+ *
+ * **والسببُ مقيسٌ لا مذوق**: صفُّ `SettingsRow` حشوتُه `px-3.5` وصفُّ
+ * المفتاح `px-4` — **وعمودُ الرموز يزيح بكسلَين حين يجلسان في بطاقةٍ
+ * واحدة**، وقد قيست على الصفحة الحيّة (١٤ مقابل ١٦). **ونسخُ السطر
+ * يفترق عند أوّل تعديل** (D-145).
+ */
+const switchRowShell =
+  "flex items-center gap-3 min-h-14 px-4 py-2.5 border-b border-[color:var(--divider)] last:border-b-0";
+
+/**
+ * 🆕 **صفٌّ مقفل — اسمٌ وكلمةٌ بلا مفتاح** (D-663، حكمُ أحمد: «حتى
+ * المفضلة التاب خلها موجوده»).
+ *
+ * **ولماذا هو من عائلة المفتاح لا من عائلة `SettingsRow`**: مكانُه بين
+ * المفاتيح، **فهندستُه هندستُها** — **وهو حالةٌ ثالثةٌ للمفتاح (لا
+ * يُطفأ) لا عائلةٌ ثالثة** (القاعدة ٣).
+ *
+ * ⚠️ **ولا مفتاحَ فيه أصلاً**: **مفتاحٌ لا يُضغط وعدٌ بفعلٍ لا يقع**
+ * (D-217) — **والكلمةُ في طرفه تقول الحكمَ بلا أن تَعِد بضغطة.**
+ */
+export function LockedRow({
+  label,
+  icon,
+  note,
+}: {
+  label: string;
+  icon?: IconName;
+  /** الكلمةُ في الطرف — «دائماً» */
+  note: string;
+}) {
+  return (
+    <div className={switchRowShell}>
+      {icon && <Icon name={icon} size={20} className="shrink-0 text-foreground" />}
+      <span className="flex-1 min-w-0 truncate text-15 font-medium">{label}</span>
+      <span className="shrink-0 text-14 text-muted" dir="auto">
+        {note}
+      </span>
+    </div>
+  );
+}
+
+/**
  * مفتاح إظهار/إخفاء — نفس مفتاح iOS في شاشتَي التخصيص.
  *
  * كان مكتوباً داخل `HomeCustomize` وحدها؛ استخراجُه هنا يمنع أن ترسم
@@ -279,7 +324,7 @@ export function ToggleRow({
   onChange: () => void;
 }) {
   return (
-    <div className="flex items-center gap-3 min-h-14 px-4 py-2.5 border-b border-[color:var(--divider)] last:border-b-0">
+    <div className={switchRowShell}>
       {icon && <Icon name={icon} size={20} className="shrink-0 text-foreground" />}
       <label className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer">
       <span className="flex-1 min-w-0">
