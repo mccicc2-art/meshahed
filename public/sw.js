@@ -17,7 +17,11 @@
 
 // رقم النسخة يُرفع مع أي تغييرٍ في قشرة التطبيق: مُعالج `activate` يمسح
 // كل كاشٍ لا يبدأ به، فالتطبيق المثبّت لا يبقى على قشرةٍ قديمة.
-const VER = "loopz-v8";
+/* ⚖️ 🆕 v9 (D-652): رُفع الرقمُ ليمسح `activate` كلَّ كاشٍ قديمٍ على
+   الأجهزة المسمومة الآن — **وهو العلاجُ الوحيدُ لما فسد قبل هذا
+   السطر.** **وما بعده لا يحتاج رفعاً**: حزامُ البناء أدناه يمسح كاشَ
+   الصفحات من تلقائه عند كلِّ نشرة. */
+const VER = "loopz-v9";
 const STATIC_CACHE = `${VER}-static`;
 const PAGE_CACHE = `${VER}-pages`;
 const IMG_CACHE = `${VER}-img`;
@@ -114,6 +118,25 @@ const NAV_TIMEOUT_MS = 3500;
 const OWNER_HEADER = "x-lz-owner";
 const OWNER_KEY = "/__lz-owner";
 
+/* ===== 🆕 v9 — «حزامُ البناء» (D-652): قشرةٌ من نشرةٍ ماضية لا تُخدَم =====
+
+   🔴 **العطلُ الذي أغلقه** (بلاغُ أحمد: «ما زال حساب mesh ما يفتح
+   البروفايل»، وهو عودةُ D-626): **اسمُ كاش الصفحات ثابتٌ بيدٍ**
+   (`VER`) **فيعيش عبر النشرات كلِّها** — **وصفحةُ HTML محفوظةٌ من
+   نشرةِ أمس تُقلع راوترَ Next ببصمةِ أمس**، فأوّلُ طلبِ حمولةِ RSC
+   يذهب ببناءٍ لم يعد قائماً **فتسقط الشاشةُ إلى حدِّ الخطأ.**
+   **ورفعُ الرقم بيدٍ ليس علاجاً**: نشرةٌ واحدةٌ يُنسى فيها الرفعُ
+   تعيد العطلَ كلَّه — **وقد نُشر اليوم وحدَه ثماني مرّات.**
+
+   🔑 **والآليّةُ آليّةُ المالك بحرفها** (D-514/D-145): تسميةٌ على
+   الردّ، وأوّلُ ردٍّ يخالف المحفوظَ يمسح **قبل** أن يُكتب سطر —
+   **قارئٌ ثانٍ لفكرةٍ قائمة لا آليّةٌ ثانية.**
+
+   ⚠️ **والمسحُ لكاش الصفحات وحدَه**: أصولُ `/_next/static/` مبصومةٌ
+   بمحتواها **فلا تكذب أبداً**، والصورُ لا علاقةَ لها ببناء. */
+const BUILD_HEADER = "x-lz-build";
+const BUILD_KEY = "/__lz-build";
+
 async function currentOwner() {
   try {
     const c = await caches.open(META_CACHE);
@@ -121,6 +144,33 @@ async function currentOwner() {
     return r ? await r.text() : null;
   } catch {
     return null;
+  }
+}
+
+async function currentBuild() {
+  try {
+    const c = await caches.open(META_CACHE);
+    const r = await c.match(BUILD_KEY);
+    return r ? await r.text() : null;
+  } catch {
+    return null;
+  }
+}
+
+/* يُستدعى على كلِّ ردِّ تنقّلٍ وصل من الشبكة — قبل أيِّ كتابةٍ للكاش.
+   ⚠️ **ولا يمسح `META_CACHE`**: فيه تسميةُ المالك، **ونشرةٌ جديدةٌ
+   ليست تبديلَ حساب** — ومسحُها كان سيُفقد الحزامَ الآخرَ ذاكرتَه. */
+async function reconcileBuild(res) {
+  try {
+    const build = res.headers.get(BUILD_HEADER);
+    if (!build) return; // ردٌّ بلا بصمة (نشرةٌ أقدم/أصلٌ ساكن) — لا حكم
+    const prev = await currentBuild();
+    if (prev === build) return;
+    if (prev !== null) await caches.delete(PAGE_CACHE);
+    const c = await caches.open(META_CACHE);
+    await c.put(BUILD_KEY, new Response(build));
+  } catch {
+    /* الحزامُ احتياطٌ — فشلُه لا يمسّ الردّ نفسه */
   }
 }
 
@@ -151,6 +201,9 @@ async function pageNetworkFirst(event) {
       /* المصالحةُ قبل الكتابة: لو تغيّر المالكُ يُمسح القديم أولاً،
          ثم يُفتح الكاشُ من جديد فلا نكتب في مقبضٍ محذوف */
       await reconcileOwner(res);
+      /* **والبناءُ بعد المالك**: كلاهما قد يمسح كاشَ الصفحات، **والفتحُ
+         يأتي بعدهما** فلا نكتب في مقبضٍ محذوف. */
+      await reconcileBuild(res);
       if (res.ok) {
         const cache = await caches.open(PAGE_CACHE);
         cache.put(event.request, res.clone());
