@@ -288,7 +288,22 @@ export function EditProfileForm({
       }
     >
       {/* ===== المعاينةُ المدمجة ===== */}
-      <section className="rounded-2xl border border-border bg-surface overflow-hidden">
+      {/* ===== بطاقةُ الهويّة — الصورةُ وحقولُها معاً ===== */}
+      {/* 🆕 **بطاقةٌ واحدةٌ لا بطاقتان** (D-641، بلاغُ أحمد بلقطة: «الترتيب
+          سيّئ، المفروض البايو بعد الاسم وتكون في كارد واحد مع الصورة»).
+          **الصورةُ والاسمُ واللقبُ والمعرّفُ والنبذةُ شيءٌ واحد: هويّتُك**
+          — **وبطاقتان تفصلان وجهَك عن اسمك تجعلانهما موضوعين.**
+          **وهي `SettingsSection boxed` بروحها** (D-555): كتلةُ محتوًى
+          مختلطٍ لا قائمةُ صفوف. */}
+      <section>
+        <h2 className="px-1 mb-2 text-12 font-semibold uppercase tracking-wide text-muted">
+          {t.setProfileDetails}
+        </h2>
+        <div className="rounded-2xl border border-border bg-surface divide-y divide-[color:var(--divider)] overflow-hidden">
+        {/* ⚠️ **وكتلةُ الصورة ابنٌ واحدٌ للبطاقة لا ثلاثة**: `divide-y`
+            تفصل بين كلِّ ابنَين، **فغلافٌ وصورةٌ وتلميحٌ عراةً كانوا
+            سيكتسبون خطَّين لا يفصلان معنًى.** */}
+        <div>
         <div
           className={`relative h-32 sm:h-40 bg-surface-2 ${
             coverUrl ? "cursor-grab active:cursor-grabbing touch-none select-none" : ""
@@ -414,14 +429,7 @@ export function EditProfileForm({
         {(coverUrl || avatarUrl) && (
           <p className="px-4 pb-3.5 text-12 text-muted leading-relaxed">{t.repositionHint}</p>
         )}
-      </section>
-
-      {/* ===== بطاقةُ التفاصيل ===== */}
-      <section>
-        <h2 className="px-1 mb-2 text-12 font-semibold uppercase tracking-wide text-muted">
-          {t.setProfileDetails}
-        </h2>
-        <div className="rounded-2xl border border-border bg-surface divide-y divide-[color:var(--divider)] overflow-hidden">
+        </div>
           {/* الاسمُ الظاهر — **واحدٌ لا اثنان**: كان «الاسم المستعار» في
               نموذجٍ و«الاسم الظاهر» في آخر لعمود `nickname` نفسِه
               (مواصفةُ أحمد: احذف المكرَّر). */}
@@ -486,6 +494,78 @@ export function EditProfileForm({
             )}
           </div>
 
+          <div className="px-4 py-3.5">
+            <div className="flex items-baseline justify-between gap-2 mb-1.5">
+              <label className="text-12 font-semibold text-muted" htmlFor="ep-bio">
+                {t.bioSection}
+              </label>
+              {/* **العدّادُ يُقرأ عدّاً لا تحذيراً** حتى الحرف الأخير */}
+              <span
+                className={`text-12 tabular-nums ${
+                  bio.length >= BIO_MAX ? "text-[color:var(--error)]" : "text-muted"
+                }`}
+                dir="ltr"
+              >
+                {t.setBioCount(String(bio.length), String(BIO_MAX))}
+              </span>
+            </div>
+            <textarea
+              id="ep-bio"
+              value={bio}
+              onChange={(e) => setBio(e.target.value.slice(0, BIO_MAX))}
+              maxLength={BIO_MAX}
+              rows={2}
+              placeholder={t.bioPlaceholder}
+              className="w-full bg-transparent text-[16px] leading-relaxed outline-none resize-none placeholder:text-[color:var(--disabled)]"
+            />
+          </div>
+
+          {/* رابطُ الملفّ — **يُعرض حين يوجد اسمُ مستخدمٍ صالحٌ فقط**:
+              **رابطٌ يُنسخ ولا يُفتح أسوأُ من غيابه** (D-217) */}
+          {cleaned.length >= 3 && (
+            <SettingsRow
+              icon="share"
+              title={t.setProfileLink}
+              subtitle={`${SITE_URL.replace(/^https?:\/\//, "")}/u/${cleaned}`}
+              trailing={
+                <button
+                  type="button"
+                  onClick={copyLink}
+                  className="shrink-0 rounded-2xl border border-border px-3 h-8 inline-flex items-center gap-1.5 text-12 font-semibold hover:border-accent/50 active:scale-95 transition"
+                >
+                  <Icon name={copied ? "check" : "bookmark"} size={13} />
+                  {copied ? t.setCopied : t.setCopyLink}
+                </button>
+              }
+            />
+          )}
+
+          {/* **الظهورُ يُعرض هنا ويُضبط هناك**: مفتاحان لقيمةٍ واحدةٍ في
+              صفحتين يجعلان الحفظَين يتسابقان (القاعدة ٦) */}
+          <SettingsRow
+            href="/profile/settings/privacy"
+            icon="eye"
+            title={t.setProfileVisibility}
+            value={isPrivate ? t.setVisibilityPrivate : t.setVisibilityPublic}
+          />
+        </div>
+      </section>
+
+      {/* ===== حساباتُ التواصل — مجموعةٌ مستقلّة ===== */}
+      {/* 🆕 ⚖️ **خرجت من بطاقة الهويّة** (D-641، بحكمه). **وموضعُها في
+          D-546 كان «بعد المعرّف مباشرةً» بحجّةٍ صحيحة** (هي معرّفاتُك في
+          أماكنَ أخرى) — **لكنّ تنفيذَها دَسَّ أربعةَ حقولٍ بين المعرّف
+          والنبذة فكسر ترتيباً كان الملفُّ نفسُه ينصّ عليه**: «اسمٌ ثمّ
+          لقبٌ ثمّ معرّفٌ ثمّ نبذة».
+          🔑 **والقرابةُ لا تعني المجاورة**: المعرّفاتُ الخارجيّةُ قريبةٌ
+          من معرّفك معنًى، **وبُعدُها عنه سطراً واحداً لا يقطع تلك
+          القرابة** — **بينما دَسُّها في منتصف الهويّة يقطع تسلسلَ
+          قراءتها.** **فمجموعةٌ بعنوانها أصدقُ من جوارٍ يزاحم.** */}
+      <section>
+        <h2 className="px-1 mb-2 text-12 font-semibold uppercase tracking-wide text-muted">
+          {t.setSocialAccounts}
+        </h2>
+        <div className="rounded-2xl border border-border bg-surface divide-y divide-[color:var(--divider)] overflow-hidden">
           {/* ===== 🆕 حساباتُ التواصل (D-546) =====
 
               **طلبُ أحمد: «تحت كتابة النِّك نيم أماكنُ مخصّصةٌ لكتابة
@@ -557,61 +637,6 @@ export function EditProfileForm({
               </div>
             );
           })}
-
-          <div className="px-4 py-3.5">
-            <div className="flex items-baseline justify-between gap-2 mb-1.5">
-              <label className="text-12 font-semibold text-muted" htmlFor="ep-bio">
-                {t.bioSection}
-              </label>
-              {/* **العدّادُ يُقرأ عدّاً لا تحذيراً** حتى الحرف الأخير */}
-              <span
-                className={`text-12 tabular-nums ${
-                  bio.length >= BIO_MAX ? "text-[color:var(--error)]" : "text-muted"
-                }`}
-                dir="ltr"
-              >
-                {t.setBioCount(String(bio.length), String(BIO_MAX))}
-              </span>
-            </div>
-            <textarea
-              id="ep-bio"
-              value={bio}
-              onChange={(e) => setBio(e.target.value.slice(0, BIO_MAX))}
-              maxLength={BIO_MAX}
-              rows={2}
-              placeholder={t.bioPlaceholder}
-              className="w-full bg-transparent text-[16px] leading-relaxed outline-none resize-none placeholder:text-[color:var(--disabled)]"
-            />
-          </div>
-
-          {/* رابطُ الملفّ — **يُعرض حين يوجد اسمُ مستخدمٍ صالحٌ فقط**:
-              **رابطٌ يُنسخ ولا يُفتح أسوأُ من غيابه** (D-217) */}
-          {cleaned.length >= 3 && (
-            <SettingsRow
-              icon="share"
-              title={t.setProfileLink}
-              subtitle={`${SITE_URL.replace(/^https?:\/\//, "")}/u/${cleaned}`}
-              trailing={
-                <button
-                  type="button"
-                  onClick={copyLink}
-                  className="shrink-0 rounded-2xl border border-border px-3 h-8 inline-flex items-center gap-1.5 text-12 font-semibold hover:border-accent/50 active:scale-95 transition"
-                >
-                  <Icon name={copied ? "check" : "bookmark"} size={13} />
-                  {copied ? t.setCopied : t.setCopyLink}
-                </button>
-              }
-            />
-          )}
-
-          {/* **الظهورُ يُعرض هنا ويُضبط هناك**: مفتاحان لقيمةٍ واحدةٍ في
-              صفحتين يجعلان الحفظَين يتسابقان (القاعدة ٦) */}
-          <SettingsRow
-            href="/profile/settings/privacy"
-            icon="eye"
-            title={t.setProfileVisibility}
-            value={isPrivate ? t.setVisibilityPrivate : t.setVisibilityPublic}
-          />
         </div>
       </section>
 
