@@ -75,13 +75,21 @@ export function ShareTitleButton({
       aria-label={t.shareLinkLabel}
       title={t.shareLinkLabel}
       className={
+        /* 🆕 **والقرصُ سقط عن وجهِ الغلاف** (D-643، بحكمه) — **وهو
+           تعميمُ D-288**: `black/35` شفّافةٌ لا سوداء، فعلى غلافٍ فاتحٍ
+           تصير رماديّةً باهتةً وأيقونتُها `white/90` فوقها. **والظلُّ
+           يفصلها عن أيِّ صورة.** **والمرئيُّ ٢٤ وهدفُ اللمس ٤٤**
+           بـ`before` (D-033) — **لا هدفَ لمسٍ بحجم ما تراه العين.** */
         (cover
-          ? "inline-grid place-items-center w-11 h-11 rounded-full bg-black/35 backdrop-blur-md border border-white/15 text-white/90 active:scale-95 transition"
+          ? "relative w-6 h-6 grid place-items-center text-white drop-shadow-[0_1px_4px_rgba(0,0,0,0.85)] active:scale-90 transition before:content-[''] before:absolute before:-inset-[10px] before:rounded-full"
           : "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-muted hover:text-accent transition active:scale-90") +
         ` ${className}`
       }
     >
-      <Icon name="share" size={cover ? 18 : 15} />
+      {/* 🆕 **٢٤ عارياً لا ١٨ داخل قرص** (D-643): **القرصُ كان يعطي
+          الأيقونةَ حجماً بصريّاً لا تملكه**، وبسقوطه **صارت هي وحدَها
+          ما يُرى** — **فتساوي جارَيها** (سهمُ الرجوع ٢٤ والنقاطُ ٢٤). */}
+      <Icon name="share" size={cover ? 24 : 15} strokeWidth={cover ? 2.5 : undefined} />
       {!cover && label && <span className="text-14 font-bold">{label}</span>}
     </button>
   );

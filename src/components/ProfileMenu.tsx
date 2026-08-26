@@ -273,9 +273,14 @@ export function ProfileMenu({
              (D-033/D-168)، **وهو مقاسُ `BackButton` في الزاوية المقابلة
              ومقاسُ قرصِ المشاركة بجانبه** — **وثلاثةُ أقراصٍ في صفٍّ
              واحدٍ بمقاسين تُقرأ رتبتين وهي رتبةٌ واحدة.** */
-          className="w-11 h-11 rounded-full bg-black/35 backdrop-blur-md border border-white/15 grid place-items-center text-white/90 active:scale-95 transition"
+          /* 🆕 ⚖️ **والقرصُ سقط** (D-643، بحكمه: «الدوائر شيلها») —
+             **ونقضٌ لسطرِ D-561 أعلاه لا لحجّته**: كان يقول «ثلاثةُ
+             أقراصٍ بمقاسين تُقرأ رتبتين»، **والعلاجُ اليوم توحيدُها
+             عاريةً لا توحيدُها بقرص** — **والرتبةُ ما زالت واحدة.**
+             والمرئيُّ ٢٤ وهدفُ اللمس ٤٤ بـ`before` (D-033). */
+          className="relative w-6 h-6 grid place-items-center text-white drop-shadow-[0_1px_4px_rgba(0,0,0,0.85)] active:scale-90 transition before:content-[''] before:absolute before:-inset-[10px] before:rounded-full"
         >
-          <Icon name="dots" size={18} />
+          <Icon name="dots" size={24} strokeWidth={2.5} />
         </button>
       )}
 
