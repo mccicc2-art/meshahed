@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { getUser } from "@/lib/data";
@@ -9,8 +8,8 @@ import {
   type StatsRange,
 } from "@/components/LibraryAnalysis";
 import { ShareCard } from "@/components/ShareCard";
+import { StatsRangeMenu } from "@/components/StatsRangeMenu";
 import { SettingsHeader } from "@/components/settings/SettingsHeader";
-import { segmentedTrackFull, segmentedItem } from "@/components/ui/controls";
 
 /**
  * الإحصائيات — **شكلٌ سلّمه أحمد** (D-493).
@@ -39,35 +38,23 @@ export default async function StatsPage({
      والأرقامُ تُحسب على الخادم — **فالتبويبُ رابطٌ يُشارَك ويعود إليه
      زرُّ الرجوع**، لا زرٌّ يُعيد بناء الشجرة في المتصفّح. */
   const range: StatsRange = raw === "year" || raw === "month" ? raw : "all";
-  const year = new Date().getUTCFullYear();
-
-  const tabs: { key: StatsRange; label: string }[] = [
-    { key: "all", label: t.statsRangeAll },
-    { key: "year", label: String(year) },
-    { key: "month", label: t.statsRangeMonth },
-  ];
 
   return (
     <div>
+      {/* ⚖️ 🆕 D-682: تبويباتُ المدى المقسّمة غادرت وجهَ الصفحة إلى قائمة
+          «⋯» في الترويسة (مواصفةُ أحمد المكتوبة: رجوعٌ · عنوانٌ · مشاركةٌ
+          فـ«⋯») — **والأداةُ انتقلت ولم تمت**، والمدى باقٍ في الرابط
+          (D-438/D-463) فصفوفُ القائمة روابطُ تُشارَك. */}
       <SettingsHeader
         title={t.statsPageTitle}
         fallbackHref="/library"
-        action={<ShareCard locale={locale} icon />}
+        action={
+          <span className="flex items-center">
+            <ShareCard locale={locale} icon />
+            <StatsRangeMenu locale={locale} current={range} />
+          </span>
+        }
       />
-
-      <nav aria-label={t.statsPageTitle} className={`${segmentedTrackFull} -mx-4 px-4 mb-5`}>
-        {tabs.map((tab) => (
-          <Link
-            key={tab.key}
-            href={tab.key === "all" ? "/stats" : `/stats?range=${tab.key}`}
-            scroll={false}
-            aria-current={range === tab.key ? "page" : undefined}
-            className={segmentedItem(range === tab.key, "flex-1 text-center")}
-          >
-            {tab.label}
-          </Link>
-        ))}
-      </nav>
 
       {/* المفتاحُ يحمل المدى: تبديلُ التبويب يبدّل الهيكلَ العظميّ أيضاً
           فلا تبقى أرقامُ المدى السابق معروضةً بينما يُجلب الجديد */}
