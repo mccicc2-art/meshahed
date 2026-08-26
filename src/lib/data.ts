@@ -4396,17 +4396,29 @@ export async function getCuratedCounts(ids: string[]): Promise<Map<string, numbe
  */
 export async function getListCardStats(
   ids: string[],
-): Promise<Map<string, { saves: number; rating: number | null }>> {
+): Promise<Map<string, { saves: number; reviews: number; rating: number | null }>> {
   try {
     if (!ids.length) return new Map();
     const supabase = await createClient();
     const { data, error } = await supabase.rpc("list_card_stats", { p_ids: ids });
     if (error || !data) return new Map();
     return new Map(
-      (data as { list_id: string; saves: number; avg_rating: number | null }[]).map((r) => [
+      (
+        data as {
+          list_id: string;
+          saves: number;
+          reviews?: number;
+          avg_rating: number | null;
+        }[]
+      ).map((r) => [
         String(r.list_id),
         {
           saves: Number(r.saves) || 0,
+          /* 🆕 **وعدُّ الآراء معها** (D-677): الدالّةُ في القاعدة تعيده
+             أصلاً (١٠٥) — **وكان يُرمى هنا وحدَه** بينما يقرؤه
+             `shapeListCards` من النداء نفسِه. **شريطُ البطاقة الجديد
+             (♥ · 💬 · ★) يحتاجه في كلِّ سطح.** */
+          reviews: Number(r.reviews) || 0,
           rating: r.avg_rating === null ? null : Number(r.avg_rating),
         },
       ]),
@@ -5101,6 +5113,33 @@ export async function getTopSavedListCards(
 }
 
 /** هل حفظ المستخدمُ هذه القائمة؟ — لحالة زرّ «أضِفها إلى قوائمي» */
+/**
+ * 🆕 **صفُّ حفظي لقائمةٍ — الحالتان معاً** (D-677): «أحفظتُها؟»
+ * و«أشغّلتُها؟» (الهجرة ١٤٩) **من الصفِّ نفسِه بقراءةٍ واحدة** —
+ * وكانت الأولى وحدَها تُقرأ في `isListSaved`. **وقبل الهجرة يغيب
+ * العمودُ فيعود `playlist=false`** ولا ينكسر شيء (D-028).
+ * `null` = زائرٌ بلا حساب، `saved:false` = لم أحفظها.
+ */
+export async function getMyListSave(
+  listId: string,
+): Promise<{ saved: boolean; playlist: boolean } | null> {
+  try {
+    if (!UUID_RE.test(listId)) return null;
+    const supabase = await createClient();
+    const user = await getUser();
+    if (!user) return null;
+    const { data, error } = await supabase
+      .from("list_saves")
+      .select("list_id, is_playlist")
+      .match({ user_id: user.id, list_id: listId })
+      .maybeSingle();
+    if (error || !data) return { saved: false, playlist: false };
+    return { saved: true, playlist: (data as { is_playlist?: boolean }).is_playlist === true };
+  } catch {
+    return null;
+  }
+}
+
 export async function isListSaved(listId: string): Promise<boolean> {
   try {
     if (!UUID_RE.test(listId)) return false;
