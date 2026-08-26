@@ -1505,7 +1505,6 @@ const ar = {
   /* 🆕 D-408 — نبضُ العمل في الترويسة */
   titlePulseHearts: (n: string) => `${n} أضافوه إلى مفضّلاتهم`,
   storyTitle: "القصة",
-  libAnalysisBtn: "تحليل مكتبتك",
   recapTitle: "ملخّص أسبوعك",
   diaryToday: "اليوم",
   diaryYesterday: "أمس",
@@ -2800,7 +2799,6 @@ const en: Dict = {
   communityKindNews: "News",
   titlePulseHearts: (n: string) => `${n} added it to their favourites`,
   storyTitle: "Story",
-  libAnalysisBtn: "Analyse your library",
   recapTitle: "Your week recap",
   diaryToday: "Today",
   diaryYesterday: "Yesterday",
