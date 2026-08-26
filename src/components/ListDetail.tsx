@@ -26,7 +26,6 @@ import type { TitleState } from "@/lib/libState";
 import { StatusThread } from "./StatusThread";
 import { PlayPill } from "./ListPlayToggle";
 import { Sheet, SheetHeader } from "./ui/Sheet";
-import { DetailTabs } from "./DetailTabs";
 import { buttonClass } from "./ui/Button";
 import { QuickAdd } from "./QuickAdd";
 /* ⚖️ 🆕 **ورقةُ الترتيب خرجت إلى ملفِّها** (D-567): صفوفُ المفضّلة
@@ -564,7 +563,50 @@ export function ListDetail({
         )}
       </div>
 
-      {/* 🆕 **شريطُ الحال** (D-677، تصميمُه): ♥ عددُ الحفظ · 💬 عددُ
+
+      {/* ⚖️ 🆕 **صفحةٌ واحدةٌ بلا تبويبات** (D-678، حكمُ أحمد على
+          المنشور: «من الداخل سيء، نفّذه مثل التصميم بدون تبويب
+          التعليقات — كلها في صفحة وحدة») — **نقضٌ صريحٌ لتبويبَي
+          D-333 بيد صاحبهما**: الأعمالُ رفٌّ أفقيٌّ مرقَّمٌ كلقطته،
+          **ثمّ شريطُ الحال، ثمّ الآراءُ تحتَه مباشرة.**
+          ⚠️ **والرفُّ الأفقيُّ ثمنُه مُعلَن**: قائمةُ مئةِ عملٍ تُقرأ
+          بالتمرير الأفقيِّ وحدَه — **وهو حكمُه بعد أن رأى الشبكةَ
+          ورفضها.** */}
+      {visible.length === 0 ? (
+        <div className="flex flex-col items-center gap-4 py-16">
+          <p className="text-sm text-muted text-center">{t.listItemsEmpty}</p>
+          {/* والبابُ في حالة الفراغ أيضاً: هنا يقف من لا يملك شيئاً
+              يفعله غيرَ الإضافة — فالنصّ وحده كان يتركه واقفاً */}
+          {isOwner && addButton}
+        </div>
+      ) : (
+        <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 snap-x">
+          {visible.map((it, i) => (
+            <div key={keyOf(it)} className="w-[126px] sm:w-[150px] shrink-0 snap-start">
+              <PosterTile
+                item={it}
+                n={numbered ? i + 1 : null}
+                rating={ratings[keyOf(it)] ?? null}
+                canRemove={isOwner}
+                onRemove={() => remove(it)}
+                /* **زرُّ «+» على الملصق** (D-495): `undefined` تعني
+                   «لا زرّ» — للزائر بلا حساب، **ولصاحب القائمة**
+                   الذي تسكن زاويتُه علامةُ الإزالة (D-205). */
+                quickAdd={
+                  libState && !isOwner
+                    ? { added: !!libState[keyOf(it)]?.added, locale }
+                    : undefined
+                }
+                /* 🆕 **وخيطُ الحالة لصاحب القائمة أيضاً** (D-542) */
+                state={libState?.[keyOf(it)]}
+                t={t}
+              />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* 🆕 **شريطُ الحال** (D-677/D-678، تصميمُه): ♥ عددُ الحفظ · 💬 عددُ
           الآراء · ★ المتوسّط · **ومفتاحُ التشغيل في طرفه** — **تشريحُ
           بطاقة القائمة نفسُه من الداخل** (`ListCardShell`)، فالخارجُ
           والداخلُ يقرآن واحداً. **والقلبُ هنا هو زرُّ الحفظ نفسُه**
@@ -572,7 +614,7 @@ export function ListDetail({
           ⚠️ **والمفتاحُ لمن يملك صفّاً يكتب فيه وحدَه** (D-217/D-674):
           المالكُ في صفِّ قائمته، والحافظُ في صفِّ حفظه — **وزائرٌ
           بلا حسابٍ يرى الأرقامَ ساكنة.** */}
-      <div className="flex items-center rounded-2xl border border-border bg-surface px-4 py-3 mb-5 min-w-0">
+      <div className="flex items-center rounded-2xl border border-border bg-surface px-4 py-3 mt-4 mb-6 min-w-0">
         {canSave ? (
           <button
             type="button"
@@ -626,62 +668,9 @@ export function ListDetail({
           )}
       </div>
 
-      {/* 🆕 **تبويبان كصفحة العمل** (D-333، طلبُ أحمد بنصّه: «لا أبغاها
-          شي يشبه صفحة العمل — تبويب قائمة الأفلام وتبويب التعليقات»).
-          **والوصفةُ `DetailTabs` حرفاً لا نسخةٌ منها** (D-145): نفسُ
-          الشريط الملتصق ونفسُ الأسهم ونفسُ الرسم المسبق المخفيّ بـCSS —
-          فتعليقٌ نصفُ مكتوبٍ في تبويبه لا يضيع بالتبديل.
-          ⚠️ **وبلا قسمِ تقييماتٍ لا تبويبات أصلاً** (قائمةٌ خاصّة أو
-          زائر): شريطُ تبويبٍ واحدٍ سؤالٌ بلا خيار (D-181). */}
-      {(() => {
-        const itemsPanel =
-          visible.length === 0 ? (
-            <div className="flex flex-col items-center gap-4 py-16">
-              <p className="text-sm text-muted text-center">{t.listItemsEmpty}</p>
-              {/* والبابُ في حالة الفراغ أيضاً: هنا يقف من لا يملك شيئاً
-                  يفعله غيرَ الإضافة — فالنصّ وحده كان يتركه واقفاً */}
-              {isOwner && addButton}
-            </div>
-          ) : (
-            <div className="grid gap-3 sm:gap-4 grid-cols-[repeat(auto-fill,minmax(102px,1fr))] sm:grid-cols-[repeat(auto-fill,minmax(136px,1fr))]">
-              {visible.map((it, i) => (
-                <PosterTile
-                  key={keyOf(it)}
-                  item={it}
-                  n={numbered ? i + 1 : null}
-                  rating={ratings[keyOf(it)] ?? null}
-                  canRemove={isOwner}
-                  onRemove={() => remove(it)}
-                  /* **زرُّ «+» على الملصق** (D-495): `undefined` تعني
-                     «لا زرّ» — للزائر بلا حساب، **ولصاحب القائمة**
-                     الذي تسكن زاويتُه علامةُ الإزالة (زرّان في زاويةٍ
-                     واحدة يجعلان الملصقَ لوحةَ أزرار — D-205). */
-                  quickAdd={
-                    libState && !isOwner
-                      ? { added: !!libState[keyOf(it)]?.added, locale }
-                      : undefined
-                  }
-                  /* 🆕 **وخيطُ الحالة لصاحب القائمة أيضاً** (D-542):
-                     **زرُّ «+» يُمنع عنه** لأن زاويته فيها علامةُ
-                     الإزالة، **والخيطُ ليس زرّاً** — **وسؤالُ «هل
-                     شاهدتُه؟» يُسأل عن قائمتك كما عن قائمة غيرك.** */
-                  state={libState?.[keyOf(it)]}
-                  t={t}
-                />
-              ))}
-            </div>
-          );
-        return reviewsSlot ? (
-          <DetailTabs
-            tabs={[
-              { key: "items", label: t.searchModeTitles, icon: "grid", content: itemsPanel },
-              { key: "reviews", label: t.listReviewsTitle, icon: "star", content: reviewsSlot },
-            ]}
-          />
-        ) : (
-          itemsPanel
-        );
-      })()}
+      {/* **والآراءُ في القاع بلا تبويب** — `ListReviews` بعنوانه
+          وصندوقِ كتابته كما هو، **والذي تبدّل بابُه لا جسدُه.** */}
+      {reviewsSlot && <div className="mt-2">{reviewsSlot}</div>}
 
       {sheet === "add" && (
         <TitleSearchSheet

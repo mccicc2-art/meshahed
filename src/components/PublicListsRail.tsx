@@ -339,7 +339,7 @@ export function ListCardShell({
       ) : (
         posters &&
         posters.length > 0 && (
-          <span aria-hidden className="absolute inset-y-0 end-0 w-[78%] flex justify-end">
+          <span aria-hidden className="absolute inset-y-0 end-0 w-[72%] flex justify-end">
             {posters.slice(0, 3).map((url, i) => (
               <span key={i} className="relative h-full flex-1 min-w-0">
                 <Image src={url} alt="" fill sizes="120px" className="object-cover" />
@@ -350,15 +350,16 @@ export function ListCardShell({
       )}
       {/* **الحجابُ بلون السطح نفسِه** — فيصحّ في `daylight` بلا رقمٍ
           أصمّ (رمزُ الثيم لا لونٌ مكتوب)، **واتّجاهُه اتّجاهُ القراءة**
-          (القاعدة ١٧). */}
+          (القاعدة ١٧).
+          ⚖️ 🆕 **وانحسر عن الملصقات** (D-678، حكمُ أحمد على المنشور:
+          «الضلام سيء كأنه غبار وأغلب البوسترات ما هي واضحة»): كان
+          يمتدّ إلى آخر البطاقة بعتمة ١٠٪ **وفوقَه حزامٌ سفليٌّ كامل**
+          — **فقُرئ غباراً لا حجاباً.** صار يذوب إلى الصفر عند ٧٢٪
+          **وسقط الحزامُ السفليّ**: شريطُ الحال يجلس في الجهة الداكنة
+          أصلاً، **ورقاقةُ المفتاح تحمل أرضيّتها بنفسها.** */}
       <span
         aria-hidden
-        className="absolute inset-0 bg-gradient-to-r rtl:bg-gradient-to-l from-[color:var(--surface)] from-[22%] via-[color:var(--surface)]/80 via-[55%] to-[color:var(--surface)]/10"
-      />
-      {/* وحزامٌ سفليٌّ يقرأ عليه شريطُ الحال فوق أيِّ ملصق */}
-      <span
-        aria-hidden
-        className="absolute inset-x-0 bottom-0 h-14 bg-gradient-to-t from-[color:var(--surface)] via-[color:var(--surface)]/70 to-transparent"
+        className="absolute inset-0 bg-gradient-to-r rtl:bg-gradient-to-l from-[color:var(--surface)] from-[30%] via-[color:var(--surface)]/60 via-[50%] to-transparent to-[72%]"
       />
 
       <span className="relative flex h-full min-h-[10.5rem] flex-col p-3.5">

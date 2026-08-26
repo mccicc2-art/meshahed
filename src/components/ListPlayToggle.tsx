@@ -27,7 +27,7 @@ export function PlayPill({ on, locale }: { on: boolean; locale: Locale }) {
     <span
       className={`shrink-0 inline-flex items-center gap-1.5 rounded-full ps-3 pe-1.5 h-7 text-12 font-bold border transition ${
         on
-          ? "border-accent/60 bg-accent/10 text-accent"
+          ? "border-accent/60 bg-surface-2 text-accent"
           : "border-border bg-surface-2 text-muted"
       }`}
     >
