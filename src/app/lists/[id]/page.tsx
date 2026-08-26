@@ -18,7 +18,6 @@ import {
 import { curatedName, curatedBlurb } from "@/lib/universes";
 import { ListReviews } from "@/components/ListReviews";
 import { getT } from "@/lib/locale";
-import { BackCrumb } from "@/components/BackButton";
 import { ListDetail } from "@/components/ListDetail";
 import { getLibState, type TitleState } from "@/lib/libState";
 import { localizeRows } from "@/lib/localize";
@@ -81,7 +80,7 @@ export async function generateMetadata({
 }
 
 export default async function ListPage({ params }: { params: Promise<{ id: string }> }) {
-  const { locale, t } = await getT();
+  const { locale } = await getT();
   const { id } = await params;
   const user = await getUser();
 
@@ -162,12 +161,9 @@ export default async function ListPage({ params }: { params: Promise<{ id: strin
 
   return (
     <div>
-      {/* 🆕 **الرجوعُ من حيث أتيت** (D-336، بلاغُ أحمد: فتح قائمةً من
-          اكتشف فرماه «رجوع» في المكتبة): كان الرابطُ مسمَّراً إلى
-          `/library?filter=list` — وصار `router.back()` بفتاتٍ من باب
-          الرجوع الواحد، **والمكتبةُ وجهةَ من لا تاريخَ له وحدَه**
-          (رابطُ مشاركةٍ عميق). */}
-      <BackCrumb label={t.listsTitle} fallback="/library?filter=list" className="mb-3" />
+      {/* ⚖️ **والرجوعُ انتقل إلى ترويسة `ListDetail`** (D-681) — سلوكُ
+          D-336 نفسُه (`router.back()` بفتاتٍ والمكتبةُ لمن لا تاريخ)،
+          **والذي تبدّل مجلسُه.** */}
       <ListDetail
         listId={data.list.id}
         name={curatedName(data.list.source_slug, data.list.name, loc)}
