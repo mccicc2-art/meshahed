@@ -15,7 +15,7 @@ import {
   type ProfilePrefs,
 } from "@/lib/profilePrefs";
 import { Alert } from "./ui/Alert";
-import { CardCountRow, PosterSizeRow, ToggleRow } from "./ui/SectionOrderList";
+import { CardCountRow, LockedRow, PosterSizeRow, ToggleRow } from "./ui/SectionOrderList";
 import { SettingsGroup } from "./settings/SettingsGroup";
 import { SettingsRow } from "./settings/SettingsRow";
 import { SettingsSaveBar } from "./settings/SettingsSaveBar";
@@ -200,12 +200,14 @@ export function ProfileCustomize({
             تعداده يجعل صاحبَه يظنّه سقط** — **فالحضورُ بلا مفتاحٍ يقول
             الحقيقتين معاً: موجودٌ، ولا يُطفأ.**
 
-            ⚠️ **و`SettingsRow` بلا `href` ولا `onClick` تُرسم `div`
-            بلا سهم** — **فلا تَعِد بضغطةٍ لا تقع** (D-030). */}
-        <SettingsRow
+            ⚠️ **و`LockedRow` من عائلة المفتاح لا من عائلة `SettingsRow`**:
+            حشوتُهما تفترق بكسلَين (`px-4` مقابل `px-3.5`) — **وقد قيست
+            على الصفحة الحيّة: ١٦ مقابل ١٤** — **وعمودُ رموزٍ يزيح داخل
+            بطاقةٍ واحدة يُقرأ خطأً في الرسم.** */}
+        <LockedRow
           icon="heart"
-          title={t.profileTabFavorites}
-          value={t.custTabAlwaysOn}
+          label={t.profileTabFavorites}
+          note={t.custTabAlwaysOn}
         />
         {(
           [
