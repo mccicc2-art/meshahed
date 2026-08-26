@@ -10,7 +10,7 @@ import {
   getTitleReplies,
   getPostViewCounts,
 } from "@/lib/data";
-import { displayNameOf } from "@/lib/people";
+import { displayNameOf, profileHref } from "@/lib/people";
 import { getMovie, getTv, posterUrl, backdropUrl } from "@/lib/tmdb";
 import { displayWorkTitle } from "@/lib/wikidata";
 import { commentViewKey } from "@/lib/postKeys";
@@ -138,7 +138,12 @@ export default async function ReviewPage({
     }));
 
   const who = displayNameOf(r, t.anonymousUser);
-  const whoHref = r.username ? `/u/${r.username}` : null;
+  /* 🔴 🆕 **والبابُ كان مشروطاً باسمِ مستخدمٍ لا يملكه أكثرُ الأعضاء**
+     (D-655، بلاغُ أحمد): **الرابطُ هنا موجودٌ منذ يومه** — **والذي سقط
+     أن صاحبَ الرأي بلا `username`**، **وسبعةَ عشرَ من واحدٍ وثلاثين
+     كذلك.** **والمعرّفُ طريقٌ مفتوحٌ أصلاً** (`getProfileByUsername`
+     فيها فرعُ UUID) — **ولا حرفَ يُكتب في القاعدة.** */
+  const whoHref = profileHref(r);
   const titleHref = `/${mediaType === "tv" ? "show" : "movie"}/${tmdbId}`;
 
   return (
