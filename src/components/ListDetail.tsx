@@ -15,6 +15,7 @@ import {
   followListTitles,
 } from "@/lib/actions";
 import { backdropUrl, posterUrl } from "@/lib/media";
+import { profileHref } from "@/lib/people";
 import { tap } from "@/lib/haptics";
 import { toast, flashError } from "@/lib/toast";
 import { getDict, num, type Locale } from "@/lib/i18n";
@@ -94,7 +95,13 @@ export function ListDetail({
    */
   /** صاحب القائمة — يُمرَّر حين يفتحها غيرُه. قائمةٌ بلا صاحبٍ ظاهرٍ
       مجهولةُ المصدر، ومن أخفى اسمه يصل هنا فارغاً فلا يُنسب شيء */
-  owner?: { nickname: string | null; username: string | null; avatar: string | null } | null;
+  owner?: {
+    /** 🆕 معرّفُه — بابُ ملفِّه حين لا اسمَ مستخدمٍ له (D-655) */
+    id?: string | null;
+    nickname: string | null;
+    username: string | null;
+    avatar: string | null;
+  } | null;
   locale: Locale;
   /** حالة الحفظ لغير المالك (D-068) — الغياب يعني زائراً بلا حساب فلا زرّ */
   initialSaved?: boolean | null;
@@ -482,9 +489,9 @@ export function ListDetail({
                   </span>
                 )}
               </span>
-              {owner.username ? (
+              {profileHref(owner) ? (
                 <Link
-                  href={`/u/${owner.username}`}
+                  href={profileHref(owner)!}
                   className="text-12 text-muted hover:text-foreground transition min-w-0 truncate"
                 >
                   {owner.nickname || `@${owner.username}`}
