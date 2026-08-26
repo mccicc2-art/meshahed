@@ -5140,22 +5140,6 @@ export async function getMyListSave(
   }
 }
 
-export async function isListSaved(listId: string): Promise<boolean> {
-  try {
-    if (!UUID_RE.test(listId)) return false;
-    const supabase = await createClient();
-    const user = await getUser();
-    if (!user) return false;
-    const { data } = await supabase
-      .from("list_saves")
-      .select("list_id")
-      .match({ user_id: user.id, list_id: listId })
-      .maybeSingle();
-    return !!data;
-  } catch {
-    return false;
-  }
-}
 
 /* ⚠️ **قرّاءُ الأخبار المجمَّعة حُذفوا** (D-214، بطلب أحمد): `getNewsFeed`
    و`getNewsStale` و`refreshNewsNow` وجدولُهم `news_items` — **لم يبقَ لهم
