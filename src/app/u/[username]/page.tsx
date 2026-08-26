@@ -27,6 +27,7 @@ import { getLevel, levelPoints, levelName } from "@/lib/level";
 import { Avatar } from "@/components/Avatar";
 import { Icon } from "@/components/Icon";
 import { PosterCard } from "@/components/PosterCard";
+import { PosterGrid } from "@/components/PosterGrid";
 import { PosterRail, RailItem } from "@/components/PosterRail";
 import { FollowUserButton } from "@/components/FollowUserButton";
 import { PlusBadge } from "@/components/PlusBadge";
@@ -337,7 +338,11 @@ export default async function PublicProfilePage({
     { key: "movies", icon: "film" as const, value: movieFollows.length, label: t.shortMovies },
     ...(isMe
       ? []
-      : [{ key: "ratings", icon: "star" as const, value: ratings.length, label: t.panelRatings }]),
+      : /* 🆕 **ومفتاحُها `reviews` لا `ratings`** (D-643): **المفتاحُ صار
+           وجهةً لا اسماً** — والخانةُ تفتح تبويبَ المراجعات، **وهو
+           بعينه ما تعدّه** (تقييماتُه). **ومفتاحٌ بلا تبويبٍ يقابله
+           بابٌ إلى لا شيء.** */
+        [{ key: "reviews", icon: "star" as const, value: ratings.length, label: t.panelRatings }]),
   ];
 
   /* ===== ترتيبان من نفس الصفوف — بلا نداءٍ ثانٍ (D-438) =====
@@ -537,7 +542,16 @@ export default async function PublicProfilePage({
      ومراجعاتُه ما كتب فيه سطراً، وقوائمُه ما أعلنه — **كلُّها مقروءةٌ
      في الموجة نفسِها**، **فالتبويبُ يفرز ما عندنا لا يطلب المزيد.**
      ⚠️ **والعدّادُ يعدّ ما يعرضه جسمُه** (D-374). */
-  const TABS = ["overview", "activity", "reviews", "lists"] as const;
+  /* 🆕 **وتبويبا «مسلسلات» و«أفلام»** (D-643، حكمُه: «إذا ضغط على كارد
+     الأفلام أو المسلسلات تظهر كل أفلامه أو مسلسلاته»).
+     🔑 **ولا بياناتٍ جديدة ولا نداءَ ثانٍ**: `tvFollows`/`movieFollows`
+     مقروءتان أصلاً — **رقماهما هما اللذان يُعرضان في البطاقة** —
+     **فالتبويبُ يفرز ما عندنا لا يطلب المزيد** (نصُّ التبويبات نفسُه).
+     ⚠️ **ولماذا تبويبٌ لا ورقة**: قائمةٌ من ٤٤ ملصقاً في ورقةٍ تُقرأ
+     نصفَ شاشة، **وما يستحقّ صفحةً يأخذها** (حجّةُ D-353/D-534).
+     **والبطاقةُ صارت باباً لهما** — **ورقمٌ يُضغط ولا يفتح شيئاً هو
+     الوعدُ الفارغ الذي يمنعه D-217.** */
+  const TABS = ["overview", "shows", "movies", "activity", "reviews", "lists"] as const;
   type ProfileTab = (typeof TABS)[number];
   /* 🆕 **تبويبٌ مخفيٌّ عن الزائر** (D-617): إخراجٌ لا قفلٌ — صاحبُ
      الصفحة يرى تبويباتِه كلَّها، والزائرُ لا يرى المطفأ **ولا يبلغه
@@ -559,6 +573,20 @@ export default async function PublicProfilePage({
       label: wants("favorites") ? t.profileTabFavorites : t.profileTabOverview,
       icon: wants("favorites") ? "heart" : "grid",
       href: base,
+    },
+    {
+      key: "shows",
+      label: t.shortShows,
+      icon: "tv",
+      count: shows.length,
+      href: `${base}?tab=shows`,
+    },
+    {
+      key: "movies",
+      label: t.shortMovies,
+      icon: "film",
+      count: movieFollows.length,
+      href: `${base}?tab=movies`,
     },
     {
       key: "activity",
@@ -583,7 +611,12 @@ export default async function PublicProfilePage({
     },
   ];
   /* 🆕 والمطفأ يسقط من الصفّ عند الزائر (D-617) — الرأسُ والمحتوى معاً */
-  const tabItems = tabItemsAll.filter((i) => !tabHidden(i.key));
+  /* 🆕 **وكلُّ تبويبٍ يستبدل ولا يكدّس** (D-643): التبويبُ وجهٌ ثانٍ
+     لصفحةٍ واحدة، **فسهمُ الرجوع يُخرجك من الملفّ لا يمشي بك بين
+     وجوهه.** الحجّةُ في `PageTabs.replace`. */
+  const tabItems = tabItemsAll
+    .filter((i) => !tabHidden(i.key))
+    .map((i) => ({ ...i, replace: true }));
 
   /* ⚖️ 🆕 **«النشاط الأخير» غادر التبويبَ الأوّل** (D-561، نقضُ
      كتلةِ D-438 الثابتة).
@@ -649,8 +682,28 @@ export default async function PublicProfilePage({
               ⚠️ **والأقراصُ الثلاثةُ ٤٤×٤٤ سواءً** (D-033/D-168):
               **رجوعٌ ٤٤ ومشاركةٌ ٤٤ ونقاطٌ كانت ٤٠ فصارت ٤٤** —
               **ورتبةٌ واحدةٌ بمقاسين تُقرأ رتبتين.** */}
-          <BackButton locale={locale} className="absolute top-3 start-3" />
-          <div className="absolute top-3 end-3 z-10 flex items-center gap-2">
+          {/* 🆕 **الأقراصُ سقطت والأزرارُ عاريةٌ** (D-643، حكمُه: «الدوائر
+              على الرجوع والمشاركة والثلاث نقاط شيلها») — **وهو تعميمُ
+              D-288 لا نقضٌ له**: الحجّةُ هناك أن `black/35` **شفّافةٌ لا
+              سوداء**، فعلى غلافٍ فاتحٍ تصير رماديّةً باهتةً والأيقونةُ
+              `white/90` فوقها — **رماديٌّ على رماديّ**. **وقد طُبِّقت على
+              السهم وحدَه يومَها، وبقي جاراه بالقرص** — **ورتبةٌ واحدةٌ
+              بشكلين تُقرأ رتبتين.**
+              **والظلُّ هو ما يفصل الأيقونةَ عن أيِّ صورة** على الفاتح
+              والداكن معاً.
+              ⚠️ **ومواضعُها تُشتقّ من `--safe-top` لا من رقمٍ ثابت**:
+              شريطُ التطبيق غاب (أعلاه)، **فالغلافُ صار يبدأ من حافّة
+              الشاشة ونتوءُ الجهاز فوقه** — **و`top-3` وحدَها تضع السهمَ
+              تحت الساعة.**
+              ⚠️ **والفجوةُ `gap-5` لا `gap-2`**: المرئيُّ ٢٤ وهدفُ اللمس
+              ٤٤ (D-033) — **وفجوةٌ أصغرُ من ٢٠ تجعل هدفَي لمسٍ متداخلين
+              فيُضغط جارُ ما قُصد.** */}
+          <BackButton
+            locale={locale}
+            variant="bare"
+            className="absolute start-4 top-[calc(var(--safe-top)+0.9rem)] z-10"
+          />
+          <div className="absolute end-4 top-[calc(var(--safe-top)+0.9rem)] z-10 flex items-center gap-5">
             <ShareTitleButton
               path={base}
               title={displayName}
@@ -995,10 +1048,17 @@ export default async function PublicProfilePage({
                 الباقي كلُّه للخانتين** — ولزائرٍ ثلاثُ خاناتٍ أرقامٌ
                 فأثلاثٌ سواء. */}
             <div className={isMe ? "grid grid-cols-[1fr_1fr_auto]" : "grid grid-cols-3"}>
+              {/* 🆕 **والخانةُ صارت باباً** (D-643): «١٦ مسلسلاً» رقمٌ
+                  يُضغط، **ورقمٌ يُضغط ولا يفتح شيئاً وعدٌ فارغ** (D-217).
+                  **ووجهتُه تبويبُه في الصفحة نفسِها** — لا صفحةٌ ثالثة.
+                  ⚠️ **و`replace` هنا أيضاً**: نفسُ حكم التبويبات — **بابٌ
+                  داخلَ الصفحة لا يكدّس تاريخاً.** */}
               {headerStats.map((c, i) => (
-                <div
+                <Link
                   key={c.key}
-                  className="relative flex items-center justify-center gap-2 px-2 py-3"
+                  href={`${base}?tab=${c.key}`}
+                  replace
+                  className="relative flex items-center justify-center gap-2 px-2 py-3 hover:text-accent transition"
                 >
                   {/* **والخطُّ بين خانتين لا بعد آخرِها**: خانةُ
                       «الإحصائيات» تلي الأخيرةَ لصاحب الصفحة وحدَه،
@@ -1024,7 +1084,7 @@ export default async function PublicProfilePage({
                       {c.label}
                     </span>
                   </span>
-                </div>
+                </Link>
               ))}
               {isMe && (
                 <Link
@@ -1059,6 +1119,39 @@ export default async function PublicProfilePage({
           كلاهما عنوانٌ وملصقاتٌ لا يحتاجانه** — **فالحاويةُ الواحدةُ
           تجعل الرفوفَ كتلةً واحدةً في عين الإيقاع الخارجيّ** (٢٠ تحت
           التبويبات مرّةً واحدة)، **وبينها `space-y-3` (١٢px).** */}
+      {/* ===== 🆕 تبويبا «مسلسلات» و«أفلام» (D-643) ===== */}
+      {/* **شبكةٌ لا رفّ**: الرفُّ يعرض ما يتّسع له السطر ويخفي البقيّة،
+          **وسؤالُ التبويب «أرِني كلَّ ما عنده»** — **فالشبكةُ هي الشكلُ
+          الذي يجيبه** (`posterGrid`، الوصفةُ نفسُها في المكتبة).
+          ⚠️ **وبلا سقفِ `cap`**: سقفُ البطاقات تفضيلُ عرضٍ للرفوف
+          (D-152) — **وتبويبٌ اسمُه «كلُّ مسلسلاته» يقصّها يكذب.** */}
+      {canView && tab === "shows" && (
+        <PosterGrid>
+          {shows.map((i) => (
+            <PosterCard
+              key={`gs-${i.id}`}
+              href={`/show/${i.id}`}
+              title={i.title}
+              posterPath={i.posterPath}
+              progress={i.progress}
+            />
+          ))}
+        </PosterGrid>
+      )}
+
+      {canView && tab === "movies" && (
+        <PosterGrid>
+          {movieFollows.map((f) => (
+            <PosterCard
+              key={`gm-${f.tmdb_id}`}
+              href={`/movie/${f.tmdb_id}`}
+              title={f.title}
+              posterPath={f.poster_path}
+            />
+          ))}
+        </PosterGrid>
+      )}
+
       {canView && tab === "overview" && (
       <div className="space-y-3">
       {/* ===== المفضّلة — ثلاثةُ صفوفٍ ثم صفوفُه بترتيب صاحبها (D-129) =====
