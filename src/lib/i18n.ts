@@ -966,6 +966,8 @@ const ar = {
   listReviewDelete: "احذف رأيي",
   listReviewOwn: "قائمتك — تقييمُ نفسك لا يُحسب.",
   listReviewCount: (n: string) => `${n} رأي`,
+  /** 🆕 قاعُ الآراء المطويّ (D-681) */
+  listReviewsViewAll: (n: number) => `عرض كل الآراء (${n})`,
   /* 🆕 D-337 — صفوفُك الخاصة في اكتشف */
   myRowsTitle: "صفوفك الخاصة",
   myRowsHint: "اختر نوعاً — ومعه موضوعاً إن شئت — يظهر صفٌّ باسمهما في اكتشف.",
@@ -2423,6 +2425,8 @@ const en: Dict = {
   listReviewDelete: "Delete mine",
   listReviewOwn: "Your list — rating yourself does not count.",
   listReviewCount: (n: string) => `${n} ratings`,
+  /** 🆕 (D-681) */
+  listReviewsViewAll: (n: number) => `View all ${n} reviews`,
   myRowsTitle: "Your rows",
   myRowsHint: "Pick a genre — and a theme if you like — and a row with that name appears in Discover.",
   myRowsRow: (n: string) => `Row ${n}`,
