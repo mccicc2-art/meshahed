@@ -28,6 +28,7 @@ import { Avatar } from "@/components/Avatar";
 import { Icon } from "@/components/Icon";
 import { PosterCard } from "@/components/PosterCard";
 import { PosterGrid } from "@/components/PosterGrid";
+import { ProfileStatSheet } from "@/components/ProfileStatSheet";
 import { PosterRail, RailItem } from "@/components/PosterRail";
 import { FollowUserButton } from "@/components/FollowUserButton";
 import { PlusBadge } from "@/components/PlusBadge";
@@ -373,6 +374,37 @@ export default async function PublicProfilePage({
     };
   });
 
+  /* 🆕 **شبكتا «كلِّ مسلسلاته» و«كلِّ أفلامه»** (D-644) — تُرسمان على
+     الخادم وتُمرَّران إلى الورقة، **فلا تعبر ملصقاتُ الخادم الحدَّ إلى
+     العميل** (درسُ `PosterCard` في D-238).
+     ⚠️ **وبلا سقفِ `cap`**: السقفُ تفضيلُ عرضٍ للرفوف (D-152)،
+     **وبابٌ اسمُه «كلُّ أفلامه» يقصّها يكذب.** */
+  const showsGrid = (
+    <PosterGrid>
+      {shows.map((i) => (
+        <PosterCard
+          key={`gs-${i.id}`}
+          href={`/show/${i.id}`}
+          title={i.title}
+          posterPath={i.posterPath}
+          progress={i.progress}
+        />
+      ))}
+    </PosterGrid>
+  );
+  const moviesGrid = (
+    <PosterGrid>
+      {movieFollows.map((f) => (
+        <PosterCard
+          key={`gm-${f.tmdb_id}`}
+          href={`/movie/${f.tmdb_id}`}
+          title={f.title}
+          posterPath={f.poster_path}
+        />
+      ))}
+    </PosterGrid>
+  );
+
   /** كل قسمٍ يُبنى مرّةً هنا، ويُرسم أعلاه بترتيب صاحبه — والفارغ `null`
       فلا يترك عنواناً بلا محتوى */
   /* سقفُ المستخدم يُطبَّق هنا لا في كل صفٍّ على حدة (D-152): `capCards`
@@ -542,16 +574,15 @@ export default async function PublicProfilePage({
      ومراجعاتُه ما كتب فيه سطراً، وقوائمُه ما أعلنه — **كلُّها مقروءةٌ
      في الموجة نفسِها**، **فالتبويبُ يفرز ما عندنا لا يطلب المزيد.**
      ⚠️ **والعدّادُ يعدّ ما يعرضه جسمُه** (D-374). */
-  /* 🆕 **وتبويبا «مسلسلات» و«أفلام»** (D-643، حكمُه: «إذا ضغط على كارد
-     الأفلام أو المسلسلات تظهر كل أفلامه أو مسلسلاته»).
-     🔑 **ولا بياناتٍ جديدة ولا نداءَ ثانٍ**: `tvFollows`/`movieFollows`
-     مقروءتان أصلاً — **رقماهما هما اللذان يُعرضان في البطاقة** —
-     **فالتبويبُ يفرز ما عندنا لا يطلب المزيد** (نصُّ التبويبات نفسُه).
-     ⚠️ **ولماذا تبويبٌ لا ورقة**: قائمةٌ من ٤٤ ملصقاً في ورقةٍ تُقرأ
-     نصفَ شاشة، **وما يستحقّ صفحةً يأخذها** (حجّةُ D-353/D-534).
-     **والبطاقةُ صارت باباً لهما** — **ورقمٌ يُضغط ولا يفتح شيئاً هو
-     الوعدُ الفارغ الذي يمنعه D-217.** */
-  const TABS = ["overview", "shows", "movies", "activity", "reviews", "lists"] as const;
+  /* 🔴 ⚖️ **ونُقض نصفُ D-643 بحكم صاحبه** («ليش غيّرت التبويب وحطّيت
+     أفلام ومسلسلات؟! رجّعها مثل ما كانت»): **كنتُ قد أضفتُ تبويبَي
+     «مسلسلات» و«أفلام» إلى الشريط ليكونا وجهةَ خانتَي البطاقة** —
+     **وهو طلب باباً من البطاقة، لا شريطاً جديداً.**
+     🔑 **والقاعدة: طلبُ بابٍ ليس إذناً بإعادة ترتيب ما حوله** —
+     **والزيادةُ على الطلب نقضٌ له لا خدمةٌ فيه.** **والوجهةُ صارت
+     ورقةً** (`ProfileStatSheet`): تفتح فوق الصفحة وتُغلق، **والشريطُ
+     لا يُمسّ.** */
+  const TABS = ["overview", "activity", "reviews", "lists"] as const;
   type ProfileTab = (typeof TABS)[number];
   /* 🆕 **تبويبٌ مخفيٌّ عن الزائر** (D-617): إخراجٌ لا قفلٌ — صاحبُ
      الصفحة يرى تبويباتِه كلَّها، والزائرُ لا يرى المطفأ **ولا يبلغه
@@ -573,20 +604,6 @@ export default async function PublicProfilePage({
       label: wants("favorites") ? t.profileTabFavorites : t.profileTabOverview,
       icon: wants("favorites") ? "heart" : "grid",
       href: base,
-    },
-    {
-      key: "shows",
-      label: t.shortShows,
-      icon: "tv",
-      count: shows.length,
-      href: `${base}?tab=shows`,
-    },
-    {
-      key: "movies",
-      label: t.shortMovies,
-      icon: "film",
-      count: movieFollows.length,
-      href: `${base}?tab=movies`,
     },
     {
       key: "activity",
@@ -1053,13 +1070,15 @@ export default async function PublicProfilePage({
                   **ووجهتُه تبويبُه في الصفحة نفسِها** — لا صفحةٌ ثالثة.
                   ⚠️ **و`replace` هنا أيضاً**: نفسُ حكم التبويبات — **بابٌ
                   داخلَ الصفحة لا يكدّس تاريخاً.** */}
-              {headerStats.map((c, i) => (
-                <Link
-                  key={c.key}
-                  href={`${base}?tab=${c.key}`}
-                  replace
-                  className="relative flex items-center justify-center gap-2 px-2 py-3 hover:text-accent transition"
-                >
+              {headerStats.map((c, i) => {
+                const cellClass =
+                  "relative w-full flex items-center justify-center gap-2 px-2 py-3 hover:text-accent transition";
+                /* 🆕 **وجهُ الخانة يُرسم مرّةً** ثمّ يلبس فعلَه (D-644):
+                    المسلسلاتُ والأفلامُ تفتحان ورقةً، **والتقييماتُ رابطُ
+                    تبويبٍ لأن تبويبَها قائمٌ أصلاً** — **ولا ورقةَ لما له
+                    وجهةٌ في الصفحة.** */
+                const face = (
+                  <>
                   {/* **والخطُّ بين خانتين لا بعد آخرِها**: خانةُ
                       «الإحصائيات» تلي الأخيرةَ لصاحب الصفحة وحدَه،
                       **فالشرطُ يعرف الحالتين** — **وخطٌّ على حافّة
@@ -1084,8 +1103,25 @@ export default async function PublicProfilePage({
                       {c.label}
                     </span>
                   </span>
-                </Link>
-              ))}
+                  </>
+                );
+                const grid = c.key === "shows" ? showsGrid : moviesGrid;
+                return c.key === "reviews" ? (
+                  <Link key={c.key} href={`${base}?tab=reviews`} replace className={cellClass}>
+                    {face}
+                  </Link>
+                ) : (
+                  <ProfileStatSheet
+                    key={c.key}
+                    title={c.label}
+                    closeLabel={t.closeLabel}
+                    className={cellClass}
+                    content={grid}
+                  >
+                    {face}
+                  </ProfileStatSheet>
+                );
+              })}
               {isMe && (
                 <Link
                   href="/stats"
@@ -1119,39 +1155,6 @@ export default async function PublicProfilePage({
           كلاهما عنوانٌ وملصقاتٌ لا يحتاجانه** — **فالحاويةُ الواحدةُ
           تجعل الرفوفَ كتلةً واحدةً في عين الإيقاع الخارجيّ** (٢٠ تحت
           التبويبات مرّةً واحدة)، **وبينها `space-y-3` (١٢px).** */}
-      {/* ===== 🆕 تبويبا «مسلسلات» و«أفلام» (D-643) ===== */}
-      {/* **شبكةٌ لا رفّ**: الرفُّ يعرض ما يتّسع له السطر ويخفي البقيّة،
-          **وسؤالُ التبويب «أرِني كلَّ ما عنده»** — **فالشبكةُ هي الشكلُ
-          الذي يجيبه** (`posterGrid`، الوصفةُ نفسُها في المكتبة).
-          ⚠️ **وبلا سقفِ `cap`**: سقفُ البطاقات تفضيلُ عرضٍ للرفوف
-          (D-152) — **وتبويبٌ اسمُه «كلُّ مسلسلاته» يقصّها يكذب.** */}
-      {canView && tab === "shows" && (
-        <PosterGrid>
-          {shows.map((i) => (
-            <PosterCard
-              key={`gs-${i.id}`}
-              href={`/show/${i.id}`}
-              title={i.title}
-              posterPath={i.posterPath}
-              progress={i.progress}
-            />
-          ))}
-        </PosterGrid>
-      )}
-
-      {canView && tab === "movies" && (
-        <PosterGrid>
-          {movieFollows.map((f) => (
-            <PosterCard
-              key={`gm-${f.tmdb_id}`}
-              href={`/movie/${f.tmdb_id}`}
-              title={f.title}
-              posterPath={f.poster_path}
-            />
-          ))}
-        </PosterGrid>
-      )}
-
       {canView && tab === "overview" && (
       <div className="space-y-3">
       {/* ===== المفضّلة — ثلاثةُ صفوفٍ ثم صفوفُه بترتيب صاحبها (D-129) =====
