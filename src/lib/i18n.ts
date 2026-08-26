@@ -1297,10 +1297,8 @@ const ar = {
      وسهمُ `seeAll` وعدُ انتقالٍ فلا يُستعار هنا (D-217) */
   allWord: "الكل",
   custTabsTitle: "التبويبات",
-  /* 🆕 كلمةُ الصفِّ المقفل (D-663): «المفضّلة» تُعرض في القائمة بلا
-     مفتاح — والكلمةُ تقول لماذا بدل مفتاحٍ لا يُضغط (D-217) */
   custTabAlwaysOn: "دائماً",
-  custTabsHint: "التبويب المطفأ يختفي عن زائرك — و«المفضّلة» تبقى باب الصفحة دائماً.",
+  custTabsHint: "التبويب المطفأ يختفي عن زائرك — وصفحتك تفتح على أوّل تبويب ظاهر.",
   custOverviewTab: "داخل تبويب النظرة العامة",
   custListsTab: "داخل تبويب القوائم",
   /* 🆕 صفوفُ الترتيب (D-555) — السجلُّ خرج إلى ورقةٍ فصار له صفٌّ يفتحه */
@@ -1322,6 +1320,9 @@ const ar = {
   /* 🆕 كلمةٌ واحدة (D-611): «بحيث الأفلام والمسلسلات يأخذون راحتهم» */
   profileFullStats: "الإحصائيات",
   profileEmptyFavorites: "لا مفضّلات بعد",
+  /* 🆕 **حالةُ «كلُّ التبويبات مطفأة»** (D-667) — صارت ممكنةً يومَ صارت
+     «المفضّلة» تُطفأ. **والنصُّ يقول «أُخفيت» لا «انكسرت».** */
+  profileNoTabs: "لا شيء ظاهرٌ هنا",
   /** تبويبُ «نظرة عامة» بلا قسمٍ ظاهر (D-658) */
   profileEmptyOverview: "لا أقسام ظاهرة بعد.",
   profileTitleLabel: "اللقب",
@@ -2644,7 +2645,7 @@ const en: Dict = {
   allWord: "All",
   custTabsTitle: "Tabs",
   custTabAlwaysOn: "Always",
-  custTabsHint: "A hidden tab disappears for your visitors — Favorites always stays the front door.",
+  custTabsHint: "A hidden tab disappears for your visitors — your page opens on the first one shown.",
   custOverviewTab: "Inside the Overview tab",
   custListsTab: "Inside the Lists tab",
   custArrange: "Arrange sections",
@@ -2663,6 +2664,7 @@ const en: Dict = {
   profileTabFavorites: "Favorites",
   profileFullStats: "Statistics",
   profileEmptyFavorites: "No favourites yet",
+  profileNoTabs: "Nothing shown here",
   profileEmptyOverview: "No sections shown yet.",
   profileTitleLabel: "Title",
   profileTitlePlaceholder: "Story lover",
