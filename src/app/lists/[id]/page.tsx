@@ -5,7 +5,8 @@ import {
   getUser,
   getList,
   getPublicList,
-  isListSaved,
+  getMyListSave,
+  getListCardStats,
   getListReviews,
   getListReviewStats,
   getMyListReview,
@@ -105,7 +106,8 @@ export default async function ListPage({ params }: { params: Promise<{ id: strin
   // وحالة الحفظ لغير المالك وحده (D-068)
   const [
     pub,
-    saved,
+    mySave,
+    cardStats,
     reviews,
     reviewStats,
     myReview,
@@ -117,7 +119,12 @@ export default async function ListPage({ params }: { params: Promise<{ id: strin
     meProfile,
   ] = await Promise.all([
     isOwner ? Promise.resolve(null) : getPublicList(id),
-    isOwner ? Promise.resolve(false) : isListSaved(id),
+    /* 🆕 **الحالتان من صفِّ الحفظ نفسِه** (D-677): «أحفظتُها؟»
+       و«أشغّلتُها؟» (١٤٩) بقراءةٍ واحدة بدل قراءتين. */
+    isOwner ? Promise.resolve(null) : getMyListSave(id),
+    /* 🆕 **وعددُ من حفظها** (D-677) — لشريط الحال؛ للمعلنة وحدَها
+       (الخاصّةُ لا تُحفظ — نصُّ ١٠٥). */
+    data.list.is_public ? getListCardStats([id]) : Promise.resolve(new Map()),
     /* **ثلاثةُ نداءاتٍ متوازية** (D-327): كلامُ الناس ومتوسّطُهم ورأيي —
        **ولا يحتاج أحدُها ناتجَ الآخر** فلا يُنتظر أحدُها لأجل أخيه. */
     data.list.is_public ? getListReviews(id) : Promise.resolve([]),
@@ -188,7 +195,9 @@ export default async function ListPage({ params }: { params: Promise<{ id: strin
             : null
         }
         locale={locale}
-        initialSaved={isOwner ? null : saved}
+        initialSaved={isOwner ? null : mySave === null ? null : mySave.saved}
+        saves={cardStats.get(id)?.saves ?? 0}
+        initialSavedPlaylist={isOwner ? null : mySave === null ? null : mySave.playlist}
         /* 🆕 رايةُ قائمة التشغيل (D-505) — للمالك وحدَه، وغيابُ العمود
            (قبل هجرة ١٢٢) يصل `undefined` فلا يُرسم الصفُّ أصلاً */
         initialPlaylist={
