@@ -21,6 +21,25 @@ import {
  */
 const OWNER_HEADER = "x-lz-owner";
 
+/**
+ * 🆕 **وبصمةُ البناء على كلِّ ردٍّ كذلك** (D-652).
+ *
+ * 🔴 **والعلّةُ التي فتحتها**: كاشُ صفحات الـsw اسمُه ثابتٌ بيدٍ
+ * (`loopz-v8-pages`) **فيعيش عبر النشرات كلِّها** — **وصفحةُ HTML من
+ * نشرةِ أمس تُقلع راوترَ Next ببصمةِ أمس**، فأوّلُ تنقّلٍ يطلب حمولةَ
+ * RSC ببناءٍ لم يعد موجوداً **فتسقط الشاشةُ إلى حدِّ الخطأ** — وهو
+ * بعينه ما وُصف في D-626 وعاد اليوم بعد ثماني نشرات.
+ *
+ * 🔑 **والحزامُ حزامُ المالك نفسُه بقارئٍ ثانٍ** (D-514/D-145): تسميةٌ
+ * على الردّ، وأوّلُ ردٍّ يخالف المحفوظَ يمسح كاشَ الصفحات قبل أن
+ * يُكتب فيه سطر — **ولا آليّةَ ثانيةٌ تُخترع لفكرةٍ قائمة.**
+ *
+ * ⚠️ **وليست سرّاً**: بصمةُ التزام مستودعٍ عامّ، **وأسوأُ ما تفعله
+ * قيمةٌ مزوَّرةٌ مسحُ كاشِ جهازِ صاحبها.**
+ */
+const BUILD_HEADER = "x-lz-build";
+const BUILD_ID = process.env.VERCEL_GIT_COMMIT_SHA ?? "dev";
+
 async function ownerLabel(request: NextRequest): Promise<string> {
   try {
     const parts = sessionCookieParts(request.cookies.getAll());
@@ -76,6 +95,7 @@ export async function proxy(request: NextRequest) {
      تُكتب هنا وعلى نسخة الردّ التي قد يعيد التجديدُ إنشاءها أدناه. */
   const owner = await ownerLabel(request);
   response.headers.set(OWNER_HEADER, owner);
+  response.headers.set(BUILD_HEADER, BUILD_ID);
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -107,8 +127,9 @@ export async function proxy(request: NextRequest) {
       setAll(cookiesToSet) {
         cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
         response = NextResponse.next({ request });
-        // الردُّ أُعيد إنشاؤه — التسميةُ تُعاد معه وإلا سقطت عن ردود التجديد
+        // الردُّ أُعيد إنشاؤه — التسميتان تُعادان معه وإلا سقطتا عن ردود التجديد
         response.headers.set(OWNER_HEADER, owner);
+        response.headers.set(BUILD_HEADER, BUILD_ID);
         cookiesToSet.forEach(({ name, value, options }) =>
           response.cookies.set(name, value, options),
         );
