@@ -80,13 +80,11 @@ export function SectionReorderButton({
   );
 }
 
-/** مفاتيحُ الأقسام — نفسُ الاشتقاق في الصفحة والزرّ، فلا يفترقان */
-export const sectionKeyOf = {
-  show: (id: number) => `tv-${id}`,
-  movie: (id: number) => `movie-${id}`,
-  artist: (id: number) => `p-${id}`,
-  list: (id: string) => `l-${id}`,
-} as const;
+/* ⚖️ **ومفاتيحُ الأقسام غادرت هذا الملفّ إلى `@/lib/profilePrefs`**
+   (D-669): **هذا ملفُّ `"use client"`، وصفحةُ الملفّ خادميّة** — **وقيمةٌ
+   خالصةٌ تُستورَد من وحدةِ عميلٍ إلى مكوّنٍ خادميّ تصل مرجعَ عميلٍ لا
+   كائناً**، فكانت `sectionKeyOf.artist` ترمي `TypeError` وقتَ التشغيل.
+   **دالّةٌ خالصةٌ لا تسكن ملفَّ مكوّن.** */
 
 export type { ReorderItem };
 export { listItemKey };
