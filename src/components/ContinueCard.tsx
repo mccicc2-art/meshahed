@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
+import { continueCardBox } from "./ui/controls";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -295,7 +296,20 @@ export function ContinueCard({
         {/* ⚖️ 🆕 **والنسبةُ عادت ٧:٥** مع عرضها الأوّل (D-444، حكمُ أحمد:
             «كذا كبير مرّة، رجّعه مثل الأصلي قبل بداية التعديل») —
             **نُقض تصغيرُ D-437 بحكم صاحبه بعد أن رآه في الشاشتين.** */}
-        <div className="relative aspect-[7/5] rounded-poster overflow-hidden bg-surface border border-border">
+        {/* 🆕 ⚖️ **والارتفاعُ صار ارتفاعَ الملصق لا نسبةً مستقلّة**
+            (D-646، بلاغُ أحمد بخطٍّ محوَّط على الحافّتين: «أبغى تابع
+            المشاهدة نفس ارتفاع الكل») — **ونقضٌ لنسبةِ D-444 لا
+            لحجّتها**: تلك عن الحجم الذي يراه، **وهذه عن أن يتساوى صفّان
+            متجاوران.**
+            🔑 **والتساوي يُشتقّ ولا يُخمَّن**: الملصقُ عرضُه
+            `--poster-w` ونسبتُه ٢:٣، **فارتفاعُه `w × 1.5`** — فكُتب
+            هنا حرفيّاً. **ولو طوبقا برقمٍ ثابتٍ لتساويا عند مقاسٍ واحدٍ
+            وافترقا عند غيره**، **ومقاسُ الملصق تفضيلُ صاحب الصفحة**
+            (D-441) — **فرقمان يُلاحق أحدُهما الآخر بيدٍ عطلٌ ينتظر
+            أوّلَ تغييرِ تفضيل.**
+            ⚠️ **والعرضُ لم يُمسّ** (٢٢٠/٣٠٠ من `RailItem`): الصورةُ
+            `object-cover` **فتُقصّ ولا تُشوَّه.** */}
+        <div className={continueCardBox}>
           {url ? (
             <Image
               src={url}

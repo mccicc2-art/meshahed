@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { continueCardBox } from "./ui/controls";
 import Image from "next/image";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -281,7 +282,10 @@ export function ListContinueCard({
       prefetch={false}
       className="group relative block active:scale-[0.98] transition"
     >
-      <div className="relative aspect-[7/5] rounded-poster overflow-hidden bg-surface border border-border">
+      {/* 🆕 **ونفسُ صندوق «تابع المشاهدة»** (D-646): **هذه البطاقةُ
+          تجلس في الصفِّ نفسِه** (D-552)، **وبطاقتان بارتفاعين في صفٍّ
+          واحدٍ هو بعينه ما شكا منه أحمد.** */}
+      <div className={continueCardBox}>
         {url ? (
           <Image
             src={url}
