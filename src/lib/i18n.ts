@@ -1297,7 +1297,6 @@ const ar = {
      وسهمُ `seeAll` وعدُ انتقالٍ فلا يُستعار هنا (D-217) */
   allWord: "الكل",
   custTabsTitle: "التبويبات",
-  custTabAlwaysOn: "دائماً",
   custTabsHint: "التبويب المطفأ يختفي عن زائرك — وصفحتك تفتح على أوّل تبويب ظاهر.",
   custOverviewTab: "داخل تبويب النظرة العامة",
   custListsTab: "داخل تبويب القوائم",
@@ -2644,7 +2643,6 @@ const en: Dict = {
   custSectionsHint: "Drag to reorder · Tap to show or hide",
   allWord: "All",
   custTabsTitle: "Tabs",
-  custTabAlwaysOn: "Always",
   custTabsHint: "A hidden tab disappears for your visitors — your page opens on the first one shown.",
   custOverviewTab: "Inside the Overview tab",
   custListsTab: "Inside the Lists tab",
