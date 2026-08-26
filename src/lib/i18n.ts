@@ -1271,6 +1271,9 @@ const ar = {
      وسهمُ `seeAll` وعدُ انتقالٍ فلا يُستعار هنا (D-217) */
   allWord: "الكل",
   custTabsTitle: "التبويبات",
+  /* 🆕 كلمةُ الصفِّ المقفل (D-663): «المفضّلة» تُعرض في القائمة بلا
+     مفتاح — والكلمةُ تقول لماذا بدل مفتاحٍ لا يُضغط (D-217) */
+  custTabAlwaysOn: "دائماً",
   custTabsHint: "التبويب المطفأ يختفي عن زائرك — و«المفضّلة» تبقى باب الصفحة دائماً.",
   custOverviewTab: "داخل تبويب النظرة العامة",
   custListsTab: "داخل تبويب القوائم",
@@ -2612,6 +2615,7 @@ const en: Dict = {
   custSectionsHint: "Drag to reorder · Tap to show or hide",
   allWord: "All",
   custTabsTitle: "Tabs",
+  custTabAlwaysOn: "Always",
   custTabsHint: "A hidden tab disappears for your visitors — Favorites always stays the front door.",
   custOverviewTab: "Inside the Overview tab",
   custListsTab: "Inside the Lists tab",
