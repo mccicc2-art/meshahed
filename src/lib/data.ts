@@ -3970,6 +3970,13 @@ export interface PublicListCard {
   /** ⚠️ `saved_by_me` لا `saved` — و`saves` فوقها عددُ الناس: **اسمان
       متقاربان لمعنيين متباعدين هو كيف يُقرأ عدّادٌ حالةً** (D-219). */
   saved_by_me?: boolean;
+  /* 🆕 **رايةُ التشغيل على البطاقة** (D-674): **حالتُها عندك أنت** —
+     من قائمتك (`user_lists.is_playlist`، ١٢٢) أو من صفِّ حفظك لها
+     (`list_saves.is_playlist`، ١٤٩). **وغيابُها يعني «لا أعرف»**
+     فلا يُرسم مفتاحٌ يكذب (D-217/D-028). */
+  playlist?: boolean;
+  /** **أهي قائمتي؟** — بها يُعرف أيُّ كاتبٍ يخدم المفتاح (D-674) */
+  mine?: boolean;
 }
 
 /**
@@ -4016,8 +4023,15 @@ async function shapeListCards(
        سياسةُ `list_saves` «صفوفي أنا» فالقراءةُ مقصورةٌ عليّ أصلاً،
        **وبطاقةٌ تسأل عن نفسها هي ستّون استعلاماً** (D-205/D-206). */
     me
-      ? supabase.from("list_saves").select("list_id").eq("user_id", me.id).in("list_id", ids)
-      : Promise.resolve({ data: [] as { list_id: string }[] }),
+      ? supabase
+          /* 🆕 **ورايةُ تشغيلي معها** (D-674) — **في الاستعلام نفسِه**:
+             الصفُّ مقروءٌ أصلاً، **وحرفٌ زائدٌ فيه أرخصُ من رحلةٍ
+             ثانية** (D-205). */
+          .from("list_saves")
+          .select("list_id, is_playlist")
+          .eq("user_id", me.id)
+          .in("list_id", ids)
+      : Promise.resolve({ data: [] as { list_id: string; is_playlist?: boolean }[] }),
     /* 🆕 **«ما رأيي أنا فيها؟» — استعلامٌ واحدٌ للصفحة كلِّها** (D-352):
        سياسةُ `list_reviews` «صفوفي أنا» فالقراءةُ مقصورةٌ عليّ أصلاً،
        **وورقةُ النجمة تُملأ بلا نداءٍ عند الفتح** (D-205/D-206). */
@@ -4031,6 +4045,13 @@ async function shapeListCards(
   ]);
   const savedSet = new Set(
     ((savedRows?.data ?? []) as { list_id: string }[]).map((r) => String(r.list_id)),
+  );
+  /* 🆕 **وأيُّ محفوظةٍ شغّلتُها** (D-674) — **وقبل الهجرة ١٤٩ يغيب
+     الحقلُ فتُقرأ كلُّها «متوقّفة»** ولا ينكسر شيء (D-028). */
+  const savedPlaylist = new Set(
+    ((savedRows?.data ?? []) as { list_id: string; is_playlist?: boolean }[])
+      .filter((r) => r.is_playlist === true)
+      .map((r) => String(r.list_id)),
   );
   const mineOf = new Map(
     ((myReviews?.data ?? []) as {
@@ -4101,6 +4122,18 @@ async function shapeListCards(
            هنا كلُّها من قوائمَ عامّة (مصادرُها تشترطها). */
         can_review: !!me && l.user_id !== me.id,
         my_review: mineOf.get(l.id) ?? null,
+        /* 🆕 **رايةُ التشغيل ومالكُها** (D-674): **قائمتي رايتُها في
+           صفِّها، والمحفوظةُ رايتُها في صفِّ حفظي** — **ومفتاحُ
+           الواجهة واحدٌ لا يعرف الفرقَ إلا عند الكتابة.**
+           ⚠️ **ولا رايةَ لقائمةٍ لم أحفظها ولا أملكها** — **الصفُّ
+           الذي تُكتب فيه غيرُ موجودٍ أصلاً** (D-217). */
+        mine: !!me && l.user_id === me.id,
+        playlist:
+          !!me && l.user_id === me.id
+            ? undefined
+            : savedSet.has(l.id)
+              ? savedPlaylist.has(l.id)
+              : undefined,
       };
     })
     /* قائمةٌ فارغة لا تُكتشف — لا تعرض شيئاً ولا تدعو لشيء */
@@ -4726,13 +4759,24 @@ export const getMyPlaylistIds = cache(async (): Promise<string[]> => {
     const supabase = await createClient();
     const uid = await getUserId();
     if (!uid) return [];
-    const { data, error } = await supabase
-      .from("user_lists")
-      .select("id")
-      .eq("user_id", uid)
-      .eq("is_playlist", true);
-    if (error || !data) return [];
-    return (data as { id: string }[]).map((r) => String(r.id));
+    /* 🆕 **ومحفوظاتي المشغَّلة معها** (D-674، الهجرة ١٤٩) — **مصدران
+       لأن المالكَ اثنان، ومجموعةٌ واحدةٌ لأن المعنى واحد** (D-145).
+       **وكلٌّ يحتمل هجرتَه غائبة** فيعود فارغاً وحدَه. */
+    const [own, saved] = await Promise.all([
+      supabase.from("user_lists").select("id").eq("user_id", uid).eq("is_playlist", true),
+      supabase
+        .from("list_saves")
+        .select("list_id")
+        .eq("user_id", uid)
+        .eq("is_playlist", true),
+    ]);
+    const ids = [
+      ...(((own.error ? [] : own.data) ?? []) as { id: string }[]).map((r) => String(r.id)),
+      ...(((saved.error ? [] : saved.data) ?? []) as { list_id: string }[]).map((r) =>
+        String(r.list_id),
+      ),
+    ];
+    return [...new Set(ids)];
   } catch {
     return [];
   }
@@ -4756,14 +4800,47 @@ export async function getMyPlaylistsBrief(limit = 4): Promise<SavedListBrief[]> 
     const uid = await getUserId();
     if (!uid) return [];
 
-    const { data: lists } = await supabase
-      .from("user_lists")
-      .select("id, name, source_slug")
-      .eq("user_id", uid)
-      .eq("is_playlist", true)
-      .order("updated_at", { ascending: false })
-      .limit(limit);
-    if (!lists?.length) return [];
+    /* 🆕 **وقوائمٌ حفظتَها وشغّلتَها** (D-674، الهجرة ١٤٩): **الرايةُ
+       في صفِّ حفظك لا في صفِّ القائمة** — **فقارئان لمصدرين ووجهةٌ
+       واحدة.** ⚠️ **والعلانيةُ شرطٌ يُقرأ هنا أيضاً**: قائمةٌ صارت
+       خاصّةً بعد أن حفظتَها لا تُقرأ لك (RLS تُسقطها بصمت، وهذا
+       الشرطُ يقولها صراحةً). */
+    const [ownRes, savedIdsRes] = await Promise.all([
+      supabase
+        .from("user_lists")
+        .select("id, name, source_slug")
+        .eq("user_id", uid)
+        .eq("is_playlist", true)
+        .order("updated_at", { ascending: false })
+        .limit(limit),
+      supabase
+        .from("list_saves")
+        .select("list_id")
+        .eq("user_id", uid)
+        .eq("is_playlist", true)
+        .order("created_at", { ascending: false })
+        .limit(limit),
+    ]);
+    const own = ((ownRes.error ? [] : ownRes.data) ?? []) as {
+      id: string;
+      name: string;
+      source_slug: string | null;
+    }[];
+    const savedIds = (((savedIdsRes.error ? [] : savedIdsRes.data) ?? []) as {
+      list_id: string;
+    }[]).map((r) => String(r.list_id));
+    const savedLists = savedIds.length
+      ? (((
+          await supabase
+            .from("user_lists")
+            .select("id, name, source_slug")
+            .in("id", savedIds)
+            .eq("is_public", true)
+        ).data ?? []) as { id: string; name: string; source_slug: string | null }[])
+      : [];
+    /* **قوائمُك أوّلاً ثمّ محفوظاتُك** — عرفُ D-597/D-588 نفسُه */
+    const lists = [...own, ...savedLists].slice(0, limit);
+    if (!lists.length) return [];
 
     const ids = lists.map((l) => String(l.id));
     const { data: items } = await supabase

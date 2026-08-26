@@ -2375,6 +2375,38 @@ export async function setListPlaylist(listId: string, on: boolean) {
   revalidatePath("/lists");
 }
 
+/**
+ * 🆕 **رايةُ التشغيل على قائمةٍ حفظتَها من غيرك** (D-674، حكمُ أحمد:
+ * «نعم الكل له مفتاح تشغيل و إيقاف»، الهجرة ١٤٩).
+ *
+ * 🔑 **وكاتبٌ ثانٍ لا لأن الفعلَ اثنان بل لأن المالكَ اثنان** (D-462):
+ * `setListPlaylist` تكتب **صفةَ القائمة** ولا يملكها إلا صاحبُها،
+ * **وهذه تكتب صفَّ حفظِك أنت** — **ولو كتبنا الأولى على قائمة غيرك
+ * لقلبتَ رايتَه على كلِّ الناس.** **والمعنى في الواجهة واحد**، ولذلك
+ * الرقاقةُ واحدةٌ والمكوّنُ واحد.
+ *
+ * ⚠️ **ولا حاجةَ لشرطٍ على ملكيّة القائمة هنا**: الصفُّ لا يوجد أصلاً
+ * إلا لقائمةٍ عامّةٍ ليست لك (`with check` في سياسة `list_saves`)،
+ * **وتعديلٌ لم يصب شيئاً يفشل بصوت** كأشقّائه.
+ */
+export async function setSavedListPlaylist(listId: string, on: boolean) {
+  listId = uuid(listId);
+  const { supabase, user } = await requireUser();
+  const { data, error } = await supabase
+    .from("list_saves")
+    .update({ is_playlist: !!on })
+    .eq("list_id", listId)
+    .eq("user_id", user.id)
+    .select("list_id");
+  if (error) fail(error);
+  if (!data?.length) throw new Error("القائمة غير محفوظة / List not saved");
+  /* **نفسُ أسطح `setListPlaylist` حرفاً** — البطاقةُ واحدةٌ فيها كلِّها */
+  revalidatePath(`/lists/${listId}`);
+  revalidatePath("/");
+  revalidatePath("/library");
+  revalidatePath("/lists");
+}
+
 export async function reorderList(listId: string, keys: string[]) {
   listId = uuid(listId);
   const clean = (Array.isArray(keys) ? keys : [])
