@@ -1,0 +1,37 @@
+-- ============================================================
+--  Loopz — الهجرة ١٤٦ (D-653، ذيلٌ): «المفضّلة» في الترتيبات المحفوظة
+--  شغّله في Supabase → SQL Editor (الترتيب الكامل في README.md)
+--
+--  💠 **تعديلُ بياناتٍ قائمة** — بحكم أحمد: «لازم الكل فيفوريت».
+--  ⚠️ **إضافةٌ لا استبدال**: لا مفتاحَ يُحذف، ولا ترتيبَ يُعاد بناؤه —
+--  **«المفضّلة» تُدسّ في الرأس وما بعدها يبقى بترتيبه حرفاً.**
+--  ⚠️ **ولا يمسّ من عندَه المفتاحُ أصلاً** (`@>` تحرسه)، **ولا من لا
+--  ترتيبَ محفوظَ له** (هؤلاء يقرأون الافتراضيَّ الجديد من الشيفرة).
+-- ============================================================
+
+--  🔑 **ولماذا لزمت أصلاً**: `sanitizeProfilePrefs` تُقدّم المحفوظَ على
+--  الافتراضيّ (وهو الصواب: ترتيبٌ اختاره صاحبُه لا يُعاد كتابتُه) —
+--  **فتغييرُ الافتراضيِّ وحدَه لا يبلغ من حفظ ترتيباً قبله.**
+--  **وغيابُ «المفضّلة» عندهما ليس اختياراً**: حُفظ ترتيبُهما **قبل أن
+--  تكون «المفضّلة» في الافتراضيّ أصلاً** — **وما لم يُعرض لا يُرفض.**
+--
+--  الفحص قبل التشغيل (المتوقَّع صفّان: ahmed · imeshal):
+--    select username, profile_prefs->'order'
+--    from public.profiles
+--    where profile_prefs ? 'order'
+--      and not (profile_prefs->'order' @> '["favorites"]');
+update public.profiles p
+set profile_prefs = jsonb_set(
+      p.profile_prefs,
+      '{order}',
+      '["favorites"]'::jsonb || (p.profile_prefs->'order')
+    )
+where p.profile_prefs ? 'order'
+  and not (p.profile_prefs->'order' @> '["favorites"]');
+
+--  الفحص بعد التشغيل — المتوقَّع: still_missing = 0 · open_policies = 4
+--    select
+--      (select count(*)::int from public.profiles
+--         where profile_prefs ? 'order'
+--           and not (profile_prefs->'order' @> '["favorites"]'))  as still_missing,
+--      (select count(*)::int from pg_policies where qual = 'true') as open_policies;
