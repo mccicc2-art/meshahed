@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { getDict, type Locale } from "@/lib/i18n";
 import type { TitleReview } from "@/lib/data";
-import { displayNameOf } from "@/lib/people";
+import { displayNameOf, profileHref } from "@/lib/people";
 import { timeAgoShort } from "@/lib/when";
 import { dirOf, alignOf } from "@/lib/dir";
 import { Avatar } from "./Avatar";
@@ -67,7 +67,8 @@ export function TitleReviewRow({
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
               <Link
-                href={r.username ? `/u/${r.username}` : href}
+                /* 🆕 **اسمُ الكاتب يفتح كاتبَه لا رأيَه** (D-655) */
+                href={profileHref(r) ?? href}
                 prefetch={false}
                 className="min-w-0 truncate font-bold text-14 leading-tight hover:text-accent transition"
               >

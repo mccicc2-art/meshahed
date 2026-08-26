@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Avatar } from "./Avatar";
-import { displayNameOf, type PersonLite } from "@/lib/people";
+import { displayNameOf, profileHref, type PersonLite } from "@/lib/people";
 import type { Dict } from "@/lib/i18n";
 
 /**
@@ -57,8 +57,10 @@ export function PersonName({
   const name = displayNameOf(person, t.anonymousUser);
   /* من أخفى اسمه لا يُفتح ملفه؛ ومن لم يختر معرّفاً يُفتح بهويته —
      المعرّف اختياريّ، وغيابه كان يجعل الاسم نصّاً ميتاً لا يُنقر */
-  const linkable = !person.hide_name;
-  const handle = person.username ?? person.id;
+  const linkable = !person.hide_name && !!profileHref(person);
+  /* 🆕 **والتعريفُ واحد** (D-655) — كانت هذه النسخةَ الصحيحةَ ونظائرُها
+     ثلاثَ نسخٍ مختلفة؛ **الآن كلُّها قارئٌ لدالّةٍ واحدة.** */
+  const handle = profileHref(person);
 
   /* **الغلافُ نسبيٌّ دائماً** حتى لا يقفز الوجه حين تظهر الشارة —
      ولا شيءَ يتغيّر حجمه بعد أن يُرسم (D-046) */
@@ -79,7 +81,7 @@ export function PersonName({
   const door = (children: React.ReactNode, cls: string) =>
     linkable ? (
       <Link
-        href={`/u/${handle}`}
+        href={handle ?? "#"}
         prefetch={false}
         title={t.viewProfileOf(name)}
         className={`${cls} hover:text-accent transition`}

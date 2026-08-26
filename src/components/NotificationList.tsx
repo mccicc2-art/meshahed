@@ -3,6 +3,7 @@ import { Avatar } from "./Avatar";
 import type { Signal } from "@/lib/actions";
 import { getDict, type Locale } from "@/lib/i18n";
 import { curatedName } from "@/lib/universes";
+import { profileHref } from "@/lib/people";
 import { timeAgo } from "@/lib/when";
 
 /**
@@ -80,9 +81,7 @@ export function NotificationList({
                 ? myUsername
                   ? `/review/${s.mediaType ?? "movie"}/${s.tmdbId}/${myUsername}`
                   : titleHref
-                : s.person.username
-                  ? `/u/${s.person.username}`
-                  : titleHref;
+                : (profileHref(s.person) ?? titleHref);
 
         const body = (
           <span className="flex items-center gap-3 py-3">

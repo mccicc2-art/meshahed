@@ -12,6 +12,7 @@ import {
 import { newsLine, newsSource } from "@/lib/newsLine";
 import { commentViewKey, newsViewKey } from "@/lib/postKeys";
 import { curatedName } from "@/lib/universes";
+import { profileHref } from "@/lib/people";
 import { backdropUrl } from "@/lib/media";
 import { Avatar } from "./Avatar";
 import { Icon } from "./Icon";
@@ -477,8 +478,10 @@ function CommentRow({
     ? curatedName(a.listSlug, a.title ?? "", locale === "en" ? "en" : "ar")
     : a.title;
   const who = displayNameOf(a.person, t.anonymousUser);
-  /** الملفُّ إن كان له `@handle`؛ وإلّا فالغرفة — **ولا صفَّ ملفٍّ بلا اسم** (D-063) */
-  const whoHref = a.person.username ? `/u/${a.person.username}` : reviewHref;
+  /* ⚖️ 🆕 **وصار الملفُّ دائماً** (D-655): كان «إن كان له `@handle`
+     وإلّا فالغرفة» — **وصفٌّ باسم شخصٍ يفتح صفحةَ عملٍ يكذب على
+     ضاغطه** (D-217/D-030: الوجهةُ تتبع ما ضُغط). **والمعرّفُ يكفي.** */
+  const whoHref = profileHref(a.person) ?? reviewHref;
 
   return (
     /* **`data-post-key` هي عقدُ العدّ** (D-237): `PostViews` تراقب هذه
