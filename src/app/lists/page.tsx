@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import {
   getUser,
   getMyLists,
+  listsForDisplay,
   getSavedLists,
   getFollows,
   getMyListedMovieIds,
@@ -66,8 +67,11 @@ export default async function ListsPage() {
       {/* العنوان مخفيٌّ بصريًّا وباقٍ لقارئ الشاشة — أُزيلت الترويسة والوصف */}
       <h1 className="sr-only">{t.listsTitle}</h1>
       <OneTimeHint id="lists-intro" text={t.hintLists} closeLabel={t.closeLabel} />
+      {/* 🆕 **و«المفضّلة» خرجت من قوائمه هنا أيضاً** (D-654): **هذه
+          الشاشةُ وشاشةُ المكتبة واحدةٌ بطريقين** — **ولو صُفّيت في
+          واحدةٍ لافترقتا عند أوّل تعديل** (D-145). */}
       <ListManager
-        lists={lists}
+        lists={listsForDisplay(lists)}
         locale={locale}
         toWatch={toWatch}
         playlistIds={playlistIds}
