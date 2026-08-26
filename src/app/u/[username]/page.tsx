@@ -54,9 +54,14 @@ import {
   applySectionOrder,
   profileSectionMeta,
   sanitizeProfilePrefs,
+  /* 🔴 **ومفاتيحُ الأقسام من `lib` لا من الزرّ** (D-669): الزرُّ
+     `"use client"` **وهذه الصفحةُ خادميّة**، **وقيمةٌ تعبر الحدَّ في
+     هذا الاتجاه تصل مرجعَ عميلٍ لا كائناً** — فكانت `sectionKeyOf.artist`
+     ترمي `TypeError` وتُسقط الملفَّ كلَّه لمن أشعل صفَّ «فنّانوك». */
+  sectionKeyOf,
   type ProfileSection,
 } from "@/lib/profilePrefs";
-import { SectionReorderButton, sectionKeyOf } from "@/components/SectionReorderButton";
+import { SectionReorderButton } from "@/components/SectionReorderButton";
 import { SavedListsToggle } from "@/components/SavedListsToggle";
 import { capCards } from "@/lib/cardCount";
 import { coverBareControl } from "@/components/ui/controls";
