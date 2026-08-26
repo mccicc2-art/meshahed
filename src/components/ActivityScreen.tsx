@@ -84,13 +84,25 @@ export function ActivityScreen({
 
   const shown = items.filter((it) => keep(it, scope));
 
+  /** يومُ القارئ الآن — **أصلٌ واحدٌ للوسمِ وللعدّ معاً** (D-656) */
+  const todayKey = useSyncExternalStore(
+    subscribeNever,
+    () => nowDayKey(true),
+    () => nowDayKey(false),
+  );
+
   /* **أسبوعٌ من الآن لا «الأسبوع الميلاديّ»**: القارئُ يسأل «كم فعلتُ
      مؤخّراً» لا «كم فعلتُ منذ الأحد» — **وسبعةُ أيامٍ جوابٌ ثابتٌ في
-     كلِّ يومٍ من الأسبوع.** */
-  const weekAgo = weekAgoIso(items);
-  const weekCount = shown.filter((it) => it.at >= weekAgo).length;
+     كلِّ يومٍ من الأسبوع.**
+     ⚖️ 🆕 **والمقارنةُ بمفاتيح الأيام لا بطوابعَ زمنيّة** (D-656):
+     **مفتاحُ اليوم `YYYY-MM-DD` يترتّب أبجديّاً كما يترتّب زمنيّاً**،
+     **ويُحسب بالساعة نفسِها التي تُجمَّع بها المجموعات** — **وطابعٌ
+     زمنيٌّ يُقارَن بمنطقةٍ ومفاتيحُ تُجمَّع بأخرى هو كيف يقع صفٌّ في
+     يومٍ ويُعدّ في غيره.** */
+  const weekStart = shiftDay(todayKey, -6);
+  const weekCount = shown.filter((it) => dayKey(it.at, local) >= weekStart).length;
 
-  const days = groupDays(shown, local, t, locale);
+  const days = groupDays(shown, local, t, locale, todayKey);
 
   return (
     <div className="space-y-4">
@@ -182,13 +194,24 @@ function keep(it: ActivityItem, scope: Scope): boolean {
   return it.kind === scope;
 }
 
-/** سبعةُ أيامٍ قبل أحدثِ صفّ — **ولا `Date.now()` في مكوّن** (قاعدة) */
-function weekAgoIso(items: ActivityItem[]): string {
-  const newest = items[0]?.at;
-  if (!newest) return "";
-  const d = new Date(newest);
-  d.setDate(d.getDate() - 7);
-  return d.toISOString();
+/**
+ * 🔴 🆕 **مفتاحُ يومِ القارئ الآن** (D-656، بلاغُ أحمد: «فيه أشياء
+ * عملتها قبل أسبوع وموجودة إني عملتها اليوم»).
+ *
+ * 🔴 **والعطلُ كان أن الشاشةَ بلا «الآن»**: «اليوم» كانت تُعرَّف **يومَ
+ * أحدثِ صفٍّ معروض** — **فأحدثُ صفٍّ يُوسَم «اليوم» مهما شاخ**، ورأيٌ
+ * كُتب في ١٨ أغسطس قُرئ «اليوم» في ٢٦ منه. **وتحته «هذا الأسبوع: صفر
+ * نشاط»** لأن العدّادَ كان يقيس من أحدثِ صفٍّ **غيرِ مصفّى** —
+ * **مبدآن للزمن في شاشةٍ واحدةٍ يتناقضان أمام القارئ** (D-145/D-374).
+ *
+ * 🔑 **والقاعدةُ «لا `Date.now()` في مكوّن» صحيحةٌ وسببُها الترطيب** —
+ * **والعلاجُ ليس التخلّي عن «الآن» بل قراءتُه بالآلة التي في الملفّ
+ * أصلاً**: `useSyncExternalStore` تعطي الخادمَ لقطةً والمتصفّحَ أخرى
+ * بلا تحذيرِ ترطيب — **وهي بعينها ما يُقسَم بها اليومُ هنا منذ يومه.**
+ * **فالخادمُ يحسب بـUTC والمتصفّحُ بساعة صاحبه، وكلاهما «الآن».**
+ */
+function nowDayKey(local: boolean): string {
+  return dayKey(new Date().toISOString(), local);
 }
 
 interface DayGroup {
@@ -203,7 +226,13 @@ interface DayGroup {
  * **والدمجُ هنا لا في الخادم** لأن حدَّ اليوم نفسَه يتبدّل بالترطيب —
  * **ودمجٌ محسوبٌ على يومٍ خاطئ يُخرج مدًى خاطئاً.**
  */
-function groupDays(items: ActivityItem[], local: boolean, t: Dict, locale: Locale): DayGroup[] {
+function groupDays(
+  items: ActivityItem[],
+  local: boolean,
+  t: Dict,
+  locale: Locale,
+  todayKey: string,
+): DayGroup[] {
   const byDay = new Map<string, ActivityItem[]>();
   for (const it of items) {
     const key = dayKey(it.at, local);
@@ -212,7 +241,10 @@ function groupDays(items: ActivityItem[], local: boolean, t: Dict, locale: Local
     else byDay.set(key, [it]);
   }
 
-  const today = items.length ? dayKey(items[0].at, local) : "";
+  /* 🔴 **«اليوم» يومُ القارئ لا يومُ أحدثِ صفّ** (D-656): **كان
+     `items[0]`** — **فأحدثُ صفٍّ يلبس «اليوم» ولو مضى عليه شهر**،
+     **ورقاقةٌ تُبدِّل المعروضَ كانت تُبدِّل معنى «اليوم» نفسَه.** */
+  const today = todayKey;
   const yesterday = shiftDay(today, -1);
 
   return [...byDay.entries()].map(([key, rows]) => ({
