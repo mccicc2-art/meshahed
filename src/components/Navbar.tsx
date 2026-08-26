@@ -7,7 +7,7 @@ import { NavLinks } from "./NavLinks";
 import { NavAvatar } from "./NavAvatar";
 import { NavTitle } from "./NavTitle";
 import { Logo } from "./Logo";
-import { LangFlagMenu } from "./LangFlagMenu";
+import { LangMenu } from "./LangMenu";
 import { HeaderTrailing } from "./HeaderTrailing";
 import { buttonClass } from "./ui/Button";
 
@@ -44,7 +44,7 @@ export async function Navbar() {
             <Logo size={44} />
           </Link>
           <span className="flex items-center gap-2.5">
-            <LangFlagMenu locale={locale} />
+            <LangMenu locale={locale} />
             <Link href="/login" prefetch={false} className={buttonClass({ size: "sm" })}>
               {t.login}
             </Link>
