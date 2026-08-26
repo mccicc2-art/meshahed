@@ -15,6 +15,7 @@ export type IconName =
   | "popcorn"
   | "bookmark"
   | "sparkle-star"
+  | "trio"
   | "calendar"
   | "film"
   | "tv"
@@ -184,6 +185,14 @@ const PATHS: Record<IconName, React.ReactNode> = {
   // نجمة رباعية — وسم الأنمي: مميّزة عن نجمة التقييم الخماسية فلا تختلطان
   "sparkle-star": (
     <path d="M12 3.5c.6 4.4 4.1 7.9 8.5 8.5-4.4.6-7.9 4.1-8.5 8.5-.6-4.4-4.1-7.9-8.5-8.5 4.4-.6 7.9-4.1 8.5-8.5Z" />
+  ),
+  // 🆕 D-682: ثلاثُ حلقاتٍ متشابكة — رمزُ «ثلاثية ذوقك» (أنمي · مسلسل · فيلم)
+  trio: (
+    <>
+      <circle cx="12" cy="7.8" r="3.8" />
+      <circle cx="8.2" cy="15" r="3.8" />
+      <circle cx="15.8" cy="15" r="3.8" />
+    </>
   ),
   calendar: (
     <>

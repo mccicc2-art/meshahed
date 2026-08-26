@@ -14,7 +14,7 @@ import {
 import { localizeRows } from "@/lib/localize";
 import { getDict, type Locale } from "@/lib/i18n";
 import { isComplete } from "@/lib/progress";
-import { AnalysisView, tallyGenres } from "./LibraryAnalysis";
+import { AnalysisView, tallyGenres, pickTasteTrio, type TrioCandidate } from "./LibraryAnalysis";
 
 /**
  * 🆕 **إحصائياتُ عضوٍ أزوره** (D-649، طلبُ أحمد: «كل الحسابات خلي الكارد
@@ -118,34 +118,39 @@ export async function MemberAnalysis({
     ? {
         name: displayNameOf(pub, t.anonymousUser),
         avatarUrl: pub.avatar_url,
-        coverUrl: pub.cover_url,
         /* **النبذةُ تتبع الاسمَ في الإخفاء** — والقطعُ في SQL أصلاً */
         bio: pub.hide_name ? null : (pub.bio ?? null),
         followers: followStats ? followStats.followers : null,
       }
     : null;
 
-  const sortedRatings = [...ratings].sort((a, b) => b.rating - a.rating);
-  const trioMap = new Map<string, { key: string; title: string; posterPath: string | null; href: string }>();
-  for (const r of sortedRatings) {
-    if (trioMap.size >= 3) break;
+  /* ⚖️ **الثلاثيةُ فئويّةٌ هنا أيضاً** (D-682) — **المُنتقي واحدٌ
+     والقارئان يطعمانه** (D-145): «جارٍ» للأفلام لا يُقرأ عند الزائر
+     فالفيلمُ «شوهد» أو لا (تعليقُ الرأس) — والمعيارُ لا يحتاجه */
+  const ratingByKey = new Map<string, number>();
+  for (const r of ratings) {
     const key = `${r.media_type}-${r.tmdb_id}`;
-    if (!trioMap.has(key) && r.title) {
-      trioMap.set(key, {
-        key,
-        title: r.title,
-        posterPath: r.poster_path,
-        href: r.media_type === "movie" ? `/movie/${r.tmdb_id}` : `/show/${r.tmdb_id}`,
-      });
-    }
+    if (!ratingByKey.has(key)) ratingByKey.set(key, r.rating);
   }
-  for (const w of topWatched) {
-    if (trioMap.size >= 3) break;
-    const key = `tv-${w.id}`;
-    if (!trioMap.has(key)) {
-      trioMap.set(key, { key, title: w.title, posterPath: w.posterPath, href: `/show/${w.id}` });
-    }
-  }
+  const trioCands: TrioCandidate[] = follows.map((f) => {
+    const key = `${f.media_type}-${f.tmdb_id}`;
+    const genreIds = genres.get(key) ?? [];
+    const watchedEp = f.media_type === "tv" ? (epStats.byShow.get(f.tmdb_id)?.watched ?? 0) : 0;
+    return {
+      key,
+      category:
+        f.media_type === "movie" ? "movie" : genreIds.includes(16) ? "anime" : "series",
+      title: f.title,
+      posterPath: f.poster_path,
+      href: f.media_type === "movie" ? `/movie/${f.tmdb_id}` : `/show/${f.tmdb_id}`,
+      completed:
+        f.media_type === "movie"
+          ? watched.movies.has(f.tmdb_id)
+          : isComplete(watchedEp, f.aired_episodes ?? f.total_episodes ?? 0),
+      rating: ratingByKey.get(key) ?? null,
+      watched: f.media_type === "movie" ? (watched.movies.has(f.tmdb_id) ? 1 : 0) : watchedEp,
+    };
+  });
 
   const buckets = [0, 0, 0, 0, 0];
   for (const r of ratings) {
@@ -173,7 +178,7 @@ export async function MemberAnalysis({
         avgAll,
         mine: false,
         hero,
-        trio: [...trioMap.values()],
+        trio: pickTasteTrio(trioCands),
         buckets,
       }}
     />
