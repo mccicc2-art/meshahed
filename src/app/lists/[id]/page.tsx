@@ -176,6 +176,11 @@ export default async function ListPage({ params }: { params: Promise<{ id: strin
         owner={
           pub
             ? {
+                /* 🆕 **والمعرّفُ يمرّ معه** (D-655، ذيلٌ سُدّ): كان
+                   البابُ مشروطاً باسمِ مستخدمٍ لا يملكه أكثرُ الأعضاء —
+                   **والمعرّفُ في `data.list.user_id` في اليد أصلاً**،
+                   فلا نداءَ ولا كتابة. */
+                id: data.list.user_id,
                 nickname: pub.owner_nickname,
                 username: pub.owner_username,
                 avatar: pub.owner_avatar,
