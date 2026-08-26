@@ -258,37 +258,10 @@ export function CardCountRow({
 const switchRowShell =
   "flex items-center gap-3 min-h-14 px-4 py-2.5 border-b border-[color:var(--divider)] last:border-b-0";
 
-/**
- * 🆕 **صفٌّ مقفل — اسمٌ وكلمةٌ بلا مفتاح** (D-663، حكمُ أحمد: «حتى
- * المفضلة التاب خلها موجوده»).
- *
- * **ولماذا هو من عائلة المفتاح لا من عائلة `SettingsRow`**: مكانُه بين
- * المفاتيح، **فهندستُه هندستُها** — **وهو حالةٌ ثالثةٌ للمفتاح (لا
- * يُطفأ) لا عائلةٌ ثالثة** (القاعدة ٣).
- *
- * ⚠️ **ولا مفتاحَ فيه أصلاً**: **مفتاحٌ لا يُضغط وعدٌ بفعلٍ لا يقع**
- * (D-217) — **والكلمةُ في طرفه تقول الحكمَ بلا أن تَعِد بضغطة.**
- */
-export function LockedRow({
-  label,
-  icon,
-  note,
-}: {
-  label: string;
-  icon?: IconName;
-  /** الكلمةُ في الطرف — «دائماً» */
-  note: string;
-}) {
-  return (
-    <div className={switchRowShell}>
-      {icon && <Icon name={icon} size={20} className="shrink-0 text-foreground" />}
-      <span className="flex-1 min-w-0 truncate text-15 font-medium">{label}</span>
-      <span className="shrink-0 text-14 text-muted" dir="auto">
-        {note}
-      </span>
-    </div>
-  );
-}
+/* 🗑️ ⚖️ **و`LockedRow` حُذفت بعد آخرِ قارئها** (D-667، حكمُ أحمد:
+   «هذا خلّه مثل الباقي تقدر تطفيه وتشغّله») — **وُلدت في D-663 لتقول
+   «موجودٌ ولا يُطفأ»، ثمّ صار يُطفأ.** **وتعود بسطرٍ إن وُجد صفٌّ مقفلٌ
+   آخر** — **ووصفتُها الهندسيّةُ باقيةٌ في `switchRowShell` أعلاه.** */
 
 /**
  * مفتاح إظهار/إخفاء — نفس مفتاح iOS في شاشتَي التخصيص.
