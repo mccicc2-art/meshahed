@@ -1271,7 +1271,7 @@ const ar = {
      وسهمُ `seeAll` وعدُ انتقالٍ فلا يُستعار هنا (D-217) */
   allWord: "الكل",
   custTabsTitle: "التبويبات",
-  custTabsHint: "التبويب المطفأ يختفي عن زائرك — و«نظرة عامة» تبقى باب الصفحة دائماً.",
+  custTabsHint: "التبويب المطفأ يختفي عن زائرك — و«المفضّلة» تبقى باب الصفحة دائماً.",
   custOverviewTab: "داخل تبويب النظرة العامة",
   custListsTab: "داخل تبويب القوائم",
   /* 🆕 صفوفُ الترتيب (D-555) — السجلُّ خرج إلى ورقةٍ فصار له صفٌّ يفتحه */
@@ -1293,6 +1293,8 @@ const ar = {
   /* 🆕 كلمةٌ واحدة (D-611): «بحيث الأفلام والمسلسلات يأخذون راحتهم» */
   profileFullStats: "الإحصائيات",
   profileEmptyFavorites: "لا مفضّلات بعد",
+  /** تبويبُ «نظرة عامة» بلا قسمٍ ظاهر (D-658) */
+  profileEmptyOverview: "لا أقسام ظاهرة بعد.",
   profileTitleLabel: "اللقب",
   profileTitlePlaceholder: "محبٌّ للقصص",
   profileTitleHint: "سطرٌ قصير يظهر تحت صورتك — ٢٤ حرفاً. اتركه فارغاً ليظهر اسمُ مستواك.",
@@ -2610,7 +2612,7 @@ const en: Dict = {
   custSectionsHint: "Drag to reorder · Tap to show or hide",
   allWord: "All",
   custTabsTitle: "Tabs",
-  custTabsHint: "A hidden tab disappears for your visitors — Overview always stays the front door.",
+  custTabsHint: "A hidden tab disappears for your visitors — Favorites always stays the front door.",
   custOverviewTab: "Inside the Overview tab",
   custListsTab: "Inside the Lists tab",
   custArrange: "Arrange sections",
@@ -2629,6 +2631,7 @@ const en: Dict = {
   profileTabFavorites: "Favorites",
   profileFullStats: "Statistics",
   profileEmptyFavorites: "No favourites yet",
+  profileEmptyOverview: "No sections shown yet.",
   profileTitleLabel: "Title",
   profileTitlePlaceholder: "Story lover",
   profileTitleHint: "A short line under your picture — 24 characters. Leave it empty to show your level name.",
