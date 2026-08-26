@@ -1893,6 +1893,10 @@ const ar = {
   plusSoon: "قريباً — والاشتراك لم يُفتح بعد",
   plusBadge: "عضو Loopz+",
   founderBadge: "مؤسِّس",
+  /* 🆕 **وسطرُ المشترك يقول ما اشتراه لا ما ينتظره** (D-633، إصلاحُ
+     نصٍّ ظهر حيّاً): «خطط إضافية قريباً» كان جواباً لسؤالٍ لم يسأله
+     المشترك — **وسطرٌ ينتظر بالنيابة عن مالكٍ عطلٌ في الصدق** (D-217). */
+  plusIncludes: "ما الذي يشمله اشتراكك",
   plusLocked: "ميزة Loopz+",
   plusFreeTheme: "متاح للجميع",
   loginNeedsKeys:
@@ -3420,6 +3424,7 @@ const en: Dict = {
   plusSoon: "Coming soon — subscriptions are not open yet",
   plusBadge: "Loopz+ member",
   founderBadge: "Founder",
+  plusIncludes: "What your membership includes",
   plusLocked: "Loopz+ feature",
   plusFreeTheme: "Free for everyone",
   loginNeedsKeys:
