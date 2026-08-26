@@ -8,6 +8,7 @@ import {
   getFollowRelation,
   recordProfileView,
   getFollowsOf,
+  getFollowGenresOf,
   getWatchedOf,
   getPublicListsOf,
   getProfileArtists,
@@ -58,6 +59,7 @@ import {
 import { SectionReorderButton, sectionKeyOf } from "@/components/SectionReorderButton";
 import { SavedListsToggle } from "@/components/SavedListsToggle";
 import { capCards } from "@/lib/cardCount";
+import { browseGenreName, groupByGenre } from "@/lib/browse";
 import { densityVars } from "@/lib/density";
 
 /**
@@ -121,6 +123,7 @@ export default async function PublicProfilePage({
     myLibRows,
     activityRows,
     savedLists,
+    followGenres,
   ] = await Promise.all([
       getRatingsOf(profile.id),
       getFollowStats(profile.id),
@@ -163,6 +166,10 @@ export default async function PublicProfilePage({
          يدفع النداءَ أصلاً (D-152/D-510) — **ففراغُ المصفوفة عنده يعني
          أن القسمَ والعدّادَ يسقطان معاً بلا شرطٍ ثانٍ** (D-374). */
       isMe || prefs.savedLists ? getSavedListsOf(profile.id) : Promise.resolve([]),
+      /* 🆕 **تصنيفاتُ مكتبته** (D-648) — **نداءٌ خفيفٌ مفتاحٌ وقيمة**،
+         **وقبل تعبئةِ `‎/api/genres` يُرجع فراغاً** فتُقرأ الشبكتان
+         أبجديّتين بلا مجموعاتٍ ولا ينكسر شيء. */
+      getFollowGenresOf(profile.id),
       isMe ? Promise.resolve() : recordProfileView(profile.id),
     ]);
 
@@ -334,16 +341,17 @@ export default async function PublicProfilePage({
      إلى صفحة الإحصائيات وحدَها.** */
   /* ⚖️ **والمسلسلاتُ قبل الأفلام باقيةٌ** (D-602، حكمُه: «مسلسلات ثم
      أفلام — الكل») — العائدُ شكلُ D-561 لا ترتيبُها. */
+  /* ⚖️ 🆕 **والبطاقةُ صارت شكلاً واحداً لكلِّ الحسابات** (D-650، طلبُ
+     أحمد: «كل الحسابات خلي الكارد الأساسي فيها مسلسلات أفلام
+     احصائيات»): **كانت شكلين** — خانتان وبابٌ لصاحبها، وثلاثُ خاناتٍ
+     ثالثتُها التقييماتُ لزائره — **وشكلان لبطاقةٍ واحدةٍ خللٌ**
+     (D-145)، **وزائرٌ لم يكن يجد باباً إلى إحصائياتِ من يزور أصلاً.**
+     ⚠️ **وخانةُ التقييمات سقطت**: عدَّها باقٍ في تبويب «مراجعات»
+     نفسِه — **وثلاثةٌ هي التي طُلبت، ورابعةٌ زيادةٌ على الطلب** (درسُ
+     D-644 بحرفه). */
   const headerStats = [
     { key: "shows", icon: "tv" as const, value: tvFollows.length, label: t.shortShows },
     { key: "movies", icon: "film" as const, value: movieFollows.length, label: t.shortMovies },
-    ...(isMe
-      ? []
-      : /* 🆕 **ومفتاحُها `reviews` لا `ratings`** (D-643): **المفتاحُ صار
-           وجهةً لا اسماً** — والخانةُ تفتح تبويبَ المراجعات، **وهو
-           بعينه ما تعدّه** (تقييماتُه). **ومفتاحٌ بلا تبويبٍ يقابله
-           بابٌ إلى لا شيء.** */
-        [{ key: "reviews", icon: "star" as const, value: ratings.length, label: t.panelRatings }]),
   ];
 
   /* ===== ترتيبان من نفس الصفوف — بلا نداءٍ ثانٍ (D-438) =====
@@ -399,30 +407,65 @@ export default async function PublicProfilePage({
      العميل** (درسُ `PosterCard` في D-238).
      ⚠️ **وبلا سقفِ `cap`**: السقفُ تفضيلُ عرضٍ للرفوف (D-152)،
      **وبابٌ اسمُه «كلُّ أفلامه» يقصّها يكذب.** */
-  const showsGrid = (
-    <PosterGrid>
-      {[...shows].sort(byTitle).map((i) => (
-        <PosterCard
-          key={`gs-${i.id}`}
-          href={`/show/${i.id}`}
-          title={i.title}
-          posterPath={i.posterPath}
-          progress={i.progress}
-        />
-      ))}
-    </PosterGrid>
+  /* 🆕 **والتصنيفُ صار ممكناً فشُحن** (D-648، تمامُ طلبِ أحمد: «مرتّبة
+     حسب التصنيف والأحرف»): **العمودُ `follows.genres` يحمله الآن**
+     (الهجرة ١٤٢)، **والاسمُ من `BROWSE_GENRES` القائمة** — **فلا سجلَّ
+     تصنيفاتٍ ثانٍ يُكتب** (القاعدة ٣/D-145).
+     ⚠️ **وما لم يُقرأ بعدُ يقع في «أخرى»** ولا يُدّعى أنه بلا نوع —
+     **والتعبئةُ الخلفيّةُ تُفرغها** (`/api/genres`).
+     ⚠️ **ولا عنوانَ لمجموعةٍ واحدة**: مكتبةٌ كلُّها في «أخرى» تُقرأ
+     قائمةً أبجديّةً كما كانت، **وعنوانٌ فوق كلِّ ما في الصفحة زينةٌ
+     تدّعي تصنيفاً.** */
+  const genresOfKey = (media: "tv" | "movie", id: number) =>
+    followGenres.get(`${media}-${id}`) ?? null;
+
+  const groupedGrid = <T extends { title: string }>(
+    rows: readonly T[],
+    genresOf: (r: T) => number[] | null,
+    card: (r: T) => React.ReactNode,
+  ) => {
+    const groups = groupByGenre(rows, genresOf, byTitle);
+    if (groups.length <= 1) {
+      return <PosterGrid>{[...rows].sort(byTitle).map((r) => card(r))}</PosterGrid>;
+    }
+    return (
+      <div className="space-y-5">
+        {groups.map((g) => (
+          <section key={g.genre?.slug ?? "other"}>
+            <h3 className="text-14 font-bold mb-2 text-muted">
+              {g.genre ? browseGenreName(g.genre, locale) : t.genreOther}
+            </h3>
+            <PosterGrid>{g.rows.map((r) => card(r))}</PosterGrid>
+          </section>
+        ))}
+      </div>
+    );
+  };
+
+  const showsGrid = groupedGrid(
+    shows,
+    (i) => genresOfKey("tv", i.id),
+    (i) => (
+      <PosterCard
+        key={`gs-${i.id}`}
+        href={`/show/${i.id}`}
+        title={i.title}
+        posterPath={i.posterPath}
+        progress={i.progress}
+      />
+    ),
   );
-  const moviesGrid = (
-    <PosterGrid>
-      {[...movieFollows].sort(byTitle).map((f) => (
-        <PosterCard
-          key={`gm-${f.tmdb_id}`}
-          href={`/movie/${f.tmdb_id}`}
-          title={f.title}
-          posterPath={f.poster_path}
-        />
-      ))}
-    </PosterGrid>
+  const moviesGrid = groupedGrid(
+    movieFollows,
+    (f) => genresOfKey("movie", f.tmdb_id),
+    (f) => (
+      <PosterCard
+        key={`gm-${f.tmdb_id}`}
+        href={`/movie/${f.tmdb_id}`}
+        title={f.title}
+        posterPath={f.poster_path}
+      />
+    ),
   );
 
   /** كل قسمٍ يُبنى مرّةً هنا، ويُرسم أعلاه بترتيب صاحبه — والفارغ `null`
@@ -1084,13 +1127,18 @@ export default async function PublicProfilePage({
                 الإحصائيات `auto` تنكمش على كلمتها الواحدة **والعرضُ
                 الباقي كلُّه للخانتين** — ولزائرٍ ثلاثُ خاناتٍ أرقامٌ
                 فأثلاثٌ سواء. */}
-            <div className={isMe ? "grid grid-cols-[1fr_1fr_auto]" : "grid grid-cols-3"}>
+            {/* **والأعمدةُ `[1fr_1fr_auto]` للجميع** — حكمُ D-611 بحرفه:
+                «الأفلام والمسلسلات تكون سطر واحد والإحصائيات كلمة وحدة
+                بحيث ياخذون راحتهم». **والبابُ كلمةٌ لا رقمٌ عمداً**:
+                **رقمٌ تحت اسم «الإحصائيات» يسأل «رقمُ ماذا؟»** — والخانتان
+                قبله عدّادان صريحان. */}
+            <div className="grid grid-cols-[1fr_1fr_auto]">
               {/* 🆕 **والخانةُ صارت باباً** (D-643): «١٦ مسلسلاً» رقمٌ
                   يُضغط، **ورقمٌ يُضغط ولا يفتح شيئاً وعدٌ فارغ** (D-217).
                   **ووجهتُه تبويبُه في الصفحة نفسِها** — لا صفحةٌ ثالثة.
                   ⚠️ **و`replace` هنا أيضاً**: نفسُ حكم التبويبات — **بابٌ
                   داخلَ الصفحة لا يكدّس تاريخاً.** */}
-              {headerStats.map((c, i) => {
+              {headerStats.map((c) => {
                 const cellClass =
                   "relative w-full flex items-center justify-center gap-2 px-2 py-3 hover:text-accent transition";
                 /* 🆕 **وجهُ الخانة يُرسم مرّةً** ثمّ يلبس فعلَه (D-644):
@@ -1103,12 +1151,13 @@ export default async function PublicProfilePage({
                       «الإحصائيات» تلي الأخيرةَ لصاحب الصفحة وحدَه،
                       **فالشرطُ يعرف الحالتين** — **وخطٌّ على حافّة
                       البطاقة يُقرأ حدّاً مزدوجاً.** */}
-                  {(i < headerStats.length - 1 || isMe) && (
-                    <span
-                      className="absolute inset-y-2 end-0 w-px bg-[color:var(--divider)]"
-                      aria-hidden
-                    />
-                  )}
+                  {/* **وخطٌّ بعد كلِّ خانةٍ من الخانتين**: البابُ يليهما
+                      دائماً الآن، **فلا حالةَ «آخرِ خانةٍ على الحافّة»**
+                      التي كان الشرطُ القديمُ يحرسها. */}
+                  <span
+                    className="absolute inset-y-2 end-0 w-px bg-[color:var(--divider)]"
+                    aria-hidden
+                  />
                   <Icon
                     name={c.icon}
                     size={20}
@@ -1126,11 +1175,7 @@ export default async function PublicProfilePage({
                   </>
                 );
                 const grid = c.key === "shows" ? showsGrid : moviesGrid;
-                return c.key === "reviews" ? (
-                  <Link key={c.key} href={`${base}?tab=reviews`} replace className={cellClass}>
-                    {face}
-                  </Link>
-                ) : (
+                return (
                   <ProfileStatSheet
                     key={c.key}
                     title={c.label}
@@ -1142,19 +1187,23 @@ export default async function PublicProfilePage({
                   </ProfileStatSheet>
                 );
               })}
-              {isMe && (
-                <Link
-                  href="/stats"
-                  className="flex items-center justify-center gap-1 px-4 py-3 text-14 font-semibold text-muted hover:text-accent transition"
-                >
-                  <span className="whitespace-nowrap">{t.profileFullStats}</span>
-                  <Icon
-                    name="chevron-down"
-                    size={16}
-                    className="shrink-0 -rotate-90 rtl:rotate-90"
-                  />
-                </Link>
-              )}
+              {/* 🔴 🆕 **ووجهةُ البابِ تختلف بالقارئ لا اسمُه** (D-650):
+                  `/stats` تقرأ **صاحبَ الجلسة** — **فزائرٌ يُوجَّه إليها
+                  يرى أرقامَ نفسِه في ملفِّ مشعل ويظنّها أرقامَ مشعل**،
+                  وهو بعينه ما تمنعه D-217. **ولصاحبها مداها الكامل
+                  بتبويباته، ولزائره سطحُ العضو** (`/u/<user>/stats`)
+                  **بما تسمح به دوالُّ `definer` وحدَه.** */}
+              <Link
+                href={isMe ? "/stats" : `${base}/stats`}
+                className="flex items-center justify-center gap-1 px-4 py-3 text-14 font-semibold text-muted hover:text-accent transition"
+              >
+                <span className="whitespace-nowrap">{t.profileFullStats}</span>
+                <Icon
+                  name="chevron-down"
+                  size={16}
+                  className="shrink-0 -rotate-90 rtl:rotate-90"
+                />
+              </Link>
             </div>
           </div>
         )}
