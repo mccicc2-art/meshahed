@@ -18,6 +18,7 @@ import {
   getMyListedMovieIds,
   getProfile,
   artKey,
+  getMyFavorites,
 } from "@/lib/data";
 import { sanitizeHomePrefs } from "@/lib/homePrefs";
 import { getT, getTabPrefs } from "@/lib/locale";
@@ -25,6 +26,7 @@ import { defaultTab } from "@/lib/tabPrefs";
 import { localizeFollows } from "@/lib/localize";
 import { Icon } from "@/components/Icon";
 import { LibraryGrid, type GridItem, type LibraryTab } from "@/components/LibraryGrid";
+import { FavFilterToggle } from "@/components/LibraryFavFilter";
 import { getArtistShelf, type ArtistShelfItem } from "@/lib/artists";
 import { FollowMetaSync } from "@/components/MetaSync";
 import { PublicListsRail } from "@/components/PublicListsRail";
@@ -87,6 +89,7 @@ export default async function LibraryPage({
     myArt,
     animeFlags,
     playlistIds,
+    favSet,
   ] = await Promise.all([
     getFollows(),
     getWatchSummary(),
@@ -120,6 +123,13 @@ export default async function LibraryPage({
        كأخواتها فوقها (D-350/D-559): **المفتاحُ لا يُرسم إلا في تبويب
        «القوائم»**، **فمن فتح «مسلسلاتي» لا يدفع نداءً لا يراه.** */
     initialTab === "lists" ? getMyPlaylistIds() : Promise.resolve([] as string[]),
+    /* 🆕 **مفاتيحُ مفضّلتك — لمِصفاة القلب** (D-671): **نداءٌ واحدٌ خفيف**
+       (`my_favorites` يرجع نوعاً ومعرّفاً لا غير) **ومخبَّأٌ بـ`cache()`**،
+       **ويجري في الموجة لا بعدها.** ⚠️ **وغيرُ مشروطٍ بتبويب** بخلاف
+       جيرانه: التبويباتُ الثلاثةُ الأساسيّة تُبدَّل في العميل بلا رحلة
+       خادم (D-521) — **فشرطُ `initialTab` كان سيُطفئ القلبَ في تبويبٍ
+       يصله القارئُ بضغطةٍ بلا طلبٍ جديد.** */
+    getMyFavorites(),
   ]);
   const follows = await localizeFollows(followRows, locale);
 
@@ -286,11 +296,9 @@ export default async function LibraryPage({
     (f) => (animeFlags.get(`${f.media_type}-${f.tmdb_id}`) ?? null) === null,
   ).length;
 
-  /* 🆕 **بابُ «المفضّلة» ومصدرُه واحد** (D-654): **قائمةُ المفضّلة
-     مقروءةٌ أصلاً في `lists`** — **فلا نداءَ ثانٍ لمعرّفٍ في اليد**
-     (D-152). **وهي تخرج من العرض وتبقى وجهةً للقلب**: شيءٌ واحدٌ في
-     مكانين يُقرأ شيئين (القاعدة ٣/D-374). */
-  const favList = lists.find((l) => l.kind === "favorites") ?? null;
+  /* **«المفضّلة» تخرج من عرض القوائم** (D-654) — **وبابُها لم يعد
+     وجهةً بل مِصفاةً في مكانها** (D-671)، **فسقط قارئُ معرّفها من هذه
+     الصفحة**: نداءٌ لا يُقرأ ثمنٌ بلا مقابل (D-152). */
   const shownLists = listsForDisplay(lists);
 
   return (
@@ -309,6 +317,7 @@ export default async function LibraryPage({
         artists={artists}
         artistCount={artistRows.length}
         lists={shownLists}
+        favKeys={[...favSet]}
         toWatch={toWatchCard}
         playlistIds={playlistIds}
         listStats={listStats}
@@ -342,7 +351,11 @@ export default async function LibraryPage({
              عند أوّل تفضيل، **و٢٤ من ٣١ عضواً لا قائمةَ لهم اليوم** —
              **وبابٌ يَعِد بما لا يعطي أسوأُ من بابٍ غائب** (D-217).
              **ويظهر من تلقائه أوّلَ ما يُفضّل عملاً.** */
-          <div className={favList ? "grid grid-cols-[1fr_1fr_auto] gap-2.5" : "grid grid-cols-2 gap-2.5"}>
+          /* 🆕 **وصفٌّ مرنٌ لا شبكةٌ بأعمدةٍ محسوبة** (D-671): القلبُ
+             **يغيب في التبويبات التي لا يُصفّيها** (D-217) — **وعمودٌ
+             ثالثٌ محجوزٌ لغائبٍ يمطّ جارَه.** والرابطان `flex-1`
+             فمنظرُهما لم يتبدّل بكسلاً حين يكون القلبُ حاضراً. */
+          <div className="flex gap-2.5">
             {(
               [
                 { href: "/stats", icon: "chart", label: t.libAnalysisBtn },
@@ -357,22 +370,19 @@ export default async function LibraryPage({
               <Link
                 key={href}
                 href={href}
-                className="flex items-center justify-center gap-2 rounded-2xl border border-border bg-surface py-3 text-14 font-bold transition hover:border-accent/40 active:scale-[0.99]"
+                className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-border bg-surface py-3 text-14 font-bold transition hover:border-accent/40 active:scale-[0.99]"
               >
                 <Icon name={icon} size={17} style={{ color: "var(--accent)" }} />
                 {label}
               </Link>
             ))}
-            {favList && (
-              <Link
-                href={`/lists/${favList.id}`}
-                aria-label={t.profileFavoritesRail}
-                title={t.profileFavoritesRail}
-                className="flex items-center justify-center px-4 rounded-2xl border border-border bg-surface transition hover:border-accent/40 active:scale-[0.99]"
-              >
-                <Icon name="heart" size={19} style={{ color: "var(--accent)" }} />
-              </Link>
-            )}
+            {/* ⚖️ 🆕 **والقلبُ صار مِصفاةً لا باباً** (D-671، حكمُ أحمد:
+                «ما أبغاه يفتح صفحة — أبغاه يفلتر الصفحة الي أنا فيها
+                بس») — **نقضٌ لوجهةِ D-654 لا لموضعه ولا لرمزه.**
+                **ويرسم نفسَه بنفسه**: مالكُ الحالة `LibraryGrid`
+                والسياقُ يصله هنا، **فلا يُرسم في تبويبٍ لا يُصفّيه ولا
+                لمن لا مفضّلةَ له.** */}
+            <FavFilterToggle label={t.profileFavoritesRail} />
           </div>
         }
         listsExtra={
