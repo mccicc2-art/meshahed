@@ -374,6 +374,26 @@ export default async function PublicProfilePage({
     };
   });
 
+  /* 🆕 **وترتيبُ الشبكتين أبجديٌّ** (D-645، بلاغُ أحمد: «تطلع له الأفلام
+     والمسلسلات بالكامل مرتّبة حسب التصنيف والأحرف»).
+     🔴 **والتصنيفُ لا يمكن اليوم ولا يُزوَّر**: **لا عمودَ تصنيفٍ لأيِّ
+     عملٍ في القاعدة** — `favorite_genres` ذوقُ العضو لا تصنيفُ عملِه —
+     **وجلبُه من TMDB وقتَ الرسم خمسون نداءً لصفحةٍ واحدة** (وهو ما
+     منعته D-580). **فشُحن الأحرفُ وحدَها، وقيل ذلك.**
+     ⚠️ **وأدواتُ الترتيب تتجاهل أداةَ التعريف الإنجليزيّة** («The Boys»
+     تحت B): **قائمةٌ نصفُها تحت حرف T لا تُقرأ مرتَّبة.**
+     **ولا تُمَسّ «ال» العربيّة** — **ليست أداةً دائماً**، **وقصُّ حرفين
+     من كلِّ عنوانٍ عربيٍّ يفسد أكثرَ ممّا يرتّب.**
+     ⚠️ **والمقارنةُ بلغة القارئ** (`localeCompare`) لا بترتيب البايت. */
+  const collator = new Intl.Collator(locale === "ar" ? "ar" : "en", {
+    sensitivity: "base",
+    numeric: true,
+  });
+  const sortKey = (title: string) =>
+    title.trim().replace(/^(the|a|an)\s+/i, "");
+  const byTitle = <T extends { title: string }>(a: T, b: T) =>
+    collator.compare(sortKey(a.title), sortKey(b.title));
+
   /* 🆕 **شبكتا «كلِّ مسلسلاته» و«كلِّ أفلامه»** (D-644) — تُرسمان على
      الخادم وتُمرَّران إلى الورقة، **فلا تعبر ملصقاتُ الخادم الحدَّ إلى
      العميل** (درسُ `PosterCard` في D-238).
@@ -381,7 +401,7 @@ export default async function PublicProfilePage({
      **وبابٌ اسمُه «كلُّ أفلامه» يقصّها يكذب.** */
   const showsGrid = (
     <PosterGrid>
-      {shows.map((i) => (
+      {[...shows].sort(byTitle).map((i) => (
         <PosterCard
           key={`gs-${i.id}`}
           href={`/show/${i.id}`}
@@ -394,7 +414,7 @@ export default async function PublicProfilePage({
   );
   const moviesGrid = (
     <PosterGrid>
-      {movieFollows.map((f) => (
+      {[...movieFollows].sort(byTitle).map((f) => (
         <PosterCard
           key={`gm-${f.tmdb_id}`}
           href={`/movie/${f.tmdb_id}`}
