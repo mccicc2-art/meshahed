@@ -15,7 +15,7 @@ import {
   type ProfilePrefs,
 } from "@/lib/profilePrefs";
 import { Alert } from "./ui/Alert";
-import { CardCountRow, LockedRow, PosterSizeRow, ToggleRow } from "./ui/SectionOrderList";
+import { CardCountRow, PosterSizeRow, ToggleRow } from "./ui/SectionOrderList";
 import { SettingsGroup } from "./settings/SettingsGroup";
 import { SettingsRow } from "./settings/SettingsRow";
 import { SettingsSaveBar } from "./settings/SettingsSaveBar";
@@ -189,28 +189,19 @@ export function ProfileCustomize({
           **والبابُ باقٍ وإن تبدّلت هويّتُه** (حجّةُ D-617) — **والسطرُ
           تحت القائمة يقول أيُّهما هو.** */}
       <SettingsGroup label={t.custTabsTitle}>
-        {/* ⚖️ 🆕 **و«المفضّلة» عادت إلى القائمة صفّاً بلا مفتاح** (D-663،
-            حكمُ أحمد: «حتى المفضلة التاب خلها موجوده») — **نقضٌ جزئيٌّ
-            لـ D-658 في موضعٍ واحد: غيابُها عن القائمة.**
+        {/* ⚖️ 🆕 **و«المفضّلة» صارت مفتاحاً كغيرها** (D-667، حكمُ أحمد
+            بلقطةٍ على صفّها: «هذا خلّه مثل الباقي تقدر تطفيه وتشغّله»).
 
-            🔑 **ولماذا صفٌّ لا مفتاح**: حكمُه السابقُ نفسُه («لا تُطفأ
-            — هي الباب») ما زال قائماً، **ومفتاحٌ لا يُطفئ وعدٌ بفعلٍ لا
-            يقع** (D-217). **والغيابُ كان جواباً لسؤالٍ لم يُسأل**:
-            القائمةُ تعدّد تبويباتِ صفحتِه، **وتبويبٌ قائمٌ غائبٌ عن
-            تعداده يجعل صاحبَه يظنّه سقط** — **فالحضورُ بلا مفتاحٍ يقول
-            الحقيقتين معاً: موجودٌ، ولا يُطفأ.**
+            🔴 **نقضٌ صريحٌ لـ D-658** («لا تُطفأ — هي الباب») **ولصفِّ
+            D-663 المقفل بعدها بساعة** — **بكلمةِ صاحب الحكمين.**
+            **والذي حلّ محلَّ البابِ المسمَّى: الصفحةُ تفتح على أوّلِ
+            تبويبٍ ظاهر** (`page.tsx`) — **ترتيبٌ لا اسم.**
 
-            ⚠️ **و`LockedRow` من عائلة المفتاح لا من عائلة `SettingsRow`**:
-            حشوتُهما تفترق بكسلَين (`px-4` مقابل `px-3.5`) — **وقد قيست
-            على الصفحة الحيّة: ١٦ مقابل ١٤** — **وعمودُ رموزٍ يزيح داخل
-            بطاقةٍ واحدة يُقرأ خطأً في الرسم.** */}
-        <LockedRow
-          icon="heart"
-          label={t.profileTabFavorites}
-          note={t.custTabAlwaysOn}
-        />
+            ⚠️ **وصارت «كلُّها مطفأة» حالةً ممكنة** — **ولها نصُّها
+            الصريح**، **ولا تمسّ صاحبَ الصفحة**: يرى تبويباتِه كلَّها. */}
         {(
           [
+            { key: "favorites", icon: "heart", label: t.profileTabFavorites },
             { key: "overview", icon: "grid", label: t.profileTabOverview },
             { key: "activity", icon: "clock", label: t.communityTabMine },
             { key: "reviews", icon: "comment", label: t.communityTabReviews },
