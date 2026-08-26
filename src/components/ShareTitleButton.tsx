@@ -5,6 +5,7 @@ import { toast } from "@/lib/toast";
 import { tap } from "@/lib/haptics";
 import { getDict, type Locale } from "@/lib/i18n";
 import { Icon } from "./Icon";
+import { coverBareControl } from "./ui/controls";
 
 /**
  * **مشاركةُ عملٍ برمزٍ واحد** (D-225، طلبُ أحمد: «أحتاج المشاركة»).
@@ -81,7 +82,7 @@ export function ShareTitleButton({
            يفصلها عن أيِّ صورة.** **والمرئيُّ ٢٤ وهدفُ اللمس ٤٤**
            بـ`before` (D-033) — **لا هدفَ لمسٍ بحجم ما تراه العين.** */
         (cover
-          ? "relative w-6 h-6 grid place-items-center text-white drop-shadow-[0_1px_4px_rgba(0,0,0,0.85)] active:scale-90 transition before:content-[''] before:absolute before:-inset-[10px] before:rounded-full"
+          ? coverBareControl
           : "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-muted hover:text-accent transition active:scale-90") +
         ` ${className}`
       }

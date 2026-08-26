@@ -6,7 +6,7 @@ import { Icon } from "./Icon";
 import { Sheet } from "./ui/Sheet";
 import { Dropdown, dropdownItem, dropdownDivider } from "./ui/Dropdown";
 import { buttonClass } from "./ui/Button";
-import { sheetMenuItem, sheetMenuDivider } from "./ui/controls";
+import { sheetMenuItem, sheetMenuDivider, coverBareControl } from "./ui/controls";
 import dynamic from "next/dynamic";
 /* الورقةُ تُحمَّل عند أوّل فتحٍ لا مع الصفحة (نمطُ TitleSearchSheet في
    الشريط السفليّ): لا تُرسم إلا بضغطةٍ، فشحنُها مع أوّل رسمةٍ ثمنٌ بلا
@@ -278,7 +278,7 @@ export function ProfileMenu({
              أقراصٍ بمقاسين تُقرأ رتبتين»، **والعلاجُ اليوم توحيدُها
              عاريةً لا توحيدُها بقرص** — **والرتبةُ ما زالت واحدة.**
              والمرئيُّ ٢٤ وهدفُ اللمس ٤٤ بـ`before` (D-033). */
-          className="relative w-6 h-6 grid place-items-center text-white drop-shadow-[0_1px_4px_rgba(0,0,0,0.85)] active:scale-90 transition before:content-[''] before:absolute before:-inset-[10px] before:rounded-full"
+          className={coverBareControl}
         >
           <Icon name="dots" size={24} strokeWidth={2.5} />
         </button>
