@@ -59,6 +59,7 @@ import {
 import { SectionReorderButton, sectionKeyOf } from "@/components/SectionReorderButton";
 import { SavedListsToggle } from "@/components/SavedListsToggle";
 import { capCards } from "@/lib/cardCount";
+import { coverBareControl } from "@/components/ui/controls";
 import { browseGenreName, groupByGenre } from "@/lib/browse";
 import { densityVars } from "@/lib/density";
 
@@ -833,7 +834,35 @@ export default async function PublicProfilePage({
               locale={locale}
               variant="cover"
             />
-            {isMe ? null : (
+            {/* 🆕 **وترسُ الإعدادات في خانةِ النقاط نفسِها** (D-659، طلبُ
+                أحمد بلقطةٍ محوَّطةٍ على المشاركة: «ترس الإعدادات حطّه
+                هنا يمين المشاركة»).
+
+                🔑 **وهو بابٌ أخذه إخفاءُ الشريط ولم يُردَّ** (D-643):
+                **صورةُ الشريط كانت تفتح الإعدادات من كلِّ صفحة** —
+                **ولمّا أُخفي الشريطُ في `/u/` فقد صاحبُ الصفحة بابَه
+                إليها وهو في صفحته هو.** **وهو نظيرُ D-651 حرفاً**:
+                إخفاءُ شريطٍ يُسقط ما كان يحمله، **والحسابُ يُتمّ.**
+
+                ⚠️ **وليس بابَ «تعديل الملفّ»** (D-637): تلك وجهةُ
+                الصورة الشخصيّة، **وبابان لفعلٍ واحدٍ زيادة** — **وهذا
+                يفتح الإعداداتِ نفسَها التي كان يفتحها الشريط**
+                (`/profile/settings`)، **فالوجهةُ واحدةٌ والمنفذُ عاد.**
+
+                🔑 **والخانةُ خانةُ النقاط**: **ما يخصّ زائرَك يشغلها
+                عنده، وما يخصّك يشغلها عندك** — **رتبةٌ واحدةٌ وموضعٌ
+                واحدٌ وشاغلان بحسب القارئ** (نمطُ D-650 نفسُه). */}
+            {isMe ? (
+              <Link
+                href="/profile/settings"
+                prefetch={false}
+                aria-label={t.headerSettings}
+                title={t.headerSettings}
+                className={coverBareControl}
+              >
+                <Icon name="settings" size={24} strokeWidth={2.5} />
+              </Link>
+            ) : (
               /* 🗑️ ⚖️ **وقلمُ الغلاف سقط** (D-637، سدادُ دَينٍ مُعلَنٍ منذ
                  D-571): كان يفتح `/profile/edit` **وصورةُ الملفّ تفتحها
                  أيضاً** — **بابان لفعلٍ واحد** (القاعدة ٣).
