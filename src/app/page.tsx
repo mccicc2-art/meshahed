@@ -790,12 +790,12 @@ async function HomeBody({
   const publicOwnIds = listsForDisplay(myListsRaw)
     .filter((l) => l.is_public && (l.item_count ?? 0) > 0)
     .map((l) => l.id);
-  const listStatsP: Promise<Map<string, { saves: number; rating: number | null }>> =
+  const listStatsP: Promise<Map<string, { saves: number; reviews: number; rating: number | null }>> =
     publicOwnIds.length > 0
       ? getListCardStats(publicOwnIds).catch(
-          () => new Map<string, { saves: number; rating: number | null }>(),
+          () => new Map<string, { saves: number; reviews: number; rating: number | null }>(),
         )
-      : Promise.resolve(new Map<string, { saves: number; rating: number | null }>());
+      : Promise.resolve(new Map<string, { saves: number; reviews: number; rating: number | null }>());
 
   // ما تغيّر اسمه بالترجمة يُكتب مرة واحدة في قاعدة البيانات
   const metaToCache = follows
@@ -955,7 +955,7 @@ async function HomeBody({
   const listStats = await listStatsP;
   const homeListCards = homeListCardsBase.map((c) => {
     const st = listStats.get(c.id);
-    return st ? { ...c, saves: st.saves, rating: st.rating } : c;
+    return st ? { ...c, saves: st.saves, reviews: st.reviews, rating: st.rating } : c;
   });
 
   const empty = false;
