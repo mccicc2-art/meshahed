@@ -136,6 +136,9 @@ export interface AnalysisData {
   status: { done: number; inProgress: number; notStarted: number };
   ratedTotal: number;
   avgAll: number;
+  /** 🆕 **القارئُ صاحبُ الأرقام؟** (D-649) — **يقرّر ضميرَ النصّ وحدَه**:
+      «ذوقك» في ملفِّ غيرك تخاطب القارئ عن أرقام سواه (D-217). */
+  mine: boolean;
 }
 
 /**
@@ -161,6 +164,7 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
     status,
     ratedTotal,
     avgAll,
+    mine,
   } = data;
   const { done, inProgress, notStarted } = status;
   const statusTotal = done + inProgress + notStarted;
@@ -278,7 +282,7 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
         <section>
           <h2 className="flex items-center gap-2 text-22 font-bold mb-3">
             <Icon name="sparkles" size={20} className="text-accent" />
-            {t.analysisTaste}
+            {mine ? t.analysisTaste : t.analysisTasteOther}
           </h2>
           {/* **وعمودان على كلِّ مقاسٍ لا من `sm` فصاعداً** (D-503، لقطةُ
               أحمد بدائرةٍ حمراء على اللوح): **الأنواعُ الثلاثةُ فوق
@@ -346,7 +350,10 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
                 ))}
               </span>
               <span className="text-12 text-muted">
-                {t.ratedCount(ratedTotal)} · {t.avgRatingLabel(avgAll.toFixed(1))}
+                {mine ? t.ratedCount(ratedTotal) : t.ratedCountOther(ratedTotal)} ·{" "}
+                {mine
+                  ? t.avgRatingLabel(avgAll.toFixed(1))
+                  : t.avgRatingOther(avgAll.toFixed(1))}
               </span>
             </div>
           )}
@@ -562,6 +569,7 @@ export async function LibraryAnalysis({
         status: { done, inProgress, notStarted },
         ratedTotal,
         avgAll,
+        mine: true,
       }}
     />
   );

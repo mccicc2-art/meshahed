@@ -5,6 +5,8 @@ import {
   getWatchStatsOf,
   getMovieStatsOf,
   getWatchedOf,
+  getProfileArt,
+  artKey,
 } from "@/lib/data";
 import { localizeRows } from "@/lib/localize";
 import { getDict, type Locale } from "@/lib/i18n";
@@ -41,20 +43,31 @@ export async function MemberAnalysis({
 }) {
   const t = getDict(locale);
 
-  const [rawFollows, genres, ratings, epStats, mvStats, watched] = await Promise.all([
+  const [rawFollows, genres, ratings, epStats, mvStats, watched, art] = await Promise.all([
     getFollowsOf(userId),
     getFollowGenresOf(userId),
     getRatingsOf(userId),
     getWatchStatsOf(userId),
     getMovieStatsOf(userId),
     getWatchedOf(userId),
+    /* 🔴 **وأغلفتُه تُقرأ هنا كما تُقرأ في ملفّه** (D-131): **صفُّ
+       المتابعة قد يكون بلا ملصقٍ أصلاً والغلافُ المختارُ هو الملصق** —
+       **و«الأكثر مشاهدة» بمربّعاتٍ سوداء كان أوّلَ ما ظهر في الفحص
+       الحيّ.** **ومصدرُ الصورة واحدٌ في السطحين** (D-145). */
+    getProfileArt(userId),
   ]);
 
   /* العناوين بلغة القارئ لا بلغة يوم المتابعة (D-048) */
   const follows = await localizeRows(rawFollows, locale);
+  if (art.size) {
+    for (const f of follows) {
+      const a = art.get(artKey(f.media_type, f.tmdb_id));
+      if (a?.poster_path) f.poster_path = a.poster_path;
+    }
+  }
 
   if (!follows.length) {
-    return <p className="text-sm text-muted text-center py-10">{t.analysisEmpty}</p>;
+    return <p className="text-sm text-muted text-center py-10">{t.analysisEmptyOther}</p>;
   }
 
   const tvFollows = follows.filter((f) => f.media_type === "tv");
@@ -112,6 +125,7 @@ export async function MemberAnalysis({
         status: { done, inProgress, notStarted },
         ratedTotal,
         avgAll,
+        mine: false,
       }}
     />
   );
