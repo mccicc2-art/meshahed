@@ -591,9 +591,22 @@ function TasteRow({
   total?: number;
   locale?: Locale;
 }) {
+  const opens = Boolean(works && works.length > 0 && locale);
+  /* 🆕 **والخطُّ تحت الاسمِ هو المِقبض** (D-722، بنصِّ أحمد: «الأشياء
+     الي عليها خط احتاج اقدر اضغط عليها»): **صفٌّ يُفتح وسط أحدَ عشرَ
+     صفّاً لا يُفتح لا يُميَّز بشيء** — **و`active:` وحدَها تُرى بعد
+     الضغط لا قبله، فهي إقرارٌ لا دعوة** (D-030: لا بابَ بلا مِقبض).
+     🔑 **والخطُّ على الاسمِ وحدَه لا على الصفّ**: النسبةُ رقمٌ ثابتٌ
+     لا يُضغط، **وتسطيرُ السطر كلِّه يَعِد بابين حيث بابٌ واحد.**
+     ⚠️ **والوصفةُ وصفةُ `ActivityFeed` حرفاً بحرف** — لا لونَ تسطيرٍ
+     ثانٍ ولا إزاحةَ ثانية: **نبرةٌ ثانيةٌ لنفس المعنى عطلٌ لا ذوق**
+     (القاعدة ٣). */
   const face = (
     <div className="flex items-baseline gap-2 min-w-0 w-full">
-      <span className="text-14 truncate" dir={ltr ? "ltr" : "auto"}>
+      <span
+        className={`text-14 truncate${opens ? " underline decoration-dotted underline-offset-2" : ""}`}
+        dir={ltr ? "ltr" : "auto"}
+      >
         {name}
       </span>
       <span className="ms-auto shrink-0 text-14 font-semibold text-accent tabular-nums">
@@ -618,7 +631,7 @@ function TasteRow({
               **وقائمةٌ مقصوصةٌ بلا خبرٍ تُقرأ قائمةً كاملة.** */}
           <p className="text-12 text-muted">
             {total > works.length
-              ? `${num(works.length, locale)} / ${num(total, locale)}`
+              ? t.worksShownOf(num(works.length, locale), num(total, locale))
               : num(total, locale)}
           </p>
           {/* 🔴 **وصفٌّ خفيفٌ لا `PosterCard`** (D-721، بعد سقوط أوّل
