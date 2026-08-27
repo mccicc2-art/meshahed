@@ -190,29 +190,24 @@ export function ShareCard(d: ShareCardData) {
           width: "100%",
           height: "100%",
           display: "flex",
-          opacity: 0.15,
-          /* ⚠️ **الرماديُّ مُرشِّحٌ لا لون**: satori تدعم `filter` على
-             العنصر — **وإن سقطَت يوماً بقيت الصورةُ ملوّنةً عند ١٥٪ لا
-             مفقودة** (سقوطٌ يُقرأ، لا انهيار). */
-          filter: "grayscale(1)",
         }}
       >
         {images.map((src, i) => (
-          <div
-            key={i}
-            style={{
-              display: "flex",
-              flex: 1,
-              backgroundImage: `url(${src})`,
-              backgroundSize: "cover",
-              /* 🔴 🆕 **و`no-repeat` صريحةٌ لا افتراضيّة** (D-720، مقيسٌ
-                 على أوّل نشرةٍ حيّة): **الافتراضُ في CSS `repeat`** —
-                 **فملصقٌ طويلٌ في صندوقٍ عريضٍ يتكرّر رأسيّاً**،
-                 وخرجت الترويسةُ بستّة ملصقاتٍ بدل ثلاثة. */
-              backgroundRepeat: "no-repeat",
-              backgroundPosition: "center",
-            }}
-          />
+          <div key={i} style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+            {/* ⚠️ **والشفافيّةُ والرماديُّ على الصورة لا على غلافها**:
+                `<img>` داخل غلافٍ يحمل `filter` لا يُرسم أصلاً في satori
+                (قِيس) — **والمُرشِّحُ يُوضع حيث تُرسم البكسلات.** */}
+            <img
+              src={src}
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                opacity: 0.15,
+                filter: "grayscale(1)",
+              }}
+            />
+          </div>
         ))}
       </div>
     );
@@ -286,21 +281,9 @@ export function ShareCard(d: ShareCardData) {
             }}
           >
             {postersView.map((p, i) => (
-              <div
-                key={i}
-                style={{
-                  display: "flex",
-                  flex: 1,
-                  backgroundImage: `url(${p})`,
-                  backgroundSize: "cover",
-              /* 🔴 🆕 **و`no-repeat` صريحةٌ لا افتراضيّة** (D-720، مقيسٌ
-                 على أوّل نشرةٍ حيّة): **الافتراضُ في CSS `repeat`** —
-                 **فملصقٌ طويلٌ في صندوقٍ عريضٍ يتكرّر رأسيّاً**،
-                 وخرجت الترويسةُ بستّة ملصقاتٍ بدل ثلاثة. */
-              backgroundRepeat: "no-repeat",
-                  backgroundPosition: "center",
-                }}
-              />
+              <div key={i} style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+                <img src={p} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              </div>
             ))}
           </div>
         )}
