@@ -1456,12 +1456,15 @@ export default async function PublicProfilePage({
           بالمكتبة») — **سدادُ الدَّين المعلَن D-438 §12** («النشاطُ
           تقييماتٌ لا كلُّ فعل»). **والشاشةُ تُستورد لا تُنسخ** (القاعدة
           ٦): `ActivityScreen` بعينها — رقائقُها وقسمةُ الأيام بساعة
-          القارئ ودمجُ الحلقات، **بلا فتاتِ «المكتبة»** (`crumb=false`). */}
+          القارئ ودمجُ الحلقات، **بلا فتاتِ «المكتبة»** (`crumb=false`).
+          🆕 **وعشرون ثمّ «المزيد»** (D-710، `initial={20}`): **التبويبُ
+          جارٌ لتبويباتٍ أخرى**، **وذيلٌ بلا نهاية يدفن ما بعده** —
+          **و`‎/activity` وحدَها تبقى بلا سقفٍ** لأن قارئَها قصدَها. */}
       {canView && tab === "activity" && (
         activityItems.length === 0 ? (
           <p className="text-center text-muted py-16 text-sm">{t.profileEmptyActivity}</p>
         ) : (
-          <ActivityScreen items={activityItems} locale={locale} crumb={false} />
+          <ActivityScreen items={activityItems} locale={locale} crumb={false} initial={20} />
         )
       )}
 
