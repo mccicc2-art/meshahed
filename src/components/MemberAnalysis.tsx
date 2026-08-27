@@ -14,7 +14,7 @@ import {
 import { localizeRows } from "@/lib/localize";
 import { getDict, type Locale } from "@/lib/i18n";
 import { isComplete } from "@/lib/progress";
-import { AnalysisView, tallyGenres, pickTasteTrio, heroBackdropOf, type TrioCandidate } from "./LibraryAnalysis";
+import { AnalysisView, tallyGenres, pickTasteTrio, type TrioCandidate } from "./LibraryAnalysis";
 
 /**
  * 🆕 **إحصائياتُ عضوٍ أزوره** (D-649، طلبُ أحمد: «كل الحسابات خلي الكارد
@@ -157,9 +157,7 @@ export async function MemberAnalysis({
     buckets[Math.min(4, Math.max(0, Math.ceil(r.rating / 2) - 1))]++;
   }
 
-  /* 🆕 D-689: غلافُ الترويسة — أغلفتُه المختارةُ تسبق TMDB (D-131) */
   const trio = pickTasteTrio(trioCands);
-  const heroArtUrl = await heroBackdropOf(topWatched, trio, art);
 
   return (
     <AnalysisView
@@ -181,7 +179,7 @@ export async function MemberAnalysis({
         ratedTotal,
         avgAll,
         mine: false,
-        hero: hero ? { ...hero, art: heroArtUrl } : null,
+        hero,
         trio,
         buckets,
       }}
