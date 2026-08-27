@@ -27,11 +27,16 @@ export function TrailerFeed({
   locale,
   soundOn,
   startAt,
+  emptyLabel,
 }: {
   items: TrailerItem[];
   locale: Locale;
   soundOn: boolean;
   startAt?: string;
+  /** 🆕 **ونصُّ الفراغ يأتي من فوق** (D-734): **فراغُ «لك» يُصلحه أن
+      تتابع، وفراغُ تبويبِ كتالوجٍ عطلُ مصدرٍ لا حيلةَ للقارئ فيه** —
+      **ونصٌّ واحدٌ للحالتين يُرشد إحداهما ويكذب على الأخرى.** */
+  emptyLabel?: string;
 }) {
   const t = getDict(locale);
   const [muted, setMuted] = useState(!soundOn);
@@ -93,7 +98,7 @@ export function TrailerFeed({
   const shown = items.filter((i) => !gone.has(keyOf(i)));
 
   if (!shown.length) {
-    return <p className="px-4 py-16 text-center text-sm text-muted">{t.trailersEmpty}</p>;
+    return <p className="px-4 py-16 text-center text-sm text-muted">{emptyLabel ?? t.trailersEmpty}</p>;
   }
 
   return (
@@ -142,7 +147,7 @@ export function TrailerFeed({
                   </p>
                 )}
                 {/* **وسببُ الترشيح آخرَ الكتلة** — هو أضعفُها رتبةً */}
-                <p className="mt-2.5 text-14 text-muted truncate">{i.note}</p>
+                {i.note && <p className="mt-2.5 text-14 text-muted truncate">{i.note}</p>}
               </div>
 
               {/* **ثلاثةُ أفعالٍ بوصفةٍ واحدة** — رمزٌ فوق كلمةٍ بعرضٍ
