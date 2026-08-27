@@ -108,7 +108,7 @@ export function TrailerRail({
                   </Link>
                   {/* **السطرُ الثاني وصفةُ «مختار لك» نفسُها** — سنةٌ ونوع */}
                   <span className="mt-0.5 block truncate text-12 text-muted">
-                    {[i.year, i.genre].filter(Boolean).join(" · ")}
+                    {[i.year, i.genre, i.country].filter(Boolean).join(" · ")}
                   </span>
                 </span>
                 {/* **وفعلان لا ثلاثة في الصفّ** (تصميمُه): «ليس لي» فعلٌ

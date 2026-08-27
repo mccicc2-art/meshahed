@@ -123,10 +123,26 @@ export function TrailerFeed({
 
               <div className="px-4 pt-3.5 pb-2">
                 <h2 className="text-22 font-bold truncate">{i.title}</h2>
+                {/* 🆕 **والنسبةُ بجوار التصنيف** (D-729، حكمُه) — سطرٌ
+                    واحدٌ يجمع السنةَ والنوعَ والنسبة، **ولا سطرَ ثالثٌ
+                    لكلمةٍ واحدة.** */}
                 <p className="mt-1 text-13 text-muted truncate">
-                  {[i.year, i.genre].filter(Boolean).join(" · ")}
+                  {[i.year, i.genre, i.country].filter(Boolean).join(" · ")}
                 </p>
-                <p className="mt-2 text-13 text-muted truncate">{i.note}</p>
+                {/* 🆕 **والنبذةُ ثلاثةُ أسطرٍ في الصفحة الكاملة وحدَها**
+                    (D-729، حكمُه: «إذا فتحت قائمة الترايلر أبغاه يعرض
+                    النبذة»): **هنا البطاقةُ وحدَها في الشاشة فللنصِّ
+                    مكان** — **وفي صفِّ اكتشف تُطيل البطاقةَ بلا أن
+                    تُقرأ** (D-510). ⚠️ **و`line-clamp-3` لا قصٌّ
+                    بالحروف**: القصُّ الحسابيُّ يقطع الكلمةَ ويكذب على
+                    مقاسات الخطوط. */}
+                {i.overview && (
+                  <p className="mt-2.5 text-13 leading-relaxed line-clamp-3" dir="auto">
+                    {i.overview}
+                  </p>
+                )}
+                {/* **وسببُ الترشيح آخرَ الكتلة** — هو أضعفُها رتبةً */}
+                <p className="mt-2.5 text-13 text-muted truncate">{i.note}</p>
               </div>
 
               {/* **ثلاثةُ أفعالٍ بوصفةٍ واحدة** — رمزٌ فوق كلمةٍ بعرضٍ

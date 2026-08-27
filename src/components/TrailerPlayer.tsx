@@ -165,7 +165,6 @@ export function TrailerPlayer({
           cancelIdle?.();
           cancelIdle = idle(() => {
             setMounted(true);
-            setPlaying(true);
             send("playVideo");
           });
         } else {
@@ -223,6 +222,14 @@ export function TrailerPlayer({
       }
       const info = d?.info;
       if (!info) return;
+      /* 🔴 **والصورةُ لا تُرفع حتى يقول الإطارُ «أنا أرسم»** (D-729،
+         عطلٌ في لقطته: **مساحةُ الفيديو خرجت بيضاءَ في صفحة الترايلرات**).
+         🔑 **كنتُ أرفعها لحظةَ التركيب** — **والتركيبُ ليس الرسم**:
+         إطارُ يوتيوب يبدأ أبيضَ ويظلّ كذلك ثوانيَ حتى يصل المقطع،
+         **فرفعتُ السترَ عن فراغٍ أبيض.** **وشرطُ أحمد كان صريحاً:
+         «أثناء التحميل تظهر صورة Backdrop بدون شاشة سوداء»** — **والبيضاءُ
+         أسوأُ من السوداء في سطحٍ داكن.**
+         ⚠️ **وحالةُ التشغيل هي الإشارة الصادقة** (`playerState === 1`). */
       if (typeof info.playerState === "number" && info.playerState === 1) setPlaying(true);
       if (
         showProgress &&
@@ -258,8 +265,15 @@ export function TrailerPlayer({
       }
     }, 400);
 
+    /* ⚠️ **وحزامٌ زمنيٌّ خلف الإشارة** (D-729): **لو لم تصل حالةُ
+       التشغيل أبداً لبقيت الصورةُ فوق مقطعٍ يعمل** — **وسترٌ دائمٌ
+       أسوأُ من سترٍ متأخّر.** **ثلاثُ ثوانٍ سقفُ الانتظار**، وهي
+       أطولُ ممّا قِيس (`infoDelivery` تصل في أقلَّ من ثانية). */
+    const belt = window.setTimeout(() => setPlaying(true), 3000);
+
     return () => {
       window.clearInterval(hello);
+      window.clearTimeout(belt);
       window.removeEventListener("message", onMsg);
     };
   }, [mounted, videoKey, showProgress]);
