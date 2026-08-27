@@ -188,8 +188,6 @@ export interface TasteData {
   languages: ({ code: string; name: string; titles: number } & TasteRowBase)[];
   /** 🆕 D-703: أعلى بلدين بعدِّ أعمالهما — بدل رقمٍ مجرّد */
   countries: ({ name: string; titles: number } & TasteRowBase)[];
-  /** وصفُ التنوّع بجانب عنوان الخانة — `null` حين لا بلدَ يُقرأ */
-  diversityLevel: string | null;
   directors: ({ name: string; titles: number } & TasteRowBase)[];
   actors: ({ name: string; titles: number } & TasteRowBase)[];
   /**
@@ -533,7 +531,16 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
                  كلمةً مجرّدةً ورقماً — **صارت تسمّي البلدانَ نفسَها**
                  (أعلى اثنين بعدِّ أعمالهما) **والمستوى وصفٌ في عنوانها**،
                  فوافقت أخواتِها الخمسَ في الشكل وزادت معنًى. */
-              <TasteCell title={t.tasteDiversity} note={taste.diversityLevel ?? undefined} divider posters={taste.posters.countries} all={taste.all.countries} shown={taste.countries.length} locale={locale}>
+              /* 🗑️ ⚖️ **وكلمةُ المستوى غادرت** (D-725، حكمُه: «كلمة
+                 medium احذفها») — **نقضٌ لشطرِ D-703** الذي أضافها.
+                 🔑 **وحجّتُها ماتت بيدها**: أُضيفت يومَ كانت الخانةُ
+                 «كلمةً مجرّدةً ورقماً»، **ثمّ صارت تسمّي بلدانَها
+                 بأعدادها** — **فمن قرأ «الولايات المتّحدة ٢٧ · مصر ١٩»
+                 عرف تنوّعَه، و«متوسّط» فوقها حكمٌ على ما يراه.**
+                 🗑️ **وماتت معها**: `diversityLevel` و`countryCount`
+                 وخاصّيّةُ `note` ومفاتيحُ `tasteDiv*` الستّة —
+                 **والعقدُ يُنظَّف بعد قارئه لا قبله** (D-702). */
+              <TasteCell title={t.tasteDiversity} divider posters={taste.posters.countries} all={taste.all.countries} shown={taste.countries.length} locale={locale}>
                 {taste.countries.map((c) => (
                   <TasteRow
                     key={c.name}
@@ -589,7 +596,6 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
     أقراصُ الأيقونات حُذفت، و⚖️ D-703: أقراصُ الحروف كذلك. */
 function TasteCell({
   title,
-  note,
   divider = false,
   posters,
   all,
@@ -598,8 +604,6 @@ function TasteCell({
   children,
 }: {
   title: string;
-  /** وصفٌ بجانب العنوان — «متوسّط» بجانب «التنوّع» */
-  note?: string;
   divider?: boolean;
   /**
    * 🆕 **بقيّةُ تصنيفات هذه الخانة** (D-723) — **العنوانُ بابُها.**
@@ -634,7 +638,6 @@ function TasteCell({
       <span className={opens ? "underline decoration-dotted underline-offset-2" : undefined}>
         {title}
       </span>
-      {note && <span className="text-accent font-semibold"> · {note}</span>}
     </>
   );
   const head =
@@ -643,7 +646,7 @@ function TasteCell({
         <ProfileStatSheet
           title={title}
           closeLabel={getDict(locale).closeLabel}
-          className="block w-full text-start text-13 text-muted active:opacity-70 transition"
+          className="block w-full text-start text-13 text-accent active:opacity-70 transition"
           content={
             <div className="space-y-3">
               <p className="text-12 text-muted">
@@ -669,7 +672,7 @@ function TasteCell({
         </ProfileStatSheet>
       </span>
     ) : (
-      <span className="relative block text-13 text-muted mb-1.5">{label}</span>
+      <span className="relative block text-13 text-accent mb-1.5">{label}</span>
     );
 
   return (
@@ -693,13 +696,13 @@ function TasteCell({
           إعلان**، **وقد رأى النتيجةَ على جهازه فحكم أنها ماتت.**
           🔑 **والرؤيةُ تغلب الحجّةَ حين يكون موضوعُ الحجّة هو المنظر**
           (D-662: قرارُ شكلٍ يُعاين على الصفحة الحيّة).
-          ⚠️ **والشفافيّةُ رفعت معه ١٥٪→٢٥٪ لا لأنها زينةٌ بل لأنها
-          شرطُه**: **لونٌ عند ١٥٪ فوق سطحٍ أسودَ رمادٌ آخر** — **ورفعُ
+          ⚠️ **والشفافيّةُ رفعت معه ١٥٪→٢٠٪ لا لأنها زينةٌ بل لأنها
+          شرطُه** (٢٥٪ كانت رقمَ أوّلِ محاولةٍ فخفّضها بعينه — D-725): **لونٌ عند ١٥٪ فوق سطحٍ أسودَ رمادٌ آخر** — **ورفعُ
           اللون بلا رفع الشفافيّة يشحن العينَ ولا يعطيها شيئاً.**
           ⚠️ **و`saturate-150` تعوّض ما تبتلعه الشفافيّة** — **اللونُ
           الباهتُ عند الربع أضعفُ ممّا يبدو في المحرِّر.** */}
       {posters && posters.length > 0 && (
-        <span aria-hidden className="absolute inset-0 flex opacity-25 saturate-150">
+        <span aria-hidden className="absolute inset-0 flex opacity-20 saturate-150">
           {posters.map((p) => (
             <span key={p} className="relative flex-1 min-w-0">
               <Image src={p} alt="" fill sizes="120px" className="object-cover" />
@@ -1055,7 +1058,6 @@ export function buildTaste(args: {
   } catch {
     rn = null;
   }
-  const countryCount = countryTally.size;
   const countries = [...countryTally.entries()]
     .sort((a, b) => b[1] - a[1])
     .slice(0, 2)
@@ -1068,10 +1070,6 @@ export function buildTaste(args: {
       }
       return { name, titles: n, ...rowOf(countryW.get(code)) };
     });
-  const diversityLevel =
-    countryCount > 0
-      ? `${countryCount >= 8 ? t.tasteDivHigh : countryCount >= 4 ? t.tasteDivMid : t.tasteDivLow}`
-      : null;
 
   const top2 = (m: Map<string, number>, w: Map<string, TasteWork[]>) =>
     [...m.entries()]
@@ -1171,7 +1169,7 @@ export function buildTaste(args: {
     actors: listOf(ranked(actorTally), ([name, n]) => entry(name, n)),
   };
 
-  return { themes, genres, decades, languages, countries, diversityLevel, directors, actors, all, posters };
+  return { themes, genres, decades, languages, countries, directors, actors, all, posters };
 }
 
 export function pickTasteTrioSlots(
