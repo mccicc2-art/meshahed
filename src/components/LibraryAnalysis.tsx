@@ -329,6 +329,19 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
     </div>
   );
 
+  /* ===== شريطُ الأرقام (D-698) — 🆕 **ووصفةٌ واحدةٌ لفرعين** (D-727):
+     **الشريطُ صار داخل البطاقة حين توجد وخارجَها حين لا توجد** —
+     **ونسخةٌ لكلِّ فرعٍ تفترق عند أوّل تعديلٍ في خانةٍ منها**
+     (القاعدة ٣/D-002). ===== */
+  const strip = (
+    <div className="grid grid-cols-4">
+      <StripCell icon="tv" value={num(shows, locale)} label={t.statsCellShows} border="" />
+      <StripCell icon="film" value={num(rangeMovies, locale)} label={t.statsCellMoviesWatched} border={`border-s ${divider}`} />
+      <StripCell icon="play" value={num(rangeEpisodes, locale)} label={t.statsCellEpisodesWatched} border={`border-s ${divider}`} />
+      <StripCell icon="comment" value={num(reviews, locale)} label={t.statsCellComments} border={`border-s ${divider}`} />
+    </div>
+  );
+
   return (
     <div className="space-y-5">
       {/* ===== البطاقةُ السينمائيّة (D-682 → D-700) ===== */}
@@ -343,7 +356,16 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
            📏 **مقيسٌ عند ٣٩٠px**: ٢١٩٫٨ → ٢٤٣٫٨ (+١٠٫٩٪) — **و`py-7`
            رقمٌ من السلّم، و`27px` كان سيصيب العشرةَ بالضبط ويخرج عنه**
            (القاعدة ١٧). */
-        <section className="relative overflow-hidden isolate rounded-2xl border border-border bg-surface px-4 py-7">
+        <section className="relative isolate rounded-2xl border border-border bg-surface overflow-hidden">
+          {/* 🆕 **والكتلةُ الفنّيّةُ تحبس ملصقاتِها** (D-727، حكمُه
+              بلقطةٍ محوَّطة: «الكارد صمّمه كذا، ضمّه مع الكارد الأول»):
+              **البطاقةُ صارت غلافاً لجسمين** — فنٌّ ثمّ أرقام —
+              **والحشوةُ نزلت من الغلاف إلى الجسم الأوّل** كي لا ترث
+              الأرقامُ حشوةً رأسيّةً ليست لها. 🔑 **والملصقاتُ `inset-0`
+              فتقيس أقربَ سلفٍ موضَّع**: **لو بقيت على الغلاف لجرت خلف
+              الأرقام** — **و`overflow-hidden` هنا هي التي تقصّها عند
+              الفاصل.** */}
+          <div className="relative overflow-hidden px-4 py-7">
           {/* ⚖️ D-700: الخلفيّةُ أوّلُ المفضّلة في كلِّ قائمة (مسلسل ·
               أنمي · فيلم) — «نكتفي بوجودهم في الكارد الأوّل» فقسمُ
               الثلاثية حُذف والملصقاتُ ورثت مكانَها هنا. الدرزُ ذائبٌ
@@ -434,19 +456,27 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
               </p>
             )}
             {bigTime}
+            </div>
           </div>
+
+          {/* 🆕 **والفاصلُ بلون الهويّة لا بلون الحدود** (D-727، بتصميمه):
+              **خطٌّ رماديٌّ يقول «قسمان»، وخطُّ الهويّة يقول «جسمٌ واحدٌ
+              بمفصل»** — **وهو الفرقُ بين بطاقتين متلاصقتين وبطاقةٍ
+              واحدة.** ⚠️ **وقوسُ الوقت يلامسه**: `-mb-7` تُلغي حشوةَ
+              الكتلة الفنّيّة (D-724)، **فالزاويةُ التي بلغها بالأمس هي
+              هذا المفصلُ اليوم** — **والهدفُ لم يتغيّر وإن تغيّر ما
+              تحته.** */}
+          <span aria-hidden className="block h-px bg-accent" />
+          {strip}
         </section>
       ) : (
-        bigTime
+        /* **ومن لا بطاقةَ له يرى الاثنين عاريين** — لا غلافَ يُصطنع
+           لجسمٍ واحد (D-222). */
+        <div className="space-y-5">
+          {bigTime}
+          {strip}
+        </div>
       )}
-
-      {/* ===== شريطُ الأرقام (D-698) ===== */}
-      <div className="grid grid-cols-4">
-        <StripCell icon="tv" value={num(shows, locale)} label={t.statsCellShows} border="" />
-        <StripCell icon="film" value={num(rangeMovies, locale)} label={t.statsCellMoviesWatched} border={`border-s ${divider}`} />
-        <StripCell icon="play" value={num(rangeEpisodes, locale)} label={t.statsCellEpisodesWatched} border={`border-s ${divider}`} />
-        <StripCell icon="comment" value={num(reviews, locale)} label={t.statsCellComments} border={`border-s ${divider}`} />
-      </div>
 
       {/* ===== بطاقةُ «ذوقك» الكاملة (D-700 — الصورةُ بالضبط) ===== */}
       {taste && (
