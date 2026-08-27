@@ -1675,6 +1675,11 @@ const ar = {
      وصفةُ `watchedOf` و`listPositionOf` أنفسِهما، لا حيلةَ `dir`
      جديدة (القاعدة ٦). */
   worksShownOf: (a: string, b: string) => `${a} من ${b} عملاً`,
+  /* 🆕 **وعدُّ التصنيفات بلا اسمِ معدودٍ** (D-723) — **ستُّ خاناتٍ
+     معدوداتُها ستّ** (نوعٌ · عقدٌ · لغةٌ · بلدٌ · مخرجٌ · ممثّل)،
+     **وستّةُ مفاتيحَ لسطرِ عدٍّ واحدٍ سلّمٌ يُبنى ليُنسى نصفُه** —
+     **والقائمةُ تحتَه تقول ما هي.** ووصفةُ «من» نفسُها (D-722). */
+  entriesShownOf: (a: string, b: string) => `${a} من ${b}`,
   shareTitle: "شارك بطاقتك",
   shareSub: "صورة فيها أرقامك — انشرها أو احفظها.",
   shareBtn: "شارك بطاقتي",
@@ -2967,6 +2972,7 @@ const en: Dict = {
     "A chronological or recommended viewing order — numbered on the posters.",
   listPositionOf: (i: number, n: number) => `Position ${i} of ${n}`,
   worksShownOf: (a: string, b: string) => `${a} of ${b} works`,
+  entriesShownOf: (a: string, b: string) => `${a} of ${b}`,
   shareTitle: "Share your card",
   shareSub: "An image with your numbers \u2014 post it or save it.",
   shareBtn: "Share my card",
