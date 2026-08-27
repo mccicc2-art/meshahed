@@ -18,6 +18,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { getDict, num, type Locale } from "@/lib/i18n";
 import { isComplete } from "@/lib/progress";
+import { favoriteTrio, trioPosterPaths } from "@/lib/heroPosters";
 import { Icon, type IconName } from "./Icon";
 import { browseGenreForId, browseGenreName } from "@/lib/browse";
 
@@ -285,8 +286,15 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
             </div>
             {hero.bio && (
               /* **النبذةُ تلزم عمودَ حجابها** (D-693) — والحجابُ يحمي
-                 جهةَ البداية، فما جاوزها يغرق فوق الملصقات */
-              <p className="mt-2 text-[13px] leading-snug text-muted line-clamp-2 max-w-[55%]" dir="auto">
+                 جهةَ البداية، فما جاوزها يغرق فوق الملصقات.
+                 ⚖️ 🆕 **ورماديُّها سقط** (D-714، حكمُه: «أرفعها»):
+                 **`text-muted` رتبةٌ تُقرأ على خلفيّةٍ صمّاء** — **وفوق
+                 ملصقٍ أبيضَ ساطعٍ هي أضعفُ حرفٍ في البطاقة**، وظلُّ
+                 D-712 ينقذ الأبيضَ ولا ينقذ الرماديّ. **والرتبةُ لم
+                 تُفقد**: ١٣px عاديّةٌ تحت اسمٍ ١٧ عريضٍ ما زالت ثانيةً
+                 — **والرتبةُ تُقال بالمقاس والوزن، واللونُ يُترك
+                 للقراءة حيث تصعب.** */
+              <p className="mt-2 text-[13px] leading-snug line-clamp-2 max-w-[55%]" dir="auto">
                 {hero.bio}
               </p>
             )}
@@ -844,18 +852,11 @@ export async function LibraryAnalysis({
   const slots = pickTasteTrioSlots(trioCands);
   const isAnimeFav = (f: { media_type: string; tmdb_id: number }) =>
     animeFlags.get(`${f.media_type}-${f.tmdb_id}`) === true;
-  const favSeries = favs.find((f) => f.media_type === "tv" && !isAnimeFav(f));
-  const favAnime = favs.find((f) => isAnimeFav(f));
-  const favMovie = favs.find((f) => f.media_type === "movie" && !isAnimeFav(f));
-  /* 🆕 D-704 (حكمُه: «الفلم يكون يسار والمسلسل أو واحد من اليمين»):
-     **الفيلمُ عند البداية والمسلسلُ عند النهاية والأنمي بينهما** —
-     والترتيبُ منطقيٌّ لا يمينيٌّ ولا يساريّ، فيرتدّ في العربية كما
-     يرتدّ كلُّ صفٍّ في التطبيق (القاعدة ١٧). */
-  const heroPosters = [
-    favMovie?.poster_path ?? slots.movie?.posterPath,
-    favAnime?.poster_path ?? slots.anime?.posterPath,
-    favSeries?.poster_path ?? slots.series?.posterPath,
-  ].filter((x): x is string => !!x);
+  /* 🆕 **والاختيارُ خرج إلى `lib/heroPosters`** (D-715) — **جاء قارئُه
+     الثاني**: بطاقةُ المشاركة تلبس الخلفيّةَ نفسَها، **وقاعدتان
+     تقرّران «أيُّ ملصقٍ يمثّلك» تفترقان يوماً** (D-002/القاعدة ٦).
+     **والسدُّ الفئويُّ يبقى هنا** لأنه وحدَه يملك مكتبةً محسوبة. */
+  const heroPosters = trioPosterPaths(favoriteTrio(favs, isAnimeFav), slots);
 
   /* 🆕 D-700: المدى يُقال في الترويسة — «كل الأوقات» حين لا مدى */
   const rangeLabel =
