@@ -9,9 +9,10 @@ import {
   getProfile,
   getUser,
   getFollowStats,
+  getMyTitleArt,
 } from "@/lib/data";
 import { getTv, getMovie } from "@/lib/tmdb";
-import { posterUrl } from "@/lib/media";
+import { posterUrl, backdropUrl } from "@/lib/media";
 import Image from "next/image";
 import Link from "next/link";
 import { getDict, num, type Locale } from "@/lib/i18n";
@@ -140,6 +141,9 @@ export interface AnalysisData {
     avatarUrl: string | null;
     bio: string | null;
     followers: number | null;
+    /** 🆕 D-689: غلافُ (backdrop) أعلى أعماله — رابطٌ جاهزٌ، والغياب
+        يُسقِط إلى أعمدة الملصقات بعرض البطاقة كلِّها */
+    art?: string | null;
   } | null;
   /** 🆕 **ثلاثيةُ الذوق** (D-679): أعلى ما قيّمه، وأكثرُ ما شاهده عند
       النقص — **وأقلُّ من واحدةٍ يُسقط القسمَ لا يزخرفه.** */
@@ -219,21 +223,28 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
       {/* ===== البطاقةُ السينمائيّة: الهويّةُ والوقتُ الكبير (D-682) ===== */}
       {hero ? (
         <section className="relative overflow-hidden isolate rounded-2xl border border-border bg-surface p-4">
-          {heroArt.length > 0 && (
+          {/* 🆕 D-689 (حكمُه: «خلها على الكارد كامل كبر البوسترات أو حط
+              غلاف المسلسل»): **الأرضيّةُ تملأ البطاقةَ كلَّها** — غلافُ
+              أعلى أعماله إن وُجد، وإلّا أعمدةُ الملصقات بعرض البطاقة.
+              والحجابُ يحمي عمودَ النصّ ويذوب قبل الطرف (روحُ D-686). */}
+          {(hero.art || heroArt.length > 0) && (
             <>
-              <span aria-hidden className="absolute inset-y-0 end-0 w-[55%] flex">
-                {heroArt.map((path) => (
-                  <span key={path} className="relative flex-1 min-w-0">
-                    {/* **بحجم العرض لا أكبر** (نصُّ المواصفة): w342 لثلث بطاقة */}
-                    <Image src={posterUrl(path, "w342")!} alt="" fill sizes="20vw" className="object-cover" />
-                  </span>
-                ))}
-              </span>
-              {/* **حجابُ D-678 نفسُه بلون البطاقة**: يحمي النصَّ في جهة البداية
-                  ويذوب قبل الطرف فلا «غبار» فوق الملصقات */}
+              {hero.art ? (
+                <span aria-hidden className="absolute inset-0">
+                  <Image src={hero.art} alt="" fill sizes="(max-width: 640px) 100vw, 640px" className="object-cover" />
+                </span>
+              ) : (
+                <span aria-hidden className="absolute inset-0 flex">
+                  {heroArt.map((path) => (
+                    <span key={path} className="relative flex-1 min-w-0">
+                      <Image src={posterUrl(path, "w342")!} alt="" fill sizes="34vw" className="object-cover" />
+                    </span>
+                  ))}
+                </span>
+              )}
               <span
                 aria-hidden
-                className="absolute inset-0 bg-gradient-to-r rtl:bg-gradient-to-l from-[color:var(--surface)] from-[40%] via-[color:var(--surface)]/55 via-[50%] to-transparent to-[62%]"
+                className="absolute inset-0 bg-gradient-to-r rtl:bg-gradient-to-l from-[color:var(--surface)] from-[38%] via-[color:var(--surface)]/60 via-[55%] to-transparent to-[78%]"
               />
             </>
           )}
@@ -437,6 +448,34 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
  * ⚠️ **وفئةٌ فارغةٌ تسقط لا تُحشى من جارتها** (D-217): من لا أنمي عنده
  * يرى بطاقتين صادقتين لا ثلاثاً إحداها كذب.
  */
+/**
+ * 🆕 **غلافُ البطاقة السينمائيّة** (D-689، حكمُه: «خلها على الكارد كامل
+ * كبر البوسترات أو حط غلاف المسلسل») — **غلافُ أعلى أعماله مشاهدةً.**
+ *
+ * **والغلافُ المختارُ يسبق TMDB** (D-131): من بدّل غلافَ عمله يراه
+ * هنا كما يراه في مكتبته — **ومصدرُ الصورة واحدٌ في السطحين.**
+ * ⚠️ **والنداءُ واحدٌ مخبَّأ** (`getTv`/`getMovie` cache) لأعلى عملٍ
+ * واحد — لا ثمانين نداءً (درسُ D-649).
+ */
+export async function heroBackdropOf(
+  topWatched: { id: number }[],
+  trio: { key: string }[],
+  chosen?: Map<string, { backdrop_path: string | null }>,
+): Promise<string | null> {
+  const key = topWatched[0] ? `tv-${topWatched[0].id}` : (trio[0]?.key ?? null);
+  if (!key) return null;
+  const picked = chosen?.get(key)?.backdrop_path;
+  if (picked) return backdropUrl(picked, "w780");
+  const [media, idStr] = key.split("-");
+  const id = Number(idStr);
+  try {
+    const d = media === "movie" ? await getMovie(id) : await getTv(id);
+    return backdropUrl(d?.backdrop_path ?? null, "w780");
+  } catch {
+    return null;
+  }
+}
+
 export interface TrioCandidate {
   key: string;
   category: "anime" | "series" | "movie";
@@ -543,6 +582,8 @@ export async function LibraryAnalysis({
   const followStats = user
     ? await getFollowStats(user.id).catch(() => null)
     : null;
+  /* 🆕 D-689: أغلفتي المختارةُ تُقرأ لغلاف الترويسة (D-131) */
+  const myArt = await getMyTitleArt();
 
   if (!follows.length) {
     return <p className="text-sm text-muted text-center py-10">{t.analysisEmpty}</p>;
@@ -703,6 +744,9 @@ export async function LibraryAnalysis({
     buckets[Math.min(4, Math.max(0, Math.ceil(r.rating / 2) - 1))]++;
   }
 
+  const trio = pickTasteTrio(trioCands);
+  const heroArtUrl = await heroBackdropOf(topWatched, trio, myArt);
+
   return (
     <AnalysisView
       locale={locale}
@@ -727,8 +771,8 @@ export async function LibraryAnalysis({
         ratedTotal,
         avgAll,
         mine: true,
-        hero,
-        trio: pickTasteTrio(trioCands),
+        hero: hero ? { ...hero, art: heroArtUrl } : null,
+        trio,
         buckets,
       }}
     />
