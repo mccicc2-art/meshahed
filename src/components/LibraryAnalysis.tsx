@@ -53,11 +53,11 @@ function StripCell({
 }) {
   return (
     <div className={`flex flex-col items-center gap-1.5 py-3 px-1 min-w-0 ${border}`}>
-      <Icon name={icon} size={22} className="text-accent" />
-      <span className="text-20 font-bold leading-none tabular-nums" dir="ltr">
+      <Icon name={icon} size={18} className="text-accent" />
+      <span className="text-[16px] font-bold leading-none tabular-nums" dir="ltr">
         {value}
       </span>
-      <span className="text-12 text-muted truncate max-w-full">{label}</span>
+      <span className="text-[11px] text-muted truncate max-w-full">{label}</span>
     </div>
   );
 }
@@ -78,15 +78,15 @@ function ProgressDonut({ done, watching, rest, pct: pctDone }: {
   return (
     <span
       aria-hidden
-      className="shrink-0 grid place-items-center w-32 h-32 rounded-full"
+      className="shrink-0 grid place-items-center w-28 h-28 rounded-full"
       style={{
         background: `conic-gradient(var(--success) 0 ${a}%, var(--accent) ${a}% ${b}%, var(--disabled) ${b}% 100%)`,
       }}
     >
       {/* **النسبةُ 34px بنصّ المواصفة** — رقمٌ زخرفيٌّ خارج سلّم D-459 كجاراته */}
-      <span className="flex items-center justify-center gap-0.5 w-24 h-24 rounded-full bg-surface text-[34px] font-bold tabular-nums leading-none">
+      <span className="flex items-center justify-center gap-0.5 w-[5.5rem] h-[5.5rem] rounded-full bg-surface text-20 font-bold tabular-nums leading-none">
         {pctDone}
-        <span className="text-12 font-bold text-muted">%</span>
+        <span className="text-[10px] font-bold text-muted">%</span>
       </span>
     </span>
   );
@@ -195,22 +195,22 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
   const bigTime = (
     <div className="mt-4">
       <div
-        className="text-[52px] font-semibold leading-none tabular-nums"
+        className="text-[34px] font-semibold leading-none tabular-nums"
         style={{ fontFamily: "ui-serif, Georgia, 'Times New Roman', serif" }}
         dir="auto"
       >
         {fmtWatchTime(rangeMinutes, t)}
       </div>
-      <div className="mt-1.5 text-15 text-muted">{t.statWatchTime}</div>
+      <div className="mt-1.5 text-12 text-muted">{t.statWatchTime}</div>
       {/* خطٌّ أصفرُ منحنٍ رفيعٌ للزينة — كتلةٌ قائمةٌ بذاتها فلا يمرّ خلف نصّ */}
-      <svg aria-hidden viewBox="0 0 220 24" fill="none" className="mt-2 h-5 w-44 text-accent/70">
+      <svg aria-hidden viewBox="0 0 220 24" fill="none" className="mt-2 h-4 w-36 text-accent/70">
         <path d="M2 20 C 58 4, 140 24, 218 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
       </svg>
     </div>
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* ===== البطاقةُ السينمائيّة: الهويّةُ والوقتُ الكبير (D-682) ===== */}
       {hero ? (
         <section className="relative overflow-hidden isolate rounded-2xl border border-border bg-surface p-4">
@@ -245,21 +245,21 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
                 )}
               </span>
               <span className="min-w-0">
-                <span className="flex items-center gap-1.5 text-22 font-bold min-w-0">
+                <span className="flex items-center gap-1.5 text-[17px] font-bold min-w-0">
                   <span className="truncate" dir="auto">{hero.name}</span>
-                  <Icon name="sparkle-star" size={15} className="shrink-0 text-accent" aria-hidden />
+                  <Icon name="sparkle-star" size={13} className="shrink-0 text-accent" aria-hidden />
                 </span>
                 {/* **المتابِعون وحدَهم** — لا اسمَ مستخدمٍ ولا «يتابِع» (نصُّ المواصفة) */}
                 {hero.followers !== null && (
-                  <span className="mt-0.5 flex items-center gap-1.5 text-14 text-muted">
-                    <Icon name="people" size={15} />
+                  <span className="mt-0.5 flex items-center gap-1.5 text-12 text-muted">
+                    <Icon name="people" size={13} />
                     {t.suggestFollowers(hero.followers)}
                   </span>
                 )}
               </span>
             </div>
             {hero.bio && (
-              <p className="mt-2 text-15 leading-[21px] text-muted line-clamp-2 max-w-[36ch]" dir="auto">
+              <p className="mt-2 text-[13px] leading-snug text-muted line-clamp-2 max-w-[38ch]" dir="auto">
                 {hero.bio}
               </p>
             )}
@@ -281,8 +281,8 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
       {/* ===== ثلاثيةُ الذوق: أنمي · مسلسل · فيلم — بلا وسمِ نوعٍ ولا رقم (D-682) ===== */}
       {trio && trio.length > 0 && (
         <section>
-          <h2 className="flex items-center gap-2 text-22 font-bold mb-3">
-            <Icon name="trio" size={22} className="text-accent" />
+          <h2 className="flex items-center gap-2 text-[16px] font-bold mb-3">
+            <Icon name="trio" size={18} className="text-accent" />
             {t.statsTasteTrio}
           </h2>
           <div className="grid grid-cols-3 gap-3">
@@ -304,8 +304,8 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
                   )}
                   {/* **الاسمُ فوق تدرّجٍ أسودَ خفيف** — أسودُ حرفيٌّ عمداً:
                       فوق ملصقٍ لا فوق سطحِ ثيم، فلا يتقلّب مع `daylight` */}
-                  <span className="absolute inset-x-0 bottom-0 pt-10 pb-2 px-2 bg-gradient-to-t from-black/75 via-black/35 to-transparent">
-                    <span className="block text-center text-14 font-semibold text-white truncate" dir="auto">
+                  <span className="absolute inset-x-0 bottom-0 pt-8 pb-1.5 px-2 bg-gradient-to-t from-black/75 via-black/35 to-transparent">
+                    <span className="block text-center text-12 font-semibold text-white truncate" dir="auto">
                       {x.title}
                     </span>
                   </span>
@@ -321,14 +321,14 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
         <div className="grid grid-cols-2 max-[359px]:grid-cols-1 gap-3">
           {topGenres.length > 0 && (
             <section className="rounded-2xl border border-border bg-surface p-4">
-              <h3 className="text-20 font-bold mb-3">
+              <h3 className="text-15 font-bold mb-3">
                 {mine ? t.analysisTaste : t.analysisTasteOther}
               </h3>
               <div className="space-y-3">
                 {topGenres.map((g) => (
                   <div key={g.name} className="flex items-center gap-2">
                     <span className="flex-1 min-w-0">
-                      <span className="block text-14 truncate mb-1" dir="auto">
+                      <span className="block text-12 truncate mb-1" dir="auto">
                         {g.name}
                       </span>
                       {/* **أشرطةٌ صفراءُ قصيرةٌ واضحة** (نصُّ المواصفة) — لا قرصَ ولا DNA */}
@@ -339,7 +339,7 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
                         />
                       </span>
                     </span>
-                    <span className="shrink-0 text-12 font-medium text-muted tabular-nums w-8 text-end">
+                    <span className="shrink-0 text-[11px] font-medium text-muted tabular-nums w-7 text-end">
                       {pct(g.count, genreTags)}%
                     </span>
                   </div>
@@ -350,7 +350,7 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
 
           {statusTotal > 0 && (
             <section className="rounded-2xl border border-border bg-surface p-4">
-              <h3 className="text-20 font-bold mb-3">{t.statsLibraryProgress}</h3>
+              <h3 className="text-15 font-bold mb-3">{t.statsLibraryProgress}</h3>
               <div className="flex flex-col items-center gap-3">
                 <ProgressDonut done={done} watching={inProgress} rest={notStarted} pct={donePct} />
                 <div className="w-full space-y-2">
@@ -361,8 +361,8 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
                   ].map((sg) => (
                     <div key={sg.l} className="flex items-center gap-2">
                       <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${sg.c}`} aria-hidden />
-                      <span className="flex-1 min-w-0 truncate text-14">{sg.l}</span>
-                      <span className="shrink-0 text-12 text-muted tabular-nums">
+                      <span className="flex-1 min-w-0 truncate text-12">{sg.l}</span>
+                      <span className="shrink-0 text-[11px] text-muted tabular-nums">
                         {pct(sg.v, statusTotal)}%
                       </span>
                     </div>
@@ -378,12 +378,12 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
       {ratedTotal > 0 && (
         <section className="rounded-2xl border border-border bg-surface p-4 flex items-center gap-4">
           <div className="shrink-0">
-            <Icon name="star" size={22} className="text-accent" aria-hidden />
-            <span className="block text-[40px] font-bold leading-none tabular-nums mt-1.5" dir="ltr">
+            <Icon name="star" size={18} className="text-accent" aria-hidden />
+            <span className="block text-[26px] font-bold leading-none tabular-nums mt-1.5" dir="ltr">
               {avgAll.toFixed(1)}
             </span>
-            <span className="block text-14 mt-1">{t.statsAvgLabel}</span>
-            <span className="block text-12 text-muted mt-0.5">
+            <span className="block text-12 mt-1">{t.statsAvgLabel}</span>
+            <span className="block text-[11px] text-muted mt-0.5">
               {mine ? t.ratedCount(ratedTotal) : t.ratedCountOther(ratedTotal)}
             </span>
           </div>
@@ -393,16 +393,16 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
                 const share = pct(n, bucketTotal);
                 return (
                   <span key={i} className="flex flex-col items-center gap-1 min-w-0">
-                    <span className="flex flex-col justify-end h-16 w-4 rounded-md bg-surface-2 overflow-hidden" aria-hidden>
+                    <span className="flex flex-col justify-end h-14 w-3.5 rounded-md bg-surface-2 overflow-hidden" aria-hidden>
                       <span
                         className="block w-full rounded-md bg-accent"
                         style={{ height: `${Math.max(share, n > 0 ? 6 : 0)}%` }}
                       />
                     </span>
-                    <span className="text-10 leading-none text-accent tracking-tighter" aria-hidden>
+                    <span className="text-[8px] leading-none text-accent tracking-tighter" aria-hidden>
                       {"★".repeat(i + 1)}
                     </span>
-                    <span className="text-12 text-muted tabular-nums">{share}%</span>
+                    <span className="text-[10px] text-muted tabular-nums">{share}%</span>
                   </span>
                 );
               })}
@@ -729,7 +729,7 @@ export async function LibraryAnalysis({
 /** هيكل عظمي بنفس ارتفاع التحليل تقريباً حتى لا تقفز الصفحة عند وصوله */
 export function LibraryAnalysisSkeleton() {
   return (
-    <div className="space-y-6 animate-pulse">
+    <div className="space-y-5 animate-pulse">
       {/* البطاقةُ السينمائيّة */}
       <div className="rounded-2xl border border-border bg-surface p-4">
         <div className="flex items-center gap-3">
@@ -739,7 +739,7 @@ export function LibraryAnalysisSkeleton() {
             <div className="h-3 w-24 rounded bg-surface-2" />
           </div>
         </div>
-        <div className="h-12 w-52 rounded bg-surface-2 mt-5" />
+        <div className="h-9 w-44 rounded bg-surface-2 mt-5" />
         <div className="h-3 w-28 rounded bg-surface-2 mt-3" />
       </div>
       {/* شريطُ الأرقام */}
