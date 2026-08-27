@@ -1146,6 +1146,11 @@ const ar = {
      وهو ترتيبٌ لا يُغيَّر بلا طلب (D-644). **يُقال ولا يُخمَّن.** */
   personWorksCount: (n: number) =>
     n <= 2 ? `${n} عمل` : n <= 10 ? `${n} أعمال` : `${n} عملاً`,
+  /* 🆕 **صيغةُ المثنّى** (D-733، حكمُه: «أصلحه للمثنّى وحدَه») —
+     **بلا رقمٍ قبلها**: العربيّةُ تحمل العددَ في بنية الكلمة.
+     ⚠️ **وفارغةٌ في كلِّ لغةٍ لا مثنّى فيها** — **والفراغُ هو الإشارة**
+     لا عَلَمٌ ثانٍ يُضاف (D-167). */
+  personWorksDual: "عملان",
   personNoWorks: "لا أعمال مسجّلة لهذا الشخص",
   personAge: (n: number) => `${n} سنة`,
   personAgeAtDeath: (n: number) => `عن ${n} سنة`,
@@ -2567,6 +2572,7 @@ const en: Dict = {
   personBioEnglishOnly: "TMDB only has this biography in English.",
   personWorksTitle: "Filmography",
   personWorksCount: (n: number) => `${n} titles`,
+  personWorksDual: "",
   personNoWorks: "No credits on record for this person",
   personAge: (n: number) => `${n} years old`,
   personAgeAtDeath: (n: number) => `aged ${n}`,
@@ -3122,6 +3128,34 @@ export function getDict(locale: Locale): Dict {
 }
 
 // أرقام لاتينية في اللغتين لتوحيد شكل الأرقام عبر الواجهة
+/**
+ * 🆕 **رقمُ العمل ووحدتُه من مصنعٍ واحد** (D-733).
+ *
+ * 🔴 **وقد كانت وصفتُه منسوخةً مرّتين**: `unitWord` في
+ * `LibraryAnalysis.tsx` **ونسخةٌ بحرفها في `api/share/route.tsx`** —
+ * **وقد وثّق ثانيهما أنه نسخة!** **ونسخةٌ موثَّقةٌ نسخةٌ على كلِّ حال**
+ * (القاعدة ٣). **فسقطتا معاً وبقيت هذه.**
+ *
+ * 🔑 **والمثنّى هو سببُ الاستخراج**: «عملان» **لا رقمَ قبلها** —
+ * **فالقسمةُ إلى رقمٍ ووحدةٍ لا تصلح لها**، **وحالةٌ واحدةٌ تخالف
+ * الشكلَ العامّ تُجبر الشكلَ على أن يصير دالّةً بدل قالب.**
+ * ⚠️ **والصفُّ يرسم `value` بلون الهويّة و`unit` هادئةً بجانبها** — **فحين
+ * يغيب `unit` تخرج «عملان» وحدَها ذهبيّةً، وهو الصواب** (D-703).
+ */
+export function worksParts(
+  n: number,
+  t: Dict,
+  locale: Locale,
+): { value: string; unit?: string } {
+  if (n === 2 && t.personWorksDual) return { value: t.personWorksDual };
+  return {
+    value: num(n, locale),
+    /* **والوحدةُ تُقتطع من العبارة لا تُكتب ثانيةً** — مفتاحٌ واحدٌ
+       يملك الصياغة، وهذه تقرأ منه. */
+    unit: t.personWorksCount(n).replace(/^[0-9,٠-٩\s]+/, "").trim(),
+  };
+}
+
 export function num(n: number, _locale: Locale) {
   void _locale;
   return n.toLocaleString("en-US");
