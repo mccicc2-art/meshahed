@@ -1353,7 +1353,7 @@ export default async function PublicProfilePage({
           {isMe && (
             <Link
               href="/profile/settings/home"
-              className="inline-block text-13 font-bold text-accent underline underline-offset-4"
+              className="inline-block text-14 font-bold text-accent underline underline-offset-4"
             >
               {t.custTitle}
             </Link>
