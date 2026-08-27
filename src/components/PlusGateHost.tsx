@@ -42,7 +42,7 @@ export function PlusGateHost({ locale }: { locale: Locale }) {
         onClose={() => setOpen(false)}
       />
       <div className="px-5 pt-3 pb-5 flex flex-col gap-4">
-        <p className="text-13 text-muted leading-relaxed">{t.plusGateHint}</p>
+        <p className="text-14 text-muted leading-relaxed">{t.plusGateHint}</p>
 
         {/* السعرُ يُقال ولا يُخفى: **من يُمنع يستحقّ أن يعرف الثمن في
             اللحظة نفسِها** — لا في صفحةٍ أخرى يبحث عنها. */}

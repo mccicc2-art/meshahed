@@ -16,7 +16,7 @@ import { getTv, getMovie } from "@/lib/tmdb";
 import { posterUrl, profileUrl } from "@/lib/media";
 import Image from "next/image";
 import Link from "next/link";
-import { getDict, num, type Locale } from "@/lib/i18n";
+import { getDict, num, worksParts, type Locale } from "@/lib/i18n";
 import { isComplete } from "@/lib/progress";
 import { favoriteTrio, trioPosterPaths } from "@/lib/heroPosters";
 import { ProfileStatSheet } from "./ProfileStatSheet";
@@ -66,7 +66,12 @@ const BG_POSTERS = 3;
  * مرسوماً من الخادم). **فيُقصّ ويُكتب العددُ الحقيقيُّ في رأس الورقة**
  * (D-217: لا رقمَ يَعِد بما لا يُعرض).
  */
-const ROW_WORKS = 24;
+/* ⚖️ 🆕 **٢٤ → ٥٠** (D-733، حكمُه بعد أن عُرض عليه الثمن): **الرقمُ
+   اختير يومَ كانت الحمولةُ متّهمةً بإسقاط الصفحتين** — **وقد بُرِّئت**
+   (السببُ كان خطأً برمجيّاً، D-721). 🔑 **وصار سقفاً واحداً مع
+   `CELL_ENTRIES`**: **سقفان مختلفان في بطاقةٍ واحدةٍ يُقرآن قاعدتين**،
+   **والحمولةُ ملصقٌ واسمٌ لا بطاقةٌ كاملة** (D-721). */
+const ROW_WORKS = 50;
 /**
  * 🆕 **سقفُ قائمة «بقيّة التصنيفات»** (D-723) — **سقفٌ واحدٌ للخانات
  * الستّ**: الأنواعُ اثنا عشرَ فلا يمسّها، **والممثّلون مئاتٌ في مكتبةٍ
@@ -504,7 +509,7 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
               بالخانات. */}
           {taste.themes.length > 0 && (
             <div className="mt-2.5 flex items-center gap-x-3 gap-y-1 flex-wrap text-14 font-semibold text-accent">
-              <span className="text-13 font-normal text-muted shrink-0">{t.tasteThemes}</span>
+              <span className="text-14 font-normal text-muted shrink-0">{t.tasteThemes}</span>
               {taste.themes.map((th, i) => (
                 <span key={th} className="flex items-center gap-3">
                   {i > 0 && (
@@ -547,8 +552,7 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
                   <TasteRow
                     key={l.code}
                     name={l.name}
-                    value={num(l.titles, locale)}
-                    unit={unitWord(t.personWorksCount(l.titles))}
+                    {...worksParts(l.titles, t, locale)}
                     works={l.works}
                     total={l.total}
                     locale={locale}
@@ -575,8 +579,7 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
                   <TasteRow
                     key={c.name}
                     name={c.name}
-                    value={num(c.titles, locale)}
-                    unit={unitWord(t.personWorksCount(c.titles))}
+                    {...worksParts(c.titles, t, locale)}
                     works={c.works}
                     total={c.total}
                     locale={locale}
@@ -590,8 +593,7 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
                   <TasteRow
                     key={d.name}
                     name={d.name}
-                    value={num(d.titles, locale)}
-                    unit={unitWord(t.personWorksCount(d.titles))}
+                    {...worksParts(d.titles, t, locale)}
                     works={d.works}
                     total={d.total}
                     locale={locale}
@@ -605,8 +607,7 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
                   <TasteRow
                     key={a.name}
                     name={a.name}
-                    value={num(a.titles, locale)}
-                    unit={unitWord(t.personWorksCount(a.titles))}
+                    {...worksParts(a.titles, t, locale)}
                     works={a.works}
                     total={a.total}
                     locale={locale}
@@ -676,7 +677,7 @@ function TasteCell({
         <ProfileStatSheet
           title={title}
           closeLabel={getDict(locale).closeLabel}
-          className="block w-full text-start text-13 text-accent active:opacity-70 transition"
+          className="block w-full text-start text-14 text-accent active:opacity-70 transition"
           content={
             <div className="space-y-3">
               <p className="text-12 text-muted">
@@ -702,7 +703,7 @@ function TasteCell({
         </ProfileStatSheet>
       </span>
     ) : (
-      <span className="relative block text-13 text-accent mb-1.5">{label}</span>
+      <span className="relative block text-14 text-accent mb-1.5">{label}</span>
     );
 
   return (
@@ -860,12 +861,6 @@ function TasteRow({
     </ProfileStatSheet>
   );
 }
-
-/** كلمةُ الوحدة من صيغةٍ قائمةٍ («٥ أعمال» → «أعمال») — بلا مفتاحٍ جديد */
-function unitWord(phrase: string): string {
-  return phrase.replace(/^[0-9,٠-٩\s]+/, "").trim();
-}
-
 
 /**
  * 🆕 **مُنتقي «ثلاثية الذوق»** (D-682، نصُّ المواصفة): **خانةٌ لكلِّ فئةٍ —
@@ -1160,8 +1155,7 @@ export function buildTaste(args: {
      مصنعٍ واحد** (القاعدة ٦). */
   const entry = (name: string, n: number): TasteEntry => ({
     name,
-    value: num(n, locale),
-    unit: unitWord(t.personWorksCount(n)),
+    ...worksParts(n, t, locale),
   });
   /* **والعددُ الحقيقيُّ يُلتقط قبل القصّ لا بعده** — `slice` تمحو ما
      نريد أن نُخبر عنه (D-217). */

@@ -607,7 +607,7 @@ export function ListDetail({
               title={t.listPlaylist}
               className="ms-auto shrink-0 flex items-center gap-2 ps-4 border-s border-[color:var(--divider)] transition active:scale-95"
             >
-              <span className={`text-13 font-bold ${playlist ? "" : "text-muted"}`}>
+              <span className={`text-14 font-bold ${playlist ? "" : "text-muted"}`}>
                 {playlist ? t.toWatchOn : t.toWatchOff}
               </span>
               <span

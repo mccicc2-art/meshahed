@@ -60,7 +60,7 @@ export function LangMenu({ locale }: { locale: Locale }) {
         }`}
       >
         {/* **الرمزُ لاتينيٌّ بـ`dir=ltr` في الواجهتين** — علامةٌ لا ترجمة */}
-        <span className="text-13 font-extrabold tracking-wide leading-none" dir="ltr">
+        <span className="text-14 font-extrabold tracking-wide leading-none" dir="ltr">
           {LOCALE_CODES[locale]}
         </span>
       </button>

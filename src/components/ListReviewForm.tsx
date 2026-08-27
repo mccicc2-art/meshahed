@@ -73,7 +73,7 @@ export function StarRatingRow({
         </button>
       ))}
       {rating > 0 && (
-        <span className="ms-auto text-13 font-bold tabular-nums text-accent" dir="ltr">
+        <span className="ms-auto text-14 font-bold tabular-nums text-accent" dir="ltr">
           {num(rating, locale)}
         </span>
       )}

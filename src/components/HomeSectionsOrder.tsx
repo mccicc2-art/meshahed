@@ -65,7 +65,7 @@ export function HomeOrderButton({
       className="shrink-0 grid place-items-center h-9 min-w-9 px-1 rounded-full text-muted hover:text-accent active:scale-90 transition"
     >
       {word ? (
-        <span className="text-13 font-semibold leading-none">{word}</span>
+        <span className="text-14 font-semibold leading-none">{word}</span>
       ) : (
         <Icon name="grip" size={18} />
       )}

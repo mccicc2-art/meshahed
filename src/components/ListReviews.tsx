@@ -184,7 +184,7 @@ export function ListReviews({
       {/* ⚖️ 🆕 **العنوانُ «الآراء · N» بلا رمزٍ ولا متوسّط** (D-681):
           المتوسّطُ صعد إلى شريط الحال — **ورقمان لشيءٍ واحدٍ في شاشةٍ
           واحدة يفترقان** (D-219). */}
-      <h2 className="text-17 font-bold">
+      <h2 className="text-15 font-bold">
         {t.listReviewsTitle}
         {stats.count > 0 && (
           <span className="text-muted font-medium"> · {num(stats.count, locale)}</span>
@@ -308,7 +308,7 @@ export function ListReviews({
                 <span className="text-12 text-muted shrink-0">
                   {timeAgoShort(r.updatedAt, t)}
                 </span>
-                <span className="ms-auto text-13 font-bold tabular-nums text-accent" dir="ltr">
+                <span className="ms-auto text-14 font-bold tabular-nums text-accent" dir="ltr">
                   ★ {num(r.rating, locale)}
                 </span>
               </div>

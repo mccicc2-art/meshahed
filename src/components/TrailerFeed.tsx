@@ -126,7 +126,7 @@ export function TrailerFeed({
                 {/* 🆕 **والنسبةُ بجوار التصنيف** (D-729، حكمُه) — سطرٌ
                     واحدٌ يجمع السنةَ والنوعَ والنسبة، **ولا سطرَ ثالثٌ
                     لكلمةٍ واحدة.** */}
-                <p className="mt-1 text-13 text-muted truncate">
+                <p className="mt-1 text-14 text-muted truncate">
                   {[i.year, i.genre, i.country].filter(Boolean).join(" · ")}
                 </p>
                 {/* 🆕 **والنبذةُ ثلاثةُ أسطرٍ في الصفحة الكاملة وحدَها**
@@ -137,12 +137,12 @@ export function TrailerFeed({
                     بالحروف**: القصُّ الحسابيُّ يقطع الكلمةَ ويكذب على
                     مقاسات الخطوط. */}
                 {i.overview && (
-                  <p className="mt-2.5 text-13 leading-relaxed line-clamp-3" dir="auto">
+                  <p className="mt-2.5 text-14 leading-relaxed line-clamp-3" dir="auto">
                     {i.overview}
                   </p>
                 )}
                 {/* **وسببُ الترشيح آخرَ الكتلة** — هو أضعفُها رتبةً */}
-                <p className="mt-2.5 text-13 text-muted truncate">{i.note}</p>
+                <p className="mt-2.5 text-14 text-muted truncate">{i.note}</p>
               </div>
 
               {/* **ثلاثةُ أفعالٍ بوصفةٍ واحدة** — رمزٌ فوق كلمةٍ بعرضٍ

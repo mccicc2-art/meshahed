@@ -463,7 +463,7 @@ export function HomeHeader({
         <div className="min-w-0 flex-1">
           {/* 🆕 **والشارةُ خارجَ `truncate`** (D-633): اسمٌ طويلٌ يُقصّ
               ولا تُقصّ معه الشارة — **وشارةٌ تختفي بطول اسمٍ ليست شارة.** */}
-          <p className="flex items-center gap-1.5 text-17 font-bold leading-tight">
+          <p className="flex items-center gap-1.5 text-15 font-bold leading-tight">
             <span className="min-w-0 truncate">{displayName}</span>
             <PlusBadge profile={{ plan, founder }} locale={locale} size={15} />
           </p>

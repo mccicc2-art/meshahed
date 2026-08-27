@@ -37,7 +37,7 @@ export function LoginGateHost({ locale }: { locale: Locale }) {
     <Sheet open onClose={() => setOpen(false)} closeLabel={t.closeLabel} variant="center" labelledBy="login-gate-title">
       <SheetHeader id="login-gate-title" title={t.loginGateTitle} closeLabel={t.closeLabel} onClose={() => setOpen(false)} />
       <div className="px-5 pt-3 pb-5 flex flex-col gap-4">
-        <p className="text-13 text-muted leading-relaxed">{t.loginGateHint}</p>
+        <p className="text-14 text-muted leading-relaxed">{t.loginGateHint}</p>
         {/* زرُّ الدخول نفسُه لا نسخةٌ عنه — والعودةُ إلى الصفحة الحاليّة */}
         <GoogleButton locale={locale} next={pathname || "/"} />
       </div>
