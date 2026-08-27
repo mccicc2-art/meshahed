@@ -144,13 +144,35 @@ export function ListReviews({
       {isOwner ? (
         <p className="text-12 text-muted">{t.listReviewOwn}</p>
       ) : canReview ? (
-        mine || writing ? (
-          /* 🔧 **الصندوقُ خرج مكوّناً عند قارئه الثاني** (D-352) —
-             والنموذجُ نفسُه يفتح للتعديل حين لي رأيٌ قائم. */
-          <div className="rounded-card border border-border bg-surface p-4">
-            <ListReviewForm listId={listId} locale={locale} mine={mine} />
+        writing ? (
+          /* 🔧 **الصندوقُ خرج مكوّناً عند قارئه الثاني** (D-352).
+             ⚖️ 🆕 **ولا يفتح نفسَه أبداً** (D-683، بلاغُه: «هذي جداً
+             كبيرة») — **كان `mine` يفتحه دائماً لمن له رأيٌ قائم**،
+             فمن قيّم مرّةً سكن النموذجُ الكاملُ صفحتَه إلى الأبد.
+             **بابُه ضغطةٌ، وبعد الحفظ يطوي نفسَه** (`onSaved`)،
+             **و× تطويه بلا حفظ.** */
+          <div className="relative rounded-card border border-border bg-surface p-4">
+            <button
+              type="button"
+              aria-label={t.closeLabel}
+              onClick={() => {
+                tap(6);
+                setWriting(false);
+              }}
+              className="absolute top-2 end-2 grid place-items-center w-9 h-9 rounded-full text-muted hover:text-foreground"
+            >
+              <Icon name="close" size={16} />
+            </button>
+            <ListReviewForm
+              listId={listId}
+              locale={locale}
+              mine={mine}
+              onSaved={() => setWriting(false)}
+            />
           </div>
-        ) : (
+        ) : mine ? null : (
+          /* **ولمن له رأيٌ قائمٌ لا رقاقةَ دعوة**: رأيُه في الخطّ تحت
+             وقلمُ «عدّل» على صفِّه — **ودعوةُ «اكتب رأيك» لمن كتب كذبة.** */
           <button
             type="button"
             onClick={() => {
@@ -251,7 +273,24 @@ export function ListReviews({
                     فلا يُبلَّغ مرّتين، **والقاعدةُ تمنع الثاني بمفتاحها.**
                     ⚠️ **ولا يُرسم على رأيي أنا** — **زرُّ بلاغٍ على كلامك
                     أنت عبثٌ يُقرأ عطلاً** (نصُّ صفحة التعليق). */}
-                {!isMine && (
+                {isMine ? (
+                  /* 🆕 **بابُ تعديل رأيي على صفّي** (D-683) — النموذجُ
+                     فوق مطويٌّ، وهذا يوقظه. **في خانة البلاغ نفسِها**:
+                     البلاغُ لا يُرسم على رأيي، فالطرفُ له. */
+                  canReview && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        tap(6);
+                        setWriting(true);
+                      }}
+                      className="ms-auto flex items-center gap-1 text-12 text-muted hover:text-foreground"
+                    >
+                      <Icon name="edit" size={13} />
+                      {t.ratingEditAria}
+                    </button>
+                  )
+                ) : (
                   <button
                     type="button"
                     disabled={reported.has(r.userId)}
