@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getUser } from "@/lib/data";
 import { allow, retryAfter } from "@/lib/ratelimit";
-import { getTv, getMovie, getCredits } from "@/lib/tmdb";
+import { getTvIn, getMovieIn, getCredits } from "@/lib/tmdb";
 
 /** خمسةٌ وعشرون عملاً في الدفعة = خمسون نداءَ TMDB (تفاصيلُ + طاقمٌ لكلٍّ) */
 export const maxDuration = 60;
@@ -52,9 +52,13 @@ export async function GET(request: Request) {
   for (const it of titles) {
     try {
       const tv = it.media_type === "tv";
+      /* 🆕 D-702 (حكمُه: «الأسماء خلها تظهر بالإنجلش»): الكتالوجُ يُكتب
+         بالإنجليزيّة صراحةً — التعبئةُ الأولى جرت من جلسةٍ عربيّةٍ
+         فخُزّن «جورج ر. ر. مارتن»، **ولغةُ الكتالوج قرارُ الكتالوج لا
+         لغةُ من شغّل الدورة.** */
       const [d, credits] = await Promise.all([
-        tv ? getTv(it.tmdb_id) : getMovie(it.tmdb_id),
-        getCredits(tv ? "tv" : "movie", it.tmdb_id),
+        tv ? getTvIn(it.tmdb_id, "en-US") : getMovieIn(it.tmdb_id, "en-US"),
+        getCredits(tv ? "tv" : "movie", it.tmdb_id, "en-US"),
       ]);
       const date = tv
         ? (d as { first_air_date?: string | null }).first_air_date
