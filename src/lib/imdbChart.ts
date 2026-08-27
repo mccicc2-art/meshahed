@@ -229,6 +229,15 @@ export async function resolveOne(c: Candidate): Promise<ResolvedRow | null> {
     if (hit.video === true) return null;
     if (!(mt === "movie" ? hit.release_date : hit.first_air_date)) return null;
     if ((hit.vote_count ?? 0) < TMDB_MIN_VOTES) return null;
+    /* 🆕 **السؤال الرابع — أله نوعٌ؟** (D-690، عودةُ الدخيل نفسِه):
+       «EARLY STREAM!» عاد تاسعاً في تعبئة ١٨ أغسطس **بعد أن اجتاز
+       أسئلةَ D-358 الثلاثة** — تاريخُ إصدارٍ مزعومٌ، و`video=false`،
+       وأصواتُ TMDB بلغت الحدَّ (الهجومُ الذي رفع أصواتَ IMDb إلى ٢٥
+       ألفاً بلغ TMDB أيضاً). **والذي لا يُزوَّر رخيصاً أنه بلا نوع**:
+       عملٌ حقيقيٌّ في مدار «أفضل ٢٥٠» له نوعٌ دائماً — والدخيلُ صفحةٌ
+       مرتجلةٌ لا يصنّفها أحد. **والحقلُ في ردّ `/find` نفسِه** — لا
+       نداءَ ثانياً (D-165). */
+    if ((hit.genre_ids ?? []).length === 0) return null;
     return {
       tconst: c.tconst,
       tmdb_id: hit.id,
