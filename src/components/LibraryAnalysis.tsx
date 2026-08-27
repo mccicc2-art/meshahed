@@ -81,16 +81,11 @@ function StripCell({
 export interface AnalysisData {
   /** دقائقُ المدى المعروض */
   minutes: number;
-  /** نصيبُ المدى من الوقت كلِّه — `1` حين المعروضُ هو الكلّ */
-  share: number;
   episodes: number;
   movies: number;
-  titles: number;
-  /** عددُ تقييمات المدى ومتوسطها — `0` عدداً يخفي المتوسّط */
-  ratings: number;
-  avgRating: number;
-  /** سطرُ «منذ يناير» — `null` لقارئٍ بلا تواريخ */
-  year: { year: number; episodes: number; movies: number; minutes: number } | null;
+  /** 🆕 D-698: خانتا «المسلسلات» و«التعليقات» بأسماء أحمد الأربعة */
+  shows: number;
+  reviews: number;
   topWatched: { id: number; title: string; posterPath: string | null; watched: number }[];
   /** توزيعُ الذوق — الاسمُ محسوبٌ عند القراءة بلغة القارئ */
   topGenres: { name: string; count: number }[];
@@ -129,9 +124,8 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
     minutes: rangeMinutes,
     episodes: rangeEpisodes,
     movies: rangeMovies,
-    titles: rangeTitles,
-    ratings: rangeRatings,
-    avgRating: rangeAvg,
+    shows,
+    reviews,
     topWatched,
     topGenres,
     genreTags,
@@ -254,11 +248,15 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
       )}
 
       {/* ===== شريطُ الأرقام: صفٌّ واحدٌ دائماً، فواصلُ لا بطاقات (D-682) ===== */}
+      {/* ⚖️ D-698 (أسماؤه الأربعة: «المسلسلات الأفلام الحلقات التعليقات
+          بدون كلمة watched»): خانةُ «في المكتبة» صارت «المسلسلات»
+          وخانةُ المتوسّط صارت «التعليقات» — **والمتوسّطُ باقٍ في بطاقة
+          التقييم تحت، فلا معلومةَ ضاعت** (D-219). */}
       <div className="grid grid-cols-4">
-        <StripCell icon="play" value={num(rangeEpisodes, locale)} label={t.statsCellEpisodesWatched} border="" />
+        <StripCell icon="tv" value={num(shows, locale)} label={t.statsCellShows} border="" />
         <StripCell icon="film" value={num(rangeMovies, locale)} label={t.statsCellMoviesWatched} border={`border-s ${divider}`} />
-        <StripCell icon="bookmark" value={num(rangeTitles, locale)} label={t.statsCellTitles} border={`border-s ${divider}`} />
-        <StripCell icon="star" value={rangeRatings ? rangeAvg.toFixed(1) : "—"} label={t.statsCellRating} border={`border-s ${divider}`} />
+        <StripCell icon="play" value={num(rangeEpisodes, locale)} label={t.statsCellEpisodesWatched} border={`border-s ${divider}`} />
+        <StripCell icon="comment" value={num(reviews, locale)} label={t.statsCellComments} border={`border-s ${divider}`} />
       </div>
 
       {/* ===== ثلاثيةُ الذوق: أنمي · مسلسل · فيلم — بلا وسمِ نوعٍ ولا رقم (D-682) ===== */}
@@ -510,7 +508,6 @@ export async function LibraryAnalysis({
     watchedByShow.set(w.show_tmdb_id, (watchedByShow.get(w.show_tmdb_id) ?? 0) + 1);
     epMinutes += w.runtime ?? 40;
   }
-  const totalMinutes = epMinutes + movieMinutes;
 
   const tvFollows = follows.filter((f) => f.media_type === "tv");
 
@@ -538,25 +535,13 @@ export async function LibraryAnalysis({
     : movieMinutes;
 
   const rangeMinutes = rangeEpMinutes + rangeMovieMinutes;
-  const rangeTitles = prefix
-    ? new Set([
-        ...rangeEpRows.map((e) => `tv-${e.show_tmdb_id}`),
-        ...rangeMovieRows.map((h) => `mv-${h.tmdbId}`),
-      ]).size
-    : follows.length;
 
+  /* 🆕 D-698: «المسلسلات» عدُّ مسلسلات مكتبته (لا يتبع المدى — المكتبةُ
+     ليست حدثاً مؤرَّخاً)، و«التعليقات» ما كتب فيه نصٌّ فعلاً — تقييمٌ
+     صامتٌ ليس تعليقاً، وتسميتُه تعليقاً كذبٌ صغير (D-219). */
+  const shows = tvFollows.length;
   const rangeRatings = prefix ? ratings.filter((r) => inRange(r.updated_at)) : ratings;
-  const rangeAvg = rangeRatings.length
-    ? rangeRatings.reduce((n, r) => n + r.rating, 0) / rangeRatings.length
-    : 0;
-
-  // ===== ملخّص السنة — سطرٌ واحد تحت الأرقام =====
-  const yearRows = episodes.filter((e) => e.watched_at.startsWith(String(nowY)));
-  const yearMinutes =
-    yearRows.reduce((n, e) => n + (e.runtime ?? 40), 0) +
-    movieHistory
-      .filter((h) => h.watchedAt.startsWith(String(nowY)))
-      .reduce((n, h) => n + (h.runtime ?? 110), 0);
+  const reviews = rangeRatings.filter((r) => (r.review ?? "").trim().length > 0).length;
 
   /* ⚖️ 🆕 **والأنواعُ من العمود لا من ثمانين نداءَ TMDB** (D-649):
      `follows.genres` يحملها منذ الهجرة ١٤٢ — **والنداءُ لم يبقَ إلا لما
@@ -644,18 +629,10 @@ export async function LibraryAnalysis({
       locale={locale}
       data={{
         minutes: rangeMinutes,
-        share: range === "all" ? 1 : totalMinutes > 0 ? rangeMinutes / totalMinutes : 0,
         episodes: rangeEpisodes,
         movies: rangeMovies,
-        titles: rangeTitles,
-        ratings: rangeRatings.length,
-        avgRating: rangeAvg,
-        year: {
-          year: nowY,
-          episodes: yearRows.length,
-          movies: movieHistory.filter((h) => h.watchedAt.startsWith(String(nowY))).length,
-          minutes: yearMinutes,
-        },
+        shows,
+        reviews,
         topWatched,
         topGenres,
         genreTags,

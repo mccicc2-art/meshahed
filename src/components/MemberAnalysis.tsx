@@ -148,14 +148,11 @@ export async function MemberAnalysis({
       locale={locale}
       data={{
         minutes: epStats.minutes + mvStats.minutes,
-        /* **القوسُ كاملٌ لأن المعروضَ هو الكلّ** — ولا مدى يُقسَم عليه */
-        share: 1,
         episodes: epStats.episodes,
         movies: mvStats.watched,
-        titles: follows.length,
-        ratings: ratedTotal,
-        avgRating: avgAll,
-        year: null,
+        /* 🆕 D-698: مسلسلاتُ مكتبته، وتعليقاتُه ما كُتب فيه نصٌّ فعلاً */
+        shows: tvFollows.length,
+        reviews: ratings.filter((r) => (r.review ?? "").trim().length > 0).length,
         topWatched,
         topGenres,
         genreTags,
