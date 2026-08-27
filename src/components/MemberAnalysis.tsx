@@ -87,9 +87,6 @@ export async function MemberAnalysis({
     locale,
   );
 
-  const ratedTotal = ratings.length;
-  const avgAll = ratedTotal ? ratings.reduce((n, r) => n + r.rating, 0) / ratedTotal : 0;
-
   /* ===== 🆕 عقدُ D-679 — نفسُ تركيب `LibraryAnalysis` بقارئه العامّ ===== */
   const hero = pub
     ? {
@@ -128,11 +125,6 @@ export async function MemberAnalysis({
       watched: f.media_type === "movie" ? (watched.movies.has(f.tmdb_id) ? 1 : 0) : watchedEp,
     };
   });
-
-  const buckets = [0, 0, 0, 0, 0];
-  for (const r of ratings) {
-    buckets[Math.min(4, Math.max(0, Math.ceil(r.rating / 2) - 1))]++;
-  }
 
   /* 🆕 D-700: خلفيّةُ الترويسة أوّلُ مفضّلاته في كلِّ قائمة (المُنتقي
      الفئويُّ سدُّ الفراغ)، وبطاقةُ ذوقه من كتالوج `title_meta` نفسِه */
@@ -177,11 +169,8 @@ export async function MemberAnalysis({
         rangeLabel: t.statsAllTime,
         heroPosters,
         taste,
-        ratedTotal,
-        avgAll,
         mine: false,
         hero,
-        buckets,
       }}
     />
   );

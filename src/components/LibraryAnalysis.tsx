@@ -112,8 +112,6 @@ export interface AnalysisData {
   heroPosters: string[];
   /** 🆕 D-700: بطاقةُ «ذوقك» الكاملة — والغيابُ يُسقط البطاقةَ لا يصفّرها */
   taste: TasteData | null;
-  ratedTotal: number;
-  avgAll: number;
   /** 🆕 **القارئُ صاحبُ الأرقام؟** (D-649) — **يقرّر ضميرَ النصّ وحدَه**:
       «ذوقك» في ملفِّ غيرك تخاطب القارئ عن أرقام سواه (D-217). */
   mine: boolean;
@@ -125,9 +123,6 @@ export interface AnalysisData {
     bio: string | null;
     followers: number | null;
   } | null;
-  /** 🆕 **توزيعُ التقييمات في خمس سلالٍ** (D-679): ١–٢ · ٣–٤ · ٥–٦ ·
-      ٧–٨ · ٩–١٠ — من صفوف التقييم نفسِها بلا نداء. */
-  buckets?: number[];
 }
 
 /**
@@ -147,14 +142,10 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
     rangeLabel,
     heroPosters,
     taste,
-    ratedTotal,
-    avgAll,
     mine,
     hero,
-    buckets,
   } = data;
   const divider = "border-[color:var(--divider)]";
-  const bucketTotal = (buckets ?? []).reduce((a, b) => a + b, 0);
 
   const bigTime = (
     <div className="mt-4">
@@ -275,7 +266,7 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
 
           <div className="mt-4 grid grid-cols-2 gap-x-4">
             {taste.genres.length > 0 && (
-              <TasteCell icon="masks" title={t.tasteGenres}>
+              <TasteCell title={t.tasteGenres}>
                 {taste.genres.map((g) => (
                   <div key={g.name} className="flex items-baseline gap-2 min-w-0">
                     <span className="text-14 truncate" dir="auto">{g.name}</span>
@@ -285,7 +276,7 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
               </TasteCell>
             )}
             {taste.decades.length > 0 && (
-              <TasteCell icon="calendar" title={t.tasteYears}>
+              <TasteCell title={t.tasteYears}>
                 {taste.decades.map((d) => (
                   <div key={d.label} className="flex items-baseline gap-2 min-w-0">
                     <span className="text-14 tabular-nums" dir="ltr">{d.label}</span>
@@ -295,7 +286,7 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
               </TasteCell>
             )}
             {taste.languages.length > 0 && (
-              <TasteCell icon="comment" title={t.tasteLanguages} divider>
+              <TasteCell title={t.tasteLanguages} divider>
                 {taste.languages.map((l) => (
                   <div key={l.code} className="flex items-center gap-2.5 min-w-0">
                     <span className="shrink-0 grid place-items-center w-8 h-8 rounded-full border border-[color:var(--divider)] text-[10px] font-bold text-muted" dir="ltr">
@@ -313,7 +304,7 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
               </TasteCell>
             )}
             {taste.diversity && (
-              <TasteCell icon="globe" title={t.tasteDiversity} divider>
+              <TasteCell title={t.tasteDiversity} divider>
                 <div className="text-14">{taste.diversity.level}</div>
                 <div className="text-12 text-muted">
                   <span className="text-accent font-semibold tabular-nums">{num(taste.diversity.countries, locale)}</span>{" "}
@@ -322,14 +313,14 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
               </TasteCell>
             )}
             {taste.directors.length > 0 && (
-              <TasteCell icon="clapper" title={t.tasteDirectors} divider>
+              <TasteCell title={t.tasteDirectors} divider>
                 {taste.directors.map((d) => (
                   <PersonLine key={d.name} name={d.name} titles={d.titles} t={t} locale={locale} />
                 ))}
               </TasteCell>
             )}
             {taste.actors.length > 0 && (
-              <TasteCell icon="sparkle-star" title={t.tasteActors} divider>
+              <TasteCell title={t.tasteActors} divider>
                 {taste.actors.map((a) => (
                   <PersonLine key={a.name} name={a.name} titles={a.titles} t={t} locale={locale} />
                 ))}
@@ -339,72 +330,25 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
         </section>
       )}
 
-      {/* ===== بطاقةُ التقييمات (D-682 → D-692) ===== */}
-      {ratedTotal > 0 && (
-        <section className="rounded-2xl border border-border bg-surface p-4 flex items-center gap-4">
-          <div className="shrink-0">
-            {/* 🆕 D-692: النجمةُ بجوار الرقم لا فوقه — قرارُ D-687 نفسُه
-                يعمّ أخاه: رتبةٌ واحدةٌ بشكلٍ واحد */}
-            <span className="flex items-center gap-1.5">
-              <Icon name="star" size={18} className="text-accent shrink-0" aria-hidden />
-              <span className="text-[26px] font-bold leading-none tabular-nums" dir="ltr">
-                {avgAll.toFixed(1)}
-              </span>
-            </span>
-            <span className="block text-12 mt-1">{t.statsAvgLabel}</span>
-            <span className="block text-[11px] text-muted mt-0.5">
-              {mine ? t.ratedCount(ratedTotal) : t.ratedCountOther(ratedTotal)}
-            </span>
-          </div>
-          {buckets && bucketTotal > 0 && (
-            <div className={`flex-1 min-w-0 flex items-end justify-around gap-1 border-s ${divider} ps-4`}>
-              {buckets.map((n, i) => {
-                const share = pct(n, bucketTotal);
-                return (
-                  <span key={i} className="flex flex-col items-center gap-1 min-w-0">
-                    <span className="flex flex-col justify-end h-14 w-3.5 rounded-md bg-surface-2 overflow-hidden" aria-hidden>
-                      <span
-                        className="block w-full rounded-md bg-accent"
-                        style={{ height: `${Math.max(share, n > 0 ? 6 : 0)}%` }}
-                      />
-                    </span>
-                    {/* 🆕 D-688: نجمتان لكلِّ سلّةٍ — عشرٌ للسلّم كلِّه */}
-                    <span className="text-[10px] leading-none text-accent tracking-tighter" aria-hidden>
-                      {"★★"}
-                    </span>
-                    <span className="text-[10px] text-muted tabular-nums">{share}%</span>
-                  </span>
-                );
-              })}
-            </div>
-          )}
-        </section>
-      )}
     </div>
   );
 }
 
-/** خانةُ بطاقة الذوق: قرصُ رمزٍ ثمّ عنوانٌ وصفوفُه — والفاصلُ العلويُّ لصفوف الشبكة التالية */
+/** خانةُ بطاقة الذوق: عنوانٌ وصفوفُه — ⚖️ D-702: أقراصُ الأيقونات الستُّ
+    حُذفت بخطّه، فاتّسع عمودُ الأسماء وسقط قصُّها */
 function TasteCell({
-  icon,
   title,
   divider = false,
   children,
 }: {
-  icon: IconName;
   title: string;
   divider?: boolean;
   children: React.ReactNode;
 }) {
   return (
-    <div className={`flex items-start gap-3 py-3.5 min-w-0 ${divider ? "border-t border-[color:var(--divider)]" : ""}`}>
-      <span className="shrink-0 grid place-items-center w-11 h-11 rounded-full border border-accent/40 text-accent">
-        <Icon name={icon} size={20} />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block text-13 text-muted mb-1.5">{title}</span>
-        <span className="block space-y-1.5">{children}</span>
-      </span>
+    <div className={`py-3.5 min-w-0 ${divider ? "border-t border-[color:var(--divider)]" : ""}`}>
+      <span className="block text-13 text-muted mb-1.5">{title}</span>
+      <span className="block space-y-1.5">{children}</span>
     </div>
   );
 }
@@ -744,9 +688,6 @@ export async function LibraryAnalysis({
     locale,
   );
 
-  const ratedTotal = ratings.length;
-  const avgAll = ratedTotal ? ratings.reduce((n, r) => n + r.rating, 0) / ratedTotal : 0;
-
   /* ===== 🆕 عقدُ D-679: الترويسةُ والثلاثيةُ والسلال ===== */
   const hero = profile
     ? {
@@ -785,12 +726,6 @@ export async function LibraryAnalysis({
       watched: f.media_type === "movie" ? (watchedMovieIds.has(f.tmdb_id) ? 1 : 0) : watchedEp,
     };
   });
-
-  /* **خمسُ سلالٍ للتقييم** — `ceil(r/2)` تضع ١–٢ في الأولى و٩–١٠ في الأخيرة */
-  const buckets = [0, 0, 0, 0, 0];
-  for (const r of ratings) {
-    buckets[Math.min(4, Math.max(0, Math.ceil(r.rating / 2) - 1))]++;
-  }
 
   /* 🆕 D-700: خلفيّةُ الترويسة **أوّلُ المفضّلة في كلِّ قائمة** (حكمُه:
      «المسلسل والأنمي والفلم مأخوذ من المفضلة أول واحد في كل قائمة») —
@@ -843,11 +778,8 @@ export async function LibraryAnalysis({
         rangeLabel,
         heroPosters,
         taste,
-        ratedTotal,
-        avgAll,
         mine: true,
         hero,
-        buckets,
       }}
     />
   );
@@ -877,8 +809,6 @@ export function LibraryAnalysisSkeleton() {
       </div>
       {/* بطاقةُ الذوق الكاملة */}
       <div className="h-[26rem] rounded-2xl bg-surface-2" />
-      {/* التقييمات */}
-      <div className="h-32 rounded-2xl bg-surface-2" />
     </div>
   );
 }
