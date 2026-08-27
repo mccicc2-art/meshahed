@@ -83,13 +83,13 @@ function ProgressDonut({ done, watching, rest, pct: pctDone }: {
   return (
     <span
       aria-hidden
-      className="shrink-0 grid place-items-center w-28 h-28 rounded-full"
+      className="shrink-0 grid place-items-center w-24 h-24 rounded-full"
       style={{
         background: `conic-gradient(var(--success) 0 ${a}%, var(--accent) ${a}% ${b}%, var(--disabled) ${b}% 100%)`,
       }}
     >
       {/* **النسبةُ 34px بنصّ المواصفة** — رقمٌ زخرفيٌّ خارج سلّم D-459 كجاراته */}
-      <span className="flex items-center justify-center gap-0.5 w-[5.5rem] h-[5.5rem] rounded-full bg-surface text-20 font-bold tabular-nums leading-none">
+      <span className="flex items-center justify-center gap-0.5 w-[4.5rem] h-[4.5rem] rounded-full bg-surface text-20 font-bold tabular-nums leading-none">
         {pctDone}
         <span className="text-[10px] font-bold text-muted">%</span>
       </span>
@@ -404,8 +404,12 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
                         style={{ height: `${Math.max(share, n > 0 ? 6 : 0)}%` }}
                       />
                     </span>
-                    <span className="text-[8px] leading-none text-accent tracking-tighter" aria-hidden>
-                      {"★".repeat(i + 1)}
+                    {/* 🆕 D-688: **نجمتان لكلِّ سلّةٍ — عشرٌ للسلّم كلِّه**
+                        (حكمُه: «المفروض عددهم ١٠ فقط»): السلّمُ من عشرة
+                        وكلُّ سلّةٍ درجتان (١–٢ … ٩–١٠)، **فالصفُّ محورُ
+                        سلّمٍ لا عدّادَ سلّة** — و١+٢+…+٥ كانت تقول ١٥. */}
+                    <span className="text-[10px] leading-none text-accent tracking-tighter" aria-hidden>
+                      {"★★"}
                     </span>
                     <span className="text-[10px] text-muted tabular-nums">{share}%</span>
                   </span>
