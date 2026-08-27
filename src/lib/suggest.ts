@@ -10,6 +10,7 @@ import {
 import { discoverByGenres, recommendationsFor, type SearchResult } from "@/lib/tmdb";
 import { railGuard } from "@/lib/topChart";
 import { localizeRows } from "@/lib/localize";
+import { cache } from "react";
 import type { Locale } from "@/lib/i18n";
 import { blendRecommendations, type Candidate, type Recommendation } from "@/lib/recommend";
 
@@ -28,7 +29,15 @@ import { blendRecommendations, type Candidate, type Recommendation } from "@/lib
  * باللغة الصحيحة، والسبب وحده عربيّ. وهو أظهر موضعٍ يقع فيه التسرّب لأن
  * الاسم يُقرأ داخل جملة لا وحده.
  */
-export async function getSuggestions(
+/**
+ * 🆕 **ومخبَّأةٌ للطلب الواحد** (D-726) — `cache()` كـ`getFollows` حرفاً.
+ * 🔑 **والسببُ قارئٌ ثانٍ ظهر اليوم**: «مختار لك» وصفُّ الترايلرات
+ * **يقرآن الترشيحَ نفسَه في الصفحة نفسِها** — **وبلا خبيئةٍ يُخلط
+ * الترشيحُ مرّتين ويُنادى TMDB مرّتين في كلِّ فتحةٍ لاكتشف.**
+ * ⚠️ **والمفتاحُ هو الوسائط**: **فليطلب القارئان السقفَ نفسَه ثمّ
+ * يقصّ كلٌّ حاجتَه** — **وسقفان مختلفان يُبطلان الخبيئةَ صامتين.**
+ */
+export const getSuggestions = cache(async function getSuggestions(
   limit = 12,
   locale: Locale = "ar",
 ): Promise<Recommendation[]> {
@@ -132,4 +141,4 @@ export async function getSuggestions(
     limit,
     prefs: await getContentPrefs(),
   });
-}
+});

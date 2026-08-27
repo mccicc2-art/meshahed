@@ -1735,6 +1735,15 @@ const ar = {
 
   trailerTitle: "الترايلر",
   trailerPlay: "شغّل الترايلر",
+  /* 🆕 **صفُّ الترايلرات وصفحتُه** (D-726) */
+  trailersForYou: "ترايلرات لك",
+  /* **والفعلُ لا الحالة** (D-224): الزرُّ يقول ما سيقع لا ما هو قائم */
+  trailerMute: "أوقف الصوت",
+  trailerUnmute: "شغّل الصوت",
+  trailerDetails: "التفاصيل",
+  trailerMyList: "مكتبتي",
+  trailerNotForMe: "ليس لي",
+  trailersEmpty: "لا ترايلرات الآن — تابِع أعمالاً أو قيّم بعضَها وسيمتلئ هذا الصفّ.",
   panelRatings: "تقييماتي",
   reviewSectionTitle: "تعليقك",
   saveReview: "احفظ التعليق",
@@ -3018,6 +3027,13 @@ const en: Dict = {
 
   trailerTitle: "Trailer",
   trailerPlay: "Play trailer",
+  trailersForYou: "Trailers for you",
+  trailerMute: "Mute",
+  trailerUnmute: "Unmute",
+  trailerDetails: "Details",
+  trailerMyList: "My List",
+  trailerNotForMe: "Not for me",
+  trailersEmpty: "No trailers yet — follow or rate a few titles and this row fills up.",
   panelRatings: "My ratings",
   reviewSectionTitle: "Your comment",
   saveReview: "Save comment",

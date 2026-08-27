@@ -720,6 +720,22 @@ export async function setTabPrefs(surface: string, prefs: TabPref[]) {
  * حرفاً: التعقيمُ بإعادة التحليل ضدّ القاموسَين، **فلا يُخزَّن إلا ما
  * يُعرف** (slug غريبٌ يسقط صامتاً لا يفرغ الصفحة).
  */
+/**
+ * 🆕 **صوتُ الترايلر** (D-726) — **كوكيزٌ كنمط `setTabPrefs` حرفاً**:
+ * قيمتان لا غير، **والمجهولُ يسقط إلى الصمت** لا إلى الصوت.
+ * ⚠️ **ولا `revalidatePath`**: التفضيلُ يُقرأ عند الرسم القادم،
+ * **وإعادةُ تصيير Discover لأجل مفتاحِ صوتٍ ثمنٌ بلا مقابل** (D-510).
+ */
+export async function setTrailerSound(on: boolean) {
+  const { TRAILER_SOUND_COOKIE, serializeTrailerSound } = await import("@/lib/trailerPrefs");
+  const store = await cookies();
+  store.set(TRAILER_SOUND_COOKIE, serializeTrailerSound(Boolean(on)), {
+    path: "/",
+    maxAge: 60 * 60 * 24 * 365,
+    sameSite: "lax",
+  });
+}
+
 export async function setMyRows(raw: string) {
   const { parseMyRows, serializeMyRows, MY_ROWS_COOKIE } = await import("@/lib/myRows");
   const store = await cookies();
