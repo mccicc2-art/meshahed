@@ -747,12 +747,6 @@ export function buildTaste(args: {
     works: (list ?? []).slice(0, ROW_WORKS),
     total: (list ?? []).length,
   });
-  const genres = topGenres.slice(0, 2).map((x) => ({
-    name: x.name,
-    pct: pct(x.count, genreTags),
-    /* **ومفتاحُ النوع يُشتقّ من عدّه** — نفسُ وصفة `topSlug` أدناه */
-    ...rowOf(genreW.get([...bySlug.entries()].find(([, n]) => n === x.count)?.[0] ?? "")),
-  }));
 
   const decadeTally = new Map<number, number>();
   const langTally = new Map<string, number>();
@@ -843,6 +837,19 @@ export function buildTaste(args: {
       if (f && !faceOf.has(a)) faceOf.set(a, f);
     });
   }
+
+  /* 🔴 **وموضعُ هذا الحساب بعد المرور لا قبله** (D-721، عطلُ أوّل
+     نشرة): **قرأتُ `genreW` في سطرٍ يسبق تعريفَها بعشرين سطراً** —
+     `const` في منطقة الموت الزمنيّ ترمي `ReferenceError` وقتَ الرسم،
+     **فسقطت صفحتا الإحصائيات كلتاهما.** **والمترجِمُ لا يمسك هذا**:
+     النوعُ سليمٌ والترتيبُ وحدَه خطأ. 🔑 **وسلّةٌ تُملأ في حلقةٍ
+     لا تُقرأ قبل الحلقة** — قاعدةٌ تُكتب مرّةً وتُقرأ دائماً. */
+  const genres = topGenres.slice(0, 2).map((x) => ({
+    name: x.name,
+    pct: pct(x.count, genreTags),
+    /* **ومفتاحُ النوع يُشتقّ من عدّه** — نفسُ وصفة `topSlug` أدناه */
+    ...rowOf(genreW.get([...bySlug.entries()].find(([, n]) => n === x.count)?.[0] ?? "")),
+  }));
 
   const yearTotal = [...decadeTally.values()].reduce((a, b) => a + b, 0);
   const decades = [...decadeTally.entries()]
