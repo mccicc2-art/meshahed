@@ -668,12 +668,14 @@ const KEY_JOBS = ["Director", "Creator", "Writer", "Screenplay", "Executive Prod
 export async function getCredits(
   mediaType: MediaType,
   id: number,
+  /** 🆕 D-702: لغةٌ صريحةٌ لكتابة الكتالوج — الغيابُ يُبقي لغةَ القارئ */
+  language?: "ar-SA" | "en-US",
 ): Promise<{ cast: CastMember[]; crew: CrewMember[] }> {
   try {
     const data = await tmdb<{
       cast?: (CastMember & { order?: number })[];
       crew?: CrewMember[];
-    }>(`/${mediaType}/${id}/credits`);
+    }>(`/${mediaType}/${id}/credits`, language ? { language } : {});
 
     const cast = (data.cast ?? [])
       .slice()
@@ -1033,6 +1035,12 @@ export async function getMovie(id: number): Promise<MovieDetails> {
  */
 export async function getTvIn(id: number, language: "ar-SA" | "en-US"): Promise<TvDetails> {
   return tmdb<TvDetails>(`/tv/${id}`, { language });
+}
+
+/** 🆕 D-702: نظيرُ `getTvIn` للفيلم — كتالوجُ `title_meta` يُكتب بالإنجليزيّة
+    مهما كانت لغةُ الجلسة الإداريّة التي شغّلت التعبئة */
+export async function getMovieIn(id: number, language: "ar-SA" | "en-US"): Promise<MovieDetails> {
+  return tmdb<MovieDetails>(`/movie/${id}`, { language });
 }
 
 
