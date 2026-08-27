@@ -36,6 +36,18 @@ function pct(part: number, total: number) {
  * ⚠️ **وما دون اليوم يبقى بالساعات**: «٠ يوم» لمن شاهد خمسَ ساعاتٍ
  * كذبٌ (D-217) — **والدقّةُ تُحذف حيث لا تُقرأ لا حيث تصنع المعنى.**
  */
+/**
+ * 🆕 **ظلُّ كلامِ البطاقة السينمائيّة** (D-712) — **أربعُ طبقاتٍ بـ٧٠٪**:
+ * ملتصقةٌ تحدُّ الحرف، وثالثةٌ ورابعةٌ تُطفئان ما خلفه. **وواحدةٌ عريضةٌ
+ * وحدَها تُقرأ صندوقاً لا ظلّاً**، **وواحدةٌ ضيّقةٌ وحدَها لا تنقذ حرفاً
+ * فوق ملصقٍ أبيض.**
+ */
+const HERO_TEXT_SHADOW =
+  "0 1px 2px rgba(0,0,0,0.7), 0 0 4px rgba(0,0,0,0.7), 0 0 9px rgba(0,0,0,0.7), 0 0 9px rgba(0,0,0,0.7)";
+
+/** **والرمزُ لا يرث ظلَّ الحرف** — `drop-shadow` بالقوّة نفسِها (D-712) */
+const HERO_ICON_SHADOW = "drop-shadow(0 0 5px rgba(0,0,0,0.7))";
+
 function fmtWatchTime(minutes: number, t: ReturnType<typeof getDict>) {
   const h = Math.round(minutes / 60);
   if (h < 24) return t.hours(h);
@@ -175,7 +187,7 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
       <div className="mt-1.5 text-12 text-muted">
         {t.statWatchTime} · {rangeLabel}
       </div>
-      <svg aria-hidden viewBox="0 0 220 24" fill="none" className="mt-2 h-4 w-36 text-accent/70">
+      <svg aria-hidden viewBox="0 0 220 24" fill="none" className="mt-2 h-4 w-36 text-accent/70" style={{ filter: HERO_ICON_SHADOW }}>
         <path d="M2 20 C 58 4, 140 24, 218 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
       </svg>
     </div>
@@ -206,22 +218,37 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
                   </span>
                 ))}
               </span>
-              {/* ⚖️ 🆕 D-707 (حكمُه: «قلّل الضلام شوي وزيد الضلام تحت
-                  الكتابة»): **طبقتان لا واحدة** — **حجابٌ عامٌّ أخفّ**
-                  يكشف الملصقاتِ أكثر، **وفراشٌ أغمقُ تحت عمود الكتابة
-                  وحدَه** ينتهي قبل منتصف البطاقة. **والعتمةُ تتبع
-                  الكلامَ** (قاعدةُ D-686) — فما لا كلامَ تحته يصفو. */}
+              {/* ⚖️ 🆕 **D-712: حجابٌ واحدٌ مستوٍ ٣٠٪، والعتمةُ نزلت من
+                  الطبقة إلى الحرف** (اختيارُ أحمد من ثلاثة ألواحٍ عُرضت
+                  عليه: «نعم ظلّ ناعم ١»).
+
+                  ⚖️ **نقضٌ لـD-707 ولطبقتَي التدرّج قبلها** — **وسببُ
+                  النقض أن الحجابَ كان يدفع ثمنَ الكلام بالفنّ كلِّه**:
+                  عمودُ البداية يعتم ٦٠٪ **ليُقرأ سطران**، فيغرق ثلثُ
+                  الملصق الأوّل ولا يُرى.
+                  🔑 **والقاعدةُ المستخلَصة**: **ما يحتاج العتمةَ هو
+                  الحرفُ لا المساحةُ التي حولَه** — **وظلٌّ على قدِّ
+                  الكلمة يشتري القراءةَ بثمنِ الكلمة، والحجابُ يشتريها
+                  بثمنِ الصورة.** وهي D-686 نفسُها («العتمةُ تتبع
+                  الكلام») **مأخوذةً إلى منتهاها**: لا تتبعه بعمودٍ، بل
+                  تلتصق به.
+                  ⚠️ **والحجابُ لم يُلغَ**: ٣٠٪ مستوٍ يخفض صخبَ
+                  الملصقات كلَّها **ويمنع أن يصير الكارد لوحةَ إعلان** —
+                  **وهو أخفُّ ممّا كان في كلِّ نقطةٍ من البطاقة.** */}
               <span
                 aria-hidden
-                className="absolute inset-0 bg-gradient-to-r rtl:bg-gradient-to-l from-[color:var(--surface)]/70 from-[8%] via-[color:var(--surface)]/32 via-[45%] to-transparent to-[72%]"
-              />
-              <span
-                aria-hidden
-                className="absolute inset-y-0 start-0 w-[54%] bg-gradient-to-r rtl:bg-gradient-to-l from-[color:var(--surface)]/60 via-[color:var(--surface)]/30 via-[55%] to-transparent"
+                className="absolute inset-0 bg-[color:var(--surface)]/30"
               />
             </>
           )}
-          <div className="relative">
+          {/* 🆕 **الظلُّ يسكن الحاوية فيرثه كلُّ حرفٍ تحتها** (D-712):
+              `text-shadow` وراثيّةٌ، **فقاعدةٌ واحدةٌ تكفي الاسمَ
+              والنبذةَ والرقمَ واسمَه** — **ونسخُها على كلِّ سطرٍ هو كيف
+              تفترق الأسطرُ يوماً** (القاعدة ٦). **وأربعُ طبقاتٍ بـ٧٠٪
+              لا طبقةٌ واحدةٌ صمّاء**: الملتصقةُ تحدّ الحرف، والواسعتان
+              تُطفئان ما خلفه — **وطبقةٌ واحدةٌ عريضةٌ تُقرأ صندوقاً لا
+              ظلّاً.** */}
+          <div className="relative" style={{ textShadow: HERO_TEXT_SHADOW }}>
             <div className="flex items-center gap-3">
               <span className="shrink-0 relative w-12 h-12 rounded-full overflow-hidden bg-surface-2 border border-accent/70">
                 {hero.avatarUrl ? (
@@ -235,11 +262,12 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
               <span className="min-w-0">
                 <span className="flex items-center gap-1.5 text-[17px] font-bold min-w-0">
                   <span className="truncate" dir="auto">{hero.name}</span>
-                  <Icon name="sparkle-star" size={13} className="shrink-0 text-accent" aria-hidden />
+                  {/* **والرمزُ لا يبلغه ظلُّ الحرف** — فله `drop-shadow` بالقوّة نفسِها (D-712) */}
+                  <Icon name="sparkle-star" size={13} className="shrink-0 text-accent" style={{ filter: HERO_ICON_SHADOW }} aria-hidden />
                 </span>
                 {hero.followers !== null && (
                   <span className="mt-0.5 flex items-center gap-1.5 text-12 text-muted">
-                    <Icon name="people" size={13} />
+                    <Icon name="people" size={13} style={{ filter: HERO_ICON_SHADOW }} />
                     {t.suggestFollowers(hero.followers)}
                   </span>
                 )}
