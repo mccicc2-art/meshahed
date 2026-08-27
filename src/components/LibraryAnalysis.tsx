@@ -488,7 +488,17 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
             </div>
           )}
 
-          <div className="mt-1 grid grid-cols-2 gap-x-4">
+          {/* 🆕 **وظلُّ الحرف نزل إلى «ذوقك»** (D-724، بعد أوّل قياسٍ
+              حيٍّ للّون): **رفعُ الخلفيّة من ١٥٪ رماديّةً إلى ٢٥٪ ملوّنةً
+              اشترى الحياةَ بثمنِ القراءة** — «عقد ٢٠٢٠» أبيضُ فوق ملصقٍ
+              فاتح، و«٢٠٪» ذهبيٌّ فوق أحمر.
+              🔑 **والعلاجُ وصفةُ D-712 بعينها ولا وصفةَ ثانية**: **ما
+              يحتاج العتمةَ هو الحرفُ لا المساحةُ التي حولَه** — **وحجابٌ
+              أثقل كان سيعيد الرماديَّ من بابٍ آخر ويُبطل حكمَه.**
+              ⚠️ **وقاعدةٌ واحدةٌ على الشبكة تكفي الستَّ** (`text-shadow`
+              وراثيّة) — **ونسخُها على كلِّ خانةٍ هو كيف تفترق الخاناتُ
+              يوماً** (القاعدة ٦). */}
+          <div className="mt-1 grid grid-cols-2 gap-x-4" style={{ textShadow: HERO_TEXT_SHADOW }}>
             {taste.genres.length > 0 && (
               <TasteCell title={t.tasteGenres} posters={taste.posters.genres} all={taste.all.genres} shown={taste.genres.length} locale={locale}>
                 {taste.genres.map((g) => (
