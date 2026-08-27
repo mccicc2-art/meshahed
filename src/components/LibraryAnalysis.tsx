@@ -49,6 +49,14 @@ const HERO_TEXT_SHADOW =
 /** **والرمزُ لا يرث ظلَّ الحرف** — `drop-shadow` بالقوّة نفسِها (D-712) */
 const HERO_ICON_SHADOW = "drop-shadow(0 0 5px rgba(0,0,0,0.7))";
 
+/**
+ * 🆕 **عددُ ملصقاتِ خلفيّة الخانة** (D-717) — **ثلاثةٌ لا أربع**:
+ * الخانةُ عرضُها نصفُ البطاقة، **ورابعٌ يصير شريطاً بعرضِ إصبع** فلا
+ * يُعرف عملاً. **وستُّ خاناتٍ × ٣ = ثمانيةَ عشرَ ملصقاً**، وهو الثمنُ
+ * المعلَن (تُطلب بـ`w185` وتُصغَّر، وكلُّها تحت ١٥٪ رماديّةً).
+ */
+const BG_POSTERS = 3;
+
 function fmtWatchTime(minutes: number, t: ReturnType<typeof getDict>) {
   const h = Math.round(minutes / 60);
   if (h < 24) return t.hours(h);
@@ -117,6 +125,19 @@ export interface TasteData {
   diversityLevel: string | null;
   directors: { name: string; titles: number }[];
   actors: { name: string; titles: number }[];
+  /**
+   * 🆕 **ملصقاتُ خلفيّةِ كلِّ خانة** (D-717، اختيارُ أحمد «مقترح ٢ —
+   * مكتبتك خلفك» من لوحين عُرضا عليه): **الأعمالُ التي صنعت رقمَ
+   * الخانة**، ثلاثةٌ لكلٍّ — **لا زخرفةٌ تُقحم، بل الدليلُ خلف الرقم.**
+   */
+  posters: {
+    genres: string[];
+    decades: string[];
+    languages: string[];
+    countries: string[];
+    directors: string[];
+    actors: string[];
+  };
 }
 
 export interface AnalysisData {
@@ -248,7 +269,7 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
                   **وهو أخفُّ ممّا كان في كلِّ نقطةٍ من البطاقة.** */}
               <span
                 aria-hidden
-                className="absolute inset-0 bg-[color:var(--surface)]/30"
+                className="absolute inset-0 bg-[color:var(--surface)]/40"
               />
             </>
           )}
@@ -315,7 +336,14 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
 
       {/* ===== بطاقةُ «ذوقك» الكاملة (D-700 — الصورةُ بالضبط) ===== */}
       {taste && (
-        <section className="rounded-2xl border border-border bg-surface p-4">
+        /* 🆕 **وارتفاعُها −٥٪** (D-717، حكمُه: «نقّص ارتفاع كارد ذوقك
+           ٥٪»). **والنقصُ حشوٌ ينزل درجةً في السلّم، في البطاقة وفي
+           خاناتها معاً** — **لا خطٌّ يصغر**: مقاساتُ الحروف ضُبطت
+           بالقياس (D-703) **وتصغيرُها يغيّر المعنى، والحشوُ يغيّر
+           المساحةَ وحدَها** (وصفةُ D-713 مقلوبة).
+           📏 **مقيسٌ عند ٣٩٠px**: ٤١٤٫٥ → ٣٩٤٫٥ (−٤٫٨٪) — **والخمسةُ
+           بالضبط كانت تحتاج رقماً خارج السلّم** (القاعدة ١٧). */
+        <section className="rounded-2xl border border-border bg-surface px-4 py-3">
           <h3 className="flex items-center gap-2.5 text-[17px] font-bold">
             <Icon name="trio" size={22} className="text-accent" />
             {mine ? t.analysisTaste : t.analysisTasteOther}
@@ -346,21 +374,21 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
 
           <div className="mt-1 grid grid-cols-2 gap-x-4">
             {taste.genres.length > 0 && (
-              <TasteCell title={t.tasteGenres}>
+              <TasteCell title={t.tasteGenres} posters={taste.posters.genres}>
                 {taste.genres.map((g) => (
                   <TasteRow key={g.name} name={g.name} value={`${g.pct}%`} />
                 ))}
               </TasteCell>
             )}
             {taste.decades.length > 0 && (
-              <TasteCell title={t.tasteYears}>
+              <TasteCell title={t.tasteYears} posters={taste.posters.decades}>
                 {taste.decades.map((d) => (
                   <TasteRow key={d.label} name={d.label} value={`${d.pct}%`} ltr />
                 ))}
               </TasteCell>
             )}
             {taste.languages.length > 0 && (
-              <TasteCell title={t.tasteLanguages} divider>
+              <TasteCell title={t.tasteLanguages} divider posters={taste.posters.languages}>
                 {taste.languages.map((l) => (
                   <TasteRow
                     key={l.code}
@@ -376,7 +404,7 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
                  كلمةً مجرّدةً ورقماً — **صارت تسمّي البلدانَ نفسَها**
                  (أعلى اثنين بعدِّ أعمالهما) **والمستوى وصفٌ في عنوانها**،
                  فوافقت أخواتِها الخمسَ في الشكل وزادت معنًى. */
-              <TasteCell title={t.tasteDiversity} note={taste.diversityLevel ?? undefined} divider>
+              <TasteCell title={t.tasteDiversity} note={taste.diversityLevel ?? undefined} divider posters={taste.posters.countries}>
                 {taste.countries.map((c) => (
                   <TasteRow
                     key={c.name}
@@ -388,7 +416,7 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
               </TasteCell>
             )}
             {taste.directors.length > 0 && (
-              <TasteCell title={t.tasteDirectors} divider>
+              <TasteCell title={t.tasteDirectors} divider posters={taste.posters.directors}>
                 {taste.directors.map((d) => (
                   <TasteRow
                     key={d.name}
@@ -400,7 +428,7 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
               </TasteCell>
             )}
             {taste.actors.length > 0 && (
-              <TasteCell title={t.tasteActors} divider>
+              <TasteCell title={t.tasteActors} divider posters={taste.posters.actors}>
                 {taste.actors.map((a) => (
                   <TasteRow
                     key={a.name}
@@ -425,21 +453,48 @@ function TasteCell({
   title,
   note,
   divider = false,
+  posters,
   children,
 }: {
   title: string;
   /** وصفٌ بجانب العنوان — «متوسّط» بجانب «التنوّع» */
   note?: string;
   divider?: boolean;
+  /**
+   * 🆕 **ملصقاتُ الأعمال التي صنعت رقمَ هذه الخانة** (D-717) — انظر
+   * حجّتَها في `TasteData.posters`.
+   */
+  posters?: string[];
   children: React.ReactNode;
 }) {
   return (
-    <div className={`py-3.5 min-w-0 ${divider ? "border-t border-[color:var(--divider)]" : ""}`}>
-      <span className="block text-13 text-muted mb-1.5">
+    <div
+      className={`relative overflow-hidden py-3 min-w-0 ${
+        divider ? "border-t border-[color:var(--divider)]" : ""
+      }`}
+    >
+      {/* 🆕 **الخلفيّة** (D-717، اختيارُه «مكتبتك خلفك»): **ملصقاتٌ لا
+          رسمٌ** — واللوحان عُرضا عليه فاختار الصورةَ على الشارت.
+          ⚠️ **ثلاثةُ قيودٍ تحوّلها من صورةٍ إلى ملمس**: **١٥٪** (رقمُه)
+          فلا تنازع الرقمَ الذي جاءت تخدمه · **ورماديّةٌ** لأن ستَّ
+          خاناتٍ بألوانِ ستِّ ملصقاتٍ تصير لوحةَ إعلان · **و`aria-hidden`
+          لأنها لا تقول شيئاً لمن لا يراها.**
+          🔑 **وهي دليلٌ لا زخرفة**: خلف «أكشن ومغامرة» أعمالُ أكشنك
+          أنت — **وزخرفةٌ لا تتبدّل ببيانات صاحبها زينةٌ في ثوب معنى.** */}
+      {posters && posters.length > 0 && (
+        <span aria-hidden className="absolute inset-0 flex opacity-15 grayscale">
+          {posters.map((p) => (
+            <span key={p} className="relative flex-1 min-w-0">
+              <Image src={posterUrl(p, "w185")!} alt="" fill sizes="120px" className="object-cover" />
+            </span>
+          ))}
+        </span>
+      )}
+      <span className="relative block text-13 text-muted mb-1.5">
         {title}
         {note && <span className="text-accent font-semibold"> · {note}</span>}
       </span>
-      <span className="block space-y-1.5">{children}</span>
+      <span className="relative block space-y-1.5">{children}</span>
     </div>
   );
 }
@@ -515,7 +570,17 @@ export interface TrioCandidate {
  * وثلاثُ سماتٍ على الأكثر ولا سمةَ لتوزيعٍ لا يحملها.
  */
 export function buildTaste(args: {
-  keys: { media_type: "tv" | "movie"; tmdb_id: number }[];
+  /**
+   * 🆕 **العملُ لا مفتاحُه** (D-717): صار الصفُّ يحمل ملصقَه وأنواعَه
+   * **لأن الخلفيّةَ تُبنى من الأعمال التي صنعت الرقم** — **ومَن يعدّ
+   * وحدَه لا يعرف مَن عدّ.**
+   */
+  keys: {
+    media_type: "tv" | "movie";
+    tmdb_id: number;
+    poster?: string | null;
+    genreIds?: number[] | null;
+  }[];
   metas: Map<string, { release_year: number | null; original_language: string | null; origin_countries: string[] | null; director: string | null; top_cast: string[] | null }>;
   bySlug: Map<string, number>;
   genreTags: number;
@@ -546,17 +611,56 @@ export function buildTaste(args: {
   const countryTally = new Map<string, number>();
   const directorTally = new Map<string, number>();
   const actorTally = new Map<string, number>();
+  /* 🆕 **سلالُ الملصقات** (D-717) — **تُملأ في المرور نفسِه الذي يعدّ**:
+     **مرورٌ ثانٍ على المكتبة كلِّها ليجمع ما جمعه الأوّلُ ضريبةٌ بلا
+     مقابل**، **والسلّةُ تقف عند ثلاثةٍ فلا تكبر بكِبَر المكتبة.** */
+  const genreP = new Map<string, string[]>();
+  const decadeP = new Map<number, string[]>();
+  const langP = new Map<string, string[]>();
+  const countryP = new Map<string, string[]>();
+  const directorP = new Map<string, string[]>();
+  const actorP = new Map<string, string[]>();
+  const push = <K,>(m: Map<K, string[]>, key: K, poster?: string | null) => {
+    if (!poster) return;
+    const cur = m.get(key);
+    if (!cur) m.set(key, [poster]);
+    else if (cur.length < BG_POSTERS && !cur.includes(poster)) cur.push(poster);
+  };
   for (const k of keys) {
+    /* **والأنواعُ تُسلَّل هنا وإن عُدّت في `tallyGenres`**: العدُّ هناك
+       يبتلع المفهومَ مرّةً للعمل (أكشن ومغامرة واحد)، **والسلّةُ تحتاج
+       المفهومَ نفسَه لا الرقم** — والدالّةُ الواحدةُ (`browseGenreForId`)
+       تضمن أنّهما يتكلّمان اللغةَ نفسَها (القاعدة ٦). */
+    const seen = new Set<string>();
+    for (const id of k.genreIds ?? []) {
+      const g = browseGenreForId(id);
+      if (!g || seen.has(g.slug)) continue;
+      seen.add(g.slug);
+      push(genreP, g.slug, k.poster);
+    }
     const m = metas.get(`${k.media_type}-${k.tmdb_id}`);
     if (!m) continue;
     if (m.release_year && m.release_year > 1900) {
       const d = Math.floor(m.release_year / 10) * 10;
       decadeTally.set(d, (decadeTally.get(d) ?? 0) + 1);
+      push(decadeP, d, k.poster);
     }
-    if (m.original_language) langTally.set(m.original_language, (langTally.get(m.original_language) ?? 0) + 1);
-    for (const c of m.origin_countries ?? []) countryTally.set(c, (countryTally.get(c) ?? 0) + 1);
-    if (m.director) directorTally.set(m.director, (directorTally.get(m.director) ?? 0) + 1);
-    for (const a of m.top_cast ?? []) actorTally.set(a, (actorTally.get(a) ?? 0) + 1);
+    if (m.original_language) {
+      langTally.set(m.original_language, (langTally.get(m.original_language) ?? 0) + 1);
+      push(langP, m.original_language, k.poster);
+    }
+    for (const c of m.origin_countries ?? []) {
+      countryTally.set(c, (countryTally.get(c) ?? 0) + 1);
+      push(countryP, c, k.poster);
+    }
+    if (m.director) {
+      directorTally.set(m.director, (directorTally.get(m.director) ?? 0) + 1);
+      push(directorP, m.director, k.poster);
+    }
+    for (const a of m.top_cast ?? []) {
+      actorTally.set(a, (actorTally.get(a) ?? 0) + 1);
+      push(actorP, a, k.poster);
+    }
   }
 
   const yearTotal = [...decadeTally.values()].reduce((a, b) => a + b, 0);
@@ -629,7 +733,25 @@ export function buildTaste(args: {
   ) {
     return null;
   }
-  return { themes, genres, decades, languages, countries, diversityLevel, directors, actors };
+  /* **وخلفيّةُ الخانة أعمالُ صدارتها** (D-717): الصفُّ الأوّلُ هو الذي
+     يقود الرقم، **وخلطُ أعمالِ الصفَّين يجعل الخلفيّةَ لا تصف شيئاً.** */
+  const topSlug = topGenres[0]
+    ? [...bySlug.entries()].find(([, n]) => n === topGenres[0].count)?.[0]
+    : undefined;
+  const topDecade = [...decadeTally.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
+  const posters = {
+    genres: (topSlug ? genreP.get(topSlug) : undefined) ?? [],
+    decades: (topDecade !== undefined ? decadeP.get(topDecade) : undefined) ?? [],
+    languages: langP.get(languages[0]?.code ?? "") ?? [],
+    countries:
+      countryP.get(
+        [...countryTally.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? "",
+      ) ?? [],
+    directors: directorP.get(directors[0]?.name ?? "") ?? [],
+    actors: actorP.get(actors[0]?.name ?? "") ?? [],
+  };
+
+  return { themes, genres, decades, languages, countries, diversityLevel, directors, actors, posters };
 }
 
 export function pickTasteTrioSlots(
@@ -867,7 +989,12 @@ export async function LibraryAnalysis({
         : t.statsAllTime;
 
   const taste = buildTaste({
-    keys: follows.map((f) => ({ media_type: f.media_type, tmdb_id: f.tmdb_id })),
+    keys: follows.map((f) => ({
+      media_type: f.media_type,
+      tmdb_id: f.tmdb_id,
+      poster: f.poster_path,
+      genreIds: f.genres ?? fetchedIds.get(`${f.media_type}-${f.tmdb_id}`) ?? null,
+    })),
     metas,
     bySlug,
     genreTags,

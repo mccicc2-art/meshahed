@@ -18,6 +18,7 @@ import { localizeRows } from "@/lib/localize";
 import { getDict, type Locale } from "@/lib/i18n";
 import { isComplete } from "@/lib/progress";
 import { AnalysisView, tallyGenres, pickTasteTrioSlots, buildTaste, type TrioCandidate } from "./LibraryAnalysis";
+import { trioPosterPaths } from "@/lib/heroPosters";
 
 /**
  * 🆕 **إحصائياتُ عضوٍ أزوره** (D-649، طلبُ أحمد: «كل الحسابات خلي الكارد
@@ -139,18 +140,25 @@ export async function MemberAnalysis({
   const favSeries = favs.find((f) => f.media_type === "tv" && !isAnimeFav(f));
   const favAnime = favs.find((f) => isAnimeFav(f));
   const favMovie = favs.find((f) => f.media_type === "movie" && !isAnimeFav(f));
-  /* 🆕 D-704 (حكمُه: «الفلم يكون يسار والمسلسل أو واحد من اليمين»):
-     **الفيلمُ عند البداية والمسلسلُ عند النهاية والأنمي بينهما** —
-     والترتيبُ منطقيٌّ لا يمينيٌّ ولا يساريّ، فيرتدّ في العربية كما
-     يرتدّ كلُّ صفٍّ في التطبيق (القاعدة ١٧). */
-  const heroPosters = [
-    favMovie?.poster_path ?? slots.movie?.posterPath,
-    favAnime?.poster_path ?? slots.anime?.posterPath,
-    favSeries?.poster_path ?? slots.series?.posterPath,
-  ].filter((x): x is string => !!x);
+  /* 🆕 **والاختيارُ من `lib/heroPosters`** (D-717 — سدادُ نسخةٍ ثانية):
+     D-715 أخرج القاعدةَ لبطاقة المشاركة **وترك هذه النسخةَ قائمة**،
+     **ونسختان لقاعدةٍ واحدةٍ تفترقان عند أوّل تعديل** (D-145).
+     وترتيبُ D-704 (فيلم · أنمي · مسلسل) داخلَها. */
+  const heroPosters = trioPosterPaths(
+    { movie: favMovie, anime: favAnime, series: favSeries },
+    slots,
+  );
 
   const taste = buildTaste({
-    keys: follows.map((f) => ({ media_type: f.media_type, tmdb_id: f.tmdb_id })),
+    /* 🆕 **والصفُّ يحمل ملصقَه وأنواعَه هنا كذلك** (D-717): **وجهٌ
+       واحدٌ للإحصائيات، فخلفيّاتُ خاناته لا تظهر لصاحب الحساب وتغيب
+       عن زائره** (D-649/القاعدة ٦). */
+    keys: follows.map((f) => ({
+      media_type: f.media_type,
+      tmdb_id: f.tmdb_id,
+      poster: f.poster_path,
+      genreIds: genres.get(`${f.media_type}-${f.tmdb_id}`) ?? null,
+    })),
     metas,
     bySlug,
     genreTags,
