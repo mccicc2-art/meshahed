@@ -1020,13 +1020,30 @@ async function HomeBody({
      بطاقتُه في تبويب «القوائم» بالمكتبة**، حيث تُرفع الرايات. */
   /* 🆕 D-703: بطاقةُ الطابور في صفِّ «القوائم» — **مفتاحُها هو مفتاحُ
      المكتبة نفسُه** (`setToWatchQueue`)، **والفارغُ لا بطاقةَ له** (D-219) */
+  /* 🆕 **وترتيبُ صاحبها يُطبَّق قبل أن تُقرأ** (D-719): الورقةُ تحفظ
+     `tw-mv-<id>` **بمفتاح البطاقة الرابع** (`towatchListOrder`)، **وما
+     لم يُذكر يلحق على ترتيب الإضافة** (`applyQueueOrder`). */
+  const unlistedOrdered = applyQueueOrder(
+    unlistedQueue,
+    (f) => `tw-mv-${f.tmdb_id}`,
+    prefs.towatchListOrder,
+  );
   const toWatchQueueCard = unlistedQueue.length
     ? {
         on: prefs.toWatch,
         count: unlistedQueue.length,
-        posters: unlistedQueue.slice(0, 3).map((f) => f.poster_path ?? null),
+        /* **والملصقاتُ الثلاثةُ رأسُ الطابور بعد ترتيبه** — **وبطاقةٌ
+           لا تتغيّر بعد السحب تُقرأ حفظاً فاشلاً** (D-719). */
+        posters: unlistedOrdered.slice(0, 3).map((f) => f.poster_path ?? null),
       }
     : null;
+  /** 🆕 بذرةُ ورقة ترتيب البطاقة (D-719) — أفلامُها كلُّها بترتيب عرضها */
+  const toWatchListItems: ReorderItem[] = unlistedOrdered.map((f) => ({
+    key: `tw-mv-${f.tmdb_id}`,
+    title: f.title,
+    poster_path: f.poster_path ?? null,
+    media_type: "movie" as const,
+  }));
 
   const toWatchCard = prefs.toWatch && unlistedNext
     ? {
@@ -1165,8 +1182,15 @@ async function HomeBody({
         subtitle:
           i.aired > 0 ? `${t.typeSeries} · ${t.epsCount(i.aired)}` : t.typeSeries,
       })),
-    ...myMovies
-      .filter((m) => m.progress < 100)
+    /* 🆕 **وأولويّةُ البطاقة تُطبَّق داخل قسم الأفلام وحدَه** (D-719):
+       **هذا هو ثمنُ المفتاح الرابع ومكسبُه معاً** — ما رتّبتَه في
+       البطاقة يتقدّم بين الأفلام هنا، **ولا يُزيح مسلسلاً عن موضعه**
+       (ولو تشاركا مفتاحاً واحداً لقفزت الأفلامُ كلُّها فوق المسلسلات). */
+    ...applyQueueOrder(
+      myMovies.filter((m) => m.progress < 100),
+      (m) => `tw-mv-${m.tmdbId}`,
+      prefs.towatchListOrder,
+    )
       .map((m) => ({
         key: `tw-mv-${m.tmdbId}`,
         mediaType: "movie" as const,
@@ -1378,6 +1402,7 @@ async function HomeBody({
         cont={continueQueueItems}
         towatch={toWatchQueueItems}
         lists={listsQueueItems}
+        towatchList={toWatchListItems}
       />
 
       {empty && (
