@@ -28,12 +28,18 @@ function pct(part: number, total: number) {
   return total > 0 ? Math.round((part / total) * 100) : 0;
 }
 
+/**
+ * ⚖️ 🆕 **D-709: الأيّامُ وحدَها** (حكمُه: «احذف عدد الساعات لأن عدد
+ * الأيام يكفي») — **نقضٌ مسجَّلٌ لصيغة `daysAndHours` في هذا السطح**:
+ * الرقمُ الكبيرُ حجمُ عمرِ مشاهدتك، **وساعاتٌ بجانب خمسةٍ وخمسين يوماً
+ * دقّةٌ لا يقرؤها أحد.**
+ * ⚠️ **وما دون اليوم يبقى بالساعات**: «٠ يوم» لمن شاهد خمسَ ساعاتٍ
+ * كذبٌ (D-217) — **والدقّةُ تُحذف حيث لا تُقرأ لا حيث تصنع المعنى.**
+ */
 function fmtWatchTime(minutes: number, t: ReturnType<typeof getDict>) {
   const h = Math.round(minutes / 60);
   if (h < 24) return t.hours(h);
-  const d = Math.floor(h / 24);
-  const rest = h % 24;
-  return rest === 0 ? t.days(d) : t.daysAndHours(d, rest);
+  return t.days(Math.floor(h / 24));
 }
 
 /**
