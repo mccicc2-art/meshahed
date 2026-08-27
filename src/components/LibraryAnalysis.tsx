@@ -260,14 +260,18 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
             {mine ? t.analysisTaste : t.analysisTasteOther}
           </h3>
 
+          {/* ⚖️ 🆕 D-706 (حكمُه: «شيل الإطار وقلّل الهامش تحتها واحذف كلمة
+              ثيم»): **السماتُ كلماتٌ لا رقائق** — الإطارُ يوحي بمِصفاةٍ
+              تُضغط (عائلةُ الرقاقة معناها «مختارٌ يُلغى» — D-134)،
+              **وهذه وصفٌ يُقرأ لا زرٌّ يُضغط** (D-217). **والعنوانُ
+              سقط لأن الكلماتِ تصف نفسَها** تحت عنوان «ذوقك». */}
           {taste.themes.length > 0 && (
-            <div className="mt-3.5 flex items-center gap-2.5 flex-wrap">
-              <span className="text-13 text-muted shrink-0">{t.tasteThemes}</span>
-              {taste.themes.map((th) => (
-                <span
-                  key={th}
-                  className="rounded-full border border-accent/70 text-accent text-12 font-semibold px-3.5 py-1.5"
-                >
+            <div className="mt-2 flex items-center gap-x-3 gap-y-1 flex-wrap text-14 font-semibold text-accent">
+              {taste.themes.map((th, i) => (
+                <span key={th} className="flex items-center gap-3">
+                  {i > 0 && (
+                    <span aria-hidden className="w-1 h-1 rounded-full bg-accent/50" />
+                  )}
                   {th}
                 </span>
               ))}
