@@ -132,6 +132,21 @@ export interface HomePrefs {
   towatchOrder: string[];
   /** 🆕 وصفُّ «قوائمي» ثالثُها (D-615): معرّفاتُ القوائم بترتيبه */
   listsOrder: string[];
+  /**
+   * 🆕 **وترتيبُ بطاقة «للمشاهدة» نفسِها** (D-719، حكمُه: «إذا ضغطتها
+   * أبغاها تنفتح، أحتاج أرتّب تسلسل الأفلام فيها»).
+   *
+   * ⚠️ **ومفتاحٌ رابعٌ لا `towatchOrder`** — **والفرقُ جوهريٌّ لا
+   * تنظيميّ**: صفُّ «للمشاهدة» في الرئيسية **مسلسلاتٌ لم تُبدأ وأفلامٌ
+   * لم تُكمَل**، والبطاقةُ **أفلامُك التي لا قائمةَ لها** — **مجموعتان
+   * مختلفتان باسمٍ واحد.** **ولو تشاركا المفتاحَ لَقفزت أفلامُ البطاقة
+   * كلُّها فوق مسلسلات الصفّ** (قاعدةُ `applyQueueOrder`: المذكورُ
+   * يتقدّم) — **أثرٌ لم يطلبه أحد.**
+   * 🔑 **والأثرُ المطلوبُ يُشترى بلا ذاك**: هذا الترتيبُ يُطبَّق على
+   * **أفلام** صفِّ الرئيسية داخلَ قسمها، **فتتقدّم أولويّتُه بين
+   * الأفلام ولا تُزيح مسلسلاً.**
+   */
+  towatchListOrder: string[];
 }
 
 /**
@@ -172,6 +187,7 @@ export const DEFAULT_HOME_PREFS: HomePrefs = {
   continueOrder: [],
   towatchOrder: [],
   listsOrder: [],
+  towatchListOrder: [],
 };
 
 /**
@@ -217,7 +233,9 @@ export function sanitizeHomePrefs(raw: unknown): HomePrefs {
 
   /* مفاتيحُ أولويّة الصفَّين (D-605): نصوصٌ قصيرةٌ بلا تكرار وبسقفٍ —
      العمودُ JSON حرٌّ والمفتاحُ الغريبُ لا يُطابق شيئاً فيسقط أثرُه */
-  const keyList = (k: "continueOrder" | "towatchOrder" | "listsOrder"): string[] => {
+  const keyList = (
+    k: "continueOrder" | "towatchOrder" | "listsOrder" | "towatchListOrder",
+  ): string[] => {
     if (!Array.isArray(o[k])) return d[k];
     const seen = new Set<string>();
     return (o[k] as unknown[])
@@ -245,6 +263,7 @@ export function sanitizeHomePrefs(raw: unknown): HomePrefs {
     continueOrder: keyList("continueOrder"),
     towatchOrder: keyList("towatchOrder"),
     listsOrder: keyList("listsOrder"),
+    towatchListOrder: keyList("towatchListOrder"),
   };
 }
 

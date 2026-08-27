@@ -352,11 +352,19 @@ export async function saveHomeSectionOrder(order: string[]) {
  * القراءة نفسِه (بابان لحقلٍ واحدٍ لا حقلان — D-462).
  */
 export async function saveHomeQueueOrder(
-  row: "continue" | "towatch" | "lists",
+  /* 🆕 **ورابعُها بطاقةُ «للمشاهدة» نفسُها** (D-719) — انظر حجّةَ
+     المفتاح الرابع في `homePrefs.towatchListOrder`. */
+  row: "continue" | "towatch" | "lists" | "towatchlist",
   keys: string[],
 ) {
   const field =
-    row === "continue" ? "continueOrder" : row === "lists" ? "listsOrder" : "towatchOrder";
+    row === "continue"
+      ? "continueOrder"
+      : row === "lists"
+        ? "listsOrder"
+        : row === "towatchlist"
+          ? "towatchListOrder"
+          : "towatchOrder";
   const { supabase, user } = await requireUser("profile", 30, 60_000);
 
   const { data } = await supabase
@@ -373,7 +381,14 @@ export async function saveHomeQueueOrder(
     .upsert({ id: user.id, home_prefs: next }, { onConflict: "id" });
   if (error) fail(error);
 
+  /* 🆕 **وبطاقةُ «للمشاهدة» تُرسم في ثلاثة أبواب** (D-719): الرئيسيةُ
+     والمكتبةُ وصفحةُ القوائم — **وترتيبٌ يُحفظ ولا يظهر إلّا في واحدٍ
+     منها يُقرأ عطلاً.** */
   revalidatePath("/");
+  if (row === "towatchlist") {
+    revalidatePath("/library");
+    revalidatePath("/lists");
+  }
 }
 
 /**
