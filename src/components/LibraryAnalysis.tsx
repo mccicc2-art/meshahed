@@ -225,16 +225,29 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
               وسقط بيد صاحبه، والحجابُ يحمي عمودَ النصّ (روحُ D-686). */}
           {heroArt.length > 0 && (
             <>
+              {/* 🆕 D-695 (حكمُه بلقطتين على الدرز): **العمودُ يدخل على
+                  جاره انسيابيّاً** — تراكبٌ سالبُ الهامش وقناعُ تدرّجٍ
+                  على حافّة البداية، فالدرزُ ذوبانٌ لا قطع. */}
               <span aria-hidden className="absolute inset-0 flex">
-                {heroArt.map((path) => (
-                  <span key={path} className="relative flex-1 min-w-0">
-                    <Image src={posterUrl(path, "w342")!} alt="" fill sizes="34vw" className="object-cover" />
+                {heroArt.map((path, i) => (
+                  <span
+                    key={path}
+                    className={`relative flex-1 min-w-0 ${
+                      i > 0
+                        ? "-ms-8 [mask-image:linear-gradient(to_right,transparent,black_36px)] rtl:[mask-image:linear-gradient(to_left,transparent,black_36px)]"
+                        : ""
+                    }`}
+                  >
+                    <Image src={posterUrl(path, "w342")!} alt="" fill sizes="40vw" className="object-cover" />
                   </span>
                 ))}
               </span>
+              {/* **وخلف المحتوى ملصقٌ يلوح تحت الظلام** (حكمُه: «أبغى
+                  يكون فيه بوستر بس فيه ضلام») — الحجابُ لم يعد مصمتاً
+                  في عموده: ٨٥٪ تكفي القراءةَ ويشفّ الملصقُ خلفَها. */}
               <span
                 aria-hidden
-                className="absolute inset-0 bg-gradient-to-r rtl:bg-gradient-to-l from-[color:var(--surface)] from-[38%] via-[color:var(--surface)]/60 via-[55%] to-transparent to-[78%]"
+                className="absolute inset-0 bg-gradient-to-r rtl:bg-gradient-to-l from-[color:var(--surface)]/85 from-[12%] via-[color:var(--surface)]/55 via-[48%] to-transparent to-[80%]"
               />
             </>
           )}
