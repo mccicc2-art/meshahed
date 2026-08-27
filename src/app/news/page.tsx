@@ -24,7 +24,7 @@ import { ListSaveHeart } from "@/components/ListSaveHeart";
 import { ListRateStar } from "@/components/ListRateStar";
 import { PosterRail, RailItem } from "@/components/PosterRail";
 import { TrailerRail } from "@/components/TrailerRail";
-import { getTrailerFeed } from "@/lib/trailers";
+import { getTrailerFeed, type TrailerScope } from "@/lib/trailers";
 import { TRAILER_SOUND_COOKIE, parseTrailerSound } from "@/lib/trailerPrefs";
 import { FRANCHISES, franchiseName, universeName, type Universe } from "@/lib/universes";
 import { awardBySlug, awardBody } from "@/lib/awards";
@@ -305,7 +305,14 @@ export default async function NewsPage({
           ⚠️ **ولا يُرسم في تبويب «القوائم»**: ذاك سطحُ قوائمَ لا أعمال. */}
       {tab !== "lists" && !browse.active && (
         <Suspense fallback={null}>
-          <TrailersSection locale={locale} />
+          <TrailersSection
+            locale={locale}
+            /* 🔴 **والنطاقُ من التبويب** (D-731): **بِركةُ الاقتراحات
+               مختلطة، والعنوانُ فوقها يقول «مسلسلات» أو «أفلام»** —
+               **وصفٌّ لا يطيع التبويبَ فوقه يُقرأ عطلاً** (سابقةُ
+               «بيكد فور يو فالأفلام قاعد يقترح مسلسلات»). */
+            scope={tab === "anime" ? "anime" : tab === "movies" ? "movies" : "shows"}
+          />
         </Suspense>
       )}
 
@@ -1938,9 +1945,9 @@ async function AnimeRails({
  * ⚠️ **والصمتُ عند الفشل مقصود**: صفٌّ زائدٌ لا يُسقط اكتشف — **ومن لا
  * اقتراحاتِ له (حسابٌ جديد) لا يرى رأساً فارغاً** (D-222).
  */
-async function TrailersSection({ locale }: { locale: Locale }) {
+async function TrailersSection({ locale, scope }: { locale: Locale; scope: TrailerScope }) {
   const [items, store] = await Promise.all([
-    getTrailerFeed(6, locale).catch(() => []),
+    getTrailerFeed(6, locale, scope).catch(() => []),
     cookies(),
   ]);
   if (!items.length) return null;
