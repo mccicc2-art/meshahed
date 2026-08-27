@@ -1734,15 +1734,12 @@ const ar = {
   analysisTasteOther: "التصنيفات الأكثر",
   analysisEmptyOther: "لا أعمال في هذه المكتبة بعد.",
   avgRatingOther: (n: string) => `متوسط التقييم ${n} من ١٠`,
-  ratedCountOther: (n: number) => `${n} عملاً مقيَّماً`,
   statusDone: "أكملتها",
   statusWatching: "جارية",
   statusNotStarted: "ما بدأتها",
   /* 🆕 صفحةُ الإحصائيات بتصميم أحمد (D-679) */
   statsLibraryProgress: "تقدّم المكتبة",
-  statsAvgLabel: "متوسط التقييم",
   avgRatingLabel: (n: string) => `متوسط تقييمك ${n} من ١٠`,
-  ratedCount: (n: number) => `قيّمت ${n} عملاً`,
   errorTitle: "صار خلل غير متوقّع",
   errorBody:
     "ما قدرنا نحمّل هذا الجزء الآن. جرّب مرة ثانية، وإذا تكرر الخطأ حدّث الصفحة.",
@@ -3020,15 +3017,12 @@ const en: Dict = {
   analysisTasteOther: "Top genres",
   analysisEmptyOther: "No titles in this library yet.",
   avgRatingOther: (n: string) => `Averages ${n} out of 10`,
-  ratedCountOther: (n: number) => `${n} title${n === 1 ? "" : "s"} rated`,
   statusDone: "Finished",
   statusWatching: "In progress",
   statusNotStarted: "Not started",
   /* 🆕 Stats page, Ahmed's design (D-679) */
   statsLibraryProgress: "Library Progress",
-  statsAvgLabel: "Average rating",
   avgRatingLabel: (n: string) => `You average ${n} out of 10`,
-  ratedCount: (n: number) => `${n} title${n === 1 ? "" : "s"} rated`,
   errorTitle: "Something went wrong",
   errorBody:
     "We couldn't load this part right now. Try again — if it keeps failing, refresh the page.",
