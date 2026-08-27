@@ -187,7 +187,6 @@ export async function GET() {
           },
           {
             title: t.tasteDiversity,
-            ...(taste.diversityLevel ? { note: taste.diversityLevel } : {}),
             rows: taste.countries.map((x) => ({
               name: x.name,
               value: String(x.titles),
