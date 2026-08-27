@@ -9,9 +9,11 @@ import {
   getMyPlaylistIds,
   getProfile,
 } from "@/lib/data";
-import { sanitizeHomePrefs } from "@/lib/homePrefs";
+import { sanitizeHomePrefs, applyQueueOrder } from "@/lib/homePrefs";
 import { getT } from "@/lib/locale";
 import { ListManager } from "@/components/ListManager";
+import { HomeQueueSheetHost } from "@/components/HomeQueueOrder";
+import type { ReorderItem } from "@/components/ReorderSheet";
 import { PublicListsRail } from "@/components/PublicListsRail";
 import { OneTimeHint } from "@/components/OneTimeHint";
 
@@ -54,19 +56,35 @@ export default async function ListsPage() {
   const queue = follows
     .filter((f) => f.media_type === "movie" && !listedMovieIds.has(f.tmdb_id))
     .sort((a, b) => a.added_at.localeCompare(b.added_at));
+  /* 🆕 **وترتيبُ صاحبها ثالثَ الأبواب** (D-719) */
+  const queueOrdered = applyQueueOrder(
+    queue,
+    (f) => `tw-mv-${f.tmdb_id}`,
+    sanitizeHomePrefs(profileRow?.home_prefs).towatchListOrder,
+  );
   const toWatch = queue.length
     ? {
         on: sanitizeHomePrefs(profileRow?.home_prefs).toWatch,
         count: queue.length,
-        posters: queue.slice(0, 3).map((f) => f.poster_path ?? null),
+        posters: queueOrdered.slice(0, 3).map((f) => f.poster_path ?? null),
       }
     : null;
+  const toWatchListItems: ReorderItem[] = queueOrdered.map((f) => ({
+    key: `tw-mv-${f.tmdb_id}`,
+    title: f.title,
+    poster_path: f.poster_path ?? null,
+    media_type: "movie" as const,
+  }));
 
   return (
     <div className="space-y-8">
       {/* العنوان مخفيٌّ بصريًّا وباقٍ لقارئ الشاشة — أُزيلت الترويسة والوصف */}
       <h1 className="sr-only">{t.listsTitle}</h1>
       <OneTimeHint id="lists-intro" text={t.hintLists} closeLabel={t.closeLabel} />
+      {/* 🆕 مضيفُ ورقة ترتيب البطاقة (D-719) — حيث تُرسم البطاقةُ يُركَّب */}
+      {toWatchListItems.length > 0 && (
+        <HomeQueueSheetHost locale={locale} cont={[]} towatch={[]} towatchList={toWatchListItems} />
+      )}
       {/* 🆕 **و«المفضّلة» خرجت من قوائمه هنا أيضاً** (D-654): **هذه
           الشاشةُ وشاشةُ المكتبة واحدةٌ بطريقين** — **ولو صُفّيت في
           واحدةٍ لافترقتا عند أوّل تعديل** (D-145). */}
