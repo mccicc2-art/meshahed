@@ -20,7 +20,6 @@ import { getDict, num, type Locale } from "@/lib/i18n";
 import { isComplete } from "@/lib/progress";
 import { favoriteTrio, trioPosterPaths } from "@/lib/heroPosters";
 import { ProfileStatSheet } from "./ProfileStatSheet";
-import { PosterCard } from "./PosterCard";
 import { Icon, type IconName } from "./Icon";
 import { browseGenreForId, browseGenreName } from "@/lib/browse";
 
@@ -60,14 +59,14 @@ const HERO_ICON_SHADOW = "drop-shadow(0 0 5px rgba(0,0,0,0.7))";
 const BG_POSTERS = 3;
 
 /**
- * 🆕 **سقفُ قائمةِ الصفّ الواحد** (D-721) — **ثلاثون عملاً.**
+ * 🆕 **سقفُ قائمةِ الصفّ الواحد** (D-721) — **أربعةٌ وعشرون عملاً.**
  * ⚠️ **والسقفُ يُقال ولا يُخفى**: «عقد 2020» عندك ثلاثُمئة عمل، **وشبكةٌ
  * بثلاثمئة بطاقةٍ تُرسَل في حمولة كلِّ فتحةٍ للصفحة** — **والورقةُ
  * تُرسم مع الصفحة لا عند فتحها** (`ProfileStatSheet` تأخذ محتواها
  * مرسوماً من الخادم). **فيُقصّ ويُكتب العددُ الحقيقيُّ في رأس الورقة**
  * (D-217: لا رقمَ يَعِد بما لا يُعرض).
  */
-const ROW_WORKS = 30;
+const ROW_WORKS = 24;
 
 function fmtWatchTime(minutes: number, t: ReturnType<typeof getDict>) {
   const h = Math.round(minutes / 60);
@@ -622,16 +621,43 @@ function TasteRow({
               ? `${num(works.length, locale)} / ${num(total, locale)}`
               : num(total, locale)}
           </p>
-          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5">
+          {/* 🔴 **وصفٌّ خفيفٌ لا `PosterCard`** (D-721، بعد سقوط أوّل
+              نشرة): **البطاقةُ الكاملةُ تجرّ ثلاثَ جزرِ عميلٍ معها**
+              (`QuickAdd` · `PosterHold` · `StatusThread`) — **واثنتا
+              عشرةَ ورقةً × ثلاثين بطاقة = ٣٦٠ بطاقةً بجزرها تُرسَل في
+              حمولة كلِّ فتحةٍ للصفحة**، **والورقةُ تُرسم مع الصفحة لا
+              عند فتحها.** 🔑 **والمطلوبُ قائمةٌ لا مكتبة**: ملصقٌ واسمٌ
+              ورابط. */}
+          <ul className="grid grid-cols-3 sm:grid-cols-4 gap-2.5">
             {works.map((w) => (
-              <PosterCard
-                key={`${w.mediaType}-${w.tmdbId}`}
-                href={`/${w.mediaType === "tv" ? "show" : "movie"}/${w.tmdbId}`}
-                title={w.title}
-                posterPath={w.poster}
-              />
+              <li key={`${w.mediaType}-${w.tmdbId}`} className="min-w-0">
+                <Link
+                  href={`/${w.mediaType === "tv" ? "show" : "movie"}/${w.tmdbId}`}
+                  prefetch={false}
+                  className="block group"
+                >
+                  <span className="relative block w-full aspect-[2/3] rounded-lg overflow-hidden bg-surface-2">
+                    {w.poster ? (
+                      <Image
+                        src={posterUrl(w.poster, "w185")!}
+                        alt=""
+                        fill
+                        sizes="120px"
+                        className="object-cover"
+                      />
+                    ) : (
+                      <span className="w-full h-full grid place-items-center text-muted" aria-hidden>
+                        <Icon name={w.mediaType === "tv" ? "tv" : "film"} size={18} />
+                      </span>
+                    )}
+                  </span>
+                  <span className="mt-1.5 block text-12 leading-snug line-clamp-2 group-hover:text-accent transition-colors">
+                    {w.title}
+                  </span>
+                </Link>
+              </li>
             ))}
-          </div>
+          </ul>
         </div>
       }
     >
