@@ -201,6 +201,8 @@ export function TrailerPlayer({
   /* ===== ٣) ما يعود من الإطار: أوّلُ رسمٍ وشريطُ التقدّم ===== */
   useEffect(() => {
     if (!mounted) return;
+    /** **ويسكت النداءُ عند أوّل جواب** — لا نبضَ بلا حاجة */
+    let got = false;
     function onMsg(e: MessageEvent) {
       if (e.origin !== YT_ORIGIN) return;
       let d: { event?: string; info?: { currentTime?: number; duration?: number; playerState?: number } };
@@ -208,17 +210,6 @@ export function TrailerPlayer({
         d = typeof e.data === "string" ? JSON.parse(e.data) : (e.data as typeof d);
       } catch {
         return;
-      }
-      if (d?.event === "onReady" || d?.event === "initialDelivery") {
-        /* **الاشتراكُ يُطلب بعد الجاهزيّة** — قبلها لا مستمعَ هناك */
-        try {
-          frame.current?.contentWindow?.postMessage(
-            JSON.stringify({ event: "listening", id: videoKey }),
-            YT_ORIGIN,
-          );
-        } catch {
-          /* لا شيء */
-        }
       }
       const info = d?.info;
       if (!info) return;
@@ -229,11 +220,38 @@ export function TrailerPlayer({
         typeof info.duration === "number" &&
         info.duration > 0
       ) {
+        got = true;
         setAt({ now: info.currentTime, total: info.duration });
       }
     }
     window.addEventListener("message", onMsg);
-    return () => window.removeEventListener("message", onMsg);
+
+    /* 🔴 **والمصافحةُ تبدأ من عندنا لا من عنده** (D-726، بعد أوّل قياسٍ
+       حيّ: الشريطُ غاب والمقطعُ يعمل): **كنتُ أرسل «أنا مستمع» بعد
+       `onReady`** — **و`onReady` نفسُها لا تصل حتى نرسل «أنا مستمع».**
+       🔑 **حلقةٌ مغلقةٌ طرفاها ينتظر كلٌّ منهما الآخر** — **ومن انتظر
+       إشارةً لا تُرسل إلّا لمن أشار أوّلاً انتظر إلى الأبد.**
+       **فالنداءُ يُكرَّر حتى يُجاب ثمّ يسكت** — ولا يبقى نبضٌ أبديّ. */
+    let tries = 0;
+    const hello = window.setInterval(() => {
+      if (got || tries++ > 20) {
+        window.clearInterval(hello);
+        return;
+      }
+      try {
+        frame.current?.contentWindow?.postMessage(
+          JSON.stringify({ event: "listening", id: videoKey, channel: "widget" }),
+          YT_ORIGIN,
+        );
+      } catch {
+        /* الإطارُ لم يصل بعد — النبضةُ القادمة تحاول */
+      }
+    }, 400);
+
+    return () => {
+      window.clearInterval(hello);
+      window.removeEventListener("message", onMsg);
+    };
   }, [mounted, videoKey, showProgress]);
 
   /* ===== ٤) الصمتُ حالةٌ يملكها القارئ لا الإطار ===== */
