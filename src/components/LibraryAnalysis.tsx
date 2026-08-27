@@ -205,8 +205,11 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
               />
             </>
           )}
-          <div className="relative flex items-end gap-3">
-            <div className="min-w-0 flex-1">
+          {/* **والبطاقةُ تحفظ قامتَها**: الوقتُ نزل إلى قاعها لا إلى
+              جنبِ الاسم — `min-h` يمنع انكماشَ البطاقة السينمائيّة إلى
+              شريط (قِيس على المنشور بعد أوّل نشرة). */}
+          <div className="relative flex flex-col min-h-[9rem]">
+            <div className="min-w-0">
             <div className="flex items-center gap-3">
               <span className="shrink-0 relative w-12 h-12 rounded-full overflow-hidden bg-surface-2 border border-accent/70">
                 {hero.avatarUrl ? (
@@ -231,12 +234,14 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
               </span>
             </div>
             {hero.bio && (
-              <p className="mt-2 text-[13px] leading-snug text-muted line-clamp-2" dir="auto">
+              /* **النبذةُ تلزم عمودَ حجابها** (D-693) — والحجابُ يحمي
+                 جهةَ البداية، فما جاوزها يغرق فوق الملصقات */
+              <p className="mt-2 text-[13px] leading-snug text-muted line-clamp-2 max-w-[52%]" dir="auto">
                 {hero.bio}
               </p>
             )}
             </div>
-            {bigTime}
+            <div className="mt-auto pt-3 flex justify-end">{bigTime}</div>
           </div>
         </section>
       ) : (
