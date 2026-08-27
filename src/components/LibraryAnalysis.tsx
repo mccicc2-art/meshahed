@@ -13,7 +13,7 @@ import {
   getTitleMetaFor,
 } from "@/lib/data";
 import { getTv, getMovie } from "@/lib/tmdb";
-import { posterUrl } from "@/lib/media";
+import { posterUrl, profileUrl } from "@/lib/media";
 import Image from "next/image";
 import Link from "next/link";
 import { getDict, num, type Locale } from "@/lib/i18n";
@@ -135,6 +135,12 @@ export interface TasteData {
     decades: string[];
     languages: string[];
     countries: string[];
+    /**
+     * 🆕 **وخانتا الأشخاص وجوهُهم لا ملصقاتُهم** (D-718، حكمُه:
+     * «نفّذها»): **الاسمُ المكتوبُ والوجهُ خلفه شيءٌ واحد** — **وملصقُ
+     * عملٍ خلف اسمِ مخرجٍ يقول «هذه أعمالُه» وهي جملةٌ أضعفُ من
+     * «هذا هو».** ووجهٌ لكلِّ اسمٍ معروض، بترتيبه.
+     */
     directors: string[];
     actors: string[];
   };
@@ -461,8 +467,9 @@ function TasteCell({
   note?: string;
   divider?: boolean;
   /**
-   * 🆕 **ملصقاتُ الأعمال التي صنعت رقمَ هذه الخانة** (D-717) — انظر
-   * حجّتَها في `TasteData.posters`.
+   * 🆕 **صورُ خلفيّة الخانة، روابطَ جاهزة** (D-717/D-718) — ملصقاتُ
+   * الأعمال التي صنعت الرقم، **أو وجوهُ الأشخاص في خانتَيهما** — انظر
+   * الحجّةَ في `TasteData.posters`.
    */
   posters?: string[];
   children: React.ReactNode;
@@ -485,7 +492,7 @@ function TasteCell({
         <span aria-hidden className="absolute inset-0 flex opacity-15 grayscale">
           {posters.map((p) => (
             <span key={p} className="relative flex-1 min-w-0">
-              <Image src={posterUrl(p, "w185")!} alt="" fill sizes="120px" className="object-cover" />
+              <Image src={p} alt="" fill sizes="120px" className="object-cover" />
             </span>
           ))}
         </span>
@@ -581,7 +588,7 @@ export function buildTaste(args: {
     poster?: string | null;
     genreIds?: number[] | null;
   }[];
-  metas: Map<string, { release_year: number | null; original_language: string | null; origin_countries: string[] | null; director: string | null; top_cast: string[] | null }>;
+  metas: Map<string, { release_year: number | null; original_language: string | null; origin_countries: string[] | null; director: string | null; top_cast: string[] | null; director_profile?: string | null; cast_profiles?: (string | null)[] | null }>;
   bySlug: Map<string, number>;
   genreTags: number;
   topGenres: { name: string; count: number }[];
@@ -614,6 +621,8 @@ export function buildTaste(args: {
   /* 🆕 **سلالُ الملصقات** (D-717) — **تُملأ في المرور نفسِه الذي يعدّ**:
      **مرورٌ ثانٍ على المكتبة كلِّها ليجمع ما جمعه الأوّلُ ضريبةٌ بلا
      مقابل**، **والسلّةُ تقف عند ثلاثةٍ فلا تكبر بكِبَر المكتبة.** */
+  /** **وجهُ كلِّ شخصٍ بالاسم** (D-718) — خريطةٌ واحدةٌ للمخرجين والممثّلين */
+  const faceOf = new Map<string, string>();
   const genreP = new Map<string, string[]>();
   const decadeP = new Map<number, string[]>();
   const langP = new Map<string, string[]>();
@@ -656,11 +665,17 @@ export function buildTaste(args: {
     if (m.director) {
       directorTally.set(m.director, (directorTally.get(m.director) ?? 0) + 1);
       push(directorP, m.director, k.poster);
+      /* 🆕 **وجهُ الشخص يُلتقط أوّلَ مرّةٍ يُرى** (D-718) — **ولا
+         يُدهَس بعدها**: العملُ الثاني قد يحمل صورةً أقدمَ أو فارغة،
+         **وأوّلُ صورةٍ وُجدت تكفي وجهاً.** */
+      if (m.director_profile && !faceOf.has(m.director)) faceOf.set(m.director, m.director_profile);
     }
-    for (const a of m.top_cast ?? []) {
+    (m.top_cast ?? []).forEach((a, i) => {
       actorTally.set(a, (actorTally.get(a) ?? 0) + 1);
       push(actorP, a, k.poster);
-    }
+      const f = m.cast_profiles?.[i];
+      if (f && !faceOf.has(a)) faceOf.set(a, f);
+    });
   }
 
   const yearTotal = [...decadeTally.values()].reduce((a, b) => a + b, 0);
@@ -739,16 +754,30 @@ export function buildTaste(args: {
     ? [...bySlug.entries()].find(([, n]) => n === topGenres[0].count)?.[0]
     : undefined;
   const topDecade = [...decadeTally.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
+  /* 🆕 **والخريطةُ تُسلَّم روابطَ جاهزة** (D-718): **الخانةُ لا تعرف
+     قاعدةَ مقاسات TMDB** — **وملصقٌ ووجهٌ لهما مقاسان مختلفان في نفس
+     الخدمة** (`w185` للملصق و`w185` للشخص بسجلٍّ آخر)، **فمن يعرف نوعَ
+     الصورة هو من يبني رابطَها** (سابقةُ `ActivityItem.poster`). */
+  const url = (paths: string[] | undefined) =>
+    (paths ?? []).map((p) => posterUrl(p, "w185")).filter((u): u is string => !!u);
+  /** **ووجهُ كلِّ اسمٍ معروضٍ بترتيبه** — ومن لا وجهَ له يسقط لا يُزاح */
+  const faces = (names: { name: string }[]) =>
+    names
+      .map((x) => faceOf.get(x.name))
+      .filter((p): p is string => !!p)
+      .map((p) => profileUrl(p, "w185"))
+      .filter((u): u is string => !!u);
   const posters = {
-    genres: (topSlug ? genreP.get(topSlug) : undefined) ?? [],
-    decades: (topDecade !== undefined ? decadeP.get(topDecade) : undefined) ?? [],
-    languages: langP.get(languages[0]?.code ?? "") ?? [],
-    countries:
-      countryP.get(
-        [...countryTally.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? "",
-      ) ?? [],
-    directors: directorP.get(directors[0]?.name ?? "") ?? [],
-    actors: actorP.get(actors[0]?.name ?? "") ?? [],
+    genres: url(topSlug ? genreP.get(topSlug) : undefined),
+    decades: url(topDecade !== undefined ? decadeP.get(topDecade) : undefined),
+    languages: url(langP.get(languages[0]?.code ?? "")),
+    countries: url(
+      countryP.get([...countryTally.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? ""),
+    ),
+    /* **والوجوهُ أوّلاً والملصقاتُ سدُّها**: من لا صورةَ له في TMDB
+       **لا تُترك خانتُه عاريةً بين أخواتها** — أعمالُه تقوم مقامَه. */
+    directors: faces(directors).length ? faces(directors) : url(directorP.get(directors[0]?.name ?? "")),
+    actors: faces(actors).length ? faces(actors) : url(actorP.get(actors[0]?.name ?? "")),
   };
 
   return { themes, genres, decades, languages, countries, diversityLevel, directors, actors, posters };
