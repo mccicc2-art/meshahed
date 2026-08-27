@@ -78,22 +78,6 @@ export async function MemberAnalysis({
   }
 
   const tvFollows = follows.filter((f) => f.media_type === "tv");
-  const movieFollows = follows.filter((f) => f.media_type === "movie");
-
-  let done = 0;
-  let inProgress = 0;
-  let notStarted = 0;
-  for (const f of tvFollows) {
-    const w = epStats.byShow.get(f.tmdb_id)?.watched ?? 0;
-    const aired = f.aired_episodes ?? f.total_episodes ?? 0;
-    if (isComplete(w, aired)) done++;
-    else if (w > 0) inProgress++;
-    else notStarted++;
-  }
-  for (const f of movieFollows) {
-    if (watched.movies.has(f.tmdb_id)) done++;
-    else notStarted++;
-  }
 
   const { topGenres, genreTags } = tallyGenres(
     follows.map((f) => genres.get(`${f.media_type}-${f.tmdb_id}`) ?? null),
@@ -175,7 +159,6 @@ export async function MemberAnalysis({
         topWatched,
         topGenres,
         genreTags,
-        status: { done, inProgress, notStarted },
         ratedTotal,
         avgAll,
         mine: false,

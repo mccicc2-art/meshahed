@@ -3,7 +3,6 @@ import {
   getMyRatings,
   getWatchedMovies,
   watchedMovieMinutes,
-  getAllMovieProgress,
   getAllWatchedEpisodes,
   getWatchHistory,
   getProfile,
@@ -68,36 +67,6 @@ function StripCell({
 }
 
 /**
- * 🆕 **قرصُ تقدّم المكتبة** (D-679) — `conic-gradient` بثلاثة رموزِ
- * ثيمٍ لا ألوانٍ صمّاء، **والمركزُ نسبةُ المكتمل** كلقطته.
- */
-function ProgressDonut({ done, watching, rest, pct: pctDone }: {
-  done: number;
-  watching: number;
-  rest: number;
-  pct: number;
-}) {
-  const total = Math.max(1, done + watching + rest);
-  const a = (done / total) * 100;
-  const b = a + (watching / total) * 100;
-  return (
-    <span
-      aria-hidden
-      className="shrink-0 grid place-items-center w-20 h-20 rounded-full"
-      style={{
-        background: `conic-gradient(var(--success) 0 ${a}%, var(--accent) ${a}% ${b}%, var(--disabled) ${b}% 100%)`,
-      }}
-    >
-      {/* **النسبةُ 34px بنصّ المواصفة** — رقمٌ زخرفيٌّ خارج سلّم D-459 كجاراته */}
-      <span className="flex items-center justify-center gap-0.5 w-[3.75rem] h-[3.75rem] rounded-full bg-surface text-15 font-extrabold tabular-nums leading-none">
-        {pctDone}
-        <span className="text-[9px] font-bold text-muted">%</span>
-      </span>
-    </span>
-  );
-}
-
-/**
  * 🆕 **بياناتُ التحليل — عقدُ الوجهِ الواحد** (D-649).
  *
  * 🔴 **ولماذا عقدٌ لا مكوّنان**: الشاشةُ نفسُها تُرسم الآن لقارئين —
@@ -127,7 +96,6 @@ export interface AnalysisData {
   topGenres: { name: string; count: number }[];
   /** مقامُ النسب: مجموعُ الوسوم لا عددُ الأعمال */
   genreTags: number;
-  status: { done: number; inProgress: number; notStarted: number };
   ratedTotal: number;
   avgAll: number;
   /** 🆕 **القارئُ صاحبُ الأرقام؟** (D-649) — **يقرّر ضميرَ النصّ وحدَه**:
@@ -167,7 +135,6 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
     topWatched,
     topGenres,
     genreTags,
-    status,
     ratedTotal,
     avgAll,
     mine,
@@ -175,9 +142,6 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
     trio,
     buckets,
   } = data;
-  const { done, inProgress, notStarted } = status;
-  const statusTotal = done + inProgress + notStarted;
-  const donePct = statusTotal ? Math.round((done / statusTotal) * 100) : 0;
   const divider = "border-[color:var(--divider)]";
   const bucketTotal = (buckets ?? []).reduce((a, b) => a + b, 0);
 
@@ -335,62 +299,34 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
         </section>
       )}
 
-      {/* ===== بطاقتا الذوق والتقدّم — متجاورتان، وتتراصّان تحت 360px (D-682) ===== */}
-      {(topGenres.length > 0 || statusTotal > 0) && (
-        <div className="grid grid-cols-2 max-[359px]:grid-cols-1 gap-3">
-          {topGenres.length > 0 && (
-            <section className="rounded-2xl border border-border bg-surface p-3.5">
-              <h3 className="text-15 font-bold mb-2.5">
-                {mine ? t.analysisTaste : t.analysisTasteOther}
-              </h3>
-              <div className="space-y-2.5">
-                {topGenres.map((g) => (
-                  <div key={g.name} className="flex items-center gap-2">
-                    <span className="flex-1 min-w-0">
-                      <span className="block text-12 truncate mb-0.5" dir="auto">
-                        {g.name}
-                      </span>
-                      {/* **أشرطةٌ صفراءُ قصيرةٌ واضحة** (نصُّ المواصفة) — لا قرصَ ولا DNA */}
-                      <span className="block h-1.5 rounded-full bg-surface-2 overflow-hidden">
-                        <span
-                          className="block h-full rounded-full bg-accent"
-                          style={{ width: `${Math.max(pct(g.count, genreTags), 3)}%` }}
-                        />
-                      </span>
-                    </span>
-                    <span className="shrink-0 text-[11px] font-medium text-muted tabular-nums w-7 text-end">
-                      {pct(g.count, genreTags)}%
-                    </span>
-                  </div>
-                ))}
+      {/* ===== بطاقةُ الذوق — وحدَها بعرض الصفحة (D-696: بطاقةُ
+          «تقدّم المكتبة» حُذفت بحكمه، والقرصُ مات بموت قارئه — D-214) ===== */}
+      {topGenres.length > 0 && (
+        <section className="rounded-2xl border border-border bg-surface p-3.5">
+          <h3 className="text-15 font-bold mb-2.5">
+            {mine ? t.analysisTaste : t.analysisTasteOther}
+          </h3>
+          <div className="space-y-2.5">
+            {topGenres.map((g) => (
+              <div key={g.name} className="flex items-center gap-2">
+                <span className="flex-1 min-w-0">
+                  <span className="block text-12 truncate mb-0.5" dir="auto">
+                    {g.name}
+                  </span>
+                  <span className="block h-1.5 rounded-full bg-surface-2 overflow-hidden">
+                    <span
+                      className="block h-full rounded-full bg-accent"
+                      style={{ width: `${Math.max(pct(g.count, genreTags), 3)}%` }}
+                    />
+                  </span>
+                </span>
+                <span className="shrink-0 text-[11px] font-medium text-muted tabular-nums w-7 text-end">
+                  {pct(g.count, genreTags)}%
+                </span>
               </div>
-            </section>
-          )}
-
-          {statusTotal > 0 && (
-            <section className="rounded-2xl border border-border bg-surface p-3.5">
-              <h3 className="text-15 font-bold mb-2.5">{t.statsLibraryProgress}</h3>
-              <div className="flex flex-col items-center gap-2.5">
-                <ProgressDonut done={done} watching={inProgress} rest={notStarted} pct={donePct} />
-                <div className="w-full space-y-1.5">
-                  {[
-                    { l: t.statusDone, v: done, c: "bg-[color:var(--success)]" },
-                    { l: t.statusWatching, v: inProgress, c: "bg-accent" },
-                    { l: t.statusNotStarted, v: notStarted, c: "bg-[color:var(--disabled)]" },
-                  ].map((sg) => (
-                    <div key={sg.l} className="flex items-center gap-2">
-                      <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${sg.c}`} aria-hidden />
-                      <span className="flex-1 min-w-0 truncate text-12">{sg.l}</span>
-                      <span className="shrink-0 text-[11px] text-muted tabular-nums">
-                        {pct(sg.v, statusTotal)}%
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </section>
-          )}
-        </div>
+            ))}
+          </div>
+        </section>
       )}
 
       {/* ===== بطاقةُ التقييمات: نجمةٌ عاريةٌ ومتوسّطٌ كبيرٌ وتوزيعٌ لا يُطغى عليه (D-682) ===== */}
@@ -545,13 +481,12 @@ export async function LibraryAnalysis({
 }) {
   const t = getDict(locale);
 
-  const [follows, ratings, episodes, watchedMovies, movieProgress, history, profile, user] =
+  const [follows, ratings, episodes, watchedMovies, history, profile, user] =
     await Promise.all([
       getFollows(),
       getMyRatings(),
       getAllWatchedEpisodes(),
       getWatchedMovies(),
-      getAllMovieProgress(),
       getWatchHistory(1000),
       /* 🆕 **الهويّةُ للترويسة** (D-679) — `cache()` فلا رحلةَ جديدة */
       getProfile(),
@@ -578,25 +513,6 @@ export async function LibraryAnalysis({
   const totalMinutes = epMinutes + movieMinutes;
 
   const tvFollows = follows.filter((f) => f.media_type === "tv");
-  const movieFollows = follows.filter((f) => f.media_type === "movie");
-  const startedMovieIds = new Set(movieProgress.map((m) => m.movie_tmdb_id));
-
-  // ===== أين وصلت =====
-  let done = 0;
-  let inProgress = 0;
-  let notStarted = 0;
-  for (const f of tvFollows) {
-    const w = watchedByShow.get(f.tmdb_id) ?? 0;
-    const aired = f.aired_episodes ?? f.total_episodes ?? 0;
-    if (isComplete(w, aired)) done++;
-    else if (w > 0) inProgress++;
-    else notStarted++;
-  }
-  for (const f of movieFollows) {
-    if (watchedMovieIds.has(f.tmdb_id)) done++;
-    else if (startedMovieIds.has(f.tmdb_id)) inProgress++;
-    else notStarted++;
-  }
 
   /* ===== المدى المختار =====
      **البادئةُ نصٌّ لا تاريخ**: `watched_at` نصٌّ ISO، **ومقارنةُ
@@ -743,7 +659,6 @@ export async function LibraryAnalysis({
         topWatched,
         topGenres,
         genreTags,
-        status: { done, inProgress, notStarted },
         ratedTotal,
         avgAll,
         mine: true,
