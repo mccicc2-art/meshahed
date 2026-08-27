@@ -96,7 +96,9 @@ export type IconName =
   | "eye"
   | "eye-off"
   | "dots"
-  | "mail";
+  | "mail"
+  | "volume"
+  | "volume-off";
 
 const PATHS: Record<IconName, React.ReactNode> = {
   /* الظرف — أيقونةُ الرسائل في الترويسة (D-187). ضربتان لا ثلاث:
@@ -283,6 +285,22 @@ const PATHS: Record<IconName, React.ReactNode> = {
     <>
       <circle cx="12" cy="12" r="8.5" />
       <path d="M10.2 9.3v5.4M13.8 9.3v5.4" />
+    </>
+  ),
+  /* 🆕 **مكبّرا الصوت** (D-726) — **مخروطٌ واحدٌ يشترك فيه الوجهان**
+     وتختلف الموجةُ عن الشطب، **فالتبديلُ يُقرأ حالةً لا أيقونتين
+     غريبتين** (القاعدة ٣: عائلةٌ واحدةٌ للرمز). */
+  volume: (
+    <>
+      <path d="M5 9.5h3l4-3v11l-4-3H5v-5Z" />
+      <path d="M15.5 9.8a3.2 3.2 0 0 1 0 4.4" />
+      <path d="M17.8 7.6a6.4 6.4 0 0 1 0 8.8" />
+    </>
+  ),
+  "volume-off": (
+    <>
+      <path d="M5 9.5h3l4-3v11l-4-3H5v-5Z" />
+      <path d="m15.5 10 4 4M19.5 10l-4 4" />
     </>
   ),
   hourglass: (
