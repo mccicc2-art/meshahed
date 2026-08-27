@@ -58,7 +58,6 @@ export async function GET() {
   ]);
 
   const name = profile?.nickname?.trim() || profile?.username || "Loopz";
-  const restHours = hours % 24;
   /* 🔴 **الوقتُ الكبيرُ أرقامٌ كبيرةٌ ووحداتٌ صغيرة، مركَّباً يدويّاً**:
      satori يقيس الكلمةَ العربيّة بأشكال حروفها المنفصلة ويرسمها
      موصولةً — ففي «يوم» بحجم ٨٠ فراغٌ داخليٌّ فاضح (قِيس بصناديق
@@ -66,14 +65,11 @@ export async function GET() {
      جديد)، وصِغَرُها يبتلع الخطأ. */
   const dayUnit = t.days(9).replace(/[0-9٠-٩,\s]/g, "");
   const hourUnit = t.hours(9).replace(/[0-9٠-٩,\s]/g, "");
+  /* ⚖️ D-709: **الأيّامُ وحدَها** — والبطاقةُ تتبع الصفحةَ (D-697):
+     **رقمان لشيءٍ واحدٍ بوجهين يفترقان.** */
   const timeParts: { v: string; u: string }[] =
     days >= 1
-      ? restHours > 0
-        ? [
-            { v: String(days), u: dayUnit },
-            { v: String(restHours), u: hourUnit },
-          ]
-        : [{ v: String(days), u: dayUnit }]
+      ? [{ v: String(days), u: dayUnit }]
       : [{ v: String(hours), u: hourUnit }];
   if (rtl) timeParts.reverse();
 
