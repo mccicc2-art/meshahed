@@ -1666,6 +1666,15 @@ const ar = {
   listTypeWatch: "ترتيب المشاهدة",
   listTypeWatchHint: "تسلسل زمنيّ أو مقترح للمشاهدة — بأرقام على الملصقات.",
   listPositionOf: (i: number, n: number) => `الموضع ${i} من ${n}`,
+  /* 🆕 **المقصوصُ يقول كم قصّ** (D-722، بعد أوّل قياسٍ حيّ لورقة
+     D-721): **كانت «${a} / ${b}» بشرطةٍ مائلة** — **والشرطةُ محايدةٌ
+     في الاتّجاهين، فالرقمان مقطعان لاتينيّان يقلبهما التوجيهُ في
+     صفحةٍ عربيّة**: كتبنا «٢٤ / ٢٥» فقرأ أحمدُ «٢٥ / ٢٤» — **عددٌ
+     معروضٌ أكبرُ من مجموعه، وهو كذبٌ لا لبس.** 🔑 **وكلمةٌ عربيّةٌ
+     بين الرقمين تفصلهما مقطعين مستقلّين فيستقيم الترتيبُ بنفسه** —
+     وصفةُ `watchedOf` و`listPositionOf` أنفسِهما، لا حيلةَ `dir`
+     جديدة (القاعدة ٦). */
+  worksShownOf: (a: string, b: string) => `${a} من ${b} عملاً`,
   shareTitle: "شارك بطاقتك",
   shareSub: "صورة فيها أرقامك — انشرها أو احفظها.",
   shareBtn: "شارك بطاقتي",
@@ -2957,6 +2966,7 @@ const en: Dict = {
   listTypeWatchHint:
     "A chronological or recommended viewing order — numbered on the posters.",
   listPositionOf: (i: number, n: number) => `Position ${i} of ${n}`,
+  worksShownOf: (a: string, b: string) => `${a} of ${b} works`,
   shareTitle: "Share your card",
   shareSub: "An image with your numbers \u2014 post it or save it.",
   shareBtn: "Share my card",
