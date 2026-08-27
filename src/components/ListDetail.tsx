@@ -355,7 +355,11 @@ export function ListDetail({
           (حجّةُ D-643 حرفاً). **وزرُّ «أضف أعمالاً» انتقل إلى قائمة
           النقاط** — الترويسةُ ترويسةُ اللقطة، **والبابُ باقٍ في القائمة
           وفي حالة الفراغ** (D-167 لا تُنقض: بابان قائمان). */}
-      <div className="flex items-center gap-2 mb-4">
+      {/* 🔴 D-685: الصفُّ كان يبدأ من صفر الشاشة فركب شريطَ حالة iOS —
+          **وموضعُ الترويسة يُشتقّ من `--safe-top` لا يُفترض** (قاعدة
+          D-561، وهندسةُ `SettingsHeader` حرفاً: `-mt-6` تُبطل حشوةَ
+          الصفحة ثم `--safe-top` يبني فوق النتوء) */}
+      <div className="-mx-4 px-4 -mt-6 pt-[calc(var(--safe-top)+0.5rem)] pb-2 mb-2 flex items-center gap-2 min-h-11">
         <BackCrumb label={t.listsTitle} fallback="/library?filter=list" />
         <span className="flex-1 grid place-items-center" aria-hidden>
           <Logo size={26} />
