@@ -61,12 +61,23 @@ export async function GET() {
 
   const name = profile?.nickname?.trim() || profile?.username || "Loopz";
   const restHours = hours % 24;
-  const timeText =
+  /* 🔴 **الوقتُ الكبيرُ أرقامٌ كبيرةٌ ووحداتٌ صغيرة، مركَّباً يدويّاً**:
+     satori يقيس الكلمةَ العربيّة بأشكال حروفها المنفصلة ويرسمها
+     موصولةً — ففي «يوم» بحجم ٨٠ فراغٌ داخليٌّ فاضح (قِيس بصناديق
+     ملوّنة). الوحدةُ تُشتقّ من مفاتيح القاموس نفسِها (بلا مفتاحٍ
+     جديد)، وصِغَرُها يبتلع الخطأ. */
+  const dayUnit = t.days(9).replace(/[0-9٠-٩,\s]/g, "");
+  const hourUnit = t.hours(9).replace(/[0-9٠-٩,\s]/g, "");
+  const timeParts: { v: string; u: string }[] =
     days >= 1
       ? restHours > 0
-        ? t.daysAndHours(days, restHours)
-        : t.days(days)
-      : t.hours(hours);
+        ? [
+            { v: String(days), u: dayUnit },
+            { v: String(restHours), u: hourUnit },
+          ]
+        : [{ v: String(days), u: dayUnit }]
+      : [{ v: String(hours), u: hourUnit }];
+  if (rtl) timeParts.reverse();
 
   /* ⚖️ 🆕 D-697 (بلاغُه: «زر المشاركة يرسل الكارد القديمة»): البطاقةُ
      تلبس وجهَ صفحة الإحصائيات الجديد (D-682 → D-696) — **الوقتُ الكبيرُ
@@ -78,21 +89,43 @@ export async function GET() {
     { icon: "bookmark", value: String(follows.length), label: t.statsCellTitles },
     { icon: "star", value: rated ? avg.toFixed(1) : "—", label: t.statsCellRating },
   ];
+  const stripView = rtl ? [...strip].reverse() : strip;
   const ICON_PATHS: Record<string, React.ReactNode> = {
+    /* ⚠️ **لا Fragment داخل svg هنا**: مولّد الصور (satori) يرمي
+       «Cannot convert a Symbol value to a string» — <g> تقوم مقامها
+       (قِيس محليّاً قبل النشرة الثانية). */
     play: (
-      <>
+      <g>
         <circle cx="12" cy="12" r="9" />
         <path d="M10 8.8v6.4l5-3.2-5-3.2Z" />
-      </>
+      </g>
     ),
     film: (
-      <>
+      <g>
         <rect x="3.5" y="5" width="17" height="14" rx="2.5" />
         <path d="M3.5 9.5h17M8 5v14M16 5v14" />
-      </>
+      </g>
     ),
     bookmark: <path d="M6.5 4.5h11v15l-5.5-4-5.5 4v-15Z" />,
     star: <path d="m12 3.5 2.6 5.4 6 .8-4.4 4.1 1.1 5.9-5.3-2.9-5.3 2.9 1.1-5.9L3.4 9.7l6-.8L12 3.5Z" />,
+  };
+
+  /* 🔴 **مولّدُ الصور يبعثر الجملةَ العربيّة** (satori بلا bidi للجمل):
+     «وقت المشاهدة» كانت تخرج «المشاهدة وقت» — **فكلُّ كلمةٍ عقدةٌ
+     والصفُّ flex باتّجاه القراءة يرتّبها**، والتشكيلُ داخل الكلمة
+     الواحدة سليمٌ أصلاً (قِيس محليّاً بلقطة قبل النشر). */
+  const Line = ({ text, size, color }: { text: string; size: number; color?: string }) => {
+    const words = text.split(/\s+/);
+    /* **الترتيبُ بأيدينا لا بيد المحرّك**: نعكس الكلماتِ بأنفسنا ونرصّ
+       LTR دائماً — `direction` في Yoga تذبذب بين سطرٍ وآخر (قِيس). */
+    if (rtl) words.reverse();
+    return (
+      <div style={{ display: "flex", gap: Math.round(size * 0.24), fontSize: size, color: color ?? "#F7F7F7" }}>
+        {words.map((w, i) => (
+          <div key={i}>{w}</div>
+        ))}
+      </div>
+    );
   };
 
   return new ImageResponse(
@@ -104,15 +137,15 @@ export async function GET() {
           display: "flex",
           flexDirection: "column",
           justifyContent: "space-between",
-          padding: "56px 64px",
+          padding: "44px 64px",
           background: "#050505",
           color: "#F7F7F7",
           fontFamily: "Cairo, CairoLatin",
           direction: rtl ? "rtl" : "ltr",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
+        <div style={{ display: "flex", flexDirection: rtl ? "row-reverse" : "row", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ display: "flex", flexDirection: rtl ? "row-reverse" : "row", alignItems: "center", gap: 18 }}>
             <div
               style={{
                 width: 22,
@@ -123,21 +156,33 @@ export async function GET() {
             />
             <div style={{ fontSize: 32, letterSpacing: -1 }}>Loopz</div>
           </div>
-          <div style={{ fontSize: 26, color: "#9A9A9A" }}>{t.shareHeadline}</div>
+          <Line text={t.shareHeadline} size={26} color="#9A9A9A" />
         </div>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-            <div style={{ fontSize: 52 }}>{name}</div>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: rtl ? "flex-end" : "flex-start", gap: 2 }}>
+          <div style={{ display: "flex", flexDirection: rtl ? "row-reverse" : "row", alignItems: "center", gap: 14 }}>
+            <div style={{ fontSize: 44 }}>{name}</div>
             {/* نجمةُ لوبز الرباعية بجانب الاسم — كما في الترويسة */}
             <svg width="26" height="26" viewBox="0 0 24 24" fill="#FFD400">
               <path d="M12 3.5c.6 4.4 4.1 7.9 8.5 8.5-4.4.6-7.9 4.1-8.5 8.5-.6-4.4-4.1-7.9-8.5-8.5 4.4-.6 7.9-4.1 8.5-8.5Z" />
             </svg>
           </div>
-          <div style={{ fontSize: 92, lineHeight: 1.1 }}>{timeText}</div>
-          <div style={{ fontSize: 26, color: "#9A9A9A" }}>{t.statWatchTime}</div>
+          <div style={{ display: "flex", alignItems: "flex-end", gap: 22, marginTop: 4 }}>
+            {timeParts.map((p2) => (
+              <div key={p2.u + p2.v} style={{ display: "flex", alignItems: "flex-end", gap: 8 }}>
+                {rtl ? (
+                  <div style={{ fontSize: 30, color: "#9A9A9A", paddingBottom: 12 }}>{p2.u}</div>
+                ) : null}
+                <div style={{ fontSize: 84, lineHeight: 1 }}>{p2.v}</div>
+                {!rtl ? (
+                  <div style={{ fontSize: 30, color: "#9A9A9A", paddingBottom: 12 }}>{p2.u}</div>
+                ) : null}
+              </div>
+            ))}
+          </div>
+          <Line text={t.statWatchTime} size={26} color="#9A9A9A" />
           {/* الخطُّ الأصفرُ المنحني — زينةُ الصفحة نفسُها */}
-          <svg width="220" height="22" viewBox="0 0 220 24" style={{ marginTop: 10 }}>
+          <svg width="200" height="20" viewBox="0 0 220 24" style={{ marginTop: 6 }}>
             <path
               d="M2 20 C 58 4, 140 24, 218 6"
               stroke="#FFD400"
@@ -153,20 +198,22 @@ export async function GET() {
           style={{
             display: "flex",
             borderTop: "1px solid rgba(255,255,255,0.08)",
-            paddingTop: 30,
+            paddingTop: 26,
           }}
         >
-          {strip.map((c, i) => (
+          {stripView.map((c, i) => (
             <div
               key={c.label}
+              /* ⚠️ **ولا مفتاحَ نمطٍ قيمتُه undefined**: satori يستدعي
+                 `.trim()` على القيمة فينهار الرسمُ كلُّه — الفاصلُ يُبنى
+                 بالنشر الشرطيّ فلا يوجد المفتاحُ أصلاً حين لا فاصل. */
               style={{
                 flex: 1,
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
                 gap: 8,
-                borderLeft: !rtl && i > 0 ? "1px solid rgba(255,255,255,0.08)" : undefined,
-                borderRight: rtl && i > 0 ? "1px solid rgba(255,255,255,0.08)" : undefined,
+                ...(i > 0 ? { borderLeft: "1px solid rgba(255,255,255,0.08)" } : {}),
               }}
             >
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -184,7 +231,7 @@ export async function GET() {
                 </svg>
                 <div style={{ fontSize: 44 }}>{c.value}</div>
               </div>
-              <div style={{ fontSize: 24, color: "#9A9A9A" }}>{c.label}</div>
+              <Line text={c.label} size={24} color="#9A9A9A" />
             </div>
           ))}
         </div>
