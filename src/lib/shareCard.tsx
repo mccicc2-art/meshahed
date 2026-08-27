@@ -77,6 +77,11 @@ const ICON_PATHS: Record<string, React.ReactNode> = {
   ),
 };
 
+/** **هل يحمل النصُّ حروفاً عربيّة؟** — اتّجاهُ النصِّ في حروفه (D-716) */
+function hasArabic(s: string): boolean {
+  return /[\u0600-\u06FF\u0750-\u077F]/.test(s);
+}
+
 export function ShareCard(d: ShareCardData) {
   const { rtl } = d;
   const row = rtl ? "row-reverse" : "row";
@@ -85,7 +90,14 @@ export function ShareCard(d: ShareCardData) {
   /* 🔴 **مولّدُ الصور يبعثر الجملةَ العربيّة** (satori بلا bidi للجمل):
      «وقت المشاهدة» كانت تخرج «المشاهدة وقت» — **فكلُّ كلمةٍ عقدةٌ
      والصفُّ يرتّبها بأيدينا.** ⚠️ **ولا نتّكل على `direction`**:
-     Yoga تذبذبَت بين سطرٍ وآخر (قِيس). */
+     Yoga تذبذبَت بين سطرٍ وآخر (قِيس).
+
+     🔴 🆕 **والعكسُ يتبع لغةَ النصِّ لا لغةَ البطاقة** (D-716، أوّلُ
+     نشرةٍ حيّة): نبذةُ أحمد إنجليزيّةٌ في بطاقةٍ عربيّة، **فخرجت
+     «rise and adapt, fall, minds strong how Watching»** — **كلُّ
+     كلمةٍ سليمةٌ والجملةُ مقلوبة.** **والعلّةُ أنّي جعلتُ اتّجاهَ
+     القارئ يقرّر ترتيبَ كلماتٍ ليست بلغته** — **والنصُّ يحمل اتّجاهَه
+     في حروفه لا في تفضيلات صاحبه.** */
   const Line = ({
     text,
     size,
@@ -98,7 +110,7 @@ export function ShareCard(d: ShareCardData) {
     shadow?: boolean;
   }) => {
     const words = text.split(/\s+/);
-    if (rtl) words.reverse();
+    if (rtl && hasArabic(text)) words.reverse();
     return (
       <div
         style={{
@@ -117,6 +129,12 @@ export function ShareCard(d: ShareCardData) {
   };
 
   const stripView = rtl ? [...d.strip].reverse() : d.strip;
+  /* 🔴 🆕 **والملصقاتُ تُعكس كما يُعكس الشريط** (D-716): ترتيبُ D-704
+     منطقيٌّ (فيلم · أنمي · مسلسل) **والصفحةُ تردّه بالاتّجاه**، **وsatori
+     لا تعرف الاتّجاه فتُرسم يساراً دائماً** — **فخرج الفيلمُ في طرفٍ
+     والصفحةُ تضعه في الطرف الآخر.** **ومرآةٌ يدويّةٌ هي القاعدةُ هنا
+     منذ D-697، وقد نُسيت في الخلفيّة وحدَها.** */
+  const postersView = rtl ? [...d.posters].reverse() : d.posters;
 
   return (
     <div
@@ -137,7 +155,7 @@ export function ShareCard(d: ShareCardData) {
           تراه في الصفحة** (D-697: رقمٌ واحدٌ بوجهين يفترقان، والوجهُ
           كذلك). ⚠️ **ولا `mask-image` في satori**: الدرزُ الذائبُ
           (D-695) لا يُنقل، **فالدرزُ حادٌّ ويُقال ولا يُدَّعى.** */}
-      {d.posters.length > 0 && (
+      {postersView.length > 0 && (
         <div
           style={{
             position: "absolute",
@@ -148,7 +166,7 @@ export function ShareCard(d: ShareCardData) {
             display: "flex",
           }}
         >
-          {d.posters.map((p, i) => (
+          {postersView.map((p, i) => (
             <div
               key={i}
               style={{
