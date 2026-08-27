@@ -150,15 +150,16 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
   } = data;
   const divider = "border-[color:var(--divider)]";
 
-  /* ⚖️ 🆕 D-703 (حكمُه بمربّعين: «الي عليه مربع انقلي يمين وصغّر الرقم
-     درجة»): **كتلةُ الوقت غادرت جهةَ البداية إلى جهة النهاية** —
-     **وتحمل حجابَها معها** (قاعدةُ D-686: العتمةُ تتبع الكلام): هالةٌ
-     محلّيّةٌ بعرض محتواها، فالملصقاتُ بين الهويّة والوقت تبقى صافية.
-     والرقمُ ٣٤ ← ٢٨. */
+  /* ⚖️ 🆕 **D-705: الكتلةُ عادت إلى ما كانت** (حكمُه بعد أن رآها في
+     طرفها: «هذي رجعها مثل ماكانت») — **نقضُ D-703/١ بيد صاحبه بعد
+     الرؤية**: الوقتُ تحت الهويّة في عمود الحجاب، بلا هالةٍ ولا طرف،
+     والرقمُ ٣٤ كما كان. **والباقي من D-703 لم يُمسّ** (الصفوفُ
+     الموحّدةُ والتنوّعُ والاسمُ في الرئيسية)، **وترتيبُ الملصقات
+     يبقى بحكم D-704.** */
   const bigTime = (
-    <div className="shrink-0 text-end rounded-2xl bg-[color:var(--surface)]/70 px-3 py-2">
+    <div className="mt-4">
       <div
-        className="text-[28px] font-semibold leading-none tabular-nums"
+        className="text-[34px] font-semibold leading-none tabular-nums"
         style={{ fontFamily: "ui-serif, Georgia, 'Times New Roman', serif" }}
         dir="auto"
       >
@@ -168,7 +169,7 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
       <div className="mt-1.5 text-12 text-muted">
         {t.statWatchTime} · {rangeLabel}
       </div>
-      <svg aria-hidden viewBox="0 0 220 24" fill="none" className="mt-1.5 ms-auto h-3.5 w-28 text-accent/70">
+      <svg aria-hidden viewBox="0 0 220 24" fill="none" className="mt-2 h-4 w-36 text-accent/70">
         <path d="M2 20 C 58 4, 140 24, 218 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
       </svg>
     </div>
@@ -205,11 +206,7 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
               />
             </>
           )}
-          {/* **والبطاقةُ تحفظ قامتَها**: الوقتُ نزل إلى قاعها لا إلى
-              جنبِ الاسم — `min-h` يمنع انكماشَ البطاقة السينمائيّة إلى
-              شريط (قِيس على المنشور بعد أوّل نشرة). */}
-          <div className="relative flex flex-col min-h-[9rem]">
-            <div className="min-w-0">
+          <div className="relative">
             <div className="flex items-center gap-3">
               <span className="shrink-0 relative w-12 h-12 rounded-full overflow-hidden bg-surface-2 border border-accent/70">
                 {hero.avatarUrl ? (
@@ -236,12 +233,11 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
             {hero.bio && (
               /* **النبذةُ تلزم عمودَ حجابها** (D-693) — والحجابُ يحمي
                  جهةَ البداية، فما جاوزها يغرق فوق الملصقات */
-              <p className="mt-2 text-[13px] leading-snug text-muted line-clamp-2 max-w-[52%]" dir="auto">
+              <p className="mt-2 text-[13px] leading-snug text-muted line-clamp-2 max-w-[55%]" dir="auto">
                 {hero.bio}
               </p>
             )}
-            </div>
-            <div className="mt-auto pt-3 flex justify-end">{bigTime}</div>
+            {bigTime}
           </div>
         </section>
       ) : (
