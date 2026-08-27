@@ -176,6 +176,29 @@ export function BottomNav({
     [],
   );
 
+  /**
+   * 🆕 **الإشعالُ نفسُه** (D-711) — **دالّةٌ واحدةٌ ينادِيها حدثان**:
+   * `touchstart` **وهو إيماءةُ iOS المعياريّة**، و`pointerdown` لبقيّة
+   * أجهزة اللمس. **ونداءان على الحقل نفسِه لا يضرّان** (الحارسُ أدناه
+   * يخرج إن كان مركَّزاً أصلاً) — **والحدثُ الذي يصل أوّلاً هو الذي
+   * يفتح الكيبورد.**
+   */
+  const primeSearch = (pathnameNow: string) => {
+    if (pathnameNow.startsWith("/search")) return;
+    const el = primerRef.current;
+    if (!el || document.activeElement === el) return;
+    el.focus({ preventScroll: true });
+    setPriming(true);
+    if (primeTimer.current) clearTimeout(primeTimer.current);
+    /* **صمّامُ أمان**: لو تعثّرت الملاحةُ بقي كيبوردٌ فوق حقلٍ خفيٍّ
+       يبتلع ما يُكتب — **وإغلاقُه أصدقُ من ذلك.** وإن ورثه حقلُ الصفحة
+       فالشرطُ لا يتحقّق أصلاً. */
+    primeTimer.current = window.setTimeout(() => {
+      setPriming(false);
+      if (document.activeElement === el) el.blur();
+    }, 2500);
+  };
+
   /* ⚖️ 🆕 والزائرُ صار له شريطُه (D-627 — نقضُ D-122 بموت حجّتها،
      انظر `GUEST_TABS` أعلاه) */
   const tabs = signedIn ? TABS : GUEST_TABS;
@@ -341,7 +364,16 @@ const LIBRARY_PREFIXES = ["/library", "/show/", "/movie/", "/stats", "/activity"
                  وطلبُ نيّةٍ متكرّران: رابطٌ عليه `prefetch={false}` بلا
                  نيّةٍ أصلاً أخرج **صفرَ طلبات**. **فالتغييرُ يوقف تسخينَ
                  الرؤية، ولا يُنسب إليه إلغاءُ ازدواج.** */
-              prefetch={key === "library" && fullOk}
+              /* ⚖️ 🆕 **والبحثُ انضمّ إلى المكتبة في التسخين الكامل**
+                 (D-711) — **نقضٌ محصورٌ لـD-510 في خانةٍ واحدةٍ
+                 بثمنٍ معلوم**: `/search` صفحةٌ ديناميّةٌ تُبنى عند
+                 الطلب، **ورحلةُ الخادم بعد الضغطة هي نفسُها النافذةُ
+                 التي يغلق فيها iOS الكيبوردَ الذي أشعلناه** — **فما
+                 لم تكن الوجهةُ جاهزةً قبل الضغطة، لا يُسلَّم الكيبوردُ
+                 إلى حقلها.** ⚠️ **والثمنُ يُقال**: حمولةُ `/search`
+                 تُجلب لكلِّ من فتح التطبيق ولو لم يبحث — **وصمّامُ
+                 موفّر البيانات و2G يحكمها كما يحكم المكتبة.** */
+              prefetch={(key === "library" || key === "search") && fullOk}
               aria-current={active ? "page" : undefined}
               aria-label={label[key]}
               title={label[key]}
@@ -375,22 +407,17 @@ const LIBRARY_PREFIXES = ["/library", "/show/", "/movie/", "/stats", "/activity"
                  كاملةً عند `primerRef` أعلاه. **ومن كان في البحث أصلاً
                  لا يُشعَل له**: لا صفحةَ تُركَّب فترث التركيز، **فيبقى
                  كيبوردٌ فوق حقلٍ لا يُرى.** */
+              /* 🆕 **الحدثان معاً** (D-711): `touchstart` أوّلاً لأنه
+                 إيماءةُ WebKit المعياريّة، و`pointerdown` لمن لا
+                 يرسله — **والدالّةُ واحدةٌ والنداءُ الثاني يخرج
+                 بحارسِه.** */
+              onTouchStart={() => {
+                if (key === "search") primeSearch(pathname);
+              }}
               onPointerDown={(e) => {
                 if (key !== "search") return;
                 if (e.pointerType !== "touch") return;
-                if (pathname.startsWith("/search")) return;
-                const el = primerRef.current;
-                if (!el) return;
-                el.focus({ preventScroll: true });
-                setPriming(true);
-                if (primeTimer.current) clearTimeout(primeTimer.current);
-                /* **صمّامُ أمان**: لو تعثّرت الملاحةُ بقي كيبوردٌ فوق
-                   حقلٍ خفيّ يبتلع ما يُكتب — **وإغلاقُه أصدقُ من ذلك.**
-                   وإن ورثه حقلُ الصفحة فالشرطُ لا يتحقّق أصلاً. */
-                primeTimer.current = window.setTimeout(() => {
-                  setPriming(false);
-                  if (document.activeElement === el) el.blur();
-                }, 1500);
+                primeSearch(pathname);
               }}
               onClick={() => {
                 if (key === "search") setPriming(false);
@@ -418,7 +445,14 @@ const LIBRARY_PREFIXES = ["/library", "/show/", "/movie/", "/stats", "/activity"
         aria-hidden
         inputMode="search"
         autoComplete="off"
-        className="md:hidden fixed bottom-0 start-0 w-px h-px p-0 border-0 bg-transparent opacity-0 pointer-events-none text-[16px]"
+        autoCapitalize="off"
+        autoCorrect="off"
+        spellCheck={false}
+        /* 🆕 **وموضعُه داخل الشاشة لا في زاويةٍ منسيّة** (D-711): iOS
+           يمرّر الحقلَ المركَّز إلى الرؤية، **وحقلٌ يجلس تحت الكيبورد
+           نفسِه يدعو المتصفّحَ إلى تمريرٍ لا معنى له.** فوق الشريط
+           بقليل، بعرضِ بكسلٍ وشفافيّةٍ كاملة. */
+        className="md:hidden fixed bottom-[84px] start-1/2 w-px h-px p-0 border-0 bg-transparent opacity-0 pointer-events-none text-[16px]"
       />
     </>
   );
