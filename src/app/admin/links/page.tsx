@@ -128,7 +128,7 @@ export default async function AdminLinksPage({
       </form>
 
       {q && /^\d+$/.test(q) && (
-        <p className="text-13">
+        <p className="text-14">
           <a className="text-accent" href={`/admin/links?id=${q}&type=${media}&country=${country}`}>
             فتح المعرّف {q} مباشرةً ←
           </a>
@@ -159,7 +159,7 @@ export default async function AdminLinksPage({
       {picked && (
         <section className="space-y-4">
           <div className="flex items-center justify-between gap-3">
-            <h2 className="text-17 font-bold" dir="auto">
+            <h2 className="text-15 font-bold" dir="auto">
               {title || `#${id}`}{" "}
               <span className="text-muted text-12" dir="ltr">{media} · {id}</span>
             </h2>
@@ -180,11 +180,11 @@ export default async function AdminLinksPage({
             </div>
           </div>
 
-          {sp.err && <p className="text-13 text-[color:var(--error)]">⚠ {sp.err}</p>}
-          {sp.ok && <p className="text-13 text-[color:var(--success)]">✓ حُفظ</p>}
+          {sp.err && <p className="text-14 text-[color:var(--error)]">⚠ {sp.err}</p>}
+          {sp.ok && <p className="text-14 text-[color:var(--success)]">✓ حُفظ</p>}
 
           {providers.length === 0 && (
-            <p className="text-13 text-muted">
+            <p className="text-14 text-muted">
               لا منصّات لهذا العمل في {country} عند TMDB — لا رابطَ يُدخل لمنصّةٍ لا تعرضه.
             </p>
           )}
@@ -218,13 +218,13 @@ export default async function AdminLinksPage({
                   defaultValue={row?.destination_url ?? ""}
                   placeholder={`https://… رابط العمل على ${p.provider_name}`}
                   dir="ltr"
-                  className="w-full rounded-xl border border-border bg-surface-2 px-3 py-2 text-13"
+                  className="w-full rounded-xl border border-border bg-surface-2 px-3 py-2 text-14"
                 />
                 <div className="flex items-center gap-2">
                   <select
                     name="status"
                     defaultValue={row?.status ?? "verified"}
-                    className="rounded-xl border border-border bg-surface-2 px-2 py-1.5 text-13"
+                    className="rounded-xl border border-border bg-surface-2 px-2 py-1.5 text-14"
                     dir="ltr"
                   >
                     {STATUSES.map((s) => (
@@ -237,7 +237,7 @@ export default async function AdminLinksPage({
                       href={row.destination_url}
                       target="_blank"
                       rel="noopener noreferrer nofollow"
-                      className="text-13 text-accent ms-auto"
+                      className="text-14 text-accent ms-auto"
                     >
                       معاينة ↗
                     </a>
