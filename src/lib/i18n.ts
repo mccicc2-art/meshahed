@@ -1165,8 +1165,8 @@ const ar = {
      على بُعد ضغطةٍ تقول «٦١ أفلام» (ما شاهده)** — **كلمةٌ واحدةٌ
      بمعنيين في شاشتين متجاورتين.** **والرقمان صحيحان، والاسمُ هو
      الكاذب** — فصار كلُّ رقمٍ يحمل قاعدتَه في اسمه. */
-  statsCellEpisodesWatched: "حلقات شوهدت",
-  statsCellMoviesWatched: "أفلام شوهدت",
+  statsCellEpisodesWatched: "حلقات",
+  statsCellMoviesWatched: "أفلام",
   /* **وهذه وحدَها تعدّ المكتبة لا المُشاهَد** — فاسمُها يقول أين تسكن */
   statsCellTitles: "في المكتبة",
   statsCellRating: "التقييم",
@@ -2548,8 +2548,8 @@ const en: Dict = {
   statsRangeMonth: "Month",
   statsRangeMenu: "Time range",
   statsSoFar: (y: number) => `${y} so far`,
-  statsCellEpisodesWatched: "Episodes watched",
-  statsCellMoviesWatched: "Movies watched",
+  statsCellEpisodesWatched: "Episodes",
+  statsCellMoviesWatched: "Movies",
   statsCellTitles: "In library",
   statsCellRating: "Rating",
   statsTopShows: "Most watched",
