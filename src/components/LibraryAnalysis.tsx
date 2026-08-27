@@ -84,9 +84,9 @@ function ProgressDonut({ done, watching, rest, pct: pctDone }: {
       }}
     >
       {/* **النسبةُ 34px بنصّ المواصفة** — رقمٌ زخرفيٌّ خارج سلّم D-459 كجاراته */}
-      <span className="grid place-items-center w-24 h-24 rounded-full bg-surface text-[34px] font-bold tabular-nums leading-none">
+      <span className="flex items-center justify-center gap-0.5 w-24 h-24 rounded-full bg-surface text-[34px] font-bold tabular-nums leading-none">
         {pctDone}
-        <span className="text-12 font-bold text-muted ms-0.5">%</span>
+        <span className="text-12 font-bold text-muted">%</span>
       </span>
     </span>
   );
@@ -228,7 +228,7 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
                   ويذوب قبل الطرف فلا «غبار» فوق الملصقات */}
               <span
                 aria-hidden
-                className="absolute inset-0 bg-gradient-to-r rtl:bg-gradient-to-l from-[color:var(--surface)] from-[42%] via-[color:var(--surface)]/70 via-[60%] to-transparent to-[85%]"
+                className="absolute inset-0 bg-gradient-to-r rtl:bg-gradient-to-l from-[color:var(--surface)] from-[40%] via-[color:var(--surface)]/55 via-[50%] to-transparent to-[62%]"
               />
             </>
           )}
