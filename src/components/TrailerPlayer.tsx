@@ -123,6 +123,14 @@ export function TrailerPlayer({
   const [playing, setPlaying] = useState(false);
   const [held, setHeld] = useState(false);
   const [at, setAt] = useState<{ now: number; total: number } | null>(null);
+  /**
+   * 🔑 **قيمةُ الصمت في مرجعٍ لا في تبعيّة** (D-730): **مستمعُ الرسائل
+   * يُعاد تركيبُه كلّما تغيّرت تبعيّاتُه** — **وإعادةُ تركيبه تقطع
+   * المصافحةَ مع الإطار** (D-726). **فالمرجعُ يقرأ الأحدثَ بلا أن
+   * يُحرّك المستمع.**
+   */
+  const mutedRef = useRef(muted);
+  mutedRef.current = muted;
 
   const send = useCallback((func: string, args: unknown[] = []) => {
     try {
@@ -194,24 +202,38 @@ export function TrailerPlayer({
     };
   }, [send, stop]);
 
-  /* ===== ٢) التطبيقُ يذهب للخلفيّة فيصمت ===== */
+  /* ===== ٢) التطبيقُ يذهب للخلفيّة فيصمت، ويعود فيستأنف ===== */
   useEffect(() => {
-    const onHide = () => {
-      if (document.visibilityState === "hidden") stop();
+    const onVisible = () => {
+      if (document.visibilityState === "hidden") {
+        stop();
+        return;
+      }
+      /* 🆕 **والعودةُ تُعيد ما أخذَته الخلفيّة** (D-730): **صاحبُ الدور
+         وحدَه يستأنف** — **ولو استأنف كلُّ مشغّلٍ لسمع القارئُ صوتين**
+         (حارسُ الواحديّة، D-726).
+         ⚠️ **والصوتُ يُعاد تأكيدُه لا يُفترض بقاؤه**: **النظامُ قد
+         يُسكت الإطارَ وهو في الخلفيّة** — **وتفضيلٌ محفوظٌ لا يُنفَّذ
+         تفضيلٌ لم يُطبَّق.** */
+      if (CURRENT !== stop) return;
+      send(mutedRef.current ? "mute" : "unMute");
+      send("playVideo");
     };
-    document.addEventListener("visibilitychange", onHide);
+    document.addEventListener("visibilitychange", onVisible);
     window.addEventListener("pagehide", stop);
     return () => {
-      document.removeEventListener("visibilitychange", onHide);
+      document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("pagehide", stop);
     };
-  }, [stop]);
+  }, [stop, send]);
 
   /* ===== ٣) ما يعود من الإطار: أوّلُ رسمٍ وشريطُ التقدّم ===== */
   useEffect(() => {
     if (!mounted) return;
     /** **ويسكت النداءُ عند أوّل جواب** — لا نبضَ بلا حاجة */
     let got = false;
+    /** **وتأكيدُ الصوت مرّةً واحدةً عند أوّل جوابٍ من الإطار** (D-730) */
+    let heard = false;
     function onMsg(e: MessageEvent) {
       if (e.origin !== YT_ORIGIN) return;
       let d: { event?: string; info?: { currentTime?: number; duration?: number; playerState?: number } };
@@ -222,6 +244,21 @@ export function TrailerPlayer({
       }
       const info = d?.info;
       if (!info) return;
+      /* 🔴 **وأوّلُ جوابٍ من الإطار هو أوّلُ لحظةٍ يسمع فيها** (D-730،
+         بلاغُ أحمد: «الصوت ما يشتغل إلّا بعد إيقافه ثمّ تشغيله»).
+         🔑 **وأمرٌ يُرسَل إلى إطارٍ لم يُحمَّل بعدُ يضيع بلا خطأ**:
+         كنّا نرسل `unMute` لحظةَ التركيب — **والإطارُ يومَها صفحةٌ لم
+         تُفتح** — **فيبقى صامتاً وتفضيلُه يقول «مسموع».** **وتوقيفُه
+         ثمّ تشغيلُه كان يُعيد إرسالَ الأمر فينجح**، وهو بالضبط ما وصفه.
+         🔑 **فالحالةُ تُعاد عند أوّل دليلٍ على السمع لا عند أوّل ظنٍّ
+         بالجاهزيّة.**
+         ⚠️ **وموضعُه هنا لا داخل فرع شريط التقدّم**: **تأكيدُ الصوت
+         لا يجوز أن يتعلّق بعَلَمٍ يخصّ شيئاً آخر** — **ومن علّق ضرورةً
+         بشرطِ زينةٍ أسقطها يومَ تُطفأ الزينة.** */
+      if (!heard) {
+        heard = true;
+        send(mutedRef.current ? "mute" : "unMute");
+      }
       /* 🔴 **والصورةُ لا تُرفع حتى يقول الإطارُ «أنا أرسم»** (D-729،
          عطلٌ في لقطته: **مساحةُ الفيديو خرجت بيضاءَ في صفحة الترايلرات**).
          🔑 **كنتُ أرفعها لحظةَ التركيب** — **والتركيبُ ليس الرسم**:
