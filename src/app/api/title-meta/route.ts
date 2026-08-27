@@ -73,9 +73,14 @@ export async function GET(request: Request) {
         [];
       /* مخرجُ الفيلم من الطاقم — وصانعُ المسلسل من `created_by` (طاقمُ
          المسلسل في TMDB نادراً ما يحمل «Director» على مستوى العمل) */
-      const director = tv
-        ? ((d as { created_by?: { name: string }[] }).created_by?.[0]?.name ?? null)
-        : (credits.crew.find((c) => c.job === "Director")?.name ?? null);
+      /* 🆕 **والوجهُ يُقرأ مع الاسم لا بعده** (D-718): مسارُ الصورة
+         موجودٌ في الجواب نفسِه — **ونداءٌ ثانٍ لِما جاء في الأوّل
+         ضريبةٌ بلا مقابل.** */
+      const dirPerson = tv
+        ? ((d as { created_by?: { name: string; profile_path?: string | null }[] })
+            .created_by?.[0] ?? null)
+        : (credits.crew.find((c) => c.job === "Director") ?? null);
+      const cast = credits.cast.slice(0, 3);
       rows.push({
         media_type: it.media_type,
         tmdb_id: it.tmdb_id,
@@ -83,8 +88,12 @@ export async function GET(request: Request) {
         original_language:
           (d as { original_language?: string }).original_language ?? null,
         origin_countries: countries.slice(0, 6),
-        director,
-        top_cast: credits.cast.slice(0, 3).map((c) => c.name),
+        director: dirPerson?.name ?? null,
+        director_profile: dirPerson?.profile_path ?? null,
+        top_cast: cast.map((c) => c.name),
+        /* **موازيةٌ بالترتيب** — و`null` لمن لا صورةَ له، **لأن حذفَها
+           يُزحزح المحاذاةَ فيُلبَس وجهُ فلانٍ اسمَ غيره.** */
+        cast_profiles: cast.map((c) => c.profile_path ?? null),
       });
     } catch {
       /* عملٌ ميّتٌ في TMDB لا يوقف الدورةَ — يُعدّ ويُترك بلا صفّ (D-063) */
