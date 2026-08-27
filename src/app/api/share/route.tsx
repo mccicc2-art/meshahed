@@ -25,6 +25,7 @@ import { posterUrl } from "@/lib/media";
 import { favoriteTrio, trioPosterPaths } from "@/lib/heroPosters";
 import { ShareCard, type ShareStripCell, type ShareTasteCell } from "@/lib/shareCard";
 import { getT } from "@/lib/locale";
+import { worksParts } from "@/lib/i18n";
 
 export const runtime = "nodejs";
 
@@ -180,8 +181,7 @@ export async function GET() {
             title: t.tasteLanguages,
             rows: taste.languages.map((x) => ({
               name: x.name,
-              value: String(x.titles),
-              unit: unitWord(t.personWorksCount(x.titles)),
+              ...worksParts(x.titles, t, locale),
             })),
             paths: taste.posters.languages,
           },
@@ -189,8 +189,7 @@ export async function GET() {
             title: t.tasteDiversity,
             rows: taste.countries.map((x) => ({
               name: x.name,
-              value: String(x.titles),
-              unit: unitWord(t.personWorksCount(x.titles)),
+              ...worksParts(x.titles, t, locale),
             })),
             paths: taste.posters.countries,
           },
@@ -198,8 +197,7 @@ export async function GET() {
             title: t.tasteDirectors,
             rows: taste.directors.map((x) => ({
               name: x.name,
-              value: String(x.titles),
-              unit: unitWord(t.personWorksCount(x.titles)),
+              ...worksParts(x.titles, t, locale),
             })),
             paths: taste.posters.directors,
           },
@@ -207,8 +205,7 @@ export async function GET() {
             title: t.tasteActors,
             rows: taste.actors.map((x) => ({
               name: x.name,
-              value: String(x.titles),
-              unit: unitWord(t.personWorksCount(x.titles)),
+              ...worksParts(x.titles, t, locale),
             })),
             paths: taste.posters.actors,
           },
@@ -294,14 +291,6 @@ async function dataUrl(url: string | null): Promise<string | null> {
   }
 }
 
-/**
- * **الوحدةُ وحدَها من العبارة** (D-720) — «٢٩ عملاً» ← «عملاً».
- * **ونسخةُ الصفحة بحرفها** (`unitWord` في `LibraryAnalysis`): **الرقمُ
- * بلون الهويّة ووحدتُه هادئةٌ خلفه**، ولا تُبنى العبارةُ مرّتين.
- */
-function unitWord(phrase: string): string {
-  return phrase.replace(/[0-9٠-٩,.\s]+/g, " ").trim();
-}
 
 /** قصٌّ بالحروف مع نقاطٍ — أقربُ ما يُشبه `line-clamp` في صورة */
 function clip(s: string, max: number): string {
