@@ -20,7 +20,7 @@ import {
   artKey,
   getMyFavorites,
 } from "@/lib/data";
-import { sanitizeHomePrefs } from "@/lib/homePrefs";
+import { sanitizeHomePrefs, applyQueueOrder } from "@/lib/homePrefs";
 import { getT, getTabPrefs } from "@/lib/locale";
 import { defaultTab } from "@/lib/tabPrefs";
 import { localizeFollows } from "@/lib/localize";
@@ -31,6 +31,8 @@ import { getArtistShelf, type ArtistShelfItem } from "@/lib/artists";
 import { FollowMetaSync } from "@/components/MetaSync";
 import { PublicListsRail } from "@/components/PublicListsRail";
 import { ScrollMemory } from "@/components/ScrollMemory";
+import { HomeQueueSheetHost } from "@/components/HomeQueueOrder";
+import type { ReorderItem } from "@/components/ReorderSheet";
 
 /**
  * المكتبة.
@@ -277,13 +279,27 @@ export default async function LibraryPage({
           .filter((f) => f.media_type === "movie" && !listedMovieIds.has(f.tmdb_id))
           .sort((a, b) => a.added_at.localeCompare(b.added_at))
       : [];
+  /* 🆕 **وترتيبُ صاحبها هنا كما في الرئيسية** (D-719): **بطاقةٌ واحدةٌ
+     في ثلاثة أبواب، وترتيبٌ يظهر في بابٍ ويغيب عن أخيه يُقرأ عطلاً.** */
+  const toWatchOrdered = applyQueueOrder(
+    toWatchQueue,
+    (f) => `tw-mv-${f.tmdb_id}`,
+    sanitizeHomePrefs(profileRow?.home_prefs).towatchListOrder,
+  );
   const toWatchCard = toWatchQueue.length
     ? {
         on: sanitizeHomePrefs(profileRow?.home_prefs).toWatch,
         count: toWatchQueue.length,
-        posters: toWatchQueue.slice(0, 3).map((f) => f.poster_path ?? null),
+        posters: toWatchOrdered.slice(0, 3).map((f) => f.poster_path ?? null),
       }
     : null;
+  /** بذرةُ ورقة الترتيب — أفلامُ البطاقة كلُّها بترتيب عرضها (D-719) */
+  const toWatchListItems: ReorderItem[] = toWatchOrdered.map((f) => ({
+    key: `tw-mv-${f.tmdb_id}`,
+    title: f.title,
+    poster_path: f.poster_path ?? null,
+    media_type: "movie" as const,
+  }));
 
   const anime = [...shows, ...movies].filter(
     (x) => animeFlags.get(`${x.mediaType}-${x.tmdbId}`) === true,
@@ -308,6 +324,14 @@ export default async function LibraryPage({
       <FollowMetaSync rows={metaToCache} />
       {/* العنوان مخفيٌّ بصريًّا وباقٍ لقارئ الشاشة — أُزيلت الترويسة وسطر الملخّص */}
       <h1 className="sr-only">{t.libraryTitle}</h1>
+
+      {/* 🆕 **مضيفُ ورقة ترتيب بطاقة «للمشاهدة»** (D-719) — **حيث تُرسم
+          البطاقةُ يُركَّب مضيفُها**: **بطاقةٌ تُوعد بورقةٍ ولا مضيفَ
+          لبابها تبتلع الضغطة** (D-030). **وينتظر حدثَه فلا يرسم شيئاً
+          قبله** — و`cont`/`lists` فارغتان هنا لأن زرّيهما في الرئيسية. */}
+      {toWatchListItems.length > 0 && (
+        <HomeQueueSheetHost locale={locale} cont={[]} towatch={[]} towatchList={toWatchListItems} />
+      )}
 
       <LibraryGrid
         shows={shows}
