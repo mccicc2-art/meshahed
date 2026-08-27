@@ -230,7 +230,17 @@ export function TrailerPlayer({
          «أثناء التحميل تظهر صورة Backdrop بدون شاشة سوداء»** — **والبيضاءُ
          أسوأُ من السوداء في سطحٍ داكن.**
          ⚠️ **وحالةُ التشغيل هي الإشارة الصادقة** (`playerState === 1`). */
-      if (typeof info.playerState === "number" && info.playerState === 1) setPlaying(true);
+      /* 🔑 **وأصدقُ دليلٍ على الرسم عقربٌ تحرّك** (D-729، بعد أوّل
+         قياسٍ حيّ): **`playerState === 1` تصل والمقطعُ ما زال يُخزَّن**،
+         **و«0:00 / 2:42» تقول إنه لم يبدأ بعد.** **فالشرطُ حالةُ تشغيلٍ
+         مع زمنٍ تجاوز الصفر** — **حالةٌ بلا زمنٍ نيّةٌ لا فعل.** */
+      if (
+        info.playerState === 1 &&
+        typeof info.currentTime === "number" &&
+        info.currentTime > 0.1
+      ) {
+        setPlaying(true);
+      }
       if (
         showProgress &&
         typeof info.currentTime === "number" &&
@@ -268,8 +278,10 @@ export function TrailerPlayer({
     /* ⚠️ **وحزامٌ زمنيٌّ خلف الإشارة** (D-729): **لو لم تصل حالةُ
        التشغيل أبداً لبقيت الصورةُ فوق مقطعٍ يعمل** — **وسترٌ دائمٌ
        أسوأُ من سترٍ متأخّر.** **ثلاثُ ثوانٍ سقفُ الانتظار**، وهي
-       أطولُ ممّا قِيس (`infoDelivery` تصل في أقلَّ من ثانية). */
-    const belt = window.setTimeout(() => setPlaying(true), 3000);
+       أطولُ من كلِّ تخزينٍ معقول. ⚠️ **وثمانٍ لا ثلاث** (بعد القياس):
+       **الثلاثُ كانت تسبق التخزينَ على شبكةٍ بطيئة فتكشف إطاراً فارغاً**
+       — **وحزامٌ يسبق الحدثَ الذي يحرسه ليس حزاماً، هو مؤقّتٌ يكذب.** */
+    const belt = window.setTimeout(() => setPlaying(true), 8000);
 
     return () => {
       window.clearInterval(hello);
