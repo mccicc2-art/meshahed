@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import { PosterRail } from "./PosterRail";
@@ -110,10 +111,17 @@ export function TrailerRail({
               prefetch={false}
               className="shrink-0 w-40 active:opacity-70 transition"
             >
+              {/* 🔴 **و`next/image` لا `<img>` خام** (D-726، عطلٌ قِيس على
+                  النشرة الحيّة): **كتبتُ وسماً خاماً فخرجت الخمسُ صوراً
+                  مكسورة** — **وطلبٌ مباشرٌ إلى `image.tmdb.org` من هذه
+                  الصفحة يفشل** (جرّبتُه في المتصفّح: `onerror`)، **بينما
+                  المسارُ عبر `/_next/image` يعمل في كلِّ ملصقٍ في
+                  التطبيق منذ يومه.** 🔑 **والدرسُ لا يحتاج تشخيصَ السبب**:
+                  **وسيلةٌ واحدةٌ لرسم الصورة في التطبيق كلِّه** (القاعدة ٣)،
+                  **ومن خرج عنها دفع ثمنَ اكتشافِ سببٍ لا يعنيه.** */}
               <span className="relative block aspect-video rounded-xl overflow-hidden bg-surface-2">
                 {i.backdrop && (
-                  /* eslint-disable-next-line @next/next/no-img-element */
-                  <img src={i.backdrop} alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover" />
+                  <Image src={i.backdrop} alt="" fill sizes="160px" className="object-cover" />
                 )}
                 <span className="absolute inset-0 grid place-items-center">
                   <span className="w-9 h-9 rounded-full bg-black/55 text-white grid place-items-center">
