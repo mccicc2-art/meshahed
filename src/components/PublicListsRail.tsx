@@ -31,6 +31,7 @@ export function PublicListsRail({
   title,
   grid = false,
   action,
+  leading,
 }: {
   lists: PublicListCard[];
   locale: Locale;
@@ -55,9 +56,17 @@ export function PublicListsRail({
    * واحدة هو العطلُ بعينه** (القاعدة ٦).
    */
   grid?: boolean;
+  /**
+   * 🆕 **بطاقةٌ أولى ليست قائمةً** (D-703) — طابورُ «للمشاهدة» في صفِّ
+   * الرئيسية: **مكانُه بين القوائم لأنه يُقرأ قائمةً** (عرفُ
+   * `ListManager` منذ D-559)، **وليس له صفٌّ في `user_lists`** فلا
+   * يدخل `lists`. **ولا بطاقةَ ثانيةً تُخترع**: المستدعي يمرّر
+   * `ToWatchListCard` نفسَها.
+   */
+  leading?: React.ReactNode;
 }) {
   const t = getDict(locale);
-  if (!lists.length) return null;
+  if (!lists.length && !leading) return null;
 
   const cards = lists.map((l) => (
     <CommunityListCard key={l.id} list={l} locale={locale} className="w-full h-full" />
@@ -88,6 +97,7 @@ export function PublicListsRail({
               ⚠️ **ومن `sm` عمودان**: الشاشةُ الواسعة تسع الاثنين
               بعرضٍ يفوق ٢٨٠ لكلٍّ منهما. */}
         <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          {leading && <li className="min-w-0">{leading}</li>}
           {lists.map((l, i) => (
             <li key={l.id} className="min-w-0">
               {cards[i]}
@@ -105,6 +115,7 @@ export function PublicListsRail({
       iconColor="var(--accent-2)"
       action={action}
     >
+      {leading && <RailItem size="list">{leading}</RailItem>}
       {lists.map((l, i) => (
         /* `size="list"` لا الافتراض: خانة الملصق (118px) لبطاقةٍ أعرض
            منها كانت تجعل البطاقات تتراكب فوق بعضها (لقطة المالك — D-084)،

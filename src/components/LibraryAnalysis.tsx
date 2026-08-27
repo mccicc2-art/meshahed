@@ -92,7 +92,10 @@ export interface TasteData {
   genres: { name: string; pct: number }[];
   decades: { label: string; pct: number }[];
   languages: { code: string; name: string; titles: number }[];
-  diversity: { level: string; countries: number } | null;
+  /** 🆕 D-703: أعلى بلدين بعدِّ أعمالهما — بدل رقمٍ مجرّد */
+  countries: { name: string; titles: number }[];
+  /** وصفُ التنوّع بجانب عنوان الخانة — `null` حين لا بلدَ يُقرأ */
+  diversityLevel: string | null;
   directors: { name: string; titles: number }[];
   actors: { name: string; titles: number }[];
 }
@@ -147,21 +150,25 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
   } = data;
   const divider = "border-[color:var(--divider)]";
 
+  /* ⚖️ 🆕 D-703 (حكمُه بمربّعين: «الي عليه مربع انقلي يمين وصغّر الرقم
+     درجة»): **كتلةُ الوقت غادرت جهةَ البداية إلى جهة النهاية** —
+     **وتحمل حجابَها معها** (قاعدةُ D-686: العتمةُ تتبع الكلام): هالةٌ
+     محلّيّةٌ بعرض محتواها، فالملصقاتُ بين الهويّة والوقت تبقى صافية.
+     والرقمُ ٣٤ ← ٢٨. */
   const bigTime = (
-    <div className="mt-4">
+    <div className="shrink-0 text-end rounded-2xl bg-[color:var(--surface)]/70 px-3 py-2">
       <div
-        className="text-[34px] font-semibold leading-none tabular-nums"
+        className="text-[28px] font-semibold leading-none tabular-nums"
         style={{ fontFamily: "ui-serif, Georgia, 'Times New Roman', serif" }}
         dir="auto"
       >
         {fmtWatchTime(rangeMinutes, t)}
       </div>
-      {/* 🆕 D-700 (حكمُه: «حط إذا all time أو سنة أو شهر كذا») — المدى
-          المختارُ يُقال بجوار اسم الرقم فلا يُقرأ رقمُ شهرٍ عمراً كاملاً */}
+      {/* 🆕 D-700: المدى المختارُ يُقال بجوار اسم الرقم */}
       <div className="mt-1.5 text-12 text-muted">
         {t.statWatchTime} · {rangeLabel}
       </div>
-      <svg aria-hidden viewBox="0 0 220 24" fill="none" className="mt-2 h-4 w-36 text-accent/70">
+      <svg aria-hidden viewBox="0 0 220 24" fill="none" className="mt-1.5 ms-auto h-3.5 w-28 text-accent/70">
         <path d="M2 20 C 58 4, 140 24, 218 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
       </svg>
     </div>
@@ -198,7 +205,8 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
               />
             </>
           )}
-          <div className="relative">
+          <div className="relative flex items-end gap-3">
+            <div className="min-w-0 flex-1">
             <div className="flex items-center gap-3">
               <span className="shrink-0 relative w-12 h-12 rounded-full overflow-hidden bg-surface-2 border border-accent/70">
                 {hero.avatarUrl ? (
@@ -223,10 +231,11 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
               </span>
             </div>
             {hero.bio && (
-              <p className="mt-2 text-[13px] leading-snug text-muted line-clamp-2 max-w-[55%]" dir="auto">
+              <p className="mt-2 text-[13px] leading-snug text-muted line-clamp-2" dir="auto">
                 {hero.bio}
               </p>
             )}
+            </div>
             {bigTime}
           </div>
         </section>
@@ -268,61 +277,66 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
             {taste.genres.length > 0 && (
               <TasteCell title={t.tasteGenres}>
                 {taste.genres.map((g) => (
-                  <div key={g.name} className="flex items-baseline gap-2 min-w-0">
-                    <span className="text-14 truncate" dir="auto">{g.name}</span>
-                    <span className="text-13 font-semibold text-accent tabular-nums shrink-0">{g.pct}%</span>
-                  </div>
+                  <TasteRow key={g.name} name={g.name} value={`${g.pct}%`} />
                 ))}
               </TasteCell>
             )}
             {taste.decades.length > 0 && (
               <TasteCell title={t.tasteYears}>
                 {taste.decades.map((d) => (
-                  <div key={d.label} className="flex items-baseline gap-2 min-w-0">
-                    <span className="text-14 tabular-nums" dir="ltr">{d.label}</span>
-                    <span className="text-13 font-semibold text-accent tabular-nums shrink-0">{d.pct}%</span>
-                  </div>
+                  <TasteRow key={d.label} name={d.label} value={`${d.pct}%`} ltr />
                 ))}
               </TasteCell>
             )}
             {taste.languages.length > 0 && (
               <TasteCell title={t.tasteLanguages} divider>
                 {taste.languages.map((l) => (
-                  <div key={l.code} className="flex items-center gap-2.5 min-w-0">
-                    <span className="shrink-0 grid place-items-center w-8 h-8 rounded-full border border-[color:var(--divider)] text-[10px] font-bold text-muted" dir="ltr">
-                      {l.code.toUpperCase()}
-                    </span>
-                    <span className="min-w-0">
-                      <span className="block text-14 truncate">{l.name}</span>
-                      <span className="block text-12 text-muted">
-                        <span className="text-accent font-semibold tabular-nums">{num(l.titles, locale)}</span>{" "}
-                        {t.personWorksCount(l.titles).replace(/^[0-9,٠-٩]+\s*/, "")}
-                      </span>
-                    </span>
-                  </div>
+                  <TasteRow
+                    key={l.code}
+                    name={l.name}
+                    value={num(l.titles, locale)}
+                    unit={unitWord(t.personWorksCount(l.titles))}
+                  />
                 ))}
               </TasteCell>
             )}
-            {taste.diversity && (
-              <TasteCell title={t.tasteDiversity} divider>
-                <div className="text-14">{taste.diversity.level}</div>
-                <div className="text-12 text-muted">
-                  <span className="text-accent font-semibold tabular-nums">{num(taste.diversity.countries, locale)}</span>{" "}
-                  {t.tasteCountries(taste.diversity.countries).replace(/^[0-9,٠-٩]+\s*/, "")}
-                </div>
+            {taste.countries.length > 0 && (
+              /* ⚖️ 🆕 D-703 (حكمُه: «حسّن diversity»): الخانةُ كانت تقول
+                 كلمةً مجرّدةً ورقماً — **صارت تسمّي البلدانَ نفسَها**
+                 (أعلى اثنين بعدِّ أعمالهما) **والمستوى وصفٌ في عنوانها**،
+                 فوافقت أخواتِها الخمسَ في الشكل وزادت معنًى. */
+              <TasteCell title={t.tasteDiversity} note={taste.diversityLevel ?? undefined} divider>
+                {taste.countries.map((c) => (
+                  <TasteRow
+                    key={c.name}
+                    name={c.name}
+                    value={num(c.titles, locale)}
+                    unit={unitWord(t.personWorksCount(c.titles))}
+                  />
+                ))}
               </TasteCell>
             )}
             {taste.directors.length > 0 && (
               <TasteCell title={t.tasteDirectors} divider>
                 {taste.directors.map((d) => (
-                  <PersonLine key={d.name} name={d.name} titles={d.titles} t={t} locale={locale} />
+                  <TasteRow
+                    key={d.name}
+                    name={d.name}
+                    value={num(d.titles, locale)}
+                    unit={unitWord(t.personWorksCount(d.titles))}
+                  />
                 ))}
               </TasteCell>
             )}
             {taste.actors.length > 0 && (
               <TasteCell title={t.tasteActors} divider>
                 {taste.actors.map((a) => (
-                  <PersonLine key={a.name} name={a.name} titles={a.titles} t={t} locale={locale} />
+                  <TasteRow
+                    key={a.name}
+                    name={a.name}
+                    value={num(a.titles, locale)}
+                    unit={unitWord(t.personWorksCount(a.titles))}
+                  />
                 ))}
               </TasteCell>
             )}
@@ -334,58 +348,66 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
   );
 }
 
-/** خانةُ بطاقة الذوق: عنوانٌ وصفوفُه — ⚖️ D-702: أقراصُ الأيقونات الستُّ
-    حُذفت بخطّه، فاتّسع عمودُ الأسماء وسقط قصُّها */
+/** خانةُ بطاقة الذوق: عنوانٌ (ووصفٌ اختياريٌّ) وصفوفُه — ⚖️ D-702:
+    أقراصُ الأيقونات حُذفت، و⚖️ D-703: أقراصُ الحروف كذلك. */
 function TasteCell({
   title,
+  note,
   divider = false,
   children,
 }: {
   title: string;
+  /** وصفٌ بجانب العنوان — «متوسّط» بجانب «التنوّع» */
+  note?: string;
   divider?: boolean;
   children: React.ReactNode;
 }) {
   return (
     <div className={`py-3.5 min-w-0 ${divider ? "border-t border-[color:var(--divider)]" : ""}`}>
-      <span className="block text-13 text-muted mb-1.5">{title}</span>
+      <span className="block text-13 text-muted mb-1.5">
+        {title}
+        {note && <span className="text-accent font-semibold"> · {note}</span>}
+      </span>
       <span className="block space-y-1.5">{children}</span>
     </div>
   );
 }
 
-/** سطرُ شخصٍ في خانتي المخرجين والممثلين: قرصُ حرفين ثمّ الاسمُ وعدُّ أعماله */
-function PersonLine({
+/**
+ * ⚖️ 🆕 **صفُّ بطاقة الذوق — وصفةٌ واحدةٌ لخاناتها الستّ** (D-703، حكمُه:
+ * «وحّد مقاسات الحروف، و«2 titles» خلها في نفس الصف مع الاسم»):
+ * **الاسمُ ورقمُه في سطرٍ واحدٍ بمقاسٍ واحد** — والرقمُ بلون الهويّة
+ * ووحدتُه هادئة. **وستُّ خاناتٍ بستّة أشكالٍ هي العطلُ بعينه** (القاعدة ٣).
+ */
+function TasteRow({
   name,
-  titles,
-  t,
-  locale,
+  value,
+  unit,
+  ltr = false,
 }: {
   name: string;
-  titles: number;
-  t: ReturnType<typeof getDict>;
-  locale: Locale;
+  value: string;
+  unit?: string;
+  ltr?: boolean;
 }) {
-  const initials = name
-    .split(/\s+/)
-    .map((w) => w[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join("");
   return (
-    <div className="flex items-center gap-2.5 min-w-0">
-      <span className="shrink-0 grid place-items-center w-8 h-8 rounded-full border border-[color:var(--divider)] text-[10px] font-bold text-muted uppercase" dir="auto">
-        {initials}
+    <div className="flex items-baseline gap-2 min-w-0">
+      <span className="text-14 truncate" dir={ltr ? "ltr" : "auto"}>
+        {name}
       </span>
-      <span className="min-w-0">
-        <span className="block text-14 truncate" dir="auto">{name}</span>
-        <span className="block text-12 text-muted">
-          <span className="text-accent font-semibold tabular-nums">{num(titles, locale)}</span>{" "}
-          {t.personWorksCount(titles).replace(/^[0-9,٠-٩]+\s*/, "")}
-        </span>
+      <span className="ms-auto shrink-0 text-14 font-semibold text-accent tabular-nums">
+        {value}
+        {unit && <span className="font-normal text-muted"> {unit}</span>}
       </span>
     </div>
   );
 }
+
+/** كلمةُ الوحدة من صيغةٍ قائمةٍ («٥ أعمال» → «أعمال») — بلا مفتاحٍ جديد */
+function unitWord(phrase: string): string {
+  return phrase.replace(/^[0-9,٠-٩\s]+/, "").trim();
+}
+
 
 /**
  * 🆕 **مُنتقي «ثلاثية الذوق»** (D-682، نصُّ المواصفة): **خانةٌ لكلِّ فئةٍ —
@@ -450,7 +472,7 @@ export function buildTaste(args: {
 
   const decadeTally = new Map<number, number>();
   const langTally = new Map<string, number>();
-  const countrySet = new Set<string>();
+  const countryTally = new Map<string, number>();
   const directorTally = new Map<string, number>();
   const actorTally = new Map<string, number>();
   for (const k of keys) {
@@ -461,7 +483,7 @@ export function buildTaste(args: {
       decadeTally.set(d, (decadeTally.get(d) ?? 0) + 1);
     }
     if (m.original_language) langTally.set(m.original_language, (langTally.get(m.original_language) ?? 0) + 1);
-    for (const c of m.origin_countries ?? []) countrySet.add(c);
+    for (const c of m.origin_countries ?? []) countryTally.set(c, (countryTally.get(c) ?? 0) + 1);
     if (m.director) directorTally.set(m.director, (directorTally.get(m.director) ?? 0) + 1);
     for (const a of m.top_cast ?? []) actorTally.set(a, (actorTally.get(a) ?? 0) + 1);
   }
@@ -492,13 +514,29 @@ export function buildTaste(args: {
       return { code, name, titles: n };
     });
 
-  const countries = countrySet.size;
-  const diversity =
-    countries > 0
-      ? {
-          level: countries >= 8 ? t.tasteDivHigh : countries >= 4 ? t.tasteDivMid : t.tasteDivLow,
-          countries,
-        }
+  /* **اسمُ البلد بلغة القارئ** — `Intl` لا سجلٌّ يدويّ، والسقوطُ رمزُه */
+  let rn: Intl.DisplayNames | null = null;
+  try {
+    rn = new Intl.DisplayNames([locale === "ar" ? "ar" : "en"], { type: "region" });
+  } catch {
+    rn = null;
+  }
+  const countryCount = countryTally.size;
+  const countries = [...countryTally.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 2)
+    .map(([code, n]) => {
+      let name = code;
+      try {
+        name = rn?.of(code) ?? code;
+      } catch {
+        /* رمزٌ شاذٌّ يبقى رمزاً */
+      }
+      return { name, titles: n };
+    });
+  const diversityLevel =
+    countryCount > 0
+      ? `${countryCount >= 8 ? t.tasteDivHigh : countryCount >= 4 ? t.tasteDivMid : t.tasteDivLow}`
       : null;
 
   const top2 = (m: Map<string, number>) =>
@@ -514,13 +552,13 @@ export function buildTaste(args: {
     !genres.length &&
     !decades.length &&
     !languages.length &&
-    !diversity &&
+    !countries.length &&
     !directors.length &&
     !actors.length
   ) {
     return null;
   }
-  return { themes, genres, decades, languages, diversity, directors, actors };
+  return { themes, genres, decades, languages, countries, diversityLevel, directors, actors };
 }
 
 export function pickTasteTrioSlots(
