@@ -52,6 +52,7 @@ import { airedEpisodeCount, percentOf } from "@/lib/progress";
 import { PosterCard } from "@/components/PosterCard";
 import { ContinueCard } from "@/components/ContinueCard";
 import { ListContinueCard } from "@/components/ListContinueCard";
+import { ToWatchListCard } from "@/components/ToWatchListCard";
 /* اسمُ قائمةِ لوبز يُترجَم عند العرض لا يُخزَّن (D-328/D-373) */
 import { curatedName } from "@/lib/universes";
 import { PosterRail, RailItem } from "@/components/PosterRail";
@@ -1017,6 +1018,16 @@ async function HomeBody({
      هذا الصفّ بلا مفتاح** — قوائمُك الحقيقيّةُ تدخله برايةٍ ترفعها
      (`is_playlist`، D-505) **وهذا يدخل بحكم الحساب.** **ومفتاحُه
      بطاقتُه في تبويب «القوائم» بالمكتبة**، حيث تُرفع الرايات. */
+  /* 🆕 D-703: بطاقةُ الطابور في صفِّ «القوائم» — **مفتاحُها هو مفتاحُ
+     المكتبة نفسُه** (`setToWatchQueue`)، **والفارغُ لا بطاقةَ له** (D-219) */
+  const toWatchQueueCard = unlistedQueue.length
+    ? {
+        on: prefs.toWatch,
+        count: unlistedQueue.length,
+        posters: unlistedQueue.slice(0, 3).map((f) => f.poster_path ?? null),
+      }
+    : null;
+
   const toWatchCard = prefs.toWatch && unlistedNext
     ? {
         name: t.libToWatch,
@@ -1664,12 +1675,27 @@ async function HomeBody({
               </Section>
             ) : null,
           lists:
-            homeListCards.length > 0 ? (
+            homeListCards.length > 0 || toWatchQueueCard ? (
               <div key="lists">
                 <PublicListsRail
                   lists={homeListCards}
                   locale={locale}
-                  title={t.myLists}
+                  /* ⚖️ 🆕 D-703 (حكمُه: «غيّر اسمها من My list إلى List»):
+                     **اسمُ الصفِّ اسمُ وجهته** (`/lists` — D-030)،
+                     **ولا اسمانِ لشيءٍ واحدٍ في التطبيق** (D-145). */
+                  title={t.listsTitle}
+                  /* 🆕 D-703: «كذلك لازم to watch تكون موجودة فيها» —
+                     البطاقةُ نفسُها التي في المكتبة (D-559)، أوّلَ الصفّ */
+                  leading={
+                    toWatchQueueCard ? (
+                      <ToWatchListCard
+                        locale={locale}
+                        initialOn={toWatchQueueCard.on}
+                        count={toWatchQueueCard.count}
+                        posters={toWatchQueueCard.posters}
+                      />
+                    ) : undefined
+                  }
                   /* 🆕 مقبضُ الصفِّ يرتّب **بطاقاتِه** (D-615) لا الأقسام —
                      نقضُ D-595 المحصورُ نفسُه الذي مضى في الصفَّين (D-605)،
                      وبطاقةٌ واحدةٌ لا تُرتَّب فلا زرَّ لها (D-217) */
