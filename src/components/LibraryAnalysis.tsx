@@ -785,10 +785,14 @@ export async function LibraryAnalysis({
   const favSeries = favs.find((f) => f.media_type === "tv" && !isAnimeFav(f));
   const favAnime = favs.find((f) => isAnimeFav(f));
   const favMovie = favs.find((f) => f.media_type === "movie" && !isAnimeFav(f));
+  /* 🆕 D-704 (حكمُه: «الفلم يكون يسار والمسلسل أو واحد من اليمين»):
+     **الفيلمُ عند البداية والمسلسلُ عند النهاية والأنمي بينهما** —
+     والترتيبُ منطقيٌّ لا يمينيٌّ ولا يساريّ، فيرتدّ في العربية كما
+     يرتدّ كلُّ صفٍّ في التطبيق (القاعدة ١٧). */
   const heroPosters = [
-    favSeries?.poster_path ?? slots.series?.posterPath,
-    favAnime?.poster_path ?? slots.anime?.posterPath,
     favMovie?.poster_path ?? slots.movie?.posterPath,
+    favAnime?.poster_path ?? slots.anime?.posterPath,
+    favSeries?.poster_path ?? slots.series?.posterPath,
   ].filter((x): x is string => !!x);
 
   /* 🆕 D-700: المدى يُقال في الترويسة — «كل الأوقات» حين لا مدى */
