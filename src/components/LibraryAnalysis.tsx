@@ -19,6 +19,8 @@ import Link from "next/link";
 import { getDict, num, type Locale } from "@/lib/i18n";
 import { isComplete } from "@/lib/progress";
 import { favoriteTrio, trioPosterPaths } from "@/lib/heroPosters";
+import { ProfileStatSheet } from "./ProfileStatSheet";
+import { PosterCard } from "./PosterCard";
 import { Icon, type IconName } from "./Icon";
 import { browseGenreForId, browseGenreName } from "@/lib/browse";
 
@@ -56,6 +58,16 @@ const HERO_ICON_SHADOW = "drop-shadow(0 0 5px rgba(0,0,0,0.7))";
  * المعلَن (تُطلب بـ`w185` وتُصغَّر، وكلُّها تحت ١٥٪ رماديّةً).
  */
 const BG_POSTERS = 3;
+
+/**
+ * 🆕 **سقفُ قائمةِ الصفّ الواحد** (D-721) — **ثلاثون عملاً.**
+ * ⚠️ **والسقفُ يُقال ولا يُخفى**: «عقد 2020» عندك ثلاثُمئة عمل، **وشبكةٌ
+ * بثلاثمئة بطاقةٍ تُرسَل في حمولة كلِّ فتحةٍ للصفحة** — **والورقةُ
+ * تُرسم مع الصفحة لا عند فتحها** (`ProfileStatSheet` تأخذ محتواها
+ * مرسوماً من الخادم). **فيُقصّ ويُكتب العددُ الحقيقيُّ في رأس الورقة**
+ * (D-217: لا رقمَ يَعِد بما لا يُعرض).
+ */
+const ROW_WORKS = 30;
 
 function fmtWatchTime(minutes: number, t: ReturnType<typeof getDict>) {
   const h = Math.round(minutes / 60);
@@ -113,18 +125,40 @@ function StripCell({
  * ستُّ خانات — أنواعٌ وسنواتٌ ولغاتٌ وتنوّعٌ ومخرجون وممثلون.
  * **وكلُّ خانةٍ بلا بياناتٍ تغيب لا تتصفّر** (D-217).
  */
+/**
+ * 🆕 **عملٌ خلف رقمٍ في بطاقة الذوق** (D-721، حكمُه: «الأشياء التي عليها
+ * خطّ أحتاج أقدر أضغط عليها وتطلع قائمة بالأفلام أو باقي التصنيفات»).
+ *
+ * 🔑 **ورقمٌ يُضغط فيُري ما عدّه هو الفرقُ بين إحصائيّةٍ وسجلّ**:
+ * «٢٩ عملاً بالإنجليزيّة» خبرٌ، **و«هذه هي» جوابٌ.**
+ */
+export interface TasteWork {
+  mediaType: "tv" | "movie";
+  tmdbId: number;
+  title: string;
+  poster: string | null;
+}
+
+/** صفٌّ في خانةٍ — اسمُه ورقمُه **وما خلفه** (D-721) */
+interface TasteRowBase {
+  /** الأعمالُ خلف الرقم، مقصوصةً بسقفٍ معلَن */
+  works: TasteWork[];
+  /** العددُ الحقيقيُّ قبل القصّ — **والسقفُ يُقال ولا يُخفى** (D-217) */
+  total: number;
+}
+
 export interface TasteData {
   /** سماتٌ مشتقّةٌ من توزيع الأنواع — نصوصٌ جاهزةٌ بلغة القارئ */
   themes: string[];
-  genres: { name: string; pct: number }[];
-  decades: { label: string; pct: number }[];
-  languages: { code: string; name: string; titles: number }[];
+  genres: ({ name: string; pct: number } & TasteRowBase)[];
+  decades: ({ label: string; pct: number } & TasteRowBase)[];
+  languages: ({ code: string; name: string; titles: number } & TasteRowBase)[];
   /** 🆕 D-703: أعلى بلدين بعدِّ أعمالهما — بدل رقمٍ مجرّد */
-  countries: { name: string; titles: number }[];
+  countries: ({ name: string; titles: number } & TasteRowBase)[];
   /** وصفُ التنوّع بجانب عنوان الخانة — `null` حين لا بلدَ يُقرأ */
   diversityLevel: string | null;
-  directors: { name: string; titles: number }[];
-  actors: { name: string; titles: number }[];
+  directors: ({ name: string; titles: number } & TasteRowBase)[];
+  actors: ({ name: string; titles: number } & TasteRowBase)[];
   /**
    * 🆕 **ملصقاتُ خلفيّةِ كلِّ خانة** (D-717، اختيارُ أحمد «مقترح ٢ —
    * مكتبتك خلفك» من لوحين عُرضا عليه): **الأعمالُ التي صنعت رقمَ
@@ -202,8 +236,21 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
      والرقمُ ٣٤ كما كان. **والباقي من D-703 لم يُمسّ** (الصفوفُ
      الموحّدةُ والتنوّعُ والاسمُ في الرئيسية)، **وترتيبُ الملصقات
      يبقى بحكم D-704.** */
+  /* ⚖️ 🆕 **D-721: الكتلةُ انتقلت إلى الزاوية المقابلة** (حكمُه بلقطةٍ
+     محوَّطة: «وقت المشاهدة غيّر مكانه — الجهة الثانية في الزاوية تحت»).
+
+     ⚖️ **نقضٌ لـD-705 بيد صاحبه** — وتلك كانت نقضاً لـD-703/١، **فهذه
+     ثالثةُ جولةٍ على موضع رقمٍ واحد.** 🔑 **والفرقُ أن الجولتين
+     الأوليين حرّكتاه داخلَ عموده** (الحجابُ كان يحرس جهةَ البداية
+     وحدَها فبدا الطرفُ الآخرُ عارياً) — **وحجابُ D-712 صار مستوياً على
+     البطاقة كلِّها، فلم يعد للعمود معنًى ولا للزاوية المقابلة خطر.**
+     **فالحركةُ التي فشلت مرّتين نجحت لأن ما منعها قد تغيّر.**
+
+     ⚠️ **والانتقالُ منطقيٌّ لا يمينيٌّ**: `items-end` و`text-end`
+     ترتدّان مع الاتّجاه (القاعدة ١٧) — **والهويّةُ تبقى في صدر البطاقة
+     والوقتُ في ذيلها المقابل**، فيقرأ العينُ قُطراً لا عموداً. */
   const bigTime = (
-    <div className="mt-4">
+    <div className="mt-4 flex flex-col items-end text-end">
       <div
         className="text-[30px] font-semibold leading-none tabular-nums"
         style={{ fontFamily: "ui-serif, Georgia, 'Times New Roman', serif" }}
@@ -382,14 +429,14 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
             {taste.genres.length > 0 && (
               <TasteCell title={t.tasteGenres} posters={taste.posters.genres}>
                 {taste.genres.map((g) => (
-                  <TasteRow key={g.name} name={g.name} value={`${g.pct}%`} />
+                  <TasteRow key={g.name} name={g.name} value={`${g.pct}%`} works={g.works} total={g.total} locale={locale} />
                 ))}
               </TasteCell>
             )}
             {taste.decades.length > 0 && (
               <TasteCell title={t.tasteYears} posters={taste.posters.decades}>
                 {taste.decades.map((d) => (
-                  <TasteRow key={d.label} name={d.label} value={`${d.pct}%`} ltr />
+                  <TasteRow key={d.label} name={d.label} value={`${d.pct}%`} ltr works={d.works} total={d.total} locale={locale} />
                 ))}
               </TasteCell>
             )}
@@ -401,6 +448,9 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
                     name={l.name}
                     value={num(l.titles, locale)}
                     unit={unitWord(t.personWorksCount(l.titles))}
+                    works={l.works}
+                    total={l.total}
+                    locale={locale}
                   />
                 ))}
               </TasteCell>
@@ -417,6 +467,9 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
                     name={c.name}
                     value={num(c.titles, locale)}
                     unit={unitWord(t.personWorksCount(c.titles))}
+                    works={c.works}
+                    total={c.total}
+                    locale={locale}
                   />
                 ))}
               </TasteCell>
@@ -429,6 +482,9 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
                     name={d.name}
                     value={num(d.titles, locale)}
                     unit={unitWord(t.personWorksCount(d.titles))}
+                    works={d.works}
+                    total={d.total}
+                    locale={locale}
                   />
                 ))}
               </TasteCell>
@@ -441,6 +497,9 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
                     name={a.name}
                     value={num(a.titles, locale)}
                     unit={unitWord(t.personWorksCount(a.titles))}
+                    works={a.works}
+                    total={a.total}
+                    locale={locale}
                   />
                 ))}
               </TasteCell>
@@ -517,14 +576,24 @@ function TasteRow({
   value,
   unit,
   ltr = false,
+  works,
+  total = 0,
+  locale,
 }: {
   name: string;
   value: string;
   unit?: string;
   ltr?: boolean;
+  /**
+   * 🆕 **الأعمالُ خلف الرقم** (D-721) — **والغيابُ يعني صفّاً ساكناً**:
+   * **صفٌّ يُضغط فيفتح فراغاً أسوأُ من صفٍّ لا يُضغط** (D-217/D-030).
+   */
+  works?: TasteWork[];
+  total?: number;
+  locale?: Locale;
 }) {
-  return (
-    <div className="flex items-baseline gap-2 min-w-0">
+  const face = (
+    <div className="flex items-baseline gap-2 min-w-0 w-full">
       <span className="text-14 truncate" dir={ltr ? "ltr" : "auto"}>
         {name}
       </span>
@@ -533,6 +602,41 @@ function TasteRow({
         {unit && <span className="font-normal text-muted"> {unit}</span>}
       </span>
     </div>
+  );
+  if (!works || works.length === 0 || !locale) return face;
+  const t = getDict(locale);
+  return (
+    /* ⚠️ **ولا ورقةَ جديدةٌ ولا زرَّ جديد** (القاعدة ٦/D-018):
+       `ProfileStatSheet` بعينها — **الوجهُ يُمرَّر إليها والشبكةُ
+       مرسومةٌ من الخادم فلا تعبر ملصقاتُها الحدَّ** (درسُ D-238). */
+    <ProfileStatSheet
+      title={name}
+      closeLabel={t.closeLabel}
+      className="block w-full text-start active:opacity-70 transition"
+      content={
+        <div className="space-y-3">
+          {/* **والسقفُ يُقال حين يقصّ** (D-217): «٣٠ من ٣٤٠» —
+              **وقائمةٌ مقصوصةٌ بلا خبرٍ تُقرأ قائمةً كاملة.** */}
+          <p className="text-12 text-muted">
+            {total > works.length
+              ? `${num(works.length, locale)} / ${num(total, locale)}`
+              : num(total, locale)}
+          </p>
+          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5">
+            {works.map((w) => (
+              <PosterCard
+                key={`${w.mediaType}-${w.tmdbId}`}
+                href={`/${w.mediaType === "tv" ? "show" : "movie"}/${w.tmdbId}`}
+                title={w.title}
+                posterPath={w.poster}
+              />
+            ))}
+          </div>
+        </div>
+      }
+    >
+      {face}
+    </ProfileStatSheet>
   );
 }
 
@@ -585,6 +689,7 @@ export function buildTaste(args: {
   keys: {
     media_type: "tv" | "movie";
     tmdb_id: number;
+    title?: string | null;
     poster?: string | null;
     genreIds?: number[] | null;
   }[];
@@ -611,7 +716,17 @@ export function buildTaste(args: {
     .slice(0, 3)
     .map((x) => x.label);
 
-  const genres = topGenres.slice(0, 2).map((x) => ({ name: x.name, pct: pct(x.count, genreTags) }));
+  /** **الأعمالُ خلف صفٍّ، مقصوصةً بسقفها ومعها عددُها الحقيقيّ** (D-721) */
+  const rowOf = (list: TasteWork[] | undefined) => ({
+    works: (list ?? []).slice(0, ROW_WORKS),
+    total: (list ?? []).length,
+  });
+  const genres = topGenres.slice(0, 2).map((x) => ({
+    name: x.name,
+    pct: pct(x.count, genreTags),
+    /* **ومفتاحُ النوع يُشتقّ من عدّه** — نفسُ وصفة `topSlug` أدناه */
+    ...rowOf(genreW.get([...bySlug.entries()].find(([, n]) => n === x.count)?.[0] ?? "")),
+  }));
 
   const decadeTally = new Map<number, number>();
   const langTally = new Map<string, number>();
@@ -623,6 +738,19 @@ export function buildTaste(args: {
      مقابل**، **والسلّةُ تقف عند ثلاثةٍ فلا تكبر بكِبَر المكتبة.** */
   /** **وجهُ كلِّ شخصٍ بالاسم** (D-718) — خريطةٌ واحدةٌ للمخرجين والممثّلين */
   const faceOf = new Map<string, string>();
+  /* 🆕 **وسلالُ الأعمال نفسُها** (D-721) — **في المرور الذي يعدّ**
+     (درسُ D-717): **والملصقاتُ الثلاثةُ تُشتقّ منها فلا سلّتان.** */
+  const genreW = new Map<string, TasteWork[]>();
+  const decadeW = new Map<number, TasteWork[]>();
+  const langW = new Map<string, TasteWork[]>();
+  const countryW = new Map<string, TasteWork[]>();
+  const directorW = new Map<string, TasteWork[]>();
+  const actorW = new Map<string, TasteWork[]>();
+  const addW = <K,>(m: Map<K, TasteWork[]>, key: K, w: TasteWork) => {
+    const cur = m.get(key);
+    if (cur) cur.push(w);
+    else m.set(key, [w]);
+  };
   const genreP = new Map<string, string[]>();
   const decadeP = new Map<number, string[]>();
   const langP = new Map<string, string[]>();
@@ -636,6 +764,12 @@ export function buildTaste(args: {
     else if (cur.length < BG_POSTERS && !cur.includes(poster)) cur.push(poster);
   };
   for (const k of keys) {
+    const work: TasteWork = {
+      mediaType: k.media_type,
+      tmdbId: k.tmdb_id,
+      title: k.title ?? "",
+      poster: k.poster ?? null,
+    };
     /* **والأنواعُ تُسلَّل هنا وإن عُدّت في `tallyGenres`**: العدُّ هناك
        يبتلع المفهومَ مرّةً للعمل (أكشن ومغامرة واحد)، **والسلّةُ تحتاج
        المفهومَ نفسَه لا الرقم** — والدالّةُ الواحدةُ (`browseGenreForId`)
@@ -646,6 +780,7 @@ export function buildTaste(args: {
       if (!g || seen.has(g.slug)) continue;
       seen.add(g.slug);
       push(genreP, g.slug, k.poster);
+      addW(genreW, g.slug, work);
     }
     const m = metas.get(`${k.media_type}-${k.tmdb_id}`);
     if (!m) continue;
@@ -653,18 +788,22 @@ export function buildTaste(args: {
       const d = Math.floor(m.release_year / 10) * 10;
       decadeTally.set(d, (decadeTally.get(d) ?? 0) + 1);
       push(decadeP, d, k.poster);
+      addW(decadeW, d, work);
     }
     if (m.original_language) {
       langTally.set(m.original_language, (langTally.get(m.original_language) ?? 0) + 1);
       push(langP, m.original_language, k.poster);
+      addW(langW, m.original_language, work);
     }
     for (const c of m.origin_countries ?? []) {
       countryTally.set(c, (countryTally.get(c) ?? 0) + 1);
       push(countryP, c, k.poster);
+      addW(countryW, c, work);
     }
     if (m.director) {
       directorTally.set(m.director, (directorTally.get(m.director) ?? 0) + 1);
       push(directorP, m.director, k.poster);
+      addW(directorW, m.director, work);
       /* 🆕 **وجهُ الشخص يُلتقط أوّلَ مرّةٍ يُرى** (D-718) — **ولا
          يُدهَس بعدها**: العملُ الثاني قد يحمل صورةً أقدمَ أو فارغة،
          **وأوّلُ صورةٍ وُجدت تكفي وجهاً.** */
@@ -673,6 +812,7 @@ export function buildTaste(args: {
     (m.top_cast ?? []).forEach((a, i) => {
       actorTally.set(a, (actorTally.get(a) ?? 0) + 1);
       push(actorP, a, k.poster);
+      addW(actorW, a, work);
       const f = m.cast_profiles?.[i];
       if (f && !faceOf.has(a)) faceOf.set(a, f);
     });
@@ -682,7 +822,7 @@ export function buildTaste(args: {
   const decades = [...decadeTally.entries()]
     .sort((a, b) => b[1] - a[1])
     .slice(0, 2)
-    .map(([d, n]) => ({ label: t.tasteDecade(d), pct: pct(n, yearTotal) }));
+    .map(([d, n]) => ({ label: t.tasteDecade(d), pct: pct(n, yearTotal), ...rowOf(decadeW.get(d)) }));
 
   /* اسمُ اللغة بلغة القارئ — Intl لا سجلٌّ يدويّ، والسقوطُ رمزُها */
   let dn: Intl.DisplayNames | null = null;
@@ -701,7 +841,7 @@ export function buildTaste(args: {
       } catch {
         /* رمزٌ شاذٌّ يبقى رمزاً */
       }
-      return { code, name, titles: n };
+      return { code, name, titles: n, ...rowOf(langW.get(code)) };
     });
 
   /* **اسمُ البلد بلغة القارئ** — `Intl` لا سجلٌّ يدويّ، والسقوطُ رمزُه */
@@ -722,20 +862,20 @@ export function buildTaste(args: {
       } catch {
         /* رمزٌ شاذٌّ يبقى رمزاً */
       }
-      return { name, titles: n };
+      return { name, titles: n, ...rowOf(countryW.get(code)) };
     });
   const diversityLevel =
     countryCount > 0
       ? `${countryCount >= 8 ? t.tasteDivHigh : countryCount >= 4 ? t.tasteDivMid : t.tasteDivLow}`
       : null;
 
-  const top2 = (m: Map<string, number>) =>
+  const top2 = (m: Map<string, number>, w: Map<string, TasteWork[]>) =>
     [...m.entries()]
       .sort((a, b) => b[1] - a[1])
       .slice(0, 2)
-      .map(([name, n]) => ({ name, titles: n }));
-  const directors = top2(directorTally);
-  const actors = top2(actorTally);
+      .map(([name, n]) => ({ name, titles: n, ...rowOf(w.get(name)) }));
+  const directors = top2(directorTally, directorW);
+  const actors = top2(actorTally, actorW);
 
   if (
     !themes.length &&
@@ -1021,6 +1161,7 @@ export async function LibraryAnalysis({
     keys: follows.map((f) => ({
       media_type: f.media_type,
       tmdb_id: f.tmdb_id,
+      title: f.title,
       poster: f.poster_path,
       genreIds: f.genres ?? fetchedIds.get(`${f.media_type}-${f.tmdb_id}`) ?? null,
     })),

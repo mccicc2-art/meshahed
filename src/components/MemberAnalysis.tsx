@@ -156,6 +156,7 @@ export async function MemberAnalysis({
     keys: follows.map((f) => ({
       media_type: f.media_type,
       tmdb_id: f.tmdb_id,
+      title: f.title,
       poster: f.poster_path,
       genreIds: genres.get(`${f.media_type}-${f.tmdb_id}`) ?? null,
     })),
