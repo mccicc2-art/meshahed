@@ -52,10 +52,15 @@ function StripCell({
   border: string;
 }) {
   return (
-    <div className={`flex flex-col items-center gap-1.5 py-3 px-1 min-w-0 ${border}`}>
-      <Icon name={icon} size={18} className="text-accent" />
-      <span className="text-[16px] font-bold leading-none tabular-nums" dir="ltr">
-        {value}
+    /* 🆕 D-687 (حكمُه بلقطة الشريط): **الرمزُ بجوار الرقم لا فوقه** —
+       سطرٌ واحدٌ للاثنين والاسمُ تحتهما، **والهوامشُ الداخليّةُ قُلّلت**
+       (py-2 · gap-1). والرمزُ في طرف البداية فيتبع اتّجاهَ القراءة. */
+    <div className={`flex flex-col items-center gap-1 py-2 px-1 min-w-0 ${border}`}>
+      <span className="flex items-center gap-1.5">
+        <Icon name={icon} size={15} className="text-accent shrink-0" />
+        <span className="text-[16px] font-bold leading-none tabular-nums" dir="ltr">
+          {value}
+        </span>
       </span>
       <span className="text-[11px] text-muted truncate max-w-full">{label}</span>
     </div>
