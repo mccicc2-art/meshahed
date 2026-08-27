@@ -4702,6 +4702,14 @@ export interface SavedListBrief {
  *
  * ⚠️ **وتُستدعى في الجسم المتدفّق لا في الموجة الأولى**: أوّلُ بايتٍ
  * للرئيسية لا ينتظر قائمةً محفوظة.
+ *
+ * ⚖️ 🆕 **والحفظُ وحدَه لم يعد تذكرةَ دخول** (D-691، بلاغُ أحمد بلقطة
+ * قائمةٍ مفتاحُها مطفأٌ جالسةً في «تابِع المشاهدة»: «مقفلة — المفروض
+ * ما تكون موجودة»): هذا القارئُ وُلد قبل مفتاح D-674، **فكان يُدخل
+ * كلَّ محفوظةٍ بالحدس** — **ومفتاحٌ يقول Off وبطاقتُها جالسةٌ كذبةُ
+ * D-142 بعينها.** صار يشترط `is_playlist` من صفِّ حفظك — **فالمفتاحُ
+ * هو البابُ الوحيد، وهذا القارئُ فائضُه** (ما زاد عن سقف
+ * `getMyPlaylistsBrief` الأربعة يدخل من هنا).
  */
 export async function getSavedListsBrief(limit = 6): Promise<SavedListBrief[]> {
   try {
@@ -4713,6 +4721,7 @@ export async function getSavedListsBrief(limit = 6): Promise<SavedListBrief[]> {
       .from("list_saves")
       .select("list_id")
       .eq("user_id", uid)
+      .eq("is_playlist", true)
       .limit(limit);
     const ids = [...new Set((saves ?? []).map((r) => String(r.list_id)))];
     if (ids.length === 0) return [];
