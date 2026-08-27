@@ -23,6 +23,9 @@ import { ListsFilters } from "@/components/ListsFilters";
 import { ListSaveHeart } from "@/components/ListSaveHeart";
 import { ListRateStar } from "@/components/ListRateStar";
 import { PosterRail, RailItem } from "@/components/PosterRail";
+import { TrailerRail } from "@/components/TrailerRail";
+import { getTrailerFeed } from "@/lib/trailers";
+import { TRAILER_SOUND_COOKIE, parseTrailerSound } from "@/lib/trailerPrefs";
 import { FRANCHISES, franchiseName, universeName, type Universe } from "@/lib/universes";
 import { awardBySlug, awardBody } from "@/lib/awards";
 import { awardWins } from "@/lib/awardsWins";
@@ -290,6 +293,21 @@ export default async function NewsPage({
             : undefined
         }
       />
+
+      {/* 🆕 **صفُّ «ترايلرات لك» مباشرةً بعد التبويبات** (D-726، موضعُه
+          في مواصفة أحمد حرفاً).
+          ⚠️ **و`Suspense` حولَه لا `await` قبله** (D-515): **الصفُّ
+          يسأل TMDB عن مقطعِ كلِّ عمل** — **وانتظارُه في المسار الحرج
+          يؤخّر Discover كلَّها لأجل صفٍّ واحد**، **والهيكلُ لا يُرسم
+          لأن ارتفاعَ الصفّ يُعرف بعد التصفية** (كم عملاً بلا مقطع؟).
+          ⚠️ **ويغيب مع فلترٍ مفعّل** (D-075): «لك» ترشيحٌ شخصيٌّ لا
+          يُصفّى، **وصفٌّ لا يطيع الفلترَ فوقه يُقرأ عطلاً.**
+          ⚠️ **ولا يُرسم في تبويب «القوائم»**: ذاك سطحُ قوائمَ لا أعمال. */}
+      {tab !== "lists" && !browse.active && (
+        <Suspense fallback={null}>
+          <TrailersSection locale={locale} />
+        </Suspense>
+      )}
 
       {/* تلميح لمرة واحدة (م٣): القوة المدفونة خلف زر Filters ورقائق
           النوافذ تُقال مرةً ثم تصمت للأبد */}
@@ -1907,6 +1925,31 @@ async function AnimeRails({
         <p className="text-center text-muted py-20">{t.browseEmpty}</p>
       )}
     </div>
+  );
+}
+
+/**
+ * 🆕 **قسمُ الترايلرات — قراءةٌ خالصةٌ خلف حاجزها** (D-726).
+ *
+ * 🔑 **وهو مكوّنٌ خادميٌّ منفصلٌ لا سطرٌ في جسد الصفحة**: `Suspense` لا
+ * تؤجّل إلّا ما يُعلَّق داخلَها، **وقراءةٌ في جسد الصفحة تُعلّق الصفحةَ
+ * كلَّها مهما أُحيطت بحاجز** — **وهي وصفةُ رفوف D-515 نفسُها.**
+ *
+ * ⚠️ **والصمتُ عند الفشل مقصود**: صفٌّ زائدٌ لا يُسقط اكتشف — **ومن لا
+ * اقتراحاتِ له (حسابٌ جديد) لا يرى رأساً فارغاً** (D-222).
+ */
+async function TrailersSection({ locale }: { locale: Locale }) {
+  const [items, store] = await Promise.all([
+    getTrailerFeed(6, locale).catch(() => []),
+    cookies(),
+  ]);
+  if (!items.length) return null;
+  return (
+    <TrailerRail
+      items={items}
+      locale={locale}
+      soundOn={parseTrailerSound(store.get(TRAILER_SOUND_COOKIE)?.value)}
+    />
   );
 }
 
