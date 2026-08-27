@@ -159,7 +159,7 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
   const bigTime = (
     <div className="mt-4">
       <div
-        className="text-[34px] font-semibold leading-none tabular-nums"
+        className="text-[30px] font-semibold leading-none tabular-nums"
         style={{ fontFamily: "ui-serif, Georgia, 'Times New Roman', serif" }}
         dir="auto"
       >
@@ -200,9 +200,18 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
                   </span>
                 ))}
               </span>
+              {/* ⚖️ 🆕 D-707 (حكمُه: «قلّل الضلام شوي وزيد الضلام تحت
+                  الكتابة»): **طبقتان لا واحدة** — **حجابٌ عامٌّ أخفّ**
+                  يكشف الملصقاتِ أكثر، **وفراشٌ أغمقُ تحت عمود الكتابة
+                  وحدَه** ينتهي قبل منتصف البطاقة. **والعتمةُ تتبع
+                  الكلامَ** (قاعدةُ D-686) — فما لا كلامَ تحته يصفو. */}
               <span
                 aria-hidden
-                className="absolute inset-0 bg-gradient-to-r rtl:bg-gradient-to-l from-[color:var(--surface)]/85 from-[12%] via-[color:var(--surface)]/55 via-[48%] to-transparent to-[80%]"
+                className="absolute inset-0 bg-gradient-to-r rtl:bg-gradient-to-l from-[color:var(--surface)]/70 from-[8%] via-[color:var(--surface)]/32 via-[45%] to-transparent to-[72%]"
+              />
+              <span
+                aria-hidden
+                className="absolute inset-y-0 start-0 w-[54%] bg-gradient-to-r rtl:bg-gradient-to-l from-[color:var(--surface)]/60 via-[color:var(--surface)]/30 via-[55%] to-transparent"
               />
             </>
           )}
