@@ -42,7 +42,8 @@ export function homeSectionMeta(t: Dict): Record<HomeSection, { icon: IconName; 
     shows: { icon: "tv", label: t.myShows },
     movies: { icon: "film", label: t.myMovies },
     ratings: { icon: "star", label: t.panelRatings },
-    lists: { icon: "list", label: t.myLists },
+    /* 🆕 D-703: اسمُ الصفِّ في لوح التخصيص هو اسمُه في الرئيسية */
+    lists: { icon: "list", label: t.listsTitle },
     trending: { icon: "trending", label: t.trendingWeek },
     friends: { icon: "people", label: t.railFriendsNow },
   };

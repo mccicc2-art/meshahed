@@ -156,7 +156,6 @@ const ar = {
 
   myShows: "مسلسلاتي",
   myMovies: "أفلامي",
-  myLists: "قوائمي",
   minuteBadge: (n: number) => `${n} د`,
   watchedBadge: "✓ شوهد",
   hours: (h: number) => `${h} ساعة`,
@@ -1178,7 +1177,6 @@ const ar = {
   tasteDirectors: "المخرجون",
   tasteActors: "الممثلون",
   tasteDecade: (y: number) => `عقد ${y}`,
-  tasteCountries: (n: number) => (n >= 3 && n <= 10 ? `${n} دول` : n === 2 ? "دولتان" : n === 1 ? "دولة واحدة" : `${n} دولة`),
   tasteDivHigh: "عالٍ",
   tasteDivMid: "متوسّط",
   tasteDivLow: "محدود",
@@ -1916,7 +1914,6 @@ const en: Dict = {
 
   myShows: "My shows",
   myMovies: "My movies",
-  myLists: "My lists",
   minuteBadge: (n: number) => `${n} min`,
   watchedBadge: "✓ Watched",
   hours: (h: number) => `${h} h`,
@@ -2575,7 +2572,6 @@ const en: Dict = {
   tasteDirectors: "Directors",
   tasteActors: "Actors",
   tasteDecade: (y: number) => `${y}s`,
-  tasteCountries: (n: number) => (n === 1 ? "1 country" : `${n} countries`),
   tasteDivHigh: "High",
   tasteDivMid: "Medium",
   tasteDivLow: "Low",
