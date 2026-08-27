@@ -67,6 +67,7 @@ export function ActivityScreen({
   items,
   locale,
   crumb = true,
+  initial,
 }: {
   items: ActivityItem[];
   locale: Locale;
@@ -76,13 +77,31 @@ export function ActivityScreen({
    * شخصٍ كذبةُ موضع**، ورأسُ الصفحة هناك يملك زرَّ رجوعه.
    */
   crumb?: boolean;
+  /**
+   * 🆕 **سقفُ أوّلِ نظرة** (D-710، مواصفةُ أحمد: «في البروفايل في
+   * اكتيفتي إذا ضغط اكتيفتي لا يظهرها كلها فقط ٢٠ وتحت فيه خيار
+   * المزيد»).
+   *
+   * **والسقفُ للتبويب لا للصفحة**: `‎/activity` وجهةٌ قصدَها القارئُ
+   * ليقرأ سجلَّه كلَّه، **وتبويبٌ داخل ملفٍّ جارٌ لتبويبات أخرى** —
+   * **وجارٌ يمدّ ذيلَه بلا نهاية يدفن ما بعده.** فتُترك بلا قيمةٍ هناك.
+   */
+  initial?: number;
 }) {
   const t = getDict(locale);
   const [scope, setScope] = useState<Scope>("all");
+  /** `null` = بلا سقف — **وفتحُ السقف لا يُغلق** بتبديل الرقاقة */
+  const [limit, setLimit] = useState<number | null>(initial ?? null);
   /** هل نحن في المتصفّح؟ **فتُقسَم الأيامُ بساعته لا بـUTC** */
   const local = useSyncExternalStore(subscribeNever, localTrue, serverFalse);
 
-  const shown = items.filter((it) => keep(it, scope));
+  /* **والسقفُ على المعروض لا على المصدر**: الرقاقةُ تفرز السجلَّ كلَّه
+     ثمّ يُقصّ — **ورقاقةٌ تفرز مقصوصاً تكذب** (D-374: العدُّ والعرضُ
+     بشرطٍ واحد). **والحصيلةُ الأسبوعيّةُ تُحسب قبل القصّ** لأنها تصف
+     الأسبوع لا الشاشة. */
+  const matching = items.filter((it) => keep(it, scope));
+  const shown = limit === null ? matching : matching.slice(0, limit);
+  const hiddenCount = matching.length - shown.length;
 
   /** يومُ القارئ الآن — **أصلٌ واحدٌ للوسمِ وللعدّ معاً** (D-656) */
   const todayKey = useSyncExternalStore(
@@ -100,7 +119,7 @@ export function ActivityScreen({
      زمنيٌّ يُقارَن بمنطقةٍ ومفاتيحُ تُجمَّع بأخرى هو كيف يقع صفٌّ في
      يومٍ ويُعدّ في غيره.** */
   const weekStart = shiftDay(todayKey, -6);
-  const weekCount = shown.filter((it) => dayKey(it.at, local) >= weekStart).length;
+  const weekCount = matching.filter((it) => dayKey(it.at, local) >= weekStart).length;
 
   const days = groupDays(shown, local, t, locale, todayKey);
 
@@ -163,6 +182,26 @@ export function ActivityScreen({
               </ol>
             </section>
           ))}
+
+          {/* 🆕 **بابُ الباقي** (D-710) — **والعددُ بجانبه** لأن «المزيد»
+              وحدَها لا تقول كم، **وزرٌّ لا يقول ما خلفه يُضغط تجربةً لا
+              قصداً** (D-217). **ويُفتح مرّةً بلا رجعة**: من طلب الكلَّ
+              لا يريد سقفاً يعود عليه بتبديل رقاقة. */}
+          {hiddenCount > 0 && (
+            <button
+              type="button"
+              onClick={() => {
+                tap(6);
+                setLimit(null);
+              }}
+              className="flex items-center gap-1.5 text-14 font-bold text-accent"
+            >
+              {t.showMore}
+              <span className="tabular-nums font-normal text-muted">
+                {num(hiddenCount, locale)}
+              </span>
+            </button>
+          )}
         </div>
       )}
     </div>
