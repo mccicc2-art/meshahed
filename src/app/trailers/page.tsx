@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { getT } from "@/lib/locale";
-import { getTrailerFeed } from "@/lib/trailers";
+import { getTrailerTabFeed, asTrailerTab } from "@/lib/trailers";
+import { TrailerTabs } from "@/components/TrailerTabs";
 import { TrailerFeed } from "@/components/TrailerFeed";
 import { Icon } from "@/components/Icon";
 import { TRAILER_SOUND_COOKIE, parseTrailerSound } from "@/lib/trailerPrefs";
@@ -9,9 +10,7 @@ import { TRAILER_SOUND_COOKIE, parseTrailerSound } from "@/lib/trailerPrefs";
 /**
  * 🆕 **صفحةُ الترايلرات** (D-726، المرحلةُ الأولى بحكمه: «الرايل أوّلاً»).
  *
- * ⚠️ **وتبويبُ «لك» وحدَه اليوم**: بقيّةُ التبويبات (رائج · أفلام ·
- * مسلسلات · أنمي) **مواصفةٌ مقروءةٌ لم تُبنَ بعد** — **وشريطُ تبويباتٍ
- * أربعتُه معطّلةٌ أسوأُ من غيابه** (D-030: لا بابَ لا يفتح).
+ * 🆕 **وتبويباتُه الخمسة** (D-734): «لك» شخصيّةٌ والأربعُ كتالوج.
  *
  * ⚠️ **ولا `force-dynamic`**: الصفحةُ تقرأ اقتراحاتِ صاحبها فهي
  * ديناميّةٌ بطبعها (كوكيز + جلسة)، **وعلَمٌ يُكتب لأجل ما هو واقعٌ أصلاً
@@ -20,16 +19,17 @@ import { TRAILER_SOUND_COOKIE, parseTrailerSound } from "@/lib/trailerPrefs";
 export default async function TrailersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ at?: string }>;
+  searchParams: Promise<{ at?: string; tab?: string }>;
 }) {
   const { locale, t } = await getT();
-  const { at } = await searchParams;
+  const { at, tab } = await searchParams;
   const store = await cookies();
   const soundOn = parseTrailerSound(store.get(TRAILER_SOUND_COOKIE)?.value);
+  const active = asTrailerTab(tab);
 
   /* **واثنا عشرَ لا ثلاثمئة**: القارئُ يمرّر مقطعاً بعد مقطع،
      **وقائمةٌ لا تُبلغ نهايتَها لا تُجلب كاملةً** (D-510). */
-  const items = await getTrailerFeed(12, locale);
+  const items = await getTrailerTabFeed(active, 12, locale);
 
   return (
     <div className="space-y-3">
@@ -48,7 +48,19 @@ export default async function TrailersPage({
         <span className="shrink-0 w-9" />
       </header>
 
-      <TrailerFeed items={items} locale={locale} soundOn={soundOn} startAt={at} />
+      <TrailerTabs active={active} locale={locale} />
+
+      {/* 🔑 **و`key` على التبويب يُجبر العلفَ على البدء من جديد** (D-734):
+          **بلا مفتاحٍ يعيد React استعمالَ المشغّلات ذاتِها لبياناتٍ أخرى**
+          — **فيبقى إطارُ التبويب السابق حيّاً بمقطعٍ لا يخصّ ما تراه.** */}
+      <TrailerFeed
+        key={active}
+        items={items}
+        locale={locale}
+        soundOn={soundOn}
+        startAt={at}
+        emptyLabel={active === "for-you" ? t.trailersEmpty : t.trailersTabEmpty}
+      />
     </div>
   );
 }
