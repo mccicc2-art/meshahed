@@ -8,13 +8,16 @@ import {
   getProfileArt,
   getProfileByUsername,
   getFollowStats,
+  getProfileFavorites,
+  getProfileAnimeFlags,
+  getTitleMetaFor,
   displayNameOf,
   artKey,
 } from "@/lib/data";
 import { localizeRows } from "@/lib/localize";
 import { getDict, type Locale } from "@/lib/i18n";
 import { isComplete } from "@/lib/progress";
-import { AnalysisView, tallyGenres, pickTasteTrio, type TrioCandidate } from "./LibraryAnalysis";
+import { AnalysisView, tallyGenres, pickTasteTrioSlots, buildTaste, type TrioCandidate } from "./LibraryAnalysis";
 
 /**
  * 🆕 **إحصائياتُ عضوٍ أزوره** (D-649، طلبُ أحمد: «كل الحسابات خلي الكارد
@@ -79,20 +82,10 @@ export async function MemberAnalysis({
 
   const tvFollows = follows.filter((f) => f.media_type === "tv");
 
-  const { topGenres, genreTags } = tallyGenres(
+  const { topGenres, genreTags, bySlug } = tallyGenres(
     follows.map((f) => genres.get(`${f.media_type}-${f.tmdb_id}`) ?? null),
     locale,
   );
-
-  const titleById = new Map(tvFollows.map((f) => [f.tmdb_id, f]));
-  const topWatched = [...epStats.byShow.entries()]
-    .filter(([id, s]) => s.watched > 0 && titleById.has(id))
-    .sort((a, b) => b[1].watched - a[1].watched)
-    .slice(0, 3)
-    .map(([id, s]) => {
-      const f = titleById.get(id)!;
-      return { id, title: f.title, posterPath: f.poster_path, watched: s.watched };
-    });
 
   const ratedTotal = ratings.length;
   const avgAll = ratedTotal ? ratings.reduce((n, r) => n + r.rating, 0) / ratedTotal : 0;
@@ -141,7 +134,34 @@ export async function MemberAnalysis({
     buckets[Math.min(4, Math.max(0, Math.ceil(r.rating / 2) - 1))]++;
   }
 
-  const trio = pickTasteTrio(trioCands);
+  /* 🆕 D-700: خلفيّةُ الترويسة أوّلُ مفضّلاته في كلِّ قائمة (المُنتقي
+     الفئويُّ سدُّ الفراغ)، وبطاقةُ ذوقه من كتالوج `title_meta` نفسِه */
+  const [favs, animeFlags, metas] = await Promise.all([
+    getProfileFavorites(userId),
+    getProfileAnimeFlags(userId),
+    getTitleMetaFor(follows.map((f) => ({ media_type: f.media_type, tmdb_id: f.tmdb_id }))),
+  ]);
+  const slots = pickTasteTrioSlots(trioCands);
+  const isAnimeFav = (f: { media_type: string; tmdb_id: number }) =>
+    animeFlags.get(`${f.media_type}-${f.tmdb_id}`) === true;
+  const favSeries = favs.find((f) => f.media_type === "tv" && !isAnimeFav(f));
+  const favAnime = favs.find((f) => isAnimeFav(f));
+  const favMovie = favs.find((f) => f.media_type === "movie" && !isAnimeFav(f));
+  const heroPosters = [
+    favSeries?.poster_path ?? slots.series?.posterPath,
+    favAnime?.poster_path ?? slots.anime?.posterPath,
+    favMovie?.poster_path ?? slots.movie?.posterPath,
+  ].filter((x): x is string => !!x);
+
+  const taste = buildTaste({
+    keys: follows.map((f) => ({ media_type: f.media_type, tmdb_id: f.tmdb_id })),
+    metas,
+    bySlug,
+    genreTags,
+    topGenres,
+    t,
+    locale,
+  });
 
   return (
     <AnalysisView
@@ -153,14 +173,14 @@ export async function MemberAnalysis({
         /* 🆕 D-698: مسلسلاتُ مكتبته، وتعليقاتُه ما كُتب فيه نصٌّ فعلاً */
         shows: tvFollows.length,
         reviews: ratings.filter((r) => (r.review ?? "").trim().length > 0).length,
-        topWatched,
-        topGenres,
-        genreTags,
+        /* **لا مدى للزائر** (تعليقُ الرأس) — فالصادقُ «كل الأوقات» */
+        rangeLabel: t.statsAllTime,
+        heroPosters,
+        taste,
         ratedTotal,
         avgAll,
         mine: false,
         hero,
-        trio,
         buckets,
       }}
     />

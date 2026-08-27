@@ -8,6 +8,9 @@ import {
   getProfile,
   getUser,
   getFollowStats,
+  getProfileFavorites,
+  getMyAnimeFlags,
+  getTitleMetaFor,
 } from "@/lib/data";
 import { getTv, getMovie } from "@/lib/tmdb";
 import { posterUrl } from "@/lib/media";
@@ -78,6 +81,22 @@ function StripCell({
  * القارئ لا يملك تواريخَ مشاهدةٍ يقرؤها» **فيسقط السطرُ كلُّه** —
  * **وصفرٌ في خانةٍ يقول «لم يشاهد شيئاً» وهو كذب** (D-217).
  */
+/**
+ * 🆕 **بطاقةُ «ذوقك» الكاملة** (D-700، صورةُ أحمد بالضبط): سماتٌ ثمّ
+ * ستُّ خانات — أنواعٌ وسنواتٌ ولغاتٌ وتنوّعٌ ومخرجون وممثلون.
+ * **وكلُّ خانةٍ بلا بياناتٍ تغيب لا تتصفّر** (D-217).
+ */
+export interface TasteData {
+  /** سماتٌ مشتقّةٌ من توزيع الأنواع — نصوصٌ جاهزةٌ بلغة القارئ */
+  themes: string[];
+  genres: { name: string; pct: number }[];
+  decades: { label: string; pct: number }[];
+  languages: { code: string; name: string; titles: number }[];
+  diversity: { level: string; countries: number } | null;
+  directors: { name: string; titles: number }[];
+  actors: { name: string; titles: number }[];
+}
+
 export interface AnalysisData {
   /** دقائقُ المدى المعروض */
   minutes: number;
@@ -86,11 +105,13 @@ export interface AnalysisData {
   /** 🆕 D-698: خانتا «المسلسلات» و«التعليقات» بأسماء أحمد الأربعة */
   shows: number;
   reviews: number;
-  topWatched: { id: number; title: string; posterPath: string | null; watched: number }[];
-  /** توزيعُ الذوق — الاسمُ محسوبٌ عند القراءة بلغة القارئ */
-  topGenres: { name: string; count: number }[];
-  /** مقامُ النسب: مجموعُ الوسوم لا عددُ الأعمال */
-  genreTags: number;
+  /** 🆕 D-700: مدى الترويسة نصّاً جاهزاً («كل الأوقات» · «2026» · «أغسطس») */
+  rangeLabel: string;
+  /** 🆕 D-700: ملصقاتُ خلفيّة الترويسة — أوّلُ المفضّلة في كلِّ قائمة
+      (مسلسل · أنمي · فيلم) والانتقاءُ الفئويُّ سدُّ النقص */
+  heroPosters: string[];
+  /** 🆕 D-700: بطاقةُ «ذوقك» الكاملة — والغيابُ يُسقط البطاقةَ لا يصفّرها */
+  taste: TasteData | null;
   ratedTotal: number;
   avgAll: number;
   /** 🆕 **القارئُ صاحبُ الأرقام؟** (D-649) — **يقرّر ضميرَ النصّ وحدَه**:
@@ -104,9 +125,6 @@ export interface AnalysisData {
     bio: string | null;
     followers: number | null;
   } | null;
-  /** 🆕 **ثلاثيةُ الذوق** (D-679): أعلى ما قيّمه، وأكثرُ ما شاهده عند
-      النقص — **وأقلُّ من واحدةٍ يُسقط القسمَ لا يزخرفه.** */
-  trio?: { key: string; title: string; posterPath: string | null; href: string }[];
   /** 🆕 **توزيعُ التقييمات في خمس سلالٍ** (D-679): ١–٢ · ٣–٤ · ٥–٦ ·
       ٧–٨ · ٩–١٠ — من صفوف التقييم نفسِها بلا نداء. */
   buckets?: number[];
@@ -126,35 +144,18 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
     movies: rangeMovies,
     shows,
     reviews,
-    topWatched,
-    topGenres,
-    genreTags,
+    rangeLabel,
+    heroPosters,
+    taste,
     ratedTotal,
     avgAll,
     mine,
     hero,
-    trio,
     buckets,
   } = data;
   const divider = "border-[color:var(--divider)]";
   const bucketTotal = (buckets ?? []).reduce((a, b) => a + b, 0);
 
-  /* **فنُّ البطاقة السينمائيّة ملصقاتُ أعماله لا غلافُ ملفّه** (D-682،
-     نصُّ المواصفة: «صور أعمال مدمجة في الجهة اليمنى») — الأكثرُ مشاهدةً
-     أوّلاً لأنه توقيعُه، **والثلاثيةُ تسدّ النقص** — والمفتاحُ يمنع الثنائي */
-  const heroArt: string[] = [];
-  const seenArt = new Set<string>();
-  for (const w of [...(topWatched ?? []), ...(trio ?? [])]) {
-    const path = w.posterPath;
-    if (!path || seenArt.has(path)) continue;
-    seenArt.add(path);
-    heroArt.push(path);
-    if (heroArt.length >= 3) break;
-  }
-
-  /* **رقمُ الوقت الكبير بحرف Serif** — بنصّ المواصفة: «خط أنيق Serif
-     للرقم الرئيسي فقط»، والباقي بخطّ النظام. **وبلا `dir` مفروض**:
-     النصُّ عربيٌّ مركّب وفرضُ LTR قلبه (درسُ D-679 المقيس). */
   const bigTime = (
     <div className="mt-4">
       <div
@@ -164,8 +165,11 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
       >
         {fmtWatchTime(rangeMinutes, t)}
       </div>
-      <div className="mt-1.5 text-12 text-muted">{t.statWatchTime}</div>
-      {/* خطٌّ أصفرُ منحنٍ رفيعٌ للزينة — كتلةٌ قائمةٌ بذاتها فلا يمرّ خلف نصّ */}
+      {/* 🆕 D-700 (حكمُه: «حط إذا all time أو سنة أو شهر كذا») — المدى
+          المختارُ يُقال بجوار اسم الرقم فلا يُقرأ رقمُ شهرٍ عمراً كاملاً */}
+      <div className="mt-1.5 text-12 text-muted">
+        {t.statWatchTime} · {rangeLabel}
+      </div>
       <svg aria-hidden viewBox="0 0 220 24" fill="none" className="mt-2 h-4 w-36 text-accent/70">
         <path d="M2 20 C 58 4, 140 24, 218 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
       </svg>
@@ -174,20 +178,17 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
 
   return (
     <div className="space-y-5">
-      {/* ===== البطاقةُ السينمائيّة: الهويّةُ والوقتُ الكبير (D-682) ===== */}
+      {/* ===== البطاقةُ السينمائيّة (D-682 → D-700) ===== */}
       {hero ? (
         <section className="relative overflow-hidden isolate rounded-2xl border border-border bg-surface p-4">
-          {/* ⚖️ D-693 (حكمُه بعد رؤية غلاف D-689: «حط الثلاث بوسترات
-              أفضل من غلاف واحد»): **أعمدةُ الملصقات الثلاثةُ تملأ
-              البطاقةَ دائماً** — خيارُ الغلاف الواحد وُلد في D-689
-              وسقط بيد صاحبه، والحجابُ يحمي عمودَ النصّ (روحُ D-686). */}
-          {heroArt.length > 0 && (
+          {/* ⚖️ D-700: الخلفيّةُ أوّلُ المفضّلة في كلِّ قائمة (مسلسل ·
+              أنمي · فيلم) — «نكتفي بوجودهم في الكارد الأوّل» فقسمُ
+              الثلاثية حُذف والملصقاتُ ورثت مكانَها هنا. الدرزُ ذائبٌ
+              (D-695) والحجابُ يشفّ (٨٥٪). */}
+          {heroPosters.length > 0 && (
             <>
-              {/* 🆕 D-695 (حكمُه بلقطتين على الدرز): **العمودُ يدخل على
-                  جاره انسيابيّاً** — تراكبٌ سالبُ الهامش وقناعُ تدرّجٍ
-                  على حافّة البداية، فالدرزُ ذوبانٌ لا قطع. */}
               <span aria-hidden className="absolute inset-0 flex">
-                {heroArt.map((path, i) => (
+                {heroPosters.map((path, i) => (
                   <span
                     key={path}
                     className={`relative flex-1 min-w-0 ${
@@ -200,9 +201,6 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
                   </span>
                 ))}
               </span>
-              {/* **وخلف المحتوى ملصقٌ يلوح تحت الظلام** (حكمُه: «أبغى
-                  يكون فيه بوستر بس فيه ضلام») — الحجابُ لم يعد مصمتاً
-                  في عموده: ٨٥٪ تكفي القراءةَ ويشفّ الملصقُ خلفَها. */}
               <span
                 aria-hidden
                 className="absolute inset-0 bg-gradient-to-r rtl:bg-gradient-to-l from-[color:var(--surface)]/85 from-[12%] via-[color:var(--surface)]/55 via-[48%] to-transparent to-[80%]"
@@ -211,7 +209,6 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
           )}
           <div className="relative">
             <div className="flex items-center gap-3">
-              {/* **48px بإطارٍ أصفرَ داكنٍ 1px** — لا طوقَ `ring` سميكاً (المواصفة: بلا حدود سميكة) */}
               <span className="shrink-0 relative w-12 h-12 rounded-full overflow-hidden bg-surface-2 border border-accent/70">
                 {hero.avatarUrl ? (
                   <Image src={hero.avatarUrl} alt="" fill sizes="48px" className="object-cover" />
@@ -226,7 +223,6 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
                   <span className="truncate" dir="auto">{hero.name}</span>
                   <Icon name="sparkle-star" size={13} className="shrink-0 text-accent" aria-hidden />
                 </span>
-                {/* **المتابِعون وحدَهم** — لا اسمَ مستخدمٍ ولا «يتابِع» (نصُّ المواصفة) */}
                 {hero.followers !== null && (
                   <span className="mt-0.5 flex items-center gap-1.5 text-12 text-muted">
                     <Icon name="people" size={13} />
@@ -247,11 +243,7 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
         bigTime
       )}
 
-      {/* ===== شريطُ الأرقام: صفٌّ واحدٌ دائماً، فواصلُ لا بطاقات (D-682) ===== */}
-      {/* ⚖️ D-698 (أسماؤه الأربعة: «المسلسلات الأفلام الحلقات التعليقات
-          بدون كلمة watched»): خانةُ «في المكتبة» صارت «المسلسلات»
-          وخانةُ المتوسّط صارت «التعليقات» — **والمتوسّطُ باقٍ في بطاقة
-          التقييم تحت، فلا معلومةَ ضاعت** (D-219). */}
+      {/* ===== شريطُ الأرقام (D-698) ===== */}
       <div className="grid grid-cols-4">
         <StripCell icon="tv" value={num(shows, locale)} label={t.statsCellShows} border="" />
         <StripCell icon="film" value={num(rangeMovies, locale)} label={t.statsCellMoviesWatched} border={`border-s ${divider}`} />
@@ -259,75 +251,95 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
         <StripCell icon="comment" value={num(reviews, locale)} label={t.statsCellComments} border={`border-s ${divider}`} />
       </div>
 
-      {/* ===== ثلاثيةُ الذوق: أنمي · مسلسل · فيلم — بلا وسمِ نوعٍ ولا رقم (D-682) ===== */}
-      {trio && trio.length > 0 && (
-        <section>
-          <h2 className="flex items-center gap-2 text-[16px] font-bold mb-3">
-            <Icon name="trio" size={18} className="text-accent" />
-            {t.statsTasteTrio}
-          </h2>
-          <div className="grid grid-cols-3 gap-3">
-            {trio.slice(0, 3).map((x) => {
-              const url = posterUrl(x.posterPath, "w342");
-              return (
-                <Link
-                  key={x.key}
-                  href={x.href}
-                  prefetch={false}
-                  className="relative block aspect-[2/3] rounded-2xl overflow-hidden bg-surface-2"
-                >
-                  {url ? (
-                    <Image src={url} alt="" fill sizes="(max-width: 640px) 33vw, 200px" className="object-cover" />
-                  ) : (
-                    <span className="absolute inset-0 grid place-items-center text-muted">
-                      <Icon name="film" size={18} />
-                    </span>
-                  )}
-                  {/* **الاسمُ فوق تدرّجٍ أسودَ خفيف** — أسودُ حرفيٌّ عمداً:
-                      فوق ملصقٍ لا فوق سطحِ ثيم، فلا يتقلّب مع `daylight` */}
-                  <span className="absolute inset-x-0 bottom-0 pt-8 pb-1.5 px-2 bg-gradient-to-t from-black/75 via-black/35 to-transparent">
-                    <span className="block text-center text-12 font-semibold text-white truncate" dir="auto">
-                      {x.title}
-                    </span>
-                  </span>
-                </Link>
-              );
-            })}
-          </div>
-        </section>
-      )}
-
-      {/* ===== بطاقةُ الذوق — وحدَها بعرض الصفحة (D-696: بطاقةُ
-          «تقدّم المكتبة» حُذفت بحكمه، والقرصُ مات بموت قارئه — D-214) ===== */}
-      {topGenres.length > 0 && (
-        <section className="rounded-2xl border border-border bg-surface p-3.5">
-          <h3 className="text-15 font-bold mb-2.5">
+      {/* ===== بطاقةُ «ذوقك» الكاملة (D-700 — الصورةُ بالضبط) ===== */}
+      {taste && (
+        <section className="rounded-2xl border border-border bg-surface p-4">
+          <h3 className="flex items-center gap-2.5 text-[17px] font-bold">
+            <Icon name="trio" size={22} className="text-accent" />
             {mine ? t.analysisTaste : t.analysisTasteOther}
           </h3>
-          <div className="space-y-2.5">
-            {topGenres.map((g) => (
-              <div key={g.name} className="flex items-center gap-2">
-                <span className="flex-1 min-w-0">
-                  <span className="block text-12 truncate mb-0.5" dir="auto">
-                    {g.name}
-                  </span>
-                  <span className="block h-1.5 rounded-full bg-surface-2 overflow-hidden">
-                    <span
-                      className="block h-full rounded-full bg-accent"
-                      style={{ width: `${Math.max(pct(g.count, genreTags), 3)}%` }}
-                    />
-                  </span>
+
+          {taste.themes.length > 0 && (
+            <div className="mt-3.5 flex items-center gap-2.5 flex-wrap">
+              <span className="text-13 text-muted shrink-0">{t.tasteThemes}</span>
+              {taste.themes.map((th) => (
+                <span
+                  key={th}
+                  className="rounded-full border border-accent/70 text-accent text-12 font-semibold px-3.5 py-1.5"
+                >
+                  {th}
                 </span>
-                <span className="shrink-0 text-[11px] font-medium text-muted tabular-nums w-7 text-end">
-                  {pct(g.count, genreTags)}%
-                </span>
-              </div>
-            ))}
+              ))}
+            </div>
+          )}
+
+          <div className="mt-4 grid grid-cols-2 gap-x-4">
+            {taste.genres.length > 0 && (
+              <TasteCell icon="masks" title={t.tasteGenres}>
+                {taste.genres.map((g) => (
+                  <div key={g.name} className="flex items-baseline gap-2 min-w-0">
+                    <span className="text-14 truncate" dir="auto">{g.name}</span>
+                    <span className="text-13 font-semibold text-accent tabular-nums shrink-0">{g.pct}%</span>
+                  </div>
+                ))}
+              </TasteCell>
+            )}
+            {taste.decades.length > 0 && (
+              <TasteCell icon="calendar" title={t.tasteYears}>
+                {taste.decades.map((d) => (
+                  <div key={d.label} className="flex items-baseline gap-2 min-w-0">
+                    <span className="text-14 tabular-nums" dir="ltr">{d.label}</span>
+                    <span className="text-13 font-semibold text-accent tabular-nums shrink-0">{d.pct}%</span>
+                  </div>
+                ))}
+              </TasteCell>
+            )}
+            {taste.languages.length > 0 && (
+              <TasteCell icon="comment" title={t.tasteLanguages} divider>
+                {taste.languages.map((l) => (
+                  <div key={l.code} className="flex items-center gap-2.5 min-w-0">
+                    <span className="shrink-0 grid place-items-center w-8 h-8 rounded-full border border-[color:var(--divider)] text-[10px] font-bold text-muted" dir="ltr">
+                      {l.code.toUpperCase()}
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block text-14 truncate">{l.name}</span>
+                      <span className="block text-12 text-muted">
+                        <span className="text-accent font-semibold tabular-nums">{num(l.titles, locale)}</span>{" "}
+                        {t.personWorksCount(l.titles).replace(/^[0-9,٠-٩]+\s*/, "")}
+                      </span>
+                    </span>
+                  </div>
+                ))}
+              </TasteCell>
+            )}
+            {taste.diversity && (
+              <TasteCell icon="globe" title={t.tasteDiversity} divider>
+                <div className="text-14">{taste.diversity.level}</div>
+                <div className="text-12 text-muted">
+                  <span className="text-accent font-semibold tabular-nums">{num(taste.diversity.countries, locale)}</span>{" "}
+                  {t.tasteCountries(taste.diversity.countries).replace(/^[0-9,٠-٩]+\s*/, "")}
+                </div>
+              </TasteCell>
+            )}
+            {taste.directors.length > 0 && (
+              <TasteCell icon="clapper" title={t.tasteDirectors} divider>
+                {taste.directors.map((d) => (
+                  <PersonLine key={d.name} name={d.name} titles={d.titles} t={t} locale={locale} />
+                ))}
+              </TasteCell>
+            )}
+            {taste.actors.length > 0 && (
+              <TasteCell icon="sparkle-star" title={t.tasteActors} divider>
+                {taste.actors.map((a) => (
+                  <PersonLine key={a.name} name={a.name} titles={a.titles} t={t} locale={locale} />
+                ))}
+              </TasteCell>
+            )}
           </div>
         </section>
       )}
 
-      {/* ===== بطاقةُ التقييمات: نجمةٌ عاريةٌ ومتوسّطٌ كبيرٌ وتوزيعٌ لا يُطغى عليه (D-682) ===== */}
+      {/* ===== بطاقةُ التقييمات (D-682 → D-692) ===== */}
       {ratedTotal > 0 && (
         <section className="rounded-2xl border border-border bg-surface p-4 flex items-center gap-4">
           <div className="shrink-0">
@@ -356,10 +368,7 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
                         style={{ height: `${Math.max(share, n > 0 ? 6 : 0)}%` }}
                       />
                     </span>
-                    {/* 🆕 D-688: **نجمتان لكلِّ سلّةٍ — عشرٌ للسلّم كلِّه**
-                        (حكمُه: «المفروض عددهم ١٠ فقط»): السلّمُ من عشرة
-                        وكلُّ سلّةٍ درجتان (١–٢ … ٩–١٠)، **فالصفُّ محورُ
-                        سلّمٍ لا عدّادَ سلّة** — و١+٢+…+٥ كانت تقول ١٥. */}
+                    {/* 🆕 D-688: نجمتان لكلِّ سلّةٍ — عشرٌ للسلّم كلِّه */}
                     <span className="text-[10px] leading-none text-accent tracking-tighter" aria-hidden>
                       {"★★"}
                     </span>
@@ -371,6 +380,65 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
           )}
         </section>
       )}
+    </div>
+  );
+}
+
+/** خانةُ بطاقة الذوق: قرصُ رمزٍ ثمّ عنوانٌ وصفوفُه — والفاصلُ العلويُّ لصفوف الشبكة التالية */
+function TasteCell({
+  icon,
+  title,
+  divider = false,
+  children,
+}: {
+  icon: IconName;
+  title: string;
+  divider?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className={`flex items-start gap-3 py-3.5 min-w-0 ${divider ? "border-t border-[color:var(--divider)]" : ""}`}>
+      <span className="shrink-0 grid place-items-center w-11 h-11 rounded-full border border-accent/40 text-accent">
+        <Icon name={icon} size={20} />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-13 text-muted mb-1.5">{title}</span>
+        <span className="block space-y-1.5">{children}</span>
+      </span>
+    </div>
+  );
+}
+
+/** سطرُ شخصٍ في خانتي المخرجين والممثلين: قرصُ حرفين ثمّ الاسمُ وعدُّ أعماله */
+function PersonLine({
+  name,
+  titles,
+  t,
+  locale,
+}: {
+  name: string;
+  titles: number;
+  t: ReturnType<typeof getDict>;
+  locale: Locale;
+}) {
+  const initials = name
+    .split(/\s+/)
+    .map((w) => w[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("");
+  return (
+    <div className="flex items-center gap-2.5 min-w-0">
+      <span className="shrink-0 grid place-items-center w-8 h-8 rounded-full border border-[color:var(--divider)] text-[10px] font-bold text-muted uppercase" dir="auto">
+        {initials}
+      </span>
+      <span className="min-w-0">
+        <span className="block text-14 truncate" dir="auto">{name}</span>
+        <span className="block text-12 text-muted">
+          <span className="text-accent font-semibold tabular-nums">{num(titles, locale)}</span>{" "}
+          {t.personWorksCount(titles).replace(/^[0-9,٠-٩]+\s*/, "")}
+        </span>
+      </span>
     </div>
   );
 }
@@ -400,12 +468,122 @@ export interface TrioCandidate {
   watched: number;
 }
 
-export function pickTasteTrio(
+/**
+ * 🆕 **بناءُ بطاقة «ذوقك»** (D-700) — مساعدٌ خالصٌ يطعمه القارئان
+ * (D-145): توزيعُ الأنواع من عمود `follows.genres`، والباقي من كتالوج
+ * `title_meta` (الهجرة ١٥٠) — **صفرُ نداء TMDB وقتَ العرض** (D-649).
+ *
+ * **والسماتُ اشتقاقٌ مُعلَنٌ من توزيع الأنواع** (دراما+رومانسي=عاطفي،
+ * جريمة+إثارة+غموض+رعب=مظلم…) — **لا ذكاءٌ يدّعي قراءةَ النفوس**،
+ * وثلاثُ سماتٍ على الأكثر ولا سمةَ لتوزيعٍ لا يحملها.
+ */
+export function buildTaste(args: {
+  keys: { media_type: "tv" | "movie"; tmdb_id: number }[];
+  metas: Map<string, { release_year: number | null; original_language: string | null; origin_countries: string[] | null; director: string | null; top_cast: string[] | null }>;
+  bySlug: Map<string, number>;
+  genreTags: number;
+  topGenres: { name: string; count: number }[];
+  t: ReturnType<typeof getDict>;
+  locale: Locale;
+}): TasteData | null {
+  const { keys, metas, bySlug, genreTags, topGenres, t, locale } = args;
+
+  const g = (slug: string) => bySlug.get(slug) ?? 0;
+  const themeScores: { label: string; score: number }[] = [
+    { label: t.themeEmotional, score: g("drama") * 0.6 + g("romance") },
+    { label: t.themeDark, score: g("crime") + g("thriller") + g("mystery") + g("horror") },
+    { label: t.themeCharacter, score: g("drama") * 0.5 + g("mystery") * 0.3 + g("war") * 0.3 },
+    { label: t.themeEpic, score: g("action") + g("scifi") + g("war") * 0.5 },
+    { label: t.themeFeelGood, score: g("comedy") + g("family") + g("animation") * 0.5 },
+  ];
+  const themes = themeScores
+    .filter((x) => x.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 3)
+    .map((x) => x.label);
+
+  const genres = topGenres.slice(0, 2).map((x) => ({ name: x.name, pct: pct(x.count, genreTags) }));
+
+  const decadeTally = new Map<number, number>();
+  const langTally = new Map<string, number>();
+  const countrySet = new Set<string>();
+  const directorTally = new Map<string, number>();
+  const actorTally = new Map<string, number>();
+  for (const k of keys) {
+    const m = metas.get(`${k.media_type}-${k.tmdb_id}`);
+    if (!m) continue;
+    if (m.release_year && m.release_year > 1900) {
+      const d = Math.floor(m.release_year / 10) * 10;
+      decadeTally.set(d, (decadeTally.get(d) ?? 0) + 1);
+    }
+    if (m.original_language) langTally.set(m.original_language, (langTally.get(m.original_language) ?? 0) + 1);
+    for (const c of m.origin_countries ?? []) countrySet.add(c);
+    if (m.director) directorTally.set(m.director, (directorTally.get(m.director) ?? 0) + 1);
+    for (const a of m.top_cast ?? []) actorTally.set(a, (actorTally.get(a) ?? 0) + 1);
+  }
+
+  const yearTotal = [...decadeTally.values()].reduce((a, b) => a + b, 0);
+  const decades = [...decadeTally.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 2)
+    .map(([d, n]) => ({ label: t.tasteDecade(d), pct: pct(n, yearTotal) }));
+
+  /* اسمُ اللغة بلغة القارئ — Intl لا سجلٌّ يدويّ، والسقوطُ رمزُها */
+  let dn: Intl.DisplayNames | null = null;
+  try {
+    dn = new Intl.DisplayNames([locale === "ar" ? "ar" : "en"], { type: "language" });
+  } catch {
+    dn = null;
+  }
+  const languages = [...langTally.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 2)
+    .map(([code, n]) => {
+      let name = code.toUpperCase();
+      try {
+        name = dn?.of(code) ?? name;
+      } catch {
+        /* رمزٌ شاذٌّ يبقى رمزاً */
+      }
+      return { code, name, titles: n };
+    });
+
+  const countries = countrySet.size;
+  const diversity =
+    countries > 0
+      ? {
+          level: countries >= 8 ? t.tasteDivHigh : countries >= 4 ? t.tasteDivMid : t.tasteDivLow,
+          countries,
+        }
+      : null;
+
+  const top2 = (m: Map<string, number>) =>
+    [...m.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 2)
+      .map(([name, n]) => ({ name, titles: n }));
+  const directors = top2(directorTally);
+  const actors = top2(actorTally);
+
+  if (
+    !themes.length &&
+    !genres.length &&
+    !decades.length &&
+    !languages.length &&
+    !diversity &&
+    !directors.length &&
+    !actors.length
+  ) {
+    return null;
+  }
+  return { themes, genres, decades, languages, diversity, directors, actors };
+}
+
+export function pickTasteTrioSlots(
   cands: TrioCandidate[],
-): { key: string; title: string; posterPath: string | null; href: string }[] {
-  const order = ["anime", "series", "movie"] as const;
-  const out: { key: string; title: string; posterPath: string | null; href: string }[] = [];
-  for (const cat of order) {
+): Partial<Record<"anime" | "series" | "movie", { posterPath: string | null }>> {
+  const out: Partial<Record<"anime" | "series" | "movie", { posterPath: string | null }>> = {};
+  for (const cat of ["anime", "series", "movie"] as const) {
     const best = cands
       .filter((c) => c.category === cat)
       .sort(
@@ -414,7 +592,7 @@ export function pickTasteTrio(
           (b.rating ?? -1) - (a.rating ?? -1) ||
           b.watched - a.watched,
       )[0];
-    if (best) out.push({ key: best.key, title: best.title, posterPath: best.posterPath, href: best.href });
+    if (best) out[cat] = { posterPath: best.posterPath };
   }
   return out;
 }
@@ -437,7 +615,7 @@ export function pickTasteTrio(
 export function tallyGenres(
   rows: readonly (number[] | null | undefined)[],
   locale: Locale,
-): { topGenres: { name: string; count: number }[]; genreTags: number } {
+): { topGenres: { name: string; count: number }[]; genreTags: number; bySlug: Map<string, number> } {
   const tally = new Map<string, { name: string; count: number }>();
   let genreTags = 0;
   for (const ids of rows) {
@@ -455,7 +633,10 @@ export function tallyGenres(
     }
   }
   const topGenres = [...tally.values()].sort((a, b) => b.count - a.count).slice(0, 4);
-  return { topGenres, genreTags };
+  /* 🆕 D-700: الخريطةُ الكاملةُ للسمات — القمّةُ وحدَها لا تكفي مشتقّها */
+  const bySlug = new Map<string, number>();
+  for (const [slug, v] of tally) bySlug.set(slug, v.count);
+  return { topGenres, genreTags, bySlug };
 }
 
 /**
@@ -558,21 +739,10 @@ export async function LibraryAnalysis({
     const ids = fetched[i]?.genres?.map((g) => g.id) ?? [];
     if (ids.length) fetchedIds.set(`${f.media_type}-${f.tmdb_id}`, ids);
   });
-  const { topGenres, genreTags } = tallyGenres(
+  const { topGenres, genreTags, bySlug } = tallyGenres(
     follows.map((f) => f.genres ?? fetchedIds.get(`${f.media_type}-${f.tmdb_id}`) ?? null),
     locale,
   );
-
-  // ===== الأكثر مشاهدة: ثلاثةٌ بملصقاتها =====
-  const showById = new Map(tvFollows.map((f) => [f.tmdb_id, f]));
-  const topWatched = [...watchedByShow.entries()]
-    .filter(([id, n]) => n > 0 && showById.has(id))
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 3)
-    .map(([id, n]) => {
-      const f = showById.get(id)!;
-      return { id, title: f.title, posterPath: f.poster_path, watched: n };
-    });
 
   const ratedTotal = ratings.length;
   const avgAll = ratedTotal ? ratings.reduce((n, r) => n + r.rating, 0) / ratedTotal : 0;
@@ -622,7 +792,44 @@ export async function LibraryAnalysis({
     buckets[Math.min(4, Math.max(0, Math.ceil(r.rating / 2) - 1))]++;
   }
 
-  const trio = pickTasteTrio(trioCands);
+  /* 🆕 D-700: خلفيّةُ الترويسة **أوّلُ المفضّلة في كلِّ قائمة** (حكمُه:
+     «المسلسل والأنمي والفلم مأخوذ من المفضلة أول واحد في كل قائمة») —
+     `profile_favorites` مرتّبةٌ بترتيبه (sort_order)، والانتقاءُ
+     الفئويُّ (D-682) **سدُّ الخانة الفارغة** لا بديلُها. */
+  const [favs, animeFlags, metas] = await Promise.all([
+    getProfileFavorites(user!.id),
+    getMyAnimeFlags(),
+    getTitleMetaFor(follows.map((f) => ({ media_type: f.media_type, tmdb_id: f.tmdb_id }))),
+  ]);
+  const slots = pickTasteTrioSlots(trioCands);
+  const isAnimeFav = (f: { media_type: string; tmdb_id: number }) =>
+    animeFlags.get(`${f.media_type}-${f.tmdb_id}`) === true;
+  const favSeries = favs.find((f) => f.media_type === "tv" && !isAnimeFav(f));
+  const favAnime = favs.find((f) => isAnimeFav(f));
+  const favMovie = favs.find((f) => f.media_type === "movie" && !isAnimeFav(f));
+  const heroPosters = [
+    favSeries?.poster_path ?? slots.series?.posterPath,
+    favAnime?.poster_path ?? slots.anime?.posterPath,
+    favMovie?.poster_path ?? slots.movie?.posterPath,
+  ].filter((x): x is string => !!x);
+
+  /* 🆕 D-700: المدى يُقال في الترويسة — «كل الأوقات» حين لا مدى */
+  const rangeLabel =
+    range === "year"
+      ? String(nowY)
+      : range === "month"
+        ? new Intl.DateTimeFormat(locale === "ar" ? "ar" : "en", { month: "long" }).format(new Date())
+        : t.statsAllTime;
+
+  const taste = buildTaste({
+    keys: follows.map((f) => ({ media_type: f.media_type, tmdb_id: f.tmdb_id })),
+    metas,
+    bySlug,
+    genreTags,
+    topGenres,
+    t,
+    locale,
+  });
 
   return (
     <AnalysisView
@@ -633,14 +840,13 @@ export async function LibraryAnalysis({
         movies: rangeMovies,
         shows,
         reviews,
-        topWatched,
-        topGenres,
-        genreTags,
+        rangeLabel,
+        heroPosters,
+        taste,
         ratedTotal,
         avgAll,
         mine: true,
         hero,
-        trio,
         buckets,
       }}
     />
@@ -669,17 +875,8 @@ export function LibraryAnalysisSkeleton() {
           <div key={i} className="h-16 rounded bg-surface-2" />
         ))}
       </div>
-      {/* الثلاثية */}
-      <div className="grid grid-cols-3 gap-3">
-        {[0, 1, 2].map((i) => (
-          <div key={i} className="aspect-[2/3] rounded-2xl bg-surface-2" />
-        ))}
-      </div>
-      {/* الذوقُ والتقدّم */}
-      <div className="grid grid-cols-2 max-[359px]:grid-cols-1 gap-3">
-        <div className="h-52 rounded-2xl bg-surface-2" />
-        <div className="h-52 rounded-2xl bg-surface-2" />
-      </div>
+      {/* بطاقةُ الذوق الكاملة */}
+      <div className="h-[26rem] rounded-2xl bg-surface-2" />
       {/* التقييمات */}
       <div className="h-32 rounded-2xl bg-surface-2" />
     </div>
