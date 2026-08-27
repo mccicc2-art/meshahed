@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { Icon } from "./Icon";
 import { buttonClass } from "./ui/Button";
-import { chipClass, chipRow } from "./ui/controls";
+import { chipClass } from "./ui/controls";
 import { saveListReview, deleteListReview } from "@/lib/actions";
 import { toast, flashError } from "@/lib/toast";
 import { tap } from "@/lib/haptics";
@@ -33,6 +33,54 @@ import { getDict, num, type Locale } from "@/lib/i18n";
  * يُقفل وتظهر رسالةُ النجاح — **ولا يُرسم رأيٌ في خطِّ الآراء قبل أن
  * يصل**، لأن ذلك سطحٌ يقرؤه غيرُك.
  */
+/**
+ * ⚖️ 🆕 **صفُّ النجوم العشر — وجهُ إدخال الرتبة الواحد** (D-701، إقفالُ
+ * دَين D-694 المرصود): وُلدت النجومُ في مُرسِل الصفحة السريع وأحبَّها
+ * أحمد بلقطة ورقة العمل — **فعمّت الورقةَ وعاد الوجهُ واحداً**، ورقائقُ
+ * الأرقام غادرت (كانت وصفةَ D-016 الثانية هنا منذ D-327).
+ */
+export function StarRatingRow({
+  rating,
+  onPick,
+  locale,
+  label,
+}: {
+  rating: number;
+  onPick: (n: number) => void;
+  locale: Locale;
+  label: string;
+}) {
+  return (
+    <div role="radiogroup" aria-label={label} className="flex items-center gap-0.5">
+      {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
+        <button
+          key={n}
+          type="button"
+          role="radio"
+          aria-checked={rating === n}
+          aria-label={String(n)}
+          onClick={() => {
+            tap(6);
+            onPick(n);
+          }}
+          className="grid place-items-center w-7 h-8"
+        >
+          <Icon
+            name="star"
+            size={20}
+            className={n <= rating ? "text-accent fill-current" : "text-[color:var(--disabled)]"}
+          />
+        </button>
+      ))}
+      {rating > 0 && (
+        <span className="ms-auto text-13 font-bold tabular-nums text-accent" dir="ltr">
+          {num(rating, locale)}
+        </span>
+      )}
+    </div>
+  );
+}
+
 export function ListReviewForm({
   listId,
   locale,
@@ -88,23 +136,15 @@ export function ListReviewForm({
   return (
     <div className="space-y-3">
       <p className="text-12 font-semibold text-muted">{t.listReviewMine}</p>
-      <div className={chipRow}>
-        {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
-          <button
-            key={n}
-            type="button"
-            aria-pressed={rating === n}
-            onClick={() => {
-              tap(8);
-              setRating(n);
-              setSaved(false);
-            }}
-            className={chipClass(rating === n, "sm")}
-          >
-            <span dir="ltr">{num(n, locale)}</span>
-          </button>
-        ))}
-      </div>
+      <StarRatingRow
+        rating={rating}
+        onPick={(n) => {
+          setRating(n);
+          setSaved(false);
+        }}
+        locale={locale}
+        label={t.listReviewMine}
+      />
 
       <textarea
         value={body}
@@ -112,7 +152,7 @@ export function ListReviewForm({
           setBody(e.target.value);
           setSaved(false);
         }}
-        rows={3}
+        rows={7}
         maxLength={2000}
         placeholder={t.reviewPlaceholder}
         className="w-full rounded-control bg-surface-2 border border-border p-3 text-15 outline-none focus:border-accent/60"
