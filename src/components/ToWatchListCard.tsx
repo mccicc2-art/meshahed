@@ -9,6 +9,7 @@ import { toast, flashError } from "@/lib/toast";
 import { Icon } from "./Icon";
 import { ListCardShell } from "./PublicListsRail";
 import { PlayPill } from "./ListPlayToggle";
+import { HOME_QUEUE_EVENT } from "./HomeQueueOrder";
 
 /**
  * **«للمشاهدة» بطاقةً في قوائم المكتبة** (D-559، بلاغُ أحمد: «تو واتش
@@ -74,13 +75,40 @@ export function ToWatchListCard({
     });
   }
 
+  /**
+   * 🆕 **والضغطةُ صارت تفتح** (D-719، حكمُه: «إذا ضغطتها أبغاها تنفتح،
+   * أحتاج أرتّب تسلسل الأفلام فيها»).
+   *
+   * ⚖️ **نقضٌ لشطرِ D-559** («ضغطتُها تقلب الرايةَ لا تفتح صفحةً لا
+   * وجودَ لها») — **والحجّةُ لم تُخطئ يومَها، ماتت**: **البابُ صار
+   * موجوداً** (ورقةُ الترتيب D-605)، **وD-030 تمنع الوعدَ بما لا يوجد
+   * لا بناءَ ما يُوعَد به.**
+   * 🔑 **والمفتاحُ لم يسقط، انتقل إلى رقاقته**: **الرقاقةُ هي التي
+   * تقول «تعمل/متوقّفة» أصلاً** (D-142/D-677) — **فهي أصدقُ موضعٍ
+   * لقلبها من البطاقة كلِّها.**
+   *
+   * ⚠️ **والغلافُ `div` بدور زرٍّ لا `button`**: **زرٌّ داخل زرٍّ
+   * يفكّه المحلّل** (يُغلق الخارجيُّ عند رؤية الداخليّ) — **وبطاقةُ
+   * القائمة الحقيقيّة تنجو لأن غلافَها `a`**، وهذه لا رابطَ لها.
+   */
+  function open() {
+    tap(6);
+    window.dispatchEvent(new CustomEvent(HOME_QUEUE_EVENT, { detail: "towatchlist" }));
+  }
+
   return (
-    <button
-      type="button"
-      onClick={toggle}
-      disabled={pending}
-      aria-pressed={on}
-      className={`block w-full h-full text-start rounded-2xl border bg-surface overflow-hidden transition hover:border-accent/40 active:scale-[0.99] disabled:opacity-70 ${
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={open}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          open();
+        }
+      }}
+      aria-label={t.libToWatch}
+      className={`block w-full h-full text-start rounded-2xl border bg-surface overflow-hidden transition hover:border-accent/40 active:scale-[0.99] cursor-pointer ${
         on ? "border-border" : "border-dashed border-border"
       }`}
     >
@@ -100,8 +128,24 @@ export function ToWatchListCard({
            حفظَ له ولا رأيَ ولا تقييمَ **أبداً** — **وخانةٌ لا يمكن أن
            تتحرّك يوماً كذبةٌ لا توحيد** (D-217؛ استثناءٌ مُعلَنٌ من
            لقطته التي رسمت أصفاراً عليه). */
-        play={<PlayPill on={on} locale={locale} />}
+        /* **والمفتاحُ زرُّه** (D-719) — و`stopPropagation` تمنع أن
+           تُقرأ ضغطتُه فتحاً للورقة. */
+        play={
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              toggle();
+            }}
+            disabled={pending}
+            aria-pressed={on}
+            aria-label={t.libToWatch}
+            className="shrink-0 active:scale-95 transition disabled:opacity-60"
+          >
+            <PlayPill on={on} locale={locale} />
+          </button>
+        }
       />
-    </button>
+    </div>
   );
 }

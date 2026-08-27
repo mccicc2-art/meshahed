@@ -34,7 +34,7 @@ import { ReorderSheet, type ReorderItem } from "./ReorderSheet";
 export const HOME_QUEUE_EVENT = "loopz:queue-order";
 /** 🆕 وصفُّ «قوائمي» ثالثُ الصفوف (D-615): «والليست في الهوم احتاج
     أقدر أرتّبهم كذلك مثل الأفلام والمسلسلات» — نفسُ الزرِّ ونفسُ الورقة */
-export type QueueRow = "continue" | "towatch" | "lists";
+export type QueueRow = "continue" | "towatch" | "lists" | "towatchlist";
 
 /** الزرُّ — وحيدُ الرأسِ في الصفَّين، بوصفة مقبض المفضّلة (D-567) حرفاً */
 export function QueueOrderButton({
@@ -79,6 +79,7 @@ export function HomeQueueSheetHost({
   cont,
   towatch,
   lists = [],
+  towatchList = [],
 }: {
   locale: Locale;
   /** عناصرُ «تابِع المشاهدة» كلُّها بترتيب عرضها الحاليّ — بذرةُ الورقة */
@@ -89,6 +90,13 @@ export function HomeQueueSheetHost({
       بفراغٍ لا واجبٌ: **رفعةُ المكوّنات تسبق رفعةَ الصفحة وتُبنى
       وحدَها** (D-028)، والغائبُ بلا زرِّه لا يُفتح أصلاً */
   lists?: ReorderItem[];
+  /**
+   * 🆕 **أفلامُ بطاقة «للمشاهدة» بترتيب عرضها** (D-719) — **اختياريّةٌ
+   * بفراغٍ لا واجبة** (D-028)، **والغائبُ لا يُفتح**: الأبوابُ الثلاثةُ
+   * التي ترسم البطاقةَ تمرّرها، **وبابٌ يرسم بطاقةً ولا يمرّر عناصرَها
+   * يَعِد بورقةٍ فارغة** (D-030).
+   */
+  towatchList?: ReorderItem[];
 }) {
   const t = getDict(locale);
   const router = useRouter();
@@ -98,7 +106,7 @@ export function HomeQueueSheetHost({
   useEffect(() => {
     const onOpen = (e: Event) => {
       const d = (e as CustomEvent).detail;
-      if (d === "continue" || d === "towatch" || d === "lists") setRow(d);
+      if (d === "continue" || d === "towatch" || d === "lists" || d === "towatchlist") setRow(d);
     };
     window.addEventListener(HOME_QUEUE_EVENT, onOpen);
     return () => window.removeEventListener(HOME_QUEUE_EVENT, onOpen);
@@ -107,7 +115,15 @@ export function HomeQueueSheetHost({
   if (!row) return null;
   return (
     <ReorderSheet
-      items={row === "continue" ? cont : row === "lists" ? lists : towatch}
+      items={
+        row === "continue"
+          ? cont
+          : row === "lists"
+            ? lists
+            : row === "towatchlist"
+              ? towatchList
+              : towatch
+      }
       t={t}
       onClose={() => setRow(null)}
       onDone={(keys) => {
