@@ -4,8 +4,7 @@ import { useState, useTransition } from "react";
 import { Avatar } from "./Avatar";
 import { Icon } from "./Icon";
 import { SpoilerText } from "./SpoilerText";
-import { reportListReview } from "@/lib/actions";
-import { ListReviewForm } from "./ListReviewForm";
+import { reportListReview, saveListReview, deleteListReview } from "@/lib/actions";
 import { toast, flashError } from "@/lib/toast";
 import { tap } from "@/lib/haptics";
 import { getDict, num, type Locale } from "@/lib/i18n";
@@ -107,11 +106,55 @@ export function ListReviews({
      الرتبةُ والنصُّ والكاتبُ كما هم (`ListReviewForm`)، **والذي تبدّل
      بابُه.** ومن له رأيٌ قائمٌ يفتح على نموذجه (تعديل). */
   const [writing, setWriting] = useState(false);
+  /* 🆕 **المُرسِلُ السريع** (D-694، حكمُه بلقطة: «حط النجوم فوق مكان
+     الكتابة وحط علامة إرسال — أكتب داخل المربع بدال ما يكبر ويتحوّل
+     الشكل القديم»): الرتبةُ نجومٌ فوق الحقل، والحقلُ حقلٌ حقيقيٌّ
+     بزرّ إرسالٍ في طرفه — **ولا تحوّلَ إلى النموذج الكبير في الصفحة
+     أبداً** (بقي لورقة النجمة على البطاقات — `ListRateStar`). */
+  const [rating, setRating] = useState(mine?.rating ?? 0);
+  const [body, setBody] = useState(mine?.body ?? "");
+  const [busy, setBusy] = useState(false);
   /* 🆕 **والقاعُ مطويٌّ بعد ثلاثة** (D-681): «عرض كل الآراء (N)» */
   const [showAll, setShowAll] = useState(false);
   /** الخيطُ المفتوح — **واحدٌ لا غير** (علّةُ D-242) */
   const [openThread, setOpenThread] = useState<string | null>(null);
   const [, start] = useTransition();
+
+  function submitQuick() {
+    if (!rating || busy) return;
+    tap([12, 30]);
+    setBusy(true);
+    start(async () => {
+      try {
+        /* **رايةُ الحرق تُحفَظ كما كانت** عند التعديل — المُرسِلُ السريع
+           لا يملك مفتاحَها، وإسقاطُها صمتاً كذبٌ على من رفعها */
+        await saveListReview({ listId, rating, body, hasSpoiler: mine?.hasSpoiler ?? false });
+        toast(t.listReviewSave, { tone: "success" });
+        setWriting(false);
+      } catch (e) {
+        flashError((e as Error).message);
+      } finally {
+        setBusy(false);
+      }
+    });
+  }
+
+  function removeQuick() {
+    tap(8);
+    setBusy(true);
+    start(async () => {
+      try {
+        await deleteListReview(listId);
+        setRating(0);
+        setBody("");
+        setWriting(false);
+      } catch (e) {
+        flashError((e as Error).message);
+      } finally {
+        setBusy(false);
+      }
+    });
+  }
 
   function report(userId: string) {
     tap(8);
@@ -143,50 +186,80 @@ export function ListReviews({
 
       {isOwner ? (
         <p className="text-12 text-muted">{t.listReviewOwn}</p>
-      ) : canReview ? (
-        writing ? (
-          /* 🔧 **الصندوقُ خرج مكوّناً عند قارئه الثاني** (D-352).
-             ⚖️ 🆕 **ولا يفتح نفسَه أبداً** (D-683، بلاغُه: «هذي جداً
-             كبيرة») — **كان `mine` يفتحه دائماً لمن له رأيٌ قائم**،
-             فمن قيّم مرّةً سكن النموذجُ الكاملُ صفحتَه إلى الأبد.
-             **بابُه ضغطةٌ، وبعد الحفظ يطوي نفسَه** (`onSaved`)،
-             **و× تطويه بلا حفظ.** */
-          <div className="relative rounded-card border border-border bg-surface p-4">
-            <button
-              type="button"
-              aria-label={t.closeLabel}
-              onClick={() => {
-                tap(6);
-                setWriting(false);
-              }}
-              className="absolute top-2 end-2 grid place-items-center w-9 h-9 rounded-full text-muted hover:text-foreground"
-            >
-              <Icon name="close" size={16} />
-            </button>
-            <ListReviewForm
-              listId={listId}
-              locale={locale}
-              mine={mine}
-              onSaved={() => setWriting(false)}
-            />
+      ) : canReview && (!mine || writing) ? (
+        /* 🆕 D-694: صفُّ النجوم العشر فوق الحقل، والإرسالُ في طرفه —
+           **السلّمُ عشرةٌ كسلّم الأعمال** (D-327) والنجومُ وجهُه السريع.
+           ⚖️ **وهو وجهٌ ثانٍ لإدخال الرتبة بجانب رقائق الورقة** — نقضٌ
+           محصورٌ لقاعدة العائلة الواحدة بحكم صاحبه، **ويُرصد للتوحيد.** */
+        <div className="space-y-2">
+          <div role="radiogroup" aria-label={t.listReviewMine} className="flex items-center gap-0.5">
+            {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
+              <button
+                key={n}
+                type="button"
+                role="radio"
+                aria-checked={rating === n}
+                aria-label={String(n)}
+                onClick={() => {
+                  tap(6);
+                  setRating(n);
+                }}
+                className="grid place-items-center w-7 h-8"
+              >
+                <Icon
+                  name="star"
+                  size={20}
+                  className={n <= rating ? "text-accent fill-current" : "text-[color:var(--disabled)]"}
+                />
+              </button>
+            ))}
+            {rating > 0 && (
+              <span className="ms-auto text-13 font-bold tabular-nums text-accent" dir="ltr">
+                {num(rating, locale)}
+              </span>
+            )}
           </div>
-        ) : mine ? null : (
-          /* **ولمن له رأيٌ قائمٌ لا رقاقةَ دعوة**: رأيُه في الخطّ تحت
-             وقلمُ «عدّل» على صفِّه — **ودعوةُ «اكتب رأيك» لمن كتب كذبة.** */
-          <button
-            type="button"
-            onClick={() => {
-              tap(6);
-              setWriting(true);
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              submitQuick();
             }}
-            className="w-full flex items-center gap-3 text-start"
+            className="flex items-center gap-3"
           >
             <Avatar src={me?.avatar ?? null} name={me?.name ?? ""} size={34} className="shrink-0" />
-            <span className="flex-1 min-w-0 truncate rounded-full border border-border bg-surface-2 px-4 py-2.5 text-14 text-muted">
-              {t.reviewPlaceholder}
-            </span>
-          </button>
-        )
+            <div className="flex-1 min-w-0 flex items-center gap-1 rounded-full border border-border bg-surface-2 ps-4 pe-1.5 py-1">
+              <input
+                type="text"
+                value={body}
+                onChange={(e) => setBody(e.target.value)}
+                maxLength={2000}
+                placeholder={t.reviewPlaceholder}
+                className="flex-1 min-w-0 bg-transparent outline-none text-base py-1.5"
+              />
+              {mine && (
+                <button
+                  type="button"
+                  aria-label={t.listReviewDelete}
+                  title={t.listReviewDelete}
+                  disabled={busy}
+                  onClick={removeQuick}
+                  className="shrink-0 grid place-items-center w-9 h-9 rounded-full text-muted hover:text-[color:var(--error)]"
+                >
+                  <Icon name="trash" size={16} />
+                </button>
+              )}
+              <button
+                type="submit"
+                aria-label={t.shareReplySend}
+                title={t.shareReplySend}
+                disabled={!rating || busy}
+                className="shrink-0 grid place-items-center w-9 h-9 rounded-full bg-accent text-[color:var(--on-accent)] disabled:opacity-40 active:scale-95 transition"
+              >
+                <Icon name="send" size={16} className="rtl:-scale-x-100" />
+              </button>
+            </div>
+          </form>
+        </div>
       ) : null}
 
       {/* 🔴 **وكلامُ الناس يُرسم دائماً** (D-371) — لا في فرعٍ لا يبلغه
