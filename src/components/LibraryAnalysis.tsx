@@ -84,15 +84,15 @@ function ProgressDonut({ done, watching, rest, pct: pctDone }: {
   return (
     <span
       aria-hidden
-      className="shrink-0 grid place-items-center w-24 h-24 rounded-full"
+      className="shrink-0 grid place-items-center w-20 h-20 rounded-full"
       style={{
         background: `conic-gradient(var(--success) 0 ${a}%, var(--accent) ${a}% ${b}%, var(--disabled) ${b}% 100%)`,
       }}
     >
       {/* **النسبةُ 34px بنصّ المواصفة** — رقمٌ زخرفيٌّ خارج سلّم D-459 كجاراته */}
-      <span className="flex items-center justify-center gap-0.5 w-[4.5rem] h-[4.5rem] rounded-full bg-surface text-20 font-bold tabular-nums leading-none">
+      <span className="flex items-center justify-center gap-0.5 w-[3.75rem] h-[3.75rem] rounded-full bg-surface text-15 font-extrabold tabular-nums leading-none">
         {pctDone}
-        <span className="text-[10px] font-bold text-muted">%</span>
+        <span className="text-[9px] font-bold text-muted">%</span>
       </span>
     </span>
   );
@@ -336,19 +336,19 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
       {(topGenres.length > 0 || statusTotal > 0) && (
         <div className="grid grid-cols-2 max-[359px]:grid-cols-1 gap-3">
           {topGenres.length > 0 && (
-            <section className="rounded-2xl border border-border bg-surface p-4">
-              <h3 className="text-15 font-bold mb-3">
+            <section className="rounded-2xl border border-border bg-surface p-3.5">
+              <h3 className="text-15 font-bold mb-2.5">
                 {mine ? t.analysisTaste : t.analysisTasteOther}
               </h3>
-              <div className="space-y-3">
+              <div className="space-y-2.5">
                 {topGenres.map((g) => (
                   <div key={g.name} className="flex items-center gap-2">
                     <span className="flex-1 min-w-0">
-                      <span className="block text-12 truncate mb-1" dir="auto">
+                      <span className="block text-12 truncate mb-0.5" dir="auto">
                         {g.name}
                       </span>
                       {/* **أشرطةٌ صفراءُ قصيرةٌ واضحة** (نصُّ المواصفة) — لا قرصَ ولا DNA */}
-                      <span className="block h-2 rounded-full bg-surface-2 overflow-hidden">
+                      <span className="block h-1.5 rounded-full bg-surface-2 overflow-hidden">
                         <span
                           className="block h-full rounded-full bg-accent"
                           style={{ width: `${Math.max(pct(g.count, genreTags), 3)}%` }}
@@ -365,11 +365,11 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
           )}
 
           {statusTotal > 0 && (
-            <section className="rounded-2xl border border-border bg-surface p-4">
-              <h3 className="text-15 font-bold mb-3">{t.statsLibraryProgress}</h3>
-              <div className="flex flex-col items-center gap-3">
+            <section className="rounded-2xl border border-border bg-surface p-3.5">
+              <h3 className="text-15 font-bold mb-2.5">{t.statsLibraryProgress}</h3>
+              <div className="flex flex-col items-center gap-2.5">
                 <ProgressDonut done={done} watching={inProgress} rest={notStarted} pct={donePct} />
-                <div className="w-full space-y-2">
+                <div className="w-full space-y-1.5">
                   {[
                     { l: t.statusDone, v: done, c: "bg-[color:var(--success)]" },
                     { l: t.statusWatching, v: inProgress, c: "bg-accent" },
@@ -394,9 +394,13 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
       {ratedTotal > 0 && (
         <section className="rounded-2xl border border-border bg-surface p-4 flex items-center gap-4">
           <div className="shrink-0">
-            <Icon name="star" size={18} className="text-accent" aria-hidden />
-            <span className="block text-[26px] font-bold leading-none tabular-nums mt-1.5" dir="ltr">
-              {avgAll.toFixed(1)}
+            {/* 🆕 D-692: النجمةُ بجوار الرقم لا فوقه — قرارُ D-687 نفسُه
+                يعمّ أخاه: رتبةٌ واحدةٌ بشكلٍ واحد */}
+            <span className="flex items-center gap-1.5">
+              <Icon name="star" size={18} className="text-accent shrink-0" aria-hidden />
+              <span className="text-[26px] font-bold leading-none tabular-nums" dir="ltr">
+                {avgAll.toFixed(1)}
+              </span>
             </span>
             <span className="block text-12 mt-1">{t.statsAvgLabel}</span>
             <span className="block text-[11px] text-muted mt-0.5">
