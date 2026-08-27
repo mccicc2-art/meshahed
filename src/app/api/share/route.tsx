@@ -51,8 +51,6 @@ export async function GET() {
   const hours = Math.round(minutes / 60);
   const days = Math.floor(hours / 24);
 
-  const rated = ratings.length;
-  const avg = rated ? ratings.reduce((a, r) => a + r.rating, 0) / rated : 0;
 
   const [arabic, latin] = await Promise.all([
     readFile(join(process.cwd(), "public/fonts/cairo-700-arabic.woff")),
@@ -83,11 +81,14 @@ export async function GET() {
      تلبس وجهَ صفحة الإحصائيات الجديد (D-682 → D-696) — **الوقتُ الكبيرُ
      رقمَ البطاقة، والشريطُ العاري بأيقوناته الصفراء تحته، وبمفاتيح
      الصفحة نفسِها** (`statsCell*`) فلا مفردتين لشيءٍ واحد. */
+  /* D-698: خاناتُ أحمد الأربع — كما في صفحة الإحصائيات حرفاً */
+  const shows = follows.filter((f) => f.media_type === "tv").length;
+  const reviewCount = ratings.filter((r) => (r.review ?? "").trim().length > 0).length;
   const strip: { icon: string; value: string; label: string }[] = [
-    { icon: "play", value: episodeCount.toLocaleString("en-US"), label: t.statsCellEpisodesWatched },
+    { icon: "tv", value: String(shows), label: t.statsCellShows },
     { icon: "film", value: String(movies), label: t.statsCellMoviesWatched },
-    { icon: "bookmark", value: String(follows.length), label: t.statsCellTitles },
-    { icon: "star", value: rated ? avg.toFixed(1) : "—", label: t.statsCellRating },
+    { icon: "play", value: episodeCount.toLocaleString("en-US"), label: t.statsCellEpisodesWatched },
+    { icon: "comment", value: String(reviewCount), label: t.statsCellComments },
   ];
   const stripView = rtl ? [...strip].reverse() : strip;
   const ICON_PATHS: Record<string, React.ReactNode> = {
@@ -106,8 +107,13 @@ export async function GET() {
         <path d="M3.5 9.5h17M8 5v14M16 5v14" />
       </g>
     ),
-    bookmark: <path d="M6.5 4.5h11v15l-5.5-4-5.5 4v-15Z" />,
-    star: <path d="m12 3.5 2.6 5.4 6 .8-4.4 4.1 1.1 5.9-5.3-2.9-5.3 2.9 1.1-5.9L3.4 9.7l6-.8L12 3.5Z" />,
+    tv: (
+      <g>
+        <rect x="3.5" y="7" width="17" height="12.5" rx="2.5" />
+        <path d="m8.5 3.5 3.5 3 3.5-3" />
+      </g>
+    ),
+    comment: <path d="M12 4.5c-4.7 0-8.5 3.1-8.5 7 0 3.9 3.8 7 8.5 7 .9 0 1.8-.1 2.6-.3L19 20l-.7-3.5c1.4-1.2 2.2-3 2.2-5 0-3.9-3.8-7-8.5-7Z" />,
   };
 
   /* 🔴 **مولّدُ الصور يبعثر الجملةَ العربيّة** (satori بلا bidi للجمل):
