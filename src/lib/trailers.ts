@@ -5,6 +5,7 @@ import { getTrailer, backdropUrl, yearOf } from "@/lib/tmdb";
 import { titleOf } from "@/lib/media";
 import { getDict, type Locale } from "@/lib/i18n";
 import { browseGenreForId, browseGenreName } from "@/lib/browse";
+import { originAdjectives } from "@/lib/region";
 
 /**
  * 🆕 **علفُ «ترايلرات لك»** (D-726، مواصفةُ أحمد المكتوبة).
@@ -36,6 +37,22 @@ export interface TrailerItem {
   year: string;
   /** اسمُ أوّلِ نوعٍ بلغة القارئ — «Action» تحت الاسم في تصميمه */
   genre: string | null;
+  /**
+   * 🆕 **نسبةُ العمل** (D-729، حكمُه: «جنب التصنيف اكتب إذا عمل أمريكي
+   * أو مصري وهكذا») — **`countryAdjective` من D-562 حرفاً** (القاعدة ٣):
+   * **جدولُ النسب مكتوبٌ منذ ذلك اليوم بلغتين**، **ومن كتب «أمريكي»
+   * ثانيةً كتب سلّماً ثانياً يفترق عند أوّل بلدٍ يُضاف.**
+   * ⚠️ **و`origin_country` وحدَه ما يصل في ردِّ القائمة** — **وبلدانُ
+   * الإنتاج في التفاصيل ولا تُطلب لأجل سطر** (D-510).
+   */
+  country: string | null;
+  /**
+   * 🆕 **نبذةُ العمل** (D-729، حكمُه: «إذا فتحت قائمة الترايلر أبغاه
+   * يعرض النبذة») — **مجّانيّةٌ في ردِّ القائمة**، **ولا نداءَ لأجلها.**
+   * ⚠️ **وتُعرض في الصفحة الكاملة وحدَها**: **صفُّ اكتشف بطاقاتٌ
+   * تُمرَّر، وثلاثةُ أسطرٍ في كلٍّ تُطيل الصفَّ بلا أن تُقرأ** (D-510).
+   */
+  overview: string | null;
   /** «لأنك تحبّ …» — **نصُّ `getSuggestions` نفسُه لا صياغةٌ ثانية** */
   note: string;
 }
@@ -60,11 +77,16 @@ export async function getTrailerFeed(limit: number, locale: Locale): Promise<Tra
   const pool = all.slice(0, PROBE);
 
   const withKeys = await Promise.all(
-    pool.map(async (s) => {
+    pool.map(async (s): Promise<TrailerItem | null> => {
       const mediaType = s.result.media_type === "movie" ? ("movie" as const) : ("tv" as const);
       const trailer = await getTrailer(mediaType, s.result.id).catch(() => null);
       if (!trailer?.key) return null;
       const g = s.result.genre_ids?.length ? browseGenreForId(s.result.genre_ids[0]) : null;
+      /* **والنوعُ يُعلَن `string | null` صراحةً**: `[0]` يُستنتج `string`
+         بلا `noUncheckedIndexedAccess`، **فيضيق نوعُ الصفِّ عن العقد
+         ويسقط حارسُ التصفية أدناه** — عطلٌ يمسكه المترجِم. */
+      const country: string | null =
+        originAdjectives({ origin: s.result.origin_country }, locale === "en" ? "en" : "ar", 1)[0] ?? null;
       return {
         tmdbId: s.result.id,
         mediaType,
@@ -74,8 +96,11 @@ export async function getTrailerFeed(limit: number, locale: Locale): Promise<Tra
         posterPath: s.result.poster_path ?? null,
         year: yearOf(s.result) ?? "",
         genre: g ? browseGenreName(g, locale) : null,
+        country,
+        /* **والفارغُ يُكتب غائباً لا سلسلةً فارغة** (D-167/D-222) */
+        overview: s.result.overview?.trim() || null,
         note: s.seedTitle ? t.recoFrom(s.seedTitle) : t.recoFromGenre,
-      } satisfies TrailerItem;
+      };
     }),
   );
 
