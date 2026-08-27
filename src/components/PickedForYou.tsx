@@ -119,9 +119,17 @@ export function PickedForYou({
             type="button"
             onClick={refresh}
             aria-label={t.pickedRefreshAria}
-            className="shrink-0 flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-12 font-semibold text-muted hover:text-foreground hover:border-accent/50 active:scale-[0.97] transition"
+            /* 🆕 **وصَغُر في حشوته لا في خطّه** (D-732، حكمُه: «هنا
+               more picks صغّرها»). 🔑 **و`text-12` قاعُ السلّم**
+               (12/14/15/20/22/24 — لا درجةَ تحتها): **فتصغيرُ الخطِّ
+               هنا يعني الخروجَ عن السلّم بمقاسٍ حرّ** (القاعدة ١٧،
+               وفخُّ الأصناف الخرساء D-684). **والحشوُ يغيّر المساحةَ
+               وحدَها** — وهي وصفةُ D-489/D-713 مقلوبة.
+               ⚠️ **والرمزُ ينزل معه**: زرٌّ ضاقت حشوتُه ورمزُه على حاله
+               يُقرأ رمزاً في علبةٍ ضيّقة لا زرّاً أصغر. */
+            className="shrink-0 flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-12 font-semibold text-muted hover:text-foreground hover:border-accent/50 active:scale-[0.97] transition"
           >
-            <Icon name="repeat" size={15} strokeWidth={2} />
+            <Icon name="repeat" size={13} strokeWidth={2} />
             <span>{t.pickedRefresh}</span>
           </button>
         ) : undefined
