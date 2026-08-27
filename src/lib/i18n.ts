@@ -1169,6 +1169,7 @@ const ar = {
   statsCellComments: "التعليقات",
   /* 🆕 D-700: مدى الترويسة وبطاقة «ذوقك» الكاملة */
   statsAllTime: "كل الأوقات",
+  tasteThemes: "السمات",
   tasteGenres: "الأنواع",
   tasteYears: "السنوات",
   tasteLanguages: "اللغات",
@@ -2563,6 +2564,7 @@ const en: Dict = {
   statsCellShows: "Series",
   statsCellComments: "Reviews",
   statsAllTime: "All time",
+  tasteThemes: "Themes",
   tasteGenres: "Genres",
   tasteYears: "Years",
   tasteLanguages: "Languages",
