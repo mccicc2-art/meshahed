@@ -274,8 +274,13 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
               تُضغط (عائلةُ الرقاقة معناها «مختارٌ يُلغى» — D-134)،
               **وهذه وصفٌ يُقرأ لا زرٌّ يُضغط** (D-217). **والعنوانُ
               سقط لأن الكلماتِ تصف نفسَها** تحت عنوان «ذوقك». */}
+          {/* ⚖️ 🆕 D-708: **كلمةُ «السمات» عادت بحكمه** (نقضُ شطرٍ من
+              D-706 بعد الرؤية — **والإطارُ لم يعد**): العنوانُ يقول
+              ما هذه الكلمات، **والهامشُ تحتها قلّ** فالتصق الصفُّ
+              بالخانات. */}
           {taste.themes.length > 0 && (
-            <div className="mt-2 flex items-center gap-x-3 gap-y-1 flex-wrap text-14 font-semibold text-accent">
+            <div className="mt-2.5 flex items-center gap-x-3 gap-y-1 flex-wrap text-14 font-semibold text-accent">
+              <span className="text-13 font-normal text-muted shrink-0">{t.tasteThemes}</span>
               {taste.themes.map((th, i) => (
                 <span key={th} className="flex items-center gap-3">
                   {i > 0 && (
@@ -287,7 +292,7 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
             </div>
           )}
 
-          <div className="mt-4 grid grid-cols-2 gap-x-4">
+          <div className="mt-1 grid grid-cols-2 gap-x-4">
             {taste.genres.length > 0 && (
               <TasteCell title={t.tasteGenres}>
                 {taste.genres.map((g) => (
@@ -718,7 +723,11 @@ export async function LibraryAnalysis({
      صامتٌ ليس تعليقاً، وتسميتُه تعليقاً كذبٌ صغير (D-219). */
   const shows = tvFollows.length;
   const rangeRatings = prefix ? ratings.filter((r) => inRange(r.updated_at)) : ratings;
-  const reviews = rangeRatings.filter((r) => (r.review ?? "").trim().length > 0).length;
+  /* ⚖️ 🆕 D-708 (حكمُه: «وفي ريفيو خلّيه يعدّ كذلك التقييم»): **الخانةُ
+     تعدّ ما قيّمتَه كلَّه** — بنصٍّ أو بلا نصّ. **نقضٌ مسجَّلٌ لتفريق
+     D-698** («تقييمٌ صامتٌ ليس تعليقاً»): **الحجّةُ كانت صدقَ الاسم،
+     وصاحبُ الاسم قرّر أن الرقمَ رقمُ رأيه لا رقمُ كلامه.** */
+  const reviews = rangeRatings.length;
 
   /* ⚖️ 🆕 **والأنواعُ من العمود لا من ثمانين نداءَ TMDB** (D-649):
      `follows.genres` يحملها منذ الهجرة ١٤٢ — **والنداءُ لم يبقَ إلا لما

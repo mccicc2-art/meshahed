@@ -168,7 +168,8 @@ export async function MemberAnalysis({
         movies: mvStats.watched,
         /* 🆕 D-698: مسلسلاتُ مكتبته، وتعليقاتُه ما كُتب فيه نصٌّ فعلاً */
         shows: tvFollows.length,
-        reviews: ratings.filter((r) => (r.review ?? "").trim().length > 0).length,
+        /* D-708: تعدّ ما قيّمه كلَّه — بنصٍّ أو بلا نصّ */
+        reviews: ratings.length,
         /* **لا مدى للزائر** (تعليقُ الرأس) — فالصادقُ «كل الأوقات» */
         rangeLabel: t.statsAllTime,
         heroPosters,
