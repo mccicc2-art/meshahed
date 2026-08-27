@@ -2158,6 +2158,46 @@ export const getImdbChart = cache(async (
   }
 });
 
+/** 🆕 D-700: بطاقةُ هويّة عملٍ من `title_meta` (الهجرة ١٥٠) */
+export interface TitleMetaRow {
+  media_type: "tv" | "movie";
+  tmdb_id: number;
+  release_year: number | null;
+  original_language: string | null;
+  origin_countries: string[] | null;
+  director: string | null;
+  top_cast: string[] | null;
+}
+
+/**
+ * 🆕 **بطاقاتُ هويّة مجموعةِ أعمالٍ دفعةً واحدة** (D-700) — تُغذّي
+ * بطاقةَ «ذوقك»: سنواتٌ ولغاتٌ وبلدانٌ ومخرجون وممثلون **بلا نداء
+ * TMDB واحدٍ وقتَ العرض** (درسُ D-649) — الكتالوجُ مُلئ مرّةً عبر
+ * `/api/title-meta` ويُقرأ ألف مرّة. **والجدولُ فارغٌ أو غائب؟ خريطةٌ
+ * فارغةٌ** فتغيب الخاناتُ لا تتصفّر (D-217/D-063).
+ */
+export async function getTitleMetaFor(
+  keys: { media_type: "tv" | "movie"; tmdb_id: number }[],
+): Promise<Map<string, TitleMetaRow>> {
+  const out = new Map<string, TitleMetaRow>();
+  if (!keys.length) return out;
+  try {
+    const supabase = await createClient();
+    const ids = [...new Set(keys.map((k) => k.tmdb_id))];
+    const { data, error } = await supabase
+      .from("title_meta")
+      .select("media_type, tmdb_id, release_year, original_language, origin_countries, director, top_cast")
+      .in("tmdb_id", ids);
+    if (error || !data) return out;
+    for (const r of data as TitleMetaRow[]) {
+      out.set(`${r.media_type}-${r.tmdb_id}`, r);
+    }
+    return out;
+  } catch {
+    return out;
+  }
+}
+
 export interface SuggestedPerson extends PersonLite {
   /** كم عملاً من بذرتك في مكتبته — صفرٌ يعني «اقتراح احتياطي بلا سبب» */
   shared: number;
