@@ -39,7 +39,6 @@ export async function GET() {
     getMyRatings(),
   ]);
 
-  const shows = follows.filter((f) => f.media_type === "tv").length;
   const movies = watchedMovies.length;
   const episodeCount = episodes.length;
 
@@ -61,14 +60,40 @@ export async function GET() {
   ]);
 
   const name = profile?.nickname?.trim() || profile?.username || "Loopz";
-  const timeText = days >= 1 ? t.days(days) : t.hours(hours);
+  const restHours = hours % 24;
+  const timeText =
+    days >= 1
+      ? restHours > 0
+        ? t.daysAndHours(days, restHours)
+        : t.days(days)
+      : t.hours(hours);
 
-  const stats: [string, string][] = [
-    [String(shows), t.shareShows],
-    [String(episodeCount), t.shareEpisodes],
-    [String(movies), t.shareMovies],
-    [timeText, t.shareTime],
+  /* ⚖️ 🆕 D-697 (بلاغُه: «زر المشاركة يرسل الكارد القديمة»): البطاقةُ
+     تلبس وجهَ صفحة الإحصائيات الجديد (D-682 → D-696) — **الوقتُ الكبيرُ
+     رقمَ البطاقة، والشريطُ العاري بأيقوناته الصفراء تحته، وبمفاتيح
+     الصفحة نفسِها** (`statsCell*`) فلا مفردتين لشيءٍ واحد. */
+  const strip: { icon: string; value: string; label: string }[] = [
+    { icon: "play", value: episodeCount.toLocaleString("en-US"), label: t.statsCellEpisodesWatched },
+    { icon: "film", value: String(movies), label: t.statsCellMoviesWatched },
+    { icon: "bookmark", value: String(follows.length), label: t.statsCellTitles },
+    { icon: "star", value: rated ? avg.toFixed(1) : "—", label: t.statsCellRating },
   ];
+  const ICON_PATHS: Record<string, React.ReactNode> = {
+    play: (
+      <>
+        <circle cx="12" cy="12" r="9" />
+        <path d="M10 8.8v6.4l5-3.2-5-3.2Z" />
+      </>
+    ),
+    film: (
+      <>
+        <rect x="3.5" y="5" width="17" height="14" rx="2.5" />
+        <path d="M3.5 9.5h17M8 5v14M16 5v14" />
+      </>
+    ),
+    bookmark: <path d="M6.5 4.5h11v15l-5.5-4-5.5 4v-15Z" />,
+    star: <path d="m12 3.5 2.6 5.4 6 .8-4.4 4.1 1.1 5.9-5.3-2.9-5.3 2.9 1.1-5.9L3.4 9.7l6-.8L12 3.5Z" />,
+  };
 
   return new ImageResponse(
     (
@@ -79,59 +104,89 @@ export async function GET() {
           display: "flex",
           flexDirection: "column",
           justifyContent: "space-between",
-          padding: 64,
-          background: "#0A0A0A",
-          color: "#F5F5F5",
+          padding: "56px 64px",
+          background: "#050505",
+          color: "#F7F7F7",
           fontFamily: "Cairo, CairoLatin",
           direction: rtl ? "rtl" : "ltr",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-          <div
-            style={{
-              width: 22,
-              height: 22,
-              borderRadius: 11,
-              background: "linear-gradient(135deg, #FFD200, #FBBF24 55%, #F59E0B)",
-            }}
-          />
-          <div style={{ fontSize: 34, letterSpacing: -1 }}>Loopz</div>
-        </div>
-
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <div style={{ fontSize: 30, color: "#A3A3A3" }}>{t.shareHeadline}</div>
-          <div style={{ fontSize: 68 }}>{name}</div>
-        </div>
-
-        <div style={{ display: "flex", gap: 24 }}>
-          {stats.map(([value, label]) => (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
             <div
-              key={label}
               style={{
+                width: 22,
+                height: 22,
+                borderRadius: 11,
+                background: "linear-gradient(135deg, #FFD400, #FBBF24 55%, #F59E0B)",
+              }}
+            />
+            <div style={{ fontSize: 32, letterSpacing: -1 }}>Loopz</div>
+          </div>
+          <div style={{ fontSize: 26, color: "#9A9A9A" }}>{t.shareHeadline}</div>
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <div style={{ fontSize: 52 }}>{name}</div>
+            {/* نجمةُ لوبز الرباعية بجانب الاسم — كما في الترويسة */}
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="#FFD400">
+              <path d="M12 3.5c.6 4.4 4.1 7.9 8.5 8.5-4.4.6-7.9 4.1-8.5 8.5-.6-4.4-4.1-7.9-8.5-8.5 4.4-.6 7.9-4.1 8.5-8.5Z" />
+            </svg>
+          </div>
+          <div style={{ fontSize: 92, lineHeight: 1.1 }}>{timeText}</div>
+          <div style={{ fontSize: 26, color: "#9A9A9A" }}>{t.statWatchTime}</div>
+          {/* الخطُّ الأصفرُ المنحني — زينةُ الصفحة نفسُها */}
+          <svg width="220" height="22" viewBox="0 0 220 24" style={{ marginTop: 10 }}>
+            <path
+              d="M2 20 C 58 4, 140 24, 218 6"
+              stroke="#FFD400"
+              strokeWidth="2"
+              fill="none"
+              strokeLinecap="round"
+              opacity="0.75"
+            />
+          </svg>
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            borderTop: "1px solid rgba(255,255,255,0.08)",
+            paddingTop: 30,
+          }}
+        >
+          {strip.map((c, i) => (
+            <div
+              key={c.label}
+              style={{
+                flex: 1,
                 display: "flex",
                 flexDirection: "column",
-                gap: 6,
-                flex: 1,
-                padding: "26px 28px",
-                borderRadius: 26,
-                background: "#161616",
-                border: "1px solid #2A2A2A",
+                alignItems: "center",
+                gap: 8,
+                borderLeft: !rtl && i > 0 ? "1px solid rgba(255,255,255,0.08)" : undefined,
+                borderRight: rtl && i > 0 ? "1px solid rgba(255,255,255,0.08)" : undefined,
               }}
             >
-              <div style={{ fontSize: 46, color: "#F5F5F5" }}>{value}</div>
-              <div style={{ fontSize: 24, color: "#A3A3A3" }}>{label}</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <svg
+                  width="30"
+                  height="30"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="#FFD400"
+                  strokeWidth="1.7"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  {ICON_PATHS[c.icon]}
+                </svg>
+                <div style={{ fontSize: 44 }}>{c.value}</div>
+              </div>
+              <div style={{ fontSize: 24, color: "#9A9A9A" }}>{c.label}</div>
             </div>
           ))}
-        </div>
-
-        <div style={{ display: "flex", alignItems: "center", gap: 14, fontSize: 26, color: "#A3A3A3" }}>
-          {/* النجمة مرسومة لا محرفاً: محرف ★ ليس في خطّ القاهرة فيخرج مربّعاً */}
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="#F59E0B">
-            <path d="M12 2l2.9 6.3 6.8.8-5 4.7 1.3 6.8L12 17.3 5.9 20.6 7.2 13.8 2.2 9.1l6.8-.8z" />
-          </svg>
-          <div>
-            {rated > 0 ? t.shareRated(rated, avg.toFixed(1)) : t.shareNoRatings}
-          </div>
         </div>
       </div>
     ),
