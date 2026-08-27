@@ -2167,6 +2167,15 @@ export interface TitleMetaRow {
   origin_countries: string[] | null;
   director: string | null;
   top_cast: string[] | null;
+  /**
+   * 🆕 **وجهُ المخرج ووجوهُ الطاقم** (D-718) — **مساراتُ صورٍ لا
+   * معرّفاتُ أشخاص**: الغرضُ وجهٌ يُرسم لا صفحةٌ تُفتح، **ومعرّفٌ
+   * يُترجَم بنداءٍ ثانٍ وقتَ العرض هو ما بُني هذا الجدولُ ليمنعه.**
+   * ⚠️ **و`cast_profiles` موازيةٌ لـ`top_cast` بالترتيب**، وفيها
+   * `null` لمن لا صورةَ له في TMDB.
+   */
+  director_profile: string | null;
+  cast_profiles: (string | null)[] | null;
 }
 
 /**
@@ -2186,7 +2195,9 @@ export async function getTitleMetaFor(
     const ids = [...new Set(keys.map((k) => k.tmdb_id))];
     const { data, error } = await supabase
       .from("title_meta")
-      .select("media_type, tmdb_id, release_year, original_language, origin_countries, director, top_cast")
+      .select(
+        "media_type, tmdb_id, release_year, original_language, origin_countries, director, director_profile, top_cast, cast_profiles",
+      )
       .in("tmdb_id", ids);
     if (error || !data) return out;
     for (const r of data as TitleMetaRow[]) {
