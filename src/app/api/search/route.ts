@@ -27,6 +27,21 @@ import type { SearchPayload, SearchScope } from "@/lib/searchTypes";
 
 /** رؤوسُ الأقسام في «الكل» — ثلاثةُ صفوفٍ لكلٍّ (تصميمُ أحمد) */
 const PEEK = 3;
+/**
+ * 🆕 **والأعمالُ عشرةٌ لا ثلاثة** (D-710، بلاغُ أحمد: «إذا بحثت خليه
+ * يظهر لي ١٠ نتائج أقل شي»).
+ *
+ * **والأقسامُ الثلاثةُ الأخرى تبقى على ثلاثة** — **لأن الأقسامَ الأربعةَ
+ * ليست متساويةَ الاحتمال**: من كتب اسماً في Loopz يقصد عملاً في تسعٍ
+ * من عشر، **وثلاثةُ صفوفٍ لأشهرِ ما يُبحث عنه معاينةٌ تُجبر القارئَ على
+ * ضغطةٍ ثانية** لِما جاء لأجله وحدَه. **والفنّانون والأعضاءُ والقوائم
+ * رؤوسٌ تقول «وهنا أيضاً» فيكفيها ثلاثة.**
+ *
+ * ⚠️ **ولا كلفةَ شبكةٍ زائدة**: نداءُ TMDB الواحد يعيد عشرين صفّاً
+ * أصلاً — **القصُّ كان عندنا لا عنده** (D-510: لا يُطلب ما لا يُعرض،
+ * **وقد كان يُطلب فعلاً**).
+ */
+const PEEK_TITLES = 10;
 /** والسقفُ حين تُختار الرقاقة — قائمةٌ تُمرَّر لا معاينة */
 const FULL = 24;
 
@@ -52,7 +67,8 @@ export async function GET(request: Request) {
   if (q.length < 2) return NextResponse.json(empty());
 
   const scope = asScope(url.searchParams.get("type"));
-  const want = (s: SearchScope) => (scope === "all" ? PEEK : scope === s ? FULL : 0);
+  const want = (s: SearchScope) =>
+    scope === "all" ? (s === "titles" ? PEEK_TITLES : PEEK) : scope === s ? FULL : 0;
   const { locale, t } = await getT();
   const mode = await getTitleMode();
 
