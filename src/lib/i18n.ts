@@ -1170,8 +1170,6 @@ const ar = {
   statsCellComments: "التعليقات",
   statsCellMoviesWatched: "الأفلام",
   /* **وهذه وحدَها تعدّ المكتبة لا المُشاهَد** — فاسمُها يقول أين تسكن */
-  statsCellTitles: "في المكتبة",
-  statsCellRating: "التقييم",
   statsTopShows: "الأكثر مشاهدة",
   diaryEpsGrouped: (n: number) =>
     n === 1
@@ -2554,8 +2552,6 @@ const en: Dict = {
   statsCellShows: "Series",
   statsCellComments: "Reviews",
   statsCellMoviesWatched: "Movies",
-  statsCellTitles: "In library",
-  statsCellRating: "Rating",
   statsTopShows: "Most watched",
   diaryEpsGrouped: (n: number) => `${n} episode${n === 1 ? "" : "s"}`,
   moviesGrouped: (n: number) => `${n} movie${n === 1 ? "" : "s"}`,
