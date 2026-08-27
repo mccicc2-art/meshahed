@@ -83,7 +83,7 @@ export async function MemberAnalysis({
 
   const tvFollows = follows.filter((f) => f.media_type === "tv");
 
-  const { topGenres, genreTags, bySlug } = tallyGenres(
+  const { topGenres, allGenres, genreTags, bySlug } = tallyGenres(
     follows.map((f) => genres.get(`${f.media_type}-${f.tmdb_id}`) ?? null),
     locale,
   );
@@ -164,6 +164,7 @@ export async function MemberAnalysis({
     bySlug,
     genreTags,
     topGenres,
+    allGenres,
     t,
     locale,
   });

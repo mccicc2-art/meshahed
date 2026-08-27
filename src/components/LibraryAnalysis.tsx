@@ -67,6 +67,13 @@ const BG_POSTERS = 3;
  * (D-217: لا رقمَ يَعِد بما لا يُعرض).
  */
 const ROW_WORKS = 24;
+/**
+ * 🆕 **سقفُ قائمة «بقيّة التصنيفات»** (D-723) — **سقفٌ واحدٌ للخانات
+ * الستّ**: الأنواعُ اثنا عشرَ فلا يمسّها، **والممثّلون مئاتٌ في مكتبةٍ
+ * من خمسمئة عمل** — **وورقةٌ بمئتي سطرٍ ليست قائمةً بل حائط.**
+ * ⚠️ **ويُقال حين يقصّ** (D-217) — العددُ الحقيقيُّ في رأس الورقة.
+ */
+const CELL_ENTRIES = 50;
 
 function fmtWatchTime(minutes: number, t: ReturnType<typeof getDict>) {
   const h = Math.round(minutes / 60);
@@ -146,6 +153,33 @@ interface TasteRowBase {
   total: number;
 }
 
+/**
+ * 🆕 **صفٌّ في قائمة «بقيّة التصنيفات»** (D-723) — **اسمٌ وقيمةٌ
+ * مصوغةٌ مسبقاً**: `buildTaste` تملك `t` و`locale` وتعرف وحدةَ كلِّ
+ * خانة، **والورقةُ لا تُعيد اشتقاقَ ما اشتُقّ** (وإلّا افترق نصُّ
+ * البطاقة عن نصِّ ورقتها يومَ تتغيّر صياغةٌ واحدة — القاعدة ٦).
+ * ⚠️ **وبلا `works`**: هذه قائمةُ تصنيفاتٍ لا قائمةُ أعمال — **والأعمالُ
+ * بابُها صفُّ البطاقة نفسُه** (D-721)، **وحملُ أعمالِ كلِّ صفٍّ هنا
+ * يضرب الحمولةَ في أربعةٍ وعشرين بلا أن يطلبها أحد** (D-510).
+ */
+export interface TasteEntry {
+  name: string;
+  value: string;
+  unit?: string;
+  /** رقمٌ لاتينيٌّ لا يُقلب مع الفقرة — العقودُ وحدَها */
+  ltr?: boolean;
+}
+
+/**
+ * 🆕 **قائمةٌ ومعها عددُها الحقيقيُّ قبل القصّ** (D-723) — **ولولاه
+ * لقالت الورقةُ «٥٠ من ٥٠» وهي تخفي مئةً وستّين** (D-217: المقصوصُ
+ * يقول كم قُصّ، **ولا يقوله من لا يعرفه**).
+ */
+export interface TasteList {
+  items: TasteEntry[];
+  total: number;
+}
+
 export interface TasteData {
   /** سماتٌ مشتقّةٌ من توزيع الأنواع — نصوصٌ جاهزةٌ بلغة القارئ */
   themes: string[];
@@ -163,6 +197,21 @@ export interface TasteData {
    * مكتبتك خلفك» من لوحين عُرضا عليه): **الأعمالُ التي صنعت رقمَ
    * الخانة**، ثلاثةٌ لكلٍّ — **لا زخرفةٌ تُقحم، بل الدليلُ خلف الرقم.**
    */
+  /**
+   * 🆕 **القوائمُ الكاملةُ خلف كلِّ عنوان** (D-723، بنصِّ أحمد بعد
+   * لقطتِه المخطَّطة: «الأشياء الي عليها خط احتاج اقدر اضغط عليها
+   * وتطلع قائمة بالأفلام **أو باقي التصنيفات**»).
+   * 🔑 **والبطاقةُ تعرض صدارةً لا كلّاً**: صفّان من اثني عشرَ نوعاً
+   * ومن مئاتِ الممثّلين — **ورقمُ الصدارة بلا بقيّتها يُقرأ كلَّ شيء.**
+   */
+  all: {
+    genres: TasteList;
+    decades: TasteList;
+    languages: TasteList;
+    countries: TasteList;
+    directors: TasteList;
+    actors: TasteList;
+  };
   posters: {
     genres: string[];
     decades: string[];
@@ -248,8 +297,13 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
      ⚠️ **والانتقالُ منطقيٌّ لا يمينيٌّ**: `items-end` و`text-end`
      ترتدّان مع الاتّجاه (القاعدة ١٧) — **والهويّةُ تبقى في صدر البطاقة
      والوقتُ في ذيلها المقابل**، فيقرأ العينُ قُطراً لا عموداً. */
+  /* 🆕 **وارتفعت درجةً** (D-723، بلاغُه: «وقت المشاهدة نزلت تحت شوي»):
+     **القوسُ الزخرفيُّ تحتها يأكل حشوةَ القاع** — `py-7` كتلةٌ ثابتةٌ
+     والقوسُ ١٦px يجلس فيها، **فبدت الكتلةُ ملتصقةً بالحافّة.**
+     **والعلاجُ في هامشها العلويِّ لا في الحشوة**: تقليصُ `py` يقصّر
+     البطاقةَ كلَّها وينقض D-713 بلا طلب. */
   const bigTime = (
-    <div className="mt-4 flex flex-col items-end text-end">
+    <div className="mt-2 flex flex-col items-end text-end">
       <div
         className="text-[30px] font-semibold leading-none tabular-nums"
         style={{ fontFamily: "ui-serif, Georgia, 'Times New Roman', serif" }}
@@ -426,21 +480,21 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
 
           <div className="mt-1 grid grid-cols-2 gap-x-4">
             {taste.genres.length > 0 && (
-              <TasteCell title={t.tasteGenres} posters={taste.posters.genres}>
+              <TasteCell title={t.tasteGenres} posters={taste.posters.genres} all={taste.all.genres} shown={taste.genres.length} locale={locale}>
                 {taste.genres.map((g) => (
                   <TasteRow key={g.name} name={g.name} value={`${g.pct}%`} works={g.works} total={g.total} locale={locale} />
                 ))}
               </TasteCell>
             )}
             {taste.decades.length > 0 && (
-              <TasteCell title={t.tasteYears} posters={taste.posters.decades}>
+              <TasteCell title={t.tasteYears} posters={taste.posters.decades} all={taste.all.decades} shown={taste.decades.length} locale={locale}>
                 {taste.decades.map((d) => (
                   <TasteRow key={d.label} name={d.label} value={`${d.pct}%`} ltr works={d.works} total={d.total} locale={locale} />
                 ))}
               </TasteCell>
             )}
             {taste.languages.length > 0 && (
-              <TasteCell title={t.tasteLanguages} divider posters={taste.posters.languages}>
+              <TasteCell title={t.tasteLanguages} divider posters={taste.posters.languages} all={taste.all.languages} shown={taste.languages.length} locale={locale}>
                 {taste.languages.map((l) => (
                   <TasteRow
                     key={l.code}
@@ -459,7 +513,7 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
                  كلمةً مجرّدةً ورقماً — **صارت تسمّي البلدانَ نفسَها**
                  (أعلى اثنين بعدِّ أعمالهما) **والمستوى وصفٌ في عنوانها**،
                  فوافقت أخواتِها الخمسَ في الشكل وزادت معنًى. */
-              <TasteCell title={t.tasteDiversity} note={taste.diversityLevel ?? undefined} divider posters={taste.posters.countries}>
+              <TasteCell title={t.tasteDiversity} note={taste.diversityLevel ?? undefined} divider posters={taste.posters.countries} all={taste.all.countries} shown={taste.countries.length} locale={locale}>
                 {taste.countries.map((c) => (
                   <TasteRow
                     key={c.name}
@@ -474,7 +528,7 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
               </TasteCell>
             )}
             {taste.directors.length > 0 && (
-              <TasteCell title={t.tasteDirectors} divider posters={taste.posters.directors}>
+              <TasteCell title={t.tasteDirectors} divider posters={taste.posters.directors} all={taste.all.directors} shown={taste.directors.length} locale={locale}>
                 {taste.directors.map((d) => (
                   <TasteRow
                     key={d.name}
@@ -489,7 +543,7 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
               </TasteCell>
             )}
             {taste.actors.length > 0 && (
-              <TasteCell title={t.tasteActors} divider posters={taste.posters.actors}>
+              <TasteCell title={t.tasteActors} divider posters={taste.posters.actors} all={taste.all.actors} shown={taste.actors.length} locale={locale}>
                 {taste.actors.map((a) => (
                   <TasteRow
                     key={a.name}
@@ -518,12 +572,25 @@ function TasteCell({
   note,
   divider = false,
   posters,
+  all,
+  shown,
+  locale,
   children,
 }: {
   title: string;
   /** وصفٌ بجانب العنوان — «متوسّط» بجانب «التنوّع» */
   note?: string;
   divider?: boolean;
+  /**
+   * 🆕 **بقيّةُ تصنيفات هذه الخانة** (D-723) — **العنوانُ بابُها.**
+   * **والفرقُ بينه وبين بابِ الصفّ فرقُ سؤالٍ لا فرقُ عمق**: الصفُّ
+   * يسأل «ما أعمالُ *هذا* النوع؟» والعنوانُ يسأل «وما بقيّةُ الأنواع؟»
+   * — **وسؤالان لا يُجابان ببابٍ واحد.**
+   */
+  all?: TasteList;
+  /** كم صفّاً تعرضه البطاقةُ أصلاً — **والبابُ لا يُرسم لما لا بقيّةَ له** */
+  shown?: number;
+  locale?: Locale;
   /**
    * 🆕 **صورُ خلفيّة الخانة، روابطَ جاهزة** (D-717/D-718) — ملصقاتُ
    * الأعمال التي صنعت الرقم، **أو وجوهُ الأشخاص في خانتَيهما** — انظر
@@ -532,6 +599,59 @@ function TasteCell({
   posters?: string[];
   children: React.ReactNode;
 }) {
+  /* 🆕 **والعنوانُ يصير باباً حين تكون خلفَه بقيّة** (D-723، لقطتُه
+     المخطَّطة: الخطوطُ الزرقاءُ كانت تحت **العناوين** لا تحت الصفوف —
+     **وقد قرأتُها أوّلَ مرّةٍ صفوفاً، فبنيتُ البابَ الصحيحَ في المكان
+     الخطأ**).
+     ⚠️ **ولا يُرسم لخانةٍ لا بقيّةَ لها** (D-030/D-217): من له لغتان
+     يرى العنوانَ نصّاً كما كان، **وبابٌ يفتح على ما تراه أصلاً وعدٌ
+     فارغ.**
+     ⚠️ **والخطُّ المنقَّطُ وصفةُ D-722 حرفاً** — **علامةٌ واحدةٌ لمعنى
+     «هذا يُفتح» في البطاقة كلِّها**، صفّاً كان أو عنواناً (القاعدة ٣). */
+  const opens = Boolean(all && locale && all.total > (shown ?? 0));
+  const label = (
+    <>
+      <span className={opens ? "underline decoration-dotted underline-offset-2" : undefined}>
+        {title}
+      </span>
+      {note && <span className="text-accent font-semibold"> · {note}</span>}
+    </>
+  );
+  const head =
+    opens && all && locale ? (
+      <span className="relative block mb-1.5">
+        <ProfileStatSheet
+          title={title}
+          closeLabel={getDict(locale).closeLabel}
+          className="block w-full text-start text-13 text-muted active:opacity-70 transition"
+          content={
+            <div className="space-y-3">
+              <p className="text-12 text-muted">
+                {all.total > all.items.length
+                  ? getDict(locale).entriesShownOf(num(all.items.length, locale), num(all.total, locale))
+                  : num(all.total, locale)}
+              </p>
+              {/* **والصفُّ وصفةُ `TasteRow` بلا أعمال** — **الوجهُ واحدٌ
+                  داخلَ الورقة وخارجَها** (القاعدة ٣)، **والأعمالُ بابُها
+                  صفُّ البطاقة لا هذه القائمة** (D-510: لا يُحمَّل ما لا
+                  يُعرض). */}
+              <ul className="space-y-2.5">
+                {all.items.map((e) => (
+                  <li key={e.name}>
+                    <TasteRow name={e.name} value={e.value} unit={e.unit} ltr={e.ltr} />
+                  </li>
+                ))}
+              </ul>
+            </div>
+          }
+        >
+          {label}
+        </ProfileStatSheet>
+      </span>
+    ) : (
+      <span className="relative block text-13 text-muted mb-1.5">{label}</span>
+    );
+
   return (
     <div
       className={`relative overflow-hidden py-3 min-w-0 ${
@@ -555,10 +675,7 @@ function TasteCell({
           ))}
         </span>
       )}
-      <span className="relative block text-13 text-muted mb-1.5">
-        {title}
-        {note && <span className="text-accent font-semibold"> · {note}</span>}
-      </span>
+      {head}
       <span className="relative block space-y-1.5">{children}</span>
     </div>
   );
@@ -736,10 +853,19 @@ export function buildTaste(args: {
   bySlug: Map<string, number>;
   genreTags: number;
   topGenres: { name: string; count: number }[];
+  /**
+   * 🆕 **الأنواعُ كلُّها مرتَّبةً** (D-723) — قائمةُ «بقيّة التصنيفات».
+   * ⚠️ **واختياريّةٌ بحجّةٍ لا بتسامح**: **قارئٌ واحدٌ يُسقطها وهو
+   * `‎/api/share`** — **صورةٌ ترسم الصدارةَ ولا تُفتح فيها ورقة**،
+   * **فقائمةُ البقيّة فيها حمولةٌ لا يراها أحد** (D-510). **والسقوطُ
+   * إلى الصدارة لا إلى فراغ.**
+   */
+  allGenres?: { name: string; count: number }[];
   t: ReturnType<typeof getDict>;
   locale: Locale;
 }): TasteData | null {
   const { keys, metas, bySlug, genreTags, topGenres, t, locale } = args;
+  const allGenres = args.allGenres ?? topGenres;
 
   const g = (slug: string) => bySlug.get(slug) ?? 0;
   const themeScores: { label: string; score: number }[] = [
@@ -966,7 +1092,54 @@ export function buildTaste(args: {
     actors: faces(actors).length ? faces(actors) : url(actorP.get(actors[0]?.name ?? "")),
   };
 
-  return { themes, genres, decades, languages, countries, diversityLevel, directors, actors, posters };
+  /* 🆕 **بقيّةُ التصنيفات — قائمةٌ مرتَّبةٌ لكلِّ خانة** (D-723).
+     ⚠️ **وسقفٌ واحدٌ للستِّ يُقال حين يقصّ** (D-217): الأنواعُ اثنا عشرَ
+     والعقودُ عشرةٌ **والممثّلون مئاتٌ في مكتبةٍ من خمسمئة عمل** — **ولا
+     ورقةَ تُقرأ بمئتي سطر.** 🔑 **والصياغةُ هنا لا في الورقة**: `t`
+     و`locale` في اليد، **وسطرُ البطاقة وسطرُ ورقتها يجب أن يخرجا من
+     مصنعٍ واحد** (القاعدة ٦). */
+  const entry = (name: string, n: number): TasteEntry => ({
+    name,
+    value: num(n, locale),
+    unit: unitWord(t.personWorksCount(n)),
+  });
+  /* **والعددُ الحقيقيُّ يُلتقط قبل القصّ لا بعده** — `slice` تمحو ما
+     نريد أن نُخبر عنه (D-217). */
+  const listOf = <T,>(rows: T[], map: (row: T) => TasteEntry): TasteList => ({
+    items: rows.slice(0, CELL_ENTRIES).map(map),
+    total: rows.length,
+  });
+  const ranked = <K,>(m: Map<K, number>) => [...m.entries()].sort((a, b) => b[1] - a[1]);
+  const all = {
+    genres: listOf(allGenres, (g) => ({ name: g.name, value: `${pct(g.count, genreTags)}%` })),
+    decades: listOf(ranked(decadeTally), ([d, n]) => ({
+      name: t.tasteDecade(d),
+      value: `${pct(n, yearTotal)}%`,
+      ltr: true,
+    })),
+    languages: listOf(ranked(langTally), ([code, n]) => {
+      let name = code.toUpperCase();
+      try {
+        name = dn?.of(code) ?? name;
+      } catch {
+        /* رمزٌ شاذٌّ يبقى رمزاً */
+      }
+      return entry(name, n);
+    }),
+    countries: listOf(ranked(countryTally), ([code, n]) => {
+      let name = code;
+      try {
+        name = rn?.of(code) ?? code;
+      } catch {
+        /* رمزٌ شاذٌّ يبقى رمزاً */
+      }
+      return entry(name, n);
+    }),
+    directors: listOf(ranked(directorTally), ([name, n]) => entry(name, n)),
+    actors: listOf(ranked(actorTally), ([name, n]) => entry(name, n)),
+  };
+
+  return { themes, genres, decades, languages, countries, diversityLevel, directors, actors, all, posters };
 }
 
 export function pickTasteTrioSlots(
@@ -1005,7 +1178,18 @@ export function pickTasteTrioSlots(
 export function tallyGenres(
   rows: readonly (number[] | null | undefined)[],
   locale: Locale,
-): { topGenres: { name: string; count: number }[]; genreTags: number; bySlug: Map<string, number> } {
+): {
+  topGenres: { name: string; count: number }[];
+  /**
+   * 🆕 **والقائمةُ الكاملةُ مرتَّبةً** (D-723) — **الأسماءُ تسكن `tally`
+   * هنا ولا تُصدَّر**، و`bySlug` تحمل الأعدادَ بمفاتيحَ لا بأسماء:
+   * **فمن أراد «بقيّةَ الأنواع» لزمه أن يعكس المفتاحَ إلى اسمِه خارجَ
+   * هذه الدالّة** — **وعكسٌ يُكتب مرّتين يفترق مرّة.**
+   */
+  allGenres: { name: string; count: number }[];
+  genreTags: number;
+  bySlug: Map<string, number>;
+} {
   const tally = new Map<string, { name: string; count: number }>();
   let genreTags = 0;
   for (const ids of rows) {
@@ -1022,11 +1206,12 @@ export function tallyGenres(
       genreTags++;
     }
   }
-  const topGenres = [...tally.values()].sort((a, b) => b.count - a.count).slice(0, 4);
+  const allGenres = [...tally.values()].sort((a, b) => b.count - a.count);
+  const topGenres = allGenres.slice(0, 4);
   /* 🆕 D-700: الخريطةُ الكاملةُ للسمات — القمّةُ وحدَها لا تكفي مشتقّها */
   const bySlug = new Map<string, number>();
   for (const [slug, v] of tally) bySlug.set(slug, v.count);
-  return { topGenres, genreTags, bySlug };
+  return { topGenres, allGenres, genreTags, bySlug };
 }
 
 /**
@@ -1133,7 +1318,7 @@ export async function LibraryAnalysis({
     const ids = fetched[i]?.genres?.map((g) => g.id) ?? [];
     if (ids.length) fetchedIds.set(`${f.media_type}-${f.tmdb_id}`, ids);
   });
-  const { topGenres, genreTags, bySlug } = tallyGenres(
+  const { topGenres, allGenres, genreTags, bySlug } = tallyGenres(
     follows.map((f) => f.genres ?? fetchedIds.get(`${f.media_type}-${f.tmdb_id}`) ?? null),
     locale,
   );
@@ -1215,6 +1400,7 @@ export async function LibraryAnalysis({
     bySlug,
     genreTags,
     topGenres,
+    allGenres,
     t,
     locale,
   });
