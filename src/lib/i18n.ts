@@ -1739,7 +1739,6 @@ const ar = {
   statusWatching: "جارية",
   statusNotStarted: "ما بدأتها",
   /* 🆕 صفحةُ الإحصائيات بتصميم أحمد (D-679) */
-  statsTasteTrio: "ثلاثية ذوقك",
   statsLibraryProgress: "تقدّم المكتبة",
   statsAvgLabel: "متوسط التقييم",
   avgRatingLabel: (n: string) => `متوسط تقييمك ${n} من ١٠`,
@@ -3026,7 +3025,6 @@ const en: Dict = {
   statusWatching: "In progress",
   statusNotStarted: "Not started",
   /* 🆕 Stats page, Ahmed's design (D-679) */
-  statsTasteTrio: "Taste Trio",
   statsLibraryProgress: "Library Progress",
   statsAvgLabel: "Average rating",
   avgRatingLabel: (n: string) => `You average ${n} out of 10`,
