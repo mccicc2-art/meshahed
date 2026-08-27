@@ -356,41 +356,53 @@ export function ListCardShell({
           يمتدّ إلى آخر البطاقة بعتمة ١٠٪ **وفوقَه حزامٌ سفليٌّ كامل**
           — **فقُرئ غباراً لا حجاباً.** صار يذوب إلى الصفر عند ٧٢٪
           **وسقط الحزامُ السفليّ**: شريطُ الحال يجلس في الجهة الداكنة
-          أصلاً، **ورقاقةُ المفتاح تحمل أرضيّتها بنفسها.** */}
+          أصلاً، **ورقاقةُ المفتاح تحمل أرضيّتها بنفسها.**
+          🆕 **ثمّ صار «ذكيّاً» (D-686، حكمُه: «خله ذكي حول الكلام
+          والأيقونات بحيث البوسترات واضحة»)**: الذوبانُ اكتمل عند ٦٠٪،
+          **والنصوصُ حُبست في عموده** (`max-w-[58%]` — نصٌّ لا يغادر
+          حجابَه لا يحتاج حجاباً يطارده)، **وعنقودُ الحال لبس هالتَه
+          المحلّيّة** — العتمةُ تتبع الكلامَ لا تفترش البطاقة. */}
       <span
         aria-hidden
-        className="absolute inset-0 bg-gradient-to-r rtl:bg-gradient-to-l from-[color:var(--surface)] from-[30%] via-[color:var(--surface)]/60 via-[50%] to-transparent to-[72%]"
+        className="absolute inset-0 bg-gradient-to-r rtl:bg-gradient-to-l from-[color:var(--surface)] from-[32%] via-[color:var(--surface)]/60 via-[44%] to-transparent to-[60%]"
       />
 
       <span className="relative flex h-full min-h-[10.5rem] flex-col p-3.5">
         <span className="flex items-start gap-1.5">
           {icon && <span className="shrink-0 mt-0.5">{icon}</span>}
-          <span dir="auto" className="min-w-0 flex-1 text-15 font-bold leading-snug line-clamp-2 break-words">
+          <span dir="auto" className="min-w-0 flex-1 max-w-[58%] text-15 font-bold leading-snug line-clamp-2 break-words">
             {name}
           </span>
           {action && <span className="shrink-0">{action}</span>}
         </span>
         {(ownerAvatar || ownerName) && (
-          <span className="mt-1.5 flex items-center gap-1.5 text-12 text-muted min-w-0">
+          <span className="mt-1.5 flex items-center gap-1.5 text-12 text-muted min-w-0 max-w-[58%]">
             {ownerAvatar}
             {ownerName && <span className="truncate">{ownerName}</span>}
           </span>
         )}
-        <span className="mt-1 text-12 text-muted min-w-0 truncate">
+        <span className="mt-1 text-12 text-muted min-w-0 max-w-[58%] truncate">
           {countText}
           {extra ?? ""}
         </span>
 
         {(stats.length > 0 || play) && (
           <span className="mt-auto pt-3 flex items-center min-w-0">
-            {stats.map((node, i) => (
-              <span key={i} className="flex items-center shrink-0">
-                {i > 0 && (
-                  <span aria-hidden className="w-px h-4 bg-[color:var(--divider)] mx-2.5" />
-                )}
-                {node}
+            {stats.length > 0 && (
+              /* **هالةُ العنقود المحلّيّة** (D-686): أرضيّةٌ بعرض محتواه
+                 لا حزامٌ بعرض البطاقة (نقضُ الحزامِ في D-678 باقٍ) —
+                 فالملصقاتُ بين العنقود والمفتاح صافية. */
+              <span className="flex items-center rounded-full bg-[color:var(--surface)]/70 -ms-1.5 px-2 py-1">
+                {stats.map((node, i) => (
+                  <span key={i} className="flex items-center shrink-0">
+                    {i > 0 && (
+                      <span aria-hidden className="w-px h-4 bg-[color:var(--divider)] mx-2.5" />
+                    )}
+                    {node}
+                  </span>
+                ))}
               </span>
-            ))}
+            )}
             {play && <span className="ms-auto ps-2 shrink-0">{play}</span>}
           </span>
         )}
