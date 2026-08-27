@@ -1270,7 +1270,11 @@ export default async function PublicProfilePage({
                     <span className="text-15 font-bold leading-none tabular-nums">
                       {c.value}
                     </span>
-                    <span className="text-12 text-muted leading-none truncate">
+                    {/* 🆕 D-699 (حكمُه: «حجم الخط خله متوافق مع الرقم،
+                        طالع صغير»): الكلمةُ ١٢←١٤ بجوار رقمها الـ١٥ —
+                        **وميزانُ D-676 باقٍ: الخاناتُ الثلاثُ مقاسٌ
+                        واحد**، فخانةُ الإحصائيات تصعد معها أدناه. */}
+                    <span className="text-14 text-muted leading-none truncate">
                       {c.label}
                     </span>
                   </span>
@@ -1306,7 +1310,7 @@ export default async function PublicProfilePage({
                    🔑 **والوزنُ يبقى `font-semibold`**: هو الفرقُ بين
                    **بابٍ يُضغط** وكلمةٍ تصف رقماً — **والمطلوبُ توحيدُ
                    المقاس لا محوُ الفرق.** */
-                className="flex items-center justify-center gap-1 px-4 py-3 text-12 font-semibold text-muted hover:text-accent transition"
+                className="flex items-center justify-center gap-1 px-4 py-3 text-14 font-semibold text-muted hover:text-accent transition"
               >
                 {/* ⚖️ 🆕 **والكلمةُ أقصر، ومن الوجهة نفسِها** (D-676،
                     ذيلُ حكمه: «ولو فيه كلمة أقصر اكتبها») — **نظيرُ
