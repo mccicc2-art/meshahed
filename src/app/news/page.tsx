@@ -1247,13 +1247,24 @@ async function CuratedRails({
   const ctx: CuratedCtx = { locale, t, browse, eraR, qs, rails, today, unmute, wantMovies, wantSeries };
 
   /* الصفّان الشخصيّان — Suspense مستقلّ منذ م٧/D-071، بشرطَي D-197 */
-  const personal =
+  /* ⚖️ 🆕 **وصفُّ السينما يسبق صفَّ الفنّانين** (D-735، حكمُه بلقطةٍ
+     محوَّطة: «في السينما خلّها قبل الفنانين») — **نقضٌ لترتيبٍ كُتب في
+     D-338**: «الشخصيُّ يسبق العامّ».
+     🔑 **وحجّةُ النقض أن «الآن في السينما» ليس عامّاً**: **هو أضيقُ
+     الصفوف زمناً** — يسقط بعد أسابيع، **وصفٌّ له تاريخُ انتهاءٍ يسبق
+     صفّاً لا ينتهي** مهما كان الثاني أقربَ إلى صاحبه.
+     ⚠️ **والحقنُ بفتحةٍ لا بشطرِ المكوّن**: `PersonalRails` تجلب
+     بياناتِها وتقرّر فراغَها بنفسها — **وشطرُها لأجل ترتيبٍ يضاعف
+     النداءات**، **وفتحةٌ تُمرَّر عقدةً جاهزةً لا تكلّف شيئاً.**
+     ⚠️ **وحين يغيب الشخصيُّ كلُّه تُرسم الفتحةُ وحدَها** — **وترتيبٌ
+     يُنفَّذ بإخفاء صفٍّ ليس ترتيباً.** */
+  const personalWith = (slot: React.ReactNode) =>
     (!active || localAxesOnly(browse)) ? (
       <Suspense fallback={<RailSkeleton count={6} />}>
         {/* الجهة تُمرَّر: التبويب وعدٌ، والصفّ الذي لا يعرف تبويبه يخلفه */}
-        <PersonalRails locale={locale} t={t} type={type} browse={active ? browse : undefined} myRows={myRows} tab={type === "tv" ? "shows" : "movies"} region={region} />
+        <PersonalRails locale={locale} t={t} type={type} browse={active ? browse : undefined} myRows={myRows} tab={type === "tv" ? "shows" : "movies"} region={region} slot={slot} />
       </Suspense>
-    ) : null;
+    ) : slot;
 
   if (active) {
     /* ===== الفلترُ مفعَّل: الحاجزُ القديم كما هو حرفاً (D-515) =====
@@ -1286,8 +1297,7 @@ async function CuratedRails({
 
     return (
       <div className="space-y-6">
-        {personal}
-        <CinemasView inCinemas={inCinemas} lib={lib} ctx={ctx} />
+        {personalWith(<CinemasView inCinemas={inCinemas} lib={lib} ctx={ctx} />)}
         <PopularView popular={popular} lib={lib} ctx={ctx} />
         <TopTenView mt="movie" rows={topMovies} lib={lib} ctx={ctx} />
         <TopTenView mt="tv" rows={topSeries} lib={lib} ctx={ctx} />
@@ -1312,11 +1322,12 @@ async function CuratedRails({
      **بلا نداءٍ ثانٍ: يعيد انتظارَ المواعيد نفسِها.** */
   return (
     <div className="space-y-6">
-      {personal}
-      {wantMovies && (
-        <Suspense fallback={<RailSkeleton count={6} />}>
-          <CinemasRail promises={promises} ctx={ctx} />
-        </Suspense>
+      {personalWith(
+        wantMovies ? (
+          <Suspense fallback={<RailSkeleton count={6} />}>
+            <CinemasRail promises={promises} ctx={ctx} />
+          </Suspense>
+        ) : null,
       )}
       <Suspense fallback={<RailSkeleton count={6} />}>
         <PopularRail promises={promises} ctx={ctx} />
@@ -1969,6 +1980,7 @@ async function PersonalRails({
   myRows = [],
   tab = "",
   region,
+  slot,
 }: {
   locale: Locale;
   t: T;
@@ -1982,6 +1994,13 @@ async function PersonalRails({
    * تُبنى كلٌّ وحدها، وغيابُه = «لا فلتر» — وهو السلوكُ القائم حرفاً بحرف.
    */
   browse?: BrowseQuery;
+  /**
+   * 🆕 **فتحةٌ تُرسم قبل صفِّ الفنّانين** (D-735) — **صفُّ «الآن في
+   * السينما» يُمرَّر عقدةً جاهزة.**
+   * 🔑 **ولماذا فتحةٌ لا شطرُ المكوّن**: هذا المكوّنُ يجلب بياناتِه
+   * **ويقرّر فراغَه بنفسه** — **وشطرُه لأجل ترتيبٍ يضاعف النداءات.**
+   */
+  slot?: React.ReactNode;
   /** 🆕 صفوفُك الخاصة (D-337→D-338، تصحيحُ أحمد: «تكون بعد picked for you») */
   myRows?: MyRow[];
   tab?: string;
@@ -2044,7 +2063,10 @@ async function PersonalRails({
   /* ⚖️ **وصفوفُك تبقى مع الفلتر** (D-378، نقضُ تطبيق D-075 عليها):
      **الصفُّ يستطيع الطاعة فيطيع** — والذي يُخفيه فراغُه لا وجودُ فلتر. */
   const showMyRows = myRows.length > 0;
-  if (suggested.length === 0 && artistRows.length === 0 && !showMyRows) return null;
+  /* ⚠️ **والفتحةُ تنجو من الخروج المبكر** (D-735): **صفُّ السينما لا
+     يخصّ هذا المكوّنَ ولا يسقط بسقوط بياناته** — **وترتيبٌ يُنفَّذ
+     بإخفاء صفٍّ ليس ترتيباً.** */
+  if (suggested.length === 0 && artistRows.length === 0 && !showMyRows) return slot ?? null;
 
   return (
     <div className="space-y-6">
@@ -2086,8 +2108,13 @@ async function PersonalRails({
         </Suspense>
       )}
 
-      {/* «من فنّانيك» بعد المقترحات مباشرة: كلاهما صفٌّ شخصيّ، والشخصيّ
-          يسبق العامّ. غير مرقّم — هذه أحدث أعمال فنّانيك لا ترتيبها */}
+      {/* ⚖️ 🆕 **وصفُّ السينما هنا** (D-735، حكمُه) — **نقضُ «الشخصيُّ
+          يسبق العامّ» في هذا الموضع وحدَه**: «الآن في السينما» صفٌّ له
+          تاريخُ انتهاء، **وما ينتهي يسبق ما لا ينتهي.** */}
+      {slot}
+
+      {/* «من فنّانيك» بعد المقترحات: غير مرقّم — هذه أحدث أعمال
+          فنّانيك لا ترتيبها */}
       {artistRows.length > 0 && (
         <RankedRail
           title={t.artistsRail}
