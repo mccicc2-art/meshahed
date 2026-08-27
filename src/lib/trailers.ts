@@ -6,6 +6,7 @@ import { titleOf } from "@/lib/media";
 import { getDict, type Locale } from "@/lib/i18n";
 import { browseGenreForId, browseGenreName } from "@/lib/browse";
 import { originAdjectives } from "@/lib/region";
+import { looksAnime } from "@/lib/topChart";
 
 /**
  * 🆕 **علفُ «ترايلرات لك»** (D-726، مواصفةُ أحمد المكتوبة).
@@ -68,13 +69,43 @@ const PROBE = 14;
  */
 const POOL = 300;
 
-export async function getTrailerFeed(limit: number, locale: Locale): Promise<TrailerItem[]> {
+/**
+ * 🔴 **والتبويبُ فلترٌ لا زينة** (D-731، بلاغُ أحمد: «في صفحة الأفلام
+ * والأنمي لا يظهر لي ترايلر») — **وهي عينُ الشكوى التي أصلحها الصفُّ
+ * المجاور قبل شهر**: «بيكد فور يو فالأفلام قاعد يقترح مسلسلات».
+ * 🔑 **وقد قرأتُ ذلك السطرَ يومَ بنيتُ هذا الصفَّ ولم أطبّقه**: **أخذتُ
+ * من `getSuggestions` بِركتَها ولم آخذ شرطَها** — **ووراثةُ المصدر
+ * ليست وراثةَ قواعده.**
+ * ⚠️ **والشرطان لا شرطٌ واحد** (D-197 وسابقةُ ١٢ أغسطس): الجهةُ
+ * **وألّا يكون أنمي** — **فمن يتابع أنمي تأتيه مقترحاتُ أنميٍ فتظهر في
+ * تبويب المسلسلات**، وله تبويبُه.
+ * ⚠️ **والتصفيةُ قبل السَّبر لا بعده**: **لو سبرتُ أربعةَ عشرَ ثمّ
+ * صفّيتُ لخرج الصفُّ فارغاً في تبويبٍ مليء** — **والقصُّ يسبق التصفية
+ * عطلٌ صامت.**
+ */
+export type TrailerScope = "movies" | "shows" | "anime";
+
+export async function getTrailerFeed(
+  limit: number,
+  locale: Locale,
+  scope?: TrailerScope,
+): Promise<TrailerItem[]> {
   const t = getDict(locale);
   /* **والاقتراحاتُ تُطلب واسعةً ثمّ تُقصّ**: `getSuggestions` تخلط
      وتُصفّي المصروفَ والمُشاهَد، **وسقفُها الداخليُّ هو ما نمرّره.** */
   const all = await getSuggestions(POOL, locale).catch(() => []);
   if (!all.length) return [];
-  const pool = all.slice(0, PROBE);
+  const inScope = scope
+    ? all.filter((s) =>
+        scope === "anime"
+          ? looksAnime(s.result)
+          : (scope === "movies"
+              ? s.result.media_type === "movie"
+              : s.result.media_type === "tv") && !looksAnime(s.result),
+      )
+    : all;
+  const pool = inScope.slice(0, PROBE);
+  if (!pool.length) return [];
 
   const withKeys = await Promise.all(
     pool.map(async (s): Promise<TrailerItem | null> => {
