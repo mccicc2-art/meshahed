@@ -205,6 +205,11 @@ export function ShareCard(d: ShareCardData) {
               flex: 1,
               backgroundImage: `url(${src})`,
               backgroundSize: "cover",
+              /* 🔴 🆕 **و`no-repeat` صريحةٌ لا افتراضيّة** (D-720، مقيسٌ
+                 على أوّل نشرةٍ حيّة): **الافتراضُ في CSS `repeat`** —
+                 **فملصقٌ طويلٌ في صندوقٍ عريضٍ يتكرّر رأسيّاً**،
+                 وخرجت الترويسةُ بستّة ملصقاتٍ بدل ثلاثة. */
+              backgroundRepeat: "no-repeat",
               backgroundPosition: "center",
             }}
           />
@@ -288,6 +293,11 @@ export function ShareCard(d: ShareCardData) {
                   flex: 1,
                   backgroundImage: `url(${p})`,
                   backgroundSize: "cover",
+              /* 🔴 🆕 **و`no-repeat` صريحةٌ لا افتراضيّة** (D-720، مقيسٌ
+                 على أوّل نشرةٍ حيّة): **الافتراضُ في CSS `repeat`** —
+                 **فملصقٌ طويلٌ في صندوقٍ عريضٍ يتكرّر رأسيّاً**،
+                 وخرجت الترويسةُ بستّة ملصقاتٍ بدل ثلاثة. */
+              backgroundRepeat: "no-repeat",
                   backgroundPosition: "center",
                 }}
               />
