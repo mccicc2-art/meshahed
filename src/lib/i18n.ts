@@ -1749,6 +1749,15 @@ const ar = {
   trailerMyList: "مكتبتي",
   trailerNotForMe: "ليس لي",
   trailersEmpty: "لا ترايلرات الآن — تابِع أعمالاً أو قيّم بعضَها وسيمتلئ هذا الصفّ.",
+  /* 🆕 **أسماءُ تبويبات صفحة الترايلرات** (D-734) */
+  trailerTabForYou: "لك",
+  trailerTabTrending: "رائج",
+  trailerTabMovies: "أفلام",
+  trailerTabShows: "مسلسلات",
+  trailerTabAnime: "أنمي",
+  /* **وفراغُ تبويبِ الكتالوج غيرُ فراغِ «لك»** (D-222): ذاك يُصلحه أن
+     تتابع، وهذا عطلُ مصدرٍ لا حيلةَ للقارئ فيه. */
+  trailersTabEmpty: "لا ترايلرات في هذا التبويب الآن.",
   panelRatings: "تقييماتي",
   reviewSectionTitle: "تعليقك",
   saveReview: "احفظ التعليق",
@@ -3040,6 +3049,12 @@ const en: Dict = {
   trailerMyList: "My List",
   trailerNotForMe: "Not for me",
   trailersEmpty: "No trailers yet — follow or rate a few titles and this row fills up.",
+  trailerTabForYou: "For You",
+  trailerTabTrending: "Trending",
+  trailerTabMovies: "Movies",
+  trailerTabShows: "Shows",
+  trailerTabAnime: "Anime",
+  trailersTabEmpty: "No trailers in this tab right now.",
   panelRatings: "My ratings",
   reviewSectionTitle: "Your comment",
   saveReview: "Save comment",

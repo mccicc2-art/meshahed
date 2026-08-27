@@ -1,12 +1,15 @@
 import "server-only";
 
 import { getSuggestions } from "@/lib/suggest";
-import { getTrailer, backdropUrl, yearOf } from "@/lib/tmdb";
+import { getTrailer, backdropUrl, yearOf, trending, type SearchResult } from "@/lib/tmdb";
+import { buildSection } from "@/lib/sections";
 import { titleOf } from "@/lib/media";
 import { getDict, type Locale } from "@/lib/i18n";
 import { browseGenreForId, browseGenreName } from "@/lib/browse";
 import { originAdjectives } from "@/lib/region";
 import { looksAnime } from "@/lib/topChart";
+import type { TrailerTab } from "@/lib/trailerTabs";
+export { asTrailerTab, TRAILER_TABS, type TrailerTab } from "@/lib/trailerTabs";
 
 /**
  * 🆕 **علفُ «ترايلرات لك»** (D-726، مواصفةُ أحمد المكتوبة).
@@ -54,8 +57,13 @@ export interface TrailerItem {
    * تُمرَّر، وثلاثةُ أسطرٍ في كلٍّ تُطيل الصفَّ بلا أن تُقرأ** (D-510).
    */
   overview: string | null;
-  /** «لأنك تحبّ …» — **نصُّ `getSuggestions` نفسُه لا صياغةٌ ثانية** */
-  note: string;
+  /**
+   * «لأنك تحبّ …» — **نصُّ `getSuggestions` نفسُه لا صياغةٌ ثانية**.
+   * ⚠️ **واختياريٌّ منذ D-734**: **تبويباتُ الكتالوج لا سببَ شخصيَّ لها**
+   * — **وسطرُ «لأنك…» تحت عملٍ رائجٍ عالميّاً كذبٌ صغير** (D-217)،
+   * **والغيابُ أصدقُ من صياغةٍ عامّة.**
+   */
+  note?: string;
 }
 
 /** كم عملاً يُسأل عن مقطعه — **وما زاد على الحاجة ثمنُه نداءٌ لا يُعرض** */
@@ -84,6 +92,78 @@ const POOL = 300;
  * عطلٌ صامت.**
  */
 export type TrailerScope = "movies" | "shows" | "anime";
+
+/**
+ * 🆕 **تبويباتُ صفحة الترايلرات** (D-734، المرحلةُ الثانية بحكمه).
+ *
+ * 🔑 **و«لك» وحدَها شخصيّةٌ والأربعُ الباقية كتالوج**: **تبويبٌ يُصفّي
+ * ترشيحَك الشخصيَّ يبقى فقيراً بفقر مكتبتك** — **ومن فتح «أفلام» يريد
+ * أفلاماً لا أفلاماً تخصّه.** **والشخصيُّ له تبويبُه الأوّل.**
+ * ⚠️ **والمصادرُ قائمةٌ كلُّها**: `trending()` و`buildSection("most-popular")`
+ * **بحرّاسها وكتمِ لغاتها** (D-545) — **ولا مصدرَ سادسٌ يُكتب لهذه
+ * الصفحة** (القاعدة ٣/D-731: وراثةُ المصدر تعني وراثةَ قواعده).
+ */
+/* 🔴 **والمفرداتُ في `trailerTabs.ts` لا هنا** — هذا الملفُّ
+   `server-only`، **وشريطُ الرقائق عميل** (انظر رأسَ ذلك الملفّ). */
+
+/**
+ * **صفٌّ من TMDB يصير بطاقةَ ترايلر** — **ووصفةٌ واحدةٌ للتبويبات
+ * الخمسة** (القاعدة ٣): **ما يفترق بينها هو المصدرُ وحدَه.**
+ */
+async function shape(
+  rows: SearchResult[],
+  locale: Locale,
+  limit: number,
+  note?: (r: SearchResult) => string,
+): Promise<TrailerItem[]> {
+  const withKeys = await Promise.all(
+    rows.slice(0, PROBE).map(async (r): Promise<TrailerItem | null> => {
+      const mediaType = r.media_type === "movie" ? ("movie" as const) : ("tv" as const);
+      const trailer = await getTrailer(mediaType, r.id).catch(() => null);
+      if (!trailer?.key) return null;
+      const g = r.genre_ids?.length ? browseGenreForId(r.genre_ids[0]) : null;
+      const country: string | null =
+        originAdjectives({ origin: r.origin_country }, locale === "en" ? "en" : "ar", 1)[0] ?? null;
+      return {
+        tmdbId: r.id,
+        mediaType,
+        title: titleOf(r),
+        videoKey: trailer.key,
+        backdrop: backdropUrl(r.backdrop_path ?? null, "w780"),
+        posterPath: r.poster_path ?? null,
+        year: yearOf(r) ?? "",
+        genre: g ? browseGenreName(g, locale) : null,
+        country,
+        overview: r.overview?.trim() || null,
+        note: note?.(r),
+      };
+    }),
+  );
+  return withKeys.filter((x): x is TrailerItem => x !== null).slice(0, limit);
+}
+
+/**
+ * **علفُ تبويبٍ واحد** (D-734).
+ * ⚠️ **والصمتُ عند فشل المصدر** — تبويبٌ فارغٌ خيرٌ من صفحةٍ ساقطة.
+ */
+export async function getTrailerTabFeed(
+  tab: TrailerTab,
+  limit: number,
+  locale: Locale,
+): Promise<TrailerItem[]> {
+  if (tab === "for-you") return getTrailerFeed(limit, locale);
+  if (tab === "trending") {
+    const rows = await trending().catch(() => []);
+    return shape(rows, locale, limit);
+  }
+  const media = tab === "anime" ? "anime" : tab === "movies" ? "movie" : "tv";
+  const rows = await buildSection(
+    "most-popular",
+    { media, base: {}, active: false },
+    PROBE,
+  ).catch(() => []);
+  return shape(rows, locale, limit);
+}
 
 export async function getTrailerFeed(
   limit: number,
