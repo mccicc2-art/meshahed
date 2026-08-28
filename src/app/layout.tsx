@@ -20,6 +20,7 @@ import { HeaderShell } from "@/components/HeaderShell";
 import { ChromeAutoHide } from "@/components/ChromeAutoHide";
 import { AccountSync } from "@/components/AccountSync";
 import { LangPing } from "@/components/LangPing";
+import { PresencePing } from "@/components/PresencePing";
 import { getLocale } from "@/lib/locale";
 import { seoKeywords } from "@/lib/seo";
 
@@ -249,6 +250,10 @@ export default async function RootLayout({
             الرسم مرّةً في الجلسة، **والترويسةُ تُقرأ على الخادم.**
             ⚠️ **وليست في `Suspense`**: لا تجلب شيئاً ولا تُبثّ. */}
         <LangPing />
+        {/* 🆕 **نبضةُ الحضور** (D-765) — أختُ LangPing: لا ترسم شيئاً،
+            وللمسجَّل وحدَه (كوكي الجلسة نفسُه الذي يحرس الشريط — D-122):
+            نبضةُ زائرٍ نداءُ فعلٍ يُرفض حتماً، وثمنُه بلا معنى. */}
+        {signedIn && <PresencePing />}
         {/* مساحة سفلية على الجوال حتى لا يغطي شريط التبويبات المحتوى */}
         {/* **السحبُ للتحديث في التخطيط لا في كل صفحة** (D-243، طلبُ
             أحمد: «إذا سحبت يعمل تحديث مثل تويتر»). **وتويتر لا يحصره في
