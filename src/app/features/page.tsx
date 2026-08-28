@@ -260,6 +260,17 @@ const SECTIONS: Section[] = [
         arBody: "قيّم من ١ إلى ١٠، اكتب رأيك، وتفاعل مع آراء الآخرين.",
         enBody: "Rate 1–10, write reviews, and react to everyone else’s.",
       },
+      {
+        /* 🆕 D-768: الدعوةُ مجّانيّةٌ للجميع — آلةُ نموٍّ لا ميزةَ طبقة:
+           بوّابةٌ عليها كانت ستقتل غرضَها. المكافأةُ وحدَها Loopz+ */
+        icon: "share",
+        ar: "دعوة الأصدقاء",
+        en: "Invite friends",
+        arBody:
+          "لكل عضو رابط دعوة دائم يرى منه كم صديقاً انضم ومَن هم. صديقك يبدأ بشهر Loopz+ هدية، وكل ٥ أصدقاء محتسبين يمنحونك شهر Loopz+.",
+        enBody:
+          "Every member gets a permanent invite link, with a live count of who joined through it. Your friend starts with a free month of Loopz+, and every 5 counted invites earn you a month of Loopz+.",
+      },
     ],
   },
   {

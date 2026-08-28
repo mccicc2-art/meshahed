@@ -1757,6 +1757,55 @@ export async function getLastSeenOf(personId: string): Promise<string | null> {
   }
 }
 
+/**
+ * 🆕 D-768: كودُ دعوتي — قراءةٌ بتهيئةٍ كسولة: `my_referral_code`
+ * (الهجرة ١٥٤) تُولّد الكودَ مرّةً واحدةً في العمر عند أوّل طلبٍ من
+ * صاحبه ثم تعيده قراءةً خالصة — فلا تعبئةَ جماعيّةً احتاجت إذنَ بيانات،
+ * ولا يملك المستخدمُ كوداً قبل أن يفتح صفحةَ دعواته.
+ */
+export async function getMyReferralCode(): Promise<string | null> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("my_referral_code");
+    if (error || !data) return null;
+    return String(data);
+  } catch {
+    return null;
+  }
+}
+
+/** 🆕 D-768: من دخلوا عن طريقي — الهويّاتُ من `public_profiles` كنمط
+ *  المحادثات: الدالّةُ تعيد المعرّفاتِ وحالَ الاحتساب، والعرضُ يُجلب
+ *  دفعةً واحدة */
+export interface ReferralEntry {
+  id: string;
+  person: PersonLite | null;
+  joinedAt: string;
+  counted: boolean;
+}
+export async function getMyReferrals(): Promise<ReferralEntry[]> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("my_referral_list");
+    if (error || !data?.length) return [];
+    type Row = { person: string; joined_at: string; counted: boolean };
+    const rows = data as Row[];
+    const { data: people } = await supabase
+      .from("public_profiles")
+      .select("id, nickname, username, avatar_url, hide_name")
+      .in("id", rows.map((r) => r.person));
+    const byId = new Map((people ?? []).map((p) => [p.id, p as PersonLite]));
+    return rows.map((r) => ({
+      id: r.person,
+      person: byId.get(r.person) ?? null,
+      joinedAt: r.joined_at,
+      counted: r.counted,
+    }));
+  } catch {
+    return [];
+  }
+}
+
 /** حالة المتابعة والإيقاف لعملٍ واحد — لقائمة «المزيد» في صفحته */
 export async function getFollowState(
   tmdbId: number,

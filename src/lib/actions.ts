@@ -1006,6 +1006,10 @@ export async function follow(input: {
       .match({ user_id: user.id, tmdb_id: input.tmdbId, media_type: input.mediaType })
       .is("genres", null);
   }
+  /* 🆕 D-768: دعوةُ المدعوِّ تُحتسب عند عمله الثالث — الدالةُ تخرج
+     فوراً لغير المدعوّ (قراءةُ صفٍّ مفهرسٍ واحد)، وفشلُها لا يمسّ
+     المتابعةَ نفسَها فلا نقرأ نتيجتها */
+  await supabase.rpc("qualify_referral");
   revalidatePath("/");
   revalidatePath("/library");
   revalidatePath(`/${input.mediaType === "tv" ? "show" : "movie"}/${input.tmdbId}`);
@@ -3761,6 +3765,25 @@ export async function markConversationRead(personId: string) {
 }
 
 /**
+ * 🆕 D-768: نسبةُ الحساب الجديد إلى داعيه — يناديها ردهةُ OAuth بعد
+ * تمام الدخول (جوار `absorbGuestContentPrefs` ونمطُه نفسُه: سقوطُها
+ * لا يُسقط الدخول). الكوكي `loopz_ref` كتبه مسارُ `/join/<code>`،
+ * والحرّاسُ كلُّهم في جسم `claim_referral` (الهجرة ١٥٤): حسابٌ عمرُه
+ * ≤ ٤٨ ساعةً وبلا متابعاتٍ ولم يُنسب من قبلُ وليس داعيَ نفسِه —
+ * فدخولُ عضوٍ قديمٍ بالكوكي نفسِه صفرٌ صامت. والكوكي يُمحى في الحالين:
+ * نسبةٌ لا تنجح اليومَ لن تنجح غداً (الحرّاس زمنيّون).
+ */
+export async function claimReferralFromCookie() {
+  const store = await cookies();
+  const code = store.get("loopz_ref")?.value;
+  if (!code) return;
+  store.delete("loopz_ref");
+  const { supabase } = await requireUser("ref", 5, 60_000);
+  const { data } = await supabase.rpc("claim_referral", { ref_code: code });
+  if (data === true) revalidatePath("/");
+}
+
+/**
  * 🆕 نبضةُ الحضور (D-765) — تُبقي `profiles.last_seen_at` صادقاً لعرض
  * «آخر ظهور» في ترويسة المحادثة. الخنقُ مزدوج: العميلُ يدقّ كلَّ أربع
  * دقائق والدالّةُ (الهجرة ١٥٣) لا تكتب إلا بعد ٦٠ ثانية من آخر كتابة —
@@ -4290,7 +4313,10 @@ export async function applyImportChunk(payload: ImportPayload): Promise<{
 
 /** يُستدعى مرّة عند نهاية الاستيراد — لا مع كل دفعة */
 export async function finishImport() {
-  await requireUser("import-apply", 90, 60_000);
+  const { supabase } = await requireUser("import-apply", 90, 60_000);
+  /* 🆕 D-768: مستوردُ تاريخه تجاوز الأعمالَ الثلاثةَ دفعةً — دعوتُه
+     تُحتسب هنا لا في انتظار متابعةٍ يدويّةٍ قد لا تأتي */
+  await supabase.rpc("qualify_referral");
   revalidatePath("/");
   revalidatePath("/library");
   revalidatePath("/stats");
