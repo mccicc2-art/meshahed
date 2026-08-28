@@ -64,6 +64,8 @@ export async function GET(request: Request) {
       ms,
       contentType: res.headers.get("content-type"),
       resultCount: parsed?.resultCount ?? null,
+      acao: res.headers.get("access-control-allow-origin"),
+      names: (parsed?.results ?? []).slice(0, 30).map((r) => r.trackName ?? "?"),
       sample: (parsed?.results ?? []).slice(0, 3).map((r) => ({
         name: r.trackName,
         year: (r.releaseDate ?? "").slice(0, 4),
