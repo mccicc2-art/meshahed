@@ -25,7 +25,9 @@ const csp = [
   "object-src 'none'",
   // accounts.google.com: مكتبة الدخول داخل الموقع (GIS). بلا هذا يُحجب
   // السكربت وتسقط الطريقة إلى التحويل القديم بصمت
-  "script-src 'self' 'unsafe-inline' https://accounts.google.com",
+  // 🆕 D-759: iframe_api الرسمي (بأمر أحمد — نقضُ «صفر جافاسكربت يوتيوب»
+  // في D-726): المحمِّل من www.youtube.com والجسمُ من s.ytimg.com
+  "script-src 'self' 'unsafe-inline' https://accounts.google.com https://www.youtube.com https://s.ytimg.com",
   "style-src 'self' 'unsafe-inline' https://accounts.google.com",
   "img-src 'self' data: blob: https://image.tmdb.org https://lh3.googleusercontent.com https://*.supabase.co https://media.giphy.com",
   "font-src 'self' data:",
@@ -36,7 +38,7 @@ const csp = [
   "media-src 'self' https://video-ssl.itunes.apple.com https://*.mzstatic.com",
   // مشغّل الترايلر لا يُحمَّل إلا بالضغط، ومن نطاق يوتيوب بلا كوكيز
   // نافذة Google تُرسم في إطارٍ من نطاقها — والترايلر من يوتيوب بلا كوكيز
-  "frame-src https://www.youtube-nocookie.com https://accounts.google.com",
+  "frame-src https://www.youtube-nocookie.com https://www.youtube.com https://accounts.google.com",
   "upgrade-insecure-requests",
 ].join("; ");
 
