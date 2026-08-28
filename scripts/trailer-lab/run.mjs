@@ -49,7 +49,8 @@ const CARDS = [
 function App(){
   const [gone, setGone] = React.useState(new Set());
   const shown = CARDS.filter(c=>!gone.has(c.key));
-  return React.createElement(TrailerPlayback, {soundPref:false},
+  return React.createElement(TrailerPlayback, {soundPref:false,
+      expandedLabels:{play:"play",pause:"pause",mute:"mute",unmute:"unmute",collapse:"collapse",seek:"seek"}},
     React.createElement("div", null,
       React.createElement("div", {style:{height:"30vh"}}),
       ...shown.map(c => React.createElement("div", {key:c.key, "data-card":c.key, className:"card"},
@@ -58,6 +59,7 @@ function App(){
           item:{keys:c.keys, fileUrl:c.fileUrl ?? null, title:c.key},
           backdrop:"/veil.png", title:c.key,
           playLabel:"play", muteLabel:"mute", unmuteLabel:"unmute",
+          withControls:true, pauseLabel:"pause", seekLabel:"seek", expandLabel:"expand",
           onUnavailable:()=>{ window.__mark(c.key,'retired'); setGone(p=>new Set(p).add(c.key)); },
         })
       )),
@@ -101,6 +103,12 @@ const harness = `<!doctype html><meta charset="utf-8"><title>trailer-lab</title>
  .pointer-events-none{pointer-events:none}.pointer-events-auto{pointer-events:auto}
  .grid{display:grid}.place-items-center{place-items:center}
  .bg-surface-2{background:#222}
+ [role="slider"]{height:20px;display:flex;align-items:center;width:100%}
+ .h-1{height:4px}.rounded-full{border-radius:99px}.bg-white{background:#fff}
+ .fixed{position:fixed}
+ .inset-x-0{left:0;right:0}.bottom-0{bottom:0}.inset-y-0{top:0;bottom:0}.left-0{left:0}
+ .top-2\\.5{top:10px}.end-2\\.5{right:10px}.start-2\\.5{left:10px}
+ .top-3{top:12px}.end-3{right:12px}.start-3{left:12px}
 </style>
 <div id="root"></div>
 <script>
@@ -217,6 +225,8 @@ const ytApiShim = `
     this._t=0; this._d=0; this._state=-1;
     this._send('loadVideoById',[id]);
   };
+  /* D-762: التقديم عاد — الواجهة الرسمية نفسها */
+  Player.prototype.seekTo=function(s){ this._send('seekTo',[s]); };
   Player.prototype.destroy=function(){
     clearInterval(this._hello);
     window.removeEventListener('message', this._onMsg);
@@ -282,9 +292,12 @@ window.addEventListener('message', e=>{
     if(d.func==='setVolume'){ volume=Number(d.args&&d.args[0]); if(!Number.isFinite(volume)) volume=100; info(); }
     if(d.func==='seekTo'){ t=Number(d.args&&d.args[0])||0; info(); }
     if(d.func==='loadVideoById'){
-      const nk=String(d.args&&d.args[0]||'');
+      /* D-762: الصيغة الكائنية الرسمية تحمل startSeconds — الاستئناف */
+      const a=d.args&&d.args[0];
+      const nk=(a&&typeof a==='object')?String(a.videoId||''):String(a||'');
+      const st=(a&&typeof a==='object'&&Number(a.startSeconds))||0;
       key0=nk; p=P[nk]||P.fast; blockedOnce=false; everPlayed=false;
-      clearTimeout(frameTimer); clearTimeout(errTimer); t=0; state=-1; info(); lab('loaded-by-id', nk);
+      clearTimeout(frameTimer); clearTimeout(errTimer); t=st; state=-1; info(); lab('loaded-by-id', nk+(st?('@'+st):''));
       begin(); /* loadVideoById يشغّل تلقائياً كالرسمية */
     }
   }
@@ -361,11 +374,43 @@ const sound = await page.evaluate(()=>({
   cookie: document.cookie.includes('loopz_trailer_sound=on'),
 }));
 
+/* T20 (D-762): سحبُ شريط التقديم إلى ٨٠٪ — أمرُ seekTo رسميٌّ والعدّاد يقفز */
+await stamp('T20-seek');
+const sliderBox = await page.locator('[data-card="fast"] [role="slider"]').boundingBox();
+await page.mouse.move(sliderBox.x + sliderBox.width * 0.1, sliderBox.y + sliderBox.height / 2);
+await page.mouse.down();
+await page.mouse.move(sliderBox.x + sliderBox.width * 0.8, sliderBox.y + sliderBox.height / 2, { steps: 5 });
+await page.mouse.up();
+await page.waitForTimeout(700);
+const seekTime = await page.evaluate(()=>{const el=document.querySelector('[data-card="fast"] span[dir="ltr"]'); return el?el.textContent:null;});
+
+/* T21 (D-762): ضغطةُ السطح توقف مؤقتاً والصورةُ باقية — وضغطةٌ تستأنف بلا إعادة تحميل */
+await stamp('T21-pause');
+await page.click('[data-card="fast"] button[aria-label="pause"]');
+await page.waitForTimeout(900);
+await page.click('[data-card="fast"] button[aria-label="play"]');
+await page.waitForTimeout(900);
+
 /* T6/T7: التمرير يشغّل التالي ويوقف السابق — ولا يعمل اثنان */
 await stamp('T6-scroll-fast2');
 await scrollToCard('fast2');
 await page.waitForTimeout(2500);
 const frames2 = await page.evaluate(()=>[...document.querySelectorAll('iframe')].map(f=>getComputedStyle(f).opacity));
+
+/* T22 (D-762، بلاغ «يعيده من البداية»): العودةُ لبطاقةٍ غادرناها تستأنف من موضعها */
+await stamp('T22-return');
+await scrollToCard('fast');
+await page.waitForTimeout(2200);
+const resumeTime = await page.evaluate(()=>{const el=document.querySelector('[data-card="fast"] span[dir="ltr"]'); return el?el.textContent:null;});
+
+/* T23 (D-762): التكبيرُ المسرحيّ — الطبقةُ تملأ الشاشة والتمريرُ مقفول، وX يعيد كلَّ شيء */
+await stamp('T23-expand');
+await page.click('[data-card="fast"] button[aria-label="expand"]');
+await page.waitForTimeout(500);
+const expOn = await page.evaluate(()=>{const ov=document.querySelector('div[aria-hidden].fixed'); const r=ov.getBoundingClientRect(); return {w:Math.round(r.width), iw:window.innerWidth, lock:document.documentElement.style.overflow, x:!!document.querySelector('button[aria-label="collapse"]')};});
+await page.click('button[aria-label="collapse"]');
+await page.waitForTimeout(500);
+const expOff = await page.evaluate(()=>{const ov=document.querySelector('div[aria-hidden].fixed'); const r=ov.getBoundingClientRect(); return {w:Math.round(r.width), lock:document.documentElement.style.overflow};});
 
 /* هزهزة: لا أوامر متذبذبة */
 await stamp('T-wiggle');
@@ -458,7 +503,8 @@ add(7,'التبديل ترقيةُ احتياطٍ سبق تحميلَه (D-761)'
   const preloaded=events.some(e=>e.card==='fast2'&&e.ev==='cmd:pauseVideo'&&e.t<a);
   const noUnmuteBefore=!events.some(e=>e.card==='fast2'&&e.ev==='cmd:unMute'&&e.t<a);
   const promoted=inSeg('fast2','cmd:playVideo','T6-scroll-fast2');
-  const noReload=!inSeg('fast2','loaded-by-id','T6-scroll-fast2') && !events.some(e=>e.ev==='loaded-by-id'&&e.extra==='fast2');
+  /* لا إعادةَ تحميلٍ **لحظةَ التبديل** — تحميلاتُ الاحتياط اللاحقة مشروعة */
+  const noReload=!events.some(e=>{const [a,b]=seg('T6-scroll-fast2'); return e.ev==='loaded-by-id'&&String(e.extra).startsWith('fast2')&&e.t>=a&&e.t<=b;});
   return preloaded&&noUnmuteBefore&&promoted&&noReload;})(), '');
 add(8,'مشغّلان كحدٍّ أقصى ومرئيٌّ واحدٌ فقط', frames1.length<=2 && frames2.length<=2 && frames1.filter(o=>o==='1').length===1 && frames2.filter(o=>o==='1').length===1, JSON.stringify({frames1,frames2}));
 add(9,'onAutoplayBlocked يعرض زر تشغيل', events.some(e=>e.card==='blocked'&&e.ev==='autoplay-blocked') && events.some(e=>e.card==='blocked'&&e.ev==='button'&&e.extra==='SHOWN'), 'blockedBtn@T9='+blockedBtn);
@@ -466,7 +512,12 @@ add(10,'زر التشغيل يعمل بضغطة واحدة', inSeg('blocked','pl
 const CARD_KEYS={fast:['fast'],fast2:['fast2'],slow:['slow'],err150:['err150','fast3'],deadend:['err150b'],blocked:['blocked'],file:['fast5']};
 add(11,'لا شاشة سوداء (الطبقة لا تظهر قبل أول إطار)', !events.some((e)=>{ if(e.ev!=='veil'||e.extra!=='LIFTED') return false; if(e.card==='file') return false; const fam=[e.card,...(CARD_KEYS[e.card]||[])]; const played=events.some(x=>fam.includes(x.card)&&x.ev==='playing'&&x.t<=e.t+100); return !played; }), '');
 add(12,'المعطل يُستبدل بالبديل ويُحذف عند النفاد', inSeg('fast3','playing','T12-err150') && deadGone && byCard('deadend','retired').length===1, '');
-add(14,'لا Seek في هذه المرحلة', noSlider, 'role=slider count 0');
+/* ⚖️ D-762: التقديمُ عاد بطلب صاحبه — شريطٌ واحدٌ على النشطة (نقضُ D-759 سابعًا) */
+add(14,'شريطُ التقديم حاضرٌ على النشطة (عاد بأمر صاحبه)', !noSlider, 'sliders>0');
+add(20,'السحبُ يقدّم بأمر seekTo الرسمي ويقفز العدّاد', inSeg('fast','cmd:seekTo','T20-seek') && events.some(e=>{const [a,b]=seg('T20-seek'); return e.card==='fast'&&e.ev==='cmd:seekTo'&&e.t>=a&&e.t<=b&&Number(e.extra)>=80&&Number(e.extra)<=115;}) && (parse(seekTime)??0)>=80, 'seek→'+seekTime);
+add(21,'الإيقافُ يُبقي الصورةَ والاستئنافُ بلا إعادة تحميل', inSeg('fast','cmd:pauseVideo','T21-pause') && inSeg('fast','cmd:playVideo','T21-pause') && !inSeg('fast','veil','T21-pause') && !events.some(e=>{const [a,b]=seg('T21-pause'); return e.ev==='loaded-by-id'&&e.t>=a&&e.t<=b;}), '');
+add(22,'العودةُ لبطاقةٍ سابقةٍ تستأنف من موضعها', (parse(resumeTime)??0)>=80, 'resumed@'+resumeTime);
+add(23,'التكبيرُ يملأ الشاشةَ ويقفل التمرير ويُغلق بسلام', expOn.w===expOn.iw && expOn.lock==='hidden' && expOn.x && expOff.w<expOn.iw && expOff.lock==='', JSON.stringify({on:expOn.w+'/'+expOn.iw, off:expOff.w}));
 add(15,'لا أخطاء console من كود Loopz', consoleErrors.filter(x=>!x.includes('shim')).length===0 && pageErrors.length===0, JSON.stringify({ce:consoleErrors.length,pe:pageErrors.length}));
 add(16,'لا مؤقتات/مراقبين بعد unmount', leaks.intervals===0 && leaks.rafs<=0 && leaks.vis===0 && leaks.iframes===0, JSON.stringify(leaks));
 add(17,'العودة من الخلفية صامتة (لا صوت آلي)', fgMutedIcon, 'icon=unmute');
