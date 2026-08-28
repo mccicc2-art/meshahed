@@ -1774,21 +1774,51 @@ export async function getMyReferralCode(): Promise<string | null> {
   }
 }
 
-/** 🆕 D-768: من دخلوا عن طريقي — الهويّاتُ من `public_profiles` كنمط
- *  المحادثات: الدالّةُ تعيد المعرّفاتِ وحالَ الاحتساب، والعرضُ يُجلب
- *  دفعةً واحدة */
-export interface ReferralEntry {
+/** 🆕 D-770: عدّاداتُ دعواتي الأربعة — صفٌّ واحدٌ من `my_invite_stats`
+ *  (الهجرة ١٥٥). `rewardDays` مجموعُ أيام الداعي وحدَها من دفتر
+ *  `plus_rewards` — هديّةُ المدعوّ ليست «كسبي» فلا تُعدّ في عدّادي */
+export interface InviteStats {
+  joined: number;
+  qualified: number;
+  subscribed: number;
+  rewardDays: number;
+}
+export async function getMyInviteStats(): Promise<InviteStats> {
+  const zero = { joined: 0, qualified: 0, subscribed: 0, rewardDays: 0 };
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("my_invite_stats");
+    const row = (data as {
+      joined: number; qualified: number; subscribed: number; reward_days: number;
+    }[] | null)?.[0];
+    if (error || !row) return zero;
+    return {
+      joined: row.joined ?? 0,
+      qualified: row.qualified ?? 0,
+      subscribed: row.subscribed ?? 0,
+      rewardDays: row.reward_days ?? 0,
+    };
+  } catch {
+    return zero;
+  }
+}
+
+/** 🆕 D-770: من دخلوا عن طريقي — الحالاتُ الخمسُ تُحسب في جسم
+ *  `my_invite_list` (مصدرُ حقيقةٍ واحدٌ للحالة)، والهويّاتُ من
+ *  `public_profiles` دفعةً واحدةً كنمط المحادثات */
+export type InviteStatus = "joined" | "in_progress" | "qualified" | "subscribed" | "rejected";
+export interface InviteEntry {
   id: string;
   person: PersonLite | null;
   joinedAt: string;
-  counted: boolean;
+  status: InviteStatus;
 }
-export async function getMyReferrals(): Promise<ReferralEntry[]> {
+export async function getMyInviteList(): Promise<InviteEntry[]> {
   try {
     const supabase = await createClient();
-    const { data, error } = await supabase.rpc("my_referral_list");
+    const { data, error } = await supabase.rpc("my_invite_list");
     if (error || !data?.length) return [];
-    type Row = { person: string; joined_at: string; counted: boolean };
+    type Row = { person: string; joined_at: string; status: InviteStatus };
     const rows = data as Row[];
     const { data: people } = await supabase
       .from("public_profiles")
@@ -1799,7 +1829,128 @@ export async function getMyReferrals(): Promise<ReferralEntry[]> {
       id: r.person,
       person: byId.get(r.person) ?? null,
       joinedAt: r.joined_at,
-      counted: r.counted,
+      status: r.status,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+/** 🆕 D-770: حالُ الشريك — صفٌّ واحدٌ يجمع الطلبَ والكودَ والعدّادين،
+ *  فالتبويبُ يقرّر وجهَه (تقديم/مراجعة/مرفوض/لوحة) بقراءةٍ واحدة.
+ *  ولا أرقامَ أموالٍ هنا أصلاً — حكمُه: «بلا قسم الأموال مؤقتاً» */
+export interface PartnerState {
+  appStatus: "pending" | "approved" | "rejected" | null;
+  appliedAt: string | null;
+  code: string | null;
+  clicks: number;
+  joined: number;
+}
+export async function getMyPartnerState(): Promise<PartnerState> {
+  const none: PartnerState = { appStatus: null, appliedAt: null, code: null, clicks: 0, joined: 0 };
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("my_partner_state");
+    const row = (data as {
+      app_status: string | null; applied_at: string | null;
+      code: string | null; clicks: number; joined: number;
+    }[] | null)?.[0];
+    if (error || !row) return none;
+    const status =
+      row.app_status === "pending" || row.app_status === "approved" || row.app_status === "rejected"
+        ? row.app_status
+        : null;
+    return {
+      appStatus: status,
+      appliedAt: row.applied_at,
+      code: row.code,
+      clicks: row.clicks ?? 0,
+      joined: row.joined ?? 0,
+    };
+  } catch {
+    return none;
+  }
+}
+
+/** 🆕 D-770: حقولُ طلبي كما أُرسلت — لتعبئة نموذج «تعديل الطلب» مسبقاً.
+ *  قراءةٌ مباشرةٌ من الجدول: سياسةُ «يقرأ صفَّه» قائمةٌ (الهجرة ١٥٥) */
+export interface PartnerApplicationFields {
+  channelUrl: string;
+  contentType: string;
+  platforms: string;
+  followersRange: string;
+  country: string;
+  contentLanguage: string;
+  reason: string;
+}
+export async function getMyPartnerApplication(): Promise<PartnerApplicationFields | null> {
+  try {
+    const supabase = await createClient();
+    const user = await getUser();
+    if (!user) return null;
+    const { data } = await supabase
+      .from("partner_applications")
+      .select("channel_url, content_type, platforms, followers_range, country, content_language, reason")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (!data) return null;
+    return {
+      channelUrl: data.channel_url ?? "",
+      contentType: data.content_type ?? "",
+      platforms: data.platforms ?? "",
+      followersRange: data.followers_range ?? "",
+      country: data.country ?? "",
+      contentLanguage: data.content_language ?? "",
+      reason: data.reason ?? "",
+    };
+  } catch {
+    return null;
+  }
+}
+
+/** 🆕 D-770: طلباتُ الشركاء للوحة الإدارة — الحارسُ الحقيقيُّ
+ *  `am_admin()` في جسم الدالّة (D-011)، وغيرُ الإداريِّ يرى قائمةً فارغة */
+export interface AdminPartnerApp {
+  userId: string;
+  person: PersonLite | null;
+  channelUrl: string;
+  contentType: string;
+  platforms: string;
+  followersRange: string;
+  country: string;
+  contentLanguage: string;
+  reason: string;
+  status: string;
+  createdAt: string;
+}
+export async function getAdminPartnerApplications(): Promise<AdminPartnerApp[]> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("admin_partner_applications");
+    if (error || !data?.length) return [];
+    type Row = {
+      user_id: string; channel_url: string; content_type: string; platforms: string;
+      followers_range: string; country: string; content_language: string; reason: string;
+      status: string; created_at: string;
+    };
+    const rows = data as Row[];
+    const { data: people } = await supabase
+      .from("public_profiles")
+      .select("id, nickname, username, avatar_url, hide_name")
+      .in("id", rows.map((r) => r.user_id));
+    const byId = new Map((people ?? []).map((p) => [p.id, p as PersonLite]));
+    return rows.map((r) => ({
+      userId: r.user_id,
+      person: byId.get(r.user_id) ?? null,
+      channelUrl: r.channel_url,
+      contentType: r.content_type,
+      platforms: r.platforms,
+      followersRange: r.followers_range,
+      country: r.country,
+      contentLanguage: r.content_language,
+      reason: r.reason,
+      status: r.status,
+      createdAt: r.created_at,
     }));
   } catch {
     return [];
