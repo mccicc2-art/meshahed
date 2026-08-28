@@ -31,6 +31,12 @@ export async function GET(request: Request) {
       const { absorbGuestContentPrefs } = await import("@/lib/actions");
       await absorbGuestContentPrefs().catch(() => {});
 
+      /* 🆕 D-768: نسبةُ الدعوة — كوكي `/join/<code>` يُصرف هنا بعد تمام
+         الدخول، بالنمط نفسِه: سقوطُها لا يُسقط الدخول، وحرّاسُها كلُّهم
+         في جسم `claim_referral` فدخولُ عضوٍ قديمٍ صفرٌ صامت. */
+      const { claimReferralFromCookie } = await import("@/lib/actions");
+      await claimReferralFromCookie().catch(() => {});
+
       /* 🔴 **والعودةُ إلى الأصل الذي جرى عليه التبادل** (D-623): الكوكيز
          كُتبت على هذا الأصل للتوّ، **وتحويلُه قسراً إلى نطاقٍ آخر يترك
          الجلسةَ خلفه** — وهو عينُ ما كان يُخرج تطبيقَ مشعل المثبَّت من
