@@ -19,8 +19,10 @@ import { setPlaybackActive } from "@/lib/playback";
  * ⚠️ **و`infoDelivery` غيرُ موثَّقة**: شريطُ التقدّم يظهر إن وصلت
  * ويغيب إن لم تصل — **ولا يُبنى عليها وعدٌ** (D-217).
  *
- * **٢) الإطارُ لا يُركَّب حتى يُطلب التشغيلُ فعلاً** — انظر «سياسةَ
- * التركيب» عند `activate` (D-756).
+ * **٢) التحميلُ مفصولٌ عن التشغيل** (D-744 سؤالاً → D-757 قراراً بأمر
+ * أحمد «لازم يكون سريع»): **الإطارُ يُركَّب عند الاقتراب صامتاً بلا
+ * تشغيل**، **والتشغيلُ أمرُ `postMessage` حين يأتي الدور** — انظر
+ * «سياسةَ التركيب» عند `activate`.
  *
  * **٣) حارسُ الواحديّة سجلٌّ على مستوى الوحدة لا حالةٌ في مكوّن**:
  * **الرايلُ والصفحةُ الكاملةُ شجرتان مختلفتان** — **ومن حرس «مشغّلٌ
@@ -63,10 +65,20 @@ const SWITCH_GAP = 0.05;
 const BELT_MS = 9000;
 
 /**
+ * 🔴 🆕 **مدى التحميل المسبق — رأسيّاً وأفقيّاً معاً** (D-757).
+ * **الهامشُ القديم `"420px 0px"` رأسيٌّ وحدَه** — **ورايلُ اكتشف صفٌّ
+ * أفقيّ**: **البطاقةُ المجاورةُ فيه على المحور الذي كان صفراً**، **فلم
+ * يكن يسبق تحميلُها وصولَها قطّ.** **والمدى واحدٌ للمحورين لأن السطحين
+ * يقرآن المكوّنَ نفسَه.**
+ */
+const KEEP_MARGIN = "420px 420px";
+
+/**
  * **وسقفُ المصافحة يمتدّ ما دام الإطارُ مركَّباً** (D-756): **إطارُ
  * يوتيوب قد يفرغ من التحميل بعد عشر ثوانٍ على شبكةٍ بطيئة** — **ومن
- * كفَّ عن النداء قبلها لا يسمع الإطارَ حين يستيقظ**، **فلا يبلغه أمرُ
- * الإيقاف** (`autoplay=1` في رابطه) **فيعمل مقطعان معاً.**
+ * كفَّ عن النداء قبلها لا يسمع الإطارَ حين يستيقظ**، **وأمرُ التشغيل
+ * المعلَّقُ لا يُطلَق إلّا بالسمع** (D-757) **فبطاقةٌ كُفَّ عن مناداتها
+ * بطاقةٌ لن تعمل.**
  * ⚠️ **والثمنُ رسالةٌ في الصفحة نفسِها كلَّ ٤٠٠م.ث** — لا رحلةَ شبكة.
  */
 const HELLO_TRIES = 60;
@@ -226,6 +238,8 @@ export function TrailerPlayer({
   /** 🔑 **هل تكلّم الإطارُ مرّةً؟** — دليلُ الحياة الوحيد (D-744/D-730) */
   const heardRef = useRef(false);
   const playingRef = useRef(false);
+  /** **أمرُ تشغيلٍ ينتظر أوّلَ دليلٍ على السمع** — لا يُرسل لإطارٍ أصمّ (D-730) */
+  const pendingPlayRef = useRef(false);
   const atRef = useRef<{ now: number; total: number } | null>(null);
   const bar = useRef<HTMLDivElement>(null);
   const unavailableRef = useRef(onUnavailable);
@@ -265,22 +279,25 @@ export function TrailerPlayer({
   }, []);
 
   /**
-   * 🔴 🆕 **سياسةُ التركيب — إطارٌ واحدٌ لا اثنان** (D-756).
+   * 🔴 🆕 **سياسةُ التركيب — التحميلُ عند القرب والتشغيلُ عند الدور**
+   * (D-757، جوابُ سؤال D-744 المفتوح بأمر أحمد «لازم يكون سريع»).
    *
-   * **كان الإطارُ يُركَّب عند القرب بـ`autoplay=0`، ثمّ يُهدَم ويُبنى
-   * ثانيةً بـ`autoplay=1` لحظةَ يأتي الدور** — **فالمشغّلُ الذي يعمل
-   * فعلاً لم يستفد من التحميل المسبق شيئاً**: ملفّاتُ يوتيوب في خبيئة
-   * HTTP بعد البطاقة الأولى، **وتنفيذُ `base.js` يُعاد كاملاً في كلِّ
-   * إطارٍ جديد.** **فرايلٌ من ستٍّ كان يدفع حتى خمسةَ تحميلاتٍ مهدورة،
-   * وصفرَ ربحٍ في زمن البدء.**
-   * 🔑 **والقاعدة: ما يُشترى ثمّ يُرمى ثمنٌ بلا سلعة** — **إمّا أن يكون
-   * الإطارُ المُحمَّلُ مسبقاً هو الذي يعمل، وإمّا ألّا يُحمَّل.**
+   * **كان التركيبُ والتشغيلُ حدثاً واحداً**: الإطارُ لا يُطلب إلّا وقد
+   * وصلت البطاقة، **فيدفع القارئُ ثمنَ `base.js` والمخزون كلَّه بعد
+   * وصوله لا قبله** — **وهو السببُ البنيويُّ لتأخّرٍ اشتكى منه ثلاث
+   * مرّات** (D-744 · D-750 · بلاغ اليوم). **والمقيسُ في المختبر: مسارُ
+   * التشغيل البارد ~١٣٠٠م.ث والدافئ ~٧٠٠م.ث على محاكٍ حِمْلُه نصفُ
+   * ثانية** — وعلى جوّالٍ حقيقيٍّ يتضاعف الفرقُ بثقل `base.js`.
    *
-   * **فالتركيبُ صار عند الدور وحدَه**، **و`autoplay=1` هو المسارُ
-   * المُثبَت منذ D-726 ولم يُمسّ** (D-750: مسارٌ لم يُقس لا يُوضع حيث
-   * يقع الحملُ الغالب).
-   * ⚠️ **ومن كان إطارُه حيّاً وقد تكلّم يُستأنف بأمرٍ لا بإعادة بناء** —
-   * **وإعادةُ بناءِ ما هو محمَّلٌ تبدأ من ٠:٠٠ وتدفع التحميلَ ثانيةً.**
+   * **فالإطارُ اليوم يُركَّب عند الاقتراب** (`KEEP_MARGIN`) **صامتاً بلا
+   * `autoplay`، ويُشغَّل بأمرٍ حين يأتي الدور.** **مسارُ تشغيلٍ واحدٌ لا
+   * اثنان** — **وما حذّرت منه D-750 (أمرٌ لم يُقَس) صار مقيساً في
+   * المختبر لا مظنوناً.**
+   * ⚠️ **وأمرٌ لإطارٍ لم يتكلّم يُبتلع صامتاً** (D-730) — **فالأمرُ
+   * يُعلَّق (`pendingPlay`) ويُطلَق عند أوّل دليلٍ على السمع.**
+   * ⚠️ **والدورُ العابرُ أثناء التمرير صار أمرَين رخيصَين** (تشغيلٌ
+   * فإيقاف) **بعد أن كان بناءَ إطارٍ كاملٍ يُرمى** — مقيسٌ في المختبر
+   * (بطاقةُ `fast` بُنيت وأُلقيت في أثناء تمريرةٍ واحدة).
    */
   const activate = useCallback(() => {
     activeRef.current = true;
@@ -288,24 +305,21 @@ export function TrailerPlayer({
     setPaused(false);
     setAttempt((value) => value + 1);
     /* ⚠️ **والسؤالُ يُوجَّه إلى مرجعٍ لا إلى حالة**: **حالةُ التركيب
-       تتأخّر عن نداء المراقب بدورة رسم** — **ومن قرأها هناك قرأ ماضياً
-       فأمَرَ إطاراً على وشك الهدم.** */
-    if (mountedRef.current && frame.current) {
-      /* إطارٌ قائم: إن تكلّم فهو يسمع فيُؤمَر، وإن لم يتكلّم بعدُ
-         فـ`autoplay=1` في رابطه يتكفّل به حين يفرغ من التحميل. */
-      if (heardRef.current) {
-        send(mutedRef.current ? "mute" : "unMute");
-        send("playVideo");
-      }
+       تتأخّر عن نداء المراقب بدورة رسم.** */
+    if (mountedRef.current && frame.current && heardRef.current) {
+      send("playVideo");
       return;
     }
-    mountedRef.current = true;
-    setMounted(true);
-    setLaunch((value) => value + 1);
+    pendingPlayRef.current = true;
+    if (!mountedRef.current) {
+      mountedRef.current = true;
+      setMounted(true);
+    }
   }, [send]);
 
   const deactivate = useCallback(() => {
     activeRef.current = false;
+    pendingPlayRef.current = false;
     send("pauseVideo");
     setPlaying(false);
     setPaused(false);
@@ -317,14 +331,17 @@ export function TrailerPlayer({
     setPaused(false);
     setAttempt((value) => value + 1);
     if (mountedRef.current && frame.current && heardRef.current) {
+      /* **ضغطةُ الإصبع لمسةُ مستخدمٍ حقيقيّة** — فالصوتُ يُؤكَّد معها
+         أيضاً: هي اللحظةُ الوحيدةُ المضمونةُ عند من يشترط لمسةً (iOS). */
       send(mutedRef.current ? "mute" : "unMute");
       send("playVideo");
       return;
     }
-    /* **وإطارٌ لا يتكلّم لا يُؤمَر، يُعاد بناؤه** — وهو مسارُ النجاة الوحيد */
-    mountedRef.current = true;
-    setMounted(true);
-    setLaunch((value) => value + 1);
+    pendingPlayRef.current = true;
+    if (!mountedRef.current) {
+      mountedRef.current = true;
+      setMounted(true);
+    }
   }, [send]);
 
   useEffect(() => {
@@ -376,17 +393,30 @@ export function TrailerPlayer({
     }
 
     /**
-     * ⚠️ **ومراقبُ الجوار مهمّتُه الهدمُ لا البناء** (D-756): **إطارٌ
-     * موقوفٌ ليس إطاراً مُفكَّكاً — يبقى صفحةَ يوتيوب حيّةً في الذاكرة**
-     * (D-728) — **فما ابتعد أكثرَ من ٤٢٠px يُفكَّك، وما اقترب لا يُركَّب
-     * حتى يأتيه الدور.**
+     * 🔴 🆕 **مراقبُ الجوار يبني ويهدم معاً** (D-757 — نقضٌ مسجَّلٌ لنصف
+     * D-756): **«الهدمُ لا البناء» جعل كلَّ وصولٍ تحميلاً بارداً**، **وهو
+     * السببُ الأوّل لبطءٍ اشتكى منه أحمد ثلاثاً.**
+     * **فما اقترب `KEEP_MARGIN` يُركَّب صامتاً** (بلا `autoplay` — لا
+     * صوتَ ولا صورةَ حتى يأتي الدور)، **وما ابتعد عنه يُفكَّك** —
+     * **فالإطارُ المُحمَّل مسبقاً هو نفسُه الذي يعمل**، وقاعدةُ D-756
+     * («ما يُشترى ثمّ يُرمى ثمنٌ بلا سلعة») **محفوظةٌ من طرفها الآخر.**
+     * ⚠️ **والثمنُ معلَن**: تحميلُ مشغّلٍ ومصافحتُه لبطاقةٍ أو اثنتين
+     * مجاورتين — **حِملُ شبكةٍ مدفوعٌ قبل الحاجة لا بعدَها** (D-745)،
+     * **وموفّرُ البيانات مستثنًى بفرعه.**
      */
     const keepObserver = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting) return;
+        if (entry.isIntersecting) {
+          if (!mountedRef.current) {
+            mountedRef.current = true;
+            setMounted(true);
+          }
+          return;
+        }
         updatePlayerRatio(playerId, 0);
         heardRef.current = false;
         mountedRef.current = false;
+        pendingPlayRef.current = false;
         setMounted(false);
         setAt(null);
         setPaused(false);
@@ -394,7 +424,7 @@ export function TrailerPlayer({
            سابقةٍ يُعيد استعمالَ العنصر بدل بنائه** — **فيُقرأ إطارٌ ميّتٌ
            إطاراً جديداً.** */
       },
-      { rootMargin: "420px 0px" },
+      { rootMargin: KEEP_MARGIN },
     );
 
     const visibilityObserver = new IntersectionObserver(
@@ -432,7 +462,10 @@ export function TrailerPlayer({
       }
       /* ⚠️ **والحالةُ تُنظَّف قبل الفرع لا داخل أحدِ طرفيه** (D-756):
          **مسارُ الأمر كان يعود قبل التنظيف** — **فيبقى زرُّ التشغيل
-         مرسوماً فوق مقطعٍ استُؤنف.** */
+         مرسوماً فوق مقطعٍ استُؤنف.**
+         ⚠️ **والصوتُ يُعاد تأكيدُه هنا** (D-730): **النظامُ قد يُسكت
+         الإطارَ في الخلفيّة** — **والصورةُ قائمةٌ قبل الخلفيّة فلا
+         سباقَ في هذا الباب.** */
       setPlaying(false);
       setPaused(false);
       setAttempt((value) => value + 1);
@@ -441,9 +474,13 @@ export function TrailerPlayer({
         send("playVideo");
         return;
       }
-      mountedRef.current = true;
-      setMounted(true);
-      setLaunch((value) => value + 1);
+      pendingPlayRef.current = true;
+      if (!mountedRef.current) {
+        mountedRef.current = true;
+        setMounted(true);
+      } else {
+        setLaunch((value) => value + 1);
+      }
     };
     const onPageHide = () => send("pauseVideo");
     document.addEventListener("visibilitychange", onVisibility);
@@ -481,32 +518,52 @@ export function TrailerPlayer({
         failed = true;
         setPlaying(false);
         setAt(null);
-        /* 🔴 ⚠️ **ومن لا دورَ له لا يُبنى له إطارٌ جديد** (D-756):
-           **البديلُ يُركَّب بـ`autoplay=1` فيعمل مقطعان معاً** — **وخطأٌ
-           يصل مشغّلاً خارجَ الدور يُطوى إطارُه ويُؤجَّل بديلُه إلى أن
-           يأتيه دورُه.** */
+        /* ⚠️ **ومن لا دورَ له يُطوى إطارُه ويُؤجَّل بديلُه** (D-756)،
+           **ومن له الدورُ يرث بديلُه أمرَ التشغيل المعلَّق** (D-757) —
+           **وإلّا حلّ البديلُ صامتاً خلف السِّتر إلى الأبد.** */
         if (!activeRef.current) {
           mountedRef.current = false;
           setMounted(false);
+        } else {
+          pendingPlayRef.current = true;
         }
         setTryIdx((value) => value + 1);
         return;
       }
-      if (!info) return;
-
       /* 🔑 **وأوّلُ رسالةٍ هي أوّلُ دليلٍ على السمع** (D-730): **عندها
-         تُطبَّق الحالةُ المقصودة لا قبلها** — **ومن لا دورَ له يُسكَت
-         هنا**، فـ`autoplay=1` في رابطه قد يكون سبق أمرَ الإيقاف. */
-      if (!heard) {
+         يُطلَق أمرُ التشغيل المعلَّق لا قبلها** — **فأمرٌ إلى نافذةٍ لم
+         تُحمَّل يُبتلع صامتاً.** 🆕 **و`onReady` تكفي دليلاً** (D-757):
+         **هي أوّلُ ما يصل بعد قبول المصافحة، وانتظارُ أوّل `infoDelivery`
+         بعدها كان يدفع ربعَ ثانيةٍ بلا مقابل** — مقيسٌ في المختبر.
+         ⚠️ **ولا صوتَ هنا** (D-757): **`unMute` عند أوّل رسالةٍ كان يفتح
+         الصوتَ والصورةُ خلف السِّتر** — **مقيسٌ في المختبر: الصوتُ يسبق
+         الصورةَ ٢٧٠م.ث في السريع وعشرَ ثوانٍ ونصفاً في البطيء** —
+         **وهو بلاغُ «الصوت سابق الصورة» حرفاً.** **فالصوتُ يُفتح حيث
+         تُفتح الصورةُ لا قبلها.** */
+      if (!heard && (info || data.event === "onReady")) {
         heard = true;
         heardRef.current = true;
-        if (activeRef.current) send(mutedRef.current ? "mute" : "unMute");
-        else send("pauseVideo");
+        if (
+          activeRef.current &&
+          pendingPlayRef.current &&
+          document.visibilityState !== "hidden"
+        ) {
+          pendingPlayRef.current = false;
+          send("playVideo");
+        }
       }
+      if (!info) return;
 
       /* 🔑 **وأصدقُ دليلٍ على الرسم عقربٌ تحرّك** (D-729): **حالةٌ بلا
-         زمنٍ نيّةٌ لا فعل.** */
+         زمنٍ نيّةٌ لا فعل.**
+         🆕 **والصوتُ يُفتح هنا — بعد الصورة لا قبلها** (D-757): **هذه
+         لحظةُ رفع السِّتر نفسُها**، **فما يسمعه القارئُ يراه.** **ويُعاد
+         التأكيدُ عند كلِّ عودةٍ من توقّف** (D-730: تفضيلٌ محفوظٌ لا
+         يُنفَّذ تفضيلٌ لم يُطبَّق). */
       if (info.playerState === 1 && typeof info.currentTime === "number" && info.currentTime > 0.1) {
+        if (!playingRef.current && activeRef.current) {
+          send(mutedRef.current ? "mute" : "unMute");
+        }
         setPlaying(true);
         setPaused(false);
       }
@@ -639,11 +696,14 @@ export function TrailerPlayer({
     if (playerId) manuallyActivate(playerId, resumeManually);
   };
 
-  /* **و`autoplay=1` دائماً** (D-756): **الإطارُ لا يُركَّب إلّا وقد صار
-     له الدور** — **فلا رابطَ ساكنٌ يُبنى ثمّ يُهدَم.** */
+  /* 🔴 🆕 **ولا `autoplay` في الرابط أصلاً** (D-757): **الإطارُ يُركَّب
+     مسبقاً صامتاً، والتشغيلُ أمرٌ يُرسل عند الدور** — **فمسارُ التشغيل
+     واحدٌ لا اثنان**، **ورابطٌ يشغّل نفسَه كان يسبق أمرَ الإيقاف عند
+     من فقد الدورَ قبل أن يسمع** (ثغرةُ «مقطعين معاً» في D-756 ماتت
+     بموت سببها). */
   const src =
     mounted && !dead && typeof window !== "undefined"
-      ? `${YT_ORIGIN}/embed/${encodeURIComponent(key)}?autoplay=1&mute=1&playsinline=1&controls=0&rel=0&modestbranding=1&loop=0&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}`
+      ? `${YT_ORIGIN}/embed/${encodeURIComponent(key)}?mute=1&playsinline=1&controls=0&rel=0&modestbranding=1&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}`
       : null;
   const progress = at && at.total > 0 ? Math.min(100, (at.now / at.total) * 100) : 0;
   const showsPlayButton = paused || manualOnly;
@@ -659,6 +719,19 @@ export function TrailerPlayer({
           allow="autoplay; encrypted-media; picture-in-picture"
           className="absolute inset-0 h-full w-full"
           style={{ pointerEvents: "none", border: 0 }}
+          /* 🆕 **وأوّلُ نداءِ مصافحةٍ لحظةَ اكتمال التحميل** (D-757):
+             **الدورةُ كلَّ ٤٠٠م.ث تكفي وحدَها لكنها تدفع حتى ٤٠٠م.ث
+             انتظاراً بلا سبب** — **والنداءُ من `load` يقتصّها.** */
+          onLoad={() => {
+            try {
+              frame.current?.contentWindow?.postMessage(
+                JSON.stringify({ event: "listening", id: key, channel: "widget" }),
+                YT_ORIGIN,
+              );
+            } catch {
+              /* دورةُ المصافحة التالية تتكفّل به */
+            }
+          }}
         />
       ) : null}
 
