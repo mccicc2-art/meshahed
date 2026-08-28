@@ -414,16 +414,46 @@ await page.click('button[aria-label="collapse"]');
 await page.waitForTimeout(500);
 const expOff = await page.evaluate(()=>{const ov=document.querySelector('div[aria-hidden].fixed.pointer-events-none'); const r=ov.getBoundingClientRect(); return {w:Math.round(r.width), lock:document.documentElement.style.overflow};});
 
+/* T25 (D-764): الأزرارُ تتوارى بعد ٥ ثوانِ تشغيلٍ — واللمسةُ الأولى
+   تُظهرها ولا توقف (لمسةُ الإظهار تُستهلَك فلا cmd:pauseVideo) */
+await stamp('T25-autohide');
+await page.waitForTimeout(6000);
+const hide25 = await page.evaluate(()=>{
+  const c=document.querySelector('[data-card="fast"]');
+  const snd=c.querySelector('button[aria-label="mute"],button[aria-label="unmute"]');
+  const exp=c.querySelector('button[aria-label="expand"]');
+  const sl=c.querySelector('[role="slider"]');
+  return { snd: snd?getComputedStyle(snd).opacity:null,
+           exp: exp?getComputedStyle(exp).opacity:null,
+           slPe: sl?getComputedStyle(sl).pointerEvents:null };
+});
+await page.click('[data-card="fast"] button[aria-label="pause"]');
+await page.waitForTimeout(350);
+const show25 = await page.evaluate(()=>{
+  const c=document.querySelector('[data-card="fast"]');
+  const snd=c.querySelector('button[aria-label="mute"],button[aria-label="unmute"]');
+  return snd?getComputedStyle(snd).opacity:null;
+});
+
 /* هزهزة: لا أوامر متذبذبة */
 await stamp('T-wiggle');
 for(let i=0;i<4;i++){ await page.evaluate(()=>window.scrollBy(0,80)); await page.waitForTimeout(150);
   await page.evaluate(()=>window.scrollBy(0,-80)); await page.waitForTimeout(150); }
 await page.waitForTimeout(600);
 
-/* slow: زر بعد ٨ ثوان (لا إجبار حالة) ثم يعمل من نفسه */
+/* slow: زر بعد ٨ ثوان (لا إجبار حالة) ثم يعمل من نفسه.
+   T26 (D-764): أثناء «loading» البطيء مؤشّرٌ دائريٌّ — «مايحسبه معلّق»؛
+   وبعد التعثّر (٨ ثوانٍ) يحلّ زرُّ التشغيل محلَّه لا فوقه */
 await stamp('T-slow');
 await scrollToCard('slow');
-await page.waitForTimeout(13500);
+await page.waitForTimeout(2000);
+const spin26on = await page.evaluate(()=>!!document.querySelector('[data-card="slow"] .animate-spin'));
+await page.waitForTimeout(7000);
+const spin26off = await page.evaluate(()=>({
+  gone: !document.querySelector('[data-card="slow"] .animate-spin'),
+  btn: !!document.querySelector('[data-card="slow"] button span.grid'),
+}));
+await page.waitForTimeout(4500);
 
 /* T12: خطأ ← البديل؛ ونفادها ← حذف البطاقة */
 await stamp('T12-err150');
@@ -521,6 +551,14 @@ add(21,'الإيقافُ يُبقي الصورةَ والاستئنافُ بلا
 add(22,'العودةُ لبطاقةٍ سابقةٍ تستأنف من موضعها', (parse(resumeTime)??0)>=80, 'resumed@'+resumeTime);
 add(24,'قصُّ واجهة يوتيوب: إطارٌ 300% ممركزٌ (D-763)', crop1.length>0 && crop1.every(c=>Math.abs(c.h-3*c.oh)<=3 && Math.abs(c.top+c.oh)<=3), JSON.stringify(crop1));
 add(23,'التكبيرُ يملأ الشاشةَ ويقفل التمرير ويُغلق بسلام', expOn.w===expOn.iw && expOn.lock==='hidden' && expOn.x && expOff.w<expOn.iw && expOff.lock==='', JSON.stringify({on:expOn.w+'/'+expOn.iw, off:expOff.w}));
+/* 🆕 D-764: «إذا استمر شغال ٥ ثواني المفروض هذي تختفي» — التواري
+   يشمل الصوتَ والتكبيرَ والشريط، ولمسةُ الإظهار لا توقف المقطع */
+add(25,'الأزرارُ تتوارى بعد ٥ ثوانٍ واللمسةُ تُظهرها ولا توقف',
+  hide25.snd==='0' && hide25.exp==='0' && hide25.slPe==='none' && show25==='1' && !inSeg('fast','cmd:pauseVideo','T25-autohide'),
+  JSON.stringify({hide25,show25}));
+/* 🆕 D-764: «تجيني علامة لودينغ الدائرية» — أثناء loading فقط، وتزول للتعثّر */
+add(26,'مؤشّرُ التحميل يظهر أثناء البطء ويزول عند التعثّر لزرّه',
+  spin26on && spin26off.gone && spin26off.btn, JSON.stringify({spin26on,spin26off}));
 add(15,'لا أخطاء console من كود Loopz', consoleErrors.filter(x=>!x.includes('shim')).length===0 && pageErrors.length===0, JSON.stringify({ce:consoleErrors.length,pe:pageErrors.length}));
 add(16,'لا مؤقتات/مراقبين بعد unmount', leaks.intervals===0 && leaks.rafs<=0 && leaks.vis===0 && leaks.iframes===0, JSON.stringify(leaks));
 add(17,'العودة من الخلفية صامتة (لا صوت آلي)', fgMutedIcon, 'icon=unmute');

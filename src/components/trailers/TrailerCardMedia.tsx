@@ -7,6 +7,7 @@ import { Icon } from "../Icon";
 import {
   clockText,
   TrailerScrubber,
+  TrailerSpinner,
   useTrailerPlayback,
   useTrailerSnapshot,
   type TrailerSlotItem,
@@ -86,6 +87,9 @@ export function TrailerCardMedia({
   /* 🆕 D-762: الإيقافُ المؤقّتُ يُبقي الصورةَ (لا غلافَ فوق إطارٍ مرسوم)
      — وphase «paused» لا تقع إلا بعد «playing» فالإطارُ مضمونُ الرسم */
   const revealed = isActive && (snap.phase === "playing" || snap.phase === "paused");
+  /* 🆕 D-764: الأزرارُ تتوارى بعد ٥ ثوانِ تشغيل — فئةُ التلاشي واحدة */
+  const controls = snap.controlsVisible;
+  const fade = `transition-opacity duration-300 ${controls ? "opacity-100" : "pointer-events-none opacity-0"}`;
   const showsPlayButton =
     (isActive && (snap.phase === "paused" || snap.phase === "blocked" || snap.phase === "stalled")) ||
     (!playing && snap.manualOnly);
@@ -125,13 +129,16 @@ export function TrailerCardMedia({
       ) : null}
 
       {/* 🆕 D-762: في العلف السطحُ كلُّه مفتاحُ إيقافٍ/استئناف — وفي
-          الرايل يبقى كما كان: زرُّ تشغيلٍ للواقفة، ونافذةُ D-743 للعاملة */}
+          الرايل يبقى كما كان: زرُّ تشغيلٍ للواقفة، ونافذةُ D-743 للعاملة.
+          D-764: أزرارٌ متواريةٌ → اللمسةُ تُظهرها ولا توقف */}
       {!playing || withControls ? (
         <button
           type="button"
           onClick={() => {
-            if (playing && withControls) api.tapPause();
-            else api.tapPlay(id);
+            if (playing && withControls) {
+              if (!controls) api.pokeControls();
+              else api.tapPause();
+            } else api.tapPlay(id);
           }}
           aria-label={playing ? (pauseLabel ?? playLabel) : playLabel}
           aria-hidden={!showsPlayButton && !playing}
@@ -152,11 +159,14 @@ export function TrailerCardMedia({
           type="button"
           onClick={() => api.toggleExpand()}
           aria-label={expandLabel}
-          className="absolute start-2.5 top-2.5 z-50 grid h-9 w-9 place-items-center rounded-full bg-black/55 text-white backdrop-blur-sm transition active:opacity-70"
+          className={`absolute start-2.5 top-2.5 z-50 grid h-9 w-9 place-items-center rounded-full bg-black/55 text-white backdrop-blur-sm active:opacity-70 ${fade}`}
         >
           <Icon name="expand" size={17} />
         </button>
       ) : null}
+
+      {/* 🆕 D-764: مؤشّرُ تحميلٍ دائريٌّ أثناء «loading» — «مايحسبه معلّق» */}
+      <TrailerSpinner active={isActive && snap.phase === "loading"} />
 
       {/* 🔴 زرُّ الصوت — **لبطاقةٍ تعمل فعلاً وحدَها**: على iPhone كان
           يظهر أثناء الحظر فصار هو زرَّ التشغيل الفعليّ. الأيقونةُ من
@@ -166,7 +176,7 @@ export function TrailerCardMedia({
           type="button"
           onClick={() => api.tapSound()}
           aria-label={snap.soundOn ? muteLabel : unmuteLabel}
-          className="absolute end-2.5 top-2.5 z-50 grid h-9 w-9 place-items-center rounded-full bg-black/55 text-white backdrop-blur-sm transition active:opacity-70"
+          className={`absolute end-2.5 top-2.5 z-50 grid h-9 w-9 place-items-center rounded-full bg-black/55 text-white backdrop-blur-sm active:opacity-70 ${fade}`}
         >
           <Icon name={snap.soundOn ? "volume" : "volume-off"} size={17} />
         </button>
@@ -175,9 +185,16 @@ export function TrailerCardMedia({
       {/* ⚖️ D-762: في العلف شريطُ تقديمٍ فوق الوقت (عاد بطلب صاحبه) —
           وفي الرايل الوقتُ نصٌّ للقراءة كما كان */}
       {isActive && snap.time ? (
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-50 bg-gradient-to-t from-black/70 to-transparent px-3 pb-1.5 pt-6">
+        <div
+          className={`pointer-events-none absolute inset-x-0 bottom-0 z-50 bg-gradient-to-t from-black/70 to-transparent px-3 pb-1.5 pt-6 ${fade}`}
+        >
           {withControls && seekLabel ? (
-            <TrailerScrubber time={snap.time} onSeek={api.seekTo} label={seekLabel} />
+            <TrailerScrubber
+              time={snap.time}
+              onSeek={api.seekTo}
+              label={seekLabel}
+              active={controls}
+            />
           ) : null}
           <span dir="ltr" className="block text-12 tabular-nums text-white/90">
             {clockText(snap.time.now)} / {clockText(snap.time.total)}
