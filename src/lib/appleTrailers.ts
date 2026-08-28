@@ -85,11 +85,16 @@ export async function getAppleTrailerUrl(
 
   try {
     const url = `${SEARCH}?media=movie&limit=8&country=US&term=${encodeURIComponent(t)}`;
-    const res = await fetch(url, {
-      next: { revalidate: WEEK },
-      signal: AbortSignal.timeout(2500),
-    });
-    if (!res.ok) return null;
+    /* ⚠️ **مهلةٌ بسباقٍ لا بإشارة إجهاض** (D-758): **`AbortSignal` داخل
+       `fetch` المخبَّأ يعبث بخبيئة Next ويُسقط النداءَ كلَّه صامتاً** —
+       والسباقُ يترك النداءَ يُكمل في الخلفيّة ويُخلي طريقَ الصفّ فقط. */
+    const res = await Promise.race([
+      fetch(url, { next: { revalidate: WEEK } }),
+      new Promise<null>((resolve) => {
+        setTimeout(() => resolve(null), 2500);
+      }),
+    ]);
+    if (!res || !res.ok) return null;
     const data = (await res.json()) as { results?: ItunesResult[] };
     for (const r of data.results ?? []) {
       if (!r.previewUrl || !r.trackName) continue;
