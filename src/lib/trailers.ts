@@ -9,7 +9,7 @@ import {
   ANIME_KEYWORD,
   type SearchResult,
 } from "@/lib/tmdb";
-import { buildSection } from "@/lib/sections";
+import { buildSection, shuffle } from "@/lib/sections";
 import { titleOf } from "@/lib/media";
 import { getDict, type Locale } from "@/lib/i18n";
 import { browseGenreForId, browseGenreName } from "@/lib/browse";
@@ -202,6 +202,11 @@ export async function getTrailerTabFeed(
       media,
       base: media === "anime" ? { keywords: [ANIME_KEYWORD] } : {},
       active: false,
+      /* 🆕 **وقرعةُ القسم تُطلب لا تُفترض** (D-740): `ctx.sample` هي
+         عينُ ما بُني في D-202 لهذه الشكوى — **وتركُها مطفأةً هو تجميدُ
+         التبويبات على وجوهٍ واحدة.** **ولا نداءَ إضافيّ**: البِركةُ
+         مسحوبةٌ أصلاً والقرعةُ ترتيبٌ لها. */
+      sample: true,
     },
     probe,
   ).catch(() => []);
@@ -227,7 +232,21 @@ export async function getTrailerFeed(
               : s.result.media_type === "tv") && !looksAnime(s.result),
       )
     : all;
-  const pool = inScope.slice(0, PROBE);
+  /* 🔴 🆕 **قرعةٌ لكلِّ طلب — وإلّا فرأسُ ترتيبٍ ثابتٍ ثابت** (D-740،
+     بلاغُ أحمد بلقطة: «المقاطع ما فيه جديدة، مكرّرة»): **كنتُ آخذ
+     أوّلَ أربعةَ عشرَ من `getSuggestions` بترتيبها** — **وهي دالّةٌ
+     مرتّبةٌ لا عشوائيّة**، **فرأسُها هو رأسُها في كلِّ زيارة**، ويرى
+     القارئُ المقاطعَ نفسَها إلى أن تتغيّر مكتبتُه.
+     🔑 **والعلاجُ مكتوبٌ في `sections.ts` منذ D-202**: «**قرعةٌ لكلّ
+     طلبٍ للصفّ… فلا يتجمّد على نفس الوجوه**» — **وهو نصُّ طلبِه القديم
+     حرفاً** («عشوائية مثل بيكد فور يو»). **ورثتُ الترشيحَ ولم أرث
+     قرعتَه.**
+     ⚠️ **والقرعةُ من نافذةٍ لا من البِركة كلِّها**: **ثلاثةُ أضعافِ
+     المسبار** — **قرعةٌ من ثلاثمئةٍ تُلغي معنى «لك»** وتُخرج المرتبةَ
+     المئتين، **ونافذةٌ بقدر المسبار لا تُغيّر شيئاً.**
+     ⚠️ **ولا نداءَ إضافيّ**: **الخلطُ قبل السبر لا بعده** — **أربعةَ
+     عشرَ نداءً كما كانت، مختلفةً في كلِّ زيارة.** */
+  const pool = shuffle(inScope.slice(0, PROBE * 3)).slice(0, PROBE);
   if (!pool.length) return [];
 
   const withKeys = await Promise.all(

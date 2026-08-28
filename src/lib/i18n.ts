@@ -1744,6 +1744,8 @@ const ar = {
   trailersForYou: "ترايلرات لك",
   /* **والفعلُ لا الحالة** (D-224): الزرُّ يقول ما سيقع لا ما هو قائم */
   trailerMute: "أوقف الصوت",
+  /** 🆕 **شريطُ التقدّم صار يُضغط** (D-741) — **والاسمُ فعلٌ لا حالة** (D-224) */
+  trailerSeek: "انتقل في المقطع",
   trailerUnmute: "شغّل الصوت",
   trailerDetails: "التفاصيل",
   trailerMyList: "مكتبتي",
@@ -3044,6 +3046,7 @@ const en: Dict = {
   trailerPlay: "Play trailer",
   trailersForYou: "Trailers for you",
   trailerMute: "Mute",
+  trailerSeek: "Seek",
   trailerUnmute: "Unmute",
   trailerDetails: "Details",
   trailerMyList: "My List",
