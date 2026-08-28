@@ -204,6 +204,7 @@ export function TrailerPlayer({
   seekLabel,
   className = "",
   eager = false,
+  fileUrl,
   href,
   openLabel,
   onOpen,
@@ -222,6 +223,13 @@ export function TrailerPlayer({
   className?: string;
   /** **البطاقةُ الأولى فوق الطيّة** (D-756): صورتُها تُحمَّل بأولويّة */
   eager?: boolean;
+  /**
+   * 🔴 🆕 **ملفُّ فيديو أصيل** (D-758) — إن وُجد رُسم `<video>` بدل إطار
+   * يوتيوب: **أوّلُ إطارٍ بمئات المللي ثانية، وصوتٌ وسحبٌ فوريّان بلا
+   * مصافحة.** **وفشلُه يسقط إلى مفاتيح يوتيوب في المكوّن نفسِه** —
+   * مشغّلٌ واحدٌ بمصدرين لا مشغّلان (القاعدة ٣).
+   */
+  fileUrl?: string | null;
   href?: string;
   openLabel?: string;
   onOpen?: () => void;
@@ -251,6 +259,8 @@ export function TrailerPlayer({
   const [at, setAt] = useState<{ now: number; total: number } | null>(null);
   const [tryIdx, setTryIdx] = useState(0);
   const [launch, setLaunch] = useState(0);
+  /** **ملفٌّ خذل مرّةً لا يُعاد إليه** — والسقوطُ إلى يوتيوب صامتٌ (D-758) */
+  const [fileDead, setFileDead] = useState(false);
   /**
    * 🔴 🆕 **عدّادُ محاولات التشغيل — والحزامُ يتبعه لا يتبع البناء**
    * (D-756).
@@ -261,6 +271,10 @@ export function TrailerPlayer({
    * **ومن نصبه على أحد المسارين حرس نصفَ الطريق.**
    */
   const [attempt, setAttempt] = useState(0);
+
+  const useFile = Boolean(fileUrl) && !fileDead;
+  const useFileRef = useRef(useFile);
+  const video = useRef<HTMLVideoElement>(null);
 
   const keys = videoKeys?.length ? videoKeys : [videoKey];
   const lastKey = keys.length - 1;
@@ -277,6 +291,35 @@ export function TrailerPlayer({
       /* الإطارُ بين تحميلين — والأمرُ يُعاد عند أوّل دليلٍ على السمع */
     }
   }, []);
+
+  /**
+   * 🆕 **أمرا التشغيل والإيقاف يعرفان المصدرين** (D-758): **المنطقُ فوقهما
+   * — الحارسُ والسِّترُ والحزام — لا يعرف إلّا «شغِّل» و«أوقِف»**، فقلبُ
+   * المصدر لا يلمسه.
+   * ⚠️ **والملفُّ يبدأ صامتاً دائماً ثمّ يُطبَّق التفضيلُ عند أوّل رسم**:
+   * **تشغيلٌ غيرُ صامتٍ بلا لمسةٍ يرفضه المتصفّح كلُّه** — والصامتُ
+   * مسموحٌ في كلِّ مكان، **والصوتُ يلحق بالصورة لا يسبقها** (D-757).
+   */
+  const doPlay = useCallback(() => {
+    if (useFileRef.current) {
+      const v = video.current;
+      if (!v) return;
+      v.muted = true;
+      v.play().catch(() => {
+        /* رفضُ التشغيل الآليّ — الحزامُ يعرض الزرَّ واللمسةُ تنجح دائماً */
+      });
+      return;
+    }
+    send("playVideo");
+  }, [send]);
+
+  const doPause = useCallback(() => {
+    if (useFileRef.current) {
+      video.current?.pause();
+      return;
+    }
+    send("pauseVideo");
+  }, [send]);
 
   /**
    * 🔴 🆕 **سياسةُ التركيب — التحميلُ عند القرب والتشغيلُ عند الدور**
@@ -306,8 +349,13 @@ export function TrailerPlayer({
     setAttempt((value) => value + 1);
     /* ⚠️ **والسؤالُ يُوجَّه إلى مرجعٍ لا إلى حالة**: **حالةُ التركيب
        تتأخّر عن نداء المراقب بدورة رسم.** */
-    if (mountedRef.current && frame.current && heardRef.current) {
-      send("playVideo");
+    if (useFileRef.current) {
+      if (mountedRef.current && video.current) {
+        doPlay();
+        return;
+      }
+    } else if (mountedRef.current && frame.current && heardRef.current) {
+      doPlay();
       return;
     }
     pendingPlayRef.current = true;
@@ -315,22 +363,31 @@ export function TrailerPlayer({
       mountedRef.current = true;
       setMounted(true);
     }
-  }, [send]);
+  }, [doPlay]);
 
   const deactivate = useCallback(() => {
     activeRef.current = false;
     pendingPlayRef.current = false;
-    send("pauseVideo");
+    doPause();
     setPlaying(false);
     setPaused(false);
-  }, [send]);
+  }, [doPause]);
 
   const resumeManually = useCallback(() => {
     activeRef.current = true;
     setPlaying(false);
     setPaused(false);
     setAttempt((value) => value + 1);
-    if (mountedRef.current && frame.current && heardRef.current) {
+    if (useFileRef.current) {
+      const v = video.current;
+      if (mountedRef.current && v) {
+        /* **لمسةُ مستخدمٍ حقيقيّة — الصوتُ يُفتح فيها مباشرةً**: هي
+           اللحظةُ الوحيدةُ المضمونةُ عند من يشترط لمسةً (iOS). */
+        v.muted = mutedRef.current;
+        v.play().catch(() => {});
+        return;
+      }
+    } else if (mountedRef.current && frame.current && heardRef.current) {
       /* **ضغطةُ الإصبع لمسةُ مستخدمٍ حقيقيّة** — فالصوتُ يُؤكَّد معها
          أيضاً: هي اللحظةُ الوحيدةُ المضمونةُ عند من يشترط لمسةً (iOS). */
       send(mutedRef.current ? "mute" : "unMute");
@@ -347,6 +404,10 @@ export function TrailerPlayer({
   useEffect(() => {
     mutedRef.current = muted;
   }, [muted]);
+
+  useEffect(() => {
+    useFileRef.current = useFile;
+  }, [useFile]);
 
   useEffect(() => {
     atRef.current = at;
@@ -456,7 +517,7 @@ export function TrailerPlayer({
     const onVisibility = () => {
       if (!activeRef.current) return;
       if (document.visibilityState === "hidden") {
-        send("pauseVideo");
+        doPause();
         setPlaying(false);
         return;
       }
@@ -469,7 +530,14 @@ export function TrailerPlayer({
       setPlaying(false);
       setPaused(false);
       setAttempt((value) => value + 1);
-      if (mountedRef.current && frame.current && heardRef.current) {
+      if (useFileRef.current) {
+        const v = video.current;
+        if (mountedRef.current && v) {
+          v.muted = mutedRef.current;
+          v.play().catch(() => {});
+          return;
+        }
+      } else if (mountedRef.current && frame.current && heardRef.current) {
         send(mutedRef.current ? "mute" : "unMute");
         send("playVideo");
         return;
@@ -478,21 +546,21 @@ export function TrailerPlayer({
       if (!mountedRef.current) {
         mountedRef.current = true;
         setMounted(true);
-      } else {
+      } else if (!useFileRef.current) {
         setLaunch((value) => value + 1);
       }
     };
-    const onPageHide = () => send("pauseVideo");
+    const onPageHide = () => doPause();
     document.addEventListener("visibilitychange", onVisibility);
     window.addEventListener("pagehide", onPageHide);
     return () => {
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("pagehide", onPageHide);
     };
-  }, [send]);
+  }, [send, doPause]);
 
   useEffect(() => {
-    if (!mounted || dead) return;
+    if (!mounted || dead || useFile) return;
     /* 🔴 **وكلُّ تشغيلٍ لهذا الأثر يعني إطاراً جديداً** (مفتاحٌ تبدّل أو
        بناءٌ أُعيد) — **فدليلُ السمع يُصفَّر معه**: **إطارٌ جديدٌ يرث
        شهادةَ سلفِه يُؤمَر قبل أن يُحمَّل، والأمرُ يُبتلع صامتاً**
@@ -608,7 +676,71 @@ export function TrailerPlayer({
       window.clearInterval(hello);
       window.removeEventListener("message", onMessage);
     };
-  }, [mounted, dead, key, launch, send]);
+  }, [mounted, dead, key, launch, send, useFile]);
+
+  /**
+   * 🔴 🆕 **أثرُ المصدر الأصيل** (D-758) — **نظيرُ أثرِ الرسائل كلِّه في
+   * عشرين سطراً**: لا مصافحةَ ولا `postMessage` ولا حزامَ صمتٍ —
+   * **العنصرُ أهلُ البيت والأحداثُ أصلية.**
+   * - **`playing` هي لحظةُ رفع السِّتر**: أوّلُ إطارٍ يُرسم معها — **ولا
+   *   سباقَ صوتٍ وصورة**: الملفُّ يبدأ صامتاً، **والتفضيلُ يُطبَّق هنا**
+   *   — حيث تُفتح الصورةُ نفسُها (D-757).
+   * - **`timeupdate` هي `infoDelivery`** — عدّادٌ يدقّ من المتصفّح لا من
+   *   بروتوكولٍ غير موثَّق.
+   * - **`error` تُسقط إلى يوتيوب في المكان** — `fileDead` يقلب الفرعَ
+   *   والبطاقةُ لا ترمش إلّا سِتراً.
+   */
+  useEffect(() => {
+    if (!useFile || !mounted) return;
+    const v = video.current;
+    if (!v) return;
+
+    const onPlaying = () => {
+      if (activeRef.current) v.muted = mutedRef.current;
+      setPlaying(true);
+      setPaused(false);
+    };
+    const onTime = () => {
+      if (v.duration > 0) setAt({ now: v.currentTime, total: v.duration });
+    };
+    const onPause = () => {
+      if (!activeRef.current) return;
+      setPlaying(false);
+      setPaused(true);
+    };
+    const onError = () => {
+      if (activeRef.current) pendingPlayRef.current = true;
+      setPlaying(false);
+      setAt(null);
+      setFileDead(true);
+    };
+
+    v.addEventListener("playing", onPlaying);
+    v.addEventListener("timeupdate", onTime);
+    v.addEventListener("pause", onPause);
+    v.addEventListener("error", onError);
+
+    if (activeRef.current && pendingPlayRef.current && document.visibilityState !== "hidden") {
+      pendingPlayRef.current = false;
+      v.muted = true;
+      v.play().catch(() => {});
+    }
+
+    return () => {
+      v.removeEventListener("playing", onPlaying);
+      v.removeEventListener("timeupdate", onTime);
+      v.removeEventListener("pause", onPause);
+      v.removeEventListener("error", onError);
+    };
+  }, [useFile, mounted, launch]);
+
+  /* **ومفتاحُ الصوت فوريٌّ في المصدر الأصيل** — خاصّيّةٌ تُكتب لا أمرٌ
+     يُرسل، والصوتُ لا يُسمع إلّا مع صورةٍ تعمل أصلاً. */
+  useEffect(() => {
+    if (!useFile) return;
+    const v = video.current;
+    if (v && playingRef.current) v.muted = muted;
+  }, [muted, useFile]);
 
   /**
    * 🔴 🆕 **وحزامٌ يقتل ما يحرسه ليس حزاماً** (D-756 — إصلاحُ نقضٍ صامتٍ
@@ -674,7 +806,9 @@ export function TrailerPlayer({
       if (rect.width <= 0) return;
       const fraction = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
       const next = fraction * total;
-      send("seekTo", [next, true]);
+      /* **السحبُ في المصدر الأصيل كتابةُ خاصّيّة** — فوريٌّ بلا رحلة رسالة */
+      if (useFileRef.current && video.current) video.current.currentTime = next;
+      else send("seekTo", [next, true]);
       setAt((value) => (value ? { ...value, now: next } : value));
     },
     [send],
@@ -685,7 +819,8 @@ export function TrailerPlayer({
       const current = atRef.current;
       if (!current || current.total <= 0) return;
       const next = Math.min(current.total, Math.max(0, current.now + seconds));
-      send("seekTo", [next, true]);
+      if (useFileRef.current && video.current) video.current.currentTime = next;
+      else send("seekTo", [next, true]);
       setAt((value) => (value ? { ...value, now: next } : value));
     },
     [send],
@@ -710,7 +845,23 @@ export function TrailerPlayer({
 
   return (
     <div ref={box} className={`relative overflow-hidden bg-surface-2 ${className}`}>
-      {src ? (
+      {useFile && mounted ? (
+        /* 🔴 🆕 **المصدرُ الأصيل** (D-758): ملفُّ MP4 في `<video>` —
+           **`preload="auto"` على المجاور يجعل بدء الدور فوريّاً**، والثمنُ
+           مقاطعُ أوّليّةٌ لبطاقةٍ أو اثنتين (سياسةُ D-757 نفسُها).
+           **و`loop`**: معاينةٌ تُعاد كما يفعل كلُّ صفِّ معايناتٍ حديث. */
+        <video
+          ref={video}
+          key={`file:${launch}`}
+          src={fileUrl ?? undefined}
+          playsInline
+          loop
+          muted
+          preload="auto"
+          className="absolute inset-0 h-full w-full object-cover"
+          style={{ pointerEvents: "none" }}
+        />
+      ) : src ? (
         <iframe
           key={`${key}:${launch}`}
           ref={frame}

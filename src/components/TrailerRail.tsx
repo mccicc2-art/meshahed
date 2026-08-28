@@ -87,6 +87,7 @@ export function TrailerRail({
               <TrailerPlayer
                 videoKey={i.videoKey}
                 videoKeys={i.videoKeys}
+                fileUrl={i.fileUrl}
                 backdrop={i.backdrop}
                 title={i.title}
                 muted={muted}
