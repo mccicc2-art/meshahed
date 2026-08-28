@@ -74,7 +74,7 @@ import { RankedRail } from "@/components/RankedRail";
 import { OneTimeHint } from "@/components/OneTimeHint";
 import { CountdownRail, type CountdownItem } from "@/components/CountdownRail";
 import { PickedForYou } from "@/components/PickedForYou";
-import { RailSkeleton } from "@/components/Skeletons";
+import { RailSkeleton, TrailerRailSkeleton } from "@/components/Skeletons";
 import { DiscoverFilters } from "@/components/DiscoverFilters";
 import { getSuggestions } from "@/lib/suggest";
 
@@ -303,8 +303,12 @@ export default async function NewsPage({
           ⚠️ **ويغيب مع فلترٍ مفعّل** (D-075): «لك» ترشيحٌ شخصيٌّ لا
           يُصفّى، **وصفٌّ لا يطيع الفلترَ فوقه يُقرأ عطلاً.**
           ⚠️ **ولا يُرسم في تبويب «القوائم»**: ذاك سطحُ قوائمَ لا أعمال. */}
+      {/* 🔴 🆕 **والهيكلُ يحجز الصدارة** (D-756، حكمُه: «أعطِ الترايلر
+          أولويّةً على كلِّ شيءٍ في اكتشف»): **كان `fallback={null}`
+          فتسبقه الرفوفُ إلى مكانه ثمّ يهبط فوقها فيدفعها** — **وأولويّةٌ
+          في الترتيب تضيع في الزمن إن لم يُحجز موضعُها.** */}
       {tab !== "lists" && !browse.active && (
-        <Suspense fallback={null}>
+        <Suspense fallback={<TrailerRailSkeleton />}>
           <TrailersSection
             locale={locale}
             /* 🔴 **والنطاقُ من التبويب** (D-731): **بِركةُ الاقتراحات
@@ -1958,7 +1962,12 @@ async function AnimeRails({
  */
 async function TrailersSection({ locale, scope }: { locale: Locale; scope: TrailerScope }) {
   const [items, store] = await Promise.all([
-    getTrailerFeed(6, locale, scope).catch(() => []),
+    /* 🆕 **وتسعٌ تُطلب وستٌّ تُعرض** (D-756): **الثلاثةُ الزائدةُ بدائلُ
+       خاناتٍ يحلّ فيها البديلُ محلَّ مقطعٍ يرفضه يوتيوب** — **فلا تزحف
+       البطاقاتُ تحت الإصبع ولا تبقى خانةٌ ميّتة.**
+       ⚠️ **ولا نداءَ شبكةٍ إضافيّ**: **المسبارُ أربعةَ عشرَ أصلاً
+       (`PROBE`) وكان الفائضُ يُقصّ ويُرمى** — **الثمنُ حقولٌ في الحمولة.** */
+    getTrailerFeed(9, locale, scope).catch(() => []),
     cookies(),
   ]);
   if (!items.length) return null;
