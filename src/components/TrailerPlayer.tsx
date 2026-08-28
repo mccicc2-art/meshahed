@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Icon } from "./Icon";
+import { setPlaybackActive } from "@/lib/playback";
 
 /**
  * 🆕 **مشغّلُ مقطعٍ واحد** (D-726) — **قلبُ الميزة كلِّها.**
@@ -545,6 +546,22 @@ export function TrailerPlayer({
       window.removeEventListener("message", onMsg);
     };
   }, [mounted, key, boot, showProgress]);
+
+  /* ===== ٣٫٤) وتحديثُ التطبيق ينتظر أن ينتهي المقطع ===== */
+  /**
+   * 🆕 **إعلانُ «أنا أعمل»** (D-749، حكمُ أحمد): **`SwRegister` كان
+   * يُعيد تحميلَ الصفحة لحظةَ وصول نسخةٍ جديدة** — **وبُني يومَ كانت
+   * «اكتشف» صفحةَ ملصقاتٍ لا فيديو**، فصار يقطع مقطعاً يُشاهَد.
+   * ⚠️ **والرمزُ مرجعُ الإطار** — ثابتٌ لعمر المكوّن، **فلا يتغيّر
+   * فيُترك أثرٌ في المجموعة.**
+   * ⚠️ **والتنظيفُ يُطفئ دائماً**: **مشغّلٌ فُكِّك وهو يعمل يترك التطبيقَ
+   * ينتظر مقطعاً لا وجودَ له** — **وانتظارٌ بلا نهايةٍ أسوأُ من قطع.**
+   */
+  useEffect(() => {
+    const token = frame;
+    setPlaybackActive(token, playing);
+    return () => setPlaybackActive(token, false);
+  }, [playing]);
 
   /* ===== ٣٫٥) مسارُ النجاة: أمرٌ لم يُطَع يُستبدل بما ثبت ===== */
   /**

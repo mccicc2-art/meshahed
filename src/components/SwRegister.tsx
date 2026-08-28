@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { isPlaybackActive, onPlaybackChange } from "@/lib/playback";
 
 /**
  * تسجيل الـService Worker — لا يرسم شيئاً.
@@ -31,12 +32,36 @@ export function SwRegister({ build }: { build?: string }) {
     // بآخر جديد هو ما يستحقّ إعادةَ تحميلٍ واحدة
     const hadController = !!navigator.serviceWorker.controller;
     let refreshing = false;
+    /**
+     * 🆕 **نسخةٌ جاهزةٌ تنتظر لحظةً مناسبة** (D-749، حكمُ أحمد: «أجّله
+     * إذا كان مقطعٌ يعمل»).
+     * 🔑 **إعادةُ التحميل وسط مقطعٍ يُشاهَد قطعٌ لا تحديث** — **وهذا
+     * المكوّنُ بُني يومَ كانت «اكتشف» صفحةَ ملصقاتٍ لا فيديو** (D-726
+     * غيّر ما تحته ولم يُراجَع ما فوقه).
+     * 🔑 **والقاعدة: ما يُقاطع القارئ يُؤجَّل إلى أن يفرغ، لا يُلغى** —
+     * **والتأجيلُ ليس تخلّياً: النيّةُ محفوظةٌ وتُنفَّذ أوّلَ فرصة.**
+     * ⚠️ **وثمنُه معلَن**: **نسخةٌ قديمةٌ تعيش أطول عند من يُدمن
+     * المشاهدة** — وهو ما اختاره بعد أن عُرض عليه.
+     */
+    let pending = false;
 
-    function onControllerChange() {
-      if (!hadController || refreshing) return;
+    function apply() {
+      if (!pending || refreshing) return;
+      /* **والمقطعُ العاملُ وحدَه يؤجّل** — لا التبويبُ ولا التمرير */
+      if (isPlaybackActive()) return;
       refreshing = true;
       window.location.reload();
     }
+
+    function onControllerChange() {
+      if (!hadController || refreshing) return;
+      pending = true;
+      apply();
+    }
+
+    /* **وأوّلُ لحظةٍ يسكت فيها المقطعُ هي لحظةُ التنفيذ** — بلا استطلاعٍ
+       دوريٍّ ولا مؤقّت: **الإعلانُ يأتينا، ولا نسأل عنه.** */
+    const offPlayback = onPlaybackChange(apply);
     navigator.serviceWorker.addEventListener("controllerchange", onControllerChange);
 
     let reg: ServiceWorkerRegistration | undefined;
@@ -60,8 +85,8 @@ export function SwRegister({ build }: { build?: string }) {
         const res = await fetch("/api/build", { cache: "no-store" });
         const live = (await res.text()).trim();
         if (res.ok && live && live !== "dev" && live !== build && !refreshing) {
-          refreshing = true;
-          window.location.reload();
+          pending = true;
+          apply();
         }
       } catch {
         /* انقطاع؟ الصفحة القائمة أفضل من لا شيء */
@@ -74,7 +99,13 @@ export function SwRegister({ build }: { build?: string }) {
       if (document.visibilityState === "visible") {
         reg?.update().catch(() => {});
         checkBuild();
+        return;
       }
+      /* 🆕 **والخلفيّةُ أفضلُ لحظةٍ للتبديل** (D-749): **التطبيقُ لا
+         يُشاهَد الآن** — **وتحديثٌ لا يراه أحدٌ هو التحديثُ المثاليّ.**
+         **والمشغّلُ يقف عند الخلفيّة أصلاً** (D-729) **فترفع الرايةُ
+         نفسَها ويقع التأجيلُ المعلَّق.** */
+      apply();
     };
     document.addEventListener("visibilitychange", onVisible);
 
@@ -88,6 +119,7 @@ export function SwRegister({ build }: { build?: string }) {
     else window.addEventListener("load", register, { once: true });
 
     return () => {
+      offPlayback();
       navigator.serviceWorker.removeEventListener("controllerchange", onControllerChange);
       document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("pageshow", onPageShow);
