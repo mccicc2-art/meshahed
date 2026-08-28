@@ -250,6 +250,9 @@ let key0=key; let p=P[key]||P.fast;
 let listening=false, state=-1, t=0, muted=q.get('mute')!=='0', volume=100, loaded=false;
 let blockedOnce=false;
 let frameTimer=null, infoTimer=null, errTimer=null;
+/* D-761: فيديو سبق عرضُه في هذا المشغّل يستأنف بعشرات المللي ثانية لا
+   بثمن تحميلٍ كامل — أمانةً لعازلٍ دافئٍ حقيقيّ؛ وloadVideoById يصفّره */
+let everPlayed=false;
 const raw=m=>parent.postMessage(JSON.stringify(m),'*');
 const lab=(x,extra)=>raw({event:'lab', key:key0, lab:x, extra});
 const proto=m=>{ if(listening) raw(m); };
@@ -259,7 +262,7 @@ function begin(){
   if(p.blockFirstPlay && !blockedOnce){ blockedOnce=true; proto({event:'onAutoplayBlocked'}); lab('autoplay-blocked'); return; }
   if(state===1) return;
   state=3; info(); clearTimeout(frameTimer);
-  frameTimer=setTimeout(()=>{ state=1; lab('playing'); info(); }, p.frameMs);
+  frameTimer=setTimeout(()=>{ state=1; everPlayed=true; lab('playing'); info(); }, everPlayed?50:p.frameMs);
 }
 window.addEventListener('message', e=>{
   let d; try{d=JSON.parse(e.data)}catch{return}
@@ -280,7 +283,7 @@ window.addEventListener('message', e=>{
     if(d.func==='seekTo'){ t=Number(d.args&&d.args[0])||0; info(); }
     if(d.func==='loadVideoById'){
       const nk=String(d.args&&d.args[0]||'');
-      key0=nk; p=P[nk]||P.fast; blockedOnce=false;
+      key0=nk; p=P[nk]||P.fast; blockedOnce=false; everPlayed=false;
       clearTimeout(frameTimer); clearTimeout(errTimer); t=0; state=-1; info(); lab('loaded-by-id', nk);
       begin(); /* loadVideoById يشغّل تلقائياً كالرسمية */
     }
@@ -346,8 +349,8 @@ const t1a=(await stateOf()).fast?.time;
 await page.waitForTimeout(1300);
 const t1b=(await stateOf()).fast?.time;
 
-/* T8: iframe واحد فقط في DOM بعد التشغيل */
-const iframes1 = await page.evaluate(()=>document.querySelectorAll('iframe').length);
+/* T8 (D-761): مشغّلان كحدٍّ أقصى — ومرئيٌّ واحدٌ لا غير */
+const frames1 = await page.evaluate(()=>[...document.querySelectorAll('iframe')].map(f=>getComputedStyle(f).opacity));
 
 /* T3/T4/T5: الصوت الحقيقي بضغطة المستخدم + الكوكي بعد التحقق فقط */
 await stamp('T3-tap-sound');
@@ -362,7 +365,7 @@ const sound = await page.evaluate(()=>({
 await stamp('T6-scroll-fast2');
 await scrollToCard('fast2');
 await page.waitForTimeout(2500);
-const iframes2 = await page.evaluate(()=>document.querySelectorAll('iframe').length);
+const frames2 = await page.evaluate(()=>[...document.querySelectorAll('iframe')].map(f=>getComputedStyle(f).opacity));
 
 /* هزهزة: لا أوامر متذبذبة */
 await stamp('T-wiggle');
@@ -447,8 +450,17 @@ add(3,'الصوت يعمل فعلياً بالضغطة', sound.icon, 'icon flipp
 add(4,'isMuted() أصبح false (المحاكي: unMute+volume)', events.some(e=>e.card==='fast'&&e.ev==='cmd:unMute'), '');
 add(5,'الكوكي بعد التحقق فقط', sound.cookie, 'loopz_trailer_sound=on');
 add(6,'التمرير يشغّل التالي ويوقف السابق', inSeg('fast','cmd:pauseVideo','T6-scroll-fast2') && byCard('fast2','veil').some(e=>e.extra==='LIFTED'), '');
-add(7,'لا يعمل أكثر من فيديو (إيقاف قبل تحميل التالي)', (()=>{const [a]=seg('T6-scroll-fast2'); const p=events.find(e=>e.card==='fast'&&e.ev==='cmd:pauseVideo'&&e.t>=a); const l=events.find(e=>e.ev==='loaded-by-id'&&e.extra==='fast2'); return p&&l&&p.t<=l.t;})(), '');
-add(8,'iframe واحد فقط في DOM', iframes1===1 && iframes2===1, iframes1+'/'+iframes2);
+/* D-761 (⚖️ بأمر أحمد — نقضُ «iframe واحد»): التبديلُ ترقيةُ احتياطٍ سبق
+   تحميلَه صامتاً: fast2 حُمّل ووُقف قبل T6، ثم في T6 أمرُ تشغيلٍ بلا
+   إعادةِ تحميل — والسابقةُ توقفت (اختبار ٦) فلا يُسمَع إلا واحد */
+add(7,'التبديل ترقيةُ احتياطٍ سبق تحميلَه (D-761)', (()=>{
+  const [a]=seg('T6-scroll-fast2');
+  const preloaded=events.some(e=>e.card==='fast2'&&e.ev==='cmd:pauseVideo'&&e.t<a);
+  const noUnmuteBefore=!events.some(e=>e.card==='fast2'&&e.ev==='cmd:unMute'&&e.t<a);
+  const promoted=inSeg('fast2','cmd:playVideo','T6-scroll-fast2');
+  const noReload=!inSeg('fast2','loaded-by-id','T6-scroll-fast2') && !events.some(e=>e.ev==='loaded-by-id'&&e.extra==='fast2');
+  return preloaded&&noUnmuteBefore&&promoted&&noReload;})(), '');
+add(8,'مشغّلان كحدٍّ أقصى ومرئيٌّ واحدٌ فقط', frames1.length<=2 && frames2.length<=2 && frames1.filter(o=>o==='1').length===1 && frames2.filter(o=>o==='1').length===1, JSON.stringify({frames1,frames2}));
 add(9,'onAutoplayBlocked يعرض زر تشغيل', events.some(e=>e.card==='blocked'&&e.ev==='autoplay-blocked') && events.some(e=>e.card==='blocked'&&e.ev==='button'&&e.extra==='SHOWN'), 'blockedBtn@T9='+blockedBtn);
 add(10,'زر التشغيل يعمل بضغطة واحدة', inSeg('blocked','playing','T9-blocked'), '');
 const CARD_KEYS={fast:['fast'],fast2:['fast2'],slow:['slow'],err150:['err150','fast3'],deadend:['err150b'],blocked:['blocked'],file:['fast5']};
@@ -461,6 +473,15 @@ add(17,'العودة من الخلفية صامتة (لا صوت آلي)', fgMut
 /* D-760: بعد تفعيل الصوت على fast (T3)، البطاقةُ التالية fast2 تنطلق
    مصوَّتةً بلا أي ضغطةِ صوتٍ إضافية — والمشهدُ لا يلمس زرَّ صوت fast2 */
 add(18,'الصوت محمولٌ إلى البطاقة التالية بلا ضغطة', events.some(e=>e.card==='fast2'&&e.ev==='sound'&&e.extra==='ON'), '');
+/* D-761: ثمرةُ الترقية — صورةُ التالية تتحرّك بأقلَّ من ٩٠٠م.ث من بدء
+   التمرير (المسارُ القديم كان يتجاوز الثانيتين: تحميلٌ كامل من الصفر) */
+add(19,'الترقية لحظيّة (< 900م.ث حتى حركة الصورة)', (()=>{
+  const [a]=seg('T6-scroll-fast2');
+  const lift=events.find(e=>e.card==='fast2'&&e.ev==='veil'&&e.extra==='LIFTED'&&e.t>=a);
+  return !!lift && (lift.t-a)<900;})(), (()=>{
+  const [a]=seg('T6-scroll-fast2');
+  const lift=events.find(e=>e.card==='fast2'&&e.ev==='veil'&&e.extra==='LIFTED'&&e.t>=a);
+  return lift?`${lift.t-a}ms`:'no-lift';})());
 
 console.log("\n=== ACCEPTANCE (المواصفة، القابل للقياس آلياً) ===");
 for(const a of ACC) console.log((a.pass?'PASS':'FAIL').padEnd(5), String(a.n).padStart(2), a.name, a.detail?(' — '+a.detail):'');

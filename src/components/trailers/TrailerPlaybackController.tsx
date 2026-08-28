@@ -213,9 +213,27 @@ function createEngine(
   const exhausted = new Set<string>();
 
   let io: IntersectionObserver | null = null;
-  let player: YTPlayer | null = null;
-  let playerReady = false;
-  let pendingLoadKey: string | null = null;
+  /* 🆕 D-761 (بأمر أحمد: «نفّذ» — ⚖️ نقضٌ صريحٌ منه لبند «iframe واحدٌ
+     في DOM» من مواصفته، بعد أن عُرض عليه الثمن: إطارٌ ثانٍ ومضاعفةُ
+     بيانات التحميل المسبق): **مشغّلان يتناوبان** — الظاهرُ يعمل فوق
+     البطاقة النشطة، والخفيُّ يسبق بتحميل البطاقة المتوقَّعة (التالية في
+     ترتيب السطح) صامتاً محجوباً ثم يقف على أوّل PLAYING؛ فالتبديلُ
+     **ترقيةُ أدوارٍ** لا تحميلٌ من الصفر. حدودُ الانضباط: لا تحميلَ
+     مسبقاً مع Save-Data/2G ولا والصفحةُ مخفيّة، واحتياطٌ واحدٌ لمفتاحٍ
+     واحدٍ هو التالي مباشرةً، والخفيُّ لا يُسمَع ولا يُرى أبداً. */
+  interface PlayerRec {
+    p: YTPlayer | null;
+    ready: boolean;
+    frame: HTMLIFrameElement;
+    /** المفتاحُ المحمَّلُ في هذا المشغّل الآن */
+    key: string | null;
+    /** حالُ التحميل المسبق حين يكون احتياطاً */
+    preload: "idle" | "loading" | "ready";
+    /** مفتاحٌ فشل تحميلُه المسبق — لا يُعاد بلا نهاية */
+    failedKey: string | null;
+  }
+  let act: PlayerRec | null = null;
+  let sby: PlayerRec | null = null;
   let tick: number | null = null;
   let stall: number | null = null;
   let raf: number | null = null;
@@ -230,7 +248,11 @@ function createEngine(
       مصوَّتةً بلا ضغطةٍ لكلِّ فيديو. (أوّلُ فيديو بعد فتح الصفحة صامتٌ
       دائماً — قانونُ iOS لا خيارُنا.) */
   let wantSound = false;
-  const unlocked = { yt: false, file: false };
+  /** فُكّ قفلُ WebKit الصوتيُّ مرّةً في هذه الجلسة (تشغيلٌ مسموعٌ
+      متحقَّق) — شرطُ حمل الصوت؛ ورفضٌ عارضٌ تعالجه مُعافاةُ PAUSED
+      وcatch الملفّ بلا مسح العلم (D-761: العلمُ للجلسة لا للعنصر —
+      المشغّلان يتناوبان والعنصرُ يتبدّل) */
+  let soundSessionUnlocked = false;
   let verifyTimer: number | null = null;
   /** لحظةُ فكِّ كتمٍ آليٍّ (بلا إيماءة) — لكشف رفض WebKit والتعافي صامتاً */
   let autoUnmuteAt = 0;
@@ -294,17 +316,17 @@ function createEngine(
         ? { now: dom.video.currentTime, total }
         : null;
     }
-    if (!player || !playerReady) return null;
-    const total = player.getDuration();
+    if (!act?.p || !act.ready) return null;
+    const total = act.p.getDuration();
     /* لا وقتَ يُعرض إلا بقيمٍ رسميةٍ منتهيةٍ موجبة (المواصفة سادسًا/٥) */
-    return Number.isFinite(total) && total > 0 ? { now: player.getCurrentTime(), total } : null;
+    return Number.isFinite(total) && total > 0 ? { now: act.p.getCurrentTime(), total } : null;
   };
 
   /* ---- الصوت: حقيقةٌ تُقرأ (المواصفة خامسًا) ---- */
   const verifySound = (): boolean => {
     let on = false;
     if (activeIsFile()) on = !dom.video.muted;
-    else if (player && playerReady) on = !player.isMuted() && player.getVolume() > 0;
+    else if (act?.p && act.ready) on = !act.p.isMuted() && act.p.getVolume() > 0;
     publish({ soundOn: on });
     return on;
   };
@@ -321,7 +343,7 @@ function createEngine(
       if (destroyed) return;
       const on = verifySound();
       if (on) {
-        unlocked[activeIsFile() ? "file" : "yt"] = true;
+        soundSessionUnlocked = true;
         autoUnmuteAt = 0;
       }
     }, ms);
@@ -335,17 +357,22 @@ function createEngine(
     if (activeIsFile()) {
       dom.video.muted = false;
       dom.video.volume = 1;
-    } else if (player && playerReady) {
-      player.unMute();
-      player.setVolume(100);
+    } else if (act?.p && act.ready) {
+      act.p.unMute();
+      act.p.setVolume(100);
     }
     publish({ soundOn: true });
     scheduleVerify(300);
   };
 
+  /* تصريحٌ متقدّم — الجسدُ في قسم المشغّلَين أسفل، والنداءُ بعد البناء */
+  let maybePreload: () => void = () => undefined;
+
   const onDrewFrame = () => {
     clearStall();
     setPhase("playing");
+    /* D-761: الظاهرُ ثبت رسمُه — الآن يحقّ للخفيّ أن يسبق بالتحميل */
+    maybePreload();
   };
 
   /* 🆕 D-760 (بلاغ أحمد: «كيف أسرّع؟»): مسبارُ رفعِ السِّتر — بعد حدث
@@ -404,9 +431,9 @@ function createEngine(
   /* ---- المصدران ---- */
   const pauseCurrent = () => {
     if (activeIsFile()) dom.video.pause();
-    else if (player && playerReady) {
+    else if (act?.p && act.ready) {
       expectPause = true;
-      player.pauseVideo();
+      act.p.pauseVideo();
     }
   };
 
@@ -432,8 +459,9 @@ function createEngine(
     const next = keyIdx + 1;
     if (next < slot.item.keys.length) {
       keyIdx = next;
-      player?.mute();
-      player?.loadVideoById(slot.item.keys[next]);
+      act?.p?.mute();
+      if (act) act.key = slot.item.keys[next];
+      act?.p?.loadVideoById(slot.item.keys[next]);
       return;
     }
     /* نفدت البدائل: البطاقةُ تُستبدل/تُحذف والدورُ لأوضح الظاهرين */
@@ -446,35 +474,83 @@ function createEngine(
     }, 0);
   };
 
-  const ensurePlayer = async (firstKey: string) => {
-    const yt = await loadYouTubeApi();
-    if (destroyed) return;
-    if (player) {
-      /* 🆕 D-760: البطاقةُ التاليةُ تحمل صوتَ سابقتها — إن اختار القارئُ
-         الصوتَ وفُكّ قفلُ الإطار مرّةً، لا نكتم عند التبديل. وإن رفض
-         WebKit فكّاً آليّاً فمُعافاةُ PAUSED أدناه تُعيدنا صامتين. */
-      const carry = wantSound && unlocked.yt;
-      if (carry) {
-        player.unMute();
-        player.setVolume(100);
-        autoUnmuteAt = Date.now();
-      } else {
-        player.mute();
-      }
-      publish({ soundOn: carry });
-      player.loadVideoById(firstKey);
-      scheduleVerify(600);
+  /* ===== قسمُ المشغّلَين المتناوبَين (D-761) ===== */
+
+  /** المفتاحُ الذي يجب أن يعرضه الظاهرُ الآن — مصدرُ الحقيقة عند سباق الإقلاع */
+  const desiredActiveKey = (): string | null => {
+    const s = activeSlot();
+    if (!s || providerOf(s.item) === "file") return null;
+    return s.item.keys[keyIdx] ?? null;
+  };
+
+  /** الظاهرُ مرئيٌّ فوق، والخفيُّ شفّافٌ تحت — ولا يُسمَع الخفيُّ أبداً */
+  const applyRoles = () => {
+    if (act) {
+      act.frame.style.opacity = "1";
+      act.frame.style.zIndex = "2";
+    }
+    if (sby) {
+      sby.frame.style.opacity = "0";
+      sby.frame.style.zIndex = "1";
+    }
+  };
+
+  const activeStateChange = (e: { data: number }) => {
+    const yts = window.YT?.PlayerState;
+    if (!yts) return;
+    if (e.data === yts.PLAYING) {
+      expectPause = false;
+      startTick();
+      startVeilProbe();
+      scheduleVerify(150);
       return;
     }
-    pendingLoadKey = firstKey;
-    /* 🔴 ⚖️ نقضُ «autoplay:0 + playVideo من onReady» بعد فشل iPhone الفعليّ
-       (بلاغ أحمد ٢٨ أغسطس): نداءُ playVideo بلا إيماءةٍ يبتلعه iOS بصمتٍ —
-       لا PLAYING ولا حتى onAutoplayBlocked، **فالحدث لا يُطلقه إلا منعُ
-       محاولةِ المشغّل نفسِه**. فالإطارُ يُبنى يدويّاً بمحاولةٍ ذاتيّةٍ
-       صامتة (`autoplay=1&mute=1`)، وهو الاستعمالُ الموثَّق لتسليم إطارٍ
-       قائمٍ إلى `YT.Player`.
-       ⚠️ و`allow="autoplay"` هو جسرُ الإيماءة: بدونه ضغطةُ زرِّنا لا
-       تملك تشغيلَ فيديو داخل إطارٍ من أصلٍ آخر على iOS إطلاقاً. */
+    if (e.data === yts.PAUSED || e.data === yts.ENDED) {
+      /* صدى إيقافِنا نحن يُستهلك ولا يدخل مُعافاةَ الرفض */
+      const echoed = expectPause && e.data === yts.PAUSED;
+      if (echoed) expectPause = false;
+      /* 🆕 D-760: توقّفٌ لحظاتٍ بعد فكِّ كتمٍ آليٍّ = WebKit رفض الصوتَ
+         فأوقف — نستعيد التشغيلَ صامتين ونُصدِق الأيقونة (علمُ الجلسة
+         يبقى: رفضٌ عارضٌ لا يُطفئ الحمل). لا نتعافى والصفحةُ مخفيّة. */
+      if (
+        !echoed &&
+        e.data === yts.PAUSED &&
+        autoUnmuteAt &&
+        Date.now() - autoUnmuteAt < 1500 &&
+        activeId &&
+        !activeIsFile() &&
+        document.visibilityState === "visible"
+      ) {
+        autoUnmuteAt = 0;
+        act?.p?.mute();
+        publish({ soundOn: false });
+        act?.p?.playVideo();
+        return;
+      }
+      stopTick();
+      publish({ time: readTime() });
+      if (activeId && phase === "playing") setPhase("paused");
+    }
+  };
+
+  const standbyStateChange = (rec: PlayerRec, e: { data: number }) => {
+    const yts = window.YT?.PlayerState;
+    if (!yts) return;
+    if (e.data === yts.PLAYING) {
+      /* بلغ أوّلَ إطار: عازلٌ دافئٌ يكفي — يقف صامتاً بانتظار الترقية.
+         وأيُّ تشغيلٍ شاردٍ لاحتياطٍ خاملٍ يُخمَد فوراً: الخفيُّ لا يعمل */
+      rec.p?.pauseVideo();
+      if (rec.preload === "loading") rec.preload = "ready";
+    }
+  };
+
+  /* 🔴 ⚖️ نقضُ «autoplay:0 + playVideo من onReady» بعد فشل iPhone الفعليّ:
+     الإطارُ يُبنى يدويّاً بمحاولةٍ ذاتيّةٍ صامتة (`autoplay=1&mute=1`) —
+     وحدَها محاولةُ المشغّل نفسِه تُطلق onAutoplayBlocked عند المنع.
+     و`allow="autoplay"` جسرُ تفويض الإيماءة إلى داخل الإطار على iOS.
+     ⚠️ الإطارُ والدورُ يُثبَّتان **قبل** انتظار الواجهة — نداءان متسارعان
+     كانا يبنيان مشغّلَين لدورٍ واحد. */
+  const bootPlayer = async (firstKey: string, asActive: boolean): Promise<void> => {
     const frame = document.createElement("iframe");
     const q = new URLSearchParams({
       autoplay: "1",
@@ -493,66 +569,155 @@ function createEngine(
     frame.style.height = "100%";
     frame.style.border = "0";
     dom.ytHost.appendChild(frame);
-    player = new yt.Player(frame, {
+    const rec: PlayerRec = {
+      p: null,
+      ready: false,
+      frame,
+      key: firstKey,
+      preload: asActive ? "idle" : "loading",
+      failedKey: null,
+    };
+    if (asActive) act = rec;
+    else sby = rec;
+    applyRoles();
+    const yt = await loadYouTubeApi();
+    if (destroyed) return;
+    rec.p = new yt.Player(frame, {
       events: {
         onReady: () => {
-          playerReady = true;
-          /* بالترتيب الذي أملاه أحمد: كتمٌ ثم صفرُ صوتٍ ثم تشغيل —
-             أوّلُ تشغيلٍ بعد فتح الصفحة صامتٌ دائماً (لا قفلَ مفكوكاً
-             بعد)، والأيقونةُ تُنشر بالأمر لا بقراءةٍ متزامنةٍ عتيقة */
-          player?.mute();
-          player?.setVolume(0);
+          rec.ready = true;
+          /* بالترتيب المُملى: كتمٌ ثم صفرُ صوت — أوّلُ تشغيلٍ صامتٌ دائماً */
+          rec.p?.mute();
+          rec.p?.setVolume(0);
+          if (rec !== act) return;
           publish({ soundOn: false });
-          if (pendingLoadKey && activeId) player?.playVideo();
-          pendingLoadKey = null;
+          const want = desiredActiveKey();
+          if (!want) return;
+          if (rec.key !== want) {
+            /* القارئُ سبق الإقلاعَ إلى بطاقةٍ أخرى — نلحق به */
+            rec.key = want;
+            rec.p?.loadVideoById(want);
+          } else {
+            rec.p?.playVideo();
+          }
         },
         onStateChange: (e) => {
-          const yts = window.YT?.PlayerState;
-          if (!yts) return;
-          if (e.data === yts.PLAYING) {
-            expectPause = false;
-            startTick();
-            startVeilProbe();
-            scheduleVerify(150);
-            return;
-          }
-          if (e.data === yts.PAUSED || e.data === yts.ENDED) {
-            /* صدى إيقافِنا نحن يُستهلك ولا يدخل مُعافاةَ الرفض */
-            const echoed = expectPause && e.data === yts.PAUSED;
-            if (echoed) expectPause = false;
-            /* 🆕 D-760: توقّفٌ لحظاتٍ بعد فكِّ كتمٍ آليٍّ = WebKit رفض
-               الصوتَ فأوقف — نستعيد التشغيلَ صامتين ونُصدِق الأيقونة.
-               (لا نتعافى والصفحةُ مخفيّة: الإيقافُ هناك مقصود.) */
-            if (
-              !echoed &&
-              e.data === yts.PAUSED &&
-              autoUnmuteAt &&
-              Date.now() - autoUnmuteAt < 1500 &&
-              activeId &&
-              !activeIsFile() &&
-              document.visibilityState === "visible"
-            ) {
-              autoUnmuteAt = 0;
-              unlocked.yt = false;
-              player?.mute();
-              publish({ soundOn: false });
-              player?.playVideo();
-              return;
-            }
-            stopTick();
-            publish({ time: readTime() });
-            if (activeId && phase === "playing") setPhase("paused");
+          if (rec === act) activeStateChange(e);
+          else standbyStateChange(rec, e);
+        },
+        onError: () => {
+          if (rec === act) {
+            onPlayerError();
+          } else {
+            /* فشلُ تحميلٍ مسبق: يُهمَل بصمتٍ ولا يُعاد لنفس المفتاح —
+               مسارُ الخطأ الظاهرُ (بديلٌ ثم حذفٌ) يبقى عند التنشيط الفعليّ */
+            rec.failedKey = rec.key;
+            rec.key = null;
+            rec.preload = "idle";
           }
         },
-        onError: onPlayerError,
         onAutoplayBlocked: () => {
-          /* الغلافُ يبقى وزرُّ تشغيلٍ واضح — لا iframe أسود (رابعًا/٧) */
-          clearStall();
-          stopTick();
-          setPhase("blocked");
+          if (rec === act) {
+            /* الغلافُ يبقى وزرُّ تشغيلٍ واضح — لا iframe أسود (رابعًا/٧) */
+            clearStall();
+            stopTick();
+            setPhase("blocked");
+          } else {
+            rec.failedKey = rec.key;
+            rec.key = null;
+            rec.preload = "idle";
+          }
         },
       },
     });
+  };
+
+  /** التحميلُ المسبق: مفتاحُ أوّلِ بطاقةِ يوتيوبَ بعد النشطة — واحدٌ لا غير */
+  maybePreload = () => {
+    if (destroyed || !activeId) return;
+    if (readSnap().manualOnly || isSavingData()) return;
+    if (document.visibilityState === "hidden") return;
+    const ids = [...slots.keys()];
+    const at = ids.indexOf(activeId);
+    if (at < 0) return;
+    let nextKey: string | null = null;
+    for (let i = at + 1; i < ids.length; i++) {
+      const s = slots.get(ids[i]);
+      if (!s || exhausted.has(ids[i])) continue;
+      /* بطاقةُ ملفٍّ تُتخطّى: بثُّها المباشرُ سريعٌ أصلاً (D-758) —
+         ويوتيوبُ التي بعدها هي المستفيدةُ من السبق */
+      if (providerOf(s.item) === "file") continue;
+      nextKey = s.item.keys[0] ?? null;
+      break;
+    }
+    if (!nextKey) return;
+    if (act?.key === nextKey) return;
+    if (sby && (sby.key === nextKey || sby.failedKey === nextKey)) return;
+    if (!sby) {
+      void bootPlayer(nextKey, false);
+      return;
+    }
+    if (!sby.ready || !sby.p) return;
+    sby.preload = "loading";
+    sby.key = nextKey;
+    sby.p.mute();
+    sby.p.setVolume(0);
+    sby.p.loadVideoById(nextKey);
+  };
+
+  /** تنشيطُ بطاقةِ يوتيوب: ترقيةٌ لحظيّةٌ إن سبق الاحتياطُ بهذا المفتاح،
+      وإلا مسارُ D-760 (تحميلٌ في الظاهر نفسِه)، وإلا إقلاعٌ أوّل */
+  const activateYt = (firstKey: string) => {
+    dom.video.pause();
+    /* بطاقةُ يوتيوب: آخرُ إطارِ ملفٍّ لا يفترش فوق الإطار الرسميّ */
+    dom.video.style.display = "none";
+
+    if (sby?.ready && sby.p && sby.key === firstKey) {
+      /* الترقية: تبادلُ أدوارٍ — المشغّلُ الجاهزُ يصعد والقديمُ يصير احتياطاً */
+      const old = act;
+      act = sby;
+      sby = old;
+      if (sby) {
+        /* وقفتُه للتوّ في منتصف مقطعه — ليس تحميلاً مسبقاً لشيء */
+        sby.key = null;
+        sby.preload = "idle";
+      }
+      applyRoles();
+      expectPause = false;
+      act.preload = "idle";
+      const carry = wantSound && soundSessionUnlocked;
+      if (carry) {
+        act.p?.unMute();
+        act.p?.setVolume(100);
+        autoUnmuteAt = Date.now();
+      } else {
+        act.p?.mute();
+      }
+      publish({ soundOn: carry });
+      act.p?.playVideo();
+      scheduleVerify(600);
+      return;
+    }
+
+    if (act?.p && act.ready) {
+      /* مسار D-760 كما هو: حملُ الصوت وتحميلٌ في الظاهر نفسِه */
+      const carry = wantSound && soundSessionUnlocked;
+      if (carry) {
+        act.p.unMute();
+        act.p.setVolume(100);
+        autoUnmuteAt = Date.now();
+      } else {
+        act.p.mute();
+      }
+      publish({ soundOn: carry });
+      act.key = firstKey;
+      act.p.loadVideoById(firstKey);
+      scheduleVerify(600);
+      return;
+    }
+
+    if (act) return; /* يقلع الآن — onReady يلحق بالمفتاح المطلوب */
+    void bootPlayer(firstKey, true);
   };
 
   /* ---- التنشيط (قلبُ المتحكّم) ---- */
@@ -573,11 +738,11 @@ function createEngine(
           });
           startTick();
           startVeilProbe();
-        } else if (player && playerReady) {
+        } else if (act?.p && act.ready) {
           /* زرُّ التشغيل يبدأ صامتاً دائماً (حالة الواجهة ٣) — والصوتُ
              لزرِّ الصوت بعد أن تتحرّك الصورة */
-          player.mute();
-          player.playVideo();
+          act.p.mute();
+          act.p.playVideo();
         }
       }
       return;
@@ -596,13 +761,17 @@ function createEngine(
     armStall();
 
     if (providerOf(slot.item) === "file") {
-      if (player && playerReady) player.pauseVideo();
+      if (act?.p && act.ready) {
+        expectPause = true;
+        act.p.pauseVideo();
+      }
       dom.video.style.display = "";
       if (!slot.item.fileUrl) return;
       if (dom.video.src !== slot.item.fileUrl) dom.video.src = slot.item.fileUrl;
       /* 🆕 D-760: عنصرُ الملفّ يحمل نيّةَ الصوت هو الآخر — وإن رفض
-         WebKit تشغيلاً مصوَّتاً عُدنا صامتين بدل بطاقةٍ ميتة */
-      const carry = wantSound && unlocked.file;
+         WebKit تشغيلاً مصوَّتاً عُدنا صامتين بدل بطاقةٍ ميتة
+         (علمُ الجلسة يبقى — الرفضُ عارضٌ لا يُطفئ الحمل) */
+      const carry = wantSound && soundSessionUnlocked;
       dom.video.muted = !carry;
       if (carry) dom.video.volume = 1;
       publish({ soundOn: carry });
@@ -611,7 +780,6 @@ function createEngine(
       void dom.video.play().catch(() => {
         if (activeId !== id) return;
         if (carry) {
-          unlocked.file = false;
           dom.video.muted = true;
           publish({ soundOn: false });
           void dom.video.play().catch(() => {
@@ -626,10 +794,7 @@ function createEngine(
       return;
     }
 
-    dom.video.pause();
-    /* بطاقةُ يوتيوب: آخرُ إطارِ ملفٍّ لا يفترش فوق الإطار الرسميّ */
-    dom.video.style.display = "none";
-    void ensurePlayer(slot.item.keys[0]);
+    activateYt(slot.item.keys[0]);
   };
 
   /* ---- اختيارُ البطاقة النشطة (المواصفة ثالثًا) ---- */
@@ -695,9 +860,16 @@ function createEngine(
 
   const onVisibility = () => {
     if (document.visibilityState === "hidden") {
-      /* الخلفيّة: إيقافٌ فوريٌّ وعدّادٌ ساكن (ثالثًا/٦، سادسًا/٦) */
+      /* الخلفيّة: إيقافٌ فوريٌّ وعدّادٌ ساكن (ثالثًا/٦، سادسًا/٦) —
+         والاحتياطُ في منتصف تحميله يقف ويُلغى: لا استهلاكَ بياناتٍ
+         مسبقاً في الخلفيّة، وسيُعاد عند العودة من onDrewFrame */
       pauseCurrent();
       stopTick();
+      if (sby?.p && sby.preload === "loading") {
+        sby.p.pauseVideo();
+        sby.preload = "idle";
+        sby.key = null;
+      }
       return;
     }
     /* العودة: استئنافٌ صامتٌ دائماً — لا صوتَ آليّاً (ثالثًا/٧) */
@@ -708,9 +880,9 @@ function createEngine(
       /* الإخفاءُ أوقف العدّاد — وعنصرُ الملفّ بلا حدثِ PLAYING يعيد
          تدويرَه، فبدون هذا يعمل المقطعُ والعقربُ ساكنٌ والسِّترُ نازل */
       startTick();
-    } else if (player && playerReady) {
-      player.mute();
-      player.playVideo();
+    } else if (act?.p && act.ready) {
+      act.p.mute();
+      act.p.playVideo();
     }
     /* أُمر بالكتم فتُنشر الأيقونةُ بالأمر — لا بقراءةٍ متزامنةٍ عتيقة.
        (نيّةُ الصوت وقفلُه باقيان: البطاقةُ التالية تحملهما كالمعتاد.) */
@@ -796,13 +968,13 @@ function createEngine(
       if (activeIsFile()) {
         dom.video.muted = !wantOn;
         if (wantOn) dom.video.volume = 1;
-      } else if (player && playerReady) {
+      } else if (act?.p && act.ready) {
         if (wantOn) {
           /* داخل الضغطة نفسِها: unMute + volume (خامسًا/٢) — بلا play */
-          player.unMute();
-          player.setVolume(100);
+          act.p.unMute();
+          act.p.setVolume(100);
         } else {
-          player.mute();
+          act.p.mute();
         }
       }
       /* الحقيقةُ تُقرأ ثم يُكتب الكوكي — لا ادّعاءَ نجاحٍ رفضه المتصفّح
@@ -810,8 +982,8 @@ function createEngine(
       window.setTimeout(() => {
         if (destroyed) return;
         const on = verifySound();
-        /* نجاحُ فكِّ الكتم بإيماءةٍ = قفلُ WebKit مفكوكٌ لهذا العنصر */
-        if (on) unlocked[activeIsFile() ? "file" : "yt"] = true;
+        /* نجاحُ فكِّ الكتم بإيماءةٍ = قفلُ الجلسة مفكوك (D-761) */
+        if (on) soundSessionUnlocked = true;
         if (on === wantOn) writeTrailerSound(on);
       }, 200);
     },
@@ -838,13 +1010,15 @@ function createEngine(
       }
       io?.disconnect();
       io = null;
-      try {
-        player?.destroy();
-      } catch {
-        /* مشغّلٌ لم يكتمل إنشاؤه */
+      for (const rec of [act, sby]) {
+        try {
+          rec?.p?.destroy();
+        } catch {
+          /* مشغّلٌ لم يكتمل إنشاؤه */
+        }
       }
-      player = null;
-      playerReady = false;
+      act = null;
+      sby = null;
       dom.ytHost.replaceChildren();
     },
   };
