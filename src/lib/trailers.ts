@@ -1,7 +1,14 @@
 import "server-only";
 
 import { getSuggestions } from "@/lib/suggest";
-import { getTrailer, backdropUrl, yearOf, trending, type SearchResult } from "@/lib/tmdb";
+import {
+  getTrailer,
+  backdropUrl,
+  yearOf,
+  trending,
+  ANIME_KEYWORD,
+  type SearchResult,
+} from "@/lib/tmdb";
 import { buildSection } from "@/lib/sections";
 import { titleOf } from "@/lib/media";
 import { getDict, type Locale } from "@/lib/i18n";
@@ -178,9 +185,24 @@ export async function getTrailerTabFeed(
   /* 🆕 **والأنمي يُسحب أوسعَ ويُسبر أوسع** (D-739): **توسيعُ المسبار
      بلا توسيع السحب لا يجد ما يسبره** — الرقمُ الواحدُ يخدم الطرفين. */
   const probe = tab === "anime" ? PROBE_ANIME : PROBE;
+  /* 🔴 🆕 **ومفتاحُ الأنمي شرطُ المصدر لا حارسٌ بعده** (D-739، بعد قياسٍ
+     حيٍّ أثبت أن توسيع المسبار وحدَه لم يرفع الأربعةَ صفّاً واحداً):
+     **كنتُ أطلب «الأكثرَ شعبيّةً» عامّاً ثمّ أُسقط ما ليس أنمي** —
+     **فالبِركةُ تُصفَّى بعد سحبها، ولا يبقى منها ما يُسبر أصلاً.**
+     🔑 **والقاعدةُ مكتوبةٌ في `sections.ts` بحرفها**: «**الأنمي
+     `/discover` دائماً: `/popular` لا يقبل مفتاحاً**» — **ومكتوبةٌ ثانيةً
+     في `news/page.tsx`** حيث كلُّ سطحِ أنمي يمرّر `ANIME_KEYWORD` في
+     `base`. **وأنا ورثتُ `buildSection` ولم أرث ما يُمرَّر إليها.**
+     ⚠️ **وهي D-731 حرفاً للمرّة الثالثة** («وراثةُ المصدر تعني وراثةَ
+     قواعده») — **والمرّةُ الثالثةُ ليست سهواً بل عادة**: **من نسخ نداءً
+     فليقرأ وسائطَ أقرانه قبل أن يقيس نتيجتَه.** */
   const rows = await buildSection(
     "most-popular",
-    { media, base: {}, active: false },
+    {
+      media,
+      base: media === "anime" ? { keywords: [ANIME_KEYWORD] } : {},
+      active: false,
+    },
     probe,
   ).catch(() => []);
   return shape(rows, locale, limit, undefined, probe);
