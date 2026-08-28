@@ -41,6 +41,8 @@ const CARDS = [
   {key:"slow",   keys:["slow"]},
   {key:"err150", keys:["err150","fast3"]},
   {key:"silent", keys:["silent"]},
+  /* D-758: المصدرُ الأصيل — ملفُّ MP4 محلّيٌّ من خادم المختبر نفسِه */
+  {key:"file",   keys:["fast5"], fileUrl:"/clip.webm"},
 ];
 
 function App(){
@@ -49,7 +51,7 @@ function App(){
     React.createElement("div", {style:{height:"30vh"}}),
     ...CARDS.map(c => React.createElement("div", {key:c.key, "data-card":c.key, className:"card"},
       React.createElement(TrailerPlayer, {
-        videoKey:c.keys[0], videoKeys:c.keys, backdrop:null, title:c.key,
+        videoKey:c.keys[0], videoKeys:c.keys, fileUrl:c.fileUrl ?? null, backdrop:null, title:c.key,
         muted, onMutedChange:setMuted,
         playLabel:"play", muteLabel:"mute", unmuteLabel:"unmute", seekLabel:"seek",
         className:"aspect-video w-full",
@@ -104,6 +106,10 @@ setInterval(()=>{
     const veil=c.querySelector('div.transition-opacity');
     const lifted=veil?veil.classList.contains('opacity-0'):null;
     const btn=!!c.querySelector('button span.grid');
+    const v=c.querySelector('video');
+    if(v && !v.__labHooked){ v.__labHooked=true;
+      v.addEventListener('playing',()=>window.__mark(key,'native-playing',null));
+      v.addEventListener('error',()=>window.__mark(key,'native-error',null)); }
     const timeEl=c.querySelector('span[dir="ltr"]');
     const time=timeEl?timeEl.textContent:null;
     const prev=window.__labState[key]||{};
@@ -165,9 +171,29 @@ setTimeout(()=>{ loaded=true; lab('loaded'); if(q.get('autoplay')==='1'&&!p.sile
 </script>`;
 
 // ---------- 4) الخادم ----------
+/* D-758: مقطعُ اختبارٍ للمصدر الأصيل — يُولَّد مرّةً عند الغياب */
+const CLIP = path.join(OUT, "clip.webm");
+if (!fs.existsSync(CLIP)) {
+  const { execSync } = await import("node:child_process");
+  try {
+    /* WebM لا MP4: كروميوم المفتوح (بناءُ Playwright) بلا مرمّز H.264 —
+       وملفّاتُ آبل الحقيقيّة H.264 تعمل في متصفّحات المستخدمين جميعاً */
+    execSync(`ffmpeg -y -f lavfi -i testsrc=duration=4:size=640x360:rate=24 -f lavfi -i sine=frequency=440:duration=4 -c:v libvpx -b:v 400k -c:a libvorbis -shortest ${CLIP}`, {stdio:"ignore"});
+  } catch { /* بلا ffmpeg تسقط بطاقةُ الملفّ وحدَها — والباقي يعمل */ }
+}
+
 const server = http.createServer((req,res)=>{
   if(req.url==='/'||req.url.startsWith('/?')){ res.setHeader('content-type','text/html'); res.end(harness); return; }
   if(req.url==='/bundle.js'){ res.setHeader('content-type','text/javascript'); res.end(fs.readFileSync(`${OUT}/bundle.js`)); return; }
+  if(req.url==='/clip.webm' && fs.existsSync(CLIP)){
+    /* دعمُ Range — المتصفّح يطلب المقاطعَ به، وبدونه لا يبدأ العرض */
+    const size=fs.statSync(CLIP).size; const r=/bytes=(\d+)-(\d*)/.exec(req.headers.range||'');
+    if(r){ const a=+r[1], b=r[2]?+r[2]:size-1;
+      res.writeHead(206,{'content-type':'video/webm','content-range':`bytes ${a}-${b}/${size}`,'accept-ranges':'bytes','content-length':b-a+1});
+      fs.createReadStream(CLIP,{start:a,end:b}).pipe(res); return; }
+    res.writeHead(200,{'content-type':'video/webm','content-length':size,'accept-ranges':'bytes'});
+    fs.createReadStream(CLIP).pipe(res); return;
+  }
   res.statusCode=404; res.end('nf');
 });
 await new Promise(r=>server.listen(PORT,'127.0.0.1',r));
@@ -229,11 +255,20 @@ await page.evaluate(()=>{
 });
 await page.waitForTimeout(2500);
 
+await stamp('S10-scroll-to-file');
+await scrollToCard('file');
+await page.waitForTimeout(3000);
+await stamp('S10-file-wiggle-back');
+await scrollToCard('silent');
+await page.waitForTimeout(1200);
+await scrollToCard('file');
+await page.waitForTimeout(2000);
+
 await stamp('S9-tick-check-a');
-const timeA = (await stateOf()).fast2?.time;
+const timeA = (await stateOf()).file?.time;
 await page.waitForTimeout(1600);
 await stamp('S9-tick-check-b');
-const timeB = (await stateOf()).fast2?.time;
+const timeB = (await stateOf()).file?.time;
 
 const events = await log();
 await browser.close(); server.close();
@@ -241,4 +276,4 @@ await browser.close(); server.close();
 // ---------- 6) التقرير ----------
 console.log("=== RAW TIMELINE (ms from page load) ===");
 for(const e of events) console.log(String(e.t).padStart(6), e.card.padEnd(9), e.ev, e.extra??'');
-console.log("\\n=== tick check: fast2 time A/B ===", JSON.stringify(timeA), JSON.stringify(timeB));
+console.log("\\n=== tick check: file-card time A/B ===", JSON.stringify(timeA), JSON.stringify(timeB));
