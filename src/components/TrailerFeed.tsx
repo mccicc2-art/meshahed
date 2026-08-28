@@ -4,25 +4,39 @@ import Link from "next/link";
 import { useState } from "react";
 import { TrailerPlayer } from "./TrailerPlayer";
 import { Icon } from "./Icon";
-import { dismissTitle, undoDismissTitle, follow } from "@/lib/actions";
-import { writeTrailerSound } from "@/lib/trailerPrefs";
+import { dismissTitle, undoDismissTitle } from "@/lib/actions";
 import { toast, flashError } from "@/lib/toast";
+import {
+  trailerKeyOf,
+  trailerTitleHref,
+  useTrailerFollow,
+  useTrailerSlots,
+  useTrailerSound,
+} from "@/lib/trailerCard";
 import { getDict, type Locale } from "@/lib/i18n";
 import type { TrailerItem } from "@/lib/trailers";
 
 /**
  * 🆕 **علفُ الترايلرات الرأسيّ** (D-726) — صفحةُ `/trailers`.
  *
- * ⚠️ **والالتقاطُ يتكفّل بالتمرير لا جافاسكربت**: `snap-y snap-mandatory`
- * **والمشغّلُ نفسُه يشتغل عند ٦٠٪ ويقف حين يخرج** — **فلا مستمعَ
- * `scroll` ولا حسابَ مواضع**: **قاعدةُ الرؤية واحدةٌ في الرايل وفي
- * الصفحة** (القاعدة ٣)، **ومنطقٌ ثانٍ للتشغيل هنا يفترق عن أخيه أوّلَ
- * إصلاح.**
+ * ⚠️ **والتمريرُ يتكفّل بالتشغيل لا جافاسكربت**: **المشغّلُ نفسُه يأخذ
+ * الدورَ عند ٠٫٤ ويتنحّى تحت ٠٫١٥** — **فلا مستمعَ `scroll` ولا حسابَ
+ * مواضع**: **قاعدةُ الرؤية واحدةٌ في الرايل وفي الصفحة** (القاعدة ٣)،
+ * **ومنطقٌ ثانٍ للتشغيل هنا يفترق عن أخيه أوّلَ إصلاح.**
  *
  * 🔑 **و«ليس لي» بابٌ مبنيٌّ منذ D-322**: `dismissed_titles` وفعلُها
  * قائمان ويُصفّيان `getSuggestions` — **فلا هجرةَ ولا جدولَ ولا فعلَ
  * جديد**، **والأثرُ يظهر في الترشيحات القادمة كما اشترط.**
+ * 🔴 🆕 **وفعلُ القارئ ليس كعطلِنا** (D-756): **«ليس لي» حذفٌ طلبَه
+ * صاحبُ الإصبع فيُطوى ويُتراجَع عنه** — **ومقطعٌ يرفضه يوتيوب عطلٌ لم
+ * يطلبه أحد، فيُستبدَل في خانته من فائض المسبار.**
+ * 🔑 **والقاعدة: ما أزاحه القارئُ بيده يُقرأ استجابة، وما أزاحه الغيبُ
+ * يُقرأ اهتزازاً** — **ووصفةٌ واحدةٌ للحالتين تُخطئ في إحداهما.**
  */
+
+/** **ما يُعرض من العلف** — وما زاد عليه في `items` بدائلُ خاناته (D-756) */
+const FEED_SLOTS = 12;
+
 export function TrailerFeed({
   items,
   locale,
@@ -38,22 +52,14 @@ export function TrailerFeed({
   emptyLabel?: string;
 }) {
   const t = getDict(locale);
-  const [muted, setMuted] = useState(!soundOn);
+  const { muted, changeMuted } = useTrailerSound(soundOn);
+  const { added, addToList } = useTrailerFollow();
+  const { slots, retire } = useTrailerSlots(items, FEED_SLOTS);
   const [gone, setGone] = useState<ReadonlySet<string>>(new Set());
-  const [unavailable, setUnavailable] = useState<ReadonlySet<string>>(new Set());
-  const [added, setAdded] = useState<ReadonlySet<string>>(new Set());
-
-  const keyOf = (i: TrailerItem) => `${i.mediaType}-${i.tmdbId}`;
-
-  function changeMuted(next: boolean) {
-    setMuted(next);
-    /* `next` هو وضع الكتم، والكوكي يحفظ وضع الصوت. */
-    writeTrailerSound(!next);
-  }
 
   function notForMe(i: TrailerItem) {
-    const k = keyOf(i);
-    setGone((p) => new Set(p).add(k));
+    const k = trailerKeyOf(i);
+    setGone((previous) => new Set(previous).add(k));
     dismissTitle({ tmdbId: i.tmdbId, mediaType: i.mediaType }).catch((e) =>
       flashError((e as Error).message),
     );
@@ -61,11 +67,14 @@ export function TrailerFeed({
       tone: "info",
       action: {
         label: t.undoWatched,
+        /* **والتراجعُ يُعيد البطاقةَ إلى مكانها** — **ولو استُبدلت
+           ببديلٍ لَما كان للتراجع ما يُعيده** (وهو سببُ بقاء «ليس لي»
+           على الطيّ لا على الاستبدال). */
         run: () => {
-          setGone((p) => {
-            const n = new Set(p);
-            n.delete(k);
-            return n;
+          setGone((previous) => {
+            const next = new Set(previous);
+            next.delete(k);
+            return next;
           });
           undoDismissTitle({ tmdbId: i.tmdbId, mediaType: i.mediaType }).catch(() => {});
         },
@@ -73,24 +82,7 @@ export function TrailerFeed({
     });
   }
 
-  function addToList(i: TrailerItem) {
-    const k = keyOf(i);
-    setAdded((p) => new Set(p).add(k));
-    follow({ tmdbId: i.tmdbId, mediaType: i.mediaType, title: i.title, posterPath: i.posterPath }).catch((e) => {
-      setAdded((p) => {
-        const n = new Set(p);
-        n.delete(k);
-        return n;
-      });
-      flashError((e as Error).message);
-    });
-  }
-
-  const shown = items.filter((i) => {
-    const key = keyOf(i);
-    return !gone.has(key) && !unavailable.has(key);
-  });
-
+  const shown = slots.filter((i) => !gone.has(trailerKeyOf(i)));
   if (!shown.length) {
     return <p className="px-4 py-16 text-center text-sm text-muted">{emptyLabel ?? t.trailersEmpty}</p>;
   }
@@ -102,11 +94,11 @@ export function TrailerFeed({
        («التمرير للأسفل يشغّل التالي ويوقف السابق») هو المراقبُ في
        المشغّل نفسِه** — **وصنفٌ خاملٌ يُقرأ ميزةً قائمةً فيُبنى فوقه.** */
     <div>
-      {shown.map((i) => {
-        const k = keyOf(i);
+      {shown.map((i, index) => {
+        const k = trailerKeyOf(i);
         const isAdded = added.has(k);
         return (
-          <section key={k} data-key={k} className="pb-4">
+          <section key={k} className="pb-4">
             <div className="rounded-2xl border border-border bg-surface overflow-hidden">
               <TrailerPlayer
                 videoKey={i.videoKey}
@@ -120,9 +112,8 @@ export function TrailerFeed({
                 unmuteLabel={t.trailerUnmute}
                 seekLabel={t.trailerSeek}
                 className="aspect-video w-full"
-                onUnavailable={() =>
-                  setUnavailable((previous) => new Set(previous).add(k))
-                }
+                eager={index === 0}
+                onUnavailable={() => retire(k)}
               />
 
               <div className="px-4 pt-3.5 pb-2">
@@ -134,12 +125,10 @@ export function TrailerFeed({
                   {[i.year, i.genre, i.country].filter(Boolean).join(" · ")}
                 </p>
                 {/* 🆕 **والنبذةُ ثلاثةُ أسطرٍ في الصفحة الكاملة وحدَها**
-                    (D-729، حكمُه: «إذا فتحت قائمة الترايلر أبغاه يعرض
-                    النبذة»): **هنا البطاقةُ وحدَها في الشاشة فللنصِّ
-                    مكان** — **وفي صفِّ اكتشف تُطيل البطاقةَ بلا أن
-                    تُقرأ** (D-510). ⚠️ **و`line-clamp-3` لا قصٌّ
-                    بالحروف**: القصُّ الحسابيُّ يقطع الكلمةَ ويكذب على
-                    مقاسات الخطوط. */}
+                    (D-729): **هنا البطاقةُ وحدَها في الشاشة فللنصِّ مكان**
+                    — **وفي صفِّ اكتشف تُطيل البطاقةَ بلا أن تُقرأ**
+                    (D-510). ⚠️ **و`line-clamp-3` لا قصٌّ بالحروف**:
+                    القصُّ الحسابيُّ يقطع الكلمةَ ويكذب على مقاسات الخطوط. */}
                 {i.overview && (
                   <p className="mt-2.5 text-14 leading-relaxed line-clamp-3" dir="auto">
                     {i.overview}
@@ -153,7 +142,7 @@ export function TrailerFeed({
                   متساوٍ، **وفاصلٌ فوقها كفاصل بطاقة الملفّ** (D-687). */}
               <div className="mt-1 grid grid-cols-3 border-t border-[color:var(--divider)]">
                 <Link
-                  href={`/${i.mediaType === "tv" ? "show" : "movie"}/${i.tmdbId}`}
+                  href={trailerTitleHref(i)}
                   prefetch={false}
                   className="flex flex-col items-center gap-1.5 py-3 text-12 text-muted active:opacity-70 transition"
                 >

@@ -65,6 +65,62 @@ export function RailSkeleton({ count = 6 }: { count?: number }) {
   );
 }
 
+/**
+ * 🔴 🆕 **هيكلُ صفِّ الترايلرات — يحجز الصدارةَ قبل أن تصل** (D-756،
+ * حكمُ أحمد: «أعطِ الترايلر أولويّةً على كلِّ شيءٍ في اكتشف»).
+ *
+ * **كان حاجزُه `fallback={null}`** — **وهو أبطأُ أقسام اكتشف** (يسأل
+ * TMDB عن مقطعِ كلِّ عمل) — **فتصل الرفوفُ تحته أوّلاً وتُرسم في مكانه،
+ * ثمّ يهبط الصفُّ فوقها ويدفعها كلَّها لأسفل.** **فالأولويّةُ التي في
+ * الترتيب كانت تضيع في الزمن.**
+ * 🔑 **والقاعدة: موضعٌ لا يُحجز موضعٌ لا يُملَك** — **وقسمٌ يصل متأخّراً
+ * بلا هيكلٍ يُقرأ قفزةً لا وصولاً** (وهو نصفُ إحساس «بطيء»).
+ * ⚠️ **والمقاسُ مقاسُ البطاقة الحقيقيّة حرفاً** (D-755): `min(92vw,1030px)`
+ * و`aspect-video` وذيلٌ بارتفاع صفِّ أفعالها — **وهيكلٌ يخالف مقاسَ ما
+ * يحلّ محلَّه يقفز مرّتين بدل مرّة.**
+ *
+ * 🔶 **وثمنٌ معلَنٌ لا مخبوء**: **من لا ترايلراتِ له** (حسابٌ جديد، أو
+ * نطاقٌ أفرغته بِركةُ ترشيحه) **يرى المساحةَ محجوزةً ثمّ تنطوي** —
+ * **إزاحةٌ إلى أعلى مرّةً واحدة.** **وقبلها كانت الإزاحةُ إلى أسفل في
+ * كلِّ فتحةٍ لكلِّ قارئ**، **ودفعُ ما تحتك بعد أن بدأتَ تقرؤه أسوأُ من
+ * انطواءِ فراغٍ لم يحمل شيئاً قطّ.** 🔑 **ولا وسطَ بينهما ما دام الفراغُ
+ * لا يُعرف إلّا بعد النداء** — **فيُختار أقلُّهما وقوعاً ويُقال.**
+ */
+export function TrailerRailSkeleton() {
+  return (
+    <section aria-hidden>
+      {/* ⚠️ **وهندسةُ الرأس هندسةُ `PosterRail` حرفاً**: **عنوانٌ `text-22`
+          بـ`mb-0.5` ثمّ فاصلُ `mb-1`، و`pb-1` من `RailScroll`.**
+          ⚠️ **والارتفاعُ يُقاس بسلّم الخطّ لا ببكسلٍ مكتوبٍ بيد**: **سلّمُ
+          المقاسات يكبر مع تفضيل حجم النصّ** (`--fs`) — **ورقمٌ ثابتٌ
+          يطابق الافتراضيَّ وحدَه ويقصر عن كلِّ ما فوقه.** **فسطرٌ فارغٌ
+          بمقاس العنوان يقيس نفسَه.** */}
+      <div className="flex items-center gap-2 mb-0.5 text-22">
+        <span className="w-0 overflow-hidden">&nbsp;</span>
+        <div className="skeleton w-[22px] h-[22px] rounded-lg" />
+        <div className="skeleton h-[22px] w-32 rounded" />
+      </div>
+      <div className="mb-1" />
+      <div className="flex gap-3 overflow-hidden pb-1">
+        <div className="w-[min(92vw,1030px)] shrink-0 rounded-2xl border border-border overflow-hidden">
+          <div className="skeleton aspect-video w-full" />
+          {/* **وذيلُ البطاقة بارتفاع ذيلها الحقيقيّ**: `py-3` وعمودٌ من
+              عنوانٍ ١٦ وسطرٍ ١٢ بينهما `mt-0.5` — **وثمانيةُ بكسلاتٍ
+              ناقصةٍ تقفز مثلما تقفز ثمانون.** */}
+          <div className="flex items-center gap-3 px-3.5 py-3">
+            <div className="min-w-0 flex-1">
+              <div className="skeleton h-6 w-2/5 rounded" />
+              <div className="skeleton mt-0.5 h-[18px] w-1/4 rounded" />
+            </div>
+            <div className="skeleton h-[41px] w-10 shrink-0 rounded-lg" />
+            <div className="skeleton h-[41px] w-10 shrink-0 rounded-lg" />
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 /** ترويسة الرئيسية: غلافٌ عريض وصفّ أرقام — بنفس ارتفاع ProfileHeader */
 export function HomeHeaderSkeleton() {
   return (

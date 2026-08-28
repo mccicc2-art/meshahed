@@ -1,39 +1,43 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { PosterRail } from "./PosterRail";
 import { RailScroll } from "./RailScroll";
 import { TrailerPlayer } from "./TrailerPlayer";
 import { Icon } from "./Icon";
-import { follow } from "@/lib/actions";
-import { writeTrailerSound } from "@/lib/trailerPrefs";
-import { flashError } from "@/lib/toast";
+import {
+  trailerKeyOf,
+  trailerTitleHref,
+  useTrailerFollow,
+  useTrailerSlots,
+  useTrailerSound,
+} from "@/lib/trailerCard";
 import { getDict, type Locale } from "@/lib/i18n";
 import type { TrailerItem, TrailerScope } from "@/lib/trailers";
 
 /**
  * 🆕 **صفُّ «ترايلرات لك» في اكتشف** (D-726 → D-728).
  *
- * ⚖️ 🆕 **والصفُّ صار بطاقاتٍ كاملةً تُمرَّر لا بطاقةً وشريطَ مصغّرات**
- * (D-728، حكمُه بشطبٍ أزرقَ على المصغّرات ولقطةِ تصميمه): **المصغّرةُ
- * صورةٌ ساكنةٌ تَعِد بترايلرٍ ولا تعطيه** — **وضغطةٌ عليها تنقلك إلى
- * صفحةٍ أخرى لترى ما ظننتَه هنا** (D-217).
- * 🔑 **وطرفُ البطاقة التالية هو التعليمة**: عرضُ البطاقة `92vw` **فيبقى
- * ثُمنٌ ظاهراً** — **وصفٌّ أفقيٌّ بطاقتُه بعرض الشاشة كاملاً يُقرأ
- * بطاقةً واحدةً لا صفّاً**، **والطرفُ الظاهرُ يقول «مرّر» بلا كلمة.**
+ * ⚖️ **والصفُّ بطاقاتٌ كاملةٌ تُمرَّر لا بطاقةٌ وشريطُ مصغّرات** (D-728):
+ * **المصغّرةُ صورةٌ ساكنةٌ تَعِد بترايلرٍ ولا تعطيه** — **وضغطةٌ عليها
+ * تنقلك إلى صفحةٍ أخرى لترى ما ظننتَه هنا** (D-217).
+ * 🔑 **وطرفُ البطاقة التالية هو التعليمة**: **بطاقةٌ بعرض الحاوية كاملاً
+ * تُقرأ بطاقةً واحدةً لا صفّاً**، **والطرَفُ الظاهرُ يقول «مرّر» بلا
+ * كلمة** (D-755).
  *
  * ⚠️ **ومشغّلٌ لكلِّ بطاقةٍ لا يعني مشغّلاتٍ كثيرة**: **الإطارُ لا
- * يُركَّب حتى تبلغ بطاقتُه ٦٠٪** — **والتي خارج الشاشة لم تُركَّب قطّ**،
- * **وحارسُ الواحديّة يوقف السابقةَ حين تطالب اللاحقةُ بالدور** (D-726).
- * 🔑 **فشرطُ أحمد «لا تنشئ عدّة مشغّلات دفعةً واحدة» تنفّذه الرؤيةُ لا
- * عدّادٌ نكتبه.**
+ * يُركَّب حتى يأتيَ البطاقةَ الدور** (D-756)، **وحارسُ الواحديّة يوقف
+ * السابقةَ حين تطالب اللاحقةُ به** (D-726) — **فشرطُ «لا تنشئ عدّة
+ * مشغّلات دفعةً واحدة» تنفّذه الرؤيةُ لا عدّادٌ نكتبه.**
  *
- * ⚠️ **و`RailScroll` هي الحاوية** (القاعدة ٣): **وعرضُ البطاقة `vw`
- * لا `%`** — **حاويتُها `w-max` فالنسبةُ المئويّةُ تُقاس على عرضٍ غير
- * محدَّدٍ فتسقط إلى `auto`** — **ووحدةُ الشاشة تقيس ما نقصده فعلاً.**
+ * ⚠️ **و`RailScroll` هي الحاوية** (القاعدة ٣)، **والوصفاتُ المشتركةُ مع
+ * العلف في `trailerCard.ts`** (D-756).
  */
+
+/** **ما يُعرض من الصفّ** — وما زاد عليه في `items` بدائلُ خاناته (D-756) */
+const RAIL_SLOTS = 6;
+
 export function TrailerRail({
   items,
   locale,
@@ -48,66 +52,36 @@ export function TrailerRail({
   const t = getDict(locale);
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  /* **والصمتُ حالةُ الصفّ كلِّه لا حالةُ بطاقة** — يُرفع هنا فترثه
-     البطاقاتُ كلُّها، **ويُكتب في الكوكي ليعيش بعد الإغلاق.** */
-  const [muted, setMuted] = useState(!soundOn);
-  const [added, setAdded] = useState<ReadonlySet<string>>(new Set());
-  const [unavailable, setUnavailable] = useState<ReadonlySet<string>>(new Set());
+  const { muted, changeMuted } = useTrailerSound(soundOn);
+  const { added, addToList } = useTrailerFollow();
+  const { slots, retire } = useTrailerSlots(items, RAIL_SLOTS);
 
-  if (!items.length) return null;
-  const keyOf = (i: TrailerItem) => `${i.mediaType}-${i.tmdbId}`;
+  if (!slots.length) return null;
   const origin = `${pathname}${searchParams.size ? `?${searchParams.toString()}` : ""}`;
   const feedHref = (i?: TrailerItem) => {
     const params = new URLSearchParams({ scope, from: origin });
-    if (i) params.set("at", keyOf(i));
+    if (i) params.set("at", trailerKeyOf(i));
     return `/trailers?${params.toString()}`;
   };
-
-  function changeMuted(next: boolean) {
-    setMuted(next);
-    /* `next` هو وضع الكتم، والكوكي يحفظ وضع الصوت. */
-    writeTrailerSound(!next);
-  }
-
-  function addToList(i: TrailerItem) {
-    const k = keyOf(i);
-    setAdded((p) => new Set(p).add(k));
-    follow({ tmdbId: i.tmdbId, mediaType: i.mediaType, title: i.title, posterPath: i.posterPath }).catch(
-      (e) => {
-        setAdded((p) => {
-          const n = new Set(p);
-          n.delete(k);
-          return n;
-        });
-        flashError((e as Error).message);
-      },
-    );
-  }
-
-  const shown = items.filter((item) => !unavailable.has(keyOf(item)));
-  if (!shown.length) return null;
 
   return (
     <PosterRail bare title={t.trailersForYou} icon="play" href={feedHref()} seeAllLabel={t.seeAll}>
       <RailScroll prevLabel="السابق / Previous" nextLabel="التالي / Next">
-        {shown.map((i) => {
-          const isAdded = added.has(keyOf(i));
+        {slots.map((i, index) => {
+          const k = trailerKeyOf(i);
+          const isAdded = added.has(k);
           return (
             <div
-              key={keyOf(i)}
-              /* 🔴 🆕 **بطاقةٌ واحدةٌ والثانيةُ طرَفٌ — على كلِّ عرض**
-                 (D-755، حكمُ أحمد بلقطةٍ من سطح المكتب: «المفروض مقطع
-                 فيديو واحد والثاني يبان طرفه مثل الجوال»).
-                 🔑 **والسقفُ ٥٦٠ كان يُنتج بطاقتين كاملتين بالضبط**:
-                 مساحةُ الرافّة المرئيّة ١١٢٠px (`max-w-6xl` بحشوةِ ١٦)،
-                 **و٥٦٠+١٢+٥٦٠ = ١١٣٢ فتدخل الثانيةُ كاملةً** — **ورقمٌ
+              key={k}
+              /* 🔴 **بطاقةٌ واحدةٌ والثانيةُ طرَفٌ — على كلِّ عرض** (D-755،
+                 حكمُ أحمد: «المفروض مقطع فيديو واحد والثاني يبان طرفه مثل
+                 الجوال»). **والسقفُ ٥٦٠ كان يُنتج بطاقتين كاملتين بالضبط**
+                 (مساحةُ الرافّة ١١٢٠px، و٥٦٠+١٢+٥٦٠ = ١١٣٢) — **ورقمٌ
                  صحيحٌ لعرضٍ واحدٍ يصير خطأً في الثاني.**
-                 🔑 **والقاعدة: الطرَفُ وعدٌ لا زينة** — **بطاقتان
-                 كاملتان تقولان «هذا كلُّ ما هناك»، والطرَفُ يقول «وراءه
-                 المزيد»** (D-198). **فالعرضُ يتبع الحاوية لا الشاشة.**
-                 ⚠️ **والثمنُ معلَن**: **البطاقةُ تكبر على الشاشات
-                 العريضة** (١٠٣٠×٥٨٠) **فتدفع ما تحتها لأسفل** — وهو ما
-                 اختاره بعد أن رأى الحالين. */
+                 🔑 **والطرَفُ وعدٌ لا زينة**: **بطاقتان كاملتان تقولان
+                 «هذا كلُّ ما هناك»، والطرَفُ يقول «وراءه المزيد»** (D-198).
+                 ⚠️ **والثمنُ معلَن**: البطاقةُ تكبر على الشاشات العريضة
+                 (١٠٣٠×٥٨٠) فتدفع ما تحتها لأسفل. */
               className="snap-start shrink-0 w-[min(92vw,1030px)] rounded-2xl border border-border bg-surface overflow-hidden"
             >
               <TrailerPlayer
@@ -122,11 +96,13 @@ export function TrailerRail({
                 unmuteLabel={t.trailerUnmute}
                 seekLabel={t.trailerSeek}
                 className="aspect-video w-full"
+                /* 🆕 **وأوّلُ بطاقةٍ فوق الطيّة** (D-756): **صورتُها أوّلُ
+                   ما تراه العينُ في اكتشف** — **والتأجيلُ لما يُرى الآن
+                   تأخيرٌ لا اقتصاد.** */
+                eager={index === 0}
                 href={feedHref(i)}
                 openLabel={i.title}
-                onUnavailable={() =>
-                  setUnavailable((previous) => new Set(previous).add(keyOf(i)))
-                }
+                onUnavailable={() => retire(k)}
               />
 
               <div className="flex items-center gap-3 px-3.5 py-3">
@@ -138,7 +114,7 @@ export function TrailerRail({
                   >
                     {i.title}
                   </Link>
-                  {/* **السطرُ الثاني وصفةُ «مختار لك» نفسُها** — سنةٌ ونوع */}
+                  {/* **السطرُ الثاني وصفةُ «مختار لك» نفسُها** — سنةٌ ونوعٌ ونسبة */}
                   <span className="mt-0.5 block truncate text-12 text-muted">
                     {[i.year, i.genre, i.country].filter(Boolean).join(" · ")}
                   </span>
@@ -148,7 +124,7 @@ export function TrailerRail({
                     الإصبع** — **فبابُه الصفحةُ الكاملة حيث البطاقةُ وحدَها
                     في الشاشة.** */}
                 <Link
-                  href={`/${i.mediaType === "tv" ? "show" : "movie"}/${i.tmdbId}`}
+                  href={trailerTitleHref(i)}
                   prefetch={false}
                   className="shrink-0 flex flex-col items-center gap-1 text-12 text-muted active:opacity-70 transition"
                 >
