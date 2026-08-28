@@ -1119,11 +1119,13 @@ const ar = {
   convHide: "إخفاء المحادثة",
   convOpenAria: (name: string) => `محادثة مع ${name}`,
   convBackAria: "رجوع إلى الرسائل",
-  // مؤشر الفورية (تقييم 9 Aug م٥): يجيب «هل تصل الرسائل فوراً؟» بلا سؤال
-  convLive: "فوري",
-  convLiveTitle: "متصل — الرسائل تصل لحظة إرسالها",
-  convPolling: "تحديث دوري",
-  convPollingTitle: "يُحدَّث كل ٢٠ ثانية",
+  /* ⚖️ 🆕 D-765 (بلاغ ٢٨ أغسطس: «دائماً مكتوب live وهذي معلومة غير
+     صحيحة») — حالُ الشخص لا حالُ القناة: «متصل الآن» لنشاطٍ خلال خمس
+     دقائق، وإلا آخرُ ظهورٍ بصيغة timeAgo («قبل ساعة»). ومفاتيحُ مؤشّر
+     القناة الأربعةُ (convLive/convPolling وعنواناهما) حُذفت في الرفعة
+     التالية لموت قارئها (قاعدة D-028/D-538) */
+  convOnline: "متصل الآن",
+  convLastSeen: (when: string) => `آخر ظهور ${when}`,
   convStartSection: "ابدأ محادثة",
   convStartRowAria: (name: string) => `ابدأ محادثة مع ${name}`,
   convStartRowHint: "شارِك عملاً لتبدأ",
@@ -2573,10 +2575,8 @@ const en: Dict = {
   convHide: "Hide conversation",
   convOpenAria: (name: string) => `Conversation with ${name}`,
   convBackAria: "Back to messages",
-  convLive: "Live",
-  convLiveTitle: "Connected — messages arrive the moment they're sent",
-  convPolling: "Auto-refresh",
-  convPollingTitle: "Refreshes every 20 seconds",
+  convOnline: "Online now",
+  convLastSeen: (when: string) => `Last seen ${when}`,
   convStartSection: "Start a conversation",
   convStartRowAria: (name: string) => `Start a conversation with ${name}`,
   convStartRowHint: "Share a title to start",

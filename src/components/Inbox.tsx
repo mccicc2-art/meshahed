@@ -8,7 +8,7 @@ import { Avatar } from "./Avatar";
 import { Icon } from "./Icon";
 import { getDict, num, type Locale } from "@/lib/i18n";
 import { posterUrl } from "@/lib/media";
-import { formatDateShort } from "@/lib/when";
+import { formatDateShort, timeAgo } from "@/lib/when";
 import { tap } from "@/lib/haptics";
 import { flashError } from "@/lib/toast";
 import { coalescedRefresh } from "@/lib/refresh";
@@ -40,12 +40,15 @@ export function Inbox({
   startable,
   openWith,
   locale,
+  lastSeen = null,
 }: {
   conversations: Conversation[];
   /** متابَعون متبادلون لا محادثة معهم بعد — منهم تبدأ محادثةٌ جديدة */
   startable: PersonLite[];
   openWith: string | null;
   locale: Locale;
+  /** 🆕 D-765: آخرُ ظهورِ صاحبِ الخيط المفتوح — يُجلب مع الصفحة (`last_seen_of`) */
+  lastSeen?: string | null;
 }) {
   const t = getDict(locale);
   const [startWith, setStartWith] = useState<PersonLite | null>(null);
@@ -59,7 +62,9 @@ export function Inbox({
 
   const open = openWith ? conversations.find((c) => c.personId === openWith) : null;
   if (open) {
-    return <ConversationView conv={open} name={nameOf(open.person)} locale={locale} />;
+    return (
+      <ConversationView conv={open} name={nameOf(open.person)} locale={locale} lastSeen={lastSeen} />
+    );
   }
 
   // لا محادثاتٍ ولا من نبدأ معه: الفراغ وحده
@@ -195,6 +200,18 @@ export function Inbox({
 
 type Dict = ReturnType<typeof getDict>;
 
+/** 🆕 D-765: سطرُ الحضور — «متصل الآن» خلال خمس دقائق وإلا «آخر ظهور
+ *  قبل …» (صيغةُ `timeAgo` نفسُها — لا صيغةَ زمنٍ ثالثة). خارجَ المكوّن
+ *  كأخواتها في `when.ts`: قراءةُ الساعة ليست من نقاء جسد المكوّن،
+ *  والسطرُ يتجدّد مع استطلاع الخيط كلَّ ٢٠ ثانية فلا يتجمّد */
+function presenceOf(lastSeen: string | null, t: Dict): string | null {
+  if (!lastSeen) return null;
+  const at = new Date(lastSeen).getTime();
+  if (!Number.isFinite(at)) return null;
+  if (Date.now() - at < 5 * 60_000) return t.convOnline;
+  return t.convLastSeen(timeAgo(lastSeen, t));
+}
+
 /** سطر المعاينة في قائمة المحادثات — آخر حدثٍ فيها */
 function previewOf(last: ConvEvent | undefined, t: Dict): string {
   if (!last) return "";
@@ -209,10 +226,12 @@ function ConversationView({
   conv,
   name,
   locale,
+  lastSeen,
 }: {
   conv: Conversation;
   name: string;
   locale: Locale;
+  lastSeen: string | null;
 }) {
   const t = getDict(locale);
   const router = useRouter();
@@ -221,8 +240,15 @@ function ConversationView({
 
   /* فورية (م٥/D-069): Realtime على جداول الخيط يوقظ التجديد لحظةَ وصول
      رسالة، والاستطلاع كل ٦ ثوانٍ شبكةُ أمانٍ تحته. أحداث الخادم الجديدة
-     تحلّ محلّ الحالة — بما فيها المتفائلة، وقد صارت حقيقيةً هناك */
-  const liveStatus = useChatPoll(true, ["title_shares", "list_shares", "share_replies"]);
+     تحلّ محلّ الحالة — بما فيها المتفائلة، وقد صارت حقيقيةً هناك.
+     ⚖️ 🆕 D-765: حالُ القناة لم يعد يُعرض — «live» قُرئت حالاً للشخص
+     وهي ليست كذلك (بلاغ ٢٨ أغسطس)، والصادقُ عن الشخص سطرُ آخرِ ظهوره */
+  useChatPoll(true, ["title_shares", "list_shares", "share_replies"]);
+
+  /* «متصل الآن» لنشاطٍ خلال خمس دقائق (نبضةُ الحضور كلَّ أربع) — وإلا
+     «آخر ظهور قبل ساعة/قبل يوم». لا نبضةَ له بعدُ؟ لا سطرَ أصلاً —
+     ترويسةٌ صامتةٌ أصدقُ من «آخر ظهور» عن زمنٍ لا نعرفه */
+  const presence = presenceOf(lastSeen, t);
   /* مزامنةٌ أثناء الرسم لا داخل effect (توصية React نفسها): وصولُ نسخة
      خادمٍ أحدث يستبدل الحالة في نفس الجولة بلا رسمٍ متتالٍ */
   const [prevServerEvents, setPrevServerEvents] = useState(conv.events);
@@ -275,19 +301,14 @@ function ConversationView({
           size={34}
           alt={t.avatarAlt}
         />
-        <span className="min-w-0 flex-1 text-sm font-bold truncate">{name}</span>
-        {/* مؤشر الفورية (تقييم 9 Aug م٥): نقطة خضراء = القناة الحية قائمة،
-            ونقطة صامتة = شبكة أمان الاستطلاع وحدها — صدقٌ لا زينة */}
-        <span
-          className="shrink-0 inline-flex items-center gap-1 text-[10px] text-muted"
-          title={liveStatus === "live" ? t.convLiveTitle : t.convPollingTitle}
-        >
-          <span
-            className="w-1.5 h-1.5 rounded-full"
-            style={{ background: liveStatus === "live" ? "var(--success)" : "var(--muted)" }}
-            aria-hidden
-          />
-          {liveStatus === "live" ? t.convLive : t.convPolling}
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-bold truncate">{name}</span>
+          {/* ⚖️ 🆕 D-765: مكانَ شارة «فوري/تحديث دوري» — كانت حالَ قناة
+              Realtime فقُرئت «الشخص متصل» وهي لا تقول ذلك. السطرُ الآن
+              عن الشخص فعلاً، ويتجدّد مع استطلاع الخيط (كل ٢٠ ثانية) */}
+          {presence && (
+            <span className="block text-12 text-muted truncate">{presence}</span>
+          )}
         </span>
         <button
           type="button"
@@ -408,7 +429,7 @@ function ConvBubble({ event, locale }: { event: ConvEvent; locale: Locale }) {
     return (
       <div className={`flex flex-col max-w-[80%] ${side}`}>
         <span
-          className={`fs-content rounded-2xl px-3.5 py-2 text-14 leading-relaxed whitespace-pre-line break-words ${
+          className={`fs-content max-w-full min-w-0 rounded-2xl px-3.5 py-2 text-14 leading-relaxed whitespace-pre-line break-words [overflow-wrap:anywhere] ${
             event.mine
               ? "bg-accent text-[color:var(--on-accent)]"
               : "bg-surface-2 text-foreground"
@@ -449,7 +470,7 @@ function ConvBubble({ event, locale }: { event: ConvEvent; locale: Locale }) {
         </Link>
         {event.note && (
           <span
-            className={`mt-1 fs-content rounded-2xl px-3.5 py-2 text-14 leading-relaxed whitespace-pre-line break-words ${
+            className={`mt-1 fs-content max-w-full min-w-0 rounded-2xl px-3.5 py-2 text-14 leading-relaxed whitespace-pre-line break-words [overflow-wrap:anywhere] ${
               event.mine ? "bg-accent text-[color:var(--on-accent)]" : "bg-surface-2 text-foreground"
             }`}
           >
@@ -490,7 +511,7 @@ function ConvBubble({ event, locale }: { event: ConvEvent; locale: Locale }) {
       </Link>
       {event.note && (
         <span
-          className={`mt-1 fs-content rounded-2xl px-3.5 py-2 text-14 leading-relaxed whitespace-pre-line break-words ${
+          className={`mt-1 fs-content max-w-full min-w-0 rounded-2xl px-3.5 py-2 text-14 leading-relaxed whitespace-pre-line break-words [overflow-wrap:anywhere] ${
             event.mine ? "bg-accent text-[color:var(--on-accent)]" : "bg-surface-2 text-foreground"
           }`}
         >
@@ -501,7 +522,13 @@ function ConvBubble({ event, locale }: { event: ConvEvent; locale: Locale }) {
   );
 }
 
-/** حقلُ الردّ — يُعلَّق بآخر عملٍ شورك في المحادثة */
+/** حقلُ الردّ — يُعلَّق بآخر عملٍ شورك في المحادثة.
+ *  ⚖️ 🆕 D-765 (بلاغ ٢٨ أغسطس: «ماتشوف وش كتبت»): كان `<input>` سطراً
+ *  واحداً لا يلتفّ — الكتابةُ الطويلة تهرب أفقيّاً خارج النظر. صار
+ *  `textarea` ينمو مع المحتوى: الارتفاعُ يُقاس من `scrollHeight` بعد
+ *  تصفيره (القياسُ الصادقُ الوحيد للالتفاف)، بسقفِ ~أربعة أسطرٍ ثم
+ *  تمريرٌ داخليّ. وEnter يُرسل كما كان (وShift+Enter سطرٌ جديد) —
+ *  فسلوكُ الإرسال لم يتغيّر على أحد. */
 function ReplyBox({
   shareId,
   locale,
@@ -514,6 +541,16 @@ function ReplyBox({
   const t = getDict(locale);
   const [value, setValue] = useState("");
   const [pending, start] = useTransition();
+  const box = useRef<HTMLTextAreaElement>(null);
+
+  /* النموُّ بعد كلِّ تغيير قيمة — في effect لا في onChange: القياسُ يقع
+     بعد أن يرسم React القيمةَ الجديدة فعلاً (ومنه التصفيرُ بعد الإرسال) */
+  useEffect(() => {
+    const el = box.current;
+    if (!el) return;
+    el.style.height = "0px";
+    el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
+  }, [value]);
 
   function submit() {
     const body = value.trim();
@@ -531,12 +568,14 @@ function ReplyBox({
   }
 
   return (
-    <div className="flex items-center gap-2 pt-3 border-t border-[color:var(--divider)]">
-      <input
+    /* items-end لا items-center: زرُّ الإرسال يلزم قاعَ الحقل وهو ينمو */
+    <div className="flex items-end gap-2 pt-3 border-t border-[color:var(--divider)]">
+      <textarea
+        ref={box}
         value={value}
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={(e) => {
-          if (e.key === "Enter") {
+          if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
             submit();
           }
@@ -544,7 +583,8 @@ function ReplyBox({
         placeholder={t.shareReplyPlaceholder}
         aria-label={t.shareReplyPlaceholder}
         maxLength={500}
-        className="flex-1 min-w-0 rounded-full bg-surface-2 border border-border px-4 py-2 text-base outline-none focus:border-accent transition"
+        rows={1}
+        className="flex-1 min-w-0 resize-none overflow-y-auto rounded-2xl bg-surface-2 border border-border px-4 py-2 text-base leading-relaxed outline-none focus:border-accent transition"
       />
       <button
         type="button"
