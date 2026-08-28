@@ -411,9 +411,18 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
                   ⚠️ **والحجابُ لم يُلغَ**: ٣٠٪ مستوٍ يخفض صخبَ
                   الملصقات كلَّها **ويمنع أن يصير الكارد لوحةَ إعلان** —
                   **وهو أخفُّ ممّا كان في كلِّ نقطةٍ من البطاقة.** */}
+              {/* 🆕 **وقوّتُه من الثيم لا من هنا** (D-738): **٤٠٪ في
+                  الليل و٦٥٪ في النهار** — **الحرفُ الداكنُ فوق ملصقٍ
+                  متوسّطٍ يحتاج بياضاً أكثرَ ممّا يحتاجه الأبيضُ من
+                  سواد.** **والحجابُ لم يُلغَ ولم يُبتلع الفنُّ** (شرطُ
+                  D-712). */}
               <span
                 aria-hidden
-                className="absolute inset-0 bg-[color:var(--surface)]/40"
+                className="absolute inset-0"
+                style={{
+                  backgroundColor:
+                    "color-mix(in srgb, var(--surface) var(--art-veil), transparent)",
+                }}
               />
             </>
           )}
