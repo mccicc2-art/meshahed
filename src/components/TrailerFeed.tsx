@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { TrailerPlayer } from "./TrailerPlayer";
+import { TrailerPlayback } from "./trailers/TrailerPlaybackController";
+import { TrailerCardMedia } from "./trailers/TrailerCardMedia";
 import { Icon } from "./Icon";
 import { dismissTitle, undoDismissTitle } from "@/lib/actions";
 import { toast, flashError } from "@/lib/toast";
@@ -11,7 +12,6 @@ import {
   trailerTitleHref,
   useTrailerFollow,
   useTrailerSlots,
-  useTrailerSound,
 } from "@/lib/trailerCard";
 import { getDict, type Locale } from "@/lib/i18n";
 import type { TrailerItem } from "@/lib/trailers";
@@ -19,10 +19,9 @@ import type { TrailerItem } from "@/lib/trailers";
 /**
  * 🆕 **علفُ الترايلرات الرأسيّ** (D-726) — صفحةُ `/trailers`.
  *
- * ⚠️ **والتمريرُ يتكفّل بالتشغيل لا جافاسكربت**: **المشغّلُ نفسُه يأخذ
- * الدورَ عند ٠٫٤ ويتنحّى تحت ٠٫١٥** — **فلا مستمعَ `scroll` ولا حسابَ
- * مواضع**: **قاعدةُ الرؤية واحدةٌ في الرايل وفي الصفحة** (القاعدة ٣)،
- * **ومنطقٌ ثانٍ للتشغيل هنا يفترق عن أخيه أوّلَ إصلاح.**
+ * ⚠️ **والتمريرُ يتكفّل بالتشغيل لا جافاسكربت**: متحكّمُ D-759 يمنح
+ * الدورَ عند ٦٠٪ ويسحبه تحت ١٥٪ — **فلا مستمعَ `scroll` ولا حسابَ
+ * مواضع**: **قاعدةُ الرؤية واحدةٌ في الرايل وفي الصفحة** (القاعدة ٣).
  *
  * 🔑 **و«ليس لي» بابٌ مبنيٌّ منذ D-322**: `dismissed_titles` وفعلُها
  * قائمان ويُصفّيان `getSuggestions` — **فلا هجرةَ ولا جدولَ ولا فعلَ
@@ -52,7 +51,6 @@ export function TrailerFeed({
   emptyLabel?: string;
 }) {
   const t = getDict(locale);
-  const { muted, changeMuted } = useTrailerSound(soundOn);
   const { added, addToList } = useTrailerFollow();
   const { slots, retire } = useTrailerSlots(items, FEED_SLOTS);
   const [gone, setGone] = useState<ReadonlySet<string>>(new Set());
@@ -93,6 +91,7 @@ export function TrailerFeed({
        — **فالصنفُ كان سيُكتب ولا يفعل شيئاً.** 🔑 **والذي ينفّذ شرطَه
        («التمرير للأسفل يشغّل التالي ويوقف السابق») هو المراقبُ في
        المشغّل نفسِه** — **وصنفٌ خاملٌ يُقرأ ميزةً قائمةً فيُبنى فوقه.** */
+    <TrailerPlayback soundPref={soundOn}>
     <div>
       {shown.map((i, index) => {
         const k = trailerKeyOf(i);
@@ -100,20 +99,15 @@ export function TrailerFeed({
         return (
           <section key={k} className="pb-4">
             <div className="rounded-2xl border border-border bg-surface overflow-hidden">
-              <TrailerPlayer
-                videoKey={i.videoKey}
-                videoKeys={i.videoKeys}
-                fileUrl={i.fileUrl}
+              <TrailerCardMedia
+                id={k}
+                item={{ keys: i.videoKeys, fileUrl: i.fileUrl, title: i.title }}
                 backdrop={i.backdrop}
                 title={i.title}
-                muted={muted}
-                onMutedChange={changeMuted}
+                eager={index === 0}
                 playLabel={t.trailerPlay}
                 muteLabel={t.trailerMute}
                 unmuteLabel={t.trailerUnmute}
-                seekLabel={t.trailerSeek}
-                className="aspect-video w-full"
-                eager={index === 0}
                 onUnavailable={() => retire(k)}
               />
 
@@ -175,5 +169,6 @@ export function TrailerFeed({
         );
       })}
     </div>
+    </TrailerPlayback>
   );
 }

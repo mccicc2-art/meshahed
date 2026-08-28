@@ -16,7 +16,6 @@
 import { useCallback, useState } from "react";
 import { follow } from "@/lib/actions";
 import { flashError } from "@/lib/toast";
-import { writeTrailerSound } from "@/lib/trailerPrefs";
 import type { TrailerItem } from "@/lib/trailers";
 
 /** **مفتاحُ البطاقة: الجهةُ والمعرّف** — ورقمٌ وحدَه يصطدم بين فيلمٍ ومسلسل */
@@ -29,21 +28,9 @@ export function trailerTitleHref(item: Pick<TrailerItem, "mediaType" | "tmdbId">
   return `/${item.mediaType === "tv" ? "show" : "movie"}/${item.tmdbId}`;
 }
 
-/**
- * **والصمتُ حالةُ السطح كلِّه لا حالةُ بطاقة** — يُرفع مرّةً فترثه
- * البطاقاتُ كلُّها، **ويُكتب في الكوكي ليعيش بعد الإغلاق** (D-726).
- * ⚠️ **والكتابةُ من المتصفّح لا من الخادم** (D-747): **ما كان تفضيلاً
- * للجهاز يُكتب في الجهاز**، **وكلُّ فعلٍ خادميٍّ يُعيد رسمَ الصفحة.**
- */
-export function useTrailerSound(soundOn: boolean) {
-  const [muted, setMuted] = useState(!soundOn);
-  const changeMuted = useCallback((next: boolean) => {
-    setMuted(next);
-    /* `next` هو وضعُ الكتم، والكوكي يحفظ وضعَ الصوت. */
-    writeTrailerSound(!next);
-  }, []);
-  return { muted, changeMuted };
-}
+/* ⚖️ D-759: `useTrailerSound` حُذفت — الصوتُ صار حالةَ المتحكّم الواحد
+   `TrailerPlayback` تُقرأ من المشغّل الفعليّ وتُكتب كوكيزَ بعد التحقّق
+   (المواصفة خامسًا). الكوكي نفسُه (`trailerPrefs`) لم يتغيّر. */
 
 /** **«أضف لمكتبتي» متفائلٌ ويتراجع عند الفشل** — والرمزُ صحٌّ بعد الوقوع */
 export function useTrailerFollow() {
