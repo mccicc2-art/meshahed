@@ -223,7 +223,6 @@ function createEngine(
   let phase: SlotPhase = "idle";
   let keyIdx = 0;
   let advancedFor = -1;
-  let userInteracted = false;
   let prefAttempted = false;
   let destroyed = false;
 
@@ -292,10 +291,12 @@ function createEngine(
     return on;
   };
 
-  /** تفضيلُ «صوت» المحفوظ يُحاوَل مرّةً بعد أوّل تفاعلٍ حقيقيٍّ —
-      وإن رفضه المتصفّح بقيت الأيقونةُ صادقةً على «شغّل الصوت» */
-  const attemptSavedSound = () => {
-    if (prefAttempted || !getSoundPref() || !userInteracted) return;
+  /** 🔴 تفضيلُ «صوت» المحفوظ يُطبَّق **داخل إيماءةٍ حقيقيّةٍ فقط**
+      (يستدعيه `tapPlay` بعد أمرِ التشغيل) — كان يُحاوَل من مؤقّتِ أوّلِ
+      إطار، وفكُّ الكتم خارج الإيماءة على iOS **يوقف** فيديو بدأ صامتاً
+      بدل أن يُسمِعه. لا يدخل مسارَ التشغيل التلقائيّ إطلاقاً. */
+  const applySavedSoundInGesture = () => {
+    if (prefAttempted || !getSoundPref()) return;
     prefAttempted = true;
     if (activeIsFile()) dom.video.muted = false;
     else if (player && playerReady) {
@@ -310,7 +311,6 @@ function createEngine(
   const onDrewFrame = () => {
     clearStall();
     setPhase("playing");
-    attemptSavedSound();
   };
 
   const startTick = () => {
@@ -321,7 +321,10 @@ function createEngine(
          حالةُ PLAYING وحدَها نيّة — والزمنُ فوق ٠٫١ هو الرسمُ الفعليّ.
          ⚠️ و«stalled» تُشفى بالعقرب أيضاً: بطيءٌ عرضنا له الزرَّ ثم
          انطلق من نفسه تُكشف صورتُه — لا يعمل خلف الغلاف */
-      if (t && t.now > 0.1 && (phase === "loading" || phase === "stalled")) onDrewFrame();
+      /* أيُّ حالةٍ غير «playing» وعقربُها يتحرّك (والعدّادُ لا يدور إلا
+         بعد حدث PLAYING) تُقلب «playing» — ومنها «paused» بعد عودةٍ من
+         الخلفيّة: بدونها يعمل المقطعُ خلف الغلاف وزرُّ تشغيلٍ كاذب فوقه */
+      if (t && t.now > 0.1 && phase !== "playing") onDrewFrame();
       publish({ time: t });
     }, TICK_MS);
   };
@@ -387,30 +390,40 @@ function createEngine(
       return;
     }
     pendingLoadKey = firstKey;
-    /* ⚠️ واجهةُ يوتيوب تستبدل العنصرَ المُسلَّم بإطارها — وعنصرٌ يملكه
-       React لا يُسلَّم لغريبٍ يستبدله: نصنع ابناً أمريّاً ونسلّمه هو */
-    const mount = document.createElement("div");
-    mount.style.width = "100%";
-    mount.style.height = "100%";
-    dom.ytHost.appendChild(mount);
-    player = new yt.Player(mount, {
-      videoId: firstKey,
-      host: "https://www.youtube-nocookie.com",
-      width: "100%",
-      height: "100%",
-      playerVars: {
-        autoplay: 0,
-        controls: 0,
-        playsinline: 1,
-        rel: 0,
-        modestbranding: 1,
-        origin: window.location.origin,
-      },
+    /* 🔴 ⚖️ نقضُ «autoplay:0 + playVideo من onReady» بعد فشل iPhone الفعليّ
+       (بلاغ أحمد ٢٨ أغسطس): نداءُ playVideo بلا إيماءةٍ يبتلعه iOS بصمتٍ —
+       لا PLAYING ولا حتى onAutoplayBlocked، **فالحدث لا يُطلقه إلا منعُ
+       محاولةِ المشغّل نفسِه**. فالإطارُ يُبنى يدويّاً بمحاولةٍ ذاتيّةٍ
+       صامتة (`autoplay=1&mute=1`)، وهو الاستعمالُ الموثَّق لتسليم إطارٍ
+       قائمٍ إلى `YT.Player`.
+       ⚠️ و`allow="autoplay"` هو جسرُ الإيماءة: بدونه ضغطةُ زرِّنا لا
+       تملك تشغيلَ فيديو داخل إطارٍ من أصلٍ آخر على iOS إطلاقاً. */
+    const frame = document.createElement("iframe");
+    const q = new URLSearchParams({
+      autoplay: "1",
+      mute: "1",
+      playsinline: "1",
+      controls: "0",
+      rel: "0",
+      enablejsapi: "1",
+      origin: window.location.origin,
+    });
+    frame.src = `https://www.youtube-nocookie.com/embed/${firstKey}?${q.toString()}`;
+    frame.allow = "autoplay; encrypted-media; picture-in-picture";
+    frame.style.position = "absolute";
+    frame.style.inset = "0";
+    frame.style.width = "100%";
+    frame.style.height = "100%";
+    frame.style.border = "0";
+    dom.ytHost.appendChild(frame);
+    player = new yt.Player(frame, {
       events: {
         onReady: () => {
           playerReady = true;
-          /* المواصفة رابعًا/١-٢: التشغيلُ التلقائيُّ صامتٌ دائماً */
+          /* بالترتيب الذي أملاه أحمد: كتمٌ ثم صفرُ صوتٍ ثم تشغيل —
+             التشغيلُ التلقائيُّ صامتٌ دائماً ولا ينتظر تفضيلَ الصوت */
           player?.mute();
+          player?.setVolume(0);
           verifySound();
           if (pendingLoadKey && activeId) player?.playVideo();
           pendingLoadKey = null;
@@ -451,11 +464,15 @@ function createEngine(
         setPhase("loading");
         armStall();
         if (activeIsFile()) {
+          dom.video.muted = true;
           void dom.video.play().catch(() => {
             if (activeId === id) setPhase("stalled");
           });
           startTick();
         } else if (player && playerReady) {
+          /* زرُّ التشغيل يبدأ صامتاً دائماً (حالة الواجهة ٣) — والصوتُ
+             لزرِّ الصوت بعد أن تتحرّك الصورة */
+          player.mute();
           player.playVideo();
         }
       }
@@ -529,21 +546,30 @@ function createEngine(
     if (bestId && bestRatio >= START_RATIO) activate(bestId, false);
   };
 
-  /* ---- محاذاةُ الطبقة ---- */
+  /* ---- محاذاةُ الطبقة ----
+     🔴 ⚖️ قلبُ السِّتر بعد فشل iPhone: كانت الطبقةُ نفسُها هي السِّتر
+     (شفّافةٌ حتى يثبت الرسم) — **فيحاول iOS تشغيلَ فيديو داخل طبقةٍ
+     غيرِ مرسومة**. الآن الطبقةُ ظاهرةٌ ما دامت بطاقةٌ نشطة، **والغلافُ
+     فوقَها هو السِّتر** (z-40 في البطاقة) يتلاشى فقط بعد عقربٍ تحرّك —
+     فالإطارُ مرسومٌ من أوّل لحظة ولا يُرى إلا ما ثبتت حركتُه. */
+  const alignOverlay = () => {
+    if (destroyed || !activeId) return;
+    const slot = slots.get(activeId);
+    if (!slot) return;
+    const el = dom.overlay;
+    /* قياسٌ طازجٌ في كلِّ نداء — لا قياسَ قديماً بعد لفٍّ أو تدوير */
+    const r = slot.area.getBoundingClientRect();
+    el.style.transform = `translate(${r.left}px, ${r.top}px)`;
+    el.style.width = `${r.width}px`;
+    el.style.height = `${r.height}px`;
+  };
   const syncOverlay = () => {
     if (destroyed) return;
-    const el = dom.overlay;
     if (!activeId) {
       showOverlay(false);
-    } else {
-      const slot = slots.get(activeId);
-      if (slot) {
-        const r = slot.area.getBoundingClientRect();
-        el.style.transform = `translate(${r.left}px, ${r.top}px)`;
-        el.style.width = `${r.width}px`;
-        el.style.height = `${r.height}px`;
-        showOverlay(phase === "playing");
-      }
+    } else if (slots.get(activeId)) {
+      alignOverlay();
+      showOverlay(true);
     }
     raf = window.requestAnimationFrame(syncOverlay);
   };
@@ -560,6 +586,9 @@ function createEngine(
     if (activeIsFile()) {
       dom.video.muted = true;
       void dom.video.play().catch(() => undefined);
+      /* الإخفاءُ أوقف العدّاد — وعنصرُ الملفّ بلا حدثِ PLAYING يعيد
+         تدويرَه، فبدون هذا يعمل المقطعُ والعقربُ ساكنٌ والسِّترُ نازل */
+      startTick();
     } else if (player && playerReady) {
       player.mute();
       player.playVideo();
@@ -589,6 +618,14 @@ function createEngine(
         for (const [, s] of slots) io.observe(s.area);
       }
       document.addEventListener("visibilitychange", onVisibility);
+      /* محاذاةٌ فوريّةٌ عند كلِّ ما يحرّك البطاقةَ تحت الطبقة (فقرة A):
+         لفُّ أيِّ حاويةٍ (`capture` لأنّ scroll لا يفقع) والتدويرُ
+         وviewport الحقيقيُّ في iOS — وحلقةُ rAF تبقى شبكةَ الأمان */
+      window.addEventListener("scroll", alignOverlay, { passive: true, capture: true });
+      window.addEventListener("resize", alignOverlay);
+      window.addEventListener("orientationchange", alignOverlay);
+      window.visualViewport?.addEventListener("resize", alignOverlay);
+      window.visualViewport?.addEventListener("scroll", alignOverlay);
       raf = window.requestAnimationFrame(syncOverlay);
     },
 
@@ -617,25 +654,28 @@ function createEngine(
     },
 
     tapPlay(id: string) {
-      userInteracted = true;
       activate(id, true);
+      /* تفضيلُ الصوت المحفوظ: هنا فقط — داخل إيماءةٍ حقيقيّةٍ وبعد
+         أمرِ التشغيل، ولا يدخل مسارَ التشغيل التلقائيّ أبداً */
+      applySavedSoundInGesture();
     },
 
+    /* 🔴 زرُّ الصوت **لا يشغّل شيئاً** (بلاغ iPhone: صار هو زرَّ التشغيل
+       فعليّاً لأنّ إيماءتَه كانت تحمل playVideo). التشغيلُ لزرِّ التشغيل
+       وحدَه — وهذا يبدّل الصوتَ فقط على مشغّلٍ جاهز. */
     tapSound() {
-      userInteracted = true;
       prefAttempted = true;
       const slot = activeSlot();
       if (!slot) return;
       const wantOn = !readSnap().soundOn;
       if (activeIsFile()) {
         dom.video.muted = !wantOn;
-        if (wantOn) void dom.video.play().catch(() => undefined);
+        if (wantOn) dom.video.volume = 1;
       } else if (player && playerReady) {
         if (wantOn) {
-          /* داخل الضغطة نفسِها: unMute + volume + play (خامسًا/٢) */
+          /* داخل الضغطة نفسِها: unMute + volume (خامسًا/٢) — بلا play */
           player.unMute();
           player.setVolume(100);
-          player.playVideo();
         } else {
           player.mute();
         }
@@ -653,6 +693,11 @@ function createEngine(
       /* لا timers ولا observers بعد unmount (اختبار ١٦) */
       destroyed = true;
       document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("scroll", alignOverlay, { capture: true });
+      window.removeEventListener("resize", alignOverlay);
+      window.removeEventListener("orientationchange", alignOverlay);
+      window.visualViewport?.removeEventListener("resize", alignOverlay);
+      window.visualViewport?.removeEventListener("scroll", alignOverlay);
       stopTick();
       clearStall();
       if (raf !== null) {
