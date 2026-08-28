@@ -89,6 +89,7 @@ export function TrailerPlayer({
   playLabel,
   muteLabel,
   unmuteLabel,
+  seekLabel,
   className = "",
   showProgress = true,
   href,
@@ -102,6 +103,8 @@ export function TrailerPlayer({
   playLabel: string;
   muteLabel: string;
   unmuteLabel: string;
+  /** 🆕 **اسمُ شريطِ التقدّم لقارئ الشاشة** (D-741) */
+  seekLabel?: string;
   className?: string;
   showProgress?: boolean;
   /**
@@ -132,6 +135,11 @@ export function TrailerPlayer({
   const mutedRef = useRef(muted);
   mutedRef.current = muted;
 
+  /** **ومسطرةُ الوقت مرجعٌ كذلك** — لنفس سبب `mutedRef` فوق */
+  const atRef = useRef(at);
+  atRef.current = at;
+  const bar = useRef<HTMLDivElement>(null);
+
   const send = useCallback((func: string, args: unknown[] = []) => {
     try {
       frame.current?.contentWindow?.postMessage(
@@ -142,6 +150,45 @@ export function TrailerPlayer({
       /* الإطارُ لم يُركّب بعد أو غادر — لا شيءَ يُنقذ */
     }
   }, []);
+
+  /**
+   * 🆕 **الانتقالُ في المقطع** (D-741، بلاغُ أحمد بلقطةٍ محوَّطة: «ما
+   * أقدر أقدّم الفيديو»).
+   *
+   * 🔑 **وشريطٌ يُرسم ولا يُضغط يَعِد بما لا يفي**: **كلُّ من رأى شريطَ
+   * تقدّمٍ في عمره ضغطه** — **فرسمُه وحدَه دعوةٌ**، وهي D-198 من جهتها
+   * الثانية («ما لا بابَ له يقول إن ما تراه هو كلُّ ما هناك»).
+   * ⚠️ **ولا بايتَ من جافاسكربت يوتيوب** (شرطُ D-726): `seekTo` أمرٌ
+   * في `postMessage` كأخواته، **والثمنُ صفر.**
+   * ⚠️ **والرقمُ يُقفز في الحال ولا يُنتظر ردُّ الإطار**: **`infoDelivery`
+   * تصل كلَّ ربعِ ثانيةٍ تقريباً** — **وشريطٌ يتأخّر ربعَ ثانيةٍ عن
+   * إصبعِك يُقرأ عطلاً لا بطئاً.**
+   */
+  const seek = useCallback(
+    (clientX: number) => {
+      const el = bar.current;
+      const total = atRef.current?.total ?? 0;
+      if (!el || total <= 0) return;
+      const r = el.getBoundingClientRect();
+      if (r.width <= 0) return;
+      const frac = Math.min(1, Math.max(0, (clientX - r.left) / r.width));
+      const to = frac * total;
+      send("seekTo", [to, true]);
+      setAt((p) => (p ? { ...p, now: to } : p));
+    },
+    [send],
+  );
+
+  const nudge = useCallback(
+    (by: number) => {
+      const a2 = atRef.current;
+      if (!a2 || a2.total <= 0) return;
+      const to = Math.min(a2.total, Math.max(0, a2.now + by));
+      send("seekTo", [to, true]);
+      setAt((p) => (p ? { ...p, now: to } : p));
+    },
+    [send],
+  );
 
   const stop = useCallback(() => {
     send("pauseVideo");
@@ -407,12 +454,49 @@ export function TrailerPlayer({
           <span dir="ltr" className="block text-12 text-white/90 tabular-nums mb-1.5">
             {clock(at.now)} / {clock(at.total)}
           </span>
-          <span className="block h-[3px] rounded-full bg-white/25 overflow-hidden">
-            <span
-              className="block h-full bg-accent transition-[width] duration-500 ease-linear"
-              style={{ width: `${pct}%` }}
-            />
-          </span>
+          {/* 🆕 **ومساحةُ اللمس أعرضُ من الخطّ** (D-741): **ثلاثةُ
+              بكسلاتٍ لا يصيبها إصبع** — **فالحشوةُ تُضاف ثمّ تُسحب
+              بهامشٍ سالبٍ فلا يتحرّك الرسمُ شعرة.**
+              🔴 **و`dir="ltr"` شرطٌ لا زينة**: **الزمنُ يجري يساراً
+              يميناً في كلِّ مشغّلٍ في الدنيا**، والرقمُ فوقه `ltr` منذ
+              كُتب — **وشريطٌ يمتلئ من اليمين تحت رقمٍ يعدّ من اليسار
+              يجعل الضغطةَ اليسرى تقفز إلى النهاية.** **والعطلُ كان
+              مستوراً ما دام الشريطُ لا يُضغط** (D-002: رمزان لمعنًى
+              واحدٍ يفترقان عند أوّل تعديل). */}
+          <div
+            ref={bar}
+            dir="ltr"
+            role="slider"
+            tabIndex={0}
+            aria-label={seekLabel ?? title}
+            aria-valuemin={0}
+            aria-valuemax={Math.round(at.total)}
+            aria-valuenow={Math.round(at.now)}
+            aria-valuetext={`${clock(at.now)} / ${clock(at.total)}`}
+            className="pointer-events-auto -my-2 py-2 cursor-pointer touch-none"
+            onPointerDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              e.currentTarget.setPointerCapture(e.pointerId);
+              seek(e.clientX);
+            }}
+            onPointerMove={(e) => {
+              if (e.currentTarget.hasPointerCapture(e.pointerId)) seek(e.clientX);
+            }}
+            onKeyDown={(e) => {
+              /* **والسهمُ يتبع الزمنَ لا الاتّجاه**: يمينٌ يقدّم في
+                 العربيّة كما في الإنجليزيّة — **الشريطُ `ltr`.** */
+              if (e.key === "ArrowRight") { e.preventDefault(); nudge(5); }
+              else if (e.key === "ArrowLeft") { e.preventDefault(); nudge(-5); }
+            }}
+          >
+            <span className="block h-[3px] rounded-full bg-white/25 overflow-hidden">
+              <span
+                className="block h-full bg-accent transition-[width] duration-500 ease-linear"
+                style={{ width: `${pct}%` }}
+              />
+            </span>
+          </div>
         </div>
       )}
     </div>

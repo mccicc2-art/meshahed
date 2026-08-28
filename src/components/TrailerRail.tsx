@@ -92,6 +92,7 @@ export function TrailerRail({
                 playLabel={t.trailerPlay}
                 muteLabel={t.trailerMute}
                 unmuteLabel={t.trailerUnmute}
+                seekLabel={t.trailerSeek}
                 className="aspect-video w-full"
                 href={feedHref(i)}
                 openLabel={i.title}

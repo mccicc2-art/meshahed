@@ -123,6 +123,7 @@ export function TrailerFeed({
                 playLabel={t.trailerPlay}
                 muteLabel={t.trailerMute}
                 unmuteLabel={t.trailerUnmute}
+                seekLabel={t.trailerSeek}
                 className="aspect-video w-full"
               />
 
