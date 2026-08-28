@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
 import { PosterRail } from "./PosterRail";
 import { RailScroll } from "./RailScroll";
 import { TrailerPlayer } from "./TrailerPlayer";
@@ -10,7 +11,7 @@ import { follow } from "@/lib/actions";
 import { writeTrailerSound } from "@/lib/trailerPrefs";
 import { flashError } from "@/lib/toast";
 import { getDict, type Locale } from "@/lib/i18n";
-import type { TrailerItem } from "@/lib/trailers";
+import type { TrailerItem, TrailerScope } from "@/lib/trailers";
 
 /**
  * 🆕 **صفُّ «ترايلرات لك» في اكتشف** (D-726 → D-728).
@@ -37,27 +38,35 @@ export function TrailerRail({
   items,
   locale,
   soundOn,
+  scope,
 }: {
   items: TrailerItem[];
   locale: Locale;
   soundOn: boolean;
+  scope: TrailerScope;
 }) {
   const t = getDict(locale);
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   /* **والصمتُ حالةُ الصفّ كلِّه لا حالةُ بطاقة** — يُرفع هنا فترثه
      البطاقاتُ كلُّها، **ويُكتب في الكوكي ليعيش بعد الإغلاق.** */
   const [muted, setMuted] = useState(!soundOn);
   const [added, setAdded] = useState<ReadonlySet<string>>(new Set());
+  const [unavailable, setUnavailable] = useState<ReadonlySet<string>>(new Set());
 
   if (!items.length) return null;
   const keyOf = (i: TrailerItem) => `${i.mediaType}-${i.tmdbId}`;
-  const feedHref = (i: TrailerItem) => `/trailers?at=${keyOf(i)}`;
+  const origin = `${pathname}${searchParams.size ? `?${searchParams.toString()}` : ""}`;
+  const feedHref = (i?: TrailerItem) => {
+    const params = new URLSearchParams({ scope, from: origin });
+    if (i) params.set("at", keyOf(i));
+    return `/trailers?${params.toString()}`;
+  };
 
   function changeMuted(next: boolean) {
     setMuted(next);
-    /* 🔴 **والكوكي يُكتب هنا لا على الخادم** (D-747): **الفعلُ
-       الخادميُّ يُعيد رسمَ الصفحة كلَّها** — **فضغطةُ سماعةٍ كانت
-       تُعيد بناءَ الصفِّ الذي تنظر إليه.** */
-    writeTrailerSound(next);
+    /* `next` هو وضع الكتم، والكوكي يحفظ وضع الصوت. */
+    writeTrailerSound(!next);
   }
 
   function addToList(i: TrailerItem) {
@@ -75,10 +84,13 @@ export function TrailerRail({
     );
   }
 
+  const shown = items.filter((item) => !unavailable.has(keyOf(item)));
+  if (!shown.length) return null;
+
   return (
-    <PosterRail bare title={t.trailersForYou} icon="play" href="/trailers" seeAllLabel={t.seeAll}>
+    <PosterRail bare title={t.trailersForYou} icon="play" href={feedHref()} seeAllLabel={t.seeAll}>
       <RailScroll prevLabel="السابق / Previous" nextLabel="التالي / Next">
-        {items.map((i) => {
+        {shown.map((i) => {
           const isAdded = added.has(keyOf(i));
           return (
             <div
@@ -99,6 +111,9 @@ export function TrailerRail({
                 className="aspect-video w-full"
                 href={feedHref(i)}
                 openLabel={i.title}
+                onUnavailable={() =>
+                  setUnavailable((previous) => new Set(previous).add(keyOf(i)))
+                }
               />
 
               <div className="flex items-center gap-3 px-3.5 py-3">

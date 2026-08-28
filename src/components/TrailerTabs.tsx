@@ -33,7 +33,10 @@ export function TrailerTabs({ active, locale }: { active: TrailerTab; locale: Lo
     const next = new URLSearchParams(sp.toString());
     next.delete("at");
     if (tab === "for-you") next.delete("tab");
-    else next.set("tab", tab);
+    else {
+      next.set("tab", tab);
+      next.delete("scope");
+    }
     const q = next.toString();
     return q ? `${pathname}?${q}` : pathname;
   }

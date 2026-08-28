@@ -1,66 +1,100 @@
-import Link from "next/link";
+import { Suspense } from "react";
 import { cookies } from "next/headers";
 import { getT } from "@/lib/locale";
-import { getTrailerTabFeed, asTrailerTab } from "@/lib/trailers";
+import {
+  asTrailerScope,
+  asTrailerTab,
+  getTrailerFeed,
+  getTrailerTabFeed,
+  parseTrailerAt,
+  type TrailerScope,
+  type TrailerTab,
+} from "@/lib/trailers";
 import { TrailerTabs } from "@/components/TrailerTabs";
 import { TrailerFeed } from "@/components/TrailerFeed";
-import { Icon } from "@/components/Icon";
+import { TrailerBackButton } from "@/components/TrailerBackButton";
 import { TRAILER_SOUND_COOKIE, parseTrailerSound } from "@/lib/trailerPrefs";
+import type { Locale } from "@/lib/i18n";
 
-/**
- * 🆕 **صفحةُ الترايلرات** (D-726، المرحلةُ الأولى بحكمه: «الرايل أوّلاً»).
- *
- * 🆕 **وتبويباتُه الخمسة** (D-734): «لك» شخصيّةٌ والأربعُ كتالوج.
- *
- * ⚠️ **ولا `force-dynamic`**: الصفحةُ تقرأ اقتراحاتِ صاحبها فهي
- * ديناميّةٌ بطبعها (كوكيز + جلسة)، **وعلَمٌ يُكتب لأجل ما هو واقعٌ أصلاً
- * تعليقٌ خاطئٌ في ثوب إعداد.**
- */
+function safeReturnPath(raw: string | undefined): string {
+  return raw?.startsWith("/news") && !raw.startsWith("//") ? raw : "/news";
+}
+
 export default async function TrailersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ at?: string; tab?: string }>;
+  searchParams: Promise<{ at?: string; tab?: string; scope?: string; from?: string }>;
 }) {
-  const { locale, t } = await getT();
-  const { at, tab } = await searchParams;
-  const store = await cookies();
-  const soundOn = parseTrailerSound(store.get(TRAILER_SOUND_COOKIE)?.value);
-  const active = asTrailerTab(tab);
-
-  /* **واثنا عشرَ لا ثلاثمئة**: القارئُ يمرّر مقطعاً بعد مقطع،
-     **وقائمةٌ لا تُبلغ نهايتَها لا تُجلب كاملةً** (D-510). */
-  const items = await getTrailerTabFeed(active, 12, locale);
+  const [{ locale, t }, params] = await Promise.all([getT(), searchParams]);
+  const active = asTrailerTab(params.tab);
+  const scope = active === "for-you" ? asTrailerScope(params.scope) : undefined;
 
   return (
     <div className="space-y-3">
-      {/* **والصفحةُ تحمل ترويستَها** — رجوعٌ إلى موضعه في اكتشف
-          (`ScrollMemory` هناك يستعيده)، والعنوانُ وسطاً (وصفةُ D-681). */}
       <header className="flex items-center gap-3 py-1">
-        <Link
-          href="/news"
-          aria-label={t.backAria}
-          className="shrink-0 w-9 h-9 grid place-items-center rounded-full active:opacity-70 transition"
-        >
-          {/* **والسهمُ يرتدّ مع الاتّجاه** — `rtl:rotate-180` (القاعدة ١٧) */}
-          <Icon name="chevron-down" size={20} className="rotate-90 rtl:-rotate-90" />
-        </Link>
-        <h1 className="flex-1 text-center text-16 font-bold">{t.trailersForYou}</h1>
-        <span className="shrink-0 w-9" />
+        <TrailerBackButton label={t.backAria} fallback={safeReturnPath(params.from)} />
+        <h1 className="flex-1 text-center text-16 font-bold">
+          {active === "for-you" ? t.trailersForYou : t.trailersTitle}
+        </h1>
+        <span className="h-9 w-9 shrink-0" />
       </header>
 
-      <TrailerTabs active={active} locale={locale} />
+      <Suspense fallback={<div className="h-9" aria-hidden />}>
+        <TrailerTabs active={active} locale={locale} />
+      </Suspense>
 
-      {/* 🔑 **و`key` على التبويب يُجبر العلفَ على البدء من جديد** (D-734):
-          **بلا مفتاحٍ يعيد React استعمالَ المشغّلات ذاتِها لبياناتٍ أخرى**
-          — **فيبقى إطارُ التبويب السابق حيّاً بمقطعٍ لا يخصّ ما تراه.** */}
-      <TrailerFeed
-        key={active}
-        items={items}
-        locale={locale}
-        soundOn={soundOn}
-        startAt={at}
-        emptyLabel={active === "for-you" ? t.trailersEmpty : t.trailersTabEmpty}
-      />
+      <Suspense key={`${active}:${scope ?? "all"}:${params.at ?? ""}`} fallback={<TrailerFeedSkeleton />}>
+        <TrailerFeedSection
+          active={active}
+          scope={scope}
+          pinAt={params.at}
+          locale={locale}
+          emptyLabel={active === "for-you" ? t.trailersEmpty : t.trailersTabEmpty}
+        />
+      </Suspense>
+    </div>
+  );
+}
+
+async function TrailerFeedSection({
+  active,
+  scope,
+  pinAt,
+  locale,
+  emptyLabel,
+}: {
+  active: TrailerTab;
+  scope?: TrailerScope;
+  pinAt?: string;
+  locale: Locale;
+  emptyLabel: string;
+}) {
+  const pin = active === "for-you" ? parseTrailerAt(pinAt) : undefined;
+  const itemsPromise =
+    active === "for-you"
+      ? getTrailerFeed(12, locale, scope, pin)
+      : getTrailerTabFeed(active, 12, locale);
+  const [items, store] = await Promise.all([itemsPromise, cookies()]);
+
+  return (
+    <TrailerFeed
+      items={items}
+      locale={locale}
+      soundOn={parseTrailerSound(store.get(TRAILER_SOUND_COOKIE)?.value)}
+      emptyLabel={emptyLabel}
+    />
+  );
+}
+
+function TrailerFeedSkeleton() {
+  return (
+    <div className="overflow-hidden rounded-2xl border border-border bg-surface" aria-hidden>
+      <div className="aspect-video w-full animate-pulse bg-surface-2" />
+      <div className="space-y-3 p-4">
+        <div className="h-5 w-2/5 animate-pulse rounded bg-surface-2" />
+        <div className="h-4 w-3/5 animate-pulse rounded bg-surface-2" />
+        <div className="h-14 animate-pulse rounded bg-surface-2" />
+      </div>
     </div>
   );
 }

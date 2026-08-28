@@ -1740,6 +1740,7 @@ const ar = {
 
   trailerTitle: "الترايلر",
   trailerPlay: "شغّل الترايلر",
+  trailersTitle: "الترايلرات",
   /* 🆕 **صفُّ الترايلرات وصفحتُه** (D-726) */
   trailersForYou: "ترايلرات لك",
   /* **والفعلُ لا الحالة** (D-224): الزرُّ يقول ما سيقع لا ما هو قائم */
@@ -3044,6 +3045,7 @@ const en: Dict = {
 
   trailerTitle: "Trailer",
   trailerPlay: "Play trailer",
+  trailersTitle: "Trailers",
   trailersForYou: "Trailers for you",
   trailerMute: "Mute",
   trailerSeek: "Seek",

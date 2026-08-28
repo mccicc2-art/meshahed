@@ -1966,6 +1966,7 @@ async function TrailersSection({ locale, scope }: { locale: Locale; scope: Trail
     <TrailerRail
       items={items}
       locale={locale}
+      scope={scope}
       soundOn={parseTrailerSound(store.get(TRAILER_SOUND_COOKIE)?.value)}
     />
   );

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { TrailerPlayer } from "./TrailerPlayer";
 import { Icon } from "./Icon";
 import { dismissTitle, undoDismissTitle, follow } from "@/lib/actions";
@@ -27,13 +27,11 @@ export function TrailerFeed({
   items,
   locale,
   soundOn,
-  startAt,
   emptyLabel,
 }: {
   items: TrailerItem[];
   locale: Locale;
   soundOn: boolean;
-  startAt?: string;
   /** 🆕 **ونصُّ الفراغ يأتي من فوق** (D-734): **فراغُ «لك» يُصلحه أن
       تتابع، وفراغُ تبويبِ كتالوجٍ عطلُ مصدرٍ لا حيلةَ للقارئ فيه** —
       **ونصٌّ واحدٌ للحالتين يُرشد إحداهما ويكذب على الأخرى.** */
@@ -42,25 +40,15 @@ export function TrailerFeed({
   const t = getDict(locale);
   const [muted, setMuted] = useState(!soundOn);
   const [gone, setGone] = useState<ReadonlySet<string>>(new Set());
+  const [unavailable, setUnavailable] = useState<ReadonlySet<string>>(new Set());
   const [added, setAdded] = useState<ReadonlySet<string>>(new Set());
-  const box = useRef<HTMLDivElement>(null);
 
   const keyOf = (i: TrailerItem) => `${i.mediaType}-${i.tmdbId}`;
 
-  /* **والفتحُ من العمل المطلوب لا من رأس القائمة** (شرطُه: «الضغط على
-     فيديو يفتح الـFeed من نفس العمل») — **قفزةٌ بلا حركةٍ قبل أوّل
-     رسم**، فلا يرى القارئُ عملاً غيرَ الذي ضغطه ثمّ ينزلق عنه. */
-  useEffect(() => {
-    if (!startAt) return;
-    const el = box.current?.querySelector<HTMLElement>(`[data-key="${CSS.escape(startAt)}"]`);
-    el?.scrollIntoView({ block: "start", behavior: "auto" });
-  }, [startAt]);
-
   function changeMuted(next: boolean) {
     setMuted(next);
-    /* 🔴 **والكوكي يُكتب هنا لا على الخادم** (D-747): **الفعلُ
-       الخادميُّ يُعيد رسمَ الصفحة كلَّها.** */
-    writeTrailerSound(next);
+    /* `next` هو وضع الكتم، والكوكي يحفظ وضع الصوت. */
+    writeTrailerSound(!next);
   }
 
   function notForMe(i: TrailerItem) {
@@ -98,7 +86,10 @@ export function TrailerFeed({
     });
   }
 
-  const shown = items.filter((i) => !gone.has(keyOf(i)));
+  const shown = items.filter((i) => {
+    const key = keyOf(i);
+    return !gone.has(key) && !unavailable.has(key);
+  });
 
   if (!shown.length) {
     return <p className="px-4 py-16 text-center text-sm text-muted">{emptyLabel ?? t.trailersEmpty}</p>;
@@ -110,7 +101,7 @@ export function TrailerFeed({
        — **فالصنفُ كان سيُكتب ولا يفعل شيئاً.** 🔑 **والذي ينفّذ شرطَه
        («التمرير للأسفل يشغّل التالي ويوقف السابق») هو المراقبُ في
        المشغّل نفسِه** — **وصنفٌ خاملٌ يُقرأ ميزةً قائمةً فيُبنى فوقه.** */
-    <div ref={box}>
+    <div>
       {shown.map((i) => {
         const k = keyOf(i);
         const isAdded = added.has(k);
@@ -129,6 +120,9 @@ export function TrailerFeed({
                 unmuteLabel={t.trailerUnmute}
                 seekLabel={t.trailerSeek}
                 className="aspect-video w-full"
+                onUnavailable={() =>
+                  setUnavailable((previous) => new Set(previous).add(k))
+                }
               />
 
               <div className="px-4 pt-3.5 pb-2">

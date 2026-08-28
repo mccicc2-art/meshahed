@@ -133,6 +133,21 @@ const POOL = 300;
  */
 export type TrailerScope = "movies" | "shows" | "anime";
 
+export type TrailerPin = { mediaType: "movie" | "tv"; tmdbId: number };
+
+export function asTrailerScope(raw: string | null | undefined): TrailerScope | undefined {
+  return raw === "movies" || raw === "shows" || raw === "anime" ? raw : undefined;
+}
+
+export function parseTrailerAt(raw: string | null | undefined): TrailerPin | undefined {
+  const match = /^(movie|tv)-(\d+)$/.exec(raw ?? "");
+  if (!match) return undefined;
+  const tmdbId = Number(match[2]);
+  return Number.isSafeInteger(tmdbId) && tmdbId > 0
+    ? { mediaType: match[1] as TrailerPin["mediaType"], tmdbId }
+    : undefined;
+}
+
 /**
  * 🆕 **تبويباتُ صفحة الترايلرات** (D-734، المرحلةُ الثانية بحكمه).
  *
@@ -236,6 +251,7 @@ export async function getTrailerFeed(
   limit: number,
   locale: Locale,
   scope?: TrailerScope,
+  pin?: TrailerPin,
 ): Promise<TrailerItem[]> {
   const t = getDict(locale);
   /* **والاقتراحاتُ تُطلب واسعةً ثمّ تُقصّ**: `getSuggestions` تخلط
@@ -265,7 +281,17 @@ export async function getTrailerFeed(
      المئتين، **ونافذةٌ بقدر المسبار لا تُغيّر شيئاً.**
      ⚠️ **ولا نداءَ إضافيّ**: **الخلطُ قبل السبر لا بعده** — **أربعةَ
      عشرَ نداءً كما كانت، مختلفةً في كلِّ زيارة.** */
-  const pool = shuffleSeeded(inScope.slice(0, PROBE * 3), drawKey()).slice(0, PROBE);
+  const pinned = pin
+    ? inScope.find(
+        (suggestion) =>
+          suggestion.result.id === pin.tmdbId &&
+          (suggestion.result.media_type === "movie" ? "movie" : "tv") === pin.mediaType,
+      )
+    : undefined;
+  const shuffled = shuffleSeeded(inScope.slice(0, PROBE * 3), drawKey()).filter(
+    (suggestion) => suggestion !== pinned,
+  );
+  const pool = (pinned ? [pinned, ...shuffled] : shuffled).slice(0, PROBE);
   if (!pool.length) return [];
 
   const withKeys = await Promise.all(

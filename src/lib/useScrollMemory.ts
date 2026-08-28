@@ -20,6 +20,14 @@ import { useEffect } from "react";
 const FLAG = "loopz:scroll:back";
 const keyOf = () => `loopz:scroll:${location.pathname}${location.search}`;
 
+export function markScrollReturn() {
+  try {
+    sessionStorage.setItem(FLAG, "1");
+  } catch {
+    /* التصفح الخاص قد يمنع التخزين؛ الرجوع نفسه يبقى يعمل */
+  }
+}
+
 if (typeof window !== "undefined") {
   window.addEventListener("popstate", () => {
     try {
