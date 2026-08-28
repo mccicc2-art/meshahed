@@ -2,7 +2,7 @@ import "server-only";
 
 import { getSuggestions } from "@/lib/suggest";
 import {
-  getTrailer,
+  getTrailerKeys,
   backdropUrl,
   yearOf,
   trending,
@@ -64,6 +64,12 @@ export interface TrailerItem {
    * تُمرَّر، وثلاثةُ أسطرٍ في كلٍّ تُطيل الصفَّ بلا أن تُقرأ** (D-510).
    */
   overview: string | null;
+  /**
+   * 🆕 **بدائلُ المقطع مرتّبةً** (D-743) — **الأوّلُ هو `videoKey`
+   * نفسُه، وما بعده يُجرَّب حين يرفض يوتيوب الأوّل** (حجبٌ بلدِيٌّ أو
+   * تعطيلُ تضمين). **والحجبُ لا يُتوقّع، يُكتشف.**
+   */
+  videoKeys: string[];
   /**
    * «لأنك تحبّ …» — **نصُّ `getSuggestions` نفسُه لا صياغةٌ ثانية**.
    * ⚠️ **واختياريٌّ منذ D-734**: **تبويباتُ الكتالوج لا سببَ شخصيَّ لها**
@@ -144,8 +150,8 @@ async function shape(
   const withKeys = await Promise.all(
     rows.slice(0, probe).map(async (r): Promise<TrailerItem | null> => {
       const mediaType = r.media_type === "movie" ? ("movie" as const) : ("tv" as const);
-      const trailer = await getTrailer(mediaType, r.id).catch(() => null);
-      if (!trailer?.key) return null;
+      const trailer = await getTrailerKeys(mediaType, r.id).catch(() => null);
+      if (!trailer?.keys.length) return null;
       const g = r.genre_ids?.length ? browseGenreForId(r.genre_ids[0]) : null;
       const country: string | null =
         originAdjectives({ origin: r.origin_country }, locale === "en" ? "en" : "ar", 1)[0] ?? null;
@@ -153,7 +159,8 @@ async function shape(
         tmdbId: r.id,
         mediaType,
         title: titleOf(r),
-        videoKey: trailer.key,
+        videoKey: trailer.keys[0],
+        videoKeys: trailer.keys,
         backdrop: backdropUrl(r.backdrop_path ?? null, "w780"),
         posterPath: r.poster_path ?? null,
         year: yearOf(r) ?? "",
@@ -252,8 +259,8 @@ export async function getTrailerFeed(
   const withKeys = await Promise.all(
     pool.map(async (s): Promise<TrailerItem | null> => {
       const mediaType = s.result.media_type === "movie" ? ("movie" as const) : ("tv" as const);
-      const trailer = await getTrailer(mediaType, s.result.id).catch(() => null);
-      if (!trailer?.key) return null;
+      const trailer = await getTrailerKeys(mediaType, s.result.id).catch(() => null);
+      if (!trailer?.keys.length) return null;
       const g = s.result.genre_ids?.length ? browseGenreForId(s.result.genre_ids[0]) : null;
       /* **والنوعُ يُعلَن `string | null` صراحةً**: `[0]` يُستنتج `string`
          بلا `noUncheckedIndexedAccess`، **فيضيق نوعُ الصفِّ عن العقد
@@ -264,7 +271,8 @@ export async function getTrailerFeed(
         tmdbId: s.result.id,
         mediaType,
         title: titleOf(s.result),
-        videoKey: trailer.key,
+        videoKey: trailer.keys[0],
+        videoKeys: trailer.keys,
         backdrop: backdropUrl(s.result.backdrop_path ?? null, "w780"),
         posterPath: s.result.poster_path ?? null,
         year: yearOf(s.result) ?? "",

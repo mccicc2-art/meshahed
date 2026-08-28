@@ -1413,6 +1413,57 @@ export interface Video {
  * المختارة أولاً، فإن لم يوجد مقطع عربي رجعنا للإنجليزية — أغلب الأعمال
  * الأجنبية ليس لها ترايلر مرفوع بالعربية.
  */
+/**
+ * 🆕 **ومعه بدائلُه مرتّبةً** (D-743، بلاغُ أحمد بلقطة: «الفيديو يقول ما
+ * هو مسموح في دولتك»).
+ *
+ * 🔑 **ولا سبيلَ إلى معرفة الحجب قبل التشغيل**: **TMDB لا تعرف أين
+ * يُحجب المقطع، ويوتيوب لا يقول إلّا للمشغّل نفسِه** — **فالحجبُ لا
+ * يُتوقّع، يُكتشف.** **والمقطعُ الواحدُ يعني أنّ اكتشافَه نهايةُ
+ * الطريق؛ والقائمةُ تعني أنّه بدايةُ المحاولة الثانية.**
+ * ⚠️ **ولا نداءَ إضافيّ**: **القائمةُ في الردّ نفسِه الذي كنّا نقرأ
+ * منه واحداً ونرمي الباقي** — **الثمنُ حقلٌ في الذاكرة لا رحلةُ شبكة.**
+ * ⚠️ **وخمسةٌ سقفاً**: **ما بعد الخامس ليس تريلراً غالباً** (مقاطعُ
+ * وراء الكواليس ولقطاتٌ قصيرة)، **وقائمةٌ بلا سقفٍ تحمل رديئاً باسم
+ * الاحتياط.**
+ */
+export async function getTrailerKeys(
+  mediaType: MediaType,
+  id: number,
+): Promise<{ keys: string[]; name: string } | null> {
+  /* **والترتيبُ ترتيبُ `pick` نفسُه ممدوداً** (القاعدة ٦): الرسميُّ ثمّ
+     التريلر ثمّ التشويقة ثمّ ما بقي — **ومعيارُ الأوّل هو معيارُ
+     البديل، وإلّا صار البديلُ تنازلاً لا احتياطاً.** */
+  const rank = (v: Video) =>
+    v.type === "Trailer" && v.official ? 0 : v.type === "Trailer" ? 1 : v.type === "Teaser" ? 2 : 3;
+  const order = (vids: Video[]) => {
+    const yt = vids.filter((v) => v.site === "YouTube" && v.key);
+    const seen = new Set<string>();
+    return yt
+      .slice()
+      .sort((a2, b2) => rank(a2) - rank(b2))
+      .filter((v) => (seen.has(v.key) ? false : (seen.add(v.key), true)))
+      .slice(0, 5);
+  };
+
+  const read = async (language?: string) => {
+    try {
+      const r = await tmdb<{ results: Video[] }>(
+        `/${mediaType}/${id}/videos`,
+        language ? { language } : undefined,
+      );
+      return order(r.results ?? []);
+    } catch {
+      return [];
+    }
+  };
+
+  const local = await read();
+  if (local.length) return { keys: local.map((v) => v.key), name: local[0].name };
+  const en = await read("en-US");
+  return en.length ? { keys: en.map((v) => v.key), name: en[0].name } : null;
+}
+
 export async function getTrailer(
   mediaType: MediaType,
   id: number,
