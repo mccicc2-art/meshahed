@@ -5,6 +5,7 @@ import {
   getConversations,
   getUnreadShares,
   getUnreadSignals,
+  getLastSeenOf,
 } from "@/lib/data";
 import { myMutualFollows, mySignals } from "@/lib/actions";
 import type { PersonLite, ConvShareEvent } from "@/lib/data";
@@ -110,7 +111,13 @@ async function InboxPane({
   locale: Awaited<ReturnType<typeof getT>>["locale"];
   withParam: string | null;
 }) {
-  let conversations = await getConversations();
+  /* 🆕 D-765: آخرُ ظهورِ صاحبِ الخيط المفتوح — مع المحادثات في موجةٍ
+     واحدة (لا نداءَ إلا وخيطٌ مفتوحٌ فعلاً)، ويتجدّد مع استطلاع الخيط */
+  const [convRows, lastSeen] = await Promise.all([
+    getConversations(),
+    withParam ? getLastSeenOf(withParam) : Promise.resolve(null),
+  ]);
+  let conversations = convRows;
   if (conversations.length) {
     const shareEvents = conversations.flatMap((c) =>
       c.events.filter((e): e is ConvShareEvent => e.kind === "share"),
@@ -134,6 +141,7 @@ async function InboxPane({
       startable={startable}
       openWith={withParam}
       locale={locale}
+      lastSeen={lastSeen}
     />
   );
 }
