@@ -31,6 +31,9 @@ const csp = [
   "font-src 'self' data:",
   `connect-src 'self' ${supabaseHost} https://*.supabase.co wss://*.supabase.co https://accounts.google.com`,
   "manifest-src 'self'",
+  // 🆕 D-758: معاينات iTunes — ملفُّ MP4 يُشغَّل في <video> مباشرةً.
+  // بلا media-src يسقط الاتجاه إلى default-src 'self' فتُحجب الملفّات صامتةً
+  "media-src 'self' https://video-ssl.itunes.apple.com https://*.mzstatic.com",
   // مشغّل الترايلر لا يُحمَّل إلا بالضغط، ومن نطاق يوتيوب بلا كوكيز
   // نافذة Google تُرسم في إطارٍ من نطاقها — والترايلر من يوتيوب بلا كوكيز
   "frame-src https://www.youtube-nocookie.com https://accounts.google.com",
