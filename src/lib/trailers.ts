@@ -11,6 +11,7 @@ import {
 } from "@/lib/tmdb";
 import { buildSection, shuffleSeeded } from "@/lib/sections";
 import { titleOf } from "@/lib/media";
+import { getAppleTrailerUrl } from "@/lib/appleTrailers";
 import { getDict, type Locale } from "@/lib/i18n";
 import { browseGenreForId, browseGenreName } from "@/lib/browse";
 import { originAdjectives } from "@/lib/region";
@@ -70,6 +71,13 @@ export interface TrailerItem {
    * تعطيلُ تضمين). **والحجبُ لا يُتوقّع، يُكتشف.**
    */
   videoKeys: string[];
+  /**
+   * 🔴 🆕 **ملفُّ فيديو أصيلٌ إن وُجد** (D-758) — معاينةُ iTunes بصيغة
+   * MP4 تُشغَّل في `<video>` مباشرةً: **أوّلُ إطارٍ بمئات المللي ثانية
+   * بدل ثواني إقلاع صفحةِ يوتيوب.** **والغيابُ سقوطٌ إلى مفاتيح يوتيوب
+   * لا عطل** — أفلامٌ إنجليزيّةُ الاسم في الغالب، والباقي على D-757.
+   */
+  fileUrl: string | null;
   /**
    * «لأنك تحبّ …» — **نصُّ `getSuggestions` نفسُه لا صياغةٌ ثانية**.
    * ⚠️ **واختياريٌّ منذ D-734**: **تبويباتُ الكتالوج لا سببَ شخصيَّ لها**
@@ -203,7 +211,17 @@ async function shape(
   const withKeys = await Promise.all(
     rows.slice(0, probe).map(async (r): Promise<TrailerItem | null> => {
       const mediaType = r.media_type === "movie" ? ("movie" as const) : ("tv" as const);
-      const trailer = await getTrailerKeys(mediaType, r.id).catch(() => null);
+      /* 🆕 **ونداءا المقطع والملفّ يجريان معاً** (D-758): مهلةُ آبل
+         ٢٫٥ث سقفاً وخبيئتُه أسبوعٌ — **فلا يضيف غيابُه إلى زمن الصفّ
+         شيئاً يُذكر، ووجودُه يقلب البطاقةَ إلى مسار الملفّ.**
+         ⚠️ **والاسمُ للبحث أصليُّ العملِ الإنجليزيُّ لا المعرَّب**:
+         بحثُ آبل بأسمائهم، **والحارسُ اللاتينيُّ في الدالّة نفسِها.** */
+      const [trailer, fileUrl] = await Promise.all([
+        getTrailerKeys(mediaType, r.id).catch(() => null),
+        mediaType === "movie"
+          ? getAppleTrailerUrl(r.original_title ?? r.title, yearOf(r))
+          : Promise.resolve(null),
+      ]);
       if (!trailer?.keys.length) return null;
       const g = r.genre_ids?.length ? browseGenreForId(r.genre_ids[0]) : null;
       const country: string | null =
@@ -214,6 +232,7 @@ async function shape(
         title: titleOf(r),
         videoKey: trailer.keys[0],
         videoKeys: trailer.keys,
+        fileUrl,
         /* 🆕 **والغلافُ `w1280` لا `w780`** (D-756): **البطاقةُ تبلغ
            ١٠٣٠px على سطح المكتب** (D-755) **فمصدرٌ بعرض ٧٨٠ يُمطّ**،
            **والصورةُ هي كلُّ ما يُرى قبل أوّل إطارٍ وبعد كلِّ توقّف.**
