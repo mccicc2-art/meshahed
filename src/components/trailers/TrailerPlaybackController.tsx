@@ -254,6 +254,10 @@ function createEngine(
     preload: "idle" | "loading" | "ready";
     /** مفتاحٌ فشل تحميلُه المسبق — لا يُعاد بلا نهاية */
     failedKey: string | null;
+    /** 🆕 D-766: بلغ PLAYING مرّةً — جلسةُ تشغيلٍ قائمةٌ تقبل أوامرَ iOS
+        اللاحقة. والبِكرُ (أُقلع مخفيّاً ولم يبدأ قطّ) لا يُرقّى: أمرُ
+        تشغيله الأوّلُ يُبتلع بصمت (عطبُ D-759 الأصليّ نفسُه) */
+    played: boolean;
   }
   let act: PlayerRec | null = null;
   let sby: PlayerRec | null = null;
@@ -672,12 +676,15 @@ function createEngine(
       key: firstKey,
       preload: asActive ? "idle" : "loading",
       failedKey: null,
+      played: false,
     };
     if (asActive) act = rec;
     else sby = rec;
     applyRoles();
     const yt = await loadYouTubeApi();
     if (destroyed) return;
+    /* 🆕 D-766: دورُه انتهى قبل اكتمال إقلاعه (بِكرٌ هُدم في الترقية) */
+    if (!rec.frame.isConnected) return;
     rec.p = new yt.Player(frame, {
       events: {
         onReady: () => {
@@ -698,6 +705,8 @@ function createEngine(
           }
         },
         onStateChange: (e) => {
+          /* 🆕 D-766: أوّلُ PLAYING يختم المشغّلَ «مجرَّباً» — أيّاً كان دورُه */
+          if (e.data === window.YT?.PlayerState?.PLAYING) rec.played = true;
           if (rec === act) activeStateChange(e);
           else standbyStateChange(rec, e);
         },
@@ -773,7 +782,35 @@ function createEngine(
     const saved = activeId ? positions.get(activeId) : undefined;
     const startAt = saved && saved.key === firstKey && saved.t > 1 ? Math.floor(saved.t) : 0;
 
-    if (sby?.ready && sby.p && sby.key === firstKey) {
+    /* 🔴 🆕 D-766 (بلاغ ٢٨ أغسطس: «ثاني مقطع دائماً تجي علامة اللودينغ
+       وبعدين مايشتغل، لازم أضغط التشغيل — واللي بعده تشتغل مباشرة»):
+       أوّلُ احتياطٍ في الجلسة **بِكرٌ**: iframe أُقلع مخفيّاً، وiOS لا
+       يبدأ تشغيلَ المخفيّ أبداً — فلا يبلغ PLAYING، وأمرُ playVideo
+       الأوّلُ على مشغّلٍ بلا جلسةِ تشغيلٍ يُبتلع بصمت (عطبُ D-759
+       الأصليّ). الترقيةُ كانت تُسلّم الظاهرَ لهذا الأخرس: دوّامةٌ ثم
+       تعثّرُ ٨ ثوانٍ ثم زرّ. أمّا الثالثةُ فما بعدها فاحتياطُها المشغّلُ
+       السابقُ وقد عمل ظاهراً — جلستُه قائمةٌ فيُطاع. العلاج: البِكرُ
+       يُهدم ويُبنى مكانَه إطارٌ جديدٌ **ظاهراً** بمحاولته الذاتيّة
+       (autoplay=1&mute=1 — بوّابةُ iOS الوحيدة، طريقُ أوّلِ بطاقةٍ
+       نفسُه)، والمجرَّبُ القديمُ يصير احتياطاً فتعود الترقيةُ ممكنةً
+       لكلِّ ما بعدها. يقع مرّةً في الجلسة وعلى iOS عمليّاً وحدَه —
+       الحاسوبُ يشغّل المخفيَّ فيُولد الاحتياطُ مجرَّباً ولا يمرّ هنا. */
+    if (sby && sby.key === firstKey && !sby.played) {
+      const virgin = sby;
+      sby = act; /* أوقفه activate() للتوّ — عودةٌ إليه لاحقاً ترقيةٌ دافئة */
+      act = null;
+      if (sby) sby.preload = "idle";
+      try {
+        virgin.p?.destroy();
+      } catch {
+        /* مشغّلٌ لم يكتمل إنشاؤه */
+      }
+      virgin.frame.remove();
+      void bootPlayer(firstKey, true, startAt);
+      return;
+    }
+
+    if (sby?.ready && sby.p && sby.key === firstKey && sby.played) {
       /* الترقية: تبادلُ أدوارٍ — المشغّلُ الجاهزُ يصعد والقديمُ يصير احتياطاً */
       const old = act;
       act = sby;
