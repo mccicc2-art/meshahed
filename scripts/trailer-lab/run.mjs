@@ -56,7 +56,7 @@ function App(){
         React.createElement(TrailerCardMedia, {
           id:c.key,
           item:{keys:c.keys, fileUrl:c.fileUrl ?? null, title:c.key},
-          backdrop:null, title:c.key,
+          backdrop:"/veil.png", title:c.key,
           playLabel:"play", muteLabel:"mute", unmuteLabel:"unmute",
           onUnavailable:()=>{ window.__mark(c.key,'retired'); setGone(p=>new Set(p).add(c.key)); },
         })
@@ -95,6 +95,9 @@ const harness = `<!doctype html><meta charset="utf-8"><title>trailer-lab</title>
  .relative{position:relative}.absolute{position:absolute}.inset-0{inset:0}
  .overflow-hidden{overflow:hidden}
  .opacity-0{opacity:0}.opacity-100{opacity:1}
+ .invisible{visibility:hidden}.visible{visibility:visible}
+ .z-40{z-index:40}.object-cover{object-fit:cover}
+ .card img{position:absolute;inset:0;width:100%;height:100%}
  .pointer-events-none{pointer-events:none}.pointer-events-auto{pointer-events:auto}
  .grid{display:grid}.place-items-center{place-items:center}
  .bg-surface-2{background:#222}
@@ -131,9 +134,11 @@ window.__labPollId=setInterval(()=>{
     const timeEl=c.querySelector('span[dir="ltr"]');
     const time=timeEl?timeEl.textContent:null;
     const prev=window.__labState[key]||{};
-    /* «الصورةُ تعمل لهذه البطاقة» = الطبقةُ ظاهرةٌ وزرُّ الصوت (النشطة) هنا */
     const soundBtn=!!c.querySelector('button[aria-label="mute"],button[aria-label="unmute"]');
-    const lifted=ovOn&&soundBtn;
+    /* «الصورةُ تعمل لهذه البطاقة» بعد قلب السِّتر: الطبقةُ ظاهرةٌ
+       **وغلافُ البطاقة نفسِها تلاشى** — قياسُ الآليّة الحقيقيّة لا وكيلِها */
+    const img=c.querySelector('img');
+    const lifted=ovOn&&(img?getComputedStyle(img).opacity==='0':soundBtn);
     if(prev.lifted!==lifted) window.__mark(key,'veil',lifted?'LIFTED':'DOWN');
     if(prev.btn!==btn) window.__mark(key,'button',btn?'SHOWN':'HIDDEN');
     window.__labState[key]={lifted,btn,time,soundBtn};
@@ -152,16 +157,26 @@ const ytApiShim = `
     const self=this;
     this._muted=true; this._volume=100; this._t=0; this._d=0; this._state=-1;
     this._ev=(cfg&&cfg.events)||{};
-    const iframe=document.createElement('iframe');
-    iframe.style.width='100%'; iframe.style.height='100%'; iframe.style.border='0';
-    iframe.setAttribute('data-yt-shim','1');
-    iframe.src=(cfg.host||'https://www.youtube.com')+'/embed/'+cfg.videoId+'?enablejsapi=1&origin='+encodeURIComponent(location.origin);
-    el.replaceWith(iframe);
+    /* D-759 بعد iPhone: الإنتاجُ يبني الإطارَ بنفسه (autoplay=1&mute=1)
+       ويسلّمه قائماً — كالواجهة الرسمية تماماً. الإنشاءُ من videoId باقٍ
+       لمن يسلّم عنصراً عاديّاً. */
+    let iframe;
+    if(el && el.tagName==='IFRAME'){
+      iframe=el;
+      iframe.setAttribute('data-yt-shim','1');
+    } else {
+      iframe=document.createElement('iframe');
+      iframe.style.width='100%'; iframe.style.height='100%'; iframe.style.border='0';
+      iframe.setAttribute('data-yt-shim','1');
+      iframe.src=((cfg&&cfg.host)||'https://www.youtube.com')+'/embed/'+((cfg&&cfg.videoId)||'')+'?enablejsapi=1&origin='+encodeURIComponent(location.origin);
+      el.replaceWith(iframe);
+    }
+    const vid=((iframe.src.split('/embed/')[1]||'').split('?')[0])||((cfg&&cfg.videoId)||'');
     this._iframe=iframe;
     const send=(func,args)=>{ try{ iframe.contentWindow.postMessage(JSON.stringify({event:'command',func,args:args||[]}),'*'); }catch(e){} };
     this._send=send;
     let listening=false, readyFired=false;
-    const hello=setInterval(()=>{ if(listening){clearInterval(hello);return;} try{ iframe.contentWindow.postMessage(JSON.stringify({event:'listening',id:cfg.videoId,channel:'widget'}),'*'); }catch(e){} },120);
+    const hello=setInterval(()=>{ if(listening){clearInterval(hello);return;} try{ iframe.contentWindow.postMessage(JSON.stringify({event:'listening',id:vid,channel:'widget'}),'*'); }catch(e){} },120);
     this._hello=hello;
     this._onMsg=(e)=>{
       if(e.source!==iframe.contentWindow) return;
@@ -225,7 +240,8 @@ const P={
   silent: {loadMs:400,  silent:true},
 };
 let key0=key; let p=P[key]||P.fast;
-let listening=false, state=-1, t=0, muted=true, volume=100, loaded=false;
+/* mute=1 من الرابط كما يبنيه الإنتاج الآن — والافتراضُ كتمٌ كالسابق */
+let listening=false, state=-1, t=0, muted=q.get('mute')!=='0', volume=100, loaded=false;
 let blockedOnce=false;
 let frameTimer=null, infoTimer=null, errTimer=null;
 const raw=m=>parent.postMessage(JSON.stringify(m),'*');
@@ -283,6 +299,7 @@ const server = http.createServer((req,res)=>{
   if(req.url==='/__yt_iframe_api'){ res.setHeader('content-type','text/javascript'); res.end(ytApiShim); return; }
   if(req.url==='/'||req.url.startsWith('/?')){ res.setHeader('content-type','text/html'); res.end(harness); return; }
   if(req.url==='/bundle.js'){ res.setHeader('content-type','text/javascript'); res.end(fs.readFileSync(`${OUT}/bundle.js`)); return; }
+  if(req.url==='/veil.png'){ res.setHeader('content-type','image/png'); res.end(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==','base64')); return; }
   if(req.url==='/clip.webm' && fs.existsSync(CLIP)){
     /* دعمُ Range — المتصفّح يطلب المقاطعَ به، وبدونه لا يبدأ العرض */
     const size=fs.statSync(CLIP).size; const r=/bytes=(\d+)-(\d*)/.exec(req.headers.range||'');
