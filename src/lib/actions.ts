@@ -3731,26 +3731,45 @@ export async function hideShare(shareId: string) {
   revalidatePath("/people");
 }
 
-/** تعليم كل الوارد من شخصٍ بعينه مقروءاً — عند فتح محادثته */
+/** تعليم كل الوارد من شخصٍ بعينه مقروءاً — عند فتح محادثته.
+ *  🆕 D-765: صار بابُه دالّةَ `mark_conversation_read` (الهجرة ١٥٣) —
+ *  الجداولُ صارت ثلاثةً بعد أن نالت الردودُ مقروئيّتها، وثالثُها كان
+ *  سيحتاج سياسةَ update جديدةً على صفوف الغير؛ الدالّةُ definer تحصر
+ *  التعديلَ في عمود القراءة ولطرف الخيط (نمط ١٢٩/١٣٨). وقبل الهجرة؟
+ *  السقوطُ إلى تحديثَي المشاركات القديمَين — شارةُ الردود وحدَها تتأخّر */
 export async function markConversationRead(personId: string) {
   personId = uuid(personId);
   const { supabase, user } = await requireUser("share", 30, 60_000);
-  const now = new Date().toISOString();
-  const { error } = await supabase
-    .from("title_shares")
-    .update({ read_at: now })
-    .eq("recipient_id", user.id)
-    .eq("sender_id", personId)
-    .is("read_at", null);
-  // وقوائم الشخص نفسه — الخيط واحد (D-066)
-  await supabase
-    .from("list_shares")
-    .update({ read_at: now })
-    .eq("recipient_id", user.id)
-    .eq("sender_id", personId)
-    .is("read_at", null);
-  if (error) fail(error);
+  const { error } = await supabase.rpc("mark_conversation_read", { p_peer: personId });
+  if (error) {
+    const now = new Date().toISOString();
+    await supabase
+      .from("title_shares")
+      .update({ read_at: now })
+      .eq("recipient_id", user.id)
+      .eq("sender_id", personId)
+      .is("read_at", null);
+    // وقوائم الشخص نفسه — الخيط واحد (D-066)
+    await supabase
+      .from("list_shares")
+      .update({ read_at: now })
+      .eq("recipient_id", user.id)
+      .eq("sender_id", personId)
+      .is("read_at", null);
+  }
   revalidatePath("/people");
+}
+
+/**
+ * 🆕 نبضةُ الحضور (D-765) — تُبقي `profiles.last_seen_at` صادقاً لعرض
+ * «آخر ظهور» في ترويسة المحادثة. الخنقُ مزدوج: العميلُ يدقّ كلَّ أربع
+ * دقائق والدالّةُ (الهجرة ١٥٣) لا تكتب إلا بعد ٦٠ ثانية من آخر كتابة —
+ * فأسوأُ حالاتها كتابةُ صفٍّ في الدقيقة لكلِّ مستخدمٍ نشط.
+ * ولا `revalidatePath`: لا شاشةَ عندي تتغيّر بنبضتي أنا (روح D-008).
+ */
+export async function touchPresence() {
+  const { supabase } = await requireUser("presence", 5, 60_000);
+  await supabase.rpc("touch_last_seen");
 }
 
 /** إخفاء محادثةٍ كاملة من جهتي — كل مشاركاتها، والطرف الآخر يحتفظ بنسخته */

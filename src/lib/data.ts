@@ -1638,7 +1638,7 @@ export async function getConversations(): Promise<Conversation[]> {
       shareIds.length
         ? supabase
             .from("share_replies")
-            .select("id, share_id, author_id, body, created_at")
+            .select("id, share_id, author_id, body, created_at, read_at")
             .in("share_id", shareIds)
             .order("created_at", { ascending: true })
             .limit(2000)
@@ -1654,6 +1654,7 @@ export async function getConversations(): Promise<Conversation[]> {
       author_id: string;
       body: string;
       created_at: string;
+      read_at: string | null;
     };
     const replies = (replyRows ?? []) as ReplyRow[];
     const byId = new Map((people ?? []).map((p) => [p.id, p as PersonLite]));
@@ -1694,13 +1695,19 @@ export async function getConversations(): Promise<Conversation[]> {
     for (const r of replies) {
       const other = otherOf.get(r.share_id);
       if (!other) continue;
-      ensure(other).events.push({
+      const c = ensure(other);
+      c.events.push({
         kind: "reply",
         id: r.id,
         mine: r.author_id === me.id,
         body: r.body,
         created_at: r.created_at,
       });
+      /* 🆕 D-765 (بلاغ ٢٨ أغسطس «مايصل أشعار ولا نقطة»): الردُّ النصّيُّ
+         هو الرسالةُ الفعليّة — وكان بلا مقروئيّةٍ أصلاً فلا يُعدُّ أبداً،
+         فتصل الرسالةُ ولا نقطةَ على الشخص. الهجرة ١٥٣ أضافت `read_at`
+         والعدُّ هنا يطابق عدَّ `unread_shares` الحيّ */
+      if (r.author_id !== me.id && !r.read_at) c.unread++;
     }
     /* مشاركات القوائم — أحداثٌ في الخيط نفسه؛ الردود تبقى معلَّقةً
        بالأعمال وحدها (D-051) فلا otherOf لها */
@@ -1728,6 +1735,25 @@ export async function getConversations(): Promise<Conversation[]> {
     return list;
   } catch {
     return [];
+  }
+}
+
+/**
+ * 🆕 آخرُ ظهورِ صاحبِ المحادثة (D-765، بلاغ ٢٨ أغسطس: «دائماً مكتوب
+ * live وهذي معلومة غير صحيحة») — كان المكتوبُ حالَ قناة Realtime لا
+ * حالَ الشخص. الدالّةُ `last_seen_of` (الهجرة ١٥٣) definer محروسةٌ
+ * بـ`are_mutual`: قارئُها الوحيدُ ترويسةُ خيطٍ، والخيطُ لا يقوم إلا بين
+ * متتابعَين. غيابُها أو فكُّ المتابعة؟ `null` صامتة — ترويسةٌ بلا سطرِ
+ * ظهورٍ لا شاشةُ خطأ.
+ */
+export async function getLastSeenOf(personId: string): Promise<string | null> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("last_seen_of", { target: personId });
+    if (error || !data) return null;
+    return String(data);
+  } catch {
+    return null;
   }
 }
 
