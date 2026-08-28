@@ -15,18 +15,6 @@ export function TrailerBackButton({
 
   function goBack() {
     markScrollReturn();
-    let sameOriginReferrer = false;
-    try {
-      sameOriginReferrer =
-        Boolean(document.referrer) && new URL(document.referrer).origin === location.origin;
-    } catch {
-      // A malformed or empty referrer uses the explicit internal fallback.
-    }
-
-    if (sameOriginReferrer && window.history.length > 1) {
-      router.back();
-      return;
-    }
     router.replace(fallback, { scroll: false });
   }
 
