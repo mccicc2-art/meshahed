@@ -171,6 +171,12 @@ export default async function RootLayout({
             يُغلق وحدَه.** */}
         <link rel="preconnect" href="https://www.youtube-nocookie.com" />
         <link rel="preconnect" href="https://i.ytimg.com" />
+        {/* 🆕 D-760: نطاقان ثابتان غابا عن D-743 — `www.youtube.com` يحمل
+            `iframe_api` نفسَه (أوّلُ ما يُطلب قبل أيِّ مشغّل)،
+            و`video-ssl.itunes.apple.com` يبثّ معايناتِ آبل (D-758)
+            واسمُه ثابتٌ لا يُولَّد كأسماء googlevideo. */}
+        <link rel="preconnect" href="https://www.youtube.com" />
+        <link rel="preconnect" href="https://video-ssl.itunes.apple.com" />
         {/* 🔴 🆕 **قماشُ المتصفّح داكنٌ من أوّل بايت** (D-532): هذا الوسمُ
             يُقرأ قبل أيِّ CSS، **فالفجواتُ التي يرسم فيها iOS قماشَه هو —
             لا صفحتَنا — تصير بلون الثيم لا بيضاء.** التفصيلُ في
