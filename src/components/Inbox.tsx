@@ -295,21 +295,42 @@ function ConversationView({
         >
           <Icon name="chevron-down" size={18} className="rotate-90 rtl:-rotate-90" />
         </Link>
-        <Avatar
-          src={conv.person?.hide_name ? null : conv.person?.avatar_url ?? null}
-          name={name}
-          size={34}
-          alt={t.avatarAlt}
-        />
-        <span className="min-w-0 flex-1">
-          <span className="block text-sm font-bold truncate">{name}</span>
-          {/* ⚖️ 🆕 D-765: مكانَ شارة «فوري/تحديث دوري» — كانت حالَ قناة
-              Realtime فقُرئت «الشخص متصل» وهي لا تقول ذلك. السطرُ الآن
-              عن الشخص فعلاً، ويتجدّد مع استطلاع الخيط (كل ٢٠ ثانية) */}
-          {presence && (
-            <span className="block text-12 text-muted truncate">{presence}</span>
-          )}
-        </span>
+        {/* 🆕 D-767 (طلب أحمد: «الاسم احتاج أقدر أضغطه»): الهويّةُ كلُّها —
+            صورةٌ واسمٌ وسطرُ الحضور — بابُ الملفّ. صاحبُ الاسم المخفيّ لا
+            صفحةَ له فيبقى نصّاً (قاعدةُ صفِّ القائمة في ورقة «المزيد» نفسُها).
+            وصفُّ الملفّ في الورقة باقٍ — بابان لمقصدٍ واحدٍ لا عائلتان. */}
+        {(() => {
+          const identity = (
+            <>
+              <Avatar
+                src={conv.person?.hide_name ? null : conv.person?.avatar_url ?? null}
+                name={name}
+                size={34}
+                alt={t.avatarAlt}
+              />
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-bold truncate">{name}</span>
+                {/* ⚖️ 🆕 D-765: مكانَ شارة «فوري/تحديث دوري» — كانت حالَ قناة
+                    Realtime فقُرئت «الشخص متصل» وهي لا تقول ذلك. السطرُ الآن
+                    عن الشخص فعلاً، ويتجدّد مع استطلاع الخيط (كل ٢٠ ثانية) */}
+                {presence && (
+                  <span className="block text-12 text-muted truncate">{presence}</span>
+                )}
+              </span>
+            </>
+          );
+          return username ? (
+            <Link
+              href={`/u/${username}`}
+              aria-label={t.viewProfileOf(name)}
+              className="flex min-w-0 flex-1 items-center gap-2.5 rounded-xl -my-1 py-1 -ms-1 ps-1 pe-1 hover:bg-surface-2 active:opacity-80 transition"
+            >
+              {identity}
+            </Link>
+          ) : (
+            <span className="flex min-w-0 flex-1 items-center gap-2.5">{identity}</span>
+          );
+        })()}
         <button
           type="button"
           onClick={() => {
