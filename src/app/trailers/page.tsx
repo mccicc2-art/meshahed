@@ -70,10 +70,18 @@ async function TrailerFeedSection({
   emptyLabel: string;
 }) {
   const pin = active === "for-you" ? parseTrailerAt(pinAt) : undefined;
+  /* 🆕 **وأربعَ عشرةَ تُطلب واثنتا عشرةَ تُعرض** (D-756): **الفائضُ
+     بدائلُ خاناتٍ يحلّ فيها البديلُ محلَّ مقطعٍ يرفضه يوتيوب.**
+     ⚠️ **والثمنُ يُقال لا يُخفى**: **المسبارُ يتبع السقفَ** (`probeFor`)
+     **فصار واحداً وعشرين بعد أربعةَ عشر** — **سبعةُ نداءاتِ فيديو
+     زائدةٍ في أوّل رسمٍ للصفحة كلَّ ساعة** (ردودُ TMDB مخبَّأةٌ ساعةً).
+     ⚠️ **وهي على هذه الصفحة وحدَها**: **رايلُ اكتشف يطلب تسعاً فيبقى
+     مسبارُه أربعةَ عشرَ** — **والسطحُ الذي طُلبت له السرعةُ لا يدفع
+     ثمنَ غيره.** */
   const itemsPromise =
     active === "for-you"
-      ? getTrailerFeed(12, locale, scope, pin)
-      : getTrailerTabFeed(active, 12, locale);
+      ? getTrailerFeed(14, locale, scope, pin)
+      : getTrailerTabFeed(active, 14, locale);
   const [items, store] = await Promise.all([itemsPromise, cookies()]);
 
   return (
