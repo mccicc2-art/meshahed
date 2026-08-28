@@ -726,15 +726,11 @@ export async function setTabPrefs(surface: string, prefs: TabPref[]) {
  * ⚠️ **ولا `revalidatePath`**: التفضيلُ يُقرأ عند الرسم القادم،
  * **وإعادةُ تصيير Discover لأجل مفتاحِ صوتٍ ثمنٌ بلا مقابل** (D-510).
  */
-export async function setTrailerSound(on: boolean) {
-  const { TRAILER_SOUND_COOKIE, serializeTrailerSound } = await import("@/lib/trailerPrefs");
-  const store = await cookies();
-  store.set(TRAILER_SOUND_COOKIE, serializeTrailerSound(Boolean(on)), {
-    path: "/",
-    maxAge: 60 * 60 * 24 * 365,
-    sameSite: "lax",
-  });
-}
+/* 🔴 **وفعلُ صوتِ الترايلر حُذف** (D-747): **كلُّ فعلٍ خادميٍّ يُعيد
+   رسمَ الصفحة** — **فكتابةُ كوكيٍّ لا يقرؤه إلّا أوّلُ رسمٍ كانت تكلّف
+   رحلةً ورسماً كاملاً.** **صار يُكتب من المتصفّح**
+   (`trailerPrefs.writeTrailerSound`). ⚠️ **ولم يُترك ميّتاً**: **فعلٌ
+   لا يُنادى يُقرأ باباً قائماً فيُبنى عليه.** */
 
 export async function setMyRows(raw: string) {
   const { parseMyRows, serializeMyRows, MY_ROWS_COOKIE } = await import("@/lib/myRows");

@@ -9,7 +9,7 @@ import {
   ANIME_KEYWORD,
   type SearchResult,
 } from "@/lib/tmdb";
-import { buildSection, shuffle } from "@/lib/sections";
+import { buildSection, shuffleSeeded } from "@/lib/sections";
 import { titleOf } from "@/lib/media";
 import { getDict, type Locale } from "@/lib/i18n";
 import { browseGenreForId, browseGenreName } from "@/lib/browse";
@@ -95,6 +95,19 @@ const PROBE = 14;
  * يُعرض** (السطرُ فوق، ولم يُنقض).
  */
 const PROBE_ANIME = 40;
+
+/**
+ * 🔴 🆕 **مفتاحُ القرعة — دلوٌ زمنيٌّ من عشر دقائق** (D-747).
+ *
+ * 🔑 **يتغيّر مع الزيارات ولا يتغيّر مع الرسم**: **فالقارئُ يرى وجوهاً
+ * جديدةً كلَّما عاد** (وهو مطلبُ D-740)، **ولا يُسحب المقطعُ من تحت
+ * عينه حين يضغط «أضف لقائمتي»** (وهو بلاغُ اليوم).
+ * ⚠️ **وعشرٌ لا دقيقة**: **جلسةُ تصفّحٍ واحدةٌ تسع عشرَ دقائقَ بسهولة**،
+ * **ومفتاحٌ يتغيّر كلَّ دقيقةٍ يعيد العطلَ لمن أطال النظر.**
+ */
+function drawKey(): number {
+  return Math.floor(Date.now() / 600000);
+}
 
 /**
  * 🔑 **والسقفُ المطلوبُ من `getSuggestions` هو سقفُ «مختار لك» نفسُه**
@@ -209,15 +222,14 @@ export async function getTrailerTabFeed(
       media,
       base: media === "anime" ? { keywords: [ANIME_KEYWORD] } : {},
       active: false,
-      /* 🆕 **وقرعةُ القسم تُطلب لا تُفترض** (D-740): `ctx.sample` هي
-         عينُ ما بُني في D-202 لهذه الشكوى — **وتركُها مطفأةً هو تجميدُ
-         التبويبات على وجوهٍ واحدة.** **ولا نداءَ إضافيّ**: البِركةُ
-         مسحوبةٌ أصلاً والقرعةُ ترتيبٌ لها. */
-      sample: true,
+      /* ⚖️ 🆕 **و`sample` أُطفئت وقامت مقامَها قرعةُ المفتاح** (D-747،
+         نقضٌ لنصف D-740): **قرعةُ `ctx.sample` تُحسب عند كلِّ رسم** —
+         **فكانت تبدّل التبويبَ تحت إصبع القارئ عند كلِّ فعلٍ خادميّ.**
+         **والقرعةُ باقيةٌ، انتقلت إلى مفتاحٍ يتغيّر بالزمن لا بالرسم.** */
     },
     probe,
   ).catch(() => []);
-  return shape(rows, locale, limit, undefined, probe);
+  return shape(shuffleSeeded(rows, drawKey()), locale, limit, undefined, probe);
 }
 
 export async function getTrailerFeed(
@@ -253,7 +265,7 @@ export async function getTrailerFeed(
      المئتين، **ونافذةٌ بقدر المسبار لا تُغيّر شيئاً.**
      ⚠️ **ولا نداءَ إضافيّ**: **الخلطُ قبل السبر لا بعده** — **أربعةَ
      عشرَ نداءً كما كانت، مختلفةً في كلِّ زيارة.** */
-  const pool = shuffle(inScope.slice(0, PROBE * 3)).slice(0, PROBE);
+  const pool = shuffleSeeded(inScope.slice(0, PROBE * 3), drawKey()).slice(0, PROBE);
   if (!pool.length) return [];
 
   const withKeys = await Promise.all(
