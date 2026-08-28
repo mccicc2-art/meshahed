@@ -36,7 +36,13 @@ import {createRoot} from "react-dom/client";
 import {TrailerPlayback} from "@/components/trailers/TrailerPlaybackController";
 import {TrailerCardMedia} from "@/components/trailers/TrailerCardMedia";
 
-const CARDS = [
+/* D-766: صفحةُ ?shy=1 تحاكي iPhone — بطاقتان فقط، والثانيةُ مفتاحُها
+   «خجول»: لا يبدأ مخفيّاً ولا يُطيع أوّلَ أمرِ تشغيل (انظر المحاكي) */
+const SHY = new URLSearchParams(location.search).get("shy") === "1";
+const CARDS = SHY ? [
+  {key:"fast4", keys:["fast4"]},
+  {key:"shy",   keys:["shy"]},
+] : [
   {key:"fast",    keys:["fast"]},
   {key:"fast2",   keys:["fast2"]},
   {key:"slow",    keys:["slow"]},
@@ -134,6 +140,8 @@ window.addEventListener('message', e=>{ let d; try{d=JSON.parse(e.data)}catch{re
 window.__labState={};
 window.__overlay=()=>document.querySelector('div[aria-hidden].fixed.pointer-events-none'); /* D-763: الستارة أيضاً aria-hidden fixed */
 window.__labPollId=setInterval(()=>{
+  /* D-766: بثُّ الظهور للأطر — المحاكي «الخجول» لا يبدأ إلا ظاهراً */
+  document.querySelectorAll('iframe').forEach(f=>{ try{ f.contentWindow.postMessage(JSON.stringify({event:'lab-vis', visible:getComputedStyle(f).opacity!=='0'}),'*'); }catch(e){} });
   const ov=window.__overlay();
   const ovOn=ov?getComputedStyle(ov).opacity==='1':false;
   document.querySelectorAll('[data-card]').forEach(c=>{
@@ -254,28 +262,46 @@ const P={
   err150b:{loadMs:400,  err:150},
   blocked:{loadMs:500,  frameMs:600,  dur:120, blockFirstPlay:true},
   silent: {loadMs:400,  silent:true},
+  /* D-766 — نمذجةُ iOS بأمانة: (أ) محاولةُ autoplay الذاتيّةُ لا تعمل
+     إلا وإطارُه ظاهرٌ (الحصادُ يبثّ الظهورَ للأطر كلَّ ٥٠م.ث)، و(ب)
+     أوّلُ أمرِ تشغيلٍ على مشغّلٍ لم يعمل قطُّ يُبتلع بصمتٍ بلا أيّ
+     حدثٍ — وبعد أوّلِ PLAYING تُطاع الأوامرُ كلُّها (جلسةٌ قائمة) */
+  shy:    {loadMs:500,  frameMs:600,  dur:120, needsVisible:true},
 };
 let key0=key; let p=P[key]||P.fast;
 /* mute=1 من الرابط كما يبنيه الإنتاج الآن — والافتراضُ كتمٌ كالسابق */
 let listening=false, state=-1, t=0, muted=q.get('mute')!=='0', volume=100, loaded=false;
 let blockedOnce=false;
+/* D-766: ظهورُ إطاري كما يبثّه الحصاد — افتراضُه مخفيّ حتى أوّل بثّ */
+let vis=false;
 let frameTimer=null, infoTimer=null, errTimer=null;
 /* D-761: فيديو سبق عرضُه في هذا المشغّل يستأنف بعشرات المللي ثانية لا
    بثمن تحميلٍ كامل — أمانةً لعازلٍ دافئٍ حقيقيّ؛ وloadVideoById يصفّره */
 let everPlayed=false;
+/* D-766: مِنحةُ التشغيل مِلكُ العنصرِ لا المقطع — أوّلُ PLAYING يمنحها
+   ولا يُصفّرها loadVideoById (على iOS الحقيقيّ المشغّلُ المجرَّبُ يُطيع
+   loadVideoById لمفتاحٍ جديدٍ ويواصل مخفيّاً) */
+let granted=false;
 const raw=m=>parent.postMessage(JSON.stringify(m),'*');
 const lab=(x,extra)=>raw({event:'lab', key:key0, lab:x, extra});
 const proto=m=>{ if(listening) raw(m); };
 const info=()=>proto({event:'infoDelivery', info:{playerState:state, currentTime:t, duration:p.dur||120, muted, volume}});
-function begin(){
+function begin(fromCmd){
   if(p.err){ clearTimeout(errTimer); errTimer=setTimeout(()=>{ proto({event:'onError', info:p.err}); lab('error',p.err); },400); return; }
   if(p.blockFirstPlay && !blockedOnce){ blockedOnce=true; proto({event:'onAutoplayBlocked'}); lab('autoplay-blocked'); return; }
+  /* D-766: نمذجةُ iOS — البِكرُ لا يبدأ بأمرٍ أبداً (يُبتلع بلا حدث)،
+     ومحاولتُه الذاتيّةُ لا تعمل إلا ظاهراً (المخفيُّ يُركن بصمت) */
+  if(p.needsVisible && !granted){
+    if(fromCmd){ lab('swallowed'); return; }
+    if(!vis){ lab('parked'); return; }
+  }
   if(state===1) return;
   state=3; info(); clearTimeout(frameTimer);
-  frameTimer=setTimeout(()=>{ state=1; everPlayed=true; lab('playing'); info(); }, everPlayed?50:p.frameMs);
+  frameTimer=setTimeout(()=>{ state=1; everPlayed=true; granted=true; lab('playing'); info(); }, everPlayed?50:p.frameMs);
 }
 window.addEventListener('message', e=>{
   let d; try{d=JSON.parse(e.data)}catch{return}
+  if(d.event==='lab-vis'){ vis=!!d.visible; return; }
   if(d.event==='listening'){
     if(p.silent||!loaded) return;
     if(!listening){ listening=true; raw({event:'onReady'}); lab('heard');
@@ -285,7 +311,7 @@ window.addEventListener('message', e=>{
   if(d.event==='command'){
     lab('cmd:'+d.func, d.func==='seekTo'?d.args[0]:null);
     if(p.silent) return;
-    if(d.func==='playVideo') begin();
+    if(d.func==='playVideo') begin(true);
     if(d.func==='pauseVideo'){ clearTimeout(frameTimer); if(state===1||state===3){state=2; info();} }
     if(d.func==='mute'){ muted=true; info(); }
     if(d.func==='unMute'){ muted=false; info(); }
@@ -298,11 +324,11 @@ window.addEventListener('message', e=>{
       const st=(a&&typeof a==='object'&&Number(a.startSeconds))||0;
       key0=nk; p=P[nk]||P.fast; blockedOnce=false; everPlayed=false;
       clearTimeout(frameTimer); clearTimeout(errTimer); t=st; state=-1; info(); lab('loaded-by-id', nk+(st?('@'+st):''));
-      begin(); /* loadVideoById يشغّل تلقائياً كالرسمية */
+      begin(true); /* loadVideoById يشغّل تلقائياً كالرسمية */
     }
   }
 });
-setTimeout(()=>{ loaded=true; lab('loaded'); if(q.get('autoplay')==='1'&&!p.silent&&!p.err) begin(); if(q.get('autoplay')==='1'&&p.err) begin(); },p.loadMs);
+setTimeout(()=>{ loaded=true; lab('loaded'); if(q.get('autoplay')==='1'&&!p.silent&&!p.err) begin(false); if(q.get('autoplay')==='1'&&p.err) begin(false); },p.loadMs);
 </script>`;
 
 // ---------- 4) الخادم ----------
@@ -511,6 +537,33 @@ const consoleErrors = await page.evaluate(()=>window.__consoleErrors);
 const pageErrors = PAGE_ERRORS;
 
 const events = await log();
+
+/* ---------- 5.5) صفحةُ D-766 — «ثاني مقطع دائماً لودينغ ثم لا يعمل» ----------
+   محاكاةُ iPhone: بطاقتان، والثانيةُ «خجولة» (لا تبدأ مخفيّةً ولا تُطيع
+   أوّلَ أمر). القبول: بلا أيِّ نقرةٍ إطلاقاً — الأولى تعمل، احتياطُ
+   الثانية يُركن، والتمريرُ إليها يهدم البِكرَ ويُقلع ظاهراً فتعمل */
+const page2 = await context.newPage();
+page2.on('pageerror', e=>{ PAGE_ERRORS.push('p2:'+String(e.message).slice(0,200)); });
+await page2.goto(`http://127.0.0.1:${PORT}/?shy=1`);
+await page2.waitForTimeout(4000);
+const parked27 = await page2.evaluate(()=>window.__lab.some(e=>e.card==='shy'&&e.ev==='parked'));
+const noPlay27 = await page2.evaluate(()=>!window.__lab.some(e=>e.card==='shy'&&e.ev==='playing'));
+await page2.evaluate(()=>{const c=document.querySelector('[data-card="shy"]'); window.scrollTo({top:c.offsetTop-(window.innerHeight-c.offsetHeight)/2});});
+await page2.waitForTimeout(700);
+const spin27 = await page2.evaluate(()=>!!document.querySelector('[data-card="shy"] .animate-spin'));
+await page2.waitForTimeout(3800);
+const state27 = await page2.evaluate(()=>{
+  const img=document.querySelector('[data-card="shy"] img');
+  return {
+    lifted: img?getComputedStyle(img).opacity==='0':false,
+    frames: document.querySelectorAll('iframe').length,
+    loads: window.__lab.filter(e=>e.card==='shy'&&e.ev==='loaded').length,
+    playing: window.__lab.some(e=>e.card==='shy'&&e.ev==='playing'),
+    pausedOld: window.__lab.some(e=>e.card==='fast4'&&e.ev==='cmd:pauseVideo'),
+  };
+});
+await page2.close();
+
 await browser.close(); server.close();
 
 // ---------- 6) التقرير ----------
@@ -559,6 +612,12 @@ add(25,'الأزرارُ تتوارى بعد ٥ ثوانٍ واللمسةُ تُ
 /* 🆕 D-764: «تجيني علامة لودينغ الدائرية» — أثناء loading فقط، وتزول للتعثّر */
 add(26,'مؤشّرُ التحميل يظهر أثناء البطء ويزول عند التعثّر لزرّه',
   spin26on && spin26off.gone && spin26off.btn, JSON.stringify({spin26on,spin26off}));
+/* 🆕 D-766: «ثاني مقطع دائماً لودينغ ثم مايشتغل» — البِكرُ المخفيُّ
+   لا يُرقّى: يُهدم ويُقلع ظاهراً بمحاولته الذاتيّة، بلا أيِّ نقرة */
+add(27,'البِكرُ المخفيُّ يُستبدل بإقلاعٍ ظاهرٍ يعمل بلا ضغطة (D-766)',
+  parked27 && noPlay27 && spin27 && state27.lifted && state27.playing
+  && state27.frames<=2 && state27.loads>=2 && state27.pausedOld,
+  JSON.stringify({parked27,noPlay27,spin27,...state27}));
 add(15,'لا أخطاء console من كود Loopz', consoleErrors.filter(x=>!x.includes('shim')).length===0 && pageErrors.length===0, JSON.stringify({ce:consoleErrors.length,pe:pageErrors.length}));
 add(16,'لا مؤقتات/مراقبين بعد unmount', leaks.intervals===0 && leaks.rafs<=0 && leaks.vis===0 && leaks.iframes===0, JSON.stringify(leaks));
 add(17,'العودة من الخلفية صامتة (لا صوت آلي)', fgMutedIcon, 'icon=unmute');
