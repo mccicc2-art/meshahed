@@ -3795,6 +3795,64 @@ export async function touchPresence() {
   await supabase.rpc("touch_last_seen");
 }
 
+/**
+ * 🆕 D-770: طلبُ الانضمام إلى Loopz Partners — upsert في جسم
+ * `apply_partner` (الهجرة ١٥٥): طلبٌ قائمٌ يُستبدل ما لم يوافَق عليه،
+ * ومرفوضٌ يعود `pending` بتاريخٍ جديد. القصُّ هنا شكليٌّ (حدودُ الأطوال
+ * قيودُ `check` في الجدول — D-011: الحكمُ حيث الباب)، والرابطُ يُشترط
+ * `https` قبل الإرسال فلا يصل الإداريَّ رابطٌ لا يُفتح.
+ */
+export async function applyPartner(input: {
+  channelUrl: string;
+  contentType: string;
+  platforms: string;
+  followersRange: string;
+  country: string;
+  contentLanguage: string;
+  reason: string;
+}) {
+  const { supabase } = await requireUser("partner", 5, 60_000);
+  const channel = String(input.channelUrl ?? "").trim().slice(0, 300);
+  if (!/^https:\/\/.+\..+/.test(channel)) {
+    throw new Error("رابط القناة يجب أن يبدأ بـ https:// / Channel URL must start with https://");
+  }
+  const { error } = await supabase.rpc("apply_partner", {
+    p_channel: channel,
+    p_content: String(input.contentType ?? "").trim().slice(0, 120),
+    p_platforms: String(input.platforms ?? "").trim().slice(0, 200),
+    p_followers: String(input.followersRange ?? "").trim().slice(0, 40),
+    p_country: String(input.country ?? "").trim().slice(0, 60),
+    p_language: String(input.contentLanguage ?? "").trim().slice(0, 60),
+    p_reason: String(input.reason ?? "").trim().slice(0, 600),
+  });
+  if (error) throw new Error("تعذّر إرسال الطلب — حاول مجدداً / Could not submit, try again");
+  revalidatePath("/profile/settings/invites");
+}
+
+/** 🆕 D-770: سحبُ طلبٍ قيد المراجعة — الحذفُ في جسم الدالّة محصورٌ
+ *  بصفّي و`pending` وحدَها، فالموافَق عليه لا يُسحب من هنا */
+export async function cancelPartnerApplication() {
+  const { supabase } = await requireUser("partner", 5, 60_000);
+  await supabase.rpc("cancel_partner_application");
+  revalidatePath("/profile/settings/invites");
+}
+
+/**
+ * 🆕 D-770: قرارُ الإدارة في طلب شريك — الحارسُ الحقيقيُّ `am_admin()`
+ * في جسم `admin_decide_partner` يرمي `forbidden` لغير الإداريّ (D-011)،
+ * والموافقةُ تولّد كودَ `/p/<CODE>` مفحوصاً ضدّ جدولَي الأكواد معاً.
+ */
+export async function adminDecidePartner(userId: string, approve: boolean) {
+  userId = uuid(userId);
+  const { supabase } = await requireUser("admin", 30, 60_000);
+  const { error } = await supabase.rpc("admin_decide_partner", {
+    p_user: userId,
+    p_approve: approve === true,
+  });
+  if (error) throw new Error(error.message.slice(0, 120));
+  revalidatePath("/admin/partners");
+}
+
 /** إخفاء محادثةٍ كاملة من جهتي — كل مشاركاتها، والطرف الآخر يحتفظ بنسخته */
 export async function hideConversation(personId: string) {
   personId = uuid(personId);
