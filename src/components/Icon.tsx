@@ -38,6 +38,9 @@ export type IconName =
   | "grip"
   | "edit"
   | "share"
+  /* 🆕 **نسخ الرابط** (D-770b، بطلب النموذج): لا شيء في المجموعة يقول
+     «انسخ» — والمربّعان المتراكبان هو الرمزُ الذي يعرفه الناس */
+  | "copy"
   | "download"
   | "trash"
   | "send"
@@ -501,6 +504,12 @@ const PATHS: Record<IconName, React.ReactNode> = {
       <path d="M12 3.5V15" />
       <path d="M8 11.5l4 4 4-4" />
       <path d="M5 17v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V17" />
+    </>
+  ),
+  copy: (
+    <>
+      <rect x="9" y="9" width="11.5" height="11.5" rx="2" />
+      <path d="M5.5 15h-1a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1H14a1 1 0 0 1 1 1v1" />
     </>
   ),
   trash: (
