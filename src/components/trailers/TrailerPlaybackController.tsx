@@ -211,6 +211,8 @@ interface EngineDom {
   overlay: HTMLDivElement;
   ytHost: HTMLDivElement;
   video: HTMLVideoElement;
+  /** D-763: ستارةُ سوادِ التكبير — حول صندوق 16:9 المُمركز */
+  scrim: HTMLDivElement;
 }
 
 function createEngine(
@@ -609,10 +611,18 @@ function createEngine(
     if (startAt > 0) q.set("start", String(Math.floor(startAt)));
     frame.src = `https://www.youtube-nocookie.com/embed/${firstKey}?${q.toString()}`;
     frame.allow = "autoplay; encrypted-media; picture-in-picture";
+    /* 🆕 D-763 (قرار أحمد بعد لقطة iPhone: «هذي ينفع تخفيها؟» ← «القصّ»):
+       الإطارُ ثلاثةُ أضعافِ الصندوق ممركزٌ — الفيديو (بعرض الصندوق) يقع
+       في الثلث الأوسط بالضبط والصندوقُ 16:9 دائماً، فشريطُ العنوان وصفُّ
+       «فيديوهات أخرى» والشعارُ (المرسومةُ على حافتَي الإطار) تقع خارج
+       القصّ ولا يُقصّ من الفيديو بكسل. ⚠️ يوتيوبُ ألغى كلَّ معاملات
+       الإخفاء الرسمية، وهذا القصُّ خروجٌ نصيٌّ على شرط إظهار علامة
+       المشغّل — **عُرض الثمنُ على أحمد واختاره مالكاً**. */
     frame.style.position = "absolute";
-    frame.style.inset = "0";
+    frame.style.left = "0";
+    frame.style.top = "-100%";
     frame.style.width = "100%";
-    frame.style.height = "100%";
+    frame.style.height = "300%";
     frame.style.border = "0";
     dom.ytHost.appendChild(frame);
     const rec: PlayerRec = {
@@ -908,12 +918,24 @@ function createEngine(
   const alignOverlay = () => {
     if (destroyed || !activeId) return;
     const el = dom.overlay;
-    /* 🆕 D-762: في التكبير المسرحيّ الطبقةُ تملأ الشاشةَ لا البطاقة —
-       وأيُّ نداءِ محاذاةٍ شاردٍ يثبّتها على الملء لا يعيدها للبطاقة */
+    /* 🆕 D-762: في التكبير المسرحيّ الطبقةُ لا تتبع البطاقة — وأيُّ
+       نداءِ محاذاةٍ شاردٍ يثبّتها على الملء لا يعيدها للبطاقة.
+       🔴 D-763: الصندوقُ **16:9 ممركزٌ** لا ملءُ الشاشة — قصُّ الأطراف
+       يفترض فيديو بعرض الصندوق في ثلثه الأوسط، وملءُ شاشةٍ عرضيّةٍ أعرضَ
+       من 16:9 كان سيقصّ من الفيديو نفسِه. السوادُ حول الصندوق ستارةُ
+       المحرّك (scrim) تحت الطبقة. */
     if (expandedFlag) {
-      el.style.transform = "translate(0px, 0px)";
-      el.style.width = `${window.innerWidth}px`;
-      el.style.height = `${window.innerHeight}px`;
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      let w = vw;
+      let h = (vw * 9) / 16;
+      if (h > vh) {
+        h = vh;
+        w = (vh * 16) / 9;
+      }
+      el.style.transform = `translate(${(vw - w) / 2}px, ${(vh - h) / 2}px)`;
+      el.style.width = `${w}px`;
+      el.style.height = `${h}px`;
       return;
     }
     const slot = slots.get(activeId);
@@ -933,6 +955,8 @@ function createEngine(
     document.documentElement.style.overflow = on ? "hidden" : "";
     dom.overlay.style.zIndex = on ? "55" : "30";
     dom.overlay.style.borderRadius = on ? "0" : "14px 14px 0 0";
+    /* D-763: ستارةُ السواد حول صندوق 16:9 — تحت الطبقة وفوق الصفحة */
+    dom.scrim.style.display = on ? "block" : "none";
     publish({ expanded: on });
     alignOverlay();
   };
@@ -1117,8 +1141,9 @@ function createEngine(
 
     destroy() {
       /* لا timers ولا observers بعد unmount (اختبار ١٦) — وقفلُ التمرير
-         يُفكّ مهما كانت الحال (D-762) */
+         والستارةُ يُفكّان مهما كانت الحال (D-762/D-763) */
       document.documentElement.style.overflow = "";
+      dom.scrim.style.display = "none";
       destroyed = true;
       if (verifyTimer !== null) {
         window.clearTimeout(verifyTimer);
@@ -1192,6 +1217,7 @@ export function TrailerPlayback({
   const overlay = useRef<HTMLDivElement>(null);
   const ytHost = useRef<HTMLDivElement>(null);
   const video = useRef<HTMLVideoElement>(null);
+  const scrim = useRef<HTMLDivElement>(null);
   /** تسجيلاتٌ وصلت قبل جاهزيّة المحرّك — البطاقاتُ الأبناء تُركَّب قبل أثر الأب */
   const earlySlots = useRef(
     new Map<
@@ -1213,14 +1239,15 @@ export function TrailerPlayback({
     const overlayEl = overlay.current;
     const ytHostEl = ytHost.current;
     const videoEl = video.current;
-    if (!overlayEl || !ytHostEl || !videoEl) {
+    const scrimEl = scrim.current;
+    if (!overlayEl || !ytHostEl || !videoEl || !scrimEl) {
       return () => {
         LIVE_CONTROLLERS -= 1;
       };
     }
 
     const engine = createEngine(
-      { overlay: overlayEl, ytHost: ytHostEl, video: videoEl },
+      { overlay: overlayEl, ytHost: ytHostEl, video: videoEl, scrim: scrimEl },
       (patch) => {
         snapRef.current = { ...snapRef.current, ...patch };
         subsRef.current.forEach((f) => f());
@@ -1313,6 +1340,8 @@ export function TrailerPlayback({
   return (
     <Ctx.Provider value={api}>
       {children}
+      {/* D-763: ستارةُ سوادِ التكبير — تحت الطبقة (55) وفوق الصفحة */}
+      <div ref={scrim} className="fixed inset-0 z-[51] hidden bg-black" aria-hidden />
       {/* الطبقةُ الواحدة: مشغّلُ يوتيوب + عنصرُ الملفّ — لمسُها معطَّلٌ
           بالكامل فلا يبتلع الإطارُ تمريرَ الصفحة (المواصفة ١١/٦) */}
       <div
