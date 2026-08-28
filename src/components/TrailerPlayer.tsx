@@ -73,12 +73,12 @@ function unregisterPlayer(id: symbol) {
   reconcilePlayers();
 }
 
-function manuallyActivate(id: symbol) {
+function manuallyActivate(id: symbol, resume: () => void) {
   const player = PLAYERS.get(id);
   if (!player) return;
   if (ACTIVE && ACTIVE !== id) PLAYERS.get(ACTIVE)?.deactivate();
   ACTIVE = id;
-  player.activate();
+  resume();
 }
 
 function isSaving(): boolean {
@@ -162,6 +162,7 @@ export function TrailerPlayer({
   const [at, setAt] = useState<{ now: number; total: number } | null>(null);
   const [tryIdx, setTryIdx] = useState(0);
   const [launch, setLaunch] = useState(0);
+  const [manualAttempt, setManualAttempt] = useState(0);
 
   const keys = videoKeys?.length ? videoKeys : [videoKey];
   const key = keys[Math.min(tryIdx, keys.length - 1)];
@@ -194,6 +195,22 @@ export function TrailerPlayer({
     setPlaying(false);
     setPaused(false);
     setStalled(false);
+  }, [send]);
+
+  const resumeManually = useCallback(() => {
+    activeRef.current = true;
+    mountedRef.current = true;
+    setMounted(true);
+    setPlaying(false);
+    setPaused(false);
+    setStalled(false);
+    setManualAttempt((value) => value + 1);
+    if (frame.current) {
+      send(mutedRef.current ? "mute" : "unMute");
+      send("playVideo");
+      return;
+    }
+    setLaunch((value) => value + 1);
   }, [send]);
 
   useEffect(() => {
@@ -381,7 +398,7 @@ export function TrailerPlayer({
       window.clearTimeout(timeout);
       window.removeEventListener("message", onMessage);
     };
-  }, [mounted, dead, key, launch, showProgress, send]);
+  }, [mounted, dead, key, launch, manualAttempt, showProgress, send]);
 
   useEffect(() => {
     if (!dead) return;
@@ -425,7 +442,7 @@ export function TrailerPlayer({
     [send],
   );
 
-  const startManually = () => manuallyActivate(id.current);
+  const startManually = () => manuallyActivate(id.current, resumeManually);
   const src =
     mounted && !dead && typeof window !== "undefined"
       ? `${YT_ORIGIN}/embed/${encodeURIComponent(key)}?autoplay=${launch > 0 ? 1 : 0}&mute=1&playsinline=1&controls=0&rel=0&modestbranding=1&loop=0&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}`
