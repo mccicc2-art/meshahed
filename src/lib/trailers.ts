@@ -70,6 +70,20 @@ export interface TrailerItem {
 const PROBE = 14;
 
 /**
+ * 🆕 **ومسبارُ الأنمي أوسعُ لأن معدنَه أفقر** (D-739، بحكم أحمد بعد أن
+ * عُرض الثمن): **أربعةٌ من أربعةَ عشرَ عنوانَ أنمي لها ترايلر عند TMDB**
+ * — **والرافّةُ تُقصّ عند مصدرِها لا عند سقفها**، فالتبويبُ يُخرج أربعاً
+ * مهما رفعنا `limit`.
+ * 🔑 **والقاعدةُ: المسبارُ يقاس بخصوبة مصدره لا برقمٍ واحدٍ للجميع** —
+ * **ورقمٌ واحدٌ لخمسة مصادرَ يُنصف أغناها ويُجحف أفقرَها.**
+ * ⚠️ **والثمنُ معلَنٌ ومحصور**: أربعون نداءَ فيديو بدل أربعةَ عشرَ
+ * **عند أوّل رسمٍ لتبويب الأنمي وحدَه** — **ولم يُرفع للتبويبات الأربعة
+ * الباقية** لأن معدنَها لا يحتاجه، **وما زاد على الحاجة ثمنُه نداءٌ لا
+ * يُعرض** (السطرُ فوق، ولم يُنقض).
+ */
+const PROBE_ANIME = 40;
+
+/**
  * 🔑 **والسقفُ المطلوبُ من `getSuggestions` هو سقفُ «مختار لك» نفسُه**
  * (D-726): **الدالّةُ مخبَّأةٌ للطلب بوسائطها** — **فسقفٌ مختلفٌ هنا
  * يُبطل الخبيئةَ صامتاً ويخلط الترشيحَ مرّتين في فتحةٍ واحدة.**
@@ -115,9 +129,13 @@ async function shape(
   locale: Locale,
   limit: number,
   note?: (r: SearchResult) => string,
+  /* 🆕 **والمسبارُ وسيطٌ لا ثابتٌ مخبوء** (D-739): **الوصفةُ واحدةٌ
+     للتبويبات الخمسة والمتبدِّلُ سعةُ الغرفة لا شكلُها** — **وفرعٌ
+     `if (tab === "anime")` داخل الوصفة هو كيف تفترق الوصفةُ يوماً.** */
+  probe: number = PROBE,
 ): Promise<TrailerItem[]> {
   const withKeys = await Promise.all(
-    rows.slice(0, PROBE).map(async (r): Promise<TrailerItem | null> => {
+    rows.slice(0, probe).map(async (r): Promise<TrailerItem | null> => {
       const mediaType = r.media_type === "movie" ? ("movie" as const) : ("tv" as const);
       const trailer = await getTrailer(mediaType, r.id).catch(() => null);
       if (!trailer?.key) return null;
@@ -157,12 +175,15 @@ export async function getTrailerTabFeed(
     return shape(rows, locale, limit);
   }
   const media = tab === "anime" ? "anime" : tab === "movies" ? "movie" : "tv";
+  /* 🆕 **والأنمي يُسحب أوسعَ ويُسبر أوسع** (D-739): **توسيعُ المسبار
+     بلا توسيع السحب لا يجد ما يسبره** — الرقمُ الواحدُ يخدم الطرفين. */
+  const probe = tab === "anime" ? PROBE_ANIME : PROBE;
   const rows = await buildSection(
     "most-popular",
     { media, base: {}, active: false },
-    PROBE,
+    probe,
   ).catch(() => []);
-  return shape(rows, locale, limit);
+  return shape(rows, locale, limit, undefined, probe);
 }
 
 export async function getTrailerFeed(
