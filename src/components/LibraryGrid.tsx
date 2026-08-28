@@ -312,43 +312,26 @@ export function LibraryGrid({
       return next;
     });
 
-  /**
-   * **خليّةُ المكتبة — بطاقةٌ بضغطةٍ مطوّلة** (انتُزعت في D-422 ليقرأها
-   * الرفُّ والشبكة معاً). **ولم يتغيّر منها حرفٌ** — نُقلت كما هي.
-   */
-  function Cell({ x }: { x: (typeof items)[number] }) {
-    return (
-      <div
-        className="relative"
-        style={
-          hold === x.key
-            ? { contentVisibility: "visible", containIntrinsicSize: "auto" }
-            : undefined
-        }
-      >
-        <LongPressable onLongPress={() => setHold(x.key)}>
-          <PosterCard
-            href={x.href}
-            title={x.title}
-            posterPath={x.posterPath}
-            progress={x.progress}
-            badge={x.badge}
-            badgeTone={x.badgeTone}
-            count={x.count}
-            dropped={x.dropped}
-          />
-        </LongPressable>
-        {hold === x.key && (
-          <HoldMenu
-            item={x}
-            t={t}
-            onClose={() => setHold(null)}
-            onDone={() => coalescedRefresh(router)}
-          />
-        )}
-      </div>
-    );
-  }
+  /* 🔴 🆕 D-769 (تسجيل أحمد: «ضغطت هولد وحطيت إني شفته — الشاشة كلها
+     تعمل ريفرش»): كانت `Cell` معرَّفةً هنا داخل جسد المكوّن — **فهويّتُها
+     نوعٌ جديدٌ مع كلِّ رسمة**، وReact يفكّ عندها كلَّ بطاقةٍ ويعيد
+     تركيبها: كلُّ `next/image` تفقد عقدتها وتُطلب من جديد، **والشبكةُ
+     تسودّ كاملةً** ريثما تعود الصورُ على شبكة الجوّال المزدحمة بالتجديد
+     نفسِه. انتُزعت إلى `LibraryCell` أعلى الملفّ بهويّةٍ ثابتة —
+     فالتجديدُ يرقّع DOM في مكانه والصورُ لا تُمسّ. */
+  const closeHold = () => setHold(null);
+  const afterHold = () => coalescedRefresh(router);
+  const cell = (x: (typeof items)[number]) => (
+    <LibraryCell
+      key={x.key}
+      x={x}
+      held={hold === x.key}
+      onHold={() => setHold(x.key)}
+      onClose={closeHold}
+      onDone={afterHold}
+      t={t}
+    />
+  );
 
   /* عدّاد كل رقاقةٍ من التبويب الحاليّ — الرقم يجيب «كم عندي؟» قبل الضغط */
 
@@ -699,19 +682,15 @@ export function LibraryGrid({
                     /* **والمفتوحُ شبكةٌ لا صفٌّ أطول**: من طلب الكلَّ
                        يريد أن يراه دفعةً، **لا أن يسحب ثلاثين بطاقة.** */
                     <div className={posterGrid}>
-                      {g.items.map((x) => (
-                        <Cell key={x.key} x={x} />
-                      ))}
+                      {g.items.map((x) => cell(x))}
                     </div>
                   ) : solo ? (
                     <div className="w-[var(--poster-w,118px)] sm:w-[var(--poster-w-sm,138px)]">
-                      <Cell x={g.items[0]} />
+                      {cell(g.items[0])}
                     </div>
                   ) : (
                     g.items.map((x) => (
-                      <RailItem key={x.key}>
-                        <Cell x={x} />
-                      </RailItem>
+                      <RailItem key={x.key}>{cell(x)}</RailItem>
                     ))
                   )}
                 </PosterRail>
@@ -720,9 +699,7 @@ export function LibraryGrid({
           </div>
         ) : (
         <div className={posterGrid}>
-          {items.map((x) => (
-            <Cell key={x.key} x={x} />
-          ))}
+          {items.map((x) => cell(x))}
         </div>
         )
       )}
@@ -737,6 +714,52 @@ export function LibraryGrid({
 type Dict = ReturnType<typeof getDict>;
 
 /** اسم رقاقة الحالة نفسه يسمّي الفاصل — مفهومٌ واحد، اسمٌ واحد (D-026) */
+/**
+ * **خليّةُ المكتبة — بطاقةٌ بضغطةٍ مطوّلة** (انتُزعت في D-422 ليقرأها
+ * الرفُّ والشبكة معاً). 🔴 🆕 **وخرجت من جسد `LibraryGrid` في D-769**
+ * (تسجيل أحمد: «الشاشة كلها تعمل ريفرش»): تعريفُها داخل المكوّن كان
+ * يمنحها **نوعاً جديداً مع كلِّ رسمة**، فيفكّ React كلَّ البطاقات ويعيد
+ * تركيبها عند أيِّ تجديدٍ — وكلُّ صورةٍ تفقد عقدتها وتُطلب من الشبكة
+ * من جديد فتسودّ المكتبةُ كاملةً. **هويّةُ المكوّن قيدُ تصميمٍ لا تفصيل
+ * تنفيذ** (أختُ درسِ حدِّ الخادم/العميل في `PosterHold`).
+ */
+function LibraryCell({
+  x,
+  held,
+  onHold,
+  onClose,
+  onDone,
+  t,
+}: {
+  x: GridItem;
+  held: boolean;
+  onHold: () => void;
+  onClose: () => void;
+  onDone: () => void;
+  t: Dict;
+}) {
+  return (
+    <div
+      className="relative"
+      style={held ? { contentVisibility: "visible", containIntrinsicSize: "auto" } : undefined}
+    >
+      <LongPressable onLongPress={onHold}>
+        <PosterCard
+          href={x.href}
+          title={x.title}
+          posterPath={x.posterPath}
+          progress={x.progress}
+          badge={x.badge}
+          badgeTone={x.badgeTone}
+          count={x.count}
+          dropped={x.dropped}
+        />
+      </LongPressable>
+      {held && <HoldMenu item={x} t={t} onClose={onClose} onDone={onDone} />}
+    </div>
+  );
+}
+
 function statusLabel(s: LibraryStatus, t: Dict): string {
   return s === "watching"
     ? t.libStatusWatching
@@ -781,19 +804,26 @@ function HoldMenu({
   const router = useRouter();
 
   /**
-   * تفاؤلي بالكامل: القائمةُ تُغلق فوراً والخادم يلحق في الخلفية.
-   * **والفشلُ توستٌ، والتجديدُ المُجمَّع يصحّح أيَّ تفاؤلٍ كاذب.**
-   * **ولا سطرَ نجاحٍ داخل القائمة**: المنسدلةُ تُغلق عند الفعل
+   * القائمةُ تُغلق فوراً والخادم يلحق في الخلفية. **والفشلُ توستٌ،
+   * ولا سطرَ نجاحٍ داخل القائمة**: المنسدلةُ تُغلق عند الفعل
    * (`PosterHold` حرفاً)، **ورسالةٌ في قائمةٍ مغلقةٍ لا يقرؤها أحد.**
+   *
+   * 🔴 🆕 D-769: **التجديدُ بعد الكتابة لا قبلها** — كان `onDone()` يسبق
+   * `fn()` فتنطلق نافذةُ الـ800م.ث **قبل أن يكتب الخادمُ حرفاً**، وفعلٌ
+   * يتجاوزها («شفته كله» لمسلسلٍ طويل) يجعل التجديدَ يقرأ بياناتِ ما
+   * قبل الكتابة: شبكةٌ تُعاد رسمتها كاملةً **بلا أثرٍ للفعل**، ثم يصحّح
+   * تجديدُ الضغطة التالية — وهو نصفُ «الريفرش» الذي صوّره أحمد (ونصفُه
+   * الآخر هويّةُ `LibraryCell` أعلاه). الآن الكتابةُ أوّلاً والتجديدُ
+   * على حقيقتها، **والفشلُ لا يجدّد شيئاً** — لا شيءَ تغيّر ليُقرأ.
    */
   function run(fn: () => Promise<unknown>) {
     /* **والاهتزازةُ نفسُها في السطحين** (D-353) */
     tap([12, 30]);
     onClose();
-    onDone();
     start(async () => {
       try {
         await fn();
+        onDone();
       } catch (e) {
         flashError((e as Error).message);
       }
