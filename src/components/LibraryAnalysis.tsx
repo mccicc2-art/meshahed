@@ -44,11 +44,14 @@ function pct(part: number, total: number) {
  * وحدَها تُقرأ صندوقاً لا ظلّاً**، **وواحدةٌ ضيّقةٌ وحدَها لا تنقذ حرفاً
  * فوق ملصقٍ أبيض.**
  */
+/* 🆕 **واللونُ من الثيمِ لا من هنا** (D-737): **أسودُ تحت نصٍّ داكنٍ
+   في `daylight` وسخٌ لا وضوح** — والطبقاتُ الأربعُ كما هي، **المتبدِّلُ
+   لونُ الحبرِ لا شكلُ الوصفة.** */
 const HERO_TEXT_SHADOW =
-  "0 1px 2px rgba(0,0,0,0.7), 0 0 4px rgba(0,0,0,0.7), 0 0 9px rgba(0,0,0,0.7), 0 0 9px rgba(0,0,0,0.7)";
+  "0 1px 2px var(--art-shadow-color), 0 0 4px var(--art-shadow-color), 0 0 9px var(--art-shadow-color), 0 0 9px var(--art-shadow-color)";
 
 /** **والرمزُ لا يرث ظلَّ الحرف** — `drop-shadow` بالقوّة نفسِها (D-712) */
-const HERO_ICON_SHADOW = "drop-shadow(0 0 5px rgba(0,0,0,0.7))";
+const HERO_ICON_SHADOW = "drop-shadow(0 0 5px var(--art-shadow-color))";
 
 /**
  * 🆕 **عددُ ملصقاتِ خلفيّة الخانة** (D-717) — **ثلاثةٌ لا أربع**:
