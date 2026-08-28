@@ -6,7 +6,8 @@ import { PosterRail } from "./PosterRail";
 import { RailScroll } from "./RailScroll";
 import { TrailerPlayer } from "./TrailerPlayer";
 import { Icon } from "./Icon";
-import { setTrailerSound, follow } from "@/lib/actions";
+import { follow } from "@/lib/actions";
+import { writeTrailerSound } from "@/lib/trailerPrefs";
 import { flashError } from "@/lib/toast";
 import { getDict, type Locale } from "@/lib/i18n";
 import type { TrailerItem } from "@/lib/trailers";
@@ -53,9 +54,10 @@ export function TrailerRail({
 
   function changeMuted(next: boolean) {
     setMuted(next);
-    /* **ولا انتظارَ للخادم**: الصوتُ يتبدّل في الإطار فوراً،
-       **والكوكي أثرٌ يلحق** (فشلُه لا يُبطل الضغطة). */
-    setTrailerSound(!next).catch(() => {});
+    /* 🔴 **والكوكي يُكتب هنا لا على الخادم** (D-747): **الفعلُ
+       الخادميُّ يُعيد رسمَ الصفحة كلَّها** — **فضغطةُ سماعةٍ كانت
+       تُعيد بناءَ الصفِّ الذي تنظر إليه.** */
+    writeTrailerSound(next);
   }
 
   function addToList(i: TrailerItem) {

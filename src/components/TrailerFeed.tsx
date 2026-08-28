@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { TrailerPlayer } from "./TrailerPlayer";
 import { Icon } from "./Icon";
-import { setTrailerSound, dismissTitle, undoDismissTitle, follow } from "@/lib/actions";
+import { dismissTitle, undoDismissTitle, follow } from "@/lib/actions";
+import { writeTrailerSound } from "@/lib/trailerPrefs";
 import { toast, flashError } from "@/lib/toast";
 import { getDict, type Locale } from "@/lib/i18n";
 import type { TrailerItem } from "@/lib/trailers";
@@ -57,7 +58,9 @@ export function TrailerFeed({
 
   function changeMuted(next: boolean) {
     setMuted(next);
-    setTrailerSound(!next).catch(() => {});
+    /* 🔴 **والكوكي يُكتب هنا لا على الخادم** (D-747): **الفعلُ
+       الخادميُّ يُعيد رسمَ الصفحة كلَّها.** */
+    writeTrailerSound(next);
   }
 
   function notForMe(i: TrailerItem) {
