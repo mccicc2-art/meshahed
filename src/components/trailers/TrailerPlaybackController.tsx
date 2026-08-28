@@ -7,8 +7,10 @@ import {
   useEffect,
   useMemo,
   useRef,
+  useState,
   useSyncExternalStore,
 } from "react";
+import { Icon } from "../Icon";
 import { writeTrailerSound } from "@/lib/trailerPrefs";
 import { providerOf } from "@/lib/trailerProviders";
 
@@ -60,7 +62,11 @@ interface YTPlayer {
   getVolume(): number;
   getCurrentTime(): number;
   getDuration(): number;
-  loadVideoById(videoId: string): void;
+  /** الصيغةُ الكائنيّةُ الرسمية تحمل `startSeconds` — استئنافُ آخرِ نقطة (D-762) */
+  loadVideoById(videoId: string | { videoId: string; startSeconds?: number }): void;
+  /* ⚖️ D-762: التقديمُ عاد بطلب أحمد («تقديم وتأخير») — نقضُ حذفِ
+     D-759 سابعًا، وبالواجهة الرسمية وحدَها كعادة البيت */
+  seekTo(seconds: number, allowSeekAhead: boolean): void;
   destroy(): void;
 }
 
@@ -139,6 +145,9 @@ export interface ControllerSnapshot {
   time: { now: number; total: number } | null;
   /** موفّرُ البيانات/2G — لا تشغيلَ آليّاً، زرٌّ في كلِّ بطاقة */
   manualOnly: boolean;
+  /** 🆕 D-762: التكبيرُ المسرحيّ — الطبقةُ تملأ الشاشةَ داخل التطبيق
+      (التكبيرُ الأصليُّ لإطار يوتيوب ممنوعٌ على iPhone في WebKit) */
+  expanded: boolean;
 }
 
 interface ControllerApi {
@@ -146,6 +155,11 @@ interface ControllerApi {
   registerUnavailable(id: string, cb: () => void): void;
   tapPlay(id: string): void;
   tapSound(): void;
+  /** 🆕 D-762 (طلب أحمد): إيقافٌ مؤقّتٌ بضغطة السطح — الاستئنافُ بـtapPlay */
+  tapPause(): void;
+  /** ⚖️ D-762: التقديمُ عاد بطلب صاحبه — بثوانٍ مطلقةٍ على النشطة */
+  seekTo(seconds: number): void;
+  toggleExpand(): void;
   subscribe(cb: () => void): () => void;
   getSnapshot(): ControllerSnapshot;
 }
@@ -254,6 +268,12 @@ function createEngine(
       المشغّلان يتناوبان والعنصرُ يتبدّل) */
   let soundSessionUnlocked = false;
   let verifyTimer: number | null = null;
+  /** 🆕 D-762 (بلاغ أحمد: «ارجع فوق يعيده من البداية»): ذاكرةُ مواضعَ
+      لكلِّ بطاقة — تُقيَّد عند مغادرتها وتُستأنف عند العودة. المفتاحُ
+      يُحفظ معها كي لا يُستأنف بديلُ خطأٍ من موضعِ غيرِه. */
+  const positions = new Map<string, { key: string; t: number }>();
+  /** التكبيرُ المسرحيّ (D-762) — علمُ المحرّك، والقشرةُ تقرؤه من اللقطة */
+  let expandedFlag = false;
   /** لحظةُ فكِّ كتمٍ آليٍّ (بلا إيماءة) — لكشف رفض WebKit والتعافي صامتاً */
   let autoUnmuteAt = 0;
   /** إيقافٌ أمرنا به نحن (تبديلٌ/خلفيّة) — صداه PAUSED ليس رفضَ WebKit:
@@ -321,6 +341,26 @@ function createEngine(
     /* لا وقتَ يُعرض إلا بقيمٍ رسميةٍ منتهيةٍ موجبة (المواصفة سادسًا/٥) */
     return Number.isFinite(total) && total > 0 ? { now: act.p.getCurrentTime(), total } : null;
   };
+
+  /** قيدُ موضعِ النشطة قبل مغادرتها (D-762) — أقلُّ من ثانيةٍ ضجيج */
+  const rememberPosition = () => {
+    if (!activeId) return;
+    const t = readTime();
+    if (!t || t.now < 1) return;
+    const s = activeSlot();
+    if (!s) return;
+    const key = providerOf(s.item) === "file" ? s.item.fileUrl : (act?.key ?? null);
+    if (!key) return;
+    positions.set(activeId, { key, t: t.now });
+    /* سقفٌ للذاكرة — الأقدمُ يسقط أوّلاً */
+    if (positions.size > 80) {
+      const first = positions.keys().next().value;
+      if (first !== undefined) positions.delete(first);
+    }
+  };
+
+  /* تصريحٌ متقدّم — الجسدُ بعد المحاذاة التي يستدعيها */
+  let setExpanded: (on: boolean) => void = () => undefined;
 
   /* ---- الصوت: حقيقةٌ تُقرأ (المواصفة خامسًا) ---- */
   const verifySound = (): boolean => {
@@ -438,6 +478,8 @@ function createEngine(
   };
 
   const clearActive = () => {
+    rememberPosition();
+    setExpanded(false);
     showOverlay(false);
     stopTick();
     clearStall();
@@ -527,6 +569,8 @@ function createEngine(
         act?.p?.playVideo();
         return;
       }
+      /* نهايةُ المقطع تمسح موضعَه — العودةُ إليه بدايةٌ جديدة (D-762) */
+      if (e.data === yts.ENDED && activeId) positions.delete(activeId);
       stopTick();
       publish({ time: readTime() });
       if (activeId && phase === "playing") setPhase("paused");
@@ -550,7 +594,7 @@ function createEngine(
      و`allow="autoplay"` جسرُ تفويض الإيماءة إلى داخل الإطار على iOS.
      ⚠️ الإطارُ والدورُ يُثبَّتان **قبل** انتظار الواجهة — نداءان متسارعان
      كانا يبنيان مشغّلَين لدورٍ واحد. */
-  const bootPlayer = async (firstKey: string, asActive: boolean): Promise<void> => {
+  const bootPlayer = async (firstKey: string, asActive: boolean, startAt = 0): Promise<void> => {
     const frame = document.createElement("iframe");
     const q = new URLSearchParams({
       autoplay: "1",
@@ -561,6 +605,8 @@ function createEngine(
       enablejsapi: "1",
       origin: window.location.origin,
     });
+    /* استئنافُ آخرِ نقطةٍ من الرابط نفسِه عند الإقلاع الأوّل (D-762) */
+    if (startAt > 0) q.set("start", String(Math.floor(startAt)));
     frame.src = `https://www.youtube-nocookie.com/embed/${firstKey}?${q.toString()}`;
     frame.allow = "autoplay; encrypted-media; picture-in-picture";
     frame.style.position = "absolute";
@@ -672,6 +718,11 @@ function createEngine(
     /* بطاقةُ يوتيوب: آخرُ إطارِ ملفٍّ لا يفترش فوق الإطار الرسميّ */
     dom.video.style.display = "none";
 
+    /* 🆕 D-762 (بلاغ أحمد «يعيده من البداية»): موضعُ آخرِ مشاهدةٍ لهذه
+       البطاقة — يُستأنف فقط إن طابق المفتاحُ المحفوظُ المفتاحَ المطلوب */
+    const saved = activeId ? positions.get(activeId) : undefined;
+    const startAt = saved && saved.key === firstKey && saved.t > 1 ? Math.floor(saved.t) : 0;
+
     if (sby?.ready && sby.p && sby.key === firstKey) {
       /* الترقية: تبادلُ أدوارٍ — المشغّلُ الجاهزُ يصعد والقديمُ يصير احتياطاً */
       const old = act;
@@ -695,6 +746,8 @@ function createEngine(
       }
       publish({ soundOn: carry });
       act.p?.playVideo();
+      /* المُرقّى عازلُه من الصفر — إن كان للبطاقة موضعٌ محفوظٌ نلحق به */
+      if (startAt > 0) act.p?.seekTo(startAt, true);
       scheduleVerify(600);
       return;
     }
@@ -710,14 +763,20 @@ function createEngine(
         act.p.mute();
       }
       publish({ soundOn: carry });
-      act.key = firstKey;
-      act.p.loadVideoById(firstKey);
+      if (act.key === firstKey) {
+        /* 🔴 D-762: المقطعُ نفسُه ما زال في الظاهر (اختلس نظرةً وعاد) —
+           استئنافٌ من موضعه، لا إعادةُ تحميلٍ تُرجعه إلى الصفر */
+        act.p.playVideo();
+      } else {
+        act.key = firstKey;
+        act.p.loadVideoById(startAt > 0 ? { videoId: firstKey, startSeconds: startAt } : firstKey);
+      }
       scheduleVerify(600);
       return;
     }
 
     if (act) return; /* يقلع الآن — onReady يلحق بالمفتاح المطلوب */
-    void bootPlayer(firstKey, true);
+    void bootPlayer(firstKey, true, startAt);
   };
 
   /* ---- التنشيط (قلبُ المتحكّم) ---- */
@@ -729,26 +788,33 @@ function createEngine(
       /* بطاقةٌ نشطةٌ ضُغط زرُّها: استئنافٌ داخل الإيماءة نفسِها —
          بلا إعادةِ إنشاءِ iframe (رابعًا/٨-٩) */
       if (viaGesture) {
-        setPhase("loading");
-        armStall();
+        /* 🆕 D-762: استئنافُ إيقافٍ مؤقّتٍ يحفظ حالَ الصوت **ولا يمرّ
+           بـ«loading»** — المرورُ بها كان يُنزل الغلافَ ومضةً فوق إطارٍ
+           مرسوم؛ حدثُ PLAYING يقلبها «playing» وحدَه. الكتمُ القسريُّ
+           و«loading» لمسارَي الحظر والتعثّر وحدَهما */
+        const resuming = phase === "paused";
+        if (!resuming) {
+          setPhase("loading");
+          armStall();
+        }
         if (activeIsFile()) {
-          dom.video.muted = true;
+          if (!resuming) dom.video.muted = true;
           void dom.video.play().catch(() => {
             if (activeId === id) setPhase("stalled");
           });
           startTick();
           startVeilProbe();
         } else if (act?.p && act.ready) {
-          /* زرُّ التشغيل يبدأ صامتاً دائماً (حالة الواجهة ٣) — والصوتُ
-             لزرِّ الصوت بعد أن تتحرّك الصورة */
-          act.p.mute();
+          if (!resuming) act.p.mute();
           act.p.playVideo();
         }
       }
       return;
     }
 
-    /* أوقف السابقةَ أوّلاً — لا يعمل مقطعان معاً أبداً (ثالثًا/٤) */
+    /* أوقف السابقةَ أوّلاً — لا يعمل مقطعان معاً أبداً (ثالثًا/٤) —
+       وموضعُها يُقيَّد قبل مغادرتها (D-762) */
+    rememberPosition();
     pauseCurrent();
     showOverlay(false);
     stopTick();
@@ -775,8 +841,11 @@ function createEngine(
       dom.video.muted = !carry;
       if (carry) dom.video.volume = 1;
       publish({ soundOn: carry });
-      /* فيديو جديد: صفّر الزمنَ ولا تعرض مدةَ سابقه (سادسًا/٨) */
-      dom.video.currentTime = 0;
+      /* فيديو جديد: صفّر الزمنَ — إلا موضعاً محفوظاً لهذه البطاقة نفسِها
+         فيُستأنف (D-762، بلاغ «يعيده من البداية») */
+      const savedFile = positions.get(id);
+      dom.video.currentTime =
+        savedFile && savedFile.key === slot.item.fileUrl && savedFile.t > 1 ? savedFile.t : 0;
       void dom.video.play().catch(() => {
         if (activeId !== id) return;
         if (carry) {
@@ -838,14 +907,34 @@ function createEngine(
      فالإطارُ مرسومٌ من أوّل لحظة ولا يُرى إلا ما ثبتت حركتُه. */
   const alignOverlay = () => {
     if (destroyed || !activeId) return;
+    const el = dom.overlay;
+    /* 🆕 D-762: في التكبير المسرحيّ الطبقةُ تملأ الشاشةَ لا البطاقة —
+       وأيُّ نداءِ محاذاةٍ شاردٍ يثبّتها على الملء لا يعيدها للبطاقة */
+    if (expandedFlag) {
+      el.style.transform = "translate(0px, 0px)";
+      el.style.width = `${window.innerWidth}px`;
+      el.style.height = `${window.innerHeight}px`;
+      return;
+    }
     const slot = slots.get(activeId);
     if (!slot) return;
-    const el = dom.overlay;
     /* قياسٌ طازجٌ في كلِّ نداء — لا قياسَ قديماً بعد لفٍّ أو تدوير */
     const r = slot.area.getBoundingClientRect();
     el.style.transform = `translate(${r.left}px, ${r.top}px)`;
     el.style.width = `${r.width}px`;
     el.style.height = `${r.height}px`;
+  };
+
+  /* التكبيرُ المسرحيّ (D-762): الطبقةُ فوق ترويسةِ الصفحة وتحت أزرارِ
+     التوسعة، والتمريرُ خلفها مقفول — والتصغيرُ يعيد كلَّ شيءٍ لمكانه */
+  setExpanded = (on: boolean) => {
+    if (expandedFlag === on) return;
+    expandedFlag = on;
+    document.documentElement.style.overflow = on ? "hidden" : "";
+    dom.overlay.style.zIndex = on ? "55" : "30";
+    dom.overlay.style.borderRadius = on ? "0" : "14px 14px 0 0";
+    publish({ expanded: on });
+    alignOverlay();
   };
   const syncOverlay = () => {
     if (destroyed) return;
@@ -863,6 +952,7 @@ function createEngine(
       /* الخلفيّة: إيقافٌ فوريٌّ وعدّادٌ ساكن (ثالثًا/٦، سادسًا/٦) —
          والاحتياطُ في منتصف تحميله يقف ويُلغى: لا استهلاكَ بياناتٍ
          مسبقاً في الخلفيّة، وسيُعاد عند العودة من onDrewFrame */
+      rememberPosition();
       pauseCurrent();
       stopTick();
       if (sby?.p && sby.preload === "loading") {
@@ -988,8 +1078,47 @@ function createEngine(
       }, 200);
     },
 
+    /* 🆕 D-762 (طلب أحمد «إيقاف الفيديو»): إيقافٌ مؤقّتٌ — الصورةُ تبقى
+       (الغلافُ لا يعود على paused) والاستئنافُ بضغطةِ tapPlay يحفظ الصوت */
+    tapPause() {
+      if (!activeId) return;
+      rememberPosition();
+      if (activeIsFile()) {
+        dom.video.pause();
+        stopTick();
+        publish({ time: readTime() });
+        if (phase === "playing") setPhase("paused");
+      } else if (act?.p && act.ready) {
+        expectPause = true;
+        act.p.pauseVideo(); /* حدثُ PAUSED يُتمّ الحالةَ والعدّاد */
+      }
+    },
+
+    /* ⚖️ D-762: التقديمُ عاد بطلب صاحبه («تقديم وتأخير») — نقضُ حذفِ
+       D-759 سابعًا. بالواجهة الرسمية وحدَها، والزمنُ يُنشر بالأمر
+       فوراً والعدّادُ يصحّح بعده (كوصفة الصوت) */
+    seekTo(seconds: number) {
+      if (!activeId) return;
+      const t = readTime();
+      const total = t?.total ?? 0;
+      const target = Math.max(0, total > 0 ? Math.min(seconds, total - 0.5) : seconds);
+      if (activeIsFile()) dom.video.currentTime = target;
+      else if (act?.p && act.ready) act.p.seekTo(target, true);
+      if (t) publish({ time: { now: target, total: t.total } });
+    },
+
+    /* 🆕 D-762 («تكبير الفيديو»): تكبيرٌ مسرحيٌّ يملأ الشاشةَ داخل
+       التطبيق — التكبيرُ الأصليُّ لإطارِ يوتيوب ممنوعٌ على iPhone في
+       WebKit، وهذا يعمل على الأجهزة كلِّها بسلوكٍ واحد */
+    toggleExpand() {
+      if (!activeId && !expandedFlag) return;
+      setExpanded(!expandedFlag);
+    },
+
     destroy() {
-      /* لا timers ولا observers بعد unmount (اختبار ١٦) */
+      /* لا timers ولا observers بعد unmount (اختبار ١٦) — وقفلُ التمرير
+         يُفكّ مهما كانت الحال (D-762) */
+      document.documentElement.style.overflow = "";
       destroyed = true;
       if (verifyTimer !== null) {
         window.clearTimeout(verifyTimer);
@@ -1028,13 +1157,26 @@ type Engine = ReturnType<typeof createEngine>;
 
 /* ===== المكوّن: قشرةٌ حول المحرّك ===== */
 
+/** نصوصُ طبقة التكبير المسرحيّ (D-762) — تمرُّ من السطح الذي يملك القاموس */
+export interface TrailerExpandedLabels {
+  play: string;
+  pause: string;
+  mute: string;
+  unmute: string;
+  collapse: string;
+  seek: string;
+}
+
 export function TrailerPlayback({
   children,
   soundPref,
+  expandedLabels,
 }: {
   children: React.ReactNode;
   /** آخرُ اختيارٍ محفوظٍ للصوت — **يُحاوَل بعد أوّل تفاعلٍ حقيقيٍّ فقط** */
   soundPref: boolean;
+  /** 🆕 D-762: سطحٌ بلا هذه النصوص لا يعرض زرَّ تكبيرٍ أصلاً (الرايل) */
+  expandedLabels?: TrailerExpandedLabels;
 }) {
   const snapRef = useRef<ControllerSnapshot>({
     activeId: null,
@@ -1042,6 +1184,7 @@ export function TrailerPlayback({
     soundOn: false,
     time: null,
     manualOnly: false,
+    expanded: false,
   });
   const subsRef = useRef(new Set<() => void>());
   const engineRef = useRef<Engine | null>(null);
@@ -1125,6 +1268,15 @@ export function TrailerPlayback({
   const tapSound = useCallback(() => {
     engineRef.current?.tapSound();
   }, []);
+  const tapPause = useCallback(() => {
+    engineRef.current?.tapPause();
+  }, []);
+  const seekTo = useCallback((seconds: number) => {
+    engineRef.current?.seekTo(seconds);
+  }, []);
+  const toggleExpand = useCallback(() => {
+    engineRef.current?.toggleExpand();
+  }, []);
   const subscribe = useCallback((cb: () => void) => {
     subsRef.current.add(cb);
     return () => {
@@ -1134,8 +1286,28 @@ export function TrailerPlayback({
   const getSnapshot = useCallback(() => snapRef.current, []);
 
   const api = useMemo<ControllerApi>(
-    () => ({ register, registerUnavailable, tapPlay, tapSound, subscribe, getSnapshot }),
-    [register, registerUnavailable, tapPlay, tapSound, subscribe, getSnapshot],
+    () => ({
+      register,
+      registerUnavailable,
+      tapPlay,
+      tapSound,
+      tapPause,
+      seekTo,
+      toggleExpand,
+      subscribe,
+      getSnapshot,
+    }),
+    [
+      register,
+      registerUnavailable,
+      tapPlay,
+      tapSound,
+      tapPause,
+      seekTo,
+      toggleExpand,
+      subscribe,
+      getSnapshot,
+    ],
   );
 
   return (
@@ -1162,6 +1334,133 @@ export function TrailerPlayback({
           className="absolute inset-0 h-full w-full object-cover"
         />
       </div>
+      {expandedLabels ? <ExpandedUi api={api} labels={expandedLabels} /> : null}
     </Ctx.Provider>
+  );
+}
+
+/* ===== أدواتُ التحكّم (D-762) ===== */
+
+/** عقربُ الساعة نصّاً — وصفةٌ واحدةٌ للبطاقة وطبقةِ التكبير (القاعدة ٣) */
+export function clockText(sec: number): string {
+  const s = Math.max(0, Math.floor(sec));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+}
+
+/**
+ * ⚖️ **شريطُ التقديم عاد بطلب أحمد** («تقديم وتأخير» — نقضُ حذفِ D-759
+ * سابعًا). سحبٌ ولمسٌ بأحداث المؤشّر مع أسرِها، و`touch-action: none`
+ * كي لا يخطف تمريرُ الصفحة السحبةَ — والقيمةُ لا تُرسل إلا عند الإفلات.
+ */
+export function TrailerScrubber({
+  time,
+  onSeek,
+  label,
+}: {
+  time: { now: number; total: number };
+  onSeek: (seconds: number) => void;
+  label: string;
+}) {
+  const [dragPct, setDragPct] = useState<number | null>(null);
+  const bar = useRef<HTMLDivElement>(null);
+  const pctOf = (clientX: number) => {
+    const r = bar.current?.getBoundingClientRect();
+    if (!r || r.width === 0) return 0;
+    return Math.min(1, Math.max(0, (clientX - r.left) / r.width));
+  };
+  const pct = dragPct ?? (time.total > 0 ? time.now / time.total : 0);
+  return (
+    <div
+      ref={bar}
+      dir="ltr"
+      role="slider"
+      tabIndex={0}
+      aria-label={label}
+      aria-valuemin={0}
+      aria-valuemax={Math.round(time.total)}
+      aria-valuenow={Math.round(pct * time.total)}
+      className="pointer-events-auto flex h-7 cursor-pointer items-center"
+      style={{ touchAction: "none" }}
+      onPointerDown={(e) => {
+        e.currentTarget.setPointerCapture(e.pointerId);
+        setDragPct(pctOf(e.clientX));
+      }}
+      onPointerMove={(e) => {
+        if (dragPct !== null) setDragPct(pctOf(e.clientX));
+      }}
+      onPointerUp={(e) => {
+        if (dragPct === null) return;
+        onSeek(pctOf(e.clientX) * time.total);
+        setDragPct(null);
+      }}
+      onPointerCancel={() => setDragPct(null)}
+      onKeyDown={(e) => {
+        if (e.key === "ArrowRight") onSeek(Math.min(time.total - 1, time.now + 5));
+        else if (e.key === "ArrowLeft") onSeek(Math.max(0, time.now - 5));
+      }}
+    >
+      <div className="relative h-1 w-full overflow-hidden rounded-full bg-white/25">
+        <div className="absolute inset-y-0 left-0 bg-white" style={{ width: `${pct * 100}%` }} />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * 🆕 **طبقةُ التكبير المسرحيّ** (D-762، «تكبير الفيديو») — فوق طبقةِ
+ * المشغّل (٥٥) بأزرارها (٦٠): سطحُ إيقافٍ/استئناف، إغلاقٌ وصوتٌ،
+ * وشريطُ تقديمٍ ووقت. **التكبيرُ الأصليُّ لإطار يوتيوب ممنوعٌ على
+ * iPhone في WebKit** — فهذا يملأ الشاشةَ داخل التطبيق، والتدويرُ يعطي
+ * العرضيّ.
+ */
+function ExpandedUi({ api, labels }: { api: ControllerApi; labels: TrailerExpandedLabels }) {
+  const snap = useSyncExternalStore(api.subscribe, api.getSnapshot, api.getSnapshot);
+  if (!snap.expanded) return null;
+  const playing = snap.phase === "playing";
+  const showsPlay =
+    snap.phase === "paused" || snap.phase === "blocked" || snap.phase === "stalled";
+  return (
+    <div className="fixed inset-0 z-[60]">
+      {/* سطحُ الإيقاف/الاستئناف — الطبقةُ كلُّها ضغطةٌ واحدة */}
+      <button
+        type="button"
+        aria-label={playing ? labels.pause : labels.play}
+        onClick={() => {
+          if (playing) api.tapPause();
+          else if (snap.activeId) api.tapPlay(snap.activeId);
+        }}
+        className="absolute inset-0"
+      >
+        {showsPlay ? (
+          <span className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-black/60 text-white shadow-lg backdrop-blur-sm">
+            <Icon name="play" size={30} />
+          </span>
+        ) : null}
+      </button>
+      <button
+        type="button"
+        aria-label={labels.collapse}
+        onClick={() => api.toggleExpand()}
+        className="absolute start-3 top-[max(0.75rem,env(safe-area-inset-top))] z-10 grid h-10 w-10 place-items-center rounded-full bg-black/55 text-white backdrop-blur-sm transition active:opacity-70"
+      >
+        <Icon name="close" size={19} />
+      </button>
+      <button
+        type="button"
+        aria-label={snap.soundOn ? labels.mute : labels.unmute}
+        onClick={() => api.tapSound()}
+        className="absolute end-3 top-[max(0.75rem,env(safe-area-inset-top))] z-10 grid h-10 w-10 place-items-center rounded-full bg-black/55 text-white backdrop-blur-sm transition active:opacity-70"
+      >
+        <Icon name={snap.soundOn ? "volume" : "volume-off"} size={18} />
+      </button>
+      {snap.time ? (
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/70 to-transparent px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-8">
+          <TrailerScrubber time={snap.time} onSeek={api.seekTo} label={labels.seek} />
+          <span dir="ltr" className="block text-12 tabular-nums text-white/90">
+            {clockText(snap.time.now)} / {clockText(snap.time.total)}
+          </span>
+        </div>
+      ) : null}
+    </div>
   );
 }

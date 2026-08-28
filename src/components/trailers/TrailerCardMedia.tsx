@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useEffect, useRef } from "react";
 import { Icon } from "../Icon";
 import {
+  clockText,
+  TrailerScrubber,
   useTrailerPlayback,
   useTrailerSnapshot,
   type TrailerSlotItem,
@@ -23,14 +25,12 @@ import {
  * **زرُّ الصوت** يعرض الحالةَ **الفعليّة** المقروءةَ من المشغّل — لا
  * الرغبة (المواصفة خامسًا/٦)، ولا يفتح صفحةً ولا يعيد بناء شيء.
  *
- * **الوقتُ نصٌّ للقراءة فقط** — ⚖️ التقديمُ محذوفٌ بأمر صاحبه في هذه
- * المرحلة: لا `role="slider"` ولا `seekTo` ولا التقاطَ مؤشّر.
+ * ⚖️ **أدواتُ التحكّم عادت بطلب صاحبها** (D-762: «إيقاف، تكبير، تقديم
+ * وتأخير») — ناقضةً حذفَ D-759 سابعًا: سطحُ إيقافٍ/استئناف، شريطُ
+ * تقديمٍ (`TrailerScrubber` الرسمي)، وزرُّ تكبيرٍ مسرحيّ. **وفي الرايل
+ * تبقى البطاقةُ نافذةً** (`withControls` غائب): الضغطةُ تفتح الصفحةَ
+ * (D-743) والوقتُ نصٌّ للقراءة.
  */
-
-function clock(sec: number): string {
-  const s = Math.max(0, Math.floor(sec));
-  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
-}
 
 export function TrailerCardMedia({
   id,
@@ -43,6 +43,10 @@ export function TrailerCardMedia({
   playLabel,
   muteLabel,
   unmuteLabel,
+  withControls = false,
+  pauseLabel,
+  seekLabel,
+  expandLabel,
   onOpen,
   onUnavailable,
 }: {
@@ -56,6 +60,11 @@ export function TrailerCardMedia({
   playLabel: string;
   muteLabel: string;
   unmuteLabel: string;
+  /** 🆕 D-762: أدواتُ التحكّم الكاملة — للعلف وحدَه، لا للرايل */
+  withControls?: boolean;
+  pauseLabel?: string;
+  seekLabel?: string;
+  expandLabel?: string;
   onOpen?: () => void;
   onUnavailable?: () => void;
 }) {
@@ -74,6 +83,9 @@ export function TrailerCardMedia({
 
   const isActive = snap.activeId === id;
   const playing = isActive && snap.phase === "playing";
+  /* 🆕 D-762: الإيقافُ المؤقّتُ يُبقي الصورةَ (لا غلافَ فوق إطارٍ مرسوم)
+     — وphase «paused» لا تقع إلا بعد «playing» فالإطارُ مضمونُ الرسم */
+  const revealed = isActive && (snap.phase === "playing" || snap.phase === "paused");
   const showsPlayButton =
     (isActive && (snap.phase === "paused" || snap.phase === "blocked" || snap.phase === "stalled")) ||
     (!playing && snap.manualOnly);
@@ -93,7 +105,7 @@ export function TrailerCardMedia({
           fill
           sizes="(max-width: 640px) 100vw, (max-width: 1080px) 92vw, 1030px"
           className={`pointer-events-none z-40 object-cover transition-[opacity,visibility] duration-300 ${
-            playing ? "invisible opacity-0" : "visible opacity-100"
+            revealed ? "invisible opacity-0" : "visible opacity-100"
           }`}
           priority={eager}
           fetchPriority={eager ? "high" : "auto"}
@@ -112,13 +124,18 @@ export function TrailerCardMedia({
         />
       ) : null}
 
-      {!playing ? (
+      {/* 🆕 D-762: في العلف السطحُ كلُّه مفتاحُ إيقافٍ/استئناف — وفي
+          الرايل يبقى كما كان: زرُّ تشغيلٍ للواقفة، ونافذةُ D-743 للعاملة */}
+      {!playing || withControls ? (
         <button
           type="button"
-          onClick={() => api.tapPlay(id)}
-          aria-label={playLabel}
-          aria-hidden={!showsPlayButton}
-          tabIndex={showsPlayButton ? 0 : -1}
+          onClick={() => {
+            if (playing && withControls) api.tapPause();
+            else api.tapPlay(id);
+          }}
+          aria-label={playing ? (pauseLabel ?? playLabel) : playLabel}
+          aria-hidden={!showsPlayButton && !playing}
+          tabIndex={showsPlayButton || (playing && withControls) ? 0 : -1}
           className="absolute inset-0 z-50 grid place-items-center"
         >
           {showsPlayButton ? (
@@ -126,6 +143,18 @@ export function TrailerCardMedia({
               <Icon name="play" size={26} />
             </span>
           ) : null}
+        </button>
+      ) : null}
+
+      {/* 🆕 D-762: التكبيرُ المسرحيّ — للعلف وحدَه، وعلى بطاقةٍ مكشوفة */}
+      {withControls && expandLabel && revealed ? (
+        <button
+          type="button"
+          onClick={() => api.toggleExpand()}
+          aria-label={expandLabel}
+          className="absolute start-2.5 top-2.5 z-50 grid h-9 w-9 place-items-center rounded-full bg-black/55 text-white backdrop-blur-sm transition active:opacity-70"
+        >
+          <Icon name="expand" size={17} />
         </button>
       ) : null}
 
@@ -143,11 +172,15 @@ export function TrailerCardMedia({
         </button>
       ) : null}
 
-      {/* الوقتُ نصّاً — بلا شريطِ تقديمٍ في هذه المرحلة (المواصفة سابعًا) */}
+      {/* ⚖️ D-762: في العلف شريطُ تقديمٍ فوق الوقت (عاد بطلب صاحبه) —
+          وفي الرايل الوقتُ نصٌّ للقراءة كما كان */}
       {isActive && snap.time ? (
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-50 bg-gradient-to-t from-black/70 to-transparent px-3 pb-2 pt-6">
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-50 bg-gradient-to-t from-black/70 to-transparent px-3 pb-1.5 pt-6">
+          {withControls && seekLabel ? (
+            <TrailerScrubber time={snap.time} onSeek={api.seekTo} label={seekLabel} />
+          ) : null}
           <span dir="ltr" className="block text-12 tabular-nums text-white/90">
-            {clock(snap.time.now)} / {clock(snap.time.total)}
+            {clockText(snap.time.now)} / {clockText(snap.time.total)}
           </span>
         </div>
       ) : null}
