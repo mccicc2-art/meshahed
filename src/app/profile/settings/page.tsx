@@ -103,6 +103,9 @@ export default async function SettingsPage() {
           title={t.setBilling}
           value={t.setPlanFree}
         />
+        {/* 🆕 D-768: دعوةُ الأصدقاء — في مجموعة الحساب بجوار الاشتراك:
+            مكافأتُها اشتراكٌ، فبابُها حيث يُسأل عنه */}
+        <SettingsRow href="/profile/settings/invites" icon="share" title={t.setInvites} />
       </SettingsGroup>
 
       <SettingsGroup label={t.setGroupPersonalize}>
