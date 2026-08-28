@@ -87,19 +87,6 @@ function isSaving(): boolean {
   }
 }
 
-function idle(run: () => void): () => void {
-  const w = window as Window & {
-    requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number;
-    cancelIdleCallback?: (h: number) => void;
-  };
-  if (typeof w.requestIdleCallback === "function") {
-    const h = w.requestIdleCallback(run, { timeout: 1500 });
-    return () => w.cancelIdleCallback?.(h);
-  }
-  const h = window.setTimeout(run, 300);
-  return () => window.clearTimeout(h);
-}
-
 function clock(sec: number): string {
   const s = Math.max(0, Math.floor(sec));
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
@@ -108,7 +95,6 @@ function clock(sec: number): string {
 export function TrailerPlayer({
   videoKey,
   videoKeys,
-  eager = false,
   backdrop,
   title,
   muted,
@@ -129,12 +115,6 @@ export function TrailerPlayer({
    * مقطعاً واحداً**، فلا كسرَ لمن لا يمرّرها.
    */
   videoKeys?: string[];
-  /**
-   * 🆕 **أوّلُ بطاقةٍ فوق الطيّة لا تنتظر فراغَ المتصفّح** (D-743):
-   * **`requestIdleCallback` تؤجّل ما هو مرئيٌّ الآن** — **والتأجيلُ
-   * لمن يُرى تأخيرٌ لا اقتصاد.**
-   */
-  eager?: boolean;
   backdrop: string | null;
   title: string;
   muted: boolean;
@@ -176,6 +156,28 @@ export function TrailerPlayer({
    * — **ومثلّثٌ فوق مقطعٍ يوشك أن يبدأ يومض ثمّ يختفي، وهو ضجيج.**
    */
   const [paused, setPaused] = useState(false);
+  /**
+   * 🆕 **وضعُ الإقلاع** (D-745، اختيارُ أحمد «ثلاثٌ حولك»):
+   * **`1` يبدأ بنفسه، و`0` يُحمَّل ساكناً وينتظر أمرَنا.**
+   *
+   * 🔑 **والجارتان تُحمَّلان ساكنتين لأنّ التحميلَ هو الثمنُ لا التشغيل**:
+   * **قشرةُ مشغّل يوتيوب هي ما يستغرق الثواني** — **ومن حمّلها قبل أن
+   * تُرى دفع الانتظارَ في وقتٍ لا يراه أحد.**
+   * ⚠️ **ولا تُشغَّل جارةٌ أبداً**: حارسُ الواحديّة يمنع، **وثلاثةُ
+   * أصواتٍ في صفحةٍ واحدةٍ عطلٌ لا سرعة.**
+   */
+  const [boot, setBoot] = useState(0);
+  /** **صاحبُ الدور الآن** — تُرفع من مراقب الرؤية لا من مراقب القرب */
+  const [owner, setOwner] = useState(false);
+  /** **وهل رُكّب الإطارُ سلفاً؟** يُقرأ داخل المراقب فلا يُحرّكه */
+  const mountedRef = useRef(false);
+  /**
+   * 🔑 **وهل أطاع الإطارُ أمرَنا؟** (D-745) — **الحالةُ ٣ (يُخزِّن) هي
+   * أوّلُ دليلٍ على الطاعة**، **وهي أبكرُ من ١ بثوانٍ على شبكةٍ بطيئة.**
+   * ⚠️ **والفرقُ جوهريّ**: **بطيءٌ يُخزِّن لا يُعاد تحميلُه** — **ومن
+   * أعاد تحميلَ ما كان يعمل زاده بطئاً باسم إنقاذه.**
+   */
+  const [obeyed, setObeyed] = useState(false);
   const keys = videoKeys?.length ? videoKeys : [videoKey];
   const key = keys[Math.min(tryIdx, keys.length - 1)];
   /** **ونفدت البدائل**: الصورةُ وحدَها — **ولا رسالةَ عطلٍ في صفٍّ يُمرَّر** */
@@ -266,7 +268,39 @@ export function TrailerPlayer({
       return;
     }
 
-    let cancelIdle: (() => void) | null = null;
+    /* 🔴 🆕 **مراقبان لا واحد** (D-745، سؤالُ أحمد «يتأخّر جدّاً — وش
+       السبب؟»): **التركيبُ والتشغيلُ كانا حدثاً واحداً** — **فالإطارُ
+       لا يُطلب إلّا وقد صارت البطاقةُ على الشاشة**، ثمّ يُحمَّل مشغّلُ
+       يوتيوب كاملاً، ثمّ يُطلب المقطع. **فالقارئُ ينتظر السلسلةَ كلَّها
+       بعد وصول البطاقة لا قبله.**
+       🔑 **والقاعدة: ما يُدفع ثمنُه وقتاً يُدفع قبل الحاجة لا عندها** —
+       **وعتبةٌ واحدةٌ لحدثين مختلفَي الثمن تُسعّرهما بسعرٍ واحد.**
+       **فمراقبُ القرب (±٤٢٠px ≈ بطاقةٌ فوق وبطاقةٌ تحت) يقرّر التحميل،
+       ومراقبُ الرؤية يقرّر التشغيل.**
+       ⚠️ **و`rootMargin` لا يُخلط مع عتبة التشغيل في مراقبٍ واحد**:
+       **توسيعُ الجذر يجعل بطاقةً خارج الشاشة تُبلَّغ بنسبةِ ١** — **فمن
+       خلطهما شغّل ما لا يُرى وهو يظنّه مرئيّاً.**
+       ⚠️ **وثلاثٌ سقفٌ لا اتّجاه**: ما خرج عن نافذة القرب يُفكَّك —
+       **D-728 لم يُنقض، اتّسعت نافذتُه من واحدةٍ إلى ثلاثٍ بحكمه بعد أن
+       عُرض الثمن** (بياناتٌ وذاكرة). */
+    const ioNear = new IntersectionObserver(
+      ([e]) => {
+        if (e.isIntersecting) {
+          mountedRef.current = true;
+          setMounted(true);
+        } else {
+          mountedRef.current = false;
+          setMounted(false);
+          setAt(null);
+          setPaused(false);
+          setObeyed(false);
+          setBoot(0);
+        }
+      },
+      { rootMargin: "420px 0px" },
+    );
+    ioNear.observe(el);
+
     const io = new IntersectionObserver(
       ([e]) => {
         /* 🔴 🆕 **حدُّ التشغيل غيرُ حدِّ الإيقاف** (D-743، بلاغُ أحمد:
@@ -285,21 +319,23 @@ export function TrailerPlayer({
         if (e.isIntersecting && e.intersectionRatio >= 0.4) {
           /* **ومن رُدَّ لم يُركّب شيئاً** — البطاقةُ الأظهرُ تعمل وحدَها */
           if (!claim(stop, e.intersectionRatio)) return;
-          cancelIdle?.();
-          /* **وأوّلُ بطاقةٍ لا تنتظر فراغاً**: `idle` تؤجّل ما هو
-             مرئيٌّ الآن — **والتأجيلُ لمن يُرى تأخيرٌ لا اقتصاد.** */
-          if (eager) {
-            setMounted(true);
+          setOwner(true);
+          /* 🔑 **ومن سبقه القربُ لا يُعاد تحميلُه** (D-745): **الإطارُ
+             محمَّلٌ ساكنٌ فيكفيه أمر** — **وتغييرُ `autoplay` في العنوان
+             يُعيد التحميلَ من الصفر فيُبطل التحميلَ المسبقَ الذي بُني
+             لأجله.**
+             🔑 **ومن لم يسبقه القربُ يبدأ بنفسه**: `autoplay=1` هو
+             المسارُ المُثبَت منذ D-726 — **ولا يُستبدل بأمرٍ لم يُقس
+             بعدُ لمجرّد أنّه أنظف.** */
+          if (mountedRef.current) {
             send("playVideo");
           } else {
-            cancelIdle = idle(() => {
-              setMounted(true);
-              send("playVideo");
-            });
+            setBoot(1);
+            mountedRef.current = true;
+            setMounted(true);
           }
         } else if (e.intersectionRatio < 0.15) {
-          cancelIdle?.();
-          cancelIdle = null;
+          setOwner(false);
           stop();
           release(stop);
           /* 🆕 **والخارجُ من الشاشة يُفكَّك لا يُوقَف وحسب** (D-728):
@@ -308,21 +344,20 @@ export function TrailerPlayer({
              **وهو بعينه ما منعه شرطُ أحمد «لا تنشئ عدّة مشغّلات».**
              ⚠️ **والثمنُ معلَن**: العودةُ إليه تُعيد التحميل من الصفر —
              **وذاكرةٌ تُحرَّر أرخصُ من تحميلٍ يتكرّر**، ولا ثالثَ لهما. */
-          if (!e.isIntersecting) {
-            setMounted(false);
-            setAt(null);
-          }
+          /* **والتفكيكُ صار لمراقب القرب وحدَه** (D-745): **الخروجُ عن
+             الشاشة لم يعد خروجاً عن الذاكرة** — **وإلّا ضاع التحميلُ
+             المسبقُ الذي بُني لأجله.** */
         }
       },
       { threshold: [0, 0.15, 0.4, 1] },
     );
     io.observe(el);
     return () => {
-      cancelIdle?.();
       io.disconnect();
+      ioNear.disconnect();
       release(stop);
     };
-  }, [send, stop, eager]);
+  }, [send, stop]);
 
   /* ===== ٢) التطبيقُ يذهب للخلفيّة فيصمت، ويعود فيستأنف ===== */
   useEffect(() => {
@@ -422,6 +457,7 @@ export function TrailerPlayer({
          قياسٍ حيّ): **`playerState === 1` تصل والمقطعُ ما زال يُخزَّن**،
          **و«0:00 / 2:42» تقول إنه لم يبدأ بعد.** **فالشرطُ حالةُ تشغيلٍ
          مع زمنٍ تجاوز الصفر** — **حالةٌ بلا زمنٍ نيّةٌ لا فعل.** */
+      if (info.playerState === 1 || info.playerState === 3) setObeyed(true);
       if (
         info.playerState === 1 &&
         typeof info.currentTime === "number" &&
@@ -508,7 +544,26 @@ export function TrailerPlayer({
       window.clearTimeout(belt);
       window.removeEventListener("message", onMsg);
     };
-  }, [mounted, key, showProgress]);
+  }, [mounted, key, boot, showProgress]);
+
+  /* ===== ٣٫٥) مسارُ النجاة: أمرٌ لم يُطَع يُستبدل بما ثبت ===== */
+  /**
+   * 🔴 🆕 **`playVideo` بلا لمسةٍ قد يُرفض** (D-745) — **وهو بالضبط ما
+   * يختبره أحمد على iOS الآن.**
+   * 🔑 **فلا أبني على احتمالٍ ولا أتجاهله**: **المسارُ السريعُ يُجرَّب،
+   * فإن لم يُبدِ الإطارُ طاعةً (حالة ١ أو ٣) خلال ثلاثِ ثوانٍ ونصف عاد
+   * إلى `autoplay=1` المُثبَت.** **إعادةُ تحميلٍ في حالة الفشل أرخصُ من
+   * صمتٍ في كلِّ حالة.**
+   * ⚠️ **والشرطُ الطاعةُ لا التشغيل**: **بطيءٌ يُخزِّن أطاع** — **ومن
+   * أعاد تحميلَ ما كان يعمل زاده بطئاً باسم إنقاذه.**
+   * ⚠️ **ولا يعمل إلّا لمن حُمّل ساكناً** (`boot === 0`): **من بدأ
+   * بنفسه ليس عنده ما يُنقَذ منه.**
+   */
+  useEffect(() => {
+    if (!mounted || !owner || playing || obeyed || boot !== 0) return;
+    const t = window.setTimeout(() => setBoot(1), 3500);
+    return () => window.clearTimeout(t);
+  }, [mounted, owner, playing, obeyed, boot]);
 
   /* ===== ٤) الصمتُ حالةٌ يملكها القارئ لا الإطار ===== */
   useEffect(() => {
@@ -518,7 +573,7 @@ export function TrailerPlayer({
 
   const src =
     mounted && !dead && typeof window !== "undefined"
-      ? `${YT_ORIGIN}/embed/${encodeURIComponent(key)}?autoplay=1&mute=1&playsinline=1&controls=0&rel=0&modestbranding=1&loop=0&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}`
+      ? `${YT_ORIGIN}/embed/${encodeURIComponent(key)}?autoplay=${boot}&mute=1&playsinline=1&controls=0&rel=0&modestbranding=1&loop=0&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}`
       : null;
 
   const pct = at && at.total > 0 ? Math.min(100, (at.now / at.total) * 100) : 0;
