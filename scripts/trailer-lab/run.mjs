@@ -139,9 +139,12 @@ window.__labPollId=setInterval(()=>{
        **وغلافُ البطاقة نفسِها تلاشى** — قياسُ الآليّة الحقيقيّة لا وكيلِها */
     const img=c.querySelector('img');
     const lifted=ovOn&&(img?getComputedStyle(img).opacity==='0':soundBtn);
+    /* D-760: الصوتُ الفعليُّ المعروض — أيقونةُ «اكتم» تعني الصوتَ يعمل */
+    const soundOnState=!!c.querySelector('button[aria-label="mute"]');
     if(prev.lifted!==lifted) window.__mark(key,'veil',lifted?'LIFTED':'DOWN');
     if(prev.btn!==btn) window.__mark(key,'button',btn?'SHOWN':'HIDDEN');
-    window.__labState[key]={lifted,btn,time,soundBtn};
+    if(prev.soundOnState!==soundOnState) window.__mark(key,'sound',soundOnState?'ON':'OFF');
+    window.__labState[key]={lifted,btn,time,soundBtn,soundOnState};
   });
 },50);
 </script>
@@ -200,10 +203,13 @@ const ytApiShim = `
   }
   Player.prototype.playVideo=function(){ this._send('playVideo'); };
   Player.prototype.pauseVideo=function(){ this._send('pauseVideo'); };
-  Player.prototype.mute=function(){ this._muted=true; this._send('mute'); };
-  Player.prototype.unMute=function(){ this._muted=false; this._send('unMute'); };
+  /* D-760: أمانةُ الواجهة الحقيقيّة — القراءاتُ من ذاكرةٍ محلّيةٍ لا
+     تتحدّث إلا بـinfoDelivery، فقراءةٌ متزامنةٌ بعد أمرٍ تعيد القديم.
+     (التحديثُ المتفائل السابق كان يُخفي عطلَ «أطفيه وأشغّله».) */
+  Player.prototype.mute=function(){ this._send('mute'); };
+  Player.prototype.unMute=function(){ this._send('unMute'); };
   Player.prototype.isMuted=function(){ return this._muted; };
-  Player.prototype.setVolume=function(v){ this._volume=v; this._send('setVolume',[v]); };
+  Player.prototype.setVolume=function(v){ this._send('setVolume',[v]); };
   Player.prototype.getVolume=function(){ return this._volume; };
   Player.prototype.getCurrentTime=function(){ return this._t; };
   Player.prototype.getDuration=function(){ return this._d; };
@@ -452,6 +458,9 @@ add(14,'لا Seek في هذه المرحلة', noSlider, 'role=slider count 0');
 add(15,'لا أخطاء console من كود Loopz', consoleErrors.filter(x=>!x.includes('shim')).length===0 && pageErrors.length===0, JSON.stringify({ce:consoleErrors.length,pe:pageErrors.length}));
 add(16,'لا مؤقتات/مراقبين بعد unmount', leaks.intervals===0 && leaks.rafs<=0 && leaks.vis===0 && leaks.iframes===0, JSON.stringify(leaks));
 add(17,'العودة من الخلفية صامتة (لا صوت آلي)', fgMutedIcon, 'icon=unmute');
+/* D-760: بعد تفعيل الصوت على fast (T3)، البطاقةُ التالية fast2 تنطلق
+   مصوَّتةً بلا أي ضغطةِ صوتٍ إضافية — والمشهدُ لا يلمس زرَّ صوت fast2 */
+add(18,'الصوت محمولٌ إلى البطاقة التالية بلا ضغطة', events.some(e=>e.card==='fast2'&&e.ev==='sound'&&e.extra==='ON'), '');
 
 console.log("\n=== ACCEPTANCE (المواصفة، القابل للقياس آلياً) ===");
 for(const a of ACC) console.log((a.pass?'PASS':'FAIL').padEnd(5), String(a.n).padStart(2), a.name, a.detail?(' — '+a.detail):'');
