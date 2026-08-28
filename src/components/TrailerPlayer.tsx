@@ -217,8 +217,21 @@ export function TrailerPlayer({
     const requiresTap = typeof IntersectionObserver === "undefined" || isSaving();
     if (requiresTap) {
       const timer = window.setTimeout(() => setManualOnly(true), 0);
+      const visibilityObserver =
+        typeof IntersectionObserver === "undefined"
+          ? null
+          : new IntersectionObserver(
+              ([entry]) => {
+                if (ACTIVE === playerId && entry.intersectionRatio < STOP_RATIO) {
+                  setActive(null);
+                }
+              },
+              { threshold: [0, STOP_RATIO] },
+            );
+      visibilityObserver?.observe(element);
       return () => {
         window.clearTimeout(timer);
+        visibilityObserver?.disconnect();
         unregisterPlayer(playerId);
       };
     }

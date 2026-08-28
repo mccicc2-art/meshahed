@@ -17,7 +17,7 @@ import { TRAILER_SOUND_COOKIE, parseTrailerSound } from "@/lib/trailerPrefs";
 import type { Locale } from "@/lib/i18n";
 
 function safeReturnPath(raw: string | undefined): string {
-  return raw?.startsWith("/news") && !raw.startsWith("//") ? raw : "/news";
+  return raw === "/news" || raw?.startsWith("/news?") ? raw : "/news";
 }
 
 export default async function TrailersPage({
