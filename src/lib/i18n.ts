@@ -1426,14 +1426,6 @@ const ar = {
   invStRejected: "مرفوضة",
   invRecent: "من دخلوا عن طريقك",
   invEmpty: "لم ينضم أحد بعد — شارك رابطك أول مرة",
-  /* ⏳ مفاتيح D-768 القديمة — تعيش قيدَ رفعةٍ واحدة: تحذفها رفعةُ
-     التنظيف بعد أن تستبدل صفحةُ D-770 مستهلكَها الوحيد */
-  invStatMonths: "أشهر Loopz+ كسبتها",
-  invRuleReward: "كل ٥ دعوات محتسبة = شهر Loopz+ لك، بلا سقف",
-  invRuleCounted: "تُحتسب الدعوة بعد أن يتابع صديقك ٣ أعمال — لا بمجرد التسجيل",
-  invRuleGift: "وصديقك يبدأ بشهر Loopz+ هدية",
-  invCounted: "محتسبة",
-  invPending: "بانتظار ٣ متابعات",
   prtEntryTitle: "هل أنت صانع محتوى؟",
   prtEntryBody: "انضم إلى Loopz Partners واكسب عمولة عن كل مشترك يأتي عن طريقك",
   prtIntroTitle: "برنامج شركاء Loopz",
@@ -2878,13 +2870,6 @@ const en: Dict = {
   invStRejected: "Rejected",
   invRecent: "Joined through you",
   invEmpty: "No one has joined yet — share your link for the first time",
-  /* transitional D-768 keys — removed by the cleanup commit */
-  invStatMonths: "Loopz+ months earned",
-  invRuleReward: "Every 5 counted invites = a month of Loopz+ for you, no cap",
-  invRuleCounted: "An invite counts once your friend tracks 3 titles — not on signup alone",
-  invRuleGift: "And your friend starts with a free month of Loopz+",
-  invCounted: "Counted",
-  invPending: "Waiting for 3 titles",
   prtEntryTitle: "Are you a content creator?",
   prtEntryBody: "Join Loopz Partners and earn a commission for every subscriber you bring",
   prtIntroTitle: "Loopz Partners program",

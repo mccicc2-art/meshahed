@@ -1774,37 +1774,6 @@ export async function getMyReferralCode(): Promise<string | null> {
   }
 }
 
-/** ⏳ D-768 (يحذفه تنظيفُ D-770): من دخلوا عن طريقي — مستهلكُه الوحيد
- *  صفحةُ الدعوات القديمة، ويعيش قيدَ رفعةٍ واحدة حتى تحلّ محلَّها */
-export interface ReferralEntry {
-  id: string;
-  person: PersonLite | null;
-  joinedAt: string;
-  counted: boolean;
-}
-export async function getMyReferrals(): Promise<ReferralEntry[]> {
-  try {
-    const supabase = await createClient();
-    const { data, error } = await supabase.rpc("my_referral_list");
-    if (error || !data?.length) return [];
-    type Row = { person: string; joined_at: string; counted: boolean };
-    const rows = data as Row[];
-    const { data: people } = await supabase
-      .from("public_profiles")
-      .select("id, nickname, username, avatar_url, hide_name")
-      .in("id", rows.map((r) => r.person));
-    const byId = new Map((people ?? []).map((p) => [p.id, p as PersonLite]));
-    return rows.map((r) => ({
-      id: r.person,
-      person: byId.get(r.person) ?? null,
-      joinedAt: r.joined_at,
-      counted: r.counted,
-    }));
-  } catch {
-    return [];
-  }
-}
-
 /** 🆕 D-770: عدّاداتُ دعواتي الأربعة — صفٌّ واحدٌ من `my_invite_stats`
  *  (الهجرة ١٥٥). `rewardDays` مجموعُ أيام الداعي وحدَها من دفتر
  *  `plus_rewards` — هديّةُ المدعوّ ليست «كسبي» فلا تُعدّ في عدّادي */
