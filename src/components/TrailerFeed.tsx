@@ -108,7 +108,7 @@ export function TrailerFeed({
        («التمرير للأسفل يشغّل التالي ويوقف السابق») هو المراقبُ في
        المشغّل نفسِه** — **وصنفٌ خاملٌ يُقرأ ميزةً قائمةً فيُبنى فوقه.** */
     <div ref={box}>
-      {shown.map((i) => {
+      {shown.map((i, n) => {
         const k = keyOf(i);
         const isAdded = added.has(k);
         return (
@@ -116,6 +116,9 @@ export function TrailerFeed({
             <div className="rounded-2xl border border-border bg-surface overflow-hidden">
               <TrailerPlayer
                 videoKey={i.videoKey}
+                videoKeys={i.videoKeys}
+                /* 🆕 **الأولى فوق الطيّة فلا تنتظر فراغاً** (D-743) */
+                eager={n === 0}
                 backdrop={i.backdrop}
                 title={i.title}
                 muted={muted}

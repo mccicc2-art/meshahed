@@ -76,7 +76,7 @@ export function TrailerRail({
   return (
     <PosterRail bare title={t.trailersForYou} icon="play" href="/trailers" seeAllLabel={t.seeAll}>
       <RailScroll prevLabel="السابق / Previous" nextLabel="التالي / Next">
-        {items.map((i) => {
+        {items.map((i, n) => {
           const isAdded = added.has(keyOf(i));
           return (
             <div
@@ -85,6 +85,9 @@ export function TrailerRail({
             >
               <TrailerPlayer
                 videoKey={i.videoKey}
+                videoKeys={i.videoKeys}
+                /* 🆕 **الأولى فوق الطيّة فلا تنتظر فراغاً** (D-743) */
+                eager={n === 0}
                 backdrop={i.backdrop}
                 title={i.title}
                 muted={muted}

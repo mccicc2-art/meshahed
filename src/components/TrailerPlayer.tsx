@@ -82,6 +82,8 @@ function clock(sec: number): string {
 
 export function TrailerPlayer({
   videoKey,
+  videoKeys,
+  eager = false,
   backdrop,
   title,
   muted,
@@ -96,6 +98,18 @@ export function TrailerPlayer({
   openLabel,
 }: {
   videoKey: string;
+  /**
+   * 🆕 **بدائلُ المقطع** (D-743): **حين يرفض يوتيوب الأوّل — حجباً
+   * بلديّاً أو تعطيلَ تضمين — يُجرَّب الذي يليه.** **والغيابُ يعني
+   * مقطعاً واحداً**، فلا كسرَ لمن لا يمرّرها.
+   */
+  videoKeys?: string[];
+  /**
+   * 🆕 **أوّلُ بطاقةٍ فوق الطيّة لا تنتظر فراغَ المتصفّح** (D-743):
+   * **`requestIdleCallback` تؤجّل ما هو مرئيٌّ الآن** — **والتأجيلُ
+   * لمن يُرى تأخيرٌ لا اقتصاد.**
+   */
+  eager?: boolean;
   backdrop: string | null;
   title: string;
   muted: boolean;
@@ -126,6 +140,21 @@ export function TrailerPlayer({
   const [playing, setPlaying] = useState(false);
   const [held, setHeld] = useState(false);
   const [at, setAt] = useState<{ now: number; total: number } | null>(null);
+  /**
+   * 🆕 **أيُّ البدائل نعرض الآن** (D-743) — **يتقدّم عند رفضِ يوتيوب،
+   * ولا يرجع**: **مقطعٌ رُفض مرّةً يُرفض ثانيةً، والدورانُ عليه حلقة.**
+   */
+  const [tryIdx, setTryIdx] = useState(0);
+  /**
+   * 🆕 **وقوفٌ معلومٌ لا انتظارُ تحميل** (D-743): **الصورةُ تنزل في
+   * الحالين، والفرقُ أنّ الواقفَ يستحقّ علامةَ «اضغطني» والمحمَّلَ لا**
+   * — **ومثلّثٌ فوق مقطعٍ يوشك أن يبدأ يومض ثمّ يختفي، وهو ضجيج.**
+   */
+  const [paused, setPaused] = useState(false);
+  const keys = videoKeys?.length ? videoKeys : [videoKey];
+  const key = keys[Math.min(tryIdx, keys.length - 1)];
+  /** **ونفدت البدائل**: الصورةُ وحدَها — **ولا رسالةَ عطلٍ في صفٍّ يُمرَّر** */
+  const dead = tryIdx >= keys.length;
   /**
    * 🔑 **قيمةُ الصمت في مرجعٍ لا في تبعيّة** (D-730): **مستمعُ الرسائل
    * يُعاد تركيبُه كلّما تغيّرت تبعيّاتُه** — **وإعادةُ تركيبه تقطع
@@ -215,14 +244,34 @@ export function TrailerPlayer({
     let cancelIdle: (() => void) | null = null;
     const io = new IntersectionObserver(
       ([e]) => {
-        if (e.isIntersecting && e.intersectionRatio >= 0.6) {
+        /* 🔴 🆕 **حدُّ التشغيل غيرُ حدِّ الإيقاف** (D-743، بلاغُ أحمد:
+           «الفيديو ما يشتغل بسرعة، ويتوقّف من نفسه»).
+           🔑 **كان الحدُّ واحداً (٠٫٦)** — **فأيُّ تمريرةٍ صغيرةٍ تُنزل
+           البطاقةَ تحته توقف المقطع**، **ورجوعُها فوقه يُعيد التحميلَ
+           من الصفر** (لأن الخروجَ التامَّ يفكّك). **فالعرَضان اللذان
+           اشتكى منهما سببُهما رقمٌ واحد.**
+           🔑 **والقاعدة**: **حدٌّ واحدٌ لفعلٍ وضدِّه يجعل الحافّةَ
+           مفتاحاً يرتجف** — **ومن أراد سكوناً فليُبعد حدَّ الرجوع عن
+           حدَّ الذهاب.** (تخلّفٌ حراريٌّ: يشتغل عند ٠٫٤ ويصمت تحت
+           ٠٫١٥.)
+           ⚠️ **وأربعون بالمئة لا ستّون لبدء التحميل**: **يوتيوب يحتاج
+           ثوانيَ قبل أوّل إطار** — **والبدءُ حين تصير البطاقةُ مرئيّةً
+           بالكامل بدءٌ متأخّرٌ بثوانٍ يراها القارئُ بطئاً.** */
+        if (e.isIntersecting && e.intersectionRatio >= 0.4) {
           claim(stop);
           cancelIdle?.();
-          cancelIdle = idle(() => {
+          /* **وأوّلُ بطاقةٍ لا تنتظر فراغاً**: `idle` تؤجّل ما هو
+             مرئيٌّ الآن — **والتأجيلُ لمن يُرى تأخيرٌ لا اقتصاد.** */
+          if (eager) {
             setMounted(true);
             send("playVideo");
-          });
-        } else {
+          } else {
+            cancelIdle = idle(() => {
+              setMounted(true);
+              send("playVideo");
+            });
+          }
+        } else if (e.intersectionRatio < 0.15) {
           cancelIdle?.();
           cancelIdle = null;
           stop();
@@ -239,7 +288,7 @@ export function TrailerPlayer({
           }
         }
       },
-      { threshold: [0, 0.6, 1] },
+      { threshold: [0, 0.15, 0.4, 1] },
     );
     io.observe(el);
     return () => {
@@ -247,7 +296,7 @@ export function TrailerPlayer({
       io.disconnect();
       release(stop);
     };
-  }, [send, stop]);
+  }, [send, stop, eager]);
 
   /* ===== ٢) التطبيقُ يذهب للخلفيّة فيصمت، ويعود فيستأنف ===== */
   useEffect(() => {
@@ -283,10 +332,39 @@ export function TrailerPlayer({
     let heard = false;
     function onMsg(e: MessageEvent) {
       if (e.origin !== YT_ORIGIN) return;
-      let d: { event?: string; info?: { currentTime?: number; duration?: number; playerState?: number } };
+      let d: {
+        event?: string;
+        info?: {
+          currentTime?: number;
+          duration?: number;
+          playerState?: number;
+          errorCode?: number;
+        };
+      };
       try {
         d = typeof e.data === "string" ? JSON.parse(e.data) : (e.data as typeof d);
       } catch {
+        return;
+      }
+      /* 🔴 🆕 **ويوتيوب يقول «لا» فنسمعها** (D-743، بلاغُ أحمد بلقطة:
+         «الفيديو يقول ما هو مسموح في دولتك»).
+         🔑 **رفضُ الإطار ليس عطلاً عندنا بل خبرٌ منه**: `onError`
+         تصل بأرقامٍ معروفة — **١٠٠ لا وجودَ له، و١٠١/١٥٠ صاحبُه منع
+         التضمين أو حجبه عن بلدك.** **وثلاثتُها جوابُها واحد: جرّب
+         الذي يليه.**
+         ⚠️ **وتصل بشكلين**: `event:"onError"` وحدَها، **أو `errorCode`
+         داخل `info`** — **ومن حرس شكلاً واحداً حرس نصفَ الباب.**
+         ⚠️ **ولا رسالةَ عطلٍ للقارئ حين تنفد البدائل**: **الصورةُ
+         والتفاصيلُ تكفيان** — **وصفٌّ يُمرَّر ليس مكانَ اعتذار**
+         (D-217: لا تقل ما لا ينفع). */
+      const errored =
+        d?.event === "onError" ||
+        typeof d?.info?.errorCode === "number" ||
+        (typeof d?.info === "number" && d?.event === "onError");
+      if (errored) {
+        setPlaying(false);
+        setAt(null);
+        setTryIdx((i) => i + 1);
         return;
       }
       const info = d?.info;
@@ -324,6 +402,27 @@ export function TrailerPlayer({
         info.currentTime > 0.1
       ) {
         setPlaying(true);
+        setPaused(false);
+      }
+      /* 🔴 🆕 **ووجهُ يوتيوب لا يكون وجهَ بطاقتنا** (D-743، لقطتُه
+         الأولى: زرٌّ أحمرُ و«Watch on YouTube» فوق المقطع).
+         🔑 **`controls=0` يخفي الأزرار ولا يخفي لوحةَ التوقّف**:
+         **ما إن يتوقّف المقطعُ — بأمرنا أو بأمرِ يوتيوب — حتى يرسم
+         علامتَه واسمَ رافعِه ودعوةً لمغادرة تطبيقنا.**
+         🔑 **والعلاجُ أن تنزل صورتُنا فوقه في كلِّ توقّف**: **٢ موقوف
+         و٠ انتهى و٥ مُهيَّأ و‎-١ لم يبدأ** — **أربعُ حالاتٍ معناها
+         واحد: لا يرسم الآن، فلتنزل الصورة.**
+         ⚠️ **و٣ (يُخزِّن) ليست منها**: **التخزينُ طريقٌ إلى الرسم لا
+         توقّفٌ عنه** — **وإنزالُ الصورة عنده وميضٌ في كلِّ تلعثمِ
+         شبكة.** */
+      if (
+        info.playerState === 2 ||
+        info.playerState === 0 ||
+        info.playerState === 5 ||
+        info.playerState === -1
+      ) {
+        setPlaying(false);
+        setPaused(info.playerState === 2 || info.playerState === 0);
       }
       if (
         showProgress &&
@@ -351,7 +450,7 @@ export function TrailerPlayer({
       }
       try {
         frame.current?.contentWindow?.postMessage(
-          JSON.stringify({ event: "listening", id: videoKey, channel: "widget" }),
+          JSON.stringify({ event: "listening", id: key, channel: "widget" }),
           YT_ORIGIN,
         );
       } catch {
@@ -372,7 +471,7 @@ export function TrailerPlayer({
       window.clearTimeout(belt);
       window.removeEventListener("message", onMsg);
     };
-  }, [mounted, videoKey, showProgress]);
+  }, [mounted, key, showProgress]);
 
   /* ===== ٤) الصمتُ حالةٌ يملكها القارئ لا الإطار ===== */
   useEffect(() => {
@@ -381,8 +480,8 @@ export function TrailerPlayer({
   }, [muted, mounted, send]);
 
   const src =
-    mounted && typeof window !== "undefined"
-      ? `${YT_ORIGIN}/embed/${encodeURIComponent(videoKey)}?autoplay=1&mute=1&playsinline=1&controls=0&rel=0&modestbranding=1&loop=0&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}`
+    mounted && !dead && typeof window !== "undefined"
+      ? `${YT_ORIGIN}/embed/${encodeURIComponent(key)}?autoplay=1&mute=1&playsinline=1&controls=0&rel=0&modestbranding=1&loop=0&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}`
       : null;
 
   const pct = at && at.total > 0 ? Math.min(100, (at.now / at.total) * 100) : 0;
@@ -414,9 +513,42 @@ export function TrailerPlayer({
         />
       )}
 
-      {/* **البابُ تحت الأزرار وفوق الصورة** — انظر حجّةَ `href` أعلاه */}
-      {href && (
+      {/* **البابُ تحت الأزرار وفوق الصورة** — انظر حجّةَ `href` أعلاه.
+          🔴 🆕 **ولا يُرسم على مقطعٍ واقف** (D-743، بلاغُ أحمد: «إذا
+          ضغطتها ما يشتغل، يفتح لي التبويب»).
+          🔑 **الضغطةُ على شيءٍ واقفٍ معناها «شغّله» لا «خذني لمكانٍ
+          آخر»** — **وبابٌ شفّافٌ فوق زرِّ تشغيلٍ يسرق أوضحَ نيّةٍ في
+          الواجهة.** **وهو عطلُ D-729 بعينه** (الغلافُ ابتلع مفتاحَ
+          الصوت) **من بابٍ ثانٍ: هناك ابتلع زرَّنا، وهنا يبتلع نيّةَ
+          القارئ.**
+          ⚠️ **والتفاصيلُ لم تُفقد**: **زرُّ «التفاصيل» تحت البطاقة** —
+          **ووجهتان لسطحٍ واحدٍ تُفرَّقان بالحال لا بالحظّ.** */}
+      {href && playing && (
         <Link href={href} prefetch={false} aria-label={openLabel ?? title} className="absolute inset-0 z-[5]" />
+      )}
+
+      {/* 🆕 **وسطحُ المقطع الواقف زرُّ تشغيل** (D-743) — **ولا يُرسم مع
+          `held`** فذاك له زرُّه المعلَن أدناه، **ولا فوق ميّتٍ نفدت
+          بدائلُه** فلا شيءَ يُشغَّل. */}
+      {!playing && !held && !dead && (
+        <button
+          type="button"
+          onClick={() => {
+            claim(stop);
+            setMounted(true);
+            setTryIdx((i) => (i >= keys.length ? 0 : i));
+            send(mutedRef.current ? "mute" : "unMute");
+            send("playVideo");
+          }}
+          aria-label={playLabel}
+          className="absolute inset-0 z-[6] grid place-items-center"
+        >
+          {paused && (
+            <span className="w-14 h-14 rounded-full bg-black/55 text-white grid place-items-center backdrop-blur-sm">
+              <Icon name="play" size={26} />
+            </span>
+          )}
+        </button>
       )}
 
       {/* **زرُّ التشغيل يظهر حين لا تشغيلَ تلقائيّ** (توفيرُ البيانات أو
