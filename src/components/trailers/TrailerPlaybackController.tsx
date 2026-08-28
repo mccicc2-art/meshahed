@@ -223,7 +223,20 @@ function createEngine(
   let phase: SlotPhase = "idle";
   let keyIdx = 0;
   let advancedFor = -1;
-  let prefAttempted = false;
+  /** 🆕 D-760 (بلاغ أحمد: «كل فيديو لازم أضغط زرّ الصوت»): نيّةُ الصوت
+      تُحمَل عبر البطاقات. `wantSound` آخرُ اختيارٍ صريح (بذرتُه الكوكي)،
+      و`unlocked` هل فُكّ قفلُ WebKit الصوتيُّ **لهذا العنصر** بإيماءةٍ
+      ناجحةٍ متحقَّقة — فبعد أوّل ضغطةِ صوتٍ تنطلق البطاقاتُ التاليةُ
+      مصوَّتةً بلا ضغطةٍ لكلِّ فيديو. (أوّلُ فيديو بعد فتح الصفحة صامتٌ
+      دائماً — قانونُ iOS لا خيارُنا.) */
+  let wantSound = false;
+  const unlocked = { yt: false, file: false };
+  let verifyTimer: number | null = null;
+  /** لحظةُ فكِّ كتمٍ آليٍّ (بلا إيماءة) — لكشف رفض WebKit والتعافي صامتاً */
+  let autoUnmuteAt = 0;
+  /** إيقافٌ أمرنا به نحن (تبديلٌ/خلفيّة) — صداه PAUSED ليس رفضَ WebKit:
+      بدون هذا التمييز كان صدى إيقافِ السابقة يكتم اللاحقةَ المحمولةَ الصوت */
+  let expectPause = false;
   let destroyed = false;
 
   const setPhase = (next: SlotPhase) => {
@@ -237,12 +250,17 @@ function createEngine(
     return s ? providerOf(s.item) === "file" : false;
   };
 
+  /* تصريحٌ متقدّمٌ كتصريح `reconcile` — الجسدُ أسفلَ حيث تسكن أدواتُه */
+  let stopVeilProbe: () => void = () => undefined;
+
   /* ---- العدّاد: interval واحدٌ لا غير (المواصفة سادسًا/٧) ---- */
   const stopTick = () => {
     if (tick !== null) {
       window.clearInterval(tick);
       tick = null;
     }
+    /* ومسبارُ السِّتر يسكن مع العدّاد أينما سكن */
+    stopVeilProbe();
   };
   const clearStall = () => {
     if (stall !== null) {
@@ -291,26 +309,71 @@ function createEngine(
     return on;
   };
 
-  /** 🔴 تفضيلُ «صوت» المحفوظ يُطبَّق **داخل إيماءةٍ حقيقيّةٍ فقط**
-      (يستدعيه `tapPlay` بعد أمرِ التشغيل) — كان يُحاوَل من مؤقّتِ أوّلِ
-      إطار، وفكُّ الكتم خارج الإيماءة على iOS **يوقف** فيديو بدأ صامتاً
-      بدل أن يُسمِعه. لا يدخل مسارَ التشغيل التلقائيّ إطلاقاً. */
-  const applySavedSoundInGesture = () => {
-    if (prefAttempted || !getSoundPref()) return;
-    prefAttempted = true;
-    if (activeIsFile()) dom.video.muted = false;
-    else if (player && playerReady) {
+  /* 🔴 D-760، جذرُ «أطفيه وأشغّله»: `isMuted()` في واجهة يوتيوب قراءةٌ
+     من ذاكرةِ الودجت المحلّية **ولا تتحدّث إلا برسالة الحالة التالية** —
+     فقراءةٌ متزامنةٌ بعد أمرِ كتمٍ تعيد الحالةَ القديمة، فتَصدُق الأيقونةُ
+     كذباً ويحتاج القارئُ ضغطتين. **فلا تحقُّقَ متزامناً بعد أمرٍ أبداً**:
+     الأيقونةُ تُنشر بما أُمر به فوراً، والتحقّقُ يُجدوَل بعد الرحلة. */
+  const scheduleVerify = (ms: number) => {
+    if (verifyTimer !== null) window.clearTimeout(verifyTimer);
+    verifyTimer = window.setTimeout(() => {
+      verifyTimer = null;
+      if (destroyed) return;
+      const on = verifySound();
+      if (on) {
+        unlocked[activeIsFile() ? "file" : "yt"] = true;
+        autoUnmuteAt = 0;
+      }
+    }, ms);
+  };
+
+  /** نيّةُ الصوت داخل إيماءةٍ حقيقيّة (زرُّ التشغيل) — الضغطةُ الأولى
+      تفكّ قفلَ WebKit، وبعدها تحمل البطاقاتُ التاليةُ الصوتَ بأنفسها.
+      لا يدخل مسارَ التشغيل التلقائيّ الأوّل إطلاقاً. */
+  const applySoundInGesture = () => {
+    if (!wantSound) return;
+    if (activeIsFile()) {
+      dom.video.muted = false;
+      dom.video.volume = 1;
+    } else if (player && playerReady) {
       player.unMute();
       player.setVolume(100);
     }
-    window.setTimeout(() => {
-      if (!destroyed) verifySound();
-    }, 250);
+    publish({ soundOn: true });
+    scheduleVerify(300);
   };
 
   const onDrewFrame = () => {
     clearStall();
     setPhase("playing");
+  };
+
+  /* 🆕 D-760 (بلاغ أحمد: «كيف أسرّع؟»): مسبارُ رفعِ السِّتر — بعد حدث
+     PLAYING نقرأ `getCurrentTime()` كلَّ إطارٍ حتى ثانيتين ونصف، فيُرفع
+     الغلافُ مع أوّل حركةٍ فعليّةٍ بدل انتظار دورة العدّاد (حتى ٣٠٠م.ث).
+     العدّادُ نفسُه باقٍ على فتراته (المواصفة سادسًا) — هذا للسِّتر فقط. */
+  let veilProbe: number | null = null;
+  stopVeilProbe = () => {
+    if (veilProbe !== null) {
+      window.cancelAnimationFrame(veilProbe);
+      veilProbe = null;
+    }
+  };
+  const startVeilProbe = () => {
+    stopVeilProbe();
+    const t0 = performance.now();
+    const step = () => {
+      veilProbe = null;
+      if (destroyed || phase === "playing") return;
+      const t = readTime();
+      if (t && t.now > 0.1) {
+        onDrewFrame();
+        publish({ time: t });
+        return;
+      }
+      if (performance.now() - t0 < 2500) veilProbe = window.requestAnimationFrame(step);
+    };
+    veilProbe = window.requestAnimationFrame(step);
   };
 
   const startTick = () => {
@@ -341,7 +404,10 @@ function createEngine(
   /* ---- المصدران ---- */
   const pauseCurrent = () => {
     if (activeIsFile()) dom.video.pause();
-    else if (player && playerReady) player.pauseVideo();
+    else if (player && playerReady) {
+      expectPause = true;
+      player.pauseVideo();
+    }
   };
 
   const clearActive = () => {
@@ -384,9 +450,20 @@ function createEngine(
     const yt = await loadYouTubeApi();
     if (destroyed) return;
     if (player) {
-      player.mute();
-      verifySound();
+      /* 🆕 D-760: البطاقةُ التاليةُ تحمل صوتَ سابقتها — إن اختار القارئُ
+         الصوتَ وفُكّ قفلُ الإطار مرّةً، لا نكتم عند التبديل. وإن رفض
+         WebKit فكّاً آليّاً فمُعافاةُ PAUSED أدناه تُعيدنا صامتين. */
+      const carry = wantSound && unlocked.yt;
+      if (carry) {
+        player.unMute();
+        player.setVolume(100);
+        autoUnmuteAt = Date.now();
+      } else {
+        player.mute();
+      }
+      publish({ soundOn: carry });
       player.loadVideoById(firstKey);
+      scheduleVerify(600);
       return;
     }
     pendingLoadKey = firstKey;
@@ -421,10 +498,11 @@ function createEngine(
         onReady: () => {
           playerReady = true;
           /* بالترتيب الذي أملاه أحمد: كتمٌ ثم صفرُ صوتٍ ثم تشغيل —
-             التشغيلُ التلقائيُّ صامتٌ دائماً ولا ينتظر تفضيلَ الصوت */
+             أوّلُ تشغيلٍ بعد فتح الصفحة صامتٌ دائماً (لا قفلَ مفكوكاً
+             بعد)، والأيقونةُ تُنشر بالأمر لا بقراءةٍ متزامنةٍ عتيقة */
           player?.mute();
           player?.setVolume(0);
-          verifySound();
+          publish({ soundOn: false });
           if (pendingLoadKey && activeId) player?.playVideo();
           pendingLoadKey = null;
         },
@@ -432,10 +510,35 @@ function createEngine(
           const yts = window.YT?.PlayerState;
           if (!yts) return;
           if (e.data === yts.PLAYING) {
+            expectPause = false;
             startTick();
+            startVeilProbe();
+            scheduleVerify(150);
             return;
           }
           if (e.data === yts.PAUSED || e.data === yts.ENDED) {
+            /* صدى إيقافِنا نحن يُستهلك ولا يدخل مُعافاةَ الرفض */
+            const echoed = expectPause && e.data === yts.PAUSED;
+            if (echoed) expectPause = false;
+            /* 🆕 D-760: توقّفٌ لحظاتٍ بعد فكِّ كتمٍ آليٍّ = WebKit رفض
+               الصوتَ فأوقف — نستعيد التشغيلَ صامتين ونُصدِق الأيقونة.
+               (لا نتعافى والصفحةُ مخفيّة: الإيقافُ هناك مقصود.) */
+            if (
+              !echoed &&
+              e.data === yts.PAUSED &&
+              autoUnmuteAt &&
+              Date.now() - autoUnmuteAt < 1500 &&
+              activeId &&
+              !activeIsFile() &&
+              document.visibilityState === "visible"
+            ) {
+              autoUnmuteAt = 0;
+              unlocked.yt = false;
+              player?.mute();
+              publish({ soundOn: false });
+              player?.playVideo();
+              return;
+            }
             stopTick();
             publish({ time: readTime() });
             if (activeId && phase === "playing") setPhase("paused");
@@ -469,6 +572,7 @@ function createEngine(
             if (activeId === id) setPhase("stalled");
           });
           startTick();
+          startVeilProbe();
         } else if (player && playerReady) {
           /* زرُّ التشغيل يبدأ صامتاً دائماً (حالة الواجهة ٣) — والصوتُ
              لزرِّ الصوت بعد أن تتحرّك الصورة */
@@ -496,14 +600,29 @@ function createEngine(
       dom.video.style.display = "";
       if (!slot.item.fileUrl) return;
       if (dom.video.src !== slot.item.fileUrl) dom.video.src = slot.item.fileUrl;
-      dom.video.muted = true;
-      verifySound();
+      /* 🆕 D-760: عنصرُ الملفّ يحمل نيّةَ الصوت هو الآخر — وإن رفض
+         WebKit تشغيلاً مصوَّتاً عُدنا صامتين بدل بطاقةٍ ميتة */
+      const carry = wantSound && unlocked.file;
+      dom.video.muted = !carry;
+      if (carry) dom.video.volume = 1;
+      publish({ soundOn: carry });
       /* فيديو جديد: صفّر الزمنَ ولا تعرض مدةَ سابقه (سادسًا/٨) */
       dom.video.currentTime = 0;
       void dom.video.play().catch(() => {
-        if (activeId === id) setPhase(viaGesture ? "stalled" : "blocked");
+        if (activeId !== id) return;
+        if (carry) {
+          unlocked.file = false;
+          dom.video.muted = true;
+          publish({ soundOn: false });
+          void dom.video.play().catch(() => {
+            if (activeId === id) setPhase(viaGesture ? "stalled" : "blocked");
+          });
+          return;
+        }
+        setPhase(viaGesture ? "stalled" : "blocked");
       });
       startTick();
+      startVeilProbe();
       return;
     }
 
@@ -593,11 +712,15 @@ function createEngine(
       player.mute();
       player.playVideo();
     }
-    verifySound();
+    /* أُمر بالكتم فتُنشر الأيقونةُ بالأمر — لا بقراءةٍ متزامنةٍ عتيقة.
+       (نيّةُ الصوت وقفلُه باقيان: البطاقةُ التالية تحملهما كالمعتاد.) */
+    publish({ soundOn: false });
   };
 
   return {
     start() {
+      /* بذرةُ النيّة من الكوكي — والقفلُ يُفكّ بإيماءةِ هذه الجلسة وحدَها */
+      wantSound = getSoundPref();
       const manualOnly = typeof IntersectionObserver === "undefined" || isSavingData();
       publish({ manualOnly });
       if (!manualOnly) {
@@ -655,19 +778,21 @@ function createEngine(
 
     tapPlay(id: string) {
       activate(id, true);
-      /* تفضيلُ الصوت المحفوظ: هنا فقط — داخل إيماءةٍ حقيقيّةٍ وبعد
-         أمرِ التشغيل، ولا يدخل مسارَ التشغيل التلقائيّ أبداً */
-      applySavedSoundInGesture();
+      /* نيّةُ الصوت تُطبَّق هنا — داخل إيماءةٍ حقيقيّةٍ وبعد أمرِ
+         التشغيل؛ هذه الضغطةُ تفكّ قفلَ WebKit فتحمل البطاقاتُ التاليةُ
+         الصوتَ بأنفسها */
+      applySoundInGesture();
     },
 
     /* 🔴 زرُّ الصوت **لا يشغّل شيئاً** (بلاغ iPhone: صار هو زرَّ التشغيل
        فعليّاً لأنّ إيماءتَه كانت تحمل playVideo). التشغيلُ لزرِّ التشغيل
        وحدَه — وهذا يبدّل الصوتَ فقط على مشغّلٍ جاهز. */
     tapSound() {
-      prefAttempted = true;
       const slot = activeSlot();
       if (!slot) return;
       const wantOn = !readSnap().soundOn;
+      /* الاختيارُ الصريح يحدّث النيّةَ المحمولةَ عبر البطاقات (D-760) */
+      wantSound = wantOn;
       if (activeIsFile()) {
         dom.video.muted = !wantOn;
         if (wantOn) dom.video.volume = 1;
@@ -685,6 +810,8 @@ function createEngine(
       window.setTimeout(() => {
         if (destroyed) return;
         const on = verifySound();
+        /* نجاحُ فكِّ الكتم بإيماءةٍ = قفلُ WebKit مفكوكٌ لهذا العنصر */
+        if (on) unlocked[activeIsFile() ? "file" : "yt"] = true;
         if (on === wantOn) writeTrailerSound(on);
       }, 200);
     },
@@ -692,6 +819,11 @@ function createEngine(
     destroy() {
       /* لا timers ولا observers بعد unmount (اختبار ١٦) */
       destroyed = true;
+      if (verifyTimer !== null) {
+        window.clearTimeout(verifyTimer);
+        verifyTimer = null;
+      }
+      stopVeilProbe();
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("scroll", alignOverlay, { capture: true });
       window.removeEventListener("resize", alignOverlay);
