@@ -105,7 +105,7 @@ const harness = `<!doctype html><meta charset="utf-8"><title>trailer-lab</title>
  .bg-surface-2{background:#222}
  [role="slider"]{height:20px;display:flex;align-items:center;width:100%}
  .h-1{height:4px}.rounded-full{border-radius:99px}.bg-white{background:#fff}
- .fixed{position:fixed}
+ .fixed{position:fixed}.hidden{display:none}
  .inset-x-0{left:0;right:0}.bottom-0{bottom:0}.inset-y-0{top:0;bottom:0}.left-0{left:0}
  .top-2\\.5{top:10px}.end-2\\.5{right:10px}.start-2\\.5{left:10px}
  .top-3{top:12px}.end-3{right:12px}.start-3{left:12px}
@@ -132,7 +132,7 @@ window.addEventListener('message', e=>{ let d; try{d=JSON.parse(e.data)}catch{re
   if(d && d.event==='lab') window.__mark(d.key, d.lab, d.extra===undefined?null:d.extra);
 });
 window.__labState={};
-window.__overlay=()=>document.querySelector('div[aria-hidden].fixed');
+window.__overlay=()=>document.querySelector('div[aria-hidden].fixed.pointer-events-none'); /* D-763: الستارة أيضاً aria-hidden fixed */
 window.__labPollId=setInterval(()=>{
   const ov=window.__overlay();
   const ovOn=ov?getComputedStyle(ov).opacity==='1':false;
@@ -364,6 +364,8 @@ const t1b=(await stateOf()).fast?.time;
 
 /* T8 (D-761): مشغّلان كحدٍّ أقصى — ومرئيٌّ واحدٌ لا غير */
 const frames1 = await page.evaluate(()=>[...document.querySelectorAll('iframe')].map(f=>getComputedStyle(f).opacity));
+/* T24 (D-763): قصّ الأطراف — كل إطارٍ ثلاثةُ أضعاف الطبقة وممركز */
+const crop1 = await page.evaluate(()=>{const ov=document.querySelector('div[aria-hidden].fixed.pointer-events-none'); const or=ov.getBoundingClientRect(); return [...document.querySelectorAll('iframe')].map(f=>{const r=f.getBoundingClientRect(); return {h:Math.round(r.height), oh:Math.round(or.height), top:Math.round(r.top-or.top)};});});
 
 /* T3/T4/T5: الصوت الحقيقي بضغطة المستخدم + الكوكي بعد التحقق فقط */
 await stamp('T3-tap-sound');
@@ -407,10 +409,10 @@ const resumeTime = await page.evaluate(()=>{const el=document.querySelector('[da
 await stamp('T23-expand');
 await page.click('[data-card="fast"] button[aria-label="expand"]');
 await page.waitForTimeout(500);
-const expOn = await page.evaluate(()=>{const ov=document.querySelector('div[aria-hidden].fixed'); const r=ov.getBoundingClientRect(); return {w:Math.round(r.width), iw:window.innerWidth, lock:document.documentElement.style.overflow, x:!!document.querySelector('button[aria-label="collapse"]')};});
+const expOn = await page.evaluate(()=>{const ov=document.querySelector('div[aria-hidden].fixed.pointer-events-none'); const r=ov.getBoundingClientRect(); return {w:Math.round(r.width), iw:window.innerWidth, lock:document.documentElement.style.overflow, x:!!document.querySelector('button[aria-label="collapse"]')};});
 await page.click('button[aria-label="collapse"]');
 await page.waitForTimeout(500);
-const expOff = await page.evaluate(()=>{const ov=document.querySelector('div[aria-hidden].fixed'); const r=ov.getBoundingClientRect(); return {w:Math.round(r.width), lock:document.documentElement.style.overflow};});
+const expOff = await page.evaluate(()=>{const ov=document.querySelector('div[aria-hidden].fixed.pointer-events-none'); const r=ov.getBoundingClientRect(); return {w:Math.round(r.width), lock:document.documentElement.style.overflow};});
 
 /* هزهزة: لا أوامر متذبذبة */
 await stamp('T-wiggle');
@@ -517,6 +519,7 @@ add(14,'شريطُ التقديم حاضرٌ على النشطة (عاد بأم�
 add(20,'السحبُ يقدّم بأمر seekTo الرسمي ويقفز العدّاد', inSeg('fast','cmd:seekTo','T20-seek') && events.some(e=>{const [a,b]=seg('T20-seek'); return e.card==='fast'&&e.ev==='cmd:seekTo'&&e.t>=a&&e.t<=b&&Number(e.extra)>=80&&Number(e.extra)<=115;}) && (parse(seekTime)??0)>=80, 'seek→'+seekTime);
 add(21,'الإيقافُ يُبقي الصورةَ والاستئنافُ بلا إعادة تحميل', inSeg('fast','cmd:pauseVideo','T21-pause') && inSeg('fast','cmd:playVideo','T21-pause') && !inSeg('fast','veil','T21-pause') && !events.some(e=>{const [a,b]=seg('T21-pause'); return e.ev==='loaded-by-id'&&e.t>=a&&e.t<=b;}), '');
 add(22,'العودةُ لبطاقةٍ سابقةٍ تستأنف من موضعها', (parse(resumeTime)??0)>=80, 'resumed@'+resumeTime);
+add(24,'قصُّ واجهة يوتيوب: إطارٌ 300% ممركزٌ (D-763)', crop1.length>0 && crop1.every(c=>Math.abs(c.h-3*c.oh)<=3 && Math.abs(c.top+c.oh)<=3), JSON.stringify(crop1));
 add(23,'التكبيرُ يملأ الشاشةَ ويقفل التمرير ويُغلق بسلام', expOn.w===expOn.iw && expOn.lock==='hidden' && expOn.x && expOff.w<expOn.iw && expOff.lock==='', JSON.stringify({on:expOn.w+'/'+expOn.iw, off:expOff.w}));
 add(15,'لا أخطاء console من كود Loopz', consoleErrors.filter(x=>!x.includes('shim')).length===0 && pageErrors.length===0, JSON.stringify({ce:consoleErrors.length,pe:pageErrors.length}));
 add(16,'لا مؤقتات/مراقبين بعد unmount', leaks.intervals===0 && leaks.rafs<=0 && leaks.vis===0 && leaks.iframes===0, JSON.stringify(leaks));
