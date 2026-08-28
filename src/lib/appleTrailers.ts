@@ -35,6 +35,7 @@ interface ItunesResult {
   trackName?: string;
   releaseDate?: string;
   previewUrl?: string;
+  kind?: string;
 }
 
 /** **تطبيعُ اسمٍ للمقارنة** — حروفٌ صغيرة، بلا علاماتٍ ولا فراغاتٍ زائدة */
@@ -84,7 +85,13 @@ export async function getAppleTrailerUrl(
   if (!t || !/[a-z]/i.test(t) || !Number.isFinite(y)) return null;
 
   try {
-    const url = `${SEARCH}?media=movie&limit=8&country=US&term=${encodeURIComponent(t)}`;
+    /* 🔴 **وبلا `media=movie` عمداً** (D-758، مقيسٌ بمسبار إنتاجٍ مؤقّت):
+       **آبل تُعيد لبحث مراكز البيانات صفراً مع `media=movie` دائماً**،
+       **وتُعيد النتائج كاملةً بدونه — والفيلمُ المطلوبُ داخلها وإن شوّهت
+       رأسَ الترتيب** (Inception وOppenheimer كلاهما وُجد وسط الثلاثين).
+       **فالمرشِّحُ عندنا**: `kind === "feature-movie"` والاسمُ والسنة —
+       **ومن اعتمد على ترتيب مصدرٍ مشوَّهٍ بدل شروطه بنى على رمل.** */
+    const url = `${SEARCH}?limit=50&country=US&term=${encodeURIComponent(t)}`;
     /* ⚠️ **مهلةٌ بسباقٍ لا بإشارة إجهاض** (D-758): **`AbortSignal` داخل
        `fetch` المخبَّأ يعبث بخبيئة Next ويُسقط النداءَ كلَّه صامتاً** —
        والسباقُ يترك النداءَ يُكمل في الخلفيّة ويُخلي طريقَ الصفّ فقط. */
@@ -97,6 +104,7 @@ export async function getAppleTrailerUrl(
     if (!res || !res.ok) return null;
     const data = (await res.json()) as { results?: ItunesResult[] };
     for (const r of data.results ?? []) {
+      if (r.kind !== "feature-movie") continue;
       if (!r.previewUrl || !r.trackName) continue;
       const ry = Number((r.releaseDate ?? "").slice(0, 4));
       if (!Number.isFinite(ry) || Math.abs(ry - y) > 1) continue;
