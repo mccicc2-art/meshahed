@@ -148,6 +148,9 @@ export interface ControllerSnapshot {
   /** 🆕 D-762: التكبيرُ المسرحيّ — الطبقةُ تملأ الشاشةَ داخل التطبيق
       (التكبيرُ الأصليُّ لإطار يوتيوب ممنوعٌ على iPhone في WebKit) */
   expanded: boolean;
+  /** 🆕 D-764 (طلب أحمد): الأزرارُ تتوارى بعد ٥ ثوانِ تشغيلٍ متواصل —
+      ولمسةُ السطح تُظهرها قبل أن تُوقف، وكلُّ تفاعلٍ يعيد عدَّها */
+  controlsVisible: boolean;
 }
 
 interface ControllerApi {
@@ -160,6 +163,8 @@ interface ControllerApi {
   /** ⚖️ D-762: التقديمُ عاد بطلب صاحبه — بثوانٍ مطلقةٍ على النشطة */
   seekTo(seconds: number): void;
   toggleExpand(): void;
+  /** 🆕 D-764: لمسةُ إظهارِ الأزرار المتوارية — تعيد عدَّ الثواني الخمس */
+  pokeControls(): void;
   subscribe(cb: () => void): () => void;
   getSnapshot(): ControllerSnapshot;
 }
@@ -190,6 +195,8 @@ const SWITCH_GAP = 0.1;
 const STALL_MS = 8000;
 /** دورةُ العدّاد — من القيم الرسمية وحدَها (المواصفة سادسًا) */
 const TICK_MS = 300;
+/** 🆕 D-764: الأزرارُ تتوارى بعد هذه المدّة من تشغيلٍ متواصل (طلب أحمد: ٥ ثوانٍ) */
+const CONTROLS_HIDE_MS = 5000;
 
 function isSavingData(): boolean {
   try {
@@ -283,9 +290,42 @@ function createEngine(
   let expectPause = false;
   let destroyed = false;
 
+  /* 🆕 D-764: توارِي الأزرار — مرئيّةٌ دائماً خارج التشغيل، وتتوارى بعد
+     ٥ ثوانِ تشغيلٍ متواصل؛ كلُّ تفاعلٍ (لمسة/صوت/تقديم) يعيد العدّ */
+  let controlsTimer: number | null = null;
+  let controlsShown = true;
+  const publishControls = (on: boolean) => {
+    if (controlsShown === on) return;
+    controlsShown = on;
+    publish({ controlsVisible: on });
+  };
+  const clearControlsTimer = () => {
+    if (controlsTimer !== null) {
+      window.clearTimeout(controlsTimer);
+      controlsTimer = null;
+    }
+  };
+  const armControlsTimer = () => {
+    clearControlsTimer();
+    controlsTimer = window.setTimeout(() => {
+      controlsTimer = null;
+      if (!destroyed && phase === "playing") publishControls(false);
+    }, CONTROLS_HIDE_MS);
+  };
+  const pokeControls = () => {
+    publishControls(true);
+    if (phase === "playing") armControlsTimer();
+    else clearControlsTimer();
+  };
+
   const setPhase = (next: SlotPhase) => {
     phase = next;
     publish({ phase: next });
+    if (next === "playing") armControlsTimer();
+    else {
+      clearControlsTimer();
+      publishControls(true);
+    }
   };
 
   const activeSlot = () => (activeId ? (slots.get(activeId) ?? null) : null);
@@ -1077,8 +1117,10 @@ function createEngine(
       const slot = activeSlot();
       if (!slot) return;
       const wantOn = !readSnap().soundOn;
-      /* الاختيارُ الصريح يحدّث النيّةَ المحمولةَ عبر البطاقات (D-760) */
+      /* الاختيارُ الصريح يحدّث النيّةَ المحمولةَ عبر البطاقات (D-760) —
+         والتفاعلُ يعيد عدَّ توارِي الأزرار (D-764) */
       wantSound = wantOn;
+      pokeControls();
       if (activeIsFile()) {
         dom.video.muted = !wantOn;
         if (wantOn) dom.video.volume = 1;
@@ -1123,6 +1165,7 @@ function createEngine(
        فوراً والعدّادُ يصحّح بعده (كوصفة الصوت) */
     seekTo(seconds: number) {
       if (!activeId) return;
+      pokeControls();
       const t = readTime();
       const total = t?.total ?? 0;
       const target = Math.max(0, total > 0 ? Math.min(seconds, total - 0.5) : seconds);
@@ -1137,6 +1180,12 @@ function createEngine(
     toggleExpand() {
       if (!activeId && !expandedFlag) return;
       setExpanded(!expandedFlag);
+      pokeControls();
+    },
+
+    /* 🆕 D-764: لمسةُ سطحٍ والأزرارُ متواريةٌ = أظهِرها ولا توقف */
+    pokeControls() {
+      pokeControls();
     },
 
     destroy() {
@@ -1150,6 +1199,7 @@ function createEngine(
         verifyTimer = null;
       }
       stopVeilProbe();
+      clearControlsTimer();
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("scroll", alignOverlay, { capture: true });
       window.removeEventListener("resize", alignOverlay);
@@ -1210,6 +1260,7 @@ export function TrailerPlayback({
     time: null,
     manualOnly: false,
     expanded: false,
+    controlsVisible: true,
   });
   const subsRef = useRef(new Set<() => void>());
   const engineRef = useRef<Engine | null>(null);
@@ -1304,6 +1355,9 @@ export function TrailerPlayback({
   const toggleExpand = useCallback(() => {
     engineRef.current?.toggleExpand();
   }, []);
+  const pokeControls = useCallback(() => {
+    engineRef.current?.pokeControls();
+  }, []);
   const subscribe = useCallback((cb: () => void) => {
     subsRef.current.add(cb);
     return () => {
@@ -1321,6 +1375,7 @@ export function TrailerPlayback({
       tapPause,
       seekTo,
       toggleExpand,
+      pokeControls,
       subscribe,
       getSnapshot,
     }),
@@ -1332,6 +1387,7 @@ export function TrailerPlayback({
       tapPause,
       seekTo,
       toggleExpand,
+      pokeControls,
       subscribe,
       getSnapshot,
     ],
@@ -1377,6 +1433,32 @@ export function clockText(sec: number): string {
 }
 
 /**
+ * 🆕 **مؤشّرُ التحميل الدائريّ** (D-764، طلب أحمد: «مايحسبه معلّق أو
+ * خربان») — يظهر أثناء «loading» وحدَها، **وبتأخيرِ ٣٥٠م.ث** كي لا
+ * يومض على الترقيات اللحظيّة؛ التعثّرُ (٨ ثوانٍ) له زرُّه لا مؤشّر.
+ */
+export function TrailerSpinner({ active }: { active: boolean }) {
+  const [show, setShow] = useState(false);
+  const activeRef = useRef(active);
+  useEffect(() => {
+    /* لا setState متزامناً داخل الأثر (قاعدة المُجمِّع) — الكتابةُ في
+       المهلة وحدَها، والعرضُ محكومٌ بـ`active` مباشرةً */
+    activeRef.current = active;
+    if (!active) return;
+    const t = window.setTimeout(() => {
+      if (activeRef.current) setShow(true);
+    }, 350);
+    return () => window.clearTimeout(t);
+  }, [active]);
+  if (!active || !show) return null;
+  return (
+    <span className="pointer-events-none absolute inset-0 z-50 grid place-items-center">
+      <span className="h-10 w-10 animate-spin rounded-full border-[2.5px] border-white/25 border-t-white/90" />
+    </span>
+  );
+}
+
+/**
  * ⚖️ **شريطُ التقديم عاد بطلب أحمد** («تقديم وتأخير» — نقضُ حذفِ D-759
  * سابعًا). سحبٌ ولمسٌ بأحداث المؤشّر مع أسرِها، و`touch-action: none`
  * كي لا يخطف تمريرُ الصفحة السحبةَ — والقيمةُ لا تُرسل إلا عند الإفلات.
@@ -1385,10 +1467,13 @@ export function TrailerScrubber({
   time,
   onSeek,
   label,
+  active = true,
 }: {
   time: { now: number; total: number };
   onSeek: (seconds: number) => void;
   label: string;
+  /** D-764: شريطٌ متوارٍ لا يلتقط اللمس — كي لا يُقدِّم من لا يراه */
+  active?: boolean;
 }) {
   const [dragPct, setDragPct] = useState<number | null>(null);
   const bar = useRef<HTMLDivElement>(null);
@@ -1408,7 +1493,7 @@ export function TrailerScrubber({
       aria-valuemin={0}
       aria-valuemax={Math.round(time.total)}
       aria-valuenow={Math.round(pct * time.total)}
-      className="pointer-events-auto flex h-7 cursor-pointer items-center"
+      className={`${active ? "pointer-events-auto" : "pointer-events-none"} flex h-7 cursor-pointer items-center`}
       style={{ touchAction: "none" }}
       onPointerDown={(e) => {
         e.currentTarget.setPointerCapture(e.pointerId);
@@ -1446,17 +1531,24 @@ function ExpandedUi({ api, labels }: { api: ControllerApi; labels: TrailerExpand
   const snap = useSyncExternalStore(api.subscribe, api.getSnapshot, api.getSnapshot);
   if (!snap.expanded) return null;
   const playing = snap.phase === "playing";
+  const controls = snap.controlsVisible;
+  /* D-764: أزرارٌ تتوارى بعد ٥ ثوانِ تشغيل — والفئةُ واحدةٌ للثلاثة والشريط */
+  const fade = `transition-opacity duration-300 ${controls ? "opacity-100" : "pointer-events-none opacity-0"}`;
   const showsPlay =
     snap.phase === "paused" || snap.phase === "blocked" || snap.phase === "stalled";
   return (
     <div className="fixed inset-0 z-[60]">
-      {/* سطحُ الإيقاف/الاستئناف — الطبقةُ كلُّها ضغطةٌ واحدة */}
+      {/* سطحُ الطبقة كلِّها: متواريةُ الأزرار → أظهِرها؛ ظاهرتُها → أوقف */}
       <button
         type="button"
         aria-label={playing ? labels.pause : labels.play}
         onClick={() => {
-          if (playing) api.tapPause();
-          else if (snap.activeId) api.tapPlay(snap.activeId);
+          if (playing) {
+            if (!controls) api.pokeControls();
+            else api.tapPause();
+          } else if (snap.activeId) {
+            api.tapPlay(snap.activeId);
+          }
         }}
         className="absolute inset-0"
       >
@@ -1466,11 +1558,12 @@ function ExpandedUi({ api, labels }: { api: ControllerApi; labels: TrailerExpand
           </span>
         ) : null}
       </button>
+      <TrailerSpinner active={snap.phase === "loading"} />
       <button
         type="button"
         aria-label={labels.collapse}
         onClick={() => api.toggleExpand()}
-        className="absolute start-3 top-[max(0.75rem,env(safe-area-inset-top))] z-10 grid h-10 w-10 place-items-center rounded-full bg-black/55 text-white backdrop-blur-sm transition active:opacity-70"
+        className={`absolute start-3 top-[max(0.75rem,env(safe-area-inset-top))] z-10 grid h-10 w-10 place-items-center rounded-full bg-black/55 text-white backdrop-blur-sm active:opacity-70 ${fade}`}
       >
         <Icon name="close" size={19} />
       </button>
@@ -1478,13 +1571,20 @@ function ExpandedUi({ api, labels }: { api: ControllerApi; labels: TrailerExpand
         type="button"
         aria-label={snap.soundOn ? labels.mute : labels.unmute}
         onClick={() => api.tapSound()}
-        className="absolute end-3 top-[max(0.75rem,env(safe-area-inset-top))] z-10 grid h-10 w-10 place-items-center rounded-full bg-black/55 text-white backdrop-blur-sm transition active:opacity-70"
+        className={`absolute end-3 top-[max(0.75rem,env(safe-area-inset-top))] z-10 grid h-10 w-10 place-items-center rounded-full bg-black/55 text-white backdrop-blur-sm active:opacity-70 ${fade}`}
       >
         <Icon name={snap.soundOn ? "volume" : "volume-off"} size={18} />
       </button>
       {snap.time ? (
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/70 to-transparent px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-8">
-          <TrailerScrubber time={snap.time} onSeek={api.seekTo} label={labels.seek} />
+        <div
+          className={`pointer-events-none absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/70 to-transparent px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-8 ${fade}`}
+        >
+          <TrailerScrubber
+            time={snap.time}
+            onSeek={api.seekTo}
+            label={labels.seek}
+            active={controls}
+          />
           <span dir="ltr" className="block text-12 tabular-nums text-white/90">
             {clockText(snap.time.now)} / {clockText(snap.time.total)}
           </span>
