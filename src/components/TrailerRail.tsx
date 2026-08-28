@@ -4,14 +4,14 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { PosterRail } from "./PosterRail";
 import { RailScroll } from "./RailScroll";
-import { TrailerPlayer } from "./TrailerPlayer";
+import { TrailerPlayback } from "./trailers/TrailerPlaybackController";
+import { TrailerCardMedia } from "./trailers/TrailerCardMedia";
 import { Icon } from "./Icon";
 import {
   trailerKeyOf,
   trailerTitleHref,
   useTrailerFollow,
   useTrailerSlots,
-  useTrailerSound,
 } from "@/lib/trailerCard";
 import { getDict, type Locale } from "@/lib/i18n";
 import type { TrailerItem, TrailerScope } from "@/lib/trailers";
@@ -26,10 +26,9 @@ import type { TrailerItem, TrailerScope } from "@/lib/trailers";
  * تُقرأ بطاقةً واحدةً لا صفّاً**، **والطرَفُ الظاهرُ يقول «مرّر» بلا
  * كلمة** (D-755).
  *
- * ⚠️ **ومشغّلٌ لكلِّ بطاقةٍ لا يعني مشغّلاتٍ كثيرة**: **الإطارُ لا
- * يُركَّب حتى يأتيَ البطاقةَ الدور** (D-756)، **وحارسُ الواحديّة يوقف
- * السابقةَ حين تطالب اللاحقةُ به** (D-726) — **فشرطُ «لا تنشئ عدّة
- * مشغّلات دفعةً واحدة» تنفّذه الرؤيةُ لا عدّادٌ نكتبه.**
+ * 🔴 **ومشغّلٌ واحدٌ للسطح كلِّه** (D-759، مواصفةُ أحمد): البطاقاتُ
+ * صورٌ وأزرارٌ فقط، **والمشغّلُ طبقةُ `TrailerPlayback` الواحدة** —
+ * فلا iframe لكلِّ بطاقةٍ ولا تداخلَ مقاطعَ أصلاً.
  *
  * ⚠️ **و`RailScroll` هي الحاوية** (القاعدة ٣)، **والوصفاتُ المشتركةُ مع
  * العلف في `trailerCard.ts`** (D-756).
@@ -52,7 +51,6 @@ export function TrailerRail({
   const t = getDict(locale);
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { muted, changeMuted } = useTrailerSound(soundOn);
   const { added, addToList } = useTrailerFollow();
   const { slots, retire } = useTrailerSlots(items, RAIL_SLOTS);
 
@@ -66,6 +64,8 @@ export function TrailerRail({
 
   return (
     <PosterRail bare title={t.trailersForYou} icon="play" href={feedHref()} seeAllLabel={t.seeAll}>
+      {/* متحكّمٌ واحدٌ للسطح كلِّه — مشغّلٌ واحدٌ في DOM (D-759) */}
+      <TrailerPlayback soundPref={soundOn}>
       <RailScroll prevLabel="السابق / Previous" nextLabel="التالي / Next">
         {slots.map((i, index) => {
           const k = trailerKeyOf(i);
@@ -84,25 +84,18 @@ export function TrailerRail({
                  (١٠٣٠×٥٨٠) فتدفع ما تحتها لأسفل. */
               className="snap-start shrink-0 w-[min(92vw,1030px)] rounded-2xl border border-border bg-surface overflow-hidden"
             >
-              <TrailerPlayer
-                videoKey={i.videoKey}
-                videoKeys={i.videoKeys}
-                fileUrl={i.fileUrl}
+              <TrailerCardMedia
+                id={k}
+                item={{ keys: i.videoKeys, fileUrl: i.fileUrl, title: i.title }}
                 backdrop={i.backdrop}
                 title={i.title}
-                muted={muted}
-                onMutedChange={changeMuted}
-                playLabel={t.trailerPlay}
-                muteLabel={t.trailerMute}
-                unmuteLabel={t.trailerUnmute}
-                seekLabel={t.trailerSeek}
-                className="aspect-video w-full"
-                /* 🆕 **وأوّلُ بطاقةٍ فوق الطيّة** (D-756): **صورتُها أوّلُ
-                   ما تراه العينُ في اكتشف** — **والتأجيلُ لما يُرى الآن
-                   تأخيرٌ لا اقتصاد.** */
+                /* أوّلُ بطاقةٍ فوق الطيّة (D-756): صورتُها بأولويّة */
                 eager={index === 0}
                 href={feedHref(i)}
                 openLabel={i.title}
+                playLabel={t.trailerPlay}
+                muteLabel={t.trailerMute}
+                unmuteLabel={t.trailerUnmute}
                 onUnavailable={() => retire(k)}
               />
 
@@ -148,6 +141,7 @@ export function TrailerRail({
           );
         })}
       </RailScroll>
+      </TrailerPlayback>
     </PosterRail>
   );
 }
