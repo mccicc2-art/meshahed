@@ -77,8 +77,13 @@ export default async function MessagesPage({
     },
   ];
 
-  return (
-    <div className="space-y-4">
+  /* 🆕 D-767 (طلب أحمد: «الصف اللي فوقه ما نحتاجه — نكتفي بزر الرجوع»):
+     داخل خيطٍ مفتوحٍ لا تبويباتِ ولا تلميح — الترويسةُ للمحادثة وحدَها،
+     وزرُّ الرجوع يعيد إلى القائمة بتبويباتها. والحكمُ عند لوح الرسائل لا
+     هنا: هو من يعرف إن كان `?with=` خيطاً قائماً فعلاً — رابطٌ لخيطٍ
+     زال يسقط إلى القائمة فتعود التبويباتُ معها. */
+  const header = (
+    <>
       <OneTimeHint id="messages-intro" text={t.hintMessages} closeLabel={t.closeLabel} />
       <PageTabs
         items={tabs}
@@ -86,7 +91,19 @@ export default async function MessagesPage({
         ariaLabel={t.communityTabInbox}
         asNav
       />
-      {alerts ? <AlertsPane locale={locale} /> : <InboxPane locale={locale} withParam={withParam ?? null} />}
+    </>
+  );
+
+  return (
+    <div className="space-y-4">
+      {alerts ? (
+        <>
+          {header}
+          <AlertsPane locale={locale} />
+        </>
+      ) : (
+        <InboxPane locale={locale} withParam={withParam ?? null} header={header} />
+      )}
     </div>
   );
 }
@@ -103,13 +120,17 @@ async function AlertsPane({ locale }: { locale: Awaited<ReturnType<typeof getT>>
   );
 }
 
-/** لوحُ الرسائل — منقولٌ بحرفه من الصفحة السابقة */
+/** لوحُ الرسائل — منقولٌ بحرفه من الصفحة السابقة.
+ *  🆕 D-767: يحمل ترويسةَ الصفحة (التلميح + التبويبات) ليُسقطها حين يكون
+ *  `?with=` خيطاً قائماً فعلاً — القرارُ حيث المعرفة، لا في الصفحة العمياء */
 async function InboxPane({
   locale,
   withParam,
+  header,
 }: {
   locale: Awaited<ReturnType<typeof getT>>["locale"];
   withParam: string | null;
+  header: React.ReactNode;
 }) {
   /* 🆕 D-765: آخرُ ظهورِ صاحبِ الخيط المفتوح — مع المحادثات في موجةٍ
      واحدة (لا نداءَ إلا وخيطٌ مفتوحٌ فعلاً)، ويتجدّد مع استطلاع الخيط */
@@ -135,13 +156,19 @@ async function InboxPane({
     (p: PersonLite) => !withConv.has(p.id),
   );
 
+  /* داخل خيطٍ مفتوحٍ تسقط الترويسة — «نكتفي بزر الرجوع» (D-767) */
+  const threadOpen = !!withParam && conversations.some((c) => c.personId === withParam);
+
   return (
-    <Inbox
-      conversations={conversations}
-      startable={startable}
-      openWith={withParam}
-      locale={locale}
-      lastSeen={lastSeen}
-    />
+    <>
+      {!threadOpen && header}
+      <Inbox
+        conversations={conversations}
+        startable={startable}
+        openWith={withParam}
+        locale={locale}
+        lastSeen={lastSeen}
+      />
+    </>
   );
 }
