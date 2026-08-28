@@ -79,7 +79,13 @@ export interface TrailerItem {
   note?: string;
 }
 
-/** كم عملاً يُسأل عن مقطعه — **وما زاد على الحاجة ثمنُه نداءٌ لا يُعرض** */
+/**
+ * **أرضيّةُ المسبار** — كم عملاً يُسأل عن مقطعه على الأقلّ.
+ * ⚠️ **واسمُه صار أرضيّةً لا عدداً منذ D-756**: **الرقمُ الفعليُّ من
+ * `probeFor(limit)`** — **وثابتٌ تغيّر معناه ولم يتغيّر تعليقُه يكذب على
+ * أوّل قارئٍ بعده.**
+ * **وما زاد على الحاجة ثمنُه نداءٌ لا يُعرض.**
+ */
 const PROBE = 14;
 
 /**
@@ -116,6 +122,23 @@ function drawKey(): number {
  * **والقصُّ عندنا بعد القراءة لا عندها.**
  */
 const POOL = 300;
+
+/**
+ * 🔴 🆕 **والمسبارُ يتبع المطلوب لا رقماً واحداً للجميع** (D-756).
+ *
+ * **رفعتُ سقفَ العلف من ١٢ إلى ١٤ ليبقى فائضٌ تُملأ منه الخانات، والمسبارُ
+ * ١٤ على حاله** — **فالفائضُ لا وجودَ له إلّا إن كان لكلِّ أربعةَ عشرَ
+ * عملاً ترايلر**، **وسقفٌ يساوي مسبارَه فائضُه صفرٌ بالتعريف.**
+ * 🔑 **والقاعدةُ مكتوبةٌ في رأس هذا الملفّ منذ D-726**: «**يُطلب ضِعفُ
+ * المطلوب تقريباً ثمّ يُقصّ بعد التصفية**» — **ورفعُ السقف بلا رفع
+ * المسبار نقضٌ لها بلا أن يُقصد.**
+ * ⚠️ **ورايلُ اكتشف لا يدفع شيئاً**: ستٌّ تُعرض وتسعٌ تُطلب **فيبقى
+ * مسبارُه أربعةَ عشرَ كما كان** — **والسطحُ الذي طُلبت له السرعةُ لا
+ * يُحمَّل ثمنَ سطحٍ آخر.**
+ */
+function probeFor(limit: number): number {
+  return Math.min(24, Math.max(PROBE, Math.ceil(limit * 1.5)));
+}
 
 /**
  * 🔴 **والتبويبُ فلترٌ لا زينة** (D-731، بلاغُ أحمد: «في صفحة الأفلام
@@ -169,11 +192,13 @@ async function shape(
   rows: SearchResult[],
   locale: Locale,
   limit: number,
-  note?: (r: SearchResult) => string,
   /* 🆕 **والمسبارُ وسيطٌ لا ثابتٌ مخبوء** (D-739): **الوصفةُ واحدةٌ
      للتبويبات الخمسة والمتبدِّلُ سعةُ الغرفة لا شكلُها** — **وفرعٌ
-     `if (tab === "anime")` داخل الوصفة هو كيف تفترق الوصفةُ يوماً.** */
-  probe: number = PROBE,
+     `if (tab === "anime")` داخل الوصفة هو كيف تفترق الوصفةُ يوماً.**
+     ⚠️ **وهو قبل `note` لا بعده** (D-756): **كلُّ مُنادٍ يمرّره
+     و`note` وحدَه اختياريّ** — **ووسيطٌ واجبٌ خلف اختياريٍّ لا يُترجَم.** */
+  probe: number,
+  note?: (r: SearchResult) => string | undefined,
 ): Promise<TrailerItem[]> {
   const withKeys = await Promise.all(
     rows.slice(0, probe).map(async (r): Promise<TrailerItem | null> => {
@@ -189,11 +214,17 @@ async function shape(
         title: titleOf(r),
         videoKey: trailer.keys[0],
         videoKeys: trailer.keys,
-        backdrop: backdropUrl(r.backdrop_path ?? null, "w780"),
+        /* 🆕 **والغلافُ `w1280` لا `w780`** (D-756): **البطاقةُ تبلغ
+           ١٠٣٠px على سطح المكتب** (D-755) **فمصدرٌ بعرض ٧٨٠ يُمطّ**،
+           **والصورةُ هي كلُّ ما يُرى قبل أوّل إطارٍ وبعد كلِّ توقّف.**
+           ⚠️ **ولا كلفةَ شبكةٍ على القارئ**: **`/_next/image` يقصّها إلى
+           مقاس مكانها ويخبّئها** — **والأكبرُ مصدرٌ أنقى لا حمولةٌ أثقل.** */
+        backdrop: backdropUrl(r.backdrop_path ?? null, "w1280"),
         posterPath: r.poster_path ?? null,
         year: yearOf(r) ?? "",
         genre: g ? browseGenreName(g, locale) : null,
         country,
+        /* **والفارغُ يُكتب غائباً لا سلسلةً فارغة** (D-167/D-222) */
         overview: r.overview?.trim() || null,
         note: note?.(r),
       };
@@ -214,12 +245,12 @@ export async function getTrailerTabFeed(
   if (tab === "for-you") return getTrailerFeed(limit, locale);
   if (tab === "trending") {
     const rows = await trending().catch(() => []);
-    return shape(rows, locale, limit);
+    return shape(rows, locale, limit, probeFor(limit));
   }
   const media = tab === "anime" ? "anime" : tab === "movies" ? "movie" : "tv";
   /* 🆕 **والأنمي يُسحب أوسعَ ويُسبر أوسع** (D-739): **توسيعُ المسبار
      بلا توسيع السحب لا يجد ما يسبره** — الرقمُ الواحدُ يخدم الطرفين. */
-  const probe = tab === "anime" ? PROBE_ANIME : PROBE;
+  const probe = tab === "anime" ? PROBE_ANIME : probeFor(limit);
   /* 🔴 🆕 **ومفتاحُ الأنمي شرطُ المصدر لا حارسٌ بعده** (D-739، بعد قياسٍ
      حيٍّ أثبت أن توسيع المسبار وحدَه لم يرفع الأربعةَ صفّاً واحداً):
      **كنتُ أطلب «الأكثرَ شعبيّةً» عامّاً ثمّ أُسقط ما ليس أنمي** —
@@ -244,7 +275,7 @@ export async function getTrailerTabFeed(
     },
     probe,
   ).catch(() => []);
-  return shape(shuffleSeeded(rows, drawKey()), locale, limit, undefined, probe);
+  return shape(shuffleSeeded(rows, drawKey()), locale, limit, probe);
 }
 
 export async function getTrailerFeed(
@@ -288,40 +319,35 @@ export async function getTrailerFeed(
           (suggestion.result.media_type === "movie" ? "movie" : "tv") === pin.mediaType,
       )
     : undefined;
-  const shuffled = shuffleSeeded(inScope.slice(0, PROBE * 3), drawKey()).filter(
+  const probe = probeFor(limit);
+  const shuffled = shuffleSeeded(inScope.slice(0, probe * 3), drawKey()).filter(
     (suggestion) => suggestion !== pinned,
   );
-  const pool = (pinned ? [pinned, ...shuffled] : shuffled).slice(0, PROBE);
+  const pool = (pinned ? [pinned, ...shuffled] : shuffled).slice(0, probe);
   if (!pool.length) return [];
 
-  const withKeys = await Promise.all(
-    pool.map(async (s): Promise<TrailerItem | null> => {
-      const mediaType = s.result.media_type === "movie" ? ("movie" as const) : ("tv" as const);
-      const trailer = await getTrailerKeys(mediaType, s.result.id).catch(() => null);
-      if (!trailer?.keys.length) return null;
-      const g = s.result.genre_ids?.length ? browseGenreForId(s.result.genre_ids[0]) : null;
-      /* **والنوعُ يُعلَن `string | null` صراحةً**: `[0]` يُستنتج `string`
-         بلا `noUncheckedIndexedAccess`، **فيضيق نوعُ الصفِّ عن العقد
-         ويسقط حارسُ التصفية أدناه** — عطلٌ يمسكه المترجِم. */
-      const country: string | null =
-        originAdjectives({ origin: s.result.origin_country }, locale === "en" ? "en" : "ar", 1)[0] ?? null;
-      return {
-        tmdbId: s.result.id,
-        mediaType,
-        title: titleOf(s.result),
-        videoKey: trailer.keys[0],
-        videoKeys: trailer.keys,
-        backdrop: backdropUrl(s.result.backdrop_path ?? null, "w780"),
-        posterPath: s.result.poster_path ?? null,
-        year: yearOf(s.result) ?? "",
-        genre: g ? browseGenreName(g, locale) : null,
-        country,
-        /* **والفارغُ يُكتب غائباً لا سلسلةً فارغة** (D-167/D-222) */
-        overview: s.result.overview?.trim() || null,
-        note: s.seedTitle ? t.recoFrom(s.seedTitle) : t.recoFromGenre,
-      };
-    }),
+  /**
+   * 🔴 🆕 **ووصفةُ البطاقة واحدةٌ للتبويبات الخمسة** (D-756، القاعدة ٣):
+   * **كانت مكتوبةً هنا مرّةً وفي `shape` مرّةً، والفرقُ بينهما حقلُ
+   * `note` وحدَه** — **و`shape` تقبل `note` وسيطاً منذ D-734.**
+   * 🔑 **ونسختان تفترقان عند أوّل تعديلٍ في خانة**: **رفعُ الغلاف إلى
+   * `w1280` كان سيقع في إحداهما ويُنسى في الأخرى** (D-002/D-733).
+   * ⚠️ **والسببُ يُحمَل في خريطةٍ لا يُعاد حسابُه**: **`shape` تقرأ صفَّ
+   * TMDB ولا تعرف بِذرةَ الترشيح** — **والمفتاحُ بالجهة والمعرّف معاً**
+   * فلا يصطدم فيلمٌ بمسلسلٍ يحمل الرقمَ نفسَه.
+   */
+  const noteOf = new Map(
+    pool.map((s) => [
+      `${s.result.media_type === "movie" ? "movie" : "tv"}-${s.result.id}`,
+      s.seedTitle ? t.recoFrom(s.seedTitle) : t.recoFromGenre,
+    ]),
   );
 
-  return withKeys.filter((x): x is TrailerItem => x !== null).slice(0, limit);
+  return shape(
+    pool.map((s) => s.result),
+    locale,
+    limit,
+    probe,
+    (r) => noteOf.get(`${r.media_type === "movie" ? "movie" : "tv"}-${r.id}`),
+  );
 }
