@@ -1434,21 +1434,6 @@ const ar = {
   invStSubscribed: "مشترك",
   invStRejected: "مرفوضة",
   invEmpty: "لم ينضم أحد بعد — شارك رابطك أول مرة",
-  /* ⏳ مفاتيح شكل D-770 الأول — تعيش قيدَ رفعةٍ واحدة حتى تحلّ صفحةُ
-     D-770b محلَّ مستهلكِها الوحيد، ثم تحذفها رفعةُ التنظيف */
-  invProgress: "تقدّمك نحو الشهر التالي",
-  invProgressHint: (n: string, of: string) => `${n} من ${of} دعوات محتسبة`,
-  invStatDays: "أيام Loopz+ كسبتها",
-  invRule7: "٧ أيام Loopz+ لك عن كل دعوة محتسبة",
-  invRuleMonth: "وكل ٥ دعوات محتسبة = شهر إضافي كامل",
-  invRuleGift14: "صديقك يكسب ١٤ يوم Loopz+ حين تُحتسب دعوته",
-  invRuleQualify:
-    "تُحتسب الدعوة بعد متابعة ٥ أعمال ونشاط في ٣ أيام مختلفة خلال أول ١٤ يوماً",
-  invRuleSubscribe: "و١٤ يوماً إضافية لك إذا اشترك صديقك — تُفعَّل مع فتح الاشتراكات",
-  invRuleCap: "الحد الأقصى ١٢ شهراً مكسوباً في السنة",
-  prtIntroTitle: "برنامج شركاء Loopz",
-  prtIntroBody:
-    "لصنّاع المحتوى: رابط خاص، إحصاءات مباشرة، وعمولة عن كل مشترك يأتي عن طريقك",
   prtEntryTitle: "تصنع محتوى؟ انضم إلى Loopz Partners",
   prtEntryBody: "اكسب ١٥٪ من المشتركين المباشرين",
   prtLearnMore: "اعرف أكثر",
@@ -2923,20 +2908,6 @@ const en: Dict = {
   invStSubscribed: "Paid",
   invStRejected: "Rejected",
   invEmpty: "No one has joined yet — share your link for the first time",
-  /* transitional D-770 v1 keys — removed by the cleanup commit */
-  invProgress: "Progress to your next month",
-  invProgressHint: (n: string, of: string) => `${n} of ${of} qualified invites`,
-  invStatDays: "Loopz+ days earned",
-  invRule7: "7 days of Loopz+ for every qualified invite",
-  invRuleMonth: "And every 5 qualified invites = a full extra month",
-  invRuleGift14: "Your friend earns 14 days of Loopz+ once their invite qualifies",
-  invRuleQualify:
-    "An invite qualifies after tracking 5 titles and being active on 3 separate days within the first 14 days",
-  invRuleSubscribe: "Plus 14 extra days for you if your friend subscribes — activates when subscriptions open",
-  invRuleCap: "Capped at 12 earned months per year",
-  prtIntroTitle: "Loopz Partners program",
-  prtIntroBody:
-    "For content creators: a dedicated link, live stats, and a commission for every subscriber you bring",
   prtEntryTitle: "Create content? Join Loopz Partners",
   prtEntryBody: "Earn 15% from direct subscribers",
   prtLearnMore: "Learn more",
