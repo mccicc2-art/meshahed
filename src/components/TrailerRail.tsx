@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { usePathname, useSearchParams } from "next/navigation";
 import { PosterRail } from "./PosterRail";
 import { RailScroll } from "./RailScroll";
 import { TrailerPlayer } from "./TrailerPlayer";
@@ -11,7 +10,7 @@ import { follow } from "@/lib/actions";
 import { writeTrailerSound } from "@/lib/trailerPrefs";
 import { flashError } from "@/lib/toast";
 import { getDict, type Locale } from "@/lib/i18n";
-import type { TrailerItem, TrailerScope } from "@/lib/trailers";
+import type { TrailerItem } from "@/lib/trailers";
 
 /**
  * 🆕 **صفُّ «ترايلرات لك» في اكتشف** (D-726 → D-728).
@@ -38,35 +37,27 @@ export function TrailerRail({
   items,
   locale,
   soundOn,
-  scope,
 }: {
   items: TrailerItem[];
   locale: Locale;
   soundOn: boolean;
-  scope: TrailerScope;
 }) {
   const t = getDict(locale);
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
   /* **والصمتُ حالةُ الصفّ كلِّه لا حالةُ بطاقة** — يُرفع هنا فترثه
      البطاقاتُ كلُّها، **ويُكتب في الكوكي ليعيش بعد الإغلاق.** */
   const [muted, setMuted] = useState(!soundOn);
   const [added, setAdded] = useState<ReadonlySet<string>>(new Set());
-  const [unavailable, setUnavailable] = useState<ReadonlySet<string>>(new Set());
 
   if (!items.length) return null;
   const keyOf = (i: TrailerItem) => `${i.mediaType}-${i.tmdbId}`;
-  const origin = `${pathname}${searchParams.size ? `?${searchParams.toString()}` : ""}`;
-  const feedHref = (i?: TrailerItem) => {
-    const params = new URLSearchParams({ scope, from: origin });
-    if (i) params.set("at", keyOf(i));
-    return `/trailers?${params.toString()}`;
-  };
+  const feedHref = (i: TrailerItem) => `/trailers?at=${keyOf(i)}`;
 
   function changeMuted(next: boolean) {
     setMuted(next);
-    /* `next` هو وضع الكتم، والكوكي يحفظ وضع الصوت. */
-    writeTrailerSound(!next);
+    /* 🔴 **والكوكي يُكتب هنا لا على الخادم** (D-747): **الفعلُ
+       الخادميُّ يُعيد رسمَ الصفحة كلَّها** — **فضغطةُ سماعةٍ كانت
+       تُعيد بناءَ الصفِّ الذي تنظر إليه.** */
+    writeTrailerSound(next);
   }
 
   function addToList(i: TrailerItem) {
@@ -84,18 +75,31 @@ export function TrailerRail({
     );
   }
 
-  const shown = items.filter((item) => !unavailable.has(keyOf(item)));
-  if (!shown.length) return null;
-
   return (
-    <PosterRail bare title={t.trailersForYou} icon="play" href={feedHref()} seeAllLabel={t.seeAll}>
+    <PosterRail bare title={t.trailersForYou} icon="play" href="/trailers" seeAllLabel={t.seeAll}>
       <RailScroll prevLabel="السابق / Previous" nextLabel="التالي / Next">
-        {shown.map((i) => {
+        {items.map((i) => {
           const isAdded = added.has(keyOf(i));
           return (
             <div
               key={keyOf(i)}
-              className="snap-start shrink-0 w-[min(92vw,560px)] rounded-2xl border border-border bg-surface overflow-hidden"
+              /* 🔴 🆕 **بطاقةٌ واحدةٌ والثانيةُ طرَفٌ — على كلِّ عرض**
+                 (D-751، حكمُ أحمد بلقطةٍ من سطح المكتب: «المفروض مقطع
+                 فيديو واحد والثاني يبان طرفه مثل الجوال»).
+                 🔑 **والسقفُ ٥٦٠ كان يُنتج بطاقتين كاملتين بالضبط**:
+                 مساحةُ الرافّة المرئيّة ١١٢٠px (`max-w-6xl` بحشوةِ ١٦)،
+                 **و٥٦٠+١٢+٥٦٠ = ١١٣٢ فتدخل الثانيةُ كاملةً** — **ورقمٌ
+                 صحيحٌ لعرضٍ واحدٍ يصير خطأً في الثاني.**
+                 🔑 **والقاعدة: الطرَفُ وعدٌ لا زينة** — **بطاقتان
+                 كاملتان تقولان «هذا كلُّ ما هناك»، والطرَفُ يقول «وراءه
+                 المزيد»** (D-198). **فالعرضُ يتبع الحاوية لا الشاشة.**
+                 ⚠️ **والثمنُ معلَن**: **البطاقةُ تكبر على الشاشات
+                 العريضة** (١٠٣٠×٥٨٠) **فتدفع ما تحتها لأسفل** — وهو ما
+                 اختاره بعد أن رأى الحالين.
+                 ⚠️ **وأثرٌ جانبيٌّ نافع**: **بطاقةٌ بهذا العرض لا تُزاحم
+                 أختَها على الدور** — **فحارسُ D-744 يستريح على سطح
+                 المكتب كما يستريح على الجوّال.** */
+              className="snap-start shrink-0 w-[min(92vw,1030px)] rounded-2xl border border-border bg-surface overflow-hidden"
             >
               <TrailerPlayer
                 videoKey={i.videoKey}
@@ -111,9 +115,6 @@ export function TrailerRail({
                 className="aspect-video w-full"
                 href={feedHref(i)}
                 openLabel={i.title}
-                onUnavailable={() =>
-                  setUnavailable((previous) => new Set(previous).add(keyOf(i)))
-                }
               />
 
               <div className="flex items-center gap-3 px-3.5 py-3">
