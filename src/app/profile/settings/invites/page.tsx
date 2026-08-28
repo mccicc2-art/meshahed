@@ -18,32 +18,27 @@ import { displayNameOf } from "@/lib/people";
 import { Avatar } from "@/components/Avatar";
 import { Icon } from "@/components/Icon";
 import { buttonClass } from "@/components/ui/Button";
-import { segmentedTrackFull, segmentedItem } from "@/components/ui/controls";
 import { SettingsPageLayout } from "@/components/settings/SettingsPageLayout";
-import { SettingsGroup, settingsCard } from "@/components/settings/SettingsGroup";
+import { SettingsGroup, settingsCard, settingsCardRows } from "@/components/settings/SettingsGroup";
 import { InviteLinkCard } from "@/components/settings/InviteLinkCard";
 
 export const dynamic = "force-dynamic";
 
 /**
- * 🆕 **«الدعوات والمكافآت» — النموذجُ النهائيّ بتبويبين** (D-770، نسخ
- * D-768 بحكمَيه: «الاثنان معاً» و«بلا قسم الأموال مؤقتاً»).
+ * 🆕 **«الدعوات والمكافآت» — على نموذجَي أحمد بالضبط** (D-770b، حكمُه
+ * بلقطتين: «صممها مثل هذي بالضبط» — وهما نسخُ شكلِ D-770 الأول).
  *
- * **تبويبان لصفحةٍ واحدة** (`?tab=partners` — عائلةُ المقسّم نفسُها لا
- * ثالثة): جمهورا البرنامجَين مختلفان — كلُّ عضوٍ يدعو أصدقاءه، وصانعُ
- * المحتوى يتقدّم بطلب — **وخلطُهما في عمودٍ واحد يجعل ٩٠٪ من الزوّار
- * يقرؤون شروطَ عمولةٍ لا تخصّهم.**
+ * **تبويبان حبّتان** (عائلةُ الرقاقة ممدودةً — لا عائلةَ ثالثة)، وتبويبُ
+ * الأصدقاء: بطاقةُ «N من ٥» بخمس درجات، الرابطُ بزرَّي نسخٍ ومشاركة،
+ * أربعةُ عدّادات، آخرُ الدعوات بحالة فارغةٍ مرسومة، و«كيف تعمل
+ * المكافآت» ثلاثةَ أسطر كما في نموذجه — **وتفصيلُ الاحتساب والسقفِ
+ * خلف «الشروط والأهلية»** (details أهليّ — فلا وعدَ مدفونٌ ولا صفحةَ
+ * مزدحمة: D-217 بلا كسر نموذجه).
  *
- * **تبويبُ الأصدقاء**: تقدّمٌ نحو الشهر (كلُّ ٥ محتسباتٍ شهرٌ — والنقاطُ
- * الخمسُ تُرسم لا تُشرح)، والرابطُ الدائم، وأربعةُ عدّادات، والقواعدُ
- * مكتوبةٌ في وجه الصفحة (روح D-217: لا وعدَ إلا بما يُسلَّم — ومكافأةُ
- * الاشتراك تقول بنصّها «تُفعَّل مع فتح الاشتراكات»).
- *
- * **تبويبُ الشركاء آلةُ حالاتٍ أربع**: لا طلبَ → تعريفٌ ونموذج · قيدُ
- * المراجعة → تاريخٌ وتعديلٌ وسحب · مرفوضٌ → تقديمٌ من جديد · موافَقٌ →
- * لوحةٌ خفيفة: الرابطُ والعدّادان والشروط — **ولا قسمَ أموالٍ ولا زرَّ
- * سحبٍ حتى يُفتح الدفع** (حكمُه بنصّه، وD-217 حرفاً: زرُّ مالٍ لا يعمل
- * فخٌّ لا ميزة).
+ * **وتبويبُ الشركاء آلةُ الحالات الأربع نفسُها** (D-770)، وجهُ ما قبل
+ * التقديم صار نموذجَه: بطاقةُ Share stories + شريطُ ١٥٪/٣/١٠٠ +
+ * «كيف يعمل» + «من يمكنه التقديم؟» — **وApply يفتح النموذجَ**
+ * (`?apply=1`) كما نصَّ. **ولا قسمَ أموالٍ حتى يُفتح الدفع** (حكمُه).
  */
 
 const BASE = "/profile/settings/invites";
@@ -54,7 +49,7 @@ async function submitApplication(formData: FormData) {
   "use server";
   const back = `${BASE}?tab=partners`;
   if (!formData.get("terms")) {
-    redirect(`${back}&err=${encodeURIComponent("الموافقة على الشروط مطلوبة / Terms agreement is required")}`);
+    redirect(`${back}&apply=1&err=${encodeURIComponent("الموافقة على الشروط مطلوبة / Terms agreement is required")}`);
   }
   try {
     await applyPartner({
@@ -67,7 +62,7 @@ async function submitApplication(formData: FormData) {
       reason: String(formData.get("reason") ?? ""),
     });
   } catch (e) {
-    redirect(`${back}&err=${encodeURIComponent((e as Error).message.slice(0, 120))}`);
+    redirect(`${back}&apply=1&err=${encodeURIComponent((e as Error).message.slice(0, 120))}`);
   }
   redirect(back);
 }
@@ -96,6 +91,28 @@ function statusLabel(s: InviteStatus, t: Dict): string {
     case "in_progress": return t.invStProgress;
     default: return t.invStJoined;
   }
+}
+
+/** عنوانُ قسمٍ بنمط النموذج — نصٌّ عريضٌ خارج البطاقة لا تسميةُ مجموعة */
+function SectionTitle({ children, end }: { children: React.ReactNode; end?: React.ReactNode }) {
+  return (
+    <div className="flex items-baseline justify-between px-1 -mb-1">
+      <h2 className="text-15 font-bold">{children}</h2>
+      {end}
+    </div>
+  );
+}
+
+/** «الشروط» خلف سطرٍ مسطَّرٍ يتوسّط الصفحة — كما في النموذج، والمتنُ حاضرٌ بلمسة */
+function Disclosure({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <details>
+      <summary className="block w-fit mx-auto text-14 text-muted underline underline-offset-4 cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+        {label}
+      </summary>
+      <div className="mt-3 text-start">{children}</div>
+    </details>
+  );
 }
 
 /** حقلُ النموذج — سطرُ التسمية فوق الحقل، نسخةٌ واحدةٌ للسبعة */
@@ -132,7 +149,7 @@ function Field({
 export default async function Page({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string; edit?: string; err?: string }>;
+  searchParams: Promise<{ tab?: string; edit?: string; apply?: string; all?: string; err?: string }>;
 }) {
   const user = await getUser();
   if (!user) redirect("/login");
@@ -142,9 +159,8 @@ export default async function Page({
 
   return (
     <SettingsPageLayout title={t.setInvites}>
-      {/* تبويبا الصفحة — عائلةُ المقسّم (D-002)، وروابطُ `replace` فلا
-          يكدّس التنقّلُ بينهما تاريخاً (D-643) */}
-      <nav className={segmentedTrackFull} aria-label={t.setInvites}>
+      {/* تبويبان حبّتان — عائلةُ الرقاقة ممدودةً على عرض الصفّ (نموذجه) */}
+      <nav className="grid grid-cols-2 gap-2" aria-label={t.setInvites}>
         {(
           [
             ["friends", t.invTabFriends, BASE],
@@ -156,17 +172,20 @@ export default async function Page({
             href={href}
             replace
             aria-current={tab === key ? "page" : undefined}
-            className={segmentedItem(
-              tab === key,
-              "flex-1 flex items-center justify-center gap-1.5",
-            )}
+            className={`rounded-full py-2.5 text-center text-14 font-bold transition ${
+              tab === key
+                ? "bg-accent text-[color:var(--on-accent)]"
+                : "bg-surface text-muted hover:text-foreground"
+            }`}
           >
             {label}
           </Link>
         ))}
       </nav>
 
-      {tab === "friends" ? <FriendsTab t={t} locale={locale} /> : (
+      {tab === "friends" ? (
+        <FriendsTab t={t} locale={locale} all={sp.all === "1"} />
+      ) : (
         <PartnersTab t={t} locale={locale} sp={sp} />
       )}
     </SettingsPageLayout>
@@ -175,7 +194,7 @@ export default async function Page({
 
 /* ============================ الأصدقاء ============================ */
 
-async function FriendsTab({ t, locale }: { t: Dict; locale: Locale }) {
+async function FriendsTab({ t, locale, all }: { t: Dict; locale: Locale; all: boolean }) {
   const [code, stats, invites] = await Promise.all([
     getMyReferralCode(),
     getMyInviteStats(),
@@ -183,82 +202,100 @@ async function FriendsTab({ t, locale }: { t: Dict; locale: Locale }) {
   ]);
   const url = code ? siteUrl(`/join/${code}`) : null;
   const toward = stats.qualified % 5;
+  const shown = all ? invites : invites.slice(0, 6);
 
   return (
     <>
-      {/* التقدّمُ نحو الشهر — خمسُ نقاطٍ تُرسم لا تُشرح */}
-      <div className={`${settingsCard} p-3.5`}>
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-14 font-semibold">{t.invProgress}</span>
-          <span className="text-12 text-muted">
-            {t.invProgressHint(num(toward, locale), num(5, locale))}
-          </span>
-        </div>
-        <div className="mt-2.5 flex items-center gap-2">
+      {/* «N من ٥» — الدرجاتُ الخمس تُرسم لا تُشرح (نموذجه حرفاً) */}
+      <div className={`${settingsCard} p-4`}>
+        <p className="text-12 font-semibold uppercase tracking-wide text-muted">
+          {t.invNextReward}
+        </p>
+        <p className="mt-1 flex items-baseline gap-1.5 text-3xl font-extrabold">
+          <span className="tabular-nums">{num(toward, locale)}</span>
+          <span className="text-accent text-22">{t.invOf}</span>
+          <span className="tabular-nums">{num(5, locale)}</span>
+        </p>
+        <p className="text-14 text-muted">{t.invQualified}</p>
+        <div className="mt-3.5 flex items-center" aria-hidden>
           {Array.from({ length: 5 }, (_, i) => (
-            <span
-              key={i}
-              className={`h-2.5 flex-1 rounded-full transition-colors ${
-                i < toward ? "bg-accent" : "bg-surface-2"
-              }`}
-            />
+            <span key={i} className="contents">
+              {i > 0 && <span className="h-px flex-1 bg-[color:var(--divider)] mx-1" />}
+              <span
+                className={`grid size-8 shrink-0 place-items-center rounded-full border text-12 font-bold tabular-nums ${
+                  i < toward
+                    ? "border-accent bg-accent text-[color:var(--on-accent)]"
+                    : "border-border text-muted"
+                }`}
+              >
+                {num(i + 1, locale)}
+              </span>
+            </span>
           ))}
         </div>
+        <p className="mt-3.5 text-14">
+          {t.invStepHintPre}{" "}
+          <span className="font-bold text-accent">{t.invStepHintReward}</span>
+        </p>
       </div>
 
-      <SettingsGroup label={t.invYourLink}>
+      {/* الرابطُ — تسميةٌ صغيرةٌ فوقه كنموذجه، والبطاقةُ تحمل زرَّيها */}
+      <section>
+        <h2 className="px-1 mb-1.5 text-12 font-semibold uppercase tracking-wide text-muted">
+          {t.invYourLink}
+        </h2>
         {url ? (
           <InviteLinkCard url={url} locale={locale} />
         ) : (
-          /* بلا كودٍ (عطلُ قاعدةٍ عارض): لا بطاقةَ ميتةً — الصفحةُ تبقى
-             تشرح البرنامجَ والزيارةُ التاليةُ تولّده */
-          <p className="p-3.5 text-12 text-muted">{t.invEmpty}</p>
+          /* بلا كودٍ (عطلُ قاعدةٍ عارض): لا بطاقةَ ميتةً — الزيارةُ التاليةُ تولّده */
+          <p className={`${settingsCard} p-3.5 text-12 text-muted`}>{t.invEmpty}</p>
         )}
-      </SettingsGroup>
+      </section>
 
-      {/* الأرقامُ الأربعة — سطرٌ واحدٌ متساوي الأعمدة */}
-      <SettingsGroup>
-        <div className="grid grid-cols-4 divide-x divide-[color:var(--divider)] rtl:divide-x-reverse text-center">
-          {(
-            [
-              [stats.joined, t.invStatJoined],
-              [stats.qualified, t.invStatCounted],
-              [stats.subscribed, t.invStatSubscribed],
-              [stats.rewardDays, t.invStatDays],
-            ] as const
-          ).map(([n, label]) => (
-            <div key={label} className="py-3.5 px-1">
-              <span className="block text-22 font-bold tabular-nums" dir="ltr">
-                {num(n, locale)}
-              </span>
-              <span className="block text-12 text-muted mt-0.5">{label}</span>
-            </div>
-          ))}
-        </div>
-      </SettingsGroup>
-
-      {/* القواعدُ مكتوبةٌ لا مخمَّنة — ومكافأةُ الاشتراك تقول بنصّها متى تعمل */}
-      <SettingsGroup>
-        {[
-          t.invRule7,
-          t.invRuleMonth,
-          t.invRuleGift14,
-          t.invRuleQualify,
-          t.invRuleSubscribe,
-          t.invRuleCap,
-        ].map((rule) => (
-          <p key={rule} className="flex items-center gap-2.5 p-3.5 text-14 leading-relaxed">
-            <Icon name="sparkles" size={15} className="shrink-0 text-accent" />
-            {rule}
-          </p>
+      {/* الأرقامُ الأربعة — انضمّوا · احتُسبوا · اشتركوا · مكافآتك */}
+      <div className={`${settingsCard} grid grid-cols-4 divide-x divide-[color:var(--divider)] rtl:divide-x-reverse text-center`}>
+        {(
+          [
+            [num(stats.joined, locale), t.invStatJoined, ""],
+            [num(stats.qualified, locale), t.invStatCounted, ""],
+            [num(stats.subscribed, locale), t.invStatSubscribed, ""],
+            [num(stats.rewardDays, locale), t.invStatRewards, t.invDayUnit],
+          ] as const
+        ).map(([n, label, unit]) => (
+          <div key={label} className="py-3.5 px-1">
+            <span className="block text-22 font-bold tabular-nums" dir="ltr">
+              {n}
+              {unit && <span className="ms-0.5 text-12 font-bold text-muted">{unit}</span>}
+            </span>
+            <span className="block text-12 text-muted mt-0.5">{label}</span>
+          </div>
         ))}
-      </SettingsGroup>
+      </div>
 
-      {/* من دخلوا عن طريقي */}
-      {invites.length > 0 && (
-        <SettingsGroup label={t.invRecent}>
-          <ul className="divide-y divide-[color:var(--divider)]">
-            {invites.map((r) => {
+      {/* آخرُ الدعوات — وحالةٌ فارغةٌ مرسومةٌ كنموذجه */}
+      <section className="space-y-3">
+        <SectionTitle
+          end={
+            invites.length > shown.length ? (
+              <Link href={`${BASE}?all=1`} replace className="text-14 font-semibold text-accent">
+                {t.invViewAll}
+              </Link>
+            ) : undefined
+          }
+        >
+          {t.invRecent}
+        </SectionTitle>
+        {invites.length === 0 ? (
+          <div className={`${settingsCard} p-6 text-center`}>
+            <span className="mx-auto grid size-14 place-items-center rounded-full bg-surface-2">
+              <Icon name="people" size={24} className="text-accent" />
+            </span>
+            <p className="mt-3 text-15 font-bold">{t.invEmptyTitle}</p>
+            <p className="mt-1 text-14 text-muted">{t.invEmptyBody}</p>
+          </div>
+        ) : (
+          <ul className={settingsCardRows}>
+            {shown.map((r) => {
               const name = displayNameOf(r.person, t.anonymousUser);
               const username = r.person?.hide_name ? null : r.person?.username ?? null;
               const inner = (
@@ -299,43 +336,57 @@ async function FriendsTab({ t, locale }: { t: Dict; locale: Locale }) {
               );
             })}
           </ul>
-        </SettingsGroup>
-      )}
+        )}
+      </section>
 
-      {/* بابُ الشركاء من تبويب الأصدقاء — صانعُ المحتوى يصل من حيث هو */}
-      <Link
-        href={`${BASE}?tab=partners`}
-        replace
-        className={`${settingsCard} flex items-center gap-3 p-3.5 transition hover:bg-surface-2 active:opacity-80`}
-      >
-        <Icon name="trending" size={20} className="shrink-0 text-accent" />
+      {/* كيف تعمل المكافآت — ثلاثةُ أسطر نموذجه، والتفصيلُ خلف «الشروط» */}
+      <section className="space-y-3">
+        <SectionTitle>{t.invHowTitle}</SectionTitle>
+        <div className={settingsCardRows}>
+          {(
+            [
+              ["calendar", t.invHow14],
+              ["people", t.invHow7],
+              ["star", t.invHowSub],
+            ] as const
+          ).map(([icon, line]) => (
+            <p key={line} className="flex items-center gap-3 p-3.5 text-14 leading-relaxed">
+              <Icon name={icon} size={18} className="shrink-0 text-accent" />
+              {line}
+            </p>
+          ))}
+        </div>
+      </section>
+
+      <Disclosure label={t.invTermsLink}>
+        <p className={`${settingsCard} p-3.5 text-14 leading-relaxed text-muted`}>
+          {t.invFinePrint}
+        </p>
+      </Disclosure>
+
+      {/* بابُ الشركاء من تبويب الأصدقاء — «اعرف أكثر» كنموذجه */}
+      <div className={`${settingsCard} flex items-center gap-3 p-3.5`}>
+        <Icon name="people" size={22} className="shrink-0 text-accent" />
         <span className="min-w-0 flex-1">
-          <span className="block text-14 font-semibold">{t.prtEntryTitle}</span>
+          <span className="block text-14 font-bold">{t.prtEntryTitle}</span>
           <span className="block text-12 text-muted mt-0.5">{t.prtEntryBody}</span>
         </span>
-        <Icon name="chevron-down" size={16} className="shrink-0 -rotate-90 rtl:rotate-90 text-muted" />
-      </Link>
+        <Link
+          href={`${BASE}?tab=partners`}
+          replace
+          className="shrink-0 rounded-full border border-accent px-3.5 py-1.5 text-12 font-bold text-accent transition hover:bg-accent/10"
+        >
+          {t.prtLearnMore}
+        </Link>
+      </div>
     </>
   );
 }
 
 /* ============================ الشركاء ============================ */
 
-async function PartnersTab({
-  t, locale, sp,
-}: {
-  t: Dict;
-  locale: Locale;
-  sp: { edit?: string; err?: string };
-}) {
-  const state = await getMyPartnerState();
-  const editing = sp.edit === "1" && state.appStatus === "pending";
-  const showForm = state.appStatus === null || state.appStatus === "rejected" || editing;
-  /* التعبئةُ المسبقة تُقرأ فقط حين يُعرض النموذجُ فوق طلبٍ قائم */
-  const app =
-    showForm && state.appStatus !== null ? await getMyPartnerApplication() : null;
-
-  const terms = (
+function TermsCard({ t }: { t: Dict }) {
+  return (
     <SettingsGroup label={t.prtTermsTitle}>
       {[t.prtTerm15, t.prtTermDirect, t.prtTermHold, t.prtTermMin, t.prtTermNature].map(
         (line) => (
@@ -352,33 +403,50 @@ async function PartnersTab({
       </p>
     </SettingsGroup>
   );
+}
+
+async function PartnersTab({
+  t, locale, sp,
+}: {
+  t: Dict;
+  locale: Locale;
+  sp: { edit?: string; apply?: string; err?: string };
+}) {
+  const state = await getMyPartnerState();
+  const editing = sp.edit === "1" && state.appStatus === "pending";
+  const applying = sp.apply === "1" && state.appStatus === null;
+  const showForm = applying || state.appStatus === "rejected" || editing;
+  /* التعبئةُ المسبقة تُقرأ فقط حين يُعرض النموذجُ فوق طلبٍ قائم */
+  const app =
+    showForm && state.appStatus !== null ? await getMyPartnerApplication() : null;
 
   /* ———— موافَقٌ عليه: اللوحةُ الخفيفة — رابطٌ وعدّادان وشروط، لا أموال ———— */
   if (state.appStatus === "approved" && state.code) {
     const url = siteUrl(`/p/${state.code}`);
     return (
       <>
-        <SettingsGroup label={t.prtYourLink}>
+        <section>
+          <h2 className="px-1 mb-1.5 text-12 font-semibold uppercase tracking-wide text-muted">
+            {t.prtYourLink}
+          </h2>
           <InviteLinkCard url={url} locale={locale} />
-        </SettingsGroup>
-        <SettingsGroup>
-          <div className="grid grid-cols-2 divide-x divide-[color:var(--divider)] rtl:divide-x-reverse text-center">
-            {(
-              [
-                [state.clicks, t.prtStatClicks],
-                [state.joined, t.prtStatJoined],
-              ] as const
-            ).map(([n, label]) => (
-              <div key={label} className="py-3.5 px-1">
-                <span className="block text-22 font-bold tabular-nums" dir="ltr">
-                  {num(n, locale)}
-                </span>
-                <span className="block text-12 text-muted mt-0.5">{label}</span>
-              </div>
-            ))}
-          </div>
-        </SettingsGroup>
-        {terms}
+        </section>
+        <div className={`${settingsCard} grid grid-cols-2 divide-x divide-[color:var(--divider)] rtl:divide-x-reverse text-center`}>
+          {(
+            [
+              [state.clicks, t.prtStatClicks],
+              [state.joined, t.prtStatJoined],
+            ] as const
+          ).map(([n, label]) => (
+            <div key={label} className="py-3.5 px-1">
+              <span className="block text-22 font-bold tabular-nums" dir="ltr">
+                {num(n, locale)}
+              </span>
+              <span className="block text-12 text-muted mt-0.5">{label}</span>
+            </div>
+          ))}
+        </div>
+        <TermsCard t={t} />
       </>
     );
   }
@@ -387,7 +455,7 @@ async function PartnersTab({
   if (state.appStatus === "pending" && !editing) {
     return (
       <>
-        <div className={`${settingsCard} p-4 text-center`}>
+        <div className={`${settingsCard} p-5 text-center`}>
           <Icon name="hourglass" size={26} className="mx-auto text-accent" />
           <h2 className="mt-2 text-15 font-bold">{t.prtUnderReview}</h2>
           <p className="mt-1 text-14 text-muted">{t.prtReviewBody}</p>
@@ -414,58 +482,149 @@ async function PartnersTab({
             </form>
           </div>
         </div>
-        {terms}
+        <Disclosure label={t.prtTermsLink}>
+          <TermsCard t={t} />
+        </Disclosure>
       </>
     );
   }
 
-  /* ———— لا طلبَ / مرفوضٌ / تعديلٌ: التعريفُ ثم النموذج ثم الشروط ———— */
+  /* ———— النموذج: تقديمٌ جديد / تعديلٌ / إعادةُ تقديمٍ بعد رفض ———— */
+  if (showForm) {
+    return (
+      <>
+        {state.appStatus === "rejected" && (
+          <div className={`${settingsCard} p-4 text-center`}>
+            <Icon name="info" size={24} className="mx-auto text-muted" />
+            <h2 className="mt-2 text-15 font-bold">{t.prtRejectedTitle}</h2>
+            <p className="mt-1 text-14 text-muted">{t.prtRejectedBody}</p>
+          </div>
+        )}
+
+        {sp.err && (
+          <p className="text-14 text-[color:var(--error)] px-1">⚠ {sp.err}</p>
+        )}
+
+        <form action={submitApplication}>
+          <SettingsGroup label={t.prtApplyTitle}>
+            <div className="pb-3.5">
+              <Field name="channel" label={t.prtFieldChannel} value={app?.channelUrl ?? ""} required dir="ltr" />
+              <Field name="content" label={t.prtFieldContent} value={app?.contentType ?? ""} required />
+              <Field name="platforms" label={t.prtFieldPlatforms} value={app?.platforms ?? ""} required />
+              <Field name="followers" label={t.prtFieldFollowers} value={app?.followersRange ?? ""} />
+              <Field name="country" label={t.prtFieldCountry} value={app?.country ?? ""} required />
+              <Field name="language" label={t.prtFieldLanguage} value={app?.contentLanguage ?? ""} required />
+              <Field name="reason" label={t.prtFieldReason} value={app?.reason ?? ""} textarea />
+              <label className="flex items-center gap-2.5 px-3.5 pt-3.5 text-14">
+                <input type="checkbox" name="terms" required className="size-4 accent-accent" />
+                {t.prtTermsAgree}
+              </label>
+              <div className="px-3.5 pt-3.5">
+                <button type="submit" className={buttonClass({ full: true })}>
+                  {t.prtSubmit}
+                </button>
+              </div>
+            </div>
+          </SettingsGroup>
+        </form>
+
+        <TermsCard t={t} />
+      </>
+    );
+  }
+
+  /* ———— ما قبل التقديم — وجهُ نموذجه حرفاً ———— */
   return (
     <>
-      {state.appStatus === "rejected" ? (
-        <div className={`${settingsCard} p-4 text-center`}>
-          <Icon name="info" size={24} className="mx-auto text-muted" />
-          <h2 className="mt-2 text-15 font-bold">{t.prtRejectedTitle}</h2>
-          <p className="mt-1 text-14 text-muted">{t.prtRejectedBody}</p>
-        </div>
-      ) : (
-        <div className={`${settingsCard} p-4`}>
-          <h2 className="text-15 font-bold flex items-center gap-2">
-            <Icon name="trending" size={18} className="text-accent" />
-            {t.prtIntroTitle}
-          </h2>
-          <p className="mt-1.5 text-14 text-muted leading-relaxed">{t.prtIntroBody}</p>
-        </div>
-      )}
+      <div className={`${settingsCard} p-6 text-center`}>
+        <Icon name="people" size={40} className="mx-auto text-accent" strokeWidth={1.4} />
+        <h2 className="mt-3 text-24 font-extrabold leading-tight">
+          {t.prtHeroTitle1}
+          <br />
+          {t.prtHeroTitle2}
+        </h2>
+        <p className="mt-2 text-14 text-muted leading-relaxed">{t.prtHeroBody}</p>
+        <Link
+          href={`${BASE}?tab=partners&apply=1`}
+          replace
+          className={buttonClass({ size: "lg", full: true, className: "mt-4" })}
+        >
+          {t.prtApplyJoin}
+        </Link>
+      </div>
 
-      {sp.err && (
-        <p className="text-14 text-[color:var(--error)] px-1">⚠ {sp.err}</p>
-      )}
-
-      <form action={submitApplication}>
-        <SettingsGroup label={t.prtApplyTitle}>
-          <div className="pb-3.5">
-            <Field name="channel" label={t.prtFieldChannel} value={app?.channelUrl ?? ""} required dir="ltr" />
-            <Field name="content" label={t.prtFieldContent} value={app?.contentType ?? ""} required />
-            <Field name="platforms" label={t.prtFieldPlatforms} value={app?.platforms ?? ""} required />
-            <Field name="followers" label={t.prtFieldFollowers} value={app?.followersRange ?? ""} />
-            <Field name="country" label={t.prtFieldCountry} value={app?.country ?? ""} required />
-            <Field name="language" label={t.prtFieldLanguage} value={app?.contentLanguage ?? ""} required />
-            <Field name="reason" label={t.prtFieldReason} value={app?.reason ?? ""} textarea />
-            <label className="flex items-center gap-2.5 px-3.5 pt-3.5 text-14">
-              <input type="checkbox" name="terms" required className="size-4 accent-accent" />
-              {t.prtTermsAgree}
-            </label>
-            <div className="px-3.5 pt-3.5">
-              <button type="submit" className={buttonClass({ full: true })}>
-                {t.prtSubmit}
-              </button>
-            </div>
+      {/* ١٥٪ · ٣ · ١٠٠ ريال — القيمُ بلون الهوية كنموذجه */}
+      <div className={`${settingsCard} grid grid-cols-3 divide-x divide-[color:var(--divider)] rtl:divide-x-reverse text-center`}>
+        {(
+          [
+            [t.prtVal15, t.prtStatCommission],
+            [t.prtVal3, t.prtStatPayments],
+            [t.prtValMin, t.prtStatMin],
+          ] as const
+        ).map(([v, label]) => (
+          <div key={label} className="py-3.5 px-1">
+            <span className="block text-22 font-extrabold tabular-nums text-accent">{v}</span>
+            <span className="block text-12 text-muted mt-0.5">{label}</span>
           </div>
-        </SettingsGroup>
-      </form>
+        ))}
+      </div>
 
-      {terms}
+      <section className="space-y-3">
+        <SectionTitle>{t.prtHowTitle}</SectionTitle>
+        <div className={settingsCardRows}>
+          {(
+            [
+              [1, t.prtStep1, t.prtStep1Sub],
+              [2, t.prtStep2, t.prtStep2Sub],
+              [3, t.prtStep3, t.prtStep3Sub],
+            ] as const
+          ).map(([n, title, sub]) => (
+            <p key={title} className="flex items-center gap-3 p-3.5">
+              <span className="grid size-8 shrink-0 place-items-center rounded-full bg-surface-2 text-14 font-bold text-accent tabular-nums">
+                {num(n, locale)}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-14 font-bold">{title}</span>
+                <span className="block text-12 text-muted mt-0.5">{sub}</span>
+              </span>
+              <Icon
+                name="chevron-down"
+                size={16}
+                className="shrink-0 -rotate-90 rtl:rotate-90 text-muted"
+              />
+            </p>
+          ))}
+        </div>
+      </section>
+
+      <section className="space-y-3">
+        <SectionTitle>{t.prtWhoTitle}</SectionTitle>
+        <div className={settingsCardRows}>
+          <p className="p-3.5 text-14 font-bold">{t.prtWhoHead}</p>
+          {[t.prtWho1, t.prtWho2, t.prtWho3].map((line) => (
+            <p key={line} className="flex items-center gap-2.5 p-3.5 text-14">
+              <span className="grid size-5 shrink-0 place-items-center rounded-full border-[1.5px] border-accent">
+                <Icon name="check" size={11} className="text-accent" strokeWidth={2.2} />
+              </span>
+              {line}
+            </p>
+          ))}
+        </div>
+      </section>
+
+      <Link
+        href={`${BASE}?tab=partners&apply=1`}
+        replace
+        className={buttonClass({ size: "lg", full: true })}
+      >
+        {t.prtApplyJoin}
+      </Link>
+
+      <Disclosure label={t.prtTermsLink}>
+        <TermsCard t={t} />
+      </Disclosure>
+
+      <p className="text-center text-12 text-muted">{t.prtReviewNote}</p>
     </>
   );
 }
