@@ -23,11 +23,28 @@ export async function GET(request: Request) {
 
   const url = new URL(request.url);
   const term = (url.searchParams.get("t") ?? "Inception").slice(0, 60);
-  const target = `https://itunes.apple.com/search?media=movie&limit=5&country=US&term=${encodeURIComponent(term)}`;
+  /* v2: يقبل رابطاً كاملاً `u` (مقيَّداً بمضيف آبل) وترويسةَ UA اختياريّة —
+     مصفوفةُ تجارب من التبويب بدل نشرةٍ لكلِّ متغيّر */
+  const rawU = url.searchParams.get("u");
+  let target = `https://itunes.apple.com/search?media=movie&limit=5&country=US&term=${encodeURIComponent(term)}`;
+  if (rawU) {
+    try {
+      const candidate = new URL(rawU);
+      if (candidate.host === "itunes.apple.com") target = candidate.toString();
+    } catch {
+      /* رابطٌ فاسد — يبقى الافتراضي */
+    }
+  }
+  const withUa = url.searchParams.get("ua") === "1";
 
   const startedAt = Date.now();
   try {
-    const res = await fetch(target, { cache: "no-store" });
+    const res = await fetch(target, {
+      cache: "no-store",
+      headers: withUa
+        ? { "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126 Safari/537.36" }
+        : undefined,
+    });
     const ms = Date.now() - startedAt;
     const text = await res.text();
     interface ProbeResult {
