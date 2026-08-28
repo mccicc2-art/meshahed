@@ -699,7 +699,19 @@ export function TrailerPlayer({
             aria-valuemax={Math.round(at.total)}
             aria-valuenow={Math.round(at.now)}
             aria-valuetext={`${clock(at.now)} / ${clock(at.total)}`}
-            className="pointer-events-auto -my-2 py-2 cursor-pointer touch-none"
+            /* 🔴 🆕 **`touch-pan-y` لا `touch-none`** (D-746، بلاغُ أحمد:
+               «كلّ شوي تحدّث الصفحة كاملةً من حالها»).
+               🔑 **`touch-none` تصادر المحورين، والشريطُ لا يملك إلّا
+               الأفقيّ**: **الإصبعُ الذي يهبط على الشريط ليمرّر الصفحةَ
+               كان يُمنع من التمرير** — **والصفحةُ عند رأسها، فتقرأ
+               `PullToRefresh` هبوطَه سحبةَ تحديثٍ فتُعيد جلبَ الصفحة
+               كلِّها.**
+               🔑 **والقاعدة: من صادر محوراً لا يحتاجه سرق إيماءةَ من
+               حوله** — **و`touch-action` تصريحُ ملكيّةٍ لا زينةَ منع.**
+               ⚠️ **والشريطُ في أسفل أوّل بطاقةٍ في «اكتشف»** — **أكثرُ
+               موضعٍ يبدأ منه إبهامٌ تمريرَه**، فالعطلُ يقع كلَّ قليلٍ لا
+               نادراً. */
+            className="pointer-events-auto -my-2 py-2 cursor-pointer touch-pan-y"
             onPointerDown={(e) => {
               e.preventDefault();
               e.stopPropagation();
