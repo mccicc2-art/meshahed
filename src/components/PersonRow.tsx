@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Avatar } from "./Avatar";
 import { displayNameOf, profileHref, type PersonLite } from "@/lib/people";
 import type { Dict } from "@/lib/i18n";
+import { AccountBadges } from "./AccountIdentity";
 
 /**
  * سطر شخص: صورة + اسم قابل للضغط.
@@ -75,7 +76,18 @@ export function PersonName({
       {badge}
     </span>
   );
-  const nameText = <span className="block text-sm font-semibold truncate">{name}</span>;
+  /* 🆕 **والشاراتُ تلتصق بالاسم في هذا المكوّن وحدَه** (D-773ب، شرطُ
+     أحمد ٩) — **وهو يخدم لوحةَ الناس والبحثَ وبطاقةَ التقييمات**،
+     فسطرٌ واحدٌ هنا يشحنها في ستّة أسطح. **والاسمُ يُقصّ والشاراتُ لا**:
+     `min-w-0 truncate` عليه وحدَه — **وشارةٌ تختفي بطول اسمٍ ليست شارة.**
+     ⚠️ **وهي خارج `door` عمداً**: **رابطٌ داخل رابطٍ ترميزٌ باطل**
+     (درسُ D-272/D-281 حرفاً) — والشارةُ ليست باباً إلى أحد. */
+  const nameText = (
+    <span className="flex items-center min-w-0" style={{ gap: 4 }}>
+      <span className="min-w-0 truncate text-sm font-semibold">{name}</span>
+      {person.hide_name ? null : <AccountBadges profile={person} t={t} />}
+    </span>
+  );
 
   /** **بابُ الملفّ في موضعٍ واحد** — ومن أخفى اسمه لا بابَ له */
   const door = (children: React.ReactNode, cls: string) =>

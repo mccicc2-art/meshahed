@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AccountBadges } from "./AccountIdentity";
 import { Avatar } from "./Avatar";
 import type { Signal } from "@/lib/actions";
 import { getDict, type Locale } from "@/lib/i18n";
@@ -91,7 +92,17 @@ export function NotificationList({
               size={40}
             />
             <span className="min-w-0 flex-1">
-              <span className="block text-14 leading-snug">{line(s)}</span>
+              {/* 🆕 **وهذا السطحُ وحدَه يخالف** (D-773ب): **الاسمُ هنا ليس
+                  عنصراً بل كلمةٌ داخل جملةٍ تُبنى في `line()`** — ولا
+                  موضعَ داخل نصٍّ تُغرس فيه شارة. **فتقف الشارةُ بجوار
+                  الجملة في صفّها** لا داخلها، **وتُقرأ صفةَ الفاعل** لأنّه
+                  هو وحدَه صاحبُ الاسم في السطر. */}
+              <span className="flex items-center min-w-0" style={{ gap: 4 }}>
+                <span className="min-w-0 text-14 leading-snug">{line(s)}</span>
+                {s.person.hide_name ? null : (
+                  <AccountBadges profile={s.person} t={t} />
+                )}
+              </span>
               <span className="block text-12 text-muted mt-0.5">{timeAgo(s.at, t)}</span>
             </span>
             {/* النقطة تقول «هذا وصل بعد آخر فتحة» — لا لونٌ يغرق السطر */}

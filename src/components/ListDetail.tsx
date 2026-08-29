@@ -64,6 +64,7 @@ const NUMBERED: ListKind[] = ["ranked", "watch_order"];
  * تعني شيئاً واحداً.
  */
 export function ListDetail({
+  brandPlus = false,
   listId,
   name,
   subtitle,
@@ -83,6 +84,8 @@ export function ListDetail({
   saves,
   initialSavedPlaylist,
 }: {
+  /** 🆕 تجربةُ Loopz+ (D-773ب) — `isPlus || isPartner` عند المستدعي */
+  brandPlus?: boolean;
   listId: string;
   name: string;
   subtitle: string | null;
@@ -362,7 +365,10 @@ export function ListDetail({
       <div className="-mx-4 px-4 -mt-6 pt-[calc(var(--safe-top)+0.5rem)] pb-2 mb-2 flex items-center gap-2 min-h-11">
         <BackCrumb label={t.listsTitle} fallback="/library?filter=list" />
         <span className="flex-1 grid place-items-center" aria-hidden>
-          <Logo size={26} />
+          {/* 🆕 **والشعارُ يتبع خطّةَ القارئ** (D-773ب): صاحبُ البلس
+              والبارتنر يرى `Loopz+` هنا كما يراه في الشريط والرئيسيّة
+              — **والعلامةُ لا تختلف من صفحةٍ إلى صفحة.** */}
+          <Logo size={26} plus={brandPlus} />
         </span>
         {(isOwner || isPublic) && (
           <button

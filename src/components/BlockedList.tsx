@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
+import { AccountBadges } from "./AccountIdentity";
 import { Avatar } from "./Avatar";
 import { buttonClass } from "./ui/Button";
 import { myBlocksList, unblockUser } from "@/lib/actions";
@@ -95,7 +96,13 @@ export function BlockedList({ locale }: { locale: Locale }) {
                   <li key={p.id} className="flex items-center gap-3 py-2.5">
                     <Avatar src={p.avatar_url} name={name} size={36} alt="" />
                     <div className="min-w-0 flex-1">
-                      <p className="text-14 font-semibold truncate">{name}</p>
+                      {/* 🆕 **والمحظورُ يُعرَف كما يُعرَف غيرُه** (D-773ب):
+                          **رفعُ الحظر قرارٌ** — ومن أراد أن يميّز الحسابَ
+                          قبله يحتاج علامتَه لا اسمَه وحدَه. */}
+                      <p className="flex items-center min-w-0" style={{ gap: 4 }}>
+                        <span className="min-w-0 truncate text-14 font-semibold">{name}</span>
+                        {p.hide_name ? null : <AccountBadges profile={p} t={t} />}
+                      </p>
                       {p.username && !p.hide_name && (
                         <p className="text-12 text-muted truncate" dir="ltr">
                           @{p.username}

@@ -3,11 +3,11 @@ import Image from "next/image";
 import { getDict, type Locale } from "@/lib/i18n";
 import { Icon, type IconName } from "./Icon";
 import { FollowCountButton } from "./ProfilePeeks";
-import { HomeAvatarMenu } from "./HomeAvatarMenu";
+import { HomeAvatarLink } from "./HomeAvatarLink";
 import { HomeViewSwitch } from "./HomeViewSwitch";
 import { HeaderTrailing } from "./HeaderTrailing";
 import { LogoWordmark } from "./Logo";
-import { AccountBadges } from "./AccountBadges";
+import { AccountIdentity } from "./AccountIdentity";
 import { isPlus } from "@/lib/plan";
 /**
  * 🆕 **خانةُ بطاقة الأرقام — تسكن مع راسمها** (D-497): كانت تُستورد
@@ -416,12 +416,27 @@ export function HomeHeader({
               unreadShares={unreadShares}
               locale={locale}
             >
-              {/* ⚖️ 🆕 **وترسُ الإعدادات سقط من الصفّ** (D-620، حكمُه:
-                «الإعدادات احذف الأيقونة») — **بابُه صار قائمةَ صورة
-                الترحيب** (`HomeAvatarMenu`)، فلا بابَ ضائعاً ولا
-                بابَين في ترويسةٍ واحدة. والمبدّلُ باقٍ من D-618 —
-                صفُّ الترحيب للتعريف وحدَه. */}
-              <HomeViewSwitch locale={locale} />
+              {/* ⚖️ 🆕 **وترسُ الإعدادات عاد إلى مكانه** (D-774، حكمُه:
+                «الإعدادات رجّعها فوق مكان الثلاث خطوط، والثلاث خطوط
+                نزّلها تحت») — **نقضٌ صريحٌ لـD-620 بيد صاحبه**، وبه
+                سقطت قائمةُ الصورة التي كانت جسراً لهذا البابِ الغائب
+                (انظر `HomeAvatarLink`).
+
+                🔑 **والوصفةُ وصفةُ `MessagesLink`/`SignalsLink` حرفاً**
+                — صندوقُ ٤٠ وقرصٌ ورمزُ ١٨: **قاعدةُ D-541 أنّ الخانةَ
+                الأخيرة تختلف معنًى لا مقاساً**، **وبكسلٌ واحدٌ هنا
+                يُقفز الجرسَ والظرفَ في كلِّ تنقّل.**
+                ⚠️ **والسلسلةُ صارت في ثلاثة مواضع** — تُستخرج يومَ
+                يدخل رابعٌ، لا اليوم بملفٍّ لمستدعٍ واحد. */}
+              <Link
+                href="/profile/settings"
+                prefetch={false}
+                aria-label={t.settingsNavHeading}
+                title={t.settingsNavHeading}
+                className="relative grid place-items-center w-10 h-10 rounded-full text-foreground/80 hover:text-foreground hover:bg-surface-2 active:scale-95 transition"
+              >
+                <Icon name="settings" size={18} />
+              </Link>
             </HeaderTrailing>
           </div>
         </div>
@@ -453,11 +468,12 @@ export function HomeHeader({
             الهوية إلى النسبة ثم رماديُّ الحدّ — **ولا مكوّنَ جديد.**
             **و`0` تعني ألّا هلال** فلا تُرسم حلقةٌ فارغةٌ تعد بشيء
             (D-222). */}
-          {/* ⚖️ 🆕 **والرابطُ صار مقبضَ قائمة** (D-620، حكمُه: «خلّ الشخص
-            إذا ضغط على الصورة تطلع قائمة صغيرة عند محل الضغط ويختار
-            إعدادات أو بروفايل») — `Dropdown` القائمةُ نفسُها (D-226)
-            بصفَّي بروفايل/إعدادات، والهلالُ ومداره كما هما. */}
-          <HomeAvatarMenu
+          {/* ⚖️ 🆕 **والصورةُ عادت باباً مباشراً إلى الملفّ** (D-774،
+            حكمُه: «الي يضغط على الصورة يروح للبروفايل مباشرة بدون
+            القائمة المنسدلة») — **نقضُ D-620**، والحجّةُ في
+            `HomeAvatarLink`: القائمةُ كانت جسراً لبابِ الإعدادات
+            الغائب، وقد عاد البابُ فسقط الجسر. */}
+          <HomeAvatarLink
             locale={locale}
             name={displayName}
             avatarUrl={avatarUrl}
@@ -482,21 +498,16 @@ export function HomeHeader({
             كما هو)، **وعدُّ مَن تتابعهم بقي بورقته نفسِها**
             (`FollowCountButton`/D-561 — نفسُ الحارس ونفسُ السقف). */}
           <div className="min-w-0 flex-1">
-            {/* 🆕 **والشارةُ خارجَ `truncate`** (D-633): اسمٌ طويلٌ يُقصّ
-              ولا تُقصّ معه الشارة — **وشارةٌ تختفي بطول اسمٍ ليست شارة.** */}
-            <p className="flex items-center gap-1.5 text-15 font-bold leading-tight">
-              <span className="min-w-0 truncate">{displayName}</span>
-              <AccountBadges
-                profile={{
-                  plan,
-                  founder,
-                  plus_until: plusUntil,
-                  verified_at: verifiedAt,
-                }}
-                locale={locale}
-                size={15}
-              />
-            </p>
+            {/* 🆕 **والسطرُ كلُّه من المكوّن المركزيّ** (D-773ب، شرطُ
+              القبول ٩): الاسمُ يُقصّ والشاراتُ لا — **وشارةٌ تختفي بطول
+              اسمٍ ليست شارة** — **والفجوةُ ٤px تُكتب هناك مرّةً لا هنا.** */}
+            <AccountIdentity
+              as="p"
+              name={displayName}
+              profile={{ plan, founder, plus_until: plusUntil, verified_at: verifiedAt }}
+              t={t}
+              className="text-15 font-bold leading-tight"
+            />
             {/* ⚖️ 🆕 ١٣ → ١٢ (D-619: «أحجام الخط كبيرة وغير متناسقة») —
               سطرُ تعريفٍ ثانويٌّ درجتُه درجةُ الثانويّ في السلّم */}
             {(username || userId) && (
@@ -530,6 +541,9 @@ export function HomeHeader({
                         close: t.closeLabel,
                         empty: t.followListEmpty,
                         anonymous: t.anonymousUser,
+                        /* **والقاموسُ يحقّق الشكلَ بنيويّاً** — فلا التقاطَ
+                           حقولٍ يدويّاً ولا خمسةُ أسطرٍ تُنسى إحداها. */
+                        badges: t,
                       }}
                     />
                     <FollowCountButton
@@ -544,6 +558,9 @@ export function HomeHeader({
                         close: t.closeLabel,
                         empty: t.followListEmpty,
                         anonymous: t.anonymousUser,
+                        /* **والقاموسُ يحقّق الشكلَ بنيويّاً** — فلا التقاطَ
+                           حقولٍ يدويّاً ولا خمسةُ أسطرٍ تُنسى إحداها. */
+                        badges: t,
                       }}
                     />
                   </span>
@@ -551,6 +568,21 @@ export function HomeHeader({
               </p>
             )}
           </div>
+
+          {/* ⚖️ 🆕 **والمبدّلُ نزل إلى صفِّ الترحيب** (D-774، حكمُه:
+            «الثلاث خطوط نزّلها تحت») — **نقضُ شطرٍ من D-618** الذي رفعه
+            إلى صفِّ الأيقونات، **والشطرُ الآخرُ باقٍ**: السطرُ ما زال
+            عمودين (اسمٌ ثمّ تعريف) لا صفّاً مزدحماً — **المبدّلُ يقف
+            عند الطرف بمحاذاة الصورة، لا داخلَ عمود الاسم.**
+
+            🔑 **و`shrink-0` لأنّ جارَه `min-w-0 flex-1`**: **الاسمُ هو
+            ما يُقصّ عند الضيق، لا الزرّ** — **وزرٌّ يضيق بطول اسمٍ
+            يصير هدفاً لا يُصاب** (قاعدةُ ٤٤×٤٤ في D-543).
+            ⚠️ **و«الطرف» هو `flex` نفسُها**: يمينٌ في LTR ويسارٌ في
+            RTL بلا `ms`/`me` مكتوبةٍ بيد (D-105). */}
+          <span className="shrink-0">
+            <HomeViewSwitch locale={locale} />
+          </span>
         </div>
 
         {/* ===== الصفُّ الثالث: بطاقةُ الأرقام =====

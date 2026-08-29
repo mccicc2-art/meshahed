@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { AccountBadges } from "./AccountIdentity";
 import { Avatar } from "./Avatar";
 import { Icon } from "./Icon";
 import { getDict, num, type Locale } from "@/lib/i18n";
@@ -113,7 +114,12 @@ export function Inbox({
               />
               <span className="min-w-0 flex-1">
                 <span className="flex items-center gap-2">
-                  <span className="text-sm font-semibold truncate flex-1">{name}</span>
+                  <span className="flex flex-1 min-w-0 items-center" style={{ gap: 4 }}>
+                    <span className="text-sm font-semibold truncate min-w-0">{name}</span>
+                    {c.person?.hide_name ? null : (
+                      <AccountBadges profile={c.person} t={t} />
+                    )}
+                  </span>
                   <span className="text-12 text-muted shrink-0">
                     {formatDateShort(c.lastAt, t)}
                   </span>
@@ -171,7 +177,10 @@ export function Inbox({
                       alt={t.avatarAlt}
                     />
                     <span className="min-w-0 flex-1">
-                      <span className="block text-sm font-semibold truncate">{name}</span>
+                      <span className="flex items-center min-w-0" style={{ gap: 4 }}>
+                        <span className="min-w-0 truncate text-sm font-semibold">{name}</span>
+                        {p.hide_name ? null : <AccountBadges profile={p} t={t} />}
+                      </span>
                       <span className="block text-12 text-muted truncate">
                         {t.convStartRowHint}
                       </span>
@@ -319,16 +328,29 @@ function ConversationView({
               </span>
             </>
           );
-          return username ? (
-            <Link
-              href={`/u/${username}`}
-              aria-label={t.viewProfileOf(name)}
-              className="flex min-w-0 flex-1 items-center gap-2.5 rounded-xl -my-1 py-1 -ms-1 ps-1 pe-1 hover:bg-surface-2 active:opacity-80 transition"
-            >
-              {identity}
-            </Link>
-          ) : (
-            <span className="flex min-w-0 flex-1 items-center gap-2.5">{identity}</span>
+          /* 🆕 **والشارةُ أختٌ للباب لا ابنةٌ له** (D-773ب): الترويسةُ كلُّها
+             بابٌ واحد منذ D-767، **ورابطٌ داخل رابطٍ ترميزٌ باطل** — فتقف
+             الشارةُ بعده في الصفّ نفسِه.
+             ⚠️ **و`flex-1` انتقلت إلى الغلاف**: لو بقيت على الباب لدُفعت
+             الشارةُ إلى آخر الترويسة بجوار النقاط — **وشارةٌ بعيدةٌ عن اسمها
+             تُقرأ صفةً لغير صاحبها.** */
+          return (
+            <span className="flex min-w-0 flex-1 items-center" style={{ gap: 4 }}>
+              {username ? (
+                <Link
+                  href={`/u/${username}`}
+                  aria-label={t.viewProfileOf(name)}
+                  className="flex min-w-0 items-center gap-2.5 rounded-xl -my-1 py-1 -ms-1 ps-1 pe-1 hover:bg-surface-2 active:opacity-80 transition"
+                >
+                  {identity}
+                </Link>
+              ) : (
+                <span className="flex min-w-0 items-center gap-2.5">{identity}</span>
+              )}
+              {conv.person?.hide_name ? null : (
+                <AccountBadges profile={conv.person} t={t} />
+              )}
+            </span>
           );
         })()}
         <button

@@ -14,6 +14,7 @@ import { commentViewKey, newsViewKey } from "@/lib/postKeys";
 import { curatedName } from "@/lib/universes";
 import { profileHref } from "@/lib/people";
 import { backdropUrl } from "@/lib/media";
+import { AccountBadges } from "./AccountIdentity";
 import { Avatar } from "./Avatar";
 import { Icon } from "./Icon";
 import { LikeButton } from "./LikeButton";
@@ -516,13 +517,21 @@ function CommentRow({
                   لاتينيّ إلى الطرف المقابل في الواجهة العربية (بلاغُ
                   أحمد). **`bdi` هي الأداة**: تعزل اتّجاهَ الاسم داخلَه
                   ولا تمسّ محاذاةَ السطر. */}
-              <Link
-                href={whoHref}
-                prefetch={false}
-                className="min-w-0 truncate font-bold text-14 leading-tight text-foreground hover:text-accent transition"
-              >
-                <bdi>{who}</bdi>
-              </Link>
+              {/* 🆕 **والشاراتُ خارجَ الرابط لا داخلَه** (D-773ب): **رابطٌ
+                  داخل رابطٍ ترميزٌ باطل** — والشارةُ ليست باباً إلى أحد.
+                  **والاسمُ وحدَه يُقصّ** فلا شارةَ تختفي بطول اسم. */}
+              <span className="flex items-center min-w-0" style={{ gap: 4 }}>
+                <Link
+                  href={whoHref}
+                  prefetch={false}
+                  className="min-w-0 truncate font-bold text-14 leading-tight text-foreground hover:text-accent transition"
+                >
+                  <bdi>{who}</bdi>
+                </Link>
+                {a.person.hide_name ? null : (
+                  <AccountBadges profile={a.person} t={t} />
+                )}
+              </span>
               {/* **العمرُ مختصرٌ ملاصقٌ للنقاط** (طلبُ أحمد): `6d` لا «قبل
                   ستّة أيام» — **جملةٌ في موضعِ وسمٍ تسرق العرضَ من الاسم
                   فيُقصّ**، والترويسةُ تحمل أربعةَ أشياء في سطر. */}

@@ -6,6 +6,7 @@ import { sheetScroll } from "./ui/controls";
 import { Icon } from "./Icon";
 import { peopleFollowsOf } from "@/lib/actions";
 import { PersonRowLink, PeopleListSkeleton } from "./PeopleFollowList";
+import type { BadgeLabels } from "./AccountIdentity";
 import type { PersonLite } from "@/lib/data";
 
 /**
@@ -32,7 +33,13 @@ export function FollowCountButton({
   label: string;
   /** صاحب الصفحة أقفل قائمتيه (هجرة 43) — العدد يبقى والباب يُقفل */
   locked: boolean;
-  labels: { close: string; empty: string; anonymous: string };
+  /* 🆕 **وحقيبةُ الملصقات تكسب ملصقاتِ الشارات** (D-773ب) — **وهي
+     الوصفةُ القائمةُ في هذا المكوّن لا وصفةٌ ثانية**: مكوّنُ عميلٍ
+     يستقبل كلماتِه من الخادم بدل أن يجرّ القاموسَ كلَّه. */
+  /* ⚠️ **و`badges` اختياريّةٌ لإصدارٍ واحد** (وصفةُ القاعدة ٢): الصفحاتُ
+     التي تمرّرها تصل في رفعةٍ تالية — **ومَن لم يمرّرها يرى الصفَّ بلا
+     شارةٍ لا منكسراً**، فيبقى كلُّ إيداعٍ قابلاً للبناء وحدَه (D-028). */
+  labels: { close: string; empty: string; anonymous: string; badges?: BadgeLabels };
   /**
    * 🆕 **رمزٌ ورقمٌ بلا كلمة** (D-572، طلبُ أحمد لترويسة الرئيسية:
    * «خلّها أيقونتين — المتابعين والمتابَعين — ومكتوب العدد، ونفس
@@ -147,6 +154,7 @@ export function FollowCountButton({
                   <PersonRowLink
                     person={p}
                     anonymous={labels.anonymous}
+                    t={labels.badges}
                     onNavigate={() => setOpen(false)}
                   />
                 </li>

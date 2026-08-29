@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Avatar } from "./Avatar";
 import type { PersonLite } from "@/lib/data";
+import { AccountBadges, type BadgeLabels } from "./AccountIdentity";
 
 /**
  * 🆕 **صفُّ شخصٍ واحد — شكلٌ واحدٌ لكلِّ قائمةِ ناس** (D-565).
@@ -16,10 +17,15 @@ import type { PersonLite } from "@/lib/data";
 export function PersonRowLink({
   person,
   anonymous,
+  t,
   onNavigate,
 }: {
   person: PersonLite;
   anonymous: string;
+  /* 🆕 **القاموسُ لأجل الشارات** (D-773ب) — **اختياريٌّ لجولةٍ واحدة**:
+     مستدعياه يمرّرانه اليوم، **ومن لم يمرّره يرى الصفَّ بلا شارةٍ لا
+     منكسراً.** (وصفةُ «معاملٌ اختياريٌّ لإصدارٍ واحد» — القاعدة ٢.) */
+  t?: BadgeLabels;
   /** تُغلق الورقةَ حين يسكن الصفُّ ورقةً — وتغيب في الصفحة الكاملة */
   onNavigate?: () => void;
 }) {
@@ -28,7 +34,10 @@ export function PersonRowLink({
     <span className="flex items-center gap-3 rounded-xl px-1.5 py-1.5 hover:bg-surface-2 transition">
       <Avatar src={person.avatar_url} name={name} size={40} alt="" />
       <span className="min-w-0">
-        <span className="block text-14 font-semibold truncate">{name}</span>
+        <span className="flex items-center min-w-0" style={{ gap: 4 }}>
+          <span className="min-w-0 truncate text-14 font-semibold">{name}</span>
+          {t && !person.hide_name ? <AccountBadges profile={person} t={t} /> : null}
+        </span>
         {person.username && (
           <span className="block text-12 text-muted truncate" dir="ltr">
             @{person.username}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
+import { AccountBadges } from "./AccountIdentity";
 import { Avatar } from "./Avatar";
 import { Icon } from "./Icon";
 import { Sheet } from "./ui/Sheet";
@@ -256,7 +257,13 @@ function FriendPicker({
                     alt={t.avatarAlt}
                   />
                   <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-semibold truncate">{name}</span>
+                    {/* 🆕 **ومن تُشارَك معه القائمةُ يُعرَف بشارته** (D-773ب):
+                        نفسُ صفِّ «أرسِله لـ…» حرفاً، **فلا عائلتان لصفِّ
+                        شخصٍ في ورقتين.** */}
+                    <span className="flex items-center min-w-0" style={{ gap: 4 }}>
+                      <span className="min-w-0 truncate text-sm font-semibold">{name}</span>
+                      {p.hide_name ? null : <AccountBadges profile={p} t={t} />}
+                    </span>
                     {p.username && (
                       <span className="block text-xs text-muted truncate" dir="ltr">
                         @{p.username}

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { AccountBadges } from "./AccountIdentity";
 import { Avatar } from "./Avatar";
 import { Icon } from "./Icon";
 import { Sheet, SheetHeader } from "./ui/Sheet";
@@ -553,7 +554,13 @@ export function CommunityRoom({
             return (
               <div key={p.id} className="flex items-center gap-3 py-2">
                 <Avatar src={p.hide_name ? null : p.avatar_url} name={name} size={34} alt={t.avatarAlt} />
-                <span className="min-w-0 flex-1 text-sm font-semibold truncate">{name}</span>
+                {/* 🆕 **والشاراتُ تُقرأ قبل القبول والرفض** (D-773ب): طالبُ
+                    الانضمام يُحكم عليه بمن هو، **والاسمُ وحدَه يُقصّ**
+                    فتبقى العلامةُ ظاهرةً مهما طال. */}
+                <span className="min-w-0 flex-1 flex items-center" style={{ gap: 4 }}>
+                  <span className="min-w-0 truncate text-sm font-semibold">{name}</span>
+                  {p.hide_name ? null : <AccountBadges profile={p} t={t} />}
+                </span>
                 <button
                   type="button"
                   onClick={() => decide(p, true)}
@@ -587,7 +594,12 @@ export function CommunityRoom({
                   className={`flex flex-col max-w-[80%] ${m.mine ? "ms-auto items-end" : "me-auto items-start"}`}
                 >
                   {!m.mine && (
-                    <span className="text-12 text-muted mb-0.5 px-1">{nameOf(m.author)}</span>
+                    <span className="flex items-center min-w-0 text-12 text-muted mb-0.5 px-1" style={{ gap: 4 }}>
+                      <span className="min-w-0 truncate">{nameOf(m.author)}</span>
+                      {m.author && !m.author.hide_name ? (
+                        <AccountBadges profile={m.author} t={t} />
+                      ) : null}
+                    </span>
                   )}
                   <span
                     className={`fs-content rounded-2xl px-3.5 py-2 text-14 leading-relaxed whitespace-pre-line break-words ${
@@ -693,7 +705,10 @@ export function CommunityRoom({
                   className="flex items-center gap-3 px-5 py-3 hover:bg-surface-2 transition"
                 >
                   <Avatar src={p.hide_name ? null : p.avatar_url} name={name} size={40} alt={t.avatarAlt} />
-                  <span className="min-w-0 flex-1 text-sm font-semibold truncate">{name}</span>
+                  <span className="min-w-0 flex-1 flex items-center" style={{ gap: 4 }}>
+                    <span className="min-w-0 truncate text-sm font-semibold">{name}</span>
+                    {p.hide_name ? null : <AccountBadges profile={p} t={t} />}
+                  </span>
                   {p.id === room.owner_id && (
                     <span className="shrink-0 text-12 font-bold text-accent">{t.commOwnerBadge}</span>
                   )}
@@ -886,7 +901,10 @@ function InviteSheet({
             return (
               <div key={p.id} className="flex items-center gap-3 px-5 py-3">
                 <Avatar src={p.hide_name ? null : p.avatar_url} name={name} size={40} alt={t.avatarAlt} />
-                <span className="min-w-0 flex-1 text-sm font-semibold truncate">{name}</span>
+                <span className="min-w-0 flex-1 flex items-center" style={{ gap: 4 }}>
+                  <span className="min-w-0 truncate text-sm font-semibold">{name}</span>
+                  {p.hide_name ? null : <AccountBadges profile={p} t={t} />}
+                </span>
                 {isMember ? (
                   <span className="shrink-0 text-12 font-bold text-muted">
                     {t.commAlreadyMember}

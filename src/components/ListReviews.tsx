@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { AccountBadges } from "./AccountIdentity";
 import { Avatar } from "./Avatar";
 import { Icon } from "./Icon";
 import { SpoilerText } from "./SpoilerText";
@@ -302,8 +303,13 @@ export function ListReviews({
               <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
                 {/* **ومخفي الاسم بلا بديل** — الغيابُ أصدق (D-011) */}
-                <span className="text-14 font-bold truncate">
-                  {r.hideName ? "" : (r.nickname ?? r.username ?? "")}
+                {/* 🆕 **ومن أخفى اسمَه أخفى شارتَه معه** (D-773ب): علامةٌ
+                    فوق فراغٍ تدلّ على صاحبها من حيث أراد أن يختفي. */}
+                <span className="flex items-center min-w-0" style={{ gap: 4 }}>
+                  <span className="min-w-0 truncate text-14 font-bold">
+                    {r.hideName ? "" : (r.nickname ?? r.username ?? "")}
+                  </span>
+                  {r.hideName ? null : <AccountBadges profile={r} t={t} />}
                 </span>
                 <span className="text-12 text-muted shrink-0">
                   {timeAgoShort(r.updatedAt, t)}

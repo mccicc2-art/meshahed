@@ -4,6 +4,7 @@ import type { TitleReview } from "@/lib/data";
 import { displayNameOf, profileHref } from "@/lib/people";
 import { timeAgoShort } from "@/lib/when";
 import { dirOf, alignOf } from "@/lib/dir";
+import { AccountBadges } from "./AccountIdentity";
 import { Avatar } from "./Avatar";
 import { Icon } from "./Icon";
 import { LikeButton } from "./LikeButton";
@@ -66,14 +67,20 @@ export function TitleReviewRow({
         <div className="flex items-start gap-1.5">
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
-              <Link
-                /* 🆕 **اسمُ الكاتب يفتح كاتبَه لا رأيَه** (D-655) */
-                href={profileHref(r) ?? href}
-                prefetch={false}
-                className="min-w-0 truncate font-bold text-14 leading-tight hover:text-accent transition"
-              >
-                <bdi>{who}</bdi>
-              </Link>
+              {/* 🆕 **والشاراتُ أختٌ للرابط لا ابنةٌ له** (D-773ب): **رابطٌ
+                  داخل رابطٍ ترميزٌ باطل** — **والقصُّ يبقى على الاسم وحدَه**
+                  فلا شارةَ تسقط بطول اسم. */}
+              <span className="flex items-center min-w-0" style={{ gap: 4 }}>
+                <Link
+                  /* 🆕 **اسمُ الكاتب يفتح كاتبَه لا رأيَه** (D-655) */
+                  href={profileHref(r) ?? href}
+                  prefetch={false}
+                  className="min-w-0 truncate font-bold text-14 leading-tight hover:text-accent transition"
+                >
+                  <bdi>{who}</bdi>
+                </Link>
+                {r.hide_name ? null : <AccountBadges profile={r} t={t} />}
+              </span>
               <span aria-hidden className="shrink-0 text-muted text-12">
                 ·
               </span>

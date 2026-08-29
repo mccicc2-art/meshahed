@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { AccountBadges } from "./AccountIdentity";
 import { Avatar } from "./Avatar";
 import { Icon } from "./Icon";
 import { Sheet, SheetHeader } from "./ui/Sheet";
@@ -155,7 +156,12 @@ export function StartConversationSheet({
           size={30}
           alt={t.avatarAlt}
         />
-        <span className="text-sm font-semibold truncate">{name}</span>
+        {/* 🆕 **والطرفُ يُعرَّف بشارته أيضاً** (D-773ب): سطرٌ يقول «مع من
+            نبدأ» ناقصٌ إن أسقط ما يميّزه. */}
+        <span className="flex items-center min-w-0" style={{ gap: 4 }}>
+          <span className="min-w-0 truncate text-sm font-semibold">{name}</span>
+          {person.hide_name ? null : <AccountBadges profile={person} t={t} />}
+        </span>
       </div>
 
       {picked ? (

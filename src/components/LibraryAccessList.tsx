@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
+import { AccountBadges } from "./AccountIdentity";
 import { Avatar } from "./Avatar";
 import { Icon } from "./Icon";
 import { buttonClass } from "./ui/Button";
@@ -136,7 +137,13 @@ export function LibraryAccessList({ locale }: { locale: Locale }) {
                       className="w-full flex items-center gap-3 py-2.5 text-start hover:bg-surface-2 -mx-1 px-1 rounded-lg transition"
                     >
                       <Avatar src={p.hide_name ? null : p.avatar_url} name={name} size={32} alt="" />
-                      <span className="min-w-0 flex-1 text-14 font-semibold truncate">{name}</span>
+                      {/* 🆕 **ومنحُ المكتبة قرارُ ثقة** (D-773ب): **الشارةُ
+                          جزءٌ ممّا يُبنى عليه** — فتظهر في المنتقي وفي
+                          الممنوحين معاً، لا في أحدهما. */}
+                      <span className="min-w-0 flex-1 flex items-center" style={{ gap: 4 }}>
+                        <span className="min-w-0 truncate text-14 font-semibold">{name}</span>
+                        {p.hide_name ? null : <AccountBadges profile={p} t={t} />}
+                      </span>
                       <span className="shrink-0 text-accent" aria-hidden>
                         <Icon name="plus" size={15} strokeWidth={2.2} />
                       </span>
@@ -160,7 +167,10 @@ export function LibraryAccessList({ locale }: { locale: Locale }) {
                   <li key={p.id} className="flex items-center gap-3 py-2.5">
                     <Avatar src={p.hide_name ? null : p.avatar_url} name={name} size={36} alt="" />
                     <div className="min-w-0 flex-1">
-                      <p className="text-14 font-semibold truncate">{name}</p>
+                      <p className="flex items-center min-w-0" style={{ gap: 4 }}>
+                        <span className="min-w-0 truncate text-14 font-semibold">{name}</span>
+                        {p.hide_name ? null : <AccountBadges profile={p} t={t} />}
+                      </p>
                       {p.username && !p.hide_name && (
                         <p className="text-12 text-muted truncate" dir="ltr">
                           @{p.username}

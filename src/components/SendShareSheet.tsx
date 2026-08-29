@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
+import { AccountBadges } from "./AccountIdentity";
 import { Avatar } from "./Avatar";
 import { Icon } from "./Icon";
 import { Sheet, SheetHeader } from "./ui/Sheet";
@@ -119,7 +120,12 @@ export function SendShareSheet({
                       alt={t.avatarAlt}
                     />
                     <span className="min-w-0 flex-1">
-                      <span className="block text-sm font-semibold truncate">{name}</span>
+                      {/* 🆕 **ومن أُرسل إليه يُعرَف كما يُعرَف في كلِّ سطح**
+                          (D-773ب): الورقةُ ليست استثناءً من الهويّة. */}
+                      <span className="flex items-center min-w-0" style={{ gap: 4 }}>
+                        <span className="min-w-0 truncate text-sm font-semibold">{name}</span>
+                        {p.hide_name ? null : <AccountBadges profile={p} t={t} />}
+                      </span>
                       {p.username && (
                         <span className="block text-xs text-muted truncate" dir="ltr">
                           @{p.username}

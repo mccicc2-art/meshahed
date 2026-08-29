@@ -12,6 +12,7 @@ import {
 } from "@/lib/actions";
 import { getDict, type Locale } from "@/lib/i18n";
 import { GENRES, posterUrl } from "@/lib/media";
+import { AccountBadges } from "./AccountIdentity";
 import { Avatar } from "./Avatar";
 import { Icon } from "./Icon";
 import { buttonClass } from "./ui/Button";
@@ -25,6 +26,12 @@ interface Suggested {
   avatar_url: string | null;
   shared: number;
   followers: number;
+  /* 🆕 **وحالةُ الحساب** (D-773ب) — **ولا `hide_name` هنا**: دالّةُ SQL
+     لا تقترح من أخفى اسمَه أصلاً، **وحارسٌ لحالةٍ لا تصل حشوٌ يكذب**.
+     **واختياريّةٌ فغيابُها «بلا شارة» لا انكسار.** */
+  plan?: string | null;
+  founder?: boolean | null;
+  verified_at?: string | null;
 }
 
 /** كم شخصاً نقترح: ستّةٌ تملأ الشاشة بلا تمرير، والمطلوب منها ثلاثة */
@@ -340,7 +347,13 @@ export function Onboarding({
                 >
                   <Avatar src={p.avatar_url} name={name} size={40} alt={t.avatarAlt} />
                   <span className="flex-1 min-w-0">
-                    <span className="block text-sm font-semibold truncate">{name}</span>
+                    {/* 🆕 **وأوّلُ ما يرى الوافدُ الجديدُ الشارات** (D-773ب):
+                        **السببُ تحت الاسم يقول «لماذا هو»، والشارةُ تقول
+                        «من هو»** — وقرارُ المتابعة يحتاج الاثنين. */}
+                    <span className="flex items-center min-w-0" style={{ gap: 4 }}>
+                      <span className="min-w-0 truncate text-sm font-semibold">{name}</span>
+                      <AccountBadges profile={p} t={t} />
+                    </span>
                     {reason && (
                       <span className="block text-12 text-muted truncate">{reason}</span>
                     )}
