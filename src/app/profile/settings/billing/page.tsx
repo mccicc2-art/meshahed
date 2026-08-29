@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getUser, getProfile } from "@/lib/data";
-import { isPlus, isFounder } from "@/lib/plan";
+import { isPlus, planNameOf } from "@/lib/plan";
 import { getT } from "@/lib/locale";
 import { SettingsPageLayout } from "@/components/settings/SettingsPageLayout";
 import { SettingsGroup } from "@/components/settings/SettingsGroup";
@@ -19,7 +19,6 @@ export default async function Page() {
   const { t } = await getT();
   const profile = await getProfile();
   const plus = isPlus(profile);
-  const founder = isFounder(profile);
 
   return (
     <SettingsPageLayout title={t.setBilling}>
@@ -27,10 +26,13 @@ export default async function Page() {
         {/* 🆕 **الصفُّ يقول خطّتَه لا خطّةً واحدةً للجميع** (D-633):
             كان مسمَّراً على «Loopz مجّاني» — **وسطرٌ ثابتٌ يكذب على
             المشترك** (D-217). والمؤسِّسُ يُنادى بصفته: **الأندرُ أصدقُ
-            بصاحبه.** */}
+            بصاحبه.**
+            🆕 **والتعبيرُ غادر هذا السطرَ إلى `planNameOf`** (D-780):
+            **صفحتان أخريان كانتا تسمّران «مجّاني» على البابِ نفسِه** —
+            **وإصلاحُ الغرفةِ وحدَها يترك المقبضَ يكذب.** */}
         <SettingsRow
           icon="card"
-          title={plus ? (founder ? t.founderBadge : t.plusName) : t.setPlanFree}
+          title={planNameOf(profile, t)}
           value={t.setPlanActive}
         />
         <SettingsRow
