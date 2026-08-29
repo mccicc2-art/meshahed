@@ -4379,6 +4379,70 @@ export interface HistoryRow {
  * الحلقات والأفلام في قائمة واحدة: السجلّ يُقرأ بالزمن لا بنوع العمل، ومن
  * يتذكّر «شفت شيئاً ليلة الخميس» لا يتذكّر إن كان فيلماً أم حلقة.
  */
+/**
+ * 🆕 **نافذةُ مشاهدةٍ كاملةٌ بتاريخها** (D-796) — **لا سقفَ عددٍ بل حدُّ
+ * زمن.**
+ *
+ * 🔑 **ولمَ ليست `getWatchHistory` بسقفٍ أكبر**: تلك تجيب «ماذا شاهدتُ
+ * أخيراً» فسقفُها عددٌ — **والتقريرُ يسأل «ماذا شاهدتُ في هذه المدّة»**،
+ * **وسقفُ عددٍ على سؤالِ مدّةٍ يقصّ التقريرَ من طرفه الأبعد ولا يقول**
+ * (D-217): **سنةٌ نشيطةٌ تتجاوز أربعمئةَ صفٍّ بسهولة، فيخرج «يناير» فارغاً
+ * وهو مليء.** **و`pageAll` تقرأ حتى ينتهي المدى** كأخواتها.
+ *
+ * ⚠️ **والتجميعُ بتوقيت UTC** — **دَينٌ مُعلَنٌ لا سهو**: حلقةٌ عُلّمت بعد
+ * منتصف الليل بتوقيت الرياض تقع في يوم الأمس عند العدّ. **وإصلاحُه يوجب
+ * منطقةَ القارئ، ولا كوكي لها اليوم** — **ويُفتح يوم يُطلب، لا بتخمينِ
+ * منطقةٍ واحدةٍ للجميع** (القاعدة ١٧).
+ */
+export async function getWatchWindow(sinceIso: string): Promise<HistoryRow[]> {
+  try {
+    const supabase = await createClient();
+    const uid = await getUserId();
+    if (!uid) return [];
+    const [eps, movies] = await Promise.all([
+      pageAll<WatchedEpisodeRow>((from, to) =>
+        supabase
+          .from("watched_episodes")
+          .select("show_tmdb_id, season_number, episode_number, watched_at, runtime")
+          .eq("user_id", uid)
+          .gte("watched_at", sinceIso)
+          .order("watched_at", { ascending: false })
+          .range(from, to),
+      ),
+      pageAll<{ movie_tmdb_id: number; watched_at: string; runtime: number | null }>(
+        (from, to) =>
+          supabase
+            .from("watched_movies")
+            .select("movie_tmdb_id, watched_at, runtime")
+            .eq("user_id", uid)
+            .gte("watched_at", sinceIso)
+            .order("watched_at", { ascending: false })
+            .range(from, to),
+      ),
+    ]);
+    const rows: HistoryRow[] = [
+      ...eps.map((e) => ({
+        kind: "episode" as const,
+        tmdbId: e.show_tmdb_id,
+        season: e.season_number,
+        episode: e.episode_number,
+        watchedAt: e.watched_at,
+        runtime: e.runtime,
+      })),
+      ...movies.map((m) => ({
+        kind: "movie" as const,
+        tmdbId: m.movie_tmdb_id,
+        watchedAt: m.watched_at,
+        runtime: m.runtime,
+      })),
+    ];
+    return rows.sort((a, b) => b.watchedAt.localeCompare(a.watchedAt));
+  } catch {
+    /* **الصمتُ عند الفشل** — تقريرٌ فارغٌ خيرٌ من صفحةٍ ساقطة */
+    return [];
+  }
+}
+
 export async function getWatchHistory(limit = 400): Promise<HistoryRow[]> {
   try {
     const supabase = await createClient();
