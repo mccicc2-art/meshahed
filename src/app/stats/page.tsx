@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { Suspense } from "react";
 import { getUser } from "@/lib/data";
 import { getT } from "@/lib/locale";
@@ -10,6 +11,7 @@ import {
 import { ShareCard } from "@/components/ShareCard";
 import { StatsRangeMenu } from "@/components/StatsRangeMenu";
 import { SettingsHeader } from "@/components/settings/SettingsHeader";
+import { Icon } from "@/components/Icon";
 
 /**
  * الإحصائيات — **شكلٌ سلّمه أحمد** (D-493).
@@ -61,6 +63,30 @@ export default async function StatsPage({
       <Suspense key={range} fallback={<LibraryAnalysisSkeleton />}>
         <LibraryAnalysis locale={locale} range={range} />
       </Suspense>
+
+      {/* 🆕 **بابُ التقارير** (D-796) — **صفٌّ في ذيل الإحصائيات لا رمزٌ
+          ثالثٌ في الترويسة**: الترويسةُ فيها المشاركةُ والمدى، **ورمزٌ
+          ثالثٌ في صفٍّ عرضُه أربعُ وحداتٍ يزحم اثنين قائمين** (D-776).
+          🔑 **والموضعُ يقول المعنى**: من فرغ من قراءة «كم عندي» هو
+          بالضبط من يسأل «وماذا فعلتُ هذا الأسبوع؟» — **وبابٌ يقع حيث
+          يولد السؤال لا يحتاج تعليماً.** */}
+      <Link
+        href="/reports"
+        className="mt-5 flex items-center gap-3 rounded-2xl border border-border bg-surface px-4 py-3 active:opacity-70 transition"
+      >
+        <Icon name="chart" size={18} className="text-accent shrink-0" />
+        <span className="min-w-0 flex-1">
+          <span className="block text-14 font-bold">
+            {locale === "en" ? "Your reports" : "تقاريرك"}
+          </span>
+          <span className="block text-12 text-muted mt-0.5">
+            {locale === "en"
+              ? "Your week, your month and your year — a Loopz+ feature."
+              : "أسبوعك وشهرك وسنتك — من مزايا Loopz+."}
+          </span>
+        </span>
+        <Icon name="sparkle-star" size={16} className="text-accent shrink-0" />
+      </Link>
     </div>
   );
 }
