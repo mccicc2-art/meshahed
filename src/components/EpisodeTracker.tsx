@@ -57,6 +57,9 @@ function metaLine(e: TrackerEpisode, aired: boolean, t: Dict): string {
 
 export function EpisodeTracker({
   showTmdbId,
+  showTitle,
+  showPosterPath = null,
+  initialFollowing = false,
   summaries,
   initialSeason,
   initialEpisodes = [],
@@ -68,6 +71,15 @@ export function EpisodeTracker({
   locale,
 }: {
   showTmdbId: number;
+  /* 🆕 **العنوانُ والملصقُ ورايةُ المتابعة** (D-777، حكمُ أحمد: «نعم —
+     من أوّل تأشير»): **أوّلُ صحٍّ يُدخل المسلسلَ المكتبةَ**، والقاعدةُ
+     تحتاج اسماً لتكتب الصفّ.
+     🔑 **ويُرسلان مرّةً واحدة**: `sentMeta` يمنع تكرارَ العنوان مع كلِّ
+     حلقة — **والتأشيرُ أعلى فعلٍ تكراراً في التطبيق**، فحمولةٌ زائدةٌ
+     في كلِّ ضغطةٍ ثمنٌ يُدفع ألفَ مرّةٍ لأجل مرّة. */
+  showTitle?: string;
+  showPosterPath?: string | null;
+  initialFollowing?: boolean;
   summaries: SeasonSummary[];
   /** الموسم الذي جاء محمّلاً مع الصفحة (فيه أول حلقة غير مشاهَدة) */
   initialSeason: number | null;
@@ -89,6 +101,15 @@ export function EpisodeTracker({
   locale: Locale;
 }) {
   const t = getDict(locale);
+
+  /* **رايةٌ لا حالة**: لا شيءَ يُرسم منها، **فتغييرُها لا يستحقّ رسمةً**
+     — ولهذا `useRef` لا `useState` (عُرفُ `busy` في `TrailerFeed`). */
+  const sentMeta = useRef(initialFollowing);
+  const followMeta = () => {
+    if (sentMeta.current || !showTitle) return {};
+    sentMeta.current = true;
+    return { title: showTitle, posterPath: showPosterPath };
+  };
   const [watched, setWatched] = useState<Set<string>>(new Set(initialWatched));
 
   /* تقييماتي — خريطةٌ في الحالة لا قراءةٌ من الخادم عند كل حفظ: الورقة
@@ -324,7 +345,7 @@ export function EpisodeTracker({
       start(async () => {
         try {
           if (toMark.length > 1) {
-            await runOrQueue("watchUpTo", { showTmdbId, episodes: toMark });
+            await runOrQueue("watchUpTo", { showTmdbId, episodes: toMark, ...followMeta() });
           } else {
             await runOrQueue("toggleEpisode", {
               showTmdbId,
@@ -332,6 +353,7 @@ export function EpisodeTracker({
               episode: ep.episode_number,
               runtime: ep.runtime,
               watched: true,
+              ...followMeta(),
             });
           }
           /* **ورقةُ «ما تقييمك لها؟» فور التأشير** (D-192 — توسيعُ D-158
@@ -412,6 +434,7 @@ export function EpisodeTracker({
       try {
         await runOrQueue("setSeasonWatched", {
           showTmdbId,
+          ...(mark ? followMeta() : {}),
           episodes: aired.map((e) => ({
             season: s.season_number,
             episode: e.episode_number,
