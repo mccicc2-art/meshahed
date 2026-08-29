@@ -158,8 +158,6 @@ interface ControllerApi {
   registerUnavailable(id: string, cb: () => void): void;
   tapPlay(id: string): void;
   tapSound(): void;
-  /** 🆕 D-762 (طلب أحمد): إيقافٌ مؤقّتٌ بضغطة السطح — الاستئنافُ بـtapPlay */
-  tapPause(): void;
   /** ⚖️ D-762: التقديمُ عاد بطلب صاحبه — بثوانٍ مطلقةٍ على النشطة */
   seekTo(seconds: number): void;
   toggleExpand(): void;
@@ -254,6 +252,10 @@ function createEngine(
     preload: "idle" | "loading" | "ready";
     /** مفتاحٌ فشل تحميلُه المسبق — لا يُعاد بلا نهاية */
     failedKey: string | null;
+    /** 🆕 D-766: بلغ PLAYING مرّةً — جلسةُ تشغيلٍ قائمةٌ تقبل أوامرَ iOS
+        اللاحقة. والبِكرُ (أُقلع مخفيّاً ولم يبدأ قطّ) لا يُرقّى: أمرُ
+        تشغيله الأوّلُ يُبتلع بصمت (عطبُ D-759 الأصليّ نفسُه) */
+    played: boolean;
   }
   let act: PlayerRec | null = null;
   let sby: PlayerRec | null = null;
@@ -265,17 +267,19 @@ function createEngine(
   let keyIdx = 0;
   let advancedFor = -1;
   /** 🆕 D-760 (بلاغ أحمد: «كل فيديو لازم أضغط زرّ الصوت»): نيّةُ الصوت
-      تُحمَل عبر البطاقات. `wantSound` آخرُ اختيارٍ صريح (بذرتُه الكوكي)،
-      و`unlocked` هل فُكّ قفلُ WebKit الصوتيُّ **لهذا العنصر** بإيماءةٍ
-      ناجحةٍ متحقَّقة — فبعد أوّل ضغطةِ صوتٍ تنطلق البطاقاتُ التاليةُ
-      مصوَّتةً بلا ضغطةٍ لكلِّ فيديو. (أوّلُ فيديو بعد فتح الصفحة صامتٌ
-      دائماً — قانونُ iOS لا خيارُنا.) */
+      تُحمَل عبر البطاقات. `wantSound` آخرُ اختيارٍ صريح (بذرتُه الكوكي —
+      ⚖️ 🆕 D-771 بحكمه «دائماً الصوت شغال والي مزعجه يحط صامت»: بذرةُ
+      الافتراض صارت **مفتوحة** ناقضةً افتراضَ D-726 الصامت، والكاتمُ
+      وحدَه يُحفظ كتمُه). ⚖️ وسقط معها شرطُ «قفلِ الجلسة المفكوك»
+      (D-760/761): الصوتُ **يُحاوَل دائماً** ما دامت النيّةُ قائمةً،
+      ورفضُ WebKit يلتقطه مسارُ `autoUnmuteAt` فيُستعاد التشغيلُ صامتاً
+      وتُختم البطاقةُ `soundBlocked` فلا تدور حلقةُ فكٍّ/رفضٍ إلى الأبد.
+      (أوّلُ إقلاعِ كلِّ إطارٍ يبقى صامتاً — قانونُ iOS — والفكُّ يقع
+      مع أوّل PLAYING.) */
   let wantSound = false;
-  /** فُكّ قفلُ WebKit الصوتيُّ مرّةً في هذه الجلسة (تشغيلٌ مسموعٌ
-      متحقَّق) — شرطُ حمل الصوت؛ ورفضٌ عارضٌ تعالجه مُعافاةُ PAUSED
-      وcatch الملفّ بلا مسح العلم (D-761: العلمُ للجلسة لا للعنصر —
-      المشغّلان يتناوبان والعنصرُ يتبدّل) */
-  let soundSessionUnlocked = false;
+  /** 🆕 D-771: رفض WebKit فكَّ الصوتِ لهذه البطاقة — لا يُعاد عليها
+      (يُصفَّر عند تنشيطِ بطاقةٍ أو بإيماءةِ صوتٍ صريحة) */
+  let soundBlocked = false;
   let verifyTimer: number | null = null;
   /** 🆕 D-762 (بلاغ أحمد: «ارجع فوق يعيده من البداية»): ذاكرةُ مواضعَ
       لكلِّ بطاقة — تُقيَّد عند مغادرتها وتُستأنف عند العودة. المفتاحُ
@@ -425,8 +429,8 @@ function createEngine(
       if (destroyed) return;
       const on = verifySound();
       if (on) {
-        soundSessionUnlocked = true;
         autoUnmuteAt = 0;
+        soundBlocked = false;
       }
     }, ms);
   };
@@ -586,7 +590,20 @@ function createEngine(
       expectPause = false;
       startTick();
       startVeilProbe();
-      scheduleVerify(150);
+      /* 🆕 D-771 (حكمه: «دائماً الصوت شغال والي مزعجه يحط صامت» — وجذرُ
+         بلاغِه «كل شوي أحصل المقطع صامت»): كلُّ PLAYING على بطاقةٍ
+         صامتةٍ ونيّةُ الصوت قائمةٌ = محاولةُ فكٍّ فوريّة — الإقلاعُ
+         الأوّل والترقيةُ والعودةُ من الخلفيّة كلُّها تمرّ من هنا فلا
+         تبقى بطاقةٌ صامتةٌ خلافاً للنيّة. رفضُ WebKit يلتقطه مسارُ
+         `autoUnmuteAt` أدناه فيُستعاد التشغيلُ صامتاً وتُختم البطاقةُ
+         `soundBlocked` — «دائماً شغّال» مقدَّمةٌ على الصوت. */
+      if (wantSound && !soundBlocked && !readSnap().soundOn && act?.p && act.ready) {
+        act.p.unMute();
+        act.p.setVolume(100);
+        autoUnmuteAt = Date.now();
+        publish({ soundOn: true });
+      }
+      scheduleVerify(300);
       return;
     }
     if (e.data === yts.PAUSED || e.data === yts.ENDED) {
@@ -606,6 +623,9 @@ function createEngine(
         document.visibilityState === "visible"
       ) {
         autoUnmuteAt = 0;
+        /* 🆕 D-771: الرفضُ يختم البطاقةَ — وإلا دار PLAYING التالي على
+           محاولةِ فكٍّ جديدةٍ فرفضٍ فإيقافٍ... حلقةً لا تنتهي */
+        soundBlocked = true;
         act?.p?.mute();
         publish({ soundOn: false });
         act?.p?.playVideo();
@@ -672,12 +692,15 @@ function createEngine(
       key: firstKey,
       preload: asActive ? "idle" : "loading",
       failedKey: null,
+      played: false,
     };
     if (asActive) act = rec;
     else sby = rec;
     applyRoles();
     const yt = await loadYouTubeApi();
     if (destroyed) return;
+    /* 🆕 D-766: دورُه انتهى قبل اكتمال إقلاعه (بِكرٌ هُدم في الترقية) */
+    if (!rec.frame.isConnected) return;
     rec.p = new yt.Player(frame, {
       events: {
         onReady: () => {
@@ -698,6 +721,8 @@ function createEngine(
           }
         },
         onStateChange: (e) => {
+          /* 🆕 D-766: أوّلُ PLAYING يختم المشغّلَ «مجرَّباً» — أيّاً كان دورُه */
+          if (e.data === window.YT?.PlayerState?.PLAYING) rec.played = true;
           if (rec === act) activeStateChange(e);
           else standbyStateChange(rec, e);
         },
@@ -773,7 +798,35 @@ function createEngine(
     const saved = activeId ? positions.get(activeId) : undefined;
     const startAt = saved && saved.key === firstKey && saved.t > 1 ? Math.floor(saved.t) : 0;
 
-    if (sby?.ready && sby.p && sby.key === firstKey) {
+    /* 🔴 🆕 D-766 (بلاغ ٢٨ أغسطس: «ثاني مقطع دائماً تجي علامة اللودينغ
+       وبعدين مايشتغل، لازم أضغط التشغيل — واللي بعده تشتغل مباشرة»):
+       أوّلُ احتياطٍ في الجلسة **بِكرٌ**: iframe أُقلع مخفيّاً، وiOS لا
+       يبدأ تشغيلَ المخفيّ أبداً — فلا يبلغ PLAYING، وأمرُ playVideo
+       الأوّلُ على مشغّلٍ بلا جلسةِ تشغيلٍ يُبتلع بصمت (عطبُ D-759
+       الأصليّ). الترقيةُ كانت تُسلّم الظاهرَ لهذا الأخرس: دوّامةٌ ثم
+       تعثّرُ ٨ ثوانٍ ثم زرّ. أمّا الثالثةُ فما بعدها فاحتياطُها المشغّلُ
+       السابقُ وقد عمل ظاهراً — جلستُه قائمةٌ فيُطاع. العلاج: البِكرُ
+       يُهدم ويُبنى مكانَه إطارٌ جديدٌ **ظاهراً** بمحاولته الذاتيّة
+       (autoplay=1&mute=1 — بوّابةُ iOS الوحيدة، طريقُ أوّلِ بطاقةٍ
+       نفسُه)، والمجرَّبُ القديمُ يصير احتياطاً فتعود الترقيةُ ممكنةً
+       لكلِّ ما بعدها. يقع مرّةً في الجلسة وعلى iOS عمليّاً وحدَه —
+       الحاسوبُ يشغّل المخفيَّ فيُولد الاحتياطُ مجرَّباً ولا يمرّ هنا. */
+    if (sby && sby.key === firstKey && !sby.played) {
+      const virgin = sby;
+      sby = act; /* أوقفه activate() للتوّ — عودةٌ إليه لاحقاً ترقيةٌ دافئة */
+      act = null;
+      if (sby) sby.preload = "idle";
+      try {
+        virgin.p?.destroy();
+      } catch {
+        /* مشغّلٌ لم يكتمل إنشاؤه */
+      }
+      virgin.frame.remove();
+      void bootPlayer(firstKey, true, startAt);
+      return;
+    }
+
+    if (sby?.ready && sby.p && sby.key === firstKey && sby.played) {
       /* الترقية: تبادلُ أدوارٍ — المشغّلُ الجاهزُ يصعد والقديمُ يصير احتياطاً */
       const old = act;
       act = sby;
@@ -786,7 +839,8 @@ function createEngine(
       applyRoles();
       expectPause = false;
       act.preload = "idle";
-      const carry = wantSound && soundSessionUnlocked;
+      /* ⚖️ D-771: الحملُ بالنيّة وحدَها — لا شرطَ قفلٍ مفكوك */
+      const carry = wantSound && !soundBlocked;
       if (carry) {
         act.p?.unMute();
         act.p?.setVolume(100);
@@ -803,8 +857,9 @@ function createEngine(
     }
 
     if (act?.p && act.ready) {
-      /* مسار D-760 كما هو: حملُ الصوت وتحميلٌ في الظاهر نفسِه */
-      const carry = wantSound && soundSessionUnlocked;
+      /* مسار D-760 كما هو: حملُ الصوت وتحميلٌ في الظاهر نفسِه
+         (⚖️ D-771: بالنيّة وحدَها) */
+      const carry = wantSound && !soundBlocked;
       if (carry) {
         act.p.unMute();
         act.p.setVolume(100);
@@ -871,6 +926,9 @@ function createEngine(
     clearStall();
     keyIdx = 0;
     advancedFor = -1;
+    /* 🆕 D-771: بطاقةٌ جديدةٌ تمحو ختمَ الرفض — محاولةُ فكٍّ واحدةٌ
+       لكلِّ بطاقةٍ كحدٍّ أقصى، لا حلقةٌ ولا صمتٌ دائم */
+    soundBlocked = false;
     activeId = id;
     publish({ activeId: id, time: null });
     setPhase("loading");
@@ -886,8 +944,8 @@ function createEngine(
       if (dom.video.src !== slot.item.fileUrl) dom.video.src = slot.item.fileUrl;
       /* 🆕 D-760: عنصرُ الملفّ يحمل نيّةَ الصوت هو الآخر — وإن رفض
          WebKit تشغيلاً مصوَّتاً عُدنا صامتين بدل بطاقةٍ ميتة
-         (علمُ الجلسة يبقى — الرفضُ عارضٌ لا يُطفئ الحمل) */
-      const carry = wantSound && soundSessionUnlocked;
+         (⚖️ D-771: بالنيّة وحدَها — لا شرطَ قفلٍ مفكوك) */
+      const carry = wantSound && !soundBlocked;
       dom.video.muted = !carry;
       if (carry) dom.video.volume = 1;
       publish({ soundOn: carry });
@@ -899,6 +957,7 @@ function createEngine(
       void dom.video.play().catch(() => {
         if (activeId !== id) return;
         if (carry) {
+          soundBlocked = true;
           dom.video.muted = true;
           publish({ soundOn: false });
           void dom.video.play().catch(() => {
@@ -1026,21 +1085,31 @@ function createEngine(
       }
       return;
     }
-    /* العودة: استئنافٌ صامتٌ دائماً — لا صوتَ آليّاً (ثالثًا/٧) */
+    /* ⚖️ 🆕 العودة: الصوتُ يُحمَل لا يُكتم (D-771 بحكمه «دائماً الصوت
+       شغال» — نقضٌ صريحٌ منه لبند ثالثًا/٧ «استئنافٌ صامتٌ دائماً»
+       الذي كان جذرَ «كل شوي أحصل المقطع صامت»): الملفُّ يحمل النيّةَ
+       بنفسه ويرتدّ صامتاً عند الرفض، ويوتيوبُ يستأنف صامتاً وحدثُ
+       PLAYING يفكّه بمساره الموحَّد. */
     if (!activeId) return;
     if (activeIsFile()) {
-      dom.video.muted = true;
-      void dom.video.play().catch(() => undefined);
+      const carry = wantSound && !soundBlocked;
+      dom.video.muted = !carry;
+      if (carry) dom.video.volume = 1;
+      publish({ soundOn: carry });
+      void dom.video.play().catch(() => {
+        soundBlocked = true;
+        dom.video.muted = true;
+        publish({ soundOn: false });
+        void dom.video.play().catch(() => undefined);
+      });
       /* الإخفاءُ أوقف العدّاد — وعنصرُ الملفّ بلا حدثِ PLAYING يعيد
          تدويرَه، فبدون هذا يعمل المقطعُ والعقربُ ساكنٌ والسِّترُ نازل */
       startTick();
     } else if (act?.p && act.ready) {
       act.p.mute();
       act.p.playVideo();
+      publish({ soundOn: false });
     }
-    /* أُمر بالكتم فتُنشر الأيقونةُ بالأمر — لا بقراءةٍ متزامنةٍ عتيقة.
-       (نيّةُ الصوت وقفلُه باقيان: البطاقةُ التالية تحملهما كالمعتاد.) */
-    publish({ soundOn: false });
   };
 
   return {
@@ -1118,8 +1187,10 @@ function createEngine(
       if (!slot) return;
       const wantOn = !readSnap().soundOn;
       /* الاختيارُ الصريح يحدّث النيّةَ المحمولةَ عبر البطاقات (D-760) —
-         والتفاعلُ يعيد عدَّ توارِي الأزرار (D-764) */
+         والتفاعلُ يعيد عدَّ توارِي الأزرار (D-764). والإيماءةُ تمحو
+         ختمَ الرفض (D-771): يدُ القارئ أقوى من رفضٍ آليٍّ سابق */
       wantSound = wantOn;
+      if (wantOn) soundBlocked = false;
       pokeControls();
       if (activeIsFile()) {
         dom.video.muted = !wantOn;
@@ -1138,27 +1209,14 @@ function createEngine(
       window.setTimeout(() => {
         if (destroyed) return;
         const on = verifySound();
-        /* نجاحُ فكِّ الكتم بإيماءةٍ = قفلُ الجلسة مفكوك (D-761) */
-        if (on) soundSessionUnlocked = true;
         if (on === wantOn) writeTrailerSound(on);
       }, 200);
     },
 
-    /* 🆕 D-762 (طلب أحمد «إيقاف الفيديو»): إيقافٌ مؤقّتٌ — الصورةُ تبقى
-       (الغلافُ لا يعود على paused) والاستئنافُ بضغطةِ tapPlay يحفظ الصوت */
-    tapPause() {
-      if (!activeId) return;
-      rememberPosition();
-      if (activeIsFile()) {
-        dom.video.pause();
-        stopTick();
-        publish({ time: readTime() });
-        if (phase === "playing") setPhase("paused");
-      } else if (act?.p && act.ready) {
-        expectPause = true;
-        act.p.pauseVideo(); /* حدثُ PAUSED يُتمّ الحالةَ والعدّاد */
-      }
-    },
+    /* ⚖️ 🆕 «إيقاف الفيديو» أُلغي بحكمه (D-771: «تلغي خيار إيقاف الفديو
+       خله دائماً شغال») — نقضٌ صريحٌ منه لطلبه في D-762. سطحُ البطاقة
+       صار يُظهر الأزرارَ فقط، والإيقافُ الوحيدُ الباقي إيقافُ النظام
+       (خلفيّة/قفل شاشة) واستئنافُه بزرّ التشغيل. */
 
     /* ⚖️ D-762: التقديمُ عاد بطلب صاحبه («تقديم وتأخير») — نقضُ حذفِ
        D-759 سابعًا. بالواجهة الرسمية وحدَها، والزمنُ يُنشر بالأمر
@@ -1235,7 +1293,6 @@ type Engine = ReturnType<typeof createEngine>;
 /** نصوصُ طبقة التكبير المسرحيّ (D-762) — تمرُّ من السطح الذي يملك القاموس */
 export interface TrailerExpandedLabels {
   play: string;
-  pause: string;
   mute: string;
   unmute: string;
   collapse: string;
@@ -1346,9 +1403,6 @@ export function TrailerPlayback({
   const tapSound = useCallback(() => {
     engineRef.current?.tapSound();
   }, []);
-  const tapPause = useCallback(() => {
-    engineRef.current?.tapPause();
-  }, []);
   const seekTo = useCallback((seconds: number) => {
     engineRef.current?.seekTo(seconds);
   }, []);
@@ -1372,7 +1426,6 @@ export function TrailerPlayback({
       registerUnavailable,
       tapPlay,
       tapSound,
-      tapPause,
       seekTo,
       toggleExpand,
       pokeControls,
@@ -1384,7 +1437,6 @@ export function TrailerPlayback({
       registerUnavailable,
       tapPlay,
       tapSound,
-      tapPause,
       seekTo,
       toggleExpand,
       pokeControls,
@@ -1538,14 +1590,16 @@ function ExpandedUi({ api, labels }: { api: ControllerApi; labels: TrailerExpand
     snap.phase === "paused" || snap.phase === "blocked" || snap.phase === "stalled";
   return (
     <div className="fixed inset-0 z-[60]">
-      {/* سطحُ الطبقة كلِّها: متواريةُ الأزرار → أظهِرها؛ ظاهرتُها → أوقف */}
+      {/* ⚖️ D-771 (حكمه: «خله دائماً شغال»): السطحُ يُظهر الأزرارَ فقط —
+          الإيقافُ أُلغي، والتشغيلُ لواقفةِ النظام وحدَها */}
       <button
         type="button"
-        aria-label={playing ? labels.pause : labels.play}
+        aria-label={labels.play}
+        aria-hidden={playing && !showsPlay}
+        tabIndex={showsPlay ? 0 : -1}
         onClick={() => {
           if (playing) {
-            if (!controls) api.pokeControls();
-            else api.tapPause();
+            api.pokeControls();
           } else if (snap.activeId) {
             api.tapPlay(snap.activeId);
           }

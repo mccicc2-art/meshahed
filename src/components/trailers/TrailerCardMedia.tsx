@@ -45,7 +45,6 @@ export function TrailerCardMedia({
   muteLabel,
   unmuteLabel,
   withControls = false,
-  pauseLabel,
   seekLabel,
   expandLabel,
   onOpen,
@@ -63,7 +62,6 @@ export function TrailerCardMedia({
   unmuteLabel: string;
   /** 🆕 D-762: أدواتُ التحكّم الكاملة — للعلف وحدَه، لا للرايل */
   withControls?: boolean;
-  pauseLabel?: string;
   seekLabel?: string;
   expandLabel?: string;
   onOpen?: () => void;
@@ -128,21 +126,21 @@ export function TrailerCardMedia({
         />
       ) : null}
 
-      {/* 🆕 D-762: في العلف السطحُ كلُّه مفتاحُ إيقافٍ/استئناف — وفي
-          الرايل يبقى كما كان: زرُّ تشغيلٍ للواقفة، ونافذةُ D-743 للعاملة.
-          D-764: أزرارٌ متواريةٌ → اللمسةُ تُظهرها ولا توقف */}
+      {/* ⚖️ 🆕 D-771 (حكمه: «تلغي خيار إيقاف الفديو خله دائماً شغال» —
+          نقضٌ صريحٌ منه لسطحِ الإيقاف الذي طلبه في D-762): لمسةُ السطح
+          في العلف تُظهر الأزرارَ فقط ولا توقف أبداً — والي فاته شيءٌ
+          يرجع بشريط التقديم. وفي الرايل كما كان: زرُّ تشغيلٍ للواقفة،
+          ونافذةُ D-743 للعاملة. */}
       {!playing || withControls ? (
         <button
           type="button"
           onClick={() => {
-            if (playing && withControls) {
-              if (!controls) api.pokeControls();
-              else api.tapPause();
-            } else api.tapPlay(id);
+            if (playing && withControls) api.pokeControls();
+            else api.tapPlay(id);
           }}
-          aria-label={playing ? (pauseLabel ?? playLabel) : playLabel}
-          aria-hidden={!showsPlayButton && !playing}
-          tabIndex={showsPlayButton || (playing && withControls) ? 0 : -1}
+          aria-label={playLabel}
+          aria-hidden={!showsPlayButton}
+          tabIndex={showsPlayButton ? 0 : -1}
           className="absolute inset-0 z-50 grid place-items-center"
         >
           {showsPlayButton ? (
