@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getUser, getProfile } from "@/lib/data";
 import { getT } from "@/lib/locale";
 import { AccountBadges } from "@/components/AccountIdentity";
+import { planNameOf } from "@/lib/plan";
 import { Avatar } from "@/components/Avatar";
 import { Icon } from "@/components/Icon";
 import { SettingsPageLayout } from "@/components/settings/SettingsPageLayout";
@@ -112,11 +113,14 @@ export default async function SettingsPage() {
       <SettingsGroup label={t.setGroupAccount}>
         <SettingsRow href="/profile/edit" icon="edit" title={t.setEditProfile} />
         <SettingsRow href="/profile/settings/account" icon="person-check" title={t.setAccount} />
+        {/* 🆕 **والمقبضُ يقول ما خلفَه** (D-780): **كان `setPlanFree`
+            نصّاً ثابتاً — فمشتركٌ يرى `PLUS` في بطاقته وسطراً تحتها
+            يقول «Loopz مجّاني».** والحكمُ من `planNameOf` وحدَها. */}
         <SettingsRow
           href="/profile/settings/billing"
           icon="card"
           title={t.setBilling}
-          value={t.setPlanFree}
+          value={planNameOf(profile, t)}
         />
         {/* 🆕 D-768: دعوةُ الأصدقاء — في مجموعة الحساب بجوار الاشتراك:
             مكافأتُها اشتراكٌ، فبابُها حيث يُسأل عنه */}
