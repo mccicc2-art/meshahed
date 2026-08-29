@@ -7,7 +7,7 @@ import { HomeAvatarLink } from "./HomeAvatarLink";
 import { HomeViewSwitch } from "./HomeViewSwitch";
 import { HeaderTrailing } from "./HeaderTrailing";
 import { LogoWordmark } from "./Logo";
-import { AccountIdentity } from "./AccountIdentity";
+import { AccountIdentity, badgeLabelsOf } from "./AccountIdentity";
 import { isPlus } from "@/lib/plan";
 /**
  * 🆕 **خانةُ بطاقة الأرقام — تسكن مع راسمها** (D-497): كانت تُستورد
@@ -541,9 +541,10 @@ export function HomeHeader({
                         close: t.closeLabel,
                         empty: t.followListEmpty,
                         anonymous: t.anonymousUser,
-                        /* **والقاموسُ يحقّق الشكلَ بنيويّاً** — فلا التقاطَ
-                           حقولٍ يدويّاً ولا خمسةُ أسطرٍ تُنسى إحداها. */
-                        badges: t,
+                        /* 🔴 **ولا `t` كاملاً هنا**: هذا مكوّنُ عميل،
+                           **و`Dict` يحمل دوالَّ صياغةٍ لا تُسلسَل** فيتوقّف
+                           القطاعُ عن الحلّ (انظر `badgeLabelsOf`). */
+                        badges: badgeLabelsOf(t),
                       }}
                     />
                     <FollowCountButton
@@ -558,9 +559,10 @@ export function HomeHeader({
                         close: t.closeLabel,
                         empty: t.followListEmpty,
                         anonymous: t.anonymousUser,
-                        /* **والقاموسُ يحقّق الشكلَ بنيويّاً** — فلا التقاطَ
-                           حقولٍ يدويّاً ولا خمسةُ أسطرٍ تُنسى إحداها. */
-                        badges: t,
+                        /* 🔴 **ولا `t` كاملاً هنا**: هذا مكوّنُ عميل،
+                           **و`Dict` يحمل دوالَّ صياغةٍ لا تُسلسَل** فيتوقّف
+                           القطاعُ عن الحلّ (انظر `badgeLabelsOf`). */
+                        badges: badgeLabelsOf(t),
                       }}
                     />
                   </span>
