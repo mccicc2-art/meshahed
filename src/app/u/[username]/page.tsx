@@ -32,7 +32,7 @@ import { PosterGrid } from "@/components/PosterGrid";
 import { ProfileStatSheet } from "@/components/ProfileStatSheet";
 import { PosterRail, RailItem } from "@/components/PosterRail";
 import { FollowUserButton } from "@/components/FollowUserButton";
-import { AccountBadges } from "@/components/AccountIdentity";
+import { AccountBadges, badgeLabelsOf } from "@/components/AccountIdentity";
 import { ProfileMenu } from "@/components/ProfileMenu";
 import { isLoopz } from "@/lib/loopz";
 import { BackButton } from "@/components/BackButton";
@@ -1131,7 +1131,7 @@ export default async function PublicProfilePage({
                     close: t.closeLabel,
                     empty: t.followListEmpty,
                     anonymous: t.anonymousUser,
-                    badges: t,
+                    badges: badgeLabelsOf(t),
                   }}
                 />
                 <FollowCountButton
@@ -1146,7 +1146,7 @@ export default async function PublicProfilePage({
                     close: t.closeLabel,
                     empty: t.followListEmpty,
                     anonymous: t.anonymousUser,
-                    badges: t,
+                    badges: badgeLabelsOf(t),
                   }}
                 />
               </span>
