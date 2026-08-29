@@ -64,6 +64,36 @@ export const HEADER_STATS = [
 export type HeaderStatKey = (typeof HEADER_STATS)[number];
 
 /**
+ * 🆕 **رمزُ الخانة واسمُها — مصدرٌ واحدٌ لقارئَيه** (D-787، نظيرُ
+ * `homeSectionMeta` أعلاه حرفاً).
+ *
+ * **وجاء قارئُه الثاني فحانت لحظةُ الاستخراج** (D-376): البطاقةُ في
+ * الرئيسية ولوحُ التخصيص كانا يكتبان الخريطةَ نفسَها مرّتين —
+ * **وافترقتا فعلاً**: «حلقات» كانت `shortEpisodes` في البطاقة
+ * و`statsWatchedEpisodes` في اللوح، **فيختار المستخدمُ اسماً ويرى
+ * غيرَه** (وهو نقضُ D-703: اسمُ الشيء في اللوح هو اسمُه في الرئيسية).
+ *
+ * ⚠️ **والأسماءُ هنا قصيرةٌ بالبناء لا بالصدفة**: الخانةُ ثُلثُ بطاقةٍ
+ * على هاتف، **فاسمٌ يُستعار من لوحٍ أو تبويبٍ أو شارةٍ يُقصّ** — **ومن
+ * أضاف خانةً جديدةً يكتب اسمَها القصير هنا، لا يستعيره من سطحٍ أوسع.**
+ */
+export function headerStatMeta(
+  t: Dict,
+): Record<HeaderStatKey, { icon: IconName; label: string }> {
+  return {
+    shows: { icon: "tv", label: t.shortShows },
+    movies: { icon: "film", label: t.shortMovies },
+    towatch: { icon: "bookmark", label: t.libToWatch },
+    time: { icon: "clock", label: t.shortWatchTime },
+    episodes: { icon: "play", label: t.shortEpisodes },
+    upcoming: { icon: "hourglass", label: t.libUpcoming },
+    completed: { icon: "check", label: t.libTabFinished },
+    dropped: { icon: "card", label: t.droppedBadge },
+    ratings: { icon: "star", label: t.shortRatings },
+  };
+}
+
+/**
  * **وضعُ العرض في الرئيسية — بصريٌّ أو مضغوط** (D-434).
  *
  * **وهو وضعُ رسمٍ لا صفحةٌ ثانية**: نفسُ البيانات ونفسُ الترتيب ونفسُ

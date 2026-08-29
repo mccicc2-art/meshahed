@@ -332,7 +332,6 @@ const ar = {
   follow: "+ تابِع",
   following: "✓ أتابعه",
   undoWatched: "تراجع",
-  statsWatchedEpisodes: "حلقات",
   remove: "إزالة",
   repositionHint: "اسحب الصورة للأعلى أو الأسفل لضبط تموضعها.",
   repositionAria: "تموضع الصورة عمودياً",
@@ -1255,6 +1254,18 @@ const ar = {
      اليوميُّ «ما أضفتُه أخيراً؟» كان بلا جواب وثمنُه حقلٌ واحد.** */
   sortAdded: "الأحدث",
   shortMovies: "أفلام",
+  /* 🆕 **اسمان قصيران لخانة بطاقة الأرقام** (D-787، بلاغُ أحمد بلقطةٍ
+     محوَّطة: «الي يحط ٣ كارد فيه كلمة ما تطلع واضحة… دائماً الكلمة تطلع
+     كاملة أو نختصر الطويل منها»).
+     🔴 **والعلّةُ أنّ الخانة كانت تستعير أسماءها من أسطحٍ أوسع**:
+     `panelRatings` كُتبت للوحٍ عريض و`statWatchTime` لصفحة الإحصاءات —
+     **واسمٌ كُتب حيث لا حدَّ للعرض لا يصلح في خانةٍ عرضُها ثُلثُ بطاقة.**
+     ⚖️ **و«My» زائدةٌ أصلاً**: البطاقةُ كلُّها أرقامُ صاحبها، **فلا
+     تُقال الملكيّةُ مرّتين** — والقياسُ ٦٣px تصير ٤٦.
+     ⚖️ **و«وقت المشاهدة» ٧٨px والرمزُ ساعةٌ والقيمةُ «٣د ٤س»** —
+     **ثلاثةُ قائلين لمعنىً واحد، فيبقى أوضحُهم.** */
+  shortRatings: "تقييماتي",
+  shortWatchTime: "الوقت",
   /* تبويب المكتبة الرابع (D-128) — كلمةٌ واحدة كإخوته: أربعة عناوين
      عربية في صفٍّ واحد على ٣٦٠px لا تحتمل «الفنانون المفضّلون» */
   shortArtists: "فنانون",
@@ -1271,6 +1282,7 @@ const ar = {
   custHeaderSection: "عناصر الترويسة",
   custStatsCard: "بطاقة الأرقام",
   custStatsPickHint: "اختر من ٢ إلى ٤ أرقام تظهر في البطاقة، ورتّبها كما تحب.",
+  statsWatchedEpisodes: "حلقات",
   shortEpisodes: "حلقات",
   custOrderHint: "رتّب الأقسام كما يعجبك، أو أخفِ ما لا تريده.",
   custWeekStrip: "تقويم الأسبوع",
@@ -2293,7 +2305,6 @@ const en: Dict = {
   follow: "+ Follow",
   following: "✓ Following",
   undoWatched: "Undo",
-  statsWatchedEpisodes: "Episodes",
   remove: "Remove",
   repositionHint: "Drag the image up or down to adjust its position.",
   repositionAria: "Vertical image position",
@@ -2866,6 +2877,8 @@ const en: Dict = {
   sortProgress: "Progress",
   sortAdded: "Recently added",
   shortMovies: "Movies",
+  shortRatings: "Ratings",
+  shortWatchTime: "Time",
   shortArtists: "Artists",
   artistWorksWatched: (n: number) =>
     n === 1 ? "1 title watched" : `${n} titles watched`,
@@ -2876,6 +2889,7 @@ const en: Dict = {
   custStatsCard: "Statistics card",
   custStatsPickHint:
     "Pick 2 to 4 numbers to show on the card, and order them your way.",
+  statsWatchedEpisodes: "Episodes",
   shortEpisodes: "Episodes",
   custOrderHint:
     "Arrange the sections however you like, or hide the ones you don't want.",
