@@ -68,12 +68,86 @@ export interface ShareCardData {
   posters: string[];
   /** الصورةُ الشخصيّة `data:` أو `null` */
   avatar: string | null;
+  /**
+   * 🆕 **هويّةُ الحساب على البطاقة** (D-792) — **القرصُ والختمُ كما في
+   * `AccountIdentity`** (D-773)، لا نجمةَ زينةٍ تُرسم للجميع.
+   */
+  /* ⚠️ **والثلاثةُ اختياريّةٌ لإصدارٍ واحدٍ لا أكثر** (D-028): **قارئُها
+     `‎/api/share` يهبط في التزامٍ تالٍ** — والمجلّدان مختلفان فلا
+     يجتمعان في التزام. **والافتراضُ «لا شارة» فلا تكذب البطاقةُ في
+     الدقائق التي بينهما.** */
+  tier?: "plus" | "partner" | null;
+  founder?: boolean;
+  verified?: boolean;
   /** عنوانُ بطاقة الذوق («ذوقك») — و`null` حين لا ذوقَ يُرسم */
   tasteTitle: string | null;
   /** كلمةُ «السمات» */
   themesLabel: string;
   themes: string[];
   tasteCells: ShareTasteCell[];
+}
+
+/**
+ * 🆕 **هويّةُ الحساب على بطاقة المشاركة** (D-792) — **نقلٌ لمواصفة
+ * D-773 إلى satori، لا تصميمٌ ثانٍ** (القاعدة ٣).
+ *
+ * 🔑 **ولمَ نقلٌ لا استيرادٌ للمكوّن**: `AccountIdentity` يقيس بالـ`em`
+ * ويستعمل `inline-grid` و`role`/`title` — **وsatori محرّكٌ آخرُ يفهم
+ * جزءاً من CSS** — **ومكوّنٌ يعمل في المتصفّح ويسقط صامتاً في الصورة
+ * أسوأُ من نقلٍ مُعلَن.** **والأرقامُ هي أرقامُ اللوح نفسُها محسوبةً
+ * على خطِّ الاسم ٥٤**: `0.82 × 54 = 44` ارتفاعاً، **والنِّسَبُ ٣٨:١٦
+ * و٦٢:١٦ و٥:١٦ و٩:١٦ محفوظةٌ حرفاً.**
+ * ⚠️ **ولونا الهويّة ثابتان ولا يتبعان الثيم** (نصُّ D-773).
+ */
+const ID_H = 44;
+const ID_INK = "#050505";
+
+function PlanMark({ tier, founder }: { tier: "plus" | "partner" | null; founder: boolean }) {
+  if (!tier) return null;
+  const word = tier === "partner" ? "PARTNER" : "PLUS";
+  const width = ((tier === "partner" ? 62 : 38) / 16) * ID_H;
+  const tracking = ((tier === "partner" ? 1.1 : 1.3) / 9) * ((9 / 16) * ID_H);
+  /* **والمؤسِّسُ يحمل قرصَ PLUS نفسَه** (D-773): **الصفةُ في التسمية
+     لا في الشكل** — ولا قرصَ ثالثٌ يُخترع هنا. */
+  void founder;
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        width,
+        height: ID_H,
+        background: ID_INK,
+        border: `1px solid ${ACCENT}`,
+        borderRadius: (5 / 16) * ID_H,
+        color: ACCENT,
+        fontSize: (9 / 16) * ID_H,
+        letterSpacing: tracking,
+      }}
+    >
+      {word}
+    </div>
+  );
+}
+
+function VerifiedMark() {
+  return (
+    <svg width={ID_H} height={ID_H} viewBox="0 0 24 24">
+      <path
+        fill={ACCENT}
+        d="M 10.555 2.054 Q 12.000 1.000 13.445 2.054 Q 14.889 3.108 16.677 3.104 Q 18.466 3.101 19.015 4.803 Q 19.564 6.504 21.013 7.553 Q 22.462 8.601 21.906 10.300 Q 21.350 12.000 21.906 13.700 Q 22.462 15.399 21.013 16.447 Q 19.564 17.496 19.015 19.197 Q 18.466 20.899 16.677 20.896 Q 14.889 20.892 13.445 21.946 Q 12.000 23.000 10.555 21.946 Q 9.111 20.892 7.323 20.896 Q 5.534 20.899 4.985 19.197 Q 4.436 17.496 2.987 16.447 Q 1.538 15.399 2.094 13.700 Q 2.650 12.000 2.094 10.300 Q 1.538 8.601 2.987 7.553 Q 4.436 6.504 4.985 4.803 Q 5.534 3.101 7.323 3.104 Q 9.111 3.108 10.555 2.054 Z"
+      />
+      <path
+        d="M7 12.2L10.4 15.6L17.4 8.6"
+        fill="none"
+        stroke={ID_INK}
+        strokeWidth="2.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
 }
 
 /**
@@ -313,10 +387,13 @@ export function ShareCard(d: ShareCardData) {
           <div style={{ display: "flex", flexDirection: "column", alignItems: side, gap: 4 }}>
             <div style={{ display: "flex", flexDirection: row, alignItems: "center", gap: 14 }}>
               <div style={{ fontSize: 54, textShadow: SHADOW }}>{d.name}</div>
-              {/* نجمةُ لوبز الرباعية — كما في الترويسة */}
-              <svg width="30" height="30" viewBox="0 0 24 24" fill={ACCENT}>
-                <path d="M12 3.5c.6 4.4 4.1 7.9 8.5 8.5-4.4.6-7.9 4.1-8.5 8.5-.6-4.4-4.1-7.9-8.5-8.5 4.4-.6 7.9-4.1 8.5-8.5Z" />
-              </svg>
+              {/* 🔴 🆕 **والنجمةُ الرباعيّةُ سقطت** (D-792): **كانت تُرسم
+                  لكلِّ من شارك بطاقتَه** — **زينةٌ في موضع هويّة**،
+                  وهو العطلُ نفسُه الذي أُصلح في بطاقة الإحصائيات
+                  (D-780). **والبطاقةُ تخرج إلى الناس، فأولى الأسطح
+                  بالصدق.** */}
+              <PlanMark tier={d.tier ?? null} founder={d.founder ?? false} />
+              {d.verified ? <VerifiedMark /> : null}
             </div>
             {d.followers ? <Line text={d.followers} size={28} color={MUTED} /> : null}
           </div>
