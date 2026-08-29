@@ -1454,16 +1454,22 @@ const ar = {
   invStRejected: "مرفوضة",
   invEmpty: "لم ينضم أحد بعد — شارك رابطك أول مرة",
   prtEntryTitle: "تصنع محتوى؟ انضم إلى Loopz Partners",
-  prtEntryBody: "اكسب ١٥٪ من المشتركين المباشرين",
+  prtEntryBody: "اكسب ٢٥٪ من المشتركين المباشرين",
   prtLearnMore: "اعرف أكثر",
   prtHeroTitle1: "شارك القصص.",
   prtHeroTitle2: "واكسب مع Loopz.",
-  prtHeroBody: "اكسب ١٥٪ من المشتركين المباشرين عن أول ٣ دفعات.",
+  prtHeroBody: "اكسب ٢٥٪ من كلّ دفعة يدفعها من اشترك عبرك — ما دام مشتركاً.",
   prtApplyJoin: "قدّم للانضمام",
   prtStatCommission: "عمولة",
+  prtStatPeriod: "المدّة",
+  /** @deprecated D-781 — يُحذف في الدفعة التالية بعد تحويل قارئه */
   prtStatPayments: "أول دفعات",
   prtStatMin: "حد أدنى للتحويل",
-  prtVal15: "١٥٪",
+  prtValRate: "٢٥٪",
+  prtValLifetime: "دائمة",
+  /** @deprecated D-781 */
+  prtVal15: "٢٥٪",
+  /** @deprecated D-781 */
   prtVal3: "٣",
   prtValMin: "١٠٠ ريال",
   prtHowTitle: "كيف يعمل",
@@ -1508,7 +1514,7 @@ const ar = {
   prtMinPayout: "الحد الأدنى للتحويل: ١٠٠ ريال",
   prtWithdraw: "سحب",
   prtCommTitle: "عمولتك",
-  prtCommBody: "من المشتركين المباشرين عن أول ٣ دفعات",
+  prtCommBody: "من كلّ دفعة يدفعها المشترك المباشر — بلا سقف",
   prtChipDirect: "مباشر فقط",
   prtChipHold: "تعليق ٣٠ يوماً",
   prtChipNet: "صافي الإيراد",
@@ -1523,8 +1529,11 @@ const ar = {
   prtCompleteSetup: "أكمل الإعداد",
   prtSetupLater: "يتاح مع فتح الاشتراكات",
   prtTermsTitle: "شروط العمولة",
+  prtTermRate:
+    "٢٥٪ من صافي الإيراد عن كلّ دفعة يدفعها المشترك ما دام مشتركاً — لا سقفَ ولا مدّة",
+  /** @deprecated D-781 */
   prtTerm15:
-    "١٥٪ من صافي الإيراد لأول ٣ دفعات شهرية لكل مشترك (الاشتراك السنوي: دفعة واحدة)",
+    "٢٥٪ من صافي الإيراد عن كلّ دفعة يدفعها المشترك ما دام مشتركاً — لا سقفَ ولا مدّة",
   prtTermDirect: "الإحالة المباشرة فقط — لا مستويات",
   prtTermHold: "تعليق ٣٠ يوماً قبل استحقاق أي عمولة",
   prtTermMin: "حد أدنى للتحويل ١٠٠ ريال — تحويل بنكي شهري بعد توثيق الهوية",
@@ -3026,16 +3035,22 @@ const en: Dict = {
   invStRejected: "Rejected",
   invEmpty: "No one has joined yet — share your link for the first time",
   prtEntryTitle: "Create content? Join Loopz Partners",
-  prtEntryBody: "Earn 15% from direct subscribers",
+  prtEntryBody: "Earn 25% from direct subscribers",
   prtLearnMore: "Learn more",
   prtHeroTitle1: "Share stories.",
   prtHeroTitle2: "Earn with Loopz.",
-  prtHeroBody: "Earn 15% from direct subscribers for their first 3 payments.",
+  prtHeroBody: "Earn 25% of every payment your subscribers make — for as long as they stay.",
   prtApplyJoin: "Apply to join",
   prtStatCommission: "Commission",
+  prtStatPeriod: "Duration",
+  /** @deprecated D-781 */
   prtStatPayments: "First payments",
   prtStatMin: "Minimum payout",
-  prtVal15: "15%",
+  prtValRate: "25%",
+  prtValLifetime: "Lifetime",
+  /** @deprecated D-781 */
+  prtVal15: "25%",
+  /** @deprecated D-781 */
   prtVal3: "3",
   prtValMin: "SAR 100",
   prtHowTitle: "How it works",
@@ -3081,7 +3096,7 @@ const en: Dict = {
   prtMinPayout: "Minimum payout: SAR 100",
   prtWithdraw: "Withdraw",
   prtCommTitle: "Your commission",
-  prtCommBody: "From direct subscribers for their first 3 payments",
+  prtCommBody: "From every payment a direct subscriber makes — no cap",
   prtChipDirect: "Direct only",
   prtChipHold: "30-day hold",
   prtChipNet: "Net revenue",
@@ -3096,8 +3111,11 @@ const en: Dict = {
   prtCompleteSetup: "Complete setup",
   prtSetupLater: "Available when subscriptions open",
   prtTermsTitle: "Commission terms",
+  prtTermRate:
+    "25% of net revenue on every payment a subscriber makes, for as long as they stay subscribed — no cap, no time limit",
+  /** @deprecated D-781 */
   prtTerm15:
-    "15% of net revenue for each subscriber's first 3 monthly payments (annual plan: one payment)",
+    "25% of net revenue on every payment a subscriber makes, for as long as they stay subscribed — no cap, no time limit",
   prtTermDirect: "Direct referrals only — no tiers",
   prtTermHold: "30-day hold before any commission is confirmed",
   prtTermMin:
