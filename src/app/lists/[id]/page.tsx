@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import {
   getUser,
+  getProfile,
   getList,
   getPublicList,
   getMyListSave,
@@ -17,6 +18,7 @@ import {
 } from "@/lib/data";
 import { curatedName, curatedBlurb } from "@/lib/universes";
 import { ListReviews } from "@/components/ListReviews";
+import { isPlus } from "@/lib/plan";
 import { getT } from "@/lib/locale";
 import { ListDetail } from "@/components/ListDetail";
 import { getLibState, type TitleState } from "@/lib/libState";
@@ -83,6 +85,10 @@ export default async function ListPage({ params }: { params: Promise<{ id: strin
   const { locale } = await getT();
   const { id } = await params;
   const user = await getUser();
+  /* 🆕 **وتجربةُ Loopz+ في ترويسة القائمة** (D-773ب) — **والقراءةُ
+     مخبّأةٌ لكلِّ طلب** (`cache`) والشريطُ يناديها أصلاً في التخطيط
+     نفسِه، **فلا رحلةَ خامسةً لأجل شعار** (D-470). */
+  const profile = await getProfile();
 
   /* 🆕 **واسمُ قائمةِ لوبز بلغة القارئ في كلِّ سطح** (دَينُ D-328):
      الاسمُ المخزَّن عربيٌّ دائماً (`upsert_curated_list`) **والهويّةُ في
@@ -165,6 +171,7 @@ export default async function ListPage({ params }: { params: Promise<{ id: strin
           D-336 نفسُه (`router.back()` بفتاتٍ والمكتبةُ لمن لا تاريخ)،
           **والذي تبدّل مجلسُه.** */}
       <ListDetail
+        brandPlus={isPlus(profile)}
         listId={data.list.id}
         name={curatedName(data.list.source_slug, data.list.name, loc)}
         /* 🆕 **ونبذةُ قائمةِ لوبز** (D-373، بلاغُ أحمد: «ليستات لوبز
