@@ -11,7 +11,8 @@ import { posterUrl, backdropUrl, type MediaType } from "@/lib/media";
 import { tap } from "@/lib/haptics";
 import { toast, flashError } from "@/lib/toast";
 import { coalescedRefresh } from "@/lib/refresh";
-import { titleArtOptions, setTitleArt } from "@/lib/actions";
+import { titleArtOptions, setTitleArt, canUseArt } from "@/lib/actions";
+import Link from "next/link";
 
 /**
  * منتقي غلاف العمل (D-131) — «هذا العمل بالوجه الذي أريده».
@@ -46,15 +47,28 @@ export function TitleArtSheet({
   const router = useRouter();
   const [tab, setTab] = useState<"poster" | "backdrop">("poster");
   const [opts, setOpts] = useState<{ posters: string[]; backdrops: string[] } | null>(null);
+  /* 🆕 **حالةُ القفل تُقرأ من الخادم عند الفتح** (D-786): `null` = لم
+     يُعرف بعد. **ولا تُشتقّ من معاملٍ يمرّ عبر صفحة العمل**: تمريرُها
+     يكلّف استعلامَ خطّةٍ على كلِّ فتحةِ صفحةِ عملٍ لأجل ورقةٍ قد لا
+     تُفتح — **والسرعةُ أولويّةٌ مكتوبة، لا تُدفع لأجل قفل.** */
+  const [locked, setLocked] = useState<boolean | null>(null);
   const [poster, setPoster] = useState(current?.poster_path ?? null);
   const [backdrop, setBackdrop] = useState(current?.backdrop_path ?? null);
   const [pending, start] = useTransition();
 
   useEffect(() => {
     let dead = false;
-    titleArtOptions(tmdbId, mediaType)
-      .then((r) => !dead && setOpts(r))
-      .catch(() => !dead && setOpts({ posters: [], backdrops: [] }));
+    Promise.all([titleArtOptions(tmdbId, mediaType), canUseArt()])
+      .then(([r, allowed]) => {
+        if (dead) return;
+        setOpts(r);
+        setLocked(!allowed);
+      })
+      .catch(() => {
+        if (dead) return;
+        setOpts({ posters: [], backdrops: [] });
+        setLocked(false);
+      });
     return () => {
       dead = true;
     };
@@ -119,7 +133,24 @@ export function TitleArtSheet({
       </div>
 
       <div className={`${sheetScroll} px-5 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))]`}>
-        {opts === null ? (
+        {/* 🆕 **ومن يُمنع يعرف الثمنَ في اللحظة نفسِها** (D-786، نمطُ
+            `PlusGateHost` حرفاً): **شبكةٌ فارغةٌ بلا سببٍ مكتوب تُقرأ
+            عطلاً لا قفلاً** — ومن يظنّه عطلاً لا يشتري، بل يبلّغ عنه. */}
+        {locked === true ? (
+          <div className="py-8 flex flex-col items-center gap-3 text-center">
+            <Icon name="sparkle-star" size={26} className="text-accent" />
+            <p className="text-15 font-bold leading-tight">{t.plusGateTitle}</p>
+            <p className="text-12 text-muted leading-relaxed max-w-xs">{t.plusGateHint}</p>
+            <div className="rounded-2xl border border-border bg-surface px-4 py-3">
+              <p className="text-15 font-bold leading-none">{t.plusPrice}</p>
+              <p className="mt-1 text-12 text-muted leading-none">{t.plusPriceRenew}</p>
+              <p className="mt-1.5 text-12 text-muted leading-none">{t.plusSoon}</p>
+            </div>
+            <Link href="/plus" className="text-12 font-bold text-accent hover:underline">
+              {t.plusLearnMore}
+            </Link>
+          </div>
+        ) : opts === null ? (
           <p className="text-sm text-muted text-center py-10">{t.peopleSearching}</p>
         ) : rows.length === 0 ? (
           <p className="text-sm text-muted text-center py-10">{t.artEmpty}</p>

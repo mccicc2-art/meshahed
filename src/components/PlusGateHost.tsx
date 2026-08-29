@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Sheet, SheetHeader } from "@/components/ui/Sheet";
 import { Icon } from "@/components/Icon";
 import { PLUS_GATE_EVENT } from "@/lib/plusGate";
@@ -50,9 +51,23 @@ export function PlusGateHost({ locale }: { locale: Locale }) {
           <Icon name="sparkle-star" size={18} className="text-accent shrink-0" />
           <div className="min-w-0">
             <p className="text-15 font-bold leading-none">{t.plusPrice}</p>
-            <p className="mt-1 text-12 text-muted leading-none">{t.plusSoon}</p>
+            {/* 🆕 **وسطرُ التجديد فرضٌ لا تحسين** (D-786): سعرُ السنة
+                الأولى دائمٌ لكلِّ مشترِكٍ جديد، **وثمنٌ أوّلُ يُعرض بلا
+                ذكر ما بعده هو الوعدُ الذي لا يُسلَّم** (D-217). */}
+            <p className="mt-1 text-12 text-muted leading-none">{t.plusPriceRenew}</p>
+            <p className="mt-1.5 text-12 text-muted leading-none">{t.plusSoon}</p>
           </div>
         </div>
+
+        {/* **ومن يريد أن يرى ما يشتريه يُدَلّ عليه** — لا زرَّ شراءٍ
+            هنا (D-217)، بل صفحةٌ تعدّ ما بُني فعلاً وما لم يُبنَ بعد. */}
+        <Link
+          href="/plus"
+          className="text-12 font-bold text-accent hover:underline self-start"
+          onClick={() => setOpen(false)}
+        >
+          {t.plusLearnMore}
+        </Link>
       </div>
     </Sheet>
   );
