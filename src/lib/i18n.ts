@@ -1864,7 +1864,6 @@ const ar = {
   /** 🆕 **شريطُ التقدّم صار يُضغط** (D-741) — **والاسمُ فعلٌ لا حالة** (D-224) */
   trailerSeek: "انتقل في المقطع",
   /* 🆕 D-762 (طلب أحمد): إيقافٌ وتكبيرٌ — والفعلُ لا الحالة (D-224) */
-  trailerPause: "أوقف مؤقتاً",
   trailerExpand: "كبّر الفيديو",
   trailerCollapse: "أغلق التكبير",
   trailerUnmute: "شغّل الصوت",
@@ -3276,7 +3275,6 @@ const en: Dict = {
   trailersForYou: "Trailers for you",
   trailerMute: "Mute",
   trailerSeek: "Seek",
-  trailerPause: "Pause",
   trailerExpand: "Expand video",
   trailerCollapse: "Exit expanded view",
   trailerUnmute: "Unmute",
