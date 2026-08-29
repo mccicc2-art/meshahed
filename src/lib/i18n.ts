@@ -1462,15 +1462,9 @@ const ar = {
   prtApplyJoin: "قدّم للانضمام",
   prtStatCommission: "عمولة",
   prtStatPeriod: "المدّة",
-  /** @deprecated D-781 — يُحذف في الدفعة التالية بعد تحويل قارئه */
-  prtStatPayments: "أول دفعات",
   prtStatMin: "حد أدنى للتحويل",
   prtValRate: "٢٥٪",
   prtValLifetime: "دائمة",
-  /** @deprecated D-781 */
-  prtVal15: "٢٥٪",
-  /** @deprecated D-781 */
-  prtVal3: "٣",
   prtValMin: "١٠٠ ريال",
   prtHowTitle: "كيف يعمل",
   prtStep1: "قدّم",
@@ -1530,9 +1524,6 @@ const ar = {
   prtSetupLater: "يتاح مع فتح الاشتراكات",
   prtTermsTitle: "شروط العمولة",
   prtTermRate:
-    "٢٥٪ من صافي الإيراد عن كلّ دفعة يدفعها المشترك ما دام مشتركاً — لا سقفَ ولا مدّة",
-  /** @deprecated D-781 */
-  prtTerm15:
     "٢٥٪ من صافي الإيراد عن كلّ دفعة يدفعها المشترك ما دام مشتركاً — لا سقفَ ولا مدّة",
   prtTermDirect: "الإحالة المباشرة فقط — لا مستويات",
   prtTermHold: "تعليق ٣٠ يوماً قبل استحقاق أي عمولة",
@@ -3043,15 +3034,9 @@ const en: Dict = {
   prtApplyJoin: "Apply to join",
   prtStatCommission: "Commission",
   prtStatPeriod: "Duration",
-  /** @deprecated D-781 */
-  prtStatPayments: "First payments",
   prtStatMin: "Minimum payout",
   prtValRate: "25%",
   prtValLifetime: "Lifetime",
-  /** @deprecated D-781 */
-  prtVal15: "25%",
-  /** @deprecated D-781 */
-  prtVal3: "3",
   prtValMin: "SAR 100",
   prtHowTitle: "How it works",
   prtStep1: "Apply",
@@ -3112,9 +3097,6 @@ const en: Dict = {
   prtSetupLater: "Available when subscriptions open",
   prtTermsTitle: "Commission terms",
   prtTermRate:
-    "25% of net revenue on every payment a subscriber makes, for as long as they stay subscribed — no cap, no time limit",
-  /** @deprecated D-781 */
-  prtTerm15:
     "25% of net revenue on every payment a subscriber makes, for as long as they stay subscribed — no cap, no time limit",
   prtTermDirect: "Direct referrals only — no tiers",
   prtTermHold: "30-day hold before any commission is confirmed",
