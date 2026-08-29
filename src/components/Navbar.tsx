@@ -1,12 +1,18 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import { getUser, getProfile, getUnreadSignals, getUnreadShares } from "@/lib/data";
+import {
+  getUser,
+  getProfile,
+  getUnreadSignals,
+  getUnreadShares,
+} from "@/lib/data";
 import { getT } from "@/lib/locale";
 import { SearchBox } from "./SearchBox";
 import { NavLinks } from "./NavLinks";
 import { NavAvatar } from "./NavAvatar";
 import { NavTitle } from "./NavTitle";
 import { Logo } from "./Logo";
+import { isPlus } from "@/lib/plan";
 import { LangMenu } from "./LangMenu";
 import { HeaderTrailing } from "./HeaderTrailing";
 import { buttonClass } from "./ui/Button";
@@ -36,16 +42,28 @@ export async function Navbar() {
     return (
       <header className="chrome-top sticky top-0 z-30 bg-[color:var(--background)]/80 backdrop-blur pt-[var(--safe-top)]">
         {/* dir=ltr: الاسم يساراً والعلم يميناً بثبات، مهما كانت لغة الصفحة */}
-        <div className="max-w-6xl mx-auto px-5 h-16 flex items-center justify-between" dir="ltr">
+        <div
+          className="max-w-6xl mx-auto px-5 h-16 flex items-center justify-between"
+          dir="ltr"
+        >
           {/* ⚖️ 🆕 الرمزُ لا الكلمة (D-628 — تطبيقُ D-256 على شريط الزائر:
               «الأيقونة في كل الصفحات بدل كلمة لوبز») — شريطُ الزائر كان
               الوحيدَ الذي بقي على الكلمة، وهويّتان في شريطٍ واحدٍ عطل */}
-          <Link href="/" prefetch={false} className="shrink-0" aria-label={t.brand}>
+          <Link
+            href="/"
+            prefetch={false}
+            className="shrink-0"
+            aria-label={t.brand}
+          >
             <Logo size={44} />
           </Link>
           <span className="flex items-center gap-2.5">
             <LangMenu locale={locale} />
-            <Link href="/login" prefetch={false} className={buttonClass({ size: "sm" })}>
+            <Link
+              href="/login"
+              prefetch={false}
+              className={buttonClass({ size: "sm" })}
+            >
               {t.login}
             </Link>
           </span>
@@ -66,7 +84,12 @@ export async function Navbar() {
           **فكان تفضيلُ الحساب لا ينزل إلى جهازٍ جديد في الصفحة التي
           فُتحت لضبطه.** **والمضيفُ الآن تخطيطُ الجذر** — لا يُلغى. */}
       <div className="relative max-w-6xl mx-auto px-4 h-16 flex items-center gap-2 sm:gap-3">
-        <Link href="/" prefetch={false} className="shrink-0" aria-label={t.brand}>
+        <Link
+          href="/"
+          prefetch={false}
+          className="shrink-0"
+          aria-label={t.brand}
+        >
           {/* **الرمزُ وحده في الشريط** (D-256، طلبُ أحمد: «الأيقونة في كل
               الصفحات بدل كلمة لوبز اللي فوق»). **ونقضٌ يُسجَّل**: كان
               السطرُ هنا يقول «الرمزُ سقط من الهوية فالكلمة هي الشعار» —
@@ -80,7 +103,10 @@ export async function Navbar() {
               أصغرَ من حرفٍ في السطر المجاور. **والمربّعُ يكبر ولا يُقصّ
               الملفّ**: هو نفسُه صورةُ حساب Loopz، **وقصُّه هنا يقصّه
               هناك.** ٤٤ تعطي `∞` بـ٣٧×١٩ — تُقرأ ولا تزاحم. */}
-          <Logo size={44} />
+          {/* 🆕 **وتجربةُ Loopz+ في الشريط أيضاً** (D-773): الزائدةُ
+              الصفراء لصاحب البلس والبارتنر. **والزائرُ فوق لا يراها**
+              — لا خطّةَ له، وشعارٌ يعِد بما لا يملكه إعلانٌ لا هويّة. */}
+          <Logo size={44} plus={isPlus(profile)} />
         </Link>
 
         {user && <NavLinks locale={locale} />}
@@ -141,10 +167,7 @@ export async function Navbar() {
               {/* زر الخروج صار داخل إعدادات الحساب فقط */}
             </>
           ) : (
-            <Link
-              href="/login"
-              className={buttonClass({ size: "sm" })}
-            >
+            <Link href="/login" className={buttonClass({ size: "sm" })}>
               {t.login}
             </Link>
           )}

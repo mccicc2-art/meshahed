@@ -7,7 +7,8 @@ import { HomeAvatarMenu } from "./HomeAvatarMenu";
 import { HomeViewSwitch } from "./HomeViewSwitch";
 import { HeaderTrailing } from "./HeaderTrailing";
 import { LogoWordmark } from "./Logo";
-import { PlusBadge } from "./PlusBadge";
+import { AccountBadges } from "./AccountBadges";
+import { isPlus } from "@/lib/plan";
 /**
  * 🆕 **خانةُ بطاقة الأرقام — تسكن مع راسمها** (D-497): كانت تُستورد
  * نوعاً من `ProfileHeader`، **وتلك بلا قارئٍ منذ D-438 وحكمُها الحذف**
@@ -188,6 +189,8 @@ export function HomeHeader({
   hideFollowLists = false,
   plan = null,
   founder = false,
+  plusUntil = null,
+  verifiedAt = null,
   locale,
 }: {
   displayName: string;
@@ -197,6 +200,12 @@ export function HomeHeader({
      مكوّنٌ قديمٌ لا يمرّرهما لا ينكسر، ولا شارةَ تُرسم. */
   plan?: string | null;
   founder?: boolean | null;
+  /* 🆕 **والتاريخُ يُمرَّر لا يُهمَل** (D-773): `isPlus` تقرؤه،
+     **وغيابُه كان يُقرأ «بلا انتهاء»** — فيرى المنتهي اشتراكُه شارتَه
+     حيّةً في ترويسته. */
+  plusUntil?: string | null;
+  /** 🆕 ختمُ التوثيق (D-773) — صفةٌ مستقلّةٌ عن الخطّة */
+  verifiedAt?: string | null;
   /** ⚖️ 🆕 **يُقرأ مرّةً أخرى** (D-536): الصورةُ عادت إلى صفّ الترحيب */
   avatarUrl?: string | null;
   avatarPos?: number | null;
@@ -254,7 +263,7 @@ export function HomeHeader({
 
        **والباقي هنا محتوًى يجري مع الصفحة** كما ثبّت D-479. */
     <>
-    {/* ===== 🆕 الغلافُ خلفَ الترويسة (D-540) =====
+      {/* ===== 🆕 الغلافُ خلفَ الترويسة (D-540) =====
 
         **ولماذا طبقةٌ مطلقةٌ بلا غلافٍ يحملها:** صفُّ العلامة `sticky`،
         **وأيُّ حاويةٍ بارتفاعه تصير سقفاً لالتصاقه** (قاعدةُ
@@ -272,59 +281,59 @@ export function HomeHeader({
         الثيم (وثيمُ النهار فاتح)، **ونصٌّ ثيميٌّ على صورةٍ يُقرأ في
         ثيمٍ ويختفي في آخر** (D-501). **فما يقف على الصورة هو الشريطُ
         وحدَه، وهو أبيضُ صريحٌ في الثيمين.** ===== */}
-    {coverUrl && (
-      <div
-        aria-hidden
-        /* 🔴 **ولا `z` سالبة** (مقيسٌ على المنشور قبل الإصلاح): طبقةٌ
+      {coverUrl && (
+        <div
+          aria-hidden
+          /* 🔴 **ولا `z` سالبة** (مقيسٌ على المنشور قبل الإصلاح): طبقةٌ
            بـ`-z-10` تُرسم **قبل خلفيّات الكتل العاديّة** في ترتيب
            الطلاء، **وخلفيّةُ `body` صمّاء** (`rgb(5,5,5)`) — **فكانت
            تُغطّي الصورةَ تغطيةً كاملة** والشجرةُ تقول إنها موجودةٌ
            ومحمَّلة. **فالطبقةُ في مستواها الطبيعيّ، وما فوقها يُرفع
            بـ`relative`** — وهو ما تفعله الترويسةُ أصلاً بـ`z-30`. */
-        /* 🆕 **الارتفاعُ يتبع المنطقةَ الآمنة لا رقماً ثابتاً** (D-543):
+          /* 🆕 **الارتفاعُ يتبع المنطقةَ الآمنة لا رقماً ثابتاً** (D-543):
            الشريطُ نفسُه ارتفاعُه `--safe-top + 64px`، **فغلافٌ بارتفاعٍ
            ثابتٍ يقع تحته على الآيفون ويفيض عنه في المتصفّح.** */
-        className="pointer-events-none absolute inset-x-0 top-0 overflow-hidden"
-        /* **ينتهي عند الخطّ الأحمر** — منتصفُ بطاقة الأرقام (D-553) */
-        style={{ height: "calc(var(--safe-top) + 9.5rem)" }}
-      >
-        {/* 🆕 **والصورةُ تذوب بقناعٍ لا بطبقةٍ فوقها** (D-543): **حجابٌ
+          className="pointer-events-none absolute inset-x-0 top-0 overflow-hidden"
+          /* **ينتهي عند الخطّ الأحمر** — منتصفُ بطاقة الأرقام (D-553) */
+          style={{ height: "calc(var(--safe-top) + 9.5rem)" }}
+        >
+          {/* 🆕 **والصورةُ تذوب بقناعٍ لا بطبقةٍ فوقها** (D-543): **حجابٌ
             ثانٍ إلى لون الخلفية كان يجتمع مع الحجاب الأوّل عند صفِّ
             الترحيب فيُظلمه مرّتين** — **والقناعُ يُنقص شفافيّةَ الصورة
             نفسِها** فيظهر ما تحتها بلا أن يُضاف سواد. **وليس مرشّحاً**
             (`filter`) ولا تغبيشاً: لا خلطَ ألوانٍ ولا تشويه. */}
-        <Image
-          src={coverUrl}
-          alt=""
-          fill
-          priority
-          sizes="100vw"
-          className="object-cover"
-          style={{
-            objectPosition: `50% ${coverPos ?? 30}%`,
-            maskImage: COVER_FADE,
-            WebkitMaskImage: COVER_FADE,
-          }}
-        />
-        {/* ⚖️ 🆕 **والحجابُ عاد** (D-556، نقضُ D-553 بطلبه): **يحمي
+          <Image
+            src={coverUrl}
+            alt=""
+            fill
+            priority
+            sizes="100vw"
+            className="object-cover"
+            style={{
+              objectPosition: `50% ${coverPos ?? 30}%`,
+              maskImage: COVER_FADE,
+              WebkitMaskImage: COVER_FADE,
+            }}
+          />
+          {/* ⚖️ 🆕 **والحجابُ عاد** (D-556، نقضُ D-553 بطلبه): **يحمي
             السقفَ وصفَّ الأيقونات ولا يمسّ القاع** — **فلا يجتمع مع
             القناع على صفِّ الترحيب** كما كان يفعل حجابُ D-540.
             ⚠️ **وفوق الصورة لا تحتها**: هو ظلامُها لا خلفيّتُها. */}
-        <div
-          aria-hidden
-          className="absolute inset-0"
-          /* 🆕 قناعُ الصورة على الحجاب أيضاً (D-616): لونٌ واحدٌ فوق
+          <div
+            aria-hidden
+            className="absolute inset-0"
+            /* 🆕 قناعُ الصورة على الحجاب أيضاً (D-616): لونٌ واحدٌ فوق
              الصورة كلِّها، ويذوبان معاً فلا حافّةَ في `daylight` */
-          style={{
-            background: COVER_SCRIM,
-            maskImage: COVER_FADE,
-            WebkitMaskImage: COVER_FADE,
-          }}
-        />
-      </div>
-    )}
+            style={{
+              background: COVER_SCRIM,
+              maskImage: COVER_FADE,
+              WebkitMaskImage: COVER_FADE,
+            }}
+          />
+        </div>
+      )}
 
-    {/* ===== ⚖️ 🆕 صفُّ العلامة وأدواتُها — عادَ إلى الرئيسية (D-536)
+      {/* ===== ⚖️ 🆕 صفُّ العلامة وأدواتُها — عادَ إلى الرئيسية (D-536)
         =====
 
         **طلبُ أحمد بلقطتين: «رجّع التصميم إلى الهوم».** **وهو نقضٌ
@@ -340,12 +349,12 @@ export function HomeHeader({
         **و`chrome-top` كي يختبئ مع النزول** كبقيّة الأشرطة (D-479)،
         **وحشوةُ `--safe-top`** لأنه أوّلُ ما تحت ساعة النظام في
         التطبيق المثبَّت (D-040). ===== */}
-    {/* ⚖️ 🆕 **وخلفيّةُ الشريط تتبع وجودَ الغلاف** (D-540 ثمّ D-543):
+      {/* ⚖️ 🆕 **وخلفيّةُ الشريط تتبع وجودَ الغلاف** (D-540 ثمّ D-543):
         **صمّاءُ بلا صورة** كما كانت، **ولا شيءَ إطلاقاً فوق الغلاف** —
         **والحجابُ الذي يجعل أيقوناتِه مقروءةً يرسمه الغلافُ نفسُه**
         (٩٦٪ عند الحافّة العليا)، **لا سطحٌ ثانٍ تحت الشريط.** */}
-    <header
-      /* ⚖️ 🆕 **ولا تغبيشَ ولا خلفيّةَ فوق الغلاف** (D-543، طلبُ أحمد
+      <header
+        /* ⚖️ 🆕 **ولا تغبيشَ ولا خلفيّةَ فوق الغلاف** (D-543، طلبُ أحمد
          بالنصّ: «احذف backdrop-filter وblur وأيّ طبقة تسبّب خلط أو
          تشويه ألوان الغلاف»). **وكان `backdrop-blur-xl` مع لونٍ ممزوج
          يشتري وضوحَ الأيقونات حين يعود الشريطُ بالتمرير فوق الملصقات**
@@ -356,70 +365,82 @@ export function HomeHeader({
          عاد بالتمرير فوق صورةٍ فاتحة صارت أيقوناتُه البيضاءُ على
          فاتح.** **و`chrome-top` يُخفيه مع النزول** فالنافذةُ ضيّقة —
          **لكنها ليست معدومة.** */
-      /* 🆕 **وارتفاعُه ارتفاعُ الشريط العامّ بالضبط** (D-543):
+        /* 🆕 **وارتفاعُه ارتفاعُ الشريط العامّ بالضبط** (D-543):
          `10 + 44 + 10 = 64` — **وهو `h-16` في `Navbar` حرفاً.**
          **فمركزُ الأيقونة `--safe-top + 32` في الشريطين**، ولا يقفز
          شيءٌ رأسيّاً في الانتقال. **وكانت `0.5rem` تعطي ٣٠ فيزيح
          بكسلين.** */
-      className={`chrome-top md:hidden sticky top-0 z-30 -mx-4 px-4 -mt-6 pt-[calc(var(--safe-top)+0.625rem)] pb-2.5 ${
-        coverUrl ? "" : "bg-[color:var(--background)]"
-      }`}
-    >
-      {/* 🆕 **الظلُّ على الصفِّ لا على كلِّ رمزٍ وحدَه** (D-662):
+        className={`chrome-top md:hidden sticky top-0 z-30 -mx-4 px-4 -mt-6 pt-[calc(var(--safe-top)+0.625rem)] pb-2.5 ${
+          coverUrl ? "" : "bg-[color:var(--background)]"
+        }`}
+      >
+        {/* 🆕 **الظلُّ على الصفِّ لا على كلِّ رمزٍ وحدَه** (D-662):
           **قيمةٌ واحدةٌ في موضعٍ واحد** — ولو كُتبت على كلِّ أيقونةٍ
           لافترقت عند أوّل تعديل (D-145). */}
-      <div
-        className="flex items-center gap-1"
-        style={{ filter: coverUrl ? COVER_ART_SHADOW : undefined }}
-      >
-        <Link href="/" prefetch={false} aria-label={t.brand} className="shrink-0 -ms-0.5">
-          {/* **الكلمةُ المرسومة لا الرمز** — هي علامةُ الرئيسية في
+        <div
+          className="flex items-center gap-1"
+          style={{ filter: coverUrl ? COVER_ART_SHADOW : undefined }}
+        >
+          <Link
+            href="/"
+            prefetch={false}
+            aria-label={t.brand}
+            className="shrink-0 -ms-0.5"
+          >
+            {/* **الكلمةُ المرسومة لا الرمز** — هي علامةُ الرئيسية في
               تصميم أحمد، **والرمزُ يبقى للشريط الضيّق في بقيّة
               الصفحات** حيث يجاوره عنوانُ الصفحة. */}
-          {/* **والعلامةُ على فنٍّ لا تتبع الثيم** (D-405): `on="art"`
+            {/* **والعلامةُ على فنٍّ لا تتبع الثيم** (D-405): `on="art"`
               يمنع قلبَها في الثيم النهاريّ — **فوق الصورة هي بيضاءُ
               دائماً**، وبلا صورةٍ تتبع الثيم كما كانت. */}
-          <LogoWordmark size={30} on={coverUrl ? "art" : "surface"} />
-        </Link>
+            {/* 🆕 **وتجربةُ Loopz+ تبدأ من العلامة** (D-773، لوحُ الهويّة):
+              صاحبُ البلس والبارتنر يرى `Loopz+`، والمجّانيُّ `Loopz`.
+              **والحكمُ من `plan.ts` لا من شرطٍ مكتوبٍ هنا** (D-145). */}
+            <LogoWordmark
+              size={30}
+              on={coverUrl ? "art" : "surface"}
+              plus={isPlus({ plan, founder, plus_until: plusUntil })}
+            />
+          </Link>
 
-        {/* 🆕 **والطرفُ صفٌّ واحدٌ مشترك** (D-541، بلاغُ أحمد بلقطتين:
+          {/* 🆕 **والطرفُ صفٌّ واحدٌ مشترك** (D-541، بلاغُ أحمد بلقطتين:
             «مكان الرسالة والجرس لازم يطابق موقعها في كل الصفحات»):
             **المسافةُ والمقاسُ يُكتبان في `HeaderTrailing` مرّةً**،
             **وهذا الشريطُ و`Navbar` يقرآن منها** — **فلا يقفز الجرسُ
             ٥px ولا الظرفُ ٣ في الانتقال.** **والخانةُ الأخيرة وحدَها
             تختلف معنًى** (ترسٌ هنا، صورةٌ هناك) **وصندوقُها ٤٠×٤٠
             في الحالين وإلّا انكسر التطابق.** */}
-        <div className="ms-auto">
-          <HeaderTrailing
-            unreadSignals={unreadSignals}
-            unreadShares={unreadShares}
-            locale={locale}
-          >
-            {/* ⚖️ 🆕 **وترسُ الإعدادات سقط من الصفّ** (D-620، حكمُه:
+          <div className="ms-auto">
+            <HeaderTrailing
+              unreadSignals={unreadSignals}
+              unreadShares={unreadShares}
+              locale={locale}
+            >
+              {/* ⚖️ 🆕 **وترسُ الإعدادات سقط من الصفّ** (D-620، حكمُه:
                 «الإعدادات احذف الأيقونة») — **بابُه صار قائمةَ صورة
                 الترحيب** (`HomeAvatarMenu`)، فلا بابَ ضائعاً ولا
                 بابَين في ترويسةٍ واحدة. والمبدّلُ باقٍ من D-618 —
                 صفُّ الترحيب للتعريف وحدَه. */}
-            <HomeViewSwitch locale={locale} />
-          </HeaderTrailing>
+              <HomeViewSwitch locale={locale} />
+            </HeaderTrailing>
+          </div>
         </div>
-      </div>
-    </header>
+      </header>
 
-    {/* ===== ما بقي محتوًى عاديّاً يتحرّك مع الصفحة (طلبُ أحمد ١٩
+      {/* ===== ما بقي محتوًى عاديّاً يتحرّك مع الصفحة (طلبُ أحمد ١٩
         أغسطس): التحيّةُ والصورةُ والأرقامُ ومبدّلُ العرض تُقرأ عند
         الدخول وتغادر بالتمرير — **لا سقفَ يتكرّر في كلِّ شاشة.** ===== */}
-    {/* **و`relative` ترفع ما تحت الشريط فوق الغلاف** — بلا رقمٍ: عنصرٌ
+      {/* **و`relative` ترفع ما تحت الشريط فوق الغلاف** — بلا رقمٍ: عنصرٌ
         موضوعٌ متأخّرٌ في الشجرة يعلو عنصراً موضوعاً قبله (D-540). */}
-    <div
-      className="relative space-y-2.5"
-      /* 🆕 **والاسمُ والمعرّفُ والعدّادان تحت الظلِّ نفسِه** (D-662) —
+      <div
+        className="relative space-y-2.5"
+        /* 🆕 **والاسمُ والمعرّفُ والعدّادان تحت الظلِّ نفسِه** (D-662) —
          **هم أيضاً بيضٌ فوق فنٍّ مجهول.** */
-      style={{ filter: coverUrl ? COVER_ART_SHADOW : undefined }}
-    >
-      {/* ===== التحيّةُ ومبدّلُ العرض ===== */}
-      <div className="flex items-center gap-3">
-        {/* ⚖️ 🆕 **وصورةُ الترحيب عادت ومعها الهلال** (D-536/D-439،
+        style={{ filter: coverUrl ? COVER_ART_SHADOW : undefined }}
+      >
+        {/* ===== التحيّةُ ومبدّلُ العرض ===== */}
+        <div className="flex items-center gap-3">
+          {/* ⚖️ 🆕 **وصورةُ الترحيب عادت ومعها الهلال** (D-536/D-439،
             لقطةُ أحمد) — **بعد أن أسقطتهما D-502.**
 
             **والهلالُ مجّانيٌّ هنا وحدَه**: نسبةُ المستوى تُحسب من
@@ -432,19 +453,19 @@ export function HomeHeader({
             الهوية إلى النسبة ثم رماديُّ الحدّ — **ولا مكوّنَ جديد.**
             **و`0` تعني ألّا هلال** فلا تُرسم حلقةٌ فارغةٌ تعد بشيء
             (D-222). */}
-        {/* ⚖️ 🆕 **والرابطُ صار مقبضَ قائمة** (D-620، حكمُه: «خلّ الشخص
+          {/* ⚖️ 🆕 **والرابطُ صار مقبضَ قائمة** (D-620، حكمُه: «خلّ الشخص
             إذا ضغط على الصورة تطلع قائمة صغيرة عند محل الضغط ويختار
             إعدادات أو بروفايل») — `Dropdown` القائمةُ نفسُها (D-226)
             بصفَّي بروفايل/إعدادات، والهلالُ ومداره كما هما. */}
-        <HomeAvatarMenu
-          locale={locale}
-          name={displayName}
-          avatarUrl={avatarUrl}
-          avatarPos={avatarPos}
-          levelPercent={levelPercent}
-        />
+          <HomeAvatarMenu
+            locale={locale}
+            name={displayName}
+            avatarUrl={avatarUrl}
+            avatarPos={avatarPos}
+            levelPercent={levelPercent}
+          />
 
-        {/* ⚖️ 🆕 **والتحيّةُ سقطت، وبقي الاسم** (D-565، طلبُ أحمد:
+          {/* ⚖️ 🆕 **والتحيّةُ سقطت، وبقي الاسم** (D-565، طلبُ أحمد:
             «وكذلك جود مورنينج وصباح الخير احذفها»).
 
             **وسطرٌ يتبدّل بالساعة يقول شيئاً لا يفعله القارئ** —
@@ -453,87 +474,100 @@ export function HomeHeader({
             التنظيف** بعد أن فقدت قارئَها الوحيد — **في رفعةٍ لاحقة لا
             مع قارئها** (D-538/D-028)، **ومفاتيحُ `greet*` الأربعةُ
             بعدها.** */}
-        {/* ⚖️ 🆕 **الاسمُ وتحته سطرُ التعريف** (D-618، توزيعُ أحمد
+          {/* ⚖️ 🆕 **الاسمُ وتحته سطرُ التعريف** (D-618، توزيعُ أحمد
             المرسوم): «AHMED» ثمّ «@ahmed · 5 Following» — **وما كان
             صفّاً واحداً مزدحماً** (اسمٌ + عدّادان + مبدّل، D-572/D-614)
             **صار عمودَين**: المبدّلُ صعد لصفِّ الأيقونات، وعدّادُ
             المتابِعين غادر (نقضُ الثنائيّة محصوراً — الملفُّ بعدَّيه
             كما هو)، **وعدُّ مَن تتابعهم بقي بورقته نفسِها**
             (`FollowCountButton`/D-561 — نفسُ الحارس ونفسُ السقف). */}
-        <div className="min-w-0 flex-1">
-          {/* 🆕 **والشارةُ خارجَ `truncate`** (D-633): اسمٌ طويلٌ يُقصّ
+          <div className="min-w-0 flex-1">
+            {/* 🆕 **والشارةُ خارجَ `truncate`** (D-633): اسمٌ طويلٌ يُقصّ
               ولا تُقصّ معه الشارة — **وشارةٌ تختفي بطول اسمٍ ليست شارة.** */}
-          <p className="flex items-center gap-1.5 text-15 font-bold leading-tight">
-            <span className="min-w-0 truncate">{displayName}</span>
-            <PlusBadge profile={{ plan, founder }} locale={locale} size={15} />
-          </p>
-          {/* ⚖️ 🆕 ١٣ → ١٢ (D-619: «أحجام الخط كبيرة وغير متناسقة») —
+            <p className="flex items-center gap-1.5 text-15 font-bold leading-tight">
+              <span className="min-w-0 truncate">{displayName}</span>
+              <AccountBadges
+                profile={{
+                  plan,
+                  founder,
+                  plus_until: plusUntil,
+                  verified_at: verifiedAt,
+                }}
+                locale={locale}
+                size={15}
+              />
+            </p>
+            {/* ⚖️ 🆕 ١٣ → ١٢ (D-619: «أحجام الخط كبيرة وغير متناسقة») —
               سطرُ تعريفٍ ثانويٌّ درجتُه درجةُ الثانويّ في السلّم */}
-          {(username || userId) && (
-            <p
-              className={`mt-0.5 flex items-center gap-1.5 text-12 leading-tight ${
-                coverUrl ? "text-white/70" : "text-muted"
-              }`}
-            >
-              {username && <span className="min-w-0 truncate">@{username}</span>}
-              {username && userId && (
-                <span aria-hidden className="shrink-0 opacity-60">
-                  •
-                </span>
-              )}
-              {/* ⚖️ 🆕 **والعدّان معاً بلا كلمات** (D-621): مَن يتابعونني
+            {(username || userId) && (
+              <p
+                className={`mt-0.5 flex items-center gap-1.5 text-12 leading-tight ${
+                  coverUrl ? "text-white/70" : "text-muted"
+                }`}
+              >
+                {username && (
+                  <span className="min-w-0 truncate">@{username}</span>
+                )}
+                {username && userId && (
+                  <span aria-hidden className="shrink-0 opacity-60">
+                    •
+                  </span>
+                )}
+                {/* ⚖️ 🆕 **والعدّان معاً بلا كلمات** (D-621): مَن يتابعونني
                   أوّلاً ثمّ مَن أتابعهم — بترتيب كلمته («وحدة الي
                   يتابعوني والثانية الي أتابعهم»)، والرمزان يفرّقان. */}
-              {userId && (
-                <span className="inline-flex items-center gap-2">
-                  <FollowCountButton
-                    targetId={userId}
-                    dir="followers"
-                    count={followers}
-                    label={t.followersLabel}
-                    sheetTitle={t.followsTabFollowers}
-                    locked={hideFollowLists}
-                    compact
-                    labels={{
-                      close: t.closeLabel,
-                      empty: t.followListEmpty,
-                      anonymous: t.anonymousUser,
-                    }}
-                  />
-                  <FollowCountButton
-                    targetId={userId}
-                    dir="following"
-                    count={following}
-                    label={t.followingLabel}
-                    sheetTitle={t.followsTabFollowing}
-                    locked={hideFollowLists}
-                    compact
-                    labels={{
-                      close: t.closeLabel,
-                      empty: t.followListEmpty,
-                      anonymous: t.anonymousUser,
-                    }}
-                  />
-                </span>
-              )}
-            </p>
-          )}
+                {userId && (
+                  <span className="inline-flex items-center gap-2">
+                    <FollowCountButton
+                      targetId={userId}
+                      dir="followers"
+                      count={followers}
+                      label={t.followersLabel}
+                      sheetTitle={t.followsTabFollowers}
+                      locked={hideFollowLists}
+                      compact
+                      labels={{
+                        close: t.closeLabel,
+                        empty: t.followListEmpty,
+                        anonymous: t.anonymousUser,
+                      }}
+                    />
+                    <FollowCountButton
+                      targetId={userId}
+                      dir="following"
+                      count={following}
+                      label={t.followingLabel}
+                      sheetTitle={t.followsTabFollowing}
+                      locked={hideFollowLists}
+                      compact
+                      labels={{
+                        close: t.closeLabel,
+                        empty: t.followListEmpty,
+                        anonymous: t.anonymousUser,
+                      }}
+                    />
+                  </span>
+                )}
+              </p>
+            )}
+          </div>
         </div>
-      </div>
 
-      {/* ===== الصفُّ الثالث: بطاقةُ الأرقام =====
+        {/* ===== الصفُّ الثالث: بطاقةُ الأرقام =====
           **والشكلُ يتبع الوضع**: بطاقةٌ واحدةٌ بفواصلَ رفيعة في المختصر —
           **سطرٌ أقلُّ ارتفاعاً لمن طلب الضغط** — وبطاقةٌ لكلِّ رقمٍ في
           البصريّ. **والمحتوى واحدٌ في الاثنين** فلا يفقد أحدُهما رقماً. */}
-      {/* ===== الصفُّ الثالث: بطاقةُ الأرقام =====
+        {/* ===== الصفُّ الثالث: بطاقةُ الأرقام =====
           ⚖️ 🆕 **وبطاقةٌ واحدةٌ في الوضعين** (D-439، حكمُ أحمد بلقطةٍ
           للبطاقة: «خلّها بنفس هذا التصميم، **لا تقسمها**»). **كانت
           بطاقتين منفصلتين في البصريّ وواحدةً في المختصر** — **وشكلان
           لشيءٍ واحدٍ يتبدّلان بتبدّل وضع العرض يجعلان الترويسةَ نفسَها
           تُقرأ ترويستين** (القاعدة ٦). **والفاصلُ الرفيع يفرّق الخانات
           بلا أن يفصل البطاقة.** */}
-      {showStats && stats.length > 0 && (() => {
-        /* 🆕 **أربعُ خاناتٍ تنزل صفّين** (D-487، لقطةُ أحمد على البطاقة:
+        {showStats &&
+          stats.length > 0 &&
+          (() => {
+            /* 🆕 **أربعُ خاناتٍ تنزل صفّين** (D-487، لقطةُ أحمد على البطاقة:
            «هذي إذا كاتب أربعة خلّها بنظام ٢ وتحتها ٢ grid»).
 
            **والعلّةُ مقيسةٌ في لقطته**: أربعُ خاناتٍ على عرض هاتفٍ تعني
@@ -544,37 +578,41 @@ export function HomeHeader({
 
            ⚠️ **والثلاثةُ تبقى صفّاً واحداً**: ١٢٠px تكفي، **وصفٌّ ونصفٌ
            أسوأُ من صفٍّ ممتلئ.** */
-        const cols = stats.length === 4 ? 2 : stats.length;
-        return (
-        <div
-          /* ⚖️ 🆕 **والصندوقُ عاد بحكم صاحبه** (D-618: «حط خلفية
+            const cols = stats.length === 4 ? 2 : stats.length;
+            return (
+              <div
+                /* ⚖️ 🆕 **والصندوقُ عاد بحكم صاحبه** (D-618: «حط خلفية
              للكاردات») — **نقضٌ مسجَّلٌ لـD-550 التي أسقطت الإطارَ
              والسطحَ والزاويةَ بطلبه يومَها**: **والوصفةُ وصفةُ بطاقة
              أرقام الملفّ حرفاً** (D-610: `rounded-2xl border
              border-border bg-surface`) — لا وصفةَ بطاقةٍ ثانية
              (القاعدة ٦). **والفاصلُ بين الخانتين باقٍ كما كان.** */
-          className="grid rounded-2xl border border-border bg-surface overflow-hidden"
-          style={{ gridTemplateColumns: `repeat(${cols}, minmax(0,1fr))` }}
-        >
-          {stats.map((s, i) => (
-            <Link
-              key={s.key}
-              href={s.href ?? "/library"}
-              /* **الفاصلُ يُحسب من موضع الخانة في الشبكة لا من ترتيبها**:
+                className="grid rounded-2xl border border-border bg-surface overflow-hidden"
+                style={{
+                  gridTemplateColumns: `repeat(${cols}, minmax(0,1fr))`,
+                }}
+              >
+                {stats.map((s, i) => (
+                  <Link
+                    key={s.key}
+                    href={s.href ?? "/library"}
+                    /* **الفاصلُ يُحسب من موضع الخانة في الشبكة لا من ترتيبها**:
                  خطٌّ رأسيٌّ لكلِّ خانةٍ ليست أوّلَ عمودها، **وأفقيٌّ لكلِّ
                  خانةٍ في صفٍّ ثانٍ** — ومن أخذ `i > 0` وحدَها رسم خطّاً
                  رأسيّاً في رأس السطر الثاني. */
-              className={`flex items-center justify-center gap-2 px-2 py-3 transition active:opacity-70 ${
-                i % cols !== 0 ? "border-s border-[color:var(--divider)] " : ""
-              }${i >= cols ? "border-t border-[color:var(--divider)]" : ""}`}
-            >
-              <StatFace stat={s} />
-            </Link>
-          ))}
-        </div>
-        );
-      })()}
-    </div>
+                    className={`flex items-center justify-center gap-2 px-2 py-3 transition active:opacity-70 ${
+                      i % cols !== 0
+                        ? "border-s border-[color:var(--divider)] "
+                        : ""
+                    }${i >= cols ? "border-t border-[color:var(--divider)]" : ""}`}
+                  >
+                    <StatFace stat={s} />
+                  </Link>
+                ))}
+              </div>
+            );
+          })()}
+      </div>
     </>
   );
 }
