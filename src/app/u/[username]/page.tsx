@@ -64,7 +64,7 @@ import {
 import { SectionReorderButton } from "@/components/SectionReorderButton";
 import { SavedListsToggle } from "@/components/SavedListsToggle";
 import { capCards } from "@/lib/cardCount";
-import { coverBareControl } from "@/components/ui/controls";
+import { coverBareControl, HEADER_ICON } from "@/components/ui/controls";
 import { browseGenreName, groupByGenre } from "@/lib/browse";
 import { densityVars } from "@/lib/density";
 
@@ -889,12 +889,17 @@ export default async function PublicProfilePage({
               ⚠️ **والفجوةُ `gap-5` لا `gap-2`**: المرئيُّ ٢٤ وهدفُ اللمس
               ٤٤ (D-033) — **وفجوةٌ أصغرُ من ٢٠ تجعل هدفَي لمسٍ متداخلين
               فيُضغط جارُ ما قُصد.** */}
+          {/* **والسهمُ يقابلها بالإزاحة نفسِها** — طرفان متناظران */}
           <BackButton
             locale={locale}
             variant="bare"
-            className="absolute start-4 top-[calc(var(--safe-top)+0.9rem)] z-10"
+            className="absolute start-2.5 top-[calc(var(--safe-top)+0.375rem)] z-10"
           />
-          <div className="absolute end-4 top-[calc(var(--safe-top)+0.9rem)] z-10 flex items-center gap-5">
+          {/* 🆕 **والفجوةُ صارت صفراً كالشريط** (D-776): الصناديقُ ٤٤
+              متلاصقةٌ هناك، **فـ`gap-5` هنا كانت تجعل إيقاعَ الصفّ
+              مختلفاً وإن تطابق المقاس** — **والتطابقُ تطابقُ الشبكة لا
+              الصندوق وحدَه.** */}
+          <div className="absolute end-2.5 top-[calc(var(--safe-top)+0.375rem)] z-10 flex items-center">
             <ShareTitleButton
               path={base}
               title={displayName}
@@ -927,7 +932,7 @@ export default async function PublicProfilePage({
                 title={t.headerSettings}
                 className={coverBareControl}
               >
-                <Icon name="settings" size={24} strokeWidth={2.5} />
+                <Icon name="settings" size={HEADER_ICON} strokeWidth={2.5} />
               </Link>
             ) : (
               /* 🗑️ ⚖️ **وقلمُ الغلاف سقط** (D-637، سدادُ دَينٍ مُعلَنٍ منذ
@@ -1059,8 +1064,13 @@ export default async function PublicProfilePage({
                 (يمينٌ في LTR ويسارٌ في RTL) — **ولا `right` ولا `mr` مكتوبةً
                 بيد** (D-105). */}
             <div className="flex items-center gap-2.5">
-              <div className="min-w-0 flex-1 flex items-center gap-1.5">
-                <h1 className="hero-halo min-w-0 text-22 sm:text-xl font-bold leading-tight truncate">
+              {/* 🆕 **ومقاسُ الخطّ انتقل من `h1` إلى الصفّ** (D-776):
+                  **الشارةُ صارت نسبةً من خطِّ ما حولها** (`0.82em`)،
+                  **فلو بقي المقاسُ على `h1` وحدَها لورثت الشارةُ ١٦ من
+                  الصفحة بدل ٢٢ من الاسم** — **فتصغر إلى ١٣ بجانب اسمٍ
+                  ٢٢.** والعنوانُ يرث المقاسَ من أبيه فلا يتغيّر شيءٌ فيه. */}
+              <div className="min-w-0 flex-1 flex items-center gap-1.5 text-22 sm:text-xl">
+                <h1 className="hero-halo min-w-0 font-bold leading-tight truncate">
                   {displayName}
                 </h1>
                 {/* 🆕 **شارةُ Loopz+ بجانب الاسم** (D-633، بحكمه) —
