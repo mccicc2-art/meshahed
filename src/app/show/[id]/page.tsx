@@ -477,6 +477,12 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
                  بلا key: إعادة التركيب كانت تُغلق الموسم المفتوح. */
               <EpisodeTracker
                 showTmdbId={tvId}
+                /* 🆕 **ليدخل المسلسلُ المكتبةَ من أوّل تأشير** (D-777):
+                   القاعدةُ تحتاج اسماً لتكتب صفَّ المتابعة، **والصفحةُ
+                   تملكه أصلاً** — فلا نداءَ إضافيٌّ لأجله. */
+                showTitle={tv.name}
+                showPosterPath={tv.poster_path ?? null}
+                initialFollowing={following}
                 summaries={summaries}
                 initialSeason={openSeason}
                 absolute={absolute}
