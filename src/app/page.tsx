@@ -43,7 +43,11 @@ import {
 } from "@/lib/tmdb";
 /* حارسُ الرفوف — نفسُ الملفّ الذي يحرس اكتشف، **لا نسخةٌ ثانية** (D-321) */
 import { railGuard } from "@/lib/topChart";
-import { getWatchedForShow, getNewsGenStale, refreshLoopzNews } from "@/lib/data";
+import {
+  getWatchedForShow,
+  getNewsGenStale,
+  refreshLoopzNews,
+} from "@/lib/data";
 import { nextUnwatchedEpisode } from "@/lib/progress";
 import { getT, getLocale } from "@/lib/locale";
 import { whenLabel } from "@/lib/when";
@@ -76,8 +80,14 @@ import { capCards } from "@/lib/cardCount";
 import { getLevel, levelPoints } from "@/lib/level";
 import { densityVars } from "@/lib/density";
 import { WeekStrip, type WeekEntry } from "@/components/WeekStrip";
-import { HomeOrderButton, HomeOrderSheetHost } from "@/components/HomeSectionsOrder";
-import { QueueOrderButton, HomeQueueSheetHost } from "@/components/HomeQueueOrder";
+import {
+  HomeOrderButton,
+  HomeOrderSheetHost,
+} from "@/components/HomeSectionsOrder";
+import {
+  QueueOrderButton,
+  HomeQueueSheetHost,
+} from "@/components/HomeQueueOrder";
 import type { ReorderItem } from "@/components/ReorderSheet";
 import { ShowStatsSync, type ShowStat } from "@/components/ShowStatsSync";
 import { FollowMetaSync, MovieStatsSync } from "@/components/MetaSync";
@@ -129,23 +139,17 @@ export default async function HomePage() {
      رفضاً معلّقاً. **ولو صارت ترمي يوماً، هذا السطرُ هو ما ينكسر.** */
   const movieProgressPromise = getAllMovieProgress();
 
-  const [
-    user,
-    followRows,
-    summary,
-    watchedMovies,
-    profile,
-    myRatings,
-  ] = await Promise.all([
-    getUser(),
-    getFollows(),
-    getWatchSummary(),
-    getWatchedMovies(),
-    getProfile(),
-    getMyRatings(),
-    /* ⚖️ وعدّادا البريد سقطا من هنا (D-502): الشريطُ العلويّ يعدّهما
+  const [user, followRows, summary, watchedMovies, profile, myRatings] =
+    await Promise.all([
+      getUser(),
+      getFollows(),
+      getWatchSummary(),
+      getWatchedMovies(),
+      getProfile(),
+      getMyRatings(),
+      /* ⚖️ وعدّادا البريد سقطا من هنا (D-502): الشريطُ العلويّ يعدّهما
        لنفسه — استعلامٌ لا يرسم شيئاً ضريبةٌ تُدفع في كلِّ فتحة. */
-  ]);
+    ]);
 
   /* **بابٌ ثانٍ لتجديد الأخبار** (D-215): كان التجديدُ لا يقع إلا حين
      يُفتح تبويبُ الأخبار — **وهو أقلُّ أسطح التطبيق زيارةً**، فبقيت
@@ -213,14 +217,17 @@ export default async function HomePage() {
   if (summary) {
     for (const s of summary) watchedByShow.set(s.show_tmdb_id, s.watched);
     lastWatchedOrder = [...summary]
-      .sort((a, b) => (b.last_watched ?? "").localeCompare(a.last_watched ?? ""))
+      .sort((a, b) =>
+        (b.last_watched ?? "").localeCompare(a.last_watched ?? ""),
+      )
       .map((s) => s.show_tmdb_id);
   }
 
   // لحظات بدء الإعادة بيدنا هنا — تُمرَّر فلا يستعلم عنها أحد مرة ثانية
   const rewatchSinceMap = new Map<number, string>();
   for (const f of rawTv) {
-    if (f.rewatch_started_at) rewatchSinceMap.set(f.tmdb_id, f.rewatch_started_at);
+    if (f.rewatch_started_at)
+      rewatchSinceMap.set(f.tmdb_id, f.rewatch_started_at);
   }
 
   if (!summary && fallbackEps) {
@@ -437,6 +444,8 @@ export default async function HomePage() {
           /* 🆕 شارةُ Loopz+ (D-633) — والقراءةُ من نداء البروفايل القائم */
           plan={profile?.plan ?? null}
           founder={profile?.founder ?? false}
+          plusUntil={profile?.plus_until ?? null}
+          verifiedAt={profile?.verified_at ?? null}
           /* ⚖️ 🆕 **الصورةُ والهلالُ والعدّادان عادوا** (D-536): كانت
              الثلاثةُ معاملاتٍ تُقبل ولا تُقرأ منذ D-502 — **وقد سقطت
              من المستدعي في D-503** — **فتعود من بابها الأوّل.**
@@ -459,7 +468,11 @@ export default async function HomePage() {
           locale={locale}
         />
         {/* تلميح أول فتح — يظهر مرةً ثم يصمت (سابقة hintDiscover) */}
-        <OneTimeHint id="home-customize" text={t.hintHome} closeLabel={t.closeLabel} />
+        <OneTimeHint
+          id="home-customize"
+          text={t.hintHome}
+          closeLabel={t.closeLabel}
+        />
         <Suspense
           fallback={
             <div className="space-y-8" aria-hidden>
@@ -581,7 +594,10 @@ async function HomeBody({
     ? rawTv
         .map((row) => {
           const aired = row.aired_episodes ?? row.total_episodes ?? 0;
-          const watched = Math.min(watchedByShow.get(row.tmdb_id) ?? 0, aired || Infinity);
+          const watched = Math.min(
+            watchedByShow.get(row.tmdb_id) ?? 0,
+            aired || Infinity,
+          );
           return { id: row.tmdb_id, watched, aired };
         })
         .filter((i) => i.watched > 0 && (i.aired === 0 || i.watched < i.aired))
@@ -607,7 +623,10 @@ async function HomeBody({
      من أظهرهما من التخصيص، كقاعدة «recap» نفسها */
   const topRatedRaw = prefs.order.includes("ratings")
     ? [...myRatings]
-        .sort((a, b) => b.rating - a.rating || b.updated_at.localeCompare(a.updated_at))
+        .sort(
+          (a, b) =>
+            b.rating - a.rating || b.updated_at.localeCompare(a.updated_at),
+        )
         .slice(0, 16)
     : [];
 
@@ -631,7 +650,9 @@ async function HomeBody({
     // أسماء المكتبة وملصقاتها بلغة الواجهة لا بلغة يوم المتابعة
     localizeFollows(followRows, locale),
     Promise.all(bootstrapIds.map((id) => getTv(id).catch(() => null))),
-    Promise.all(movieIdsNeedingDate.map((id) => getMovie(id).catch(() => null))),
+    Promise.all(
+      movieIdsNeedingDate.map((id) => getMovie(id).catch(() => null)),
+    ),
     prefs.order.includes("recap")
       ? getWatchHistory(300).catch(() => [])
       : Promise.resolve(null),
@@ -767,7 +788,10 @@ async function HomeBody({
      (قوائمُه ثمّ محفوظاتُه) يبقى للمَن لم يرتّب — ومَن رتّب فترتيبُه
      المحفوظ يتقدّم والجديدُ يلحق بذيله (نمطُ الصفَّين حرفاً). */
   const homeListCardsBase = applyQueueOrder(
-    [...myListCards, ...savedListCards.filter((c) => c.item_count > 0 && !ownedIds.has(c.id))],
+    [
+      ...myListCards,
+      ...savedListCards.filter((c) => c.item_count > 0 && !ownedIds.has(c.id)),
+    ],
     (c) => c.id,
     prefs.listsOrder,
   );
@@ -791,12 +815,23 @@ async function HomeBody({
   const publicOwnIds = listsForDisplay(myListsRaw)
     .filter((l) => l.is_public && (l.item_count ?? 0) > 0)
     .map((l) => l.id);
-  const listStatsP: Promise<Map<string, { saves: number; reviews: number; rating: number | null }>> =
+  const listStatsP: Promise<
+    Map<string, { saves: number; reviews: number; rating: number | null }>
+  > =
     publicOwnIds.length > 0
       ? getListCardStats(publicOwnIds).catch(
-          () => new Map<string, { saves: number; reviews: number; rating: number | null }>(),
+          () =>
+            new Map<
+              string,
+              { saves: number; reviews: number; rating: number | null }
+            >(),
         )
-      : Promise.resolve(new Map<string, { saves: number; reviews: number; rating: number | null }>());
+      : Promise.resolve(
+          new Map<
+            string,
+            { saves: number; reviews: number; rating: number | null }
+          >(),
+        );
 
   // ما تغيّر اسمه بالترجمة يُكتب مرة واحدة في قاعدة البيانات
   const metaToCache = follows
@@ -956,7 +991,9 @@ async function HomeBody({
   const listStats = await listStatsP;
   const homeListCards = homeListCardsBase.map((c) => {
     const st = listStats.get(c.id);
-    return st ? { ...c, saves: st.saves, reviews: st.reviews, rating: st.rating } : c;
+    return st
+      ? { ...c, saves: st.saves, reviews: st.reviews, rating: st.rating }
+      : c;
   });
 
   const empty = false;
@@ -972,9 +1009,10 @@ async function HomeBody({
      يفعّله لا يدفع نداءَه (شرطُ الرسم في الخريطة أدناه)، وسقوطُ جلبِ
      TMDB يُسقطه صامتاً كما كان. */
 
-
   // لزرّ الحفظ السريع على «الرائج»: ما تتابعه، وما أنهيته فعلاً
-  const followedKeys = new Set(follows.map((f) => `${f.media_type}-${f.tmdb_id}`));
+  const followedKeys = new Set(
+    follows.map((f) => `${f.media_type}-${f.tmdb_id}`),
+  );
   const doneShowIds = new Set(
     items.filter((i) => i.aired > 0 && i.watched >= i.aired).map((i) => i.id),
   );
@@ -1012,7 +1050,8 @@ async function HomeBody({
   const unlistedQueue = movieFollows
     .filter((f) => !listedMovieIds.has(f.tmdb_id))
     .sort((a, b) => a.added_at.localeCompare(b.added_at));
-  const unlistedNext = unlistedQueue.find((f) => !watchedMovieIds.has(f.tmdb_id)) ?? null;
+  const unlistedNext =
+    unlistedQueue.find((f) => !watchedMovieIds.has(f.tmdb_id)) ?? null;
   /* ⚖️ 🆕 **ورايةٌ فوقه** (D-559، بلاغُ أحمد: «ما أبغى أشوفها، أبغى
      الليست الي جنبها فقط وهي جات معها»): **كان الطابورُ الوحيدَ في
      هذا الصفّ بلا مفتاح** — قوائمُك الحقيقيّةُ تدخله برايةٍ ترفعها
@@ -1045,19 +1084,21 @@ async function HomeBody({
     media_type: "movie" as const,
   }));
 
-  const toWatchCard = prefs.toWatch && unlistedNext
-    ? {
-        name: t.libToWatch,
-        next: {
-          tmdb_id: unlistedNext.tmdb_id,
-          media_type: "movie" as const,
-          title: unlistedNext.title,
-          poster_path: unlistedNext.poster_path,
-        },
-        watched: unlistedQueue.filter((f) => watchedMovieIds.has(f.tmdb_id)).length,
-        total: unlistedQueue.length,
-      }
-    : null;
+  const toWatchCard =
+    prefs.toWatch && unlistedNext
+      ? {
+          name: t.libToWatch,
+          next: {
+            tmdb_id: unlistedNext.tmdb_id,
+            media_type: "movie" as const,
+            title: unlistedNext.title,
+            poster_path: unlistedNext.poster_path,
+          },
+          watched: unlistedQueue.filter((f) => watchedMovieIds.has(f.tmdb_id))
+            .length,
+          total: unlistedQueue.length,
+        }
+      : null;
 
   const playlistCards = myPlaylists
     .map((l) => {
@@ -1124,7 +1165,9 @@ async function HomeBody({
   });
 
   // ===== أفلامي: الموضع المحفوظ يصير شريط تقدّم، والمشاهَد يمتلئ =====
-  const progressById = new Map(movieProgressRows.map((m) => [m.movie_tmdb_id, m]));
+  const progressById = new Map(
+    movieProgressRows.map((m) => [m.movie_tmdb_id, m]),
+  );
   const myMovies = movieFollows
     .map((f) => {
       const prog = progressById.get(f.tmdb_id);
@@ -1180,7 +1223,9 @@ async function HomeBody({
            عنوانَ قسمها على كلِّ بطاقةٍ فيه ضجيجٌ لا خبر** — والشارةُ
            باقيةٌ حيث تُفرِّق فعلاً (صفُّ «مسلسلاتي» والمكتبة). */
         subtitle:
-          i.aired > 0 ? `${t.typeSeries} · ${t.epsCount(i.aired)}` : t.typeSeries,
+          i.aired > 0
+            ? `${t.typeSeries} · ${t.epsCount(i.aired)}`
+            : t.typeSeries,
       })),
     /* 🆕 **وأولويّةُ البطاقة تُطبَّق داخل قسم الأفلام وحدَه** (D-719):
        **هذا هو ثمنُ المفتاح الرابع ومكسبُه معاً** — ما رتّبتَه في
@@ -1190,24 +1235,27 @@ async function HomeBody({
       myMovies.filter((m) => m.progress < 100),
       (m) => `tw-mv-${m.tmdbId}`,
       prefs.towatchListOrder,
-    )
-      .map((m) => ({
-        key: `tw-mv-${m.tmdbId}`,
-        mediaType: "movie" as const,
-        tmdbId: m.tmdbId,
-        runtime: progressById.get(m.tmdbId)?.runtime_minutes ?? null,
-        href: `/movie/${m.tmdbId}`,
-        title: m.title,
-        posterPath: m.posterPath,
-        progress: m.progress,
-        /* **والشارةُ تبقى حين تحمل خبراً**: «٤٥ د» موضعُك في الفيلم —
+    ).map((m) => ({
+      key: `tw-mv-${m.tmdbId}`,
+      mediaType: "movie" as const,
+      tmdbId: m.tmdbId,
+      runtime: progressById.get(m.tmdbId)?.runtime_minutes ?? null,
+      href: `/movie/${m.tmdbId}`,
+      title: m.title,
+      posterPath: m.posterPath,
+      progress: m.progress,
+      /* **والشارةُ تبقى حين تحمل خبراً**: «٤٥ د» موضعُك في الفيلم —
            **وأمّا «فيلم» فنوعُه، ومكانُه السطرُ الثاني في المختصر لا
            رقاقةٌ فوق الملصق.** */
-        badge: m.progress === 0 ? undefined : m.badge,
-        subtitle: t.typeMovie,
-      })),
+      badge: m.progress === 0 ? undefined : m.badge,
+      subtitle: t.typeMovie,
+    })),
   ];
-  const toWatchOrdered = applyQueueOrder(toWatchAll, (x) => x.key, prefs.towatchOrder);
+  const toWatchOrdered = applyQueueOrder(
+    toWatchAll,
+    (x) => x.key,
+    prefs.towatchOrder,
+  );
   const toWatchRow = toWatchOrdered.slice(0, 16);
 
   /* 🆕 **بذرتا ورقة الأولويّة** (D-605) — قائمتا الصفَّين كاملتَين
@@ -1266,14 +1314,19 @@ async function HomeBody({
   // مواعيد الأفلام: المخزّن يُقرأ من صفّ المتابعة، والمجلوب حديثاً يُكتب
   // عبر MovieStatsSync فلا يُطلب مرتين
   const fetchedDateById = new Map(
-    movieIdsNeedingDate.map((id, n) => [id, fetchedMovieDetails[n]?.release_date ?? null]),
+    movieIdsNeedingDate.map((id, n) => [
+      id,
+      fetchedMovieDetails[n]?.release_date ?? null,
+    ]),
   );
   const movieDatesToCache = movieIdsNeedingDate.map((id) => ({
     tmdbId: id,
     releaseDate: fetchedDateById.get(id) ?? null,
   }));
   const movieDateOf = (f: (typeof upcomingMovieCandidates)[number]) =>
-    f.stats_updated_at != null ? (f.next_air_date ?? null) : (fetchedDateById.get(f.tmdb_id) ?? null);
+    f.stats_updated_at != null
+      ? (f.next_air_date ?? null)
+      : (fetchedDateById.get(f.tmdb_id) ?? null);
 
   const upcomingRow: MixedItem[] = [
     ...upcoming.map((u) => ({
@@ -1298,7 +1351,9 @@ async function HomeBody({
         date: d!,
       })),
   ]
-    .sort((a, b) => (a as { date: string }).date.localeCompare((b as { date: string }).date))
+    .sort((a, b) =>
+      (a as { date: string }).date.localeCompare((b as { date: string }).date),
+    )
     .slice(0, 16);
 
   /* ===== رقمُ الحلقة القادمة (D-437، طلبُ أحمد: «وأظهر رقم الحلقة في
@@ -1342,9 +1397,7 @@ async function HomeBody({
         const key = `${h.kind === "movie" ? "movie" : "tv"}-${h.tmdbId}`;
         if (seen.has(key)) continue;
         seen.add(key);
-        const f = follows.find(
-          (x) => `${x.media_type}-${x.tmdb_id}` === key,
-        );
+        const f = follows.find((x) => `${x.media_type}-${x.tmdb_id}` === key);
         posters.push(f?.poster_path ?? null);
         if (posters.length === 3) break;
       }
@@ -1372,12 +1425,20 @@ async function HomeBody({
         weekday: "short",
         timeZone: "UTC",
       }).format(d),
-      dayNum: new Intl.DateTimeFormat("en-GB", { day: "numeric", timeZone: "UTC" }).format(d),
+      dayNum: new Intl.DateTimeFormat("en-GB", {
+        day: "numeric",
+        timeZone: "UTC",
+      }).format(d),
     };
   });
   const weekEnd = weekDays[weekDays.length - 1].date;
   const weekEntries: WeekEntry[] = upcoming
-    .filter((u) => u.date >= weekDays[0].date && u.date <= weekEnd && u.key.startsWith("tv-"))
+    .filter(
+      (u) =>
+        u.date >= weekDays[0].date &&
+        u.date <= weekEnd &&
+        u.key.startsWith("tv-"),
+    )
     .map((u) => ({
       date: u.date,
       showTmdbId: Number(u.key.replace("tv-", "")),
@@ -1448,7 +1509,11 @@ async function HomeBody({
             href="/library"
             action={
               toWatchOrdered.length > 1 ? (
-                <QueueOrderButton row="towatch" label={t.listReorder} word={t.allWord} />
+                <QueueOrderButton
+                  row="towatch"
+                  label={t.listReorder}
+                  word={t.allWord}
+                />
               ) : undefined
             }
             view={view}
@@ -1541,7 +1606,9 @@ async function HomeBody({
                 days={weekDays}
                 entries={weekEntries}
                 locale={locale}
-                action={<HomeOrderButton label={t.custReorder} word={t.allWord} />}
+                action={
+                  <HomeOrderButton label={t.custReorder} word={t.allWord} />
+                }
               />
             </div>
           ),
@@ -1560,11 +1627,7 @@ async function HomeBody({
                  صارت خلف Suspense خاصّته، والصفُّ معروفُ الوجود مسبقاً
                  فلا هيكلَ يظهر ثم ينهار. */
               <Suspense key="upcoming" fallback={<RailSkeleton count={4} />}>
-                <UpcomingSection
-                  row={upcomingRow}
-                  cards={prefs.cards}
-                  t={t}
-                />
+                <UpcomingSection row={upcomingRow} cards={prefs.cards} t={t} />
               </Suspense>
             ) : null,
           shows:
@@ -1576,7 +1639,9 @@ async function HomeBody({
                 iconColor="var(--accent)"
                 href="/library?filter=tv"
                 seeAll={t.seeAll}
-                action={<HomeOrderButton label={t.custReorder} word={t.allWord} />}
+                action={
+                  <HomeOrderButton label={t.custReorder} word={t.allWord} />
+                }
               >
                 {myShows.slice(0, cap(myShows.length)).map((i) => (
                   <PosterCard
@@ -1585,7 +1650,11 @@ async function HomeBody({
                     title={i.name}
                     posterPath={i.posterPath}
                     progress={i.progress}
-                    count={i.watched > 0 && i.aired > i.watched ? i.aired - i.watched : undefined}
+                    count={
+                      i.watched > 0 && i.aired > i.watched
+                        ? i.aired - i.watched
+                        : undefined
+                    }
                     badge={
                       i.watched === 0
                         ? t.notStartedBadge
@@ -1594,7 +1663,9 @@ async function HomeBody({
                           : undefined
                     }
                     badgeTone={
-                      i.aired > 0 && i.watched >= i.aired && i.watched > 0 ? "watched" : "neutral"
+                      i.aired > 0 && i.watched >= i.aired && i.watched > 0
+                        ? "watched"
+                        : "neutral"
                     }
                   />
                 ))}
@@ -1609,7 +1680,9 @@ async function HomeBody({
                 iconColor="var(--accent)"
                 href="/library?filter=movie"
                 seeAll={t.seeAll}
-                action={<HomeOrderButton label={t.custReorder} word={t.allWord} />}
+                action={
+                  <HomeOrderButton label={t.custReorder} word={t.allWord} />
+                }
               >
                 {myMovies.slice(0, cap(myMovies.length)).map((m) => (
                   <PosterCard
@@ -1627,7 +1700,11 @@ async function HomeBody({
             <div key="recap">
               <div className="flex items-center justify-between gap-3 mb-3">
                 <h2 className="flex items-center gap-2 text-22 font-bold">
-                  <Icon name="book" size={20} style={{ color: "var(--accent)" }} />
+                  <Icon
+                    name="book"
+                    size={20}
+                    style={{ color: "var(--accent)" }}
+                  />
                   {t.recapTitle}
                 </h2>
                 {/* 🆕 مقبضُ الترتيب بجوار «الكلّ» — كسائر الأقسام (D-595) */}
@@ -1685,7 +1762,9 @@ async function HomeBody({
                 iconColor="var(--accent)"
                 href="/ratings"
                 seeAll={t.seeAll}
-                action={<HomeOrderButton label={t.custReorder} word={t.allWord} />}
+                action={
+                  <HomeOrderButton label={t.custReorder} word={t.allWord} />
+                }
               >
                 {topRated.slice(0, cap(topRated.length)).map((r) => (
                   <PosterCard
@@ -1706,8 +1785,8 @@ async function HomeBody({
                   lists={homeListCards}
                   locale={locale}
                   /* ⚖️ 🆕 D-703 (حكمُه: «غيّر اسمها من My list إلى List»):
-                     **اسمُ الصفِّ اسمُ وجهته** (`/lists` — D-030)،
-                     **ولا اسمانِ لشيءٍ واحدٍ في التطبيق** (D-145). */
+                   **اسمُ الصفِّ اسمُ وجهته** (`/lists` — D-030)،
+                   **ولا اسمانِ لشيءٍ واحدٍ في التطبيق** (D-145). */
                   title={t.listsTitle}
                   /* 🆕 D-703: «كذلك لازم to watch تكون موجودة فيها» —
                      البطاقةُ نفسُها التي في المكتبة (D-559)، أوّلَ الصفّ */
@@ -1726,7 +1805,11 @@ async function HomeBody({
                      وبطاقةٌ واحدةٌ لا تُرتَّب فلا زرَّ لها (D-217) */
                   action={
                     homeListCards.length > 1 ? (
-                      <QueueOrderButton row="lists" label={t.listReorder} word={t.allWord} />
+                      <QueueOrderButton
+                        row="lists"
+                        label={t.listReorder}
+                        word={t.allWord}
+                      />
                     ) : undefined
                   }
                 />
@@ -1750,7 +1833,9 @@ async function HomeBody({
                   <>
                     <RailNewBadge
                       id="friends"
-                      sig={friendsRows.map((r) => `${r.media_type}${r.tmdb_id}`).join(",")}
+                      sig={friendsRows
+                        .map((r) => `${r.media_type}${r.tmdb_id}`)
+                        .join(",")}
                       locale={locale}
                     />
                     <HomeOrderButton label={t.custReorder} word={t.allWord} />
@@ -1776,24 +1861,23 @@ async function HomeBody({
                 ))}
               </PosterRail>
             ) : null,
-          trending:
-            prefs.order.includes("trending") ? (
-              /* ⚖️ **«الرائج» يبثّ وحده** (جولة ٢٠ أغسطس): نداءُ TMDB
+          trending: prefs.order.includes("trending") ? (
+            /* ⚖️ **«الرائج» يبثّ وحده** (جولة ٢٠ أغسطس): نداءُ TMDB
                  الوحيد الذي لا يخصّ مكتبتك — كان أبطأَ عضوٍ في الموجة
                  فيحكم في ظهور كلِّ الأقسام. **وشرطُ الظهور صار التفضيلَ
                  وحدَه (D-599)**؛ وسقوطُ الجلب كلِّه يُسقط القسمَ صامتاً
                  كما كان (`catch` إلى صفوفٍ صفر). */
-              <Suspense key="trending" fallback={<RailSkeleton count={6} />}>
-                <TrendingSection
-                  watchedMovieIds={watchedMovieIds}
-                  doneShowIds={doneShowIds}
-                  followedKeys={followedKeys}
-                  cards={prefs.cards}
-                  locale={locale}
-                  t={t}
-                />
-              </Suspense>
-            ) : null,
+            <Suspense key="trending" fallback={<RailSkeleton count={6} />}>
+              <TrendingSection
+                watchedMovieIds={watchedMovieIds}
+                doneShowIds={doneShowIds}
+                followedKeys={followedKeys}
+                cards={prefs.cards}
+                locale={locale}
+                t={t}
+              />
+            </Suspense>
+          ) : null,
         };
         return prefs.order.map((k) => sections[k]);
       })()}
@@ -1808,7 +1892,6 @@ async function HomeBody({
           {t.pickGenresHint}
         </Link>
       )}
-
     </>
   );
 }
@@ -2014,7 +2097,9 @@ async function ContinueSection({
         const key = `${n.media_type}-${n.tmdb_id}`;
         try {
           const d =
-            n.media_type === "movie" ? await getMovie(n.tmdb_id) : await getTv(n.tmdb_id);
+            n.media_type === "movie"
+              ? await getMovie(n.tmdb_id)
+              : await getTv(n.tmdb_id);
           return [key, d?.backdrop_path ?? null] as const;
         } catch {
           return [key, null] as const;
@@ -2043,7 +2128,13 @@ async function ContinueSection({
         iconColor="var(--accent)"
         href="/library"
         action={
-          canReorder ? <QueueOrderButton row="continue" label={t.listReorder} word={t.allWord} /> : undefined
+          canReorder ? (
+            <QueueOrderButton
+              row="continue"
+              label={t.listReorder}
+              word={t.allWord}
+            />
+          ) : undefined
         }
         view={view}
         wide
@@ -2206,25 +2297,27 @@ async function UpcomingSection({
 
   const cap = (n: number) => capCards(n, cards);
   /* **الرسمان من الجلب نفسِه**: أرقامُ الحلقات فوقُ تُجلب مرّةً،
-     **والذي يتبدّل صدرُ الصفّ وغلافُ القسم** — لا نداءَ ثانٍ. */
+   **والذي يتبدّل صدرُ الصفّ وغلافُ القسم** — لا نداءَ ثانٍ. */
   const rail = (view: HomeView) => (
-      <Section
-        key="upcoming"
-        title={t.libUpcoming}
-        icon="hourglass"
-        iconColor="var(--accent)"
-        href="/library"
-        seeAll={t.seeAll}
-        action={<HomeOrderButton label={t.custReorder} word={t.allWord} />}
-        view={view}
-        soloFull
-        wide
-      >
-        {/* **القادمُ موعدٌ قبل أن يكون عملاً** (D-434): الصدرُ في السطر
+    <Section
+      key="upcoming"
+      title={t.libUpcoming}
+      icon="hourglass"
+      iconColor="var(--accent)"
+      href="/library"
+      seeAll={t.seeAll}
+      action={<HomeOrderButton label={t.custReorder} word={t.allWord} />}
+      view={view}
+      soloFull
+      wide
+    >
+      {/* **القادمُ موعدٌ قبل أن يكون عملاً** (D-434): الصدرُ في السطر
             الأوّل هو التاريخ، واسمُ العمل تحته — **فالقارئ يسأل «متى» ثم
             «ماذا»، لا العكس.** وفي المختصر يصير التاريخُ رقاقةً في صدر
             الصفّ بدل الملصق. */}
-        {rows.slice(0, cap(rows.length)).map((x) =>
+      {rows
+        .slice(0, cap(rows.length))
+        .map((x) =>
           view === "compact" ? (
             <CompactMediaRow
               key={x.key}
@@ -2243,7 +2336,7 @@ async function UpcomingSection({
             />
           ),
         )}
-      </Section>
+    </Section>
   );
 
   return <ByHomeView visual={rail("visual")} compact={rail("compact")} />;
@@ -2281,7 +2374,12 @@ async function TrendingSection({
 
   const cap = (n: number) => capCards(n, cards);
   return (
-    <Section key="trending" title={t.trendingWeek} icon="trending" action={<HomeOrderButton label={t.custReorder} word={t.allWord} />}>
+    <Section
+      key="trending"
+      title={t.trendingWeek}
+      icon="trending"
+      action={<HomeOrderButton label={t.custReorder} word={t.allWord} />}
+    >
       {trend.slice(0, cap(12)).map((r) => {
         const mt = r.media_type === "tv" ? "tv" : "movie";
         const seen =
