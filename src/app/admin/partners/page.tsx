@@ -2,6 +2,8 @@ import { notFound, redirect } from "next/navigation";
 import { getAmAdmin, getAdminPartnerApplications } from "@/lib/data";
 import { adminDecidePartner } from "@/lib/actions";
 import { displayNameOf } from "@/lib/people";
+import { getDict } from "@/lib/i18n";
+import { AccountBadges } from "@/components/AccountIdentity";
 import { Avatar } from "@/components/Avatar";
 import { buttonClass } from "@/components/ui/Button";
 
@@ -44,6 +46,9 @@ export default async function AdminPartnersPage({
   if (!admin) notFound();
   const sp = await searchParams;
   const apps = await getAdminPartnerApplications();
+  /* **والصفحةُ عربيّةٌ ثابتة** (`dir="rtl"` ونصوصُها مكتوبةٌ لا مترجمة)،
+     **فملصقاتُ الشارة تُقرأ من العربيّة** لا من لغة الزائر. */
+  const badgeLabels = getDict("ar");
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8 space-y-6" dir="rtl">
@@ -66,7 +71,16 @@ export default async function AdminPartnersPage({
             <div className="flex items-center gap-3">
               <Avatar src={a.person?.avatar_url ?? null} name={name} size={40} alt="" />
               <div className="min-w-0 flex-1">
-                <p className="text-14 font-bold truncate">{name}</p>
+                {/* 🆕 **ولوحُ الإدارة يقرأ حالةَ مقدّم الطلب قبل قراره**
+                    (D-773ب): **هل هو موثَّقٌ أصلاً؟ أهو بلس؟** — سؤالٌ
+                    يُسأل هنا كلَّ مرّة، **وقاموسُه عربيٌّ ثابتٌ كالصفحة**
+                    فهي لوحٌ لا يُترجَم. */}
+                <p className="flex items-center min-w-0" style={{ gap: 4 }}>
+                  <span className="min-w-0 truncate text-14 font-bold">{name}</span>
+                  {a.person?.hide_name ? null : (
+                    <AccountBadges profile={a.person} t={badgeLabels} />
+                  )}
+                </p>
                 <p className="text-12 text-muted" dir="ltr">
                   {a.person?.username ? `@${a.person.username} · ` : ""}
                   {a.createdAt.slice(0, 10)}
