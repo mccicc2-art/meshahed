@@ -19,3 +19,15 @@ export const TRAILER_TABS: TrailerTab[] = ["for-you", "trending", "movies", "sho
 export function asTrailerTab(raw: string | null | undefined): TrailerTab {
   return TRAILER_TABS.includes(raw as TrailerTab) ? (raw as TrailerTab) : "for-you";
 }
+
+/**
+ * 🆕 **مقاسا العلف — يقرؤهما الخادمُ والعميلُ معاً** (D-772).
+ *
+ * 🔑 **وبيتُهما هنا لأن الطرفين يطلبان بهما**: **الصفحةُ ترسم الدفعةَ
+ * الأولى والعميلُ يطلب ما بعدها** — **ورقمان منسوخان يفترقان عند أوّل
+ * تعديل** (D-145)، **فتصل الدفعةُ الثانيةُ بمقاسٍ غيرِ مقاس الأولى.**
+ */
+export const TRAILER_FEED_LIMIT = 48;
+
+/** **كم بطاقةً لكلِّ عمل** — ورايلُ اكتشف يبقى على واحدة (صفُّ تصفّح) */
+export const TRAILER_PER_TITLE = 4;

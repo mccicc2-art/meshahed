@@ -8,11 +8,12 @@ import {
   trending,
   ANIME_KEYWORD,
   type SearchResult,
+  type TrailerVideo,
 } from "@/lib/tmdb";
 import { buildSection, shuffleSeeded } from "@/lib/sections";
 import { titleOf } from "@/lib/media";
 import { getAppleTrailerUrl } from "@/lib/appleTrailers";
-import { getDict, type Locale } from "@/lib/i18n";
+import { getDict, num, type Dict, type Locale } from "@/lib/i18n";
 import { browseGenreForId, browseGenreName } from "@/lib/browse";
 import { originAdjectives } from "@/lib/region";
 import { looksAnime } from "@/lib/topChart";
@@ -85,6 +86,18 @@ export interface TrailerItem {
    * **والغيابُ أصدقُ من صياغةٍ عامّة.**
    */
   note?: string;
+  /**
+   * 🆕 **وسمُ المقطع** (D-772، بلاغُ أحمد: «الفيديوهات قليلة… وش فيه
+   * أفكار لزيادة المقاطع؟») — **«تشويقة» · «الإعلان ٢» · «مشهد»**.
+   * 🔑 **والعلفُ صار بطاقةً لكلِّ مقطعٍ لا لكلِّ عمل**: **قِيس على
+   * المنشور أنّ الصفحة تُنزّل ٥٥ مفتاحاً لأربعةَ عشرَ عملاً وتعرض
+   * اثني عشر** — **ثلاثةٌ وأربعون مقطعاً منزَّلاً ومدفوعَ الثمن لا
+   * يراها أحد.** **والزيادةُ من الحمولة القائمة بصفر نداء.**
+   * ⚠️ **والوسمُ شرطُ الفهم لا زينة**: **بطاقتان لعملٍ واحدٍ بلا وسمٍ
+   * تُقرآن تكراراً** — **والأولى (الإعلان الرسميّ) بلا وسمٍ عمداً:
+   * هي الأصلُ وما بعدها هو الذي يحتاج تعريفاً.**
+   */
+  clipLabel: string | null;
 }
 
 /**
@@ -193,6 +206,74 @@ export function parseTrailerAt(raw: string | null | undefined): TrailerPin | und
    `server-only`، **وشريطُ الرقائق عميل** (انظر رأسَ ذلك الملفّ). */
 
 /**
+ * 🆕 **الأنواعُ التي تستحقّ بطاقةً بنفسها** (D-772).
+ * ⚠️ **و«خلف الكواليس» و«الأخطاء» ليست ترايلرات**: تبقى بدائلَ خانةٍ
+ * حين يرفض يوتيوب مقطعاً، **ولا تُرقّى بطاقةً في علفِ إعلانات** —
+ * **وصفحةٌ اسمُها «ترايلرات» تعرض لقطاتِ كواليسَ تكذب على اسمها**
+ * (D-664: الاسمُ يقول قاعدتَه).
+ */
+const CLIP_TYPES = new Set(["Trailer", "Teaser", "Clip"]);
+
+/** **وسمُ البطاقة** — والأوّلُ الرسميُّ بلا وسمٍ عمداً (هو الأصل) */
+function clipLabelOf(v: TrailerVideo, ordinal: number, locale: Locale, t: Dict): string | null {
+  const n = num(ordinal, locale);
+  if (v.type === "Teaser") return ordinal > 1 ? `${t.clipTeaser} ${n}` : t.clipTeaser;
+  if (v.type === "Clip") return ordinal > 1 ? `${t.clipScene} ${n}` : t.clipScene;
+  return ordinal > 1 ? `${t.clipTrailer} ${n}` : null;
+}
+
+/**
+ * 🔴 🆕 **التوزيعُ دائريٌّ لا متتابع** (D-772): **مقطعٌ من كلِّ عملٍ
+ * أوّلاً ثمّ نعمّق** — **فلا يقع عملان متجاوران لعملٍ واحد**، **ورأسُ
+ * العلف يبقى أعرضَ تنويعاً كما كان.** **والتتابعُ (كلُّ مقاطع العمل
+ * معاً) كان سيقلب صفحةَ اكتشافٍ إلى أرشيفِ عملٍ واحد.**
+ */
+function interleaveClips(
+  titles: { base: Omit<TrailerItem, "clipLabel">; videos: TrailerVideo[] }[],
+  limit: number,
+  perTitle: number,
+  locale: Locale,
+  t: Dict,
+): TrailerItem[] {
+  const out: TrailerItem[] = [];
+  const depth = Math.max(1, perTitle);
+  /* **بطاقاتُ كلِّ عملٍ وبدائلُه تُحسب مرّةً** — ودورانٌ يعيد حسابَها
+     في كلِّ جولةٍ يكرّر العملَ بلا فائدة */
+  const plan = titles.map(({ base, videos }) => {
+    /* **البطاقاتُ من الأنواع الثلاثة وحدَها** — وعملٌ لا يملك منها
+       شيئاً يأخذ أوّلَ ما عنده بطاقةً واحدة: **إسقاطُه بالكامل خسارةُ
+       عملٍ كاملٍ ثمناً لوسمٍ** (D-222: الصفرُ لا يُرسم، وهذا ليس صفراً). */
+    const typed = videos.filter((v) => CLIP_TYPES.has(v.type));
+    const cards = typed.length ? typed : videos.slice(0, 1);
+    /* 🔑 **والبدائلُ ما لم يصر بطاقةً** (D-756 محفوظةً): **سلسلةُ
+       الاحتياط تبقى لكلِّ بطاقة** — **لكنّها لا تحمل مفتاحاً هو نفسُه
+       بطاقةٌ مجاورة**، **وإلّا عرض الاحتياطُ ما تعرضه جارتُه.** */
+    const asCards = new Set(cards.slice(0, depth).map((v) => v.key));
+    const spares = videos.filter((v) => !asCards.has(v.key)).map((v) => v.key);
+    return { base, cards, spares };
+  });
+  for (let round = 0; round < depth && out.length < limit; round++) {
+    for (const { base, cards, spares } of plan) {
+      if (out.length >= limit) break;
+      const v = cards[round];
+      if (!v) continue;
+      /* **ورتبةُ الوسم داخل نوعه**: «الإعلان ٢» يعني ثانيَ إعلانٍ لا
+         ثانيَ مقطعٍ أيّاً كان — **ورقمٌ يعدّ غيرَ ما يسمّيه يكذب.** */
+      const ordinal = cards.slice(0, round + 1).filter((x) => x.type === v.type).length;
+      out.push({
+        ...base,
+        videoKey: v.key,
+        videoKeys: [v.key, ...spares],
+        /* **وملفُّ آبل للأولى وحدَها** — هو معاينةُ العمل لا هذا المقطع */
+        fileUrl: round === 0 ? base.fileUrl : null,
+        clipLabel: clipLabelOf(v, ordinal, locale, t),
+      });
+    }
+  }
+  return out;
+}
+
+/**
  * **صفٌّ من TMDB يصير بطاقةَ ترايلر** — **ووصفةٌ واحدةٌ للتبويبات
  * الخمسة** (القاعدة ٣): **ما يفترق بينها هو المصدرُ وحدَه.**
  */
@@ -206,10 +287,18 @@ async function shape(
      ⚠️ **وهو قبل `note` لا بعده** (D-756): **كلُّ مُنادٍ يمرّره
      و`note` وحدَه اختياريّ** — **ووسيطٌ واجبٌ خلف اختياريٍّ لا يُترجَم.** */
   probe: number,
+  /* 🆕 **وكم بطاقةً لكلِّ عمل** (D-772) — **واحدةٌ افتراضاً**: **رايلُ
+     اكتشف صفُّ تصفّحٍ لا علفُ مشاهدة**، **وعملٌ يأخذ خانتين من تسعٍ
+     فيه يضيّق التنويعَ الذي وُجد الصفُّ لأجله** (D-510 روحاً).
+     **وصفحةُ الترايلرات وحدَها تعمّق** — الطلبُ كان لها. */
+  perTitle: number,
   note?: (r: SearchResult) => string | undefined,
 ): Promise<TrailerItem[]> {
+  const t = getDict(locale);
   const withKeys = await Promise.all(
-    rows.slice(0, probe).map(async (r): Promise<TrailerItem | null> => {
+    rows
+      .slice(0, probe)
+      .map(async (r): Promise<{ base: Omit<TrailerItem, "clipLabel">; videos: TrailerVideo[] } | null> => {
       const mediaType = r.media_type === "movie" ? ("movie" as const) : ("tv" as const);
       /* 🆕 **ونداءا المقطع والملفّ يجريان معاً** (D-758): مهلةُ آبل
          ٢٫٥ث سقفاً وخبيئتُه أسبوعٌ — **فلا يضيف غيابُه إلى زمن الصفّ
@@ -227,6 +316,8 @@ async function shape(
       const country: string | null =
         originAdjectives({ origin: r.origin_country }, locale === "en" ? "en" : "ar", 1)[0] ?? null;
       return {
+        videos: trailer.videos,
+        base: {
         tmdbId: r.id,
         mediaType,
         title: titleOf(r),
@@ -246,10 +337,28 @@ async function shape(
         /* **والفارغُ يُكتب غائباً لا سلسلةً فارغة** (D-167/D-222) */
         overview: r.overview?.trim() || null,
         note: note?.(r),
+        },
       };
     }),
   );
-  return withKeys.filter((x): x is TrailerItem => x !== null).slice(0, limit);
+  const titles = withKeys.filter((x): x is NonNullable<typeof x> => x !== null);
+  return interleaveClips(titles, limit, perTitle, locale, t);
+}
+
+/**
+ * 🆕 **خياراتُ العلف** (D-772) — **الصفحةُ وعمقُ المقاطع**.
+ * 🔑 **و`page` نافذةٌ في البِركة نفسِها لا مصدرٌ ثانٍ**: `getSuggestions`
+ * تعيد ثلاثمئة، و`buildSection` تقبل سقفاً — **فالدفعةُ التالية قصٌّ
+ * أبعدُ من الشيء نفسِه**، **ومصدرٌ ثانٍ للدفعة الثانية كان سيُخرج
+ * ترشيحين متناقضين تحت اسمٍ واحد** (D-664/D-731).
+ */
+export interface TrailerFeedOpts {
+  /** دفعةٌ صفريّةُ الأساس — ما بعد الأولى يُطلب عند بلوغ آخر العلف */
+  page?: number;
+  /** كم بطاقةً لكلِّ عمل (الرايل واحدة، وصفحةُ الترايلرات أعمق) */
+  perTitle?: number;
+  /** نطاقُ «لك» وحدَه — والتبويباتُ الأربعةُ نطاقُها اسمُها */
+  scope?: TrailerScope;
 }
 
 /**
@@ -260,11 +369,16 @@ export async function getTrailerTabFeed(
   tab: TrailerTab,
   limit: number,
   locale: Locale,
+  opts: TrailerFeedOpts = {},
 ): Promise<TrailerItem[]> {
-  if (tab === "for-you") return getTrailerFeed(limit, locale);
+  const page = Math.max(0, opts.page ?? 0);
+  const perTitle = opts.perTitle ?? 1;
+  if (tab === "for-you") return getTrailerFeed(limit, locale, opts.scope, undefined, opts);
   if (tab === "trending") {
     const rows = await trending().catch(() => []);
-    return shape(rows, locale, limit, probeFor(limit));
+    /* **و«الرائج» بِركةٌ واحدةٌ لا تُعمَّق**: مصدرُه صفحةُ اليوم عند
+       TMDB — **والدفعةُ التالية تنزل فيها لا تطلب صفحةً لا وجودَ لها.** */
+    return shape(rows.slice(page * probeFor(limit)), locale, limit, probeFor(limit), perTitle);
   }
   const media = tab === "anime" ? "anime" : tab === "movies" ? "movie" : "tv";
   /* 🆕 **والأنمي يُسحب أوسعَ ويُسبر أوسع** (D-739): **توسيعُ المسبار
@@ -292,9 +406,19 @@ export async function getTrailerTabFeed(
          **فكانت تبدّل التبويبَ تحت إصبع القارئ عند كلِّ فعلٍ خادميّ.**
          **والقرعةُ باقيةٌ، انتقلت إلى مفتاحٍ يتغيّر بالزمن لا بالرسم.** */
     },
-    probe,
+    /* 🆕 **والدفعةُ التالية تُطلب أعمقَ ثمّ يُقصّ رأسُها** (D-772):
+       `buildSection` تقبل سقفاً لا صفحةً — **والسقفُ الأعمقُ يُنزل
+       صفحاتِ TMDB التالية**، **وردودُ القوائم مخبَّأةٌ ساعةً فثمنُ
+       الدفعة الثانية قائمةٌ لا أربعون فيديو.** */
+    probe * (page + 1),
   ).catch(() => []);
-  return shape(shuffleSeeded(rows, drawKey()), locale, limit, probe);
+  return shape(
+    shuffleSeeded(rows, drawKey()).slice(page * probe),
+    locale,
+    limit,
+    probe,
+    perTitle,
+  );
 }
 
 export async function getTrailerFeed(
@@ -302,8 +426,11 @@ export async function getTrailerFeed(
   locale: Locale,
   scope?: TrailerScope,
   pin?: TrailerPin,
+  opts: TrailerFeedOpts = {},
 ): Promise<TrailerItem[]> {
   const t = getDict(locale);
+  const page = Math.max(0, opts.page ?? 0);
+  const perTitle = opts.perTitle ?? 1;
   /* **والاقتراحاتُ تُطلب واسعةً ثمّ تُقصّ**: `getSuggestions` تخلط
      وتُصفّي المصروفَ والمُشاهَد، **وسقفُها الداخليُّ هو ما نمرّره.** */
   const all = await getSuggestions(POOL, locale).catch(() => []);
@@ -339,10 +466,17 @@ export async function getTrailerFeed(
       )
     : undefined;
   const probe = probeFor(limit);
-  const shuffled = shuffleSeeded(inScope.slice(0, probe * 3), drawKey()).filter(
-    (suggestion) => suggestion !== pinned,
-  );
-  const pool = (pinned ? [pinned, ...shuffled] : shuffled).slice(0, probe);
+  /* 🆕 **والدفعةُ التالية نافذةٌ أبعدُ في البِركة نفسِها** (D-772):
+     **ثلاثمئةُ اقتراحٍ مقروءةٌ أصلاً** — **والدفعةُ الثانية قصٌّ منها
+     لا نداءٌ جديد**، **والقرعةُ داخل النافذة كما كانت** (D-740).
+     ⚠️ **والمثبَّتُ للدفعة الأولى وحدَها**: `?at=` يفتح على مقطعٍ بعينه،
+     **وتثبيتُه في كلِّ دفعةٍ كان سيكرّره كلَّما نزل القارئ.** */
+  const window = probe * 3;
+  const shuffled = shuffleSeeded(
+    inScope.slice(page * window, (page + 1) * window),
+    drawKey() + page,
+  ).filter((suggestion) => suggestion !== pinned);
+  const pool = (pinned && page === 0 ? [pinned, ...shuffled] : shuffled).slice(0, probe);
   if (!pool.length) return [];
 
   /**
@@ -367,6 +501,7 @@ export async function getTrailerFeed(
     locale,
     limit,
     probe,
+    perTitle,
     (r) => noteOf.get(`${r.media_type === "movie" ? "movie" : "tv"}-${r.id}`),
   );
 }

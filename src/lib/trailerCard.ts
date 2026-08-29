@@ -23,6 +23,22 @@ export function trailerKeyOf(item: Pick<TrailerItem, "mediaType" | "tmdbId">): s
   return `${item.mediaType}-${item.tmdbId}`;
 }
 
+/**
+ * 🔴 🆕 **وهويّةُ البطاقة غيرُ هويّة العمل** (D-772) — **منذ صارت
+ * البطاقةُ مقطعاً لا عملاً**: **عملٌ واحدٌ يملك أربعَ بطاقات**، **ومفتاحٌ
+ * بالمعرّف وحدَه يجعل الأربعَ بطاقةً واحدةً في عين React وفي خانات
+ * `useTrailerSlots` وفي مُعرّفِ المشغّل** — **فتُرسم واحدةٌ وتُهمل ثلاث.**
+ * ⚠️ **والقديمُ باقٍ حيث الحكمُ للعمل لا للمقطع**: «ليس لي» تُخفي
+ * **العملَ كلَّه** بمقاطعه (وهو الصواب: القارئُ رفض العملَ لا اللقطة)،
+ * **و«أضف لمكتبتي» يتابع العملَ** — **ومفتاحٌ واحدٌ للحكمين كان سيُخفي
+ * مقطعاً ويُبقي أخاه.**
+ */
+export function trailerClipKeyOf(
+  item: Pick<TrailerItem, "mediaType" | "tmdbId" | "videoKey">,
+): string {
+  return `${item.mediaType}-${item.tmdbId}-${item.videoKey}`;
+}
+
 /** **ووجهةُ التفاصيل وصفةٌ واحدة** — مسارُ العمل يُبنى من جهته */
 export function trailerTitleHref(item: Pick<TrailerItem, "mediaType" | "tmdbId">): string {
   return `/${item.mediaType === "tv" ? "show" : "movie"}/${item.tmdbId}`;
@@ -84,7 +100,7 @@ export function useTrailerSlots(items: TrailerItem[], count: number) {
    * الرسم يُكتب مرّتين حين يُعيد React الرسمَ للتحقّق** — **والثلاثةُ
    * تتبدّل معاً فبيتُها واحد.**
    */
-  const signature = items.map(trailerKeyOf).join(",");
+  const signature = items.map(trailerClipKeyOf).join(",");
   const seedOf = (): { seed: string; slots: TrailerItem[]; spare: number } => ({
     seed: signature,
     slots: items.slice(0, count),
@@ -98,7 +114,7 @@ export function useTrailerSlots(items: TrailerItem[], count: number) {
   const retire = useCallback(
     (key: string) => {
       setState((previous) => {
-        const at = previous.slots.findIndex((item) => trailerKeyOf(item) === key);
+        const at = previous.slots.findIndex((item) => trailerClipKeyOf(item) === key);
         if (at < 0) return previous;
         const slots = previous.slots.slice();
         const fill = items[previous.spare];

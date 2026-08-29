@@ -33,6 +33,13 @@ import {
 } from "@/lib/tabPrefs";
 import { allow } from "@/lib/ratelimit";
 import {
+  asTrailerScope,
+  asTrailerTab,
+  getTrailerTabFeed,
+  type TrailerItem,
+} from "@/lib/trailers";
+import { getT } from "@/lib/locale";
+import {
   FONT_UI_COOKIE,
   FONT_CONTENT_COOKIE,
   sanitizeFontSize,
@@ -3933,6 +3940,40 @@ export async function undoDismissTitle(input: { tmdbId: number; mediaType: Media
     .match({ user_id: user.id, tmdb_id: tmdbId, media_type: mediaType });
   if (error) fail(error);
   revalidatePath("/news");
+}
+
+/**
+ * 🆕 **الدفعةُ التالية من المقاطع** (D-772، بلاغُ أحمد: «الفيديوهات
+ * قليلة، ما بغا توقف») — **العلفُ يطلبها وحدَه عند بلوغ آخره.**
+ *
+ * 🔑 **ولا مصدرَ ثانٍ ولا جدولَ جديد**: **الدالّةُ نفسُها التي رسمت
+ * الدفعةَ الأولى بنافذةٍ أبعد** — **ودفعةٌ من مصدرٍ ثانٍ كانت ستُخرج
+ * أعمالاً تناقض التبويبَ الذي تُلحق به** (D-731: وراثةُ المصدر وراثةُ
+ * قواعده).
+ * ⚠️ **ومفتوحةٌ للزائر كالصفحة نفسِها** (D-627) — **والحدُّ بعنوانه**
+ * كحدِّ البحث حرفاً (`/api/search`)، **فلا يتقاسم الزوّارُ سلّةً واحدة.**
+ * ⚠️ **وسقفُ الصفحات ستٌّ**: **ما بعدها بِركةُ الاقتراحات نفسُها تنفد**
+ * — **ونداءٌ يعود فارغاً أبداً حلقةٌ لا علف** (D-217).
+ * ⚠️ **ولا `revalidatePath`**: **قراءةٌ خالصةٌ لا تغيّر شاشةً على الخادم**
+ * — **وفعلٌ خادميٌّ يُبطل التخبئة يعيد رسمَ الصفحة كلِّها** (D-747).
+ */
+export async function moreTrailerClips(input: {
+  tab?: string;
+  scope?: string;
+  page: number;
+  perTitle?: number;
+  limit?: number;
+}): Promise<TrailerItem[]> {
+  const page = intIn(input.page, 1, 6);
+  const head = await headers();
+  const ip = head.get("x-forwarded-for")?.split(",")[0]?.trim() || "anon";
+  if (!allow(`trailers:${ip}`, 20, 60_000)) return [];
+  const { locale } = await getT();
+  const tab = asTrailerTab(input.tab);
+  const scope = asTrailerScope(input.scope);
+  const limit = intIn(input.limit ?? 40, 1, 60);
+  const perTitle = intIn(input.perTitle ?? 1, 1, 8);
+  return getTrailerTabFeed(tab, limit, locale, { page, perTitle, scope }).catch(() => []);
 }
 
 export async function stopWatching(input: {

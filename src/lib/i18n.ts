@@ -1870,6 +1870,13 @@ const ar = {
   trailerDetails: "التفاصيل",
   trailerMyList: "مكتبتي",
   trailerNotForMe: "ليس لي",
+  /* 🆕 D-772: وسمُ المقطع — بطاقةٌ لكلِّ مقطعٍ لا لكلِّ عمل، **والأوّلُ
+     الرسميُّ بلا وسمٍ عمداً** (هو الأصل وما بعده يحتاج تعريفاً) */
+  clipTrailer: "الإعلان",
+  clipTeaser: "تشويقة",
+  clipScene: "مشهد",
+  trailerMore: "مقاطع أكثر",
+  trailerEnd: "وصلتَ آخر المقاطع",
   trailersEmpty: "لا ترايلرات الآن — تابِع أعمالاً أو قيّم بعضَها وسيمتلئ هذا الصفّ.",
   /* 🆕 **أسماءُ تبويبات صفحة الترايلرات** (D-734) */
   trailerTabForYou: "لك",
@@ -3281,6 +3288,11 @@ const en: Dict = {
   trailerDetails: "Details",
   trailerMyList: "My List",
   trailerNotForMe: "Not for me",
+  clipTrailer: "Trailer",
+  clipTeaser: "Teaser",
+  clipScene: "Clip",
+  trailerMore: "More clips",
+  trailerEnd: "You've reached the end",
   trailersEmpty: "No trailers yet — follow or rate a few titles and this row fills up.",
   trailerTabForYou: "For You",
   trailerTabTrending: "Trending",

@@ -1,19 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { TrailerPlayback } from "./trailers/TrailerPlaybackController";
 import { TrailerCardMedia } from "./trailers/TrailerCardMedia";
 import { Icon } from "./Icon";
-import { dismissTitle, undoDismissTitle } from "@/lib/actions";
+import { dismissTitle, moreTrailerClips, undoDismissTitle } from "@/lib/actions";
 import { toast, flashError } from "@/lib/toast";
 import {
+  trailerClipKeyOf,
   trailerKeyOf,
   trailerTitleHref,
   useTrailerFollow,
   useTrailerSlots,
 } from "@/lib/trailerCard";
 import { getDict, type Locale } from "@/lib/i18n";
+import { TRAILER_FEED_LIMIT, TRAILER_PER_TITLE } from "@/lib/trailerTabs";
 import type { TrailerItem } from "@/lib/trailers";
 
 /**
@@ -33,18 +35,30 @@ import type { TrailerItem } from "@/lib/trailers";
  * يُقرأ اهتزازاً** — **ووصفةٌ واحدةٌ للحالتين تُخطئ في إحداهما.**
  */
 
-/** **ما يُعرض من العلف** — وما زاد عليه في `items` بدائلُ خاناته (D-756) */
-const FEED_SLOTS = 12;
+/**
+ * **ما يُعرض من العلف** — وما زاد عليه في `items` بدائلُ خاناته (D-756).
+ * ⚖️ 🆕 **واثنتا عشرةَ صارت أربعين** (D-772، بلاغُ أحمد: «الفيديوهات
+ * قليلة… ما بغا توقف»): **البطاقةُ صارت مقطعاً لا عملاً** — **والحمولةُ
+ * التي كانت تحمل ٥٥ مفتاحاً لتعرض اثني عشر صارت تعرض أربعين منها**،
+ * **بصفر نداءٍ إضافيٍّ لكلِّ مقطعٍ زائد** (الزيادةُ الوحيدةُ ثلاثةُ
+ * أعمالٍ في المسبار: ٢١ ← ٢٤).
+ */
+const FEED_SLOTS = 40;
 
 export function TrailerFeed({
   items,
   locale,
   soundOn,
   emptyLabel,
+  tab,
+  scope,
 }: {
   items: TrailerItem[];
   locale: Locale;
   soundOn: boolean;
+  /** 🆕 D-772: هويّةُ العلف — بها يطلب دفعتَه التالية من الخادم */
+  tab?: string;
+  scope?: string;
   /** 🆕 **ونصُّ الفراغ يأتي من فوق** (D-734): **فراغُ «لك» يُصلحه أن
       تتابع، وفراغُ تبويبِ كتالوجٍ عطلُ مصدرٍ لا حيلةَ للقارئ فيه** —
       **ونصٌّ واحدٌ للحالتين يُرشد إحداهما ويكذب على الأخرى.** */
@@ -52,7 +66,14 @@ export function TrailerFeed({
 }) {
   const t = getDict(locale);
   const { added, addToList } = useTrailerFollow();
-  const { slots, retire } = useTrailerSlots(items, FEED_SLOTS);
+  /**
+   * 🆕 **الدفعاتُ التاليةُ تُلحق بالأولى** (D-772) — **والخانةُ تُحسب
+   * على المجموع**: `useTrailerSlots` يقصّ عند `count`، **فسقفٌ ثابتٌ
+   * كان سيبتلع كلَّ دفعةٍ تصل.**
+   */
+  const [extra, setExtra] = useState<TrailerItem[]>([]);
+  const all = extra.length ? [...items, ...extra] : items;
+  const { slots, retire } = useTrailerSlots(all, FEED_SLOTS + extra.length);
   const [gone, setGone] = useState<ReadonlySet<string>>(new Set());
 
   function notForMe(i: TrailerItem) {
@@ -80,6 +101,65 @@ export function TrailerFeed({
     });
   }
 
+  /**
+   * 🆕 **ويطلب دفعتَه التاليةَ عند بلوغ آخره** (D-772، حكمُه: «ما بغا
+   * توقف») — **مراقبُ تقاطعٍ على حارسٍ في الذيل لا مستمعُ تمرير**:
+   * **قاعدةُ الرؤية واحدةٌ في هذا السطح** (القاعدة ٣، ومتحكّمُ D-759
+   * يشغّل بها أصلاً) — **ومستمعُ `scroll` ثانٍ كان سيحسب المواضعَ في
+   * كلِّ إطار.**
+   * ⚠️ **ونداءٌ واحدٌ في كلِّ لحظة** (`busy`)، **والنفادُ يُختم** (`done`)
+   * فلا يُعاد النداءُ على بِركةٍ فرغت — **ونداءٌ يعود فارغاً أبداً حلقةٌ
+   * لا علف** (D-217).
+   */
+  const [page, setPage] = useState(0);
+  const [done, setDone] = useState(false);
+  const busy = useRef(false);
+  const tail = useRef<HTMLDivElement>(null);
+
+  const loadMore = useCallback(async () => {
+    if (busy.current || done) return;
+    busy.current = true;
+    try {
+      const next = await moreTrailerClips({
+        tab,
+        scope,
+        page: page + 1,
+        perTitle: TRAILER_PER_TITLE,
+        limit: TRAILER_FEED_LIMIT,
+      });
+      if (!next.length) {
+        setDone(true);
+        return;
+      }
+      setPage((p) => p + 1);
+      /* **والمكرَّرُ يسقط عند الوصل**: **البِركةُ واحدةٌ ونافذتُها تتحرّك**
+         — **ومقطعٌ يظهر مرّتين في علفٍ واحدٍ يُقرأ عطلاً** (D-756). */
+      setExtra((previous) => {
+        const seen = new Set([...items, ...previous].map(trailerClipKeyOf));
+        return [...previous, ...next.filter((x) => !seen.has(trailerClipKeyOf(x)))];
+      });
+    } catch {
+      /* دفعةٌ سقطت — الحارسُ باقٍ ويُعاد عند تقاطعٍ لاحق */
+    } finally {
+      busy.current = false;
+    }
+  }, [done, items, page, scope, tab]);
+
+  useEffect(() => {
+    const el = tail.current;
+    if (!el || done || typeof IntersectionObserver === "undefined") return;
+    /* **وهامشٌ سفليٌّ سخيّ**: **الدفعةُ تصل قبل أن يبلغ القارئُ الحافّة**
+       — **فلا يرى فراغاً ينتظره** (D-198: الطرَفُ وعدٌ لا زينة). */
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) void loadMore();
+      },
+      { rootMargin: "1200px 0px" },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [done, loadMore]);
+
   const shown = slots.filter((i) => !gone.has(trailerKeyOf(i)));
   if (!shown.length) {
     return <p className="px-4 py-16 text-center text-sm text-muted">{emptyLabel ?? t.trailersEmpty}</p>;
@@ -104,8 +184,9 @@ export function TrailerFeed({
     >
     <div>
       {shown.map((i, index) => {
-        const k = trailerKeyOf(i);
-        const isAdded = added.has(k);
+        /* 🆕 D-772: هويّةُ الخانة والمشغّل بالمقطع، والمتابعةُ بالعمل */
+        const k = trailerClipKeyOf(i);
+        const isAdded = added.has(trailerKeyOf(i));
         return (
           <section key={k} className="pb-4">
             <div className="rounded-2xl border border-border bg-surface overflow-hidden">
@@ -127,7 +208,18 @@ export function TrailerFeed({
               />
 
               <div className="px-4 pt-3.5 pb-2">
-                <h2 className="text-22 font-bold truncate">{i.title}</h2>
+                {/* 🆕 **ووسمُ المقطع بجوار الاسم** (D-772): **عملٌ يملك
+                    أربعَ بطاقاتٍ في العلف** — **وبطاقتان بلا وسمٍ تُقرآن
+                    تكراراً لا تنويعاً.** **والأولى بلا وسمٍ عمداً**: هي
+                    الإعلانُ الرسميُّ وما بعده هو الذي يحتاج تعريفاً. */}
+                <div className="flex items-baseline gap-2">
+                  <h2 className="min-w-0 flex-1 text-22 font-bold truncate">{i.title}</h2>
+                  {i.clipLabel && (
+                    <span className="shrink-0 rounded-full bg-surface-2 px-2.5 py-0.5 text-12 font-semibold text-muted">
+                      {i.clipLabel}
+                    </span>
+                  )}
+                </div>
                 {/* 🆕 **والنسبةُ بجوار التصنيف** (D-729، حكمُه) — سطرٌ
                     واحدٌ يجمع السنةَ والنوعَ والنسبة، **ولا سطرَ ثالثٌ
                     لكلمةٍ واحدة.** */}
@@ -183,6 +275,11 @@ export function TrailerFeed({
           </section>
         );
       })}
+      {/* **الحارسُ وسطرُ النهاية** — والنهايةُ تُقال ولا تُترك فراغاً */}
+      <div ref={tail} aria-hidden className="h-px" />
+      {done && (
+        <p className="py-8 text-center text-12 text-muted">{t.trailerEnd}</p>
+      )}
     </div>
     </TrailerPlayback>
   );

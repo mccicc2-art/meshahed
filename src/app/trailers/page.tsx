@@ -10,6 +10,7 @@ import {
   type TrailerScope,
   type TrailerTab,
 } from "@/lib/trailers";
+import { TRAILER_FEED_LIMIT, TRAILER_PER_TITLE } from "@/lib/trailerTabs";
 import { TrailerTabs } from "@/components/TrailerTabs";
 import { TrailerFeed } from "@/components/TrailerFeed";
 import { TrailerBackButton } from "@/components/TrailerBackButton";
@@ -78,10 +79,15 @@ async function TrailerFeedSection({
      ⚠️ **وهي على هذه الصفحة وحدَها**: **رايلُ اكتشف يطلب تسعاً فيبقى
      مسبارُه أربعةَ عشرَ** — **والسطحُ الذي طُلبت له السرعةُ لا يدفع
      ثمنَ غيره.** */
+  /* 🆕 **والدفعةُ الأولى ثمانٍ وأربعون بطاقةً** (D-772): **البطاقةُ صارت
+     مقطعاً لا عملاً** — **والمسبارُ ٢٤ عملاً بدل ٢١** (`probeFor(48)`
+     يقف عند سقفه)، **فثلاثةُ نداءاتٍ زائدةٍ في أوّل رسمٍ كلَّ ساعة
+     مقابل أربعين بطاقةً بدل اثنتي عشرة.** **والفائضُ فوق الأربعين
+     بدائلُ خانات** (D-756). */
   const itemsPromise =
     active === "for-you"
-      ? getTrailerFeed(14, locale, scope, pin)
-      : getTrailerTabFeed(active, 14, locale);
+      ? getTrailerFeed(TRAILER_FEED_LIMIT, locale, scope, pin, { perTitle: TRAILER_PER_TITLE })
+      : getTrailerTabFeed(active, TRAILER_FEED_LIMIT, locale, { perTitle: TRAILER_PER_TITLE });
   const [items, store] = await Promise.all([itemsPromise, cookies()]);
 
   return (
@@ -90,6 +96,8 @@ async function TrailerFeedSection({
       locale={locale}
       soundOn={parseTrailerSound(store.get(TRAILER_SOUND_COOKIE)?.value)}
       emptyLabel={emptyLabel}
+      tab={active}
+      scope={scope}
     />
   );
 }
