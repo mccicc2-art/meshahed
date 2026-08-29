@@ -1465,8 +1465,6 @@ const ar = {
   prtStatMin: "حد أدنى للتحويل",
   prtValRate: "٢٥٪",
   prtValPeriod: "سنة",
-  /** @deprecated D-782 */
-  prtValLifetime: "سنة",
   prtValMin: "١٠٠ ريال",
   prtHowTitle: "كيف يعمل",
   prtStep1: "قدّم",
@@ -3039,8 +3037,6 @@ const en: Dict = {
   prtStatMin: "Minimum payout",
   prtValRate: "25%",
   prtValPeriod: "1 year",
-  /** @deprecated D-782 */
-  prtValLifetime: "1 year",
   prtValMin: "SAR 100",
   prtHowTitle: "How it works",
   prtStep1: "Apply",
