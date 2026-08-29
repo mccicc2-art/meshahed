@@ -1192,13 +1192,65 @@ export async function classifyMyFollows(limit = 240): Promise<number> {
   return verdict.size;
 }
 
+/**
+ * 🆕 **تأشيرُ حلقةٍ يُدخل المسلسلَ المكتبةَ** (D-777، سؤالُ أحمد: «هذا
+ * المسلسل مثلاً ليه ماهو موجود في المكتبة؟» وحكمُه: «نعم — من أوّل تأشير»).
+ *
+ * 🔴 **والعطلُ كان صامتاً وقديماً**: المكتبةُ تُبنى من `follows`،
+ * **والتأشيرُ يكتب في `watched_episodes` ولا يمسّ `follows`** — **فمن
+ * أشّر ٩٢ حلقةً من Arrow لم يكن مسلسلُه في مكتبته**، وصفحةُ العمل تقول
+ * «شاهدتَ ٩٢ من ١٧٠» بينما المكتبةُ لا تعرفه. **مقيسٌ في الإنتاج: ٤١
+ * زوجاً (مستخدم، عمل) عند ١٢ حساباً، و٣١٦٢ حلقةً خارج المكتبات.**
+ *
+ * 🔑 **والتأشيرُ إقرارٌ بمتابعةٍ لا لمسةٌ عابرة**: أوّلُ صحٍّ يعلّم كلَّ ما
+ * قبله أيضاً (نصُّ الشاشة نفسِها) — **فمن أشّر حلقةً واحدةً قال إنّه
+ * يتابع.**
+ *
+ * ⚠️ **و`ignoreDuplicates` لا استبدال**: من تابَع ثمّ أسقط (`dropped`)
+ * ثمّ أشّر حلقةً **لا تُمحى حالتُه** — **ولا `rewatch_count` ولا `genres`
+ * ولا `added_at`.** **الصفُّ يُنشأ إن غاب، ولا يُلمس إن حضر.**
+ * ⚠️ **ولا نداءَ قراءةٍ قبله**: `on conflict do nothing` جملةٌ واحدةٌ —
+ * **والتأشيرُ أعلى فعلٍ تكراراً في التطبيق**، فقراءةٌ تسبق كلَّ ضغطةٍ
+ * ثمنٌ لا يُدفع. **والعميلُ يرسل العنوانَ مرّةً واحدةً** (أوّلَ تأشيرٍ
+ * وهو غيرُ متابع) فلا تتكرّر الجملةُ مع كلِّ حلقة.
+ */
+async function ensureShowFollowed(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  showTmdbId: number,
+  title: string | null | undefined,
+  posterPath: string | null | undefined,
+) {
+  const name = String(title ?? "").trim().slice(0, 300);
+  if (!name) return;
+  try {
+    await supabase.from("follows").upsert(
+      {
+        user_id: userId,
+        tmdb_id: showTmdbId,
+        media_type: "tv",
+        title: name,
+        poster_path: safeImagePath(posterPath ?? null),
+      },
+      { onConflict: "user_id,tmdb_id,media_type", ignoreDuplicates: true },
+    );
+  } catch {
+    /* **والتأشيرُ لا يسقط لأنّ الإضافةَ سقطت** — المشاهدةُ محفوظةٌ
+       أصلاً، والمكتبةُ تُصلَح في التأشير التالي. */
+  }
+}
+
 export async function toggleEpisode(input: {
   showTmdbId: number;
   season: number;
   episode: number;
   runtime: number | null;
   watched: boolean;
+  /** 🆕 يُرسلان في أوّل تأشيرٍ وحدَه، حين لا يكون متابِعاً (D-777) */
+  title?: string | null;
+  posterPath?: string | null;
 }) {
+  const meta = { title: input.title, posterPath: input.posterPath };
   input = {
     ...input,
     showTmdbId: intId(input.showTmdbId),
@@ -1222,6 +1274,7 @@ export async function toggleEpisode(input: {
       },
       { onConflict: "user_id,show_tmdb_id,season_number,episode_number" },
     );
+    await ensureShowFollowed(supabase, user.id, input.showTmdbId, meta.title, meta.posterPath);
   } else {
     await supabase.from("watched_episodes").delete().match({
       user_id: user.id,
@@ -1234,6 +1287,8 @@ export async function toggleEpisode(input: {
   // تعيد بناء الصفحة كاملة على الخادم (~15 استعلاماً وطلباً) بلا داعٍ
   revalidatePath("/");
   revalidatePath("/stats");
+  /* 🆕 **والمكتبةُ تُبطَل معهما** (D-777): الصفُّ قد يكون وُلد للتوّ */
+  if (input.watched) revalidatePath("/library");
 }
 
 /**
@@ -1303,7 +1358,11 @@ export async function rateEpisode(input: {
 export async function watchUpTo(input: {
   showTmdbId: number;
   episodes: { season: number; episode: number; runtime: number | null }[];
+  /** 🆕 كأختها `toggleEpisode` (D-777) — **البابان يؤدّيان الفعلَ نفسَه** */
+  title?: string | null;
+  posterPath?: string | null;
 }) {
+  const meta = { title: input.title, posterPath: input.posterPath };
   input = {
     showTmdbId: intId(input.showTmdbId),
     episodes: (input.episodes ?? []).slice(0, 5000).map((e) => ({
@@ -1331,8 +1390,11 @@ export async function watchUpTo(input: {
   if (error) fail(error);
 
   // نفس منطق toggleEpisode: التتابع السريع لا يعيد بناء صفحة المسلسل
+  await ensureShowFollowed(supabase, user.id, input.showTmdbId, meta.title, meta.posterPath);
+
   revalidatePath("/");
   revalidatePath("/stats");
+  revalidatePath("/library");
 }
 
 // حفظ موضع التوقف في فيلم لاستئنافه لاحقاً
@@ -1398,7 +1460,11 @@ export async function setSeasonWatched(input: {
   showTmdbId: number;
   episodes: { season: number; episode: number; runtime: number | null }[];
   watched: boolean;
+  /** 🆕 كأخواتها (D-777) — **ثلاثةُ أبوابٍ للفعل نفسِه، وحارسٌ واحد** */
+  title?: string | null;
+  posterPath?: string | null;
 }) {
+  const meta = { title: input.title, posterPath: input.posterPath };
   input = {
     ...input,
     showTmdbId: intId(input.showTmdbId),
@@ -1431,6 +1497,11 @@ export async function setSeasonWatched(input: {
         .match({ user_id: user.id, show_tmdb_id: input.showTmdbId, season_number: s });
     }
   }
+  if (input.watched) {
+    await ensureShowFollowed(supabase, user.id, input.showTmdbId, meta.title, meta.posterPath);
+    revalidatePath("/library");
+  }
+
   revalidatePath("/");
   revalidatePath("/stats");
   revalidatePath(`/show/${input.showTmdbId}`);
