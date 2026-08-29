@@ -538,12 +538,18 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
               ما هذه الكلمات، **والهامشُ تحتها قلّ** فالتصق الصفُّ
               بالخانات. */}
           {taste.themes.length > 0 && (
-            <div className="mt-2.5 flex items-center gap-x-3 gap-y-1 flex-wrap text-14 font-semibold text-accent">
+            /* ⚖️ 🆕 **السماتُ الثلاثُ بيضاء** (D-788، حكمُ أحمد على لقطةٍ
+                محوَّطة: «الثلاثة الثيمز خلّها أبيض»).
+                🔑 **والحجّةُ تسندُه**: البطاقةُ كانت تقول بالأصفر ثلاثةَ
+                أشياءٍ مختلفة — **سماتٍ وعناوينَ وأرقاماً** — **ولونٌ
+                يقول ثلاثةَ معانٍ لا يقول واحداً** (القاعدة ٣).
+                **فبقي الأصفرُ للرقم وحدَه** وهو الذي جاء القارئُ لأجله. */
+            <div className="mt-2.5 flex items-center gap-x-3 gap-y-1 flex-wrap text-14 font-semibold text-foreground">
               <span className="text-14 font-normal text-muted shrink-0">{t.tasteThemes}</span>
               {taste.themes.map((th, i) => (
                 <span key={th} className="flex items-center gap-3">
                   {i > 0 && (
-                    <span aria-hidden className="w-1 h-1 rounded-full bg-accent/50" />
+                    <span aria-hidden className="w-1 h-1 rounded-full bg-foreground/40" />
                   )}
                   {th}
                 </span>
@@ -694,20 +700,21 @@ function TasteCell({
      ⚠️ **والخطُّ المنقَّطُ وصفةُ D-722 حرفاً** — **علامةٌ واحدةٌ لمعنى
      «هذا يُفتح» في البطاقة كلِّها**، صفّاً كان أو عنواناً (القاعدة ٣). */
   const opens = Boolean(all && locale && all.total > (shown ?? 0));
-  const label = (
-    <>
-      <span className={opens ? "underline decoration-dotted underline-offset-2" : undefined}>
-        {title}
-      </span>
-    </>
-  );
+  /* 🗑️ ⚖️ **والخطُّ المنقَّطُ سقط بحكمه** (D-788: «شيل الخط الي تحت
+     الكلام») — **نقضٌ صريحٌ لـD-722 بيد صاحبها**، وهي التي بُنيت على
+     نصِّه: «الأشياء الي عليها خط احتاج أقدر أضغط عليها».
+     ⚠️ **والثمنُ مكتوبٌ لا مُخفى**: البطاقةُ فيها ثمانيةَ عشرَ سطراً،
+     **بعضُها يُفتح وبعضُها لا** — **وبلا علامةٍ لا يُعرف أيُّها باب**
+     (D-030: لا بابَ بلا مِقبض). **والضغطُ يبقى يعمل، والدعوةُ إليه هي
+     التي غابت.** */
+  const label = title;
   const head =
     opens && all && locale ? (
       <span className="relative block mb-1.5">
         <ProfileStatSheet
           title={title}
           closeLabel={getDict(locale).closeLabel}
-          className="block w-full text-start text-14 text-accent active:opacity-70 transition"
+          className="block w-full text-start text-14 text-foreground active:opacity-70 transition"
           content={
             <div className="space-y-3">
               <p className="text-12 text-muted">
@@ -733,7 +740,7 @@ function TasteCell({
         </ProfileStatSheet>
       </span>
     ) : (
-      <span className="relative block text-14 text-accent mb-1.5">{label}</span>
+      <span className="relative block text-14 text-foreground mb-1.5">{label}</span>
     );
 
   return (
@@ -763,13 +770,23 @@ function TasteCell({
           ⚠️ **و`saturate-150` تعوّض ما تبتلعه الشفافيّة** — **اللونُ
           الباهتُ عند الربع أضعفُ ممّا يبدو في المحرِّر.** */}
       {posters && posters.length > 0 && (
-        <span aria-hidden className="absolute inset-0 flex opacity-20 saturate-150">
-          {posters.map((p) => (
-            <span key={p} className="relative flex-1 min-w-0">
-              <Image src={p} alt="" fill sizes="120px" className="object-cover" />
-            </span>
-          ))}
-        </span>
+        <>
+          <span aria-hidden className="absolute inset-0 flex opacity-20 saturate-150">
+            {posters.map((p) => (
+              <span key={p} className="relative flex-1 min-w-0">
+                <Image src={p} alt="" fill sizes="120px" className="object-cover" />
+              </span>
+            ))}
+          </span>
+          {/* 🆕 **حجابٌ أسودُ فوق الملصقات** (D-788: «الخلفية زيد الظلام
+              فيها»).
+              🔑 **ولمَ حجابٌ لا خفضُ شفافيّة**: خفضُ العشرين يسحب
+              **اللونَ** معه، **وعودةُ اللون كانت حكمَه هو** (D-724:
+              «الكارت الي تحت ما فيه حياة أبيض وأسود») — **فطريقٌ يطفئ
+              الضوءَ يطفئ معه ما أشعله بالأمس.** **والحجابُ ينزل
+              بالإضاءة ويترك الصبغة**، وهو معنى «زيد الظلام» بعينه. */}
+          <span aria-hidden className="absolute inset-0 bg-black/35" />
+        </>
       )}
       {head}
       <span className="relative block space-y-1.5">{children}</span>
@@ -804,20 +821,18 @@ function TasteRow({
   total?: number;
   locale?: Locale;
 }) {
-  const opens = Boolean(works && works.length > 0 && locale);
-  /* 🆕 **والخطُّ تحت الاسمِ هو المِقبض** (D-722، بنصِّ أحمد: «الأشياء
-     الي عليها خط احتاج اقدر اضغط عليها»): **صفٌّ يُفتح وسط أحدَ عشرَ
-     صفّاً لا يُفتح لا يُميَّز بشيء** — **و`active:` وحدَها تُرى بعد
-     الضغط لا قبله، فهي إقرارٌ لا دعوة** (D-030: لا بابَ بلا مِقبض).
-     🔑 **والخطُّ على الاسمِ وحدَه لا على الصفّ**: النسبةُ رقمٌ ثابتٌ
-     لا يُضغط، **وتسطيرُ السطر كلِّه يَعِد بابين حيث بابٌ واحد.**
-     ⚠️ **والوصفةُ وصفةُ `ActivityFeed` حرفاً بحرف** — لا لونَ تسطيرٍ
-     ثانٍ ولا إزاحةَ ثانية: **نبرةٌ ثانيةٌ لنفس المعنى عطلٌ لا ذوق**
-     (القاعدة ٣). */
+  /* 🗑️ ⚖️ **والخطُّ تحت الاسمِ سقط بحكمه** (D-788: «شيل الخط الي تحت
+     الكلام») — **نقضٌ صريحٌ لـD-722**، وقد بُنيت على نصِّه: «الأشياء
+     الي عليها خط احتاج أقدر أضغط عليها».
+     ⚠️ **وسقطت معه رايتُه `opens`**: لم يكن لها قارئٌ سواه — **والعقدُ
+     يُنظَّف بعد قارئه لا قبله** (D-702). **والصفُّ ما زال يُفتح**، وهو
+     `works` من يقرّره أصلاً لا الرايةُ المحذوفة.
+     🔑 **والثمنُ مكتوب**: `active:` تُرى بعد الضغط لا قبله، **فهي إقرارٌ
+     لا دعوة** — **ومن أراد إعادةَ المِقبض بلا خطٍّ فالبابُ سهم** (D-030). */
   const face = (
     <div className="flex items-baseline gap-2 min-w-0 w-full">
       <span
-        className={`text-14 truncate${opens ? " underline decoration-dotted underline-offset-2" : ""}`}
+        className="text-14 truncate"
         dir={ltr ? "ltr" : "auto"}
       >
         {name}
