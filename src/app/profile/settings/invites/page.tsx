@@ -420,33 +420,130 @@ async function PartnersTab({
   const app =
     showForm && state.appStatus !== null ? await getMyPartnerApplication() : null;
 
-  /* ———— موافَقٌ عليه: اللوحةُ الخفيفة — رابطٌ وعدّادان وشروط، لا أموال ———— */
+  /* ———— موافَقٌ عليه: لوحةُ الشريك — على نموذجه الثالث بالضبط (D-770c) ————
+     حكمُه الجديد «حتى هذي الصفحة الداخلية صممها مثل كذا» نقضٌ معلَنٌ
+     لحكمِ «بلا قسم الأموال مؤقتاً»: قسمُ الأموال يُرسم — **والأرقامُ
+     صفرٌ بالواقع لا بالزينة** (لا عمولةَ تُستحق قبل فتح الدفع)،
+     وزرّا السحب وإكمال الإعداد **معطَّلان بسطرٍ يقول متى يعملان**
+     (D-217: زرٌّ يبدو حيّاً ويموت تحت الإصبع فخٌّ لا ميزة).
+     قارئُ العمولات الحقيقيُّ يُبنى في جولة فتح الاشتراكات. */
   if (state.appStatus === "approved" && state.code) {
     const url = siteUrl(`/p/${state.code}`);
+    const available = 0;
+    const pending = 0;
+    /* «اشتركوا» صفرٌ حقيقيٌّ لا ثابتٌ مزيَّف: `subscribed_at` لا يكتبه
+       شيءٌ قبل قناة الاشتراك — يوم تفتح يصير قراءةً حيّة */
+    const paid = 0;
+    const conv = state.clicks > 0 ? Math.round((state.joined / state.clicks) * 100) : 0;
+    const money = (n: number) =>
+      locale === "ar" ? `${num(n, locale)}٫٠٠` : `${n}.00`;
+    const outlineBtn =
+      "rounded-xl border border-accent font-bold text-accent transition disabled:opacity-50 disabled:cursor-not-allowed";
     return (
       <>
+        {/* الأرباحُ المتاحة — كنموذجه: المبلغُ بلون الهوية والسحبُ في الطرف */}
+        <div className={`${settingsCard} p-4`}>
+          <p className="text-12 font-semibold uppercase tracking-wide text-muted">
+            {t.prtEarnLabel}
+          </p>
+          <p className="mt-1 flex items-baseline gap-2 text-3xl font-extrabold">
+            <span>{t.prtCurrency}</span>
+            <span className="text-accent tabular-nums">{money(available)}</span>
+          </p>
+          <p className="mt-0.5 text-14 text-muted tabular-nums">
+            {t.prtCurrency} {money(pending)} {t.prtPendingSuffix}
+          </p>
+          <div className="mt-3 flex items-center justify-between gap-3">
+            <span className="text-12 text-muted">{t.prtMinPayout}</span>
+            {/* معطَّلٌ بصدق: الرصيدُ دون الحدّ الأدنى — والسحبُ كلُّه مع فتح الدفع */}
+            <button type="button" disabled className={`${outlineBtn} px-5 py-2 text-14`}>
+              {t.prtWithdraw}
+            </button>
+          </div>
+        </div>
+
         <section>
           <h2 className="px-1 mb-1.5 text-12 font-semibold uppercase tracking-wide text-muted">
             {t.prtYourLink}
           </h2>
           <InviteLinkCard url={url} locale={locale} />
         </section>
-        <div className={`${settingsCard} grid grid-cols-2 divide-x divide-[color:var(--divider)] rtl:divide-x-reverse text-center`}>
+
+        {/* الأرقامُ الأربعة — نقرات · انضمّوا · اشتركوا · التحويل */}
+        <div className={`${settingsCard} grid grid-cols-4 divide-x divide-[color:var(--divider)] rtl:divide-x-reverse text-center`}>
           {(
             [
-              [state.clicks, t.prtStatClicks],
-              [state.joined, t.prtStatJoined],
+              [num(state.clicks, locale), t.prtStatClicks, ""],
+              [num(state.joined, locale), t.prtStatJoined, ""],
+              [num(paid, locale), t.prtStatPaid, ""],
+              [num(conv, locale), t.prtStatConv, "%"],
             ] as const
-          ).map(([n, label]) => (
+          ).map(([n, label, unit]) => (
             <div key={label} className="py-3.5 px-1">
               <span className="block text-22 font-bold tabular-nums" dir="ltr">
-                {num(n, locale)}
+                {n}
+                {unit && <span className="ms-0.5 text-12 font-bold text-muted">{unit}</span>}
               </span>
               <span className="block text-12 text-muted mt-0.5">{label}</span>
             </div>
           ))}
         </div>
-        <TermsCard t={t} />
+
+        {/* عمولتك — ١٥٪ وثلاثُ رقائقِ شروطٍ مصغّرة كنموذجه */}
+        <div className={`${settingsCard} p-4`}>
+          <h2 className="text-15 font-bold">{t.prtCommTitle}</h2>
+          <p className="mt-1 text-3xl font-extrabold text-accent">{t.prtVal15}</p>
+          <p className="mt-1 text-14 text-muted">{t.prtCommBody}</p>
+          <div className="mt-3.5 flex items-center divide-x divide-[color:var(--divider)] rtl:divide-x-reverse">
+            {(
+              [
+                ["people", t.prtChipDirect],
+                ["calendar", t.prtChipHold],
+                ["chart", t.prtChipNet],
+              ] as const
+            ).map(([icon, label]) => (
+              <span key={label} className="flex flex-1 items-center justify-center gap-1.5 px-1 text-12 whitespace-nowrap">
+                <Icon name={icon} size={15} className="shrink-0 text-muted" />
+                {label}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {/* حركةُ الأرباح — فارغةٌ بحقٍّ حتى يفتح الدفع؛ المرشِّحُ يُضاف مع أول صفّ */}
+        <section className="space-y-3">
+          <SectionTitle>{t.prtActivityTitle}</SectionTitle>
+          <div className={`${settingsCard} p-6 text-center`}>
+            <span className="mx-auto grid size-14 place-items-center rounded-full bg-surface-2">
+              <Icon name="card" size={24} className="text-accent" />
+            </span>
+            <p className="mt-3 text-15 font-bold">{t.prtNoEarnTitle}</p>
+            <p className="mt-1 text-14 text-muted">{t.prtNoEarnBody}</p>
+          </div>
+        </section>
+
+        {/* بياناتُ التحويل — «غير محدّدة/مطلوب» حقيقتان، والإعدادُ يفتح مع الدفع */}
+        <div className={`${settingsCard} p-4`}>
+          <h2 className="text-15 font-bold">{t.prtPayoutTitle}</h2>
+          <dl className="mt-1 divide-y divide-[color:var(--divider)]">
+            <div className="flex items-center justify-between gap-3 py-3 text-14">
+              <dt>{t.prtPayoutMethod}</dt>
+              <dd className="text-muted">{t.prtNotSet}</dd>
+            </div>
+            <div className="flex items-center justify-between gap-3 py-3 text-14">
+              <dt>{t.prtVerification}</dt>
+              <dd className="text-muted">{t.prtRequired}</dd>
+            </div>
+          </dl>
+          <button type="button" disabled className={`${outlineBtn} w-full py-3 text-15 mt-1`}>
+            {t.prtCompleteSetup}
+          </button>
+          <p className="mt-1.5 text-center text-12 text-muted">{t.prtSetupLater}</p>
+        </div>
+
+        <Disclosure label={t.prtTermsLink}>
+          <TermsCard t={t} />
+        </Disclosure>
       </>
     );
   }
