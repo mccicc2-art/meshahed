@@ -17,6 +17,10 @@ import { posterUrl, profileUrl } from "@/lib/media";
 import Image from "next/image";
 import Link from "next/link";
 import { getDict, num, worksParts, type Locale } from "@/lib/i18n";
+/* 🆕 **التقديرُ من مصدرٍ واحدٍ** (D-797): كان ٤٠ و١١٠ مكتوبَين هنا
+   و٤٢ و١٠٥ في تقرير المدّة — **فقالت الصفحتان عن الصفوف نفسِها رقمين
+   يفترقان ٦٣ ساعة، ولم يُكتشف إلّا حين عُرض السطحان جنباً إلى جنب.** */
+import { runtimeMinutes } from "@/lib/watchTime";
 import { isComplete } from "@/lib/progress";
 import { favoriteTrio, trioPosterPaths } from "@/lib/heroPosters";
 import { ProfileStatSheet } from "./ProfileStatSheet";
@@ -1361,7 +1365,7 @@ export async function LibraryAnalysis({
   let epMinutes = 0;
   for (const w of episodes) {
     watchedByShow.set(w.show_tmdb_id, (watchedByShow.get(w.show_tmdb_id) ?? 0) + 1);
-    epMinutes += w.runtime ?? 40;
+    epMinutes += runtimeMinutes("episode", w.runtime);
   }
 
   const tvFollows = follows.filter((f) => f.media_type === "tv");
@@ -1378,7 +1382,7 @@ export async function LibraryAnalysis({
 
   const rangeEpRows = prefix ? episodes.filter((e) => inRange(e.watched_at)) : episodes;
   const rangeEpisodes = rangeEpRows.length;
-  const rangeEpMinutes = rangeEpRows.reduce((n, e) => n + (e.runtime ?? 40), 0);
+  const rangeEpMinutes = rangeEpRows.reduce((n, e) => n + runtimeMinutes("episode", e.runtime), 0);
 
   /* ⚠️ **والأفلامُ من السجلّ لأنه وحدَه يحمل تاريخَها** — وهي عشراتٌ
      لا آلاف، **فسقفُ الألف لا يبلغها** (بخلاف الحلقات أعلاه). */
@@ -1386,7 +1390,7 @@ export async function LibraryAnalysis({
   const rangeMovieRows = prefix ? movieHistory.filter((h) => inRange(h.watchedAt)) : movieHistory;
   const rangeMovies = prefix ? rangeMovieRows.length : watchedMovieIds.size;
   const rangeMovieMinutes = prefix
-    ? rangeMovieRows.reduce((n, h) => n + (h.runtime ?? 110), 0)
+    ? rangeMovieRows.reduce((n, h) => n + runtimeMinutes("movie", h.runtime), 0)
     : movieMinutes;
 
   const rangeMinutes = rangeEpMinutes + rangeMovieMinutes;

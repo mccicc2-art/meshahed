@@ -65,14 +65,20 @@ export function PeriodReportView({
             </span>
           )}
         </div>
+        {/* 🔴 🆕 **والسطرُ يقول ما يقيسه بالضبط** (D-797، بعد أوّل قراءةٍ
+            حيّة): **Loopz يعرف لحظةَ التعليم لا لحظةَ المشاهدة** —
+            **فمن نقل مكتبتَه دفعةً واحدةً يرى ألفَ حلقةٍ في يومٍ واحد**،
+            **وتقريرٌ يسمّي ذلك «شاهدتَ» يكذب برقمٍ صحيح.** والوصفُ
+            الصادقُ يصلح للحالتين: **من يعلّم وهو يشاهد يقرأ تقريرَ
+            مشاهدته بلا فرق.** */}
         <p className="text-12 text-muted mt-2 leading-relaxed">
-          {delta === null
-            ? ar
-              ? "لا مدّة سابقة تُقارن بها بعد."
-              : "No earlier period to compare with yet."
-            : ar
-              ? `المدّة السابقة: ${num(prevHours, locale)} ساعة.`
-              : `Previous period: ${num(prevHours, locale)} hours.`}
+          {ar
+            ? `مجموع مدّة ما علّمتَه في هذه المدّة${
+                delta === null ? " — ولا مدّة سابقة تُقارن بها بعد." : `، مقابل ${num(prevHours, locale)} ساعة قبلها.`
+              }`
+            : `The total runtime of what you marked in this period${
+                delta === null ? " — no earlier period to compare with yet." : `, against ${num(prevHours, locale)} hours before it.`
+              }`}
         </p>
       </section>
 
@@ -108,7 +114,9 @@ export function PeriodReportView({
         <section className="rounded-2xl border border-border bg-surface px-4 py-3 flex items-center gap-3">
           <Icon name="calendar" size={18} className="text-accent shrink-0" />
           <div className="min-w-0">
-            <p className="text-12 text-muted leading-none">{ar ? "أكثف يوم" : "Busiest day"}</p>
+            {/* **«أكثر يوم تعليماً» لا «أكثف يوم»** (D-797): **يومُ نقلِ
+                مكتبةٍ ليس يومَ مشاهدة** — والاسمُ يقول القاعدةَ (D-664). */}
+            <p className="text-12 text-muted leading-none">{ar ? "أكثر يوم تعليماً" : "Most-marked day"}</p>
             <p className="text-14 font-bold mt-1 truncate">{report.busiest.label}</p>
           </div>
           <span className="ms-auto shrink-0 text-14 font-bold text-accent tabular-nums">
