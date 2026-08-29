@@ -422,8 +422,31 @@ export function EpisodeTracker({
       const aired = eps.filter((e) => hasAired(e.air_date));
       if (!aired.length) return;
       const before = watched;
+      /* 🆕 **«الموسم كله» يختم ما قبله أيضاً** (D-785، طلبُ أحمد: «إذا
+         حطيت صح على جزء كل الي قبله ينحط صح عليها، وبعدها بكيفي أقدر
+         أشيل الصح من الثاني لو ماشفته أو حاب أعيده»).
+         🔑 **والقاعدةُ قائمةٌ لا مخترعة**: تأشيرُ الحلقةِ يختم سابقاتها
+         منذ يومه (`airedUpTo` — والجملةُ فوق القائمة تقولها) — **وكان
+         زرُّ الموسم البابَ الوحيدَ الذي لا يطيعها**: بابان لفعلِ
+         «شاهدتُ حتى هنا» بقاعدتين (D-145).
+         ⚠️ **والقائمةُ نفسُها لا نسخةٌ منها**: السابقون من `airedUpTo`
+         بحدِّ «قبل أوّل حلقات هذا الموسم» (صفرُ حلقاتٍ منه — والنافذةُ
+         من `seasonBounds` للترقيم المطلق، درسُ D-603)، وحلقاتُ الموسم
+         نفسِه من جلبته الطازجة بأزمانها الحقيقيّة.
+         ⚠️ **والإزالةُ تبقى موسمَها وحدَه** (الفرعُ الآخر لم يُمسّ) —
+         وهو نصُّ طلبه الثاني حرفاً. */
+      const b = seasonBounds.get(s.season_number);
+      const first = absolute && b ? b.lo : 1;
+      const prior = mark
+        ? airedUpTo(s.season_number, first - 1).filter(
+            (o) =>
+              o.season !== s.season_number &&
+              !watched.has(episodeKey(o.season, o.episode)),
+          )
+        : [];
       setWatched((prev) => {
         const set = new Set(prev);
+        for (const o of prior) set.add(episodeKey(o.season, o.episode));
         for (const e of aired) {
           const key = episodeKey(s.season_number, e.episode_number);
           if (mark) set.add(key);
@@ -435,11 +458,14 @@ export function EpisodeTracker({
         await runOrQueue("setSeasonWatched", {
           showTmdbId,
           ...(mark ? followMeta() : {}),
-          episodes: aired.map((e) => ({
-            season: s.season_number,
-            episode: e.episode_number,
-            runtime: e.runtime,
-          })),
+          episodes: [
+            ...prior,
+            ...aired.map((e) => ({
+              season: s.season_number,
+              episode: e.episode_number,
+              runtime: e.runtime,
+            })),
+          ],
           watched: mark,
         });
       } catch (e) {
