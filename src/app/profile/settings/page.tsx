@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getUser, getProfile } from "@/lib/data";
 import { getT } from "@/lib/locale";
+import { AccountBadges } from "@/components/AccountIdentity";
 import { Avatar } from "@/components/Avatar";
 import { Icon } from "@/components/Icon";
 import { SettingsPageLayout } from "@/components/settings/SettingsPageLayout";
@@ -64,21 +65,35 @@ export default async function SettingsPage() {
     <SettingsPageLayout title={t.settingsNavHeading} fallbackHref="/">
       {/* ===== بطاقةُ الحساب ===== */}
       <div className={settingsCardRows}>
-        <Link
-          href={username ? `/u/${username}` : "/profile"}
-          aria-label={t.setOpenProfile}
-          className="flex items-center gap-3 p-3.5 transition hover:bg-surface-2 active:opacity-80"
-        >
-          <Avatar
-            src={profile?.avatar_url ?? null}
-            name={displayName}
-            size={52}
-            alt=""
-            posY={profile?.avatar_pos ?? 50}
-          />
+        {/* 🆕 **وشارتُك تُرى في بطاقتك أنت أوّلاً** (D-773ب): من دفع أو
+            وُثّق يرى ذلك حيث يفتح إعداداته. **والصفُّ كان باباً واحداً
+            يلفّ الاسم، ورابطٌ داخل رابطٍ ترميزٌ باطل** — فصار **باباً
+            للوجه وباباً للاسم** (عُرفُ D-281)، **والتظليلُ على الصفّ**
+            فلا شيءَ يتبدّل في العين. */}
+        <div className="flex items-center gap-3 p-3.5 transition hover:bg-surface-2 active:opacity-80">
+          <Link
+            href={username ? `/u/${username}` : "/profile"}
+            aria-label={t.setOpenProfile}
+            className="shrink-0"
+          >
+            <Avatar
+              src={profile?.avatar_url ?? null}
+              name={displayName}
+              size={52}
+              alt=""
+              posY={profile?.avatar_pos ?? 50}
+            />
+          </Link>
           <span className="min-w-0 flex-1">
-            <span className="block text-15 font-bold truncate" dir="auto">
-              {displayName}
+            <span className="flex items-center min-w-0" style={{ gap: 4 }}>
+              <Link
+                href={username ? `/u/${username}` : "/profile"}
+                className="block min-w-0 truncate text-15 font-bold"
+                dir="auto"
+              >
+                {displayName}
+              </Link>
+              <AccountBadges profile={profile} t={t} />
             </span>
             {username && (
               <span className="block text-12 font-medium text-muted truncate" dir="ltr">
@@ -91,7 +106,7 @@ export default async function SettingsPage() {
             size={18}
             className="shrink-0 text-muted -rotate-90 rtl:rotate-90"
           />
-        </Link>
+        </div>
       </div>
 
       <SettingsGroup label={t.setGroupAccount}>
