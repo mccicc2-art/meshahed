@@ -1293,8 +1293,6 @@ type Engine = ReturnType<typeof createEngine>;
 /** نصوصُ طبقة التكبير المسرحيّ (D-762) — تمرُّ من السطح الذي يملك القاموس */
 export interface TrailerExpandedLabels {
   play: string;
-  /** ⏳ D-762 — يقبله هذا القيد رفعةً واحدة حتى تلحق TrailerFeed — تحذفه رفعةُ التنظيف */
-  pause?: string;
   mute: string;
   unmute: string;
   collapse: string;

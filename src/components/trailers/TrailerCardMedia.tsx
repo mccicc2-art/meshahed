@@ -62,8 +62,6 @@ export function TrailerCardMedia({
   unmuteLabel: string;
   /** 🆕 D-762: أدواتُ التحكّم الكاملة — للعلف وحدَه، لا للرايل */
   withControls?: boolean;
-  /** ⏳ مقبولٌ مهملٌ رفعةً واحدة — تحذفه رفعةُ التنظيف */
-  pauseLabel?: string;
   seekLabel?: string;
   expandLabel?: string;
   onOpen?: () => void;
