@@ -42,19 +42,47 @@ export function NotificationList({
   const listName = (s: Signal) =>
     curatedName(s.listSlug, s.title ?? "", locale === "en" ? "en" : "ar");
 
-  /** نصُّ السطر — الفاعل ثم فعلُه ثم العمل إن كان له عمل */
-  function line(s: Signal): string {
+  /**
+   * 🆕 **علامةٌ مؤقّتةٌ مكانَ الاسم، ثمّ تُشقُّ الجملةُ عندها** (D-775).
+   *
+   * 🔴 **والمشكلةُ التي حلّتها**: الشارةُ كانت تقف في **آخر السطر** لا
+   * بجانب الاسم، **لأنّ `line()` تُعيد نصّاً والاسمُ كلمةٌ في وسطه.**
+   * **والقاموسُ يبني الجملةَ بالاسم أوّلاً** (`${who} بدأ متابعتك`) —
+   * فلا موضعَ في نصٍّ تُغرس فيه عقدة.
+   *
+   * ⚖️ **والبديلُ الحدسيُّ كان تغييرَ توقيع ستَّ عشرةَ دالّةَ صياغةٍ
+   * لتعيد أجزاءً** — **ستَّ عشرةَ فرصةَ خطأٍ في لغتين لأجل ٤px.**
+   * 🔑 **وهذه تناديها كما هي**: تمرّر محرفاً لا يظهر في أيِّ ترجمة
+   * (`U+0000`) مكانَ الاسم، **فتعود الجملةُ مشقوقةً عند موضعه بالضبط**
+   * — **وما قبلَه وما بعدَه هما ما يُرسم حولَ الاسم.**
+   * ⚠️ **وإن لم يوجد المحرفُ** (ترجمةٌ أسقطت `who`): يُرسم النصُّ كما
+   * هو والاسمُ بعده — **فلا سطرَ يضيع لأنّ حيلةً لم تنجح.**
+   */
+  const NAME_SLOT = "\u0000";
+
+  function parts(s: Signal): { pre: string; who: string; post: string } {
     const who = s.person.hide_name
       ? t.anonymousUser
       : s.person.nickname || s.person.username || t.anonymousUser;
-    if (s.kind === "follow") return t.notifFollow(who);
-    if (s.kind === "request") return t.notifRequest(who);
-    if (s.kind === "reply") return t.notifReply(who, s.title ?? "");
-    if (s.kind === "talk_reply") return t.notifTalkReply(who, s.title ?? "");
-    if (s.kind === "list_review") return t.notifListReview(who, listName(s));
-    if (s.kind === "like_list_review") return t.notifListReviewLike(who, listName(s));
-    if (s.kind === "list_reply") return t.notifListReply(who, listName(s));
-    return t.notifLike(who, s.title ?? "");
+    const text =
+      s.kind === "follow"
+        ? t.notifFollow(NAME_SLOT)
+        : s.kind === "request"
+          ? t.notifRequest(NAME_SLOT)
+          : s.kind === "reply"
+            ? t.notifReply(NAME_SLOT, s.title ?? "")
+            : s.kind === "talk_reply"
+              ? t.notifTalkReply(NAME_SLOT, s.title ?? "")
+              : s.kind === "list_review"
+                ? t.notifListReview(NAME_SLOT, listName(s))
+                : s.kind === "like_list_review"
+                  ? t.notifListReviewLike(NAME_SLOT, listName(s))
+                  : s.kind === "list_reply"
+                    ? t.notifListReply(NAME_SLOT, listName(s))
+                    : t.notifLike(NAME_SLOT, s.title ?? "");
+    const at = text.indexOf(NAME_SLOT);
+    if (at < 0) return { pre: text, who, post: "" };
+    return { pre: text.slice(0, at), who, post: text.slice(at + NAME_SLOT.length) };
   }
 
   if (rows.length === 0) {
@@ -84,6 +112,20 @@ export function NotificationList({
                   : titleHref
                 : (profileHref(s.person) ?? titleHref);
 
+        /* **وتُحسب مرّةً لا ثلاثاً**: نداءٌ لكلِّ جزءٍ يبني الجملةَ
+           ثلاثَ مرّاتٍ لكلِّ إشعار. */
+        const p = parts(s);
+        const sentence = (
+          <>
+            {p.pre}
+            <bdi className="font-semibold">{p.who}</bdi>
+            {s.person.hide_name ? null : (
+              <AccountBadges profile={s.person} t={t} className="align-middle mx-1" />
+            )}
+            {p.post}
+          </>
+        );
+
         const body = (
           <span className="flex items-center gap-3 py-3">
             <Avatar
@@ -92,17 +134,13 @@ export function NotificationList({
               size={40}
             />
             <span className="min-w-0 flex-1">
-              {/* 🆕 **وهذا السطحُ وحدَه يخالف** (D-773ب): **الاسمُ هنا ليس
-                  عنصراً بل كلمةٌ داخل جملةٍ تُبنى في `line()`** — ولا
-                  موضعَ داخل نصٍّ تُغرس فيه شارة. **فتقف الشارةُ بجوار
-                  الجملة في صفّها** لا داخلها، **وتُقرأ صفةَ الفاعل** لأنّه
-                  هو وحدَه صاحبُ الاسم في السطر. */}
-              <span className="flex items-center min-w-0" style={{ gap: 4 }}>
-                <span className="min-w-0 text-14 leading-snug">{line(s)}</span>
-                {s.person.hide_name ? null : (
-                  <AccountBadges profile={s.person} t={t} />
-                )}
-              </span>
+              {/* 🆕 **والشارةُ صارت بجانب الاسم داخل الجملة** (D-775،
+                  تصحيحُ D-773ب) — **لا في آخر السطر.** والجملةُ تُشقُّ
+                  عند موضع الاسم (انظر `parts`).
+                  ⚠️ **والشارةُ داخلَ `<p>` لا خارجَها**: `inline-flex`
+                  يجعلها تسبح مع النصّ فتلتفّ معه في سطرٍ ثانٍ ولا تُترك
+                  وحدَها — **وشارةٌ في سطرٍ خالٍ أسوأُ من شارةٍ متأخّرة.** */}
+              <p className="text-14 leading-snug">{sentence}</p>
               <span className="block text-12 text-muted mt-0.5">{timeAgo(s.at, t)}</span>
             </span>
             {/* النقطة تقول «هذا وصل بعد آخر فتحة» — لا لونٌ يغرق السطر */}
