@@ -98,6 +98,13 @@ const SECTIONS: Section[] = [
         enBody: "A day-by-day log of everything you watched.",
       },
       {
+        icon: "sparkle-star",
+        ar: "مستوى العضو",
+        en: "Member level",
+        arBody: "مستوىً يرتفع بما تشاهده وتكتبه، وهلالُه حول صورتك في رئيسيتك.",
+        enBody: "A level that rises with what you watch and write, drawn as a ring around your picture at home.",
+      },
+      {
         icon: "chart",
         ar: "الإحصاءات",
         en: "Stats",
@@ -168,6 +175,23 @@ const SECTIONS: Section[] = [
         arBody: "من سجّل قبل إعلان الاشتراك يحمل شارة مؤسِّس و Loopz+ مدى الحياة.",
         enBody: "Anyone who joined before subscriptions were announced keeps a Founder badge and Loopz+ for life.",
         plus: true,
+      },
+      /* 🆕 **وثلاثُ ميزاتٍ مجّانيّةٍ قائمةٍ لم تُوثَّق قطّ** (D-793،
+         تكملةُ كشف D-783 §٢): **ميزةٌ لا يعرف بها أحدٌ لم تُشحن،
+         شُحنت شيفرتُها فقط.** */
+      {
+        icon: "list",
+        ar: "ترتيب التبويبات وإخفاؤها",
+        en: "Reorder and hide tabs",
+        arBody: "رتّب تبويبات المكتبة والمجتمع والاكتشاف كما تحبّ، وأخفِ ما لا تستعمله — مجّاناً للجميع.",
+        enBody: "Order the tabs in Library, Community and Discover the way you like, and hide the ones you never use — free for everyone.",
+      },
+      {
+        icon: "globe",
+        ar: "منطقة المشاهدة ولغات المحتوى",
+        en: "Watch region and content languages",
+        arBody: "اختر بلد التوفّر لتعرف أين يُعرض العمل عندك، واستبعِد لغاتٍ لا تشاهدها من الاكتشاف.",
+        enBody: "Pick your availability region to see where a title streams for you, and exclude languages you never watch from Discover.",
       },
       {
         icon: "eye",
@@ -327,6 +351,15 @@ const SECTIONS: Section[] = [
           "لكل عضو رابط دعوة دائم يرى منه كم صديقاً انضم ومَن هم. صديقك يبدأ بشهر Loopz+ هدية، وكل ٥ أصدقاء محتسبين يمنحونك شهر Loopz+.",
         enBody:
           "Every member gets a permanent invite link, with a live count of who joined through it. Your friend starts with a free month of Loopz+, and every 5 counted invites earn you a month of Loopz+.",
+      },
+      {
+        icon: "people",
+        ar: "برنامج شركاء Loopz",
+        en: "Loopz Partners",
+        arBody:
+          "قدّم طلب انضمام، وخذ رابط إحالتك وإحصاءاته، وعمولة ٢٥٪ من صافي كل دفعة خلال السنة الأولى لمن اشترك عبرك.",
+        enBody:
+          "Apply to join, get your referral link and its live stats, and earn 25% of the net on every payment during the first year from anyone who subscribes through you.",
       },
     ],
   },
