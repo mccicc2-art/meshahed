@@ -83,8 +83,8 @@ export function PersonName({
      ⚠️ **وهي خارج `door` عمداً**: **رابطٌ داخل رابطٍ ترميزٌ باطل**
      (درسُ D-272/D-281 حرفاً) — والشارةُ ليست باباً إلى أحد. */
   const nameText = (
-    <span className="flex items-center min-w-0" style={{ gap: 4 }}>
-      <span className="min-w-0 truncate text-sm font-semibold">{name}</span>
+    <span className="flex items-center min-w-0 text-sm" style={{ gap: 4 }}>
+      <span className="min-w-0 truncate font-semibold">{name}</span>
       {person.hide_name ? null : <AccountBadges profile={person} t={t} />}
     </span>
   );

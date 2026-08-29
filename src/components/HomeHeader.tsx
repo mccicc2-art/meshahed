@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { getDict, type Locale } from "@/lib/i18n";
 import { Icon, type IconName } from "./Icon";
+import { HEADER_ICON, headerIconControl } from "./ui/controls";
 import { FollowCountButton } from "./ProfilePeeks";
 import { HomeAvatarLink } from "./HomeAvatarLink";
 import { HomeViewSwitch } from "./HomeViewSwitch";
@@ -422,20 +423,19 @@ export function HomeHeader({
                 سقطت قائمةُ الصورة التي كانت جسراً لهذا البابِ الغائب
                 (انظر `HomeAvatarLink`).
 
-                🔑 **والوصفةُ وصفةُ `MessagesLink`/`SignalsLink` حرفاً**
-                — صندوقُ ٤٠ وقرصٌ ورمزُ ١٨: **قاعدةُ D-541 أنّ الخانةَ
-                الأخيرة تختلف معنًى لا مقاساً**، **وبكسلٌ واحدٌ هنا
-                يُقفز الجرسَ والظرفَ في كلِّ تنقّل.**
-                ⚠️ **والسلسلةُ صارت في ثلاثة مواضع** — تُستخرج يومَ
-                يدخل رابعٌ، لا اليوم بملفٍّ لمستدعٍ واحد. */}
+                🆕 🔑 **والوصفةُ صارت مصدراً واحداً** (D-776):
+                `headerIconControl` + `HEADER_ICON` في `ui/controls` —
+                **يقرؤها الظرفُ والجرسُ والترسُ هنا، والغلافُ هناك.**
+                **وثلاثُ نسخٍ من سلسلةِ أصنافٍ تفترق عند أوّل تعديل**
+                (D-145)، **وقد افترقت فعلاً: ٤٠ هنا و٤٤ في الصورة.** */}
               <Link
                 href="/profile/settings"
                 prefetch={false}
                 aria-label={t.settingsNavHeading}
                 title={t.settingsNavHeading}
-                className="relative grid place-items-center w-10 h-10 rounded-full text-foreground/80 hover:text-foreground hover:bg-surface-2 active:scale-95 transition"
+                className={headerIconControl}
               >
-                <Icon name="settings" size={18} />
+                <Icon name="settings" size={HEADER_ICON} />
               </Link>
             </HeaderTrailing>
           </div>

@@ -6,6 +6,7 @@ import { getDict, type Locale } from "@/lib/i18n";
 import { siteUrl } from "@/lib/site";
 import type { MediaType } from "@/lib/media";
 import { Icon } from "./Icon";
+import { HEADER_ICON } from "./ui/controls";
 import { BackButton } from "./BackButton";
 import { Sheet } from "./ui/Sheet";
 import { sheetMenuItem } from "./ui/controls";
@@ -141,7 +142,7 @@ export function DetailTopBar({
           title={t.moreMenuTitle}
           className={btn}
         >
-          <Icon name="dots" size={24} strokeWidth={2.5} />
+          <Icon name="dots" size={HEADER_ICON} strokeWidth={2.5} />
         </button>
       </div>
 

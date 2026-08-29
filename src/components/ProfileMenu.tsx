@@ -6,7 +6,7 @@ import { Icon } from "./Icon";
 import { Sheet } from "./ui/Sheet";
 import { Dropdown, dropdownItem, dropdownDivider } from "./ui/Dropdown";
 import { buttonClass } from "./ui/Button";
-import { sheetMenuItem, sheetMenuDivider, coverBareControl } from "./ui/controls";
+import { sheetMenuItem, sheetMenuDivider, coverBareControl, HEADER_ICON } from "./ui/controls";
 import dynamic from "next/dynamic";
 /* الورقةُ تُحمَّل عند أوّل فتحٍ لا مع الصفحة (نمطُ TitleSearchSheet في
    الشريط السفليّ): لا تُرسم إلا بضغطةٍ، فشحنُها مع أوّل رسمةٍ ثمنٌ بلا
@@ -280,7 +280,7 @@ export function ProfileMenu({
              والمرئيُّ ٢٤ وهدفُ اللمس ٤٤ بـ`before` (D-033). */
           className={coverBareControl}
         >
-          <Icon name="dots" size={24} strokeWidth={2.5} />
+          <Icon name="dots" size={HEADER_ICON} strokeWidth={2.5} />
         </button>
       )}
 

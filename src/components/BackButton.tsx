@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { getDict, type Locale } from "@/lib/i18n";
 import { Icon } from "./Icon";
+import { coverBareControl, HEADER_ICON } from "./ui/controls";
 
 /**
  * زر الرجوع الموحّد — هيئة زرّ DetailTopBar حرفاً بحرف (نفس القياس
@@ -46,15 +47,20 @@ export function BackButton({
       aria-label={t.backAria}
       className={
         (bare
-          ? "relative w-6 h-6 grid place-items-center text-white drop-shadow-[0_1px_4px_rgba(0,0,0,0.85)] active:scale-90 transition before:content-[''] before:absolute before:-inset-[10px] before:rounded-full"
+          ? /* 🆕 **والنسخةُ الثالثةُ سقطت** (D-776): كانت هذه السلسلةُ
+               مكتوبةً بيدها هنا وفي `coverBareControl` — **ووصفةٌ واحدةٌ
+               في موضعين تفترق عند أوّل تعديل** (D-145). */
+            coverBareControl
           : "w-11 h-11 rounded-full bg-black/35 backdrop-blur-md border border-white/15 grid place-items-center text-white/90 active:scale-95 transition") +
         ` ${className}`
       }
     >
       <Icon
         name="chevron-down"
-        size={bare ? 24 : 18}
+        size={HEADER_ICON}
         className="rotate-90 rtl:-rotate-90"
+        /* **والسُّمكُ يزيد على الفنّ لا المقاس** (D-776): رمزٌ أبيضُ
+           فوق صورةٍ يحتاج ثِخَناً لا كِبَراً. */
         strokeWidth={bare ? 2.5 : undefined}
       />
     </button>

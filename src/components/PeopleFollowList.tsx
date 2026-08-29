@@ -34,8 +34,8 @@ export function PersonRowLink({
     <span className="flex items-center gap-3 rounded-xl px-1.5 py-1.5 hover:bg-surface-2 transition">
       <Avatar src={person.avatar_url} name={name} size={40} alt="" />
       <span className="min-w-0">
-        <span className="flex items-center min-w-0" style={{ gap: 4 }}>
-          <span className="min-w-0 truncate text-14 font-semibold">{name}</span>
+        <span className="flex items-center min-w-0 text-14" style={{ gap: 4 }}>
+          <span className="min-w-0 truncate font-semibold">{name}</span>
           {t && !person.hide_name ? <AccountBadges profile={person} t={t} /> : null}
         </span>
         {person.username && (

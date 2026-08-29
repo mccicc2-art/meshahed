@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getDict, num, type Locale } from "@/lib/i18n";
 import { Icon } from "./Icon";
+import { HEADER_ICON, headerIconControl } from "./ui/controls";
 
 /**
  * بريدُ الترويسة — **بابُ الرسائل والإشعارات معاً** (D-187 ثم D-463).
@@ -39,10 +40,10 @@ export function MessagesLink({ unread, locale }: { unread: number; locale: Local
          ⚠️ **والمقاسُ يُكتب هنا لا في شريطٍ بعينه**: هذا المكوّنُ
          يقرؤه شريطُ الرئيسية والشريطُ العامّ معاً (D-541) —
          **فتغييرُه هنا يغيّرهما معاً، وهو المطلوب.** */
-      className="relative grid place-items-center w-10 h-10 rounded-full text-foreground/80 hover:text-foreground hover:bg-surface-2 active:scale-95 transition"
+      className={headerIconControl}
     >
       {/* ⚖️ 🆕 ٢٤ → ٢٠ (D-619) ثمّ ١٨ والصندوقُ ٤٠ (D-620) — كالجرس سواء */}
-      <Icon name="mail" size={18} />
+      <Icon name="mail" size={HEADER_ICON} />
       {has && (
         /* نفسُ شارة الجرس شكلاً وموضعاً: عائلةٌ واحدة لمعنًى واحد
            («عندك جديدٌ هنا»)، فلا يتعلّم المستخدم لغتين للشيء نفسه. */
