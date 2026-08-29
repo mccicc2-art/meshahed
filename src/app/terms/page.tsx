@@ -14,7 +14,7 @@ export const metadata: Metadata = {
  * رابطاً يفتحه أي زائر. والنصّ داخل الملف لا في القاموس المشترك.
  */
 export default async function TermsPage() {
-  const { locale } = await getT();
+  const { locale, t } = await getT();
   const ar = locale === "ar";
 
   return (
@@ -25,7 +25,7 @@ export default async function TermsPage() {
 
       <h1 className="text-2xl font-bold mt-3">{ar ? "شروط الاستخدام" : "Terms of Use"}</h1>
       <p className="text-xs text-muted mt-1.5" dir="ltr">
-        {ar ? "آخر تحديث: ٧ أغسطس ٢٠٢٦" : "Last updated: 7 August 2026"}
+        {ar ? "آخر تحديث: ٢٩ أغسطس ٢٠٢٦" : "Last updated: 29 August 2026"}
       </p>
 
       <div className="mt-7 space-y-7 text-15 leading-relaxed">
@@ -80,6 +80,31 @@ export default async function TermsPage() {
             ar
               ? "تستطيع حذف حسابك متى شئت من الإعدادات. وقد نوقف حساباً يخالف هذه الشروط، أو نوقف الخدمة كلّها بإشعارٍ مسبقٍ معقول."
               : "You can delete your account at any time from Settings. We may suspend an account that breaks these terms, or discontinue the service entirely with reasonable notice."
+          }
+        />
+
+        {/* 🆕 **بندا الاشتراك والشراكة** (D-795): **صفحةُ بيعٍ بلا شروطٍ
+            مكتوبةٍ لا تُفتح لها بوّابةُ دفع** — كلُّ بائعٍ مسجَّلٍ يطلبها،
+            **وثمنٌ يُعرض بلا شرطِ تجديدٍ مكتوبٍ وعدٌ ناقص** (D-217).
+            🔑 **ولا صفحةَ ثالثةٌ لها**: هذه عائلةُ «الشروط» — **وصفحةٌ
+            ثانيةٌ لنفس العائلة تفترق عن أختها عند أوّل تعديل** (القاعدة ٣).
+            ⚠️ **والثمنُ من القاموس لا منسوخاً بيد** — وهو الرقمُ نفسُه
+            في `/plus` و`/features` وورقة البوّابة وصفِّ الفوترة. */}
+        <Block
+          title={ar ? "اشتراك Loopz+" : "The Loopz+ subscription"}
+          body={
+            ar
+              ? `Loopz+ اشتراكٌ اختياريّ للثيمات وتنسيق صفحاتك وشارةٍ بجانب اسمك — والمتابعة والقوائم والمجتمع والبحث تبقى مجّانيةً للجميع دائماً. الثمن ${t.plusPrice}، ${t.plusPriceRenew}، ${t.plusPriceLocal}. والاشتراك يُجدَّد تلقائياً في نهاية مدّته ما لم تُلغِه، والإلغاء متاحٌ في أيّ وقتٍ من إعدادات الاشتراك ويسري في نهاية المدّة المدفوعة — فلا تفقد ما دفعت مقابله. ومن سجّل قبل إعلان الاشتراك يحمل صفة «مؤسِّس» وLoopz+ مدى الحياة بلا تجديد. وتجربة Loopz بلا إعلانات للجميع، مشتركين وغير مشتركين. والاشتراك لم يُفتح بعد؛ ولا يُطلب منك دفعٌ حتى تُفتح بوّابته.`
+              : `Loopz+ is an optional subscription for themes, shaping your pages and a badge beside your name — tracking, lists, community and search stay free for everyone, always. It costs ${t.plusPrice}, ${t.plusPriceRenew}, ${t.plusPriceLocal}. It renews automatically at the end of each term unless you cancel; cancelling is available any time from subscription settings and takes effect at the end of the paid term, so you never lose what you already paid for. Anyone who joined before subscriptions were announced keeps Founder status and Loopz+ for life with no renewal. Loopz carries no advertising for anyone, subscriber or not. Subscriptions are not open yet, and you are never asked to pay until they are.`
+          }
+        />
+
+        <Block
+          title={ar ? "برنامج شركاء Loopz" : "The Loopz Partners programme"}
+          body={
+            ar
+              ? "الشريك يحصل على ٢٥٪ من صافي كلّ دفعةٍ يدفعها مشترِكٌ انضمّ عبر رابط إحالته، طوال السنة الأولى من اشتراك ذلك العضو. و«الصافي» هو ما يصلنا بعد رسوم الدفع والضرائب. وتُعلَّق العمولة إذا ترك الشريك البرنامج أو أُنهيت شراكته، فهي مقابل شراكةٍ قائمةٍ لا حقٌّ دائم. ويحقّ لنا تعديل النسبة للإحالات الجديدة وحدها بإشعارٍ مسبق، أمّا الإحالات القائمة فتبقى بنسبتها المتّفق عليها. ويُمنع الترويج المضلِّل أو الرسائل غير المرغوبة أو الإحالة الذاتية، ومخالفتها تُنهي الشراكة وتُسقط العمولة غير المدفوعة."
+              : "A partner earns 25% of the net on every payment made by a subscriber who joined through their referral link, throughout that member's first year. “Net” means what reaches us after payment fees and taxes. The commission is suspended if the partner leaves the programme or the partnership is ended — it is payment for an ongoing partnership, not a permanent right. We may change the rate for new referrals only, with prior notice; existing referrals keep the rate they were agreed at. Misleading promotion, unsolicited messages and self-referral are prohibited, and a breach ends the partnership and forfeits unpaid commission."
           }
         />
 
