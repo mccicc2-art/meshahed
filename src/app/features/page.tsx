@@ -29,9 +29,10 @@ export async function generateMetadata(): Promise<Metadata> {
  * زائرٌ قبل أن يسجّل. والنصّ داخل الملف لا في القاموس المشترك — محتوىً
  * تحريريّ طويل كنصّ الشروط، لا مفردات واجهة.
  *
- * كل ميزة تحمل وسم «مجاني» — الصفحة صادقة: كل شيء مجاني اليوم
- * (settingsBillingHint). حين يأتي الاشتراك يتغيّر وسم بنودٍ بعينها إلى
- * «بريميوم» في نفس البنية، فلا يُعاد بناء شيء.
+ * كل ميزة تحمل وسمها في خانةٍ واحدة: «مجاني» أو «Loopz+» أو «قريباً».
+ * 🆕 **والوعدُ المكتوب هنا وُفِّي** (D-633 ثمّ D-783/786): جاء الاشتراك
+ * فتبدّل وسمُ بنودٍ بعينها في البنية نفسِها، **ولم يُعَد بناءُ شيء** —
+ * **والثمنُ وحدَه انتقل إلى القاموس** لأنّه يظهر في أربعة أسطح.
  */
 
 interface Feature {
@@ -140,6 +141,34 @@ const SECTIONS: Section[] = [
          الإتاحة): **من يكبّر الخطّ يفعلها لعينه لا لذوقه**، ومن يقرأ في
          الشمس قارئٌ محبوسٌ لا مشترٍ محتمل — **وبيعُ الإتاحة يُقرأ ضدّ
          المنتج لا معه.** */
+      /* 🆕 **وأربعةُ بنودٍ مبنيّةٍ ومقفولةٍ لم تكن مكتوبةً في هذه الصفحة**
+         (كشفُ D-783 §١): **الصفحةُ كانت تعرض ثلاثةَ بنودِ بلس من ثمانية**
+         — **وصفحةٌ تُخفي نصفَ ما تبيعه تخسر مرّتين**: لا هي أقنعت، ولا
+         هي صدقت. */
+      {
+        icon: "image",
+        ar: "بوستر وخلفية لكلّ عمل",
+        en: "Your own poster and backdrop",
+        arBody: "اختر ملصق العمل وخلفيته كما تحبّ — والأثر لا يتعدّى أسطحك أنت.",
+        enBody: "Pick the poster and backdrop you want — it only ever changes your own surfaces.",
+        plus: true,
+      },
+      {
+        icon: "sparkles",
+        ar: "شارةٌ بجانب اسمك",
+        en: "A badge beside your name",
+        arBody: "علامة Loopz+ تظهر مع اسمك في كل سطحٍ يحمله، وشعار شريطك العلوي يصير Loopz+.",
+        enBody: "The Loopz+ mark appears with your name everywhere it shows, and your top-bar wordmark becomes Loopz+.",
+        plus: true,
+      },
+      {
+        icon: "sparkle-star",
+        ar: "شارة «مؤسِّس»",
+        en: "Founder badge",
+        arBody: "من سجّل قبل إعلان الاشتراك يحمل شارة مؤسِّس و Loopz+ مدى الحياة.",
+        enBody: "Anyone who joined before subscriptions were announced keeps a Founder badge and Loopz+ for life.",
+        plus: true,
+      },
       {
         icon: "eye",
         ar: "الوضع النهاري وحجم الخط",
@@ -174,6 +203,13 @@ const SECTIONS: Section[] = [
         en: "Top 50 of all time",
         arBody: "أفضل ٥٠ فيلماً وأفضل ٥٠ مسلسلاً، مرجعٌ ثابت في ذيل ديسكفري.",
         enBody: "The 50 greatest movies and shows, a fixed reference at the foot of Discover.",
+      },
+      {
+        icon: "star",
+        ar: "الجوائز وأفضل الأعمال",
+        en: "Awards and the greats",
+        arBody: "رفوف الحائزين على الجوائز، وTop 250، وأفضل ٥٠ أنمي — مرجعٌ ثابتٌ لا يتغيّر بالموضة.",
+        enBody: "Award-winner rails, the Top 250, and the 50 greatest anime — a fixed reference that fashion does not move.",
       },
       {
         icon: "sparkles",
@@ -261,6 +297,27 @@ const SECTIONS: Section[] = [
         enBody: "Rate 1–10, write reviews, and react to everyone else’s.",
       },
       {
+        icon: "comment",
+        ar: "غرف نقاش الحلقة والأسبوع",
+        en: "Episode and week rooms",
+        arBody: "لكل عمل غرفُه: نقاشٌ لكل حلقة ونقاشٌ للأسبوع، مع تثبيت أهمّ ما قيل.",
+        enBody: "Every title has its rooms: one per episode and one for the week, with the best replies pinned.",
+      },
+      {
+        icon: "bell",
+        ar: "إشعارات داخل التطبيق",
+        en: "In-app notifications",
+        arBody: "جرسٌ يجمع المتابعات والردود والإعجابات وما شُورك معك.",
+        enBody: "A bell that gathers follows, replies, likes and everything shared with you.",
+      },
+      {
+        icon: "people",
+        ar: "تصفّحٌ بلا حساب",
+        en: "Browse without an account",
+        arBody: "المجتمع والاكتشاف وملفّات الأعضاء تُقرأ كلّها بلا تسجيل — والحساب يُطلب عند أوّل تفاعل فقط.",
+        enBody: "Community, Discover and member profiles are all readable without signing in — an account is only asked for at your first interaction.",
+      },
+      {
         /* 🆕 D-768: الدعوةُ مجّانيّةٌ للجميع — آلةُ نموٍّ لا ميزةَ طبقة:
            بوّابةٌ عليها كانت ستقتل غرضَها. المكافأةُ وحدَها Loopz+ */
         icon: "share",
@@ -278,6 +335,18 @@ const SECTIONS: Section[] = [
     ar: "الخصوصية والبيانات",
     en: "Privacy & data",
     items: [
+      /* 🆕 **وميزةٌ مجّانيّةٌ قائمةٌ لم تُكتب قطّ** (D-783 §٢): التوثيقُ
+         شُحن في D-773/775 **ولم يُذكر في أيِّ صفحةٍ يقرأها مستخدم** —
+         **وميزةٌ لا يعرف بها أحدٌ لم تُشحن، شُحنت شيفرتُها فقط.** */
+      {
+        icon: "shield",
+        ar: "توثيق الحساب",
+        en: "Account verification",
+        arBody:
+          "علامةٌ تقول إنّ هذا الحساب يمثّل الشخص أو الجهة المذكورة. تُطلب من الإعدادات وتُراجَع يدوياً — ولا تُباع ولا تأتي مع Loopz+.",
+        enBody:
+          "A mark saying this account represents the stated person or organisation. Requested from settings and reviewed by hand — never sold, and it does not come with Loopz+.",
+      },
       {
         icon: "eye-off",
         ar: "حسابٌ خاص",
@@ -330,6 +399,10 @@ const SECTIONS: Section[] = [
       },
       {
         icon: "newspaper",
+        /* 🆕 **وسمُ بلس** (D-783 §٢): كانت الصفحةُ تقول «قريباً» بلا وسم
+           خطّة **وقائمةُ أحمد تضعه في Loopz+** — **وسمٌ ناقصٌ في صفحةٍ
+           اسمُها «صادقة» يبيع مجّاناً ما سيُطلب ثمنُه.** */
+        plus: true,
         ar: "دعم اشتراكات IPTV",
         en: "IPTV support",
         arBody:
@@ -363,7 +436,7 @@ const SECTIONS: Section[] = [
 ];
 
 export default async function FeaturesPage() {
-  const { locale } = await getT();
+  const { locale, t } = await getT();
   const ar = locale === "ar";
 
   return (
@@ -440,8 +513,11 @@ export default async function FeaturesPage() {
             اشتراك اليوم، وإن جاء ستقول هذه الصفحةُ بوضوحٍ ما يبقى
             مجّانيّاً» — **وقد جاء، فقالت.** */}
         {ar
-          ? "المتابعة والقوائم والمجتمع والبحث والترجمة مجّانيةٌ للجميع دائماً — و Loopz+ (٩٩ ريالاً سنويّاً) للثيمات الملوّنة وتنسيق صفحاتك. والاشتراك لم يُفتح بعد."
-          : "Tracking, lists, community, search and translation are free for everyone, always — Loopz+ (SAR 99 a year) covers colour themes and shaping your pages. Subscriptions are not open yet."}
+          ? `المتابعة والقوائم والمجتمع والبحث والترجمة مجّانيةٌ للجميع دائماً — و Loopz+ (${t.plusPrice}، ${t.plusPriceRenew}) للثيمات الملوّنة وتنسيق صفحاتك. `
+          : `Tracking, lists, community, search and translation are free for everyone, always — Loopz+ (${t.plusPrice}, ${t.plusPriceRenew}) covers colour themes and shaping your pages. `}
+        <Link href="/plus" className="text-accent hover:underline">
+          {t.plusLearnMore}
+        </Link>
       </p>
     </article>
   );
