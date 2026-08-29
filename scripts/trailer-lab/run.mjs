@@ -36,7 +36,16 @@ import {createRoot} from "react-dom/client";
 import {TrailerPlayback} from "@/components/trailers/TrailerPlaybackController";
 import {TrailerCardMedia} from "@/components/trailers/TrailerCardMedia";
 
-const CARDS = [
+/* D-766: صفحةُ ?shy=1 تحاكي iPhone — بطاقتان فقط، والثانيةُ مفتاحُها
+   «خجول»: لا يبدأ مخفيّاً ولا يُطيع أوّلَ أمرِ تشغيل (انظر المحاكي) */
+const SHY = new URLSearchParams(location.search).get("shy") === "1";
+/* D-771: صفحةُ ?snd=1 — بذرةُ الصوت مفتوحة (افتراضُ الإنتاج الجديد):
+   أوّلُ فيديو يفكّ كتمَه بنفسه مع أوّل PLAYING بلا أيِّ نقرة */
+const SND = new URLSearchParams(location.search).get("snd") === "1";
+const CARDS = SHY ? [
+  {key:"fast4", keys:["fast4"]},
+  {key:"shy",   keys:["shy"]},
+] : [
   {key:"fast",    keys:["fast"]},
   {key:"fast2",   keys:["fast2"]},
   {key:"slow",    keys:["slow"]},
@@ -49,8 +58,8 @@ const CARDS = [
 function App(){
   const [gone, setGone] = React.useState(new Set());
   const shown = CARDS.filter(c=>!gone.has(c.key));
-  return React.createElement(TrailerPlayback, {soundPref:false,
-      expandedLabels:{play:"play",pause:"pause",mute:"mute",unmute:"unmute",collapse:"collapse",seek:"seek"}},
+  return React.createElement(TrailerPlayback, {soundPref:SND,
+      expandedLabels:{play:"play",mute:"mute",unmute:"unmute",collapse:"collapse",seek:"seek"}},
     React.createElement("div", null,
       React.createElement("div", {style:{height:"30vh"}}),
       ...shown.map(c => React.createElement("div", {key:c.key, "data-card":c.key, className:"card"},
@@ -59,7 +68,7 @@ function App(){
           item:{keys:c.keys, fileUrl:c.fileUrl ?? null, title:c.key},
           backdrop:"/veil.png", title:c.key,
           playLabel:"play", muteLabel:"mute", unmuteLabel:"unmute",
-          withControls:true, pauseLabel:"pause", seekLabel:"seek", expandLabel:"expand",
+          withControls:true, seekLabel:"seek", expandLabel:"expand",
           onUnavailable:()=>{ window.__mark(c.key,'retired'); setGone(p=>new Set(p).add(c.key)); },
         })
       )),
@@ -134,6 +143,8 @@ window.addEventListener('message', e=>{ let d; try{d=JSON.parse(e.data)}catch{re
 window.__labState={};
 window.__overlay=()=>document.querySelector('div[aria-hidden].fixed.pointer-events-none'); /* D-763: الستارة أيضاً aria-hidden fixed */
 window.__labPollId=setInterval(()=>{
+  /* D-766: بثُّ الظهور للأطر — المحاكي «الخجول» لا يبدأ إلا ظاهراً */
+  document.querySelectorAll('iframe').forEach(f=>{ try{ f.contentWindow.postMessage(JSON.stringify({event:'lab-vis', visible:getComputedStyle(f).opacity!=='0'}),'*'); }catch(e){} });
   const ov=window.__overlay();
   const ovOn=ov?getComputedStyle(ov).opacity==='1':false;
   document.querySelectorAll('[data-card]').forEach(c=>{
@@ -254,28 +265,46 @@ const P={
   err150b:{loadMs:400,  err:150},
   blocked:{loadMs:500,  frameMs:600,  dur:120, blockFirstPlay:true},
   silent: {loadMs:400,  silent:true},
+  /* D-766 — نمذجةُ iOS بأمانة: (أ) محاولةُ autoplay الذاتيّةُ لا تعمل
+     إلا وإطارُه ظاهرٌ (الحصادُ يبثّ الظهورَ للأطر كلَّ ٥٠م.ث)، و(ب)
+     أوّلُ أمرِ تشغيلٍ على مشغّلٍ لم يعمل قطُّ يُبتلع بصمتٍ بلا أيّ
+     حدثٍ — وبعد أوّلِ PLAYING تُطاع الأوامرُ كلُّها (جلسةٌ قائمة) */
+  shy:    {loadMs:500,  frameMs:600,  dur:120, needsVisible:true},
 };
 let key0=key; let p=P[key]||P.fast;
 /* mute=1 من الرابط كما يبنيه الإنتاج الآن — والافتراضُ كتمٌ كالسابق */
 let listening=false, state=-1, t=0, muted=q.get('mute')!=='0', volume=100, loaded=false;
 let blockedOnce=false;
+/* D-766: ظهورُ إطاري كما يبثّه الحصاد — افتراضُه مخفيّ حتى أوّل بثّ */
+let vis=false;
 let frameTimer=null, infoTimer=null, errTimer=null;
 /* D-761: فيديو سبق عرضُه في هذا المشغّل يستأنف بعشرات المللي ثانية لا
    بثمن تحميلٍ كامل — أمانةً لعازلٍ دافئٍ حقيقيّ؛ وloadVideoById يصفّره */
 let everPlayed=false;
+/* D-766: مِنحةُ التشغيل مِلكُ العنصرِ لا المقطع — أوّلُ PLAYING يمنحها
+   ولا يُصفّرها loadVideoById (على iOS الحقيقيّ المشغّلُ المجرَّبُ يُطيع
+   loadVideoById لمفتاحٍ جديدٍ ويواصل مخفيّاً) */
+let granted=false;
 const raw=m=>parent.postMessage(JSON.stringify(m),'*');
 const lab=(x,extra)=>raw({event:'lab', key:key0, lab:x, extra});
 const proto=m=>{ if(listening) raw(m); };
 const info=()=>proto({event:'infoDelivery', info:{playerState:state, currentTime:t, duration:p.dur||120, muted, volume}});
-function begin(){
+function begin(fromCmd){
   if(p.err){ clearTimeout(errTimer); errTimer=setTimeout(()=>{ proto({event:'onError', info:p.err}); lab('error',p.err); },400); return; }
   if(p.blockFirstPlay && !blockedOnce){ blockedOnce=true; proto({event:'onAutoplayBlocked'}); lab('autoplay-blocked'); return; }
+  /* D-766: نمذجةُ iOS — البِكرُ لا يبدأ بأمرٍ أبداً (يُبتلع بلا حدث)،
+     ومحاولتُه الذاتيّةُ لا تعمل إلا ظاهراً (المخفيُّ يُركن بصمت) */
+  if(p.needsVisible && !granted){
+    if(fromCmd){ lab('swallowed'); return; }
+    if(!vis){ lab('parked'); return; }
+  }
   if(state===1) return;
   state=3; info(); clearTimeout(frameTimer);
-  frameTimer=setTimeout(()=>{ state=1; everPlayed=true; lab('playing'); info(); }, everPlayed?50:p.frameMs);
+  frameTimer=setTimeout(()=>{ state=1; everPlayed=true; granted=true; lab('playing'); info(); }, everPlayed?50:p.frameMs);
 }
 window.addEventListener('message', e=>{
   let d; try{d=JSON.parse(e.data)}catch{return}
+  if(d.event==='lab-vis'){ vis=!!d.visible; return; }
   if(d.event==='listening'){
     if(p.silent||!loaded) return;
     if(!listening){ listening=true; raw({event:'onReady'}); lab('heard');
@@ -285,7 +314,7 @@ window.addEventListener('message', e=>{
   if(d.event==='command'){
     lab('cmd:'+d.func, d.func==='seekTo'?d.args[0]:null);
     if(p.silent) return;
-    if(d.func==='playVideo') begin();
+    if(d.func==='playVideo') begin(true);
     if(d.func==='pauseVideo'){ clearTimeout(frameTimer); if(state===1||state===3){state=2; info();} }
     if(d.func==='mute'){ muted=true; info(); }
     if(d.func==='unMute'){ muted=false; info(); }
@@ -298,11 +327,11 @@ window.addEventListener('message', e=>{
       const st=(a&&typeof a==='object'&&Number(a.startSeconds))||0;
       key0=nk; p=P[nk]||P.fast; blockedOnce=false; everPlayed=false;
       clearTimeout(frameTimer); clearTimeout(errTimer); t=st; state=-1; info(); lab('loaded-by-id', nk+(st?('@'+st):''));
-      begin(); /* loadVideoById يشغّل تلقائياً كالرسمية */
+      begin(true); /* loadVideoById يشغّل تلقائياً كالرسمية */
     }
   }
 });
-setTimeout(()=>{ loaded=true; lab('loaded'); if(q.get('autoplay')==='1'&&!p.silent&&!p.err) begin(); if(q.get('autoplay')==='1'&&p.err) begin(); },p.loadMs);
+setTimeout(()=>{ loaded=true; lab('loaded'); if(q.get('autoplay')==='1'&&!p.silent&&!p.err) begin(false); if(q.get('autoplay')==='1'&&p.err) begin(false); },p.loadMs);
 </script>`;
 
 // ---------- 4) الخادم ----------
@@ -337,6 +366,8 @@ await new Promise(r=>server.listen(PORT,'127.0.0.1',r));
 
 // ---------- 5) المتصفّح والسيناريوهات ----------
 const browser = await chromium.launch({ headless:true,
+  /* D-771: سياسةُ autoplay مثبَّتةٌ صراحةً — نقيس منطقَنا لا مزاجَ كروميوم */
+  args:['--autoplay-policy=no-user-gesture-required'],
   executablePath: process.env.LAB_CHROMIUM || (fs.existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined) });
 const context = await browser.newContext({ viewport:{width:900,height:900} });
 await context.route('**youtube-nocookie.com/embed/**', route => route.fulfill({contentType:'text/html', body: stub}));
@@ -386,9 +417,10 @@ await page.mouse.up();
 await page.waitForTimeout(700);
 const seekTime = await page.evaluate(()=>{const el=document.querySelector('[data-card="fast"] span[dir="ltr"]'); return el?el.textContent:null;});
 
-/* T21 (D-762): ضغطةُ السطح توقف مؤقتاً والصورةُ باقية — وضغطةٌ تستأنف بلا إعادة تحميل */
-await stamp('T21-pause');
-await page.click('[data-card="fast"] button[aria-label="pause"]');
+/* ⚖️ T21 (D-771 — نقضُ إيقافِ D-762 بحكمه): ضغطةُ السطح والأزرارُ ظاهرةٌ
+   **لا توقف شيئاً** — لا cmd:pauseVideo ولا إعادةَ تحميل، والمقطعُ ماضٍ */
+await stamp('T21-no-pause');
+await page.click('[data-card="fast"] button[aria-label="play"]');
 await page.waitForTimeout(900);
 await page.click('[data-card="fast"] button[aria-label="play"]');
 await page.waitForTimeout(900);
@@ -427,7 +459,7 @@ const hide25 = await page.evaluate(()=>{
            exp: exp?getComputedStyle(exp).opacity:null,
            slPe: sl?getComputedStyle(sl).pointerEvents:null };
 });
-await page.click('[data-card="fast"] button[aria-label="pause"]');
+await page.click('[data-card="fast"] button[aria-label="play"]');
 await page.waitForTimeout(350);
 const show25 = await page.evaluate(()=>{
   const c=document.querySelector('[data-card="fast"]');
@@ -490,7 +522,8 @@ await page.evaluate(()=>{
   document.dispatchEvent(new Event('visibilitychange'));
 });
 await page.waitForTimeout(1800);
-const fgMutedIcon = await page.evaluate(()=>!!document.querySelector('[data-card="file"] button[aria-label="unmute"]'));
+/* D-771: العودةُ تحمل الصوتَ (النيّةُ قائمةٌ منذ T3) — أيقونةُ «اكتم» حاضرة */
+const fgSoundIcon = await page.evaluate(()=>!!document.querySelector('[data-card="file"] button[aria-label="mute"]'));
 
 /* T14: لا Seek في هذه المرحلة */
 const noSlider = await page.evaluate(()=>document.querySelectorAll('[role="slider"]').length===0);
@@ -511,6 +544,55 @@ const consoleErrors = await page.evaluate(()=>window.__consoleErrors);
 const pageErrors = PAGE_ERRORS;
 
 const events = await log();
+
+/* ---------- 5.5) صفحةُ D-766 — «ثاني مقطع دائماً لودينغ ثم لا يعمل» ----------
+   محاكاةُ iPhone: بطاقتان، والثانيةُ «خجولة» (لا تبدأ مخفيّةً ولا تُطيع
+   أوّلَ أمر). القبول: بلا أيِّ نقرةٍ إطلاقاً — الأولى تعمل، احتياطُ
+   الثانية يُركن، والتمريرُ إليها يهدم البِكرَ ويُقلع ظاهراً فتعمل */
+const page2 = await context.newPage();
+page2.on('pageerror', e=>{ PAGE_ERRORS.push('p2:'+String(e.message).slice(0,200)); });
+await page2.goto(`http://127.0.0.1:${PORT}/?shy=1`);
+await page2.waitForTimeout(4000);
+const parked27 = await page2.evaluate(()=>window.__lab.some(e=>e.card==='shy'&&e.ev==='parked'));
+const noPlay27 = await page2.evaluate(()=>!window.__lab.some(e=>e.card==='shy'&&e.ev==='playing'));
+await page2.evaluate(()=>{const c=document.querySelector('[data-card="shy"]'); window.scrollTo({top:c.offsetTop-(window.innerHeight-c.offsetHeight)/2});});
+await page2.waitForTimeout(700);
+const spin27 = await page2.evaluate(()=>!!document.querySelector('[data-card="shy"] .animate-spin'));
+await page2.waitForTimeout(3800);
+const state27 = await page2.evaluate(()=>{
+  const img=document.querySelector('[data-card="shy"] img');
+  return {
+    lifted: img?getComputedStyle(img).opacity==='0':false,
+    frames: document.querySelectorAll('iframe').length,
+    loads: window.__lab.filter(e=>e.card==='shy'&&e.ev==='loaded').length,
+    playing: window.__lab.some(e=>e.card==='shy'&&e.ev==='playing'),
+    pausedOld: window.__lab.some(e=>e.card==='fast4'&&e.ev==='cmd:pauseVideo'),
+  };
+});
+await page2.close();
+
+/* ---------- 5.6) صفحةُ D-771 — «دائماً الصوت شغال» ----------
+   بذرةُ الصوت مفتوحة (افتراضُ الإنتاج الجديد): أوّلُ فيديو يفكّ كتمَه
+   بنفسه مع أوّل PLAYING بلا أيِّ نقرة، والصوتُ محمولٌ للتالية بالتمرير
+   وحدَه — ولا إيقافَ يعقب الفكَّ (لا حلقةَ فكٍّ/رفض) */
+const page3 = await context.newPage();
+page3.on('pageerror', e=>{ PAGE_ERRORS.push('p3:'+String(e.message).slice(0,200)); });
+await page3.goto(`http://127.0.0.1:${PORT}/?snd=1`);
+await page3.waitForTimeout(4000);
+const snd28 = await page3.evaluate(()=>({
+  unmuted: window.__lab.some(e=>e.card==='fast'&&e.ev==='cmd:unMute'),
+  iconOn: !!document.querySelector('[data-card="fast"] button[aria-label="mute"]'),
+  playing: window.__lab.some(e=>e.card==='fast'&&e.ev==='playing'),
+  noPause: !window.__lab.some(e=>e.card==='fast'&&e.ev==='cmd:pauseVideo'),
+}));
+await page3.evaluate(()=>{const c=document.querySelector('[data-card="fast2"]'); window.scrollTo({top:c.offsetTop-(window.innerHeight-c.offsetHeight)/2});});
+await page3.waitForTimeout(2500);
+const snd29 = await page3.evaluate(()=>({
+  soundOn: window.__lab.some(e=>e.card==='fast2'&&e.ev==='sound'&&e.extra==='ON'),
+  playing: window.__lab.some(e=>e.card==='fast2'&&e.ev==='playing'),
+}));
+await page3.close();
+
 await browser.close(); server.close();
 
 // ---------- 6) التقرير ----------
@@ -547,7 +629,7 @@ add(12,'المعطل يُستبدل بالبديل ويُحذف عند النف�
 /* ⚖️ D-762: التقديمُ عاد بطلب صاحبه — شريطٌ واحدٌ على النشطة (نقضُ D-759 سابعًا) */
 add(14,'شريطُ التقديم حاضرٌ على النشطة (عاد بأمر صاحبه)', !noSlider, 'sliders>0');
 add(20,'السحبُ يقدّم بأمر seekTo الرسمي ويقفز العدّاد', inSeg('fast','cmd:seekTo','T20-seek') && events.some(e=>{const [a,b]=seg('T20-seek'); return e.card==='fast'&&e.ev==='cmd:seekTo'&&e.t>=a&&e.t<=b&&Number(e.extra)>=80&&Number(e.extra)<=115;}) && (parse(seekTime)??0)>=80, 'seek→'+seekTime);
-add(21,'الإيقافُ يُبقي الصورةَ والاستئنافُ بلا إعادة تحميل', inSeg('fast','cmd:pauseVideo','T21-pause') && inSeg('fast','cmd:playVideo','T21-pause') && !inSeg('fast','veil','T21-pause') && !events.some(e=>{const [a,b]=seg('T21-pause'); return e.ev==='loaded-by-id'&&e.t>=a&&e.t<=b;}), '');
+add(21,'سطحُ البطاقة لا يوقف — الإيقافُ أُلغي (D-771 بحكمه)', !inSeg('fast','cmd:pauseVideo','T21-no-pause') && !inSeg('fast','veil','T21-no-pause') && !events.some(e=>{const [a,b]=seg('T21-no-pause'); return e.ev==='loaded-by-id'&&e.t>=a&&e.t<=b;}), '');
 add(22,'العودةُ لبطاقةٍ سابقةٍ تستأنف من موضعها', (parse(resumeTime)??0)>=80, 'resumed@'+resumeTime);
 add(24,'قصُّ واجهة يوتيوب: إطارٌ 300% ممركزٌ (D-763)', crop1.length>0 && crop1.every(c=>Math.abs(c.h-3*c.oh)<=3 && Math.abs(c.top+c.oh)<=3), JSON.stringify(crop1));
 add(23,'التكبيرُ يملأ الشاشةَ ويقفل التمرير ويُغلق بسلام', expOn.w===expOn.iw && expOn.lock==='hidden' && expOn.x && expOff.w<expOn.iw && expOff.lock==='', JSON.stringify({on:expOn.w+'/'+expOn.iw, off:expOff.w}));
@@ -559,9 +641,20 @@ add(25,'الأزرارُ تتوارى بعد ٥ ثوانٍ واللمسةُ تُ
 /* 🆕 D-764: «تجيني علامة لودينغ الدائرية» — أثناء loading فقط، وتزول للتعثّر */
 add(26,'مؤشّرُ التحميل يظهر أثناء البطء ويزول عند التعثّر لزرّه',
   spin26on && spin26off.gone && spin26off.btn, JSON.stringify({spin26on,spin26off}));
+/* 🆕 D-766: «ثاني مقطع دائماً لودينغ ثم مايشتغل» — البِكرُ المخفيُّ
+   لا يُرقّى: يُهدم ويُقلع ظاهراً بمحاولته الذاتيّة، بلا أيِّ نقرة */
+add(27,'البِكرُ المخفيُّ يُستبدل بإقلاعٍ ظاهرٍ يعمل بلا ضغطة (D-766)',
+  parked27 && noPlay27 && spin27 && state27.lifted && state27.playing
+  && state27.frames<=2 && state27.loads>=2 && state27.pausedOld,
+  JSON.stringify({parked27,noPlay27,spin27,...state27}));
+/* 🆕 D-771: «دائماً الصوت شغال والي مزعجه يحط صامت» — الافتراضُ المفتوح */
+add(28,'أول فيديو يفكّ كتمَه بنفسه بلا نقرة (D-771)',
+  snd28.unmuted && snd28.iconOn && snd28.playing && snd28.noPause, JSON.stringify(snd28));
+add(29,'الصوتُ محمولٌ للتالية بالتمرير وحدَه (D-771)',
+  snd29.soundOn && snd29.playing, JSON.stringify(snd29));
 add(15,'لا أخطاء console من كود Loopz', consoleErrors.filter(x=>!x.includes('shim')).length===0 && pageErrors.length===0, JSON.stringify({ce:consoleErrors.length,pe:pageErrors.length}));
 add(16,'لا مؤقتات/مراقبين بعد unmount', leaks.intervals===0 && leaks.rafs<=0 && leaks.vis===0 && leaks.iframes===0, JSON.stringify(leaks));
-add(17,'العودة من الخلفية صامتة (لا صوت آلي)', fgMutedIcon, 'icon=unmute');
+add(17,'العودة من الخلفية بصوتٍ محمول (D-771 — نقض ثالثًا/٧ بحكمه)', fgSoundIcon, 'icon=mute');
 /* D-760: بعد تفعيل الصوت على fast (T3)، البطاقةُ التالية fast2 تنطلق
    مصوَّتةً بلا أي ضغطةِ صوتٍ إضافية — والمشهدُ لا يلمس زرَّ صوت fast2 */
 add(18,'الصوت محمولٌ إلى البطاقة التالية بلا ضغطة', events.some(e=>e.card==='fast2'&&e.ev==='sound'&&e.extra==='ON'), '');
