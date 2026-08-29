@@ -104,6 +104,50 @@ export function headerStatMeta(
 export const HOME_VIEWS = ["visual", "compact"] as const;
 export type HomeView = (typeof HOME_VIEWS)[number];
 
+/**
+ * 🔴 🆕 **حقولُ التنسيق التي يبيعها لوحُ البلس** (D-791، حكمُ أحمد:
+ * «ما تبيعه الصفحة فقط»).
+ *
+ * 🔴 **ولمَ وُلدت هذه القائمة**: أقفالُ Loopz+ كانت **في المتصفّح
+ * وحدَه** — `ThemeSection` تقرأ معامل `plus`، **ولا شرطَ خطّةٍ واحدٌ في
+ * أيِّ فعلِ خادم** — **فما نبيعه لم يكن مقفولاً، وقفلٌ في الواجهة بلا
+ * خادمٍ يقفل زينةٌ تُفتح بأدوات المطوّر.**
+ *
+ * ⚖️ **والقائمةُ نصُّ صفحة البيع لا اجتهاداً**: «رتّب الأقسام وأظهِر ما
+ * يهمّك… واختر الكثافة ومقاسات البوسترات» و«أيّ أرقامٍ تراها في
+ * الترويسة». **وما ليس فيها مجّانيٌّ بحكمه صراحةً**: **زرُّ تبديل
+ * العرض** و**مفتاحُ «للمشاهدة»** — **أفعالٌ يوميّةٌ يستعملها الجميع،
+ * وقفلُها يُقرأ تضييقاً لا بيعاً** — **وترتيبُ عناصر الطوابير يدويّاً**
+ * (D-719): **ترتيبُ ما تملكه ليس تنسيقَ صفحة.**
+ */
+export const PLUS_HOME_FIELDS = [
+  "level",
+  "stats",
+  "followers",
+  "social",
+  "order",
+  "statsPick",
+  "cards",
+  "density",
+] as const satisfies readonly (keyof HomePrefs)[];
+
+/**
+ * **يردّ حقولَ البلس إلى المحفوظ ويقبل ما سواها** — **ولا يرمي خطأً**:
+ * النموذجُ يرسل الاسمَ والنبذةَ والتنسيقَ في نداءٍ واحد، **ورفضُ
+ * النداء كلِّه كان سيمنع مجّانيّاً من حفظ نبذته** (D-217).
+ */
+export function keepPaidHomePrefs(stored: HomePrefs, incoming: HomePrefs): HomePrefs {
+  const out: HomePrefs = { ...incoming };
+  /* **نسخٌ محفوظُ النوع لا `Record<string, unknown>`**: المفتاحُ من
+     `keyof HomePrefs`، **فحقلٌ يُحذف من الشكل غداً يسقط عند الترجمة لا
+     في الإنتاج** — وهو الفرقُ كلُّه. */
+  const carry = <K extends keyof HomePrefs>(key: K) => {
+    out[key] = stored[key];
+  };
+  for (const key of PLUS_HOME_FIELDS) carry(key);
+  return out;
+}
+
 export const STATS_PICK_MIN = 2;
 export const STATS_PICK_MAX = 4;
 

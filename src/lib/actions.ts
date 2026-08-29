@@ -17,12 +17,22 @@ import {
   serializeContentPrefs,
 } from "@/lib/contentPrefs";
 import { GENRES, type MediaType } from "@/lib/media";
-import { isPlus } from "@/lib/plan";
+import { isPlus, themeNeedsPlus } from "@/lib/plan";
 import { BROWSE_GENRES } from "@/lib/browse";
 import { sanitizeSocials } from "@/lib/socials";
 import { THEMES } from "@/lib/themes";
-import { sanitizeHomePrefs, type HomePrefs, type HomeView } from "@/lib/homePrefs";
-import { sanitizeProfilePrefs, SORTABLE_SECTIONS, type ProfilePrefs } from "@/lib/profilePrefs";
+import {
+  keepPaidHomePrefs,
+  sanitizeHomePrefs,
+  type HomePrefs,
+  type HomeView,
+} from "@/lib/homePrefs";
+import {
+  keepPaidProfilePrefs,
+  sanitizeProfilePrefs,
+  SORTABLE_SECTIONS,
+  type ProfilePrefs,
+} from "@/lib/profilePrefs";
 import {
   FEED_STRANGERS_COOKIE,
   FEED_SORT_COOKIE,
@@ -190,8 +200,37 @@ export async function updateProfile(input: {
     payload.cover_pos = clampPos(input.coverPos);
   if (input.avatarPos !== undefined && Number.isFinite(input.avatarPos))
     payload.avatar_pos = clampPos(input.avatarPos);
+  /* 🔴 🆕 **حارسُ الخادم على ما تبيعه صفحةُ البلس** (D-791، حكمُ أحمد:
+     «ما تبيعه الصفحة فقط»).
+     🔴 **ولمَ وُلد**: أقفالُ Loopz+ كانت **في المتصفّح وحدَه** —
+     **ولا شرطَ خطّةٍ واحدٌ في أيِّ فعلِ خادم** — **فكانت الثيماتُ
+     والتنسيقُ تُحفظ لمن ليس مشترِكاً بنداءٍ مباشر.** **ومن يبيع ميزةً
+     يقفلها في الخادم أوّلاً.**
+     ⚠️ **وقراءةٌ واحدةٌ لا ثلاث**: الحكمُ والمحفوظُ في استعلامٍ واحدٍ
+     **ولا يُدفع إلّا حين يُرسَل حقلٌ مقفول** — **ومن حفظ نبذتَه لا
+     يدفع ثمنَ حارسٍ لا يخصّه.** */
+  const gated =
+    input.theme !== undefined ||
+    input.homePrefs !== undefined ||
+    input.profilePrefs !== undefined;
+  let plus = true;
+  let storedRow: { home_prefs?: unknown; profile_prefs?: unknown } | null = null;
+  if (gated) {
+    const { data } = await supabase
+      .from("profiles")
+      .select("plan, plus_until, home_prefs, profile_prefs")
+      .eq("id", user.id)
+      .maybeSingle();
+    plus = isPlus(data);
+    storedRow = data ?? null;
+  }
+
   if (input.theme !== undefined) {
-    payload.theme = THEMES.some((t) => t.id === input.theme) ? input.theme : "amber";
+    const wanted = THEMES.some((t) => t.id === input.theme) ? input.theme : "amber";
+    /* **والمقفولُ يُترك على حاله لا يُردّ إلى `amber`**: **من فقد
+       اشتراكَه لا يُسلَب ثيمَه بحفظةِ نبذة** — **والسلبُ الصامتُ أسوأُ
+       من المنع المعلن** (D-217). */
+    if (plus || !themeNeedsPlus(wanted)) payload.theme = wanted;
   }
   if (input.hideName !== undefined) payload.hide_name = !!input.hideName;
   if (input.isPrivate !== undefined) payload.is_private = !!input.isPrivate;
@@ -204,9 +243,21 @@ export async function updateProfile(input: {
     payload.bio = bio || null;
   }
   // تُنقّى قبل الكتابة كما تُنقّى بعد القراءة: القيمة تمرّ عبر الشبكة
-  if (input.homePrefs !== undefined) payload.home_prefs = sanitizeHomePrefs(input.homePrefs);
-  if (input.profilePrefs !== undefined)
-    payload.profile_prefs = sanitizeProfilePrefs(input.profilePrefs);
+  /* **والحقلُ المقفولُ يعود إلى محفوظه والباقي يُكتب** — **لا رفضَ
+     للنداء كلِّه**: النموذجُ يرسل الاسمَ والنبذةَ والتنسيقَ معاً،
+     **ورفضُ الجميع كان سيمنع مجّانيّاً من حفظ اسمه.** */
+  if (input.homePrefs !== undefined) {
+    const next = sanitizeHomePrefs(input.homePrefs);
+    payload.home_prefs = plus
+      ? next
+      : keepPaidHomePrefs(sanitizeHomePrefs(storedRow?.home_prefs), next);
+  }
+  if (input.profilePrefs !== undefined) {
+    const next = sanitizeProfilePrefs(input.profilePrefs);
+    payload.profile_prefs = plus
+      ? next
+      : keepPaidProfilePrefs(sanitizeProfilePrefs(storedRow?.profile_prefs), next);
+  }
 
   const { error } = await supabase.from("profiles").upsert(payload, { onConflict: "id" });
   if (error) {
@@ -337,9 +388,15 @@ export async function saveHomeSectionOrder(order: string[]) {
 
   const { data } = await supabase
     .from("profiles")
-    .select("home_prefs")
+    .select("home_prefs, plan, plus_until")
     .eq("id", user.id)
     .maybeSingle();
+
+  /* 🔴 🆕 **وترتيبُ الأقسام من البلس** (D-791) — **والحكمُ من الصفِّ
+     المقروء أصلاً فلا استعلامَ ثانٍ.** **والصمتُ لا خطأ**: الواجهةُ
+     تحرس قبله، **ومن بلغ هنا بنداءٍ مباشرٍ لا يستحقّ رسالةً تشرح له
+     كيف يعيد المحاولة.** */
+  if (!isPlus(data)) return;
 
   const prefs = sanitizeHomePrefs(data?.home_prefs);
   /* **التنقيةُ بمرشِّح القراءة نفسِه**: أقسامٌ معروفةٌ بلا تكرار —
@@ -2581,10 +2638,13 @@ export async function setProfileSavedLists(on: boolean) {
 
   const { data, error } = await supabase
     .from("profiles")
-    .select("profile_prefs")
+    .select("profile_prefs, plan, plus_until")
     .eq("id", user.id)
     .maybeSingle();
   if (error) fail(error);
+
+  /* 🔴 🆕 **وإظهارُ أقسام الملفّ من البلس** (D-791) — كأختها أعلاه */
+  if (!isPlus(data)) return;
 
   const prefs = sanitizeProfilePrefs(data?.profile_prefs);
   prefs.savedLists = on === true;

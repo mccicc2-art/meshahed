@@ -45,6 +45,40 @@ export type ProfileSection = (typeof PROFILE_SECTIONS)[number];
  *
  * وهي **دالّةٌ تأخذ القاموس** لا ثابتٌ: الأسماء تتبع لغة الواجهة.
  */
+/**
+ * 🔴 🆕 **حقولُ تنسيق الملفّ التي يبيعها لوحُ البلس** (D-791) — نظيرُ
+ * `PLUS_HOME_FIELDS` حرفاً، وحجّتُها حجّتُه.
+ *
+ * ⚖️ **وحقلان خارجها عمداً**: **`title`** سطرٌ يكتبه صاحبُه كالنبذة
+ * **لا تنسيقُ صفحة**، **و`sectionOrder`** ترتيبُ عناصرَ داخل قسمٍ
+ * (D-581) **لا ترتيبُ الأقسام نفسِها** — **وبينهما فرقُ من يرتّب أثاثَ
+ * بيته ومن يشتري غرفةً جديدة.**
+ */
+export const PLUS_PROFILE_FIELDS = [
+  "stats",
+  "level",
+  "visits",
+  "visitsWho",
+  "savedLists",
+  "order",
+  "density",
+  "cards",
+  "hiddenTabs",
+] as const satisfies readonly (keyof ProfilePrefs)[];
+
+/** **يردّ حقولَ البلس إلى المحفوظ ويقبل ما سواها** — بلا رفضِ النداء */
+export function keepPaidProfilePrefs(
+  stored: ProfilePrefs,
+  incoming: ProfilePrefs,
+): ProfilePrefs {
+  const out: ProfilePrefs = { ...incoming };
+  const carry = <K extends keyof ProfilePrefs>(key: K) => {
+    out[key] = stored[key];
+  };
+  for (const key of PLUS_PROFILE_FIELDS) carry(key);
+  return out;
+}
+
 export function profileSectionMeta(t: Dict): Record<ProfileSection, { icon: IconName; label: string }> {
   return {
     shows: { icon: "tv", label: t.shortShows },
