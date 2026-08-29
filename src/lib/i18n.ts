@@ -1867,8 +1867,19 @@ const ar = {
   plusGateTitle: "هذي من مزايا Loopz+",
   plusGateHint:
     "المتابعة والقوائم والمجتمع والبحث تبقى مجّانيةً للجميع — و Loopz+ للثيمات وتنسيق صفحاتك كما تحبّ.",
-  plusPrice: "٩٩ ريالاً سنويّاً",
+  /* 🆕 **الثمنُ بحكم أحمد (٢٩ أغسطس، D-786)** — **نقضٌ مسجَّلٌ لـ«٩٩
+     ريالاً سنويّاً» في D-633**، والفرقُ ليس صياغةً بل ضعفٌ تقريباً.
+     **وسعرُ السنة الأولى دائمٌ لكلِّ مشترِكٍ جديد** لا عرضَ إطلاقٍ
+     ينتهي — **ولذلك سطرُ التجديد فرضٌ لا تحسين**: ثمنٌ أوّلُ يُعرض بلا
+     ذكر ما بعده هو بعينه الوعدُ الذي لا يُسلَّم (D-217).
+     ⚠️ **والعملةُ بالكلمة لا بالرمز في العربيّة**: «$» ملتصقاً برقمٍ
+     داخل نصٍّ عربيٍّ يتنازع عليه محرّكُ الاتجاهين، **ورقمُ ثمنٍ يُقرأ
+     مقلوباً أسوأُ من رقمٍ لا يُقرأ.** */
+  plusPrice: "39.99 دولاراً للسنة الأولى",
+  plusPriceRenew: "ثمّ 49.99 دولاراً سنويّاً · أو 4.99 شهريّاً",
+  plusPriceLocal: "بعملة بلدك يوم يُفتح الاشتراك",
   plusSoon: "قريباً — والاشتراك لم يُفتح بعد",
+  plusLearnMore: "ما الذي يشمله Loopz+؟",
   plusBadge: "عضو Loopz+",
   founderBadge: "مؤسِّس",
   partnerBadge: "شريك Loopz",
@@ -3361,8 +3372,11 @@ const en: Dict = {
   plusGateTitle: "This is a Loopz+ feature",
   plusGateHint:
     "Tracking, lists, community and search stay free for everyone — Loopz+ is for themes and shaping your pages the way you like.",
-  plusPrice: "SAR 99 a year",
+  plusPrice: "$39.99 for your first year",
+  plusPriceRenew: "then $49.99 a year · or $4.99 a month",
+  plusPriceLocal: "in your local currency when subscriptions open",
   plusSoon: "Coming soon — subscriptions are not open yet",
+  plusLearnMore: "What does Loopz+ include?",
   plusBadge: "Loopz+ member",
   founderBadge: "Founder",
   partnerBadge: "Loopz partner",

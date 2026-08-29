@@ -17,6 +17,7 @@ import {
   serializeContentPrefs,
 } from "@/lib/contentPrefs";
 import { GENRES, type MediaType } from "@/lib/media";
+import { isPlus } from "@/lib/plan";
 import { BROWSE_GENRES } from "@/lib/browse";
 import { sanitizeSocials } from "@/lib/socials";
 import { THEMES } from "@/lib/themes";
@@ -4687,15 +4688,47 @@ export async function aiStorySearch(
 // ============================================================
 
 /**
- * بوّابة الميزة (ق٩) — نقطةٌ واحدة، ترجع `true` اليوم.
+ * 🆕 **هل صاحبُ الجلسة مشترِكٌ؟ — قراءةُ خطّةٍ واحدةٌ في الخادم** (D-786).
  *
- * البريف يذكر تمييزاً مدفوعاً مؤجَّلاً. المنفذ الواحد مقصود: تقييدُه
- * لاحقاً تغييرُ جسمِ هذه الدالّة، لا تعقّبُ شرطٍ منثورٍ في عشرة ملفات.
- * (وقبل أيّ تسييل: شروط TMDB تشترط ترخيصاً تجارياً حين يكون توليد
- * الإيراد غرضاً أساسياً — والميزة مبنيةٌ حرفياً على صورهم.)
+ * 🔴 **ولماذا وُلدت هذه الدالّة أصلاً**: أقفالُ Loopz+ كلُّها كانت في
+ * المتصفّح وحدَه (`ThemeSection` تقرأ `themeNeedsPlus` بمعامل `plus`)،
+ * **ولا شرطَ خطّةٍ واحدٌ في أيِّ فعلِ خادم** — **وقفلٌ في الواجهة بلا
+ * خادمٍ يقفل زينةٌ تُفتح بأدوات المطوّر**، وهو نصُّ التعليق في
+ * `PlusGateHost` الذي كان يَعِد بحراسةٍ لم تكن موجودة. **فمَن يبيع
+ * ميزةً يقفلها في الخادم أوّلاً.**
+ *
+ * **والقراءةُ عند الفعل لا مع الصفحة**: استعلامٌ بعمودين لا يُدفع ثمنُه
+ * إلا حين يُطلب الفعلُ المقفول — **فصفحةُ العمل لا تحمل استعلاماً
+ * إضافيّاً لأجل ورقةٍ قد لا تُفتح.**
+ */
+export async function viewerIsPlus(): Promise<boolean> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return false;
+  const { data } = await supabase
+    .from("profiles")
+    .select("plan, plus_until")
+    .eq("id", user.id)
+    .maybeSingle();
+  return isPlus(data);
+}
+
+/**
+ * بوّابة الميزة (ق٩) — نقطةٌ واحدة.
+ *
+ * 🆕 **وقد أُغلقت بحكم أحمد** (٢٩ أغسطس، D-786): «يُقفل على البلس».
+ * **ولا خاسرَ اليوم**: الأعضاءُ الحاليّون كلُّهم مؤسِّسون = Loopz+ مدى
+ * الحياة (هجرة ١٤١)، **فقاعدةُ «لم أمنع خدماتٍ مجّانيّةً على الأعضاء»
+ * محفوظةٌ حرفاً** — القفلُ يقع على جمهورٍ لم يأتِ بعد.
+ *
+ * ⚠️ **وشرطُ TMDB قائمٌ ولم يسقط**: شروطُهم تشترط ترخيصاً تجاريّاً حين
+ * يكون توليدُ الإيراد غرضاً أساسيّاً، **والميزةُ مبنيّةٌ حرفاً على
+ * صورهم** — **يُحسم قبل فتح الدفع لا بعده.**
  */
 export async function canUseArt(): Promise<boolean> {
-  return true;
+  return viewerIsPlus();
 }
 
 /**
@@ -4708,7 +4741,11 @@ export async function titleArtOptions(tmdbId: number, mediaType: "tv" | "movie")
   const id = intId(tmdbId);
   const type = asMediaType(mediaType);
   await requireUser("art", 30, 60_000);
-  if (!(await canUseArt())) return { posters: [], backdrops: [] };
+  /* 🔴 **ولا قفلَ هنا عمداً** (D-786): **هذه الدالّة مشتركةٌ مع
+     `ListCoverSheet`** (غلافُ القائمة) — **وقفلُها كان سيقفل معها ميزةً
+     لم يحكم عليها أحد**، ويردّ ورقةً فارغةً بلا سببٍ مكتوب. **القفلُ
+     على الكتابة (`setTitleArt`) وهي الحارس، والورقةُ تسأل `canUseArt`
+     عند فتحها لتقول الثمنَ بدل أن تصمت.** */
 
   const [{ titleImages }, { getLocale }] = await Promise.all([
     import("@/lib/tmdb"),
