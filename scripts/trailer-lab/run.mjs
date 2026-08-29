@@ -52,6 +52,9 @@ const CARDS = SHY ? [
   {key:"err150",  keys:["err150","fast3"]},
   {key:"deadend", keys:["err150b"]},
   {key:"blocked", keys:["blocked"]},
+  /* D-779: تحظر في كل محاولة — لتبقى تغطية الزر الاحتياطي قائمة
+     بعد أن صارت blocked تنجح في محاولتها الثانية. */
+  {key:"blockedAlways", keys:["blockedAlways"]},
   {key:"file",    keys:["fast5"], fileUrl:"/clip.webm"},
 ];
 
@@ -264,6 +267,9 @@ const P={
   err150: {loadMs:400,  err:150},
   err150b:{loadMs:400,  err:150},
   blocked:{loadMs:500,  frameMs:600,  dur:120, blockFirstPlay:true},
+  /* يحظر أول محاولتين (التلقائية ثم الصامتة) ويسمح بالثالثة — وهي
+     ضغطة المستخدم: النظام يمنع التشغيل الآلي ولا يمنع الإيماءة. */
+  blockedAlways:{loadMs:500, frameMs:600, dur:120, blockPlays:2},
   silent: {loadMs:400,  silent:true},
   /* D-766 — نمذجةُ iOS بأمانة: (أ) محاولةُ autoplay الذاتيّةُ لا تعمل
      إلا وإطارُه ظاهرٌ (الحصادُ يبثّ الظهورَ للأطر كلَّ ٥٠م.ث)، و(ب)
@@ -275,6 +281,7 @@ let key0=key; let p=P[key]||P.fast;
 /* mute=1 من الرابط كما يبنيه الإنتاج الآن — والافتراضُ كتمٌ كالسابق */
 let listening=false, state=-1, t=0, muted=q.get('mute')!=='0', volume=100, loaded=false;
 let blockedOnce=false;
+let blockCount=0;
 /* D-766: ظهورُ إطاري كما يبثّه الحصاد — افتراضُه مخفيّ حتى أوّل بثّ */
 let vis=false;
 let frameTimer=null, infoTimer=null, errTimer=null;
@@ -291,6 +298,7 @@ const proto=m=>{ if(listening) raw(m); };
 const info=()=>proto({event:'infoDelivery', info:{playerState:state, currentTime:t, duration:p.dur||120, muted, volume}});
 function begin(fromCmd){
   if(p.err){ clearTimeout(errTimer); errTimer=setTimeout(()=>{ proto({event:'onError', info:p.err}); lab('error',p.err); },400); return; }
+  if(p.blockPlays && blockCount < p.blockPlays){ blockCount++; proto({event:'onAutoplayBlocked'}); lab('autoplay-blocked'); return; }
   if(p.blockFirstPlay && !blockedOnce){ blockedOnce=true; proto({event:'onAutoplayBlocked'}); lab('autoplay-blocked'); return; }
   /* D-766: نمذجةُ iOS — البِكرُ لا يبدأ بأمرٍ أبداً (يُبتلع بلا حدث)،
      ومحاولتُه الذاتيّةُ لا تعمل إلا ظاهراً (المخفيُّ يُركن بصمت) */
@@ -325,7 +333,7 @@ window.addEventListener('message', e=>{
       const a=d.args&&d.args[0];
       const nk=(a&&typeof a==='object')?String(a.videoId||''):String(a||'');
       const st=(a&&typeof a==='object'&&Number(a.startSeconds))||0;
-      key0=nk; p=P[nk]||P.fast; blockedOnce=false; everPlayed=false;
+      key0=nk; p=P[nk]||P.fast; blockedOnce=false; blockCount=0; everPlayed=false;
       clearTimeout(frameTimer); clearTimeout(errTimer); t=st; state=-1; info(); lab('loaded-by-id', nk+(st?('@'+st):''));
       begin(true); /* loadVideoById يشغّل تلقائياً كالرسمية */
     }
@@ -400,6 +408,13 @@ const crop1 = await page.evaluate(()=>{const ov=document.querySelector('div[aria
 
 /* T3/T4/T5: الصوت الحقيقي بضغطة المستخدم + الكوكي بعد التحقق فقط */
 await stamp('T3-tap-sound');
+/* 🆕 **لمسةُ إظهارٍ قبل لمسة الفعل** (D-779): الأزرارُ تتوارى بعد
+   ثانيتين لا خمس، **والانتظارُ هنا ٤٫٥** — فالزرُّ مخفيٌّ حين يُضغط.
+   🔑 **وهذا ما يفعله المستخدمُ نفسُه**: لمسةٌ على السطح تُظهر (D-771،
+   لا توقف)، ثمّ لمسةٌ على الصوت. **فالاختبارُ صار أقربَ إلى الواقع لا
+   أبعدَ عنه** — وكان يعتمد على أنّ الأزرارَ ما زالت ظاهرة. */
+await page.click('[data-card="fast"] button[aria-label="play"]');
+await page.waitForTimeout(200);
 await page.click('[data-card="fast"] button[aria-label="unmute"]');
 await page.waitForTimeout(600);
 const sound = await page.evaluate(()=>({
@@ -503,6 +518,15 @@ await page.waitForTimeout(2500);
 const blockedBtn = await page.evaluate(()=>!!document.querySelector('[data-card="blocked"] button span.grid'));
 await page.click('[data-card="blocked"] button[aria-label="play"]');
 await page.waitForTimeout(2500);
+
+/* 🆕 T9b/T10 (D-779): الحظرُ المتكرّر — المحاولةُ الصامتةُ تفشل فيظهر الزرّ */
+await stamp('T9b-blockedAlways');
+await scrollToCard('blockedAlways');
+/* **أطولُ من RETRY_MS (١٥٠٠) بهامش**: الزرُّ لا يظهر قبل أن تفشل المحاولة */
+await page.waitForTimeout(2600);
+const blockedAlwaysBtn = await page.evaluate(()=>!!document.querySelector('[data-card="blockedAlways"] button span.grid'));
+await page.click('[data-card="blockedAlways"] button[aria-label="play"]');
+await page.waitForTimeout(2000);
 
 /* مزوّد الملف */
 await stamp('T-file');
@@ -621,9 +645,18 @@ add(7,'التبديل ترقيةُ احتياطٍ سبق تحميلَه (D-761)'
   const noReload=!events.some(e=>{const [a,b]=seg('T6-scroll-fast2'); return e.ev==='loaded-by-id'&&String(e.extra).startsWith('fast2')&&e.t>=a&&e.t<=b;});
   return preloaded&&noUnmuteBefore&&promoted&&noReload;})(), '');
 add(8,'مشغّلان كحدٍّ أقصى ومرئيٌّ واحدٌ فقط', frames1.length<=2 && frames2.length<=2 && frames1.filter(o=>o==='1').length===1 && frames2.filter(o=>o==='1').length===1, JSON.stringify({frames1,frames2}));
-add(9,'onAutoplayBlocked يعرض زر تشغيل', events.some(e=>e.card==='blocked'&&e.ev==='autoplay-blocked') && events.some(e=>e.card==='blocked'&&e.ev==='button'&&e.extra==='SHOWN'), 'blockedBtn@T9='+blockedBtn);
-add(10,'زر التشغيل يعمل بضغطة واحدة', inSeg('blocked','playing','T9-blocked'), '');
-const CARD_KEYS={fast:['fast'],fast2:['fast2'],slow:['slow'],err150:['err150','fast3'],deadend:['err150b'],blocked:['blocked'],file:['fast5']};
+/* ⚖️ 🆕 **العقدُ انقلب بحكم أحمد** (D-779: «بعض الأحيان في مقطع يجهز
+   ولكن مايشتغل تطلع علامة تشغيل»): **الحظرُ لم يعد يعني زرّاً فوراً** —
+   محاولةٌ صامتةٌ واحدةٌ أوّلاً (مكتومةٌ فلا تحتاج إيماءة)، **والزرُّ لمن
+   رفضه النظامُ مرّتين.** فالتأكيدُ التاسعُ صار يقيس النجاحَ لا الزرّ. */
+add(9,'الحظرُ يُعالَج بمحاولةٍ صامتةٍ فيعمل بلا زر (D-779)',
+    events.some(e=>e.card==='blocked'&&e.ev==='autoplay-blocked') &&
+    events.some(e=>e.card==='blocked'&&e.ev==='playing') && blockedBtn===false,
+    'btn@T9='+blockedBtn+' (المتوقَّع false)');
+add(10,'وإن فشلت المحاولةُ أيضاً ظهر الزرُّ وعمل بضغطةٍ واحدة',
+    blockedAlwaysBtn===true && inSeg('blockedAlways','playing','T9b-blockedAlways'),
+    'btn@T9b='+blockedAlwaysBtn);
+const CARD_KEYS={fast:['fast'],fast2:['fast2'],slow:['slow'],err150:['err150','fast3'],deadend:['err150b'],blocked:['blocked'],blockedAlways:['blockedAlways'],file:['fast5']};
 add(11,'لا شاشة سوداء (الطبقة لا تظهر قبل أول إطار)', !events.some((e)=>{ if(e.ev!=='veil'||e.extra!=='LIFTED') return false; if(e.card==='file') return false; const fam=[e.card,...(CARD_KEYS[e.card]||[])]; const played=events.some(x=>fam.includes(x.card)&&x.ev==='playing'&&x.t<=e.t+100); return !played; }), '');
 add(12,'المعطل يُستبدل بالبديل ويُحذف عند النفاد', inSeg('fast3','playing','T12-err150') && deadGone && byCard('deadend','retired').length===1, '');
 /* ⚖️ D-762: التقديمُ عاد بطلب صاحبه — شريطٌ واحدٌ على النشطة (نقضُ D-759 سابعًا) */
@@ -635,7 +668,7 @@ add(24,'قصُّ واجهة يوتيوب: إطارٌ 300% ممركزٌ (D-763)',
 add(23,'التكبيرُ يملأ الشاشةَ ويقفل التمرير ويُغلق بسلام', expOn.w===expOn.iw && expOn.lock==='hidden' && expOn.x && expOff.w<expOn.iw && expOff.lock==='', JSON.stringify({on:expOn.w+'/'+expOn.iw, off:expOff.w}));
 /* 🆕 D-764: «إذا استمر شغال ٥ ثواني المفروض هذي تختفي» — التواري
    يشمل الصوتَ والتكبيرَ والشريط، ولمسةُ الإظهار لا توقف المقطع */
-add(25,'الأزرارُ تتوارى بعد ٥ ثوانٍ واللمسةُ تُظهرها ولا توقف',
+add(25,'الأزرارُ تتوارى بعد ثانيتين واللمسةُ تُظهرها ولا توقف (D-779)',
   hide25.snd==='0' && hide25.exp==='0' && hide25.slPe==='none' && show25==='1' && !inSeg('fast','cmd:pauseVideo','T25-autohide'),
   JSON.stringify({hide25,show25}));
 /* 🆕 D-764: «تجيني علامة لودينغ الدائرية» — أثناء loading فقط، وتزول للتعثّر */
