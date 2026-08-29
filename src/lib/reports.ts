@@ -3,6 +3,7 @@ import "server-only";
 import { getFollows, getWatchWindow, type FollowRow, type HistoryRow } from "@/lib/data";
 import { browseGenreForId, browseGenreName } from "@/lib/browse";
 import type { Locale } from "@/lib/i18n";
+import { runtimeMinutes } from "@/lib/watchTime";
 
 /**
  * ============ تقاريرُ المشاهدة — أسبوعُك وشهرُك وسنتُك (D-796) ============
@@ -66,13 +67,13 @@ export interface PeriodReport {
   streak: number;
 }
 
-/** دقائقُ الصفّ — **والغائبُ يُقدَّر بمتوسّطٍ معلَن لا يُطرح صفراً** */
+/**
+ * دقائقُ الصفّ — **من `watchTime` لا من رقمٍ محلّيّ** (D-797).
+ * 🔴 **وكان هنا ٤٢ و١٠٥ بينما `/stats` تقدّر ٤٠ و١١٠** — **فقالت
+ * الصفحتان عن الصفوف نفسِها رقمين يفترقان ٦٣ ساعة.**
+ */
 function minutesOf(row: HistoryRow): number {
-  if (typeof row.runtime === "number" && row.runtime > 0) return row.runtime;
-  /* ⚠️ **التقديرُ مُعلَن**: صفوفٌ قديمةٌ سبقت تخزينَ المدّة — **وطرحُها
-     صفراً يجعل شهراً كاملاً يبدو فارغاً**، **وتقديرُها بالمتوسّط المعروف
-     (٤٢ للحلقة و١٠٥ للفيلم) يقارب ولا يدّعي.** */
-  return row.kind === "movie" ? 105 : 42;
+  return runtimeMinutes(row.kind, row.runtime);
 }
 
 /** مفتاحُ اليوم بصيغة `YYYY-MM-DD` — **بتوقيت UTC، وهو دَينٌ مُعلَن** */
