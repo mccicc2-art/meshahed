@@ -1,0 +1,332 @@
+import Link from "next/link";
+import Image from "next/image";
+import { Icon } from "@/components/Icon";
+import { posterUrl } from "@/lib/media";
+import { num, type Locale } from "@/lib/i18n";
+import { hm, clock, primeLabel } from "@/lib/statsFormat";
+import type { PeriodStats } from "@/lib/periodStats";
+
+/**
+ * ============ «تقريرك» — الوجهُ كما سلّمه أحمد (D-799) ============
+ *
+ * **الصورةُ هي المرجع** (نصُّه: «نفّذ التقرير مثل هذا بالضبط… دون إعادة
+ * تفسير التصميم») — **فالترتيبُ والمقاساتُ والألوانُ منها لا منّي.**
+ *
+ * ⚖️ **والأخضرُ والأحمرُ هنا بحكم الصورة**: كنتُ قد كتبتُ في D-796 أن
+ * **لونَ الزيادة والنقص يحكم على القارئ** — **والصورةُ تقول غيرَه،
+ * والرؤيةُ تغلب الحجّةَ حين يكون موضوعُ الحجّة هو المنظر** (D-662).
+ *
+ * 🔑 **ولا رقمَ من هنا**: كلُّه من `buildPeriodStats` — **مصدرٌ واحدٌ
+ * لهذه الصفحة وللتبويبات الأربعة** (شرطُه المكتوب)، **فلا يقول سطحان
+ * عن المدّة الواحدة رقمين** (D-797).
+ */
+
+/** ألوانُ شريط الذوق — **فئاتٌ لا تدرّج**، وأربعةٌ كما في الصورة */
+const TASTE_COLORS = ["#7C4DFF", "#3DBE6B", "#E5484D", "#6B6B6B"];
+
+export function ReportView({
+  stats,
+  locale,
+}: {
+  stats: PeriodStats;
+  locale: Locale;
+}) {
+  const ar = locale !== "en";
+  const peakBar = Math.max(1, ...stats.buckets.map((b) => b.minutes));
+  const insight = stats.taste.shift[0];
+
+  if (stats.empty) {
+    return (
+      <p className="text-sm text-muted text-center py-16 px-6 leading-relaxed">
+        {ar
+          ? "لا مشاهدات في هذه المدّة — علّم حلقةً أو فيلماً ويظهر تقريرك هنا."
+          : "Nothing watched in this period — tick an episode or a film and your report appears here."}
+      </p>
+    );
+  }
+
+  return (
+    <div className="pb-6">
+      {/* ═══ نطاقُ التاريخ ═══ */}
+      <p className="text-center text-12 tracking-[0.14em] uppercase text-muted mt-1">
+        {stats.range.label}
+      </p>
+
+      {/* ═══ الوقتُ الكبير · حلقةُ الأيّام ═══ */}
+      <div className="mt-4 flex items-start gap-4">
+        <div className="min-w-0 flex-1">
+          <p className="text-[52px] leading-[1.05] font-bold tracking-tight">
+            {hm(stats.minutes, locale)}
+          </p>
+          <p className="text-12 tracking-[0.12em] uppercase text-muted mt-1">
+            {ar ? "وقت المشاهدة" : "Watch time"}
+          </p>
+          {stats.deltaPct !== null && (
+            <p className="mt-2 flex items-center gap-1.5 text-12">
+              <Icon
+                name={stats.deltaPct >= 0 ? "trending" : "pause"}
+                size={15}
+                style={{ color: stats.deltaPct >= 0 ? "#3DBE6B" : "#E5484D" }}
+              />
+              <span
+                className="font-bold tabular-nums"
+                dir="ltr"
+                style={{ color: stats.deltaPct >= 0 ? "#3DBE6B" : "#E5484D" }}
+              >
+                {stats.deltaPct >= 0 ? "+" : ""}
+                {num(stats.deltaPct, locale)}%
+              </span>
+              <span className="text-muted">
+                {ar ? "عن المدّة السابقة" : "from last period"}
+              </span>
+            </p>
+          )}
+        </div>
+        <DaysRing active={stats.activeDays} total={stats.range.days} locale={locale} ar={ar} />
+      </div>
+
+      {/* ═══ الأعمدة ═══ */}
+      <div className="mt-6 flex items-end gap-2 sm:gap-3">
+        {stats.buckets.map((b, i) => {
+          const full = Math.round((b.minutes / peakBar) * 112);
+          const top = stats.period === "week" && b.minutes === peakBar && b.minutes > 0;
+          return (
+            <div key={`${b.label}-${i}`} className="flex-1 min-w-0 flex flex-col items-center gap-1.5">
+              <span className="text-12 text-muted tabular-nums" dir="ltr">
+                {b.minutes > 0 ? clock(b.minutes, locale) : ""}
+              </span>
+              {/* **العمودُ قامةٌ ثابتةٌ وداخلها الممتلئ** — كما في الصورة:
+                  رمادٌ غامقٌ يقول المدى، وأصفرُ يقول القيمة. */}
+              <span className="relative w-full max-w-[34px] h-[112px] flex items-end">
+                <span aria-hidden className="absolute inset-x-0 bottom-0 top-0 rounded-md bg-surface-2/70" />
+                <span
+                  aria-hidden
+                  className="relative w-full rounded-md bg-accent"
+                  style={{ height: `${Math.max(b.minutes > 0 ? 6 : 0, full)}px` }}
+                />
+              </span>
+              <span className={`text-12 truncate w-full text-center ${top ? "font-bold" : "text-muted"}`}>
+                {b.label}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* ═══ ثلاثةُ أرقام ═══ */}
+      <div className="mt-7 grid grid-cols-3 gap-2">
+        <RoundStat icon="play" value={num(stats.episodes, locale)} label={ar ? "حلقة" : "Episodes"} />
+        <RoundStat icon="film" value={num(stats.movies, locale)} label={ar ? "فيلم" : "Movies"} />
+        <RoundStat icon="check" value={num(stats.streak, locale)} label={ar ? "أيام متتالية" : "Day streak"} />
+      </div>
+
+      {/* ═══ لمحةٌ عن المدّة ═══ */}
+      <h2 className="text-20 font-bold mt-8 mb-3">
+        {ar ? "لمحة عن مدّتك" : "Your period at a glance"}
+      </h2>
+      <div className="grid grid-cols-3 gap-3">
+        <Glance
+          icon="trending"
+          label={ar ? "أكثف يوم" : "Peak day"}
+          value={stats.peak ? `${stats.peak.label} · ${hm(stats.peak.minutes, locale)}` : "—"}
+        />
+        {/* ⚠️ **ووقتُ الذروة لا يُرسم بلا ساعةٍ حقيقيّة** (D-797/D-798):
+            الصفوفُ المؤرَّخةُ رجعيّاً بلا ساعة — **وخانةٌ تقول «٩–١١ م»
+            من وسمِ نظامٍ تكذب**، **والغيابُ أصدق** (D-063). */}
+        <Glance
+          icon="clock"
+          label={ar ? "وقت الذروة" : "Prime time"}
+          value={stats.habits.primeHours ? primeLabel(stats.habits.primeHours) : "—"}
+        />
+        <Glance
+          icon="check"
+          label={ar ? "الإكمال" : "Completion"}
+          value={`${num(stats.completionPct, locale)}%`}
+        />
+      </div>
+
+      {/* ═══ أكثرُ ما شوهد ═══ */}
+      {stats.topTitles.length > 0 && (
+        <>
+          <h2 className="text-20 font-bold mt-8 mb-3">{ar ? "الأكثر مشاهدة" : "Most watched"}</h2>
+          <div className="flex gap-3">
+            {stats.topTitles.slice(0, 3).map((x, i) => (
+              <Link
+                key={x.key}
+                href={`/${x.mediaType === "tv" ? "show" : "movie"}/${x.tmdbId}`}
+                prefetch={false}
+                className={`${i === 0 ? "flex-[1.6]" : "flex-1"} min-w-0 group`}
+              >
+                <span className="relative block w-full aspect-[2/3] rounded-2xl overflow-hidden bg-surface-2">
+                  {x.poster ? (
+                    <Image
+                      src={posterUrl(x.poster, "w342")!}
+                      alt=""
+                      fill
+                      sizes="(max-width: 640px) 45vw, 240px"
+                      className="object-cover"
+                    />
+                  ) : (
+                    <span className="w-full h-full grid place-items-center text-muted" aria-hidden>
+                      <Icon name={x.mediaType === "tv" ? "tv" : "film"} size={20} />
+                    </span>
+                  )}
+                  {i === 0 && (
+                    <span className="absolute top-2 start-2 grid place-items-center w-6 h-6 rounded-md bg-accent text-[color:var(--on-accent)] text-12 font-bold">
+                      {num(1, locale)}
+                    </span>
+                  )}
+                </span>
+                <span className="block text-12 font-bold mt-2 truncate group-hover:text-accent transition-colors">
+                  {x.title}
+                </span>
+                <span className="block text-12 text-muted mt-0.5 truncate">
+                  {hm(x.minutes, locale)}
+                  {x.episodes > 0 && ` · ${num(x.episodes, locale)} ${ar ? "حلقة" : "eps"}`}
+                </span>
+              </Link>
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* ═══ ذوقُك في هذه المدّة ═══ */}
+      {!stats.taste.thin && stats.taste.genres.length > 0 && (
+        <>
+          <h2 className="text-20 font-bold mt-8 mb-3">
+            {ar ? "ذوقك في هذه المدّة" : "Your taste this period"}
+          </h2>
+          <div className="flex rounded-lg overflow-hidden h-9">
+            {stats.taste.genres.slice(0, 4).map((g, i) => (
+              <span
+                key={g.slug}
+                className="grid place-items-center text-12 font-bold text-white min-w-0"
+                style={{ flex: `${Math.max(1, g.pct)} 0 0`, background: TASTE_COLORS[i] }}
+              >
+                {g.pct >= 10 ? `${num(g.pct, locale)}%` : ""}
+              </span>
+            ))}
+          </div>
+          <div className="flex mt-1.5">
+            {stats.taste.genres.slice(0, 4).map((g) => (
+              <span
+                key={g.slug}
+                className="text-12 text-muted text-center truncate min-w-0"
+                style={{ flex: `${Math.max(1, g.pct)} 0 0` }}
+              >
+                {g.name}
+              </span>
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* ═══ سطرُ الاستنتاج — **ولا يُكتب بلا حركةٍ تُقاس** ═══ */}
+      {insight && (
+        <p className="mt-4 flex items-start gap-2 text-12 leading-relaxed">
+          <Icon name="sparkles" size={16} className="text-accent shrink-0 mt-0.5" />
+          <span>
+            {ar
+              ? `${insight.delta > 0 ? "زادت" : "قلّت"} مشاهدتُك لـ«${insight.label}» بمقدار ${num(Math.abs(insight.delta), locale)} نقطة عن المدّة السابقة.`
+              : `You watched ${insight.delta > 0 ? "more" : "less"} ${insight.label} this period — ${num(Math.abs(insight.delta), locale)} points ${insight.delta > 0 ? "up" : "down"}.`}
+          </span>
+        </p>
+      )}
+
+      {/* ═══ الإحصائيات الكاملة ═══ */}
+      <Link
+        href={`/statistics?p=${stats.period}${stats.offset ? `&o=${stats.offset}` : ""}`}
+        className="mt-7 flex items-center justify-center gap-1.5 text-14 font-bold text-muted hover:text-foreground transition"
+      >
+        {ar ? "الإحصائيات الكاملة" : "View full statistics"}
+        {/* **سهمٌ نصّيٌّ لا أيقونةٌ سابعة** — العائلةُ لا تُوسَّع لحرف */}
+        <span aria-hidden dir="ltr">›</span>
+      </Link>
+    </div>
+  );
+}
+
+/** حلقةُ «٥ / ٧ أيّام» — **قوسٌ لا شريط**، كما في الصورة */
+function DaysRing({
+  active,
+  total,
+  locale,
+  ar,
+}: {
+  active: number;
+  total: number;
+  locale: Locale;
+  ar: boolean;
+}) {
+  const r = 44;
+  const c = 2 * Math.PI * r;
+  const pct = total > 0 ? Math.min(1, active / total) : 0;
+  return (
+    <div className="relative shrink-0 w-[104px] h-[104px]">
+      <svg viewBox="0 0 104 104" className="w-full h-full -rotate-90" aria-hidden>
+        <circle cx="52" cy="52" r={r} fill="none" stroke="var(--surface-2)" strokeWidth="7" />
+        <circle
+          cx="52"
+          cy="52"
+          r={r}
+          fill="none"
+          stroke="var(--accent)"
+          strokeWidth="7"
+          strokeLinecap="round"
+          strokeDasharray={`${c * pct} ${c}`}
+        />
+      </svg>
+      <span className="absolute inset-0 grid place-items-center text-center">
+        <span>
+          <span className="block leading-none" dir="ltr">
+            <span className="text-[26px] font-bold tabular-nums">{num(active, locale)}</span>
+            <span className="text-15 text-muted"> / {num(total, locale)}</span>
+          </span>
+          <span className="block text-12 text-muted mt-1">{ar ? "أيام" : "days"}</span>
+        </span>
+      </span>
+    </div>
+  );
+}
+
+/** خانةُ رقمٍ برمزٍ مطوَّق — الصفُّ الثلاثيُّ في الصورة */
+function RoundStat({
+  icon,
+  value,
+  label,
+}: {
+  icon: "play" | "film" | "check";
+  value: string;
+  label: string;
+}) {
+  return (
+    <div className="flex items-center gap-2.5 min-w-0">
+      <span className="grid place-items-center w-9 h-9 rounded-full border border-accent/60 text-accent shrink-0">
+        <Icon name={icon} size={17} />
+      </span>
+      <span className="min-w-0">
+        <span className="block text-20 font-bold leading-none tabular-nums">{value}</span>
+        <span className="block text-12 text-muted mt-1 truncate">{label}</span>
+      </span>
+    </div>
+  );
+}
+
+/** خانةُ «لمحة» — رمزٌ فوق سطرين */
+function Glance({
+  icon,
+  label,
+  value,
+}: {
+  icon: "trending" | "clock" | "check";
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="min-w-0">
+      <Icon name={icon} size={17} className="text-accent" />
+      <p className="text-12 text-muted mt-1.5">{label}</p>
+      <p className="text-12 font-bold mt-0.5 leading-snug break-words">{value}</p>
+    </div>
+  );
+}
