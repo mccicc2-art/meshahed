@@ -1565,6 +1565,102 @@ export async function setSeasonWatched(input: {
   revalidatePath(`/show/${input.showTmdbId}`);
 }
 
+/**
+ * 🆕 **تأريخُ مشاهدةٍ رجعيٌّ لمواسمَ عُلّمت للتوّ** (D-798، حكمُ أحمد).
+ *
+ * 🔴 **العطلُ الذي يغلقه**: **Loopz يعرف لحظةَ التعليم لا لحظةَ
+ * المشاهدة** — **فمن نقل مكتبتَه دفعةً واحدةً رأى ألفَ حلقةٍ في يومٍ
+ * واحدٍ في تقريره** (D-797: «٨٤٢ ساعةً في يومٍ من أربعٍ وعشرين»).
+ * **وهذه الدالّةُ تعطي كلَّ حلقةٍ تاريخَ عرضها الأصليَّ** فيصير التقريرُ
+ * تقريرَ مشاهدةٍ بحقّ.
+ *
+ * ⚖️ **والتواريخُ تُقرأ في الخادم لا تُرسَل من المتصفّح**: المواسمُ
+ * السابقةُ لا تكون محمّلةً عند القارئ أصلاً (`airedUpTo` تصطنع أرقامَها
+ * بلا تواريخ) — **ومتصفّحٌ يُسأل عمّا لا يملك يجيب بالتخمين.**
+ * **والخادمُ يملك TMDB وخبيئتَه**، فنداءُ موسمٍ مخبَّأٌ ساعةً.
+ *
+ * ⚡ **وكتابةٌ واحدةٌ لا ألفٌ**: `upsert` على المفتاح الفريد نفسِه —
+ * **وتحديثُ صفٍّ صفٍّ كان ألفَ رحلةِ شبكةٍ لفعلٍ واحد.** **والمدّةُ
+ * تُقرأ وتُعاد كما هي** فلا يمحوها التحديث.
+ *
+ * ⚠️ **وثلاثةُ حرّاسٍ على التاريخ**: **لا مستقبلَ** (حلقةٌ لم تُعرض بعد
+ * تبقى بيومها)، **ولا ما قبل ١٩٠٠** (تاريخٌ فاسدٌ في المصدر)، **ومنتصفُ
+ * النهار لا منتصفُ الليل** — **فلا ينزلق اليومُ إلى سابقه في منطقةٍ
+ * زمنيّةٍ شرقيّة.**
+ */
+export async function backdateSeasonWatches(input: {
+  showTmdbId: number;
+  seasons: number[];
+}): Promise<{ updated: number }> {
+  const showTmdbId = intId(input.showTmdbId);
+  const seasons = [...new Set((input.seasons ?? []).slice(0, 60).map((n) => intIn(n, 0, 1000)))];
+  if (!seasons.length) return { updated: 0 };
+
+  const { supabase, user } = await requireUser("ep", 30, 60_000);
+
+  const { data: rows, error } = await supabase
+    .from("watched_episodes")
+    .select("season_number, episode_number, runtime")
+    .eq("user_id", user.id)
+    .eq("show_tmdb_id", showTmdbId)
+    .in("season_number", seasons);
+  if (error) fail(error);
+  if (!rows?.length) return { updated: 0 };
+
+  const { getSeason } = await import("@/lib/tmdb");
+  const airOf = new Map<string, string>();
+  await Promise.all(
+    seasons.map(async (s) => {
+      try {
+        const detail = await getSeason(showTmdbId, s);
+        for (const e of detail.episodes ?? []) {
+          if (e.air_date) airOf.set(`${s}-${e.episode_number}`, e.air_date);
+        }
+      } catch {
+        /* **موسمٌ سقط نداؤه يبقى بتاريخ يومه** — ولا يُخترع له تاريخ (D-063) */
+      }
+    }),
+  );
+
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const payload: {
+    user_id: string;
+    show_tmdb_id: number;
+    season_number: number;
+    episode_number: number;
+    runtime: number | null;
+    watched_at: string;
+  }[] = [];
+  for (const r of rows as { season_number: number; episode_number: number; runtime: number | null }[]) {
+    const air = airOf.get(`${r.season_number}-${r.episode_number}`);
+    if (!air || air > todayIso || air < "1900-01-01") continue;
+    payload.push({
+      user_id: user.id,
+      show_tmdb_id: showTmdbId,
+      season_number: r.season_number,
+      episode_number: r.episode_number,
+      runtime: r.runtime,
+      watched_at: `${air}T12:00:00Z`,
+    });
+  }
+  if (!payload.length) return { updated: 0 };
+
+  for (let i = 0; i < payload.length; i += 1000) {
+    const { error: writeError } = await supabase
+      .from("watched_episodes")
+      .upsert(payload.slice(i, i + 1000), {
+        onConflict: "user_id,show_tmdb_id,season_number,episode_number",
+      });
+    if (writeError) fail(writeError);
+  }
+
+  revalidatePath("/");
+  revalidatePath("/stats");
+  revalidatePath("/reports");
+  revalidatePath(`/show/${showTmdbId}`);
+  return { updated: payload.length };
+}
+
 export async function toggleMovieWatched(input: {
   movieTmdbId: number;
   runtime: number | null;

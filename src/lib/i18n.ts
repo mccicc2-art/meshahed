@@ -1874,6 +1874,23 @@ const ar = {
     "التصفّح مفتوح للجميع — والمتابعة والتقييم والردود لأصحاب الحسابات.",
   /* 🆕 **Loopz+** (D-633، حكمُ أحمد): البلس زينةٌ وتنسيقٌ لا وظيفة —
      ولذلك نصُّ البوّابة يقول ما تكسبه، لا ما مُنعتَ منه. */
+  /* 🆕 **سؤالُ تاريخ المشاهدة عند تأشير موسمٍ كامل** (D-798، حكمُ أحمد:
+     «أيّ شخص يؤشّر على موسم كامل يجيه سؤال بسيط بخيارات… المهم ما يطلع
+     إلّا للي يحدّد موسماً كاملاً أو عدّة مواسم»).
+     🔑 **ولمَ مفرداتُ قاموسٍ لا نصٌّ في المكوّن**: **ورقةٌ تظهر في أكثر
+     الأفعال تكراراً ليست محتوىً تحريريّاً** — وهي واجهةٌ تُترجَم كأخواتها.
+     ⚖️ **والسؤالُ بعد الفعل لا قبله**: **التأشيرُ يقع فوراً** وهو ما جاء
+     القارئُ لأجله، **والورقةُ تصحّح التاريخَ ولا تحجز الفعل** — **وسؤالٌ
+     يقف بين الإصبع ونتيجته يُقرأ عقبةً لا خدمة** (D-217). */
+  seasonWhenTitle: "متى شاهدتَ هذا الموسم؟",
+  seasonWhenTitleMany: "متى شاهدتَ هذه المواسم؟",
+  seasonWhenHint:
+    "علّمناها بتاريخ اليوم. والتاريخ يظهر في سجلّك وتقاريرك أنت وحدك — لا يراه غيرك.",
+  seasonWhenAired: "شاهدتها وقت نزولها",
+  seasonWhenAiredHint: "نضع لكلّ حلقة تاريخ عرضها الأصلي",
+  seasonWhenNow: "شاهدتها الآن",
+  seasonWhenNowHint: "نبقيها بتاريخ اليوم",
+  seasonWhenDone: "ضُبطت تواريخ المشاهدة",
   plusName: "Loopz+",
   plusGateTitle: "هذي من مزايا Loopz+",
   plusGateHint:
@@ -3380,6 +3397,15 @@ const en: Dict = {
   loginGateTitle: "Sign in to continue",
   loginGateHint:
     "Browsing is open to everyone — following, rating and replies need an account.",
+  seasonWhenTitle: "When did you watch this season?",
+  seasonWhenTitleMany: "When did you watch these seasons?",
+  seasonWhenHint:
+    "We marked them with today's date. That date shows in your own diary and reports only — nobody else sees it.",
+  seasonWhenAired: "I watched them as they aired",
+  seasonWhenAiredHint: "We give each episode its original air date",
+  seasonWhenNow: "I watched them now",
+  seasonWhenNowHint: "We keep today's date",
+  seasonWhenDone: "Watch dates set",
   plusName: "Loopz+",
   plusGateTitle: "This is a Loopz+ feature",
   plusGateHint:
