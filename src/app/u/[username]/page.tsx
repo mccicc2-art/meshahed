@@ -32,7 +32,7 @@ import { PosterGrid } from "@/components/PosterGrid";
 import { ProfileStatSheet } from "@/components/ProfileStatSheet";
 import { PosterRail, RailItem } from "@/components/PosterRail";
 import { FollowUserButton } from "@/components/FollowUserButton";
-import { AccountBadges } from "@/components/AccountBadges";
+import { AccountBadges } from "@/components/AccountIdentity";
 import { ProfileMenu } from "@/components/ProfileMenu";
 import { isLoopz } from "@/lib/loopz";
 import { BackButton } from "@/components/BackButton";
@@ -1066,7 +1066,7 @@ export default async function PublicProfilePage({
                 {/* 🆕 **شارةُ Loopz+ بجانب الاسم** (D-633، بحكمه) —
                     **خارجَ `truncate`**: اسمٌ طويلٌ يُقصّ ولا تُقصّ معه
                     الشارة، **وشارةٌ تختفي بطول اسمٍ ليست شارة.** */}
-                <AccountBadges profile={profile} locale={locale} size={16} />
+                <AccountBadges profile={profile} t={t} />
               </div>
               {!isMe && (
                 <span className="shrink-0">
@@ -1131,6 +1131,7 @@ export default async function PublicProfilePage({
                     close: t.closeLabel,
                     empty: t.followListEmpty,
                     anonymous: t.anonymousUser,
+                    badges: t,
                   }}
                 />
                 <FollowCountButton
@@ -1145,6 +1146,7 @@ export default async function PublicProfilePage({
                     close: t.closeLabel,
                     empty: t.followListEmpty,
                     anonymous: t.anonymousUser,
+                    badges: t,
                   }}
                 />
               </span>
