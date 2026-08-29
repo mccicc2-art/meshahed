@@ -406,7 +406,7 @@ async function FriendsTab({ t, locale, all }: { t: Dict; locale: Locale; all: bo
 function TermsCard({ t }: { t: Dict }) {
   return (
     <SettingsGroup label={t.prtTermsTitle}>
-      {[t.prtTerm15, t.prtTermDirect, t.prtTermHold, t.prtTermMin, t.prtTermNature].map(
+      {[t.prtTermRate, t.prtTermDirect, t.prtTermHold, t.prtTermMin, t.prtTermNature].map(
         (line) => (
           <p key={line} className="flex items-center gap-2.5 p-3.5 text-14 leading-relaxed">
             <Icon name="shield" size={15} className="shrink-0 text-accent" />
@@ -507,10 +507,10 @@ async function PartnersTab({
           ))}
         </div>
 
-        {/* عمولتك — ١٥٪ وثلاثُ رقائقِ شروطٍ مصغّرة كنموذجه */}
+        {/* عمولتك — ٢٥٪ (D-781) وثلاثُ رقائقِ شروطٍ مصغّرة كنموذجه */}
         <div className={`${settingsCard} p-4`}>
           <h2 className="text-15 font-bold">{t.prtCommTitle}</h2>
-          <p className="mt-1 text-3xl font-extrabold text-accent">{t.prtVal15}</p>
+          <p className="mt-1 text-3xl font-extrabold text-accent">{t.prtValRate}</p>
           <p className="mt-1 text-14 text-muted">{t.prtCommBody}</p>
           <div className="mt-3.5 flex items-center divide-x divide-[color:var(--divider)] rtl:divide-x-reverse">
             {(
@@ -668,12 +668,17 @@ async function PartnersTab({
         </Link>
       </div>
 
-      {/* ١٥٪ · ٣ · ١٠٠ ريال — القيمُ بلون الهوية كنموذجه */}
+      {/* ⚖️ 🆕 **٢٥٪ · دائمة · ١٠٠ ريال** (D-781، حكمُ أحمد: «خليها
+          ٢٥٪ كل الدفعات وليس أول ٣ أشهر فقط»).
+          🔴 **والخانةُ الوسطى لم تُفرَّغ بل بُدِّلت**: كانت «٣ · أول
+          دفعات» — **وهي سقفُ العرض** — **فلمّا سقط السقفُ صار تركُها
+          فراغاً وحذفُها يترك شبكةً بثلثين.** **وما كان قيداً صار
+          الميزةَ نفسَها**: «دائمة». */}
       <div className={`${settingsCard} grid grid-cols-3 divide-x divide-[color:var(--divider)] rtl:divide-x-reverse text-center`}>
         {(
           [
-            [t.prtVal15, t.prtStatCommission],
-            [t.prtVal3, t.prtStatPayments],
+            [t.prtValRate, t.prtStatCommission],
+            [t.prtValLifetime, t.prtStatPeriod],
             [t.prtValMin, t.prtStatMin],
           ] as const
         ).map(([v, label]) => (
