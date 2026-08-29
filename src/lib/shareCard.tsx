@@ -271,18 +271,37 @@ export function ShareCard(d: ShareCardData) {
             {/* ⚠️ **والشفافيّةُ والرماديُّ على الصورة لا على غلافها**:
                 `<img>` داخل غلافٍ يحمل `filter` لا يُرسم أصلاً في satori
                 (قِيس) — **والمُرشِّحُ يُوضع حيث تُرسم البكسلات.** */}
+            {/* 🔴 🆕 **والبطاقةُ كانت حكمين وراء الصفحة** (D-794):
+                **D-724 أسقطت الرماديَّ ورفعت الشفافيّة إلى ٢٠٪ بحكمه**
+                («الكارت الي تحت ما فيه حياة أبيض وأسود — ضيف فيه
+                ألوان»)، **وD-788 أضافت حجابَ العتمة** — **وبقيت هذه
+                رماديّةً عند ١٥٪ لأن أحداً لم يفتح البطاقةَ بعدهما.**
+                🔑 **والدرسُ**: **سطحٌ لا يُنظر إليه لا تصله الأحكام** —
+                **ومن غيّر مظهراً فليعدّ أسطحَه لا صفحتَه.** */}
             <img
               src={src}
               style={{
                 width: "100%",
                 height: "100%",
                 objectFit: "cover",
-                opacity: 0.15,
-                filter: "grayscale(1)",
+                opacity: 0.2,
+                filter: "saturate(1.5)",
               }}
             />
           </div>
         ))}
+        {/* **حجابُ العتمة كما في الصفحة** (D-788): **ينزل بالإضاءة
+            ويترك الصبغة** — ولا يُخفَّض اللونُ ثانيةً من بابٍ آخر. */}
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            background: "rgba(0,0,0,0.35)",
+          }}
+        />
       </div>
     );
 
@@ -517,9 +536,9 @@ export function ShareCard(d: ShareCardData) {
               {(rtl ? [...d.themes].reverse() : d.themes).map((th, i) => (
                 <div key={th} style={{ display: "flex", flexDirection: row, alignItems: "center", gap: 18 }}>
                   {i > 0 ? (
-                    <div style={{ width: 7, height: 7, borderRadius: 4, background: "rgba(255,212,0,0.5)" }} />
+                    <div style={{ width: 7, height: 7, borderRadius: 4, background: "rgba(247,247,247,0.4)" }} />
                   ) : null}
-                  <Line text={th} size={30} color={ACCENT} shadow={false} />
+                  <Line text={th} size={30} color={FG} shadow={false} />
                 </div>
               ))}
             </div>
@@ -550,7 +569,7 @@ export function ShareCard(d: ShareCardData) {
                     >
                       <CellArt images={cell.images} />
                       <div style={{ display: "flex", flexDirection: row, alignItems: "center", gap: 10 }}>
-                        <Line text={cell.title} size={26} color={MUTED} shadow={false} />
+                        <Line text={cell.title} size={26} color={FG} shadow={false} />
                         {cell.note ? <Line text={`· ${cell.note}`} size={26} color={ACCENT} shadow={false} /> : null}
                       </div>
                       {cell.rows.map((r) => (
