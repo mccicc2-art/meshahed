@@ -91,3 +91,34 @@ export const FREE_THEMES: readonly string[] = ["amber", "daylight"] as const;
 export function themeNeedsPlus(themeId: string): boolean {
   return !FREE_THEMES.includes(themeId);
 }
+
+/**
+ * 🆕 **اسمُ الخطّة كما يُقرأ** (D-780).
+ *
+ * ⚠️ **ولمَ هنا لا في كلِّ صفحة**: كان صفُّ «الاشتراك والفوترة» في
+ * الفهرس وفي «الحساب» **مسمَّراً على `setPlanFree` نصّاً ثابتاً** —
+ * **فمشتركٌ يرى شارةَ PLUS فوق رأسه وسطراً تحته يقول «Loopz مجّاني»**،
+ * **وسطحان يقولان عن الحقيقة الواحدة قولين متناقضين** (D-217). **وهو
+ * الكذبُ نفسُه الذي أخرجه D-633 من صفحة الفوترة وحدَها** — **وأصلحُ
+ * بابٍ لا ينفع إن كذب مقبضُه.**
+ *
+ * **والاسمُ يُشتقّ مرّةً واحدةً من الحكم الواحد**: من يضيف طبقةً ثالثةً
+ * غداً يبدّل هذه الدالّة، **لا ثلاثةَ تعابيرَ متطابقةٍ في ثلاث صفحات**
+ * (القاعدة ٦).
+ *
+ * **والترتيبُ رتبةٌ لا خطّة**: الشريكُ أندرُ من المؤسِّس، والمؤسِّسُ
+ * أندرُ من المشترك — **والأندرُ أصدقُ بصاحبه** (نصُّ D-633).
+ */
+export type PlanLabels = {
+  plusName: string;
+  partnerBadge: string;
+  founderBadge: string;
+  setPlanFree: string;
+};
+
+export function planNameOf(p: PlanBearer | null | undefined, t: PlanLabels): string {
+  if (isPartner(p)) return t.partnerBadge;
+  if (isFounder(p) && isPlus(p)) return t.founderBadge;
+  if (isPlus(p)) return t.plusName;
+  return t.setPlanFree;
+}
