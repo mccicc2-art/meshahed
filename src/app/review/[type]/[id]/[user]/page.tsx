@@ -16,6 +16,7 @@ import { displayWorkTitle } from "@/lib/wikidata";
 import { commentViewKey } from "@/lib/postKeys";
 import { dirOf } from "@/lib/dir";
 import { getT } from "@/lib/locale";
+import { AccountBadges } from "@/components/AccountIdentity";
 import { Avatar } from "@/components/Avatar";
 import { SpoilerText } from "@/components/SpoilerText";
 import { LikeButton } from "@/components/LikeButton";
@@ -192,19 +193,25 @@ export default async function ReviewPage({
             />
           )}
           <div className="min-w-0 flex-1">
-            {whoHref ? (
-              <Link
-                href={whoHref}
-                prefetch={false}
-                className="block min-w-0 truncate font-bold text-15 leading-tight hover:text-accent transition"
-              >
-                <bdi>{who}</bdi>
-              </Link>
-            ) : (
-              <p className="min-w-0 truncate font-bold text-15 leading-tight">
-                <bdi>{who}</bdi>
-              </p>
-            )}
+            {/* 🆕 **والغلافُ واحدٌ للحالتين** (D-773ب): من له بابٌ ومن لا
+                بابَ له يقفان في صفٍّ واحد، **والشارةُ خارج الرابط** فلا
+                رابطَ داخل رابط. */}
+            <span className="flex items-center min-w-0" style={{ gap: 4 }}>
+              {whoHref ? (
+                <Link
+                  href={whoHref}
+                  prefetch={false}
+                  className="block min-w-0 truncate font-bold text-15 leading-tight hover:text-accent transition"
+                >
+                  <bdi>{who}</bdi>
+                </Link>
+              ) : (
+                <span className="min-w-0 truncate font-bold text-15 leading-tight">
+                  <bdi>{who}</bdi>
+                </span>
+              )}
+              {r.hide_name ? null : <AccountBadges profile={r} t={t} />}
+            </span>
             {/* **اسمُ العمل وتقييمُه في سطرٍ واحد** — نفسُ سطر خطّ النشاط
                 حرفاً (D-228)، **فمن ضغط الصفَّ يجد ما ضغطه.** */}
             <div className="mt-0.5 flex items-center gap-1.5">
