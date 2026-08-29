@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { ImageResponse } from "next/og";
+import { isFounder, isPartner, isPlus, isVerified } from "@/lib/plan";
 import {
   getUser,
   getProfile,
@@ -245,6 +246,12 @@ export async function GET() {
         strip={strip}
         posters={posters}
         avatar={avatar}
+        /* 🆕 **وهويّتُه تخرج معه** (D-792): **القرصُ والختمُ من الحكم
+           الواحد في `plan.ts`** (D-145) — **ومجّانيٌّ غيرُ موثَّقٍ لا
+           يحمل شيئاً**، وهو الصدق. */
+        tier={isPartner(profile) ? "partner" : isPlus(profile) ? "plus" : null}
+        founder={isFounder(profile)}
+        verified={isVerified(profile)}
         tasteTitle={taste ? t.analysisTaste : null}
         themesLabel={t.tasteThemes}
         themes={taste?.themes ?? []}
