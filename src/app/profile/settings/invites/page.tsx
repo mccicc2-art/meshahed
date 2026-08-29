@@ -15,6 +15,7 @@ import { siteUrl } from "@/lib/site";
 import { num, type Dict, type Locale } from "@/lib/i18n";
 import { timeAgo, formatDate } from "@/lib/when";
 import { displayNameOf } from "@/lib/people";
+import { AccountBadges } from "@/components/AccountIdentity";
 import { Avatar } from "@/components/Avatar";
 import { Icon } from "@/components/Icon";
 import { buttonClass } from "@/components/ui/Button";
@@ -298,16 +299,48 @@ async function FriendsTab({ t, locale, all }: { t: Dict; locale: Locale; all: bo
             {shown.map((r) => {
               const name = displayNameOf(r.person, t.anonymousUser);
               const username = r.person?.hide_name ? null : r.person?.username ?? null;
-              const inner = (
-                <>
-                  <Avatar
-                    src={r.person?.hide_name ? null : r.person?.avatar_url ?? null}
-                    name={name}
-                    size={40}
-                    alt=""
-                  />
+              /* 🆕 **والشارةُ لا تدخل الباب** (D-773ب): كان الصفُّ كلُّه
+                 رابطاً واحداً، **ورابطٌ داخل رابطٍ ترميزٌ باطل** — فصار
+                 **باباً للوجه وباباً للاسم** (عُرفُ D-281 نفسُه في
+                 `PersonRow`)، **والتظليلُ انتقل إلى الصفّ** فلا شيءَ
+                 يتغيّر في العين. */
+              const rowClass = "flex items-center gap-3 p-3.5";
+              const door = (children: React.ReactNode, cls: string) =>
+                username ? (
+                  <Link href={`/u/${username}`} className={cls}>
+                    {children}
+                  </Link>
+                ) : (
+                  <span className={cls}>{children}</span>
+                );
+              return (
+                <li
+                  key={r.id}
+                  className={
+                    username
+                      ? `${rowClass} transition hover:bg-surface-2 active:opacity-80`
+                      : rowClass
+                  }
+                >
+                  {door(
+                    <Avatar
+                      src={r.person?.hide_name ? null : r.person?.avatar_url ?? null}
+                      name={name}
+                      size={40}
+                      alt=""
+                    />,
+                    "shrink-0",
+                  )}
                   <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-semibold truncate">{name}</span>
+                    <span className="flex items-center min-w-0" style={{ gap: 4 }}>
+                      {door(
+                        <span className="block truncate text-sm font-semibold">{name}</span>,
+                        "min-w-0",
+                      )}
+                      {r.person?.hide_name ? null : (
+                        <AccountBadges profile={r.person} t={t} />
+                      )}
+                    </span>
                     <span className="block text-12 text-muted truncate">
                       {timeAgo(r.joinedAt, t)}
                     </span>
@@ -317,21 +350,6 @@ async function FriendsTab({ t, locale, all }: { t: Dict; locale: Locale; all: bo
                   >
                     {statusLabel(r.status, t)}
                   </span>
-                </>
-              );
-              const rowClass = "flex items-center gap-3 p-3.5";
-              return (
-                <li key={r.id}>
-                  {username ? (
-                    <Link
-                      href={`/u/${username}`}
-                      className={`${rowClass} transition hover:bg-surface-2 active:opacity-80`}
-                    >
-                      {inner}
-                    </Link>
-                  ) : (
-                    <span className={rowClass}>{inner}</span>
-                  )}
                 </li>
               );
             })}
