@@ -6,7 +6,7 @@ import { getDict, type Locale } from "@/lib/i18n";
 import { siteUrl } from "@/lib/site";
 import type { MediaType } from "@/lib/media";
 import { Icon } from "./Icon";
-import { HEADER_ICON } from "./ui/controls";
+import { HEADER_ICON, coverBareControl } from "./ui/controls";
 import { BackButton } from "./BackButton";
 import { Sheet } from "./ui/Sheet";
 import { sheetMenuItem } from "./ui/controls";
@@ -111,17 +111,25 @@ export function DetailTopBar({
    * يُقرآن رتبتين مختلفتين** — **والصفُّ الواحد لغةٌ واحدة** (قاعدة ٣).
    * **والنقاطُ الثلاث عُرفٌ لا يقلّ رسوخاً عن سهم الرجوع** (D-150).
    *
-   * ⚠️ **وهدفُ اللمس ٤٤ محفوظٌ بـ`before`** كما في `BackButton` حرفاً —
-   * **المرئيُّ ٢٤ والملموسُ ٤٤** (D-281/D-033).
+   * 🔴 🆕 **والنسخةُ المحلّيّةُ سقطت — وسقوطُها إصلاحُ عطلٍ أحدثتُه**
+   * (D-778، بلاغُ أحمد بلقطةٍ محوَّطة: «هذي خلّها على سطر واحد»).
+   *
+   * **كان هنا `btn` نسخةً يدويّةً من `coverBareControl`** — والملفُّ نفسُه
+   * يعظ بألّا تُنسخ الوصفات. **وفي D-776 وحّدتُ `BackButton` و`u/[username]`
+   * على الوصفة (صندوقٌ ٤٤ حقيقيّ) ونسيتُ هذه الثالثة**، فبقيت ٢٤.
+   * **فصار في صفٍّ واحدٍ صندوقان: سهمٌ في ٤٤ ونقاطٌ في ٢٤** —
+   * **و`items-start` تحاذي الصندوقين لا الرمزين**، فنزل السهمُ عشرةَ
+   * بكسلاتٍ تحت النقاط. **وهو بعينه ما رآه أحمد.**
+   * 🔑 **والدرس: توحيدٌ يترك نسخةً واحدةً لم يوحِّد شيئاً — بل خلق فرقاً
+   * لم يكن موجوداً** (كان الصندوقان ٢٤ متساويين قبل D-776).
+   *
+   * ⚠️ **والحشوةُ نقصت بمقدار نصفِ فرق الصندوقين** (٢٠ ← ١٠): **الرمزُ
+   * يبقى حيث كان بالضبط** (٣٢px من أعلى الغلاف) — **والصندوقُ وحدَه كبر.**
    */
-  const btn =
-    "relative w-6 h-6 grid place-items-center text-white " +
-    "drop-shadow-[0_1px_4px_rgba(0,0,0,0.85)] active:scale-90 transition " +
-    "before:content-[''] before:absolute before:-inset-[10px] before:rounded-full";
 
   return (
     <>
-      <div className="absolute inset-x-0 top-0 z-20 flex items-start justify-between px-4 pt-5">
+      <div className="absolute inset-x-0 top-0 z-20 flex items-start justify-between px-2.5 pt-2.5">
         {/* 🆕 **سهمُ الرجوع بلا دائرة — في كلِّ مكان** (D-406، طلبُ أحمد
             بلقطتين: شطبَ المطوَّق وحوّط العاري: «زر الرجوع في أي مكان
             خليها مثل هذا بدون دائرة»).
@@ -140,7 +148,7 @@ export function DetailTopBar({
           onClick={() => setMenu(true)}
           aria-label={t.moreMenuTitle}
           title={t.moreMenuTitle}
-          className={btn}
+          className={coverBareControl}
         >
           <Icon name="dots" size={HEADER_ICON} strokeWidth={2.5} />
         </button>
