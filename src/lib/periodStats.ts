@@ -92,12 +92,16 @@ export function statsRange(period: StatsPeriod, offset: number, locale: Locale):
 
   let label: string;
   if (period === "week") {
-    const d = new Intl.DateTimeFormat(loc, { month: "short", day: "numeric", timeZone: "UTC" });
-    const dEnd =
-      from.getUTCMonth() === to.getUTCMonth()
-        ? new Intl.DateTimeFormat(loc, { day: "numeric", timeZone: "UTC" })
-        : d;
-    label = `${d.format(from)} – ${dEnd.format(to)}`;
+    /* 🔴 **`formatRange` لا تركيبٌ بيدي** (D-800، بعد أوّل قراءةٍ حيّة):
+       **ركّبتُ «٢٣ أغسطس – ٢٩» بالوصل فقلبها محرّكُ الاتجاهين إلى
+       «23 أغسطس – 29»** — **ومدىً يُقرأ معكوساً في العربيّة يكذب على
+       قارئه.** **و`Intl` تعرف أين يقع الشهرُ في كلِّ لغة**، فتخرج
+       «٢٣–٢٩ أغسطس» و«Aug 23 – 29» بلا شرطٍ مكتوبٍ بيدي. */
+    label = new Intl.DateTimeFormat(loc, {
+      month: "short",
+      day: "numeric",
+      timeZone: "UTC",
+    }).formatRange(from, to);
   } else if (period === "month") {
     label = new Intl.DateTimeFormat(loc, { month: "long", year: "numeric", timeZone: "UTC" }).format(from);
   } else if (period === "year") {
