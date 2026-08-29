@@ -73,6 +73,7 @@ import {
   sanitizeHomePrefs,
   applyQueueOrder,
   type HomeSection,
+  headerStatMeta,
   type HeaderStatKey,
   type HomeView,
 } from "@/lib/homePrefs";
@@ -301,77 +302,83 @@ export default async function HomePage() {
      خمسةُ ألوانِ تمييزٍ فلا يبقى للأصفر معنى «هنا الفعل».**
      **واللونُ الدلاليُّ باقٍ حيث يقول حالةً** (أخضرُ الاكتمال وأحمرُ
      الإيقاف في خيط الملصق) — **الذي سقط هو التلوينُ التزيينيّ.** */
+  /* 🆕 **الرمزُ والاسمُ من `headerStatMeta` لا مكتوبَين هنا** (D-787):
+     **كانت الخريطةُ منسوخةً بين هذا الملفّ ولوح التخصيص**، وافترقت
+     فعلاً في «حلقات» — **ومن نسخ خريطةً في ملفّين افترقت عند أوّل
+     تعديل** (القاعدة ٦). **والقيمةُ والوجهةُ تبقيان هنا**: هما بيانُ
+     الصفحة لا وصفُ الخانة. */
+  const statMeta = headerStatMeta(t);
   const allHeaderStats: Record<HeaderStatKey, HeaderStat> = {
     shows: {
       key: "shows",
-      icon: "tv",
+      icon: statMeta.shows.icon,
       value: String(rawTv.length),
-      label: t.shortShows,
+      label: statMeta.shows.label,
       href: "/library?filter=tv",
       color: "var(--accent)",
     },
     movies: {
       key: "movies",
-      icon: "film",
+      icon: statMeta.movies.icon,
       value: String(rawMovies.length),
-      label: t.shortMovies,
+      label: statMeta.movies.label,
       href: "/library?filter=movie",
       color: "var(--accent)",
     },
     towatch: {
       key: "towatch",
-      icon: "bookmark",
+      icon: statMeta.towatch.icon,
       value: String(toWatchCount),
-      label: t.libToWatch,
+      label: statMeta.towatch.label,
       href: "/library",
       color: "var(--accent)",
     },
     time: {
       key: "time",
-      icon: "clock",
+      icon: statMeta.time.icon,
       value: watchTime,
-      label: t.statWatchTime,
+      label: statMeta.time.label,
       href: "/stats",
       color: "var(--accent)",
     },
     episodes: {
       key: "episodes",
-      icon: "play",
+      icon: statMeta.episodes.icon,
       value: String(watchedEpisodeTotal),
-      label: t.shortEpisodes,
+      label: statMeta.episodes.label,
       href: "/stats",
       color: "var(--accent)",
     },
     upcoming: {
       key: "upcoming",
-      icon: "hourglass",
+      icon: statMeta.upcoming.icon,
       value: String(upcomingCount),
-      label: t.libUpcoming,
+      label: statMeta.upcoming.label,
       href: "/library",
       color: "var(--accent)",
     },
     completed: {
       key: "completed",
-      icon: "check",
+      icon: statMeta.completed.icon,
       value: String(finishedShowsCount + finishedMoviesCount),
-      label: t.libTabFinished,
+      label: statMeta.completed.label,
       href: "/library",
       color: "var(--accent)",
     },
     dropped: {
       key: "dropped",
-      icon: "card",
+      icon: statMeta.dropped.icon,
       value: String(droppedCount),
-      label: t.droppedBadge,
+      label: statMeta.dropped.label,
       href: "/library",
       color: "var(--accent)",
     },
     // خانة «تقييماتي» في بطاقة الأرقام (طلب أحمد 9 Aug)
     ratings: {
       key: "ratings",
-      icon: "star",
+      icon: statMeta.ratings.icon,
       value: String(myRatingsCount),
-      label: t.panelRatings,
+      label: statMeta.ratings.label,
       href: "/ratings",
       color: "var(--accent)",
     },
