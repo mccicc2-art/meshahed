@@ -9,6 +9,7 @@ import { dirOf } from "@/lib/dir";
 import { gifUrl } from "@/lib/media";
 import { tap } from "@/lib/haptics";
 import { bulletinLine, bulletinFacts, bulletinSpoiler } from "@/lib/bulletinLine";
+import { AccountBadges } from "../AccountIdentity";
 import { Avatar } from "../Avatar";
 import { Icon } from "../Icon";
 import { SpoilerText } from "../SpoilerText";
@@ -72,6 +73,11 @@ export type ThreadReply = {
   imagePath?: string | null;
   /** 🆕 **معرّفُ GIF لا رابطُه** (D-362) — الرابطُ يُركَّب من قالبٍ ثابت */
   gifId?: string | null;
+  /* 🆕 **وحالةُ الحساب** (D-773ب) — تُلحَق في القارئ لا تعيدها الدالّة
+     (`withIdentities`)، **واختياريّةٌ فغيابُها «بلا شارة» لا انكسار.** */
+  plan?: string | null;
+  founder?: boolean | null;
+  verified_at?: string | null;
 };
 
 /** ردٌّ محليٌّ لم يُقرأ من القاعدة بعد — **معرّفُه مؤقّتٌ فيُرسم باهتاً** */
@@ -230,8 +236,13 @@ export function ReplyItem({
           ) : (
             <Avatar src={reply.avatar_url} name={name} size={34} alt="" className="shrink-0" />
           )}
-          <span className="min-w-0 truncate font-bold text-14 leading-tight">
-            <bdi>{name}</bdi>
+          {/* 🆕 **والشارةُ تلي الاسمَ لا الوقت** (D-773ب): بينهما نقطةُ
+              فصلٍ، **ولو تأخّرت لقُرئت صفةً للوقت لا للكاتب.** */}
+          <span className="flex items-center min-w-0" style={{ gap: 4 }}>
+            <span className="min-w-0 truncate font-bold text-14 leading-tight">
+              <bdi>{name}</bdi>
+            </span>
+            {reply.hide_name ? null : <AccountBadges profile={reply} t={t} />}
           </span>
           <span aria-hidden className="shrink-0 text-muted text-12">
             ·
