@@ -17,6 +17,9 @@ import type { EpisodeTarget } from "./EpisodeRateSheet";
    الشريط السفليّ): لا تُرسم إلا بضغطةٍ، فشحنُها مع أوّل رسمةٍ ثمنٌ بلا
    قارئ — و`ssr: false` لأن لا HTML لها قبل الضغطة. */
 const EpisodeRateSheet = dynamic(() => import("./EpisodeRateSheet").then((m) => m.EpisodeRateSheet), { ssr: false });
+/* 🆕 **ورقةُ «متى شاهدتَه؟»** (D-798) — **كسولةٌ كأختها**: لا تُرسم إلّا
+   بعد تأشير موسمٍ كامل، **فشحنُها مع الصفحة ثمنٌ بلا قارئ.** */
+const SeasonDateSheet = dynamic(() => import("./SeasonDateSheet").then((m) => m.SeasonDateSheet), { ssr: false });
 import type { EpisodeRatingRow } from "@/lib/data";
 
 export interface TrackerEpisode {
@@ -101,6 +104,9 @@ export function EpisodeTracker({
   locale: Locale;
 }) {
   const t = getDict(locale);
+  /* 🆕 **مواسمُ تنتظر سؤالَ التاريخ** (D-798) — `null` = لا سؤال.
+     **والشرطُ هنا لا في الورقة**: يُملأ من مسار «الموسم كامل» وحدَه. */
+  const [askWhen, setAskWhen] = useState<number[] | null>(null);
 
   /* **رايةٌ لا حالة**: لا شيءَ يُرسم منها، **فتغييرُها لا يستحقّ رسمةً**
      — ولهذا `useRef` لا `useState` (عُرفُ `busy` في `TrailerFeed`). */
@@ -468,6 +474,16 @@ export function EpisodeTracker({
           ],
           watched: mark,
         });
+        /* 🆕 **والسؤالُ بعد الفعل** (D-798، حكمُ أحمد): **التأشيرُ وقع
+           فوراً** — والورقةُ تصحّح التاريخَ لا تحجزه. **ولا تظهر عند
+           الإزالة** (`mark`)، **ولا لحلقةٍ واحدة**: هذا مسارُ الموسم
+           الكامل وحدَه، وهو نصُّ شرطه. */
+        if (mark) {
+          const touched = [
+            ...new Set([s.season_number, ...prior.map((o) => o.season)]),
+          ].sort((a, b) => a - b);
+          setAskWhen(touched);
+        }
       } catch (e) {
         setWatched(before);
         setErr((e as Error).message);
@@ -801,6 +817,15 @@ export function EpisodeTracker({
           }
         }}
       />
+      )}
+
+      {askWhen && askWhen.length > 0 && (
+        <SeasonDateSheet
+          showTmdbId={showTmdbId}
+          seasons={askWhen}
+          locale={locale}
+          onClose={() => setAskWhen(null)}
+        />
       )}
     </div>
   );
