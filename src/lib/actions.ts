@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { cookies, headers } from "next/headers";
+import { PERSON_COLS } from "@/lib/people";
+import { withIdentities, withPersonIdentities } from "@/lib/data";
 import { createClient } from "@/lib/supabase/server";
 import { LOCALE_COOKIE, normalizeLocale } from "@/lib/i18n";
 import { REGION_COOKIE, normalizeRegion } from "@/lib/region";
@@ -1866,7 +1868,7 @@ export async function mySignals(): Promise<Signal[]> {
   const { supabase } = await requireUser();
   const { data, error } = await supabase.rpc("my_signals");
   if (error) fail(error);
-  return ((data ?? []) as {
+  const signals = ((data ?? []) as {
     kind: SignalKind;
     actor_id: string;
     nickname: string | null;
@@ -1898,6 +1900,8 @@ export async function mySignals(): Promise<Signal[]> {
     listId: r.list_id ?? null,
     listSlug: r.list_slug ?? null,
   }));
+  /* 🆕 **والشخصُ متداخلٌ هنا** (D-773ب) — فالإلحاقُ يدخل `person` نفسَه */
+  return withPersonIdentities(signals);
 }
 
 /** ختمُ «رأيتُ الجرس» — يُنادى مرّةً عند الفتح فتسقط الشارة */
@@ -1942,13 +1946,14 @@ export async function myBlocksList(): Promise<PersonLite[]> {
   const { supabase } = await requireUser();
   const { data, error } = await supabase.rpc("my_blocks");
   if (error) fail(error);
-  return ((data ?? []) as { user_id: string; username: string | null; nickname: string | null; avatar_url: string | null; hide_name: boolean | null }[]).map((r) => ({
+  const rows = ((data ?? []) as { user_id: string; username: string | null; nickname: string | null; avatar_url: string | null; hide_name: boolean | null }[]).map((r) => ({
     id: r.user_id,
     username: r.username,
     nickname: r.nickname,
     avatar_url: r.avatar_url,
     hide_name: r.hide_name,
   })) as PersonLite[];
+  return withIdentities(rows);
 }
 
 /** الإبلاغ عن حساب — كإبلاغ المراجعة: صامتٌ، مرّةٌ واحدة، سببٌ اختياريّ */
@@ -3221,7 +3226,7 @@ export async function myMutualFollows(): Promise<PersonLite[]> {
   if (!mutual.length) return [];
   const { data: people } = await supabase
     .from("public_profiles")
-    .select("id, nickname, username, avatar_url, hide_name")
+    .select(PERSON_COLS)
     .in("id", mutual);
   return (people ?? []) as PersonLite[];
 }
@@ -3350,7 +3355,8 @@ export async function peopleFollowsOf(
     dir,
   });
   if (error) return [];
-  return ((data ?? []) as PersonLite[]);
+  /* 🆕 **وحالةُ الحساب تُلحق** (D-773ب) — الدالّةُ لا تعيدها */
+  return withIdentities((data ?? []) as PersonLite[]);
 }
 
 export async function myFollowersList(): Promise<PersonLite[]> {
@@ -3364,7 +3370,7 @@ export async function myFollowersList(): Promise<PersonLite[]> {
   if (!ids.length) return [];
   const { data: people } = await supabase
     .from("public_profiles")
-    .select("id, nickname, username, avatar_url, hide_name")
+    .select(PERSON_COLS)
     .in("id", ids);
   return (people ?? []) as PersonLite[];
 }
@@ -3381,7 +3387,7 @@ export async function myFollowingList(): Promise<PersonLite[]> {
   if (!ids.length) return [];
   const { data: people } = await supabase
     .from("public_profiles")
-    .select("id, nickname, username, avatar_url, hide_name")
+    .select(PERSON_COLS)
     .in("id", ids);
   return (people ?? []) as PersonLite[];
 }
@@ -3448,7 +3454,7 @@ export async function myLibraryGrants(): Promise<PersonLite[]> {
   if (!ids.length) return [];
   const { data: people } = await supabase
     .from("public_profiles")
-    .select("id, nickname, username, avatar_url, hide_name")
+    .select(PERSON_COLS)
     .in("id", ids);
   const rank = new Map(ids.map((id, i) => [id, i]));
   return ((people ?? []) as PersonLite[]).sort(

@@ -1,7 +1,7 @@
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { decodeSessionCookie, sessionCookieParts } from "@/lib/sessionCookie";
-import type { PersonLite } from "./people";
+import { PERSON_COLS, type PersonLite } from "./people";
 import { episodeKey } from "@/lib/keys";
 import { LOOPZ_ID } from "@/lib/loopz";
 import {
@@ -146,6 +146,100 @@ export interface Profile {
      يُمنح بمراجعةٍ يدويّةٍ ولا يُشترى. والحكمُ عليه في `lib/plan.ts`
      وحدَه كأخويه (D-145). */
   verified_at?: string | null;
+}
+
+/**
+ * 🆕 **إلحاقُ حالةِ الحساب بصفوفٍ جاءت من دالّةٍ لا تعيدها** (D-773ب).
+ *
+ * ⚖️ **ولماذا نداءٌ ثانٍ لا خمسَ عشرةَ دالّةً تُعدَّل** — وهذا خلافُ
+ * حدسي الأوّل، فأكتب الحجّة كاملةً:
+ * **خمسَ عشرةَ دالّةَ `security definer` تُطعم أسماءَ التطبيق**
+ * (`title_reviews`، `following_activity_v2`، `search_people`،
+ * `people_leaderboard`…). **وإضافةُ عمودٍ إلى `returns table` لا
+ * تقبلها `create or replace`** — **تحتاج `drop function` ثمّ إنشاءً**،
+ * وذلك يُسقط المنحَ ويكسر النداءَ الحيَّ بين اللحظتين، **خمسَ عشرةَ
+ * مرّة.** **وثمنُ الصواب المعماريِّ هنا خمسَ عشرةَ نافذةَ انكسارٍ في
+ * الإنتاج، مقابل استعلامٍ واحدٍ صغيرٍ يقرأ عرضاً عامّاً.**
+ *
+ * 🔑 **والاستعلامُ ثلاثةُ أعمدةٍ لصفوفٍ معدودة**، **ومخبّأٌ لكلِّ طلب**
+ * (`cache`) — **فسطحان في صفحةٍ واحدةٍ يشتركان في نداءٍ واحدٍ إن
+ * تشابهت معرّفاتُهما**، ولا يتكرّر لكلِّ بطاقة.
+ * ⚠️ **وهذا دَينٌ معلَنٌ لا حلٌّ نهائيّ**: يومَ تُعاد كتابةُ تلك الدوالِّ
+ * لسببٍ آخر **تُضاف الأعمدةُ إليها ويسقط هذا النداء** — والدالّةُ تبقى
+ * لأنّها لا تضرّ.
+ * ⚠️ **ولا تُقرأ `plus_until` هنا**: العرضُ يحجبها ويخفض `plan` عند
+ * المصدر (الهجرة ١٥٦) — **فمن حسب الصلاحيّةَ هنا زرع حكماً ثانياً.**
+ */
+export const getIdentities = cache(
+  async (ids: readonly string[]): Promise<Map<string, IdentityFields>> => {
+    const want = [...new Set(ids.filter(Boolean))];
+    if (want.length === 0) return new Map();
+    try {
+      const supabase = await createClient();
+      const { data } = await supabase
+        .from("public_profiles")
+        .select("id, plan, founder, verified_at")
+        .in("id", want);
+      return new Map(
+        (data ?? []).map((r) => [
+          String(r.id),
+          {
+            plan: r.plan ?? null,
+            founder: r.founder ?? null,
+            verified_at: r.verified_at ?? null,
+          },
+        ]),
+      );
+    } catch {
+      /* **وغيابُها «بلا شارة» لا انكسار** — السطرُ يُرسم كما كان */
+      return new Map();
+    }
+  },
+);
+
+export interface IdentityFields {
+  plan?: string | null;
+  founder?: boolean | null;
+  verified_at?: string | null;
+}
+
+/**
+ * **يُلحق الحالةَ بصفوفٍ تحمل `id`** — نداءٌ واحدٌ للدفعة كلِّها.
+ * **والمعرّفُ هو معرّفُ صاحبِ السطر** (في `ReviewReply` وأخواتها `id`
+ * هو معرّفُ الكاتب لا معرّفُ الردّ — D-…، فانتبه عند التوسعة).
+ */
+export async function withIdentities<T extends { id: string }>(rows: T[]): Promise<T[]> {
+  return withIdentitiesOn(rows, (r) => r.id);
+}
+
+/**
+ * **والصفوفُ التي لا تسمّي صاحبَها `id`** — `TalkPost` و`NewsReply`
+ * تسمّيانه `authorId` **لأنّ `id` عندهما معرّفُ المنشور** — فتُعطي
+ * مفتاحَها بيدها. **ولا نسخةَ ثانيةٌ من المنطق**: الأولى تنادي هذه.
+ */
+/**
+ * **والشخصُ متداخلاً** — صفُّ الخطّ يحمل `person` لا يكون هو الشخصَ.
+ * ⚠️ **والإلحاقُ يدخل `person` نفسَه لا الصفَّ**: **حقلٌ يُلصق بالغلاف
+ * لا يصل المكوّنَ الذي يرسم الاسمَ** — وهذا ما وقع في أوّل محاولة.
+ */
+export async function withPersonIdentities<T extends { person: { id: string } | null }>(
+  rows: T[],
+): Promise<T[]> {
+  if (rows.length === 0) return rows;
+  const map = await getIdentities(rows.map((r) => r.person?.id ?? ""));
+  return rows.map((r) => {
+    const f = r.person ? map.get(r.person.id) : undefined;
+    return f ? { ...r, person: { ...r.person, ...f } } : r;
+  });
+}
+
+export async function withIdentitiesOn<T>(rows: T[], idOf: (r: T) => string): Promise<T[]> {
+  if (rows.length === 0) return rows;
+  const map = await getIdentities(rows.map(idOf));
+  return rows.map((r) => {
+    const f = map.get(idOf(r));
+    return f ? { ...r, ...f } : r;
+  });
 }
 
 /** الملف الشخصي — يُقرأ في التخطيط والشريط العلوي والصفحة، فيُخزَّن لكل طلب */
@@ -1473,7 +1567,10 @@ export async function getCommunityFeed(
       if (l.liked_by_me) mine.add(k);
     }
 
-    return rows.map((r) => {
+    /* 🆕 **وحالةُ الحساب تُلحق بالشخصِ المتداخل** (D-773ب): `person`
+       كائنٌ مبنيٌّ هنا، **فالإلحاقُ بعد البناء لا داخله** — ونداءٌ واحدٌ
+       لكلِّ الخطّ لا لكلِّ سطر. */
+    const built = rows.map((r) => {
       /* **النوعُ من الصفّ لا من العمود وحدَه**: صفُّ القائمة يأتي من
          `community_activity` بلا عمود `kind` (شكلُها القديم يُطبَّع إلى
          `rate` هنا منذ D-123)، **فحضورُ `list_id` هو ما يسمّيه.** */
@@ -1520,6 +1617,7 @@ export async function getCommunityFeed(
         listCover: r.list_cover ?? null,
       };
     });
+    return withPersonIdentities(built);
   } catch {
     return [];
   }
@@ -1802,7 +1900,7 @@ export async function getConversations(): Promise<Conversation[]> {
         : Promise.resolve({ data: [] }),
       supabase
         .from("public_profiles")
-        .select("id, nickname, username, avatar_url, hide_name")
+        .select(PERSON_COLS)
         .in("id", [...ids]),
     ]);
     type ReplyRow = {
@@ -1991,7 +2089,7 @@ export async function getMyInviteList(): Promise<InviteEntry[]> {
     const rows = data as Row[];
     const { data: people } = await supabase
       .from("public_profiles")
-      .select("id, nickname, username, avatar_url, hide_name")
+      .select(PERSON_COLS)
       .in(
         "id",
         rows.map((r) => r.person),
@@ -2134,7 +2232,7 @@ export async function getAdminPartnerApplications(): Promise<
     const rows = data as Row[];
     const { data: people } = await supabase
       .from("public_profiles")
-      .select("id, nickname, username, avatar_url, hide_name")
+      .select(PERSON_COLS)
       .in(
         "id",
         rows.map((r) => r.user_id),
@@ -2332,7 +2430,7 @@ export async function getIncomingFollowRequests(): Promise<PersonLite[]> {
     if (!rows?.length) return [];
     const { data: people } = await supabase
       .from("public_profiles")
-      .select("id, nickname, username, avatar_url, hide_name")
+      .select(PERSON_COLS)
       .in(
         "id",
         rows.map((r) => r.requester_id),
@@ -2551,7 +2649,7 @@ export async function searchPeople(q: string): Promise<PersonLite[]> {
     const supabase = await createClient();
     const { data, error } = await supabase.rpc("search_people", { q: term });
     if (error || !data) return [];
-    return data as PersonLite[];
+    return withIdentities(data as PersonLite[]);
   } catch {
     return [];
   }
@@ -2688,7 +2786,7 @@ export async function getPeopleToFollow(
       want,
     });
     if (error || !data) return [];
-    return data as SuggestedPerson[];
+    return withIdentities(data as SuggestedPerson[]);
   } catch {
     return [];
   }
@@ -2743,7 +2841,10 @@ export async function getPeopleLeaderboard(
       p_limit: limit,
     });
     if (error || !data) return [];
-    return (
+    /* 🆕 **وحالةُ الحساب تُلحق هنا** (D-773ب) — الدالّةُ لا تعيدها،
+       **ونداءٌ واحدٌ للدفعة كلِّها** لا لكلِّ سطر (انظر `getIdentities`). */
+    return withIdentities(
+      (
       data as {
         user_id: string;
         nickname: string | null;
@@ -2766,7 +2867,7 @@ export async function getPeopleLeaderboard(
       /* ⚖️ **وسقط `likes_in`** (D-312، الهجرة ٩٧) — بلا قارئٍ منذ D-285 */
       total: Number(r.total ?? 0),
       prevTotal: Number(r.prev_total ?? 0),
-    }));
+    })));
   } catch {
     return [];
   }
@@ -2802,7 +2903,10 @@ export async function getPeopleFeatured(
       p_limit: limit,
     });
     if (error || !data) return [];
-    return (
+    /* 🆕 **وحالةُ الحساب تُلحق هنا** (D-773ب) — الدالّةُ لا تعيدها،
+       **ونداءٌ واحدٌ للدفعة كلِّها** لا لكلِّ سطر (انظر `getIdentities`). */
+    return withIdentities(
+      (
       data as {
         user_id: string;
         nickname: string | null;
@@ -2825,7 +2929,7 @@ export async function getPeopleFeatured(
       /* ⚖️ **وسقط `likes_in`** (D-312) — كأختها أعلاه */
       total: Number(r.total ?? 0),
       prevTotal: 0,
-    }));
+    })));
   } catch {
     return [];
   }
@@ -2873,7 +2977,7 @@ export async function getPeopleTopReviews(
       p_limit: limit,
     });
     if (error || !data) return [];
-    return (
+    return withIdentities(
       (
         data as {
           user_id: string;
@@ -3036,7 +3140,10 @@ export async function getTitleReplies(
       getUser(),
     ]);
     if (error || !data) return [];
-    return (
+    /* 🆕 **وحالةُ الحساب تُلحق هنا** (D-773ب) — الدالّةُ لا تعيدها،
+       **ونداءٌ واحدٌ للدفعة كلِّها** لا لكلِّ سطر (انظر `getIdentities`). */
+    return withIdentities(
+      (
       data as {
         id: string;
         review_user_id: string;
@@ -3067,7 +3174,7 @@ export async function getTitleReplies(
       body: r.body,
       createdAt: r.created_at,
       isMine: !!me && me.id === r.author_id,
-    }));
+    })));
   } catch {
     return [];
   }
@@ -3139,6 +3246,11 @@ export interface TalkPost {
   /** 🆕 **معرّفُ Giphy وحدَه — لا رابط** (D-362): الرابطُ يُركَّب من قالبٍ
       ثابتٍ في الواجهة، **فما يُخزَّن حروفٌ وأرقامٌ لا عنوان.** */
   gifId: string | null;
+  /* 🆕 **وحالةُ الحساب** (D-773ب) — تُلحَق في القارئ لا تعيدها الدالّة
+     (`withIdentities`)، **واختياريّةٌ فغيابُها «بلا شارة» لا انكسار.** */
+  plan?: string | null;
+  founder?: boolean | null;
+  verified_at?: string | null;
 }
 
 /**
@@ -3161,7 +3273,10 @@ export async function getTitleThread(
       getUser(),
     ]);
     if (error || !data) return [];
-    return (
+    /* 🆕 **وحالةُ الحساب تُلحق هنا** (D-773ب) — الدالّةُ لا تعيدها،
+       **ونداءٌ واحدٌ للدفعة كلِّها** لا لكلِّ سطر (انظر `getIdentities`). */
+    return withIdentitiesOn(
+      (
       data as {
         id: string;
         parent_id: string | null;
@@ -3202,7 +3317,11 @@ export async function getTitleThread(
       imagePath: r.image_path ?? null,
       /* 🆕 D-362 — **يُقرأ متسامحاً وغيابُه `null`** (D-179) */
       gifId: (r as { gif_id?: string | null }).gif_id ?? null,
-    }));
+      })),
+      /* **والمعرّفُ هنا `authorId`**: `id` في هذين الشكلين معرّفُ
+         المنشور لا صاحبَه — **ومفتاحٌ خاطئٌ يعطي شارةَ شخصٍ آخر.** */
+      (r) => r.authorId,
+    );
   } catch {
     return [];
   }
@@ -3680,6 +3799,11 @@ export interface NewsReply {
   body: string;
   createdAt: string;
   isMine: boolean;
+  /* 🆕 **وحالةُ الحساب** (D-773ب) — تُلحَق في القارئ لا تعيدها الدالّة
+     (`withIdentities`)، **واختياريّةٌ فغيابُها «بلا شارة» لا انكسار.** */
+  plan?: string | null;
+  founder?: boolean | null;
+  verified_at?: string | null;
 }
 
 /**
@@ -3721,7 +3845,10 @@ export async function getNewsThread(postKey: string): Promise<NewsReply[]> {
       getUser(),
     ]);
     if (error || !data) return [];
-    return (
+    /* 🆕 **وحالةُ الحساب تُلحق هنا** (D-773ب) — الدالّةُ لا تعيدها،
+       **ونداءٌ واحدٌ للدفعة كلِّها** لا لكلِّ سطر (انظر `getIdentities`). */
+    return withIdentitiesOn(
+      (
       data as {
         id: string;
         parent_id: string | null;
@@ -3744,7 +3871,11 @@ export async function getNewsThread(postKey: string): Promise<NewsReply[]> {
       body: r.body,
       createdAt: r.created_at,
       isMine: !!me && me.id === r.author_id,
-    }));
+      })),
+      /* **والمعرّفُ هنا `authorId`**: `id` في هذين الشكلين معرّفُ
+         المنشور لا صاحبَه — **ومفتاحٌ خاطئٌ يعطي شارةَ شخصٍ آخر.** */
+      (r) => r.authorId,
+    );
   } catch {
     return [];
   }
@@ -3864,12 +3995,14 @@ export const getTitleReviews = cache(
         if (l.liked_by_me) mine.add(l.review_user_id);
       }
 
-      return rows.map((r) => ({
-        ...r,
-        likes: counts.get(r.id) ?? 0,
-        likedByMe: mine.has(r.id),
-        isMine: me?.id === r.id,
-      }));
+      return withIdentities(
+        rows.map((r) => ({
+          ...r,
+          likes: counts.get(r.id) ?? 0,
+          likedByMe: mine.has(r.id),
+          isMine: me?.id === r.id,
+        })),
+      );
     } catch {
       return [];
     }
@@ -3929,7 +4062,7 @@ export async function getFollowLists(
 
     const { data: people } = await supabase
       .from("public_profiles")
-      .select("id, nickname, username, avatar_url, hide_name")
+      .select(PERSON_COLS)
       .in("id", [...new Set(ids)]);
 
     const byId = new Map((people ?? []).map((p) => [p.id, p as PersonLite]));
@@ -4112,7 +4245,7 @@ export async function getCommunityRoom(
     const { data: people } = ids.size
       ? await supabase
           .from("public_profiles")
-          .select("id, nickname, username, avatar_url, hide_name")
+          .select(PERSON_COLS)
           .in("id", [...ids])
       : { data: [] as PersonLite[] };
     const byId = new Map((people ?? []).map((p) => [p.id, p as PersonLite]));
@@ -4631,7 +4764,7 @@ async function shapeListCards(
     withOwner
       ? supabase
           .from("public_profiles")
-          .select("id, nickname, username, avatar_url, hide_name")
+          .select(PERSON_COLS)
           .in("id", [...new Set(lists.map((l) => l.user_id))])
       : Promise.resolve({
           data: [] as {
@@ -5137,6 +5270,11 @@ export interface ListReviewRow {
   body: string | null;
   updatedAt: string;
   hasSpoiler: boolean;
+  /* 🆕 **وحالةُ الحساب** (D-773ب) — تُلحَق في القارئ لا تعيدها الدالّة
+     (`withIdentities`)، **واختياريّةٌ فغيابُها «بلا شارة» لا انكسار.** */
+  plan?: string | null;
+  founder?: boolean | null;
+  verified_at?: string | null;
 }
 
 export async function getListReviews(
@@ -5150,7 +5288,10 @@ export async function getListReviews(
       p_limit: limit,
     });
     if (error || !data) return [];
-    return (
+    /* 🆕 **وحالةُ الحساب تُلحق هنا** (D-773ب) — الدالّةُ لا تعيدها،
+       **ونداءٌ واحدٌ للدفعة كلِّها** لا لكلِّ سطر (انظر `getIdentities`). */
+    return withIdentitiesOn(
+      (
       data as {
         id: string;
         nickname: string | null;
@@ -5172,7 +5313,10 @@ export async function getListReviews(
       body: r.body,
       updatedAt: String(r.updated_at),
       hasSpoiler: Boolean(r.has_spoiler),
-    }));
+      })),
+      /* **ومفتاحُه `userId`** — `ListReviewRow` تسمّي حقولَها camelCase */
+      (r) => r.userId,
+    );
   } catch {
     /* **سقوطٌ صامتٌ قبل الهجرة ١٠٣** — والقسمُ لا يُرسم بلا صفوف */
     return [];
@@ -5304,7 +5448,10 @@ export async function getListReviewReplies(
       getUser(),
     ]);
     if (error || !data) return [];
-    return (
+    /* 🆕 **وحالةُ الحساب تُلحق هنا** (D-773ب) — الدالّةُ لا تعيدها،
+       **ونداءٌ واحدٌ للدفعة كلِّها** لا لكلِّ سطر (انظر `getIdentities`). */
+    return withIdentities(
+      (
       data as {
         id: string;
         review_user_id: string;
@@ -5332,7 +5479,7 @@ export async function getListReviewReplies(
       body: r.body,
       createdAt: r.created_at,
       isMine: !!me && me.id === r.author_id,
-    }));
+    })));
   } catch {
     return [];
   }
