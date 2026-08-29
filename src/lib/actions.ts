@@ -5170,3 +5170,180 @@ export async function reportReply(input: { replyId: string; reason?: string }): 
   if (error) fail(error);
 }
 
+
+// ============================================================
+//  التوثيق (157_verification_requests.sql · D-775)
+// ============================================================
+
+/** حالةُ الأهليّة كما تحسبها القاعدة — **لا تُحسب في الواجهة أبداً** */
+export interface VerifyEligibility {
+  complete: boolean;
+  active: boolean;
+  activeDays: number;
+  needDays: number;
+  clean: boolean;
+  verified: boolean;
+  eligible: boolean;
+}
+
+export type VerifyStatus = "pending" | "more_info" | "approved" | "rejected";
+
+export interface VerifyState {
+  status: VerifyStatus | null;
+  kind: "person" | "org" | "media" | null;
+  note: string | null;
+  createdAt: string | null;
+  decidedAt: string | null;
+  nextApplyAt: string | null;
+  canApply: boolean;
+}
+
+export interface LinkedProvider {
+  provider: string;
+  handle: string | null;
+}
+
+/**
+ * 🆕 **قراءةُ شاشة التوثيق كاملةً في موجةٍ واحدة** (D-775).
+ *
+ * **ثلاثةُ نداءاتٍ متوازيةٍ لا متسلسلة** — والشاشةُ لا تُرسم قبل أبطئها
+ * على كلّ حال، **فتسلسلُها يجمع أزمنتَها بلا فائدة** (عُرفُ D-470).
+ * ⚠️ **والفشلُ يعني «غيرُ مؤهَّل» لا صفحةً مكسورة**: الأهليّةُ حارسٌ،
+ * **وحارسٌ ينهار مفتوحاً أسوأُ من حارسٍ ينهار مغلقاً.**
+ */
+export async function getVerificationScreen(): Promise<{
+  eligibility: VerifyEligibility;
+  state: VerifyState;
+  providers: LinkedProvider[];
+}> {
+  const closed: VerifyEligibility = {
+    complete: false, active: false, activeDays: 0, needDays: 3,
+    clean: false, verified: false, eligible: false,
+  };
+  const noState: VerifyState = {
+    status: null, kind: null, note: null, createdAt: null,
+    decidedAt: null, nextApplyAt: null, canApply: false,
+  };
+  try {
+    const { supabase } = await requireUser("verify", 30, 60_000);
+    const [e, s, p] = await Promise.all([
+      supabase.rpc("verification_eligibility"),
+      supabase.rpc("my_verification_state"),
+      supabase.rpc("linked_providers"),
+    ]);
+    const ej = (e.data ?? {}) as Record<string, unknown>;
+    const sj = (s.data ?? {}) as Record<string, unknown>;
+    return {
+      eligibility: {
+        complete: !!ej.complete,
+        active: !!ej.active,
+        activeDays: Number(ej.activeDays ?? 0),
+        needDays: Number(ej.needDays ?? 3),
+        clean: !!ej.clean,
+        verified: !!ej.verified,
+        eligible: !!ej.eligible,
+      },
+      state: {
+        status: (sj.status as VerifyStatus | null) ?? null,
+        kind: (sj.kind as VerifyState["kind"]) ?? null,
+        note: (sj.note as string | null) ?? null,
+        createdAt: (sj.createdAt as string | null) ?? null,
+        decidedAt: (sj.decidedAt as string | null) ?? null,
+        nextApplyAt: (sj.nextApplyAt as string | null) ?? null,
+        canApply: !!sj.canApply,
+      },
+      providers: ((p.data ?? []) as { provider: string; handle: string | null }[]).map((r) => ({
+        provider: String(r.provider),
+        handle: r.handle ?? null,
+      })),
+    };
+  } catch {
+    return { eligibility: closed, state: noState, providers: [] };
+  }
+}
+
+/**
+ * 🆕 **تقديمُ طلب التوثيق** (D-775).
+ *
+ * ⚠️ **ولا حارسَ أهليّةٍ هنا**: هو في جسم الدالّة (D-011) — **والواجهةُ
+ * تُخفي الزرَّ، والقاعدةُ تمنع الطلب**، فمن نادى الفعلَ بلا شاشةٍ ارتدّ.
+ * **والروابطُ تُنقّى قبل الإرسال**: `https` وحدَها وستّةٌ بحدٍّ أقصى —
+ * **وحقلٌ حرٌّ يصل المراجعَ كما وصل يصير باباً لما ليس رابطاً.**
+ */
+export async function requestVerification(input: {
+  kind: string;
+  links: string[];
+  website: string;
+  sources: string;
+  reason: string;
+}) {
+  const { supabase } = await requireUser("verify", 5, 60_000);
+  const kind = ["person", "org", "media"].includes(input.kind) ? input.kind : "person";
+  const links = (input.links ?? [])
+    .map((l) => String(l ?? "").trim().slice(0, 300))
+    .filter((l) => /^https:\/\/.+\..+/.test(l))
+    .slice(0, 6);
+  const website = String(input.website ?? "").trim().slice(0, 300);
+  const reason = String(input.reason ?? "").trim().slice(0, 600);
+  if (reason.length < 10) {
+    throw new Error("اكتب سببَ الطلب بجملةٍ واضحة / Give a clear reason");
+  }
+  const { error } = await supabase.rpc("request_verification", {
+    p_kind: kind,
+    p_links: links,
+    p_website: /^https:\/\/.+\..+/.test(website) ? website : null,
+    p_sources: String(input.sources ?? "").trim().slice(0, 600) || null,
+    p_reason: reason,
+  });
+  if (error) {
+    /* **ورسالةُ القاعدة لا تُعرض كما هي**: `not eligible` ليست جملةً
+       لقارئ. **والحالاتُ الثلاثُ تُترجم، وما عداها رسالةٌ عامّة.** */
+    const m = error.message || "";
+    if (m.includes("not eligible"))
+      throw new Error("لم تكتمل الشروط بعد / Requirements not met yet");
+    if (m.includes("cannot apply"))
+      throw new Error("لا يمكن التقديم الآن / You cannot apply right now");
+    throw new Error("تعذّر إرسال الطلب — حاول مجدداً / Could not submit, try again");
+  }
+  revalidatePath("/profile/settings/verify");
+}
+
+/** 🆕 طابورُ المراجعة — **الحارسُ في جسم الدالّة، والصفحةُ تُخفي لا تمنع** */
+export async function adminVerificationQueue() {
+  const { supabase } = await requireUser("adminverify", 60, 60_000);
+  const { data, error } = await supabase.rpc("admin_verification_queue");
+  if (error) return [];
+  return (data ?? []) as {
+    id: string;
+    user_id: string;
+    kind: "person" | "org" | "media";
+    status: VerifyStatus;
+    links: string[];
+    website: string | null;
+    sources: string | null;
+    reason: string;
+    proven: { provider: string; handle: string | null }[];
+    created_at: string;
+    note: string | null;
+  }[];
+}
+
+/**
+ * 🆕 **القرار** (D-775) — **وهو الطريقُ الوحيدُ إلى ختم التوثيق**:
+ * لا منحةَ كتابةٍ على `profiles.verified_at` لأحد (الهجرة ١٥٦)،
+ * **فالختمُ لا يُنال إلّا من مراجعٍ إنسان.**
+ */
+export async function adminDecideVerification(
+  id: string,
+  decision: "approved" | "rejected" | "more_info",
+  note: string,
+) {
+  const { supabase } = await requireUser("adminverify", 30, 60_000);
+  const { error } = await supabase.rpc("admin_decide_verification", {
+    p_id: uuid(id),
+    p_decision: decision,
+    p_note: String(note ?? "").trim().slice(0, 400) || null,
+  });
+  if (error) throw new Error("تعذّر تنفيذ القرار / Could not apply the decision");
+  revalidatePath("/admin/verify");
+}
