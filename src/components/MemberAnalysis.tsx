@@ -96,6 +96,9 @@ export async function MemberAnalysis({
         /* **النبذةُ تتبع الاسمَ في الإخفاء** — والقطعُ في SQL أصلاً */
         bio: pub.hide_name ? null : (pub.bio ?? null),
         followers: followStats ? followStats.followers : null,
+        /* 🆕 **وشارةُ العضو من صفِّه العامّ** (D-780) — `public_profiles`
+           يحمل `plan`/`founder`/`verified_at` منذ الهجرة ١٥٦. */
+        identity: pub,
       }
     : null;
 

@@ -21,6 +21,8 @@ import { isComplete } from "@/lib/progress";
 import { favoriteTrio, trioPosterPaths } from "@/lib/heroPosters";
 import { ProfileStatSheet } from "./ProfileStatSheet";
 import { Icon, type IconName } from "./Icon";
+import { AccountBadges, badgeLabelsOf } from "./AccountIdentity";
+import type { PlanBearer } from "@/lib/plan";
 import { browseGenreForId, browseGenreName } from "@/lib/browse";
 
 /** المدى الزمنيّ الذي تحكمه تبويبات الصفحة */
@@ -259,6 +261,9 @@ export interface AnalysisData {
     avatarUrl: string | null;
     bio: string | null;
     followers: number | null;
+    /* 🆕 **الهويّةُ تُمرَّر لا تُخترع** (D-780): الصفُّ نفسُه الذي
+       تقرؤه بقيّةُ الأسطح — **فحكمُ الشارة واحدٌ في كلِّ الشاشات.** */
+    identity: PlanBearer | null;
   } | null;
 }
 
@@ -445,10 +450,23 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
                 )}
               </span>
               <span className="min-w-0">
-                <span className="flex items-center gap-1.5 text-[17px] font-bold min-w-0">
+                <span className="flex items-center gap-1 text-[17px] font-bold min-w-0">
                   <span className="truncate" dir="auto">{hero.name}</span>
-                  {/* **والرمزُ لا يبلغه ظلُّ الحرف** — فله `drop-shadow` بالقوّة نفسِها (D-712) */}
-                  <Icon name="sparkle-star" size={13} className="shrink-0 text-accent" style={{ filter: HERO_ICON_SHADOW }} aria-hidden />
+                  {/* ⚖️ 🆕 **علامةُ الهويّة لا نجمةُ زينة** (D-780).
+                      **كانت `sparkle-star` ثابتةً فوق كلِّ اسم** —
+                      **رمزٌ لامعٌ بجوار الاسم يُقرأ رتبةً، ورتبةٌ
+                      تُمنح للجميع ليست رتبة** — **وهو علامةُ هويّةٍ
+                      ثانيةٌ إلى جانب `AccountIdentity`**، والثانيةُ
+                      من أيِّ عائلةٍ عيبٌ بنصِّ القاعدة ٣.
+                      **والظلُّ يسكن الغلافَ لا الشارةَ**: `filter`
+                      على الحاوية يبلغ الحبّةَ والختمَ معاً (D-712). */}
+                  {/* 🔴 **والغلافُ `flex` لا `inline`** — **مقيسٌ لا
+                      مستنتَج**: غلافٌ سطريٌّ يصنع صندوقَ سطرٍ بذيلٍ
+                      تحته، **فيهبط القرصُ ٢٫١٦px تحت مركز الاسم** —
+                      **وهي بعينها الشكوى التي أطلقت D-776.** */}
+                  <span className="shrink-0 flex items-center" style={{ filter: HERO_ICON_SHADOW }}>
+                    <AccountBadges profile={hero.identity} t={badgeLabelsOf(t)} />
+                  </span>
                 </span>
                 {hero.followers !== null && (
                   <span className="mt-0.5 flex items-center gap-1.5 text-12 text-muted">
@@ -1397,6 +1415,7 @@ export async function LibraryAnalysis({
         /* **النبذةُ تتبع الاسمَ في الإخفاء** (profile_bio.sql) */
         bio: profile.hide_name ? null : (profile.bio ?? null),
         followers: followStats ? followStats.followers : null,
+        identity: profile,
       }
     : null;
 
