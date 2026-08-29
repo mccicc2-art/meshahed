@@ -96,7 +96,6 @@ export function TrailerFeed({
       /* 🆕 D-762: نصوصُ طبقة التكبير — وجودُها هو ما يفعّل التكبيرَ في هذا السطح */
       expandedLabels={{
         play: t.trailerPlay,
-        pause: t.trailerPause,
         mute: t.trailerMute,
         unmute: t.trailerUnmute,
         collapse: t.trailerCollapse,
@@ -119,9 +118,9 @@ export function TrailerFeed({
                 playLabel={t.trailerPlay}
                 muteLabel={t.trailerMute}
                 unmuteLabel={t.trailerUnmute}
-                /* 🆕 D-762: أدواتُ التحكّم الكاملة في العلف وحدَه */
+                /* 🆕 D-762: أدواتُ التحكّم الكاملة في العلف وحدَه —
+                   ⚖️ بلا إيقافٍ منذ D-771 (حكمه: «خله دائماً شغال») */
                 withControls
-                pauseLabel={t.trailerPause}
                 seekLabel={t.trailerSeek}
                 expandLabel={t.trailerExpand}
                 onUnavailable={() => retire(k)}
