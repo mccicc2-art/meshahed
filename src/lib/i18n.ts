@@ -1282,7 +1282,6 @@ const ar = {
   custHeaderSection: "عناصر الترويسة",
   custStatsCard: "بطاقة الأرقام",
   custStatsPickHint: "اختر من ٢ إلى ٤ أرقام تظهر في البطاقة، ورتّبها كما تحب.",
-  statsWatchedEpisodes: "حلقات",
   shortEpisodes: "حلقات",
   custOrderHint: "رتّب الأقسام كما يعجبك، أو أخفِ ما لا تريده.",
   custWeekStrip: "تقويم الأسبوع",
@@ -2889,7 +2888,6 @@ const en: Dict = {
   custStatsCard: "Statistics card",
   custStatsPickHint:
     "Pick 2 to 4 numbers to show on the card, and order them your way.",
-  statsWatchedEpisodes: "Episodes",
   shortEpisodes: "Episodes",
   custOrderHint:
     "Arrange the sections however you like, or hide the ones you don't want.",
