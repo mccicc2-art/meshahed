@@ -8,6 +8,7 @@ import { TrailerPlayback } from "./trailers/TrailerPlaybackController";
 import { TrailerCardMedia } from "./trailers/TrailerCardMedia";
 import { Icon } from "./Icon";
 import {
+  trailerClipKeyOf,
   trailerKeyOf,
   trailerTitleHref,
   useTrailerFollow,
@@ -68,8 +69,10 @@ export function TrailerRail({
       <TrailerPlayback soundPref={soundOn}>
       <RailScroll prevLabel="السابق / Previous" nextLabel="التالي / Next">
         {slots.map((i, index) => {
-          const k = trailerKeyOf(i);
-          const isAdded = added.has(k);
+          /* 🆕 D-772: هويّةُ البطاقة بالمقطع (خانةٌ ومشغّلٌ ومفتاحُ React)،
+             و«أضف لمكتبتي» بالعمل — حكمان لا حكم */
+          const k = trailerClipKeyOf(i);
+          const isAdded = added.has(trailerKeyOf(i));
           return (
             <div
               key={k}
