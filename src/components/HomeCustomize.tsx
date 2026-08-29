@@ -14,8 +14,8 @@ import {
   STATS_PICK_MAX,
   sanitizeHomePrefs,
   homeSectionMeta,
+  headerStatMeta,
   type HomePrefs,
-  type HeaderStatKey,
 } from "@/lib/homePrefs";
 import { type IconName } from "./Icon";
 import { Alert } from "./ui/Alert";
@@ -93,17 +93,11 @@ export function HomeCustomize({
      (D-376) — نظيرُ `profileSectionMeta` حرفاً. */
   const sectionMeta = homeSectionMeta(t);
 
-  const statMeta: Record<HeaderStatKey, { icon: IconName; label: string }> = {
-    shows: { icon: "tv", label: t.shortShows },
-    movies: { icon: "film", label: t.shortMovies },
-    towatch: { icon: "bookmark", label: t.libToWatch },
-    time: { icon: "clock", label: t.statWatchTime },
-    episodes: { icon: "play", label: t.statsWatchedEpisodes },
-    upcoming: { icon: "hourglass", label: t.libUpcoming },
-    completed: { icon: "check", label: t.libTabFinished },
-    dropped: { icon: "card", label: t.droppedBadge },
-    ratings: { icon: "star", label: t.panelRatings },
-  };
+  /* 🆕 **والخريطةُ خرجت إلى `headerStatMeta`** (D-787): **كانت مكتوبةً
+     هنا وفي الرئيسية معاً وافترقتا فعلاً** — «حلقات» كانت
+     `statsWatchedEpisodes` هنا و`shortEpisodes` هناك، **فيختار
+     المستخدمُ اسماً ويرى غيرَه** (D-703). */
+  const statMeta = headerStatMeta(t);
 
   const orderLabels = {
     up: t.custMoveUp,
