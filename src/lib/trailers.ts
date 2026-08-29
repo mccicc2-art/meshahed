@@ -1,6 +1,8 @@
 import "server-only";
 
+import { cache } from "react";
 import { getSuggestions } from "@/lib/suggest";
+import { getDismissedTitles, getFollows, getWatchedMovieIds } from "@/lib/data";
 import {
   getTrailerKeys,
   backdropUrl,
@@ -365,6 +367,61 @@ export interface TrailerFeedOpts {
  * **علفُ تبويبٍ واحد** (D-734).
  * ⚠️ **والصمتُ عند فشل المصدر** — تبويبٌ فارغٌ خيرٌ من صفحةٍ ساقطة.
  */
+/**
+ * 🔴 🆕 **ما رآه القارئُ أو رفضه — يُستبعد من التبويبات كلِّها** (D-790،
+ * بلاغُ أحمد بلقطةِ ترايلر «ناروتو»: «هذا أنا شايفه، المفروض ما يقترحه
+ * لي في الترايلر»).
+ *
+ * 🔴 **والعطلُ أنّ التبويبات الأربعةَ لم تكن تعرف مكتبتَه أصلاً**:
+ * «لك» وحدَها كانت تُصفّي (`getSuggestions` تُسقط المتابَعَ والمُشاهَدَ
+ * والمصروف)، **والكتالوجُ يُسحب من TMDB ويُعرض كما جاء** — **فناروتو
+ * المكتملُ في مكتبته يعود إليه ببطاقةٍ تعرض عليه «أضفه لقائمتي».**
+ *
+ * ⚖️ **وهذا لا ينقض D-734** («من فتح أفلاماً يريد أفلاماً لا أفلاماً
+ * تخصّه»): **تلك تمنع تضييقَ المصدر على ذوقه**، **وهذه تطرح بضعةَ
+ * عشراتٍ رآها من كتالوجٍ بالآلاف** — **وطرحُ المرئيِّ ليس تضييقاً على
+ * الذوق، بل هو الفرقُ بين «اكتشف» و«أرشيفُ ما عندك».**
+ *
+ * ⚠️ **ومجموعتان بالجهة لا مجموعةٌ بالمعرّف وحدَه**: **معرّفات TMDB
+ * تتكرّر بين الأفلام والمسلسلات** — **ومجموعةٌ واحدةٌ كانت ستكتم فيلماً
+ * بريئاً لأن رقمَه رقمُ مسلسلٍ يتابعه.**
+ * ⚠️ **و«غير مهتم» بلا جهةٍ مخزَّنة** فيُستبعد من الاثنتين — **وقولُه
+ * «لا» مرّةً أصدقُ من دقّةِ جهةٍ لا نملكها.**
+ * ⚠️ **والتصفيةُ قبل السَّبر لا بعده** — قاعدةُ D-731 في هذا الملفّ.
+ */
+const seenByMedia = cache(async function seenByMedia(): Promise<{
+  tv: Set<number>;
+  movie: Set<number>;
+}> {
+  const [follows, dismissed, watchedMovies] = await Promise.all([
+    getFollows().catch(() => []),
+    getDismissedTitles().catch(() => new Set<number>()),
+    getWatchedMovieIds().catch(() => new Set<number>()),
+  ]);
+  const tv = new Set<number>();
+  const movie = new Set<number>();
+  for (const f of follows) (f.media_type === "movie" ? movie : tv).add(f.tmdb_id);
+  for (const id of watchedMovies) movie.add(id);
+  for (const id of dismissed) {
+    tv.add(id);
+    movie.add(id);
+  }
+  return { tv, movie };
+});
+
+/** يقرأ جهةَ الصفّ، **وما لا جهةَ له يأخذ جهةَ تبويبه** — لا يُخمَّن */
+function unseen(
+  rows: SearchResult[],
+  seen: { tv: Set<number>; movie: Set<number> },
+  fallback: "tv" | "movie",
+): SearchResult[] {
+  return rows.filter((r) => {
+    const media =
+      r.media_type === "movie" ? "movie" : r.media_type === "tv" ? "tv" : fallback;
+    return !seen[media].has(r.id);
+  });
+}
+
 export async function getTrailerTabFeed(
   tab: TrailerTab,
   limit: number,
@@ -374,8 +431,9 @@ export async function getTrailerTabFeed(
   const page = Math.max(0, opts.page ?? 0);
   const perTitle = opts.perTitle ?? 1;
   if (tab === "for-you") return getTrailerFeed(limit, locale, opts.scope, undefined, opts);
+  const seen = await seenByMedia();
   if (tab === "trending") {
-    const rows = await trending().catch(() => []);
+    const rows = unseen(await trending().catch(() => []), seen, "tv");
     /* **و«الرائج» بِركةٌ واحدةٌ لا تُعمَّق**: مصدرُه صفحةُ اليوم عند
        TMDB — **والدفعةُ التالية تنزل فيها لا تطلب صفحةً لا وجودَ لها.** */
     return shape(rows.slice(page * probeFor(limit)), locale, limit, probeFor(limit), perTitle);
@@ -412,8 +470,9 @@ export async function getTrailerTabFeed(
        الدفعة الثانية قائمةٌ لا أربعون فيديو.** */
     probe * (page + 1),
   ).catch(() => []);
+  const fresh = unseen(rows, seen, media === "movie" ? "movie" : "tv");
   return shape(
-    shuffleSeeded(rows, drawKey()).slice(page * probe),
+    shuffleSeeded(fresh, drawKey()).slice(page * probe),
     locale,
     limit,
     probe,
