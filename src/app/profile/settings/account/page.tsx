@@ -37,6 +37,15 @@ export default async function Page() {
           value={username ? `@${username}` : undefined}
         />
         <SettingsRow icon="mail" title={t.emailSection} subtitle={user.email ?? ""} />
+        {/* 🆕 **بابُ التوثيق هنا بنصِّ أحمد** (D-775): «الأفضل يكون طلب
+            التوثيق من: الإعدادات ← الحساب ← طلب التوثيق» — **وبابٌ
+            واحدٌ في الموضع الذي طلبه، لا في فهرسٍ يُمرَّر بالإبهام.** */}
+        <SettingsRow
+          href="/profile/settings/verify"
+          icon="shield"
+          title={t.verifyTitle}
+          subtitle={t.verifySub}
+        />
         <SettingsRow
           href="/profile/settings/billing"
           icon="card"
