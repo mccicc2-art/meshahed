@@ -61,6 +61,16 @@ export function ReportView({
           <p className="text-12 tracking-[0.12em] uppercase text-muted mt-1">
             {ar ? "وقت المشاهدة" : "Watch time"}
           </p>
+          {/* 🔴 🆕 **والسطرُ يقول ما يقيسه** (D-800 — لحاقٌ بـD-797 سقط
+              في إعادة البناء): **Loopz يعرف لحظةَ التعليم لا لحظةَ
+              المشاهدة** — **ومن نقل مكتبتَه دفعةً يرى ألفَ ساعةٍ في
+              أسبوع**، **وعنوانٌ يقول «وقت المشاهدة» وحدَه يكذب برقمٍ
+              صحيح.** **ويسقط السطرُ من تلقائه** يومَ يؤرّخ القارئُ
+              مشاهدتَه بتاريخها (D-798)، **لأنّ العددَ حينها يصدق
+              بالاسمين.** */}
+          <p className="text-12 text-muted mt-1.5 leading-relaxed">
+            {ar ? "مدّة ما علّمتَه في هذه المدّة" : "Runtime of what you marked in this period"}
+          </p>
           {stats.deltaPct !== null && (
             <p className="mt-2 flex items-center gap-1.5 text-12">
               <Icon
