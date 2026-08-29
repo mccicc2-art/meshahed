@@ -1427,10 +1427,23 @@ export interface Video {
  * وراء الكواليس ولقطاتٌ قصيرة)، **وقائمةٌ بلا سقفٍ تحمل رديئاً باسم
  * الاحتياط.**
  */
+/**
+ * 🆕 **مقطعٌ واحدٌ بهويّته** (D-772) — **الاسمُ والنوعُ يُحملان مع
+ * المفتاح لا يُرميان**: العلفُ صار يعرض بطاقةً لكلِّ مقطعٍ لا لكلِّ
+ * عمل، **وبطاقةٌ بلا وسمٍ يقول «تشويقة» أو «الإعلان ٢» تُقرأ تكراراً
+ * لا تنويعاً.** **وردُّ TMDB يحملهما مجّاناً** — الرميُ كان اختياراً.
+ */
+export interface TrailerVideo {
+  key: string;
+  name: string;
+  type: string;
+  official: boolean;
+}
+
 export async function getTrailerKeys(
   mediaType: MediaType,
   id: number,
-): Promise<{ keys: string[]; name: string } | null> {
+): Promise<{ keys: string[]; name: string; videos: TrailerVideo[] } | null> {
   /* **والترتيبُ ترتيبُ `pick` نفسُه ممدوداً** (القاعدة ٦): الرسميُّ ثمّ
      التريلر ثمّ التشويقة ثمّ ما بقي — **ومعيارُ الأوّل هو معيارُ
      البديل، وإلّا صار البديلُ تنازلاً لا احتياطاً.** */
@@ -1443,7 +1456,11 @@ export async function getTrailerKeys(
       .slice()
       .sort((a2, b2) => rank(a2) - rank(b2))
       .filter((v) => (seen.has(v.key) ? false : (seen.add(v.key), true)))
-      .slice(0, 5);
+      /* 🆕 **والسقفُ ثمانٍ لا خمس** (D-772): **قِيس على المنشور أنّ
+         عشرةً من أربعةَ عشرَ عملاً كانت تبلغ الخمسةَ بالضبط** — **رقمٌ
+         يبلغه أغلبُ الصفّ سقفٌ يقصّ لا حدٌّ يصف.** **ولا نداءَ جديد**:
+         الردُّ نفسُه يحملها، **والقصُّ كان عندنا لا عندهم.** */
+      .slice(0, 8);
   };
 
   const read = async (language?: string) => {
@@ -1458,10 +1475,21 @@ export async function getTrailerKeys(
     }
   };
 
+  const out = (vids: Video[]) => ({
+    keys: vids.map((v) => v.key),
+    name: vids[0].name,
+    videos: vids.map((v) => ({
+      key: v.key,
+      name: v.name,
+      type: v.type,
+      official: !!v.official,
+    })),
+  });
+
   const local = await read();
-  if (local.length) return { keys: local.map((v) => v.key), name: local[0].name };
+  if (local.length) return out(local);
   const en = await read("en-US");
-  return en.length ? { keys: en.map((v) => v.key), name: en[0].name } : null;
+  return en.length ? out(en) : null;
 }
 
 export async function getTrailer(
