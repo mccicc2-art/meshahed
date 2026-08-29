@@ -98,8 +98,10 @@ const ar = {
   // تلميحات أول فتحٍ لكل صفحة (١٩ أغسطس) — قصيرة، تُقال مرةً ثم تصمت
   hintHome: "رتّب أقسام الرئيسية وبدّل وضع العرض من زرّ التخصيص أعلى الصفحة.",
   hintLists: "اجمع أعمالك حول فكرة: أنشئ قائمتك، أو احفظ قوائم الآخرين بالقلب.",
-  hintPeople: "تابع أصدقاءك لترى نشاطهم هنا — وتابع الفنانين لتصلك أعمالهم الجديدة.",
-  hintMessages: "الرسائل والإشعارات في تبويبين — والشارة على التبويب تقول أين الجديد.",
+  hintPeople:
+    "تابع أصدقاءك لترى نشاطهم هنا — وتابع الفنانين لتصلك أعمالهم الجديدة.",
+  hintMessages:
+    "الرسائل والإشعارات في تبويبين — والشارة على التبويب تقول أين الجديد.",
 
   // الجولة التعريفية (١٩ أغسطس) — الخطوات في lib/tour.ts، والنصوص هنا
   tourSuggestTitle: "جديد هنا؟ جولة سريعة تعرّفك على Loopz.",
@@ -120,13 +122,17 @@ const ar = {
   tourHomeBody:
     "كل ما تتابعه في لمحة: أكمل المشاهدة، حلقات الأسبوع، والقادم — والأقسام كلها قابلة للترتيب والإخفاء من زرّ التخصيص.",
   tourDiscoverTitle: "اكتشف",
-  tourDiscoverBody: "الرائج والقادم وقوائم أفضل الأعمال والأنمي — مع فلاتر بالنوع والحقبة والمنصة.",
+  tourDiscoverBody:
+    "الرائج والقادم وقوائم أفضل الأعمال والأنمي — مع فلاتر بالنوع والحقبة والمنصة.",
   tourLibraryTitle: "مكتبتي",
-  tourLibraryBody: "مسلسلاتك وأفلامك بحالاتها: أتابعه، مكتمل، متروك — وأدوات الفرز والتصدير من زرّ الأدوات.",
+  tourLibraryBody:
+    "مسلسلاتك وأفلامك بحالاتها: أتابعه، مكتمل، متروك — وأدوات الفرز والتصدير من زرّ الأدوات.",
   tourListsTitle: "القوائم",
-  tourListsBody: "أنشئ قوائم خاصة أو عامة، واحفظ قوائم الآخرين بالقلب لتعود إليها من هنا.",
+  tourListsBody:
+    "أنشئ قوائم خاصة أو عامة، واحفظ قوائم الآخرين بالقلب لتعود إليها من هنا.",
   tourPeopleTitle: "الأشخاص",
-  tourPeopleBody: "تابع أصدقاءك وشاهد نشاطهم وآراءهم — وتابع الفنانين لتصلك أعمالهم.",
+  tourPeopleBody:
+    "تابع أصدقاءك وشاهد نشاطهم وآراءهم — وتابع الفنانين لتصلك أعمالهم.",
   tourMessagesTitle: "البريد",
   tourMessagesBody: "رسائلك وإشعاراتك في سطحٍ واحد بتبويبين — ولكل نوعٍ شارته.",
   tourSettingsTitle: "الإعدادات",
@@ -397,7 +403,8 @@ const ar = {
   /* **الحفظُ فشل والشكلُ باقٍ** — الرسالةُ تقول الأمرين معاً: **إرجاعُ
      الشكل تحت إصبع من ضغط للتوّ أسوأُ من حفظٍ لم يثبت**، **لكنّ
      الصمتَ يجعل العودةَ غداً مفاجأة.** */
-  errViewSave: "تعذّر حفظ وضع العرض — الشكل باقٍ الآن، ويعود إلى السابق عند إعادة فتح لوبز.",
+  errViewSave:
+    "تعذّر حفظ وضع العرض — الشكل باقٍ الآن، ويعود إلى السابق عند إعادة فتح لوبز.",
 
   // الاستيراد من الخدمات الأخرى
   importSection: "استيراد مكتبتك",
@@ -707,7 +714,8 @@ const ar = {
   cpLangDown: "اخفض الأولوية",
   cpGuestNote: "تفضيلاتك محفوظة على هذا الجهاز، وستنتقل إلى حسابك عند الدخول.",
   // 🆕 حسابات التواصل (D-546)
-  socialInvalid: "هذا المعرّف لا يصلح لهذه المنصّة — اكتب اسم الحساب أو الصق رابطه.",
+  socialInvalid:
+    "هذا المعرّف لا يصلح لهذه المنصّة — اكتب اسم الحساب أو الصق رابطه.",
   // ترتيب خطّ المجتمع
   // جرس الإشعارات (D-125)
   notifTitle: "الإشعارات",
@@ -898,7 +906,9 @@ const ar = {
   /* 🆕 **عدُّ الأسبوع لبطاقة D-291** (D-311) — النافذةُ في الجملة لأن
      الرقمَ صار يملكها فعلاً (الهجرة ٩٦) */
   talkRoomPostsWeek: (n: number) =>
-    n === 1 ? "مشاركةٌ واحدة هذا الأسبوع" : `${num(n, "ar")} مشاركة هذا الأسبوع`,
+    n === 1
+      ? "مشاركةٌ واحدة هذا الأسبوع"
+      : `${num(n, "ar")} مشاركة هذا الأسبوع`,
   /**
    * **آخرُ حلقةٍ نشرها Loopz في الغرفة** (D-273، طلبُ أحمد: «رقم الموسم
    * والحلقة وعنوانها»).
@@ -1016,7 +1026,8 @@ const ar = {
      يظنّ أنه أطفأها فرآها عادَ يقرأ المفتاحَ معطّلاً** (D-155). **وسقط
      منه «تُلغى من قائمة حسابها» وحدَه** — **مكانُ الإلغاء يُعرف حين
      يُقصَد، وسطرٌ يشرح باباً ثانياً في ورقةٍ ثالثة ضجيج** (D-224). */
-  feedShowStrangersHint: "حين يُطفأ ترى من تتابعهم وكلامَك وحدَه. ونشراتُ Loopz لا يمسّها.",
+  feedShowStrangersHint:
+    "حين يُطفأ ترى من تتابعهم وكلامَك وحدَه. ونشراتُ Loopz لا يمسّها.",
   /* ⚖️ **وعادت `feedEmptyForYou` بعد أربعين دقيقة من حذفها** (D-283،
      طلبُ أحمد: «ناس ما أتابعهم ولا أتابع أفلامهم لا تظهرهم لي»).
      **وحذفتُها في D-280 لأن قارئَها سقط، وعادت لأن سلوكَها عاد** —
@@ -1031,7 +1042,13 @@ const ar = {
   /* 🆕 **نصُّ سهم التوسيع** (D-284) — **يقول عددَه فلا يُخفى شيءٌ بلا
      إشارة**، وصيغةُ الجمع جزءٌ من الصدق (D-015: جمعُ القِلّة ٣–١٠). */
   talkShowReplies: (n: number) =>
-    n === 1 ? "عرض ردّ واحد" : n === 2 ? "عرض ردَّين" : n <= 10 ? `عرض ${num(n, "ar")} ردود` : `عرض ${num(n, "ar")} ردّاً`,
+    n === 1
+      ? "عرض ردّ واحد"
+      : n === 2
+        ? "عرض ردَّين"
+        : n <= 10
+          ? `عرض ${num(n, "ar")} ردود`
+          : `عرض ${num(n, "ar")} ردّاً`,
   /* 🆕 **والطيُّ يعود من حيث فُتح** (D-287، سؤالُ أحمد: «بعد ما فتحتها
      وين الزرُّ الي قفلها؟»). **زرٌّ يفتح ولا يُغلق ليس مفتاحاً، هو بابٌ
      بلا مقبضٍ من الداخل** — **و«تراجَع بعد» لا «أكِّد قبل»** (D-047). */
@@ -1333,7 +1350,8 @@ const ar = {
      وسهمُ `seeAll` وعدُ انتقالٍ فلا يُستعار هنا (D-217) */
   allWord: "الكل",
   custTabsTitle: "التبويبات",
-  custTabsHint: "التبويب المطفأ يختفي عن زائرك — وصفحتك تفتح على أوّل تبويب ظاهر.",
+  custTabsHint:
+    "التبويب المطفأ يختفي عن زائرك — وصفحتك تفتح على أوّل تبويب ظاهر.",
   custOverviewTab: "داخل تبويب النظرة العامة",
   custListsTab: "داخل تبويب القوائم",
   /* 🆕 صفوفُ الترتيب (D-555) — السجلُّ خرج إلى ورقةٍ فصار له صفٌّ يفتحه */
@@ -1361,7 +1379,8 @@ const ar = {
   profileEmptyOverview: "لا أقسام ظاهرة بعد.",
   profileTitleLabel: "اللقب",
   profileTitlePlaceholder: "محبٌّ للقصص",
-  profileTitleHint: "سطرٌ قصير يظهر تحت صورتك — ٢٤ حرفاً. اتركه فارغاً ليظهر اسمُ مستواك.",
+  profileTitleHint:
+    "سطرٌ قصير يظهر تحت صورتك — ٢٤ حرفاً. اتركه فارغاً ليظهر اسمُ مستواك.",
   profileTabLists: "القوائم",
   profileTopRated: "الأعلى تقييماً",
   profileEmptyActivity: "لا نشاط بعد.",
@@ -1504,12 +1523,14 @@ const ar = {
   prtCompleteSetup: "أكمل الإعداد",
   prtSetupLater: "يتاح مع فتح الاشتراكات",
   prtTermsTitle: "شروط العمولة",
-  prtTerm15: "١٥٪ من صافي الإيراد لأول ٣ دفعات شهرية لكل مشترك (الاشتراك السنوي: دفعة واحدة)",
+  prtTerm15:
+    "١٥٪ من صافي الإيراد لأول ٣ دفعات شهرية لكل مشترك (الاشتراك السنوي: دفعة واحدة)",
   prtTermDirect: "الإحالة المباشرة فقط — لا مستويات",
   prtTermHold: "تعليق ٣٠ يوماً قبل استحقاق أي عمولة",
   prtTermMin: "حد أدنى للتحويل ١٠٠ ريال — تحويل بنكي شهري بعد توثيق الهوية",
   prtTermNature: "«الأرباح» رصيد مكافآت غير قابل للتحويل لشخص آخر",
-  prtMoneyLater: "العمولات والسحب تُفعَّل مع فتح الاشتراكات — رابطك وإحصاءاتك تعمل من الآن",
+  prtMoneyLater:
+    "العمولات والسحب تُفعَّل مع فتح الاشتراكات — رابطك وإحصاءاتك تعمل من الآن",
   setHelp: "المساعدة والملاحظات",
   setAbout: "عن Loopz",
   /* **صفحاتُ «الدعم» الثلاث — ولا واحدةٌ منها تَعِد بما لا تملك**
@@ -1669,7 +1690,13 @@ const ar = {
   activityTabReviews: "آراء",
   activityThisWeek: "هذا الأسبوع",
   activityCount: (n: number) =>
-    n === 1 ? "نشاط واحد" : n === 2 ? "نشاطان" : n <= 10 ? `${num(n, "ar")} أنشطة` : `${num(n, "ar")} نشاطاً`,
+    n === 1
+      ? "نشاط واحد"
+      : n === 2
+        ? "نشاطان"
+        : n <= 10
+          ? `${num(n, "ar")} أنشطة`
+          : `${num(n, "ar")} نشاطاً`,
   activityEmpty: "ما سجّلتَ شيئاً بعد — أشّر حلقةً أو قيّم عملاً وبيظهر هنا.",
   actVerbFinished: "أنهيت",
   actVerbWatched: "شاهدت",
@@ -1832,7 +1859,8 @@ const ar = {
   /* 🆕 **بوّابةُ الزائر** (D-627 مرحلة ٢): الورقةُ التي تُفتح حين يلمس
      زائرٌ فعلَ كتابةٍ — متابعة، تقييم، ردّ */
   loginGateTitle: "سجّل دخولك للمتابعة",
-  loginGateHint: "التصفّح مفتوح للجميع — والمتابعة والتقييم والردود لأصحاب الحسابات.",
+  loginGateHint:
+    "التصفّح مفتوح للجميع — والمتابعة والتقييم والردود لأصحاب الحسابات.",
   /* 🆕 **Loopz+** (D-633، حكمُ أحمد): البلس زينةٌ وتنسيقٌ لا وظيفة —
      ولذلك نصُّ البوّابة يقول ما تكسبه، لا ما مُنعتَ منه. */
   plusName: "Loopz+",
@@ -1843,6 +1871,10 @@ const ar = {
   plusSoon: "قريباً — والاشتراك لم يُفتح بعد",
   plusBadge: "عضو Loopz+",
   founderBadge: "مؤسِّس",
+  partnerBadge: "شريك Loopz",
+  verifiedBadge: "حساب موثَّق",
+  /* 🆕 نصُّ أحمد حرفاً (D-773) — ما يظهر عند الضغط على العلامة */
+  verifiedBadgeTip: "تم التأكد من أن هذا الحساب يمثل الشخص أو الجهة المذكورة.",
   /* 🆕 **وسطرُ المشترك يقول ما اشتراه لا ما ينتظره** (D-633، إصلاحُ
      نصٍّ ظهر حيّاً): «خطط إضافية قريباً» كان جواباً لسؤالٍ لم يسأله
      المشترك — **وسطرٌ ينتظر بالنيابة عن مالكٍ عطلٌ في الصدق** (D-217). */
@@ -1877,7 +1909,8 @@ const ar = {
   clipScene: "مشهد",
   trailerMore: "مقاطع أكثر",
   trailerEnd: "وصلتَ آخر المقاطع",
-  trailersEmpty: "لا ترايلرات الآن — تابِع أعمالاً أو قيّم بعضَها وسيمتلئ هذا الصفّ.",
+  trailersEmpty:
+    "لا ترايلرات الآن — تابِع أعمالاً أو قيّم بعضَها وسيمتلئ هذا الصفّ.",
   /* 🆕 **أسماءُ تبويبات صفحة الترايلرات** (D-734) */
   trailerTabForYou: "لك",
   trailerTabTrending: "رائج",
@@ -2021,7 +2054,8 @@ const en: Dict = {
   recoFromGenre: "From your genres",
   listAddAllDone: (n: number) => `${n} added to To watch`,
   listStartWatching: "Start Watching",
-  listStartWatchingAria: "Add this list to Continue Watching and open the first title",
+  listStartWatchingAria:
+    "Add this list to Continue Watching and open the first title",
   trendingWeek: "Trending this week",
   hintDiscover:
     "The Filters button hides language, era, platform and rating filters — and week/month/year chips sit on every Top 10 rail.",
@@ -2029,10 +2063,14 @@ const en: Dict = {
     "Long-press any card: rate it, add it to a list, or mark it \u201Cnot interested\u201D.",
 
   // First-open page hints (19 Aug) — short, said once, then silent
-  hintHome: "Reorder home sections and switch the view mode from the customize button up top.",
-  hintLists: "Gather titles around an idea: create your own list, or heart other people\u2019s lists to keep them.",
-  hintPeople: "Follow friends to see their activity here \u2014 and follow artists to catch their new work.",
-  hintMessages: "Messages and notifications live in two tabs \u2014 the badge on each tab shows where the news is.",
+  hintHome:
+    "Reorder home sections and switch the view mode from the customize button up top.",
+  hintLists:
+    "Gather titles around an idea: create your own list, or heart other people\u2019s lists to keep them.",
+  hintPeople:
+    "Follow friends to see their activity here \u2014 and follow artists to catch their new work.",
+  hintMessages:
+    "Messages and notifications live in two tabs \u2014 the badge on each tab shows where the news is.",
 
   // Site tour (19 Aug) — steps live in lib/tour.ts, copy lives here
   tourSuggestTitle: "New here? A quick tour of Loopz.",
@@ -2053,15 +2091,20 @@ const en: Dict = {
   tourHomeBody:
     "Everything you follow at a glance: continue watching, this week\u2019s episodes and what\u2019s next \u2014 all sections reorder and hide from the customize button.",
   tourDiscoverTitle: "Discover",
-  tourDiscoverBody: "Trending, upcoming and top charts for shows, movies and anime \u2014 with genre, era and platform filters.",
+  tourDiscoverBody:
+    "Trending, upcoming and top charts for shows, movies and anime \u2014 with genre, era and platform filters.",
   tourLibraryTitle: "Library",
-  tourLibraryBody: "Your shows and movies by status: watching, completed, dropped \u2014 with sorting and export in the tools button.",
+  tourLibraryBody:
+    "Your shows and movies by status: watching, completed, dropped \u2014 with sorting and export in the tools button.",
   tourListsTitle: "Lists",
-  tourListsBody: "Create private or public lists, and heart other people\u2019s lists to keep them here.",
+  tourListsBody:
+    "Create private or public lists, and heart other people\u2019s lists to keep them here.",
   tourPeopleTitle: "People",
-  tourPeopleBody: "Follow friends to see their activity and reviews \u2014 and follow artists to catch their work.",
+  tourPeopleBody:
+    "Follow friends to see their activity and reviews \u2014 and follow artists to catch their work.",
   tourMessagesTitle: "Inbox",
-  tourMessagesBody: "Messages and notifications on one surface, two tabs \u2014 each with its own badge.",
+  tourMessagesBody:
+    "Messages and notifications on one surface, two tabs \u2014 each with its own badge.",
   tourSettingsTitle: "Settings",
   tourSettingsBody:
     "Theme, language, text size and privacy all live here \u2014 and you can replay this tour any time from Help.",
@@ -2149,7 +2192,8 @@ const en: Dict = {
   libraryEmpty: "Your library is empty — search for a title and follow it.",
   libSearchEmpty: (q: string) => `Nothing named “${q}” in this tab.`,
   libSearchEmptyCta: "Clear search",
-  libAnimeEmpty: "No anime in your library yet — follow one and it shows up here.",
+  libAnimeEmpty:
+    "No anime in your library yet — follow one and it shows up here.",
   libAnimeEmptyCta: "Browse anime",
   searchPlaceholder: "Search for a show or a movie…",
   agoNow: "just now",
@@ -2512,8 +2556,10 @@ const en: Dict = {
   cpNoMatch: "No matches",
   cpLangUp: "Raise priority",
   cpLangDown: "Lower priority",
-  cpGuestNote: "Saved on this device, and moved into your account when you sign in.",
-  socialInvalid: "That handle doesn\u2019t work for this platform \u2014 type the account name or paste its link.",
+  cpGuestNote:
+    "Saved on this device, and moved into your account when you sign in.",
+  socialInvalid:
+    "That handle doesn\u2019t work for this platform \u2014 type the account name or paste its link.",
   notifTitle: "Notifications",
   notifEmpty: "Nothing yet — new followers and likes will show up here.",
   notifUnreadAria: (n: number) => `${n} new notifications`,
@@ -2528,7 +2574,9 @@ const en: Dict = {
       ? `${who} replied to you in the “${title}” discussion`
       : `${who} replied to you in a discussion`,
   notifListReview: (who: string, list: string) =>
-    list ? `${who} rated your list “${list}”` : `${who} rated one of your lists`,
+    list
+      ? `${who} rated your list “${list}”`
+      : `${who} rated one of your lists`,
   notifListReviewLike: (who: string, list: string) =>
     list
       ? `${who} liked your review of “${list}”`
@@ -2616,7 +2664,8 @@ const en: Dict = {
   /** 🆕 (D-681) */
   listReviewsViewAll: (n: number) => `View all ${n} reviews`,
   myRowsTitle: "Your rows",
-  myRowsHint: "Pick a genre — and a theme if you like — and a row with that name appears in Discover.",
+  myRowsHint:
+    "Pick a genre — and a theme if you like — and a row with that name appears in Discover.",
   myRowsRow: (n: string) => `Row ${n}`,
   myRowsGenreOff: "None — row off",
   myRowsTagAny: "No theme",
@@ -2636,10 +2685,12 @@ const en: Dict = {
   feedShowStrangers: "Show strangers",
   // Shortened (D-292). The Loopz-bulletin exception stays — without it the
   // switch reads broken to anyone who turns it off and still sees them
-  feedShowStrangersHint: "Off: only people you follow, plus you. Loopz bulletins are unaffected.",
+  feedShowStrangersHint:
+    "Off: only people you follow, plus you. Loopz bulletins are unaffected.",
   feedEmptyForYou:
     "Nothing for you yet. Follow a few people or add titles to your library, and this feed fills with talk that concerns you.",
-  talkShowReplies: (n: number) => (n === 1 ? "Show 1 reply" : `Show ${num(n, "en")} replies`),
+  talkShowReplies: (n: number) =>
+    n === 1 ? "Show 1 reply" : `Show ${num(n, "en")} replies`,
   talkHideReplies: "Hide replies",
   talkMoreReplies: (n: number) =>
     n === 1 ? "View 1 more reply" : `View ${num(n, "en")} more replies`,
@@ -2846,12 +2897,14 @@ const en: Dict = {
   custTitle: "Customize",
   custHomeView: "Home view",
   custResetShort: "Reset",
-  custResetHint: "Puts this panel back to its defaults — nothing is saved until you press save.",
+  custResetHint:
+    "Puts this panel back to its defaults — nothing is saved until you press save.",
   custSectionsTitle: "Sections",
   custSectionsHint: "Drag to reorder · Tap to show or hide",
   allWord: "All",
   custTabsTitle: "Tabs",
-  custTabsHint: "A hidden tab disappears for your visitors — your page opens on the first one shown.",
+  custTabsHint:
+    "A hidden tab disappears for your visitors — your page opens on the first one shown.",
   custOverviewTab: "Inside the Overview tab",
   custListsTab: "Inside the Lists tab",
   custArrange: "Arrange sections",
@@ -2873,7 +2926,8 @@ const en: Dict = {
   profileEmptyOverview: "No sections shown yet.",
   profileTitleLabel: "Title",
   profileTitlePlaceholder: "Story lover",
-  profileTitleHint: "A short line under your picture — 24 characters. Leave it empty to show your level name.",
+  profileTitleHint:
+    "A short line under your picture — 24 characters. Leave it empty to show your level name.",
   profileTabLists: "Lists",
   profileTopRated: "Top rated",
   profileEmptyActivity: "No activity yet.",
@@ -2979,7 +3033,8 @@ const en: Dict = {
   prtEdit: "Edit application",
   prtCancelApp: "Withdraw application",
   prtRejectedTitle: "Not accepted this time",
-  prtRejectedBody: "You can apply again whenever your content or audience changes",
+  prtRejectedBody:
+    "You can apply again whenever your content or audience changes",
   prtYourLink: "Your partner link",
   prtStatClicks: "Clicks",
   prtStatJoined: "Joined",
@@ -3006,12 +3061,16 @@ const en: Dict = {
   prtCompleteSetup: "Complete setup",
   prtSetupLater: "Available when subscriptions open",
   prtTermsTitle: "Commission terms",
-  prtTerm15: "15% of net revenue for each subscriber's first 3 monthly payments (annual plan: one payment)",
+  prtTerm15:
+    "15% of net revenue for each subscriber's first 3 monthly payments (annual plan: one payment)",
   prtTermDirect: "Direct referrals only — no tiers",
   prtTermHold: "30-day hold before any commission is confirmed",
-  prtTermMin: "SAR 100 minimum — monthly bank transfer after identity verification",
-  prtTermNature: "“Earnings” are a rewards balance, not transferable to anyone else",
-  prtMoneyLater: "Commissions and withdrawals activate when subscriptions open — your link and stats work now",
+  prtTermMin:
+    "SAR 100 minimum — monthly bank transfer after identity verification",
+  prtTermNature:
+    "“Earnings” are a rewards balance, not transferable to anyone else",
+  prtMoneyLater:
+    "Commissions and withdrawals activate when subscriptions open — your link and stats work now",
   setHelp: "Help & feedback",
   setAbout: "About Loopz",
   setNotifInApp: "In-app notifications",
@@ -3125,8 +3184,10 @@ const en: Dict = {
   activityTabRatings: "Ratings",
   activityTabReviews: "Reviews",
   activityThisWeek: "This week",
-  activityCount: (n: number) => `${num(n, "en")} ${n === 1 ? "activity" : "activities"}`,
-  activityEmpty: "Nothing logged yet \u2014 tick an episode or rate a title and it lands here.",
+  activityCount: (n: number) =>
+    `${num(n, "en")} ${n === 1 ? "activity" : "activities"}`,
+  activityEmpty:
+    "Nothing logged yet \u2014 tick an episode or rate a title and it lands here.",
   actVerbFinished: "Finished",
   actVerbWatched: "Watched",
   actVerbRated: "Rated",
@@ -3259,7 +3320,8 @@ const en: Dict = {
   loginRedirecting: "Redirecting…",
   loginFailed: "Sign-in failed: ",
   loginGateTitle: "Sign in to continue",
-  loginGateHint: "Browsing is open to everyone — following, rating and replies need an account.",
+  loginGateHint:
+    "Browsing is open to everyone — following, rating and replies need an account.",
   plusName: "Loopz+",
   plusGateTitle: "This is a Loopz+ feature",
   plusGateHint:
@@ -3268,6 +3330,10 @@ const en: Dict = {
   plusSoon: "Coming soon — subscriptions are not open yet",
   plusBadge: "Loopz+ member",
   founderBadge: "Founder",
+  partnerBadge: "Loopz partner",
+  verifiedBadge: "Verified account",
+  verifiedBadgeTip:
+    "This account has been confirmed to represent the stated person or organisation.",
   plusIncludes: "What your membership includes",
   plusLocked: "Loopz+ feature",
   loginNeedsKeys:
@@ -3293,7 +3359,8 @@ const en: Dict = {
   clipScene: "Clip",
   trailerMore: "More clips",
   trailerEnd: "You've reached the end",
-  trailersEmpty: "No trailers yet — follow or rate a few titles and this row fills up.",
+  trailersEmpty:
+    "No trailers yet — follow or rate a few titles and this row fills up.",
   trailerTabForYou: "For You",
   trailerTabTrending: "Trending",
   trailerTabMovies: "Movies",
@@ -3412,7 +3479,10 @@ export function worksParts(
     value: num(n, locale),
     /* **والوحدةُ تُقتطع من العبارة لا تُكتب ثانيةً** — مفتاحٌ واحدٌ
        يملك الصياغة، وهذه تقرأ منه. */
-    unit: t.personWorksCount(n).replace(/^[0-9,٠-٩\s]+/, "").trim(),
+    unit: t
+      .personWorksCount(n)
+      .replace(/^[0-9,٠-٩\s]+/, "")
+      .trim(),
   };
 }
 

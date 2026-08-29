@@ -142,6 +142,10 @@ export interface Profile {
   plus_until?: string | null;
   /** صفةٌ لا خطّة — تبقى بعد أيِّ تبدّلٍ في الاشتراك */
   founder?: boolean | null;
+  /* 🆕 **ختمُ التوثيق** (D-773، الهجرة ١٥٦) — **لا صلةَ له بالخطّة**:
+     يُمنح بمراجعةٍ يدويّةٍ ولا يُشترى. والحكمُ عليه في `lib/plan.ts`
+     وحدَه كأخويه (D-145). */
+  verified_at?: string | null;
 }
 
 /** الملف الشخصي — يُقرأ في التخطيط والشريط العلوي والصفحة، فيُخزَّن لكل طلب */
@@ -158,7 +162,7 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
     let { data, error } = await supabase
       .from("profiles")
       .select(
-        "id, nickname, username, avatar_url, cover_url, cover_pos, avatar_pos, theme, favorite_genres, unwanted_genres, preferred_languages, excluded_languages, socials, hide_name, home_prefs, bio, is_private, hide_follow_lists, profile_prefs, font_ui, font_content, ui_state, plan, plus_until, founder",
+        "id, nickname, username, avatar_url, cover_url, cover_pos, avatar_pos, theme, favorite_genres, unwanted_genres, preferred_languages, excluded_languages, socials, hide_name, home_prefs, bio, is_private, hide_follow_lists, profile_prefs, font_ui, font_content, ui_state, plan, plus_until, founder, verified_at",
       )
       .eq("id", uid)
       .maybeSingle();
@@ -171,14 +175,36 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
       // ظهر ذلك عياناً حين نُشر الكود قبل تشغيل ملف SQL الخاص بعموده
       const mid = await supabase
         .from("profiles")
-        .select("id, nickname, username, avatar_url, cover_url, theme, favorite_genres, hide_name")
+        .select(
+          "id, nickname, username, avatar_url, cover_url, theme, favorite_genres, hide_name",
+        )
         .eq("id", uid)
         .maybeSingle();
       if (mid.data) {
         // عمودا التموضع أحدث من هذه الدرجة — يسقطان إلى سلوكهما القديم
         /* 🆕 **وأعمدةُ ١٢٦ تسقط إلى الفراغ في هذه الدرجة** — **والفراغُ
            يعني «بلا تفضيلات» أي السلوكَ القديم بالضبط** (D-063). */
-        data = { ...mid.data, cover_pos: null, avatar_pos: null, home_prefs: null, bio: null, is_private: null, hide_follow_lists: null, profile_prefs: null, font_ui: null, font_content: null, ui_state: null, unwanted_genres: null, preferred_languages: null, excluded_languages: null, socials: null, plan: "free", plus_until: null, founder: false };
+        data = {
+          ...mid.data,
+          cover_pos: null,
+          avatar_pos: null,
+          home_prefs: null,
+          bio: null,
+          is_private: null,
+          hide_follow_lists: null,
+          profile_prefs: null,
+          font_ui: null,
+          font_content: null,
+          ui_state: null,
+          unwanted_genres: null,
+          preferred_languages: null,
+          excluded_languages: null,
+          socials: null,
+          plan: "free",
+          plus_until: null,
+          founder: false,
+          verified_at: null,
+        };
       } else {
         const legacy = await supabase
           .from("profiles")
@@ -210,6 +236,7 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
             plan: "free",
             plus_until: null,
             founder: false,
+            verified_at: null,
           };
         }
       }
@@ -227,7 +254,8 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
         // معرّف عشوائي لا بداية الإيميل: المعرّف يُنشر ويُبحث، وبداية
         // الإيميل هوية لم يخترها صاحبها
         username: `user_${user.id.replace(/-/g, "").slice(0, 8)}`,
-        avatar_url: (user.user_metadata?.avatar_url as string | undefined) ?? null,
+        avatar_url:
+          (user.user_metadata?.avatar_url as string | undefined) ?? null,
         cover_url: null,
         cover_pos: null,
         avatar_pos: null,
@@ -306,7 +334,11 @@ export const getMyAnimeFlags = cache(
         .select("tmdb_id, media_type, is_anime")
         .eq("user_id", uid);
       if (error || !data) return out;
-      for (const r of data as { tmdb_id: number; media_type: string; is_anime: boolean | null }[]) {
+      for (const r of data as {
+        tmdb_id: number;
+        media_type: string;
+        is_anime: boolean | null;
+      }[]) {
         out.set(`${r.media_type}-${r.tmdb_id}`, r.is_anime ?? null);
       }
       return out;
@@ -333,13 +365,21 @@ export const getMyAnimeFlags = cache(
  * `user_list_items` **ولا علَمَ فيها** — **والعلَمُ في `follows`
  * وحدَها**، فالخريطةُ واحدةٌ لقارئَين.
  */
-export async function getProfileAnimeFlags(userId: string): Promise<Map<string, boolean>> {
+export async function getProfileAnimeFlags(
+  userId: string,
+): Promise<Map<string, boolean>> {
   const out = new Map<string, boolean>();
   try {
     const supabase = await createClient();
-    const { data, error } = await supabase.rpc("profile_anime_flags", { p_user: userId });
+    const { data, error } = await supabase.rpc("profile_anime_flags", {
+      p_user: userId,
+    });
     if (error || !data) return out;
-    for (const r of data as { tmdb_id: number; media_type: string; is_anime: boolean | null }[]) {
+    for (const r of data as {
+      tmdb_id: number;
+      media_type: string;
+      is_anime: boolean | null;
+    }[]) {
       if (r.is_anime) out.set(`${r.media_type}-${r.tmdb_id}`, true);
     }
     return out;
@@ -364,7 +404,9 @@ export async function getReviewLikesOf(
   const out = new Map<string, { likes: number; likedByMe: boolean }>();
   try {
     const supabase = await createClient();
-    const { data, error } = await supabase.rpc("feed_review_likes", { uids: [userId] });
+    const { data, error } = await supabase.rpc("feed_review_likes", {
+      uids: [userId],
+    });
     if (error || !data) return out;
     for (const l of data as {
       review_user_id: string;
@@ -481,11 +523,15 @@ export const getMyFavorites = cache(async (): Promise<Set<string>> => {
  * الواحدة، ولا باب ثانٍ (D-061/D-070). وسقوطُها يعيد خريطةً فارغة:
  * الأغلفة زينةٌ، ولا يجوز أن يُسقط سقوطُها البروفايل.
  */
-export async function getProfileArt(userId: string): Promise<Map<string, TitleArt>> {
+export async function getProfileArt(
+  userId: string,
+): Promise<Map<string, TitleArt>> {
   const out = new Map<string, TitleArt>();
   try {
     const supabase = await createClient();
-    const { data, error } = await supabase.rpc("profile_title_art", { p_user: userId });
+    const { data, error } = await supabase.rpc("profile_title_art", {
+      p_user: userId,
+    });
     if (error || !data) return out;
     for (const r of data as {
       tmdb_id: number;
@@ -548,30 +594,38 @@ export async function getWatchedForShow(
         .eq("tmdb_id", showTmdbId)
         .eq("media_type", "tv")
         .maybeSingle();
-      since = (fr as { rewatch_started_at?: string | null } | null)?.rewatch_started_at ?? null;
+      since =
+        (fr as { rewatch_started_at?: string | null } | null)
+          ?.rewatch_started_at ?? null;
     } catch {
       since = null;
     }
   }
 
-  const rows = await pageAll<{ season_number: number; episode_number: number }>((from, to) => {
-    let q = supabase
-      .from("watched_episodes")
-      .select("season_number, episode_number")
-      .eq("user_id", uid)
-      .eq("show_tmdb_id", showTmdbId);
-    if (since) q = q.gte("watched_at", since);
-    return q
-      .order("season_number", { ascending: true })
-      .order("episode_number", { ascending: true })
-      .range(from, to);
-  });
-  return new Set(rows.map((r) => episodeKey(r.season_number, r.episode_number)));
+  const rows = await pageAll<{ season_number: number; episode_number: number }>(
+    (from, to) => {
+      let q = supabase
+        .from("watched_episodes")
+        .select("season_number, episode_number")
+        .eq("user_id", uid)
+        .eq("show_tmdb_id", showTmdbId);
+      if (since) q = q.gte("watched_at", since);
+      return q
+        .order("season_number", { ascending: true })
+        .order("episode_number", { ascending: true })
+        .range(from, to);
+    },
+  );
+  return new Set(
+    rows.map((r) => episodeKey(r.season_number, r.episode_number)),
+  );
 }
 
-
 /** هل أتابع هذا العمل؟ صفٌّ واحد بدل قراءة كل المتابعات لسؤال بنعم أو لا */
-export async function isFollowing(tmdbId: number, mediaType: "tv" | "movie"): Promise<boolean> {
+export async function isFollowing(
+  tmdbId: number,
+  mediaType: "tv" | "movie",
+): Promise<boolean> {
   try {
     const supabase = await createClient();
     const user = await getUser();
@@ -623,20 +677,22 @@ export interface WatchSummaryRow {
  */
 /* `cache()`: getLibState غيرُ مخبّأةٍ وتتداخل استدعاءاتُها في /news ثلاث
    مرّاتٍ في الطلب الواحد — فكان ملخّصُ المشاهدة يُحسب ثلاثاً. */
-export const getWatchSummary = cache(async (): Promise<WatchSummaryRow[] | null> => {
-  try {
-    const supabase = await createClient();
-    const { data, error } = await supabase.rpc("watch_summary");
-    if (error || !data) return null;
-    return (data as WatchSummaryRow[]).map((r) => ({
-      ...r,
-      watched: Number(r.watched),
-      minutes: Number(r.minutes),
-    }));
-  } catch {
-    return null;
-  }
-});
+export const getWatchSummary = cache(
+  async (): Promise<WatchSummaryRow[] | null> => {
+    try {
+      const supabase = await createClient();
+      const { data, error } = await supabase.rpc("watch_summary");
+      if (error || !data) return null;
+      return (data as WatchSummaryRow[]).map((r) => ({
+        ...r,
+        watched: Number(r.watched),
+        minutes: Number(r.minutes),
+      }));
+    } catch {
+      return null;
+    }
+  },
+);
 
 export async function getAllWatchedEpisodes(): Promise<WatchedEpisodeRow[]> {
   const supabase = await createClient();
@@ -645,7 +701,9 @@ export async function getAllWatchedEpisodes(): Promise<WatchedEpisodeRow[]> {
   return pageAll<WatchedEpisodeRow>((from, to) =>
     supabase
       .from("watched_episodes")
-      .select("show_tmdb_id, season_number, episode_number, watched_at, runtime")
+      .select(
+        "show_tmdb_id, season_number, episode_number, watched_at, runtime",
+      )
       .eq("user_id", uid)
       .order("show_tmdb_id", { ascending: true })
       .order("season_number", { ascending: true })
@@ -662,14 +720,18 @@ export interface MovieProgressRow {
   poster_path: string | null;
 }
 
-export async function getMovieProgress(movieTmdbId: number): Promise<MovieProgressRow | null> {
+export async function getMovieProgress(
+  movieTmdbId: number,
+): Promise<MovieProgressRow | null> {
   try {
     const supabase = await createClient();
     const user = await getUser();
     if (!user) return null;
     const { data } = await supabase
       .from("movie_progress")
-      .select("movie_tmdb_id, position_minutes, runtime_minutes, title, poster_path")
+      .select(
+        "movie_tmdb_id, position_minutes, runtime_minutes, title, poster_path",
+      )
       .eq("user_id", user.id)
       .eq("movie_tmdb_id", movieTmdbId)
       .maybeSingle();
@@ -686,7 +748,9 @@ export async function getAllMovieProgress(): Promise<MovieProgressRow[]> {
     if (!uid) return [];
     const { data } = await supabase
       .from("movie_progress")
-      .select("movie_tmdb_id, position_minutes, runtime_minutes, title, poster_path")
+      .select(
+        "movie_tmdb_id, position_minutes, runtime_minutes, title, poster_path",
+      )
       .eq("user_id", uid)
       .order("updated_at", { ascending: false });
     return (data as MovieProgressRow[]) ?? [];
@@ -720,9 +784,15 @@ export async function getReactions(ids: number[] = []): Promise<ReactionInfo> {
     if (unique.length) {
       // العدّ من دالة definer حصراً: القراءة المباشرة صارت مقصورة على
       // صفوف المستخدم نفسه، فأي عدٍّ محلي سيكون ناقصاً بصمت
-      const { data, error } = await supabase.rpc("reaction_counts", { ids: unique });
+      const { data, error } = await supabase.rpc("reaction_counts", {
+        ids: unique,
+      });
       if (!error && data) {
-        for (const r of data as { tmdb_id: number; media_type: string; n: number }[]) {
+        for (const r of data as {
+          tmdb_id: number;
+          media_type: string;
+          n: number;
+        }[]) {
           counts[`${r.media_type}-${r.tmdb_id}`] = Number(r.n);
         }
       }
@@ -734,7 +804,9 @@ export async function getReactions(ids: number[] = []): Promise<ReactionInfo> {
       .eq("user_id", user.id)
       .limit(1000);
 
-    const mine = new Set<string>((own ?? []).map((r) => `${r.media_type}-${r.tmdb_id}`));
+    const mine = new Set<string>(
+      (own ?? []).map((r) => `${r.media_type}-${r.tmdb_id}`),
+    );
     return { counts, mine };
   } catch {
     return empty;
@@ -766,23 +838,28 @@ export const getWatchedMovieIds = cache(async (): Promise<Set<number>> => {
  * المشاركة كانت تُسقط الأفلام من الوقت أصلاً. المدّة مخزّنة عند وضع علامة
  * المشاهدة (`toggleMovieWatched`)، فنقرأها ونجمعها فعلاً بدل التقدير.
  */
-export async function getWatchedMovies(): Promise<{ id: number; runtime: number | null }[]> {
+export async function getWatchedMovies(): Promise<
+  { id: number; runtime: number | null }[]
+> {
   const supabase = await createClient();
   const uid = await getUserId();
   if (!uid) return [];
-  const rows = await pageAll<{ movie_tmdb_id: number; runtime: number | null }>((from, to) =>
-    supabase
-      .from("watched_movies")
-      .select("movie_tmdb_id, runtime")
-      .eq("user_id", uid)
-      .order("movie_tmdb_id", { ascending: true })
-      .range(from, to),
+  const rows = await pageAll<{ movie_tmdb_id: number; runtime: number | null }>(
+    (from, to) =>
+      supabase
+        .from("watched_movies")
+        .select("movie_tmdb_id, runtime")
+        .eq("user_id", uid)
+        .order("movie_tmdb_id", { ascending: true })
+        .range(from, to),
   );
   return rows.map((r) => ({ id: r.movie_tmdb_id, runtime: r.runtime }));
 }
 
 /** إجمالي دقائق الأفلام — المدّة الفعلية، وبديلٌ ١١٠ لِما لا مدّةَ له فقط */
-export function watchedMovieMinutes(rows: { runtime: number | null }[]): number {
+export function watchedMovieMinutes(
+  rows: { runtime: number | null }[],
+): number {
   return rows.reduce((n, r) => n + (r.runtime ?? 110), 0);
 }
 
@@ -850,7 +927,9 @@ export async function getMyRatings(): Promise<RatingRow[]> {
 export async function getRatingsOf(userId: string): Promise<RatingRow[]> {
   try {
     const supabase = await createClient();
-    const { data, error } = await supabase.rpc("user_ratings", { target: userId });
+    const { data, error } = await supabase.rpc("user_ratings", {
+      target: userId,
+    });
     if (error) return [];
     return (data as RatingRow[]) ?? [];
   } catch {
@@ -884,7 +963,9 @@ export async function getTitlePulse(
       m_type: mediaType,
     });
     if (error || !data) return empty;
-    const row = (data as { hearts: number; votes: number; avg_rating: number }[])[0];
+    const row = (
+      data as { hearts: number; votes: number; avg_rating: number }[]
+    )[0];
     if (!row) return empty;
     return {
       hearts: Number(row.hearts) || 0,
@@ -937,13 +1018,23 @@ export interface PublicProfile {
   profile_prefs?: unknown;
   /* 🆕 **الخطّةُ والصفةُ في العرض العامّ** (D-633، الهجرة ١٤٠): الشارةُ
      تُرى على ملفِّ صاحبها، **و`plus_until` لا تدخل العرض** — الشارةُ
-     تُرى والتاريخُ لا يُرى، فلا يعرف الناسُ متى ينتهي اشتراكُ غيرهم. */
+     تُرى والتاريخُ لا يُرى، فلا يعرف الناسُ متى ينتهي اشتراكُ غيرهم.
+     🔴 **وكان لهذا ثمنٌ صامتٌ سُدّ في الهجرة ١٥٦**: `isPlus()` تقرأ
+     التاريخَ، **والغائبُ يُقرأ «بلا انتهاء»** — فكان المنتهي اشتراكُه
+     يحمل الشارةَ عند الناس ويراها مطفأةً عند نفسه. **والآن العرضُ
+     يخفض `plan` إلى `free` عند المصدر** فيصدق الحكمان معاً، **ويبقى
+     التاريخُ مستوراً كما أراد القرار.** */
   plan?: string | null;
   founder?: boolean | null;
+  /* 🆕 **والختمُ يخرج للعامّة** (D-773، الهجرة ١٥٦): الشارةُ تُرى على
+     ملفِّ صاحبها وفي كلِّ سطرٍ يحمل اسمَه — **ونوعُ التوثيق لا يخرج**،
+     فهو لسياسة المراجعة لا لرسمٍ ثانٍ. */
+  verified_at?: string | null;
 }
 
 /** معرّف UUID كما يكتبه Postgres — يميّز رابط الهوية عن رابط المعرّف */
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
  * الملف العام بالمعرّف أو بالهوية.
@@ -978,7 +1069,9 @@ export async function getProfileByUsername(
          وغائبَين عن هذا السطر: العمودان أحدث من الاستعلام، فكان القفل
          لا يقفل والتخصيص لا يُقرأ. أُضيفا بعد تشغيل الهجرتين 43 و51،
          والاحتياط أدناه يمسكهما لو نُشر الكود قبل هجرةٍ لاحقة. */
-      .select("id, nickname, username, avatar_url, cover_url, cover_pos, avatar_pos, favorite_genres, hide_name, bio, is_private, hide_follow_lists, profile_prefs, plan, founder")
+      .select(
+        "id, nickname, username, avatar_url, cover_url, cover_pos, avatar_pos, favorite_genres, hide_name, bio, is_private, hide_follow_lists, profile_prefs, plan, founder, verified_at",
+      )
       .eq(column, value)
       .maybeSingle();
 
@@ -986,7 +1079,9 @@ export async function getProfileByUsername(
     if (error) {
       const legacy = await supabase
         .from("public_profiles")
-        .select("id, nickname, username, avatar_url, cover_url, favorite_genres")
+        .select(
+          "id, nickname, username, avatar_url, cover_url, favorite_genres",
+        )
         .eq(column, value)
         .maybeSingle();
       if (!legacy.data) return null;
@@ -1001,7 +1096,10 @@ export async function getProfileByUsername(
     }
 
     if (!data) return null;
-    return { ...data, favorite_genres: data.favorite_genres ?? [] } as PublicProfile;
+    return {
+      ...data,
+      favorite_genres: data.favorite_genres ?? [],
+    } as PublicProfile;
   } catch {
     return null;
   }
@@ -1021,7 +1119,9 @@ export async function getFollowsOf(userId: string): Promise<FollowRow[]> {
     // ترجع صفراً بصمت. المكتبة عامة بحكم المنتج، فتخرج من دالة definer
     // محدودة الأعمدة والعدد (انظر supabase/security2.sql)
     const supabase = await createClient();
-    const { data, error } = await supabase.rpc("user_public_follows", { target: userId });
+    const { data, error } = await supabase.rpc("user_public_follows", {
+      target: userId,
+    });
     if (error) return [];
     return (data as FollowRow[]) ?? [];
   } catch {
@@ -1040,13 +1140,21 @@ export async function getFollowsOf(userId: string): Promise<FollowRow[]> {
  * ⚠️ **والفشلُ خريطةٌ فارغة** لا استثناء: **تجميعُ الشبكة زينةُ ترتيبٍ
  * لا شرطُ عرض** — فتُقرأ أبجديّةً بلا مجموعاتٍ ولا تنكسر الصفحة.
  */
-export async function getFollowGenresOf(userId: string): Promise<Map<string, number[]>> {
+export async function getFollowGenresOf(
+  userId: string,
+): Promise<Map<string, number[]>> {
   const out = new Map<string, number[]>();
   try {
     const supabase = await createClient();
-    const { data, error } = await supabase.rpc("user_follow_genres", { target: userId });
+    const { data, error } = await supabase.rpc("user_follow_genres", {
+      target: userId,
+    });
     if (error || !data) return out;
-    for (const r of data as { tmdb_id: number; media_type: string; genres: number[] | null }[]) {
+    for (const r of data as {
+      tmdb_id: number;
+      media_type: string;
+      genres: number[] | null;
+    }[]) {
       if (r.genres?.length) out.set(`${r.media_type}-${r.tmdb_id}`, r.genres);
     }
     return out;
@@ -1068,16 +1176,30 @@ export async function getFollowGenresOf(userId: string): Promise<Map<string, num
  */
 export async function getWatchStatsOf(
   userId: string,
-): Promise<{ byShow: Map<number, { watched: number; minutes: number }>; episodes: number; minutes: number }> {
-  const empty = { byShow: new Map<number, { watched: number; minutes: number }>(), episodes: 0, minutes: 0 };
+): Promise<{
+  byShow: Map<number, { watched: number; minutes: number }>;
+  episodes: number;
+  minutes: number;
+}> {
+  const empty = {
+    byShow: new Map<number, { watched: number; minutes: number }>(),
+    episodes: 0,
+    minutes: 0,
+  };
   try {
     const supabase = await createClient();
-    const { data, error } = await supabase.rpc("user_watch_stats", { target: userId });
+    const { data, error } = await supabase.rpc("user_watch_stats", {
+      target: userId,
+    });
     if (error || !data) return empty;
     const byShow = new Map<number, { watched: number; minutes: number }>();
     let episodes = 0;
     let minutes = 0;
-    for (const r of data as { show_tmdb_id: number; watched: number; minutes: number }[]) {
+    for (const r of data as {
+      show_tmdb_id: number;
+      watched: number;
+      minutes: number;
+    }[]) {
       const w = Number(r.watched);
       const m = Number(r.minutes);
       byShow.set(r.show_tmdb_id, { watched: w, minutes: m });
@@ -1101,12 +1223,16 @@ export async function getMovieStatsOf(
 ): Promise<{ watched: number; minutes: number }> {
   try {
     const supabase = await createClient();
-    const { data, error } = await supabase.rpc("user_movie_stats", { target: userId });
+    const { data, error } = await supabase.rpc("user_movie_stats", {
+      target: userId,
+    });
     if (error || !data) return { watched: 0, minutes: 0 };
     const row = (Array.isArray(data) ? data[0] : data) as
-      | { watched: number; minutes: number }
-      | undefined;
-    return { watched: Number(row?.watched ?? 0), minutes: Number(row?.minutes ?? 0) };
+      { watched: number; minutes: number } | undefined;
+    return {
+      watched: Number(row?.watched ?? 0),
+      minutes: Number(row?.minutes ?? 0),
+    };
   } catch {
     return { watched: 0, minutes: 0 };
   }
@@ -1116,8 +1242,16 @@ export async function getMovieStatsOf(
  *  دوال definer، لا صفوف حلقات ولا أوقات مشاهدة */
 export async function getWatchedOf(
   userId: string,
-): Promise<{ byShow: Map<number, number>; episodes: number; movies: Set<number> }> {
-  const empty = { byShow: new Map<number, number>(), episodes: 0, movies: new Set<number>() };
+): Promise<{
+  byShow: Map<number, number>;
+  episodes: number;
+  movies: Set<number>;
+}> {
+  const empty = {
+    byShow: new Map<number, number>(),
+    episodes: 0,
+    movies: new Set<number>(),
+  };
   try {
     const supabase = await createClient();
     const [eps, mvs] = await Promise.all([
@@ -1126,7 +1260,10 @@ export async function getWatchedOf(
     ]);
     const byShow = new Map<number, number>();
     let episodes = 0;
-    for (const r of (eps.data ?? []) as { show_tmdb_id: number; watched: number }[]) {
+    for (const r of (eps.data ?? []) as {
+      show_tmdb_id: number;
+      watched: number;
+    }[]) {
       byShow.set(r.show_tmdb_id, Number(r.watched));
       episodes += Number(r.watched);
     }
@@ -1134,7 +1271,9 @@ export async function getWatchedOf(
       byShow,
       episodes,
       movies: new Set(
-        ((mvs.data ?? []) as { movie_tmdb_id: number }[]).map((m) => m.movie_tmdb_id),
+        ((mvs.data ?? []) as { movie_tmdb_id: number }[]).map(
+          (m) => m.movie_tmdb_id,
+        ),
       ),
     };
   } catch {
@@ -1270,7 +1409,9 @@ export async function getCommunityFeed(
     };
     // صفٌّ بلا عنوان لا يُرسم — الملصق والعنوان يأتيان من `follows`، فإن
     // غاب الصفّ هناك (استيرادٌ ناقص مثلاً) لم يبقَ ما يُعرض
-    const rows = (actRows as ActivityRow[]).filter((r) => r.title || r.review || r.list_id);
+    const rows = (actRows as ActivityRow[]).filter(
+      (r) => r.title || r.review || r.list_id,
+    );
     if (!rows.length) return [];
 
     /* الإعجابات في ندائين متوازيين — أعدادٌ و«هل أعجبتُ به» بلا أي
@@ -1282,9 +1423,14 @@ export async function getCommunityFeed(
        نداءً بمعرّفٍ صفريّ يعود فارغاً دائماً. **ولا إعجابَ على مراجعة
        قائمةٍ اليوم** (لا جدولَ له)، **وزرٌّ لا يكتب شيئاً أسوأ من
        غيابه** (نصُّ D-123 حرفاً). */
-    const rated = rows.filter((r) => !r.list_id && (r.kind ?? "rate") === "rate");
-    const acted = rows.filter((r) => !r.list_id && (r.kind ?? "rate") !== "rate");
-    const likeKey = (u: string, t2: number, m: string, d = "") => `${u}|${t2}|${m}|${d}`;
+    const rated = rows.filter(
+      (r) => !r.list_id && (r.kind ?? "rate") === "rate",
+    );
+    const acted = rows.filter(
+      (r) => !r.list_id && (r.kind ?? "rate") !== "rate",
+    );
+    const likeKey = (u: string, t2: number, m: string, d = "") =>
+      `${u}|${t2}|${m}|${d}`;
     const counts = new Map<string, number>();
     const mine = new Set<string>();
 
@@ -1334,7 +1480,12 @@ export async function getCommunityFeed(
       const kind: FeedKind = r.list_id ? "list_review" : (r.kind ?? "rate");
       const when = r.at ?? r.updated_at ?? new Date(0).toISOString();
       const day = r.day ?? when.slice(0, 10);
-      const k = likeKey(r.id, r.tmdb_id, r.media_type, kind === "rate" ? "" : day);
+      const k = likeKey(
+        r.id,
+        r.tmdb_id,
+        r.media_type,
+        kind === "rate" ? "" : day,
+      );
       const review = r.review?.trim() ?? "";
       return {
         person: {
@@ -1349,9 +1500,10 @@ export async function getCommunityFeed(
         media_type: r.media_type,
         /* **وتقييمُ القائمة رقمٌ كتقييم العمل** — سلّمٌ واحدٌ من عشرة
            (D-002/D-327)، فيُرسم في موضعه نفسِه بلا فرعٍ في الواجهة. */
-        rating: kind === "rate" || kind === "list_review" ? r.rating ?? null : null,
+        rating:
+          kind === "rate" || kind === "list_review" ? (r.rating ?? null) : null,
         review: review || null,
-        title: r.list_id ? r.list_name ?? r.title : r.title,
+        title: r.list_id ? (r.list_name ?? r.title) : r.title,
         poster_path: r.poster_path,
         updated_at: when,
         day,
@@ -1402,7 +1554,9 @@ export interface FriendWatchRow {
   at: string;
 }
 
-export async function getFriendsWatching(limit = 12): Promise<FriendWatchRow[]> {
+export async function getFriendsWatching(
+  limit = 12,
+): Promise<FriendWatchRow[]> {
   try {
     const supabase = await createClient();
     const uid = await getUserId();
@@ -1589,7 +1743,9 @@ export async function getConversations(): Promise<Conversation[]> {
         .limit(300),
       supabase
         .from("list_shares")
-        .select("id, sender_id, recipient_id, list_id, list_name, item_count, note, created_at, read_at")
+        .select(
+          "id, sender_id, recipient_id, list_id, list_name, item_count, note, created_at, read_at",
+        )
         .order("created_at", { ascending: true })
         .limit(300),
     ]);
@@ -1633,7 +1789,8 @@ export async function getConversations(): Promise<Conversation[]> {
        الردود وطلبُ الملفّات مستقلّان ويخرجان معاً: موجتان لا ثلاث. */
     const ids = new Set<string>();
     for (const s of shareRows) ids.add(otherOf.get(s.id)!);
-    for (const s of listShareRows) ids.add(s.sender_id === me.id ? s.recipient_id : s.sender_id);
+    for (const s of listShareRows)
+      ids.add(s.sender_id === me.id ? s.recipient_id : s.sender_id);
     const [{ data: replyRows }, { data: people }] = await Promise.all([
       shareIds.length
         ? supabase
@@ -1729,7 +1886,9 @@ export async function getConversations(): Promise<Conversation[]> {
     const list = [...convs.values()];
     for (const c of list) {
       c.events.sort((a, b) => a.created_at.localeCompare(b.created_at));
-      c.lastAt = c.events.length ? c.events[c.events.length - 1].created_at : "";
+      c.lastAt = c.events.length
+        ? c.events[c.events.length - 1].created_at
+        : "";
     }
     list.sort((a, b) => b.lastAt.localeCompare(a.lastAt));
     return list;
@@ -1749,7 +1908,9 @@ export async function getConversations(): Promise<Conversation[]> {
 export async function getLastSeenOf(personId: string): Promise<string | null> {
   try {
     const supabase = await createClient();
-    const { data, error } = await supabase.rpc("last_seen_of", { target: personId });
+    const { data, error } = await supabase.rpc("last_seen_of", {
+      target: personId,
+    });
     if (error || !data) return null;
     return String(data);
   } catch {
@@ -1788,9 +1949,16 @@ export async function getMyInviteStats(): Promise<InviteStats> {
   try {
     const supabase = await createClient();
     const { data, error } = await supabase.rpc("my_invite_stats");
-    const row = (data as {
-      joined: number; qualified: number; subscribed: number; reward_days: number;
-    }[] | null)?.[0];
+    const row = (
+      data as
+        | {
+            joined: number;
+            qualified: number;
+            subscribed: number;
+            reward_days: number;
+          }[]
+        | null
+    )?.[0];
     if (error || !row) return zero;
     return {
       joined: row.joined ?? 0,
@@ -1806,7 +1974,8 @@ export async function getMyInviteStats(): Promise<InviteStats> {
 /** 🆕 D-770: من دخلوا عن طريقي — الحالاتُ الخمسُ تُحسب في جسم
  *  `my_invite_list` (مصدرُ حقيقةٍ واحدٌ للحالة)، والهويّاتُ من
  *  `public_profiles` دفعةً واحدةً كنمط المحادثات */
-export type InviteStatus = "joined" | "in_progress" | "qualified" | "subscribed" | "rejected";
+export type InviteStatus =
+  "joined" | "in_progress" | "qualified" | "subscribed" | "rejected";
 export interface InviteEntry {
   id: string;
   person: PersonLite | null;
@@ -1823,7 +1992,10 @@ export async function getMyInviteList(): Promise<InviteEntry[]> {
     const { data: people } = await supabase
       .from("public_profiles")
       .select("id, nickname, username, avatar_url, hide_name")
-      .in("id", rows.map((r) => r.person));
+      .in(
+        "id",
+        rows.map((r) => r.person),
+      );
     const byId = new Map((people ?? []).map((p) => [p.id, p as PersonLite]));
     return rows.map((r) => ({
       id: r.person,
@@ -1847,17 +2019,32 @@ export interface PartnerState {
   joined: number;
 }
 export async function getMyPartnerState(): Promise<PartnerState> {
-  const none: PartnerState = { appStatus: null, appliedAt: null, code: null, clicks: 0, joined: 0 };
+  const none: PartnerState = {
+    appStatus: null,
+    appliedAt: null,
+    code: null,
+    clicks: 0,
+    joined: 0,
+  };
   try {
     const supabase = await createClient();
     const { data, error } = await supabase.rpc("my_partner_state");
-    const row = (data as {
-      app_status: string | null; applied_at: string | null;
-      code: string | null; clicks: number; joined: number;
-    }[] | null)?.[0];
+    const row = (
+      data as
+        | {
+            app_status: string | null;
+            applied_at: string | null;
+            code: string | null;
+            clicks: number;
+            joined: number;
+          }[]
+        | null
+    )?.[0];
     if (error || !row) return none;
     const status =
-      row.app_status === "pending" || row.app_status === "approved" || row.app_status === "rejected"
+      row.app_status === "pending" ||
+      row.app_status === "approved" ||
+      row.app_status === "rejected"
         ? row.app_status
         : null;
     return {
@@ -1890,7 +2077,9 @@ export async function getMyPartnerApplication(): Promise<PartnerApplicationField
     if (!user) return null;
     const { data } = await supabase
       .from("partner_applications")
-      .select("channel_url, content_type, platforms, followers_range, country, content_language, reason")
+      .select(
+        "channel_url, content_type, platforms, followers_range, country, content_language, reason",
+      )
       .eq("user_id", user.id)
       .maybeSingle();
     if (!data) return null;
@@ -1923,21 +2112,33 @@ export interface AdminPartnerApp {
   status: string;
   createdAt: string;
 }
-export async function getAdminPartnerApplications(): Promise<AdminPartnerApp[]> {
+export async function getAdminPartnerApplications(): Promise<
+  AdminPartnerApp[]
+> {
   try {
     const supabase = await createClient();
     const { data, error } = await supabase.rpc("admin_partner_applications");
     if (error || !data?.length) return [];
     type Row = {
-      user_id: string; channel_url: string; content_type: string; platforms: string;
-      followers_range: string; country: string; content_language: string; reason: string;
-      status: string; created_at: string;
+      user_id: string;
+      channel_url: string;
+      content_type: string;
+      platforms: string;
+      followers_range: string;
+      country: string;
+      content_language: string;
+      reason: string;
+      status: string;
+      created_at: string;
     };
     const rows = data as Row[];
     const { data: people } = await supabase
       .from("public_profiles")
       .select("id, nickname, username, avatar_url, hide_name")
-      .in("id", rows.map((r) => r.user_id));
+      .in(
+        "id",
+        rows.map((r) => r.user_id),
+      );
     const byId = new Map((people ?? []).map((p) => [p.id, p as PersonLite]));
     return rows.map((r) => ({
       userId: r.user_id,
@@ -1982,7 +2183,9 @@ export async function getFollowState(
 export async function getReceivedLikes(userId: string): Promise<number> {
   try {
     const supabase = await createClient();
-    const { data, error } = await supabase.rpc("received_likes", { target: userId });
+    const { data, error } = await supabase.rpc("received_likes", {
+      target: userId,
+    });
     if (error) return 0;
     return Number(data ?? 0);
   } catch {
@@ -2001,7 +2204,9 @@ export async function getFollowStats(
        لـanon**: عدّادان يُعرضان علناً لا يبرّران تعدادَ شبكةِ المتابعات
        كلِّها عبر REST. **والدالّةُ تُرجع الرقمين وحدَهما وتحترم
        `can_view_profile`** — الهجرة ١٣٨. */
-    const { data, error } = await supabase.rpc("follow_stats", { target: userId });
+    const { data, error } = await supabase.rpc("follow_stats", {
+      target: userId,
+    });
     const row = Array.isArray(data) ? data[0] : data;
     if (!error && row) {
       return {
@@ -2128,9 +2333,14 @@ export async function getIncomingFollowRequests(): Promise<PersonLite[]> {
     const { data: people } = await supabase
       .from("public_profiles")
       .select("id, nickname, username, avatar_url, hide_name")
-      .in("id", rows.map((r) => r.requester_id));
+      .in(
+        "id",
+        rows.map((r) => r.requester_id),
+      );
     const byId = new Map((people ?? []).map((p) => [p.id, p as PersonLite]));
-    return rows.map((r) => byId.get(r.requester_id)).filter(Boolean) as PersonLite[];
+    return rows
+      .map((r) => byId.get(r.requester_id))
+      .filter(Boolean) as PersonLite[];
   } catch {
     return [];
   }
@@ -2151,7 +2361,9 @@ export async function getFollowedPeople(): Promise<PublicProfile[]> {
     if (!list.length) return [];
     const { data } = await supabase
       .from("public_profiles")
-      .select("id, nickname, username, avatar_url, cover_url, favorite_genres, hide_name")
+      .select(
+        "id, nickname, username, avatar_url, cover_url, favorite_genres, hide_name",
+      )
       .in("id", list);
     return ((data ?? []) as PublicProfile[]).map((p) => ({
       ...p,
@@ -2290,10 +2502,14 @@ export interface FavoriteLite {
  * وسقوطُه يعيد صفّاً فارغاً فيغيب القسم بصمت — لا شاشةَ خطأ في صفحةٍ
  * عامّة لم يطلب صاحبُها شيئاً.
  */
-export async function getProfileFavorites(userId: string): Promise<FavoriteLite[]> {
+export async function getProfileFavorites(
+  userId: string,
+): Promise<FavoriteLite[]> {
   try {
     const supabase = await createClient();
-    const { data, error } = await supabase.rpc("profile_favorites", { p_user: userId });
+    const { data, error } = await supabase.rpc("profile_favorites", {
+      p_user: userId,
+    });
     if (error || !data) return [];
     return data as FavoriteLite[];
   } catch {
@@ -2301,7 +2517,10 @@ export async function getProfileFavorites(userId: string): Promise<FavoriteLite[
   }
 }
 
-export async function getProfileArtists(userId: string, limit = 60): Promise<ArtistLite[]> {
+export async function getProfileArtists(
+  userId: string,
+  limit = 60,
+): Promise<ArtistLite[]> {
   try {
     const supabase = await createClient();
     const { data, error } = await supabase.rpc("profile_artists", {
@@ -2338,7 +2557,6 @@ export async function searchPeople(q: string): Promise<PersonLite[]> {
   }
 }
 
-
 export interface ChartRow {
   tmdb_id: number;
   media_type: "tv" | "movie";
@@ -2362,27 +2580,33 @@ export interface ChartRow {
  */
 /* `cache()`: يُطلب من أكثر من رفٍّ في /news بنفس المعاملات — ٢٥٠ صفّاً لا
    تُنقل مرّتين. (التخبئة بالمعاملات، فاختلافُها لا يخلط النتائج.) */
-export const getImdbChart = cache(async (
-  kind: "movie" | "tv" | "anime",
-  limit = 250,
-  /** جهةٌ داخل الصنف — للأنمي وحده اليوم: صنفُه يحمل أفلاماً ومسلسلاتٍ
+export const getImdbChart = cache(
+  async (
+    kind: "movie" | "tv" | "anime",
+    limit = 250,
+    /** جهةٌ داخل الصنف — للأنمي وحده اليوم: صنفُه يحمل أفلاماً ومسلسلاتٍ
       معاً منذ الهجرة ٦٠، ورفّاه منفصلان في الواجهة (D-169). */
-  media?: "tv" | "movie",
-): Promise<ChartRow[]> => {
-  try {
-    const supabase = await createClient();
-    let q = supabase
-      .from("imdb_chart")
-      .select("tmdb_id, media_type, title, poster_path, rating, votes, is_doc")
-      .eq("kind", kind);
-    if (media) q = q.eq("media_type", media);
-    const { data, error } = await q.order("rank", { ascending: true }).limit(limit);
-    if (error || !data) return [];
-    return data as ChartRow[];
-  } catch {
-    return [];
-  }
-});
+    media?: "tv" | "movie",
+  ): Promise<ChartRow[]> => {
+    try {
+      const supabase = await createClient();
+      let q = supabase
+        .from("imdb_chart")
+        .select(
+          "tmdb_id, media_type, title, poster_path, rating, votes, is_doc",
+        )
+        .eq("kind", kind);
+      if (media) q = q.eq("media_type", media);
+      const { data, error } = await q
+        .order("rank", { ascending: true })
+        .limit(limit);
+      if (error || !data) return [];
+      return data as ChartRow[];
+    } catch {
+      return [];
+    }
+  },
+);
 
 /** 🆕 D-700: بطاقةُ هويّة عملٍ من `title_meta` (الهجرة ١٥٠) */
 export interface TitleMetaRow {
@@ -2507,25 +2731,31 @@ export interface PeopleLeaderRow extends PersonLite {
  * **فلا طولَ يُختار ولا معاملَ `p_days`**: المرساةُ في SQL بتوقيت
  * الرياض، **والواجهةُ تطلب العددَ وحده.**
  */
-export async function getPeopleLeaderboard(limit = 20): Promise<PeopleLeaderRow[]> {
+export async function getPeopleLeaderboard(
+  limit = 20,
+): Promise<PeopleLeaderRow[]> {
   try {
     const supabase = await createClient();
     /* **وحارسُ العبور حُذف** بعد أن شُغِّلت الهجرة ٨٣ وتحقّقت
        (`board_overloads=1` و`week_starts` ينتهي بسبت) — **حارسٌ مؤقّتٌ
        يُنسى يصير كذبةً عن حالة القاعدة** (D-151). */
-    const { data, error } = await supabase.rpc("people_leaderboard", { p_limit: limit });
+    const { data, error } = await supabase.rpc("people_leaderboard", {
+      p_limit: limit,
+    });
     if (error || !data) return [];
-    return (data as {
-      user_id: string;
-      nickname: string | null;
-      username: string | null;
-      avatar_url: string | null;
-      hide_name: boolean | null;
-      posts: number;
-      reviews: number;
-      total: number;
-      prev_total: number;
-    }[]).map((r) => ({
+    return (
+      data as {
+        user_id: string;
+        nickname: string | null;
+        username: string | null;
+        avatar_url: string | null;
+        hide_name: boolean | null;
+        posts: number;
+        reviews: number;
+        total: number;
+        prev_total: number;
+      }[]
+    ).map((r) => ({
       id: String(r.user_id),
       nickname: r.nickname,
       username: r.username,
@@ -2561,7 +2791,10 @@ export async function getPeopleLeaderboard(limit = 20): Promise<PeopleLeaderRow[
  * **و`prevTotal` تعود صفراً دائماً** — لا «صاعدين» على مدى تسعين يوماً،
  * **والحقلُ يبقى ليبقى الشكلُ واحداً** وهو أرخصُ من نوعٍ ثانٍ.
  */
-export async function getPeopleFeatured(days = 90, limit = 3): Promise<PeopleLeaderRow[]> {
+export async function getPeopleFeatured(
+  days = 90,
+  limit = 3,
+): Promise<PeopleLeaderRow[]> {
   try {
     const supabase = await createClient();
     const { data, error } = await supabase.rpc("people_featured", {
@@ -2569,17 +2802,19 @@ export async function getPeopleFeatured(days = 90, limit = 3): Promise<PeopleLea
       p_limit: limit,
     });
     if (error || !data) return [];
-    return (data as {
-      user_id: string;
-      nickname: string | null;
-      username: string | null;
-      avatar_url: string | null;
-      hide_name: boolean | null;
-      posts: number;
-      reviews: number;
-      total: number;
-      prev_total: number;
-    }[]).map((r) => ({
+    return (
+      data as {
+        user_id: string;
+        nickname: string | null;
+        username: string | null;
+        avatar_url: string | null;
+        hide_name: boolean | null;
+        posts: number;
+        reviews: number;
+        total: number;
+        prev_total: number;
+      }[]
+    ).map((r) => ({
       id: String(r.user_id),
       nickname: r.nickname,
       username: r.username,
@@ -2638,43 +2873,47 @@ export async function getPeopleTopReviews(
       p_limit: limit,
     });
     if (error || !data) return [];
-    return (data as {
-      user_id: string;
-      nickname: string | null;
-      username: string | null;
-      avatar_url: string | null;
-      hide_name: boolean | null;
-      tmdb_id: number;
-      media_type: string;
-      title: string | null;
-      poster_path: string | null;
-      backdrop_path?: string | null;
-      review: string | null;
-      rating: number | null;
-      likes: number;
-      created_at: string;
-      has_spoiler?: boolean;
-    }[])
-      /* **وصفٌّ بلا نصّ لا يُرسم**: الدالّةُ تشترطه، **والحارسُ هنا
+    return (
+      (
+        data as {
+          user_id: string;
+          nickname: string | null;
+          username: string | null;
+          avatar_url: string | null;
+          hide_name: boolean | null;
+          tmdb_id: number;
+          media_type: string;
+          title: string | null;
+          poster_path: string | null;
+          backdrop_path?: string | null;
+          review: string | null;
+          rating: number | null;
+          likes: number;
+          created_at: string;
+          has_spoiler?: boolean;
+        }[]
+      )
+        /* **وصفٌّ بلا نصّ لا يُرسم**: الدالّةُ تشترطه، **والحارسُ هنا
          احتياطٌ لا تكرار** — قارئٌ متسامح (D-179). */
-      .filter((r) => Boolean(r.review))
-      .map((r) => ({
-        id: String(r.user_id),
-        nickname: r.nickname,
-        username: r.username,
-        avatar_url: r.avatar_url,
-        hide_name: Boolean(r.hide_name),
-        tmdbId: Number(r.tmdb_id),
-        mediaType: r.media_type === "tv" ? "tv" : "movie",
-        title: r.title,
-        posterPath: r.poster_path,
-        backdropPath: r.backdrop_path ?? null,
-        review: String(r.review),
-        rating: Number(r.rating ?? 0),
-        likes: Number(r.likes ?? 0),
-        createdAt: String(r.created_at),
-        hasSpoiler: Boolean(r.has_spoiler),
-      }));
+        .filter((r) => Boolean(r.review))
+        .map((r) => ({
+          id: String(r.user_id),
+          nickname: r.nickname,
+          username: r.username,
+          avatar_url: r.avatar_url,
+          hide_name: Boolean(r.hide_name),
+          tmdbId: Number(r.tmdb_id),
+          mediaType: r.media_type === "tv" ? "tv" : "movie",
+          title: r.title,
+          posterPath: r.poster_path,
+          backdropPath: r.backdrop_path ?? null,
+          review: String(r.review),
+          rating: Number(r.rating ?? 0),
+          likes: Number(r.likes ?? 0),
+          createdAt: String(r.created_at),
+          hasSpoiler: Boolean(r.has_spoiler),
+        }))
+    );
   } catch {
     return [];
   }
@@ -2719,9 +2958,10 @@ export async function getTitleCircle(
     return {
       watchers: Number(row.watchers ?? 0),
       raters: Number(row.raters ?? 0),
-      avgRating: row.avg_rating === null || row.avg_rating === undefined
-        ? null
-        : Number(row.avg_rating),
+      avgRating:
+        row.avg_rating === null || row.avg_rating === undefined
+          ? null
+          : Number(row.avg_rating),
     };
   } catch {
     return none;
@@ -2796,18 +3036,20 @@ export async function getTitleReplies(
       getUser(),
     ]);
     if (error || !data) return [];
-    return (data as {
-      id: string;
-      review_user_id: string;
-      parent_id: string | null;
-      author_id: string;
-      nickname: string | null;
-      username: string | null;
-      avatar_url: string | null;
-      hide_name: boolean;
-      body: string;
-      created_at: string;
-    }[]).map((r) => ({
+    return (
+      data as {
+        id: string;
+        review_user_id: string;
+        parent_id: string | null;
+        author_id: string;
+        nickname: string | null;
+        username: string | null;
+        avatar_url: string | null;
+        hide_name: boolean;
+        body: string;
+        created_at: string;
+      }[]
+    ).map((r) => ({
       /* ⚠️ **و`id` هنا معرّفُ الكاتب لا معرّفُ الردّ** — لأن `ReviewReply`
          يمدّ `PersonLite`، و`PersonLite.id` معناه «صاحبُ الصفّ» في كل
          مكوّنٍ يقرؤه (`Avatar` · `displayNameOf` · زرُّ الحظر). ومعرّفُ
@@ -2919,27 +3161,29 @@ export async function getTitleThread(
       getUser(),
     ]);
     if (error || !data) return [];
-    return (data as {
-      id: string;
-      parent_id: string | null;
-      depth: number;
-      author_id: string;
-      nickname: string | null;
-      username: string | null;
-      avatar_url: string | null;
-      hide_name: boolean;
-      body: string | null;
-      created_at: string;
-      /* 🆕 D-261 — **تغيب قبل تشغيل الهجرة ٨٠ فتُقرأ `undefined`**،
+    return (
+      data as {
+        id: string;
+        parent_id: string | null;
+        depth: number;
+        author_id: string;
+        nickname: string | null;
+        username: string | null;
+        avatar_url: string | null;
+        hide_name: boolean;
+        body: string | null;
+        created_at: string;
+        /* 🆕 D-261 — **تغيب قبل تشغيل الهجرة ٨٠ فتُقرأ `undefined`**،
          والحارسُ `?? null` يجعل الصفَّ يُقرأ كلامَ إنسانٍ كما كان */
-      kind?: string | null;
-      data?: Record<string, unknown> | null;
-      spoiler?: Record<string, unknown> | null;
-      /* **وتغيب قبل الهجرة ٨٤** فتُقرأ `false` — والمتنُ يظهر كما كان */
-      has_spoiler?: boolean | null;
-      /* **وتغيب قبل الهجرة ٩٧** فتُقرأ `null` — والقارئُ يعود لـ`data` */
-      image_path?: string | null;
-    }[]).map((r) => ({
+        kind?: string | null;
+        data?: Record<string, unknown> | null;
+        spoiler?: Record<string, unknown> | null;
+        /* **وتغيب قبل الهجرة ٨٤** فتُقرأ `false` — والمتنُ يظهر كما كان */
+        has_spoiler?: boolean | null;
+        /* **وتغيب قبل الهجرة ٩٧** فتُقرأ `null` — والقارئُ يعود لـ`data` */
+        image_path?: string | null;
+      }[]
+    ).map((r) => ({
       postId: String(r.id),
       authorId: String(r.author_id),
       nickname: r.nickname,
@@ -3079,7 +3323,10 @@ export async function getProviderLinks(
       p_country: country,
     });
     if (error || !data) return out;
-    for (const r of data as { provider_id: number; destination_url: string }[]) {
+    for (const r of data as {
+      provider_id: number;
+      destination_url: string;
+    }[]) {
       out[r.provider_id] = r.destination_url;
     }
     return out;
@@ -3108,20 +3355,24 @@ export async function getMyRoomPins(): Promise<Set<string>> {
 export async function getTalkRooms(limit = 40): Promise<TalkRoom[]> {
   try {
     const supabase = await createClient();
-    const { data, error } = await supabase.rpc("title_talk_rooms", { p_limit: limit });
+    const { data, error } = await supabase.rpc("title_talk_rooms", {
+      p_limit: limit,
+    });
     if (error || !data) return [];
-    return (data as {
-      tmdb_id: number;
-      media_type: string;
-      title: string | null;
-      poster_path: string | null;
-      backdrop_path: string | null;
-      posts: number;
-      posts_week?: number;
-      last_at: string;
-      faces: PersonLite[] | null;
-      bulletin?: Record<string, unknown> | null;
-    }[]).map((r) => ({
+    return (
+      data as {
+        tmdb_id: number;
+        media_type: string;
+        title: string | null;
+        poster_path: string | null;
+        backdrop_path: string | null;
+        posts: number;
+        posts_week?: number;
+        last_at: string;
+        faces: PersonLite[] | null;
+        bulletin?: Record<string, unknown> | null;
+      }[]
+    ).map((r) => ({
       tmdbId: Number(r.tmdb_id),
       mediaType: r.media_type === "tv" ? "tv" : "movie",
       title: r.title,
@@ -3194,13 +3445,17 @@ export function pickTalkedAboutRoom(rooms: TalkRoom[]): TalkRoom | null {
  * ⚠️ **وسقوطُها صامتٌ ومقصود** (D-179): قبل ٨٩ تعود خريطةً فارغة
  * **فيبقى الترتيبُ زمنيّاً بالإعجابات وحدَها** — لا ينكسر شيء.
  */
-export async function getReviewReplyCounts(keys: string[]): Promise<Map<string, number>> {
+export async function getReviewReplyCounts(
+  keys: string[],
+): Promise<Map<string, number>> {
   const out = new Map<string, number>();
   const unique = [...new Set(keys)].slice(0, 200);
   if (!unique.length) return out;
   try {
     const supabase = await createClient();
-    const { data, error } = await supabase.rpc("review_reply_counts", { keys: unique });
+    const { data, error } = await supabase.rpc("review_reply_counts", {
+      keys: unique,
+    });
     if (error || !data) return out;
     for (const r of data as { post_key: string; replies: number }[]) {
       out.set(String(r.post_key), Number(r.replies));
@@ -3232,7 +3487,10 @@ export interface SavedListRow {
   posters: string[];
 }
 
-export async function getTopSavedLists(days = 7, limit = 3): Promise<SavedListRow[]> {
+export async function getTopSavedLists(
+  days = 7,
+  limit = 3,
+): Promise<SavedListRow[]> {
   try {
     const supabase = await createClient();
     const { data, error } = await supabase.rpc("top_saved_lists", {
@@ -3240,17 +3498,19 @@ export async function getTopSavedLists(days = 7, limit = 3): Promise<SavedListRo
       p_limit: limit,
     });
     if (error || !data) return [];
-    return (data as {
-      list_id: string;
-      name: string;
-      owner_id: string;
-      nickname: string | null;
-      username: string | null;
-      avatar_url: string | null;
-      hide_name: boolean;
-      saves: number;
-      posters: string[] | null;
-    }[]).map((r) => ({
+    return (
+      data as {
+        list_id: string;
+        name: string;
+        owner_id: string;
+        nickname: string | null;
+        username: string | null;
+        avatar_url: string | null;
+        hide_name: boolean;
+        saves: number;
+        posters: string[] | null;
+      }[]
+    ).map((r) => ({
       listId: String(r.list_id),
       name: String(r.name ?? ""),
       ownerId: String(r.owner_id),
@@ -3281,19 +3541,23 @@ export async function getTopSavedLists(days = 7, limit = 3): Promise<SavedListRo
 export async function getForYouLists(limit = 12): Promise<SavedListRow[]> {
   try {
     const supabase = await createClient();
-    const { data, error } = await supabase.rpc("for_you_lists", { p_limit: limit });
+    const { data, error } = await supabase.rpc("for_you_lists", {
+      p_limit: limit,
+    });
     if (error || !data) return [];
-    return (data as {
-      list_id: string;
-      name: string;
-      owner_id: string;
-      nickname: string | null;
-      username: string | null;
-      avatar_url: string | null;
-      hide_name: boolean;
-      saves: number;
-      posters: string[] | null;
-    }[]).map((r) => ({
+    return (
+      data as {
+        list_id: string;
+        name: string;
+        owner_id: string;
+        nickname: string | null;
+        username: string | null;
+        avatar_url: string | null;
+        hide_name: boolean;
+        saves: number;
+        posters: string[] | null;
+      }[]
+    ).map((r) => ({
       listId: String(r.list_id),
       name: String(r.name ?? ""),
       ownerId: String(r.owner_id),
@@ -3317,7 +3581,9 @@ export async function getPostLikes(
   if (!unique.length) return empty;
   try {
     const supabase = await createClient();
-    const { data, error } = await supabase.rpc("post_like_counts", { ids: unique });
+    const { data, error } = await supabase.rpc("post_like_counts", {
+      ids: unique,
+    });
     if (error || !data) return empty;
     const counts: Record<string, number> = {};
     const mine: string[] = [];
@@ -3343,15 +3609,24 @@ export async function getPostVotes(
   ids: string[],
 ): Promise<{ scores: Record<string, number>; mine: Record<string, number> }> {
   const unique = [...new Set(ids)].slice(0, 300);
-  const empty = { scores: {} as Record<string, number>, mine: {} as Record<string, number> };
+  const empty = {
+    scores: {} as Record<string, number>,
+    mine: {} as Record<string, number>,
+  };
   if (!unique.length) return empty;
   try {
     const supabase = await createClient();
-    const { data, error } = await supabase.rpc("post_vote_scores", { ids: unique });
+    const { data, error } = await supabase.rpc("post_vote_scores", {
+      ids: unique,
+    });
     if (error || !data) return empty;
     const scores: Record<string, number> = {};
     const mine: Record<string, number> = {};
-    for (const r of data as { post_id: string; score: number; mine: number }[]) {
+    for (const r of data as {
+      post_id: string;
+      score: number;
+      mine: number;
+    }[]) {
       scores[String(r.post_id)] = Number(r.score) || 0;
       if (r.mine) mine[String(r.post_id)] = Number(r.mine);
     }
@@ -3361,13 +3636,17 @@ export async function getPostVotes(
   }
 }
 
-export async function getNewsReplyCounts(keys: string[]): Promise<Map<string, number>> {
+export async function getNewsReplyCounts(
+  keys: string[],
+): Promise<Map<string, number>> {
   const out = new Map<string, number>();
   const unique = [...new Set(keys)].slice(0, 200);
   if (!unique.length) return out;
   try {
     const supabase = await createClient();
-    const { data, error } = await supabase.rpc("news_reply_counts", { keys: unique });
+    const { data, error } = await supabase.rpc("news_reply_counts", {
+      keys: unique,
+    });
     if (error || !data) return out;
     for (const r of data as { post_key: string; replies: number }[]) {
       out.set(String(r.post_key), Number(r.replies));
@@ -3514,7 +3793,9 @@ export async function getTitleLoopzNews(
   }
 }
 
-export async function getNewsPost(postKey: string): Promise<LoopzNewsItem | null> {
+export async function getNewsPost(
+  postKey: string,
+): Promise<LoopzNewsItem | null> {
   const key = String(postKey ?? "").trim();
   if (!key) return null;
   const all = await getLoopzNews(300);
@@ -3528,13 +3809,17 @@ export async function getNewsPost(postKey: string): Promise<LoopzNewsItem | null
  * فارغة وتُخفى الخانةُ ويبقى الخطُّ مقروءاً**. **ورقمٌ غائبٌ خيرٌ من صفحةٍ
  * ساقطة** — والعدّادُ زينةٌ لا ركن.
  */
-export async function getPostViewCounts(keys: string[]): Promise<Map<string, number>> {
+export async function getPostViewCounts(
+  keys: string[],
+): Promise<Map<string, number>> {
   const out = new Map<string, number>();
   const unique = [...new Set(keys)].slice(0, 200);
   if (!unique.length) return out;
   try {
     const supabase = await createClient();
-    const { data, error } = await supabase.rpc("post_view_counts", { keys: unique });
+    const { data, error } = await supabase.rpc("post_view_counts", {
+      keys: unique,
+    });
     if (error || !data) return out;
     for (const r of data as { post_key: string; views: number }[]) {
       out.set(String(r.post_key), Number(r.views));
@@ -3547,47 +3832,49 @@ export async function getPostViewCounts(keys: string[]): Promise<Map<string, num
 
 /** مراجعات عمل معيّن مع أصحابها */
 /* `cache()`: generateMetadata وصفحةُ المراجعة يطلبانها معاً — ٤ RPC بدل ٢. */
-export const getTitleReviews = cache(async (
-  tmdbId: number,
-  mediaType: "tv" | "movie",
-): Promise<TitleReview[]> => {
-  try {
-    const supabase = await createClient();
-    const [{ data, error }, me] = await Promise.all([
-      supabase.rpc("title_reviews", { t_id: tmdbId, m_type: mediaType }),
-      getUser(),
-    ]);
-    if (error || !data) return [];
-    const rows = data as Omit<TitleReview, "likes" | "likedByMe" | "isMine">[];
-    if (!rows.length) return [];
+export const getTitleReviews = cache(
+  async (tmdbId: number, mediaType: "tv" | "movie"): Promise<TitleReview[]> => {
+    try {
+      const supabase = await createClient();
+      const [{ data, error }, me] = await Promise.all([
+        supabase.rpc("title_reviews", { t_id: tmdbId, m_type: mediaType }),
+        getUser(),
+      ]);
+      if (error || !data) return [];
+      const rows = data as Omit<
+        TitleReview,
+        "likes" | "likedByMe" | "isMine"
+      >[];
+      if (!rows.length) return [];
 
-    // إعجابات العمل كلها في نداءٍ واحد على دالة definer تُرجع الأعداد
-    // و«هل أعجبتُ به أنا» فقط — من أعجب بماذا لم يعد يُقرأ
-    const counts = new Map<string, number>();
-    const mine = new Set<string>();
-    const { data: likeRows } = await supabase.rpc("title_review_likes", {
-      t_id: tmdbId,
-      m_type: mediaType,
-    });
-    for (const l of (likeRows ?? []) as {
-      review_user_id: string;
-      likes: number;
-      liked_by_me: boolean;
-    }[]) {
-      counts.set(l.review_user_id, Number(l.likes));
-      if (l.liked_by_me) mine.add(l.review_user_id);
+      // إعجابات العمل كلها في نداءٍ واحد على دالة definer تُرجع الأعداد
+      // و«هل أعجبتُ به أنا» فقط — من أعجب بماذا لم يعد يُقرأ
+      const counts = new Map<string, number>();
+      const mine = new Set<string>();
+      const { data: likeRows } = await supabase.rpc("title_review_likes", {
+        t_id: tmdbId,
+        m_type: mediaType,
+      });
+      for (const l of (likeRows ?? []) as {
+        review_user_id: string;
+        likes: number;
+        liked_by_me: boolean;
+      }[]) {
+        counts.set(l.review_user_id, Number(l.likes));
+        if (l.liked_by_me) mine.add(l.review_user_id);
+      }
+
+      return rows.map((r) => ({
+        ...r,
+        likes: counts.get(r.id) ?? 0,
+        likedByMe: mine.has(r.id),
+        isMine: me?.id === r.id,
+      }));
+    } catch {
+      return [];
     }
-
-    return rows.map((r) => ({
-      ...r,
-      likes: counts.get(r.id) ?? 0,
-      likedByMe: mine.has(r.id),
-      isMine: me?.id === r.id,
-    }));
-  } catch {
-    return [];
-  }
-});
+  },
+);
 
 /** يسجّل زيارة للملف (يتجاهل زيارة صاحبه ويتجاهل التكرار اليومي) */
 export async function recordProfileView(targetId: string): Promise<void> {
@@ -3602,7 +3889,9 @@ export async function recordProfileView(targetId: string): Promise<void> {
 export async function getProfileViewCount(targetId: string): Promise<number> {
   try {
     const supabase = await createClient();
-    const { data, error } = await supabase.rpc("profile_view_count", { target: targetId });
+    const { data, error } = await supabase.rpc("profile_view_count", {
+      target: targetId,
+    });
     if (error) return 0;
     return Number(data ?? 0);
   } catch {
@@ -3614,12 +3903,23 @@ export async function getProfileViewCount(targetId: string): Promise<number> {
 export async function getFollowLists(
   userId: string,
 ): Promise<{ followers: PersonLite[]; following: PersonLite[] }> {
-  const empty = { followers: [] as PersonLite[], following: [] as PersonLite[] };
+  const empty = {
+    followers: [] as PersonLite[],
+    following: [] as PersonLite[],
+  };
   try {
     const supabase = await createClient();
     const [a, b] = await Promise.all([
-      supabase.from("user_follows").select("follower_id").eq("following_id", userId).limit(50),
-      supabase.from("user_follows").select("following_id").eq("follower_id", userId).limit(50),
+      supabase
+        .from("user_follows")
+        .select("follower_id")
+        .eq("following_id", userId)
+        .limit(50),
+      supabase
+        .from("user_follows")
+        .select("following_id")
+        .eq("follower_id", userId)
+        .limit(50),
     ]);
     const ids = [
       ...(a.data ?? []).map((r) => r.follower_id),
@@ -3634,8 +3934,12 @@ export async function getFollowLists(
 
     const byId = new Map((people ?? []).map((p) => [p.id, p as PersonLite]));
     return {
-      followers: (a.data ?? []).map((r) => byId.get(r.follower_id)).filter(Boolean) as PersonLite[],
-      following: (b.data ?? []).map((r) => byId.get(r.following_id)).filter(Boolean) as PersonLite[],
+      followers: (a.data ?? [])
+        .map((r) => byId.get(r.follower_id))
+        .filter(Boolean) as PersonLite[],
+      following: (b.data ?? [])
+        .map((r) => byId.get(r.following_id))
+        .filter(Boolean) as PersonLite[],
     };
   } catch {
     return empty;
@@ -3708,7 +4012,10 @@ export async function getMyCommunities(): Promise<CommunityLite[]> {
     const supabase = await createClient();
     const { data, error } = await supabase.rpc("my_communities");
     if (error || !data) return [];
-    return (data as CommunityLite[]).map((c) => ({ ...c, member_count: Number(c.member_count) }));
+    return (data as CommunityLite[]).map((c) => ({
+      ...c,
+      member_count: Number(c.member_count),
+    }));
   } catch {
     return [];
   }
@@ -3720,7 +4027,10 @@ export async function getMyCommunityInvites(): Promise<CommunityLite[]> {
     const supabase = await createClient();
     const { data, error } = await supabase.rpc("my_community_invites");
     if (error || !data) return [];
-    return (data as CommunityLite[]).map((c) => ({ ...c, member_count: Number(c.member_count) }));
+    return (data as CommunityLite[]).map((c) => ({
+      ...c,
+      member_count: Number(c.member_count),
+    }));
   } catch {
     return [];
   }
@@ -3731,7 +4041,9 @@ export async function getMyCommunityInvites(): Promise<CommunityLite[]> {
  * تحرسهما سياسات العضوية فتعودان فارغتين لغير العضو — فتعرض الصفحة
  * غلافَ «انضمّ» بدل الدردشة. طلبات الانضمام تُقرأ للمالك وحده.
  */
-export async function getCommunityRoom(id: string): Promise<CommunityRoomData | null> {
+export async function getCommunityRoom(
+  id: string,
+): Promise<CommunityRoomData | null> {
   try {
     if (!UUID_RE.test(id)) return null;
     const supabase = await createClient();
@@ -3740,52 +4052,55 @@ export async function getCommunityRoom(id: string): Promise<CommunityRoomData | 
 
     const { data: c } = await supabase
       .from("communities")
-      .select("id, name, is_private, owner_id, photo_url, kind, tmdb_id, media_type")
+      .select(
+        "id, name, is_private, owner_id, photo_url, kind, tmdb_id, media_type",
+      )
       .eq("id", id)
       .maybeSingle();
     if (!c) return null;
     // `owner_id` قد يكون null (غرفة عمل) — والمساواة به تكذب لو تُركت
     const isOwner = !!c.owner_id && c.owner_id === me.id;
 
-    const [memberRows, msgRows, reqRows, myReq, inviteRows, countRow] = await Promise.all([
-      supabase
-        .from("community_members")
-        .select("user_id")
-        .eq("community_id", id)
-        .order("joined_at", { ascending: true })
-        .limit(100),
-      supabase
-        .from("community_messages")
-        .select("id, author_id, body, created_at")
-        .eq("community_id", id)
-        .order("created_at", { ascending: true })
-        .limit(200),
-      isOwner
-        ? supabase
-            .from("community_join_requests")
-            .select("user_id")
-            .eq("community_id", id)
-            .order("created_at", { ascending: false })
-            .limit(50)
-        : Promise.resolve({ data: [] as { user_id: string }[] }),
-      supabase
-        .from("community_join_requests")
-        .select("community_id")
-        .eq("community_id", id)
-        .eq("user_id", me.id)
-        .maybeSingle(),
-      // من دعاهم المالك — لحالة «مدعو» في ورقة الدعوة (هجرة 42)
-      isOwner
-        ? supabase
-            .from("community_invites")
-            .select("user_id")
-            .eq("community_id", id)
-            .limit(200)
-        : Promise.resolve({ data: [] as { user_id: string }[] }),
-      // العدد الحقيقي (هجرة 53): قائمة الأعضاء محروسةٌ بالعضوية، فكان
-      // غيرُ العضو — وهو من يقرأ غرفة العمل الآن — يرى «٠ أعضاء»
-      supabase.rpc("community_member_count", { p_community: id }),
-    ]);
+    const [memberRows, msgRows, reqRows, myReq, inviteRows, countRow] =
+      await Promise.all([
+        supabase
+          .from("community_members")
+          .select("user_id")
+          .eq("community_id", id)
+          .order("joined_at", { ascending: true })
+          .limit(100),
+        supabase
+          .from("community_messages")
+          .select("id, author_id, body, created_at")
+          .eq("community_id", id)
+          .order("created_at", { ascending: true })
+          .limit(200),
+        isOwner
+          ? supabase
+              .from("community_join_requests")
+              .select("user_id")
+              .eq("community_id", id)
+              .order("created_at", { ascending: false })
+              .limit(50)
+          : Promise.resolve({ data: [] as { user_id: string }[] }),
+        supabase
+          .from("community_join_requests")
+          .select("community_id")
+          .eq("community_id", id)
+          .eq("user_id", me.id)
+          .maybeSingle(),
+        // من دعاهم المالك — لحالة «مدعو» في ورقة الدعوة (هجرة 42)
+        isOwner
+          ? supabase
+              .from("community_invites")
+              .select("user_id")
+              .eq("community_id", id)
+              .limit(200)
+          : Promise.resolve({ data: [] as { user_id: string }[] }),
+        // العدد الحقيقي (هجرة 53): قائمة الأعضاء محروسةٌ بالعضوية، فكان
+        // غيرُ العضو — وهو من يقرأ غرفة العمل الآن — يرى «٠ أعضاء»
+        supabase.rpc("community_member_count", { p_community: id }),
+      ]);
 
     const members = (memberRows.data ?? []).map((r) => r.user_id);
     const isMember = members.includes(me.id);
@@ -3816,7 +4131,9 @@ export async function getCommunityRoom(id: string): Promise<CommunityRoomData | 
       isMember,
       requested: !!myReq.data,
       member_count: Math.max(Number(countRow?.data ?? 0), members.length),
-      members: members.map((uid) => byId.get(uid)).filter(Boolean) as PersonLite[],
+      members: members
+        .map((uid) => byId.get(uid))
+        .filter(Boolean) as PersonLite[],
       messages: (msgRows.data ?? []).map((m) => ({
         id: m.id,
         author_id: m.author_id,
@@ -3844,7 +4161,9 @@ export async function getCommunityRoom(id: string): Promise<CommunityRoomData | 
 export async function getTitleRooms(limit = 12): Promise<CommunityLite[]> {
   try {
     const supabase = await createClient();
-    const { data, error } = await supabase.rpc("title_rooms", { p_limit: limit });
+    const { data, error } = await supabase.rpc("title_rooms", {
+      p_limit: limit,
+    });
     if (error || !data) return [];
     return (data as CommunityLite[]).map((c) => ({
       ...c,
@@ -3867,9 +4186,15 @@ export async function getTitleRoomOf(
       p_type: mediaType,
     });
     if (error || !data) return null;
-    const row = (data as { id: string; member_count: number; archived: boolean }[])[0];
+    const row = (
+      data as { id: string; member_count: number; archived: boolean }[]
+    )[0];
     if (!row) return null;
-    return { id: row.id, member_count: Number(row.member_count), archived: !!row.archived };
+    return {
+      id: row.id,
+      member_count: Number(row.member_count),
+      archived: !!row.archived,
+    };
   } catch {
     return null;
   }
@@ -3932,7 +4257,9 @@ export async function getWatchHistory(limit = 400): Promise<HistoryRow[]> {
     const [eps, movies] = await Promise.all([
       supabase
         .from("watched_episodes")
-        .select("show_tmdb_id, season_number, episode_number, watched_at, runtime")
+        .select(
+          "show_tmdb_id, season_number, episode_number, watched_at, runtime",
+        )
         .eq("user_id", uid)
         .order("watched_at", { ascending: false })
         .limit(limit),
@@ -3953,17 +4280,23 @@ export async function getWatchHistory(limit = 400): Promise<HistoryRow[]> {
         watchedAt: e.watched_at,
         runtime: e.runtime,
       })),
-      ...((movies.data ?? []) as { movie_tmdb_id: number; watched_at: string; runtime: number | null }[]).map(
-        (m) => ({
-          kind: "movie" as const,
-          tmdbId: m.movie_tmdb_id,
-          watchedAt: m.watched_at,
-          runtime: m.runtime,
-        }),
-      ),
+      ...(
+        (movies.data ?? []) as {
+          movie_tmdb_id: number;
+          watched_at: string;
+          runtime: number | null;
+        }[]
+      ).map((m) => ({
+        kind: "movie" as const,
+        tmdbId: m.movie_tmdb_id,
+        watchedAt: m.watched_at,
+        runtime: m.runtime,
+      })),
     ];
 
-    return rows.sort((a, b) => b.watchedAt.localeCompare(a.watchedAt)).slice(0, limit);
+    return rows
+      .sort((a, b) => b.watchedAt.localeCompare(a.watchedAt))
+      .slice(0, limit);
   } catch {
     return [];
   }
@@ -4015,7 +4348,6 @@ export interface ListItem {
   added_at: string;
   sort_order: number | null;
 }
-
 
 /** قوائمي مع عدد عناصر كل واحدة — استعلام واحد لا استعلام لكل قائمة */
 /**
@@ -4092,7 +4424,9 @@ export async function getList(listId: string): Promise<{
        تدرّج. الاستعلامُ الثاني لا يقع إلا في تلك الحالة وحدها. */
     let { data: list } = await supabase
       .from("user_lists")
-      .select(`${BASE}, cover_backdrop, cover_tmdb_id, cover_media_type, is_playlist`)
+      .select(
+        `${BASE}, cover_backdrop, cover_tmdb_id, cover_media_type, is_playlist`,
+      )
       .eq("id", listId)
       .maybeSingle();
     if (!list) {
@@ -4127,7 +4461,11 @@ export async function getList(listId: string): Promise<{
       }
     }
 
-    return { list: { ...list, kind: (list.kind ?? "regular") as ListKind }, items: rows, ratings };
+    return {
+      list: { ...list, kind: (list.kind ?? "regular") as ListKind },
+      items: rows,
+      ratings,
+    };
   } catch {
     return null;
   }
@@ -4158,22 +4496,26 @@ export interface PublicList {
 
 /* `cache()`: generateMetadata والصفحةُ يجريان في الطلب نفسه، وكلاهما يطلب
    القائمة — وحمولةُ items كاملةً كانت تُنقل مرّتين. */
-export const getPublicList = cache(async (listId: string): Promise<PublicList | null> => {
-  if (!/^[0-9a-f-]{36}$/i.test(listId)) return null;
-  try {
-    const supabase = await createClient();
-    const { data, error } = await supabase.rpc("public_list", { p_id: listId });
-    if (error || !data?.length) return null;
-    const row = data[0] as PublicList;
-    return {
-      ...row,
-      kind: (row.kind ?? "regular") as ListKind,
-      items: Array.isArray(row.items) ? (row.items as ListItem[]) : [],
-    };
-  } catch {
-    return null;
-  }
-});
+export const getPublicList = cache(
+  async (listId: string): Promise<PublicList | null> => {
+    if (!/^[0-9a-f-]{36}$/i.test(listId)) return null;
+    try {
+      const supabase = await createClient();
+      const { data, error } = await supabase.rpc("public_list", {
+        p_id: listId,
+      });
+      if (error || !data?.length) return null;
+      const row = data[0] as PublicList;
+      return {
+        ...row,
+        kind: (row.kind ?? "regular") as ListKind,
+        items: Array.isArray(row.items) ? (row.items as ListItem[]) : [],
+      };
+    } catch {
+      return null;
+    }
+  },
+);
 
 /** أي قوائمي تحتوي هذا العمل — لتعليم الأزرار في صفحة العمل */
 export async function getListsContaining(
@@ -4243,7 +4585,11 @@ export interface PublicListCard {
      يفشل عند الضغط وعدٌ كاذب** (D-217). */
   can_review?: boolean;
   /** رأيي القائم في هذه القائمة — يملأ ورقةَ النجمة فيكون تعديلاً */
-  my_review?: { rating: number; body: string | null; hasSpoiler: boolean } | null;
+  my_review?: {
+    rating: number;
+    body: string | null;
+    hasSpoiler: boolean;
+  } | null;
   /** ⚠️ `saved_by_me` لا `saved` — و`saves` فوقها عددُ الناس: **اسمان
       متقاربان لمعنيين متباعدين هو كيف يُقرأ عدّادٌ حالةً** (D-219). */
   saved_by_me?: boolean;
@@ -4287,7 +4633,15 @@ async function shapeListCards(
           .from("public_profiles")
           .select("id, nickname, username, avatar_url, hide_name")
           .in("id", [...new Set(lists.map((l) => l.user_id))])
-      : Promise.resolve({ data: [] as { id: string; nickname: string | null; username: string | null; avatar_url: string | null; hide_name: boolean | null }[] }),
+      : Promise.resolve({
+          data: [] as {
+            id: string;
+            nickname: string | null;
+            username: string | null;
+            avatar_url: string | null;
+            hide_name: boolean | null;
+          }[],
+        }),
     /* 🆕 **نداءٌ واحدٌ لأرقام البطاقات كلِّها** (D-329/D-205): الحفظُ
        والتقييمُ لثلاثٍ وستّين بطاقةً في استدعاءٍ واحد، **لا استعلامين
        لكلِّ واحدة**. وسقوطُه لا يُسقط البطاقة — **الرقمُ الغائبُ لا
@@ -4308,7 +4662,9 @@ async function shapeListCards(
           .select("list_id, is_playlist")
           .eq("user_id", me.id)
           .in("list_id", ids)
-      : Promise.resolve({ data: [] as { list_id: string; is_playlist?: boolean }[] }),
+      : Promise.resolve({
+          data: [] as { list_id: string; is_playlist?: boolean }[],
+        }),
     /* 🆕 **«ما رأيي أنا فيها؟» — استعلامٌ واحدٌ للصفحة كلِّها** (D-352):
        سياسةُ `list_reviews` «صفوفي أنا» فالقراءةُ مقصورةٌ عليّ أصلاً،
        **وورقةُ النجمة تُملأ بلا نداءٍ عند الفتح** (D-205/D-206). */
@@ -4318,10 +4674,19 @@ async function shapeListCards(
           .select("list_id, rating, body, has_spoiler")
           .eq("user_id", me.id)
           .in("list_id", ids)
-      : Promise.resolve({ data: [] as { list_id: string; rating: number; body: string | null; has_spoiler: boolean }[] }),
+      : Promise.resolve({
+          data: [] as {
+            list_id: string;
+            rating: number;
+            body: string | null;
+            has_spoiler: boolean;
+          }[],
+        }),
   ]);
   const savedSet = new Set(
-    ((savedRows?.data ?? []) as { list_id: string }[]).map((r) => String(r.list_id)),
+    ((savedRows?.data ?? []) as { list_id: string }[]).map((r) =>
+      String(r.list_id),
+    ),
   );
   /* 🆕 **وأيُّ محفوظةٍ شغّلتُها** (D-674) — **وقبل الهجرة ١٤٩ يغيب
      الحقلُ فتُقرأ كلُّها «متوقّفة»** ولا ينكسر شيء (D-028). */
@@ -4331,23 +4696,31 @@ async function shapeListCards(
       .map((r) => String(r.list_id)),
   );
   const mineOf = new Map(
-    ((myReviews?.data ?? []) as {
-      list_id: string;
-      rating: number;
-      body: string | null;
-      has_spoiler: boolean;
-    }[]).map((r) => [
+    (
+      (myReviews?.data ?? []) as {
+        list_id: string;
+        rating: number;
+        body: string | null;
+        has_spoiler: boolean;
+      }[]
+    ).map((r) => [
       String(r.list_id),
-      { rating: Number(r.rating), body: r.body ?? null, hasSpoiler: !!r.has_spoiler },
+      {
+        rating: Number(r.rating),
+        body: r.body ?? null,
+        hasSpoiler: !!r.has_spoiler,
+      },
     ]),
   );
   const statOf = new Map(
-    ((stats?.data ?? []) as {
-      list_id: string;
-      saves: number;
-      reviews: number;
-      avg_rating: number | null;
-    }[]).map((r) => [
+    (
+      (stats?.data ?? []) as {
+        list_id: string;
+        saves: number;
+        reviews: number;
+        avg_rating: number | null;
+      }[]
+    ).map((r) => [
       String(r.list_id),
       {
         saves: Number(r.saves) || 0,
@@ -4367,54 +4740,59 @@ async function shapeListCards(
   const nameOf = new Map(
     (owners.data ?? []).map((p) => [
       p.id,
-      p.hide_name ? null : (p.nickname || p.username || null),
+      p.hide_name ? null : p.nickname || p.username || null,
     ]),
   );
   const faceOf = new Map(
-    (owners.data ?? []).map((p) => [p.id, p.hide_name ? null : (p.avatar_url ?? null)]),
+    (owners.data ?? []).map((p) => [
+      p.id,
+      p.hide_name ? null : (p.avatar_url ?? null),
+    ]),
   );
 
-  return lists
-    .map((l) => {
-      const e = byList.get(l.id) ?? { count: 0, posters: [] };
-      const st = statOf.get(l.id);
-      return {
-        saves: st?.saves ?? 0,
-        reviews: st?.reviews ?? 0,
-        rating: st?.rating ?? null,
-        id: l.id,
-        name: l.name,
-        kind: l.kind ?? null,
-        owner: withOwner ? (nameOf.get(l.user_id) ?? null) : null,
-        owner_avatar: withOwner ? (faceOf.get(l.user_id) ?? null) : null,
-        item_count: e.count,
-        posters: e.posters,
-        source_slug: l.source_slug ?? null,
-        /* **الحفظُ فعلُ من لا يملكها وحدَه** — نفسُ شرط `list_saves`
+  return (
+    lists
+      .map((l) => {
+        const e = byList.get(l.id) ?? { count: 0, posters: [] };
+        const st = statOf.get(l.id);
+        return {
+          saves: st?.saves ?? 0,
+          reviews: st?.reviews ?? 0,
+          rating: st?.rating ?? null,
+          id: l.id,
+          name: l.name,
+          kind: l.kind ?? null,
+          owner: withOwner ? (nameOf.get(l.user_id) ?? null) : null,
+          owner_avatar: withOwner ? (faceOf.get(l.user_id) ?? null) : null,
+          item_count: e.count,
+          posters: e.posters,
+          source_slug: l.source_slug ?? null,
+          /* **الحفظُ فعلُ من لا يملكها وحدَه** — نفسُ شرط `list_saves`
            حرفاً (قائمةٌ ليست لي)، **وحدٌّ في الواجهة وحدَها ليس حدّاً**
            (D-302) فالقاعدةُ تحرسه أيضاً. وزائرٌ بلا حساب لا زرَّ له. */
-        can_save: !!me && l.user_id !== me.id,
-        saved_by_me: savedSet.has(l.id),
-        /* **والتقييمُ شرطُه شرطُ الحفظ نفسُه ومعه العلانية** — والبطاقاتُ
+          can_save: !!me && l.user_id !== me.id,
+          saved_by_me: savedSet.has(l.id),
+          /* **والتقييمُ شرطُه شرطُ الحفظ نفسُه ومعه العلانية** — والبطاقاتُ
            هنا كلُّها من قوائمَ عامّة (مصادرُها تشترطها). */
-        can_review: !!me && l.user_id !== me.id,
-        my_review: mineOf.get(l.id) ?? null,
-        /* 🆕 **رايةُ التشغيل ومالكُها** (D-674): **قائمتي رايتُها في
+          can_review: !!me && l.user_id !== me.id,
+          my_review: mineOf.get(l.id) ?? null,
+          /* 🆕 **رايةُ التشغيل ومالكُها** (D-674): **قائمتي رايتُها في
            صفِّها، والمحفوظةُ رايتُها في صفِّ حفظي** — **ومفتاحُ
            الواجهة واحدٌ لا يعرف الفرقَ إلا عند الكتابة.**
            ⚠️ **ولا رايةَ لقائمةٍ لم أحفظها ولا أملكها** — **الصفُّ
            الذي تُكتب فيه غيرُ موجودٍ أصلاً** (D-217). */
-        mine: !!me && l.user_id === me.id,
-        playlist:
-          !!me && l.user_id === me.id
-            ? undefined
-            : savedSet.has(l.id)
-              ? savedPlaylist.has(l.id)
-              : undefined,
-      };
-    })
-    /* قائمةٌ فارغة لا تُكتشف — لا تعرض شيئاً ولا تدعو لشيء */
-    .filter((c) => c.item_count > 0);
+          mine: !!me && l.user_id === me.id,
+          playlist:
+            !!me && l.user_id === me.id
+              ? undefined
+              : savedSet.has(l.id)
+                ? savedPlaylist.has(l.id)
+                : undefined,
+        };
+      })
+      /* قائمةٌ فارغة لا تُكتشف — لا تعرض شيئاً ولا تدعو لشيء */
+      .filter((c) => c.item_count > 0)
+  );
 }
 
 /**
@@ -4425,9 +4803,15 @@ async function shapeListCards(
  * الاسم قصير والبحث «يحتوي» لا لغويّ، ومحارف النمط تُنزع من المدخل كي
  * لا يكتب أحدهم `%` فيطابق كلَّ شيء.
  */
-export async function searchPublicLists(q: string, limit = 40): Promise<PublicListCard[]> {
+export async function searchPublicLists(
+  q: string,
+  limit = 40,
+): Promise<PublicListCard[]> {
   try {
-    const needle = q.trim().replace(/[%_\\]/g, "").slice(0, 60);
+    const needle = q
+      .trim()
+      .replace(/[%_\\]/g, "")
+      .slice(0, 60);
     if (!needle) return [];
     const supabase = await createClient();
     const user = await getUser();
@@ -4452,7 +4836,9 @@ export async function searchPublicLists(q: string, limit = 40): Promise<PublicLi
  * المتابَعون أولاً ثم قوائمهم المعلنة: طلبان مهما كثر المتابَعون،
  * والقراءة عبر سياسة `is_public` العالمية نفسها.
  */
-export async function getFollowedPublicLists(limit = 15): Promise<PublicListCard[]> {
+export async function getFollowedPublicLists(
+  limit = 15,
+): Promise<PublicListCard[]> {
   try {
     const supabase = await createClient();
     const user = await getUser();
@@ -4478,7 +4864,6 @@ export async function getFollowedPublicLists(limit = 15): Promise<PublicListCard
   }
 }
 
-
 /**
  * القوائم العامة التي يظهر فيها هذا العمل — لتبويب «مشابه» في صفحته
  * (دفعة أحمد الثالثة: «تبويب للأعمال المشابهة والليستات»).
@@ -4499,7 +4884,9 @@ export async function getPublicListsContaining(
       .eq("tmdb_id", tmdbId)
       .eq("media_type", mediaType)
       .limit(60);
-    const ids = [...new Set((rows ?? []).map((r) => r.list_id as string))].slice(0, limit * 2);
+    const ids = [
+      ...new Set((rows ?? []).map((r) => r.list_id as string)),
+    ].slice(0, limit * 2);
     if (!ids.length) return [];
     const { data: lists } = await supabase
       .from("user_lists")
@@ -4515,7 +4902,9 @@ export async function getPublicListsContaining(
   }
 }
 
-export async function getPublicListsFeed(limit = 15): Promise<PublicListCard[]> {
+export async function getPublicListsFeed(
+  limit = 15,
+): Promise<PublicListCard[]> {
   try {
     const supabase = await createClient();
     const user = await getUser();
@@ -4559,21 +4948,23 @@ export async function getPublicListsFeed(limit = 15): Promise<PublicListCard[]> 
  * كما كانت — **ولا شاشةَ خطأٍ لبطاقةٍ تعمل** (D-181).
  */
 /* `cache()`: خريطةٌ عامّةٌ تُطلب من أكثر من رفٍّ في /news في الطلب الواحد. */
-export const getCuratedListIds = cache(async (): Promise<Map<string, string>> => {
-  try {
-    const supabase = await createClient();
-    const { data, error } = await supabase.rpc("curated_list_ids");
-    if (error || !data) return new Map();
-    return new Map(
-      (data as { source_slug: string; list_id: string }[]).map((r) => [
-        String(r.source_slug),
-        String(r.list_id),
-      ]),
-    );
-  } catch {
-    return new Map();
-  }
-});
+export const getCuratedListIds = cache(
+  async (): Promise<Map<string, string>> => {
+    try {
+      const supabase = await createClient();
+      const { data, error } = await supabase.rpc("curated_list_ids");
+      if (error || !data) return new Map();
+      return new Map(
+        (data as { source_slug: string; list_id: string }[]).map((r) => [
+          String(r.source_slug),
+          String(r.list_id),
+        ]),
+      );
+    } catch {
+      return new Map();
+    }
+  },
+);
 
 /**
  * 🆕 **كم عملاً في قائمةِ لوبز فعلاً** (الهجرة ١٠٧ — بلاغُ أحمد: بطاقةُ
@@ -4601,17 +4992,21 @@ export const getCuratedListIds = cache(async (): Promise<Map<string, string>> =>
  * **والغيابُ يعني «ليست منسّقة»** فيبقى الاسمُ المخزَّن (D-063).
  */
 /* `cache()`: generateMetadata وصفحةُ القائمة يسألانها معاً. */
-export const getCuratedSlug = cache(async (listId: string): Promise<string | null> => {
-  try {
-    if (!/^[0-9a-f-]{36}$/i.test(listId)) return null;
-    const supabase = await createClient();
-    const { data, error } = await supabase.rpc("curated_slug_of", { p_id: listId });
-    if (error || !data) return null;
-    return String(data) || null;
-  } catch {
-    return null;
-  }
-});
+export const getCuratedSlug = cache(
+  async (listId: string): Promise<string | null> => {
+    try {
+      if (!/^[0-9a-f-]{36}$/i.test(listId)) return null;
+      const supabase = await createClient();
+      const { data, error } = await supabase.rpc("curated_slug_of", {
+        p_id: listId,
+      });
+      if (error || !data) return null;
+      return String(data) || null;
+    } catch {
+      return null;
+    }
+  },
+);
 
 /**
  * 🆕 **رأيي أنا في قوائمَ بمعرّفاتها** (D-352) — لبطاقات لوبز التي تبني
@@ -4620,7 +5015,9 @@ export const getCuratedSlug = cache(async (listId: string): Promise<string | nul
  */
 export async function getMyListReviews(
   ids: string[],
-): Promise<Map<string, { rating: number; body: string | null; hasSpoiler: boolean }>> {
+): Promise<
+  Map<string, { rating: number; body: string | null; hasSpoiler: boolean }>
+> {
   try {
     if (!ids.length) return new Map();
     const supabase = await createClient();
@@ -4632,23 +5029,36 @@ export async function getMyListReviews(
       .eq("user_id", user.id)
       .in("list_id", ids);
     return new Map(
-      ((data ?? []) as { list_id: string; rating: number; body: string | null; has_spoiler: boolean }[]).map(
-        (r) => [
-          String(r.list_id),
-          { rating: Number(r.rating), body: r.body ?? null, hasSpoiler: !!r.has_spoiler },
-        ],
-      ),
+      (
+        (data ?? []) as {
+          list_id: string;
+          rating: number;
+          body: string | null;
+          has_spoiler: boolean;
+        }[]
+      ).map((r) => [
+        String(r.list_id),
+        {
+          rating: Number(r.rating),
+          body: r.body ?? null,
+          hasSpoiler: !!r.has_spoiler,
+        },
+      ]),
     );
   } catch {
     return new Map();
   }
 }
 
-export async function getCuratedCounts(ids: string[]): Promise<Map<string, number>> {
+export async function getCuratedCounts(
+  ids: string[],
+): Promise<Map<string, number>> {
   try {
     if (!ids.length) return new Map();
     const supabase = await createClient();
-    const { data, error } = await supabase.rpc("curated_list_counts", { p_ids: ids });
+    const { data, error } = await supabase.rpc("curated_list_counts", {
+      p_ids: ids,
+    });
     if (error || !data) return new Map();
     return new Map(
       (data as { list_id: string; items: number }[]).map((r) => [
@@ -4673,11 +5083,15 @@ export async function getCuratedCounts(ids: string[]): Promise<Map<string, numbe
  */
 export async function getListCardStats(
   ids: string[],
-): Promise<Map<string, { saves: number; reviews: number; rating: number | null }>> {
+): Promise<
+  Map<string, { saves: number; reviews: number; rating: number | null }>
+> {
   try {
     if (!ids.length) return new Map();
     const supabase = await createClient();
-    const { data, error } = await supabase.rpc("list_card_stats", { p_ids: ids });
+    const { data, error } = await supabase.rpc("list_card_stats", {
+      p_ids: ids,
+    });
     if (error || !data) return new Map();
     return new Map(
       (
@@ -4725,7 +5139,10 @@ export interface ListReviewRow {
   hasSpoiler: boolean;
 }
 
-export async function getListReviews(listId: string, limit = 50): Promise<ListReviewRow[]> {
+export async function getListReviews(
+  listId: string,
+  limit = 50,
+): Promise<ListReviewRow[]> {
   try {
     const supabase = await createClient();
     const { data, error } = await supabase.rpc("list_reviews_of", {
@@ -4733,17 +5150,19 @@ export async function getListReviews(listId: string, limit = 50): Promise<ListRe
       p_limit: limit,
     });
     if (error || !data) return [];
-    return (data as {
-      id: string;
-      nickname: string | null;
-      username: string | null;
-      avatar_url: string | null;
-      hide_name: boolean;
-      rating: number;
-      body: string | null;
-      updated_at: string;
-      has_spoiler: boolean;
-    }[]).map((r) => ({
+    return (
+      data as {
+        id: string;
+        nickname: string | null;
+        username: string | null;
+        avatar_url: string | null;
+        hide_name: boolean;
+        rating: number;
+        body: string | null;
+        updated_at: string;
+        has_spoiler: boolean;
+      }[]
+    ).map((r) => ({
       userId: String(r.id),
       nickname: r.nickname,
       username: r.username,
@@ -4765,10 +5184,17 @@ export async function getListReviewStats(
 ): Promise<{ avg: number | null; count: number }> {
   try {
     const supabase = await createClient();
-    const { data, error } = await supabase.rpc("list_review_stats", { p_list: listId });
-    const row = (data as { avg_rating: number | null; reviews: number }[] | null)?.[0];
+    const { data, error } = await supabase.rpc("list_review_stats", {
+      p_list: listId,
+    });
+    const row = (
+      data as { avg_rating: number | null; reviews: number }[] | null
+    )?.[0];
     if (error || !row) return { avg: null, count: 0 };
-    return { avg: row.avg_rating === null ? null : Number(row.avg_rating), count: Number(row.reviews) || 0 };
+    return {
+      avg: row.avg_rating === null ? null : Number(row.avg_rating),
+      count: Number(row.reviews) || 0,
+    };
   } catch {
     return { avg: null, count: 0 };
   }
@@ -4777,7 +5203,11 @@ export async function getListReviewStats(
 /** رأيي أنا في قائمةٍ — لتعبئة الصندوق بما كتبتُه سابقاً (D-047) */
 export async function getMyListReview(
   listId: string,
-): Promise<{ rating: number; body: string | null; hasSpoiler: boolean } | null> {
+): Promise<{
+  rating: number;
+  body: string | null;
+  hasSpoiler: boolean;
+} | null> {
   try {
     const supabase = await createClient();
     const user = await getUser();
@@ -4829,16 +5259,20 @@ export async function getListReviewSocial(
     const ids = [...new Set(listIds.filter(Boolean))];
     if (!ids.length) return new Map();
     const supabase = await createClient();
-    const { data, error } = await supabase.rpc("list_review_social", { p_lists: ids });
+    const { data, error } = await supabase.rpc("list_review_social", {
+      p_lists: ids,
+    });
     if (error || !data) return new Map();
     return new Map(
-      (data as {
-        list_id: string;
-        review_user_id: string;
-        likes: number;
-        replies: number;
-        liked_by_me: boolean;
-      }[]).map((r) => [
+      (
+        data as {
+          list_id: string;
+          review_user_id: string;
+          likes: number;
+          replies: number;
+          liked_by_me: boolean;
+        }[]
+      ).map((r) => [
         listReviewKey(String(r.list_id), String(r.review_user_id)),
         {
           likes: Number(r.likes) || 0,
@@ -4860,7 +5294,9 @@ export async function getListReviewSocial(
  * **والنوعُ `ReviewReply` نفسُه** لأن الصفَّ الذي يرسمه واحد
  * (`ThreadReplies`) — **ونوعٌ ثانٍ بحقولٍ متطابقة يفترق عند أوّل تعديل.**
  */
-export async function getListReviewReplies(listId: string): Promise<ReviewReply[]> {
+export async function getListReviewReplies(
+  listId: string,
+): Promise<ReviewReply[]> {
   try {
     const supabase = await createClient();
     const [{ data, error }, me] = await Promise.all([
@@ -4868,18 +5304,20 @@ export async function getListReviewReplies(listId: string): Promise<ReviewReply[
       getUser(),
     ]);
     if (error || !data) return [];
-    return (data as {
-      id: string;
-      review_user_id: string;
-      parent_id: string | null;
-      author_id: string;
-      nickname: string | null;
-      username: string | null;
-      avatar_url: string | null;
-      hide_name: boolean;
-      body: string;
-      created_at: string;
-    }[]).map((r) => ({
+    return (
+      data as {
+        id: string;
+        review_user_id: string;
+        parent_id: string | null;
+        author_id: string;
+        nickname: string | null;
+        username: string | null;
+        avatar_url: string | null;
+        hide_name: boolean;
+        body: string;
+        created_at: string;
+      }[]
+    ).map((r) => ({
       /* ⚠️ **و`id` معرّفُ الكاتب لا معرّفُ الردّ** — نفسُ حجّة
          `getTitleReplies`: `PersonLite.id` معناه «صاحبُ الصفّ» في كلِّ
          مكوّنٍ يقرؤه. */
@@ -4916,7 +5354,9 @@ export async function getListReviewReplies(listId: string): Promise<ReviewReply[
  * ⚠️ **والترتيبُ يُحفظ كما وصل**: ترتيبُ الرفِّ هو معناه («الأكثر حفظاً»
  * و«الأقربُ إلى مكتبتك»)، **و`in (...)` عند Postgres لا يَعِد بترتيب**.
  */
-export async function getListCardsByIds(ids: string[]): Promise<PublicListCard[]> {
+export async function getListCardsByIds(
+  ids: string[],
+): Promise<PublicListCard[]> {
   if (!ids.length) return [];
   try {
     const supabase = await createClient();
@@ -5007,19 +5447,29 @@ export async function getSavedListsBrief(limit = 6): Promise<SavedListBrief[]> {
       supabase.from("user_lists").select("id, name, source_slug").in("id", ids),
       supabase
         .from("user_list_items")
-        .select("list_id, tmdb_id, media_type, title, poster_path, added_at, sort_order")
+        .select(
+          "list_id, tmdb_id, media_type, title, poster_path, added_at, sort_order",
+        )
         .in("list_id", ids)
         .limit(400),
     ]);
 
     const byList = new Map<string, ListItem[]>();
-    for (const r of (itemsRes.data ?? []) as (ListItem & { list_id: string })[]) {
+    for (const r of (itemsRes.data ?? []) as (ListItem & {
+      list_id: string;
+    })[]) {
       const arr = byList.get(r.list_id) ?? [];
       arr.push(r);
       byList.set(r.list_id, arr);
     }
 
-    return ((listsRes.data ?? []) as { id: string; name: string; source_slug: string | null }[])
+    return (
+      (listsRes.data ?? []) as {
+        id: string;
+        name: string;
+        source_slug: string | null;
+      }[]
+    )
       .map((l) => ({
         id: l.id,
         name: l.name,
@@ -5061,7 +5511,11 @@ export const getMyPlaylistIds = cache(async (): Promise<string[]> => {
        لأن المالكَ اثنان، ومجموعةٌ واحدةٌ لأن المعنى واحد** (D-145).
        **وكلٌّ يحتمل هجرتَه غائبة** فيعود فارغاً وحدَه. */
     const [own, saved] = await Promise.all([
-      supabase.from("user_lists").select("id").eq("user_id", uid).eq("is_playlist", true),
+      supabase
+        .from("user_lists")
+        .select("id")
+        .eq("user_id", uid)
+        .eq("is_playlist", true),
       supabase
         .from("list_saves")
         .select("list_id")
@@ -5069,9 +5523,11 @@ export const getMyPlaylistIds = cache(async (): Promise<string[]> => {
         .eq("is_playlist", true),
     ]);
     const ids = [
-      ...(((own.error ? [] : own.data) ?? []) as { id: string }[]).map((r) => String(r.id)),
-      ...(((saved.error ? [] : saved.data) ?? []) as { list_id: string }[]).map((r) =>
-        String(r.list_id),
+      ...(((own.error ? [] : own.data) ?? []) as { id: string }[]).map((r) =>
+        String(r.id),
+      ),
+      ...(((saved.error ? [] : saved.data) ?? []) as { list_id: string }[]).map(
+        (r) => String(r.list_id),
       ),
     ];
     return [...new Set(ids)];
@@ -5092,7 +5548,9 @@ export const getMyPlaylistIds = cache(async (): Promise<string[]> => {
  * **وتحتمل الهجرةَ غائبة**: قبل ١٢٢ يعيد `eq("is_playlist")` خطأَ
  * عمودٍ مجهول، فتعود المصفوفةُ فارغةً ولا بطاقة — بلا شاشة خطأ.
  */
-export async function getMyPlaylistsBrief(limit = 4): Promise<SavedListBrief[]> {
+export async function getMyPlaylistsBrief(
+  limit = 4,
+): Promise<SavedListBrief[]> {
   try {
     const supabase = await createClient();
     const uid = await getUserId();
@@ -5124,9 +5582,11 @@ export async function getMyPlaylistsBrief(limit = 4): Promise<SavedListBrief[]> 
       name: string;
       source_slug: string | null;
     }[];
-    const savedIds = (((savedIdsRes.error ? [] : savedIdsRes.data) ?? []) as {
-      list_id: string;
-    }[]).map((r) => String(r.list_id));
+    const savedIds = (
+      ((savedIdsRes.error ? [] : savedIdsRes.data) ?? []) as {
+        list_id: string;
+      }[]
+    ).map((r) => String(r.list_id));
     const savedLists = savedIds.length
       ? (((
           await supabase
@@ -5134,7 +5594,11 @@ export async function getMyPlaylistsBrief(limit = 4): Promise<SavedListBrief[]> 
             .select("id, name, source_slug")
             .in("id", savedIds)
             .eq("is_public", true)
-        ).data ?? []) as { id: string; name: string; source_slug: string | null }[])
+        ).data ?? []) as {
+          id: string;
+          name: string;
+          source_slug: string | null;
+        }[])
       : [];
     /* **قوائمُك أوّلاً ثمّ محفوظاتُك** — عرفُ D-597/D-588 نفسُه */
     const lists = [...own, ...savedLists].slice(0, limit);
@@ -5143,7 +5607,9 @@ export async function getMyPlaylistsBrief(limit = 4): Promise<SavedListBrief[]> 
     const ids = lists.map((l) => String(l.id));
     const { data: items } = await supabase
       .from("user_list_items")
-      .select("list_id, tmdb_id, media_type, title, poster_path, added_at, sort_order")
+      .select(
+        "list_id, tmdb_id, media_type, title, poster_path, added_at, sort_order",
+      )
       .in("list_id", ids)
       .limit(400);
 
@@ -5216,7 +5682,10 @@ export async function getMyListedMovieIds(): Promise<Set<number>> {
  * القراءة عبر سياسة `is_public` العالمية نفسها؛ بلا سطر صاحبٍ — الصفحة
  * كلّها صفحته أصلاً.
  */
-export async function getPublicListsOf(userId: string, limit = 15): Promise<PublicListCard[]> {
+export async function getPublicListsOf(
+  userId: string,
+  limit = 15,
+): Promise<PublicListCard[]> {
   try {
     const supabase = await createClient();
     const { data: lists } = await supabase
@@ -5259,7 +5728,9 @@ export async function getPublicListsOf(userId: string, limit = 15): Promise<Publ
  * الطريق القائم** (`user_lists` المعلنة + `shapeListCards`)، فلا
  * نسخةَ ثانيةً من التشكيل (القاعدة ٦).
  */
-export async function getSavedListsOf(userId: string): Promise<PublicListCard[]> {
+export async function getSavedListsOf(
+  userId: string,
+): Promise<PublicListCard[]> {
   try {
     const supabase = await createClient();
     const { data: saves, error } = await supabase.rpc("profile_saved_lists", {
@@ -5271,7 +5742,10 @@ export async function getSavedListsOf(userId: string): Promise<PublicListCard[]>
     const { data: lists } = await supabase
       .from("user_lists")
       .select("id, user_id, name, kind, source_slug")
-      .in("id", rows.map((s) => s.list_id))
+      .in(
+        "id",
+        rows.map((s) => s.list_id),
+      )
       .eq("is_public", true);
     if (!lists?.length) return [];
 
@@ -5302,7 +5776,10 @@ export async function getSavedLists(limit = 500): Promise<PublicListCard[]> {
     const { data: lists } = await supabase
       .from("user_lists")
       .select("id, user_id, name, kind, source_slug")
-      .in("id", saves.map((s) => s.list_id))
+      .in(
+        "id",
+        saves.map((s) => s.list_id),
+      )
       .eq("is_public", true);
     if (!lists?.length) return [];
 
@@ -5350,7 +5827,10 @@ export async function getSavedListsCount(): Promise<number> {
     const { count } = await supabase
       .from("user_lists")
       .select("id", { count: "exact", head: true })
-      .in("id", saves.map((s) => s.list_id))
+      .in(
+        "id",
+        saves.map((s) => s.list_id),
+      )
       .eq("is_public", true);
     return count ?? 0;
   } catch {
@@ -5385,7 +5865,10 @@ export async function getTopSavedListCards(
     const { data: lists } = await supabase
       .from("user_lists")
       .select("id, user_id, name, kind, source_slug")
-      .in("id", rows.map((r) => r.listId))
+      .in(
+        "id",
+        rows.map((r) => r.listId),
+      )
       .eq("is_public", true);
     if (!lists?.length) return [];
     const rank = new Map(rows.map((r, i) => [r.listId, i]));
@@ -5420,12 +5903,14 @@ export async function getMyListSave(
       .match({ user_id: user.id, list_id: listId })
       .maybeSingle();
     if (error || !data) return { saved: false, playlist: false };
-    return { saved: true, playlist: (data as { is_playlist?: boolean }).is_playlist === true };
+    return {
+      saved: true,
+      playlist: (data as { is_playlist?: boolean }).is_playlist === true,
+    };
   } catch {
     return null;
   }
 }
-
 
 /* ⚠️ **قرّاءُ الأخبار المجمَّعة حُذفوا** (D-214، بطلب أحمد): `getNewsFeed`
    و`getNewsStale` و`refreshNewsNow` وجدولُهم `news_items` — **لم يبقَ لهم
@@ -5440,8 +5925,16 @@ export async function getMyListSave(
 export interface LoopzNewsItem {
   key: string;
   kind:
-    | "trailer" | "date" | "season" | "status" | "season_date" | "theatrical"
-    | "released" | "chart" | "provider" | "report";
+    | "trailer"
+    | "date"
+    | "season"
+    | "status"
+    | "season_date"
+    | "theatrical"
+    | "released"
+    | "chart"
+    | "provider"
+    | "report";
   tmdb_id: number;
   media_type: "tv" | "movie";
   title: string;
@@ -5458,22 +5951,28 @@ export interface LoopzNewsItem {
  * تبقى أربعاً**. والسقوطُ صامت: قبل تشغيل الهجرة قائمةٌ فارغة، لا خطأ.
  */
 /* `cache()`: getNewsPost وصفحةُ الخبر يسحبان ٣٠٠ صفٍّ مرّتين للطلب الواحد. */
-export const getLoopzNews = cache(async (limit = 30): Promise<LoopzNewsItem[]> => {
-  try {
-    const supabase = await createClient();
-    const { data, error } = await supabase.rpc("loopz_news", { p_limit: limit });
-    if (error || !data) return [];
-    return data as LoopzNewsItem[];
-  } catch {
-    return [];
-  }
-});
+export const getLoopzNews = cache(
+  async (limit = 30): Promise<LoopzNewsItem[]> => {
+    try {
+      const supabase = await createClient();
+      const { data, error } = await supabase.rpc("loopz_news", {
+        p_limit: limit,
+      });
+      if (error || !data) return [];
+      return data as LoopzNewsItem[];
+    } catch {
+      return [];
+    }
+  },
+);
 
 /** «هل حان الرصدُ التالي؟» — يُسأل في القاعدة لا على ساعة الرسم */
 export async function getNewsGenStale(minutes = 30): Promise<boolean> {
   try {
     const supabase = await createClient();
-    const { data, error } = await supabase.rpc("news_gen_stale", { p_minutes: minutes });
+    const { data, error } = await supabase.rpc("news_gen_stale", {
+      p_minutes: minutes,
+    });
     if (error) return false;
     return data === true;
   } catch {
@@ -5519,7 +6018,9 @@ export async function refreshLoopzNews(): Promise<number> {
 export async function getTalkBulletinStale(minutes = 180): Promise<boolean> {
   try {
     const supabase = await createClient();
-    const { data, error } = await supabase.rpc("talk_bulletin_stale", { p_minutes: minutes });
+    const { data, error } = await supabase.rpc("talk_bulletin_stale", {
+      p_minutes: minutes,
+    });
     if (error) return false;
     return data === true;
   } catch {
