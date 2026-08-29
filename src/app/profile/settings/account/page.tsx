@@ -5,6 +5,7 @@ import { SettingsPageLayout } from "@/components/settings/SettingsPageLayout";
 import { SettingsGroup } from "@/components/settings/SettingsGroup";
 import { SettingsRow } from "@/components/settings/SettingsRow";
 import { PrivacyData } from "@/components/PrivacyData";
+import { planNameOf } from "@/lib/plan";
 
 /**
  * الحساب — **البريدُ ومنطقةُ الخطر، والاسمُ بابُه «تعديل الملف»**
@@ -46,11 +47,13 @@ export default async function Page() {
           title={t.verifyTitle}
           subtitle={t.verifySub}
         />
+        {/* 🆕 **الخطّةُ تُقرأ لا تُفترض** (D-780) — والحكمُ من
+            `planNameOf` نفسِها التي يقرؤها الفهرسُ والفوترة. */}
         <SettingsRow
           href="/profile/settings/billing"
           icon="card"
           title={t.setBilling}
-          value={t.setPlanFree}
+          value={planNameOf(p, t)}
         />
       </SettingsGroup>
 
