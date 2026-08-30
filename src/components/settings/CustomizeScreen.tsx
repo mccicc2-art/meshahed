@@ -8,6 +8,7 @@ import { chipClass, pillTrack } from "../ui/controls";
 import { SettingsPageLayout } from "./SettingsPageLayout";
 import { SettingsGroup } from "./SettingsGroup";
 import { SettingsRow } from "./SettingsRow";
+import { type PrefTemplate } from "@/lib/prefTemplates";
 
 /**
  * شاشةُ التخصيص — **سطحان لا صفحتان** (D-129)، **وترويستُها تحمل
@@ -50,6 +51,7 @@ export function CustomizeScreen({
   coverPos,
   avatarPos,
   counters,
+  templates = [],
   plus = false,
 }: {
   locale: Locale;
@@ -64,6 +66,9 @@ export function CustomizeScreen({
   coverPos?: number;
   avatarPos?: number;
   counters?: { followers: number; following: number; visits: number };
+  /* 🆕 **قوالبُ التخصيص** (D-822) — **تُقرأ مرّةً في الخادم وتمرّ للوحين**:
+     **العمودُ واحدٌ وفيه السطحان**، **والمكوّنُ يصفّي سطحَه.** */
+  templates?: PrefTemplate[];
   /* 🆕 **الخطّة تمرّ ولا تُقرأ هنا** (D-633): الشاشةُ حاويةٌ، **والحكمُ
      في `lib/plan.ts` والقفلُ في اللوحين** — ولا شرطَ ثالث. */
   plus?: boolean;
@@ -111,6 +116,7 @@ export function CustomizeScreen({
           genres={genres}
           initial={homePrefs}
           registerReset={registerReset}
+          templates={templates}
           plus={plus}
         />
       ) : (
@@ -127,6 +133,7 @@ export function CustomizeScreen({
           avatarPos={avatarPos}
           counters={counters}
           registerReset={registerReset}
+          templates={templates}
           plus={plus}
         />
       )}
