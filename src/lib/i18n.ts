@@ -2031,6 +2031,10 @@ const ar = {
      والقارئان اثنان — **و«ذوقك» في ملفِّ مشعل تخاطب القارئ عن أرقام
      غيره** (D-217). **ولا ضميرَ مذكَّرٍ ولا مؤنَّث**: أسماءٌ محايدة. */
   analysisTasteOther: "التصنيفات الأكثر",
+  /* 🆕 **اسمُ المقارنة** (D-829) — **قارئاه الزرُّ والورقةُ التي يفتحها**،
+     **واسمان لشيءٍ واحدٍ بين البابِ وما خلفَه يجعلان القارئَ يظنّهما
+     شيئين** (D-703/D-787). */
+  tasteMatchLabel: "تطابق الذوق",
   analysisEmptyOther: "لا أعمال في هذه المكتبة بعد.",
   avgRatingOther: (n: string) => `متوسط التقييم ${n} من ١٠`,
   statusDone: "أكملتها",
@@ -3522,6 +3526,7 @@ const en: Dict = {
   analysisTaste: "Your taste",
   analysisEmpty: "Follow a few titles and your library analysis appears here.",
   analysisTasteOther: "Top genres",
+  tasteMatchLabel: "taste match",
   analysisEmptyOther: "No titles in this library yet.",
   avgRatingOther: (n: string) => `Averages ${n} out of 10`,
   statusDone: "Finished",
