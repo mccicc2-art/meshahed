@@ -19,11 +19,18 @@ import { tap } from "@/lib/haptics";
  */
 export function SettingsHeader({
   title,
+  badge,
   fallbackHref = "/",
   action,
   onBack,
 }: {
   title: string;
+  /**
+   * 🆕 **وسمٌ ملاصقٌ للاسم** (D-801) — رقاقةُ «PLUS» في صورة التقرير.
+   * **ولمَ إلى جانب `title` لا داخله**: الاسمُ يُقرأ `aria-label` لزرِّ
+   * الرجوع، **ووسمٌ داخل نصٍّ يُنطق مع الاسم في قارئ الشاشة.**
+   */
+  badge?: React.ReactNode;
   /** وجهةُ الرجوع حين لا تاريخَ خلفك */
   fallbackHref?: string;
   /** فعلُ الطرف الآخر — بحثٌ أو «حفظ» */
@@ -59,8 +66,9 @@ export function SettingsHeader({
           <Icon name="chevron-down" size={24} className="rotate-90 rtl:-rotate-90" />
         </button>
 
-        <h1 className="min-w-0 flex-1 text-center text-15 font-bold truncate">
-          {title}
+        <h1 className="min-w-0 flex-1 flex items-center justify-center gap-1.5 text-15 font-bold">
+          <span className="min-w-0 truncate">{title}</span>
+          {badge}
         </h1>
 
         {/* خانةٌ بعرض زرِّ الرجوع نفسِه حين لا فعلَ — **فيبقى الاسمُ في
