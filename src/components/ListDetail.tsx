@@ -70,6 +70,7 @@ export function ListDetail({
   subtitle,
   isPublic,
   kind,
+  smart = null,
   items,
   ratings,
   isOwner,
@@ -91,6 +92,15 @@ export function ListDetail({
   subtitle: string | null;
   isPublic: boolean;
   kind: ListKind;
+  /**
+   * 🆕 **القائمةُ الذكيّة** (D-823) — **نصُّ استعلامِ شرطها، أو `null`**.
+   * **وقيمةٌ واحدةٌ تحمل معنيين عمداً**: **«أهي ذكيّة» و«أين شرطُها»** —
+   * **ورايةٌ منفصلةٌ عن الشرط تفترقان يوماً** (D-462: حقلٌ واحد، كاتبٌ
+   * واحد). **والقائمةُ تُقرأ ولا تُحرَّر**: **زرُّ إضافةٍ في قائمةٍ تملأ
+   * نفسَها زرٌّ لا أثرَ له** (D-346)، **وحذفُ عملٍ منها يعود عند أوّل
+   * فتحة** — **وهو أسوأُ من منعه** (D-217).
+   */
+  smart?: string | null;
   items: ListItem[];
   ratings: Record<string, number>;
   isOwner: boolean;
@@ -235,6 +245,10 @@ export function ListDetail({
      وأزرارُ «+» على الملصقات باقيةٌ لعملٍ بعينه. */
 
   const numbered = NUMBERED.includes(kind);
+  /* 🔑 **وصاحبُ القائمة الذكيّة مالكٌ لا محرّر** — **شرطٌ واحدٌ يُشتقّ
+     منه كلُّ منعٍ** (D-145)، **ولا يُكتب `!smart` في ستّة مواضعَ تُنسى
+     واحدةٌ منها.** */
+  const canEditItems = isOwner && !smart;
   /* `w780` لا الأصل: الغلافُ يُرسم بعرض الصفحة على الجوال، والأصلُ ملفٌّ
      بحجم ثلاثة أضعافه لا تراه العين (نفس مقاس منتقي D-131) */
   const coverUrl = backdropUrl(cover?.backdrop ?? null, "w780");
@@ -415,6 +429,26 @@ export function ListDetail({
         </p>
       )}
 
+      {/* 🆕 **وسطرٌ يقول لماذا لا يوجد زرُّ إضافة** (D-823 · D-063:
+          الغيابُ يُكتب غياباً): **قائمةٌ بلا «أضف» وبلا تفسيرٍ تُقرأ
+          معطوبةً** — **وهي مملوءةٌ بشرطها لا معطّلة.**
+          **والرابطُ يفتح الشرطَ نفسَه في «اكتشف»**: **من أراد تعديله
+          يعدّله حيث بُني** — **ولا ورقةَ فلاترَ ثانيةً بلغةٍ ثانية**
+          (D-145). */}
+      {smart && (
+        <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-12 text-muted">
+          <Icon name="sparkle-star" size={13} className="shrink-0 text-accent" />
+          <span>
+            {locale === "en"
+              ? "Fills itself from the Loopz catalogue — nothing is added by hand."
+              : "تمتلئ وحدَها من كتالوج Loopz — لا يُضاف إليها شيءٌ يدويّاً."}
+          </span>
+          <Link href={`/news?${smart}`} className="text-accent hover:opacity-80 transition">
+            {locale === "en" ? "Open in Discover" : "افتحه في اكتشف"}
+          </Link>
+        </p>
+      )}
+
       {/* نسبة القائمة إلى صاحبها: صفٌّ واحدٌ تحت الوصف يظهر لغير المالك
           وحده. من أخفى اسمه لا اسم له هنا ولا رابط — القرار محفوظٌ في
           SQL لا في هذا السطر (D-011) */}
@@ -522,7 +556,7 @@ export function ListDetail({
           <p className="text-sm text-muted text-center">{t.listItemsEmpty}</p>
           {/* والبابُ في حالة الفراغ أيضاً: هنا يقف من لا يملك شيئاً
               يفعله غيرَ الإضافة — فالنصّ وحده كان يتركه واقفاً */}
-          {isOwner && addButton}
+          {canEditItems && addButton}
         </div>
       ) : (
         <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 snap-x">
@@ -532,7 +566,7 @@ export function ListDetail({
                 item={it}
                 n={numbered ? i + 1 : null}
                 rating={ratings[keyOf(it)] ?? null}
-                canRemove={isOwner}
+                canRemove={canEditItems}
                 onRemove={() => remove(it)}
                 /* **زرُّ «+» على الملصق** (D-495): `undefined` تعني
                    «لا زرّ» — للزائر بلا حساب، **ولصاحب القائمة**
@@ -664,7 +698,9 @@ export function ListDetail({
               واحدة */}
           {/* 🆕 **«أضف أعمالاً» أوّلَ القائمة** (D-681) — غادر الترويسةَ
               مع تصميمها، **والبابُ لا يُغلق**: هنا وفي حالة الفراغ. */}
-          <MenuRow icon="plus" label={t.listAddTitles} onClick={() => setSheet("add")} />
+          {canEditItems && (
+            <MenuRow icon="plus" label={t.listAddTitles} onClick={() => setSheet("add")} />
+          )}
           <MenuRow icon="edit" label={t.listEditTitle} onClick={() => setSheet("rename")} />
           {/* مشاركة القائمة — في المجتمع (تظهر في ملفّك العام) أو خارج
               التطبيق (رابط). بابٌ واحد لكل فعل، فمكانها هنا لا على البطاقة */}
@@ -677,21 +713,26 @@ export function ListDetail({
             value={cover?.backdrop ? t.listCoverSet : undefined}
             onClick={() => setSheet("cover")}
           />
-          <MenuRow
-            icon="list"
-            label={t.listType}
-            value={
-              kind === "ranked"
-                ? t.listTypeRanked
-                : kind === "watch_order"
-                  ? t.listTypeWatch
-                  : t.listTypeRegular
-            }
-            onClick={() => setSheet("type")}
-          />
+          {/* ⚠️ **ولا تبديلَ نوعٍ لقائمةٍ ذكيّة**: **الأنواعُ الثلاثةُ
+              في الورقة لا تشمل `smart`** — **فصفٌّ يقول «عاديّة» عن
+              قائمةٍ ليست كذلك يكذب، وضغطُه يمحو شرطَها** (D-217). */}
+          {!smart && (
+            <MenuRow
+              icon="list"
+              label={t.listType}
+              value={
+                kind === "ranked"
+                  ? t.listTypeRanked
+                  : kind === "watch_order"
+                    ? t.listTypeWatch
+                    : t.listTypeRegular
+              }
+              onClick={() => setSheet("type")}
+            />
+          )}
           {/* «أعد الترتيب» لا يظهر على قائمةٍ عادية: صفٌّ يفتح وضعاً بلا أثرٍ
               مرئيّ هو وعدٌ كاذب — ومن أراده غيّر النوع أوّلاً */}
-          {numbered && visible.length > 1 && (
+          {numbered && !smart && visible.length > 1 && (
             <MenuRow icon="grip" label={t.listReorder} onClick={() => setSheet("reorder")} />
           )}
           {/* 🆕 **قائمةُ التشغيل** (D-505): تُعرض في «تابِع المشاهدة»

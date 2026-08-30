@@ -140,10 +140,20 @@ export function ListManager({
                   }}
                   /* **العدُّ بتفصيله حين تعرفه القاعدة** (my_lists) —
                      **وقبل الهجرة يسقط إلى العدّ الكلّي** (D-028). */
+                  /* 🔴 🆕 **والقائمةُ الذكيّةُ لا تُعدّ صفوفاً** (D-823):
+                     **`my_lists` تعدّ `user_list_items`، ولا صفَّ لها
+                     فيه** — **فبطاقةٌ تقول «٠ أعمال» عن قائمةٍ تعرض
+                     ستّين تكذب** (D-217). **والصادقُ أن تقول ما هي**،
+                     **ولا عدَّ يُخترع بنداءِ TMDB لكلِّ بطاقةٍ في
+                     الشاشة** (D-515). */
                   countLabel={
-                    typeof l.shows_count === "number" || typeof l.movies_count === "number"
-                      ? t.listContentCount(l.shows_count ?? 0, l.movies_count ?? 0)
-                      : undefined
+                    l.kind === "smart"
+                      ? locale === "en"
+                        ? "Fills itself"
+                        : "تمتلئ وحدَها"
+                      : typeof l.shows_count === "number" || typeof l.movies_count === "number"
+                        ? t.listContentCount(l.shows_count ?? 0, l.movies_count ?? 0)
+                        : undefined
                   }
                   cover={backdropUrl(l.cover_backdrop ?? null, "w780")}
                   action={

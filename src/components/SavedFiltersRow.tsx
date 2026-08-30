@@ -7,7 +7,9 @@ import { Icon } from "@/components/Icon";
 import { buttonClass } from "@/components/ui/Button";
 import { chipClass, chipRow } from "@/components/ui/controls";
 import { openPlusGate } from "@/lib/plusGate";
-import { updateUiState } from "@/lib/actions";
+import { updateUiState, createSmartList } from "@/lib/actions";
+import { toast, flashError } from "@/lib/toast";
+import { sectionToRuleType } from "@/lib/smartListKeys";
 import {
   FILTERS_CAP,
   FILTER_NAME_MAX,
@@ -61,7 +63,12 @@ export function SavedFiltersRow({
   const sp = useSearchParams();
   const [, start] = useTransition();
   const [list, setList] = useState<SavedFilter[]>(saved);
-  const [naming, setNaming] = useState(false);
+  /**
+   * 🆕 **وضعُ التسمية — لأيِّهما؟** (D-823): **مدخلٌ واحدٌ لفعلين**،
+   * **ورقاقتان تفتحان حقلين متطابقين تُقرآن حقلاً معطوباً.**
+   * `"filter"` = فلترٌ محفوظ · `"smart"` = قائمةٌ ذكيّة.
+   */
+  const [naming, setNaming] = useState<null | "filter" | "smart">(null);
   const [name, setName] = useState("");
 
   /* **الاستعلامُ الحاليُّ مطهَّراً** — **والمطهِّرُ نفسُه في الطرفين**
@@ -114,7 +121,45 @@ export function SavedFiltersRow({
       upsertFilter(list, { id: newFilterId(), name: clean, section, q: current }),
     );
     setName("");
-    setNaming(false);
+    setNaming(null);
+  }
+
+  /**
+   * 🆕 **الشرطُ إلى قائمةٍ ذكيّة** (D-823) — **وبابُها هنا لأنّ الشرطَ
+   * هنا**: **شاشةُ إنشاءٍ تسأل عن نوعٍ ولغةٍ وسنةٍ هي ورقةُ فلاترَ
+   * ثانيةٌ بلغةٍ ثانية** (D-145).
+   * ⚠️ **ولا كتابةَ متفائلةً هنا**: **صفٌّ يُنشأ في جدولٍ آخر لا يُرسم
+   * قبل أن يُخلَق** — **ورقاقةٌ تظهر ثمّ تختفي أسوأُ من انتظارٍ قصير.**
+   */
+  function saveSmart() {
+    if (!plus) {
+      openPlusGate();
+      return;
+    }
+    const clean = sanitizeFilterName(name);
+    const type = sectionToRuleType(section);
+    /* 🔴 **والجهةُ تُكتب في الشرط عند إنشائه** — **لأنّ `tab` ليست من
+       `FILTER_KEYS` عمداً** (D-816: التبويبُ هو القسمُ نفسُه) —
+       **فشرطٌ بلا `type` يُقرأ لاحقاً أفلاماً** (D-179) **ويعرض غيرَ
+       الفلتر الذي صنعه.** **والقسمُ الذي لا جهةَ له (القوائم) لا
+       يُصنع منه شرطٌ أصلاً.** */
+    if (!clean || !current || !type) return;
+    const rule = { ...Object.fromEntries(new URLSearchParams(current)), type };
+    setName("");
+    setNaming(null);
+    start(async () => {
+      try {
+        const res = await createSmartList(clean, rule);
+        if (res.needsPlus) {
+          openPlusGate();
+          return;
+        }
+        toast(ar ? "أُنشئت القائمة الذكيّة" : "Smart list created", { tone: "success" });
+        if (res.id) router.push(`/lists/${res.id}`);
+      } catch (e) {
+        flashError((e as Error).message);
+      }
+    });
   }
 
   return (
@@ -141,10 +186,25 @@ export function SavedFiltersRow({
         {current && !applied && !naming && (
           <button
             type="button"
-            onClick={() => (plus ? setNaming(true) : openPlusGate())}
+            onClick={() => (plus ? setNaming("filter") : openPlusGate())}
             className={chipClass(false, "sm", "shrink-0")}
           >
             {ar ? "＋ احفظ الفلتر" : "＋ Save filter"}
+          </button>
+        )}
+
+        {/* 🆕 **والبابُ الثاني: قائمةٌ ذكيّةٌ من الشرط نفسِه** (D-823).
+            **وهو يظهر مع فلترٍ قائمٍ سواءٌ أكان محفوظاً أم لا**: **فلترٌ
+            محفوظٌ يُستدعى، والقائمةُ الذكيّةُ تسكن مكتبتَك** — **فعلان
+            مختلفان لا بديلان.** */}
+        {current && !naming && sectionToRuleType(section) && (
+          <button
+            type="button"
+            onClick={() => (plus ? setNaming("smart") : openPlusGate())}
+            className={chipClass(false, "sm", "shrink-0 inline-flex items-center gap-1.5")}
+          >
+            <Icon name="sparkle-star" size={12} />
+            {ar ? "قائمة ذكيّة" : "Smart list"}
           </button>
         )}
       </div>
@@ -156,16 +216,24 @@ export function SavedFiltersRow({
             value={name}
             onChange={(e) => setName(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter") save();
-              if (e.key === "Escape") setNaming(false);
+              if (e.key === "Enter") (naming === "smart" ? saveSmart : save)();
+              if (e.key === "Escape") setNaming(null);
             }}
             maxLength={FILTER_NAME_MAX}
-            placeholder={ar ? "سمِّ الفلتر" : "Name this filter"}
+            placeholder={
+              naming === "smart"
+                ? ar
+                  ? "سمِّ القائمة الذكيّة"
+                  : "Name this smart list"
+                : ar
+                  ? "سمِّ الفلتر"
+                  : "Name this filter"
+            }
             className="min-w-0 flex-1 rounded-xl border border-border bg-surface-2 px-3 py-2 text-14 outline-none focus:border-accent"
           />
           <button
             type="button"
-            onClick={save}
+            onClick={naming === "smart" ? saveSmart : save}
             disabled={!sanitizeFilterName(name)}
             className={buttonClass({ size: "sm", className: "shrink-0" })}
           >
