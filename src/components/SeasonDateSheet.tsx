@@ -81,7 +81,7 @@ export function SeasonDateSheet({
         onClose={onClose}
       />
       <div className="px-5 pt-2 pb-5 flex flex-col gap-3">
-        <p className="text-13 text-muted leading-relaxed">{t.seasonWhenHint}</p>
+        <p className="text-12 text-muted leading-relaxed">{t.seasonWhenHint}</p>
 
         <button
           type="button"

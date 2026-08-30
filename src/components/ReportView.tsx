@@ -4,6 +4,7 @@ import { Icon } from "@/components/Icon";
 import { posterUrl } from "@/lib/media";
 import { num, type Locale } from "@/lib/i18n";
 import { hm, clock, primeLabel } from "@/lib/statsFormat";
+import { ImpossibleDayCard } from "@/components/stats/ImpossibleDayCard";
 import type { PeriodStats } from "@/lib/periodStats";
 
 /**
@@ -95,15 +96,33 @@ export function ReportView({
         <DaysRing active={stats.activeDays} total={stats.range.days} locale={locale} ar={ar} />
       </div>
 
+      {/* 🔴 🆕 **اليومُ المستحيل** (D-801 — حكمُ أحمد): **يومٌ فيه أكثرُ
+          من ٢٤ ساعةً ليس رقماً كبيراً، هو رقمٌ محال** — **والسطرُ الصادقُ
+          فوقه يشرح الاسمَ ولا يصلح الصفّ.** فالبطاقةُ تعرض السببَ وتعرض
+          الزرَّ، **والقرارُ لصاحب التاريخ لا لي.** */}
+      {stats.impossible.days > 0 && <ImpossibleDayCard locale={locale} />}
+
       {/* ═══ الأعمدة ═══ */}
-      <div className="mt-6 flex items-end gap-2 sm:gap-3">
+      {/* 🔴 🆕 **وكثافةُ الأعمدة تتبع عددَها** (D-801 — من الصورة الحيّة):
+          الصورةُ سبعةُ أعمدةٍ فوق كلٍّ منها ساعتُه — **وواحدٌ وثلاثون عموداً
+          للشهر بالفجوة نفسِها يأكل الفجواتُ فيها عرضَ الشاشة**، **واثنا عشر
+          شهراً فوق كلٍّ منها «٤٨:١٩» أسماءٌ تتراكب.** فالقاعدةُ مكتوبة:
+          **الساعةُ فوق العمود ما دامت الأعمدةُ سبعةً، وبعدها فوق الأعلى
+          وحدَه**، **والاسمُ يتخطّى ليقرأ**: كلُّ ثالثٍ في السنة وكلُّ
+          خامسٍ في الشهر. **وعمودٌ لا يُقرأ اسمُه رسمٌ لا بيان.** */}
+      <div className={`mt-6 flex items-end ${stats.buckets.length > 12 ? "gap-[3px]" : stats.buckets.length > 7 ? "gap-1.5" : "gap-2 sm:gap-3"}`}>
         {stats.buckets.map((b, i) => {
           const full = Math.round((b.minutes / peakBar) * 112);
-          const top = stats.period === "week" && b.minutes === peakBar && b.minutes > 0;
+          const dense = stats.buckets.length > 7;
+          const isPeak = b.minutes === peakBar && b.minutes > 0;
+          const top = stats.period === "week" && isPeak;
+          const showValue = dense ? isPeak : b.minutes > 0;
+          const step = stats.buckets.length > 20 ? 5 : stats.buckets.length > 7 ? 3 : 1;
+          const showLabel = i % step === 0 || isPeak;
           return (
             <div key={`${b.label}-${i}`} className="flex-1 min-w-0 flex flex-col items-center gap-1.5">
               <span className="text-12 text-muted tabular-nums" dir="ltr">
-                {b.minutes > 0 ? clock(b.minutes, locale) : ""}
+                {showValue ? clock(b.minutes, locale) : ""}
               </span>
               {/* **العمودُ قامةٌ ثابتةٌ وداخلها الممتلئ** — كما في الصورة:
                   رمادٌ غامقٌ يقول المدى، وأصفرُ يقول القيمة. */}
@@ -115,7 +134,9 @@ export function ReportView({
                   style={{ height: `${Math.max(b.minutes > 0 ? 6 : 0, full)}px` }}
                 />
               </span>
-              <span className={`text-12 truncate w-full text-center ${top ? "font-bold" : "text-muted"}`}>
+              <span
+                className={`text-12 w-full text-center whitespace-nowrap overflow-visible ${top ? "font-bold" : "text-muted"} ${showLabel ? "" : "invisible"}`}
+              >
                 {b.label}
               </span>
             </div>
