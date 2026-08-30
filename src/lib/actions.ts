@@ -22,6 +22,7 @@ import { isListColor } from "@/lib/listColors";
 import { BROWSE_GENRES } from "@/lib/browse";
 import { sanitizeSocials } from "@/lib/socials";
 import { THEMES, isThemeAccent } from "@/lib/themes";
+import { RAILS_COOKIE, serializeHiddenRails } from "@/lib/railPrefs";
 import {
   keepPaidHomePrefs,
   sanitizeHomePrefs,
@@ -660,6 +661,36 @@ export async function updateUiState(patch: {
     /* زائرٌ، أو عمودٌ لم يُهاجَر، أو انقطاع — localStorage يكفي للجهاز */
     return { ok: false };
   }
+}
+
+/**
+ * 🆕 **صفوفُ اكتشف الظاهرة** (D-826).
+ *
+ * **حكمُ أحمد**: «يقدر يخفي أيَّ عنوانٍ من هذي العناوين، **وتكون في
+ * فيو**».
+ *
+ * 🔑 **وكوكيٌّ لا عمود** — **نفسُ عقدِ `setTabPrefs` حرفاً** (D-179):
+ * **الصفحةُ تُرسم على الخادم قبل أن تُعرف الجلسة.**
+ *
+ * 🔒 **وبلس** — **والحارسُ هنا لا في الورقة** (D-819/D-821):
+ * **حارسُ العميل زينةٌ حين يُنادى الفعلُ بلا سطحِه.**
+ * ⚠️ **والإظهارُ ليس محروساً كالإخفاء**: **قائمةٌ فارغةٌ = كلُّ شيءٍ
+ * ظاهر** — **ومن انقطع اشتراكُه لا يُحبس في صفحةٍ أطفأ نصفَها ولا
+ * يملك إعادتَه** (نفسُ حكم `setThemeAccent`).
+ */
+export async function setHiddenRails(
+  keys: string[],
+): Promise<{ ok: boolean; needsPlus?: true }> {
+  const clean = serializeHiddenRails(Array.isArray(keys) ? keys : []);
+  if (clean && !(await viewerIsPlus())) return { ok: false, needsPlus: true };
+
+  const store = await cookies();
+  store.set(RAILS_COOKIE, clean, {
+    path: "/",
+    maxAge: clean ? 60 * 60 * 24 * 365 : 0,
+    sameSite: "lax",
+  });
+  return { ok: true };
 }
 
 /**
