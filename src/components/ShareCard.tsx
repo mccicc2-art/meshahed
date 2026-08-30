@@ -4,6 +4,7 @@ import { useState } from "react";
 import { getDict, type Locale } from "@/lib/i18n";
 import { Icon } from "./Icon";
 import { buttonClass } from "./ui/Button";
+import { actionRowClass, ActionRowBody } from "./ui/ActionRow";
 
 /**
  * زرّ مشاركة بطاقة الإحصاءات.
@@ -18,20 +19,54 @@ import { buttonClass } from "./ui/Button";
  * **ولا زرَّ مشاركةٍ ثانٍ يُكتب**: نفسُ الدالّة ونفسُ حالة الانشغال
  * ونفسُ رسالة الفشل — **ولو نُسخ الزرُّ لافترقا عند أوّل تعديل**
  * (القاعدة ٦).
+ *
+ * 🆕 **وبطاقةٌ ثانيةٌ خلف الزرِّ نفسِه** (D-810): `kind="report"` يشارك
+ * **صورةَ تقريرِ المدّة** لا بطاقةَ «كلِّ الأوقات».
+ *
+ * ⚖️ **ولمَ وسيطٌ لا مكوّنٌ ثانٍ**: **الفعلُ واحد** — جلبٌ، ثمّ
+ * `navigator.share` وإلّا تنزيل، ثمّ حالةُ انشغالٍ ورسالةُ فشل —
+ * **والمختلفُ حرفان في الرابط.** **وزرٌّ ثانٍ ينسخ ذلك يفترق عند أوّل
+ * إصلاح** (القاعدة ٦، وهي علّةُ `icon` نفسُها في D-493).
+ *
+ * 🔴 **وهذا يسدّ دَينَ D-217 المكتوبَ في رأس `/reports`**: **رمزُ
+ * المشاركة في ترويسة «تقريرك» كان يشارك بطاقةَ إحصائيّاتِ كلِّ
+ * الأوقات** — **صفحةٌ اسمُها «تقريرك · أغسطس» تُخرج صورةً لا تعرف
+ * أغسطس.** **واسمٌ يَعِد بما لا يُسلَّم.**
  */
-export function ShareCard({ locale, icon = false }: { locale: Locale; icon?: boolean }) {
+export function ShareCard({
+  locale,
+  icon = false,
+  row = false,
+  kind = "stats",
+  period,
+}: {
+  locale: Locale;
+  icon?: boolean;
+  /** 🆕 **وجهٌ ثالث** (D-810): **صفُّ بابٍ في ذيل صفحة**، بوصفة `ActionRow` */
+  row?: boolean;
+  kind?: "stats" | "report";
+  /** مدّةُ التقرير — `week`/`month`/`year`، وتُهمَل في `stats` */
+  period?: string;
+}) {
   const t = getDict(locale);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const src =
+    kind === "report"
+      ? `/api/share?kind=report${period ? `&p=${period}` : ""}`
+      : "/api/share";
 
   async function share() {
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch("/api/share");
+      const res = await fetch(src);
       if (!res.ok) throw new Error(String(res.status));
       const blob = await res.blob();
-      const file = new File([blob], "loopz.png", { type: "image/png" });
+      const file = new File([blob], kind === "report" ? "loopz-report.png" : "loopz.png", {
+        type: "image/png",
+      });
 
       const nav = navigator as Navigator & {
         canShare?: (data: { files: File[] }) => boolean;
@@ -43,7 +78,7 @@ export function ShareCard({ locale, icon = false }: { locale: Locale; icon?: boo
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = "loopz.png";
+        a.download = kind === "report" ? "loopz-report.png" : "loopz.png";
         a.click();
         URL.revokeObjectURL(url);
       }
@@ -52,6 +87,23 @@ export function ShareCard({ locale, icon = false }: { locale: Locale; icon?: boo
     } finally {
       setBusy(false);
     }
+  }
+
+  /* 🆕 **وصفُّ الذيل** (D-810): **جارُ «الإحصائيات الكاملة» بشكله
+     نفسِه** — **وبابان في ذيلٍ واحدٍ بشكلين يُقرآن رتبتين** (القاعدة ٣).
+     ⚠️ **وبلا سهم**: **السهمُ يَعِد بصفحةٍ تُفتح، وهذا يفعل في مكانه**
+     (D-217 في أصغر صوره). */
+  if (row) {
+    return (
+      <button type="button" onClick={share} disabled={busy} className={actionRowClass}>
+        <ActionRowBody
+          icon="share"
+          title={t.shareReportTitle}
+          sub={error ?? (busy ? t.shareBusy : t.shareReportSub)}
+          arrow={false}
+        />
+      </button>
+    );
   }
 
   if (icon) {
@@ -81,7 +133,7 @@ export function ShareCard({ locale, icon = false }: { locale: Locale; icon?: boo
         {/* معاينة حيّة: الصورة نفسها التي ستُشارَك، مولّدةً من الخادم */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src="/api/share"
+          src={src}
           alt={t.shareTitle}
           loading="lazy"
           className="w-full rounded-xl border border-border bg-surface-2"

@@ -3,9 +3,11 @@ import Image from "next/image";
 import { Icon } from "@/components/Icon";
 import { posterUrl } from "@/lib/media";
 import { num, type Locale } from "@/lib/i18n";
-import { hm, clock, primeLabel } from "@/lib/statsFormat";
+import { hm, clock, primeLabel, reportLead } from "@/lib/statsFormat";
 import { ImpossibleDayCard } from "@/components/stats/ImpossibleDayCard";
 import { PlusPreview } from "@/components/stats/PlusPreview";
+import { ShareCard } from "@/components/ShareCard";
+import { actionRowClass, ActionRowBody } from "@/components/ui/ActionRow";
 import type { PeriodStats } from "@/lib/periodStats";
 
 /**
@@ -59,37 +61,11 @@ export function ReportView({
      هو أم قليل** حتى يترجمَه إلى يومه. **والمعدّلُ اليوميُّ هو
      المسطرة**، وهو الرقمُ الوحيدُ في «الإحصائيات الكاملة» الذي لم يكن
      في التقرير أصلاً — **فلا يكرّر خانةً تحته.**
-     ⚖️ **والشطرُ الثاني يُقال إن صدق وحدَه** (D-063): **عملٌ يأخذ ربعَ
-     المدّة خبرٌ**، **وعملٌ يأخذ سبعةً في المئة ليس خبراً** —
-     **وجملةٌ تُكتب لتُملأ تصير زخرفةً تُتخطّى بالعين.** */
-  const lead = (() => {
-    if (stats.dailyAvgMin <= 0) return null;
-    const top = stats.topTitles[0];
-    const topPct = top && stats.minutes > 0 ? Math.round((top.minutes / stats.minutes) * 100) : 0;
-    if (top && topPct >= 25) {
-      return {
-        tail: ar ? "في اليوم — و" : "a day — and ",
-        pct: `${num(topPct, locale)}${ar ? "٪" : "%"}`,
-        after: ar ? ` منها «${top.title}».` : ` of it was ${top.title}.`,
-      };
-    }
-    const kind = [...stats.mix].sort((a, b) => b.pct - a.pct)[0];
-    if (kind && kind.pct >= 55) {
-      const word = ar
-        ? kind.key === "anime"
-          ? "أنمي"
-          : kind.key === "movies"
-            ? "أفلاماً"
-            : "مسلسلات"
-        : kind.key === "anime"
-          ? "anime"
-          : kind.key === "movies"
-            ? "films"
-            : "series";
-      return { tail: ar ? `في اليوم — ومعظمُها ${word}.` : `a day — and most of it ${word}.` };
-    }
-    return { tail: ar ? "في اليوم." : "a day." };
-  })();
+     ⚖️ 🆕 **والقاعدةُ خرجت إلى `statsFormat`** (D-810): **بطاقةُ
+     المشاركة ترسم الجملةَ نفسَها على صورة** — **وقارئٌ ثانٍ يعني
+     استخراجاً** (D-376)، **ونسختان تفترقان عند أوّل تعديلٍ للحدود**
+     (٢٥٪ و٥٥٪). */
+  const lead = reportLead(stats, locale);
 
   if (stats.empty) {
     return (
@@ -168,7 +144,7 @@ export function ReportView({
           مثلَه** فلا يقفز عن قوسَيه. */}
       {lead && (
         <p className="mt-3.5 text-14 leading-relaxed">
-          <bdi className="font-bold">{hm(stats.dailyAvgMin, locale)}</bdi> {lead.tail}
+          <bdi className="font-bold">{lead.avg}</bdi> {lead.tail}
           {lead.pct && (
             <>
               <bdi className="font-bold text-accent">{lead.pct}</bdi>
@@ -385,24 +361,28 @@ export function ReportView({
           واحداً** (القاعدة ٣). */}
       <Link
         href={`/statistics?p=${stats.period}${stats.offset ? `&o=${stats.offset}` : ""}`}
-        className="mt-8 flex items-center gap-3 rounded-2xl border border-border bg-surface px-4 py-3 active:opacity-70 transition"
+        className={`${actionRowClass} mt-8`}
       >
-        <Icon name="chart" size={18} className="text-accent shrink-0" />
-        <span className="min-w-0 flex-1">
-          <span className="block text-14 font-bold">
-            {ar ? "الإحصائيات الكاملة" : "View full statistics"}
-          </span>
-          <span className="block text-12 text-muted mt-0.5">
-            {ar
-              ? "المحتوى والذوق والعادات بتفصيلها"
-              : "Content, taste and habits in full"}
-          </span>
-        </span>
-        {/* **سهمٌ نصّيٌّ لا أيقونةٌ سابعة** — العائلةُ لا تُوسَّع لحرف.
-            **وبلا `dir="ltr"`** (D-801): الحرفُ مرآويٌّ في يونيكود
-            **فينقلب مع العربيّة إلى جهة القراءة.** */}
-        <span aria-hidden className="text-muted shrink-0">›</span>
+        {/* ⚖️ 🆕 **والصفُّ صار وصفةً مشتركة** (D-810): **«شارك تقريرك»
+            جارُه بالشكل نفسِه** — **وصفّان متطابقان بنصَّي أصنافٍ
+            منسوخين يفترقان عند أوّل تعديل** (D-002/القاعدة ٣). */}
+        <ActionRowBody
+          icon="chart"
+          title={ar ? "الإحصائيات الكاملة" : "View full statistics"}
+          sub={ar ? "المحتوى والذوق والعادات بتفصيلها" : "Content, taste and habits in full"}
+        />
       </Link>
+
+      {/* ═══ 🆕 شارك تقريرك (D-810) ═══ */}
+      {/* 🔑 **وتحت البابِ الأوّل لا فوقه**: **«الإحصائيات الكاملة» هي
+          الوجهةُ التالية** (D-805، وقد رُفعت لأنها كانت مدفونة) —
+          **والمشاركةُ فعلُ من انتهى لا من يريد المزيد.**
+          🔒 **ولا يُرسم في المعاينة**: **`lockedPart` كلُّه مموَّهٌ
+          و`aria-hidden`** (D-809) — **وزرٌّ داخل ضبابٍ لا يُضغط**،
+          **والمسارُ نفسُه يردّ ٤٠٣ لغير المشترك** فلا يُتخطّى بالرابط. */}
+      <div className="mt-3">
+        <ShareCard locale={locale} kind="report" period={stats.period} row />
+      </div>
     </>
   );
 
