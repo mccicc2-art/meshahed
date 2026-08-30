@@ -107,7 +107,7 @@ export function TrailerRail({
                   <Link
                     href={feedHref(i)}
                     prefetch={false}
-                    className="block truncate font-bold text-16"
+                    className="block truncate font-bold text-15"
                   >
                     {i.title}
                   </Link>
