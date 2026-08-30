@@ -98,13 +98,6 @@ const SECTIONS: Section[] = [
         enBody: "A day-by-day log of everything you watched.",
       },
       {
-        icon: "sparkle-star",
-        ar: "مستوى العضو",
-        en: "Member level",
-        arBody: "مستوىً يرتفع بما تشاهده وتكتبه، وهلالُه حول صورتك في رئيسيتك.",
-        enBody: "A level that rises with what you watch and write, drawn as a ring around your picture at home.",
-      },
-      {
         icon: "chart",
         ar: "الإحصاءات",
         en: "Stats",
