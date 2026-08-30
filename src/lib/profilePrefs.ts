@@ -49,14 +49,13 @@ export type ProfileSection = (typeof PROFILE_SECTIONS)[number];
  * 🔴 🆕 **حقولُ تنسيق الملفّ التي يبيعها لوحُ البلس** (D-791) — نظيرُ
  * `PLUS_HOME_FIELDS` حرفاً، وحجّتُها حجّتُه.
  *
- * ⚖️ **وحقلان خارجها عمداً**: **`title`** سطرٌ يكتبه صاحبُه كالنبذة
- * **لا تنسيقُ صفحة**، **و`sectionOrder`** ترتيبُ عناصرَ داخل قسمٍ
- * (D-581) **لا ترتيبُ الأقسام نفسِها** — **وبينهما فرقُ من يرتّب أثاثَ
- * بيته ومن يشتري غرفةً جديدة.**
+ * ⚖️ **وحقلٌ خارجها عمداً**: **`sectionOrder`** ترتيبُ عناصرَ داخل
+ * قسمٍ (D-581) **لا ترتيبُ الأقسام نفسِها** — **وبينهما فرقُ من يرتّب
+ * أثاثَ بيته ومن يشتري غرفةً جديدة.**
+ * 🗑️ **و`title` كان ثانيَهما وقد حُذف** (D-807).
  */
 export const PLUS_PROFILE_FIELDS = [
   "stats",
-  "level",
   "visits",
   "visitsWho",
   "savedLists",
@@ -108,7 +107,6 @@ export interface ProfilePrefs {
   /** صفّ الأرقام الأربعة فوق المستوى */
   stats: boolean;
   /** شريط المستوى */
-  level: boolean;
   /** شارة عدد الزيارات على الغلاف */
   visits: boolean;
   /** ومن يراها — **يُطبَّق في صفحة الملفّ لا هنا** (D-465) */
@@ -143,7 +141,6 @@ export interface ProfilePrefs {
    * ⚠️ **والفراغُ ليس غياباً بل ارتدادٌ إلى اسم المستوى** — تُقرَّر في
    * الصفحة لا هنا، **فالسجلُّ يحفظ ما كُتب لا ما يُعرض.**
    */
-  title: string;
   /**
    * 🆕 **ترتيبٌ يدويٌّ لصفوف الأقسام** (D-581، طلبُ أحمد بلقطةٍ على
    * مقبض «Shows»: «هذي العلامة حطّها في كل شي في المفضّلة — وكل شي
@@ -255,7 +252,6 @@ export const sectionKeyOf = {
 
 export const DEFAULT_PROFILE_PREFS: ProfilePrefs = {
   stats: true,
-  level: true,
   visits: true,
   /* **والافتراضيُّ «الجميع»** — **وهو ما كانت تفعله الصفحةُ فعلاً قبل
      وجود القائمة**، فلا يتبدّل شيءٌ لمن لم يختر (D-152). */
@@ -278,7 +274,6 @@ export const DEFAULT_PROFILE_PREFS: ProfilePrefs = {
   density: "comfortable",
   cards: "full",
   /** **والفراغُ هو الافتراضي** — من لم يكتب لقباً يُعرض اسمُ مستواه */
-  title: "",
   /** **والفراغُ يعني الترتيبَ الطبيعيّ** — لا شيء يتبدّل لمن لم يرتّب */
   sectionOrder: {},
   /* ⚖️ 🆕 **و«نظرة عامة» مطفأةٌ افتراضاً** (D-658، حكمُه: «وأوفر فيو
@@ -301,7 +296,7 @@ export function sanitizeProfilePrefs(raw: unknown): ProfilePrefs {
   if (!raw || typeof raw !== "object") return d;
   const o = raw as Record<string, unknown>;
 
-  const bool = (k: "stats" | "level" | "visits" | "savedLists") =>
+  const bool = (k: "stats" | "visits" | "savedLists") =>
     typeof o[k] === "boolean" ? (o[k] as boolean) : d[k];
 
   let order: ProfileSection[] = d.order;
@@ -322,7 +317,6 @@ export function sanitizeProfilePrefs(raw: unknown): ProfilePrefs {
 
   return {
     stats: bool("stats"),
-    level: bool("level"),
     visits: bool("visits"),
     visitsWho: who,
     savedLists: bool("savedLists"),
@@ -332,10 +326,6 @@ export function sanitizeProfilePrefs(raw: unknown): ProfilePrefs {
     /* **المسافاتُ تُطوى والحدُّ أربعةٌ وعشرون** — كنبذةِ `updateProfile`
        حرفاً: **سطرٌ يجلس بين الاسم والعدّادات لا يحتمل فقرةً**، **والقصُّ
        هنا لا في الرسم** فلا يُخزَّن ما لا يُعرض. */
-    title:
-      typeof o.title === "string"
-        ? o.title.replace(/\s+/g, " ").trim().slice(0, 24)
-        : d.title,
     sectionOrder: sanitizeSectionOrder(o.sectionOrder),
     hiddenTabs: Array.isArray(o.hiddenTabs)
       ? (() => {

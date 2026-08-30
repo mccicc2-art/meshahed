@@ -140,16 +140,6 @@ const ar = {
     "الثيم واللغة وحجم الخط والخصوصية كلها هنا — ويمكنك إعادة هذه الجولة في أي وقت من «المساعدة».",
   pickGenresHint:
     "حدّد أنواعك المفضّلة في الملف الشخصي لتظهر لك اقتراحات على ذوقك ←",
-  levelNames: [
-    "وصلت للتو",
-    "مشاهد جديد",
-    "متابع",
-    "مدمن حلقات",
-    "خبير",
-    "موسوعة",
-    "أسطورة",
-    "خالد",
-  ],
   headerSettings: "الإعدادات",
 
   /* ترويسةُ الرئيسية الجديدة (D-434): تحيّةٌ بالوقت، ومبدّلُ وضع العرض */
@@ -1373,7 +1363,6 @@ const ar = {
   custLayout: "التنسيق",
   custPosterSize: "حجم الملصق",
   custStatsShort: "الأرقام",
-  custLevelShort: "المستوى",
   custPosterS: "ملصقٌ صغير",
   custPosterM: "ملصقٌ متوسّط",
   custPosterL: "ملصقٌ كبير",
@@ -1388,10 +1377,6 @@ const ar = {
   profileNoTabs: "لا شيء ظاهرٌ هنا",
   /** تبويبُ «نظرة عامة» بلا قسمٍ ظاهر (D-658) */
   profileEmptyOverview: "لا أقسام ظاهرة بعد.",
-  profileTitleLabel: "اللقب",
-  profileTitlePlaceholder: "محبٌّ للقصص",
-  profileTitleHint:
-    "سطرٌ قصير يظهر تحت صورتك — ٢٤ حرفاً. اتركه فارغاً ليظهر اسمُ مستواك.",
   profileTabLists: "القوائم",
   profileTopRated: "الأعلى تقييماً",
   profileEmptyActivity: "لا نشاط بعد.",
@@ -2197,16 +2182,6 @@ const en: Dict = {
     "Theme, language, text size and privacy all live here \u2014 and you can replay this tour any time from Help.",
   pickGenresHint:
     "Pick your favourite genres in your profile to get suggestions you'll like →",
-  levelNames: [
-    "Just Arrived",
-    "Newcomer",
-    "Regular",
-    "Binger",
-    "Expert",
-    "Encyclopedia",
-    "Legend",
-    "Immortal",
-  ],
   headerSettings: "Settings",
 
   greetNeutral: "Welcome",
@@ -3002,7 +2977,6 @@ const en: Dict = {
   custLayout: "Layout",
   custPosterSize: "Poster size",
   custStatsShort: "Statistics",
-  custLevelShort: "Level",
   custPosterS: "Small poster",
   custPosterM: "Medium poster",
   custPosterL: "Large poster",
@@ -3012,10 +2986,6 @@ const en: Dict = {
   profileEmptyFavorites: "No favourites yet",
   profileNoTabs: "Nothing shown here",
   profileEmptyOverview: "No sections shown yet.",
-  profileTitleLabel: "Title",
-  profileTitlePlaceholder: "Story lover",
-  profileTitleHint:
-    "A short line under your picture — 24 characters. Leave it empty to show your level name.",
   profileTabLists: "Lists",
   profileTopRated: "Top rated",
   profileEmptyActivity: "No activity yet.",

@@ -121,7 +121,6 @@ export type HomeView = (typeof HOME_VIEWS)[number];
  * (D-719): **ترتيبُ ما تملكه ليس تنسيقَ صفحة.**
  */
 export const PLUS_HOME_FIELDS = [
-  "level",
   "stats",
   "followers",
   "social",
@@ -153,7 +152,6 @@ export const STATS_PICK_MAX = 4;
 
 export interface HomePrefs {
   /** شريط المستوى */
-  level: boolean;
   /** بطاقة الأرقام الأربعة */
   stats: boolean;
   /** سطر المتابعين */
@@ -242,7 +240,6 @@ export interface HomePrefs {
  * يحوّل بمجرّد أوّل متابعة)، فالحالةُ حالةُ المتخطّي وحدَه.
  */
 export const DEFAULT_HOME_PREFS: HomePrefs = {
-  level: true,
   stats: true,
   followers: true,
   social: true,
@@ -321,7 +318,6 @@ export function sanitizeHomePrefs(raw: unknown): HomePrefs {
   };
 
   return {
-    level: bool("level") as boolean,
     stats: bool("stats") as boolean,
     followers: bool("followers") as boolean,
     social: bool("social") as boolean,
