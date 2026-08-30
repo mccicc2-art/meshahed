@@ -15,7 +15,6 @@ import { ReportView } from "@/components/ReportView";
 import { SettingsHeader } from "@/components/settings/SettingsHeader";
 import { PlusPill } from "@/components/ui/PlusPill";
 import { ShareCard } from "@/components/ShareCard";
-import { Icon } from "@/components/Icon";
 
 /**
  * ============ «تقريرك» (D-799 — تصميمُ أحمد المرفق) ============
@@ -41,7 +40,7 @@ export default async function ReportsPage({
   const user = await getUser();
   if (!user) redirect("/login");
 
-  const [{ locale, t }, params, profile] = await Promise.all([
+  const [{ locale }, params, profile] = await Promise.all([
     getT(),
     searchParams,
     getProfile(),
@@ -86,8 +85,11 @@ export default async function ReportsPage({
         action={plus ? <ShareCard locale={locale} icon /> : undefined}
       />
 
-      {plus ? (
-        <div className="mt-1">
+      {/* 🆕 **ولا شاشةَ فارغةَ لغير المشترك** (D-809، شرطُه في مواصفة
+          D-799): **الصفحةُ تُرسم للجميع**، **والقفلُ ضبابٌ على نصفها
+          الأسفل لا بابٌ مغلقٌ على كلِّها** — **ومن لم يرَ ما يشتريه لا
+          يشتريه** (حجّةُ مربّعات الثيمات في D-633). */}
+      <div className="mt-1">
           {/* ═══ تبويباتُ المدّة — **خطٌّ تحت النشط لا رقاقةٌ مطوَّقة**،
               كما في الصورة. **وروابطُ لا أزرار**: المدّةُ في الرابط. ═══ */}
           <div role="tablist" aria-label={ar ? "المدّة" : "Period"} className="flex">
@@ -121,28 +123,9 @@ export default async function ReportsPage({
           </div>
 
           <Suspense key={period} fallback={<ReportSkeleton />}>
-            <ReportBody period={period} locale={locale} tz={tz} />
+            <ReportBody period={period} locale={locale} tz={tz} preview={!plus} />
           </Suspense>
-        </div>
-      ) : (
-        <div className="mt-8 flex flex-col items-center gap-3 text-center px-4">
-          <Icon name="sparkle-star" size={28} className="text-accent" />
-          <p className="text-15 font-bold leading-tight">{t.plusGateTitle}</p>
-          <p className="text-12 text-muted leading-relaxed max-w-sm">
-            {ar
-              ? "التقارير والإحصائيات الكاملة من مزايا Loopz+ — وإحصاءاتك في صفحة الإحصائيات تبقى مجّانيةً كما هي."
-              : "Reports and full statistics are a Loopz+ feature — your stats page stays free exactly as it is."}
-          </p>
-          <div className="rounded-2xl border border-border bg-surface px-4 py-3 mt-1">
-            <p className="text-15 font-bold leading-none">{t.plusPrice}</p>
-            <p className="mt-1 text-12 text-muted leading-none">{t.plusPriceRenew}</p>
-            <p className="mt-1.5 text-12 text-muted leading-none">{t.plusSoon}</p>
-          </div>
-          <Link href="/plus" className="text-12 font-bold text-accent hover:underline">
-            {t.plusLearnMore}
-          </Link>
-        </div>
-      )}
+      </div>
     </div>
   );
 }
@@ -151,13 +134,15 @@ async function ReportBody({
   period,
   locale,
   tz,
+  preview,
 }: {
   period: StatsPeriod;
   locale: "ar" | "en";
   tz: string;
+  preview: boolean;
 }) {
   const stats = await buildPeriodStats(period, 0, locale, tz);
-  return <ReportView stats={stats} locale={locale} />;
+  return <ReportView stats={stats} locale={locale} preview={preview} />;
 }
 
 /** هيكلٌ عظميٌّ **بمواضع المحتوى نفسِها** (شرطُه) — لا مستطيلٌ واحدٌ كبير */
