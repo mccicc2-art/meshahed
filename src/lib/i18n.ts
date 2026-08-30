@@ -1852,6 +1852,15 @@ const ar = {
   weekTitle: "أسبوعك",
   weekSub: "حلقات أعمالك في الأسبوعين القادمين.",
   weekNothing: "ما فيه حلقات قادمة هذا الأسبوع.",
+  /* 🆕 **تقويمُ أعمالك** (D-828) — بابُ شريط الأسبوع، وعمقُه.
+     ⚠️ **و«حلقة جديدة» بلا رقم**: رقمُها نداءُ TMDB لكلِّ صفّ (D-437)،
+     **والغائبُ يغيب ولا يُخمَّن** (D-063). */
+  calTitle: "تقويم أعمالك",
+  calSub: "متى تنزل حلقاتُك وأفلامُك.",
+  calHorizon: "نعرف موعدَ القادم وحدَه، فالأشهرُ البعيدة تمتلئ كلّما اقتربت.",
+  calEmpty: "ما فيه شيء معروفٌ في هذا الشهر بعد.",
+  calEpisode: "حلقة جديدة",
+  calRelease: "يصدر",
   userNotFound: "لا يوجد مستخدم بهذا الاسم.",
   loginContinueGoogle: "المتابعة عبر Google",
   loginOtherWay: "طريقة دخولٍ أخرى",
@@ -3388,6 +3397,12 @@ const en: Dict = {
   weekTitle: "Your week",
   weekSub: "Episodes from your shows over the next two weeks.",
   weekNothing: "No episodes due this week.",
+  calTitle: "Your calendar",
+  calSub: "When your episodes and films land.",
+  calHorizon: "We only know the next one, so later months fill in as they get closer.",
+  calEmpty: "Nothing known for this month yet.",
+  calEpisode: "New episode",
+  calRelease: "Out",
   userNotFound: "No user with that name.",
   loginContinueGoogle: "Continue with Google",
   loginOtherWay: "Another way to sign in",
