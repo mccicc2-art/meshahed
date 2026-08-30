@@ -17,6 +17,7 @@ import {
   getMyPlaylistIds,
   getMyListedMovieIds,
   getProfile,
+  getTitleMetaFor,
   artKey,
   getMyFavorites,
 } from "@/lib/data";
@@ -28,6 +29,9 @@ import { Icon } from "@/components/Icon";
 import { LibraryGrid, type GridItem, type LibraryTab } from "@/components/LibraryGrid";
 import { FavFilterToggle } from "@/components/LibraryFavFilter";
 import { getArtistShelf, type ArtistShelfItem } from "@/lib/artists";
+import { buildAutoGroups } from "@/lib/autoGroups";
+import { AutoGroups } from "@/components/AutoGroups";
+import { isPlus } from "@/lib/plan";
 import { FollowMetaSync } from "@/components/MetaSync";
 import { PublicListsRail } from "@/components/PublicListsRail";
 import { ScrollMemory } from "@/components/ScrollMemory";
@@ -149,6 +153,22 @@ export default async function LibraryPage({
      تراجعٌ في أسخن صفحة. والتبويب يسكن الرابط (D-095) فالخادم يعرفه. */
   const artists: ArtistShelfItem[] =
     initialTab === "artists" ? await getArtistShelf(60) : [];
+
+  /* 🆕 **المجموعاتُ التلقائيّة** (D-820، البندُ الرابعُ من خطّة الـ٢٤)
+     — **مشروطةٌ بتبويب «القوائم» وحدَه**، **كأخواتها فوقها** (D-128/
+     D-559): **نداءٌ واحدٌ مجمَّعٌ لبطاقات الهويّة** (`title_meta`)،
+     **ومن فتح «مسلسلاتي» لا يدفع ثمنَ رفٍّ لا يراه.**
+     ⚠️ **ولا نداءَ TMDB واحد**: الجدولُ مُلئ مرّةً (D-700) — **والوجهُ
+     مسارُ صورةٍ مخزَّن.** */
+  const autoGroups =
+    initialTab === "lists"
+      ? buildAutoGroups(
+          follows,
+          await getTitleMetaFor(
+            follows.map((f) => ({ media_type: f.media_type, tmdb_id: f.tmdb_id })),
+          ).catch(() => new Map()),
+        )
+      : [];
 
   /* 🆕 **★ و♥ على «قوائمي» أيضاً** (D-350، بند ٣): كانت بطاقةُ قوائمي
      بلا أرقامٍ **وبطاقةُ «المحفوظة» تحتها في اللوح نفسِه تحملها** —
@@ -419,6 +439,11 @@ export default async function LibraryPage({
           </div>
         }
         listsExtra={
+          <>
+          {/* 🆕 **«تجتمع عندك» فوق المحفوظة** (D-820): **مجموعاتٌ من
+              مكتبتك تسبق قوائمَ غيرك** — **وتبويبٌ اسمُه «قوائمي» يبدأ
+              بما هو لك.** */}
+          <AutoGroups locale={locale} groups={autoGroups} plus={isPlus(profileRow)} />
           <PublicListsRail
             lists={saved}
             locale={locale}
@@ -432,6 +457,7 @@ export default async function LibraryPage({
               savedCount > 0 ? `${t.savedListsSection} · ${savedCount}` : t.savedListsSection
             }
           />
+          </>
         }
       />
 
