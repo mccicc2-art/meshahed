@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "../Icon";
 import { segmentedItem, segmentedTrackFull } from "./controls";
@@ -300,12 +300,20 @@ export function SheetHeader({
   onClose,
   id,
   action,
+  divider = true,
   children,
 }: {
   title: string;
   closeLabel: string;
   onClose: () => void;
   id?: string;
+  /**
+   * 🆕 **الخيطُ تحت الترويسة** (D-802) — **افتراضُه قائمٌ لكلِّ الأوراق**،
+   * **ويسقط حيث يحمل تحتَه سطرَ شرحٍ يفصل بنفسه**: **خيطٌ ثمّ سطرُ شرحٍ
+   * ثمّ فراغٌ ثلاثةُ فواصلَ لشيءٍ واحد.** **والخاصّيّةُ في المصدر لا صنفٌ
+   * يُكتب عند المستدعي** — حجّةُ `anchor` نفسُها (D-558).
+   */
+  divider?: boolean;
   /** بديلُ زرّ الإغلاق حين يكون للورقة فعلٌ ختاميّ («تمّ» في وضع الترتيب).
       ليست ترويسةً ثانية بل الترويسة نفسها وقد استُبدل زرّها: ورقةٌ تنتهي
       بحفظٍ لا يجوز أن يكون مخرجها الوحيد علامة × تُقرأ إلغاءً. */
@@ -314,9 +322,18 @@ export function SheetHeader({
   children?: React.ReactNode;
 }) {
   return (
-    <div className="flex items-start justify-between gap-3 px-5 pt-4 pb-3 border-b border-[color:var(--divider)]">
+    <div
+      className={`flex items-start justify-between gap-3 px-5 pt-4 pb-3 ${
+        divider ? "border-b border-[color:var(--divider)]" : ""
+      }`}
+    >
       <div className="min-w-0">
-        <h3 id={id} className="text-15 font-bold truncate">
+        {/* 🔴 **والعنوانُ يلتفّ سطرين ولا يُبتر** (D-802، من لقطة أحمد):
+            «When did you watch these sea…» — **سؤالٌ يُقطع في منتصفه لا
+            يُجاب**، **وهذه ترويسةُ حوارٍ لا صفُّ قائمة.** **والسقفُ
+            سطران** فلا ينمو الرأسُ بلا حدّ، **وكلُّ عناوين الأوراق في
+            التطبيق مفاتيحُ قاموسٍ لا نصوصُ مستخدمين** — فُحصت. */}
+        <h3 id={id} className="text-15 font-bold leading-snug line-clamp-2">
           {title}
         </h3>
         {children}
@@ -331,6 +348,79 @@ export function SheetHeader({
           <Icon name="close" size={16} strokeWidth={2.2} />
         </button>
       )}
+    </div>
+  );
+}
+
+/**
+ * ============ المقبضُ والسحبُ للإغلاق — مشتركان (D-802) ============
+ *
+ * **وُلدا في `SettingsBottomSheet` (D-558)، وجاء قارئُهما الثاني اليومَ**
+ * (ورقةُ «متى شاهدتَ هذا الموسم؟») — **فحانت لحظةُ الاستخراج**
+ * (D-376/D-002). **ونسختان من إيماءةٍ واحدةٍ تفترقان عند أوّل تعديلِ
+ * عتبة** (D-145).
+ *
+ * ⚠️ **والمقبضُ ليس زينة**: **قضيبٌ صغيرٌ فوق الورقة هو ما يقول إنها
+ * تُسحب** — **وسحبٌ بلا علامةٍ لا يجده أحد، وعلامةٌ لا تعمل وعدٌ
+ * يُخلَف** (D-138).
+ * ⚠️ **ومساحةُ الإمساك ٤٤ لا ارتفاعَ القضيب**: القضيبُ أربعةُ بكسلات،
+ * **وإيماءةٌ تبدأ في أربعةِ بكسلاتٍ لا تبدأ.**
+ * ⚠️ **والعتبةُ ٩٠ بكسلاً**: تمريرةٌ داخل الورقة تبدأ بحركةٍ رأسيّةٍ
+ * صغيرة، **وعتبةٌ قصيرةٌ تُغلق الورقةَ على من أراد أن يقرأ ما تحت.**
+ * ⚠️ **والمقبضُ وحدَه يمسك الإيماءة** — لا جسمُ الورقة — فلا تنازعَ مع
+ * تمرير القائمة أصلاً.
+ */
+export function useSheetDragToDismiss(onDismiss: () => void) {
+  const [dy, setDy] = useState(0);
+  const from = useRef<number | null>(null);
+
+  const handleProps = {
+    onPointerDown(e: React.PointerEvent) {
+      from.current = e.clientY;
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    },
+    onPointerMove(e: React.PointerEvent) {
+      if (from.current === null) return;
+      /* **لأسفل وحدَه**: سحبٌ لأعلى لا معنى له، **وورقةٌ تتبع الإصبعَ
+         صعوداً تبدو مكسورة** */
+      setDy(Math.max(0, e.clientY - from.current));
+    },
+    onPointerUp() {
+      if (from.current === null) return;
+      const travelled = dy;
+      from.current = null;
+      setDy(0);
+      if (travelled > 90) {
+        tap(8);
+        onDismiss();
+      }
+    },
+    onPointerCancel() {
+      from.current = null;
+      setDy(0);
+    },
+  };
+
+  /* **الحركةُ تُطفأ أثناء السحب** — وإلّا غلبت `sheet-pop` النمطَ
+     السطريَّ فلم يتحرّك اللوحُ بكسلاً واحداً (الحجّةُ عند `panelStyle`) */
+  const panelProps = {
+    className: dy > 0 ? "[animation:none]" : undefined,
+    panelStyle: dy > 0 ? { transform: `translateY(${dy}px)` } : undefined,
+  };
+
+  return { handleProps, panelProps };
+}
+
+/** القضيبُ نفسُه — يُمرَّر عليه `handleProps` من الخطّاف أعلاه */
+export function SheetGrabHandle(
+  props: ReturnType<typeof useSheetDragToDismiss>["handleProps"],
+) {
+  return (
+    <div
+      {...props}
+      className="shrink-0 grid place-items-center h-11 -mb-4 cursor-grab active:cursor-grabbing touch-none"
+    >
+      <span aria-hidden className="block w-9 h-1 rounded-full bg-[color:var(--border)]" />
     </div>
   );
 }
