@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { backdropUrl } from "@/lib/media";
+import { listColor, listColorCss } from "@/lib/listColors";
 import { getDict, type Locale } from "@/lib/i18n";
 import { Icon } from "./Icon";
 import { CommunityListCard } from "./PublicListsRail";
@@ -156,6 +157,13 @@ export function ListManager({
                         : undefined
                   }
                   cover={backdropUrl(l.cover_backdrop ?? null, "w780")}
+                  /* 🆕 **واللونُ يُترجَم هنا لا في البطاقة** (D-824):
+                     **سجلُّ الألوان قارئٌ واحد**، **والبطاقةُ ترسم
+                     تدرّجاً جاهزاً ولا تعرف الرموز.** */
+                  coverColor={(() => {
+                    const c = listColor(l.cover_color);
+                    return c ? listColorCss(c) : null;
+                  })()}
                   action={
                     /* ⚠️ **زرٌّ داخل بطاقةٍ رابط** — فالحدثُ يُوقَف عنده
                        (D-339/D-155)، **وإلّا شارك وفتح الصفحة في لمسة.** */

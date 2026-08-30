@@ -15,6 +15,7 @@ import {
   saveList,
 } from "@/lib/actions";
 import { backdropUrl, posterUrl } from "@/lib/media";
+import { listColor, listColorCss } from "@/lib/listColors";
 import { profileHref } from "@/lib/people";
 import { tap } from "@/lib/haptics";
 import { toast, flashError } from "@/lib/toast";
@@ -127,6 +128,8 @@ export function ListDetail({
     backdrop: string | null;
     tmdbId?: number | null;
     mediaType?: "tv" | "movie" | null;
+    /** 🆕 **رمزُ اللون** (D-824) — **ولا يجتمع مع `backdrop`** */
+    color?: string | null;
   } | null;
   /** 🆕 خلاصةُ التقييم لسطر الرأس (D-332) — الغيابُ يعني قائمةً خاصّة
       أو صفحةً لا تعرض التقييمات فلا رقم */
@@ -252,6 +255,10 @@ export function ListDetail({
   /* `w780` لا الأصل: الغلافُ يُرسم بعرض الصفحة على الجوال، والأصلُ ملفٌّ
      بحجم ثلاثة أضعافه لا تراه العين (نفس مقاس منتقي D-131) */
   const coverUrl = backdropUrl(cover?.backdrop ?? null, "w780");
+  /* 🆕 **واللونُ يحلُّ محلَّ الصورة في الشريط نفسِه** (D-824): **غلافٌ
+     واحدٌ لا اثنان** (D-462) — **وشريطُ لونٍ فوق شريطِ صورةٍ ارتفاعٌ
+     مضاعفٌ يقول الشيءَ مرّتين** (حجّةُ D-364 حرفاً). */
+  const coverTint = coverUrl ? null : listColor(cover?.color);
 
 
   function remove(it: ListItem) {
@@ -353,7 +360,7 @@ export function ListDetail({
       {/* الغلاف فوق الاسم لا خلفه (D-208): نصٌّ فوق صورةٍ لا يملكها
           المصمّم يعني تباينَ لونٍ يتغيّر مع كل قائمة — والاسمُ أهمّ من
           أن يُقامر به. وحين لا غلاف لا يبقى فراغُه: العنصرُ غائبٌ أصلاً */}
-      {coverUrl && (
+      {coverUrl ? (
         <div className="relative mb-4 -mx-1 aspect-[16/9] sm:aspect-[21/9] rounded-2xl overflow-hidden bg-surface-2 border border-[color:var(--background)]">
           <Image
             src={coverUrl}
@@ -364,7 +371,17 @@ export function ListDetail({
             className="object-cover"
           />
         </div>
-      )}
+      ) : coverTint ? (
+        /* **وأقصرُ من شريط الصورة عمداً**: **الصورةُ محتوًى يُنظر إليه،
+           واللونُ علامةٌ تُعرَف** — **وشريطُ لونٍ بارتفاع ٢١:٩ يأخذ
+           شاشةً أولى ويعطي صفراً** (D-200: فراغٌ لا يفصل معنيين تأجيلٌ
+           للمحتوى). */
+        <div
+          aria-hidden
+          className="mb-4 -mx-1 h-16 sm:h-20 rounded-2xl border border-[color:var(--background)]"
+          style={{ backgroundImage: listColorCss(coverTint) }}
+        />
+      ) : null}
 
       {/* ⚖️ 🆕 **ترويسةُ الصفحة بتصميم D-681**: رجوعٌ في الطرف،
           **الشعارُ وسطاً**، والمشاركةُ والنقاطُ في الطرف الآخر — وشريطُ
@@ -710,7 +727,13 @@ export function ListDetail({
           <MenuRow
             icon="image"
             label={t.listCover}
-            value={cover?.backdrop ? t.listCoverSet : undefined}
+            value={
+              cover?.backdrop
+                ? t.listCoverSet
+                : /* **واللونُ يُقال باسمه في الصفّ** — **قيمةٌ تقول
+                     «مضبوط» عن لونٍ لا تقول أيَّ لون** (D-787). */
+                  (listColor(cover?.color)?.[locale === "en" ? "en" : "ar"] ?? undefined)
+            }
             onClick={() => setSheet("cover")}
           />
           {/* ⚠️ **ولا تبديلَ نوعٍ لقائمةٍ ذكيّة**: **الأنواعُ الثلاثةُ
@@ -775,6 +798,7 @@ export function ListDetail({
             tmdbId: cover?.tmdbId ?? null,
             mediaType: cover?.mediaType ?? null,
             backdrop: cover?.backdrop ?? null,
+            color: cover?.color ?? null,
           }}
           locale={locale}
           onClose={() => setSheet(null)}

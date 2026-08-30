@@ -139,6 +139,7 @@ export function CommunityListCard({
   className = "w-full",
   countLabel,
   cover,
+  coverColor,
   action,
 }: {
   list: PublicListCard;
@@ -158,6 +159,14 @@ export function CommunityListCard({
    * ⚠️ **وغيابُه هو السلوكُ القائم** لبقيّة قرّاء البطاقة (D-152).
    */
   cover?: string | null;
+  /**
+   * 🆕 **لونُ الغلاف** (D-824 · الهجرة ١٦٢) — **تدرّجٌ جاهزٌ لا رمز**:
+   * **البطاقةُ ترسم ولا تعرف السجلّ** (D-235: ما يعبر الحدَّ مُسلسَل)،
+   * **والمستدعي يترجم الرمزَ بـ`listColorCss`** — **فسجلُّ الألوان
+   * قارئٌ واحدٌ لا اثنان.**
+   * ⚠️ **ويأتي بعد `cover` في الترتيب** — غلافٌ واحدٌ لا اثنان.
+   */
+  coverColor?: string | null;
   /**
    * 🆕 **فتحةٌ في عمود الزاوية** (D-364) — **حيث يجلس ♥ و★**. مكتبتُك
    * لا تعرض الاثنين على قوائمك (لا تحفظ ما تملك ولا تقيّمه — D-217)،
@@ -258,6 +267,7 @@ export function CommunityListCard({
       ownerName={l.owner ?? null}
       countText={countLabel ?? t.listCount(l.item_count)}
       posters={posters}
+      coverColor={coverColor}
       cover={cover}
     />
   );
@@ -316,6 +326,7 @@ export function ListCardShell({
   extra,
   posters,
   cover,
+  coverColor,
 }: {
   name: string;
   /** رمزٌ قبل الاسم — لقوائم لوبز وطابور «للمشاهدة» */
@@ -334,6 +345,8 @@ export function ListCardShell({
   extra?: string;
   posters?: string[];
   cover?: string | null;
+  /** 🆕 **لونُ الغلاف** (D-824) — تدرّجٌ جاهزٌ من `listColorCss` */
+  coverColor?: string | null;
 }) {
   const stats = [heart, comments, star].filter(
     (x) => x !== undefined && x !== null && x !== false,
@@ -343,10 +356,19 @@ export function ListCardShell({
       {/* **الأرضيّة**: الغلافُ المختارُ كاملاً، وإلّا الملصقاتُ الثلاثة
           من جهة النهاية — **والفراغُ أرضيّةُ السطح وحدَها** (D-063:
           الغيابُ لا يُزخرف). */}
+      {/* 🆕 **واللونُ في مرتبة الغلاف لا فوقه ولا تحته** (D-824):
+          **غلافٌ واحدٌ لا اثنان** — **والصورةُ تسبقه لأنّها الأخصّ**
+          (اختيرت من أعمال القائمة نفسِها)، **واللونُ يسبق الملصقات**
+          لأنّه اختيارُ صاحبها والملصقاتُ افتراضُنا (D-152).
+          ⚠️ **ويقع تحت نفس الحجاب**: **النصُّ محبوسٌ في عمود الحجاب**
+          (D-686) **فلا يحتاج اللونُ لونَ نصٍّ يقابله** — وهو ما جعل
+          سجلَّه بلا قيمتين لكلِّ لون. */}
       {cover ? (
         <span aria-hidden className="absolute inset-0">
           <Image src={cover} alt="" fill sizes="(max-width: 640px) 100vw, 320px" className="object-cover" />
         </span>
+      ) : coverColor ? (
+        <span aria-hidden className="absolute inset-0" style={{ backgroundImage: coverColor }} />
       ) : (
         posters &&
         posters.length > 0 && (
