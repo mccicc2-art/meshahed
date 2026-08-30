@@ -280,8 +280,11 @@ export function ReportView({
         className="mt-7 flex items-center justify-center gap-1.5 text-14 font-bold text-muted hover:text-foreground transition"
       >
         {ar ? "الإحصائيات الكاملة" : "View full statistics"}
-        {/* **سهمٌ نصّيٌّ لا أيقونةٌ سابعة** — العائلةُ لا تُوسَّع لحرف */}
-        <span aria-hidden dir="ltr">›</span>
+        {/* **سهمٌ نصّيٌّ لا أيقونةٌ سابعة** — العائلةُ لا تُوسَّع لحرف.
+            **وبلا `dir="ltr"`** (D-801): الحرفُ مرآويٌّ في يونيكود
+            **فينقلب مع العربيّة إلى جهة القراءة** — وسهمُ «تابع» يشير
+            حيث يمضي القارئ. */}
+        <span aria-hidden>›</span>
       </Link>
     </div>
   );
