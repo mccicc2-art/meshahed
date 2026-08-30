@@ -1884,12 +1884,16 @@ const ar = {
      يقف بين الإصبع ونتيجته يُقرأ عقبةً لا خدمة** (D-217). */
   seasonWhenTitle: "متى شاهدتَ هذا الموسم؟",
   seasonWhenTitleMany: "متى شاهدتَ هذه المواسم؟",
-  seasonWhenHint:
-    "علّمناها بتاريخ اليوم. والتاريخ يظهر في سجلّك وتقاريرك أنت وحدك — لا يراه غيرك.",
-  seasonWhenAired: "شاهدتها وقت نزولها",
-  seasonWhenAiredHint: "نضع لكلّ حلقة تاريخ عرضها الأصلي",
-  seasonWhenNow: "شاهدتها الآن",
-  seasonWhenNowHint: "نبقيها بتاريخ اليوم",
+  /* 🆕 **نصٌّ أقصر بحكم أحمد** (D-802): **السؤالُ سطرٌ واحدٌ يقول ما
+     يترتّب على الجواب**، **وفقرةٌ من ثلاثة أسطر فوق خيارين تُقرأ تحذيراً
+     لا سؤالاً.** ⚠️ **وسطرُ الخصوصيّة سقط معها** — التاريخُ لم يكن
+     يُعرض لأحدٍ سواه أصلاً، **وطمأنةٌ عن خطرٍ لم يخطر تصنع الخطرَ في
+     ذهن قارئها.** */
+  seasonWhenHint: "اختر كيف تظهر الحلقات في سجلّك وإحصائياتك.",
+  seasonWhenAired: "وقت عرضها",
+  seasonWhenAiredHint: "نعطي كلّ حلقة تاريخ عرضها الأصلي",
+  seasonWhenNow: "الآن",
+  seasonWhenNowHint: "نستخدم تاريخ اليوم لكلّ الحلقات",
   seasonWhenDone: "ضُبطت تواريخ المشاهدة",
   /* 🆕 **اليومُ المستحيل** (D-801) — **الرقمُ يُقال كما هو ثمّ يُفسَّر**:
      من رأى «٨٣٤ ساعةً في يوم» يستحقّ سببَها لا إخفاءها. */
@@ -3408,12 +3412,11 @@ const en: Dict = {
     "Browsing is open to everyone — following, rating and replies need an account.",
   seasonWhenTitle: "When did you watch this season?",
   seasonWhenTitleMany: "When did you watch these seasons?",
-  seasonWhenHint:
-    "We marked them with today's date. That date shows in your own diary and reports only — nobody else sees it.",
-  seasonWhenAired: "I watched them as they aired",
-  seasonWhenAiredHint: "We give each episode its original air date",
-  seasonWhenNow: "I watched them now",
-  seasonWhenNowHint: "We keep today's date",
+  seasonWhenHint: "Choose how the episodes appear in your diary and stats.",
+  seasonWhenAired: "As they aired",
+  seasonWhenAiredHint: "Use each episode's original air date",
+  seasonWhenNow: "Just now",
+  seasonWhenNowHint: "Use today's date for every episode",
   seasonWhenDone: "Watch dates set",
   impossibleTitle: "A day with more than 24 hours in it",
   impossibleBody:
