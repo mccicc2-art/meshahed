@@ -44,9 +44,16 @@ import { trioPosterPaths } from "@/lib/heroPosters";
 export async function MemberAnalysis({
   userId,
   locale,
+  tasteAction,
 }: {
   userId: string;
   locale: Locale;
+  /**
+   * 🆕 **بابُ المقارنة في طرف عنوان بطاقة الذوق** (D-829) —
+   * **يُمرَّر ولا يُبنى هنا**: **هذه تقرأ أرقامَه، وتلك تقارن ذوقين**،
+   * **ودمجُهما يجعل قراءةَ صفحةٍ تنتظر قراءتَي مكتبتين.**
+   */
+  tasteAction?: React.ReactNode;
 }) {
   const t = getDict(locale);
 
@@ -175,6 +182,7 @@ export async function MemberAnalysis({
   return (
     <AnalysisView
       locale={locale}
+      tasteAction={tasteAction}
       data={{
         minutes: epStats.minutes + mvStats.minutes,
         episodes: epStats.episodes,
