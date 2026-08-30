@@ -98,9 +98,20 @@ export async function TasteMatchSection({
     <>
       {match.shared.length > 0 && (
         <section className="mt-6">
-          <h3 className="text-14 font-bold mb-2.5">
+          <h3 className="text-14 font-bold mb-1">
             {ar ? "تجتمعان على" : "You both watch"}
           </h3>
+          {/* **ووسيلةُ إيضاحٍ واحدةٌ للقسمين** — تُكتب مرّةً فوق أوّلهما */}
+          <p className="text-12 text-muted mb-2.5 flex items-center gap-3">
+            <span className="flex items-center gap-1.5">
+              <span aria-hidden className="w-2 h-2 rounded-full bg-accent" />
+              {ar ? "أنت" : "You"}
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span aria-hidden className="w-2 h-2 rounded-full bg-[color:var(--muted)]" />
+              {targetName}
+            </span>
+          </p>
           <ul className="space-y-2.5">
             {match.shared.map((r) => (
               <li key={r.slug} className="flex items-center gap-3">
@@ -136,9 +147,15 @@ export async function TasteMatchSection({
               >
                 {genreLabel(r.slug, locale)}
                 <span className="text-muted"> · </span>
-                <bdi className="tabular-nums">
-                  {num(r.mine, locale)}% / {num(r.theirs, locale)}%
-                </bdi>
+                {/* 🔴 **ورقمان بلا صاحبٍ لا يُقرآن** (D-814، من الصفحة
+                    الحيّة): **«12% / 30%» لا تقول أيُّهما لك** —
+                    **والصفوفُ فوقها تفرّق بينهما باللون، والرقاقةُ كانت
+                    تسقط التفريقَ فتصير لغزاً.** **واللونُ نفسُه هنا**:
+                    الهويّةُ لك والخافتُ له (D-142: الحالُ تُقال بأكثرَ
+                    من لونٍ حيث أمكن — والاسمان في السطر أعلاه). */}
+                <bdi className="tabular-nums font-bold text-accent">{num(r.mine, locale)}%</bdi>
+                <span className="text-muted"> / </span>
+                <bdi className="tabular-nums text-muted">{num(r.theirs, locale)}%</bdi>
               </span>
             ))}
           </div>
