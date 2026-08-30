@@ -64,6 +64,7 @@ import {
   type TourState,
   type UiState,
 } from "@/lib/uiState";
+import { sanitizeSavedFilters, type SavedFilter } from "@/lib/savedFilters";
 import { isViewKey } from "@/lib/postKeys";
 import { intId, intIn, asMediaType, uuid, dateOrNull } from "@/lib/validate";
 import { searchGifs, type GifHit } from "@/lib/gif";
@@ -587,6 +588,13 @@ export async function updateUiState(patch: {
   resetHints?: boolean;
   /** حالة الجولة الجديدة — تستبدل المخزنة (التقدم الخطي شأن الجهاز الفعال) */
   tour?: TourState;
+  /**
+   * 🆕 **الفلاترُ المحفوظة** (D-816) — **تستبدل المخزَّنة كاملةً لا
+   * تتّحد معها**: **الحذفُ فعلٌ مقصود**، **واتحادٌ يجعل ما حُذف يعود.**
+   * **والعميلُ يبني القائمةَ الجديدةَ بدوالِّ `savedFilters` ثمّ يرسلها.**
+   * ⚠️ **والتطهيرُ هنا لا هناك**: **العميلُ يُقترح والخادمُ يقرّر.**
+   */
+  filters?: SavedFilter[];
 }) {
   try {
     const { supabase, user } = await requireUser("uistate", 30, 60_000);
@@ -603,6 +611,8 @@ export async function updateUiState(patch: {
           ? mergeHints(current.hints, sanitizeUiState({ hints: patch.addHints }).hints)
           : current.hints,
       tour: patch.tour !== undefined ? sanitizeTourState(patch.tour) : current.tour,
+      filters:
+        patch.filters !== undefined ? sanitizeSavedFilters(patch.filters) : current.filters,
     };
     await supabase.from("profiles").update({ ui_state: next }).eq("id", user.id);
   } catch {

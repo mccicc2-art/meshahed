@@ -15,6 +15,8 @@
  * والحسابُ مصدرَ الحقيقة الذي يتبع صاحبَه بين أجهزته.
  */
 
+import { sanitizeSavedFilters, type SavedFilter } from "@/lib/savedFilters";
+
 export const TOUR_STATE_VALUES = ["suggested", "active", "done"] as const;
 export type TourStateS = (typeof TOUR_STATE_VALUES)[number];
 
@@ -30,6 +32,14 @@ export interface TourState {
 export interface UiState {
   hints: string[];
   tour: TourState | null;
+  /**
+   * 🆕 **الفلاترُ المحفوظة** (D-816) — **بيتُها هذا العمودُ لأنّه بلا
+   * قيدِ شكلٍ عمداً** (D-475)، **فلا هجرةَ لبندٍ كاملٍ من خطّة الـ٢٤.**
+   * ⚠️ **والمنطقُ في `savedFilters.ts` لا هنا**: **هذا الملفُّ يعرف
+   * شكلَ العمود، وذاك يعرف معنى الفلتر** — **ودمجُهما يجعل كلَّ تعديلٍ
+   * على الفلاتر يمسّ الجولةَ والتلميحات.**
+   */
+  filters: SavedFilter[];
 }
 
 /** معرّف تلميح صالح — يدخل مفاتيح localStorage وعمودَ jsonb فيُقيَّد شكله */
@@ -51,7 +61,7 @@ export function sanitizeTourState(value: unknown): TourState | null {
 
 /** قيمة العمود (أو أي مجهول) إلى شكلٍ مضمون — الفاسد يسقط صامتاً */
 export function sanitizeUiState(value: unknown): UiState {
-  const out: UiState = { hints: [], tour: null };
+  const out: UiState = { hints: [], tour: null, filters: [] };
   if (!value || typeof value !== "object") return out;
   const v = value as Record<string, unknown>;
   if (Array.isArray(v.hints)) {
@@ -61,6 +71,7 @@ export function sanitizeUiState(value: unknown): UiState {
     );
   }
   out.tour = sanitizeTourState(v.tour);
+  out.filters = sanitizeSavedFilters(v.filters);
   return out;
 }
 
