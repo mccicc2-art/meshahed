@@ -25,6 +25,18 @@
 alter table public.profiles
   add column if not exists timezone text;
 
+-- 🔴 **ومنحُ العمود بالاسم — وإلّا فالعمودُ للقراءة وحدَها.**
+-- **`profiles` محروسٌ بمنحٍ على مستوى الأعمدة** (منذ ١٥٦): `authenticated`
+-- يملك `update` على **أربعةٍ وعشرين عموداً مسمّى** لا على الجدول —
+-- **فلا يمنح أحدٌ نفسَه `plan` ولا `founder` ولا `verified_at`.**
+-- 🔴 **وعمودٌ جديدٌ لا يرث ذلك المنح**: **شُحن هذا الملفُّ أوّلَ مرّةٍ
+-- بلا هذا السطر فسقطت الكتابةُ ثلاثَ مرّاتٍ صامتة** — **وكشفها
+-- `runtime_errors` لا الشاشة** (D-668 يعمل).
+-- 🔑 **والقاعدةُ للجولات القادمة**: **كلُّ عمودٍ جديدٍ على `profiles`
+-- يكتبه صاحبُه يحتاج سطرَ `grant update (col)` بجانب `add column`** —
+-- **وهجرةٌ تَعِد بحقلٍ لا يُكتب هي هجرةٌ نصفُها.**
+grant update (timezone) on public.profiles to authenticated;
+
 comment on column public.profiles.timezone is
   'اسمُ منطقة IANA من متصفّح صاحب الحساب (Asia/Riyadh) — يملؤه TimezoneSync مرّةً. null = غرينتش.';
 
@@ -33,3 +45,6 @@ comment on column public.profiles.timezone is
 -- where table_schema = 'public' and table_name = 'profiles' and column_name = 'timezone';
 -- select tablename, policyname from pg_policies
 -- where schemaname = 'public' and qual = 'true';   -- المتوقَّع خمسٌ
+-- select privilege_type, column_name from information_schema.column_privileges
+-- where table_schema='public' and table_name='profiles'
+--   and grantee='authenticated' and column_name='timezone';   -- المتوقَّع SELECT + UPDATE
