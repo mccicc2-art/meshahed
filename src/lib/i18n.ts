@@ -1855,6 +1855,12 @@ const ar = {
   /* 🆕 **تقويمُ أعمالك** (D-828) — بابُ شريط الأسبوع، وعمقُه.
      ⚠️ **و«حلقة جديدة» بلا رقم**: رقمُها نداءُ TMDB لكلِّ صفّ (D-437)،
      **والغائبُ يغيب ولا يُخمَّن** (D-063). */
+  /* 🆕 **اسمُ القائمة الذكيّة ووصفُ بابها** (D-830) — **مفتاحٌ واحدٌ
+     يقرؤه البابان**: رقاقةُ «اكتشف» التي تصنعها، وزرُّ تبويب القوائم
+     الذي يدلّ عليها (D-376/D-703: **الاسمُ الذي يُضغط هو الاسمُ الذي
+     يُقرأ**). */
+  smartListLabel: "قائمة ذكيّة",
+  smartListHint: "تُبنى بشرطٍ من اكتشف: اختر فلاترك ثمّ اضغط «قائمة ذكيّة» تحتها.",
   calTitle: "تقويم أعمالك",
   calSub: "متى تنزل حلقاتُك وأفلامُك.",
   calHorizon: "نعرف موعدَ القادم وحدَه، فالأشهرُ البعيدة تمتلئ كلّما اقتربت.",
@@ -3401,6 +3407,8 @@ const en: Dict = {
   weekTitle: "Your week",
   weekSub: "Episodes from your shows over the next two weeks.",
   weekNothing: "No episodes due this week.",
+  smartListLabel: "Smart list",
+  smartListHint: "Built from a filter in Discover: pick your filters, then tap Smart list under them.",
   calTitle: "Your calendar",
   calSub: "When your episodes and films land.",
   calHorizon: "We only know the next one, so later months fill in as they get closer.",
