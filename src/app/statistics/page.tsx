@@ -4,6 +4,7 @@ import Link from "next/link";
 import { getProfile, getUser } from "@/lib/data";
 import { getT } from "@/lib/locale";
 import { isPlus } from "@/lib/plan";
+import { asTimeZone } from "@/lib/zone";
 import {
   asOffset,
   asStatsPeriod,
@@ -62,7 +63,9 @@ export default async function StatisticsPage({
   const offset = asOffset(params.o);
   const tab = asTab(params.t);
   const plus = isPlus(profile);
-  const range = statsRange(period, offset, locale);
+  /* 🆕 **وتقويمُ الصفحة تقويمُ القارئ** (D-806) — والغائبُ غرينتش */
+  const tz = asTimeZone(profile?.timezone);
+  const range = statsRange(period, offset, locale, tz);
 
   const periodLabel: Record<StatsPeriod, string> = ar
     ? { week: "الأسبوع", month: "الشهر", year: "السنة", all: "كل الأوقات" }
@@ -194,7 +197,7 @@ export default async function StatisticsPage({
           </div>
 
           <Suspense key={`${period}:${offset}:${tab}`} fallback={<StatsSkeleton />}>
-            <Body period={period} offset={offset} tab={tab} locale={locale} />
+            <Body period={period} offset={offset} tab={tab} locale={locale} tz={tz} />
           </Suspense>
         </div>
       ) : (
@@ -225,13 +228,15 @@ async function Body({
   offset,
   tab,
   locale,
+  tz,
 }: {
   period: StatsPeriod;
   offset: number;
   tab: TabId;
   locale: "ar" | "en";
+  tz: string;
 }) {
-  const s = await buildPeriodStats(period, offset, locale);
+  const s = await buildPeriodStats(period, offset, locale, tz);
   if (s.empty) {
     return (
       <p className="text-sm text-muted text-center py-16 px-6 leading-relaxed">
