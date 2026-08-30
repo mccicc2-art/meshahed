@@ -285,6 +285,174 @@ export const DEFAULT_BRAND: [string, string, string] = ["#FFD400", "#FBBF24", "#
 
 export const DEFAULT_THEME = THEMES[0];
 
+/**
+ * ====== ألوانُ التمييز الشخصيّة — «لونُك أنت» (D-825) ======
+ *
+ * **حكمُ أحمد**: «اختيارُ ألوان الثيم حسب مزاجه، **والي يدخل حسابه يشوف
+ * الألوان المختارة**».
+ *
+ * 🔑 **والمختارُ لونُ التمييز لا الثيمُ كلُّه — والحجّةُ تُقال:** الثيمُ
+ * ثمانيةَ عشرَ متغيّراً فيها الخلفيّةُ والنصّ، **ومن ملك الخلفيّةَ
+ * والنصَّ ملك أن يصنع تطبيقاً لا يُقرأ** (D-636). **ولونُ التمييز هو
+ * الذي يُقرأ «لوني»**: الأزرارُ والحالُ المفعَّلةُ والروابط.
+ * ⬜ **والثيمُ كاملاً قابلٌ للفتح لاحقاً** إن أراده صراحةً — **دَينٌ
+ * مكتوبٌ لا نسيان.**
+ *
+ * 🔴 **وكلُّ لونٍ يحمل لونَ نصِّه معه** — **ولا يُحسب عند العرض**:
+ * `on-accent` وُجد أصلاً لأنّ **الأبيضَ على الأصفر لا يُقرأ** (تعليقُ
+ * الثيم الرسميّ بنصّه). **فالسجلُّ يضمن التركيبةَ ولا يتركها للحظّ.**
+ *
+ * ⚠️ **ولا يُبدَّل `--accent` وحدَه**: **`accent-2` تُشتقّ معه**
+ * (التدرّجاتُ والهالاتُ تستعملهما معاً) — **ونصفُ تبديلٍ يصنع تدرّجاً
+ * من لونين لا يجتمعان.**
+ *
+ * ⚖️ **وليس هذا سجلَّ `LIST_COLORS`** (D-824) رغم التشابه (القاعدة ٣):
+ * **تلك تدرّجاتٌ تجلس خلف حجابٍ ولا نصَّ عليها**، **وهذه أسطحُ أفعالٍ
+ * يُكتب فوقها** — **وعقدان مختلفان لا وصفةٌ مكرّرة.**
+ */
+export interface ThemeAccent {
+  /** الرمزُ المخزَّن — `^[a-z]{3,12}$` كقيد الجدول (الهجرة ١٦٣) */
+  id: string;
+  ar: string;
+  en: string;
+  accent: string;
+  accent2: string;
+  /** لونُ النصِّ فوقه — **مقيسٌ لا مخمَّن** */
+  onAccent: string;
+  onAccent2: string;
+  glowA: string;
+  glowB: string;
+}
+
+export const ACCENTS: ThemeAccent[] = [
+  {
+    id: "gold",
+    ar: "ذهبي",
+    en: "Gold",
+    accent: "#FFD400",
+    accent2: "#F59E0B",
+    onAccent: "#050505",
+    onAccent2: "#050505",
+    glowA: "rgba(255, 212, 0, 0.10)",
+    glowB: "rgba(245, 158, 11, 0.05)",
+  },
+  {
+    id: "sky",
+    ar: "سماوي",
+    en: "Sky",
+    accent: "#38BDF8",
+    accent2: "#0EA5E9",
+    onAccent: "#04121C",
+    onAccent2: "#04121C",
+    glowA: "rgba(56, 189, 248, 0.10)",
+    glowB: "rgba(14, 165, 233, 0.05)",
+  },
+  {
+    id: "mint",
+    ar: "نعناعي",
+    en: "Mint",
+    accent: "#34D399",
+    accent2: "#10B981",
+    onAccent: "#04140D",
+    onAccent2: "#04140D",
+    glowA: "rgba(52, 211, 153, 0.10)",
+    glowB: "rgba(16, 185, 129, 0.05)",
+  },
+  {
+    id: "coral",
+    ar: "مرجاني",
+    en: "Coral",
+    accent: "#FB7185",
+    accent2: "#F43F5E",
+    onAccent: "#1A0409",
+    onAccent2: "#FFFFFF",
+    glowA: "rgba(251, 113, 133, 0.10)",
+    glowB: "rgba(244, 63, 94, 0.05)",
+  },
+  {
+    id: "lavender",
+    ar: "بنفسجي",
+    en: "Lavender",
+    accent: "#A78BFA",
+    accent2: "#8B5CF6",
+    onAccent: "#120428",
+    onAccent2: "#FFFFFF",
+    glowA: "rgba(167, 139, 250, 0.10)",
+    glowB: "rgba(139, 92, 246, 0.05)",
+  },
+  {
+    id: "flame",
+    ar: "ناري",
+    en: "Flame",
+    accent: "#FB923C",
+    accent2: "#EA580C",
+    onAccent: "#1A0A02",
+    onAccent2: "#FFFFFF",
+    glowA: "rgba(251, 146, 60, 0.10)",
+    glowB: "rgba(234, 88, 12, 0.05)",
+  },
+  {
+    id: "ice",
+    ar: "جليدي",
+    en: "Ice",
+    accent: "#CBD5E1",
+    accent2: "#94A3B8",
+    onAccent: "#0B1220",
+    onAccent2: "#0B1220",
+    glowA: "rgba(203, 213, 225, 0.10)",
+    glowB: "rgba(148, 163, 184, 0.05)",
+  },
+  {
+    id: "rose",
+    ar: "وردي",
+    en: "Rose",
+    accent: "#F472B6",
+    accent2: "#DB2777",
+    onAccent: "#1A0410",
+    onAccent2: "#FFFFFF",
+    glowA: "rgba(244, 114, 182, 0.10)",
+    glowB: "rgba(219, 39, 119, 0.05)",
+  },
+];
+
+const ACCENT_BY_ID = new Map(ACCENTS.map((a) => [a.id, a]));
+
+/** **رمزٌ لا نعرفه لا لون** — والفاسدُ يسقط صامتاً */
+export function themeAccent(id: string | null | undefined): ThemeAccent | null {
+  return id ? (ACCENT_BY_ID.get(id) ?? null) : null;
+}
+
+/** **حارسُ الكتابة في الخادم** */
+export function isThemeAccent(id: unknown): id is string {
+  return typeof id === "string" && ACCENT_BY_ID.has(id);
+}
+
+/**
+ * **متغيّراتُ لونِ التمييز وحدَها** — **تُكتب على `:root` بعد الثيم
+ * فتغلبه**، **أو تُكتب سطريّاً على حاوية** فتسري على نسلها وحدَه.
+ * 🔑 **وهي الوصفةُ الواحدةُ للحالتين** (D-145): **صفحةُ الزائر تلبس
+ * لونَ صاحبِ الملفّ بنفس الأسطر التي يلبسها التطبيق لصاحبه** — **ولا
+ * قائمتان تفترقان عند إضافة متغيّر.**
+ */
+export function accentVars(a: ThemeAccent): Record<string, string> {
+  return {
+    "--accent": a.accent,
+    "--accent-2": a.accent2,
+    "--on-accent": a.onAccent,
+    "--on-accent-2": a.onAccent2,
+    "--glow-a": a.glowA,
+    "--glow-b": a.glowB,
+  };
+}
+
+/** نفسُها نصّاً لِـ`<style>` في الرأس — **مصدرٌ واحدٌ لا نسختان** */
+export function accentCss(a: ThemeAccent): string {
+  const v = accentVars(a);
+  return `:root{${Object.entries(v)
+    .map(([k, x]) => `${k}:${x}`)
+    .join(";")}}`;
+}
+
 export function themeById(id: string | null | undefined): Theme {
   return THEMES.find((t) => t.id === id) ?? DEFAULT_THEME;
 }

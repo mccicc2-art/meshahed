@@ -21,7 +21,7 @@ import { isPlus, themeNeedsPlus } from "@/lib/plan";
 import { isListColor } from "@/lib/listColors";
 import { BROWSE_GENRES } from "@/lib/browse";
 import { sanitizeSocials } from "@/lib/socials";
-import { THEMES } from "@/lib/themes";
+import { THEMES, isThemeAccent } from "@/lib/themes";
 import {
   keepPaidHomePrefs,
   sanitizeHomePrefs,
@@ -534,6 +534,24 @@ export async function syncThemeCookie(value: string) {
 }
 
 /**
+ * 🆕 **جسرُ لونِ التمييز إلى الكوكي** (D-825) — **توأمُ `syncThemeCookie`
+ * لا نسختُه**: **هذه تكتب الكوكيَّ وحدَه** — **والقاعدةُ كاتبُها
+ * `setThemeAccent` وحدَه** (D-462: حقلٌ واحد، كاتبٌ واحد).
+ * ⚠️ **ولا حارسَ بلس هنا**: **هذه تنزّل ما في حسابه أصلاً إلى جهازه** —
+ * **ولونٌ مدفوعٌ يومَ حُفظ لا يُمنع من الظهور على جهازٍ ثانٍ.**
+ */
+export async function syncAccentCookie(value: string) {
+  const accent = isThemeAccent(value) ? value : "";
+  const store = await cookies();
+  store.set("accent", accent, {
+    path: "/",
+    maxAge: accent ? 60 * 60 * 24 * 365 : 0,
+    sameSite: "lax",
+    secure: true,
+  });
+}
+
+/**
  * حجم الخطّ — تفضيلان مستقلّان: واجهة النظام ومحتوى المستخدم.
  *
  * على نمط الثيم حرفاً: الكوكي للرسمة الأولى (يقرؤه layout قبل أول
@@ -642,6 +660,52 @@ export async function updateUiState(patch: {
     /* زائرٌ، أو عمودٌ لم يُهاجَر، أو انقطاع — localStorage يكفي للجهاز */
     return { ok: false };
   }
+}
+
+/**
+ * 🆕 **لونُ التمييز الشخصيّ** (D-825 · الهجرة ١٦٣).
+ *
+ * **حكمُ أحمد**: «اختيارُ ألوان الثيم حسب مزاجه، **والي يدخل حسابه يشوف
+ * الألوان المختارة**».
+ *
+ * 🔑 **وفعلٌ مستقلٌّ لا `updateProfile`** — **نفسُ حجّة `setHomeView`
+ * (D-434)**: ذاك يطلب الاسمَ والصورةَ والأنواعَ ويكتب الصفَّ كلَّه،
+ * **وهذا حقلٌ واحدٌ يُبدَّل برقاقة.**
+ *
+ * 🔑 **وعمودٌ وكوكيٌّ معاً** — **ولكلٍّ دورُه**: **العمودُ هو المصدرُ
+ * عبر الأجهزة وهو الذي يقرؤه الزائر**، **والكوكيُّ هو الذي يرسم قبل
+ * أوّل بايت** (نفسُ عقدِ `theme` في `updateProfile` حرفاً).
+ *
+ * 🔒 **وبلس** (D-783 §٣) — **والحارسُ هنا لا في الرقاقة** (D-819/D-821).
+ */
+export async function setThemeAccent(
+  id: string | null,
+): Promise<{ ok: boolean; needsPlus?: true }> {
+  /* **والمجهولُ يسقط إلى «لا لون» لا إلى خطأ** — **رمزٌ حُذف من السجلّ
+     غداً يعيد صاحبَه إلى لون الثيم بلا شاشةِ عطل** (D-475). */
+  const clean = isThemeAccent(id) ? id : null;
+  const { supabase, user } = await requireUser("art", 30, 60_000);
+  /* **والرفعُ وحدَه محروس**: **إعادةُ الأمر إلى لون الثيم مجّانيّةٌ
+     دائماً** — **ومن انقطع اشتراكُه لا يُحبس في لونٍ لا يملك تغييره**
+     (D-217: بابٌ لا يُفتح ليس باباً). */
+  if (clean && !(await viewerIsPlus())) return { ok: false, needsPlus: true };
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({ theme_accent: clean })
+    .eq("id", user.id);
+  if (error) fail(error);
+
+  const store = await cookies();
+  store.set("accent", clean ?? "", {
+    path: "/",
+    maxAge: clean ? 60 * 60 * 24 * 365 : 0,
+    sameSite: "lax",
+    secure: true,
+  });
+
+  revalidatePath("/", "layout");
+  return { ok: true };
 }
 
 /**
