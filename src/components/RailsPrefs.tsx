@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { setHiddenRails } from "@/lib/actions";
-import { railsOf, type RailTab } from "@/lib/railPrefs";
+import { railsOf, railToken, type RailTab } from "@/lib/railPrefs";
 import { getDict, type Locale } from "@/lib/i18n";
 import { openPlusGate } from "@/lib/plusGate";
 import { Icon } from "./Icon";
@@ -39,7 +39,11 @@ export function RailsPrefs({
   locale: Locale;
   /** تبويبُ اكتشف الحاليّ — **صفوفُه وحدَها تُعرض** */
   tab: RailTab;
-  /** المخفيُّ الآن — يأتي من الخادم فلا يومض مفتاحٌ ثمّ يُصحَّح */
+  /**
+   * **المخفيُّ كلُّه بمفاتيحِ `tab:key`** — **لا مفاتيحُ هذا التبويب
+   * وحدَها**: **الفعلُ يستبدل القائمةَ كاملةً** (D-462)، **وإرسالُ
+   * تبويبٍ واحدٍ يمحو ما أطفأه صاحبُه في التبويبين الآخرين.**
+   */
   hidden: string[];
   title?: string;
 }) {
@@ -69,7 +73,8 @@ export function RailsPrefs({
   }
 
   function toggle(key: string) {
-    commit(local.includes(key) ? local.filter((k) => k !== key) : [...local, key]);
+    const tok = railToken(tab, key);
+    commit(local.includes(tok) ? local.filter((k) => k !== tok) : [...local, tok]);
   }
 
   return (
@@ -83,7 +88,7 @@ export function RailsPrefs({
       </p>
       <ul>
         {rails.map((r) => {
-          const off = local.includes(r.key);
+          const off = local.includes(railToken(tab, r.key));
           const label = r.label(t, tab);
           return (
             <li key={r.key} className="pe-3">
