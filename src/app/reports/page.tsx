@@ -4,6 +4,7 @@ import Link from "next/link";
 import { getProfile, getUser } from "@/lib/data";
 import { getT } from "@/lib/locale";
 import { isPlus } from "@/lib/plan";
+import { asTimeZone } from "@/lib/zone";
 import {
   asStatsPeriod,
   buildPeriodStats,
@@ -55,6 +56,8 @@ export default async function ReportsPage({
      القارئين — **والسطحُ يقرّر بابَه، والمحلِّلُ يقرّر ما يقبله.** */
   const period = params.p ? asStatsPeriod(params.p) : "month";
   const plus = isPlus(profile);
+  /* 🆕 **وتقويمُ الصفحة تقويمُ القارئ** (D-806) — والغائبُ غرينتش */
+  const tz = asTimeZone(profile?.timezone);
 
   /* **و«كلُّ الأوقات» ليست في «تقريرك»** (الصورة: ثلاثةُ تبويبات) —
      **تقريرٌ عن كلِّ الأوقات ليس تقريراً، هو الملفُّ نفسُه.** ومكانُها
@@ -77,7 +80,7 @@ export default async function ReportsPage({
           قفلٍ يُكتشف بعد الدخول** — ولا يُرسم لغير المشترك، فبابُه هو
           شاشةُ الثمن نفسُها. */}
       <SettingsHeader
-        title={`${ar ? "تقريرك" : "Your Report"} · ${statsRange(period, 0, locale).label}`}
+        title={`${ar ? "تقريرك" : "Your Report"} · ${statsRange(period, 0, locale, tz).label}`}
         badge={plus ? <PlusPill /> : undefined}
         fallbackHref="/stats"
         action={plus ? <ShareCard locale={locale} icon /> : undefined}
@@ -118,7 +121,7 @@ export default async function ReportsPage({
           </div>
 
           <Suspense key={period} fallback={<ReportSkeleton />}>
-            <ReportBody period={period} locale={locale} />
+            <ReportBody period={period} locale={locale} tz={tz} />
           </Suspense>
         </div>
       ) : (
@@ -144,8 +147,16 @@ export default async function ReportsPage({
   );
 }
 
-async function ReportBody({ period, locale }: { period: StatsPeriod; locale: "ar" | "en" }) {
-  const stats = await buildPeriodStats(period, 0, locale);
+async function ReportBody({
+  period,
+  locale,
+  tz,
+}: {
+  period: StatsPeriod;
+  locale: "ar" | "en";
+  tz: string;
+}) {
+  const stats = await buildPeriodStats(period, 0, locale, tz);
   return <ReportView stats={stats} locale={locale} />;
 }
 
