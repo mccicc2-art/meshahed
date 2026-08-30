@@ -56,13 +56,14 @@ export function ReportView({
      **وجملةٌ تُكتب لتُملأ تصير زخرفةً تُتخطّى بالعين.** */
   const lead = (() => {
     if (stats.dailyAvgMin <= 0) return null;
-    const per = hm(stats.dailyAvgMin, locale);
     const top = stats.topTitles[0];
     const topPct = top && stats.minutes > 0 ? Math.round((top.minutes / stats.minutes) * 100) : 0;
     if (top && topPct >= 25) {
-      return ar
-        ? `${per} في اليوم — و${num(topPct, locale)}٪ منها «${top.title}».`
-        : `${per} a day — and ${num(topPct, locale)}% of it was ${top.title}.`;
+      return {
+        tail: ar ? "في اليوم — و" : "a day — and ",
+        pct: `${num(topPct, locale)}${ar ? "٪" : "%"}`,
+        after: ar ? ` منها «${top.title}».` : ` of it was ${top.title}.`,
+      };
     }
     const kind = [...stats.mix].sort((a, b) => b.pct - a.pct)[0];
     if (kind && kind.pct >= 55) {
@@ -77,11 +78,9 @@ export function ReportView({
           : kind.key === "movies"
             ? "films"
             : "series";
-      return ar
-        ? `${per} في اليوم — ومعظمُها ${word}.`
-        : `${per} a day — and most of it ${word}.`;
+      return { tail: ar ? `في اليوم — ومعظمُها ${word}.` : `a day — and most of it ${word}.` };
     }
-    return ar ? `${per} في اليوم.` : `${per} a day.`;
+    return { tail: ar ? "في اليوم." : "a day." };
   })();
 
   if (stats.empty) {
@@ -147,9 +146,23 @@ export function ReportView({
       </div>
 
       {/* ═══ سطرُ الافتتاح — **جملةٌ قبل الرسم** ═══ */}
+      {/* 🔴 **و`bdi` حول كلِّ مقدارٍ لاتينيّ** (D-808، من الصفحة الحيّة):
+          **`hm` تكتب «4h 4m» بحرفين لاتينيّين قويَّين** — **فجملةٌ
+          عربيّةٌ تبدأ بها انقلبت كلُّها** مع `dir="auto"`، وخرجت
+          «في اليوم. 4h 4m» **والنقطةُ في أقصى اليسار.**
+          🔑 **والعزلُ لا القسر**: `bdi` تعزل المقدارَ وتترك الجملةَ على
+          اتّجاه صفحتها — **و`dir="ltr"` على الجملة كان سيقلبها كلَّها،
+          و`dir="rtl"` كان سيكسر الإنجليزيّة.** **واسمُ العمل يُعزل
+          مثلَه** فلا يقفز عن قوسَيه. */}
       {lead && (
-        <p className="mt-3.5 text-14 leading-relaxed" dir="auto">
-          {lead}
+        <p className="mt-3.5 text-14 leading-relaxed">
+          <bdi className="font-bold">{hm(stats.dailyAvgMin, locale)}</bdi> {lead.tail}
+          {lead.pct && (
+            <>
+              <bdi className="font-bold text-accent">{lead.pct}</bdi>
+              <bdi>{lead.after}</bdi>
+            </>
+          )}
         </p>
       )}
 
