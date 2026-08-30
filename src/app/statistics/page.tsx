@@ -106,7 +106,14 @@ export default async function StatisticsPage({
               aria-label={ar ? "السابق" : "Previous"}
               className="grid place-items-center w-9 h-9 rounded-full text-muted hover:text-foreground transition"
             >
-              <span aria-hidden dir="ltr">‹</span>
+              {/* 🔴 **ولا اتّجاهَ مقسورٌ على سهمِ تنقّل** (D-801، من الصفحة
+                  الحيّة): **الأرقامُ تُقسر على اليسار لأنها أرقام، والأسهمُ
+                  لا** — `‹` و`›` حرفان **مرآويّان في يونيكود** يقلبهما
+                  محرّكُ الاتجاهين وحدَه في العربيّة. **وسهمُ «السابق» على
+                  اليمين يشير إلى اليسار يقول للقارئ العربيّ: تقدّم**، وهو
+                  عكسُ فعله. **وترويسةُ الإعدادات تعكس سهمَها منذ اليوم
+                  الأوّل** (`rtl:-rotate-90`) — فهذه لحاقٌ بها لا اجتهاد. */}
+              <span aria-hidden>‹</span>
             </Link>
             <span className="text-14 font-semibold tabular-nums">{range.label}</span>
             {range.canGoNext ? (
@@ -116,7 +123,7 @@ export default async function StatisticsPage({
                 aria-label={ar ? "التالي" : "Next"}
                 className="grid place-items-center w-9 h-9 rounded-full text-muted hover:text-foreground transition"
               >
-                <span aria-hidden dir="ltr">›</span>
+                <span aria-hidden>›</span>
               </Link>
             ) : (
               /* **والسهمُ الغائبُ يبقى مكانُه** فلا يقفز الاسمُ عند الحدّ */
