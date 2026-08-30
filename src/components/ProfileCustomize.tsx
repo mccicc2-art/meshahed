@@ -22,6 +22,8 @@ import { SettingsSaveBar } from "./settings/SettingsSaveBar";
 import { SettingsArrangeSheet } from "./settings/SettingsArrangeSheet";
 import { toast } from "@/lib/toast";
 import { CustomizePreview } from "./CustomizePreview";
+import { PrefTemplatesRow } from "./PrefTemplatesRow";
+import { type PrefTemplate } from "@/lib/prefTemplates";
 import type { Density } from "@/lib/density";
 
 /**
@@ -51,6 +53,7 @@ export function ProfileCustomize({
   avatarPos,
   counters,
   registerReset,
+  templates = [],
   plus = false,
 }: {
   locale: Locale;
@@ -67,6 +70,8 @@ export function ProfileCustomize({
   counters?: { followers: number; following: number; visits: number };
   /** يسلّم زرَّ «استعادة» في الترويسة مقبضاً على هذا اللوح (D-465) */
   registerReset?: (fn: () => void) => void;
+  /* 🆕 **قوالبُ التخصيص** (D-822) — تمرّ كما هي، **والمكوّنُ يملك حالتَها** */
+  templates?: PrefTemplate[];
   /* 🆕 **الخطّة** (D-633) — افتراضٌ صامتٌ `false` (D-028) */
   plus?: boolean;
 }) {
@@ -151,6 +156,19 @@ export function ProfileCustomize({
         showStats={prefs.stats}
         rows={prefs.order.map((k) => ({ key: k, ...sectionMeta[k] }))}
         density={prefs.density}
+      />
+
+      {/* 🆕 **قوالبُ التخصيص** (D-822) — **موضعُها هنا كموضعِها في توأمها**
+          (`HomeCustomize`): **سطحان بشكلٍ واحد، والمستخدمُ يتعلّم مرّةً.**
+          ⚠️ **وقوالبُ هذا السطح وحدَه تُعرض** — **وقالبُ رئيسيّةٍ يُطبَّق
+          على الملفّ يغيّر شاشةً لم يفتحها صاحبُها** (D-644). */}
+      <PrefTemplatesRow
+        locale={locale}
+        surface="profile"
+        initial={templates}
+        current={prefs as unknown as Record<string, unknown>}
+        onApply={(p) => setPrefs(sanitizeProfilePrefs(p))}
+        plus={plus}
       />
 
       {/* ===== ١) أعلى البروفايل ===== */}

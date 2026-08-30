@@ -27,6 +27,8 @@ import { SettingsSaveBar } from "./settings/SettingsSaveBar";
 import { SettingsArrangeSheet } from "./settings/SettingsArrangeSheet";
 import { toast } from "@/lib/toast";
 import { CustomizePreview } from "./CustomizePreview";
+import { PrefTemplatesRow } from "./PrefTemplatesRow";
+import { type PrefTemplate } from "@/lib/prefTemplates";
 /* **بابٌ ثانٍ للوضع نفسِه** — فيُخبَر مخزنُ التبويب بما حُفظ هنا */
 import { rememberHomeView } from "./HomeViewProvider";
 import { type Density } from "@/lib/density";
@@ -48,6 +50,7 @@ export function HomeCustomize({
   genres,
   initial,
   registerReset,
+  templates = [],
   plus = false,
 }: {
   locale: Locale;
@@ -58,6 +61,8 @@ export function HomeCustomize({
   initial: unknown;
   /** يسلّم زرَّ «استعادة» في الترويسة مقبضاً على هذا اللوح (D-465) */
   registerReset?: (fn: () => void) => void;
+  /* 🆕 **قوالبُ التخصيص** (D-822) — تمرّ كما هي، **والمكوّنُ يملك حالتَها** */
+  templates?: PrefTemplate[];
   /* 🆕 **الخطّة** (D-633) — افتراضٌ صامتٌ `false` (D-028) */
   plus?: boolean;
 }) {
@@ -173,6 +178,21 @@ export function HomeCustomize({
         stats={prefs.statsPick.map((k) => ({ key: k, ...statMeta[k] }))}
         rows={prefs.order.map((k) => ({ key: k, ...sectionMeta[k] }))}
         density={prefs.density}
+      />
+
+      {/* 🆕 **قوالبُ التخصيص تحت المعاينة مباشرةً** (D-822): **الشكلُ
+          الذي تبنيه فوق، وأشكالُك المحفوظةُ تحته** — **وصفٌّ في قاع
+          الصفحة يُقرأ إعداداً لا مبدِّلَ مظهر.**
+          ⚠️ **ويُطبَّق بمطهِّر هذا السطح** (D-145): **المرجعُ الوحيدُ
+          لشكل الرئيسية `sanitizeHomePrefs`** — **وقالبٌ حُفظ قبل حقلٍ
+          أُضيف اليومَ يُشفى عند تطبيقه لا يبقى ناقصاً.** */}
+      <PrefTemplatesRow
+        locale={locale}
+        surface="home"
+        initial={templates}
+        current={prefs as unknown as Record<string, unknown>}
+        onApply={(p) => setPrefs(sanitizeHomePrefs(p))}
+        plus={plus}
       />
 
       {/* ===== ١) الترويسة ===== */}

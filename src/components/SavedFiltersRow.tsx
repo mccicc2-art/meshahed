@@ -78,10 +78,22 @@ export function SavedFiltersRow({
      صفراً.** */
   if (mine.length === 0 && !current) return null;
 
+  /* 🔑 **والرجوعُ يُلتقط قبل التفاؤل لا بعده** (درسُ `TabsPrefs`):
+     `list` داخل السهم هو الجديدُ بعد `setList`، **فالمحفوظُ في متغيّرٍ
+     قبلَها هو وحدَه القديم.**
+     🔴 **والخادمُ يردّ `needsPlus` فتُردّ القائمةُ وتُفتح البوّابة** —
+     **الحارسُ أدناه لا يُغني عنه** (D-819): **هذا يرسم، وذاك يمنع.** */
   function persist(next: SavedFilter[]) {
     const before = list;
     setList(next);
-    void updateUiState({ filters: next }).catch(() => setList(before));
+    void updateUiState({ filters: next })
+      .then((res) => {
+        if (res?.needsPlus) {
+          setList(before);
+          openPlusGate();
+        }
+      })
+      .catch(() => setList(before));
   }
 
   function apply(f: SavedFilter) {
