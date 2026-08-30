@@ -20,7 +20,7 @@ import {
 } from "@/components/stats/FullStatsTabs";
 import { SettingsHeader } from "@/components/settings/SettingsHeader";
 import { PlusPill } from "@/components/ui/PlusPill";
-import { Icon } from "@/components/Icon";
+import { PlusPreview } from "@/components/stats/PlusPreview";
 
 /**
  * ============ الإحصائيات الكاملة (D-799 — تصميمُ أحمد المرفق) ============
@@ -53,7 +53,7 @@ export default async function StatisticsPage({
   const user = await getUser();
   if (!user) redirect("/login");
 
-  const [{ locale, t }, params, profile] = await Promise.all([
+  const [{ locale }, params, profile] = await Promise.all([
     getT(),
     searchParams,
     getProfile(),
@@ -147,8 +147,9 @@ export default async function StatisticsPage({
         action={plus && period !== "all" ? periodNav : undefined}
       />
 
-      {plus ? (
-        <div className="mt-1">
+      {/* 🆕 **ومعاينةٌ مموّهةٌ لغير المشترك هنا كما في «تقريرك»**
+          (D-809) — **قفلان بشكلين في صفحتين شقيقتين عطلٌ** (القاعدة ٣). */}
+      <div className="mt-1">
           {/* ═══ المدّة ═══ */}
           <div role="tablist" aria-label={ar ? "المدّة" : "Period"} className="flex">
             {(["week", "month", "year", "all"] as const).map((p) => {
@@ -197,28 +198,16 @@ export default async function StatisticsPage({
           </div>
 
           <Suspense key={`${period}:${offset}:${tab}`} fallback={<StatsSkeleton />}>
-            <Body period={period} offset={offset} tab={tab} locale={locale} tz={tz} />
+            <Body
+              period={period}
+              offset={offset}
+              tab={tab}
+              locale={locale}
+              tz={tz}
+              preview={!plus}
+            />
           </Suspense>
-        </div>
-      ) : (
-        <div className="mt-8 flex flex-col items-center gap-3 text-center px-4">
-          <Icon name="sparkle-star" size={28} className="text-accent" />
-          <p className="text-20 font-bold leading-tight">{t.plusGateTitle}</p>
-          <p className="text-12 text-muted leading-relaxed max-w-sm">
-            {ar
-              ? "الإحصائيات الكاملة من مزايا Loopz+ — وإحصاءاتك في صفحة الإحصائيات تبقى مجّانيةً كما هي."
-              : "Full statistics are a Loopz+ feature — your stats page stays free exactly as it is."}
-          </p>
-          <div className="rounded-2xl border border-border bg-surface px-4 py-3 mt-1">
-            <p className="text-15 font-bold leading-none">{t.plusPrice}</p>
-            <p className="mt-1 text-12 text-muted leading-none">{t.plusPriceRenew}</p>
-            <p className="mt-1.5 text-12 text-muted leading-none">{t.plusSoon}</p>
-          </div>
-          <Link href="/plus" className="text-12 font-bold text-accent hover:underline">
-            {t.plusLearnMore}
-          </Link>
-        </div>
-      )}
+      </div>
     </div>
   );
 }
@@ -229,12 +218,14 @@ async function Body({
   tab,
   locale,
   tz,
+  preview,
 }: {
   period: StatsPeriod;
   offset: number;
   tab: TabId;
   locale: "ar" | "en";
   tz: string;
+  preview: boolean;
 }) {
   const s = await buildPeriodStats(period, offset, locale, tz);
   if (s.empty) {
@@ -246,10 +237,20 @@ async function Body({
       </p>
     );
   }
-  if (tab === "content") return <ContentTab s={s} locale={locale} />;
-  if (tab === "taste") return <TasteTab s={s} locale={locale} />;
-  if (tab === "habits") return <HabitsTab s={s} locale={locale} />;
-  return <OverviewTab s={s} locale={locale} />;
+  const body =
+    tab === "content" ? (
+      <ContentTab s={s} locale={locale} />
+    ) : tab === "taste" ? (
+      <TasteTab s={s} locale={locale} />
+    ) : tab === "habits" ? (
+      <HabitsTab s={s} locale={locale} />
+    ) : (
+      <OverviewTab s={s} locale={locale} />
+    );
+  /* **ولا فتحةَ مكشوفةً هنا بخلاف «تقريرك»**: **الرقمُ الكبيرُ هناك
+     أوّلُ حقيقةٍ تُعطى**، **وهذه الصفحةُ كلُّها عمقٌ** — **وفتحةٌ منها
+     تكرّر ما أعطاه التقريرُ للتوّ.** */
+  return preview ? <PlusPreview locale={locale} locked={body} /> : body;
 }
 
 /** هيكلٌ **بمواضع المحتوى** لا مستطيلٌ واحد (شرطُه) */
