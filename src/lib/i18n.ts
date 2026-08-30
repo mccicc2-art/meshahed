@@ -1906,9 +1906,17 @@ const ar = {
      ⚠️ **والعملةُ بالكلمة لا بالرمز في العربيّة**: «$» ملتصقاً برقمٍ
      داخل نصٍّ عربيٍّ يتنازع عليه محرّكُ الاتجاهين، **ورقمُ ثمنٍ يُقرأ
      مقلوباً أسوأُ من رقمٍ لا يُقرأ.** */
-  plusPrice: "39.99 دولاراً للسنة الأولى",
-  plusPriceRenew: "ثمّ 49.99 دولاراً سنويّاً · أو 4.99 شهريّاً",
-  plusPriceLocal: "بعملة بلدك يوم يُفتح الاشتراك",
+  /* 🆕 **والثمنُ بالريال لا بالدولار** (D-815، حكمُ أحمد: «اضربها في
+     ٣٫٧٥ وقرّبها لـ٩٩ هللة»): **٣٩٫٩٩ → ١٤٩٫٩٩ · ٤٩٫٩٩ → ١٨٦٫٩٩ ·
+     ٤٫٩٩ → ١٨٫٩٩** (الأقربُ في كلٍّ، والفرقُ في السنويّ ٠٫٤٧ هللة عن
+     ١٨٧٫٩٩ فاختير الأقرب).
+     🔑 **وعملةٌ واحدةٌ في اللغتين**: **سعران بعملتين يفترقان عند أوّل
+     تغييرِ صرف** — **والسوقُ سعوديٌّ أوّلاً.** ⚠️ **والمفاتيحُ الثلاثةُ
+     هي المصدرُ الوحيد**: `/terms` وصفحةُ البيع والبوّابةُ تقرأ منها،
+     **وثمنٌ مكتوبٌ بيدٍ في صفحةٍ هو أوّلُ سعرٍ يُنسى عند التغيير.** */
+  plusPrice: "149.99 ريالاً للسنة الأولى",
+  plusPriceRenew: "ثمّ 186.99 ريالاً سنويّاً · أو 18.99 شهريّاً",
+  plusPriceLocal: "أو ما يعادلها بعملة بلدك",
   plusSoon: "قريباً — والاشتراك لم يُفتح بعد",
   plusLearnMore: "ما الذي يشمله Loopz+؟",
   plusBadge: "عضو Loopz+",
@@ -3407,9 +3415,9 @@ const en: Dict = {
   plusGateTitle: "This is a Loopz+ feature",
   plusGateHint:
     "Tracking, lists, community and search stay free for everyone — Loopz+ is for themes and shaping your pages the way you like.",
-  plusPrice: "$39.99 for your first year",
-  plusPriceRenew: "then $49.99 a year · or $4.99 a month",
-  plusPriceLocal: "in your local currency when subscriptions open",
+  plusPrice: "SAR 149.99 for your first year",
+  plusPriceRenew: "then SAR 186.99 a year · or 18.99 a month",
+  plusPriceLocal: "or the equivalent in your local currency",
   plusSoon: "Coming soon — subscriptions are not open yet",
   plusLearnMore: "What does Loopz+ include?",
   plusBadge: "Loopz+ member",
