@@ -46,7 +46,14 @@ export default async function ReportsPage({
     getProfile(),
   ]);
   const ar = locale !== "en";
-  const period = asStatsPeriod(params.p);
+  /* 🆕 **والشهرُ هو الافتراضيّ لا الأسبوع** (D-805، حكمُ أحمد: «إذا
+     دخلت على التقرير خلّه مباشرةً يفتح لي على الشهر»). **والحجّةُ
+     تسنده**: **أسبوعٌ فيه ثلاثُ حلقاتٍ ليس تقريراً**، **والشهرُ أوّلُ
+     مدّةٍ يكون فيها لما يُرسم شكلٌ يُقرأ** — عمودٌ لكلِّ يومٍ ومزيجُ
+     أنواعٍ لا نوعٌ واحدٌ ومقارنةٌ بشهرٍ مضى. **والأسبوعُ يبقى بضغطة.**
+     ⚠️ **و`asStatsPeriod` لم تُمسّ**: افتراضُها الأسبوعُ لبقيّة
+     القارئين — **والسطحُ يقرّر بابَه، والمحلِّلُ يقرّر ما يقبله.** */
+  const period = params.p ? asStatsPeriod(params.p) : "month";
   const plus = isPlus(profile);
 
   /* **و«كلُّ الأوقات» ليست في «تقريرك»** (الصورة: ثلاثةُ تبويبات) —
@@ -88,8 +95,16 @@ export default async function ReportsPage({
                   key={p}
                   role="tab"
                   aria-selected={on}
-                  href={p === "week" ? "/reports" : `/reports?p=${p}`}
+                  href={p === "month" ? "/reports" : `/reports?p=${p}`}
                   scroll={false}
+                  /* 🔴 🆕 **وتبديلُ المدّة يستبدل ولا يُكدّس** (D-805،
+                     حكمُ أحمد: «إذا ضغطت سهم الرجوع المفروض يرجع
+                     للصفحة الي قبلها مباشرة»): **كلُّ ضغطةِ تبويبٍ
+                     كانت تدفع مدخلاً في التاريخ** — **فمن قلّب المدد
+                     الثلاث ثمّ ضغط الرجوع مشى بينها بدل أن يخرج.**
+                     **والتبويبُ وجهٌ ثانٍ لصفحةٍ واحدة لا وجهةٌ
+                     ثانية** — وهو حرفُ D-643. */
+                  replace
                   className={`flex-1 basis-0 min-w-0 text-center pb-2.5 pt-1 text-15 border-b-2 transition ${
                     on
                       ? "font-bold text-foreground border-accent"
