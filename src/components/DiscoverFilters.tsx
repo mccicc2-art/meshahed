@@ -90,11 +90,14 @@ export function DiscoverFilters({
   studio,
   listsFilters,
   tabPrefs,
+  hiddenRails = [],
   myRows = [],
 }: {
   locale: Locale;
   /** ترتيبُ تبويبات اكتشف وإظهارها — من الكوكي على الخادم (D-014) */
   tabPrefs: TabPref[];
+  /** 🆕 **صفوفُ اكتشف المطفأة** (D-826) — تمرّ من الخادم إلى الورقة */
+  hiddenRails?: string[];
   /** 🆕 صفوفُك الخاصة (D-337) — تمرّ إلى الورقة؛ اختياريّةٌ كي تُنشر الدفعات بترتيب D-028 */
   myRows?: MyRow[];
   /** فلاتر تبويب القوائم — يرسم زرّها في خانة زرّ الأعمال نفسها
@@ -483,6 +486,7 @@ export function DiscoverFilters({
           region={region}
           axes={axes}
           tabPrefs={tabPrefs}
+          hiddenRails={hiddenRails}
           myRows={myRows}
           tabLabels={tabLabels}
           onClose={() => setSheet(false)}

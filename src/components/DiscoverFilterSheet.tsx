@@ -35,6 +35,8 @@ import { sheetScroll } from "./ui/controls";
 /* القسم الثاني في هذه الورقة — نفسُ المكوّن في المكتبة والمجتمع (D-179) */
 import { TabsPrefs } from "./TabsPrefs";
 import type { TabPref } from "@/lib/tabPrefs";
+import { RailsPrefs } from "./RailsPrefs";
+import { type RailTab } from "@/lib/railPrefs";
 import { setMyRows } from "@/lib/actions";
 import { serializeMyRows, MY_ROWS_MAX, type MyRow } from "@/lib/myRows";
 
@@ -88,6 +90,7 @@ export function DiscoverFilterSheet({
   region,
   axes,
   tabPrefs,
+  hiddenRails = [],
   myRows: initialMyRows = [],
   tabLabels,
   onApply,
@@ -119,6 +122,8 @@ export function DiscoverFilterSheet({
   axes: "full" | "anime" | "none";
   /** تفضيلات تبويبات اكتشف — القسم الثاني في هذه الورقة */
   tabPrefs: TabPref[];
+  /** 🆕 **صفوفُ اكتشف المطفأة** (D-826) — تأتي من الخادم فلا تومض */
+  hiddenRails?: string[];
   /** 🆕 صفوفُك الخاصة (D-337) — القيمةُ الحاليّة من الكوكيز */
   myRows?: MyRow[];
   tabLabels: Record<string, string>;
@@ -129,6 +134,11 @@ export function DiscoverFilterSheet({
   const lang = locale === "en" ? "en" : "ar";
   const [draft, setDraft] = useState<FilterDraft>(initial);
   const showFilters = axes !== "none";
+  /* 🆕 **تبويبُ الصفوف يُشتقّ ولا يُمرَّر** (D-826): **الورقةُ تعرف
+     `axes` و`type` أصلاً** — **ومعاملٌ ثالثٌ يقول ما يقولانه معاً
+     يفترق عنهما يوماً** (D-462). **و«القوائم» (`none`) بلا صفوف.** */
+  const railTab: RailTab | null =
+    axes === "none" ? null : axes === "anime" ? "anime" : type === "tv" ? "shows" : "movies";
   /**
    * 🆕 **الورقةُ تبويبان كورقة المجتمع** (D-325، طلبُ أحمد: «الفلتر اعمله
    * ٢ تبويب مثل ما عملنا في الكومينتي»).
@@ -531,6 +541,21 @@ export function DiscoverFilterSheet({
           labels={tabLabels}
           title={t.tabsPrefsGroup}
         />
+
+        {/* 🆕 **وصفوفُ التبويب تحت تبويباته** (D-826، حكمُ أحمد: «يخفي
+            أيَّ عنوانٍ من هذي العناوين، وتكون في فيو»): **«عرض» سؤالٌ
+            واحدٌ — ما الذي يبقى بعد أن تُغلق الورقة؟ — والتبويباتُ
+            والصفوفُ جوابان له.**
+            ⚠️ **وتغيب في تبويب «القوائم»**: **لا صفوفَ أعمالٍ فيه**،
+            **وقائمةٌ فارغةٌ تحت عنوانٍ تُقرأ عطلاً** (D-219/D-280). */}
+        {railTab && (
+          <RailsPrefs
+            locale={locale}
+            tab={railTab}
+            hidden={hiddenRails}
+            title={locale === "en" ? "This tab's rows" : "صفوف هذا التبويب"}
+          />
+        )}
         </div>
         )}
       </div>
