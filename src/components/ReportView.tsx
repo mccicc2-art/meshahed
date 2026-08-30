@@ -46,6 +46,44 @@ export function ReportView({
   );
   const insight = stats.taste.shift[0];
 
+  /* 🆕 **سطرُ الافتتاح** (D-808، حكمُ أحمد: «خلّ فائدة التقرير في
+     بدايته»): **«١٢١ ساعة» رقمٌ بلا مسطرة** — **ولا يعرف قارئُه أكثيرٌ
+     هو أم قليل** حتى يترجمَه إلى يومه. **والمعدّلُ اليوميُّ هو
+     المسطرة**، وهو الرقمُ الوحيدُ في «الإحصائيات الكاملة» الذي لم يكن
+     في التقرير أصلاً — **فلا يكرّر خانةً تحته.**
+     ⚖️ **والشطرُ الثاني يُقال إن صدق وحدَه** (D-063): **عملٌ يأخذ ربعَ
+     المدّة خبرٌ**، **وعملٌ يأخذ سبعةً في المئة ليس خبراً** —
+     **وجملةٌ تُكتب لتُملأ تصير زخرفةً تُتخطّى بالعين.** */
+  const lead = (() => {
+    if (stats.dailyAvgMin <= 0) return null;
+    const per = hm(stats.dailyAvgMin, locale);
+    const top = stats.topTitles[0];
+    const topPct = top && stats.minutes > 0 ? Math.round((top.minutes / stats.minutes) * 100) : 0;
+    if (top && topPct >= 25) {
+      return ar
+        ? `${per} في اليوم — و${num(topPct, locale)}٪ منها «${top.title}».`
+        : `${per} a day — and ${num(topPct, locale)}% of it was ${top.title}.`;
+    }
+    const kind = [...stats.mix].sort((a, b) => b.pct - a.pct)[0];
+    if (kind && kind.pct >= 55) {
+      const word = ar
+        ? kind.key === "anime"
+          ? "أنمي"
+          : kind.key === "movies"
+            ? "أفلاماً"
+            : "مسلسلات"
+        : kind.key === "anime"
+          ? "anime"
+          : kind.key === "movies"
+            ? "films"
+            : "series";
+      return ar
+        ? `${per} في اليوم — ومعظمُها ${word}.`
+        : `${per} a day — and most of it ${word}.`;
+    }
+    return ar ? `${per} في اليوم.` : `${per} a day.`;
+  })();
+
   if (stats.empty) {
     return (
       <p className="text-sm text-muted text-center py-16 px-6 leading-relaxed">
@@ -107,6 +145,13 @@ export function ReportView({
         </div>
         <DaysRing active={stats.activeDays} total={stats.range.days} locale={locale} ar={ar} />
       </div>
+
+      {/* ═══ سطرُ الافتتاح — **جملةٌ قبل الرسم** ═══ */}
+      {lead && (
+        <p className="mt-3.5 text-14 leading-relaxed" dir="auto">
+          {lead}
+        </p>
+      )}
 
       {/* 🔴 🆕 **اليومُ المستحيل** (D-801 — حكمُ أحمد): **يومٌ فيه أكثرُ
           من ٢٤ ساعةً ليس رقماً كبيراً، هو رقمٌ محال** — **والسطرُ الصادقُ
