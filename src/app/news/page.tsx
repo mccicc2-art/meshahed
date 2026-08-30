@@ -11,6 +11,7 @@ import {
   getCuratedCounts,
   getMyListReviews,
   getTopSavedListCards,
+  getProfile,
 } from "@/lib/data";
 import { getLibState } from "@/lib/libState";
 import { cookies } from "next/headers";
@@ -18,6 +19,9 @@ import { parseMyRows, MY_ROWS_COOKIE, type MyRow } from "@/lib/myRows";
 import { BROWSE_GENRES, BROWSE_TAGS, browseGenreName, browseTagName } from "@/lib/browse";
 import { LOOPZ_PERSON } from "@/lib/loopz";
 import { Avatar } from "@/components/Avatar";
+import { SavedFiltersRow } from "@/components/SavedFiltersRow";
+import { sanitizeUiState } from "@/lib/uiState";
+import { isPlus } from "@/lib/plan";
 import { PublicListsRail, ListCardShell } from "@/components/PublicListsRail";
 import { ListsFilters } from "@/components/ListsFilters";
 import { ListSaveHeart } from "@/components/ListSaveHeart";
@@ -293,6 +297,17 @@ export default async function NewsPage({
             : undefined
         }
       />
+
+      {/* 🆕 **صفُّ الفلاتر المحفوظة** (D-816، بندا خطّة الـ٢٤ الأوّلان)
+          — **تحت الفلاتر مباشرةً**: **هو ذيلُها لا جارُها**، **وصفٌّ
+          يُستدعى منه فلترٌ يجب أن يجاور الفلترَ الذي يستبدله.**
+          ⚠️ **و`Suspense` حولَه**: **يقرأ الملفَّ الشخصيَّ** — **ولا
+          يؤخّر أوّلَ رسمٍ لصفحةٍ كلُّها كتالوج** (D-515). **ولا هيكلَ
+          عظميّاً**: **صفٌّ قد يغيب أصلاً** (زائرٌ · بلا محفوظاتٍ ولا
+          فلترٍ قائم) **وهيكلٌ لما قد لا يأتي يَعِد** (D-217). */}
+      <Suspense fallback={null}>
+        <SavedFiltersHost locale={locale} section={tab} />
+      </Suspense>
 
       {/* 🆕 **صفُّ «ترايلرات لك» مباشرةً بعد التبويبات** (D-726، موضعُه
           في مواصفة أحمد حرفاً).
@@ -2137,5 +2152,34 @@ async function PersonalRails({
         />
       )}
     </div>
+  );
+}
+
+
+/**
+ * 🆕 **مضيفُ صفِّ الفلاتر المحفوظة** (D-816) — **قراءةٌ خالصةٌ تُغذّي
+ * مكوّنَ العميل.**
+ *
+ * 🔑 **ولمَ مضيفٌ لا قراءةٌ في جسم الصفحة**: **`Suspense` لا يعزل إلّا
+ * ما ينتظر داخلَه** — **وقراءةٌ في الجسم تؤخّر الصفحةَ كلَّها** (D-515).
+ * ⚠️ **والزائرُ لا ملفَّ له** فيسقط الصفُّ صامتاً (D-219).
+ */
+async function SavedFiltersHost({
+  locale,
+  section,
+}: {
+  locale: Locale;
+  section: string;
+}) {
+  const profile = await getProfile();
+  if (!profile) return null;
+  const { filters } = sanitizeUiState(profile.ui_state);
+  return (
+    <SavedFiltersRow
+      locale={locale}
+      section={section}
+      saved={filters}
+      plus={isPlus(profile)}
+    />
   );
 }
