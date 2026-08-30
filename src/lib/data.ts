@@ -4532,6 +4532,12 @@ export interface UserList {
   cover_backdrop?: string | null;
   cover_tmdb_id?: number | null;
   cover_media_type?: "tv" | "movie" | null;
+  /**
+   * 🆕 **لونُ الغلاف** (D-824 · هجرة ١٦٢) — **رمزٌ لا لون** (`amber`…)،
+   * **والقيمُ في `lib/listColors.ts`.** ⚖️ **ولا يجتمع مع `cover_backdrop`**:
+   * **غلافٌ واحدٌ لا اثنان** (D-462)، **و`setListCover` تمحو أحدَهما.**
+   */
+  cover_color?: string | null;
 }
 
 /** نوع القائمة — هو ما يقرّر هل للترتيب اليدوي وأرقامه معنى (lists2.sql) */
@@ -4614,6 +4620,8 @@ export async function getList(listId: string): Promise<{
     cover_backdrop?: string | null;
     cover_tmdb_id?: number | null;
     cover_media_type?: "tv" | "movie" | null;
+    /** 🆕 **لونُ الغلاف** (D-824 · هجرة ١٦٢) — ولا يجتمع مع الخلفيّة */
+    cover_color?: string | null;
     /** 🆕 هويّةُ قائمةِ لوبز — الاسمُ يُترجَم عند العرض (دَينُ D-328) */
     source_slug?: string | null;
     /** 🆕 قائمةُ تشغيلٍ في «تابِع المشاهدة» (D-505) — غائبٌ قبل هجرة ١٢٢ */
@@ -4636,7 +4644,7 @@ export async function getList(listId: string): Promise<{
     let { data: list } = await supabase
       .from("user_lists")
       .select(
-        `${BASE}, cover_backdrop, cover_tmdb_id, cover_media_type, is_playlist, rule, rule_source`,
+        `${BASE}, cover_backdrop, cover_tmdb_id, cover_media_type, cover_color, is_playlist, rule, rule_source`,
       )
       .eq("id", listId)
       .maybeSingle();
@@ -4702,6 +4710,8 @@ export interface PublicList {
   owner_avatar: string | null;
   /** غلافُ القائمة يسافر مع الرابط (D-208) — غائبٌ قبل هجرة ٦٣ */
   cover_backdrop?: string | null;
+  /** 🆕 **واللونُ يسافر معه** (D-824 · هجرة ١٦٢) */
+  cover_color?: string | null;
   items: ListItem[];
 }
 

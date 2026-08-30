@@ -18,6 +18,7 @@ import {
 } from "@/lib/contentPrefs";
 import { GENRES, type MediaType } from "@/lib/media";
 import { isPlus, themeNeedsPlus } from "@/lib/plan";
+import { isListColor } from "@/lib/listColors";
 import { BROWSE_GENRES } from "@/lib/browse";
 import { sanitizeSocials } from "@/lib/socials";
 import { THEMES } from "@/lib/themes";
@@ -3092,21 +3093,39 @@ export async function setListCover(input: {
   tmdbId: number | null;
   mediaType: MediaType | null;
   backdropPath: string | null;
+  /**
+   * 🆕 **لونُ الغلاف** (D-824 · الهجرة ١٦٢) — **رمزٌ من `listColors.ts`**.
+   * ⚖️ **ولا يجتمع مع الصورة**: **غلافٌ واحدٌ لا اثنان** (D-462) —
+   * **فكتابةُ أحدِهما تمحو الآخرَ في نفس الصفّ**، **ولا حالةَ ثالثةَ
+   * يقرؤها سطحٌ فيختار بنفسه** (D-636).
+   */
+  color?: string | null;
 }) {
   const listId = uuid(input.listId);
   const backdrop = safeImagePath(input.backdropPath);
+  /* **واللونُ لا يُصدَّق كما وصل**: **رمزٌ خارجَ السجلِّ يسقط إلى «لا
+     لون»** — **وقيدُ الجدول شكلٌ لا تعداد** (الهجرة ١٦٢). */
+  const color = !backdrop && isListColor(input.color) ? input.color : null;
   /* لا خلفيةَ = لا نسب: الحقولُ الثلاثة تُمحى معاً فلا يبقى معرّفٌ
      معلّقٌ بلا صورة */
   const tmdbId = backdrop && input.tmdbId ? intId(input.tmdbId) : null;
   const mediaType = backdrop && input.mediaType ? asMediaType(input.mediaType) : null;
 
   const { supabase, user } = await requireUser("art", 30, 60_000);
+  /* 🔒 **واللونُ وحدَه بلس** (قاعدةُ D-783 §٣: القائمُ مجّانيٌّ والجديدُ
+     بلس) — **والغلافُ الصوريُّ يبقى مجّانيّاً كما كان منذ D-208.**
+     🔑 **والحارسُ هنا لا في الورقة** (D-819/D-821): **حارسُ العميل زينةٌ
+     حين يُنادى الفعلُ بلا سطحِه.** ⚠️ **والسؤالُ لا يُطرح إلّا حين
+     يُطلب لون** — **فلا يدفع رافعُ صورةٍ ثمنَ استعلامٍ لا يخصّه** (D-515). */
+  if (color && !(await viewerIsPlus())) return { ok: false, needsPlus: true as const };
+
   const { data, error } = await supabase
     .from("user_lists")
     .update({
       cover_backdrop: backdrop,
       cover_tmdb_id: tmdbId,
       cover_media_type: mediaType,
+      cover_color: color,
       updated_at: new Date().toISOString(),
     })
     .eq("id", listId)
@@ -3118,6 +3137,7 @@ export async function setListCover(input: {
   revalidatePath("/lists");
   revalidatePath(`/lists/${listId}`);
   revalidatePath("/library");
+  return { ok: true as const };
 }
 
 export async function deleteList(listId: string) {
