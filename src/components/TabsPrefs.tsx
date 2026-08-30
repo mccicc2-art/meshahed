@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { setTabPrefs } from "@/lib/actions";
+import { openPlusGate } from "@/lib/plusGate";
 import { getDict, type Locale } from "@/lib/i18n";
 import { tap } from "@/lib/haptics";
 import {
@@ -67,9 +68,23 @@ export function TabsPrefs({
   function commit(next: TabPref[]) {
     if (next === local) return;
     tap(8);
+    /* 🔒 🆕 **والعرضُ صار بلس** (D-819) — **والحارسُ في `setTabPrefs`**:
+       **حارسٌ في العميل زينةٌ لا قفل**، **ومعاملٌ يُمرَّر عبر ستّة
+       مكوّناتٍ كان يكلّف قراءةَ ملفٍّ حاجبةً في كلِّ فتحةِ صفحة** — انظر
+       رأسَ الفعل. **والجوابُ يعود منه، فتفتح البوّابةُ عن حقيقةٍ لا عن
+       تخمين.**
+       ⚠️ **والتفاؤلُ يرتدّ إلى `prev` لا إلى `local`**: **`local` داخل
+       المغلَّف هي لقطةُ الرسم لا الحالةُ بعد `setLocal`** — **وارتدادٌ
+       إلى قيمةٍ قديمةٍ يترك اللوحَ على ترتيبٍ ثالثٍ لم يطلبه أحد.** */
+    const prev = local;
     setLocal(next);
     start(async () => {
-      await setTabPrefs(surface, next);
+      const res = await setTabPrefs(surface, next);
+      if (res?.needsPlus) {
+        setLocal(prev);
+        openPlusGate();
+        return;
+      }
       router.refresh();
     });
   }
