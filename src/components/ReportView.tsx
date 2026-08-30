@@ -262,13 +262,24 @@ export function ReportView({
               </span>
             ))}
           </div>
-          <div className="flex mt-1.5">
-            {stats.taste.genres.slice(0, 4).map((g) => (
+          {/* 🔴 🆕 **والأسماءُ صفٌّ متساوٍ بنقاطٍ ملوّنة** (D-805، من
+              الصفحة الحيّة): **كانت بعرض حصّتها من الشريط** — **فحصّةُ
+              ١٠٪ تعطي اسمَها ثلاثين بكسلاً فيخرج «رسوم متح…»**، **واسمُ
+              نوعٍ لا يُقرأ آخرُه لا يعرّف لونَه.** **والنقطةُ تربط
+              الاسمَ بلونه** فلا يحتاج الموضعُ أن يفعل ذلك، **وهي لغةُ
+              وسيلة الإيضاح في كلِّ رسمٍ ملوّن** (وتبويبُ «المحتوى»
+              يستعملها أصلاً). */}
+          <div className="flex mt-2">
+            {stats.taste.genres.slice(0, 4).map((g, i) => (
               <span
                 key={g.slug}
-                className="text-12 text-muted text-center truncate min-w-0"
-                style={{ flex: `${Math.max(1, g.pct)} 0 0` }}
+                className="flex-1 basis-0 min-w-0 flex items-center justify-center gap-1.5 px-1 text-12 text-muted leading-tight text-center"
               >
+                <span
+                  aria-hidden
+                  className="w-2 h-2 rounded-full shrink-0"
+                  style={{ background: TASTE_COLORS[i] }}
+                />
                 {g.name}
               </span>
             ))}
