@@ -1,5 +1,6 @@
 import { getProfile } from "@/lib/data";
 import { ThemeCookieSync } from "./ThemeCookieSync";
+import { AccentCookieSync } from "./AccentCookieSync";
 import { FontPrefsSync } from "./FontPrefsSync";
 import { UiStateSync } from "./UiStateSync";
 import { TimezoneSync } from "./TimezoneSync";
@@ -37,6 +38,9 @@ export async function AccountSync() {
     <>
       {/* يهاجر ثيم الحساب إلى الكوكي مرة واحدة — ثم لا يفعل شيئاً */}
       {profile.theme && <ThemeCookieSync theme={profile.theme} />}
+      {/* 🆕 **ولونُ التمييز سواء** (D-825) — **ولا يُركَّب قبل الهجرة ١٦٣**
+          (العمودُ `null`)، **فلا يُطفئ لوناً لم يُقرأ بعد.** */}
+      {profile.theme_accent && <AccentCookieSync accent={profile.theme_accent} />}
       {/* وحجمُ الخطّ سواء — ولا يُركَّب قبل الهجرة 121 (العمود null) */}
       {profile.font_ui && profile.font_content && (
         <FontPrefsSync fontUi={profile.font_ui} fontContent={profile.font_content} />
