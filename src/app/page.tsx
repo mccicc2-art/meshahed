@@ -78,7 +78,6 @@ import {
   type HomeView,
 } from "@/lib/homePrefs";
 import { capCards } from "@/lib/cardCount";
-import { getLevel, levelPoints } from "@/lib/level";
 import { densityVars } from "@/lib/density";
 import { WeekStrip, type WeekEntry } from "@/components/WeekStrip";
 import {
@@ -396,13 +395,6 @@ export default async function HomePage() {
      (`watch_summary` مقابل `user_watch_overview`) — **والجدولان
      واحد**، **فإن اختلف الرقمان يوماً فالعطلُ في أحد المصدرين لا في
      الرسم** (D-219: رقمان لشيءٍ واحد). */
-  const level = getLevel(
-    levelPoints(
-      (summary ?? []).reduce((n, r) => n + r.watched, 0),
-      new Set(watchedMovies.map((m) => m.id)).size,
-    ),
-  );
-
   /* **والعدّادان يُقرآن هنا أيضاً بلا ثمن**: كلاهما مغلَّفٌ بـ`cache()`
      (D-470) **والشريطُ العلويُّ قرأهما في الطلب نفسِه** — فالنداءُ
      محفوظٌ لا مُكرَّر. */
@@ -465,7 +457,6 @@ export default async function HomePage() {
           coverPos={profile?.cover_pos ?? null}
           unreadSignals={unreadSignals}
           unreadShares={unreadShares}
-          levelPercent={level.percent}
           userId={user.id}
           followers={followStats.followers}
           following={followStats.following}
