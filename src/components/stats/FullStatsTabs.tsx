@@ -64,7 +64,9 @@ export function OverviewTab({ s, locale }: { s: PeriodStats; locale: Locale }) {
           {s.mix.map((m) => (
             <li key={m.key} className="flex items-center gap-3">
               <Icon name={mixIcon(m.key)} size={18} className="text-muted shrink-0" />
-              <span className="text-14 w-16 shrink-0 truncate">{mixLabel(m.key, ar)}</span>
+              <span className="text-14 basis-[22%] max-w-[6rem] shrink-0 leading-tight">
+                {mixLabel(m.key, ar)}
+              </span>
               <span className="relative flex-1 h-2 rounded-full bg-surface-2 overflow-hidden">
                 <span
                   aria-hidden
@@ -202,7 +204,14 @@ export function TasteTab({ s, locale }: { s: PeriodStats; locale: Locale }) {
         <ul className="space-y-2.5">
           {s.taste.genres.map((g, i) => (
             <li key={g.slug} className="flex items-center gap-3">
-              <span className="text-14 w-24 shrink-0 truncate">{g.name}</span>
+              {/* 🔴 **والاسمُ يلتفّ ولا يُبتر** (D-801، وحكمُ D-787 نفسُه):
+                  «Action & Adv…» و«Sci-Fi & Fant…» أسماءٌ مقطوعةٌ في عرضٍ
+                  ثابتٍ ٩٦ بكسل — **واسمُ نوعٍ لا يُقرأ آخرُه لا يُعرَّف
+                  عمّا يعدّه.** فالخانةُ نسبةٌ من السطر، **والالتفافُ سطرين
+                  أصدقُ من نقاطٍ ثلاث.** */}
+              <span className="text-14 basis-[38%] max-w-[9.5rem] shrink-0 leading-tight">
+                {g.name}
+              </span>
               <span className="relative flex-1 h-2 rounded-full bg-surface-2 overflow-hidden">
                 <span
                   aria-hidden
@@ -440,11 +449,15 @@ function TileRow({
 }) {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-y-5 gap-x-3">
+      {/* 🔴 **والاسمُ تحت الرقم يلتفّ ولا يُبتر** (D-801، وحكمُ D-787):
+          «My ratin…» هو الشكوى بعينِها التي رفعها أحمد في الرئيسيّة —
+          **وخانةٌ يُقطع اسمُها تفقد ما يعرّف رقمَها.** **والرقمُ وحدَه
+          يبقى سطراً واحداً** فلا يكسر الشبكةَ عرضاً. */}
       {items.map((x) => (
         <div key={x.label} className="min-w-0">
           <Icon name={x.icon} size={18} className="text-accent" />
           <p className="text-24 font-bold leading-none mt-2 tabular-nums truncate">{x.value}</p>
-          <p className="text-12 text-muted mt-1.5 truncate">{x.label}</p>
+          <p className="text-12 text-muted mt-1.5 leading-tight">{x.label}</p>
         </div>
       ))}
     </div>
@@ -456,7 +469,7 @@ function MiniStat({ icon, value, label }: { icon: IconName; value: string; label
     <div className="text-center min-w-0">
       <Icon name={icon} size={16} className="text-accent mx-auto" />
       <p className="text-20 font-bold leading-none mt-1.5 tabular-nums truncate">{value}</p>
-      <p className="text-12 text-muted mt-1 truncate">{label}</p>
+      <p className="text-12 text-muted mt-1 leading-tight">{label}</p>
     </div>
   );
 }
@@ -573,7 +586,9 @@ function TrendChart({ s, ar }: { s: PeriodStats; ar: boolean }) {
       <div className="flex">
         {s.buckets.map((b, i) => (
           <span key={i} className="flex-1 min-w-0 text-12 text-muted text-center truncate">
-            {s.buckets.length <= 12 || i % 3 === 0 ? b.label : ""}
+            {/* **واثنا عشر شهراً في صفٍّ واحدٍ لا تُقرأ على هاتف** (D-801):
+                «أغسطس» تحتاج أربعين بكسلاً ولها سبعةٌ وعشرون. */}
+            {s.buckets.length <= 8 || i % 3 === 0 ? b.label : ""}
           </span>
         ))}
       </div>
@@ -593,21 +608,37 @@ function TrendChart({ s, ar }: { s: PeriodStats; ar: boolean }) {
   );
 }
 
+/**
+ * 🔴 **البصمةُ الخماسيّة** (D-801 — بعد قراءة الصفحة الحيّة):
+ *
+ * **الأسماءُ عند رؤوسها لا تحتها**: كانت الخمسةُ سطرين مكدّسين أسفل
+ * الرسم — **ورادارٌ لا يُعرف أيُّ ضلعٍ لأيّ اسمٍ رسمٌ زخرفيٌّ لا قراءة**،
+ * وهو خلافُ الصورة التي سلّمها أحمد. **والأسماءُ عناصرُ HTML لا `text`
+ * في الـSVG**: تلتفّ سطرين حين تطول («شخصيّات عميقة»)، **وتكبر مع تفضيل
+ * حجم الخطّ عند القارئ** — **و`font-size` داخل SVG لا يعرف `--fs`.**
+ *
+ * ⚖️ **والجذرُ لا النسبةُ المستقيمة**: المحاورُ منسوبةٌ إلى أعلاها،
+ * **فذوقٌ ثلثاه نوعٌ واحدٌ يسحق الأربعةَ الباقيةَ إلى نقطةٍ في المركز**
+ * — **وشكلٌ منهارٌ يُقرأ عطلاً لا ذوقاً.** **والعينُ تقرأ المساحةَ لا
+ * نصفَ القطر**، والمساحةُ تنمو بمربّعه، **فجذرُ النسبة يجعل ما تراه
+ * العينُ متناسباً مع القيمة** — وهي القاعدةُ المعروفة في هذا الرسم لا
+ * تجميلٌ للرقم. **والقاعُ ١٢٪ حتى يبقى للشكل ضلعٌ يُرى.**
+ */
 function Radar({ axes }: { axes: PeriodStats["taste"]["radar"] }) {
   const size = 240;
   const cx = size / 2;
-  const cy = size / 2 + 6;
-  const r = 78;
-  const pt = (i: number, v: number) => {
+  const cy = size / 2;
+  const r = 66;
+  const at = (i: number, dist: number) => {
     const a = (Math.PI * 2 * i) / axes.length - Math.PI / 2;
-    const d = (v / 100) * r;
-    return [cx + Math.cos(a) * d, cy + Math.sin(a) * d];
+    return [cx + Math.cos(a) * dist, cy + Math.sin(a) * dist] as const;
   };
-  const outline = axes.map((_, i) => pt(i, 100).join(",")).join(" ");
-  const shape = axes.map((a, i) => pt(i, Math.max(6, a.score)).join(",")).join(" ");
+  const pt = (i: number, v: number) => at(i, (v / 100) * r);
+  const plotted = (score: number) => Math.max(12, Math.round(Math.sqrt(score / 100) * 100));
+  const shape = axes.map((a, i) => pt(i, plotted(a.score)).join(",")).join(" ");
   return (
-    <div className="mx-auto" style={{ maxWidth: size }}>
-      <svg viewBox={`0 0 ${size} ${size + 12}`} className="w-full" aria-hidden>
+    <div className="relative mx-auto" style={{ maxWidth: size, height: size }}>
+      <svg viewBox={`0 0 ${size} ${size}`} className="w-full h-full" aria-hidden>
         {[0.33, 0.66, 1].map((k) => (
           <polygon
             key={k}
@@ -618,20 +649,33 @@ function Radar({ axes }: { axes: PeriodStats["taste"]["radar"] }) {
             strokeDasharray={k === 1 ? undefined : "2 3"}
           />
         ))}
-        <polygon points={outline} fill="none" stroke="var(--divider)" strokeWidth="1" />
+        {axes.map((a, i) => {
+          const [x, y] = pt(i, 100);
+          return <line key={a.key} x1={cx} y1={cy} x2={x} y2={y} stroke="var(--divider)" strokeWidth="1" />;
+        })}
         <polygon points={shape} fill="var(--accent)" fillOpacity="0.18" stroke="var(--accent)" strokeWidth="2" />
         {axes.map((a, i) => {
-          const [x, y] = pt(i, Math.max(6, a.score));
+          const [x, y] = pt(i, plotted(a.score));
           return <circle key={a.key} cx={x} cy={y} r="3.5" fill="var(--accent)" />;
         })}
       </svg>
-      <ul className="flex flex-wrap justify-center gap-x-4 gap-y-1 mt-1">
-        {axes.map((a) => (
-          <li key={a.key} className="text-12 text-muted">
+      {axes.map((a, i) => {
+        const [x, y] = at(i, r + 22);
+        return (
+          <span
+            key={a.key}
+            className="absolute text-12 text-muted text-center leading-tight"
+            style={{
+              left: `${(x / size) * 100}%`,
+              top: `${(y / size) * 100}%`,
+              width: 74,
+              transform: "translate(-50%, -50%)",
+            }}
+          >
             {a.label}
-          </li>
-        ))}
-      </ul>
+          </span>
+        );
+      })}
     </div>
   );
 }
