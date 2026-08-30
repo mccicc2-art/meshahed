@@ -51,12 +51,23 @@ export function PlusPreview({
             **وتلاشٍ يقول «هناك المزيد» بلا كلمة.** */}
         <div
           aria-hidden
-          className="pointer-events-none select-none max-h-[340px] overflow-hidden blur-[7px] opacity-70 [mask-image:linear-gradient(to_bottom,black_0%,black_55%,transparent_100%)]"
+          className="pointer-events-none select-none max-h-[320px] overflow-hidden blur-[7px] opacity-70 [mask-image:linear-gradient(to_bottom,black_0%,black_50%,transparent_100%)]"
         >
           {locked}
         </div>
 
-        <div className="absolute inset-x-0 bottom-0 flex flex-col items-center gap-2.5 text-center px-4 pb-1">
+        {/* 🔴 **وحجابٌ تحت البطاقة لا ضبابٌ وحدَه** (D-809، من مقاسٍ
+            مرسوم): **التمويهُ يُخفي المعنى ولا يُخفي الضوء** — **وأعمدةٌ
+            صفراءُ مموّهةٌ تحت كلامٍ أبيضَ تجعله غيرَ مقروء.** **والحجابُ
+            يضمن القراءةَ مهما كان تحتَه** — وهو حجابُ الغلاف نفسُه
+            (`COVER_SCRIM`) بمعناه: **ظلٌّ من أجل النصّ لا من أجل
+            الصورة** (D-662). */}
+        <div
+          aria-hidden
+          className="absolute inset-0 bg-gradient-to-b from-transparent via-[color:var(--background)]/75 to-[color:var(--background)]"
+        />
+
+        <div className="absolute inset-x-0 bottom-0 flex flex-col items-center gap-2.5 text-center px-4">
           <Icon name="sparkle-star" size={26} className="text-accent" />
           <p className="text-15 font-bold leading-tight">{t.plusGateTitle}</p>
           <p className="text-12 text-muted leading-relaxed max-w-sm">
