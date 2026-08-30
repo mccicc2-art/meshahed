@@ -24,6 +24,17 @@ import { ListDetail } from "@/components/ListDetail";
 import { getLibState, type TitleState } from "@/lib/libState";
 import { localizeRows } from "@/lib/localize";
 import { buttonClass } from "@/components/ui/Button";
+import { getWatchRegion } from "@/lib/locale";
+import { buildSection } from "@/lib/sections";
+import { titleOf } from "@/lib/tmdb";
+import {
+  browseToFilter,
+  ruleMedia,
+  ruleToBrowse,
+  ruleToQuery,
+  sanitizeRule,
+  SMART_LIST_LIMIT,
+} from "@/lib/smartLists";
 
 /**
  * قائمة واحدة.
@@ -143,9 +154,44 @@ export default async function ListPage({ params }: { params: Promise<{ id: strin
     getMyProfileLite().catch(() => null),
   ]);
 
+  /* ===================== 🆕 القائمةُ الذكيّة (D-823) =====================
+     🔑 **أعمالُها محسوبةٌ عند الفتح لا مخزَّنةٌ في صفوف** (قاعدةُ D-818):
+     **قائمةٌ شرطُها «رعبٌ فوق ٧٫٥» تُخزَّن صفوفاً تتقادم في يومين** —
+     **والوعدُ أنّها تتحدّث، فمن خزّنها كذب الوعد** (D-217).
+     ⚠️ **وبنفس `buildSection` الذي تبني به «اكتشف»** (D-145): **مصدرٌ
+     ثانٍ لنفس الجرد يعني قائمةً تعرض غيرَ ما يعرضه الفلترُ الذي صنعها.**
+     ⚠️ **والفشلُ فراغٌ لا انهيار**: TMDB خارجُنا، **وصفحةُ قائمةٍ تسقط
+     لأنّ نداءً خارجيّاً تعثّر أسوأُ من قائمةٍ فارغةٍ اليوم.** */
+  const smartRule = data.list.kind === "smart" ? sanitizeRule(data.list.rule) : null;
+  const smartRows = smartRule
+    ? await (async () => {
+        try {
+          const media = ruleMedia(smartRule);
+          const browse = ruleToBrowse(smartRule);
+          const region = await getWatchRegion();
+          const { base, genreIds } = await browseToFilter(browse, { media, watchRegion: region });
+          const rows = await buildSection(
+            "my-row",
+            { media, base, genreIds, active: browse.active, win: "week", winRange: null, locale },
+            SMART_LIST_LIMIT,
+          );
+          return rows.map((r) => ({
+            tmdb_id: r.id,
+            media_type: (r.media_type === "tv" ? "tv" : "movie") as "tv" | "movie",
+            title: titleOf(r) || "",
+            poster_path: r.poster_path ?? null,
+            added_at: "",
+            sort_order: null,
+          }));
+        } catch {
+          return [];
+        }
+      })()
+    : null;
+
   /* العناوين مخزّنة بلغة يوم الإضافة — تُترجَم عند العرض وحده (D-048)،
      فلا تظهر قائمةٌ عربية داخل واجهةٍ إنجليزية */
-  const items = await localizeRows(data.items, locale);
+  const items = await localizeRows(smartRows ?? data.items, locale);
 
   /* 🆕 **حالةُ المكتبة لهذه القائمة — نداءٌ واحدٌ لا نداءٌ لكلِّ ملصق**
      (D-495/D-205): `getLibState` يقرأ المتابعاتِ والمشاهَداتِ مرّةً،
@@ -180,6 +226,10 @@ export default async function ListPage({ params }: { params: Promise<{ id: strin
         subtitle={curatedBlurb(data.list.source_slug, loc) ?? data.list.subtitle}
         isPublic={data.list.is_public}
         kind={data.list.kind}
+        /* 🆕 **والقائمةُ الذكيّةُ تُقرأ ولا تُحرَّر** (D-823): **زرُّ
+           إضافةٍ في قائمةٍ تملأ نفسَها زرٌّ لا أثرَ له** (D-346)،
+           **وحذفُ عملٍ منها يعود عند أوّل فتحة.** */
+        smart={smartRule ? ruleToQuery(smartRule) : null}
         items={items}
         ratings={data.ratings}
         isOwner={isOwner}
