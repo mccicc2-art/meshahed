@@ -18,6 +18,7 @@ import {
   TasteTab,
 } from "@/components/stats/FullStatsTabs";
 import { SettingsHeader } from "@/components/settings/SettingsHeader";
+import { PlusPill } from "@/components/ui/PlusPill";
 import { Icon } from "@/components/Icon";
 
 /**
@@ -86,20 +87,24 @@ export default async function StatisticsPage({
     <div>
       <SettingsHeader
         title={ar ? "الإحصائيات الكاملة" : "Full Statistics"}
+        badge={plus ? <PlusPill /> : undefined}
         fallbackHref={`/reports${period !== "week" ? `?p=${period}` : ""}`}
       />
 
       {plus ? (
         <div className="mt-1">
           {/* ═══ شريطُ التاريخ — سهمان واسمُ المدّة، **ولا مستقبل** ═══ */}
+          {/* 🔴 **ولا شريطَ في «كلّ الأوقات»** (D-801 — من الصفحة الحيّة):
+              **سهمان مخفيّان واسمٌ يكرّر التبويبَ الذي تحته حرفاً بحرف**
+              — «All time» فوق «All time» — **وصفٌّ لا يحمل فعلاً ولا خبراً
+              جديداً هو سطرٌ يسرق ارتفاعاً ويشكّك القارئَ في نظره.** */}
+          {period !== "all" && (
           <div className="flex items-center justify-center gap-6 py-1.5">
             <Link
               href={href({ o: offset - 1 })}
               scroll={false}
               aria-label={ar ? "السابق" : "Previous"}
-              className={`grid place-items-center w-9 h-9 rounded-full text-muted hover:text-foreground transition ${
-                period === "all" ? "invisible" : ""
-              }`}
+              className="grid place-items-center w-9 h-9 rounded-full text-muted hover:text-foreground transition"
             >
               <span aria-hidden dir="ltr">‹</span>
             </Link>
@@ -118,6 +123,7 @@ export default async function StatisticsPage({
               <span aria-hidden className="w-9 h-9" />
             )}
           </div>
+          )}
 
           {/* ═══ المدّة ═══ */}
           <div role="tablist" aria-label={ar ? "المدّة" : "Period"} className="flex">
