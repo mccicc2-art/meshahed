@@ -4,7 +4,7 @@ import { getProfileByUsername, displayNameOf } from "@/lib/data";
 import { getT } from "@/lib/locale";
 import { LibraryAnalysisSkeleton } from "@/components/LibraryAnalysis";
 import { MemberAnalysis } from "@/components/MemberAnalysis";
-import { TasteMatchSection } from "@/components/stats/TasteMatchSection";
+import { TasteMatchDoor } from "@/components/stats/TasteMatchDoor";
 import { SettingsHeader } from "@/components/settings/SettingsHeader";
 
 /**
@@ -60,20 +60,23 @@ export default async function MemberStatsPage({
 
       <h1 className="sr-only">{`${t.statsPageTitle} — ${name}`}</h1>
 
-      {/* 🆕 **«أنت وهو» قبل أرقامه** (D-814، حكمُ أحمد: «المقارنة»):
-          **الزائرُ جاء ليقيس نفسَه به لا ليقرأ أرقامَه** — **وقسمُ
-          المقارنة أعلى الصفحة لأنه سببُ فتحها.** ⚠️ **وSuspense
-          مستقلٌّ**: **قراءتان زائدتان لا تؤخّران أرقامَه** — ولا يُرسم
-          هيكلٌ عظميٌّ له، **فقسمٌ قد يغيب أصلاً** (خاصٌّ · بلا حساب ·
-          صاحبُ الملفّ · بياناتٌ رقيقة) **وهيكلٌ لما قد لا يأتي يَعِد.** */}
-      <Suspense key={`m-${profile.id}`} fallback={null}>
-        <TasteMatchSection targetId={profile.id} targetName={name} locale={locale} />
-      </Suspense>
-
-      {/* المفتاحُ معرّفُ العضو: انتقالٌ من ملفٍّ إلى ملفٍّ يبدّل الهيكلَ
-          العظميّ أيضاً فلا تبقى أرقامُ الأوّل معروضةً بينما تُجلب الثانية */}
+      {/* ⚖️ 🆕 **«أنت وهو» صارت باباً في بطاقة الذوق** (D-829، حكمُ أحمد
+          بلقطةٍ محوَّطة: «المقارنة خلها في زر هنا وبعدها يفتح قسم فيه
+          المقارنة منفصلة عن كارد الشخص») — **نقضٌ مسجَّلٌ لموضعِ D-814**:
+          كان القسمُ يفترش صدرَ الصفحة **فيدفع بطاقةَ صاحب الملفّ تحت
+          الطَّيّ في صفحةٍ اسمُها باسمه.**
+          🔑 **ويُمرَّر عنصراً لا يُنتظَر هنا**: **يُرسم داخلَ شجرة
+          `MemberAnalysis` فيقع انتظارُه في حدِّ `Suspense` نفسِه** —
+          **وقراءتان تُضافان إلى الهيكل العظميِّ القائم لا إلى قشرة
+          الصفحة** (D-515). */}
       <Suspense key={profile.id} fallback={<LibraryAnalysisSkeleton />}>
-        <MemberAnalysis userId={profile.id} locale={locale} />
+        <MemberAnalysis
+          userId={profile.id}
+          locale={locale}
+          tasteAction={
+            <TasteMatchDoor targetId={profile.id} targetName={name} locale={locale} />
+          }
+        />
       </Suspense>
     </div>
   );
