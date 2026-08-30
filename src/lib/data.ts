@@ -4543,7 +4543,10 @@ export interface UserList {
  * **ونوعٌ يخالف قيدَ جدولِه ليس نوعاً، هو تعليقٌ خاطئ** — **والمترجِمُ
  * هو الحكمُ حين يتطابقان.**
  */
-export type ListKind = "regular" | "ranked" | "watch_order" | "favorites";
+/* 🆕 **ونوعٌ خامسٌ يملأ نفسَه** (D-823 · الهجرة ١٦١): **`smart` قائمةٌ
+   شرطُها في صفِّها وأعمالُها محسوبةٌ عند الفتح** — **ولا صفَّ لها في
+   `user_list_items` إطلاقاً.** */
+export type ListKind = "regular" | "ranked" | "watch_order" | "favorites" | "smart";
 
 export interface ListItem {
   tmdb_id: number;
@@ -4615,6 +4618,9 @@ export async function getList(listId: string): Promise<{
     source_slug?: string | null;
     /** 🆕 قائمةُ تشغيلٍ في «تابِع المشاهدة» (D-505) — غائبٌ قبل هجرة ١٢٢ */
     is_playlist?: boolean | null;
+    /** 🆕 **شرطُ القائمة الذكيّة** (D-823 · هجرة ١٦١) — `null` = عاديّة */
+    rule?: unknown;
+    rule_source?: string | null;
   };
   items: ListItem[];
   ratings: Record<string, number>;
@@ -4630,7 +4636,7 @@ export async function getList(listId: string): Promise<{
     let { data: list } = await supabase
       .from("user_lists")
       .select(
-        `${BASE}, cover_backdrop, cover_tmdb_id, cover_media_type, is_playlist`,
+        `${BASE}, cover_backdrop, cover_tmdb_id, cover_media_type, is_playlist, rule, rule_source`,
       )
       .eq("id", listId)
       .maybeSingle();

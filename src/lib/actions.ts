@@ -2825,6 +2825,59 @@ export async function createList(
  * هذه الدالّة بثلاث وسائط فقط، ولو كان الغياب محواً لضاع وصف القائمة مع كل
  * تبديلٍ للإعلان. التمرير الصريح بسلسلةٍ فارغة هو المحو.
  */
+/**
+ * 🆕 **إنشاءُ قائمةٍ ذكيّة** (D-823 · الهجرة ١٦١) — **قائمةٌ شرطُها في
+ * صفِّها تملأ نفسَها من كتالوج Loopz.**
+ *
+ * 🔑 **وبابُها «اكتشف» لا شاشةُ القوائم**: **الشرطُ يُبنى حيث تُبنى
+ * الفلاتر** — **وشاشةُ إنشاءٍ تسأل عن نوعٍ ولغةٍ وسنةٍ هي ورقةُ فلاترَ
+ * ثانيةٌ بلغةٍ ثانية** (D-145).
+ *
+ * 🔒 **وبلس** — **والحارسُ هنا لا في الرقاقة** (D-819/D-821).
+ * ⚠️ **والشرطُ يُطهَّر في الخادم**: **العميلُ يُقترح والخادمُ يقرّر.**
+ */
+export async function createSmartList(
+  name: string,
+  rule: unknown,
+): Promise<{ id: string | null; needsPlus?: true }> {
+  const clean = String(name ?? "").trim().slice(0, 60);
+  if (!clean) throw new Error("empty name");
+  const { sanitizeRule } = await import("@/lib/smartLists");
+  const clean_rule = sanitizeRule(rule);
+  /* 🔴 **وقائمةٌ ذكيّةٌ بلا شرطٍ فارغةٌ إلى الأبد** — **والقاعدةُ تمنعها
+     في القاعدة (١٦١)، وهذا حارسُها قبل أن تصل إليها** (D-636). */
+  if (!clean_rule) throw new Error("empty rule");
+
+  const { supabase, user } = await requireUser("list", 10, 60_000);
+  if (!(await viewerIsPlus())) return { id: null, needsPlus: true };
+
+  const { count } = await supabase
+    .from("user_lists")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", user.id);
+  if ((count ?? 0) >= 50) throw new Error("too many lists");
+
+  const { data, error } = await supabase
+    .from("user_lists")
+    .insert({
+      user_id: user.id,
+      name: clean,
+      is_public: false,
+      kind: "smart",
+      rule: clean_rule,
+      /* **`catalog` وحدَها في هذه الدفعة** — و`library` يقبلها القيدُ
+         ولا يبنيها أحد (D-818: رابطٌ يعني شيئين لكلِّ فاتحٍ ليس رابطاً). */
+      rule_source: "catalog",
+    })
+    .select("id")
+    .single();
+  if (error) fail(error);
+
+  revalidatePath("/lists");
+  revalidatePath("/library");
+  return { id: data?.id ?? null };
+}
+
 export async function renameList(
   listId: string,
   name: string,
