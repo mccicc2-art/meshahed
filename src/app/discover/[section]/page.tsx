@@ -3,16 +3,15 @@ import { notFound } from "next/navigation";
 import { getLibState } from "@/lib/libState";
 import { getT, getWatchRegion } from "@/lib/locale";
 import {
-  eraRange,
   parseBrowse,
   parseRailWin,
-  seasonRange,
   browseHref,
   browseGenreName,
   browseTagName,
   BROWSE_TAGS,
 } from "@/lib/browse";
-import { keywordId, companyId, titleOf, yearOf, ANIME_KEYWORD, type DiscoverFilter } from "@/lib/tmdb";
+import { browseToFilter } from "@/lib/smartLists";
+import { titleOf, yearOf } from "@/lib/tmdb";
 import { localizeRows } from "@/lib/localize";
 import {
   buildSection,
@@ -86,41 +85,15 @@ export default async function SectionPage({
   const browse = parseBrowse({ ...sp, type: media === "anime" ? "all" : media });
   const region = await getWatchRegion();
 
-  const eraR = eraRange(browse.era);
-  const anime = media === "anime";
-  const tagId = browse.tag ? await keywordId(browse.tag.q) : null;
-  const studioId = anime && browse.studio ? await companyId(browse.studio.name) : null;
-  const seasonR =
-    anime && browse.season
-      ? seasonRange(browse.season, eraR.to ? Number(eraR.to.slice(0, 4)) : new Date().getUTCFullYear())
-      : null;
-
-  /* **بناءُ الفلتر هنا كما يُبنى في `‎/news` — بنفس الحقول بنفس الترتيب.**
-     ولو اختلف حرفٌ لاختلفت الصفحةُ عن الصفّ الذي أتى منه القارئ. */
-  const base: DiscoverFilter = {
-    lang: browse.lang?.code ?? null,
-    country: browse.country?.code ?? null,
-    provider: browse.provider,
+  /* ✅ 🆕 **وبناءُ الفلتر خرج إلى `smartLists.ts`** (D-823): **كان هنا
+     تعليقٌ يقول «ولو اختلف حرفٌ لاختلفت الصفحةُ عن الصفّ الذي أتى منه
+     القارئ»** — **وقد جاء قارئٌ ثالث (القائمةُ الذكيّة) فحانت لحظةُ
+     الاستخراج** (D-376). **والنقلُ حرفيٌّ: نفسُ الحقول بنفس الترتيب،
+     ولا سطرَ منطقٍ تبدّل** — **وتحذيرٌ مكتوبٌ لا يُترك ليصير عطلاً.** */
+  const { base, genreIds } = await browseToFilter(browse, {
+    media,
     watchRegion: region,
-    from: seasonR?.from ?? eraR.from,
-    to: seasonR?.to ?? eraR.to,
-    minRate: browse.rate,
-    keywords: anime
-      ? [ANIME_KEYWORD, ...(tagId ? [tagId] : [])]
-      : tagId
-        ? [tagId]
-        : undefined,
-    status: browse.status?.code ?? null,
-    companies: studioId ? [studioId] : undefined,
-  };
-
-  const genreIds = browse.genre
-    ? media === "tv"
-      ? browse.genre.tv
-      : media === "movie"
-        ? browse.genre.movie
-        : undefined
-    : undefined;
+  });
 
   /* **صفحةُ التمديد من الرابط** — والمجهولُ يسقط إلى الأولى (D-179).
      🔴 **واسمُها `pg` لا `p`** — **قِيس على الموقع الحيّ**: أوّلُ نسخةٍ
