@@ -277,7 +277,23 @@ export interface AnalysisData {
  * **شكلُ الصفحة كما رسمه أحمد** (D-493) بحرفه — **والمنقولُ هنا هو
  * الرسمُ وحدَه**، ولم يُمسَّ منه شيءٌ سوى أن مصادرَه صارت وسائطَ.
  */
-export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Locale }) {
+export function AnalysisView({
+  data,
+  locale,
+  tasteAction,
+}: {
+  data: AnalysisData;
+  locale: Locale;
+  /**
+   * 🆕 **فعلٌ في طرف عنوان بطاقة الذوق** (D-829، حكمُ أحمد بلقطةٍ
+   * محوَّطة: «المقارنة خلها في زر هنا»). **بابُ «أنت وهو» يسكن بطاقةَ
+   * الذوق لأنّ المقارنةَ ذوقٌ** — **وبابٌ يجلس بعيداً عمّا يفتحه يُقرأ
+   * زينةً لا باباً.**
+   * ⚠️ **والغيابُ هو السلوكُ القائم** (D-152): `/stats` لا تمرّره —
+   * **ومقارنةُ المرء بنفسه لا تقول شيئاً** (D-814).
+   */
+  tasteAction?: React.ReactNode;
+}) {
   const t = getDict(locale);
   const {
     minutes: rangeMinutes,
@@ -527,10 +543,19 @@ export function AnalysisView({ data, locale }: { data: AnalysisData; locale: Loc
            📏 **مقيسٌ عند ٣٩٠px**: ٤١٤٫٥ → ٣٩٤٫٥ (−٤٫٨٪) — **والخمسةُ
            بالضبط كانت تحتاج رقماً خارج السلّم** (القاعدة ١٧). */
         <section className="rounded-2xl border border-border bg-surface px-4 py-3">
-          <h3 className="flex items-center gap-2.5 text-[17px] font-bold">
-            <Icon name="trio" size={22} className="text-accent" />
-            {mine ? t.analysisTaste : t.analysisTasteOther}
-          </h3>
+          {/* 🆕 **والعنوانُ صار صفّاً** (D-829): **العنوانُ مجموعةٌ
+              والفعلُ في الطرف** — **والفراغُ ملكُ المجموعة لا ملكُ
+              الكلمة** (D-634)، **فالزرُّ يبقى في الحافّة مهما طال
+              الاسمُ أو قصر.** */}
+          <div className="flex items-center gap-2">
+            <h3 className="flex min-w-0 items-center gap-2.5 text-[17px] font-bold">
+              <Icon name="trio" size={22} className="text-accent shrink-0" />
+              <span className="truncate">
+                {mine ? t.analysisTaste : t.analysisTasteOther}
+              </span>
+            </h3>
+            {tasteAction}
+          </div>
 
           {/* 🗑️ ⚖️ **وصفُّ «السمات» حُذف بحكمه** (D-803: «احذف سطر
               themes»). ⚖️ **ونقضٌ صريحٌ لـD-708** (التي أعادت الكلمةَ)
