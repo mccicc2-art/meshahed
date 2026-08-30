@@ -168,6 +168,8 @@ export interface PeriodStats {
   streak: number;
   /** أيّامٌ فيها مشاهدة — حلقةُ «٥ / ٧ أيّام» */
   activeDays: number;
+  /** 🆕 **الأيّامُ المنقضيةُ من المدّة** (D-808) — قاسمُ المعدّل اليوميّ */
+  elapsedDays: number;
   /**
    * 🆕 **اليومُ المستحيل** (D-801 — حكمُ أحمد): **يومٌ مجموعُه أكثرُ من
    * ٢٤ ساعةً ليس مشاهدةً، هو أثرُ تعليم.** **والحكمُ يقع هنا مرّةً**
@@ -601,6 +603,17 @@ export async function buildPeriodStats(
 
   const totalHeat = heat.reduce((n, band) => n + band.reduce((m, v) => m + v, 0), 0);
 
+  /* **الأيّامُ المنقضيةُ من المدّة** — المدّةُ كلُّها لفترةٍ مضت،
+     وما بلغَه اليومُ لفترةٍ جارية */
+  const nowShifted = Date.now() + tzShift;
+  const elapsedDays = Math.max(
+    1,
+    Math.min(
+      range.days,
+      Math.floor((nowShifted - range.from.getTime()) / 86_400_000) + 1,
+    ),
+  );
+
   /* ═══ اليومُ المستحيل — **وحدُّه ١٤٤٠ دقيقةً، وهو حدُّ اليوم نفسِه** ═══ */
   let impossibleDays = 0;
   let worstDayMin = 0;
@@ -630,7 +643,12 @@ export async function buildPeriodStats(
             return Math.abs(d) <= 999 ? d : null;
           })()
         : null,
-    dailyAvgMin: range.days > 0 ? Math.round(minutes / range.days) : 0,
+    /* 🔴 🆕 **والمعدّلُ يُقسَم على ما مضى لا على ما سيأتي** (D-808):
+       **شهرٌ في يومه العشرين كان يُقسَم على واحدٍ وثلاثين** — **فيقول
+       لصاحبه معدّلاً أقلَّ من معدّله بالثلث**، **ورقمٌ يصغر كلّما بدأ
+       الشهرُ يكذب في اتّجاهٍ واحدٍ دائماً.** **والمدّةُ المنقضيةُ تساوي
+       المدّةَ كلَّها في كلِّ فترةٍ ماضية** — فلا يتغيّر شيءٌ لِما سبق. */
+    dailyAvgMin: elapsedDays > 0 ? Math.round(minutes / elapsedDays) : 0,
     episodes,
     movies,
     titles: byTitle.size,
@@ -638,6 +656,7 @@ export async function buildPeriodStats(
     peak,
     streak,
     activeDays: byDay.size,
+    elapsedDays,
     impossible: { days: impossibleDays, worstMinutes: worstDayMin },
     mix: (["shows", "movies", "anime"] as const).map((k) => ({
       key: k,
