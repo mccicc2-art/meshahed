@@ -233,7 +233,7 @@ export default async function PlusPage() {
           <Icon name="sparkle-star" size={20} className="text-accent shrink-0 mt-0.5" />
           <div className="min-w-0">
             <p className="text-lg font-bold leading-tight">{t.plusPrice}</p>
-            <p className="text-13 text-muted mt-1 leading-relaxed">{t.plusPriceRenew}</p>
+            <p className="text-12 text-muted mt-1 leading-relaxed">{t.plusPriceRenew}</p>
             <p className="text-12 text-muted mt-0.5 leading-relaxed">{t.plusPriceLocal}</p>
             <p className="text-12 font-bold text-accent mt-2 leading-none">{t.plusSoon}</p>
           </div>
