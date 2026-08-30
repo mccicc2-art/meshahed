@@ -7,7 +7,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { updateProfile } from "@/lib/actions";
-import type { ProfilePrefs } from "@/lib/profilePrefs";
 import { getDict, type Locale } from "@/lib/i18n";
 import { SITE_URL } from "@/lib/site";
 import { Avatar } from "../Avatar";
@@ -26,7 +25,7 @@ type Snapshot = {
   username: string;
   bio: string;
   /**
-   * 🆕 **اللقب** (D-561) — **يسكن `profile_prefs` لا عموداً خاصّاً به**
+   * 🗑️ **واللقبُ الذي كان يسكن `profile_prefs` حُذف** (D-807)
    * (انظر `profilePrefs.ts`)، **ويُحرَّر هنا** لأن مكانَه بين الاسم
    * والنبذة: **ثلاثتُها ما يقرؤه زائرُك عن هويّتك**، **وحقلٌ يعيش في
    * شاشةٍ ثانيةٍ لأن عمودَه في مكانٍ آخر تسريبُ تنظيمِ القاعدة إلى
@@ -35,7 +34,6 @@ type Snapshot = {
    * ⚠️ **واختياريٌّ في النوع** (D-028): **النموذجُ في `settings`
    * والصفحةُ في `app/profile/edit` — دليلان فكوميتان.**
    */
-  title?: string;
   /**
    * 🆕 **روابطُ التواصل** (D-546) — **داخل اللقطة لا خارجها**: زرُّ
    * الحفظ يستيقظ بتغيّرها كما يستيقظ بتغيّر الاسم، **وحوارُ «تعديلاتٌ
@@ -77,7 +75,6 @@ export function EditProfileForm({
   locale,
   isPrivate,
   genres,
-  prefs,
   initial,
 }: {
   userId: string;
@@ -96,7 +93,6 @@ export function EditProfileForm({
    * لا يعرضه نموذجٌ لا يجوز أن يمحوَه.** **فالسجلُّ يمرّ كاملاً ويعود
    * كاملاً بحرفٍ واحدٍ مبدَّل.**
    */
-  prefs?: ProfilePrefs;
   initial: Snapshot;
 }) {
   const t = getDict(locale);
@@ -106,7 +102,6 @@ export function EditProfileForm({
   const [nickname, setNickname] = useState(initial.nickname);
   const [username, setUsername] = useState(initial.username);
   const [bio, setBio] = useState(initial.bio);
-  const [title, setTitle] = useState(initial.title ?? "");
   const [socials, setSocials] = useState<Socials>(initial.socials ?? {});
   const [avatarUrl, setAvatarUrl] = useState(initial.avatarUrl);
   const [coverUrl, setCoverUrl] = useState(initial.coverUrl);
@@ -130,7 +125,6 @@ export function EditProfileForm({
     nickname !== base.nickname ||
     username !== base.username ||
     bio !== base.bio ||
-    title !== (base.title ?? "") ||
     avatarUrl !== base.avatarUrl ||
     coverUrl !== base.coverUrl ||
     coverPos !== base.coverPos ||
@@ -214,17 +208,13 @@ export function EditProfileForm({
   function save() {
     setError(null);
     if (usernameInvalid) return setError(t.usernameShort);
-    const next: Snapshot = { nickname, username, bio, title, avatarUrl, coverUrl, coverPos, avatarPos, socials };
+    const next: Snapshot = { nickname, username, bio, avatarUrl, coverUrl, coverPos, avatarPos, socials };
     start(async () => {
       try {
         await updateProfile({
           nickname,
           username: cleaned,
           bio,
-          /* **السجلُّ كاملاً بحرفٍ واحدٍ مبدَّل** — **وغيابُه يعني
-             «اتركه كما هو»**، فالصفحةُ القديمةُ التي لا تمرّره لا
-             تمحو شيئاً (D-028). */
-          ...(prefs ? { profilePrefs: { ...prefs, title } } : {}),
           avatarUrl,
           coverUrl,
           coverPos,
@@ -448,29 +438,11 @@ export function EditProfileForm({
             />
           </div>
 
-          {/* 🆕 **اللقب** (D-561، تصميمُ أحمد: «Story lover» تحت الصورة).
-
-              **وموضعُه بين الاسم والمعرّف قصداً**: **هو الاسمُ الثاني
-              لا الحقلُ الخامس** — **وترتيبُ الحقول هنا هو ترتيبُ
-              قراءتها في الملفّ** (اسمٌ ثم لقبٌ ثم معرّفٌ ثم نبذة).
-              **وأربعةٌ وعشرون حرفاً** لأنه يجلس في سطرٍ فيه عدّادان. */}
-          <div className="px-4 py-3.5">
-            <label className="block text-12 font-semibold text-muted mb-1.5" htmlFor="ep-title">
-              {t.profileTitleLabel}
-            </label>
-            <input
-              id="ep-title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              maxLength={24}
-              placeholder={t.profileTitlePlaceholder}
-              disabled={!prefs}
-              /* ١٦ بكسلاً استثناءٌ موثَّق: أصغرُ منها يجعل سفاري يقرّب الصفحة عند التركيز */
-              className="w-full bg-transparent text-[16px] outline-none placeholder:text-[color:var(--disabled)] disabled:opacity-50"
-            />
-            <p className="text-12 text-muted mt-1.5 leading-relaxed">{t.profileTitleHint}</p>
-          </div>
-
+          {/* 🗑️ ⚖️ **وحقلُ «اللقب» حُذف** (D-807، حكمُ أحمد) — **نقضٌ
+              صريحٌ لـD-561 التي وُلد فيها.** **ولا موضعَ يعرضه بعد
+              اليوم**، **وحقلٌ يُكتب ولا يُقرأ أسوأُ من حقلٍ لا يوجد**
+              (D-217). ⚠️ **والقيمةُ المخزَّنةُ في `profile_prefs.title`
+              تبقى** — **لا تُقرأ ولا تُتلف** (D-063). */}
           <div className="px-4 py-3.5">
             <label className="block text-12 font-semibold text-muted mb-1.5" htmlFor="ep-user">
               {t.usernameSection}
