@@ -35,7 +35,10 @@ import type React from "react";
  */
 
 export interface ShareStripCell {
-  icon: "tv" | "film" | "play" | "comment";
+  /* 🆕 **و`check` أُضيفت لخانة «أيّام متتالية»** (D-810) — **الشريطُ
+     في «تقريرك» ثلاثُ خاناتٍ لا أربع** (`ReportView`: حلقة · فيلم ·
+     أيّام متتالية)، **والصورةُ تتبع الصفحة.** */
+  icon: "tv" | "film" | "play" | "comment" | "check";
   value: string;
   label: string;
 }
@@ -188,6 +191,12 @@ const ICON_PATHS: Record<string, React.ReactNode> = {
       <path d="m8.5 3.5 3.5 3 3.5-3" />
     </g>
   ),
+  check: (
+    <g>
+      <circle cx="12" cy="12" r="9" />
+      <path d="m8.2 12.2 2.6 2.6 5-5.6" />
+    </g>
+  ),
   comment: (
     <path d="M12 4.5c-4.7 0-8.5 3.1-8.5 7 0 3.9 3.8 7 8.5 7 .9 0 1.8-.1 2.6-.3L19 20l-.7-3.5c1.4-1.2 2.2-3 2.2-5 0-3.9-3.8-7-8.5-7Z" />
   ),
@@ -195,7 +204,53 @@ const ICON_PATHS: Record<string, React.ReactNode> = {
 
 /** **هل يحمل النصُّ حروفاً عربيّة؟** — اتّجاهُ النصِّ في حروفه (D-716) */
 function hasArabic(s: string): boolean {
-  return /[؀-ۿݐ-ݿ]/.test(s);
+  return /[\u0600-\u06FF\u0750-\u077F]/.test(s);
+}
+
+/**
+ * ⚖️ 🆕 **وسطرُ النصِّ صار مشتركاً بين البطاقتين** (D-810): **كان
+ * داخلَ `ShareCard`** — **وبطاقةُ التقرير قارئٌ ثانٍ** (D-376).
+ *
+ * 🔴 **ولمَ صفٌّ من كلماتٍ لا نصٌّ واحد**: **satori بلا bidi للجمل** —
+ * «وقت المشاهدة» تخرج «المشاهدة وقت» — **فكلُّ كلمةٍ عقدةٌ والصفُّ
+ * يرتّبها بأيدينا.** ⚠️ **ولا اتّكالَ على `direction`**: Yoga تذبذبَت
+ * بين سطرٍ وآخر (قِيس).
+ * 🔴 **والعكسُ يتبع لغةَ النصِّ لا لغةَ البطاقة** (D-716): **نبذةٌ
+ * إنجليزيّةٌ في بطاقةٍ عربيّةٍ خرجت مقلوبةً في أوّل نشرةٍ حيّة.**
+ * 🔴 **ولا `fontWeight` هنا البتّة** (D-720): **الخطُّ مسجَّلٌ بوزنٍ
+ * واحدٍ (٧٠٠)**، **وطلبُ ٤٠٠ ينهار في قياس الحرف** — **والعربيّةُ
+ * وحدَها تنهار واللاتينيّةُ تسقط إلى وجهها الثاني بصمت.**
+ */
+function TextLine({
+  rtl,
+  text,
+  size,
+  color,
+  shadow = true,
+}: {
+  rtl: boolean;
+  text: string;
+  size: number;
+  color?: string;
+  shadow?: boolean;
+}) {
+  const words = text.split(/\s+/);
+  if (rtl && hasArabic(text)) words.reverse();
+  return (
+    <div
+      style={{
+        display: "flex",
+        gap: Math.round(size * 0.2),
+        fontSize: size,
+        color: color ?? FG,
+        ...(shadow ? { textShadow: SHADOW } : {}),
+      }}
+    >
+      {words.map((w, i) => (
+        <div key={i}>{w}</div>
+      ))}
+    </div>
+  );
 }
 
 export function ShareCard(d: ShareCardData) {
@@ -217,35 +272,13 @@ export function ShareCard(d: ShareCardData) {
      تنهار، واللاتينيّةُ تسقط إلى وجهها الثاني بصمت.**
      🔑 **والدرسُ**: **وزنٌ لا يُسجَّل لا يُطلب** — **وعطلٌ يظهر في لغةٍ
      دون أخرى يُقرأ عطلَ نصٍّ وهو عطلُ خطّ.** */
-  const Line = ({
-    text,
-    size,
-    color,
-    shadow = true,
-  }: {
-    text: string;
-    size: number;
-    color?: string;
-    shadow?: boolean;
-  }) => {
-    const words = text.split(/\s+/);
-    if (rtl && hasArabic(text)) words.reverse();
-    return (
-      <div
-        style={{
-          display: "flex",
-          gap: Math.round(size * 0.2),
-          fontSize: size,
-          color: color ?? FG,
-          ...(shadow ? { textShadow: SHADOW } : {}),
-        }}
-      >
-        {words.map((w, i) => (
-          <div key={i}>{w}</div>
-        ))}
-      </div>
-    );
-  };
+  /* ⚖️ 🆕 **والرسمُ صار في `TextLine` أعلاه** (D-810): **نداءاتُها
+     العشرون هنا لم تُمسّ**، **والغلافُ يمرّر `rtl` وحدَه** — **ونسخةٌ
+     ثانيةٌ من قاعدة عكس الكلمات في بطاقةٍ أخرى تفترق عند أوّل عطلٍ
+     يُصلَح في إحداهما** (D-145). */
+  const Line = (p: { text: string; size: number; color?: string; shadow?: boolean }) => (
+    <TextLine rtl={rtl} {...p} />
+  );
 
   const stripView = rtl ? [...d.strip].reverse() : d.strip;
   /* 🔴 **والملصقاتُ تُعكس كما يُعكس الشريط** (D-716): ترتيبُ D-704
@@ -602,6 +635,431 @@ export function ShareCard(d: ShareCardData) {
           </div>
         </div>
       ) : null}
+    </div>
+  );
+}
+
+/* ================= 🆕 بطاقةُ «شارك تقريرك» (D-810) ================= */
+
+/**
+ * **وجهُ مشاركة التقرير — رسمٌ خالصٌ بلا قراءةٍ واحدة**، أختُ `ShareCard`.
+ *
+ * ⚖️ **ولمَ بطاقةٌ ثانيةٌ لا وسيطٌ في الأولى**: **الأولى «كلُّ الأوقات»
+ * وهذه مدّةٌ بعينها** — **وبنيتاهما تفترقان في كلِّ جسم**: تلك شريطُ
+ * أرقامٍ وذوقٌ في ستِّ خانات، **وهذه رقمُ مدّةٍ وسطرُ افتتاحٍ وأكثرُ ما
+ * شوهد.** **وشرطٌ يقلب نصفَ الرسم ليس إعادةَ استعمالٍ، هو بطاقتان في
+ * دالّةٍ واحدة.** **والمشتركُ استُخرج** (`TextLine`، `PlanMark`،
+ * `VerifiedMark`، الألوان، الظلّ) — **وهو حدُّ القاعدة ٣ بالضبط.**
+ *
+ * ⚖️ **والوجهُ يتبع الصفحةَ لا يخترع** (درسُ D-720): **ترتيبُ `/reports`
+ * بعينه** — الرقمُ الكبير، ثمّ حلقةُ الأيّام، ثمّ سطرُ الافتتاح، ثمّ
+ * شريطُ الأرقام، ثمّ «الأكثر مشاهدة». **وصورةٌ تنسخ ألوانَ سطحٍ وتخالف
+ * ترتيبَه تُقرأ سطحاً آخر.**
+ *
+ * ⚠️ **ولا حلقةَ مرسومةً هنا**: **`conic-gradient` لا وجودَ لها في
+ * satori** — **وقوسٌ في `<svg>` يحتاج حسابَ زاويةٍ بيدنا** — **والنصُّ
+ * «٢٠ / ٣١ يوماً» يقول ما تقوله الحلقةُ بلا كذبٍ بصريّ.**
+ */
+export interface ReportShareTitle {
+  title: string;
+  /** «12h 48m» — مصوغاً */
+  time: string;
+  /** الملصقُ `data:` أو `null` */
+  poster: string | null;
+}
+
+export interface ReportShareData {
+  rtl: boolean;
+  /** «تقريرك» */
+  title: string;
+  /** «أغسطس ٢٠٢٦» — نطاقُ المدّة كما تكتبه الصفحة */
+  range: string;
+  name: string;
+  avatar: string | null;
+  tier?: "plus" | "partner" | null;
+  founder?: boolean;
+  verified?: boolean;
+  /** «121h 50m» */
+  time: string;
+  /** «وقت المشاهدة» */
+  watchLine: string;
+  /** «+12%» — و`null` حين لا مقارنةَ صادقة (حارسُ D-805) */
+  delta: string | null;
+  deltaUp: boolean;
+  /**
+   * سطرُ الافتتاح — **شطرُه الأوّلُ وحدَه** (`avg` + `plain` من
+   * `reportLead`)، و`null` حين لا معدّل.
+   * ⚖️ **ولا شطرَ ثانٍ في الصورة** (D-810): **علّتُه في `statsFormat`
+   * عند `plain`** — **واسمُ العمل مرسومٌ تحته باسمه ووقته.**
+   */
+  lead: { avg: string; plain: string } | null;
+  /** حلقةُ الأيّام — «٢٠ من ٣١» */
+  daysActive: number;
+  daysTotal: number;
+  /** «أيّام» */
+  daysLabel: string;
+  strip: ShareStripCell[];
+  /** «الأكثر مشاهدة» — و`null` حين لا أعمال */
+  topLabel: string | null;
+  top: ReportShareTitle[];
+}
+
+/**
+ * 🆕 **حلقةُ الأيّام النشطة** (D-810) — **نقلُ `DaysRing` من الصفحة إلى
+ * satori**، لا شكلٌ ثانٍ (القاعدة ٣).
+ *
+ * 🔑 **والقوسُ `stroke-dasharray` لا `conic-gradient`**: **المحيطُ
+ * `2πr`**، **والمرسومُ منه نسبةُ الأيّام**، **والفجوةُ بطول المحيط
+ * كلِّه** فلا يتكرّر القوس. **والدورانُ `-90` يبدأ من القمّة** كما تبدأ
+ * حلقةُ الصفحة.
+ * ⚠️ **و`transform` سمةُ SVG على `<g>`** لا نمطاً على `<svg>`.
+ */
+function DaysRing({
+  rtl,
+  active,
+  total,
+  label,
+}: {
+  rtl: boolean;
+  active: number;
+  total: number;
+  label: string;
+}) {
+  const R = 78;
+  const C = 2 * Math.PI * R;
+  const pct = total > 0 ? Math.min(1, Math.max(0, active / total)) : 0;
+  return (
+    <div
+      style={{
+        position: "relative",
+        display: "flex",
+        width: 186,
+        height: 186,
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      <svg width="186" height="186" viewBox="0 0 186 186" style={{ position: "absolute" }}>
+        <g transform="rotate(-90 93 93)">
+          <circle cx="93" cy="93" r={R} fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="14" />
+          <circle
+            cx="93"
+            cy="93"
+            r={R}
+            fill="none"
+            stroke={ACCENT}
+            strokeWidth="14"
+            strokeLinecap="round"
+            strokeDasharray={`${C * pct} ${C}`}
+          />
+        </g>
+      </svg>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+        {/* **والكسرُ لاتينيٌّ في اللغتين** — «20 / 31» أرقامٌ لا كلمات */}
+        <div style={{ display: "flex", flexDirection: "row", alignItems: "baseline", gap: 6 }}>
+          {/* 🔴 **ووَلدٌ عدديٌّ ليس نصّاً في satori** (D-810، عطلُها
+              السابع — **بُصر بالرسم المحلّيّ لا بالمترجِم**):
+              **`{active}` ورقمُه ٢٠ يرمي «Expected <div> to have
+              explicit display: flex»** — **رسالةٌ تتّهم النمطَ والعلّةُ
+              في نوع الولد.** 🔑 **والدرسُ**: **كلُّ ما يدخل عقدةَ نصٍّ
+              هنا يُصاغ نصّاً عند مصدره**، **ورسالةُ خطأٍ في محرّكٍ
+              أجنبيٍّ تدلّ على مكانٍ لا على سبب.** */}
+          <div style={{ fontSize: 48, lineHeight: 1 }}>{String(active)}</div>
+          {/* 🔴 **وعقدةٌ نصّيّةٌ واحدةٌ لا اثنتان** (D-810، عطلُ satori
+              السادس وقد سقط في الرسم المحلّيّ): **`/ {total}` في JSX
+              ولدان في `div` بلا `display:flex`** — **والمحرّكُ يرمي
+              «Expected <div> to have explicit display: flex»**،
+              **والمترجِمُ يقبلها.** **والقالبُ يجمعهما عقدةً.** */}
+          <div style={{ fontSize: 26, color: MUTED }}>{`/ ${total}`}</div>
+        </div>
+        <div style={{ display: "flex", marginTop: 4 }}>
+          <TextLine rtl={rtl} text={label} size={24} color={MUTED} shadow={false} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const UP = "#3DBE6B";
+const DOWN = "#E5484D";
+
+export function ReportShareCard(d: ReportShareData) {
+  const { rtl } = d;
+  const row = rtl ? "row-reverse" : "row";
+  const side = rtl ? "flex-end" : "flex-start";
+  /* ⚠️ **ولا غلافَ محلّيّاً لـ`TextLine`** (D-810): **`const Line = …`
+     داخل مكوّنٍ يخلق مكوّناً في كلِّ رسم** — **وهو خطأُ
+     `react-hooks/static-components` بعينه** (وقد سقط في هذا الملفّ
+     نفسِه حين كُتب). **والنداءُ المباشرُ بـ`rtl` أوضحُ وأرخص.** */
+
+  const stripView = rtl ? [...d.strip].reverse() : d.strip;
+  /* **والأعمالُ تُعكس كما يُعكس الشريط** (D-716): **satori لا تعرف
+     الاتّجاه فتُرسم يساراً دائماً.** */
+  const topView = rtl ? [...d.top].reverse() : d.top;
+
+  return (
+    <div
+      style={{
+        width: "100%",
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "center",
+        padding: "56px 48px",
+        background: "#050505",
+        color: FG,
+        fontFamily: "Cairo, CairoLatin",
+      }}
+    >
+      {/* ===== الترويسةُ الصغيرة ===== */}
+      <div
+        style={{
+          display: "flex",
+          flexDirection: row,
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: 28,
+        }}
+      >
+        <div style={{ display: "flex", flexDirection: row, alignItems: "center", gap: 16 }}>
+          <div
+            style={{
+              width: 26,
+              height: 26,
+              borderRadius: 13,
+              background: "linear-gradient(135deg, #FFD400, #FBBF24 55%, #F59E0B)",
+            }}
+          />
+          <div style={{ fontSize: 38, letterSpacing: -1 }}>Loopz</div>
+        </div>
+        {/* 🆕 **والمدّةُ في الترويسة كما في اسم الصفحة** (D-804):
+            **«تقريرك · أغسطس ٢٠٢٦»** — **ونطاقٌ بلا اسمٍ يُقرأ تاريخَ
+            التقاط.** ⚠️ **والنطاقُ عقدةٌ مستقلّةٌ عن الاسم**: قد يحمل
+            رقماً لاتينيّاً («٢٠٢٦» تُكتب `2026`) **فلا يُخلط بجملةٍ
+            عربيّةٍ تُعكس كلماتُها.** */}
+        <div style={{ display: "flex", flexDirection: row, alignItems: "center", gap: 12 }}>
+          <TextLine rtl={rtl} text={d.title} size={28} color={MUTED} shadow={false} />
+          <div style={{ fontSize: 28, color: MUTED }}>·</div>
+          <div style={{ fontSize: 28, color: MUTED }}>{d.range}</div>
+        </div>
+      </div>
+
+      {/* ===== ١) البطاقةُ السينمائيّة — الرقمُ والافتتاح ===== */}
+      <div
+        style={{
+          position: "relative",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: side,
+          borderRadius: 40,
+          border: `1px solid ${BORDER}`,
+          background: "linear-gradient(160deg, #17140B 0%, #121212 55%)",
+          padding: "44px 40px",
+          overflow: "hidden",
+        }}
+      >
+        {/* 🔴 **وملصقاتُ الخلفيّة سقطت — عطلٌ كشفه الرسمُ المحلّيّ** (D-810):
+            **الملصقاتُ الثلاثةُ نفسُها كانت تُرسم مرّتين في صورةٍ واحدة**
+            — خلفيّةً هنا وبطاقاتٍ في «الأكثر مشاهدة» — **وتكرارٌ بلا
+            معنىً في صورةٍ واحدةٍ يُقرأ خطأً في التوليد لا تصميماً.**
+            **والملصقُ يكسب موضعَه مرّةً: حيث يُسمّى.**
+            ⚖️ **وهذا فرقٌ عن `ShareCard`** (D-720): **ملصقاتُها مفضّلاتٌ
+            لا تتكرّر تحتها**، **وهذه أعمالُ المدّة نفسُها** — **والقاعدةُ
+            تُنقل بعلّتها لا بشكلها.**
+            **والحياةُ تأتي من مسحةٍ دافئةٍ في السطح** لا من صورةٍ مكرّرة. */}
+
+        {/* صاحبُ التقرير */}
+        <div style={{ display: "flex", flexDirection: row, alignItems: "center", gap: 22 }}>
+          {d.avatar ? (
+            <img
+              src={d.avatar}
+              width={80}
+              height={80}
+              style={{ width: 80, height: 80, borderRadius: 40, objectFit: "cover" }}
+            />
+          ) : null}
+          <div style={{ display: "flex", flexDirection: row, alignItems: "center", gap: 14 }}>
+            <div style={{ fontSize: 44, textShadow: SHADOW }}>{d.name}</div>
+            <PlanMark tier={d.tier ?? null} founder={d.founder ?? false} />
+            {d.verified ? <VerifiedMark /> : null}
+          </div>
+        </div>
+
+        {/* الرقمُ الكبير وسطرُ وصفه · وحلقةُ الأيّام مقابلَه — كما في الصفحة */}
+        {/* ⚖️ 🔴 **والحلقةُ رُسمت ولم تُترك نصّاً** (D-810): **أوّلُ
+            محاولةٍ كتبَتها «٢٠ / ٣١» نصّاً بحجّة أنّ `conic-gradient`
+            غائبةٌ في satori** — **والرسمُ المحلّيُّ أرى النتيجة: نصفُ
+            البطاقة فارغٌ حيث تضع الصفحةُ حلقتَها.**
+            🔑 **والقوسُ لا يحتاج تدرّجاً**: **`stroke-dasharray` على
+            دائرةٍ يرسم أيَّ نسبة** — **ودورانٌ بـ`-90` يبدأ من القمّة.**
+            **و«تعذّرَ» في محرّكٍ ليست حكماً حتى تُجرَّب فيه.** */}
+        <div
+          style={{
+            display: "flex",
+            flexDirection: row,
+            alignItems: "center",
+            justifyContent: "space-between",
+            width: "100%",
+            marginTop: 26,
+          }}
+        >
+          <div style={{ display: "flex", flexDirection: "column", alignItems: side }}>
+            <div style={{ fontSize: 104, lineHeight: 1, textShadow: SHADOW }}>{d.time}</div>
+            <div
+              style={{
+                display: "flex",
+                flexDirection: row,
+                alignItems: "center",
+                gap: 16,
+                marginTop: 10,
+              }}
+            >
+              <TextLine rtl={rtl} text={d.watchLine} size={28} color={MUTED} />
+              {d.delta ? (
+                <div style={{ display: "flex", flexDirection: row, alignItems: "center", gap: 16 }}>
+                  <div style={{ width: 7, height: 7, borderRadius: 4, background: "rgba(247,247,247,0.4)" }} />
+                  <div style={{ fontSize: 28, color: d.deltaUp ? UP : DOWN }}>{d.delta}</div>
+                </div>
+              ) : null}
+            </div>
+          </div>
+
+          <DaysRing rtl={rtl} active={d.daysActive} total={d.daysTotal} label={d.daysLabel} />
+        </div>
+
+        {/* سطرُ الافتتاح — **الجملةُ نفسُها التي تفتتح الصفحة** (D-810) */}
+        {/* 🔴 **ولا التفافَ هنا البتّة — عطلٌ كشفه الرسمُ المحلّيّ**:
+            **`flex-wrap` مع `row-reverse` في Yoga يُنزل السطرَ الثاني
+            إلى وسط البطاقة لا إلى حافّتها** — **وجملةٌ تبدأ يميناً
+            وتُكمل وسطاً تُقرأ جملتين.** **والشطرُ الواحدُ لا يلتفّ**،
+            فسقط الالتفافُ بسقوط سببه. */}
+        {d.lead ? (
+          <div
+            style={{
+              display: "flex",
+              flexDirection: row,
+              alignItems: "baseline",
+              gap: 12,
+              marginTop: 22,
+            }}
+          >
+            <div style={{ fontSize: 34 }}>{d.lead.avg}</div>
+            <TextLine rtl={rtl} text={d.lead.plain} size={34} />
+          </div>
+        ) : null}
+
+        {/* الخطُّ الأصفرُ المنحني — زينةُ الصفحة نفسُها */}
+        <svg width="250" height="26" viewBox="0 0 220 24" style={{ marginTop: 14 }}>
+          <path
+            d="M2 20 C 58 4, 140 24, 218 6"
+            stroke={ACCENT}
+            strokeWidth="2"
+            fill="none"
+            strokeLinecap="round"
+            opacity="0.8"
+          />
+        </svg>
+      </div>
+
+      {/* ===== ٢) شريطُ الأرقام — عارٍ بين البطاقتين كما في الصفحة ===== */}
+      <div style={{ display: "flex", marginTop: 30, marginBottom: 30 }}>
+        {stripView.map((c, i) => (
+          <div
+            key={c.label}
+            style={{
+              flex: 1,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 8,
+              ...(i > 0 ? { borderLeft: `1px solid ${DIVIDER}` } : {}),
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <svg
+                width="34"
+                height="34"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke={ACCENT}
+                strokeWidth="1.7"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                {ICON_PATHS[c.icon]}
+              </svg>
+              <div style={{ fontSize: 48 }}>{c.value}</div>
+            </div>
+            <TextLine rtl={rtl} text={c.label} size={26} color={MUTED} shadow={false} />
+          </div>
+        ))}
+      </div>
+
+      {/* ===== ٣) «الأكثر مشاهدة» — ثلاثةُ ملصقاتٍ بأسمائها ===== */}
+      {d.topLabel && d.top.length > 0 ? (
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: side,
+            borderRadius: 40,
+            border: `1px solid ${BORDER}`,
+            background: SURFACE,
+            padding: "32px 36px",
+          }}
+        >
+          <TextLine rtl={rtl} text={d.topLabel} size={40} shadow={false} />
+          <div style={{ display: "flex", flexDirection: "row", width: "100%", marginTop: 22, gap: 22 }}>
+            {topView.map((x, i) => (
+              <div
+                key={`${x.title}-${i}`}
+                style={{ display: "flex", flexDirection: "column", flex: 1, alignItems: "center" }}
+              >
+                {/* ⚠️ **وغيابُ الملصق مربّعٌ مصمَت لا فجوة**: **صفٌّ
+                    يفقد عنصراً يعيد توزيعَ العرض على الباقين** — **فتخرج
+                    البطاقةُ بمقاسين لعملين.** */}
+                <div
+                  style={{
+                    display: "flex",
+                    width: "100%",
+                    height: 384,
+                    borderRadius: 24,
+                    overflow: "hidden",
+                    background: "#1A1A1A",
+                    border: `1px solid ${BORDER}`,
+                  }}
+                >
+                  {x.poster ? (
+                    <img
+                      src={x.poster}
+                      style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                    />
+                  ) : null}
+                </div>
+                <div style={{ display: "flex", marginTop: 14 }}>
+                  <TextLine rtl={rtl} text={x.title} size={26} shadow={false} />
+                </div>
+                <div style={{ fontSize: 26, color: ACCENT, marginTop: 4 }}>{x.time}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {/* ===== ٤) الذيل — **اسمُ الموقع وحدَه** ===== */}
+      {/* ⚖️ **وجملةٌ عربيّةٌ تنتهي بعنوانٍ لاتينيٍّ سقطت** (D-810):
+          **اتّجاهان في سطرٍ واحدٍ من أجل كلمتين** — **والعنوانُ وحدَه
+          يقول ما تقوله الجملة**، **وأقلُّ ما يُكتب أقلُّ ما ينكسر.** */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          marginTop: 30,
+        }}
+      >
+        <div style={{ fontSize: 28, color: "rgba(247,247,247,0.5)" }}>loopztv.com</div>
+      </div>
     </div>
   );
 }

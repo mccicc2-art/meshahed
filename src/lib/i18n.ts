@@ -1844,6 +1844,11 @@ const ar = {
     `قيّم ${n} عملاً · متوسّط ${avg} من ١٠`,
   shareNoRatings: "ما قيّم شيئاً بعد",
   shareFailed: "تعذّر توليد البطاقة — جرّب بعد شوي.",
+  /* 🆕 **مفاتيحُ «شارك تقريرك»** (D-810) — **وثلاثتُها تُقرأ من صفٍّ
+     واحدٍ في ذيل التقرير**، فتُكتب متجاورةً هنا. */
+  shareReportTitle: "شارك تقريرك",
+  shareReportSub: "صورةٌ فيها رقمُك وأكثرُ ما شاهدت",
+  shareBusy: "جارٍ التوليد…",
   weekTitle: "أسبوعك",
   weekSub: "حلقات أعمالك في الأسبوعين القادمين.",
   weekNothing: "ما فيه حلقات قادمة هذا الأسبوع.",
@@ -3369,6 +3374,9 @@ const en: Dict = {
     `Rated ${n} titles \u00b7 ${avg}/10 average`,
   shareNoRatings: "No ratings yet",
   shareFailed: "Could not build the card \u2014 try again shortly.",
+  shareReportTitle: "Share your report",
+  shareReportSub: "An image with your number and what you watched most",
+  shareBusy: "Building\u2026",
   weekTitle: "Your week",
   weekSub: "Episodes from your shows over the next two weeks.",
   weekNothing: "No episodes due this week.",
