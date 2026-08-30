@@ -11,10 +11,18 @@ import type { Dict } from "@/lib/i18n";
  * انتظارَ البروفايل قبل أوّل بايت** (D-122). **وهو تفضيلُ عرضٍ كالثيم
  * والكثافة** (D-014) — **ولا يراه أحدٌ غيرُ صاحبه** فلا يحتاج عموداً.
  *
- * 🔑 **ومفتاحٌ واحدٌ لصفٍّ واحدٍ عبر التبويبات** (`top10` لا
+ * 🔑 **ومفتاحٌ واحدٌ لصفٍّ واحدٍ داخلَ التبويب** (`top10` لا
  * `top10-movie` و`top10-tv`): **تبويبُ الأفلام يرسم نسخةَ الأفلام
  * وحدَها** (`wantMovies`) — **ومفتاحان لصفٍّ يراه المستخدمُ واحداً
  * يجعله يُطفئه مرّتين.**
+ *
+ * 🔴 **والمخزَّنُ `tab:key` لا `key` — وهذا تصحيحٌ لأوّل نسخة، قِيس
+ * حيّاً فسقط**: **كانت المفاتيحُ عامّةً، فإطفاءُ «القادم قريباً» في
+ * الأفلام أطفأ «أنميٌ قادم» في الأنمي** — **واللوحُ يقول «صفوفُ هذا
+ * التبويب»** — **فوعدٌ في السطر ونقيضُه في التخزين** (D-217).
+ * ⚠️ **والحجّةُ التي جمعت المفاتيح كانت عن نسختَي الصفِّ في التبويب
+ * الواحد** (فيلم/مسلسل)، **ولا تمتدّ إلى تبويبين يراهما المستخدمُ
+ * صفحتين باسمين مختلفين** — **وتوسيعُ حجّةٍ خارجَ مداها هو العطل.**
  *
  * ⚠️ **والاسمُ يُقرأ من القاموس نفسِه الذي يرسمه الصفّ** (D-703):
  * **من أطفأ «الأكثر شعبية» يجب أن يقرأ في القائمة ما يقرؤه فوق
@@ -69,7 +77,13 @@ export const RAILS: RailSpec[] = [
   },
   {
     key: "foryou",
-    tabs: ["movies", "shows"],
+    /* 🔴 **والأنمي منها — قِيس على الصفحة الحيّة** (D-662): **أوّلُ نسخةٍ
+       حصرته في تبويبَي الأفلام والمسلسلات**، **و`AnimeRails` تستدعي
+       `PersonalRails` أيضاً** فيُرسم «مقترح لك» في الأنمي — **وقائمةٌ
+       تنقص صفّاً يراه صاحبُها تعني صفّاً لا يستطيع إطفاءه** (D-346).
+       ⚠️ **و«من فنّانيك» ليست منها**: **`PersonalRails` تُسقطه للأنمي
+       عمداً** (تعليقُ `anime` بنصّه) — **والفرقُ مقيسٌ لا مفترَض.** */
+    tabs: ["movies", "shows", "anime"],
     label: (t) => t.suggestedForYou,
   },
   {
@@ -140,9 +154,29 @@ export function isRailTab(v: unknown): v is RailTab {
   return v === "movies" || v === "shows" || v === "anime";
 }
 
-/** **السؤالُ الوحيدُ عن صفٍّ مطفأ** — **يمرّ بالنوع فلا يُخطئ حرفاً** */
+/**
+ * **السؤالُ الوحيدُ عن صفٍّ مطفأ** — **يمرّ بالنوع فلا يُخطئ حرفاً**.
+ * ⚠️ **والمجموعةُ الممرَّرةُ مقصورةٌ على تبويبها** (`railsHiddenFor`)،
+ * **فلا يحمل كلُّ نداءٍ اسمَ تبويبه معه.**
+ */
 export function railOff(hidden: ReadonlySet<string>, key: RailKey): boolean {
   return hidden.has(key);
+}
+
+/** **مفتاحُ التخزين** — `tab:key` (تصحيحُ النطاق أعلاه) */
+export function railToken(tab: RailTab, key: string): string {
+  return `${tab}:${key}`;
+}
+
+/**
+ * **المخزَّنُ كلُّه إلى مفاتيحِ تبويبٍ واحدٍ عاريةً** — **وهي التي
+ * تُمرَّر إلى الصفوف**: **فالصفُّ لا يعرف تبويبَه ولا يحتاج أن يعرفه.**
+ */
+export function railsHiddenFor(all: ReadonlySet<string>, tab: RailTab): Set<string> {
+  const out = new Set<string>();
+  const pre = `${tab}:`;
+  for (const tok of all) if (tok.startsWith(pre)) out.add(tok.slice(pre.length));
+  return out;
 }
 
 /** **صفوفُ تبويبٍ بترتيب ظهورها** */
@@ -157,16 +191,29 @@ export function railsOf(tab: RailTab): RailSpec[] {
 export function parseHiddenRails(raw: string | null | undefined): Set<string> {
   const out = new Set<string>();
   for (const piece of (raw ?? "").split(",")) {
-    const k = piece.trim();
-    if (k && KNOWN.has(k)) out.add(k);
+    const tok = piece.trim();
+    const at = tok.indexOf(":");
+    if (at < 1) continue;
+    const tab = tok.slice(0, at);
+    const key = tok.slice(at + 1);
+    /* **وتبويبٌ لا يملك هذا الصفَّ يسقط أيضاً** — **فلا يبقى مفتاحٌ
+       يُطفئ ما لا يُرسم أصلاً** (وينتفخ الكوكيُّ بلا أثر). */
+    if (!isRailTab(tab) || !KNOWN.has(key)) continue;
+    if (!RAILS.find((r) => r.key === key)?.tabs.includes(tab)) continue;
+    out.add(tok);
   }
   return out;
 }
 
-/** **بترتيب السجلّ لا بترتيب الإطفاء** — فقيمتان متطابقتان نصٌّ واحد */
+/** **بترتيب التبويب ثمّ السجلّ** — فقيمتان متطابقتان نصٌّ واحد */
 export function serializeHiddenRails(hidden: Iterable<string>): string {
-  const set = new Set([...hidden].filter((k) => KNOWN.has(k)));
-  return RAILS.filter((r) => set.has(r.key))
-    .map((r) => r.key)
-    .join(",");
+  const clean = parseHiddenRails([...hidden].join(","));
+  const out: string[] = [];
+  for (const tab of ["movies", "shows", "anime"] as RailTab[]) {
+    for (const r of RAILS) {
+      const tok = railToken(tab, r.key);
+      if (clean.has(tok)) out.push(tok);
+    }
+  }
+  return out.join(",");
 }
