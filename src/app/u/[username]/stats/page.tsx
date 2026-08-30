@@ -4,6 +4,7 @@ import { getProfileByUsername, displayNameOf } from "@/lib/data";
 import { getT } from "@/lib/locale";
 import { LibraryAnalysisSkeleton } from "@/components/LibraryAnalysis";
 import { MemberAnalysis } from "@/components/MemberAnalysis";
+import { TasteMatchSection } from "@/components/stats/TasteMatchSection";
 import { SettingsHeader } from "@/components/settings/SettingsHeader";
 
 /**
@@ -58,6 +59,16 @@ export default async function MemberStatsPage({
       <SettingsHeader title={t.statsPageTitle} fallbackHref={`/u/${username}`} />
 
       <h1 className="sr-only">{`${t.statsPageTitle} — ${name}`}</h1>
+
+      {/* 🆕 **«أنت وهو» قبل أرقامه** (D-814، حكمُ أحمد: «المقارنة»):
+          **الزائرُ جاء ليقيس نفسَه به لا ليقرأ أرقامَه** — **وقسمُ
+          المقارنة أعلى الصفحة لأنه سببُ فتحها.** ⚠️ **وSuspense
+          مستقلٌّ**: **قراءتان زائدتان لا تؤخّران أرقامَه** — ولا يُرسم
+          هيكلٌ عظميٌّ له، **فقسمٌ قد يغيب أصلاً** (خاصٌّ · بلا حساب ·
+          صاحبُ الملفّ · بياناتٌ رقيقة) **وهيكلٌ لما قد لا يأتي يَعِد.** */}
+      <Suspense key={`m-${profile.id}`} fallback={null}>
+        <TasteMatchSection targetId={profile.id} targetName={name} locale={locale} />
+      </Suspense>
 
       {/* المفتاحُ معرّفُ العضو: انتقالٌ من ملفٍّ إلى ملفٍّ يبدّل الهيكلَ
           العظميّ أيضاً فلا تبقى أرقامُ الأوّل معروضةً بينما تُجلب الثانية */}
