@@ -59,7 +59,13 @@ import {
 import { ScrollMemory } from "@/components/ScrollMemory";
 import { animeMovieRail, topChartRail, looksAnime, railGuard } from "@/lib/topChart";
 import { buildSection, sectionHref } from "@/lib/sections";
-import { RAILS_COOKIE, parseHiddenRails, railOff } from "@/lib/railPrefs";
+import {
+  RAILS_COOKIE,
+  parseHiddenRails,
+  railsHiddenFor,
+  railOff,
+  isRailTab,
+} from "@/lib/railPrefs";
 import { attachImdbRatings, withImdbRatings, rankByImdb } from "@/lib/omdb";
 import { localizeRows } from "@/lib/localize";
 import { getT, getWatchRegion, getTabPrefs } from "@/lib/locale";
@@ -243,7 +249,11 @@ export default async function NewsPage({
      فلا يسأل كلُّ صفٍّ عن نفسه.
      ⚠️ **ولا تسري مع فلترٍ مفعَّل؟ بل تسري**: **من أطفأ صفّاً أطفأه**
      — **وصفٌّ يعود لأنّ المستخدم فلتر يُقرأ عطلاً** (D-346). */
-  const hiddenRails = parseHiddenRails((await cookies()).get(RAILS_COOKIE)?.value);
+  const hiddenAll = parseHiddenRails((await cookies()).get(RAILS_COOKIE)?.value);
+  /* 🔴 **والمجموعةُ تُقصَر على تبويبها هنا** (D-826) — **فالصفوفُ لا
+     تحمل اسمَ تبويبها في كلِّ نداء**، **واللوحُ الذي يقول «صفوفُ هذا
+     التبويب» يصدق.** */
+  const hiddenRails = isRailTab(tab) ? railsHiddenFor(hiddenAll, tab) : new Set<string>();
   /* نوافذ صفوف «أفضل ١٠» — لكل صفٍّ نافذته (D-099): أفلام/مسلسلات/أنمي */
   const rails = {
     /* ⚖️ 🆕 **والنوافذُ ثبتت على الأسبوع** (D-504، طلبُ أحمد بلقطةٍ على
@@ -303,7 +313,7 @@ export default async function NewsPage({
         tabPrefs={tabPrefs}
         /* 🆕 **المطفأُ يمرّ من الخادم** (D-826) — **فلا يومض مفتاحٌ ثمّ
            يُصحَّح**، ولا نداءَ ثانٍ من العميل. */
-        hiddenRails={[...hiddenRails]}
+        hiddenRails={[...hiddenAll]}
         myRows={myRows}
         type={browse.type}
         genre={browse.genre?.slug ?? null}
