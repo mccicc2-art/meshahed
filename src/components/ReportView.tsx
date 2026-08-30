@@ -70,8 +70,29 @@ export function ReportView({
           <p className="text-[52px] leading-[1.05] font-bold tracking-tight">
             {hm(stats.minutes, locale)}
           </p>
-          <p className="text-12 tracking-[0.12em] uppercase text-muted mt-1">
-            {ar ? "وقت المشاهدة" : "Watch time"}
+          {/* 🆕 **والفرقُ يجلس على سطر الاسم** (D-805، حكمُ أحمد: «المحتوى
+              الي فوق ماهو مرتّب وماخذ مساحة كبيرة»): **كان سطراً رابعاً
+              تحت الرقم** — **وأربعةُ أسطرٍ تحت رقمٍ واحدٍ تجعل رأسَ
+              الصفحة عمودَ نصٍّ لا عنواناً.** **والنسبةُ صفةٌ للاسم لا
+              خبرٌ مستقلّ**، فمكانُها بجانبه. ⚠️ **و«عن المدّة السابقة»
+              سقطت لا معناها**: صفحةٌ كلُّها مدّةٌ واحدة، **والمقارنةُ
+              فيها لا تكون إلّا بما قبلها.** */}
+          <p className="text-12 tracking-[0.12em] uppercase text-muted mt-1 flex items-center gap-2">
+            <span>{ar ? "وقت المشاهدة" : "Watch time"}</span>
+            {stats.deltaPct !== null && (
+              <>
+                <span aria-hidden className="w-1 h-1 rounded-full bg-muted/50 shrink-0" />
+                <span
+                  className="flex items-center gap-1 tracking-normal font-bold tabular-nums"
+                  dir="ltr"
+                  style={{ color: stats.deltaPct >= 0 ? "#3DBE6B" : "#E5484D" }}
+                >
+                  <Icon name={stats.deltaPct >= 0 ? "trending" : "pause"} size={14} />
+                  {stats.deltaPct >= 0 ? "+" : ""}
+                  {num(stats.deltaPct, locale)}%
+                </span>
+              </>
+            )}
           </p>
           {/* 🔴 🆕 **والسطرُ يقول ما يقيسه** (D-800 — لحاقٌ بـD-797 سقط
               في إعادة البناء): **Loopz يعرف لحظةَ التعليم لا لحظةَ
@@ -83,26 +104,6 @@ export function ReportView({
           <p className="text-12 text-muted mt-1.5 leading-relaxed">
             {ar ? "مدّة ما علّمتَه في هذه المدّة" : "Runtime of what you marked in this period"}
           </p>
-          {stats.deltaPct !== null && (
-            <p className="mt-2 flex items-center gap-1.5 text-12">
-              <Icon
-                name={stats.deltaPct >= 0 ? "trending" : "pause"}
-                size={15}
-                style={{ color: stats.deltaPct >= 0 ? "#3DBE6B" : "#E5484D" }}
-              />
-              <span
-                className="font-bold tabular-nums"
-                dir="ltr"
-                style={{ color: stats.deltaPct >= 0 ? "#3DBE6B" : "#E5484D" }}
-              >
-                {stats.deltaPct >= 0 ? "+" : ""}
-                {num(stats.deltaPct, locale)}%
-              </span>
-              <span className="text-muted">
-                {ar ? "عن المدّة السابقة" : "from last period"}
-              </span>
-            </p>
-          )}
         </div>
         <DaysRing active={stats.activeDays} total={stats.range.days} locale={locale} ar={ar} />
       </div>
@@ -155,38 +156,12 @@ export function ReportView({
         })}
       </div>
 
-      {/* ═══ ثلاثةُ أرقام ═══ */}
-      <div className="mt-7 grid grid-cols-3 gap-2">
-        <RoundStat icon="play" value={num(stats.episodes, locale)} label={ar ? "حلقة" : "Episodes"} />
-        <RoundStat icon="film" value={num(stats.movies, locale)} label={ar ? "فيلم" : "Movies"} />
-        <RoundStat icon="check" value={num(stats.streak, locale)} label={ar ? "أيام متتالية" : "Day streak"} />
-      </div>
-
-      {/* ═══ لمحةٌ عن المدّة ═══ */}
-      <h2 className="text-20 font-bold mt-8 mb-3">
-        {ar ? "لمحة عن مدّتك" : "Your period at a glance"}
-      </h2>
-      <div className="grid grid-cols-3 gap-3">
-        <Glance
-          icon="trending"
-          label={ar ? "أكثف يوم" : "Peak day"}
-          value={stats.peak ? `${stats.peak.label} · ${hm(stats.peak.minutes, locale)}` : "—"}
-        />
-        {/* ⚠️ **ووقتُ الذروة لا يُرسم بلا ساعةٍ حقيقيّة** (D-797/D-798):
-            الصفوفُ المؤرَّخةُ رجعيّاً بلا ساعة — **وخانةٌ تقول «٩–١١ م»
-            من وسمِ نظامٍ تكذب**، **والغيابُ أصدق** (D-063). */}
-        <Glance
-          icon="clock"
-          label={ar ? "وقت الذروة" : "Prime time"}
-          value={stats.habits.primeHours ? primeLabel(stats.habits.primeHours) : "—"}
-        />
-        <Glance
-          icon="check"
-          label={ar ? "الإكمال" : "Completion"}
-          value={`${num(stats.completionPct, locale)}%`}
-        />
-      </div>
-
+      {/* 🆕 **وأكثرُ ما شوهد صعد فوق الأرقام** (D-805، حكمُ أحمد:
+          «المحتوى المهمّ تحت… خلّ فائدة التقرير في بدايته»): **من فتح
+          تقريرَه يسأل «كم شاهدتُ؟» ثمّ «ماذا شاهدتُ؟»** — **والملصقاتُ
+          هي جوابُ السؤال الثاني**، **وستُّ خاناتِ أرقامٍ تفصلها عن
+          الرقم الكبير تدفعها تحت طيّة الشاشة على الهاتف.** 📏 **مقيس**:
+          كانت تبدأ عند ~٥٩٠ بكسلاً من رأس المحتوى، وصارت عند ~٣٩٠. */}
       {/* ═══ أكثرُ ما شوهد ═══ */}
       {stats.topTitles.length > 0 && (
         <>
@@ -232,6 +207,44 @@ export function ReportView({
         </>
       )}
 
+      {/* ═══ لمحةٌ عن المدّة — **عنوانٌ واحدٌ لستِّ حقائق** ═══ */}
+      {/* 🆕 **وعنوانان لستِّ حقائقَ صارا عنواناً** (D-805): كان «ثلاثةُ
+          أرقام» بلا عنوانٍ ثمّ «لمحة عن مدّتك» بعنوان — **وصفّان
+          متجاوران من ثلاثِ خاناتٍ كلٌّ منهما يصف المدّةَ نفسَها**،
+          **وعنوانٌ يفصل بينهما يقول إنّهما موضوعان وهما موضوع.**
+          ⚖️ **والشكلان باقيان عمداً**: **الرقمُ المعدود مطوَّقٌ برمزه،
+          والحقيقةُ الموصوفةُ سطرٌ تحت رمزها** — **وعددٌ ووصفٌ شيئان
+          يُقرآن بشكلين**، ولو وُحِّدا لَما وسع «الثلاثاء · ٢٣س ٢٨د»
+          مقاسُ رقمٍ كبير. */}
+      <h2 className="text-20 font-bold mt-8 mb-3">
+        {ar ? "لمحة عن مدّتك" : "Your period at a glance"}
+      </h2>
+      <div className="grid grid-cols-3 gap-2">
+        <RoundStat icon="play" value={num(stats.episodes, locale)} label={ar ? "حلقة" : "Episodes"} />
+        <RoundStat icon="film" value={num(stats.movies, locale)} label={ar ? "فيلم" : "Movies"} />
+        <RoundStat icon="check" value={num(stats.streak, locale)} label={ar ? "أيام متتالية" : "Day streak"} />
+      </div>
+      <div className="grid grid-cols-3 gap-3 mt-5">
+        <Glance
+          icon="trending"
+          label={ar ? "أكثف يوم" : "Peak day"}
+          value={stats.peak ? `${stats.peak.label} · ${hm(stats.peak.minutes, locale)}` : "—"}
+        />
+        {/* ⚠️ **ووقتُ الذروة لا يُرسم بلا ساعةٍ حقيقيّة** (D-797/D-798):
+            الصفوفُ المؤرَّخةُ رجعيّاً بلا ساعة — **وخانةٌ تقول «٩–١١ م»
+            من وسمِ نظامٍ تكذب**، **والغيابُ أصدق** (D-063). */}
+        <Glance
+          icon="clock"
+          label={ar ? "وقت الذروة" : "Prime time"}
+          value={stats.habits.primeHours ? primeLabel(stats.habits.primeHours) : "—"}
+        />
+        <Glance
+          icon="check"
+          label={ar ? "الإكمال" : "Completion"}
+          value={`${num(stats.completionPct, locale)}%`}
+        />
+      </div>
+
       {/* ═══ ذوقُك في هذه المدّة ═══ */}
       {!stats.taste.thin && stats.taste.genres.length > 0 && (
         <>
@@ -276,16 +289,33 @@ export function ReportView({
       )}
 
       {/* ═══ الإحصائيات الكاملة ═══ */}
+      {/* 🆕 **والبابُ صفٌّ يُرى لا سطرٌ رماديٌّ في الذيل** (D-805، حكمُ
+          أحمد: «خيار view full statistics تحت وما هو واضح»): **كلمتان
+          بلون النصِّ الخافت في آخر تمريرةٍ طويلةٍ تُقرآن حاشيةً لا
+          باباً** — **وهو أهمُّ رابطٍ في الصفحة.**
+          🔑 **وهو صفُّ «تقاريرك» في `/stats` نفسُه** (رمزٌ · اسمٌ ·
+          سهم داخل بطاقةٍ محدودة) — **والبابُ من الإحصائيات إلى التقرير
+          ومن التقرير إلى الإحصائيات وجهان لطريقٍ واحد، فيلبسان شكلاً
+          واحداً** (القاعدة ٣). */}
       <Link
         href={`/statistics?p=${stats.period}${stats.offset ? `&o=${stats.offset}` : ""}`}
-        className="mt-7 flex items-center justify-center gap-1.5 text-14 font-bold text-muted hover:text-foreground transition"
+        className="mt-8 flex items-center gap-3 rounded-2xl border border-border bg-surface px-4 py-3 active:opacity-70 transition"
       >
-        {ar ? "الإحصائيات الكاملة" : "View full statistics"}
+        <Icon name="chart" size={18} className="text-accent shrink-0" />
+        <span className="min-w-0 flex-1">
+          <span className="block text-14 font-bold">
+            {ar ? "الإحصائيات الكاملة" : "View full statistics"}
+          </span>
+          <span className="block text-12 text-muted mt-0.5">
+            {ar
+              ? "المحتوى والذوق والعادات بتفصيلها"
+              : "Content, taste and habits in full"}
+          </span>
+        </span>
         {/* **سهمٌ نصّيٌّ لا أيقونةٌ سابعة** — العائلةُ لا تُوسَّع لحرف.
             **وبلا `dir="ltr"`** (D-801): الحرفُ مرآويٌّ في يونيكود
-            **فينقلب مع العربيّة إلى جهة القراءة** — وسهمُ «تابع» يشير
-            حيث يمضي القارئ. */}
-        <span aria-hidden>›</span>
+            **فينقلب مع العربيّة إلى جهة القراءة.** */}
+        <span aria-hidden className="text-muted shrink-0">›</span>
       </Link>
     </div>
   );
