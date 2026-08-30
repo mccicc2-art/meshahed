@@ -5,6 +5,7 @@ import { posterUrl } from "@/lib/media";
 import { num, type Locale } from "@/lib/i18n";
 import { hm, clock, primeLabel } from "@/lib/statsFormat";
 import { ImpossibleDayCard } from "@/components/stats/ImpossibleDayCard";
+import { PlusPreview } from "@/components/stats/PlusPreview";
 import type { PeriodStats } from "@/lib/periodStats";
 
 /**
@@ -28,9 +29,16 @@ const TASTE_COLORS = ["#7C4DFF", "#3DBE6B", "#E5484D", "#6B6B6B"];
 export function ReportView({
   stats,
   locale,
+  preview = false,
 }: {
   stats: PeriodStats;
   locale: Locale;
+  /**
+   * 🆕 **معاينةُ غير المشترك** (D-809، شرطُه المكتوب في مواصفة D-799) —
+   * **الرقمُ وسطرُه مكشوفان وما تحتهما مموَّه.** **وبياناتُه هي التي
+   * تُموَّه، لا أرقامٌ مخترعة** (شرطُه: «لا تعرض بيانات وهمية»).
+   */
+  preview?: boolean;
 }) {
   const ar = locale !== "en";
   const peakBar = Math.max(1, ...stats.buckets.map((b) => b.minutes));
@@ -93,8 +101,12 @@ export function ReportView({
     );
   }
 
-  return (
-    <div className="pb-6">
+  /* **المكشوفُ والمقفل** — قسمةٌ واحدةٌ يقرؤها الوضعان: **من اشترك
+     يراهما متّصلَين، ومن لم يشترك يرى الأوّلَ ثمّ ضباباً.** **ولا نسخةَ
+     ثانيةٌ من الصفحة للمعاينة** (القاعدة ٣). */
+  const openPart = (
+    <>
+
       {/* 🗑️ 🆕 **ونطاقُ التاريخ صعد إلى الاسم** (D-804، حكمُ أحمد:
           «السنة والشهر لا تكتبهم في سطر لوحدهم، خلّهم مع أوّل صفّ —
           your 2026 report مثلاً»): **سطرٌ فيه كلمةٌ واحدةٌ متوسّطةٌ بين
@@ -166,6 +178,11 @@ export function ReportView({
         </p>
       )}
 
+    </>
+  );
+
+  const lockedPart = (
+    <>
       {/* 🔴 🆕 **اليومُ المستحيل** (D-801 — حكمُ أحمد): **يومٌ فيه أكثرُ
           من ٢٤ ساعةً ليس رقماً كبيراً، هو رقمٌ محال** — **والسطرُ الصادقُ
           فوقه يشرح الاسمَ ولا يصلح الصفّ.** فالبطاقةُ تعرض السببَ وتعرض
@@ -386,6 +403,19 @@ export function ReportView({
             **فينقلب مع العربيّة إلى جهة القراءة.** */}
         <span aria-hidden className="text-muted shrink-0">›</span>
       </Link>
+    </>
+  );
+
+  return (
+    <div className="pb-6">
+      {preview ? (
+        <PlusPreview locale={locale} open={openPart} locked={lockedPart} />
+      ) : (
+        <>
+          {openPart}
+          {lockedPart}
+        </>
+      )}
     </div>
   );
 }
