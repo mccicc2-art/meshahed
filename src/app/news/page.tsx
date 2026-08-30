@@ -21,6 +21,8 @@ import { LOOPZ_PERSON } from "@/lib/loopz";
 import { Avatar } from "@/components/Avatar";
 import { SavedFiltersRow } from "@/components/SavedFiltersRow";
 import { sanitizeUiState } from "@/lib/uiState";
+import { FILTER_KEYS, defaultFor } from "@/lib/savedFilters";
+import { redirect } from "next/navigation";
 import { isPlus } from "@/lib/plan";
 import { PublicListsRail, ListCardShell } from "@/components/PublicListsRail";
 import { ListsFilters } from "@/components/ListsFilters";
@@ -185,6 +187,11 @@ export default async function NewsPage({
     award?: string;
     fr?: string;
     lsrc?: string;
+    /** 🆕 «مسحتُ اختياري» — تمنع تطبيقَ الفلتر الافتراضيّ (D-817) */
+    nf?: string;
+    st?: string;
+    se?: string;
+    std?: string;
   }>;
 }) {
   /* ✅ وبوّابةُ D-515 ورحلتُها سقطتا معاً (D-627) — الصفحةُ للضيف
@@ -203,6 +210,23 @@ export default async function NewsPage({
     sp.tab || sp.type
       ? parseDiscoverTab(sp.tab, sp.type)
       : parseDiscoverTab(defaultTab(tabPrefs, "shows"));
+  /* 🆕 **والفلترُ الافتراضيُّ يُطبَّق هنا — لا في العميل** (D-817،
+     تمامُ البند الثاني من خطّة الـ٢٤): **فلترٌ يُطبَّق بعد الرسم يُري
+     القارئَ صفحةً ثمّ يستبدلها**، **والخادمُ يعرف قبل أن يرسم.**
+     🔑 **والشرطُ ثلاثيّ**: **لا معاملَ فلترٍ في الرابط** · **ولا علامةَ
+     `nf`** (D-817: «مسحتُ اختياري» ≠ «لم أختر») · **وللقسم افتراضيٌّ
+     محفوظ.** **وبعد التحويل يحمل الرابطُ معاملاتٍ فلا حلقةَ تحويل.**
+     ⚠️ **والقراءةُ تقع على الرابط العاري وحدَه** — **ولا تؤخّر رابطاً
+     مفلتَراً** — **و`getProfile` مكيَّشةٌ فيتقاسمها `SavedFiltersHost`
+     أدناه** (D-470): **نداءٌ واحدٌ لا اثنان.** */
+  if (!sp.nf && !FILTER_KEYS.some((k) => sp[k as keyof typeof sp])) {
+    const profile = await getProfile();
+    const def = profile
+      ? defaultFor(sanitizeUiState(profile.ui_state).filters, tab)
+      : null;
+    if (def) redirect(`/news?${def.q}&tab=${tab}`);
+  }
+
   /* **وجهةُ الأنمي «الكلّ» لا «فيلم»** (طلب أحمد ١١ أغسطس: «الأنمي في
      ديسكفري لازم يكون له فلتر»): تبويبُه يحمل صفَّي أفلامٍ وصفَّي
      مسلسلات معاً، فلو قُيّد بجهةٍ واحدة لسقط من قائمة الأنواع ما لا
