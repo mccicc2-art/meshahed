@@ -34,7 +34,7 @@ export default async function TrailersPage({
     <div className="space-y-3">
       <header className="flex items-center gap-3 py-1">
         <TrailerBackButton label={t.backAria} fallback={safeReturnPath(params.from)} />
-        <h1 className="flex-1 text-center text-16 font-bold">
+        <h1 className="flex-1 text-center text-15 font-bold">
           {active === "for-you" ? t.trailersForYou : t.trailersTitle}
         </h1>
         <span className="h-9 w-9 shrink-0" />
