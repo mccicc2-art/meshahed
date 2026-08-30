@@ -30,6 +30,7 @@ export function NewListForm({
   /** يُنادى بعد نجاح الإنشاء — الورقة تُغلق نفسها به */
   onCreated,
   collapsed = false,
+  trailing,
 }: {
   locale: Locale;
   onCreated?: () => void;
@@ -45,7 +46,15 @@ export function NewListForm({
    * ⚠️ **وبابُ ورقة الأدوات يبقى مفتوحاً** (`collapsed = false`): من فتح
    * ورقةً اسمُها «قائمة جديدة» لا يُطلب منه ضغطةٌ ثانية.
    */
-  collapsed?: boolean;}) {
+  collapsed?: boolean;
+  /**
+   * 🆕 **جارٌ في صفِّ الزرّ** (D-830) — **يُرسم مع الزرِّ المطويِّ وحدَه**:
+   * **من فتح النموذجَ يكتب اسماً**، **وبابٌ ثانٍ بجانب حقلٍ مفتوحٍ
+   * يزاحم الفعلَ الجاري.** **والحالةُ تُقرأ حيث تسكن** — **ومستدعٍ
+   * يخمّن أنّ النموذجَ مطويٌّ سيخطئ عند أوّل فتح** (D-570).
+   */
+  trailing?: React.ReactNode;
+}) {
   const t = getDict(locale);
   const router = useRouter();
   const [name, setName] = useState("");
@@ -96,16 +105,19 @@ export function NewListForm({
 
   if (collapsed && !open) {
     return (
-      <button
-        type="button"
-        onClick={() => {
-          tap(6);
-          setOpen(true);
-        }}
-        className={buttonClass({ size: "sm" })}
-      >
-        + {t.listNewGroup}
-      </button>
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={() => {
+            tap(6);
+            setOpen(true);
+          }}
+          className={buttonClass({ size: "sm" })}
+        >
+          + {t.listNewGroup}
+        </button>
+        {trailing}
+      </div>
     );
   }
 

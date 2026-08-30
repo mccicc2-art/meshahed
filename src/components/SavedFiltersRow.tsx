@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import type { Locale } from "@/lib/i18n";
+import { getDict, type Locale } from "@/lib/i18n";
 import { Icon } from "@/components/Icon";
 import { buttonClass } from "@/components/ui/Button";
 import { chipClass, chipRow } from "@/components/ui/controls";
@@ -59,6 +59,7 @@ export function SavedFiltersRow({
   plus: boolean;
 }) {
   const ar = locale !== "en";
+  const t = getDict(locale);
   const router = useRouter();
   const sp = useSearchParams();
   const [, start] = useTransition();
@@ -204,7 +205,11 @@ export function SavedFiltersRow({
             className={chipClass(false, "sm", "shrink-0 inline-flex items-center gap-1.5")}
           >
             <Icon name="sparkle-star" size={12} />
-            {ar ? "قائمة ذكيّة" : "Smart list"}
+            {/* 🆕 **والاسمُ من القاموس** (D-830): **بابٌ ثانٍ وُلد في
+                تبويب القوائم يدلّ على هذه الرقاقة** — **واسمان لشيءٍ
+                واحدٍ بين دالٍّ ومدلولٍ عليه يجعلان القارئَ يبحث عن غيرِ
+                ما يراه** (D-703/D-787). */}
+            {t.smartListLabel}
           </button>
         )}
       </div>
