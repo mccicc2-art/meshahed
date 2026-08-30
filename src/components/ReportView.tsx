@@ -34,6 +34,16 @@ export function ReportView({
 }) {
   const ar = locale !== "en";
   const peakBar = Math.max(1, ...stats.buckets.map((b) => b.minutes));
+  /* 🔴 **وشبكةُ الأسماء تُرسى على العمود الأعلى** (D-801، بقياسٍ حيّ):
+     **كنتُ أُظهر كلَّ ثالثٍ ثمّ أضيف اسمَ الذروة فوقها** — **فإذا وقعت
+     الذروةُ بجوار عمودٍ مُسمّىً تراكب الاسمان**: «يوليو» ٢٣ بكسلاً
+     و«أغسطس» ٥٠ في خانتين عرضُ كلٍّ ٢٧ على هاتفٍ ٣٩٠. **والحلُّ ألّا
+     يُستثنى أحد**: تبدأ الشبكةُ من الذروة نفسِها وتمشي كلَّ ثالث،
+     **فالذروةُ مُسمّاةٌ دائماً والمسافاتُ متساويةٌ دائماً.** */
+  const peakIndex = Math.max(
+    0,
+    stats.buckets.findIndex((b) => b.minutes === peakBar && b.minutes > 0),
+  );
   const insight = stats.taste.shift[0];
 
   if (stats.empty) {
@@ -118,7 +128,7 @@ export function ReportView({
           const top = stats.period === "week" && isPeak;
           const showValue = dense ? isPeak : b.minutes > 0;
           const step = stats.buckets.length > 20 ? 5 : stats.buckets.length > 7 ? 3 : 1;
-          const showLabel = i % step === 0 || isPeak;
+          const showLabel = (((i - peakIndex) % step) + step) % step === 0;
           return (
             <div key={`${b.label}-${i}`} className="flex-1 min-w-0 flex flex-col items-center gap-1.5">
               <span className="text-12 text-muted tabular-nums" dir="ltr">
