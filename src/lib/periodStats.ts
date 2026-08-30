@@ -151,6 +151,12 @@ export interface PeriodStats {
   streak: number;
   /** أيّامٌ فيها مشاهدة — حلقةُ «٥ / ٧ أيّام» */
   activeDays: number;
+  /**
+   * 🆕 **اليومُ المستحيل** (D-801 — حكمُ أحمد): **يومٌ مجموعُه أكثرُ من
+   * ٢٤ ساعةً ليس مشاهدةً، هو أثرُ تعليم.** **والحكمُ يقع هنا مرّةً**
+   * ليقرأه التقريرُ والتبويبات، **فلا يكتشف كلُّ سطحٍ الاستحالةَ وحدَه.**
+   */
+  impossible: { days: number; worstMinutes: number };
 
   mix: { key: "shows" | "movies" | "anime"; minutes: number; pct: number }[];
   status: { started: number; completed: number; inProgress: number; rewatched: number };
@@ -567,6 +573,14 @@ export async function buildPeriodStats(
 
   const totalHeat = heat.reduce((n, band) => n + band.reduce((m, v) => m + v, 0), 0);
 
+  /* ═══ اليومُ المستحيل — **وحدُّه ١٤٤٠ دقيقةً، وهو حدُّ اليوم نفسِه** ═══ */
+  let impossibleDays = 0;
+  let worstDayMin = 0;
+  for (const v of byDay.values()) {
+    if (v > 1440) impossibleDays += 1;
+    if (v > worstDayMin) worstDayMin = v;
+  }
+
   return {
     period,
     offset,
@@ -584,6 +598,7 @@ export async function buildPeriodStats(
     peak,
     streak,
     activeDays: byDay.size,
+    impossible: { days: impossibleDays, worstMinutes: worstDayMin },
     mix: (["shows", "movies", "anime"] as const).map((k) => ({
       key: k,
       minutes: mixMin[k],

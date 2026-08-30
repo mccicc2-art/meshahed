@@ -1891,6 +1891,15 @@ const ar = {
   seasonWhenNow: "شاهدتها الآن",
   seasonWhenNowHint: "نبقيها بتاريخ اليوم",
   seasonWhenDone: "ضُبطت تواريخ المشاهدة",
+  /* 🆕 **اليومُ المستحيل** (D-801) — **الرقمُ يُقال كما هو ثمّ يُفسَّر**:
+     من رأى «٨٣٤ ساعةً في يوم» يستحقّ سببَها لا إخفاءها. */
+  impossibleTitle: "يوم فيه أكثر من ٢٤ ساعة",
+  impossibleBody:
+    "علّمتَ عدداً كبيراً من الحلقات في يوم واحد، فحُسبت مدّتها كلّها على ذلك اليوم. نقدر ننقلها إلى مواعيد عرضها الأصلية فيصير تقريرك على حقيقته.",
+  impossibleCta: "رتّبها على مواعيد العرض",
+  impossibleDone: "نُقلت المشاهدات إلى مواعيد عرضها",
+  impossibleMore: "بقيت أعمال — اضغط مرّة أخرى",
+  impossibleStuck: "أعمال بلا تاريخ عرض معروف بقيت على يومها",
   plusName: "Loopz+",
   plusGateTitle: "هذي من مزايا Loopz+",
   plusGateHint:
@@ -3406,6 +3415,13 @@ const en: Dict = {
   seasonWhenNow: "I watched them now",
   seasonWhenNowHint: "We keep today's date",
   seasonWhenDone: "Watch dates set",
+  impossibleTitle: "A day with more than 24 hours in it",
+  impossibleBody:
+    "You marked a lot of episodes on a single day, so their whole runtime landed on that day. We can move them to their original air dates and your report becomes true.",
+  impossibleCta: "Move them to air dates",
+  impossibleDone: "Watches moved to their air dates",
+  impossibleMore: "More titles left — tap again",
+  impossibleStuck: "Titles with no known air date stayed where they were",
   plusName: "Loopz+",
   plusGateTitle: "This is a Loopz+ feature",
   plusGateHint:

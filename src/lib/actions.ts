@@ -1661,6 +1661,195 @@ export async function backdateSeasonWatches(input: {
   return { updated: payload.length };
 }
 
+/**
+ * ============ ترميمُ الأيّام المستحيلة (D-801 — حكمُ أحمد) ============
+ *
+ * **نصُّه**: «**أيّ يوم عنده ساعات أكثر من ٢٤ ساعة معناته فيه مشكلة —
+ * لازم وقت المشاهدة يتغيّر ونحطّه في نفس وقت الإصدار**».
+ *
+ * 🔑 **والعلّةُ واحدةٌ معروفة**: `watched_at` هو **لحظةُ التعليم** لا
+ * لحظةُ المشاهدة — **ومن نقل مكتبتَه في جلسةٍ واحدة كوّم ثمانمئةَ ساعةٍ
+ * على يومِ سبتٍ واحد.** **ورقمٌ يقول «٨٣٤ ساعةً في يوم» لا يُصلحه
+ * تنسيقٌ ولا صياغة** — **الصفُّ نفسُه خاطئٌ فيُصلَح الصفّ.**
+ *
+ * ⚖️ **ولا يُمسّ إلّا ما استحال**: الصفوفُ على أيّامٍ دون ٢٤ ساعةً تبقى
+ * كما هي — **فمن علّم حلقتين مساءَ أمسِ لم يكذب، ولا حقَّ لي في تاريخه.**
+ *
+ * ⚖️ **والتاريخُ من TMDB أو لا يتغيّر** (D-063): **ما لا نعرف بثَّه يبقى
+ * على يومه ويُعدُّ في `stuck`** — **واختراعُ تاريخٍ ليصغر الرقمُ كذبةٌ
+ * أهدأُ من الأولى لا أصدق.**
+ *
+ * 🕛 **والساعةُ منتصفُ النهار بالضبط** — **وسمُ D-798 نفسُه**: هذه الصفوفُ
+ * تعرف يومَها ولا تعرف ساعتَها، **فتُستبعد من خريطة الحرارة ومن وقت
+ * الذروة** بدل أن تملأهما بوسمِ نظام.
+ *
+ * ⚙️ **وميزانيّةُ النداءات محدودةٌ في كلِّ جولة**: **مكتبةٌ من مئة موسمٍ
+ * لا تُنادى دفعةً واحدةً على مهلة الخادم** — فتُصلَح الأكبرُ أوّلاً
+ * ويُعاد الباقي في `remaining`، **والزرُّ يقول للقارئ أنّ عليه ضغطةً
+ * أخرى** بدل أن يصمت عن نصف العمل (D-217).
+ */
+const DAY_MINUTES = 1440;
+const SEASON_BUDGET = 40;
+const MOVIE_BUDGET = 40;
+
+export async function repairImpossibleDays(): Promise<{
+  moved: number;
+  remaining: number;
+  stuck: number;
+}> {
+  const { supabase, user } = await requireUser("repair", 4, 60_000);
+  const { runtimeMinutes } = await import("@/lib/watchTime");
+
+  /* ═══ ١ — كلُّ التاريخ، فالاستحالةُ لا تعرف حدودَ فترة ═══ */
+  type Ep = {
+    show_tmdb_id: number;
+    season_number: number;
+    episode_number: number;
+    runtime: number | null;
+    watched_at: string;
+  };
+  type Mv = { movie_tmdb_id: number; runtime: number | null; watched_at: string };
+
+  const eps: Ep[] = [];
+  for (let from = 0; from < 100_000; from += 1000) {
+    const { data, error } = await supabase
+      .from("watched_episodes")
+      .select("show_tmdb_id, season_number, episode_number, runtime, watched_at")
+      .eq("user_id", user.id)
+      .range(from, from + 999);
+    if (error) fail(error);
+    if (!data?.length) break;
+    eps.push(...(data as Ep[]));
+    if (data.length < 1000) break;
+  }
+  const { data: movieData, error: movieError } = await supabase
+    .from("watched_movies")
+    .select("movie_tmdb_id, runtime, watched_at")
+    .eq("user_id", user.id);
+  if (movieError) fail(movieError);
+  const mvs = (movieData ?? []) as Mv[];
+
+  /* ═══ ٢ — أيُّ يومٍ تجاوز اليومَ نفسَه ═══ */
+  const byDay = new Map<string, number>();
+  const add = (iso: string, mins: number) =>
+    byDay.set(iso.slice(0, 10), (byDay.get(iso.slice(0, 10)) ?? 0) + mins);
+  for (const e of eps) add(e.watched_at, runtimeMinutes("episode", e.runtime));
+  for (const m of mvs) add(m.watched_at, runtimeMinutes("movie", m.runtime));
+  const badDays = new Set([...byDay].filter(([, v]) => v > DAY_MINUTES).map(([d]) => d));
+  if (badDays.size === 0) return { moved: 0, remaining: 0, stuck: 0 };
+
+  const badEps = eps.filter((e) => badDays.has(e.watched_at.slice(0, 10)));
+  const badMvs = mvs.filter((m) => badDays.has(m.watched_at.slice(0, 10)));
+
+  /* ═══ ٣ — الأكبرُ أوّلاً: موسمٌ فيه ثمانون حلقةً قبل موسمٍ فيه اثنتان ═══ */
+  const seasonCount = new Map<string, number>();
+  for (const e of badEps) {
+    const k = `${e.show_tmdb_id}:${e.season_number}`;
+    seasonCount.set(k, (seasonCount.get(k) ?? 0) + 1);
+  }
+  const seasonsRanked = [...seasonCount].sort((a, b) => b[1] - a[1]).map(([k]) => k);
+  const seasonsNow = seasonsRanked.slice(0, SEASON_BUDGET);
+  const moviesRanked = [...new Set(badMvs.map((m) => m.movie_tmdb_id))];
+  const moviesNow = moviesRanked.slice(0, MOVIE_BUDGET);
+  const remaining =
+    seasonsRanked.length - seasonsNow.length + (moviesRanked.length - moviesNow.length);
+
+  const { getSeason, getMovie } = await import("@/lib/tmdb");
+  const airOf = new Map<string, string>();
+  const releaseOf = new Map<number, string>();
+  await Promise.all([
+    ...seasonsNow.map(async (k) => {
+      const [show, season] = k.split(":").map(Number);
+      try {
+        const detail = await getSeason(show, season);
+        for (const e of detail.episodes ?? []) {
+          if (e.air_date) airOf.set(`${show}:${season}:${e.episode_number}`, e.air_date);
+        }
+      } catch {
+        /* **نداءٌ سقط يترك صفَّه على يومه** — ولا يُخترع له تاريخ (D-063) */
+      }
+    }),
+    ...moviesNow.map(async (id) => {
+      try {
+        const m = await getMovie(id);
+        if (m.release_date) releaseOf.set(id, m.release_date);
+      } catch {
+        /* كما فوق */
+      }
+    }),
+  ]);
+
+  /* ═══ ٤ — الصفوفُ الجديدة، ولا صفَّ يُكتب ليبقى مكانَه ═══ */
+  const today = new Date().toISOString().slice(0, 10);
+  const usable = (d: string | undefined, was: string) =>
+    !!d && d <= today && d >= "1900-01-01" && d !== was.slice(0, 10);
+
+  const epPayload: {
+    user_id: string;
+    show_tmdb_id: number;
+    season_number: number;
+    episode_number: number;
+    runtime: number | null;
+    watched_at: string;
+  }[] = [];
+  let stuck = 0;
+  for (const e of badEps) {
+    const air = airOf.get(`${e.show_tmdb_id}:${e.season_number}:${e.episode_number}`);
+    if (!usable(air, e.watched_at)) {
+      if (!air) stuck += 1;
+      continue;
+    }
+    epPayload.push({
+      user_id: user.id,
+      show_tmdb_id: e.show_tmdb_id,
+      season_number: e.season_number,
+      episode_number: e.episode_number,
+      runtime: e.runtime,
+      watched_at: `${air}T12:00:00Z`,
+    });
+  }
+  const mvPayload: {
+    user_id: string;
+    movie_tmdb_id: number;
+    runtime: number | null;
+    watched_at: string;
+  }[] = [];
+  for (const m of badMvs) {
+    const rel = releaseOf.get(m.movie_tmdb_id);
+    if (!usable(rel, m.watched_at)) {
+      if (!rel) stuck += 1;
+      continue;
+    }
+    mvPayload.push({
+      user_id: user.id,
+      movie_tmdb_id: m.movie_tmdb_id,
+      runtime: m.runtime,
+      watched_at: `${rel}T12:00:00Z`,
+    });
+  }
+
+  for (let i = 0; i < epPayload.length; i += 1000) {
+    const { error } = await supabase
+      .from("watched_episodes")
+      .upsert(epPayload.slice(i, i + 1000), {
+        onConflict: "user_id,show_tmdb_id,season_number,episode_number",
+      });
+    if (error) fail(error);
+  }
+  if (mvPayload.length) {
+    const { error } = await supabase
+      .from("watched_movies")
+      .upsert(mvPayload, { onConflict: "user_id,movie_tmdb_id" });
+    if (error) fail(error);
+  }
+
+  revalidatePath("/");
+  revalidatePath("/stats");
+  revalidatePath("/reports");
+  revalidatePath("/statistics");
+  return { moved: epPayload.length + mvPayload.length, remaining, stuck };
+}
+
 export async function toggleMovieWatched(input: {
   movieTmdbId: number;
   runtime: number | null;
