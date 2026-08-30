@@ -2,6 +2,7 @@ import { getProfile } from "@/lib/data";
 import { ThemeCookieSync } from "./ThemeCookieSync";
 import { FontPrefsSync } from "./FontPrefsSync";
 import { UiStateSync } from "./UiStateSync";
+import { TimezoneSync } from "./TimezoneSync";
 
 /**
  * 🆕 **مزامنةُ الحساب — مضيفٌ لا يُلغى في الإعدادات** (D-498).
@@ -43,6 +44,13 @@ export async function AccountSync() {
       {/* والتلميحاتُ والجولة سواء: الحسابُ ينزل إلى الجهاز والجهازُ يصعد
           إليه مرةً — ولا يُركَّب قبل الهجرة */}
       {profile.ui_state != null && <UiStateSync uiState={profile.ui_state} />}
+      {/* 🆕 **والمنطقةُ الزمنيّةُ تصعد من الجهاز إلى الحساب** (D-806):
+          **الخادمُ هو الذي يحسب «وقت الذروة» و«أكثف يوم» وخريطةَ
+          المشاهدة** — **ولا يعرف ساعةَ القارئ إلّا إن رفعها جهازُه.**
+          ⚠️ **ولا يُشترط عمودٌ مملوءٌ للتركيب** بخلاف أخواته: **الغائبُ
+          هو بالضبط ما جاء هذا المكوّنُ ليملأه** (ومن قبل الهجرة ١٦٠
+          يفشل النداءُ صامتاً). */}
+      <TimezoneSync saved={profile.timezone ?? null} />
     </>
   );
 }
