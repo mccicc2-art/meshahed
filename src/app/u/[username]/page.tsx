@@ -66,6 +66,7 @@ import { capCards } from "@/lib/cardCount";
 import { coverBareControl, HEADER_ICON } from "@/components/ui/controls";
 import { browseGenreName, groupByGenre } from "@/lib/browse";
 import { densityVars } from "@/lib/density";
+import { themeAccent, accentVars } from "@/lib/themes";
 
 /**
  * صفحة المستخدم العامة — بهيئة الرئيسية نفسها.
@@ -110,6 +111,14 @@ export default async function PublicProfilePage({
   /* التخصيص يُقرأ قبل الجلب لا بعده (D-129): قسمٌ أخفاه صاحبه لا يستحقّ
      نداءً — و«فنّانوك» خاصّةً دالّةٌ إضافية لا داعي لدفعها لمن أطفأها */
   const prefs = sanitizeProfilePrefs(profile.profile_prefs);
+
+  /* 🆕 **لونُ صاحبِ الصفحة** (D-825) — **يُقرأ من العرض العامّ ويُطبَّق
+     على جذر الصفحة أدناه.** **والرمزُ المجهولُ يسقط إلى «لا لون»**
+     فتبقى الصفحةُ بلون الزائر — **وهو السلوكُ القديم بالضبط** (D-063). */
+  const accentStyle = (() => {
+    const a = themeAccent(profile.theme_accent);
+    return a ? (accentVars(a) as React.CSSProperties) : null;
+  })();
   const wants = (s: ProfileSection) => prefs.order.includes(s);
 
   const [
@@ -783,7 +792,19 @@ export default async function PublicProfilePage({
     /* 🆕 **كثافةُ صاحب الصفحة تُكتب على جذرها** (D-441) — **فملصقاتُ
        ملفّه بمقاسه هو لا بمقاس قارئه**: الصفحةُ صفحتُه، **ومن يزورك يرى
        ما اخترتَه أنت.** */
-    <div className="space-y-5" style={densityVars(prefs.density)}>
+    <div
+      className="space-y-5"
+      /* 🆕 **ولونُ صاحبِ الصفحة معها** (D-825، حكمُ أحمد: «الي يدخل
+         حسابه يشوف الألوان المختارة») — **نظيرُ الكثافة فوقه حرفاً**
+         (D-441: «من يزورك يرى ما اخترتَه أنت»).
+         🔑 **وحاويةٌ لا `:root`**: **متغيّراتُ CSS تُورَّث** — **فكلُّ
+         ما في الصفحة يلبس لونَه بلا سطرٍ واحدٍ في مكوّن**، **وشريطُ
+         التطبيق وقائمتُه السفليّةُ خارجَها فتبقى بلونِ الزائر**:
+         **ملفُّه يلبس لونَه، والتطبيقُ يبقى تطبيقَ قارئه.**
+         ⚠️ **وستّةُ متغيّراتٍ لا ثمانيةَ عشر**: **لا خلفيّةَ ولا نصّ**
+         — **فصفحةُ زائرٍ تقلب أرضيّتَها عليه ليست تخصيصاً.** */
+      style={{ ...densityVars(prefs.density), ...(accentStyle ?? {}) }}
+    >
       {/* ===== الغلاف ===== */}
       <section>
         {/* 🔴 🆕 **والغلافُ استعاد ما أخذه النتوء** (D-651، بلاغُ أحمد
