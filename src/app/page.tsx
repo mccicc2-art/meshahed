@@ -1604,6 +1604,10 @@ async function HomeBody({
                 days={weekDays}
                 entries={weekEntries}
                 locale={locale}
+                /* 🆕 **والعنوانُ بابُ التقويم** (D-828/D-198): **كلُّ صفٍّ
+                   يُعرض له بابٌ يُفتح على صفحةٍ كاملة** — **والشريطُ كان
+                   الصفَّ الوحيدَ بلا باب.** */
+                href="/calendar"
                 action={
                   <HomeOrderButton label={t.custReorder} word={t.allWord} />
                 }
