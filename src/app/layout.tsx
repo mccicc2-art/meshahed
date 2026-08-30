@@ -14,7 +14,7 @@ import { SwRegister } from "@/components/SwRegister";
 import { cookies } from "next/headers";
 import { getT } from "@/lib/locale";
 import { getDict, isRtl } from "@/lib/i18n";
-import { themeById, themeCss } from "@/lib/themes";
+import { themeById, themeCss, themeAccent, accentCss } from "@/lib/themes";
 import { FONT_UI_COOKIE, FONT_CONTENT_COOKIE, fontAttr, sanitizeFontSize } from "@/lib/fontPrefs";
 import { HeaderShell } from "@/components/HeaderShell";
 import { ChromeAutoHide } from "@/components/ChromeAutoHide";
@@ -118,6 +118,11 @@ export default async function RootLayout({
   // يؤخّر أول بايت للصفحة كلها ~نصف ثانية. ThemeCookieSync يهاجر القدامى.
   const cookieStore = await cookies();
   const theme = themeById(cookieStore.get("theme")?.value);
+  /* 🆕 **ولونُ التمييز الشخصيُّ من كوكيٍّ كالثيم سواء** (D-825):
+     **قراءةُ البروفايل هنا تؤخّر أوّلَ بايتٍ للصفحة كلِّها** (حجّةُ
+     السطر فوقه بحرفها) — **والعمودُ هو المصدرُ عبر الأجهزة، والكوكيُّ
+     هو الذي يرسم.** **والمجهولُ يسقط إلى «لا لون» فيبقى لونُ الثيم.** */
+  const accent = themeAccent(cookieStore.get("accent")?.value);
 
   /* حجم الخطّ من كوكي كالثيم سواء: الخادم يكتب `data-fs-*` على الجذر
      قبل أول رسمة فلا وميضَ ولا فرقَ ترطيب. الافتراضي بلا سمةٍ أصلاً. */
@@ -185,6 +190,13 @@ export default async function RootLayout({
         <meta name="color-scheme" content={theme.id === "daylight" ? "light" : "dark"} />
         {/* ألوان الثيم متغيّرات CSS مبنية من قائمة ثابتة في themes.ts — لا مدخلات مستخدم */}
         <style dangerouslySetInnerHTML={{ __html: themeCss(theme) }} />
+        {/* 🆕 **ولونُ التمييز بعده فيغلبه** (D-825) — **ستّةُ متغيّراتٍ
+            لا ثمانيةَ عشر**: **الخلفيّةُ والنصُّ ليسا للاختيار** (من
+            ملكهما ملك أن يصنع تطبيقاً لا يُقرأ).
+            ⚠️ **و`--verified` و`--brand-*` لا تتبعانه**: **الأولى معنًى
+            ثابتٌ عبر الثيمات** (D-437: الأصفرُ توثيق) **والثانية هويّةٌ
+            لا واجهة** (تعليقُ `themeCss` بنصّه). */}
+        {accent && <style dangerouslySetInnerHTML={{ __html: accentCss(accent) }} />}
         {/* هل نحن داخل تطبيقٍ مثبّت؟ سطرٌ واحد قبل أول رسمة.
             يجري هنا لا في تأثيرٍ بعد التركيب: لو تأخّر لرُسمت الترويسة
             مرّةً فوق الساعة ثم قفزت — والقفزة أسوأ من التراكب.
