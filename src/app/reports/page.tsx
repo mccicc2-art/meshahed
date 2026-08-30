@@ -4,7 +4,12 @@ import Link from "next/link";
 import { getProfile, getUser } from "@/lib/data";
 import { getT } from "@/lib/locale";
 import { isPlus } from "@/lib/plan";
-import { asStatsPeriod, buildPeriodStats, type StatsPeriod } from "@/lib/periodStats";
+import {
+  asStatsPeriod,
+  buildPeriodStats,
+  statsRange,
+  type StatsPeriod,
+} from "@/lib/periodStats";
 import { ReportView } from "@/components/ReportView";
 import { SettingsHeader } from "@/components/settings/SettingsHeader";
 import { PlusPill } from "@/components/ui/PlusPill";
@@ -53,12 +58,19 @@ export default async function ReportsPage({
 
   return (
     <div>
-      {/* 🆕 **ورقاقةُ PLUS بجانب الاسم** (D-801 — الصورة المرفقة):
+      {/* 🆕 **والمدّةُ في الاسم لا في سطرٍ تحته** (D-804، حكمُ أحمد):
+          **«٢٠٢٦» وحدَها في سطرٍ متوسّطٍ تأخذ ارتفاعَ سطرٍ كاملٍ لتقول
+          كلمةً** — **والترويسةُ تقولها في الصفِّ نفسِه بلا زيادةِ
+          بكسل.** ⚠️ **و`statsRange` نداءٌ نقيٌّ بلا قاعدة** فلا يكلّف
+          الترويسةَ انتظارَ الجسم، **وهي الدالّةُ نفسُها التي يقرؤها
+          `buildPeriodStats`** — **فلا تاريخان لمدّةٍ واحدة** (D-145).
+
+          🆕 **ورقاقةُ PLUS بجانب الاسم** (D-801 — الصورة المرفقة):
           **الصفحةُ مدفوعةٌ كلُّها**، **ووسمٌ يقول ذلك عند بابها أصدقُ من
           قفلٍ يُكتشف بعد الدخول** — ولا يُرسم لغير المشترك، فبابُه هو
           شاشةُ الثمن نفسُها. */}
       <SettingsHeader
-        title={ar ? "تقريرك" : "Your Report"}
+        title={`${ar ? "تقريرك" : "Your Report"} · ${statsRange(period, 0, locale).label}`}
         badge={plus ? <PlusPill /> : undefined}
         fallbackHref="/stats"
         action={plus ? <ShareCard locale={locale} icon /> : undefined}
