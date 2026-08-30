@@ -12,6 +12,7 @@ import { ShareCard } from "@/components/ShareCard";
 import { StatsRangeMenu } from "@/components/StatsRangeMenu";
 import { SettingsHeader } from "@/components/settings/SettingsHeader";
 import { Icon } from "@/components/Icon";
+import { PlusPill } from "@/components/ui/PlusPill";
 
 /**
  * الإحصائيات — **شكلٌ سلّمه أحمد** (D-493).
@@ -79,13 +80,22 @@ export default async function StatsPage({
           <span className="block text-14 font-bold">
             {locale === "en" ? "Your reports" : "تقاريرك"}
           </span>
+          {/* 🆕 **والجملةُ تقول ما فيها مرّةً واحدة** (D-803): كانت
+              «**أسبوعك** و**شهرك** و**سنتك** — من مزايا Loopz+»،
+              **وثلاثةُ ضمائرَ ثمّ وسمُ خطّةٍ في سطرِ شرحٍ من اثنتي عشرة
+              كلمةً يُقرأ إعلاناً لا وصفاً.** */}
           <span className="block text-12 text-muted mt-0.5">
-            {locale === "en"
-              ? "Your week, your month and your year — a Loopz+ feature."
-              : "أسبوعك وشهرك وسنتك — من مزايا Loopz+."}
+            {locale === "en" ? "Your week, month and year." : "أسبوعك وشهرك وسنتك."}
           </span>
         </span>
-        <Icon name="sparkle-star" size={16} className="text-accent shrink-0" />
+        {/* 🆕 **والوسمُ رقاقةٌ لا نجمة** (D-803، حكمُ أحمد على لقطةٍ
+            محوَّطة): **«من مزايا Loopz+» جملةٌ في سطرِ الشرح، والرقاقةُ
+            تقولها بلا كلمة** — **ووسمٌ وجملةٌ يقولان الشيءَ مرّتين.**
+            🔑 **وهي `PlusPill` نفسُها التي في ترويستَي «تقريرك»
+            و«الإحصائيات الكاملة»** (D-801) — **فالقارئُ يرى الوسمَ
+            نفسَه عند الباب وخلفه**، **ونجمةٌ هنا ورقاقةٌ هناك وسمان
+            لمعنًى واحد** (القاعدة ٣). */}
+        <PlusPill />
       </Link>
     </div>
   );
