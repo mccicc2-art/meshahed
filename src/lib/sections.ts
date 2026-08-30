@@ -18,6 +18,9 @@ import {
 } from "./tmdb";
 import { getFollowedArtists } from "./data";
 import { railGuard, topChartRail } from "./topChart";
+/* 🆕 **حكمُ IMDb لصفِّ «أفضل ٢٥»** (D-827) — **انتقل مع مصدره من
+   `news/page.tsx`**، فلا يبقى نصفُ الصفِّ في صفحةٍ ونصفُه هنا. */
+import { withImdbRatings, rankByImdb } from "./omdb";
 import type { Locale } from "./i18n";
 import type { RailWin } from "./browse";
 
@@ -113,6 +116,16 @@ function shuffle<T>(rows: T[]): T[] {
 export type SectionKey =
   | "most-popular"
   | "top-ten"
+  /**
+   * 🆕 **«أفضل ٢٥ هذي السنة» — بابٌ لصفٍّ كان بلا باب** (D-827، لقطةُ
+   * أحمد: صفّان من أربعةٍ بلا «الكل»).
+   *
+   * 🔑 **ومصدرُه انتقل إلى هنا من `news/page.tsx`** — **وهو بالضبط ما
+   * وُجد هذا الملفُّ لأجله** (نصُّ رأسه: «أفضل ٥٠ عاش في ثلاثة مواضع
+   * فتبدّل مصدرُه أربع مرّات»): **صفٌّ مصدرُه في صفحةٍ وصفحةٌ تفتحه
+   * بمصدرٍ ثانٍ تعرض غيرَ ما ضُغط** (D-199).
+   */
+  | "top-25"
   | "upcoming"
   | "in-cinemas"
   | "airing-now"
@@ -176,6 +189,8 @@ export const SECTION_TITLE_KEY: Record<
     anime: "mostPopularAnime",
   },
   "top-ten": { movie: "top10Movies", tv: "top10Series", anime: "top10Anime" },
+  /* **والاسمُ من مفاتيح الصفِّ نفسِها** (D-703): ما يُضغط هو ما يُقرأ */
+  "top-25": { movie: "top50Movies", tv: "top50Series", anime: "top50AnimeMovies" },
   upcoming: { movie: "comingSoon", tv: "comingSoon", anime: "upcomingAnime" },
   "in-cinemas": { movie: "inCinemas", tv: "inCinemas", anime: "animeInCinemas" },
   "airing-now": { movie: "airingNowAnime", tv: "airingNowAnime", anime: "airingNowAnime" },
@@ -201,16 +216,16 @@ export function sectionHref(key: SectionKey, media: SectionMedia, search?: strin
   return `/discover/${key}${qs ? `?${qs}` : ""}`;
 }
 
+/**
+ * 🔴 🆕 **ويُشتقُّ من `SECTION_TITLE_KEY` لا يُعدَّد بيدٍ** (D-827):
+ * **كان اتحاداً مكتوباً حرفاً حرفاً** — **فقسمٌ يُضاف إلى النوع وإلى
+ * الخريطة ويُنسى هنا يردّ `notFound()`**، **وهو بابٌ يُفتح على لا
+ * شيءٍ لا عطلٌ يُرى** (وقد كاد يقع في هذه الدفعة نفسِها).
+ * 🔑 **والخريطةُ لا تُنسى لأنّ الصفحةَ لا تُرسم بلا عنوان** — **فما
+ * يُشتقُّ منها لا يفترق عنها.**
+ */
 export function isSectionKey(v: string): v is SectionKey {
-  return (
-    v === "most-popular" ||
-    v === "top-ten" ||
-    v === "upcoming" ||
-    v === "in-cinemas" ||
-    v === "airing-now" ||
-    v === "from-artists" ||
-    v === "my-row"
-  );
+  return Object.prototype.hasOwnProperty.call(SECTION_TITLE_KEY, v);
 }
 
 export function isSectionMedia(v: string | undefined): v is SectionMedia {
@@ -489,6 +504,30 @@ export async function buildSection(
           "popularity.desc",
         );
         return guard(rows);
+      }
+
+      /**
+       * 🆕 **«أفضل ٢٥ هذي السنة»** (D-827) — **نُقل حرفاً من
+       * `bestOfYear` في `news/page.tsx`**، **والذي تبدّل شيئان لا
+       * ثالثَ لهما**: **الحدُّ صار `limit`** (كان ٢٥ ثابتاً) —
+       * **فالصفحةُ تعمّق ما يعرضه الصفّ ولا تغيّره** (D-199) —
+       * **والبِركةُ تتّسع معه** بهامشٍ ثابت (درسُ D-322: بِركةٌ بحجم
+       * الحدّ تُفسد الحاجزَ فوقها).
+       *
+       * ⚠️ **والسنةُ تعلو على الحقبة المختارة** — **بنصِّ التعليق
+       * الأصليّ**: «من اختار التسعينات ثمّ قرأ عنواناً يقول هذي السنة
+       * ينتظر هذي السنة» (D-141).
+       */
+      case "top-25": {
+        const y = new Date().getFullYear();
+        const rows = await topByFilter(
+          media === "tv" ? "tv" : "movie",
+          { ...base, genreIds, from: `${y}-01-01`, to: `${y}-12-31` },
+          Math.min(200, Math.max(60, limit * 2.5)),
+          "vote_count.desc",
+        );
+        const rated = await withImdbRatings(rows);
+        return guard(rankByImdb(rated, { want: limit }));
       }
 
       case "my-row": {
