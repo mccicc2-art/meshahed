@@ -136,18 +136,16 @@ async function bestOfYear(
   base: DiscoverFilter = {},
   genreIds?: number[],
 ): Promise<SearchResult[]> {
-  const y = new Date().getFullYear();
-  const rows = await topByFilter(
-    kind,
-    /* **والحقبةُ المختارة تسقط أمام السنة** (`from`/`to` بعد النشر): من
-       اختار «التسعينات» ثم قرأ عنواناً يقول «هذي السنة» ينتظر هذي السنة
-       — **وصفٌّ يخالف عنوانَه أسوأ من صفٍّ يتجاهل محوراً واحداً** (D-141). */
-    { ...base, genreIds, from: `${y}-01-01`, to: `${y}-12-31` },
-    60,
-    "vote_count.desc",
+  /* ✅ 🆕 **والمصدرُ انتقل إلى `sections.ts`** (D-827): **كان مكتوباً
+     هنا وحدَه فلم يكن للصفِّ بابٌ يُفتح** — **وصفحةٌ تُبنى بمصدرٍ ثانٍ
+     تعرض غيرَ ما ضُغط** (D-199)، **وهو العطلُ الذي وُجد هذا الملفُّ
+     لمنعه** (نصُّ رأس `sections.ts`). **فهذه غلافٌ يحفظ التوقيعَ
+     ويُبقي `localizeRows` حيث كانت.** */
+  const ranked = await buildSection(
+    "top-25",
+    { media: kind, base, genreIds, active: false, locale },
+    25,
   );
-  const rated = await withImdbRatings(rows);
-  const ranked = rankByImdb(rated, { want: 25 });
   /* **والعناوينُ بلغة القارئ كأيّ رفّ** — نفسُ `localizeRows` التي
      يستعملها `topChartRail`، ولا نسخةَ ثانية. */
   const l = await localizeRows(
@@ -1597,6 +1595,12 @@ function TopTenView({
       icon={mt === "movie" ? "film" : "tv"}
       items={rows}
       href={sectionHref("top-ten", mt, winQs(qs, mt === "movie" ? rails.m : rails.s))}
+      /* 🔴 🆕 **و«الكل» كان غائباً والبابُ محسوبٌ** (D-827، لقطةُ أحمد):
+         `PosterRail` ترسم الرابطَ بشرط `href && seeAllLabel` — **فكان
+         `sectionHref` يُحسب في كلِّ رسمةٍ ثمّ يُرمى**، **وصفٌّ بلا باب
+         يقول إنّ ما تراه هو كلُّ ما هناك** (D-198 بنصّها)، **وصفحةُ
+         القسم تعرض ستّين لا عشرة.** */
+      seeAllLabel={t.seeAll}
     />
   );
 }
@@ -1613,7 +1617,7 @@ function Top25View({
   lib: LibCtx;
   ctx: CuratedCtx;
 }) {
-  const { t } = ctx;
+  const { t, qs } = ctx;
   if (rows.length === 0) return null;
   return (
     <RankedRail
@@ -1621,6 +1625,11 @@ function Top25View({
       icon={mt === "movie" ? "film" : "tv"}
       items={rows}
       lib={lib}
+      /* 🆕 **وبابُه فُتح** (D-827): **كان الصفَّ الوحيدَ بلا قسمٍ
+         أصلاً** — **فبُني القسمُ من مصدره نفسِه** (D-199)، **ولا
+         يُوعَد بما لا يُسلَّم** (D-217). */
+      href={sectionHref("top-25", mt, qs)}
+      seeAllLabel={t.seeAll}
     />
   );
 }
