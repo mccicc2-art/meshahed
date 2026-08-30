@@ -145,7 +145,7 @@ export function VerifyScreen({
           <VerifiedBadge t={t} />
           <h2 className="text-15 font-bold">{t.verifyTitle}</h2>
         </div>
-        <p className="mt-2 text-13 text-muted leading-relaxed">{t.verifySub}</p>
+        <p className="mt-2 text-14 text-muted leading-relaxed">{t.verifySub}</p>
         {/* ⚖️ **وهذا السطرُ ليس زينةً**: حكمُ أحمد «التوثيق لا يُباع ولا
             يأتي تلقائيّاً مع Plus» — **وقولُه في الشاشة نفسِها هو ما
             يمنع صاحبَ البلس من انتظاره مجّاناً.** */}
@@ -161,7 +161,7 @@ export function VerifyScreen({
       ) : statusLabel ? (
         <section className="rounded-2xl border border-border bg-surface-2 p-4">
           <p className="text-14 font-bold">{statusLabel}</p>
-          {state.note && <p className="mt-1.5 text-13 text-muted leading-relaxed">{state.note}</p>}
+          {state.note && <p className="mt-1.5 text-12 text-muted leading-relaxed">{state.note}</p>}
           {state.status === "pending" && (
             <p className="mt-1.5 text-12 text-muted">{t.verifyReviewTime}</p>
           )}
@@ -176,7 +176,7 @@ export function VerifyScreen({
       {/* ===== ١) الشروط — تُقرأ من القاعدة ===== */}
       {!eligibility.verified && (
         <section>
-          <h3 className="text-13 font-bold text-muted mb-1">{t.verifyStepChecks}</h3>
+          <h3 className="text-12 font-bold text-muted mb-1">{t.verifyStepChecks}</h3>
           <ul className="rounded-2xl border border-border bg-surface-2 px-4 py-2">
             <Check ok={eligibility.complete} label={t.verifyChkComplete} />
             <Check
@@ -195,15 +195,15 @@ export function VerifyScreen({
       {/* ===== ٢) الحسابات المرتبطة — البرهان ===== */}
       {!eligibility.verified && (
         <section>
-          <h3 className="text-13 font-bold text-muted mb-1">{t.verifyLinked}</h3>
+          <h3 className="text-12 font-bold text-muted mb-1">{t.verifyLinked}</h3>
           <div className="rounded-2xl border border-border bg-surface-2 p-4 space-y-3">
             <p className="text-12 text-muted leading-relaxed">{t.verifyLinkHint}</p>
             {providers.length === 0 ? (
-              <p className="text-13 text-muted">{t.verifyLinkedNone}</p>
+              <p className="text-12 text-muted">{t.verifyLinkedNone}</p>
             ) : (
               <ul className="space-y-1.5">
                 {providers.map((p) => (
-                  <li key={p.provider} className="flex items-center gap-2 text-13">
+                  <li key={p.provider} className="flex items-center gap-2 text-14">
                     <Icon name="check" size={13} className="text-accent shrink-0" strokeWidth={2.4} />
                     <span className="font-semibold capitalize">{p.provider}</span>
                     {p.handle && (
@@ -231,7 +231,7 @@ export function VerifyScreen({
       {showForm && (
         <>
           <section>
-            <h3 className="text-13 font-bold text-muted mb-1">{t.verifyStepKind}</h3>
+            <h3 className="text-12 font-bold text-muted mb-1">{t.verifyStepKind}</h3>
             <div className="rounded-2xl border border-border bg-surface-2 p-2 space-y-1">
               {KINDS.map((k) => (
                 <button
@@ -261,7 +261,7 @@ export function VerifyScreen({
           </section>
 
           <section className="space-y-2.5">
-            <h3 className="text-13 font-bold text-muted">{t.verifyStepProof}</h3>
+            <h3 className="text-12 font-bold text-muted">{t.verifyStepProof}</h3>
             <label className="block">
               <span className="block text-12 text-muted mb-1">{t.verifyLinksLabel}</span>
               <textarea
