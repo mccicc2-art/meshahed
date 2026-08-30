@@ -30,13 +30,11 @@ export function HomeAvatarLink({
   name,
   avatarUrl,
   avatarPos,
-  levelPercent,
 }: {
   locale: Locale;
   name: string;
   avatarUrl?: string | null;
   avatarPos?: number | null;
-  levelPercent?: number;
 }) {
   const t = getDict(locale);
   return (
@@ -46,12 +44,10 @@ export function HomeAvatarLink({
       aria-label={t.profile}
       title={name || t.profile}
       onClick={() => tap(6)}
+      /* 🗑️ **وهلالُ المستوى سقط** (D-807): كان `conic-gradient` حول
+         الصورة — **وحلقةٌ ملوّنةٌ حول وجهٍ تَعِد بمعنًى**، **ومعناها
+         نظامٌ حُذف.** */
       className="block shrink-0 rounded-full p-[2px] active:scale-95 transition"
-      style={
-        levelPercent && levelPercent > 0
-          ? { background: `conic-gradient(var(--accent) ${levelPercent}%, var(--border) 0)` }
-          : undefined
-      }
     >
       <span className="block rounded-full p-[2px] bg-[color:var(--background)]">
         <Avatar src={avatarUrl} name={name} size={44} posY={avatarPos} alt={t.avatarAlt} />

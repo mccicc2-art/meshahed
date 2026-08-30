@@ -146,11 +146,9 @@ export function ProfileCustomize({
           followers: t.followersLabel,
           following: t.followingLabel,
           visits: t.visitsLabel,
-          level: t.custLevelShort,
           follow: t.followingUser,
         }}
         showStats={prefs.stats}
-        showLevel={prefs.level}
         rows={prefs.order.map((k) => ({ key: k, ...sectionMeta[k] }))}
         density={prefs.density}
       />
@@ -163,12 +161,10 @@ export function ProfileCustomize({
           checked={prefs.stats}
           onChange={() => set({ ...prefs, stats: !prefs.stats })}
         />
-        <ToggleRow
-          icon="star"
-          label={t.custLevelShort}
-          checked={prefs.level}
-          onChange={() => set({ ...prefs, level: !prefs.level })}
-        />
+        {/* 🗑️ ⚖️ **ومفتاحُ المستوى سقط معه** (D-807، حكمُ أحمد: «احذف
+            نظام الليفل بالكامل»): **مفتاحٌ يضبط ما لا يُرسم وعدٌ بفعلٍ
+            لا يقع** (D-217) — **وهو مصيرُ مفتاح الزيارات في D-584
+            حرفاً.** **والحقلُ يُهمَل في `profile_prefs` ولا يُتلف.** */}
         {/* ⚖️ 🆕 **ومفتاحُ الزيارات وجمهورُه سقطا** (D-584، حكمُ أحمد:
             «احذف visit، غير مهمّة») — **العدّادُ لم يعد يُرسم في
             الصفحة، ومفتاحٌ يضبط ما لا يظهر وعدٌ بفعلٍ لا يقع** (D-217،

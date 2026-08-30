@@ -183,7 +183,6 @@ export function HomeHeader({
   unreadShares = 0,
   stats,
   showStats,
-  levelPercent,
   userId,
   followers = 0,
   following = 0,
@@ -228,7 +227,6 @@ export function HomeHeader({
   stats: HeaderStat[];
   showStats: boolean;
   /** ⚖️ 🆕 **والهلالُ عاد معها** (D-536/D-439) — **٠ يعني «لا هلال»** */
-  levelPercent?: number;
   /**
    * 🆕 **عدّادا المتابعة** (D-572، طلبُ أحمد) — **اختياريّةٌ في النوع**
    * (D-028): **المكوّنُ في `components` والصفحةُ في `app`، دليلان
@@ -478,7 +476,6 @@ export function HomeHeader({
             name={displayName}
             avatarUrl={avatarUrl}
             avatarPos={avatarPos}
-            levelPercent={levelPercent}
           />
 
           {/* ⚖️ 🆕 **والتحيّةُ سقطت، وبقي الاسم** (D-565، طلبُ أحمد:

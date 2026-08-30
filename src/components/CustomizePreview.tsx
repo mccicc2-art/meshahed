@@ -40,7 +40,6 @@ export function CustomizePreview({
   avatarPos,
   counters,
   labels,
-  showLevel = false,
   showVisits = false,
 }: {
   kind: "home" | "profile";
@@ -71,10 +70,8 @@ export function CustomizePreview({
     followers: string;
     following: string;
     visits: string;
-    level: string;
     follow: string;
   };
-  showLevel?: boolean;
   showVisits?: boolean;
 }) {
   /** عرضُ الملصق المصغَّر — ثلثُ الحقيقيّ تقريباً، فالفرقُ يبقى مرئيّاً */
@@ -177,22 +174,11 @@ export function CustomizePreview({
                     </span>
                   </>
                 )}
-                {/* ⚠️ **الرقاقةُ بلا رقمٍ عمداً**: المستوى يُحسب من ملخّص
-                    المشاهدة كلِّه — **واستعلامُ صفحةِ رئيسيةٍ كاملٍ داخل
-                    شاشة إعدادات ثمنٌ لا تستحقّه معاينة** (D-441).
-                    **والسؤالُ الذي يجيبه المفتاحُ فوقها هو: أتظهر أم لا.** */}
-                {showLevel && (
-                  <span
-                    className="inline-flex items-center gap-1 rounded-full border px-2 py-[2px] font-bold"
-                    style={{
-                      borderColor: "color-mix(in srgb, var(--accent) 45%, transparent)",
-                      color: "var(--accent)",
-                    }}
-                  >
-                    <Icon name="star" size={9} />
-                    {labels.level}
-                  </span>
-                )}
+                {/* 🗑️ **ورقاقةُ المستوى سقطت من المعاينة** (D-807) —
+                    **ومعاينةٌ تعرض ما لا يوجد أسوأُ من معاينةٍ ناقصة.**
+                    ⚠️ **والدَّينُ المعلَنُ ١٥ في `05` مات معها**:
+                    «رقاقةُ المستوى بلا رقم» **لم تعد ديناً، صارت
+                    لا شيء.** */}
               </p>
             )}
           </>
