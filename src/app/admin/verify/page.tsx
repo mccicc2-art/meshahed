@@ -58,7 +58,7 @@ export default async function AdminVerifyPage({
       {rows.map((r) => (
         <article key={r.id} className="rounded-2xl border border-border bg-surface-2 p-4 space-y-3">
           <header className="flex items-center justify-between gap-3">
-            <span className="text-13 font-bold">{KIND_AR[r.kind] ?? r.kind}</span>
+            <span className="text-14 font-bold">{KIND_AR[r.kind] ?? r.kind}</span>
             <span className="text-12 text-muted">
               {new Date(r.created_at).toLocaleDateString("ar")}
               {r.status === "more_info" ? " · بانتظار معلومات" : ""}
@@ -69,11 +69,11 @@ export default async function AdminVerifyPage({
           <section>
             <h2 className="text-12 font-bold text-muted mb-1">حسابات مرتبطة (مبرهنة)</h2>
             {r.proven.length === 0 ? (
-              <p className="text-13 text-[color:var(--error)]">لا حساب مرتبط — دعوى بلا برهان.</p>
+              <p className="text-12 text-[color:var(--error)]">لا حساب مرتبط — دعوى بلا برهان.</p>
             ) : (
               <ul className="space-y-0.5">
                 {r.proven.map((p, i) => (
-                  <li key={i} className="text-13">
+                  <li key={i} className="text-12">
                     <span className="font-semibold capitalize">{p.provider}</span>{" "}
                     <span dir="ltr" className="text-muted">
                       {p.handle ?? "—"}
@@ -106,8 +106,8 @@ export default async function AdminVerifyPage({
               </a>
             </p>
           )}
-          {r.sources && <p className="text-13 text-muted whitespace-pre-line">{r.sources}</p>}
-          <p className="text-13 whitespace-pre-line">{r.reason}</p>
+          {r.sources && <p className="text-12 text-muted whitespace-pre-line">{r.sources}</p>}
+          <p className="text-14 whitespace-pre-line">{r.reason}</p>
 
           {/* ===== القرار — والسببُ يُكتب مرّةً ويُقرأ عند المتقدّم ===== */}
           <form action={decide} className="space-y-2 pt-1">
@@ -115,7 +115,7 @@ export default async function AdminVerifyPage({
             <input
               name="note"
               placeholder="سبب الرفض أو ما ينقص — يظهر للمتقدّم"
-              className="w-full rounded-xl border border-border bg-surface px-3 py-2 text-13 outline-none focus:border-accent"
+              className="w-full rounded-xl border border-border bg-surface px-3 py-2 text-14 outline-none focus:border-accent"
             />
             <div className="flex flex-wrap gap-2">
               <button name="decision" value="approved" className={buttonClass({ size: "sm" })}>
