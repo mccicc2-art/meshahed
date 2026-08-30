@@ -130,6 +130,9 @@ export interface Profile {
   is_private?: boolean | null;
   /** قفل قائمتَي المتابعة (هجرة 43) */
   hide_follow_lists?: boolean | null;
+  /** 🆕 **منطقةُ IANA من متصفّح صاحب الحساب** (D-806، الهجرة ١٦٠) —
+      **`null` تعني غرينتش**، وهو سلوكُ ما قبلها بالضبط. */
+  timezone?: string | null;
   /** حجم خطّ الواجهة والمحتوى (هجرة 121) — `null` قبل تشغيلها */
   font_ui?: string | null;
   font_content?: string | null;
@@ -256,7 +259,7 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
     let { data, error } = await supabase
       .from("profiles")
       .select(
-        "id, nickname, username, avatar_url, cover_url, cover_pos, avatar_pos, theme, favorite_genres, unwanted_genres, preferred_languages, excluded_languages, socials, hide_name, home_prefs, bio, is_private, hide_follow_lists, profile_prefs, font_ui, font_content, ui_state, plan, plus_until, founder, verified_at",
+        "id, nickname, username, avatar_url, cover_url, cover_pos, avatar_pos, theme, favorite_genres, unwanted_genres, preferred_languages, excluded_languages, socials, hide_name, home_prefs, bio, is_private, hide_follow_lists, profile_prefs, font_ui, font_content, ui_state, plan, plus_until, founder, verified_at, timezone",
       )
       .eq("id", uid)
       .maybeSingle();
@@ -298,6 +301,10 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
           plus_until: null,
           founder: false,
           verified_at: null,
+          /* 🆕 **ومنطقةُ ١٦٠ تسقط إلى الفراغ** — **والفراغُ غرينتش**،
+             وهو سلوكُ ما قبلها (D-063/D-179: القارئُ المتسامحُ يبني
+             حرفيّاً، **فحقلٌ جديدٌ يجب أن يُكتب في كلِّ درجةِ تراجع**). */
+          timezone: null,
         };
       } else {
         const legacy = await supabase
@@ -331,6 +338,7 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
             plus_until: null,
             founder: false,
             verified_at: null,
+            timezone: null,
           };
         }
       }

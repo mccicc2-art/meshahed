@@ -12,6 +12,7 @@ import {
 import { browseGenreForId, browseGenreName } from "@/lib/browse";
 import { runtimeMinutes } from "@/lib/watchTime";
 import { getDict, type Locale } from "@/lib/i18n";
+import { UTC, zoneShiftMs } from "@/lib/zone";
 
 /**
  * ================= مصدرُ الإحصائيات الواحد (D-799) =================
@@ -56,8 +57,11 @@ function isBackdated(iso: string): boolean {
 }
 
 export interface StatsRange {
+  /** **بفضاء ساعة الحائط** — تُقارَن بلحظةٍ مُزاحةٍ مثلَها، لا بلحظةٍ خام */
   from: Date;
   to: Date;
+  /** إزاحةُ منطقة القارئ بالملّي — صفرٌ لمن لا منطقةَ له (D-806) */
+  shift: number;
   label: string;
   /** أيّامُ المدّة — للمتوسّط اليوميّ ولطول المدّة السابقة */
   days: number;
@@ -65,8 +69,21 @@ export interface StatsRange {
 }
 
 /** **حدودُ الفترة تقويميّةٌ لا «آخر ٧ أيّام»**: «Aug 24–30» أسبوعٌ يبدأ الأحد */
-export function statsRange(period: StatsPeriod, offset: number, locale: Locale): StatsRange {
-  const now = new Date();
+/**
+ * 🔴 🆕 **والتقويمُ تقويمُ القارئ لا تقويمُ غرينتش** (D-806): «هذا
+ * الأسبوع» يبدأ أحدَه هو، **ومن علّم حلقةً الحاديةَ عشرةَ ليلاً في
+ * الرياض كان يقع في يوم غدٍ بغرينتش** — **فتُحسب في مدّةٍ لم يكن فيها.**
+ * **والحدودُ تُحسب في فضاء ساعة الحائط** (اللحظةُ + الإزاحة) **وتُقرأ
+ * بـ`timeZone: "UTC"`** — فتخرج الأسماءُ صحيحةً بلا حسابٍ ثانٍ.
+ */
+export function statsRange(
+  period: StatsPeriod,
+  offset: number,
+  locale: Locale,
+  tz: string = UTC,
+): StatsRange {
+  const shift = zoneShiftMs(tz);
+  const now = new Date(Date.now() + shift);
   const loc = locale === "en" ? "en-GB" : "ar";
   let from: Date;
   let to: Date;
@@ -109,7 +126,7 @@ export function statsRange(period: StatsPeriod, offset: number, locale: Locale):
   } else {
     label = locale === "en" ? "All time" : "كل الأوقات";
   }
-  return { from, to, label, days, canGoNext: period !== "all" && offset < 0 };
+  return { from, to, label, days, canGoNext: period !== "all" && offset < 0, shift };
 }
 
 export interface StatTitle {
@@ -205,7 +222,9 @@ function bandOf(hour: number): number {
   return 3;
 }
 
-const dayKeyOf = (iso: string) => iso.slice(0, 10);
+/** **مفتاحُ اليوم في تقويم القارئ** — لا في تقويم غرينتش (D-806) */
+const dayKeyIn = (iso: string, shift: number) =>
+  new Date(Date.parse(iso) + shift).toISOString().slice(0, 10);
 
 /** الاسمُ المعروضُ للغة — **من `Intl` لا من جدولٍ يدويّ يتقادم** */
 function langName(code: string, locale: Locale): string {
@@ -236,14 +255,22 @@ export async function buildPeriodStats(
   period: StatsPeriod,
   offset: number,
   locale: Locale,
+  tz: string = UTC,
 ): Promise<PeriodStats> {
   const t = getDict(locale);
-  const range = statsRange(period, offset, locale);
+  const range = statsRange(period, offset, locale, tz);
   const prevFrom = new Date(range.from);
   prevFrom.setUTCDate(prevFrom.getUTCDate() - range.days);
 
+  /* 🔴 🆕 **كلُّ لحظةٍ تُقرأ في فضاء ساعة الحائط** (D-806): `at(iso)`
+     تزيح، **وكلُّ ما بعدها يبقى `getUTC*` كما كُتب** — **فالحسابُ لم
+     يُعَد كتابتُه، تغيّرت قراءتُه.** ⚠️ **والحدُّ الذي يُرسل إلى
+     القاعدة لحظةٌ حقيقيّةٌ لا مُزاحة** — فيُطرح منها ما أُضيف. */
+  const tzShift = range.shift;
+  const at = (iso: string) => Date.parse(iso) + tzShift;
+
   const [rows, follows, animeFlags] = await Promise.all([
-    getWatchWindow(prevFrom.toISOString()),
+    getWatchWindow(new Date(prevFrom.getTime() - tzShift).toISOString()),
     getFollows().catch(() => [] as FollowRow[]),
     getMyAnimeFlags().catch(() => new Map<string, boolean>()),
   ]);
@@ -251,11 +278,11 @@ export async function buildPeriodStats(
   const fromMs = range.from.getTime();
   const toMs = range.to.getTime() + 86_400_000 - 1;
   const inRange = (r: HistoryRow) => {
-    const ms = Date.parse(r.watchedAt);
+    const ms = at(r.watchedAt);
     return ms >= fromMs && ms <= toMs;
   };
   const current = rows.filter(inRange);
-  const previous = rows.filter((r) => Date.parse(r.watchedAt) < fromMs);
+  const previous = rows.filter((r) => at(r.watchedAt) < fromMs);
 
   const meta = new Map<string, FollowRow>(
     follows.map((f) => [`${f.media_type}-${f.tmdb_id}`, f]),
@@ -281,7 +308,7 @@ export async function buildPeriodStats(
     if (row.kind === "movie") movies += 1;
     else episodes += 1;
 
-    const day = dayKeyOf(row.watchedAt);
+    const day = dayKeyIn(row.watchedAt, tzShift);
     byDay.set(day, (byDay.get(day) ?? 0) + mins);
 
     const kind = kindOf(key, mediaType);
@@ -289,7 +316,7 @@ export async function buildPeriodStats(
 
     if (!isBackdated(row.watchedAt)) {
       timedRows += 1;
-      const d = new Date(row.watchedAt);
+      const d = new Date(at(row.watchedAt));
       const hour = d.getUTCHours();
       byHour[hour] += mins;
       heat[bandOf(hour)][d.getUTCDay()] += mins;
@@ -317,7 +344,7 @@ export async function buildPeriodStats(
   const prevMinutes = previous.reduce((n, r) => n + runtimeMinutes(r.kind, r.runtime), 0);
   const prevByDay = new Map<string, number>();
   for (const r of previous) {
-    const k = dayKeyOf(r.watchedAt);
+    const k = dayKeyIn(r.watchedAt, tzShift);
     prevByDay.set(k, (prevByDay.get(k) ?? 0) + runtimeMinutes(r.kind, r.runtime));
   }
 
@@ -411,6 +438,7 @@ export async function buildPeriodStats(
   /* ═══ الجلسات — قاعدةُ الثلاثين دقيقةً بنصِّه ═══ */
   const stamps = current
     .filter((r) => !isBackdated(r.watchedAt))
+    /* **والفجوةُ فرقٌ، والفروقُ لا تتأثّر بإزاحةٍ ثابتة** — فتبقى خاماً */
     .map((r) => ({ ms: Date.parse(r.watchedAt), mins: runtimeMinutes(r.kind, r.runtime) }))
     .sort((a, b) => a.ms - b.ms);
   const sessionMins: number[] = [];

@@ -1692,6 +1692,25 @@ const DAY_MINUTES = 1440;
 const SEASON_BUDGET = 40;
 const MOVIE_BUDGET = 40;
 
+/**
+ * **منطقةُ القارئ الزمنيّة تُكتب مرّةً** (D-806).
+ *
+ * ⚠️ **ولا بياناتٍ شخصيّةً جديدة**: اسمُ منطقةٍ من قائمة IANA — **لا
+ * موقعَ ولا إحداثيّاتٍ** — **وهو ما يقرؤه كلُّ موقعٍ من `Intl` أصلاً.**
+ * ⚠️ **والحَكَمُ `asTimeZone`**: ما لا تقبله المنصّةُ يسقط إلى غرينتش،
+ * **فلا يدخل العمودَ نصٌّ من عند المستدعي.**
+ */
+export async function setTimezone(raw: string): Promise<void> {
+  const { supabase, user } = await requireUser("tz", 6, 60_000);
+  const { asTimeZone, UTC } = await import("@/lib/zone");
+  const tz = asTimeZone(raw);
+  if (tz === UTC) return;
+  const { error } = await supabase.from("profiles").update({ timezone: tz }).eq("id", user.id);
+  if (error) fail(error);
+  revalidatePath("/reports");
+  revalidatePath("/statistics");
+}
+
 export async function repairImpossibleDays(): Promise<{
   moved: number;
   remaining: number;
