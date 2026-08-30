@@ -16,6 +16,7 @@
  */
 
 import { sanitizeSavedFilters, type SavedFilter } from "@/lib/savedFilters";
+import { sanitizePrefTemplates, type PrefTemplate } from "@/lib/prefTemplates";
 
 export const TOUR_STATE_VALUES = ["suggested", "active", "done"] as const;
 export type TourStateS = (typeof TOUR_STATE_VALUES)[number];
@@ -40,6 +41,13 @@ export interface UiState {
    * على الفلاتر يمسّ الجولةَ والتلميحات.**
    */
   filters: SavedFilter[];
+  /**
+   * 🆕 **قوالبُ التخصيص** (D-822) — **نفسُ حجّة الفلاتر أعلاه**:
+   * **حالةُ صاحبِها وحدَه، وعمودٌ بلا قيدِ شكلٍ عمداً** (D-475).
+   * ⚠️ **والمنطقُ في `prefTemplates.ts` لا هنا** — **وهذا الملفُّ
+   * يعرف شكلَ العمود، وذاك يعرف معنى القالب.**
+   */
+  tpl: PrefTemplate[];
 }
 
 /** معرّف تلميح صالح — يدخل مفاتيح localStorage وعمودَ jsonb فيُقيَّد شكله */
@@ -61,7 +69,7 @@ export function sanitizeTourState(value: unknown): TourState | null {
 
 /** قيمة العمود (أو أي مجهول) إلى شكلٍ مضمون — الفاسد يسقط صامتاً */
 export function sanitizeUiState(value: unknown): UiState {
-  const out: UiState = { hints: [], tour: null, filters: [] };
+  const out: UiState = { hints: [], tour: null, filters: [], tpl: [] };
   if (!value || typeof value !== "object") return out;
   const v = value as Record<string, unknown>;
   if (Array.isArray(v.hints)) {
@@ -72,6 +80,7 @@ export function sanitizeUiState(value: unknown): UiState {
   }
   out.tour = sanitizeTourState(v.tour);
   out.filters = sanitizeSavedFilters(v.filters);
+  out.tpl = sanitizePrefTemplates(v.tpl);
   return out;
 }
 

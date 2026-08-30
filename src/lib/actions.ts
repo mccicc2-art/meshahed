@@ -65,6 +65,7 @@ import {
   type UiState,
 } from "@/lib/uiState";
 import { sanitizeSavedFilters, type SavedFilter } from "@/lib/savedFilters";
+import { sanitizePrefTemplates, type PrefTemplate } from "@/lib/prefTemplates";
 import { isViewKey } from "@/lib/postKeys";
 import { intId, intIn, asMediaType, uuid, dateOrNull } from "@/lib/validate";
 import { searchGifs, type GifHit } from "@/lib/gif";
@@ -595,14 +596,33 @@ export async function updateUiState(patch: {
    * ⚠️ **والتطهيرُ هنا لا هناك**: **العميلُ يُقترح والخادمُ يقرّر.**
    */
   filters?: SavedFilter[];
-}) {
+  /**
+   * 🆕 **قوالبُ التخصيص** (D-822) — **نفسُ عقد `filters` حرفاً**:
+   * تستبدل المخزَّنةَ كاملةً (الحذفُ فعلٌ مقصود)، **والتطهيرُ هنا لا
+   * عند المستدعي**، **والبلسُ شرطُ الكتابة.**
+   */
+  tpl?: PrefTemplate[];
+}): Promise<{ ok: boolean; needsPlus?: true }> {
   try {
     const { supabase, user } = await requireUser("uistate", 30, 60_000);
+    /* 🔑 **والخطّةُ تُقرأ مع الحالة لا بنداءٍ ثانٍ** — `viewerIsPlus()`
+       استعلامٌ كاملٌ على `profiles`، **وهذا الصفُّ مقروءٌ أصلاً** (D-515). */
     const { data } = await supabase
       .from("profiles")
-      .select("ui_state")
+      .select("ui_state, plan, plus_until")
       .eq("id", user.id)
       .maybeSingle();
+
+    /* 🔴 **حارسُ البلس هنا لا في الرقاقة** (درسُ D-819 بحرفه): **حارسُ
+       العميل زينةٌ — الفعلُ يُنادى بلا سطحِه.** **وD-816 شُحنت بحارسٍ
+       في `SavedFiltersRow` وحدَه، وهذا سدُّ ثغرتها.**
+       ⚠️ **والفرعُ وحدَه محروس**: **التلميحاتُ والجولةُ مجّانيّتان
+       لكلِّ أحد** — **ومن قفلَ `updateUiState` كلَّها أطفأ إرشادَ
+       التطبيق عن غير المشترك.** */
+    if ((patch.filters !== undefined || patch.tpl !== undefined) && !isPlus(data)) {
+      return { ok: false, needsPlus: true };
+    }
+
     const current = sanitizeUiState(data?.ui_state);
     const next: UiState = {
       hints: patch.resetHints
@@ -613,10 +633,13 @@ export async function updateUiState(patch: {
       tour: patch.tour !== undefined ? sanitizeTourState(patch.tour) : current.tour,
       filters:
         patch.filters !== undefined ? sanitizeSavedFilters(patch.filters) : current.filters,
+      tpl: patch.tpl !== undefined ? sanitizePrefTemplates(patch.tpl) : current.tpl,
     };
     await supabase.from("profiles").update({ ui_state: next }).eq("id", user.id);
+    return { ok: true };
   } catch {
     /* زائرٌ، أو عمودٌ لم يُهاجَر، أو انقطاع — localStorage يكفي للجهاز */
+    return { ok: false };
   }
 }
 
