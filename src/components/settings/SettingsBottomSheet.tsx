@@ -1,7 +1,12 @@
 "use client";
 
-import { useId, useRef, useState, type ReactNode } from "react";
-import { Sheet, type SheetVariant } from "../ui/Sheet";
+import { useId, type ReactNode } from "react";
+import {
+  Sheet,
+  SheetGrabHandle,
+  useSheetDragToDismiss,
+  type SheetVariant,
+} from "../ui/Sheet";
 import { tap } from "@/lib/haptics";
 
 /**
@@ -70,30 +75,10 @@ export function SettingsBottomSheet({
   children: ReactNode;
 }) {
   const id = useId();
-  /** إزاحةُ السحب الحيّة — تُصفَّر عند الإفلات */
-  const [dy, setDy] = useState(0);
-  const from = useRef<number | null>(null);
-
-  function onDown(e: React.PointerEvent) {
-    from.current = e.clientY;
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-  }
-  function onMove(e: React.PointerEvent) {
-    if (from.current === null) return;
-    /* **لأسفل وحدَه**: سحبٌ لأعلى لا معنى له هنا، **وورقةٌ تتبع
-       الإصبعَ صعوداً تبدو مكسورة** */
-    setDy(Math.max(0, e.clientY - from.current));
-  }
-  function onUp() {
-    if (from.current === null) return;
-    const travelled = dy;
-    from.current = null;
-    setDy(0);
-    if (travelled > 90) {
-      tap(8);
-      onCancel();
-    }
-  }
+  /* 🆕 **والإيماءةُ خرجت إلى `ui/Sheet`** (D-802): **جاء قارئُها الثاني**
+     (ورقةُ «متى شاهدتَ هذا الموسم؟») — **وعند القارئ الثاني يُستخرج**
+     (D-376). **والعتبةُ والحجّةُ كلُّها هناك، ولا نسخةَ ثانيةَ لها.** */
+  const { handleProps, panelProps } = useSheetDragToDismiss(onCancel);
 
   return (
     <Sheet
@@ -103,24 +88,10 @@ export function SettingsBottomSheet({
       labelledBy={id}
       variant={variant}
       anchor="bottom"
-      /* **الحركةُ تُطفأ أثناء السحب** — وإلا غلبت `sheet-pop` النمطَ
-         السطريَّ فلم يتحرّك اللوح (الحجّةُ عند `panelStyle`) */
-      className={dy > 0 ? "[animation:none]" : undefined}
-      panelStyle={dy > 0 ? { transform: `translateY(${dy}px)` } : undefined}
+      className={panelProps.className}
+      panelStyle={panelProps.panelStyle}
     >
-      {/* **المقبض**: يُرى فيُعرف أنها تُسحب، ويمسك الإيماءةَ وحدَه */}
-      <div
-        onPointerDown={onDown}
-        onPointerMove={onMove}
-        onPointerUp={onUp}
-        onPointerCancel={onUp}
-        /* ⚠️ **ومساحةُ الإمساك ٤٤ لا ارتفاعَ القضيب**: القضيبُ أربعةُ
-           بكسلات، **وإيماءةٌ تبدأ في أربعةِ بكسلاتٍ لا تبدأ** —
-           **والحشوُ حولَه هو هدفُ اللمس** (حدُّ ٤٤ في المواصفة). */
-        className="shrink-0 grid place-items-center h-11 -mb-4 cursor-grab active:cursor-grabbing touch-none"
-      >
-        <span aria-hidden className="block w-9 h-1 rounded-full bg-[color:var(--border)]" />
-      </div>
+      <SheetGrabHandle {...handleProps} />
 
       <div className="flex items-center gap-2 px-2 pt-1 pb-2 border-b border-[color:var(--divider)]">
         <span className="flex-1 basis-0 min-w-0 flex justify-start">
