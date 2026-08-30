@@ -368,7 +368,21 @@ export function ListCardShell({
           <Image src={cover} alt="" fill sizes="(max-width: 640px) 100vw, 320px" className="object-cover" />
         </span>
       ) : coverColor ? (
-        <span aria-hidden className="absolute inset-0" style={{ backgroundImage: coverColor }} />
+        /* 🔴 **وصندوقُه صندوقُ الملصقات لا البطاقةُ كلُّها** (D-824 —
+           **قِيس في `daylight` بالإنجليزيّة فسقط**): **اللونُ ملءَ
+           البطاقة يضع طرفَه الغامقَ تحت الاسم في LTR** — **ونصٌّ داكنٌ
+           على بنفسجيٍّ غامقٍ لا يُقرأ**، **والسطرُ الخافتُ تحته يختفي.**
+           ⚖️ **والحجابُ مضبوطٌ على هذا الصندوق بعينه منذ D-686**
+           («النصوصُ حُبست في عموده») — **فاللونُ يجلس حيث تجلس
+           الملصقاتُ اليوم**، **ولا حجابَ ثانٍ يُخترع للون** (القاعدة ٣).
+           🔑 **والدرسُ**: **تدرّجٌ باتّجاهٍ فيزيائيٍّ (`left`) في تطبيقٍ
+           بوجهين لا يُحكم عليه من وجهٍ واحد** — **والقياسُ في الاتّجاه
+           الآخر أرخصُ من بلاغ.** */
+        <span
+          aria-hidden
+          className="absolute inset-y-0 end-0 w-[72%]"
+          style={{ backgroundImage: coverColor }}
+        />
       ) : (
         posters &&
         posters.length > 0 && (
