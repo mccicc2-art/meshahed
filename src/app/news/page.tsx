@@ -59,6 +59,7 @@ import {
 import { ScrollMemory } from "@/components/ScrollMemory";
 import { animeMovieRail, topChartRail, looksAnime, railGuard } from "@/lib/topChart";
 import { buildSection, sectionHref } from "@/lib/sections";
+import { RAILS_COOKIE, parseHiddenRails, railOff } from "@/lib/railPrefs";
 import { attachImdbRatings, withImdbRatings, rankByImdb } from "@/lib/omdb";
 import { localizeRows } from "@/lib/localize";
 import { getT, getWatchRegion, getTabPrefs } from "@/lib/locale";
@@ -235,6 +236,14 @@ export default async function NewsPage({
     ...sp,
     type: tab === "shows" ? "tv" : tab === "anime" ? "all" : "movie",
   });
+
+  /* 🆕 **الصفوفُ المخفيّة** (D-826، حكمُ أحمد: «يقدر يخفي أيَّ عنوانٍ من
+     هذي العناوين، وتكون في فيو») — **كوكيٌّ يُقرأ قبل الرسم لا عمودٌ
+     يُنتظر** (D-122/D-179)، **ومجموعةٌ واحدةٌ تمرّ إلى الصفوف كلِّها**
+     فلا يسأل كلُّ صفٍّ عن نفسه.
+     ⚠️ **ولا تسري مع فلترٍ مفعَّل؟ بل تسري**: **من أطفأ صفّاً أطفأه**
+     — **وصفٌّ يعود لأنّ المستخدم فلتر يُقرأ عطلاً** (D-346). */
+  const hiddenRails = parseHiddenRails((await cookies()).get(RAILS_COOKIE)?.value);
   /* نوافذ صفوف «أفضل ١٠» — لكل صفٍّ نافذته (D-099): أفلام/مسلسلات/أنمي */
   const rails = {
     /* ⚖️ 🆕 **والنوافذُ ثبتت على الأسبوع** (D-504، طلبُ أحمد بلقطةٍ على
@@ -292,6 +301,9 @@ export default async function NewsPage({
         locale={locale}
         tab={tab}
         tabPrefs={tabPrefs}
+        /* 🆕 **المطفأُ يمرّ من الخادم** (D-826) — **فلا يومض مفتاحٌ ثمّ
+           يُصحَّح**، ولا نداءَ ثانٍ من العميل. */
+        hiddenRails={[...hiddenRails]}
         myRows={myRows}
         type={browse.type}
         genre={browse.genre?.slug ?? null}
@@ -346,7 +358,7 @@ export default async function NewsPage({
           أولويّةً على كلِّ شيءٍ في اكتشف»): **كان `fallback={null}`
           فتسبقه الرفوفُ إلى مكانه ثمّ يهبط فوقها فيدفعها** — **وأولويّةٌ
           في الترتيب تضيع في الزمن إن لم يُحجز موضعُها.** */}
-      {tab !== "lists" && !browse.active && (
+      {tab !== "lists" && !browse.active && !railOff(hiddenRails, "trailers") && (
         <Suspense fallback={<TrailerRailSkeleton />}>
           <TrailersSection
             locale={locale}
@@ -386,7 +398,7 @@ export default async function NewsPage({
             </div>
           }
         >
-          <AnimeRails locale={locale} t={t} rails={rails} browse={browse} region={region} myRows={myRows} />
+          <AnimeRails locale={locale} t={t} rails={rails} browse={browse} region={region} myRows={myRows} hidden={hiddenRails} />
         </Suspense>
       ) : tab === "lists" ? (
         /* ===== تبويب «القوائم» — صفوفٌ كصفوف الأعمال (D-084) =====
@@ -430,7 +442,7 @@ export default async function NewsPage({
             </div>
           }
         >
-          <CuratedRails locale={locale} t={t} browse={browse} rails={rails} region={region} myRows={myRows} />
+          <CuratedRails locale={locale} t={t} browse={browse} rails={rails} region={region} myRows={myRows} hidden={hiddenRails} />
         </Suspense>
       )}
     </div>
@@ -1096,6 +1108,7 @@ async function CuratedRails({
   rails,
   region,
   myRows = [],
+  hidden = new Set<string>(),
 }: {
   locale: Locale;
   t: T;
@@ -1106,6 +1119,8 @@ async function CuratedRails({
   region: string;
   /** 🆕 صفوفُك الخاصة (D-338) — تمرّ إلى `PersonalRails` */
   myRows?: MyRow[];
+  /** 🆕 **مفاتيحُ الصفوف المطفأة** (D-826) — **تُقرأ مرّةً في الصفحة** */
+  hidden?: Set<string>;
 }) {
   const { type, genre, lang, country, provider, era, rate, tag, status, active } = browse;
   /* ===== فلتر الجائزة (طلب أحمد 9 Aug) =====
@@ -1305,7 +1320,7 @@ async function CuratedRails({
     (!active || localAxesOnly(browse)) ? (
       <Suspense fallback={<RailSkeleton count={6} />}>
         {/* الجهة تُمرَّر: التبويب وعدٌ، والصفّ الذي لا يعرف تبويبه يخلفه */}
-        <PersonalRails locale={locale} t={t} type={type} browse={active ? browse : undefined} myRows={myRows} tab={type === "tv" ? "shows" : "movies"} region={region} slot={slot} />
+        <PersonalRails locale={locale} t={t} type={type} browse={active ? browse : undefined} myRows={myRows} tab={type === "tv" ? "shows" : "movies"} region={region} slot={slot} hidden={hidden} />
       </Suspense>
     ) : slot;
 
@@ -1340,13 +1355,15 @@ async function CuratedRails({
 
     return (
       <div className="space-y-6">
-        {personalWith(<CinemasView inCinemas={inCinemas} lib={lib} ctx={ctx} />)}
-        <PopularView popular={popular} lib={lib} ctx={ctx} />
-        <TopTenView mt="movie" rows={topMovies} lib={lib} ctx={ctx} />
-        <TopTenView mt="tv" rows={topSeries} lib={lib} ctx={ctx} />
-        <Top25View mt="movie" rows={top25Movies} lib={lib} ctx={ctx} />
-        <Top25View mt="tv" rows={top25Series} lib={lib} ctx={ctx} />
-        <SoonView soon={soon} ctx={ctx} />
+        {personalWith(
+          railOff(hidden, "cinemas") ? null : <CinemasView inCinemas={inCinemas} lib={lib} ctx={ctx} />,
+        )}
+        {!railOff(hidden, "popular") && <PopularView popular={popular} lib={lib} ctx={ctx} />}
+        {!railOff(hidden, "top10") && <TopTenView mt="movie" rows={topMovies} lib={lib} ctx={ctx} />}
+        {!railOff(hidden, "top10") && <TopTenView mt="tv" rows={topSeries} lib={lib} ctx={ctx} />}
+        {!railOff(hidden, "top50") && <Top25View mt="movie" rows={top25Movies} lib={lib} ctx={ctx} />}
+        {!railOff(hidden, "top50") && <Top25View mt="tv" rows={top25Series} lib={lib} ctx={ctx} />}
+        {!railOff(hidden, "soon") && <SoonView soon={soon} ctx={ctx} />}
         {empty && (
           <p className="text-center text-muted py-20">{t.browseEmpty}</p>
         )}
@@ -1366,38 +1383,42 @@ async function CuratedRails({
   return (
     <div className="space-y-6">
       {personalWith(
-        wantMovies ? (
+        wantMovies && !railOff(hidden, "cinemas") ? (
           <Suspense fallback={<RailSkeleton count={6} />}>
             <CinemasRail promises={promises} ctx={ctx} />
           </Suspense>
         ) : null,
       )}
-      <Suspense fallback={<RailSkeleton count={6} />}>
-        <PopularRail promises={promises} ctx={ctx} />
-      </Suspense>
-      {wantMovies && (
+      {!railOff(hidden, "popular") && (
+        <Suspense fallback={<RailSkeleton count={6} />}>
+          <PopularRail promises={promises} ctx={ctx} />
+        </Suspense>
+      )}
+      {wantMovies && !railOff(hidden, "top10") && (
         <Suspense fallback={<RailSkeleton count={6} />}>
           <TopTenRail mt="movie" promises={promises} ctx={ctx} />
         </Suspense>
       )}
-      {wantSeries && (
+      {wantSeries && !railOff(hidden, "top10") && (
         <Suspense fallback={<RailSkeleton count={6} />}>
           <TopTenRail mt="tv" promises={promises} ctx={ctx} />
         </Suspense>
       )}
-      {wantMovies && (
+      {wantMovies && !railOff(hidden, "top50") && (
         <Suspense fallback={<RailSkeleton count={6} />}>
           <Top25Rail mt="movie" promises={promises} ctx={ctx} />
         </Suspense>
       )}
-      {wantSeries && (
+      {wantSeries && !railOff(hidden, "top50") && (
         <Suspense fallback={<RailSkeleton count={6} />}>
           <Top25Rail mt="tv" promises={promises} ctx={ctx} />
         </Suspense>
       )}
-      <Suspense fallback={<RailSkeleton count={6} />}>
-        <SoonRail promises={promises} ctx={ctx} />
-      </Suspense>
+      {!railOff(hidden, "soon") && (
+        <Suspense fallback={<RailSkeleton count={6} />}>
+          <SoonRail promises={promises} ctx={ctx} />
+        </Suspense>
+      )}
       <Suspense fallback={null}>
         <CuratedEmptyNotice promises={promises} ctx={ctx} />
       </Suspense>
@@ -1699,6 +1720,7 @@ async function AnimeRails({
   browse,
   region,
   myRows = [],
+  hidden = new Set<string>(),
 }: {
   locale: Locale;
   t: T;
@@ -1707,6 +1729,8 @@ async function AnimeRails({
   browse: BrowseQuery;
   region: string;
   myRows?: MyRow[];
+  /** 🆕 **مفاتيحُ الصفوف المطفأة** (D-826) */
+  hidden?: Set<string>;
 }) {
   const { genre, lang, country, provider, era, rate, tag, season, studio, active } = browse;
   const y = new Date().getUTCFullYear();
@@ -1892,11 +1916,12 @@ async function AnimeRails({
             myRows={myRows}
             tab="anime"
             region={region}
+            hidden={hidden}
           />
         </Suspense>
       )}
 
-      {cinemas && cinemas.results.length > 0 && (
+      {!railOff(hidden, "cinemas") && cinemas && cinemas.results.length > 0 && (
         <RankedRail
           title={t.animeInCinemas}
           lib={lib}
@@ -1910,7 +1935,7 @@ async function AnimeRails({
       {/* «يُعرض الآن» ثم «الأكثر شعبية» قبل رفوف «أفضل ١٠» — نفسُ ترتيب
           مواصفة أحمد في التبويبين الآخرين: الآنَ أوّلاً ثم الشعبيّ ثم
           المرتَّب بالجودة ثم القادم. */}
-      {airing.length > 0 && (
+      {!railOff(hidden, "airing") && airing.length > 0 && (
         <RankedRail
           title={t.airingNowAnime}
           lib={lib}
@@ -1922,7 +1947,7 @@ async function AnimeRails({
         />
       )}
 
-      {popular.length > 0 && (
+      {!railOff(hidden, "popular") && popular.length > 0 && (
         <RankedRail
           title={t.mostPopularAnime}
           lib={lib}
@@ -1937,7 +1962,7 @@ async function AnimeRails({
       {/* 🆕 **ورفّا الأنمي أخذا المبدِّلَ نفسَه** (D-445): نوافذُهما
           (`wa`/`wam`) كانت تُقرأ من الرابط منذ D-099 **ولا بابَ إليها في
           الواجهة** — أي محورٌ حيٌّ في الخادم لا يعرف به أحد. */}
-      {topMovies.length > 0 && (
+      {!railOff(hidden, "top10a-movies") && topMovies.length > 0 && (
         <RankedRail
           title={t.top10Win(t.top10AnimeMovies, "week")}
           lib={lib}
@@ -1945,7 +1970,7 @@ async function AnimeRails({
           items={topMovies}
         />
       )}
-      {topSeries.length > 0 && (
+      {!railOff(hidden, "top10a-shows") && topSeries.length > 0 && (
         <RankedRail
           title={t.top10Win(t.top10AnimeSeries, "week")}
           lib={lib}
@@ -1956,7 +1981,7 @@ async function AnimeRails({
 
       {/* «أنميٌ قادم» — بعد المرتَّب بالجودة وقبل مراجع «أفضل ٥٠»:
           القادمُ آخرُ الحاضر، والخمسون مرجعٌ ثابتٌ لا حاضر. */}
-      {soon.length > 0 && (
+      {!railOff(hidden, "soon") && soon.length > 0 && (
         <RankedRail
           title={t.upcomingAnime}
           lib={lib}
@@ -1968,10 +1993,10 @@ async function AnimeRails({
         />
       )}
 
-      {top50Movies.length > 0 && (
+      {!railOff(hidden, "top50a-movies") && top50Movies.length > 0 && (
         <RankedRail title={t.top50AnimeMovies} icon="film" items={top50Movies} />
       )}
-      {top50Series.length > 0 && (
+      {!railOff(hidden, "top50a-shows") && top50Series.length > 0 && (
         <RankedRail title={t.top50AnimeSeries} icon="sparkle-star" items={top50Series} />
       )}
 
@@ -2030,6 +2055,7 @@ async function PersonalRails({
   tab = "",
   region,
   slot,
+  hidden = new Set<string>(),
 }: {
   locale: Locale;
   t: T;
@@ -2050,6 +2076,8 @@ async function PersonalRails({
    * **ويقرّر فراغَه بنفسه** — **وشطرُه لأجل ترتيبٍ يضاعف النداءات.**
    */
   slot?: React.ReactNode;
+  /** 🆕 **مفاتيحُ الصفوف المطفأة** (D-826) */
+  hidden?: Set<string>;
   /** 🆕 صفوفُك الخاصة (D-337→D-338، تصحيحُ أحمد: «تكون بعد picked for you») */
   myRows?: MyRow[];
   tab?: string;
@@ -2119,7 +2147,7 @@ async function PersonalRails({
 
   return (
     <div className="space-y-6">
-      {suggested.length > 0 && (
+      {!railOff(hidden, "foryou") && suggested.length > 0 && (
         /* السبب يُحسب هنا (يحتاج القاموس) والبطاقات تُسلسَل خفيفةً للعميل */
         <PickedForYou
           title={t.suggestedForYou}
@@ -2164,7 +2192,7 @@ async function PersonalRails({
 
       {/* «من فنّانيك» بعد المقترحات: غير مرقّم — هذه أحدث أعمال
           فنّانيك لا ترتيبها */}
-      {artistRows.length > 0 && (
+      {!railOff(hidden, "artists") && artistRows.length > 0 && (
         <RankedRail
           title={t.artistsRail}
           icon="people"
