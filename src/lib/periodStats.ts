@@ -588,8 +588,20 @@ export async function buildPeriodStats(
     empty: current.length === 0,
     minutes,
     prevMinutes,
+    /* 🔴 🆕 **ونسبةٌ من قاعٍ فارغٍ تقيس الفراغَ لا النموّ** (D-805، من
+       الصفحة الحيّة): **الشهرُ عرض «+٩٬٦٤٧٪»** لأنّ الشهرَ الذي قبله
+       كان دقائق — **ورقمٌ من أربع خاناتٍ بعلامة نسبةٍ يُقرأ عطلاً لا
+       خبراً**، **ولا يجيب سؤالاً**: «كم زدتُ؟» جوابُها ليس «مئةَ ضعف».
+       **فالشرطان مكتوبان**: قاعٌ لا يقلّ عن ساعة، **ونسبةٌ تُقرأ**
+       (٩٩٩٪ فأقلّ). **وما جاوزهما يغيب** — **والغيابُ أصدقُ من رقمٍ
+       يقول ما لا يعنيه** (D-063). */
     deltaPct:
-      prevMinutes > 0 ? Math.round(((minutes - prevMinutes) / prevMinutes) * 100) : null,
+      prevMinutes >= 60
+        ? (() => {
+            const d = Math.round(((minutes - prevMinutes) / prevMinutes) * 100);
+            return Math.abs(d) <= 999 ? d : null;
+          })()
+        : null,
     dailyAvgMin: range.days > 0 ? Math.round(minutes / range.days) : 0,
     episodes,
     movies,
