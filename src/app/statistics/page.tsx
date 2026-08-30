@@ -91,6 +91,16 @@ export default async function StatisticsPage({
         <Link
           href={href({ o: offset - 1 })}
           scroll={false}
+          /* 🔴 🆕 **وكلُّ رابطٍ هنا يستبدل ولا يُكدّس** (D-805، حكمُ
+             أحمد: «إذا ضغطت سهم الرجوع المفروض يرجع للصفحة الي قبلها
+             مباشرة»): **المدّةُ والإزاحةُ والتبويبُ كلُّها في الرابط**
+             (D-799) — **فكلُّ ضغطةٍ كانت تدفع مدخلاً في التاريخ**،
+             **ومن قلّب أربعَ مددٍ وأربعةَ أقسامٍ ثمّ ضغط الرجوع مشى في
+             ثمانيةِ مداخلَ قبل أن يخرج.** **والتبويبُ وجهٌ ثانٍ لصفحةٍ
+             واحدة لا وجهةٌ ثانية** (D-643).
+             ⚠️ **والرابطُ الداخلُ إلى الصفحة يبقى دفعاً** — هو الذي
+             يُرجِع القارئَ إلى «تقريرك». */
+          replace
           aria-label={ar ? "السابق" : "Previous"}
           className="grid place-items-center w-8 h-9 rounded-full text-muted hover:text-foreground transition"
         >
@@ -105,6 +115,7 @@ export default async function StatisticsPage({
           <Link
             href={href({ o: offset + 1 })}
             scroll={false}
+            replace
             aria-label={ar ? "التالي" : "Next"}
             className="grid place-items-center w-8 h-9 rounded-full text-muted hover:text-foreground transition"
           >
@@ -146,6 +157,7 @@ export default async function StatisticsPage({
                   aria-selected={on}
                   href={href({ p, o: 0 })}
                   scroll={false}
+                  replace
                   className={`flex-1 basis-0 min-w-0 text-center pb-2.5 pt-1 text-14 border-b-2 transition ${
                     on
                       ? "font-bold text-foreground border-accent"
@@ -169,6 +181,7 @@ export default async function StatisticsPage({
                   aria-selected={on}
                   href={href({ t: id })}
                   scroll={false}
+                  replace
                   className={`flex-1 basis-0 min-w-0 text-center text-14 transition flex items-center justify-center gap-1.5 ${
                     on ? "font-bold text-foreground" : "text-muted hover:text-foreground"
                   }`}
