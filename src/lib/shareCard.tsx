@@ -253,42 +253,13 @@ function TextLine({
   );
 }
 
-export function ShareCard(d: ShareCardData) {
-  const { rtl } = d;
-  const row = rtl ? "row-reverse" : "row";
-  const side = rtl ? "flex-end" : "flex-start";
-
-  /* 🔴 **مولّدُ الصور يبعثر الجملةَ العربيّة** (satori بلا bidi للجمل):
-     «وقت المشاهدة» كانت تخرج «المشاهدة وقت» — **فكلُّ كلمةٍ عقدةٌ
-     والصفُّ يرتّبها بأيدينا.** ⚠️ **ولا نتّكل على `direction`**:
-     Yoga تذبذبَت بين سطرٍ وآخر (قِيس).
-     🔴 **والعكسُ يتبع لغةَ النصِّ لا لغةَ البطاقة** (D-716): نبذةٌ
-     إنجليزيّةٌ في بطاقةٍ عربيّةٍ خرجت مقلوبةً في أوّل نشرةٍ حيّة —
-     **والنصُّ يحمل اتّجاهَه في حروفه لا في تفضيلات صاحبه.** */
-  /* 🔴 🆕 **ولا `fontWeight` هنا البتّة** (D-720، خامسُ أعطال satori
-     وقد سقط محلّيّاً قبل النشر): **الخطُّ مسجَّلٌ بوزنٍ واحد (٧٠٠)**،
-     **وطلبُ ٤٠٠ يجعل المحرّكَ يبحث عن وجهٍ لا وجود له فينهار في قياس
-     الحرف** (`charToGlyphIndex` على `undefined`) — **والعربيّةُ وحدَها
-     تنهار، واللاتينيّةُ تسقط إلى وجهها الثاني بصمت.**
-     🔑 **والدرسُ**: **وزنٌ لا يُسجَّل لا يُطلب** — **وعطلٌ يظهر في لغةٍ
-     دون أخرى يُقرأ عطلَ نصٍّ وهو عطلُ خطّ.** */
-  /* ⚖️ 🆕 **والرسمُ صار في `TextLine` أعلاه** (D-810): **نداءاتُها
-     العشرون هنا لم تُمسّ**، **والغلافُ يمرّر `rtl` وحدَه** — **ونسخةٌ
-     ثانيةٌ من قاعدة عكس الكلمات في بطاقةٍ أخرى تفترق عند أوّل عطلٍ
-     يُصلَح في إحداهما** (D-145). */
-  const Line = (p: { text: string; size: number; color?: string; shadow?: boolean }) => (
-    <TextLine rtl={rtl} {...p} />
-  );
-
-  const stripView = rtl ? [...d.strip].reverse() : d.strip;
-  /* 🔴 **والملصقاتُ تُعكس كما يُعكس الشريط** (D-716): ترتيبُ D-704
-     منطقيٌّ (فيلم · أنمي · مسلسل) **والصفحةُ تردّه بالاتّجاه**، **وsatori
-     لا تعرف الاتّجاه فتُرسم يساراً دائماً.** */
-  const postersView = rtl ? [...d.posters].reverse() : d.posters;
-
+/**
+ * صفٌّ من صورٍ يملأ خلفيّةَ خانةٍ — **٢٠٪ بصبغةٍ وحجابِ عتمة** (D-717/D-724/D-788).
+ * ⚖️ **ورُفع إلى مستوى الملفّ** (D-811): **مكوّنٌ يُخلق في كلِّ رسمٍ خطأ.**
+ */
   /** صفٌّ من صورٍ يملأ خلفيّةَ خانةٍ — ١٥٪ رماديّةً (D-717) */
-  const CellArt = ({ images }: { images: string[] }) =>
-    images.length === 0 ? null : (
+function CellArt({ images }: { images: string[] }) {
+  return images.length === 0 ? null : (
       <div
         style={{
           position: "absolute",
@@ -337,6 +308,39 @@ export function ShareCard(d: ShareCardData) {
         />
       </div>
     );
+}
+
+export function ShareCard(d: ShareCardData) {
+  const { rtl } = d;
+  const row = rtl ? "row-reverse" : "row";
+  const side = rtl ? "flex-end" : "flex-start";
+
+  /* 🔴 **مولّدُ الصور يبعثر الجملةَ العربيّة** (satori بلا bidi للجمل):
+     «وقت المشاهدة» كانت تخرج «المشاهدة وقت» — **فكلُّ كلمةٍ عقدةٌ
+     والصفُّ يرتّبها بأيدينا.** ⚠️ **ولا نتّكل على `direction`**:
+     Yoga تذبذبَت بين سطرٍ وآخر (قِيس).
+     🔴 **والعكسُ يتبع لغةَ النصِّ لا لغةَ البطاقة** (D-716): نبذةٌ
+     إنجليزيّةٌ في بطاقةٍ عربيّةٍ خرجت مقلوبةً في أوّل نشرةٍ حيّة —
+     **والنصُّ يحمل اتّجاهَه في حروفه لا في تفضيلات صاحبه.** */
+  /* 🔴 🆕 **ولا `fontWeight` هنا البتّة** (D-720، خامسُ أعطال satori
+     وقد سقط محلّيّاً قبل النشر): **الخطُّ مسجَّلٌ بوزنٍ واحد (٧٠٠)**،
+     **وطلبُ ٤٠٠ يجعل المحرّكَ يبحث عن وجهٍ لا وجود له فينهار في قياس
+     الحرف** (`charToGlyphIndex` على `undefined`) — **والعربيّةُ وحدَها
+     تنهار، واللاتينيّةُ تسقط إلى وجهها الثاني بصمت.**
+     🔑 **والدرسُ**: **وزنٌ لا يُسجَّل لا يُطلب** — **وعطلٌ يظهر في لغةٍ
+     دون أخرى يُقرأ عطلَ نصٍّ وهو عطلُ خطّ.** */
+  /* ⚖️ 🆕 **ولا غلافَ محلّيّاً لـ`TextLine`** (D-811 — سدادُ دَينِ
+     D-810): **`const Line = …` داخل مكوّنٍ يخلق مكوّناً في كلِّ رسم**،
+     **وهو خطأُ `react-hooks/static-components` بعينه** — **وكان خمسةَ
+     أخطاءٍ في هذا الملفّ سابقةً على D-810 وبقيت بعده.**
+     📏 **والتحويلُ قِيس لا صُدِّق**: **البطاقةُ رُسمت محلّيّاً قبله
+     وبعده** — **والملفّان متطابقان بايتاً ببايت**، **فلا انحدارَ
+     صامتاً في سطحٍ يعمل.** */
+  const stripView = rtl ? [...d.strip].reverse() : d.strip;
+  /* 🔴 **والملصقاتُ تُعكس كما يُعكس الشريط** (D-716): ترتيبُ D-704
+     منطقيٌّ (فيلم · أنمي · مسلسل) **والصفحةُ تردّه بالاتّجاه**، **وsatori
+     لا تعرف الاتّجاه فتُرسم يساراً دائماً.** */
+  const postersView = rtl ? [...d.posters].reverse() : d.posters;
 
   return (
     <div
@@ -378,7 +382,7 @@ export function ShareCard(d: ShareCardData) {
           />
           <div style={{ fontSize: 38, letterSpacing: -1 }}>Loopz</div>
         </div>
-        <Line text={d.headline} size={28} color={MUTED} shadow={false} />
+        <TextLine rtl={rtl} text={d.headline} size={28} color={MUTED} shadow={false} />
       </div>
 
       {/* ===== ١) البطاقةُ السينمائيّة — مغلقةٌ على ملصقاتها ===== */}
@@ -447,13 +451,13 @@ export function ShareCard(d: ShareCardData) {
               <PlanMark tier={d.tier ?? null} founder={d.founder ?? false} />
               {d.verified ? <VerifiedMark /> : null}
             </div>
-            {d.followers ? <Line text={d.followers} size={28} color={MUTED} /> : null}
+            {d.followers ? <TextLine rtl={rtl} text={d.followers} size={28} color={MUTED} /> : null}
           </div>
         </div>
 
         {d.bio ? (
           <div style={{ display: "flex", marginTop: 16 }}>
-            <Line text={d.bio} size={30} color="#EDEDED" />
+            <TextLine rtl={rtl} text={d.bio} size={30} color="#EDEDED" />
           </div>
         ) : null}
 
@@ -478,7 +482,7 @@ export function ShareCard(d: ShareCardData) {
           ))}
         </div>
         <div style={{ display: "flex", marginTop: 8 }}>
-          <Line text={d.watchLine} size={28} color={MUTED} />
+          <TextLine rtl={rtl} text={d.watchLine} size={28} color={MUTED} />
         </div>
         {/* الخطُّ الأصفرُ المنحني — زينةُ الصفحة نفسُها */}
         <svg width="250" height="26" viewBox="0 0 220 24" style={{ marginTop: 10 }}>
@@ -525,7 +529,7 @@ export function ShareCard(d: ShareCardData) {
               </svg>
               <div style={{ fontSize: 48 }}>{c.value}</div>
             </div>
-            <Line text={c.label} size={26} color={MUTED} shadow={false} />
+            <TextLine rtl={rtl} text={c.label} size={26} color={MUTED} shadow={false} />
           </div>
         ))}
       </div>
@@ -565,13 +569,13 @@ export function ShareCard(d: ShareCardData) {
                 marginTop: 14,
               }}
             >
-              <Line text={d.themesLabel} size={28} color={MUTED} shadow={false} />
+              <TextLine rtl={rtl} text={d.themesLabel} size={28} color={MUTED} shadow={false} />
               {(rtl ? [...d.themes].reverse() : d.themes).map((th, i) => (
                 <div key={th} style={{ display: "flex", flexDirection: row, alignItems: "center", gap: 18 }}>
                   {i > 0 ? (
                     <div style={{ width: 7, height: 7, borderRadius: 4, background: "rgba(247,247,247,0.4)" }} />
                   ) : null}
-                  <Line text={th} size={30} color={FG} shadow={false} />
+                  <TextLine rtl={rtl} text={th} size={30} color={FG} shadow={false} />
                 </div>
               ))}
             </div>
@@ -602,8 +606,8 @@ export function ShareCard(d: ShareCardData) {
                     >
                       <CellArt images={cell.images} />
                       <div style={{ display: "flex", flexDirection: row, alignItems: "center", gap: 10 }}>
-                        <Line text={cell.title} size={26} color={FG} shadow={false} />
-                        {cell.note ? <Line text={`· ${cell.note}`} size={26} color={ACCENT} shadow={false} /> : null}
+                        <TextLine rtl={rtl} text={cell.title} size={26} color={FG} shadow={false} />
+                        {cell.note ? <TextLine rtl={rtl} text={`· ${cell.note}`} size={26} color={ACCENT} shadow={false} /> : null}
                       </div>
                       {cell.rows.map((r) => (
                         <div
@@ -618,11 +622,11 @@ export function ShareCard(d: ShareCardData) {
                             gap: 16,
                           }}
                         >
-                          <Line text={r.name} size={28} shadow={false} />
+                          <TextLine rtl={rtl} text={r.name} size={28} shadow={false} />
                           <div style={{ display: "flex", flexDirection: row, alignItems: "baseline", gap: 8 }}>
                             <div style={{ fontSize: 28, color: ACCENT }}>{r.value}</div>
                             {r.unit ? (
-                              <Line text={r.unit} size={26} color={MUTED} shadow={false} />
+                              <TextLine rtl={rtl} text={r.unit} size={26} color={MUTED} shadow={false} />
                             ) : null}
                           </div>
                         </div>
