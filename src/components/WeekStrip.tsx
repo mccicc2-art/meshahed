@@ -39,6 +39,7 @@ export function WeekStrip({
   entries,
   locale,
   action,
+  href,
 }: {
   /** تواريخُ متتابعةٌ تبدأ من اليوم — أربعةَ عشرَ اليوم (D-491) */
   days: { date: string; weekday: string; dayNum: string }[];
@@ -46,6 +47,13 @@ export function WeekStrip({
   locale: Locale;
   /** 🆕 عنصرٌ في طرف العنوان — مقبضُ ترتيب أقسام الرئيسية (D-595) */
   action?: React.ReactNode;
+  /**
+   * 🆕 **وجهةُ العنوان** (D-828) — **العنوانُ بابٌ حين تكون له وجهة**
+   * (D-422/D-198)، **وهو عُرفُ `PosterRail` نفسُه لا وصفةٌ ثانية.**
+   * ⚠️ **وخانةُ الفعل مشغولةٌ بمقبض الترتيب** (D-595) — **فالبابُ في
+   * العنوان لا في طرفٍ ثالثٍ يُخترع له.**
+   */
+  href?: string;
 }) {
   const t = getDict(locale);
   const byDay = new Map<string, WeekEntry[]>();
@@ -57,9 +65,22 @@ export function WeekStrip({
   return (
     <section>
       <div className="flex items-center justify-between gap-3 mb-1">
-        <h2 className="flex items-center gap-2 text-22 font-bold">
-          <Icon name="calendar" size={18} className="text-muted" />
-          {t.weekTitle}
+        <h2 className="min-w-0 text-22 font-bold">
+          {href ? (
+            <Link href={href} className="flex items-center gap-2 hover:opacity-80 transition">
+              <Icon name="calendar" size={18} className="text-muted" />
+              <span className="truncate">{t.weekTitle}</span>
+              {/* **ولا اتّجاهَ مقسورٌ على السهم ولا شرطُ لغة** (D-801):
+                  `›` مرآويٌّ في يونيكود **فينقلب مع الصفحة وحدَه** —
+                  **وشرطٌ يكتب السهمَ بيده يقلبه مرّتين في العربيّة.** */}
+              <span aria-hidden className="text-muted text-base">›</span>
+            </Link>
+          ) : (
+            <span className="flex items-center gap-2">
+              <Icon name="calendar" size={18} className="text-muted" />
+              {t.weekTitle}
+            </span>
+          )}
         </h2>
         {action}
       </div>
