@@ -24,9 +24,19 @@ import {
 import { buildTaste, tallyGenres } from "@/components/LibraryAnalysis";
 import { posterUrl } from "@/lib/media";
 import { favoriteTrio, trioPosterPaths } from "@/lib/heroPosters";
-import { ShareCard, type ShareStripCell, type ShareTasteCell } from "@/lib/shareCard";
+import {
+  ShareCard,
+  ReportShareCard,
+  type ShareStripCell,
+  type ShareTasteCell,
+} from "@/lib/shareCard";
 import { getT } from "@/lib/locale";
-import { worksParts } from "@/lib/i18n";
+import { num, worksParts, type Dict, type Locale } from "@/lib/i18n";
+/* 🆕 **بطاقةُ «شارك تقريرك»** (D-810) — **الرقمُ والجملةُ من المحرّك
+   نفسِه الذي ترسمه الصفحة** (D-797: لا سطحان يقولان عن المدّة رقمين). */
+import { asStatsPeriod, buildPeriodStats, statsRange } from "@/lib/periodStats";
+import { hm, reportLead } from "@/lib/statsFormat";
+import { asTimeZone } from "@/lib/zone";
 
 export const runtime = "nodejs";
 
@@ -45,12 +55,23 @@ export const runtime = "nodejs";
  *
  * **وهذا الملفُّ صار جمعَ بياناتٍ لا رسماً.**
  */
-export async function GET() {
+export async function GET(request: Request) {
   const user = await getUser();
   if (!user) return new Response("unauthorized", { status: 401 });
 
   const { t, locale } = await getT();
   const rtl = locale === "ar";
+
+  /* 🆕 **وبابان في مسارٍ واحد** (D-810): **بطاقةُ «كلِّ الأوقات» هي
+     الافتراضُ ولم تُمسّ**، **و`kind=report` بطاقةُ مدّةٍ بعينها.**
+     ⚖️ **ولمَ مسارٌ واحدٌ لا مساران**: **الخطوطُ و`dataUrl` وحارسُ
+     الجلسة واحدةٌ لهما** — **ومسارٌ ثانٍ ينسخها ثمّ يفترق عند أوّل
+     إصلاحٍ في أحدهما** (D-145). **والرسمان مفترقان في `shareCard`
+     حيث يفترق المعنى فعلاً.** */
+  const q = new URL(request.url).searchParams;
+  if (q.get("kind") === "report") {
+    return reportImage(q.get("p"), locale, rtl, t);
+  }
 
   const [profile, follows, followStats, summary, episodes, watchedMovies, ratings, favs, animeFlags] =
     await Promise.all([
@@ -302,4 +323,108 @@ async function dataUrl(url: string | null): Promise<string | null> {
 /** قصٌّ بالحروف مع نقاطٍ — أقربُ ما يُشبه `line-clamp` في صورة */
 function clip(s: string, max: number): string {
   return s.length <= max ? s : `${s.slice(0, max - 1).trimEnd()}…`;
+}
+
+
+/* ================= 🆕 بطاقةُ «شارك تقريرك» (D-810) ================= */
+
+/**
+ * **صورةُ مدّةٍ بعينها** — «تقريرك · أغسطس ٢٠٢٦».
+ *
+ * 🔒 **والقفلُ هنا لا في الزرِّ وحدَه**: **زرُّ المشاركة لا يُرسم لغير
+ * المشترك** (D-809)، **لكنّ رابطاً يُكتب باليد يتخطّى زرّاً غائباً** —
+ * **وبابٌ حارسُه في الواجهة ليس بباب.** ⚖️ **وهذا يسدّ ثغرةً أوسعَ من
+ * ثغرةِ المعاينة المُعلَنة في D-809**: تلك قيمٌ في DOM صفحته،
+ * **وهذه صورةٌ كاملةٌ تُولَّد وتُشارَك.**
+ *
+ * ⚖️ **ولا رقمَ يُحسب هنا**: `buildPeriodStats` هي المحرّك — **الصفحةُ
+ * والصورةُ يقرآن الدالّةَ نفسَها بالمنطقة الزمنيّة نفسِها** (D-806)،
+ * **فلا تقول صورةٌ عن أغسطس ما لا تقوله صفحتُه** (D-797).
+ *
+ * ⚠️ **وحدُّ الجلب ثلاثةُ ملصقاتٍ ووجهٌ واحد** — **أربعُ صورٍ لا اثنتان
+ * وعشرون** (بطاقةُ الإحصائيات)، **والتوليدةُ تقع بضغطةِ مشاركةٍ لا في
+ * كلِّ فتحة.**
+ */
+async function reportImage(rawPeriod: string | null, locale: Locale, rtl: boolean, t: Dict) {
+  const profile = await getProfile();
+  if (!isPlus(profile)) return new Response("plus required", { status: 403 });
+
+  const period = rawPeriod ? asStatsPeriod(rawPeriod) : "month";
+  const tz = asTimeZone(profile?.timezone);
+  const stats = await buildPeriodStats(period, 0, locale, tz);
+  /* **ولا صورةَ لمدّةٍ فارغة** — **بطاقةٌ تقول صفراً تُشارَك مرّةً
+     واحدةً ثمّ لا تُشارَك** (D-063: الغيابُ يُقال غياباً، ولا يُزيَّن). */
+  if (stats.empty) return new Response("nothing to share", { status: 409 });
+
+  const [arabic, latin] = await Promise.all([
+    readFile(join(process.cwd(), "public/fonts/tajawal-700-arabic.woff")),
+    readFile(join(process.cwd(), "public/fonts/cairo-700-latin.woff")),
+  ]);
+
+  const top = stats.topTitles.slice(0, 3);
+  const [posters, avatar] = await Promise.all([
+    Promise.all(top.map((x) => dataUrl(posterUrl(x.poster, "w342")))),
+    dataUrl(profile?.avatar_url ?? null),
+  ]);
+
+  const strip: ShareStripCell[] = [
+    /* **الخاناتُ الثلاثُ هي خاناتُ الصفحة حرفاً** (`ReportView`) —
+       **ورابعةٌ تُخترع للصورة تجعلها سطحاً آخر** (درسُ D-720). */
+    { icon: "play", value: num(stats.episodes, locale), label: rtl ? "حلقة" : "Episodes" },
+    { icon: "film", value: num(stats.movies, locale), label: rtl ? "فيلم" : "Movies" },
+    { icon: "check", value: num(stats.streak, locale), label: rtl ? "أيام متتالية" : "Day streak" },
+  ];
+
+  const lead = reportLead(stats, locale);
+
+  return new ImageResponse(
+    (
+      <ReportShareCard
+        rtl={rtl}
+        title={rtl ? "تقريرك" : "Your Report"}
+        range={statsRange(period, 0, locale, tz).label}
+        name={profile?.nickname?.trim() || profile?.username || "Loopz"}
+        avatar={avatar}
+        tier={isPartner(profile) ? "partner" : "plus"}
+        founder={isFounder(profile)}
+        verified={isVerified(profile)}
+        time={hm(stats.minutes, locale)}
+        watchLine={t.statWatchTime}
+        /* **والفرقُ يُرسم إن صدق وحدَه** — حارسُ D-805 في `periodStats` */
+        delta={
+          stats.deltaPct === null
+            ? null
+            : `${stats.deltaPct >= 0 ? "+" : ""}${num(stats.deltaPct, locale)}%`
+        }
+        deltaUp={(stats.deltaPct ?? 0) >= 0}
+        lead={lead ? { avg: lead.avg, plain: lead.plain } : null}
+        daysActive={stats.activeDays}
+        daysTotal={stats.range.days}
+        daysLabel={rtl ? "أيّام" : "days"}
+        strip={strip}
+        topLabel={top.length > 0 ? (rtl ? "الأكثر مشاهدة" : "Most watched") : null}
+        top={top.map((x, i) => ({
+          /* 🔴 **والاسمُ يُقصّ عند مصدره** (D-810، من الرسم المحلّيّ):
+             **عنوانٌ طويلٌ يفيض عن عموده إلى جاره** — **و`line-clamp`
+             لا وجودَ لها في satori**، **والالتفافُ في صفٍّ معكوسٍ ينزل
+             إلى غير موضعه.** **فالقصُّ هنا حيث تُعرف اللغةُ والمقاس.** */
+          title: clip(x.title, 18),
+          time: hm(x.minutes, locale),
+          poster: posters[i] ?? null,
+        }))}
+      />
+    ),
+    {
+      /* 📏 **١٧٠٠ مقيسةٌ لا مخمَّنة**: **أطولُ الحالات الإنجليزيّة
+         ١٥٠٧px محتوىً + ١١٢ حشوةً = ١٦١٩** — **والعربيّةُ أقصرُ فتتوسّط**
+         (`justify-content: center`)، **وذيلٌ أسودُ يُقرأ صورةً مقصوصة.** */
+      width: 1080,
+      height: 1700,
+      fonts: [
+        { name: "Cairo", data: arabic, weight: 700, style: "normal" },
+        { name: "CairoLatin", data: latin, weight: 700, style: "normal" },
+      ],
+      headers: { "Cache-Control": "private, max-age=0, must-revalidate" },
+    },
+  );
 }
