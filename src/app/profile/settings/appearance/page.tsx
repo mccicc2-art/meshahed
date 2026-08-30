@@ -6,6 +6,7 @@ import { SettingsPageLayout } from "@/components/settings/SettingsPageLayout";
 import { SettingsGroup } from "@/components/settings/SettingsGroup";
 import { LanguageRow } from "@/components/settings/LanguageRow";
 import { ThemeSection } from "@/components/settings/ThemeSection";
+import { AccentSection } from "@/components/settings/AccentSection";
 import { FontSizeSection } from "@/components/settings/FontSizeSection";
 import { FONT_UI_COOKIE, FONT_CONTENT_COOKIE, sanitizeFontSize } from "@/lib/fontPrefs";
 import { isPlus } from "@/lib/plan";
@@ -60,6 +61,14 @@ export default async function Page() {
             avatarPos: p?.avatar_pos ?? 50,
             favoriteGenres: p?.favorite_genres ?? [],
           }}
+        />
+        {/* 🆕 **ولونُك بعد الثيم مباشرةً** (D-825): **يركب فوقه**،
+            **فترتيبُ القراءة هو ترتيبُ التركيب.** */}
+        <AccentSection
+          locale={locale}
+          initial={p?.theme_accent ?? null}
+          /* 🆕 D-783 §٣ — والحكمُ من `lib/plan.ts` وحدَه */
+          plus={isPlus(p)}
         />
         <FontSizeSection locale={locale} initialUi={fsUi} initialContent={fsContent} />
       </SettingsGroup>
