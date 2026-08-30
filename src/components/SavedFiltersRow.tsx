@@ -3,6 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { Locale } from "@/lib/i18n";
+import { Icon } from "@/components/Icon";
 import { buttonClass } from "@/components/ui/Button";
 import { chipClass, chipRow } from "@/components/ui/controls";
 import { openPlusGate } from "@/lib/plusGate";
@@ -12,6 +13,7 @@ import {
   FILTER_NAME_MAX,
   newFilterId,
   removeFilter,
+  setDefaultFilter,
   sanitizeFilterName,
   sanitizeQuery,
   upsertFilter,
@@ -111,8 +113,14 @@ export function SavedFiltersRow({
             key={f.id}
             type="button"
             onClick={() => apply(f)}
-            className={chipClass(applied?.id === f.id, "sm", "shrink-0")}
+            className={chipClass(
+              applied?.id === f.id,
+              "sm",
+              "shrink-0 inline-flex items-center gap-1.5",
+            )}
           >
+            {/* **والنجمةُ علامةُ الافتراضيّ لا زرُّه** — الزرُّ سطرٌ تحت */}
+            {f.def ? <Icon name="sparkle-star" size={12} /> : null}
             {f.name}
           </button>
         ))}
@@ -154,18 +162,28 @@ export function SavedFiltersRow({
         </div>
       )}
 
-      {/* ⚠️ **وفعلُ المحفوظ تحت الصفِّ لا داخل الرقاقة**: **رقاقةٌ فيها
-          فعلان تُضغط بالخطأ**، **والمستدعى وحدَه هو الذي يُدار.**
+      {/* ⚠️ **وأفعالُ المحفوظ تحت الصفِّ لا داخل الرقاقة**: **رقاقةٌ فيها
+          ثلاثةُ أفعالٍ تُضغط بالخطأ**، **والمستدعى وحدَه هو الذي يُدار.**
 
-          🔴 **ولا «اجعله الافتراضيّ» في هذه الدفعة — وهو نصفُ البند
-          الثاني، أُسقط عمداً** (D-816): **«امسح الكل» تُنزل القارئَ على
-          رابطٍ عارٍ**، **وتطبيقُ الافتراضيّ على الرابط العاري في الخادم
-          يعيد الفلترَ الذي مسحه للتوّ** — **فعلٌ يُلغي فعلَ القارئ
-          صامتاً.** **ونجمةٌ تُرسم لحكمٍ لا يُطبَّق وعدٌ فارغ** (D-217).
-          **فالبندُ يُشحن كاملاً بقاعدةٍ تفرّق بين «لم أختر» و«مسحتُ
-          اختياري»، لا نصفَين.** **والمحرّكُ يحمله جاهزاً ومختبَراً.** */}
+          ✅ 🆕 **و«اجعله الافتراضيّ» عاد** (D-817 — تمامُ ما أُسقط في
+          D-816): **صار وراءه فعلٌ حقيقيّ** — **الخادمُ يحوّل الرابطَ
+          العاريَ إليه**، **و«امسح الكل» تكتب `nf` فلا يُعاد ما مُسح.**
+          **وما أُسقط لأنّه وعدٌ فارغٌ يعود يومَ يصير وعداً يُسلَّم.** */}
       {applied && (
         <div className="flex items-center gap-4 mt-2 text-12">
+          <button
+            type="button"
+            onClick={() => persist(setDefaultFilter(list, applied.id, !applied.def))}
+            className="text-muted hover:text-foreground transition"
+          >
+            {applied.def
+              ? ar
+                ? "أزل الافتراضيّ"
+                : "Unset default"
+              : ar
+                ? "اجعله الافتراضيّ"
+                : "Make default"}
+          </button>
           <button
             type="button"
             onClick={() => persist(removeFilter(list, applied.id))}

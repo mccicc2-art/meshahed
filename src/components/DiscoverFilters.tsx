@@ -149,6 +149,8 @@ export function DiscoverFilters({
     st?: string | null;
     se?: string | null;
     std?: string | null;
+    /** 🆕 **«مسحتُ اختياري»** (D-817) — «امسح الكل» وحدَها تمرّرها */
+    nf?: true;
   }) {
     let nextGenre = next.g === undefined ? genre : next.g;
 
@@ -171,6 +173,10 @@ export function DiscoverFilters({
       st: next.st === undefined ? status : next.st,
       se: next.se === undefined ? season : next.se,
       std: next.std === undefined ? studio : next.std,
+      /* 🆕 **ولا تُورَّث من الحالة** (D-817): **علامةُ فعلٍ لا حالةُ
+         صفحة** — **ولو ورثتها كلُّ لمسةِ فلترٍ بعدها لبقيت في الرابط
+         وأبطلت الافتراضيَّ إلى الأبد.** */
+      nf: next.nf,
     });
 
     tap(8);
@@ -446,6 +452,8 @@ export function DiscoverFilters({
               clearAllLabel={t.browseClearAll}
               onClearAll={() =>
                 go({
+                  /* 🆕 **والمسحُ يُعلن نفسَه** (D-817) — انظر `browseHref` */
+                  nf: true,
                   g: null,
                   lang: null,
                   co: null,
