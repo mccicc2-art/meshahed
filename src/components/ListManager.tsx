@@ -2,10 +2,12 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { backdropUrl } from "@/lib/media";
 import { listColor, listColorCss } from "@/lib/listColors";
 import { getDict, type Locale } from "@/lib/i18n";
 import { Icon } from "./Icon";
+import { buttonClass } from "./ui/Button";
 import { CommunityListCard } from "./PublicListsRail";
 import { ToWatchListCard } from "./ToWatchListCard";
 import type { UserList } from "@/lib/data";
@@ -74,8 +76,42 @@ export function ListManager({
       {/* نموذجُ الإنشاء صار مكوّناً مشتركاً (D-177): بابُه الثاني ورقةُ
           أدوات المكتبة، **وتحصينات D-168 لا تُنسخ** */}
       {/* 🆕 **زرٌّ لا حقلٌ دائم** (D-443) — انظر حجّتَه في `NewListForm` */}
+      {/* 🆕 **وبابُ القائمة الذكيّة بجانبه** (D-830، سؤالُ أحمد: «ما
+          عرفت كيف أسوي الليستات التلقائية؟»): **بابُها الوحيدُ كان
+          رقاقةً في «اكتشف» لا تُرسم إلّا بعد اختيار فلتر** — **وميزةٌ
+          لا يصل إليها إلّا من يعرف أنّها موجودة ليست مشحونة** (D-346).
+          🔑 **ومن يريد قائمةً يذهب حيث تسكن القوائم لا حيث تُبنى
+          الشروط** — **فالشرطُ يبقى في «اكتشف» ويصير البابُ حيث يُبحث
+          عنه** (D-198). ⚠️ **ورابطٌ لا زرّ**: **الوجهةُ صفحةٌ**،
+          **ورابطٌ يرث شكلَ الزرِّ أصدقُ من زرٍّ يتظاهر بأنه رابط**
+          (D-017). */}
       <div className="mb-4">
-        <NewListForm locale={locale} collapsed />
+        <NewListForm
+          locale={locale}
+          collapsed
+          trailing={
+            <Link
+              href="/news"
+              className={buttonClass({
+                variant: "surface",
+                size: "sm",
+                className: "gap-1.5",
+              })}
+            >
+              <Icon name="sparkle-star" size={14} />
+              {t.smartListLabel}
+            </Link>
+          }
+        />
+        {/* 🔑 **والسطرُ يُقاس ولا يُفترض** (D-570): **يُرسم لمن لا قائمةَ
+            ذكيّةَ له**، **ويسقط عن نفسه أوّلَ ما يصنع واحدة** — **ولا
+            رايةَ تُخزَّن ولا سطرَ تعليمٍ يسكن الصفحةَ إلى الأبد**
+            (D-138: أداةٌ تُرى ولا تُستعمل تزاحم ما يُستعمل). */}
+        {!lists.some((l) => l.kind === "smart") && (
+          <p className="text-12 text-muted mt-2 leading-relaxed" dir="auto">
+            {t.smartListHint}
+          </p>
+        )}
       </div>
 
       {lists.length === 0 && !toWatch ? (
