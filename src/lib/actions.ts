@@ -781,8 +781,32 @@ export async function setWatchRegion(value: string) {
  * يمرّ بها الكوكي المقروء — فالمجهولُ يسقط، والناقصُ يُلحَق بحالته
  * الافتراضية، **والأخيرُ الظاهر لا يُخفى** مهما أرسل العميل.
  */
-export async function setTabPrefs(surface: string, prefs: TabPref[]) {
-  if (!isTabSurface(surface)) return;
+/**
+ * 🔒 🆕 **وترتيبُ التبويبات وإظهارُها صارا بلس** (D-819، حكمُ أحمد:
+ * «الفيو في كلّ التولز خلّها للبلس فقط»).
+ *
+ * 🔑 **والحارسُ هنا لا في الأوراق الأربع**: **هذا الفعلُ هو الكاتبُ
+ * الوحيدُ للتفضيل** (D-462: حقلٌ واحدٌ لا يملك كاتبَين) — **وأربعُ
+ * أوراقٍ تحرس ثلاثاً وتنسى واحدة.**
+ *
+ * 🔴 **والبديلُ المرفوض كان معاملَ `plus` يُمرَّر عبر ستّة مكوّنات**:
+ * **حارسٌ في العميل زينةٌ لا قفل** (الفعلُ يُنادى بدونه)، **وكان يكلّف
+ * قراءةَ ملفٍّ حاجبةً في كلِّ فتحةِ «اكتشف» و«مكتبتي»** — **ثمنٌ يدفعه
+ * كلُّ زائرٍ لأجل لوحٍ لا يفتحه واحدٌ من مئة** (D-515).
+ * **والجوابُ يعود من الفعل نفسِه، فتفتح الواجهةُ البوّابةَ عن حقيقةٍ لا
+ * عن تخمين.**
+ *
+ * ⚠️ **والمناداةُ القائمةُ لا تُكسر**: **قيمةٌ راجعةٌ تُضاف ولا تُطلب**
+ * — ومن كان يتجاهلها يبقى يتجاهلها (D-028).
+ */
+export async function setTabPrefs(
+  surface: string,
+  prefs: TabPref[],
+): Promise<{ ok: boolean; needsPlus?: true }> {
+  if (!isTabSurface(surface)) return { ok: false };
+  /* **ولا كتابةَ قبل الحكم** — **كوكيٌّ يُكتب ثمّ تُفتح بوّابةٌ يترك
+     التفضيلَ محفوظاً ويقول «اشترِ»**، وهو أسوأُ من الاثنين. */
+  if (!(await viewerIsPlus())) return { ok: false, needsPlus: true };
   const clean = parseTabPrefs(surface, serializeTabPrefs(prefs));
   const store = await cookies();
   store.set(surfaceCookie(surface), serializeTabPrefs(clean), {
@@ -790,6 +814,7 @@ export async function setTabPrefs(surface: string, prefs: TabPref[]) {
     maxAge: 60 * 60 * 24 * 365,
     sameSite: "lax",
   });
+  return { ok: true };
 }
 
 /**
