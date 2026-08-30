@@ -7,6 +7,7 @@ import { isPlus } from "@/lib/plan";
 import { asStatsPeriod, buildPeriodStats, type StatsPeriod } from "@/lib/periodStats";
 import { ReportView } from "@/components/ReportView";
 import { SettingsHeader } from "@/components/settings/SettingsHeader";
+import { PlusPill } from "@/components/ui/PlusPill";
 import { ShareCard } from "@/components/ShareCard";
 import { Icon } from "@/components/Icon";
 
@@ -52,8 +53,13 @@ export default async function ReportsPage({
 
   return (
     <div>
+      {/* 🆕 **ورقاقةُ PLUS بجانب الاسم** (D-801 — الصورة المرفقة):
+          **الصفحةُ مدفوعةٌ كلُّها**، **ووسمٌ يقول ذلك عند بابها أصدقُ من
+          قفلٍ يُكتشف بعد الدخول** — ولا يُرسم لغير المشترك، فبابُه هو
+          شاشةُ الثمن نفسُها. */}
       <SettingsHeader
         title={ar ? "تقريرك" : "Your Report"}
+        badge={plus ? <PlusPill /> : undefined}
         fallbackHref="/stats"
         action={plus ? <ShareCard locale={locale} icon /> : undefined}
       />
