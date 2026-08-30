@@ -83,9 +83,15 @@ export function tasteMatch(mine: GenreTally, theirs: GenreTally): TasteMatch {
     .sort((a, b) => Math.min(b.mine, b.theirs) - Math.min(a.mine, a.theirs))
     .slice(0, 4);
 
-  /* **والفراقُ أكبرُ فارقٍ مطلق** — يُقرأ «هو يشاهد هذا وأنت لا» */
+  /* **والفراقُ أكبرُ فارقٍ مطلق** — يُقرأ «هو يشاهد هذا وأنت لا».
+     🔴 **ولا نوعَ في القسمين معاً** (D-814، من الصفحة الحيّة): **«دراما»
+     خرجت في «تجتمعان على» و«تفترقان في» في آنٍ واحد** — **وكلا
+     السطرين صادقٌ حسابيّاً** (يشاهدانها معاً، وهي أكبرُ فارقٍ بينهما)
+     — **لكنّ القارئ يقرأ تناقضاً لا تفصيلاً.** **والاجتماعُ يسبق
+     الفراقَ في الرسم، فيملك حقَّ الأوّليّة.** */
+  const sharedSlugs = new Set(shared.map((r) => r.slug));
   const apart = rows
-    .filter((r) => Math.abs(r.mine - r.theirs) >= 5)
+    .filter((r) => !sharedSlugs.has(r.slug) && Math.abs(r.mine - r.theirs) >= 5)
     .sort((a, b) => Math.abs(b.mine - b.theirs) - Math.abs(a.mine - a.theirs))
     .slice(0, 3);
 
