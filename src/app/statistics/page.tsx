@@ -83,55 +83,58 @@ export default async function StatisticsPage({
     return s ? `/statistics?${s}` : "/statistics";
   };
 
+  /* **مِقودُ المدّة** — سهمٌ واسمٌ وسهم، في صفِّ الترويسة لا تحته.
+     ⚠️ **وقيمةٌ لا مكوّنٌ يُعرَّف داخل الرسم**: `react-hooks/static-components`
+     ترفض الثاني بحقّ — **مكوّنٌ يُخلق في كلِّ رسمةٍ يفقد حالتَه معها.** */
+  const periodNav = (
+      <span className="flex items-center gap-0.5 shrink-0">
+        <Link
+          href={href({ o: offset - 1 })}
+          scroll={false}
+          aria-label={ar ? "السابق" : "Previous"}
+          className="grid place-items-center w-8 h-9 rounded-full text-muted hover:text-foreground transition"
+        >
+          {/* **ولا اتّجاهَ مقسورٌ على سهمِ تنقّل** (D-801) — الحرفُ
+              مرآويٌّ في يونيكود فينقلب مع العربيّة وحدَه */}
+          <span aria-hidden>‹</span>
+        </Link>
+        <span className="text-12 font-semibold tabular-nums whitespace-nowrap">
+          {range.label}
+        </span>
+        {range.canGoNext ? (
+          <Link
+            href={href({ o: offset + 1 })}
+            scroll={false}
+            aria-label={ar ? "التالي" : "Next"}
+            className="grid place-items-center w-8 h-9 rounded-full text-muted hover:text-foreground transition"
+          >
+            <span aria-hidden>›</span>
+          </Link>
+        ) : (
+          /* **والسهمُ الغائبُ يبقى مكانُه** فلا يقفز الاسمُ عند الحدّ */
+          <span aria-hidden className="w-8 h-9" />
+        )}
+      </span>
+  );
+
   return (
     <div>
+      {/* 🆕 **والمدّةُ صعدت إلى الصفِّ الأوّل** (D-804، حكمُ أحمد:
+          «السنة والشهر لا تكتبهم في سطر لوحدهم، خلّهم مع أوّل صفّ»):
+          **كان لها صفٌّ كامل** — سهمان واسمٌ — **يعطي معلومةَ كلمةٍ
+          بارتفاع سطر.** **والسهمان يبقيان ملاصقَين لِما يحرّكانه**:
+          **مِقودٌ يُفصل عن الرقم الذي يقوده يصير زرَّين بلا معنى** —
+          **ولذلك لم تُدسَّ الكلمةُ في الاسم هنا كما في «تقريرك»**،
+          فتلك لا تتنقّل وهذه تتنقّل. */}
       <SettingsHeader
         title={ar ? "الإحصائيات الكاملة" : "Full Statistics"}
         badge={plus ? <PlusPill /> : undefined}
         fallbackHref={`/reports${period !== "week" ? `?p=${period}` : ""}`}
+        action={plus && period !== "all" ? periodNav : undefined}
       />
 
       {plus ? (
         <div className="mt-1">
-          {/* ═══ شريطُ التاريخ — سهمان واسمُ المدّة، **ولا مستقبل** ═══ */}
-          {/* 🔴 **ولا شريطَ في «كلّ الأوقات»** (D-801 — من الصفحة الحيّة):
-              **سهمان مخفيّان واسمٌ يكرّر التبويبَ الذي تحته حرفاً بحرف**
-              — «All time» فوق «All time» — **وصفٌّ لا يحمل فعلاً ولا خبراً
-              جديداً هو سطرٌ يسرق ارتفاعاً ويشكّك القارئَ في نظره.** */}
-          {period !== "all" && (
-          <div className="flex items-center justify-center gap-6 py-1.5">
-            <Link
-              href={href({ o: offset - 1 })}
-              scroll={false}
-              aria-label={ar ? "السابق" : "Previous"}
-              className="grid place-items-center w-9 h-9 rounded-full text-muted hover:text-foreground transition"
-            >
-              {/* 🔴 **ولا اتّجاهَ مقسورٌ على سهمِ تنقّل** (D-801، من الصفحة
-                  الحيّة): **الأرقامُ تُقسر على اليسار لأنها أرقام، والأسهمُ
-                  لا** — `‹` و`›` حرفان **مرآويّان في يونيكود** يقلبهما
-                  محرّكُ الاتجاهين وحدَه في العربيّة. **وسهمُ «السابق» على
-                  اليمين يشير إلى اليسار يقول للقارئ العربيّ: تقدّم**، وهو
-                  عكسُ فعله. **وترويسةُ الإعدادات تعكس سهمَها منذ اليوم
-                  الأوّل** (`rtl:-rotate-90`) — فهذه لحاقٌ بها لا اجتهاد. */}
-              <span aria-hidden>‹</span>
-            </Link>
-            <span className="text-14 font-semibold tabular-nums">{range.label}</span>
-            {range.canGoNext ? (
-              <Link
-                href={href({ o: offset + 1 })}
-                scroll={false}
-                aria-label={ar ? "التالي" : "Next"}
-                className="grid place-items-center w-9 h-9 rounded-full text-muted hover:text-foreground transition"
-              >
-                <span aria-hidden>›</span>
-              </Link>
-            ) : (
-              /* **والسهمُ الغائبُ يبقى مكانُه** فلا يقفز الاسمُ عند الحدّ */
-              <span aria-hidden className="w-9 h-9" />
-            )}
-          </div>
-          )}
-
           {/* ═══ المدّة ═══ */}
           <div role="tablist" aria-label={ar ? "المدّة" : "Period"} className="flex">
             {(["week", "month", "year", "all"] as const).map((p) => {
