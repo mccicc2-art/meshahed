@@ -4,7 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import { Sheet, SheetHeader } from "@/components/ui/Sheet";
 import { PosterCard } from "@/components/PosterCard";
-import { posterGrid, chipRow } from "@/components/ui/controls";
+import { posterGrid, chipRow, sheetScroll } from "@/components/ui/controls";
 import { profileUrl } from "@/lib/media";
 import { openPlusGate } from "@/lib/plusGate";
 import type { Locale } from "@/lib/i18n";
@@ -105,13 +105,20 @@ export function AutoGroups({
               title={open.name}
               onClose={() => setOpen(null)}
               closeLabel={ar ? "إغلاق" : "Close"}
-            />
-            <div className="px-4 pb-6">
-              <p className="text-12 text-muted mb-3">
+            >
+              {/* **العدُّ في الرأس لا في الجسد**: الجسدُ يمرّ، والرأسُ
+                  يبقى — **ورقمٌ يختفي عند أوّل تمريرةٍ لا يُقرأ.** */}
+              <p className="text-12 text-muted mt-0.5">
                 {ar
                   ? `${open.items.length} من أعمالك`
                   : `${open.items.length} of your titles`}
               </p>
+            </SheetHeader>
+            {/* 🔑 **والورقةُ سقفُها `76svh` وابنُها لا ينكمش تحته بلا
+                `min-h-0`** (درسُ `ReorderSheet` بنصّه): **اثنا عشر عملاً
+                كانت تُقصّ بلا تمرير** — **فآخرُ صفٍّ لا يُرى ولا يُبلَغ.**
+                **و`sheetScroll` هي الوصفةُ نفسُها لا نسخةٌ ثانية** (القاعدة ٣). */}
+            <div className={`${sheetScroll} px-4 pt-1 pb-[calc(1.5rem+env(safe-area-inset-bottom))]`}>
               <div className={posterGrid}>
                 {open.items.map((x) => (
                   <PosterCard
