@@ -88,9 +88,9 @@ export function OverviewTab({ s, locale }: { s: PeriodStats; locale: Locale }) {
         <div className="flex items-center gap-5">
           <Ring pct={s.completionPct} locale={locale} label={ar ? "نسبة الإكمال" : "Completion rate"} />
           <div className="flex-1 grid grid-cols-3 gap-2 min-w-0">
-            <MiniStat icon="check" value={num(s.status.completed, locale)} label={ar ? "مكتملة" : "Completed"} />
-            <MiniStat icon="play" value={num(s.status.inProgress, locale)} label={ar ? "قيد المشاهدة" : "In progress"} />
-            <MiniStat icon="repeat" value={num(s.status.rewatched, locale)} label={ar ? "أُعيدت" : "Rewatched"} />
+            <StatCell size="sm" align="center" icon="check" value={num(s.status.completed, locale)} label={ar ? "مكتملة" : "Completed"} />
+            <StatCell size="sm" align="center" icon="play" value={num(s.status.inProgress, locale)} label={ar ? "قيد المشاهدة" : "In progress"} />
+            <StatCell size="sm" align="center" icon="repeat" value={num(s.status.rewatched, locale)} label={ar ? "أُعيدت" : "Rewatched"} />
           </div>
         </div>
       </section>
@@ -140,10 +140,10 @@ export function ContentTab({ s, locale }: { s: PeriodStats; locale: Locale }) {
       <section>
         <h2 className="text-20 font-bold mb-3">{ar ? "حالة المشاهدة" : "Watch status"}</h2>
         <div className="grid grid-cols-4 gap-2">
-          <MiniStat icon="play" value={num(s.status.started, locale)} label={ar ? "بدأتها" : "Started"} />
-          <MiniStat icon="check" value={num(s.status.completed, locale)} label={ar ? "مكتملة" : "Completed"} />
-          <MiniStat icon="hourglass" value={num(s.status.inProgress, locale)} label={ar ? "جارية" : "In progress"} />
-          <MiniStat icon="repeat" value={num(s.status.rewatched, locale)} label={ar ? "أُعيدت" : "Rewatched"} />
+          <StatCell size="sm" align="center" icon="play" value={num(s.status.started, locale)} label={ar ? "بدأتها" : "Started"} />
+          <StatCell size="sm" align="center" icon="check" value={num(s.status.completed, locale)} label={ar ? "مكتملة" : "Completed"} />
+          <StatCell size="sm" align="center" icon="hourglass" value={num(s.status.inProgress, locale)} label={ar ? "جارية" : "In progress"} />
+          <StatCell size="sm" align="center" icon="repeat" value={num(s.status.rewatched, locale)} label={ar ? "أُعيدت" : "Rewatched"} />
         </div>
       </section>
 
@@ -368,11 +368,22 @@ export function HabitsTab({ s, locale }: { s: PeriodStats; locale: Locale }) {
         </div>
       </section>
 
+      {/* 🔴 **وهذا الصفُّ وحدَه يُبقي الرمزَ فوق الرقم — بقياسٍ لا بذوق**
+          (D-813): **قيمُه مُدَدٌ لا أعداد** («14h 6m»)، **وعرضُها عند
+          `text-20` بين ٧١ و٨٤ بكسلاً** (مقيسٌ في المتصفّح الحيّ)،
+          **وخانةُ أربعةِ أعمدةٍ على ٣٩٠ بكسلاً عرضُها ٨١** — **يبقى
+          للقيمة ٥٧ بعد الرمز والفجوة، فتُبتر «14h…».**
+          🔑 **ورقمٌ مبتورٌ أسوأُ من خانةٍ أطول** — **الاسمُ يُبتر فيُفقد
+          تعريفُ الرقم (D-787)، والرقمُ يُبتر فيُفقد الخبرُ نفسُه.**
+          ⚖️ **ولا يُرى الشكلان معاً**: **هذا الصفُّ وحيدُ تبويبِ
+          «العادات»**، **وشبكتا «الإكمال» و«حالة المشاهدة» في تبويبين
+          آخرين** — **وحكمُ أحمد كان أن تُقرأ الصفحةُ الواحدةُ برتبةٍ
+          واحدة**، وهو قائم. */}
       <div className="grid grid-cols-4 gap-2">
-        <MiniStat icon="play" value={num(s.habits.sessions, locale)} label={ar ? "جلسات" : "Sessions"} />
-        <MiniStat icon="clock" value={hm(s.habits.avgSessionMin, locale)} label={ar ? "المتوسط" : "Average"} />
-        <MiniStat icon="trending" value={hm(s.habits.longestSessionMin, locale)} label={ar ? "الأطول" : "Longest"} />
-        <MiniStat icon="check" value={num(s.streak, locale)} label={ar ? "أيام متتالية" : "Day streak"} />
+        <StatCell size="sm" align="center" inline={false} icon="play" value={num(s.habits.sessions, locale)} label={ar ? "جلسات" : "Sessions"} />
+        <StatCell size="sm" align="center" inline={false} icon="clock" value={hm(s.habits.avgSessionMin, locale)} label={ar ? "المتوسط" : "Average"} />
+        <StatCell size="sm" align="center" inline={false} icon="trending" value={hm(s.habits.longestSessionMin, locale)} label={ar ? "الأطول" : "Longest"} />
+        <StatCell size="sm" align="center" inline={false} icon="check" value={num(s.streak, locale)} label={ar ? "أيام متتالية" : "Day streak"} />
       </div>
 
       <section>
@@ -442,6 +453,76 @@ function mixColor(k: "shows" | "movies" | "anime"): string {
   return k === "shows" ? "var(--accent)" : k === "movies" ? "#EDEDED" : "#8A8A8A";
 }
 
+/**
+ * ============ خليّةُ رقمٍ واحدةٌ لكلِّ شبكات الإحصائيات (D-813) ============
+ *
+ * ⚖️ **جُمعت `TileRow` و`MiniStat` في وصفةٍ واحدة** بحكم أحمد («سوّها»):
+ * **شكلان لشبكتَي أرقامٍ في صفحةٍ واحدةٍ يُقرآن رتبتين** (القاعدة ٣).
+ * **والفرقُ بينهما كثافةٌ لا عائلة** — **درجةٌ في سلّمٍ كدرجة `xs` في
+ * `Button`** (D-634)، فتُكتب مرّةً ويُنادى عليها بمقاسها.
+ *
+ * 🔴 **و`inline` ليست ذوقاً، هي قياس** (انظر `SessionRow` أدناه).
+ */
+function StatCell({
+  icon,
+  value,
+  label,
+  size = "lg",
+  align = "start",
+  inline = true,
+}: {
+  icon: IconName;
+  value: string;
+  label: string;
+  /** `lg` شبكةُ الرأس (عمودان) · `sm` الشبكاتُ الضيّقة (ثلاثةٌ أو أربعة) */
+  size?: "lg" | "sm";
+  align?: "start" | "center";
+  /** **الرمزُ في سطر الرقم** — و`false` يعيده فوقه (قيمةٌ عريضةٌ لا تتّسع) */
+  inline?: boolean;
+}) {
+  const lg = size === "lg";
+  const mid = align === "center";
+  return (
+    <div className={`min-w-0 ${mid ? "text-center" : ""}`}>
+      {/* 🆕 **والرمزُ يجاور الرقمَ ولا يعلوه** (D-812، حكمُ أحمد: «خلّها
+          يسار الرقم عشان نقلّل المساحات ونصغّر الارتفاع»): **سطرُ رمزٍ
+          وحدَه يأخذ ارتفاعَ سطرٍ كاملاً ليقول ما يقوله الرمزُ في هامش
+          الرقم.**
+          🔑 **والرمزُ داخلَ سطر الرقم لا في عمودٍ بجانبه**:
+          **`items-center` على السطر نفسِه يتوسّطه في كلِّ مقاسِ خطٍّ
+          يختاره القارئ** — **وعمودٌ بارتفاعٍ مكتوبٍ بيدنا (`h-6`) يصدق
+          عند `--fs = 1` وحدَها ثمّ ينزاح.**
+          ⚠️ **ولا `dir` هنا**: `flex` تتبع اتّجاهَ الصفحة، **فالرمزُ في
+          جهة البداية — يساراً في الإنجليزيّة ويميناً في العربيّة.** */}
+      {/* 🔴 **ولا صنفان متعارضان في سلسلةٍ واحدة** (D-813): **`gap-2`
+          و`gap-0` معاً لا يحسمهما ترتيبُ الكلمات في `className`، بل
+          ترتيبُهما في ورقة الأنماط** — **فالمكتوبُ أخيراً في السلسلة قد
+          يخسر**، **وهو عطلٌ يعمل تسعاً من عشرٍ ثمّ ينقلب مع أوّل بناء.**
+          **والسلسلةُ تُبنى فرعاً واحداً لا فرعين متزاحمَين.** */}
+      <p
+        className={[
+          "flex font-bold leading-none tabular-nums",
+          lg ? "text-24" : "text-20",
+          inline
+            ? `items-center gap-2 ${mid ? "justify-center" : ""}`
+            : `flex-col ${mid ? "items-center" : "items-start"}`,
+        ].join(" ")}
+      >
+        <Icon
+          name={icon}
+          size={lg ? 18 : 16}
+          className={`text-accent shrink-0 ${inline ? "" : "mb-1.5"}`}
+        />
+        <span className="min-w-0 max-w-full truncate">{value}</span>
+      </p>
+      {/* ⚠️ **والاسمُ على حافّة الخانة بعرضها كاملاً** — **لم يُزَحزَح
+          تحت الرقم**: **خانةٌ تُضيّق على اسمها تعود إلى «My ratin…»**
+          (D-801/D-787). */}
+      <p className={`text-12 text-muted ${lg ? "mt-1.5" : "mt-1"} leading-tight`}>{label}</p>
+    </div>
+  );
+}
+
 function TileRow({
   items,
 }: {
@@ -452,45 +533,9 @@ function TileRow({
        بثلثه وفجوةٌ بقيت على حالها تُقرأ فراغاً لا فاصلاً** — **والفجوةُ
        صفةُ ما بين، فتصغر معه.** */
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-y-4 gap-x-3">
-      {/* 🔴 **والاسمُ تحت الرقم يلتفّ ولا يُبتر** (D-801، وحكمُ D-787):
-          «My ratin…» هو الشكوى بعينِها التي رفعها أحمد في الرئيسيّة —
-          **وخانةٌ يُقطع اسمُها تفقد ما يعرّف رقمَها.** **والرقمُ وحدَه
-          يبقى سطراً واحداً** فلا يكسر الشبكةَ عرضاً. */}
       {items.map((x) => (
-        <div key={x.label} className="min-w-0">
-          {/* 🆕 **والرمزُ يجاور الرقمَ ولا يعلوه** (D-812، حكمُ أحمد:
-              «خلّها يسار الرقم عشان نقلّل المساحات ونصغّر الارتفاع»):
-              **سطرُ رمزٍ وحدَه يأخذ ارتفاعَ سطرٍ كاملٍ ليقول ما يقوله
-              الرمزُ في هامش الرقم** — **والخانةُ نزلت من ٧١ بكسلاً إلى
-              ٤٥** (مقيسةً على `--fs` = ١)، **فوفّرت الشبكةُ ذاتُ
-              الصفَّين نحوَ ستّين بكسلاً من أعلى الصفحة.**
-              🔑 **والرمزُ داخلَ سطر الرقم لا في عمودٍ بجانبه**:
-              **`items-center` على سطر الرقم نفسِه يتوسّطه في كلِّ مقاسِ
-              خطٍّ يختاره القارئ** — **وعمودٌ بارتفاعٍ مكتوبٍ بيدنا
-              (`h-6`) يصدق عند `--fs = 1` وحدَها ثمّ ينزاح.**
-              ⚠️ **والاسمُ يبقى على حافّة الخانة بعرضها كاملاً** — **لم
-              يُزَحزَح تحت الرقم** — **فلا يُنقض D-801: خانةٌ تُضيّق على
-              اسمها تعود إلى «My ratin…».**
-              ⚠️ **ولا `dir` هنا**: `flex` تتبع اتّجاهَ الصفحة، **فالرمزُ
-              في جهة البداية — يساراً في الإنجليزيّة ويميناً في
-              العربيّة** (D-801: الحرفُ المرآويُّ يُترك لجهة القراءة). */}
-          <p className="flex items-center gap-2 text-24 font-bold leading-none tabular-nums">
-            <Icon name={x.icon} size={18} className="text-accent shrink-0" />
-            <span className="min-w-0 truncate">{x.value}</span>
-          </p>
-          <p className="text-12 text-muted mt-1.5 leading-tight">{x.label}</p>
-        </div>
+        <StatCell key={x.label} icon={x.icon} value={x.value} label={x.label} />
       ))}
-    </div>
-  );
-}
-
-function MiniStat({ icon, value, label }: { icon: IconName; value: string; label: string }) {
-  return (
-    <div className="text-center min-w-0">
-      <Icon name={icon} size={16} className="text-accent mx-auto" />
-      <p className="text-20 font-bold leading-none mt-1.5 tabular-nums truncate">{value}</p>
-      <p className="text-12 text-muted mt-1 leading-tight">{label}</p>
     </div>
   );
 }
