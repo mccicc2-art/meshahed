@@ -737,6 +737,13 @@ export function browseHref(q: {
   st?: string | null;
   se?: string | null;
   std?: string | null;
+  /**
+   * 🆕 **«لا فلتر» صريحةً** (D-817) — **تفرّق بين «لم أختر» و«مسحتُ
+   * اختياري».** **ورابطٌ عارٍ يعني الأوّل**، **فيطبّق الخادمُ الفلترَ
+   * الافتراضيّ عليه** — **ولولا هذه العلامةُ لأعاد الافتراضيُّ ما مسحه
+   * القارئُ للتوّ، وهو فعلٌ يُلغي فعلَ صاحبه صامتاً.**
+   */
+  nf?: boolean;
 }) {
   const p = new URLSearchParams();
   if (q.tab) {
@@ -760,6 +767,7 @@ export function browseHref(q: {
   if (q.se) p.set("se", q.se);
   if (q.std) p.set("std", q.std);
   if (q.award) p.set("award", q.award);
+  if (q.nf) p.set("nf", "1");
   const qs = p.toString();
   return qs ? `/news?${qs}` : "/news";
 }
