@@ -746,7 +746,7 @@ function TopTitles({ s, locale, ar }: { s: PeriodStats; locale: Locale; ar: bool
                   {x.episodes > 0 && ` · ${num(x.episodes, locale)} ${ar ? "حلقة" : "episodes"}`}
                 </span>
               </span>
-              <span aria-hidden dir="ltr" className="text-muted shrink-0">
+              <span aria-hidden className="text-muted shrink-0">
                 ›
               </span>
             </Link>
