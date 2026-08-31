@@ -121,7 +121,7 @@ export function TrailerRailSkeleton() {
   );
 }
 
-/** ترويسة الرئيسية: غلافٌ عريض وصفّ أرقام — بنفس ارتفاع ProfileHeader */
+/** ترويسة الرئيسية: غلافٌ عريض وصفّ أرقام — بنفس ارتفاع `HomeHeader` */
 export function HomeHeaderSkeleton() {
   return (
     <section aria-hidden>

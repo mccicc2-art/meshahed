@@ -19,7 +19,7 @@ import { SettingsBottomSheet } from "./settings/SettingsBottomSheet";
  * قراءة، وخمس ثوانٍ من الصمت تُعيده لحاله.
  */
 /** أيُّ نصفَي البطاقة يُعرض — **والغيابُ يعني الاثنين** (نمطُ `only`
-    في `ProfileForm` و`AccountSettings` حرفياً، فلا عرفٌ ثالث) */
+    في `AccountSettings` حرفياً، فلا عرفٌ ثالث) */
 export type PrivacyDataSection = "export" | "delete";
 
 export function PrivacyData({
