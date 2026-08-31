@@ -18,10 +18,9 @@ import {
 } from "@/lib/contentPrefs";
 import { GENRES, type MediaType } from "@/lib/media";
 import { isPlus, themeNeedsPlus } from "@/lib/plan";
-import { isListColor } from "@/lib/listColors";
 import { BROWSE_GENRES } from "@/lib/browse";
 import { cleanHandle } from "@/lib/socials";
-import { THEMES, isThemeAccent } from "@/lib/themes";
+import { THEMES } from "@/lib/themes";
 import { RAILS_COOKIE, serializeHiddenRails } from "@/lib/railPrefs";
 import {
   keepPaidHomePrefs,
@@ -597,23 +596,6 @@ export async function syncThemeCookie(value: string) {
   });
 }
 
-/**
- * 🆕 **جسرُ لونِ التمييز إلى الكوكي** (D-825) — **توأمُ `syncThemeCookie`
- * لا نسختُه**: **هذه تكتب الكوكيَّ وحدَه** — **والقاعدةُ كاتبُها
- * `setThemeAccent` وحدَه** (D-462: حقلٌ واحد، كاتبٌ واحد).
- * ⚠️ **ولا حارسَ بلس هنا**: **هذه تنزّل ما في حسابه أصلاً إلى جهازه** —
- * **ولونٌ مدفوعٌ يومَ حُفظ لا يُمنع من الظهور على جهازٍ ثانٍ.**
- */
-export async function syncAccentCookie(value: string) {
-  const accent = isThemeAccent(value) ? value : "";
-  const store = await cookies();
-  store.set("accent", accent, {
-    path: "/",
-    maxAge: accent ? 60 * 60 * 24 * 365 : 0,
-    sameSite: "lax",
-    secure: true,
-  });
-}
 
 /**
  * حجم الخطّ — تفضيلان مستقلّان: واجهة النظام ومحتوى المستخدم.
@@ -756,51 +738,10 @@ export async function setHiddenRails(
   return { ok: true };
 }
 
-/**
- * 🆕 **لونُ التمييز الشخصيّ** (D-825 · الهجرة ١٦٣).
- *
- * **حكمُ أحمد**: «اختيارُ ألوان الثيم حسب مزاجه، **والي يدخل حسابه يشوف
- * الألوان المختارة**».
- *
- * 🔑 **وفعلٌ مستقلٌّ لا `updateProfile`** — **نفسُ حجّة `setHomeView`
- * (D-434)**: ذاك يطلب الاسمَ والصورةَ والأنواعَ ويكتب الصفَّ كلَّه،
- * **وهذا حقلٌ واحدٌ يُبدَّل برقاقة.**
- *
- * 🔑 **وعمودٌ وكوكيٌّ معاً** — **ولكلٍّ دورُه**: **العمودُ هو المصدرُ
- * عبر الأجهزة وهو الذي يقرؤه الزائر**، **والكوكيُّ هو الذي يرسم قبل
- * أوّل بايت** (نفسُ عقدِ `theme` في `updateProfile` حرفاً).
- *
- * 🔒 **وبلس** (D-783 §٣) — **والحارسُ هنا لا في الرقاقة** (D-819/D-821).
- */
-export async function setThemeAccent(
-  id: string | null,
-): Promise<{ ok: boolean; needsPlus?: true }> {
-  /* **والمجهولُ يسقط إلى «لا لون» لا إلى خطأ** — **رمزٌ حُذف من السجلّ
-     غداً يعيد صاحبَه إلى لون الثيم بلا شاشةِ عطل** (D-475). */
-  const clean = isThemeAccent(id) ? id : null;
-  const { supabase, user } = await requireUser("art", 30, 60_000);
-  /* **والرفعُ وحدَه محروس**: **إعادةُ الأمر إلى لون الثيم مجّانيّةٌ
-     دائماً** — **ومن انقطع اشتراكُه لا يُحبس في لونٍ لا يملك تغييره**
-     (D-217: بابٌ لا يُفتح ليس باباً). */
-  if (clean && !(await viewerIsPlus())) return { ok: false, needsPlus: true };
-
-  const { error } = await supabase
-    .from("profiles")
-    .update({ theme_accent: clean })
-    .eq("id", user.id);
-  if (error) fail(error);
-
-  const store = await cookies();
-  store.set("accent", clean ?? "", {
-    path: "/",
-    maxAge: clean ? 60 * 60 * 24 * 365 : 0,
-    sameSite: "lax",
-    secure: true,
-  });
-
-  revalidatePath("/", "layout");
-  return { ok: true };
-}
+/* 🗑️ **و`setThemeAccent` و`syncAccentCookie` سقطتا** (D-848): **لونُ
+   التمييز الشخصيُّ حُذف بالكامل بحكم أحمد** — **والعمودُ `theme_accent`
+   يبقى في `profiles` بلا كاتبٍ ولا قارئ**، **يُسقَط في هجرةٍ بعد أن
+   يستقرّ هذا** (D-214/D-538: العمودُ بعد قرّائه لا معهم). */
 
 /**
  * تبديل بلد المشاهدة.
@@ -3252,18 +3193,19 @@ export async function setListCover(input: {
   mediaType: MediaType | null;
   backdropPath: string | null;
   /**
-   * 🆕 **لونُ الغلاف** (D-824 · الهجرة ١٦٢) — **رمزٌ من `listColors.ts`**.
-   * ⚖️ **ولا يجتمع مع الصورة**: **غلافٌ واحدٌ لا اثنان** (D-462) —
-   * **فكتابةُ أحدِهما تمحو الآخرَ في نفس الصفّ**، **ولا حالةَ ثالثةَ
-   * يقرؤها سطحٌ فيختار بنفسه** (D-636).
+   * 🗑️ **ولونُ الغلاف سقط** (D-848، حكمُ أحمد: «والألوان اللي عند
+   * اللستة احذفها») — **والوسيطُ يُقبل ولا يُقرأ لِرفعةٍ واحدة**
+   * (`19` §٢): **الورقةُ تُرسله `null` منذ اليوم**، **ويُحذف بعدها.**
    */
   color?: string | null;
 }) {
   const listId = uuid(input.listId);
   const backdrop = safeImagePath(input.backdropPath);
-  /* **واللونُ لا يُصدَّق كما وصل**: **رمزٌ خارجَ السجلِّ يسقط إلى «لا
-     لون»** — **وقيدُ الجدول شكلٌ لا تعداد** (الهجرة ١٦٢). */
-  const color = !backdrop && isListColor(input.color) ? input.color : null;
+  /* 🗑️ **والعمودُ يُكتب فارغاً دائماً** (D-848): **صفٌّ قديمٌ يحمل
+     لوناً يُنظَّف عند أوّل حفظِ غلاف** — **ولا قارئَ له بعد اليوم.**
+     ⚠️ **والعمودُ يبقى في الجدول**: **حذفُ عمودٍ يسبق حذفَ قرّائه من
+     المنشور خسارةُ بياناتٍ بلا رجعة** (D-214/D-538) — **يُسقَط في
+     هجرةٍ بعد أن يستقرّ هذا.** */
   /* لا خلفيةَ = لا نسب: الحقولُ الثلاثة تُمحى معاً فلا يبقى معرّفٌ
      معلّقٌ بلا صورة */
   const tmdbId = backdrop && input.tmdbId ? intId(input.tmdbId) : null;
@@ -3275,7 +3217,6 @@ export async function setListCover(input: {
      🔑 **والحارسُ هنا لا في الورقة** (D-819/D-821): **حارسُ العميل زينةٌ
      حين يُنادى الفعلُ بلا سطحِه.** ⚠️ **والسؤالُ لا يُطرح إلّا حين
      يُطلب لون** — **فلا يدفع رافعُ صورةٍ ثمنَ استعلامٍ لا يخصّه** (D-515). */
-  if (color && !(await viewerIsPlus())) return { ok: false, needsPlus: true as const };
 
   const { data, error } = await supabase
     .from("user_lists")
@@ -3283,7 +3224,7 @@ export async function setListCover(input: {
       cover_backdrop: backdrop,
       cover_tmdb_id: tmdbId,
       cover_media_type: mediaType,
-      cover_color: color,
+      cover_color: null,
       updated_at: new Date().toISOString(),
     })
     .eq("id", listId)

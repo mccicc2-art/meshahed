@@ -4601,9 +4601,10 @@ export interface UserList {
   cover_tmdb_id?: number | null;
   cover_media_type?: "tv" | "movie" | null;
   /**
-   * 🆕 **لونُ الغلاف** (D-824 · هجرة ١٦٢) — **رمزٌ لا لون** (`amber`…)،
-   * **والقيمُ في `lib/listColors.ts`.** ⚖️ **ولا يجتمع مع `cover_backdrop`**:
-   * **غلافٌ واحدٌ لا اثنان** (D-462)، **و`setListCover` تمحو أحدَهما.**
+   * 🗑️ **لونُ الغلاف — سقط** (D-848، حكمُ أحمد): **العمودُ يُقرأ ولا
+   * يُرسم**، **و`setListCover` تكتبه فارغاً** — **باقٍ في النوع حتّى
+   * تُسقطه هجرةٌ لاحقة، فحذفُ عمودٍ قبل رحيل قرّائه من المنشور
+   * خسارةٌ بلا رجعة** (D-214/D-538).
    */
   cover_color?: string | null;
 }
@@ -4688,7 +4689,7 @@ export async function getList(listId: string): Promise<{
     cover_backdrop?: string | null;
     cover_tmdb_id?: number | null;
     cover_media_type?: "tv" | "movie" | null;
-    /** 🆕 **لونُ الغلاف** (D-824 · هجرة ١٦٢) — ولا يجتمع مع الخلفيّة */
+    /** 🗑️ **لونُ الغلاف — سقط** (D-848): يُقرأ ولا يُرسم */
     cover_color?: string | null;
     /** 🆕 هويّةُ قائمةِ لوبز — الاسمُ يُترجَم عند العرض (دَينُ D-328) */
     source_slug?: string | null;
@@ -4778,7 +4779,7 @@ export interface PublicList {
   owner_avatar: string | null;
   /** غلافُ القائمة يسافر مع الرابط (D-208) — غائبٌ قبل هجرة ٦٣ */
   cover_backdrop?: string | null;
-  /** 🆕 **واللونُ يسافر معه** (D-824 · هجرة ١٦٢) */
+  /** 🗑️ **واللونُ سقط** (D-848) — يسافر ولا يُرسم */
   cover_color?: string | null;
   items: ListItem[];
 }
