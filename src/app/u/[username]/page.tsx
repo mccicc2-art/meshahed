@@ -36,6 +36,7 @@ import { FollowUserButton } from "@/components/FollowUserButton";
 import { AccountBadges, badgeLabelsOf } from "@/components/AccountIdentity";
 import { ProfileMenu } from "@/components/ProfileMenu";
 import { WeeklyRanksDoor } from "@/components/WeeklyRanksDoor";
+import { sanitizeSocials, socialUrl } from "@/lib/socials";
 import { isLoopz } from "@/lib/loopz";
 import { BackButton } from "@/components/BackButton";
 import { PublicListsRail } from "@/components/PublicListsRail";
@@ -292,6 +293,13 @@ export default async function PublicProfilePage({
      **الشارةُ صارت تصف حسابَه لا أسبوعَه** — والحجّةُ في
      `WeeklyRanksDoor`. */
   const weeklyRanks = await getWeeklyRanks(profile.id);
+  /* 🆕 **حسابُ X الموثَّق** (D-839) — **الموثَّقُ وحدَه يُعرض**:
+     **معرّفٌ بلا `x_verified_at` كلامٌ لا دليل** — **وقد كان يُكتب
+     باليد قبل اليوم**، **فصفٌّ قديمٌ لا يُرقّى بالسكوت** (D-063). */
+  const xHandle = profile.x_verified_at
+    ? (sanitizeSocials(profile.socials).x ?? null)
+    : null;
+  const xUrl = socialUrl("x", xHandle);
 
   /* 🆕 **وترتيبُ صاحب الصفحة يُطبَّق عند القراءة** (D-581): المحفوظُ في
      `profile_prefs.sectionOrder` أوّلاً بترتيبه، **وما أُضيف بعد آخرِ
@@ -1288,9 +1296,34 @@ export default async function PublicProfilePage({
                 لأنّ العربيّةَ والإنجليزيّةَ لا تقيسان الشهرَ بالطول
                 نفسِه**، **وسطرٌ يفيض على شاشةٍ ضيّقةٍ ينزل ولا يُقصّ.**
                 **والغلافُ لا يُرسم حين لا شيءَ فيه** (D-219/D-280). */}
-            {(weeklyRanks.length > 0 || (profile.joined_at && isPlus(profile))) && (
+            {(weeklyRanks.length > 0 || xUrl || (profile.joined_at && isPlus(profile))) && (
               <div className="mt-2 flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
                 <WeeklyRanksDoor rows={weeklyRanks} locale={locale} />
+
+                {/* 🆕 **وحسابُ X في الصفّ نفسِه** (D-839): **هو من
+                    الهويّة لا من المحتوى** — **وصفُّ ما تحمله هو
+                    بيتُه**، **لا صفٌّ رابعٌ يُفتح لسطرٍ واحد.**
+                    ⚠️ **ورمزُ الصحّة بلون الهوية والنصُّ خافت**:
+                    **الكأسُ وحدَها هي الجائزة**، **وثلاثُ رقاقاتٍ
+                    ذهبيّةٍ في سطرٍ واحدٍ تُلغي بعضَها** (D-142: المعنى
+                    في الرمز والكلمة لا في اللون وحدَه).
+                    ⚠️ **و`dir="ltr"` على المعرّف**: لاتينيٌّ دائماً،
+                    **وعلامةُ `@` تقفز إلى آخره في سطرٍ عربيّ.** */}
+                {xUrl && xHandle ? (
+                  <a
+                    href={xUrl}
+                    target="_blank"
+                    rel="noopener noreferrer nofollow"
+                    title={`X — ${t.xVerifiedTip}`}
+                    className="hero-halo text-12 text-muted leading-none flex items-center gap-1.5 hover:text-foreground active:opacity-70 transition"
+                  >
+                    <Icon name="person-check" size={12} className="shrink-0 text-accent" />
+                    <bdi className="font-semibold" dir="ltr">
+                      X
+                    </bdi>
+                    <bdi dir="ltr">@{xHandle}</bdi>
+                  </a>
+                ) : null}
 
                 {profile.joined_at && isPlus(profile) ? (
                   <p
