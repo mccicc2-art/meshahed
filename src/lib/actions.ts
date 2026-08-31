@@ -153,9 +153,16 @@ export async function syncXIdentity(): Promise<string> {
   const { data, error } = await supabase.auth.getUserIdentities();
   if (error) throw new Error("تعذّر قراءة الهويّات / Could not read identities");
 
-  /* ⚠️ **والمفتاحُ `twitter` لا `x`**: GoTrue تسمّي مزوّدَها باسمه
-     القديم — **واسمُ العلامة تغيّر واسمُ المفتاح لم يتغيّر.** */
-  const ident = (data?.identities ?? []).find((i) => i.provider === "twitter");
+  /* 🔴 **والمفتاحُ `x` لا `twitter` — وقد كتبتُها `twitter` تخميناً**:
+     **`twitter` مزوّدُ OAuth 1.0a المهجور** («Twitter (Deprecated)» في
+     اللوحة)، **و`x` مزوّدُ OAuth 2.0** («X / Twitter (OAuth 2.0)»).
+     **والدليلُ من اللوحة نفسِها لا من الوثائق**: حقلا استمارتِه
+     `EXTERNAL_X_CLIENT_ID` و`EXTERNAL_X_SECRET` — **و`auth-js` تفصل
+     بينهما في نوعها بتعليقين: الأوّلُ OAuth 1.0a والثاني OAuth 2.0.**
+     ⚠️ **فمن فعّل «Twitter (Deprecated)» لن يعمل عنده شيء** — **والصوابُ
+     تفعيلُ الثاني.** 🔑 **والدرس: اسمُ المفتاح يُقرأ من الاستمارة لا
+     يُشتقّ من اسم العلامة.** */
+  const ident = (data?.identities ?? []).find((i) => i.provider === "x");
   if (!ident) throw new Error("لم يكتمل ربط X / X was not linked");
 
   /* 🔴 **وأسماءُ الحقل تختلف بين إصدارات المزوّد** — **فتُجرَّب
@@ -200,7 +207,7 @@ export async function unlinkXIdentity(): Promise<void> {
   const { supabase, user } = await requireUser("xlink", 10, 60_000);
 
   const { data } = await supabase.auth.getUserIdentities();
-  const ident = (data?.identities ?? []).find((i) => i.provider === "twitter");
+  const ident = (data?.identities ?? []).find((i) => i.provider === "x");
   if (ident) {
     const { error } = await supabase.auth.unlinkIdentity(ident);
     if (error) throw new Error(error.message);

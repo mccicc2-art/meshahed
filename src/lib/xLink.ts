@@ -44,10 +44,16 @@ export async function xLinkEnabled(): Promise<boolean> {
     });
     if (res.ok) {
       const body = (await res.json()) as { external?: Record<string, unknown> };
-      /* ⚠️ **والمفتاحُ `twitter` لا `x`**: **GoTrue تسمّي مزوّدَها
-         باسمه القديم** — **واسمُ العلامة تغيّر واسمُ المفتاح لم
-         يتغيّر**، وهو ما يُنادى به في `linkIdentity` أيضاً. */
-      on = body.external?.twitter === true;
+      /* 🔴 **والمفتاحُ `x` لا `twitter` — وقد كتبتُها `twitter` تخميناً**:
+     **`twitter` مزوّدُ OAuth 1.0a المهجور** («Twitter (Deprecated)» في
+     اللوحة)، **و`x` مزوّدُ OAuth 2.0** («X / Twitter (OAuth 2.0)»).
+     **والدليلُ من اللوحة نفسِها لا من الوثائق**: حقلا استمارتِه
+     `EXTERNAL_X_CLIENT_ID` و`EXTERNAL_X_SECRET` — **و`auth-js` تفصل
+     بينهما في نوعها بتعليقين: الأوّلُ OAuth 1.0a والثاني OAuth 2.0.**
+     ⚠️ **فمن فعّل «Twitter (Deprecated)» لن يعمل عنده شيء** — **والصوابُ
+     تفعيلُ الثاني.** 🔑 **والدرس: اسمُ المفتاح يُقرأ من الاستمارة لا
+     يُشتقّ من اسم العلامة.** */
+      on = body.external?.x === true;
     }
   } catch {
     on = false;
