@@ -371,14 +371,18 @@ async function Screens({ locale }: { locale: Locale }) {
       {/* ٦ — القوائم: بطاقةُ القائمة الواحدةُ كما تُرسم في كلِّ سطح */}
       <Row panel={PANELS[5]} flip locale={locale}>
         <div className="grid gap-2.5">
+          {/* ⚠️ **واسمان محايدان لا «مارفل» ولا «أفضل ٢٥٠»** (D-217):
+              **تلك قوائمُ حقيقيّةٌ في المنصّة بمحتوًى معلوم** — **واسمٌ
+              يَعِد بمارفل فوق ملصقاتٍ ليست منها كذبةٌ تُرى بالعين.**
+              والملصقاتُ هنا رائجُ الأسبوع، فالاسمُ لا يصف محتوًى بعينه. */}
           <ListCardShell
-            name={ar ? "مارفل بترتيب الأحداث" : "Marvel in story order"}
+            name={ar ? "قائمتي" : "My list"}
             countText={ar ? "٣٦ عملاً" : "36 titles"}
             posters={listA}
           />
           <ListCardShell
-            name={ar ? "أفضل ٢٥٠" : "Top 250"}
-            countText={ar ? "٢٥٠ عملاً" : "250 titles"}
+            name={ar ? "مشاهدة لاحقاً" : "Watch later"}
+            countText={ar ? "١٢ عملاً" : "12 titles"}
             posters={listB}
           />
         </div>
