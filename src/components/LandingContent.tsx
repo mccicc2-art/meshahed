@@ -99,12 +99,12 @@ export function LandingContent({ locale }: { locale: Locale }) {
              (D-846): كان النصُّ `--on-accent` فوق `--gradient-brand-x`
              — 📏 **وفي `daylight` ذلك أبيضُ (#ffffff) فوق أصفرَ ساطع:
              تباينُ ١٫٤٣** — **وهو زرُّ التحويل الوحيدُ في الصفحة.**
-             **والسطحُ صار من `--accent`/`--accent-2` فعاد الطرفان إلى
-             عقدٍ واحد** — وصفرُ تغيّرٍ في الثيمات الداكنة. */
-          className="inline-flex items-center justify-center rounded-2xl px-6 py-3 text-sm font-bold text-[color:var(--on-accent)]"
-          style={{
-            background: "linear-gradient(90deg, var(--accent), var(--accent-2))",
-          }}
+             **والسطحُ صار `--gradient-brand-text`** — الهويّةُ بدرجتها
+             التي تُقرأ — **والنصُّ `--foreground` عليه**: 🔑 **`--on-accent`
+             عقدُ `--accent` وحدَه، ووضعُه فوق سطحٍ آخر يكسر العقد من
+             طرفيه.** **والثيماتُ الداكنةُ ترث الثلاثيَّ حرفاً.** */
+          className="inline-flex items-center justify-center rounded-2xl px-6 py-3 text-sm font-bold text-[color:var(--background)]"
+          style={{ background: "var(--gradient-brand-text)" }}
         >
           {ar ? "ابدأ مجاناً" : "Start free"}
         </Link>

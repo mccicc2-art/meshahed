@@ -73,14 +73,14 @@ export async function LandingHero({
               الأبيض لا يُقرأ نصّاً» — **و`--accent`/`--accent-2` هما
               تلك الدرجةُ المعتَّمة**، **وهذا السطرُ كان يتخطّاهما إلى
               الهويّة الخام.**
-              ⚠️ **وصفرُ تغيّرٍ في الثيمات الداكنة**: زوجُ الذهبيّ
-              (#FFD400 → #F59E0B) هو `--brand-1` → `--brand-3` نفسُه.
-              **ويتبع لونَ القارئ الذي اختاره** (D-825). */}
+              ⚠️ **ولا يُبنى من `--accent`/`--accent-2`**: 🔴 **جُرّب
+              فسقط في القياس الحيّ** — **زوجُ الواجهة ليس درجتين من
+              لونٍ واحد في كلِّ ثيم** (`amber`: كهرمانيٌّ وأخضر) —
+              **فصار العنوانُ تدرّجاً من لونين.** **والثيماتُ الداكنةُ
+              ترث الثلاثيَّ حرفاً، والنهاريُّ وحدَه يعمّقه.** */}
           <span
             className="bg-clip-text text-transparent"
-            style={{
-              backgroundImage: "linear-gradient(90deg, var(--accent), var(--accent-2))",
-            }}
+            style={{ backgroundImage: "var(--gradient-brand-text)" }}
           >
             {t.landingH1b}
           </span>
