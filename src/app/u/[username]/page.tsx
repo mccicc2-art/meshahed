@@ -70,7 +70,6 @@ import { capCards } from "@/lib/cardCount";
 import { coverBareControl, HEADER_ICON } from "@/components/ui/controls";
 import { browseGenreName, groupByGenre } from "@/lib/browse";
 import { densityVars } from "@/lib/density";
-import { themeAccent, accentVars } from "@/lib/themes";
 
 /**
  * 🆕 **مقاسُ صورة الملفّ في درجتين** (D-836).
@@ -133,13 +132,9 @@ export default async function PublicProfilePage({
      نداءً — و«فنّانوك» خاصّةً دالّةٌ إضافية لا داعي لدفعها لمن أطفأها */
   const prefs = sanitizeProfilePrefs(profile.profile_prefs);
 
-  /* 🆕 **لونُ صاحبِ الصفحة** (D-825) — **يُقرأ من العرض العامّ ويُطبَّق
-     على جذر الصفحة أدناه.** **والرمزُ المجهولُ يسقط إلى «لا لون»**
-     فتبقى الصفحةُ بلون الزائر — **وهو السلوكُ القديم بالضبط** (D-063). */
-  const accentStyle = (() => {
-    const a = themeAccent(profile.theme_accent);
-    return a ? (accentVars(a) as React.CSSProperties) : null;
-  })();
+  /* 🗑️ **ولونُ صاحبِ الصفحة سقط** (D-848): **كان يُقرأ من العرض العامّ
+     ويُركَّب على جذر الصفحة** — **وزائرُ ملفِّك يراه بثيمه هو منذ
+     اليوم**، وهو السلوكُ الذي سبق D-825 حرفاً. */
   const wants = (s: ProfileSection) => prefs.order.includes(s);
 
   const [
@@ -839,7 +834,7 @@ export default async function PublicProfilePage({
          **ملفُّه يلبس لونَه، والتطبيقُ يبقى تطبيقَ قارئه.**
          ⚠️ **وستّةُ متغيّراتٍ لا ثمانيةَ عشر**: **لا خلفيّةَ ولا نصّ**
          — **فصفحةُ زائرٍ تقلب أرضيّتَها عليه ليست تخصيصاً.** */
-      style={{ ...densityVars(prefs.density), ...(accentStyle ?? {}) }}
+      style={densityVars(prefs.density) as React.CSSProperties}
     >
       {/* ===== الغلاف ===== */}
       <section>
