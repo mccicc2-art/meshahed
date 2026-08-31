@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getUser, getProfile } from "@/lib/data";
 import { getT } from "@/lib/locale";
 import { sanitizeSocials } from "@/lib/socials";
+import { xLinkEnabled } from "@/lib/xLink";
 import { EditProfileForm } from "@/components/settings/EditProfileForm";
 
 /**
@@ -17,6 +18,9 @@ export default async function EditProfilePage() {
   if (!user) redirect("/login");
   const { locale } = await getT();
   const p = await getProfile();
+  /* 🆕 **وقسمُ X لا يُرسم حتّى يوجد مزوّدُه** (D-839/D-217) —
+     **الحالةُ تُقاس من GoTrue نفسِها ولا تُفترض** (D-570). */
+  const xEnabled = await xLinkEnabled();
   /* 🆕 **سجلُّ التخصيص يمرّ كاملاً** (D-561): **اللقبُ يسكنه**، **وحفظُه
      يستبدل العمودَ كلَّه** — **فالنموذجُ يحتاج ما لا يعرضه كي لا
      يمحوَه** (D-462). */
@@ -27,6 +31,8 @@ export default async function EditProfilePage() {
       email={user.email ?? ""}
       locale={locale}
       isPrivate={!!p?.is_private}
+      xEnabled={xEnabled}
+      xVerified={!!p?.x_verified_at}
       genres={p?.favorite_genres ?? []}
       initial={{
         nickname: p?.nickname ?? "",
