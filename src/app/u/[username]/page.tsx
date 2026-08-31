@@ -71,6 +71,23 @@ import { densityVars } from "@/lib/density";
 import { themeAccent, accentVars } from "@/lib/themes";
 
 /**
+ * 🆕 **مقاسُ صورة الملفّ في درجتين** (D-836).
+ *
+ * **`AVATAR_LG` هو المقاسُ الجوهريُّ الذي تُطلب به الصورةُ من الخادم**
+ * — **يُكتب بالأكبر دائماً** كي لا تُمدَّ صورةُ ٧٤ على دائرةِ ١٠٤.
+ * **و`AVATAR_BOX` هو الصندوقُ المرسوم**: ٧٤ على الجوّال و١٠٤ على
+ * الشاشة الواسعة، **والحرفُ (لمن لا صورةَ له) ٤٢٪ من الدائرة في
+ * الدرجتين** — وهي نسبةُ `Avatar` نفسُها مكتوبةً بأصنافٍ لأن السطرَ
+ * تنحّى.
+ *
+ * ⚠️ **ومن غيّر رقماً هنا غيّر التراكبَ معه**: `-mt` نصفُ الدائرة
+ * بحلقتها (٨٠→٤٠، ١١٠→٥٥) — **قاعدةُ D-547 بحرفها.**
+ */
+const AVATAR_LG = 104;
+const AVATAR_BOX =
+  "w-[74px] h-[74px] text-[31px] lg:w-[104px] lg:h-[104px] lg:text-[44px]";
+
+/**
  * صفحة المستخدم العامة — بهيئة الرئيسية نفسها.
  *
  * من يفتح ملفّ شخصٍ يرى ما يراه ذلك الشخص في رئيسيته: الغلاف الممتدّ
@@ -830,7 +847,20 @@ export default async function PublicProfilePage({
             غيرَه** (٤٧ في المثبَّت، صفرٌ في المتصفّح، وأكبرُ في أجهزة
             الجزيرة). **وعلى الشاشة الواسعة `--safe-top` صفرٌ فلا شيء
             يتغيّر** — ولذلك بقي `sm:h-[15rem]` كما هو. */}
-        <div className="relative h-[calc(9.5rem+var(--safe-top))] sm:h-[15rem] -mx-4 -mt-6 sm:mx-0 sm:mt-0 sm:rounded-3xl overflow-hidden">
+        {/* ⚖️ 🆕 **ودرجةٌ ثالثةٌ للشاشة الواسعة** (D-836، بلاغُ أحمد
+            وخالد: «أبعادُ الهيدر في المتصفّح سيّئة، على الجوّال ممتازة»
+            · «الهيدرُ شكلُه صغير في المتصفّح»).
+
+            📏 **والعلّةُ نسبةٌ لا ارتفاع**: **العمودُ يتّسع إلى ١١٢٠
+            بكسلاً** (`max-w-6xl` ناقصَ الهامش) **والارتفاعُ واقفٌ عند
+            ٢٤٠** — **فالغلافُ ٤٫٧:١ شريطٌ رفيع**، **وهو على الجوّال
+            ٢٫٦:١ صورةٌ كاملة.** **فالمقاسُ لم يصغر؛ النسبةُ هي التي
+            انفرطت.**
+
+            🔑 **ودرجةٌ واحدةٌ لا درجتان** (`lg` وحدَها): عند ٩٩٢
+            تصير ٢٫٨:١ وعند ١١٢٠ تصير ٣٫٢:١ — **وكلاهما داخل النطاق
+            الذي يُقرأ غلافاً**، **ورقمان لفرقٍ لا تراه العينُ زيادة.** */}
+        <div className="relative h-[calc(9.5rem+var(--safe-top))] sm:h-[15rem] lg:h-[22rem] -mx-4 -mt-6 sm:mx-0 sm:mt-0 sm:rounded-3xl overflow-hidden">
           {/* 🆕 **والتدرّجُ أرضيّةٌ دائمةٌ لا فرعٌ مقابل** (D-657):
               **صورةٌ تفشل بعد الرسم لا تعيد تشغيل الفرع** — فيجب أن
               يكون تحتها أصلاً. **ومن سقط غلافُه يرى ما يراه من لا
@@ -998,7 +1028,10 @@ export default async function PublicProfilePage({
             **٦٨ كانت تقطعها قربَ قاعها، و٨٠ في الشاشة الواسعة كانت
             تُغرقها كلَّها.** **والرقمُ مشتقٌّ من المقاس لا مذوق**:
             يتغيّر مقاسُ الصورة يوماً فيتغيّر معه. */}
-        <div className="flex items-start gap-3 pe-4 -mt-10 relative z-10">
+        {/* 🆕 **والتراكبُ يتبع الدائرةَ في الدرجتين** (D-836):
+            **٤٠ نصفُ ٨٠ و٥٥ نصفُ ١١٠** — **والقاعدةُ نفسُها لا رقمٌ
+            ثانٍ يُذاق** (D-547: «الرقمُ مشتقٌّ من المقاس»). */}
+        <div className="flex items-start gap-3 pe-4 -mt-10 lg:-mt-[3.4375rem] relative z-10">
           {/* 🆕 **وصورةُ ملفّي بابُ تعديله** (D-571، طلبُ أحمد: «وصورة
               البروفايل توديني على إعدادات البروفايل»).
 
@@ -1028,7 +1061,8 @@ export default async function PublicProfilePage({
               <Avatar
                 src={profile.avatar_url}
                 name={displayName}
-                size={74}
+                size={AVATAR_LG}
+                boxClass={AVATAR_BOX}
                 posY={profile.avatar_pos ?? null}
                 alt={t.avatarAlt}
                 className="ring-[3px] ring-[color:var(--background)]"
@@ -1042,7 +1076,8 @@ export default async function PublicProfilePage({
               <Avatar
                 src={profile.avatar_url}
                 name={displayName}
-                size={74}
+                size={AVATAR_LG}
+                boxClass={AVATAR_BOX}
                 posY={profile.avatar_pos ?? null}
                 alt={t.avatarAlt}
                 className="ring-[3px] ring-[color:var(--background)]"
@@ -1088,7 +1123,14 @@ export default async function PublicProfilePage({
                   **فلو بقي المقاسُ على `h1` وحدَها لورثت الشارةُ ١٦ من
                   الصفحة بدل ٢٢ من الاسم** — **فتصغر إلى ١٣ بجانب اسمٍ
                   ٢٢.** والعنوانُ يرث المقاسَ من أبيه فلا يتغيّر شيءٌ فيه. */}
-              <div className="min-w-0 flex-1 flex items-center gap-1.5 text-22 sm:text-xl">
+              {/* ⚖️ 🆕 **والاسمُ كان يصغر على الشاشة الواسعة** (D-836):
+                  `sm:text-xl` **عشرون**، **و`text-22` على الجوّال اثنان
+                  وعشرون** — **فاسمُك على الحاسوب أصغرُ منه على هاتفك**،
+                  وهو نصفُ شكوى «الهيدر شكلُه صغير» حرفاً. **والاتّجاهُ
+                  يُعكس**: ٢٢ ثم ٢٤ مع الغلاف الأطول، **ودرجةٌ واحدةٌ
+                  عند `lg` كالغلاف والدائرة** — **ثلاثتُها تكبر معاً أو
+                  لا يكبر منها شيء.** */}
+              <div className="min-w-0 flex-1 flex items-center gap-1.5 text-22 lg:text-24">
                 <h1 className="hero-halo min-w-0 font-bold leading-tight truncate">
                   {displayName}
                 </h1>
