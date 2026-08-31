@@ -1144,6 +1144,16 @@ export interface PublicProfile {
      ملفِّ صاحبها وفي كلِّ سطرٍ يحمل اسمَه — **ونوعُ التوثيق لا يخرج**،
      فهو لسياسة المراجعة لا لرسمٍ ثانٍ. */
   verified_at?: string | null;
+  /**
+   * 🆕 **تاريخُ الانضمام** (D-831 · هجرة ١٦٤) — **حكمُ أحمد: «مدّة
+   * العضويّة من الانضمام»**، **بعد أن قِيست القاعدة**: ٢٩ من ٣٢ عضواً
+   * انضمّوا قبل التاريخ الثابت الذي كان مقترحاً، **فتاريخٌ واحدٌ للجميع
+   * كان سيقصّر مدّةَ أكثرهم** (D-063).
+   * ⚠️ **واختياريٌّ بحجّةٍ لا بتسامح**: **فرعُ السقوط أدناه لا يقرؤه**،
+   * **وحسابُ المنصّة نفسُه بلا تاريخٍ عمداً** (ليس عضواً منضمّاً) —
+   * **والغيابُ يُقرأ غياباً فتسقط الشارة** لا تُملأ بتاريخِ اليوم.
+   */
+  joined_at?: string | null;
 }
 
 /** معرّف UUID كما يكتبه Postgres — يميّز رابط الهوية عن رابط المعرّف */
@@ -1184,7 +1194,7 @@ export async function getProfileByUsername(
          لا يقفل والتخصيص لا يُقرأ. أُضيفا بعد تشغيل الهجرتين 43 و51،
          والاحتياط أدناه يمسكهما لو نُشر الكود قبل هجرةٍ لاحقة. */
       .select(
-        "id, nickname, username, avatar_url, cover_url, cover_pos, avatar_pos, favorite_genres, hide_name, bio, is_private, hide_follow_lists, profile_prefs, plan, founder, verified_at, theme_accent",
+        "id, nickname, username, avatar_url, cover_url, cover_pos, avatar_pos, favorite_genres, hide_name, bio, is_private, hide_follow_lists, profile_prefs, plan, founder, verified_at, theme_accent, joined_at",
       )
       .eq(column, value)
       .maybeSingle();

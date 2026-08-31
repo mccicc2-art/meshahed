@@ -1860,6 +1860,10 @@ const ar = {
      الذي يدلّ عليها (D-376/D-703: **الاسمُ الذي يُضغط هو الاسمُ الذي
      يُقرأ**). */
   smartListLabel: "قائمة ذكيّة",
+  /* 🆕 **شارةُ مدّة العضويّة** (D-831) — **الشهرُ والسنةُ لا اليومُ
+     بالضبط**: **«منذ ٢ أغسطس» تُقرأ ذكرى، و«منذ أغسطس ٢٠٢٦» تُقرأ
+     مدّةً** — **وهي المدّةُ التي طُلبت.** */
+  memberSince: (when: string) => `عضو منذ ${when}`,
   smartListHint: "تُبنى بشرطٍ من اكتشف: اختر فلاترك ثمّ اضغط «قائمة ذكيّة» تحتها.",
   calTitle: "تقويم أعمالك",
   calSub: "متى تنزل حلقاتُك وأفلامُك.",
@@ -3408,6 +3412,7 @@ const en: Dict = {
   weekSub: "Episodes from your shows over the next two weeks.",
   weekNothing: "No episodes due this week.",
   smartListLabel: "Smart list",
+  memberSince: (when: string) => `Member since ${when}`,
   smartListHint: "Built from a filter in Discover: pick your filters, then tap Smart list under them.",
   calTitle: "Your calendar",
   calSub: "When your episodes and films land.",
