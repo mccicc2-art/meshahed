@@ -1881,7 +1881,18 @@ const ar = {
       "التاسع",
       "العاشر",
     ][n - 1] ?? `${n}`,
+  /* ⚠️ **والعددُ يُعرب ما بعده**: **المفردُ والمثنّى وجمعُ القلّة
+     (٣–١٠) والمعدودُ المفرد (١١+)** — **وصيغةٌ واحدةٌ لكلِّ الأعداد
+     تكتب «٣ مرّة»** (وهي وصفةُ `libraryCount` نفسُها في هذا الملفّ). */
   weeklyRanksTip: (n: string) => `في أوائل الأسبوع ${n} مرّة`,
+  weeklyRanksTimes: (n: number) =>
+    n === 1
+      ? "في أوائل الأسبوع مرّةً واحدة"
+      : n === 2
+        ? "في أوائل الأسبوع مرّتين"
+        : n <= 10
+          ? `في أوائل الأسبوع ${n} مرّات`
+          : `في أوائل الأسبوع ${n} مرّة`,
   weeklyRanksTitle: "أسابيعُ المراتب",
   weeklyRanksWeek: (when: string) => `أسبوع ${when}`,
   weeklyRanksHint: "الأوائلُ الثلاثة يكسبون أيّامَ Loopz+ كلَّ أسبوع.",
@@ -3438,6 +3449,8 @@ const en: Dict = {
     ["1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th", "9th", "10th"][n - 1] ??
     `${n}`,
   weeklyRanksTip: (n: string) => `In the week's top ten ${n} times`,
+  weeklyRanksTimes: (n: number) =>
+    n === 1 ? "In the week's top ten once" : `In the week's top ten ${n} times`,
   weeklyRanksTitle: "Weeks ranked",
   weeklyRanksWeek: (when: string) => `Week of ${when}`,
   weeklyRanksHint: "The top three earn Loopz+ days every week.",
