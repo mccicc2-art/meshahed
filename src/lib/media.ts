@@ -23,6 +23,26 @@ function tmdbImage(path: string | null | undefined, size: string): string | null
   return `${IMG}/${size}/${p.replace(/^\/+/, "")}`;
 }
 
+/**
+ * 🆕 أبعادُ الملصق الجوهريّة لكلِّ دلوٍ (D-845 · دَينُ D-840).
+ *
+ * 🔑 **لماذا `width`/`height` لا `fill`**: صورةُ `fill` تجعل Next يكتب
+ * `srcset` بسلّم العروض كلِّه (~١٦ مرشَّحاً) — **ومرشَّحاتُ الممرّ
+ * المخزَّن روابطُ متطابقةٌ حرفاً** (المحمِّلُ يتجاهل العرضَ عمداً —
+ * D-841)، **فالسلّمُ كلُّه وزنُ HTML ميّتٌ يتكرّر مع كلِّ ملصق.**
+ * `width`/`height` تكتبان مرشَّحَين (1x/2x) — **والمقاسُ الحقيقيُّ
+ * يقرّره دلو TMDB المعلَنُ في الرابط لا srcset أصلاً.**
+ *
+ * ⚠️ والنسبةُ ٢:٣ نسبةُ ملصق TMDB — الرسمُ الفعليُّ يحكمه صندوقُ
+ * المستدعي (`absolute inset-0` + `object-cover`)، وهذان الرقمان
+ * تلميحُ نسبةٍ وعرضا srcset لا غير.
+ */
+export const POSTER_INTRINSIC = {
+  w185: { width: 185, height: 278 },
+  w342: { width: 342, height: 513 },
+  w500: { width: 500, height: 750 },
+} as const;
+
 export function posterUrl(path: string | null, size: "w185" | "w342" | "w500" = "w342") {
   return tmdbImage(path, size);
 }
