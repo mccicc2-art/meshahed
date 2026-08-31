@@ -12,7 +12,8 @@ import { getDict, type Locale } from "@/lib/i18n";
 import { SITE_URL } from "@/lib/site";
 import { Avatar } from "../Avatar";
 import { Icon } from "../Icon";
-import { SOCIALS, cleanHandle, type Socials } from "@/lib/socials";
+import { type Socials } from "@/lib/socials";
+import { XLinkRow } from "./XLinkRow";
 import { Alert } from "../ui/Alert";
 import { SettingsPageLayout } from "./SettingsPageLayout";
 import { SettingsRow } from "./SettingsRow";
@@ -76,6 +77,8 @@ export function EditProfileForm({
   locale,
   isPrivate,
   genres,
+  xEnabled = false,
+  xVerified = false,
   initial,
 }: {
   userId: string;
@@ -83,6 +86,15 @@ export function EditProfileForm({
   locale: Locale;
   /** لعرضِ حالةِ الظهور — تُضبط في «الخصوصية»، وتُقرأ هنا فقط */
   isPrivate: boolean;
+  /**
+   * **هل مزوّدُ X مفعَّل؟** — القسمُ كلُّه يغيب بدونه (D-217).
+   * ⚠️ **اختياريّةٌ بافتراضٍ آمن** (D-028/D-152): **الصفحةُ التي تمرّرها
+   * تصل في التزامٍ بعد هذا** — **والغيابُ يعني «لا تُرسم»**، وهو
+   * السلوكُ القائمُ بالضبط.
+   */
+  xEnabled?: boolean;
+  /** **هل ثبت المعرّفُ بتسجيل دخول؟** (`x_verified_at` موجود) */
+  xVerified?: boolean;
   /** تمرُّ كما هي: `updateProfile` يطلب الأنواعَ في كلِّ نداء */
   genres: number[];
   /**
@@ -103,7 +115,7 @@ export function EditProfileForm({
   const [nickname, setNickname] = useState(initial.nickname);
   const [username, setUsername] = useState(initial.username);
   const [bio, setBio] = useState(initial.bio);
-  const [socials, setSocials] = useState<Socials>(initial.socials ?? {});
+
   const [avatarUrl, setAvatarUrl] = useState(initial.avatarUrl);
   const [coverUrl, setCoverUrl] = useState(initial.coverUrl);
   const [coverPos, setCoverPos] = useState(initial.coverPos);
@@ -145,8 +157,11 @@ export function EditProfileForm({
     coverUrl !== base.coverUrl ||
     coverPos !== base.coverPos ||
     avatarPos !== base.avatarPos ||
-    /* **مقارنةٌ بالقيمة لا بالمرجع** — الكائنُ يُعاد بناؤه مع كلِّ حرف */
-    SOCIALS.some((sp) => (socials[sp.key] ?? "") !== (base.socials?.[sp.key] ?? ""));
+    /* 🗑️ **وحساباتُ التواصل خرجت من اللقطة** (D-839): **لم تعد
+       تُحرَّر في هذا النموذج** — **يكتبها `syncXIdentity` وحدَها**
+       (D-462: حقلٌ واحدٌ لا يملك كاتبَين) — **وقيمةٌ لا تُحرَّر لا
+       تُوقظ زرَّ الحفظ.** */
+    false;
 
   /* ===== الرفع ===== منقولٌ بحرفه من `ProfileForm`: نفسُ المخزن ونفسُ
      الحدّ (٢ ميجابايت) ونفسُ حذفِ السابق — **وملفٌّ قديمٌ يبقى في المخزن
@@ -232,7 +247,7 @@ export function EditProfileForm({
   function save() {
     setError(null);
     if (usernameInvalid) return setError(t.usernameShort);
-    const next: Snapshot = { nickname, username, bio, avatarUrl, coverUrl, coverPos, avatarPos, socials };
+    const next: Snapshot = { nickname, username, bio, avatarUrl, coverUrl, coverPos, avatarPos };
     start(async () => {
       try {
         await updateProfile({
@@ -244,13 +259,9 @@ export function EditProfileForm({
           coverPos,
           avatarPos,
           favoriteGenres: genres,
-          /* **يُرسل خاماً ويُنقّى في الفعل** (D-177): الواجهةُ تُعين
-             وتُنبّه، **والكاتبُ هو الحارس** — ومن لصق رابطاً كاملاً
-             يُقشَّر هناك لا هنا. */
-          socials: SOCIALS.reduce<Record<string, string>>((acc, sp) => {
-            acc[sp.key] = socials[sp.key] ?? "";
-            return acc;
-          }, {}),
+          /* 🗑️ **و`socials` لم تعد تُرسل من هنا** (D-839): **كاتبُها
+             `syncXIdentity` وحدَها** — **ونموذجٌ يرسل حقلاً لا يعرضه
+             يمحوه يومَ يُحفظ.** */
         });
         /* **الخطُّ الأساسُ يتقدّم بعد النجاح وحدَه**: لو تقدّم قبله لأطفأ
            زرَّ الحفظ على تعديلٍ لم يصل — **وأسوأُ من فشلٍ ظاهرٍ فشلٌ
@@ -563,9 +574,9 @@ export function EditProfileForm({
           من معرّفك معنًى، **وبُعدُها عنه سطراً واحداً لا يقطع تلك
           القرابة** — **بينما دَسُّها في منتصف الهويّة يقطع تسلسلَ
           قراءتها.** **فمجموعةٌ بعنوانها أصدقُ من جوارٍ يزاحم.** */}
-      <section>
+      <section hidden={!xEnabled}>
         <h2 className="px-1 mb-2 text-12 font-semibold uppercase tracking-wide text-muted">
-          {t.setSocialAccounts}
+          {t.setXSection}
         </h2>
         <div className="rounded-2xl border border-border bg-surface divide-y divide-[color:var(--divider)] overflow-hidden">
           {/* ===== 🆕 حساباتُ التواصل (D-546) =====
@@ -589,56 +600,29 @@ export function EditProfileForm({
               ⚠️ **و`dir="ltr"` على الحقل**: المعرّفاتُ لاتينيّةٌ دائماً،
               **وحقلٌ يتبع اتّجاهَ الصفحة يقفز فيه المؤشّرُ عند أوّل
               حرف** (وهو نفسُ سببِ `dir="ltr"` في حقل المعرّف أعلاه). ===== */}
-          {SOCIALS.map((sp) => {
-            const value = socials[sp.key] ?? "";
-            /* **تنبيهٌ لا منع**: الحقلُ يقبل ما يُكتب، **ويقول إن كان
-               لا يصلح** — **ومنعُ الكتابة حرفاً بحرفٍ يمنع اللصق نفسَه**
-               (رابطٌ ملصوقٌ يمرّ بحالاتٍ غير صالحةٍ قبل أن يكتمل). */
-            const bad = value.trim() !== "" && cleanHandle(sp.key, value) === null;
-            return (
-              <div key={sp.key} className="px-4 py-3.5">
-                <label
-                  className="block text-12 font-semibold text-muted mb-1.5"
-                  htmlFor={`ep-social-${sp.key}`}
-                >
-                  {sp.label}
-                </label>
-                <div className="flex items-center gap-1" dir="ltr">
-                  <span className="text-[16px] text-muted">@</span>
-                  <input
-                    id={`ep-social-${sp.key}`}
-                    value={value}
-                    onChange={(e) =>
-                      setSocials((prev) => ({ ...prev, [sp.key]: e.target.value }))
-                    }
-                    maxLength={120}
-                    placeholder={sp.placeholder}
-                    dir="ltr"
-                    inputMode="text"
-                    autoCapitalize="none"
-                    autoCorrect="off"
-                    spellCheck={false}
-                    className="flex-1 min-w-0 bg-transparent text-[16px] outline-none text-left placeholder:text-[color:var(--disabled)]"
-                  />
-                </div>
-                {bad ? (
-                  <p className="text-12 text-[color:var(--error)] mt-1.5" dir="ltr">
-                    {t.socialInvalid}
-                  </p>
-                ) : (
-                  /* **ما سيُحفظ فعلاً، حين يختلف عمّا كُتب** — نفسُ
-                     وصفةِ `willSaveAs` في حقل المعرّف: **من لصق رابطاً
-                     يرى المعرّفَ الذي استُخرج منه قبل أن يحفظ.** */
-                  value.trim() !== "" &&
-                  cleanHandle(sp.key, value) !== value.trim() && (
-                    <p className="text-12 text-muted mt-1.5" dir="ltr">
-                      {t.willSaveAs(cleanHandle(sp.key, value) ?? "—")}
-                    </p>
-                  )
-                )}
-              </div>
-            );
-          })}
+          {/* ⚖️ 🔴 **والحقولُ الأربعةُ صارت زرَّ ربطٍ واحداً** (D-839،
+              حكمُ أحمد: «أبغاه ربط حقيقي مو بس كتابة اسم، بحيث يعمل
+              تسجيل دخول عن طريقهم عشان يكون أكثر مصداقيّة»).
+
+              🔑 **ونقضٌ مسجَّلٌ لشكل D-546 لا لحاجتها**: الحاجةُ («أين
+              أجدك خارج Loopz؟») باقيةٌ — **والشكلُ كان يجيب بكلامٍ لا
+              بدليل**: **معرّفٌ يُكتب باليد يقول «أنا فلان» ولا يثبته.**
+
+              🔴 **وثلاثتُها سقطت لأنّها لا تستطيع، لا لأنّنا لم نبنِ**:
+              سناب لا تعطي اسمَ المستخدم أصلاً · وإنستقرام أغلقت واجهةَ
+              الحسابات الشخصيّة في ٤ ديسمبر ٢٠٢٤ · وفيسبوك هجرت
+              `username` منذ Graph v2.0. **والتفصيلُ في رأس
+              `lib/socials.ts`** — **كي لا يُعاد البحثُ بعد سنة.**
+
+              ⚠️ **والصفُّ لا يُرسم حتّى يوجد المزوّد** (`xEnabled`،
+              D-217) — **والقسمُ كلُّه يغيب معه**: **عنوانٌ فوق فراغٍ
+              أسوأُ من قسمٍ لم يُرسم** (D-219/D-280). */}
+          <XLinkRow
+            locale={locale}
+            handle={initial.socials?.x ?? null}
+            verified={xVerified}
+            dirty={dirty}
+          />
         </div>
       </section>
 
