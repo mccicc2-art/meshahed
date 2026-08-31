@@ -1864,6 +1864,10 @@ const ar = {
      بالضبط**: **«منذ ٢ أغسطس» تُقرأ ذكرى، و«منذ أغسطس ٢٠٢٦» تُقرأ
      مدّةً** — **وهي المدّةُ التي طُلبت.** */
   memberSince: (when: string) => `عضو منذ ${when}`,
+  /* 🆕 **أوائلُ الأسبوع** (D-835) — **الكلمةُ لا الرقمُ وحدَه**: **رمزٌ
+     ولونٌ يقولان «مرتبة» ولا يقولان أيَّها** (D-142). */
+  weeklyRank: (n: number): string => (n === 1 ? "الأول" : n === 2 ? "الثاني" : "الثالث"),
+  weeklyRankTip: "الأكثر نشاطاً في نقاشات الأسبوع الماضي",
   smartListHint: "تُبنى بشرطٍ من اكتشف: اختر فلاترك ثمّ اضغط «قائمة ذكيّة» تحتها.",
   calTitle: "تقويم أعمالك",
   calSub: "متى تنزل حلقاتُك وأفلامُك.",
@@ -3413,6 +3417,8 @@ const en: Dict = {
   weekNothing: "No episodes due this week.",
   smartListLabel: "Smart list",
   memberSince: (when: string) => `Member since ${when}`,
+  weeklyRank: (n: number): string => (n === 1 ? "1st" : n === 2 ? "2nd" : "3rd"),
+  weeklyRankTip: "Most active in last week's discussions",
   smartListHint: "Built from a filter in Discover: pick your filters, then tap Smart list under them.",
   calTitle: "Your calendar",
   calSub: "When your episodes and films land.",

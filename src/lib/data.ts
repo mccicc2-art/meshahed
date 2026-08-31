@@ -1156,6 +1156,32 @@ export interface PublicProfile {
   joined_at?: string | null;
 }
 
+/**
+ * 🆕 **أوائلُ الأسبوع الثلاثة** (D-835 · الهجرة ١٦٦).
+ *
+ * **آخرُ أسبوعٍ مُنحت جائزتُه** — **ثلاثةُ صفوفٍ لا أكثر**، **ومخبَّأةٌ
+ * للطلب** (D-470) فتُقرأ مرّةً ولو رسمتها صفحةٌ في موضعين.
+ * ⚠️ **والجدولُ بلا سياسةِ قراءة**: **القراءةُ بدالّةِ definer** —
+ * **فالسياساتُ المفتوحةُ تبقى خمساً** (`19` §٤).
+ * ⚠️ **والفراغُ هو الحالُ الطبيعيُّ أوّلَ أسبوع**: **خريطةٌ فارغةٌ تعني
+ * ألّا شارةَ تُرسم** — **لا صفراً يُعرض** (D-063/D-219).
+ */
+export const getWeeklyTop = cache(async (): Promise<Map<string, number>> => {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("weekly_top_now");
+    if (error || !data) return new Map();
+    return new Map(
+      (data as { user_id: string; rank: number }[]).map((r) => [
+        String(r.user_id),
+        Number(r.rank),
+      ]),
+    );
+  } catch {
+    return new Map();
+  }
+});
+
 /** معرّف UUID كما يكتبه Postgres — يميّز رابط الهوية عن رابط المعرّف */
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
