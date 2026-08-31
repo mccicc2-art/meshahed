@@ -79,9 +79,22 @@ export function XLinkRow({
     setBusy(true);
     try {
       const supabase = await createClient();
+      /* 🔴 **والعودةُ تمرّ بـ`/auth/callback` لا بالصفحة مباشرةً**:
+         **تدفّقُ PKCE يعود بـ`?code=` يجب أن يُبادَل بجلسة** — **ورابطُ
+         عودةٍ يقفز فوق المبادِل يصل الصفحةَ بلا هويّةٍ جديدة**،
+         **فتقول `syncXIdentity` «لم يكتمل الربط» وقد اكتمل نصفُه.**
+         **والمسارُ يُمرَّر في `next` كما يفعل زرُّ Google بالضبط** —
+         وصفةٌ واحدةٌ للعودة من كلِّ مزوّد (D-145).
+         🔴 **والأصلُ من `resolveAuthBase` لا `window.location.origin`
+         خاماً** (D-623، بلاغُ مشعل): **تطبيقٌ مثبَّتٌ من أصلٍ قديمٍ
+         تهبط كوكيزُه في نطاقٍ ولا تصل أصلَه**، **فيخرج من حسابه في
+         كلِّ فتح.** */
+      const { resolveAuthBase } = await import("@/lib/siteOrigin");
+      const base = resolveAuthBase(window.location.origin);
+      const back = encodeURIComponent("/profile/edit?x=1");
       const { error } = await supabase.auth.linkIdentity({
         provider: "twitter",
-        options: { redirectTo: `${window.location.origin}/profile/edit?x=1` },
+        options: { redirectTo: `${base}/auth/callback?next=${back}` },
       });
       if (error) throw new Error(error.message);
       /* **ولا `setBusy(false)` عند النجاح**: الصفحةُ تغادر الآن،
