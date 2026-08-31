@@ -62,7 +62,11 @@ export function XLinkRow({
     done.current = true;
     start(async () => {
       try {
-        await syncXIdentity();
+        /* 🔴 **والنتيجةُ تُقرأ ولا تُلتقط** (D-839): **Next تُخفي رسائلَ
+           أخطاء أفعال الخادم في الإنتاج** — **فكان القارئُ يرى
+           «Minified React error #441» مكانَ السبب.** */
+        const res = await syncXIdentity();
+        if (res.error) setErr(t.xError + res.error);
       } catch (e) {
         setErr(t.xError + (e as Error).message);
       } finally {
@@ -118,7 +122,11 @@ export function XLinkRow({
     setErr(null);
     start(async () => {
       try {
-        await unlinkXIdentity();
+        const res = await unlinkXIdentity();
+        if (res.error) {
+          setErr(t.xError + res.error);
+          return;
+        }
         router.refresh();
       } catch (e) {
         setErr(t.xError + (e as Error).message);
