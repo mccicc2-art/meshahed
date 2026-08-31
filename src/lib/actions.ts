@@ -134,92 +134,73 @@ function fail(error: unknown): never {
 }
 
 /**
- * ====== ربطُ حساب X وفكُّه — التوثيقُ يُكتب هنا وحدَه (D-839) ======
+ * ====== ربطُ حساب X وفكُّه — التوثيقُ تشتقّه القاعدةُ بنفسها (D-839) ======
  *
  * **حكمُ أحمد**: «أبغاه ربط حقيقي مو بس كتابة اسم، بحيث يعمل تسجيل
  * دخول عن طريقهم عشان يكون أكثر مصداقيّة».
  *
- * 🔑 **والحقلُ صار له كاتبٌ واحد** (D-462): **المعرّفُ و«متى ثبت»
- * يُكتبان معاً من هويّةِ المزوّد** — **ولا يكتب المستخدمُ معرّفَه
- * بيده بعد اليوم.** **وحقلٌ يُوثَّق ثمّ يُحرَّر توثيقٌ كاذب.**
+ * 🔴 **وهذه الصيغةُ الثانية، بعد عطلٍ حيٍّ في الأولى** (الهجرة ١٧٠):
+ * كانت هذه الدالّةُ تقرأ الهويّةَ من GoTrue ثمّ تكتب الصفَّ بجلسة
+ * المستخدم — **فردّت القاعدةُ `permission denied for table profiles`**:
+ * **`authenticated` تملك UPDATE على ٢٦ عموداً مسمّى، و`x_verified_at`
+ * ليس منها.**
+ * 🔑 **ومنحُ العمود كان سيهدم الميزةَ نفسَها**: **`socials` ممنوحةٌ
+ * للمستخدم** — **فمنحُ التاريخ معها يجعل الشارةَ تُزوَّر بنداءٍ مباشرٍ
+ * على PostgREST بلا مرورٍ بأيِّ شاشة.**
+ * ✅ **فصار الاشتقاقُ في القاعدة**: `sync_x_identity()` بـ`definer`
+ * **تقرأ `auth.identities` بنفسها وتكتب** — **والعميلُ لا يمرّر شيئاً
+ * أصلاً، فلا مُدخَلَ يُزوَّر.**
  *
- * ⚠️ **والربطُ نفسُه يقع في المتصفّح** (`linkIdentity` تُحوّل الصفحة)،
- * **وهذه تُنادى بعد العودة**: **تقرأ الهويّةَ من الجلسة وتكتب.**
- * **فالخادمُ لا يثق بما يعود في الرابط** — **يسأل GoTrue نفسَه.**
+ * 🔑 **ودالّةٌ واحدةٌ للاتّجاهين** (D-238): **وجدت الهويّةُ فتوثيق،
+ * وغابت فمحو** — **فالربطُ وفكُّه ينادِيان الشيءَ نفسَه.**
+ *
+ * 🔴 **والخطأُ يُعاد لا يُرمى** — **وهذا عطلٌ ثانٍ ظهر في نفس الجولة**:
+ * **Next تُخفي رسائلَ أخطاء أفعال الخادم في الإنتاج**، **فرأى أحمد
+ * «Minified React error #441» مكانَ رسالتي العربيّة.** **ورسالةُ خطأٍ
+ * لا تصل القارئ ليست رسالة** (D-063) — **فالنتيجةُ كائنٌ يُقرأ، لا
+ * استثناءٌ يُلتقط.**
  */
-export async function syncXIdentity(): Promise<string> {
-  const { supabase, user } = await requireUser("xlink", 10, 60_000);
+export type XSyncResult = { handle: string | null; error?: string };
 
-  const { data, error } = await supabase.auth.getUserIdentities();
-  if (error) throw new Error("تعذّر قراءة الهويّات / Could not read identities");
+export async function syncXIdentity(): Promise<XSyncResult> {
+  const { supabase } = await requireUser("xlink", 10, 60_000);
 
-  /* 🔴 **والمفتاحُ `x` لا `twitter` — وقد كتبتُها `twitter` تخميناً**:
-     **`twitter` مزوّدُ OAuth 1.0a المهجور** («Twitter (Deprecated)» في
-     اللوحة)، **و`x` مزوّدُ OAuth 2.0** («X / Twitter (OAuth 2.0)»).
-     **والدليلُ من اللوحة نفسِها لا من الوثائق**: حقلا استمارتِه
-     `EXTERNAL_X_CLIENT_ID` و`EXTERNAL_X_SECRET` — **و`auth-js` تفصل
-     بينهما في نوعها بتعليقين: الأوّلُ OAuth 1.0a والثاني OAuth 2.0.**
-     ⚠️ **فمن فعّل «Twitter (Deprecated)» لن يعمل عنده شيء** — **والصوابُ
-     تفعيلُ الثاني.** 🔑 **والدرس: اسمُ المفتاح يُقرأ من الاستمارة لا
-     يُشتقّ من اسم العلامة.** */
-  const ident = (data?.identities ?? []).find((i) => i.provider === "x");
-  if (!ident) throw new Error("لم يكتمل ربط X / X was not linked");
+  const { data, error } = await supabase.rpc("sync_x_identity");
+  if (error) return { handle: null, error: error.message };
 
-  /* 🔴 **وأسماءُ الحقل تختلف بين إصدارات المزوّد** — **فتُجرَّب
-     المرشّحاتُ بالترتيب**، **ولا يُخمَّن.**
-     ⚠️ **و`name` ليست منها عمداً**: **هي الاسمُ الظاهرُ لا المعرّف**
-     — **ومعرّفٌ مبنيٌّ عليه يوثّق حساباً لا يملكه صاحبُه.** */
-  const d = (ident.identity_data ?? {}) as Record<string, unknown>;
-  const raw = ["user_name", "preferred_username", "screen_name", "username", "nickname"]
-    .map((k) => d[k])
-    .find((v): v is string => typeof v === "string" && v.trim() !== "");
-
-  /* **والمصفاةُ تُطبَّق على ما جاء من المزوّد كما تُطبَّق على اليد**
-     (D-177): **بياناتُ طرفٍ ثالثٍ مُدخَلٌ لا ثقة.** */
-  const handle = raw ? cleanHandle("x", raw) : null;
+  /* **والمصفاةُ تُطبَّق مرّتين عمداً**: في الدالّة وهنا — **بياناتُ
+     طرفٍ ثالثٍ مُدخَلٌ لا ثقة**، **وحارسان أرخصُ من شارةٍ كاذبة.** */
+  const handle = typeof data === "string" ? cleanHandle("x", data) : null;
   if (!handle) {
-    /* **ولا يُكتب توثيقٌ بلا معرّف** (D-063): **الغيابُ يُقال ولا
-       يُملأ بتخمين.** */
-    throw new Error("تعذّر قراءة معرّف X من المزوّد / Could not read the X username");
+    return {
+      handle: null,
+      error: "لم تصل هويّة X — جرّب الربط مرّة أخرى / X identity not found",
+    };
   }
-
-  const { error: upErr } = await supabase
-    .from("profiles")
-    .update({
-      socials: { x: handle },
-      x_verified_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", user.id);
-  if (upErr) throw new Error(upErr.message);
-
-  return handle;
+  return { handle };
 }
 
 /**
  * **فكُّ الربط** — **الهويّةُ تُفكّ أوّلاً ثمّ يُمحى الأثر.**
  *
  * ⚠️ **والترتيبُ ليس ذوقاً**: **GoTrue ترفض فكَّ آخرِ هويّةٍ للحساب**
- * — **فلو مسحنا العمودَين أوّلاً ثمّ فشل الفكُّ لبقي الحسابُ مربوطاً
- * وملفُّه يقول إنّه ليس كذلك.** **والفشلُ يُرفع ولا يُبتلع.**
+ * — **فلو مسحنا الأثرَ أوّلاً ثمّ فشل الفكُّ لبقي الحسابُ مربوطاً
+ * وملفُّه يقول إنّه ليس كذلك.**
  */
-export async function unlinkXIdentity(): Promise<void> {
-  const { supabase, user } = await requireUser("xlink", 10, 60_000);
+export async function unlinkXIdentity(): Promise<{ error?: string }> {
+  const { supabase } = await requireUser("xlink", 10, 60_000);
 
   const { data } = await supabase.auth.getUserIdentities();
   const ident = (data?.identities ?? []).find((i) => i.provider === "x");
   if (ident) {
     const { error } = await supabase.auth.unlinkIdentity(ident);
-    if (error) throw new Error(error.message);
+    if (error) return { error: error.message };
   }
 
-  /* **وهويّةٌ غائبةٌ أصلاً لا تمنع تنظيفَ الأثر** — **صفٌّ يقول
-     «موثَّق» بلا هويّةٍ خلفه أسوأُ ممّا نُصلحه.** */
-  const { error: upErr } = await supabase
-    .from("profiles")
-    .update({ socials: {}, x_verified_at: null, updated_at: new Date().toISOString() })
-    .eq("id", user.id);
-  if (upErr) throw new Error(upErr.message);
+  /* **والدالّةُ نفسُها تمحو** — **لأنّ الهويّةَ غابت، لا لأنّنا أمرناها** */
+  const { error: rpcErr } = await supabase.rpc("sync_x_identity");
+  if (rpcErr) return { error: rpcErr.message };
+  return {};
 }
 
 export async function updateProfile(input: {
