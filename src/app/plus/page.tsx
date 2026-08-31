@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { getT, getLocale } from "@/lib/locale";
 import { Icon, type IconName } from "@/components/Icon";
 import { seoKeywords } from "@/lib/seo";
+import { FOUNDER_PLUS_UNTIL } from "@/lib/plan";
 
 /* صفحةُ البيع تُفهرَس كأختها `/features`: **الوصفُ هو الإعلانُ الوحيد
    الذي نملكه** في نتيجة البحث، ويُكتب بلغة الزائر لا بالإنجليزية دائماً
@@ -120,10 +121,12 @@ const READY: Perk[] = [
     icon: "sparkle-star",
     ar: "شارة «مؤسِّس» للأوائل",
     en: "A Founder badge for the first members",
-    arBody:
-      "من سجّل قبل إعلان الاشتراك يحمل شارة مؤسِّس و Loopz+ مدى الحياة — لا خدمةَ تُنتزع من عضوٍ قائم.",
-    enBody:
-      "Everyone who joined before subscriptions were announced keeps a Founder badge and Loopz+ for life — nothing is taken back from an existing member.",
+    /* ⚖️ 🆕 **وجملةُ «لا خدمةَ تُنتزع من عضوٍ قائم» سقطت معها** (D-833):
+       **مدّةُ البلس صارت محدودةً بحكم صاحبها** — **وجملةٌ تنفي ما وقع
+       تكذب مرّتين: مرّةً بالوعد ومرّةً بالمبدأ.** **والباقي صدقٌ يُقال:
+       الصفةُ لا تُنتزع.** */
+    arBody: `من سجّل قبل إعلان الاشتراك يحمل شارة مؤسِّس دائماً — والصفة لا تنتهي — ومعها Loopz+ حتى ${FOUNDER_PLUS_UNTIL.ar}.`,
+    enBody: `Everyone who joined before subscriptions were announced keeps a Founder badge for good — the status never expires — with Loopz+ until ${FOUNDER_PLUS_UNTIL.en}.`,
   },
 ];
 
