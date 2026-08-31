@@ -2,7 +2,7 @@ import Link from "next/link";
 import {
   getUser,
   getProfileByUsername,
-  getWeeklyTop,
+  getWeeklyRanks,
   getRatingsOf,
   getFollowStats,
   getFollowRelation,
@@ -35,6 +35,7 @@ import { PosterRail, RailItem } from "@/components/PosterRail";
 import { FollowUserButton } from "@/components/FollowUserButton";
 import { AccountBadges, badgeLabelsOf } from "@/components/AccountIdentity";
 import { ProfileMenu } from "@/components/ProfileMenu";
+import { WeeklyRanksDoor } from "@/components/WeeklyRanksDoor";
 import { isLoopz } from "@/lib/loopz";
 import { BackButton } from "@/components/BackButton";
 import { PublicListsRail } from "@/components/PublicListsRail";
@@ -287,7 +288,10 @@ export default async function PublicProfilePage({
   /* 🆕 **مرتبتُه في أوائل الأسبوع** (D-835) — **قراءةٌ واحدةٌ مخبَّأةٌ
      للطلب** (ثلاثةُ صفوفٍ من دالّةِ definer)، **والفراغُ يعني ألّا
      شارةَ تُرسم** لا صفراً يُعرض. */
-  const rank = (await getWeeklyTop()).get(profile.id) ?? null;
+  /* 🆕 **سجلُّ مراتبِه كلِّه لا مرتبةُ الأسبوع الأخير** (D-838):
+     **الشارةُ صارت تصف حسابَه لا أسبوعَه** — والحجّةُ في
+     `WeeklyRanksDoor`. */
+  const weeklyRanks = await getWeeklyRanks(profile.id);
 
   /* 🆕 **وترتيبُ صاحب الصفحة يُطبَّق عند القراءة** (D-581): المحفوظُ في
      `profile_prefs.sectionOrder` أوّلاً بترتيبه، **وما أُضيف بعد آخرِ
@@ -1273,23 +1277,20 @@ export default async function PublicProfilePage({
                 🔒 **وهي مجّانيّةٌ لا بلس**: **جائزةُ نشاطٍ تُكسب**،
                 **وشارةٌ تُكسب ثمّ تُحجب عمّن لم يشترِ تعاقب الفائز.**
                 ⚠️ **وتُرسم لصاحبها ولزائره سواء**: **مرتبةٌ لا يراها
-                إلّا صاحبُها لا تشجّع أحداً** (نصُّ الطلب: «نشجّعهم»). */}
+                إلّا صاحبُها لا تشجّع أحداً** (نصُّ الطلب: «نشجّعهم»).
+                ⚖️ 🆕 **وصارت باباً لا تختفي** (D-838، حكمُه: «الشارة لا
+                تختفي · جنبها عدد المرّات · وإذا ضغط عليها تطلع قائمة
+                بالأسابيع») — **ووجهُها عددٌ لا مرتبة**، **وما تقوله
+                وما تفتحه في `WeeklyRanksDoor` لا هنا**: **الصفُّ يقرّر
+                من يجلس فيه، لا ما يقوله كلٌّ منهم.** */}
             {/* ⚠️ **صفٌّ واحدٌ يلفّهما** (نصُّ الطلب: «في نفس صفّ عضو
                 منذ كذا»): **الشارةُ والتاريخُ سطرٌ واحد** — **و`flex-wrap`
                 لأنّ العربيّةَ والإنجليزيّةَ لا تقيسان الشهرَ بالطول
                 نفسِه**، **وسطرٌ يفيض على شاشةٍ ضيّقةٍ ينزل ولا يُقصّ.**
                 **والغلافُ لا يُرسم حين لا شيءَ فيه** (D-219/D-280). */}
-            {(rank || (profile.joined_at && isPlus(profile))) && (
+            {(weeklyRanks.length > 0 || (profile.joined_at && isPlus(profile))) && (
               <div className="mt-2 flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
-                {rank ? (
-                  <span
-                    className="hero-halo inline-flex items-center gap-1.5 rounded-full border border-accent/40 bg-accent/10 px-2 py-0.5 text-12 font-bold text-accent"
-                    title={t.weeklyRankTip}
-                  >
-                    <Icon name="trophy" size={12} className="shrink-0" />
-                    {t.weeklyRank(rank)}
-                  </span>
-                ) : null}
+                <WeeklyRanksDoor rows={weeklyRanks} locale={locale} />
 
                 {profile.joined_at && isPlus(profile) ? (
                   <p
