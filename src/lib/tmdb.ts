@@ -1,6 +1,7 @@
 // TMDB API client (v3). Requires TMDB_API_KEY in the environment.
 // Server-only: never expose the key to the browser.
 
+import { cache } from "react";
 import { cookies } from "next/headers";
 import { normalizeTerm, type MediaType } from "@/lib/media";
 import { REGION_COOKIE, DEFAULT_REGION, normalizeRegion, regionChain } from "@/lib/region";
@@ -365,12 +366,18 @@ export async function searchMulti(query: string): Promise<SearchResult[]> {
     .map((x) => x.r);
 }
 
-export async function trending(): Promise<SearchResult[]> {
+/**
+ * 🆕 **مغلَّفةٌ بـ`cache()`** (D-844 · قاعدةُ D-470): **صار لها قارئان في
+ * الطلب نفسِه** — جدارُ ملصقات `LandingHero` وشاشاتُ `LandingShowcase` —
+ * **ونداءان لبِركةٍ واحدةٍ في صفحةٍ واحدة كلفةٌ بلا مقابل.** والتغليفُ
+ * يُلغي التكرار داخل الطلب وحدَه، فلا يمسّ خبيئةَ `railTmdb` ولا مهلتَها.
+ */
+export const trending = cache(async function trending(): Promise<SearchResult[]> {
   const data = await railTmdb<{ results: SearchResult[] }>("/trending/all/week");
   return data.results.filter(
     (r) => (r.media_type === "tv" || r.media_type === "movie") && r.poster_path,
   );
-}
+});
 
 // أخبار: أفلام قادمة قريباً + مسلسلات تُعرض حالياً
 /**
