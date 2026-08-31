@@ -57,12 +57,6 @@ export interface SocialSpec {
   /** الحروفُ المسموحة في المعرّف عند تلك المنصّة */
   pattern: RegExp;
   max: number;
-  /**
-   * 🗑️ **مثالٌ في الحقل الفارغ — ويسقط مع الحقل في الالتزام التالي**
-   * (D-028): **النموذجُ الذي يقرؤه ما زال هو القديم في هذه اللحظة**،
-   * **وحقلٌ يُحذف قبل قارئه يكسر البناء.**
-   */
-  placeholder?: string;
 }
 
 export const SOCIALS: readonly SocialSpec[] = [
@@ -72,7 +66,6 @@ export const SOCIALS: readonly SocialSpec[] = [
     base: "https://x.com/",
     pattern: /^[A-Za-z0-9_]{1,15}$/,
     max: 15,
-    placeholder: "imeshal",
   },
 ] as const;
 

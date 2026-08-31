@@ -20,7 +20,7 @@ import { GENRES, type MediaType } from "@/lib/media";
 import { isPlus, themeNeedsPlus } from "@/lib/plan";
 import { isListColor } from "@/lib/listColors";
 import { BROWSE_GENRES } from "@/lib/browse";
-import { cleanHandle, sanitizeSocials } from "@/lib/socials";
+import { cleanHandle } from "@/lib/socials";
 import { THEMES, isThemeAccent } from "@/lib/themes";
 import { RAILS_COOKIE, serializeHiddenRails } from "@/lib/railPrefs";
 import {
@@ -225,7 +225,6 @@ export async function updateProfile(input: {
   avatarPos?: number;
   theme?: string;
   favoriteGenres: number[];
-  socials?: Record<string, string>;
   hideName?: boolean;
   homePrefs?: HomePrefs;
   /** تخصيص البروفايل (D-129) — غيابه يعني «اتركه كما هو» */
@@ -266,7 +265,10 @@ export async function updateProfile(input: {
     nickname: nickname || null,
     avatar_url: safeImageUrl(input.avatarUrl),
     favorite_genres: genres,
-  
+    /* 🗑️ **و`socials` خرجت من هنا** (D-839): **كاتبُها `syncXIdentity`
+       وحدَها بعد ثبوت الهويّة** — **وفعلٌ عامٌّ يقبل معرّفاً نصّيّاً
+       يجعل التوثيقَ قابلاً للتزوير بنداءٍ مباشرٍ بلا شاشة** (وهي حجّةُ
+       D-821 بحرفها: **الحارسُ يسكن الفعل لا الشاشة**). */
     updated_at: new Date().toISOString(),
   };
   if (input.username !== undefined) payload.username = username || null;
