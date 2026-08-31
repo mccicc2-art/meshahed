@@ -140,10 +140,17 @@ const COVER_SCRIM = "rgba(0,0,0,0.30)";
 const COVER_ART_SHADOW =
   "drop-shadow(0 1px 5px rgba(0,0,0,0.95)) drop-shadow(0 0 14px rgba(0,0,0,0.6))";
 
-/** **القناع**: الصورةُ تامّةٌ إلى خطِّه الثاني، ثمّ تذوب إلى العدم */
+/** **القناع**: الصورةُ تامّةٌ إلى خطِّه الثاني، ثمّ تذوب إلى العدم.
+ *
+ * 🆕 **والخطُّ صار متغيّراً لا رقماً** (D-847): **الصندوقُ يكبر على
+ * الشاشة الواسعة، وقناعٌ برقمٍ ثابتٍ كان سيبقى واقفاً عند ١٢٣**
+ * **فتُقصّ الصورةُ قصّاً حادّاً في منتصف الصندوق الجديد.** **رقمان
+ * يجب أن يتحرّكا معاً فليس لهما إلّا مصدرٌ واحد** — **وهما مكتوبان
+ * على الصندوق نفسِه** (`--cover-h`/`--cover-solid`) **لا في
+ * `globals.css`**: **الوصفةُ وتعليلُها في ملفٍّ واحد** (D-145). */
 const COVER_FADE =
   "linear-gradient(180deg, #000 0," +
-  " #000 calc(var(--safe-top) + 123px)," +
+  " #000 calc(var(--safe-top) + var(--cover-solid))," +
   " transparent 100%)";
 
 export interface HeaderStat {
@@ -292,9 +299,29 @@ export function HomeHeader({
           /* 🆕 **الارتفاعُ يتبع المنطقةَ الآمنة لا رقماً ثابتاً** (D-543):
            الشريطُ نفسُه ارتفاعُه `--safe-top + 64px`، **فغلافٌ بارتفاعٍ
            ثابتٍ يقع تحته على الآيفون ويفيض عنه في المتصفّح.** */
-          className="pointer-events-none absolute inset-x-0 top-0 overflow-hidden"
+          /* ⚖️ 🆕 **ودرجةٌ واحدةٌ للشاشة الواسعة** (D-847، بلاغُ أحمد:
+           «البنر في المتصفّح الهوم صغير — بلّغتك اليوم لكنك ما عملتها»
+           — **وهي شكوى D-836 نفسُها على صفحةٍ أخرى**).
+
+           📏 **والمقيسُ حيّاً عند ١٩١٢px**: الصندوقُ **١٥٢** وعرضُه
+           **١٩١٢** — **١٢٫٦:١**، **ومنه ٦٥ تحت الشريط العلويّ**
+           **فلا يُرى منه إلا ٨٧px**. **وعلى الجوّال ٣٧٥×٢١١ —
+           ١٫٨:١**، **وهي نسبةُ الخلفيّة نفسِها فتُرى الصورةُ كاملةً.**
+           **فما صغُر مقاسٌ بل نسبة**، وهو حرفُ D-836.
+
+           🔑 **ولا يُمدُّ الصندوقُ وحدَه**: **سقفُه ليس ذوقاً بل
+           أوّلُ نصٍّ ثيميٍّ تحته** (D-501: نصٌّ ثيميٌّ على صورةٍ
+           يُقرأ في ثيمٍ ويختفي في آخر) — **وما يقف على الصورة هو
+           صفُّ الترحيب وبطاقةُ الأرقام وحدَهما.** **فالغلافُ يكبر
+           بمقدار ما تكبر الترويسةُ تحته لا أكثر** — **والصورةُ
+           والدائرةُ والاسمُ والبطاقةُ تكبر معاً أو لا يكبر منها
+           شيء** (D-836).
+
+           ⚠️ **والجوّالُ لم يُمسّ**: `9.5rem`/`123px` كما كانتا
+           حرفاً، **والدرجةُ عند `lg` وحدَها.** */
+          className="pointer-events-none absolute inset-x-0 top-0 overflow-hidden [--cover-h:9.5rem] [--cover-solid:123px] lg:[--cover-h:14rem] lg:[--cover-solid:160px]"
           /* **ينتهي عند الخطّ الأحمر** — منتصفُ بطاقة الأرقام (D-553) */
-          style={{ height: "calc(var(--safe-top) + 9.5rem)" }}
+          style={{ height: "calc(var(--safe-top) + var(--cover-h))" }}
         >
           {/* 🆕 **والصورةُ تذوب بقناعٍ لا بطبقةٍ فوقها** (D-543): **حجابٌ
             ثانٍ إلى لون الخلفية كان يجتمع مع الحجاب الأوّل عند صفِّ
@@ -503,13 +530,19 @@ export function HomeHeader({
               name={displayName}
               profile={{ plan, founder, plus_until: plusUntil, verified_at: verifiedAt }}
               t={t}
-              className="text-15 font-bold leading-tight"
+              /* ⚖️ 🆕 **والاسمُ يكبر مع الغلاف** (D-847): **١٥ على
+                الجوّال وعشرون على الواسعة** — **ودرجةٌ واحدةٌ من
+                السلّم لا رقمٌ يُذاق** (لا ١٦ ولا ١٨ في السلّم،
+                D-811). **و٢٢/٢٤ تبقى للملفّ العامّ**: **ذاك عنوانُ
+                صفحةٍ وهذا سطرُ ترحيبٍ فوق مكتبة.** */
+              className="text-15 lg:text-20 font-bold leading-tight"
             />
             {/* ⚖️ 🆕 ١٣ → ١٢ (D-619: «أحجام الخط كبيرة وغير متناسقة») —
               سطرُ تعريفٍ ثانويٌّ درجتُه درجةُ الثانويّ في السلّم */}
             {(username || userId) && (
               <p
-                className={`mt-0.5 flex items-center gap-1.5 text-12 leading-tight ${
+                /* 🆕 **والثانويُّ يتبع الأوّل** (D-847): ١٢ ثمّ ١٤ */
+                className={`mt-0.5 flex items-center gap-1.5 text-12 lg:text-14 leading-tight ${
                   coverUrl ? "text-white/70" : "text-muted"
                 }`}
               >
@@ -653,7 +686,11 @@ export function HomeHeader({
                  لكلِّ خانةٍ تُقرأ فرقاً في العين لا يُذكر، **وتكفي
                  لتمرير أطول تركيبةٍ إنجليزيّةٍ عند ٣٥٨px** — وهي
                  التركيبةُ الوحيدةُ التي بقيت تُقصّ بعد قسمة الفائض. */
-                    className={`flex items-center justify-center gap-1.5 px-1.5 py-3 transition active:opacity-70 ${
+                    /* 🆕 **والحشوةُ درجةً على الواسعة** (D-847):
+                 **بطاقةٌ بارتفاع ٤٢px في عمودٍ عرضُه ١١٢٠ شريطٌ لا
+                 بطاقة** — **والحشوةُ هي ما يصنع ارتفاعَها**، لا
+                 ارتفاعٌ يُكتب بيد. */
+                    className={`flex items-center justify-center gap-1.5 px-1.5 py-3 lg:px-3 lg:py-5 transition active:opacity-70 ${
                       i % cols !== 0
                         ? "border-s border-[color:var(--divider)] "
                         : ""
@@ -684,15 +721,20 @@ function StatFace({ stat }: { stat: HeaderStat }) {
      **١٢** والرمزُ **١٦**. */
   return (
     <>
+      {/* 🆕 **والدرجاتُ الثلاثُ تصعد معاً على الواسعة** (D-847):
+        **١٦/١٥/١٢ على الجوّال، ٢٠/٢٠/١٤ على الواسعة** — **والرمزُ
+        بصنفٍ لا برقمٍ ثانٍ**: `size` سِمةٌ على الـ`svg` **والصنفُ
+        يغلبها**، فيبقى مصدرُ المقاس الجوّاليِّ واحداً. */}
       <Icon
         name={stat.icon}
         size={16}
+        className="lg:w-5 lg:h-5"
         style={{ color: stat.color ?? "var(--accent)" }}
       />
-      <span className="text-15 font-bold leading-none tabular-nums">
+      <span className="text-15 lg:text-20 font-bold leading-none tabular-nums">
         {stat.value}
       </span>
-      <span className="min-w-0 truncate text-12 font-medium text-muted leading-none">
+      <span className="min-w-0 truncate text-12 lg:text-14 font-medium text-muted leading-none">
         {stat.label}
       </span>
     </>

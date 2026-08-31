@@ -50,7 +50,20 @@ export function HomeAvatarLink({
       className="block shrink-0 rounded-full p-[2px] active:scale-95 transition"
     >
       <span className="block rounded-full p-[2px] bg-[color:var(--background)]">
-        <Avatar src={avatarUrl} name={name} size={44} posY={avatarPos} alt={t.avatarAlt} />
+        {/* ⚖️ 🆕 **ودرجةٌ ثانيةٌ للشاشة الواسعة** (D-847، بقاعدة D-836
+          حرفاً): **`size` هو المقاسُ الجوهريُّ الذي تُطلب به الصورةُ
+          من الخادم فيُكتب بالأكبر دائماً** — **وصورةُ ٤٤ ممدودةً على
+          دائرةِ ٧٢ ضبابٌ.** **و`boxClass` هو الصندوقُ المرسوم**،
+          **والحرفُ (لمن لا صورةَ له) ٤٢٪ من الدائرة في الدرجتين** —
+          نسبةُ `Avatar` نفسُها مكتوبةً بأصنافٍ لأن السطرَ تنحّى. */}
+        <Avatar
+          src={avatarUrl}
+          name={name}
+          size={72}
+          boxClass="w-[44px] h-[44px] text-[18px] lg:w-[72px] lg:h-[72px] lg:text-[30px]"
+          posY={avatarPos}
+          alt={t.avatarAlt}
+        />
       </span>
     </Link>
   );
