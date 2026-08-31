@@ -3,6 +3,7 @@ import { RailScroll } from "./RailScroll";
 import { Icon, type IconName } from "./Icon";
 import Image from "next/image";
 import { posterUrl, titleOf, type SearchResult } from "@/lib/tmdb";
+import { POSTER_INTRINSIC } from "@/lib/media";
 import { ImdbMark, TmdbMark } from "./RatingMarks";
 import { PosterHold } from "./PosterHold";
 import { MarqueeText } from "./MarqueeText";
@@ -138,9 +139,8 @@ export function RankedRail({
                     <Image
                       src={img}
                       alt={titleOf(r)}
-                      fill
-                      sizes="132px"
-                      className="object-cover group-hover:scale-105 transition duration-300"
+                      {...POSTER_INTRINSIC.w342}
+                      className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition duration-300"
                     />
                   ) : (
                     <div className="w-full h-full grid place-items-center text-muted"><Icon name="film" size={22} /></div>

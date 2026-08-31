@@ -3,7 +3,7 @@ import Image from "next/image";
 import { Avatar } from "./Avatar";
 import { Icon } from "./Icon";
 import { PosterRail, RailItem } from "./PosterRail";
-import { posterUrl } from "@/lib/media";
+import { posterUrl, POSTER_INTRINSIC } from "@/lib/media";
 import { getDict, num, type Locale } from "@/lib/i18n";
 import { curatedName } from "@/lib/universes";
 import { ListSaveHeart } from "./ListSaveHeart";
@@ -389,7 +389,7 @@ export function ListCardShell({
           <span aria-hidden className="absolute inset-y-0 end-0 w-[72%] flex justify-end">
             {posters.slice(0, 3).map((url, i) => (
               <span key={i} className="relative h-full flex-1 min-w-0">
-                <Image src={url} alt="" fill sizes="120px" className="object-cover" />
+                <Image src={url} alt="" {...POSTER_INTRINSIC.w185} className="absolute inset-0 w-full h-full object-cover" />
               </span>
             ))}
           </span>

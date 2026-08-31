@@ -2,6 +2,7 @@ import Link from "next/link";
 import { RailScroll } from "./RailScroll";
 import { Icon, type IconName } from "./Icon";
 import Image from "next/image";
+import { POSTER_INTRINSIC } from "@/lib/media";
 import { getDict, type Locale } from "@/lib/i18n";
 import { daysUntil } from "@/lib/when";
 
@@ -81,9 +82,8 @@ export function CountdownRail({
                     <Image
                       src={item.poster}
                       alt={item.title}
-                      fill
-                      sizes="132px"
-                      className="object-cover group-hover:scale-105 transition duration-300"
+                      {...POSTER_INTRINSIC.w342}
+                      className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition duration-300"
                     />
                   ) : (
                     <div className="w-full h-full grid place-items-center text-muted"><Icon name="film" size={22} /></div>

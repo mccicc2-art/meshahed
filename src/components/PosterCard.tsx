@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { posterUrl } from "@/lib/media";
+import { posterUrl, POSTER_INTRINSIC } from "@/lib/media";
 import { MarqueeText } from "./MarqueeText";
 import { Icon, type IconName } from "./Icon";
 import { QuickAdd } from "./QuickAdd";
@@ -168,13 +168,14 @@ export function PosterCard({
     // كانت ترجع 503 وتُبطئ التنقّل الفعلي. الرابط يُحمَّل عند النقر.
     <Link href={href} prefetch={false} className="group block">
       <div className="relative aspect-[2/3] rounded-poster overflow-hidden bg-surface border border-border">
+        {/* 🆕 `width`/`height` لا `fill` (D-845): مرشَّحا srcset بدل
+            ~١٣ متطابقاً — انظر `POSTER_INTRINSIC` في `lib/media.ts`. */}
         {url ? (
           <Image
             src={url}
             alt={title}
-            fill
-            sizes="(max-width: 640px) 33vw, 160px"
-            className="object-cover group-hover:scale-105 transition duration-300"
+            {...POSTER_INTRINSIC[posterSize]}
+            className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition duration-300"
           />
         ) : (
           <div className="w-full h-full grid place-items-center text-muted">

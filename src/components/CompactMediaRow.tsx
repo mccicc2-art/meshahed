@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { posterUrl } from "@/lib/media";
+import { posterUrl, POSTER_INTRINSIC } from "@/lib/media";
 import { Icon, type IconName } from "./Icon";
 
 /**
@@ -80,9 +80,8 @@ export function CompactMediaRow({
             <Image
               src={url}
               alt=""
-              fill
-              sizes={wide ? "124px" : "40px"}
-              className="object-cover"
+              {...POSTER_INTRINSIC.w185}
+              className="absolute inset-0 w-full h-full object-cover"
               /* ⚠️ **والقصُّ من أعلى الثلث لا من الوسط** في الصدر العريض
                  (D-443): **ملصقٌ ٢:٣ مقصوصٌ إلى ١٦:١٠ يفقد ثلثيه**،
                  **ومنتصفُ الملصق أغلبُه خلفيّةٌ داكنة** بينما الوجهُ

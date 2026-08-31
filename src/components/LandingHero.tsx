@@ -4,7 +4,7 @@ import Image from "next/image";
 import { getT } from "@/lib/locale";
 import { trending, type SearchResult } from "@/lib/tmdb";
 import { railGuard } from "@/lib/topChart";
-import { posterUrl } from "@/lib/media";
+import { posterUrl, POSTER_INTRINSIC } from "@/lib/media";
 import { GoogleButton } from "@/components/GoogleButton";
 
 /**
@@ -178,10 +178,9 @@ async function PosterWall() {
                       <Image
                         src={p}
                         alt=""
-                        fill
-                        sizes="132px"
+                        {...POSTER_INTRINSIC.w185}
                         priority={ri === 0 && i < 6}
-                        className="object-cover"
+                        className="absolute inset-0 w-full h-full object-cover"
                       />
                     </div>
                   ))}
