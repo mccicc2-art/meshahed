@@ -20,7 +20,7 @@ import { GENRES, type MediaType } from "@/lib/media";
 import { isPlus, themeNeedsPlus } from "@/lib/plan";
 import { isListColor } from "@/lib/listColors";
 import { BROWSE_GENRES } from "@/lib/browse";
-import { sanitizeSocials } from "@/lib/socials";
+import { cleanHandle, sanitizeSocials } from "@/lib/socials";
 import { THEMES, isThemeAccent } from "@/lib/themes";
 import { RAILS_COOKIE, serializeHiddenRails } from "@/lib/railPrefs";
 import {
@@ -133,6 +133,88 @@ function fail(error: unknown): never {
   throw new Error("تعذّر إتمام العملية، جرّب مرة أخرى / Something went wrong, try again.");
 }
 
+/**
+ * ====== ربطُ حساب X وفكُّه — التوثيقُ يُكتب هنا وحدَه (D-839) ======
+ *
+ * **حكمُ أحمد**: «أبغاه ربط حقيقي مو بس كتابة اسم، بحيث يعمل تسجيل
+ * دخول عن طريقهم عشان يكون أكثر مصداقيّة».
+ *
+ * 🔑 **والحقلُ صار له كاتبٌ واحد** (D-462): **المعرّفُ و«متى ثبت»
+ * يُكتبان معاً من هويّةِ المزوّد** — **ولا يكتب المستخدمُ معرّفَه
+ * بيده بعد اليوم.** **وحقلٌ يُوثَّق ثمّ يُحرَّر توثيقٌ كاذب.**
+ *
+ * ⚠️ **والربطُ نفسُه يقع في المتصفّح** (`linkIdentity` تُحوّل الصفحة)،
+ * **وهذه تُنادى بعد العودة**: **تقرأ الهويّةَ من الجلسة وتكتب.**
+ * **فالخادمُ لا يثق بما يعود في الرابط** — **يسأل GoTrue نفسَه.**
+ */
+export async function syncXIdentity(): Promise<string> {
+  const { supabase, user } = await requireUser("xlink", 10, 60_000);
+
+  const { data, error } = await supabase.auth.getUserIdentities();
+  if (error) throw new Error("تعذّر قراءة الهويّات / Could not read identities");
+
+  /* ⚠️ **والمفتاحُ `twitter` لا `x`**: GoTrue تسمّي مزوّدَها باسمه
+     القديم — **واسمُ العلامة تغيّر واسمُ المفتاح لم يتغيّر.** */
+  const ident = (data?.identities ?? []).find((i) => i.provider === "twitter");
+  if (!ident) throw new Error("لم يكتمل ربط X / X was not linked");
+
+  /* 🔴 **وأسماءُ الحقل تختلف بين إصدارات المزوّد** — **فتُجرَّب
+     المرشّحاتُ بالترتيب**، **ولا يُخمَّن.**
+     ⚠️ **و`name` ليست منها عمداً**: **هي الاسمُ الظاهرُ لا المعرّف**
+     — **ومعرّفٌ مبنيٌّ عليه يوثّق حساباً لا يملكه صاحبُه.** */
+  const d = (ident.identity_data ?? {}) as Record<string, unknown>;
+  const raw = ["user_name", "preferred_username", "screen_name", "username", "nickname"]
+    .map((k) => d[k])
+    .find((v): v is string => typeof v === "string" && v.trim() !== "");
+
+  /* **والمصفاةُ تُطبَّق على ما جاء من المزوّد كما تُطبَّق على اليد**
+     (D-177): **بياناتُ طرفٍ ثالثٍ مُدخَلٌ لا ثقة.** */
+  const handle = raw ? cleanHandle("x", raw) : null;
+  if (!handle) {
+    /* **ولا يُكتب توثيقٌ بلا معرّف** (D-063): **الغيابُ يُقال ولا
+       يُملأ بتخمين.** */
+    throw new Error("تعذّر قراءة معرّف X من المزوّد / Could not read the X username");
+  }
+
+  const { error: upErr } = await supabase
+    .from("profiles")
+    .update({
+      socials: { x: handle },
+      x_verified_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", user.id);
+  if (upErr) throw new Error(upErr.message);
+
+  return handle;
+}
+
+/**
+ * **فكُّ الربط** — **الهويّةُ تُفكّ أوّلاً ثمّ يُمحى الأثر.**
+ *
+ * ⚠️ **والترتيبُ ليس ذوقاً**: **GoTrue ترفض فكَّ آخرِ هويّةٍ للحساب**
+ * — **فلو مسحنا العمودَين أوّلاً ثمّ فشل الفكُّ لبقي الحسابُ مربوطاً
+ * وملفُّه يقول إنّه ليس كذلك.** **والفشلُ يُرفع ولا يُبتلع.**
+ */
+export async function unlinkXIdentity(): Promise<void> {
+  const { supabase, user } = await requireUser("xlink", 10, 60_000);
+
+  const { data } = await supabase.auth.getUserIdentities();
+  const ident = (data?.identities ?? []).find((i) => i.provider === "twitter");
+  if (ident) {
+    const { error } = await supabase.auth.unlinkIdentity(ident);
+    if (error) throw new Error(error.message);
+  }
+
+  /* **وهويّةٌ غائبةٌ أصلاً لا تمنع تنظيفَ الأثر** — **صفٌّ يقول
+     «موثَّق» بلا هويّةٍ خلفه أسوأُ ممّا نُصلحه.** */
+  const { error: upErr } = await supabase
+    .from("profiles")
+    .update({ socials: {}, x_verified_at: null, updated_at: new Date().toISOString() })
+    .eq("id", user.id);
+  if (upErr) throw new Error(upErr.message);
+}
+
 export async function updateProfile(input: {
   nickname: string;
   username?: string;
@@ -143,6 +225,7 @@ export async function updateProfile(input: {
   avatarPos?: number;
   theme?: string;
   favoriteGenres: number[];
+  socials?: Record<string, string>;
   hideName?: boolean;
   homePrefs?: HomePrefs;
   /** تخصيص البروفايل (D-129) — غيابه يعني «اتركه كما هو» */
@@ -153,12 +236,6 @@ export async function updateProfile(input: {
   isPrivate?: boolean;
   /** قفل قائمتَي المتابعة في الملف العام (هجرة 43) */
   hideFollowLists?: boolean;
-  /**
-   * 🆕 **روابطُ التواصل** (D-546، الهجرة ١٢٧) — **غيابُها يعني «اتركها
-   * كما هي» لا «امحُها»**، كالنبذة: **نموذجٌ لا يعرض الحقلَ لا يجوز أن
-   * يمسحه** (وهو عطلُ النموذجين الذي عالجته D-462).
-   */
-  socials?: Record<string, string>;
 }) {
   const { supabase, user } = await requireUser("profile", 10, 60_000);
 
@@ -189,11 +266,7 @@ export async function updateProfile(input: {
     nickname: nickname || null,
     avatar_url: safeImageUrl(input.avatarUrl),
     favorite_genres: genres,
-    /* 🆕 **روابطُ التواصل** (D-546) — **منقّاةً لا كما وصلت**: المفتاحُ
-       المجهولُ يسقط، والمعرّفُ الذي لا يطابق مصفاةَ منصّته يسقط،
-       **والرابطُ الملصوق يُقشَّر إلى معرّف.** **وما يُخزَّن معرّفٌ لا
-       رابط.** */
-    ...(input.socials === undefined ? {} : { socials: sanitizeSocials(input.socials) }),
+  
     updated_at: new Date().toISOString(),
   };
   if (input.username !== undefined) payload.username = username || null;

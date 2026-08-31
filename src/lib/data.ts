@@ -120,6 +120,9 @@ export interface Profile {
   excluded_languages?: string[] | null;
   /** 🆕 **روابطُ التواصل** (D-546، الهجرة ١٢٧) — معرّفاتٌ لا روابط */
   socials?: unknown;
+  /** 🆕 **متى ثبت معرّفُ X بتسجيل دخول** (D-839، الهجرة ١٦٩) — **غيابُه
+      يعني «غيرُ موثَّق»**، **وتاريخٌ لا رايةٌ** لأنّ «منذ متى» سؤالٌ يُسأل */
+  x_verified_at?: string | null;
   hide_name?: boolean | null;
   home_prefs?: unknown;
   /** تخصيص البروفايل — توأم `home_prefs` (هجرة 51، D-129) */
@@ -261,7 +264,7 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
     let { data, error } = await supabase
       .from("profiles")
       .select(
-        "id, nickname, username, avatar_url, cover_url, cover_pos, avatar_pos, theme, theme_accent, favorite_genres, unwanted_genres, preferred_languages, excluded_languages, socials, hide_name, home_prefs, bio, is_private, hide_follow_lists, profile_prefs, font_ui, font_content, ui_state, plan, plus_until, founder, verified_at, timezone",
+        "id, nickname, username, avatar_url, cover_url, cover_pos, avatar_pos, theme, theme_accent, favorite_genres, unwanted_genres, preferred_languages, excluded_languages, socials, x_verified_at, hide_name, home_prefs, bio, is_private, hide_follow_lists, profile_prefs, font_ui, font_content, ui_state, plan, plus_until, founder, verified_at, timezone",
       )
       .eq("id", uid)
       .maybeSingle();
@@ -302,6 +305,9 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
           preferred_languages: null,
           excluded_languages: null,
           socials: null,
+          /* 🆕 **وتوثيقُ X يسقط إلى «غيرِ موثَّق»** (D-839) — **وهو
+             السلوكُ القديمُ بالضبط** (D-063/D-179). */
+          x_verified_at: null,
           plan: "free",
           plus_until: null,
           founder: false,
@@ -328,6 +334,8 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
             preferred_languages: null,
             excluded_languages: null,
             socials: null,
+            /* 🆕 **وتوثيقُ X كذلك** (D-839) */
+            x_verified_at: null,
             hide_name: false,
             home_prefs: null,
             bio: null,
@@ -1154,6 +1162,14 @@ export interface PublicProfile {
    * **والغيابُ يُقرأ غياباً فتسقط الشارة** لا تُملأ بتاريخِ اليوم.
    */
   joined_at?: string | null;
+  /**
+   * 🆕 **حسابُ X الموثَّق** (D-839 · الهجرة ١٦٩) — **معرّفٌ لا رابط**،
+   * **و`x_verified_at` هو الفرقُ بين «قال» و«ثبت».**
+   * ⚠️ **ويتبعان حجابَ الاسم في الرؤية نفسِها**: **من أخفى اسمَه لا
+   * يُكشف حسابُه في X** — **وإلّا كان الحجابُ بابَه مفتوحاً من الخلف.**
+   */
+  socials?: unknown;
+  x_verified_at?: string | null;
 }
 
 /**
@@ -1224,7 +1240,7 @@ export async function getProfileByUsername(
          لا يقفل والتخصيص لا يُقرأ. أُضيفا بعد تشغيل الهجرتين 43 و51،
          والاحتياط أدناه يمسكهما لو نُشر الكود قبل هجرةٍ لاحقة. */
       .select(
-        "id, nickname, username, avatar_url, cover_url, cover_pos, avatar_pos, favorite_genres, hide_name, bio, is_private, hide_follow_lists, profile_prefs, plan, founder, verified_at, theme_accent, joined_at",
+        "id, nickname, username, avatar_url, cover_url, cover_pos, avatar_pos, favorite_genres, hide_name, bio, is_private, hide_follow_lists, profile_prefs, plan, founder, verified_at, theme_accent, joined_at, socials, x_verified_at",
       )
       .eq(column, value)
       .maybeSingle();

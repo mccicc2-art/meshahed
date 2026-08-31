@@ -1567,6 +1567,17 @@ const ar = {
   /* 🆕 **عنوانُ مجموعة حسابات التواصل** (D-641): خرجت من بطاقة الهويّة
      فاحتاجت اسماً — **ومجموعةٌ بلا عنوانٍ صفوفٌ بلا سبب.** */
   setSocialAccounts: "حسابات التواصل",
+  /* 🆕 **ربطُ X الحقيقيّ** (D-839) — **العنوانُ مفردٌ لأنّ المنصّةَ
+     واحدة**: **عنوانٌ يقول «حسابات» فوق حسابٍ واحدٍ يَعِد بما ليس
+     تحته** (D-217). */
+  setXSection: "حسابك في X",
+  xConnect: "اربط حسابك في X",
+  xVerified: "موثَّق",
+  xVerifiedTip: "ثبت بتسجيل الدخول إلى X",
+  xDisconnect: "فكّ الربط",
+  xHint: "يُقرأ معرّفك من X نفسها بعد تسجيل الدخول — فلا يستطيع أحد أن يدّعي حسابك.",
+  xSaveFirst: "احفظ تعديلاتك أوّلاً — الربط يفتح صفحة X ويعود.",
+  xError: "تعذّر ربط X: ",
   setSave: "حفظ",
   setNameHandle: "الاسم واسم المستخدم",
   setEditCover: "تغيير صورة الغلاف",
@@ -3230,6 +3241,14 @@ const en: Dict = {
   setPreviewProfile: "Preview profile",
   setProfileDetails: "Profile details",
   setSocialAccounts: "Social accounts",
+  setXSection: "Your X account",
+  xConnect: "Connect your X account",
+  xVerified: "Verified",
+  xVerifiedTip: "Proven by signing in to X",
+  xDisconnect: "Disconnect",
+  xHint: "Your username is read from X itself after you sign in — so nobody can claim your account.",
+  xSaveFirst: "Save your changes first — linking opens X and comes back.",
+  xError: "Couldn't link X: ",
   setSave: "Save",
   setNameHandle: "Name and username",
   setEditCover: "Change cover image",
