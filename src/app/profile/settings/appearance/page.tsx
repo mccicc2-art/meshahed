@@ -6,7 +6,6 @@ import { SettingsPageLayout } from "@/components/settings/SettingsPageLayout";
 import { SettingsGroup } from "@/components/settings/SettingsGroup";
 import { LanguageRow } from "@/components/settings/LanguageRow";
 import { ThemeSection } from "@/components/settings/ThemeSection";
-import { AccentSection } from "@/components/settings/AccentSection";
 import { FontSizeSection } from "@/components/settings/FontSizeSection";
 import { FONT_UI_COOKIE, FONT_CONTENT_COOKIE, sanitizeFontSize } from "@/lib/fontPrefs";
 import { isPlus } from "@/lib/plan";
@@ -62,14 +61,12 @@ export default async function Page() {
             favoriteGenres: p?.favorite_genres ?? [],
           }}
         />
-        {/* 🆕 **ولونُك بعد الثيم مباشرةً** (D-825): **يركب فوقه**،
-            **فترتيبُ القراءة هو ترتيبُ التركيب.** */}
-        <AccentSection
-          locale={locale}
-          initial={p?.theme_accent ?? null}
-          /* 🆕 D-783 §٣ — والحكمُ من `lib/plan.ts` وحدَه */
-          plus={isPlus(p)}
-        />
+        {/* 🗑️ **وقسمُ «لونُك» سقط** (D-848، حكمُ أحمد بلقطةٍ محوَّطة:
+            «ألوان الثيم الإضافيّة هذي احذفها بالكامل»).
+            🔑 **والثيمُ يعود مصدرَ اللون الوحيد**: **كان لونُ التمييز
+            يركب فوق أيِّ ثيمٍ ويعبر إلى زائر ملفّك** (D-825) —
+            **فصار للتطبيق مصدران للّون الواحد**، **وثيمٌ لا يملك لونَ
+            نفسِه ليس ثيماً.** ⚠️ **والثيماتُ كلُّها باقيةٌ كما هي.** */}
         <FontSizeSection locale={locale} initialUi={fsUi} initialContent={fsContent} />
       </SettingsGroup>
     </SettingsPageLayout>
