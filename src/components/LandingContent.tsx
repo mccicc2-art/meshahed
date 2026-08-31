@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Icon, type IconName } from "@/components/Icon";
 import { faqs } from "@/lib/seo";
 import type { Locale } from "@/lib/i18n";
 
@@ -18,80 +17,6 @@ import type { Locale } from "@/lib/i18n";
  * على الشاشة وفي البيانات المهيكلة. اختلافهما يُعدّ تمويهاً (cloaking)
  * وعقوبته إسقاط النتيجة الغنيّة كلّها.
  */
-
-interface Highlight {
-  icon: IconName;
-  ar: string;
-  en: string;
-  arBody: string;
-  enBody: string;
-}
-
-const HIGHLIGHTS: Highlight[] = [
-  {
-    icon: "tv",
-    ar: "تتبّع المسلسلات حلقةً حلقة",
-    en: "Track shows episode by episode",
-    arBody:
-      "علّم الحلقة التي وصلتها — أو موسماً كاملاً بضغطة — ويحسب Loopz تقدّمك ويضع حلقتك القادمة في رئيسيتك.",
-    enBody:
-      "Tick the episode you reached — or a whole season in one tap — and Loopz works out your progress and puts your next episode on your home screen.",
-  },
-  {
-    icon: "film",
-    ar: "الأفلام بموضع توقّفك",
-    en: "Movies, down to where you stopped",
-    arBody:
-      "علّم الفيلم مُشاهداً، أو احفظ الدقيقة التي توقّفت عندها وكمّله متى عدت. وإعادة المشاهدة لها عدّادها المستقل.",
-    enBody:
-      "Mark a film watched, or save the exact minute you stopped and finish it later. Rewatches get their own counter.",
-  },
-  {
-    icon: "sparkles",
-    ar: "الأنمي في نفس المكان",
-    en: "Anime in the same place",
-    arBody:
-      "لا تطبيق ثانٍ للأنمي: مواسمه وحلقاته وترتيب مشاهدته داخل مكتبتك مع كل شيء آخر.",
-    enBody:
-      "No second app for anime: its seasons, episodes and watch order sit in your library beside everything else.",
-  },
-  {
-    icon: "settings",
-    ar: "رئيسيةٌ تبنيها أنت",
-    en: "A home screen you build",
-    arBody:
-      "رتّب صفحتك الرئيسية كما تريدها: أظهِر الأقسام التي تهمّك وأخفِ ما لا يهمّك، واختَر الإحصاءات التي تراها وشكل البطاقة نفسها.",
-    enBody:
-      "Arrange your home page exactly as you want it: show the sections you care about, hide the ones you do not, and choose which stats you see and how cards look.",
-  },
-  {
-    icon: "calendar",
-    ar: "يوميات وإحصاءات",
-    en: "A diary and real numbers",
-    arBody:
-      "سجلٌّ يوميّ لما شاهدت، وساعاتك وأنواعك المفضّلة بالأرقام — وبطاقة إحصاءات تشاركها.",
-    enBody:
-      "A day-by-day log of what you watched, your hours and favourite genres in numbers — and a stats card you can share.",
-  },
-  {
-    icon: "list",
-    ar: "قوائم وجوائز وترتيب أحداث",
-    en: "Lists, awards and story order",
-    arBody:
-      "ابنِ قوائمك، أو افتح قوائم جاهزة: مارفل وهاري بوتر بترتيب الأحداث، أفضل 250، والفائزون بالأوسكار والإيمي منذ 1990.",
-    enBody:
-      "Build your own lists, or open ready-made ones: Marvel and Harry Potter in story order, the Top 250, and Oscar and Emmy winners since 1990.",
-  },
-  {
-    icon: "people",
-    ar: "أصدقاؤك ورأيهم",
-    en: "Your friends and their taste",
-    arBody:
-      "تابع أصدقاءك، اقرأ تقييماتهم، تحدّث معهم في المنصّة نفسها — وقرّر أنت من يرى مكتبتك.",
-    enBody:
-      "Follow friends, read their ratings and talk to them inside the platform — and you decide who sees your library.",
-  },
-];
 
 export function LandingContent({ locale }: { locale: Locale }) {
   const ar = locale === "ar";
@@ -123,25 +48,14 @@ export function LandingContent({ locale }: { locale: Locale }) {
         </p>
       </div>
 
-      {/* الميزات الست — لكلٍّ عنوانٌ فرعيّ ونصّ، لا أيقونةٌ وكلمة */}
-      <div className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {HIGHLIGHTS.map((h) => (
-          <div
-            key={h.en}
-            className="bg-surface-2/60 border border-border rounded-2xl px-4 py-3.5 flex items-start gap-3"
-          >
-            <Icon name={h.icon} size={18} className="text-accent shrink-0 mt-0.5" />
-            <div className="min-w-0">
-              <h3 className="text-sm font-bold leading-tight">{ar ? h.ar : h.en}</h3>
-              <p className="text-12 text-muted leading-relaxed mt-1">
-                {ar ? h.arBody : h.enBody}
-              </p>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <p className="mt-4 text-center text-14">
+      {/* 🔴 🆕 **بطاقاتُ الميزات السبعُ خرجت من هنا إلى `LandingShowcase`**
+          (D-844، بحكم أحمد: «هذي الصفحة كلها كلام»): **نصُّها انتقل
+          بحرفه** فصار مكتوباً بجانب شاشةٍ حيّةٍ تُريه — **ولم يسقط سطرٌ
+          من الصفحة**، فبقي ما يربطها بما يُكتب في مربّع البحث (حجّةُ
+          D-122 التي وُلد هذا القسمُ لأجلها).
+          ⚠️ **ولا تُعاد كتابتُها هنا**: نسختان من نصٍّ واحدٍ تفترقان عند
+          أوّل تحرير (D-145)، **وقارئُ الصفحة يقرؤه مرّتين.** */}
+      <p className="mt-8 text-center text-14">
         <Link href="/features" className="text-accent hover:underline font-semibold">
           {ar ? "استعرض كل المميزات ←" : "See every feature →"}
         </Link>
