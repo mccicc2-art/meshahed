@@ -2,10 +2,11 @@
 
 /* eslint-disable @next/next/no-img-element */
 
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { fitForUpload, UPLOAD_MAX_BYTES } from "@/lib/imageFile";
 import { updateProfile } from "@/lib/actions";
 import { getDict, type Locale } from "@/lib/i18n";
 import { SITE_URL } from "@/lib/site";
@@ -117,6 +118,21 @@ export function EditProfileForm({
 
   const avatarRef = useRef<HTMLInputElement>(null);
   const coverRef = useRef<HTMLInputElement>(null);
+  const alertRef = useRef<HTMLDivElement>(null);
+
+  /* 🔴 🆕 **والخطأُ يُقرأ حيث يقع لا في قاع الصفحة** (D-837).
+
+     📏 **والمسافةُ كانت مقيسة**: صندوقُ الغلاف عند ٩١ من رأس
+     الصفحة **والرسالةُ عند ١٠٥٠** — **شاشةٌ ونصفٌ بينهما**، **فمن
+     اختار صورةً ثقيلةً رأى غلافَه لم يتغيّر ولم ير لماذا.**
+
+     🔑 **وموضعٌ واحدٌ لا موضعان**: **الرأسُ** — **فمن رفع صورةً
+     فهو عنده أصلاً**، **ومن حفظ فزرُّ الحفظ في الترويسة فوقه.**
+     **والتمريرُ يضمن الحالةَ الثالثة** (خطأُ حفظٍ وهو في قاع النموذج):
+     **صندوقُ تنبيهٍ يُرسم ولا يُرى كأنه لم يُرسم** (D-063). */
+  useEffect(() => {
+    if (error) alertRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+  }, [error]);
 
   const cleaned = username.trim().toLowerCase().replace(/[^a-z0-9_]/g, "");
   const usernameInvalid = cleaned.length > 0 && cleaned.length < 3;
@@ -144,13 +160,21 @@ export function EditProfileForm({
     return path.startsWith(`${uid}/`) ? path : null;
   }
 
-  async function upload(file: File, kind: "avatar" | "cover") {
+  async function upload(picked: File, kind: "avatar" | "cover") {
     setError(null);
-    if (!file.type.startsWith("image/")) return setError(t.errPickImage);
-    if (file.size > 2 * 1024 * 1024) return setError(t.errTooLarge);
+    if (!picked.type.startsWith("image/")) return setError(t.errPickImage);
 
     setUploading(kind);
     try {
+      /* 🆕 **تُصغَّر قبل أن تُقاس** (D-837): **الحدُّ كان يردّ
+         خلفيّةَ حاسوبٍ عاديّةً ورسالتُه خارج الشاشة** — **فالرفضُ يقع
+         صامتاً ويُقرأ «الرفع لا يعمل».** والحجّةُ كاملةً في
+         `lib/imageFile.ts`. */
+      const file = await fitForUpload(picked);
+      if (file.size > UPLOAD_MAX_BYTES) {
+        setError(t.errTooLarge);
+        return;
+      }
       const supabase = await createClient();
       const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
       const path = `${userId}/${kind}-${Date.now()}.${ext}`;
@@ -277,6 +301,12 @@ export function EditProfileForm({
         </button>
       }
     >
+      {error && (
+        <div ref={alertRef}>
+          <Alert>{error}</Alert>
+        </div>
+      )}
+
       {/* ===== المعاينةُ المدمجة ===== */}
       {/* ===== بطاقةُ الهويّة — الصورةُ وحقولُها معاً ===== */}
       {/* 🆕 **بطاقةٌ واحدةٌ لا بطاقتان** (D-641، بلاغُ أحمد بلقطة: «الترتيب
@@ -611,8 +641,6 @@ export function EditProfileForm({
           })}
         </div>
       </section>
-
-      {error && <Alert>{error}</Alert>}
 
       {/* **بشارةُ الحفظ تمرّ ولا تُقيم**: سطرٌ ثابتٌ «حُفظ» يبقى صادقاً
           بعد تعديلٍ جديدٍ فيكذب (D-030) */}
