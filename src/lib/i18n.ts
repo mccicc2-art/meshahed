@@ -1866,8 +1866,6 @@ const ar = {
   memberSince: (when: string) => `عضو منذ ${when}`,
   /* 🆕 **أوائلُ الأسبوع** (D-835) — **الكلمةُ لا الرقمُ وحدَه**: **رمزٌ
      ولونٌ يقولان «مرتبة» ولا يقولان أيَّها** (D-142). */
-  weeklyRank: (n: number): string => (n === 1 ? "الأول" : n === 2 ? "الثاني" : "الثالث"),
-  weeklyRankTip: "الأكثر نشاطاً في نقاشات الأسبوع الماضي",
   /* 🆕 **شارةٌ لا تختفي** (D-838، حكمُ أحمد): **الرتبةُ حتّى
      العاشرة، والوجهُ عددُ المرّات، والورقةُ أسابيعُها.** */
   weeklyRankOrd: (n: number): string =>
@@ -3436,8 +3434,6 @@ const en: Dict = {
   weekNothing: "No episodes due this week.",
   smartListLabel: "Smart list",
   memberSince: (when: string) => `Member since ${when}`,
-  weeklyRank: (n: number): string => (n === 1 ? "1st" : n === 2 ? "2nd" : "3rd"),
-  weeklyRankTip: "Most active in last week's discussions",
   weeklyRankOrd: (n: number): string =>
     ["1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th", "9th", "10th"][n - 1] ??
     `${n}`,

@@ -1156,22 +1156,6 @@ export interface PublicProfile {
   joined_at?: string | null;
 }
 
-export const getWeeklyTop = cache(async (): Promise<Map<string, number>> => {
-  try {
-    const supabase = await createClient();
-    const { data, error } = await supabase.rpc("weekly_top_now");
-    if (error || !data) return new Map();
-    return new Map(
-      (data as { user_id: string; rank: number }[]).map((r) => [
-        String(r.user_id),
-        Number(r.rank),
-      ]),
-    );
-  } catch {
-    return new Map();
-  }
-});
-
 /**
  * 🆕 **سجلُّ مراتبِ حسابٍ واحد** (D-838) — **لا أسبوعٌ واحدٌ لكلِّ
  * الناس**.
