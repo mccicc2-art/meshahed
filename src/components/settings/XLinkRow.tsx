@@ -93,7 +93,16 @@ export function XLinkRow({
       const base = resolveAuthBase(window.location.origin);
       const back = encodeURIComponent("/profile/edit?x=1");
       const { error } = await supabase.auth.linkIdentity({
-        provider: "twitter",
+        /* 🔴 **والمفتاحُ `x` لا `twitter` — وقد كتبتُها `twitter` تخميناً**:
+     **`twitter` مزوّدُ OAuth 1.0a المهجور** («Twitter (Deprecated)» في
+     اللوحة)، **و`x` مزوّدُ OAuth 2.0** («X / Twitter (OAuth 2.0)»).
+     **والدليلُ من اللوحة نفسِها لا من الوثائق**: حقلا استمارتِه
+     `EXTERNAL_X_CLIENT_ID` و`EXTERNAL_X_SECRET` — **و`auth-js` تفصل
+     بينهما في نوعها بتعليقين: الأوّلُ OAuth 1.0a والثاني OAuth 2.0.**
+     ⚠️ **فمن فعّل «Twitter (Deprecated)» لن يعمل عنده شيء** — **والصوابُ
+     تفعيلُ الثاني.** 🔑 **والدرس: اسمُ المفتاح يُقرأ من الاستمارة لا
+     يُشتقّ من اسم العلامة.** */
+        provider: "x",
         options: { redirectTo: `${base}/auth/callback?next=${back}` },
       });
       if (error) throw new Error(error.message);
