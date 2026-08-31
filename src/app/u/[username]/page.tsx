@@ -26,6 +26,7 @@ import { localizeRows } from "@/lib/localize";
 import { Avatar } from "@/components/Avatar";
 import { CoverImage } from "@/components/CoverImage";
 import { Icon } from "@/components/Icon";
+import { isPlus } from "@/lib/plan";
 import { PosterCard } from "@/components/PosterCard";
 import { PosterGrid } from "@/components/PosterGrid";
 import { ProfileStatSheet } from "@/components/ProfileStatSheet";
@@ -1203,6 +1204,34 @@ export default async function PublicProfilePage({
                 dir="auto"
               >
                 {bioText}
+              </p>
+            )}
+
+            {/* 🆕 **شارةُ مدّة العضويّة** (D-831، البندُ ١٣ من خطّة
+                الـ٢٤ — وحكمُه: «مدّة العضويّة من الانضمام»).
+                🔑 **وسطرٌ لا رقاقةٌ في سطر الاسم**: **ذلك السطرُ يحمل
+                الاسمَ والشارةَ وزرَّ المتابعة** — **وثالثٌ فيه يعيد عطلَ
+                D-634 بيدي.** **وموضعُها ذيلُ عنقود الهويّة**: اسمٌ ·
+                معرّفٌ · نبذةٌ · **ومنذ متى** — **وهي بياناتُ تعريفٍ
+                فتتبعها لا تسبقها** (D-642).
+                🔒 **وبلس** (D-783 §٣): **الجديدُ كلُّه بلس** — **وتغيب
+                عمّن ليس مشتركاً بلا قفلٍ يُرسم**، **فشارةٌ مقفلةٌ على
+                ملفِّ غيرك تبيع لمن لا يملك تغييرها.**
+                ⚠️ **وتغيب عمّن لا تاريخَ له** (حسابُ المنصّة) —
+                **والغيابُ يُكتب غياباً** (D-063). */}
+            {profile.joined_at && isPlus(profile) && (
+              <p
+                className="hero-halo text-12 text-muted leading-none mt-2 flex items-center gap-1.5"
+                dir="auto"
+              >
+                <Icon name="calendar" size={12} className="shrink-0" />
+                {t.memberSince(
+                  new Intl.DateTimeFormat(locale === "en" ? "en-GB" : "ar", {
+                    month: "long",
+                    year: "numeric",
+                    timeZone: "UTC",
+                  }).format(new Date(profile.joined_at)),
+                )}
               </p>
             )}
           </div>
