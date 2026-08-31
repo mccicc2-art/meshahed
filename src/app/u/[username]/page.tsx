@@ -2,6 +2,7 @@ import Link from "next/link";
 import {
   getUser,
   getProfileByUsername,
+  getWeeklyTop,
   getRatingsOf,
   getFollowStats,
   getFollowRelation,
@@ -265,6 +266,11 @@ export default async function PublicProfilePage({
   /* النبذة تتبع الاسم في الإخفاء — والقطع منفَّذٌ في `public_profiles`
      نفسه لا هنا (profile_bio.sql)؛ هذا السطر حارسٌ ثانٍ لا أوّل */
   const bioText = profile.hide_name ? null : (profile.bio ?? null);
+
+  /* 🆕 **مرتبتُه في أوائل الأسبوع** (D-835) — **قراءةٌ واحدةٌ مخبَّأةٌ
+     للطلب** (ثلاثةُ صفوفٍ من دالّةِ definer)، **والفراغُ يعني ألّا
+     شارةَ تُرسم** لا صفراً يُعرض. */
+  const rank = (await getWeeklyTop()).get(profile.id) ?? null;
 
   /* 🆕 **وترتيبُ صاحب الصفحة يُطبَّق عند القراءة** (D-581): المحفوظُ في
      `profile_prefs.sectionOrder` أوّلاً بترتيبه، **وما أُضيف بعد آخرِ
@@ -1219,9 +1225,26 @@ export default async function PublicProfilePage({
                 ملفِّ غيرك تبيع لمن لا يملك تغييرها.**
                 ⚠️ **وتغيب عمّن لا تاريخَ له** (حسابُ المنصّة) —
                 **والغيابُ يُكتب غياباً** (D-063). */}
+            {/* 🆕 **وشارةُ أوائل الأسبوع في صفِّ العضويّة** (D-835،
+                حكمُ أحمد: «تكون تظهر أيقونة في نفس صفّ عضو منذ كذا»)
+                — **الصفُّ صار صفَّ ما تحمله لا سطرَ تاريخٍ وحدَه.**
+                🔒 **وهي مجّانيّةٌ لا بلس**: **جائزةُ نشاطٍ تُكسب**،
+                **وشارةٌ تُكسب ثمّ تُحجب عمّن لم يشترِ تعاقب الفائز.**
+                ⚠️ **وتُرسم لصاحبها ولزائره سواء**: **مرتبةٌ لا يراها
+                إلّا صاحبُها لا تشجّع أحداً** (نصُّ الطلب: «نشجّعهم»). */}
+            {rank ? (
+              <span
+                className="hero-halo mt-2 inline-flex items-center gap-1.5 rounded-full border border-accent/40 bg-accent/10 px-2 py-0.5 text-12 font-bold text-accent"
+                title={t.weeklyRankTip}
+              >
+                <Icon name="trophy" size={12} className="shrink-0" />
+                {t.weeklyRank(rank)}
+              </span>
+            ) : null}
+
             {profile.joined_at && isPlus(profile) && (
               <p
-                className="hero-halo text-12 text-muted leading-none mt-2 flex items-center gap-1.5"
+                className={`hero-halo text-12 text-muted leading-none flex items-center gap-1.5 ${rank ? "mt-1.5" : "mt-2"}`}
                 dir="auto"
               >
                 <Icon name="calendar" size={12} className="shrink-0" />
