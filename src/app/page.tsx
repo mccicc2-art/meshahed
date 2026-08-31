@@ -92,6 +92,7 @@ import type { ReorderItem } from "@/components/ReorderSheet";
 import { ShowStatsSync, type ShowStat } from "@/components/ShowStatsSync";
 import { FollowMetaSync, MovieStatsSync } from "@/components/MetaSync";
 import { LandingHero } from "@/components/LandingHero";
+import { LandingShowcase } from "@/components/LandingShowcase";
 import { LandingContent } from "@/components/LandingContent";
 import { JsonLd } from "@/components/JsonLd";
 import { siteGraph, faqGraph, seoKeywords } from "@/lib/seo";
@@ -183,6 +184,11 @@ export default async function HomePage() {
             **وفي التطبيق المثبَّت هو السطرُ الوحيدُ الباقي تحت الزرّ**
             بعد سقوط الذيل. */}
         <LandingHero variant="flow" />
+        {/* 🆕 **الشاشاتُ بين البطل والذيل** (D-844): **خارجَ
+            `data-landing-seo` عمداً** — **ذاك الذيلُ لمحرّك البحث ويسقط
+            في التطبيق المثبَّت** (D-843)، **وهذه هي بالضبط ما يُفترض أن
+            يراه من حمّل التطبيق ولم يسجّل بعد.** */}
+        <LandingShowcase locale={locale} />
         <LandingContent locale={locale} />
       </>
     );
