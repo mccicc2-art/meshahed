@@ -100,7 +100,12 @@ export function LandingContent({ locale }: { locale: Locale }) {
   return (
     /* الاتجاه صريحٌ هنا لا موروث: هذا القسم نصٌّ طويل، وقلبُ اتجاهه
        يكسر ترقيمه ونقاطه — بينما البطل فوقه متوسّطٌ لا يتأثّر */
-    <section className="pt-14 pb-4" dir={ar ? "rtl" : "ltr"}>
+    /* 🆕 **و`data-landing-seo` ليس تنسيقاً بل هويّة** (D-843):
+       **هذا القسمُ مكتوبٌ لمحرّك بحث** — وقد قاله رأسُ الملفّ بنفسه —
+       **وتطبيقٌ مثبَّتٌ لا محرّكَ بحثٍ فيه**، فتُخفيه ورقةُ الأنماط هناك.
+       ⚠️ **والسمةُ لا الصنف**: الصنفُ يُنسخ ويُعاد استعمالُه بلا معنًى،
+       **والسمةُ تقول «أنا الذيلُ التسويقيّ» وحدَها.** */
+    <section data-landing-seo className="pt-14 pb-4" dir={ar ? "rtl" : "ltr"}>
       {/* ما هو Loopz — الفقرة التي يقرؤها المحرّك والزائر معاً */}
       <div className="max-w-2xl mx-auto text-center">
         <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight">
