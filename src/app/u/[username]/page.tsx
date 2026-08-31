@@ -1232,30 +1232,39 @@ export default async function PublicProfilePage({
                 **وشارةٌ تُكسب ثمّ تُحجب عمّن لم يشترِ تعاقب الفائز.**
                 ⚠️ **وتُرسم لصاحبها ولزائره سواء**: **مرتبةٌ لا يراها
                 إلّا صاحبُها لا تشجّع أحداً** (نصُّ الطلب: «نشجّعهم»). */}
-            {rank ? (
-              <span
-                className="hero-halo mt-2 inline-flex items-center gap-1.5 rounded-full border border-accent/40 bg-accent/10 px-2 py-0.5 text-12 font-bold text-accent"
-                title={t.weeklyRankTip}
-              >
-                <Icon name="trophy" size={12} className="shrink-0" />
-                {t.weeklyRank(rank)}
-              </span>
-            ) : null}
+            {/* ⚠️ **صفٌّ واحدٌ يلفّهما** (نصُّ الطلب: «في نفس صفّ عضو
+                منذ كذا»): **الشارةُ والتاريخُ سطرٌ واحد** — **و`flex-wrap`
+                لأنّ العربيّةَ والإنجليزيّةَ لا تقيسان الشهرَ بالطول
+                نفسِه**، **وسطرٌ يفيض على شاشةٍ ضيّقةٍ ينزل ولا يُقصّ.**
+                **والغلافُ لا يُرسم حين لا شيءَ فيه** (D-219/D-280). */}
+            {(rank || (profile.joined_at && isPlus(profile))) && (
+              <div className="mt-2 flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
+                {rank ? (
+                  <span
+                    className="hero-halo inline-flex items-center gap-1.5 rounded-full border border-accent/40 bg-accent/10 px-2 py-0.5 text-12 font-bold text-accent"
+                    title={t.weeklyRankTip}
+                  >
+                    <Icon name="trophy" size={12} className="shrink-0" />
+                    {t.weeklyRank(rank)}
+                  </span>
+                ) : null}
 
-            {profile.joined_at && isPlus(profile) && (
-              <p
-                className={`hero-halo text-12 text-muted leading-none flex items-center gap-1.5 ${rank ? "mt-1.5" : "mt-2"}`}
-                dir="auto"
-              >
-                <Icon name="calendar" size={12} className="shrink-0" />
-                {t.memberSince(
-                  new Intl.DateTimeFormat(locale === "en" ? "en-GB" : "ar", {
-                    month: "long",
-                    year: "numeric",
-                    timeZone: "UTC",
-                  }).format(new Date(profile.joined_at)),
-                )}
-              </p>
+                {profile.joined_at && isPlus(profile) ? (
+                  <p
+                    className="hero-halo text-12 text-muted leading-none flex items-center gap-1.5"
+                    dir="auto"
+                  >
+                    <Icon name="calendar" size={12} className="shrink-0" />
+                    {t.memberSince(
+                      new Intl.DateTimeFormat(locale === "en" ? "en-GB" : "ar", {
+                        month: "long",
+                        year: "numeric",
+                        timeZone: "UTC",
+                      }).format(new Date(profile.joined_at)),
+                    )}
+                  </p>
+                ) : null}
+              </div>
             )}
           </div>
         </div>
