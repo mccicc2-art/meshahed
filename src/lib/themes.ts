@@ -59,6 +59,8 @@ export interface Theme {
   glowB: string;
   /** ألوان تدرّج الشعار — ثابتة عبر الثيمات لأنها الهوية لا الواجهة */
   brand?: [string, string, string];
+  /** 🆕 درجةُ الهويّة حين تُقرأ نصّاً (D-846) — الغيابُ يعني `brand` نفسَه */
+  brandText?: [string, string, string];
 }
 
 export const THEMES: Theme[] = [
@@ -228,6 +230,12 @@ export const THEMES: Theme[] = [
   },
   {
     id: "daylight",
+    /* 🆕 **الهويّةُ نصّاً تُعمَّق نهاراً وحدَها** (D-846): الثلاثيُّ
+       الأصفرُ يبقى شعاراً وشريطَ تقدّمٍ كما هو (`brand` غيرُ معلَنةٍ
+       هنا)، **وهذه درجتُه حين يصير حروفاً** — وهي درجاتُ `accent`
+       و`accent-2` المكتوبةُ أدناه نفسُها (٤٫٥١ و٤٫٦ على `#f5f5f3`
+       مقيسة)، **ودرجةٌ بينهما**. */
+    brandText: ["#8a6d00", "#9c6404", "#b45309"],
     // النسخة النهارية من الهوية: رماديّاتٌ محايدة لا مزرقّة (الكتيّب بلا
     // أزرق أصلاً)، والأصفر يُعتَّم إلى ذهبيٍّ داكن #8A6D00 لأن #FFD200
     // على الأبيض لا يُقرأ نصّاً (تباين ~1.5 — والذهبي ~4.9). لون الهوية
@@ -282,6 +290,27 @@ export const THEMES: Theme[] = [
    لجرى في شريط التقدّم لونٌ وفي الأيقونة فوقه لونٌ آخر**، وهو فارقٌ
    لا يُسمّى فيُقرأ خطأَ عرضٍ لا لونين. */
 export const DEFAULT_BRAND: [string, string, string] = ["#FFD400", "#FBBF24", "#F59E0B"];
+
+/**
+ * 🆕 **درجةُ الهويّة حين تُقرأ نصّاً** (D-846).
+ *
+ * 🔑 **الهويّةُ لا تتبدّل، ودرجتُها حين تُقرأ تتبدّل**: `--brand-*` هي
+ * الأصفرُ الذي يُرى في الشعار وأشرطة التقدّم في كلِّ ثيم — **وذاك
+ * صحيحٌ ما دام سطحاً أو علامة.** 📏 **أمّا نصّاً على خلفيّة `daylight`
+ * فتباينُه ١٫٣١–١٫٩٧ : ١** — **وهو ما كتبه تعريفُ الثيم النهاريِّ
+ * نفسُه يومَ وُلد**: «#FFD200 على الأبيض لا يُقرأ نصّاً».
+ *
+ * **فالنهاريُّ وحدَه يعمّق الثلاثيَّ، وما عداه يرثه حرفاً** — ولهذا
+ * `brandText` اختياريّةٌ لا مطلوبة: **الغيابُ يعني الهويّةَ كما هي**
+ * (عُرفُ `success`/`error` في `semantic` — D-454).
+ *
+ * ⚠️ **ولا يُبنى هذا التدرّجُ من `--accent`/`--accent-2`**: 🔴 **جُرّب
+ * فسقط** — **زوجُ الواجهة ليس درجتين من لونٍ واحد في كلِّ ثيم**
+ * (`amber`: كهرمانيٌّ `#ffb43a` وأخضرُ `#3ddc97`) — **فيصير عنوانُ
+ * العلامة تدرّجاً من لونين مختلفين.** **والقياسُ الحيُّ هو الذي أمسكها
+ * بعد النشر** (D-662).
+ */
+export const DEFAULT_BRAND_TEXT: [string, string, string] = DEFAULT_BRAND;
 
 export const DEFAULT_THEME = THEMES[0];
 
@@ -476,6 +505,8 @@ export function themeCss(t: Theme) {
   // تدرّج الشعار يتبع الهوية لا الثيم: الثيمات تغيّر لون الواجهة، أما
   // العلامة فتبقى كما هي في كل مكان تُرى فيه
   const b = t.brand ?? DEFAULT_BRAND;
+  /* 🆕 ودرجةُ الهويّة حين تُقرأ نصّاً (D-846) — انظر `DEFAULT_BRAND_TEXT` */
+  const bt = t.brandText ?? t.brand ?? DEFAULT_BRAND_TEXT;
   const semantic =
     (v.success ? `--success:${v.success};` : "") +
     (v.error ? `--error:${v.error};` : "") +
@@ -498,5 +529,5 @@ export function themeCss(t: Theme) {
      المخصَّصةُ لهذا القماش بالذات** — فيصير داكناً مع الثيمات الداكنة
      وفاتحاً مع النهاريّ. */
   const scheme = t.id === "daylight" ? "light" : "dark";
-  return `:root{color-scheme:${scheme};--background:${v.background};--surface:${v.surface};--surface-2:${v["surface-2"]};--foreground:${v.foreground};--muted:${v.muted};--accent:${v.accent};--accent-2:${v["accent-2"]};--border:${v.border};--on-accent:${v["on-accent"]};--on-accent-2:${v["on-accent-2"]};--glow-a:${t.glowA};--glow-b:${t.glowB};--brand-1:${b[0]};--brand-2:${b[1]};--brand-3:${b[2]};--elevated:${v.elevated};--divider:${v.divider};--surface-inverse:${v["surface-inverse"]};--on-surface-inverse:${v["on-surface-inverse"]};${semantic}}`;
+  return `:root{color-scheme:${scheme};--background:${v.background};--surface:${v.surface};--surface-2:${v["surface-2"]};--foreground:${v.foreground};--muted:${v.muted};--accent:${v.accent};--accent-2:${v["accent-2"]};--border:${v.border};--on-accent:${v["on-accent"]};--on-accent-2:${v["on-accent-2"]};--glow-a:${t.glowA};--glow-b:${t.glowB};--brand-1:${b[0]};--brand-2:${b[1]};--brand-3:${b[2]};--brand-text-1:${bt[0]};--brand-text-2:${bt[1]};--brand-text-3:${bt[2]};--elevated:${v.elevated};--divider:${v.divider};--surface-inverse:${v["surface-inverse"]};--on-surface-inverse:${v["on-surface-inverse"]};${semantic}}`;
 }
