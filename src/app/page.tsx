@@ -177,7 +177,12 @@ export default async function HomePage() {
       <>
         <JsonLd data={siteGraph(locale, getDict(locale))} />
         <JsonLd data={faqGraph(locale)} />
-        <LandingHero variant="flow" showWordmark={false} />
+        {/* 🆕 **والوردمارك يُرسم هنا كما يُرسم في `/login`** (D-843):
+            **كان مطفأً «لأن التذييل العام يظهر في آخر الصفحة» — ولا
+            تذييلَ عامَّ في الشجرة** (صفرُ `<footer>` في `src/`).
+            **وفي التطبيق المثبَّت هو السطرُ الوحيدُ الباقي تحت الزرّ**
+            بعد سقوط الذيل. */}
+        <LandingHero variant="flow" />
         <LandingContent locale={locale} />
       </>
     );
