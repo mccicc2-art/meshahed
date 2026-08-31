@@ -14,7 +14,7 @@ import { SwRegister } from "@/components/SwRegister";
 import { cookies } from "next/headers";
 import { getT } from "@/lib/locale";
 import { getDict, isRtl } from "@/lib/i18n";
-import { themeById, themeCss, themeAccent, accentCss } from "@/lib/themes";
+import { themeById, themeCss } from "@/lib/themes";
 import { FONT_UI_COOKIE, FONT_CONTENT_COOKIE, fontAttr, sanitizeFontSize } from "@/lib/fontPrefs";
 import { HeaderShell } from "@/components/HeaderShell";
 import { ChromeAutoHide } from "@/components/ChromeAutoHide";
@@ -118,11 +118,9 @@ export default async function RootLayout({
   // يؤخّر أول بايت للصفحة كلها ~نصف ثانية. ThemeCookieSync يهاجر القدامى.
   const cookieStore = await cookies();
   const theme = themeById(cookieStore.get("theme")?.value);
-  /* 🆕 **ولونُ التمييز الشخصيُّ من كوكيٍّ كالثيم سواء** (D-825):
-     **قراءةُ البروفايل هنا تؤخّر أوّلَ بايتٍ للصفحة كلِّها** (حجّةُ
-     السطر فوقه بحرفها) — **والعمودُ هو المصدرُ عبر الأجهزة، والكوكيُّ
-     هو الذي يرسم.** **والمجهولُ يسقط إلى «لا لون» فيبقى لونُ الثيم.** */
-  const accent = themeAccent(cookieStore.get("accent")?.value);
+  /* 🗑️ **ولونُ التمييز الشخصيُّ سقط** (D-848): **كان كوكيّاً يُقرأ هنا
+     ويُركَّب فوق الثيم** — **ولونُ الثيم وحدَه يرسم اليوم.** ⚠️ **وكوكيُّ
+     `accent` يبقى في المتصفّحات ولا يقرؤه أحد**، **ويموت بانتهائه.** */
 
   /* حجم الخطّ من كوكي كالثيم سواء: الخادم يكتب `data-fs-*` على الجذر
      قبل أول رسمة فلا وميضَ ولا فرقَ ترطيب. الافتراضي بلا سمةٍ أصلاً. */
@@ -196,7 +194,6 @@ export default async function RootLayout({
             ⚠️ **و`--verified` و`--brand-*` لا تتبعانه**: **الأولى معنًى
             ثابتٌ عبر الثيمات** (D-437: الأصفرُ توثيق) **والثانية هويّةٌ
             لا واجهة** (تعليقُ `themeCss` بنصّه). */}
-        {accent && <style dangerouslySetInnerHTML={{ __html: accentCss(accent) }} />}
         {/* هل نحن داخل تطبيقٍ مثبّت؟ سطرٌ واحد قبل أول رسمة.
             يجري هنا لا في تأثيرٍ بعد التركيب: لو تأخّر لرُسمت الترويسة
             مرّةً فوق الساعة ثم قفزت — والقفزة أسوأ من التراكب.

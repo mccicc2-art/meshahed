@@ -72,6 +72,7 @@ import { CompactMediaRow } from "@/components/CompactMediaRow";
 import {
   sanitizeHomePrefs,
   applyQueueOrder,
+  unwatchedOf,
   type HomeSection,
   headerStatMeta,
   type HeaderStatKey,
@@ -1071,15 +1072,22 @@ async function HomeBody({
   /* 🆕 **وترتيبُ صاحبها يُطبَّق قبل أن تُقرأ** (D-719): الورقةُ تحفظ
      `tw-mv-<id>` **بمفتاح البطاقة الرابع** (`towatchListOrder`)، **وما
      لم يُذكر يلحق على ترتيب الإضافة** (`applyQueueOrder`). */
+  /* 🆕 **والمشاهَدُ يسقط من القائمة لا من الحساب** (D-848): **ما يُعرض
+     ويُرتَّب ويُعدّ هو الباقي**، **و`unlistedQueue` الكاملُ يبقى تحته
+     لبطاقة «تابِع المشاهدة» وحدَها** — الحكمُ في `unwatchedOf`. */
+  const unlistedLeft = unwatchedOf(unlistedQueue, watchedMovieIds);
   const unlistedOrdered = applyQueueOrder(
-    unlistedQueue,
+    unlistedLeft,
     (f) => `tw-mv-${f.tmdb_id}`,
     prefs.towatchListOrder,
   );
-  const toWatchQueueCard = unlistedQueue.length
+  /* ⚠️ **والشرطُ صار على الباقي لا على الطابور** (D-219/D-280): **من
+     شاهد أفلامَه كلَّها لا يرى بطاقةَ «للمشاهدة» تقول صفراً** — **وهي
+     القاعدةُ نفسُها التي أخفتها حين كان الطابورُ فارغاً أصلاً.** */
+  const toWatchQueueCard = unlistedLeft.length
     ? {
         on: prefs.toWatch,
-        count: unlistedQueue.length,
+        count: unlistedLeft.length,
         /* **والملصقاتُ الثلاثةُ رأسُ الطابور بعد ترتيبه** — **وبطاقةٌ
            لا تتغيّر بعد السحب تُقرأ حفظاً فاشلاً** (D-719). */
         posters: unlistedOrdered.slice(0, 3).map((f) => f.poster_path ?? null),
