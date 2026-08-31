@@ -1884,7 +1884,6 @@ const ar = {
   /* ⚠️ **والعددُ يُعرب ما بعده**: **المفردُ والمثنّى وجمعُ القلّة
      (٣–١٠) والمعدودُ المفرد (١١+)** — **وصيغةٌ واحدةٌ لكلِّ الأعداد
      تكتب «٣ مرّة»** (وهي وصفةُ `libraryCount` نفسُها في هذا الملفّ). */
-  weeklyRanksTip: (n: string) => `في أوائل الأسبوع ${n} مرّة`,
   weeklyRanksTimes: (n: number) =>
     n === 1
       ? "في أوائل الأسبوع مرّةً واحدة"
@@ -3448,7 +3447,6 @@ const en: Dict = {
   weeklyRankOrd: (n: number): string =>
     ["1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th", "9th", "10th"][n - 1] ??
     `${n}`,
-  weeklyRanksTip: (n: string) => `In the week's top ten ${n} times`,
   weeklyRanksTimes: (n: number) =>
     n === 1 ? "In the week's top ten once" : `In the week's top ten ${n} times`,
   weeklyRanksTitle: "Weeks ranked",
