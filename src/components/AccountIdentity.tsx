@@ -99,7 +99,10 @@ function Pill({
   tracking,
   label,
 }: {
-  word: "PLUS" | "PARTNER";
+  /* 🆕 **وثالثةٌ في الاتّحاد** (D-833): **الكلمةُ اتّحادٌ لا نصٌّ حرّ**
+     — **فمن كتب كلمةً رابعةً بيده يكسر البناء قبل أن يُنشر** (وهو ما
+     أمسك هذه الإضافةَ نفسَها لحظةَ كتابتها). */
+  word: "PLUS" | "PARTNER" | "FOUNDER";
   width: number;
   tracking: number;
   label: string;
@@ -192,6 +195,20 @@ export function PlanPill({
         label={founder ? t.founderBadge : t.plusBadge}
       />
     );
+  /* 🆕 ⚖️ **والصفةُ تبقى بعد أن تنتهي المدّة** (D-833، حكمُ أحمد: «نفّذها
+     وأصلح الوعد معها»): **كانت الشارةُ كلُّها معلَّقةً بـ`tier`** —
+     **فيومَ تنتهي ثلاثةُ الأشهر كان المؤسِّسُ يفقد بلس وصفتَه معاً في
+     رسمةٍ واحدة.**
+     🔑 **و«مؤسِّس» ليست طبقةً تُشترى، هي تاريخٌ لا يُنسخ**: **من سجّل
+     قبل إعلان الاشتراك سجّل قبله أبداً** — **وصفةٌ تُنتزع بانقضاء
+     اشتراكٍ ليست صفة، هي إيجار.**
+     ⚠️ **ورتبةٌ ثالثةٌ في العائلة نفسِها لا شارةٌ ثانية**: `Pill` بعينها
+     بكلمةٍ ثالثة (القاعدة ٣) — **وعرضُها عرضُ `PARTNER`** لأنّ الكلمتين
+     سبعةُ حروفٍ لا أربعة. */
+  if (founder)
+    return (
+      <Pill word="FOUNDER" width={62} tracking={1.1} label={t.founderBadge} />
+    );
   return null;
 }
 
@@ -277,7 +294,10 @@ export function AccountBadges({
   className?: string;
 }) {
   const { tier, verified, founder } = identityOf(profile);
-  if (!tier && !verified) return null;
+  /* 🆕 **والمؤسِّسُ يُحسب في شرط الغياب** (D-833): **شرطٌ ينسى الصفةَ
+     يُرجع `null` فلا تُرسم شارتُها أصلاً** — **وفرعٌ يُضاف في مكانٍ
+     ويُنسى في حارسه لا يعمل.** */
+  if (!tier && !verified && !founder) return null;
   return (
     <span
       className={`inline-flex items-center ${className}`}
