@@ -21,7 +21,7 @@ import {
   artKey,
   getMyFavorites,
 } from "@/lib/data";
-import { sanitizeHomePrefs, applyQueueOrder } from "@/lib/homePrefs";
+import { sanitizeHomePrefs, applyQueueOrder, unwatchedOf } from "@/lib/homePrefs";
 import { getT, getTabPrefs } from "@/lib/locale";
 import { defaultTab } from "@/lib/tabPrefs";
 import { localizeFollows } from "@/lib/localize";
@@ -301,15 +301,19 @@ export default async function LibraryPage({
       : [];
   /* 🆕 **وترتيبُ صاحبها هنا كما في الرئيسية** (D-719): **بطاقةٌ واحدةٌ
      في ثلاثة أبواب، وترتيبٌ يظهر في بابٍ ويغيب عن أخيه يُقرأ عطلاً.** */
+  /* 🆕 **والمشاهَدُ يسقط هنا كما يسقط في الرئيسيّة** (D-848): **الحكمُ
+     في `unwatchedOf` لا مكتوباً مرّتين** — **وبابان يقولان عن القائمة
+     نفسِها عددين مختلفين عطلٌ يُقرأ.** */
+  const toWatchLeft = unwatchedOf(toWatchQueue, watchedMovieIds);
   const toWatchOrdered = applyQueueOrder(
-    toWatchQueue,
+    toWatchLeft,
     (f) => `tw-mv-${f.tmdb_id}`,
     sanitizeHomePrefs(profileRow?.home_prefs).towatchListOrder,
   );
-  const toWatchCard = toWatchQueue.length
+  const toWatchCard = toWatchLeft.length
     ? {
         on: sanitizeHomePrefs(profileRow?.home_prefs).toWatch,
-        count: toWatchQueue.length,
+        count: toWatchLeft.length,
         posters: toWatchOrdered.slice(0, 3).map((f) => f.poster_path ?? null),
       }
     : null;
