@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { getT, getLocale } from "@/lib/locale";
 import { Icon, type IconName } from "@/components/Icon";
 import { seoKeywords } from "@/lib/seo";
+import { FOUNDER_PLUS_UNTIL } from "@/lib/plan";
 
 /* عنوانٌ ووصفٌ بلغة الزائر لا بالإنجليزية دائماً (D-122): هذه صفحةٌ عامّة
    تُفهرَس، وسطرُ الوصف في نتيجة البحث هو الإعلان الوحيد الذي نملكه —
@@ -165,8 +166,12 @@ const SECTIONS: Section[] = [
         icon: "sparkle-star",
         ar: "شارة «مؤسِّس»",
         en: "Founder badge",
-        arBody: "من سجّل قبل إعلان الاشتراك يحمل شارة مؤسِّس و Loopz+ مدى الحياة.",
-        enBody: "Anyone who joined before subscriptions were announced keeps a Founder badge and Loopz+ for life.",
+        /* ⚖️ 🆕 **«مدى الحياة» سقطت بحكمه** (D-833): **المدّةُ صارت
+           ثلاثةَ أشهرٍ والصفةُ باقية** — **وصفحةٌ اسمُها «صادقة» تَعِد
+           بما نقضته القاعدةُ أسوأُ من صفحةٍ لا تعد** (D-217، وهو عطلُ
+           `9cbe3ae` نفسُه في جولة D-633). */
+        arBody: `من سجّل قبل إعلان الاشتراك يحمل شارة مؤسِّس دائماً — والصفة لا تنتهي — ومعها Loopz+ حتى ${FOUNDER_PLUS_UNTIL.ar}.`,
+        enBody: `Anyone who joined before subscriptions were announced keeps a Founder badge for good — the status never expires — with Loopz+ until ${FOUNDER_PLUS_UNTIL.en}.`,
         plus: true,
       },
       /* 🆕 **وثلاثُ ميزاتٍ مجّانيّةٍ قائمةٍ لم تُوثَّق قطّ** (D-793،
