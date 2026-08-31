@@ -30,6 +30,7 @@ import {
   rejectCommunityInvite,
 } from "@/lib/actions";
 import { createClient } from "@/lib/supabase/client";
+import { fitForUpload, UPLOAD_MAX_BYTES } from "@/lib/imageFile";
 import type {
   CommunityKind,
   CommunityLite,
@@ -737,17 +738,19 @@ function RoomPhotoButton({ room, t }: { room: CommunityRoomData; t: Dict }) {
   const [busy, setBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  async function onPick(file: File) {
-    if (!file.type.startsWith("image/")) {
+  async function onPick(picked: File) {
+    if (!picked.type.startsWith("image/")) {
       flashError(t.errPickImage);
-      return;
-    }
-    if (file.size > 2 * 1024 * 1024) {
-      flashError(t.errTooLarge);
       return;
     }
     setBusy(true);
     try {
+      /* 🆕 **تُصغَّر قبل أن تُقاس** (D-837) — الحجّةُ في `lib/imageFile.ts` */
+      const file = await fitForUpload(picked);
+      if (file.size > UPLOAD_MAX_BYTES) {
+        flashError(t.errTooLarge);
+        return;
+      }
       const supabase = await createClient();
       const {
         data: { user },

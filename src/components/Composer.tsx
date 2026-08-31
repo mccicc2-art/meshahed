@@ -3,6 +3,7 @@
 import { useRef, useState, useTransition } from "react";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
+import { fitForUpload, UPLOAD_MAX_BYTES } from "@/lib/imageFile";
 import { buttonClass } from "./ui/Button";
 import { getDict, type Locale } from "@/lib/i18n";
 import { Icon } from "./Icon";
@@ -111,12 +112,18 @@ export function Composer({
    * كان يجعلها **مُدخَلاً يُصدَّق**، **وهنا هي عائدُ `getUser()`** —
    * ونداءٌ واحدٌ لا يقع إلا عند أوّل رفع (D-194).
    */
-  async function pick(f: File) {
+  async function pick(picked: File) {
     setErr(null);
-    if (!f.type.startsWith("image/")) return setErr(t.errPickImage);
-    if (f.size > 2 * 1024 * 1024) return setErr(t.errTooLarge);
+    if (!picked.type.startsWith("image/")) return setErr(t.errPickImage);
     setBusy(true);
     try {
+      /* 🆕 **تُصغَّر قبل أن تُقاس** (D-837) — **والمنتقياتُ الثلاثةُ
+         على مصفاةٍ واحدة**: هنا وفي `Communities` وفي تعديل الملفّ. */
+      const f = await fitForUpload(picked);
+      if (f.size > UPLOAD_MAX_BYTES) {
+        setErr(t.errTooLarge);
+        return;
+      }
       const supabase = await createClient();
       const { data: who } = await supabase.auth.getUser();
       const uid = who.user?.id;
