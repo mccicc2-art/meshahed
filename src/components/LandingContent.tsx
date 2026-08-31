@@ -95,8 +95,16 @@ export function LandingContent({ locale }: { locale: Locale }) {
       <div className="mt-12 text-center">
         <Link
           href="/login"
+          /* 🔴 🆕 **`--on-accent` عقدٌ مع `--accent` لا مع الهويّة**
+             (D-846): كان النصُّ `--on-accent` فوق `--gradient-brand-x`
+             — 📏 **وفي `daylight` ذلك أبيضُ (#ffffff) فوق أصفرَ ساطع:
+             تباينُ ١٫٤٣** — **وهو زرُّ التحويل الوحيدُ في الصفحة.**
+             **والسطحُ صار من `--accent`/`--accent-2` فعاد الطرفان إلى
+             عقدٍ واحد** — وصفرُ تغيّرٍ في الثيمات الداكنة. */
           className="inline-flex items-center justify-center rounded-2xl px-6 py-3 text-sm font-bold text-[color:var(--on-accent)]"
-          style={{ background: "var(--gradient-brand-x)" }}
+          style={{
+            background: "linear-gradient(90deg, var(--accent), var(--accent-2))",
+          }}
         >
           {ar ? "ابدأ مجاناً" : "Start free"}
         </Link>

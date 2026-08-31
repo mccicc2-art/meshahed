@@ -63,9 +63,24 @@ export async function LandingHero({
         <h1 className="mt-[clamp(14px,2.6vh,30px)] text-[clamp(28px,min(3.4vw,5.4vh),62px)] font-extrabold leading-[1.16] tracking-tight px-4">
           {t.landingH1a}
           <br />
+          {/* 🔴 🆕 **تدرّجُ الواجهة لا تدرّجُ الهويّة** (D-846):
+              `--gradient-brand-x` مبنيٌّ من `--brand-*` **وهي ألوانُ
+              الهويّة الثابتةُ في كلِّ ثيم** — 📏 **وعلى خلفيّة
+              `daylight` (#f5f5f3) تباينُها ١٫٣١–١٫٩٧** أي أنّ أكبرَ
+              عنوانٍ في واجهة المنتج **لا يُقرأ نهاراً.**
+              🔑 **والثيمُ النهاريُّ نفسُه كتب القاعدةَ في تعريفه**:
+              «الأصفر يُعتَّم إلى ذهبيٍّ داكن #8A6D00 لأن #FFD200 على
+              الأبيض لا يُقرأ نصّاً» — **و`--accent`/`--accent-2` هما
+              تلك الدرجةُ المعتَّمة**، **وهذا السطرُ كان يتخطّاهما إلى
+              الهويّة الخام.**
+              ⚠️ **وصفرُ تغيّرٍ في الثيمات الداكنة**: زوجُ الذهبيّ
+              (#FFD400 → #F59E0B) هو `--brand-1` → `--brand-3` نفسُه.
+              **ويتبع لونَ القارئ الذي اختاره** (D-825). */}
           <span
             className="bg-clip-text text-transparent"
-            style={{ backgroundImage: "var(--gradient-brand-x)" }}
+            style={{
+              backgroundImage: "linear-gradient(90deg, var(--accent), var(--accent-2))",
+            }}
           >
             {t.landingH1b}
           </span>
