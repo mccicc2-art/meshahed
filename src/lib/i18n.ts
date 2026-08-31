@@ -328,13 +328,8 @@ const ar = {
   removeCover: "إزالة الغلاف",
   noCover: "لا يوجد غلاف بعد",
   themeSection: "ثيم الواجهة",
-  themeHint: "اختر ألوان الشريط العلوي والواجهة.",
   bioSection: "نبذة",
   bioPlaceholder: "سطرٌ يعرّف بك — مثال: أطارد الدراما الكورية وأنسى النهايات",
-  favoriteContent: "الأنواع المفضّلة",
-  favoriteHint:
-    "اختر أنواعك المفضّلة، فتظهر لك اقتراحات مبنيّة عليها في الصفحة الرئيسية.",
-  selectedN: (n: number) => `اخترت ${n} نوعاً.`,
   saveChanges: "حفظ التغييرات",
   saving: "جارٍ الحفظ…",
   savedOk: "✓ تم الحفظ",
@@ -2393,14 +2388,9 @@ const en: Dict = {
   removeCover: "Remove cover",
   noCover: "No cover yet",
   themeSection: "Interface theme",
-  themeHint: "Pick the colours for the top bar and the rest of the app.",
   bioSection: "Bio",
   bioPlaceholder:
     "One line about you — e.g. chasing Korean dramas, forgetting the endings",
-  favoriteContent: "Favourite genres",
-  favoriteHint:
-    "Pick the genres you like and Home will suggest titles based on them.",
-  selectedN: (n: number) => `${n} selected.`,
   saveChanges: "Save changes",
   saving: "Saving…",
   savedOk: "✓ Saved",
