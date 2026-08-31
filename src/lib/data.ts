@@ -1156,16 +1156,6 @@ export interface PublicProfile {
   joined_at?: string | null;
 }
 
-/**
- * 🆕 **أوائلُ الأسبوع الثلاثة** (D-835 · الهجرة ١٦٦).
- *
- * **آخرُ أسبوعٍ مُنحت جائزتُه** — **ثلاثةُ صفوفٍ لا أكثر**، **ومخبَّأةٌ
- * للطلب** (D-470) فتُقرأ مرّةً ولو رسمتها صفحةٌ في موضعين.
- * ⚠️ **والجدولُ بلا سياسةِ قراءة**: **القراءةُ بدالّةِ definer** —
- * **فالسياساتُ المفتوحةُ تبقى خمساً** (`19` §٤).
- * ⚠️ **والفراغُ هو الحالُ الطبيعيُّ أوّلَ أسبوع**: **خريطةٌ فارغةٌ تعني
- * ألّا شارةَ تُرسم** — **لا صفراً يُعرض** (D-063/D-219).
- */
 export const getWeeklyTop = cache(async (): Promise<Map<string, number>> => {
   try {
     const supabase = await createClient();
@@ -1179,6 +1169,36 @@ export const getWeeklyTop = cache(async (): Promise<Map<string, number>> => {
     );
   } catch {
     return new Map();
+  }
+});
+
+/**
+ * 🆕 **سجلُّ مراتبِ حسابٍ واحد** (D-838) — **لا أسبوعٌ واحدٌ لكلِّ
+ * الناس**.
+ *
+ * **حكمُ أحمد**: «الشارة لا تختفي · جنبها عدد المرّات · وإذا ضغط عليها
+ * تطلع قائمة بالأسابيع».
+ *
+ * 🔑 **والجدولُ كان سجلّاً منذ يومه** (D-835): صفٌّ لكلِّ أسبوعٍ ومرتبة
+ * — **والذي كان يختفي هو القراءةُ لا البيانات.**
+ *
+ * ⚠️ **والفشلُ صفوفٌ فارغةٌ لا استثناء**: **شارةٌ غائبةٌ أهونُ من صفحةِ
+ * ملفٍّ لا تُفتح.**
+ */
+export type WeeklyRank = { week: string; rank: number; total: number };
+
+export const getWeeklyRanks = cache(async (uid: string): Promise<WeeklyRank[]> => {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("weekly_top_of", { uid });
+    if (error || !data) return [];
+    return (data as { week_start: string; rank: number; total: number }[]).map((r) => ({
+      week: String(r.week_start),
+      rank: Number(r.rank),
+      total: Number(r.total),
+    }));
+  } catch {
+    return [];
   }
 });
 

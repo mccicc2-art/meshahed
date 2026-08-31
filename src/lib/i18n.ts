@@ -1868,6 +1868,25 @@ const ar = {
      ولونٌ يقولان «مرتبة» ولا يقولان أيَّها** (D-142). */
   weeklyRank: (n: number): string => (n === 1 ? "الأول" : n === 2 ? "الثاني" : "الثالث"),
   weeklyRankTip: "الأكثر نشاطاً في نقاشات الأسبوع الماضي",
+  /* 🆕 **شارةٌ لا تختفي** (D-838، حكمُ أحمد): **الرتبةُ حتّى
+     العاشرة، والوجهُ عددُ المرّات، والورقةُ أسابيعُها.** */
+  weeklyRankOrd: (n: number): string =>
+    [
+      "الأول",
+      "الثاني",
+      "الثالث",
+      "الرابع",
+      "الخامس",
+      "السادس",
+      "السابع",
+      "الثامن",
+      "التاسع",
+      "العاشر",
+    ][n - 1] ?? `${n}`,
+  weeklyRanksTip: (n: string) => `في أوائل الأسبوع ${n} مرّة`,
+  weeklyRanksTitle: "أسابيعُ المراتب",
+  weeklyRanksWeek: (when: string) => `أسبوع ${when}`,
+  weeklyRanksHint: "الأوائلُ الثلاثة يكسبون أيّامَ Loopz+ كلَّ أسبوع.",
   smartListHint: "تُبنى بشرطٍ من اكتشف: اختر فلاترك ثمّ اضغط «قائمة ذكيّة» تحتها.",
   calTitle: "تقويم أعمالك",
   calSub: "متى تنزل حلقاتُك وأفلامُك.",
@@ -3419,6 +3438,13 @@ const en: Dict = {
   memberSince: (when: string) => `Member since ${when}`,
   weeklyRank: (n: number): string => (n === 1 ? "1st" : n === 2 ? "2nd" : "3rd"),
   weeklyRankTip: "Most active in last week's discussions",
+  weeklyRankOrd: (n: number): string =>
+    ["1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th", "9th", "10th"][n - 1] ??
+    `${n}`,
+  weeklyRanksTip: (n: string) => `In the week's top ten ${n} times`,
+  weeklyRanksTitle: "Weeks ranked",
+  weeklyRanksWeek: (when: string) => `Week of ${when}`,
+  weeklyRanksHint: "The top three earn Loopz+ days every week.",
   smartListHint: "Built from a filter in Discover: pick your filters, then tap Smart list under them.",
   calTitle: "Your calendar",
   calSub: "When your episodes and films land.",
