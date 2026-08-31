@@ -139,7 +139,6 @@ export function CommunityListCard({
   className = "w-full",
   countLabel,
   cover,
-  coverColor,
   action,
 }: {
   list: PublicListCard;
@@ -159,14 +158,6 @@ export function CommunityListCard({
    * ⚠️ **وغيابُه هو السلوكُ القائم** لبقيّة قرّاء البطاقة (D-152).
    */
   cover?: string | null;
-  /**
-   * 🆕 **لونُ الغلاف** (D-824 · الهجرة ١٦٢) — **تدرّجٌ جاهزٌ لا رمز**:
-   * **البطاقةُ ترسم ولا تعرف السجلّ** (D-235: ما يعبر الحدَّ مُسلسَل)،
-   * **والمستدعي يترجم الرمزَ بـ`listColorCss`** — **فسجلُّ الألوان
-   * قارئٌ واحدٌ لا اثنان.**
-   * ⚠️ **ويأتي بعد `cover` في الترتيب** — غلافٌ واحدٌ لا اثنان.
-   */
-  coverColor?: string | null;
   /**
    * 🆕 **فتحةٌ في عمود الزاوية** (D-364) — **حيث يجلس ♥ و★**. مكتبتُك
    * لا تعرض الاثنين على قوائمك (لا تحفظ ما تملك ولا تقيّمه — D-217)،
@@ -267,7 +258,6 @@ export function CommunityListCard({
       ownerName={l.owner ?? null}
       countText={countLabel ?? t.listCount(l.item_count)}
       posters={posters}
-      coverColor={coverColor}
       cover={cover}
     />
   );
@@ -326,7 +316,6 @@ export function ListCardShell({
   extra,
   posters,
   cover,
-  coverColor,
 }: {
   name: string;
   /** رمزٌ قبل الاسم — لقوائم لوبز وطابور «للمشاهدة» */
@@ -345,8 +334,6 @@ export function ListCardShell({
   extra?: string;
   posters?: string[];
   cover?: string | null;
-  /** 🆕 **لونُ الغلاف** (D-824) — تدرّجٌ جاهزٌ من `listColorCss` */
-  coverColor?: string | null;
 }) {
   const stats = [heart, comments, star].filter(
     (x) => x !== undefined && x !== null && x !== false,
@@ -367,22 +354,8 @@ export function ListCardShell({
         <span aria-hidden className="absolute inset-0">
           <Image src={cover} alt="" fill sizes="(max-width: 640px) 100vw, 320px" className="object-cover" />
         </span>
-      ) : coverColor ? (
-        /* 🔴 **وصندوقُه صندوقُ الملصقات لا البطاقةُ كلُّها** (D-824 —
-           **قِيس في `daylight` بالإنجليزيّة فسقط**): **اللونُ ملءَ
-           البطاقة يضع طرفَه الغامقَ تحت الاسم في LTR** — **ونصٌّ داكنٌ
-           على بنفسجيٍّ غامقٍ لا يُقرأ**، **والسطرُ الخافتُ تحته يختفي.**
-           ⚖️ **والحجابُ مضبوطٌ على هذا الصندوق بعينه منذ D-686**
-           («النصوصُ حُبست في عموده») — **فاللونُ يجلس حيث تجلس
-           الملصقاتُ اليوم**، **ولا حجابَ ثانٍ يُخترع للون** (القاعدة ٣).
-           🔑 **والدرسُ**: **تدرّجٌ باتّجاهٍ فيزيائيٍّ (`left`) في تطبيقٍ
-           بوجهين لا يُحكم عليه من وجهٍ واحد** — **والقياسُ في الاتّجاه
-           الآخر أرخصُ من بلاغ.** */
-        <span
-          aria-hidden
-          className="absolute inset-y-0 end-0 w-[72%]"
-          style={{ backgroundImage: coverColor }}
-        />
+      /* 🗑️ **وفرعُ اللون سقط** (D-848): **الأرضيّةُ غلافٌ مختارٌ
+         وإلّا ملصقاتُ القائمة** — **ولا مرتبةَ ثالثةً بينهما.** */
       ) : (
         posters &&
         posters.length > 0 && (

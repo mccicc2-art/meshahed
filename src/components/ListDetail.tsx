@@ -14,8 +14,7 @@ import {
   toggleInList,
   saveList,
 } from "@/lib/actions";
-import { backdropUrl, posterUrl } from "@/lib/media";
-import { listColor, listColorCss } from "@/lib/listColors";
+import { posterUrl } from "@/lib/media";
 import { profileHref } from "@/lib/people";
 import { tap } from "@/lib/haptics";
 import { toast, flashError } from "@/lib/toast";
@@ -28,6 +27,7 @@ import { BackCrumb } from "./BackButton";
 import { Logo } from "./Logo";
 import { Sheet, SheetHeader } from "./ui/Sheet";
 import { buttonClass } from "./ui/Button";
+import { HEADER_ICON } from "./ui/controls";
 import { QuickAdd } from "./QuickAdd";
 /* ⚖️ 🆕 **ورقةُ الترتيب خرجت إلى ملفِّها** (D-567): صفوفُ المفضّلة
    في البروفايل تحتاجها أيضاً — **وهي هنا خمسون سطراً من رياضيّات
@@ -128,8 +128,6 @@ export function ListDetail({
     backdrop: string | null;
     tmdbId?: number | null;
     mediaType?: "tv" | "movie" | null;
-    /** 🆕 **رمزُ اللون** (D-824) — **ولا يجتمع مع `backdrop`** */
-    color?: string | null;
   } | null;
   /** 🆕 خلاصةُ التقييم لسطر الرأس (D-332) — الغيابُ يعني قائمةً خاصّة
       أو صفحةً لا تعرض التقييمات فلا رقم */
@@ -252,13 +250,6 @@ export function ListDetail({
      منه كلُّ منعٍ** (D-145)، **ولا يُكتب `!smart` في ستّة مواضعَ تُنسى
      واحدةٌ منها.** */
   const canEditItems = isOwner && !smart;
-  /* `w780` لا الأصل: الغلافُ يُرسم بعرض الصفحة على الجوال، والأصلُ ملفٌّ
-     بحجم ثلاثة أضعافه لا تراه العين (نفس مقاس منتقي D-131) */
-  const coverUrl = backdropUrl(cover?.backdrop ?? null, "w780");
-  /* 🆕 **واللونُ يحلُّ محلَّ الصورة في الشريط نفسِه** (D-824): **غلافٌ
-     واحدٌ لا اثنان** (D-462) — **وشريطُ لونٍ فوق شريطِ صورةٍ ارتفاعٌ
-     مضاعفٌ يقول الشيءَ مرّتين** (حجّةُ D-364 حرفاً). */
-  const coverTint = coverUrl ? null : listColor(cover?.color);
 
 
   function remove(it: ListItem) {
@@ -357,32 +348,23 @@ export function ListDetail({
 
   return (
     <div>
-      {/* الغلاف فوق الاسم لا خلفه (D-208): نصٌّ فوق صورةٍ لا يملكها
-          المصمّم يعني تباينَ لونٍ يتغيّر مع كل قائمة — والاسمُ أهمّ من
-          أن يُقامر به. وحين لا غلاف لا يبقى فراغُه: العنصرُ غائبٌ أصلاً */}
-      {coverUrl ? (
-        <div className="relative mb-4 -mx-1 aspect-[16/9] sm:aspect-[21/9] rounded-2xl overflow-hidden bg-surface-2 border border-[color:var(--background)]">
-          <Image
-            src={coverUrl}
-            alt=""
-            fill
-            sizes="(max-width: 640px) 100vw, 640px"
-            priority
-            className="object-cover"
-          />
-        </div>
-      ) : coverTint ? (
-        /* **وأقصرُ من شريط الصورة عمداً**: **الصورةُ محتوًى يُنظر إليه،
-           واللونُ علامةٌ تُعرَف** — **وشريطُ لونٍ بارتفاع ٢١:٩ يأخذ
-           شاشةً أولى ويعطي صفراً** (D-200: فراغٌ لا يفصل معنيين تأجيلٌ
-           للمحتوى). */
-        <div
-          aria-hidden
-          className="mb-4 -mx-1 h-16 sm:h-20 rounded-2xl border border-[color:var(--background)]"
-          style={{ backgroundImage: listColorCss(coverTint) }}
-        />
-      ) : null}
+      {/* 🗑️ **وشريطُ الغلاف داخل الصفحة سقط** (D-848، حكمُ أحمد
+          بلقطة: «الهيدر تبع اللسته إذا دخلت اللسته يطلع فوق وهذا غلط،
+          احذفه ما يحتاج يكون هنا يكفي في الخارج»).
 
+          🔑 **والحجّةُ أنّ الغلافَ وجهُ القائمة لا محتواها**: **وجهٌ
+          يُعرَف به الشيءُ من بين أشباهه** — **وأنت داخلَه فقد عرفتَه.**
+          **وهو باقٍ حيث يعمل**: أرضيّةَ بطاقة القائمة في صفِّ
+          «القوائم» وفي المكتبة والمجتمع (`ListCardShell`).
+
+          📏 **والثمنُ الذي كان يُدفع مقيسٌ**: `aspect-[16/9]` بعرض
+          الشاشة — **أكثرُ من ثلث الشاشة الأولى قبل أن يُقرأ اسمُ
+          القائمة** — **وصفحةٌ عن أعمالٍ تفتح على صورةٍ ليست عملاً
+          منها.** (D-437: أوّلُ ما يُرى في صفحةٍ يجب أن يكون سببَ
+          فتحها.)
+
+          ⚠️ **وباب الغلاف باقٍ في قائمة النقاط**: **يُختار من هنا
+          ويُرى هناك** — **ولا فعلٌ فقد بابَه** (D-030). */}
       {/* ⚖️ 🆕 **ترويسةُ الصفحة بتصميم D-681**: رجوعٌ في الطرف،
           **الشعارُ وسطاً**، والمشاركةُ والنقاطُ في الطرف الآخر — وشريطُ
           التطبيق مخفيٌّ (`chromeRules`) **فترويسةٌ واحدةٌ لا اثنتان**
@@ -399,7 +381,21 @@ export function ListDetail({
           {/* 🆕 **والشعارُ يتبع خطّةَ القارئ** (D-773ب): صاحبُ البلس
               والبارتنر يرى `Loopz+` هنا كما يراه في الشريط والرئيسيّة
               — **والعلامةُ لا تختلف من صفحةٍ إلى صفحة.** */}
-          <Logo size={26} plus={brandPlus} />
+          {/* ⚖️ 🆕 **والمقاسُ صار مقاسَ الشريط** (D-848، بلاغُ أحمد
+              بلقطةٍ محوَّطة على هذا الصفِّ: «الصفّ اللي أنا محدّده طالع
+              صغير»).
+              📏 **والمقيسُ أنّ هذا الصفَّ وحدَه كان دون كلِّ ترويسةٍ
+              في التطبيق**: **الشعارُ ٢٦ حيث هو ٤٤ في `Navbar`**،
+              **وصندوقُ الأيقونة ٣٦ حيث هو ٤٤** (`headerIconControl`،
+              وهو رقمُ أحمد نفسُه في D-543: «مساحة اللمس ٤٤×٤٤»)،
+              **والرمزُ ١٦ حيث هو ١٨** (`HEADER_ICON`).
+              🔑 **وهذا الصفُّ يحلُّ محلَّ شريط التطبيق في هذه الصفحة**
+              (`chromeRules` تخفيه — D-643: ترويسةٌ واحدةٌ لا اثنتان) —
+              **فبديلُ الشريط يجب أن يكون بمقاس الشريط**، **وإلّا انكمشت
+              العلامةُ عند كلِّ دخولٍ إلى قائمة.**
+              ⚠️ **والشكلُ لم يُمسّ**: الدائرةُ المحدودةُ باقيةٌ كما
+              هي — **الذي تغيّر ثلاثةُ أرقامٍ صارت أرقامَ إخوتها.** */}
+          <Logo size={44} plus={brandPlus} />
         </span>
         {(isOwner || isPublic) && (
           <button
@@ -413,8 +409,8 @@ export function ListDetail({
             aria-haspopup="dialog"
             className="shrink-0 -m-1 p-1 grid place-items-center"
           >
-            <span className="grid place-items-center w-9 h-9 rounded-full border border-border bg-surface text-muted transition active:scale-95 hover:border-accent hover:text-foreground">
-              <Icon name="share" size={16} />
+            <span className="grid place-items-center w-11 h-11 rounded-full border border-border bg-surface text-muted transition active:scale-95 hover:border-accent hover:text-foreground">
+              <Icon name="share" size={HEADER_ICON} />
             </span>
           </button>
         )}
@@ -429,8 +425,8 @@ export function ListDetail({
             aria-haspopup="dialog"
             className="shrink-0 -m-1 p-1 grid place-items-center"
           >
-            <span className="grid place-items-center w-9 h-9 rounded-full border border-border bg-surface text-muted transition active:scale-95 hover:border-accent hover:text-foreground">
-              <Icon name="dots" size={16} />
+            <span className="grid place-items-center w-11 h-11 rounded-full border border-border bg-surface text-muted transition active:scale-95 hover:border-accent hover:text-foreground">
+              <Icon name="dots" size={HEADER_ICON} />
             </span>
           </button>
         )}
@@ -727,13 +723,7 @@ export function ListDetail({
           <MenuRow
             icon="image"
             label={t.listCover}
-            value={
-              cover?.backdrop
-                ? t.listCoverSet
-                : /* **واللونُ يُقال باسمه في الصفّ** — **قيمةٌ تقول
-                     «مضبوط» عن لونٍ لا تقول أيَّ لون** (D-787). */
-                  (listColor(cover?.color)?.[locale === "en" ? "en" : "ar"] ?? undefined)
-            }
+            value={cover?.backdrop ? t.listCoverSet : undefined}
             onClick={() => setSheet("cover")}
           />
           {/* ⚠️ **ولا تبديلَ نوعٍ لقائمةٍ ذكيّة**: **الأنواعُ الثلاثةُ
@@ -798,7 +788,6 @@ export function ListDetail({
             tmdbId: cover?.tmdbId ?? null,
             mediaType: cover?.mediaType ?? null,
             backdrop: cover?.backdrop ?? null,
-            color: cover?.color ?? null,
           }}
           locale={locale}
           onClose={() => setSheet(null)}

@@ -12,8 +12,6 @@ import { tap } from "@/lib/haptics";
 import { toast, flashError } from "@/lib/toast";
 import { coalescedRefresh } from "@/lib/refresh";
 import { titleArtOptions, setListCover } from "@/lib/actions";
-import { LIST_COLORS, listColorCss } from "@/lib/listColors";
-import { openPlusGate } from "@/lib/plusGate";
 import type { ListItem } from "@/lib/data";
 
 /**
@@ -49,8 +47,6 @@ export function ListCoverSheet({
     tmdbId: number | null;
     mediaType: "tv" | "movie" | null;
     backdrop: string | null;
-    /** 🆕 **رمزُ اللون** (D-824) — **ولا يجتمع مع الخلفيّة** */
-    color?: string | null;
   };
   locale: Locale;
   onClose: () => void;
@@ -60,8 +56,6 @@ export function ListCoverSheet({
   const router = useRouter();
   const [pending, start] = useTransition();
   const [cover, setCover] = useState<string | null>(current.backdrop ?? null);
-  /** 🆕 **اللونُ المختار** (D-824) — **حالتان لا واحدة لأنّهما حقلان** */
-  const [color, setColor] = useState<string | null>(current.color ?? null);
   /* العملُ المفتوح — `null` يعني أننا في شبكة الأعمال */
   const [pick, setPick] = useState<{ id: number; type: "tv" | "movie"; title: string } | null>(
     null,
@@ -80,41 +74,33 @@ export function ListCoverSheet({
   }, [pick]);
 
   /**
-   * 🆕 **ووسيطٌ ثالثٌ: اللون** (D-824). ⚖️ **والغلافُ واحدٌ لا اثنان**
-   * (D-462) — **فاختيارُ صورةٍ يمحو اللون، واختيارُ لونٍ يمحو الصورة**،
-   * **والخادمُ يُنفّذ ذلك بنفسه** فلا يعتمد الحقلان على أمانة المستدعي.
+   * 🗑️ **والوسيطُ الثالثُ سقط مع الألوان** (D-848): **الغلافُ خلفيّةٌ
+   * من عملٍ في القائمة، وإلّا فلا غلاف** — **ولا حقلَ ثانٍ يُمحى.**
+   * ⚠️ **والخادمُ يبقى يمحو `color` بنفسه** (`setListCover`): **صفٌّ
+   * قديمٌ يحمل لوناً يُنظَّف عند أوّل حفظ** ولا يُترك يرسم شيئاً.
    */
   function save(
     path: string | null,
     from: { id: number; type: "tv" | "movie" } | null,
-    nextColor: string | null = null,
   ) {
     setCover(path);
-    setColor(path ? null : nextColor);
     start(async () => {
       try {
-        const res = await setListCover({
+        await setListCover({
           listId,
           tmdbId: path ? (from?.id ?? null) : null,
           mediaType: path ? (from?.type ?? null) : null,
           backdropPath: path,
-          color: path ? null : nextColor,
+          color: null,
         });
-        /* 🔒 **والبوّابةُ تفتح عن جواب الفعل لا عن معاملٍ يُمرَّر**
-           (D-819): **الورقةُ لا تعرف الخطّة ولا تحتاج أن تعرفها** —
-           **والحالُ تُردّ كما كانت فلا يظنّ أنّه اختار.** */
-        if (res?.needsPlus) {
-          setCover(current.backdrop ?? null);
-          setColor(current.color ?? null);
-          openPlusGate();
-          return;
-        }
+        /* 🗑️ **وبوّابةُ البلس سقطت مع اللون** (D-848): **اللونُ وحدَه
+           كان بلس، والغلافُ الصوريُّ مجّانيٌّ منذ D-208** — **فلم يبقَ
+           في هذه الورقة ما يُسأل عنه.** */
         toast(path ? t.artSaved : t.artReset, { tone: "success" });
         coalescedRefresh(router);
       } catch (e) {
         /* الرجوعُ إلى ما كان: العلامةُ لا تكذب حين يفشل الحفظ */
         setCover(current.backdrop ?? null);
-        setColor(current.color ?? null);
         flashError((e as Error).message);
       }
     });
@@ -139,7 +125,7 @@ export function ListCoverSheet({
       <div className={`${sheetScroll} px-5 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))]`}>
         {/* صفُّ الأفعال: الرجوعُ إلى الأعمال، و«أعِد الأصل» حين يوجد غلاف —
             كلاهما زرٌّ ظاهرٌ لا فعلٌ مخفيّ (نمط D-131) */}
-        {(pick || cover || color) && (
+        {(pick || cover) && (
           <div className="flex flex-wrap items-center gap-2 mb-4">
             {pick && (
               <button
@@ -158,13 +144,13 @@ export function ListCoverSheet({
                 {t.listCoverBack}
               </button>
             )}
-            {(cover || color) && (
+            {cover && (
               <button
                 type="button"
                 disabled={pending}
                 onClick={() => {
                   tap(8);
-                  save(null, null, null);
+                  save(null, null);
                 }}
                 className="inline-flex items-center gap-2 rounded-full border border-border px-3.5 py-2 text-12 font-semibold text-muted hover:text-foreground transition disabled:opacity-50"
               >
@@ -175,44 +161,10 @@ export function ListCoverSheet({
           </div>
         )}
 
-        {/* 🆕 ===== صفُّ الألوان (D-824) — **قبل الأعمال لا بعدها** =====
-            **الأعمالُ شبكةٌ تُمرَّر، والألوانُ صفٌّ من ثمانية** —
-            **وصفٌّ قصيرٌ تحت شبكةٍ طويلةٍ لا يُرى أصلاً.**
-            ⚠️ **ولا يُرسم داخل خطوة الخلفيّات**: **من فتح عملاً يختار
-            صورتَه** — **وخيارٌ ثالثٌ في خطوةٍ لها سؤالٌ واحد يشتّت.** */}
-        {!pick && (
-          <div className="mb-5">
-            <p className="text-12 text-muted mb-2">
-              {ar ? "أو لونٌ بدل الصورة" : "Or a colour instead of an image"}
-            </p>
-            <div className="flex flex-wrap gap-2.5">
-              {LIST_COLORS.map((c) => {
-                const on = color === c.id;
-                return (
-                  <button
-                    key={c.id}
-                    type="button"
-                    disabled={pending}
-                    onClick={() => {
-                      tap(8);
-                      /* **وضغطُ اللونِ المختار يرفعه** — **ولا يُترك
-                         المستخدمُ بلا بابِ رجوعٍ إلا «أعِد الأصل»**. */
-                      save(null, null, on ? null : c.id);
-                    }}
-                    aria-label={ar ? c.ar : c.en}
-                    aria-pressed={on}
-                    title={ar ? c.ar : c.en}
-                    className={`w-11 h-11 rounded-full border-2 transition active:scale-95 disabled:opacity-50 ${
-                      on ? "border-accent" : "border-transparent hover:border-border"
-                    }`}
-                    style={{ backgroundImage: listColorCss(c) }}
-                  />
-                );
-              })}
-            </div>
-          </div>
-        )}
-
+        {/* 🗑️ **وصفُّ الألوان سقط** (D-848، حكمُ أحمد: «والألوان اللي
+            عند اللستة احذفها»): **كان بديلاً للصورة** — **وغلافُ
+            القائمة صار وجهاً واحداً: خلفيّةٌ من أعمالها، وإلّا
+            ملصقاتُها.** **ولا خيارَ ثالثٌ في سؤالٍ واحد.** */}
         {works.length === 0 ? (
           <p className="text-sm text-muted text-center py-10">{t.listCoverEmpty}</p>
         ) : !pick ? (
