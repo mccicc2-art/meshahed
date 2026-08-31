@@ -261,9 +261,6 @@ export default async function ListPage({ params }: { params: Promise<{ id: strin
           backdrop: data.list.cover_backdrop ?? null,
           tmdbId: data.list.cover_tmdb_id ?? null,
           mediaType: data.list.cover_media_type ?? null,
-          /* 🆕 **ولونُ الغلاف** (D-824) — **ولغيرِ المالك من `public_list`
-             حيث يسافر مع الرابط** كما يسافر الغلاف. */
-          color: data.list.cover_color ?? pub?.cover_color ?? null,
         }}
         /* 🆕 **خلاصةُ التقييم لسطر الرأس** (D-332) — نفسُ النداء الذي
            يقرؤه التبويب، لا نداءَ ثانياً */
