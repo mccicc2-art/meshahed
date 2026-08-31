@@ -37,7 +37,8 @@ import { openPlusGate } from "@/lib/plusGate";
  *
  * ⚠️ **والحقولُ الأخرى تُمرَّر كما جاءت**: `updateProfile` يكتب
  * `nickname` و`avatar_url` في **كلِّ** نداء — **وحذفُها يمحو الاسمَ
- * والصورةَ عند تبديل ثيم** (تحذيرُ `ProfileForm` بنصّه).
+ * والصورةَ عند تبديل ثيم**. **التحذيرُ وُرّث عن `ProfileForm` وبقي
+ * بعد حذفها** (D-214): **الحجّةُ في الفعل لا في الملفّ الذي حملها.**
  */
 export function ThemeSection({
   locale,
