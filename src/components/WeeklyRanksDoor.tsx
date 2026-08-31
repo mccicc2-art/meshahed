@@ -45,6 +45,9 @@ export function WeeklyRanksDoor({
   if (rows.length === 0) return null;
   const t = getDict(locale);
   const count = num(rows.length, locale);
+  /* **والوصفُ يأخذ العددَ لا نصَّه**: الإعرابُ يُبنى على الرقم
+     (مفردٌ · مثنّى · جمعُ قلّة) — **ونصٌّ جاهزٌ لا يُعرب** */
+  const tip = t.weeklyRanksTimes(rows.length);
 
   /* **تاريخُ الأسبوع يُكتب بـ`Intl` لا بقائمة أشهرٍ بخطِّ اليد** (D-800)،
      **وبـ`UTC` لأنّ `week_start` تاريخٌ لا لحظة** — **ومنطقةُ القارئ
@@ -99,8 +102,8 @@ export function WeeklyRanksDoor({
       {/* **وصفةُ الشارة كما رُسمت في D-835** — **والمتغيّرُ ما تقوله** */}
       <span
         className="hero-halo inline-flex items-center gap-1.5 rounded-full border border-accent/40 bg-accent/10 px-2 py-0.5 text-12 font-bold text-accent"
-        title={t.weeklyRanksTip(count)}
-        aria-label={t.weeklyRanksTip(count)}
+        title={tip}
+        aria-label={tip}
       >
         <Icon name="trophy" size={12} className="shrink-0" />
         <bdi className="tabular-nums">{count}</bdi>
