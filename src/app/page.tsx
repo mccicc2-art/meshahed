@@ -1627,7 +1627,7 @@ async function HomeBody({
                 <QueueOrderButton
                   row="towatch"
                   label={t.listReorder}
-                  word={t.listReorder}
+                  word={t.allWord}
                 />
               ) : undefined
             }
@@ -1957,7 +1957,7 @@ async function HomeBody({
                       <QueueOrderButton
                         row="lists"
                         label={t.listReorder}
-                        word={t.listReorder}
+                        word={t.allWord}
                       />
                     ) : undefined
                   }
@@ -2284,7 +2284,7 @@ async function ContinueSection({
             <QueueOrderButton
               row="continue"
               label={t.listReorder}
-              word={t.listReorder}
+              word={t.allWord}
             />
           ) : undefined
         }
