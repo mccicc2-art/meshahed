@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { getDict, type Locale } from "@/lib/i18n";
-import { TOUR_STEPS, TOUR_VERSION, persistTourState } from "@/lib/tour";
+import { TOUR_META, TOUR_VERSION, persistTourState, stepsOf, type TourId } from "@/lib/tour";
 import { Icon } from "./Icon";
 import { buttonClass } from "./ui/Button";
 
@@ -25,27 +25,34 @@ import { buttonClass } from "./ui/Button";
  */
 export function TourGuide({
   locale,
+  tourId,
   initialIndex,
   onClose,
 }: {
   locale: Locale;
+  /** 🆕 **أيُّ جولة** (D-852) — **والمحرّكُ واحدٌ لهما** (القاعدة ٣) */
+  tourId: TourId;
   initialIndex: number;
   onClose: () => void;
 }) {
   const t = getDict(locale);
   const router = useRouter();
   const pathname = usePathname();
+  /* 🆕 **الخطواتُ تُقرأ من الجولة المطلوبة** (D-852) — **ومحرّكٌ واحدٌ
+     يقودهما**: **جولتان بمحرّكين نسختان تفترقان عند أوّل إصلاح**
+     (القاعدة ٣). */
+  const steps = stepsOf(tourId);
   const [index, setIndex] = useState(
-    Math.min(Math.max(initialIndex, 0), TOUR_STEPS.length - 1),
+    Math.min(Math.max(initialIndex, 0), steps.length - 1),
   );
   const cardRef = useRef<HTMLDivElement>(null);
 
-  const step = TOUR_STEPS[index];
-  const last = index === TOUR_STEPS.length - 1;
+  const step = steps[index];
+  const last = index === steps.length - 1;
 
   /* الإبحار إلى صفحة الخطوة + حفظ التقدّم — عند كل تغيّر خطوة */
   useEffect(() => {
-    persistTourState({ v: TOUR_VERSION, i: index, s: "active" });
+    persistTourState({ v: TOUR_VERSION, id: tourId, i: index, s: "active" });
     if (pathname !== step.path) router.push(step.path);
     // التركيز على البطاقة كي يقرأ قارئ الشاشة العنوان الجديد
     cardRef.current?.focus({ preventScroll: true });
@@ -54,7 +61,7 @@ export function TourGuide({
   }, [index]);
 
   function end() {
-    persistTourState({ v: TOUR_VERSION, i: index, s: "done" });
+    persistTourState({ v: TOUR_VERSION, id: tourId, i: index, s: "done" });
     onClose();
   }
 
@@ -101,7 +108,7 @@ export function TourGuide({
       <div className="mt-3 flex items-center gap-2">
         {/* نقاط التقدّم — والعدّ نصاً لقارئ الشاشة */}
         <span className="flex items-center gap-1" aria-hidden>
-          {TOUR_STEPS.map((s, i) => (
+          {steps.map((s, i) => (
             <span
               key={s.id}
               className={`rounded-full transition-all ${
@@ -111,7 +118,7 @@ export function TourGuide({
           ))}
         </span>
         <span className="text-12 text-muted tabular-nums" dir="ltr">
-          {index + 1} / {TOUR_STEPS.length}
+          {index + 1} / {steps.length}
         </span>
         <span className="ms-auto flex items-center gap-2">
           {index > 0 && (

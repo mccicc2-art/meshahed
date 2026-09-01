@@ -5,10 +5,12 @@ import { usePathname } from "next/navigation";
 import dynamic from "next/dynamic";
 import { getDict, type Locale } from "@/lib/i18n";
 import {
+  TOUR_IDS,
   TOUR_START_EVENT,
   TOUR_VERSION,
   persistTourState,
   readTourState,
+  type TourId,
 } from "@/lib/tour";
 import { Icon } from "./Icon";
 import { buttonClass } from "./ui/Button";
@@ -35,6 +37,10 @@ export function TourMount({ locale, signedIn }: { locale: Locale; signedIn: bool
   const pathname = usePathname();
   const [mode, setMode] = useState<"idle" | "suggest" | "active">("idle");
   const [startIndex, setStartIndex] = useState(0);
+  /* 🆕 **وأيُّ جولةٍ تجري** (D-852) — **والاقتراحُ التلقائيُّ للأساسيّات
+     وحدَها**: **من يفتح التطبيقَ أوّلَ مرّةٍ يحتاج «كيف أستعمله» لا
+     «ما الذي لا تعرف أنّه موجود»** — **والثانيةُ بابُها الإعدادات.** */
+  const [tourId, setTourId] = useState<TourId>("basics");
 
   /* القراءة في effect لا أثناء الرسم: الخادم لا يعرف localStorage،
      وفرقُ الرسمتين يكسر الترطيب (نفس درس OneTimeHint) */
@@ -46,6 +52,7 @@ export function TourMount({ locale, signedIn }: { locale: Locale; signedIn: bool
       const state = readTourState();
       if (state?.s === "active") {
         setStartIndex(state.i);
+        setTourId(state.id ?? "basics");
         setMode("active");
         return;
       }
@@ -53,7 +60,7 @@ export function TourMount({ locale, signedIn }: { locale: Locale; signedIn: bool
         /* «يظهر مرة واحدة» بنصّ أحمد: يُسجَّل «اقتُرح» لحظةَ عرضه —
            في الجهاز والحساب معاً — فلا يعود ولو أُهمل بلا ضغطة. والجولة
            تبقى متاحةً دائماً من الإعدادات → المساعدة. */
-        persistTourState({ v: TOUR_VERSION, i: 0, s: "suggested" });
+        persistTourState({ v: TOUR_VERSION, id: "basics", i: 0, s: "suggested" });
         setMode("suggest");
       }
     });
@@ -64,8 +71,13 @@ export function TourMount({ locale, signedIn }: { locale: Locale; signedIn: bool
 
   /* «ابدأ الجولة» من الإعدادات — حدثٌ لا خيطُ props عبر الشجرة كلها */
   useEffect(() => {
-    const onStart = () => {
-      persistTourState({ v: TOUR_VERSION, i: 0, s: "active" });
+    /* 🆕 **والحدثُ يحمل رمزَ الجولة** (D-852) — **والقديمُ بلا حمولةٍ
+       يُقرأ «الأساسيّات»** فلا ينكسر مستدعٍ لم يلحق (D-152). */
+    const onStart = (e: Event) => {
+      const asked = (e as CustomEvent<{ id?: TourId }>).detail?.id;
+      const id: TourId = asked && TOUR_IDS.includes(asked) ? asked : "basics";
+      persistTourState({ v: TOUR_VERSION, id, i: 0, s: "active" });
+      setTourId(id);
       setStartIndex(0);
       setMode("active");
     };
@@ -100,7 +112,8 @@ export function TourMount({ locale, signedIn }: { locale: Locale; signedIn: bool
           <button
             type="button"
             onClick={() => {
-              persistTourState({ v: TOUR_VERSION, i: 0, s: "active" });
+              persistTourState({ v: TOUR_VERSION, id: "basics", i: 0, s: "active" });
+              setTourId("basics");
               setStartIndex(0);
               setMode("active");
             }}
@@ -115,7 +128,7 @@ export function TourMount({ locale, signedIn }: { locale: Locale; signedIn: bool
 
   if (mode === "active") {
     return (
-      <TourGuide locale={locale} initialIndex={startIndex} onClose={() => setMode("idle")} />
+      <TourGuide locale={locale} tourId={tourId} initialIndex={startIndex} onClose={() => setMode("idle")} />
     );
   }
 
