@@ -82,8 +82,6 @@ import { capCards } from "@/lib/cardCount";
 import { densityVars } from "@/lib/density";
 import { WeekStrip, type WeekEntry } from "@/components/WeekStrip";
 import {
-  HomeOrderButton,
-  HomeOrderSheetHost,
 } from "@/components/HomeSectionsOrder";
 import {
   QueueOrderButton,
@@ -1472,7 +1470,6 @@ async function HomeBody({
           بحدث نافذة** (D-595؛ نمطُ قلمِ D-538): عشرةُ أقسامٍ تبثّ كلٌّ
           في `Suspense` خاصّته، وتمريرُ الترتيب لكلِّ واحدٍ خيطٌ يُجرّ
           عبر عشرة مكوّنات — والحدثُ يقطعه. */}
-      <HomeOrderSheetHost locale={locale} order={prefs.order} />
       {/* 🆕 مضيفُ أولويّة الصفوف (D-605، وثالثُها «قوائمي» بـD-615) —
           واحدٌ للأزرار الثلاثة */}
       <HomeQueueSheetHost
@@ -1627,9 +1624,6 @@ async function HomeBody({
                    يُعرض له بابٌ يُفتح على صفحةٍ كاملة** — **والشريطُ كان
                    الصفَّ الوحيدَ بلا باب.** */
                 href="/calendar"
-                action={
-                  <HomeOrderButton label={t.custReorder} word={t.allWord} />
-                }
               />
             </div>
           ),
@@ -1653,6 +1647,18 @@ async function HomeBody({
             ) : null,
           shows:
             myShows.length > 0 ? (
+                /* 🗑️ ⚖️ **وسقط زرُّ الترتيب من رؤوس الأقسام** (D-863،
+                   حكمُ أحمد: «ليه فيه اثنين all · احذف الإعدادات أقدر
+                   أوصل لها من الإعدادات · ويكون فيه all واحد فقط») —
+                   **نقضٌ صريحٌ لـD-595** الذي جمع الأداةَ و«الكلّ» في
+                   رأسٍ واحد. 🔴 **والعلّةُ أن الاثنين كتبا الكلمةَ
+                   نفسَها**: زرُّ الترتيب يلبس `allWord` وبابُ الصفّ
+                   يقول «الكل ←» — **فرأسٌ فيه «All» و«All ←» يقرؤهما
+                   القارئُ خياراً واحداً مكرَّراً لا فعلين.**
+                   ✅ **والبابُ الآخرُ مثبَتٌ لا مفترَض**: الإعدادات ←
+                   «الرئيسية والملفّ» فيها صفُّ ترتيبِ الأقسام نفسُه
+                   (`HomeCustomize` ← `ReorderSheet` على `prefs.order`) —
+                   **فُحص قبل الحذف، ولم تُحذف ميزةٌ بلا باب** (D-030). */
               <Section
                 key="shows"
                 title={t.myShows}
@@ -1660,9 +1666,6 @@ async function HomeBody({
                 iconColor="var(--accent)"
                 href="/library?filter=tv"
                 seeAll={t.seeAll}
-                action={
-                  <HomeOrderButton label={t.custReorder} word={t.allWord} />
-                }
               >
                 {myShows.slice(0, cap(myShows.length)).map((i) => (
                   <PosterCard
@@ -1701,9 +1704,6 @@ async function HomeBody({
                 iconColor="var(--accent)"
                 href="/library?filter=movie"
                 seeAll={t.seeAll}
-                action={
-                  <HomeOrderButton label={t.custReorder} word={t.allWord} />
-                }
               >
                 {myMovies.slice(0, cap(myMovies.length)).map((m) => (
                   <PosterCard
@@ -1730,7 +1730,6 @@ async function HomeBody({
                 </h2>
                 {/* 🆕 مقبضُ الترتيب بجوار «الكلّ» — كسائر الأقسام (D-595) */}
                 <span className="shrink-0 flex items-center gap-2.5">
-                  <HomeOrderButton label={t.custReorder} word={t.allWord} />
                   <Link
                     href="/activity"
                     className="text-xs text-accent hover:brightness-110 transition"
@@ -1783,9 +1782,6 @@ async function HomeBody({
                 iconColor="var(--accent)"
                 href="/ratings"
                 seeAll={t.seeAll}
-                action={
-                  <HomeOrderButton label={t.custReorder} word={t.allWord} />
-                }
               >
                 {topRated.slice(0, cap(topRated.length)).map((r) => (
                   <PosterCard
@@ -1859,7 +1855,6 @@ async function HomeBody({
                         .join(",")}
                       locale={locale}
                     />
-                    <HomeOrderButton label={t.custReorder} word={t.allWord} />
                   </>
                 }
               >
@@ -2327,7 +2322,6 @@ async function UpcomingSection({
       iconColor="var(--accent)"
       href="/library"
       seeAll={t.seeAll}
-      action={<HomeOrderButton label={t.custReorder} word={t.allWord} />}
       view={view}
       soloFull
       wide
@@ -2399,7 +2393,6 @@ async function TrendingSection({
       key="trending"
       title={t.trendingWeek}
       icon="trending"
-      action={<HomeOrderButton label={t.custReorder} word={t.allWord} />}
     >
       {trend.slice(0, cap(12)).map((r) => {
         const mt = r.media_type === "tv" ? "tv" : "movie";
