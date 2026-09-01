@@ -9,7 +9,7 @@ import {
 import { getT } from "@/lib/locale";
 import { SearchBox } from "./SearchBox";
 import { NavLinks } from "./NavLinks";
-import { NavAvatar } from "./NavAvatar";
+import { NavSettingsButton } from "./NavSettingsButton";
 import { NavTitle } from "./NavTitle";
 import { Logo } from "./Logo";
 import { isPlus } from "@/lib/plan";
@@ -32,7 +32,8 @@ export async function Navbar() {
     getUnreadSignals(),
     getUnreadShares(),
   ]);
-  const displayName = profile?.nickname || user?.email?.split("@")[0] || "";
+  /* 🗑️ D-865: **وسقط `displayName` معه** — كان اسمَ الصورة وعنوانَها،
+     **والترسُ لا يحمل اسمَ صاحبه.** و`profile` باقٍ لشارة Loopz+ وحدَها. */
 
   /* ⚖️ 🆕 **زائرٌ غير مسجّل: صار له زرُّ دخولٍ** (D-627) — كان الشريطُ
      اسمَ المنتج والعلمَ وحدَهما «فالصفحةُ نفسُها هي الدخول»، **وماتت
@@ -153,15 +154,12 @@ export async function Navbar() {
                 unreadShares={unreadMessages}
                 locale={locale}
               >
-                <Suspense fallback={<span className="w-11 h-11" />}>
-                  <NavAvatar
-                    src={profile?.avatar_url}
-                    name={displayName}
-                    title={displayName || t.profile}
-                    alt={t.avatarAlt}
-                    ariaLabel={t.profile}
-                  />
-                </Suspense>
+                {/* 🆕 D-865: ترسٌ لا صورة — **ولا `Suspense`**: ما كان
+                    يُنتظر هو صورةُ الملفّ، ولم يعد يُقرأ منها شيء. */}
+                <NavSettingsButton
+                  title={t.headerSettings}
+                  ariaLabel={t.headerSettings}
+                />
               </HeaderTrailing>
 
               {/* زر الخروج صار داخل إعدادات الحساب فقط */}
