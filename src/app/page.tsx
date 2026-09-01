@@ -2457,7 +2457,44 @@ async function UpcomingSection({
       icon="hourglass"
       iconColor="var(--accent)"
       href="/library"
-      seeAll={t.seeAll}
+      /* 🆕 **و«القادم» ثالثةُ الأقسام التي كانت تنقل إلى المكتبة**
+         (D-868) — **والقاعدةُ لا تُطبَّق في اثنين من ثلاثة** (D-863).
+         **وجسدُ الورقة صفوفُ الصفِّ نفسُها** (`CompactMediaRow`) لا
+         شبكةَ ملصقاتٍ: **القادمُ موعدٌ قبل أن يكون عملاً** (D-434)،
+         **وشكلٌ ثانٍ للشيء نفسِه في ورقته يُقرأ قسماً ثانياً.** */
+      seeAllDoor={
+        <ProfileStatSheet
+          title={`${t.libUpcoming} · ${t.listCount(rows.length)}`}
+          closeLabel={t.closeLabel}
+          className={seeAllClass}
+          content={
+            <>
+              <div className="flex flex-col">
+                {rows.slice(0, 50).map((x) => (
+                  <CompactMediaRow
+                    key={`ua-${x.key}`}
+                    href={x.href}
+                    chip={x.badge}
+                    title={x.title}
+                    subtitle={x.ep ?? x.subtitle}
+                  />
+                ))}
+              </div>
+              {rows.length > 50 && (
+                <Link
+                  href="/library"
+                  prefetch={false}
+                  className="mt-4 block text-center text-12 font-medium text-accent"
+                >
+                  {t.seeAll}
+                </Link>
+              )}
+            </>
+          }
+        >
+          {t.allWord}
+        </ProfileStatSheet>
+      }
       view={view}
       soloFull
       wide
