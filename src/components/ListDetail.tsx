@@ -714,7 +714,12 @@ export function ListDetail({
           {canEditItems && (
             <MenuRow icon="plus" label={t.listAddTitles} onClick={() => setSheet("add")} />
           )}
-          <MenuRow icon="edit" label={t.listEditTitle} onClick={() => setSheet("rename")} />
+          {/* 🆕 **ولا صفَّ تسميةٍ للمفضّلة** (D-860): **الحارسُ في
+              `renameList` هو الحكم** — **وصفٌّ يُعرض ثم يُرفض عند الباب
+              فخٌّ لا ميزة** (D-217)، **والغيابُ يُقرأ غياباً** (D-063). */}
+          {kind !== "favorites" && (
+            <MenuRow icon="edit" label={t.listEditTitle} onClick={() => setSheet("rename")} />
+          )}
           {/* مشاركة القائمة — في المجتمع (تظهر في ملفّك العام) أو خارج
               التطبيق (رابط). بابٌ واحد لكل فعل، فمكانها هنا لا على البطاقة */}
           <MenuRow icon="share" label={t.listShare} onClick={() => setSheet("share")} />
