@@ -15,6 +15,17 @@
 | 3 — تصنيف الصفحات ناقص | فُصل تصنيف البناء (`ƒ`/`○`) عن وجود export باسم `dynamic`، وأُضيف `loading`/`error`/`not-found` **محلّي أم موروث** لكل صفحة، وحُسم كل `عام؟` | §3 |
 | 4 — خريطة الميزات ناقصة الربط | كل ميزة صارت: Route + المكوّنات + Server Actions + Tables/Views + RPC + Storage/خدمة + مسار ملف | §6 |
 
+### الجولة الثانية — أقسام سقطت أثناء إعادة الكتابة
+
+اعتراضك الثاني صحيح: اختصرتُ التقرير من 477 سطراً إلى 311، **فسقطت أربعة أقسام كانت في معيار القبول**. أُعيدت كاملةً إلى النسخة الحالية دون المساس بما اجتاز، **والبوّابات لم تُعَد** لأن الـAudited SHA لم يتغيّر — نتائجها في §1 هي نتائج Commit `1110de45`.
+
+| القسم الساقط | أُعيد في |
+|---|---|
+| مصفوفة الأدوار والصلاحيات وحسابات الاختبار | **§14** |
+| خريطة تدفّق البيانات وحدود الثقة | **§15** |
+| جرد Auth/OAuth/Session/Redirects/Deep Links موحّداً | **§16** |
+| تصوّر بيئة الاختبار والحسابات الاصطناعية | **§17** |
+
 **وثلاثة تصحيحات إضافية لأخطاءٍ منّي** — مفصّلة في §9.
 
 ---
@@ -298,7 +309,177 @@
 
 ---
 
-## 14. إقرار
+## 14. مصفوفة الأدوار والصلاحيات وحسابات الاختبار
+
+مصدرها أعمدة `public.profiles` على الـAudited SHA (**مخطّط فقط — صفر بيانات مستخدم**):
+`plan` · `plus_until` · `founder` · `is_admin` · `is_system` · `is_private` · `hide_follow_lists` · `verified_at` · `verified_kind` · `x_verified_at`.
+
+| # | الدور | مصدره | الأسطح المتأثّرة | الرحلات التي يحتاجها |
+|---|---|---|---|---|
+| 1 | **Guest** | لا جلسة | كل صفحة عامة (§3) · `/api/search` و`/api/lang-ping` (بحدّ IP) · `/i/[size]/[file]` · `/join/[code]` · `/p/[code]` · `/robots.txt` · `/api/list-og/[id]` | فتح رابط مباشر لعمل/شخص/قائمة عامة · بحث · ترايلرات · صفحات التسويق والقانون · إعادة التوجيه من `/` إلى `/login` |
+| 2 | **Free** | `plan` افتراضي · `plus_until` فارغ أو منتهٍ | خط الأساس كله: `/` `/library` `/lists` `/activity` `/messages` `/statistics` `/profile/settings/*` | التسجيل ← إكمال الملف ← تتبّع حلقة ← تقييم ← قائمة ← تعليق ← متابعة ← رسالة |
+| 3 | **Plus** | `plus_until > now()` — `src/lib/plan.ts` `plusGate.ts` | `/plus` · `PlusGateHost.tsx` · `stats/PlusPreview.tsx` · `ui/PlusPill.tsx` · الثيمات الملوّنة · تنسيق الرئيسية والملف | فروق Plus مقابل Free على نفس الشاشة · انتهاء الاشتراك وسلوك الهبوط · شارة بجانب الاسم |
+| 4 | **Founder** | `founder = true` · `FOUNDER_PLUS_UNTIL` في `src/lib/plan.ts` | الشارات · `/plus` · `/features` | ظهور الشارة · امتيازات Plus بلا اشتراك |
+| 5 | **Verified** | `verified_at` + `verified_kind` | `settings/VerifyScreen.tsx` · الشارة في كل سطح يعرض اسماً | تقديم طلب ← طابور `/admin/verify` ← قبول/رفض ← ظهور الشارة |
+| 6 | **X-Verified** | `x_verified_at` · `src/lib/xLink.ts` | شارة منفصلة | ربط الحساب · `sync_x_identity` · `reverify_on_handle_change` عند تغيير المُعرّف |
+| 7 | **Admin** | `is_admin = true` → `am_admin()` (SECURITY DEFINER) | `/admin/links` `/admin/partners` `/admin/verify` · **و`/api/genres` و`/api/title-meta` فعلياً** | عمليات الإشراف · تثبيت الغرف · إخفاء المُبلَّغ عنه · **وتأكيد أن غير الإداري يأخذ 404 على الصفحة و403 من الـRPC** |
+| 8 | **System** | `is_system = true` | حسابات النظام · القوائم المنسّقة (`curated_lists` · `featured_lists`) | ظهور المحتوى المنسّق بلا نسبته لعضو حقيقي |
+| 9 | **Private** | `is_private = true` (+ `hide_follow_lists`) | `can_view_profile()` · `follow_requests` · `/u/[username]` و`/u/[username]/stats` | طلب متابعة ← قبول/رفض · **فتح ملف خاص من رابط مباشر** · إخفاء قوائم المتابعة |
+| 10 | **Partner** | `partners` / `partner_applications` | `/admin/partners` · `/p/[code]` · `bump_partner_click` | تقديم ← قرار إداري ← نقرة على رابط الشريك تُحتسب |
+| 11 | **زوج A/B** | حسابان مستقلان + `blocks` | كل جدول فيه `user_id` · Storage · RPC | **IDOR/BOLA**: هل يقرأ A بيانات B؟ · الحظر المتبادل · حذف محتوى مفتوح عند الآخر |
+
+**الحارس الحقيقي في القاعدة لا في الواجهة.** التعليق في `src/app/admin/verify/page.tsx` يقولها صراحةً: صلاحية `am_admin()` القائمة، وغير الإداري يرى 404، **«والحارسُ الحقيقيُّ في جسم `admin_decide_verification` مهما فعلت هذه القشرة» (D-011)**. هذا نمط سليم يجب **التحقق منه** في Phase 5 لا نقضه.
+
+⚠️ **قيد ثابت لا يتغيّر بأي قرار:** لا أُدخل بيانات اعتماد ولا أسجّل الدخول بأي حساب. الأدوار 2–11 تحتاج حسابات يوفّرها من يملك الوصول — وحتى ذلك الحين تُوسم رحلاتها `BLOCKED_BY_TEST_ENV` كما أمرت.
+
+---
+
+## 15. خريطة تدفّق البيانات وحدود الثقة
+
+### 15.1 مسار القراءة — Server Component
+
+```
+المتصفّح (طلب صفحة)
+  └─ src/proxy.ts               تجديد جلسة Supabase على كل مسار غير ثابت (matcher يستثني _next/static و_next/image والصور)
+     └─ src/app/**/page.tsx     Server Component — يقرأ الجلسة بـ getUser()
+        └─ src/lib/data.ts      (6394 سطراً) طبقة القراءة الوحيدة
+           ├─ src/lib/supabase/server.ts  عميل خادم بكوكيز الجلسة
+           │  └─ Postgres: 71 جدولاً + View public_profiles + 176 دالة
+           │     └─ 🔒 حدّ الثقة: RLS + am_admin()/can_view_profile()/is_blocked()
+           └─ src/lib/tmdb.ts   TMDB بمفتاح خادم — 🔒 المفتاح لا يغادر الخادم
+```
+
+### 15.2 مسار الكتابة — Server Action
+
+```
+مكوّن عميل (166 ملفاً في src/components)
+  └─ استدعاء Server Action  ─→ src/lib/actions.ts (162 دالة مُصدَّرة · 6051 سطراً)
+     ├─ getUser()             🔒 الحارس الأول
+     ├─ supabase.from(...) / .rpc(...)   🔒 الحارس الحاسم: RLS وجسم الدالة
+     └─ revalidatePath(...)   194 استدعاءً في 6 ملفات → إبطال كاش الراوتر فوراً
+        └─ coalescedRefresh (src/lib/refresh.ts) → router.refresh()
+```
+
+### 15.3 مسار العميل المباشر
+
+```
+مكوّن عميل ─→ src/lib/supabase/client.ts (ANON key، عام بالتصميم)
+   └─ 🔒 حدّ الثقة الوحيد هنا: RLS — لا طبقة خادم بينهما
+      (Realtime للرسائل: supabase/realtime_messages.sql)
+```
+
+**هذا أهم حدّ ثقة في التطبيق كله:** ما يمرّ من المتصفّح مباشرةً إلى Supabase **لا يحرسه إلا RLS**. Phase 6 هي التي تُثبت أن هذه الحراسة صحيحة، لا هذا الجرد.
+
+### 15.4 مسار الخدمات الخارجية
+
+| الخدمة | النطاق | الملف | المفتاح | الجانب |
+|---|---|---|---|---|
+| TMDB API | `api.themoviedb.org` | `src/lib/tmdb.ts` · `src/lib/imdbChart.ts` | `TMDB_API_KEY` | **خادم فقط** |
+| TMDB Images | `image.tmdb.org` | `src/app/i/[size]/[file]/route.ts` · `src/lib/imageLoader.ts` · `src/lib/media.ts` | — | يُبَثّ عبر نطاقنا (D-726/D-841) |
+| OMDb | `omdbapi.com` | `src/lib/omdb.ts` | `OMDB_API_KEY` | خادم |
+| Trakt | `api.trakt.tv` | `src/lib/trakt.ts` | `TRAKT_CLIENT_ID/SECRET` | خادم |
+| Gemini | `generativelanguage.googleapis.com` | `src/lib/ai.ts` | `GEMINI_API_KEY` | خادم |
+| DeepL | `api-free.deepl.com` | `src/lib/translate.ts:45` | `DEEPL_API_KEY` | خادم |
+| Giphy | `api.giphy.com` | `src/lib/gif.ts` | `GIPHY_API_KEY` | خادم |
+| Google Identity | `accounts.google.com` | `src/components/GoogleButton.tsx` | `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | **عميل** (عام بالتصميم) |
+| YouTube | `youtube-nocookie.com` · `s.ytimg.com` | `src/components/Trailer.tsx` · `src/components/trailers/TrailerPlaybackController.tsx` | — | عميل |
+| iTunes | `itunes.apple.com` | `src/lib/appleTrailers.ts:31` | — | خادم |
+| flagcdn | `flagcdn.com` | `src/components/LangMenu.tsx` | — | خادم ثم يُقدَّم من نطاقنا |
+
+### 15.5 التخزين والجدولة
+
+- **Storage bucket واحد:** `avatars` — `storage.from("avatars")` هو الاستدعاء الوحيد في `src`. (فنّ العمل الشخصي يخزّن **مسار** TMDB لا رفعاً — D-131.)
+- **وظيفة مجدولة واحدة، داخل Postgres لا عبر HTTP:** `loopz-title-communities` عند `17 3 * * *`، نشطة. (المصدر: `select jobname, schedule, active from cron.job` — قراءة فقط.) وهذا يفسّر لماذا **لا حاجة لسرّ cron ولا لمفتاح service-role**.
+
+---
+
+## 16. جرد Auth / OAuth / Session / Redirects / Deep Links
+
+### 16.1 المزوّد ومسارا الدخول
+
+**Google هو المزوّد الوحيد** — لا مزوّد ثانٍ في الكود كله.
+
+| المسار | الملف | السطر | الآلية |
+|---|---|---|---|
+| المسار الأساسي (GIS داخل الصفحة) | `src/components/GoogleButton.tsx` | 160 | `signInWithIdToken` — مكتبة Google Identity تعطي رمزاً يُبادَل مباشرةً |
+| المسار الاحتياطي (تحويل كلاسيكي) | `src/components/GoogleButton.tsx` | 21, 107 | `signInWithOAuth` |
+
+**`Cross-Origin-Opener-Policy: same-origin-allow-popups` شرطُ عمل المسار الأول** — التعليق في `next.config.ts` يوثّق أن `same-origin` تقطع `window.opener` فتبقى نافذة Google بيضاء عند `accounts.google.com/gsi/transform`. **لا يُشدَّد هذا في Phase 5 بلا اختبار دخول فعلي.**
+
+### 16.2 دورة الجلسة
+
+| المرحلة | الملف | التفصيل |
+|---|---|---|
+| العودة من Google | `src/app/auth/callback/route.ts` | `exchangeCodeForSession(code)` ثم `absorbGuestContentPrefs()` و`claimReferralFromCookie()` — **وسقوط أيّهما لا يُسقط الدخول** (`.catch(() => {})`) |
+| حارس الوجهة | نفس الملف، `safeNext()` | يردّ `/` لأي قيمة: لا تبدأ بـ`/` · تبدأ بـ`//` · تحوي `\` · تطابق `^/[a-z][a-z0-9+.-]*:` — **حارس open-redirect مكتوب بيد** |
+| أصل التحويل | `src/lib/siteOrigin.ts` → `resolveAuthBase(origin)` | يقبل `origin` **فقط** إن كان في `TRUSTED_ORIGINS` المغلقة، وإلا فمن `NEXT_PUBLIC_SITE_URL`. **علّته موثّقة:** التحويل القسري لنطاق آخر يترك الجلسة خلفه فيخرج التطبيق المثبَّت من أصله القديم عند كل فتح |
+| فشل التبادل | نفس الملف | `/login?error=auth` |
+| تجديد الجلسة | `src/proxy.ts` (بديل middleware في Next 16) | matcher: `/((?!_next/static\|_next/image\|favicon.ico\|.*\.(?:svg\|png\|jpg\|jpeg\|gif\|webp)$).*)` — أي كل مسار غير ثابت |
+| الخروج | `src/app/auth/signout/route.ts` | **POST فقط** — و**مقارنة ترويسة `origin` بأصل الطلب؛ الاختلاف يعيد التحويل بلا تنفيذ** (حارس CSRF) |
+| عميلا Supabase | `src/lib/supabase/server.ts` · `client.ts` | خادم بالكوكيز · متصفّح بالـANON key |
+| كوكي الجلسة | `src/lib/sessionCookie.ts` (95 سطراً) + `scripts/test-session-cookie.mjs` | أداة فحص قائمة في المستودع |
+
+### 16.3 كوكيز التطبيق (14 — عدا كوكيز Supabase)
+
+`loopz_content_prefs` · `loopz_ctabs_hidden` · `loopz_feed_sort` · `loopz_feed_strangers` · `loopz_news` · `loopz_rails` · `loopz_ref` · `loopz_tabs_community` · `loopz_tabs_discover` · `loopz_tabs_library` · `loopz_talk_followed` · `loopz_title_mode` · `loopz_trailer_sound` · `loopz_translate`.
+
+وكوكي عابر ثالث عشر من نوع آخر: **`trakt_state`** — `httpOnly` · `secure` · `sameSite=lax` · `maxAge=600` — يُكتب في `/api/trakt/start` ويُحذف فور المقارنة في `/api/trakt/callback`.
+
+### 16.4 Deep links والروابط القصيرة
+
+| المسار | الملف | ما يفعله | التطبيع | المصادقة |
+|---|---|---|---|---|
+| `/join/[code]` | `src/app/join/[code]/route.ts` | يضع `loopz_ref` (httpOnly · lax · 30 يوماً) ثم يحوّل للجذر | `toUpperCase` + حذف `[^A-Z0-9]` + `slice(0,10)` | عام |
+| `/p/[code]` | `src/app/p/[code]/route.ts` | نفسه + `bump_partner_click` (فشلها مبتلَع صامتاً) | نفسه | عام |
+| `/i/[size]/[file]` | `src/app/i/[size]/[file]/route.ts` | ممرّ صور TMDB مخزَّن سنةً (`immutable`) | **قائمة بيضاء لثمانية مقاسات** + `^[A-Za-z0-9]+\.(?:jpg\|png)$` وإلا 400 | عام |
+| `/api/trakt/start` → `/api/trakt/callback` | `src/app/api/trakt/*` | دورة OAuth مع Trakt ثم استيراد المكتبة بسقوف `IMPORT_CAPS` | مقارنة `state` بالكوكي؛ الاختلاف ← `?trakt=denied` | جلسة مطلوبة |
+
+**Universal Links / App Links: لا وجود لها بعد** — لا `apple-app-site-association` ولا `assetlinks.json` في `public/`. هذا بند Phase 9 لا نقص حالي.
+
+### 16.5 ما لا يوجد — وتسجيله جزء من الجرد
+
+- **لا استعادة كلمة مرور ولا تغيير كلمة مرور ولا تغيير بريد** — لأن الدخول بـGoogle وحده، فلا كلمة مرور أصلاً. أي بند في `AUDIT_PLAN` عن «استعادة الحساب وتغيير كلمة المرور» **لا ينطبق على هذا المشروع** ويجب شطبه من معايير Phase 2 بدل تركه فاشلاً.
+- **لا خروج من كل الأجهزة** كسطح مستقل في الواجهة.
+- **لا CAPTCHA** — الحماية بحدّ المعدّل في `src/lib/ratelimit.ts` وحده.
+- **لا قناة إشعارات دفع ولا مرسِل بريد** (D-462).
+
+---
+
+## 17. تصوّر بيئة الاختبار والحسابات الاصطناعية — **تصوّر فقط**
+
+> ⚠️ **لم يُنشأ شيء.** لا مشروع Supabase، ولا حساب، ولا صفّ، ولا فرع قاعدة بيانات. هذا القسم اقتراح ينتظر قرارك، وقرارك التشغيلي الحالي (لا إنشاء) مطبَّق حرفياً.
+
+### 17.1 المشكلة
+
+`LOOPZ-AUD-0006` — **P1**: لا بيئة بيانات معزولة. مشروع Supabase واحد (`uvgmvrdrxzpudoldjxaa`) يخدم Local وPreview وProduction معاً، وفيه بيانات مستخدمين حقيقيين. أي اختبار كاتب — وكل اختبار عزل A/B هو اختبار كاتب — يلوّث بيانات حقيقية.
+
+### 17.2 الخيارات
+
+| # | الخيار | الكلفة | يعالج | المخاطرة |
+|---|---|---|---|---|
+| A | **Supabase Branching** — فرع قاعدة بيانات لكل Preview | **مدفوع** — المنظمة على الخطة المجانية اليوم | عزل كامل: Phase 2 و5 و6 | ترقية خطة + إعداد CI |
+| B | **مشروع Supabase ثانٍ للاختبار** (خطة مجانية) | **مجاني** | عزل كامل + بيانات اصطناعية بحتة | مزامنة المخطط يدوياً — 173 ملف SQL بترتيب `supabase/README.md`، وتَشيخ مع كل migration جديدة |
+| C | **حسابات اصطناعية داخل Production** | مجاني وفوري | Phase 2 جزئياً | **تلويث بيانات حقيقية — لا أوصي به** |
+
+### 17.3 التوصية
+
+**الخيار (B).** مشروع ثانٍ مجاني يُبنى بتشغيل `supabase/*.sql` بترتيبها، ويُملأ ببيانات اصطناعية بحتة. يعطي عزلاً كاملاً بلا كلفة وبلا لمس بيانات المستخدمين الحقيقيين. وثمنه المعلَن: **مزامنة المخطط تصبح خطوة يدوية دائمة** — وهذا ثمن يستحق الدفع مقارنةً بالبديل.
+
+وإن رُفض (B)، فالبديل الوحيد المقبول هو **قصر Phase 5 و6 على القراءة والتحليل الساكن** وتوثيق أن اختبارات العزل النشطة لم تُجرَ — لا افتراض نجاحها.
+
+### 17.4 الحسابات الاصطناعية المطلوبة (10)
+
+`t_guest` (بلا حساب) · `t_free` · `t_plus` · `t_founder` · `t_verified` · `t_xverified` · `t_admin` · `t_private` · `t_partner` · `t_a` و`t_b` (زوج العزل والحظر).
+
+كلها ببادئة `t_` وبريد اختباري، **ولا واحد منها يمثّل شخصاً حقيقياً**.
+
+### 17.5 حتى ذلك الحين
+
+Phase 2 تبدأ **بالزائر والقراءة الآمنة فقط**، وكل رحلة تحتاج حساباً تُوسم **`BLOCKED_BY_TEST_ENV`** مع ذكر الدور المطلوب — لا تُفترض ناجحة ولا فاشلة.
+
+---
+
+## 18. إقرار
 
 - ✅ لم أعدّل أي ملف في `src/` أو `supabase/` أو أي إعداد تطبيق.
 - ✅ لم ألمس `main` ولم أفتح PR نحوه ولم أدمج ولم أحذف أي فرع.
