@@ -136,8 +136,36 @@ export type PlanLabels = {
 };
 
 export function planNameOf(p: PlanBearer | null | undefined, t: PlanLabels): string {
+  return isPlus(p) ? t.plusName : t.setPlanFree;
+}
+
+/**
+ * ⚖️ 🆕 **نوعُ الحساب أوّلاً، وسببُه ثانياً** (D-851، حكمُ أحمد: «لا
+ * تكتب فوندر، حط كلمة أفضل توضح نوع الحساب»).
+ *
+ * 🔑 **والخلطُ كان في `planNameOf` نفسِها**: **كانت تُرجع «مؤسِّس» أو
+ * «شريك Loopz» مكانَ اسم الخطّة** — **وذانك ليسا خطّتين بل طريقَين
+ * إليها.** **فمقبضٌ يقول «مؤسِّس» لا يجيب سؤالَ من فتحه**: «هل أنا
+ * مشتركٌ أم لا؟» — **وهو السؤالُ الوحيدُ الذي يجلب أحداً إلى صفحة
+ * الاشتراك.**
+ *
+ * 📏 **والدليلُ في الشيفرة لا في الرأي**: `isPartner` تشترط `isPlus`
+ * (سطرُها أعلاه)، **و`planNameOf` كانت تشترط `isFounder && isPlus`** —
+ * **فكلُّ من كان يُسمّى «مؤسِّساً» أو «شريكاً» فهو صاحبُ Loopz+
+ * بالضرورة** — **فاسمُ الخطّة كان معلوماً وحُجب باسم الصفة.**
+ *
+ * ⚖️ **وهذا يوسّع D-780 ولا ينقضها**: حكمُها «المقبضُ يقول ما خلفَه»
+ * **باقٍ بحرفه** — **والذي تبدّل أنّ ما خلفَه هو الخطّةُ لا الصفة.**
+ *
+ * **والصفةُ لم تُحذف**: **تُقال سطراً ثانياً حيث تنفع** (صفحةُ
+ * الاشتراك)، **وشارةً حيث تُفاخر** (`AccountBadges` — لم تُمسّ).
+ * **والغيابُ يعني مشتركاً عاديّاً أو مجّانيّاً** فلا سطرَ ثانٍ له.
+ */
+export function planReasonOf(
+  p: PlanBearer | null | undefined,
+  t: PlanLabels,
+): string | null {
   if (isPartner(p)) return t.partnerBadge;
   if (isFounder(p) && isPlus(p)) return t.founderBadge;
-  if (isPlus(p)) return t.plusName;
-  return t.setPlanFree;
+  return null;
 }

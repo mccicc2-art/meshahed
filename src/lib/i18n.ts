@@ -1404,8 +1404,18 @@ const ar = {
   setPrivacy: "الخصوصية والأمان",
   setNotifications: "الإشعارات",
   setImport: "الاستيراد والتصدير",
-  setBilling: "الاشتراك والفوترة",
+  /* ⚖️ **وكلمةُ «الفوترة» سقطت** (D-851، حكمُ أحمد: «خلّها الاشتراك
+     بدون كلمة الدفع»): **لا مزوّدَ دفعٍ ولا جدولَ فواتير** — **وبابٌ
+     يقول «فوترة» ولا فاتورةَ خلفه وعدٌ يُخلَف** (D-217). **يعود
+     الاسمُ يومَ تعود الفاتورة.** */
+  setBilling: "الاشتراك",
   setPlanActive: "الحالية",
+  /* 🆕 صفحةُ الاشتراك (D-851) — **تقول نوعَ الحساب ومدّتَه وما يشمله** */
+  subUntil: (when: string) => `حتّى ${when}`,
+  subNoEnd: "بلا تاريخ انتهاء",
+  subPlusUnlocks: "ما يفتحه Loopz+",
+  subUpgrade: "رقِّ إلى Loopz+",
+  subExpired: "انتهت — وما كتبتَه باقٍ كما هو",
   /* 🆕 D-770 (النموذج النهائيّ، نسخ D-768): صفحةُ «الدعوات والمكافآت»
      بتبويبين — دعوةُ الأصدقاء (٧ أيامٍ لكلّ محتسبةٍ + شهرٌ لكلّ ٥ +
      ١٤ يوماً للمدعوّ عند الاحتساب لا التسجيل — حكمُه: «الاثنان معاً»)
@@ -1541,7 +1551,6 @@ const ar = {
   setAboutBuild: "الإصدار",
   setAboutSources: "مصادر البيانات",
   setEditProfile: "تعديل الملف",
-  setOpenProfile: "فتح ملفّك العامّ",
   setPlanFree: "Loopz مجّاني",
   setViewPlans: "الخطط",
   setDangerZone: "منطقة الخطر",
@@ -3081,8 +3090,13 @@ const en: Dict = {
   setPrivacy: "Privacy & security",
   setNotifications: "Notifications",
   setImport: "Import & export",
-  setBilling: "Subscription & billing",
+  setBilling: "Subscription",
   setPlanActive: "Current",
+  subUntil: (when: string) => `Until ${when}`,
+  subNoEnd: "No end date",
+  subPlusUnlocks: "What Loopz+ unlocks",
+  subUpgrade: "Upgrade to Loopz+",
+  subExpired: "Ended — everything you wrote stays yours",
   setInvites: "Invite & Earn",
   invTabFriends: "Invite friends",
   invTabPartners: "Loopz Partners",
@@ -3212,7 +3226,6 @@ const en: Dict = {
   setAboutBuild: "Version",
   setAboutSources: "Data sources",
   setEditProfile: "Edit profile",
-  setOpenProfile: "Open your public profile",
   setPlanFree: "Loopz Free",
   setViewPlans: "View plans",
   setDangerZone: "Danger zone",
