@@ -43,6 +43,19 @@ export const POSTER_INTRINSIC = {
   w500: { width: 500, height: 750 },
 } as const;
 
+/**
+ * مقاسا الخلفيّة الجوهريّان — ١٦:٩ بحسابٍ لا بتخمين.
+ *
+ * **ولماذا مقاسان لا واحد** (سدادُ دَين D-845): `w300` يسلك الممرَّ
+ * المخزَّن فمرشَّحاتُه رابطٌ واحدٌ مكرَّر — **فيُكتب بمقاسٍ صريحٍ
+ * ينتج مرشَّحَين** — **و`w780` سطحُ محسِّنٍ مرشَّحاتُه متباينةٌ
+ * حقّاً فيبقى على `fill`** (D-841، القاعدةُ الرابعة في D-845).
+ */
+export const BACKDROP_INTRINSIC = {
+  w300: { width: 300, height: 169 },
+  w780: { width: 780, height: 439 },
+} as const;
+
 export function posterUrl(path: string | null, size: "w185" | "w342" | "w500" = "w342") {
   return tmdbImage(path, size);
 }
