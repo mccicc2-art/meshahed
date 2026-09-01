@@ -59,16 +59,10 @@ import {
 import { ScrollMemory } from "@/components/ScrollMemory";
 import { animeMovieRail, topChartRail, looksAnime, railGuard } from "@/lib/topChart";
 import { buildSection, sectionHref } from "@/lib/sections";
-import {
-  RAILS_COOKIE,
-  parseHiddenRails,
-  railsHiddenFor,
-  railOff,
-  isRailTab,
-} from "@/lib/railPrefs";
+import { railsHiddenFor, railOff, isRailTab } from "@/lib/railPrefs";
 import { attachImdbRatings, withImdbRatings, rankByImdb } from "@/lib/omdb";
 import { localizeRows } from "@/lib/localize";
-import { getT, getWatchRegion, getTabPrefs } from "@/lib/locale";
+import { getT, getWatchRegion, getTabPrefs, getHiddenRails } from "@/lib/locale";
 import { defaultTab } from "@/lib/tabPrefs";
 import { regionName } from "@/lib/region";
 import { num, type Locale } from "@/lib/i18n";
@@ -247,7 +241,9 @@ export default async function NewsPage({
      فلا يسأل كلُّ صفٍّ عن نفسه.
      ⚠️ **ولا تسري مع فلترٍ مفعَّل؟ بل تسري**: **من أطفأ صفّاً أطفأه**
      — **وصفٌّ يعود لأنّ المستخدم فلتر يُقرأ عطلاً** (D-346). */
-  const hiddenAll = parseHiddenRails((await cookies()).get(RAILS_COOKIE)?.value);
+  /* **والقراءةُ من `getHiddenRails`** (D-874): **صار للكوكي ثلاثةُ قرّاء**
+     — اكتشف والمكتبة والمجتمع — **فاستُخرج عند الثاني** (D-376). */
+  const hiddenAll = await getHiddenRails();
   /* 🔴 **والمجموعةُ تُقصَر على تبويبها هنا** (D-826) — **فالصفوفُ لا
      تحمل اسمَ تبويبها في كلِّ نداء**، **واللوحُ الذي يقول «صفوفُ هذا
      التبويب» يصدق.** */
