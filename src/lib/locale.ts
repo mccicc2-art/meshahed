@@ -2,6 +2,7 @@ import { cookies, headers } from "next/headers";
 import { LOCALE_COOKIE, normalizeLocale, getDict, type Locale, type Dict } from "@/lib/i18n";
 import { REGION_COOKIE, DEFAULT_REGION, normalizeRegion } from "@/lib/region";
 import { TITLE_MODE_COOKIE, parseTitleMode, type TitleMode } from "@/lib/titleMode";
+import { parseHiddenRails, RAILS_COOKIE } from "@/lib/railPrefs";
 import {
   TAB_SURFACES,
   parseTabPrefs,
@@ -120,6 +121,22 @@ export async function getTabPrefs(surface: TabSurface): Promise<TabPref[]> {
     );
   } catch {
     return parseTabPrefs(surface, null);
+  }
+}
+
+/**
+ * 🆕 **صفوفُ الصفحة المخفيّة من الكوكي** (D-826 → D-874): **كانت تُقرأ في
+ * `news/page.tsx` وحدَها**، **والمكتبةُ والمجتمعُ قارئان ثانٍ وثالث** —
+ * **فالاستخراجُ عند القارئ الثاني** (D-376) **وإلى جانب `getTabPrefs`:
+ * تفضيلُ عرضٍ من الكوكي كأخيه، ومن قرأ أحدَهما يجد الآخر.**
+ * **وتعود المجموعةَ كاملةً (`tab:key`)** — **فالصفحةُ تُمرّرها إلى اللوح
+ * كما هي وتقصّ نطاقَها بـ`railsHiddenFor`.**
+ */
+export async function getHiddenRails(): Promise<Set<string>> {
+  try {
+    return parseHiddenRails((await cookies()).get(RAILS_COOKIE)?.value);
+  } catch {
+    return new Set();
   }
 }
 

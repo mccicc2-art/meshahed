@@ -606,7 +606,9 @@ const ar = {
   followersLabel: "متابِع",
   followingLabel: "يتابع",
   followListEmpty: "لا أحد هنا بعد",
-  /* 🆕 صفحةُ المتابعات (D-565) */
+  /* المفتاحان وُلدا لصفحة `/follows` (D-565) **وبقيا بعد حذفها لأن
+     قارئَهما تبدّل** — تبويبا ترويسة الملفّ و`HomeHeader` (جُرد في D-873:
+     **حيّان لا يتيمان**). */
   followsTabFollowing: "أتابعهم",
   followsTabFollowers: "يتابعونني",
   followListsSection: "قوائم المتابعة",
@@ -1845,6 +1847,10 @@ const ar = {
   listUnsavedToast: "أُزيلت من قوائمك",
   openMyLists: "افتح قوائمي",
   savedListsSection: "قوائم محفوظة",
+  /* 🆕 **عنوانُ «تجتمع عندك» في القاموس لا في المكوّن** (D-874): **لوحُ
+     الإخفاء يقرأ الاسمَ من القاموس نفسِه الذي يرسمه الصفّ** (D-703) —
+     **ونصٌّ مضمَّنٌ في المكوّن اسمٌ ثانٍ يفترق عند أوّل تعديل.** */
+  autoGroupsTitle: "تجتمع عندك",
   profileListsRail: "القوائم المعلنة",
   listShareToFriend: "أرسِلها لصديق",
   listShareToCommunity: "انشرها في مجتمعي",
@@ -3507,6 +3513,7 @@ const en: Dict = {
   listUnsavedToast: "Removed from your lists",
   openMyLists: "Open my lists",
   savedListsSection: "Saved lists",
+  autoGroupsTitle: "Recurring in your library",
   profileListsRail: "Public lists",
   listShareToFriend: "Send to a friend",
   listShareToCommunity: "Post to my community",

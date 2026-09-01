@@ -34,8 +34,17 @@ import type { Dict } from "@/lib/i18n";
 
 export const RAILS_COOKIE = "loopz_rails";
 
-/** تبويباتُ اكتشف التي لها صفوف */
-export type RailTab = "movies" | "shows" | "anime";
+/**
+ * تبويباتُ اكتشف التي لها صفوف — **وصفحتان انضمّتا في D-874** بحكم
+ * أحمد («نعم، للاثنين» على سؤال `05` §ب-٣): **«مكتبتي» و«المجتمع».**
+ * 🔑 **والنطاقُ هو الشيءُ الذي يراه المستخدمُ صفحةً باسم** — تبويبُ
+ * اكتشف عنده صفحة، **والمكتبةُ صفحة، والمجتمعُ صفحة** — **فالمفتاحُ
+ * `library:` و`community:` على وزن `movies:` بلا استثناء.**
+ */
+export type RailTab = "movies" | "shows" | "anime" | "library" | "community";
+
+/** **بترتيب الظهور في الشريط السفليّ** — **والقائمةُ الوحيدةُ للتبويبات** */
+export const RAIL_TABS: readonly RailTab[] = ["movies", "shows", "anime", "library", "community"];
 
 /**
  * 🔴 **المفاتيحُ نوعٌ لا نصّ** — **لأنّ خطأً في حرفٍ يسقط صامتاً**:
@@ -56,7 +65,16 @@ export type RailKey =
   | "top50"
   | "soon"
   | "top50a-movies"
-  | "top50a-shows";
+  | "top50a-shows"
+  /* D-874 — صفوفُ المكتبة (تبويبُ «قوائمي») */
+  | "autogroups"
+  | "savedlists"
+  /* D-874 — صفوفُ المجتمع (تبويبُ «أوائل») */
+  | "featured"
+  | "topweek"
+  | "topreviews"
+  | "talked"
+  | "rising";
 
 export interface RailSpec {
   key: RailKey;
@@ -146,12 +164,51 @@ export const RAILS: RailSpec[] = [
     tabs: ["anime"],
     label: (t) => t.top50AnimeSeries,
   },
+  /* ===== D-874 · المكتبة — تبويبُ «قوائمي» بترتيب ظهوره ===== */
+  {
+    key: "autogroups",
+    tabs: ["library"],
+    label: (t) => t.autoGroupsTitle,
+  },
+  {
+    /* **مفتاحٌ واحدٌ للمحفوظة في الصفحتين** — على وزن `cinemas`:
+       **الصفُّ واحدٌ عند المستخدم واسمُه يتبع صفحتَه.** */
+    key: "savedlists",
+    tabs: ["library", "community"],
+    label: (t, tab) => (tab === "community" ? t.peopleBoardSavedLists : t.savedListsSection),
+  },
+  /* ===== D-874 · المجتمع — تبويبُ «أوائل» بترتيب ظهوره (D-289/D-291) ===== */
+  {
+    key: "featured",
+    tabs: ["community"],
+    label: (t) => t.peopleBoardFeatured,
+  },
+  {
+    key: "topweek",
+    tabs: ["community"],
+    label: (t) => t.peopleBoardTop,
+  },
+  {
+    key: "topreviews",
+    tabs: ["community"],
+    label: (t) => t.peopleBoardTopReview,
+  },
+  {
+    key: "talked",
+    tabs: ["community"],
+    label: (t) => t.peopleBoardTalked,
+  },
+  {
+    key: "rising",
+    tabs: ["community"],
+    label: (t) => t.peopleBoardRising,
+  },
 ];
 
 const KNOWN: ReadonlySet<string> = new Set<string>(RAILS.map((r) => r.key));
 
 export function isRailTab(v: unknown): v is RailTab {
-  return v === "movies" || v === "shows" || v === "anime";
+  return (RAIL_TABS as readonly unknown[]).includes(v);
 }
 
 /**
@@ -209,7 +266,7 @@ export function parseHiddenRails(raw: string | null | undefined): Set<string> {
 export function serializeHiddenRails(hidden: Iterable<string>): string {
   const clean = parseHiddenRails([...hidden].join(","));
   const out: string[] = [];
-  for (const tab of ["movies", "shows", "anime"] as RailTab[]) {
+  for (const tab of RAIL_TABS) {
     for (const r of RAILS) {
       const tok = railToken(tab, r.key);
       if (clean.has(tok)) out.push(tok);
