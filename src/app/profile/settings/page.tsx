@@ -67,33 +67,48 @@ export default async function SettingsPage() {
       {/* ===== بطاقةُ الحساب ===== */}
       <div className={settingsCardRows}>
         {/* 🆕 **وشارتُك تُرى في بطاقتك أنت أوّلاً** (D-773ب): من دفع أو
-            وُثّق يرى ذلك حيث يفتح إعداداته. **والصفُّ كان باباً واحداً
-            يلفّ الاسم، ورابطٌ داخل رابطٍ ترميزٌ باطل** — فصار **باباً
-            للوجه وباباً للاسم** (عُرفُ D-281)، **والتظليلُ على الصفّ**
-            فلا شيءَ يتبدّل في العين. */}
-        <div className="flex items-center gap-3 p-3.5 transition hover:bg-surface-2 active:opacity-80">
-          <Link
-            href={username ? `/u/${username}` : "/profile"}
-            aria-label={t.setOpenProfile}
+            وُثّق يرى ذلك حيث يفتح إعداداته.
+
+            🔴 ⚖️ 🆕 **والصفُّ صار باباً واحداً** (D-849، بلاغُ أحمد
+            بلقطة: «هنا السهم ما هو شغّال»).
+
+            **وكان بابَين — للوجه وللاسم — والباقي ميّت**: **السهمُ
+            والمعرّفُ وكلُّ الفراغ بينهما لا يُضغط**، **والتظليلُ يعمّ
+            الصفَّ كلَّه عند المرور** — **فصفٌّ يضيء كلُّه ويحمل سهماً
+            ويستجيب في موضعين ضيّقين** (D-217: شكلُ بابٍ على ما ليس
+            باباً وعدٌ كاذب · D-030).
+
+            🔑 **وحجّةُ الانقسام سقطت بالقياس لا بالرأي**: **«رابطٌ داخل
+            رابطٍ ترميزٌ باطل» صحيحةٌ حين تختلف الوجهتان** — 📏 **والوجهتان
+            هنا نصٌّ واحد** (`/u/${username}`) — **فلم يكن هناك رابطان
+            يتداخلان أصلاً، بل رابطٌ واحدٌ كُتب مرّتين وتُرك ثلثا الصفِّ
+            بلا واحد.** **والشاراتُ أسطرٌ لا روابط** (فُحصت: `PlanPill`
+            و`VerifiedBadge` عناصرُ `span` خالصة) — **فلا تداخلَ.**
+
+            ⚖️ **وهذا نقضٌ محصورٌ لتطبيق D-281 هنا وحدَه**: **عُرفُها
+            «بابان لوجهتين» باقٍ حيث تختلف الوجهتان** — **والذي سقط
+            بابان لوجهةٍ واحدة.**
+
+            🔑 **والوصفةُ وصفةُ `SettingsRow` حرفاً** — **ولا صنفَ صفٍّ
+            ثانٍ يُخترع** (القاعدة ٣): **هو صفُّ فهرسٍ كبقيّته، وكلُّ
+            الفرق أنّ رمزَه وجهُك.** */}
+        <Link
+          href={username ? `/u/${username}` : "/profile"}
+          className="w-full flex items-center gap-3 p-3.5 text-start transition hover:bg-surface-2 active:opacity-80"
+        >
+          <Avatar
+            src={profile?.avatar_url ?? null}
+            name={displayName}
+            size={52}
+            alt=""
+            posY={profile?.avatar_pos ?? 50}
             className="shrink-0"
-          >
-            <Avatar
-              src={profile?.avatar_url ?? null}
-              name={displayName}
-              size={52}
-              alt=""
-              posY={profile?.avatar_pos ?? 50}
-            />
-          </Link>
+          />
           <span className="min-w-0 flex-1">
             <span className="flex items-center min-w-0" style={{ gap: 4 }}>
-              <Link
-                href={username ? `/u/${username}` : "/profile"}
-                className="block min-w-0 truncate text-15 font-bold"
-                dir="auto"
-              >
+              <span className="block min-w-0 truncate text-15 font-bold" dir="auto">
                 {displayName}
-              </Link>
+              </span>
               <AccountBadges profile={profile} t={t} />
             </span>
             {username && (
@@ -107,7 +122,7 @@ export default async function SettingsPage() {
             size={18}
             className="shrink-0 text-muted -rotate-90 rtl:rotate-90"
           />
-        </div>
+        </Link>
       </div>
 
       <SettingsGroup label={t.setGroupAccount}>
