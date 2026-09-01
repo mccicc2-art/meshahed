@@ -9,6 +9,7 @@ import { getDict, type Dict, type Locale } from "@/lib/i18n";
 import { formatDateShort } from "@/lib/when";
 import { IMG } from "@/lib/media";
 import { Icon } from "./Icon";
+import { OneTimeHint } from "./OneTimeHint";
 import { ImdbMark } from "./RatingMarks";
 import { Alert } from "./ui/Alert";
 import dynamic from "next/dynamic";
@@ -494,6 +495,12 @@ export function EpisodeTracker({
 
   return (
     <div>
+      {/* 🆕 **التلميحُ الأوّلُ في الترتيب لأنّه أقوى ما يُجهَل** (D-852):
+          **«شاهدتُ حتى هنا» والموسمُ الكامل يختصران عشراتِ الضغطات** —
+          **ومن لا يعرفهما يؤشّر حلقةً حلقة** ويظنّ التطبيقَ بطيئاً.
+          ⚠️ **ويُقرأ مرّةً ثمّ يصمت للأبد** (`OneTimeHint`) — لا صفٌّ
+          دائمٌ يشرح، **وشرحٌ لا يصمت يصير أثاثاً.** */}
+      <OneTimeHint id="episode-bulk" text={t.hintEpisodeBulk} closeLabel={t.closeLabel} />
       <div className="mb-5">
         <div className="flex items-center justify-between text-sm mb-2">
           <span className="text-muted">{t.watchedOf(watchedAired, airedTotal)}</span>
