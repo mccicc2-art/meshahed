@@ -72,6 +72,12 @@ export function PrivacyData({
     startDelete(async () => {
       try {
         await deleteMyAccount();
+        /* 🆕 **تحميلٌ كاملٌ لا تنقّلُ موجِّه** (D-869، قاعدةٌ جديدةٌ في
+           `eslint-config-next@16.3.0`): **الحسابُ حُذف للتوّ** —
+           **و`router.push` يُبقي شجرةَ العميل ومخبأَ الموجِّه لحسابٍ لم
+           يعد له وجود**، فتُعرض بقاياه حتى أوّل تحديث. **والتحميلُ
+           الكاملُ يُسقط الحالةَ كلَّها**، وهو المقصود هنا لا سهو. */
+        // eslint-disable-next-line @next/next/no-location-assign-relative-destination
         window.location.href = "/login";
       } catch (e) {
         setArmed(false);
