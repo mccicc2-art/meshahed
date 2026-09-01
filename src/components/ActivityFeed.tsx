@@ -19,6 +19,7 @@ import { Avatar } from "./Avatar";
 import { Icon } from "./Icon";
 import { LikeButton } from "./LikeButton";
 import { PosterCard } from "./PosterCard";
+import type { LibState, TitleState } from "@/lib/libState";
 import { ShareTitleButton } from "./ShareTitleButton";
 import { ProfileMenu } from "./ProfileMenu";
 import { RowComment } from "./RowComment";
@@ -114,6 +115,7 @@ export function ActivityFeed({
   news,
   meId,
   followed = new Set<string>(),
+  libState,
   postLikes,
   views,
   followingIds,
@@ -138,6 +140,13 @@ export function ActivityFeed({
    * «احفظ» لا «محفوظ»** — وهو الاتجاه الآمن: أوّلُ لمسةٍ تُصلحه بـ`upsert`.
    */
   followed?: ReadonlySet<string>;
+  /**
+   * 🆕 **حالةُ مكتبتك للأعمال المعروضة** (D-850) — **`getLibState`
+   * نفسُها التي تقرؤها ستّةُ أسطحٍ أخرى** (D-322)، **لا مجموعةٌ ثانية.**
+   * ⚠️ **واختياريّةٌ**: **غيابُها يُبقي `followed` وحدَها** — سماويٌّ
+   * كما كان — **فمستدعٍ لم يلحق لا ينكسر** (D-152).
+   */
+  libState?: LibState;
   /** إعجاباتُ الأخبار — تُقرأ في الصفحة بنداءٍ واحدٍ للقائمة كلِّها */
   postLikes?: PostLikes;
   /**
@@ -322,6 +331,7 @@ export function ActivityFeed({
             a={row.item}
             meId={meId}
             added={followed.has(key)}
+            state={libState?.of(row.item.tmdb_id, row.item.media_type)}
             viewKey={commentViewKey(row.item.person.id, row.item.media_type, row.item.tmdb_id)}
             views={views}
             iFollowThem={followingIds?.has(row.item.person.id) ?? false}
@@ -334,6 +344,7 @@ export function ActivityFeed({
             key={`n-${row.item.key}`}
             n={row.item}
             added={followed.has(key)}
+            state={libState?.of(row.item.tmdb_id, row.item.media_type)}
             viewKey={newsViewKey(row.item.key)}
             views={views}
             likes={postLikes?.counts[key] ?? 0}
@@ -373,6 +384,7 @@ export function RowPoster({
   title,
   posterPath,
   added,
+  state,
   locale,
 }: {
   tmdbId: number;
@@ -380,8 +392,29 @@ export function RowPoster({
   title: string;
   posterPath: string | null;
   added: boolean;
+  /**
+   * ✅ 🆕 **الحالةُ الكاملةُ للعمل — والدَّينُ سُدَّ** (D-850، بلاغُ أحمد
+   * بلقطةٍ محوَّطة: «هذا أنا شايفه، المفروض الخط أخضر»).
+   *
+   * 🔴 **وكان دَيناً معلَناً في هذا الملفّ منذ D-229 بنصِّه**: «الأخضرُ
+   * لا يُرسم هنا لأن الخطَّ لا يقرأ شوهد كاملاً؛ **يعود يوم يقرأه**».
+   * **وقد صار يقرؤه منذ D-322** (`StatusThread` بحالاته الأربع)
+   * **و`getLibState` تحسبها لستّة أسطحٍ أخرى** — **وبقي هذا السطحُ
+   * وحدَه يرسل `added` عارياً.**
+   *
+   * 📏 **والمقيسُ في القاعدة يوم البلاغ**: `Heroes` (1639) **٧٨ من ٧٨
+   * حلقة** — **والبطاقةُ ترسم سماويَّ «عندك ولم يبدأ» فوق مراجعةٍ كتبها
+   * صاحبُها بعشرةٍ من عشرة.** **وحالةٌ تناقض ما تحتها ليست حالةً هادئة.**
+   *
+   * ⚠️ **واختياريّةٌ لرفعةٍ واحدة** (`19` §٢): **قارئاها في مجلّدين
+   * آخرين** — **فتُقبل ولا تُفرض حتّى يلحقا، ثمّ يسقط `added`.**
+   */
+  state?: TitleState;
   locale: Locale;
 }) {
+  /* **والغيابُ يعني السلوكَ القديم حرفاً** (D-152): مستدعٍ لم يلحق
+     بعدُ يرسل `added` وحدَه فيرى السماويَّ كما كان. */
+  const st = state ?? { added, watched: false, progress: 0, dropped: false };
   return (
     <div className={`${POSTER_W} shrink-0`}>
       {/* **`hideTitle`** (D-225، بلاغُ أحمد): فنُّ الملصق يحمل العنوان في
@@ -395,12 +428,19 @@ export function RowPoster({
         posterSize="w185"
         fallbackIcon={mediaType === "tv" ? "tv" : "film"}
         hideTitle
-        /* **الخيطُ الرماديّ يقول «عندك»** (D-229) — والأخضرُ لا يُرسم هنا
-           لأن الخطَّ لا يقرأ «شوهد كاملاً»؛ يعود يوم يقرأه. */
-        saved={added}
+        /* ✅ **والحالاتُ الأربعُ كلُّها تُرسم اليوم** (D-850): سماويٌّ
+           «عندك» · أصفرُ بمقدار التقدّم · أخضرُ للمنتهي · أحمرُ
+           للموقوف — **وصفةُ `StatusThread` نفسُها التي يلبسها كلُّ
+           ملصقٍ في التطبيق** (D-322)، لا ثانيةٌ تُخترع. */
+        saved={st.added}
+        watched={st.watched}
+        progress={st.progress}
+        dropped={st.dropped}
         /* **الضغطُ المطوَّل بأفعاله الثلاثة** — وهو بديلُ المِرجَعية التي
-           غادرت الذيل (D-229، طلبُ أحمد) */
-        hold={{ tmdbId, mediaType, added, watched: false, locale }}
+           غادرت الذيل (D-229، طلبُ أحمد).
+           🔴 **و`watched` هنا كان مسمَّراً على `false`** فكان الضغطُ
+           المطوَّل يعرض «أشِّر مشاهَداً» على عملٍ انتهيتَ منه. */
+        hold={{ tmdbId, mediaType, added: st.added, watched: st.watched, locale }}
       />
     </div>
   );
@@ -440,6 +480,7 @@ function CommentRow({
   a,
   meId,
   added,
+  state,
   viewKey,
   views,
   iFollowThem,
@@ -452,6 +493,8 @@ function CommentRow({
   translated?: string | null;
   meId: string;
   added: boolean;
+  /** 🆕 حالةُ العمل في مكتبتك (D-850) — تمرُّ إلى `RowPoster` كما هي */
+  state?: TitleState;
   viewKey: string;
   views?: Map<string, number>;
   iFollowThem: boolean;
@@ -715,6 +758,7 @@ function CommentRow({
           title={a.title ?? ""}
           posterPath={a.poster_path}
           added={added}
+          state={state}
           locale={locale}
         />
       ) : (
@@ -740,6 +784,7 @@ function CommentRow({
 function NewsRow({
   n,
   added,
+  state,
   viewKey,
   views,
   likes,
@@ -750,6 +795,8 @@ function NewsRow({
 }: {
   n: LoopzNewsItem;
   added: boolean;
+  /** 🆕 حالةُ العمل في مكتبتك (D-850) — تمرُّ إلى `RowPoster` كما هي */
+  state?: TitleState;
   viewKey: string;
   views?: Map<string, number>;
   likes: number;
@@ -946,6 +993,7 @@ function NewsRow({
         title={n.title}
         posterPath={n.poster_path}
         added={added}
+        state={state}
         locale={locale}
       />
     </article>
