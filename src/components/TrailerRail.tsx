@@ -94,8 +94,6 @@ export function TrailerRail({
                 title={i.title}
                 /* أوّلُ بطاقةٍ فوق الطيّة (D-756): صورتُها بأولويّة */
                 eager={index === 0}
-                href={feedHref(i)}
-                openLabel={i.title}
                 playLabel={t.trailerPlay}
                 muteLabel={t.trailerMute}
                 unmuteLabel={t.trailerUnmute}
