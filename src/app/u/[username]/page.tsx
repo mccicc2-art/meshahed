@@ -47,6 +47,7 @@ import { PageTabs, type PageTab } from "@/components/ui/PageTabs";
 import { ShareTitleButton } from "@/components/ShareTitleButton";
 import { FeedReviewText } from "@/components/FeedReviewText";
 import { RowPoster } from "@/components/ActivityFeed";
+import { getLibState } from "@/lib/libState";
 import { RowComment } from "@/components/RowComment";
 import { LikeButton } from "@/components/LikeButton";
 import { timeAgoShort } from "@/lib/when";
@@ -244,6 +245,12 @@ export default async function PublicProfilePage({
   const myLibKeys = new Set(
     myLibRows.map((f) => `${f.media_type}-${f.tmdb_id}`),
   );
+  /* ✅ 🆕 **والخيطُ يقول أربعةً لا واحداً** (D-850): **`myLibKeys` تجيب
+     «عندك أم لا»** — **وتبويبُ المراجعات يلبس بطاقةَ المجتمع نفسَها**
+     (D-583) **فيرث عطلَها نفسَه**: سماويُّ «لم يبدأ» فوق مراجعةٍ لعملٍ
+     انتهيتَ منه. **والحالةُ حالةُ القارئ لا صاحبِ الصفحة**، كالمفاتيح
+     فوقها حرفاً. */
+  const myState = await getLibState().catch(() => undefined);
 
   /* 🆕 **صفوفُ النشاط بلبوس شاشة `/activity`** (D-586) — **الإثراءُ
      وصفةُ صفحة النشاط حرفاً**: كلُّ صفٍّ يحمل اسمَه يتبرّع به لغيره،
@@ -1756,6 +1763,7 @@ export default async function PublicProfilePage({
                     title={r.title ?? ""}
                     posterPath={r.poster_path}
                     added={myLibKeys.has(`${r.media_type}-${r.tmdb_id}`)}
+                    state={myState?.of(r.tmdb_id, r.media_type)}
                     locale={locale}
                   />
                 </article>
