@@ -1,8 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Icon } from "../Icon";
 import {
   clockText,
@@ -26,11 +25,16 @@ import {
  * **زرُّ الصوت** يعرض الحالةَ **الفعليّة** المقروءةَ من المشغّل — لا
  * الرغبة (المواصفة خامسًا/٦)، ولا يفتح صفحةً ولا يعيد بناء شيء.
  *
- * ⚖️ **أدواتُ التحكّم عادت بطلب صاحبها** (D-762: «إيقاف، تكبير، تقديم
- * وتأخير») — ناقضةً حذفَ D-759 سابعًا: سطحُ إيقافٍ/استئناف، شريطُ
- * تقديمٍ (`TrailerScrubber` الرسمي)، وزرُّ تكبيرٍ مسرحيّ. **وفي الرايل
- * تبقى البطاقةُ نافذةً** (`withControls` غائب): الضغطةُ تفتح الصفحةَ
- * (D-743) والوقتُ نصٌّ للقراءة.
+ * ⚖️ **أدواتُ التحكّم عادت بطلب صاحبها** (D-762) — سطحُ استئنافٍ وشريطُ
+ * تقديمٍ وزرُّ تكبير.
+ *
+ * ⚖️ 🆕 **وفي الرايل صارت البطاقةُ مقطعاً لا نافذة** (D-861، حكمُ أحمد:
+ * «يخفي شريط التقدم وكل شي ماعدا الصوت · وإذا ضغطت عليه تظهر · وحالياً
+ * يفتح صفحة ترايلر ألغِها، والوصولُ من العنوان أو زرّ All فقط») —
+ * **نقضٌ صريحٌ لنافذة D-743**: الضغطةُ على المقطع **تُظهر الأدوات ولا
+ * تنقل**. 🔑 **والسببُ أن الوجهتين اجتمعتا على سطحٍ واحد**: من ضغط
+ * ليكتم أو ليقدّم وجد نفسَه في صفحةٍ أخرى — **وبابُ الصفحة له نصُّه
+ * وزرُّه، وهما لا يلتبسان بالفيديو.**
  */
 
 export function TrailerCardMedia({
@@ -39,15 +43,12 @@ export function TrailerCardMedia({
   backdrop,
   title,
   eager = false,
-  href,
-  openLabel,
   playLabel,
   muteLabel,
   unmuteLabel,
   withControls = false,
   seekLabel,
   expandLabel,
-  onOpen,
   onUnavailable,
 }: {
   id: string;
@@ -55,8 +56,6 @@ export function TrailerCardMedia({
   backdrop: string | null;
   title: string;
   eager?: boolean;
-  href?: string;
-  openLabel?: string;
   playLabel: string;
   muteLabel: string;
   unmuteLabel: string;
@@ -64,7 +63,6 @@ export function TrailerCardMedia({
   withControls?: boolean;
   seekLabel?: string;
   expandLabel?: string;
-  onOpen?: () => void;
   onUnavailable?: () => void;
 }) {
   const api = useTrailerPlayback();
@@ -87,7 +85,18 @@ export function TrailerCardMedia({
   const revealed = isActive && (snap.phase === "playing" || snap.phase === "paused");
   /* 🆕 D-764: الأزرارُ تتوارى بعد ٥ ثوانِ تشغيل — فئةُ التلاشي واحدة */
   const controls = snap.controlsVisible;
-  const fade = `transition-opacity duration-300 ${controls ? "opacity-100" : "pointer-events-none opacity-0"}`;
+  /* 🆕 **وفي الرايل لا تظهر الأدواتُ إلا بلمسة** (D-861): المتحكّمُ يكشفها
+     ثانيتين عند الإقلاع (D-764) — **وحكمُ أحمد أن تبدأ مخفيّةً تماماً.**
+     🔑 **ولا مؤقّتَ ثانياً يُخترع**: التوقيتُ يبقى للمتحكّم وحدَه (ق٣)،
+     وهذه رايةٌ محلّيّةٌ تقول «هل لمسها صاحبُها بعد؟» — تُرفع باللمسة
+     وتسقط مع أوّل إخفاءٍ يقرّره المتحكّم. */
+  const [poked, setPoked] = useState(false);
+  /* ⚠️ **وإسقاطُ الراية اشتقاقٌ أثناء الرسم لا أثرٌ جانبيّ**: نمطُ React
+     الرسميّ لتصفير حالةٍ تتبع قيمةً خارجيّة — **و`useEffect` هنا كان
+     يرسم مرّتين ويخالف قاعدةَ الخطّافات.** */
+  if (!controls && poked) setPoked(false);
+  const chrome = withControls ? controls : controls && poked;
+  const fade = `transition-opacity duration-300 ${chrome ? "opacity-100" : "pointer-events-none opacity-0"}`;
   const showsPlayButton =
     (isActive && (snap.phase === "paused" || snap.phase === "blocked" || snap.phase === "stalled")) ||
     (!playing && snap.manualOnly);
@@ -114,33 +123,34 @@ export function TrailerCardMedia({
         />
       ) : null}
 
-      {/* بابُ الصفحة الكاملة — على مقطعٍ يعمل فقط (D-743: الضغطةُ على
-          الواقف تعني «شغّله» لا «انقلني») */}
-      {href && playing ? (
-        <Link
-          href={href}
-          prefetch={false}
-          aria-label={openLabel ?? title}
-          className="absolute inset-0 z-40"
-          onClick={onOpen}
-        />
-      ) : null}
-
+      {/* 🗑️ ⚖️ **وسقط بابُ الصفحة من فوق المقطع** (D-861 — نقضُ D-743
+          بحكم صاحبه): كان رابطاً يغطّي المساحة كلَّها حين تعمل،
+          **فالضغطةُ تنقل ولا تكشف** — **وسطحٌ واحدٌ لوجهتين يُقرأ
+          خطأً** (ق٦). **والوجهةُ باقيةٌ في نصِّ العنوان وزرِّ All.** */}
       {/* ⚖️ 🆕 D-771 (حكمه: «تلغي خيار إيقاف الفديو خله دائماً شغال» —
           نقضٌ صريحٌ منه لسطحِ الإيقاف الذي طلبه في D-762): لمسةُ السطح
           في العلف تُظهر الأزرارَ فقط ولا توقف أبداً — والي فاته شيءٌ
           يرجع بشريط التقديم. وفي الرايل كما كان: زرُّ تشغيلٍ للواقفة،
           ونافذةُ D-743 للعاملة. */}
-      {!playing || withControls ? (
+      {/* ⚖️ 🆕 **والسطحُ حاضرٌ دائماً** (D-861): كان يغيب في الرايل أثناء
+          التشغيل لأن الرابطَ يعتليه — **وقد سقط الرابط، فاللمسةُ صارت
+          له**: تكشف الأدواتِ إن كان يعمل، وتُشغّل إن كان واقفاً. */}
+      {true ? (
         <button
           type="button"
           onClick={() => {
-            if (playing && withControls) api.pokeControls();
-            else api.tapPlay(id);
+            if (playing) {
+              api.pokeControls();
+              setPoked(true);
+            } else api.tapPlay(id);
           }}
-          aria-label={playLabel}
-          aria-hidden={!showsPlayButton}
-          tabIndex={showsPlayButton ? 0 : -1}
+          /* ⚠️ 🆕 **والسطحُ يُعلَن لقارئ الشاشة حين يعمل أيضاً** (D-861):
+             **صار هو بابَ كشفِ الأدوات** — **وإخفاؤه كما كان يترك
+             مستعملَ لوحةِ المفاتيح بلا وصولٍ إلى الصوت والتقديم.**
+             واسمُه اسمُ العمل حينئذٍ لا كلمة «تشغيل» التي تكذب. */
+          aria-label={showsPlayButton ? playLabel : title}
+          aria-hidden={!showsPlayButton && !playing}
+          tabIndex={showsPlayButton || playing ? 0 : -1}
           className="absolute inset-0 z-50 grid place-items-center"
         >
           {showsPlayButton ? (
@@ -174,7 +184,10 @@ export function TrailerCardMedia({
           type="button"
           onClick={() => api.tapSound()}
           aria-label={snap.soundOn ? muteLabel : unmuteLabel}
-          className={`absolute end-2.5 top-2.5 z-50 grid h-9 w-9 place-items-center rounded-full bg-black/55 text-white backdrop-blur-sm active:opacity-70 ${fade}`}
+          /* ⚖️ 🆕 **والصوتُ وحدَه لا يتوارى** (D-861، نصُّ حكمه: «كل شي
+             ماعدا الصوت») — **وهو الفعلُ الوحيدُ الذي يُطلب بلا مقدّمة**:
+             مقطعٌ يبدأ صامتاً وصاحبُه يريد سماعَه **لا ينتظر لمستين.** */
+          className="absolute end-2.5 top-2.5 z-50 grid h-9 w-9 place-items-center rounded-full bg-black/55 text-white backdrop-blur-sm active:opacity-70"
         >
           <Icon name={snap.soundOn ? "volume" : "volume-off"} size={17} />
         </button>
