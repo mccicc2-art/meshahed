@@ -286,7 +286,7 @@ export default async function RootLayout({
             فإن كبر الدوك يوماً كبر هذا معه أو انكشف فوراً. */}
         <main
           id="main"
-          className="flex-1 w-full max-w-6xl mx-auto px-4 pt-6 pb-[calc(71px+max(0.5rem,env(safe-area-inset-bottom)/2))] md:pb-8"
+          className="flex-1 w-full max-w-shell mx-auto px-4 pt-6 pb-[calc(71px+max(0.5rem,env(safe-area-inset-bottom)/2))] md:pb-8"
         >
           {children}
         </main>
