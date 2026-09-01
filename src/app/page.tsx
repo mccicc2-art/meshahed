@@ -59,7 +59,9 @@ import { ListContinueCard } from "@/components/ListContinueCard";
 import { ToWatchListCard } from "@/components/ToWatchListCard";
 /* اسمُ قائمةِ لوبز يُترجَم عند العرض لا يُخزَّن (D-328/D-373) */
 import { curatedName } from "@/lib/universes";
-import { PosterRail, RailItem } from "@/components/PosterRail";
+import { PosterRail, RailItem, seeAllClass } from "@/components/PosterRail";
+import { PosterGrid } from "@/components/PosterGrid";
+import { ProfileStatSheet } from "@/components/ProfileStatSheet";
 import { RailNewBadge } from "@/components/RailNewBadge";
 import { PublicListsRail } from "@/components/PublicListsRail";
 import { Icon, type IconName } from "@/components/Icon";
@@ -1543,6 +1545,56 @@ async function HomeBody({
            لا يمسّ سطراً واحداً. */
         const cap = (n: number) => capCards(n, prefs.cards);
 
+        /* 🔴 🆕 ===== D-868: «الكل» تفتح ورقةً لا تنقل إلى المكتبة =====
+
+           **حكمُ أحمد** (الشقُّ الثاني من طلب D-863، بلقطةٍ محوَّطة):
+           «وخيار all لا يوديني المكتبة، يفتحها منبثقة هنا».
+
+           🔑 **والمفردةُ مسنونةٌ عندنا قبل اليوم** (D-624/D-217):
+           **«الكل ←» بسهمٍ وعدُ انتقال، و«الكل» بلا سهمٍ وعدُ ورقة** —
+           **فالتنفيذُ إسقاطُ السهم لا اختراعُ لغة.**
+
+           ⚠️ **والمكتبةُ لم تُهجر**: **العنوانُ بابُها كما هو** (D-378)
+           — **ورقةٌ تُضاف ووجهةٌ تبقى، لا استبدال.**
+
+           ⚠️ **والورقةُ تُرسم مع الصفحة لا عند فتحها** (سابقةُ D-644:
+           `ProfileStatSheet` تأخذ محتواها مرسوماً من الخادم فتبقى
+           الملصقاتُ مكوّناتِ خادم) — **ولذلك سقفٌ يُقصّ**: مكتبةٌ من
+           خمسمئة عملٍ تعني خمسَمئةِ بطاقةٍ في حمولة كلِّ فتحةٍ للرئيسية
+           (`LOOPZ-AUD-0036`/`0038`). **والسقفُ ٥٠ — سقفُ D-733 نفسُه**،
+           **ويُقال ولا يُخفى**: العددُ الحقيقيُّ في رأس الورقة، **ورابطُ
+           المكتبة بسهمه في ذيلها حين يُقصّ** (D-030: لا وعدَ بلا باب). */
+        const ALL_SHEET_CAP = 50;
+        const allSheetDoor = (
+          label: string,
+          total: number,
+          href: string,
+          cards: React.ReactNode[],
+        ) =>
+          total > 0 ? (
+            <ProfileStatSheet
+              title={`${label} · ${t.listCount(total)}`}
+              closeLabel={t.closeLabel}
+              className={seeAllClass}
+              content={
+                <>
+                  <PosterGrid>{cards}</PosterGrid>
+                  {total > ALL_SHEET_CAP && (
+                    <Link
+                      href={href}
+                      prefetch={false}
+                      className="mt-4 block text-center text-12 font-medium text-accent"
+                    >
+                      {t.seeAll}
+                    </Link>
+                  )}
+                </>
+              }
+            >
+              {t.allWord}
+            </ProfileStatSheet>
+          ) : undefined;
+
         /* **وضعُ العرض يُقرأ مرّةً هنا** (D-434) — **والبياناتُ أعلاه
            واحدةٌ للوضعين**: لا نداءَ ثانٍ ولا فرعَ جلبٍ ثانٍ، **والفرقُ
            في آخر خطوةٍ وحدَها.**
@@ -1575,7 +1627,7 @@ async function HomeBody({
                 <QueueOrderButton
                   row="towatch"
                   label={t.listReorder}
-                  word={t.allWord}
+                  word={t.listReorder}
                 />
               ) : undefined
             }
@@ -1714,7 +1766,20 @@ async function HomeBody({
                 icon="tv"
                 iconColor="var(--accent)"
                 href="/library?filter=tv"
-                seeAll={t.seeAll}
+                seeAllDoor={allSheetDoor(
+                  t.myShows,
+                  myShows.length,
+                  "/library?filter=tv",
+                  myShows.slice(0, ALL_SHEET_CAP).map((i) => (
+                    <PosterCard
+                      key={`as-${i.id}`}
+                      href={`/show/${i.id}`}
+                      title={i.name}
+                      posterPath={i.posterPath}
+                      progress={i.progress}
+                    />
+                  )),
+                )}
               >
                 {myShows.slice(0, cap(myShows.length)).map((i) => (
                   <PosterCard
@@ -1752,7 +1817,20 @@ async function HomeBody({
                 icon="film"
                 iconColor="var(--accent)"
                 href="/library?filter=movie"
-                seeAll={t.seeAll}
+                seeAllDoor={allSheetDoor(
+                  t.myMovies,
+                  myMovies.length,
+                  "/library?filter=movie",
+                  myMovies.slice(0, ALL_SHEET_CAP).map((m) => (
+                    <PosterCard
+                      key={`am-${m.tmdbId}`}
+                      href={`/movie/${m.tmdbId}`}
+                      title={m.title}
+                      posterPath={m.posterPath}
+                      progress={m.progress}
+                    />
+                  )),
+                )}
               >
                 {myMovies.slice(0, cap(myMovies.length)).map((m) => (
                   <PosterCard
@@ -1879,7 +1957,7 @@ async function HomeBody({
                       <QueueOrderButton
                         row="lists"
                         label={t.listReorder}
-                        word={t.allWord}
+                        word={t.listReorder}
                       />
                     ) : undefined
                   }
@@ -1980,6 +2058,7 @@ function Section({
   subtitle,
   href,
   seeAll,
+  seeAllDoor,
   action,
   wide = false,
   view = "visual",
@@ -1992,6 +2071,8 @@ function Section({
   subtitle?: string;
   href?: string;
   seeAll?: string;
+  /** 🆕 **بابُ الورقة بدل رابط الانتقال** (D-868) — يُمرَّر كما هو */
+  seeAllDoor?: React.ReactNode;
   /** 🆕 مقبضُ ترتيب الأقسام (D-595) — يجلس بجوار «الكلّ» لا مكانه */
   action?: React.ReactNode;
   /** بطاقات عريضة بصورة المشهد بدل الملصق */
@@ -2048,6 +2129,7 @@ function Section({
       subtitle={subtitle}
       href={href}
       seeAllLabel={seeAll}
+      seeAllDoor={seeAllDoor}
       action={action}
       /* المختصر بلا مجالِ تمرير: **قائمةٌ تُقرأ لا صفٌّ يُسحب** */
       bare={view === "compact" || solo}
@@ -2202,7 +2284,7 @@ async function ContinueSection({
             <QueueOrderButton
               row="continue"
               label={t.listReorder}
-              word={t.allWord}
+              word={t.listReorder}
             />
           ) : undefined
         }
