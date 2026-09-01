@@ -18,6 +18,7 @@ import {
   todayIn,
 } from "@/lib/calendar";
 import { CalendarMonth } from "@/components/CalendarMonth";
+import { OneTimeHint } from "@/components/OneTimeHint";
 import { SettingsHeader } from "@/components/settings/SettingsHeader";
 import { PlusPill } from "@/components/ui/PlusPill";
 import { PlusPreview } from "@/components/stats/PlusPreview";
@@ -140,6 +141,10 @@ export default async function CalendarPage({
       />
 
       <div className="mt-2">
+        {/* 🆕 **تلميحُ الصفحة** (D-852): **بابُ التقويم عنوانُ شريط
+            الأسبوع في الرئيسيّة** — **وصفحةٌ يُوصَل إليها من عنوانٍ
+            صغيرٍ تُفتح مرّةً وتُنسى** إن لم تقل ما تعطيه. */}
+        <OneTimeHint id="calendar-intro" text={t.hintCalendar} closeLabel={t.closeLabel} />
         <p className="text-12 text-muted mb-4" dir="auto">
           {t.calSub}{" "}
           {/* ⚠️ **وسقفُ معرفتنا مكتوبٌ في الصفحة لا في تعليقٍ وحدَه**
