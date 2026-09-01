@@ -12,6 +12,21 @@ import { ListRateStar } from "./ListRateStar";
 import type { PublicListCard } from "@/lib/data";
 
 /**
+ * 🆕 **دسُّ البطاقة الغريبة في موضعها** (D-866) — **حسبةٌ واحدةٌ
+ * للفرعين** (الرفُّ والشبكة، D-145): موضعٌ سالبٌ أو خارجُ المدى يعني
+ * «لا موضعَ لها» فتُترك، **والصفرُ هو السلوكُ القائم** (الصدارة).
+ */
+function slots(
+  cards: React.ReactNode[],
+  lead: React.ReactNode | null,
+  at: number,
+): React.ReactNode[] {
+  if (!lead) return cards;
+  const i = Math.min(Math.max(at, 0), cards.length);
+  return [...cards.slice(0, i), lead, ...cards.slice(i)];
+}
+
+/**
  * صفّ «قوائم من المجتمع» — اكتشاف القوائم المعلنة في اكتشف.
  *
  * مكوّن خادمٍ بلا تفاعل: البطاقة رابطٌ واحد إلى `/lists/[id]` (الصفحة
@@ -32,6 +47,7 @@ export function PublicListsRail({
   grid = false,
   action,
   leading,
+  leadingIndex = 0,
 }: {
   lists: PublicListCard[];
   locale: Locale;
@@ -64,6 +80,14 @@ export function PublicListsRail({
    * `ToWatchListCard` نفسَها.
    */
   leading?: React.ReactNode;
+  /**
+   * 🆕 **وموضعُها ليس الصدارةَ حتماً** (D-866، بلاغُ أحمد: «تو واتش
+   * خليها تكون ظاهرة هنا عشان أرتّبها»): **بطاقةٌ تُعرض تُرتَّب** —
+   * **فالمستدعي يقول أين تجلس بين البطاقات** بعد تطبيق ترتيب صاحبها،
+   * **والافتراضُ صفرٌ فلا يتغيّر مستدعٍ قائم** (D-028: المكتبةُ لا
+   * ترتّب صفَّها فتبقى بطاقتُها أوّلاً).
+   */
+  leadingIndex?: number;
 }) {
   const t = getDict(locale);
   if (!lists.length && !leading) return null;
@@ -97,12 +121,15 @@ export function PublicListsRail({
               ⚠️ **ومن `sm` عمودان**: الشاشةُ الواسعة تسع الاثنين
               بعرضٍ يفوق ٢٨٠ لكلٍّ منهما. */}
         <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-          {leading && <li className="min-w-0">{leading}</li>}
-          {lists.map((l, i) => (
-            <li key={l.id} className="min-w-0">
-              {cards[i]}
-            </li>
-          ))}
+          {slots(
+            lists.map((l, i) => (
+              <li key={l.id} className="min-w-0">
+                {cards[i]}
+              </li>
+            )),
+            leading ? <li key="lead" className="min-w-0">{leading}</li> : null,
+            leadingIndex,
+          )}
         </ul>
       </PosterRail>
     );
@@ -115,15 +142,22 @@ export function PublicListsRail({
       iconColor="var(--accent-2)"
       action={action}
     >
-      {leading && <RailItem size="list">{leading}</RailItem>}
-      {lists.map((l, i) => (
-        /* `size="list"` لا الافتراض: خانة الملصق (118px) لبطاقةٍ أعرض
-           منها كانت تجعل البطاقات تتراكب فوق بعضها (لقطة المالك — D-084)،
-           🆕 **والمقاسُ كبر في D-433 ليساوي بطاقةَ الشبكة.** */
-        <RailItem key={l.id} size="list">
-          {cards[i]}
-        </RailItem>
-      ))}
+      {slots(
+        lists.map((l, i) => (
+          /* `size="list"` لا الافتراض: خانة الملصق (118px) لبطاقةٍ أعرض
+             منها كانت تجعل البطاقات تتراكب فوق بعضها (لقطة المالك — D-084)،
+             🆕 **والمقاسُ كبر في D-433 ليساوي بطاقةَ الشبكة.** */
+          <RailItem key={l.id} size="list">
+            {cards[i]}
+          </RailItem>
+        )),
+        leading ? (
+          <RailItem key="lead" size="list">
+            {leading}
+          </RailItem>
+        ) : null,
+        leadingIndex,
+      )}
     </PosterRail>
   );
 }
