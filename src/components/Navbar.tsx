@@ -44,7 +44,7 @@ export async function Navbar() {
       <header className="chrome-top sticky top-0 z-30 bg-[color:var(--background)]/80 backdrop-blur pt-[var(--safe-top)]">
         {/* dir=ltr: الاسم يساراً والعلم يميناً بثبات، مهما كانت لغة الصفحة */}
         <div
-          className="max-w-6xl mx-auto px-5 h-16 flex items-center justify-between"
+          className="max-w-shell mx-auto px-5 h-16 flex items-center justify-between"
           dir="ltr"
         >
           {/* ⚖️ 🆕 الرمزُ لا الكلمة (D-628 — تطبيقُ D-256 على شريط الزائر:
@@ -84,7 +84,7 @@ export async function Navbar() {
           **هذا الشريطُ يعود `null` في كلِّ مسارِ إعدادات** (D-462)،
           **فكان تفضيلُ الحساب لا ينزل إلى جهازٍ جديد في الصفحة التي
           فُتحت لضبطه.** **والمضيفُ الآن تخطيطُ الجذر** — لا يُلغى. */}
-      <div className="relative max-w-6xl mx-auto px-4 h-16 flex items-center gap-2 sm:gap-3">
+      <div className="relative max-w-shell mx-auto px-4 h-16 flex items-center gap-2 sm:gap-3">
         <Link
           href="/"
           prefetch={false}

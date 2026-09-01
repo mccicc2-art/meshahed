@@ -36,7 +36,7 @@ export function CoverImage({
       alt=""
       fill
       priority
-      sizes="(max-width: 640px) 100vw, 1152px"
+      sizes="(max-width: 640px) 100vw, 1440px"
       className="object-cover"
       style={{ objectPosition: `50% ${posY ?? 30}%` }}
       onError={() => setFailed(true)}
