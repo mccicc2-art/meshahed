@@ -42,61 +42,9 @@ f8a2b33cd036cffd1e7a0b9bc3e5ced0e19b8bfa
 
 ---
 
-## 2. مصفوفة الـ49 صفحة — الحالة كزائر
+## 2. المصفوفة — انظر §10
 
-**المنهج:** `fetch(path, {redirect:'manual'})` من أصل الموقع نفسه لكل مسار، ثم تصفّح حيّ للصفحات العامة. عمود «الآلية» يميّز التحويل الحقيقي (3xx) من **التحويل اللَيّن** (200 + `<meta http-equiv="refresh">`).
-
-### 2.1 الصفحات المحميّة (27) — كلها نمط واحد
-
-`/activity` · `/calendar` · `/library` · `/lists` · `/messages` · `/profile` · `/profile/edit` · `/profile/settings` وأبناؤها الأربعة عشر · `/ratings` · `/reports` · `/statistics` · `/stats` · `/welcome`
-
-| القياس | القيمة |
-|---|---|
-| HTTP status كزائر | **200** — لا 307 ولا 302 |
-| آلية الحماية | `<meta id="__next-page-redirect" http-equiv="refresh" content="1;url=/login"/>` |
-| حجم ما يُسلَّم للزائر قبل القذف | **≈ 40–45 ك.ب HTML كاملة** |
-| زمن البقاء على الصفحة الخطأ | **ثانية واحدة معلنة في الـmeta** |
-| الحالة | **`FAIL` — انظر `C-01`** |
-
-### 2.2 الصفحات الإدارية (3)
-
-`/admin/links` · `/admin/partners` · `/admin/verify`
-
-| القياس | القيمة |
-|---|---|
-| HTTP status كزائر | **200** |
-| المحتوى المرسوم | `Home Discover Community Search Sign in EN Sign in` — **الترويسة وحدها، وجسم فارغ** |
-| تحويل | **لا شيء** |
-| الحالة | **`FAIL` — انظر `C-02`.** الصلاحية نفسها سليمة (لا تسريب محتوى إداري)، **والعطل في العرض لا في الحماية** |
-
-### 2.3 الصفحات العامة (16) — كلها `PASS` في الوصول
-
-| المسار | status | ملاحظة |
-|---|---|---|
-| `/` | 200 | يرسم صفحة هبوط كاملة للزائر: عنوان · «See Loopz before you sign in» · «What is Loopz?» · **أسئلة شائعة بثمانية عناوين** · «Start free» · «Continue with Google» · روابط أعمال حقيقية |
-| `/login` | 200 | يعمل — **مع عطل لغة، انظر `C-04`** |
-| `/features` `/plus` `/terms` `/privacy` | 200 | تسويق وقانون، ميتاداتا سليمة |
-| `/search` | 200 | يعمل للزائر · `/api/search` مفتوح للزائر بحدّ IP |
-| `/trailers` | 200 | يعمل — **مع فراغ بلا حالة فارغة، انظر `C-08`** |
-| `/discover/[section]` | 200 | يعمل — **والقسم المجهول لا يُنكَر، انظر `C-09`** |
-| `/movie/[id]` `/show/[id]` `/person/[id]` | 200 | تعمل — **بلا ميتاداتا للاثنين الأولين، انظر `C-05`** |
-| `/talk/[type]/[id]` · `/u/[username]` · `/news` · `/people` | 200 | تعمل للزائر |
-| `/diary` | 200 → `1;url=/activity` | **ليست صفحة**: جسمها كلّه `redirect("/activity")`. والزائر يُقذف مرتين: `/diary` → `/activity` → `/login` |
-
-### 2.4 المسارات غير الصفحية
-
-| المسار | status | ملاحظة |
-|---|---|---|
-| `/robots.txt` | 200 | `Allow: /` + `Disallow: /api/` و`/auth/` + Sitemap — سليم |
-| `/manifest.webmanifest` | 200 | سليم |
-| `/opengraph-image` | 200 | سليم |
-| `/sitemap.xml` | 200 | **أربعة روابط فقط — انظر `C-06`** |
-| `/api/build` | 200 | يُعيد SHA الإنتاج |
-| مسار غير موجود | **404** | **وبواجهة 404 صحيحة**: «Page not found — That link doesn't point anywhere. Try searching or head back home.» ✅ |
-| `/p/[code]` · `/join/[code]` | — | **لم تُطلَب عمداً**: كلاهما يكتب كوكي إحالة، و`/p/[code]` يستدعي `bump_partner_click` أي يكتب في القاعدة. خارج نطاق «القراءة الآمنة» بأمرك |
-| دورات المشغّل (`/api/genres` · `/api/title-meta` · `/api/imdb-chart` · `/api/news-gen` · `/api/curated`) | — | **لم تُطلَب عمداً** — كاتبة |
-
-**التغطية: 49/49 صفحة بحالة صريحة، وصفر مسار بلا نتيجة.**
+النسخة المجمَّعة التي كانت هنا **حُذفت** لأنها دمجت مسارات وأدخلت variants في العدّ. **المصفوفة المعتمدة هي §10.1: صفّ واحد لكل واحد من الـ49 `page.tsx`**، وحالات الاختبار الإضافية في §10.2 خارج العدّ.
 
 ---
 
@@ -187,16 +135,20 @@ f8a2b33cd036cffd1e7a0b9bc3e5ced0e19b8bfa
 
 | البند المطلوب | النتيجة | الدليل |
 |---|---|---|
-| ظهور الفيديو لا الصوت وحده | **`PASS` جزئياً** | `/trailers?tab=trending` يُنشئ `<video>` حقيقياً + 42 صورة |
-| **الافتراضي Muted للمستخدم الجديد** | ✅ **`PASS`** | `video.muted === true` · `autoplay === false` · وكوكي `loopz_trailer_sound` **غير موجود أصلاً** لزائر جديد. **يطابق السلوك المتوقّع الذي حدّدته، لا سلوك `mccicc2-art-patch-1`** |
+| ظهور الفيديو لا الصوت وحده | ❌ **`FAIL`** — `0023` | فحص ChatGPT المرئي: بعد 11 ثانية **لا تقدّم لصورة الفيديو**، والصورة/حلقة التحميل باقية |
+| **الافتراضي Muted للمستخدم الجديد** | ⚠️ **قياس DOM صحيح، لا نجاح وظيفي** | `video.muted === true` · `autoplay === false` · وكوكي `loopz_trailer_sound` **غير موجود أصلاً** لزائر جديد. **يطابق السلوك المتوقّع الذي حدّدته، لا سلوك `mccicc2-art-patch-1`** |
 | تذكّر آخر اختيار للصوت محلياً | **`BLOCKED_BY_SURFACE`** | يحتاج ضغط زرّ الصوت ثم إعادة تحميل ومراقبة الكوكي — والتفاعل غير موثوق بلا رؤية |
-| زرّ الصوت والزمن يعملان | **`BLOCKED_BY_SURFACE`** | لا لقطة ولا تفاعل موثوق |
+| زرّ الصوت والزمن يعملان | ❌ **`FAIL`** — `0023` | فحص ChatGPT: **لا زرّ صوت ولا عرض زمن ظاهر قابل للاستخدام** · الـiframe `controls=0` و`pointer-events:none` |
 | التمرير يشغّل الحالي ويوقف السابق | **`BLOCKED_BY_SURFACE`** | يعتمد `IntersectionObserver` وهو معطَّل المعنى في لوح مخفيّ |
 | حفظ موضع Discover عند العودة | **`BLOCKED_BY_SURFACE`** | يحتاج تمريراً حقيقياً ورجوعاً |
 | التوقّف عند background/navigation | **`BLOCKED_BY_SURFACE`** | اللوح نفسه في الخلفية — الشرط ملوَّث |
 | تبويب «For You» للزائر | ❌ **`FAIL`** | `C-08` |
 
-**الخلاصة الصادقة:** البند الوحيد الذي طلبتَه صراحةً وكان قابلاً للإثبات على هذا السطح — **الكتم الافتراضي** — **مثبَت وناجح**. والستّة الباقية تحتاج متصفّحاً مرئيّاً، ولا أدّعي فيها نجاحاً ولا فشلاً. **من يستطيع إثباتها في دقيقتين هو أحمد على جهازه.**
+> 🔴 **تصحيح بعد فحص ChatGPT المرئي المستقل — اقرأ §10.3 قبل هذا الجدول.**
+>
+> ما قِيس هنا صحيح **كقياس DOM** ومضلِّل **كخلاصة**. `muted === true` على عنصر لا يعرض صورة أصلاً **ليس نجاحاً وظيفياً**، ووجود `<video>` أو iframe أو poster **لا يساوي تشغيلاً**. الفحص المرئي أثبت أن **التشغيل نفسه معطوب** وأن **زرّي الصوت والزمن غير موجودَين** — وهو `LOOPZ-AUD-0023` بدرجة **P1**.
+>
+> **فالحكم على الترايلرات هو `FAIL` بـ`0023`، لا «PASS جزئياً».** وأزلت التسمية من الجدول أعلاه.
 
 ---
 
@@ -323,75 +275,140 @@ f8a2b33cd036cffd1e7a0b9bc3e5ced0e19b8bfa
 
 ---
 
-## 10. مصفوفة الـ49 صفحة — صفّاً صفّاً
+## 10. مصفوفة الـ49 صفحة — **صفّ واحد لكل route مصدر، بلا دمج**
 
-**مفاتيح الحالة:** `PASS` = السلوك المرصود مطابق للمتوقّع · `FAIL` = مخالف · `BLOCKED_BY_TEST_ENV` = يحتاج حساباً · `BLOCKED_BY_SURFACE` = يحتاج سطحاً مرئيّاً (انظر §11) · `N/A` = لا ينطبق.
+**تصحيح:** النسخة السابقة دمجت أربعة عشر مساراً في سطر واحد، وأدخلت variants (`?tab=trending`، معرّف غير موجود، قسم مجهول) في عدّ الـ49، وأخرجت ثلاثة مسارات إلى فقرة خارج الجدول، ووضعت `/` تحت عنوان «المحمية». **اعتراضك في محلّه في البنود الستّة كلها.** القائمة أدناه منسوخة من قائمة `page.tsx` الـ49 المعتمدة في Phase 1، **صفّاً لكل مسار مصدر**، وحالات الاختبار الإضافية نُقلت إلى §10.2 **خارج العدّ**.
 
-**أدلّة مشتركة تُشار بالرمز بدل التكرار:**
+**رموز الأدلّة:**
 
-- **`E-GUARD`** — `fetch(path,{redirect:'manual'})` ← `status:200` + `<meta id="__next-page-redirect" http-equiv="refresh" content="1;url=/login">` · حجم الجسم 39–45 ك.ب. مطبَّق على 27 مساراً.
-- **`E-ADMIN`** — `status:200` · جسم مرسوم = `Home Discover Community Search Sign in EN Sign in` · لا تحويل.
-- **`E-PUB`** — `status:200` · تصفّح حيّ كزائر · لا خطأ Console غير معالَج · لا طلب شبكة فاشل رُصد.
-- **`E-SHELL`** — الصفحة تُرجع 200 وهيكلاً، **ولا يكتمل رسم محتواها في سطح الفحص** (`document.visibilityState === "hidden"`، §11). القياس البنيوي صالح، وتقييم المحتوى `BLOCKED_BY_SURFACE`.
+- **`E-GUARD`** — `fetch(path,{redirect:'manual'})` ← `200` + `<meta id="__next-page-redirect" http-equiv="refresh" content="1;url=/login">` · الجسم 39–45 ك.ب.
+- **`E-ADMIN`** — `200` · الجسم المرسوم = `Home Discover Community Search Sign in EN Sign in` · لا تحويل.
+- **`E-PUB`** — `200` · تصفّح حيّ كزائر · لا خطأ Console غير معالَج · لا طلب شبكة فاشل.
+- **`E-SHELL`** — 200 وهيكل، **ولا يكتمل رسم المحتوى في سطح الفحص** (`visibilityState: hidden`، §11). القياس البنيوي صالح، وتقييم المحتوى `BLOCKED_BY_SURFACE`.
 
-### 10.1 الصفحات المحميّة (27) — `FAIL` بـ`LOOPZ-AUD-0014`
+### 10.1 الـ49 route المصدر
 
-| # | Route | status | الآلية | المحتوى للزائر | loading | error | not-found | Console | Network | الحالة |
-|---:|---|:--:|---|---|---|---|---|:--:|:--:|---|
-| 1 | `/` | 200 | — (صفحة هبوط) | **كاملة**: عنوان · «See Loopz before you sign in» · «What is Loopz?» · **8 أسئلة شائعة** · «Start free» · «Continue with Google» · أعمال حقيقية | local | **local** | **local** | نظيف | نظيف | **`PASS`** |
-| 2 | `/activity` | 200 | `E-GUARD` | هيكل ثم قذف بعد ثانية | local | inherit ← `/` | inherit ← `/` | نظيف | نظيف | `FAIL` |
-| 3 | `/calendar` | 200 | `E-GUARD` | ↑ | inherit ← `/` | inherit ← `/` | inherit ← `/` | نظيف | نظيف | `FAIL` |
-| 4 | `/library` | 200 | `E-GUARD` | ↑ | local | inherit ← `/` | inherit ← `/` | نظيف | نظيف | `FAIL` |
-| 5 | `/lists` | 200 | `E-GUARD` | ↑ | local | inherit ← `/` | inherit ← `/` | نظيف | نظيف | `FAIL` |
-| 6 | `/messages` | 200 | `E-GUARD` | ↑ | local | inherit ← `/` | inherit ← `/` | نظيف | نظيف | `FAIL` |
-| 7 | `/profile` | 200 | `E-GUARD` | ↑ | inherit ← `/` | inherit ← `/` | inherit ← `/` | نظيف | نظيف | `FAIL` |
-| 8 | `/profile/edit` | 200 | `E-GUARD` | ↑ | inherit ← `/` | inherit ← `/` | inherit ← `/` | نظيف | نظيف | `FAIL` |
-| 9 | `/profile/settings` | 200 | `E-GUARD` | ↑ | local | inherit ← `/` | inherit ← `/` | نظيف | نظيف | `FAIL` |
-| 10–23 | `/profile/settings/{about,account,appearance,billing,content,help,home,import,invites,notifications,privacy,verify}` + `/reports` + `/welcome` | 200 | `E-GUARD` | ↑ | inherit ← `/profile/settings` (والأخيران ← `/`) | inherit ← `/` | inherit ← `/` | نظيف | نظيف | `FAIL` |
-| 24 | `/ratings` | 200 | `E-GUARD` | ↑ | local | inherit ← `/` | inherit ← `/` | نظيف | نظيف | `FAIL` |
-| 25 | `/statistics` | 200 | `E-GUARD` | ↑ | inherit ← `/` | inherit ← `/` | inherit ← `/` | نظيف | نظيف | `FAIL` |
-| 26 | `/stats` | 200 | `E-GUARD` | ↑ | local | inherit ← `/` | inherit ← `/` | نظيف | نظيف | `FAIL` |
-| 27 | `/diary` | 200 | `1;url=/activity` ثم `E-GUARD` | **قذفتان متتاليتان**: `/diary` → `/activity` → `/login` | local (**لن يُرى**) | inherit ← `/` | inherit ← `/` | نظيف | نظيف | `FAIL` |
+| # | Route | build | dynamic export | status كزائر | المحتوى/الملاحظة | loading | error | not-found | Console | Network | الحالة |
+|---:|---|:--:|---|:--:|---|---|---|---|:--:|:--:|---|
+| 1 | `/` | ƒ | — | 200 | صفحة هبوط كاملة للزائر: 8 أسئلة شائعة · «Start free» · «Continue with Google» · أعمال حقيقية (`E-PUB`) | local | local | local | نظيف | نظيف | `PASS` |
+| 2 | `/activity` | ƒ | — | 200 | هيكل 39–45 ك.ب ثم قذف بعد ثانية إلى `/login` (`E-GUARD`) | local | inherit ← `/` | inherit ← `/` | نظيف | نظيف | `FAIL` `0014` |
+| 3 | `/admin/links` | ƒ | — | 200 | ترويسة وجسم فارغ · **لا 404 ولا تحويل** (`E-ADMIN`) | inherit ← `/` | inherit ← `/` | inherit ← `/` | نظيف | نظيف | `FAIL` `0015` |
+| 4 | `/admin/partners` | ƒ | — | 200 | ترويسة وجسم فارغ · **لا 404 ولا تحويل** (`E-ADMIN`) | inherit ← `/` | inherit ← `/` | inherit ← `/` | نظيف | نظيف | `FAIL` `0015` |
+| 5 | `/admin/verify` | ƒ | — | 200 | ترويسة وجسم فارغ · **لا 404 ولا تحويل** (`E-ADMIN`) | inherit ← `/` | inherit ← `/` | inherit ← `/` | نظيف | نظيف | `FAIL` `0015` |
+| 6 | `/calendar` | ƒ | — | 200 | هيكل 39–45 ك.ب ثم قذف بعد ثانية إلى `/login` (`E-GUARD`) | inherit ← `/` | inherit ← `/` | inherit ← `/` | نظيف | نظيف | `FAIL` `0014` |
+| 7 | `/diary` | ƒ | — | 200 | **ليست صفحة**: جسمها `redirect("/activity")` · قذفتان: `/diary`→`/activity`→`/login` (`E-GUARD` مضاعف) | local | inherit ← `/` | inherit ← `/` | نظيف | نظيف | `FAIL` `0014` |
+| 8 | `/discover/[section]` | ƒ | force-dynamic | 200 | `E-SHELL` · **القسم المجهول يعيد جسماً مطابقاً للصحيح بدل 404** (`E-PUB`) | local | inherit ← `/` | inherit ← `/` | نظيف | نظيف | `FAIL` `0022` |
+| 9 | `/features` | ƒ | — | 200 | يرسم كاملاً · `Features — Loopz` · a11y نظيف (`E-PUB`) | inherit ← `/` | inherit ← `/` | inherit ← `/` | نظيف | نظيف | `PASS` |
+| 10 | `/library` | ƒ | — | 200 | هيكل 39–45 ك.ب ثم قذف بعد ثانية إلى `/login` (`E-GUARD`) | local | inherit ← `/` | inherit ← `/` | نظيف | نظيف | `FAIL` `0014` |
+| 11 | `/lists` | ƒ | — | 200 | هيكل 39–45 ك.ب ثم قذف بعد ثانية إلى `/login` (`E-GUARD`) | local | inherit ← `/` | inherit ← `/` | نظيف | نظيف | `FAIL` `0014` |
+| 12 | `/lists/[id]` | ƒ | — | 200 | 200 وميتاداتا موجودة · **لم يُختبر بمعرّف حقيقي**: معرّفاته محتوى مستخدمين، وجلبها يُدخل بيانات أشخاص في التقرير (—) | local | inherit ← `/` | inherit ← `/` | نظيف | نظيف | `BLOCKED_BY_TEST_ENV` |
+| 13 | `/login` | ƒ | — | 200 | يرسم كاملاً · **زرّ GIS عربيّ في صفحة `lang="en"`** (`E-PUB`) | local | inherit ← `/` | inherit ← `/` | نظيف | نظيف | `FAIL` `0017` |
+| 14 | `/messages` | ƒ | force-dynamic | 200 | هيكل 39–45 ك.ب ثم قذف بعد ثانية إلى `/login` (`E-GUARD`) | local | inherit ← `/` | inherit ← `/` | نظيف | نظيف | `FAIL` `0014` |
+| 15 | `/movie/[id]` | ƒ | — | 200 | 216 ك.ب · **عنوان عام لا اسم العمل** · غير الموجود يُعرض كعطل مؤقّت · فيض 25px عند 390 (`E-SHELL`) | local | inherit ← `/` | inherit ← `/` | نظيف | نظيف | `FAIL` `0018` · `0016` · `0020` |
+| 16 | `/news` | ƒ | — | 200 | يرسم للزائر · المحتوى `E-SHELL` (`E-PUB`) | local | inherit ← `/` | inherit ← `/` | نظيف | نظيف | `PASS` (الوصول) |
+| 17 | `/people` | ƒ | — | 200 | يرسم للزائر · المحتوى `E-SHELL` (`E-PUB`) | local | inherit ← `/` | inherit ← `/` | نظيف | نظيف | `PASS` (الوصول) |
+| 18 | `/person/[id]` | ƒ | — | 200 | 560 ك.ب · **ميتاداتا صحيحة** (`title: person.name`) ✅ (`E-SHELL`) | local | inherit ← `/` | inherit ← `/` | نظيف | نظيف | `PASS` |
+| 19 | `/plus` | ƒ | — | 200 | يرسم كاملاً · ميتاداتا خاصة (`E-PUB`) | inherit ← `/` | inherit ← `/` | inherit ← `/` | نظيف | نظيف | `PASS` |
+| 20 | `/post/[key]` | ƒ | force-dynamic | 200 | نفس السبب (—) | local | inherit ← `/` | inherit ← `/` | نظيف | نظيف | `BLOCKED_BY_TEST_ENV` |
+| 21 | `/privacy` | ƒ | — | 200 | يرسم كاملاً · ميتاداتا ثابتة (`E-PUB`) | inherit ← `/` | inherit ← `/` | inherit ← `/` | نظيف | نظيف | `PASS` |
+| 22 | `/profile` | ƒ | — | 200 | هيكل 39–45 ك.ب ثم قذف بعد ثانية إلى `/login` (`E-GUARD`) | inherit ← `/` | inherit ← `/` | inherit ← `/` | نظيف | نظيف | `FAIL` `0014` |
+| 23 | `/profile/edit` | ƒ | — | 200 | هيكل 39–45 ك.ب ثم قذف بعد ثانية إلى `/login` (`E-GUARD`) | inherit ← `/` | inherit ← `/` | inherit ← `/` | نظيف | نظيف | `FAIL` `0014` |
+| 24 | `/profile/settings` | ƒ | — | 200 | هيكل 39–45 ك.ب ثم قذف بعد ثانية إلى `/login` (`E-GUARD`) | local | inherit ← `/` | inherit ← `/` | نظيف | نظيف | `FAIL` `0014` |
+| 25 | `/profile/settings/about` | ƒ | — | 200 | هيكل 39–45 ك.ب ثم قذف بعد ثانية إلى `/login` (`E-GUARD`) | inherit ← `/profile/settings` | inherit ← `/` | inherit ← `/` | نظيف | نظيف | `FAIL` `0014` |
+| 26 | `/profile/settings/account` | ƒ | — | 200 | هيكل 39–45 ك.ب ثم قذف بعد ثانية إلى `/login` (`E-GUARD`) | inherit ← `/profile/settings` | inherit ← `/` | inherit ← `/` | نظيف | نظيف | `FAIL` `0014` |
+| 27 | `/profile/settings/appearance` | ƒ | — | 200 | هيكل 39–45 ك.ب ثم قذف بعد ثانية إلى `/login` (`E-GUARD`) | inherit ← `/profile/settings` | inherit ← `/` | inherit ← `/` | نظيف | نظيف | `FAIL` `0014` |
+| 28 | `/profile/settings/billing` | ƒ | — | 200 | هيكل 39–45 ك.ب ثم قذف بعد ثانية إلى `/login` (`E-GUARD`) | inherit ← `/profile/settings` | inherit ← `/` | inherit ← `/` | نظيف | نظيف | `FAIL` `0014` |
+| 29 | `/profile/settings/content` | ƒ | — | 200 | هيكل 39–45 ك.ب ثم قذف بعد ثانية إلى `/login` (`E-GUARD`) | inherit ← `/profile/settings` | inherit ← `/` | inherit ← `/` | نظيف | نظيف | `FAIL` `0014` |
+| 30 | `/profile/settings/help` | ƒ | — | 200 | هيكل 39–45 ك.ب ثم قذف بعد ثانية إلى `/login` (`E-GUARD`) | inherit ← `/profile/settings` | inherit ← `/` | inherit ← `/` | نظيف | نظيف | `FAIL` `0014` |
+| 31 | `/profile/settings/home` | ƒ | — | 200 | هيكل 39–45 ك.ب ثم قذف بعد ثانية إلى `/login` (`E-GUARD`) | inherit ← `/profile/settings` | inherit ← `/` | inherit ← `/` | نظيف | نظيف | `FAIL` `0014` |
+| 32 | `/profile/settings/import` | ƒ | — | 200 | هيكل 39–45 ك.ب ثم قذف بعد ثانية إلى `/login` (`E-GUARD`) | inherit ← `/profile/settings` | inherit ← `/` | inherit ← `/` | نظيف | نظيف | `FAIL` `0014` |
+| 33 | `/profile/settings/invites` | ƒ | force-dynamic | 200 | هيكل 39–45 ك.ب ثم قذف بعد ثانية إلى `/login` (`E-GUARD`) | inherit ← `/profile/settings` | inherit ← `/` | inherit ← `/` | نظيف | نظيف | `FAIL` `0014` |
+| 34 | `/profile/settings/notifications` | ƒ | — | 200 | هيكل 39–45 ك.ب ثم قذف بعد ثانية إلى `/login` (`E-GUARD`) | inherit ← `/profile/settings` | inherit ← `/` | inherit ← `/` | نظيف | نظيف | `FAIL` `0014` |
+| 35 | `/profile/settings/privacy` | ƒ | — | 200 | هيكل 39–45 ك.ب ثم قذف بعد ثانية إلى `/login` (`E-GUARD`) | inherit ← `/profile/settings` | inherit ← `/` | inherit ← `/` | نظيف | نظيف | `FAIL` `0014` |
+| 36 | `/profile/settings/verify` | ƒ | force-dynamic | 200 | هيكل 39–45 ك.ب ثم قذف بعد ثانية إلى `/login` (`E-GUARD`) | inherit ← `/profile/settings` | inherit ← `/` | inherit ← `/` | نظيف | نظيف | `FAIL` `0014` |
+| 37 | `/ratings` | ƒ | — | 200 | هيكل 39–45 ك.ب ثم قذف بعد ثانية إلى `/login` (`E-GUARD`) | local | inherit ← `/` | inherit ← `/` | نظيف | نظيف | `FAIL` `0014` |
+| 38 | `/reports` | ƒ | — | 200 | هيكل 39–45 ك.ب ثم قذف بعد ثانية إلى `/login` (`E-GUARD`) | inherit ← `/` | inherit ← `/` | inherit ← `/` | نظيف | نظيف | `FAIL` `0014` |
+| 39 | `/review/[type]/[id]/[user]` | ƒ | force-dynamic | 200 | نفس السبب (—) | inherit ← `/review/[type]/[id]` | inherit ← `/` | inherit ← `/` | نظيف | نظيف | `BLOCKED_BY_TEST_ENV` |
+| 40 | `/search` | ƒ | — | 200 | الإطار يرسم · `/api/search` مفتوح للزائر ويعمل · النتائج `E-SHELL` (`E-PUB`) | local | inherit ← `/` | inherit ← `/` | نظيف | نظيف | `PASS` (الإطار) |
+| 41 | `/show/[id]` | ƒ | — | 200 | 228 ك.ب · **بلا ميتاداتا** (`E-SHELL`) | local | inherit ← `/` | inherit ← `/` | نظيف | نظيف | `FAIL` `0018` |
+| 42 | `/statistics` | ƒ | — | 200 | هيكل 39–45 ك.ب ثم قذف بعد ثانية إلى `/login` (`E-GUARD`) | inherit ← `/` | inherit ← `/` | inherit ← `/` | نظيف | نظيف | `FAIL` `0014` |
+| 43 | `/stats` | ƒ | — | 200 | هيكل 39–45 ك.ب ثم قذف بعد ثانية إلى `/login` (`E-GUARD`) | local | inherit ← `/` | inherit ← `/` | نظيف | نظيف | `FAIL` `0014` |
+| 44 | `/talk/[type]/[id]` | ƒ | force-dynamic | 200 | يرسم · ميتاداتا موجودة · المحتوى `E-SHELL` (`E-PUB`) | local | inherit ← `/` | inherit ← `/` | نظيف | نظيف | `PASS` (الوصول) |
+| 45 | `/terms` | ƒ | — | 200 | يرسم كاملاً · `Terms of Use — Loopz` (`E-PUB`) | inherit ← `/` | inherit ← `/` | inherit ← `/` | نظيف | نظيف | `PASS` |
+| 46 | `/trailers` | ƒ | — | 200 | التبويبات ترسم · **«For You» صفر بطاقة وصفر نصّ** · **والتشغيل معطوب (`0023`)** (`E-PUB`) | inherit ← `/` | inherit ← `/` | inherit ← `/` | نظيف | نظيف | `FAIL` `0021` · `0023` |
+| 47 | `/u/[username]` | ƒ | — | 200 | يرسم للزائر · **بلا ميتاداتا** (`E-SHELL`) | local | inherit ← `/` | inherit ← `/` | نظيف | نظيف | `FAIL` `0018` |
+| 48 | `/u/[username]/stats` | ƒ | — | 200 | **ميتاداتا صحيحة بينما أمّها لا** (`E-SHELL`) | inherit ← `/u/[username]` | inherit ← `/` | inherit ← `/` | نظيف | نظيف | `PASS` (ميتاداتا) |
+| 49 | `/welcome` | ƒ | — | 200 | هيكل 39–45 ك.ب ثم قذف بعد ثانية إلى `/login` (`E-GUARD`) | inherit ← `/` | inherit ← `/` | inherit ← `/` | نظيف | نظيف | `FAIL` `0014` |
 
-**رحلات هذه الصفحات بعد الدخول:** `BLOCKED_BY_TEST_ENV` — الدور المطلوب: Free (وPlus للفروق).
+**المجموع: 49 صفّاً — واحد لكل `page.tsx`، بلا دمج وبلا variant داخل العدّ.**
 
-### 10.2 الصفحات الإدارية (3) — `FAIL` بـ`LOOPZ-AUD-0015`
+### 10.2 حالات اختبار إضافية — **خارج عدّ الـ49**
 
-| # | Route | status | المحتوى | loading/error/not-found | Console | Network | الحالة |
-|---:|---|:--:|---|---|:--:|:--:|---|
-| 28 | `/admin/links` | 200 | `E-ADMIN` — ترويسة وجسم فارغ، **لا 404** | inherit ← `/` (الثلاثة) | نظيف | نظيف | `FAIL` |
-| 29 | `/admin/partners` | 200 | `E-ADMIN` | ↑ | نظيف | نظيف | `FAIL` |
-| 30 | `/admin/verify` | 200 | `E-ADMIN` | ↑ | نظيف | نظيف | `FAIL` |
+| # | الحالة | المسار المصدر | النتيجة | الحالة |
+|---:|---|---|---|---|
+| T-1 | تبويب Trending في الترايلرات | `/trailers` | عنصر `<video>` + 42 صورة · `muted=true` · `autoplay=false` | البنية `PASS` · **التشغيل `FAIL` `0023`** |
+| T-2 | معرّف عمل غير موجود | `/movie/[id]` | **200** + «Couldn't load this movie right now. Please try again shortly.» بدل 404 | `FAIL` `0016` |
+| T-3 | قسم استكشاف مجهول | `/discover/[section]` | **200** وجسم **مطابق حرفياً** للقسم الصحيح (`identical: true`) | `FAIL` `0022` |
+| T-4 | مسار غير موجود إطلاقاً | — | **404** + واجهة صحيحة: «Page not found — That link doesn't point anywhere…» | ✅ `PASS` |
+| T-5 | `/robots.txt` | route handler | 200 · `Allow: /` + `Disallow: /api/` و`/auth/` + Sitemap | ✅ `PASS` |
+| T-6 | `/sitemap.xml` | `sitemap.ts` | 200 · **أربعة روابط فقط** | `FAIL` `0019` (DEFERRED) |
+| T-7 | `/manifest.webmanifest` · `/opengraph-image` | metadata routes | 200 | ✅ `PASS` |
+| T-8 | `GET /api/build` | route handler | 200 · `f8a2b33c…` — **Production = الـAudited SHA** | ✅ `PASS` |
+| T-9 | `GET /api/search?q=fight` كزائر | route handler | 200 · نتائج حقيقية | ✅ `PASS` |
+| T-10 | `GET /api/search?q=f` (حرف واحد) | route handler | 200 · نتائج فارغة — **التحقّق يعمل حيّاً** | ✅ `PASS` |
+| T-11 | `GET /api/suggest?q=fight` كزائر | route handler | **401** — **فرض الجلسة يعمل حيّاً** | ✅ `PASS` |
+| T-12 | مقاس 768×1024 على `/movie/[id]` | — | **لا فيض** (`768 == 768`) → فيض `0020` **مقصور على 390** | مفيد لتضييق `0020` |
 
-**التحقق من الصلاحية نفسها** (أن الإداري يرى المحتوى وغيره لا): `BLOCKED_BY_TEST_ENV` — الدور: Admin.
+**لم تُطلَب عمداً:** `/p/[code]` و`/join/[code]` (تكتبان كوكي، والثانية تستدعي `bump_partner_click`) · دورات المشغّل الخمس (`/api/genres` · `/api/title-meta` · `/api/imdb-chart` · `/api/news-gen` · `/api/curated`).
 
-### 10.3 الصفحات العامة (19) — التفصيل
+---
 
-| # | Route | status | المحتوى كزائر | حالة فارغة/تحميل/خطأ | Console | Network | الحالة |
-|---:|---|:--:|---|---|:--:|:--:|---|
-| 31 | `/login` | 200 | يرسم كاملاً · زرّ GIS | لا حاجة | نظيف | نظيف | **`FAIL`** — `LOOPZ-AUD-0017` (زرّ عربيّ في صفحة إنجليزية) |
-| 32 | `/features` | 200 | **يرسم كاملاً** · عنوان `Features — Loopz` | لا حاجة | نظيف | نظيف | **`PASS`** |
-| 33 | `/plus` | 200 | يرسم كاملاً · ميتاداتا خاصة | لا حاجة | نظيف | نظيف | **`PASS`** |
-| 34 | `/terms` | 200 | يرسم كاملاً · `Terms of Use — Loopz` | لا حاجة | نظيف | نظيف | **`PASS`** |
-| 35 | `/privacy` | 200 | يرسم كاملاً · ميتاداتا ثابتة | لا حاجة | نظيف | نظيف | **`PASS`** |
-| 36 | `/search` | 200 | إطار البحث يرسم · `/api/search` مفتوح للزائر ويعمل | `E-SHELL` للنتائج | نظيف | نظيف | `PASS` (الإطار) · محتوى `BLOCKED_BY_SURFACE` |
-| 37 | `/trailers` | 200 | التبويبات الخمسة ترسم · **«For You» صفر بطاقة وصفر نصّ** | **حالة فارغة مفقودة** | نظيف | نظيف | **`FAIL`** — `LOOPZ-AUD-0021` |
-| 38 | `/trailers?tab=trending` | 200 | عنصر `<video>` + 42 صورة · `muted=true` · `autoplay=false` | — | نظيف | نظيف | `PASS` (البنية) · التشغيل `BLOCKED_BY_SURFACE` |
-| 39 | `/discover/movies` | 200 | `E-SHELL` — الجسم المخدوم ترويسة فقط | — | نظيف | نظيف | `BLOCKED_BY_SURFACE` |
-| 40 | `/discover/<قسم مجهول>` | 200 | **جسم مطابق حرفياً للقسم الصحيح** (`identical: true`) | لا 404 | نظيف | نظيف | **`FAIL`** — `LOOPZ-AUD-0022` |
-| 41 | `/movie/[id]` صحيح (550) | 200 | 216 ك.ب · **عنوان عام لا «Fight Club»** · `E-SHELL` | 14 هيكلاً باقية | نظيف | نظيف | **`FAIL`** — `LOOPZ-AUD-0018` |
-| 42 | `/movie/[id]` غير موجود | **200** | «Couldn't load this movie right now. Please try again shortly.» | **خطأ مؤقّت بدل 404** | نظيف | نظيف | **`FAIL`** — `LOOPZ-AUD-0016` |
-| 43 | `/show/[id]` (1399) | 200 | 228 ك.ب · **بلا ميتاداتا** · `E-SHELL` | — | نظيف | نظيف | **`FAIL`** — `LOOPZ-AUD-0018` |
-| 44 | `/person/[id]` (287) | 200 | 560 ك.ب · **ميتاداتا صحيحة** (`title: person.name`) ✅ | — | نظيف | نظيف | **`PASS`** |
-| 45 | `/talk/[type]/[id]` | 200 | يرسم · ميتاداتا موجودة | `E-SHELL` للمحتوى | نظيف | نظيف | `PASS` (الوصول) |
-| 46 | `/u/[username]` | 200 | يرسم · **بلا ميتاداتا** | `E-SHELL` | نظيف | نظيف | **`FAIL`** — `LOOPZ-AUD-0018` |
-| 47 | `/u/[username]/stats` | 200 | **ميتاداتا صحيحة** بينما أمّه لا | `E-SHELL` | نظيف | نظيف | `PASS` (الميتاداتا) |
-| 48 | `/news` | 200 | يرسم للزائر | `E-SHELL` | نظيف | نظيف | `PASS` (الوصول) |
-| 49 | `/people` | 200 | يرسم للزائر | `E-SHELL` | نظيف | نظيف | `PASS` (الوصول) |
+## 10.3 `LOOPZ-AUD-0023` — **P1** — تشغيل الترايلر المرئي وعناصر التحكم
 
-**الصفحات الديناميكية غير القابلة للوصول كزائر** — `/lists/[id]` و`/post/[key]` و`/review/[type]/[id]/[user]`: تُرجع 200 وتملك ميتاداتا، **ولم أختبرها بمعرّف حقيقي** لأن معرّفاتها تخصّ محتوى مستخدمين، وجلبها من صفحات عامة كان سيدخل بيانات أشخاص في التقرير. **`BLOCKED_BY_TEST_ENV`** — تحتاج محتوى اختبار مخصّصاً.
+**هذا البلاغ ليس منّي.** أثبته **ChatGPT** بفحص مستقل بمتصفّح مرئي نظيف كزائر — وهو ما عجزت عنه أسطحي الثلاثة (§11). أنقله هنا بحرفه ليكون في المرجع الرسمي، **ولا أنسبه إلى نفسي**.
 
-**المجموع: 49 صفّاً، صفر مسار بلا حالة.**
+**بيئة الدليل:** Production SHA `f8a2b33c` · زائر · لغة عربية · Chrome مرئي · viewport `1363×936` · `/trailers?tab=trending` · بلا تسجيل دخول ولا كتابة ولا بيانات شخصية.
+
+**المرصود:**
+
+1. الصفحة ترسم بطاقة وصورة وتعرض زرّاً `aria-label="شغّل الترايلر"`.
+2. بعد الضغط يُنشأ iframe: `youtube-nocookie.com/embed/ZHRR-1CKYIQ?autoplay=1&mute=1&controls=0…` و`visibilityState = visible`.
+3. **بعد أكثر من 11 ثانية بقيت الصورة/حلقة التحميل ظاهرة، ولم يثبت تقدّم صورة الفيديو.**
+4. الـiframe نفسه `controls=0` و`pointer-events:none`.
+5. عناصر التحكم المرئية من التطبيق بعد الضغط كانت فقط: اللغة، والرجوع، وزرّ البطاقة الكامل **الذي ما زال اسمه «شغّل الترايلر»**. **لا زرّ صوت ولا عرض زمن ظاهر قابل للاستخدام.**
+6. أبعاد البطاقة المرئية `1118×629`، والـiframe يستخدم `height:300%; top:-100%` للقصّ — **وهذا ليس حكماً مستقلاً بالعطل** بل جزء من دليل إعادة الاختبار.
+
+**ويطابق هذا بلاغاً سابقاً من أحمد:** الفيديو لا يعمل كما يجب، والصوت والزمن غير قابلين للتحكّم.
+
+**معيار القبول المعتمد لـ`0023`:** تقدّم مرئي فعلي للصورة والزمن بعد التشغيل · زرّ صوت وزمن ظاهران ويعملان · الافتراضي muted وآخر اختيار يُحفظ محلياً · الانتقال/التمرير يوقف السابق ويشغّل الحالي · لا spinner دائم ولا audio-only · إعادة اختبار على Mobile وDesktop على الأقل.
+
+> ⚠️ **وهذا يصحّح قراءتي:** سجّلت في §4 أن «الكتم الافتراضي مثبَت وناجح» — **وهو صحيح كقياس DOM، ومضلِّل كخلاصة**. `muted=true` على عنصر لا يعرض صورة أصلاً ليس نجاحاً وظيفياً. **وجود `<video>` أو iframe أو poster لا يساوي تشغيلاً**، وقد صرّحتَ بذلك. §4 مُصحَّحة أدناه.
+
+---
+
+## 10.4 Visual Verification Gate — **مانع للقرار النهائي**
+
+بأمرك: البنود التي تعذّر عليّ إثباتها بصرياً **لا تُسمّى `PASS`**، وتبقى في بوّابة إلزامية قبل `GO`.
+
+| # | البند | الحالة |
+|---:|---|---|
+| V-1 | تشغيل الترايلر: تقدّم الصورة والزمن | **`FAIL` مؤكَّد** — `0023` |
+| V-2 | زرّ الصوت والزمن ظاهران ويعملان | **`FAIL` مؤكَّد** — `0023` |
+| V-3 | تذكّر آخر اختيار للصوت محلياً | `PENDING_VISUAL` |
+| V-4 | التمرير/الانتقال يوقف السابق ويشغّل الحالي | `PENDING_VISUAL` |
+| V-5 | حفظ موضع التمرير عند العودة | `PENDING_VISUAL` |
+| V-6 | Back/forward والفتح المباشر العميق | `PENDING_VISUAL` |
+| V-7 | إظهار/إخفاء التنقّل عند التمرير | `PENDING_VISUAL` |
+| V-8 | تصادم العناصر الثابتة وSafe Area | `PENDING_VISUAL` |
+| V-9 | أهداف اللمس بصرياً | `PENDING_VISUAL` |
+| V-10 | تركيز لوحة المفاتيح المرئي | `PENDING_VISUAL` |
+| V-11 | zoom 200% على صفحتين رئيسيتين | `PENDING_VISUAL` |
+| V-12 | Reduced Motion | `PENDING_VISUAL` |
+| V-13 | تباين العناصر الثانوية | `PENDING_VISUAL` (الأساس **19.02:1** ✅) |
+| V-14 | إثبات فيض `0020` بعد اكتمال الرسم | `PENDING_VISUAL` |
+| V-15 | مراجعة النصوص المقطوعة والحالات الفارغة بصرياً | `PENDING_VISUAL` |
+
+**صفر بند هنا مُسمّى `PASS`.**
 
 ---
 
