@@ -3000,9 +3000,23 @@ export async function renameList(
     })
     .eq("id", listId)
     .eq("user_id", user.id)
+    /* 🆕 **وحاويةُ المفضّلة لا تُعاد تسميتُها** (D-860، عطلُ خالد):
+       **المفضّلةُ صفٌّ في `user_lists` بعلامة `kind='favorites'`**
+       (هجرة ٥٥) **واسمُها للتطبيق لا للمستخدم** — يُولَّد بلغة الواجهة
+       عند أوّل قلب.
+       🔴 **والعطلُ الذي أغلقه**: `listsForDisplay` تُسقط `favorites` من
+       `/library` و`/lists` معاً (D-374: للمفضّلة بابُها الخاصّ)،
+       **ومنتقي «أضف إلى قائمة» لا يُصفّي عمداً** — **فمن أعاد تسميتَها
+       إلى اسمٍ يشبه القوائم رآها في المنتقي وفقدها من مكتبته**، وظنّ
+       قائمتَه ضاعت. **والحارسُ هنا في الباب لا في القشرة** (D-011):
+       صفُّ المفضّلة لا يُطابَق أصلاً فلا يُحدَّث. */
+    .neq("kind", "favorites")
     .select("id");
   if (error) fail(error);
-  if (!data?.length) throw new Error("القائمة غير موجودة / List not found");
+  if (!data?.length)
+    throw new Error(
+      "القائمة غير موجودة، أو هي قائمة المفضّلة ولا يُعاد تسميتها / List not found, or it is the favourites list which cannot be renamed",
+    );
   revalidatePath("/lists");
   revalidatePath(`/lists/${listId}`);
 }
