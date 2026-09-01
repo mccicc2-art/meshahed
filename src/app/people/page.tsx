@@ -39,6 +39,7 @@ import {
   TalkedAboutWork,
 } from "@/components/PeopleBoard";
 import { ActivityFeed } from "@/components/ActivityFeed";
+import { getLibState } from "@/lib/libState";
 import { commentViewKey, newsViewKey } from "@/lib/postKeys";
 import { applyTabPrefs, defaultTab } from "@/lib/tabPrefs";
 import { localizeRows, localizeTitleRooms, localizeTalkRooms } from "@/lib/localize";
@@ -496,6 +497,13 @@ export default async function PeoplePage({
   const followed = pagerTab
     ? new Set((await getFollows()).map((f) => `${f.media_type}-${f.tmdb_id}`))
     : new Set<string>();
+  /* ✅ 🆕 **وحالةُ مكتبتك الكاملةُ معها** (D-850): **`followed` تجيب
+     «عندك أم لا» وحدَها** — **والخيطُ تحت الملصق يقول أربعةَ أشياء**
+     (D-322) — **فكان يرسم سماويَّ «لم يبدأ» فوق مراجعةٍ لعملٍ انتهيتَ
+     منه.** ⚠️ **ولا نداءَ رابعٌ يُضاف**: `getLibState` ثلاثةٌ مغلَّفةٌ
+     بـ`cache`، **و`getFollows` أوّلُها ومدفوعةٌ في السطر فوقه أصلاً**
+     (D-194/D-291: نداءٌ قائمٌ يحمل الجواب). */
+  const libState = pagerTab ? await getLibState().catch(() => undefined) : undefined;
 
   /* 🆕 **«النقاشات»: أعمالي المتابَعة فقط** (D-306، نصُّ أحمد: «إخفاء
      النقاشات اللي ما يتابعها»). **الترشيحُ على مجموعةٍ مدفوعةٍ أصلاً**
@@ -685,6 +693,7 @@ export default async function PeoplePage({
               news={newsForMe}
               meId={user?.id ?? ""}
               followed={followed}
+              libState={libState}
               postLikes={postLikes}
               views={viewCounts}
               followingIds={followingIds}
