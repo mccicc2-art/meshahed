@@ -9,7 +9,6 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@fontsource/cairo": "^5.3.0",
     "@fontsource/poppins": "^5.3.0",
     "@fontsource/tajawal": "^5.3.0",
     "@supabase/ssr": "^0.12.4",
@@ -26,7 +25,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.2.12",
+    "eslint-config-next": "16.3.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
