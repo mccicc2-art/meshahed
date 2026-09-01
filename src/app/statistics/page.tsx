@@ -19,6 +19,7 @@ import {
   TasteTab,
 } from "@/components/stats/FullStatsTabs";
 import { SettingsHeader } from "@/components/settings/SettingsHeader";
+import { OneTimeHint } from "@/components/OneTimeHint";
 import { PlusPill } from "@/components/ui/PlusPill";
 import { PlusPreview } from "@/components/stats/PlusPreview";
 
@@ -53,7 +54,7 @@ export default async function StatisticsPage({
   const user = await getUser();
   if (!user) redirect("/login");
 
-  const [{ locale }, params, profile] = await Promise.all([
+  const [{ locale, t }, params, profile] = await Promise.all([
     getT(),
     searchParams,
     getProfile(),
@@ -150,6 +151,10 @@ export default async function StatisticsPage({
       {/* 🆕 **ومعاينةٌ مموّهةٌ لغير المشترك هنا كما في «تقريرك»**
           (D-809) — **قفلان بشكلين في صفحتين شقيقتين عطلٌ** (القاعدة ٣). */}
       <div className="mt-1">
+          {/* 🆕 **تلميحُ الصفحة** (D-852): **أعمقُ ما فيها ليس الأرقامَ
+              بل التقاريرَ وبطاقةَ الذوق التي تُشارَك** — **وهما خلف
+              تبويبٍ ومقبضٍ لا يُقرآن من الشاشة الأولى.** */}
+          <OneTimeHint id="stats-reports" text={t.hintStats} closeLabel={t.closeLabel} />
           {/* ═══ المدّة ═══ */}
           <div role="tablist" aria-label={ar ? "المدّة" : "Period"} className="flex">
             {(["week", "month", "year", "all"] as const).map((p) => {
