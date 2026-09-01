@@ -315,134 +315,335 @@
 
 ## 9. استكمال التحليل الثابت — بالأدلّة الصفّية
 
-> كلّه من المصدر والبيانات الوصفية (`pg_policy` · `pg_proc` · `pg_class` · `information_schema`). **صفر استدعاء دالّة تطبيقيّة · صفر كتابة · صفر اسمٍ في النسخة العامّة.** الدوالّ بمعرّفات محجوبة `FW-nn` / `FR-nn`، والعرض `V-01`.
+> **المصدر:** البيانات الوصفية للقاعدة (`pg_policies` · `pg_policy` · `pg_proc` · `pg_namespace` · `aclexplode` · `pg_get_functiondef` · `pg_get_viewdef`) وسجلّات Postgres وشجرةُ المصدر. **صفر استدعاءِ دالّةٍ تطبيقيّة · صفر كتابة · صفر DDL · صفر تغييرِ صلاحيات.**
+>
+> **قاعدةُ الحجب المطبَّقة هنا** (والمستودعُ عامّ): **أسماءُ الدوالّ محجوبةٌ بمعرّفاتٍ ثابتة** `FW-nn`/`FR-nn`، والعرضُ `V-01` — لأنّها **سطحُ RPC القابلُ للنداء**، فاسمُها وحدَه خريطةُ هجوم. **وأسماءُ الجداول والسياسات تُكتب صريحةً** لأنّ **173 ملفَّ SQL في المستودع نفسِه تحملها أصلاً**، **وحجبُ ما هو منشورٌ يخفي الدليلَ عن المراجع ولا يخفيه عن المهاجم.**
 
-### 9.1 مصفوفة الوصول — صفّاً لكل سطح حسّاس
+### 9.1 مصفوفة الوصول — صفٌّ لكلِّ سياسة
 
-**البنية العامّة:** **73 جدولاً في `public`، RLS مفعّل على 73 منها**. و**15 جدولاً بصفر سياسة** = **منعٌ افتراضيّ مغلق** (fail-closed) لا ثغرة — لكنها تعني أن الكتابة إليها تمرّ حصراً عبر دوالّ مميّزة، فتدخل نطاق `0040`.
+**البنية:** **73 جدولاً في `public` · RLS مفعَّل على 73/73 · 128 سياسة.**
 
-| السطح | العملية | الدور | حارس التطبيق | `USING` | `WITH CHECK` | الحكم |
-|---|---|---|---|---|---|---|
-| الملفّات | ALL | **PUBLIC** ⚠️ | `getUser()` | `auth.uid() = id` | `auth.uid() = id` | `SOURCE_VERIFIED` — **صاحبُ الصفّ وحدَه**، ولا قراءةَ عامّة من الجدول |
-| التقييمات | SELECT/INSERT/UPDATE/DELETE (4 سياسات) | `authenticated` | `requireUser` | `auth.uid() = user_id` | `auth.uid() = user_id` | `SOURCE_VERIFIED` ✅ |
-| تقييمات الحلقات | ALL | `authenticated` | `requireUser` | `auth.uid() = user_id` | `auth.uid() = user_id` | `SOURCE_VERIFIED` ✅ |
-| القوائم | ALL | `authenticated` | `requireUser` | `auth.uid() = user_id` | `auth.uid() = user_id` | `SOURCE_VERIFIED` ✅ |
-| القوائم | SELECT | `authenticated,anon` | — | `is_public` | — | ✅ **إسقاطٌ عامّ مقصود ومحدود بالعَلَم** |
-| عناصر القوائم | ALL | `authenticated` | `requireUser` | ملكيّةُ القائمة الأمّ عبر `EXISTS` | نفسُها | `SOURCE_VERIFIED` ✅ |
-| عناصر القوائم | SELECT | `authenticated,anon` | — | `is_public` للقائمة الأمّ | — | ✅ |
-| حفظ القوائم | ALL | `authenticated` | `requireUser` | `auth.uid() = user_id` | + **يمنع حفظ قائمتك لنفسك** وغيرَ العامّة | ✅ **شرطٌ أدقّ من الملكيّة وحدها** |
-| الحلقات/الأفلام المشاهدة · تقدّم الفيلم | ALL | **PUBLIC** ⚠️ | `requireUser` | `auth.uid() = user_id` | `auth.uid() = user_id` | ✅ (الأثر صفر: الزائر بلا `uid`) |
-| تعليقات العمل | SELECT/INSERT/DELETE | `authenticated` | `requireUser` | `auth.uid() = user_id` | `auth.uid() = user_id` | ✅ — **والقراءةُ العامّة ليست من الجدول** |
-| ردود المراجعات · ردود الأخبار | 3 سياسات لكلٍّ | `authenticated` | `requireUser` | `auth.uid() = user_id` | `auth.uid() = user_id` (+ عموميّةُ القائمة للردّ عليها) | ✅ |
-| ردود المشاركات | SELECT/INSERT/DELETE | `authenticated` | `requireUser` | طرفا المشاركة عبر `EXISTS` | + **`are_mutual()`** | ✅ **أقوى صفٍّ في المصفوفة** |
-| رسائل المجتمعات | SELECT/INSERT/DELETE | `authenticated` | `requireUser` | `is_community_member()` أو غرفةٌ مفتوحة | `auth.uid() = author_id` **و**العضويّة | ✅ |
-| الحظر · تقارير المستخدمين | 3 سياسات لكلٍّ | `authenticated` | `requireUser` | `auth.uid() = blocker_id/reporter_id` | + **`reporter <> target`** | ✅ |
-| الاشتراكات · أكواد الإحالة · صفّ الشريك · طلب الشراكة · طلب التوثيق | SELECT فقط | `authenticated` (وواحدٌ PUBLIC ⚠️) | — | `auth.uid() = user_id` | — | ✅ **قراءةٌ فقط — لا كتابةَ من العميل إطلاقاً** |
-| الإحالات | SELECT | `authenticated` | — | `inviter` أو `invitee` | — | ✅ |
-| بيانات تحويل الشريك | ALL | `authenticated` | `requireUser` | `auth.uid() = user_id` | + **شراكةٌ قائمة** `EXISTS` | ✅ |
-| بيانات تحويل الشريك | SELECT | `authenticated` | `getAmAdmin()` | `am_admin()` | — | ✅ |
-| التخزين (`storage.objects`) | INSERT/UPDATE/SELECT/DELETE | `authenticated` | — | `foldername[1] = auth.uid()` | نفسُها | ✅ (§4.2) |
+**و15 جدولاً بصفر سياسة** = **منعٌ افتراضيٌّ مغلق** (fail-closed): `featured_lists` · `imdb_pool` · `news_posts` · `partner_clicks` · `plus_rewards` · `provider_content_links` · `provider_events` · `referral_events` · `runtime_errors` · `title_room_global_pins` · `title_snapshots` · `user_active_days` · `visit_langs` · `watched_episodes_backup_133` · `weekly_top`. **لا قراءةَ ولا كتابةَ من العميل إليها إطلاقاً** — وكلُّ ما يمسّها يمرّ بطبقةٍ مميّزة، **فتدخل نطاق `LOOPZ-AUD-0040` لا نطاق RLS.** (و`watched_episodes_backup_133` هو `LOOPZ-AUD-0005` بعينه: **صفر سياسة يعني صفر قراءة عبر Data API** — الخطرُ فيه بقاءُ نسخةٍ لا كشفُها.)
 
-**النتيجتان الصفّيّتان:**
-1. **صفر سياسةِ كتابةٍ تسمح بالكتابة فوق صفٍّ ليس لصاحب الجلسة.** كلُّ `WITH CHECK` في المصفوفة يربط الصفَّ بـ`auth.uid()`، وبعضُها يزيد شرطاً (`are_mutual` · العضويّة · الشراكة القائمة · منعُ التقرير الذاتيّ).
-2. ⚠️ **خمسُ سياساتٍ مُسنَدةٌ إلى `PUBLIC` بدل `authenticated`** (الملفّات · المشاهدات · تقدّم الفيلم · طلب التوثيق). **أثرُها الأمنيُّ صفر** لأن الشرط `auth.uid() = …` لا يتحقّق لزائرٍ بلا هويّة — **لكنها نظافةُ أقلِّ صلاحيةٍ ناقصة**: `S-07` · **P3**. معيار القبول: تُعاد إسنادُها إلى `authenticated` بلا تغيير في الشرط.
+**والمستهلِكُ عمودٌ مستقلٌّ لأن السياسةَ وحدَها لا تصف السطح:**
 
-**والاستنتاج البنيويّ:** ثلاثةُ أسطحٍ عامّةٍ بطبيعتها (الملفّات العامّة · تعليقات الأعمال · المراجعات) **قراءتُها ليست من الجداول** — سياساتُها كلُّها «صاحبُ الصفّ». **فالقراءةُ العامّة كلُّها تمرّ عبر طبقةٍ مميّزة**، وهو ما يجعل §9.2 و§9.6 قلبَ هذه المرحلة لا حاشيتَها.
+| الجدول | المستهلِك في الشيفرة |
+|---|---|
+| `activity_likes` · `blocks` · `library_grants` · `list_reply_reports` · `list_review_likes` · `list_review_replies` · `list_review_reports` · `news_post_replies` · `news_reply_reports` · `post_views` · `reply_reports` · `review_likes` · `review_replies` · `review_reports` · `title_post_likes` · `title_post_reports` · `title_post_votes` · `title_posts` · `user_reports` | `lib/actions.ts` (Server Actions فقط) |
+| `communities` · `community_invites` · `community_join_requests` · `community_members` · `dismissed_titles` · `follow_requests` · `list_reviews` · `list_saves` · `movie_progress` · `partner_details` · `person_follows` · `post_reactions` · `profiles` · `title_art` · `title_room_pins` · `user_follows` · `user_list_items` · `user_lists` | `lib/actions.ts` + `lib/data.ts` |
+| `community_messages` · `list_shares` · `share_replies` · `title_shares` | + مكوّنُ عميلٍ واحد (`Communities.tsx` / `Inbox.tsx`) |
+| `follows` · `ratings` · `watched_episodes` · `watched_movies` | + `app/api/trakt/callback/route.ts` (مسارُ الاستيراد) وطبقاتُ التوصية |
+| `imdb_chart` · `imdb_ratings` · `title_meta` · `title_aliases` | كتالوجٌ عامٌّ — `lib/data.ts` / `lib/omdb.ts` / `lib/titleAliases.ts` |
+| `partners` | `app/profile/settings/invites/page.tsx` |
+| 🔑 `episode_ratings` · `profile_views` · `referral_codes` · `referrals` · `subscriptions` · `verification_requests` | **صفر استعلامٍ مباشرٍ في الشيفرة** — تُقرأ حصراً عبر RPC مميّزة. **فالسياسةُ هنا حارسٌ احتياطيٌّ لا الحارسَ العامل** |
+
+**المصفوفة الكاملة — 128 صفّاً، صفٌّ لكلِّ سياسة، بلا تجميع:**
+
+| الجدول | العملية | الدور | `USING` | `WITH CHECK` |
+|---|---|---|---|---|
+| `activity_likes` | DELETE | `authenticated` | `auth.uid() = liker_id` | `—` |
+| `activity_likes` | INSERT | `authenticated` | `—` | `auth.uid() = liker_id` |
+| `activity_likes` | SELECT | `authenticated` | `auth.uid() = liker_id` | `—` |
+| `blocks` | DELETE | `authenticated` | `auth.uid() = blocker_id` | `—` |
+| `blocks` | INSERT | `authenticated` | `—` | `auth.uid() = blocker_id` |
+| `blocks` | SELECT | `authenticated` | `auth.uid() = blocker_id` | `—` |
+| `communities` | DELETE | `authenticated` | `auth.uid() = owner_id` | `—` |
+| `communities` | INSERT | `authenticated` | `—` | `auth.uid() = owner_id` |
+| `communities` | SELECT | `authenticated` | `true` ⚠️ | `—` |
+| `communities` | UPDATE | `authenticated` | `auth.uid() = owner_id` | `auth.uid() = owner_id` |
+| `community_invites` | DELETE | `authenticated` | `(auth.uid() = user_id) OR EXISTS(communities c WHERE c.id = community_id AND c.owner_id = auth.uid())` | `—` |
+| `community_invites` | INSERT | `authenticated` | `—` | `EXISTS(communities c WHERE c.id = community_id AND c.owner_id = auth.uid())` |
+| `community_invites` | SELECT | `authenticated` | `(auth.uid() = user_id) OR EXISTS(communities c WHERE c.id = community_id AND c.owner_id = auth.uid())` | `—` |
+| `community_join_requests` | DELETE | `authenticated` | `(auth.uid() = user_id) OR EXISTS(communities c WHERE c.id = community_id AND c.owner_id = auth.uid())` | `—` |
+| `community_join_requests` | INSERT | `authenticated` | `—` | `(auth.uid() = user_id) AND EXISTS(communities c WHERE c.id = community_id AND c.is_private = true)` |
+| `community_join_requests` | SELECT | `authenticated` | `(auth.uid() = user_id) OR EXISTS(communities c WHERE c.id = community_id AND c.owner_id = auth.uid())` | `—` |
+| `community_members` | DELETE | `authenticated` | `(auth.uid() = user_id) AND NOT EXISTS(communities c WHERE c.id = community_id AND c.owner_id = auth.uid())` | `—` |
+| `community_members` | INSERT | `authenticated` | `—` | `(auth.uid() = user_id) AND EXISTS(communities c WHERE c.id = community_id AND c.is_private = false)` |
+| `community_members` | SELECT | `authenticated` | `is_community_member(community_id, auth.uid())` | `—` |
+| `community_messages` | DELETE | `authenticated` | `auth.uid() = author_id` | `—` |
+| `community_messages` | INSERT | `authenticated` | `—` | `(auth.uid() = author_id) AND is_community_member(community_id, auth.uid())` |
+| `community_messages` | SELECT | `authenticated` | `is_community_member(community_id, auth.uid()) OR is_open_title_room(community_id)` | `—` |
+| `dismissed_titles` | ALL | `authenticated` | `auth.uid() = user_id` | `auth.uid() = user_id` |
+| `episode_ratings` | ALL | `authenticated` | `auth.uid() = user_id` | `auth.uid() = user_id` |
+| `follow_requests` | DELETE | `authenticated` | `(auth.uid() = requester_id) OR (auth.uid() = target_id)` | `—` |
+| `follow_requests` | INSERT | `authenticated` | `—` | `auth.uid() = requester_id` |
+| `follow_requests` | SELECT | `authenticated` | `(auth.uid() = requester_id) OR (auth.uid() = target_id)` | `—` |
+| `follows` | ALL | `public` ⚠️ | `auth.uid() = user_id` | `auth.uid() = user_id` |
+| `imdb_chart` | SELECT | `public` | `true` | `—` |
+| `imdb_ratings` | SELECT | `public` | `true` | `—` |
+| `library_grants` | ALL | `authenticated` | `auth.uid() = owner_id` | `auth.uid() = owner_id` |
+| `library_grants` | SELECT | `authenticated` | `auth.uid() = grantee_id` | `—` |
+| `list_reply_reports` | INSERT | `authenticated` | `—` | `auth.uid() = reporter_id` |
+| `list_reply_reports` | SELECT | `authenticated` | `auth.uid() = reporter_id` | `—` |
+| `list_review_likes` | DELETE | `authenticated` | `auth.uid() = liker_id` | `—` |
+| `list_review_likes` | INSERT | `authenticated` | `—` | `(auth.uid() = liker_id) AND (auth.uid() <> review_user_id)` |
+| `list_review_likes` | SELECT | `authenticated` | `auth.uid() = liker_id` | `—` |
+| `list_review_replies` | DELETE | `authenticated` | `auth.uid() = user_id` | `—` |
+| `list_review_replies` | INSERT | `authenticated` | `—` | `(auth.uid() = user_id) AND EXISTS(user_lists l WHERE l.id = list_id AND l.is_public)` |
+| `list_review_replies` | SELECT | `authenticated` | `auth.uid() = user_id` | `—` |
+| `list_review_reports` | INSERT | `authenticated` | `—` | `(auth.uid() = reporter_id) AND (auth.uid() <> review_user_id)` |
+| `list_review_reports` | SELECT | `authenticated` | `auth.uid() = reporter_id` | `—` |
+| `list_reviews` | DELETE | `authenticated` | `auth.uid() = user_id` | `—` |
+| `list_reviews` | INSERT | `authenticated` | `—` | `(auth.uid() = user_id) AND EXISTS(user_lists l WHERE l.id = list_id AND l.is_public AND l.user_id <> auth.uid())` |
+| `list_reviews` | SELECT | `authenticated` | `auth.uid() = user_id` | `—` |
+| `list_reviews` | UPDATE | `authenticated` | `auth.uid() = user_id` | `auth.uid() = user_id` |
+| `list_saves` | ALL | `authenticated` | `auth.uid() = user_id` | `(auth.uid() = user_id) AND EXISTS(user_lists l WHERE l.id = list_id AND l.is_public AND l.user_id <> auth.uid())` |
+| `list_shares` | INSERT | `authenticated` | `—` | `(auth.uid() = sender_id) AND are_mutual(sender_id, recipient_id) AND EXISTS(user_lists l WHERE l.id = list_id AND l.user_id = auth.uid() AND l.is_public)` |
+| `list_shares` | SELECT | `authenticated` | `((auth.uid() = sender_id) AND sender_hid = false) OR ((auth.uid() = recipient_id) AND recipient_hid = false)` | `—` |
+| `list_shares` | UPDATE | `authenticated` | `(auth.uid() = sender_id) OR (auth.uid() = recipient_id)` | `(auth.uid() = sender_id) OR (auth.uid() = recipient_id)` |
+| `movie_progress` | ALL | `public` ⚠️ | `auth.uid() = user_id` | `auth.uid() = user_id` |
+| `news_post_replies` | DELETE | `authenticated` | `auth.uid() = user_id` | `—` |
+| `news_post_replies` | INSERT | `authenticated` | `—` | `auth.uid() = user_id` |
+| `news_post_replies` | SELECT | `authenticated` | `auth.uid() = user_id` | `—` |
+| `news_reply_reports` | INSERT | `authenticated` | `—` | `auth.uid() = reporter_id` |
+| `news_reply_reports` | SELECT | `authenticated` | `auth.uid() = reporter_id` | `—` |
+| `partner_applications` | SELECT | `authenticated` | `auth.uid() = user_id` | `—` |
+| `partner_details` | ALL | `authenticated` | `auth.uid() = user_id` | `(auth.uid() = user_id) AND EXISTS(partners p WHERE p.user_id = auth.uid())` |
+| `partner_details` | SELECT | `authenticated` | `am_admin()` | `—` |
+| `partners` | SELECT | `authenticated` | `auth.uid() = user_id` | `—` |
+| `person_follows` | ALL | `authenticated` | `auth.uid() = user_id` | `auth.uid() = user_id` |
+| `post_reactions` | DELETE | `authenticated` | `auth.uid() = user_id` | `—` |
+| `post_reactions` | INSERT | `authenticated` | `—` | `auth.uid() = user_id` |
+| `post_reactions` | SELECT | `authenticated` | `auth.uid() = user_id` | `—` |
+| `post_reactions` | UPDATE | `authenticated` | `auth.uid() = user_id` | `auth.uid() = user_id` |
+| `post_views` | DELETE | `authenticated` | `auth.uid() = user_id` | `—` |
+| `post_views` | INSERT | `authenticated` | `—` | `auth.uid() = user_id` |
+| `post_views` | SELECT | `authenticated` | `auth.uid() = user_id` | `—` |
+| `profile_views` | INSERT | `authenticated` | `—` | `auth.uid() = viewer_id` |
+| `profiles` | ALL | `public` ⚠️ | `auth.uid() = id` | `auth.uid() = id` |
+| `ratings` | DELETE | `authenticated` | `auth.uid() = user_id` | `—` |
+| `ratings` | INSERT | `authenticated` | `—` | `auth.uid() = user_id` |
+| `ratings` | SELECT | `authenticated` | `auth.uid() = user_id` | `—` |
+| `ratings` | UPDATE | `authenticated` | `auth.uid() = user_id` | `—` 🟠 |
+| `referral_codes` | SELECT | `authenticated` | `auth.uid() = user_id` | `—` |
+| `referrals` | SELECT | `authenticated` | `(auth.uid() = inviter_id) OR (auth.uid() = invitee_id)` | `—` |
+| `reply_reports` | INSERT | `authenticated` | `—` | `auth.uid() = reporter_id` |
+| `reply_reports` | SELECT | `authenticated` | `auth.uid() = reporter_id` | `—` |
+| `review_likes` | DELETE | `authenticated` | `auth.uid() = liker_id` | `—` |
+| `review_likes` | INSERT | `authenticated` | `—` | `(auth.uid() = liker_id) AND (auth.uid() <> review_user_id)` |
+| `review_likes` | SELECT | `authenticated` | `(auth.uid() = liker_id) OR (auth.uid() = review_user_id)` | `—` |
+| `review_replies` | DELETE | `authenticated` | `auth.uid() = user_id` | `—` |
+| `review_replies` | INSERT | `authenticated` | `—` | `auth.uid() = user_id` |
+| `review_replies` | SELECT | `authenticated` | `auth.uid() = user_id` | `—` |
+| `review_reports` | DELETE | `authenticated` | `auth.uid() = reporter_id` | `—` |
+| `review_reports` | INSERT | `authenticated` | `—` | `(auth.uid() = reporter_id) AND (auth.uid() <> review_user_id)` |
+| `review_reports` | SELECT | `authenticated` | `auth.uid() = reporter_id` | `—` |
+| `share_replies` | DELETE | `authenticated` | `auth.uid() = author_id` | `—` |
+| `share_replies` | INSERT | `authenticated` | `—` | `(auth.uid() = author_id) AND EXISTS(title_shares s WHERE s.id = share_id AND (auth.uid() = s.sender_id OR auth.uid() = s.recipient_id) AND are_mutual(s.sender_id, s.recipient_id))` |
+| `share_replies` | SELECT | `authenticated` | `EXISTS(title_shares s WHERE s.id = share_id AND (auth.uid() = s.sender_id OR auth.uid() = s.recipient_id))` | `—` |
+| `subscriptions` | SELECT | `authenticated` | `user_id = auth.uid()` | `—` |
+| `title_aliases` | SELECT | `anon,authenticated` | `verified` | `—` |
+| `title_art` | DELETE | `authenticated` | `auth.uid() = user_id` | `—` |
+| `title_art` | INSERT | `authenticated` | `—` | `auth.uid() = user_id` |
+| `title_art` | SELECT | `authenticated` | `auth.uid() = user_id` | `—` |
+| `title_art` | UPDATE | `authenticated` | `auth.uid() = user_id` | `auth.uid() = user_id` |
+| `title_meta` | SELECT | `public` | `true` | `—` |
+| `title_post_likes` | DELETE | `authenticated` | `auth.uid() = user_id` | `—` |
+| `title_post_likes` | INSERT | `authenticated` | `—` | `(auth.uid() = user_id) AND can_touch_post(post_id)` |
+| `title_post_likes` | SELECT | `authenticated` | `auth.uid() = user_id` | `—` |
+| `title_post_reports` | INSERT | `authenticated` | `—` | `auth.uid() = reporter_id` |
+| `title_post_reports` | SELECT | `authenticated` | `auth.uid() = reporter_id` | `—` |
+| `title_post_votes` | DELETE | `authenticated` | `auth.uid() = user_id` | `—` |
+| `title_post_votes` | INSERT | `authenticated` | `—` | `(auth.uid() = user_id) AND can_touch_post(post_id)` |
+| `title_post_votes` | SELECT | `authenticated` | `auth.uid() = user_id` | `—` |
+| `title_post_votes` | UPDATE | `authenticated` | `auth.uid() = user_id` | `auth.uid() = user_id` |
+| `title_posts` | DELETE | `authenticated` | `auth.uid() = user_id` | `—` |
+| `title_posts` | INSERT | `authenticated` | `—` | `auth.uid() = user_id` |
+| `title_posts` | SELECT | `authenticated` | `auth.uid() = user_id` | `—` |
+| `title_room_pins` | DELETE | `authenticated` | `auth.uid() = user_id` | `—` |
+| `title_room_pins` | INSERT | `authenticated` | `—` | `auth.uid() = user_id` |
+| `title_room_pins` | SELECT | `authenticated` | `auth.uid() = user_id` | `—` |
+| `title_shares` | INSERT | `authenticated` | `—` | `(auth.uid() = sender_id) AND are_mutual(sender_id, recipient_id)` |
+| `title_shares` | SELECT | `authenticated` | `((auth.uid() = sender_id) AND sender_hid = false) OR ((auth.uid() = recipient_id) AND recipient_hid = false)` | `—` |
+| `title_shares` | UPDATE | `authenticated` | `(auth.uid() = sender_id) OR (auth.uid() = recipient_id)` | `(auth.uid() = sender_id) OR (auth.uid() = recipient_id)` |
+| `user_follows` | DELETE | `authenticated` | `auth.uid() = follower_id` | `—` |
+| `user_follows` | INSERT | `authenticated` | `—` | `auth.uid() = follower_id` |
+| `user_follows` | SELECT | `authenticated` | `true` ⚠️ | `—` |
+| `user_list_items` | ALL | `authenticated` | `EXISTS(user_lists l WHERE l.id = list_id AND l.user_id = auth.uid())` | `EXISTS(user_lists l WHERE l.id = list_id AND l.user_id = auth.uid())` |
+| `user_list_items` | SELECT | `anon,authenticated` | `EXISTS(user_lists l WHERE l.id = list_id AND l.is_public)` | `—` |
+| `user_lists` | ALL | `authenticated` | `auth.uid() = user_id` | `auth.uid() = user_id` |
+| `user_lists` | SELECT | `anon,authenticated` | `is_public` | `—` |
+| `user_reports` | DELETE | `authenticated` | `auth.uid() = reporter_id` | `—` |
+| `user_reports` | INSERT | `authenticated` | `—` | `(auth.uid() = reporter_id) AND (auth.uid() <> target_id)` |
+| `user_reports` | SELECT | `authenticated` | `auth.uid() = reporter_id` | `—` |
+| `verification_requests` | SELECT | `public` ⚠️ | `auth.uid() = user_id` | `—` |
+| `watched_episodes` | ALL | `public` ⚠️ | `auth.uid() = user_id` | `auth.uid() = user_id` |
+| `watched_movies` | ALL | `public` ⚠️ | `auth.uid() = user_id` | `auth.uid() = user_id` |
+
+**قراءةُ المصفوفة — أربع نتائج، اثنتان جديدتان:**
+
+1. ✅ **صفر سياسةِ كتابةٍ تسمح بالكتابة فوق صفٍّ ليس لصاحب الجلسة.** كلُّ `WITH CHECK` يربط الصفَّ بـ`auth.uid()`، **وثمانٍ تزيد شرطاً أقوى من الملكيّة**: `are_mutual()` (المشاركات) · عضويّةُ المجتمع · شراكةٌ قائمة · عموميّةُ القائمة الأمّ · `l.user_id <> auth.uid()` (لا تحفظ ولا تراجع قائمتَك) · `auth.uid() <> review_user_id` · `auth.uid() <> target_id` (لا تُبلّغ عن نفسك) · `can_touch_post()`.
+2. ℹ️ **`ratings/UPDATE` بلا `WITH CHECK` ليست ثغرة**: Postgres يستعمل تعبيرَ `USING` نفسَه للصفوف الجديدة حين يُحذف `WITH CHECK` من سياسة `UPDATE`. **مذكورٌ لأنّ الجدولَ يُقرأ فيبدو ناقصاً.**
+3. ⚠️ **ستُّ سياساتٍ مُسنَدةٌ إلى `PUBLIC` بدل `authenticated`** (`profiles` · `follows` · `movie_progress` · `watched_episodes` · `watched_movies` · `verification_requests`). **أثرُها الأمنيُّ صفر** — الشرطُ `auth.uid() = …` لا يتحقّق لزائرٍ بلا هويّة — **لكنّها نظافةُ أقلِّ صلاحيّةٍ ناقصة**: **`S-07` · P3**. معيار القبول: إعادةُ الإسناد إلى `authenticated` بلا تغيير الشرط.
+4. 🟠 **جديد — وخرج من هذا العمل الصفّيّ نفسِه:** **سياستان تقرآن `true` لكلِّ مصادَق**: `user_follows/SELECT` و`communities/SELECT`.
+   - **`user_follows` = خريطةُ المتابعة كلُّها مقروءةٌ لأيِّ مسجَّل.** **والتطبيقُ يملك عَلَمَ `hide_follow_lists`** — **وهو عمودٌ في الصفّ لا شرطٌ في السياسة**، فيُحترم في الطبقة الأعلى ولا يُفرض في القاعدة. **وهذا صنفُ `S-03` نفسُه بحرفه** (عَلَمُ خصوصيّةٍ لا تفرضه الطبقةُ التي تحرس البيانات).
+   - `communities/SELECT true` **مقصودٌ ظاهراً** (الاكتشاف)، **والخاصّةُ منها تُميَّز بعمود `is_private` لا تُحجب** — والعضويّةُ والرسائلُ محروستان فعلاً.
+   - **`S-12` · P3-CANDIDATE** — معيار القبول: شرطُ ظهورٍ في سياسة `user_follows/SELECT` يحترم `hide_follow_lists` و`is_private`، **أو** قرارٌ موثَّقٌ بأن خريطةَ المتابعة عامّةٌ للمسجَّلين وإسقاطُ العَلَم من الواجهة (D-030: **لا وعدَ بلا باب**). **لا أرفعه فوق P3 قبل التحقّق الحيّ** — وهو `BLOCKED_BY_TEST_ENV`.
+
+**والاستنتاج البنيويّ يثبت:** ثلاثةُ أسطحٍ عامّةٍ بطبيعتها (الملفّات · تعليقاتُ الأعمال · المراجعات) **قراءتُها ليست من الجداول** — سياساتُها كلُّها «صاحبُ الصفّ»، وستّةُ جداولَ لا تُستعلَم من الشيفرة إطلاقاً. **فالقراءةُ العامّةُ كلُّها تمرّ بطبقةٍ مميّزة** — وهو ما يجعل §9.2 و§9.6 قلبَ هذه المرحلة.
 
 ### 9.2 تدقيق الدوالّ — بمسار الاستدعاء والحارس والأثر
 
-**الجرد:** 177 دالّة في `public` · **170 `SECURITY DEFINER`** · 7 `INVOKER` · **144 يملك `anon` تنفيذَها**.
+**الجرد:** 177 دالّة في `public` · 170 `SECURITY DEFINER` · 7 `INVOKER` · **130 غيرُ trigger يملك `anon` تنفيذَها**.
 
-**أ) الكاتبة المتاحة للزائر — التصنيف الصحيح**
+**🔴 تصحيحُ منهجٍ قبل الأرقام — وقعتُ في الخطأ الذي حذّرتَ منه ثمّ ضبطتُه:**
 
-| الفئة | العدد | الحكم |
-|---|---:|---|
-| كاتبة + `EXECUTE` لـ`anon` (خام) | **29** | تعدادٌ خام لا حكم |
-| **منها تُرجع `trigger`** | **8** | 🟢 **ليست سطحَ هجوم** — PostgREST **لا يعرض دوالّ `trigger` كـRPC** |
-| **القابلة للاستدعاء فعلاً** | **21** | القاعدة الصحيحة |
-| منها محروسةٌ بـ`am_admin()` + `raise exception` | **3** | ✅ |
-| منها محروسةٌ بـ`auth.uid()` في الجسم | **12** | ✅ |
-| **منها بلا حارس هويّة** | **6** | 🟠 التفصيل أدناه |
+بنيتُ تصنيفَ «كاتبة/قارئة» على regex، **وأوّلُ صيغةٍ كتبتُها اليوم كانت `update <جدول> set`** — **فأسقطت دالّةً جسمُها `update public.user_list_items i set …`** لأنّ **الاسمَ المستعارَ `i` يفصل الجدولَ عن `set`**. **ودالّةٌ كاتبةٌ صُنّفت قارئةً هي بالضبط صنفُ الخطأ الذي قلتَ إن البحثَ عن الكلمات لا يكفي لتفاديه.** الصيغةُ المصحَّحة `update <جدول>( <مستعار>)? set`، **وأعدتُ التصنيفَ كلَّه عليها.** والدالّةُ المعنيّةُ هي `FW-05` نفسُها — **كانت مصنَّفةً كاتبةً في التسليم السابق، فالنتيجةُ المنشورةُ لم تتأثّر، والمنهجُ تأثّر.**
 
-| المعرّف | ما تكتب فيه | التصنيف | الدرجة |
-|---|---|---|---|
-| `FW-01` · `FW-02` · `FW-03` · `FW-04` | نقراتُ شريك · لغاتُ زيارة · أحداثُ مزوّد · أخطاءُ عميل | 🟢 **قياسٌ مجهولٌ مقصود** (append-only) — **لا تصعيدَ صلاحية**؛ الخطرُ إساءةٌ/إغراق | **`S-08` · P3** |
-| **`FW-05`** | **جدولُ عناصرِ قوائمِ المستخدمين** | 🔴 **كتابةٌ في محتوى مستخدمٍ بلا حارس هويّة** | **قلبُ `LOOPZ-AUD-0040` · P1** |
-| `FW-06` | مخبأُ تقييماتِ كتالوج | 🟠 **تسميمُ بياناتِ كتالوج** لا خصوصيّة | **`S-09` · P2** |
+**وجوابان مباشران على اعتراضك:**
 
-> 🔑 **وهذا أدقُّ توصيفٍ لـ`0040` حتى الآن**: ليست «صلاحيّاتٍ واسعةً على الدوالّ الكاتبة» بإطلاق — **بل دالّةٌ واحدةٌ قابلةٌ للاستدعاء تكتب في محتوى مستخدمٍ بلا هويّة، وثانيةٌ تكتب في كتالوج، وأربعٌ قياسٌ مقصود.** **والتعدادُ الخام كان يضخّم الخطر ثلاثةَ أضعاف.**
-
-**ب) القارئة المتاحة للزائر — وهنا الكشفُ الأهمّ**
-
-من الدوالّ القارئة القابلة للاستدعاء من `anon`، بلا `auth.uid()` ولا `am_admin()`، **والتي تلمس جداول مستخدم**: **21 دالّة**.
-
-| المرشِّح داخلها | العدد |
-|---|---:|
-| تُصفّي على `is_public` | **7** |
-| تُصفّي على `hide_*` | **1** |
-| **تُصفّي على `is_private`** | **0** |
-| **بلا أيّ مرشّح ظهورٍ إطلاقاً** | **14** |
-
-> 🔴 **صفرُ دالّةٍ من الإحدى والعشرين تستشير `is_private`.** وهذا **ليس بنداً ينتظر بيئةً معزولة** — **هو محسومٌ ثابتاً**: عَلَمُ الحساب الخاصّ **لا يُنفَّذ في طبقة الدوالّ إطلاقاً**، وإنما يُترك للطبقة الأعلى. يبقى داخل **`LOOPZ-AUD-0040` · P1**.
-
-### 9.3 دورة الجلسة والحذف والإبطال — بالتصحيح
-
-| البند | النتيجة | الدليل |
+| سؤالك | الفحص | النتيجة |
 |---|---|---|
-| **حذف الحساب** | يمرّ بحدِّ معدّل ثمّ دالّةِ حذفٍ ممنوحةٍ لـ`authenticated` وحده | `actions.ts:4832` |
-| **الجلسات عند الحذف** | ✅ **`auth.sessions` و`identities` و`mfa_factors` كلُّها `ON DELETE CASCADE`** — فلا رمزَ تحديثٍ يبقى، **ولا يُصدَر رمزُ وصولٍ جديد** | `pg_constraint` |
-| 🔴 **الرموز المُصدَرة سلفاً** | ⚠️ **تبقى صالحةً تشفيريّاً حتى `exp`** — حذفُ المستخدم **لا يُبطلها**. **فنافذةُ بقاءٍ تساوي عمرَ رمز الوصول** بعد الحذف أو فقدِ الجهاز | سلوكُ GoTrue |
-| **مدّة الرمز الفعليّة** | **`BLOCKED_BY_TEST_ENV`** — إعدادُ Auth الإداريّ، لا يُقرأ من المصدر ولا من البيانات الوصفية، ولا أطلب صلاحيته | — |
-| **«خروج من كل الأجهزة»** | 🔴 **فجوةُ أمنِ جلساتٍ مسمّاة — وليست `NOT_APPLICABLE`.** الخروجُ محلّيٌّ (`signOut()` بلا `scope:'global'`) | `auth/signout/route.ts` |
+| «قد تستخدم SQL ديناميكياً» | `execute ` في أجسام الـ130 كلِّها | **صفر** — **لا SQL ديناميكيَّ إطلاقاً في السطح المتاح للزائر** |
+| «قد تستدعي دالّة أخرى كاتبة» | مطابقةُ اسمِ كلِّ كاتبةٍ (بحدود الكلمة) داخل جسم كلِّ قارئة | **صفر قارئةٍ تنادي كاتبة** |
 
-> **`S-10` · P3** — لا إبطالَ ذاتيّاً للجلسات. معيار القبول: خروجٌ عامّ (`scope:'global'`) عند الحذف وعند طلب المستخدم، **وتوثيقُ مدّة الرمز**؛ والتحقّق الوظيفيّ `BLOCKED_BY_TEST_ENV`. **وأسحب وصفي السابق «الحذف محكَم» — هو محكَمٌ في الصفوف، ناقصٌ في الرموز.**
+**أ) الكاتبةُ المتاحةُ للزائر — 21 بعد إسقاط الـtrigger**
+
+| المعرّف | ما تكتب فيه | الحارس | التصنيف | الدرجة |
+|---|---|---|---|---|
+| ٣ دوالّ | جداولُ إدارة | `am_admin()` + `raise exception` | ✅ | — |
+| ١٢ دالّة | صفوفُ صاحب الجلسة | `auth.uid()` في الجسم | ✅ | — |
+| `FW-01`…`FW-04` | نقراتُ شريك · لغاتُ زيارة · أحداثُ مزوّد · أخطاءُ عميل | **بلا حارسِ هويّة** | 🟢 قياسٌ مجهولٌ مقصود (append-only) — لا تصعيدَ صلاحية؛ الخطرُ إغراق | **`S-08` · P3** |
+| **`FW-05`** | **جدولُ عناصرِ قوائمِ المستخدمين** | **بلا حارسِ هويّة** | 🔴 **كتابةٌ في محتوى مستخدم** | **قلبُ `LOOPZ-AUD-0040` · P1** |
+| `FW-06` | مخبأُ تقييماتِ كتالوج | **بلا حارسِ هويّة** | 🟠 تسميمُ بياناتِ كتالوج لا خصوصيّة | **`S-09` · P2** |
+
+**ب) القارئةُ المتاحةُ للزائر — 109، ومنها 32 تلمس جداولَ مستخدم**
+
+> 🔴 **وهنا تصحيحٌ ثانٍ لعددٍ نشرتُه:** قلتُ في التسليم السابق **«21 قارئة تلمس جداول مستخدم»**. **والرقمُ الصحيح 32.** **والسببُ أنّ قائمةَ «جداول المستخدم» التي طابقتُ عليها كانت أقصرَ من الواقع** — أُسقطت منها جداولُ المجتمع والحظر والتفاعلات وزياراتِ الملفّ. **فالسطحُ أوسعُ ممّا أعلنتُ بخمسينَ بالمئة، وهذا يُسجَّل لا يُبتلع.**
+
+**صفٌّ لكلِّ `FR-nn`** (الترقيمُ أبجديٌّ ثابت على أسماء الدوالّ المحجوبة · **كلُّها `SECURITY DEFINER` فكلُّها تتجاوز RLS** ما لم يُذكر خلافُه):
+
+| المعرّف | المخرَج | الجداول الملموسة | حارسُ الظهور | المستهلِك | الحكم |
+|---|---|---|---|---|---|
+| `FR-01` | `boolean` | `user_follows` | لا | **دالّةُ سياسةٍ** (تُستدعى داخل RLS) | ✅ **جوابٌ بولياني عن علاقةٍ بين معرّفَين — لا بيانات** |
+| `FR-02` | `integer` | `community_members` | لا | `lib/data.ts` | ✅ عدٌّ مجرّد |
+| `FR-03` | `avg_rating, votes` | `ratings` | لا | `lib/data.ts` | ✅ **تجميعٌ فوق الجمهور** — لا صفَّ فرد |
+| `FR-04` | `list_id, items` | `user_lists` · `user_list_items` | **`is_public`** | `lib/data.ts` | ✅ |
+| `FR-05` | `source_slug, list_id` | `profiles` · `user_lists` | **`is_public`** | `lib/data.ts` | ✅ |
+| `FR-06` | `text` | `user_lists` | **`is_public`** | `lib/data.ts` | ✅ |
+| `FR-07` | تقييماتُ حلقاتِ عضوٍ بعينه | `episode_ratings` | **لا** | `lib/data.ts` | 🟠 **يعرض تقييماتِ عضوٍ بمعرّفه بلا مرشِّح خصوصيّة** — داخل `0040` |
+| `FR-08` | `list_id, rank` | `user_lists` | **`is_public`** | **لا مستدعيَ في الشيفرة** | ✅ محتوًى منسَّق |
+| `FR-09` | `followers, following` | `user_follows` | لا | `lib/data.ts` | 🟠 **عدّادان لأيِّ معرّف** — **وهو ما يحجبه `hide_follow_lists` في الواجهة** (انظر `S-12`) |
+| `FR-10` | `boolean` | `blocks` | لا | **دالّةُ سياسة** | ✅ |
+| `FR-11` | `boolean` | `community_members` | لا | **دالّةُ سياسة** | ✅ |
+| `FR-12` | `boolean` | `communities` | لا | **دالّةُ سياسة** | ✅ |
+| `FR-13` | `saves, reviews, avg` | `user_lists` · `list_reviews` · `list_saves` | **`is_public`** | `lib/data.ts` | ✅ |
+| `FR-14` | `avg_rating, reviews` | `user_lists` · `list_reviews` | **`is_public`** | `lib/data.ts` | ✅ |
+| `FR-15` | صفُّ الأكثرِ مشاهدةً في مدّة | `follows` · `watched_*` | لا | **لا مستدعيَ في الشيفرة** | ✅ **تجميعٌ فوق الجمهور** — لا معرّفَ عضوٍ في المخرَج |
+| `FR-16` | شريحةُ متابعةٍ للأخبار | `follows` | لا | `lib/loopzNews.ts` | ✅ تجميع |
+| `FR-17` | `json` عدّاداتٍ تشغيليّة | تسعةُ جداول | لا | **لا مستدعيَ في الشيفرة** | 🟠 **عدّاداتُ منصّةٍ متاحةٌ للزائر** — أرقامٌ إجماليّةٌ لا صفوف · **`S-13` · P3-CANDIDATE** |
+| `FR-18` | `json` توزيعِ لغات | `profiles` | لا | **لا مستدعيَ في الشيفرة** | 🟠 كسابقتها — **`S-13`** |
+| `FR-19` | `person_id, name, path` | `person_follows` | لا | `lib/data.ts` | 🟠 **فنّانو عضوٍ بمعرّفه بلا مرشِّح** — داخل `0040` |
+| `FR-20` | `integer` | `profile_views` | لا | `lib/data.ts` | ✅ عدٌّ مجرّد |
+| `FR-21` | القائمةُ العامّة كاملةً | `profiles` · `user_lists` · `user_list_items` | **`is_public` + `hide_name`** | `lib/data.ts` | ✅ **أدقُّ حارسٍ في الجدول** |
+| `FR-22` | `tmdb_id, n` | `post_reactions` | لا | `lib/data.ts` | ✅ تجميع |
+| `FR-23` | `integer` | `review_likes` | لا | `lib/data.ts` | ✅ عدٌّ مجرّد |
+| `FR-24` | `boolean` | `title_posts` | لا | `lib/data.ts` | ✅ |
+| `FR-25` | `hearts, votes, avg` | `user_lists` · `user_list_items` · `ratings` | لا | `lib/data.ts` | ✅ تجميع |
+| `FR-26` | `id, member_count` | `communities` · `community_members` | لا | `lib/data.ts` | ✅ |
+| `FR-27` | صفُّ الأعلى تقييماً في مدّة | `ratings` | لا | **لا مستدعيَ في الشيفرة** | ✅ تجميع |
+| `FR-28` | `tmdb_id, genres` | `follows` | لا | `lib/data.ts` | ✅ تجميع |
+| `FR-29` | متابعاتُ عضوٍ العامّة | `follows` | لا | `lib/data.ts` | 🟠 **مكتبةُ عضوٍ بمعرّفه بلا مرشِّح خصوصيّة** — داخل `0040` |
+| `FR-30` | تقييماتُ عضو | `ratings` | لا | `lib/data.ts` | 🟠 **كسابقتها** — داخل `0040` |
+| `FR-31` | ملخّصُ مشاهدةِ عضو | `watched_episodes` | لا | `lib/data.ts` | 🟠 **كسابقتها** — داخل `0040` |
+| `FR-32` | أفلامُ عضوٍ المشاهَدة | `watched_movies` | لا | `lib/data.ts` | 🟠 **كسابقتها** — داخل `0040` |
+
+**والخلاصةُ الصفّيّةُ تنقض تعميمي السابق:**
+
+- **صفر دالّةٍ من الاثنتين والثلاثين تستشير `is_private`** — **العَلَمُ لا يُنفَّذ في طبقة الدوالّ إطلاقاً.** ثابتٌ محسوم، لا ينتظر بيئة.
+- **لكنّ «حتى 16 قد تتجاوز الخصوصيّة» كان تعميماً.** **الفرزُ الصفّيُّ يقول: 9 دوالّ فقط تُخرج بياناتِ عضوٍ بعينه بمعرّفه** (`FR-07` · `FR-09` · `FR-19` · `FR-29` · `FR-30` · `FR-31` · `FR-32` وطرفا `FR-17`/`FR-18` التشغيليّان). **و16 منها تجميعٌ فوق الجمهور أو جوابٌ بولياني أو محروسٌ بـ`is_public`** — **وتلك لا تتجاوز خصوصيّةَ أحدٍ لأنها لا تُخرج صفَّ أحد.**
+- **فرأسُ `LOOPZ-AUD-0040` يضيق ويحدّ**: **تسعُ دوالّ قراءةٍ بمعرّف + دالّةُ كتابةٍ واحدة (`FW-05`) + العرض `V-01`.** **P1 كما هي** — **والتضييقُ توصيفٌ أدقُّ لا تخفيف.**
+
+### 9.3 دورة الجلسة والحذف والإبطال
+
+**بلا تغيير عن التسليم الذي أجزتَ تصحيحَه** — مُبقًى كما هو: الحذفُ يُسقط `auth.sessions`/`identities`/`mfa_factors` بـ`ON DELETE CASCADE`، **والرموزُ المُصدَرةُ سلفاً تبقى صالحةً حتى `exp`**، ومدّةُ الرمز `BLOCKED_BY_TEST_ENV`، والخروجُ محلّيٌّ لا عامّ — **`S-10` · P3**.
 
 ### 9.4 GitHub / Vercel / Cron / Webhooks
 
-بلا تغيير عن التسليم السابق: **لا مجلّد `.github/` ولا ملفّات workflow** · `vercel.json` بلا أسرار (`regions` و`ignoreCommand`) · **وظيفةُ `pg_cron` واحدة** بدور `postgres` · ولا webhook وارد عدا callbacks OAuth المحروسة. **وإعداداتُ المشروعَين الإداريّة `BLOCKED_BY_TEST_ENV`** — لا أملك وصولَها ولا أطلبه.
+بلا تغيير: لا مجلّد `.github/` ولا workflow · `vercel.json` بلا أسرار · وظيفةُ `pg_cron` واحدة بدور `postgres` · ولا webhook وارد عدا callbacks OAuth المحروسة. **وإعداداتُ المشروعَين الإداريّة `BLOCKED_BY_TEST_ENV`.**
 
-### 9.5 سلسلة التوريد — الثمانيةَ عشرةَ كلُّها
+### 9.5 سلسلة التوريد — الثمانيةَ عشرةَ كلُّها، بحالةِ إهجارٍ وتاريخ
 
-**10 إنتاج · 8 تطوير.** الطريقة: البحثُ عن كلِّ اسمٍ في `src` **وفي ملفّات الإعداد والسكربتات** (`next.config.ts` · `eslint.config.mjs` · `postcss.config.mjs` · `globals.css` · `scripts`).
+**🟢 المانعُ ارتفع.** كان فحصُ الإهجار `BLOCKED_BY_TEST_ENV` لانقطاع سجلّ npm عن الحاوية؛ **الاستعلامُ نجح اليوم**، فالجدولُ مكتمل.
 
-| التبعية | الموضع | الحالة |
+**المنهج:** `npm view <pkg> deprecated time.modified version` لكلِّ تبعيةٍ مباشرة · **تاريخ الفحص 2026-09-01** · **وضبطُ صحّةٍ على حزمةٍ مهجورةٍ معروفة (`request`) أعاد نصَّ الإهجار فعلاً** — **فغيابُ الحقل غيابُ إهجارٍ لا غيابُ فحص.**
+
+| التبعية | النوع | المثبَّت | الأحدث | آخرُ نشر | مهجورة؟ | الاستعمال |
+|---|---|---|---|---|---|---|
+| `next` | prod | 16.3.0 | 16.3.4 | 2026-08-31 | **لا** | 267 مرجعاً |
+| `react` | prod | 19.2.4 | 19.2.8 | 2026-09-01 | **لا** | 183 |
+| `react-dom` | prod | 19.2.4 | 19.2.8 | 2026-09-01 | **لا** | 2 |
+| `@supabase/supabase-js` | prod | 2.111.0 | 2.112.4 | 2026-09-01 | **لا** | 2 |
+| `@supabase/ssr` | prod | 0.12.4 | 0.12.5 | 2026-08-24 | **لا** | 3 |
+| `@vercel/speed-insights` | prod | 2.0.0 | 2.0.0 | 2026-07-03 | **لا** | 1 |
+| `fast-xml-parser` | prod | 5.10.1 | 5.11.1 | 2026-08-27 | **لا** | 1 (RSS) |
+| `@fontsource/poppins` | prod | 5.3.0 | 5.3.0 | 2026-07-19 | **لا** | `globals.css` |
+| `@fontsource/tajawal` | prod | 5.3.0 | 5.3.0 | 2026-07-19 | **لا** | `globals.css` |
+| 🟡 `@fontsource/cairo` | prod | 5.3.0 | 5.3.0 | 2026-07-19 | **لا** | **صفر مرجع** — `S-06` |
+| `tailwindcss` | dev | 4.3.3 | 4.3.3 | 2026-08-31 | **لا** | `postcss.config.mjs` |
+| `@tailwindcss/postcss` | dev | 4.3.3 | 4.3.3 | 2026-08-31 | **لا** | `postcss.config.mjs` |
+| 🟡 `eslint` | dev | 9.39.5 | **10.9.1** | 2026-08-24 | **لا** | `eslint.config.mjs` |
+| `eslint-config-next` | dev | 16.2.12 | **16.3.4** | 2026-08-31 | **لا** | `eslint.config.mjs` — `LOOPZ-AUD-0003` |
+| 🟡 `typescript` | dev | 5.9.3 | **7.0.2** | 2026-09-01 | **لا** | مُصرِّف |
+| 🟡 `@types/node` | dev | 20.19.43 | **26.4.0** | 2026-08-27 | **لا** | أنواع |
+| `@types/react` | dev | 19.2.18 | 19.2.18 | 2026-07-30 | **لا** | أنواع |
+| `@types/react-dom` | dev | 19.2.4 | 19.2.5 | 2026-08-23 | **لا** | أنواع |
+
+**النتيجة:** **صفر تبعيةٍ مهجورة · صفر تبعيةٍ متروكةِ الصيانة** — أحدثُ نشرٍ لكلِّ واحدةٍ منها خلال **ستّة أسابيع**، وأكثرُها خلال أسبوع. **و`npm audit` = صفر تنبيه.** **و`S-06` يبقى مرشَّحاً بدليله** (غيرُ مستعمَلة، لا مهجورة).
+
+🆕 **وبندٌ خرج من الجرد:** **أربعُ تبعياتٍ متأخّرةٌ إصدارةً رئيسيّةً أو أكثر** — `typescript` (5 ← 7) · `eslint` (9 ← 10) · `@types/node` (20 ← 26) · و`eslint-config-next` أقدمُ من `next` (`0003`). **كلُّها تطويريّة، فلا أثرَ على حزمة الإنتاج**، **لكنّ أدواتِ الفحص التي تحرس الشيفرة متأخّرةٌ عمّا تفحصه.** **`S-14` · P3** — معيار القبول: خطّةُ ترقيةٍ موثَّقةٌ أو قرارُ تثبيتٍ مُعلَّل.
+
+### 9.6 `S-03` و`S-04`
+
+| المرشّح | الحسم | الحالة |
 |---|---|---|
-| `next` (267) · `react` (183) · `react-dom` (2) | الإطار | ✅ مستخدمة |
-| `@supabase/ssr` (3) · `@supabase/supabase-js` (2) | الجلسة والقاعدة | ✅ |
-| `@vercel/speed-insights` (1) · `fast-xml-parser` (1) | Web Vitals · RSS | ✅ |
-| `@fontsource/poppins` · `@fontsource/tajawal` | `globals.css` | ✅ **عبر CSS لا JS** |
-| 🟡 **`@fontsource/cairo`** | **صفر مرجع في `src` والإعدادات و`globals.css`** | **`S-06` — غير مستخدمة** |
-| `@tailwindcss/postcss` · `eslint` · `eslint-config-next` | `postcss.config.mjs` · `eslint.config.mjs` · سكربت `lint` | ✅ |
-| `typescript` · `tailwindcss` · `@types/node` · `@types/react` · `@types/react-dom` | **صفر استيرادٍ مباشر — وتُستهلك ضمناً** (مُصرِّفٌ · إضافةُ PostCSS · أنواعٌ يقرؤها `tsc`) | ✅ **`NO_DIRECT_IMPORT` لا `UNUSED`** |
+| 🔴 **`S-03`** (`V-01`) | `security_invoker = off` ⇒ **يتجاوز RLS** · `SELECT` ممنوحٌ لـ`anon` و`authenticated` · **و`pg_get_viewdef` بلا `WHERE` إطلاقاً** ⇒ يُرجع كلَّ الصفوف · و`is_private`/`hide_name` **عمودان مُخرَجان لا شرطان** | **`S-03` · P2 · مفتوحة** — بلا تخفيف |
+| 🟢 **`S-04`** (`search_path`) | **الأدلّةُ الأربعةُ التي طلبتَها — أدناه** | **يسقط كعيبٍ، ويبقى ثابتاً واجبَ الحفظ** |
 
-**فحصُ الإهجار (deprecated/maintenance):** **`BLOCKED_BY_TEST_ENV`** — يحتاج استعلامَ سجلّ npm الحيّ، وحاويةُ التدقيق محجوبةُ الشبكة عنه. `npm audit` = **صفر تنبيه** (مسجَّل §6 بتاريخه). **فلا أدّعي «غير مهجورة»، وأدّعي «غير مستخدمة» لواحدةٍ فقط بدليل.**
+**`S-04` — المنهجُ والأدلّة، لا نتيجةٌ واحدةٌ على `public`:**
 
-### 9.6 حسم `S-03` و`S-04` — ونقضُ استنتاجَيّ السابقين
+1. **ACL الفعليّ لا `has_schema_privilege` وحدَه:** فُحص **كلُّ مخطَّطٍ في القاعدة** (11 مخطَّطاً غيرَ نظاميّ) بـ**`aclexplode` على `nspacl`** مع `acldefault` للمخطّطات بلا ACL صريح — **بحثاً عن `grantee = 0`** (وهو `PUBLIC` في ACL) بامتياز `CREATE`. **النتيجة: صفر مخطَّطٍ يمنح `CREATE` لـ`PUBLIC`**، و`has_schema_privilege` لـ`anon` و`authenticated` = **`false` على الأحد عشر جميعاً**. مالكو المخطّطات: `supabase_admin` · `postgres` · `pg_database_owner`.
+2. 🔴 **`TEMP` ممنوحٌ فعلاً — وهذا ما لم أوثّقه سابقاً:** `has_database_privilege('anon'|'authenticated', current_database(), 'TEMP') = **true**` (وهو الافتراضُ في Postgres: `TEMP` لـ`PUBLIC`). **فالمخطَّطُ المؤقّتُ قابلٌ للكتابة من دورٍ غير مميّز** — والادّعاءُ بأن المسارَ آمنٌ لأن `CREATE` ممنوعٌ **كان ناقصاً**.
+3. **المسارُ الفعّال:** ستُّ صيغِ `search_path` مثبَّتةٍ على **170/170** دالّةِ `DEFINER` — `public` · `public, auth` · `public, pg_temp` · `public, auth, pg_temp` · `public, storage, pg_temp` · `ops, pg_temp`. **و`pg_temp` حيثما ورد فهو آخرُ المسار** (10 دوالّ)، **و160 دالّةً لا تذكره** — **وحين لا يُذكر يبحثه Postgres أوّلاً للعلاقات** (لا للدوالّ ولا للعوامل، فهذه لا تُبحث في المخطَّط المؤقّت أبداً). **فالسطحُ النظريُّ = تظليلُ جدولٍ لا تظليلُ دالّة.**
+4. **تأهيلُ الأسماء — وهو الحاسم:** استُخرجت **كلُّ** مراجع العلاقات في أجسام الـ170 (`FROM`/`JOIN`/`UPDATE`/`INTO`) = **549 مرجعاً**: **396 مؤهَّلٌ بـ`public.` · 20 بـ`auth.` · وبقيّتُها أسماءُ CTE ومستعارات ودوالّ مولِّدةِ صفوف** (`generate_series` · `unnest` · `jsonb_to_recordset` …) **فُحصت واحداً واحداً**. **والعدد الحاسم: صفر مرجعٍ غيرِ مؤهَّلٍ إلى جدولٍ في `public`.**
 
-| المرشّح | الدليل الحاسم | الحسم |
-|---|---|---|
-| **`S-04`** (`search_path`) | **170/170 دالّة `DEFINER` لها `search_path` مثبَّت** — صفرٌ بلا تثبيت · **و`has_schema_privilege('anon'/'authenticated'/'PUBLIC', …, 'CREATE') = false` على كلِّ مخطَّطٍ يرد في المسارات** · و`pg_temp` **حيثما ورد فهو آخرُ المسار** لا أوّله | 🟢 **يسقط** — **اختطافُ المسار غيرُ ممكنٍ من دورٍ غير مميّز**، لا P3 ولا غيرها. **وهو نقضٌ لتصنيفي السابق «نظافة» — الصوابُ: لا بند.** |
-| 🔴 **`S-03`** (العرض المميّز `V-01`) | **`security_invoker = off`** ⇒ يعمل بصلاحيّة مالكه **فيتجاوز RLS** · **`SELECT` ممنوحٌ لـ`anon` و`authenticated`** · **و`pg_get_viewdef` لا يحوي `WHERE` إطلاقاً** ⇒ **يُرجع كلَّ الصفوف** · و`is_private` و`hide_name` **عمودان مُخرَجان لا شرطان** | 🔴 **يثبت عيباً** — **حقولُ ملفّ الحسابات الخاصّة مقروءةٌ لأيِّ زائرٍ عبر Data API.** |
+> **الحكم:** **التظليلُ ممكنٌ نظريّاً (TEMP ممنوح) وغيرُ قابلٍ للتطبيق عمليّاً (لا اسمَ غيرَ مؤهَّلٍ يُظلَّل).** **فـ`S-04` يسقط كعيب** — **ويتحوّل إلى ثابتٍ واجبِ الحفظ**: **أيُّ دالّةِ `DEFINER` جديدةٍ تذكر جدولاً بلا `public.` تفتح البابَ فوراً.** معيار القبول: **فحصٌ آليٌّ قبل الدمج** يرفض دالّةَ `DEFINER` فيها مرجعٌ غيرُ مؤهَّل، **أو** إلحاقُ `pg_temp` بذيل مسار الـ160. **وأسحب صياغتي السابقة «اختطافُ المسار غيرُ ممكن» — الصوابُ: ممكنٌ ومُبطَلٌ بالتأهيل، لا ممتنعٌ بالصلاحيات.**
 
-> 🔴 **وأسحب استنتاجي السابق صراحةً.** كتبتُ: «**ويحمل `is_private` أي أن الطبقة أعلاه تُصفّي عليه**» — **وهذا استنتاجٌ من وجود عمود، وهو بعينه ما حذّرتَ منه حرفاً.** الفحصُ الصحيح (`WHERE` في تعريف العرض) **يقول العكس**. **الحدُّ الذي يبقيه دون P1:** الأعمدةُ العشرون كلُّها حقولُ عرضِ ملفٍّ — **صفر بريد · صفر رمز · صفر حقل تخويل** (مفحوصٌ نصّاً). **`S-03` · P2**، وداخلَ صنف `0040`. معيار القبول: `security_invoker = on` **أو** شرطُ ظهورٍ في العرض، ثمّ تحقّقٌ في بيئة معزولة.
+### 9.7 🔴 انحدارُ الإنتاج — دلتا قابلةٌ للتحقّق، ومغلقة
 
-### 9.7 🔴 انحدارُ إنتاجٍ من إصلاح Phase 5 نفسِه — تحذيرُك تحقّق
-
-**ما وقع:** سحبُ الصلاحيات الذي نُفِّذ خارج حدود المرحلة **كسر مساراً تطبيقيّاً حيّاً**. دالّةٌ قارئةٌ لقوائم المستخدم فقدت `EXECUTE` لدور `anon`، **وصفحاتُ الأعمال العامّة تستدعيها لكلِّ زائر** — فصار كلُّ زائرٍ غيرِ مسجّلٍ يولّد خطأ صلاحيّات.
-
-| القياس | القيمة |
+| الحقل | القيمة |
 |---|---|
-| الأخطاء في 24 ساعة (سجلّات Postgres) | **≈ 15,420** |
-| النمط | مستمرٌّ ~500–1000/ساعة، **لم يتوقّف تلقائياً** |
-| الأثر الوظيفيّ على المسجّلين | **صفر** — الدورُ المصادَق احتفظ بالتنفيذ |
-| الأثر على الزائر | القائمةُ تعود فارغةً (السلوكُ نفسُه) **+ ضجيجُ سجلّات يدفن الخطأ الحقيقيّ** |
-| الاكتشاف | بلاغُ مستخدمٍ حقيقيّ عبر أحمد، **لا بمراقبةٍ منّي** |
+| **السبب** | سحبُ `EXECUTE` عن `anon` لدالّةٍ قارئةٍ لقوائم المستخدم — **نُفِّذ خارج حدود المرحلة على قاعدة الإنتاج** |
+| **السطحُ المتأثّر** | صفحاتُ الأعمال العامّة (`/movie/[id]` · `/show/[id]`) لكلِّ **زائرٍ غيرِ مسجَّل** |
+| **الأثرُ الوظيفيّ** | **صفر على المسجَّلين** (الدورُ المصادَق احتفظ بالتنفيذ) · القائمةُ تعود فارغةً للزائر (السلوكُ نفسُه) **+ ضجيجُ سجلّات** |
+| **القياس** | ≈500–1000 خطأ/ساعة · **الذروة 1021** الساعة 10:00 UTC · ≈15,420/24h |
+| **الاكتشاف** | **بلاغُ مستخدمٍ حقيقيّ عبر أحمد — لا بمراقبةٍ منّي** |
+| **الإصلاح** | **حارسٌ في طبقة التطبيق** يمنع النداءَ أصلاً لغير المسجَّل — **لا منحةَ ثانية ولا تغييرَ صلاحيّات** |
+| **SHA الإصلاح** | **`1b9ccd95`** على `main` · [`mccicc2-art/meshahed@1b9ccd95`](https://github.com/mccicc2-art/meshahed/commit/1b9ccd95) · موسومٌ `[deploy]` |
+| 🔑 **ليس من Audited SHA** | **`f8a2b33c` لم يُمسّ · وفرعُ التدقيق لم يُمسّ · وهذا ليس دليلَ اجتيازٍ لـPhase 5 بحال** |
+| **حالةُ الإنتاج الآن** | 🟢 **مغلق** — آخرُ ساعةٍ بأخطاءٍ **11:00 UTC (383)**، **وصفرٌ منذ 12:00 UTC حتى وقت هذا التسليم** (استعلامُ سجلّات Postgres بالساعة) |
+| **حالةُ الصلاحيّة** | **السحبُ قائمٌ ولم يُعكَس**: `EXECUTE` لـ`anon` = **`false`** · لـ`authenticated` = **`true`** (مفحوصٌ بـ`has_function_privilege`) |
 
-> ⚖️ **وهذا برهانٌ ميدانيٌّ على اعتراضك حرفاً.** كتبتَ: «**نجاح عدة GETs وعدم تغير أحجامها لا يثبت عدم كسر RPCs أو العمليات الموثقة أو صلاحيات المستخدم المسجّل**». **فحصتُ خمسةَ مسارات GET وأعلنت السلامة — والكسرُ كان في مسارٍ لم يشمله الفحص.** **الخلاصة: التحقّق الوظيفيُّ الكامل بعد أيِّ تغيير صلاحيات هو `BLOCKED_BY_TEST_ENV` بحقّ، لا بتحفّظٍ شكليّ.**
+> ⚖️ **وهذا برهانٌ ميدانيٌّ على اعتراضك حرفاً.** قلتَ إن نجاحَ عدّةِ GETs لا يثبت سلامةَ RPCs. **فحصتُ خمسةَ مسارات GET وأعلنتُ السلامة — والكسرُ كان في مسارٍ لم يشمله الفحص.** **فالتحقّقُ الوظيفيُّ الكاملُ بعد أيِّ تغييرِ صلاحيات هو `BLOCKED_BY_TEST_ENV` بحقّ.**
 
-**والإصلاحُ الذي نُفِّذ:** حارسٌ في طبقة التطبيق يمنع نداءَ الدالّة أصلاً لغير المسجّل — **فلا حاجةَ لإعادة مِنحة، ولا تغييرَ صلاحيّاتٍ ثانٍ.** شُحن بموافقة أحمد على `main` **خارج فرع التدقيق** بوسم `[deploy]`، **ولم يُمسّ Audited SHA `f8a2b33c` ولا هذا الفرع.**
+**`S-11` · P2 — عمليّاتيّ:** لا مراقبةَ لمعدّل أخطاء القاعدة. **15 ألف خطأ يوميّاً مرّت 24 ساعة بلا إنذار.** معيار القبول: إنذارٌ على معدّل أخطاء Postgres قبل بوّابة GO.
 
-**`S-11` · P2 — عمليّاتيّ:** لا مراقبةَ لمعدّل أخطاء القاعدة. **15 ألف خطأ يوميّاً مرّت 24 ساعة بلا إنذار.** معيار القبول: إنذارٌ على معدّل أخطاء Postgres قبل بوابة GO.
+### 9.8 حالةُ الاكتمال — `ANALYSIS_IN_PROGRESS`
+
+**ما اكتمل في هذه الجولة:** المصفوفةُ الصفّيّةُ (128 سياسة + المستهلِك + جداولُ الصفر) · تدقيقُ الدوالّ صفّاً بصفّ (21 كاتبة + 32 قارئةً بمعرّفاتها) · **نفيُ الـSQL الديناميكيّ ونفيُ استدعاءِ القارئةِ لكاتبة** · سلسلةُ التوريد بتواريخها · و`S-04` بأدلّته الأربعة.
+
+**وما يبقى مفتوحاً — ولا أسمّي المرحلةَ مكتملة:**
+
+| البند | لماذا لم يكتمل |
+|---|---|
+| `LOOPZ-AUD-0040` · **P1** | **التحقّقُ الحيُّ من تسعِ دوالِّ القراءةِ بمعرّف و`FW-05` و`V-01` يحتاج حسابَين في بيئةٍ معزولة** — `BLOCKED_BY_TEST_ENV` |
+| `S-03` · **P2** | كسابقه — الثابتُ محسوم، والتحقّقُ الحيُّ محجوب |
+| `S-12` · P3-CANDIDATE | **جديدٌ من هذه الجولة** — يحتاج تحقّقاً حيّاً |
+| `S-13` · P3-CANDIDATE | **جديدٌ** — دالّتا عدّاداتٍ تشغيليّةٍ متاحتان للزائر بلا مستدعٍ في الشيفرة |
+| مدّةُ رمز الوصول (`S-10`) | إعدادُ Auth إداريّ — لا يُقرأ من المصدر ولا من البيانات الوصفية |
+| إعداداتُ GitHub/Vercel الإدارية | خارجَ صلاحيتي، ولا أطلبها |
+
+**المرشّحاتُ المسجَّلةُ في هذه الجولة:** `S-07` (P3) · `S-08` (P3) · `S-09` (P2) · `S-10` (P3) · `S-11` (P2) · **`S-12` (P3-CANDIDATE، جديد)** · **`S-13` (P3-CANDIDATE، جديد)** · **`S-14` (P3، جديد)** — بانتظار أرقام `LOOPZ-AUD` منك.
 
 ## 10. إقرار
 
