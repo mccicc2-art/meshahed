@@ -52,6 +52,7 @@ export type IconName =
   | "palette"
   | "grid"
   | "card"
+  | "phone"
   | "compass"
   | "home"
   | "people"
@@ -393,6 +394,14 @@ const PATHS: Record<IconName, React.ReactNode> = {
     <>
       <rect x="3" y="5.5" width="18" height="13" rx="2.5" />
       <path d="M3 10h18M6.5 14.5h3" />
+    </>
+  ),
+  /* 🆕 هاتفٌ محمول (D-858) — صفُّ رقم الجوال في بيانات الشريك:
+     مستطيلُ جهازٍ وسمّاعةُ أذنٍ سفليّة، بسمك الطقم نفسِه */
+  phone: (
+    <>
+      <rect x="7" y="3" width="10" height="18" rx="2.5" />
+      <path d="M10.5 17.5h3" />
     </>
   ),
   "people-filled": (
