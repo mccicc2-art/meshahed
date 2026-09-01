@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { getDict, type Locale } from "@/lib/i18n";
-import { TOUR_START_EVENT } from "@/lib/tour";
+import { TOUR_META, TOUR_IDS, TOUR_START_EVENT } from "@/lib/tour";
 import { updateUiState } from "@/lib/actions";
 import { toast } from "@/lib/toast";
 import { SettingsRow } from "./SettingsRow";
@@ -22,15 +22,27 @@ export function HelpTourRows({ locale }: { locale: Locale }) {
 
   return (
     <>
-      <SettingsRow
-        icon="sparkles"
-        title={t.tourRow}
-        subtitle={t.tourRowSub}
-        onClick={() => {
-          window.dispatchEvent(new CustomEvent(TOUR_START_EVENT));
-          router.push("/");
-        }}
-      />
+      {/* ⚖️ 🆕 **صفٌّ لكلِّ جولة** (D-852، طلبُ أحمد: «يقدر يشغّلهم بأي
+          وقت من الإعدادات»): **والصفّان يُشتقّان من `TOUR_IDS` لا
+          يُكتبان بيد** — **فجولةٌ ثالثةٌ غداً صفٌّ في السجلّ لا سطرٌ
+          هنا** (D-826/D-827: اتّحادٌ يُشتقّ من سجلّه).
+          🔑 **والوجهةُ أوّلُ خطوةٍ في الجولة نفسِها لا `/` دائماً**:
+          **جولةُ التفاصيل تبدأ من الرئيسية أيضاً**، لكنّ الاشتقاقَ
+          يحمي من جولةٍ تبدأ من غيرها غداً. */}
+      {TOUR_IDS.map((id) => (
+        <SettingsRow
+          key={id}
+          icon="sparkles"
+          title={TOUR_META[id].title(t)}
+          subtitle={TOUR_META[id].sub(t)}
+          onClick={() => {
+            window.dispatchEvent(
+              new CustomEvent(TOUR_START_EVENT, { detail: { id } }),
+            );
+            router.push("/");
+          }}
+        />
+      ))}
       <SettingsRow
         icon="eye"
         title={t.hintsResetRow}
