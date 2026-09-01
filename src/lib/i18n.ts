@@ -96,6 +96,14 @@ const ar = {
     "اضغط مطولاً على أي بطاقة: تقييمٌ سريع، وإضافةٌ لقوائمك، و«غير مهتم» فلا تُقترح مجدداً.",
 
   // تلميحات أول فتحٍ لكل صفحة (١٩ أغسطس) — قصيرة، تُقال مرةً ثم تصمت
+  /* 🆕 **تلميحاتُ الكنسة** (D-852) — **واحدٌ لكلِّ سطحٍ فيه قوّةٌ
+     مدفونة**، **وتلميحٌ في كلِّ شاشةٍ ضجيجٌ لا إرشاد** */
+  hintEpisodeBulk:
+    "لا تؤشّر حلقةً حلقة: اضغط مطوّلاً على حلقةٍ لتؤشّر كلّ ما قبلها، أو أشّر الموسم كاملاً من رأسه.",
+  hintCalendar:
+    "متى تنزل حلقاتُ ما تتابعه — شهراً شهراً. وبابُه دائماً عنوانُ شريط الأسبوع في رئيسيّتك.",
+  hintStats:
+    "تحت الأرقام: تقاريرُ المدّة، وأوقاتُ مشاهدتك، وبطاقةُ ذوقٍ تشاركها بصورة.",
   hintHome: "رتّب أقسام الرئيسية وبدّل وضع العرض من زرّ التخصيص أعلى الصفحة.",
   hintLists: "اجمع أعمالك حول فكرة: أنشئ قائمتك، أو احفظ قوائم الآخرين بالقلب.",
   hintPeople:
@@ -2247,6 +2255,12 @@ const en: Dict = {
     "Long-press any card: rate it, add it to a list, or mark it \u201Cnot interested\u201D.",
 
   // First-open page hints (19 Aug) — short, said once, then silent
+  hintEpisodeBulk:
+    "Don’t tick one by one: press and hold an episode to tick everything before it, or tick a whole season from its header.",
+  hintCalendar:
+    "When the episodes you follow air — month by month. Its door is the week strip heading on your home page.",
+  hintStats:
+    "Under the numbers: period reports, your viewing times, and a taste card you can share as an image.",
   hintHome:
     "Reorder home sections and switch the view mode from the customize button up top.",
   hintLists:
