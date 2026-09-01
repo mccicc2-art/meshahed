@@ -4504,7 +4504,18 @@ export async function applyPartner(input: {
     p_language: String(input.contentLanguage ?? "").trim().slice(0, 60),
     p_reason: String(input.reason ?? "").trim().slice(0, 600),
   });
-  if (error) throw new Error("تعذّر إرسال الطلب — حاول مجدداً / Could not submit, try again");
+  if (error) {
+    /* 🆕 **شرطا التقديم في جسم الدالّة** (D-855، حكمُ أحمد: «ضروري
+       يكون رابط حساب X بلوبز وكذلك مشترك بلس») — **والحارسُ الحقيقيُّ
+       هناك** (D-011)، وهنا ترجمةُ رفضِه وحدَها: من تجاوز الواجهةَ
+       ووصل البابَ يقرأ سببَ الردّ لا «حاول مجدداً». */
+    if ((error.message ?? "").includes("partner_requirements_not_met")) {
+      throw new Error(
+        "شرطا التقديم: حساب X موثّق في لوبز واشتراك بلس فعّال / Requirements: a verified X account on Loopz and an active Plus subscription",
+      );
+    }
+    throw new Error("تعذّر إرسال الطلب — حاول مجدداً / Could not submit, try again");
+  }
   revalidatePath("/profile/settings/invites");
 }
 
