@@ -211,7 +211,7 @@ export default async function SectionPage({
   });
 
   return (
-    <main className="px-4 sm:px-6 py-5 max-w-6xl mx-auto pb-24">
+    <main className="px-4 sm:px-6 py-5 max-w-shell mx-auto pb-24">
       <div className="flex items-center gap-3 mb-5">
         {/* زرُّ الرجوع المشترك — ورابطُ التبويب تحته لمن وصل من رابطٍ محفوظ
             ولا تاريخَ عنده يرجع إليه */}

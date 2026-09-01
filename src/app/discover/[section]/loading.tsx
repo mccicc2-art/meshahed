@@ -9,7 +9,7 @@ import { PosterGrid } from "@/components/PosterGrid";
  */
 export default function Loading() {
   return (
-    <main className="px-4 sm:px-6 py-5 max-w-6xl mx-auto pb-24" aria-hidden>
+    <main className="px-4 sm:px-6 py-5 max-w-shell mx-auto pb-24" aria-hidden>
       <div className="flex items-center gap-3 mb-5">
         <div className="skeleton w-10 h-10 rounded-full shrink-0" />
         <div className="min-w-0">
