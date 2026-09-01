@@ -7,8 +7,10 @@ import {
   getMyInviteList,
   getMyPartnerState,
   getMyPartnerApplication,
+  getProfile,
   type InviteStatus,
 } from "@/lib/data";
+import { isPlus } from "@/lib/plan";
 import { applyPartner, cancelPartnerApplication } from "@/lib/actions";
 import { getT } from "@/lib/locale";
 import { siteUrl } from "@/lib/site";
@@ -21,6 +23,7 @@ import { Icon } from "@/components/Icon";
 import { buttonClass } from "@/components/ui/Button";
 import { SettingsPageLayout } from "@/components/settings/SettingsPageLayout";
 import { SettingsGroup, settingsCard, settingsCardRows } from "@/components/settings/SettingsGroup";
+import { SettingsRow } from "@/components/settings/SettingsRow";
 import { InviteLinkCard } from "@/components/settings/InviteLinkCard";
 
 export const dynamic = "force-dynamic";
@@ -423,6 +426,40 @@ function TermsCard({ t }: { t: Dict }) {
   );
 }
 
+/* 🆕 **بطاقةُ شرطَي التقديم** (D-855): **صفّان من `SettingsRow` القائم**
+   (القاعدة ٣) — **المستوفى صفٌّ ساكنٌ بعلامة صحّ**، **والناقصُ بابٌ
+   يودّي إلى إكماله** (توثيقُ X ← `‎/profile/settings/verify` ·
+   بلس ← `‎/plus`) — **فالشرطُ الذي لا يُرفَق ببابه لومٌ لا إرشاد.**
+   **والسهمُ يظهر للناقص وحدَه** (D-030: سهمٌ بلا بابٍ وعدٌ يُخلَف). */
+function PartnerReqCard({ t, xOk, plusOk }: { t: Dict; xOk: boolean; plusOk: boolean }) {
+  const done = (
+    <span className="grid size-5 shrink-0 place-items-center rounded-full border-[1.5px] border-accent">
+      <Icon name="check" size={11} className="text-accent" strokeWidth={2.2} />
+    </span>
+  );
+  return (
+    <section className="space-y-3">
+      <SectionTitle>{t.prtReqTitle}</SectionTitle>
+      <div className={settingsCardRows}>
+        <SettingsRow
+          icon="person-check"
+          title={t.prtReqX}
+          subtitle={xOk ? undefined : t.prtReqGo}
+          href={xOk ? undefined : "/profile/settings/verify"}
+          trailing={xOk ? done : undefined}
+        />
+        <SettingsRow
+          icon="sparkle-star"
+          title={t.prtReqPlus}
+          subtitle={plusOk ? undefined : t.prtReqGo}
+          href={plusOk ? undefined : "/plus"}
+          trailing={plusOk ? done : undefined}
+        />
+      </div>
+    </section>
+  );
+}
+
 async function PartnersTab({
   t, locale, sp,
 }: {
@@ -434,6 +471,15 @@ async function PartnersTab({
   const editing = sp.edit === "1" && state.appStatus === "pending";
   const applying = sp.apply === "1" && state.appStatus === null;
   const showForm = applying || state.appStatus === "rejected" || editing;
+  /* 🆕 **شرطا التقديم** (D-855، حكمُ أحمد: «ضروري يكون رابط حساب X
+     بلوبز وكذلك مشترك بلس»): **توثيقُ X** (`x_verified_at`، D-839)
+     **واشتراكُ بلس** (`isPlus` — القارئُ الواحد، D-633). **والقراءةُ
+     هنا للرسم وحدَها** — الحارسُ الحقيقيُّ في جسم `apply_partner`
+     (D-011). **ولا تُقرأ لشريكٍ قائم**: بابُه فُتح وقُضي. */
+  const me = state.appStatus === "approved" ? null : await getProfile().catch(() => null);
+  const xOk = !!me?.x_verified_at;
+  const plusOk = isPlus(me);
+  const eligible = xOk && plusOk;
   /* التعبئةُ المسبقة تُقرأ فقط حين يُعرض النموذجُ فوق طلبٍ قائم */
   const app =
     showForm && state.appStatus !== null ? await getMyPartnerApplication() : null;
@@ -606,6 +652,19 @@ async function PartnersTab({
 
   /* ———— النموذج: تقديمٌ جديد / تعديلٌ / إعادةُ تقديمٍ بعد رفض ———— */
   if (showForm) {
+    /* 🆕 **ولا نموذجَ لمن لم يستوفِ** (D-855) — **حتى من كتب `?apply=1`
+       بيده**: تُعرض البطاقةُ مكانَه، **ونموذجٌ يُملأ ثم يُرفض عند
+       البابِ إهدارٌ لعشر خاناتٍ كُتبت** (روح D-217). */
+    if (!eligible) {
+      return (
+        <>
+          <PartnerReqCard t={t} xOk={xOk} plusOk={plusOk} />
+          <Disclosure label={t.prtTermsLink}>
+            <TermsCard t={t} />
+          </Disclosure>
+        </>
+      );
+    }
     return (
       <>
         {state.appStatus === "rejected" && (
@@ -659,14 +718,21 @@ async function PartnersTab({
           {t.prtHeroTitle2}
         </h2>
         <p className="mt-2 text-14 text-muted leading-relaxed">{t.prtHeroBody}</p>
-        <Link
-          href={`${BASE}?tab=partners&apply=1`}
-          replace
-          className={buttonClass({ size: "lg", full: true, className: "mt-4" })}
-        >
-          {t.prtApplyJoin}
-        </Link>
+        {/* 🆕 **الزرُّ لمن استوفى الشرطين وحدَه** (D-855) — ولغيره
+            بطاقةُ الشرطين تحت البطاقة مباشرةً، **فالغائبُ يُشرَح لا
+            يُخفى** (D-063). */}
+        {eligible && (
+          <Link
+            href={`${BASE}?tab=partners&apply=1`}
+            replace
+            className={buttonClass({ size: "lg", full: true, className: "mt-4" })}
+          >
+            {t.prtApplyJoin}
+          </Link>
+        )}
       </div>
+
+      {!eligible && <PartnerReqCard t={t} xOk={xOk} plusOk={plusOk} />}
 
       {/* ⚖️ 🆕 **٢٥٪ · سنة · ١٠٠ ريال** (D-782، حكمُ أحمد: «خلها أول
           سنة فقط، وكذلك ٢٥٪ من الصافي») — **مصحِّحاً «دائمة» التي
@@ -737,13 +803,17 @@ async function PartnersTab({
         </div>
       </section>
 
-      <Link
-        href={`${BASE}?tab=partners&apply=1`}
-        replace
-        className={buttonClass({ size: "lg", full: true })}
-      >
-        {t.prtApplyJoin}
-      </Link>
+      {/* 🆕 والزرُّ السفليُّ كذلك (D-855) — بطاقةُ الشرطين في رأس
+          الصفحة تكفي، فلا تُكرَّر هنا (القاعدة ٦). */}
+      {eligible && (
+        <Link
+          href={`${BASE}?tab=partners&apply=1`}
+          replace
+          className={buttonClass({ size: "lg", full: true })}
+        >
+          {t.prtApplyJoin}
+        </Link>
+      )}
 
       <Disclosure label={t.prtTermsLink}>
         <TermsCard t={t} />
