@@ -22,7 +22,8 @@ import {
   getMyFavorites,
 } from "@/lib/data";
 import { sanitizeHomePrefs, applyQueueOrder, unwatchedOf } from "@/lib/homePrefs";
-import { getT, getTabPrefs } from "@/lib/locale";
+import { getT, getTabPrefs, getHiddenRails } from "@/lib/locale";
+import { railsHiddenFor, railOff } from "@/lib/railPrefs";
 import { defaultTab } from "@/lib/tabPrefs";
 import { localizeFollows } from "@/lib/localize";
 import { Icon } from "@/components/Icon";
@@ -57,6 +58,11 @@ export default async function LibraryPage({
   const { locale, t } = await getT();
   const { filter } = await searchParams;
   const tabPrefs = await getTabPrefs("library");
+  /* 🆕 **صفوفُ الصفحة المخفيّة** (D-874، حكمُ أحمد: «نعم، للاثنين») —
+     **الكاملةُ تمرّ إلى اللوح** (الفعلُ يستبدل القائمةَ كلَّها، D-462)
+     **ومجموعةُ `library:` وحدَها تمرّ إلى الصفوف.** */
+  const hiddenAll = await getHiddenRails();
+  const hiddenRails = railsHiddenFor(hiddenAll, "library");
   /* **الرابط الأعزل يعني «تبويبي الأوّل»** (D-179): كان يعني «الأفلام»
      ثابتاً في الشيفرة، وقد صار الافتراضُ يخصّ صاحبه فيُقرأ من الكوكي.
      و`?filter=` الصريح يبقى فوقه دائماً — ومنه `movie` القديم الذي كان
@@ -373,6 +379,7 @@ export default async function LibraryPage({
         locale={locale}
         initialTab={initialTab}
         tabPrefs={tabPrefs}
+        hiddenRails={[...hiddenAll]}
         /* 🆕 **الاختصاران نزلا تحت الشريط** (D-453، طلبُ أحمد بلقطةٍ
            معلَّمة: «هذي نزّلها تحت الشريط»).
 
@@ -447,7 +454,12 @@ export default async function LibraryPage({
           {/* 🆕 **«تجتمع عندك» فوق المحفوظة** (D-820): **مجموعاتٌ من
               مكتبتك تسبق قوائمَ غيرك** — **وتبويبٌ اسمُه «قوائمي» يبدأ
               بما هو لك.** */}
-          <AutoGroups locale={locale} groups={autoGroups} plus={isPlus(profileRow)} />
+          {/* D-874: **الصفُّ المطفأُ يغيب بعنوانه** — والشرطُ هنا لا داخل
+              المكوّن، **كصفوف اكتشف حرفاً** (`railOff`). */}
+          {!railOff(hiddenRails, "autogroups") && (
+            <AutoGroups locale={locale} groups={autoGroups} plus={isPlus(profileRow)} />
+          )}
+          {!railOff(hiddenRails, "savedlists") && (
           <PublicListsRail
             lists={saved}
             locale={locale}
@@ -461,6 +473,7 @@ export default async function LibraryPage({
               savedCount > 0 ? `${t.savedListsSection} · ${savedCount}` : t.savedListsSection
             }
           />
+          )}
           </>
         }
       />
