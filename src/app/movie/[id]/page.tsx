@@ -175,7 +175,7 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
               alt=""
               fill
               priority
-              sizes="(max-width: 640px) 100vw, 1152px"
+              sizes="(max-width: 640px) 100vw, 1440px"
               className="object-cover opacity-45"
             />
           )}
