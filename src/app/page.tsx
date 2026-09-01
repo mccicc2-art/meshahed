@@ -72,6 +72,7 @@ import { CompactMediaRow } from "@/components/CompactMediaRow";
 import {
   sanitizeHomePrefs,
   applyQueueOrder,
+  TW_LIST_KEY,
   unwatchedOf,
   type HomeSection,
   headerStatMeta,
@@ -1319,12 +1320,60 @@ async function HomeBody({
   }));
   /* 🆕 وبذرةُ «قوائمي» (D-615) — البطاقاتُ مرتَّبةً كما تُعرض، ومفتاحُها
      معرّفُ القائمة نفسُه فالحفظُ يعيد ما رُتِّب بلا ترجمة */
-  const listsQueueItems: ReorderItem[] = homeListCards.map((c) => ({
-    key: c.id,
-    title: c.name,
-    poster_path: c.posters[0] ?? null,
-    fallbackIcon: "list" as const,
-  }));
+  /* 🔴 🆕 **و«للمشاهدة» دخلت الترتيبَ معها** (D-866، بلاغُ أحمد بلقطتين:
+     «تو واتش خليها تكون ظاهرة هنا عشان أرتّبها»).
+
+     🔍 **والعلّةُ في التركيب لا في الورقة**: البطاقةُ كانت تُمرَّر
+     `leading` — **موضعٌ مفروضٌ خارج الصفّ لا عضوٌ فيه** — **فورقةُ
+     الترتيب تسرد ما في `lists` وحدَه فتغيب هي.** **وصفٌّ يعرض ستَّ
+     بطاقاتٍ وورقتُه تعرض خمساً يُقرأ عطلاً** (D-217): ما يُرى يُرتَّب.
+
+     🔑 **ولا صفَّ لها في `user_lists`** (حجّةُ D-559: طابورُ «ما لا
+     قائمةَ له» لو صار قائمةً أفرغ نفسَه) — **فمفتاحُها اسمُها**
+     (`tw-queue`)، والعمودُ JSON حرٌّ يقبله (`keyList`).
+     ⚠️ **وغيابُ المفتاح من المحفوظ = الصدارة**: مَن رتّب قبل اليوم
+     لا تقفز بطاقتُه إلى الذيل — **نصدّر المفتاحَ للترتيب المقروء
+     فيبقى أوّلَ الصفّ كما كان** (D-028: ما لم يُقل لا يتغيّر). */
+  const listsRowSeq = applyQueueOrder(
+    [
+      ...(toWatchQueueCard
+        ? [
+            {
+              key: TW_LIST_KEY,
+              card: null as (typeof homeListCards)[number] | null,
+            },
+          ]
+        : []),
+      ...homeListCards.map((c) => ({
+        key: c.id,
+        card: c as (typeof homeListCards)[number] | null,
+      })),
+    ],
+    (x) => x.key,
+    prefs.listsOrder.includes(TW_LIST_KEY)
+      ? prefs.listsOrder
+      : [TW_LIST_KEY, ...prefs.listsOrder],
+  );
+  const listsRowCards = listsRowSeq
+    .map((x) => x.card)
+    .filter((c): c is (typeof homeListCards)[number] => c !== null);
+  /** موضعُ بطاقة «للمشاهدة» بين البطاقات — `-1` حين لا بطاقةَ لها */
+  const toWatchListAt = listsRowSeq.findIndex((x) => x.card === null);
+  const listsQueueItems: ReorderItem[] = listsRowSeq.map((x) =>
+    x.card
+      ? {
+          key: x.card.id,
+          title: x.card.name,
+          poster_path: x.card.posters[0] ?? null,
+          fallbackIcon: "list" as const,
+        }
+      : {
+          key: TW_LIST_KEY,
+          title: t.libToWatch,
+          poster_path: toWatchQueueCard?.posters[0] ?? null,
+          fallbackIcon: "list" as const,
+        },
+  );
 
   // مواعيد الأفلام: المخزّن يُقرأ من صفّ المتابعة، والمجلوب حديثاً يُكتب
   // عبر MovieStatsSync فلا يُطلب مرتين
@@ -1799,7 +1848,7 @@ async function HomeBody({
             homeListCards.length > 0 || toWatchQueueCard ? (
               <div key="lists">
                 <PublicListsRail
-                  lists={homeListCards}
+                  lists={listsRowCards}
                   locale={locale}
                   /* ⚖️ 🆕 D-703 (حكمُه: «غيّر اسمها من My list إلى List»):
                    **اسمُ الصفِّ اسمُ وجهته** (`/lists` — D-030)،
@@ -1817,11 +1866,16 @@ async function HomeBody({
                       />
                     ) : undefined
                   }
+                  /* 🆕 **وموضعُها موضعٌ يُرتَّب لا صدارةٌ مفروضة**
+                     (D-866) — الحسبةُ في `listsRowSeq` أعلاه */
+                  leadingIndex={toWatchListAt}
                   /* 🆕 مقبضُ الصفِّ يرتّب **بطاقاتِه** (D-615) لا الأقسام —
                      نقضُ D-595 المحصورُ نفسُه الذي مضى في الصفَّين (D-605)،
                      وبطاقةٌ واحدةٌ لا تُرتَّب فلا زرَّ لها (D-217) */
                   action={
-                    homeListCards.length > 1 ? (
+                    /* 🆕 **والعدُّ عدُّ ما يُرتَّب** (D-866): قائمةٌ
+                       واحدةٌ مع «للمشاهدة» صفَّان يُرتَّبان */
+                    listsQueueItems.length > 1 ? (
                       <QueueOrderButton
                         row="lists"
                         label={t.listReorder}
