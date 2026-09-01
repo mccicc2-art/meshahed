@@ -12,7 +12,12 @@ import {
   follow,
   unfollow,
 } from "@/lib/actions";
-import { posterUrl, backdropUrl } from "@/lib/media";
+import {
+  posterUrl,
+  backdropUrl,
+  POSTER_INTRINSIC,
+  BACKDROP_INTRINSIC,
+} from "@/lib/media";
 import { getDict, num, type Locale } from "@/lib/i18n";
 import { tap } from "@/lib/haptics";
 import { flashError } from "@/lib/toast";
@@ -128,9 +133,17 @@ export function ListContinueCard({
   /* 🆕 **غلافٌ لا ملصق** (D-507، حكمُ أحمد بلقطة: «الحجم كبير!! اعملها
      غلاف وحجمه يكون مثل المسلسل»): صورةُ المشهد كبطاقة الحلقة سواء —
      **والملصقُ سقوطٌ لمن لا مشهدَ له**، يُقصّ في ٧:٥ ولا يترك فراغاً. */
+  /* 🔑 **والحقلان يُفصلان هنا كما في `ContinueCard`** — **سدادُ دَين
+     D-845**: **الصفُّ ١٤٤×٩٠ يأخذ مقاسَ الممرِّ الصغير، والبطاقةُ
+     تبقى سطحَ محسِّن.** **والوصفةُ واحدةٌ في البيتين لأن الصندوقَ
+     واحدٌ** (D-646) — **ولو افترقتا لافترق الصفّان أوّلَ إصلاح.** */
+  const isRow = variant === "row";
   const url = next.backdropPath
-    ? backdropUrl(next.backdropPath, "w780")
-    : posterUrl(next.posterPath, "w342");
+    ? backdropUrl(next.backdropPath, isRow ? "w300" : "w780")
+    : posterUrl(next.posterPath, isRow ? "w185" : "w342");
+  const rowIntrinsic = next.backdropPath
+    ? BACKDROP_INTRINSIC.w300
+    : POSTER_INTRINSIC.w185;
   const pct = total > 0 ? Math.round((watched / total) * 100) : 0;
 
   function mark(e: React.MouseEvent) {
@@ -234,7 +247,12 @@ export function ListContinueCard({
         >
           <span className="relative w-[144px] shrink-0 aspect-[16/10] rounded-xl overflow-hidden bg-surface-2">
             {url ? (
-              <Image src={url} alt="" fill sizes="144px" className="object-cover" />
+              <Image
+                src={url}
+                alt=""
+                {...rowIntrinsic}
+                className="absolute inset-0 w-full h-full object-cover"
+              />
             ) : (
               <span className="absolute inset-0 grid place-items-center text-muted">
                 <Icon name="list" size={20} />

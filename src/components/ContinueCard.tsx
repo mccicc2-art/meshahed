@@ -5,7 +5,12 @@ import { continueCardBox } from "./ui/controls";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { posterUrl, backdropUrl } from "@/lib/media";
+import {
+  posterUrl,
+  backdropUrl,
+  POSTER_INTRINSIC,
+  BACKDROP_INTRINSIC,
+} from "@/lib/media";
 import { saveRating } from "@/lib/actions";
 import { runOrQueue } from "@/lib/offline";
 import { tap } from "@/lib/haptics";
@@ -131,9 +136,20 @@ export function ContinueCard({
   );
   const left = aired > w ? aired - w : 0;
 
+  /* 🔑 **حقلان لا حقلٌ واحد** — **سدادُ الدَّين المعلَن في D-845**
+     («المختلطُ الدلو … يُكنس يومَ يُفصل»): **الوجهُ يختار مقاسَه**.
+     **الصفُّ صندوقُه ١٤٤×٩٠** — **وكان يطلب خلفيّةَ w780، أي صورةً
+     عرضُها خمسةُ أضعافِ صندوقها** — فصار `w300`/`w185`، **وكلاهما دون
+     `KEEP_OPTIMIZED` فيسلكان الممرَّ المخزَّن** (D-841). **والبطاقةُ
+     وحدَها سطحُ محسِّنٍ** فتبقى على `w780`/`w342`. */
+  const isRow = variant === "row";
   const url = backdropPath
-    ? backdropUrl(backdropPath, "w780")
-    : posterUrl(posterPath, "w342");
+    ? backdropUrl(backdropPath, isRow ? "w300" : "w780")
+    : posterUrl(posterPath, isRow ? "w185" : "w342");
+  /* **والمقاسُ الصريحُ للصفِّ وحدَه**: `fill` تكتب سلّمَ العروض كلَّه
+     (~١٣ مرشَّحاً)، **ومرشَّحاتُ الممرِّ رابطٌ واحدٌ مكرَّرٌ حرفاً** —
+     **فالمقاسان الجوهريّان يُنزلانها إلى مرشَّحَين** (D-845). */
+  const rowIntrinsic = backdropPath ? BACKDROP_INTRINSIC.w300 : POSTER_INTRINSIC.w185;
 
   const canMark = ep != null && slide === "idle" && !celebrate;
 
@@ -247,7 +263,12 @@ export function ContinueCard({
             صغيرةً في سطر. */}
         <span className="relative w-[144px] shrink-0 aspect-[16/10] rounded-xl overflow-hidden bg-surface-2">
           {url ? (
-            <Image src={url} alt="" fill sizes="144px" className="object-cover" />
+            <Image
+              src={url}
+              alt=""
+              {...rowIntrinsic}
+              className="absolute inset-0 w-full h-full object-cover"
+            />
           ) : (
             <span className="absolute inset-0 grid place-items-center text-muted">
               <Icon name="film" size={20} />
