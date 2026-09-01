@@ -111,6 +111,36 @@ const ar = {
   tourPrev: "السابق",
   tourSkip: "تخطّي الجولة",
   tourFinish: "إنهاء",
+  /* 🆕 **جولتان** (D-852) — **الأولى تعلّم أفعالاً، والثانية تكشف ما
+     لا يُرى** */
+  tourBasicsRow: "جولة الأساسيات",
+  tourBasicsRowSub: "كيف تضيف عملاً وتؤشّر حلقاتك — ستّ خطوات",
+  tourDetailsRow: "جولة التفاصيل والمميّزات",
+  tourDetailsRowSub: "ما لا تعرف أنّه موجود: التخصيص، القوائم الذكيّة، التقويم، الإحصاءات، وLoopz+",
+  tourAddTitle: "كيف تضيف عملاً",
+  tourAddBody:
+    "ابحث باسم المسلسل أو الفيلم بأيّ لغة، افتحه، ثمّ اضغط «أضِف» — يدخل مكتبتك فوراً ويبدأ تتبّعه.",
+  tourTrackTitle: "كيف تؤشّر ما شاهدتَه",
+  tourTrackBody:
+    "افتح العمل من مكتبتك وأشِّر الحلقة — أو موسماً كاملاً، أو «شاهدتُ حتى هنا» فتُؤشَّر كلُّ ما قبلها. والفيلم ضغطةٌ واحدة.",
+  tourCustomizeTitle: "رئيسيّتك أنت",
+  tourCustomizeBody:
+    "من زرّ التخصيص في الرئيسية: أخفِ الأقسام التي لا تهمّك، رتّبها بالسحب، واختر أرقام ترويستك.",
+  tourHoldTitle: "الضغط المطوّل",
+  tourHoldBody:
+    "اضغط مطوّلاً على أيّ ملصق في التطبيق: تؤشّره مشاهَداً، تحفظه، أو تفتح خياراته — بلا فتح صفحته.",
+  tourFiltersTitle: "الفلاتر والقوائم الذكيّة",
+  tourFiltersBody:
+    "صفِّ «اكتشف» بالنوع والحقبة والتقييم، ثمّ احفظ الفلتر باسمه — أو اجعله «قائمة ذكيّة» تُحدَّث نفسَها كلّما ظهر عملٌ يطابق شرطك.",
+  tourCalendarTitle: "تقويم أعمالك",
+  tourCalendarBody:
+    "شهراً شهراً: متى تنزل حلقاتُ ما تتابعه — وبابُه عنوان شريط الأسبوع في رئيسيّتك.",
+  tourStatsTitle: "إحصاءاتك",
+  tourStatsBody:
+    "ساعاتُك وأنواعك وأوقات مشاهدتك، وتقاريرُ المدّة، وبطاقةُ ذوقٍ تشاركها — كلُّها هنا.",
+  tourPlusTitle: "Loopz+",
+  tourPlusBody:
+    "الثيمات الملوّنة، وتخصيص صفحاتك، وملصقٌ وخلفيّةٌ لكلّ عمل، وشارةٌ بجانب اسمك — وصفحةُ الاشتراك تقول لك ما تملكه ومتى ينتهي.",
   tourRow: "الجولة التعريفية",
   tourRowSub: "تعرّف على أقسام Loopz خطوة خطوة — في أي وقت",
   hintsResetRow: "إعادة عرض التلميحات",
@@ -2234,6 +2264,34 @@ const en: Dict = {
   tourPrev: "Back",
   tourSkip: "Skip tour",
   tourFinish: "Done",
+  tourBasicsRow: "Tour: the basics",
+  tourBasicsRowSub: "How to add a title and tick your episodes \u2014 six steps",
+  tourDetailsRow: "Tour: details & extras",
+  tourDetailsRowSub: "What you may not know is there: customising, smart lists, the calendar, stats and Loopz+",
+  tourAddTitle: "Adding a title",
+  tourAddBody:
+    "Search by name in any language, open it, then press \u201cAdd\u201d \u2014 it lands in your library and tracking starts.",
+  tourTrackTitle: "Marking what you watched",
+  tourTrackBody:
+    "Open a title from your library and tick the episode \u2014 or a whole season, or \u201cwatched up to here\u201d to tick everything before it. A film is one tap.",
+  tourCustomizeTitle: "Your home, your way",
+  tourCustomizeBody:
+    "From the customise button on Home: hide the sections you don\u2019t care about, drag to reorder, and pick the numbers in your header.",
+  tourHoldTitle: "Press and hold",
+  tourHoldBody:
+    "Hold any poster anywhere in the app: mark it watched, save it, or open its options \u2014 without leaving the page.",
+  tourFiltersTitle: "Filters & smart lists",
+  tourFiltersBody:
+    "Filter Discover by genre, era and rating, then save the filter by name \u2014 or make it a smart list that refreshes itself whenever a new title matches.",
+  tourCalendarTitle: "Your calendar",
+  tourCalendarBody:
+    "Month by month: when the episodes you follow air \u2014 reached from the week strip heading on your home page.",
+  tourStatsTitle: "Your statistics",
+  tourStatsBody:
+    "Your hours, genres and viewing times, period reports, and a taste card you can share \u2014 all here.",
+  tourPlusTitle: "Loopz+",
+  tourPlusBody:
+    "Colour themes, shaping your pages, a poster and backdrop per title, and a badge beside your name \u2014 and the subscription page tells you what you have and when it ends.",
   tourRow: "Take the tour",
   tourRowSub: "Walk through Loopz step by step \u2014 any time",
   hintsResetRow: "Show hints again",

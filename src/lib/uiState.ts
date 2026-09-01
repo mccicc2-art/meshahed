@@ -21,9 +21,29 @@ import { sanitizePrefTemplates, type PrefTemplate } from "@/lib/prefTemplates";
 export const TOUR_STATE_VALUES = ["suggested", "active", "done"] as const;
 export type TourStateS = (typeof TOUR_STATE_VALUES)[number];
 
+/** 🆕 **الجولاتُ صارت اثنتين** (D-852، طلبُ أحمد: «يفضّل عمل جولتين،
+    وحدة الأساسيات والثانية التفاصيل والمميّزات الصغيرة») */
+export const TOUR_IDS = ["basics", "details"] as const;
+export type TourId = (typeof TOUR_IDS)[number];
+
 /** حالة الجولة — تُخزَّن في localStorage وفي `ui_state.tour` بالشكل نفسه */
 export interface TourState {
   v: number;
+  /**
+   * 🆕 **أيُّ جولة** (D-852) — **والحالةُ واحدةٌ لا اثنتان بقصد**:
+   * **ما تحتاجه الشجرةُ هو «أيُّ جولةٍ تجري الآن وأين وقفت»** —
+   * **و«هل رأى الاقتراحَ من قبل؟» يجيبه وجودُ الحالة نفسِه** (`null`
+   * يعني «لم يُقترَح عليه قطُّ»). **وسجلٌّ لكلِّ جولةٍ على حدة يخزّن
+   * أكثرَ ممّا يُقرأ** (D-063).
+   * ⚠️ **والغيابُ يعني `basics`**: **صفوفُ الإصدار الأوّل بلا هذا
+   * الحقل**، **ورقمُ الإصدار يرفعها إلى الجديدة أصلاً** — **فلا هجرةَ
+   * ولا صفٌّ يُقرأ خطأً.**
+   * ⚠️ **واختياريّةٌ في النوع لا في القراءة**: **`sanitizeTourState`
+   * تُرجعها دائماً** — **والاختياريّةُ لأنّ الكاتبَ القديمَ (رفعةٌ
+   * واحدةٌ سابقة) لا يكتبها** (`19` §٢)، **فلا التزامٌ في الطريق
+   * يسقط.**
+   */
+  id?: TourId;
   /** رقم الخطوة الحالية — يُحفظ فيُستأنف من حيث توقّف */
   i: number;
   /** suggested: عُرض الاقتراح · active: تجري · done: أُنهيت أو تُخطّيت */
@@ -64,7 +84,16 @@ export function sanitizeTourState(value: unknown): TourState | null {
     !TOUR_STATE_VALUES.includes(v.s as TourStateS)
   )
     return null;
-  return { v: Math.trunc(v.v), i: Math.max(0, Math.trunc(v.i)), s: v.s as TourStateS };
+  /* **والمجهولُ يسقط إلى `basics` لا إلى `null`** (D-475): **حالةٌ
+     كاملةٌ برمزِ جولةٍ لا نعرفه أهونُ من إسقاطها كلِّها** — وإسقاطُها
+     يُعيد اقتراحَ الجولة على من أنهاها. */
+  const id = TOUR_IDS.includes(v.id as TourId) ? (v.id as TourId) : "basics";
+  return {
+    v: Math.trunc(v.v),
+    id,
+    i: Math.max(0, Math.trunc(v.i)),
+    s: v.s as TourStateS,
+  };
 }
 
 /** قيمة العمود (أو أي مجهول) إلى شكلٍ مضمون — الفاسد يسقط صامتاً */
