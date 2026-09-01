@@ -7,11 +7,13 @@ import {
   getMyInviteList,
   getMyPartnerState,
   getMyPartnerApplication,
+  getMyPartnerDetails,
   getProfile,
   type InviteStatus,
+  type PartnerDetails,
 } from "@/lib/data";
 import { isPlus } from "@/lib/plan";
-import { applyPartner, cancelPartnerApplication } from "@/lib/actions";
+import { applyPartner, cancelPartnerApplication, savePartnerDetails } from "@/lib/actions";
 import { getT } from "@/lib/locale";
 import { siteUrl } from "@/lib/site";
 import { num, type Dict, type Locale } from "@/lib/i18n";
@@ -25,6 +27,7 @@ import { SettingsPageLayout } from "@/components/settings/SettingsPageLayout";
 import { SettingsGroup, settingsCard, settingsCardRows } from "@/components/settings/SettingsGroup";
 import { SettingsRow } from "@/components/settings/SettingsRow";
 import { InviteLinkCard } from "@/components/settings/InviteLinkCard";
+import { PartnerIdUpload } from "@/components/PartnerIdUpload";
 
 export const dynamic = "force-dynamic";
 
@@ -77,6 +80,25 @@ async function withdrawApplication() {
   redirect(`${BASE}?tab=partners`);
 }
 
+/* 🆕 **حفظُ بيانات التحويل** (D-858) — قشرةُ النموذج، والحكمُ في
+   `savePartnerDetails` وقيودِ الجدول (D-011). الخطأُ يعود في `derr`
+   فلا يختلط بخطأ نموذج التقديم (`err`). */
+async function saveDetails(formData: FormData) {
+  "use server";
+  const back = `${BASE}?tab=partners`;
+  try {
+    await savePartnerDetails({
+      iban: String(formData.get("iban") ?? ""),
+      bankName: String(formData.get("bank") ?? ""),
+      accountName: String(formData.get("holder") ?? ""),
+      phone: String(formData.get("phone") ?? ""),
+    });
+  } catch (e) {
+    redirect(`${back}&derr=${encodeURIComponent((e as Error).message.slice(0, 140))}`);
+  }
+  redirect(back);
+}
+
 /* ============ قطعُ العرض — دوالُّ ملفٍّ لا مكوّناتٌ متداخلة (درس D-769) ============ */
 
 const STATUS_CHIP: Record<InviteStatus, string> = {
@@ -121,10 +143,14 @@ function Disclosure({ label, children }: { label: string; children: React.ReactN
 
 /** حقلُ النموذج — سطرُ التسمية فوق الحقل، نسخةٌ واحدةٌ للسبعة */
 function Field({
-  name, label, value, required = false, dir, textarea = false,
+  name, label, value, required = false, dir, textarea = false, type, placeholder,
 }: {
   name: string; label: string; value: string;
   required?: boolean; dir?: "ltr"; textarea?: boolean;
+  /* 🆕 D-858: `dir="ltr"` كانت تعني «رابطاً» حتماً — وصار النوعُ يُصرَّح
+     حين لا يكون كذلك (آيبان · جوال)، **فلا يفحص المتصفّحُ آيباناً فحصَ
+     رابطٍ فيحبس النموذج.** */
+  type?: string; placeholder?: string;
 }) {
   const cls =
     "w-full rounded-xl border border-border bg-surface-2 px-3 py-2 text-14 placeholder:text-muted/60";
@@ -138,9 +164,9 @@ function Field({
           name={name}
           defaultValue={value}
           required={required}
-          type={dir === "ltr" ? "url" : "text"}
+          type={type ?? (dir === "ltr" ? "url" : "text")}
           dir={dir}
-          placeholder={dir === "ltr" ? "https://…" : undefined}
+          placeholder={placeholder ?? (!type && dir === "ltr" ? "https://…" : undefined)}
           className={cls}
         />
       )}
@@ -153,7 +179,7 @@ function Field({
 export default async function Page({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string; edit?: string; apply?: string; all?: string; err?: string }>;
+  searchParams: Promise<{ tab?: string; edit?: string; apply?: string; all?: string; err?: string; derr?: string }>;
 }) {
   const user = await getUser();
   if (!user) redirect("/login");
@@ -460,12 +486,66 @@ function PartnerReqCard({ t, xOk, plusOk }: { t: Dict; xOk: boolean; plusOk: boo
   );
 }
 
+/* 🆕 **كتلةُ بيانات الشريك** (D-858، حكمُ أحمد: «وين يسجّل بياناته
+   البنكيّة وإرفاق الهوية وجواله») — **قطعةٌ واحدةٌ لموضعيها** (القاعدة
+   ٣/٦): في رأس اللوحة ما دام فيها نقصٌ، وخلف «بيانات التحويل» بعد
+   الاكتمال — **لا نسخةٌ ثانية.** صفّا حالةٍ (توثيقُ X · الهويّة) ثم
+   نموذجُ البنك والجوال — **والحَكَمُ قيودُ الجدول وسياساتُ المخزن**
+   (D-011)، وهذه قشرةٌ تشرح وتوصل. */
+function PartnerSetupBlock({
+  t, details, xDone, derr,
+}: {
+  t: Dict; details: PartnerDetails | null; xDone: boolean; derr?: string;
+}) {
+  const doneMark = (
+    <span className="grid size-5 shrink-0 place-items-center rounded-full border-[1.5px] border-accent">
+      <Icon name="check" size={11} className="text-accent" strokeWidth={2.2} />
+    </span>
+  );
+  return (
+    <div className="space-y-3">
+      {derr && <p className="text-14 text-[color:var(--error)] px-1">⚠ {derr}</p>}
+      <div className={settingsCardRows}>
+        <SettingsRow
+          icon="person-check"
+          title={t.prtReqX}
+          href={xDone ? undefined : "/profile/settings/verify"}
+          trailing={xDone ? doneMark : undefined}
+        />
+        <PartnerIdUpload
+          title={t.prtRowId}
+          pickHint={t.prtIdPick}
+          doneHint={t.prtIdDone}
+          busyHint={t.prtIdBusy}
+          errTooLarge={t.prtIdErrSize}
+          errType={t.prtIdErrType}
+          errUpload={t.prtIdErrUp}
+          idFile={details?.id_file ?? null}
+        />
+      </div>
+      <form action={saveDetails}>
+        <div className={settingsCardRows}>
+          <Field name="iban" label={t.prtBankIban} value={details?.iban ?? ""} required dir="ltr" type="text" placeholder="SA0380000000608010167519" />
+          <Field name="bank" label={t.prtBankName} value={details?.bank_name ?? ""} required />
+          <Field name="holder" label={t.prtBankHolder} value={details?.account_name ?? ""} required />
+          <Field name="phone" label={t.prtPhoneField} value={details?.phone ?? ""} required dir="ltr" type="tel" placeholder="05xxxxxxxx" />
+          <div className="p-3.5">
+            <button type="submit" className={buttonClass({ full: true })}>
+              {t.prtSaveDetails}
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  );
+}
+
 async function PartnersTab({
   t, locale, sp,
 }: {
   t: Dict;
   locale: Locale;
-  sp: { edit?: string; apply?: string; err?: string };
+  sp: { edit?: string; apply?: string; err?: string; derr?: string };
 }) {
   const state = await getMyPartnerState();
   const editing = sp.edit === "1" && state.appStatus === "pending";
@@ -476,7 +556,10 @@ async function PartnersTab({
      **واشتراكُ بلس** (`isPlus` — القارئُ الواحد، D-633). **والقراءةُ
      هنا للرسم وحدَها** — الحارسُ الحقيقيُّ في جسم `apply_partner`
      (D-011). **ولا تُقرأ لشريكٍ قائم**: بابُه فُتح وقُضي. */
-  const me = state.appStatus === "approved" ? null : await getProfile().catch(() => null);
+  /* ⚖️ 🆕 **وتُقرأ للشريك أيضاً** (D-858 — نقضُ «لا تُقرأ لشريكٍ قائم»
+     بيد كاتبها): **بطاقةُ الاستكمال تسأل عن توثيق X** — والقراءةُ
+     `cache()` فلا رحلةَ تُدفع مرّتين. */
+  const me = await getProfile().catch(() => null);
   const xOk = !!me?.x_verified_at;
   const plusOk = isPlus(me);
   const eligible = xOk && plusOk;
@@ -492,6 +575,13 @@ async function PartnersTab({
      (D-217: زرٌّ يبدو حيّاً ويموت تحت الإصبع فخٌّ لا ميزة).
      قارئُ العمولات الحقيقيُّ يُبنى في جولة فتح الاشتراكات. */
   if (state.appStatus === "approved" && state.code) {
+    /* 🆕 D-858: حالُ الاستكمال — أربعُ حقائقَ تُقرأ لا تُخمَّن */
+    const details = await getMyPartnerDetails();
+    const xDone = !!me?.x_verified_at;
+    const bankDone = !!(details?.iban && details?.bank_name && details?.account_name);
+    const phoneDone = !!details?.phone;
+    const idDone = !!details?.id_file;
+    const setupDone = xDone && bankDone && phoneDone && idDone;
     const url = siteUrl(`/p/${state.code}`);
     const available = 0;
     const pending = 0;
@@ -505,6 +595,19 @@ async function PartnersTab({
       "rounded-xl border border-accent font-bold text-accent transition disabled:opacity-50 disabled:cursor-not-allowed";
     return (
       <>
+        {/* 🆕 **الاستكمالُ في وجه الداخل** (D-858، حكمُه: «لازم أول ما
+            يدخل صفحة البارتنر يطلب منه ربط تويتر والبيانات الي
+            مااستكملوها») — **مطالبةٌ لا حجب**: يرى لوحتَه كاملةً
+            والنقصُ في رأسها — **وبعد الاكتمال تختفي** (D-219) وتسكن
+            الكتلةُ ذيلَ اللوحة خلف «بيانات التحويل». */}
+        {!setupDone && (
+          <section className="space-y-3">
+            <SectionTitle>{t.prtSetupTitle}</SectionTitle>
+            <p className="px-1 text-12 text-muted">{t.prtSetupBody}</p>
+            <PartnerSetupBlock t={t} details={details} xDone={xDone} derr={sp.derr} />
+          </section>
+        )}
+
         {/* الأرباحُ المتاحة — كنموذجه: المبلغُ بلون الهوية والسحبُ في الطرف */}
         <div className={`${settingsCard} p-4`}>
           <p className="text-12 font-semibold uppercase tracking-wide text-muted">
@@ -586,24 +689,17 @@ async function PartnersTab({
           </div>
         </section>
 
-        {/* بياناتُ التحويل — «غير محدّدة/مطلوب» حقيقتان، والإعدادُ يفتح مع الدفع */}
-        <div className={`${settingsCard} p-4`}>
-          <h2 className="text-15 font-bold">{t.prtPayoutTitle}</h2>
-          <dl className="mt-1 divide-y divide-[color:var(--divider)]">
-            <div className="flex items-center justify-between gap-3 py-3 text-14">
-              <dt>{t.prtPayoutMethod}</dt>
-              <dd className="text-muted">{t.prtNotSet}</dd>
-            </div>
-            <div className="flex items-center justify-between gap-3 py-3 text-14">
-              <dt>{t.prtVerification}</dt>
-              <dd className="text-muted">{t.prtRequired}</dd>
-            </div>
-          </dl>
-          <button type="button" disabled className={`${outlineBtn} w-full py-3 text-15 mt-1`}>
-            {t.prtCompleteSetup}
-          </button>
-          <p className="mt-1.5 text-center text-12 text-muted">{t.prtSetupLater}</p>
-        </div>
+        {/* 🗑️ 🆕 **وسقطت بطاقةُ «إكمال الإعداد» الميّتة** (D-858 —
+            نسخُ D-770c): كانت «غير محدّدة/مطلوب» وزرّاً معطّلاً صادقاً
+            يومَ لا بابَ للبيانات — **وصار البابُ حقيقيّاً فبقاؤها
+            سطحين لمعنًى واحد** (القاعدة ٦). **وبعد الاكتمال تسكن
+            الكتلةُ هنا خلف سطرٍ مطويّ** — تعديلُ آيبانٍ فعلٌ نادرٌ لا
+            بطاقةٌ دائمة. */}
+        {setupDone && (
+          <Disclosure label={t.prtDetailsTitle}>
+            <PartnerSetupBlock t={t} details={details} xDone={xDone} derr={sp.derr} />
+          </Disclosure>
+        )}
 
         <Disclosure label={t.prtTermsLink}>
           <TermsCard t={t} />
