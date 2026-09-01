@@ -7,7 +7,7 @@ import { PosterCard } from "@/components/PosterCard";
 import { posterGrid, chipRow, sheetScroll } from "@/components/ui/controls";
 import { profileUrl } from "@/lib/media";
 import { openPlusGate } from "@/lib/plusGate";
-import type { Locale } from "@/lib/i18n";
+import { getDict, type Locale } from "@/lib/i18n";
 import type { AutoGroup } from "@/lib/autoGroups";
 
 /**
@@ -38,6 +38,7 @@ export function AutoGroups({
   plus: boolean;
 }) {
   const ar = locale !== "en";
+  const t = getDict(locale);
   const [open, setOpen] = useState<AutoGroup | null>(null);
 
   /* **ولا عنوانَ لقسمٍ فارغ** (D-219/D-280) */
@@ -46,7 +47,9 @@ export function AutoGroups({
   return (
     <section className="mt-6">
       <h2 className="text-20 font-bold mb-1">
-        {ar ? "تجتمع عندك" : "Recurring in your library"}
+        {/* **من القاموس لا نصّاً مضمَّناً** (D-874/D-703): لوحُ الإخفاء
+            يقرأ الاسمَ نفسَه — **واسمان لصفٍّ واحدٍ يفترقان.** */}
+        {t.autoGroupsTitle}
       </h2>
       {/* 🔑 **وسطرٌ يقول ما قِيس** (D-800): **«تجتمع عندك» بلا تعريفٍ
           تُقرأ ترشيحاً** — **وهي عدُّ مكتبتك لا رأيَ أحد.** */}

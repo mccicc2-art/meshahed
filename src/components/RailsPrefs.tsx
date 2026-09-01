@@ -83,8 +83,16 @@ export function RailsPrefs({
       {/* **وسطرٌ يقول نطاقَه** (D-063): **القائمةُ صفوفُ هذا التبويب
           وحدَه** — **ومن أطفأ في «أفلام» ثمّ فتح «أنمي» فوجد غيرَها
           يظنّها لم تُحفظ.** */}
+      {/* D-874: **في المكتبة والمجتمع النطاقُ صفحةٌ لا تبويب** — والسطرُ
+          يقول ما يراه المستخدم (D-063). */}
       <p className="px-5 pb-2 text-12 text-muted leading-relaxed">
-        {ar ? "صفوفُ هذا التبويب — والمطفأُ يغيب بعنوانه." : "This tab's rows — hidden ones go with their heading."}
+        {tab === "library" || tab === "community"
+          ? ar
+            ? "صفوفُ هذه الصفحة — والمطفأُ يغيب بعنوانه."
+            : "This page's rows — hidden ones go with their heading."
+          : ar
+            ? "صفوفُ هذا التبويب — والمطفأُ يغيب بعنوانه."
+            : "This tab's rows — hidden ones go with their heading."}
       </p>
       <ul>
         {rails.map((r) => {

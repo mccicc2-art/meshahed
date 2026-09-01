@@ -19,6 +19,7 @@ import {
 import { FilterIconButton } from "./ui/FilterIconButton";
 import { buttonClass } from "./ui/Button";
 import { TabsPrefs } from "./TabsPrefs";
+import { RailsPrefs } from "./RailsPrefs";
 
 /**
  * أدوات المجتمع خلف رمزٍ واحد (D-177 → D-292 → **D-306**).
@@ -109,6 +110,7 @@ function SwitchRow({
 export function CommunityTools({
   locale,
   prefs,
+  hiddenRails = [],
   labels,
   activeTab: activeTabProp = "activity",
   strangers: strangersInitial,
@@ -119,6 +121,8 @@ export function CommunityTools({
   locale: Locale;
   /** تفضيلات التبويبات — تأتي من الخادم فلا يومض شيء */
   prefs: TabPref[];
+  /** صفوفُ «الأعضاء» المخفيّة — كاملةً بمفاتيح `tab:key` (D-874)؛ اختياريّةٌ حتّى يصل قارئُها (D-028) */
+  hiddenRails?: string[];
   /** أسماء التبويبات كما تُعرض في الرأس — مصدرٌ واحد لا قاموسٌ ثانٍ */
   labels: Record<string, string>;
   /** 🆕 **التبويبُ المفتوح — سياقُ «أدوات»** (D-306).
@@ -450,6 +454,21 @@ export function CommunityTools({
                   prefs={prefs}
                   labels={labels}
                   title={t.tabsPrefsGroup}
+                />
+                {/* 🆕 **وصفوفُ «الأعضاء» تحت التبويبات** (D-874، حكمُ أحمد:
+                    «نعم، للاثنين») — **نفسُ مكوّن اكتشف والمكتبة**، والنطاقُ
+                    `community:`. **وهي صفوفُ تبويبٍ واحد** لأن «النشاط»
+                    خطٌّ لا صفوف، و«الأعمال» غرفٌ — **فلا يُعرض ما لا
+                    يُطفأ** (D-219). **واسمُ التبويب من مفتاحه** (D-703). */}
+                <RailsPrefs
+                  locale={locale}
+                  tab="community"
+                  hidden={hiddenRails}
+                  title={
+                    locale === "en"
+                      ? `${t.communityTabPeople} rows`
+                      : `صفوف «${t.communityTabPeople}»`
+                  }
                 />
               </div>
             )}

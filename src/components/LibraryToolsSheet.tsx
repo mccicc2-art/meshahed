@@ -10,6 +10,7 @@ import { Icon } from "./Icon";
 import { NewListForm } from "./NewListForm";
 /* القسم الرابع في هذه الورقة — نفسُ المكوّن في اكتشف والمجتمع (D-179) */
 import { TabsPrefs } from "./TabsPrefs";
+import { RailsPrefs } from "./RailsPrefs";
 import type { TabPref } from "@/lib/tabPrefs";
 
 export type LibrarySort = "smart" | "title" | "progress" | "added";
@@ -57,6 +58,7 @@ export function LibraryToolsSheet({
   showFilters,
   tabPrefs,
   tabLabels,
+  hiddenRails = [],
 }: {
   locale: Locale;
   onClose: () => void;
@@ -68,6 +70,8 @@ export function LibraryToolsSheet({
   /** القسم الرابع: ترتيبُ تبويبات المكتبة وإظهارها (D-179) */
   tabPrefs: TabPref[];
   tabLabels: Record<string, string>;
+  /** **المخفيُّ كلُّه بمفاتيح `tab:key`** (D-826/D-874) — يُمرَّر كاملاً لأن الفعلَ يستبدل القائمةَ كلَّها */
+  hiddenRails?: string[];
 }) {
   const t = getDict(locale);
   /* **وتفتح على «أدوات» دائماً** — وهي التي جئتَ لأجلها؛ **و«عرض»
@@ -217,6 +221,15 @@ export function LibraryToolsSheet({
             prefs={tabPrefs}
             labels={tabLabels}
             title={t.tabsPrefsGroup}
+          />
+          {/* 🆕 **وصفوفُ الصفحة تحت تبويباتها** (D-874، امتدادُ D-826 بحكم
+              أحمد: «نعم، للاثنين») — **نفسُ المكوّن ونفسُ الكوكي**، والنطاقُ
+              `library:`. **ولا يُرسم للزائر**: الورقةُ كلُّها للمسجَّل. */}
+          <RailsPrefs
+            locale={locale}
+            tab="library"
+            hidden={hiddenRails}
+            title={locale === "en" ? "This page's rows" : "صفوف هذه الصفحة"}
           />
         </div>
         )}

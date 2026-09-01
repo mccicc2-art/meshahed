@@ -118,7 +118,7 @@ export function LibraryGrid({
   listStats,
   savedCount = 0,
   locale,
-  initialTab = "shows", tabPrefs,
+  initialTab = "shows", tabPrefs, hiddenRails = [],
   listsExtra,
   underTabs,
   favKeys,
@@ -154,6 +154,8 @@ export function LibraryGrid({
   savedCount?: number;
   locale: Locale;
   initialTab?: LibraryTab; /** ترتيبُ تبويبات المكتبة وإظهارها — من الكوكي (D-179) */ tabPrefs: TabPref[];
+  /** صفوفُ الصفحة المخفيّة — كاملةً بمفاتيح `tab:key` (D-874)؛ **اختياريّةٌ لأنّ قارئَها في الصفحة يصل في التزامٍ لاحق** (D-028) */
+  hiddenRails?: string[];
   /** ما يلي قوائمي في اللوح (القوائم المحفوظة — طلب أحمد: بيتها
       المكتبة لا صفحة منفصلة): يُرسم على الخادم ويُمرَّر عقدةً جاهزة،
       فيبقى PublicListsRail مكوّن خادمٍ بلا JS كما وُلد (D-063) */
@@ -530,6 +532,7 @@ export function LibraryGrid({
           q={q}
           onQ={setQ}
           showFilters={showSearchRow} tabPrefs={tabPrefs} tabLabels={tabLabels}
+          hiddenRails={hiddenRails}
         />
       )}
 
