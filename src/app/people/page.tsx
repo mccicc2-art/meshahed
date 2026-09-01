@@ -30,7 +30,8 @@ import {
   getPeopleTopReviews,
   getTopSavedListCards,
 } from "@/lib/data";
-import { getT, getTabPrefs, getFeedStrangers, getFeedSort, getTalkFollowedOnly, getTranslateEnabled } from "@/lib/locale";
+import { getT, getTabPrefs, getFeedStrangers, getFeedSort, getTalkFollowedOnly, getTranslateEnabled, getHiddenRails } from "@/lib/locale";
+import { railsHiddenFor, railOff } from "@/lib/railPrefs";
 import { WorksTalk } from "@/components/WorksTalk";
 import {
   PeopleLeaderboard,
@@ -148,6 +149,12 @@ export default async function PeoplePage({
 
   const { locale, t } = await getT();
   const tabPrefs = await getTabPrefs("community");
+  /* 🆕 **صفوفُ «الأعضاء» المخفيّة** (D-874) — كصفوف اكتشف والمكتبة:
+     الكاملةُ إلى اللوح، ومجموعةُ `community:` وحدَها إلى الصفوف.
+     ⚠️ **وفي «عرض الكل» لا تسري**: من فتح رابطَ صفٍّ مباشرةً يريده
+     (نفسُ حجّة D-827 لصفحات الأبواب). */
+  const hiddenAll = await getHiddenRails();
+  const hiddenRails = railsHiddenFor(hiddenAll, "community");
   /* **من يظهر في «النشاط»** (D-255) — كوكي يُقرأ قبل أوّل رسمة، فلا
      يومض صفُّ غريبٍ ثم يختفي */
   const showStrangers = await getFeedStrangers();
@@ -806,6 +813,9 @@ export default async function PeoplePage({
                  وجوهَ «الأكثر مشاركة»** — واختار، **وحجّتُه أن الصدارةَ
                  على تسعين يوماً غيرُ صدارةِ سبتٍ واحد** وهي صحيحة. */
               <>
+                {/* D-874: **الصفُّ المطفأُ يغيب بعنوانه** — الشرطُ هنا لا
+                    داخل المكوّن، **كصفوف اكتشف حرفاً** (`railOff`). */}
+                {!railOff(hiddenRails, "featured") && (
                 <PeopleLeaderboard
                   rows={featured}
                   locale={locale}
@@ -814,6 +824,8 @@ export default async function PeoplePage({
                   meId={user?.id ?? ""}
                   following={boardFollowing}
                 />
+                )}
+                {!railOff(hiddenRails, "topweek") && (
                 <PeopleLeaderboard
                   rows={board}
                   locale={locale}
@@ -822,11 +834,14 @@ export default async function PeoplePage({
                   meId={user?.id ?? ""}
                   following={boardFollowing}
                 />
+                )}
+                {!railOff(hiddenRails, "topreviews") && (
                 <TopReviews
                   rows={topReviews}
                   locale={locale}
                   seeAllHref="/people?tab=people&all=reviews"
                 />
+                )}
                 {/* 🆕 **وقبل الرفّ: بطاقةُ العمل الذي يدور حوله الكلام**
                     (D-291). **وموضعُها فوق رفِّ القوائم كما كُتب الاقتراح**:
                     الثلاثةُ فوقها ترتيباتُ أشخاص، **وهي وما تحتها ليسا
@@ -834,16 +849,21 @@ export default async function PeoplePage({
                     كسرَين متباعدين يقطعان الأشخاصَ مرّتين.
                     **والحجمُ يكسر ثم الاتّجاهُ يكسر**، **وآخرُ قسمٍ يعود
                     إلى الوجوه** فتُقفل اللوحةُ على ما فُتحت عليه. */}
-                <TalkedAboutWork room={talkedAbout} locale={locale} />
+                {!railOff(hiddenRails, "talked") && (
+                  <TalkedAboutWork room={talkedAbout} locale={locale} />
+                )}
                 {/* 🆕 **والخامسُ: أكثرُ القوائم حفظاً** (D-289).
                     **وموضعُه بعد «أعلى التعليقات» وقبل «الصاعدين»**:
                     الثلاثةُ فوقه أشخاصٌ يُرتَّبون، **وهذا شيءٌ صنعه
                     شخص** — فيفصل بين ترتيبين للناس بدل أن يذيّلهما. */}
+                {!railOff(hiddenRails, "savedlists") && (
                 <TopSavedLists
                   cards={savedLists}
                   locale={locale}
                   seeAllHref="/people?tab=people&all=lists"
                 />
+                )}
+                {!railOff(hiddenRails, "rising") && (
                 <PeopleLeaderboard
                   rows={board}
                   locale={locale}
@@ -852,6 +872,7 @@ export default async function PeoplePage({
                   meId={user?.id ?? ""}
                   following={boardFollowing}
                 />
+                )}
               </>
             ))
       }
@@ -923,6 +944,7 @@ export default async function PeoplePage({
             <CommunityTools
               locale={locale}
               prefs={tabPrefs}
+              hiddenRails={[...hiddenAll]}
               labels={Object.fromEntries(tabs.map((x) => [x.key, x.label]))}
               activeTab={tab}
               strangers={showStrangers}
