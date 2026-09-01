@@ -2271,6 +2271,32 @@ export async function getMyPartnerApplication(): Promise<PartnerApplicationField
   }
 }
 
+/** 🆕 **بياناتُ تحويل الشريك** (D-858) — صفُّ `partner_details` لصاحبه:
+ *  آيبانٌ وبنكٌ واسمُ حسابٍ وجوالٌ ومسارُ هويّة. **`null` يعني لم يبدأ**،
+ *  والحقلُ الفارغُ يعني نقصَه وحدَه — **وبطاقةُ الاستكمال تُرسم من هذين.**
+ *  الحارسُ RLS: صفُّ صاحبه وحدَه، والإدارةُ تقرأ للتحويل. */
+export interface PartnerDetails {
+  iban: string | null;
+  bank_name: string | null;
+  account_name: string | null;
+  phone: string | null;
+  id_file: string | null;
+}
+
+export async function getMyPartnerDetails(): Promise<PartnerDetails | null> {
+  try {
+    if (!(await getUserId())) return null;
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from("partner_details")
+      .select("iban, bank_name, account_name, phone, id_file")
+      .maybeSingle();
+    return (data as PartnerDetails | null) ?? null;
+  } catch {
+    return null;
+  }
+}
+
 /** 🆕 D-770: طلباتُ الشركاء للوحة الإدارة — الحارسُ الحقيقيُّ
  *  `am_admin()` في جسم الدالّة (D-011)، وغيرُ الإداريِّ يرى قائمةً فارغة */
 export interface AdminPartnerApp {

@@ -4528,6 +4528,51 @@ export async function cancelPartnerApplication() {
 }
 
 /**
+ * 🆕 **حفظُ بيانات تحويل الشريك** (D-858، حكمُ أحمد: «وين يسجّل بياناته
+ * البنكيّة وجواله») — **آيبانٌ سعوديٌّ حصراً** (قرارُه: الشركاءُ
+ * سعوديّون اليوم) **والجوالُ يُجمع الآن وتوثيقُ الرمز مع فتح
+ * المدفوعات.** القصُّ هنا شكليٌّ — **قيودُ `check` في الجدول هي
+ * الحَكَم** (D-011)، وRLS تحصر الكتابةَ بشريكٍ قائمٍ على صفّه.
+ * ⚠️ **والهويّةُ ليست هنا**: ملفُّها يصعد من العميل إلى المخزن مباشرةً
+ * (نمطُ `Composer`) — **فِعلا نصٍّ وملفٍّ لا يُخلطان في بابٍ واحد.**
+ */
+export async function savePartnerDetails(input: {
+  iban: string;
+  bankName: string;
+  accountName: string;
+  phone: string;
+}) {
+  const { supabase, user } = await requireUser("partner", 5, 60_000);
+  const iban = String(input.iban ?? "").replace(/\s+/g, "").toUpperCase();
+  if (!/^SA\d{22}$/.test(iban)) {
+    throw new Error("الآيبان السعودي: SA ثم ٢٢ رقماً / Saudi IBAN: SA followed by 22 digits");
+  }
+  const bank = String(input.bankName ?? "").trim().slice(0, 60);
+  const holder = String(input.accountName ?? "").trim().slice(0, 80);
+  if (!bank || !holder) {
+    throw new Error("اسمُ البنك واسمُ صاحب الحساب مطلوبان / Bank and account holder names are required");
+  }
+  /* `05xxxxxxxx` تُطبَّع إلى الصيغة الدوليّة — **صيغةٌ واحدةٌ في القاعدة**
+     فقارئُ الغد (OTP/التحويل) لا يفكّ صيغتين */
+  let phone = String(input.phone ?? "").replace(/[\s()-]/g, "");
+  if (/^05\d{8}$/.test(phone)) phone = `+966${phone.slice(1)}`;
+  if (/^9665\d{8}$/.test(phone)) phone = `+${phone}`;
+  if (!/^\+9665\d{8}$/.test(phone)) {
+    throw new Error("رقم جوال سعودي: 05xxxxxxxx أو +9665xxxxxxxx / Saudi mobile: 05xxxxxxxx or +9665xxxxxxxx");
+  }
+  const { error } = await supabase.from("partner_details").upsert({
+    user_id: user.id,
+    iban,
+    bank_name: bank,
+    account_name: holder,
+    phone,
+    updated_at: new Date().toISOString(),
+  });
+  if (error) throw new Error("تعذّر الحفظ — حاول مجدداً / Could not save, try again");
+  revalidatePath("/profile/settings/invites");
+}
+
+/**
  * 🆕 D-770: قرارُ الإدارة في طلب شريك — الحارسُ الحقيقيُّ `am_admin()`
  * في جسم `admin_decide_partner` يرمي `forbidden` لغير الإداريّ (D-011)،
  * والموافقةُ تولّد كودَ `/p/<CODE>` مفحوصاً ضدّ جدولَي الأكواد معاً.
