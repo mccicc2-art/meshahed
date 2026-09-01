@@ -710,11 +710,13 @@ async function PartnersTab({
                 <span className="block text-14 font-bold">{title}</span>
                 <span className="block text-12 text-muted mt-0.5">{sub}</span>
               </span>
-              <Icon
-                name="chevron-down"
-                size={16}
-                className="shrink-0 -rotate-90 rtl:rotate-90 text-muted"
-              />
+              {/* 🗑️ 🆕 **والسهمُ سقط من الخطوات الثلاث** (D-849، وُجد في
+                  كنسةِ بلاغِ أحمد لا ببلاغٍ عليه): **كان سهمَ صفٍّ في
+                  ثلاثة `<p>` لا تُضغط ولا تفتح شيئاً** — **وهي شرحُ
+                  «كيف يعمل البارتنر» لا أبوابَ فهرس.** **والسهمُ يقول
+                  «هذا بابٌ يُفتح»** (نصُّ `Tail` في `SearchScreen`
+                  حرفاً) — **ووعدٌ يُخلَف أسوأُ من غيابٍ صريح**
+                  (D-030/D-217). */}
             </p>
           ))}
         </div>
