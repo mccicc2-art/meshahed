@@ -4657,6 +4657,13 @@ export function listsForDisplay(lists: UserList[]): UserList[] {
 
 export async function getMyLists(): Promise<UserList[]> {
   try {
+    /* 🆕 **ولا نداءَ لزائر** (D-856): صفحاتُ الأعمال عامّةٌ وتستدعيها،
+       **وكان الزائرُ يدفع رحلةَ RPC جوابُها المحتومُ صفرُ قوائم** —
+       بل صارت بعد كنسة الأذونات (Phase 5) خطأَ صلاحيّاتٍ يُبتلع هنا
+       ويُسجَّل هناك: **~١٥ ألف سطرِ ضجيجٍ يوميّاً يدفن الخطأَ الحقيقيَّ
+       حين يقع.** **والحكمُ محليٌّ بلا رحلة** (`getUserId` يفكّ الكوكي
+       فكّاً) — **فالمسجّلُ لا يتأخّر والزائرُ لا يَطرُق باباً ليس له.** */
+    if (!(await getUserId())) return [];
     const supabase = await createClient();
     const { data, error } = await supabase.rpc("my_lists");
     if (error || !data) return [];
