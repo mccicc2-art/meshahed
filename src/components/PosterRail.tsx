@@ -9,6 +9,13 @@ import { RailScroll } from "./RailScroll";
  * تحتها خارج الشاشة. الصفّ يعرض ثلاثة ويخفي الباقي خلف السحب، فتُرى
  * أربعة أقسام في شاشة واحدة بدل قسم ونصف.
  */
+/**
+ * 🆕 **صنفُ «الكلّ» مُصدَّراً** (D-868) — **بابٌ غيرُ الرابط يلبسه
+ * كما هو**: **وصفةٌ ثانيةٌ لزرٍّ واحدٍ هي العطلُ** (القاعدة ٣).
+ */
+export const seeAllClass =
+  "text-12 font-medium text-muted hover:text-accent transition shrink-0";
+
 export function PosterRail({
   title,
   icon,
@@ -16,6 +23,7 @@ export function PosterRail({
   href,
   onTitle,
   seeAllLabel,
+  seeAllDoor,
   subtitle,
   action,
   className,
@@ -35,6 +43,17 @@ export function PosterRail({
    */
   onTitle?: () => void;
   seeAllLabel?: string;
+  /**
+   * 🔴 🆕 **بابٌ يفتح ورقةً بدل أن ينقل** (D-868، حكمُ أحمد: «وخيار all
+   * لا يوديني المكتبة، يفتحها منبثقة هنا»).
+   *
+   * 🔑 **والمفردةُ مسنونةٌ في المشروع أصلاً** (D-624/D-217): **«الكل ←»
+   * بسهمٍ وعدُ انتقال، و«الكل» بلا سهمٍ وعدُ ورقة** — **فالسطحُ هنا
+   * يمرّر البابَ مبنيّاً ويبقى الرفُّ جاهلاً بما فيه.**
+   * ⚠️ **ولا يُسقط `href`**: العنوانُ يبقى بابَ المكتبة (D-378) —
+   * **ورقةٌ تُضاف لا وجهةٌ تُحذف.**
+   */
+  seeAllDoor?: React.ReactNode;
   subtitle?: string;
   /** عنصرٌ في طرف العنوان (زرّ إجراء) — بديلٌ عن رابط «الكل» في هذا الصفّ */
   action?: React.ReactNode;
@@ -90,19 +109,23 @@ export function PosterRail({
             (زرُّ الترتيب وبابُ الصفّ)، **وأداةٌ تُسقط باباً قائماً
             ثمنٌ لم يُطلب** (D-378). المستدعون القدامى لا يمرّرون
             الاثنين معاً فلا بكسلَ تغيّر عندهم. */}
-        {(action || (href && seeAllLabel)) && (
+        {(action || seeAllDoor || (href && seeAllLabel)) && (
           <span className="shrink-0 flex items-center gap-2.5">
             {action}
-            {href && seeAllLabel && (
-              <Link
-                href={href}
-                /* 🆕 ١٢ لا ١٣ (D-459): **«الكلّ» ثانويٌّ كسائر الثانويّ** —
-                   **ودرجةٌ ثالثةٌ بين ١٢ و١٥ لدورٍ واحدٍ ليست درجة.** */
-                className="text-12 font-medium text-muted hover:text-accent transition shrink-0"
-              >
-                {seeAllLabel}
-              </Link>
-            )}
+            {/* 🆕 **والبابُ الممرَّرُ يسبق الرابط** (D-868) — **ولا
+                يجتمعان**: كلمتان متطابقتان لفعلين في رأسٍ واحدٍ هي
+                علّةُ D-863 بعينها. */}
+            {seeAllDoor ??
+              (href && seeAllLabel ? (
+                <Link
+                  href={href}
+                  /* 🆕 ١٢ لا ١٣ (D-459): **«الكلّ» ثانويٌّ كسائر الثانويّ** —
+                     **ودرجةٌ ثالثةٌ بين ١٢ و١٥ لدورٍ واحدٍ ليست درجة.** */
+                  className={seeAllClass}
+                >
+                  {seeAllLabel}
+                </Link>
+              ) : null)}
           </span>
         )}
       </div>
