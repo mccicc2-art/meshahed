@@ -118,7 +118,7 @@ export function CompactMediaRow({
               className="block h-full w-full origin-left rtl:origin-right"
               style={{
                 transform: `scaleX(${Math.min(100, Math.max(0, progress)) / 100})`,
-                background: "var(--gradient-brand-x)",
+                background: "var(--gradient-progress-x)",
               }}
             />
           </span>

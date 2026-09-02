@@ -299,7 +299,7 @@ export function ContinueCard({
                 className="block h-full w-full origin-left rtl:origin-right transition-transform duration-500"
                 style={{
                   transform: `scaleX(${pct / 100})`,
-                  background: "var(--gradient-brand-x)",
+                  background: "var(--gradient-progress-x)",
                 }}
               />
             </span>
@@ -376,7 +376,7 @@ export function ContinueCard({
               style={{
                 transform: `scaleX(${pct / 100})`,
                 background:
-                  "var(--gradient-brand-x)",
+                  "var(--gradient-progress-x)",
               }}
             />
           </span>
