@@ -12,6 +12,7 @@ import {
   getMyListReviews,
   getTopSavedListCards,
   getProfile,
+  getMyLists,
 } from "@/lib/data";
 import { getLibState } from "@/lib/libState";
 import { cookies } from "next/headers";
@@ -60,6 +61,7 @@ import { ScrollMemory } from "@/components/ScrollMemory";
 import { animeMovieRail, topChartRail, looksAnime, railGuard } from "@/lib/topChart";
 import { buildSection, sectionHref } from "@/lib/sections";
 import { railsHiddenFor, railOff, isRailTab } from "@/lib/railPrefs";
+import { isUuid } from "@/lib/validate";
 import { attachImdbRatings, withImdbRatings, rankByImdb } from "@/lib/omdb";
 import { localizeRows } from "@/lib/localize";
 import { getT, getWatchRegion, getTabPrefs, getHiddenRails } from "@/lib/locale";
@@ -191,12 +193,18 @@ export default async function NewsPage({
     st?: string;
     se?: string;
     std?: string;
+    /** 🆕 D-875: قائمةٌ ذكيّةٌ يُعدَّل شرطُها */
+    edit?: string;
   }>;
 }) {
   /* ✅ وبوّابةُ D-515 ورحلتُها سقطتا معاً (D-627) — الصفحةُ للضيف
      والمسجَّلِ سواء، والفرقُ في الصفوف الشخصيّة الذاتيّةِ الحراسة */
   const { locale, t } = await getT();
   const sp = await searchParams;
+  /* 🆕 **معرّفُ القائمة الذكيّة المعدَّلة** (D-875) — **شكلُه يُفحص هنا
+     وملكيّتُه في المضيف** (`SavedFiltersHost`): **رابطٌ بمعرّفٍ غريبٍ لا
+     يفتح وضعَ تعديل.** */
+  const editId = sp.edit && isUuid(sp.edit) ? sp.edit : null;
   /* ثلاثة تبويبات (طلب أحمد 9 Aug): أفلام · مسلسلات · القوائم — الجهة
      صعدت من ورقة الفلاتر إلى الرأس، فتُفرض هنا على التصفح من التبويب
      (وروابط ?type القديمة يهديها parseDiscoverTab لتبويبها) */
@@ -305,6 +313,7 @@ export default async function NewsPage({
         locale={locale}
         tab={tab}
         tabPrefs={tabPrefs}
+        edit={editId}
         /* 🆕 **المطفأُ يمرّ من الخادم** (D-826) — **فلا يومض مفتاحٌ ثمّ
            يُصحَّح**، ولا نداءَ ثانٍ من العميل. */
         hiddenRails={[...hiddenAll]}
@@ -346,7 +355,7 @@ export default async function NewsPage({
           عظميّاً**: **صفٌّ قد يغيب أصلاً** (زائرٌ · بلا محفوظاتٍ ولا
           فلترٍ قائم) **وهيكلٌ لما قد لا يأتي يَعِد** (D-217). */}
       <Suspense fallback={null}>
-        <SavedFiltersHost locale={locale} section={tab} />
+        <SavedFiltersHost locale={locale} section={tab} edit={editId} />
       </Suspense>
 
       {/* 🆕 **صفُّ «ترايلرات لك» مباشرةً بعد التبويبات** (D-726، موضعُه
@@ -2241,19 +2250,28 @@ async function PersonalRails({
 async function SavedFiltersHost({
   locale,
   section,
+  edit = null,
 }: {
   locale: Locale;
   section: string;
+  edit?: string | null;
 }) {
   const profile = await getProfile();
   if (!profile) return null;
   const { filters } = sanitizeUiState(profile.ui_state);
+  /* 🆕 **القائمةُ المعدَّلة تُحسم من قوائم الزائر لا من الرابط** (D-875):
+     **`getMyLists` مكيَّشةٌ ومحروسةٌ بالجلسة** (D-856) — **فقائمةُ غيره
+     أو غيرُ الذكيّة تسقط صامتةً ويبقى اكتشف اكتشف.** */
+  const editing = edit
+    ? ((await getMyLists()).find((l) => l.id === edit && l.kind === "smart") ?? null)
+    : null;
   return (
     <SavedFiltersRow
       locale={locale}
       section={section}
       saved={filters}
       plus={isPlus(profile)}
+      editing={editing ? { id: editing.id, name: editing.name } : null}
     />
   );
 }
