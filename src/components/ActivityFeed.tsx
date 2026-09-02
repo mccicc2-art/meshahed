@@ -127,6 +127,8 @@ export function ActivityFeed({
   listSocial,
   emptyText,
   locale,
+  limit,
+  moreHref,
 }: {
   comments: FeedItem[];
   /** أخبارُنا — **تُمرَّر فارغةً في نطاق «من أتابع»**، انظر الصفحة */
@@ -195,6 +197,22 @@ export function ActivityFeed({
   /** **وفراغُ «الكل» غيرُ فراغ «من أتابع»** — الصفحةُ تملك النطاق فتملك جملته */
   emptyText: string;
   locale: Locale;
+  /**
+   * 🆕 **سقفُ الرسم الخادميّ** (D-884 · `LOOPZ-AUD-0069`): الخطُّ كان
+   * يُرسم كاملاً (٦٥ صفّاً للزائر ≈ 455 KB markup + مثلُها في حمولة RSC)
+   * فصارت وثيقةُ `/people` مليون بايتٍ مفكوكةً. **السقفُ بعد الترشيح
+   * والفرز لا قبلهما** — فالصفوفُ الأولى هي نفسُها التي كانت تتصدّر،
+   * **ولا يتغيّر ترتيبٌ ولا ترشيح**. ⚠️ **واختياريّ**: غيابُه يرسم الكلَّ
+   * كما كان — **فورقةُ العضو وكلُّ مستدعٍ لم يلحق لا ينكسر** (D-152).
+   */
+  limit?: number;
+  /**
+   * رابطُ «المزيد» حين يُقصّ الخطُّ — **الحالةُ في الرابط لا في عميل**
+   * (D-051/D-054 · نفسُ نحو `?tab=`): يفتح الصفحةَ نفسَها بلا سقف،
+   * فالرجوعُ والمشاركةُ يحفظان ما رآه القارئ، **ولا جزيرةَ ولا إجراءَ
+   * خادمٍ يعيد بناءَ الخطّ بصفٍّ ثانٍ من النداءات.**
+   */
+  moreHref?: string | null;
 }) {
   const t = getDict(locale);
 
@@ -321,6 +339,11 @@ export function ActivityFeed({
     );
   }
 
+  /* 🆕 **القصُّ آخرَ خطوة** (D-884): بعد الترشيح والفرز — فما يُرسم هو
+     رأسُ الخطّ نفسُه، **والباقي خلف «المزيد» لا محذوف.** */
+  const hidden = limit && shown.length > limit ? shown.length - limit : 0;
+  if (hidden) shown = shown.slice(0, limit);
+
   return (
     <div className="divide-y divide-[color:var(--divider)]">
       {shown.map((row) => {
@@ -359,6 +382,24 @@ export function ActivityFeed({
           سِمَتها `data-post-key` — **فلا عميلَ في كل صفّ** ولا نداءَ
           لكل صفّ. */}
       <PostViews />
+      {/* **«المزيد» بنفس صفِّ D-535** («عرض N ردوداً أخرى» في الخيط):
+          رابطٌ لا زرّ — **يحمل الحالةَ في العنوان**، و`scroll={false}`
+          يُبقي القارئَ حيث كان، **و`prefetch={false}` لأنّ الحمولةَ خلفه
+          هي الخطُّ كلُّه** (ما جئنا نوفّره لا يُجلب سلفاً). */}
+      {hidden > 0 && moreHref ? (
+        <Link
+          href={moreHref}
+          scroll={false}
+          prefetch={false}
+          className="w-full flex items-center gap-2 py-2.5 text-12 font-bold text-accent hover:opacity-80 transition"
+        >
+          <Icon name="comment" size={16} className="shrink-0" />
+          {t.feedMorePosts(hidden)}
+          <span className="ms-auto shrink-0" aria-hidden>
+            <Icon name="chevron-down" size={14} className="-rotate-90 rtl:rotate-90" />
+          </span>
+        </Link>
+      ) : null}
     </div>
   );
 }
