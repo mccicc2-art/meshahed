@@ -27,7 +27,7 @@ import {
   posterUrl,
 } from "@/lib/tmdb";
 import { animeExtras } from "@/lib/anilist";
-import { displayWorkTitle } from "@/lib/wikidata";
+import { displayWorkTitle, prefetchWorkTitle } from "@/lib/wikidata";
 import { EpisodeTracker, type SeasonSummary } from "@/components/EpisodeTracker";
 import { getT, getWatchRegion } from "@/lib/locale";
 import { originAdjectives } from "@/lib/region";
@@ -68,6 +68,11 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
      وعداً يُرفض قبل أن يُنتظر = رفضٌ بلا ماسك (الدوالُّ تبتلع أخطاءها
      أصلاً، والحارسُ للاحتياط). عند `!tv` تُهدر ثلاثُ رحلاتٍ مقيَّدةٍ
      بمهلتها — نادرٌ ومقبول. */
+  /* 🆕 D-894 (`LOOPZ-AUD-0081`): سؤالُ ويكي‑بيانات عن العنوان العربيّ كان
+     يُنتظر بعد TMDB — رحلةً خارجيّةً ثانيةً قبل الترويسة بمهلة ١٫٥ث (قِيس
+     من متصفّح المالك: ترويسةٌ عند 2.0 ثمّ 1.7 ث). ينطلق هنا مع الموجة؛
+     `displayWorkTitle` تقرأه بعد فحص العربيّة كما كانت. */
+  const workTitlePromise = prefetchWorkTitle(tvId, "tv", locale);
   const creditsPromise = getCredits("tv", tvId).catch(() => ({ cast: [], crew: [] }));
   const trailerPromise = getTrailer("tv", tvId).catch(() => null);
   const imdbIdPromise = tvImdbId(tvId).catch(() => null);
@@ -138,7 +143,7 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
      `displayPersonName`: واجهةٌ عربية وعنوانٌ ليس عربياً أصلاً، فصفرُ طلباتٍ
      في الحالة الغالبة. وبعد حارس `!tv` لا قبله: لا يُسأل عن عملٍ لم يُجلب.
      والفشل صامتٌ فيبقى عنوان TMDB. */
-  const title = await displayWorkTitle(tvId, "tv", tv.name, locale);
+  const title = await displayWorkTitle(tvId, "tv", tv.name, locale, workTitlePromise);
 
   /* 🆕 **نسبةُ العمل** (D-562) — **الصفحتان بصفٍّ واحدٍ لا صفَّين**
      (القاعدة ٦): نفسُ الدالّة ونفسُ الموضع ونفسُ السقف. */
