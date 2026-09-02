@@ -14,11 +14,12 @@ exit=0
 /api/build == 062d083 read from the browser after deploy; rollback point = 1f39f60 (previous main head); commit time 2026-09-02 08:26:04 UTC
 == post-deploy smoke (embedded automated Chromium, guest, /trailers?tab=trending) ==
 tap -> pause hint present at 400/800/1200 ms -> absent from 1600 ms; counter kept advancing 0:12 -> 0:15
-== iPhone (the reporting device) ==
-PENDING_OWNER_CHECK
-
-== iPhone post-fix check — reported by the owner in chat (2026-09-02 ~09:05 UTC), text only ==
-device:        owner's iPhone (model / iOS version / PWA-vs-Safari NOT stated — requested; will be appended when given)
+== iPhone (the reporting device) — post-fix check, reported by the owner in chat, text only ==
+status:        PASS (owner-reported; functional acceptance gate of D-882 / LOOPZ-AUD-0023 on the reporting device)
+report time:   time not recorded (the chat message carries no timestamp visible to me); it preceded the evidence commit 41354f2 = 2026-09-02 09:03:26 UTC
+device model:  UNKNOWN / NOT_RECORDED (not stated by the owner)
+iOS version:   UNKNOWN / NOT_RECORDED (not stated by the owner)
+PWA or Safari: UNKNOWN / NOT_RECORDED (not stated by the owner)
 build:         main @ d9767dd deployed at the time of the check (D-882 code unchanged since 062d083)
 step 1  play trailer -> video visible, counter advancing ............ YES
 step 2  tap -> pause hint shown -> wait 2 s -> hint gone, video continues ... YES
@@ -26,3 +27,5 @@ step 3  tap (hint) then tap again -> video pauses; resumes after ........ YES
 step 4  sound: DEFAULT MUTED on this iPhone; after the owner turns sound on and moves to the next card it STAYS ON
         reading: default-muted here is the WebKit autoplay policy (unmuted autoplay refused -> controller falls back to muted, D-771 fallback text);
         the carried preference across cards works as designed. Owner decision BY_DESIGN (sound on when the platform allows).
+scope:         proves the original 0023 symptom (frozen cover / stuck pause glyph while the counter advances) is gone on the reporting device
+               for the four steps above; it does not measure first-frame latency or verify audibility.
