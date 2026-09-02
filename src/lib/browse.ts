@@ -744,6 +744,14 @@ export function browseHref(q: {
    * القارئُ للتوّ، وهو فعلٌ يُلغي فعلَ صاحبه صامتاً.**
    */
   nf?: boolean;
+  /**
+   * 🆕 **قائمةٌ ذكيّةٌ يُعدَّل شرطُها** (D-875 — سدادُ دَين D-823 «لا
+   * تعديلَ لشرط القائمة الذكيّة بعد إنشائها»): **معرّفُها يركب الرابطَ
+   * كما تركبه `nf`** — **فكلُّ لمسةِ فلترٍ تحمله، وإلّا سقط عند أوّل
+   * لمسةٍ وضاع وضعُ التعديل صامتاً.** **والرابطُ يبنيه هذا الملفُّ
+   * وحدَه** (D-174) فالمعاملُ هنا لا في المكوّن.
+   */
+  edit?: string | null;
 }) {
   const p = new URLSearchParams();
   if (q.tab) {
@@ -768,6 +776,7 @@ export function browseHref(q: {
   if (q.std) p.set("std", q.std);
   if (q.award) p.set("award", q.award);
   if (q.nf) p.set("nf", "1");
+  if (q.edit) p.set("edit", q.edit);
   const qs = p.toString();
   return qs ? `/news?${qs}` : "/news";
 }

@@ -1938,6 +1938,12 @@ const ar = {
      الذي يدلّ عليها (D-376/D-703: **الاسمُ الذي يُضغط هو الاسمُ الذي
      يُقرأ**). */
   smartListLabel: "قائمة ذكيّة",
+  /* 🆕 **تعديلُ شرط القائمة الذكيّة** (D-875): **الزرُّ يحمل اسمَ
+     القائمة** — «حدّث» وحدَها تُقرأ عن أيِّ شيء. */
+  smartListUpdate: (name: string) => `حدِّث «${name}»`,
+  smartListUpdated: "حُدِّث شرطُ القائمة الذكيّة",
+  smartListEditHint: (name: string) =>
+    `تعدّل شرطَ «${name}» — غيّر الفلاتر ثمّ اضغط «حدِّث».`,
   /* 🆕 **شارةُ مدّة العضويّة** (D-831) — **الشهرُ والسنةُ لا اليومُ
      بالضبط**: **«منذ ٢ أغسطس» تُقرأ ذكرى، و«منذ أغسطس ٢٠٢٦» تُقرأ
      مدّةً** — **وهي المدّةُ التي طُلبت.** */
@@ -3582,6 +3588,10 @@ const en: Dict = {
   weekSub: "Episodes from your shows over the next two weeks.",
   weekNothing: "No episodes due this week.",
   smartListLabel: "Smart list",
+  smartListUpdate: (name: string) => `Update “${name}”`,
+  smartListUpdated: "Smart list rule updated",
+  smartListEditHint: (name: string) =>
+    `Editing the rule of “${name}” — change the filters, then press “Update”.`,
   memberSince: (when: string) => `Member since ${when}`,
   weeklyRankOrd: (n: number): string =>
     ["1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th", "9th", "10th"][n - 1] ??

@@ -2978,6 +2978,47 @@ export async function createSmartList(
   return { id: data?.id ?? null };
 }
 
+/**
+ * 🆕 **تعديلُ شرط القائمة الذكيّة** (D-875 — سدادُ دَين D-823: «لا
+ * تعديلَ لشرط القائمة الذكيّة بعد إنشائها — يُعاد إنشاؤها»).
+ *
+ * 🔑 **ومن الباب نفسِه**: **الشرطُ يُعدَّل حيث بُني — في «اكتشف»**
+ * (نصُّ `ListDetail`: «من أراد تعديله يعدّله حيث بُني»)، **والرابطُ
+ * يحمل `edit=<id>` فيصير زرُّ «قائمة ذكيّة» زرَّ «حدِّث «الاسم»».**
+ * **ولا ورقةَ تعديلٍ ثانية** (D-145).
+ *
+ * 🔒 **وبلس كالإنشاء** — **والحارسُ هنا** (D-819/D-821). **والمنحُ
+ * `update (rule, rule_source)` قائمٌ منذ الهجرة ١٦١** — **كُتب يومَها
+ * لهذا اليوم.** ⚠️ **و`rule_source` لا يُمسّ**: **الشرطُ يتبدّل ومصدرُه
+ * لا** — قائمةُ كتالوجٍ تبقى قائمةَ كتالوج.
+ */
+export async function updateSmartListRule(
+  listId: string,
+  rule: unknown,
+): Promise<{ ok: boolean; needsPlus?: true }> {
+  listId = uuid(listId);
+  const { sanitizeRule } = await import("@/lib/smartLists");
+  const clean_rule = sanitizeRule(rule);
+  if (!clean_rule) throw new Error("empty rule");
+
+  const { supabase, user } = await requireUser("list", 10, 60_000);
+  if (!(await viewerIsPlus())) return { ok: false, needsPlus: true };
+
+  const { error, count } = await supabase
+    .from("user_lists")
+    .update({ rule: clean_rule }, { count: "exact" })
+    .eq("id", listId)
+    .eq("user_id", user.id)
+    .eq("kind", "smart");
+  if (error) fail(error);
+  /* **صفرُ صفٍّ = ليست قائمتَه أو ليست ذكيّة** — **ويُقال لا يُبتلع** */
+  if (!count) throw new Error("not your smart list");
+
+  revalidatePath(`/lists/${listId}`);
+  revalidatePath("/lists");
+  return { ok: true };
+}
+
 export async function renameList(
   listId: string,
   name: string,

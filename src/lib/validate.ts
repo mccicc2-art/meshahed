@@ -36,6 +36,10 @@ export function asMediaType(v: unknown): MediaType {
 
 /** معرّف مستخدم UUID — يرفض أي نصٍّ آخر قبل أن يبلغ الاستعلام */
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+/** 🆕 D-875: **سؤالٌ لا حارس** — لرابطٍ قد يحمل معرّفاً غريباً فيُتجاهَل لا يُرمى */
+export function isUuid(v: unknown): v is string {
+  return typeof v === "string" && UUID_RE.test(v);
+}
 export function uuid(v: unknown): string {
   if (typeof v === "string" && UUID_RE.test(v)) return v.toLowerCase();
   throw new Error("مدخل غير صالح / Invalid input");
