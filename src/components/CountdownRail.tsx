@@ -46,7 +46,8 @@ export function CountdownRail({
       <h2 className="flex items-center gap-2 text-22 font-bold mb-3">
         {icon && <Icon name={icon} size={18} className="text-muted" />}
         {href ? (
-          <Link href={href} className="truncate hover:text-accent transition">
+          /* D-893: بابا الرفّ بلا prefetch (انظر PosterRail) */
+          <Link href={href} prefetch={false} className="truncate hover:text-accent transition">
             {title}
           </Link>
         ) : (
@@ -55,6 +56,7 @@ export function CountdownRail({
         {href && seeAllLabel && (
           <Link
             href={href}
+            prefetch={false}
             className="ms-auto shrink-0 text-12 text-muted hover:text-accent transition font-normal"
           >
             {seeAllLabel}

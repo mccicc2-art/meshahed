@@ -84,7 +84,14 @@ export function RankedRail({
             ٣٦٠px يسع ثلاثَ عشرة كلمةً لاتينيّةً قصيرة، **وما زاد يُقصّ في
             منتصف الكلمة.** **وسطران يُقرآن، ونصفُ كلمةٍ لا يُقرأ.** */}
         {href ? (
-          <Link href={href} className="min-w-0 line-clamp-2 leading-tight hover:text-accent transition">
+          /* 🆕 D-893 (`LOOPZ-AUD-0077`): بابا الرفّ بلا prefetch كبابَي
+             `PosterRail` — هذا الرفُّ بعينه كان مصدرَ ٦ طلبات RSC مسبقة
+             لمسارَي Discover على تحميلٍ واحد. */
+          <Link
+            href={href}
+            prefetch={false}
+            className="min-w-0 line-clamp-2 leading-tight hover:text-accent transition"
+          >
             {title}
           </Link>
         ) : (
@@ -99,6 +106,7 @@ export function RankedRail({
           seeAllLabel && (
             <Link
               href={href}
+              prefetch={false}
               className="ms-auto shrink-0 text-12 font-medium text-muted hover:text-accent transition"
             >
               {seeAllLabel}
