@@ -34,7 +34,10 @@ import {
   ruleToQuery,
   sanitizeRule,
   SMART_LIST_LIMIT,
+  isRuleSource,
+  type RuleSource,
 } from "@/lib/smartLists";
+import { evaluateLibraryRule } from "@/lib/librarySmart";
 
 /**
  * قائمة واحدة.
@@ -162,10 +165,25 @@ export default async function ListPage({ params }: { params: Promise<{ id: strin
      ثانٍ لنفس الجرد يعني قائمةً تعرض غيرَ ما يعرضه الفلترُ الذي صنعها.**
      ⚠️ **والفشلُ فراغٌ لا انهيار**: TMDB خارجُنا، **وصفحةُ قائمةٍ تسقط
      لأنّ نداءً خارجيّاً تعثّر أسوأُ من قائمةٍ فارغةٍ اليوم.** */
-  const smartRule = data.list.kind === "smart" ? sanitizeRule(data.list.rule) : null;
+  /* 🆕 **والمصدرُ يفرّق القارئَ** (D-876): **`library` تُقوَّم من جداولنا**
+     (`evaluateLibraryRule`) **و`catalog` من `buildSection`** — **وشرطٌ
+     يُطهَّر بمفردات مصدره.** */
+  const smartSource: RuleSource = isRuleSource(data.list.rule_source) ? data.list.rule_source : "catalog";
+  const smartRule = data.list.kind === "smart" ? sanitizeRule(data.list.rule, smartSource) : null;
   const smartRows = smartRule
     ? await (async () => {
         try {
+          if (smartSource === "library") {
+            const rows = await evaluateLibraryRule(smartRule, SMART_LIST_LIMIT);
+            return rows.map((r) => ({
+              tmdb_id: r.tmdb_id,
+              media_type: r.media_type,
+              title: r.title,
+              poster_path: r.poster_path,
+              added_at: r.added_at,
+              sort_order: null,
+            }));
+          }
           const media = ruleMedia(smartRule);
           const browse = ruleToBrowse(smartRule);
           const region = await getWatchRegion();
@@ -230,6 +248,7 @@ export default async function ListPage({ params }: { params: Promise<{ id: strin
            إضافةٍ في قائمةٍ تملأ نفسَها زرٌّ لا أثرَ له** (D-346)،
            **وحذفُ عملٍ منها يعود عند أوّل فتحة.** */
         smart={smartRule ? ruleToQuery(smartRule) : null}
+        smartSource={smartRule ? smartSource : null}
         items={items}
         ratings={data.ratings}
         isOwner={isOwner}
