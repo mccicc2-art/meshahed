@@ -456,8 +456,19 @@ export function ListDetail({
               ? "Fills itself from the Loopz catalogue — nothing is added by hand."
               : "تمتلئ وحدَها من كتالوج Loopz — لا يُضاف إليها شيءٌ يدويّاً."}
           </span>
-          <Link href={`/news?${smart}`} className="text-accent hover:opacity-80 transition">
-            {locale === "en" ? "Open in Discover" : "افتحه في اكتشف"}
+          {/* 🆕 **وللمالك يحمل الرابطُ `edit`** (D-875): **فيفتح اكتشف في وضع
+              التعديل وزرُّ «حدِّث» جاهز** — **ولغيره الشرطُ للاطّلاع وحدَه.** */}
+          <Link
+            href={isOwner ? `/news?${smart}&edit=${listId}` : `/news?${smart}`}
+            className="text-accent hover:opacity-80 transition"
+          >
+            {isOwner
+              ? locale === "en"
+                ? "Edit the rule in Discover"
+                : "عدّل الشرط في اكتشف"
+              : locale === "en"
+                ? "Open in Discover"
+                : "افتحه في اكتشف"}
           </Link>
         </p>
       )}

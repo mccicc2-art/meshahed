@@ -88,6 +88,7 @@ export function DiscoverFilters({
   status,
   season,
   studio,
+  edit = null,
   listsFilters,
   tabPrefs,
   hiddenRails = [],
@@ -133,6 +134,8 @@ export function DiscoverFilters({
   status?: string | null;
   season?: string | null;
   studio?: string | null;
+  /** 🆕 D-875: قائمةٌ ذكيّةٌ يُعدَّل شرطُها — **يُحمل في كلِّ رابطٍ يُبنى هنا** وإلّا ضاع وضعُ التعديل عند أوّل لمسة */
+  edit?: string | null;
 }) {
   const t = getDict(locale);
   const loc = locale === "en" ? "en" : "ar";
@@ -180,6 +183,7 @@ export function DiscoverFilters({
          صفحة** — **ولو ورثتها كلُّ لمسةِ فلترٍ بعدها لبقيت في الرابط
          وأبطلت الافتراضيَّ إلى الأبد.** */
       nf: next.nf,
+      edit,
     });
 
     tap(8);
@@ -244,7 +248,9 @@ export function DiscoverFilters({
             se: next === "anime" ? season : null,
             std: next === "anime" ? studio : null,
           };
-    start(() => router.push(browseHref({ tab: next, ...carry }), { scroll: false }));
+    /* **و`edit` يعبر التبويبَ أيضاً** (D-875): **نوعُ الشرط يتبع التبويب**
+       (`sectionToRuleType`)، **فمن نقل قائمتَه من الأفلام إلى المسلسلات قصد.** */
+    start(() => router.push(browseHref({ tab: next, ...carry, edit }), { scroll: false }));
   }
 
   /* ثلاثة تبويبات (طلب أحمد 9 Aug): أفلام · مسلسلات · القوائم —

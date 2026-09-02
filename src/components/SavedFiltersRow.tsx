@@ -7,7 +7,7 @@ import { Icon } from "@/components/Icon";
 import { buttonClass } from "@/components/ui/Button";
 import { chipClass, chipRow } from "@/components/ui/controls";
 import { openPlusGate } from "@/lib/plusGate";
-import { updateUiState, createSmartList } from "@/lib/actions";
+import { updateUiState, createSmartList, updateSmartListRule } from "@/lib/actions";
 import { toast, flashError } from "@/lib/toast";
 import { sectionToRuleType } from "@/lib/smartListKeys";
 import {
@@ -51,12 +51,20 @@ export function SavedFiltersRow({
   section,
   saved,
   plus,
+  editing = null,
 }: {
   locale: Locale;
   /** التبويبُ الحاليّ — هو القسمُ الذي يُحفظ فيه ويُستدعى منه */
   section: string;
   saved: SavedFilter[];
   plus: boolean;
+  /**
+   * 🆕 **قائمةٌ ذكيّةٌ يُعدَّل شرطُها** (D-875): **يصل من `?edit=<id>`
+   * بعد أن يتحقّق الخادمُ أنّها قائمةُ الزائر وذكيّة** — **فالعميلُ لا
+   * يثق برابط.** **وحين تكون حاضرةً يصير زرُّ «قائمة ذكيّة» زرَّ
+   * «حدِّث «الاسم»»** — **بابٌ واحدٌ بفعلين لا بابان** (D-145).
+   */
+  editing?: { id: string; name: string } | null;
 }) {
   const ar = locale !== "en";
   const t = getDict(locale);
@@ -84,7 +92,9 @@ export function SavedFiltersRow({
   /* **ولا صفَّ بلا شيءٍ يقوله** (D-280/D-219): **لا محفوظاتٍ ولا فلترَ
      قائمٌ يُحفظ = لا يُرسم شيء** — **وصفٌّ فارغٌ يأخذ ارتفاعاً ويعطي
      صفراً.** */
-  if (mine.length === 0 && !current) return null;
+  /* **والتعديلُ يُبقي الصفَّ مرسوماً ولو بلا فلتر**: **سطرُ «تعدّل شرطَ
+     …» هو ما يقول للمستخدم أين هو** (D-063) — وإخفاؤه يُفقده الوضع. */
+  if (mine.length === 0 && !current && !editing) return null;
 
   /* 🔑 **والرجوعُ يُلتقط قبل التفاؤل لا بعده** (درسُ `TabsPrefs`):
      `list` داخل السهم هو الجديدُ بعد `setList`، **فالمحفوظُ في متغيّرٍ
@@ -163,8 +173,40 @@ export function SavedFiltersRow({
     });
   }
 
+  /* 🆕 **تحديثُ الشرط** (D-875): **نفسُ بناء الشرط في `saveSmart` حرفاً**
+     — **وصفةٌ واحدة** — **والفرقُ في الفعل والوجهة وحدَهما.** */
+  function updateSmart() {
+    if (!editing) return;
+    if (!plus) {
+      openPlusGate();
+      return;
+    }
+    const type = sectionToRuleType(section);
+    if (!current || !type) return;
+    const rule = { ...Object.fromEntries(new URLSearchParams(current)), type };
+    start(async () => {
+      try {
+        const res = await updateSmartListRule(editing.id, rule);
+        if (res.needsPlus) {
+          openPlusGate();
+          return;
+        }
+        toast(t.smartListUpdated, { tone: "success" });
+        router.push(`/lists/${editing.id}`);
+      } catch (e) {
+        flashError((e as Error).message);
+      }
+    });
+  }
+
   return (
     <div className="pt-3 pb-1">
+      {editing && (
+        <p className="mb-2 flex items-center gap-1.5 text-12 text-muted">
+          <Icon name="sparkle-star" size={12} className="shrink-0 text-accent" />
+          {t.smartListEditHint(editing.name)}
+        </p>
+      )}
       <div className={`${chipRow} flex items-center gap-2`}>
         {mine.map((f) => (
           <button
@@ -198,7 +240,21 @@ export function SavedFiltersRow({
             **وهو يظهر مع فلترٍ قائمٍ سواءٌ أكان محفوظاً أم لا**: **فلترٌ
             محفوظٌ يُستدعى، والقائمةُ الذكيّةُ تسكن مكتبتَك** — **فعلان
             مختلفان لا بديلان.** */}
-        {current && !naming && sectionToRuleType(section) && (
+        {/* 🆕 **وفي وضع التعديل يحلّ «حدِّث» محلَّ «قائمة ذكيّة»** (D-875):
+            **زرّان للشرط نفسِه — إنشاءٌ وتحديث — يُقرآن سؤالاً لا
+            جواباً** (D-217). **ويغيب حين لا شرطَ**: شرطٌ فارغٌ تمنعه
+            القاعدةُ (D-636). */}
+        {editing && current && !naming && sectionToRuleType(section) && (
+          <button
+            type="button"
+            onClick={updateSmart}
+            className={chipClass(true, "sm", "shrink-0 inline-flex items-center gap-1.5")}
+          >
+            <Icon name="sparkle-star" size={12} />
+            {t.smartListUpdate(editing.name)}
+          </button>
+        )}
+        {!editing && current && !naming && sectionToRuleType(section) && (
           <button
             type="button"
             onClick={() => (plus ? setNaming("smart") : openPlusGate())}
