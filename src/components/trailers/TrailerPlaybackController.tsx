@@ -354,14 +354,17 @@ function createEngine(
   /* 🆕 **D-881 — إشارةٌ إلى `runtime_errors` عند الفشل** (`LOOPZ-AUD-0023`،
      `P10-06`): **رمزُ يوتيوب وحالةُ المشغّل لا غير** — صفرُ معرّفٍ وصفرُ
      مستخدم — **`sendBeacon` فلا ينتظر أحدٌ ولا يفشل شيءٌ إن فشلت.**
-     **ومرّةٌ لكلِّ (نوع، رمز) في الجلسة**: الحلقةُ تُبلَّغ مرّةً لا ألفاً. */
+     **ومرّةٌ لكلِّ (نوع، رمز) لكلِّ نسخةِ محرّك** (تصحيحُ المراجع على D-881:
+     المجموعةُ عمرُها عمرُ `createEngine`، لا عمرُ الجلسة) — الحلقةُ تُبلَّغ
+     مرّةً لا ألفاً. **والحالةُ تُمرَّر صراحةً** لا تُقرأ من المتغيّر: **`setPhase`
+     تنادي قبل أن تكتب `phase`** فكانت الإشارةُ تحمل الحالةَ السابقة. */
   const signalled = new Set<string>();
-  const signal = (kind: string, code = -1) => {
+  const signal = (kind: string, code = -1, at: SlotPhase = phase) => {
     try {
       const k = `${kind}:${code}`;
       if (signalled.has(k)) return;
       signalled.add(k);
-      const body = JSON.stringify({ kind, code, phase, provider: activeIsFile() ? "file" : "youtube" });
+      const body = JSON.stringify({ kind, code, phase: at, provider: activeIsFile() ? "file" : "youtube" });
       if (!navigator.sendBeacon?.("/api/trailer-signal", new Blob([body], { type: "application/json" }))) {
         void fetch("/api/trailer-signal", { method: "POST", body, headers: { "content-type": "application/json" }, keepalive: true }).catch(() => undefined);
       }
@@ -371,7 +374,7 @@ function createEngine(
   };
 
   const setPhase = (next: SlotPhase) => {
-    if (next === "blocked" || next === "stalled") signal(next);
+    if (next === "blocked" || next === "stalled") signal(next, -1, next);
     /* **ونجاحُ المحاولة يُسقط مؤقّتَها**: عقربٌ تحرّك فقُلبت «playing» */
     if (next !== "loading") clearRetry();
     phase = next;
