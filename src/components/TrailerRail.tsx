@@ -110,8 +110,13 @@ export function TrailerRail({
                 /* أوّلُ بطاقةٍ فوق الطيّة (D-756): صورتُها بأولويّة */
                 eager={index === 0}
                 playLabel={t.trailerPlay}
+                pauseLabel={t.trailerPause}
                 muteLabel={t.trailerMute}
                 unmuteLabel={t.trailerUnmute}
+                /* 🆕 D-878 (حكمه بلقطة): **شريطُ التقديم في الرايل أيضاً** —
+                   كان للعلف وحدَه (D-762)، **وما يُقدَّم في صفحةٍ يُقدَّم في
+                   الصفّ الذي يفتحها** (D-199). */
+                seekLabel={t.trailerSeek}
                 onUnavailable={() => retire(k)}
               />
 

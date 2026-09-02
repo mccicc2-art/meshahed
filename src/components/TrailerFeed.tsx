@@ -197,6 +197,7 @@ export function TrailerFeed({
                 title={i.title}
                 eager={index === 0}
                 playLabel={t.trailerPlay}
+                pauseLabel={t.trailerPause}
                 muteLabel={t.trailerMute}
                 unmuteLabel={t.trailerUnmute}
                 /* 🆕 D-762: أدواتُ التحكّم الكاملة في العلف وحدَه —
