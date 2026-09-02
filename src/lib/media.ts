@@ -39,7 +39,13 @@ function tmdbImage(path: string | null | undefined, size: string): string | null
  */
 export const POSTER_INTRINSIC = {
   w185: { width: 185, height: 278 },
-  w342: { width: 342, height: 513 },
+  /* 🆕 D-895 (`LOOPZ-AUD-0082`): **176 لا 342** — الرقمان تلميحُ نسبةٍ
+     وعرضا srcset (انظر أعلاه)، **والبطاقاتُ تُرسم بعرض 137–176 css px**
+     (رفوفٌ وشبكةُ الاكتشاف عند 1280). بـ342 كان مرشَّحُ 1x = 384 فيطلب
+     المحمِّلُ `w342` (44–58 KB) حتى على شاشة DPR 1 يكفيها `w185` (17–20).
+     بـ176 يصير مرشَّحُ 1x = 256 ⇢ `w185`، ومرشَّحُ 2x = 384 ⇢ `w342`
+     كما كان — فشاشاتُ DPR ≥ 1.5 والهواتفُ بلا تغيير. النسبةُ ٢:٣ كما هي. */
+  w342: { width: 176, height: 264 },
   w500: { width: 500, height: 750 },
 } as const;
 
