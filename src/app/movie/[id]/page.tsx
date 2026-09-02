@@ -24,7 +24,7 @@ import {
   backdropUrl,
   posterUrl,
 } from "@/lib/tmdb";
-import { displayWorkTitle } from "@/lib/wikidata";
+import { displayWorkTitle, prefetchWorkTitle } from "@/lib/wikidata";
 import { universeOf } from "@/lib/universes";
 import { getT, getWatchRegion } from "@/lib/locale";
 import { originAdjectives } from "@/lib/region";
@@ -70,6 +70,11 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
      **لا مفتاحَ كاشٍ ولا عددَ رحلاتٍ يتغيّر** — وقتُ الانطلاق فقط.
      `.catch` على كلٍّ منهما (رفضٌ قبل الانتظار = رفضٌ بلا ماسك). معرّفُ
      IMDb يأتي في تفاصيل الفيلم نفسِها فلا وعدَ ثالثاً هنا. */
+  /* 🆕 D-894 (`LOOPZ-AUD-0081`): سؤالُ ويكي‑بيانات عن العنوان العربيّ كان
+     يُنتظر بعد TMDB — رحلةً خارجيّةً ثانيةً قبل الترويسة بمهلة ١٫٥ث (قِيس
+     من متصفّح المالك: ترويسةٌ عند 2.0 ثمّ 1.7 ث). ينطلق هنا مع الموجة؛
+     `displayWorkTitle` تقرأه بعد فحص العربيّة كما كانت. */
+  const workTitlePromise = prefetchWorkTitle(movieId, "movie", locale);
   const creditsPromise = getCredits("movie", movieId).catch(() => ({ cast: [], crew: [] }));
   const trailerPromise = getTrailer("movie", movieId).catch(() => null);
   const [userRegion, movie, followState, watched, watchWhere, myLists, inLists, myArt, favs, pulse, curatedMap, mySaved] = await Promise.all([
@@ -132,7 +137,7 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
 
   /* العنوان بالعربية إن لم تترجمه TMDB (D-176) — نفس شرطَي `displayPersonName`
      ونفس صمته، وبعد حارس `!movie` لا قبله. */
-  const title = await displayWorkTitle(movieId, "movie", movie.title, locale);
+  const title = await displayWorkTitle(movieId, "movie", movie.title, locale, workTitlePromise);
 
   /* 🆕 **نسبةُ العمل** (D-562) — **حسابٌ محليٌّ من الردّ نفسِه**: لا
      نداءَ ولا خدمة، **والحقلان كانا يصلان ولا يُقرآن.** */
