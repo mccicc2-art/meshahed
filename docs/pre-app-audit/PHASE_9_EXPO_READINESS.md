@@ -67,6 +67,8 @@
 | **REWRITE — تُعاد كتابتها بواجهات RN** | **16** | **2,204** | `toast` · `haptics` · `offline` · `uiState` · `tour` · `trailerPrefs` · `loginGate` · `plusGate` · `site` · `imageFile` · `useKeyboard` · `useScrollMemory` · `useUiLocale` · `usePoll` (Realtime) · `shareCard.tsx` · `trailerCard.ts` |
 | **DROP — لا مقابل لها** | 1 | 55 | `prefetchIntent.ts` (تلميح prefetch لـnext/link) |
 
+> ⚠️ **تصحيحٌ لاحق (§١١، بعد D-897):** هذا الجدول أُنتج بمصنِّفٍ لم يفحص الاستيرادَ بين ملفّات `src/lib` ولا `import "server-only"` بلا `from`. **الأرقامُ الصحيحة: SHARE 69 / 14,874 · SERVER 32 / 22,806 · REWRITE 16 / 2,204 · DROP 1 / 55.** الجدولُ يبقى كما نُشر ليُقرأ التصحيح.
+
 **القراءة الصحيحة:** نصفُ `src/lib` بالأسطر يُشارك بلا لمس، ونصفُه الآخر ليس «غير قابل للمشاركة» بل **منطقٌ صحيح واقفٌ خلف بابٍ لا يفتحه Expo** (Server Actions/Components + مفاتيح خادمية). هذا هو `0008` بالضبط — والحلّ في §٤.
 
 ### ٢.٢ الملفات التي احتاجت حكماً يدويّاً
@@ -311,3 +313,22 @@ RN يثبّت إصدارَ React بنفسه. إن اختلف عن `19.2.4` ال�
 - لم تُحلّ `0008` — **حالتُها تصبح `DESIGN_APPROVED_PENDING_OWNER` عند اعتماد المالك لـ§٤، وتُغلق مع الخطوة 3.**
 - `0013` تبقى `TODO` (تحتاج معرّفات المالك).
 - تحديثُ ملفّات المشروع (`04/05/06/07/18/19`) **مؤجَّلٌ بأمر المالك** («أجل تحديث الملفات»).
+
+---
+
+## ١١. D-897 — الخطوة 1 نُفِّذت على `main` `61cb418` (20:27:03 UTC) · وتصحيحُ §٢.١
+
+**المالك:** «تمام أكمل» ⇢ اختيرت الخطوةُ 1 من §٩ لأنّها تطبيقٌ خالص لا ينتظر الـGO ولا يمسّ الإنتاج.
+
+**انحرافٌ مُعلَن عن §٥.٢:** لا نقلَ لملفّات — مسارُ النشر (رفعُ GitHub عبر المتصفّح) لا ينقل ولا يحذف؛ النقلُ الفعليّ مع خطوة workspaces (§٩-5). ما شُحن هو **الحدُّ نفسُه**: كتلةُ override واحدة في `eslint.config.mjs` — 69 ملفّاً مشتركاً في `src/lib` تحت `@typescript-eslint/no-restricted-imports` (error) بمجموعتين: (١) `next`/`next/*`/`react-dom`/`server-only`/`@/components/*`/`@/app/*`/`@/lib/supabase/*`؛ (٢) كلُّ وحدةِ `lib` تبقى خلف الـAPI (49 وحدة، بالهجاءين `@/lib/x` و`./x`). `allowTypeImports: true` (استيرادُ الأنواع يُمحى عند التجميع). نقطةُ الرجوع `e254b2f`. البوّابات: `tsc 0` · `eslint 0/15` · `build ✓` · **اختبارٌ سلبيّ:** حقنُ `import { cookies } from "next/headers"` في ملفٍّ مشترك ⇢ القاعدةُ تُطلق الخطأ (ثمّ أُزيل). `/api/build == 61cb418` (≈20:29 UTC من متصفّح المالك). الدليل `evidence/D-897-gates-61cb418.txt` + `evidence/P9-closure-e254b2f.py`.
+
+**تصحيحُ §٢.١ — خطئي، اكتُشف بفرض الحدّ:** المصنِّف فحص العلاماتِ الخارجيّةَ فقط ولم يفحص (أ) الاستيرادَ بين ملفّات `src/lib`، (ب) `import "server-only"` بلا `from`. النتيجة: **16 من الـ85 ليست مشتركةً اليوم** —
+
+| | ملفّات | أسطر | لماذا |
+|---|---:|---:|---|
+| تستورد **قيماً** من وحدات خادم (`data`/`tmdb`/`omdb`/`titleAliases`/`locale`/`site`) أو حزمةَ خادم | 14: `artists` · `libState` · `librarySmart` · `localize` · `news` · `periodStats` · `reports` · `sections` · `seo` · `smartLists` · `suggest` · `titleNews` · `topChart` · `trailers` | 4,729 | هي «التنسيقُ خلف الـAPI» الذي يفترضه §٤ أصلاً — تبقى على الخادم |
+| تعلن `import "server-only"` | 2: `appleTrailers` · `xLink` | 189 | خادميّة بالتصريح |
+
+**المصفوفةُ المصحَّحة (118 · 39,939):** **SHARE 69 / 14,874 · SERVER 32 / 22,806 · REWRITE 16 / 2,204 · DROP 1 / 55.**
+**حوافُّ باقيةٌ داخل الـ69 (مُعلَنة، مسموحةٌ بالقاعدة):** 8 ملفّات تستورد **أنواعاً فقط** من وحداتِ خادم/مكوّنات (`calendar` · `libraryStatus` · `newsLine` · `progress` · `recommend` ⇢ أنواعُ `data`/`tmdb`؛ `features` · `homePrefs` · `profilePrefs` ⇢ `IconName` من `components/Icon`) — تُفصَل إلى أنواعِ core قبل النقل الفعليّ؛ و`siteOrigin.ts` يقرأ `process.env.NEXT_PUBLIC_SITE_URL` (Expo يقرأ `EXPO_PUBLIC_*` — محوِّلُ سطرٍ لاحقاً).
+**ما لا يتغيّر بالتصحيح:** تصميمُ الـAPI (§٤) والبنية (§٥) ومصفوفةُ الميزات (§٦) وترتيبُ البناء (§٩).
