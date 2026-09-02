@@ -2118,6 +2118,10 @@ const ar = {
 
   trailerTitle: "الترايلر",
   trailerPlay: "شغّل الترايلر",
+  /* 🆕 D-878: الإيقافُ يعود إلى البطاقة بحكمه — نقضُ D-771 */
+  trailerPause: "أوقف الترايلر",
+  trailerFastForward: "تقديمٌ سريع",
+  trailerRewind: "ترجيعٌ سريع",
   trailersTitle: "الترايلرات",
   /* 🆕 **صفُّ الترايلرات وصفحتُه** (D-726) */
   trailersForYou: "ترايلرات لك",
@@ -3711,6 +3715,9 @@ const en: Dict = {
 
   trailerTitle: "Trailer",
   trailerPlay: "Play trailer",
+  trailerPause: "Pause trailer",
+  trailerFastForward: "Fast forward",
+  trailerRewind: "Rewind",
   trailersTitle: "Trailers",
   trailersForYou: "Trailers for you",
   trailerMute: "Mute",
