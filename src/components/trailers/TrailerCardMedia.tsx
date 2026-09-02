@@ -86,6 +86,26 @@ export function TrailerCardMedia({
   /* 🆕 D-762: الإيقافُ المؤقّتُ يُبقي الصورةَ (لا غلافَ فوق إطارٍ مرسوم)
      — وphase «paused» لا تقع إلا بعد «playing» فالإطارُ مضمونُ الرسم */
   const revealed = isActive && (snap.phase === "playing" || snap.phase === "paused");
+  /* 🔴 **D-879 — `LOOPZ-AUD-0023` (P1): الغلافُ كان يُرفع بانتقال CSS وحدَه**
+     (`transition-[opacity,visibility]` ٣٠٠ مللي ثانية) — **وأُعيد إنتاجُ العطل
+     على Production بقياسٍ لا بانطباع**: الزمنُ يتقدّم (0:05 → 1:12) وزرُّ
+     الصوت حاضر، **والغلافُ فوق الفيديو بحروف `invisible opacity-0` في صنفه
+     وبـ`visibility: visible · opacity: 1` في المحسوب** — **لأنّ الانتقالَين
+     عالقان `running` منذ سبعين ثانية**: **`requestAnimationFrame` لا يُطلق
+     و`document.timeline` لا يتقدّم** في نافذةٍ مرئيّةٍ غيرِ مرسومة (تبويبٌ
+     محجوب، لوحٌ مضمَّن، طاقةٌ منخفضة). **فصورةٌ تختفي بالـcompositor لا تختفي
+     حيث لا compositor.** **والعلاجُ مؤقّتٌ بـJavaScript لا يطلب إذنَ الرسم**:
+     بعد ٤٠٠ مللي ثانية من الكشف يُنزَع الغلافُ من التخطيط بـ`hidden` —
+     **والتلاشي يبقى للمسار السعيد، والنزعُ ضمانٌ للمسار الآخر.** */
+  const [gone, setGone] = useState(false);
+  /* **والتصفيرُ في الرسم لا في الأثر** (وصفةُ `poked` أعلاه — قاعدةُ الخطّافات):
+     غلافٌ عاد لأنّ البطاقةَ خمدت يُرسم فوراً بلا مؤقّت. */
+  if (!revealed && gone) setGone(false);
+  useEffect(() => {
+    if (!revealed) return;
+    const id = window.setTimeout(() => setGone(true), 400);
+    return () => window.clearTimeout(id);
+  }, [revealed]);
   /* 🆕 D-764: الأزرارُ تتوارى بعد ٥ ثوانِ تشغيل — فئةُ التلاشي واحدة */
   const controls = snap.controlsVisible;
   /* 🆕 **وفي الرايل لا تظهر الأدواتُ إلا بلمسة** (D-861): المتحكّمُ يكشفها
@@ -182,6 +202,9 @@ export function TrailerCardMedia({
           className={`pointer-events-none z-40 object-cover transition-[opacity,visibility] duration-300 ${
             revealed ? "invisible opacity-0" : "visible opacity-100"
           }`}
+          /* D-879: **النزعُ من التخطيط لا التلاشي وحدَه** — `[hidden]` في preflight
+             تايلويند `display:none !important`، **ولا انتقالَ يمنعها** */
+          hidden={gone}
           priority={eager}
           fetchPriority={eager ? "high" : "auto"}
         />
