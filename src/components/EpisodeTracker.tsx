@@ -73,6 +73,7 @@ export function EpisodeTracker({
   initialEpisodeRatings = [],
   absolute = false,
   locale,
+  guest = false,
 }: {
   showTmdbId: number;
   /* 🆕 **العنوانُ والملصقُ ورايةُ المتابعة** (D-777، حكمُ أحمد: «نعم —
@@ -103,6 +104,15 @@ export function EpisodeTracker({
   /** تقييماتي في هذا المسلسل (D-139) — مفتاحُها «موسم-حلقة» */
   initialEpisodeRatings?: EpisodeRatingRow[];
   locale: Locale;
+  /**
+   * 🆕 **زائر؟** (D-892، `LOOPZ-AUD-0078`): `/api/season` يردّ 401 لمن لا
+   * جلسةَ له، **وكان المتتبّع يطلبه عند الإقلاع على كلِّ صفحة مسلسل ثمّ
+   * يعرض «تعذّر تحميل بيانات هذا المسلسل»** — رسالةَ فشلٍ كاذبة على أسخن
+   * صفحة (مقيسٌ في Phase 10D). الزائرُ لا يطلب شيئاً ويرى سطراً صادقاً
+   * واحداً. **اختياريّ**: من لا يمرّره يبقى على السلوك القديم حرفاً
+   * (D-152)، **و401 يُعامَل زائراً في كلِّ حال** لا خطأً.
+   */
+  guest?: boolean;
 }) {
   const t = getDict(locale);
   /* 🆕 **مواسمُ تنتظر سؤالَ التاريخ** (D-798) — `null` = لا سؤال.
@@ -236,13 +246,25 @@ export function EpisodeTracker({
     }
   }
 
+  /* D-892: راية الزائر — من الخاصيّة أوّلاً، وتُرفع أيضاً إن ردّ الخادم 401
+     (جلسةٌ انتهت في أثناء التصفّح) فلا تُعاد المحاولةُ موسماً موسماً. */
+  const guestRef = useRef(guest);
+  const [guestSeen, setGuestSeen] = useState(guest);
+
   const loadSeason = useCallback(
     async (n: number): Promise<TrackerEpisode[]> => {
       const have = episodesBySeason[n];
       if (have) return have;
+      /* الزائرُ لا يملك حلقات: لا طلبَ ولا رسالة (D-892) */
+      if (guestRef.current) return [];
       setLoading(n);
       try {
         const res = await fetch(`/api/season?tv=${showTmdbId}&s=${n}`);
+        if (res.status === 401) {
+          guestRef.current = true;
+          setGuestSeen(true);
+          return [];
+        }
         // فشل الطلب (429 أو 502) لا يُخزَّن قائمةً فارغة — التخزين كان
         // يجعل الموسم يبدو «بلا حلقات» إلى أن يُعاد تحميل الصفحة
         if (!res.ok) throw new Error(`season ${res.status}`);
@@ -269,7 +291,7 @@ export function EpisodeTracker({
   useEffect(() => {
     if (bootRef.current) return;
     bootRef.current = true;
-    if (open != null && !episodesBySeason[open]) {
+    if (open != null && !episodesBySeason[open] && !guestRef.current) {
       // تأجيلُ microtask واحد: تغيير الحالة لا يقع متزامناً داخل جسد
       // الـeffect فلا يفتح سلسلة رسمٍ متتابعة — والجلب يبدأ في نفس اللحظة
       void Promise.resolve().then(() => loadSeason(open));
@@ -537,6 +559,7 @@ export function EpisodeTracker({
           />
         </div>
         <p className="text-xs text-muted mt-2">{t.cascadeHint}</p>
+        {guestSeen && <p className="text-xs text-muted mt-1">{t.episodesGuestHint}</p>}
         {err && (
           <Alert inline className="mt-2.5">
             {err}
