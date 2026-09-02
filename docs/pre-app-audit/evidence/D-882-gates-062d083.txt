@@ -1,0 +1,18 @@
+== git head ==
+062d0830fb3db47f40fa283b5c20435582e22daa
+== git status ==
+(clean)
+== npx tsc --noEmit ==
+exit=0
+== npx eslint src ==
+✖ 15 problems (0 errors, 15 warnings)
+
+== npx next build ==
+✓ Compiled successfully in 1281ms
+exit=0
+== deploy ==
+/api/build == 062d083 read from the browser after deploy; rollback point = 1f39f60 (previous main head); commit time 2026-09-02 08:26:04 UTC
+== post-deploy smoke (embedded automated Chromium, guest, /trailers?tab=trending) ==
+tap -> pause hint present at 400/800/1200 ms -> absent from 1600 ms; counter kept advancing 0:12 -> 0:15
+== iPhone (the reporting device) ==
+PENDING_OWNER_CHECK
