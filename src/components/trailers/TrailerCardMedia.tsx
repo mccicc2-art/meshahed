@@ -253,6 +253,10 @@ export function TrailerCardMedia({
               /* D-878/D-882: **لمسةٌ ترى ⏸ توقف، وما سواها تكشف وتُظهر ⏸ لمدّتها** */
               if (showPause) api.togglePlay();
               else {
+                /* 🆕 D-888 (حكمُ أحمد): **اللمسةُ نفسُها إيماءةٌ تكفي WebKit** —
+                   إن كانت النيّةُ صوتاً والمشغّلُ صامتاً بقرار المتصفّح فُكّ هنا،
+                   قبل إظهار الأزرار. لا شيءَ يحدث لمن كتم بيده. */
+                api.unlockSound();
                 api.pokeControls();
                 setPoked(true);
                 setPauseHint(true);

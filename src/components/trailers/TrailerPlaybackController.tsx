@@ -173,6 +173,15 @@ interface ControllerApi {
   togglePlay(): void;
   /** 🆕 D-878: سرعةُ التشغيل على النشطة — `2` أثناء الضغطة المطوّلة و`1` عند رفع الإصبع */
   setRate(rate: number): void;
+  /**
+   * 🆕 D-888 (حكمُ أحمد: «أوّل لمسة تفكّ الصوت»): على iPhone يبدأ المقطعُ
+   * صامتاً رغم نيّة الصوت (رفضُ WebKit للتشغيل الآليّ المسموع — السقوطُ
+   * المكتوب في D-771)، وكان الفكُّ يحتاج زرَّ الصوت بعينه. **أيُّ لمسةٍ
+   * على البطاقة إيماءةُ مستخدمٍ تكفي WebKit** — فتُحاوَل داخلها. **لا
+   * تقلب النيّة ولا تكتب الكوكي**: من كتم بيده يبقى مكتوماً (`wantSound`
+   * كاذبة فلا تفعل شيئاً)، ومن لم يكتم يسمع من أوّل لمسة.
+   */
+  unlockSound(): void;
   subscribe(cb: () => void): () => void;
   getSnapshot(): ControllerSnapshot;
 }
@@ -1318,6 +1327,25 @@ function createEngine(
       }, 200);
     },
 
+    /* 🆕 D-888 — انظر الواجهة: فكُّ الصوت داخل لمسةِ البطاقة حين تكون النيّةُ
+       مفتوحةً والمشغّلُ صامتاً بقرار المتصفّح. **الحقيقةُ تُقرأ بعد ٢٠٠ م.ث**
+       كما في `tapSound` — ولا كوكي لأنّ الاختيارَ لم يتغيّر. */
+    unlockSound() {
+      if (!activeId || !wantSound || readSnap().soundOn) return;
+      soundBlocked = false;
+      if (activeIsFile()) {
+        dom.video.muted = false;
+        dom.video.volume = 1;
+      } else if (act?.p && act.ready) {
+        act.p.unMute();
+        act.p.setVolume(100);
+      } else return;
+      window.setTimeout(() => {
+        if (destroyed) return;
+        verifySound();
+      }, 200);
+    },
+
     /* ⚖️ 🆕 «إيقاف الفيديو» أُلغي بحكمه (D-771: «تلغي خيار إيقاف الفديو
        خله دائماً شغال») — نقضٌ صريحٌ منه لطلبه في D-762. سطحُ البطاقة
        صار يُظهر الأزرارَ فقط، والإيقافُ الوحيدُ الباقي إيقافُ النظام
@@ -1560,6 +1588,9 @@ export function TrailerPlayback({
   const setRate = useCallback((rate: number) => {
     engineRef.current?.setRate(rate);
   }, []);
+  const unlockSound = useCallback(() => {
+    engineRef.current?.unlockSound();
+  }, []);
   const subscribe = useCallback((cb: () => void) => {
     subsRef.current.add(cb);
     return () => {
@@ -1579,6 +1610,7 @@ export function TrailerPlayback({
       pokeControls,
       togglePlay,
       setRate,
+      unlockSound,
       subscribe,
       getSnapshot,
     }),
@@ -1592,6 +1624,7 @@ export function TrailerPlayback({
       pokeControls,
       togglePlay,
       setRate,
+      unlockSound,
       subscribe,
       getSnapshot,
     ],
