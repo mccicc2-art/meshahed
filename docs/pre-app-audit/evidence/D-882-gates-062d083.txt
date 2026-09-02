@@ -17,7 +17,7 @@ tap -> pause hint present at 400/800/1200 ms -> absent from 1600 ms; counter kep
 == iPhone (the reporting device) — post-fix check, reported by the owner in chat, text only ==
 status:        PASS (owner-reported; functional acceptance gate of D-882 / LOOPZ-AUD-0023 on the reporting device)
 report time:   time not recorded (the chat message carries no timestamp visible to me); it preceded the evidence commit 41354f2 = 2026-09-02 09:03:26 UTC
-device model:  UNKNOWN / NOT_RECORDED (not stated by the owner)
+device model:  iPhone 17 Plus (owner-stated in chat later the same day, 2026-09-02, time not recorded; appended in its own evidence commit just before the 0074 diagnosis docs commit — was UNKNOWN / NOT_RECORDED at 93ea163)
 iOS version:   UNKNOWN / NOT_RECORDED (not stated by the owner)
 PWA or Safari: UNKNOWN / NOT_RECORDED (not stated by the owner)
 build:         main @ d9767dd deployed at the time of the check (D-882 code unchanged since 062d083)
