@@ -1088,6 +1088,17 @@ const ar = {
         : n <= 10
           ? `عرض ${num(n, "ar")} ردود أخرى`
           : `عرض ${num(n, "ar")} ردّاً آخر`,
+  /* 🆕 **«المزيد» في ذيل خطّ النشاط** (D-884 · `LOOPZ-AUD-0069`): الخطُّ
+     يُرسم عشرين صفّاً ثمّ هذا السطر — **بنفس نحو `talkMoreReplies`**:
+     يُكمل قائمةً بدأت، والعددُ صادقٌ لأنّ الباقي محسوبٌ بعد الترشيح. */
+  feedMorePosts: (n: number) =>
+    n === 1
+      ? "عرض منشورٍ آخر"
+      : n === 2
+        ? "عرض منشورَين آخرَين"
+        : n <= 10
+          ? `عرض ${num(n, "ar")} منشورات أخرى`
+          : `عرض ${num(n, "ar")} منشوراً آخر`,
   talkReply: "ردّ",
   /* **«تعليق» في ذيل خطّ النشاط** (D-224، طلبُ أحمد: «ريبلي غيّرها كومنت»).
      **وهي غيرُ `talkReply` عمداً وإن تجاورتا:** داخل الغرفة أنت **تردّ على
@@ -2950,6 +2961,8 @@ const en: Dict = {
   talkHideReplies: "Hide replies",
   talkMoreReplies: (n: number) =>
     n === 1 ? "View 1 more reply" : `View ${num(n, "en")} more replies`,
+  feedMorePosts: (n: number) =>
+    n === 1 ? "View 1 more post" : `View ${num(n, "en")} more posts`,
   talkReply: "Reply",
   actionComment: "Comment",
   replySentToast: "Reply sent",
