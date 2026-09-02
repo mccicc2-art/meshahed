@@ -351,7 +351,27 @@ function createEngine(
     }
   };
 
+  /* 🆕 **D-881 — إشارةٌ إلى `runtime_errors` عند الفشل** (`LOOPZ-AUD-0023`،
+     `P10-06`): **رمزُ يوتيوب وحالةُ المشغّل لا غير** — صفرُ معرّفٍ وصفرُ
+     مستخدم — **`sendBeacon` فلا ينتظر أحدٌ ولا يفشل شيءٌ إن فشلت.**
+     **ومرّةٌ لكلِّ (نوع، رمز) في الجلسة**: الحلقةُ تُبلَّغ مرّةً لا ألفاً. */
+  const signalled = new Set<string>();
+  const signal = (kind: string, code = -1) => {
+    try {
+      const k = `${kind}:${code}`;
+      if (signalled.has(k)) return;
+      signalled.add(k);
+      const body = JSON.stringify({ kind, code, phase, provider: activeIsFile() ? "file" : "youtube" });
+      if (!navigator.sendBeacon?.("/api/trailer-signal", new Blob([body], { type: "application/json" }))) {
+        void fetch("/api/trailer-signal", { method: "POST", body, headers: { "content-type": "application/json" }, keepalive: true }).catch(() => undefined);
+      }
+    } catch {
+      /* الإشارةُ احتياطٌ — لا تمسّ التشغيل */
+    }
+  };
+
   const setPhase = (next: SlotPhase) => {
+    if (next === "blocked" || next === "stalled") signal(next);
     /* **ونجاحُ المحاولة يُسقط مؤقّتَها**: عقربٌ تحرّك فقُلبت «playing» */
     if (next !== "loading") clearRetry();
     phase = next;
@@ -771,7 +791,8 @@ function createEngine(
           if (rec === act) activeStateChange(e);
           else standbyStateChange(rec, e);
         },
-        onError: () => {
+        onError: (e) => {
+          signal("yt-error", Number(e?.data) || -1);
           if (rec === act) {
             onPlayerError();
           } else {
@@ -783,6 +804,7 @@ function createEngine(
           }
         },
         onAutoplayBlocked: () => {
+          signal("autoplay-blocked");
           if (rec === act) {
             clearStall();
             stopTick();
