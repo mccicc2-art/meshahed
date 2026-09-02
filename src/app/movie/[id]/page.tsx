@@ -16,7 +16,14 @@ import {
   getProviderLinks,
   artKey,
 } from "@/lib/data";
-import { getMovie, getTrailer, getWatchProviders, backdropUrl, posterUrl } from "@/lib/tmdb";
+import {
+  getMovie,
+  getTrailer,
+  getCredits,
+  getWatchProviders,
+  backdropUrl,
+  posterUrl,
+} from "@/lib/tmdb";
 import { displayWorkTitle } from "@/lib/wikidata";
 import { universeOf } from "@/lib/universes";
 import { getT, getWatchRegion } from "@/lib/locale";
@@ -55,6 +62,16 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
      قائمته **الموجةَ نفسَها** بدل موجةٍ ثانيةٍ متسلسلةٍ بعدها (كانا
      رحلتَي قاعدةٍ إضافيّتين لكلّ فيلمٍ له عالَم). */
   const universe = universeOf(movieId);
+  /* 🆕 **نداءا الحاجزين ينطلقان مع الموجة لا بعدها** (D-890 — نظيرُ D-889
+     في صفحة العمل، `LOOPZ-AUD-0074`). القياسُ قبل التعديل: الطاقمُ يصل
+     بعد الترويسة بـ +390…+550 ms والترايلر بـ +265…+375 (وبالعربيّة
+     +500…+640 لأنّه رحلتان) — لأنّ المكوّنَ خلف `Suspense` لا يبدأ نداءَه
+     إلا بعد أن تعود هذه الموجةُ كلُّها. الوعدان يُنشآن هنا ويُمرَّران؛
+     **لا مفتاحَ كاشٍ ولا عددَ رحلاتٍ يتغيّر** — وقتُ الانطلاق فقط.
+     `.catch` على كلٍّ منهما (رفضٌ قبل الانتظار = رفضٌ بلا ماسك). معرّفُ
+     IMDb يأتي في تفاصيل الفيلم نفسِها فلا وعدَ ثالثاً هنا. */
+  const creditsPromise = getCredits("movie", movieId).catch(() => ({ cast: [], crew: [] }));
+  const trailerPromise = getTrailer("movie", movieId).catch(() => null);
   const [userRegion, movie, followState, watched, watchWhere, myLists, inLists, myArt, favs, pulse, curatedMap, mySaved] = await Promise.all([
     /* قراءةُ كوكي البلد كانت `await` منفرداً قبل الموجة — رحلةً لا تلزم
        أحداً قبلها، فدخلت الموجة. */
@@ -447,7 +464,7 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
                   fallback={<div className="skeleton aspect-video rounded-2xl" aria-hidden />}
                 >
                   <MovieTrailerSection
-                    movieId={movieId}
+                    trailer={trailerPromise}
                     title={title}
                     backdrop={backdrop}
                     locale={locale}
@@ -497,7 +514,12 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
             icon: "people",
             content: (
               <Suspense fallback={null}>
-                <CastRail mediaType="movie" tmdbId={movieId} locale={locale} />
+                <CastRail
+                  mediaType="movie"
+                  tmdbId={movieId}
+                  locale={locale}
+                  credits={creditsPromise}
+                />
               </Suspense>
             ),
           },
@@ -554,19 +576,19 @@ async function ListsWithMovie({ movieId, locale }: { movieId: number; locale: Lo
   return <PublicListsRail lists={lists} locale={locale} />;
 }
 
-/** الترايلر يُبثّ بعد أول رسمة */
+/** الترايلر يُبثّ بعد أول رسمة — 🆕 D-890: الوعدُ من الصفحة (أُطلق مع موجتها) */
 async function MovieTrailerSection({
-  movieId,
+  trailer: trailerPromise,
   title,
   backdrop,
   locale,
 }: {
-  movieId: number;
+  trailer: ReturnType<typeof getTrailer>;
   title: string;
   backdrop: string | null;
   locale: Awaited<ReturnType<typeof getT>>["locale"];
 }) {
-  const trailer = await getTrailer("movie", movieId);
+  const trailer = await trailerPromise;
   if (!trailer) return null;
   return <Trailer videoKey={trailer.key} title={title} thumbnail={backdrop} locale={locale} />;
 }
