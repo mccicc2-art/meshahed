@@ -7,6 +7,7 @@ import {
   getWatchSummary,
   getWatchedMovieIds,
   getMyLists,
+  getList,
   listsForDisplay,
   getSavedLists,
   getSavedListsCount,
@@ -24,6 +25,8 @@ import {
 import { sanitizeHomePrefs, applyQueueOrder, unwatchedOf } from "@/lib/homePrefs";
 import { getT, getTabPrefs, getHiddenRails } from "@/lib/locale";
 import { railsHiddenFor, railOff } from "@/lib/railPrefs";
+import { showStatusOf, movieStatusOf } from "@/lib/libraryStatus";
+import { isUuid } from "@/lib/validate";
 import { defaultTab } from "@/lib/tabPrefs";
 import { localizeFollows } from "@/lib/localize";
 import { Icon } from "@/components/Icon";
@@ -50,19 +53,44 @@ import type { ReorderItem } from "@/components/ReorderSheet";
 export default async function LibraryPage({
   searchParams,
 }: {
-  searchParams: Promise<{ filter?: string }>;
+  searchParams: Promise<{ filter?: string; edit?: string }>;
 }) {
   const user = await getUser();
   if (!user) redirect("/login");
 
   const { locale, t } = await getT();
-  const { filter } = await searchParams;
+  const { filter, edit } = await searchParams;
   const tabPrefs = await getTabPrefs("library");
   /* 🆕 **صفوفُ الصفحة المخفيّة** (D-874، حكمُ أحمد: «نعم، للاثنين») —
      **الكاملةُ تمرّ إلى اللوح** (الفعلُ يستبدل القائمةَ كلَّها، D-462)
      **ومجموعةُ `library:` وحدَها تمرّ إلى الصفوف.** */
   const hiddenAll = await getHiddenRails();
   const hiddenRails = railsHiddenFor(hiddenAll, "library");
+  /* 🆕 **قائمةُ مكتبةٍ ذكيّةٌ يُعدَّل شرطُها** (D-876 — الوصفةُ نفسُها في
+     اكتشف D-875): **تُحسم من `getMyLists` لا من الرابط** — ذكيّةٌ ومصدرُها
+     المكتبة — **وغيرُها تسقط صامتةً وتبقى المكتبةُ مكتبة.** */
+  const smartEditing =
+    edit && isUuid(edit)
+      ? await (async () => {
+          /* **`getList` لا `getMyLists`**: **`my_lists` لا تعيد الشرطَ ولا
+             مصدرَه** — **وتوسيعُها هجرةٌ لا تستحقّها قراءةٌ نادرة**، وقارئُ
+             صفحة القائمة يحمل الشرطَ أصلاً. **والملكيّةُ تُفحص هنا** ولو
+             كانت السياسةُ تحرس. */
+          const got = await getList(edit);
+          const l = got?.list;
+          if (!l || l.user_id !== user.id || l.kind !== "smart" || l.rule_source !== "library")
+            return null;
+          const rule =
+            l.rule && typeof l.rule === "object" && !Array.isArray(l.rule)
+              ? Object.fromEntries(
+                  Object.entries(l.rule as Record<string, unknown>).filter(
+                    (e): e is [string, string] => typeof e[1] === "string",
+                  ),
+                )
+              : null;
+          return rule ? { id: l.id, name: l.name, rule } : null;
+        })()
+      : null;
   /* **الرابط الأعزل يعني «تبويبي الأوّل»** (D-179): كان يعني «الأفلام»
      ثابتاً في الشيفرة، وقد صار الافتراضُ يخصّ صاحبه فيُقرأ من الكوكي.
      و`?filter=` الصريح يبقى فوقه دائماً — ومنه `movie` القديم الذي كان
@@ -243,13 +271,9 @@ export default async function LibraryPage({
         dropped,
         /* الحالة اسمَ رقاقةٍ لا رقماً: الترتيب الذكي كان يحسبها أصلاً
            (rank)، ورقائق التقسيم (طلب المالك) تحتاجها بالاسم */
-        status: dropped
-          ? ("dropped" as const)
-          : done
-            ? ("completed" as const)
-            : watched > 0
-              ? ("watching" as const)
-              : ("unstarted" as const),
+        /* **من الوصفة الواحدة** (D-876): **قائمةُ المكتبة الذكيّة تقرأ الحالةَ
+           نفسَها** — فاستُخرجت لا نُسخت (D-376). */
+        status: showStatusOf(f, watchedByShow.get(f.tmdb_id) ?? 0),
         rank: dropped ? 3 : watched > 0 && !done ? 0 : watched === 0 ? 1 : 2,
         progressSort: progress,
       };
@@ -272,11 +296,7 @@ export default async function LibraryPage({
         progress: done ? 100 : undefined,
         dropped,
         // الفيلم بلا «أشاهده»: شاهدتُه أو لم أشاهده أو أوقفته
-        status: dropped
-          ? ("dropped" as const)
-          : done
-            ? ("completed" as const)
-            : ("unstarted" as const),
+        status: movieStatusOf(f, done),
         rank: dropped ? 2 : done ? 1 : 0,
       };
     })
@@ -380,6 +400,7 @@ export default async function LibraryPage({
         initialTab={initialTab}
         tabPrefs={tabPrefs}
         hiddenRails={[...hiddenAll]}
+        smartEditing={smartEditing}
         /* 🆕 **الاختصاران نزلا تحت الشريط** (D-453، طلبُ أحمد بلقطةٍ
            معلَّمة: «هذي نزّلها تحت الشريط»).
 
