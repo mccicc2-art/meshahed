@@ -845,16 +845,26 @@ export async function relatedTitles(
   const seen = new Set<number>([id]);
   const pool: SearchResult[] = [];
 
-  for (const path of ["recommendations", "similar"] as const) {
-    try {
-      const data = await railTmdb<{ results: SearchResult[] }>(`/${mediaType}/${id}/${path}`);
-      for (const r of data.results ?? []) {
-        if (!r.poster_path || seen.has(r.id)) continue;
-        seen.add(r.id);
-        pool.push({ ...r, media_type: mediaType });
-      }
-    } catch {
-      /* المصدر التالي */
+  /* 🆕 **المصدران يُطلبان معاً لا واحداً بعد الآخر** (D-891، ذيلُ
+     `LOOPZ-AUD-0074`). كانت الحلقةُ تنتظر `/recommendations` ثمّ تسأل
+     `/similar` — رحلتان متسلسلتان من `bom1` ≈ +615…+700 ms بعد الترويسة،
+     **وهما آخرُ ما يصل في بثّ الصفحة كلِّها** (القياس: Phase 10D §١١).
+     **الترتيبُ محفوظ**: الدمجُ يمرّ على النتيجتين بترتيب المصدرين نفسِه،
+     فالتوصياتُ أوّلاً ثمّ المشابهات كما كان، ومصدرٌ يفشل يُهمَل وحدَه
+     كما كان (`catch` لكلِّ رحلة). لا مفتاحَ كاشٍ ولا مهلةَ ولا عددَ
+     رحلاتٍ يتغيّر. */
+  const sources = await Promise.all(
+    (["recommendations", "similar"] as const).map((path) =>
+      railTmdb<{ results: SearchResult[] }>(`/${mediaType}/${id}/${path}`).catch(
+        () => ({ results: [] as SearchResult[] }),
+      ),
+    ),
+  );
+  for (const data of sources) {
+    for (const r of data.results ?? []) {
+      if (!r.poster_path || seen.has(r.id)) continue;
+      seen.add(r.id);
+      pool.push({ ...r, media_type: mediaType });
     }
   }
 
