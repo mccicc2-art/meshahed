@@ -18,6 +18,8 @@ import {
 import {
   getTv,
   getTrailer,
+  getCredits,
+  tvImdbId,
   getWatchProviders,
   isAnime,
   backdropUrl,
@@ -54,6 +56,20 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
   const { id } = await params;
   const tvId = Number(id);
   if (!Number.isFinite(tvId)) notFound();
+
+  /* 🆕 **نداءاتُ الحواجز تنطلق مع الموجة لا بعدها** (D-889،
+     `LOOPZ-AUD-0074`). القياسُ (Phase 10D §٨): الطاقمُ والترايلر يصلان
+     بعد الترويسة بـ +313 ms وسيطاً بارداً، والتقييمُ بعدهما بـ +235 —
+     لأنّ المكوّنَ خلف `Suspense` لا يبدأ نداءَه إلا بعد أن تعود هذه
+     الموجةُ كلُّها، **فرحلةُ TMDB الثانية كانت تنتظر الأولى بلا سبب.**
+     الوعودُ تُنشأ هنا وتُمرَّر إلى الحواجز؛ **لا مفتاحَ كاشٍ ولا عددَ
+     رحلاتٍ يتغيّر** — وقتُ الانطلاق فقط. `.catch` على كلٍّ منها لأنّ
+     وعداً يُرفض قبل أن يُنتظر = رفضٌ بلا ماسك (الدوالُّ تبتلع أخطاءها
+     أصلاً، والحارسُ للاحتياط). عند `!tv` تُهدر ثلاثُ رحلاتٍ مقيَّدةٍ
+     بمهلتها — نادرٌ ومقبول. */
+  const creditsPromise = getCredits("tv", tvId).catch(() => ({ cast: [], crew: [] }));
+  const trailerPromise = getTrailer("tv", tvId).catch(() => null);
+  const imdbIdPromise = tvImdbId(tvId).catch(() => null);
 
   // بيانات أول رسمة فقط في الموجة الحاسمة — الترايلر والتعليقات تُبثّ
   // لاحقاً عبر Suspense فلا تؤخّر ترويسة الصفحة وتبويب الحلقات
@@ -368,6 +384,7 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
                 name={tv.name}
                 year={tv.first_air_date ? Number(tv.first_air_date.slice(0, 4)) : null}
                 ageLabel={t.ageRating}
+                tvImdbIdPromise={imdbIdPromise}
               />
             </Suspense>
             </div>
@@ -527,7 +544,12 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
                 <Suspense
                   fallback={<div className="skeleton aspect-video rounded-2xl" aria-hidden />}
                 >
-                  <TrailerSection tvId={tvId} name={title} backdrop={backdrop} locale={locale} />
+                  <TrailerSection
+                    trailer={trailerPromise}
+                    name={title}
+                    backdrop={backdrop}
+                    locale={locale}
+                  />
                 </Suspense>
 
                 {/* **الطاقمُ عاد إلى «عن العمل» — ثالثاً لا أوّلاً** (D-203،
@@ -537,7 +559,12 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
                     **والصفحتان تتحرّكان معاً دائماً** (تنبيهُ أحمد يومَ
                     تحرّكت إحداهما وحدها). */}
                 <Suspense fallback={null}>
-                  <CastRail mediaType="tv" tmdbId={tvId} locale={locale} />
+                  <CastRail
+                    mediaType="tv"
+                    tmdbId={tvId}
+                    locale={locale}
+                    credits={creditsPromise}
+                  />
                 </Suspense>
               </div>
             ),
@@ -603,19 +630,21 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
   );
 }
 
-/** الترايلر يُبثّ بعد أول رسمة — طلبا TMDB المتسلسلان له لا يؤخّران الصفحة */
+/** الترايلر يُبثّ بعد أول رسمة — طلبا TMDB المتسلسلان له لا يؤخّران الصفحة.
+    🆕 D-889: **الوعدُ يأتي من الصفحة** (أُطلق مع موجتها) فلا يبدأ الطلبان
+    بعد الترويسة بل معها. */
 async function TrailerSection({
-  tvId,
+  trailer: trailerPromise,
   name,
   backdrop,
   locale,
 }: {
-  tvId: number;
+  trailer: ReturnType<typeof getTrailer>;
   name: string;
   backdrop: string | null;
   locale: Awaited<ReturnType<typeof getT>>["locale"];
 }) {
-  const trailer = await getTrailer("tv", tvId);
+  const trailer = await trailerPromise;
   if (!trailer) return null;
   return <Trailer videoKey={trailer.key} title={name} thumbnail={backdrop} locale={locale} />;
 }
