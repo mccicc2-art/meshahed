@@ -348,6 +348,9 @@ const ar = {
   showLoadFailed:
     "تعذّر تحميل بيانات هذا المسلسل حالياً. حاول مرة أخرى بعد قليل.",
   seasonsCount: (n: number) => `${n} موسم`,
+  /* 🆕 D-892 (`LOOPZ-AUD-0078`): الزائرُ لا يملك حلقاتٍ ليتتبّعها — سطرٌ
+     واحدٌ صادق بدل رسالةِ «تعذّر التحميل» الكاذبة التي كان يراها. */
+  episodesGuestHint: "سجّل الدخول لتتبّع الحلقات.",
   episodesCount: (n: number) => `${n} حلقة`,
   nextEpisodeOn: (d: string) => `الحلقة القادمة ${d}`,
   watchedOf: (a: number, b: number) => `شاهدت ${a} من ${b} حلقة`,
@@ -2517,6 +2520,7 @@ const en: Dict = {
   showLoadFailed:
     "Couldn't load this show right now. Please try again shortly.",
   seasonsCount: (n: number) => `${n} seasons`,
+  episodesGuestHint: "Sign in to track episodes.",
   episodesCount: (n: number) => `${n} episodes`,
   nextEpisodeOn: (d: string) => `Next episode ${d}`,
   watchedOf: (a: number, b: number) => `Watched ${a} of ${b} episodes`,
