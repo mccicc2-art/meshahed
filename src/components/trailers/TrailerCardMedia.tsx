@@ -97,15 +97,19 @@ export function TrailerCardMedia({
      حيث لا compositor.** **والعلاجُ مؤقّتٌ بـJavaScript لا يطلب إذنَ الرسم**:
      بعد ٤٠٠ مللي ثانية من الكشف يُنزَع الغلافُ من التخطيط بـ`hidden` —
      **والتلاشي يبقى للمسار السعيد، والنزعُ ضمانٌ للمسار الآخر.** */
-  const [gone, setGone] = useState(false);
-  /* **والتصفيرُ في الرسم لا في الأثر** (وصفةُ `poked` أعلاه — قاعدةُ الخطّافات):
-     غلافٌ عاد لأنّ البطاقةَ خمدت يُرسم فوراً بلا مؤقّت. */
-  if (!revealed && gone) setGone(false);
+  /* ⚖️ **D-880 (طلبُ المراجع، `CHANGES_REQUESTED` على `921abd7`): لا `setState`
+     في مسار الرسم.** **فصار الغيابُ حالةً مشتقّة**: يُخزَّن معرّفُ البطاقة
+     التي انقضت مهلتُها، **و`gone = revealed && goneFor === id`** — **فخمودُ
+     البطاقة يعيد الغلافَ بلا تصفيرٍ ولا مؤقّت** (المشتقُّ يسقط وحدَه)،
+     **والأثرُ الوحيدُ هو المؤقّت.** ⚠️ **وعودةُ البطاقة نفسِها تُظهر الفيديو
+     بلا تلاشٍ ثانٍ** — مقصود: الغلافُ زينةُ الإقلاع لا شرطُه. */
+  const [goneFor, setGoneFor] = useState<string | null>(null);
+  const gone = revealed && goneFor === id;
   useEffect(() => {
     if (!revealed) return;
-    const id = window.setTimeout(() => setGone(true), 400);
-    return () => window.clearTimeout(id);
-  }, [revealed]);
+    const t = window.setTimeout(() => setGoneFor(id), 400);
+    return () => window.clearTimeout(t);
+  }, [revealed, id]);
   /* 🆕 D-764: الأزرارُ تتوارى بعد ٥ ثوانِ تشغيل — فئةُ التلاشي واحدة */
   const controls = snap.controlsVisible;
   /* 🆕 **وفي الرايل لا تظهر الأدواتُ إلا بلمسة** (D-861): المتحكّمُ يكشفها
