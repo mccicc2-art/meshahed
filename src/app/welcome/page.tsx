@@ -4,6 +4,7 @@ import { trending } from "@/lib/tmdb";
 import { railGuard } from "@/lib/topChart";
 import { getT } from "@/lib/locale";
 import { Onboarding, type SeedTitle } from "@/components/Onboarding";
+import { AccountNotice } from "@/components/AccountNotice";
 
 /**
  * الانضمام في ٦٠ ثانية.
@@ -40,6 +41,11 @@ export default async function WelcomePage() {
     }));
 
   return (
+    <>
+      {/* 🆕 D-885: البريدُ الذي دخل به فوق أوّل خطوةٍ — **هنا بالضبط** ظنّ
+          عضوٌ أنّ مكتبتَه ضاعت وهو على حساب جوجل آخر. يُرسم بلا شرطٍ
+          لأنّ الصفحةَ نفسَها شرطُه (مكتبةٌ فارغة)، **ولا يُرسم بلا بريد**. */}
+      {user.email ? <AccountNotice email={user.email} locale={locale} /> : null}
     <Onboarding
       locale={locale}
       seeds={seeds}
@@ -49,5 +55,6 @@ export default async function WelcomePage() {
       username={profile?.username ?? ""}
       emptyHint={t.emptyStart}
     />
+    </>
   );
 }
