@@ -23,3 +23,24 @@ export function sectionToRuleType(section: string): "movie" | "tv" | "all" | nul
         ? "all"
         : null;
 }
+
+/**
+ * ====== مفرداتُ شرط المكتبة (D-876) — **عميلٌ وخادمٌ يقرآن الملفَّ نفسَه** ======
+ *
+ * **حكمُ أحمد**: «مفردات المكتبة وحدها» — **ما تجيب عنه جداولُها بلا
+ * نداء TMDB ولا تقييمٍ خارجيّ.** **والمفاتيحُ المشتركةُ مع الكتالوج تحمل
+ * أسماءَها هناك بحروفها** (`type` · `g` · `era` · `lang` · `co`) —
+ * **واسمان لمحورٍ واحدٍ يفترقان** (D-816/D-818).
+ *
+ * 🆕 **ومفتاحان للمكتبة وحدَها**: `wst` حالةُ المشاهدة · `my` تقييمي.
+ */
+export const LIBRARY_RULE_KEYS = ["type", "g", "era", "lang", "co", "wst", "my"] as const;
+export type LibraryRuleKey = (typeof LIBRARY_RULE_KEYS)[number];
+
+/** عتباتُ «تقييمي» — **ثلاثٌ كعتبات اكتشف** (`BROWSE_RATES`)، ولا عشرُ خانات */
+export const MY_RATING_MIN = ["7", "8", "9"] as const;
+
+/** تبويبُ المكتبة إلى نوعِ الشرط — **نظيرُ `sectionToRuleType` لأقسام اكتشف** */
+export function libraryTabToRuleType(tab: string): "movie" | "tv" | "all" | null {
+  return tab === "movies" ? "movie" : tab === "shows" ? "tv" : tab === "anime" ? "all" : null;
+}

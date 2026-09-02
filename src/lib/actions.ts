@@ -2939,11 +2939,14 @@ export async function createList(
 export async function createSmartList(
   name: string,
   rule: unknown,
+  /** 🆕 D-876: **مصدرُ الشرط** — `catalog` من اكتشف، و`library` من ورقة أدوات المكتبة */
+  source: "catalog" | "library" = "catalog",
 ): Promise<{ id: string | null; needsPlus?: true }> {
   const clean = String(name ?? "").trim().slice(0, 60);
   if (!clean) throw new Error("empty name");
-  const { sanitizeRule } = await import("@/lib/smartLists");
-  const clean_rule = sanitizeRule(rule);
+  const { sanitizeRule, isRuleSource } = await import("@/lib/smartLists");
+  if (!isRuleSource(source)) throw new Error("bad source");
+  const clean_rule = sanitizeRule(rule, source);
   /* 🔴 **وقائمةٌ ذكيّةٌ بلا شرطٍ فارغةٌ إلى الأبد** — **والقاعدةُ تمنعها
      في القاعدة (١٦١)، وهذا حارسُها قبل أن تصل إليها** (D-636). */
   if (!clean_rule) throw new Error("empty rule");
@@ -2965,9 +2968,9 @@ export async function createSmartList(
       is_public: false,
       kind: "smart",
       rule: clean_rule,
-      /* **`catalog` وحدَها في هذه الدفعة** — و`library` يقبلها القيدُ
-         ولا يبنيها أحد (D-818: رابطٌ يعني شيئين لكلِّ فاتحٍ ليس رابطاً). */
-      rule_source: "catalog",
+      /* **والمصدرُ يُخزَّن مع الشرط** — **وكلاهما مبنيٌّ منذ D-876**: الكتالوجُ
+         من اكتشف والمكتبةُ من ورقة أدواتها، **وقارئُ الصفحة يفرّق بهما.** */
+      rule_source: source,
     })
     .select("id")
     .single();
@@ -2997,12 +3000,25 @@ export async function updateSmartListRule(
   rule: unknown,
 ): Promise<{ ok: boolean; needsPlus?: true }> {
   listId = uuid(listId);
-  const { sanitizeRule } = await import("@/lib/smartLists");
-  const clean_rule = sanitizeRule(rule);
-  if (!clean_rule) throw new Error("empty rule");
+  const { sanitizeRule, isRuleSource } = await import("@/lib/smartLists");
 
   const { supabase, user } = await requireUser("list", 10, 60_000);
   if (!(await viewerIsPlus())) return { ok: false, needsPlus: true };
+
+  /* 🆕 **المصدرُ يُقرأ من الصفِّ لا من العميل** (D-876): **الشرطُ يتبدّل
+     ومصدرُه لا** — **وقائمةُ مكتبةٍ تُطهَّر بمفردات المكتبة** ولو أرسل
+     العميلُ غيرَها. */
+  const { data: row } = await supabase
+    .from("user_lists")
+    .select("rule_source")
+    .eq("id", listId)
+    .eq("user_id", user.id)
+    .eq("kind", "smart")
+    .maybeSingle();
+  if (!row) throw new Error("not your smart list");
+  const source = isRuleSource(row.rule_source) ? row.rule_source : "catalog";
+  const clean_rule = sanitizeRule(rule, source);
+  if (!clean_rule) throw new Error("empty rule");
 
   const { error, count } = await supabase
     .from("user_lists")

@@ -1944,6 +1944,16 @@ const ar = {
   smartListUpdated: "حُدِّث شرطُ القائمة الذكيّة",
   smartListEditHint: (name: string) =>
     `تعدّل شرطَ «${name}» — غيّر الفلاتر ثمّ اضغط «حدِّث».`,
+  /* 🆕 **قائمةٌ ذكيّةٌ من المكتبة** (D-876) — **مفرداتُ المكتبة وحدَها** */
+  librarySmartGroup: "قائمة ذكيّة من مكتبتي",
+  librarySmartHint: "تمتلئ وحدَها من مكتبتك بالشروط التي تختارها هنا.",
+  librarySmartStatus: "حالة المشاهدة",
+  librarySmartMyRating: "تقييمي",
+  librarySmartGenre: "التصنيف",
+  librarySmartEra: "الحقبة",
+  librarySmartAny: "أيّ",
+  librarySmartCreated: "أُنشئت القائمة الذكيّة",
+  librarySmartNeedsRule: "اختر شرطاً واحداً على الأقلّ",
   /* 🆕 **شارةُ مدّة العضويّة** (D-831) — **الشهرُ والسنةُ لا اليومُ
      بالضبط**: **«منذ ٢ أغسطس» تُقرأ ذكرى، و«منذ أغسطس ٢٠٢٦» تُقرأ
      مدّةً** — **وهي المدّةُ التي طُلبت.** */
@@ -3592,6 +3602,15 @@ const en: Dict = {
   smartListUpdated: "Smart list rule updated",
   smartListEditHint: (name: string) =>
     `Editing the rule of “${name}” — change the filters, then press “Update”.`,
+  librarySmartGroup: "Smart list from my library",
+  librarySmartHint: "Fills itself from your library with the rules you pick here.",
+  librarySmartStatus: "Watch status",
+  librarySmartMyRating: "My rating",
+  librarySmartGenre: "Genre",
+  librarySmartEra: "Era",
+  librarySmartAny: "Any",
+  librarySmartCreated: "Smart list created",
+  librarySmartNeedsRule: "Pick at least one rule",
   memberSince: (when: string) => `Member since ${when}`,
   weeklyRankOrd: (n: number): string =>
     ["1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th", "9th", "10th"][n - 1] ??

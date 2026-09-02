@@ -5,6 +5,8 @@ import { eraRange, parseBrowse, seasonRange, type BrowseQuery } from "@/lib/brow
    قائمةَ سماحٍ ثانيةً تُكتب من الذاكرة** (درسُ D-816 الذي كاد يُسقط
    كلَّ فلترٍ يُحفظ). */
 import { FILTER_KEYS } from "@/lib/savedFilters";
+import { LIBRARY_RULE_KEYS, MY_RATING_MIN } from "@/lib/smartListKeys";
+import { isLibraryStatus } from "@/lib/libraryStatus";
 import { keywordId, companyId, ANIME_KEYWORD, type DiscoverFilter } from "@/lib/tmdb";
 import type { SectionMedia } from "@/lib/sections";
 
@@ -28,8 +30,12 @@ import type { SectionMedia } from "@/lib/sections";
 /** حدُّ ما تعرضه القائمةُ الذكيّة — **جردٌ لا تصفّحٌ لا نهائيّ** */
 export const SMART_LIST_LIMIT = 60;
 
-/** مصادرُ الشرط — `library` مقبولةٌ في القاعدة وغيرُ مبنيّةٍ بعد (١٦١) */
+/** مصادرُ الشرط — **وكلاهما مبنيٌّ منذ D-876** (كان `library` قيداً بلا قارئ من ١٦١) */
 export type RuleSource = "catalog" | "library";
+
+export function isRuleSource(v: unknown): v is RuleSource {
+  return v === "catalog" || v === "library";
+}
 
 /**
  * **الشرطُ المخزَّن** — **مفاتيحُه مفاتيحُ الفلاتر بعينها** (D-816):
@@ -45,14 +51,23 @@ const VALUE_RE = /^[A-Za-z0-9,._-]{1,64}$/;
  * **ويعود `null` للشرط الفارغ**: **قائمةٌ ذكيّةٌ بلا شرطٍ فارغةٌ إلى
  * الأبد** — **والقاعدةُ تمنعها، وهذا حارسُها في الشيفرة** (D-636).
  */
-export function sanitizeRule(value: unknown): SmartRule | null {
+export function sanitizeRule(value: unknown, source: RuleSource = "catalog"): SmartRule | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const v = value as Record<string, unknown>;
   const out: SmartRule = {};
-  /* **بترتيبٍ ثابتٍ لا بترتيب وروده** — نفسُ حجّة `sanitizeQuery` */
-  for (const k of FILTER_KEYS) {
+  /* **بترتيبٍ ثابتٍ لا بترتيب وروده** — نفسُ حجّة `sanitizeQuery`.
+     🆕 **والمفاتيحُ بمصدرها** (D-876): **الكتالوجُ `FILTER_KEYS`، والمكتبةُ
+     `LIBRARY_RULE_KEYS`** — **ومفتاحٌ من غير مصدره يسقط صامتاً** (D-475).
+     **ومطهِّرٌ واحدٌ لا اثنان**: **الفرقُ قائمةُ سماحٍ لا لغةٌ ثانية.** */
+  const keys: readonly string[] = source === "library" ? LIBRARY_RULE_KEYS : FILTER_KEYS;
+  for (const k of keys) {
     const x = v[k];
-    if (typeof x === "string" && VALUE_RE.test(x)) out[k] = x;
+    if (typeof x !== "string" || !VALUE_RE.test(x)) continue;
+    /* **والمفتاحان الخاصّان بالمكتبة قيمُهما مغلقة**: حالةٌ من أربع، وعتبةٌ
+       من ثلاث — **ونصٌّ حرٌّ في شرطٍ يُخزَّن ثغرةٌ تنتظر قارئاً.** */
+    if (k === "wst" && !isLibraryStatus(x)) continue;
+    if (k === "my" && !(MY_RATING_MIN as readonly string[]).includes(x)) continue;
+    out[k] = x;
   }
   return Object.keys(out).length ? out : null;
 }
