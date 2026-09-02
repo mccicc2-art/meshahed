@@ -20,13 +20,23 @@ export async function CastRail({
   mediaType,
   tmdbId,
   locale,
+  credits,
 }: {
   mediaType: MediaType;
   tmdbId: number;
   locale: Locale;
+  /**
+   * 🆕 **وعدُ الطاقم من الصفحة** (D-889، `LOOPZ-AUD-0074`): هذا الرفُّ
+   * خلف `Suspense`، **فنداؤه لا ينطلق إلا بعد أن تُحلّ موجةُ الصفحة
+   * الرئيسة** — رحلةُ TMDB ثانيةٌ متسلسلةٌ بلا سبب (+313 ms وسيطاً
+   * بارداً في القياس). الصفحةُ تُطلق `getCredits` **مع** موجتها وتمرّر
+   * الوعدَ هنا. **اختياريّ**: من لا يمرّره يبقى على النداء الداخليّ
+   * حرفاً (D-152) — صفحةُ الفيلم لم تُمسّ بعد.
+   */
+  credits?: Promise<Awaited<ReturnType<typeof getCredits>>>;
 }) {
   const t = getDict(locale);
-  const { cast, crew } = await getCredits(mediaType, tmdbId);
+  const { cast, crew } = await (credits ?? getCredits(mediaType, tmdbId));
   if (cast.length === 0 && crew.length === 0) return null;
 
   return (

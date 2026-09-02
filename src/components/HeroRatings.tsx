@@ -64,6 +64,7 @@ export async function HeroRatings({
   movieId,
   ageLabel,
   compact = false,
+  tvImdbIdPromise,
 }: {
   /** معرّف IMDb إن كان بيدنا (الفيلم يحمله في تفاصيله) */
   imdbId?: string | null;
@@ -87,6 +88,15 @@ export async function HeroRatings({
   /** اسمُ «التصنيف العمري» بلغة القارئ — لقارئ الشاشة وحدَه (D-177) */
   ageLabel?: string;
   /**
+   * 🆕 **وعدُ معرّف IMDb من الصفحة** (D-889، `LOOPZ-AUD-0074`): `tvImdbId`
+   * هنا خلف `Suspense` فلا ينطلق إلا بعد موجة الصفحة، ثمّ OMDb بعده —
+   * مستويان متسلسلان (التقييمُ يصل عند 1.1–1.4 s بارداً). الصفحةُ تُطلق
+   * `tvImdbId` مع موجتها وتمرّر الوعدَ. **الخريطةُ المكتوبةُ بيدٍ
+   * (`imdbOverride`، D-431) و`imdbId` الممرَّرُ يبقيان أوّلاً** — الوعدُ
+   * يحلّ محلَّ النداء الداخليّ فقط حيث كان يقع. **اختياريّ** (D-152).
+   */
+  tvImdbIdPromise?: Promise<string | null>;
+  /**
    * 🆕 **شكلٌ ثانٍ لا مكوّنٌ ثانٍ** (D-286، سيرةُ `variant` في D-224/D-281):
    * فوق الغلاف يقف السطرُ **على صورةٍ داكنة** وبمقاسٍ أصغر — **ونسخُ
    * الملفّ لأجل لونين وحجمين هو العطلُ نفسُه** (D-002).
@@ -100,7 +110,8 @@ export async function HeroRatings({
      البحث عنه**، **وسقوطُها يعني «لا أعرفه» فتمشي الجسورُ الثلاثة**
      (D-063). */
   const pinned = altId ? imdbOverride(kind === "series" ? "tv" : "movie", altId) : null;
-  const first = pinned ?? imdbId ?? (tvId ? await tvImdbId(tvId) : null);
+  const first =
+    pinned ?? imdbId ?? (tvId ? await (tvImdbIdPromise ?? tvImdbId(tvId)) : null);
   /* **ولا يُبحث بالاسم إلا بعد أن يسقط المعرّف** (D-414) — نداءٌ لا يقع
      لأكثر الأعمال، **وردُّه مخبّأٌ يوماً كردِّ التقييم نفسِه.** */
   const second = first ?? (name && year ? await imdbIdByName(name, year, kind) : null);
