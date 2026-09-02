@@ -93,7 +93,13 @@ export function PosterRail({
           )}
           {/* العنوان نفسه بابٌ حين توجد وجهة (طلب أحمد: «أقدر أضغط على الاسم») */}
           {href ? (
-            <Link href={href} className="hover:text-accent transition">
+            /* 🆕 **بابا الرفّ لا يُجلبان مسبقاً** (D-893، `LOOPZ-AUD-0077`):
+               كلُّ رفٍّ يحمل الرابطَ مرّتين (العنوان و«الكلّ») ⇢ Next تجلب
+               RSC وجهتِه بالافتراضيّ حين يدخل الشاشة — قِيس في Discover:
+               ٦ طلباتِ prefetch لمسارَين على تحميلٍ واحد، ثلاثةٌ تُلغى
+               بالمغادرة. البطاقاتُ نفسُها بلا prefetch منذ زمن؛ **والبابُ
+               كالبطاقة**: من ينقره يدفع رحلةً واحدةً كأيِّ تنقّل. */
+            <Link href={href} prefetch={false} className="hover:text-accent transition">
               {title}
             </Link>
           ) : onTitle ? (
@@ -119,6 +125,7 @@ export function PosterRail({
               (href && seeAllLabel ? (
                 <Link
                   href={href}
+                  prefetch={false}
                   /* 🆕 ١٢ لا ١٣ (D-459): **«الكلّ» ثانويٌّ كسائر الثانويّ** —
                      **ودرجةٌ ثالثةٌ بين ١٢ و١٥ لدورٍ واحدٍ ليست درجة.** */
                   className={seeAllClass}

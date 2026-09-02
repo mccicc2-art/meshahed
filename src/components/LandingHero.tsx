@@ -129,11 +129,14 @@ export async function LandingHero({
               يبحث فيه من لم يسجّل بعد، وهو الرابط الذي تطلبه شاشة موافقة
               Google ويفتحه المراجع بلا حساب. */}
           <p className="mt-2.5 text-12 text-muted/50 flex items-center justify-center gap-2">
-            <Link href="/privacy" className="hover:text-muted transition">
+            {/* 🆕 D-893 (`LOOPZ-AUD-0077`): رابطا التذييل كانا يُجلبان مسبقاً
+                مرّتين لكلٍّ (بمفتاحَي راوتر) على صفحة الزائر ويُلغى أحدُهما
+                بالمغادرة — صفحتان لا تُنقران إلا نادراً. */}
+            <Link href="/privacy" prefetch={false} className="hover:text-muted transition">
               {locale === "ar" ? "الخصوصية" : "Privacy"}
             </Link>
             <span aria-hidden>·</span>
-            <Link href="/terms" className="hover:text-muted transition">
+            <Link href="/terms" prefetch={false} className="hover:text-muted transition">
               {locale === "ar" ? "الشروط" : "Terms"}
             </Link>
           </p>
