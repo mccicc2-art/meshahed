@@ -13,6 +13,7 @@ import {
   getTitlePulse,
   getMyFavorites,
   getProviderLinks,
+  getUser,
   artKey,
 } from "@/lib/data";
 import {
@@ -73,7 +74,7 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
 
   // بيانات أول رسمة فقط في الموجة الحاسمة — الترايلر والتعليقات تُبثّ
   // لاحقاً عبر Suspense فلا تؤخّر ترويسة الصفحة وتبويب الحلقات
-  const [userRegion, tv, followState, watched, watchWhere, myLists, inLists, epRatings, myArt, favs, pulse] =
+  const [userRegion, tv, followState, watched, watchWhere, myLists, inLists, epRatings, myArt, favs, pulse, user] =
     await Promise.all([
     /* قراءةُ كوكي البلد كانت `await` منفرداً قبل الموجة — رحلةً لا يعتمد
        عليها أحدٌ فيها، فدخلتها. */
@@ -97,6 +98,9 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
     getMyFavorites(),
     /* 🆕 **نبضُ العمل** (D-408) — انظر تعليقَ صفحة الفيلم */
     getTitlePulse(tvId, "tv"),
+    /* 🆕 D-892: هل القارئُ زائر؟ `getUser` مخبّأٌ للطلب (تقرأه قراءاتُ
+       الموجة نفسُها) فلا رحلةَ إضافيّة — والمتتبّعُ يحتاج الجوابَ ليصمت. */
+    getUser(),
   ]);
   const following = followState.following;
 
@@ -507,6 +511,7 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
                 defaultRuntime={tv.episode_run_time?.[0] ?? null}
                 initialWatched={[...watched]}
                 initialEpisodeRatings={[...epRatings.values()]}
+                guest={!user}
                 locale={locale}
               />
             ),
