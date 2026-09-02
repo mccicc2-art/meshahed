@@ -62,6 +62,14 @@ const ar = {
 
   statWatchTime: "وقت المشاهدة",
   emptyStart: "ابدأ بمتابعة مسلسل أو فيلم لتظهر هنا.",
+  /* 🆕 **تنبيهُ الحساب المكرّر** (D-885، حادثةُ دعمٍ حقيقيّة): عضوٌ بمكتبةٍ
+     كاملة دخل بحساب جوجل ثانٍ فرأى «مكتبةً فارغة» وظنّ أنّ قوائمَه ضاعت.
+     يُقرأ على صفحة البداية وحدَها — وهي لا تُفتح إلا لمن مكتبتُه
+     فارغة — **فالبريدُ يُقال باسمه والمخرجُ زرٌّ واحد** (حكمُ أحمد ①+②). */
+  accountNoticeSignedInAs: (email: string) => `دخلتَ بحساب ${email}.`,
+  accountNoticeHint:
+    "إن كان لك حساب سابق في لوبز فربّما هذا حساب جوجل آخر — بدّل الحساب بدل أن تبدأ من جديد.",
+  accountNoticeSwitch: "بدّل الحساب",
   continueWatching: "أكمل المشاهدة",
   comingSoon: "القادم قريباً",
   suggestedForYou: "مقترح لك",
@@ -2296,6 +2304,10 @@ const en: Dict = {
 
   statWatchTime: "Watch time",
   emptyStart: "Follow a show or a movie and it will show up here.",
+  accountNoticeSignedInAs: (email: string) => `You're signed in as ${email}.`,
+  accountNoticeHint:
+    "If you already had a Loopz account, this may be a different Google account — switch accounts instead of starting over.",
+  accountNoticeSwitch: "Switch account",
   continueWatching: "Continue Watching",
   comingSoon: "Coming soon",
   suggestedForYou: "Picked for you",
