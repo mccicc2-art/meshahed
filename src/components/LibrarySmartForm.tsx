@@ -39,13 +39,17 @@ import { Icon } from "./Icon";
  */
 export function LibrarySmartForm({
   locale,
-  libraryTab,
+  libraryTab = null,
   editing = null,
   onDone,
 }: {
   locale: Locale;
-  /** تبويبُ المكتبة الحاليّ — **هو نوعُ الشرط** */
-  libraryTab: string;
+  /**
+   * تبويبُ المكتبة الحاليّ — **هو نوعُ الشرط** حين يكون له نوع.
+   * 🆕 **وغيابُه (D-877: البابُ في تبويب «قوائمي»)** يرسم صفَّ النوع
+   * رقائقَ أوّلاً — **فالمستخدمُ يختار نوعَه حيث لا تبويبَ يختاره عنه.**
+   */
+  libraryTab?: string | null;
   /** قائمةٌ يُعدَّل شرطُها — من `/library?edit=<id>` بعد أن حسمها الخادم */
   editing?: { id: string; name: string; rule: Record<string, string> } | null;
   onDone?: () => void;
@@ -62,23 +66,29 @@ export function LibrarySmartForm({
   const [era, setEra] = useState<string | null>(editing?.rule.era ?? null);
   const [naming, setNaming] = useState(false);
   const [name, setName] = useState("");
+  const [pickedType, setPickedType] = useState<"movie" | "tv" | "all" | null>(null);
 
-  /* **النوعُ من التبويب** — **وفي تبويبٍ بلا نوعٍ (الفنّانون · القوائم) لا
-     يُرسم البابُ أصلاً**: **بابٌ يفتح على «اختر تبويباً أوّلاً» وعدٌ فارغ** (D-217). */
-  const type = editing?.rule.type ?? libraryTabToRuleType(libraryTab);
+  /* **النوعُ من التبويب إن كان له نوع، وإلّا من رقاقةٍ يختارها** (D-877):
+     **كان المكوّنُ يعود `null` في تبويبٍ بلا نوع** — **وصار البابُ في
+     «قوائمي» نفسِه**، فصفُّ النوع أوّلُ الصفوف. **والتحريرُ يثبّت نوعَه.** */
+  const tabType = libraryTab ? libraryTabToRuleType(libraryTab) : null;
+  const type = (editing?.rule.type as "movie" | "tv" | "all" | undefined) ?? tabType ?? pickedType;
   const genres = useMemo(
-    () => BROWSE_GENRES.filter((g) => genreFitsType(g, type === "all" ? "all" : type === "tv" ? "tv" : "movie")),
+    () =>
+      type
+        ? BROWSE_GENRES.filter((g) => genreFitsType(g, type === "all" ? "all" : type === "tv" ? "tv" : "movie"))
+        : [],
     [type],
   );
 
-  if (!type) return null;
-
-  const rule: Record<string, string> = { type };
+  const rule: Record<string, string> = type ? { type } : {};
   if (status) rule.wst = status;
   if (my) rule.my = my;
   if (genre) rule.g = genre;
   if (era) rule.era = era;
-  const hasRule = Object.keys(rule).length > 1;
+  /* **شرطٌ = نوعٌ + محورٌ واحدٌ على الأقلّ**: قائمةُ «كلُّ أفلامي» ليست
+     ذكيّةً، هي تبويبُ الأفلام. */
+  const hasRule = !!type && Object.keys(rule).length > 1;
 
   const statusLabel: Record<LibraryStatus, string> = {
     unstarted: t.libStatusUnstarted,
@@ -134,6 +144,29 @@ export function LibrarySmartForm({
         {editing ? t.smartListEditHint(editing.name) : t.librarySmartGroup}
       </span>
       {!editing && <p className="text-12 text-muted -mt-2 leading-relaxed">{t.librarySmartHint}</p>}
+
+      {/* 🆕 **صفُّ النوع حين لا تبويبَ يقرّره** (D-877) — **ولا يُرسم حيث
+          يقرّره التبويب**: رقاقةٌ تكرّر ما يقوله التبويبُ فوقها ضجيج (D-138). */}
+      {!editing && !tabType &&
+        row(
+          t.librarySmartType,
+          (
+            [
+              { v: "movie", label: t.shortMovies },
+              { v: "tv", label: t.shortShows },
+              { v: "all", label: t.discoverTabAnime },
+            ] as const
+          ).map((o) => (
+            <button
+              key={o.v}
+              type="button"
+              onClick={() => pick(setPickedType, pickedType, o.v)}
+              className={chipClass(pickedType === o.v, "sm", "shrink-0")}
+            >
+              {o.label}
+            </button>
+          )),
+        )}
 
       {row(
         t.librarySmartStatus,

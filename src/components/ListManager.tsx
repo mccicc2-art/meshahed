@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { backdropUrl } from "@/lib/media";
 import { getDict, type Locale } from "@/lib/i18n";
 import { Icon } from "./Icon";
@@ -16,6 +15,7 @@ import dynamic from "next/dynamic";
    قارئ — و`ssr: false` لأن لا HTML لها قبل الضغطة. */
 const ShareListSheet = dynamic(() => import("./ShareListSheet").then((m) => m.ShareListSheet), { ssr: false });
 import { NewListForm } from "./NewListForm";
+import { LibrarySmartForm } from "./LibrarySmartForm";
 
 /**
  * إدارة القوائم.
@@ -66,6 +66,10 @@ export function ListManager({
   /* المشاركة من صفحة القوائم نفسها (طلب المالك): زرٌّ على البطاقة يفتح
      نفس ورقة مشاركة صفحة القائمة — مكوّنٌ واحد لا نسختان */
   const [shareFor, setShareFor] = useState<UserList | null>(null);
+  /* 🆕 **بابُ القائمة الذكيّة يفتح في مكانه** (D-877، حكمُ أحمد: «لا أريد
+     الزر ينقلني إلى الديسكفري لأنها غير مفهومة») — **زرٌّ لا رابط** (D-017):
+     **الوجهةُ صارت هنا لا صفحةً.** */
+  const [smartOpen, setSmartOpen] = useState(false);
   /* **مجموعةٌ لا مصفوفة**: البحثُ يقع مرّةً لكلِّ بطاقة، **و`includes`
      على مصفوفةٍ داخل `map` مسحٌ داخل مسح.** */
   const playlists = playlistIds ? new Set(playlistIds) : null;
@@ -79,18 +83,23 @@ export function ListManager({
           عرفت كيف أسوي الليستات التلقائية؟»): **بابُها الوحيدُ كان
           رقاقةً في «اكتشف» لا تُرسم إلّا بعد اختيار فلتر** — **وميزةٌ
           لا يصل إليها إلّا من يعرف أنّها موجودة ليست مشحونة** (D-346).
-          🔑 **ومن يريد قائمةً يذهب حيث تسكن القوائم لا حيث تُبنى
-          الشروط** — **فالشرطُ يبقى في «اكتشف» ويصير البابُ حيث يُبحث
-          عنه** (D-198). ⚠️ **ورابطٌ لا زرّ**: **الوجهةُ صفحةٌ**،
-          **ورابطٌ يرث شكلَ الزرِّ أصدقُ من زرٍّ يتظاهر بأنه رابط**
-          (D-017). */}
+          ⚖️ 🆕 **ونُقض نصفُه في D-877** (حكمُ أحمد: «اجعلني أستطيع من
+          المكتبة تحديد الفلتر والإنشاء مباشرة، لا أريد الزر ينقلني إلى
+          الديسكفري لأنها غير مفهومة»): **كان رابطاً إلى «اكتشف» فصار
+          زرّاً يفتح الشروطَ هنا** — **بمفردات المكتبة (D-876) لا
+          الكتالوج**: **من يقف في قوائمه يريد قائمةً ممّا يملك.**
+          **وبابُ الكتالوج باقٍ في «اكتشف» لمن يبني شرطَه هناك** — بابان
+          لمصدرين لا لشيءٍ واحد. **وزرٌّ لا رابط** لأن الوجهةَ لم تعد
+          صفحة (D-017). */}
       <div className="mb-4">
         <NewListForm
           locale={locale}
           collapsed
           trailing={
-            <Link
-              href="/news"
+            <button
+              type="button"
+              aria-expanded={smartOpen}
+              onClick={() => setSmartOpen((v) => !v)}
               className={buttonClass({
                 variant: "surface",
                 size: "sm",
@@ -99,9 +108,14 @@ export function ListManager({
             >
               <Icon name="sparkle-star" size={14} />
               {t.smartListLabel}
-            </Link>
+            </button>
           }
         />
+        {smartOpen && (
+          <div className="mt-3 rounded-2xl border border-border bg-surface p-4">
+            <LibrarySmartForm locale={locale} onDone={() => setSmartOpen(false)} />
+          </div>
+        )}
         {/* 🔑 **والسطرُ يُقاس ولا يُفترض** (D-570): **يُرسم لمن لا قائمةَ
             ذكيّةَ له**، **ويسقط عن نفسه أوّلَ ما يصنع واحدة** — **ولا
             رايةَ تُخزَّن ولا سطرَ تعليمٍ يسكن الصفحةَ إلى الأبد**
