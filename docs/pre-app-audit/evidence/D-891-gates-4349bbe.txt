@@ -1,0 +1,49 @@
+D-891 — LOOPZ-AUD-0074 tail: relatedTitles asks /recommendations and /similar together instead of one after the other
+=====================================================================================================================
+
+commit (main, git log, UTC):
+  4349bbe  2026-09-02 15:48:21  src/lib/tmdb.ts — relatedTitles(): the two rail calls run in Promise.all; merge order (recommendations first, then similar) and per-source failure handling unchanged  [deploy]
+rollback point: 48cc29e (one file)
+scope: one function in src/lib/tmdb.ts used by RelatedTitles on the TV and movie pages. No cache key, TTL, timeout (rail 2 s, one attempt), number of calls, SQL, image or Supabase change; only the start time of the second call.
+
+gates on 4349bbe, clean working tree (git status empty after `git reset --hard origin/main`):
+  npx tsc --noEmit   : exit 0
+  npx eslint src     : 0 errors, 15 warnings (pre-existing)
+  npx next build     : exit 0 ("Compiled successfully")
+deploy: /api/build == 4349bbe read from the Claude pane at 15:50:11 UTC
+
+review (Claude acting as reviewer by the owner's decision, verdict written before execution): diagnosis first — a `related` marker ("Related titles" / "أعمال مرتبطة" in the RSC stream) added to the probe; on 48cc29e the related rail was the LAST chunk of every stream, arriving hero +615…+700 ms = two sequential rail round-trips from bom1. One fix: parallelize the two sources inside relatedTitles (the alternative — starting relatedTitles before the main wave — needs the title's language/genres only for scoring, but changes the function's contract; rejected for this step). Expected: related ≈ hero + one round-trip (≈ +300), end −300.
+
+Before/After — same method (RSC stream markers, guest, PARTIAL_COLD inferred, breadth instead of repetition); numbers relative to hero
+------------------------------------------------------------------------------------------------------------------------------
+BEFORE (48cc29e, 15:45 UTC, 6 cold titles; ms):
+  title          fb    hero  cast  ratings related(=end)  related−hero
+  /show/37854   1076   1851  1882  2208    2487 (end 4107*)  +636   (*fb 1076 and a 1.6 s idle tail after the last byte — outlier, flagged; first byte precedes data)
+  /show/95557    186    807   870  1289    1422           +615
+  /show/119051   163    507   522   819    1162           +655
+  /show/1399     143    794   824  1260    1431           +637
+  /movie/272     145    621   621   869    1320           +699
+  /movie/324857  156    493   493   818    1140           +647
+  related − hero: +615…+699 (median 646) — the related rail was the last chunk in 6/6 streams.
+
+AFTER (4349bbe, 15:50–15:51 UTC, 9 cold titles en + 2 ar):
+  title           fb    hero  cast  ratings related  end    related−hero  end−hero
+  /show/2288      416   1131  1131  1288    1326    1326   +195          +195   (fb 416: first requests after the deploy — cold start, precedes data)
+  /show/1418      686   1073  1089  1449    1515    1515   +442          +442   (fb 686: same)
+  /show/72844     598   1230  1230  1541    1541    1541   +311          +311   (fb 598: same)
+  /movie/106646   144    499   499   731     885     885   +386          +386
+  /movie/98       127    607   607   858     887     887   +280          +280
+  /show/1408      175    528   528  1069     843    1069   +315          +541   (ratings arrived last here — OMDb slow on this one)
+  /show/18165     136    806   806  1071    1090    1090   +284          +284
+  /movie/278927   148    684   684   731     926     926   +242          +242
+  /movie/671      398    742   742  1006    1038    1039   +296          +297
+  (/show/456 in the first batch was warm — excluded)
+  related − hero : +615…+699 (median 646) → +195…+442 (median 296)     target "≈ one round-trip (+300)"  MET
+  end − hero     : +615…+699 here; +513 median after D-889 (§9)  → +195…+541 (median 297)               MET (−300…−350)
+  ar (lang=ar; /show/94605 · /movie/475557): related − hero +183 / +285 · end − hero +183 / +285
+  rollback criterion (related − hero must fall below +500 on the median, else revert): MET → not reverted.
+
+combined effect of D-889 + D-890 + D-891 on a cold title open (relative to hero, medians): cast +313 → 0 · ratings +548 → +249 · stream end +670 → +297. Absolute stream end: 1,214 median before (§8) → ≈ 1,040 in this hour with three cold-start rows included (887–1,090 without them). The first content (hero) itself is unchanged: one TMDB round-trip after the loading shell.
+
+smoke after deploy (guest, RSC): the "Related titles" rail rendered on 9/9 cold titles and 2/2 Arabic titles; the order of merge is by construction unchanged (recommendations then similar); a failing source is still ignored alone (.catch per call).
+not measured: first paint (BLOCKED_BY_TOOLING) · network from Riyadh · the discover fallback branch of relatedTitles (non-English titles with < 6 same-language results — unchanged code path).
