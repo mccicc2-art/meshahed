@@ -314,6 +314,67 @@ export const DEFAULT_BRAND_TEXT: [string, string, string] = DEFAULT_BRAND;
 
 export const DEFAULT_THEME = THEMES[0];
 
+/**
+ * 🆕 **سلّمُ شريط التقدّم — من لون الثيم لا من الهويّة** (D-887، حكمُ
+ * أحمد على سؤال D-825 القديم «شريطُ التقدّم هويّةٌ أم واجهة؟»: «هويّة —
+ * يتبع لون المستخدم»). **لونُ المستخدم اليومَ هو ثيمُه** (D-848 أسقط
+ * اللونَ الراكب) — **فالشريطُ الأزرق في `ocean` والأخضرُ في `forest`**،
+ * بينما بقي أصفرَ الهويّة في كلِّ ثيم.
+ *
+ * 🔑 **درجاتُ لونٍ واحد لا لونان**: القاعدةُ المكتوبة فوق (`DEFAULT_BRAND_TEXT`)
+ * حرّمت بناءَ تدرّجٍ من `--accent` + `--accent-2` لأنّهما ليسا درجتين من
+ * لونٍ واحد في كلِّ ثيم — **فالسلّمُ هنا من `accent` وحدَه** بتعتيمٍ
+ * متدرّج في HSL (الصبغةُ والإشباعُ ثابتان، والإضاءةُ تنزل) — نظيرُ
+ * `#FFD400 → #FBBF24 → #F59E0B` في الهويّة. **والثيمُ الذي يملك `brand`
+ * صريحاً (لوبز) يبقى على سلّمه** فلا يتغيّر شريطٌ واحدٌ عند من لم يبدّل ثيمَه.
+ * ⚠️ **والهويّةُ (`--brand-*`) لا تُمسّ**: الشعارُ وعنوانُ العلامة كما كانا.
+ */
+export function progressLadder(accent: string): [string, string, string] {
+  const hex = accent.replace("#", "");
+  const n = parseInt(hex.length === 3 ? hex.split("").map((c) => c + c).join("") : hex, 16);
+  if (Number.isNaN(n)) return DEFAULT_BRAND;
+  const r = ((n >> 16) & 255) / 255;
+  const g = ((n >> 8) & 255) / 255;
+  const b = (n & 255) / 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const l = (max + min) / 2;
+  let h = 0;
+  let sat = 0;
+  if (max !== min) {
+    const d = max - min;
+    sat = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+    else if (max === g) h = ((b - r) / d + 2) / 6;
+    else h = ((r - g) / d + 4) / 6;
+  }
+  const toHex = (light: number) => {
+    const hue2rgb = (p: number, q: number, t: number) => {
+      if (t < 0) t += 1;
+      if (t > 1) t -= 1;
+      if (t < 1 / 6) return p + (q - p) * 6 * t;
+      if (t < 1 / 2) return q;
+      if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+      return p;
+    };
+    let rr = light;
+    let gg = light;
+    let bb = light;
+    if (sat !== 0) {
+      const q = light < 0.5 ? light * (1 + sat) : light + sat - light * sat;
+      const pp = 2 * light - q;
+      rr = hue2rgb(pp, q, h + 1 / 3);
+      gg = hue2rgb(pp, q, h);
+      bb = hue2rgb(pp, q, h - 1 / 3);
+    }
+    const c = (x: number) => Math.round(Math.min(1, Math.max(0, x)) * 255).toString(16).padStart(2, "0");
+    return `#${c(rr)}${c(gg)}${c(bb)}`;
+  };
+  /* ثلاثُ درجاتٍ تنزل ٠ · ٨٪ · ١٦٪ — قريبةٌ من فرق الإضاءة بين درجات
+     الهويّة الثلاث، فلا يُقرأ الشريطُ لونين */
+  return [toHex(l), toHex(Math.max(0.08, l - 0.08)), toHex(Math.max(0.08, l - 0.16))];
+}
+
 /* 🗑️ **سجلُّ لون التمييز الشخصيِّ سقط بكامله** (D-848، حكمُ أحمد
    بلقطةٍ محوَّطة: «ألوان الثيم الإضافيّة هذي احذفها بالكامل»).
 
@@ -356,6 +417,8 @@ export function themeCss(t: Theme) {
   const b = t.brand ?? DEFAULT_BRAND;
   /* 🆕 ودرجةُ الهويّة حين تُقرأ نصّاً (D-846) — انظر `DEFAULT_BRAND_TEXT` */
   const bt = t.brandText ?? t.brand ?? DEFAULT_BRAND_TEXT;
+  /* 🆕 وسلّمُ شريط التقدّم من لون الثيم (D-887) — انظر `progressLadder` */
+  const pg = t.brand ?? progressLadder(v.accent);
   const semantic =
     (v.success ? `--success:${v.success};` : "") +
     (v.error ? `--error:${v.error};` : "") +
@@ -378,5 +441,5 @@ export function themeCss(t: Theme) {
      المخصَّصةُ لهذا القماش بالذات** — فيصير داكناً مع الثيمات الداكنة
      وفاتحاً مع النهاريّ. */
   const scheme = t.id === "daylight" ? "light" : "dark";
-  return `:root{color-scheme:${scheme};--background:${v.background};--surface:${v.surface};--surface-2:${v["surface-2"]};--foreground:${v.foreground};--muted:${v.muted};--accent:${v.accent};--accent-2:${v["accent-2"]};--border:${v.border};--on-accent:${v["on-accent"]};--on-accent-2:${v["on-accent-2"]};--glow-a:${t.glowA};--glow-b:${t.glowB};--brand-1:${b[0]};--brand-2:${b[1]};--brand-3:${b[2]};--brand-text-1:${bt[0]};--brand-text-2:${bt[1]};--brand-text-3:${bt[2]};--elevated:${v.elevated};--divider:${v.divider};--surface-inverse:${v["surface-inverse"]};--on-surface-inverse:${v["on-surface-inverse"]};${semantic}}`;
+  return `:root{color-scheme:${scheme};--background:${v.background};--surface:${v.surface};--surface-2:${v["surface-2"]};--foreground:${v.foreground};--muted:${v.muted};--accent:${v.accent};--accent-2:${v["accent-2"]};--border:${v.border};--on-accent:${v["on-accent"]};--on-accent-2:${v["on-accent-2"]};--glow-a:${t.glowA};--glow-b:${t.glowB};--brand-1:${b[0]};--brand-2:${b[1]};--brand-3:${b[2]};--brand-text-1:${bt[0]};--brand-text-2:${bt[1]};--brand-text-3:${bt[2]};--progress-1:${pg[0]};--progress-2:${pg[1]};--progress-3:${pg[2]};--elevated:${v.elevated};--divider:${v.divider};--surface-inverse:${v["surface-inverse"]};--on-surface-inverse:${v["on-surface-inverse"]};${semantic}}`;
 }
