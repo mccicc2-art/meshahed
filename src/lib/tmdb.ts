@@ -1421,6 +1421,37 @@ export interface Video {
   name: string;
   official: boolean;
   size: number;
+  /** لغةُ المقطع (ISO 639-1) — بها يُفرَز الردُّ الواحد إلى محلّيٍّ وإنجليزيّ (D-896) */
+  iso_639_1?: string;
+}
+
+/**
+ * 🆕 **مقاطعُ العمل برحلةٍ واحدة** (D-896، ذيلُ `LOOPZ-AUD-0074` للقارئ
+ * العربيّ). كان الترايلرُ يُطلب بالعربيّة **ثمّ** — حين لا مقطعَ عربيّاً،
+ * وهي الحالُ الغالبة — بالإنجليزيّة: رحلتان متسلسلتان من `bom1`، فكان
+ * الترايلرُ آخرَ ما يصل في بثّ الصفحة (+250…+360 ms بعد الترويسة حتى
+ * بعد D-889). TMDB تقبل `include_video_language` فيعود الردُّ الواحد
+ * بالعربيّ والإنجليزيّ معاً، **والتفضيلُ كما كان**: مقاطعُ لغة القارئ
+ * أوّلاً، فإن خلت فالإنجليزيّة. بالإنجليزيّة نداءٌ واحدٌ كما كان.
+ * (مفتاحُ الكاش يتغيّر بالمعامل الجديد — مدخلٌ جديد لكلِّ عمل عربيّاً.)
+ */
+async function readVideosOnce(
+  mediaType: MediaType,
+  id: number,
+): Promise<{ local: Video[]; en: Video[] }> {
+  const lang = await tmdbLanguage();
+  if (lang === "en-US") {
+    const r = await tmdb<{ results: Video[] }>(`/${mediaType}/${id}/videos`);
+    return { local: r.results ?? [], en: [] };
+  }
+  const r = await tmdb<{ results: Video[] }>(`/${mediaType}/${id}/videos`, {
+    include_video_language: "ar,en",
+  });
+  const all = r.results ?? [];
+  return {
+    local: all.filter((v) => v.iso_639_1 === "ar"),
+    en: all.filter((v) => v.iso_639_1 !== "ar"),
+  };
 }
 
 /**
@@ -1480,17 +1511,6 @@ export async function getTrailerKeys(
       .slice(0, 8);
   };
 
-  const read = async (language?: string) => {
-    try {
-      const r = await tmdb<{ results: Video[] }>(
-        `/${mediaType}/${id}/videos`,
-        language ? { language } : undefined,
-      );
-      return order(r.results ?? []);
-    } catch {
-      return [];
-    }
-  };
 
   const out = (vids: Video[]) => ({
     keys: vids.map((v) => v.key),
@@ -1503,9 +1523,16 @@ export async function getTrailerKeys(
     })),
   });
 
-  const local = await read();
+  /* D-896: رحلةٌ واحدة بدل رحلتين — الترتيبُ نفسُه: المحلّيُّ ثمّ الإنجليزيّ */
+  let sets: { local: Video[]; en: Video[] };
+  try {
+    sets = await readVideosOnce(mediaType, id);
+  } catch {
+    return null;
+  }
+  const local = order(sets.local);
   if (local.length) return out(local);
-  const en = await read("en-US");
+  const en = order(sets.en);
   return en.length ? out(en) : null;
 }
 
@@ -1524,19 +1551,10 @@ export async function getTrailer(
     );
   };
 
+  /* D-896: رحلةٌ واحدة بدل رحلتين — التفضيلُ نفسُه: المحلّيُّ ثمّ الإنجليزيّ */
   try {
-    const local = await tmdb<{ results: Video[] }>(`/${mediaType}/${id}/videos`);
-    const found = pick(local.results ?? []);
-    if (found) return { key: found.key, name: found.name };
-  } catch {
-    /* نكمل للإنجليزية */
-  }
-
-  try {
-    const en = await tmdb<{ results: Video[] }>(`/${mediaType}/${id}/videos`, {
-      language: "en-US",
-    });
-    const found = pick(en.results ?? []);
+    const { local, en } = await readVideosOnce(mediaType, id);
+    const found = pick(local) ?? pick(en);
     return found ? { key: found.key, name: found.name } : null;
   } catch {
     return null;
