@@ -29,6 +29,7 @@ const LibraryToolsSheet = dynamic(() => import("./LibraryToolsSheet").then((m) =
 import { OneTimeHint } from "./OneTimeHint";
 import { normalizeSearch, byTitle } from "@/lib/arabic";
 import { applyTabPrefs, type TabPref } from "@/lib/tabPrefs";
+import type { LibraryStatus } from "@/lib/libraryStatus";
 import { buttonClass } from "./ui/Button";
 
 export interface GridItem {
@@ -99,7 +100,9 @@ const FILTER_TAB: Record<string, LibraryTab> = {
 };
 
 /** حالات التقسيم — «أشاهدها» للمسلسلات وحدها؛ الفيلم يُشاهد أو لا */
-export type LibraryStatus = "watching" | "unstarted" | "completed" | "dropped";
+/* **النوعُ من بيته** (D-876): `lib/libraryStatus.ts` هو الوصفةُ الواحدة —
+   **ويُعاد تصديرُه هنا فلا يبحث القرّاءُ القدامى عنه.** */
+export type { LibraryStatus } from "@/lib/libraryStatus";
 
 export function LibraryGrid({
   shows,
@@ -118,7 +121,7 @@ export function LibraryGrid({
   listStats,
   savedCount = 0,
   locale,
-  initialTab = "shows", tabPrefs, hiddenRails = [],
+  initialTab = "shows", tabPrefs, hiddenRails = [], smartEditing = null,
   listsExtra,
   underTabs,
   favKeys,
@@ -156,6 +159,8 @@ export function LibraryGrid({
   initialTab?: LibraryTab; /** ترتيبُ تبويبات المكتبة وإظهارها — من الكوكي (D-179) */ tabPrefs: TabPref[];
   /** صفوفُ الصفحة المخفيّة — كاملةً بمفاتيح `tab:key` (D-874)؛ **اختياريّةٌ لأنّ قارئَها في الصفحة يصل في التزامٍ لاحق** (D-028) */
   hiddenRails?: string[];
+  /** 🆕 D-876: قائمةُ مكتبةٍ ذكيّةٌ يُعدَّل شرطُها — **حضورُها يفتح الورقةَ من أوّل رسمة** */
+  smartEditing?: { id: string; name: string; rule: Record<string, string> } | null;
   /** ما يلي قوائمي في اللوح (القوائم المحفوظة — طلب أحمد: بيتها
       المكتبة لا صفحة منفصلة): يُرسم على الخادم ويُمرَّر عقدةً جاهزة،
       فيبقى PublicListsRail مكوّن خادمٍ بلا JS كما وُلد (D-063) */
@@ -239,7 +244,9 @@ export function LibraryGrid({
   const [fav, setFav] = useState(false);
   const favSet = useMemo(() => new Set(favKeys ?? []), [favKeys]);
   /* ورقةُ الأدوات (D-177): البحث والترتيب وإنشاء القائمة خلف رمزٍ واحد */
-  const [tools, setTools] = useState(false);
+  /* **وتفتح على التعديل من أوّل رسمة** (D-876): من جاء بـ`?edit=` جاء
+     للورقة — **وصفحةٌ تفتح مغلقةً ثمّ تطلب ضغطةً ثانيةً باب** (D-030). */
+  const [tools, setTools] = useState(!!smartEditing);
   /* رقاقة الحالة (طلب المالك): «الكل» افتراضاً، والترشيح محليّ كالبحث */
   /* 🆕 **مفتاحُ الصفِّ المفتوحةِ قائمتُه** (D-376) — **واحدٌ لا غير**،
      **والمنسدلةُ تُركَّب عند فتحها وحدَها** فلا ستّون نسخةً بحالاتها. */
@@ -533,6 +540,8 @@ export function LibraryGrid({
           onQ={setQ}
           showFilters={showSearchRow} tabPrefs={tabPrefs} tabLabels={tabLabels}
           hiddenRails={hiddenRails}
+          libraryTab={tab}
+          smartEditing={smartEditing}
         />
       )}
 

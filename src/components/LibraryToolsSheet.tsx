@@ -11,6 +11,7 @@ import { NewListForm } from "./NewListForm";
 /* القسم الرابع في هذه الورقة — نفسُ المكوّن في اكتشف والمجتمع (D-179) */
 import { TabsPrefs } from "./TabsPrefs";
 import { RailsPrefs } from "./RailsPrefs";
+import { LibrarySmartForm } from "./LibrarySmartForm";
 import type { TabPref } from "@/lib/tabPrefs";
 
 export type LibrarySort = "smart" | "title" | "progress" | "added";
@@ -59,6 +60,8 @@ export function LibraryToolsSheet({
   tabPrefs,
   tabLabels,
   hiddenRails = [],
+  libraryTab = "shows",
+  smartEditing = null,
 }: {
   locale: Locale;
   onClose: () => void;
@@ -72,6 +75,10 @@ export function LibraryToolsSheet({
   tabLabels: Record<string, string>;
   /** **المخفيُّ كلُّه بمفاتيح `tab:key`** (D-826/D-874) — يُمرَّر كاملاً لأن الفعلَ يستبدل القائمةَ كلَّها */
   hiddenRails?: string[];
+  /** 🆕 D-876: تبويبُ الشبكة الحاليّ — **نوعُ شرط قائمة المكتبة الذكيّة** */
+  libraryTab?: string;
+  /** 🆕 D-876: قائمةُ مكتبةٍ ذكيّةٌ يُعدَّل شرطُها (`/library?edit=<id>`) */
+  smartEditing?: { id: string; name: string; rule: Record<string, string> } | null;
 }) {
   const t = getDict(locale);
   /* **وتفتح على «أدوات» دائماً** — وهي التي جئتَ لأجلها؛ **و«عرض»
@@ -200,6 +207,18 @@ export function LibraryToolsSheet({
             {t.listNewGroup}
           </span>
           <NewListForm locale={locale} onCreated={onClose} />
+        </div>
+        {/* 🆕 **والقائمةُ الذكيّةُ من المكتبة تحت «قائمة جديدة»** (D-876،
+            حكمُ أحمد: «بابها ورقة أدوات المكتبة») — **فعلان لشيءٍ واحدٍ
+            متجاوران**: قائمةٌ تملؤها بيدك، وقائمةٌ تملأ نفسَها. **ولا تُرسم
+            في تبويبٍ بلا نوع** (الفنّانون · القوائم) — المكوّنُ يعود `null`. */}
+        <div className="border-t border-border pt-4">
+          <LibrarySmartForm
+            locale={locale}
+            libraryTab={libraryTab}
+            editing={smartEditing}
+            onDone={onClose}
+          />
         </div>
         </div>
         )}

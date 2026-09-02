@@ -72,6 +72,7 @@ export function ListDetail({
   isPublic,
   kind,
   smart = null,
+  smartSource = null,
   items,
   ratings,
   isOwner,
@@ -102,6 +103,8 @@ export function ListDetail({
    * فتحة** — **وهو أسوأُ من منعه** (D-217).
    */
   smart?: string | null;
+  /** 🆕 D-876: مصدرُ الشرط — **يقرّر جملةَ التفسير وبابَ التعديل** (اكتشف أم المكتبة) */
+  smartSource?: "catalog" | "library" | null;
   items: ListItem[];
   ratings: Record<string, number>;
   isOwner: boolean;
@@ -452,24 +455,39 @@ export function ListDetail({
         <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-12 text-muted">
           <Icon name="sparkle-star" size={13} className="shrink-0 text-accent" />
           <span>
-            {locale === "en"
-              ? "Fills itself from the Loopz catalogue — nothing is added by hand."
-              : "تمتلئ وحدَها من كتالوج Loopz — لا يُضاف إليها شيءٌ يدويّاً."}
-          </span>
-          {/* 🆕 **وللمالك يحمل الرابطُ `edit`** (D-875): **فيفتح اكتشف في وضع
-              التعديل وزرُّ «حدِّث» جاهز** — **ولغيره الشرطُ للاطّلاع وحدَه.** */}
-          <Link
-            href={isOwner ? `/news?${smart}&edit=${listId}` : `/news?${smart}`}
-            className="text-accent hover:opacity-80 transition"
-          >
-            {isOwner
+            {smartSource === "library"
               ? locale === "en"
-                ? "Edit the rule in Discover"
-                : "عدّل الشرط في اكتشف"
+                ? "Fills itself from your library — nothing is added by hand."
+                : "تمتلئ وحدَها من مكتبتك — لا يُضاف إليها شيءٌ يدويّاً."
               : locale === "en"
-                ? "Open in Discover"
-                : "افتحه في اكتشف"}
-          </Link>
+                ? "Fills itself from the Loopz catalogue — nothing is added by hand."
+                : "تمتلئ وحدَها من كتالوج Loopz — لا يُضاف إليها شيءٌ يدويّاً."}
+          </span>
+          {/* 🆕 **وللمالك يحمل الرابطُ `edit`** (D-875): **فيفتح البابَ الذي
+              بُني فيه الشرطُ في وضع التعديل وزرُّ «حدِّث» جاهز** — **اكتشف
+              للكتالوج، وورقةُ أدوات المكتبة للمكتبة** (D-876) — **ولغيره
+              الشرطُ للاطّلاع وحدَه**، **وشرطُ مكتبةٍ لا يُطّلع عليه في مكتبة
+              غيرك** فلا رابطَ له. */}
+          {smartSource === "library" ? (
+            isOwner && (
+              <Link href={`/library?edit=${listId}`} className="text-accent hover:opacity-80 transition">
+                {locale === "en" ? "Edit the rule in your library" : "عدّل الشرط في مكتبتي"}
+              </Link>
+            )
+          ) : (
+            <Link
+              href={isOwner ? `/news?${smart}&edit=${listId}` : `/news?${smart}`}
+              className="text-accent hover:opacity-80 transition"
+            >
+              {isOwner
+                ? locale === "en"
+                  ? "Edit the rule in Discover"
+                  : "عدّل الشرط في اكتشف"
+                : locale === "en"
+                  ? "Open in Discover"
+                  : "افتحه في اكتشف"}
+            </Link>
+          )}
         </p>
       )}
 
