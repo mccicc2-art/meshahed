@@ -1,0 +1,27 @@
+D-893 — LOOPZ-AUD-0077: rail doors (title + "All") and landing footer links no longer prefetch
+===========================================================================================
+
+commits (main, git log, UTC):
+  f9fa8b4  2026-09-02 16:45:01  D-893 (1/2) src/components/PosterRail.tsx (title link + see-all link: prefetch={false}) · src/components/LandingHero.tsx (/privacy · /terms: prefetch={false})  [deploy]
+  254ce48  2026-09-02 16:49:24  D-893 (2/2) src/components/RankedRail.tsx (title + see-all) · src/components/CountdownRail.tsx (title + see-all): prefetch={false}  [deploy]
+  (two commits because the After measurement of 1/2 showed the Discover prefetches still present — they come from RankedRail, not PosterRail; recorded, not hidden)
+rollback point: 94c9a71 (four files)
+scope: pure application, links only. Poster cards already had prefetch={false}; the rail doors now follow the same rule. No cache/SW/images/SQL/Supabase. Nav links (e.g. /search in the header) NOT touched — out of this item.
+
+owner: "نفذ الصح لا اعلم" (do the right thing) — decision taken by Claude as reviewer: 0077 is the next item on the plan; the fix follows an existing decision (cards without prefetch) and costs the clicker one ordinary navigation.
+
+gates on 254ce48, clean working tree (git status empty after `git reset --hard origin/main`):
+  npx tsc --noEmit   : exit 0
+  npx eslint src     : 0 errors, 15 warnings (pre-existing)
+  npx next build     : exit 0 ("Compiled successfully")
+  (1/2 f9fa8b4 also passed all three on a clean tree before 2/2 was uploaded)
+deploy: /api/build == f9fa8b4 at 16:46:34 UTC · /api/build == 254ce48 at 16:50:57 UTC (Claude pane)
+
+Before/After (guest, pane visible so links enter the viewport and prefetch runs; load, wait 4 s, scroll to bottom, wait 3 s; count resource entries containing `_rsc=`):
+  /news (Discover) BEFORE 94c9a71 : 8 prefetch RSC requests — /discover/most-popular ×3 (?m=tv ×2 + bare) · /discover/top-ten ×3 · /search ×2 (header nav) — 3 of 8 transferred bytes (3 KB each), the rest 0 KB
+  /news            AFTER  f9fa8b4 : 7 (most-popular ×3 · top-ten ×3 still present → source is RankedRail)
+  /news            AFTER  254ce48 : **2** — /search ×2 only (header nav link, out of scope; residual noted)
+  /  (landing)     BEFORE (report §2-b, measured 09:21–09:37 UTC on d9767dd) : /privacy ×2 + /terms ×2 prefetch, one aborted at leave
+  /  (landing)     AFTER  254ce48 : **0** `_rsc` requests; the two footer links still render
+smoke: clicking the "All" of the first Discover rail → soft navigation to /discover/most-popular?m=tv, 60 cards rendered ✓ · footer links present ✓
+not measured: the after-leave abort count (was 3 aborted prefetches on /news at leave — with 0 rail prefetches there is nothing to abort; by construction) · first paint · the /search nav prefetch (separate item if wanted).
