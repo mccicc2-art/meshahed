@@ -1,0 +1,42 @@
+== D-884 · LOOPZ-AUD-0069 — cap the server-rendered activity feed on /people ==
+commits on main (git log, UTC):
+  49a26e3  11:08:58  D-884 (1/3) src/lib/i18n.ts            — feedMorePosts(n) key (ar/en)
+  bf15af9  11:09:43  D-884 (2/3) src/components/ActivityFeed.tsx — optional `limit` (applied AFTER filter+sort) + `moreHref` link (D-535 row style)
+  6f248f0  11:10:26  D-884 (3/3) src/app/people/page.tsx   — FEED_PAGE = 20; `?feed=all` renders everything; "more" is a <Link scroll={false} prefetch={false}> (state in the URL, D-051/D-054), NOT a server action [deploy]
+rollback point: d9767dd (previous main head) — revert the three files
+scope: app only · zero SQL/Migration · zero cache/SW/image changes · zero Supabase · zero member data in this file
+== git head ==
+6f248f00165ddffdc698e7cf25705e8337c8907d
+== git status (tracked) ==
+(clean)
+== npx tsc --noEmit ==
+exit=0
+== npx eslint src ==
+✖ 15 problems (0 errors, 15 warnings)
+
+== npx next build ==
+✓ Compiled successfully in 785ms
+  Generating static pages using 1 worker (0/59) ...
+exit=0
+== deploy ==
+/api/build == 6f248f0 read from the browser pane at 11:12:41 UTC (Vercel MCP list_deployments = 403 for this token → BLOCKED_BY_ACCESS, as before)
+
+== Before / After — same method as PHASE_10D_API_NETWORK.md (Claude browser pane · Chromium 148 · guest · 1280x720 · PARTIAL_COLD = unregister SW + clear CacheStorage; HTTP cache stays warm; true cold = BLOCKED_BY_TOOLING) ==
+metric                                   BEFORE (d9767dd, 3 runs 09:25–09:36)      AFTER (6f248f0, 3 runs 11:13–11:14)
+/people document decodedBodySize         1,067 KB × 3                              492 KB × 3   (target < 500 KB → MET, −54%)
+/people document wire (br)               49 KB                                     31 KB
+TTFB (PARTIAL_COLD)                      167 / 161 / 232 ms                        122 / 118 / 116 ms
+DCL (PARTIAL_COLD, HTTP-cache-warm)      1,967 / 896 / 1,226 ms                    1,838* / 943 / 681 ms   (*run 1 was with the pane VISIBLE → 56 requests incl. lazy images; runs 2–3 hidden like BEFORE: 25 requests)
+warm (SW) TTFB / DCL                     286 / 931 · 209 / 788 · 284 / 1,150       170 / 640
+document breakdown (fetch of /people):   total 1,060 · markup 590 · feed 477 · RSC 458 · svg 346 (109 KB) · class 133 KB · img 177 · /_next/image URLs 1,072
+                                         total 488 · markup 265 · feed 169 · RSC 212 · svg 122 (38 KB) · class 55 KB · img 87 · /_next/image URLs 577
+<article> rendered                       65                                        20 + link "View 45 more posts" (ar: «عرض 45 منشوراً آخر»)
+
+== Smoke after deploy (guest, pane visible where a click was needed) ==
+1. "more" link: real click → soft navigation (window marker kept) → /people?feed=all · 65 articles · scrollY unchanged (3330 → 3330) · RSC 25 KB wire / 393 KB decoded in 746 ms · link gone ........ PASS
+2. back from ?feed=all → /people · 20 articles · scrollY 3330 restored ........................................................................... PASS
+3. D-522 scroll memory: /people scrolled to article #13 (scrollY 2196) → poster click → /movie/807 (soft) → back → scrollY 2196, 20 articles ....... PASS
+4. same from ?feed=all: article #41 (scrollY 7185) → /movie/75612 → back → /people?feed=all · scrollY 7185 · 65 articles ......................... PASS
+5. tabs: /people?tab=talk renders (591 chars text, 0 pending boundaries once visible) ............................................................. PASS
+6. /login renders with the Google button (sign-in itself not exercised — guest run) ............................................................... PASS (render only)
+not measured: member (signed-in) feed — the cap applies after the member filters (followed/strangers) so the first 20 are the same rows a member saw at the top before; first paint = BLOCKED_BY_TOOLING
