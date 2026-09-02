@@ -149,6 +149,20 @@ export function TrailerCardMedia({
   const heldRef = useRef(false);
   const downX = useRef<number | null>(null);
   const [hold, setHold] = useState<"ff" | "rw" | null>(null);
+  /* ⚖️ **D-882 (بلاغُ أحمد بلقطة من iPhone: «العلامة ما تختفي وهو شغال»)**:
+     كانت ⏸ معلَّقةً على `controlsVisible` من المتحكّم — **وعلى الجوّال بقيت**.
+     **لم يُعد إنتاجُه على Chromium (⏸ تغيب بعد ثانيتين)**، **فلا يُصلَح
+     بتخمين سببٍ بل بنزع الاعتماد**: **لـ⏸ مؤقّتُها المحلّيُّ (١٫٥ ثانية)
+     يبدأ بكلِّ لمسةٍ وينتهي وحدَه** — **ومهما فعل مؤقّتُ المتحكّم تغيب.**
+     **واللمسةُ توقف حين ترى ⏸ فقط** — **ما تراه هو ما تفعله اللمسة** (D-217). */
+  const [pauseHint, setPauseHint] = useState(false);
+  const [pokeSeq, setPokeSeq] = useState(0);
+  useEffect(() => {
+    if (pokeSeq === 0) return;
+    const t = window.setTimeout(() => setPauseHint(false), 1500);
+    return () => window.clearTimeout(t);
+  }, [pokeSeq]);
+  const showPause = playing && chrome && !hold && pauseHint;
   /* **الزمنُ للترجيع يُقرأ من المتحكّم لا من مرجعٍ يُكتب أثناء الرسم**
      (قاعدةُ React: لا مرجعَ يُمسّ في الرسم) — `getSnapshot` هي المصدرُ نفسُه */
   const readNow = () => api.getSnapshot().time;
@@ -236,11 +250,13 @@ export function TrailerCardMedia({
               return;
             }
             if (playing) {
-              /* D-878: **مكشوفةُ الأدوات تُوقف، ومخفيّتُها تكشف** */
-              if (chrome) api.togglePlay();
+              /* D-878/D-882: **لمسةٌ ترى ⏸ توقف، وما سواها تكشف وتُظهر ⏸ لمدّتها** */
+              if (showPause) api.togglePlay();
               else {
                 api.pokeControls();
                 setPoked(true);
+                setPauseHint(true);
+                setPokeSeq((n) => n + 1);
               }
             } else api.tapPlay(id);
           }}
@@ -270,7 +286,7 @@ export function TrailerCardMedia({
              **صار هو بابَ كشفِ الأدوات** — **وإخفاؤه كما كان يترك
              مستعملَ لوحةِ المفاتيح بلا وصولٍ إلى الصوت والتقديم.**
              واسمُه اسمُ العمل حينئذٍ لا كلمة «تشغيل» التي تكذب. */
-          aria-label={showsPlayButton ? playLabel : playing && chrome ? (pauseLabel ?? title) : title}
+          aria-label={showsPlayButton ? playLabel : showPause ? (pauseLabel ?? title) : title}
           aria-hidden={!showsPlayButton && !playing}
           tabIndex={showsPlayButton || playing ? 0 : -1}
           className="absolute inset-0 z-50 grid select-none place-items-center"
@@ -280,11 +296,9 @@ export function TrailerCardMedia({
             <span className="grid h-14 w-14 place-items-center rounded-full bg-black/60 text-white shadow-lg backdrop-blur-sm">
               <Icon name="play" size={26} />
             </span>
-          ) : playing && chrome && !hold ? (
-            /* D-878: **⏸ في الوسط ما دامت الأدواتُ مكشوفة** — يتوارى معها */
-            <span
-              className={`grid h-14 w-14 place-items-center rounded-full bg-black/60 text-white shadow-lg backdrop-blur-sm ${fade}`}
-            >
+          ) : showPause ? (
+            /* D-878/D-882: **⏸ في الوسط لمدّة مؤقّتها المحلّيّ** — ولا يُعلَّق على تلاشي CSS */
+            <span className="grid h-14 w-14 place-items-center rounded-full bg-black/60 text-white shadow-lg backdrop-blur-sm">
               <Icon name="pause" size={26} />
             </span>
           ) : null}
