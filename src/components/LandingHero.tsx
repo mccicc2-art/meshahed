@@ -6,6 +6,7 @@ import { trending, type SearchResult } from "@/lib/tmdb";
 import { railGuard } from "@/lib/topChart";
 import { posterUrl, POSTER_INTRINSIC } from "@/lib/media";
 import { GoogleButton } from "@/components/GoogleButton";
+import { buttonClass } from "@/components/ui/Button";
 
 /**
  * بطل صفحة الهبوط — الشاشة الأولى، حرفاً بحرف كما صمّمها المالك.
@@ -97,6 +98,21 @@ export async function LandingHero({
           ) : (
             <p className="text-sm text-accent leading-relaxed">{t.loginNeedsKeys}</p>
           )}
+          {/* 🆕 **«تصفَّح أوّلاً» — للمثبَّت وحدَه** (D-886، حكمُ أحمد على
+              سؤال D-843 المفتوح): من نزّل التطبيقَ ولم يسجّل كان بابُه
+              الشريطَ السفليَّ وحدَه؛ صار له رابطٌ صريحٌ تحت الدخول إلى
+              الاكتشاف. **يُرسم دائماً ويُظهره وضعُ العرض في ورقة الأنماط**
+              (`data-standalone-only` — نظيرُ `data-landing-seo` بالعكس:
+              الخادمُ لا يعرف `display-mode`، القاعدةُ الثانية في D-843).
+              **رابطٌ بشكل الزرّ من المصنع، ورتبتُه `ghost`**: الفعلُ
+              الأوّلُ في الشاشة يبقى الدخول. */}
+          <Link
+            href="/news"
+            data-standalone-only
+            className={buttonClass({ variant: "ghost", size: "md", full: true, className: "mt-2.5" })}
+          >
+            {t.browseFirst}
+          </Link>
           {/* الشعار ملتصقٌ بالزرّ لا في قاع الصفحة: التذييل العام كان
               يهبط تحت جدار الملصقات فيبتعد — والموضع هنا قرارُ المالك.
               🔴 🆕 **وكان يُخفى في الجذر «لأن التذييل العام يظهر هناك في
