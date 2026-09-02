@@ -92,6 +92,19 @@ export async function arabicPersonName(tmdbPersonId: number): Promise<string | n
  * **والحارس الرقميّ قبل التركيب** كما في `arabicPersonName`: لا يصل إلى
  * الاستعلام محرفٌ ليس رقماً، فلا حقنَ SPARQL.
  */
+/**
+ * 🆕 **ذاكرةُ الفشل — عشرُ دقائق** (D-894، اكتشافٌ من متصفّح أحمد: «ثقلٌ
+ * وبطء»). خبيئةُ `fetch` تحفظ **النجاحَ** أسبوعاً، **لكنّ المهلةَ المتجاوزة
+ * لا تُحفظ**: عملٌ تباطأت عليه ويكي‑بيانات فوق ١٫٥ث كان يدفع الثانيةَ
+ * والنصفَ **في كلِّ فتحةٍ** حتى تُسعفه النقطةُ مرّة (قِيس: ترويسةٌ عند
+ * 2.0 ثمّ 1.7 ثمّ 1.5 ث لثلاث فتحاتٍ متتالية ثمّ 0.37). الفشلُ يُذكر
+ * لكلِّ نسخةِ خادمٍ عشرَ دقائق ثمّ يُعاد السؤال — ذاكرةٌ لا خبيئة (كـ`lastGood`
+ * في `tmdb.ts`)، وسقفُها صغيرٌ لأنّ مفاتيحَها قليلة.
+ */
+const failedUntil = new Map<string, number>();
+const FAIL_MEMO_MS = 10 * 60_000;
+const FAIL_MEMO_LIMIT = 500;
+
 export async function arabicWorkTitles(
   keys: { id: number; media: "tv" | "movie" }[],
 ): Promise<Map<string, string>> {
@@ -121,6 +134,13 @@ export async function arabicWorkTitles(
   FILTER(LANG(?ar) = "ar")
 }`;
 
+  /* D-894: سؤالٌ فشل قبل قليل لا يُعاد الآن — يبقى عنوانُ TMDB */
+  const failedAt = failedUntil.get(query);
+  if (failedAt !== undefined) {
+    if (failedAt > Date.now()) return out;
+    failedUntil.delete(query);
+  }
+
   try {
     const res = await fetch(`${SPARQL}?format=json&query=${encodeURIComponent(query)}`, {
       headers: { Accept: "application/sparql-results+json", "User-Agent": UA },
@@ -132,7 +152,10 @@ export async function arabicWorkTitles(
          والمفتاح هو الرابط نفسه — فمجموعةُ المعرّفات ذاتها لا تُسأل مرّتين */
       next: { revalidate: 604_800 },
     });
-    if (!res.ok) return out;
+    if (!res.ok) {
+      rememberFailure(query);
+      return out;
+    }
     const j = (await res.json()) as {
       results?: { bindings?: { k?: SparqlValue; t?: SparqlValue; ar?: SparqlValue }[] };
     };
@@ -148,8 +171,35 @@ export async function arabicWorkTitles(
     }
   } catch {
     /* الشبكة أو النقطة أو الصيغة — كلّها تعني «أبقِ عنوان TMDB» */
+    rememberFailure(query);
   }
   return out;
+}
+
+function rememberFailure(query: string) {
+  if (failedUntil.size >= FAIL_MEMO_LIMIT) {
+    const oldest = failedUntil.keys().next().value;
+    if (oldest !== undefined) failedUntil.delete(oldest);
+  }
+  failedUntil.set(query, Date.now() + FAIL_MEMO_MS);
+}
+
+/**
+ * 🆕 **السؤالُ ينطلق مع موجة الصفحة لا بعدها** (D-894، `LOOPZ-AUD-0081`).
+ * كان `displayWorkTitle` يُنتظر **بعد** أن تعود تفاصيلُ TMDB — رحلةً خارجيّةً
+ * ثانيةً متسلسلةً **قبل الترويسة** (حتى ١٫٥ث). الصفحةُ تُنشئ الوعدَ هنا مع
+ * موجتها وتمرّره إلى `displayWorkTitle`؛ فالانتظارُ = الأطولُ منهما لا
+ * مجموعُهما. **ثمنُه**: عملٌ عنوانُه عربيٌّ أصلاً في TMDB يُسأل عنه بلا حاجة
+ * — نداءٌ واحد يُخبَّأ أسبوعاً، **والعنوانُ المعروضُ لا يتغيّر** (الفحصُ
+ * العربيّ يسبق قراءةَ الوعد). بالإنجليزيّة لا وعدَ أصلاً.
+ */
+export function prefetchWorkTitle(
+  tmdbId: number,
+  media: "tv" | "movie",
+  locale: string,
+): Promise<Map<string, string>> | null {
+  if (locale === "en") return null;
+  return arabicWorkTitles([{ id: tmdbId, media }]).catch(() => new Map<string, string>());
 }
 
 /** هل في النصّ حرفٌ عربيّ؟ — نفس محدِّد `localize.ts` حرفاً بحرف */
@@ -173,10 +223,13 @@ export async function displayWorkTitle(
   media: "tv" | "movie",
   tmdbTitle: string,
   locale: string,
+  /** D-894: وعدٌ أُطلق مع موجة الصفحة (`prefetchWorkTitle`) — اختياريّ؛
+      غيابُه يُبقي السلوكَ القديم حرفاً (D-152). */
+  pending?: Promise<Map<string, string>> | null,
 ): Promise<string> {
   if (locale === "en") return tmdbTitle;
   if (ARABIC.test(tmdbTitle)) return tmdbTitle;
-  const found = await arabicWorkTitles([{ id: tmdbId, media }]);
+  const found = await (pending ?? arabicWorkTitles([{ id: tmdbId, media }]));
   return found.get(`${media}-${tmdbId}`) ?? tmdbTitle;
 }
 
