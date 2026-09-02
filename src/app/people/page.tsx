@@ -139,6 +139,10 @@ export default async function PeoplePage({
     all?: string;
     c?: string;
     with?: string;
+    /* 🆕 `?feed=all` (D-884 · `LOOPZ-AUD-0069`): خطُّ النشاط يُرسم على
+       الخادم عشرين صفّاً ثمّ «المزيد»؛ **والمزيدُ رابطٌ إلى هذه القيمة**
+       لا حالةَ عميل — الحالةُ في العنوان كبقيّة الصفحة (D-051/D-054). */
+    feed?: string;
   }>;
 }) {
   /* ⚖️ 🆕 **البوّابةُ سقطت — الكوميونيتي مفتوحٌ للضيف** (D-627):
@@ -169,6 +173,7 @@ export default async function PeoplePage({
     all: allParam,
     c: cParam,
     with: withParam,
+    feed: feedParam,
   } = await searchParams;
   /* **الروابط القديمة لا تموت** (D-187): `‎/people?tab=inbox` كان يُشارَك
      في محادثاتٍ ويُحفظ في المتصفّحات. يُحوَّل إلى بيته الجديد ومعه الخيط
@@ -691,6 +696,22 @@ export default async function PeoplePage({
      هنا ثابتٌ واحد. */
   const READING = "max-w-[680px] mx-auto";
 
+  /* 🆕 **سقفُ الرسم الخادميّ لخطّ النشاط** (D-884 · `LOOPZ-AUD-0069`):
+     كانت وثيقةُ `/people` ≈ 1,067 KB مفكوكةً (49 KB على السلك) لأنّ
+     الخطَّ يُرسم كاملاً — 65 صفّاً للزائر × ≈ 7 KB — **ثمّ يُضاعَف في
+     حمولة RSC للترطيب.** عشرون صفّاً هي ما يُقرأ قبل أوّل تمريرةٍ ونصف؛
+     **والباقي خلف «المزيد» رابطاً** (`?feed=all`) **لا إجراءَ خادمٍ**:
+     لا جزيرةَ جديدة، ولا صفَّ نداءاتٍ ثانياً يعيد بناءَ الخطّ، والرجوعُ
+     من منشورٍ يعيد ما رآه القارئ لأنّ العنوانَ يحمله (D-522).
+     ⚠️ **لا يُمسّ استعلامٌ ولا حدُّ الدالّة SQL** — القصُّ في الرسم فقط. */
+  const FEED_PAGE = 20;
+  const feedAll = feedParam === "all";
+  const feedMoreHref = `/people?${new URLSearchParams({
+    ...(tabParam ? { tab: tabParam } : {}),
+    ...(sParam ? { scope: sParam } : {}),
+    feed: "all",
+  }).toString()}`;
+
   const activityBody = (
     <section className={READING}>
             <ActivityFeed
@@ -723,6 +744,8 @@ export default async function PeoplePage({
                  لا «لا أحدَ يتكلّم»** — وجملةٌ تقول الثاني تكذب. */
               emptyText={t.feedEmptyForYou}
               locale={locale}
+              limit={feedAll ? undefined : FEED_PAGE}
+              moreHref={feedAll ? null : feedMoreHref}
             />
     </section>
   );
