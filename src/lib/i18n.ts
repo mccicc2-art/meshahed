@@ -2129,6 +2129,10 @@ const ar = {
      المشترك — **وسطرٌ ينتظر بالنيابة عن مالكٍ عطلٌ في الصدق** (D-217). */
   plusIncludes: "ما الذي يشمله اشتراكك",
   plusLocked: "ميزة Loopz+",
+  /* 🆕 **«تصفَّح أوّلاً»** (D-886، حكمُ أحمد على سؤال D-843): للتطبيق
+     المثبَّت وحدَه — من نزّل التطبيق ولم يسجّل يجد باباً صريحاً إلى
+     الاكتشاف تحت زرّ الدخول، لا الشريطَ السفليَّ وحدَه. */
+  browseFirst: "تصفَّح أوّلاً",
   loginNeedsKeys:
     "التطبيق يحتاج إعداد المفاتيح أولاً في إعدادات Vercel ثم أعد النشر.",
   avatarAlt: "الصورة الشخصية",
@@ -3732,6 +3736,7 @@ const en: Dict = {
     "This account has been confirmed to represent the stated person or organisation.",
   plusIncludes: "What your membership includes",
   plusLocked: "Loopz+ feature",
+  browseFirst: "Browse first",
   loginNeedsKeys:
     "The app needs its keys configured in Vercel settings, then redeploy.",
   avatarAlt: "Profile photo",
