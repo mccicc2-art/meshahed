@@ -257,6 +257,23 @@
   display: none;
 }
 
+/* 🆕 D-886 — عكسُ القاعدة أعلاه: ما يُرسم **للمثبَّت وحدَه** («تصفَّح
+   أوّلاً» تحت زرّ الدخول). الطريقان نفسُهما، والإظهارُ يعيد `inline-flex`
+   الذي يمنحه مصنعُ الأزرار — لا `block` يكسر شكلَ الزرّ. */
+[data-standalone-only] {
+  display: none;
+}
+
+@media (display-mode: standalone) {
+  [data-standalone-only] {
+    display: inline-flex;
+  }
+}
+
+:root[data-standalone="1"] [data-standalone-only] {
+  display: inline-flex;
+}
+
 /* ============================================================
    شاشةُ الإقلاع (جولة ١٩ أغسطس ليلاً — «شعار Loopz فور الفتح، لا شاشة
    سوداء فارغة»). عنصرٌ في HTML الأوّل نفسِه: يُرسم مع أوّل بايتٍ يصل،
