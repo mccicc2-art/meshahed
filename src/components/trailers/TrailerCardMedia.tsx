@@ -44,6 +44,7 @@ export function TrailerCardMedia({
   title,
   eager = false,
   playLabel,
+  pauseLabel,
   muteLabel,
   unmuteLabel,
   withControls = false,
@@ -57,6 +58,8 @@ export function TrailerCardMedia({
   title: string;
   eager?: boolean;
   playLabel: string;
+  /** 🆕 D-878: اسمُ فعل الإيقاف — **اختياريٌّ حتى يصل من القارئَين** (D-028) */
+  pauseLabel?: string;
   muteLabel: string;
   unmuteLabel: string;
   /** 🆕 D-762: أدواتُ التحكّم الكاملة — للعلف وحدَه، لا للرايل */
@@ -101,6 +104,67 @@ export function TrailerCardMedia({
     (isActive && (snap.phase === "paused" || snap.phase === "blocked" || snap.phase === "stalled")) ||
     (!playing && snap.manualOnly);
 
+  /* 🆕 D-878 (حكمُ أحمد بلقطةٍ على بطاقة الرايل، دائرتان على طرفَي المقطع:
+     «أريد استطاعة إيقافه وتشغيله، وتحريك الشريط السفلي، وإذا عملت هولد
+     يمين أو يسار يسرّع الفيديو») — ⚖️ **نقضٌ لـD-771 بيد صاحبه.**
+
+     **الإيقاف**: اللمسةُ الأولى تكشف الأدوات (D-764 كما كان)، **واللمسةُ
+     والأدواتُ مكشوفةٌ توقف** — **وأيقونةُ ⏸ في الوسط تقول ذلك قبل أن
+     تقع** (D-217: لا فعلَ خفيّاً). والواقفةُ زرُّ ▶ كما كان.
+
+     **الضغطةُ المطوّلة**: ٣٥٠ مللي ثانية بلا حركة — **النصفُ الأيمن ٢×**
+     (`setPlaybackRate` الرسمية)، **والنصفُ الأيسر ترجيعٌ**: يوتيوب لا
+     يعرف سرعةً سالبة، **فيُقفَز ثانيتين إلى الوراء كلَّ ربع ثانية** (~٨×
+     محسوسة). **ورفعُ الإصبع يعيد كلَّ شيء**، **والضغطةُ التي كانت
+     هولداً لا تُحسب لمسة** (`heldRef`) فلا يُوقَف المقطعُ عند الرفع.
+     ⚠️ **ولا `touch-action: none` على السطح**: **البطاقةُ في صفحةٍ تُمرَّر**،
+     والتمريرُ يُلغي الضغطةَ بنفسه (`pointercancel`) — **فمن سحب مرّ، ومن
+     ثبّت إصبعَه سرّع.** */
+  const holdTimer = useRef<number | null>(null);
+  const rewindTimer = useRef<number | null>(null);
+  const heldRef = useRef(false);
+  const downX = useRef<number | null>(null);
+  const [hold, setHold] = useState<"ff" | "rw" | null>(null);
+  /* **الزمنُ للترجيع يُقرأ من المتحكّم لا من مرجعٍ يُكتب أثناء الرسم**
+     (قاعدةُ React: لا مرجعَ يُمسّ في الرسم) — `getSnapshot` هي المصدرُ نفسُه */
+  const readNow = () => api.getSnapshot().time;
+
+  const endHold = () => {
+    if (holdTimer.current !== null) {
+      window.clearTimeout(holdTimer.current);
+      holdTimer.current = null;
+    }
+    if (rewindTimer.current !== null) {
+      window.clearInterval(rewindTimer.current);
+      rewindTimer.current = null;
+    }
+    /* **السرعةُ تُعاد كلَّما كان هولدٌ** — من المرجع لا من الحالة، فلا
+       تُفلت ضغطةٌ رُفعت قبل أن يُعاد الرسم */
+    if (heldRef.current) api.setRate(1);
+    setHold(null);
+    downX.current = null;
+  };
+  useEffect(() => {
+    const timers = { holdTimer, rewindTimer };
+    return () => {
+      if (timers.holdTimer.current !== null) window.clearTimeout(timers.holdTimer.current);
+      if (timers.rewindTimer.current !== null) window.clearInterval(timers.rewindTimer.current);
+    };
+  }, []);
+
+  const beginHold = (side: "ff" | "rw") => {
+    heldRef.current = true;
+    setHold(side);
+    api.pokeControls();
+    if (side === "ff") api.setRate(2);
+    else {
+      rewindTimer.current = window.setInterval(() => {
+        const t = readNow();
+        if (t) api.seekTo(Math.max(0, t.now - 2));
+      }, 250);
+    }
+  };
+
   return (
     <div ref={area} className="relative aspect-video w-full overflow-hidden bg-surface-2">
       {/* 🔴 ⚖️ الغلافُ هو السِّترُ نفسُه بعد فشل iPhone (بلاغ ٢٨ أغسطس):
@@ -139,23 +203,73 @@ export function TrailerCardMedia({
         <button
           type="button"
           onClick={() => {
+            /* **ضغطةٌ كانت هولداً لا تُحسب لمسة** (D-878) */
+            if (heldRef.current) {
+              heldRef.current = false;
+              return;
+            }
             if (playing) {
-              api.pokeControls();
-              setPoked(true);
+              /* D-878: **مكشوفةُ الأدوات تُوقف، ومخفيّتُها تكشف** */
+              if (chrome) api.togglePlay();
+              else {
+                api.pokeControls();
+                setPoked(true);
+              }
             } else api.tapPlay(id);
+          }}
+          onPointerDown={(e) => {
+            if (!playing || e.button !== 0) return;
+            heldRef.current = false;
+            downX.current = e.clientX;
+            const r = e.currentTarget.getBoundingClientRect();
+            const side: "ff" | "rw" = e.clientX - r.left > r.width / 2 ? "ff" : "rw";
+            holdTimer.current = window.setTimeout(() => {
+              holdTimer.current = null;
+              beginHold(side);
+            }, 350);
+          }}
+          onPointerMove={(e) => {
+            /* **حركةٌ قبل أن يشتدّ الهولد = تمريرٌ لا ضغطة** */
+            if (holdTimer.current !== null && downX.current !== null && Math.abs(e.clientX - downX.current) > 10)
+              endHold();
+          }}
+          onPointerUp={endHold}
+          onPointerCancel={endHold}
+          onPointerLeave={endHold}
+          onContextMenu={(e) => {
+            if (playing) e.preventDefault();
           }}
           /* ⚠️ 🆕 **والسطحُ يُعلَن لقارئ الشاشة حين يعمل أيضاً** (D-861):
              **صار هو بابَ كشفِ الأدوات** — **وإخفاؤه كما كان يترك
              مستعملَ لوحةِ المفاتيح بلا وصولٍ إلى الصوت والتقديم.**
              واسمُه اسمُ العمل حينئذٍ لا كلمة «تشغيل» التي تكذب. */
-          aria-label={showsPlayButton ? playLabel : title}
+          aria-label={showsPlayButton ? playLabel : playing && chrome ? (pauseLabel ?? title) : title}
           aria-hidden={!showsPlayButton && !playing}
           tabIndex={showsPlayButton || playing ? 0 : -1}
-          className="absolute inset-0 z-50 grid place-items-center"
+          className="absolute inset-0 z-50 grid select-none place-items-center"
+          style={{ WebkitTouchCallout: "none" }}
         >
           {showsPlayButton ? (
             <span className="grid h-14 w-14 place-items-center rounded-full bg-black/60 text-white shadow-lg backdrop-blur-sm">
               <Icon name="play" size={26} />
+            </span>
+          ) : playing && chrome && !hold ? (
+            /* D-878: **⏸ في الوسط ما دامت الأدواتُ مكشوفة** — يتوارى معها */
+            <span
+              className={`grid h-14 w-14 place-items-center rounded-full bg-black/60 text-white shadow-lg backdrop-blur-sm ${fade}`}
+            >
+              <Icon name="pause" size={26} />
+            </span>
+          ) : null}
+          {hold ? (
+            /* D-878: **شارةُ الهولد على طرفها** — ٢× يميناً وترجيعٌ يساراً */
+            <span
+              dir="ltr"
+              className={`absolute top-1/2 -translate-y-1/2 rounded-full bg-black/60 px-3 py-1.5 text-13 font-bold tabular-nums text-white backdrop-blur-sm ${
+                hold === "ff" ? "right-4" : "left-4"
+              }`}
+            >
+              {hold === "ff" ? "2× ▸▸" : "◂◂"}
             </span>
           ) : null}
         </button>
@@ -199,7 +313,8 @@ export function TrailerCardMedia({
         <div
           className={`pointer-events-none absolute inset-x-0 bottom-0 z-50 bg-gradient-to-t from-black/70 to-transparent px-3 pb-1.5 pt-6 ${fade}`}
         >
-          {withControls && seekLabel ? (
+          {/* D-878: **الشريطُ حيث يُمرَّر اسمُه** — الرايلُ صار يمرّره أيضاً */}
+          {seekLabel ? (
             <TrailerScrubber
               time={snap.time}
               onSeek={api.seekTo}

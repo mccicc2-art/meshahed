@@ -67,6 +67,8 @@ interface YTPlayer {
   /* ⚖️ D-762: التقديمُ عاد بطلب أحمد («تقديم وتأخير») — نقضُ حذفِ
      D-759 سابعًا، وبالواجهة الرسمية وحدَها كعادة البيت */
   seekTo(seconds: number, allowSeekAhead: boolean): void;
+  /** 🆕 D-878: سرعةُ التشغيل — للضغطة المطوّلة يميناً (٢×)؛ بالواجهة الرسمية */
+  setPlaybackRate(rate: number): void;
   destroy(): void;
 }
 
@@ -163,6 +165,14 @@ interface ControllerApi {
   toggleExpand(): void;
   /** 🆕 D-764: لمسةُ إظهارِ الأزرار المتوارية — تعيد عدَّ الثواني الخمس */
   pokeControls(): void;
+  /**
+   * 🆕 D-878 (حكمُ أحمد بلقطة: «أريد استطاعة إيقافه وتشغيله») — ⚖️ **نقضٌ
+   * لـD-771 («خله دائماً شغال») بيد صاحبه**: **زرُّ الإيقاف يعود إلى
+   * البطاقة**، والتشغيلُ الآليُّ عند الظهور باقٍ كما هو.
+   */
+  togglePlay(): void;
+  /** 🆕 D-878: سرعةُ التشغيل على النشطة — `2` أثناء الضغطة المطوّلة و`1` عند رفع الإصبع */
+  setRate(rate: number): void;
   subscribe(cb: () => void): () => void;
   getSnapshot(): ControllerSnapshot;
 }
@@ -997,6 +1007,9 @@ function createEngine(
        لكلِّ بطاقةٍ كحدٍّ أقصى، لا حلقةٌ ولا صمتٌ دائم */
     soundBlocked = false;
     activeId = id;
+    /* D-878: **سرعةٌ لا تُورَّث**: ضغطةٌ مطوّلةٌ على بطاقةٍ لا تُسرّع التي بعدها */
+    dom.video.playbackRate = 1;
+    if (act?.p && act.ready) act.p.setPlaybackRate(1);
     publish({ activeId: id, time: null });
     setPhase("loading");
     armStall();
@@ -1288,6 +1301,43 @@ function createEngine(
     /* ⚖️ D-762: التقديمُ عاد بطلب صاحبه («تقديم وتأخير») — نقضُ حذفِ
        D-759 سابعًا. بالواجهة الرسمية وحدَها، والزمنُ يُنشر بالأمر
        فوراً والعدّادُ يصحّح بعده (كوصفة الصوت) */
+    /* 🆕 D-878 — ⚖️ نقضُ D-771 بيد صاحبه: **الإيقافُ يعود زرّاً في البطاقة.**
+       يوتيوب: `pauseVideo` الرسمية ويُنتظر صدى PAUSED (`expectPause` كما
+       في `pauseCurrent`) فتنقلب الحالة. الملفُّ: لا حدثَ نستمع إليه (المواصفة
+       سادسًا: القيمُ الرسمية بالعدّاد) — **فتُقلب الحالةُ هنا ويُوقف
+       العدّاد**، والاستئنافُ من مسار `activate` نفسِه (`resuming`). */
+    togglePlay() {
+      if (!activeId) return;
+      pokeControls();
+      if (phase === "playing") {
+        rememberPosition();
+        if (activeIsFile()) {
+          dom.video.pause();
+          stopTick();
+          publish({ time: readTime() });
+          setPhase("paused");
+        } else if (act?.p && act.ready) {
+          expectPause = true;
+          act.p.pauseVideo();
+        }
+        return;
+      }
+      if (phase === "paused" || phase === "blocked" || phase === "stalled") {
+        activate(activeId, true);
+        applySoundInGesture();
+      }
+    },
+
+    /* 🆕 D-878: **السرعةُ للضغطة المطوّلة وحدَها** — ولا تُخزَّن: ترتفع
+       عند الضغط وتعود عند الرفع، **والبطاقةُ التي ترفع الإصبعَ تعيدها**
+       (وتُصفَّر عند كلِّ تنشيطٍ جديد تحت). */
+    setRate(rate: number) {
+      if (!activeId) return;
+      const r = rate === 2 ? 2 : 1;
+      if (activeIsFile()) dom.video.playbackRate = r;
+      else if (act?.p && act.ready) act.p.setPlaybackRate(r);
+    },
+
     seekTo(seconds: number) {
       if (!activeId) return;
       pokeControls();
@@ -1479,6 +1529,12 @@ export function TrailerPlayback({
   const pokeControls = useCallback(() => {
     engineRef.current?.pokeControls();
   }, []);
+  const togglePlay = useCallback(() => {
+    engineRef.current?.togglePlay();
+  }, []);
+  const setRate = useCallback((rate: number) => {
+    engineRef.current?.setRate(rate);
+  }, []);
   const subscribe = useCallback((cb: () => void) => {
     subsRef.current.add(cb);
     return () => {
@@ -1496,6 +1552,8 @@ export function TrailerPlayback({
       seekTo,
       toggleExpand,
       pokeControls,
+      togglePlay,
+      setRate,
       subscribe,
       getSnapshot,
     }),
@@ -1507,6 +1565,8 @@ export function TrailerPlayback({
       seekTo,
       toggleExpand,
       pokeControls,
+      togglePlay,
+      setRate,
       subscribe,
       getSnapshot,
     ],
