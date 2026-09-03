@@ -6228,3 +6228,29 @@ export async function adminDecidePayout(
   if (error) throw new Error(error.message.slice(0, 160));
   revalidatePath("/admin/payouts");
 }
+
+/**
+ * 🆕 **طلبُ تحويلٍ من الشريك** (D-901) — قشرةٌ تنقل المبلغ، **وكلُّ بوّابةٍ
+ * في جسم `request_payout`**: شريكٌ قائم · بياناتٌ مكتملة · ≥ ١٠٠ · ≤ الرصيد ·
+ * لا طلبَ معلَّقاً آخر (وفهرسٌ فريدٌ يحرسه حتى لو تسابق طلبان). الرسائلُ
+ * الثابتةُ تُترجَم هنا — «حاول مجدداً» تكذب (D-855).
+ */
+const PAYOUT_ERRORS: Record<string, string> = {
+  not_a_partner: "لستَ شريكاً / Not a partner",
+  details_incomplete: "أكمل بيانات التحويل أولاً / Complete your payout details first",
+  below_minimum: "الحدّ الأدنى ١٠٠ ريال / Minimum is SAR 100",
+  insufficient_balance: "الرصيد لا يكفي / Insufficient balance",
+  pending_request_exists: "لديك طلب معلّق بالفعل / You already have a pending request",
+};
+
+export async function requestPayout(amount: number) {
+  const { supabase } = await requireUser("payout", 5, 60_000);
+  const n = Number(amount);
+  if (!Number.isFinite(n) || n <= 0) throw new Error(PAYOUT_ERRORS.below_minimum);
+  const { error } = await supabase.rpc("request_payout", { p_amount: Math.floor(n * 100) / 100 });
+  if (error) {
+    const key = Object.keys(PAYOUT_ERRORS).find((k) => error.message.includes(k));
+    throw new Error(key ? PAYOUT_ERRORS[key] : error.message.slice(0, 120));
+  }
+  revalidatePath("/profile/settings/invites");
+}

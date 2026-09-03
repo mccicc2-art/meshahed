@@ -6521,3 +6521,49 @@ export async function getAdminPayouts(): Promise<AdminPayoutRow[]> {
     return [];
   }
 }
+
+/**
+ * 🆕 **رصيدُ الشريك وطلباتُه** (D-901) — `partner_balance` **صفرٌ اليوم
+ * بالواقع** (المدفوعاتُ لم تُفتح)، وهي الموضعُ الوحيد الذي يتغيّر يومَ
+ * الفتح؛ **فزرُّ الطلب يقرأ الرصيدَ ولا يقرأ ثابتاً**، ويقول «بانتظار
+ * الربط» ما دام صفراً (طلبُ أحمد: «اكتب بانتظار الربط بحيث أشوفه وما أنساه»).
+ */
+export async function getMyPartnerBalance(userId: string): Promise<number> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("partner_balance", { p_user: userId });
+    if (error || data === null || data === undefined) return 0;
+    return Number(data) || 0;
+  } catch {
+    return 0;
+  }
+}
+
+export type MyPayoutRow = {
+  id: string;
+  amount: number;
+  currency: string;
+  status: "pending" | "approved" | "paid" | "rejected";
+  requestedAt: string | null;
+  decidedAt: string | null;
+  note: string | null;
+};
+
+export async function getMyPayoutRequests(): Promise<MyPayoutRow[]> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("my_payout_requests");
+    if (error || !Array.isArray(data)) return [];
+    return (data as Record<string, unknown>[]).map((r) => ({
+      id: String(r.id),
+      amount: Number(r.amount ?? 0),
+      currency: (r.currency as string) ?? "SAR",
+      status: (r.status as MyPayoutRow["status"]) ?? "pending",
+      requestedAt: (r.requested_at as string) ?? null,
+      decidedAt: (r.decided_at as string) ?? null,
+      note: (r.note as string) ?? null,
+    }));
+  } catch {
+    return [];
+  }
+}
