@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import {
   getUser,
-  getProfile,
   getConversations,
   getUnreadShares,
   getUnreadSignals,
@@ -99,7 +98,7 @@ export default async function MessagesPage({
       {alerts ? (
         <>
           {header}
-          <AlertsPane locale={locale} />
+          <AlertsPane locale={locale} myId={user.id} />
         </>
       ) : (
         <InboxPane locale={locale} withParam={withParam ?? null} header={header} />
@@ -109,13 +108,20 @@ export default async function MessagesPage({
 }
 
 /** لوحُ الإشعارات — **يُجلب حين يُفتح تبويبُه وحدَه** (نمطُ D-125 باقياً) */
-async function AlertsPane({ locale }: { locale: Awaited<ReturnType<typeof getT>>["locale"] }) {
-  const [rows, profile] = await Promise.all([mySignals(), getProfile()]);
+async function AlertsPane({
+  locale,
+  myId,
+}: {
+  locale: Awaited<ReturnType<typeof getT>>["locale"];
+  /** معرّفُ القارئ من الصفحة — **لا نداءَ ملفٍّ لأجل اسمٍ لم يعد يُستعمل** (D-899) */
+  myId: string;
+}) {
+  const rows = await mySignals();
   return (
     <>
       {/* الختمُ بعد العرض — والشارةُ تسقط بالإنعاش الذي يليه */}
       <MarkSignalsSeen enabled={rows.some((r) => r.isNew)} />
-      <NotificationList rows={rows} myUsername={profile?.username ?? null} locale={locale} />
+      <NotificationList rows={rows} myId={myId} locale={locale} />
     </>
   );
 }
