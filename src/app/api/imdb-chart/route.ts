@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getUser } from "@/lib/data";
-import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { allow, retryAfter } from "@/lib/ratelimit";
 import {
   CANDIDATE_POOL,
@@ -49,7 +49,8 @@ export async function GET(request: Request) {
   // ===== التثبيت: المسوّدة تصير قائمةً مرتّبة =====
   if (step === "build") {
     try {
-      const supabase = await createClient();
+      // البناءُ بعميل الخدمة (D-898): الحارسُ جلسةٌ + حدُّ معدّل أعلاه، والدالّةُ لن تبقى ممنوحةً للمسجَّلين
+      const supabase = await createServiceClient();
       const { data, error } = await supabase.rpc("build_imdb_chart", { p_limit: 250 });
       if (error) return NextResponse.json({ error: error.message }, { status: 500 });
       return NextResponse.json({ built: data });
