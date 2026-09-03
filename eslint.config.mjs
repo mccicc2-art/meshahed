@@ -13,6 +13,58 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
   ]),
+  // سياجُ عميل الخدمة (D-898 · LOOPZ-AUD-0040): `src/lib/supabase/service.ts`
+  // يحمل مفتاح service_role الذي يتجاوز RLS. لا يستورده إلا مواضعُ الكتابة
+  // المجمَّعة والقياس المعدودة أدناه — استيرادُه من مكوّنٍ أو ملفٍّ مشترك أو
+  // مسارٍ آخر يوقف البناء بدل أن يتسرّب المفتاحُ بصمت. الكتلةُ قبل كتلة حدِّ
+  // النواة عمداً: الأخيرةُ تحلّ محلَّ خيارات القاعدة نفسِها في ملفّات النواة
+  // (لا دمجَ في flat config)، وهي أصلاً تمنع `@/lib/supabase/*` كلَّه هناك.
+  {
+    files: ["src/**/*.{ts,tsx}"],
+    ignores: [
+      "src/lib/supabase/service.ts",
+      "src/lib/omdb.ts",
+      "src/lib/imdbChart.ts",
+      "src/lib/loopzNews.ts",
+      "src/lib/newsReports.ts",
+      "src/lib/talkBulletins.ts",
+      "src/lib/actions.ts",
+      "src/app/api/imdb-chart/route.ts",
+      "src/app/api/lang-ping/route.ts",
+      "src/app/api/trailer-signal/route.ts",
+      "src/app/p/[[]code[]]/route.ts",
+    ],
+    rules: {
+      "@typescript-eslint/no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["@/lib/supabase/service", "**/supabase/service", "**/supabase/service.ts"],
+              message:
+                "service-role fence (D-898): only the listed bulk-write/telemetry call sites may import the service client — add the file to eslint.config.mjs deliberately, never around it.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  // والمفتاحُ نفسُه يُقرأ في ملفّين لا غير: service.ts وinstrumentation.ts
+  // (fetch خامّ قد يجري في Edge). قراءتُه في أيّ موضعٍ آخر خطأُ بناء.
+  {
+    files: ["src/**/*.{ts,tsx}"],
+    ignores: ["src/lib/supabase/service.ts", "src/instrumentation.ts"],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector:
+            "MemberExpression[object.object.name='process'][object.property.name='env'][property.name='SUPABASE_SERVICE_ROLE_KEY']",
+          message: "service-role fence (D-898): read SUPABASE_SERVICE_ROLE_KEY only in src/lib/supabase/service.ts.",
+        },
+      ],
+    },
+  },
   // حدُّ النواة المشتركة (Phase 9 §5.2 — الخطوة 1 من ترتيب البناء):
   // هذه الملفّات هي ما سيشاركه تطبيقُ Expo مع الويب كما هو. لا يجوز أن تستورد
   // شيئاً من Next أو DOM أو عميلِ الخادم أو المكوّنات أو ملفّات lib الواقفة
