@@ -8,12 +8,14 @@ import {
   getMyPartnerState,
   getMyPartnerApplication,
   getMyPartnerDetails,
+  getMyPartnerBalance,
+  getMyPayoutRequests,
   getProfile,
   type InviteStatus,
   type PartnerDetails,
 } from "@/lib/data";
 import { isPlus } from "@/lib/plan";
-import { applyPartner, cancelPartnerApplication, savePartnerDetails } from "@/lib/actions";
+import { applyPartner, cancelPartnerApplication, savePartnerDetails, requestPayout } from "@/lib/actions";
 import { getT } from "@/lib/locale";
 import { siteUrl } from "@/lib/site";
 import { num, type Dict, type Locale } from "@/lib/i18n";
@@ -78,6 +80,18 @@ async function withdrawApplication() {
   "use server";
   await cancelPartnerApplication();
   redirect(`${BASE}?tab=partners`);
+}
+
+/* 🆕 **طلبُ تحويل** (D-901) — قشرةٌ سطريّةٌ كأخواتها: تنقل المبلغَ وترجع
+   بالرسالة أو بالنجاح على نفس التبويب. */
+async function requestPayoutAction(formData: FormData) {
+  "use server";
+  try {
+    await requestPayout(Number(formData.get("amount") ?? 0));
+  } catch (e) {
+    redirect(`${BASE}?tab=partners&perr=${encodeURIComponent((e as Error).message.slice(0, 140))}`);
+  }
+  redirect(`${BASE}?tab=partners&pok=1`);
 }
 
 /* 🆕 **حفظُ بيانات التحويل** (D-858) — قشرةُ النموذج، والحكمُ في
@@ -179,7 +193,7 @@ function Field({
 export default async function Page({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string; edit?: string; apply?: string; all?: string; err?: string; derr?: string }>;
+  searchParams: Promise<{ tab?: string; edit?: string; apply?: string; all?: string; err?: string; derr?: string; perr?: string; pok?: string }>;
 }) {
   const user = await getUser();
   if (!user) redirect("/login");
@@ -545,7 +559,7 @@ async function PartnersTab({
 }: {
   t: Dict;
   locale: Locale;
-  sp: { edit?: string; apply?: string; err?: string; derr?: string };
+  sp: { edit?: string; apply?: string; err?: string; derr?: string; perr?: string; pok?: string };
 }) {
   const state = await getMyPartnerState();
   const editing = sp.edit === "1" && state.appStatus === "pending";
@@ -583,8 +597,24 @@ async function PartnersTab({
     const idDone = !!details?.id_file;
     const setupDone = xDone && bankDone && phoneDone && idDone;
     const url = siteUrl(`/p/${state.code}`);
-    const available = 0;
-    const pending = 0;
+    /* 🆕 D-901: الرصيدُ يُقرأ لا يُثبَّت — `partner_balance` صفرٌ اليوم
+       **بالواقع** (لا قناةَ دفع)، وهي الموضعُ الوحيد الذي يتغيّر يومَ الفتح.
+       **فالزرُّ يقول «بانتظار الربط» ما دام صفراً، ويصير طلباً حقيقيّاً
+       من نفسِه حين يبلغ الحدّ** — لا ثابتَ يُنسى ولا سطرَ يُعدَّل. */
+    const [available, payouts] = await Promise.all([
+      me ? getMyPartnerBalance(me.id) : Promise.resolve(0),
+      getMyPayoutRequests(),
+    ]);
+    const hasPendingPayout = payouts.some((r) => r.status === "pending");
+    const canRequest = available >= 100 && !hasPendingPayout;
+    const pending = payouts
+      .filter((r) => r.status === "pending" || r.status === "approved")
+      .reduce((sum, r) => sum + r.amount, 0);
+    const payoutStatus = (st: string) =>
+      st === "paid" ? t.prtPayoutStPaid
+      : st === "approved" ? t.prtPayoutStApproved
+      : st === "rejected" ? t.prtPayoutStRejected
+      : t.prtPayoutStPending;
     /* «اشتركوا» صفرٌ حقيقيٌّ لا ثابتٌ مزيَّف: `subscribed_at` لا يكتبه
        شيءٌ قبل قناة الاشتراك — يوم تفتح يصير قراءةً حيّة */
     const paid = 0;
@@ -622,12 +652,61 @@ async function PartnersTab({
           </p>
           <div className="mt-3 flex items-center justify-between gap-3">
             <span className="text-12 text-muted">{t.prtMinPayout}</span>
-            {/* معطَّلٌ بصدق: الرصيدُ دون الحدّ الأدنى — والسحبُ كلُّه مع فتح الدفع */}
-            <button type="button" disabled className={`${outlineBtn} px-5 py-2 text-14`}>
-              {t.prtWithdraw}
-            </button>
+            {/* 🆕 D-901: ثلاثُ حالاتٍ صادقة — **صفرٌ = «بانتظار الربط»** (طلبُ
+                أحمد بنصّه، ليُرى ولا يُنسى) · دون الحدّ = «سحب» معطَّل ·
+                بلغ الحدّ = طلبٌ حقيقيٌّ بالرصيد كلِّه، **والحارسُ في جسم
+                `request_payout`** (D-011). */}
+            {canRequest ? (
+              <form action={requestPayoutAction}>
+                <input type="hidden" name="amount" value={available} />
+                <button type="submit" className={`${outlineBtn} px-5 py-2 text-14`}>
+                  {t.prtRequestPayout}
+                </button>
+              </form>
+            ) : (
+              <button type="button" disabled className={`${outlineBtn} px-5 py-2 text-14`}
+                      title={available === 0 ? t.prtAwaitingLink : t.prtMinPayout}>
+                {available === 0 && !hasPendingPayout ? t.prtAwaitingLink : t.prtWithdraw}
+              </button>
+            )}
           </div>
+          {sp.perr && <p className="mt-2 text-12 text-[color:var(--error)]">⚠ {sp.perr}</p>}
+          {sp.pok && <p className="mt-2 text-12 text-[color:var(--success)]">✓ {t.prtPayoutOk}</p>}
         </div>
+
+        {/* 🆕 D-901: طلباتُ التحويل — تظهر حين يكون لها صفٌّ واحدٌ على الأقلّ؛
+            **وفراغُها اليوم حقيقيٌّ** فلا تُرسم بطاقةٌ فارغةٌ فوق بطاقةٍ فارغة. */}
+        {payouts.length > 0 && (
+          <section className="space-y-3">
+            <SectionTitle>{t.prtPayoutsListTitle}</SectionTitle>
+            <div className={settingsCardRows}>
+              {payouts.map((r) => (
+                <div key={r.id} className="flex items-center justify-between gap-3 px-4 py-3">
+                  <div className="min-w-0">
+                    <p className="text-14 font-bold tabular-nums" dir="ltr">
+                      {t.prtCurrency} {money(r.amount)}
+                    </p>
+                    <p className="text-12 text-muted">
+                      {r.requestedAt ? formatDate(r.requestedAt, t) : ""}
+                      {r.note ? ` · ${r.note}` : ""}
+                    </p>
+                  </div>
+                  <span
+                    className={`shrink-0 rounded-full px-2.5 py-1 text-12 font-bold ${
+                      r.status === "paid"
+                        ? "bg-[color:var(--success)]/15 text-[color:var(--success)]"
+                        : r.status === "rejected"
+                          ? "bg-surface-2 text-muted"
+                          : "bg-accent/15 text-accent"
+                    }`}
+                  >
+                    {payoutStatus(r.status)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
         <section>
           <h2 className="px-1 mb-1.5 text-12 font-semibold uppercase tracking-wide text-muted">
