@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { allow } from "@/lib/ratelimit";
 
 /**
@@ -45,7 +45,8 @@ export async function POST(req: Request) {
       (req.headers.get("accept-language") ?? "").split(",")[0]?.split(";")[0]?.trim() ?? "";
     if (!first) return new NextResponse(null, { status: 204 });
 
-    const supabase = await createClient();
+    // عميلُ الخدمة (D-898): بابُ العدّاد هذا المسارُ وحاجزُه، لا PostgREST مباشرةً
+    const supabase = await createServiceClient();
     await supabase.rpc("bump_visit_lang", { p_lang: first });
   } catch {
     /* لا شيء — انظر رأسَ الملفّ */
