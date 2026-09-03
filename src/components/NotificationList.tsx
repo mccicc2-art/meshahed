@@ -28,12 +28,21 @@ import { timeAgo } from "@/lib/when";
  */
 export function NotificationList({
   rows,
-  myUsername,
+  myId,
   locale,
 }: {
   rows: Signal[];
-  /** اسمُك — **وجهةُ إشعار الردّ صفحةُ تعليقك** (D-257) */
-  myUsername: string | null;
+  /**
+   * **معرّفُك لا اسمُك** — وجهةُ إشعار الردّ صفحةُ تعليقك (D-257).
+   *
+   * 🔴 D-899 (بلاغُ عضو: «ضغطت على ردّ مشعل ولا ودّاني له» ⇢ Page not
+   * found): المقطعُ الأخير في `/review/<type>/<id>/<user>` **معرّفُ
+   * الكاتب** — الصفحةُ تطابقه بـ`x.id` (وكذلك كلُّ رابطِ رأيٍ في
+   * `ActivityFeed`/`PeopleBoard`/`TitleReviewRow`) — **وكان هذا وحدَه
+   * يمرّر اسمَ المستخدم**، فكلُّ إشعارِ ردٍّ لمن له اسمٌ يفتح 404، ومن
+   * لا اسمَ له كان يرتدّ إلى صفحة العمل «فيعمل» ويُخفي العطل.
+   */
+  myId: string | null;
   locale: Locale;
 }) {
   const t = getDict(locale);
@@ -107,8 +116,8 @@ export function NotificationList({
             : s.kind === "talk_reply" && s.tmdbId
               ? `/talk/${s.mediaType ?? "movie"}/${s.tmdbId}`
               : s.kind === "reply" && s.tmdbId
-                ? myUsername
-                  ? `/review/${s.mediaType ?? "movie"}/${s.tmdbId}/${myUsername}`
+                ? myId
+                  ? `/review/${s.mediaType ?? "movie"}/${s.tmdbId}/${myId}`
                   : titleHref
                 : (profileHref(s.person) ?? titleHref);
 
