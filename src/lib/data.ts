@@ -6425,3 +6425,99 @@ export const getContentPrefs = cache(async (): Promise<ContentPrefs> => {
     return EMPTY_CONTENT_PREFS;
   }
 });
+
+/**
+ * 🆕 **بحثُ المستخدمين للإدارة** (D-901) — يقرأ `admin_users_search`
+ * وحدَها، **والحارسُ `am_admin()` في جسم الدالّة لا هنا** (D-011):
+ * فمن نادى النقطةَ بغير صلاحيّةٍ عاد بصفرِ صفوفٍ لا بخطأٍ يُغري بالمحاولة.
+ * ⚠️ **والبريدُ يصل مقنَّعاً من القاعدة نفسِها** — لا يُفكُّ هنا ولا يُعرض
+ * كاملاً في أيِّ سطح.
+ */
+export type AdminUserRow = {
+  id: string;
+  username: string | null;
+  nickname: string | null;
+  avatarUrl: string | null;
+  createdAt: string | null;
+  lastSignInAt: string | null;
+  plan: string | null;
+  isAdmin: boolean;
+  suspendedAt: string | null;
+  suspendedReason: string | null;
+  emailMasked: string | null;
+};
+
+export async function getAdminUsers(q: string, limit = 25): Promise<AdminUserRow[]> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("admin_users_search", {
+      p_q: q ?? "",
+      lim: limit,
+    });
+    if (error || !Array.isArray(data)) return [];
+    return (data as Record<string, unknown>[]).map((r) => ({
+      id: String(r.id),
+      username: (r.username as string) ?? null,
+      nickname: (r.nickname as string) ?? null,
+      avatarUrl: (r.avatar_url as string) ?? null,
+      createdAt: (r.created_at as string) ?? null,
+      lastSignInAt: (r.last_sign_in_at as string) ?? null,
+      plan: (r.plan as string) ?? null,
+      isAdmin: r.is_admin === true,
+      suspendedAt: (r.suspended_at as string) ?? null,
+      suspendedReason: (r.suspended_reason as string) ?? null,
+      emailMasked: (r.email_masked as string) ?? null,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * 🆕 **طابورُ طلبات التحويل** (D-901) — `admin_payout_queue` وحدَها،
+ * والحارسُ `am_admin()` في جسمها. **المعلَّقُ أوّلاً بترتيب الدالّة نفسِها.**
+ * ⚠️ **والطابورُ فارغٌ اليوم بحقّ**: المدفوعاتُ لم تُفتح فلا عمولةَ
+ * تُستحقّ — **وفراغُه صحّةٌ لا عطل.**
+ */
+export type AdminPayoutRow = {
+  id: string;
+  partnerId: string;
+  username: string | null;
+  nickname: string | null;
+  amount: number;
+  currency: string;
+  status: "pending" | "approved" | "paid" | "rejected";
+  requestedAt: string | null;
+  decidedAt: string | null;
+  note: string | null;
+  iban: string | null;
+  bank: string | null;
+  holder: string | null;
+  detailsChanged: boolean;
+};
+
+export async function getAdminPayouts(): Promise<AdminPayoutRow[]> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("admin_payout_queue", { lim: 100 });
+    if (error || !Array.isArray(data)) return [];
+    return (data as Record<string, unknown>[]).map((r) => ({
+      id: String(r.id),
+      partnerId: String(r.partner_id),
+      username: (r.username as string) ?? null,
+      nickname: (r.nickname as string) ?? null,
+      amount: Number(r.amount ?? 0),
+      currency: (r.currency as string) ?? "SAR",
+      status: (r.status as AdminPayoutRow["status"]) ?? "pending",
+      requestedAt: (r.requested_at as string) ?? null,
+      decidedAt: (r.decided_at as string) ?? null,
+      note: (r.note as string) ?? null,
+      iban: (r.iban_snapshot as string) ?? null,
+      bank: (r.bank_snapshot as string) ?? null,
+      holder: (r.holder_snapshot as string) ?? null,
+      detailsChanged: r.details_changed === true,
+    }));
+  } catch {
+    return [];
+  }
+}

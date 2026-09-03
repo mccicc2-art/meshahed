@@ -6178,3 +6178,53 @@ export async function adminDecideVerification(
   if (error) throw new Error("تعذّر تنفيذ القرار / Could not apply the decision");
   revalidatePath("/admin/verify");
 }
+
+/**
+ * 🆕 **إيقافُ حسابٍ وفكُّه** (D-901) — طلبُ أحمد: «أقدر أوقف حساب أي شخص».
+ *
+ * **الفعلُ كلُّه في القاعدة**: منعُ الدخول (`banned_until` + مسحُ رموز
+ * التجديد، **وإلّا بقي الموقوفُ داخلاً ساعة**) وإخفاءُ المحتوى (البوّابةُ
+ * `can_view_profile` + قلبُ المنشورات والقوائم) وكتابةُ `admin_audit`.
+ * **وهذه القشرةُ تنقل الطلبَ لا أكثر** — الحارسُ `am_admin()` في جسم
+ * الدالّة (D-011)، **والسببُ إلزاميٌّ هناك لا هنا** فلا تُخدع الواجهةُ
+ * بنداءٍ مباشر.
+ */
+export async function adminSuspendUser(userId: string, reason: string) {
+  userId = uuid(userId);
+  const { supabase } = await requireUser("admin", 30, 60_000);
+  const { error } = await supabase.rpc("admin_suspend_user", {
+    p_user: userId,
+    p_reason: String(reason ?? "").slice(0, 300),
+  });
+  if (error) throw new Error(error.message.slice(0, 160));
+  revalidatePath("/admin/users");
+}
+
+export async function adminUnsuspendUser(userId: string) {
+  userId = uuid(userId);
+  const { supabase } = await requireUser("admin", 30, 60_000);
+  const { error } = await supabase.rpc("admin_unsuspend_user", { p_user: userId });
+  if (error) throw new Error(error.message.slice(0, 160));
+  revalidatePath("/admin/users");
+}
+
+/**
+ * 🆕 **قرارُ طلب تحويل** (D-901) — قشرةٌ تنقل الطلب، **والحالاتُ تمشي في
+ * اتّجاهٍ واحدٍ في جسم الدالّة**: معلَّق → موافَق → مصروف، والرفضُ من
+ * المعلَّق وحدَه، **ولا يُنقَض قرارٌ صُرف.**
+ */
+export async function adminDecidePayout(
+  id: string,
+  decision: "approved" | "paid" | "rejected",
+  note?: string,
+) {
+  id = uuid(id);
+  const { supabase } = await requireUser("admin", 30, 60_000);
+  const { error } = await supabase.rpc("admin_decide_payout", {
+    p_id: id,
+    p_decision: decision,
+    p_note: note ? String(note).slice(0, 300) : null,
+  });
+  if (error) throw new Error(error.message.slice(0, 160));
+  revalidatePath("/admin/payouts");
+}
