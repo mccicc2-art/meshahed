@@ -5,6 +5,7 @@ import { cookies, headers } from "next/headers";
 import { PERSON_COLS } from "@/lib/people";
 import { withIdentities, withPersonIdentities } from "@/lib/data";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { LOCALE_COOKIE, normalizeLocale } from "@/lib/i18n";
 import { REGION_COOKIE, normalizeRegion } from "@/lib/region";
 import { TITLE_MODE_COOKIE, parseTitleMode } from "@/lib/titleMode";
@@ -538,7 +539,8 @@ export async function logProviderEvent(input: {
   country: string;
 }) {
   try {
-    const supabase = await createClient();
+    // عميلُ الخدمة (D-898): الحدثُ بلا هويّةٍ أصلاً، وبابُه الخادمُ لا المفتاحُ العامّ
+    const supabase = await createServiceClient();
     await supabase.rpc("log_provider_event", {
       p_event: String(input.event).slice(0, 40),
       p_tmdb: intId(input.tmdbId),

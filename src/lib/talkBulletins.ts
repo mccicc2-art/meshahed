@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { getTvIn, type Episode, type TvDetails } from "@/lib/tmdb";
 
 /**
@@ -228,6 +229,8 @@ export async function runTalkBulletinSlice(limit = SLICE): Promise<{
   const bulletins = built.filter((b): b is GeneratedBulletin => b !== null);
   if (!bulletins.length) return { checked: rows.length, posted: 0 };
 
-  const { data: saved } = await supabase.rpc("set_talk_bulletins", { p_rows: bulletins });
+  // الكتابةُ بعميل الخدمة (D-898) — القراءةُ أعلاه تبقى على عميل الجلسة
+  const writer = await createServiceClient();
+  const { data: saved } = await writer.rpc("set_talk_bulletins", { p_rows: bulletins });
   return { checked: rows.length, posted: Number(saved ?? 0) };
 }

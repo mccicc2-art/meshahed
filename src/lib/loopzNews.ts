@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 
 /**
  * **أخبارُنا نحن** (D-211) — الخبرُ تغيّرٌ نرصده، لا مقالٌ نأخذه.
@@ -485,12 +486,14 @@ export async function runNewsSlice(limit = 26): Promise<{
     }
   }
 
+  /* الكتابتان بعميل الخدمة (D-898) — القراءاتُ أعلاه تبقى على عميل الجلسة */
+  const writer = await createServiceClient();
   let saved = 0;
   if (posts.length) {
-    const { data } = await supabase.rpc("set_news_posts", { p_rows: posts });
+    const { data } = await writer.rpc("set_news_posts", { p_rows: posts });
     saved = Number(data ?? 0);
   }
-  const { data: snapCount } = await supabase.rpc("set_title_snapshots", { p_rows: snaps });
+  const { data: snapCount } = await writer.rpc("set_title_snapshots", { p_rows: snaps });
 
   return { checked: snaps.length, posts: saved, snapshots: Number(snapCount ?? 0) };
 }

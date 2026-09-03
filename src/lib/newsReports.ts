@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { NEWS_SOURCES, fetchFeed, matchTitle } from "@/lib/news";
 import type { GeneratedPost } from "@/lib/loopzNews";
 
@@ -144,7 +144,8 @@ export async function runReportSlice(): Promise<{ found: number; saved: number }
   }
   if (!named.length) return { found: rows.length, saved: 0 };
 
-  const supabase = await createClient();
+  // الكتابةُ بعميل الخدمة (D-898): الدالّةُ لن تبقى ممنوحةً للمفتاح العامّ
+  const supabase = await createServiceClient();
   const { data } = await supabase.rpc("set_news_posts", { p_rows: named });
   return { found: rows.length, saved: Number(data ?? 0) };
 }

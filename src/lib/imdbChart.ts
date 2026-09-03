@@ -1,4 +1,4 @@
-import { createClient } from "./supabase/server";
+import { createServiceClient } from "./supabase/service";
 
 /**
  * قائمة IMDb الحقيقية — من ملفّاتها المفتوحة لا من بِركة TMDB (D-135).
@@ -271,7 +271,8 @@ export async function resolveOne(c: Candidate): Promise<ResolvedRow | null> {
 export async function saveResolved(rows: ResolvedRow[]): Promise<number> {
   if (!rows.length) return 0;
   try {
-    const supabase = await createClient();
+    // الكتابةُ بعميل الخدمة (D-898): الدالّةُ لن تبقى ممنوحةً للمفتاح العامّ
+    const supabase = await createServiceClient();
     const { data, error } = await supabase.rpc("set_imdb_pool", { p_rows: rows });
     if (error) return 0;
     return Number(data ?? 0);

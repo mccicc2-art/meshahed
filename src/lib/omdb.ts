@@ -15,6 +15,7 @@
 
 import { movieImdbId, tvImdbId, type SearchResult } from "./tmdb";
 import { createClient } from "./supabase/server";
+import { createServiceClient } from "./supabase/service";
 
 export interface ExternalRatings {
   /** «8.1» — من IMDb */
@@ -537,7 +538,8 @@ export async function attachImdbRatings<T extends SearchResult>(rows: T[]): Prom
   // ===== ٣ · الكتابة للمخزن — دفعةً واحدة، وفشلها لا يعطّل العرض =====
   if (fetched.length) {
     try {
-      const supabase = await createClient();
+      // الكتابةُ بعميل الخدمة (D-898): الدالّةُ لن تبقى ممنوحةً للمفتاح العامّ
+      const supabase = await createServiceClient();
       await supabase.rpc("set_imdb_ratings", { p_rows: fetched });
     } catch {
       /* الهجرة لم تُشغَّل بعد — الخبيئة اليومية لطبقة fetch تبقى الشبكة */
