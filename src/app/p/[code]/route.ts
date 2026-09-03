@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 
 /**
  * 🆕 بابُ الشريك (D-770) — `loopztv.com/p/<code>`.
@@ -35,7 +35,8 @@ export async function GET(
       sameSite: "lax",
     });
     try {
-      const supabase = await createClient();
+      // عميلُ الخدمة (D-898): العدُّ من الخادم وحده، والدالّةُ لن تبقى ممنوحةً للمفتاح العامّ
+      const supabase = await createServiceClient();
       // كودٌ غيرُ موجودٍ صفرٌ صامتٌ في جسم الدالّة — لا شاشةَ خطأٍ لرابطٍ مكسور
       await supabase.rpc("bump_partner_click", { p_code: clean });
     } catch {
