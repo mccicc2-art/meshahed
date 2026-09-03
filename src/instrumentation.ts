@@ -32,7 +32,10 @@ export async function onRequestError(
 ): Promise<void> {
   try {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    /* مفتاحُ الخدمة إن وُجد (D-898) وإلا العامُّ: بعد سحب منح `anon` عن
+       الدالّة يبقى هذا البابُ يعمل — وfetch خامٌّ لأنّ الملفَّ قد يجري في
+       Edge حيث لا عميلَ خادمٍ ولا كوكيز. */
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
     if (!url || !key) return;
 
     const e = err as { message?: string; digest?: string; name?: string };
