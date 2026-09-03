@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { allow } from "@/lib/ratelimit";
 
 /**
@@ -47,7 +47,8 @@ export async function POST(req: Request) {
     const provider = body?.provider === "file" ? "file" : "youtube";
     if (!kind) return new NextResponse(null, { status: 204 });
 
-    const supabase = await createClient();
+    // عميلُ الخدمة (D-898): بابُ السجلّ هذا المسارُ وحاجزُه، لا PostgREST مباشرةً
+    const supabase = await createServiceClient();
     await supabase.rpc("log_runtime_error", {
       p_route: "/trailers#player",
       p_digest: `${kind}:${code}`,
