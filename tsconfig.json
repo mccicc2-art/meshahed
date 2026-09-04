@@ -6,6 +6,10 @@
     "skipLibCheck": true,
     "strict": true,
     "noEmit": true,
+    /* مشغّلُ Node يوجب لاحقةَ `.ts` صريحةً في استيراد الاختبارات (ESM لا
+       يخمّن الامتداد)، و`tsc` يرفضها إلا بهذا. **إباحةٌ لا إلزام**: لا
+       استيرادَ في التطبيق يتغيّر، و`noEmit` فوقه فلا مخرجاتِ ترجمةٍ أصلاً. */
+    "allowImportingTsExtensions": true,
     "esModuleInterop": true,
     "module": "esnext",
     "moduleResolution": "bundler",
