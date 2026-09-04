@@ -35,6 +35,18 @@ export type AdminOverview = {
   content: { follows: number; ratings: number; lists: number; posts: number; messages: number; communities: number };
 };
 
+/**
+ * 🆕 **ملخّصُ الاختبار المغلق** (D-909) — نداءٌ ثانٍ صغيرٌ بجانب
+ * `admin_overview` لا توسيعٌ لها: **توسيعُها كان يعني إعادةَ كتابة مئةٍ
+ * وثلاثين سطراً حيّةً لتُضاف إليها ستّةَ عشر**، **وخطأُ نسخٍ في نداءٍ
+ * يقرؤه الفهرسُ كلَّ فتحة أغلى من رحلةٍ ثانية.**
+ */
+export type AdminTestersSummary = {
+  testers: { total: number; with_account: number; signed_in: number; active_7d: number };
+  /** `app_users` = من فتح **التطبيق** لا الموقع — وهو وحدَه دليلُ التثبيت. */
+  platforms: { platform: string; users: number; app_users: number }[];
+};
+
 export async function getAdminOverview(): Promise<AdminOverview | null> {
   try {
     const supabase = await createClient();
@@ -46,7 +58,120 @@ export async function getAdminOverview(): Promise<AdminOverview | null> {
   }
 }
 
-/** رأسُ `main` على GitHub — عامٌّ بلا توكن، ويُخزَّن دقيقةً كي لا تُحرق حصّةُ ٦٠/ساعة. */
+export async function getAdminTestersSummary(): Promise<AdminTestersSummary | null> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("admin_testers_summary");
+    if (error || !data) return null;
+    return data as AdminTestersSummary;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 🆕 **صفُّ مختبِرٍ** (D-909) — سطرٌ من قائمة الدعوة مضموماً على حسابه
+ * إن وُجد. **و`userId = null` هو الجواب**: بريدٌ دُعي ولم يُفتح به حساب.
+ */
+export type AdminTesterRow = {
+  email: string;
+  note: string | null;
+  invitedAt: string | null;
+  userId: string | null;
+  username: string | null;
+  nickname: string | null;
+  createdAt: string | null;
+  lastSignInAt: string | null;
+  lastSeenAt: string | null;
+  activeDays30: number;
+  platforms: string | null;
+  onApp: boolean;
+  suspendedAt: string | null;
+};
+
+/** 🆕 **مرشَّحُ اختبار** (D-909) — أندرويديٌّ من المتصفّح، بريدُه مقنَّع. */
+export type AdminCandidateRow = {
+  userId: string;
+  username: string | null;
+  nickname: string | null;
+  avatarUrl: string | null;
+  emailMasked: string | null;
+  createdAt: string | null;
+  seenAt: string | null;
+  activeDays30: number;
+  watched: number;
+};
+
+/**
+ * **قائمةُ المختبِرين.** ⚠️ **والفشلُ قائمةٌ فارغةٌ لا شاشةٌ مكسورة**:
+ * الصفحةُ تقول «لا أحد» بنفسها — **ودالّةٌ غائبةٌ قبل تشغيل الهجرة
+ * تُقرأ هكذا**، فيُشحن الكودُ قبل SQL بلا ضرر.
+ */
+export async function getAdminTesters(): Promise<AdminTesterRow[]> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("admin_testers");
+    if (error || !Array.isArray(data)) return [];
+    return (data as Record<string, unknown>[]).map((r) => ({
+      email: String(r.email),
+      note: (r.note as string) ?? null,
+      invitedAt: (r.invited_at as string) ?? null,
+      userId: (r.user_id as string) ?? null,
+      username: (r.username as string) ?? null,
+      nickname: (r.nickname as string) ?? null,
+      createdAt: (r.created_at as string) ?? null,
+      lastSignInAt: (r.last_sign_in_at as string) ?? null,
+      lastSeenAt: (r.last_seen_at as string) ?? null,
+      activeDays30: Number(r.active_days_30 ?? 0),
+      platforms: (r.platforms as string) ?? null,
+      onApp: r.on_app === true,
+      suspendedAt: (r.suspended_at as string) ?? null,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+/** **مرشَّحو أندرويد** — نافذةُ الأيّام معاملٌ لأنّ «الآن» تضيق وتتّسع. */
+export async function getAdminAndroidCandidates(days = 30): Promise<AdminCandidateRow[]> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("admin_android_candidates", { p_days: days });
+    if (error || !Array.isArray(data)) return [];
+    return (data as Record<string, unknown>[]).map((r) => ({
+      userId: String(r.user_id),
+      username: (r.username as string) ?? null,
+      nickname: (r.nickname as string) ?? null,
+      avatarUrl: (r.avatar_url as string) ?? null,
+      emailMasked: (r.email_masked as string) ?? null,
+      createdAt: (r.created_at as string) ?? null,
+      seenAt: (r.seen_at as string) ?? null,
+      activeDays30: Number(r.active_days_30 ?? 0),
+      watched: Number(r.watched ?? 0),
+    }));
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * **كشفُ بريدٍ واحد** — ⚠️ **فعلٌ لا عرض**: القوائمُ مقنَّعةٌ دائماً،
+ * **وكلُّ كشفٍ يُكتب في `admin_audit`** بجسم الدالّة. **ودعوةُ مرشَّحٍ
+ * إلى Play تحتاج بريدَه كاملاً** — فالبابُ يُفتح بقدر حاجته لا أكثر
+ * (D-138 روحاً)، **وتحديثُ الصفحة يُسجَّل من جديد لأنّه كشفٌ من جديد.**
+ */
+export async function revealUserEmail(userId: string): Promise<string | null> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("admin_reveal_email", { p_user: userId });
+    if (error || typeof data !== "string") return null;
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+/** رأسُ `main` على GitHub — عامٌّ بلا توكن، ويُخزّن دقيقةً كي لا تُحرق حصّةُ ٦٠/ساعة. */
 export async function getGitHubHead(): Promise<{ sha: string; message: string; date: string } | null> {
   try {
     const res = await fetch("https://api.github.com/repos/mccicc2-art/meshahed/commits/main", {
@@ -111,7 +236,7 @@ export const PROVIDERS: Provider[] = [
   {
     name: "GoDaddy", plan: "نطاق مدفوع — loopztv.com", paid: true,
     what: "النطاقُ وسجلّاتُه.",
-    risk: "انتهاءُ التجديد يُسقط الموقعَ كلَّه بلا إنذارٍ من Vercel. ⚠️ تاريخُ التجديد غيرُ موثَّقٍ في ملفّات المشروع.",
+    risk: "انتهاءُ التجديد يُسقط الموقعَ كلَّه بلا إنذارٍ من Vercel. ⚠️ تاريخُ التجديد غيرُ موثّقٍ في ملفّات المشروع.",
     dashboard: "https://dcc.godaddy.com/control/portfolio",
   },
   {
