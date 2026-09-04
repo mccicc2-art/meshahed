@@ -149,6 +149,8 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    /* `api/v1` مستثنًى: طلباتُ التطبيق تحمل `Bearer` لا كوكي، فلا جلسةَ
+       هنا تُجدَّد — ورحلةُ `getUser` عليها هدرٌ محض (Phase 9 §4.3) */
+    "/((?!_next/static|_next/image|favicon.ico|api/v1|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

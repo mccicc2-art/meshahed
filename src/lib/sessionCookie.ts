@@ -81,6 +81,22 @@ export function decodeSessionCookie(
     const session: unknown = JSON.parse(raw);
     const token = (session as { access_token?: unknown })?.access_token;
     if (typeof token !== "string") return null;
+    return decodeAccessToken(token);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * يفكّ رمزَ وصولٍ خاماً (JWT) إلى `sub` و`exp` — **الحمولةُ لا التوقيع**.
+ *
+ * 🆕 **فُصل عن الكوكي لأجل التطبيق** (Phase 9 §4.3): الجوّالُ لا يحمل
+ * كوكي، بل `Authorization: Bearer <token>` — **والرمزُ داخل الكوكي هو
+ * الرمزُ نفسُه**، فالقراءةُ واحدةٌ من مصدرين. وكما في الكوكي: القيمةُ
+ * **للفلترة والعرض فقط**، والتحقّقُ الحقيقيُّ عند RLS مع كلِّ صفّ.
+ */
+export function decodeAccessToken(token: string): SessionClaims | null {
+  try {
     const segments = token.split(".");
     if (segments.length !== 3) return null;
     const payload: unknown = JSON.parse(b64ToUtf8(segments[1]));

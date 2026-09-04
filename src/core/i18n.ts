@@ -2222,6 +2222,16 @@ const ar = {
     "ما قدرنا نحمّل هذا الجزء الآن. جرّب مرة ثانية، وإذا تكرر الخطأ حدّث الصفحة.",
   errorRetry: "حاول مجدداً",
   errorHome: "الرجوع للرئيسية",
+  /* 🆕 أخطاءُ `/api/v1` — **الخادمُ يعيد المفتاحَ لا النصّ** (Phase 9 §4.3 القاعدة ٥):
+     التطبيقُ يترجم بلغة الجهاز، والويبُ بلغة الكوكي، **من هذا القاموس وحدَه.** */
+  apiUnauthenticated: "سجّل دخولك للمتابعة",
+  apiForbidden: "ليس لديك صلاحية لهذا",
+  apiNotFound: "غير موجود",
+  apiInvalidInput: "بيانات غير صالحة",
+  apiRateLimited: "طلبات كثيرة — انتظر قليلاً",
+  apiConflict: "تعذّر التنفيذ: هناك تعارض",
+  apiUpstream: "تعذّر الوصول إلى مزوّد البيانات",
+  apiInternal: "صار خلل غير متوقّع",
   errorCode: (d: string) => `رمز الخطأ: ${d}`,
   notFoundTitle: "الصفحة غير موجودة",
   notFoundBody:
@@ -3819,6 +3829,14 @@ const en: Dict = {
     "We couldn't load this part right now. Try again — if it keeps failing, refresh the page.",
   errorRetry: "Try again",
   errorHome: "Back to home",
+  apiUnauthenticated: "Sign in to continue",
+  apiForbidden: "You don't have permission for this",
+  apiNotFound: "Not found",
+  apiInvalidInput: "Invalid input",
+  apiRateLimited: "Too many requests — wait a moment",
+  apiConflict: "Couldn't complete: there's a conflict",
+  apiUpstream: "Couldn't reach the data provider",
+  apiInternal: "Something went wrong",
   errorCode: (d: string) => `Error code: ${d}`,
   notFoundTitle: "Page not found",
   notFoundBody:

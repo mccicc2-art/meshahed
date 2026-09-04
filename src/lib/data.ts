@@ -1,6 +1,6 @@
 import { cache } from "react";
-import { createClient } from "@/lib/supabase/server";
-import { decodeSessionCookie, sessionCookieParts } from "@/lib/sessionCookie";
+import { createClient, bearerToken } from "@/lib/supabase/server";
+import { decodeAccessToken, decodeSessionCookie, sessionCookieParts } from "@/lib/sessionCookie";
 import { PERSON_COLS, type PersonLite } from "@/core/people";
 import { episodeKey } from "@/core/keys";
 import { LOOPZ_ID } from "@/core/loopz";
@@ -86,9 +86,16 @@ export const getUserId = cache(async (): Promise<string | null> => {
     const { cookies } = await import("next/headers");
     const store = await cookies();
     const parts = sessionCookieParts(store.getAll());
-    if (parts.length === 0) return null; // زائر — بلا رحلةٍ أصلاً
 
-    const claims = decodeSessionCookie(parts);
+    // 🆕 التطبيق: لا كوكي بل `Bearer` — الرمزُ نفسُه من بابٍ آخر (Phase 9 §4.3)
+    let claims: ReturnType<typeof decodeSessionCookie> = null;
+    if (parts.length === 0) {
+      const token = await bearerToken();
+      if (!token) return null; // زائر — بلا رحلةٍ أصلاً
+      claims = decodeAccessToken(token);
+    } else {
+      claims = decodeSessionCookie(parts);
+    }
     // مشوَّهٌ أو منتهٍ أو على وشك؟ التحقّق الكامل يجدّد الجلسة —
     // لا نستعلم بتوكنٍ ميّت فيظهر «حسابٌ فارغ»
     if (!claims || !claims.exp || claims.exp * 1000 <= Date.now() + 5000)
