@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { ImageResponse } from "next/og";
 import { getPublicList } from "@/lib/data";
-import { posterUrl } from "@/lib/media";
+import { posterUrl } from "@/core/media";
 
 export const runtime = "nodejs";
 

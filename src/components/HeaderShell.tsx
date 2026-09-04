@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { hidesAppHeader, hidesAppHeaderOnMobile } from "@/lib/chromeRules";
+import { hidesAppHeader, hidesAppHeaderOnMobile } from "@/core/chromeRules";
 
 /**
  * غلاف الشريط العلوي.

@@ -1,9 +1,9 @@
 import { ImageResponse } from "next/og";
 import { getTitleReviews } from "@/lib/data";
-import { displayNameOf } from "@/lib/people";
+import { displayNameOf } from "@/core/people";
 import { getMovie, getTv, posterUrl } from "@/lib/tmdb";
 import { displayWorkTitle } from "@/lib/wikidata";
-import { dirOf } from "@/lib/dir";
+import { dirOf } from "@/core/dir";
 import { getT } from "@/lib/locale";
 import { OG_SIZE, OG_CONTENT_TYPE, ogFonts, threadOgCard } from "@/lib/og";
 

@@ -5,7 +5,7 @@ import { updateUiState } from "@/lib/actions";
 import { openPlusGate } from "@/lib/plusGate";
 import { chipRow, chipClass } from "./ui/controls";
 import { buttonClass } from "@/components/ui/Button";
-import { type Locale } from "@/lib/i18n";
+import { type Locale } from "@/core/i18n";
 import {
   TEMPLATES_CAP,
   TEMPLATE_NAME_MAX,
@@ -16,7 +16,7 @@ import {
   upsertTemplate,
   type PrefTemplate,
   type TemplateSurface,
-} from "@/lib/prefTemplates";
+} from "@/core/prefTemplates";
 
 /**
  * ====== صفُّ قوالب التخصيص — سطحان، مكوّنٌ واحد (D-822) ======

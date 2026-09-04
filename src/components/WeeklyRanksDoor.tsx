@@ -1,6 +1,6 @@
 import { Icon } from "@/components/Icon";
 import { ProfileStatSheet } from "@/components/ProfileStatSheet";
-import { getDict, num, type Locale } from "@/lib/i18n";
+import { getDict, num, type Locale } from "@/core/i18n";
 import type { WeeklyRank } from "@/lib/data";
 
 /**

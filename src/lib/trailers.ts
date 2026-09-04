@@ -13,14 +13,14 @@ import {
   type TrailerVideo,
 } from "@/lib/tmdb";
 import { buildSection, shuffleSeeded } from "@/lib/sections";
-import { titleOf } from "@/lib/media";
+import { titleOf } from "@/core/media";
 import { getAppleTrailerUrl } from "@/lib/appleTrailers";
-import { getDict, num, type Dict, type Locale } from "@/lib/i18n";
-import { browseGenreForId, browseGenreName } from "@/lib/browse";
-import { originAdjectives } from "@/lib/region";
+import { getDict, num, type Dict, type Locale } from "@/core/i18n";
+import { browseGenreForId, browseGenreName } from "@/core/browse";
+import { originAdjectives } from "@/core/region";
 import { looksAnime } from "@/lib/topChart";
-import type { TrailerTab } from "@/lib/trailerTabs";
-export { asTrailerTab, TRAILER_TABS, type TrailerTab } from "@/lib/trailerTabs";
+import type { TrailerTab } from "@/core/trailerTabs";
+export { asTrailerTab, TRAILER_TABS, type TrailerTab } from "@/core/trailerTabs";
 
 /**
  * 🆕 **علفُ «ترايلرات لك»** (D-726، مواصفةُ أحمد المكتوبة).

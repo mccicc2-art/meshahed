@@ -16,9 +16,9 @@ import {
   getMyProfileLite,
   getCuratedSlug,
 } from "@/lib/data";
-import { curatedName, curatedBlurb } from "@/lib/universes";
+import { curatedName, curatedBlurb } from "@/core/universes";
 import { ListReviews } from "@/components/ListReviews";
-import { isPlus } from "@/lib/plan";
+import { isPlus } from "@/core/plan";
 import { getT } from "@/lib/locale";
 import { ListDetail } from "@/components/ListDetail";
 import { getLibState, type TitleState } from "@/lib/libState";

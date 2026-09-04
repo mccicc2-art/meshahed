@@ -88,9 +88,9 @@ const nextConfig: NextConfig = {
     /* 🆕 D-841: محمِّلٌ مخصّص يفرز من يستحقّ المحسِّن المدفوع — المقاسات
        الصغيرة (w45–w500 وh632) تُقدَّم من الممرّ المخزَّن ‎/i/‎ كما خرجت
        من TMDB، والكبيرة (w780/w1280/original) تبقى هنا لأن AVIF على
-       عنصر LCP يدفع ثمنَ تحويله. التفصيل والقياس في src/lib/imageLoader.ts. */
+       عنصر LCP يدفع ثمنَ تحويله. التفصيل والقياس في src/core/imageLoader.ts. */
     loader: "custom",
-    loaderFile: "./src/lib/imageLoader.ts",
+    loaderFile: "./src/core/imageLoader.ts",
     /* AVIF قبل WebP: أصغر بنحو الربع بجودةٍ مساوية، وغلاف الرئيسية هو
        عنصر LCP — فربعُ حجمه ربعُ انتظاره. WebP يبقى احتياطاً للمتصفحات
        الأقدم، والاختيار تفاوضٌ عبر ترويسة Accept لا شيء نديره بأيدينا. */

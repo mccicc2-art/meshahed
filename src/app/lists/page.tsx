@@ -9,7 +9,7 @@ import {
   getMyPlaylistIds,
   getProfile,
 } from "@/lib/data";
-import { sanitizeHomePrefs, applyQueueOrder } from "@/lib/homePrefs";
+import { sanitizeHomePrefs, applyQueueOrder } from "@/core/homePrefs";
 import { getT } from "@/lib/locale";
 import { ListManager } from "@/components/ListManager";
 import { HomeQueueSheetHost } from "@/components/HomeQueueOrder";

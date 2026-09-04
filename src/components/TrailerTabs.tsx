@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { getDict, type Locale } from "@/lib/i18n";
-import { TRAILER_TABS, type TrailerTab } from "@/lib/trailerTabs";
+import { getDict, type Locale } from "@/core/i18n";
+import { TRAILER_TABS, type TrailerTab } from "@/core/trailerTabs";
 
 /**
  * 🆕 **شريطُ رقائق صفحة الترايلرات** (D-734، تصميمُه).

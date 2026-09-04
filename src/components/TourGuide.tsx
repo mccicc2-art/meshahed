@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { getDict, type Locale } from "@/lib/i18n";
+import { getDict, type Locale } from "@/core/i18n";
 import { TOUR_META, TOUR_VERSION, persistTourState, stepsOf, type TourId } from "@/lib/tour";
 import { Icon } from "./Icon";
 import { buttonClass } from "./ui/Button";

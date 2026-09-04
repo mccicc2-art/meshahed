@@ -4,9 +4,9 @@ import { useState, useTransition } from "react";
 import { useCommunityPager } from "./CommunityPager";
 import { useRouter } from "next/navigation";
 import { setFeedStrangers, setFeedSort, setTalkFollowedOnly, setTranslateEnabled } from "@/lib/actions";
-import { getDict, type Locale } from "@/lib/i18n";
+import { getDict, type Locale } from "@/core/i18n";
 import { tap } from "@/lib/haptics";
-import type { TabPref } from "@/lib/tabPrefs";
+import type { TabPref } from "@/core/tabPrefs";
 import { Icon, type IconName } from "./Icon";
 import { Sheet, SheetHeader, SheetTabs } from "./ui/Sheet";
 import {

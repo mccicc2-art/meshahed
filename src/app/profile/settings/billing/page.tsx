@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getUser, getProfile } from "@/lib/data";
-import { isPlus, planNameOf, planReasonOf } from "@/lib/plan";
-import { SECTIONS } from "@/lib/features";
+import { isPlus, planNameOf, planReasonOf } from "@/core/plan";
+import { SECTIONS } from "@/core/features";
 import { getT } from "@/lib/locale";
 import { Icon } from "@/components/Icon";
 import { SettingsPageLayout } from "@/components/settings/SettingsPageLayout";

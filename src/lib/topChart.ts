@@ -1,10 +1,10 @@
 import { getImdbChart } from "./data";
 import { localizeRows } from "./localize";
-import type { Locale } from "./i18n";
+import type { Locale } from "@/core/i18n";
 import type { SearchResult } from "./tmdb";
 import { rankByImdb, withImdbRatings } from "./omdb";
 import { getMovie, getTv, topRatedRows } from "./tmdb";
-import { MIN_CHART_VOTES, minChartVotes } from "./chartFloor";
+import { MIN_CHART_VOTES, minChartVotes } from "@/core/chartFloor";
 
 /**
  * صفٌّ في قائمة «أفضل ٢٥٠» — بشكل صفّ TMDB عمداً.

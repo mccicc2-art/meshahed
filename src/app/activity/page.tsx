@@ -3,7 +3,7 @@ import { getUser, getFollows, getAllMovieProgress } from "@/lib/data";
 import { getMyActivity } from "@/lib/myActivity";
 import { getT } from "@/lib/locale";
 import { localizeFollows } from "@/lib/localize";
-import { posterUrl } from "@/lib/media";
+import { posterUrl } from "@/core/media";
 import { ActivityScreen, type ActivityItem } from "@/components/ActivityScreen";
 
 /**

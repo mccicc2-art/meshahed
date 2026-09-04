@@ -6,11 +6,11 @@ import { useRouter } from "next/navigation";
 import { Sheet, SheetHeader } from "./ui/Sheet";
 import { Icon } from "./Icon";
 import { sheetScroll } from "./ui/controls";
-import { getDict, type Locale } from "@/lib/i18n";
-import { posterUrl, backdropUrl } from "@/lib/media";
+import { getDict, type Locale } from "@/core/i18n";
+import { posterUrl, backdropUrl } from "@/core/media";
 import { tap } from "@/lib/haptics";
 import { toast, flashError } from "@/lib/toast";
-import { coalescedRefresh } from "@/lib/refresh";
+import { coalescedRefresh } from "@/core/refresh";
 import { titleArtOptions, setListCover } from "@/lib/actions";
 import type { ListItem } from "@/lib/data";
 

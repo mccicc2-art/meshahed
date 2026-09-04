@@ -7,7 +7,7 @@ import { chipClass } from "./ui/controls";
 import { saveListReview, deleteListReview } from "@/lib/actions";
 import { toast, flashError } from "@/lib/toast";
 import { tap } from "@/lib/haptics";
-import { getDict, num, type Locale } from "@/lib/i18n";
+import { getDict, num, type Locale } from "@/core/i18n";
 
 /**
  * **صندوقُ تقييم القائمة ومراجعتِها — مُخرَجاً عند قارئه الثاني** (D-352).

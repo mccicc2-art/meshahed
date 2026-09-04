@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { getDict, type Dict, type Locale } from "@/lib/i18n";
+import { getDict, type Dict, type Locale } from "@/core/i18n";
 
 /**
  * لغة الواجهة داخل مكوّنات العميل التي لا تستقبل `locale` كخاصية

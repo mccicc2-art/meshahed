@@ -9,7 +9,7 @@ import { getPerson, getPersonCredits, isTvProgram, profileUrl, titleOf, yearOf }
 import { displayPersonName } from "@/lib/wikidata";
 import { segmentedItem, segmentedTrackFull } from "@/components/ui/controls";
 import { getT } from "@/lib/locale";
-import { formatDate } from "@/lib/when";
+import { formatDate } from "@/core/when";
 import { Icon, SectionTitle } from "@/components/Icon";
 import { PosterCard } from "@/components/PosterCard";
 import { PosterGrid } from "@/components/PosterGrid";

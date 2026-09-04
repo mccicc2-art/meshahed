@@ -1,7 +1,7 @@
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
-import type { MediaType } from "@/lib/media";
-import { normalizeSearch } from "@/lib/arabic";
+import type { MediaType } from "@/core/media";
+import { normalizeSearch } from "@/core/arabic";
 
 /**
  * **قارئُ الأسماء البديلة — نداءٌ واحدٌ للصفحة كلِّها** (D-544، الهجرة ١٢٥).

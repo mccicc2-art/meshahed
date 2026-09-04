@@ -3,8 +3,8 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { setHiddenRails } from "@/lib/actions";
-import { railsOf, railToken, type RailTab } from "@/lib/railPrefs";
-import { getDict, type Locale } from "@/lib/i18n";
+import { railsOf, railToken, type RailTab } from "@/core/railPrefs";
+import { getDict, type Locale } from "@/core/i18n";
 import { openPlusGate } from "@/lib/plusGate";
 import { Icon } from "./Icon";
 import { tap } from "@/lib/haptics";

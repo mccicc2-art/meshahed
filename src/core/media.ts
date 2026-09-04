@@ -1,5 +1,5 @@
 // أدوات آمنة للاستخدام في الخادم والمتصفح معاً (لا تستورد next/headers)
-import { resolveMediaTitle, type ResolvedTitle, type TitleMode } from "@/lib/titleMode";
+import { resolveMediaTitle, type ResolvedTitle, type TitleMode } from "@/core/titleMode";
 
 export const IMG = "https://image.tmdb.org/t/p";
 

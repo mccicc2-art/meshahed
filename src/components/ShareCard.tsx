@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { getDict, type Locale } from "@/lib/i18n";
+import { getDict, type Locale } from "@/core/i18n";
 import { Icon } from "./Icon";
 import { buttonClass } from "./ui/Button";
 import { actionRowClass, ActionRowBody } from "./ui/ActionRow";

@@ -1,4 +1,4 @@
-import { num, type Locale } from "@/lib/i18n";
+import { num, type Locale } from "@/core/i18n";
 
 /**
  * ============ صياغةُ أرقام الإحصائيات — مصدرٌ واحد (D-799) ============

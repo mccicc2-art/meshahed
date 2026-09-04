@@ -1,6 +1,6 @@
 import type { FollowRow } from "@/lib/data";
-import { zoneShiftMs } from "@/lib/zone";
-import type { Locale } from "@/lib/i18n";
+import { zoneShiftMs } from "@/core/zone";
+import type { Locale } from "@/core/i18n";
 
 /**
  * ============ تقويمُ أعمالك — منطقٌ نقيّ (D-828) ============

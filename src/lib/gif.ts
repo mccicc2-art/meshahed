@@ -1,6 +1,6 @@
 import "server-only";
 
-import { GIF_ID_RE, gifUrl } from "./media";
+import { GIF_ID_RE, gifUrl } from "@/core/media";
 
 /**
  * **بحثُ الـGIF — من الخادم، ومعرّفاً لا رابطاً** (D-362، طلبُ أحمد:

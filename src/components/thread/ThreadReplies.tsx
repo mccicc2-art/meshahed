@@ -18,14 +18,14 @@ import {
   togglePostLike,
   votePost,
 } from "@/lib/actions";
-import { getDict, type Locale } from "@/lib/i18n";
-import { displayNameOf } from "@/lib/people";
+import { getDict, type Locale } from "@/core/i18n";
+import { displayNameOf } from "@/core/people";
 import { tap } from "@/lib/haptics";
 import { useKeyboardInset, useKeyboardOpen, KEYBOARD_MIN } from "@/lib/useKeyboard";
 import { Icon } from "../Icon";
 import { Composer } from "../Composer";
 import { ReplyItem, TEMP, type ThreadReply } from "./ReplyItem";
-import { isPlus } from "@/lib/plan";
+import { isPlus } from "@/core/plan";
 
 /**
  * **خيطُ الردود — واحدٌ لكلِّ ما يُردّ عليه في Loopz** (D-242).

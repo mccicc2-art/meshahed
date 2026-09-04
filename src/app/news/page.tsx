@@ -16,15 +16,15 @@ import {
 } from "@/lib/data";
 import { getLibState } from "@/lib/libState";
 import { cookies } from "next/headers";
-import { parseMyRows, MY_ROWS_COOKIE, type MyRow } from "@/lib/myRows";
-import { BROWSE_GENRES, BROWSE_TAGS, browseGenreName, browseTagName } from "@/lib/browse";
-import { LOOPZ_PERSON } from "@/lib/loopz";
+import { parseMyRows, MY_ROWS_COOKIE, type MyRow } from "@/core/myRows";
+import { BROWSE_GENRES, BROWSE_TAGS, browseGenreName, browseTagName } from "@/core/browse";
+import { LOOPZ_PERSON } from "@/core/loopz";
 import { Avatar } from "@/components/Avatar";
 import { SavedFiltersRow } from "@/components/SavedFiltersRow";
 import { sanitizeUiState } from "@/lib/uiState";
-import { FILTER_KEYS, defaultFor } from "@/lib/savedFilters";
+import { FILTER_KEYS, defaultFor } from "@/core/savedFilters";
 import { redirect } from "next/navigation";
-import { isPlus } from "@/lib/plan";
+import { isPlus } from "@/core/plan";
 import { PublicListsRail, ListCardShell } from "@/components/PublicListsRail";
 import { ListsFilters } from "@/components/ListsFilters";
 import { ListSaveHeart } from "@/components/ListSaveHeart";
@@ -33,9 +33,9 @@ import { PosterRail, RailItem } from "@/components/PosterRail";
 import { TrailerRail } from "@/components/TrailerRail";
 import { getTrailerFeed, type TrailerScope } from "@/lib/trailers";
 import { TRAILER_SOUND_COOKIE, parseTrailerSound } from "@/lib/trailerPrefs";
-import { FRANCHISES, franchiseName, universeName, type Universe } from "@/lib/universes";
-import { awardBySlug, awardBody } from "@/lib/awards";
-import { awardWins } from "@/lib/awardsWins";
+import { FRANCHISES, franchiseName, universeName, type Universe } from "@/core/universes";
+import { awardBySlug, awardBody } from "@/core/awards";
+import { awardWins } from "@/core/awardsWins";
 import { Icon } from "@/components/Icon";
 import {
   topTenAnimeThisWeek,
@@ -60,14 +60,14 @@ import {
 import { ScrollMemory } from "@/components/ScrollMemory";
 import { animeMovieRail, topChartRail, looksAnime, railGuard } from "@/lib/topChart";
 import { buildSection, sectionHref } from "@/lib/sections";
-import { railsHiddenFor, railOff, isRailTab } from "@/lib/railPrefs";
-import { isUuid } from "@/lib/validate";
+import { railsHiddenFor, railOff, isRailTab } from "@/core/railPrefs";
+import { isUuid } from "@/core/validate";
 import { attachImdbRatings, withImdbRatings, rankByImdb } from "@/lib/omdb";
 import { localizeRows } from "@/lib/localize";
 import { getT, getWatchRegion, getTabPrefs, getHiddenRails } from "@/lib/locale";
-import { defaultTab } from "@/lib/tabPrefs";
-import { regionName } from "@/lib/region";
-import { num, type Locale } from "@/lib/i18n";
+import { defaultTab } from "@/core/tabPrefs";
+import { regionName } from "@/core/region";
+import { num, type Locale } from "@/core/i18n";
 import {
   parseBrowse,
   parseDiscoverTab,
@@ -78,7 +78,7 @@ import {
   browseHref,
   type BrowseQuery,
   type RailWin,
-} from "@/lib/browse";
+} from "@/core/browse";
 import { RankedRail } from "@/components/RankedRail";
 import { OneTimeHint } from "@/components/OneTimeHint";
 import { CountdownRail, type CountdownItem } from "@/components/CountdownRail";

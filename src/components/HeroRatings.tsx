@@ -1,5 +1,5 @@
 import { externalRatings, imdbIdByName } from "@/lib/omdb";
-import { imdbOverride } from "@/lib/imdbOverrides";
+import { imdbOverride } from "@/core/imdbOverrides";
 import { altTitles, tvImdbId } from "@/lib/tmdb";
 
 /**

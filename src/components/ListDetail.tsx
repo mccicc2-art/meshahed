@@ -14,11 +14,11 @@ import {
   toggleInList,
   saveList,
 } from "@/lib/actions";
-import { posterUrl } from "@/lib/media";
-import { profileHref } from "@/lib/people";
+import { posterUrl } from "@/core/media";
+import { profileHref } from "@/core/people";
 import { tap } from "@/lib/haptics";
 import { toast, flashError } from "@/lib/toast";
-import { getDict, num, type Locale } from "@/lib/i18n";
+import { getDict, num, type Locale } from "@/core/i18n";
 import { Icon, type IconName } from "./Icon";
 import type { ListItem, ListKind } from "@/lib/data";
 import type { TitleState } from "@/lib/libState";

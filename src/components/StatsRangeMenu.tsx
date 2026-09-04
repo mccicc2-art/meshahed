@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Sheet, SheetHeader } from "./ui/Sheet";
 import { Icon } from "./Icon";
-import { getDict, type Locale } from "@/lib/i18n";
+import { getDict, type Locale } from "@/core/i18n";
 import type { StatsRange } from "./LibraryAnalysis";
 import { tap } from "@/lib/haptics";
 

@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { syncXIdentity, unlinkXIdentity } from "@/lib/actions";
 import { buttonClass } from "@/components/ui/Button";
 import { Icon } from "@/components/Icon";
-import { getDict, type Locale } from "@/lib/i18n";
+import { getDict, type Locale } from "@/core/i18n";
 
 /**
  * ====== ربطُ حساب X — تسجيلُ دخولٍ لا حقلُ كتابة (D-839) ======
@@ -93,7 +93,7 @@ export function XLinkRow({
          خاماً** (D-623، بلاغُ مشعل): **تطبيقٌ مثبَّتٌ من أصلٍ قديمٍ
          تهبط كوكيزُه في نطاقٍ ولا تصل أصلَه**، **فيخرج من حسابه في
          كلِّ فتح.** */
-      const { resolveAuthBase } = await import("@/lib/siteOrigin");
+      const { resolveAuthBase } = await import("@/core/siteOrigin");
       const base = resolveAuthBase(window.location.origin);
       const back = encodeURIComponent("/profile/edit?x=1");
       const { error } = await supabase.auth.linkIdentity({

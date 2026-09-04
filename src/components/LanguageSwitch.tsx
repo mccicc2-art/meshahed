@@ -2,7 +2,7 @@
 
 import { useTransition } from "react";
 import { setLocale } from "@/lib/actions";
-import { getDict, type Locale } from "@/lib/i18n";
+import { getDict, type Locale } from "@/core/i18n";
 import { segmentedItem, segmentedTrack } from "./ui/controls";
 
 export function LanguageSwitch({

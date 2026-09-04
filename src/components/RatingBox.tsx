@@ -2,13 +2,13 @@
 
 import { useState, useTransition } from "react";
 import { saveRating, deleteRating } from "@/lib/actions";
-import { getDict, type Locale } from "@/lib/i18n";
-import type { MediaType } from "@/lib/media";
+import { getDict, type Locale } from "@/core/i18n";
+import type { MediaType } from "@/core/media";
 import { tap } from "@/lib/haptics";
 import { Alert } from "./ui/Alert";
 import { buttonClass } from "./ui/Button";
 import { Icon } from "./Icon";
-import { dirOf } from "@/lib/dir";
+import { dirOf } from "@/core/dir";
 
 export function RatingBox({
   tmdbId,

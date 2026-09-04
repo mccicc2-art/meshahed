@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { updateProfile } from "@/lib/actions";
-import { getDict, type Locale } from "@/lib/i18n";
+import { getDict, type Locale } from "@/core/i18n";
 import { openPlusGate } from "@/lib/plusGate";
 import {
   DEFAULT_HOME_PREFS,
@@ -16,7 +16,7 @@ import {
   homeSectionMeta,
   headerStatMeta,
   type HomePrefs,
-} from "@/lib/homePrefs";
+} from "@/core/homePrefs";
 import { type IconName } from "./Icon";
 import { Alert } from "./ui/Alert";
 import { CardCountRow, PosterSizeRow, ToggleRow } from "./ui/SectionOrderList";
@@ -28,10 +28,10 @@ import { SettingsArrangeSheet } from "./settings/SettingsArrangeSheet";
 import { toast } from "@/lib/toast";
 import { CustomizePreview } from "./CustomizePreview";
 import { PrefTemplatesRow } from "./PrefTemplatesRow";
-import { type PrefTemplate } from "@/lib/prefTemplates";
+import { type PrefTemplate } from "@/core/prefTemplates";
 /* **بابٌ ثانٍ للوضع نفسِه** — فيُخبَر مخزنُ التبويب بما حُفظ هنا */
 import { rememberHomeView } from "./HomeViewProvider";
-import { type Density } from "@/lib/density";
+import { type Density } from "@/core/density";
 
 /**
  * تخصيص الرئيسية.

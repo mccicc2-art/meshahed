@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { backdropUrl } from "@/lib/media";
-import { getDict, type Locale } from "@/lib/i18n";
+import { backdropUrl } from "@/core/media";
+import { getDict, type Locale } from "@/core/i18n";
 import { Icon } from "./Icon";
 import { buttonClass } from "./ui/Button";
 import { CommunityListCard } from "./PublicListsRail";

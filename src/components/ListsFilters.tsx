@@ -9,8 +9,8 @@ import { Button } from "./ui/Button";
 import { chipClass } from "./ui/controls";
 /* تبويب القوائم له بابُه هنا لا في ورقة اكتشف — رمزٌ واحد لكل تبويب (D-179) */
 import { TabsPrefs } from "./TabsPrefs";
-import { getDict, num, type Locale } from "@/lib/i18n";
-import type { TabPref } from "@/lib/tabPrefs";
+import { getDict, num, type Locale } from "@/core/i18n";
+import type { TabPref } from "@/core/tabPrefs";
 
 /**
  * فلاتر تبويب القوائم (طلب أحمد: «زر فلتر مثل الموجود في الأفلام»).

@@ -1,4 +1,4 @@
-import type { Dict } from "@/lib/i18n";
+import type { Dict } from "@/core/i18n";
 
 /**
  * ====== صفوفُ «اكتشف» — أيُّها يظهر (D-826) ======

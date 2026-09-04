@@ -13,21 +13,21 @@ import {
   getTitleMetaFor,
 } from "@/lib/data";
 import { getTv, getMovie } from "@/lib/tmdb";
-import { posterUrl, profileUrl } from "@/lib/media";
+import { posterUrl, profileUrl } from "@/core/media";
 import Image from "next/image";
 import Link from "next/link";
-import { getDict, num, worksParts, type Locale } from "@/lib/i18n";
+import { getDict, num, worksParts, type Locale } from "@/core/i18n";
 /* 🆕 **التقديرُ من مصدرٍ واحدٍ** (D-797): كان ٤٠ و١١٠ مكتوبَين هنا
    و٤٢ و١٠٥ في تقرير المدّة — **فقالت الصفحتان عن الصفوف نفسِها رقمين
    يفترقان ٦٣ ساعة، ولم يُكتشف إلّا حين عُرض السطحان جنباً إلى جنب.** */
-import { runtimeMinutes } from "@/lib/watchTime";
-import { isComplete } from "@/lib/progress";
-import { favoriteTrio, trioPosterPaths } from "@/lib/heroPosters";
+import { runtimeMinutes } from "@/core/watchTime";
+import { isComplete } from "@/core/progress";
+import { favoriteTrio, trioPosterPaths } from "@/core/heroPosters";
 import { ProfileStatSheet } from "./ProfileStatSheet";
 import { Icon, type IconName } from "./Icon";
 import { AccountBadges, badgeLabelsOf } from "./AccountIdentity";
-import type { PlanBearer } from "@/lib/plan";
-import { browseGenreForId, browseGenreName } from "@/lib/browse";
+import type { PlanBearer } from "@/core/plan";
+import { browseGenreForId, browseGenreName } from "@/core/browse";
 
 /** المدى الزمنيّ الذي تحكمه تبويبات الصفحة */
 export type StatsRange = "all" | "year" | "month";

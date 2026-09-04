@@ -17,8 +17,8 @@ import {
   backdropUrl,
   POSTER_INTRINSIC,
   BACKDROP_INTRINSIC,
-} from "@/lib/media";
-import { getDict, num, type Locale } from "@/lib/i18n";
+} from "@/core/media";
+import { getDict, num, type Locale } from "@/core/i18n";
 import { tap } from "@/lib/haptics";
 import { flashError } from "@/lib/toast";
 import { Icon } from "./Icon";

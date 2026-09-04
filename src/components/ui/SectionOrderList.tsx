@@ -1,11 +1,11 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { claimGesture, releaseGesture } from "@/lib/tabDrag";
+import { claimGesture, releaseGesture } from "@/core/tabDrag";
 import { tap } from "@/lib/haptics";
 import { Icon, type IconName } from "../Icon";
-import { CARD_COUNTS, type CardCount } from "@/lib/cardCount";
-import { DENSITIES, type Density } from "@/lib/density";
+import { CARD_COUNTS, type CardCount } from "@/core/cardCount";
+import { DENSITIES, type Density } from "@/core/density";
 import { chipClass, pillTrack } from "./controls";
 
 /**

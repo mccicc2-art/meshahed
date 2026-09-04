@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { setTabPrefs } from "@/lib/actions";
 import { openPlusGate } from "@/lib/plusGate";
-import { getDict, type Locale } from "@/lib/i18n";
+import { getDict, type Locale } from "@/core/i18n";
 import { tap } from "@/lib/haptics";
 import {
   moveTab,
@@ -12,7 +12,7 @@ import {
   visibleTabs,
   type TabPref,
   type TabSurface,
-} from "@/lib/tabPrefs";
+} from "@/core/tabPrefs";
 import { Icon } from "./Icon";
 
 /**

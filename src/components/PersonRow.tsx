@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Avatar } from "./Avatar";
-import { displayNameOf, profileHref, type PersonLite } from "@/lib/people";
-import type { Dict } from "@/lib/i18n";
+import { displayNameOf, profileHref, type PersonLite } from "@/core/people";
+import type { Dict } from "@/core/i18n";
 import { AccountBadges } from "./AccountIdentity";
 
 /**

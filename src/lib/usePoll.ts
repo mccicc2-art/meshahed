@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { coalescedRefresh } from "./refresh";
+import { coalescedRefresh } from "@/core/refresh";
 import { createClient } from "./supabase/client";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 

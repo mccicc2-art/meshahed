@@ -6,7 +6,7 @@ import { follow, unfollow, unmarkEpisodes } from "@/lib/actions";
 import { runOrQueue } from "@/lib/offline";
 import { toast, flashError } from "@/lib/toast";
 import { tap } from "@/lib/haptics";
-import { getDict, type Locale } from "@/lib/i18n";
+import { getDict, type Locale } from "@/core/i18n";
 import { type IconName } from "./Icon";
 import { LongPressable } from "./LongPressable";
 import { Dropdown, DropdownRow } from "./ui/Dropdown";

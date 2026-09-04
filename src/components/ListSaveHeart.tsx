@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { Icon } from "./Icon";
 import { saveList } from "@/lib/actions";
-import { getDict, num, type Locale } from "@/lib/i18n";
+import { getDict, num, type Locale } from "@/core/i18n";
 import { toast, flashError } from "@/lib/toast";
 import { tap } from "@/lib/haptics";
 

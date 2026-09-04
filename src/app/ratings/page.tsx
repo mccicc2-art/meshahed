@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { getUser, getMyRatings } from "@/lib/data";
 import { getT } from "@/lib/locale";
 import { localizeRows } from "@/lib/localize";
-import { posterUrl } from "@/lib/media";
+import { posterUrl } from "@/core/media";
 import { Icon } from "@/components/Icon";
 import { chipClass } from "@/components/ui/controls";
 

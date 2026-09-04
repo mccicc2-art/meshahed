@@ -1,6 +1,6 @@
 import { PosterCard } from "./PosterCard";
 import { posterGrid } from "./ui/controls";
-import type { Dict } from "@/lib/i18n";
+import type { Dict } from "@/core/i18n";
 import type { ArtistShelfItem } from "@/lib/artists";
 
 /**

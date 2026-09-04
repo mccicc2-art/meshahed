@@ -3,15 +3,15 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { setContentPrefs } from "@/lib/actions";
-import { getDict, type Locale } from "@/lib/i18n";
+import { getDict, type Locale } from "@/core/i18n";
 import {
   ALL_LANGS,
   BROWSE_GENRES,
   browseGenreName,
   langName,
   type BrowseGenre,
-} from "@/lib/browse";
-import { sanitizeContentPrefs, type ContentPrefs } from "@/lib/contentPrefs";
+} from "@/core/browse";
+import { sanitizeContentPrefs, type ContentPrefs } from "@/core/contentPrefs";
 import { tap } from "@/lib/haptics";
 import { toast } from "@/lib/toast";
 import { SettingsPickerPanel } from "./SettingsPickerPanel";

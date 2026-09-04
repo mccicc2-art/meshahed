@@ -1,6 +1,6 @@
 import { getT } from "@/lib/locale";
 import { SearchScreen } from "@/components/SearchScreen";
-import type { SearchScope } from "@/lib/searchTypes";
+import type { SearchScope } from "@/core/searchTypes";
 
 /**
  * **صفحةُ البحث — قشرةٌ خادميّةٌ وحدَها** (D-534، تصميمُ أحمد).

@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 
 import { setLocale } from "@/lib/actions";
-import { getDict, LOCALE_CODES, LOCALES, type Locale } from "@/lib/i18n";
+import { getDict, LOCALE_CODES, LOCALES, type Locale } from "@/core/i18n";
 import { Icon } from "./Icon";
 import { Dropdown } from "./ui/Dropdown";
 

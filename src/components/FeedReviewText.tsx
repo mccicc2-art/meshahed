@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { getDict, type Locale } from "@/lib/i18n";
-import { dirOf, alignOf } from "@/lib/dir";
+import { getDict, type Locale } from "@/core/i18n";
+import { dirOf, alignOf } from "@/core/dir";
 import { SpoilerText } from "./SpoilerText";
 
 /**

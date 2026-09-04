@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { reorderList } from "@/lib/actions";
-import { getDict, type Locale } from "@/lib/i18n";
+import { getDict, type Locale } from "@/core/i18n";
 import { tap } from "@/lib/haptics";
 import { flashError } from "@/lib/toast";
 import { Icon } from "./Icon";

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getUser } from "@/lib/data";
-import { allow, retryAfter } from "@/lib/ratelimit";
+import { allow, retryAfter } from "@/core/ratelimit";
 import { getTv, getMovie } from "@/lib/tmdb";
 
 /** خمسون عملاً في الدفعة تعني خمسين نداءَ TMDB */

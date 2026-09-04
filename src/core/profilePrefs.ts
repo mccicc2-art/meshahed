@@ -3,7 +3,7 @@
 import { sanitizeCardCount, type CardCount } from "./cardCount";
 import { sanitizeDensity, type Density } from "./density";
 import type { Dict } from "./i18n";
-import type { IconName } from "@/components/Icon";
+import type { IconName } from "./iconNames";
 
 /**
  * **توأم `homePrefs` عمداً، لا نسخةٌ منه.**

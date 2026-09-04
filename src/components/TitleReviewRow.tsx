@@ -1,9 +1,9 @@
 import Link from "next/link";
-import { getDict, type Locale } from "@/lib/i18n";
+import { getDict, type Locale } from "@/core/i18n";
 import type { TitleReview } from "@/lib/data";
-import { displayNameOf, profileHref } from "@/lib/people";
-import { timeAgoShort } from "@/lib/when";
-import { dirOf, alignOf } from "@/lib/dir";
+import { displayNameOf, profileHref } from "@/core/people";
+import { timeAgoShort } from "@/core/when";
+import { dirOf, alignOf } from "@/core/dir";
 import { AccountBadges } from "./AccountIdentity";
 import { Avatar } from "./Avatar";
 import { Icon } from "./Icon";

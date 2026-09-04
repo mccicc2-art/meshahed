@@ -5,10 +5,10 @@ import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { follow, unfollow, toggleMovieWatched } from "@/lib/actions";
-import { coalescedRefresh } from "@/lib/refresh";
+import { coalescedRefresh } from "@/core/refresh";
 import { flashError } from "@/lib/toast";
 import { tap } from "@/lib/haptics";
-import { getDict, type Locale } from "@/lib/i18n";
+import { getDict, type Locale } from "@/core/i18n";
 import { Icon } from "./Icon";
 
 interface Part {

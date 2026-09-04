@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { tap } from "@/lib/haptics";
-import { setTabDrag, claimGesture, releaseGesture, gestureTakenBy } from "@/lib/tabDrag";
+import { setTabDrag, claimGesture, releaseGesture, gestureTakenBy } from "@/core/tabDrag";
 import { useBeforePaint } from "@/lib/useBeforePaint";
 import { revealChrome } from "./ChromeAutoHide";
 import { useCommunityPager } from "./CommunityPager";

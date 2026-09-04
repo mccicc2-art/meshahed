@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getUser } from "@/lib/data";
-import { allow, retryAfter } from "@/lib/ratelimit";
+import { allow, retryAfter } from "@/core/ratelimit";
 import { runNewsSlice } from "@/lib/loopzNews";
 import { runReportSlice } from "@/lib/newsReports";
 import { NEWS_SOURCES, probeSources } from "@/lib/news";

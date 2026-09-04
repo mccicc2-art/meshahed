@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { getDict, type Locale } from "@/lib/i18n";
+import { getDict, type Locale } from "@/core/i18n";
 
 /**
  * الدخول بحساب Google.
@@ -102,7 +102,7 @@ export function GoogleButton({ locale, next = "/" }: { locale: Locale; next?: st
        خروجٌ من الحساب في كلِّ فتح): تطبيقٌ مثبَّتٌ من الأصل القديم كان
        يُدخَل عبر loopztv.com فتهبط الكوكيز هناك **ولا تصل أصلَه أبداً**
        — التفصيلُ والقائمةُ الموثوقة في `lib/siteOrigin.ts`. */
-    const { resolveAuthBase } = await import("@/lib/siteOrigin");
+    const { resolveAuthBase } = await import("@/core/siteOrigin");
     const siteUrl = resolveAuthBase(window.location.origin);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",

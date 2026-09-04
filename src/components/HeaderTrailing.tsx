@@ -1,4 +1,4 @@
-import type { Locale } from "@/lib/i18n";
+import type { Locale } from "@/core/i18n";
 import { MessagesLink } from "./MessagesLink";
 import { SignalsLink } from "./SignalsLink";
 

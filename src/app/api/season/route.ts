@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getUser } from "@/lib/data";
 import { getSeason, tvImdbId } from "@/lib/tmdb";
 import { seasonImdbRatings } from "@/lib/omdb";
-import { allow, retryAfter } from "@/lib/ratelimit";
+import { allow, retryAfter } from "@/core/ratelimit";
 
 /**
  * حلقات موسم واحد، تُطلب عند فتح الموسم في صفحة المسلسل.

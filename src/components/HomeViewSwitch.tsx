@@ -2,10 +2,10 @@
 
 import { useRef } from "react";
 import { setHomeView } from "@/lib/actions";
-import { getDict, type Locale } from "@/lib/i18n";
+import { getDict, type Locale } from "@/core/i18n";
 import { tap } from "@/lib/haptics";
 import { flashError } from "@/lib/toast";
-import type { HomeView } from "@/lib/homePrefs";
+import type { HomeView } from "@/core/homePrefs";
 import { useHomeView } from "./HomeViewProvider";
 import { Icon } from "./Icon";
 

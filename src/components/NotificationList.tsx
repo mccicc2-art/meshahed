@@ -2,10 +2,10 @@ import Link from "next/link";
 import { AccountBadges } from "./AccountIdentity";
 import { Avatar } from "./Avatar";
 import type { Signal } from "@/lib/actions";
-import { getDict, type Locale } from "@/lib/i18n";
-import { curatedName } from "@/lib/universes";
-import { profileHref } from "@/lib/people";
-import { timeAgo } from "@/lib/when";
+import { getDict, type Locale } from "@/core/i18n";
+import { curatedName } from "@/core/universes";
+import { profileHref } from "@/core/people";
+import { timeAgo } from "@/core/when";
 
 /**
  * قائمةُ الإشعارات — **لوحٌ في صفحةٍ لا ورقةٌ منبثقة** (D-463، طلبُ

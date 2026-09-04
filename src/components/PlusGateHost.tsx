@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Sheet, SheetHeader } from "@/components/ui/Sheet";
 import { Icon } from "@/components/Icon";
 import { PLUS_GATE_EVENT } from "@/lib/plusGate";
-import { getDict, type Locale } from "@/lib/i18n";
+import { getDict, type Locale } from "@/core/i18n";
 
 /**
  * مضيفُ بوّابة Loopz+ — يُركَّب مرّةً في التخطيط كمضيفَي التوست وبوّابة

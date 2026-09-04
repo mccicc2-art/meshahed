@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { getDict, type Locale } from "@/lib/i18n";
+import { getDict, type Locale } from "@/core/i18n";
 import { Icon } from "@/components/Icon";
 import { Button } from "@/components/ui/Button";
 import { VerifiedBadge } from "@/components/AccountIdentity";

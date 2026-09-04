@@ -9,9 +9,9 @@ import {
   useSheetDragToDismiss,
 } from "./ui/Sheet";
 import { Icon } from "./Icon";
-import { getDict, type Locale } from "@/lib/i18n";
+import { getDict, type Locale } from "@/core/i18n";
 import { backdateSeasonWatches } from "@/lib/actions";
-import { coalescedRefresh } from "@/lib/refresh";
+import { coalescedRefresh } from "@/core/refresh";
 import { toast, flashError } from "@/lib/toast";
 import { tap } from "@/lib/haptics";
 

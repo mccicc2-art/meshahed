@@ -1,7 +1,7 @@
 import { getCollection, relatedTitles, titleOf, yearOf } from "@/lib/tmdb";
 import { getLibState } from "@/lib/libState";
-import type { MediaType } from "@/lib/media";
-import { getDict, type Locale } from "@/lib/i18n";
+import type { MediaType } from "@/core/media";
+import { getDict, type Locale } from "@/core/i18n";
 import { PosterRail, RailItem } from "./PosterRail";
 import { PosterCard } from "./PosterCard";
 

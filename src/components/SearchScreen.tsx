@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState, useTransition } from "react";
-import { getDict, type Locale } from "@/lib/i18n";
+import { getDict, type Locale } from "@/core/i18n";
 import { aiStorySearch } from "@/lib/actions";
 import { flashError } from "@/lib/toast";
 import { tap } from "@/lib/haptics";
@@ -18,7 +18,7 @@ import type {
   SearchPayload,
   SearchScope,
   SearchTitle,
-} from "@/lib/searchTypes";
+} from "@/core/searchTypes";
 
 /**
  * **صفحةُ البحث — سطحٌ واحدٌ لكلِّ ما يُبحث عنه في Loopz** (D-534،

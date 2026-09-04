@@ -7,7 +7,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import type { HomeView } from "@/lib/homePrefs";
+import type { HomeView } from "@/core/homePrefs";
 
 /**
  * **وضعُ العرض حالةُ عميلٍ لا رحلةُ خادم** (D-434 يُنفَّذ أخيراً بحرفه).

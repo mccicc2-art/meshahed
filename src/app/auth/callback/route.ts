@@ -44,7 +44,7 @@ export async function GET(request: Request) {
          (لا بناءَ على ترويسات العميل): `origin` هنا أصلُ الخدمة نفسِها،
          ويُقبل **فقط** إن كان في قائمة `TRUSTED_ORIGINS` المغلقة —
          وإلا فالنطاقُ القانونيُّ من متغيّر البيئة كما كان. */
-      const { resolveAuthBase } = await import("@/lib/siteOrigin");
+      const { resolveAuthBase } = await import("@/core/siteOrigin");
       return NextResponse.redirect(`${resolveAuthBase(origin)}${next}`);
     }
   }

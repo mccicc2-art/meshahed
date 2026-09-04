@@ -2,13 +2,13 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { num, getDict, type Locale } from "@/lib/i18n";
-import { displayNameOf, profileHref } from "@/lib/people";
-import { timeAgoShort } from "@/lib/when";
-import { dirOf } from "@/lib/dir";
-import { gifUrl } from "@/lib/media";
+import { num, getDict, type Locale } from "@/core/i18n";
+import { displayNameOf, profileHref } from "@/core/people";
+import { timeAgoShort } from "@/core/when";
+import { dirOf } from "@/core/dir";
+import { gifUrl } from "@/core/media";
 import { tap } from "@/lib/haptics";
-import { bulletinLine, bulletinFacts, bulletinSpoiler } from "@/lib/bulletinLine";
+import { bulletinLine, bulletinFacts, bulletinSpoiler } from "@/core/bulletinLine";
 import { AccountBadges } from "../AccountIdentity";
 import { Avatar } from "../Avatar";
 import { Icon } from "../Icon";

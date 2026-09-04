@@ -10,11 +10,11 @@ import {
   getTitleReplies,
   getPostViewCounts,
 } from "@/lib/data";
-import { displayNameOf, profileHref } from "@/lib/people";
+import { displayNameOf, profileHref } from "@/core/people";
 import { getMovie, getTv, posterUrl, backdropUrl } from "@/lib/tmdb";
 import { displayWorkTitle } from "@/lib/wikidata";
-import { commentViewKey } from "@/lib/postKeys";
-import { dirOf } from "@/lib/dir";
+import { commentViewKey } from "@/core/postKeys";
+import { dirOf } from "@/core/dir";
 import { getT } from "@/lib/locale";
 import { AccountBadges } from "@/components/AccountIdentity";
 import { Avatar } from "@/components/Avatar";

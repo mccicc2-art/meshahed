@@ -2,7 +2,7 @@
 
 import { useRef, useState, useTransition } from "react";
 import { exportMyData, deleteMyAccount } from "@/lib/actions";
-import { getDict, type Locale } from "@/lib/i18n";
+import { getDict, type Locale } from "@/core/i18n";
 import { Icon } from "./Icon";
 import { Alert } from "./ui/Alert";
 import { buttonClass } from "./ui/Button";

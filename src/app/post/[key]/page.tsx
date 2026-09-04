@@ -11,8 +11,8 @@ import {
   getReactions,
 } from "@/lib/data";
 import { getMovie, getTv, posterUrl, backdropUrl } from "@/lib/tmdb";
-import { newsLine, newsSource } from "@/lib/newsLine";
-import { newsViewKey } from "@/lib/postKeys";
+import { newsLine, newsSource } from "@/core/newsLine";
+import { newsViewKey } from "@/core/postKeys";
 import { getT } from "@/lib/locale";
 import { Avatar } from "@/components/Avatar";
 import { LikeButton } from "@/components/LikeButton";
@@ -20,7 +20,7 @@ import { ShareTitleButton } from "@/components/ShareTitleButton";
 import { TitleHero } from "@/components/TitleHero";
 import { HeroRatings, HeroRatingsSkeleton } from "@/components/HeroRatings";
 import { ThreadDateLine, ThreadActionBar } from "@/components/thread/ThreadShell";
-import { LOOPZ_USERNAME } from "@/lib/loopz";
+import { LOOPZ_USERNAME } from "@/core/loopz";
 import { ThreadReplies } from "@/components/thread/ThreadReplies";
 
 export const dynamic = "force-dynamic";

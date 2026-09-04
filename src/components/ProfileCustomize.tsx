@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { updateProfile } from "@/lib/actions";
-import { getDict, type Locale } from "@/lib/i18n";
+import { getDict, type Locale } from "@/core/i18n";
 import { openPlusGate } from "@/lib/plusGate";
 import {
   DEFAULT_PROFILE_PREFS,
@@ -13,7 +13,7 @@ import {
   sanitizeProfilePrefs,
   type HideableProfileTab,
   type ProfilePrefs,
-} from "@/lib/profilePrefs";
+} from "@/core/profilePrefs";
 import { Alert } from "./ui/Alert";
 import { CardCountRow, PosterSizeRow, ToggleRow } from "./ui/SectionOrderList";
 import { SettingsGroup } from "./settings/SettingsGroup";
@@ -23,8 +23,8 @@ import { SettingsArrangeSheet } from "./settings/SettingsArrangeSheet";
 import { toast } from "@/lib/toast";
 import { CustomizePreview } from "./CustomizePreview";
 import { PrefTemplatesRow } from "./PrefTemplatesRow";
-import { type PrefTemplate } from "@/lib/prefTemplates";
-import type { Density } from "@/lib/density";
+import { type PrefTemplate } from "@/core/prefTemplates";
+import type { Density } from "@/core/density";
 
 /**
  * تخصيص البروفايل (D-129 → D-465) — **توأم `HomeCustomize` لا نسخته**.

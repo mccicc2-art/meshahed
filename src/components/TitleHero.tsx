@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import type { Locale } from "@/lib/i18n";
+import type { Locale } from "@/core/i18n";
 import { BackButton } from "./BackButton";
 import { Icon } from "./Icon";
 

@@ -4,7 +4,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { Icon } from "./Icon";
 import { Sheet } from "./ui/Sheet";
-import { getDict, type Locale } from "@/lib/i18n";
+import { getDict, type Locale } from "@/core/i18n";
 import { tap } from "@/lib/haptics";
 import { WRITE_REVIEW_EVENT } from "./TitleRatingsCard";
 

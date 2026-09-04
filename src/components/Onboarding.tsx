@@ -10,8 +10,8 @@ import {
   suggestPeople,
   requestOrFollowUser,
 } from "@/lib/actions";
-import { getDict, type Locale } from "@/lib/i18n";
-import { GENRES, posterUrl } from "@/lib/media";
+import { getDict, type Locale } from "@/core/i18n";
+import { GENRES, posterUrl } from "@/core/media";
 import { AccountBadges } from "./AccountIdentity";
 import { Avatar } from "./Avatar";
 import { Icon } from "./Icon";

@@ -2,9 +2,9 @@
 
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
-import { posterUrl } from "@/lib/media";
+import { posterUrl } from "@/core/media";
 import { tap } from "@/lib/haptics";
-import { getDict } from "@/lib/i18n";
+import { getDict } from "@/core/i18n";
 import { Icon } from "./Icon";
 import { Sheet, SheetHeader } from "./ui/Sheet";
 import { buttonClass } from "./ui/Button";

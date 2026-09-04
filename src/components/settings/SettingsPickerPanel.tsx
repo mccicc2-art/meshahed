@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { normalizeSearch } from "@/lib/arabic";
+import { normalizeSearch } from "@/core/arabic";
 import { tap } from "@/lib/haptics";
 import { Icon } from "../Icon";
 import { chipOutline } from "../ui/controls";

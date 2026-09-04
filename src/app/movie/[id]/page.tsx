@@ -25,10 +25,10 @@ import {
   posterUrl,
 } from "@/lib/tmdb";
 import { displayWorkTitle, prefetchWorkTitle } from "@/lib/wikidata";
-import { universeOf } from "@/lib/universes";
+import { universeOf } from "@/core/universes";
 import { getT, getWatchRegion } from "@/lib/locale";
-import { originAdjectives } from "@/lib/region";
-import { type Locale } from "@/lib/i18n";
+import { originAdjectives } from "@/core/region";
+import { type Locale } from "@/core/i18n";
 import { UniverseSaveRow } from "@/components/UniverseSaveRow";
 import { PublicListsRail } from "@/components/PublicListsRail";
 import { HeroRatings, HeroRatingsSkeleton } from "@/components/HeroRatings";
@@ -39,7 +39,7 @@ import { CastRail } from "@/components/CastRail";
 import { SectionTitle } from "@/components/Icon";
 import { Trailer } from "@/components/Trailer";
 import { WatchChip } from "@/components/WatchChip";
-import { bestSearchTitle } from "@/lib/providerLinks";
+import { bestSearchTitle } from "@/core/providerLinks";
 import { TitleActions } from "@/components/TitleActions";
 import { TitlePulse } from "@/components/TitlePulse";
 import { DetailTopBar } from "@/components/DetailTopBar";

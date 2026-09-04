@@ -18,7 +18,7 @@
  */
 
 import { SITE_URL, siteUrl } from "@/lib/site";
-import type { Locale } from "@/lib/i18n";
+import type { Locale } from "@/core/i18n";
 
 /* ───────────────────────── الأسماء البديلة ─────────────────────────
    من يكتب «Loopz TV» أو «لوبز» يقصدنا. الأسماء البديلة تدخل البيانات

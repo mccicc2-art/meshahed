@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState, useSyncExternalStore } from "react";
-import { getDict, num, type Locale } from "@/lib/i18n";
+import { getDict, num, type Locale } from "@/core/i18n";
 import { tap } from "@/lib/haptics";
 import { chipClass, chipRow } from "./ui/controls";
 import { Icon } from "./Icon";

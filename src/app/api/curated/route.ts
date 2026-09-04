@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { getUser, getCuratedListIds } from "@/lib/data";
-import { allow, retryAfter } from "@/lib/ratelimit";
+import { allow, retryAfter } from "@/core/ratelimit";
 import { buildCuratedList } from "@/lib/actions";
-import { allCuratedSets } from "@/lib/universes";
+import { allCuratedSets } from "@/core/universes";
 
 /** جائزةٌ بثمانيةٍ وتسعين فائزاً تعني ثمانيةً وتسعين نداءَ TMDB */
 export const maxDuration = 60;

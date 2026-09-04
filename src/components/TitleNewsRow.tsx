@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { getDict, type Locale } from "@/lib/i18n";
-import { timeAgoShort } from "@/lib/when";
+import { getDict, type Locale } from "@/core/i18n";
+import { timeAgoShort } from "@/core/when";
 import { Icon } from "./Icon";
 
 /**

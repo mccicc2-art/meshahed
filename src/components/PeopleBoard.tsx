@@ -1,9 +1,9 @@
 import Link from "next/link";
 import Image from "next/image";
 import { posterUrl, backdropUrl } from "@/lib/tmdb";
-import { getDict, num, type Locale } from "@/lib/i18n";
-import { timeAgoShort } from "@/lib/when";
-import { dirOf, alignOf } from "@/lib/dir";
+import { getDict, num, type Locale } from "@/core/i18n";
+import { timeAgoShort } from "@/core/when";
+import { dirOf, alignOf } from "@/core/dir";
 import type {
   PeopleLeaderRow,
   PeopleTopReviewRow,

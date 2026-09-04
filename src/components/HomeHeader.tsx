@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { getDict, type Locale } from "@/lib/i18n";
+import { getDict, type Locale } from "@/core/i18n";
 import { Icon, type IconName } from "./Icon";
 import { HEADER_ICON, headerIconControl } from "./ui/controls";
 import { FollowCountButton } from "./ProfilePeeks";
@@ -9,7 +9,7 @@ import { HomeViewSwitch } from "./HomeViewSwitch";
 import { HeaderTrailing } from "./HeaderTrailing";
 import { LogoWordmark } from "./Logo";
 import { AccountIdentity, badgeLabelsOf } from "./AccountIdentity";
-import { isPlus } from "@/lib/plan";
+import { isPlus } from "@/core/plan";
 /**
  * 🆕 **خانةُ بطاقة الأرقام — تسكن مع راسمها** (D-497): كانت تُستورد
  * نوعاً من `ProfileHeader` — **وتلك حُذفت بعد أن فقدت قارئَها في

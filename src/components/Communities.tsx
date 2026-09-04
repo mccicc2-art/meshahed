@@ -9,10 +9,10 @@ import { Avatar } from "./Avatar";
 import { Icon } from "./Icon";
 import { Sheet, SheetHeader } from "./ui/Sheet";
 import { buttonClass } from "./ui/Button";
-import { getDict, num, type Locale } from "@/lib/i18n";
+import { getDict, num, type Locale } from "@/core/i18n";
 import { tap } from "@/lib/haptics";
 import { toast, flashError } from "@/lib/toast";
-import { coalescedRefresh } from "@/lib/refresh";
+import { coalescedRefresh } from "@/core/refresh";
 import { useChatPoll } from "@/lib/usePoll";
 import {
   joinCommunity,

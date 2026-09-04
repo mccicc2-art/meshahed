@@ -1,4 +1,4 @@
-import { getDict, type Locale } from "@/lib/i18n";
+import { getDict, type Locale } from "@/core/i18n";
 
 /**
  * **تشريحُ صفحة الخيط — وصفةٌ واحدة لسطحين** (D-242، طلبُ أحمد بلقطتين

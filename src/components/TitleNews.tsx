@@ -1,9 +1,9 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Icon } from "./Icon";
-import { posterUrl } from "@/lib/media";
-import { timeAgo, whenLabel } from "@/lib/when";
-import { getDict, type Locale } from "@/lib/i18n";
+import { posterUrl } from "@/core/media";
+import { timeAgo, whenLabel } from "@/core/when";
+import { getDict, type Locale } from "@/core/i18n";
 import type { NewsItem, NewsKind } from "@/lib/titleNews";
 
 /**

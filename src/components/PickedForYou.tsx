@@ -5,7 +5,7 @@ import { PosterRail, RailItem } from "./PosterRail";
 import { PosterCard } from "./PosterCard";
 import { OneTimeHint } from "./OneTimeHint";
 import { Icon } from "./Icon";
-import { getDict, type Locale } from "@/lib/i18n";
+import { getDict, type Locale } from "@/core/i18n";
 import { tap } from "@/lib/haptics";
 import { toast, flashError } from "@/lib/toast";
 import { dismissTitle, undoDismissTitle } from "@/lib/actions";

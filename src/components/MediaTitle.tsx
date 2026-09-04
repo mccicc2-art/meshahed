@@ -1,4 +1,4 @@
-import type { ResolvedTitle } from "@/lib/titleMode";
+import type { ResolvedTitle } from "@/core/titleMode";
 
 /**
  * **اسمُ العمل كما يُرسم — مكوّنٌ واحدٌ لكلِّ سطح** (D-544، شرطُ

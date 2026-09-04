@@ -27,7 +27,7 @@ import { localizeRows } from "@/lib/localize";
 import { Avatar } from "@/components/Avatar";
 import { CoverImage } from "@/components/CoverImage";
 import { Icon } from "@/components/Icon";
-import { isPlus } from "@/lib/plan";
+import { isPlus } from "@/core/plan";
 import { PosterCard } from "@/components/PosterCard";
 import { PosterGrid } from "@/components/PosterGrid";
 import { ProfileStatSheet } from "@/components/ProfileStatSheet";
@@ -36,13 +36,13 @@ import { FollowUserButton } from "@/components/FollowUserButton";
 import { AccountBadges, badgeLabelsOf } from "@/components/AccountIdentity";
 import { ProfileMenu } from "@/components/ProfileMenu";
 import { WeeklyRanksDoor } from "@/components/WeeklyRanksDoor";
-import { sanitizeSocials, socialUrl } from "@/lib/socials";
-import { isLoopz } from "@/lib/loopz";
+import { sanitizeSocials, socialUrl } from "@/core/socials";
+import { isLoopz } from "@/core/loopz";
 import { BackButton } from "@/components/BackButton";
 import { PublicListsRail } from "@/components/PublicListsRail";
 import { ActivityScreen, type ActivityItem } from "@/components/ActivityScreen";
 import { getProfileActivity } from "@/lib/myActivity";
-import { posterUrl } from "@/lib/media";
+import { posterUrl } from "@/core/media";
 import { PageTabs, type PageTab } from "@/components/ui/PageTabs";
 import { ShareTitleButton } from "@/components/ShareTitleButton";
 import { FeedReviewText } from "@/components/FeedReviewText";
@@ -50,7 +50,7 @@ import { RowPoster } from "@/components/ActivityFeed";
 import { getLibState } from "@/lib/libState";
 import { RowComment } from "@/components/RowComment";
 import { LikeButton } from "@/components/LikeButton";
-import { timeAgoShort } from "@/lib/when";
+import { timeAgoShort } from "@/core/when";
 import { FollowCountButton } from "@/components/ProfilePeeks";
 import { FavoritesRail } from "@/components/FavoritesRail";
 import {
@@ -64,13 +64,13 @@ import {
      ترمي `TypeError` وتُسقط الملفَّ كلَّه لمن أشعل صفَّ «فنّانوك». */
   sectionKeyOf,
   type ProfileSection,
-} from "@/lib/profilePrefs";
+} from "@/core/profilePrefs";
 import { SectionReorderButton } from "@/components/SectionReorderButton";
 import { SavedListsToggle } from "@/components/SavedListsToggle";
-import { capCards } from "@/lib/cardCount";
+import { capCards } from "@/core/cardCount";
 import { coverBareControl, HEADER_ICON } from "@/components/ui/controls";
-import { browseGenreName, groupByGenre } from "@/lib/browse";
-import { densityVars } from "@/lib/density";
+import { browseGenreName, groupByGenre } from "@/core/browse";
+import { densityVars } from "@/core/density";
 
 /**
  * 🆕 **مقاسُ صورة الملفّ في درجتين** (D-836).

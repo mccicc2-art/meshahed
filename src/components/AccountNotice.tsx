@@ -1,4 +1,4 @@
-import { getDict, type Locale } from "@/lib/i18n";
+import { getDict, type Locale } from "@/core/i18n";
 import { Icon } from "./Icon";
 import { buttonClass } from "./ui/Button";
 

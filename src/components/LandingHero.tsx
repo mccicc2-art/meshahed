@@ -4,7 +4,7 @@ import Image from "next/image";
 import { getT } from "@/lib/locale";
 import { trending, type SearchResult } from "@/lib/tmdb";
 import { railGuard } from "@/lib/topChart";
-import { posterUrl, POSTER_INTRINSIC } from "@/lib/media";
+import { posterUrl, POSTER_INTRINSIC } from "@/core/media";
 import { GoogleButton } from "@/components/GoogleButton";
 import { buttonClass } from "@/components/ui/Button";
 

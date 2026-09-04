@@ -1,4 +1,4 @@
-import type { Dict } from "@/lib/i18n";
+import type { Dict } from "@/core/i18n";
 import type { LoopzNewsItem } from "@/lib/data";
 
 /**

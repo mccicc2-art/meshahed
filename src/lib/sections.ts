@@ -1,5 +1,5 @@
 import { getContentPrefs } from "@/lib/data";
-import { EMPTY_CONTENT_PREFS, isExcludedLanguage } from "@/lib/contentPrefs";
+import { EMPTY_CONTENT_PREFS, isExcludedLanguage } from "@/core/contentPrefs";
 import type { SearchResult } from "./tmdb";
 import {
   airingTv,
@@ -21,8 +21,8 @@ import { railGuard, topChartRail } from "./topChart";
 /* 🆕 **حكمُ IMDb لصفِّ «أفضل ٢٥»** (D-827) — **انتقل مع مصدره من
    `news/page.tsx`**، فلا يبقى نصفُ الصفِّ في صفحةٍ ونصفُه هنا. */
 import { withImdbRatings, rankByImdb } from "./omdb";
-import type { Locale } from "./i18n";
-import type { RailWin } from "./browse";
+import type { Locale } from "@/core/i18n";
+import type { RailWin } from "@/core/browse";
 
 /**
  * خلطٌ عشوائيّ — **قرعةُ خادمٍ لا دالّةُ عرض** (نمط D-073 حرفياً).

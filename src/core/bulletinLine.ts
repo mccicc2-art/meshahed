@@ -1,5 +1,5 @@
-import type { Dict } from "@/lib/i18n";
-import type { Locale } from "@/lib/i18n";
+import type { Dict } from "@/core/i18n";
+import type { Locale } from "@/core/i18n";
 
 /**
  * **جملةُ نشرةِ الغرفة** — تُركَّب من حقائقَ في الصفّ لا تُقرأ نصّاً

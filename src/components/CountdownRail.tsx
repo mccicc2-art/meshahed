@@ -2,9 +2,9 @@ import Link from "next/link";
 import { RailScroll } from "./RailScroll";
 import { Icon, type IconName } from "./Icon";
 import Image from "next/image";
-import { POSTER_INTRINSIC } from "@/lib/media";
-import { getDict, type Locale } from "@/lib/i18n";
-import { daysUntil } from "@/lib/when";
+import { POSTER_INTRINSIC } from "@/core/media";
+import { getDict, type Locale } from "@/core/i18n";
+import { daysUntil } from "@/core/when";
 
 export interface CountdownItem {
   key: string;

@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { getDict, type Locale } from "@/lib/i18n";
+import { getDict, type Locale } from "@/core/i18n";
 
 /**
  * **اسمُ الصفحة في منتصف الشريط العلويّ** (D-258، طلبُ أحمد: «اخفِ

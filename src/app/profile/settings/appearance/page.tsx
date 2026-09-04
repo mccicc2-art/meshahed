@@ -7,8 +7,8 @@ import { SettingsGroup } from "@/components/settings/SettingsGroup";
 import { LanguageRow } from "@/components/settings/LanguageRow";
 import { ThemeSection } from "@/components/settings/ThemeSection";
 import { FontSizeSection } from "@/components/settings/FontSizeSection";
-import { FONT_UI_COOKIE, FONT_CONTENT_COOKIE, sanitizeFontSize } from "@/lib/fontPrefs";
-import { isPlus } from "@/lib/plan";
+import { FONT_UI_COOKIE, FONT_CONTENT_COOKIE, sanitizeFontSize } from "@/core/fontPrefs";
+import { isPlus } from "@/core/plan";
 
 /**
  * المظهرُ واللغة — **الثيمُ ولغةُ الواجهة وحجمُ الخطّ** (D-462).

@@ -5,10 +5,10 @@ import Image from "next/image";
 import { Sheet, SheetHeader } from "@/components/ui/Sheet";
 import { PosterCard } from "@/components/PosterCard";
 import { posterGrid, chipRow, sheetScroll } from "@/components/ui/controls";
-import { profileUrl } from "@/lib/media";
+import { profileUrl } from "@/core/media";
 import { openPlusGate } from "@/lib/plusGate";
-import { getDict, type Locale } from "@/lib/i18n";
-import type { AutoGroup } from "@/lib/autoGroups";
+import { getDict, type Locale } from "@/core/i18n";
+import type { AutoGroup } from "@/core/autoGroups";
 
 /**
  * ============ «تجتمع عندك» — المجموعاتُ التلقائيّة (D-820) ============

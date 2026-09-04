@@ -1,4 +1,4 @@
-import { normalizeTerm } from "@/lib/media";
+import { normalizeTerm } from "@/core/media";
 
 /**
  * قاموس الجنسيات — «سعودي» يصير فلتراً، لا نتيجة بحث.

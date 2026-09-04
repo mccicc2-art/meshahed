@@ -12,7 +12,7 @@ import {
 } from "react";
 import { Icon } from "../Icon";
 import { writeTrailerSound } from "@/lib/trailerPrefs";
-import { providerOf } from "@/lib/trailerProviders";
+import { providerOf } from "@/core/trailerProviders";
 
 /**
  * 🔴 🆕 **TrailerPlaybackController** (D-759 — إعادةُ بناءٍ من الأساس

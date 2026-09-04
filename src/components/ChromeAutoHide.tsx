@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
-import { allowsAutoHideChrome } from "@/lib/chromeRules";
+import { allowsAutoHideChrome } from "@/core/chromeRules";
 
 /**
  * **الكسوةُ الذكيّة** (جولة ١٩ أغسطس ليلاً، طلبُ أحمد: «عند النزول داخل

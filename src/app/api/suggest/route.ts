@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import { getUser } from "@/lib/data";
 import { searchMulti, searchPeople, titleOf, yearOf, posterUrl, profileUrl } from "@/lib/tmdb";
 import { getT } from "@/lib/locale";
-import { roleName } from "@/lib/i18n";
-import { allow, retryAfter } from "@/lib/ratelimit";
+import { roleName } from "@/core/i18n";
+import { allow, retryAfter } from "@/core/ratelimit";
 
 // اقتراحات البحث الفورية — يبقى مفتاح TMDB على الخادم
 export async function GET(request: Request) {

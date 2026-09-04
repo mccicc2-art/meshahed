@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { getT, getLocale } from "@/lib/locale";
 import { Icon, type IconName } from "@/components/Icon";
 import { seoKeywords } from "@/lib/seo";
-import { FOUNDER_PLUS_UNTIL } from "@/lib/plan";
+import { FOUNDER_PLUS_UNTIL } from "@/core/plan";
 
 /* صفحةُ البيع تُفهرَس كأختها `/features`: **الوصفُ هو الإعلانُ الوحيد
    الذي نملكه** في نتيجة البحث، ويُكتب بلغة الزائر لا بالإنجليزية دائماً

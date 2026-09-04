@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { cacheFollowMeta, cacheMovieStats } from "@/lib/actions";
-import type { MediaType } from "@/lib/media";
+import type { MediaType } from "@/core/media";
 
 export interface FollowMeta {
   tmdbId: number;

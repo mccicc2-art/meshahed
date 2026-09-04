@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
-import { allow } from "@/lib/ratelimit";
+import { allow } from "@/core/ratelimit";
 
 /**
  * ====== إشارةُ مشغّل الترايلر (D-881 · `LOOPZ-AUD-0023`) ======

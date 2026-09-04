@@ -1,4 +1,4 @@
-import { ALL_LANGS, BROWSE_GENRES, expandGenreIds } from "@/lib/browse";
+import { ALL_LANGS, BROWSE_GENRES, expandGenreIds } from "@/core/browse";
 
 /**
  * **تفضيلاتُ المحتوى — ما يُعزَّز وما يُخفَّض وما يُستبعد** (D-545،

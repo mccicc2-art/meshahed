@@ -2,8 +2,8 @@
 
 import { useState, useTransition } from "react";
 import { setToWatchQueue } from "@/lib/actions";
-import { getDict, type Locale } from "@/lib/i18n";
-import { posterUrl } from "@/lib/media";
+import { getDict, type Locale } from "@/core/i18n";
+import { posterUrl } from "@/core/media";
 import { tap } from "@/lib/haptics";
 import { toast, flashError } from "@/lib/toast";
 import { Icon } from "./Icon";

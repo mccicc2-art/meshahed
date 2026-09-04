@@ -7,7 +7,7 @@ import { buttonClass } from "./ui/Button";
 import { myBlocksList, unblockUser } from "@/lib/actions";
 import { toast, flashError } from "@/lib/toast";
 import { tap } from "@/lib/haptics";
-import { getDict, type Locale } from "@/lib/i18n";
+import { getDict, type Locale } from "@/core/i18n";
 import { SettingsRow } from "./settings/SettingsRow";
 import { SettingsBottomSheet } from "./settings/SettingsBottomSheet";
 import { sheetScroll } from "./ui/controls";

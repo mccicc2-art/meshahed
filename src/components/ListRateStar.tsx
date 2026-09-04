@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Icon } from "./Icon";
 import { Sheet, SheetHeader } from "./ui/Sheet";
 import { ListReviewForm } from "./ListReviewForm";
-import { getDict, num, type Locale } from "@/lib/i18n";
+import { getDict, num, type Locale } from "@/core/i18n";
 import { tap } from "@/lib/haptics";
 
 /**

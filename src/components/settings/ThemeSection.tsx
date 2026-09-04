@@ -3,13 +3,13 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { updateProfile, syncThemeCookie } from "@/lib/actions";
-import { THEMES, themeName } from "@/lib/themes";
-import { getDict, type Locale } from "@/lib/i18n";
+import { THEMES, themeName } from "@/core/themes";
+import { getDict, type Locale } from "@/core/i18n";
 import { tap } from "@/lib/haptics";
 import { toast } from "@/lib/toast";
 import { Icon } from "../Icon";
 import { SettingsExpandRow } from "./SettingsExpandRow";
-import { themeNeedsPlus } from "@/lib/plan";
+import { themeNeedsPlus } from "@/core/plan";
 import { openPlusGate } from "@/lib/plusGate";
 
 /**

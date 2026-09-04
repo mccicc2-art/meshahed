@@ -1,12 +1,12 @@
 import "server-only";
 
-import { eraRange, parseBrowse, seasonRange, type BrowseQuery } from "@/lib/browse";
+import { eraRange, parseBrowse, seasonRange, type BrowseQuery } from "@/core/browse";
 /* 🔑 **ومفرداتُ الشرط هي `FILTER_KEYS` بعينها** (D-816/D-818) — **ولا
    قائمةَ سماحٍ ثانيةً تُكتب من الذاكرة** (درسُ D-816 الذي كاد يُسقط
    كلَّ فلترٍ يُحفظ). */
-import { FILTER_KEYS } from "@/lib/savedFilters";
-import { LIBRARY_RULE_KEYS, MY_RATING_MIN } from "@/lib/smartListKeys";
-import { isLibraryStatus } from "@/lib/libraryStatus";
+import { FILTER_KEYS } from "@/core/savedFilters";
+import { LIBRARY_RULE_KEYS, MY_RATING_MIN } from "@/core/smartListKeys";
+import { isLibraryStatus } from "@/core/libraryStatus";
 import { keywordId, companyId, ANIME_KEYWORD, type DiscoverFilter } from "@/lib/tmdb";
 import type { SectionMedia } from "@/lib/sections";
 
@@ -99,7 +99,7 @@ export function ruleMedia(rule: SmartRule): SectionMedia {
 /* **وخريطةُ التبويب إلى الجهة تسكن `smartListKeys.ts`** — **يقرؤها
    العميلُ وهذا الملفُّ `server-only`** — **وتُعاد تصديرُها هنا فلا
    يبحث قارئُ الخادم عن نصفِ الوحدة في ملفٍّ ثانٍ.** */
-export { sectionToRuleType } from "@/lib/smartListKeys";
+export { sectionToRuleType } from "@/core/smartListKeys";
 
 /**
  * **الشرطُ إلى `DiscoverFilter`** — **المصدرُ الواحدُ الذي كان مكتوباً

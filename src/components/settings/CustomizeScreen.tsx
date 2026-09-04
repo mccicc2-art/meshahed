@@ -1,14 +1,14 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import { getDict, type Locale } from "@/lib/i18n";
+import { getDict, type Locale } from "@/core/i18n";
 import { HomeCustomize } from "../HomeCustomize";
 import { ProfileCustomize } from "../ProfileCustomize";
 import { chipClass, pillTrack } from "../ui/controls";
 import { SettingsPageLayout } from "./SettingsPageLayout";
 import { SettingsGroup } from "./SettingsGroup";
 import { SettingsRow } from "./SettingsRow";
-import { type PrefTemplate } from "@/lib/prefTemplates";
+import { type PrefTemplate } from "@/core/prefTemplates";
 
 /**
  * شاشةُ التخصيص — **سطحان لا صفحتان** (D-129)، **وترويستُها تحمل

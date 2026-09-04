@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { getDict, type Locale } from "@/lib/i18n";
+import { getDict, type Locale } from "@/core/i18n";
 import { tap } from "@/lib/haptics";
 import { Sheet, SheetHeader, SheetTabs } from "./ui/Sheet";
 import { segmentedItem, segmentedTrackFull, sheetScroll } from "./ui/controls";
@@ -12,7 +12,7 @@ import { NewListForm } from "./NewListForm";
 import { TabsPrefs } from "./TabsPrefs";
 import { RailsPrefs } from "./RailsPrefs";
 import { LibrarySmartForm } from "./LibrarySmartForm";
-import type { TabPref } from "@/lib/tabPrefs";
+import type { TabPref } from "@/core/tabPrefs";
 
 export type LibrarySort = "smart" | "title" | "progress" | "added";
 

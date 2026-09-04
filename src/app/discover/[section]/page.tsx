@@ -9,7 +9,7 @@ import {
   browseGenreName,
   browseTagName,
   BROWSE_TAGS,
-} from "@/lib/browse";
+} from "@/core/browse";
 import { browseToFilter } from "@/lib/smartLists";
 import { titleOf, yearOf } from "@/lib/tmdb";
 import { localizeRows } from "@/lib/localize";
@@ -23,7 +23,7 @@ import {
 import { PosterGrid } from "@/components/PosterGrid";
 import { PosterCard } from "@/components/PosterCard";
 import { BackButton } from "@/components/BackButton";
-import type { Dict } from "@/lib/i18n";
+import type { Dict } from "@/core/i18n";
 
 export const dynamic = "force-dynamic";
 

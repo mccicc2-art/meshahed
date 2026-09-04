@@ -2,8 +2,8 @@
 
 import { useState, useTransition } from "react";
 import { setFontPrefs } from "@/lib/actions";
-import { getDict, type Locale } from "@/lib/i18n";
-import { FONT_SIZES, type FontSize } from "@/lib/fontPrefs";
+import { getDict, type Locale } from "@/core/i18n";
+import { FONT_SIZES, type FontSize } from "@/core/fontPrefs";
 import { SettingsOptionRow, SettingsOptionList } from "./SettingsOptionRow";
 import { SettingsExpandRow } from "./SettingsExpandRow";
 

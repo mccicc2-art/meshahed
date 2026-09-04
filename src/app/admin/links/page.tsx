@@ -3,8 +3,8 @@ import { getAmAdmin } from "@/lib/data";
 import { createClient } from "@/lib/supabase/server";
 import { getTv, getMovie, getWatchProviders, searchMulti, type Provider } from "@/lib/tmdb";
 import { adminSetProviderLink } from "@/lib/actions";
-import { isTrustedProviderUrl } from "@/lib/providerLinks";
-import { WATCH_REGIONS } from "@/lib/region";
+import { isTrustedProviderUrl } from "@/core/providerLinks";
+import { WATCH_REGIONS } from "@/core/region";
 import { buttonClass } from "@/components/ui/Button";
 
 /**

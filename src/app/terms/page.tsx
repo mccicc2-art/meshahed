@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { getT } from "@/lib/locale";
-import { FOUNDER_PLUS_UNTIL } from "@/lib/plan";
+import { FOUNDER_PLUS_UNTIL } from "@/core/plan";
 
 export const metadata: Metadata = {
   title: "Terms of Use",

@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { getDict, type Locale } from "@/lib/i18n";
-import { dirOf } from "@/lib/dir";
+import { getDict, type Locale } from "@/core/i18n";
+import { dirOf } from "@/core/dir";
 import { Icon } from "./Icon";
 
 /**

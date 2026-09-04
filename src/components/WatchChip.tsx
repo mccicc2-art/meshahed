@@ -2,15 +2,15 @@
 
 import Image from "next/image";
 import { useState } from "react";
-import { IMG } from "@/lib/media";
-import { regionName } from "@/lib/region";
-import { getDict, type Locale } from "@/lib/i18n";
+import { IMG } from "@/core/media";
+import { regionName } from "@/core/region";
+import { getDict, type Locale } from "@/core/i18n";
 import { logProviderEvent } from "@/lib/actions";
 import {
   isTrustedProviderUrl,
   providerSearchUrl,
   type ProviderEvent,
-} from "@/lib/providerLinks";
+} from "@/core/providerLinks";
 import type { WatchOptions, Provider } from "@/lib/tmdb";
 import { Sheet, SheetHeader } from "./ui/Sheet";
 import { buttonClass } from "./ui/Button";

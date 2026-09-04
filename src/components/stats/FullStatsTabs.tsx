@@ -1,9 +1,9 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Icon, type IconName } from "@/components/Icon";
-import { posterUrl, profileUrl } from "@/lib/media";
-import { num, type Locale } from "@/lib/i18n";
-import { hm, primeLabel } from "@/lib/statsFormat";
+import { posterUrl, profileUrl } from "@/core/media";
+import { num, type Locale } from "@/core/i18n";
+import { hm, primeLabel } from "@/core/statsFormat";
 import type { PeriodStats } from "@/lib/periodStats";
 
 /**

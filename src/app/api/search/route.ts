@@ -1,15 +1,15 @@
 import { NextResponse } from "next/server";
 import { getUser, searchPeople as searchMembers, searchPublicLists } from "@/lib/data";
 import { searchMulti, searchPeople, yearOf, getTv, getMovie } from "@/lib/tmdb";
-import { resolveTmdbTitle } from "@/lib/media";
-import { posterUrl, profileUrl } from "@/lib/media";
+import { resolveTmdbTitle } from "@/core/media";
+import { posterUrl, profileUrl } from "@/core/media";
 import { getT, getTitleMode } from "@/lib/locale";
-import { roleName } from "@/lib/i18n";
-import { curatedName } from "@/lib/universes";
-import { allow, retryAfter } from "@/lib/ratelimit";
+import { roleName } from "@/core/i18n";
+import { curatedName } from "@/core/universes";
+import { allow, retryAfter } from "@/core/ratelimit";
 import { getTranslits, searchTranslits } from "@/lib/titleAliases";
-import { needsTranslit } from "@/lib/titleMode";
-import type { SearchPayload, SearchScope } from "@/lib/searchTypes";
+import { needsTranslit } from "@/core/titleMode";
+import type { SearchPayload, SearchScope } from "@/core/searchTypes";
 
 /**
  * **بحثٌ واحدٌ لأربعة أنواع** (D-534) — نداءٌ واحدٌ لصفحة البحث الجديدة.

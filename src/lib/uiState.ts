@@ -15,8 +15,8 @@
  * والحسابُ مصدرَ الحقيقة الذي يتبع صاحبَه بين أجهزته.
  */
 
-import { sanitizeSavedFilters, type SavedFilter } from "@/lib/savedFilters";
-import { sanitizePrefTemplates, type PrefTemplate } from "@/lib/prefTemplates";
+import { sanitizeSavedFilters, type SavedFilter } from "@/core/savedFilters";
+import { sanitizePrefTemplates, type PrefTemplate } from "@/core/prefTemplates";
 
 export const TOUR_STATE_VALUES = ["suggested", "active", "done"] as const;
 export type TourStateS = (typeof TOUR_STATE_VALUES)[number];

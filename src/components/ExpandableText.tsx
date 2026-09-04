@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { getDict, type Locale } from "@/lib/i18n";
-import { dirOf, alignOf } from "@/lib/dir";
+import { getDict, type Locale } from "@/core/i18n";
+import { dirOf, alignOf } from "@/core/dir";
 
 /**
  * **نصٌّ سطرٌ واحدٌ ثم يُوسَّع** (D-304 → **D-310**، طلبُ أحمد: «الوصف

@@ -1,4 +1,4 @@
-import type { MediaType } from "@/lib/media";
+import type { MediaType } from "@/core/media";
 
 /**
  * تحقّقٌ من مدخلات أفعال الخادم.

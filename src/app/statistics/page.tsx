@@ -3,8 +3,8 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { getProfile, getUser } from "@/lib/data";
 import { getT } from "@/lib/locale";
-import { isPlus } from "@/lib/plan";
-import { asTimeZone } from "@/lib/zone";
+import { isPlus } from "@/core/plan";
+import { asTimeZone } from "@/core/zone";
 import {
   asOffset,
   asStatsPeriod,

@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { redirect } from "next/navigation";
 import { after } from "next/server";
-import { getDict, type Locale } from "@/lib/i18n";
+import { getDict, type Locale } from "@/core/i18n";
 import { RailSkeleton } from "@/components/Skeletons";
 import {
   getUser,
@@ -48,24 +48,24 @@ import {
   getNewsGenStale,
   refreshLoopzNews,
 } from "@/lib/data";
-import { nextUnwatchedEpisode } from "@/lib/progress";
+import { nextUnwatchedEpisode } from "@/core/progress";
 import { getT, getLocale } from "@/lib/locale";
-import { whenLabel } from "@/lib/when";
+import { whenLabel } from "@/core/when";
 import { localizeFollows, localizeRows } from "@/lib/localize";
-import { airedEpisodeCount, percentOf } from "@/lib/progress";
+import { airedEpisodeCount, percentOf } from "@/core/progress";
 import { PosterCard } from "@/components/PosterCard";
 import { ContinueCard } from "@/components/ContinueCard";
 import { ListContinueCard } from "@/components/ListContinueCard";
 import { ToWatchListCard } from "@/components/ToWatchListCard";
 /* اسمُ قائمةِ لوبز يُترجَم عند العرض لا يُخزَّن (D-328/D-373) */
-import { curatedName } from "@/lib/universes";
+import { curatedName } from "@/core/universes";
 import { PosterRail, RailItem, seeAllClass } from "@/components/PosterRail";
 import { PosterGrid } from "@/components/PosterGrid";
 import { ProfileStatSheet } from "@/components/ProfileStatSheet";
 import { RailNewBadge } from "@/components/RailNewBadge";
 import { PublicListsRail } from "@/components/PublicListsRail";
 import { Icon, type IconName } from "@/components/Icon";
-import { posterUrl } from "@/lib/media";
+import { posterUrl } from "@/core/media";
 import { getWatchHistory } from "@/lib/data";
 import { HomeHeader, type HeaderStat } from "@/components/HomeHeader";
 /* **الشكلان يُرسمان معاً والعميلُ يختار** — لا رحلةَ خادمٍ لتبديل شكل */
@@ -80,9 +80,9 @@ import {
   headerStatMeta,
   type HeaderStatKey,
   type HomeView,
-} from "@/lib/homePrefs";
-import { capCards } from "@/lib/cardCount";
-import { densityVars } from "@/lib/density";
+} from "@/core/homePrefs";
+import { capCards } from "@/core/cardCount";
+import { densityVars } from "@/core/density";
 import { WeekStrip, type WeekEntry } from "@/components/WeekStrip";
 import {
 } from "@/components/HomeSectionsOrder";

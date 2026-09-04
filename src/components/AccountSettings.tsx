@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { updateProfile } from "@/lib/actions";
-import { getDict, type Locale } from "@/lib/i18n";
+import { getDict, type Locale } from "@/core/i18n";
 import { toast } from "@/lib/toast";
 import { settingsCardRows } from "./settings/SettingsGroup";
 import { ToggleRow } from "./ui/SectionOrderList";

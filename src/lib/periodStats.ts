@@ -9,10 +9,10 @@ import {
   type HistoryRow,
   type TitleMetaRow,
 } from "@/lib/data";
-import { browseGenreForId, browseGenreName } from "@/lib/browse";
-import { runtimeMinutes } from "@/lib/watchTime";
-import { getDict, type Locale } from "@/lib/i18n";
-import { UTC, zoneShiftMs } from "@/lib/zone";
+import { browseGenreForId, browseGenreName } from "@/core/browse";
+import { runtimeMinutes } from "@/core/watchTime";
+import { getDict, type Locale } from "@/core/i18n";
+import { UTC, zoneShiftMs } from "@/core/zone";
 
 /**
  * ================= مصدرُ الإحصائيات الواحد (D-799) =================

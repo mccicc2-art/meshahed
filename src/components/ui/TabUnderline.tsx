@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import { onTabDrag } from "@/lib/tabDrag";
+import { onTabDrag } from "@/core/tabDrag";
 import { useBeforePaint } from "@/lib/useBeforePaint";
 
 /** **منحنى الاستقرار** — واحدٌ للشريط واللوحة (D-279) */

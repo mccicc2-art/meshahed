@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { claimGesture, releaseGesture, gestureTakenBy } from "@/lib/tabDrag";
+import { claimGesture, releaseGesture, gestureTakenBy } from "@/core/tabDrag";
 import { usePathname, useRouter } from "next/navigation";
-import { allowsPullToRefresh } from "@/lib/chromeRules";
+import { allowsPullToRefresh } from "@/core/chromeRules";
 
 /**
  * **السحبُ للتحديث** (D-243، طلبُ أحمد: «أحتاج إذا سحبت يعمل تحديث مثل

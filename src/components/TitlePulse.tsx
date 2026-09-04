@@ -1,4 +1,4 @@
-import { getDict, num, type Locale } from "@/lib/i18n";
+import { getDict, num, type Locale } from "@/core/i18n";
 import { Icon } from "./Icon";
 
 /**

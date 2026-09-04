@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { getDict, type Locale } from "@/lib/i18n";
+import { getDict, type Locale } from "@/core/i18n";
 import { TOUR_META, TOUR_IDS, TOUR_START_EVENT } from "@/lib/tour";
 import { updateUiState } from "@/lib/actions";
 import { toast } from "@/lib/toast";

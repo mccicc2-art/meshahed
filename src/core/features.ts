@@ -1,5 +1,5 @@
-import type { IconName } from "@/components/Icon";
-import { FOUNDER_PLUS_UNTIL } from "@/lib/plan";
+import type { IconName } from "./iconNames";
+import { FOUNDER_PLUS_UNTIL } from "@/core/plan";
 
 /**
  * 🆕 **سجلُّ ميزات لوبز — بيتٌ واحدٌ لقارئَيه** (D-851).

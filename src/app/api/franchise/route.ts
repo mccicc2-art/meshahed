@@ -2,9 +2,9 @@ import { NextResponse } from "next/server";
 import { getUser, getWatchedMovieIds, getFollows } from "@/lib/data";
 import { awardWinners, getCollection, moviesByIds, posterUrl, resolveSetIds, titleOf, yearOf } from "@/lib/tmdb";
 import { topChartRows } from "@/lib/topChart";
-import { universeBySlug, universeName } from "@/lib/universes";
+import { universeBySlug, universeName } from "@/core/universes";
 import { getLocale } from "@/lib/locale";
-import { allow, retryAfter } from "@/lib/ratelimit";
+import { allow, retryAfter } from "@/core/ratelimit";
 
 /**
  * أجزاء السلسلة، مع حالة كلّ جزءٍ عند صاحب الحساب.

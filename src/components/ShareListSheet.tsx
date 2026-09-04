@@ -6,7 +6,7 @@ import { Avatar } from "./Avatar";
 import { Icon } from "./Icon";
 import { Sheet } from "./ui/Sheet";
 import { buttonClass } from "./ui/Button";
-import { getDict, num, type Locale } from "@/lib/i18n";
+import { getDict, num, type Locale } from "@/core/i18n";
 import { siteUrl } from "@/lib/site";
 import { tap } from "@/lib/haptics";
 import { toast, flashError } from "@/lib/toast";

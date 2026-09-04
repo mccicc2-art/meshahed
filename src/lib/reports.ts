@@ -1,9 +1,9 @@
 import "server-only";
 
 import { getFollows, getWatchWindow, type FollowRow, type HistoryRow } from "@/lib/data";
-import { browseGenreForId, browseGenreName } from "@/lib/browse";
-import type { Locale } from "@/lib/i18n";
-import { runtimeMinutes } from "@/lib/watchTime";
+import { browseGenreForId, browseGenreName } from "@/core/browse";
+import type { Locale } from "@/core/i18n";
+import { runtimeMinutes } from "@/core/watchTime";
 
 /**
  * ============ تقاريرُ المشاهدة — أسبوعُك وشهرُك وسنتُك (D-796) ============

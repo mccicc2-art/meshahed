@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getUser } from "@/lib/data";
 import { createServiceClient } from "@/lib/supabase/service";
-import { allow, retryAfter } from "@/lib/ratelimit";
+import { allow, retryAfter } from "@/core/ratelimit";
 import {
   CANDIDATE_POOL,
   RESOLVE_BATCH,

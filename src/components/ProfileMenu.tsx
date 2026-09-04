@@ -16,7 +16,7 @@ import { BlockConfirmSheet } from "./BlockConfirmSheet";
 import { reportUser, requestOrFollowUser, unfollowUser } from "@/lib/actions";
 import { toast, flashError } from "@/lib/toast";
 import { tap } from "@/lib/haptics";
-import { getDict, type Locale } from "@/lib/i18n";
+import { getDict, type Locale } from "@/core/i18n";
 import type { PersonLite } from "@/lib/data";
 
 /**

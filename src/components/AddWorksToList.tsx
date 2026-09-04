@@ -2,7 +2,7 @@
 
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { getDict, type Locale } from "@/lib/i18n";
+import { getDict, type Locale } from "@/core/i18n";
 import { toast, flashError } from "@/lib/toast";
 import { tap } from "@/lib/haptics";
 import { createListFromPerson } from "@/lib/actions";

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { posterUrl, POSTER_INTRINSIC } from "@/lib/media";
+import { posterUrl, POSTER_INTRINSIC } from "@/core/media";
 import { Icon, type IconName } from "./Icon";
 
 /**

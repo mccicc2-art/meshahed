@@ -3,8 +3,8 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { saveProfileSectionOrder } from "@/lib/actions";
-import type { SortableSection } from "@/lib/profilePrefs";
-import { getDict, type Locale } from "@/lib/i18n";
+import type { SortableSection } from "@/core/profilePrefs";
+import { getDict, type Locale } from "@/core/i18n";
 import { tap } from "@/lib/haptics";
 import { flashError } from "@/lib/toast";
 import { Icon } from "./Icon";

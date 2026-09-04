@@ -1,7 +1,7 @@
 import { getTv, getMovie } from "@/lib/tmdb";
 import type { FollowRow } from "@/lib/data";
-import type { Locale } from "@/lib/i18n";
-import { originalTitleOf, type MediaType } from "@/lib/media";
+import type { Locale } from "@/core/i18n";
+import { originalTitleOf, type MediaType } from "@/core/media";
 import { getTranslits } from "@/lib/titleAliases";
 import { getTitleMode } from "@/lib/locale";
 import {
@@ -10,7 +10,7 @@ import {
   resolveMediaTitle,
   type ResolvedTitle,
   type TitleMode,
-} from "@/lib/titleMode";
+} from "@/core/titleMode";
 
 /**
  * أسماء الأعمال المخزّنة، معروضةً بلغة الواجهة.

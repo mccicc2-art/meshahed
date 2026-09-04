@@ -1,8 +1,8 @@
 import { ImageResponse } from "next/og";
 import { getNewsPost } from "@/lib/data";
-import { newsLine } from "@/lib/newsLine";
-import { posterUrl } from "@/lib/media";
-import { dirOf } from "@/lib/dir";
+import { newsLine } from "@/core/newsLine";
+import { posterUrl } from "@/core/media";
+import { dirOf } from "@/core/dir";
 import { getT } from "@/lib/locale";
 import { OG_SIZE, OG_CONTENT_TYPE, ogFonts, threadOgCard } from "@/lib/og";
 

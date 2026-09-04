@@ -3,12 +3,12 @@
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { saveHomeSectionOrder } from "@/lib/actions";
-import { getDict, type Locale } from "@/lib/i18n";
+import { getDict, type Locale } from "@/core/i18n";
 import {
   HOME_SECTIONS,
   homeSectionMeta,
   type HomeSection,
-} from "@/lib/homePrefs";
+} from "@/core/homePrefs";
 import { tap } from "@/lib/haptics";
 import { flashError } from "@/lib/toast";
 import { Icon } from "./Icon";

@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { setLocale } from "@/lib/actions";
-import { getDict, type Locale } from "@/lib/i18n";
+import { getDict, type Locale } from "@/core/i18n";
 import { SettingsOptionRow, SettingsOptionList } from "./SettingsOptionRow";
 import { SettingsExpandRow } from "./SettingsExpandRow";
 

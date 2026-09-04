@@ -2,13 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import { cookies, headers } from "next/headers";
-import { PERSON_COLS } from "@/lib/people";
+import { PERSON_COLS } from "@/core/people";
 import { withIdentities, withPersonIdentities } from "@/lib/data";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
-import { LOCALE_COOKIE, normalizeLocale } from "@/lib/i18n";
-import { REGION_COOKIE, normalizeRegion } from "@/lib/region";
-import { TITLE_MODE_COOKIE, parseTitleMode } from "@/lib/titleMode";
+import { LOCALE_COOKIE, normalizeLocale } from "@/core/i18n";
+import { REGION_COOKIE, normalizeRegion } from "@/core/region";
+import { TITLE_MODE_COOKIE, parseTitleMode } from "@/core/titleMode";
 import {
   CONTENT_PREFS_COOKIE,
   hasAnyPrefs,
@@ -16,25 +16,25 @@ import {
   parseContentPrefs,
   sanitizeContentPrefs,
   serializeContentPrefs,
-} from "@/lib/contentPrefs";
-import { GENRES, type MediaType } from "@/lib/media";
-import { isPlus, themeNeedsPlus } from "@/lib/plan";
-import { BROWSE_GENRES } from "@/lib/browse";
-import { cleanHandle } from "@/lib/socials";
-import { THEMES } from "@/lib/themes";
-import { RAILS_COOKIE, serializeHiddenRails } from "@/lib/railPrefs";
+} from "@/core/contentPrefs";
+import { GENRES, type MediaType } from "@/core/media";
+import { isPlus, themeNeedsPlus } from "@/core/plan";
+import { BROWSE_GENRES } from "@/core/browse";
+import { cleanHandle } from "@/core/socials";
+import { THEMES } from "@/core/themes";
+import { RAILS_COOKIE, serializeHiddenRails } from "@/core/railPrefs";
 import {
   keepPaidHomePrefs,
   sanitizeHomePrefs,
   type HomePrefs,
   type HomeView,
-} from "@/lib/homePrefs";
+} from "@/core/homePrefs";
 import {
   keepPaidProfilePrefs,
   sanitizeProfilePrefs,
   SORTABLE_SECTIONS,
   type ProfilePrefs,
-} from "@/lib/profilePrefs";
+} from "@/core/profilePrefs";
 import {
   FEED_STRANGERS_COOKIE,
   FEED_SORT_COOKIE,
@@ -45,8 +45,8 @@ import {
   serializeTabPrefs,
   surfaceCookie,
   type TabPref,
-} from "@/lib/tabPrefs";
-import { allow } from "@/lib/ratelimit";
+} from "@/core/tabPrefs";
+import { allow } from "@/core/ratelimit";
 import {
   asTrailerScope,
   asTrailerTab,
@@ -58,7 +58,7 @@ import {
   FONT_UI_COOKIE,
   FONT_CONTENT_COOKIE,
   sanitizeFontSize,
-} from "@/lib/fontPrefs";
+} from "@/core/fontPrefs";
 import {
   mergeHints,
   sanitizeTourState,
@@ -66,12 +66,12 @@ import {
   type TourState,
   type UiState,
 } from "@/lib/uiState";
-import { sanitizeSavedFilters, type SavedFilter } from "@/lib/savedFilters";
-import { sanitizePrefTemplates, type PrefTemplate } from "@/lib/prefTemplates";
-import { isViewKey } from "@/lib/postKeys";
-import { intId, intIn, asMediaType, uuid, dateOrNull } from "@/lib/validate";
+import { sanitizeSavedFilters, type SavedFilter } from "@/core/savedFilters";
+import { sanitizePrefTemplates, type PrefTemplate } from "@/core/prefTemplates";
+import { isViewKey } from "@/core/postKeys";
+import { intId, intIn, asMediaType, uuid, dateOrNull } from "@/core/validate";
 import { searchGifs, type GifHit } from "@/lib/gif";
-import { IMPORT_CAPS, type ImportPayload, type ResolveRequest, type ResolveResult } from "@/lib/importer";
+import { IMPORT_CAPS, type ImportPayload, type ResolveRequest, type ResolveResult } from "@/core/importer";
 import { getTv, getMovie } from "@/lib/tmdb";
 import type { PersonLite, CommunityLite } from "@/lib/data";
 
@@ -568,7 +568,7 @@ export async function adminSetProviderLink(input: {
   url: string;
   status: "verified" | "pending" | "disabled";
 }) {
-  const { isTrustedProviderUrl } = await import("@/lib/providerLinks");
+  const { isTrustedProviderUrl } = await import("@/core/providerLinks");
   const url = String(input.url ?? "").trim();
   if (!isTrustedProviderUrl(input.providerName, url)) {
     throw new Error("الرابط مرفوض: https على نطاق المنصّة الموثوق فقط");
@@ -960,7 +960,7 @@ export async function setTabPrefs(
    لا يُنادى يُقرأ باباً قائماً فيُبنى عليه.** */
 
 export async function setMyRows(raw: string) {
-  const { parseMyRows, serializeMyRows, MY_ROWS_COOKIE } = await import("@/lib/myRows");
+  const { parseMyRows, serializeMyRows, MY_ROWS_COOKIE } = await import("@/core/myRows");
   const store = await cookies();
   store.set(MY_ROWS_COOKIE, serializeMyRows(parseMyRows(raw)), {
     path: "/",
@@ -1862,7 +1862,7 @@ const MOVIE_BUDGET = 40;
  */
 export async function setTimezone(raw: string): Promise<void> {
   const { supabase, user } = await requireUser("tz", 6, 60_000);
-  const { asTimeZone, UTC } = await import("@/lib/zone");
+  const { asTimeZone, UTC } = await import("@/core/zone");
   const tz = asTimeZone(raw);
   if (tz === UTC) return;
   const { error } = await supabase.from("profiles").update({ timezone: tz }).eq("id", user.id);
@@ -1877,7 +1877,7 @@ export async function repairImpossibleDays(): Promise<{
   stuck: number;
 }> {
   const { supabase, user } = await requireUser("repair", 4, 60_000);
-  const { runtimeMinutes } = await import("@/lib/watchTime");
+  const { runtimeMinutes } = await import("@/core/watchTime");
 
   /* ═══ ١ — كلُّ التاريخ، فالاستحالةُ لا تعرف حدودَ فترة ═══ */
   type Ep = {
@@ -2804,7 +2804,7 @@ export async function applyOnboardingProgress(
   }));
   const { supabase, user } = await requireUser("bulk", 8, 60_000);
   const { getTv, getSeason } = await import("@/lib/tmdb");
-  const { airedPerSeason, firstEpisodeOf } = await import("@/lib/progress");
+  const { airedPerSeason, firstEpisodeOf } = await import("@/core/progress");
 
   const done = items.filter((it) => it.progress === "done");
 
@@ -3513,7 +3513,7 @@ export async function createListFromPerson(personId: number) {
  */
 export async function buildCuratedList(slug: string): Promise<{ slug: string; listId: string; items: number }> {
   const clean = String(slug ?? "").trim().toLowerCase();
-  const { universeBySlug, universeName } = await import("@/lib/universes");
+  const { universeBySlug, universeName } = await import("@/core/universes");
   const u = universeBySlug(clean);
   if (!u) throw new Error("عالمٌ غير معروف / Unknown universe");
 
@@ -3757,7 +3757,7 @@ export async function markShowWatched(
   const { supabase, user } = await requireUser("bulk", 8, 60_000);
   const { getTv } = await import("@/lib/tmdb");
   const { airedPerSeason, airedEpisodeCount, firstEpisodeOf } = await import(
-    "@/lib/progress"
+    "@/core/progress"
   );
 
   const tv = await getTv(tmdbId);
@@ -4855,7 +4855,7 @@ export async function markNextEpisode(
   tmdbId = intId(tmdbId);
   const { supabase, user } = await requireUser("next", 20, 60_000);
   const { getTv } = await import("@/lib/tmdb");
-  const { airedPerSeason, firstEpisodeOf } = await import("@/lib/progress");
+  const { airedPerSeason, firstEpisodeOf } = await import("@/core/progress");
 
   const tv = await getTv(tmdbId);
   const per = airedPerSeason(tv);
@@ -5284,7 +5284,7 @@ export async function aiStorySearch(
     .sort((a, b) => b.rating - a.rating)
     .slice(0, 12)
     .map((r) => r.title as string);
-  const { GENRES, genreName } = await import("@/lib/media");
+  const { GENRES, genreName } = await import("@/core/media");
   const genres = (profile?.favorite_genres ?? [])
     .map((id: number) => GENRES.find((g) => g.id === id))
     .filter(Boolean)
@@ -5296,7 +5296,7 @@ export async function aiStorySearch(
 
   const { searchByName, searchMulti, keywordDiscover, topByFilter, titleOf, yearOf, posterUrl } =
     await import("@/lib/tmdb");
-  const { originalTitleOf } = await import("@/lib/media");
+  const { originalTitleOf } = await import("@/core/media");
 
   const seen = new Set<string>();
   const results: AiSearchResult[] = [];
@@ -5314,7 +5314,7 @@ export async function aiStorySearch(
   const finish = async (rows: AiSearchResult[]): Promise<AiSearchResult[]> => {
     const [{ getTitleMode }, { resolveMediaTitle, needsTranslit }] = await Promise.all([
       import("@/lib/locale"),
-      import("@/lib/titleMode"),
+      import("@/core/titleMode"),
     ]);
     const mode = await getTitleMode();
     if (mode === "localized") return rows;
@@ -5371,8 +5371,8 @@ export async function aiStorySearch(
      يجيب بما يملكه التطبيق فعلاً: نيّةُ النص (نوع درامي + حقبة) أولاً،
      ثم كلمات TMDB المفتاحية، ثم مطابقةُ الاسم. أضعف من النموذج وأصدق
      من رسالة عطل. */
-  const { matchBrowseIntent } = await import("@/lib/intent");
-  const { BROWSE_GENRES, eraRange, BROWSE_ERAS } = await import("@/lib/browse");
+  const { matchBrowseIntent } = await import("@/core/intent");
+  const { BROWSE_GENRES, eraRange, BROWSE_ERAS } = await import("@/core/browse");
   const intent = matchBrowseIntent(desc, loc);
   const wantsShows = /مسلسل|أنمي|انمي|series|shows?|anime/i.test(desc);
   const media = wantsShows ? ("tv" as const) : ("movie" as const);

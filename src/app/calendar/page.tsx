@@ -2,9 +2,9 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getFollows, getProfile, getUser } from "@/lib/data";
 import { getT } from "@/lib/locale";
-import { getDict } from "@/lib/i18n";
-import { isPlus } from "@/lib/plan";
-import { asTimeZone } from "@/lib/zone";
+import { getDict } from "@/core/i18n";
+import { isPlus } from "@/core/plan";
+import { asTimeZone } from "@/core/zone";
 import {
   MONTHS_AHEAD,
   asMonth,
@@ -16,7 +16,7 @@ import {
   monthOf,
   monthShift,
   todayIn,
-} from "@/lib/calendar";
+} from "@/core/calendar";
 import { CalendarMonth } from "@/components/CalendarMonth";
 import { OneTimeHint } from "@/components/OneTimeHint";
 import { SettingsHeader } from "@/components/settings/SettingsHeader";

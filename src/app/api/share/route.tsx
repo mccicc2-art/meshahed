@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { ImageResponse } from "next/og";
-import { isFounder, isPartner, isPlus, isVerified } from "@/lib/plan";
+import { isFounder, isPartner, isPlus, isVerified } from "@/core/plan";
 import {
   getUser,
   getProfile,
@@ -22,8 +22,8 @@ import {
    ⬜ **ودَينٌ يُقال**: بيتُهما `lib` لا ملفُّ مكوّن — **يُنقلان يومَ
    يوجد قارئٌ ثالث** (D-002)، ولا نُوسّع هذا الشحنَ بنقلةٍ لا تُطلب. */
 import { buildTaste, tallyGenres } from "@/components/LibraryAnalysis";
-import { posterUrl } from "@/lib/media";
-import { favoriteTrio, trioPosterPaths } from "@/lib/heroPosters";
+import { posterUrl } from "@/core/media";
+import { favoriteTrio, trioPosterPaths } from "@/core/heroPosters";
 import {
   ShareCard,
   ReportShareCard,
@@ -31,12 +31,12 @@ import {
   type ShareTasteCell,
 } from "@/lib/shareCard";
 import { getT } from "@/lib/locale";
-import { num, worksParts, type Dict, type Locale } from "@/lib/i18n";
+import { num, worksParts, type Dict, type Locale } from "@/core/i18n";
 /* 🆕 **بطاقةُ «شارك تقريرك»** (D-810) — **الرقمُ والجملةُ من المحرّك
    نفسِه الذي ترسمه الصفحة** (D-797: لا سطحان يقولان عن المدّة رقمين). */
 import { asStatsPeriod, buildPeriodStats, statsRange } from "@/lib/periodStats";
-import { hm, reportLead } from "@/lib/statsFormat";
-import { asTimeZone } from "@/lib/zone";
+import { hm, reportLead } from "@/core/statsFormat";
+import { asTimeZone } from "@/core/zone";
 
 export const runtime = "nodejs";
 

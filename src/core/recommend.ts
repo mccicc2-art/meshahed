@@ -6,7 +6,7 @@ import {
   isExcludedLanguage,
   prefFactor,
   type ContentPrefs,
-} from "@/lib/contentPrefs";
+} from "@/core/contentPrefs";
 
 export type Source = "rated" | "follows" | "recent" | "genres";
 

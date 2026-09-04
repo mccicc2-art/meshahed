@@ -2,9 +2,9 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { getDict, type Locale } from "@/lib/i18n";
+import { getDict, type Locale } from "@/core/i18n";
 import { siteUrl } from "@/lib/site";
-import type { MediaType } from "@/lib/media";
+import type { MediaType } from "@/core/media";
 import { Icon } from "./Icon";
 import { HEADER_ICON, coverBareControl } from "./ui/controls";
 import { BackButton } from "./BackButton";
@@ -20,7 +20,7 @@ const SendShareSheet = dynamic(() => import("./SendShareSheet").then((m) => m.Se
    قارئ — و`ssr: false` لأن لا HTML لها قبل الضغطة. */
 const TitleArtSheet = dynamic(() => import("./TitleArtSheet").then((m) => m.TitleArtSheet), { ssr: false });
 import { stopWatching } from "@/lib/actions";
-import { coalescedRefresh } from "@/lib/refresh";
+import { coalescedRefresh } from "@/core/refresh";
 import { tap } from "@/lib/haptics";
 import { toast as showToast, flashError } from "@/lib/toast";
 

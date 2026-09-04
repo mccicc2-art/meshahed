@@ -10,14 +10,14 @@ import {
   backdropUrl,
   POSTER_INTRINSIC,
   BACKDROP_INTRINSIC,
-} from "@/lib/media";
+} from "@/core/media";
 import { saveRating } from "@/lib/actions";
 import { runOrQueue } from "@/lib/offline";
 import { tap } from "@/lib/haptics";
 import { flashError, toast as showToast } from "@/lib/toast";
-import { coalescedRefresh } from "@/lib/refresh";
+import { coalescedRefresh } from "@/core/refresh";
 import { Sheet } from "./ui/Sheet";
-import { getDict, type Locale } from "@/lib/i18n";
+import { getDict, type Locale } from "@/core/i18n";
 import { Icon } from "./Icon";
 
 /**

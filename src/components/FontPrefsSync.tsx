@@ -7,7 +7,7 @@ import {
   FONT_UI_COOKIE,
   FONT_CONTENT_COOKIE,
   sanitizeFontSize,
-} from "@/lib/fontPrefs";
+} from "@/core/fontPrefs";
 
 /**
  * جسرُ حجم الخطّ من الحساب إلى كوكي الجهاز — توأم `ThemeCookieSync`.

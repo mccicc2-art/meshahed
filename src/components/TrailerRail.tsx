@@ -14,7 +14,7 @@ import {
   useTrailerFollow,
   useTrailerSlots,
 } from "@/lib/trailerCard";
-import { getDict, type Locale } from "@/lib/i18n";
+import { getDict, type Locale } from "@/core/i18n";
 import type { TrailerItem, TrailerScope } from "@/lib/trailers";
 
 /**

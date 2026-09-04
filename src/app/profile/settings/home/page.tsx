@@ -7,7 +7,7 @@ import {
 } from "@/lib/data";
 import { getT } from "@/lib/locale";
 import { CustomizeScreen } from "@/components/settings/CustomizeScreen";
-import { isPlus } from "@/lib/plan";
+import { isPlus } from "@/core/plan";
 import { sanitizeUiState } from "@/lib/uiState";
 
 /**

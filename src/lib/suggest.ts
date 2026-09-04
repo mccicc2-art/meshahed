@@ -11,8 +11,8 @@ import { discoverByGenres, recommendationsFor, type SearchResult } from "@/lib/t
 import { railGuard } from "@/lib/topChart";
 import { localizeRows } from "@/lib/localize";
 import { cache } from "react";
-import type { Locale } from "@/lib/i18n";
-import { blendRecommendations, type Candidate, type Recommendation } from "@/lib/recommend";
+import type { Locale } from "@/core/i18n";
+import { blendRecommendations, type Candidate, type Recommendation } from "@/core/recommend";
 
 /**
  * محرّك الاقتراحات.

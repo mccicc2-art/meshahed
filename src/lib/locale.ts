@@ -1,8 +1,8 @@
 import { cookies, headers } from "next/headers";
-import { LOCALE_COOKIE, normalizeLocale, getDict, type Locale, type Dict } from "@/lib/i18n";
-import { REGION_COOKIE, DEFAULT_REGION, normalizeRegion } from "@/lib/region";
-import { TITLE_MODE_COOKIE, parseTitleMode, type TitleMode } from "@/lib/titleMode";
-import { parseHiddenRails, RAILS_COOKIE } from "@/lib/railPrefs";
+import { LOCALE_COOKIE, normalizeLocale, getDict, type Locale, type Dict } from "@/core/i18n";
+import { REGION_COOKIE, DEFAULT_REGION, normalizeRegion } from "@/core/region";
+import { TITLE_MODE_COOKIE, parseTitleMode, type TitleMode } from "@/core/titleMode";
+import { parseHiddenRails, RAILS_COOKIE } from "@/core/railPrefs";
 import {
   TAB_SURFACES,
   parseTabPrefs,
@@ -16,7 +16,7 @@ import {
   parseTalkFollowed,
   TRANSLATE_COOKIE,
   parseTranslate,
-} from "@/lib/tabPrefs";
+} from "@/core/tabPrefs";
 
 export async function getLocale(): Promise<Locale> {
   try {

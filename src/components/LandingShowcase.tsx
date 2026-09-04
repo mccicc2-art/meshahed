@@ -6,8 +6,8 @@ import { Avatar } from "@/components/Avatar";
 import { segmentedTrack, segmentedItem, chipClass } from "@/components/ui/controls";
 import { trending, type SearchResult } from "@/lib/tmdb";
 import { railGuard } from "@/lib/topChart";
-import { posterUrl } from "@/lib/media";
-import type { Locale } from "@/lib/i18n";
+import { posterUrl } from "@/core/media";
+import type { Locale } from "@/core/i18n";
 
 /**
  * ما تحت الشاشة الأولى — **التطبيقُ نفسُه يُرى، لا يُوصَف** (D-844).

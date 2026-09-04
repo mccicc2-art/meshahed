@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { getDict, type Locale } from "@/lib/i18n";
-import { timeAgoShort } from "@/lib/when";
-import { LOOPZ_ID, LOOPZ_USERNAME, LOOPZ_PERSON } from "@/lib/loopz";
+import { getDict, type Locale } from "@/core/i18n";
+import { timeAgoShort } from "@/core/when";
+import { LOOPZ_ID, LOOPZ_USERNAME, LOOPZ_PERSON } from "@/core/loopz";
 import {
   displayNameOf,
   listReviewKey,
@@ -9,11 +9,11 @@ import {
   type LoopzNewsItem,
   type ListReviewSocial,
 } from "@/lib/data";
-import { newsLine, newsSource } from "@/lib/newsLine";
-import { commentViewKey, newsViewKey } from "@/lib/postKeys";
-import { curatedName } from "@/lib/universes";
-import { profileHref } from "@/lib/people";
-import { backdropUrl } from "@/lib/media";
+import { newsLine, newsSource } from "@/core/newsLine";
+import { commentViewKey, newsViewKey } from "@/core/postKeys";
+import { curatedName } from "@/core/universes";
+import { profileHref } from "@/core/people";
+import { backdropUrl } from "@/core/media";
 import { AccountBadges } from "./AccountIdentity";
 import { Avatar } from "./Avatar";
 import { Icon } from "./Icon";

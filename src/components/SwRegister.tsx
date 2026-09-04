@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { isPlaybackActive, onPlaybackChange } from "@/lib/playback";
+import { isPlaybackActive, onPlaybackChange } from "@/core/playback";
 
 /**
  * تسجيل الـService Worker — لا يرسم شيئاً.

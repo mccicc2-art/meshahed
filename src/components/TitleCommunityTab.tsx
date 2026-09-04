@@ -5,9 +5,9 @@ import {
   getTitleReviews,
   getTitleThread,
 } from "@/lib/data";
-import { getDict, type Locale } from "@/lib/i18n";
-import { bulletinLine } from "@/lib/bulletinLine";
-import { newsLine, newsSource } from "@/lib/newsLine";
+import { getDict, type Locale } from "@/core/i18n";
+import { bulletinLine } from "@/core/bulletinLine";
+import { newsLine, newsSource } from "@/core/newsLine";
 import { RatingBox } from "./RatingBox";
 import { TitleReviewRow } from "./TitleReviewRow";
 import { TitleCommunityFeed, type FeedItem } from "./TitleCommunityFeed";

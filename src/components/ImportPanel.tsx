@@ -2,17 +2,17 @@
 
 import { useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { getDict, num, type Locale } from "@/lib/i18n";
-import { parseTvTimeFiles } from "@/lib/tvtime";
-import { parseLetterboxdFiles } from "@/lib/letterboxd";
-import { parseTrackerExport } from "@/lib/trackerExport";
-import { groupForResolve, recordKey, type ParseOutcome, type RawRecord } from "@/lib/importParse";
+import { getDict, num, type Locale } from "@/core/i18n";
+import { parseTvTimeFiles } from "@/core/tvtime";
+import { parseLetterboxdFiles } from "@/core/letterboxd";
+import { parseTrackerExport } from "@/core/trackerExport";
+import { groupForResolve, recordKey, type ParseOutcome, type RawRecord } from "@/core/importParse";
 import {
   IMPORT_CAPS,
   type ImportMovie,
   type ImportShow,
   type ResolveResult,
-} from "@/lib/importer";
+} from "@/core/importer";
 import { resolveImportItems, applyImportChunk, finishImport } from "@/lib/actions";
 import { Alert } from "./ui/Alert";
 import { buttonClass } from "./ui/Button";

@@ -7,12 +7,12 @@ import { useRouter } from "next/navigation";
 import { AccountBadges } from "./AccountIdentity";
 import { Avatar } from "./Avatar";
 import { Icon } from "./Icon";
-import { getDict, num, type Locale } from "@/lib/i18n";
-import { posterUrl } from "@/lib/media";
-import { formatDateShort, timeAgo } from "@/lib/when";
+import { getDict, num, type Locale } from "@/core/i18n";
+import { posterUrl } from "@/core/media";
+import { formatDateShort, timeAgo } from "@/core/when";
 import { tap } from "@/lib/haptics";
 import { flashError } from "@/lib/toast";
-import { coalescedRefresh } from "@/lib/refresh";
+import { coalescedRefresh } from "@/core/refresh";
 import { useChatPoll } from "@/lib/usePoll";
 import { FeedEmptyCta } from "./FeedEmptyCta";
 import { Sheet } from "./ui/Sheet";
@@ -25,7 +25,7 @@ import dynamic from "next/dynamic";
    قارئ — و`ssr: false` لأن لا HTML لها قبل الضغطة. */
 const StartConversationSheet = dynamic(() => import("./StartConversationSheet").then((m) => m.StartConversationSheet), { ssr: false });
 import type { Conversation, ConvEvent } from "@/lib/data";
-import { displayNameOf, type PersonLite } from "@/lib/people";
+import { displayNameOf, type PersonLite } from "@/core/people";
 
 /**
  * تبويب «الرسائل» — محادثةٌ واحدة لكل شخص، كالرسائل الخاصة.

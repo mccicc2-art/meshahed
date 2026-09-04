@@ -14,8 +14,8 @@ import {
   useTrailerFollow,
   useTrailerSlots,
 } from "@/lib/trailerCard";
-import { getDict, type Locale } from "@/lib/i18n";
-import { TRAILER_FEED_LIMIT, TRAILER_PER_TITLE } from "@/lib/trailerTabs";
+import { getDict, type Locale } from "@/core/i18n";
+import { TRAILER_FEED_LIMIT, TRAILER_PER_TITLE } from "@/core/trailerTabs";
 import type { TrailerItem } from "@/lib/trailers";
 
 /**

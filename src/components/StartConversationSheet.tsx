@@ -7,12 +7,12 @@ import { AccountBadges } from "./AccountIdentity";
 import { Avatar } from "./Avatar";
 import { Icon } from "./Icon";
 import { Sheet, SheetHeader } from "./ui/Sheet";
-import { getDict, type Locale } from "@/lib/i18n";
+import { getDict, type Locale } from "@/core/i18n";
 import { tap } from "@/lib/haptics";
 import { toast, flashError } from "@/lib/toast";
-import { coalescedRefresh } from "@/lib/refresh";
+import { coalescedRefresh } from "@/core/refresh";
 import { sendShare } from "@/lib/actions";
-import type { MediaType } from "@/lib/media";
+import type { MediaType } from "@/core/media";
 import type { PersonLite } from "@/lib/data";
 import { sheetScroll } from "./ui/controls";
 

@@ -2,14 +2,14 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { getDict, type Locale } from "@/lib/i18n";
+import { getDict, type Locale } from "@/core/i18n";
 import { Icon } from "@/components/Icon";
 import { buttonClass } from "@/components/ui/Button";
 import { chipClass, chipRow } from "@/components/ui/controls";
 import { openPlusGate } from "@/lib/plusGate";
 import { updateUiState, createSmartList, updateSmartListRule } from "@/lib/actions";
 import { toast, flashError } from "@/lib/toast";
-import { sectionToRuleType } from "@/lib/smartListKeys";
+import { sectionToRuleType } from "@/core/smartListKeys";
 import {
   FILTERS_CAP,
   FILTER_NAME_MAX,
@@ -21,7 +21,7 @@ import {
   upsertFilter,
   filtersOf,
   type SavedFilter,
-} from "@/lib/savedFilters";
+} from "@/core/savedFilters";
 
 /**
  * ============ الفلاترُ المحفوظة — الصفُّ (D-816) ============

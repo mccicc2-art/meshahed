@@ -10,12 +10,12 @@ import {
   type TrailerScope,
   type TrailerTab,
 } from "@/lib/trailers";
-import { TRAILER_FEED_LIMIT, TRAILER_PER_TITLE } from "@/lib/trailerTabs";
+import { TRAILER_FEED_LIMIT, TRAILER_PER_TITLE } from "@/core/trailerTabs";
 import { TrailerTabs } from "@/components/TrailerTabs";
 import { TrailerFeed } from "@/components/TrailerFeed";
 import { TrailerBackButton } from "@/components/TrailerBackButton";
 import { TRAILER_SOUND_COOKIE, parseTrailerSound } from "@/lib/trailerPrefs";
-import type { Locale } from "@/lib/i18n";
+import type { Locale } from "@/core/i18n";
 
 function safeReturnPath(raw: string | undefined): string {
   return raw === "/news" || raw?.startsWith("/news?") ? raw : "/news";

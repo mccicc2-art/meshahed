@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { segmentedTrack, segmentedItem } from "./ui/controls";
-import type { RailWin } from "@/lib/browse";
+import type { RailWin } from "@/core/browse";
 
 /** النوافذُ الثلاث بترتيبها — من الأضيق إلى الأوسع، فالقراءةُ تمشي في اتجاه */
 const WINS = ["week", "month", "all"] as const;

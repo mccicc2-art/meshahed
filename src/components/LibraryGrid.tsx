@@ -3,9 +3,9 @@
 import { Fragment, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { flashError } from "@/lib/toast";
 import { runOrQueue } from "@/lib/offline";
-import { coalescedRefresh } from "@/lib/refresh";
+import { coalescedRefresh } from "@/core/refresh";
 import { useRouter } from "next/navigation";
-import { getDict, num, type Locale } from "@/lib/i18n";
+import { getDict, num, type Locale } from "@/core/i18n";
 import { startRewatch, classifyMyFollows } from "@/lib/actions";
 import { tap } from "@/lib/haptics";
 import type { UserList } from "@/lib/data";
@@ -27,9 +27,9 @@ import dynamic from "next/dynamic";
    قارئ — و`ssr: false` لأن لا HTML لها قبل الضغطة. */
 const LibraryToolsSheet = dynamic(() => import("./LibraryToolsSheet").then((m) => m.LibraryToolsSheet), { ssr: false });
 import { OneTimeHint } from "./OneTimeHint";
-import { normalizeSearch, byTitle } from "@/lib/arabic";
-import { applyTabPrefs, type TabPref } from "@/lib/tabPrefs";
-import type { LibraryStatus } from "@/lib/libraryStatus";
+import { normalizeSearch, byTitle } from "@/core/arabic";
+import { applyTabPrefs, type TabPref } from "@/core/tabPrefs";
+import type { LibraryStatus } from "@/core/libraryStatus";
 import { buttonClass } from "./ui/Button";
 
 export interface GridItem {
@@ -102,7 +102,7 @@ const FILTER_TAB: Record<string, LibraryTab> = {
 /** حالات التقسيم — «أشاهدها» للمسلسلات وحدها؛ الفيلم يُشاهد أو لا */
 /* **النوعُ من بيته** (D-876): `lib/libraryStatus.ts` هو الوصفةُ الواحدة —
    **ويُعاد تصديرُه هنا فلا يبحث القرّاءُ القدامى عنه.** */
-export type { LibraryStatus } from "@/lib/libraryStatus";
+export type { LibraryStatus } from "@/core/libraryStatus";
 
 export function LibraryGrid({
   shows,

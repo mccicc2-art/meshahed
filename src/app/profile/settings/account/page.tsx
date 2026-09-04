@@ -5,7 +5,7 @@ import { SettingsPageLayout } from "@/components/settings/SettingsPageLayout";
 import { SettingsGroup } from "@/components/settings/SettingsGroup";
 import { SettingsRow } from "@/components/settings/SettingsRow";
 import { PrivacyData } from "@/components/PrivacyData";
-import { planNameOf } from "@/lib/plan";
+import { planNameOf } from "@/core/plan";
 
 /**
  * الحساب — **البريدُ ومنطقةُ الخطر، والاسمُ بابُه «تعديل الملف»**

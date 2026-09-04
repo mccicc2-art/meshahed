@@ -3,11 +3,11 @@ import { PlusPreview } from "@/components/stats/PlusPreview";
 import { ProfileStatSheet } from "@/components/ProfileStatSheet";
 import { buttonClass } from "@/components/ui/Button";
 import { tallyGenres } from "@/components/LibraryAnalysis";
-import { tasteMatch, onlyTheirs } from "@/lib/tasteMatch";
+import { tasteMatch, onlyTheirs } from "@/core/tasteMatch";
 import { getFollows, getFollowsOf, getFollowGenresOf, getProfile } from "@/lib/data";
-import { isPlus } from "@/lib/plan";
-import { browseGenreForId, browseGenreName } from "@/lib/browse";
-import { getDict, num, type Locale } from "@/lib/i18n";
+import { isPlus } from "@/core/plan";
+import { browseGenreForId, browseGenreName } from "@/core/browse";
+import { getDict, num, type Locale } from "@/core/i18n";
 
 /**
  * ============ «أنت وهو» — بابٌ في بطاقة الذوق (D-814 → ⚖️ D-829) ============

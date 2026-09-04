@@ -5,10 +5,10 @@ import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 import { fitForUpload, UPLOAD_MAX_BYTES } from "@/lib/imageFile";
 import { buttonClass } from "./ui/Button";
-import { getDict, type Locale } from "@/lib/i18n";
+import { getDict, type Locale } from "@/core/i18n";
 import { Icon } from "./Icon";
 import { GifPicker } from "./GifPicker";
-import { gifUrl } from "@/lib/media";
+import { gifUrl } from "@/core/media";
 
 /**
  * **صندوقُ الكتابة — واحدٌ لكل ردّ في التطبيق** (D-227).

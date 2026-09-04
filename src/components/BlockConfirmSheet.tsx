@@ -6,7 +6,7 @@ import { buttonClass } from "./ui/Button";
 import { blockUser } from "@/lib/actions";
 import { toast, flashError } from "@/lib/toast";
 import { tap } from "@/lib/haptics";
-import { getDict, type Locale } from "@/lib/i18n";
+import { getDict, type Locale } from "@/core/i18n";
 
 /**
  * ورقةُ تأكيد الحظر — **ورقةٌ واحدة، بابان** (نمط `ShareListSheet`، D-054).

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { faqs } from "@/lib/seo";
-import type { Locale } from "@/lib/i18n";
+import type { Locale } from "@/core/i18n";
 
 /**
  * ما تحت الشاشة الأولى في الجذر — المحتوى الذي لم يكن موجوداً (D-122).

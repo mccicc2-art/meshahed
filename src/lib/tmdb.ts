@@ -3,8 +3,8 @@
 
 import { cache } from "react";
 import { cookies } from "next/headers";
-import { normalizeTerm, type MediaType } from "@/lib/media";
-import { REGION_COOKIE, DEFAULT_REGION, normalizeRegion, regionChain } from "@/lib/region";
+import { normalizeTerm, type MediaType } from "@/core/media";
+import { REGION_COOKIE, DEFAULT_REGION, normalizeRegion, regionChain } from "@/core/region";
 
 export {
   IMG,
@@ -15,8 +15,8 @@ export {
   yearOf,
   GENRES,
   genreName,
-} from "@/lib/media";
-export type { MediaType } from "@/lib/media";
+} from "@/core/media";
+export type { MediaType } from "@/core/media";
 
 const BASE = "https://api.themoviedb.org/3";
 
@@ -2111,8 +2111,8 @@ export interface AwardRow extends SearchResult {
 
 export async function awardWinners(slug: string, limit?: number): Promise<AwardRow[]> {
   const [{ awardBySlug }, { awardWins }] = await Promise.all([
-    import("./awards"),
-    import("./awardsWins"),
+    import("@/core/awards"),
+    import("@/core/awardsWins"),
   ]);
   const award = awardBySlug(slug);
   if (!award) return [];

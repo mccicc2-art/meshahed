@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { getDict, type Locale } from "@/lib/i18n";
+import { getDict, type Locale } from "@/core/i18n";
 import { usePrefetchOnIntent } from "@/lib/prefetchIntent";
 
 export function NavLinks({ locale }: { locale: Locale }) {

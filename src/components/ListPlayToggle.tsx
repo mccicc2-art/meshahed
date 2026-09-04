@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { setListPlaylist, setSavedListPlaylist } from "@/lib/actions";
-import { getDict, type Locale } from "@/lib/i18n";
+import { getDict, type Locale } from "@/core/i18n";
 import { tap } from "@/lib/haptics";
 import { toast, flashError } from "@/lib/toast";
 

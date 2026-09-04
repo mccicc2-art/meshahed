@@ -3,8 +3,8 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { deleteRating, saveRating } from "@/lib/actions";
-import { getDict, num, type Locale } from "@/lib/i18n";
-import type { PersonLite } from "@/lib/people";
+import { getDict, num, type Locale } from "@/core/i18n";
+import type { PersonLite } from "@/core/people";
 import { flashError, toast } from "@/lib/toast";
 import { tap } from "@/lib/haptics";
 import { Icon } from "./Icon";

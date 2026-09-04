@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { getUser, getProfile } from "@/lib/data";
 import { getT } from "@/lib/locale";
 import { AccountBadges } from "@/components/AccountIdentity";
-import { planNameOf } from "@/lib/plan";
+import { planNameOf } from "@/core/plan";
 import { Avatar } from "@/components/Avatar";
 import { Icon } from "@/components/Icon";
 import { SettingsPageLayout } from "@/components/settings/SettingsPageLayout";

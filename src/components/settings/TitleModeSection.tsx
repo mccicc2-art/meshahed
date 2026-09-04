@@ -3,12 +3,12 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { setTitleMode } from "@/lib/actions";
-import { getDict, type Locale } from "@/lib/i18n";
+import { getDict, type Locale } from "@/core/i18n";
 import {
   TITLE_MODES,
   resolveMediaTitle,
   type TitleMode,
-} from "@/lib/titleMode";
+} from "@/core/titleMode";
 import { SettingsOptionRow, SettingsOptionList } from "./SettingsOptionRow";
 import { SettingsExpandRow } from "./SettingsExpandRow";
 

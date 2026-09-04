@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getUser, getProfile } from "@/lib/data";
 import { getT } from "@/lib/locale";
-import { sanitizeSocials } from "@/lib/socials";
+import { sanitizeSocials } from "@/core/socials";
 import { xLinkEnabled } from "@/lib/xLink";
 import { EditProfileForm } from "@/components/settings/EditProfileForm";
 

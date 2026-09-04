@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { getDict, num, type Locale } from "@/lib/i18n";
+import { getDict, num, type Locale } from "@/core/i18n";
 import {
   BROWSE_COUNTRIES,
   BROWSE_STATUSES,
@@ -24,9 +24,9 @@ import {
   genreFitsType,
   type BrowseRate,
   type BrowseType,
-} from "@/lib/browse";
-import { AWARDS, awardName } from "@/lib/awards";
-import { regionName } from "@/lib/region";
+} from "@/core/browse";
+import { AWARDS, awardName } from "@/core/awards";
+import { regionName } from "@/core/region";
 import { tap } from "@/lib/haptics";
 import { Icon } from "./Icon";
 import { Sheet, SheetHeader, SheetTabs } from "./ui/Sheet";
@@ -34,11 +34,11 @@ import { buttonClass } from "./ui/Button";
 import { sheetScroll } from "./ui/controls";
 /* القسم الثاني في هذه الورقة — نفسُ المكوّن في المكتبة والمجتمع (D-179) */
 import { TabsPrefs } from "./TabsPrefs";
-import type { TabPref } from "@/lib/tabPrefs";
+import type { TabPref } from "@/core/tabPrefs";
 import { RailsPrefs } from "./RailsPrefs";
-import { type RailTab } from "@/lib/railPrefs";
+import { type RailTab } from "@/core/railPrefs";
 import { setMyRows } from "@/lib/actions";
-import { serializeMyRows, MY_ROWS_MAX, type MyRow } from "@/lib/myRows";
+import { serializeMyRows, MY_ROWS_MAX, type MyRow } from "@/core/myRows";
 
 export interface FilterDraft {
   /** slug النوع الدرامي — انتقل من صفّ التبويبات إلى قائمةٍ هنا (طلب المالك).

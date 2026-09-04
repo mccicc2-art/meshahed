@@ -3,8 +3,8 @@ import type { Metadata } from "next";
 import { getT, getLocale } from "@/lib/locale";
 import { Icon } from "@/components/Icon";
 import { seoKeywords } from "@/lib/seo";
-import { FOUNDER_PLUS_UNTIL } from "@/lib/plan";
-import { SECTIONS } from "@/lib/features";
+import { FOUNDER_PLUS_UNTIL } from "@/core/plan";
+import { SECTIONS } from "@/core/features";
 
 /* عنوانٌ ووصفٌ بلغة الزائر لا بالإنجليزية دائماً (D-122): هذه صفحةٌ عامّة
    تُفهرَس، وسطرُ الوصف في نتيجة البحث هو الإعلان الوحيد الذي نملكه —

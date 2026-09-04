@@ -3,7 +3,7 @@
 import { siteUrl } from "@/lib/site";
 import { toast } from "@/lib/toast";
 import { tap } from "@/lib/haptics";
-import { getDict, type Locale } from "@/lib/i18n";
+import { getDict, type Locale } from "@/core/i18n";
 import { Icon } from "./Icon";
 import { coverBareControl } from "./ui/controls";
 

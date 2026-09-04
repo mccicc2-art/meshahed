@@ -15,7 +15,7 @@ import {
 import { getMovie, getTv, posterUrl, backdropUrl } from "@/lib/tmdb";
 import { displayWorkTitle } from "@/lib/wikidata";
 import { getT, getTranslateEnabled } from "@/lib/locale";
-import { bulletinLine } from "@/lib/bulletinLine";
+import { bulletinLine } from "@/core/bulletinLine";
 import { TitleHero } from "@/components/TitleHero";
 import { ExpandableText } from "@/components/ExpandableText";
 import { getBatchTranslations } from "@/lib/translate";

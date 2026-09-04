@@ -1,4 +1,4 @@
-import type { PersonLite } from "@/lib/people";
+import type { PersonLite } from "@/core/people";
 
 /**
  * **هويّةُ حساب Loopz النظاميّ** (D-252، هجرة ٧٧) — ثابتٌ واحد لكل قارئ.

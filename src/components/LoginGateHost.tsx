@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { Sheet, SheetHeader } from "@/components/ui/Sheet";
 import { GoogleButton } from "@/components/GoogleButton";
 import { LOGIN_GATE_EVENT } from "@/lib/loginGate";
-import { getDict, type Locale } from "@/lib/i18n";
+import { getDict, type Locale } from "@/core/i18n";
 
 /**
  * مضيف بوّابة الزائر — يُركَّب مرّةً في الـlayout كمضيف التوست (D-627

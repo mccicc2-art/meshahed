@@ -1,11 +1,11 @@
 import Link from "next/link";
 import Image from "next/image";
 import { posterUrl, backdropUrl } from "@/lib/tmdb";
-import { getDict, type Locale } from "@/lib/i18n";
-import { timeAgo } from "@/lib/when";
-import { displayNameOf } from "@/lib/people";
+import { getDict, type Locale } from "@/core/i18n";
+import { timeAgo } from "@/core/when";
+import { displayNameOf } from "@/core/people";
 import type { TalkRoom } from "@/lib/data";
-import { bulletinLine } from "@/lib/bulletinLine";
+import { bulletinLine } from "@/core/bulletinLine";
 import { Avatar } from "./Avatar";
 import { RoomPinButton } from "./RoomPinButton";
 import { Icon } from "./Icon";

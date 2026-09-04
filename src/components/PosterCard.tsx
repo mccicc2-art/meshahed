@@ -1,12 +1,12 @@
 import Link from "next/link";
 import Image from "next/image";
-import { posterUrl, POSTER_INTRINSIC } from "@/lib/media";
+import { posterUrl, POSTER_INTRINSIC } from "@/core/media";
 import { MarqueeText } from "./MarqueeText";
 import { Icon, type IconName } from "./Icon";
 import { QuickAdd } from "./QuickAdd";
 import { PosterHold } from "./PosterHold";
 import { StatusThread } from "./StatusThread";
-import type { Locale } from "@/lib/i18n";
+import type { Locale } from "@/core/i18n";
 
 type BadgeTone = "neutral" | "progress" | "watched" | "rating" | "dropped";
 

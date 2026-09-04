@@ -30,7 +30,7 @@ import { animeExtras } from "@/lib/anilist";
 import { displayWorkTitle, prefetchWorkTitle } from "@/lib/wikidata";
 import { EpisodeTracker, type SeasonSummary } from "@/components/EpisodeTracker";
 import { getT, getWatchRegion } from "@/lib/locale";
-import { originAdjectives } from "@/lib/region";
+import { originAdjectives } from "@/core/region";
 import { DetailTabs } from "@/components/DetailTabs";
 import { TitleCommunityTab } from "@/components/TitleCommunityTab";
 import { RelatedTitles } from "@/components/RelatedTitles";
@@ -38,15 +38,15 @@ import { CastRail } from "@/components/CastRail";
 import { Icon, SectionTitle } from "@/components/Icon";
 import { Trailer } from "@/components/Trailer";
 import { WatchChip } from "@/components/WatchChip";
-import { bestSearchTitle } from "@/lib/providerLinks";
+import { bestSearchTitle } from "@/core/providerLinks";
 import { TitleActions } from "@/components/TitleActions";
 import { TitlePulse } from "@/components/TitlePulse";
 import { DetailTopBar } from "@/components/DetailTopBar";
 import { ReadMore } from "@/components/ReadMore";
-import { formatDate } from "@/lib/when";
+import { formatDate } from "@/core/when";
 import { ShowStatsSync } from "@/components/ShowStatsSync";
-import { airedEpisodeCount, airedPerSeason, isAbsoluteNumbering } from "@/lib/progress";
-import { episodeKey } from "@/lib/keys";
+import { airedEpisodeCount, airedPerSeason, isAbsoluteNumbering } from "@/core/progress";
+import { episodeKey } from "@/core/keys";
 import { buttonClass } from "@/components/ui/Button";
 
 export default async function ShowPage({ params }: { params: Promise<{ id: string }> }) {

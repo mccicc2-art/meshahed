@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { rateEpisode } from "@/lib/actions";
-import { getDict, type Locale } from "@/lib/i18n";
+import { getDict, type Locale } from "@/core/i18n";
 import { tap } from "@/lib/haptics";
 import { Sheet, SheetHeader } from "./ui/Sheet";
 import { Alert } from "./ui/Alert";

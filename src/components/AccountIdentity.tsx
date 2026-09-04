@@ -4,8 +4,8 @@ import {
   isVerified as isVerifiedOf,
   isFounder,
   type PlanBearer,
-} from "@/lib/plan";
-import type { Dict } from "@/lib/i18n";
+} from "@/core/plan";
+import type { Dict } from "@/core/i18n";
 
 /**
  * 🆕 **أصغرُ ما تحتاجه الشارةُ من القاموس** (D-773ب).

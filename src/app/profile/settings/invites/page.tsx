@@ -14,13 +14,13 @@ import {
   type InviteStatus,
   type PartnerDetails,
 } from "@/lib/data";
-import { isPlus } from "@/lib/plan";
+import { isPlus } from "@/core/plan";
 import { applyPartner, cancelPartnerApplication, savePartnerDetails, requestPayout } from "@/lib/actions";
 import { getT } from "@/lib/locale";
 import { siteUrl } from "@/lib/site";
-import { num, type Dict, type Locale } from "@/lib/i18n";
-import { timeAgo, formatDate } from "@/lib/when";
-import { displayNameOf } from "@/lib/people";
+import { num, type Dict, type Locale } from "@/core/i18n";
+import { timeAgo, formatDate } from "@/core/when";
+import { displayNameOf } from "@/core/people";
 import { AccountBadges } from "@/components/AccountIdentity";
 import { Avatar } from "@/components/Avatar";
 import { Icon } from "@/components/Icon";

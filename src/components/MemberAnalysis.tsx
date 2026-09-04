@@ -15,10 +15,10 @@ import {
   artKey,
 } from "@/lib/data";
 import { localizeRows } from "@/lib/localize";
-import { getDict, type Locale } from "@/lib/i18n";
-import { isComplete } from "@/lib/progress";
+import { getDict, type Locale } from "@/core/i18n";
+import { isComplete } from "@/core/progress";
 import { AnalysisView, tallyGenres, pickTasteTrioSlots, buildTaste, type TrioCandidate } from "./LibraryAnalysis";
-import { trioPosterPaths } from "@/lib/heroPosters";
+import { trioPosterPaths } from "@/core/heroPosters";
 
 /**
  * 🆕 **إحصائياتُ عضوٍ أزوره** (D-649، طلبُ أحمد: «كل الحسابات خلي الكارد

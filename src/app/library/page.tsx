@@ -22,20 +22,20 @@ import {
   artKey,
   getMyFavorites,
 } from "@/lib/data";
-import { sanitizeHomePrefs, applyQueueOrder, unwatchedOf } from "@/lib/homePrefs";
+import { sanitizeHomePrefs, applyQueueOrder, unwatchedOf } from "@/core/homePrefs";
 import { getT, getTabPrefs, getHiddenRails } from "@/lib/locale";
-import { railsHiddenFor, railOff } from "@/lib/railPrefs";
-import { showStatusOf, movieStatusOf } from "@/lib/libraryStatus";
-import { isUuid } from "@/lib/validate";
-import { defaultTab } from "@/lib/tabPrefs";
+import { railsHiddenFor, railOff } from "@/core/railPrefs";
+import { showStatusOf, movieStatusOf } from "@/core/libraryStatus";
+import { isUuid } from "@/core/validate";
+import { defaultTab } from "@/core/tabPrefs";
 import { localizeFollows } from "@/lib/localize";
 import { Icon } from "@/components/Icon";
 import { LibraryGrid, type GridItem, type LibraryTab } from "@/components/LibraryGrid";
 import { FavFilterToggle } from "@/components/LibraryFavFilter";
 import { getArtistShelf, type ArtistShelfItem } from "@/lib/artists";
-import { buildAutoGroups } from "@/lib/autoGroups";
+import { buildAutoGroups } from "@/core/autoGroups";
 import { AutoGroups } from "@/components/AutoGroups";
-import { isPlus } from "@/lib/plan";
+import { isPlus } from "@/core/plan";
 import { FollowMetaSync } from "@/components/MetaSync";
 import { PublicListsRail } from "@/components/PublicListsRail";
 import { ScrollMemory } from "@/components/ScrollMemory";

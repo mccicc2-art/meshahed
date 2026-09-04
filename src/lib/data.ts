@@ -1,16 +1,16 @@
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { decodeSessionCookie, sessionCookieParts } from "@/lib/sessionCookie";
-import { PERSON_COLS, type PersonLite } from "./people";
-import { episodeKey } from "@/lib/keys";
-import { LOOPZ_ID } from "@/lib/loopz";
+import { PERSON_COLS, type PersonLite } from "@/core/people";
+import { episodeKey } from "@/core/keys";
+import { LOOPZ_ID } from "@/core/loopz";
 import {
   CONTENT_PREFS_COOKIE,
   EMPTY_CONTENT_PREFS,
   parseContentPrefs,
   sanitizeContentPrefs,
   type ContentPrefs,
-} from "@/lib/contentPrefs";
+} from "@/core/contentPrefs";
 
 export { episodeKey };
 
@@ -2740,8 +2740,8 @@ export async function getProfileArtists(
    ملفٌّ نقيٌّ يقرؤه مكوّنُ العميل أيضاً، لأن هذا الملفَّ يستورد عميلَ
    الخادم فيسقط البناء إن دخل حزمةَ المتصفّح. **ويُعاد تصديرُهما من هنا**
    كي لا يتغيّر سطرٌ في مئات الاستدعاءات القائمة. */
-export type { PersonLite } from "./people";
-export { displayNameOf } from "./people";
+export type { PersonLite } from "@/core/people";
+export { displayNameOf } from "@/core/people";
 
 /** بحث عن أشخاص بالاسم أو المعرّف — الأحرف البديلة تُهرَّب داخل الدالة */
 export async function searchPeople(q: string): Promise<PersonLite[]> {

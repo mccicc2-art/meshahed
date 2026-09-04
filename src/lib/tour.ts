@@ -1,6 +1,6 @@
 // الجولة التعريفية — الإعداد المركزي (١٩ أغسطس)
 
-import type { Dict } from "./i18n";
+import type { Dict } from "@/core/i18n";
 import { updateUiState } from "./actions";
 import { sanitizeTourState, TOUR_IDS, type TourId, type TourState } from "./uiState";
 

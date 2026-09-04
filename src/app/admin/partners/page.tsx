@@ -1,8 +1,8 @@
 import { notFound, redirect } from "next/navigation";
 import { getAmAdmin, getAdminPartnerApplications } from "@/lib/data";
 import { adminDecidePartner } from "@/lib/actions";
-import { displayNameOf } from "@/lib/people";
-import { getDict } from "@/lib/i18n";
+import { displayNameOf } from "@/core/people";
+import { getDict } from "@/core/i18n";
 import { AccountBadges } from "@/components/AccountIdentity";
 import { Avatar } from "@/components/Avatar";
 import { buttonClass } from "@/components/ui/Button";

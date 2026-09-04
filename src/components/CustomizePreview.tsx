@@ -4,7 +4,7 @@
 
 import { Avatar } from "./Avatar";
 import { Icon, type IconName } from "./Icon";
-import { type Density } from "@/lib/density";
+import { type Density } from "@/core/density";
 
 /**
  * المعاينةُ الحيّة في شاشة التخصيص (D-441).

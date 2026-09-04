@@ -10,8 +10,8 @@ import {
   getTitleMetaFor,
   type FollowRow,
 } from "@/lib/data";
-import { BROWSE_GENRES, BROWSE_ERAS, eraRange } from "@/lib/browse";
-import { showStatusOf, movieStatusOf } from "@/lib/libraryStatus";
+import { BROWSE_GENRES, BROWSE_ERAS, eraRange } from "@/core/browse";
+import { showStatusOf, movieStatusOf } from "@/core/libraryStatus";
 import type { SmartRule } from "@/lib/smartLists";
 
 /**

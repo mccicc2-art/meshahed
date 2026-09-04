@@ -3,12 +3,12 @@ import { RailScroll } from "./RailScroll";
 import { Icon, type IconName } from "./Icon";
 import Image from "next/image";
 import { posterUrl, titleOf, type SearchResult } from "@/lib/tmdb";
-import { POSTER_INTRINSIC } from "@/lib/media";
+import { POSTER_INTRINSIC } from "@/core/media";
 import { ImdbMark, TmdbMark } from "./RatingMarks";
 import { PosterHold } from "./PosterHold";
 import { MarqueeText } from "./MarqueeText";
 import type { LibState } from "@/lib/libState";
-import type { Locale } from "@/lib/i18n";
+import type { Locale } from "@/core/i18n";
 
 /**
  * صفّ أفقي مرقّم — قائمة «أفضل ١٠».

@@ -1,14 +1,14 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Icon } from "./Icon";
-import { posterUrl } from "@/lib/media";
-import { getDict, type Locale } from "@/lib/i18n";
+import { posterUrl } from "@/core/media";
+import { getDict, type Locale } from "@/core/i18n";
 import {
   dayLabel,
   weekdayLabels,
   type CalendarDay,
   type CalendarEntry,
-} from "@/lib/calendar";
+} from "@/core/calendar";
 
 /**
  * ============ شهرُ التقويم — شبكةٌ وجدول (D-828) ============

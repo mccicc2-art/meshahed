@@ -12,7 +12,7 @@ import { NavLinks } from "./NavLinks";
 import { NavSettingsButton } from "./NavSettingsButton";
 import { NavTitle } from "./NavTitle";
 import { Logo } from "./Logo";
-import { isPlus } from "@/lib/plan";
+import { isPlus } from "@/core/plan";
 import { LangMenu } from "./LangMenu";
 import { HeaderTrailing } from "./HeaderTrailing";
 import { buttonClass } from "./ui/Button";

@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import { getUser } from "@/lib/data";
 import { createClient } from "@/lib/supabase/server";
 import { traktConfigured, traktToken, harvestTrakt } from "@/lib/trakt";
-import { IMPORT_CAPS } from "@/lib/importer";
+import { IMPORT_CAPS } from "@/core/importer";
 import { revalidatePath } from "next/cache";
 
 // الاستيراد قد يكتب عشرات الآلاف من الصفوف — المهلة الافتراضية لا تكفي

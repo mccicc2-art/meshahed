@@ -31,7 +31,7 @@ import {
   getTopSavedListCards,
 } from "@/lib/data";
 import { getT, getTabPrefs, getFeedStrangers, getFeedSort, getTalkFollowedOnly, getTranslateEnabled, getHiddenRails } from "@/lib/locale";
-import { railsHiddenFor, railOff } from "@/lib/railPrefs";
+import { railsHiddenFor, railOff } from "@/core/railPrefs";
 import { WorksTalk } from "@/components/WorksTalk";
 import {
   PeopleLeaderboard,
@@ -41,8 +41,8 @@ import {
 } from "@/components/PeopleBoard";
 import { ActivityFeed } from "@/components/ActivityFeed";
 import { getLibState } from "@/lib/libState";
-import { commentViewKey, newsViewKey } from "@/lib/postKeys";
-import { applyTabPrefs, defaultTab } from "@/lib/tabPrefs";
+import { commentViewKey, newsViewKey } from "@/core/postKeys";
+import { applyTabPrefs, defaultTab } from "@/core/tabPrefs";
 import { localizeRows, localizeTitleRooms, localizeTalkRooms } from "@/lib/localize";
 import { CommunityDirectory, CommunityRoom } from "@/components/Communities";
 import { CommunityTools } from "@/components/CommunityTools";

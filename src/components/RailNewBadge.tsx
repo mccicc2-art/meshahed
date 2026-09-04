@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Icon } from "./Icon";
-import { getDict, type Locale } from "@/lib/i18n";
+import { getDict, type Locale } from "@/core/i18n";
 
 /**
  * **شارةُ «جديد» على صفٍّ تغيّر** (البند ٧).

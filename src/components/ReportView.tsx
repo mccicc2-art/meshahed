@@ -1,9 +1,9 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Icon } from "@/components/Icon";
-import { posterUrl } from "@/lib/media";
-import { num, type Locale } from "@/lib/i18n";
-import { hm, clock, primeLabel, reportLead } from "@/lib/statsFormat";
+import { posterUrl } from "@/core/media";
+import { num, type Locale } from "@/core/i18n";
+import { hm, clock, primeLabel, reportLead } from "@/core/statsFormat";
 import { ImpossibleDayCard } from "@/components/stats/ImpossibleDayCard";
 import { PlusPreview } from "@/components/stats/PlusPreview";
 import { ShareCard } from "@/components/ShareCard";

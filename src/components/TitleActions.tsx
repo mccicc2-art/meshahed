@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { flashError, toast } from "@/lib/toast";
-import { coalescedRefresh } from "@/lib/refresh";
+import { coalescedRefresh } from "@/core/refresh";
 import { tap } from "@/lib/haptics";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -17,8 +17,8 @@ import {
   toggleFavorite,
   myRatingFor,
 } from "@/lib/actions";
-import { getDict, type Locale } from "@/lib/i18n";
-import type { MediaType } from "@/lib/media";
+import { getDict, type Locale } from "@/core/i18n";
+import type { MediaType } from "@/core/media";
 import { Icon } from "./Icon";
 import { Sheet } from "./ui/Sheet";
 import { FranchisePanel } from "./FranchisePanel";

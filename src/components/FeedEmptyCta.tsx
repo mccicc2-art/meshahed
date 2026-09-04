@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getDict, type Locale } from "@/lib/i18n";
+import { getDict, type Locale } from "@/core/i18n";
 import { buttonClass } from "./ui/Button";
 
 /**

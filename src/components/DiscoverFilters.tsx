@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { getDict, num, type Locale } from "@/lib/i18n";
+import { getDict, num, type Locale } from "@/core/i18n";
 import {
   BROWSE_COUNTRIES,
   BROWSE_ERAS,
@@ -25,8 +25,8 @@ import {
   browseStatusName,
   browseSeasonName,
   browseStudioName,
-} from "@/lib/browse";
-import { AWARDS, awardName } from "@/lib/awards";
+} from "@/core/browse";
+import { AWARDS, awardName } from "@/core/awards";
 import { tap } from "@/lib/haptics";
 import { FilterIconButton } from "./ui/FilterIconButton";
 import { ListsFilters, type ListsFiltersProps } from "./ListsFilters";
@@ -38,8 +38,8 @@ import type { FilterDraft } from "./DiscoverFilterSheet";
 const DiscoverFilterSheet = dynamic(() => import("./DiscoverFilterSheet").then((m) => m.DiscoverFilterSheet), { ssr: false });
 import { PageTabs } from "./ui/PageTabs";
 import { ActiveFilterChips } from "./ui/ActiveFilterChips";
-import { applyTabPrefs, type TabPref } from "@/lib/tabPrefs";
-import type { MyRow } from "@/lib/myRows";
+import { applyTabPrefs, type TabPref } from "@/core/tabPrefs";
+import type { MyRow } from "@/core/myRows";
 
 /**
  * رأس «اكتشف».

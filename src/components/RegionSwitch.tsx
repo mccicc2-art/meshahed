@@ -3,8 +3,8 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { setWatchRegion } from "@/lib/actions";
-import { getDict, type Locale } from "@/lib/i18n";
-import { WATCH_REGIONS, regionName, regionFlag } from "@/lib/region";
+import { getDict, type Locale } from "@/core/i18n";
+import { WATCH_REGIONS, regionName, regionFlag } from "@/core/region";
 import { tap } from "@/lib/haptics";
 import { SettingsPickerPanel } from "./settings/SettingsPickerPanel";
 import { SettingsExpandRow } from "./settings/SettingsExpandRow";
