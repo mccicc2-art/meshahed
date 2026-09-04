@@ -23,6 +23,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: "/features", priority: 0.8, freq: "weekly" },
     { path: "/privacy", priority: 0.2, freq: "monthly" },
     { path: "/terms", priority: 0.2, freq: "monthly" },
+    { path: "/account/delete", priority: 0.2, freq: "monthly" },
   ];
   return pages.map((p) => ({
     // الجذر بلا شرطةٍ أخيرة كي يطابق `canonical` الذي يبنيه Next حرفياً

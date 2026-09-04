@@ -101,6 +101,14 @@ export default async function PrivacyPage() {
               : "You can edit or delete any rating, review, list or follow from inside the app at any time. Deleting your account from Settings deletes the sign-in record itself, and everything that points at it falls with it: your profile, follows, watched episodes, ratings, lists, messages, posts and images. Not one row of you remains, and you do not need to write to us."
           }
         />
+        {/* D-907: بيانُ «أمان البيانات» في Google Play يطلب رابطاً مخصّصاً
+            لخطوات الحذف — الصفحةُ تشرح الخطوات ومدّة الاحتفاظ، والفقرةُ
+            أعلاه تبقى الوعدَ القانونيّ. */}
+        <p className="text-15 -mt-4">
+          <Link href="/account/delete" className="text-accent hover:brightness-110 transition">
+            {ar ? "خطوات حذف الحساب ←" : "How to delete your account →"}
+          </Link>
+        </p>
 
         <Block
           title={ar ? "الأطفال" : "Children"}
