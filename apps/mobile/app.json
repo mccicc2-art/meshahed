@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Loopz",
-    "slug": "loopz",
+    "slug": "mesh",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -49,9 +49,16 @@
       "apiBase": "https://loopztv.com",
       "supabaseUrl": "https://uvgmvrdrxzpudoldjxaa.supabase.co",
       "eas": {
-        "projectId": "REPLACE_WITH_EXPO_PROJECT_ID"
+        "projectId": "928fd255-8956-4e37-a5eb-69d687282bbf"
       },
       "supabasePublishableKey": "sb_publishable_lGgIjPJMAHFF0zo7xSh1Qw_un3QheUo"
+    },
+    "owner": "loopztvs-team",
+    "updates": {
+      "url": "https://u.expo.dev/928fd255-8956-4e37-a5eb-69d687282bbf"
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
     }
   }
 }
