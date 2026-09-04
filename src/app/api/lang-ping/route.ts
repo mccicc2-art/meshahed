@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { createServiceClient } from "@/lib/supabase/service";
+import { createClient } from "@/lib/supabase/server";
 import { allow } from "@/core/ratelimit";
+import { platformFromUA } from "@/core/platform";
 
 /**
  * 🆕 **عدّادُ لغاتِ الزوّار** (D-666، طلبُ أحمد: «فعّل العدّاد») —
@@ -20,7 +23,7 @@ import { allow } from "@/core/ratelimit";
  * (أعلى `q`) — **قائمةُ تفضيلاتٍ كاملةٍ تصير بصمةً تعرّف صاحبَها**،
  * **وسمٌ واحدٌ لا.**
  *
- * ================= وما لا يُخزَّن لا يُسرَّب =================
+ * ================= وما لا يُخزّن لا يُسرّب =================
  *
  * **الصفُّ يومٌ ولغةٌ وعدد** — لا IP ولا معرّفَ مستخدمٍ ولا مسار.
  * **وعنوانُ الطلب يُقرأ في الذاكرة لحاجزِ المعدّل ولا يُكتب** (وصفةُ
@@ -39,6 +42,37 @@ export async function POST(req: Request) {
        (نصُّ `lib/ratelimit`)، وهو يكفي هنا: الرقمُ اتّجاهٌ لا محاسبة. */
     if (!allow(`lang:${ip}`, 10, 600_000)) {
       return new NextResponse(null, { status: 204 });
+    }
+
+    /* ================= 🆕 ومنصّةُ المسجّل تُعدّ هنا (D-909) =================
+     *
+     * 🔑 **ولمَ هنا لا في نبضة الحضور؟** **لأنّ المنصّة لا تتغير داخل
+     * الجلسة**: نبضةُ الحضور تدقّ كلَّ أربع دقائق لسؤالٍ آخر («متى ظهر؟»)،
+     * **وهذا البابُ يُنادى مرّةً واحدةً في الجلسة** — **وهو تردُّدُ السؤال
+     * بالضبط**. **وسؤالان بتردُّدَين مختلفَين لا يركبان نبضةً واحدة.**
+     *
+     * **والوسمُ يُقرأ من ترويسة الطلب** كما تُقرأ اللغةُ سطراً أعلاه —
+     * **لا يُصدَّق نصٌّ يرسله متصفّحٌ عن نفسه**، **وصنفٌ يُخزّن لا وسمٌ
+     * كامل**: الوسمُ الكاملُ بصمةٌ تعرّف صاحبَها، والصنفُ لا.
+     *
+     * ⚠️ **والكوكي دليلُ محاولةٍ لا حكم**: وجودُه يمنعنا رحلةً إلى القاعدة
+     * عن كلِّ زائرٍ مجهول، **والحكمُ النهائيُّ `auth.uid()` في جسم
+     * `touch_presence`** — كوكيٌّ منتهٍ يُقرأ هناك «لا أحد» فلا يُكتب شيء.
+     */
+    const jar = await cookies();
+    const maybeSignedIn = jar
+      .getAll()
+      .some((c) => c.name.startsWith("sb-") && c.name.includes("auth-token"));
+    if (maybeSignedIn) {
+      try {
+        const session = await createClient();
+        await session.rpc("touch_presence", {
+          p_platform: platformFromUA(req.headers.get("user-agent")),
+          p_is_app: false,
+        });
+      } catch {
+        /* لا شيء — انظر رأسَ الملفّ */
+      }
     }
 
     const first =

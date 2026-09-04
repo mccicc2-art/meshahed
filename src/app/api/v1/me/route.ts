@@ -1,4 +1,7 @@
+import { headers } from "next/headers";
 import { getProfile } from "@/lib/data";
+import { createClient } from "@/lib/supabase/server";
+import { platformFromUA } from "@/core/platform";
 import { handle, requireUser } from "@/lib/v1";
 import { ok } from "@/core/contracts/result";
 import { isPlus, isPartner, isVerified, isFounder } from "@/core/plan";
@@ -17,7 +20,22 @@ export async function GET() {
   return handle(async () => {
     const auth = await requireUser();
     if (!auth.ok) return auth;
-    const p = await getProfile();
+    /* 🆕 D-909: **نبضةُ «فُتح التطبيق»** — هذا البابُ يُنادى عند إقلاع
+       تطبيق Expo، **وهو الدليلُ الوحيد على تثبيتٍ حقيقيّ**: الويبُ لا
+       يمرّ من هنا. **بالتوازي لا بالتسلسل** فلا تُضاف إليه ملّي ثانية،
+       **وفشلُه صمتٌ** — إحصاءٌ يكسر إقلاعَ تطبيقٍ أسوأُ صفقةٍ ممكنة. */
+    const ua = (await headers()).get("user-agent");
+    const [p] = await Promise.all([
+      getProfile(),
+      (async () => {
+        try {
+          const supabase = await createClient();
+          await supabase.rpc("touch_presence", { p_platform: platformFromUA(ua), p_is_app: true });
+        } catch {
+          /* لا شيء */
+        }
+      })(),
+    ]);
     if (!p) return ok(null);
     return ok({
       id: p.id,
