@@ -1,8 +1,9 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getAmAdmin } from "@/lib/data";
-import { getAdminOverview, getGitHubHead, LIVE_SHA, LIMITS, PROVIDERS } from "@/lib/admin";
+import { getAdminOverview, getAdminTestersSummary, getGitHubHead, LIVE_SHA, LIMITS, PROVIDERS } from "@/lib/admin";
 import { settingsCard, settingsCardRows } from "@/components/settings/SettingsGroup";
+import { PLATFORM_AR, type Platform } from "@/core/platform";
 
 /**
  * 🆕 **نظرةُ الإدارة العامّة** (D-901، حكمُ أحمد: «تحتاج تطويراً أكثر» بعد
@@ -32,6 +33,7 @@ const riyadh = (iso: string) =>
 
 const PAGES = [
   { href: "/admin/users",    title: "المستخدمون",     key: "suspended" as const,            hint: "بحث · إيقافٌ وفكّ" },
+  { href: "/admin/testers",  title: "المختبِرون",     key: null,                            hint: "قائمةُ دعوة Play ومن دخل" },
   { href: "/admin/partners", title: "طلبات الشركاء",  key: "partners_pending" as const,     hint: "قبولٌ ورفض" },
   { href: "/admin/verify",   title: "طلبات التوثيق",  key: "verification_pending" as const, hint: "طابورُ التوثيق" },
   { href: "/admin/payouts",  title: "طلبات التحويل",  key: "payouts_pending" as const,      hint: "فارغٌ حتى تُفتح المدفوعات" },
@@ -84,7 +86,11 @@ export default async function AdminIndexPage() {
   const admin = await getAmAdmin();
   if (!admin) notFound();
 
-  const [o, head] = await Promise.all([getAdminOverview(), getGitHubHead()]);
+  const [o, ts, head] = await Promise.all([
+    getAdminOverview(),
+    getAdminTestersSummary(),
+    getGitHubHead(),
+  ]);
   if (!o) notFound();
 
   /* ——— ما يهدّد الاستقرار: كلُّ سطرٍ هنا شيءٌ يستحقّ فعلاً اليوم ——— */
@@ -93,16 +99,16 @@ export default async function AdminIndexPage() {
   const headShort = head?.sha.slice(0, 7) ?? null;
   const shaMatch = liveShort && headShort ? liveShort === headShort : null;
   if (shaMatch === false)
-    alerts.push({ tone: "bad", text: `الإنتاج (${liveShort}) متأخّرٌ عن رأس main (${headShort}) — آخرُ التزامٍ بلا وسم [deploy]؟ ادفع التزاماً موسوماً أو رقِّ من Vercel.` });
+    alerts.push({ tone: "bad", text: `الإنتاج (${liveShort}) متأخّرٌ عن رأس main (${headShort}) — آخرُ التزامٍ بلا وسم [deploy]؟ ادفع التزاماً موسوماً أو رقِّ من Vercel.` });
   const dbP = pct(o.db.db_bytes, LIMITS.supabaseDbBytes);
   if (dbP >= 60) alerts.push({ tone: dbP >= 85 ? "bad" : "warn", text: `قاعدة البيانات ${dbP.toFixed(0)}% من سقف الخطة المجانية — التجاوزُ يوقف الخدمة.` });
   const stP = pct(o.db.storage_bytes, LIMITS.supabaseStorageBytes);
   if (stP >= 60) alerts.push({ tone: stP >= 85 ? "bad" : "warn", text: `المخزن ${stP.toFixed(0)}% من السقف.` });
   if (o.health.open_policies !== LIMITS.expectedOpenPolicies)
-    alerts.push({ tone: "bad", text: `السياسات المفتوحة = ${o.health.open_policies} والمتوقَّع ${LIMITS.expectedOpenPolicies}: ${o.health.open_policy_tables.join(" · ")}` });
+    alerts.push({ tone: "bad", text: `السياسات المفتوحة = ${o.health.open_policies} والمتوقّع ${LIMITS.expectedOpenPolicies}: ${o.health.open_policy_tables.join(" · ")}` });
   const activeCron = o.health.cron.filter((c) => c.active).length;
   if (activeCron !== LIMITS.expectedActiveCron)
-    alerts.push({ tone: "warn", text: `وظائف cron الفعّالة = ${activeCron} والمتوقَّع ${LIMITS.expectedActiveCron}.` });
+    alerts.push({ tone: "warn", text: `وظائف cron الفعّالة = ${activeCron} والمتوقّع ${LIMITS.expectedActiveCron}.` });
   if (o.errors.count_24h > 0)
     alerts.push({ tone: o.errors.count_24h >= 50 ? "bad" : "warn", text: `${fmt(o.errors.count_24h)} خطأً في الخادم خلال ٢٤ ساعة (${fmt(o.errors.count_7d)} في ٧ أيام) — التفصيل أدناه.` });
   if (o.queues.verification_pending > 0)
@@ -119,6 +125,13 @@ export default async function AdminIndexPage() {
   const peakHour = o.logins_hourly.reduce((a, b) => (b.n > a.n ? b : a), { h: 0, n: 0 });
   const langTotal = o.visit_langs.reduce((s, l) => s + l.hits, 0) || 1;
   const queueCount = (k: (typeof PAGES)[number]["key"]) => (k ? (k === "suspended" ? o.suspended : o.queues[k]) : 0);
+  /* 🆕 D-909 — **والدفاعُ لأنّ الكودَ قد يسبق الهجرة**: `admin_testers_summary`
+     غائبةً تُقرأ `null` فأصفاراً، **لا شاشةً بيضاء** — والفهرسُ يبقى قائماً
+     كما كان قبلها. */
+  const tst = ts?.testers ?? { total: 0, with_account: 0, signed_in: 0, active_7d: 0 };
+  const plats = ts?.platforms ?? [];
+  const platTotal = plats.reduce((sum, p) => sum + p.users, 0) || 1;
+  const androidUsers = plats.find((p) => p.platform === "android")?.users ?? 0;
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8 space-y-5" dir="rtl">
@@ -174,6 +187,48 @@ export default async function AdminIndexPage() {
         })}
       </div>
 
+      {/* ——— ٢·٥) الاختبار المغلق — D-909 ——— */}
+      <section className={`${settingsCard} p-4 space-y-3`}>
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="text-15 font-bold">
+            الاختبار المغلق <span className="text-12 font-normal text-muted">— Play يعرف من دُعي، وهذه تعرف من دخل</span>
+          </h2>
+          <Link href="/admin/testers" className="text-12 text-accent underline">الصفحة الكاملة</Link>
+        </div>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <Stat label="في قائمة الدعوة" value={fmt(tst.total)} sub="المطلوب ١٢" />
+          <Stat label="لهم حساب" value={fmt(tst.with_account)} />
+          <Stat label="دخلوا فعلاً" value={fmt(tst.signed_in)} />
+          <Stat label="نشِطون ٧ أيام" value={fmt(tst.active_7d)} />
+        </div>
+        {plats.length > 0 ? (
+          <div>
+            <p className="mb-1.5 text-12 text-muted">
+              منصّاتُ المستخدمين — ٣٠ يوماً · <b className="text-accent tabular-nums" dir="ltr">{fmt(androidUsers)}</b> على أندرويد
+            </p>
+            <div className="space-y-1.5">
+              {plats.map((pf) => (
+                <div key={pf.platform} className="flex items-center gap-2 text-12">
+                  <span className="w-14 shrink-0">{PLATFORM_AR[pf.platform as Platform] ?? pf.platform}</span>
+                  <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-2">
+                    <div className="h-full rounded-full bg-accent" style={{ width: `${(pf.users / platTotal) * 100}%` }} />
+                  </div>
+                  <span className="w-24 shrink-0 text-end tabular-nums text-muted" dir="ltr">
+                    {fmt(pf.users)}{pf.app_users > 0 ? ` · ${fmt(pf.app_users)} تطبيق` : ""}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <p className="text-12 text-muted leading-relaxed">
+            لا منصّاتٍ بعد — ⚠️ <b>الماضي لا يُستردّ</b>: وسمُ ٤٥ جلسةً من ٥٥ في
+            <code dir="ltr"> auth.sessions </code> هو <code dir="ltr">node</code> لأنّ خادمنا هو من يجدّد
+            الرمز. العدُّ يبدأ من أوّل نبضةِ حضورٍ بعد الهجرة ١٨١.
+          </p>
+        )}
+      </section>
+
       {/* ——— ٣) المستخدمون ——— */}
       <section className={`${settingsCard} p-4 space-y-3`}>
         <h2 className="text-15 font-bold">المستخدمون</h2>
@@ -202,7 +257,7 @@ export default async function AdminIndexPage() {
         </div>
         {o.visit_langs.length > 0 && (
           <div>
-            <p className="mb-1.5 text-12 text-muted">لغةُ الزوّار — ٣٠ يوماً (أقربُ ما نملكه عن «من أين»؛ لا بلدَ يُخزَّن)</p>
+            <p className="mb-1.5 text-12 text-muted">لغةُ الزوّار — ٣٠ يوماً (أقربُ ما نملكه عن «من أين»؛ لا بلدَ يُخزّن)</p>
             <div className="space-y-1.5">
               {o.visit_langs.map((l) => (
                 <div key={l.lang} className="flex items-center gap-2 text-12">
