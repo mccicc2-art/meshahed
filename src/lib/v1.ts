@@ -54,7 +54,7 @@ export function respond<T>(
   init?: { cacheControl?: string },
 ): NextResponse {
   if (!r.ok) {
-    const headers: Record<string, string> = {};
+    const headers: Record<string, string> = { Vary: "Authorization, Cookie", "Cache-Control": "private, no-store" };
     if (r.error.retry_after_ms)
       headers["Retry-After"] = String(Math.ceil(r.error.retry_after_ms / 1000));
     return NextResponse.json(
@@ -66,6 +66,11 @@ export function respond<T>(
     // الافتراضُ: لا كاشَ وسيط — الردودُ شخصيّةٌ أو متغيّرة؛ المسارُ يرفع
     // `cacheControl` صراحةً حين يعرف أنّ ردَّه عامٌّ وثابتٌ لدقائق
     "Cache-Control": init?.cacheControl ?? "private, no-store",
+    /* 🔴 **مقيسٌ على الإنتاج (٤ سبتمبر)**: الردُّ نفسُه بعنوانٍ واحدٍ يختلف
+       بالهويّة — زائرٌ ثمّ Bearer — **فأعاد كاشُ المتصفّح ردَّ الزائر لصاحب
+       الرمز** (`watched_count: 0` وهو ٧٣). المفتاحُ الذي يميّز الردَّ ليس
+       العنوان بل الترويسة، **ويجب أن يقال ذلك للكاش صراحةً.** */
+    Vary: "Authorization, Cookie",
   };
   return NextResponse.json({ data: r.data, invalidates: r.invalidates }, { headers });
 }
