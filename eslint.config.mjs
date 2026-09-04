@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // تطبيقُ الجوّال حزمةٌ منفصلة بإعداد ESLint خاصٍّ بها (Expo) — لا يُفحص بقواعد Next
+    "apps/**",
   ]),
   // سياجُ عميل الخدمة (D-898 · LOOPZ-AUD-0040): `src/lib/supabase/service.ts`
   // يحمل مفتاح service_role الذي يتجاوز RLS. لا يستورده إلا مواضعُ الكتابة

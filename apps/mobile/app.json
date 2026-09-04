@@ -1,0 +1,57 @@
+{
+  "expo": {
+    "name": "Loopz",
+    "slug": "loopz",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "com.loopztv.app",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "backgroundColor": "#0D0D0D",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0D0D0D"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.loopztv.app"
+    },
+    "android": {
+      "package": "com.loopztv.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#0D0D0D",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-web-browser",
+      "expo-localization",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#0D0D0D",
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 160
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "apiBase": "https://loopztv.com",
+      "supabaseUrl": "https://uvgmvrdrxzpudoldjxaa.supabase.co",
+      "eas": {
+        "projectId": "REPLACE_WITH_EXPO_PROJECT_ID"
+      },
+      "supabasePublishableKey": "sb_publishable_lGgIjPJMAHFF0zo7xSh1Qw_un3QheUo"
+    }
+  }
+}
