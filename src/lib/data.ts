@@ -3518,7 +3518,10 @@ export async function getGlobalRoomPins(): Promise<Set<string>> {
  * **والجوابُ هنا للرسم وحدَه** — الحارسُ الحقيقيُّ في جسم دالّة
  * الكتابة. **وسقوطُه `false`** — زرٌّ يغيب خيرٌ من زرٍّ يكذب.
  */
-export async function getAmAdmin(): Promise<boolean> {
+export const getAmAdmin = cache(async function getAmAdmin(): Promise<boolean> {
+  /* 🆕 D-923 — **مغلَّفةٌ بـ`cache()`**: صار للإدارة غلافٌ يحرس المسار وصفحةٌ
+     تحرس نفسَها، **وسؤالٌ واحدٌ يُسأل مرّتين في الطلب نفسِه** بلا هذا السطر.
+     دفاعٌ في عمقٍ بثمنِ رحلةٍ واحدة. */
   try {
     const supabase = await createClient();
     const { data, error } = await supabase.rpc("am_admin");
@@ -3527,7 +3530,7 @@ export async function getAmAdmin(): Promise<boolean> {
   } catch {
     return false;
   }
-}
+});
 
 /**
  * 🆕 **روابطُ المنصّات المباشرة لعملٍ وبلد** (D-608) — نداءٌ واحدٌ يعيد

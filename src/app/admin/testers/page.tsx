@@ -1,5 +1,4 @@
 import { notFound, redirect } from "next/navigation";
-import Link from "next/link";
 import { getAmAdmin } from "@/lib/data";
 import {
   getAdminTesters,
@@ -175,13 +174,12 @@ export default async function AdminTestersPage({
   const complete = signedIn >= NEEDED;
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-8 space-y-5" dir="rtl">
+    <div className="space-y-5">
       <header className="flex flex-wrap items-end justify-between gap-2">
         <div>
           <h1 className="text-22 font-bold">المختبِرون</h1>
           <p className="text-12 text-muted">
-            قائمةُ دعوة Play مضمومةً على من دخل فعلاً ·{" "}
-            <Link href="/admin" className="underline">لوحة الإدارة</Link>
+            قائمةُ دعوة Play مضمومةً على من دخل فعلاً
           </p>
         </div>
         <span

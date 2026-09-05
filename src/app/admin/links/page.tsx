@@ -109,7 +109,7 @@ export default async function AdminLinksPage({
     existing.find((r) => r.provider_id === pid && r.country_code === country) ?? null;
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8 space-y-6" dir="rtl">
+    <div className="space-y-6">
       <h1 className="text-22 font-bold">روابط المنصّات المباشرة</h1>
 
       {/* بحثٌ بالاسم أو معرّف TMDB مباشرةً */}

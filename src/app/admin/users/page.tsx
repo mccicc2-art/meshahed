@@ -66,7 +66,7 @@ export default async function AdminUsersPage({
     : null;
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8 space-y-5" dir="rtl">
+    <div className="space-y-5">
       <h1 className="text-22 font-bold">المستخدمون</h1>
 
       <form className="flex gap-2" action="/admin/users">

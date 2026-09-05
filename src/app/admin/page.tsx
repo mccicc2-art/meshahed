@@ -1,7 +1,16 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getAmAdmin } from "@/lib/data";
-import { getAdminOverview, getAdminTestersSummary, getGitHubHead, LIVE_SHA, LIMITS, PROVIDERS } from "@/lib/admin";
+import {
+  AUDIT_AR,
+  getAdminAudit,
+  getAdminOverview,
+  getAdminTestersSummary,
+  getGitHubHead,
+  LIVE_SHA,
+  LIMITS,
+  PROVIDERS,
+} from "@/lib/admin";
 import { settingsCard, settingsCardRows } from "@/components/settings/SettingsGroup";
 import { PLATFORM_AR, type Platform } from "@/core/platform";
 
@@ -31,14 +40,9 @@ const tone = (p: number) => (p >= 85 ? "var(--error)" : p >= 60 ? "var(--accent)
 const riyadh = (iso: string) =>
   new Date(iso).toLocaleString("ar-SA", { timeZone: "Asia/Riyadh", dateStyle: "short", timeStyle: "short" });
 
-const PAGES = [
-  { href: "/admin/users",    title: "المستخدمون",     key: "suspended" as const,            hint: "بحث · إيقافٌ وفكّ" },
-  { href: "/admin/testers",  title: "المختبِرون",     key: null,                            hint: "قائمةُ دعوة Play ومن دخل" },
-  { href: "/admin/partners", title: "طلبات الشركاء",  key: "partners_pending" as const,     hint: "قبولٌ ورفض" },
-  { href: "/admin/verify",   title: "طلبات التوثيق",  key: "verification_pending" as const, hint: "طابورُ التوثيق" },
-  { href: "/admin/payouts",  title: "طلبات التحويل",  key: "payouts_pending" as const,      hint: "فارغٌ حتى تُفتح المدفوعات" },
-  { href: "/admin/links",    title: "روابط المنصّات", key: null,                            hint: "عملٌ ↔ منصّةٌ في بلد" },
-];
+/** كم فعلاً يُعرض من سجلّ الإدارة — يُقرأ بالنظر لا يُبحث فيه. */
+const AUDIT_N = 12;
+
 
 function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
@@ -86,10 +90,11 @@ export default async function AdminIndexPage() {
   const admin = await getAmAdmin();
   if (!admin) notFound();
 
-  const [o, ts, head] = await Promise.all([
+  const [o, ts, head, audit] = await Promise.all([
     getAdminOverview(),
     getAdminTestersSummary(),
     getGitHubHead(),
+    getAdminAudit(AUDIT_N),
   ]);
   if (!o) notFound();
 
@@ -124,7 +129,6 @@ export default async function AdminIndexPage() {
   const retention = u.total ? Math.round(((u.total - u.never_returned) / u.total) * 100) : 0;
   const peakHour = o.logins_hourly.reduce((a, b) => (b.n > a.n ? b : a), { h: 0, n: 0 });
   const langTotal = o.visit_langs.reduce((s, l) => s + l.hits, 0) || 1;
-  const queueCount = (k: (typeof PAGES)[number]["key"]) => (k ? (k === "suspended" ? o.suspended : o.queues[k]) : 0);
   /* 🆕 D-909 — **والدفاعُ لأنّ الكودَ قد يسبق الهجرة**: `admin_testers_summary`
      غائبةً تُقرأ `null` فأصفاراً، **لا شاشةً بيضاء** — والفهرسُ يبقى قائماً
      كما كان قبلها. */
@@ -134,7 +138,7 @@ export default async function AdminIndexPage() {
   const androidUsers = plats.find((p) => p.platform === "android")?.users ?? 0;
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-8 space-y-5" dir="rtl">
+    <div className="space-y-5">
       <header className="flex flex-wrap items-end justify-between gap-2">
         <div>
           <h1 className="text-22 font-bold">لوحة الإدارة</h1>
@@ -167,27 +171,7 @@ export default async function AdminIndexPage() {
         </div>
       </section>
 
-      {/* ——— ٢) الصفحات + الطوابير ——— */}
-      <div className="grid gap-2 sm:grid-cols-2">
-        {PAGES.map((p) => {
-          const n = queueCount(p.key);
-          return (
-            <Link key={p.href} href={p.href} className={`${settingsCard} flex items-center justify-between gap-3 p-4 hover:border-accent transition-colors`}>
-              <div className="min-w-0">
-                <p className="text-15 font-bold">{p.title}</p>
-                <p className="text-12 text-muted">{p.hint}</p>
-              </div>
-              {n > 0 && (
-                <span className={`shrink-0 rounded-full px-2.5 py-1 text-12 font-bold ${p.key === "suspended" ? "bg-[color:var(--error)]/15 text-[color:var(--error)]" : "bg-accent/15 text-accent"}`}>
-                  {n}
-                </span>
-              )}
-            </Link>
-          );
-        })}
-      </div>
-
-      {/* ——— ٢·٥) الاختبار المغلق — D-909 ——— */}
+      {/* ——— ٢) الاختبار المغلق — D-909 ——— */}
       <section className={`${settingsCard} p-4 space-y-3`}>
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h2 className="text-15 font-bold">
@@ -273,8 +257,69 @@ export default async function AdminIndexPage() {
         )}
       </section>
 
-      {/* ——— ٤) الطاقة ——— */}
-      <section className={`${settingsCard} p-4 space-y-3`}>
+      {/* ——— ٤) الأخطاء الحيّة ——— */}
+      <section className={`${settingsCard} p-4 space-y-2`}>
+        <h2 className="text-15 font-bold">
+          أخطاء الخادم <span className="text-12 font-normal text-muted">— من `runtime_errors` (١٤٨)، بلا هويّةٍ ولا IP</span>
+        </h2>
+        <div className="grid grid-cols-2 gap-2">
+          <Stat label="آخر ٢٤ ساعة" value={fmt(o.errors.count_24h)} />
+          <Stat label="آخر ٧ أيام" value={fmt(o.errors.count_7d)} />
+        </div>
+        {o.errors.top.length === 0 ? (
+          <p className="text-14 text-[color:var(--success)]">لا أخطاء في ٧ أيام.</p>
+        ) : (
+          <div className={settingsCardRows}>
+            {o.errors.top.map((e, i) => (
+              <div key={i} className="px-3 py-2.5">
+                <div className="flex items-center justify-between gap-2">
+                  <code className="truncate text-12" dir="ltr">{e.route}</code>
+                  <span className="shrink-0 rounded-full bg-[color:var(--error)]/15 px-2 py-0.5 text-12 font-bold tabular-nums text-[color:var(--error)]" dir="ltr">×{fmt(e.n)}</span>
+                </div>
+                <p className="mt-0.5 truncate text-12 text-muted" dir="auto">{e.kind} · {e.sample}</p>
+                <p className="text-12 text-muted">آخر مرّة: {riyadh(e.last_at)}</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* ——— ٥) سجلُّ الإدارة — من فعل ماذا ومتى (D-923) ——— */}
+      <section className={`${settingsCard} p-4 space-y-2`}>
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="text-15 font-bold">
+            سجلُّ الإدارة <span className="text-12 font-normal text-muted">— آخرُ {AUDIT_N} فعلٍ من `admin_audit`</span>
+          </h2>
+          <span className="text-12 text-muted">صار في اللوحة أكثرُ من مدير</span>
+        </div>
+        {audit.length === 0 ? (
+          <p className="text-14 text-muted">لا أفعالَ مسجَّلةً بعد.</p>
+        ) : (
+          <div className={settingsCardRows}>
+            {audit.map((a, i) => (
+              <div key={`${a.at}-${i}`} className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 px-3 py-2.5 text-13">
+                <b className="text-14">{AUDIT_AR[a.action] ?? a.action}</b>
+                {a.targetName && <span className="text-muted">← {a.targetName}</span>}
+                <span className="text-muted">بيد {a.actorName ?? "—"}</span>
+                <span className="ms-auto shrink-0 text-12 text-muted">{riyadh(a.at)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* ——— ٦) الأساس — مرجعٌ يتغيّر شهريّاً لا يوميّاً (D-923) ———
+          🔑 **المطويُّ ليس مخفيّاً**: الحصصُ والصحّةُ والجهاتُ لا تتحرّك في
+          اليوم، **وما لا يتحرّك يوميّاً لا يُقرأ يوميّاً** — وما يستحقّ فعلاً
+          منها يصعد وحدَه إلى «ما يهدّد الاستقرار» فوق. */}
+      <details className="space-y-3">
+        <summary className={`${settingsCard} cursor-pointer px-4 py-3 text-15 font-bold`}>
+          الأساس — الطاقة والصحّة والجهات
+          <span className="ms-2 text-12 font-normal text-muted">مرجعٌ يتغيّر شهريّاً</span>
+        </summary>
+        <div className="space-y-5 pt-3">
+          {/* ——— ٦أ) الطاقة ——— */}
+          <section className={`${settingsCard} p-4 space-y-3`}>
         <h2 className="text-15 font-bold">الطاقة والحصص <span className="text-12 font-normal text-muted">— Supabase Free: التجاوزُ يوقف، لا يفوتر</span></h2>
         <Meter label="قاعدة البيانات" used={o.db.db_bytes} total={LIMITS.supabaseDbBytes} />
         <Meter label={`المخزن (${fmt(o.db.storage_objects)} ملفّاً)`} used={o.db.storage_bytes} total={LIMITS.supabaseStorageBytes} />
@@ -302,41 +347,14 @@ export default async function AdminIndexPage() {
         </details>
       </section>
 
-      {/* ——— ٥) الأخطاء الحيّة ——— */}
-      <section className={`${settingsCard} p-4 space-y-2`}>
-        <h2 className="text-15 font-bold">
-          أخطاء الخادم <span className="text-12 font-normal text-muted">— من `runtime_errors` (١٤٨)، بلا هويّةٍ ولا IP</span>
-        </h2>
-        <div className="grid grid-cols-2 gap-2">
-          <Stat label="آخر ٢٤ ساعة" value={fmt(o.errors.count_24h)} />
-          <Stat label="آخر ٧ أيام" value={fmt(o.errors.count_7d)} />
-        </div>
-        {o.errors.top.length === 0 ? (
-          <p className="text-14 text-[color:var(--success)]">لا أخطاء في ٧ أيام.</p>
-        ) : (
-          <div className={settingsCardRows}>
-            {o.errors.top.map((e, i) => (
-              <div key={i} className="px-3 py-2.5">
-                <div className="flex items-center justify-between gap-2">
-                  <code className="truncate text-12" dir="ltr">{e.route}</code>
-                  <span className="shrink-0 rounded-full bg-[color:var(--error)]/15 px-2 py-0.5 text-12 font-bold tabular-nums text-[color:var(--error)]" dir="ltr">×{fmt(e.n)}</span>
-                </div>
-                <p className="mt-0.5 truncate text-12 text-muted" dir="auto">{e.kind} · {e.sample}</p>
-                <p className="text-12 text-muted">آخر مرّة: {riyadh(e.last_at)}</p>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
-
-      {/* ——— ٦) الصحّة ——— */}
+          {/* ——— ٦ب) الصحّة ——— */}
       <section className={`${settingsCard} p-4 space-y-2 text-14`}>
         <h2 className="text-15 font-bold">فحوصُ الصحّة</h2>
         <p>السياسات المفتوحة: <b className="tabular-nums" dir="ltr">{o.health.open_policies}</b> / {LIMITS.expectedOpenPolicies} <span className="text-12 text-muted">({o.health.open_policy_tables.join(" · ")})</span></p>
         <p>وظائف cron: {o.health.cron.map((c) => <code key={c.job} className="me-2 text-12" dir="ltr">{c.job} {c.active ? "✓" : "✕"} {c.schedule}</code>)}</p>
       </section>
 
-      {/* ——— ٧) الجهات والخطط ——— */}
+          {/* ——— ٦ج) الجهات والخطط ——— */}
       <section className="space-y-2">
         <h2 className="px-1 text-15 font-bold">الجهات المرتبطة — الخطط والمخاطر</h2>
         <div className="grid gap-2 sm:grid-cols-2">
@@ -352,7 +370,10 @@ export default async function AdminIndexPage() {
             </div>
           ))}
         </div>
-      </section>
+          </section>
+        </div>
+      </details>
+
     </div>
   );
 }

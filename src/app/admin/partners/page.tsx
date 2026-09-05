@@ -51,7 +51,7 @@ export default async function AdminPartnersPage({
   const badgeLabels = getDict("ar");
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8 space-y-6" dir="rtl">
+    <div className="space-y-6">
       <h1 className="text-22 font-bold">طلبات Loopz Partners</h1>
 
       {sp.err && <p className="text-14 text-[color:var(--error)]">⚠ {sp.err}</p>}

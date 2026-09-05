@@ -282,3 +282,80 @@ export const PROVIDERS: Provider[] = [
     dashboard: "https://github.com/mccicc2-art/meshahed",
   },
 ];
+
+/**
+ * 🆕 **سجلُّ الإدارة يُقرأ** (D-923، الهجرة ١٨٣) — `admin_audit` (١٧٢) تمتلئ
+ * منذ أسابيع وبصفرِ سياساتٍ على الجدول **لم يكن لها بابٌ في الواجهة**.
+ *
+ * 🔑 **وصار للسؤال صاحبان**: منذ ٥ سبتمبر في اللوحة مديران — **«من فعل ماذا
+ * ومتى» سؤالُ فريقٍ لا سؤالُ مالكٍ وحيد.** والأسماءُ تُضَمّ في القاعدة لا
+ * هنا: صفٌّ فيه `uuid` وحدَه يفرض رحلةً ثانيةً لكلِّ سطر.
+ */
+export type AdminAuditRow = {
+  at: string;
+  actor: string | null;
+  actorName: string | null;
+  action: string;
+  target: string | null;
+  targetName: string | null;
+  detail: Record<string, unknown> | null;
+};
+
+export async function getAdminAudit(limit = 12): Promise<AdminAuditRow[]> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("admin_audit_recent", { p_limit: limit });
+    if (error || !data) return [];
+    return (data as Record<string, unknown>[]).map((r) => ({
+      at: String(r.at),
+      actor: (r.actor as string) ?? null,
+      actorName: (r.actor_name as string) ?? null,
+      action: String(r.action),
+      target: (r.target as string) ?? null,
+      targetName: (r.target_name as string) ?? null,
+      detail: (r.detail as Record<string, unknown>) ?? null,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+/** الاسمُ العربيُّ لفعلِ الإدارة — **مكانٌ واحدٌ لا خريطةٌ في كلِّ صفحة.** */
+export const AUDIT_AR: Record<string, string> = {
+  grant_admin: "منح صلاحية إدارة",
+  revoke_admin: "سحب صلاحية إدارة",
+  suspend: "إيقاف حساب",
+  unsuspend: "فكّ إيقاف",
+  reveal_email: "كشف بريد",
+  tester_add: "إضافة مختبِر",
+  tester_remove: "حذف مختبِر",
+  tester_invited: "تعليم الدعوة",
+};
+
+/**
+ * 🆕 **أرقامُ الشريط** (D-923) — أربعةُ طوابيرَ وواجبُ اليوم في نداءٍ واحدٍ خفيف.
+ *
+ * ⚖️ **ولماذا دالّةٌ ثانيةٌ لا `admin_overview`؟** لأنّ الشريطَ يُرسم في
+ * **كلِّ** صفحةِ إدارة، و`admin_overview` تقيس أحجامَ الجداول وتجمع أخطاءَ
+ * ثلاثين يوماً — **ثمنُ لوحةِ قيادةٍ كاملةٍ لأربعة أرقام.** (وهي حجّةُ
+ * `admin_testers_summary` نفسُها في D-909.)
+ */
+export type AdminNavCounts = {
+  partners: number;
+  verify: number;
+  payouts: number;
+  suspended: number;
+  /** من له حسابٌ ولم يدخل اليومَ (يومُ الرياض) — **الرقمُ الذي يُراسَل صاحبُه** */
+  testers_missing: number;
+};
+
+export async function getAdminNavCounts(): Promise<AdminNavCounts | null> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("admin_nav_counts");
+    if (error || !data) return null;
+    return data as AdminNavCounts;
+  } catch {
+    return null;
+  }
+}
