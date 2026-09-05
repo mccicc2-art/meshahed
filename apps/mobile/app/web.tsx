@@ -1,0 +1,163 @@
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { BackHandler, Linking, Platform, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import Constants from "expo-constants";
+import { WebView, type WebViewMessageEvent, type WebViewNavigation } from "react-native-webview";
+import type { ShouldStartLoadRequest } from "react-native-webview/lib/WebViewTypes";
+import { supabase, useAuth } from "../src/auth";
+import { CONFIG } from "../src/config";
+import { Loading } from "../src/ui";
+
+/**
+ * ====== الغلافُ الهجين — الويبُ نفسُه داخل التطبيق (D-922) ======
+ *
+ * 🔴 **لماذا هجين؟** قرارُ أحمد (٥ سبتمبر): «لازم يكون مطابق ١٠٠٪». الشاشاتُ
+ * الأصليّة (D-919) كانت تعيد بناءَ ما في الويب بأدواتٍ أخرى، وكلُّ سطرٍ
+ * فيها فرقٌ محتمل. الويبُ هو المنتج؛ التطبيقُ **بابٌ** إليه لا نسخةٌ منه.
+ *
+ * 🔑 **الدخولُ وحدَه أصليّ**: Google ترفض OAuth داخل WebView، فالصفحةُ ترسل
+ * `login` عبر الجسر (`GoogleButton`)، ونفتح متصفّحَ النظام (PKCE، الطريقُ
+ * الذي شحن في 1.0)، ثمّ **نسلّم الرمزين في جسم POST** إلى
+ * `/api/v1/session/handoff` فيكتب الخادمُ كوكيَ الجلسة نفسَه الذي يكتبه للويب.
+ * التسليمُ نموذجٌ يُحقن في الصفحة ويُرسَل — لا تبديلَ لمصدر الـWebView،
+ * فلا إعادةَ تحميلٍ ثانية حين تتغيّر الجلسةُ الأصليّة بعده.
+ *
+ * 🔑 **بعد التسليم يُمسح المخزنُ المحلّيّ** (`signOut({ scope: "local" })`):
+ * رموزُ التجديد تُدوَّر، وعميلان يجدّدان رمزاً واحداً يُسقط أحدُهما الآخر.
+ * صاحبُ الجلسة هو كوكي الـWebView — ونبضةُ الحضور تأتي منه بوسم
+ * `LoopzApp/<version>` في وكيل المتصفّح، فتُكتب `is_app` من الترويسة.
+ *
+ * 🔑 **الروابطُ الخارجيّة تفتح خارجَ الغلاف** (يوتيوب، المتاجر): الغلافُ
+ * لنطاق Loopz وحدَه. **وزرُّ الرجوع** يرجع في تاريخ الصفحة قبل أن يغلق.
+ */
+const HOME = CONFIG.apiBase + "/";
+const HANDOFF = CONFIG.apiBase + "/api/v1/session/handoff";
+const APP_VERSION = Constants.expoConfig?.version ?? "0";
+
+/** النطاقاتُ التي تُعرض داخل الغلاف — ما عداها للمتصفّح الخارجيّ */
+const INSIDE = new Set(["loopztv.com", "www.loopztv.com", "meshahed.vercel.app"]);
+
+type Source = { uri: string; method?: "POST"; headers?: Record<string, string>; body?: string };
+
+function handoffSource(access: string, refresh: string): Source {
+  return {
+    uri: HANDOFF,
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: "access_token=" + encodeURIComponent(access) + "&refresh_token=" + encodeURIComponent(refresh),
+  };
+}
+
+/** نموذجُ تسليمٍ يُحقن في الصفحة ويُرسَل فوراً — الرمزان في الجسم لا في العنوان */
+function handoffScript(access: string, refresh: string): string {
+  return `(function(){var f=document.createElement('form');f.method='POST';f.action=${JSON.stringify(HANDOFF)};
+var a=document.createElement('input');a.type='hidden';a.name='access_token';a.value=${JSON.stringify(access)};
+var r=document.createElement('input');r.type='hidden';r.name='refresh_token';r.value=${JSON.stringify(refresh)};
+f.appendChild(a);f.appendChild(r);document.body.appendChild(f);f.submit();})();true;`;
+}
+
+export default function Web() {
+  const { session, loading, signInWithGoogle } = useAuth();
+  const ref = useRef<WebView>(null);
+  const [ready, setReady] = useState(false);
+  const [canGoBack, setCanGoBack] = useState(false);
+  const handing = useRef(false);
+  /* المصدرُ يُحسب مرّةً عند أوّل جلسةٍ مقروءة: رمزان في المخزن ⇢ تسليم،
+     وإلا الرئيسيّةُ (كوكي الـWebView تحمل الجلسةَ إن كانت). */
+  const [source, setSource] = useState<Source | null>(null);
+  useEffect(() => {
+    if (loading || source) return;
+    if (session) {
+      handing.current = true;
+      setSource(handoffSource(session.access_token, session.refresh_token));
+    } else {
+      setSource({ uri: HOME });
+    }
+  }, [loading, session, source]);
+
+  const onNav = useCallback((nav: WebViewNavigation) => {
+    setCanGoBack(nav.canGoBack);
+    /* وصلنا الرئيسيّةَ بعد التسليم ⇢ الصفحةُ تملك الكوكي؛ يُمسح المخزنُ المحلّيّ
+       حتّى لا يجدّد الغلافُ رمزاً صار للـWebView. */
+    if (handing.current && !nav.loading && nav.url.startsWith(HOME) && !nav.url.includes("/session/handoff")) {
+      handing.current = false;
+      supabase.auth.signOut({ scope: "local" }).catch(() => {});
+    }
+  }, []);
+
+  const onMessage = useCallback(
+    async (e: WebViewMessageEvent) => {
+      let msg: { type?: string } = {};
+      try {
+        msg = JSON.parse(e.nativeEvent.data);
+      } catch {
+        return;
+      }
+      if (msg.type !== "login") return;
+      const r = await signInWithGoogle();
+      const { data } = await supabase.auth.getSession();
+      if (r.ok && data.session) {
+        handing.current = true;
+        ref.current?.injectJavaScript(handoffScript(data.session.access_token, data.session.refresh_token));
+      } else {
+        ref.current?.injectJavaScript("window.dispatchEvent(new Event('loopz:login-cancel'));true;");
+      }
+    },
+    [signInWithGoogle],
+  );
+
+  const onShouldStart = useCallback((req: ShouldStartLoadRequest) => {
+    let host = "";
+    try {
+      host = new URL(req.url).hostname;
+    } catch {
+      return true;
+    }
+    if (!host || INSIDE.has(host)) return true;
+    // حزامُ أمان: لو وصلت الصفحةُ إلى Google بطريقٍ آخر يُفتح خارج الغلاف لا داخله
+    Linking.openURL(req.url).catch(() => {});
+    return false;
+  }, []);
+
+  useEffect(() => {
+    if (Platform.OS !== "android") return;
+    const sub = BackHandler.addEventListener("hardwareBackPress", () => {
+      if (canGoBack) {
+        ref.current?.goBack();
+        return true;
+      }
+      return false;
+    });
+    return () => sub.remove();
+  }, [canGoBack]);
+
+  return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#0D0D0D" }}>
+      {source ? (
+        <WebView
+          ref={ref}
+          source={source}
+          style={{ flex: 1, backgroundColor: "#0D0D0D" }}
+          applicationNameForUserAgent={`LoopzApp/${APP_VERSION}`}
+          onMessage={onMessage}
+          onNavigationStateChange={onNav}
+          onShouldStartLoadWithRequest={onShouldStart}
+          onLoadEnd={() => setReady(true)}
+          setSupportMultipleWindows={false}
+          domStorageEnabled
+          javaScriptEnabled
+          thirdPartyCookiesEnabled
+          allowsInlineMediaPlayback
+          mediaPlaybackRequiresUserAction={false}
+          overScrollMode="never"
+          textZoom={100}
+        />
+      ) : null}
+      {!ready ? (
+        <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "#0D0D0D" }}>
+          <Loading />
+        </View>
+      ) : null}
+    </SafeAreaView>
+  );
+}

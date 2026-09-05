@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import { createServiceClient } from "@/lib/supabase/service";
 import { createClient } from "@/lib/supabase/server";
 import { allow } from "@/core/ratelimit";
-import { platformFromUA } from "@/core/platform";
+import { isLoopzApp, platformFromUA } from "@/core/platform";
 
 /**
  * 🆕 **عدّادُ لغاتِ الزوّار** (D-666، طلبُ أحمد: «فعّل العدّاد») —
@@ -66,9 +66,11 @@ export async function POST(req: Request) {
     if (maybeSignedIn) {
       try {
         const session = await createClient();
+        // 🆕 D-922: الغلافُ الهجين يمرّ من هنا كالويب — ووسمُه يقول إنه التطبيق
+        const ua = req.headers.get("user-agent");
         await session.rpc("touch_presence", {
-          p_platform: platformFromUA(req.headers.get("user-agent")),
-          p_is_app: false,
+          p_platform: platformFromUA(ua),
+          p_is_app: isLoopzApp(ua),
         });
       } catch {
         /* لا شيء — انظر رأسَ الملفّ */

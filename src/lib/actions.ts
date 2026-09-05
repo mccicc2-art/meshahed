@@ -47,7 +47,7 @@ import {
   type TabPref,
 } from "@/core/tabPrefs";
 import { allow } from "@/core/ratelimit";
-import { platformFromUA } from "@/core/platform";
+import { isLoopzApp, platformFromUA } from "@/core/platform";
 import {
   asTrailerScope,
   asTrailerTab,
@@ -4552,7 +4552,8 @@ export async function touchPresence() {
      (١٨١/١٨٢) تكتب ما كانت `touch_last_seen` تكتبه ثمّ صفَّ الجهاز
      مخنوقاً كلَّ خمس دقائق. */
   const ua = (await headers()).get("user-agent");
-  await supabase.rpc("touch_presence", { p_platform: platformFromUA(ua), p_is_app: false });
+  // 🆕 D-922: من داخل الغلاف الهجين الوسمُ `LoopzApp/…` — فالنبضةُ نفسُها تشهد بالتثبيت
+  await supabase.rpc("touch_presence", { p_platform: platformFromUA(ua), p_is_app: isLoopzApp(ua) });
 }
 
 /**

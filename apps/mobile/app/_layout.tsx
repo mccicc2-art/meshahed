@@ -10,7 +10,7 @@ import { queryClient } from "../src/api";
 import { applyDirection, deviceLocale } from "../src/i18n";
 
 /**
- * الجذر: الاستعلامات ⇢ الجلسة ⇢ الحالة ⇢ الشاشات.
+ * الجذر: الاستعلامات ⇢ الجلسة ⇢ الحالة ⇢ الغلاف (D-922: شاشةٌ واحدة `/web`).
  * **الاتّجاهُ يُطبَّق قبل أوّل رسمة**: RTL قرارُ إقلاعٍ في React Native.
  */
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -48,11 +48,8 @@ function Shell() {
         }}
       >
         <Stack.Screen name="index" options={{ headerShown: false }} />
-        <Stack.Screen name="login" options={{ headerShown: false }} />
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="web" options={{ headerShown: false }} />
         <Stack.Screen name="auth/callback" options={{ headerShown: false }} />
-        <Stack.Screen name="title/[kind]/[id]" options={{ title: "" }} />
-        <Stack.Screen name="title/tv/[id]/season/[n]" options={{ title: "" }} />
       </Stack>
     </>
   );

@@ -39,3 +39,15 @@ export const PLATFORM_AR: Record<Platform, string> = {
   linux: "لينكس",
   other: "أخرى",
 };
+
+/**
+ * 🆕 D-922 — **وسمُ الغلاف الهجين**: تطبيقُ أندرويد يعرض الويبَ في WebView
+ * ويلحق بوسم المتصفّح `LoopzApp/<version>`. **الوسمُ هو دليلُ التثبيت** الآن
+ * (كان `okhttp` عميلَ Expo): نبضةُ الحضور من داخل التطبيق تصل بهذا الوسم
+ * فتُكتب `is_app = true` — **من ترويسة الطلب لا من نصٍّ يرسله العميل** (D-666).
+ */
+export const APP_UA_TAG = "LoopzApp/";
+
+export function isLoopzApp(ua: string | null | undefined): boolean {
+  return (ua ?? "").includes(APP_UA_TAG);
+}

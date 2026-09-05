@@ -1,10 +1,6 @@
 import { Redirect } from "expo-router";
-import { useAuth } from "../src/auth";
-import { Loading, Screen } from "../src/ui";
 
-/** البوّابة: داخلٌ ⇢ التبويبات، وإلا ⇢ الدخول. لا وميضَ قبل قراءة المخزن. */
+/** البوّابة: كلُّ شيءٍ في `/web` (D-922) — الجلسةُ تُقرأ هناك قبل أوّل رسمة. */
 export default function Index() {
-  const { session, loading } = useAuth();
-  if (loading) return <Screen><Loading /></Screen>;
-  return <Redirect href={session ? "/(tabs)/today" : "/login"} />;
+  return <Redirect href="/web" />;
 }

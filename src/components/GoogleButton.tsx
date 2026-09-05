@@ -34,6 +34,8 @@ type CredentialResponse = { credential?: string };
 
 declare global {
   interface Window {
+    /** 🆕 D-922 — جسرُ الغلاف الهجين (`react-native-webview`) */
+    ReactNativeWebView?: { postMessage: (data: string) => void };
     google?: {
       accounts: {
         id: {
@@ -63,6 +65,18 @@ function isIOS(): boolean {
   if (/iP(hone|od|ad)/.test(navigator.userAgent)) return true;
   return /Macintosh|MacIntel/.test(navigator.userAgent + navigator.platform) &&
     navigator.maxTouchPoints > 1;
+}
+
+/**
+ * 🆕 D-922 — **داخلَ تطبيق أندرويد الدخولُ أصليٌّ لا في الصفحة**: Google
+ * ترفض OAuth داخل WebView (`disallowed_useragent`) ونافذةُ GIS لا تُفتح
+ * أصلاً. فالزرُّ نفسُه (شكلُ الشاشة كما هو) يرسل `login` إلى الغلاف عبر
+ * `postMessage`، والغلافُ يفتح متصفّحَ النظام (PKCE) ثمّ يسلّم الجلسةَ إلى
+ * الصفحة (`/api/v1/session/handoff`). الكشفُ بوجود الجسر لا بوسم المتصفّح:
+ * الجسرُ لا يزرعه إلا الغلاف.
+ */
+function inApp(): boolean {
+  return typeof window !== "undefined" && !!window.ReactNativeWebView;
 }
 
 /** بصمتان لرقمٍ عشوائي: المُعمّاة تذهب لـGoogle والخام تبقى معنا */
@@ -96,6 +110,11 @@ export function GoogleButton({ locale, next = "/" }: { locale: Locale; next?: st
   /** الطريقة القديمة — تبقى بابَ الاحتياط */
   const redirectSignIn = useCallback(async () => {
     setLoading(true);
+    if (inApp()) {
+      // الغلافُ يتولّى الباقي ويعيد تحميلَ الصفحة بجلسةٍ — أو يرفع التحميلَ إن أُلغي
+      window.ReactNativeWebView!.postMessage(JSON.stringify({ type: "login", next }));
+      return;
+    }
     // العميل يُجلب عند الضغطة — انظر لماذا في supabase/client.ts
     const supabase = await createClient();
     /* 🔴 **أصلُ الزائر أوّلاً لا متغيّرُ البيئة** (D-623، بلاغُ مشعل:
@@ -116,13 +135,22 @@ export function GoogleButton({ locale, next = "/" }: { locale: Locale; next?: st
     }
   }, [t, next]);
 
+  /* D-922: الغلافُ يبثّ هذا الحدثَ حين يُلغي المستخدمُ الدخولَ من متصفّح
+     النظام — فيعود الزرُّ إلى حاله بدل أن يبقى «يحوّل…» إلى الأبد. */
+  useEffect(() => {
+    if (!inApp()) return;
+    const back = () => setLoading(false);
+    window.addEventListener("loopz:login-cancel", back);
+    return () => window.removeEventListener("loopz:login-cancel", back);
+  }, []);
+
   useEffect(() => {
     if (!CLIENT_ID || done.current) return;
     /* iOS/iPadOS: لا `initialize` ولا `renderButton` أصلاً — يبقى
        `gsiReady` خامداً فيظهر زرُّ الموقع نفسُه (تصميمُ الشاشة الأصلي)
        وضغطتُه `redirectSignIn` المجرَّبة. بابٌ واحدٌ صالحٌ خيرٌ من
        بابين أحدُهما أبيض. */
-    if (isIOS()) return;
+    if (isIOS() || inApp()) return;
     let cancelled = false;
 
     async function boot() {
