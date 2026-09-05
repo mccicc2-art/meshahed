@@ -41,6 +41,12 @@ function allowed(raw: string): URL | null {
   }
 }
 
+/** اسمُ ملفٍّ لا ترويسةَ فيه: حروفٌ آمنةٌ فقط، وإلا فالافتراضيّ */
+function safeName(raw: string | null): string {
+  const n = (raw ?? "").trim();
+  return /^[A-Za-z0-9._-]{1,80}\.aab$/.test(n) ? n : "artifact.aab";
+}
+
 const CORS = {
   "access-control-allow-origin": "*",
   "access-control-allow-methods": "GET, OPTIONS",
@@ -74,6 +80,9 @@ export async function GET(request: NextRequest) {
     headers: {
       ...CORS,
       "content-type": "application/octet-stream",
+      // اسمٌ صريحٌ عند التنزيل: المتصفّح وحده لا يشتقّ اسماً من مسارٍ بمعاملات.
+      // ومصفّاةٌ لأن المعامل من الخارج: حرفٌ شارد في ترويسةٍ يفتح حقناً
+      "content-disposition": `attachment; filename="${safeName(params.get("n"))}"`,
       "cache-control": "no-store",
       "x-robots-tag": "noindex",
     },
