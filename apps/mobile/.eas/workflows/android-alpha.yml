@@ -11,9 +11,14 @@
 #    يستهلك دقائقَ EAS. والمسارات نسبيّةٌ إلى جذر المستودع لا إلى apps/mobile.
 name: Android → Play Alpha
 
-# ⏳ مؤقّتاً يدويٌّ فقط: يتحوّل إلى push عند كلِّ دفعةٍ تمسّ apps/mobile حالما
-#    يُرفع مفتاحُ حساب الخدمة — وإلا استُهلك بناءٌ يفشل إرسالُه.
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - apps/mobile/**
+      # تعديلُ المسار نفسِه لا يشحن تطبيقاً
+      - '!apps/mobile/.eas/**'
   workflow_dispatch: {}
 
 jobs:
