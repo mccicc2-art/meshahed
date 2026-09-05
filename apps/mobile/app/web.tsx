@@ -4,6 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Constants from "expo-constants";
 import { WebView, type WebViewMessageEvent, type WebViewNavigation } from "react-native-webview";
 import type { ShouldStartLoadRequest } from "react-native-webview/lib/WebViewTypes";
+import { useLocalSearchParams } from "expo-router";
 import { supabase, useAuth } from "../src/auth";
 import { CONFIG } from "../src/config";
 import { File, Paths } from "expo-file-system";
@@ -36,6 +37,13 @@ import { space } from "../src/theme";
  * 🆕 **ولقطةُ الودجت تمرّ من هنا** (D-929): الصفحةُ ترسل `widget` عبر الجسر،
  * والغلافُ يكتبها ملفّاً واحداً يقرؤه كوتلن. **ولا وحدةَ أصليّةً للكتابة**:
  * `documentDirectory/widget.json` هو نفسُه `context.filesDir/widget.json`.
+ *
+ * 🆕 **والودجتُ تفتح صفحةَ العمل لا الرئيسيّة**: تُرسل
+ * `com.loopztv.app://web?u=/show/123`، **ومسارُ `web` هذا موجودٌ في الموجِّه**
+ * فلا تظهر «غير موجود»، والوسيطُ يُقرأ هنا.
+ * ⚠️ **ولا يُنتقل قبل أوّل تحميلٍ ناجح**: طلبُ التسليم (POST) يجب أن يكتب
+ * الكوكي أوّلاً — **وانتقالٌ يسبقه يفتح الصفحةَ ضيفاً ثمّ يقفز**، وهو وميضُ
+ * «مسجَّلٌ ثمّ غيرُ مسجَّل» الذي عولج في D-910. فيُحفظ الهدفُ ويُنفَّذ بعدها.
  */
 const HOME = CONFIG.apiBase + "/";
 const HANDOFF = CONFIG.apiBase + "/api/v1/session/handoff";
@@ -81,6 +89,9 @@ export default function Web() {
   const [failed, setFailed] = useState(false);
   const [canGoBack, setCanGoBack] = useState(false);
   const handing = useRef(false);
+  /* الهدفُ المؤجَّل من الودجت — يُنفَّذ بعد أوّل تحميلٍ ناجحٍ لا قبله */
+  const pending = useRef<string | null>(null);
+  const { u } = useLocalSearchParams<{ u?: string }>();
   /* المصدرُ يُحسب مرّةً عند أوّل جلسةٍ مقروءة: رمزان في المخزن ⇢ تسليم،
      وإلا الرئيسيّةُ (كوكي الـWebView تحمل الجلسةَ إن كانت). */
   const [source, setSource] = useState<Source | null>(null);
@@ -94,6 +105,21 @@ export default function Web() {
     }
   }, [loading, session, source]);
 
+  /** ينقل الـWebView إلى الهدف المحفوظ — بحقن `location.href` لا بتبديل
+      المصدر: تبديلُ المصدر يُعيد تركيبَ العرض ويفقد تاريخَ الرجوع. */
+  const flush = useCallback(() => {
+    const target = pending.current;
+    if (!target) return;
+    pending.current = null;
+    ref.current?.injectJavaScript(`location.href=${JSON.stringify(target)};true;`);
+  }, []);
+
+  useEffect(() => {
+    if (typeof u !== "string" || !u || !u.startsWith("/")) return;
+    pending.current = CONFIG.apiBase + u;
+    if (ready && !handing.current) flush();
+  }, [u, ready, flush]);
+
   const onNav = useCallback((nav: WebViewNavigation) => {
     setCanGoBack(nav.canGoBack);
     /* وصلنا الرئيسيّةَ بعد التسليم ⇢ الصفحةُ تملك الكوكي؛ يُمسح المخزنُ المحلّيّ
@@ -101,8 +127,9 @@ export default function Web() {
     if (handing.current && !nav.loading && nav.url.startsWith(HOME) && !nav.url.includes("/session/handoff")) {
       handing.current = false;
       supabase.auth.signOut({ scope: "local" }).catch(() => {});
+      flush();
     }
-  }, []);
+  }, [flush]);
 
   const onMessage = useCallback(
     async (e: WebViewMessageEvent) => {
@@ -180,7 +207,7 @@ export default function Web() {
           onMessage={onMessage}
           onNavigationStateChange={onNav}
           onShouldStartLoadWithRequest={onShouldStart}
-          onLoadEnd={() => setReady(true)}
+          onLoadEnd={() => { setReady(true); if (!handing.current) flush(); }}
           /* 🔴 **بلا هذه كان الانقطاعُ يعرض صفحةَ خطأ أندرويد الخام**
              (`net::ERR_INTERNET_DISCONNECTED` بخطٍّ إنجليزيٍّ صغير) داخل
              تطبيقٍ عربيٍّ أسود — **أسوأُ ما يراه مختبِرٌ في أوّل نفق.** */

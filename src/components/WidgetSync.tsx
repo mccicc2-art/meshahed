@@ -20,7 +20,8 @@ declare global {
   }
 }
 
-export type WidgetItem = { t: string; s: string | null };
+/** `h` مسارٌ نسبيٌّ لا مطلق: الغلافُ يعرف مضيفَه، والودجتُ تفتحه عبر السكيم. */
+export type WidgetItem = { t: string; s: string | null; h: string };
 
 export function WidgetSync({ items }: { items: WidgetItem[] }) {
   useEffect(() => {

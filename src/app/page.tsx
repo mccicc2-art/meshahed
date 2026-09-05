@@ -1007,6 +1007,7 @@ async function HomeBody({
   const widgetItems = continueTop.slice(0, 3).map((i, n) => ({
     t: i.name,
     s: continueExtra[n]?.episodeLabel ?? null,
+    h: `/show/${i.id}`,
   }));
 
   /* 🆕 **وهنا تُجمع أرقامُ قوائمك** (D-673) — **بعد موجة TMDB لا
