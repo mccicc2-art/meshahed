@@ -359,3 +359,163 @@ export async function getAdminNavCounts(): Promise<AdminNavCounts | null> {
     return null;
   }
 }
+
+/**
+ * 🆕 **الأداءُ والحمايةُ تُقاس لا تُوصف** (D-924، الهجرة ١٨٤، طلبُ أحمد:
+ * «أحتاج أعرف فيها حالة الأداء والسرعة والتأخير، وحالة الأمان وحفظ البيانات
+ * وأنواع البيانات التي نجمعها ومستوى الحماية والثغرات والتوصيات»).
+ *
+ * 🔑 **كلُّ رقمٍ من مصدرٍ حيّ**: `pg_stat_statements` للزمن، `pg_policies`
+ * و`pg_proc` للحماية، `pg_class` للنموّ. **والتصنيفُ وحدَه مكتوبٌ هنا**
+ * (`DATA_MAP`) لأنّه حكمٌ لا قياس — **والقاعدة تقول كم وكم عمرُه، والشيفرةُ
+ * تقول ما هو ولماذا نحتفظ به.**
+ */
+export type AdminHealth = {
+  at: string;
+  perf: {
+    since: string;
+    calls: number;
+    total_s: number;
+    avg_ms: number;
+    cache_hit: number;
+    db_bytes: number;
+    unused_indexes: number;
+    top: { name: string; calls: number; mean_ms: number; pct: number }[];
+  };
+  sec: {
+    tables: number;
+    rls_off: number;
+    policies: number;
+    open_policies: number;
+    /** سياساتٌ تُعيد تقييم `auth.uid()` لكلِّ صفّ — رقمُ مستشار Supabase نفسُه */
+    initplan: number;
+    definer: number;
+    definer_anon: number;
+    mutable_path: number;
+    providers: { provider: string; n: number }[];
+    buckets: { id: string; public: boolean; objects: number }[];
+  };
+  data: Record<string, { rows: number; oldest: string | null }>;
+};
+
+export async function getAdminHealth(): Promise<AdminHealth | null> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("admin_health");
+    if (error || !data) return null;
+    return data as AdminHealth;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * **ما نجمعه ولماذا** — التصنيفُ حكمٌ فيسكن الشيفرة، والعددُ والعمرُ من
+ * القاعدة. **والعمودُ الأهمّ «يُحذف؟»**: جدولٌ بلا سياسةِ حذفٍ ينمو إلى الأبد،
+ * **وبياناتٌ لا تنتهي صلاحيّتُها هي بياناتٌ تُسرَّب يوماً ما.**
+ */
+export type DataKind = "identity" | "financial" | "behaviour" | "technical";
+
+export const DATA_MAP: {
+  table: string;
+  what: string;
+  kind: DataKind;
+  keep: string;
+  /** `false` = ينمو بلا حدّ: لا وظيفةَ حذفٍ دوريّ تمسّه اليوم */
+  pruned: boolean;
+}[] = [
+  { table: "partner_details", what: "IBAN وهاتفُ الشريك", kind: "financial",
+    keep: "ما دام الشريك", pruned: false },
+  { table: "payout_requests", what: "لقطةُ IBAN مع كلِّ طلبِ تحويل", kind: "financial",
+    keep: "بلا حدّ", pruned: false },
+  { table: "play_testers", what: "بريدُ المختبِر (مُدخَلُ أحمد لا قراءةُ القاعدة)", kind: "identity",
+    keep: "حتى يُحذف يدويّاً", pruned: false },
+  { table: "user_devices", what: "صنفُ المنصّة فقط — لا وكيلَ متصفّحٍ كاملاً (D-666)", kind: "technical",
+    keep: "بلا حدّ", pruned: false },
+  { table: "user_active_days", what: "يومُ نشاطٍ وعدّادُ نبضات", kind: "behaviour",
+    keep: "بلا حدّ", pruned: false },
+  { table: "profile_views", what: "من زار ملفَّ من", kind: "behaviour",
+    keep: "بلا حدّ", pruned: false },
+  { table: "admin_audit", what: "فعلُ مديرٍ وهدفُه", kind: "technical",
+    keep: "بلا حدّ (مقصود: سجلٌّ يُحذف ليس سجلّاً)", pruned: false },
+  { table: "runtime_errors", what: "خطأُ خادمٍ ومسارُه — بلا هويّةٍ ولا IP", kind: "technical",
+    keep: "بلا حدّ", pruned: false },
+];
+
+export const KIND_AR: Record<DataKind, string> = {
+  identity: "هويّة",
+  financial: "ماليّ",
+  behaviour: "سلوك",
+  technical: "تقنيّ",
+};
+
+/**
+ * **الثغراتُ تُشتَقّ من الأرقام لا تُكتب قائمةً** — فتختفي وحدَها متى عولجت.
+ * **قائمةُ توصياتٍ ثابتةٌ في الشيفرة تكذب بعد أوّل إصلاح**، وهذه لا تستطيع.
+ */
+export type Finding = {
+  id: string;
+  sev: "high" | "med" | "low";
+  title: string;
+  why: string;
+  fix: string;
+};
+
+export function findingsOf(h: AdminHealth): Finding[] {
+  const f: Finding[] = [];
+  const hot = h.perf.top?.[0];
+  if (hot && hot.pct >= 20 && hot.name !== "sql")
+    f.push({
+      id: "hot-fn", sev: "high",
+      title: `${hot.name} تأكل ${hot.pct}٪ من زمن القاعدة`,
+      why: `${hot.calls.toLocaleString("en-US")} نداءً بمتوسّط ${hot.mean_ms} م.ث. شارةٌ في الترويسة تُحسب في كلِّ رسمةِ صفحة — وNext يرسم مسبقاً عند كلِّ تحويم.`,
+      fix: "عدُّ الجديد بسؤالٍ مباشرٍ بدل تشغيل دالّة الإشارات كاملةً ثمّ عدِّها، أو تخزينُ الرقم في الملفّ ويُبطَل عند الحدث.",
+    });
+  if (h.sec.initplan > 0)
+    f.push({
+      id: "initplan", sev: "high",
+      title: `${h.sec.initplan} سياسةً تُعيد تقييم auth.uid() لكلِّ صفّ`,
+      why: "الدالّةُ تُنادى مرّةً لكلِّ صفٍّ بدل مرّةٍ للاستعلام — الأثرُ يكبر مع كلِّ صفٍّ يُقرأ، وهو أوسعُ مكسبٍ منهجيٍّ متاح.",
+      fix: "(select auth.uid()) بدل auth.uid() داخل كلِّ سياسة — تغييرٌ آليٌّ في security*.sql وحدَها، بلا مساسِ منطق.",
+    });
+  const noPrune = DATA_MAP.filter((d) => !d.pruned && (h.data?.[d.table]?.rows ?? 0) > 0);
+  if (noPrune.length > 0)
+    f.push({
+      id: "retention", sev: "med",
+      title: `لا وظيفةَ حذفٍ دوريّ — ${noPrune.length} جداولَ تنمو بلا حدّ`,
+      why: "وظيفةُ cron الوحيدةُ صيانةٌ لا تنظيف. runtime_errors وحدَها تكتب آلافَ الصفوف شهريّاً، والاحتفاظُ بلا سببٍ التزامٌ لا أصل.",
+      fix: "وظيفةٌ ليليّةٌ واحدة: حذفُ runtime_errors فوق ٩٠ يوماً وprofile_views فوق ١٨٠. والماليُّ والسجلُّ يبقيان بقرارٍ مكتوب.",
+    });
+  const extra = (h.sec.providers ?? []).filter((p) => p.provider !== "google");
+  if (extra.length > 0)
+    f.push({
+      id: "providers", sev: "med",
+      title: `بابُ دخولٍ ثانٍ مفعَّل: ${extra.map((p) => `${p.provider} (${p.n})`).join(" · ")}`,
+      why: "قواعدُ المشروع وصفحةُ الخصوصيّة وإقرارُ «أمان البيانات» في Play تقول Google وحدَها — **وبابٌ لا تذكره الوثيقةُ بابٌ لا يراجعه أحد.**",
+      fix: "إمّا يُعطَّل، أو يُوثَّق في 18/07 و/privacy وإقرارِ Play — والقرارُ لأحمد.",
+    });
+  if (h.sec.definer_anon > 0)
+    f.push({
+      id: "definer-anon", sev: "med",
+      title: `${h.sec.definer_anon} دالّةَ definer ينفّذها anon`,
+      why: "الحكمُ في جسم الدالّة (am_admin/auth.uid) وهو صحيح — **لكنّ المنحَ أوسعُ من الحاجة، فالدفاعُ طبقةٌ واحدةٌ لا طبقتان.**",
+      fix: "سحبُ execute عن anon من كلِّ دالّةٍ لا يحتاجها زائر — دفعةً واحدةً بجردٍ مولَّد.",
+    });
+  if (h.sec.mutable_path > 0)
+    f.push({
+      id: "search-path", sev: "low",
+      title: `${h.sec.mutable_path} دوالّ بمسارِ بحثٍ متغيّر`,
+      why: "دالّةٌ بلا search_path مثبَّت قد تُخدع بجدولٍ يُزرع في مسارِ المنادي.",
+      fix: "set search_path = public, pg_temp على كلٍّ منها.",
+    });
+  if (h.perf.unused_indexes >= 50)
+    f.push({
+      id: "idx", sev: "low",
+      title: `${h.perf.unused_indexes} فهرساً لم يُقرأ قطّ`,
+      why: "كلُّ فهرسٍ ثمنُه في كلِّ كتابة. وعلى قاعدةٍ صغيرةٍ الأثرُ محتمَل، ومع النموّ يصير كلفةً.",
+      fix: "لا يُحذف شيءٌ الآن: بعضُها لمسارٍ لم يُستعمل بعد. يُراجَع عند ألفِ مستخدم.",
+    });
+  return f;
+}
+
+export const SEV_AR: Record<Finding["sev"], string> = { high: "عالٍ", med: "متوسّط", low: "منخفض" };
