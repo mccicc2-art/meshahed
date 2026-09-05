@@ -14,6 +14,9 @@ export const dynamic = "force-dynamic";
 
 export function GET() {
   return new NextResponse(process.env.VERCEL_GIT_COMMIT_SHA ?? "dev", {
-    headers: { "cache-control": "no-store" },
+    // 🆕 D-910: **يُزحَف ولا يُفهرس** — `robots.txt` يسمح بقراءته ليصير فحصُ
+    // النشر آليّاً، **والترويسةُ هنا تمنع ظهورَه في نتائج البحث**: الاستثناءُ
+    // في ملفٍّ واحدٍ لا يُفهم إلا مع نصفه الثاني، فالنصفان متجاوران بالقصد.
+    headers: { "cache-control": "no-store", "x-robots-tag": "noindex" },
   });
 }
