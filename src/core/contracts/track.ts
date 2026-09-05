@@ -8,6 +8,8 @@
  * فلا موضعَ يفترق فيه التطبيقُ عن الويب في معنى حقل.
  */
 
+import type { TitleKind } from "./tags.ts";
+
 export type EpisodeRef = { season: number; episode: number; runtime: number | null };
 
 /** `POST /track/episode` — تبديلُ حلقةٍ واحدة */
@@ -47,3 +49,23 @@ export type ToggleMovieBody = {
 
 /** ردُّ كلِّ كتابةِ تتبّع — لا بياناتَ، الوسومُ هي الردّ */
 export type TrackResult = { done: true };
+
+/**
+ * 🆕 D-916 — المتابعةُ من التطبيق. بلا «تابِع» كان الطريقُ الوحيدُ إلى
+ * المكتبة أن تشاهد حلقةً؛ فيلمٌ «للمشاهدة لاحقاً» لم يكن له باب.
+ * الأجسامُ تطابق `follow`/`unfollow`/`setDropped` في `actions.ts` حرفاً.
+ */
+
+/** `POST /track/follow` — إلى المكتبة (للمشاهدة) */
+export type FollowBody = {
+  tmdbId: number;
+  mediaType: TitleKind;
+  title: string;
+  posterPath: string | null;
+};
+
+/** `POST /track/unfollow` — من المكتبة */
+export type UnfollowBody = { tmdbId: number; mediaType: TitleKind };
+
+/** `POST /track/dropped` — البطاقةُ الحمراء أو رفعُها؛ يبقى في المكتبة */
+export type SetDroppedBody = { tmdbId: number; mediaType: TitleKind; dropped: boolean };

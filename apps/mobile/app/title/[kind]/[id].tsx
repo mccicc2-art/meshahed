@@ -8,12 +8,17 @@ import { useApp } from "../../../src/state";
 import { Button, Card, Loading, Poster, Screen, Text } from "../../../src/ui";
 import { radius, space } from "../../../src/theme";
 import { backdropUrl } from "@/core/media";
-import type { TitlePayload, TrackResult } from "../../../src/contracts";
+import type { FollowBody, SetDroppedBody, TitlePayload, TrackResult, UnfollowBody } from "../../../src/contracts";
 
 /**
  * صفحةُ العمل — `/api/v1/title/{kind}/{id}` في ردٍّ واحد.
  * المسلسل: المواسمُ بتقدّمها، والضغطُ على موسمٍ يفتح حلقاتِه.
  * الفيلم: زرُّ «شاهدتُه» واحدٌ يبدّل.
+ *
+ * 🆕 D-916: **«تابِع» و«أوقف المتابعة» في صفٍّ واحدٍ تحت الرأس.** قبلها كان
+ * الطريقُ الوحيدُ إلى المكتبة أن تشاهد حلقةً — فيلمٌ «للمشاهدة لاحقاً» لم
+ * يكن له باب، والمختبِرُ يبحث ثمّ لا يجد كيف يضيف. الحالةُ من الخادم
+ * (`me.following`/`me.dropped`) والوسومُ تعيد جلبَها — لا حالةَ محلّيّةً تنسى.
  */
 export default function Title() {
   const { kind, id } = useLocalSearchParams<{ kind: "tv" | "movie"; id: string }>();
@@ -32,6 +37,25 @@ export default function Title() {
         runtime: q.data?.kind === "movie" ? q.data.runtime : null,
         watched,
       }),
+    onSuccess: () => q.refetch(),
+  });
+
+  const setFollowing = useMutation({
+    mutationFn: (following: boolean) =>
+      following
+        ? write<TrackResult>("/api/v1/track/follow", {
+            tmdbId,
+            mediaType: kind,
+            title: q.data?.name ?? "",
+            posterPath: q.data?.poster_path ?? null,
+          } satisfies FollowBody)
+        : write<TrackResult>("/api/v1/track/unfollow", { tmdbId, mediaType: kind } satisfies UnfollowBody),
+    onSuccess: () => q.refetch(),
+  });
+
+  const setDropped = useMutation({
+    mutationFn: (dropped: boolean) =>
+      write<TrackResult>("/api/v1/track/dropped", { tmdbId, mediaType: kind, dropped } satisfies SetDroppedBody),
     onSuccess: () => q.refetch(),
   });
 
@@ -59,6 +83,26 @@ export default function Title() {
         </View>
 
         <View style={{ padding: space.lg, gap: space.lg }}>
+          {/* المتابعةُ أوّلاً: هي الفعلُ الذي يُدخل العملَ المكتبةَ — والإيقافُ لا معنى له قبلها */}
+          <View style={{ flexDirection: "row", gap: space.sm }}>
+            <Button
+              style={{ flex: 1 }}
+              label={d.me.following ? t.following : t.follow}
+              variant={d.me.following ? "ghost" : "primary"}
+              busy={setFollowing.isPending}
+              onPress={() => setFollowing.mutate(!d.me.following)}
+            />
+            {d.me.following ? (
+              <Button
+                style={{ flex: 1 }}
+                label={d.me.dropped ? t.resumeWatching : t.stopWatching}
+                variant="ghost"
+                busy={setDropped.isPending}
+                onPress={() => setDropped.mutate(!d.me.dropped)}
+              />
+            ) : null}
+          </View>
+
           {d.kind === "movie" ? (
             <Button
               label={d.me.watched ? t.statusDone + " ✓" : t.markWatchedBtn}

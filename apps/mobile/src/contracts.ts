@@ -17,5 +17,8 @@ export type {
   WatchUpToBody,
   SetSeasonBody,
   ToggleMovieBody,
+  FollowBody,
+  UnfollowBody,
+  SetDroppedBody,
   TrackResult,
 } from "@/core/contracts/track";
