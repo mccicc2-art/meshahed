@@ -6,6 +6,7 @@ import {
   isMovieWatched,
   getMovieProgress,
   getUserId,
+  getMyRating,
 } from "@/lib/data";
 import { airedPerSeason, airedEpisodeCount } from "@/core/progress";
 import { handle, positiveInt, limited, fail } from "@/lib/v1";
@@ -50,11 +51,13 @@ export async function GET(
 }
 
 async function tvPayload(tvId: number, signedIn: boolean): Promise<TvTitlePayload> {
-  const [tv, trailer, following, watched] = await Promise.all([
+  const [tv, trailer, following, watched, rating] = await Promise.all([
     getTv(tvId),
     getTrailer("tv", tvId).catch(() => null),
     signedIn ? getFollowState(tvId, "tv") : { following: false, dropped: false },
     signedIn ? getWatchedForShow(tvId) : new Set<string>(),
+    // 🆕 D-919: تقييمي مع الصفحة — نداءٌ رابعٌ بالتوازي لا رحلةٌ ثانية من التطبيق
+    signedIn ? getMyRating(tvId, "tv") : null,
   ]);
   const aired = airedPerSeason(tv);
   return {
@@ -95,17 +98,19 @@ async function tvPayload(tvId: number, signedIn: boolean): Promise<TvTitlePayloa
       dropped: following.dropped,
       watched_count: watched.size,
       watched: [...watched],
+      rating: rating?.rating ?? null,
     },
   };
 }
 
 async function moviePayload(movieId: number, signedIn: boolean): Promise<MovieTitlePayload> {
-  const [movie, trailer, following, watched, progress] = await Promise.all([
+  const [movie, trailer, following, watched, progress, rating] = await Promise.all([
     getMovie(movieId),
     getTrailer("movie", movieId).catch(() => null),
     signedIn ? getFollowState(movieId, "movie") : { following: false, dropped: false },
     signedIn ? isMovieWatched(movieId) : false,
     signedIn ? getMovieProgress(movieId).catch(() => null) : null,
+    signedIn ? getMyRating(movieId, "movie") : null,
   ]);
   return {
     kind: "movie",
@@ -126,6 +131,7 @@ async function moviePayload(movieId: number, signedIn: boolean): Promise<MovieTi
       dropped: following.dropped,
       watched,
       progress,
+      rating: rating?.rating ?? null,
     },
   };
 }

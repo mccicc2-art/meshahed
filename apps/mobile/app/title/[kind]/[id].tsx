@@ -1,5 +1,5 @@
 import React from "react";
-import { Pressable, ScrollView, View } from "react-native";
+import { Linking, Pressable, ScrollView, View } from "react-native";
 import { Image } from "expo-image";
 import { Link, Stack, useLocalSearchParams } from "expo-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -8,7 +8,15 @@ import { useApp } from "../../../src/state";
 import { Button, Card, Loading, Poster, Screen, Text } from "../../../src/ui";
 import { radius, space } from "../../../src/theme";
 import { backdropUrl } from "@/core/media";
-import type { FollowBody, SetDroppedBody, TitlePayload, TrackResult, UnfollowBody } from "../../../src/contracts";
+import type {
+  FollowBody,
+  RateBody,
+  SetDroppedBody,
+  TitlePayload,
+  TrackResult,
+  UnfollowBody,
+  UnrateBody,
+} from "../../../src/contracts";
 
 /**
  * صفحةُ العمل — `/api/v1/title/{kind}/{id}` في ردٍّ واحد.
@@ -19,6 +27,10 @@ import type { FollowBody, SetDroppedBody, TitlePayload, TrackResult, UnfollowBod
  * الطريقُ الوحيدُ إلى المكتبة أن تشاهد حلقةً — فيلمٌ «للمشاهدة لاحقاً» لم
  * يكن له باب، والمختبِرُ يبحث ثمّ لا يجد كيف يضيف. الحالةُ من الخادم
  * (`me.following`/`me.dropped`) والوسومُ تعيد جلبَها — لا حالةَ محلّيّةً تنسى.
+ *
+ * 🆕 D-919: **التقييمُ من ١٠ بصفِّ رقاقات** (الضغطُ على الرقم المختار يزيله)
+ * **وزرُّ الترايلر** يفتح يوتيوب بمفتاح TMDB — لا مشغّلَ داخليّاً في هذه
+ * النسخة: مشغّلٌ مضمّنٌ حزمةٌ ثقيلةٌ لأجل زرٍّ واحد.
  */
 export default function Title() {
   const { kind, id } = useLocalSearchParams<{ kind: "tv" | "movie"; id: string }>();
@@ -56,6 +68,21 @@ export default function Title() {
   const setDropped = useMutation({
     mutationFn: (dropped: boolean) =>
       write<TrackResult>("/api/v1/track/dropped", { tmdbId, mediaType: kind, dropped } satisfies SetDroppedBody),
+    onSuccess: () => q.refetch(),
+  });
+
+  const rate = useMutation({
+    mutationFn: (rating: number | null) =>
+      rating === null
+        ? write<TrackResult>("/api/v1/track/unrate", { tmdbId, mediaType: kind } satisfies UnrateBody)
+        : write<TrackResult>("/api/v1/track/rate", {
+            tmdbId,
+            mediaType: kind,
+            rating,
+            review: "",
+            title: q.data?.name ?? "",
+            posterPath: q.data?.poster_path ?? null,
+          } satisfies RateBody),
     onSuccess: () => q.refetch(),
   });
 
@@ -118,6 +145,46 @@ export default function Title() {
               ) : null}
             </Card>
           )}
+
+          {d.trailer_key ? (
+            <Button
+              label={`▶ ${t.trailerPlay}`}
+              variant="ghost"
+              onPress={() => Linking.openURL(`https://www.youtube.com/watch?v=${d.trailer_key}`)}
+            />
+          ) : null}
+
+          {d.me.following || d.me.rating !== null ? (
+            <Card style={{ gap: space.sm }}>
+              <Text weight="600" size={14}>{t.rateTitle}</Text>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+                {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => {
+                  const on = d.me.rating === n;
+                  return (
+                    <Pressable
+                      key={n}
+                      disabled={rate.isPending}
+                      onPress={() => rate.mutate(on ? null : n)}
+                      accessibilityLabel={on ? t.ratingDeleteAria : String(n)}
+                      style={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: radius.pill,
+                        alignItems: "center",
+                        justifyContent: "center",
+                        backgroundColor: on ? tokens.accent : tokens.surface2,
+                        borderWidth: 1,
+                        borderColor: on ? tokens.accent : tokens.border,
+                        opacity: rate.isPending ? 0.6 : 1,
+                      }}
+                    >
+                      <Text weight="700" size={14} style={{ color: on ? tokens.onAccent : tokens.fg }}>{n}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </Card>
+          ) : null}
 
           {d.overview ? <Text muted style={{ lineHeight: 22 }}>{d.overview}</Text> : null}
 

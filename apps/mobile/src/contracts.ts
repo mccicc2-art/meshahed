@@ -20,5 +20,16 @@ export type {
   FollowBody,
   UnfollowBody,
   SetDroppedBody,
+  RateBody,
+  UnrateBody,
   TrackResult,
 } from "@/core/contracts/track";
+export type {
+  HomePayload,
+  ContinueItem,
+  WeekEpisode,
+  StartItem,
+  DiscoverPayload,
+  DiscoverRail,
+  DiscoverCard,
+} from "@/core/contracts/home";

@@ -54,6 +54,8 @@ export type TvTitlePayload = TitleBase & {
     watched_count: number;
     /** مفاتيحُ `episodeKey(season, episode)` — نفسُ شكل الويب */
     watched: string[];
+    /** 🆕 D-919 — تقييمي من ١٠، أو null */
+    rating: number | null;
   };
 };
 
@@ -66,6 +68,8 @@ export type MovieTitlePayload = TitleBase & {
     dropped: boolean;
     watched: boolean;
     progress: unknown;
+    /** 🆕 D-919 — تقييمي من ١٠، أو null */
+    rating: number | null;
   };
 };
 

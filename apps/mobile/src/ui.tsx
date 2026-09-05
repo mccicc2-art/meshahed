@@ -1,6 +1,7 @@
 import React from "react";
 import {
   ActivityIndicator,
+  FlatList,
   Pressable,
   StyleSheet,
   Text as RNText,
@@ -129,3 +130,60 @@ const styles = StyleSheet.create({
     minHeight: 44,
   },
 });
+
+/**
+ * 🆕 D-919 — **صفٌّ أفقيٌّ بعنوان**: الوحدةُ التي تُبنى منها الرئيسيةُ
+ * و«اكتشف». عنوانٌ واحدٌ وشكلٌ واحد (القاعدة ٣) — لا صفٌّ لكلِّ شاشة.
+ */
+export function Rail<T>({
+  title,
+  data,
+  keyOf,
+  render,
+  action,
+}: {
+  title: string;
+  data: T[];
+  keyOf: (item: T) => string;
+  render: (item: T) => React.ReactElement;
+  action?: React.ReactNode;
+}) {
+  if (data.length === 0) return null;
+  return (
+    <View style={{ gap: space.sm }}>
+      <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: space.lg }}>
+        <Text size={20} weight="700" style={{ flex: 1 }}>{title}</Text>
+        {action}
+      </View>
+      <FlatList
+        horizontal
+        data={data}
+        keyExtractor={keyOf}
+        renderItem={({ item }) => render(item)}
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ paddingHorizontal: space.lg, gap: space.md }}
+      />
+    </View>
+  );
+}
+
+/** ملصقٌ بعنوانٍ تحته — خليّةُ صفوف «اكتشف» و«ابدأ» */
+export function PosterTile({
+  path,
+  title,
+  subtitle,
+  width = 110,
+}: {
+  path: string | null;
+  title: string;
+  subtitle?: string | null;
+  width?: number;
+}) {
+  return (
+    <View style={{ width, gap: 6 }}>
+      <Poster path={path} width={width} />
+      <Text size={13} weight="600" numberOfLines={2}>{title}</Text>
+      {subtitle ? <Text muted size={12} numberOfLines={1}>{subtitle}</Text> : null}
+    </View>
+  );
+}

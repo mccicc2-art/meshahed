@@ -4,9 +4,9 @@ import { Text as RNText, type ColorValue } from "react-native";
 import { useApp } from "../../src/state";
 
 /**
- * ثلاثةُ تبويباتٍ لا أكثر في النسخة الأولى: **العمل (مكتبتي) · البحث · الملف**.
- * القصدُ تطبيقٌ **يُستعمل** كلَّ يومٍ لا تطبيقٌ كامل — عدّادُ Play يقيس
- * الاستعمالَ الحقيقيّ، وشاشاتُ الاكتشاف والنشاط تأتي والساعةُ تدور.
+ * كانت ثلاثةَ تبويباتٍ في النسخة الأولى (مكتبتي · البحث · الملف) — والساعةُ
+ * تدور. 🆕 D-919 (حكمُ أحمد بعد أوّل تثبيت: «ناقص جدّاً»): **الرئيسيةُ
+ * و«اكتشف» انضمّتا** — الرئيسيةُ أوّلاً لأنها ما يُفتح التطبيقُ لأجله.
  */
 export default function TabsLayout() {
   const { t, tokens } = useApp();
@@ -15,6 +15,7 @@ export default function TabsLayout() {
   );
   return (
     <Tabs
+      initialRouteName="today"
       screenOptions={{
         headerShown: false,
         tabBarStyle: { backgroundColor: tokens.surface, borderTopColor: tokens.border },
@@ -22,7 +23,9 @@ export default function TabsLayout() {
         tabBarInactiveTintColor: tokens.muted,
       }}
     >
+      <Tabs.Screen name="today" options={{ title: t.navHome, tabBarIcon: icon("⌂") }} />
       <Tabs.Screen name="home" options={{ title: t.navLibrary, tabBarIcon: icon("▦") }} />
+      <Tabs.Screen name="discover" options={{ title: t.newsTitle, tabBarIcon: icon("✦") }} />
       <Tabs.Screen name="search" options={{ title: t.navSearch, tabBarIcon: icon("⌕") }} />
       <Tabs.Screen name="profile" options={{ title: t.profile, tabBarIcon: icon("◉") }} />
     </Tabs>

@@ -69,3 +69,14 @@ export type UnfollowBody = { tmdbId: number; mediaType: TitleKind };
 
 /** `POST /track/dropped` — البطاقةُ الحمراء أو رفعُها؛ يبقى في المكتبة */
 export type SetDroppedBody = { tmdbId: number; mediaType: TitleKind; dropped: boolean };
+
+/** 🆕 D-919 — `POST /track/rate` و`/track/unrate`: تطابق `saveRating`/`deleteRating` */
+export type RateBody = {
+  tmdbId: number;
+  mediaType: TitleKind;
+  rating: number;
+  review: string;
+  title: string;
+  posterPath: string | null;
+};
+export type UnrateBody = { tmdbId: number; mediaType: TitleKind };

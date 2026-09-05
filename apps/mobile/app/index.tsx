@@ -6,5 +6,5 @@ import { Loading, Screen } from "../src/ui";
 export default function Index() {
   const { session, loading } = useAuth();
   if (loading) return <Screen><Loading /></Screen>;
-  return <Redirect href={session ? "/(tabs)/home" : "/login"} />;
+  return <Redirect href={session ? "/(tabs)/today" : "/login"} />;
 }
