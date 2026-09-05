@@ -350,6 +350,8 @@ export type AdminNavCounts = {
   verify: number;
   payouts: number;
   suspended: number;
+  /** 🆕 D-927 — بلاغاتٌ منتظرةٌ **ومحتوًى مخفيٌّ بقرارِ آلة**: كلاهما ينتظر حكماً */
+  reports: number;
   /** من له حسابٌ ولم يدخل اليومَ (يومُ الرياض) — **الرقمُ الذي يُراسَل صاحبُه** */
   testers_missing: number;
 };
@@ -524,3 +526,64 @@ export function findingsOf(h: AdminHealth): Finding[] {
 }
 
 export const SEV_AR: Record<Finding["sev"], string> = { high: "عالٍ", med: "متوسّط", low: "منخفض" };
+
+/**
+ * 🆕 **طابورُ البلاغات** (D-927، الهجرة ١٨٦) — سبعةُ مجارٍ في صفٍّ واحد.
+ *
+ * 🔴 **الثقبُ الذي يُغلقه**: `hide_reported_review` تُخفي التقييمَ عند **عشرة
+ * بلاغات** — **بلا شاشةٍ تعرضه، وبلا إخطارِ صاحبِه، وبلا زرِّ إرجاع.**
+ * فعشرةُ حساباتٍ متواطئةٍ تُخفي أيَّ مراجعةٍ ولا يعلم أحد.
+ *
+ * ⚖️ **والمخفيُّ بلا بلاغاتٍ يُعرض أيضاً** (`reports = 0`): صفٌّ أُخفي ثمّ
+ * مُسحت بلاغاتُه يبقى مخفيّاً إلى الأبد بلا أثر — **وقائمةٌ تُظهر الطابورَ
+ * وحدَه تُخفي ضحاياه.**
+ */
+export type ReportKind =
+  | "review" | "post" | "reply" | "list_review" | "list_reply" | "news_reply" | "user";
+
+export type AdminReportRow = {
+  kind: ReportKind;
+  ref: Record<string, unknown>;
+  author: string | null;
+  authorName: string | null;
+  subject: string | null;
+  body: string | null;
+  reports: number;
+  reasons: string | null;
+  firstAt: string | null;
+  lastAt: string | null;
+  hidden: boolean;
+};
+
+export const REPORT_KIND_AR: Record<ReportKind, string> = {
+  review: "مراجعةُ عمل",
+  post: "منشورُ نقاش",
+  reply: "ردٌّ على مراجعة",
+  list_review: "مراجعةُ قائمة",
+  list_reply: "ردٌّ في قائمة",
+  news_reply: "ردٌّ على خبر",
+  user: "بلاغٌ على حساب",
+};
+
+export async function getAdminReports(limit = 100): Promise<AdminReportRow[]> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("admin_reports_queue", { lim: limit });
+    if (error || !data) return [];
+    return (data as Record<string, unknown>[]).map((r) => ({
+      kind: String(r.kind) as ReportKind,
+      ref: (r.ref as Record<string, unknown>) ?? {},
+      author: (r.author as string) ?? null,
+      authorName: (r.author_name as string) ?? null,
+      subject: (r.subject as string) ?? null,
+      body: (r.body as string) ?? null,
+      reports: Number(r.reports ?? 0),
+      reasons: (r.reasons as string) ?? null,
+      firstAt: (r.first_at as string) ?? null,
+      lastAt: (r.last_at as string) ?? null,
+      hidden: Boolean(r.hidden),
+    }));
+  } catch {
+    return [];
+  }
+}

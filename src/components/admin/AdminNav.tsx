@@ -24,6 +24,7 @@ const SECTIONS: { key: string; href: string; label: string; of?: keyof AdminNavC
   { key: "overview", href: "/admin", label: "نظرة" },
   { key: "testers", href: "/admin/testers", label: "المختبِرون", of: "testers_missing" },
   { key: "users", href: "/admin/users", label: "المستخدمون", of: "suspended" },
+  { key: "reports", href: "/admin/reports", label: "البلاغات", of: "reports" },
   { key: "verify", href: "/admin/verify", label: "التوثيق", of: "verify" },
   { key: "partners", href: "/admin/partners", label: "الشركاء", of: "partners" },
   { key: "payouts", href: "/admin/payouts", label: "التحويلات", of: "payouts" },
