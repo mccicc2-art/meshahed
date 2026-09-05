@@ -43,9 +43,17 @@ export async function GET(
     return new Response(null, { status: upstream.status === 404 ? 404 : 502 });
   }
 
-  return new Response(upstream.body, {
+  /* 🔴 🆕 **يُشترى كاملاً ثمّ يُردّ — لا يُمرَّر تيّاراً** (D-914، مقيسٌ في لوحة
+     Vercel ٥ سبتمبر: **١٦٣ ألف طلبٍ على هذا المسار في ١٢ ساعة، المخزَّنُ منها ٢٪**).
+     الردُّ المتدفّق (`upstream.body`) يخرج بلا `Content-Length`، **وCDN فيرسل لا
+     تخزّن ردَّ دالّةٍ متدفّقاً** — فكان كلُّ ملصقٍ رحلةً إلى الخادم مهما قالت
+     `Cache-Control`. الشراءُ الكامل يعطي طولاً معلوماً فتُخزَّن الصورةُ سنةً كما
+     وُعد أصلاً. **ثمنُه ذاكرةُ ملفٍّ صغير (٥–٦٠ ك.ب) للحظة** — لا شيء. */
+  const bytes = await upstream.arrayBuffer();
+  return new Response(bytes, {
     headers: {
       "Content-Type": upstream.headers.get("content-type") ?? "image/jpeg",
+      "Content-Length": String(bytes.byteLength),
       // سنةٌ ثابتة: روابط TMDB مجزّأةٌ بالمحتوى — تغيّرُ الصورة يغيّر
       // رابطَها (المبدأ نفسُه الذي برّر minimumCacheTTL شهراً في D-8xx).
       "Cache-Control": "public, max-age=31536000, s-maxage=31536000, immutable",

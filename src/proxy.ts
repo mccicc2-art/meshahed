@@ -89,7 +89,19 @@ function needsRefresh(cookieValue: string | undefined): boolean {
   }
 }
 
+/* 🔴 🆕 D-914 — **الزواحفُ تُردّ عند الباب لا بعد الرسم**: لوحةُ Vercel (٥ سبتمبر)
+   قالت ٢٩٩ ألفَ استدعاءٍ في ١٢ ساعة، ثلثاها صفحاتُ أشخاصٍ وأفلامٍ لا يفتحها
+   بشرٌ بهذا العدد. صفحةُ عملٍ ترسم برحلاتٍ إلى TMDB وقاعدةٍ وتُسجَّل زمنَ معالجٍ
+   يُفوتَر — **و403 من هنا ملّي ثانية بلا رحلة**. القائمةُ الأسماءُ التي تُعلن عن
+   نفسها (نسخةُ `robots.txt`)؛ **والمقنَّعُ يوقفه جدارُ Vercel** (حدُّ المعدّل — من اللوحة). */
+const BLOCKED_UA =
+  /GPTBot|ChatGPT-User|OAI-SearchBot|ClaudeBot|Claude-Web|anthropic-ai|CCBot|Bytespider|Amazonbot|PerplexityBot|Perplexity-User|meta-externalagent|FacebookBot|Applebot-Extended|cohere-ai|Diffbot|ImagesiftBot|omgili|Timpibot|YouBot|AhrefsBot|SemrushBot|MJ12bot|DotBot|DataForSeoBot|PetalBot|Scrapy/i;
+
 export async function proxy(request: NextRequest) {
+  if (BLOCKED_UA.test(request.headers.get("user-agent") ?? "")) {
+    return new NextResponse(null, { status: 403, headers: { "cache-control": "no-store" } });
+  }
+
   let response = NextResponse.next({ request });
   /* تسميةُ المالك على كلِّ ردٍّ يمرّ بالوسيط — انظر D-514 أعلاه.
      تُكتب هنا وعلى نسخة الردّ التي قد يعيد التجديدُ إنشاءها أدناه. */
