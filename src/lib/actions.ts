@@ -4702,6 +4702,8 @@ export async function setDropped(tmdbId: number, mediaType: MediaType, dropped: 
   if (error) fail(error);
   revalidatePath("/");
   revalidatePath("/library");
+  // 🆕 D-916: صفحةُ العمل تحمل `me.dropped` — والوسمُ في `/api/v1` يطابق هذا السطر
+  revalidatePath(`/${mediaType === "tv" ? "show" : "movie"}/${tmdbId}`);
 }
 
 /**
