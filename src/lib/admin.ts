@@ -587,3 +587,44 @@ export async function getAdminReports(limit = 100): Promise<AdminReportRow[]> {
     return [];
   }
 }
+
+/**
+ * 🆕 **نافذةُ محتوى المستخدم** (D-928، تقييمُ ٥ سبتمبر: «تستطيع أن توقفه ولا
+ * تستطيع أن ترى ما كتبه قبل أن تحكم»).
+ *
+ * 🔑 **ولا تُجلب إلا لمن فُتحت نافذتُه** (`?u=<id>`): جلبُ محتوى كلِّ نتيجةِ
+ * بحثٍ سلفاً ثمنٌ يُدفع في كلِّ فتحةٍ لأجل صفٍّ واحدٍ يُقرأ.
+ */
+export type AdminUserItem = {
+  kind: "review" | "post" | "reply" | "list";
+  at: string | null;
+  title: string | null;
+  body: string | null;
+  hidden: boolean;
+  ref: Record<string, unknown>;
+};
+
+export const USER_ITEM_AR: Record<AdminUserItem["kind"], string> = {
+  review: "مراجعة",
+  post: "منشور",
+  reply: "ردّ",
+  list: "قائمة",
+};
+
+export async function getAdminUserContent(userId: string, limit = 40): Promise<AdminUserItem[]> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("admin_user_content", { p_user: userId, lim: limit });
+    if (error || !data) return [];
+    return (data as Record<string, unknown>[]).map((r) => ({
+      kind: String(r.kind) as AdminUserItem["kind"],
+      at: (r.at as string) ?? null,
+      title: (r.title as string) ?? null,
+      body: (r.body as string) ?? null,
+      hidden: Boolean(r.hidden),
+      ref: (r.ref as Record<string, unknown>) ?? {},
+    }));
+  } catch {
+    return [];
+  }
+}
