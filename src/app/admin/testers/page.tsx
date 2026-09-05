@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getAmAdmin } from "@/lib/data";
 import {
   getAdminTesters,
+  getAdminTestersDaily,
   getAdminAndroidCandidates,
   revealUserEmail,
   type AdminTesterRow,
@@ -26,6 +27,14 @@ import { settingsCard } from "@/components/settings/SettingsGroup";
  * `auth.sessions` وسمُها `node` في ٤٥ صفّاً من ٥٥ (مقيس ٥ سبتمبر) —
  * **خادمُنا هو من يجدّد الرمز فيدهس وسمَ المتصفّح**. فالعدّ يبدأ من
  * أوّل نبضةِ حضورٍ بعد الهجرة ١٨١، **وما نُقل هو ما نجا وحدَه.**
+ *
+ * 🆕 **D-917 — الصفحةُ صارت فحصاً يوميّاً** (طلبُ أحمد: «كل يوم أدخل
+ * وأتأكد أنهم دخلوا وجلسوا وقتاً كافياً، وإذا فيه شخص ما دخل أو مقصّر
+ * أراسله مباشرة»). فالترتيبُ **من يحتاج رسالةً أوّلاً**: من له حسابٌ ولم
+ * يدخل اليوم، ثمّ من لا حسابَ له، ثمّ من دخل — **والأقلُّ دقائقَ أعلى.**
+ * والعدّادُ الأعلى يجيب سؤالَ الأربعةَ عشرَ يوماً: **كم يوماً متّصلاً دخل
+ * فيه الجميع؟** — واليومُ يومُ الرياض (`loopz_today`)، والدقائقُ تقديرٌ
+ * من نبضات الحضور (ضربةٌ ≈ ٤ دقائق) **فتُكتب بـ«≈» ولا تدّعي ثانية.**
  *
  * عربيّةٌ ثابتةٌ كأخواتها في `/admin`: **صفحةُ مشغّلٍ لا مستخدمين.**
  */
@@ -103,14 +112,29 @@ function countActiveWithin(rows: AdminTesterRow[], days: number): number {
   return rows.filter((t) => t.lastSignInAt && new Date(t.lastSignInAt).getTime() > cut).length;
 }
 
-/** حالةُ المختبِر في كلمةٍ واحدة — **الترتيبُ من الأسوأ إلى الأفضل.** */
+/** حالةُ المختبِر **اليومَ** في كلمةٍ واحدة — **الترتيبُ من الأسوأ إلى الأفضل.** */
 function testerState(t: AdminTesterRow): { label: string; tone: "bad" | "warn" | "ok" | "best" } {
   if (t.suspendedAt) return { label: "موقوف", tone: "bad" };
-  if (!t.userId) return { label: "لم يدخل بعد", tone: "warn" };
-  if (t.onApp) return { label: "من التطبيق", tone: "best" };
-  if ((t.platforms ?? "").includes("android")) return { label: "أندرويد — من الويب", tone: "ok" };
-  return { label: "دخل من الويب", tone: "ok" };
+  if (!t.userId) return { label: "لا حساب بعد", tone: "warn" };
+  if (!t.activeToday) return { label: t.streak > 0 ? "لم يدخل اليوم بعد" : "انقطع", tone: t.streak > 0 ? "warn" : "bad" };
+  if (t.appToday) return { label: "اليوم من التطبيق", tone: "best" };
+  return { label: "اليوم من الويب", tone: "ok" };
 }
+
+/**
+ * **من يحتاج رسالةً أوّلاً**: صاحبُ حسابٍ لم يدخل اليوم (٠)، ثمّ من لا
+ * حسابَ له (١)، ثمّ من دخل (٢) — **والأقلُّ دقائقَ يعلو**، فالمقصّرُ لا
+ * يختبئ تحت النشيط.
+ */
+function attentionRank(t: AdminTesterRow): number {
+  if (t.suspendedAt) return 3;
+  if (t.userId && !t.activeToday) return 0;
+  if (!t.userId) return 1;
+  return 2;
+}
+
+/** الفرقُ بين «ما لدينا» و«ما تشترطه Google» يُقال رقماً لا شعوراً. */
+const NEEDED = 12;
 
 const TONE: Record<string, string> = {
   bad: "bg-[color:var(--error)]/15 text-[color:var(--error)]",
@@ -128,21 +152,27 @@ export default async function AdminTestersPage({
   if (!admin) notFound();
 
   const sp = await searchParams;
-  const [testers, candidates, revealed] = await Promise.all([
+  const [rawTesters, daily, candidates, revealed] = await Promise.all([
     getAdminTesters(),
+    getAdminTestersDaily(),
     getAdminAndroidCandidates(30),
     sp.reveal ? revealUserEmail(sp.reveal) : Promise.resolve(null),
   ]);
+  const testers = [...rawTesters].sort(
+    (a, b) => attentionRank(a) - attentionRank(b) || a.minutesToday - b.minutesToday || a.email.localeCompare(b.email),
+  );
 
   const err = sp.err
     ? (Object.entries(ERRORS).find(([k]) => sp.err!.includes(k))?.[1] ?? sp.err)
     : null;
 
   const signedIn = testers.filter((t) => t.userId).length;
-  const onApp = testers.filter((t) => t.onApp).length;
+  const activeToday = testers.filter((t) => t.activeToday).length;
+  const appToday = testers.filter((t) => t.appToday).length;
   const active7 = countActiveWithin(testers, 7);
-  /* عتبةُ Google: اثنا عشر مختبِراً، وساعةُ الأربعةَ عشرَ يوماً تبدأ بالثاني عشر. */
-  const NEEDED = 12;
+  const needMessage = testers.filter((t) => attentionRank(t) === 0);
+  const allStreak = daily?.all_streak ?? 0;
+  const complete = signedIn >= NEEDED;
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8 space-y-5" dir="rtl">
@@ -156,10 +186,10 @@ export default async function AdminTestersPage({
         </div>
         <span
           className={`rounded-full px-3 py-1 text-12 font-bold ${
-            signedIn >= NEEDED ? TONE.best : TONE.warn
+            activeToday >= NEEDED ? TONE.best : activeToday === signedIn && signedIn > 0 ? TONE.ok : TONE.warn
           }`}
         >
-          {signedIn} / {NEEDED} دخلوا
+          اليوم {activeToday} / {NEEDED}
         </span>
       </header>
 
@@ -168,14 +198,28 @@ export default async function AdminTestersPage({
       {sp.ok === "removed" && <p className="text-14 text-[color:var(--success)]">✓ حُذف من القائمة</p>}
       {sp.ok === "invited" && <p className="text-14 text-[color:var(--success)]">✓ حُدّثت حالةُ الدعوة</p>}
 
-      {/* ——— ١) الأرقامُ الأربعة التي تُقرأ يوميّاً ——— */}
+      {/* ——— ١) العدّادُ اليوميّ — يُقرأ في ثلاث ثوانٍ ——— */}
       <section className={`${settingsCard} p-4`}>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <div
+          className={`rounded-xl px-4 py-3 ${
+            complete && (daily?.all_today ?? false) ? TONE.best : complete ? TONE.ok : TONE.warn
+          }`}
+        >
+          <p className="text-12 opacity-80">
+            {complete ? "القائمةُ مكتملة" : `القائمةُ ناقصة: ${signedIn} من ${NEEDED} لهم حساب`}
+            {" · "}
+            {daily?.all_today ? "ودخل الجميعُ اليوم" : "ولم يدخل الجميعُ اليوم بعد"}
+          </p>
+          <p className="mt-1 text-22 font-bold tabular-nums">
+            <span dir="ltr">{allStreak}</span> / 14 يوماً متّصلاً دخل فيها الجميع
+          </p>
+        </div>
+        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
           {[
-            { k: "في القائمة", v: `${testers.length}` },
-            { k: "دخلوا", v: `${signedIn}` },
+            { k: "دخلوا اليوم", v: `${activeToday} / ${signedIn}` },
+            { k: "من التطبيق اليوم", v: `${appToday}` },
+            { k: "يحتاجون رسالة", v: `${needMessage.length}` },
             { k: "نشطون ٧ أيّام", v: `${active7}` },
-            { k: "فتحوا التطبيق", v: `${onApp}` },
           ].map((s) => (
             <div key={s.k} className="rounded-xl bg-surface-2 px-3 py-2.5">
               <p className="text-12 text-muted">{s.k}</p>
@@ -184,11 +228,40 @@ export default async function AdminTestersPage({
           ))}
         </div>
         <p className="mt-3 text-12 text-muted leading-relaxed">
-          «دخلوا» = لهذا البريد حسابٌ في Loopz. «فتحوا التطبيق» = جاءت نبضةٌ من تطبيق
-          أندرويد لا من المتصفّح — <b>وهي وحدَها دليلُ التثبيت</b>. وGoogle تشترط{" "}
-          {NEEDED} مختبِراً، وساعةَ الأربعةَ عشرَ يوماً تبدأ بانضمام الثاني عشر.
+          اليومُ بتوقيت الرياض. «من التطبيق» = نبضةٌ من تطبيق أندرويد لا من المتصفّح —{" "}
+          <b>وهي وحدَها دليلُ التثبيت</b>. الدقائقُ تقديرٌ من نبضات الحضور (كلُّ نبضةٍ ≈ ٤
+          دقائق). Google تشترط {NEEDED} مختبِراً منضمّاً ١٤ يوماً متّصلة، والعدّادُ الكبيرُ
+          يعدّ الأيّامَ التي دخل فيها <b>كلُّ</b> من له حساب — فإن نقص واحدٌ يوماً عاد إلى الصفر.
+          {" "}
+          <a
+            href="https://play.google.com/console/u/0/developers/6000185498301388341/email-lists/5630686807996412066/update-email-list"
+            target="_blank"
+            rel="noopener"
+            className="underline"
+          >
+            قائمةُ البريد في Play Console
+          </a>{" "}
+          — كلُّ بريدٍ يُضاف هنا يُضاف هناك أيضاً.
         </p>
       </section>
+
+      {needMessage.length > 0 && (
+        <section className={`${settingsCard} p-4`}>
+          <p className="text-14 font-bold">يحتاجون رسالةً الآن</p>
+          <ul className="mt-2 space-y-1 text-13">
+            {needMessage.map((t) => (
+              <li key={t.email} className="flex flex-wrap items-center gap-2">
+                <a href={`mailto:${t.email}`} className="underline" dir="ltr">{t.email}</a>
+                <span className="text-muted">
+                  {t.nickname || t.username ? `(${t.nickname || t.username})` : ""}
+                  {" · "}
+                  {t.streak > 0 ? `كان على ${t.streak} يوماً متّصلاً` : `آخر ظهور ${since(t.lastSeenAt)}`}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {/* ——— ٢) إضافةٌ إلى القائمة ——— */}
       <form action={addTester} className={`${settingsCard} flex flex-wrap gap-2 p-4`}>
@@ -226,7 +299,9 @@ export default async function AdminTestersPage({
           <section key={t.email} className="rounded-card border border-border bg-surface p-4 space-y-2.5">
             <div className="flex items-center gap-3">
               <div className="min-w-0 flex-1">
-                <p className="truncate text-14 font-bold" dir="ltr">{t.email}</p>
+                <p className="truncate text-14 font-bold" dir="ltr">
+                  <a href={`mailto:${t.email}`} className="hover:underline">{t.email}</a>
+                </p>
                 <p className="truncate text-12 text-muted">
                   {name ? `${name}${t.username ? ` · @${t.username}` : ""}` : "لا حساب بهذا البريد"}
                   {t.note ? ` · ${t.note}` : ""}
@@ -236,6 +311,23 @@ export default async function AdminTestersPage({
                 {st.label}
               </span>
             </div>
+
+            {t.userId && (
+              <div className="flex flex-wrap gap-1.5 text-12">
+                <span className={`rounded-full px-2 py-0.5 font-bold ${t.activeToday ? TONE.best : TONE.bad}`}>
+                  {t.activeToday ? `اليوم ✓ ≈ ${t.minutesToday} د` : "اليوم ✗"}
+                </span>
+                <span className={`rounded-full px-2 py-0.5 font-bold ${t.streak >= 3 ? TONE.best : t.streak > 0 ? TONE.ok : TONE.bad}`}>
+                  متّصل {t.streak} يوم
+                </span>
+                <span className={`rounded-full px-2 py-0.5 ${TONE.ok}`}>
+                  ١٤ يوماً: {t.days14} (من التطبيق {t.appDays14})
+                </span>
+                <span className={`rounded-full px-2 py-0.5 ${TONE.ok}`}>
+                  ٧ أيّام ≈ {t.minutes7d} د
+                </span>
+              </div>
+            )}
 
             <dl className="flex flex-wrap gap-x-4 gap-y-1 text-13 text-muted">
               <div className="flex gap-1.5">

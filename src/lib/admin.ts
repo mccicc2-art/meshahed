@@ -87,7 +87,36 @@ export type AdminTesterRow = {
   platforms: string | null;
   onApp: boolean;
   suspendedAt: string | null;
+  /** 🆕 D-917 — اليومُ يومُ الرياض (`loopz_today`)، والدقائقُ تقديرٌ: ضربةُ حضورٍ ≈ ٤ دقائق */
+  activeToday: boolean;
+  appToday: boolean;
+  /** أيّامٌ متّصلةٌ تنتهي اليومَ أو أمس */
+  streak: number;
+  days14: number;
+  appDays14: number;
+  minutesToday: number;
+  minutes7d: number;
 };
+
+/** 🆕 D-917 — العدّادُ الأعلى: كم دخل اليوم، وكم يوماً متّصلاً دخل فيه **الجميع**. */
+export type AdminTestersDaily = {
+  today: string;
+  with_account: number;
+  active_today: number;
+  all_streak: number;
+  all_today: boolean;
+};
+
+export async function getAdminTestersDaily(): Promise<AdminTestersDaily | null> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("admin_testers_daily");
+    if (error || !data) return null;
+    return data as AdminTestersDaily;
+  } catch {
+    return null;
+  }
+}
 
 /** 🆕 **مرشَّحُ اختبار** (D-909) — أندرويديٌّ من المتصفّح، بريدُه مقنَّع. */
 export type AdminCandidateRow = {
@@ -126,6 +155,13 @@ export async function getAdminTesters(): Promise<AdminTesterRow[]> {
       platforms: (r.platforms as string) ?? null,
       onApp: r.on_app === true,
       suspendedAt: (r.suspended_at as string) ?? null,
+      activeToday: r.active_today === true,
+      appToday: r.app_today === true,
+      streak: Number(r.streak ?? 0),
+      days14: Number(r.days_14 ?? 0),
+      appDays14: Number(r.app_days_14 ?? 0),
+      minutesToday: Number(r.minutes_today ?? 0),
+      minutes7d: Number(r.minutes_7d ?? 0),
     }));
   } catch {
     return [];
