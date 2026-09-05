@@ -200,15 +200,16 @@ export default function Title() {
                     asChild
                   >
                     <Pressable
-                      style={({ pressed }) => ({
+                      android_ripple={{ color: tokens.border }}
+                      style={{
                         flexDirection: "row",
                         alignItems: "center",
                         gap: space.md,
                         padding: space.md,
                         borderRadius: radius.md,
                         backgroundColor: tokens.surface,
-                        opacity: pressed ? 0.8 : 1,
-                      })}
+                        overflow: "hidden",
+                      }}
                     >
                       <View style={{ flex: 1, gap: 2 }}>
                         <Text weight="600">{t.seasonLabel(s.season_number)}</Text>

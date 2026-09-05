@@ -105,7 +105,7 @@ export default function Today() {
             keyOf={(s) => `${s.kind}:${s.id}`}
             render={(s) => (
               <Link href={{ pathname: "/title/[kind]/[id]", params: { kind: s.kind, id: String(s.id) } }} asChild>
-                <Pressable style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}>
+                <Pressable>
                   <PosterTile path={s.poster_path} title={s.title} />
                 </Pressable>
               </Link>
@@ -126,14 +126,13 @@ function ContinueCard({ item, busy, onMark }: { item: ContinueItem; busy: boolea
   return (
     <Link href={{ pathname: "/title/[kind]/[id]", params: { kind: "tv", id: String(item.id) } }} asChild>
       <Pressable
-        style={({ pressed }) => ({
+        style={{
           width: 280,
           height: 170,
           borderRadius: radius.lg,
           overflow: "hidden",
           backgroundColor: tokens.surface2,
-          opacity: pressed ? 0.85 : 1,
-        })}
+        }}
       >
         {bg ? <Image source={{ uri: bg }} style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} contentFit="cover" /> : null}
         <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.45)" }} />
@@ -186,15 +185,16 @@ function WeekRow({ e }: { e: WeekEpisode }) {
   return (
     <Link href={{ pathname: "/title/[kind]/[id]", params: { kind: "tv", id: String(e.id) } }} asChild>
       <Pressable
-        style={({ pressed }) => ({
+        android_ripple={{ color: tokens.border }}
+        style={{
           flexDirection: "row",
           alignItems: "center",
           gap: space.md,
           padding: space.sm,
           borderRadius: radius.md,
           backgroundColor: tokens.surface,
-          opacity: pressed ? 0.8 : 1,
-        })}
+          overflow: "hidden",
+        }}
       >
         <View style={{ width: 56, alignItems: "center" }}>
           <Text size={12} weight="700" style={{ color: tokens.accent }}>{day}</Text>

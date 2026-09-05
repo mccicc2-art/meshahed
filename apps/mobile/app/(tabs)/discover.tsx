@@ -51,7 +51,7 @@ export default function Discover() {
             keyOf={(c) => `${c.kind}:${c.id}`}
             render={(c) => (
               <Link href={{ pathname: "/title/[kind]/[id]", params: { kind: c.kind, id: String(c.id) } }} asChild>
-                <Pressable style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}>
+                <Pressable>
                   <PosterTile
                     path={c.poster_path}
                     title={c.title}

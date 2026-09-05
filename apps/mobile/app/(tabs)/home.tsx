@@ -94,7 +94,8 @@ function LibraryRow({ item }: { item: LibraryItem }) {
   const pct = item.aired > 0 ? Math.min(1, item.watched / item.aired) : 0;
   return (
     <Link href={{ pathname: "/title/[kind]/[id]", params: { kind: item.kind, id: String(item.id) } }} asChild>
-      <Pressable style={({ pressed }) => ({ flexDirection: "row", gap: space.md, opacity: pressed ? 0.8 : 1 })}>
+      {/* 🔴 D-920: لا دالّةَ نمطٍ تحت `Link asChild` — الـSlot ينثرها كائناً فتضيع (كانت الصفوفُ تُرسم عموداً) */}
+      <Pressable android_ripple={{ color: tokens.border }} style={{ flexDirection: "row", gap: space.md, alignItems: "center" }}>
         <Poster path={item.poster_path} width={72} />
         <View style={{ flex: 1, justifyContent: "center", gap: 6 }}>
           <Text weight="600" numberOfLines={2}>{item.title}</Text>

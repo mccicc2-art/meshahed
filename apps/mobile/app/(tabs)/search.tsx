@@ -72,7 +72,7 @@ export default function Search() {
 function Row({ item }: { item: SearchTitle }) {
   return (
     <Link href={{ pathname: "/title/[kind]/[id]", params: { kind: item.mediaType, id: String(item.id) } }} asChild>
-      <Pressable style={({ pressed }) => ({ flexDirection: "row", gap: space.md, opacity: pressed ? 0.8 : 1, alignItems: "center" })}>
+      <Pressable style={{ flexDirection: "row", gap: space.md, alignItems: "center" }}>
         <Poster path={item.poster} width={56} />
         <View style={{ flex: 1, gap: 2 }}>
           <Text weight="600" numberOfLines={2}>{item.title}</Text>
