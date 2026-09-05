@@ -47,6 +47,7 @@ import {
   type TabPref,
 } from "@/core/tabPrefs";
 import { allow } from "@/core/ratelimit";
+import { platformFromUA } from "@/core/platform";
 import {
   asTrailerScope,
   asTrailerTab,
@@ -4544,7 +4545,14 @@ export async function claimReferralFromCookie() {
  */
 export async function touchPresence() {
   const { supabase } = await requireUser("presence", 5, 60_000);
-  await supabase.rpc("touch_last_seen");
+  /* 🆕 D-921 (سؤالُ أحمد: «حسابات أندرويد ما ظهرت مرشّحين — وش السبب؟»):
+     الجوابُ أن المنصّة كانت تُلتقط في `lang-ping` وحدَها، مرّةً في الجلسة —
+     ومن يعود بجلسةٍ قائمةٍ لا يمرّ بها. **فالنبضةُ نفسُها تسمّي منصّتها**
+     من ترويسة الطلب (لا من نصٍّ يرسله العميل — D-666)، و`touch_presence`
+     (١٨١/١٨٢) تكتب ما كانت `touch_last_seen` تكتبه ثمّ صفَّ الجهاز
+     مخنوقاً كلَّ خمس دقائق. */
+  const ua = (await headers()).get("user-agent");
+  await supabase.rpc("touch_presence", { p_platform: platformFromUA(ua), p_is_app: false });
 }
 
 /**
