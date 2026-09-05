@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { getDict, type Locale } from "@/core/i18n";
 import { isPlus } from "@/core/plan";
+import { WidgetSync } from "@/components/WidgetSync";
 import { RailSkeleton } from "@/components/Skeletons";
 import {
   getUser,
@@ -959,7 +960,6 @@ async function HomeBody({
      المسار الطبيعي؛ الاحتياط (قبل performance.sql) وحده يطلبها هنا */
   const continueTop = continueRow.slice(0, CONTINUE_CARDS);
   const extraById = new Map(earlyExtra.map((e) => [e.id, e]));
-
   /* موسمٌ جديد ينتظر: أنهيت كل ما سبق، وأوّل حلقةٍ لم تُشاهَد هي حلقة
      موسمٍ جديد. هذا العمل «لم يبدأ» من جهة المستخدم وإن كان في وسط
      المسلسل، فيبقى في «للمشاهدة» ولا يُطوى في «أكمل المشاهدة» وحدها. */
@@ -999,6 +999,15 @@ async function HomeBody({
           };
         }),
       );
+
+
+  /* 🆕 D-929 — **لقطةُ الودجت**: ثلاثةُ سطورٍ نصّيّةٍ لا أكثر. الودجتُ
+     `RemoteViews` ولا تقبل صورةً تُجلب من الشبكة، **والنصُّ يكفي لسؤالٍ
+     واحد: أيُّ حلقةٍ تاليةٍ لأقرب ثلاثة أعمال.** */
+  const widgetItems = continueTop.slice(0, 3).map((i, n) => ({
+    t: i.name,
+    s: continueExtra[n]?.episodeLabel ?? null,
+  }));
 
   /* 🆕 **وهنا تُجمع أرقامُ قوائمك** (D-673) — **بعد موجة TMDB لا
      قبلها**، فالرحلةُ تجري بجوارها لا في أثرها. **والصفرُ لا يُطبع**
@@ -1710,6 +1719,7 @@ async function HomeBody({
                  الشرطُ يبقى هنا (معروفٌ من الموجة) فلا هيكلَ لقسمٍ لن
                  يُرسم — والهيكلُ يظهر لقسمٍ سيأتي يقيناً. */
               <Suspense key="continue" fallback={<RailSkeleton count={4} />}>
+                <WidgetSync items={widgetItems} />
                 <ContinueSection
                   toWatchCard={toWatchCard}
                   playlistCards={playlistCards}

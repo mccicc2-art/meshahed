@@ -6,6 +6,7 @@ import { WebView, type WebViewMessageEvent, type WebViewNavigation } from "react
 import type { ShouldStartLoadRequest } from "react-native-webview/lib/WebViewTypes";
 import { supabase, useAuth } from "../src/auth";
 import { CONFIG } from "../src/config";
+import { File, Paths } from "expo-file-system";
 import { deviceLocale } from "../src/i18n";
 import { Button, Loading, Text } from "../src/ui";
 import { space } from "../src/theme";
@@ -31,6 +32,10 @@ import { space } from "../src/theme";
  *
  * 🔑 **الروابطُ الخارجيّة تفتح خارجَ الغلاف** (يوتيوب، المتاجر): الغلافُ
  * لنطاق Loopz وحدَه. **وزرُّ الرجوع** يرجع في تاريخ الصفحة قبل أن يغلق.
+ *
+ * 🆕 **ولقطةُ الودجت تمرّ من هنا** (D-929): الصفحةُ ترسل `widget` عبر الجسر،
+ * والغلافُ يكتبها ملفّاً واحداً يقرؤه كوتلن. **ولا وحدةَ أصليّةً للكتابة**:
+ * `documentDirectory/widget.json` هو نفسُه `context.filesDir/widget.json`.
  */
 const HOME = CONFIG.apiBase + "/";
 const HANDOFF = CONFIG.apiBase + "/api/v1/session/handoff";
@@ -101,10 +106,21 @@ export default function Web() {
 
   const onMessage = useCallback(
     async (e: WebViewMessageEvent) => {
-      let msg: { type?: string } = {};
+      let msg: { type?: string; items?: unknown[] } = {};
       try {
         msg = JSON.parse(e.nativeEvent.data);
       } catch {
+        return;
+      }
+      /* 🆕 D-929 — لقطةُ الودجت: تُكتب ملفّاً ويقرؤها `LoopzWidget.kt` كلَّ
+         نصف ساعة. **والفشلُ صمتٌ**: ودجتٌ قديمةٌ خيرٌ من شاشةٍ تسقط. */
+      if (msg.type === "widget") {
+        try {
+          const f = new File(Paths.document, "widget.json");
+          f.write(JSON.stringify(Array.isArray(msg.items) ? msg.items.slice(0, 3) : []));
+        } catch {
+          /* لا شيء */
+        }
         return;
       }
       if (msg.type !== "login") return;

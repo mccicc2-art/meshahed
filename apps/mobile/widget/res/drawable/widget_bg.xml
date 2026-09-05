@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- خلفيّةُ الودجت: لونُ التطبيق نفسُه (#0D0D0D) وحوافٌّ من سلّم النظام -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="#0D0D0D" />
+    <corners android:radius="20dp" />
+</shape>
