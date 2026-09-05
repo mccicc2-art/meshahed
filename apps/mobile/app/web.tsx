@@ -6,7 +6,9 @@ import { WebView, type WebViewMessageEvent, type WebViewNavigation } from "react
 import type { ShouldStartLoadRequest } from "react-native-webview/lib/WebViewTypes";
 import { supabase, useAuth } from "../src/auth";
 import { CONFIG } from "../src/config";
-import { Loading } from "../src/ui";
+import { deviceLocale } from "../src/i18n";
+import { Button, Loading, Text } from "../src/ui";
+import { space } from "../src/theme";
 
 /**
  * ====== الغلافُ الهجين — الويبُ نفسُه داخل التطبيق (D-922) ======
@@ -39,6 +41,16 @@ const INSIDE = new Set(["loopztv.com", "www.loopztv.com", "meshahed.vercel.app"]
 
 type Source = { uri: string; method?: "POST"; headers?: Record<string, string>; body?: string };
 
+/**
+ * 🆕 **نصُّ شاشة الانقطاع هنا لا في `core/i18n`** — حجّةُ D-907 نفسُها:
+ * القاموسُ يُشحن مع كلِّ شاشةِ ويب، **وهذه شاشةُ الغلاف وحدَه** ولا يراها
+ * متصفّحٌ أبداً. سطران لا يستحقّان مفتاحين عامَّين.
+ */
+const OFFLINE = {
+  ar: { title: "لا اتّصال بالإنترنت", hint: "تحقّق من الشبكة ثمّ أعِد المحاولة.", retry: "أعِد المحاولة" },
+  en: { title: "No internet connection", hint: "Check your network and try again.", retry: "Try again" },
+} as const;
+
 function handoffSource(access: string, refresh: string): Source {
   return {
     uri: HANDOFF,
@@ -58,8 +70,10 @@ f.appendChild(a);f.appendChild(r);document.body.appendChild(f);f.submit();})();t
 
 export default function Web() {
   const { session, loading, signInWithGoogle } = useAuth();
+  const t = OFFLINE[deviceLocale() === "ar" ? "ar" : "en"];
   const ref = useRef<WebView>(null);
   const [ready, setReady] = useState(false);
+  const [failed, setFailed] = useState(false);
   const [canGoBack, setCanGoBack] = useState(false);
   const handing = useRef(false);
   /* المصدرُ يُحسب مرّةً عند أوّل جلسةٍ مقروءة: رمزان في المخزن ⇢ تسليم،
@@ -119,6 +133,14 @@ export default function Web() {
     return false;
   }, []);
 
+  /** إعادةُ المحاولة: تُخفي الشاشةَ ثمّ تُعيد التحميل — **لا تبدّل المصدر**
+      فلا يُعاد تسليمُ جلسةٍ سُلِّمت أصلاً. */
+  const retry = useCallback(() => {
+    setFailed(false);
+    setReady(false);
+    ref.current?.reload();
+  }, []);
+
   useEffect(() => {
     if (Platform.OS !== "android") return;
     const sub = BackHandler.addEventListener("hardwareBackPress", () => {
@@ -143,17 +165,39 @@ export default function Web() {
           onNavigationStateChange={onNav}
           onShouldStartLoadWithRequest={onShouldStart}
           onLoadEnd={() => setReady(true)}
+          /* 🔴 **بلا هذه كان الانقطاعُ يعرض صفحةَ خطأ أندرويد الخام**
+             (`net::ERR_INTERNET_DISCONNECTED` بخطٍّ إنجليزيٍّ صغير) داخل
+             تطبيقٍ عربيٍّ أسود — **أسوأُ ما يراه مختبِرٌ في أوّل نفق.** */
+          onError={() => { setFailed(true); setReady(true); }}
+          /* ولا تُحسب أخطاءُ HTTP انقطاعاً: صفحةُ 404 من موقعنا صفحتُنا. */
+          onRenderProcessGone={() => { setReady(false); ref.current?.reload(); }}
+          /* السحبُ للتحديث: غلافٌ بلا تحديثٍ يُجبر على قتل التطبيق لإعادة الفتح.
+             ⚠️ **و`overScrollMode="never"` رُفعت من هنا**: المكتبةُ تلفّ العرضَ
+             بـ`SwipeRefreshLayout` وتفرض `always` معه — **وخاصّيّتان تتنازعان
+             تنتجان إيماءةً ميتةً بلا خطأ**، وهو أسوأُ من وهجٍ أزرق. */
+          pullToRefreshEnabled
           setSupportMultipleWindows={false}
           domStorageEnabled
           javaScriptEnabled
           thirdPartyCookiesEnabled
           allowsInlineMediaPlayback
           mediaPlaybackRequiresUserAction={false}
-          overScrollMode="never"
           textZoom={100}
         />
       ) : null}
-      {!ready ? (
+      {failed ? (
+        <View
+          style={{
+            position: "absolute", top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: "#0D0D0D", alignItems: "center", justifyContent: "center",
+            gap: space.md, padding: space.xl,
+          }}
+        >
+          <Text size={18} weight="700" style={{ textAlign: "center" }}>{t.title}</Text>
+          <Text muted style={{ textAlign: "center" }}>{t.hint}</Text>
+          <Button label={t.retry} onPress={retry} style={{ minWidth: 180 }} />
+        </View>
+      ) : !ready ? (
         <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "#0D0D0D" }}>
           <Loading />
         </View>

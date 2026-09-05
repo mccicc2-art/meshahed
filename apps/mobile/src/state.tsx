@@ -1,5 +1,4 @@
-import React, { createContext, useContext, useEffect, useMemo } from "react";
-import { AppState as RNAppState } from "react-native";
+import React, { createContext, useContext, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api, qk } from "./api";
 import { useAuth } from "./auth";
@@ -30,37 +29,6 @@ type AppState = { locale: Locale; t: Dict; tokens: Tokens; me: Me; meLoading: bo
 const Ctx = createContext<AppState | null>(null);
 
 /**
- * 🆕 D-917 — **نبضةُ الحضور** (أختُ `PresencePing` في الويب، D-765): دقّةٌ
- * بعد ثوانٍ من الدخول، ثمّ كلَّ أربع دقائق ما دام التطبيقُ في المقدّمة،
- * ودقّةٌ عند العودة من الخلفيّة. لوحةُ المختبِرين تقدّر منها «كم جلس».
- * **الخنقُ مزدوج**: دقيقةٌ هنا، وثلاثٌ في القاعدة. **والفشلُ صمتٌ مطلق** —
- * إحصاءٌ يكسر شاشةً أسوأُ صفقةٍ ممكنة.
- */
-function usePresencePing(enabled: boolean) {
-  useEffect(() => {
-    if (!enabled) return;
-    let last = 0;
-    const beat = () => {
-      if (RNAppState.currentState !== "active") return;
-      const now = Date.now();
-      if (now - last < 60_000) return;
-      last = now;
-      api("/api/v1/me/ping", { method: "POST", body: {} }).catch(() => {});
-    };
-    const first = setTimeout(beat, 3000);
-    const every = setInterval(beat, 240_000);
-    const sub = RNAppState.addEventListener("change", (s) => {
-      if (s === "active") beat();
-    });
-    return () => {
-      clearTimeout(first);
-      clearInterval(every);
-      sub.remove();
-    };
-  }, [enabled]);
-}
-
-/**
  * حالةُ التطبيق الواحدة: اللغةُ والقاموسُ والثيمُ ومن أنا.
  * **الثيمُ يتبع الملفَّ** (`me.theme`) — وقبل وصوله الافتراضيُّ، لا وميض.
  */
@@ -72,7 +40,6 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     queryFn: async () => (await api<Me>("/api/v1/me")).data,
     enabled: !!session,
   });
-  usePresencePing(!!session);
   const value = useMemo<AppState>(
     () => ({
       locale,
