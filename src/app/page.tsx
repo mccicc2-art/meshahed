@@ -85,6 +85,8 @@ import { capCards } from "@/core/cardCount";
 import { densityVars } from "@/core/density";
 import { WeekStrip, type WeekEntry } from "@/components/WeekStrip";
 import {
+  HomeOrderButton,
+  HomeOrderSheetHost,
 } from "@/components/HomeSectionsOrder";
 import {
   QueueOrderButton,
@@ -1515,6 +1517,8 @@ async function HomeBody({
   return (
     <>
       <ShowStatsSync stats={statsToCache} />
+      <HomeOrderSheetHost locale={locale} order={prefs.order} />
+
       <FollowMetaSync rows={metaToCache} />
       <MovieStatsSync rows={movieDatesToCache} />
       {/* 🆕 **ورقةُ ترتيب الأقسام — تُركَّب مرّةً وتناديها المقابضُ
@@ -1762,6 +1766,7 @@ async function HomeBody({
                    **فُحص قبل الحذف، ولم تُحذف ميزةٌ بلا باب** (D-030). */
               <Section
                 key="shows"
+                action={<HomeOrderButton label={t.custArrange} />}
                 title={t.myShows}
                 icon="tv"
                 iconColor="var(--accent)"
@@ -1813,6 +1818,7 @@ async function HomeBody({
             myMovies.length > 0 ? (
               <Section
                 key="movies"
+                action={<HomeOrderButton label={t.custArrange} />}
                 title={t.myMovies}
                 icon="film"
                 iconColor="var(--accent)"
@@ -1904,6 +1910,7 @@ async function HomeBody({
             topRated.length > 0 ? (
               <Section
                 key="ratings"
+                action={<HomeOrderButton label={t.custArrange} />}
                 title={t.ratingsListTitle}
                 icon="star"
                 iconColor="var(--accent)"
@@ -2453,6 +2460,7 @@ async function UpcomingSection({
   const rail = (view: HomeView) => (
     <Section
       key="upcoming"
+      action={<HomeOrderButton label={t.custArrange} />}
       title={t.libUpcoming}
       icon="hourglass"
       iconColor="var(--accent)"
@@ -2564,6 +2572,7 @@ async function TrendingSection({
   return (
     <Section
       key="trending"
+      action={<HomeOrderButton label={t.custArrange} />}
       title={t.trendingWeek}
       icon="trending"
     >
