@@ -72,7 +72,10 @@ class LoopzWidget : AppWidgetProvider() {
             (0 until minOf(arr.length(), 3)).map { i ->
                 val o = arr.getJSONObject(i)
                 val title = o.optString("t")
-                val sub = o.optString("s")
+                /* ⚠️ **`optString` على `null` يعيد نصَّ «null» لا فراغاً** في
+                   org.json — ولقطتُنا تكتب `s: null` لمن لا حلقةَ تاليةَ له،
+                   **فبلا `isNull` تقرأ الودجتُ «الاسم · null» على شاشة أحدهم.** */
+                val sub = if (o.isNull("s")) "" else o.optString("s")
                 if (sub.isEmpty()) title else "$title  ·  $sub"
             }
         } catch (e: Exception) {
