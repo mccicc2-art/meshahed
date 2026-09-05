@@ -5,6 +5,7 @@ import Image from "next/image";
 import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { getDict, type Locale } from "@/core/i18n";
+import { isPlus } from "@/core/plan";
 import { RailSkeleton } from "@/components/Skeletons";
 import {
   getUser,
@@ -597,12 +598,14 @@ async function HomeBody({
 
   // مرشّحو «أكمل المشاهدة» يُعرفون من الملخّص قبل الترجمة — فتنضم
   // تفاصيلهم إلى نفس الموجة بدل موجةٍ خاصة بهم
-  const CONTINUE_CARDS = 4;
-  /* نستطلع أكثر مما نعرض: البطاقات أربع، لكن معرفة «الحلقة التالية»
-     تلزم لكل عملٍ قيد المشاهدة لا للبطاقات وحدها — بها نعرف مَن ينتظره
-     موسمٌ جديد فيبقى في «للمشاهدة». عشرةٌ سقفٌ يكفي ولا يفتح موجة
-     طلباتٍ بحجم المكتبة. */
-  const CONTINUE_PROBE = 10;
+  /* 🆕 D-918 (حكمُ أحمد بلقطة: «حالياً يعرض ٤ ويُعتبر قليلاً، خلّها
+     مفتوحة»): الصفُّ أفقيٌّ يُمرَّر، فالسقفُ لم يعد شاشةً بل كلفةً —
+     عشرون بطاقةً ولا أكثر: كلُّ بطاقةٍ نداءُ TMDB وصورةُ خلفيّة (D-914)،
+     ومكتبةٌ فيها أكثرُ من عشرين عملاً جارياً تجد بقيّتَها في ورقة «الكل». */
+  const CONTINUE_CARDS = 20;
+  /* نستطلع بقدر ما نعرض: معرفةُ «الحلقة التالية» تلزم لكلِّ بطاقة، وبها
+     نعرف مَن ينتظره موسمٌ جديد فيبقى في «للمشاهدة». */
+  const CONTINUE_PROBE = CONTINUE_CARDS;
   const earlyContinueIds: number[] = summary
     ? rawTv
         .map((row) => {
@@ -1533,6 +1536,8 @@ async function HomeBody({
         towatch={toWatchQueueItems}
         lists={listsQueueItems}
         towatchList={toWatchListItems}
+        /* 🆕 D-918: تبويبُ «عرض» في ورقة «الكل» — بابُ ترتيب الأقسام للمشترك */
+        plus={isPlus(profile)}
       />
 
       {empty && (

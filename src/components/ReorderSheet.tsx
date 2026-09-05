@@ -8,7 +8,7 @@ import { getDict } from "@/core/i18n";
 import { Icon } from "./Icon";
 import { Sheet, SheetHeader } from "./ui/Sheet";
 import { buttonClass } from "./ui/Button";
-import { sheetScroll } from "./ui/controls";
+import { segmentedItem, segmentedTrackFull, sheetScroll } from "./ui/controls";
 
 type Dict = ReturnType<typeof getDict>;
 
@@ -57,13 +57,25 @@ export function ReorderSheet({
   t,
   onClose,
   onDone,
+  tabs,
+  panel,
 }: {
   items: ReorderItem[];
   t: Dict;
   onClose: () => void;
   onDone: (keys: string[]) => void;
+  /**
+   * 🆕 **تبويبٌ ثانٍ اختياريّ** (D-918، طلبُ أحمد: «زرّ All إذا فتحته يكون
+   * فيه تبويب اسمه view وفيه arrange sections»). **الأوّلُ دائماً
+   * العناصر** وهذه الورقةُ نفسُها؛ والثاني يرسم `panel` مكانَ القائمة.
+   * **اختياريٌّ بسقوطٍ إلى الورقة كما كانت** (D-028): قارئُ المفضّلة
+   * (D-567) لا يمرّره فلا يتغيّر عنده حرف.
+   */
+  tabs?: { items: string; view: string };
+  panel?: React.ReactNode;
 }) {
   const [order, setOrder] = useState<ReorderItem[]>(items);
+  const [tab, setTab] = useState<"items" | "view">("items");
   const [from, setFrom] = useState<number | null>(null);
   const [dy, setDy] = useState(0);
   const startY = useRef(0);
@@ -161,22 +173,51 @@ export function ReorderSheet({
         closeLabel={t.closeLabel}
         onClose={onClose}
         action={
-          <button
-            type="button"
-            onClick={() => onDone(order.map(listItemKey))}
-            className={buttonClass({ size: "sm", className: "shrink-0" })}
-          >
-            {t.listDone}
-          </button>
+          tab === "items" ? (
+            <button
+              type="button"
+              onClick={() => onDone(order.map(listItemKey))}
+              className={buttonClass({ size: "sm", className: "shrink-0" })}
+            >
+              {t.listDone}
+            </button>
+          ) : undefined
         }
       >
-        <p className="text-12 text-muted mt-0.5">{t.listReorderHint}</p>
+        <p className="text-12 text-muted mt-0.5">
+          {tab === "items" ? t.listReorderHint : t.queueViewHint}
+        </p>
       </SheetHeader>
+
+      {tabs && (
+        /* **المقسّمُ من العائلة نفسِها** (القاعدة ٣) — لا تبويبَ ثانٍ يُخترع */
+        <div className={`${segmentedTrackFull} px-2`} role="tablist">
+          {(["items", "view"] as const).map((k) => (
+            <button
+              key={k}
+              type="button"
+              role="tab"
+              aria-selected={tab === k}
+              onClick={() => {
+                tap(4);
+                setTab(k);
+              }}
+              className={segmentedItem(tab === k, "flex-1")}
+            >
+              {tabs[k]}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {tab === "view" ? (
+        <div className={`${sheetScroll} px-4 py-4`}>{panel}</div>
+      ) : null}
 
       {/* `min-h-0` ليست زينة: ابنُ الفليكس لا ينكمش تحت ارتفاع محتواه بلا
           هذه، فقائمةٌ من ثلاثين عملاً كانت تتجاوز سقف الورقة (85vh) وتُقصّ
           بلا إمكانية تمرير — أي لا يمكن الوصول إلى آخرها أصلاً */}
-      <div ref={body} className={`${sheetScroll} px-2 py-2`}>
+      <div ref={body} className={`${sheetScroll} px-2 py-2`} hidden={tab !== "items"}>
         <ul className="relative" style={{ height: order.length * ROW }}>
           {order.map((it, i) => {
             const dragging = from === i;

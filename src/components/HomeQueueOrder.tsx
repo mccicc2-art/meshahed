@@ -6,8 +6,12 @@ import { saveHomeQueueOrder } from "@/lib/actions";
 import { getDict, type Locale } from "@/core/i18n";
 import { tap } from "@/lib/haptics";
 import { flashError } from "@/lib/toast";
+import Link from "next/link";
 import { Icon } from "./Icon";
 import { ReorderSheet, type ReorderItem } from "./ReorderSheet";
+import { HOME_ORDER_EVENT } from "./HomeSectionsOrder";
+import { PlusPill } from "./ui/PlusPill";
+import { buttonClass } from "./ui/Button";
 
 /**
  * 🆕 **أولويّةُ المشاهدة من رأس الصفِّ نفسِه** (D-605، حكمُ أحمد بلقطتين:
@@ -89,6 +93,7 @@ export function HomeQueueSheetHost({
   towatch,
   lists = [],
   towatchList = [],
+  plus = false,
 }: {
   locale: Locale;
   /** عناصرُ «تابِع المشاهدة» كلُّها بترتيب عرضها الحاليّ — بذرةُ الورقة */
@@ -106,6 +111,17 @@ export function HomeQueueSheetHost({
    * يَعِد بورقةٍ فارغة** (D-030).
    */
   towatchList?: ReorderItem[];
+  /**
+   * 🆕 **تبويبُ «عرض» في ورقة «الكل»** (D-918، طلبُ أحمد بلقطة «أكمل
+   * المشاهدة»: «قلنا بنحطّ الكوستومايز هنا وما حصلته»). D-605 حجز مقبضَ
+   * هذين الصفَّين لترتيب **العناصر**، **فبابُ ترتيب الأقسام يسكن تبويباً
+   * ثانياً داخل الورقة نفسِها** لا زرّاً ثانياً في الرأس (D-912 §٣: الحلُّ
+   * الوحيد الذي لا ينقض D-605). **والقفلُ في الخادم أصلاً**
+   * (`saveHomeSectionOrder` يعود صامتاً لغير المشترك — D-791)، وهذه
+   * الرايةُ للوجه وحدَه: غيرُ المشترك يرى الميزةَ مقفلةً لا زرّاً يكذب.
+   * **اختياريّةٌ بسقوطٍ إلى الورقة كما كانت** (D-028).
+   */
+  plus?: boolean;
 }) {
   const t = getDict(locale);
   const router = useRouter();
@@ -122,8 +138,40 @@ export function HomeQueueSheetHost({
   }, []);
 
   if (!row) return null;
+  /* التبويبُ للصفَّين اللذين حجز D-605 مقبضَهما — «للمشاهدة» يملك مقبضَ
+     الأقسام في رأسه أصلاً فلا يحتاج باباً ثانياً */
+  const withView = row === "continue" || row === "lists";
   return (
     <ReorderSheet
+      tabs={withView ? { items: t.queueTabItems, view: t.queueTabView } : undefined}
+      panel={
+        withView ? (
+          plus === true ? (
+            <button
+              type="button"
+              onClick={() => {
+                tap(6);
+                setRow(null);
+                /* الورقةُ الأخرى تُفتح بعد إغلاق هذه — ورقتان معاً تتنازعان الخلفيّة */
+                window.setTimeout(() => window.dispatchEvent(new Event(HOME_ORDER_EVENT)), 0);
+              }}
+              className={buttonClass({ variant: "surface", className: "w-full justify-start gap-3" })}
+            >
+              <Icon name="grip" size={18} className="text-muted" />
+              <span className="text-14 font-semibold">{t.custArrange}</span>
+            </button>
+          ) : (
+            <Link
+              href="/plus"
+              className={buttonClass({ variant: "surface", className: "w-full justify-start gap-3" })}
+            >
+              <PlusPill />
+              <span className="text-14 font-semibold">{t.custArrange}</span>
+              <span className="ms-auto text-12 text-muted">{t.plusLocked}</span>
+            </Link>
+          )
+        ) : undefined
+      }
       items={
         row === "continue"
           ? cont

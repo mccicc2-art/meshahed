@@ -1899,6 +1899,10 @@ const ar = {
   listCancel: "تراجع",
   listReorder: "أعد الترتيب",
   listReorderHint: "اسحب من المقبض، ثم «تمّ» لحفظ الترتيب.",
+  /** 🆕 D-918 — تبويبا ورقة «الكل» في «أكمل المشاهدة»/«قوائمي»: العناصرُ ثمّ «عرض» */
+  queueTabItems: "الترتيب",
+  queueTabView: "عرض",
+  queueViewHint: "ترتيبُ أقسام الرئيسية وإخفاؤها — من هنا بدل الإعدادات.",
   /** 🆕 قائمةُ التشغيل (D-505) — صفُّ القلب في قائمة أدوات المالك */
   listPlaylist: "قائمة تشغيل في «تابِع المشاهدة»",
   listPlaylistOnState: "تُعرض",
@@ -3614,6 +3618,9 @@ const en: Dict = {
   listCancel: "Cancel",
   listReorder: "Reorder",
   listReorderHint: "Drag by the handle, then press Done to save the order.",
+  queueTabItems: "Order",
+  queueTabView: "View",
+  queueViewHint: "Arrange and hide home sections — here instead of Settings.",
   listPlaylist: "Playlist in Continue Watching",
   listPlaylistOnState: "On",
   listPlaylistOnToast: "Now showing in Continue Watching",
