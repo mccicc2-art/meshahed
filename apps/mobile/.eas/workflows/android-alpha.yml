@@ -1,0 +1,33 @@
+# مسارُ النشر الدائم — D-915.
+#
+# 🔴 العلّة: رفعُ الـ.aab إلى Play بيدٍ يمرّ عبر حوار ملفّات ويندوز، وهو
+#    خارجَ متناول الوكيل. فالبناءُ والإرسالُ يجريان هنا على خوادم EAS،
+#    ولا يلمسان جهازَ أحمد.
+#
+# 🔑 الشرطُ الوحيد: مفتاحُ حسابِ الخدمة (Google Service Account Key) مخزَّنٌ
+#    في بيانات اعتماد Expo للمشروع — يُرفع مرّةً واحدة، ولا يعيش في المستودع.
+#
+# ⚖️ يعمل عند كلِّ دفعةٍ إلى main تمسّ apps/mobile فقط: بناءُ الويب لا
+#    يستهلك دقائقَ EAS. والمسارات نسبيّةٌ إلى جذر المستودع لا إلى apps/mobile.
+name: Android → Play Alpha
+
+# ⏳ مؤقّتاً يدويٌّ فقط: يتحوّل إلى push عند كلِّ دفعةٍ تمسّ apps/mobile حالما
+#    يُرفع مفتاحُ حساب الخدمة — وإلا استُهلك بناءٌ يفشل إرسالُه.
+on:
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    name: Build Android (production)
+    type: build
+    params:
+      platform: android
+      profile: production
+
+  submit:
+    name: Submit to Play (closed track Alpha)
+    needs: [build]
+    type: submit
+    params:
+      build_id: ${{ needs.build.outputs.build_id }}
+      profile: production
