@@ -304,7 +304,12 @@ export type AdminAuditRow = {
 export async function getAdminAudit(limit = 12): Promise<AdminAuditRow[]> {
   try {
     const supabase = await createClient();
-    const { data, error } = await supabase.rpc("admin_audit_recent", { p_limit: limit });
+    /* 🔴 **`admin_audit_log` لا `admin_audit_recent`** (D-926): القارئُ كان
+       موجوداً منذ الهجرة ١٧٢ بالتوقيع نفسِه، **وبُنيت له نسخةٌ ثانيةٌ في D-923
+       لأنّ البحثَ جرى في الشيفرة ولم يجرِ في `pg_proc`** — ونسخةٌ ثانيةٌ من
+       شيءٍ واحدٍ عيبٌ لا خيار (القاعدة ٣). **وقدرةٌ في القاعدة بلا قارئٍ في
+       الشيفرة تبدو غائبةً لمن يفتّش بـgrep وحدَه.** */
+    const { data, error } = await supabase.rpc("admin_audit_log", { lim: limit });
     if (error || !data) return [];
     return (data as Record<string, unknown>[]).map((r) => ({
       at: String(r.at),
