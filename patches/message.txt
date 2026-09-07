@@ -1,0 +1,12 @@
+ci(patch-lane): optional patches/target — apply a patch to a branch other than main (D-937)
+
+PR #19's coordination files (SHARED_PROGRESS.md and the phase docs) are
+large, diacritized Arabic; rewriting them through push_files loses
+diacritics silently — the very reason the patch lane exists (D-913). The
+lane only knew main. A `patches/target` file naming a branch now makes the
+workflow check that branch out, apply the patch and push back to it; the
+name is validated to branch characters, and a missing file keeps the old
+behaviour exactly. No [deploy]: nothing here is built by Vercel.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_015PnWyrs5bJM3M8uex54YLu
