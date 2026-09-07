@@ -97,9 +97,37 @@ function needsRefresh(cookieValue: string | undefined): boolean {
 const BLOCKED_UA =
   /GPTBot|ChatGPT-User|OAI-SearchBot|ClaudeBot|Claude-Web|anthropic-ai|CCBot|Bytespider|Amazonbot|PerplexityBot|Perplexity-User|meta-externalagent|FacebookBot|Applebot-Extended|cohere-ai|Diffbot|ImagesiftBot|omgili|Timpibot|YouBot|AhrefsBot|SemrushBot|MJ12bot|DotBot|DataForSeoBot|PetalBot|Scrapy/i;
 
+/* 🔴 🆕 D-931 — **روابطُ المحسِّن الميّتة تُحوَّل إلى الممرّ المخزَّن.**
+   لوحةُ Vercel (٧ سبتمبر، ٢٤ ساعة): **٣٦ ألفَ تحويلٍ مدفوع، ٣٥٬٩٠٠ منها أعادت
+   الصورةَ بصيغتها الأصليّة** (webp ٨٨ · avif ١) — أي طلباتٌ بلا `Accept`
+   صورٍ حديثة، **فليست متصفّحات**؛ وبعروضِ سلّم Next الافتراضيّ (2048/1200/828)
+   لا سلّمِنا المقصوص (D-895)؛ ومقاساتُها w342/w185/h632 **التي لا يبنيها
+   `imageLoader` للمحسِّن منذ D-841**. أي زواحفُ تعيد استدعاءَ روابطَ فهرستها
+   قبل ٣١ أغسطس. **التحويلُ الدائم يقلب كلَّ طلبٍ منها من تحويلٍ يُفوتَر إلى
+   مرورٍ من CDN، ويعلّم الزاحفَ الرابطَ الجديد فلا يعود.**
+   ⚖️ **ولا يُمسّ w780/w1280/original**: هي أسطحُ البطل التي قرّر D-841 أن
+   تدفع ثمنَ AVIF. والقائمةُ هنا هي قائمةُ `/i/` حرفاً — ما لا يقبله الممرُّ لا
+   يُحوَّل إليه. */
+const LEGACY_IMAGE =
+  /^https:\/\/image\.tmdb\.org\/t\/p\/(w45|w92|w154|w185|w300|w342|w500|h632)\/([A-Za-z0-9]+\.(?:jpg|png))$/;
+
 export async function proxy(request: NextRequest) {
   if (BLOCKED_UA.test(request.headers.get("user-agent") ?? "")) {
     return new NextResponse(null, { status: 403, headers: { "cache-control": "no-store" } });
+  }
+
+  /* مسارُ المحسِّن يدخل الوسيطَ لهذا الفحص وحدَه — لا تسميةَ مالكٍ ولا تجديدَ
+     جلسةٍ على صورة: يخرج فوراً بعده. */
+  if (request.nextUrl.pathname === "/_next/image") {
+    const m = LEGACY_IMAGE.exec(request.nextUrl.searchParams.get("url") ?? "");
+    if (m) {
+      return NextResponse.redirect(new URL(`/i/${m[1]}/${m[2]}`, request.url), {
+        status: 301,
+        // التحويلُ نفسُه يُخزَّن سنةً: رابطٌ ميّتٌ لا يحيا
+        headers: { "cache-control": "public, max-age=31536000, immutable" },
+      });
+    }
+    return NextResponse.next();
   }
 
   let response = NextResponse.next({ request });
@@ -164,5 +192,7 @@ export const config = {
     /* `api/v1` مستثنًى: طلباتُ التطبيق تحمل `Bearer` لا كوكي، فلا جلسةَ
        هنا تُجدَّد — ورحلةُ `getUser` عليها هدرٌ محض (Phase 9 §4.3) */
     "/((?!_next/static|_next/image|favicon.ico|api/v1|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    /* 🆕 D-931: المحسِّنُ يدخل لفحص الروابط الميّتة وحدَه (انظر `LEGACY_IMAGE`) */
+    "/_next/image",
   ],
 };
