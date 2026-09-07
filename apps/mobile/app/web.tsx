@@ -11,6 +11,7 @@ import { File, Paths } from "expo-file-system";
 import { deviceLocale } from "../src/i18n";
 import { Button, Loading, Text } from "../src/ui";
 import { space } from "../src/theme";
+import { perfMs } from "./_layout";
 
 /**
  * ====== الغلافُ الهجين — الويبُ نفسُه داخل التطبيق (D-922) ======
@@ -121,7 +122,7 @@ export default function Web() {
 
   const onMessage = useCallback(
     async (e: WebViewMessageEvent) => {
-      let msg: { type?: string; items?: unknown[] } = {};
+      let msg: { type?: string; items?: unknown[]; mark?: string; path?: string; images?: number; sincePathChange?: number } = {};
       try {
         msg = JSON.parse(e.nativeEvent.data);
       } catch {
@@ -129,6 +130,12 @@ export default function Web() {
       }
       /* 🆕 D-929 — لقطةُ الودجت: تُكتب ملفّاً ويقرؤها `LoopzWidget.kt` كلَّ
          نصف ساعة. **والفشلُ صمتٌ**: ودجتٌ قديمةٌ خيرٌ من شاشةٍ تسقط. */
+      /* Phase 11 · A0-prep — علاماتُ الصفحة تُختم بساعة الغلاف عند الاستلام
+         (`adb logcat -s ReactNativeJS`)؛ تسجيلٌ لا سلوك، ولا يُرسَل شيءٌ لأحد. */
+      if (msg.type === "perf") {
+        console.log(`[perf] ${msg.mark} t=${perfMs()}ms path=${msg.path} images=${msg.images} sincePathChange=${msg.sincePathChange}`);
+        return;
+      }
       if (msg.type === "widget") {
         try {
           const f = new File(Paths.document, "widget.json");
@@ -195,7 +202,8 @@ export default function Web() {
           onMessage={onMessage}
           onNavigationStateChange={onNav}
           onShouldStartLoadWithRequest={onShouldStart}
-          onLoadEnd={() => { setReady(true); if (!handing.current) flush(); }}
+          onLoadStart={() => console.log(`[perf] onLoadStart t=${perfMs()}ms`)}
+          onLoadEnd={() => { console.log(`[perf] onLoadEnd t=${perfMs()}ms`); setReady(true); if (!handing.current) flush(); }}
           /* 🔴 **بلا هذه كان الانقطاعُ يعرض صفحةَ خطأ أندرويد الخام**
              (`net::ERR_INTERNET_DISCONNECTED` بخطٍّ إنجليزيٍّ صغير) داخل
              تطبيقٍ عربيٍّ أسود — **أسوأُ ما يراه مختبِرٌ في أوّل نفق.** */

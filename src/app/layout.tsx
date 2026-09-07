@@ -7,6 +7,7 @@ import { PullToRefresh } from "@/components/PullToRefresh";
 import { BottomNav } from "@/components/BottomNav";
 import { OfflineSync } from "@/components/OfflineSync";
 import { ToastHost } from "@/components/ToastHost";
+import { PerfMarks } from "@/components/PerfMarks";
 import { LoginGateHost } from "@/components/LoginGateHost";
 import { PlusGateHost } from "@/components/PlusGateHost";
 import { TourMount } from "@/components/TourMount";
@@ -336,6 +337,8 @@ export default async function RootLayout({
         <ChromeAutoHide />
         <OfflineSync />
         <ToastHost />
+        {/* Phase 11 A0-prep: علاماتُ أوّل محتوى للغلاف — لا شيءَ في المتصفّح */}
+        <PerfMarks />
         {/* 🆕 بوّابة الزائر (D-627 مرحلة ٢): تُفتح حين يلمس زائرٌ فعلَ
             كتابةٍ — عمارةُ التوست نفسُها، مضيفٌ واحدٌ وحدثُ نافذة */}
         <LoginGateHost locale={locale} />
