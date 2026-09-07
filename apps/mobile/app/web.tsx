@@ -26,9 +26,11 @@ import { space } from "../src/theme";
  * التسليمُ نموذجٌ يُحقن في الصفحة ويُرسَل — لا تبديلَ لمصدر الـWebView،
  * فلا إعادةَ تحميلٍ ثانية حين تتغيّر الجلسةُ الأصليّة بعده.
  *
- * 🔑 **بعد التسليم يُمسح المخزنُ المحلّيّ** (`signOut({ scope: "local" })`):
- * رموزُ التجديد تُدوَّر، وعميلان يجدّدان رمزاً واحداً يُسقط أحدُهما الآخر.
- * صاحبُ الجلسة هو كوكي الـWebView — ونبضةُ الحضور تأتي منه بوسم
+ * 🔴 **بعد التسليم لا يُنادى `signOut` أبداً — ولا بـ`scope: "local"`**
+ * (٧ سبتمبر): هذا النداءُ يصل إلى الخادم ويُلغي الجلسةَ التي سُلِّمت للتوّ،
+ * فكان كلُّ دخولٍ من التطبيق يُطرد بعد ثانيتين (`session_not_found`).
+ * الجلسةُ الأصليّةُ الآن في الذاكرة فقط بلا تجديدٍ (`src/auth.tsx`)، وصاحبُ
+ * الجلسة هو كوكي الـWebView — ونبضةُ الحضور تأتي منه بوسم
  * `LoopzApp/<version>` في وكيل المتصفّح، فتُكتب `is_app` من الترويسة.
  *
  * 🔑 **الروابطُ الخارجيّة تفتح خارجَ الغلاف** (يوتيوب، المتاجر): الغلافُ
@@ -52,7 +54,7 @@ const APP_VERSION = Constants.expoConfig?.version ?? "0";
 /** النطاقاتُ التي تُعرض داخل الغلاف — ما عداها للمتصفّح الخارجيّ */
 const INSIDE = new Set(["loopztv.com", "www.loopztv.com", "meshahed.vercel.app"]);
 
-type Source = { uri: string; method?: "POST"; headers?: Record<string, string>; body?: string };
+type Source = { uri: string };
 
 /**
  * 🆕 **نصُّ شاشة الانقطاع هنا لا في `core/i18n`** — حجّةُ D-907 نفسُها:
@@ -64,15 +66,6 @@ const OFFLINE = {
   en: { title: "No internet connection", hint: "Check your network and try again.", retry: "Try again" },
 } as const;
 
-function handoffSource(access: string, refresh: string): Source {
-  return {
-    uri: HANDOFF,
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: "access_token=" + encodeURIComponent(access) + "&refresh_token=" + encodeURIComponent(refresh),
-  };
-}
-
 /** نموذجُ تسليمٍ يُحقن في الصفحة ويُرسَل فوراً — الرمزان في الجسم لا في العنوان */
 function handoffScript(access: string, refresh: string): string {
   return `(function(){var f=document.createElement('form');f.method='POST';f.action=${JSON.stringify(HANDOFF)};
@@ -82,7 +75,7 @@ f.appendChild(a);f.appendChild(r);document.body.appendChild(f);f.submit();})();t
 }
 
 export default function Web() {
-  const { session, loading, signInWithGoogle } = useAuth();
+  const { loading, signInWithGoogle } = useAuth();
   const t = OFFLINE[deviceLocale() === "ar" ? "ar" : "en"];
   const ref = useRef<WebView>(null);
   const [ready, setReady] = useState(false);
@@ -92,18 +85,13 @@ export default function Web() {
   /* الهدفُ المؤجَّل من الودجت — يُنفَّذ بعد أوّل تحميلٍ ناجحٍ لا قبله */
   const pending = useRef<string | null>(null);
   const { u } = useLocalSearchParams<{ u?: string }>();
-  /* المصدرُ يُحسب مرّةً عند أوّل جلسةٍ مقروءة: رمزان في المخزن ⇢ تسليم،
-     وإلا الرئيسيّةُ (كوكي الـWebView تحمل الجلسةَ إن كانت). */
+  /* المصدرُ يُحسب مرّةً: الرئيسيّةُ دائماً — كوكي الـWebView تحمل الجلسةَ إن
+     كانت. (تسليمٌ عند الإقلاع من جلسةٍ مخزونة لم يعد له مصدر: لا مخزن.) */
   const [source, setSource] = useState<Source | null>(null);
   useEffect(() => {
     if (loading || source) return;
-    if (session) {
-      handing.current = true;
-      setSource(handoffSource(session.access_token, session.refresh_token));
-    } else {
-      setSource({ uri: HOME });
-    }
-  }, [loading, session, source]);
+    setSource({ uri: HOME });
+  }, [loading, source]);
 
   /** ينقل الـWebView إلى الهدف المحفوظ — بحقن `location.href` لا بتبديل
       المصدر: تبديلُ المصدر يُعيد تركيبَ العرض ويفقد تاريخَ الرجوع. */
@@ -122,11 +110,11 @@ export default function Web() {
 
   const onNav = useCallback((nav: WebViewNavigation) => {
     setCanGoBack(nav.canGoBack);
-    /* وصلنا الرئيسيّةَ بعد التسليم ⇢ الصفحةُ تملك الكوكي؛ يُمسح المخزنُ المحلّيّ
-       حتّى لا يجدّد الغلافُ رمزاً صار للـWebView. */
+    /* وصلنا الرئيسيّةَ بعد التسليم ⇢ الصفحةُ تملك الكوكي. **لا خروجَ هنا**:
+       الرمزان في الذاكرة بلا تجديدٍ، ونداءُ `signOut` — حتى `local` — يُلغي
+       الجلسةَ عند الخادم (علّةُ ٧ سبتمبر). */
     if (handing.current && !nav.loading && nav.url.startsWith(HOME) && !nav.url.includes("/session/handoff")) {
       handing.current = false;
-      supabase.auth.signOut({ scope: "local" }).catch(() => {});
       flush();
     }
   }, [flush]);

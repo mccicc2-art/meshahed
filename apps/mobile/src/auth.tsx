@@ -1,6 +1,5 @@
 import "react-native-url-polyfill/auto";
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { AppState } from "react-native";
 import * as WebBrowser from "expo-web-browser";
 import * as Linking from "expo-linking";
 import { createClient, type Session, type SupabaseClient } from "@supabase/supabase-js";
@@ -21,9 +20,18 @@ import { secureStorage } from "./secureStorage";
  * ويُبدَّل من الجهاز بجلسة. **وعنوانُ الرجوع مسجَّلٌ في Supabase** فلا يستطيع
  * تطبيقٌ آخر يدّعي المخطّطَ نفسَه أن يتلقّى شيئاً ذا قيمة.
  *
- * 🔑 **التجديدُ مربوطٌ بـ`AppState`** (Phase 9 §3): المؤقّتُ يتوقّف في
- * الخلفيّة ويعود في المقدّمة — **فلا رمزٌ ينتهي والتطبيقُ نائم ثمّ يفتح
- * على 401.** والخادمُ لا يضع كوكيز للتطبيق أبداً.
+ * 🔴 **الجلسةُ الأصليّةُ لا تُحفظ ولا تُجدَّد (٧ سبتمبر — إصلاحُ D-922)**:
+ * بعد التسليم صاحبُ الجلسة **كوكي الـWebView**، والرمزان اللذان يعودان من
+ * `exchangeCodeForSession` يعيشان ثوانيَ في الذاكرة حتّى يُحقَنا في نموذج
+ * التسليم. **كان الغلافُ يحفظهما في SecureStore ثمّ يمسحهما بـ
+ * `signOut({ scope: "local" })`** — و`local` في supabase-js **لا يعني
+ * «محلّيّاً»**: النداءُ يذهب إلى `/logout?scope=local` **فيُلغي عند الخادم
+ * الجلسةَ نفسَها التي سُلِّمت للتوّ**، فتعود الصفحةُ التاليةُ `session_not_found`
+ * ويُطرد المستخدمُ بعد ثانيتين من دخوله (سجلّاتُ Supabase ٧ سبتمبر: login ⇢
+ * logout ⇢ 403 كلَّ محاولة). **والتجديدُ التلقائيُّ معطَّل** للسبب نفسِه:
+ * عميلان يدوّران رمزَ تجديدٍ واحداً يُسقط أحدُهما الآخر
+ * (`refresh_token_already_used`). فلا مخزنَ ولا مؤقّت — **ولا خروجَ عبر
+ * الخادم من هنا أبداً.**
  */
 
 WebBrowser.maybeCompleteAuthSession();
@@ -33,19 +41,35 @@ export const supabase: SupabaseClient = createClient(
   CONFIG.supabasePublishableKey,
   {
     auth: {
-      storage: secureStorage,
-      autoRefreshToken: true,
-      persistSession: true,
+      autoRefreshToken: false,
+      persistSession: false,
       detectSessionInUrl: false,
       flowType: "pkce",
     },
   },
 );
 
-AppState.addEventListener("change", (state) => {
-  if (state === "active") supabase.auth.startAutoRefresh();
-  else supabase.auth.stopAutoRefresh();
-});
+/** مفتاحُ supabase-js الافتراضيّ للجلسة في المخزن — لِمسح ما حفظته 1.1/1.2 مرّةً واحدة */
+const LEGACY_SESSION_KEY = (() => {
+  try {
+    return `sb-${new URL(CONFIG.supabaseUrl).hostname.split(".")[0]}-auth-token`;
+  } catch {
+    return "";
+  }
+})();
+
+/**
+ * جلسةٌ حفظتها نسخةٌ سابقةٌ في SecureStore تُمسح بلا نداءٍ للخادم: رمزُها
+ * ميّتٌ غالباً (أُلغي بالخروج القديم أو دُوِّر من الـWebView)، وتسليمُ رمزٍ
+ * ميّتٍ يعيد `/login?handoff=failed`. **لا `signOut` هنا** — انظر أعلى.
+ */
+export async function forgetLegacySession(): Promise<void> {
+  if (!LEGACY_SESSION_KEY) return;
+  await Promise.all([
+    secureStorage.removeItem(LEGACY_SESSION_KEY),
+    secureStorage.removeItem(`${LEGACY_SESSION_KEY}-code-verifier`),
+  ]).catch(() => {});
+}
 
 type AuthState = {
   session: Session | null;
@@ -62,10 +86,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setLoading(false);
-    });
+    /* لا جلسةَ تُقرأ من مخزن: الكوكي في الـWebView هو الجلسة. يُمسح إرثُ
+       النسخ السابقة ثمّ يُرفع الستار. */
+    forgetLegacySession().finally(() => setLoading(false));
     const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
     return () => sub.subscription.unsubscribe();
   }, []);
@@ -96,7 +119,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       },
       async signOut() {
-        await supabase.auth.signOut();
+        /* الخروجُ خروجُ الويب (`/auth/signout`) — الغلافُ لا يملك جلسةً يُنهيها */
+        await forgetLegacySession();
       },
     }),
     [session, loading],
