@@ -137,7 +137,18 @@ const nextConfig: NextConfig = {
        بالمحتوى أصلاً، فطول العمر آمن — تغيّر الصورة يغيّر رابطها. */
     minimumCacheTTL: 2678400,
     remotePatterns: [
-      { protocol: "https", hostname: "image.tmdb.org", pathname: "/t/p/**" },
+      /* 🔴 🆕 D-931 — **المحسِّنُ لا يقبل من TMDB إلا ما يبنيه المحمِّلُ له.**
+         لوحةُ Vercel (٧ سبتمبر، ٢٤ ساعة): ٣٦ ألفَ تحويلٍ مدفوع، **٣٥٬٩٠٠ منها
+         لمقاسات w342/w185/h632 التي لا يرسلها `imageLoader` إلى المحسِّن منذ
+         D-841** — روابطُ ما قبل ٣١ أغسطس تعيدها زواحفُ بلا `Accept` صورٍ حديثة،
+         فتعود بصيغتها الأصليّة (webp ٨٨ · avif ١) ويُدفع ثمنُ تحويلٍ لم يحوّل.
+         🔑 **والفحصُ هنا يسبق الخبيئةَ والتحويلَ معاً** (ترتيبُ Vercel المعلَن):
+         رابطٌ خارجَ الأنماط يُردّ 400 **بلا تحويلٍ يُفوتَر**. ⚖️ وجُرِّب قبله
+         تحويلٌ من الوسيط (`proxy.ts`) — **ولا يمرّ `/_next/image` بالوسيط على
+         Vercel أصلاً**، فبقي الفحصُ في المكان الوحيد الذي يراه المحسِّن. */
+      { protocol: "https", hostname: "image.tmdb.org", pathname: "/t/p/w780/**" },
+      { protocol: "https", hostname: "image.tmdb.org", pathname: "/t/p/w1280/**" },
+      { protocol: "https", hostname: "image.tmdb.org", pathname: "/t/p/original/**" },
       { protocol: "https", hostname: "lh3.googleusercontent.com" },
       { protocol: "https", hostname: "*.supabase.co", pathname: "/storage/v1/object/public/**" },
       // أعلام اللغات — تُجلب على الخادم وتُقدَّم من نطاقنا، فلا يُوسَّع
