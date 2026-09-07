@@ -16,14 +16,6 @@ import { applyDirection, deviceLocale } from "../src/i18n";
 SplashScreen.preventAutoHideAsync().catch(() => {});
 applyDirection(deviceLocale());
 
-/**
- * Phase 11 · A0-prep: **صفرُ ساعة الأداء** — أوّلُ سطرٍ ينفَّذ في JS التطبيق، على
- * ساعةٍ رتيبة (`performance.now()`) لا على `Date.now()`. كلُّ علاماتِ الغلاف
- * (`onLoadStart` · `onLoadEnd` · استلامُ `first-content`) تُقاس منه، على
- * الساعة نفسِها — **ولا يُخلط برقم `am start -W`** (ساعةُ النظام) في رقمٍ واحد.
- */
-export const launchT0 = performance.now();
-export const perfMs = () => Math.round(performance.now() - launchT0);
 
 export default function RootLayout() {
   return (

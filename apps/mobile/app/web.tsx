@@ -11,7 +11,7 @@ import { File, Paths } from "expo-file-system";
 import { deviceLocale } from "../src/i18n";
 import { Button, Loading, Text } from "../src/ui";
 import { space } from "../src/theme";
-import { perfMs } from "./_layout";
+import { perfMs } from "../src/perf";
 
 /**
  * ====== الغلافُ الهجين — الويبُ نفسُه داخل التطبيق (D-922) ======
@@ -133,7 +133,7 @@ export default function Web() {
       /* Phase 11 · A0-prep — علاماتُ الصفحة تُختم بساعة الغلاف عند الاستلام
          (`adb logcat -s ReactNativeJS`)؛ تسجيلٌ لا سلوك، ولا يُرسَل شيءٌ لأحد. */
       if (msg.type === "perf") {
-        console.log(`[perf] ${msg.mark} t=${perfMs()}ms path=${msg.path} images=${msg.images} sincePathChange=${msg.sincePathChange}`);
+        console.log(`[perf] ${msg.mark} t=${perfMs()}ms (js-entry clock) path=${msg.path} images=${msg.images} sincePathChange=${msg.sincePathChange}`);
         return;
       }
       if (msg.type === "widget") {
