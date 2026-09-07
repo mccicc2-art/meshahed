@@ -11,7 +11,7 @@ import {
   useSyncExternalStore,
 } from "react";
 import { Icon } from "../Icon";
-import { writeTrailerSound } from "@/lib/trailerPrefs";
+import { readTrailerVolume, writeTrailerSound, writeTrailerVolume } from "@/lib/trailerPrefs";
 import { providerOf } from "@/core/trailerProviders";
 
 /**
@@ -144,6 +144,8 @@ export interface ControllerSnapshot {
   phase: SlotPhase;
   /** **الصوتُ الفعليُّ المُتحقَّق** من المشغّل — لا الرغبة (المواصفة خامسًا) */
   soundOn: boolean;
+  /** 🆕 D-933: مستوى الصوت ١–١٠٠ — آخرُ قيمةٍ مسموعة، لا تصير صفراً (الصفرُ كتم) */
+  volume: number;
   time: { now: number; total: number } | null;
   /** موفّرُ البيانات/2G — لا تشغيلَ آليّاً، زرٌّ في كلِّ بطاقة */
   manualOnly: boolean;
@@ -182,6 +184,13 @@ interface ControllerApi {
    * كاذبة فلا تفعل شيئاً)، ومن لم يكتم يسمع من أوّل لمسة.
    */
   unlockSound(): void;
+  /**
+   * 🆕 D-933 (طلبُ أحمد: «إضافة إمكانية تعديل مستوى الصوت»): مستوى ٠–١٠٠
+   * على النشطة. **الصفرُ كتمٌ والباقي مستوى**: السحبُ إلى الصفر يمرّ من
+   * مسار الكتم نفسِه (نيّةٌ + كوكي)، وأيُّ قيمةٍ فوقه تفكّ الكتمَ إن كان
+   * — **فشريطٌ يُسحب من الصفر يُسمَع بلا زرٍّ ثانٍ.**
+   */
+  setVolume(level: number): void;
   subscribe(cb: () => void): () => void;
   getSnapshot(): ControllerSnapshot;
 }
@@ -303,6 +312,9 @@ function createEngine(
   /** 🆕 D-771: رفض WebKit فكَّ الصوتِ لهذه البطاقة — لا يُعاد عليها
       (يُصفَّر عند تنشيطِ بطاقةٍ أو بإيماءةِ صوتٍ صريحة) */
   let soundBlocked = false;
+  /** 🆕 D-933: المستوى المطلوب — بذرتُه الكوكي، ويُطبَّق مع كلِّ فكِّ كتم */
+  let volume = readTrailerVolume();
+  publish({ volume });
   let verifyTimer: number | null = null;
   /** 🆕 D-762 (بلاغ أحمد: «ارجع فوق يعيده من البداية»): ذاكرةُ مواضعَ
       لكلِّ بطاقة — تُقيَّد عند مغادرتها وتُستأنف عند العودة. المفتاحُ
@@ -505,10 +517,10 @@ function createEngine(
     if (!wantSound) return;
     if (activeIsFile()) {
       dom.video.muted = false;
-      dom.video.volume = 1;
+      dom.video.volume = volume / 100;
     } else if (act?.p && act.ready) {
       act.p.unMute();
-      act.p.setVolume(100);
+      act.p.setVolume(volume);
     }
     publish({ soundOn: true });
     scheduleVerify(300);
@@ -662,7 +674,7 @@ function createEngine(
          `soundBlocked` — «دائماً شغّال» مقدَّمةٌ على الصوت. */
       if (wantSound && !soundBlocked && !readSnap().soundOn && act?.p && act.ready) {
         act.p.unMute();
-        act.p.setVolume(100);
+        act.p.setVolume(volume);
         autoUnmuteAt = Date.now();
         publish({ soundOn: true });
       }
@@ -950,7 +962,7 @@ function createEngine(
       const carry = wantSound && !soundBlocked;
       if (carry) {
         act.p?.unMute();
-        act.p?.setVolume(100);
+        act.p?.setVolume(volume);
         autoUnmuteAt = Date.now();
       } else {
         act.p?.mute();
@@ -969,7 +981,7 @@ function createEngine(
       const carry = wantSound && !soundBlocked;
       if (carry) {
         act.p.unMute();
-        act.p.setVolume(100);
+        act.p.setVolume(volume);
         autoUnmuteAt = Date.now();
       } else {
         act.p.mute();
@@ -1061,7 +1073,7 @@ function createEngine(
          (⚖️ D-771: بالنيّة وحدَها — لا شرطَ قفلٍ مفكوك) */
       const carry = wantSound && !soundBlocked;
       dom.video.muted = !carry;
-      if (carry) dom.video.volume = 1;
+      if (carry) dom.video.volume = volume / 100;
       publish({ soundOn: carry });
       /* فيديو جديد: صفّر الزمنَ — إلا موضعاً محفوظاً لهذه البطاقة نفسِها
          فيُستأنف (D-762، بلاغ «يعيده من البداية») */
@@ -1208,7 +1220,7 @@ function createEngine(
     if (activeIsFile()) {
       const carry = wantSound && !soundBlocked;
       dom.video.muted = !carry;
-      if (carry) dom.video.volume = 1;
+      if (carry) dom.video.volume = volume / 100;
       publish({ soundOn: carry });
       void dom.video.play().catch(() => {
         soundBlocked = true;
@@ -1308,12 +1320,12 @@ function createEngine(
       pokeControls();
       if (activeIsFile()) {
         dom.video.muted = !wantOn;
-        if (wantOn) dom.video.volume = 1;
+        if (wantOn) dom.video.volume = volume / 100;
       } else if (act?.p && act.ready) {
         if (wantOn) {
           /* داخل الضغطة نفسِها: unMute + volume (خامسًا/٢) — بلا play */
           act.p.unMute();
-          act.p.setVolume(100);
+          act.p.setVolume(volume);
         } else {
           act.p.mute();
         }
@@ -1330,15 +1342,49 @@ function createEngine(
     /* 🆕 D-888 — انظر الواجهة: فكُّ الصوت داخل لمسةِ البطاقة حين تكون النيّةُ
        مفتوحةً والمشغّلُ صامتاً بقرار المتصفّح. **الحقيقةُ تُقرأ بعد ٢٠٠ م.ث**
        كما في `tapSound` — ولا كوكي لأنّ الاختيارَ لم يتغيّر. */
+    /* 🆕 D-933 — انظر الواجهة. **الحقيقةُ تُقرأ بعد ٢٠٠ م.ث** كما في `tapSound`:
+       iOS يتجاهل مستوى الصوت لعناصر الوسائط (قانونُ WebKit) — فالشريطُ لا
+       يُعرض هناك أصلاً (`TrailerVolume` تفحص القدرة) ولا يُدّعى ما رُفض. */
+    setVolume(level: number) {
+      const slot = activeSlot();
+      if (!slot) return;
+      const v = Math.min(100, Math.max(0, Math.round(level)));
+      pokeControls();
+      if (v === 0) {
+        if (readSnap().soundOn) this.tapSound();
+        return;
+      }
+      volume = v;
+      publish({ volume });
+      writeTrailerVolume(volume);
+      const wasOn = readSnap().soundOn;
+      if (activeIsFile()) {
+        dom.video.volume = volume / 100;
+        if (!wasOn) dom.video.muted = false;
+      } else if (act?.p && act.ready) {
+        act.p.setVolume(volume);
+        if (!wasOn) act.p.unMute();
+      } else return;
+      if (!wasOn) {
+        wantSound = true;
+        soundBlocked = false;
+        publish({ soundOn: true });
+        window.setTimeout(() => {
+          if (destroyed) return;
+          if (verifySound()) writeTrailerSound(true);
+        }, 200);
+      }
+    },
+
     unlockSound() {
       if (!activeId || !wantSound || readSnap().soundOn) return;
       soundBlocked = false;
       if (activeIsFile()) {
         dom.video.muted = false;
-        dom.video.volume = 1;
+        dom.video.volume = volume / 100;
       } else if (act?.p && act.ready) {
         act.p.unMute();
-        act.p.setVolume(100);
+        act.p.setVolume(volume);
       } else return;
       window.setTimeout(() => {
         if (destroyed) return;
@@ -1467,6 +1513,8 @@ export interface TrailerExpandedLabels {
   unmute: string;
   collapse: string;
   seek: string;
+  /** 🆕 D-933: شريطُ مستوى الصوت — اختياريٌّ حتى يصل من السطح (D-028) */
+  volume?: string;
 }
 
 export function TrailerPlayback({
@@ -1484,6 +1532,7 @@ export function TrailerPlayback({
     activeId: null,
     phase: "idle",
     soundOn: false,
+    volume: 100,
     time: null,
     manualOnly: false,
     expanded: false,
@@ -1591,6 +1640,9 @@ export function TrailerPlayback({
   const unlockSound = useCallback(() => {
     engineRef.current?.unlockSound();
   }, []);
+  const setVolume = useCallback((level: number) => {
+    engineRef.current?.setVolume(level);
+  }, []);
   const subscribe = useCallback((cb: () => void) => {
     subsRef.current.add(cb);
     return () => {
@@ -1611,6 +1663,7 @@ export function TrailerPlayback({
       togglePlay,
       setRate,
       unlockSound,
+      setVolume,
       subscribe,
       getSnapshot,
     }),
@@ -1625,6 +1678,7 @@ export function TrailerPlayback({
       togglePlay,
       setRate,
       unlockSound,
+      setVolume,
       subscribe,
       getSnapshot,
     ],
@@ -1758,6 +1812,87 @@ export function TrailerScrubber({
 }
 
 /**
+ * 🆕 **شريطُ مستوى الصوت** (D-933) — **الشكلُ شكلُ شريط التقديم نفسُه**
+ * (المسارُ والخطُّ والقبضة) كي لا يُخترع عنصرٌ ثانٍ (ق٣): أفقيٌّ، `ltr`
+ * دائماً لأنّ «أعلى» جهةٌ فيزيائيّةٌ لا لغويّة (كما الزمن في الشريط).
+ *
+ * 🔴 **ولا يُعرض حيث لا يعمل**: iOS يتجاهل `volume` على عناصر الوسائط
+ * وإطار يوتيوب معاً (قانونُ WebKit، الصوتُ للزرّ الجانبيّ وحدَه) —
+ * **وشريطٌ يتحرّك ولا يسمعه أحد كذبٌ** (D-063). الفحصُ فعليٌّ لا بقائمة
+ * أجهزة: يُضبط `volume` على عنصرٍ صامتٍ ويُقرأ؛ من لم يحفظه لا يعرض.
+ *
+ * **والصفرُ كتم**: الشريطُ يُعرض على الصفر حين الصوتُ مكتوم، وسحبُه فوق
+ * الصفر يفكّه (`setVolume` في المحرّك) — فبابٌ واحدٌ للصوت لا بابان.
+ */
+export function TrailerVolume({
+  level,
+  onChange,
+  label,
+  active = true,
+}: {
+  level: number;
+  onChange: (level: number) => void;
+  label: string;
+  active?: boolean;
+}) {
+  const [supported] = useState(() => {
+    if (typeof document === "undefined") return false;
+    try {
+      const a = document.createElement("audio");
+      a.volume = 0.5;
+      return a.volume === 0.5;
+    } catch {
+      return false;
+    }
+  });
+  const [dragPct, setDragPct] = useState<number | null>(null);
+  const bar = useRef<HTMLDivElement>(null);
+  const pctOf = (clientX: number) => {
+    const r = bar.current?.getBoundingClientRect();
+    if (!r || r.width === 0) return 0;
+    return Math.min(1, Math.max(0, (clientX - r.left) / r.width));
+  };
+  if (!supported) return null;
+  const pct = dragPct ?? level / 100;
+  return (
+    <div
+      ref={bar}
+      dir="ltr"
+      role="slider"
+      tabIndex={active ? 0 : -1}
+      aria-label={label}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={Math.round(pct * 100)}
+      className={`${active ? "pointer-events-auto" : "pointer-events-none"} flex h-9 w-20 cursor-pointer items-center rounded-full bg-black/55 px-3 backdrop-blur-sm`}
+      style={{ touchAction: "none" }}
+      onPointerDown={(e) => {
+        e.stopPropagation();
+        e.currentTarget.setPointerCapture(e.pointerId);
+        setDragPct(pctOf(e.clientX));
+      }}
+      onPointerMove={(e) => {
+        if (dragPct !== null) setDragPct(pctOf(e.clientX));
+      }}
+      onPointerUp={(e) => {
+        if (dragPct === null) return;
+        onChange(Math.round(pctOf(e.clientX) * 100));
+        setDragPct(null);
+      }}
+      onPointerCancel={() => setDragPct(null)}
+      onKeyDown={(e) => {
+        if (e.key === "ArrowRight" || e.key === "ArrowUp") onChange(Math.min(100, level + 10));
+        else if (e.key === "ArrowLeft" || e.key === "ArrowDown") onChange(Math.max(0, level - 10));
+      }}
+    >
+      <div className="relative h-1 w-full overflow-hidden rounded-full bg-white/25">
+        <div className="absolute inset-y-0 left-0 bg-white" style={{ width: `${pct * 100}%` }} />
+      </div>
+    </div>
+  );
+}
+
+/**
  * 🆕 **طبقةُ التكبير المسرحيّ** (D-762، «تكبير الفيديو») — فوق طبقةِ
  * المشغّل (٥٥) بأزرارها (٦٠): سطحُ إيقافٍ/استئناف، إغلاقٌ وصوتٌ،
  * وشريطُ تقديمٍ ووقت. **التكبيرُ الأصليُّ لإطار يوتيوب ممنوعٌ على
@@ -1806,14 +1941,24 @@ function ExpandedUi({ api, labels }: { api: ControllerApi; labels: TrailerExpand
       >
         <Icon name="close" size={19} />
       </button>
-      <button
-        type="button"
-        aria-label={snap.soundOn ? labels.mute : labels.unmute}
-        onClick={() => api.tapSound()}
-        className={`absolute end-3 top-[max(0.75rem,env(safe-area-inset-top))] z-10 grid h-10 w-10 place-items-center rounded-full bg-black/55 text-white backdrop-blur-sm active:opacity-70 ${fade}`}
-      >
-        <Icon name={snap.soundOn ? "volume" : "volume-off"} size={18} />
-      </button>
+      <div className={`absolute end-3 top-[max(0.75rem,env(safe-area-inset-top))] z-10 flex items-center gap-2 ${fade}`}>
+        {labels.volume ? (
+          <TrailerVolume
+            level={snap.soundOn ? snap.volume : 0}
+            onChange={api.setVolume}
+            label={labels.volume}
+            active={controls}
+          />
+        ) : null}
+        <button
+          type="button"
+          aria-label={snap.soundOn ? labels.mute : labels.unmute}
+          onClick={() => api.tapSound()}
+          className="grid h-10 w-10 place-items-center rounded-full bg-black/55 text-white backdrop-blur-sm active:opacity-70"
+        >
+          <Icon name={snap.soundOn ? "volume" : "volume-off"} size={18} />
+        </button>
+      </div>
       {snap.time ? (
         <div
           className={`pointer-events-none absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/70 to-transparent px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-8 ${fade}`}

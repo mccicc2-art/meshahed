@@ -7,6 +7,7 @@ import {
   clockText,
   TrailerScrubber,
   TrailerSpinner,
+  TrailerVolume,
   useTrailerPlayback,
   useTrailerSnapshot,
   type TrailerSlotItem,
@@ -50,6 +51,7 @@ export function TrailerCardMedia({
   withControls = false,
   seekLabel,
   expandLabel,
+  volumeLabel,
   onUnavailable,
 }: {
   id: string;
@@ -66,6 +68,8 @@ export function TrailerCardMedia({
   withControls?: boolean;
   seekLabel?: string;
   expandLabel?: string;
+  /** 🆕 D-933: شريطُ مستوى الصوت — يظهر مع الأدوات، والزرُّ وحدَه يبقى دائماً */
+  volumeLabel?: string;
   onUnavailable?: () => void;
 }) {
   const api = useTrailerPlayback();
@@ -339,17 +343,33 @@ export function TrailerCardMedia({
           يظهر أثناء الحظر فصار هو زرَّ التشغيل الفعليّ. الأيقونةُ من
           الحالة المُتحقَّقة، والتشغيلُ لزرِّ التشغيل وحدَه. */}
       {playing ? (
-        <button
-          type="button"
-          onClick={() => api.tapSound()}
-          aria-label={snap.soundOn ? muteLabel : unmuteLabel}
-          /* ⚖️ 🆕 **والصوتُ وحدَه لا يتوارى** (D-861، نصُّ حكمه: «كل شي
-             ماعدا الصوت») — **وهو الفعلُ الوحيدُ الذي يُطلب بلا مقدّمة**:
-             مقطعٌ يبدأ صامتاً وصاحبُه يريد سماعَه **لا ينتظر لمستين.** */
-          className="absolute end-2.5 top-2.5 z-50 grid h-9 w-9 place-items-center rounded-full bg-black/55 text-white backdrop-blur-sm active:opacity-70"
-        >
-          <Icon name={snap.soundOn ? "volume" : "volume-off"} size={17} />
-        </button>
+        <div className="absolute end-2.5 top-2.5 z-50 flex items-center gap-2">
+          {/* 🆕 D-933: **المستوى يتوارى مع الأدوات، والزرُّ لا** — الزرُّ هو
+              الفعلُ الذي يُطلب بلا مقدّمة (D-861)، والشريطُ ضبطٌ دقيقٌ يُطلب
+              بعد أن يُرى. **والصفرُ هو الكتم** فالشريطُ يُعرض على الصفر حين
+              الصوتُ مكتوم. */}
+          {volumeLabel ? (
+            <div className={fade}>
+              <TrailerVolume
+                level={snap.soundOn ? snap.volume : 0}
+                onChange={api.setVolume}
+                label={volumeLabel}
+                active={chrome}
+              />
+            </div>
+          ) : null}
+          <button
+            type="button"
+            onClick={() => api.tapSound()}
+            aria-label={snap.soundOn ? muteLabel : unmuteLabel}
+            /* ⚖️ 🆕 **والصوتُ وحدَه لا يتوارى** (D-861، نصُّ حكمه: «كل شي
+               ماعدا الصوت») — **وهو الفعلُ الوحيدُ الذي يُطلب بلا مقدّمة**:
+               مقطعٌ يبدأ صامتاً وصاحبُه يريد سماعَه **لا ينتظر لمستين.** */
+            className="grid h-9 w-9 place-items-center rounded-full bg-black/55 text-white backdrop-blur-sm active:opacity-70"
+          >
+            <Icon name={snap.soundOn ? "volume" : "volume-off"} size={17} />
+          </button>
+        </div>
       ) : null}
 
       {/* ⚖️ D-762: في العلف شريطُ تقديمٍ فوق الوقت (عاد بطلب صاحبه) —

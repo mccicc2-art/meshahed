@@ -48,3 +48,41 @@ export function writeTrailerSound(on: boolean): void {
     /* متصفّحٌ يمنع الكوكيز — الصوتُ يعمل هذه الجلسة ولا يُحفظ */
   }
 }
+
+/**
+ * 🆕 **مستوى الصوت** (D-933، طلبُ أحمد بلقطة على «ترايلرات لك»: «إضافة
+ * إمكانية تعديل مستوى الصوت»). عددٌ صحيحٌ ١–١٠٠، والافتراضُ ١٠٠.
+ *
+ * 🔑 **يُقرأ من المتصفّح لا من الخادم** — على خلاف كوكي الكتم: **الكتمُ
+ * يغيّر أيقونةً في أوّل رسم** فتقرؤه الصفحةُ الخادميّة كي لا تقفز،
+ * **أمّا المستوى فلا يُطبَّق إلا على مشغّلٍ يعمل** — لا أثرَ له في HTML،
+ * فلا سببَ لتمريره عبر أربع صفحات. **والصفرُ ليس مستوىً بل كتم**: من
+ * سحب الشريطَ إلى آخره كتمَ (كوكي الكتم)، والمستوى يبقى آخرَ قيمةٍ
+ * مسموعة كي يعود إليها عند الفكّ.
+ */
+export const TRAILER_VOLUME_COOKIE = "loopz_trailer_volume";
+
+export function parseTrailerVolume(raw: string | undefined | null): number {
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return 100;
+  return Math.min(100, Math.max(1, Math.round(n)));
+}
+
+export function readTrailerVolume(): number {
+  try {
+    const m = document.cookie.match(new RegExp(`(?:^|; )${TRAILER_VOLUME_COOKIE}=([^;]*)`));
+    return parseTrailerVolume(m?.[1]);
+  } catch {
+    return 100;
+  }
+}
+
+export function writeTrailerVolume(level: number): void {
+  try {
+    document.cookie =
+      `${TRAILER_VOLUME_COOKIE}=${parseTrailerVolume(String(level))}` +
+      `; path=/; max-age=${60 * 60 * 24 * 365}; samesite=lax`;
+  } catch {
+    /* كما في الكتم: يعمل هذه الجلسة ولا يُحفظ */
+  }
+}

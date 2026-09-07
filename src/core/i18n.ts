@@ -2171,6 +2171,8 @@ const ar = {
   trailerExpand: "كبّر الفيديو",
   trailerCollapse: "أغلق التكبير",
   trailerUnmute: "شغّل الصوت",
+  /** 🆕 D-933: شريطُ مستوى الصوت — اسمُ الفعل (D-224) */
+  trailerVolume: "عدّل مستوى الصوت",
   trailerDetails: "التفاصيل",
   trailerMyList: "مكتبتي",
   trailerNotForMe: "ليس لي",
@@ -3792,6 +3794,7 @@ const en: Dict = {
   trailerExpand: "Expand video",
   trailerCollapse: "Exit expanded view",
   trailerUnmute: "Unmute",
+  trailerVolume: "Adjust volume",
   trailerDetails: "Details",
   trailerMyList: "My List",
   trailerNotForMe: "Not for me",

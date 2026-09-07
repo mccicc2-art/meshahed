@@ -180,6 +180,7 @@ export function TrailerFeed({
         unmute: t.trailerUnmute,
         collapse: t.trailerCollapse,
         seek: t.trailerSeek,
+        volume: t.trailerVolume,
       }}
     >
     <div>
@@ -204,6 +205,7 @@ export function TrailerFeed({
                    ⚖️ بلا إيقافٍ منذ D-771 (حكمه: «خله دائماً شغال») */
                 withControls
                 seekLabel={t.trailerSeek}
+                volumeLabel={t.trailerVolume}
                 expandLabel={t.trailerExpand}
                 onUnavailable={() => retire(k)}
               />

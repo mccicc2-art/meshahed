@@ -131,6 +131,7 @@ export function TrailerRail({
                    كان للعلف وحدَه (D-762)، **وما يُقدَّم في صفحةٍ يُقدَّم في
                    الصفّ الذي يفتحها** (D-199). */
                 seekLabel={t.trailerSeek}
+                volumeLabel={t.trailerVolume}
                 onUnavailable={() => retire(k)}
               />
 
