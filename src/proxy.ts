@@ -95,7 +95,7 @@ function needsRefresh(cookieValue: string | undefined): boolean {
    يُفوتَر — **و403 من هنا ملّي ثانية بلا رحلة**. القائمةُ الأسماءُ التي تُعلن عن
    نفسها (نسخةُ `robots.txt`)؛ **والمقنَّعُ يوقفه جدارُ Vercel** (حدُّ المعدّل — من اللوحة). */
 const BLOCKED_UA =
-  /GPTBot|ChatGPT-User|OAI-SearchBot|ClaudeBot|Claude-Web|anthropic-ai|CCBot|Bytespider|Amazonbot|PerplexityBot|Perplexity-User|meta-externalagent|FacebookBot|Applebot-Extended|cohere-ai|Diffbot|ImagesiftBot|omgili|Timpibot|YouBot|AhrefsBot|SemrushBot|MJ12bot|DotBot|DataForSeoBot|PetalBot|Scrapy/i;
+  /GPTBot|ChatGPT-User|OAI-SearchBot|ClaudeBot|Claude-Web|anthropic-ai|CCBot|Bytespider|Amazonbot|PerplexityBot|Perplexity-User|meta-externalagent|FacebookBot|Applebot-Extended|cohere-ai|Diffbot|ImagesiftBot|omgili|Timpibot|YouBot|AhrefsBot|SemrushBot|MJ12bot|DotBot|DataForSeoBot|PetalBot|Scrapy|meta-webindexer|meta-externalfetcher/i;
 
 export async function proxy(request: NextRequest) {
   if (BLOCKED_UA.test(request.headers.get("user-agent") ?? "")) {

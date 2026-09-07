@@ -16,6 +16,10 @@ const AI_BOTS = [
   "FacebookBot", "Applebot-Extended", "cohere-ai", "Diffbot", "ImagesiftBot", "omgili",
   "Timpibot", "YouBot", "AhrefsBot", "SemrushBot", "MJ12bot", "DotBot", "DataForSeoBot",
   "PetalBot", "Scrapy",
+  // 🔴 🆕 D-931 (لوحة Vercel ٧ سبتمبر): **`meta-webindexer` ١٥١ ألفَ طلبٍ في يوم**
+  // بوسم Chrome كامل — لم يكن في القائمة فمرّ من الأبواب الثلاثة. **والاسمُ
+  // يُقرأ من لوحة Traffic لا من ذاكرة أحد.**
+  "meta-webindexer", "meta-externalfetcher",
 ];
 
 export function GET(request: Request) {
