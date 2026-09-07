@@ -8,6 +8,8 @@ import {
   TrailerScrubber,
   TrailerSpinner,
   TrailerVolume,
+  SeekBadge,
+  useDoubleTapSeek,
   useTrailerPlayback,
   useTrailerSnapshot,
   type TrailerSlotItem,
@@ -170,6 +172,8 @@ export function TrailerCardMedia({
   /* **الزمنُ للترجيع يُقرأ من المتحكّم لا من مرجعٍ يُكتب أثناء الرسم**
      (قاعدةُ React: لا مرجعَ يُمسّ في الرسم) — `getSnapshot` هي المصدرُ نفسُه */
   const readNow = () => api.getSnapshot().time;
+  /* 🆕 D-934: ضغطتان متتاليتان على جهةٍ = قفزةُ خمس ثوانٍ (انظر الخطّاف) */
+  const dbl = useDoubleTapSeek(api);
 
   const endHold = () => {
     if (holdTimer.current !== null) {
@@ -247,13 +251,15 @@ export function TrailerCardMedia({
       {true ? (
         <button
           type="button"
-          onClick={() => {
+          onClick={(e) => {
             /* **ضغطةٌ كانت هولداً لا تُحسب لمسة** (D-878) */
             if (heldRef.current) {
               heldRef.current = false;
               return;
             }
             if (playing) {
+              /* D-934: **الثانيةُ خلال ثلث ثانيةٍ قفزةٌ لا إيقاف** */
+              if (dbl.tap(e)) return;
               /* D-878/D-882: **لمسةٌ ترى ⏸ توقف، وما سواها تكشف وتُظهر ⏸ لمدّتها** */
               if (showPause) api.togglePlay();
               else {
@@ -321,6 +327,7 @@ export function TrailerCardMedia({
               {hold === "ff" ? "2× ▸▸" : "◂◂"}
             </span>
           ) : null}
+          <SeekBadge side={dbl.badge} />
         </button>
       ) : null}
 

@@ -1812,6 +1812,62 @@ export function TrailerScrubber({
 }
 
 /**
+ * 🆕 **الضغطةُ المزدوجة تقفز خمسَ ثوانٍ** (D-934، طلبُ أحمد بلقطة على
+ * `/trailers`: «إذا ضغطت مرتين يمين الفيديو يقدّم ٥ ثوان، يسار يرجع ٥ ثوان»).
+ * الإيماءةُ إيماءةُ يوتيوب نفسُها فلا تُشرح.
+ *
+ * 🔑 **الضغطةُ الأولى تبقى ضغطةً** (تكشف الأدوات كما في D-764) **والثانيةُ
+ * خلال ٣٢٠ م.ث على الجهة نفسِها قفزة** — ولا تُؤخَّر الأولى انتظاراً للثانية:
+ * تأخيرُ كشف الأدوات ثلثَ ثانيةٍ يُقرأ بطئاً، وكشفٌ زائدٌ لا يضرّ. **والثانيةُ
+ * لا توقف المقطع** رغم أنّ ⏸ ظاهرةٌ بعد الأولى (D-882): من ضغط مرّتين
+ * بسرعةٍ يقصد القفزَ لا الإيقاف، والإيقافُ يبقى للضغطة المتمهّلة.
+ * **اليمينُ تقديمٌ واليسارُ ترجيعٌ فيزيائيّاً لا لغويّاً** — كما الهولد (D-878)
+ * والشريط. ⚠️ **ولوحةُ المفاتيح مستثناة** (`detail === 0`): لا إحداثيّاتَ لها.
+ */
+export function useDoubleTapSeek(api: ControllerApi) {
+  const last = useRef<{ t: number; x: number } | null>(null);
+  const [badge, setBadge] = useState<"ff" | "rw" | null>(null);
+  const [seq, setSeq] = useState(0);
+  useEffect(() => {
+    if (seq === 0) return;
+    const t = window.setTimeout(() => setBadge(null), 700);
+    return () => window.clearTimeout(t);
+  }, [seq]);
+  /** يعيد `true` حين استُهلكت الضغطةُ قفزةً — فلا يتصرّف السطحُ بها */
+  const tap = (e: React.MouseEvent<HTMLElement>): boolean => {
+    if (e.detail === 0) return false;
+    const now = performance.now();
+    const prev = last.current;
+    last.current = { t: now, x: e.clientX };
+    if (!prev || now - prev.t > 320 || Math.abs(e.clientX - prev.x) > 40) return false;
+    last.current = null;
+    const r = e.currentTarget.getBoundingClientRect();
+    const side: "ff" | "rw" = e.clientX - r.left > r.width / 2 ? "ff" : "rw";
+    const t = api.getSnapshot().time;
+    if (t) api.seekTo(side === "ff" ? t.now + 5 : Math.max(0, t.now - 5));
+    setBadge(side);
+    setSeq((n) => n + 1);
+    return true;
+  };
+  return { tap, badge };
+}
+
+/** شارةُ القفزة — **شكلُ شارة الهولد نفسُه** (D-878) على طرف الجهة */
+export function SeekBadge({ side }: { side: "ff" | "rw" | null }) {
+  if (!side) return null;
+  return (
+    <span
+      dir="ltr"
+      className={`pointer-events-none absolute top-1/2 -translate-y-1/2 rounded-full bg-black/60 px-3 py-1.5 text-13 font-bold tabular-nums text-white backdrop-blur-sm ${
+        side === "ff" ? "right-4" : "left-4"
+      }`}
+    >
+      {side === "ff" ? "+5s ▸▸" : "◂◂ −5s"}
+    </span>
+  );
+}
+
+/**
  * 🆕 **شريطُ مستوى الصوت** (D-933) — **الشكلُ شكلُ شريط التقديم نفسُه**
  * (المسارُ والخطُّ والقبضة) كي لا يُخترع عنصرٌ ثانٍ (ق٣): أفقيٌّ، `ltr`
  * دائماً لأنّ «أعلى» جهةٌ فيزيائيّةٌ لا لغويّة (كما الزمن في الشريط).
@@ -1901,6 +1957,9 @@ export function TrailerVolume({
  */
 function ExpandedUi({ api, labels }: { api: ControllerApi; labels: TrailerExpandedLabels }) {
   const snap = useSyncExternalStore(api.subscribe, api.getSnapshot, api.getSnapshot);
+  /* 🆕 D-934: الضغطةُ المزدوجة تقفز — على سطح التكبير كما على البطاقة.
+     (قبل الخروج المبكّر: قاعدةُ الخطّافات) */
+  const dbl = useDoubleTapSeek(api);
   if (!snap.expanded) return null;
   const playing = snap.phase === "playing";
   const controls = snap.controlsVisible;
@@ -1917,8 +1976,9 @@ function ExpandedUi({ api, labels }: { api: ControllerApi; labels: TrailerExpand
         aria-label={labels.play}
         aria-hidden={playing && !showsPlay}
         tabIndex={showsPlay ? 0 : -1}
-        onClick={() => {
+        onClick={(e) => {
           if (playing) {
+            if (dbl.tap(e)) return;
             api.pokeControls();
           } else if (snap.activeId) {
             api.tapPlay(snap.activeId);
@@ -1931,6 +1991,7 @@ function ExpandedUi({ api, labels }: { api: ControllerApi; labels: TrailerExpand
             <Icon name="play" size={30} />
           </span>
         ) : null}
+        <SeekBadge side={dbl.badge} />
       </button>
       <TrailerSpinner active={snap.phase === "loading"} />
       <button
