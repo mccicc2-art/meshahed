@@ -15,6 +15,9 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "./state";
 import { radius, space } from "./theme";
 import { posterUrl } from "@/core/media";
+import { ARABIC_RE, familyOf, type Weight } from "./fonts";
+import { deviceLocale } from "./i18n";
+import { isRtl } from "@/core/i18n";
 
 /**
  * ====== العائلاتُ الأساسيّة — مصنعُ زرٍّ واحد، نصٌّ واحد، ملصقٌ واحد ======
@@ -39,22 +42,63 @@ export function Screen({ children, style, ...rest }: ViewProps) {
   );
 }
 
+/**
+ * 🆕 Phase 11 · B2 — **الخطُّ يتبع الحرفَ لا الشاشة** (D-454): الويبُ يكتب
+ * `Poppins, Tajawal` فيحلّ المتصفّحُ كلَّ حرفٍ من عائلته. RN لا يملك سلسلةَ
+ * سقوطٍ، **فالنصُّ يُقسَّم إلى مقاطعَ عربيّةٍ ولاتينيّة** كلٌّ بعائلته
+ * ووزنه — عنوانٌ مثل «Breaking Bad — الموسم ٣» يُرسم بخطّين كما في الصفحة.
+ * وقبل تحميل الخطوط يُرسم بخطّ النظام بالوزن نفسِه، لا فراغاً.
+ */
+function runsOf(text: string): { s: string; ar: boolean }[] {
+  const out: { s: string; ar: boolean }[] = [];
+  let cur = "";
+  let curAr: boolean | null = null;
+  for (const ch of text) {
+    /* المسافاتُ وعلاماتُ الترقيم المشتركة تتبع المقطعَ الجاري فلا تُقطّعه */
+    const ar: boolean | null = ARABIC_RE.test(ch) ? true : /[A-Za-z0-9]/.test(ch) ? false : curAr;
+    if (curAr === null || ar === null || ar === curAr) {
+      cur += ch;
+      if (curAr === null && ar !== null) curAr = ar;
+    } else {
+      out.push({ s: cur, ar: curAr });
+      cur = ch;
+      curAr = ar;
+    }
+  }
+  if (cur) out.push({ s: cur, ar: curAr ?? isRtl(deviceLocale()) });
+  return out;
+}
+
 export function Text({
   style,
   muted,
   size = 15,
   weight = "400",
+  color,
+  children,
   ...rest
-}: TextProps & { muted?: boolean; size?: number; weight?: "400" | "600" | "700" }) {
-  const { tokens } = useApp();
+}: TextProps & { muted?: boolean; size?: number; weight?: Weight; color?: string }) {
+  const { tokens, fontsReady } = useApp();
+  const base = {
+    color: color ?? (muted ? tokens.muted : tokens.fg),
+    fontSize: size,
+    fontWeight: weight,
+    textAlign: "left" as const,
+  };
+  if (!fontsReady || typeof children !== "string") {
+    return <RNText {...rest} style={[base, style]}>{children}</RNText>;
+  }
+  const runs = runsOf(children);
+  const family = (ar: boolean) => ({ fontFamily: familyOf(ar, weight), fontWeight: undefined });
+  if (runs.length === 1) {
+    return <RNText {...rest} style={[base, family(runs[0].ar), style]}>{children}</RNText>;
+  }
   return (
-    <RNText
-      {...rest}
-      style={[
-        { color: muted ? tokens.muted : tokens.fg, fontSize: size, fontWeight: weight, textAlign: "left" },
-        style,
-      ]}
-    />
+    <RNText {...rest} style={[base, family(runs[0].ar), style]}>
+      {runs.map((r, i) => (
+        <RNText key={i} style={family(r.ar)}>{r.s}</RNText>
+      ))}
+    </RNText>
   );
 }
 

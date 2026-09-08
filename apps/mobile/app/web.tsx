@@ -1,10 +1,10 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { BackHandler, Linking, Platform, View } from "react-native";
+import { AppState, BackHandler, Linking, Platform, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Constants from "expo-constants";
 import { WebView, type WebViewMessageEvent, type WebViewNavigation } from "react-native-webview";
 import type { ShouldStartLoadRequest } from "react-native-webview/lib/WebViewTypes";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { supabase, useAuth } from "../src/auth";
 import { CONFIG } from "../src/config";
 import { File, Paths } from "expo-file-system";
@@ -12,6 +12,8 @@ import { deviceLocale } from "../src/i18n";
 import { Button, Loading, Text } from "../src/ui";
 import { space } from "../src/theme";
 import { perfMs } from "../src/perf";
+import { BACKGROUND_CLEAR_MS, session } from "../src/session";
+import { shell } from "../src/shell";
 
 /**
  * ====== الغلافُ الهجين — الويبُ نفسُه داخل التطبيق (D-922) ======
@@ -47,6 +49,14 @@ import { perfMs } from "../src/perf";
  * ⚠️ **ولا يُنتقل قبل أوّل تحميلٍ ناجح**: طلبُ التسليم (POST) يجب أن يكتب
  * الكوكي أوّلاً — **وانتقالٌ يسبقه يفتح الصفحةَ ضيفاً ثمّ يقفز**، وهو وميضُ
  * «مسجَّلٌ ثمّ غيرُ مسجَّل» الذي عولج في D-910. فيُحفظ الهدفُ ويُنفَّذ بعدها.
+ *
+ * 🆕 **Phase 11 · B1 (D-936) — الشاشةُ الأصليّةُ فوق الـWebView**: رسالةُ
+ * `native {route:"library"}` (من زرّ المكتبة، للإدارة وحدَها) تدفع `/library`
+ * فوق هذه الشاشة **وهذه تبقى مركَّبةً تحتها** — الرجوعُ لا يُعيد تحميلَ شيء.
+ * ورمزُ الوصول للشاشة الأصليّة يمرّ من `src/session.ts` **بطلبٍ بـnonce
+ * وذاكرةٍ فقط** — انظر عقدَ الأمان هناك. **والمسحُ من ثلاثة أبواب**: رسالةُ
+ * الصفحة، وعنوانُ الخروج في التاريخ (حزامٌ لا يعتمد على JS الصفحة)،
+ * وخلفيّةٌ أطولُ من خمس دقائق.
  */
 const HOME = CONFIG.apiBase + "/";
 const HANDOFF = CONFIG.apiBase + "/api/v1/session/handoff";
@@ -75,8 +85,18 @@ var r=document.createElement('input');r.type='hidden';r.name='refresh_token';r.v
 f.appendChild(a);f.appendChild(r);document.body.appendChild(f);f.submit();})();true;`;
 }
 
+/** هل عنوانُ الرسالة/الصفحة من نطاقنا؟ — شرطُ قبول أيِّ رسالةٍ ذاتِ أثر */
+function insideUrl(url: string | undefined): boolean {
+  try {
+    return !!url && INSIDE.has(new URL(url).hostname);
+  } catch {
+    return false;
+  }
+}
+
 export default function Web() {
   const { loading, signInWithGoogle } = useAuth();
+  const router = useRouter();
   const t = OFFLINE[deviceLocale() === "ar" ? "ar" : "en"];
   const ref = useRef<WebView>(null);
   const [ready, setReady] = useState(false);
@@ -111,6 +131,9 @@ export default function Web() {
 
   const onNav = useCallback((nav: WebViewNavigation) => {
     setCanGoBack(nav.canGoBack);
+    /* Phase 11 · B1 §٣ — الحزامُ الثاني للمسح: خروجٌ أو صفحةُ دخولٍ في
+       التاريخ = لا جلسةَ للشاشة الأصليّة، بصرف النظر عمّا بثّته الصفحة. */
+    if (nav.url.includes("/auth/signout") || nav.url.startsWith(CONFIG.apiBase + "/login")) session.clear();
     /* وصلنا الرئيسيّةَ بعد التسليم ⇢ الصفحةُ تملك الكوكي. **لا خروجَ هنا**:
        الرمزان في الذاكرة بلا تجديدٍ، ونداءُ `signOut` — حتى `local` — يُلغي
        الجلسةَ عند الخادم (علّةُ ٧ سبتمبر). */
@@ -122,10 +145,19 @@ export default function Web() {
 
   const onMessage = useCallback(
     async (e: WebViewMessageEvent) => {
-      let msg: { type?: string; items?: unknown[]; mark?: string; path?: string; images?: number; sincePathChange?: number } = {};
+      let msg: { type?: string; items?: unknown[]; mark?: string; path?: string; images?: number; sincePathChange?: number; route?: string } = {};
       try {
         msg = JSON.parse(e.nativeEvent.data);
       } catch {
+        return;
+      }
+      if (!msg || typeof msg !== "object") return;
+      const hostOk = insideUrl(e.nativeEvent.url);
+      /* Phase 11 · B1 — رسائلُ الجلسة تُفحص في `session.ts` (nonce · JWT · exp · المضيف) */
+      if (session.receive(msg as Record<string, unknown>, hostOk)) return;
+      if (msg.type === "native") {
+        /* الشاشةُ الأصليّةُ لا تُفتح لرسالةٍ من غير نطاقنا — المضيفُ شرطٌ هنا أيضاً */
+        if (hostOk && msg.route === "library") router.push("/library");
         return;
       }
       /* 🆕 D-929 — لقطةُ الودجت: تُكتب ملفّاً ويقرؤها `LoopzWidget.kt` كلَّ
@@ -155,8 +187,35 @@ export default function Web() {
         ref.current?.injectJavaScript("window.dispatchEvent(new Event('loopz:login-cancel'));true;");
       }
     },
-    [signInWithGoogle],
+    [signInWithGoogle, router],
   );
+
+  /* Phase 11 · B1 — الجسرُ يعرف كيف يحقن في هذه الـWebView ما دامت مركَّبة */
+  useEffect(() => {
+    const fn = (js: string) => ref.current?.injectJavaScript(js);
+    session.attach(fn);
+    shell.attach(fn);
+    return () => {
+      session.attach(null);
+      shell.attach(null);
+      session.clear();
+    };
+  }, []);
+
+  /* Phase 11 · B1 §٦-ج — خلفيّةٌ أطولُ من خمس دقائق تمسح الرمز؛ العودةُ تطلب
+     رمزاً جديداً قبل أوّل نداء (`api.ts` يطلب حين لا يجد). */
+  useEffect(() => {
+    let hiddenAt = 0;
+    const sub = AppState.addEventListener("change", (st) => {
+      if (st === "active") {
+        if (hiddenAt && Date.now() - hiddenAt > BACKGROUND_CLEAR_MS) session.clear();
+        hiddenAt = 0;
+      } else if (!hiddenAt) {
+        hiddenAt = Date.now();
+      }
+    });
+    return () => sub.remove();
+  }, []);
 
   const onShouldStart = useCallback((req: ShouldStartLoadRequest) => {
     let host = "";

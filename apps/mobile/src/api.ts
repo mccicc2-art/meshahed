@@ -1,6 +1,7 @@
 import { QueryClient } from "@tanstack/react-query";
 import { CONFIG } from "./config";
 import { accessToken } from "./auth";
+import { session } from "./session";
 import { deviceLocale } from "./i18n";
 import type { AppError, Tag } from "./contracts";
 
@@ -12,8 +13,11 @@ import type { AppError, Tag } from "./contracts";
  * الاستعلامات هنا** — فما أبطله الخادمُ يُعاد جلبُه، **لا أكثر ولا أقلّ،
  * ولا قاعدةَ إبطالٍ ثانيةً مكتوبةً في التطبيق.**
  *
- * 🔑 **`401` يُترجم إلى خروج**: رمزٌ رُفض في الخادم = جلسةٌ لا تصلح، **ولا
- * معنى لإعادة المحاولة بالرمز نفسِه.**
+ * 🔑 **`401` = رمزٌ جديدٌ من الصفحة، بمحاولتين** (Phase 11 · B1 §٤): الرمزُ
+ * الذي يحمله الغلافُ رمزُ وصولٍ يشيخ بعد ساعة **ولا يجدّده الغلافُ أبداً**
+ * — يطلبه من الـWebView (`session.request`، بـnonce) ويعيد النداء. **محاولتان
+ * كحدٍّ أقصى** ثمّ الخطأُ يصعد إلى الشاشة التي تعود إلى الـWebView برسالة.
+ * ولا نداءَ بلا رمز: إن لم يكن في الذاكرة يُطلب **قبل** أوّل طلب (§٦-ج).
  */
 export class ApiError extends Error {
   constructor(public readonly error: AppError, public readonly status: number) {
@@ -44,19 +48,29 @@ export async function api<T>(
   path: string,
   init?: { method?: "GET" | "POST"; body?: unknown; auth?: boolean },
 ): Promise<{ data: T; invalidates: Tag[] }> {
-  const headers = await baseHeaders(init?.auth !== false);
-  if (init?.body !== undefined) headers["Content-Type"] = "application/json";
-  const res = await fetch(`${CONFIG.apiBase}${path}`, {
-    method: init?.method ?? "GET",
-    headers,
-    body: init?.body === undefined ? undefined : JSON.stringify(init.body),
-  });
-  const json = (await res.json().catch(() => null)) as Envelope<T> | null;
-  if (!json || "error" in json) {
-    const error: AppError = json?.error ?? { code: "internal", message_key: "apiInternal" };
-    throw new ApiError(error, res.status);
+  const auth = init?.auth !== false;
+  /* بلا رمزٍ في الذاكرة يُطلب قبل النداء لا بعده — نداءٌ سيُرفض حتماً كلفةٌ بلا معنى */
+  if (auth && !session.has()) await session.request();
+  for (let attempt = 0; ; attempt++) {
+    const headers = await baseHeaders(auth);
+    if (init?.body !== undefined) headers["Content-Type"] = "application/json";
+    const res = await fetch(`${CONFIG.apiBase}${path}`, {
+      method: init?.method ?? "GET",
+      headers,
+      body: init?.body === undefined ? undefined : JSON.stringify(init.body),
+    });
+    const json = (await res.json().catch(() => null)) as Envelope<T> | null;
+    if (!json || "error" in json) {
+      if (res.status === 401 && auth && attempt < 2) {
+        session.clear();
+        const fresh = await session.request();
+        if (fresh) continue;
+      }
+      const error: AppError = json?.error ?? { code: "internal", message_key: "apiInternal" };
+      throw new ApiError(error, res.status);
+    }
+    return json;
   }
-  return json;
 }
 
 /** كتابةٌ تُطبِّق إبطالَها بنفسها — السطرُ الذي يجعل الوسومَ حيّة. */
@@ -76,7 +90,8 @@ async function baseHeaders(auth: boolean): Promise<Record<string, string>> {
     "Accept-Language": deviceLocale(),
   };
   if (auth) {
-    const token = await accessToken();
+    /* الجسرُ أوّلاً (Phase 11 · B1)؛ وجلسةُ الدخول العابرةُ سقوطٌ لا يكاد يُبلغ */
+    const token = session.get() ?? (await accessToken());
     if (token) headers.Authorization = `Bearer ${token}`;
   }
   return headers;

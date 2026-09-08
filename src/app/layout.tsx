@@ -12,7 +12,10 @@ import { LoginGateHost } from "@/components/LoginGateHost";
 import { PlusGateHost } from "@/components/PlusGateHost";
 import { TourMount } from "@/components/TourMount";
 import { SwRegister } from "@/components/SwRegister";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
+import { isLoopzApp } from "@/core/platform";
+import { SessionBridge } from "@/components/SessionBridge";
+import { NativeLibraryGate } from "@/components/NativeLibraryGate";
 import { getT } from "@/lib/locale";
 import { getDict, isRtl } from "@/core/i18n";
 import { themeById, themeCss } from "@/core/themes";
@@ -138,6 +141,10 @@ export default async function RootLayout({
   const signedIn = cookieStore
     .getAll()
     .some((c) => c.name.startsWith("sb-") && c.name.includes("auth-token"));
+  /* 🆕 Phase 11 · B1 (D-936) — **داخل الغلاف الهجين وحدَه** (وسم `LoopzApp/`
+     من الترويسة، لا نصٌّ يرسله العميل — D-666): جسرُ الجلسة وبوّابةُ تجربة
+     «المكتبة أصليّة». المتصفّحُ لا يركّبهما ولا يدفع ثمنَهما. */
+  const inApp = signedIn && isLoopzApp((await headers()).get("user-agent"));
 
   return (
     <html
@@ -264,6 +271,15 @@ export default async function RootLayout({
             وللمسجَّل وحدَه (كوكي الجلسة نفسُه الذي يحرس الشريط — D-122):
             نبضةُ زائرٍ نداءُ فعلٍ يُرفض حتماً، وثمنُه بلا معنى. */}
         {signedIn && <PresencePing />}
+        {/* 🆕 Phase 11 · B1 — جسرُ الجلسة (رمزُ الوصول عند الطلب بـnonce، ومسحٌ
+            عند الخروج) وبوّابةُ التجربة (خلف `is_admin`، في `Suspense` كأخيها
+            `AccountSync` فلا تحبس أوّلَ بايت). كلاهما لا يرسم شيئاً. */}
+        {inApp && <SessionBridge />}
+        {inApp && (
+          <Suspense fallback={null}>
+            <NativeLibraryGate />
+          </Suspense>
+        )}
         {/* مساحة سفلية على الجوال حتى لا يغطي شريط التبويبات المحتوى */}
         {/* **السحبُ للتحديث في التخطيط لا في كل صفحة** (D-243، طلبُ
             أحمد: «إذا سحبت يعمل تحديث مثل تويتر»). **وتويتر لا يحصره في

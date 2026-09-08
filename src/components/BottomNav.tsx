@@ -7,6 +7,7 @@ import { getDict, type Locale } from "@/core/i18n";
 import { useKeyboardOpen } from "@/lib/useKeyboard";
 import { usePrefetchOnIntent } from "@/lib/prefetchIntent";
 import { Icon, type IconName } from "./Icon";
+import { openNativeLibrary } from "./NativeLibraryFlag";
 
 /* ⚖️ 🆕 **وورقةُ البحث غادرت هذا الملفّ** (D-534): البحثُ صار صفحةً
    كاملةً (`/search`) بترويستها ورقائقها وأقسامها — **فالخانةُ رابطٌ
@@ -419,8 +420,14 @@ const LIBRARY_PREFIXES = ["/library", "/show/", "/movie/", "/stats", "/activity"
                 if (e.pointerType !== "touch") return;
                 primeSearch(pathname);
               }}
-              onClick={() => {
+              onClick={(e) => {
                 if (key === "search") setPriming(false);
+                /* 🆕 Phase 11 · B1 (D-936) — **داخل الغلاف وللإدارة وحدَها**
+                   تفتح خانةُ المكتبة الشاشةَ الأصليّة بدل الصفحة: العلَمُ
+                   سمةٌ على `<html>` يضعها `NativeLibraryGate` خادميّاً، **فمن
+                   لا علَمَ له لا يصل هذا الفرعُ أصلاً** ويبقى الرابطُ رابطاً.
+                   والمقارنةُ A/B على الجهاز نفسِه بضغطة (§٢.٢). */
+                if (key === "library" && openNativeLibrary()) e.preventDefault();
               }}
             >
               {face}

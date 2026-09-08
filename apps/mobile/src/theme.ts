@@ -19,6 +19,13 @@ export type Tokens = {
   border: string;
   success: string;
   error: string;
+  /* 🆕 Phase 11 · B2 — رموزُ الشاشة الأصليّة للمكتبة (B0 §٤): كلُّها من
+     `core/themes.ts`/`globals.css` نفسِهما، **ولا قيمةَ مكتوبةً بيدٍ في شاشة.** */
+  verified: string;
+  /** «عندك» سماويٌّ دلاليٌّ لا يتبدّل مع الثيم (`--info` في `globals.css`) */
+  info: string;
+  divider: string;
+  disabled: string;
 };
 
 export function tokensOf(themeId: string | null | undefined): Tokens {
@@ -33,10 +40,16 @@ export function tokensOf(themeId: string | null | undefined): Tokens {
     accent: v.accent,
     onAccent: v["on-accent"],
     border: v.border,
-    success: v.success ?? "#22C55E",
-    error: v.error ?? "#EF4444",
+    /* الافتراضاتُ هي قيمُ `globals.css` (`--success` · `--error` · `--verified` · `--info`) */
+    success: v.success ?? "#22c55e",
+    error: v.error ?? "#ef4444",
+    verified: v.verified ?? "#ffd400",
+    info: "#3b82f6",
+    divider: v.divider,
+    disabled: v.disabled ?? v.muted,
   };
 }
 
-export const radius = { sm: 8, md: 12, lg: 16, pill: 999 } as const;
+/** `poster` = `--radius-poster: 12px` في `globals.css` — نصفُ قطر الملصق في كلِّ سطح */
+export const radius = { sm: 8, md: 12, lg: 16, poster: 12, pill: 999 } as const;
 export const space = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24 } as const;
