@@ -1,10 +1,11 @@
-import React, { memo } from "react";
+import React, { memo, useRef } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { Image } from "expo-image";
 import { useApp } from "../state";
 import { Text } from "../ui";
 import { radius } from "../theme";
 import { posterUrl } from "@/core/media";
+import { MarqueeText } from "./MarqueeText";
 
 /**
  * ====== بطاقةُ الملصق — نسخةُ `PosterCard.tsx` (الويب) بالبكسل ======
@@ -18,9 +19,8 @@ import { posterUrl } from "@/core/media";
  * على `black/50`، **أحمرُ بمقدار التقدّم للموقوف** (D-784)، أخضرُ للمكتمل،
  * تمييزٌ للجاري، **ولا خيطَ لِما لم يبدأ** (المكتبةُ لا تمرّر `saved`).
  *
- * ⚠️ **ما لم يُنقل يُقال**: `MarqueeText` (السطرُ الذي يمشي — D-486) ⇢ هنا
- * سطرٌ واحدٌ يُقصّ (`numberOfLines={1}`) — **KNOWN_GAP-11** حتى B4؛ وقائمةُ
- * الضغط المطوَّل (G5) في B3.
+ * الاسمُ سطرٌ يمشي (`MarqueeText` — D-486) وقائمةُ الضغط المطوَّل (G5) عبر
+ * `onHold` ⇢ `HoldMenu` (B3).
  */
 export type CardItem = {
   key: string;
@@ -39,19 +39,35 @@ export type CardItem = {
 /** الحجابُ `from-black/90 via-black/60 to-transparent` صورةٌ ١×٤٨ تُمدّ — بلا حزمةِ تدرّجٍ جديدة */
 const VEIL = require("../../assets/poster-veil.png");
 
+export type CardAnchor = { x: number; y: number; width: number; height: number };
+
 export const PosterCard = memo(function PosterCard({
   item,
   width,
   onPress,
+  onHold,
 }: {
   item: CardItem;
   width: number;
   onPress: (item: CardItem) => void;
+  /** الضغطُ المطوَّل (`LongPressable` في الويب) — يمرّر موضعَ البطاقة في النافذة لتُرسى القائمةُ عليه */
+  onHold?: (item: CardItem, anchor: CardAnchor) => void;
 }) {
   const { tokens } = useApp();
   const uri = posterUrl(item.posterPath, width > 120 ? "w342" : "w185");
+  const ref = useRef<View>(null);
   return (
-    <Pressable onPress={() => onPress(item)} style={{ width }}>
+    <Pressable
+      ref={ref}
+      onPress={() => onPress(item)}
+      onLongPress={
+        onHold
+          ? () => ref.current?.measureInWindow((x, y, w, h) => onHold(item, { x, y, width: w, height: h }))
+          : undefined
+      }
+      delayLongPress={350}
+      style={{ width }}
+    >
       <View
         style={{
           width,
@@ -94,9 +110,7 @@ export const PosterCard = memo(function PosterCard({
         ) : null}
         <View style={{ position: "absolute", left: 0, right: 0, bottom: 0, paddingHorizontal: 8, paddingBottom: 8, paddingTop: 28 }}>
           <Image source={VEIL} style={StyleSheet.absoluteFill} contentFit="fill" />
-          <Text size={12} weight="600" color="#fff" numberOfLines={1} style={styles.shadow}>
-            {item.title}
-          </Text>
+          <MarqueeText text={item.title} size={12} weight="600" color="#fff" style={styles.shadow} />
         </View>
         <StatusThread progress={item.progress} completed={item.completed} dropped={item.dropped} />
       </View>

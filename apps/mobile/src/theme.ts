@@ -26,6 +26,8 @@ export type Tokens = {
   info: string;
   divider: string;
   disabled: string;
+  /** لوحُ المنسدلة `--elevated` (D-376) */
+  elevated: string;
 };
 
 export function tokensOf(themeId: string | null | undefined): Tokens {
@@ -47,6 +49,7 @@ export function tokensOf(themeId: string | null | undefined): Tokens {
     info: "#3b82f6",
     divider: v.divider,
     disabled: v.disabled ?? v.muted,
+    elevated: v.elevated,
   };
 }
 

@@ -6,6 +6,7 @@ import type { ToggleMovieBody } from "@/core/contracts/track";
 /** `POST /api/v1/track/movie` */
 export const POST = trackRoute<ToggleMovieBody>(toggleMovieWatched, (b) => [
   "home",
+  "me:library",
   "me:stats",
   titleTag("movie", b.movieTmdbId),
 ]);

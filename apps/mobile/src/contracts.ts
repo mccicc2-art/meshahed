@@ -20,6 +20,7 @@ export type {
   FollowBody,
   UnfollowBody,
   SetDroppedBody,
+  ShowRefBody,
   RateBody,
   UnrateBody,
   TrackResult,
