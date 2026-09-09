@@ -24,12 +24,28 @@ export function NativeLibraryFlag() {
   return null;
 }
 
-/** هل التجربةُ مفعّلةٌ على هذا المستند وداخل الغلاف؟ — سؤالُ لحظة الضغط */
+declare global {
+  interface Window {
+    /** 🆕 يحقنه الغلافُ (≥ 1.4.1) قبل تحميل المستند: ما يستطيع فتحَه أصليّاً */
+    LoopzNative?: { library?: boolean };
+  }
+}
+
+/**
+ * هل التجربةُ مفعّلةٌ على هذا المستند **وداخل غلافٍ يعرف الشاشة**؟ — سؤالُ لحظة الضغط.
+ *
+ * 🔴 **الدرسُ (٩ سبتمبر، بلاغُ أحمد: «لا أستطيع الدخول إلى المكتبة من التطبيق»)**:
+ * الويبُ كان يبتلع الضغطةَ (`preventDefault`) لكلِّ غلافٍ يحمل وسم `LoopzApp/`،
+ * **والغلافُ المثبَّت كان 1.2.3 الذي لا يعرف رسالةَ `native`** — فلا صفحةَ ولا
+ * شاشة. **الجسرُ وحدَه لا يثبت القدرة**؛ الغلافُ الذي يعرف الشاشةَ يحقن
+ * `window.LoopzNative.library` قبل المستند، **ومن لا يحقنها يبقى الرابطُ رابطاً.**
+ */
 export function nativeLibraryOn(): boolean {
   return (
     typeof document !== "undefined" &&
     document.documentElement.hasAttribute(NATIVE_LIBRARY_ATTR) &&
-    !!window.ReactNativeWebView
+    !!window.ReactNativeWebView &&
+    window.LoopzNative?.library === true
   );
 }
 

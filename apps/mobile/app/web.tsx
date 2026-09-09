@@ -59,6 +59,14 @@ import { shell } from "../src/shell";
  * وخلفيّةٌ أطولُ من خمس دقائق.
  */
 const HOME = CONFIG.apiBase + "/";
+/**
+ * 🆕 **إعلانُ القدرة قبل المستند** (٩ سبتمبر — بلاغُ أحمد «لا أستطيع الدخول إلى
+ * المكتبة»): الويبُ كان يبتلع ضغطةَ «المكتبة» لكلِّ غلافٍ يحمل الوسم، والمثبَّتُ
+ * 1.2.3 لا يعرف `native`. **فالغلافُ الذي يعرف الشاشةَ يقولها** بحقن
+ * `window.LoopzNative` قبل تحميل الصفحة، والويبُ لا يبتلع الضغطةَ بدونها.
+ * تُحقن في كلِّ الإطارات لكنّ الرسالةَ تُقبل من `INSIDE` وحدَه (`onMessage`).
+ */
+const CAPABILITIES = "window.LoopzNative={library:true};true;";
 const HANDOFF = CONFIG.apiBase + "/api/v1/session/handoff";
 const APP_VERSION = Constants.expoConfig?.version ?? "0";
 
@@ -258,6 +266,8 @@ export default function Web() {
           source={source}
           style={{ flex: 1, backgroundColor: "#0D0D0D" }}
           applicationNameForUserAgent={`LoopzApp/${APP_VERSION}`}
+          injectedJavaScriptBeforeContentLoaded={CAPABILITIES}
+          injectedJavaScriptBeforeContentLoadedForMainFrameOnly={false}
           onMessage={onMessage}
           onNavigationStateChange={onNav}
           onShouldStartLoadWithRequest={onShouldStart}
