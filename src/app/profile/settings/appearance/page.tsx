@@ -1,3 +1,4 @@
+import { DEFAULT_THEME } from "@/core/themes";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { getUser, getProfile } from "@/lib/data";
@@ -48,7 +49,7 @@ export default async function Page() {
         <LanguageRow locale={locale} />
         <ThemeSection
           locale={locale}
-          initialTheme={p?.theme ?? "amber"}
+          initialTheme={p?.theme ?? DEFAULT_THEME.id}
           /* 🆕 D-633 — والحكمُ من `lib/plan.ts` وحدَه، لا شرطَ هنا */
           plus={isPlus(p)}
           carry={{

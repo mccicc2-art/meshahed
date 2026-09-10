@@ -101,11 +101,15 @@ export function isFounder(p: PlanBearer | null | undefined): boolean {
 /**
  * الثيماتُ المجّانيّة — **الافتراضيُّ ووضعُ النهار**.
  *
- * `amber` هو الافتراضيُّ فلا يُقفل، **و`daylight` إتاحةٌ لا زينة**:
- * من يقرأ في الشمس ليس مشترياً محتملاً بل قارئٌ محبوس (D-633، بموافقته).
- * وما عداهما ألوانٌ خالصة — وهي البلس بحقّ.
+ * 🆕 **`loopz` هو الافتراضيُّ منذ ١٠ سبتمبر (D-939، طلبُ أحمد: «أيّ أحد يدخل
+ * أوّل مرّة خلّ الثيم الأساسيّ لوبز الرسميّ»)** — **هويّةُ العلامة لا تُقفل
+ * خلف اشتراك**: من رأى التطبيقَ أوّلَ مرّةٍ يراه بلونه. و`amber` يبقى
+ * مجّانيّاً لأنّه كان الافتراضيَّ لعشرين حساباً **ولا يُسلَب أحدٌ لونَه بتغييرِ
+ * افتراضيّ** (D-217)، **و`daylight` إتاحةٌ لا زينة**: من يقرأ في الشمس ليس
+ * مشترياً محتملاً بل قارئٌ محبوس (D-633، بموافقته). وما عداها ألوانٌ خالصة —
+ * وهي البلس بحقّ.
  */
-export const FREE_THEMES: readonly string[] = ["amber", "daylight"] as const;
+export const FREE_THEMES: readonly string[] = ["loopz", "amber", "daylight"] as const;
 
 export function themeNeedsPlus(themeId: string): boolean {
   return !FREE_THEMES.includes(themeId);

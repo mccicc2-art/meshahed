@@ -21,7 +21,7 @@ import { GENRES, type MediaType } from "@/core/media";
 import { isPlus, themeNeedsPlus } from "@/core/plan";
 import { BROWSE_GENRES } from "@/core/browse";
 import { cleanHandle } from "@/core/socials";
-import { THEMES } from "@/core/themes";
+import { DEFAULT_THEME, THEMES } from "@/core/themes";
 import { RAILS_COOKIE, serializeHiddenRails } from "@/core/railPrefs";
 import {
   keepPaidHomePrefs,
@@ -294,7 +294,9 @@ export async function updateProfile(input: {
   }
 
   if (input.theme !== undefined) {
-    const wanted = THEMES.some((t) => t.id === input.theme) ? input.theme : "amber";
+    /* 🆕 والمجهولُ يعود إلى الافتراضيّ الواحد (`DEFAULT_THEME` = الرسميّ منذ D-939)
+       — **لا نصَّ ثابتاً هنا يفترق عن `themes.ts` عند أوّل تبديل** */
+    const wanted = THEMES.some((t) => t.id === input.theme) ? input.theme : DEFAULT_THEME.id;
     /* **والمقفولُ يُترك على حاله لا يُردّ إلى `amber`**: **من فقد
        اشتراكَه لا يُسلَب ثيمَه بحفظةِ نبذة** — **والسلبُ الصامتُ أسوأُ
        من المنع المعلن** (D-217). */
@@ -589,7 +591,7 @@ export async function adminSetProviderLink(input: {
 
 /** مزامنة كوكي الثيم لمن اختار ثيمه قبل اعتماد الكوكي — تُستدعى مرة من العميل */
 export async function syncThemeCookie(value: string) {
-  const theme = THEMES.some((t) => t.id === value) ? value : "amber";
+  const theme = THEMES.some((t) => t.id === value) ? value : DEFAULT_THEME.id;
   const store = await cookies();
   store.set("theme", theme, {
     path: "/",
