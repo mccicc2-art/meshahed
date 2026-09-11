@@ -310,8 +310,9 @@ export default async function PublicProfilePage({
   const secOrder = prefs.sectionOrder;
   /* 🆕 **والأنمي يخرج من «مسلسلات» إلى قسمه** (D-941): القسمةُ بالعلَم أوّلاً
      (`animeFlags`، D-182) كما في المفضّلة — **وعملٌ واحدٌ لا يظهر في صفَّين.**
-     ⚠️ **و`tvAll` هو الكلُّ** لعدّاد الترويسة («44 مسلسلاً») ولشبكة «كلِّ
-     مسلسلاته» — **فالأنمي مسلسلٌ في العدّ، قسمٌ في العرض.** */
+     ⚖️ 🆕 **والعدُّ انقسم مع العرض** (D-941c، طلبُ أحمد: «أضف أنمي على اليمين
+     قبل الإحصائيات»): خانةُ «مسلسلات» تعدّ ما في صفّها وخانةُ «أنمي» ما في
+     صفّها — **رقمٌ فوق صفٍّ لا يطابقه يكذب** (D-217). */
   const tvAll = follows.filter((f) => f.media_type === "tv" && !f.dropped);
   const isAnime = (f: { media_type: "tv" | "movie"; tmdb_id: number }) =>
     !!animeFlags.get(artKey(f.media_type, f.tmdb_id));
@@ -422,7 +423,7 @@ export default async function PublicProfilePage({
     {
       key: "shows",
       icon: "tv" as const,
-      value: tvAll.length,
+      value: tvFollows.length,
       label: t.shortShows,
     },
     {
@@ -430,6 +431,15 @@ export default async function PublicProfilePage({
       icon: "film" as const,
       value: movieFollows.length,
       label: t.shortMovies,
+    },
+    /* 🆕 **وخانةٌ ثالثةٌ للأنمي** (D-941c) — ⚖️ نقضٌ لذيل D-650 («ثلاثةٌ هي التي
+       طُلبت، ورابعةٌ زيادةٌ على الطلب») **بطلبٍ صريحٍ من صاحبه**؛ رمزُها
+       واسمُها من سجلّ الأقسام نفسِه (`sparkles` · `discoverTabAnime`). */
+    {
+      key: "anime",
+      icon: "sparkles" as const,
+      value: animeFollows.length,
+      label: t.discoverTabAnime,
     },
   ];
 
@@ -526,20 +536,24 @@ export default async function PublicProfilePage({
     );
   };
 
-  const showsGrid = groupedGrid(
-    /* الشبكةُ «كلُّ مسلسلاته» — الأنمي معها؛ الترتيبُ داخلها أبجديٌّ فلا يهمّ الضمُّ (D-941) */
-    [...shows, ...anime],
-    (i) => genresOfKey("tv", i.id),
-    (i) => (
-      <PosterCard
-        key={`gs-${i.id}`}
-        href={`/show/${i.id}`}
-        title={i.title}
-        posterPath={i.posterPath}
-        progress={i.progress}
-      />
-    ),
-  );
+  /* **شبكتان من قالبٍ واحد**: «كلُّ مسلسلاته» و«كلُّ أنميه» (D-941c) — الخانةُ
+     التي تعدّ صفّاً تفتح الصفَّ نفسَه كاملاً، لا أكثر. */
+  const tvGrid = (rows: typeof shows) =>
+    groupedGrid(
+      rows,
+      (i) => genresOfKey("tv", i.id),
+      (i) => (
+        <PosterCard
+          key={`gs-${i.id}`}
+          href={`/show/${i.id}`}
+          title={i.title}
+          posterPath={i.posterPath}
+          progress={i.progress}
+        />
+      ),
+    );
+  const showsGrid = tvGrid(shows);
+  const animeGrid = tvGrid(anime);
   const moviesGrid = groupedGrid(
     movieFollows,
     (f) => genresOfKey("movie", f.tmdb_id),
@@ -1465,7 +1479,12 @@ export default async function PublicProfilePage({
                 بحيث ياخذون راحتهم». **والبابُ كلمةٌ لا رقمٌ عمداً**:
                 **رقمٌ تحت اسم «الإحصائيات» يسأل «رقمُ ماذا؟»** — والخانتان
                 قبله عدّادان صريحان. */}
-            <div className="grid grid-cols-[1fr_1fr_auto]">
+            {/* 🆕 **وثلاثُ خاناتِ أرقامٍ وبابٌ** (D-941c) — الأعمدةُ تتبع عددَ
+                `headerStats` لا رقماً مكتوباً، **فخانةٌ رابعةٌ غداً لا تُعيد كتابةَ الشبكة.** */}
+            <div
+              className="grid"
+              style={{ gridTemplateColumns: `repeat(${headerStats.length}, minmax(0, 1fr)) auto` }}
+            >
               {/* 🆕 **والخانةُ صارت باباً** (D-643): «١٦ مسلسلاً» رقمٌ
                   يُضغط، **ورقمٌ يُضغط ولا يفتح شيئاً وعدٌ فارغ** (D-217).
                   **ووجهتُه تبويبُه في الصفحة نفسِها** — لا صفحةٌ ثالثة.
@@ -1511,7 +1530,8 @@ export default async function PublicProfilePage({
                     </span>
                   </>
                 );
-                const grid = c.key === "shows" ? showsGrid : moviesGrid;
+                const grid =
+                  c.key === "shows" ? showsGrid : c.key === "anime" ? animeGrid : moviesGrid;
                 return (
                   <ProfileStatSheet
                     key={c.key}
