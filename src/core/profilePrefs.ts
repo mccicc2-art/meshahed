@@ -63,6 +63,7 @@ export const PLUS_PROFILE_FIELDS = [
   "density",
   "cards",
   "hiddenTabs",
+  "tabOrder",
 ] as const satisfies readonly (keyof ProfilePrefs)[];
 
 /** **يردّ حقولَ البلس إلى المحفوظ ويقبل ما سواها** — بلا رفضِ النداء */
@@ -165,6 +166,17 @@ export interface ProfilePrefs {
    * لا قفلٌ (نصُّ رأسِ هذا الملفّ).
    */
   hiddenTabs: HideableProfileTab[];
+  /**
+   * 🆕 **ترتيبُ التبويبات نفسِها** (D-940، طلبُ أحمد بلقطتين: «ترتيب
+   * البروفايل اللي يظهر لأوّل مرّة: overview · activity · reviews …
+   * وأضِف إمكانيّةَ تعديل الترتيب للمستخدم»).
+   *
+   * **ترتيبٌ كامل لا ترتيبُ الظاهر وحدَه**: المخفيُّ يحتفظ بموضعه فمن
+   * أطفأ تبويباً ثمّ أعاده وجده حيث تركه (نظيرُ `order` للأقسام). **والغائبُ
+   * عن المخزون يُذيَّل بترتيب السجلّ الافتراضيّ** — فمخزونٌ كُتب قبل هذا
+   * الحقل لا يفقد تبويباً (D-152).
+   */
+  tabOrder: HideableProfileTab[];
 }
 
 /** الأقسامُ التي تقبل ترتيباً يدويّاً — والمفضّلةُ لها بابُها القائم (D-567) */
@@ -281,8 +293,36 @@ export const DEFAULT_PROFILE_PREFS: ProfilePrefs = {
      **ومن أراد عرضَ مكتبته كاملةً فتحه بمفتاح.**
      ⚠️ **ويمسّ من لم يخصّص وحدَه**: `sanitizeProfilePrefs` تُقدّم
      المحفوظَ — **ومن أطفأ أو أشعل بيده يبقى على اختياره** (ق٨). */
-  hiddenTabs: ["overview"],
+  /* ⚖️ 🆕 **والافتراضيُّ انقلب** (D-940، حكمُ أحمد ١١ سبتمبر: «اللي يظهر
+     لأوّل مرّة قبل التعديل: overview · activity · reviews»): **«نظرة
+     عامة» تُفتح و«المفضّلة» و«القوائم» تُطفآن** — نقضٌ لـD-658 («أوفر
+     فيو مقفل») ولـD-653 («لازم الكل فيفوريت») **بكلمةِ صاحبهما**،
+     **والحجّةُ صفحةٌ تبدأ بمكتبته لا بقائمةٍ فارغة** («لا مفضّلات بعد»
+     كانت أوّلَ ما يراه الزائر). ⚠️ **ويمسّ من لم يخصّص وحدَه** (ق٨). */
+  hiddenTabs: ["favorites", "lists"],
+  tabOrder: ["overview", "activity", "reviews", "favorites", "lists"],
 };
+
+/**
+ * أيقونةُ كلِّ تبويبٍ واسمُه — **سجلٌّ واحدٌ لقارئَين** (D-152، حجّةُ
+ * `profileSectionMeta` حرفاً): شاشةُ التخصيص وصفحةُ الملفّ ترسمان الصفَّ
+ * نفسَه، **وقائمتان تفترقان عند أوّل تعديل.**
+ */
+export function profileTabMeta(t: Dict): Record<HideableProfileTab, { icon: IconName; label: string }> {
+  return {
+    favorites: { icon: "heart", label: t.profileTabFavorites },
+    overview: { icon: "grid", label: t.profileTabOverview },
+    activity: { icon: "clock", label: t.communityTabMine },
+    reviews: { icon: "comment", label: t.communityTabReviews },
+    lists: { icon: "list", label: t.profileTabLists },
+  };
+}
+
+/** التبويباتُ بترتيب صاحبها **والغائبُ مذيَّلٌ بترتيب السجلّ** — تُستدعى في الصفحة وفي المعاينة */
+export function orderedProfileTabs(prefs: ProfilePrefs): HideableProfileTab[] {
+  const rest = DEFAULT_PROFILE_PREFS.tabOrder.filter((k) => !prefs.tabOrder.includes(k));
+  return [...prefs.tabOrder, ...rest];
+}
 
 /**
  * تنقية ما جاء من قاعدة البيانات — نفس منطق `sanitizeHomePrefs`.
@@ -339,6 +379,20 @@ export function sanitizeProfilePrefs(raw: unknown): ProfilePrefs {
           );
         })()
       : d.hiddenTabs,
+    tabOrder: Array.isArray(o.tabOrder)
+      ? (() => {
+          const seen = new Set<string>();
+          const kept = o.tabOrder.filter(
+            (s): s is HideableProfileTab =>
+              typeof s === "string" &&
+              (HIDEABLE_PROFILE_TABS as readonly string[]).includes(s) &&
+              !seen.has(s) &&
+              !!seen.add(s),
+          );
+          /* **والناقصُ يُذيَّل بترتيب الافتراضيّ** — فلا يضيع تبويبٌ أُضيف بعد الحفظ */
+          return [...kept, ...d.tabOrder.filter((k) => !seen.has(k))];
+        })()
+      : d.tabOrder,
   };
 }
 

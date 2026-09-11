@@ -63,6 +63,7 @@ import {
      هذا الاتجاه تصل مرجعَ عميلٍ لا كائناً** — فكانت `sectionKeyOf.artist`
      ترمي `TypeError` وتُسقط الملفَّ كلَّه لمن أشعل صفَّ «فنّانوك». */
   sectionKeyOf,
+  orderedProfileTabs,
   type ProfileSection,
 } from "@/core/profilePrefs";
 import { SectionReorderButton } from "@/components/SectionReorderButton";
@@ -724,13 +725,11 @@ export default async function PublicProfilePage({
      🔑 **والبابُ باقٍ وإن تبدّلت هويّتُه** (حجّةُ D-617): **«المفضّلة»
      لا تُطفأ** — **وصفُّ تبويباتٍ بلا أوّلٍ يقف عليه الزائرُ صفحةٌ بلا
      باب.** */
-  const TABS = [
-    "favorites",
-    "overview",
-    "activity",
-    "reviews",
-    "lists",
-  ] as const;
+  /* 🆕 **والصفُّ بترتيب صاحبه** (D-940): `tabOrder` من التخصيص، **والغائبُ
+     مذيَّلٌ بترتيب السجلّ** — **فـ«أوّلُ ظاهر» (أدناه) صار أوّلَ ما رتّبه هو**،
+     لا أوّلَ ما كتبناه نحن. والتعريفُ واحدٌ في `profilePrefs` لهذه الصفحة
+     ولمعاينة التخصيص معاً (D-152). */
+  const TABS = orderedProfileTabs(prefs);
   type ProfileTab = (typeof TABS)[number];
   /* ⚖️ 🆕 **والمطفأُ يسقط عن صاحبه كما يسقط عن زائره** (D-672، حكمُ
      أحمد: «حتى صاحب الحساب ما يراه إذا قفله») — **نقضٌ صريحٌ لشرط
@@ -813,7 +812,7 @@ export default async function PublicProfilePage({
   /* 🆕 **وكلُّ تبويبٍ يستبدل ولا يكدّس** (D-643): التبويبُ وجهٌ ثانٍ
      لصفحةٍ واحدة، **فسهمُ الرجوع يُخرجك من الملفّ لا يمشي بك بين
      وجوهه.** الحجّةُ في `PageTabs.replace`. */
-  const tabItems = tabItemsAll
+  const tabItems = TABS.map((k) => tabItemsAll.find((i) => i.key === k)!)
     .filter((i) => !tabHidden(i.key))
     .map((i) => ({ ...i, replace: true }));
 

@@ -9,7 +9,9 @@ import {
   DEFAULT_PROFILE_PREFS,
   HIDEABLE_PROFILE_TABS,
   PROFILE_SECTIONS,
+  orderedProfileTabs,
   profileSectionMeta,
+  profileTabMeta,
   sanitizeProfilePrefs,
   type HideableProfileTab,
   type ProfilePrefs,
@@ -83,11 +85,15 @@ export function ProfileCustomize({
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const [arrange, setArrange] = useState(false);
+  const [arrangeTabs, setArrangeTabs] = useState(false);
 
   const dirty = JSON.stringify(prefs) !== JSON.stringify(base);
 
   /* سجلٌّ واحد تقرؤه هذه الشاشة وصفحةُ البروفايل معاً (D-152) */
   const sectionMeta = profileSectionMeta(t);
+  const tabMeta = profileTabMeta(t);
+  /* الظاهرُ بترتيبه — **ما تعرضه الورقةُ هو ما يراه الزائرُ حرفاً** */
+  const visibleTabs = orderedProfileTabs(prefs).filter((k) => !prefs.hiddenTabs.includes(k));
 
   function set(next: ProfilePrefs) {
     setPrefs(next);
@@ -203,46 +209,20 @@ export function ProfileCustomize({
           **والبابُ باقٍ وإن تبدّلت هويّتُه** (حجّةُ D-617) — **والسطرُ
           تحت القائمة يقول أيُّهما هو.** */}
       <SettingsGroup label={t.custTabsTitle}>
-        {/* ⚖️ 🆕 **و«المفضّلة» صارت مفتاحاً كغيرها** (D-667، حكمُ أحمد
-            بلقطةٍ على صفّها: «هذا خلّه مثل الباقي تقدر تطفيه وتشغّله»).
-
-            🔴 **نقضٌ صريحٌ لـ D-658** («لا تُطفأ — هي الباب») **ولصفِّ
-            D-663 المقفل بعدها بساعة** — **بكلمةِ صاحب الحكمين.**
-            **والذي حلّ محلَّ البابِ المسمَّى: الصفحةُ تفتح على أوّلِ
-            تبويبٍ ظاهر** (`page.tsx`) — **ترتيبٌ لا اسم.**
-
-            ⚠️ **وصارت «كلُّها مطفأة» حالةً ممكنة** — **ولها نصُّها
-            الصريح**، **ولا تمسّ صاحبَ الصفحة**: يرى تبويباتِه كلَّها. */}
-        {(
-          [
-            { key: "favorites", icon: "heart", label: t.profileTabFavorites },
-            { key: "overview", icon: "grid", label: t.profileTabOverview },
-            { key: "activity", icon: "clock", label: t.communityTabMine },
-            { key: "reviews", icon: "comment", label: t.communityTabReviews },
-            { key: "lists", icon: "list", label: t.profileTabLists },
-          ] as const
-        ).map((row) => (
-          <ToggleRow
-            key={row.key}
-            icon={row.icon}
-            label={row.label}
-            checked={!prefs.hiddenTabs.includes(row.key)}
-            onChange={() =>
-              set({
-                ...prefs,
-                hiddenTabs: prefs.hiddenTabs.includes(row.key)
-                  ? prefs.hiddenTabs.filter((k) => k !== row.key)
-                  : /* بترتيب السجلّ الثابت لا ترتيبِ الضغطات — فالمخزونُ قانونيٌّ دائماً */
-                    HIDEABLE_PROFILE_TABS.filter(
-                      (k): k is HideableProfileTab =>
-                        k === row.key || prefs.hiddenTabs.includes(k),
-                    ),
-              })
-            }
-          />
-        ))}
+        {/* ⚖️ 🆕 **خمسةُ مفاتيحَ صارت ورقةَ ترتيبٍ واحدة** (D-940، طلبُ أحمد:
+            «أضِف إمكانيّة تعديل الترتيب للمستخدم») — **الورقةُ نفسُها التي
+            ترتّب أقسامَ «نظرة عامة» تحتها** (`SettingsArrangeSheet`: أسهمٌ
+            ومقبضٌ وإظهار/إخفاء)، **لا سجلُّ مفاتيحَ وسجلُّ ترتيبٍ لشيءٍ
+            واحد** (القاعدة ٣). **والإخفاءُ باقٍ داخلها** كما كان في
+            المفاتيح — **ومن أخفى الكلَّ صفحتُه بلا صفٍّ ونصُّها صريح** (D-667). */}
+        <SettingsRow
+          icon="grip"
+          title={t.custArrange}
+          subtitle={t.custSectionsHint}
+          value={t.custShownN(visibleTabs.length)}
+          onClick={() => setArrangeTabs(true)}
+        />
       </SettingsGroup>
-      <p className="px-1 -mt-4 text-12 text-muted leading-relaxed">{t.custTabsHint}</p>
 
       {/* ===== ٣) داخل «نظرة عامة» — **السجلُّ خرج إلى ورقة** (D-555) ===== */}
       <SettingsGroup label={t.custOverviewTab}>
@@ -299,6 +279,36 @@ export function ProfileCustomize({
           />
         </div>
       </SettingsGroup>
+
+      <SettingsArrangeSheet
+        open={arrangeTabs}
+        title={t.custTabsTitle}
+        hint={t.custTabsHint}
+        all={HIDEABLE_PROFILE_TABS}
+        picked={visibleTabs}
+        meta={tabMeta}
+        labels={{
+          up: t.custMoveUp,
+          down: t.custMoveDown,
+          hide: t.custHide,
+          show: t.custShow,
+          drag: t.custReorder,
+        }}
+        onCancel={() => setArrangeTabs(false)}
+        onDone={(picked) => {
+          /* **الظاهرُ بترتيبه ثمّ المخفيُّ بترتيبه السابق** — فمن أعاد تبويباً
+             وجده حيث تركه؛ **و`hiddenTabs` يُشتقّ لا يُحرَّر** (مخزونٌ واحد) */
+          const hidden = orderedProfileTabs(prefs).filter((k) => !picked.includes(k));
+          set({
+            ...prefs,
+            tabOrder: [...picked, ...hidden],
+            hiddenTabs: HIDEABLE_PROFILE_TABS.filter((k): k is HideableProfileTab => hidden.includes(k)),
+          });
+          setArrangeTabs(false);
+        }}
+        cancelLabel={t.cancelLabel}
+        doneLabel={t.doneLabel}
+      />
 
       <SettingsArrangeSheet
         open={arrange}
