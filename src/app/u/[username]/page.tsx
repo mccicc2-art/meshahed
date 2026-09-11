@@ -308,9 +308,21 @@ export default async function PublicProfilePage({
      `profile_prefs.sectionOrder` أوّلاً بترتيبه، **وما أُضيف بعد آخرِ
      ترتيبٍ يُذيَّل بترتيبه الطبيعيّ** فلا يختفي. */
   const secOrder = prefs.sectionOrder;
+  /* 🆕 **والأنمي يخرج من «مسلسلات» إلى قسمه** (D-941): القسمةُ بالعلَم أوّلاً
+     (`animeFlags`، D-182) كما في المفضّلة — **وعملٌ واحدٌ لا يظهر في صفَّين.**
+     ⚠️ **و`tvAll` هو الكلُّ** لعدّاد الترويسة («44 مسلسلاً») ولشبكة «كلِّ
+     مسلسلاته» — **فالأنمي مسلسلٌ في العدّ، قسمٌ في العرض.** */
+  const tvAll = follows.filter((f) => f.media_type === "tv" && !f.dropped);
+  const isAnime = (f: { media_type: "tv" | "movie"; tmdb_id: number }) =>
+    !!animeFlags.get(artKey(f.media_type, f.tmdb_id));
   const tvFollows = applySectionOrder(
-    follows.filter((f) => f.media_type === "tv" && !f.dropped),
+    tvAll.filter((f) => !isAnime(f)),
     secOrder.shows,
+    (f) => sectionKeyOf.show(f.tmdb_id),
+  );
+  const animeFollows = applySectionOrder(
+    tvAll.filter(isAnime),
+    secOrder.anime,
     (f) => sectionKeyOf.show(f.tmdb_id),
   );
   const movieFollows = applySectionOrder(
@@ -410,7 +422,7 @@ export default async function PublicProfilePage({
     {
       key: "shows",
       icon: "tv" as const,
-      value: tvFollows.length,
+      value: tvAll.length,
       label: t.shortShows,
     },
     {
@@ -438,7 +450,7 @@ export default async function PublicProfilePage({
     .filter((r) => r.rating != null || r.review?.trim())
     .sort((a, b) => (b.updated_at ?? "").localeCompare(a.updated_at ?? ""));
 
-  const shows = tvFollows.map((f) => {
+  const withProgress = (f: (typeof tvAll)[number]) => {
     const aired = f.aired_episodes ?? f.total_episodes ?? 0;
     const w = Math.min(watched.byShow.get(f.tmdb_id) ?? 0, aired || Infinity);
     return {
@@ -447,7 +459,10 @@ export default async function PublicProfilePage({
       posterPath: f.poster_path,
       progress: aired > 0 ? Math.round((w / aired) * 100) : 0,
     };
-  });
+  };
+  const shows = tvFollows.map(withProgress);
+  /* **والأنمي بخيط التقدّم نفسِه** — مسلسلٌ في كلِّ شيءٍ إلا الصفَّ الذي يسكنه (D-941) */
+  const anime = animeFollows.map(withProgress);
 
   /* 🆕 **وترتيبُ الشبكتين أبجديٌّ** (D-645، بلاغُ أحمد: «تطلع له الأفلام
      والمسلسلات بالكامل مرتّبة حسب التصنيف والأحرف»).
@@ -512,7 +527,8 @@ export default async function PublicProfilePage({
   };
 
   const showsGrid = groupedGrid(
-    shows,
+    /* الشبكةُ «كلُّ مسلسلاته» — الأنمي معها؛ الترتيبُ داخلها أبجديٌّ فلا يهمّ الضمُّ (D-941) */
+    [...shows, ...anime],
     (i) => genresOfKey("tv", i.id),
     (i) => (
       <PosterCard
@@ -608,6 +624,41 @@ export default async function PublicProfilePage({
                 href={`/movie/${f.tmdb_id}`}
                 title={f.title}
                 posterPath={f.poster_path}
+              />
+            </RailItem>
+          ))}
+        </PosterRail>
+      ) : null,
+
+    /* 🆕 **«أنمي» — صفُّ «مسلسلات» بعينه لِما وُسم أنمي** (D-941): نفسُ
+       البطاقة ونفسُ خيط التقدّم ونفسُ مقبض الترتيب (`section="anime"`)،
+       **والفارغُ `null`** فمن لا أنمي عنده لا يرى عنواناً بلا ملصقات. */
+    anime:
+      anime.length > 0 ? (
+        <PosterRail
+          title={t.discoverTabAnime}
+          action={
+            isMe ? (
+              <SectionReorderButton
+                section="anime"
+                locale={locale}
+                items={animeFollows.map((f) => ({
+                  tmdb_id: f.tmdb_id,
+                  media_type: "tv" as const,
+                  title: f.title,
+                  poster_path: f.poster_path,
+                }))}
+              />
+            ) : undefined
+          }
+        >
+          {anime.slice(0, cap(anime.length)).map((i) => (
+            <RailItem key={`a-${i.id}`}>
+              <PosterCard
+                href={`/show/${i.id}`}
+                title={i.title}
+                posterPath={i.posterPath}
+                progress={i.progress}
               />
             </RailItem>
           ))}

@@ -30,6 +30,13 @@ export const PROFILE_SECTIONS = [
      من مكانين** (القاعدة ٣/D-374).
      ⚠️ **والمفاتيحُ المحفوظةُ لها تُهمَل بصمت** (`sanitizeProfilePrefs`
      تُصفّي بالسجلّ) — **ولا هجرةَ ولا حرفَ يُكتب.** */
+  /* 🆕 **«أنمي» قسمٌ ثالثٌ تحت الأفلام** (D-941، طلبُ أحمد: «في overview أضف
+     anime تحت movies»). **والأنمي علَمٌ على المتابعة لا نوعُ وسيط** (D-182):
+     مسلسلٌ موسومٌ أنمي يخرج من «مسلسلات» إلى هنا **فلا يظهر عملٌ في صفَّين**
+     (قسمةُ المفضّلة نفسُها). ⚠️ **ومن رتّب أقسامَه قبل اليوم** أُدرج المفتاحُ
+     في مخزونه بعد «أفلام» بتحديثٍ واحد على القاعدة (لا هجرة) — **لأن غيابَه
+     عن `order` يُقرأ إخفاءً** (D-152)، ولا يُميَّز مخفيٌّ بيدٍ من غائبٍ لقِدَم. */
+  "anime",
   "lists",
   "ratings",
 ] as const;
@@ -83,6 +90,8 @@ export function profileSectionMeta(t: Dict): Record<ProfileSection, { icon: Icon
   return {
     shows: { icon: "tv", label: t.shortShows },
     movies: { icon: "film", label: t.shortMovies },
+    /* التسميةُ والرمزُ تسميةُ تبويب المكتبة نفسِه (`LibraryGrid`) — لا كلمةٌ ثانية */
+    anime: { icon: "sparkles", label: t.discoverTabAnime },
     artists: { icon: "people", label: t.shortArtists },
     lists: { icon: "list", label: t.profileListsRail },
     ratings: { icon: "star", label: t.ratingsListTitle },
@@ -180,7 +189,7 @@ export interface ProfilePrefs {
 }
 
 /** الأقسامُ التي تقبل ترتيباً يدويّاً — والمفضّلةُ لها بابُها القائم (D-567) */
-export const SORTABLE_SECTIONS = ["shows", "movies", "artists", "lists"] as const;
+export const SORTABLE_SECTIONS = ["shows", "movies", "anime", "artists", "lists"] as const;
 export type SortableSection = (typeof SORTABLE_SECTIONS)[number];
 
 /**
@@ -282,7 +291,7 @@ export const DEFAULT_PROFILE_PREFS: ProfilePrefs = {
      — **وقد صار للتبويب اسمُه ووجودُه بلا وساطةِ قسم**، فسقطت الحاجة.
      ✅ **وحكمُه «لازم الكل فيفوريت» تحقّق أتمَّ ممّا كان**: التبويبُ
      قائمٌ لكلِّ حسابٍ ولا يُطفأ أصلاً — **والهجرةُ ١٤٦ لم تعد لازمة.** */
-  order: ["shows", "movies", "lists", "ratings"],
+  order: ["shows", "movies", "anime", "lists", "ratings"],
   density: "comfortable",
   cards: "full",
   /** **والفراغُ هو الافتراضي** — من لم يكتب لقباً يُعرض اسمُ مستواه */
