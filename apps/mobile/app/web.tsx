@@ -10,7 +10,7 @@ import { CONFIG } from "../src/config";
 import { File, Paths } from "expo-file-system";
 import { deviceLocale } from "../src/i18n";
 import { Button, Loading, Text } from "../src/ui";
-import { space } from "../src/theme";
+import { SHELL_BG, space } from "../src/theme";
 import { perfMs } from "../src/perf";
 import { BACKGROUND_CLEAR_MS, session } from "../src/session";
 import { shell } from "../src/shell";
@@ -259,12 +259,12 @@ export default function Web() {
   }, [canGoBack]);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#0D0D0D" }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: SHELL_BG }}>
       {source ? (
         <WebView
           ref={ref}
           source={source}
-          style={{ flex: 1, backgroundColor: "#0D0D0D" }}
+          style={{ flex: 1, backgroundColor: SHELL_BG }}
           applicationNameForUserAgent={`LoopzApp/${APP_VERSION}`}
           injectedJavaScriptBeforeContentLoaded={CAPABILITIES}
           injectedJavaScriptBeforeContentLoadedForMainFrameOnly={false}
@@ -297,7 +297,7 @@ export default function Web() {
         <View
           style={{
             position: "absolute", top: 0, left: 0, right: 0, bottom: 0,
-            backgroundColor: "#0D0D0D", alignItems: "center", justifyContent: "center",
+            backgroundColor: SHELL_BG, alignItems: "center", justifyContent: "center",
             gap: space.md, padding: space.xl,
           }}
         >
@@ -306,7 +306,7 @@ export default function Web() {
           <Button label={t.retry} onPress={retry} style={{ minWidth: 180 }} />
         </View>
       ) : !ready ? (
-        <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "#0D0D0D" }}>
+        <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: SHELL_BG }}>
           <Loading />
         </View>
       ) : null}

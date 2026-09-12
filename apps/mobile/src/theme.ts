@@ -55,4 +55,13 @@ export function tokensOf(themeId: string | null | undefined): Tokens {
 
 /** `poster` = `--radius-poster: 12px` في `globals.css` — نصفُ قطر الملصق في كلِّ سطح */
 export const radius = { sm: 8, md: 12, lg: 16, poster: 12, pill: 999 } as const;
+/**
+ * 🆕 **أرضيّةُ الغلاف قبل أن يرسم الويبُ شيئاً** (D-944، دَينُ `05` «`#0D0D0D`
+ * في `app.json` و`web.tsx` والمعتمد `#050505`»): **لونُ الثيم الرسميّ نفسُه من
+ * `themes.ts`** لا رقمٌ مكتوبٌ ثانيةً — فشاشةُ البداية والـWebView قبل التحميل
+ * والصفحةُ بعده لونٌ واحد، **والوميضُ الرماديُّ عند كلِّ إقلاعٍ كان الفرقَ بين
+ * الرقمين.** (`app.json` لا يقرأ TypeScript فيحمل الرقمَ نفسَه نصّاً — والتعليقُ
+ * هناك يشير إلى هنا.)
+ */
+export const SHELL_BG = tokensOf(null).bg;
 export const space = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24 } as const;
