@@ -1,7 +1,6 @@
 import React from "react";
 import {
   ActivityIndicator,
-  FlatList,
   Pressable,
   StyleSheet,
   Text as RNText,
@@ -10,11 +9,9 @@ import {
   type TextProps,
   type ViewProps,
 } from "react-native";
-import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "./state";
 import { radius, space } from "./theme";
-import { posterUrl } from "@/core/media";
 import { ARABIC_RE, familyOf, type Weight } from "./fonts";
 import { deviceLocale } from "./i18n";
 import { isRtl } from "@/core/i18n";
@@ -132,33 +129,11 @@ export function Button({
   );
 }
 
-export function Poster({ path, width = 96 }: { path: string | null; width?: number }) {
-  const { tokens } = useApp();
-  const uri = posterUrl(path, width > 120 ? "w342" : "w185");
-  return (
-    <View style={{ width, aspectRatio: 2 / 3, borderRadius: radius.md, overflow: "hidden", backgroundColor: tokens.surface2 }}>
-      {uri ? <Image source={{ uri }} style={{ width: "100%", height: "100%" }} contentFit="cover" transition={150} /> : null}
-    </View>
-  );
-}
-
 export function Loading() {
   const { tokens } = useApp();
   return (
     <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
       <ActivityIndicator color={tokens.accent} />
-    </View>
-  );
-}
-
-export function Card({ children, style, ...rest }: ViewProps) {
-  const { tokens } = useApp();
-  return (
-    <View
-      {...rest}
-      style={[{ backgroundColor: tokens.surface, borderRadius: radius.lg, padding: space.md, borderWidth: StyleSheet.hairlineWidth, borderColor: tokens.border }, style]}
-    >
-      {children}
     </View>
   );
 }
@@ -175,59 +150,6 @@ const styles = StyleSheet.create({
   },
 });
 
-/**
- * 🆕 D-919 — **صفٌّ أفقيٌّ بعنوان**: الوحدةُ التي تُبنى منها الرئيسيةُ
- * و«اكتشف». عنوانٌ واحدٌ وشكلٌ واحد (القاعدة ٣) — لا صفٌّ لكلِّ شاشة.
- */
-export function Rail<T>({
-  title,
-  data,
-  keyOf,
-  render,
-  action,
-}: {
-  title: string;
-  data: T[];
-  keyOf: (item: T) => string;
-  render: (item: T) => React.ReactElement;
-  action?: React.ReactNode;
-}) {
-  if (data.length === 0) return null;
-  return (
-    <View style={{ gap: space.sm }}>
-      <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: space.lg }}>
-        <Text size={20} weight="700" style={{ flex: 1 }}>{title}</Text>
-        {action}
-      </View>
-      <FlatList
-        horizontal
-        data={data}
-        keyExtractor={keyOf}
-        renderItem={({ item }) => render(item)}
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: space.lg, gap: space.md }}
-      />
-    </View>
-  );
-}
-
-/** ملصقٌ بعنوانٍ تحته — خليّةُ صفوف «اكتشف» و«ابدأ» */
-export function PosterTile({
-  path,
-  title,
-  subtitle,
-  width = 110,
-}: {
-  path: string | null;
-  title: string;
-  subtitle?: string | null;
-  width?: number;
-}) {
-  return (
-    <View style={{ width, gap: 6 }}>
-      <Poster path={path} width={width} />
-      <Text size={13} weight="600" numberOfLines={2}>{title}</Text>
-      {subtitle ? <Text muted size={12} numberOfLines={1}>{subtitle}</Text> : null}
-    </View>
-  );
-}
+/* 🗑️ D-944: `Poster` · `Card` · `Rail` · `PosterTile` حُذفت — كانت وحداتِ الشاشات
+   الأصليّة التسع (D-919) التي أُلغيت بـD-922، وبقيت بلا قارئٍ منذ ٥ سبتمبر (دَينُ
+   `05` رقم ٢١/٢٩). بطاقةُ المكتبة الأصليّة لها `library/PosterCard.tsx` بقيم الويب. */
