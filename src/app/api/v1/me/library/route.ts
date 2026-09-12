@@ -6,13 +6,17 @@ import {
   getMyTitleArt,
   getMyAnimeFlags,
   getMyFavorites,
+  getMyLists,
+  getSavedListsCount,
+  getFollowedArtists,
   artKey,
 } from "@/lib/data";
 import { showStatusOf, movieStatusOf } from "@/core/libraryStatus";
 import { handle, requireUser, limited } from "@/lib/v1";
 import { ok } from "@/core/contracts/result";
-import { getLocale, getTabPrefs } from "@/lib/locale";
-import { defaultTab } from "@/core/tabPrefs";
+import { getLocale, getTabPrefs, getHiddenRails } from "@/lib/locale";
+import { defaultTab, applyTabPrefs } from "@/core/tabPrefs";
+import { viewerIsPlus } from "@/lib/actions";
 import { localizeFollows } from "@/lib/localize";
 import type {
   LibraryItem,
@@ -48,7 +52,11 @@ export async function GET() {
     const lim = limited(`v1:library:${auth.user.id}`, 60, 60_000);
     if (lim) return lim;
 
-    const [followRows, summary, movieIds, locale, myArt, animeFlags, favorites, tabPrefs] =
+    /* 🆕 D-947 — **عدّادا التبويبَين الرابع والخامس في الموجة نفسِها** كما في
+       الصفحة (D-128/D-374: الثقيلُ مشروطٌ بتبويبه، **والعدّادُ لا**):
+       `getMyLists` و`getSavedListsCount` و`getFollowedArtists(60)` نداءاتُ
+       Supabase خفيفةٌ بلا TMDB. والصفوفُ المخفيّةُ وبلس للشاشة كما للصفحة. */
+    const [followRows, summary, movieIds, locale, myArt, animeFlags, favorites, tabPrefs, lists, savedCount, artistRows, hiddenRails, plus] =
       await Promise.all([
         getFollows(),
         getWatchSummary(),
@@ -58,6 +66,11 @@ export async function GET() {
         getMyAnimeFlags(),
         getMyFavorites(),
         getTabPrefs("library"),
+        getMyLists().catch(() => []),
+        getSavedListsCount().catch(() => 0),
+        getFollowedArtists(60).catch(() => []),
+        getHiddenRails().catch(() => new Set<string>()),
+        viewerIsPlus().catch(() => false),
       ]);
     const localized = await localizeFollows(followRows, locale);
 
@@ -111,10 +124,23 @@ export async function GET() {
       };
     });
     const dt = defaultTab(tabPrefs, "shows");
+    const ALL: LibraryTab[] = ["shows", "movies", "anime", "artists", "lists"];
+    const isTab = (k: string): k is LibraryTab => (ALL as string[]).includes(k);
+    /* الشريطُ بترتيب صاحبه — **والمخفيُّ يبقى في الردّ معلَماً**: الشاشةُ
+       تعرف أنّ المفتوحَ لا يُخفى من نفسه (`applyTabPrefs` بلا `active`). */
+    const ordered = applyTabPrefs(ALL.map((key) => ({ key })), tabPrefs.map((p) => ({ ...p, hidden: false })));
+    const hiddenTabs = new Set(tabPrefs.filter((p) => p.hidden).map((p) => p.key));
+    const tabs = ordered.map((x) => ({ key: x.key, hidden: hiddenTabs.has(x.key) }));
     const payload: LibraryPayload = {
       items,
       counts,
-      default_tab: dt === "movies" || dt === "anime" ? dt : ("shows" satisfies LibraryTab),
+      default_tab: isTab(dt) ? dt : ("shows" satisfies LibraryTab),
+      tabs,
+      artist_count: artistRows.length,
+      list_count: lists.length + savedCount,
+      anime_unknown: items.filter((x) => x.is_anime === null).length,
+      hidden_rails: [...hiddenRails],
+      plus,
     };
     return ok(payload);
   });

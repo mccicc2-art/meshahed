@@ -39,8 +39,12 @@ export type LibraryItem = {
   is_favorite?: boolean;
 };
 
-/** التبويباتُ الثلاثةُ التي تنقلها الشاشةُ الأصليّة (B0 §٣.١ V1) */
-export type LibraryTab = "shows" | "movies" | "anime";
+/**
+ * التبويباتُ الخمسة — 🆕 D-947: **كانت ثلاثةً** (B0 §٣.١ V1، نطاقُ B)
+ * **وصارت الخمسةَ كلَّها** بحكم أحمد («كمّل بناءَ المكتبة بالكامل»):
+ * «فنّانون» و«قوائم» لهما مساراهما تحت `/api/v1/me/library/*`.
+ */
+export type LibraryTab = "shows" | "movies" | "anime" | "artists" | "lists";
 
 export type LibraryPayload = {
   items: LibraryItem[];
@@ -48,4 +52,83 @@ export type LibraryPayload = {
   counts: Record<LibraryStatus, number>;
   /** التبويبُ الافتراضيُّ من تفضيل صاحبه (`tabPrefs`) — `shows` بلا كوكي */
   default_tab?: LibraryTab;
+  /**
+   * 🆕 D-947 — **شريطُ التبويبات كما يرسمه الويب** (`applyTabPrefs`):
+   * ترتيبُ صاحبه، والمخفيُّ يُعلَم لا يُحذف (المفتوحُ لا يُخفى من نفسه —
+   * الشاشةُ تطبّق ذلك). **العدّادان** لتبويبَي «فنّانون» و«قوائم» بالوصفة
+   * نفسِها (`getFollowedArtists(60).length` · `lists + saved`).
+   */
+  tabs?: { key: LibraryTab; hidden: boolean }[];
+  artist_count?: number;
+  list_count?: number;
+  /** كم عملاً لم يُصنَّف أنمياً بعد — الشاشةُ تطلق `classify-anime` مرّةً كالويب */
+  anime_unknown?: number;
+  /** الصفوفُ المخفيّة كاملةً بمفاتيح `tab:key` (D-874) — من الكوكي */
+  hidden_rails?: string[];
+  plus?: boolean;
 };
+
+/** 🆕 D-947 — `GET /api/v1/me/library/artists`: رفُّ الفنّانين (`getArtistShelf(60)`) */
+export type LibraryArtist = {
+  person_id: number;
+  name: string | null;
+  profile_path: string | null;
+  /** «شاهدتَ له N أعمال» — يغيب عند الصفر (D-219) */
+  watched_works: number;
+};
+export type LibraryArtistsPayload = { items: LibraryArtist[] };
+
+/**
+ * 🆕 D-947 — بطاقةُ قائمةٍ كما يرسمها `ListCardShell` (D-677): **حقولُ
+ * `PublicListCard` التي تصل البطاقةَ فعلاً** + ما تحسبه `ListManager`
+ * لقوائمي (`count_label` · `cover`). `owner` غائبٌ لقوائمي، ولمخفي الاسم.
+ */
+export type LibraryListCard = {
+  id: string;
+  name: string;
+  kind: string | null;
+  owner: string | null;
+  owner_avatar: string | null;
+  item_count: number;
+  posters: string[];
+  saves: number;
+  reviews: number;
+  rating: number | null;
+  /** «تمتلئ وحدَها» أو «N مسلسلاً · M فيلماً» — وإلّا `listCount` */
+  count_label: string | null;
+  /** خلفيّةُ الغلاف المختار (`w780`) — تحلّ محلَّ الملصقات */
+  cover: string | null;
+  mine: boolean;
+  is_public: boolean;
+  /** رايةُ التشغيل — `null` = لا نعرف فلا مفتاحَ (D-217) */
+  playlist: boolean | null;
+  /** أستطيع الحفظ/إلغاءه (قائمةُ غيري) و«هل حفظتُها» */
+  can_save: boolean;
+  saved_by_me: boolean;
+};
+
+export type LibraryAutoGroup = {
+  kind: "director" | "actor";
+  name: string;
+  photo: string | null;
+  items: { key: string; media_type: TitleKind; tmdb_id: number; title: string; poster: string | null }[];
+};
+
+/** 🆕 D-947 — `GET /api/v1/me/library/lists`: تبويبُ «قوائم» كلُّه في ردٍّ واحد */
+export type LibraryListsPayload = {
+  lists: LibraryListCard[];
+  /** بطاقةُ «للمشاهدة» (D-559) — `null` = طابورٌ فارغٌ فلا بطاقة (D-219) */
+  to_watch: { on: boolean; count: number; posters: (string | null)[] } | null;
+  saved: LibraryListCard[];
+  saved_count: number;
+  auto_groups: LibraryAutoGroup[];
+  plus: boolean;
+  has_smart: boolean;
+};
+
+/** أجسامُ الكتابات التي يحتاجها تبويبُ «قوائم» أصليّاً (D-947) */
+export type CreateListBody = { name: string };
+export type ListPlaylistBody = { listId: string; on: boolean };
+export type SaveListBody = { listId: string; save: boolean };
+export type ToWatchBody = { on: boolean };
+export type HiddenRailsBody = { keys: string[] };

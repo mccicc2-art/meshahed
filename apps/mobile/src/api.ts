@@ -2,7 +2,7 @@ import { QueryClient } from "@tanstack/react-query";
 import { CONFIG } from "./config";
 import { accessToken } from "./auth";
 import { session } from "./session";
-import { deviceLocale } from "./i18n";
+import { currentLocale } from "./i18n";
 import type { AppError, Tag } from "./contracts";
 
 /**
@@ -81,13 +81,14 @@ export async function write<T>(path: string, body: unknown): Promise<T> {
 }
 
 /**
- * الترويساتُ المشتركة: الرمزُ إن وُجد، **ولغةُ الجهاز في `Accept-Language`** —
- * فالمساراتُ القائمة (`/api/search`…) تقرأها كما تقرأ لغةَ زائرٍ جديد في الويب.
+ * الترويساتُ المشتركة: الرمزُ إن وُجد، **ولغةُ الحساب في `Accept-Language`**
+ * (D-946: لغةُ الويب تغلب لغةَ الجهاز) — فالمساراتُ التي تسقط إليها بلا كوكي
+ * (`getLocale`) تعيد العنوانَ والعدَّ بلغة ما يراه المستخدم في الصفحة.
  */
 async function baseHeaders(auth: boolean): Promise<Record<string, string>> {
   const headers: Record<string, string> = {
     Accept: "application/json",
-    "Accept-Language": deviceLocale(),
+    "Accept-Language": currentLocale(),
   };
   if (auth) {
     /* الجسرُ أوّلاً (Phase 11 · B1)؛ وجلسةُ الدخول العابرةُ سقوطٌ لا يكاد يُبلغ */

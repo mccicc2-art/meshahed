@@ -11,7 +11,22 @@ export type {
   SeasonPayload,
   SeasonEpisode,
 } from "@/core/contracts/title";
-export type { LibraryItem, LibraryPayload, LibraryStatus, LibraryTab } from "@/core/contracts/library";
+export type {
+  LibraryItem,
+  LibraryPayload,
+  LibraryStatus,
+  LibraryTab,
+  LibraryArtist,
+  LibraryArtistsPayload,
+  LibraryListCard,
+  LibraryListsPayload,
+  LibraryAutoGroup,
+  CreateListBody,
+  ListPlaylistBody,
+  SaveListBody,
+  ToWatchBody,
+  HiddenRailsBody,
+} from "@/core/contracts/library";
 export type {
   ToggleEpisodeBody,
   WatchUpToBody,

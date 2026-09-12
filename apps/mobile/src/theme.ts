@@ -15,6 +15,8 @@ export type Tokens = {
   fg: string;
   muted: string;
   accent: string;
+  /** `--accent-2` — سطرُ «شاهدتَ له N أعمال» تحت اسم الفنّان (D-947) */
+  accent2: string;
   onAccent: string;
   border: string;
   success: string;
@@ -40,6 +42,7 @@ export function tokensOf(themeId: string | null | undefined): Tokens {
     fg: v.foreground,
     muted: v.muted,
     accent: v.accent,
+    accent2: v["accent-2"],
     onAccent: v["on-accent"],
     border: v.border,
     /* الافتراضاتُ هي قيمُ `globals.css` (`--success` · `--error` · `--verified` · `--info`) */
@@ -54,7 +57,8 @@ export function tokensOf(themeId: string | null | undefined): Tokens {
 }
 
 /** `poster` = `--radius-poster: 12px` في `globals.css` — نصفُ قطر الملصق في كلِّ سطح */
-export const radius = { sm: 8, md: 12, lg: 16, poster: 12, pill: 999 } as const;
+/* 🆕 D-947 — أسماءُ `globals.css` نفسُها: `--radius-control` ١٠ · `--radius-card`/`rounded-2xl` ١٤ · `--radius-sheet` ٢٢ */
+export const radius = { sm: 8, md: 12, lg: 16, control: 10, card: 14, sheet: 22, poster: 12, pill: 999 } as const;
 /**
  * 🆕 **أرضيّةُ الغلاف قبل أن يرسم الويبُ شيئاً** (D-944، دَينُ `05` «`#0D0D0D`
  * في `app.json` و`web.tsx` والمعتمد `#050505`»): **لونُ الثيم الرسميّ نفسُه من

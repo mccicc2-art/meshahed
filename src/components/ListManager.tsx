@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { backdropUrl } from "@/core/media";
 import { getDict, type Locale } from "@/core/i18n";
 import { Icon } from "./Icon";
@@ -69,7 +69,11 @@ export function ListManager({
   /* 🆕 **بابُ القائمة الذكيّة يفتح في مكانه** (D-877، حكمُ أحمد: «لا أريد
      الزر ينقلني إلى الديسكفري لأنها غير مفهومة») — **زرٌّ لا رابط** (D-017):
      **الوجهةُ صارت هنا لا صفحةً.** */
-  const [smartOpen, setSmartOpen] = useState(false);
+  /* 🆕 D-947 — **`?smart=new` يفتح النموذجَ من أوّل رسمة**: الشاشةُ الأصليّة
+     لا تملك نموذجَ الشروط (ورقةُ فلاترَ كاملة — نسخُها لغةٌ ثانية، D-145)
+     فتفتح الويبَ على هذا الباب مباشرةً؛ **والرابطُ العاديُّ لا يتغيّر.** */
+  const smartParam = useSearchParams().get("smart") === "new";
+  const [smartOpen, setSmartOpen] = useState(smartParam);
   /* **مجموعةٌ لا مصفوفة**: البحثُ يقع مرّةً لكلِّ بطاقة، **و`includes`
      على مصفوفةٍ داخل `map` مسحٌ داخل مسح.** */
   const playlists = playlistIds ? new Set(playlistIds) : null;

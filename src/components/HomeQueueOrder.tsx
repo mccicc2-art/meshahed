@@ -134,6 +134,17 @@ export function HomeQueueSheetHost({
       if (d === "continue" || d === "towatch" || d === "lists" || d === "towatchlist") setRow(d);
     };
     window.addEventListener(HOME_QUEUE_EVENT, onOpen);
+    /* 🆕 D-947 — **`?queue=towatchlist` يفتح ورقةَ الترتيب من الرابط**: بطاقةُ
+       «للمشاهدة» في الشاشة الأصليّة لا تملك الورقةَ (سحبٌ وترتيبٌ — نسخُه
+       لغةٌ ثانية) فتفتح الويبَ على هذا الباب؛ **حدثٌ واحدٌ لا مسارٌ ثانٍ**. */
+    try {
+      const q = new URLSearchParams(window.location.search).get("queue");
+      /* الحدثُ نفسُه لا `setState` مباشرةً في الأثر — فالمسارُ واحد */
+      if (q === "towatchlist" || q === "continue" || q === "towatch" || q === "lists")
+        window.dispatchEvent(new CustomEvent(HOME_QUEUE_EVENT, { detail: q }));
+    } catch {
+      /* لا شيء */
+    }
     return () => window.removeEventListener(HOME_QUEUE_EVENT, onOpen);
   }, []);
 

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BackHandler, FlatList, Platform, Pressable, ScrollView, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -11,9 +11,12 @@ import { radius, space } from "../theme";
 import { PosterCard, type CardAnchor, type CardItem } from "./PosterCard";
 import { HoldMenu, type HoldAction } from "./HoldMenu";
 import { ToolsSheet, type LibrarySort } from "./ToolsSheet";
+import { ArtistsTab } from "./ArtistsTab";
+import { ListsTab } from "./ListsTab";
 import { Icon } from "../icons";
 import { byTitle, normalizeSearch } from "@/core/arabic";
-import type { LibraryItem, LibraryPayload, LibraryStatus, LibraryTab, ShowRefBody, SetDroppedBody, ToggleMovieBody } from "../contracts";
+import { guardLastVisible, type TabPref } from "@/core/tabPrefs";
+import type { LibraryItem, LibraryPayload, LibraryStatus, LibraryTab, ShowRefBody, SetDroppedBody, ToggleMovieBody, HiddenRailsBody } from "../contracts";
 
 /**
  * ====== المكتبةُ أصليّةً — تجربةُ المقارنة (Phase 11 · B2، D-936) ======
@@ -37,12 +40,20 @@ import type { LibraryItem, LibraryPayload, LibraryStatus, LibraryTab, ShowRefBod
  * والترتيبُ داخل التبويب ترتيبُ الصفحة: جارٍ ⇢ لم يبدأ ⇢ مكتمل ⇢ موقوف،
  * والجاري بتقدّمه تنازليّاً.
  *
- * ⚠️ **ما ليس هنا معلَنٌ لا منسيّ** (B0 §٨): فنّانون/قوائم (KNOWN_GAP-7) ·
- * أدواتُ الفرز والبحث والمفضّلة وخانةُ «حلّل مكتبتك» (B4) · قائمةُ الضغط
- * المطوَّل (B3) · ذاكرةُ التمرير وتخزينُ التبويب في الرابط (B4) · تصنيفُ
- * الأنمي غيرِ المصنَّف (الويبُ يسأل عنه عند أوّل فتح — هنا يُعرض المصنَّفُ
- * فقط، KNOWN_GAP-12) · كثافةُ الملصقات من تفضيل صاحبها (`home_prefs.density`
- * لا يصل الغلاف — الافتراضيُّ `comfortable` ١١٨، KNOWN_GAP-13).
+ * 🆕 **D-947 — المكتبةُ كاملةً** (حكمُ أحمد: «كمّل بناءَ المكتبة بالكامل مثل
+ * الليست وغيرها»): **التبويباتُ الخمسة** بترتيب صاحبها وإخفائه (`tabs` من
+ * الردّ — كوكي `TabsPrefs` نفسُه) وعدّاداتُها (`PageTabs`: الاسمُ ورقمٌ
+ * `text-12` بجانبه)، **والشريطُ يمرّر أفقيّاً حين لا يسع** (وصفةُ `PageTabs`:
+ * `flex-1 shrink-0` — لا قصَّ لاسم). «فنّانون» في `ArtistsTab` و«قوائم» في
+ * `ListsTab` **ببياناتٍ من مسارَيهما ولا تُجلب قبل فتحهما** (D-128/D-350:
+ * الثقيلُ مشروطٌ بتبويبه). **وتصنيفُ الأنمي غيرِ المصنَّف يُطلق مرّةً عند فتح
+ * تبويبه** كالويب (يسدّ KNOWN_GAP-12)، **وورقةُ الأدوات تحمل تبويبَ «عرض»**
+ * (ترتيبُ التبويبات · صفوفُ الصفحة — يسدّ KNOWN_GAP-8).
+ *
+ * ⚠️ **ما بقي معلَناً**: كثافةُ الملصقات من تفضيل صاحبها (`home_prefs.density`
+ * — الافتراضيُّ `comfortable` ١١٨، KNOWN_GAP-13) · طابورُ الأوفلاين
+ * (KNOWN_GAP-14) · **وأبوابُ الأشكال الثقيلة في الويب** (نموذجُ الشروط
+ * الذكيّة · ورقةُ ترتيب الطابور · إعلانُ قائمةٍ خاصّة — انظر `ListsTab`).
  *
  * 🆕 **B3 — الأفعالُ من قائمة الضغط المطوَّل، تفاؤليّةٌ بارتداد** (كما
  * `runOrQueue` في الويب، بلا طابورِ أوفلاين — KNOWN_GAP-14): الحمولةُ في
@@ -246,11 +257,68 @@ export function LibraryScreen() {
   ];
   const toolsOn = (q.trim() ? 1 : 0) + (sort !== "smart" ? 1 : 0);
 
-  const tabs: { key: Tab; label: string }[] = [
-    { key: "shows", label: t.shortShows },
-    { key: "movies", label: t.shortMovies },
-    { key: "anime", label: t.discoverTabAnime },
-  ];
+  /* D-947 — الخمسةُ بعدّاداتها كما في `LibraryGrid` (`shows.length` بعد قاطع
+     D-946 · `artistCount` · `lists + saved`)، بترتيب صاحبها، والمخفيُّ يغيب
+     إلّا إن كان المفتوح (`applyTabPrefs` حرفاً). */
+  const allItems = data.data?.items ?? [];
+  const nOf = (k: Tab) =>
+    k === "shows"
+      ? allItems.filter((x) => x.kind === "tv" && x.is_anime !== true).length
+      : k === "movies"
+        ? allItems.filter((x) => x.kind === "movie" && x.is_anime !== true).length
+        : k === "anime"
+          ? allItems.filter((x) => x.is_anime === true).length
+          : k === "artists"
+            ? (data.data?.artist_count ?? 0)
+            : (data.data?.list_count ?? 0);
+  const labelOf = (k: Tab) =>
+    k === "shows" ? t.shortShows : k === "movies" ? t.shortMovies : k === "anime" ? t.discoverTabAnime : k === "artists" ? t.shortArtists : t.listsTitle;
+  const tabPrefs: TabPref[] = data.data?.tabs ?? (["shows", "movies", "anime", "artists", "lists"] as Tab[]).map((key) => ({ key, hidden: false }));
+  const tabs: { key: Tab; label: string; n: number }[] = tabPrefs
+    .filter((p) => !p.hidden || p.key === activeTab)
+    .map((p) => ({ key: p.key as Tab, label: labelOf(p.key as Tab), n: nOf(p.key as Tab) }));
+  const tabLabels = Object.fromEntries(tabPrefs.map((p) => [p.key, labelOf(p.key as Tab)]));
+  const coreTab = activeTab === "shows" || activeTab === "movies" || activeTab === "anime";
+  const hiddenRails = data.data?.hidden_rails ?? [];
+
+  /* تفضيلاتُ العرض تُكتب في الخادم (كوكي) وتُبطل `me:library` فيعود الردُّ بها؛
+     والحارسُ (بلس) هناك — `needsPlus` يفتح بابَ «بلس» في الويب. */
+  const savePrefs = useCallback(
+    async (path: string, body: unknown) => {
+      try {
+        const r = await write<{ ok: boolean; needsPlus?: true }>(path, body);
+        if (r.needsPlus) {
+          shell.open("/plus");
+          back();
+        }
+      } catch (e) {
+        const key = e instanceof ApiError ? e.error.message_key : "apiInternal";
+        const msg = (t as unknown as Record<string, unknown>)[key];
+        setToast(typeof msg === "string" ? msg : t.apiInternal);
+      }
+    },
+    [back, t],
+  );
+  const openWeb = useCallback(
+    (path: string) => {
+      shell.open(path);
+      back();
+    },
+    [back],
+  );
+
+  /* تصنيفُ ما لم يُصنَّف — مرّةً، عند من فتح التبويب (D-182)، كما في `LibraryGrid` */
+  const [classifying, setClassifying] = useState(false);
+  const askedRef = useRef(false);
+  const animeUnknown = data.data?.anime_unknown ?? 0;
+  useEffect(() => {
+    if (activeTab !== "anime" || animeUnknown <= 0 || askedRef.current) return;
+    askedRef.current = true;
+    setClassifying(true);
+    write<{ classified: number }>("/api/v1/me/library/classify-anime", {})
+      .catch(() => null)
+      .finally(() => setClassifying(false));
+  }, [activeTab, animeUnknown]);
 
   return (
     <View style={{ flex: 1, backgroundColor: tokens.bg, paddingTop: insets.top }}>
@@ -277,6 +345,7 @@ export function LibraryScreen() {
 
       {/* التبويباتُ الثلاثة — عائلةُ segmented الواحدة، وزرُّ الأدوات في طرفها (`FilterIconButton`: `h-9 w-9 rounded-full border`) */}
       <View style={{ flexDirection: "row", alignItems: "stretch", borderBottomWidth: 1, borderBottomColor: tokens.divider, paddingHorizontal: PAGE_PAD }}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1, alignItems: "stretch" }}>
         {tabs.map((tb) => {
           const on = tb.key === activeTab;
           return (
@@ -285,9 +354,10 @@ export function LibraryScreen() {
               onPress={() => setTab(tb.key)}
               accessibilityRole="tab"
               accessibilityState={{ selected: on }}
-              style={{ flex: 1, alignItems: "center", paddingTop: 8, paddingBottom: 12, paddingHorizontal: 12 }}
+              style={{ flexGrow: 1, flexShrink: 0, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingTop: 8, paddingBottom: 12, paddingHorizontal: 12 }}
             >
               <Text size={14} weight="600" color={on ? tokens.fg : tokens.muted}>{tb.label}</Text>
+              <Text size={12} color={on ? tokens.accent : tokens.muted + "B3"} style={{ fontVariant: ["tabular-nums"] }}>{String(tb.n)}</Text>
               {on ? (
                 <View
                   style={{
@@ -305,6 +375,7 @@ export function LibraryScreen() {
             </Pressable>
           );
         })}
+        </ScrollView>
         <Pressable
           onPress={() => setTools(true)}
           accessibilityLabel={t.libraryToolsTitle}
@@ -320,7 +391,7 @@ export function LibraryScreen() {
       </View>
 
       {/* رقاقاتُ «ما اخترتَه» (`ActiveFilterChips`، عائلةُ chip): بحث · مفضّلة · ترتيب — قابلةٌ للإزالة، و«مسح الكل» */}
-      {chips.length > 0 ? (
+      {coreTab && chips.length > 0 ? (
         <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 8, paddingHorizontal: PAGE_PAD, paddingTop: 12, paddingBottom: 8 }}>
           {chips.map((c) => (
             <Pressable
@@ -339,7 +410,8 @@ export function LibraryScreen() {
         </View>
       ) : null}
 
-      {/* خانةٌ تحت الشريط (D-453/D-671): «الإحصائيات» و«النشاط» بابان إلى الويب، والقلبُ مِصفاةٌ لمن له مفضّلة */}
+      {/* خانةٌ تحت الشريط (D-453/D-671): «الإحصائيات» و«النشاط» بابان إلى الويب، والقلبُ مِصفاةٌ لمن له مفضّلة — **وتغيب في تبويب القوائم** (D-832) */}
+      {activeTab !== "lists" ? (
       <View style={{ flexDirection: "row", gap: 10, paddingHorizontal: PAGE_PAD, marginTop: 12 }}>
         {(
           [
@@ -356,7 +428,7 @@ export function LibraryScreen() {
             <Text size={14} weight="700">{b.label}</Text>
           </Pressable>
         ))}
-        {hasFav ? (
+        {hasFav && coreTab ? (
           <Pressable
             onPress={() => setFav((v) => !v)}
             accessibilityRole="togglebutton"
@@ -368,8 +440,17 @@ export function LibraryScreen() {
           </Pressable>
         ) : null}
       </View>
+      ) : null}
 
-      {data.isLoading ? (
+      {activeTab === "anime" && classifying ? (
+        <Text size={12} muted style={{ textAlign: "center", paddingVertical: 8 }}>{t.animeClassifying}</Text>
+      ) : null}
+
+      {activeTab === "artists" ? (
+        <ArtistsTab onOpenWeb={openWeb} />
+      ) : activeTab === "lists" ? (
+        <ListsTab hiddenRails={hiddenRails} onOpenWeb={openWeb} say={setToast} />
+      ) : data.isLoading ? (
         <Skeleton cols={cols} cellW={cellW} />
       ) : data.isError ? (
         <Empty
@@ -455,7 +536,28 @@ export function LibraryScreen() {
           })}
         </ScrollView>
       )}
-      {tools ? <ToolsSheet q={q} onQ={setQ} sort={sort} onSort={setSort} onClose={() => setTools(false)} /> : null}
+      {tools ? (
+        <ToolsSheet
+          q={q}
+          onQ={setQ}
+          sort={sort}
+          onSort={setSort}
+          showFilters={coreTab}
+          tabs={tabPrefs}
+          tabLabels={tabLabels}
+          onTabs={(next) => {
+            const clean = guardLastVisible(next);
+            queryClient.setQueryData<LibraryPayload>(qk.tag("me:library"), (prev) => (prev ? { ...prev, tabs: clean as LibraryPayload["tabs"] } : prev));
+            void savePrefs("/api/v1/me/prefs/tabs", { surface: "library", prefs: clean });
+          }}
+          hiddenRails={hiddenRails}
+          onRails={(keys) => {
+            queryClient.setQueryData<LibraryPayload>(qk.tag("me:library"), (prev) => (prev ? { ...prev, hidden_rails: keys } : prev));
+            void savePrefs("/api/v1/me/prefs/hidden-rails", { keys } satisfies HiddenRailsBody);
+          }}
+          onClose={() => setTools(false)}
+        />
+      ) : null}
       {held ? <HoldMenu item={held.item} anchor={held.anchor} busy={busy} onAction={(a) => void act(a)} onClose={() => setHeld(null)} /> : null}
       {toast ? <Toast text={toast} bottom={insets.bottom + 16} /> : null}
     </View>

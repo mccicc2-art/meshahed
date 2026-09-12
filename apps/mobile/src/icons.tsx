@@ -23,6 +23,15 @@ const ICONS = {
   sliders: require("../assets/icons/sliders.png"),
   search: require("../assets/icons/search.png"),
   close: require("../assets/icons/close.png"),
+  /* 🆕 D-947 — رموزُ التبويبَين الرابع والخامس وبطاقةِ القائمة، من `Icon.tsx` بالطريقة نفسِها */
+  people: require("../assets/icons/people.png"),
+  list: require("../assets/icons/list.png"),
+  share: require("../assets/icons/share.png"),
+  comment: require("../assets/icons/comment.png"),
+  "sparkle-star": require("../assets/icons/sparkle-star.png"),
+  plus: require("../assets/icons/plus.png"),
+  bookmark: require("../assets/icons/bookmark.png"),
+  "chevron-down": require("../assets/icons/chevron-down.png"),
 } as const;
 
 export type IconName = keyof typeof ICONS;
