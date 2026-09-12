@@ -29,6 +29,7 @@ import { Sheet, SheetHeader } from "./ui/Sheet";
 import { buttonClass } from "./ui/Button";
 import { HEADER_ICON } from "./ui/controls";
 import { QuickAdd } from "./QuickAdd";
+import { RailScroll } from "./RailScroll";
 /* ⚖️ 🆕 **ورقةُ الترتيب خرجت إلى ملفِّها** (D-567): صفوفُ المفضّلة
    في البروفايل تحتاجها أيضاً — **وهي هنا خمسون سطراً من رياضيّات
    سحبٍ لا تُنسخ** (القاعدة ٣/D-145). */
@@ -601,7 +602,14 @@ export function ListDetail({
           {canEditItems && addButton}
         </div>
       ) : (
-        <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 snap-x">
+        /* 🆕 **`RailScroll` لا حاويةٌ خاصّة** (D-943، طلبُ أحمد بلقطةِ «Top 250
+           Shows»: «حطّ سهم يمين ويسار لتحريك الأفلام الظاهرة»): كان الرفُّ
+           `overflow-x-auto` عارياً — **وقائمةُ مئتين وخمسين عملاً تُقرأ بالسحب
+           وحدَه على سطح المكتب** (ثمنُ D-678 المُعلَن، وقد استُحقّ). الحاويةُ
+           المشتركةُ هي التي تحمل السهمين في «القوائم المرتّبة» والمقاطع
+           (`RankedRail` · `TrailerRail`) — **وسهمان يُرسمان مرّةً ثانيةً عائلةٌ
+           ثانية** (القاعدة ٣). على الجوال تختفي والسحبُ كما كان. */
+        <RailScroll prevLabel="السابق / Previous" nextLabel="التالي / Next">
           {visible.map((it, i) => (
             <div key={keyOf(it)} className="w-[126px] sm:w-[150px] shrink-0 snap-start">
               <PosterTile
@@ -624,7 +632,7 @@ export function ListDetail({
               />
             </div>
           ))}
-        </div>
+        </RailScroll>
       )}
 
       {/* 🆕 **شريطُ الحال** (D-677/D-678، تصميمُه): ♥ عددُ الحفظ · 💬 عددُ
