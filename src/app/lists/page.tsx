@@ -8,8 +8,9 @@ import {
   getMyListedMovieIds,
   getMyPlaylistIds,
   getProfile,
+  getWatchedMovieIds,
 } from "@/lib/data";
-import { sanitizeHomePrefs, applyQueueOrder } from "@/core/homePrefs";
+import { sanitizeHomePrefs, applyQueueOrder, unwatchedOf } from "@/core/homePrefs";
 import { getT } from "@/lib/locale";
 import { ListManager } from "@/components/ListManager";
 import { HomeQueueSheetHost } from "@/components/HomeQueueOrder";
@@ -39,7 +40,7 @@ export default async function ListsPage() {
   if (!user) redirect("/login");
 
   const { locale, t } = await getT();
-  const [lists, saved, follows, listedMovieIds, profileRow, playlistIds] = await Promise.all([
+  const [lists, saved, follows, listedMovieIds, profileRow, playlistIds, watchedMovieIds] = await Promise.all([
     getMyLists(),
     getSavedLists(),
     getFollows(),
@@ -49,13 +50,22 @@ export default async function ListsPage() {
        نداءٌ واحدٌ بعمودٍ واحدٍ لصاحب الجلسة، **وموجةٌ ثانيةٌ لحرفٍ في
        بطاقةٍ ثمنٌ بلا مقابل.** */
     getMyPlaylistIds(),
+    /* 🔴 **القارئُ الثالثُ الذي قالت D-848 إنّه لا يوجد** (D-942، بلاغُ أحمد:
+       «قائمة تو واتش فيها أفلام أنا شفتها»): الرئيسيّةُ والمكتبةُ تُسقطان
+       المشاهَدَ عبر `unwatchedOf`، **وهذه الصفحةُ كانت تعدّ الطابورَ الخامَ
+       وتعرضه في ورقة الترتيب** — **فبابٌ ثالثٌ يقول عن القائمة نفسِها ما لا
+       يقوله أخواه.** الحكمُ نفسُه، من الدالّة نفسِها. */
+    getWatchedMovieIds().catch(() => new Set<number>()),
   ]);
 
   /* **الحسابُ حسابُ المكتبة والرئيسية حرفاً** (D-505): أفلامُك التي لا
      قائمةَ لها، بترتيب الإضافة. **والفارغُ لا بطاقةَ له** (D-219). */
-  const queue = follows
-    .filter((f) => f.media_type === "movie" && !listedMovieIds.has(f.tmdb_id))
-    .sort((a, b) => a.added_at.localeCompare(b.added_at));
+  const queue = unwatchedOf(
+    follows
+      .filter((f) => f.media_type === "movie" && !listedMovieIds.has(f.tmdb_id))
+      .sort((a, b) => a.added_at.localeCompare(b.added_at)),
+    watchedMovieIds,
+  );
   /* 🆕 **وترتيبُ صاحبها ثالثَ الأبواب** (D-719) */
   const queueOrdered = applyQueueOrder(
     queue,
