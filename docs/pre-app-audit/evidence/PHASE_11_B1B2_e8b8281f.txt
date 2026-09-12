@@ -1,0 +1,48 @@
+# Phase 11 · B1+B2 gates — main @ e8b8281ff44409b2411b9c49b29664aeb23139fc (clean tree)
+# 2026-09-08 04:33:33 +0000 feat(mobile): native Library experiment — B1 session bridge (nonce, memory-only token) + B2 grid/card/tabs, admi
+
+## git status --short | wc -l
+0
+
+## web: npx tsc --noEmit
+TSC_WEB_OK
+
+## app: npx tsc --noEmit (apps/mobile)
+TSC_APP_OK
+
+## eslint (changed web files)
+ESLINT_OK
+
+## B1 §5 evidence: grep -rn access apps/mobile/src apps/mobile/app (code lines only)
+apps/mobile/src/api.ts:3:import { accessToken } from "./auth";
+apps/mobile/src/api.ts:94:    const token = session.get() ?? (await accessToken());
+apps/mobile/src/auth.tsx:139:export async function accessToken(): Promise<string | null> {
+apps/mobile/src/auth.tsx:141:  return data.session?.access_token ?? null;
+apps/mobile/src/session.ts:29:let access: string | null = null;
+apps/mobile/src/session.ts:52:    if (!access) return null;
+apps/mobile/src/session.ts:54:    return access;
+apps/mobile/src/session.ts:67:    const had = !!access;
+apps/mobile/src/session.ts:68:    access = null;
+apps/mobile/src/session.ts:121:      if ("access" in msg) console.warn(`[session] ignored message with access field: type=${String(msg.type)}`);
+apps/mobile/src/session.ts:126:    const okAccess = typeof msg.access === "string" && JWT.test(msg.access);
+apps/mobile/src/session.ts:129:      console.warn(`[session] rejected session message host=${hostOk} nonce=${okNonce} access=${okAccess} exp=${okExp}`);
+apps/mobile/src/session.ts:132:    access = msg.access as string;
+apps/mobile/src/session.ts:137:    p!.resolve(access);
+apps/mobile/app/web.tsx:81:function handoffScript(access: string, refresh: string): string {
+apps/mobile/app/web.tsx:83:var a=document.createElement('input');a.type='hidden';a.name='access_token';a.value=${JSON.stringify(access)};
+apps/mobile/app/web.tsx:185:        ref.current?.injectJavaScript(handoffScript(data.session.access_token, data.session.refresh_token));
+
+## fonts on main (from the lane: @fontsource 5.3.0 WOFF sha256-verified → TTF, fontTools 4.62.1)
+Poppins-400.ttf Poppins 218
+Poppins-500.ttf Poppins Medium 218
+Poppins-600.ttf Poppins SemiBold 218
+Poppins-700.ttf Poppins 218
+Tajawal-400.ttf Tajawal 190
+Tajawal-500.ttf Tajawal Medium 190
+Tajawal-700.ttf Tajawal 190
+Tajawal-800.ttf Tajawal ExtraBold 190
+## web: npx next build (tail)
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+
