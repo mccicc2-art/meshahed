@@ -3,7 +3,7 @@ import { session as bridge } from "./session";
 import { useQuery } from "@tanstack/react-query";
 import { api, qk } from "./api";
 import { useAuth } from "./auth";
-import { deviceLocale, dictFor } from "./i18n";
+import { currentLocale, dictFor, webLocale } from "./i18n";
 import { tokensOf, type Tokens } from "./theme";
 import type { Dict, Locale } from "@/core/i18n";
 
@@ -35,7 +35,8 @@ const Ctx = createContext<AppState | null>(null);
  */
 export function AppStateProvider({ children, fontsReady }: { children: React.ReactNode; fontsReady: boolean }) {
   const { session } = useAuth();
-  const locale = deviceLocale();
+  /* 🆕 D-946 — اللغةُ من الويب حين بلّغها، وتتبدّل حيّةً حين يبدّلها المستخدم */
+  const locale = useSyncExternalStore(webLocale.subscribe, currentLocale, currentLocale);
   /* 🆕 Phase 11 · B1 — الرمزُ من الجسر لا من جلسةٍ مخزونة: «مَن أنا» (والثيمُ
      معه) يُجلب حين يحمل الغلافُ رمزَ وصولٍ، أي حين تُفتح شاشةٌ أصليّة. */
   const bridged = useSyncExternalStore(bridge.subscribe, bridge.has, bridge.has);

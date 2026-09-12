@@ -8,7 +8,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { supabase, useAuth } from "../src/auth";
 import { CONFIG } from "../src/config";
 import { File, Paths } from "expo-file-system";
-import { deviceLocale } from "../src/i18n";
+import { currentLocale, webLocale } from "../src/i18n";
 import { Button, Loading, Text } from "../src/ui";
 import { SHELL_BG, space } from "../src/theme";
 import { perfMs } from "../src/perf";
@@ -105,7 +105,7 @@ function insideUrl(url: string | undefined): boolean {
 export default function Web() {
   const { loading, signInWithGoogle } = useAuth();
   const router = useRouter();
-  const t = OFFLINE[deviceLocale() === "ar" ? "ar" : "en"];
+  const t = OFFLINE[currentLocale() === "ar" ? "ar" : "en"];
   const ref = useRef<WebView>(null);
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -163,6 +163,11 @@ export default function Web() {
       const hostOk = insideUrl(e.nativeEvent.url);
       /* Phase 11 · B1 — رسائلُ الجلسة تُفحص في `session.ts` (nonce · JWT · exp · المضيف) */
       if (session.receive(msg as Record<string, unknown>, hostOk)) return;
+      /* 🆕 D-946 — لغةُ الويب: تُقبل من نطاقنا وحدَه، وتُفحص القيمةُ في `webLocale.set` */
+      if (msg.type === "locale") {
+        if (hostOk) webLocale.set((msg as { lang?: unknown }).lang);
+        return;
+      }
       if (msg.type === "native") {
         /* الشاشةُ الأصليّةُ لا تُفتح لرسالةٍ من غير نطاقنا — المضيفُ شرطٌ هنا أيضاً */
         if (hostOk && msg.route === "library") router.push("/library");

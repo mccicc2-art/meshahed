@@ -198,8 +198,13 @@ export function LibraryScreen() {
   /** القائمةُ بعد المصافي والترتيب — الوصفةُ في `LibraryGrid.tsx` (`items`) حرفاً */
   const list = useMemo(() => {
     const items = data.data?.items ?? [];
+    /* 🆕 D-946 — **الأنمي في تبويبه وحدَه**: المعلَّمُ أنمياً يخرج من
+       «مسلسلاتي» و«أفلامي»؛ وغيرُ المصنَّف (`null`) يبقى في تبويبه الأصليّ.
+       **الوصفةُ حرفاً كما في `library/page.tsx`** (B5: تكافؤٌ لا تقريب). */
     const inTab = items.filter((x) =>
-      activeTab === "shows" ? x.kind === "tv" : activeTab === "movies" ? x.kind === "movie" : x.is_anime === true,
+      activeTab === "anime"
+        ? x.is_anime === true
+        : x.is_anime !== true && (activeTab === "shows" ? x.kind === "tv" : x.kind === "movie"),
     );
     const byFav = fav && hasFav ? inTab.filter((x) => x.is_favorite === true) : inTab;
     const needle = normalizeSearch(q);

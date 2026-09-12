@@ -351,9 +351,16 @@ export default async function LibraryPage({
     media_type: "movie" as const,
   }));
 
-  const anime = [...shows, ...movies].filter(
-    (x) => animeFlags.get(`${x.mediaType}-${x.tmdbId}`) === true,
-  );
+  /* 🆕 **الأنمي في تبويبه وحدَه** (D-946، طلبُ أحمد ١٢ سبتمبر: «خلّ الأنمي
+     فقط في قائمة الأنمي»): ما عُلِّم أنمياً **يخرج من «مسلسلاتي» و«أفلامي»**
+     ويعيش في «أنمي» وحدَه — **نقضٌ صريحٌ لـD-182** («تبويبٌ يجمع لا يقتطع»).
+     ⚖️ **وما لم يُصنَّف بعد (`null`) يبقى في تبويبه الأصليّ** حتى تصنّفه
+     الجولةُ الأولى — فلا يختفي عملٌ من كلِّ التبويبات في لحظةٍ ما. **الوصفةُ
+     نفسُها في `LibraryScreen.tsx` الأصليّة** (B5: تكافؤٌ حرفيّ). */
+  const isAnime = (x: { mediaType?: string; tmdbId?: number }) => animeFlags.get(`${x.mediaType}-${x.tmdbId}`) === true;
+  const anime = [...shows, ...movies].filter(isAnime);
+  const showsOnly = shows.filter((x) => !isAnime(x));
+  const moviesOnly = movies.filter((x) => !isAnime(x));
   /* **و`null` ليست `false`:** ما لم يُصنَّف بعد يُسأل عنه مرّةً عند أوّل
      فتحٍ للتبويب. صفٌّ جديد يولد غيرَ مصنَّف، فالعدّ لا يجفّ للأبد.
      والخريطةُ الفارغة (قبل الهجرة ٦١) تعني «الكلُّ غير مصنَّف» — وهو
@@ -384,8 +391,8 @@ export default async function LibraryPage({
       )}
 
       <LibraryGrid
-        shows={shows}
-        movies={movies}
+        shows={showsOnly}
+        movies={moviesOnly}
         anime={anime}
         animeUnknown={animeUnknown}
         artists={artists}

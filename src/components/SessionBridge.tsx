@@ -82,6 +82,16 @@ export function SessionBridge() {
     window.addEventListener(REQUEST_EVENT, onRequest);
     document.addEventListener("submit", onSubmit, true);
 
+    /* 🆕 D-946 — **لغةُ الويب إلى الغلاف**: الشاشةُ الأصليّة كانت تقرأ لغةَ
+       الهاتف لا لغةَ الحساب (أحمد: «المكتبةُ بالعربيّة والتطبيقُ بالإنجليزيّة»).
+       المصدرُ `<html lang>` — يكتبه التخطيطُ من الكوكي — يُبلَّغ عند التركيب
+       وعند كلِّ تبديلٍ (المراقبُ يلتقط إعادةَ رسم التخطيط). لا `nonce`: ليست
+       سرّاً، والغلافُ يفحص المضيفَ والقيمةَ. */
+    const postLocale = () => post({ type: "locale", lang: document.documentElement.lang });
+    postLocale();
+    const langWatch = new MutationObserver(postLocale);
+    langWatch.observe(document.documentElement, { attributes: true, attributeFilter: ["lang"] });
+
     let unsub: (() => void) | null = null;
     createClient()
       .then((supabase) => {
@@ -101,6 +111,7 @@ export function SessionBridge() {
       disposed = true;
       window.removeEventListener(REQUEST_EVENT, onRequest);
       document.removeEventListener("submit", onSubmit, true);
+      langWatch.disconnect();
       unsub?.();
     };
   }, []);

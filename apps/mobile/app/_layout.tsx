@@ -7,15 +7,16 @@ import * as SplashScreen from "expo-splash-screen";
 import { AuthProvider, useAuth } from "../src/auth";
 import { AppStateProvider, useApp } from "../src/state";
 import { queryClient } from "../src/api";
-import { applyDirection, deviceLocale } from "../src/i18n";
+import { applyDirection, currentLocale } from "../src/i18n";
 import { useAppFonts } from "../src/fonts";
 
 /**
  * الجذر: الاستعلامات ⇢ الجلسة ⇢ الحالة ⇢ الغلاف (D-922: شاشةٌ واحدة `/web`).
  * **الاتّجاهُ يُطبَّق قبل أوّل رسمة**: RTL قرارُ إقلاعٍ في React Native.
+ * 🆕 D-946 — **ومن لغة الويب المحفوظة** لا لغةِ الجهاز حين تختلفان.
  */
 SplashScreen.preventAutoHideAsync().catch(() => {});
-applyDirection(deviceLocale());
+applyDirection(currentLocale());
 
 
 export default function RootLayout() {
