@@ -32,6 +32,11 @@ const ICONS = {
   plus: require("../assets/icons/plus.png"),
   bookmark: require("../assets/icons/bookmark.png"),
   "chevron-down": require("../assets/icons/chevron-down.png"),
+  /* D-948 — مقبضُ الترتيب، وعينُ الحرق، والنجمةُ الممتلئة (`fill-current` في الويب) */
+  grip: require("../assets/icons/grip.png"),
+  eye: require("../assets/icons/eye.png"),
+  "eye-off": require("../assets/icons/eye-off.png"),
+  "star-filled": require("../assets/icons/star-filled.png"),
 } as const;
 
 export type IconName = keyof typeof ICONS;

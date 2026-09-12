@@ -26,6 +26,11 @@ export type {
   SaveListBody,
   ToWatchBody,
   HiddenRailsBody,
+  QueueItem,
+  ListReviewBody,
+  ListReviewDeleteBody,
+  QueueOrderBody,
+  SmartListBody,
 } from "@/core/contracts/library";
 export type {
   ToggleEpisodeBody,

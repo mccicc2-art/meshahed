@@ -1,4 +1,14 @@
-import type { FollowRow } from "@/lib/data";
+/**
+ * 🆕 D-948 — **الحقولُ التي تقرؤها الوصفة لا الصفُّ كاملاً**: كان يستورد
+ * `FollowRow` من `@/lib/data`، **والنواةُ لا تستورد من `lib` حتى نوعاً** —
+ * فالتطبيقُ (`apps/mobile`) يستورد `LIBRARY_STATUSES` من هنا ولا يرى `lib`.
+ * `FollowRow` تُرضي هذا النوعَ بنيويّاً فلا يتغيّر قارئٌ واحد.
+ */
+export type StatusSource = {
+  aired_episodes?: number | null;
+  total_episodes?: number | null;
+  dropped?: boolean | null;
+};
 
 /**
  * ====== حالةُ عملٍ في المكتبة — الوصفةُ الواحدة (D-876) ======
@@ -32,7 +42,7 @@ export function isLibraryStatus(v: unknown): v is LibraryStatus {
  * (بطاقةٌ حمراء تعلو كلَّ شيء)، **ثمّ المكتمل**، **ثمّ ما بدأ**، **وما
  * سواها لم يبدأ.** `watched` مقصوصٌ على `aired` كما في الصفحة.
  */
-export function showStatusOf(f: FollowRow, watchedRaw: number): LibraryStatus {
+export function showStatusOf(f: StatusSource, watchedRaw: number): LibraryStatus {
   const aired = f.aired_episodes ?? f.total_episodes ?? 0;
   const watched = Math.min(watchedRaw, aired || Infinity);
   const done = aired > 0 && watched >= aired && watched > 0;
@@ -43,7 +53,7 @@ export function showStatusOf(f: FollowRow, watchedRaw: number): LibraryStatus {
 }
 
 /** **حالةُ فيلم** — **لا «قيد المشاهدة» للفيلم**: يُرى أو لا يُرى */
-export function movieStatusOf(f: FollowRow, watched: boolean): LibraryStatus {
+export function movieStatusOf(f: StatusSource, watched: boolean): LibraryStatus {
   if (f.dropped) return "dropped";
   return watched ? "completed" : "unstarted";
 }

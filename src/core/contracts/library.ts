@@ -105,6 +105,9 @@ export type LibraryListCard = {
   /** أستطيع الحفظ/إلغاءه (قائمةُ غيري) و«هل حفظتُها» */
   can_save: boolean;
   saved_by_me: boolean;
+  /** D-948 — بابُ التقييم (قائمةٌ عامّةٌ ليست لي) ورأيي القائم — كـ`ListRateStar` */
+  can_review?: boolean;
+  my_review?: { rating: number; body: string | null; has_spoiler: boolean } | null;
 };
 
 export type LibraryAutoGroup = {
@@ -117,8 +120,9 @@ export type LibraryAutoGroup = {
 /** 🆕 D-947 — `GET /api/v1/me/library/lists`: تبويبُ «قوائم» كلُّه في ردٍّ واحد */
 export type LibraryListsPayload = {
   lists: LibraryListCard[];
-  /** بطاقةُ «للمشاهدة» (D-559) — `null` = طابورٌ فارغٌ فلا بطاقة (D-219) */
-  to_watch: { on: boolean; count: number; posters: (string | null)[] } | null;
+  /** بطاقةُ «للمشاهدة» (D-559) — `null` = طابورٌ فارغٌ فلا بطاقة (D-219).
+      D-948: `items` الطابورُ كاملاً بترتيب صاحبه لورقة الترتيب (`ReorderItem`) */
+  to_watch: { on: boolean; count: number; posters: (string | null)[]; items: QueueItem[] } | null;
   saved: LibraryListCard[];
   saved_count: number;
   auto_groups: LibraryAutoGroup[];
@@ -126,7 +130,13 @@ export type LibraryListsPayload = {
   has_smart: boolean;
 };
 
-/** أجسامُ الكتابات التي يحتاجها تبويبُ «قوائم» أصليّاً (D-947) */
+export type QueueItem = { key: string; title: string; poster_path: string | null; media_type: TitleKind };
+
+/** أجسامُ الكتابات التي يحتاجها تبويبُ «قوائم» أصليّاً (D-947 · D-948) */
+export type ListReviewBody = { listId: string; rating: number; body?: string | null; hasSpoiler?: boolean };
+export type ListReviewDeleteBody = { listId: string };
+export type QueueOrderBody = { row: "continue" | "towatch" | "lists" | "towatchlist"; keys: string[] };
+export type SmartListBody = { name: string; rule: Record<string, string> };
 export type CreateListBody = { name: string };
 export type ListPlaylistBody = { listId: string; on: boolean };
 export type SaveListBody = { listId: string; save: boolean };

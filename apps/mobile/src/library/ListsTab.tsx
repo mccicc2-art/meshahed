@@ -10,9 +10,12 @@ import { radius } from "../theme";
 import { Icon } from "../icons";
 import { Sheet } from "./Sheet";
 import { ListCard, type ListCardData } from "./ListCard";
+import { ListReviewSheet, type MyReview } from "./ListReviewSheet";
+import { ReorderSheet } from "./ReorderSheet";
+import { SmartListSheet } from "./SmartListSheet";
 import { profileUrl, posterUrl } from "@/core/media";
 import { railOff, railsHiddenFor } from "@/core/railPrefs";
-import type { LibraryListsPayload, LibraryListCard, LibraryAutoGroup, ListPlaylistBody, SaveListBody, ToWatchBody, CreateListBody } from "../contracts";
+import type { LibraryListsPayload, LibraryListCard, LibraryAutoGroup, ListPlaylistBody, SaveListBody, ToWatchBody, CreateListBody, QueueOrderBody } from "../contracts";
 
 /**
  * ====== تبويبُ «قوائم» أصليّاً — نسخةُ `ListManager` + `listsExtra` (D-947) ======
@@ -22,14 +25,14 @@ import type { LibraryListsPayload, LibraryListCard, LibraryAutoGroup, ListPlayli
  * أوّلاً (D-559) ⇢ قوائمي (D-364) ⇢ «تجتمع عندك» (D-820) ⇢ المحفوظة (D-374).
  * **والصفوفُ المخفيّة تغيب بعنوانها** (D-874) بالكوكي نفسِه الذي تقرؤه الصفحة.
  *
- * 🔑 **الأفعالُ الخفيفة هنا، والأشكالُ الثقيلة في الويب** (D-922: الويبُ هو
- * المنتج): رايةُ التشغيل والحفظُ ورايةُ «للمشاهدة» وإنشاءُ قائمةٍ باسمها —
- * كتاباتٌ بسطرٍ عبر `/api/v1`؛ **أمّا نموذجُ الشروط الذكيّة وورقةُ ترتيب
- * الطابور وورقةُ المشاركة (إعلانُ قائمةٍ خاصّة) فأبوابٌ في الويب** تُفتح على
- * مكانها (`?smart=new` · `?queue=towatchlist` · `/lists/:id`) — نسخُها
- * ورقةُ فلاترَ ثانيةٌ ومحرّرُ سحبٍ ثانٍ (D-145)، **ولا مكسبَ مقيساً منها.**
- * **والمشاركةُ الأصليّةُ لقائمةٍ معلَنة** بورقة النظام (`Share`) — الرابطُ
- * نفسُه الذي يشاركه الويب.
+ * 🔑 **كلُّ أفعال التبويب أصليّة** — كتاباتٌ بسطرٍ عبر `/api/v1` فوق الأفعال
+ * القائمة: رايةُ التشغيل · الحفظُ · رايةُ «للمشاهدة» · إنشاءُ قائمةٍ · 🆕 D-948
+ * **رأيي في قائمةٍ** (`ListReviewSheet`) · **ترتيبُ طابور «للمشاهدة» بالسحب**
+ * (`ReorderSheet`) · **قائمةٌ ذكيّةٌ بشروطها** (`SmartListSheet`) — ⚖️ نقضٌ
+ * لحكم D-947 («الأشكالُ الثقيلة أبوابٌ في الويب») بأمر أحمد: «ابنِ الثلاثة».
+ * **ما بقي باباً في الويب**: إعلانُ قائمةٍ خاصّة للمشاركة (`/lists/:id`) وتحريرُ
+ * شرطِ ذكيّةٍ قائمة (`?edit=`). **والمشاركةُ الأصليّةُ لقائمةٍ معلَنة** بورقة
+ * النظام (`Share`) — الرابطُ نفسُه الذي يشاركه الويب.
  *
  * 📐 الشبكةُ `grid-cols-1 sm:grid-cols-2` بفاصل `gap-2.5` ١٠ — عمودٌ على
  * الجوّال واثنان من ٦٤٠ (D-461).
@@ -46,6 +49,9 @@ export function ListsTab({ hiddenRails, onOpenWeb, say }: { hiddenRails: string[
   });
   const [busyId, setBusyId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const [smart, setSmart] = useState(false);
+  const [reorder, setReorder] = useState(false);
+  const [rating, setRating] = useState<LibraryListCard | null>(null);
   const [group, setGroup] = useState<LibraryAutoGroup | null>(null);
 
   const fail = useCallback(
@@ -150,6 +156,8 @@ export function ListsTab({ hiddenRails, onOpenWeb, say }: { hiddenRails: string[
     playlist: l.playlist === null || l.item_count <= 0 ? null : l.playlist,
     canSave: l.can_save,
     savedByMe: l.saved_by_me,
+    canReview: !!l.can_review,
+    hasMyReview: !!l.my_review,
   });
 
   /* المفاتيحُ تصل كاملةً (`library:autogroups`) وتُقصر على تبويبها كما في الصفحة (`railsHiddenFor`) */
@@ -169,7 +177,7 @@ export function ListsTab({ hiddenRails, onOpenWeb, say }: { hiddenRails: string[
             <Text size={14} weight="700">{t.listNewGroup}</Text>
           </Pressable>
           <Pressable
-            onPress={() => onOpenWeb("/library?filter=list&smart=new")}
+            onPress={() => setSmart(true)}
             style={{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, height: 40, borderRadius: radius.control, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface }}
           >
             <Icon name="sparkle-star" size={14} color={tokens.fg} />
@@ -202,7 +210,7 @@ export function ListsTab({ hiddenRails, onOpenWeb, say }: { hiddenRails: string[
                   }}
                   busy={busyId === "towatch"}
                   onPlaylist={(on) => void setToWatch(on)}
-                  onPress={() => onOpenWeb("/library?filter=list&queue=towatchlist")}
+                  onPress={() => setReorder(true)}
                 />
               </View>
             ) : null}
@@ -265,6 +273,7 @@ export function ListsTab({ hiddenRails, onOpenWeb, say }: { hiddenRails: string[
                   onPress={() => onOpenWeb(`/lists/${l.id}`)}
                   onPlaylist={(on) => void setPlaylist(l, on)}
                   onSave={(save) => void setSaved(l, save)}
+                  onRate={() => setRating(l)}
                 />
               </View>
             ))}
@@ -280,6 +289,57 @@ export function ListsTab({ hiddenRails, onOpenWeb, say }: { hiddenRails: string[
             say(t.listMadeToast(name));
             void queryClient.invalidateQueries({ queryKey: qk.tag("me:lists") });
             if (id) onOpenWeb(`/lists/${id}`);
+          }}
+          onError={fail}
+        />
+      ) : null}
+      {smart ? (
+        <SmartListSheet
+          onClose={() => setSmart(false)}
+          onNeedsPlus={() => {
+            setSmart(false);
+            onOpenWeb("/plus");
+          }}
+          onCreated={(id) => {
+            setSmart(false);
+            say(t.librarySmartCreated);
+            void queryClient.invalidateQueries({ queryKey: qk.tag("me:lists") });
+            void queryClient.invalidateQueries({ queryKey: qk.tag("me:library") });
+            if (id) onOpenWeb(`/lists/${id}`);
+          }}
+          onError={fail}
+        />
+      ) : null}
+      {reorder && p.to_watch ? (
+        <ReorderSheet
+          items={p.to_watch.items}
+          onClose={() => setReorder(false)}
+          onDone={(keys) => {
+            setReorder(false);
+            /* تفاؤلٌ: ملصقاتُ البطاقة الثلاثة من رأس الترتيب الجديد */
+            patch((prev) => {
+              if (!prev.to_watch) return prev;
+              const byKey = new Map(prev.to_watch.items.map((x) => [x.key, x]));
+              const items = keys.map((k) => byKey.get(k)).filter((x): x is NonNullable<typeof x> => !!x);
+              return { ...prev, to_watch: { ...prev.to_watch, items, posters: items.slice(0, 3).map((x) => x.poster_path) } };
+            });
+            write<{ done: true }>("/api/v1/me/prefs/queue-order", { row: "towatchlist", keys } satisfies QueueOrderBody).catch(fail);
+          }}
+        />
+      ) : null}
+      {rating ? (
+        <ListReviewSheet
+          listId={rating.id}
+          listName={rating.name}
+          mine={rating.my_review ?? null}
+          onClose={() => setRating(null)}
+          onSaved={(next: MyReview | null) => {
+            const id = rating.id;
+            setRating(null);
+            say(next ? t.listReviewSave : t.listReviewDelete);
+            /* تفاؤلٌ على رأيي وحدَه؛ المتوسّطُ والعدُّ يأتيان مع إعادة الجلب */
+            patch((prev) => ({ ...prev, saved: prev.saved.map((x) => (x.id === id ? { ...x, my_review: next } : x)) }));
+            void queryClient.invalidateQueries({ queryKey: qk.tag("me:lists") });
           }}
           onError={fail}
         />

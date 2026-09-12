@@ -75,7 +75,13 @@ export async function GET() {
     const left = unwatchedOf(queue, watchedMovieIds);
     const ordered = applyQueueOrder(left, (f) => `tw-mv-${f.tmdb_id}`, prefs.towatchListOrder);
     const to_watch = left.length
-      ? { on: prefs.toWatch, count: left.length, posters: ordered.slice(0, 3).map((f) => f.poster_path ?? null) }
+      ? {
+          on: prefs.toWatch,
+          count: left.length,
+          posters: ordered.slice(0, 3).map((f) => f.poster_path ?? null),
+          /* D-948 — بذرةُ ورقة الترتيب كما تبنيها الصفحة (`toWatchListItems`، D-719) */
+          items: ordered.map((f) => ({ key: `tw-mv-${f.tmdb_id}`, title: f.title, poster_path: f.poster_path ?? null, media_type: "movie" as const })),
+        }
       : null;
 
     const playlists = new Set(playlistIds);
@@ -126,6 +132,8 @@ export async function GET() {
       playlist: typeof l.playlist === "boolean" ? l.playlist : null,
       can_save: !!l.can_save,
       saved_by_me: l.saved_by_me !== false,
+      can_review: !!l.can_review,
+      my_review: l.my_review ? { rating: l.my_review.rating, body: l.my_review.body, has_spoiler: l.my_review.hasSpoiler } : null,
     }));
 
     const groups = buildAutoGroups(followRows, metas);

@@ -48,6 +48,9 @@ export type ListCardData = {
   /** القلبُ فعلٌ (قائمةُ غيري) — وإلّا رقمٌ ساكن */
   canSave?: boolean;
   savedByMe?: boolean;
+  /** D-948 — ★ فعلٌ لقائمة غيري (`ListRateStar`): ممتلئةٌ ولونُ التمييز حين لي رأي */
+  canReview?: boolean;
+  hasMyReview?: boolean;
   dashed?: boolean;
 };
 
@@ -57,6 +60,7 @@ export function ListCard({
   onPlaylist,
   onShare,
   onSave,
+  onRate,
   busy,
 }: {
   card: ListCardData;
@@ -64,6 +68,7 @@ export function ListCard({
   onPlaylist?: (on: boolean) => void;
   onShare?: () => void;
   onSave?: (save: boolean) => void;
+  onRate?: () => void;
   busy?: boolean;
 }) {
   const { t, tokens, locale } = useApp();
@@ -200,10 +205,17 @@ export function ListCard({
                   <Text size={12} muted style={styles.nums}>{num(stats.reviews, locale)}</Text>
                 </View>
                 <Sep />
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                  <Icon name="star" size={15} color={tokens.accent} />
-                  <Text size={12} weight="700" color={tokens.accent} style={styles.nums}>{num(stats.rating ?? 0, locale)}</Text>
-                </View>
+                {/* ★ — فعلٌ يفتح ورقةَ الرأي لقائمة غيري (D-948)، رقمٌ ساكنٌ لقائمتي */}
+                <Pressable
+                  disabled={!card.canReview || !onRate}
+                  onPress={onRate}
+                  hitSlop={6}
+                  accessibilityLabel={t.listReviewsTitle}
+                  style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
+                >
+                  <Icon name={card.hasMyReview ? "star-filled" : "star"} size={15} color={card.canReview && !card.hasMyReview ? tokens.muted : tokens.accent} />
+                  <Text size={12} weight="700" color={card.canReview && !card.hasMyReview ? tokens.muted : tokens.accent} style={styles.nums}>{num(stats.rating ?? 0, locale)}</Text>
+                </Pressable>
               </View>
             ) : null}
             {play ? <View style={{ marginStart: "auto", paddingStart: 8 }}>{play}</View> : null}
