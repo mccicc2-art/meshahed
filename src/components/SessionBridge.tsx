@@ -82,6 +82,82 @@ export function SessionBridge() {
     window.addEventListener(REQUEST_EVENT, onRequest);
     document.addEventListener("submit", onSubmit, true);
 
+    /* 🆕 D-949 — **الرجوعُ من صفحةٍ فُتحت من المكتبة الأصليّة يعود إليها**
+       (بلاغُ أحمد: «إذا دخلت الإحصائيات وأرجع يودّيني للهوم»). الغلافُ يضع
+       `loopz:return` في `sessionStorage` قبل `location.href`؛ هنا عند الوصول:
+       تُنزع العلامةُ وتُسلَّح (`loopz:armed`)، وتُوسَم حالةُ التاريخ لهذه
+       الصفحة وكلِّ ما يُدفع بعدها (`pushState` مُغلَّف) — **فأوّلُ `popstate`
+       يهبط على حالةٍ بلا وسمٍ هو رجوعٌ تجاوز صفحةَ الوصول** ⇒ `native:library`.
+       والرجوعُ الذي يحمّل مستنداً (المدخلُ السابق مستندٌ لا SPA) يُلتقط عند
+       الوصول بـ`navigation.type === "back_forward"` مع التسليح.
+       ⚖️ **والذهابُ إلى جذرٍ (الرئيسيّة/التبويبات) ينزع السلاح**: من ضغط
+       «الرئيسيّة» بنفسه ثمّ رجع لا يتوقّع المكتبة. */
+    const ROOTS = new Set(["/", "/library", "/discover", "/community", "/search"]);
+    const toLibrary = () => {
+      try {
+        sessionStorage.removeItem("loopz:armed");
+      } catch {
+        /* لا شيء */
+      }
+      post({ type: "native", route: "library" });
+    };
+    let armed = false;
+    try {
+      if (sessionStorage.getItem("loopz:return") === "library") {
+        sessionStorage.removeItem("loopz:return");
+        sessionStorage.setItem("loopz:armed", "1");
+      }
+      armed = sessionStorage.getItem("loopz:armed") === "1";
+      const navType = (performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming | undefined)?.type;
+      if (armed && navType === "back_forward") {
+        toLibrary();
+        armed = false;
+      }
+    } catch {
+      armed = false;
+    }
+    const origPush = window.history.pushState;
+    const origReplace = window.history.replaceState;
+    /* الوسمُ يُحفظ على كلِّ مدخلٍ غيرِ جذرٍ ما دمنا مسلَّحين — و`replaceState`
+       أيضاً لأنّ موجِّه Next يستبدل الحالةَ بعد كلِّ انتقالٍ بلا نسخِ ما ليس له. */
+    const stamp = (data: unknown, url?: string | URL | null): unknown => {
+      try {
+        const path = url ? new URL(String(url), window.location.href).pathname : window.location.pathname;
+        if (ROOTS.has(path)) {
+          sessionStorage.removeItem("loopz:armed");
+          return data;
+        }
+        if (sessionStorage.getItem("loopz:armed") === "1" && data && typeof data === "object")
+          return { ...(data as Record<string, unknown>), loopzReturn: 1 };
+      } catch {
+        /* لا شيء */
+      }
+      return data;
+    };
+    const onPop = () => {
+      try {
+        if (sessionStorage.getItem("loopz:armed") !== "1") return;
+        const st = window.history.state as { loopzReturn?: number } | null;
+        if (!st?.loopzReturn) toLibrary();
+      } catch {
+        /* لا شيء */
+      }
+    };
+    if (armed) {
+      try {
+        window.history.replaceState({ ...(window.history.state ?? {}), loopzReturn: 1 }, "");
+      } catch {
+        /* لا شيء */
+      }
+      window.history.pushState = function (this: History, data: unknown, unused: string, url?: string | URL | null) {
+        return origPush.call(this, stamp(data, url), unused, url);
+      };
+      window.history.replaceState = function (this: History, data: unknown, unused: string, url?: string | URL | null) {
+        return origReplace.call(this, stamp(data, url), unused, url);
+      };
+      window.addEventListener("popstate", onPop);
+    }
+
     /* 🆕 D-946 — **لغةُ الويب إلى الغلاف**: الشاشةُ الأصليّة كانت تقرأ لغةَ
        الهاتف لا لغةَ الحساب (أحمد: «المكتبةُ بالعربيّة والتطبيقُ بالإنجليزيّة»).
        المصدرُ `<html lang>` — يكتبه التخطيطُ من الكوكي — يُبلَّغ عند التركيب
@@ -112,6 +188,11 @@ export function SessionBridge() {
       window.removeEventListener(REQUEST_EVENT, onRequest);
       document.removeEventListener("submit", onSubmit, true);
       langWatch.disconnect();
+      if (armed) {
+        window.history.pushState = origPush;
+        window.history.replaceState = origReplace;
+        window.removeEventListener("popstate", onPop);
+      }
       unsub?.();
     };
   }, []);

@@ -12,10 +12,21 @@ export const shell = {
   attach(fn: ((js: string) => void) | null) {
     inject = fn;
   },
-  /** مسارٌ نسبيٌّ على نطاق Loopz (`/show/123`) — ما سواه يُهمل */
-  open(path: string): boolean {
+  /**
+   * مسارٌ نسبيٌّ على نطاق Loopz (`/show/123`) — ما سواه يُهمل.
+   *
+   * 🆕 D-949 — **الرجوعُ يعود إلى المكتبة الأصليّة** (بلاغُ أحمد بتسجيل: «إذا
+   * دخلت الإحصائيات وأرجع يودّيني للهوم»): الشاشةُ الأصليّة تُغلق عند فتح صفحةٍ
+   * ويبيّة، **فتاريخُ الـWebView لا يعرفها** — والرجوعُ يهبط على ما قبلها
+   * (الرئيسيّة). الحلُّ علامةٌ في `sessionStorage` تُقرأ عند وصول الصفحة
+   * (`SessionBridge`): أوّلُ رجوعٍ يتجاوز صفحةَ الوصول يبثّ `native:library`
+   * فيُعاد فتحُ الشاشة. **`sessionStorage` لا `history.state`** لأنّ
+   * `location.href` تحميلُ مستندٍ جديد والحالةُ لا تعبره.
+   */
+  open(path: string, opts?: { returnTo?: "library" }): boolean {
     if (!inject || !path.startsWith("/")) return false;
-    inject(`location.href=${JSON.stringify(CONFIG.apiBase + path)};true;`);
+    const arm = opts?.returnTo ? `try{sessionStorage.setItem("loopz:return",${JSON.stringify(opts.returnTo)})}catch(e){}` : "";
+    inject(`${arm}location.href=${JSON.stringify(CONFIG.apiBase + path)};true;`);
     return true;
   },
 };

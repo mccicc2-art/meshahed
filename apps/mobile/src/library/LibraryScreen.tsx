@@ -126,7 +126,7 @@ export function LibraryScreen() {
 
   const openTitle = useCallback(
     (item: CardItem) => {
-      shell.open(item.kind === "tv" ? `/show/${item.id}` : `/movie/${item.id}`);
+      shell.open(item.kind === "tv" ? `/show/${item.id}` : `/movie/${item.id}`, { returnTo: "library" });
       back();
     },
     [back],
@@ -288,7 +288,7 @@ export function LibraryScreen() {
       try {
         const r = await write<{ ok: boolean; needsPlus?: true }>(path, body);
         if (r.needsPlus) {
-          shell.open("/plus");
+          shell.open("/plus", { returnTo: "library" });
           back();
         }
       } catch (e) {
@@ -301,7 +301,7 @@ export function LibraryScreen() {
   );
   const openWeb = useCallback(
     (path: string) => {
-      shell.open(path);
+      shell.open(path, { returnTo: "library" });
       back();
     },
     [back],
@@ -421,7 +421,7 @@ export function LibraryScreen() {
         ).map((b) => (
           <Pressable
             key={b.path}
-            onPress={() => { shell.open(b.path); back(); }}
+            onPress={() => { shell.open(b.path, { returnTo: "library" }); back(); }}
             style={{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 12, borderRadius: 14, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface }}
           >
             <Icon name={b.icon} size={17} color={tokens.accent} />
@@ -467,7 +467,7 @@ export function LibraryScreen() {
               setQ("");
               return;
             }
-            shell.open(activeTab === "anime" ? "/news?tab=anime" : "/news");
+            shell.open(activeTab === "anime" ? "/news?tab=anime" : "/news", { returnTo: "library" });
             back();
           }}
         />
