@@ -27,7 +27,7 @@ export function NativeLibraryFlag() {
 declare global {
   interface Window {
     /** 🆕 يحقنه الغلافُ (≥ 1.4.1) قبل تحميل المستند: ما يستطيع فتحَه أصليّاً */
-    LoopzNative?: { library?: boolean };
+    LoopzNative?: { library?: boolean; discover?: boolean };
   }
 }
 
@@ -51,9 +51,19 @@ export function nativeLibraryOn(): boolean {
 
 /** يطلب من الغلاف فتحَ الشاشة الأصليّة — `true` إن أُرسل الطلب */
 export function openNativeLibrary(): boolean {
+  return openNative("library");
+}
+
+/**
+ * 🆕 Phase 11-C (D-955) — **الشاشاتُ الأصليّةُ بالمفتاح نفسِه**: العلَمُ واحد
+ * (الإدارةُ داخل الغلاف)، **والقدرةُ لكلِّ شاشةٍ على حدة** في `LoopzNative`
+ * (غلافٌ يعرف المكتبةَ ولا يعرف «اكتشف» يبقي «اكتشف» رابطاً — درسُ ٩ سبتمبر).
+ */
+export function openNative(route: "library" | "discover"): boolean {
   if (!nativeLibraryOn()) return false;
+  if (window.LoopzNative?.[route] !== true) return false;
   try {
-    window.ReactNativeWebView!.postMessage(JSON.stringify({ type: "native", route: "library" }));
+    window.ReactNativeWebView!.postMessage(JSON.stringify({ type: "native", route }));
     return true;
   } catch {
     return false;

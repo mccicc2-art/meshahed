@@ -34,7 +34,7 @@ export const shell = {
    * فيُعاد فتحُ الشاشة. **`sessionStorage` لا `history.state`** لأنّ
    * `location.href` تحميلُ مستندٍ جديد والحالةُ لا تعبره.
    */
-  open(path: string, opts?: { returnTo?: "library" }): Promise<void> {
+  open(path: string, opts?: { returnTo?: "library" | "discover" }): Promise<void> {
     if (!inject || !path.startsWith("/")) return Promise.resolve();
     const arm = opts?.returnTo ? `try{sessionStorage.setItem("loopz:return",${JSON.stringify(opts.returnTo)})}catch(e){}` : "";
     /* 🆕 D-951 — الوعدُ يُهيَّأ **قبل** الحقن: `onNavigationStateChange` قد يصل

@@ -33,6 +33,7 @@ export type {
   SmartListBody,
   UiStateBody,
 } from "@/core/contracts/library";
+export type { CuratedCard, CuratedRailKey, CuratedRailPayload, CuratedTab, PersonalCard, PersonalRailsPayload, DiscoverListsPayload } from "@/core/contracts/discover";
 export type {
   ToggleEpisodeBody,
   WatchUpToBody,

@@ -16,8 +16,8 @@ import { sanitizeHomePrefs, applyQueueOrder, unwatchedOf } from "@/core/homePref
 import { buildAutoGroups } from "@/core/autoGroups";
 import { isPlus } from "@/core/plan";
 import { backdropUrl } from "@/core/media";
-import { curatedName } from "@/core/universes";
 import { getDict } from "@/core/i18n";
+import { toLibraryListCard } from "@/lib/listCard";
 import { getLocale } from "@/lib/locale";
 import { handle, requireUser, limited } from "@/lib/v1";
 import { createClient } from "@/lib/supabase/server";
@@ -127,27 +127,8 @@ export async function GET() {
         smart_source: l.kind === "smart" ? (sources.get(l.id) ?? null) : null,
       };
     });
-    const savedCards: LibraryListCard[] = saved.map((l) => ({
-      id: l.id,
-      name: curatedName(l.source_slug, l.name, locale === "en" ? "en" : "ar"),
-      kind: l.kind,
-      owner: l.owner,
-      owner_avatar: l.owner_avatar ?? null,
-      item_count: l.item_count,
-      posters: l.posters,
-      saves: l.saves ?? 0,
-      reviews: l.reviews ?? 0,
-      rating: l.rating ?? null,
-      count_label: null,
-      cover: null,
-      mine: !!l.mine,
-      is_public: true,
-      playlist: typeof l.playlist === "boolean" ? l.playlist : null,
-      can_save: !!l.can_save,
-      saved_by_me: l.saved_by_me !== false,
-      can_review: !!l.can_review,
-      my_review: l.my_review ? { rating: l.my_review.rating, body: l.my_review.body, has_spoiler: l.my_review.hasSpoiler } : null,
-    }));
+    /* D-955 (C3) — الخريطةُ مستخرَجةٌ إلى `src/lib/listCard.ts` لتقرأها «اكتشف» أيضاً */
+    const savedCards: LibraryListCard[] = saved.map((l) => toLibraryListCard(l, locale));
 
     const groups = buildAutoGroups(followRows, metas);
     const payload: LibraryListsPayload = {

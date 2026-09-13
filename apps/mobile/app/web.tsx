@@ -66,7 +66,7 @@ const HOME = CONFIG.apiBase + "/";
  * `window.LoopzNative` قبل تحميل الصفحة، والويبُ لا يبتلع الضغطةَ بدونها.
  * تُحقن في كلِّ الإطارات لكنّ الرسالةَ تُقبل من `INSIDE` وحدَه (`onMessage`).
  */
-const CAPABILITIES = "window.LoopzNative={library:true};true;";
+const CAPABILITIES = "window.LoopzNative={library:true,discover:true};true;";
 const HANDOFF = CONFIG.apiBase + "/api/v1/session/handoff";
 const APP_VERSION = Constants.expoConfig?.version ?? "0";
 
@@ -173,6 +173,8 @@ export default function Web() {
       if (msg.type === "native") {
         /* الشاشةُ الأصليّةُ لا تُفتح لرسالةٍ من غير نطاقنا — المضيفُ شرطٌ هنا أيضاً */
         if (hostOk && msg.route === "library") router.push("/library");
+        /* Phase 11-C (D-955) — «اكتشف» الأصليّة فوق الـWebView بالطريقة نفسِها */
+        if (hostOk && msg.route === "discover") router.push("/discover");
         return;
       }
       /* 🆕 D-929 — لقطةُ الودجت: تُكتب ملفّاً ويقرؤها `LoopzWidget.kt` كلَّ

@@ -92,25 +92,31 @@ export function SessionBridge() {
        الوصول بـ`navigation.type === "back_forward"` مع التسليح.
        ⚖️ **والذهابُ إلى جذرٍ (الرئيسيّة/التبويبات) ينزع السلاح**: من ضغط
        «الرئيسيّة» بنفسه ثمّ رجع لا يتوقّع المكتبة. */
-    const ROOTS = new Set(["/", "/library", "/discover", "/community", "/search"]);
-    const toLibrary = () => {
+    const ROOTS = new Set(["/", "/library", "/discover", "/news", "/community", "/search"]);
+    /* 🆕 Phase 11-C (D-955) — العلامةُ تحمل اسمَ الشاشة (`library` · `discover`)
+       فالرجوعُ يعود إلى الشاشة التي فُتحت منها الصفحة، بالآليّة نفسِها */
+    const NATIVE = new Set(["library", "discover"]);
+    const toNative = () => {
+      let route = "library";
       try {
+        route = sessionStorage.getItem("loopz:armed") ?? "library";
         sessionStorage.removeItem("loopz:armed");
       } catch {
         /* لا شيء */
       }
-      post({ type: "native", route: "library" });
+      post({ type: "native", route: NATIVE.has(route) ? route : "library" });
     };
     let armed = false;
     try {
-      if (sessionStorage.getItem("loopz:return") === "library") {
+      const ret = sessionStorage.getItem("loopz:return");
+      if (ret && NATIVE.has(ret)) {
         sessionStorage.removeItem("loopz:return");
-        sessionStorage.setItem("loopz:armed", "1");
+        sessionStorage.setItem("loopz:armed", ret);
       }
-      armed = sessionStorage.getItem("loopz:armed") === "1";
+      armed = NATIVE.has(sessionStorage.getItem("loopz:armed") ?? "");
       const navType = (performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming | undefined)?.type;
       if (armed && navType === "back_forward") {
-        toLibrary();
+        toNative();
         armed = false;
       }
     } catch {
@@ -127,7 +133,7 @@ export function SessionBridge() {
           sessionStorage.removeItem("loopz:armed");
           return data;
         }
-        if (sessionStorage.getItem("loopz:armed") === "1" && data && typeof data === "object")
+        if (NATIVE.has(sessionStorage.getItem("loopz:armed") ?? "") && data && typeof data === "object")
           return { ...(data as Record<string, unknown>), loopzReturn: 1 };
       } catch {
         /* لا شيء */
@@ -136,9 +142,9 @@ export function SessionBridge() {
     };
     const onPop = () => {
       try {
-        if (sessionStorage.getItem("loopz:armed") !== "1") return;
+        if (!NATIVE.has(sessionStorage.getItem("loopz:armed") ?? "")) return;
         const st = window.history.state as { loopzReturn?: number } | null;
-        if (!st?.loopzReturn) toLibrary();
+        if (!st?.loopzReturn) toNative();
       } catch {
         /* لا شيء */
       }

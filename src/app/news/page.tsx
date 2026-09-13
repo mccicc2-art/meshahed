@@ -63,7 +63,7 @@ import { buildSection, sectionHref } from "@/lib/sections";
 import { railsHiddenFor, railOff, isRailTab } from "@/core/railPrefs";
 import { isUuid } from "@/core/validate";
 import { attachImdbRatings, withImdbRatings, rankByImdb } from "@/lib/omdb";
-import { localizeRows } from "@/lib/localize";
+import { bestOfYear } from "@/lib/discoverRails";
 import { getT, getWatchRegion, getTabPrefs, getHiddenRails } from "@/lib/locale";
 import { defaultTab } from "@/core/tabPrefs";
 import { regionName } from "@/core/region";
@@ -110,63 +110,17 @@ function dateOf(r: SearchResult) {
  * الفلاتر ترسم فوراً، والصفوف خلف Suspense تجلب بياناتها بنفسها — فلا
  * تنتظر الصفحة كلّها أبطأ طلب TMDB.
  */
-/**
- * 🆕 **أفضلُ ما صدر هذا العام — بِركةٌ من TMDB وحكمٌ من IMDb** (D-420).
- *
- * **ولماذا لا يُقرأ من `imdb_chart`**: جدولُه بلا عمود سنة (انظر
- * `imdb_chart.sql`) — **فسؤالُ «هذي السنة» لا يُجاب منه** بلا هجرةٍ
- * تضيف العمودَ وتُعيد بناءَ القائمة. **والبِركةُ من `/discover` بمدى
- * السنة مرتَّبةً بعدد الأصوات** (أكثرُها مشاهدةً)، **ثم `rankByImdb`
- * يفرزها بتقييم IMDb بعتبةِ أصواتٍ تحرسها** — **وهي القسمةُ نفسُها في
- * كلِّ رفٍّ مرتَّب منذ D-164.**
- */
-/* 🆕 **ويطيع الفلترَ الآن** (D-449، مواصفةُ المرحلة ٦: «تطبيق الفلاتر
-   المختارة على جميع الأقسام ذات الصلة»). **وكان آخرَ رفٍّ يختفي عند أوّل
-   لمسةِ فلتر وهو يستطيع الطاعة**: مصدرُه `/discover` أصلاً، **فما كان
-   ينقصه إلا أن تُمرَّر إليه المحاور** — تماماً كحجّة D-378 في الصفوف
-   الشخصية. **ورفٌّ يغيب بلا عجزٍ يُقرأ عطلاً لا قراراً.** */
-async function bestOfYear(
-  kind: "movie" | "tv",
-  locale: Locale,
-  /** محاورُ الفلتر — والمدى الزمنيّ يعلو عليها: عنوانُ الرفّ «هذي السنة» */
-  base: DiscoverFilter = {},
-  genreIds?: number[],
-): Promise<SearchResult[]> {
-  /* ✅ 🆕 **والمصدرُ انتقل إلى `sections.ts`** (D-827): **كان مكتوباً
-     هنا وحدَه فلم يكن للصفِّ بابٌ يُفتح** — **وصفحةٌ تُبنى بمصدرٍ ثانٍ
-     تعرض غيرَ ما ضُغط** (D-199)، **وهو العطلُ الذي وُجد هذا الملفُّ
-     لمنعه** (نصُّ رأس `sections.ts`). **فهذه غلافٌ يحفظ التوقيعَ
-     ويُبقي `localizeRows` حيث كانت.** */
-  const ranked = await buildSection(
-    "top-25",
-    { media: kind, base, genreIds, active: false, locale },
-    25,
-  );
-  /* **والعناوينُ بلغة القارئ كأيّ رفّ** — نفسُ `localizeRows` التي
-     يستعملها `topChartRail`، ولا نسخةَ ثانية. */
-  const l = await localizeRows(
-    ranked.map((r) => ({
-      tmdb_id: r.id,
-      media_type: (r.media_type === "tv" ? "tv" : "movie") as "tv" | "movie",
-      title: r.title ?? r.name ?? null,
-      poster_path: r.poster_path,
-    })),
-    locale,
-    ranked.length,
-  );
-  return ranked.map((r, i) => ({
-    ...r,
-    title: l[i]?.title ?? r.title,
-    name: l[i]?.title ?? r.name,
-    poster_path: l[i]?.poster_path ?? r.poster_path,
-  }));
-}
+/* ✅ **`bestOfYear` انتقلت إلى `src/lib/discoverRails.ts`** (Phase 11-C · D-955):
+   الصفحةُ والشاشةُ الأصليّةُ تناديان الوصفةَ نفسَها — وسردُها الكامل (D-420 ·
+   D-449 · D-827) هناك. */
 
 export default async function NewsPage({
   searchParams,
 }: {
   searchParams: Promise<{
     tab?: string;
+    /** D-955 (C3) — بابُ التطبيق: يفتح ورقةَ الفلاتر من أوّل رسمة */
+    filters?: string;
     q?: string;
     src?: string;
     type?: string;
@@ -312,6 +266,7 @@ export default async function NewsPage({
       <DiscoverFilters
         locale={locale}
         tab={tab}
+        openSheet={sp.filters === "1"}
         tabPrefs={tabPrefs}
         edit={editId}
         /* 🆕 **المطفأُ يمرّ من الخادم** (D-826) — **فلا يومض مفتاحٌ ثمّ
@@ -1297,7 +1252,7 @@ async function CuratedRails({
     ? buildSection("upcoming", { media: "tv", base, genreIds: genre?.tv, active }, 20)
     : Promise.resolve([] as SearchResult[]);
   /* «أفضل ٢٥ هذي السنة» (D-420) — البِركةُ من TMDB والحكمُ من IMDb،
-     وتاريخُ المصادر كاملاً في تعليق `bestOfYear` أعلى الملفّ */
+     وتاريخُ المصادر كاملاً في `src/lib/discoverRails.ts` (D-955) */
   const pTop25Movies: Promise<SearchResult[]> = wantMovies
     ? bestOfYear("movie", locale, base, genre?.movie).catch(() => [] as SearchResult[])
     : Promise.resolve([] as SearchResult[]);

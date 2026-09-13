@@ -7,7 +7,7 @@ import { getDict, type Locale } from "@/core/i18n";
 import { useKeyboardOpen } from "@/lib/useKeyboard";
 import { usePrefetchOnIntent } from "@/lib/prefetchIntent";
 import { Icon, type IconName } from "./Icon";
-import { openNativeLibrary } from "./NativeLibraryFlag";
+import { openNative } from "./NativeLibraryFlag";
 
 /* ⚖️ 🆕 **وورقةُ البحث غادرت هذا الملفّ** (D-534): البحثُ صار صفحةً
    كاملةً (`/search`) بترويستها ورقائقها وأقسامها — **فالخانةُ رابطٌ
@@ -427,7 +427,9 @@ const LIBRARY_PREFIXES = ["/library", "/show/", "/movie/", "/stats", "/activity"
                    سمةٌ على `<html>` يضعها `NativeLibraryGate` خادميّاً، **فمن
                    لا علَمَ له لا يصل هذا الفرعُ أصلاً** ويبقى الرابطُ رابطاً.
                    والمقارنةُ A/B على الجهاز نفسِه بضغطة (§٢.٢). */
-                if (key === "library" && openNativeLibrary()) e.preventDefault();
+                if (key === "library" && openNative("library")) e.preventDefault();
+                /* 🆕 Phase 11-C (D-955) — «اكتشف» أصليّةً بالبوّابة نفسِها */
+                if (key === "news" && openNative("discover")) e.preventDefault();
               }}
             >
               {face}

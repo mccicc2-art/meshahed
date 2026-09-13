@@ -74,6 +74,7 @@ import type { MyRow } from "@/core/myRows";
 export function DiscoverFilters({
   locale,
   tab = "movies",
+  openSheet = false,
   type,
   genre,
   lang,
@@ -108,6 +109,8 @@ export function DiscoverFilters({
       اختياريٌّ بافتراض الأعمال: يُبقي المكوّن مُصرَّفاً بين لقطة المكوّنات
       ولقطة الصفحة أثناء الرفع المرتّب (صفر ERROR وسيط) */
   tab?: DiscoverTab;
+  /** 🆕 D-955 (C3) — `?filters=1`: بابُ الشاشة الأصليّة؛ الورقةُ مفتوحةٌ من أوّل رسمة */
+  openSheet?: boolean;
   type: BrowseType;
   /** slug التصنيف المختار — صار داخل الورقة */
   genre: string | null;
@@ -141,7 +144,7 @@ export function DiscoverFilters({
   const loc = locale === "en" ? "en" : "ar";
   const router = useRouter();
   const [pending, start] = useTransition();
-  const [sheet, setSheet] = useState(false);
+  const [sheet, setSheet] = useState(openSheet);
 
   function go(next: {
     g?: string | null;

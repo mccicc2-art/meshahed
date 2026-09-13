@@ -119,16 +119,21 @@ export const PosterCard = memo(function PosterCard({
 });
 
 /** خيطُ اللون أسفلَ الملصق — وصفةُ `StatusThread.tsx` حرفاً */
-function StatusThread({ progress, completed, dropped }: { progress: number; completed: boolean; dropped: boolean }) {
+/**
+ * خيطُ الحالة — نسخةُ `StatusThread` الويب (D-322) بحالاتها الأربع. `export`
+ * منذ Phase 11-C (D-955) لأنّ بطاقةَ «اكتشف» تقرؤه أيضاً (**استخراجٌ لا نسخ**،
+ * درسُ D-289)، ومعه `saved` («عندك» ولم يبدأ — سماويٌّ `info` كاملاً).
+ */
+export function StatusThread({ progress, completed, dropped, saved = false }: { progress: number; completed: boolean; dropped: boolean; saved?: boolean }) {
   const { tokens } = useApp();
   const pct = Math.max(0, Math.min(100, progress));
   /* المكتبةُ لا تمرّر `saved`/`watched` للبطاقة (كما `LibraryCell`): **ما لم يبدأ
      ولم يُوقَف بلا خيطٍ أصلاً** (`hasStatus` في الويب)، والسماويُّ (`--info`)
      لِـ«عندك» في سطوحٍ أخرى — يبقى رمزاً هنا ولا يُرسم. */
-  if (!dropped && pct <= 0) return null;
+  if (!dropped && !saved && pct <= 0) return null;
   /* وموقوفٌ لم يبدأ أحمرُ كامل؛ الموقوفُ الجاري أحمرُ بمقدار تقدّمه (D-784) */
-  const full = completed || (dropped && pct <= 0);
-  const color = dropped ? tokens.error : completed || pct >= 100 ? tokens.success : tokens.accent;
+  const full = completed || ((dropped || saved) && pct <= 0);
+  const color = dropped ? tokens.error : completed || pct >= 100 ? tokens.success : pct > 0 ? tokens.accent : tokens.info;
   return (
     <View style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 6, backgroundColor: "rgba(0,0,0,0.5)" }}>
       <View style={{ height: "100%", width: full ? "100%" : `${pct}%`, backgroundColor: color }} />
