@@ -1,4 +1,5 @@
 import {
+  getProfile,
   getFollows,
   getWatchSummary,
   getAllWatchedEpisodes,
@@ -17,6 +18,7 @@ import { ok } from "@/core/contracts/result";
 import { getLocale, getTabPrefs, getHiddenRails } from "@/lib/locale";
 import { defaultTab, applyTabPrefs } from "@/core/tabPrefs";
 import { viewerIsPlus } from "@/lib/actions";
+import { sanitizeUiState } from "@/lib/uiState";
 import { localizeFollows } from "@/lib/localize";
 import type {
   LibraryItem,
@@ -56,7 +58,7 @@ export async function GET() {
        الصفحة (D-128/D-374: الثقيلُ مشروطٌ بتبويبه، **والعدّادُ لا**):
        `getMyLists` و`getSavedListsCount` و`getFollowedArtists(60)` نداءاتُ
        Supabase خفيفةٌ بلا TMDB. والصفوفُ المخفيّةُ وبلس للشاشة كما للصفحة. */
-    const [followRows, summary, movieIds, locale, myArt, animeFlags, favorites, tabPrefs, lists, savedCount, artistRows, hiddenRails, plus] =
+    const [followRows, summary, movieIds, locale, myArt, animeFlags, favorites, tabPrefs, lists, savedCount, artistRows, hiddenRails, plus, profileRow] =
       await Promise.all([
         getFollows(),
         getWatchSummary(),
@@ -71,6 +73,8 @@ export async function GET() {
         getFollowedArtists(60).catch(() => []),
         getHiddenRails().catch(() => new Set<string>()),
         viewerIsPlus().catch(() => false),
+        /* D-954 — `getProfile` مخبّأةٌ للطلب (`cache`) فلا رحلةَ إضافيّةً فعليّاً */
+        getProfile().catch(() => null),
       ]);
     const localized = await localizeFollows(followRows, locale);
 
@@ -141,6 +145,7 @@ export async function GET() {
       anime_unknown: items.filter((x) => x.is_anime === null).length,
       hidden_rails: [...hiddenRails],
       plus,
+      hints: sanitizeUiState(profileRow?.ui_state).hints,
     };
     return ok(payload);
   });

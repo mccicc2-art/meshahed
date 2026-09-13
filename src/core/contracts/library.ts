@@ -66,7 +66,13 @@ export type LibraryPayload = {
   /** الصفوفُ المخفيّة كاملةً بمفاتيح `tab:key` (D-874) — من الكوكي */
   hidden_rails?: string[];
   plus?: boolean;
+  /** 🆕 D-954 — التلميحاتُ المقروءةُ في الحساب (`profiles.ui_state.hints`): الشاشةُ
+   *  تُخفي ما قُرئ على أيِّ جهاز (حكمُ أحمد ١٩ أغسطس: التلميحُ شأنُ حسابٍ لا جهاز) */
+  hints?: string[];
 };
+
+/** `POST /api/v1/me/prefs/ui-state` — تعليمُ تلميحاتٍ مقروءةً (اتّحادٌ في الخادم) */
+export type UiStateBody = { addHints: string[] };
 
 /** 🆕 D-947 — `GET /api/v1/me/library/artists`: رفُّ الفنّانين (`getArtistShelf(60)`) */
 export type LibraryArtist = {

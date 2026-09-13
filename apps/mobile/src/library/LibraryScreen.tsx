@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, BackHandler, FlatList, Platform, Pressable, ScrollView, useWindowDimensions, View } from "react-native";
+import { ActivityIndicator, BackHandler, FlatList, I18nManager, PanResponder, Platform, Pressable, ScrollView, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
@@ -13,6 +13,7 @@ import { HoldMenu, type HoldAction } from "./HoldMenu";
 import { ToolsSheet, type LibrarySort } from "./ToolsSheet";
 import { ArtistsTab } from "./ArtistsTab";
 import { ListsTab } from "./ListsTab";
+import { OneTimeHint } from "./OneTimeHint";
 import { Icon } from "../icons";
 import { byTitle, normalizeSearch } from "@/core/arabic";
 import { guardLastVisible, type TabPref } from "@/core/tabPrefs";
@@ -292,6 +293,37 @@ export function LibraryScreen() {
   const coreTab = activeTab === "shows" || activeTab === "movies" || activeTab === "anime";
   const hiddenRails = data.data?.hidden_rails ?? [];
 
+  /* 🆕 D-953 — **السحبُ الأفقيُّ في الفراغ ينقل التبويب** (فكرةُ أحمد بتسجيل:
+     «إذا حرّكت إصبعي في المكان الفاضي بين watching وnot started… ينتقل من
+     shows إلى movies»). خيارٌ ثانٍ بجانب الضغط، لا بديلٌ عنه.
+     🔑 **لماذا «الفراغُ» تحديداً ولا `PagerView`**: صفوفُ الحالات المطويّة
+     تتمرّر أفقيّاً، وصفحةٌ تنزلق كاملةً تسرق سحبَها. فالحكمُ لنظام المستجيب
+     نفسِه: الصفُّ الأفقيُّ يستولي على السحب أصليّاً بعد ٨ بكسل (Android)،
+     **ونحن لا نسأل قبل ٢٠ بكسل** — فما وصلنا فهو سحبٌ لم يُرِده أحد.
+     والقائمةُ العموديّة لا تعترض الأفقيّ. **والاتّجاهُ اتّجاهُ القراءة**: التالي
+     في جهة النهاية (RTL: السحبُ يميناً = التالي). التبويباتُ المخفيّة لا تُزار. */
+  const tabsRef = useRef(tabs);
+  tabsRef.current = tabs;
+  const activeRef = useRef(activeTab);
+  activeRef.current = activeTab;
+  const swipe = useMemo(
+    () =>
+      PanResponder.create({
+        onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 20 && Math.abs(g.dx) > 1.6 * Math.abs(g.dy),
+        onPanResponderTerminationRequest: () => true,
+        onPanResponderRelease: (_, g) => {
+          if (Math.abs(g.dx) < 56 && Math.abs(g.vx) < 0.4) return;
+          const order = tabsRef.current.map((x) => x.key);
+          const i = order.indexOf(activeRef.current);
+          if (i < 0) return;
+          const toEnd = I18nManager.isRTL ? g.dx > 0 : g.dx < 0;
+          const next = order[i + (toEnd ? 1 : -1)];
+          if (next) setTab(next);
+        },
+      }),
+    [],
+  );
+
   /* تفضيلاتُ العرض تُكتب في الخادم (كوكي) وتُبطل `me:library` فيعود الردُّ بها؛
      والحارسُ (بلس) هناك — `needsPlus` يفتح بابَ «بلس» في الويب. */
   const savePrefs = useCallback(
@@ -444,6 +476,7 @@ export function LibraryScreen() {
       </View>
       ) : null}
 
+      <View style={{ flex: 1 }} {...swipe.panHandlers}>
       {activeTab === "anime" && classifying ? (
         <Text size={12} muted style={{ textAlign: "center", paddingVertical: 8 }}>{t.animeClassifying}</Text>
       ) : null}
@@ -480,6 +513,11 @@ export function LibraryScreen() {
           onScroll={(e) => { memory.y = e.nativeEvent.contentOffset.y; }}
           scrollEventThrottle={64}
         >
+          {/* D-954 — التلميحُ في رأس القائمة كما في `LibraryGrid` (فوق الشبكة، تحت
+              الأدوات)، **ولا يُرسم إن قُرئ في الحساب** — على أيِّ جهاز */}
+          {list.length > 0 && !(data.data?.hints ?? []).includes("library-hold") ? (
+            <OneTimeHint id="library-hold" text={t.longPressHint} />
+          ) : null}
           {!grouped ? (
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: GAP }}>
               {list.map(({ c }) => (
@@ -537,6 +575,7 @@ export function LibraryScreen() {
           })}
         </ScrollView>
       )}
+      </View>
       {tools ? (
         <ToolsSheet
           q={q}

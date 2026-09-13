@@ -31,6 +31,7 @@ export type {
   ListReviewDeleteBody,
   QueueOrderBody,
   SmartListBody,
+  UiStateBody,
 } from "@/core/contracts/library";
 export type {
   ToggleEpisodeBody,
