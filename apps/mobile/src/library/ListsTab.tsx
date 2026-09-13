@@ -30,8 +30,10 @@ import type { LibraryListsPayload, LibraryListCard, LibraryAutoGroup, ListPlayli
  * **رأيي في قائمةٍ** (`ListReviewSheet`) · **ترتيبُ طابور «للمشاهدة» بالسحب**
  * (`ReorderSheet`) · **قائمةٌ ذكيّةٌ بشروطها** (`SmartListSheet`) — ⚖️ نقضٌ
  * لحكم D-947 («الأشكالُ الثقيلة أبوابٌ في الويب») بأمر أحمد: «ابنِ الثلاثة».
- * **ما بقي باباً في الويب**: إعلانُ قائمةٍ خاصّة للمشاركة (`/lists/:id`) وتحريرُ
- * شرطِ ذكيّةٍ قائمة (`?edit=`). **والمشاركةُ الأصليّةُ لقائمةٍ معلَنة** بورقة
+ * 🆕 D-952 — **البابان الأخيران صارا مباشرين**: إعلانُ قائمةٍ خاصّة للمشاركة
+ * يفتح `/lists/:id?share=1` **وورقةُ الإعلان مفتوحة**، وتحريرُ شرطِ ذكيّةٍ من
+ * مكتبتي يفتح `/library?edit=<id>` (D-876) برمزٍ على البطاقة؛ وذكيّةُ الكتالوج
+ * تُعدَّل في اكتشف من صفحتها كما في الويب. **والمشاركةُ الأصليّةُ لقائمةٍ معلَنة** بورقة
  * النظام (`Share`) — الرابطُ نفسُه الذي يشاركه الويب.
  *
  * 📐 الشبكةُ `grid-cols-1 sm:grid-cols-2` بفاصل `gap-2.5` ١٠ — عمودٌ على
@@ -122,7 +124,8 @@ export function ListsTab({ hiddenRails, onOpenWeb, say }: { hiddenRails: string[
   const share = useCallback(
     async (l: LibraryListCard) => {
       if (!l.is_public) {
-        onOpenWeb(`/lists/${l.id}`);
+        /* D-952 — الورقةُ مفتوحةٌ عند الوصول، لا بحثٌ عن زرّ المشاركة */
+        onOpenWeb(`/lists/${l.id}?share=1`);
         return;
       }
       try {
@@ -222,6 +225,11 @@ export function ListsTab({ hiddenRails, onOpenWeb, say }: { hiddenRails: string[
                   onPress={() => onOpenWeb(`/lists/${l.id}`)}
                   onPlaylist={(on) => void setPlaylist(l, on)}
                   onShare={() => void share(l)}
+                  onEdit={
+                    l.smart_source === "library"
+                      ? { label: ar ? "عدّل الشرط في مكتبتي" : "Edit the rule in your library", onPress: () => onOpenWeb(`/library?edit=${l.id}`) }
+                      : undefined
+                  }
                 />
               </View>
             ))}

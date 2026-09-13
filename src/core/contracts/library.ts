@@ -108,6 +108,9 @@ export type LibraryListCard = {
   /** D-948 — بابُ التقييم (قائمةٌ عامّةٌ ليست لي) ورأيي القائم — كـ`ListRateStar` */
   can_review?: boolean;
   my_review?: { rating: number; body: string | null; has_spoiler: boolean } | null;
+  /** 🆕 D-952 — مصدرُ شرط القائمة الذكيّة (قوائمي وحدَها): `library` يفتح بابَ
+   *  التعديل `/library?edit=<id>` (D-876)، `catalog` يعدَّل في اكتشف من صفحتها */
+  smart_source?: "library" | "catalog" | null;
 };
 
 export type LibraryAutoGroup = {

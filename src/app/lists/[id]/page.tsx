@@ -95,9 +95,20 @@ export async function generateMetadata({
   };
 }
 
-export default async function ListPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function ListPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ share?: string }>;
+}) {
   const { locale } = await getT();
   const { id } = await params;
+  /* 🆕 D-952 — **`?share=1` بابُ الإعلان للشاشة الأصليّة**: بطاقةُ قائمةٍ خاصّة
+     في مكتبة التطبيق تُشارَك بفتح هذه الصفحة **وورقةُ الإعلان مفتوحةٌ من أوّل
+     رسمة** (كما يفعل `?smart=new` في المكتبة، D-947) — لا نسخةَ من الورقة في
+     التطبيق (D-145). **وللمالك وحدَه**؛ لغيره الوسيطُ صامت. */
+  const { share } = await searchParams;
   const user = await getUser();
   /* 🆕 **وتجربةُ Loopz+ في ترويسة القائمة** (D-773ب) — **والقراءةُ
      مخبّأةٌ لكلِّ طلب** (`cache`) والشريطُ يناديها أصلاً في التخطيط
@@ -249,6 +260,7 @@ export default async function ListPage({ params }: { params: Promise<{ id: strin
            **وحذفُ عملٍ منها يعود عند أوّل فتحة.** */
         smart={smartRule ? ruleToQuery(smartRule) : null}
         smartSource={smartRule ? smartSource : null}
+        openShare={isOwner && share === "1"}
         items={items}
         ratings={data.ratings}
         isOwner={isOwner}

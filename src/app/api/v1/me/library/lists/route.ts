@@ -20,6 +20,7 @@ import { curatedName } from "@/core/universes";
 import { getDict } from "@/core/i18n";
 import { getLocale } from "@/lib/locale";
 import { handle, requireUser, limited } from "@/lib/v1";
+import { createClient } from "@/lib/supabase/server";
 import { ok } from "@/core/contracts/result";
 import type { LibraryListCard, LibraryListsPayload } from "@/core/contracts/library";
 
@@ -84,6 +85,17 @@ export async function GET() {
         }
       : null;
 
+    /* 🆕 D-952 — **مصدرُ شرطِ الذكيّة**: `my_lists` لا تعيده (انظر `library/page.tsx`
+       D-876)، **واستعلامٌ واحدٌ صغيرٌ على صفوفي** أرخصُ من هجرةٍ — ولا يقع إلّا
+       لمن له قائمةٌ ذكيّة. الفشلُ = لا باب، لا خطأ. */
+    const smartIds = shown.filter((l) => l.kind === "smart").map((l) => l.id);
+    const sources = new Map<string, "library" | "catalog">();
+    if (smartIds.length) {
+      const supabase = await createClient();
+      const { data } = await supabase.from("user_lists").select("id, rule_source").in("id", smartIds);
+      for (const r of data ?? []) sources.set(r.id, r.rule_source === "library" ? "library" : "catalog");
+    }
+
     const playlists = new Set(playlistIds);
     const mine: LibraryListCard[] = shown.map((l) => {
       const st = stats.get(l.id);
@@ -112,6 +124,7 @@ export async function GET() {
         playlist: playlists.has(l.id),
         can_save: false,
         saved_by_me: false,
+        smart_source: l.kind === "smart" ? (sources.get(l.id) ?? null) : null,
       };
     });
     const savedCards: LibraryListCard[] = saved.map((l) => ({

@@ -74,6 +74,7 @@ export function ListDetail({
   kind,
   smart = null,
   smartSource = null,
+  openShare = false,
   items,
   ratings,
   isOwner,
@@ -106,6 +107,8 @@ export function ListDetail({
   smart?: string | null;
   /** 🆕 D-876: مصدرُ الشرط — **يقرّر جملةَ التفسير وبابَ التعديل** (اكتشف أم المكتبة) */
   smartSource?: "catalog" | "library" | null;
+  /** 🆕 D-952 — تُفتح ورقةُ الإعلان/المشاركة من أوّل رسمة (`?share=1`، بابُ التطبيق) */
+  openShare?: boolean;
   items: ListItem[];
   ratings: Record<string, number>;
   isOwner: boolean;
@@ -219,7 +222,7 @@ export function ListDetail({
   const [removed, setRemoved] = useState<Set<string>>(new Set());
   const [sheet, setSheet] = useState<
     "menu" | "rename" | "type" | "reorder" | "delete" | "share" | "add" | "cover" | null
-  >(null);
+  >(openShare ? "share" : null);
   /* الأعمال المضافة في هذه الجلسة تُرسم فوراً ثم يلحق `router.refresh()`:
      الانتظار كان سيجعل الورقة تُغلق على شبكةٍ لم تتغيّر، فيُقرأ الفعل
      فاشلاً (نفس منطق الترتيب المحليّ أعلاه). */

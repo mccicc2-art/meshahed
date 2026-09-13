@@ -8,6 +8,17 @@ import { CONFIG } from "./config";
  */
 let inject: ((js: string) => void) | null = null;
 
+/**
+ * 🆕 D-951 — **الشاشةُ الأصليّة لا تُغلق قبل أن تصل الصفحة** (بلاغُ أحمد
+ * بتسجيل: «أوّل ما أدخل الإحصائيات يظهر لي الهوم لجزءٍ من الثانية»): الـWebView
+ * تحت الشاشة ما زالت ترسم الرئيسيّةَ حتّى يكتمل تحميلُ المستند الجديد، **فإغلاقُ
+ * الشاشة فورَ الحقن يكشفها**. فـ`open` تعِد، والوعدُ يُحلّ حين يبلّغ الغلافُ
+ * وصولَ العنوان (`arrived`) **أو بعد مهلةٍ** — شبكةٌ بطيئةٌ لا تحبس المستخدم
+ * في شاشةٍ لا تستجيب؛ وميضٌ عند البطء الشديد أهونُ من انتظارٍ بلا نهاية.
+ */
+const ARRIVAL_TIMEOUT_MS = 4000;
+let waiter: { path: string; settle: () => void } | null = null;
+
 export const shell = {
   attach(fn: ((js: string) => void) | null) {
     inject = fn;
@@ -23,10 +34,41 @@ export const shell = {
    * فيُعاد فتحُ الشاشة. **`sessionStorage` لا `history.state`** لأنّ
    * `location.href` تحميلُ مستندٍ جديد والحالةُ لا تعبره.
    */
-  open(path: string, opts?: { returnTo?: "library" }): boolean {
-    if (!inject || !path.startsWith("/")) return false;
+  open(path: string, opts?: { returnTo?: "library" }): Promise<void> {
+    if (!inject || !path.startsWith("/")) return Promise.resolve();
     const arm = opts?.returnTo ? `try{sessionStorage.setItem("loopz:return",${JSON.stringify(opts.returnTo)})}catch(e){}` : "";
+    /* 🆕 D-951 — الوعدُ يُهيَّأ **قبل** الحقن: `onNavigationStateChange` قد يصل
+       في الدورة نفسِها على الأجهزة السريعة، فلا يجد من ينتظره. */
+    const done = new Promise<void>((resolve) => {
+      waiter?.settle();
+      const timer = setTimeout(() => waiter?.settle(), ARRIVAL_TIMEOUT_MS);
+      waiter = {
+        path,
+        settle() {
+          clearTimeout(timer);
+          waiter = null;
+          resolve();
+        },
+      };
+    });
     inject(`${arm}location.href=${JSON.stringify(CONFIG.apiBase + path)};true;`);
-    return true;
+    return done;
+  },
+  /**
+   * 🆕 D-951 — **الغلافُ يبلّغ وصولَ الـWebView** (من `onNavigationStateChange`):
+   * حين ينتهي تحميلُ العنوان المطلوب يُحلّ وعدُ `open` فتُغلق الشاشةُ الأصليّة
+   * **على صفحةٍ مرسومة**. المقارنةُ بالمسار وحدَه (`/stats`) لأنّ الويبَ قد
+   * يضيف استعلاماً أو يزيل آخر، والمهمّ أنّ الرئيسيّةَ لم تعد ما يُعرض.
+   */
+  arrived(url: string, loading: boolean) {
+    if (!waiter || loading) return;
+    let pathname = url;
+    try {
+      pathname = new URL(url).pathname;
+    } catch {
+      /* عنوانٌ غيرُ قابلٍ للتحليل — لا نحكم به */
+      return;
+    }
+    if (pathname === waiter.path.split("?")[0]) waiter.settle();
   },
 };

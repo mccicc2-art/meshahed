@@ -59,6 +59,7 @@ export function ListCard({
   onPress,
   onPlaylist,
   onShare,
+  onEdit,
   onSave,
   onRate,
   busy,
@@ -67,6 +68,8 @@ export function ListCard({
   onPress: () => void;
   onPlaylist?: (on: boolean) => void;
   onShare?: () => void;
+  /** 🆕 D-952 — قائمةُ مكتبةٍ ذكيّةٌ لي: بابُ تعديل شرطها (`/library?edit=<id>`) */
+  onEdit?: { label: string; onPress: () => void };
   onSave?: (save: boolean) => void;
   onRate?: () => void;
   busy?: boolean;
@@ -147,6 +150,19 @@ export function ListCard({
           <Text size={15} weight="700" numberOfLines={2} style={{ flex: 1, maxWidth: "58%", lineHeight: 20 }}>
             {card.name}
           </Text>
+          {/* 🆕 D-952 — رمزُ الفلاتر (`sliders`) قبل المشاركة: الويبُ يضع «عدّل الشرط»
+              في صفحة القائمة، **والتطبيقُ يختصر ضغطةً** لأنّ الصفحةَ بابٌ ويبيٌّ أصلاً.
+              الرمزُ نفسُه رمزُ ورقة الأدوات التي يُفتح فيها الشرط (D-876). */}
+          {onEdit ? (
+            <Pressable
+              onPress={onEdit.onPress}
+              hitSlop={8}
+              accessibilityLabel={onEdit.label}
+              style={{ width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center", marginTop: -6 }}
+            >
+              <Icon name="sliders" size={16} color={tokens.muted} />
+            </Pressable>
+          ) : null}
           {onShare ? (
             <Pressable
               onPress={onShare}

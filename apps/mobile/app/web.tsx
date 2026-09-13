@@ -139,6 +139,8 @@ export default function Web() {
 
   const onNav = useCallback((nav: WebViewNavigation) => {
     setCanGoBack(nav.canGoBack);
+    /* D-951 — الشاشةُ الأصليّة التي طلبت صفحةً تنتظر وصولَها قبل أن تُغلق */
+    shell.arrived(nav.url, nav.loading);
     /* Phase 11 · B1 §٣ — الحزامُ الثاني للمسح: خروجٌ أو صفحةُ دخولٍ في
        التاريخ = لا جلسةَ للشاشة الأصليّة، بصرف النظر عمّا بثّته الصفحة. */
     if (nav.url.includes("/auth/signout") || nav.url.startsWith(CONFIG.apiBase + "/login")) session.clear();

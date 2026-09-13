@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { BackHandler, FlatList, Platform, Pressable, ScrollView, useWindowDimensions, View } from "react-native";
+import { ActivityIndicator, BackHandler, FlatList, Platform, Pressable, ScrollView, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
@@ -124,12 +124,23 @@ export function LibraryScreen() {
     return () => sub.remove();
   }, [back]);
 
-  const openTitle = useCallback(
-    (item: CardItem) => {
-      shell.open(item.kind === "tv" ? `/show/${item.id}` : `/movie/${item.id}`, { returnTo: "library" });
-      back();
+  /* 🆕 D-951 — **الخروجُ إلى صفحةٍ ويبيّة يُغلق الشاشةَ بعد وصولها لا قبله**:
+     `shell.open` تعِد بالوصول (أو بمهلة)، والشاشةُ تبقى فوق الـWebView حتّى
+     يُحلّ الوعد — فلا تظهر الرئيسيّةُ لجزءٍ من الثانية. و`leaving` يحجب ضغطةً
+     ثانيةً في أثناء الانتظار ويُظهر مؤشّراً خفيفاً إن طالت الشبكة. */
+  const [leaving, setLeaving] = useState(false);
+  const leaveTo = useCallback(
+    (path: string) => {
+      if (leaving) return;
+      setLeaving(true);
+      void shell.open(path, { returnTo: "library" }).then(back);
     },
-    [back],
+    [leaving, back],
+  );
+
+  const openTitle = useCallback(
+    (item: CardItem) => leaveTo(item.kind === "tv" ? `/show/${item.id}` : `/movie/${item.id}`),
+    [leaveTo],
   );
 
   const hold = useCallback((item: CardItem, anchor: CardAnchor) => setHeld({ item, anchor }), []);
@@ -287,25 +298,16 @@ export function LibraryScreen() {
     async (path: string, body: unknown) => {
       try {
         const r = await write<{ ok: boolean; needsPlus?: true }>(path, body);
-        if (r.needsPlus) {
-          shell.open("/plus", { returnTo: "library" });
-          back();
-        }
+        if (r.needsPlus) leaveTo("/plus");
       } catch (e) {
         const key = e instanceof ApiError ? e.error.message_key : "apiInternal";
         const msg = (t as unknown as Record<string, unknown>)[key];
         setToast(typeof msg === "string" ? msg : t.apiInternal);
       }
     },
-    [back, t],
+    [leaveTo, t],
   );
-  const openWeb = useCallback(
-    (path: string) => {
-      shell.open(path, { returnTo: "library" });
-      back();
-    },
-    [back],
-  );
+  const openWeb = leaveTo;
 
   /* تصنيفُ ما لم يُصنَّف — مرّةً، عند من فتح التبويب (D-182)، كما في `LibraryGrid` */
   const [classifying, setClassifying] = useState(false);
@@ -421,7 +423,7 @@ export function LibraryScreen() {
         ).map((b) => (
           <Pressable
             key={b.path}
-            onPress={() => { shell.open(b.path, { returnTo: "library" }); back(); }}
+            onPress={() => leaveTo(b.path)}
             style={{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 12, borderRadius: 14, borderWidth: 1, borderColor: tokens.border, backgroundColor: tokens.surface }}
           >
             <Icon name={b.icon} size={17} color={tokens.accent} />
@@ -467,8 +469,7 @@ export function LibraryScreen() {
               setQ("");
               return;
             }
-            shell.open(activeTab === "anime" ? "/news?tab=anime" : "/news", { returnTo: "library" });
-            back();
+            leaveTo(activeTab === "anime" ? "/news?tab=anime" : "/news");
           }}
         />
       ) : (
@@ -559,6 +560,12 @@ export function LibraryScreen() {
         />
       ) : null}
       {held ? <HoldMenu item={held.item} anchor={held.anchor} busy={busy} onAction={(a) => void act(a)} onClose={() => setHeld(null)} /> : null}
+      {leaving ? (
+        /* D-951 — حجابٌ يمنع ضغطةً ثانية، ومؤشّرٌ صغيرٌ فوق المكتبة حتّى تصل الصفحة (أقلّ من ثانية عادةً) */
+        <View pointerEvents="auto" style={{ position: "absolute", inset: 0, alignItems: "center", justifyContent: "center" }}>
+          <ActivityIndicator color={tokens.accent} />
+        </View>
+      ) : null}
       {toast ? <Toast text={toast} bottom={insets.bottom + 16} /> : null}
     </View>
   );
