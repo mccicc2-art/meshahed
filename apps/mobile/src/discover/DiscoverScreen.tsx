@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, BackHandler, FlatList, Platform, Pressable, ScrollView, View } from "react-native";
+import { ActivityIndicator, Animated, BackHandler, FlatList, Platform, Pressable, ScrollView, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
@@ -13,6 +13,7 @@ import { Chip } from "../library/Chip";
 import { ListsRails } from "./ListsRails";
 import { TrailersRail } from "./TrailersRail";
 import { TabSlide } from "../TabSlide";
+import { useChromeHide } from "../ChromeHide";
 import { BottomNav, navHeight } from "../BottomNav";
 import { regionName } from "@/core/region";
 import type { CuratedCard, CuratedRailKey, CuratedRailPayload, CuratedTab, LibraryPayload, PersonalRailsPayload } from "../contracts";
@@ -127,13 +128,34 @@ export function DiscoverScreen() {
   const tabsOrder: Tab[] = ["shows", "movies", "anime", "lists"];
   const goTab = useCallback((next: Tab) => setTab(next), []);
 
+  /* D-966 — الكسوةُ الذكيّة كما في المكتبة: الورقةُ (رأسٌ + ألواح) تصعد بارتفاع الرأس
+     وتمتدّ تحته، والشريطُ يهبط؛ وقلبُ التبويب يُعيدها (`reveal`). */
+  const chrome = useChromeHide();
+  const [topH, setTopH] = useState(0);
+  const bottomPad = navH + 24 + topH;
+  const { reveal } = chrome;
+  useEffect(() => {
+    reveal();
+  }, [tab, reveal]);
+
   /* الصفوفُ الشخصيّة والمنسَّقة صارت في `DiscoverPane` (D-965): لوحٌ لكلِّ تبويب */
 
   const tabLabel = (k: Tab) =>
     k === "shows" ? t.discoverTabShows : k === "movies" ? t.discoverTabMovies : k === "anime" ? t.discoverTabAnime : t.discoverTabLists;
 
   return (
-    <View style={{ flex: 1, backgroundColor: tokens.bg, paddingTop: insets.top }}>
+    <View style={{ flex: 1, backgroundColor: tokens.bg }}>
+    <Animated.View
+      style={{
+        position: "absolute",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: -topH,
+        transform: [{ translateY: Animated.multiply(chrome.hidden, -topH) }],
+      }}
+    >
+    <View onLayout={(e) => setTopH(Math.round(e.nativeEvent.layout.height))} style={{ paddingTop: insets.top, backgroundColor: tokens.bg }}>
       <View style={{ height: HEADER_H, borderBottomWidth: 1, borderBottomColor: tokens.border, alignItems: "center", justifyContent: "center" }}>
         <Text size={15} weight="700">{t.newsTitle}</Text>
         <Pressable onPress={back} hitSlop={12} accessibilityLabel={t.closeLabel} style={{ position: "absolute", start: PAGE_PAD, top: 0, bottom: 0, justifyContent: "center" }}>
@@ -163,6 +185,7 @@ export function DiscoverScreen() {
           );
         })}
       </View>
+    </View>
 
       {/* ⚖️ D-961 → D-965 — اللوحُ ينزلق، **والجارُ يُرسم حيّاً** تحت الإصبع لحظةَ قفل السحب */}
       <TabSlide
@@ -173,7 +196,8 @@ export function DiscoverScreen() {
           <DiscoverPane
             tab={k}
             marks={marks}
-            bottomPad={navH + 24}
+            bottomPad={bottomPad}
+            onScroll={chrome.onScroll}
             ar={ar}
             onOpen={openCard}
             onLeave={leaveTo}
@@ -181,7 +205,9 @@ export function DiscoverScreen() {
           />
         )}
       />
-      {/* D-961 — الشريطُ الخماسيُّ كما في كلِّ صفحةٍ ويبيّة؛ «اكتشف» هي الخانةُ المضيئة */}
+    </Animated.View>
+      {/* D-961 — الشريطُ الخماسيُّ كما في كلِّ صفحةٍ ويبيّة؛ «اكتشف» هي الخانةُ المضيئة — D-966: يهبط بارتفاعه مع النزول */}
+      <Animated.View style={{ position: "absolute", left: 0, right: 0, bottom: 0, transform: [{ translateY: Animated.multiply(chrome.hidden, navH) }] }}>
       <BottomNav
         active="news"
         onGo={(k) => {
@@ -193,6 +219,7 @@ export function DiscoverScreen() {
           leaveTo(k === "home" ? "/" : k === "people" ? "/people" : "/search");
         }}
       />
+      </Animated.View>
       {toast ? <Toast text={toast} bottom={navH + 16} /> : null}
       {leaving ? (
         <View pointerEvents="auto" style={{ position: "absolute", inset: 0, alignItems: "center", justifyContent: "center" }}>
@@ -214,6 +241,7 @@ function DiscoverPane({
   tab,
   marks,
   bottomPad,
+  onScroll,
   ar,
   onOpen,
   onLeave,
@@ -222,6 +250,8 @@ function DiscoverPane({
   tab: Tab;
   marks: Map<string, LibMark>;
   bottomPad: number;
+  /** الكسوةُ الذكيّة تقرأ التمرير (D-966) */
+  onScroll: (e: NativeSyntheticEvent<NativeScrollEvent>) => void;
   ar: boolean;
   onOpen: (c: CuratedCard) => void;
   onLeave: (path: string) => void;
@@ -244,8 +274,8 @@ function DiscoverPane({
       contentContainerStyle={{ paddingTop: 12, paddingBottom: bottomPad, gap: 24 }}
       showsVerticalScrollIndicator={false}
       contentOffset={{ x: 0, y: memory.y[tab] ?? 0 }}
-      onScroll={(e) => { memory.y[tab] = e.nativeEvent.contentOffset.y; }}
-      scrollEventThrottle={64}
+      onScroll={(e) => { memory.y[tab] = e.nativeEvent.contentOffset.y; onScroll(e); }}
+      scrollEventThrottle={16}
     >
       {lists ? <ListsRails onOpenWeb={onLeave} /> : null}
       {/* رقاقاتُ الفلاتر المحفوظة — كما `SavedFiltersRow`: تفتح `/news?<q>&tab=` باباً */}

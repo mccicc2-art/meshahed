@@ -1,5 +1,5 @@
 import React from "react";
-import { Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from "react-native";
+import { Pressable, ScrollView, StyleSheet, View, useWindowDimensions, type ScrollViewProps } from "react-native";
 import { Image } from "expo-image";
 import { useQuery } from "@tanstack/react-query";
 import { api, qk } from "../api";
@@ -28,7 +28,7 @@ const PAGE_PAD = 16;
 const GAP = 12;
 const MIN_COL = 96;
 
-export function ArtistsTab({ onOpenWeb, bottomPad = 40 }: { onOpenWeb: (path: string) => void; bottomPad?: number }) {
+export function ArtistsTab({ onOpenWeb, bottomPad = 40, onScroll }: { onOpenWeb: (path: string) => void; bottomPad?: number; onScroll?: ScrollViewProps["onScroll"] }) {
   const { t, tokens } = useApp();
   const { width } = useWindowDimensions();
   const data = useQuery({
@@ -53,7 +53,7 @@ export function ArtistsTab({ onOpenWeb, bottomPad = 40 }: { onOpenWeb: (path: st
   if (items.length === 0) return <Empty text={t.artistsEmpty} cta={t.artistsEmptyCta} onCta={() => onOpenWeb("/search")} />;
 
   return (
-    <ScrollView contentContainerStyle={{ paddingHorizontal: PAGE_PAD, paddingTop: 12, paddingBottom: bottomPad }} showsVerticalScrollIndicator={false}>
+    <ScrollView contentContainerStyle={{ paddingHorizontal: PAGE_PAD, paddingTop: 12, paddingBottom: bottomPad }} showsVerticalScrollIndicator={false} onScroll={onScroll} scrollEventThrottle={16}>
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: GAP }}>
         {items.map((a) => (
           <ArtistCard key={a.person_id} a={a} width={cellW} onPress={() => onOpenWeb(`/person/${a.person_id}`)} />

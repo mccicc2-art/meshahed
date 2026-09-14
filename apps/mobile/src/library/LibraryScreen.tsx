@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, BackHandler, FlatList, Platform, Pressable, ScrollView, useWindowDimensions, View } from "react-native";
+import { ActivityIndicator, Animated, BackHandler, FlatList, Platform, Pressable, ScrollView, useWindowDimensions, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
@@ -14,6 +14,7 @@ import { ToolsSheet, type LibrarySort } from "./ToolsSheet";
 import { ArtistsTab } from "./ArtistsTab";
 import { ListsTab } from "./ListsTab";
 import { TabSlide } from "../TabSlide";
+import { useChromeHide } from "../ChromeHide";
 import { BottomNav, navHeight } from "../BottomNav";
 import { OneTimeHint } from "./OneTimeHint";
 import { Icon } from "../icons";
@@ -275,6 +276,19 @@ export function LibraryScreen() {
      ومن السحب معاً. */
   const tabsOrder = useMemo(() => tabs.map((x) => x.key), [tabs]);
 
+  /* D-966 — الكسوةُ الذكيّة: الرأسُ (بتبويباته وأدواته) والشريطُ يختبئان مع النزول
+     ويعودان مع الرجوع — حدودُ `ChromeAutoHide` الويب حرفاً. **الورقةُ كلُّها** (رأسٌ +
+     ألواح) تصعد بارتفاع الرأس وتمتدّ تحت الشاشة بمقداره، فلا يتغيّر ارتفاعُ شيءٍ ولا
+     يقفز المحتوى؛ وذيلُ التمرير يزيد بالمقدار نفسِه. وقلبُ التبويب يُعيد الكسوةَ
+     (بابُ `reveal` — درسُ D-524). */
+  const chrome = useChromeHide();
+  const [topH, setTopH] = useState(0);
+  const bottomPad = navH + 24 + topH;
+  const { reveal } = chrome;
+  useEffect(() => {
+    reveal();
+  }, [activeTab, reveal]);
+
   /* تفضيلاتُ العرض تُكتب في الخادم (كوكي) وتُبطل `me:library` فيعود الردُّ بها؛
      والحارسُ (بلس) هناك — `needsPlus` يفتح بابَ «بلس» في الويب. */
   const savePrefs = useCallback(
@@ -306,7 +320,18 @@ export function LibraryScreen() {
   }, [activeTab, animeUnknown]);
 
   return (
-    <View style={{ flex: 1, backgroundColor: tokens.bg, paddingTop: insets.top }}>
+    <View style={{ flex: 1, backgroundColor: tokens.bg }}>
+    <Animated.View
+      style={{
+        position: "absolute",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: -topH,
+        transform: [{ translateY: Animated.multiply(chrome.hidden, -topH) }],
+      }}
+    >
+    <View onLayout={(e) => setTopH(Math.round(e.nativeEvent.layout.height))} style={{ paddingTop: insets.top, backgroundColor: tokens.bg }}>
       {/* الترويسة: `header` ٦٤ بحدٍّ سفليّ `border-border`، الاسمُ في المنتصف `text-15 font-bold` */}
       <View
         style={{
@@ -426,6 +451,7 @@ export function LibraryScreen() {
         ) : null}
       </View>
       ) : null}
+    </View>
 
       {/* D-965 — لوحٌ لكلِّ تبويب: `TabSlide` يرسم النشطَ، ويسلّح الجارَ حيّاً عند قفل السحب */}
       <TabSlide
@@ -434,9 +460,9 @@ export function LibraryScreen() {
         onTab={setTab}
         render={(k) =>
           k === "artists" ? (
-            <ArtistsTab onOpenWeb={openWeb} bottomPad={navH + 24} />
+            <ArtistsTab onOpenWeb={openWeb} bottomPad={bottomPad} onScroll={chrome.onScroll} />
           ) : k === "lists" ? (
-            <ListsTab hiddenRails={hiddenRails} onOpenWeb={openWeb} say={setToast} bottomPad={navH + 24} />
+            <ListsTab hiddenRails={hiddenRails} onOpenWeb={openWeb} say={setToast} bottomPad={bottomPad} onScroll={chrome.onScroll} />
           ) : (
             <LibraryPane
               tab={k}
@@ -448,7 +474,8 @@ export function LibraryScreen() {
               setOpen={setOpen}
               cols={cols}
               cellW={cellW}
-              bottomPad={navH + 24}
+              bottomPad={bottomPad}
+              onScroll={chrome.onScroll}
               classifying={k === "anime" && classifying}
               onOpen={openTitle}
               onHold={hold}
@@ -458,7 +485,9 @@ export function LibraryScreen() {
           )
         }
       />
-      {/* D-961 — الشريطُ الخماسيُّ كما في كلِّ صفحةٍ ويبيّة؛ «المكتبة» هي الخانةُ المضيئة */}
+    </Animated.View>
+      {/* D-961 — الشريطُ الخماسيُّ كما في كلِّ صفحةٍ ويبيّة؛ «المكتبة» هي الخانةُ المضيئة — D-966: يهبط بارتفاعه مع النزول */}
+      <Animated.View style={{ position: "absolute", left: 0, right: 0, bottom: 0, transform: [{ translateY: Animated.multiply(chrome.hidden, navH) }] }}>
       <BottomNav
         active="library"
         onGo={(k) => {
@@ -470,6 +499,7 @@ export function LibraryScreen() {
           leaveTo(k === "home" ? "/" : k === "people" ? "/people" : "/search");
         }}
       />
+      </Animated.View>
       {tools ? (
         <ToolsSheet
           q={q}
@@ -521,6 +551,7 @@ function LibraryPane({
   cols,
   cellW,
   bottomPad,
+  onScroll,
   classifying,
   onOpen,
   onHold,
@@ -538,6 +569,8 @@ function LibraryPane({
   cols: number;
   cellW: number;
   bottomPad: number;
+  /** الكسوةُ الذكيّة تقرأ التمرير (D-966) */
+  onScroll: (e: NativeSyntheticEvent<NativeScrollEvent>) => void;
   classifying: boolean;
   onOpen: (item: CardItem) => void;
   onHold: (item: CardItem, anchor: CardAnchor) => void;
@@ -614,8 +647,8 @@ function LibraryPane({
       contentContainerStyle={{ paddingHorizontal: PAGE_PAD, paddingTop: 12, paddingBottom: bottomPad, gap: 28 }}
       showsVerticalScrollIndicator={false}
       contentOffset={{ x: 0, y: memory.y[tab] ?? 0 }}
-      onScroll={(e) => { memory.y[tab] = e.nativeEvent.contentOffset.y; }}
-      scrollEventThrottle={64}
+      onScroll={(e) => { memory.y[tab] = e.nativeEvent.contentOffset.y; onScroll(e); }}
+      scrollEventThrottle={16}
     >
       {/* D-954 — التلميحُ في رأس القائمة كما في `LibraryGrid` (فوق الشبكة، تحت
           الأدوات)، **ولا يُرسم إن قُرئ في الحساب** — على أيِّ جهاز */}
