@@ -6,7 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { api, qk, queryClient, write, ApiError } from "../api";
 import { useApp } from "../state";
 import { shell } from "../shell";
-import { Button, Text } from "../ui";
+import { Button, Text, Toast } from "../ui";
 import { radius, space } from "../theme";
 import { PosterCard, type CardAnchor, type CardItem } from "./PosterCard";
 import { HoldMenu, type HoldAction } from "./HoldMenu";
@@ -607,34 +607,6 @@ export function LibraryScreen() {
         </View>
       ) : null}
       {toast ? <Toast text={toast} bottom={insets.bottom + 16} /> : null}
-    </View>
-  );
-}
-
-/** مضيفُ الرسائل الواحد في التطبيق — نسخةُ `ToastHost` (الويب) بنغمة الخطأ: كبسولةٌ `rounded-full border bg-elevated ps-4 py-2.5 text-sm` بحدٍّ ونصٍّ بلون `--error`، على ارتفاع `5.5rem + safe-area` */
-function Toast({ text, bottom }: { text: string; bottom: number }) {
-  const { tokens } = useApp();
-  return (
-    <View pointerEvents="none" style={{ position: "absolute", left: PAGE_PAD, right: PAGE_PAD, bottom: bottom + 72, alignItems: "center" }}>
-      <View
-        style={{
-          maxWidth: 448,
-          paddingStart: 16,
-          paddingEnd: 16,
-          paddingVertical: 10,
-          borderRadius: radius.pill,
-          backgroundColor: tokens.elevated,
-          borderWidth: 1,
-          borderColor: tokens.error + "66",
-          shadowColor: "#000",
-          shadowOpacity: 0.45,
-          shadowRadius: 24,
-          shadowOffset: { width: 0, height: 12 },
-          elevation: 12,
-        }}
-      >
-        <Text size={14} color={tokens.error}>{text}</Text>
-      </View>
     </View>
   );
 }

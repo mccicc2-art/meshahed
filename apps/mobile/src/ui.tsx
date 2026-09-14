@@ -153,3 +153,31 @@ const styles = StyleSheet.create({
 /* 🗑️ D-944: `Poster` · `Card` · `Rail` · `PosterTile` حُذفت — كانت وحداتِ الشاشات
    الأصليّة التسع (D-919) التي أُلغيت بـD-922، وبقيت بلا قارئٍ منذ ٥ سبتمبر (دَينُ
    `05` رقم ٢١/٢٩). بطاقةُ المكتبة الأصليّة لها `library/PosterCard.tsx` بقيم الويب. */
+
+/** مضيفُ الرسائل الواحد في التطبيق (انتقل من `LibraryScreen` إلى هنا في D-958 — «اكتشف» تحتاجه، ومضيفٌ ثانٍ خطأ) — نسخةُ `ToastHost` (الويب) بنغمة الخطأ: كبسولةٌ `rounded-full border bg-elevated ps-4 py-2.5 text-sm` بحدٍّ ونصٍّ بلون `--error`، على ارتفاع `5.5rem + safe-area` */
+export function Toast({ text, bottom }: { text: string; bottom: number }) {
+  const { tokens } = useApp();
+  return (
+    <View pointerEvents="none" style={{ position: "absolute", left: 16, right: 16, bottom: bottom + 72, alignItems: "center" }}>
+      <View
+        style={{
+          maxWidth: 448,
+          paddingStart: 16,
+          paddingEnd: 16,
+          paddingVertical: 10,
+          borderRadius: radius.pill,
+          backgroundColor: tokens.elevated,
+          borderWidth: 1,
+          borderColor: tokens.error + "66",
+          shadowColor: "#000",
+          shadowOpacity: 0.45,
+          shadowRadius: 24,
+          shadowOffset: { width: 0, height: 12 },
+          elevation: 12,
+        }}
+      >
+        <Text size={14} color={tokens.error}>{text}</Text>
+      </View>
+    </View>
+  );
+}

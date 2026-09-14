@@ -3,10 +3,10 @@ import { ActivityIndicator, BackHandler, FlatList, I18nManager, PanResponder, Pl
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
-import { api, qk } from "../api";
+import { api, ApiError, qk } from "../api";
 import { useApp } from "../state";
 import { shell } from "../shell";
-import { Text } from "../ui";
+import { Text, Toast } from "../ui";
 import { Icon } from "../icons";
 import { RailCard, RAIL_CARD_W, type LibMark } from "./RailCard";
 import { Chip } from "../library/Chip";
@@ -80,6 +80,21 @@ export function DiscoverScreen() {
       void shell.open(path, { returnTo: "discover" }).then(back);
     },
     [leaving, back],
+  );
+  /* D-958 — خطأُ «مكتبتي» من صفّ التريلرات: مضيفُ الإشعار الواحد كما في المكتبة */
+  const [toast, setToast] = useState<string | null>(null);
+  useEffect(() => {
+    if (!toast) return;
+    const id = setTimeout(() => setToast(null), 3200);
+    return () => clearTimeout(id);
+  }, [toast]);
+  const onError = useCallback(
+    (e: unknown) => {
+      const key = e instanceof ApiError ? e.error.message_key : "apiInternal";
+      const msg = (t as unknown as Record<string, unknown>)[key];
+      setToast(typeof msg === "string" ? msg : t.apiInternal);
+    },
+    [t],
   );
   /* D-956 — صفحةُ العمل أصليّةٌ: دفعٌ في المكدّس، و«اكتشف» تبقى تحتها */
   const openCard = useCallback((c: CuratedCard) => router.push({ pathname: "/title/[kind]/[id]", params: { kind: c.kind, id: String(c.id), from: "discover" } }), [router]);
@@ -189,7 +204,7 @@ export function DiscoverScreen() {
             </ScrollView>
           ) : null}
           {/* D-958 — صفُّ التريلرات أوّلاً كما في الصفحة (قبل `PersonalRails`)؛ المشغّلُ بابٌ ويبيّ (C3) */}
-          {tab !== "lists" ? <TrailersRail tab={tab} onOpenWeb={leaveTo} /> : null}
+          {tab !== "lists" ? <TrailersRail tab={tab} onOpenWeb={leaveTo} onOpenTitle={(c) => router.push({ pathname: "/title/[kind]/[id]", params: { kind: c.kind, id: String(c.id), from: "discover" } })} onError={onError} /> : null}
           {/* ترتيبُ `PersonalRails`: مقترحٌ لك · صفوفي · (السينما) · من فنّانيك · ثمّ الباقي */}
           {tab !== "lists" && ps && ps.foryou.length > 0 ? (
             <CardsRail title={t.suggestedForYou} icon="sparkle-star" items={ps.foryou} ranked={false} marks={marks} onOpen={openCard} notes />
@@ -207,6 +222,7 @@ export function DiscoverScreen() {
           )) : null}
         </ScrollView>
       </View>
+      {toast ? <Toast text={toast} bottom={insets.bottom + 16} /> : null}
       {leaving ? (
         <View pointerEvents="auto" style={{ position: "absolute", inset: 0, alignItems: "center", justifyContent: "center" }}>
           <ActivityIndicator color={tokens.accent} />

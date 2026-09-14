@@ -66,6 +66,10 @@ export type TrailerCard = {
   title: string;
   year: string;
   genre: string | null;
+  /** نسبةُ العمل («أمريكي») — السطرُ الثاني كما في بطاقة الويب (D-729) */
+  country: string | null;
+  /** مسارُ الملصق الخام — لـ«مكتبتي» (`track/follow` يخزّن ما يُرسم، D-718) */
+  poster_path: string | null;
   /** خلفيّةُ TMDB الكاملة (`w780`) — وإن غابت فمصغّرةُ يوتيوب تُبنى من المفتاح في الشاشة */
   backdrop: string | null;
   video_key: string;

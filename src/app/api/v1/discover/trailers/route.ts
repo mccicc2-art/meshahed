@@ -1,6 +1,5 @@
 import type { NextRequest } from "next/server";
 import { getTrailerFeed } from "@/lib/trailers";
-import { trailerKeyOf } from "@/lib/trailerCard";
 import { getLocale } from "@/lib/locale";
 import { handle, limited } from "@/lib/v1";
 import { ok } from "@/core/contracts/result";
@@ -34,9 +33,13 @@ export async function GET(req: NextRequest) {
         title: i.title,
         year: i.year,
         genre: i.genre,
+        country: i.country,
+        poster_path: i.posterPath,
         backdrop: i.backdrop,
         video_key: i.videoKey,
-        href: `${seeAll}&at=${trailerKeyOf(i)}`,
+        /* مفتاحُ `?at=` بصيغة `trailerKeyOf` حرفاً (`{mediaType}-{tmdbId}`) — لا استيرادَ منها:
+           `trailerCard.ts` وحدةُ عميل، واستدعاؤها من الخادم كان يُسقط المسارَ بـ500 (١٤ سبتمبر) */
+        href: `${seeAll}&at=${i.mediaType}-${i.tmdbId}`,
       }));
       const payload: TrailersRailPayload = { tab, see_all: seeAll, items: cards };
       return ok(payload);

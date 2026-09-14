@@ -12,6 +12,7 @@ import { Image } from "expo-image";
  */
 const ICONS = {
   play: require("../assets/icons/play.png"),
+  info: require("../assets/icons/info.png"),
   repeat: require("../assets/icons/repeat.png"),
   "check-line": require("../assets/icons/check-line.png"),
   star: require("../assets/icons/star.png"),
