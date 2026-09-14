@@ -22,14 +22,11 @@ concurrency:
   cancel_in_progress: true
   group: ${{ workflow.filename }}-${{ github.ref }}
 
+# ♻️ D-960b (١٤ سبتمبر مساءً، «ارفع 1.8.0»): **مُشغِّلُ `push` رُفع من هنا**
+#    وعاد إلى مسار Play — **وهذا يبقى بالزرّ وحدَه**: نسخةُ APK تُطلب حين
+#    تُراد تجربةٌ على الجهاز قبل النشر، **ولا تُبنى مع كلِّ دفعةٍ فتُضاعف
+#    الدولار** (D-938/D-944).
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - apps/mobile/**
-      # تعديلُ المسار نفسِه لا يشحن تطبيقاً
-      - '!apps/mobile/.eas/**'
   workflow_dispatch: {}
 
 jobs:
