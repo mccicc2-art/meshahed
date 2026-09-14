@@ -92,3 +92,49 @@ export type SeasonPayload = {
   season_number: number;
   episodes: SeasonEpisode[];
 };
+
+/* ====== ملحقاتُ صفحة العمل — Phase 11-D · D2/D3 (D-956) ====== */
+
+/** `GET /api/v1/title/{kind}/{id}/extras` — كلُّ ما حول البطل في ردٍّ ثانٍ خفيف */
+export type TitleExtrasPayload = {
+  ratings: { imdb: string | null; rt: string | null; rated: string | null } | null;
+  pulse: { hearts: number; votes: number; avg: number };
+  /** أين يُشاهَد — منطقةُ القارئ ومزوّدوها بروابطهم (إن وُجدت) */
+  watch: {
+    region: string;
+    groups: { key: "flatrate" | "free" | "rent" | "buy"; providers: { id: number; name: string; logo_path: string | null; link: string | null }[] }[];
+  } | null;
+  cast: { id: number; name: string; character: string | null; profile_path: string | null }[];
+  collection: { id: number; name: string; parts: { id: number; title: string; poster_path: string | null; year: string | null }[] } | null;
+  related: { kind: TitleKind; id: number; title: string; poster_path: string | null; year: string | null }[];
+  /** قوائمي العاديّة (لا الذكيّة) وما يحوي هذا العملَ منها — لورقة «إلى قائمة» */
+  my_lists: { id: string; name: string }[];
+  containing: string[];
+  favorite: boolean;
+};
+
+/** `GET /api/v1/title/{kind}/{id}/community` — تبويبُ المجتمع للقراءة؛ الكتابةُ في الويب (`/talk`) */
+export type TitleCommunityPayload = {
+  my_review: { rating: number; review: string | null; has_spoiler: boolean } | null;
+  reviews: {
+    user_id: string;
+    name: string;
+    username: string | null;
+    avatar_url: string | null;
+    rating: number;
+    review: string | null;
+    has_spoiler: boolean;
+    updated_at: string;
+    likes: number;
+    replies: number;
+    mine: boolean;
+  }[];
+  /** نشراتُ لوبز وأخبارُه بلغة القارئ — سطرٌ وتاريخ (`bulletinLine` · `newsLine`) */
+  bulletins: { line: string; at: string; replies: number }[];
+  talk_path: string;
+};
+
+/** `POST /api/v1/track/favorite` — تبديلُ المفضّل؛ يعود بالحالة الحقيقيّة */
+export type FavoriteBody = { tmdbId: number; mediaType: TitleKind; title: string; posterPath: string | null };
+/** `POST /api/v1/lists/toggle-item` — إضافةُ عملٍ إلى قائمةٍ أو نزعُه */
+export type ListToggleItemBody = { listId: string; tmdbId: number; mediaType: TitleKind; title: string; posterPath: string | null; add: boolean };

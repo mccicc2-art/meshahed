@@ -87,5 +87,7 @@ export type RateBody = {
   review: string;
   title: string;
   posterPath: string | null;
+  /** 🆕 D-956 — «فيها حرق» من ورقة الرأي الأصليّة؛ الفعلُ يقبله اختياريّاً */
+  hasSpoiler?: boolean;
 };
 export type UnrateBody = { tmdbId: number; mediaType: TitleKind };

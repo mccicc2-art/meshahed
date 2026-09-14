@@ -1,6 +1,5 @@
-import { externalRatings, imdbIdByName } from "@/lib/omdb";
-import { imdbOverride } from "@/core/imdbOverrides";
-import { altTitles, tvImdbId } from "@/lib/tmdb";
+import { externalRatings } from "@/lib/omdb";
+import { resolveImdbId } from "@/lib/titleExtras";
 
 /**
  * سطر التقييمات في ترويسة العمل — IMDb وطماطم فقط، بشعاراتهما.
@@ -103,36 +102,9 @@ export async function HeroRatings({
    */
   compact?: boolean;
 }) {
-  const kind = tvId ? ("series" as const) : ("movie" as const);
-  const altId = tvId ?? movieId;
-  /* 🔴 🆕 **والخريطةُ المكتوبةُ بيدٍ تُسأل أوّلاً** (D-431): **سطرٌ نعرفه
-     أوثقُ من ثلاث رحلاتِ شبكةٍ وأرخصُ منها** — **فما نعرفه لا يُدفع ثمنُ
-     البحث عنه**، **وسقوطُها يعني «لا أعرفه» فتمشي الجسورُ الثلاثة**
-     (D-063). */
-  const pinned = altId ? imdbOverride(kind === "series" ? "tv" : "movie", altId) : null;
-  const first =
-    pinned ?? imdbId ?? (tvId ? await (tvImdbIdPromise ?? tvImdbId(tvId)) : null);
-  /* **ولا يُبحث بالاسم إلا بعد أن يسقط المعرّف** (D-414) — نداءٌ لا يقع
-     لأكثر الأعمال، **وردُّه مخبّأٌ يوماً كردِّ التقييم نفسِه.** */
-  const second = first ?? (name && year ? await imdbIdByName(name, year, kind) : null);
-  /* 🔴 🆕 **والجسرُ الثالثُ صيغُ الاسم** (D-430، دَينُ D-414 المعلَن):
-     **الاسمُ المنقولُ عن العربيّة لا صيغةَ واحدةَ له** — TMDB تكتب
-     `Fi El` وIMDb تكتب `Fi Al` — **وحرفٌ يمنع المطابقة.** **وTMDB تحمل
-     الصيغَ كلَّها ولم نكن نسألها.**
-     ⚠️ **ولا يقع إلّا بعد سقوط الجسرين** (D-152)، **ويتوقّف عند أوّل
-     صيغةٍ تطابق** فلا يستنفد السقفَ بلا داعٍ. */
-  let iid = second;
-  if (!iid && altId && year) {
-    for (const alt of await altTitles(kind === "series" ? "tv" : "movie", altId)) {
-      /* **والاسمُ الذي جرّبناه لا يُجرَّب ثانيةً** */
-      if (name && alt.toLowerCase() === name.trim().toLowerCase()) continue;
-      const hit = await imdbIdByName(alt, year, kind);
-      if (hit) {
-        iid = hit;
-        break;
-      }
-    }
-  }
+  /* D-956 — **الترتيبُ مستخرَجٌ إلى `resolveImdbId`** (`src/lib/titleExtras.ts`) ليقرأه
+     مسارُ التطبيق أيضاً؛ ما هنا نداءٌ للوصفة الواحدة لا نسخةٌ منها. */
+  const iid = await resolveImdbId(tvId ? "tv" : "movie", (tvId ?? movieId) ?? 0, name ?? null, year ?? null, imdbId, tvImdbIdPromise);
   const ext = await externalRatings(iid);
   /* `externalRatings` صارت تُميّز «لا تقييم» عن «لم نصل» (D-172)، فتعود
      بكائنٍ فارغ بدل `null`. والترويسة لا ترسم صفّاً فارغاً.

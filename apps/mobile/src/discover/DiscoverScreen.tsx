@@ -11,6 +11,7 @@ import { Icon } from "../icons";
 import { RailCard, RAIL_CARD_W, type LibMark } from "./RailCard";
 import { Chip } from "../library/Chip";
 import { ListsRails } from "./ListsRails";
+import { TrailersRail } from "./TrailersRail";
 import { regionName } from "@/core/region";
 import type { CuratedCard, CuratedRailKey, CuratedRailPayload, CuratedTab, LibraryPayload, PersonalRailsPayload } from "../contracts";
 
@@ -80,7 +81,8 @@ export function DiscoverScreen() {
     },
     [leaving, back],
   );
-  const openCard = useCallback((c: CuratedCard) => leaveTo(c.kind === "tv" ? `/show/${c.id}` : `/movie/${c.id}`), [leaveTo]);
+  /* D-956 — صفحةُ العمل أصليّةٌ: دفعٌ في المكدّس، و«اكتشف» تبقى تحتها */
+  const openCard = useCallback((c: CuratedCard) => router.push({ pathname: "/title/[kind]/[id]", params: { kind: c.kind, id: String(c.id), from: "discover" } }), [router]);
 
   /* «عندك» — خريطةٌ من كاش المكتبة نفسِه (المفتاحُ والجالبُ كما في `LibraryScreen`) */
   const lib = useQuery({
@@ -186,6 +188,8 @@ export function DiscoverScreen() {
               ))}
             </ScrollView>
           ) : null}
+          {/* D-958 — صفُّ التريلرات أوّلاً كما في الصفحة (قبل `PersonalRails`)؛ المشغّلُ بابٌ ويبيّ (C3) */}
+          {tab !== "lists" ? <TrailersRail tab={tab} onOpenWeb={leaveTo} /> : null}
           {/* ترتيبُ `PersonalRails`: مقترحٌ لك · صفوفي · (السينما) · من فنّانيك · ثمّ الباقي */}
           {tab !== "lists" && ps && ps.foryou.length > 0 ? (
             <CardsRail title={t.suggestedForYou} icon="sparkle-star" items={ps.foryou} ranked={false} marks={marks} onOpen={openCard} notes />

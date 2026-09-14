@@ -67,6 +67,16 @@ const HOME = CONFIG.apiBase + "/";
  * تُحقن في كلِّ الإطارات لكنّ الرسالةَ تُقبل من `INSIDE` وحدَه (`onMessage`).
  */
 const CAPABILITIES = "window.LoopzNative={library:true,discover:true};true;";
+/**
+ * 🔴 **والحقنُ مرّتين (١٤ سبتمبر — بلاغُ أحمد على 1.6.0: «المكتبة رجعت ويب»)**:
+ * أوّلُ فتحٍ بعد التثبيت أعاد الصفحةَ ويبيّةً من أوّل ضغطة، وإغلاقٌ كامل أصلحها،
+ * وتشخيصُ `NativeGate` لم يسجّل شيئاً بعدها. **التفسيرُ الوحيدُ المتّسق**: WebView
+ * أندرويد يستعيد مستندَ الجلسة السابقة بعد الترقية **دون أن يعيد تشغيلَ حقنِ
+ * «قبل المستند»** — فيغيب `LoopzNative` ويبقى الرابطُ رابطاً (بقرار ٩ سبتمبر).
+ * حقنُ «بعد التحميل» يجري على كلِّ `onLoadEnd` بما فيه الاستعادةُ، **وهو احتياطٌ
+ * لا بديل**: الأوّلُ يسبق كودَ الصفحة، والثاني يلحقه لكنّه يسبق أوّلَ ضغطة.
+ */
+const CAPABILITIES_LATE = "if(!window.LoopzNative)" + CAPABILITIES;
 const HANDOFF = CONFIG.apiBase + "/api/v1/session/handoff";
 const APP_VERSION = Constants.expoConfig?.version ?? "0";
 
@@ -277,6 +287,7 @@ export default function Web() {
           applicationNameForUserAgent={`LoopzApp/${APP_VERSION}`}
           injectedJavaScriptBeforeContentLoaded={CAPABILITIES}
           injectedJavaScriptBeforeContentLoadedForMainFrameOnly={false}
+          injectedJavaScript={CAPABILITIES_LATE}
           onMessage={onMessage}
           onNavigationStateChange={onNav}
           onShouldStartLoadWithRequest={onShouldStart}

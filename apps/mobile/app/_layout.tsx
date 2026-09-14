@@ -60,6 +60,7 @@ function Shell() {
             بلا إعادة تحميل (عقدُ المالك: الحالةُ محفوظة). */}
         <Stack.Screen name="library" options={{ headerShown: false, animation: "none" }} />
         <Stack.Screen name="discover" options={{ headerShown: false, animation: "none" }} />
+        <Stack.Screen name="title/[kind]/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="auth/callback" options={{ headerShown: false }} />
       </Stack>
     </>

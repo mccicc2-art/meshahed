@@ -57,3 +57,26 @@ export type DiscoverListsPayload = {
   /** العوالمُ المنسَّقة — كلُّ عالمٍ صفٌّ من بطاقات لوبز، و«الكل» يفتح `/news?tab=lists&fr=` */
   franchises: { slug: string; name: string; see_all: string; sets: LibraryListCard[] }[];
 };
+
+/* ====== صفُّ التريلرات — D-958 (١٤ سبتمبر ٢٠٢٦) ====== */
+/** بطاقةُ تريلر للشاشة الأصليّة: خلفيّةٌ وعنوانٌ ومفتاحُ يوتيوب — **لا مشغّلَ أصليّاً** (قرارُ C3)؛ الضغطُ بابٌ إلى `/trailers?at=` */
+export type TrailerCard = {
+  kind: "tv" | "movie";
+  id: number;
+  title: string;
+  year: string;
+  genre: string | null;
+  /** خلفيّةُ TMDB الكاملة (`w780`) — وإن غابت فمصغّرةُ يوتيوب تُبنى من المفتاح في الشاشة */
+  backdrop: string | null;
+  video_key: string;
+  /** بابُ المشغّل الويبي لهذه البطاقة (`/trailers?scope=&at=`) */
+  href: string;
+};
+
+/** `GET /api/v1/discover/trailers?tab=` — `private`؛ مفتوحٌ للضيف كالصفحة؛ الصامتُ عند الفشل صفٌّ فارغ */
+export type TrailersRailPayload = {
+  tab: CuratedTab;
+  /** بابُ «الكل» (`/trailers?scope=`) */
+  see_all: string;
+  items: TrailerCard[];
+};

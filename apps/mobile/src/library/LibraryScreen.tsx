@@ -139,9 +139,10 @@ export function LibraryScreen() {
     [leaving, back],
   );
 
+  /* D-956 — صفحةُ العمل أصليّةٌ الآن: دفعٌ في المكدّس لا بابٌ ويبيّ؛ المكتبةُ تبقى تحتها */
   const openTitle = useCallback(
-    (item: CardItem) => leaveTo(item.kind === "tv" ? `/show/${item.id}` : `/movie/${item.id}`),
-    [leaveTo],
+    (item: CardItem) => router.push({ pathname: "/title/[kind]/[id]", params: { kind: item.kind, id: String(item.id), from: "library" } }),
+    [router],
   );
 
   const hold = useCallback((item: CardItem, anchor: CardAnchor) => setHeld({ item, anchor }), []);
