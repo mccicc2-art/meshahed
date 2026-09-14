@@ -10,9 +10,11 @@ import type { TrailerCard, TrailersRailPayload } from "@/core/contracts/discover
  * للشاشة الأصليّة (D-958 · ١٤ سبتمبر ٢٠٢٦).
  *
  * 🔑 **الوصفةُ وصفةُ الصفحة** (`getTrailerFeed` — المصدرُ الواحد، بالحدّ نفسِه ٩
- * كما `TrailersSection` بعد D-756)، **والمشغّلُ يبقى ويبيّاً بقرار C3**: الشاشةُ
- * ترسم الخلفيّةَ وزرَّ ▶، والضغطُ بابٌ إلى `/trailers?at=` حيث المشغّلُ الواحد
- * (D-759) وصوتُه وتبديلُ الخانات. **مفتوحٌ للضيف** كالصفحة؛ الحدُّ بعنوان الشبكة.
+ * كما `TrailersSection` بعد D-756). ⚖️ **وقرارُ C3 نُقض بأمر أحمد (D-959)**:
+ * **الضغطُ يشغّل في مكانه** بمشغّلٍ أصليٍّ فوق `react-native-youtube-iframe`،
+ * **و`href` صار احتياطاً** يُفتح حين تُرفض المفاتيحُ كلُّها. ولذلك يحمل الردُّ
+ * `video_keys` (سلسلةُ البدائل، D-743) لا مفتاحاً واحداً.
+ * **مفتوحٌ للضيف** كالصفحة؛ الحدُّ بعنوان الشبكة.
  * ⚠️ **`private`**: الاقتراحاتُ تطيع المصروفَ والمُشاهَد لكلِّ قارئ.
  */
 export async function GET(req: NextRequest) {
@@ -37,6 +39,8 @@ export async function GET(req: NextRequest) {
         poster_path: i.posterPath,
         backdrop: i.backdrop,
         video_key: i.videoKey,
+        /* D-959: سلسلةُ البدائل كما تبنيها `getTrailerFeed` — المشغّلُ الأصليُّ يجرّبها بالترتيب */
+        video_keys: i.videoKeys,
         /* مفتاحُ `?at=` بصيغة `trailerKeyOf` حرفاً (`{mediaType}-{tmdbId}`) — لا استيرادَ منها:
            `trailerCard.ts` وحدةُ عميل، واستدعاؤها من الخادم كان يُسقط المسارَ بـ500 (١٤ سبتمبر) */
         href: `${seeAll}&at=${i.mediaType}-${i.tmdbId}`,

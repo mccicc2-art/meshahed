@@ -1,8 +1,10 @@
-import React, { useState } from "react";
-import { FlatList, Pressable, StyleSheet, useWindowDimensions, View } from "react-native";
+import React, { useCallback, useRef, useState } from "react";
+import { FlatList, Pressable, StyleSheet, useWindowDimensions, View, type ViewToken } from "react-native";
 import { Image } from "expo-image";
+import { useFocusEffect } from "expo-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { api, write } from "../api";
+import { TrailerPlayer } from "../trailers/TrailerPlayer";
 import { useApp } from "../state";
 import { Text } from "../ui";
 import { Icon } from "../icons";
@@ -17,6 +19,14 @@ import type { CuratedTab, FollowBody, TrackResult, TrailerCard, TrailersRailPayl
  * التطبيق لا يرى التريلرات (بلاغُ أحمد). هذا الصفُّ يسدّ الفجوةَ بلا تبعيّةٍ
  * جديدة: خلفيّةُ TMDB (أو مصغّرةُ يوتيوب من المفتاح) وزرُّ ▶ **والضغطُ يفتح
  * `/trailers?at=` في الغلاف** — المشغّلُ الواحدُ وصوتُه وتبديلُ الخانات كما هي.
+ *
+ * ⚖️ **١٤ سبتمبر مساءً — D-959: البابُ صار مشغّلاً في مكانه** (أمرُ أحمد
+ * «نفّذها»): الضغطةُ على السطح تُبدّل الصورةَ بـ`TrailerPlayer` الأصليِّ فوق
+ * البطاقة نفسِها — **لا مغادرةَ للشاشة**. **وواحدٌ يعمل في الصفّ**: من يفتح
+ * بطاقةً يُغلق ما قبلها، **والبطاقةُ التي تخرج من العين تتوقّف** (`viewability`
+ * — الرفُّ يلتقط بطاقةً واحدةً في المرّة)، **والخروجُ من «اكتشف» يوقف الكلّ**
+ * (`useFocusEffect`): **صوتٌ يتبع مستخدماً غادر الشاشةَ عطلٌ لا ميزة.**
+ * **و`href` باقٍ احتياطاً** — يُفتح حين ترفض يوتيوب مفاتيحَ البطاقة كلَّها.
  *
  * 🔑 **والبطاقةُ بقياس الويب لا بقياس الملصقات** (أحمد بلقطة، ١٤ سبتمبر: «أبغى
  * حجم شاشة عرض التريلر مثل حجمها في الويب»): الويبُ يعرضها `min(92vw, …)` —
@@ -67,6 +77,16 @@ export function TrailersRail({
     },
   });
 
+  /* **بطاقةٌ واحدةٌ تعمل** — المعرّفُ لا المؤشّر: القائمةُ تُعاد جلبُها فتتبدّل الرتب */
+  const [live, setLive] = useState<string | null>(null);
+  const viewCfg = useRef({ itemVisiblePercentThreshold: 60 }).current;
+  const onView = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
+    const seen = new Set(viewableItems.map((v) => v.key));
+    setLive((cur) => (cur && !seen.has(cur) ? null : cur));
+  }).current;
+  /* مغادرةُ الشاشة توقف الصوت — والعودةُ تبدأ من الصورة لا من منتصف مقطع */
+  useFocusEffect(useCallback(() => () => setLive(null), []));
+
   const items = q.data?.items ?? [];
   /* فشلُ الجلب صمتٌ لا هيكلٌ أبديّ (درسُ ١٤ سبتمبر: 500 في المسار أبقى الهيكلَ معروضاً) */
   if (q.isError) return null;
@@ -100,19 +120,35 @@ export function TrailersRail({
         data={items}
         keyExtractor={(c) => `${c.kind}-${c.id}`}
         renderItem={({ item }) => {
-          const isAdded = added.has(`${item.kind}-${item.id}`);
+          const id = `${item.kind}-${item.id}`;
+          const isAdded = added.has(id);
           return (
             <View style={{ width: cardW, borderRadius: radius.card, overflow: "hidden", backgroundColor: tokens.surface, borderWidth: 1, borderColor: tokens.border }}>
-              <Pressable onPress={() => onOpenWeb(item.href)} accessibilityLabel={`${t.trailerPlay} — ${item.title}`} style={{ width: "100%", aspectRatio: 16 / 9, backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center" }}>
-                <Image source={{ uri: thumbOf(item) }} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} recyclingKey={`${item.kind}-${item.id}`} />
-                {/* دائرةُ ▶ كما في `TrailerCardMedia` (`h-14 w-14 rounded-full bg-black/60`) */}
-                <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: "rgba(0,0,0,0.6)", alignItems: "center", justifyContent: "center" }}>
-                  <Icon name="play" size={24} color="#fff" />
-                </View>
-              </Pressable>
+              {live === id ? (
+                /* D-959 — المشغّلُ الأصليُّ في مكان الصورة، بالمصغّرة نفسِها سِتراً فلا وميض */
+                <TrailerPlayer
+                  videoKeys={item.video_keys?.length ? item.video_keys : [item.video_key]}
+                  width={cardW}
+                  poster={thumbOf(item)}
+                  label={item.title}
+                  onExhausted={() => {
+                    setLive(null);
+                    onOpenWeb(item.href);
+                  }}
+                />
+              ) : (
+                <Pressable onPress={() => setLive(id)} accessibilityLabel={`${t.trailerPlay} — ${item.title}`} style={{ width: "100%", aspectRatio: 16 / 9, backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center" }}>
+                  <Image source={{ uri: thumbOf(item) }} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} recyclingKey={id} />
+                  {/* دائرةُ ▶ كما في `TrailerCardMedia` (`h-14 w-14 rounded-full bg-black/60`) */}
+                  <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: "rgba(0,0,0,0.6)", alignItems: "center", justifyContent: "center" }}>
+                    <Icon name="play" size={24} color="#fff" />
+                  </View>
+                </Pressable>
+              )}
               {/* التذييلُ: `flex items-center gap-3 px-3.5 py-3` — الاسمُ وسطرُه، ثمّ «التفاصيل» و«مكتبتي» */}
               <View style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 14, paddingVertical: 12 }}>
-                <Pressable onPress={() => onOpenWeb(item.href)} style={{ flex: 1, minWidth: 0 }}>
+                {/* D-959: الاسمُ يشغّل كالسطح — لا يغادر الشاشةَ بعد اليوم */}
+                <Pressable onPress={() => setLive(id)} style={{ flex: 1, minWidth: 0 }}>
                   <Text size={15} weight="700" numberOfLines={1}>{item.title}</Text>
                   <Text size={12} muted numberOfLines={1} style={{ marginTop: 2 }}>{[item.year, item.genre, item.country].filter(Boolean).join(" · ")}</Text>
                 </Pressable>
@@ -128,6 +164,8 @@ export function TrailersRail({
             </View>
           );
         }}
+        viewabilityConfig={viewCfg}
+        onViewableItemsChanged={onView}
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={{ paddingHorizontal: PAGE_PAD, gap: GAP }}
         snapToInterval={cardW + GAP}

@@ -38,6 +38,12 @@ const ICONS = {
   eye: require("../assets/icons/eye.png"),
   "eye-off": require("../assets/icons/eye-off.png"),
   "star-filled": require("../assets/icons/star-filled.png"),
+  /* 🆕 D-959 — رموزُ المشغّل الأصليّ، من `Icon.tsx` بالطريقة نفسِها: دائرةُ
+     الإيقاف، ومخروطُ الصوت الواحد بموجتِه أو بشطبِه (**عائلةٌ واحدةٌ للرمز**
+     — التبديلُ يُقرأ حالةً لا أيقونتين غريبتين). */
+  pause: require("../assets/icons/pause.png"),
+  volume: require("../assets/icons/volume.png"),
+  "volume-off": require("../assets/icons/volume-off.png"),
 } as const;
 
 export type IconName = keyof typeof ICONS;

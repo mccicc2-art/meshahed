@@ -9,6 +9,35 @@
 #
 # ⚖️ يعمل عند كلِّ دفعةٍ إلى main تمسّ apps/mobile فقط: بناءُ الويب لا
 #    يستهلك دقائقَ EAS. والمسارات نسبيّةٌ إلى جذر المستودع لا إلى apps/mobile.
+#
+# 🔴🔴 معطَّلٌ مؤقّتاً — ١٤ سبتمبر ٢٠٢٦ (D-960)، بأمر أحمد:
+#    «ابغاك ترفعه لي باستخدام USB .. بدون ما ترفعه في بلاي ستور».
+#    فالدفعةُ التالية يجب أن تبني APK للتجربة ولا تصل Play بحال —
+#    ولذلك رُفع مُشغِّلُ `push` من هنا (بقي `workflow_dispatch` وحدَه)،
+#    **ومسارُ التجربة في `android-apk-usb.yml` بجانبه.**
+#
+# ♻️ الاستعادةُ عند أوّل نشرٍ إلى Play (سطران، لا أكثر):
+#    ١) أعِد كتلةَ `on:` كما هي في التعليق أدناه.
+#    ٢) أعِد وظيفةَ `submit` كما هي في التعليق أدناه.
+#    ٣) واحذف `android-apk-usb.yml` أو ارفع مُشغِّلَ `push` منه —
+#       **وإلّا بنى كلُّ دفعةٍ بناءين اثنين بدولارين.**
+#
+#    on:
+#      push:
+#        branches:
+#          - main
+#        paths:
+#          - apps/mobile/**
+#          - '!apps/mobile/.eas/**'
+#      workflow_dispatch: {}
+#
+#    submit:
+#      name: Submit to Play (closed track Alpha)
+#      needs: [build]
+#      type: submit
+#      params:
+#        build_id: ${{ needs.build.outputs.build_id }}
+#        profile: production
 name: Android → Play Alpha
 
 # 🆕 D-944: ثلاثُ دفعاتٍ في نصف ساعةٍ أنتجت ثلاثةَ بناءاتٍ وثلاثةَ إرسالات (٧ سبتمبر)
@@ -19,13 +48,6 @@ concurrency:
   group: ${{ workflow.filename }}-${{ github.ref }}
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - apps/mobile/**
-      # تعديلُ المسار نفسِه لا يشحن تطبيقاً
-      - '!apps/mobile/.eas/**'
   workflow_dispatch: {}
 
 jobs:
@@ -34,12 +56,4 @@ jobs:
     type: build
     params:
       platform: android
-      profile: production
-
-  submit:
-    name: Submit to Play (closed track Alpha)
-    needs: [build]
-    type: submit
-    params:
-      build_id: ${{ needs.build.outputs.build_id }}
       profile: production

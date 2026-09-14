@@ -15,6 +15,7 @@ import { CONFIG } from "../config";
 import { backdropUrl, posterUrl } from "@/core/media";
 import { num } from "@/core/i18n";
 import { SeasonAccordion } from "./SeasonAccordion";
+import { TrailerPlayer } from "../trailers/TrailerPlayer";
 import { useExtras, RatingsLine, WatchWhere, FavoriteButton, AddToListButton, CastRail, RelatedRails } from "./TitleExtras";
 import { useCommunity, CommunityTab, ReviewSheet, communityKey } from "./TitleCommunity";
 import type {
@@ -63,6 +64,9 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
   const [toast, setToast] = useState<string | null>(null);
   const [more, setMore] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
+  /* D-959 — التريلرُ يعمل في الصفحة: تشغيلٌ صريحٌ بضغطة، **ومغادرةُ التبويب توقفه**
+     فلا يعود صوتٌ من نفسه حين يرجع القارئُ إلى «المعلومات». */
+  const [trailerOn, setTrailerOn] = useState(false);
 
   const q = useQuery({
     queryKey: qk.title(kind, id),
@@ -96,6 +100,10 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
     },
     [t, q],
   );
+  /* D-959: تركُ تبويب «المعلومات» يهدم المشغّل — لا صوتَ خلف تبويبٍ آخر */
+  useEffect(() => {
+    if (tab !== "info") setTrailerOn(false);
+  }, [tab]);
   useEffect(() => {
     if (!toast) return;
     const h = setTimeout(() => setToast(null), 2600);
@@ -307,10 +315,28 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
                     <Chip label={t.episodesCount(d.aired_total)} active={false} onPress={() => setTab("episodes")} />
                   </View>
                 ) : null}
+                {/* ⚖️ D-959 — التريلرُ كان باباً ويبيّاً بقرار (خطّةُ 11-D §٢)، وصار
+                    يعمل في مكانه بأمر أحمد: الزرُّ يفتح المشغّلَ الأصليَّ تحته
+                    **في الصفحة نفسِها**، والفشلُ الكاملُ يسقط إلى الباب القديم. */}
                 {d.trailer_key ? (
-                  <View style={{ flexDirection: "row" }}>
-                    <Button label={`▶ ${t.trailerPlay}`} variant="ghost" onPress={() => openWeb()} />
-                  </View>
+                  trailerOn ? (
+                    <View style={{ borderRadius: radius.card, overflow: "hidden" }}>
+                      <TrailerPlayer
+                        videoKeys={[d.trailer_key]}
+                        width={width - PAGE_PAD * 2}
+                        poster={backdropUrl(d.backdrop_path, "w780")}
+                        label={d.name}
+                        onExhausted={() => {
+                          setTrailerOn(false);
+                          openWeb();
+                        }}
+                      />
+                    </View>
+                  ) : (
+                    <View style={{ flexDirection: "row" }}>
+                      <Button label={`▶ ${t.trailerPlay}`} variant="ghost" onPress={() => setTrailerOn(true)} />
+                    </View>
+                  )
                 ) : null}
                 <CastRail x={x} onPerson={(pid) => openWeb("", `/person/${pid}`)} />
                 <RelatedRails x={x} onOpen={openTitle} />
