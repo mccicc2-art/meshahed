@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, BackHandler, FlatList, I18nManager, PanResponder, Platform, Pressable, ScrollView, View } from "react-native";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { ActivityIndicator, BackHandler, FlatList, Platform, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
@@ -12,6 +12,8 @@ import { RailCard, RAIL_CARD_W, type LibMark } from "./RailCard";
 import { Chip } from "../library/Chip";
 import { ListsRails } from "./ListsRails";
 import { TrailersRail } from "./TrailersRail";
+import { TabSlide } from "../TabSlide";
+import { BottomNav, navHeight } from "../BottomNav";
 import { regionName } from "@/core/region";
 import type { CuratedCard, CuratedRailKey, CuratedRailPayload, CuratedTab, LibraryPayload, PersonalRailsPayload } from "../contracts";
 
@@ -53,6 +55,7 @@ export function DiscoverScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const ar = locale !== "en";
+  const navH = navHeight(insets.bottom);
   const [tab, setTab] = useState<Tab>(memory.tab);
   useEffect(() => {
     memory.tab = tab;
@@ -117,29 +120,11 @@ export function DiscoverScreen() {
     return m;
   }, [lib.data]);
 
-  /* D-953 — السحبُ الأفقيُّ في الفراغ ينقل التبويب (الآليّةُ نفسُها في المكتبة) */
+  /* D-953 → ⚖️ D-961: السحبُ صار انزلاقاً — الإيماءةُ والعتباتُ انتقلت إلى
+     `TabSlide` (مصنعٌ واحدٌ تقرؤه المكتبةُ و«اكتشف»)، **والترتيبُ هنا لأنّه
+     ترتيبُ هذه الشاشة.** */
   const tabsOrder: Tab[] = ["shows", "movies", "anime", "lists"];
-  const tabRef = useRef<Tab>(tab);
-  tabRef.current = tab;
   const goTab = useCallback((next: Tab) => setTab(next), []);
-  const goTabRef = useRef(goTab);
-  goTabRef.current = goTab;
-  const swipe = useMemo(
-    () =>
-      PanResponder.create({
-        onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 20 && Math.abs(g.dx) > 1.6 * Math.abs(g.dy),
-        onPanResponderTerminationRequest: () => true,
-        onPanResponderRelease: (_, g) => {
-          if (Math.abs(g.dx) < 56 && Math.abs(g.vx) < 0.4) return;
-          const i = tabsOrder.indexOf(tabRef.current);
-          const toEnd = I18nManager.isRTL ? g.dx > 0 : g.dx < 0;
-          const next = tabsOrder[i + (toEnd ? 1 : -1)];
-          if (next) goTabRef.current(next);
-        },
-      }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [],
-  );
 
   /* C2 — الصفوفُ الشخصيّة في ردٍّ واحد؛ «لا صفَّ بلا شيءٍ يقوله» (D-219) */
   const railTab: CuratedTab = tab === "lists" ? "shows" : tab;
@@ -186,9 +171,10 @@ export function DiscoverScreen() {
         })}
       </View>
 
-      <View style={{ flex: 1 }} {...swipe.panHandlers}>
+      {/* ⚖️ D-961 — اللوحُ ينزلق، وهيكلُ الجار يلوح تحت الإصبع (الفجوةُ في رأس `TabSlide`) */}
+      <TabSlide order={tabsOrder} tab={tab} onTab={goTab} peek={<RailsSkeleton pad={navH + 24} />}>
         <ScrollView
-          contentContainerStyle={{ paddingTop: 12, paddingBottom: insets.bottom + 24, gap: 24 }}
+          contentContainerStyle={{ paddingTop: 12, paddingBottom: navH + 24, gap: 24 }}
           showsVerticalScrollIndicator={false}
           contentOffset={{ x: 0, y: memory.y }}
           onScroll={(e) => { memory.y = e.nativeEvent.contentOffset.y; }}
@@ -221,13 +207,49 @@ export function DiscoverScreen() {
             </React.Fragment>
           )) : null}
         </ScrollView>
-      </View>
-      {toast ? <Toast text={toast} bottom={insets.bottom + 16} /> : null}
+      </TabSlide>
+      {/* D-961 — الشريطُ الخماسيُّ كما في كلِّ صفحةٍ ويبيّة؛ «اكتشف» هي الخانةُ المضيئة */}
+      <BottomNav
+        active="news"
+        onGo={(k) => {
+          if (k === "news") return;
+          if (k === "library") {
+            router.replace("/library");
+            return;
+          }
+          leaveTo(k === "home" ? "/" : k === "people" ? "/people" : "/search");
+        }}
+      />
+      {toast ? <Toast text={toast} bottom={navH + 16} /> : null}
       {leaving ? (
         <View pointerEvents="auto" style={{ position: "absolute", inset: 0, alignItems: "center", justifyContent: "center" }}>
           <ActivityIndicator color={tokens.accent} />
         </View>
       ) : null}
+    </View>
+  );
+}
+
+/**
+ * هيكلُ لوحٍ قادم — يلوح تحت الإصبع في أثناء السحب (D-961). **هو هيكلُ الصفّ
+ * نفسُه المرسومُ في `Rail` عند التحميل** (سطرٌ ورفٌّ من صناديق `surface-2`) —
+ * **ولا هيكلَ ثانٍ بشكلٍ ثانٍ**: ما يراه الإصبعُ في الانتقال هو ما يراه بعده
+ * حتى تصل البيانات.
+ */
+function RailsSkeleton({ pad }: { pad: number }) {
+  const { tokens } = useApp();
+  return (
+    <View style={{ flex: 1, paddingTop: 12, gap: 24, paddingBottom: pad }}>
+      {Array.from({ length: 3 }, (_, r) => (
+        <View key={r}>
+          <View style={{ height: 22, marginHorizontal: PAGE_PAD, marginBottom: 10, width: 160, borderRadius: 6, backgroundColor: tokens.surface2 }} />
+          <View style={{ flexDirection: "row", gap: GAP, paddingHorizontal: PAGE_PAD }}>
+            {Array.from({ length: 4 }, (_, i) => (
+              <View key={i} style={{ width: RAIL_CARD_W, aspectRatio: 2 / 3, borderRadius: 12, backgroundColor: tokens.surface2 }} />
+            ))}
+          </View>
+        </View>
+      ))}
     </View>
   );
 }

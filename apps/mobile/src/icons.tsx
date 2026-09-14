@@ -44,6 +44,18 @@ const ICONS = {
   pause: require("../assets/icons/pause.png"),
   volume: require("../assets/icons/volume.png"),
   "volume-off": require("../assets/icons/volume-off.png"),
+  /* 🆕 D-961 — رموزُ الشريط السفليّ، وجهان لكلِّ خانة: مفرَّغٌ للخامل وممتلئٌ
+     للنشط (`Icon.tsx` نفسُها — والممتلئُ `fill="currentColor" stroke="none"`
+     فيُرسم أبيضَ ويُلوَّن بـ`tintColor` كسائره). `people` و`search` المفرَّغتان
+     موجودتان أصلاً فلم تُرسما ثانيةً. */
+  home: require("../assets/icons/home.png"),
+  "home-filled": require("../assets/icons/home-filled.png"),
+  library: require("../assets/icons/library.png"),
+  "library-filled": require("../assets/icons/library-filled.png"),
+  compass: require("../assets/icons/compass.png"),
+  "compass-filled": require("../assets/icons/compass-filled.png"),
+  "people-filled": require("../assets/icons/people-filled.png"),
+  "search-filled": require("../assets/icons/search-filled.png"),
 } as const;
 
 export type IconName = keyof typeof ICONS;

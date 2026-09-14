@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, BackHandler, FlatList, I18nManager, PanResponder, Platform, Pressable, ScrollView, useWindowDimensions, View } from "react-native";
+import { ActivityIndicator, BackHandler, FlatList, Platform, Pressable, ScrollView, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
@@ -13,6 +13,8 @@ import { HoldMenu, type HoldAction } from "./HoldMenu";
 import { ToolsSheet, type LibrarySort } from "./ToolsSheet";
 import { ArtistsTab } from "./ArtistsTab";
 import { ListsTab } from "./ListsTab";
+import { TabSlide } from "../TabSlide";
+import { BottomNav, navHeight } from "../BottomNav";
 import { OneTimeHint } from "./OneTimeHint";
 import { Icon } from "../icons";
 import { byTitle, normalizeSearch } from "@/core/arabic";
@@ -89,6 +91,7 @@ export function LibraryScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { width: screenW } = useWindowDimensions();
+  const navH = navHeight(insets.bottom);
 
   const data = useQuery({
     queryKey: qk.tag("me:library"),
@@ -303,27 +306,10 @@ export function LibraryScreen() {
      **ونحن لا نسأل قبل ٢٠ بكسل** — فما وصلنا فهو سحبٌ لم يُرِده أحد.
      والقائمةُ العموديّة لا تعترض الأفقيّ. **والاتّجاهُ اتّجاهُ القراءة**: التالي
      في جهة النهاية (RTL: السحبُ يميناً = التالي). التبويباتُ المخفيّة لا تُزار. */
-  const tabsRef = useRef(tabs);
-  tabsRef.current = tabs;
-  const activeRef = useRef(activeTab);
-  activeRef.current = activeTab;
-  const swipe = useMemo(
-    () =>
-      PanResponder.create({
-        onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 20 && Math.abs(g.dx) > 1.6 * Math.abs(g.dy),
-        onPanResponderTerminationRequest: () => true,
-        onPanResponderRelease: (_, g) => {
-          if (Math.abs(g.dx) < 56 && Math.abs(g.vx) < 0.4) return;
-          const order = tabsRef.current.map((x) => x.key);
-          const i = order.indexOf(activeRef.current);
-          if (i < 0) return;
-          const toEnd = I18nManager.isRTL ? g.dx > 0 : g.dx < 0;
-          const next = order[i + (toEnd ? 1 : -1)];
-          if (next) setTab(next);
-        },
-      }),
-    [],
-  );
+  /* ⚖️ D-961 — الإيماءةُ نفسُها (عتباتُ D-953) انتقلت إلى `TabSlide`، **ومعها
+     صار للانتقال حركة**: `setTab` تبقى بابَ التبديل الوحيد، تُنادى من الضغطة
+     ومن السحب معاً. */
+  const tabsOrder = useMemo(() => tabs.map((x) => x.key), [tabs]);
 
   /* تفضيلاتُ العرض تُكتب في الخادم (كوكي) وتُبطل `me:library` فيعود الردُّ بها؛
      والحارسُ (بلس) هناك — `needsPlus` يفتح بابَ «بلس» في الويب. */
@@ -477,15 +463,15 @@ export function LibraryScreen() {
       </View>
       ) : null}
 
-      <View style={{ flex: 1 }} {...swipe.panHandlers}>
+      <TabSlide order={tabsOrder} tab={activeTab} onTab={setTab} peek={<Skeleton cols={cols} cellW={cellW} />}>
       {activeTab === "anime" && classifying ? (
         <Text size={12} muted style={{ textAlign: "center", paddingVertical: 8 }}>{t.animeClassifying}</Text>
       ) : null}
 
       {activeTab === "artists" ? (
-        <ArtistsTab onOpenWeb={openWeb} />
+        <ArtistsTab onOpenWeb={openWeb} bottomPad={navH + 24} />
       ) : activeTab === "lists" ? (
-        <ListsTab hiddenRails={hiddenRails} onOpenWeb={openWeb} say={setToast} />
+        <ListsTab hiddenRails={hiddenRails} onOpenWeb={openWeb} say={setToast} bottomPad={navH + 24} />
       ) : data.isLoading ? (
         <Skeleton cols={cols} cellW={cellW} />
       ) : data.isError ? (
@@ -508,7 +494,7 @@ export function LibraryScreen() {
         />
       ) : (
         <ScrollView
-          contentContainerStyle={{ paddingHorizontal: PAGE_PAD, paddingTop: 12, paddingBottom: insets.bottom + 24, gap: 28 }}
+          contentContainerStyle={{ paddingHorizontal: PAGE_PAD, paddingTop: 12, paddingBottom: navH + 24, gap: 28 }}
           showsVerticalScrollIndicator={false}
           contentOffset={{ x: 0, y: memory.y }}
           onScroll={(e) => { memory.y = e.nativeEvent.contentOffset.y; }}
@@ -576,7 +562,19 @@ export function LibraryScreen() {
           })}
         </ScrollView>
       )}
-      </View>
+      </TabSlide>
+      {/* D-961 — الشريطُ الخماسيُّ كما في كلِّ صفحةٍ ويبيّة؛ «المكتبة» هي الخانةُ المضيئة */}
+      <BottomNav
+        active="library"
+        onGo={(k) => {
+          if (k === "library") return;
+          if (k === "news") {
+            router.replace("/discover");
+            return;
+          }
+          leaveTo(k === "home" ? "/" : k === "people" ? "/people" : "/search");
+        }}
+      />
       {tools ? (
         <ToolsSheet
           q={q}
@@ -606,7 +604,7 @@ export function LibraryScreen() {
           <ActivityIndicator color={tokens.accent} />
         </View>
       ) : null}
-      {toast ? <Toast text={toast} bottom={insets.bottom + 16} /> : null}
+      {toast ? <Toast text={toast} bottom={navH + 16} /> : null}
     </View>
   );
 }

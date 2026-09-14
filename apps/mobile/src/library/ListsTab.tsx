@@ -41,7 +41,7 @@ import type { LibraryListsPayload, LibraryListCard, LibraryAutoGroup, ListPlayli
  */
 const PAGE_PAD = 16;
 
-export function ListsTab({ hiddenRails, onOpenWeb, say }: { hiddenRails: string[]; onOpenWeb: (path: string) => void; say: (msg: string) => void }) {
+export function ListsTab({ hiddenRails, onOpenWeb, say, bottomPad = 40 }: { hiddenRails: string[]; onOpenWeb: (path: string) => void; say: (msg: string) => void; bottomPad?: number }) {
   const { t, tokens, locale } = useApp();
   const { width } = useWindowDimensions();
   const ar = locale !== "en";
@@ -168,7 +168,7 @@ export function ListsTab({ hiddenRails, onOpenWeb, say }: { hiddenRails: string[
   const savedTitle = p.saved_count > 0 ? `${t.savedListsSection} · ${p.saved_count}` : t.savedListsSection;
 
   return (
-    <ScrollView contentContainerStyle={{ paddingHorizontal: PAGE_PAD, paddingTop: 12, paddingBottom: 40, gap: 32 }} showsVerticalScrollIndicator={false}>
+    <ScrollView contentContainerStyle={{ paddingHorizontal: PAGE_PAD, paddingTop: 12, paddingBottom: bottomPad, gap: 32 }} showsVerticalScrollIndicator={false}>
       <View>
         {/* زرّان لا حقلٌ دائم (D-443/D-877): «قائمة جديدة» ورقةٌ بحقلٍ واحد، و«قائمة ذكيّة» بابٌ في الويب */}
         <View style={{ flexDirection: "row", gap: 10, marginBottom: 16 }}>
