@@ -34,6 +34,7 @@ const eslintConfig = defineConfig([
       "src/app/api/imdb-chart/route.ts",
       "src/app/api/lang-ping/route.ts",
       "src/app/api/trailer-signal/route.ts",
+      "src/app/api/native-signal/route.ts", // تشخيصُ بوّابة الشاشات الأصليّة (١٤ سبتمبر) — يُزال مع الإصلاح
       "src/app/p/[[]code[]]/route.ts",
     ],
     rules: {

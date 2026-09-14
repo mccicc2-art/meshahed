@@ -60,12 +60,42 @@ export function openNativeLibrary(): boolean {
  * (غلافٌ يعرف المكتبةَ ولا يعرف «اكتشف» يبقي «اكتشف» رابطاً — درسُ ٩ سبتمبر).
  */
 export function openNative(route: "library" | "discover"): boolean {
-  if (!nativeLibraryOn()) return false;
-  if (window.LoopzNative?.[route] !== true) return false;
+  if (!nativeLibraryOn() || window.LoopzNative?.[route] !== true) {
+    signalGate(route);
+    return false;
+  }
   try {
     window.ReactNativeWebView!.postMessage(JSON.stringify({ type: "native", route }));
     return true;
   } catch {
     return false;
+  }
+}
+
+/**
+ * 🩺 **تشخيصٌ مؤقّت (١٤ سبتمبر ٢٠٢٦)** — بلاغُ أحمد على 1.6.0: الشاشتان تفتحان
+ * ويبيّاً. **حين تسقط البوّابةُ داخل غلافٍ** (وسمُ `LoopzApp/` في UA) تُرسَل
+ * الشروطُ الثلاثةُ منطقيّاتٍ إلى `/api/native-signal` → `runtime_errors` بنوع
+ * `NativeGate` — **مرّةً لكلِّ مسارٍ لكلِّ تحميلِ مستند** (لا حلقة)، `sendBeacon`
+ * فلا ينتظر أحد. يُزال مع الإصلاح.
+ */
+const gateSignalled = new Set<string>();
+function signalGate(route: "library" | "discover") {
+  try {
+    if (!navigator.userAgent.includes("LoopzApp/") || gateSignalled.has(route)) return;
+    gateSignalled.add(route);
+    const body = JSON.stringify({
+      route,
+      attr: document.documentElement.hasAttribute(NATIVE_LIBRARY_ATTR),
+      rnwv: !!window.ReactNativeWebView,
+      ln: !!window.LoopzNative,
+      lib: window.LoopzNative?.library === true,
+      disc: window.LoopzNative?.discover === true,
+    });
+    if (!navigator.sendBeacon?.("/api/native-signal", new Blob([body], { type: "application/json" }))) {
+      void fetch("/api/native-signal", { method: "POST", body, headers: { "content-type": "application/json" }, keepalive: true }).catch(() => undefined);
+    }
+  } catch {
+    /* الإشارةُ احتياطٌ — لا تمسّ الضغطة */
   }
 }
