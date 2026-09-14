@@ -131,8 +131,9 @@ export function DiscoverScreen() {
   /* D-966 — الكسوةُ الذكيّة كما في المكتبة: الورقةُ (رأسٌ + ألواح) تصعد بارتفاع الرأس
      وتمتدّ تحته، والشريطُ يهبط؛ وقلبُ التبويب يُعيدها (`reveal`). */
   const chrome = useChromeHide();
-  const [topH, setTopH] = useState(0);
-  const bottomPad = navH + 24 + topH;
+  /* تقديرٌ أوّليٌّ قبل القياس (ترويسة + تبويبات) — فلا يقفز المحتوى في أوّل إطار */
+  const [topH, setTopH] = useState(insets.top + HEADER_H + 46);
+  const bottomPad = navH + 24;
   const { reveal } = chrome;
   useEffect(() => {
     reveal();
@@ -145,17 +146,21 @@ export function DiscoverScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: tokens.bg }}>
+    {/* ⚖️ D-969 — الرأسُ وحدَه يتحرّك والمحتوى ثابت، كالويب (انظر `LibraryScreen`) */}
     <Animated.View
+      onLayout={(e) => setTopH(Math.round(e.nativeEvent.layout.height))}
       style={{
         position: "absolute",
         top: 0,
         left: 0,
         right: 0,
-        bottom: -topH,
+        zIndex: 2,
+        paddingTop: insets.top,
+        backgroundColor: tokens.bg,
         transform: [{ translateY: Animated.multiply(chrome.hidden, -topH) }],
       }}
     >
-    <View onLayout={(e) => setTopH(Math.round(e.nativeEvent.layout.height))} style={{ paddingTop: insets.top, backgroundColor: tokens.bg }}>
+    <View>
       <View style={{ height: HEADER_H, borderBottomWidth: 1, borderBottomColor: tokens.border, alignItems: "center", justifyContent: "center" }}>
         <Text size={15} weight="700">{t.newsTitle}</Text>
         <Pressable onPress={back} hitSlop={12} accessibilityLabel={t.closeLabel} style={{ position: "absolute", start: PAGE_PAD, top: 0, bottom: 0, justifyContent: "center" }}>
@@ -186,6 +191,7 @@ export function DiscoverScreen() {
         })}
       </View>
     </View>
+    </Animated.View>
 
       {/* ⚖️ D-961 → D-965 — اللوحُ ينزلق، **والجارُ يُرسم حيّاً** تحت الإصبع لحظةَ قفل السحب */}
       <TabSlide
@@ -196,6 +202,7 @@ export function DiscoverScreen() {
           <DiscoverPane
             tab={k}
             marks={marks}
+            topPad={topH}
             bottomPad={bottomPad}
             onScroll={chrome.onScroll}
             ar={ar}
@@ -205,7 +212,6 @@ export function DiscoverScreen() {
           />
         )}
       />
-    </Animated.View>
       {/* D-961 — الشريطُ الخماسيُّ كما في كلِّ صفحةٍ ويبيّة؛ «اكتشف» هي الخانةُ المضيئة — D-966: يهبط بارتفاعه مع النزول */}
       <Animated.View style={{ position: "absolute", left: 0, right: 0, bottom: 0, transform: [{ translateY: Animated.multiply(chrome.hidden, navH) }] }}>
       <BottomNav
@@ -240,6 +246,7 @@ export function DiscoverScreen() {
 function DiscoverPane({
   tab,
   marks,
+  topPad,
   bottomPad,
   onScroll,
   ar,
@@ -249,6 +256,8 @@ function DiscoverPane({
 }: {
   tab: Tab;
   marks: Map<string, LibMark>;
+  /** ارتفاعُ الرأس المطلق فوق اللوح (D-969) */
+  topPad: number;
   bottomPad: number;
   /** الكسوةُ الذكيّة تقرأ التمرير (D-966) */
   onScroll: (e: NativeSyntheticEvent<NativeScrollEvent>) => void;
@@ -271,7 +280,7 @@ function DiscoverPane({
   const lists = tab === "lists";
   return (
     <ScrollView
-      contentContainerStyle={{ paddingTop: 12, paddingBottom: bottomPad, gap: 24 }}
+      contentContainerStyle={{ paddingTop: topPad + 12, paddingBottom: bottomPad, gap: 24 }}
       showsVerticalScrollIndicator={false}
       contentOffset={{ x: 0, y: memory.y[tab] ?? 0 }}
       onScroll={(e) => { memory.y[tab] = e.nativeEvent.contentOffset.y; onScroll(e); }}

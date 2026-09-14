@@ -282,8 +282,9 @@ export function LibraryScreen() {
      يقفز المحتوى؛ وذيلُ التمرير يزيد بالمقدار نفسِه. وقلبُ التبويب يُعيد الكسوةَ
      (بابُ `reveal` — درسُ D-524). */
   const chrome = useChromeHide();
-  const [topH, setTopH] = useState(0);
-  const bottomPad = navH + 24 + topH;
+  /* تقديرٌ أوّليٌّ قبل القياس (ترويسة + تبويبات + صفُّ الأدوات) — فلا يقفز المحتوى في أوّل إطار */
+  const [topH, setTopH] = useState(insets.top + HEADER_H + 46 + 60);
+  const bottomPad = navH + 24;
   const { reveal } = chrome;
   useEffect(() => {
     reveal();
@@ -321,17 +322,25 @@ export function LibraryScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: tokens.bg }}>
+    {/* ⚖️ D-969 — **الرأسُ وحدَه يتحرّك والمحتوى ثابت** (بلاغُ أحمد بتسجيل على 1.8.2: «في الهوم
+        الدوك سلس… في اكتشف والمكتبة أبغى نفس السلاسة»): D-966 رفعت الورقةَ كلَّها بارتفاع الرأس
+        فقفز المحتوى معه — **والويبُ يحرّك الكسوةَ فقط والمحتوى يظهر من تحتها** (`transform`
+        على `.chrome-top` وحدَه). فالرأسُ مطلقٌ فوق الألواح، والألواحُ تملأ الشاشةَ وتبدأ
+        بحشوةٍ علويّة بارتفاعه — ما مرّ تحته يظهر حين يختبئ، كما في الويب حرفاً. */}
     <Animated.View
+      onLayout={(e) => setTopH(Math.round(e.nativeEvent.layout.height))}
       style={{
         position: "absolute",
         top: 0,
         left: 0,
         right: 0,
-        bottom: -topH,
+        zIndex: 2,
+        paddingTop: insets.top,
+        backgroundColor: tokens.bg,
         transform: [{ translateY: Animated.multiply(chrome.hidden, -topH) }],
       }}
     >
-    <View onLayout={(e) => setTopH(Math.round(e.nativeEvent.layout.height))} style={{ paddingTop: insets.top, backgroundColor: tokens.bg }}>
+    <View>
       {/* الترويسة: `header` ٦٤ بحدٍّ سفليّ `border-border`، الاسمُ في المنتصف `text-15 font-bold` */}
       <View
         style={{
@@ -452,6 +461,7 @@ export function LibraryScreen() {
       </View>
       ) : null}
     </View>
+    </Animated.View>
 
       {/* D-965 — لوحٌ لكلِّ تبويب: `TabSlide` يرسم النشطَ، ويسلّح الجارَ حيّاً عند قفل السحب */}
       <TabSlide
@@ -460,9 +470,9 @@ export function LibraryScreen() {
         onTab={setTab}
         render={(k) =>
           k === "artists" ? (
-            <ArtistsTab onOpenWeb={openWeb} bottomPad={bottomPad} onScroll={chrome.onScroll} />
+            <ArtistsTab onOpenWeb={openWeb} topPad={topH} bottomPad={bottomPad} onScroll={chrome.onScroll} />
           ) : k === "lists" ? (
-            <ListsTab hiddenRails={hiddenRails} onOpenWeb={openWeb} say={setToast} bottomPad={bottomPad} onScroll={chrome.onScroll} />
+            <ListsTab hiddenRails={hiddenRails} onOpenWeb={openWeb} say={setToast} topPad={topH} bottomPad={bottomPad} onScroll={chrome.onScroll} />
           ) : (
             <LibraryPane
               tab={k}
@@ -474,6 +484,7 @@ export function LibraryScreen() {
               setOpen={setOpen}
               cols={cols}
               cellW={cellW}
+              topPad={topH}
               bottomPad={bottomPad}
               onScroll={chrome.onScroll}
               classifying={k === "anime" && classifying}
@@ -485,7 +496,6 @@ export function LibraryScreen() {
           )
         }
       />
-    </Animated.View>
       {/* D-961 — الشريطُ الخماسيُّ كما في كلِّ صفحةٍ ويبيّة؛ «المكتبة» هي الخانةُ المضيئة — D-966: يهبط بارتفاعه مع النزول */}
       <Animated.View style={{ position: "absolute", left: 0, right: 0, bottom: 0, transform: [{ translateY: Animated.multiply(chrome.hidden, navH) }] }}>
       <BottomNav
@@ -550,6 +560,7 @@ function LibraryPane({
   setOpen,
   cols,
   cellW,
+  topPad,
   bottomPad,
   onScroll,
   classifying,
@@ -568,6 +579,8 @@ function LibraryPane({
   setOpen: React.Dispatch<React.SetStateAction<Set<string>>>;
   cols: number;
   cellW: number;
+  /** ارتفاعُ الرأس المطلق فوق اللوح (D-969) — يُحشى به أوّلُ المحتوى لا اللوحُ نفسُه */
+  topPad: number;
   bottomPad: number;
   /** الكسوةُ الذكيّة تقرأ التمرير (D-966) */
   onScroll: (e: NativeSyntheticEvent<NativeScrollEvent>) => void;
@@ -617,11 +630,12 @@ function LibraryPane({
     return [...by].map(([status, items]) => ({ status, items }));
   }, [grouped, list]);
 
+  /* ملاحظةُ التصنيف تعيش فوق اللوح المطلق (تحت الرأس مباشرةً) لا داخل التمرير */
   const note = classifying ? (
-    <Text size={12} muted style={{ textAlign: "center", paddingVertical: 8 }}>{t.animeClassifying}</Text>
+    <Text size={12} muted style={{ textAlign: "center", paddingVertical: 8, position: "absolute", top: topPad, left: 0, right: 0, zIndex: 1 }}>{t.animeClassifying}</Text>
   ) : null;
-  const wrap = (body: React.ReactNode) => (
-    <View style={{ flex: 1 }}>
+  const wrap = (body: React.ReactNode, scrolls = false) => (
+    <View style={{ flex: 1, paddingTop: scrolls ? 0 : topPad }}>
       {note}
       {body}
     </View>
@@ -644,7 +658,7 @@ function LibraryPane({
     );
   return wrap(
     <ScrollView
-      contentContainerStyle={{ paddingHorizontal: PAGE_PAD, paddingTop: 12, paddingBottom: bottomPad, gap: 28 }}
+      contentContainerStyle={{ paddingHorizontal: PAGE_PAD, paddingTop: topPad + 12, paddingBottom: bottomPad, gap: 28 }}
       showsVerticalScrollIndicator={false}
       contentOffset={{ x: 0, y: memory.y[tab] ?? 0 }}
       onScroll={(e) => { memory.y[tab] = e.nativeEvent.contentOffset.y; onScroll(e); }}
@@ -711,6 +725,7 @@ function LibraryPane({
         );
       })}
     </ScrollView>,
+    true,
   );
 }
 

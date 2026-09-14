@@ -41,7 +41,7 @@ import type { LibraryListsPayload, LibraryListCard, LibraryAutoGroup, ListPlayli
  */
 const PAGE_PAD = 16;
 
-export function ListsTab({ hiddenRails, onOpenWeb, say, bottomPad = 40, onScroll }: { hiddenRails: string[]; onOpenWeb: (path: string) => void; say: (msg: string) => void; bottomPad?: number; onScroll?: ScrollViewProps["onScroll"] }) {
+export function ListsTab({ hiddenRails, onOpenWeb, say, topPad = 0, bottomPad = 40, onScroll }: { hiddenRails: string[]; onOpenWeb: (path: string) => void; say: (msg: string) => void; topPad?: number; bottomPad?: number; onScroll?: ScrollViewProps["onScroll"] }) {
   const { t, tokens, locale } = useApp();
   const { width } = useWindowDimensions();
   const ar = locale !== "en";
@@ -140,9 +140,9 @@ export function ListsTab({ hiddenRails, onOpenWeb, say, bottomPad = 40, onScroll
   const cols = width >= 640 ? 2 : 1;
   const cardW = cols === 1 ? "100%" : Math.floor((width - PAGE_PAD * 2 - 10) / 2);
 
-  if (data.isLoading) return <Loading />;
+  if (data.isLoading) return <View style={{ paddingTop: topPad }}><Loading /></View>;
   if (data.isError || !data.data)
-    return <Empty text={t.apiInternal} cta={t.errorRetry} onCta={() => void data.refetch()} />;
+    return <View style={{ paddingTop: topPad }}><Empty text={t.apiInternal} cta={t.errorRetry} onCta={() => void data.refetch()} /></View>;
   const p = data.data;
 
   const toCard = (l: LibraryListCard): ListCardData => ({
@@ -168,7 +168,7 @@ export function ListsTab({ hiddenRails, onOpenWeb, say, bottomPad = 40, onScroll
   const savedTitle = p.saved_count > 0 ? `${t.savedListsSection} · ${p.saved_count}` : t.savedListsSection;
 
   return (
-    <ScrollView contentContainerStyle={{ paddingHorizontal: PAGE_PAD, paddingTop: 12, paddingBottom: bottomPad, gap: 32 }} showsVerticalScrollIndicator={false} onScroll={onScroll} scrollEventThrottle={16}>
+    <ScrollView contentContainerStyle={{ paddingHorizontal: PAGE_PAD, paddingTop: topPad + 12, paddingBottom: bottomPad, gap: 32 }} showsVerticalScrollIndicator={false} onScroll={onScroll} scrollEventThrottle={16}>
       <View>
         {/* زرّان لا حقلٌ دائم (D-443/D-877): «قائمة جديدة» ورقةٌ بحقلٍ واحد، و«قائمة ذكيّة» بابٌ في الويب */}
         <View style={{ flexDirection: "row", gap: 10, marginBottom: 16 }}>
