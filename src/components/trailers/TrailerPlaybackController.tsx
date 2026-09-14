@@ -264,6 +264,19 @@ function createEngine(
   /** بطاقةٌ نفدت بدائلُها لا يُعاد تنشيطُها أبداً — وإلا دارت حلقةُ
       خطأ→مصالحة→تنشيط إلى الأبد (قِيست في المختبر قبل هذا السطر) */
   const exhausted = new Set<string>();
+  /**
+   * 🆕 D-964 — **بطاقةٌ أوقفها صاحبُها لا تُنشَّط بالرؤية** (بلاغُ أحمد: «إذا
+   * وقفت الفيديو ونزلت تحت ثمّ رجعت فوق أشوفه يشتغل مرّة أخرى .. أبغى إذا وقفته
+   * يوقف لين أشغله أو أطلع»). **والعلّةُ في `reconcile` لا في زرِّ الإيقاف**:
+   * الخروجُ عن ١٥٪ يُخلي النشطةَ (ثالثًا/٥)، **والعودةُ فوق ٦٠٪ تنشّطها من
+   * جديدٍ بلا أن تسأل: هل أوقفها أحد؟** — فصار الإيقافُ يدوم ثانيتين.
+   * 🔑 **والوصفةُ وصفةُ `exhausted` نفسُها** (القاعدة ٣): مجموعةٌ تُقصّى في
+   * اختيار المرشَّح، **لا فرعٌ ثانٍ في المصالحة.** والفرقُ في الخروج:
+   * `exhausted` أبديّةٌ لأنّ البدائلَ نفدت، **وهذه تُمحى بضغطة تشغيلٍ من
+   * صاحبها** (`tapPlay`/`togglePlay`) **أو بموت المتحكّم عند مغادرة الصفحة**
+   * — وهما الشرطان اللذان نصّ عليهما.
+   */
+  const userPaused = new Set<string>();
 
   let io: IntersectionObserver | null = null;
   /* 🆕 D-761 (بأمر أحمد: «نفّذ» — ⚖️ نقضٌ صريحٌ منه لبند «iframe واحدٌ
@@ -1107,7 +1120,7 @@ function createEngine(
     let bestId: string | null = null;
     let bestRatio = 0;
     for (const [id, ratio] of ratios) {
-      if (exhausted.has(id)) continue;
+      if (exhausted.has(id) || userPaused.has(id)) continue;
       if (ratio > bestRatio) {
         bestId = id;
         bestRatio = ratio;
@@ -1283,6 +1296,7 @@ function createEngine(
         ratios.delete(id);
         unavailableCb.delete(id);
         exhausted.delete(id);
+        userPaused.delete(id);
         if (activeId === id) {
           pauseCurrent();
           clearActive();
@@ -1298,6 +1312,8 @@ function createEngine(
     },
 
     tapPlay(id: string) {
+      /* D-964: ضغطةُ التشغيل هي فسخُ الإيقاف — **والفسخُ بيد من أوقف** */
+      userPaused.delete(id);
       activate(id, true);
       /* نيّةُ الصوت تُطبَّق هنا — داخل إيماءةٍ حقيقيّةٍ وبعد أمرِ
          التشغيل؛ هذه الضغطةُ تفكّ قفلَ WebKit فتحمل البطاقاتُ التاليةُ
@@ -1409,6 +1425,9 @@ function createEngine(
       if (!activeId) return;
       pokeControls();
       if (phase === "playing") {
+        /* D-964: **النيّةُ تُسجَّل قبل الأمر** — فلو خرجت البطاقةُ عن العين في
+           الأثناء لم تُنشَّط عند العودة */
+        userPaused.add(activeId);
         rememberPosition();
         if (activeIsFile()) {
           dom.video.pause();
@@ -1422,6 +1441,7 @@ function createEngine(
         return;
       }
       if (phase === "paused" || phase === "blocked" || phase === "stalled") {
+        userPaused.delete(activeId);
         activate(activeId, true);
         applySoundInGesture();
       }

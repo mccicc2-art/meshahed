@@ -79,13 +79,38 @@ export function TrailersRail({
 
   /* **بطاقةٌ واحدةٌ تعمل** — المعرّفُ لا المؤشّر: القائمةُ تُعاد جلبُها فتتبدّل الرتب */
   const [live, setLive] = useState<string | null>(null);
+  /**
+   * 🔴 D-964 — **الرغبةُ والكتمُ يسكنان هنا لا في المشغّل** (بلاغُ أحمد: «إذا
+   * وقفت الفيديو ونزلت تحت ثمّ رجعت فوق أشوفه يشتغل مرّة أخرى»): **حالةٌ داخل
+   * المشغّل تموت مع أوّل إعادة تركيب** — وبطاقةُ الصفِّ تخرج من الشجرة وتعود
+   * (تدويرُ `FlatList` وقصُّ أندرويد للمنقطع عن العين) — **فتُولد الرغبةُ من
+   * جديدٍ «شغِّل» ويستأنف ما أوقفه صاحبُه.** فالصفُّ يملك «مَن يعمل» **ويملك
+   * معه: هل يريد تشغيلاً؟ وهل هو مكتوم؟**
+   * 🔑 **والإيقافُ يدوم حتّى يُشغِّله بيده أو يغادر «اكتشف»** (بنصِّ طلبه):
+   * الغادرةُ تمحوه في `useFocusEffect` أدناه، وفتحُ بطاقةٍ جديدةٍ يبدأ برغبةٍ
+   * جديدة — **والكتمُ يعبر البطاقات** لأنّه تفضيلُ جلسةٍ لا حالةُ مقطع.
+   */
+  const [wantPlay, setWantPlay] = useState(true);
+  const [muted, setMuted] = useState(false);
+  const open = useCallback((id: string) => {
+    setLive(id);
+    setWantPlay(true);
+  }, []);
   const viewCfg = useRef({ itemVisiblePercentThreshold: 60 }).current;
   const onView = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
     const seen = new Set(viewableItems.map((v) => v.key));
     setLive((cur) => (cur && !seen.has(cur) ? null : cur));
   }).current;
   /* مغادرةُ الشاشة توقف الصوت — والعودةُ تبدأ من الصورة لا من منتصف مقطع */
-  useFocusEffect(useCallback(() => () => setLive(null), []));
+  useFocusEffect(
+    useCallback(
+      () => () => {
+        setLive(null);
+        setWantPlay(true);
+      },
+      [],
+    ),
+  );
 
   const items = q.data?.items ?? [];
   /* فشلُ الجلب صمتٌ لا هيكلٌ أبديّ (درسُ ١٤ سبتمبر: 500 في المسار أبقى الهيكلَ معروضاً) */
@@ -131,13 +156,17 @@ export function TrailersRail({
                   width={cardW}
                   poster={thumbOf(item)}
                   label={item.title}
+                  wantPlay={wantPlay}
+                  onWantPlay={setWantPlay}
+                  muted={muted}
+                  onMuted={setMuted}
                   onExhausted={() => {
                     setLive(null);
                     onOpenWeb(item.href);
                   }}
                 />
               ) : (
-                <Pressable onPress={() => setLive(id)} accessibilityLabel={`${t.trailerPlay} — ${item.title}`} style={{ width: "100%", aspectRatio: 16 / 9, backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center" }}>
+                <Pressable onPress={() => open(id)} accessibilityLabel={`${t.trailerPlay} — ${item.title}`} style={{ width: "100%", aspectRatio: 16 / 9, backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center" }}>
                   <Image source={{ uri: thumbOf(item) }} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} recyclingKey={id} />
                   {/* دائرةُ ▶ كما في `TrailerCardMedia` (`h-14 w-14 rounded-full bg-black/60`) */}
                   <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: "rgba(0,0,0,0.6)", alignItems: "center", justifyContent: "center" }}>
@@ -148,7 +177,7 @@ export function TrailersRail({
               {/* التذييلُ: `flex items-center gap-3 px-3.5 py-3` — الاسمُ وسطرُه، ثمّ «التفاصيل» و«مكتبتي» */}
               <View style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 14, paddingVertical: 12 }}>
                 {/* D-959: الاسمُ يشغّل كالسطح — لا يغادر الشاشةَ بعد اليوم */}
-                <Pressable onPress={() => setLive(id)} style={{ flex: 1, minWidth: 0 }}>
+                <Pressable onPress={() => open(id)} style={{ flex: 1, minWidth: 0 }}>
                   <Text size={15} weight="700" numberOfLines={1}>{item.title}</Text>
                   <Text size={12} muted numberOfLines={1} style={{ marginTop: 2 }}>{[item.year, item.genre, item.country].filter(Boolean).join(" · ")}</Text>
                 </Pressable>

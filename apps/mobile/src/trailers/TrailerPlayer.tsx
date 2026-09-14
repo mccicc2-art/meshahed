@@ -95,6 +95,10 @@ export function TrailerPlayer({
   poster,
   active = true,
   label,
+  wantPlay,
+  onWantPlay,
+  muted,
+  onMuted,
   onExhausted,
 }: {
   /** بدائلُ المقطع مرتّبةً (D-743) — الأوّلُ هو المعروض، وما بعده يُجرَّب عند الرفض */
@@ -106,6 +110,19 @@ export function TrailerPlayer({
   active?: boolean;
   /** اسمُ العمل — لتسميةِ السطح لقارئ الشاشة */
   label: string;
+  /**
+   * 🔴 **الرغبةُ والكتمُ يسكنان فوق هذا المكوّن** (D-964، بلاغُ أحمد: «إذا وقفت
+   * الفيديو ونزلت تحت ثمّ رجعت فوق أشوفه يشتغل مرّة أخرى»): كانا حالةً داخليّةً
+   * هنا، **وحالةٌ داخليّةٌ تموت مع أوّل إعادة تركيب** — والصفُّ يُعيد تركيبَ
+   * بطاقتِه حين تخرج من الشجرة وتعود (تدويرُ `FlatList` وقصُّ أندرويد)، فتعود
+   * القيمةُ الافتراضيّةُ «شغِّل» **فيستأنف ما أوقفه صاحبُه.**
+   * 🔑 **فالقاعدة: الرغبةُ تُحفظ حيث لا تُهدم** — في الصفِّ الذي يملك «مَن يعمل»
+   * (أو في الشاشة) — **وهذا المكوّنُ يُنفّذ ولا يتذكّر.**
+   */
+  wantPlay: boolean;
+  onWantPlay: (next: boolean) => void;
+  muted: boolean;
+  onMuted: (next: boolean) => void;
   /** كلُّ المفاتيح رُفضت — يُفتح المشغّلُ الويبيُّ في الغلاف كما قبل D-959 */
   onExhausted: () => void;
 }) {
@@ -114,12 +131,10 @@ export function TrailerPlayer({
   const height = Math.round((width * 9) / 16);
 
   const [idx, setIdx] = useState(0);
-  /** رغبةُ المستخدم — لا حالةُ المشغّل: `play` تُشتقّ منها ومن `active` معاً */
-  const [want, setWant] = useState(true);
   const [playing, setPlaying] = useState(false);
-  /** البِكرُ مكتومٌ حتى أوّل `playing` (D-759)، ثمّ الصوتُ هو الافتراض (D-771) */
+  /** البِكرُ مكتومٌ حتى أوّل `playing` (D-759)، ثمّ الصوتُ هو الافتراض (D-771).
+      **وهذه وحدَها تبقى محلّيّةً**: كلُّ إطارٍ جديدٍ بوّابتُه من جديد. */
   const [primed, setPrimed] = useState(false);
-  const [muted, setMuted] = useState(false);
   const [at, setAt] = useState(0);
   const [dur, setDur] = useState(0);
   const [controls, setControls] = useState(true);
@@ -237,7 +252,7 @@ export function TrailerPlayer({
         height={height}
         width={width}
         videoId={key}
-        play={want && active && foreground}
+        play={wantPlay && active && foreground}
         mute={muted || !primed}
         volume={100}
         useLocalHTML
@@ -282,7 +297,7 @@ export function TrailerPlayer({
           if (s === "ended") {
             /* النهايةُ تعيده إلى البداية بسِترِه — لا تكرارَ ذاتيّاً ولا مستطيلٌ أسود */
             setPlaying(false);
-            setWant(false);
+            onWantPlay(false);
             setAt(0);
             ref.current?.seekTo(0, true);
           }
@@ -294,7 +309,7 @@ export function TrailerPlayer({
         <View style={[StyleSheet.absoluteFill, { alignItems: "center", justifyContent: "center" }]} pointerEvents="none">
           {poster ? <Image source={{ uri: poster }} style={StyleSheet.absoluteFill} contentFit="cover" /> : null}
           <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: "rgba(0,0,0,0.6)", alignItems: "center", justifyContent: "center" }}>
-            {slow && want ? <ActivityIndicator color="#fff" /> : <Icon name="play" size={24} color="#fff" />}
+            {slow && wantPlay ? <ActivityIndicator color="#fff" /> : <Icon name="play" size={24} color="#fff" />}
           </View>
         </View>
       ) : null}
@@ -305,6 +320,20 @@ export function TrailerPlayer({
         accessibilityLabel={`${playing ? t.trailerPause : t.trailerPlay} — ${label}`}
         onPress={(e) => onSurface(e.nativeEvent.locationX)}
       />
+
+      {/* 🔇 **زرُّ الصوت في رُكن السطح** (D-964، طلبُ أحمد بلقطةٍ معلَّمةٍ على الرُكن
+          الأعلى): **لا يتوارى مع شريط الأدوات** (D-764) — **والكتمُ فعلٌ عاجلٌ
+          يُطلب حين يفاجئك الصوت، فزرٌّ يحتاج لمسةً تُظهره أوّلاً وصل بعد فوات
+          الحاجة.** والرُكنُ فيزيائيٌّ (`right`) كما وسمه في اللقطة، والدائرةُ
+          ٣٢ بمساحة لمسٍ ٤٤ بـ`hitSlop` (D-033). */}
+      <Pressable
+        onPress={() => onMuted(!muted)}
+        hitSlop={10}
+        accessibilityLabel={muted ? t.trailerUnmute : t.trailerMute}
+        style={{ position: "absolute", top: 8, right: 8, width: 32, height: 32, borderRadius: 16, backgroundColor: "rgba(0,0,0,0.55)", alignItems: "center", justifyContent: "center" }}
+      >
+        <Icon name={muted ? "volume-off" : "volume"} size={17} color="#fff" />
+      </Pressable>
 
       {badge ? (
         <View pointerEvents="none" style={{ position: "absolute", top: 0, bottom: 0, left: badge === "rw" ? 0 : undefined, right: badge === "ff" ? 0 : undefined, width: width / 2, alignItems: "center", justifyContent: "center" }}>
@@ -329,7 +358,7 @@ export function TrailerPlayer({
           <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
             <Pressable
               onPress={() => {
-                setWant((v) => !v);
+                onWantPlay(!wantPlay);
                 show();
               }}
               hitSlop={8}
@@ -337,19 +366,11 @@ export function TrailerPlayer({
             >
               <Icon name={playing ? "pause" : "play"} size={20} color="#fff" />
             </Pressable>
+            {/* 🗑️ D-964 — **وزرُّ الصوت خرج من هنا**: صار في الرُكن ظاهراً دائماً،
+                **وزرّان لفعلٍ واحدٍ على سطحٍ واحد عطلٌ لا خيار** (القاعدة ٣). */}
             <Text size={12} weight="600" color="#fff" style={{ flex: 1 }}>
               {`${clock(at)} / ${dur > 0 ? clock(dur) : "0:00"}`}
             </Text>
-            <Pressable
-              onPress={() => {
-                setMuted((v) => !v);
-                show();
-              }}
-              hitSlop={8}
-              accessibilityLabel={muted ? t.trailerUnmute : t.trailerMute}
-            >
-              <Icon name={muted ? "volume-off" : "volume"} size={20} color="#fff" />
-            </Pressable>
           </View>
         </View>
       ) : null}

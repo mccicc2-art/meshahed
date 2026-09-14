@@ -65,8 +65,12 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
   const [more, setMore] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
   /* D-959 — التريلرُ يعمل في الصفحة: تشغيلٌ صريحٌ بضغطة، **ومغادرةُ التبويب توقفه**
-     فلا يعود صوتٌ من نفسه حين يرجع القارئُ إلى «المعلومات». */
+     فلا يعود صوتٌ من نفسه حين يرجع القارئُ إلى «المعلومات».
+     🆕 D-964 — **والرغبةُ والكتمُ هنا لا في المشغّل**: حالةٌ داخلَه تموت مع إعادة
+     التركيب فيستأنف ما أوقفه صاحبُه (حجّةُ الصفِّ نفسُها، `TrailersRail`). */
   const [trailerOn, setTrailerOn] = useState(false);
+  const [trailerWant, setTrailerWant] = useState(true);
+  const [trailerMuted, setTrailerMuted] = useState(false);
 
   const q = useQuery({
     queryKey: qk.title(kind, id),
@@ -326,6 +330,10 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
                         width={width - PAGE_PAD * 2}
                         poster={backdropUrl(d.backdrop_path, "w780")}
                         label={d.name}
+                        wantPlay={trailerWant}
+                        onWantPlay={setTrailerWant}
+                        muted={trailerMuted}
+                        onMuted={setTrailerMuted}
                         onExhausted={() => {
                           setTrailerOn(false);
                           openWeb();
@@ -334,7 +342,14 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
                     </View>
                   ) : (
                     <View style={{ flexDirection: "row" }}>
-                      <Button label={`▶ ${t.trailerPlay}`} variant="ghost" onPress={() => setTrailerOn(true)} />
+                      <Button
+                        label={`▶ ${t.trailerPlay}`}
+                        variant="ghost"
+                        onPress={() => {
+                          setTrailerWant(true);
+                          setTrailerOn(true);
+                        }}
+                      />
                     </View>
                   )
                 ) : null}
