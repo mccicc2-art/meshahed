@@ -1,0 +1,25 @@
+D-892 — LOOPZ-AUD-0078: guests no longer call /api/season, and no longer see a false "couldn't load" message
+=========================================================================================================
+
+commits (main, git log, UTC):
+  b1c2431  2026-09-02 16:07:29  D-892 (1/3) src/lib/i18n.ts — key episodesGuestHint ("سجّل الدخول لتتبّع الحلقات." / "Sign in to track episodes.")
+  6226e91  2026-09-02 16:08:24  D-892 (2/3) src/components/EpisodeTracker.tsx — optional prop guest; guest: no fetch, one hint line; a 401 from /api/season is treated as guest (no error, no retries)
+  94c9a71  2026-09-02 16:09:16  D-892 (3/3) src/app/show/[id]/page.tsx — getUser() joins the main wave (request-cached, no extra round-trip) and passes guest={!user}  [deploy]
+rollback point: 4349bbe (three files)
+scope: pure application. No SQL/Migration, no cache/SW, no images, no Supabase schema; /api/season itself unchanged (still 401 for guests, still rate-limited per user).
+owner decision (chat, time not recorded; after the 0078 diagnosis was written to the project and before b1c2431 16:07:29): option 2 of three — "no request for guests + one honest line"; option 3 (open the episode list to guests) rejected for now.
+
+diagnosis before the change (owner-visible finding beyond the audit item, pane visible, guest, /show/1396 @ 4349bbe):
+  /api/season?tv=1396&s=1 → 401 in 335 ms at boot, then the tracker rendered "Couldn't load this show right now. Please try again shortly." above the season list — a false failure message on every TV title page for every guest. (Proposed numbering: LOOPZ-AUD-0080 P1 UX, or raise 0078 to P1 — owner/reviewer decision.)
+
+gates on 94c9a71, clean working tree (git status empty after `git reset --hard origin/main`):
+  npx tsc --noEmit   : exit 0
+  npx eslint src     : 0 errors, 15 warnings (pre-existing)
+  npx next build     : exit 0 ("Compiled successfully")
+deploy: /api/build == 94c9a71 read from the Claude pane at 16:11:29 UTC
+
+Before/After (guest, pane visible so hydration runs):
+  BEFORE 4349bbe /show/1396 : /api/season requests 1 (401) · false failure text present · no guest hint
+  AFTER  94c9a71 /show/1399 : /api/season requests 0 · failure text absent · "Sign in to track episodes." present · clicking "Season 2" header → still 0 requests, no failure text
+  AFTER  ar (lang=ar cookie, full HTML): "سجّل الدخول لتتبّع الحلقات." present · "تعذّر تحميل بيانات" absent · <html lang="ar">
+not measured: the signed-in path (needs a session — owner to confirm the tracker still loads seasons and ratings as before; the code path is unchanged when guest=false and the response is 200) · first paint.

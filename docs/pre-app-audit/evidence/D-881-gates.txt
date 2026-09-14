@@ -1,0 +1,13 @@
+== git head ==
+1f39f605303738e6a64369a07cd36fcd3182ca08
+== git status ==
+(clean)
+== npx tsc --noEmit ==
+exit=0
+== npx eslint src ==
+✖ 15 problems (0 errors, 15 warnings)
+
+== npx next build ==
+✓ Compiled successfully in 981ms
+├ ƒ /api/trailer-signal
+exit=0

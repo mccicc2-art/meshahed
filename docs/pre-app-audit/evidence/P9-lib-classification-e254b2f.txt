@@ -1,0 +1,120 @@
+{'SERVER': 15, 'SHARE': 83, 'REWRITE(dom)': 15, 'REVIEW': 5}
+{'SERVER': 17666, 'SHARE': 15508, 'REWRITE(dom)': 4927, 'REVIEW': 1838}
+actions.ts              6178 SERVER         server-action,next-server,sb-server,dom,next-import
+ai.ts                    146 SERVER         secret-env,fetch
+anilist.ts               147 SHARE          fetch
+appleTrailers.ts         121 SHARE          fetch
+arabic.ts                 57 SHARE          
+artists.ts                60 SHARE          
+autoGroups.ts            132 SHARE          
+awards.ts                134 SHARE          
+awardsWins.ts            918 SHARE          
+browse.ts                801 SHARE          
+bulletinLine.ts           84 SHARE          
+calendar.ts              207 SHARE          
+cardCount.ts              40 SHARE          
+chartFloor.ts             22 SHARE          
+chromeRules.ts           128 SHARE          
+contentPrefs.ts          249 SHARE          
+data.ts                 6427 SERVER         sb-server,react
+density.ts                49 SHARE          
+dir.ts                    73 SHARE          
+famousLists.ts           242 SHARE          
+features.ts              454 SHARE          
+fontPrefs.ts              34 SHARE          
+gif.ts                    96 SERVER         secret-env,fetch
+haptics.ts                15 REWRITE(dom)   dom
+heroPosters.ts            58 SHARE          
+homePrefs.ts             393 SHARE          
+i18n.ts                 3922 REWRITE(dom)   dom
+imageFile.ts              97 REWRITE(dom)   dom
+imageLoader.ts            59 SHARE          
+imdbChart.ts             281 SERVER         sb-server,secret-env,fetch
+imdbOverrides.ts          45 SHARE          
+importParse.ts           243 SHARE          
+importer.ts               59 SHARE          
+intent.ts                 85 SHARE          
+keys.ts                    4 SHARE          
+letterboxd.ts            178 SHARE          
+libState.ts               80 SHARE          
+librarySmart.ts          133 SHARE          
+libraryStatus.ts          49 SHARE          
+locale.ts                162 SERVER         next-server,next-import
+localize.ts              347 SHARE          
+loginGate.ts              41 REWRITE(dom)   client,dom
+loopz.ts                  29 SHARE          
+loopzNews.ts             496 SERVER         sb-server
+media.ts                 189 SHARE          
+myActivity.ts            248 SERVER         sb-server
+myRows.ts                 40 SHARE          
+nationality.ts            93 SHARE          
+news.ts                  643 SHARE          fetch
+newsLine.ts              107 SHARE          
+newsReports.ts           150 SERVER         sb-server
+offline.ts               150 REWRITE(dom)   client,dom
+og.tsx                   222 REVIEW         tsx
+omdb.ts                  548 SERVER         sb-server,secret-env,fetch
+people.ts                 98 SHARE          
+periodStats.ts           714 SHARE          
+plan.ts                  171 SHARE          
+playback.ts               39 SHARE          
+plusGate.ts               23 REWRITE(dom)   client,dom
+postKeys.ts               50 SHARE          
+prefTemplates.ts         114 SHARE          
+prefetchIntent.ts         55 REVIEW         client,react,next-import
+profilePrefs.ts          362 REVIEW         client
+progress.ts              157 SHARE          
+providerLinks.ts         129 SHARE          
+railPrefs.ts             276 SHARE          
+ratelimit.ts              48 SHARE          
+recommend.ts             190 SHARE          
+refresh.ts                17 SHARE          
+region.ts                233 SHARE          
+reports.ts               255 SHARE          
+savedFilters.ts          162 SHARE          
+searchTypes.ts            59 SHARE          
+sections.ts              581 SHARE          
+seo.ts                   267 SHARE          
+sessionCookie.ts          95 SHARE          
+shareCard.tsx           1069 REVIEW         react,tsx
+site.ts                   14 REWRITE(dom)   dom
+siteOrigin.ts             34 SHARE          
+smartListKeys.ts          46 SHARE          
+smartLists.ts            158 SHARE          
+socials.ts               138 SHARE          
+statsFormat.ts           135 SHARE          
+suggest.ts               144 SHARE          react
+tabDrag.ts                83 SHARE          
+tabPrefs.ts              353 SHARE          
+talkBulletins.ts         233 SERVER         sb-server
+tasteMatch.ts            121 SHARE          
+themes.ts                445 SHARE          
+titleAliases.ts          121 SERVER         sb-server,react
+titleMode.ts             150 SHARE          
+titleNews.ts             172 SHARE          
+tmdb.ts                 2303 SERVER         next-server,secret-env,react,next-import,fetch
+toast.ts                  64 REWRITE(dom)   client,dom
+topChart.ts              609 SHARE          
+tour.ts                  133 REWRITE(dom)   dom
+trackerExport.ts         287 SHARE          
+trailerCard.ts           130 REVIEW         client,react
+trailerPrefs.ts           50 REWRITE(dom)   dom
+trailerProviders.ts       23 SHARE          
+trailerTabs.ts            33 SHARE          
+trailers.ts              566 SHARE          react
+trakt.ts                 165 SERVER         secret-env,fetch
+translate.ts             112 SERVER         next-server,secret-env,next-import,fetch
+tvtime.ts                201 SHARE          
+uiState.ts               138 REWRITE(dom)   dom
+universes.ts             749 SHARE          
+useBeforePaint.ts         19 SHARE          react
+useKeyboard.ts            68 REWRITE(dom)   client,dom,react
+usePoll.ts                93 REWRITE(dom)   client,sb-client,dom,react,next-import
+useScrollMemory.ts       104 REWRITE(dom)   client,dom,react
+useUiLocale.ts            15 REWRITE(dom)   client,dom,react
+validate.ts               53 SHARE          
+watchTime.ts              30 SHARE          
+when.ts                  117 SHARE          
+wikidata.ts              252 SHARE          fetch
+xLink.ts                  68 SHARE          fetch
+zone.ts                   81 SHARE          

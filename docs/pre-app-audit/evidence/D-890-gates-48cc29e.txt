@@ -1,0 +1,48 @@
+D-890 — LOOPZ-AUD-0074, movie page: boundary fetches start with the main wave (mirror of D-889)
+==============================================================================================
+
+commit (main, git log, UTC):
+  48cc29e  2026-09-02 15:35:10  src/app/movie/[id]/page.tsx — getCredits / getTrailer promises created before `await Promise.all` (each with .catch), passed to CastRail (credits prop from 5e13806) and MovieTrailerSection (trailer prop)  [deploy]
+rollback point: 8cf2d80 (one file)
+scope: movie page only. imdb_id already arrives in the movie details, so no third promise; HeroRatings unchanged here. No cache key, TTL, append_to_response, SQL, image or Supabase change. Number of external calls unchanged; only their start time.
+
+gates on 48cc29e, clean working tree (git status empty after `git reset --hard origin/main`):
+  npx tsc --noEmit   : exit 0
+  npx eslint src     : 0 errors, 15 warnings (pre-existing)
+  npx next build     : exit 0 ("Compiled successfully")
+deploy: /api/build == 48cc29e read from the Claude pane at 15:36:55 UTC
+
+review (Claude acting as reviewer by the owner's decision, verdict written before execution): same scope/limits as D-889; Before measured on the same build 8cf2d80 immediately before the change (15:31–15:33 UTC), After on 48cc29e (15:37–15:40 UTC).
+
+Before/After — same method as PHASE_10D §8-a (RSC stream markers, guest, PARTIAL_COLD inferred from timing, breadth instead of repetition)
+--------------------------------------------------------------------------------------------------------------------------------------
+BEFORE (8cf2d80, 4 cold en movies 27205 · 155 · 603 · 13; ms from request start):
+  title  fb   hero  cast  trailer ratings end     cast−hero  trailer−hero  ratings−hero  end−hero
+  27205  160   867  1420  1179    1102    1421    +553       +312          +235          +554
+  155    143   491   881   865     756    1206    +390       +374          +265          +715
+  603    149   482   899   807     807    1120    +417       +325          +325          +638
+  13     148   807  1352  1072    1041    1385    +545       +265          +234          +578
+  warm ×2 (27205 · 155): hero 183–238 · cast 215–288 (= hero +24…+63) · end 270–400
+  ar cold (680 · 278 · 238): trailer−hero +545 / +500 / +639 (two sequential /videos calls) · cast−hero +263 / +235 / +639
+
+AFTER (48cc29e, 4 cold en movies 11 · 122 · 157336 · 550, then 3 more 680 · 278 · 238 whose en key was cold but OMDb warm from the ar round):
+  title   fb   hero  cast  trailer ratings end     cast−hero  trailer−hero  ratings−hero  end−hero
+  11      476   919   919   919    1170    1756    0          0             +251          +837   (fb 476: first-byte variance, precedes data)
+  122     141   484   484   484     809    1251    0          0             +325          +767
+  157336  140   506   506   506     832    1300    0          0             +326          +794
+  550     364   697   697   697     944    1454    0          0             +247          +757   (fb 364)
+  680     132   476   476   476     476*   1052    0          0             *OMDb warm    +576
+  278     320   982  1013  1013    1013*   1600    +31        +31           *             +618
+  238     160   580   612   612     612*   1149    +32        +32           *             +569
+  cast−hero    : +390…+553 → 0…+32     (7/7)                      target "≈ hero"       MET
+  trailer−hero : +265…+374 → 0…+32     (7/7)                      target "≈ hero"       MET
+  ratings−hero : +234…+325 → +247…+326 (4 comparable)             unchanged — expected (imdb_id is in the details; OMDb was already one hop)
+  end−hero     : +554…+715 → +569…+837 (7)                        no measurable change — the tail (related rail, lists, community) is untouched
+  warm ×2 (27205 · 155): hero 188–466 (155 had fb 362/438 — first-byte variance) · cast = hero (4/4) · end 235–529
+  ar cold (424 · 129 · 497): trailer−hero +244 / +363 / 0 (was +500…+640) · cast−hero 0/0/0
+  rollback criterion (cast−hero < 100 ms): MET → not reverted.
+
+re-measurement note for D-889 (TV, hero absolute "unresolved" in §9): 4 more cold TV titles at 15:30 UTC (1668 · 456 · 1434 · 4614): hero−fb 334 / 333 / 498 / 333 vs before-median 361 → no slowdown of the main wave; the 506→650 absolute rise was first-byte variance (cold starts after the deploy). Resolved: NOT a regression.
+
+smoke after deploy (guest, RSC): /movie/1029575: cast 23 · trailer · IMDb · no failure text ✓ · /movie/999999999: load-failed message (27 KB), no crash ✓ · ar /movie/497: Arabic RSC, cast, trailer, IMDb ✓
+not measured: first paint (BLOCKED_BY_TOOLING) · network from Riyadh.

@@ -1,0 +1,64 @@
+D-898 gates on working tree over main@61cb418 (published as a7eb4dc) — 2026-09-03T06:15:00Z
+
+== tsc
+tsc: 0 errors
+
+== eslint src
+✖ 15 problems (0 errors, 15 warnings)
+
+== fence negative test (temporary file, removed)
+fence errors: 2
+
+== next build
+✓ Compiled successfully in 424ms
+  Generating static pages using 1 worker (0/59) ...
+  Generating static pages using 1 worker (14/59) 
+  Generating static pages using 1 worker (29/59) 
+  Generating static pages using 1 worker (44/59) 
+build exit: ok
+
+== files
+ M eslint.config.mjs
+ M src/app/api/imdb-chart/route.ts
+ M src/app/api/lang-ping/route.ts
+ M src/app/api/trailer-signal/route.ts
+ M src/app/p/[code]/route.ts
+ M src/instrumentation.ts
+ M src/lib/actions.ts
+ M src/lib/imdbChart.ts
+ M src/lib/loopzNews.ts
+ M src/lib/newsReports.ts
+ M src/lib/omdb.ts
+ M src/lib/talkBulletins.ts
+?? src/lib/supabase/service.ts
+
+== published (GitHub web upload from the owner's browser, 8 commits, last carries [deploy])
+65cf17c 06:16:48Z  1/9 src/lib/supabase/service.ts
+b0b4860 06:18:27Z  2/9 src/lib (6 files)
+4bf1ba7 06:19:24Z  3/9 src/instrumentation.ts
+1aabb28 06:20:44Z  4/9 eslint.config.mjs
+24f4b80 06:22:28Z  5/9 api/imdb-chart
+bc31b23 06:23:41Z  6/9 api/lang-ping
+f0e6f27 06:24:59Z  7/9 api/trailer-signal
+a7eb4dc 06:25:51Z  8/8 p/[code] [deploy]   (the "/9" in earlier messages was a miscount: eight commits)
+fresh clone `git clone --depth 1 -b main` @ a7eb4dc: all 13 files byte-identical (cmp) to the gated working tree.
+
+== Set B rehearsal on loopz-preview (zzrbebfuzfimrrutefeg) — counts only; names in the private project doc
+step 1  migration: the three bulk-write functions that raise 'auth required' when auth.uid() is null now also
+        accept auth.role() = 'service_role' (bodies otherwise byte-identical to the production export).
+        role-shape test on each of the three (empty payload):
+          anon           -> err: auth required   (unchanged)
+          authenticated  -> ok: 0                (unchanged)
+          service_role   -> ok: 0                (new; was: auth required)
+step 2  REVOKE EXECUTE FROM PUBLIC, anon, authenticated on the 10 server-only functions
+        (6 bulk writes + 4 telemetry). EXECUTE counts after Set A + Set B on preview:
+          anon 144 -> 133 (A) -> 125 (B) · authenticated 172 -> 161 (A) -> 151 (B) · PUBLIC 27 -> 14 (A) -> 14 · service_role 177 (unchanged)
+        spot checks: has_function_privilege on 4 revoked functions = anon false / authenticated false / service_role true;
+        one read RPC used by the news cycle = true for all three (reads untouched).
+
+== production order (owner-run, in this order, nothing else)
+  1. deploy a7eb4dc is live (/api/build == a7eb4dc)  — behaviour identical to before: no SUPABASE_SERVICE_ROLE_KEY yet
+  2. Set B step 1 migration (safe before the env var: only adds acceptance of service_role)
+  3. add SUPABASE_SERVICE_ROLE_KEY to Vercel (Production) and redeploy — writes switch to the service client
+  4. verify a write path once (e.g. news cycle returns non-error) then Set B step 2 REVOKE
+  rollback of any step: GRANT EXECUTE back / remove the env var; code path falls back automatically.
