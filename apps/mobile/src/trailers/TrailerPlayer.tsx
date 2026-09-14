@@ -69,6 +69,7 @@ type YtProps = {
   volume?: number;
   useLocalHTML?: boolean;
   baseUrlOverride?: string;
+  forceAndroidAutoplay?: boolean;
   initialPlayerParams?: { controls?: boolean; rel?: boolean; iv_load_policy?: number; preventFullScreen?: boolean; loop?: boolean };
   webViewStyle?: StyleProp<ViewStyle>;
   webViewProps?: WebViewProps;
@@ -98,6 +99,8 @@ const DOUBLE_TAP_MS = 320;
 const BADGE_MS = 700;
 /** D-764: الأدواتُ تتوارى بعد خمس ثوانٍ من التشغيل */
 const CONTROLS_IDLE_MS = 5000;
+/** D-968: مهلةُ التعثّر — تشغيلٌ مطلوبٌ بلا `playing` بعدها يُعامل كرفض */
+const STALL_MS = 10_000;
 const TICK_MS = 250;
 
 const clock = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
@@ -210,6 +213,18 @@ export function TrailerPlayer({
     return () => clearTimeout(id);
   }, [veiled, idx]);
 
+  /* 🔴 D-968 — **حارسُ التعثّر**: مشغّلٌ طُلب منه التشغيلُ ولم يصل `playing` خلال عشر
+     ثوانٍ يُعامل كرفض (`fail`): البديلُ التالي ثمّ البابُ الويبيّ — **فلا دوّارةَ أبديّة**
+     (ما رآه أحمد على 1.8.2 حين زال الرفضُ وبقي الصمت). المهلةُ من قيمة المنتظَر
+     (D-580): أطولُ من أيِّ إقلاعٍ صادق، أقصرُ من صبر مشاهد. */
+  const stalled = wantPlay && active && foreground && veiled;
+  const failRef = useRef<() => void>(() => {});
+  useEffect(() => {
+    if (!stalled) return;
+    const id = setTimeout(() => failRef.current(), STALL_MS);
+    return () => clearTimeout(id);
+  }, [stalled, idx]);
+
   const show = useCallback(() => setPoke((n) => n + 1), []);
 
   const onSurface = useCallback(
@@ -256,6 +271,7 @@ export function TrailerPlayer({
     if (idx + 1 < videoKeys.length) setIdx(idx + 1);
     else onExhausted();
   }, [idx, onExhausted, videoKeys]);
+  failRef.current = () => fail("stalled");
 
   if (!key) return null;
   const pct = dur > 0 ? Math.max(0, Math.min(1, at / dur)) : 0;
@@ -272,6 +288,12 @@ export function TrailerPlayer({
         volume={100}
         useLocalHTML
         baseUrlOverride={DOC_ORIGIN}
+        /* 🔴 D-968 — **الرفضُ زال (D-967) والتشغيلُ لم يبدأ**: بلاغُ أحمد بتسجيل على 1.8.2
+           «الفيديو ما يشتغل — 0:00 / 2:09 ودوّارة». المدّةُ وصلت فالتضمينُ مقبول، لكنّ
+           `playVideo()` من غير لمسةٍ لا يُنفَّذ في WebView أندرويد **بواجهة مستخدمٍ محمولة**
+           — يوتيوب تمنع التشغيلَ البرمجيَّ على الجوّال. والعلاجُ الموثَّق في المكتبة نفسِها:
+           واجهةُ سطح مكتبٍ للإطار (`forceAndroidAutoplay`) — **لا اجتهادٌ ثانٍ** (D-145). */
+        forceAndroidAutoplay
         initialPlayerParams={{ controls: false, rel: false, iv_load_policy: 3, preventFullScreen: true }}
         webViewStyle={{ opacity: veiled ? 0 : 1, backgroundColor: "#000" }}
         webViewProps={{
