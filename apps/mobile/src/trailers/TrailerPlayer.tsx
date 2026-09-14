@@ -5,6 +5,7 @@ import YoutubePlayer, { type YoutubeIframeRef } from "react-native-youtube-ifram
 import type { WebViewProps } from "react-native-webview";
 import type { ShouldStartLoadRequest } from "react-native-webview/lib/WebViewTypes";
 import { useApp } from "../state";
+import { CONFIG } from "../config";
 import { Text } from "../ui";
 import { Icon } from "../icons";
 import { radius } from "../theme";
@@ -47,7 +48,8 @@ import { radius } from "../theme";
  *
  * 🔑 **ولا صفحةَ طرفٍ ثالثٍ في المسار**: المكتبةُ تُحمّل افتراضاً صفحةً على
  * `lonelycpp.github.io` — **`useLocalHTML` يُلغيها**، والمستندُ يُبنى محليّاً
- * بأصلِ `https://www.youtube.com` (شرطُ التضمين)، فلا مضيفَ بيننا وبين يوتيوب.
+ * **بأصل الموقع نفسِه** (`loopztv.com` — D-967؛ كان `youtube.com` فردّته يوتيوب)،
+ * فلا مضيفَ بيننا وبين يوتيوب.
  */
 
 /**
@@ -77,8 +79,19 @@ type YtProps = {
 };
 const Player = YoutubePlayer as unknown as React.ComponentType<YtProps>;
 
-/** أصلُ المستند المحلّيّ — يوتيوب نفسُها: التضمينُ يشترط أصلاً معلوماً لا `about:blank` */
+/** روابطُ يوتيوب الخارجة من التضمين (شعارٌ · «شاهد على يوتيوب») تُعرف بأصلها */
 const YT_ORIGIN = "https://www.youtube.com";
+/**
+ * 🔴 D-967 — **أصلُ المستند المحلّيّ هو أصلُ الويب نفسُه** (`loopztv.com`) لا يوتيوب.
+ * بلاغُ أحمد بتسجيل: «إذا ضغطت على الفيديو يشتغل ويذهب بي إلى صفحة التريلر» —
+ * **وما رآه ليس باباً بل سقوطاً**: يوتيوب رفضت المقطعَ داخل التطبيق فجرّب المشغّلُ
+ * بدائلَه ثمّ فتح البابَ الويبيّ (`onExhausted`)، **والمقطعُ نفسُه يعمل في الويب.**
+ * الفرقُ الوحيدُ بين الحالتين هو المُحيل: مستندٌ يدّعي أصلَ `youtube.com` ولا يُخدَم
+ * منها يصل يوتيوب بلا مُحيلٍ صادق فتردّه («configuration error» 153)، **ومستندٌ
+ * بأصل الموقع يصلها كما تصلها صفحةُ التريلرات التي تعمل.** فالمرجعُ ما ثبت لا ما
+ * افتُرض (D-145).
+ */
+const DOC_ORIGIN = CONFIG.apiBase;
 /** D-934: القفزةُ خمسُ ثوانٍ، والضغطتان خلال ٣٢٠ م.ث على الجهة نفسِها */
 const SEEK_STEP = 5;
 const DOUBLE_TAP_MS = 320;
@@ -235,12 +248,14 @@ export function TrailerPlayer({
   /* البديلُ التالي في المكان، فإن نفدت السلسلةُ فالبابُ الويبيّ (D-743).
      **والقرارُ خارجَ مُحدِّث الحالة عمداً**: مُحدِّثٌ يُنادى مرّتين في وضع
      التطوير الصارم يفتح البابَ مرّتين. */
-  const fail = useCallback(() => {
+  const fail = useCallback((error?: string) => {
+    /* D-967: رمزُ الرفض يُكتب في السجلّ — الجهازُ وحدَه يراه (logcat/A0)، والحاويةُ لا تصل يوتيوب */
+    if (error) console.warn(`[trailer] youtube rejected ${videoKeys[idx] ?? "?"}: ${error}`);
     setPlaying(false);
     setAt(0);
     if (idx + 1 < videoKeys.length) setIdx(idx + 1);
     else onExhausted();
-  }, [idx, onExhausted, videoKeys.length]);
+  }, [idx, onExhausted, videoKeys]);
 
   if (!key) return null;
   const pct = dur > 0 ? Math.max(0, Math.min(1, at / dur)) : 0;
@@ -256,7 +271,7 @@ export function TrailerPlayer({
         mute={muted || !primed}
         volume={100}
         useLocalHTML
-        baseUrlOverride={YT_ORIGIN}
+        baseUrlOverride={DOC_ORIGIN}
         initialPlayerParams={{ controls: false, rel: false, iv_load_policy: 3, preventFullScreen: true }}
         webViewStyle={{ opacity: veiled ? 0 : 1, backgroundColor: "#000" }}
         webViewProps={{
@@ -268,6 +283,8 @@ export function TrailerPlayer({
           onShouldStartLoadWithRequest: (req: ShouldStartLoadRequest) => {
             const url = req.url ?? "";
             if (!url || url === "about:blank" || req.isTopFrame === false) return true;
+            /* D-967: المستندُ نفسُه يحمل أصلَ الموقع — تحميلُه ليس خروجاً */
+            if (url.startsWith(DOC_ORIGIN)) return true;
             if (url.startsWith(YT_ORIGIN)) {
               if (url.includes("/watch") || url.includes("/channel/") || url.includes("/@")) {
                 Linking.openURL(url).catch(() => {});
