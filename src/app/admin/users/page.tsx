@@ -6,6 +6,7 @@ import { getAdminUserContent, USER_ITEM_AR } from "@/lib/admin";
 import { adminSetAdmin } from "@/lib/adminUsers";
 import { Avatar } from "@/components/Avatar";
 import { buttonClass } from "@/components/ui/Button";
+import { AdminNotice } from "@/components/admin/AdminNotice";
 import { settingsCardRows } from "@/components/settings/SettingsGroup";
 
 /**
@@ -47,30 +48,28 @@ async function unsuspend(formData: FormData) {
 /**
  * 🆕 D-928 — **منحُ الإدارة وسحبُها من الواجهة**: كان `is_admin` يُبدَّل
  * بـSQL خام وحدَه، **فمالكُ المنتج لا يستطيع أن يعيّن مديراً ولا أن يعزله.**
+ *
+ * 🔴 🆕 **وبسببٍ إلزاميٍّ منذ D-962**: كان **الإيقافُ يفرض سبباً والمنحُ
+ * ضغطةً واحدةً عاريةً بجانب زرِّ عرضِ المحتوى** — **وأوسعُ فعلٍ في اللوحة
+ * أثراً كان أرخصَها ضغطة.** والحقلُ نظيرُ حقلِ الإيقاف حرفاً: **شكلٌ واحدٌ
+ * لفعلين متشابهين لا شكلان** (القاعدة ٦)، **والقاعدةُ ترفض الفارغَ
+ * (`reason_required`) لا الشاشةُ وحدَها** (D-011).
  */
 async function setAdmin(formData: FormData) {
   "use server";
   const q = String(formData.get("q") ?? "");
   const back = `/admin/users${q ? `?q=${encodeURIComponent(q)}` : ""}`;
   try {
-    await adminSetAdmin(String(formData.get("user") ?? ""), formData.get("on") === "1");
+    await adminSetAdmin(
+      String(formData.get("user") ?? ""),
+      formData.get("on") === "1",
+      String(formData.get("reason") ?? ""),
+    );
   } catch (e) {
     redirect(`${back}${back.includes("?") ? "&" : "?"}err=${encodeURIComponent((e as Error).message.slice(0, 140))}`);
   }
   redirect(`${back}${back.includes("?") ? "&" : "?"}ok=admin`);
 }
-
-/** رسائلُ القاعدة الثابتة تُترجَم هنا — «حاول مجدداً» تكذب (D-855). */
-const ERRORS: Record<string, string> = {
-  not_admin: "لا صلاحية.",
-  cannot_suspend_self: "لا توقف حسابك بنفسك.",
-  cannot_suspend_admin: "لا يُوقَف حسابُ مديرٍ من هنا.",
-  reason_required: "السبب مطلوب.",
-  cannot_change_self: "لا تغيّر صلاحيةَ نفسك — لا أحدَ يفتح البابَ بعدها.",
-  no_such_user: "لا حساب بهذا المعرّف.",
-  already_suspended: "الحساب موقوف أصلاً.",
-  not_suspended: "الحساب ليس موقوفاً.",
-};
 
 export default async function AdminUsersPage({
   searchParams,
@@ -87,9 +86,6 @@ export default async function AdminUsersPage({
   /* **لا يُجلب محتوًى إلا لمن فُتحت نافذتُه**: جلبُه لكلِّ نتيجةٍ ثمنٌ
      يُدفع في كلِّ فتحةٍ لأجل صفٍّ واحدٍ يُقرأ. */
   const items = open ? await getAdminUserContent(open, 40) : [];
-  const err = sp.err
-    ? (Object.entries(ERRORS).find(([k]) => sp.err!.includes(k))?.[1] ?? sp.err)
-    : null;
 
   return (
     <div className="space-y-5">
@@ -107,10 +103,7 @@ export default async function AdminUsersPage({
         <button type="submit" className={buttonClass({ size: "sm" })}>بحث</button>
       </form>
 
-      {err && <p className="text-14 text-[color:var(--error)]">⚠ {err}</p>}
-      {sp.ok === "suspended" && <p className="text-14 text-[color:var(--success)]">✓ أُوقف الحساب</p>}
-      {sp.ok === "restored" && <p className="text-14 text-[color:var(--success)]">✓ فُكّ الإيقاف</p>}
-      {sp.ok === "admin" && <p className="text-14 text-[color:var(--success)]">✓ حُدّثت صلاحيةُ الإدارة</p>}
+      <AdminNotice err={sp.err} ok={sp.ok} />
 
       {rows.length === 0 && <p className="text-14 text-muted">لا نتائج.</p>}
 
@@ -137,9 +130,17 @@ export default async function AdminUsersPage({
                 <span className="shrink-0 rounded-full bg-[color:var(--error)]/15 px-2.5 py-1 text-12 font-bold text-[color:var(--error)]">
                   موقوف
                 </span>
-              ) : u.isAdmin ? (
-                <span className="shrink-0 rounded-full bg-accent/15 px-2.5 py-1 text-12 font-bold text-accent">
-                  مدير
+              ) : u.isAdmin || u.isSystem ? (
+                /* 🆕 D-963 — **والشارةُ تقرأ الحارسَ لا نصفَه**: `am_admin()`
+                   = `is_admin` **أو** `is_system`، **وحسابُ النظام كان يُقرأ
+                   مستخدماً عاديّاً وهو يملك اللوحةَ كاملة** — وهو أوّلُ صفٍّ
+                   في هذه الصفحة (`created_at` فارغةٌ تتصدّر التنازليَّ). */
+                <span
+                  className={`shrink-0 rounded-full px-2.5 py-1 text-12 font-bold ${
+                    u.isSystem ? "bg-[color:var(--error)]/15 text-[color:var(--error)]" : "bg-accent/15 text-accent"
+                  }`}
+                >
+                  {u.isSystem ? (u.isAdmin ? "نظام · مدير" : "حساب نظام") : "مدير"}
                 </span>
               ) : null}
             </div>
@@ -170,15 +171,37 @@ export default async function AdminUsersPage({
               >
                 {open === u.id ? "أغلق المحتوى" : "اعرض ما كتبه"}
               </Link>
-              <form action={setAdmin}>
-                <input type="hidden" name="user" value={u.id} />
-                <input type="hidden" name="q" value={q} />
-                <input type="hidden" name="on" value={u.isAdmin ? "0" : "1"} />
-                <button type="submit" className={buttonClass({ variant: "surface", size: "sm" })}>
-                  {u.isAdmin ? "اسحب صلاحية الإدارة" : "اجعله مديراً"}
-                </button>
-              </form>
             </div>
+
+            {/* 🆕 D-963 — **ولا زرَّ منحٍ على حسابِ نظام**: صلاحيتُه من
+                `is_system` لا من `is_admin`، **فالزرُّ يبدّل عموداً لا يغيّر
+                شيئاً** — **وزرٌّ يقرّر ما لا يملك تنفيذَه كذبٌ في الواجهة**
+                (حجّةُ D-927 نفسُها في بلاغ الحساب). */}
+            {u.isSystem ? (
+              <p className="text-12 text-muted leading-relaxed">
+                حسابُ نظام: يفتح اللوحةَ بـ<code dir="ltr">is_system</code> لا بشارة الإدارة —
+                ولا يُمنح ولا يُسحب ولا يُوقَف من هنا.
+              </p>
+            ) : (
+            <form action={setAdmin} className="flex items-center gap-2">
+              <input type="hidden" name="user" value={u.id} />
+              <input type="hidden" name="q" value={q} />
+              <input type="hidden" name="on" value={u.isAdmin ? "0" : "1"} />
+              <input
+                type="text"
+                name="reason"
+                required
+                minLength={3}
+                maxLength={300}
+                placeholder={u.isAdmin ? "سبب سحب الإدارة (إلزامي)" : "سبب منح الإدارة (إلزامي)"}
+                aria-label={`${u.isAdmin ? "سبب سحب صلاحية الإدارة عن" : "سبب منح صلاحية الإدارة لـ"} ${name}`}
+                className="min-w-0 flex-1 rounded-input border border-border bg-surface-2 px-3 py-2 text-14"
+              />
+              <button type="submit" className={`shrink-0 ${buttonClass({ variant: "surface", size: "sm" })}`}>
+                {u.isAdmin ? "اسحب صلاحية الإدارة" : "اجعله مديراً"}
+              </button>
+            </form>
+            )}
 
             {open === u.id && (
               <div className="space-y-2 pt-1">
@@ -216,7 +239,7 @@ export default async function AdminUsersPage({
               </div>
             )}
 
-            {u.isAdmin ? null : suspended ? (
+            {u.isAdmin || u.isSystem ? null : suspended ? (
               <form action={unsuspend} className="pt-1">
                 <input type="hidden" name="user" value={u.id} />
                 <input type="hidden" name="q" value={q} />
@@ -235,9 +258,9 @@ export default async function AdminUsersPage({
                   maxLength={300}
                   placeholder="سبب الإيقاف (إلزامي)"
                   aria-label={`سبب إيقاف ${name}`}
-                  className="flex-1 rounded-input border border-border bg-surface-2 px-3 py-2 text-14"
+                  className="min-w-0 flex-1 rounded-input border border-border bg-surface-2 px-3 py-2 text-14"
                 />
-                <button type="submit" className={buttonClass({ size: "sm" })}>
+                <button type="submit" className={`shrink-0 ${buttonClass({ size: "sm" })}`}>
                   إيقاف
                 </button>
               </form>

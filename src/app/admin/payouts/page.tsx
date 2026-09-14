@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { getAmAdmin, getAdminPayouts } from "@/lib/data";
 import { adminDecidePayout } from "@/lib/actions";
 import { buttonClass } from "@/components/ui/Button";
+import { AdminNotice } from "@/components/admin/AdminNotice";
 
 /**
  * 🆕 **طابورُ طلبات التحويل** (D-901) — نمطُ `/admin/partners` حرفاً.
@@ -36,15 +37,6 @@ const STATUS_AR: Record<string, string> = {
   rejected: "مرفوض",
 };
 
-const ERRORS: Record<string, string> = {
-  not_admin: "لا صلاحية.",
-  bad_decision: "قرار غير معروف.",
-  not_found: "الطلب غير موجود.",
-  already_paid: "الطلب صُرف — لا يُنقَض.",
-  approve_first: "وافِق أولاً ثم سجّل الصرف.",
-  not_pending: "الطلب لم يعد معلّقاً.",
-};
-
 export default async function AdminPayoutsPage({
   searchParams,
 }: {
@@ -55,16 +47,12 @@ export default async function AdminPayoutsPage({
 
   const sp = await searchParams;
   const rows = await getAdminPayouts();
-  const err = sp.err
-    ? (Object.entries(ERRORS).find(([k]) => sp.err!.includes(k))?.[1] ?? sp.err)
-    : null;
 
   return (
     <div className="space-y-5">
       <h1 className="text-22 font-bold">طلبات التحويل</h1>
 
-      {err && <p className="text-14 text-[color:var(--error)]">⚠ {err}</p>}
-      {sp.ok && <p className="text-14 text-[color:var(--success)]">✓ حُفظ القرار</p>}
+      <AdminNotice err={sp.err} ok={sp.ok} />
 
       {rows.length === 0 && (
         <div className="rounded-card border border-border bg-surface p-4 space-y-1.5">

@@ -4,6 +4,7 @@ import { getAmAdmin } from "@/lib/data";
 import {
   AUDIT_AR,
   getAdminAudit,
+  getAdminKeyholders,
   getAdminOverview,
   getAdminTestersSummary,
   getGitHubHead,
@@ -90,11 +91,12 @@ export default async function AdminIndexPage() {
   const admin = await getAmAdmin();
   if (!admin) notFound();
 
-  const [o, ts, head, audit] = await Promise.all([
+  const [o, ts, head, audit, keys] = await Promise.all([
     getAdminOverview(),
     getAdminTestersSummary(),
     getGitHubHead(),
     getAdminAudit(AUDIT_N),
+    getAdminKeyholders(),
   ]);
   if (!o) notFound();
 
@@ -284,7 +286,60 @@ export default async function AdminIndexPage() {
         )}
       </section>
 
-      {/* ——— ٥) سجلُّ الإدارة — من فعل ماذا ومتى (D-923) ——— */}
+      {/* ——— ٥أ) من يملك مفتاح اللوحة (D-963) ———
+          🔑 **قبل «من فعل ماذا» يأتي «من يستطيع أن يفعل»**: حارسُ اللوحة
+          `am_admin()` = `is_admin` **أو** `is_system`، **وصفحةُ المستخدمين
+          كانت تقرأ نصفَه** — فحسابُ النظام يجلس في رأسها بلا شارة. */}
+      <section className={`${settingsCard} p-4 space-y-2`}>
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="text-15 font-bold">
+            مفاتيحُ اللوحة{" "}
+            <span className="text-12 font-normal text-muted">
+              — كلُّ هويّةٍ يفتح لها <code dir="ltr">am_admin()</code> البابَ
+            </span>
+          </h2>
+          <span className="text-12 text-muted tabular-nums" dir="ltr">{fmt(keys.length)}</span>
+        </div>
+        {keys.length === 0 ? (
+          <p className="text-14 text-muted">تعذّر القياس — الهجرة ١٩٠ لم تُشغَّل بعد.</p>
+        ) : (
+          <div className={settingsCardRows}>
+            {keys.map((k) => (
+              <div key={k.id} className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 px-3 py-2.5 text-13">
+                <b className="text-14">{k.nickname || k.username || k.id.slice(0, 8)}</b>
+                <span
+                  className={`shrink-0 rounded-full px-2 py-0.5 text-12 font-bold ${
+                    k.isSystem
+                      ? "bg-[color:var(--error)]/15 text-[color:var(--error)]"
+                      : "bg-accent/15 text-accent"
+                  }`}
+                >
+                  {k.isSystem ? (k.isAdmin ? "نظام · مدير" : "حساب نظام") : "مدير"}
+                </span>
+                {/* 🔑 **والسؤالُ «هل يدخل؟» لا «هل له صفّ؟»**: القيدُ يفرض صفَّ
+                    `auth.users` لكلِّ ملفّ، **فوجودُه لا يقول شيئاً** — والاعتمادُ
+                    يقول. */}
+                {/* **والنصُّ قصيرٌ لأنّ الصفَّ صفّ**: التفصيلُ في حاشية البطاقة —
+                    جملةٌ طويلةٌ هنا تلفّ السطرَ وتترك تاريخَ الدخول وحيداً (رُئي في الرسم). */}
+                <span className="text-muted">
+                  {k.canSignIn ? `يدخل · ${k.identities} هويّة` : "بلا اعتمادِ دخول"}
+                </span>
+                <span className="ms-auto shrink-0 text-12 text-muted" dir="ltr">
+                  {k.lastSignInAt ? riyadh(k.lastSignInAt) : "—"}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+        <p className="text-12 text-muted leading-relaxed">
+          <b className="text-foreground">وحسابُ النظام لا يُمنح ولا يُسحب ولا يُوقَف من اللوحة</b> —
+          صلاحيتُه من <code dir="ltr">is_system</code>، وتغييرُها قرارٌ مكتوبٌ بـSQL.
+          و«بلا اعتمادِ دخول» تعني: <b>لا كلمةَ مرورٍ ولا هويّةَ مزوّدٍ واحدة</b> —
+          فلا سبيلَ لأحدٍ أن يسجّل الدخولَ بهذا الصفّ اليوم.
+        </p>
+      </section>
+
+      {/* ——— ٥ب) سجلُّ الإدارة — من فعل ماذا ومتى (D-923) ——— */}
       <section className={`${settingsCard} p-4 space-y-2`}>
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h2 className="text-15 font-bold">
@@ -302,6 +357,15 @@ export default async function AdminIndexPage() {
                 {a.targetName && <span className="text-muted">← {a.targetName}</span>}
                 <span className="text-muted">بيد {a.actorName ?? "—"}</span>
                 <span className="ms-auto shrink-0 text-12 text-muted">{riyadh(a.at)}</span>
+                {/* 🆕 D-962 — **السببُ يُعرض لا يُخزَّن وحدَه**: الإيقافُ يفرضه
+                    منذ D-901 والمنحُ منذ ١٨٩، **وحقلٌ إلزاميٌّ لا يُقرأ في أيِّ
+                    شاشةٍ حقلٌ يُملأ بحرفٍ واحد.** ولا يُعرض إلا حين يوجد
+                    (أفعالُ الكشف والمختبِرين بلا سبب). */}
+                {typeof a.detail?.reason === "string" && a.detail.reason.trim() !== "" && (
+                  <p className="w-full text-12 text-muted leading-relaxed">
+                    السبب: {a.detail.reason}
+                  </p>
+                )}
               </div>
             ))}
           </div>

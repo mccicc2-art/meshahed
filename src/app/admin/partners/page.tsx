@@ -6,6 +6,7 @@ import { getDict } from "@/core/i18n";
 import { AccountBadges } from "@/components/AccountIdentity";
 import { Avatar } from "@/components/Avatar";
 import { buttonClass } from "@/components/ui/Button";
+import { AdminNotice } from "@/components/admin/AdminNotice";
 
 /**
  * 🆕 **لوحةُ طلبات الشركاء** (D-770) — نمطُ `/admin/links` حرفاً (D-608):
@@ -54,8 +55,7 @@ export default async function AdminPartnersPage({
     <div className="space-y-6">
       <h1 className="text-22 font-bold">طلبات Loopz Partners</h1>
 
-      {sp.err && <p className="text-14 text-[color:var(--error)]">⚠ {sp.err}</p>}
-      {sp.ok && <p className="text-14 text-[color:var(--success)]">✓ حُفظ القرار</p>}
+      <AdminNotice err={sp.err} ok={sp.ok} />
 
       {apps.length === 0 && (
         <p className="text-14 text-muted">لا طلبات بعد.</p>

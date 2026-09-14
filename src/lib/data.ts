@@ -6452,6 +6452,8 @@ export type AdminUserRow = {
   lastSignInAt: string | null;
   plan: string | null;
   isAdmin: boolean;
+  /** 🆕 D-963 — **حسابُ نظامٍ يفتح اللوحةَ كالمدير** (`am_admin` = `is_admin` أو `is_system`) */
+  isSystem: boolean;
   suspendedAt: string | null;
   suspendedReason: string | null;
   emailMasked: string | null;
@@ -6474,6 +6476,7 @@ export async function getAdminUsers(q: string, limit = 25): Promise<AdminUserRow
       lastSignInAt: (r.last_sign_in_at as string) ?? null,
       plan: (r.plan as string) ?? null,
       isAdmin: r.is_admin === true,
+      isSystem: r.is_system === true,
       suspendedAt: (r.suspended_at as string) ?? null,
       suspendedReason: (r.suspended_reason as string) ?? null,
       emailMasked: (r.email_masked as string) ?? null,

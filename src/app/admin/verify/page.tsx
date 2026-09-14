@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { getAmAdmin } from "@/lib/data";
 import { adminVerificationQueue, adminDecideVerification } from "@/lib/actions";
 import { buttonClass } from "@/components/ui/Button";
+import { AdminNotice } from "@/components/admin/AdminNotice";
 
 /**
  * 🆕 **طابورُ مراجعة التوثيق** (D-775) — نمطُ `/admin/partners` حرفاً
@@ -50,8 +51,7 @@ export default async function AdminVerifyPage({
     <div className="space-y-6">
       <h1 className="text-22 font-bold">طلبات التوثيق</h1>
 
-      {sp.err && <p className="text-14 text-[color:var(--error)]">⚠ {sp.err}</p>}
-      {sp.ok && <p className="text-14 text-[color:var(--success)]">✓ حُفظ القرار</p>}
+      <AdminNotice err={sp.err} ok={sp.ok} />
 
       {rows.length === 0 && <p className="text-14 text-muted">لا طلبات معلّقة.</p>}
 

@@ -325,16 +325,147 @@ export async function getAdminAudit(limit = 12): Promise<AdminAuditRow[]> {
   }
 }
 
-/** الاسمُ العربيُّ لفعلِ الإدارة — **مكانٌ واحدٌ لا خريطةٌ في كلِّ صفحة.** */
+/**
+ * الاسمُ العربيُّ لفعلِ الإدارة — **مكانٌ واحدٌ لا خريطةٌ في كلِّ صفحة.**
+ *
+ * 🔴 🆕 **والمفاتيحُ جُردت من `pg_proc` لا من الذاكرة** (D-962، مراجعةُ ١٤
+ * سبتمبر): كانت `suspend` و`unsuspend` **والقاعدةُ تكتب `suspend_user`
+ * و`unsuspend_user`**، و`decide_payout` و`report_keep`/`report_remove`
+ * **غائبةً أصلاً** — **خمسةٌ من تسعةِ أفعالٍ حقيقيّةٍ تُطبع خاماً
+ * بالإنجليزيّة في لوحةٍ عربيّةٍ صرفة.** ولم يظهر العطلُ لأنّ الجدولَ فيه
+ * سبعةُ صفوفٍ ثلاثتُها من المغطّى — **وأوّلُ إيقافٍ حقيقيٍّ كان سيكشفه.**
+ *
+ * 🔑 **والدرسُ درسُ D-926 نفسُه مقلوباً**: هناك بُنيت قدرةٌ في القاعدة بلا
+ * قارئٍ في الشيفرة، **وهنا كُتب قارئٌ في الشيفرة لاسمٍ لا تكتبه القاعدة** —
+ * **والطرفان لا يلتقيان إلا بجردٍ يسأل `pg_proc` كما يسأل `src/`.**
+ *
+ * ⚖️ **فمن يضيف فعلاً إداريّاً جديداً يضيف سطرَه هنا في الالتزام نفسِه** —
+ * وإلا قرأه خَلَفُه بالإنجليزيّة ولم يعرف لماذا.
+ */
 export const AUDIT_AR: Record<string, string> = {
   grant_admin: "منح صلاحية إدارة",
   revoke_admin: "سحب صلاحية إدارة",
-  suspend: "إيقاف حساب",
-  unsuspend: "فكّ إيقاف",
+  suspend_user: "إيقاف حساب",
+  unsuspend_user: "فكّ إيقاف",
   reveal_email: "كشف بريد",
   tester_add: "إضافة مختبِر",
   tester_remove: "حذف مختبِر",
   tester_invited: "تعليم الدعوة",
+  decide_payout: "قرار تحويل",
+  report_keep: "إبقاء محتوى مُبلَّغ",
+  report_remove: "إخفاء محتوى مُبلَّغ",
+  /* 🆕 D-962 §١–§٣ — أفعالٌ كانت تقع **بلا أثرٍ في السجلّ** حتّى الهجرة ١٨٩ */
+  decide_verification: "قرار توثيق",
+  decide_partner: "قرار شراكة",
+  set_provider_link: "تعديل رابط منصّة",
+};
+
+/**
+ * 🆕 **من يملك مفتاحَ اللوحة** (D-963، البند (د) من مراجعة ١٤ سبتمبر).
+ *
+ * 🔴 **العلّة**: حارسُ اللوحة `am_admin()` = `is_admin` **أو** `is_system` —
+ * **وفي الإنتاج ثلاثُ هويّاتٍ يفتح لها البابُ واللوحةُ تسمّي اثنتين.**
+ * والصفُّ الثالث (`loopz`) **ليس غائباً بل يجلس في رأس `/admin/users` بلا
+ * شارة**: الترتيبُ `created_at desc` و`created_at` فارغةٌ فتتصدّر —
+ * **فأوّلُ صفٍّ في الصفحة صاحبُ صلاحيّةٍ كاملةٍ يُقرأ مستخدماً عاديّاً.**
+ *
+ * 🔑 **و`canSignIn` لا «له صفٌّ في `auth.users`»**: القيدُ `profiles_id_fkey`
+ * يفرض الصفَّ لكلِّ ملفّ، **فوجودُه لا يقول شيئاً** — **والسؤالُ: هل يملك
+ * اعتماداً يدخل به؟** (كلمةُ مرورٍ أو هويّةُ مزوّدٍ واحدةٌ فأكثر).
+ * ⚠️ **وهذا تصحيحُ قياسٍ في المراجعة نفسِها**: قيل أوّلاً «بلا صفٍّ في
+ * `auth.users`» والمِجَسُّ كان البريدَ — **وسببٌ خاطئٌ لحكمٍ صحيحٍ يسقط يومَ
+ * يتغيّر الواقع** (درسُ D-928).
+ */
+export type AdminKeyholder = {
+  id: string;
+  username: string | null;
+  nickname: string | null;
+  isAdmin: boolean;
+  isSystem: boolean;
+  canSignIn: boolean;
+  identities: number;
+  lastSignInAt: string | null;
+  suspendedAt: string | null;
+};
+
+export async function getAdminKeyholders(): Promise<AdminKeyholder[]> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("admin_keyholders");
+    if (error || !Array.isArray(data)) return [];
+    return (data as Record<string, unknown>[]).map((r) => ({
+      id: String(r.id),
+      username: (r.username as string) ?? null,
+      nickname: (r.nickname as string) ?? null,
+      isAdmin: r.is_admin === true,
+      isSystem: r.is_system === true,
+      canSignIn: r.can_sign_in === true,
+      identities: Number(r.identities ?? 0),
+      lastSignInAt: (r.last_sign_in_at as string) ?? null,
+      suspendedAt: (r.suspended_at as string) ?? null,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * 🆕 **رسائلُ القاعدة تُترجَم مرّةً واحدةً للوحة كلِّها** (D-963، البند (ز)).
+ *
+ * 🔴 **ما كان**: `/admin/users` و`/admin/payouts` تملكان خريطةً عربيّةً
+ * **و`/admin/reports` و`/admin/verify` و`/admin/partners` و`/admin/links`
+ * تطبع `sp.err` كما جاء من PostgREST** — إنجليزيّاً في لوحةٍ نصُّ تعليقها
+ * «عربيّةٌ ثابتةٌ بلا i18n»، **ونقضاً لـD-855: «حاول مجدداً» تكذب، والخامُ
+ * لا يُقرأ أصلاً.**
+ *
+ * 🔑 **والمفاتيحُ مجرودةٌ من `pg_proc` لا من الذاكرة** — كلُّ `raise
+ * exception` في دوالِّ الإدارة الاثنتَي عشرة. **وخريطةٌ تُكتب من الذاكرة
+ * هي بعينها عطلُ `AUDIT_AR` في D-962.**
+ *
+ * ⚠️ **والمطابقةُ بالاحتواء والترتيبُ يحكم**: الرسالةُ تصل ملفوفةً في نصِّ
+ * PostgREST، **فالأخصُّ أوّلاً** (`cannot_suspend_admin` قبل `not_admin`).
+ * **ولا يُضاف مفتاحٌ عامٌّ قصيرٌ في الرأس** — يبتلع ما بعده.
+ */
+export const ADMIN_ERRORS: [string, string][] = [
+  ["cannot_suspend_admin", "لا يُوقَف حسابُ مديرٍ من هنا."],
+  ["cannot_suspend_self", "لا توقف حسابك بنفسك."],
+  ["cannot_change_self", "لا تغيّر صلاحيةَ نفسك — لا أحدَ يفتح البابَ بعدها."],
+  ["already_suspended", "الحساب موقوف أصلاً."],
+  ["not_suspended", "الحساب ليس موقوفاً."],
+  ["already_paid", "الطلب صُرف — لا يُنقَض."],
+  ["approve_first", "وافِق أولاً ثم سجّل الصرف."],
+  ["not_pending", "الطلب لم يعد معلّقاً."],
+  ["reason_required", "السبب مطلوب."],
+  ["no_such_user", "لا حساب بهذا المعرّف."],
+  ["bad_decision", "قرار غير معروف."],
+  ["bad decision", "قرار غير معروف."],
+  ["bad_kind", "نوعُ بلاغٍ غير معروف."],
+  ["bad_email", "بريد غير صالح."],
+  ["bad_user", "معرّف حساب غير صالح."],
+  ["bad_ref", "مرجعُ البلاغ غير صالح."],
+  ["bad status", "حالةُ رابطٍ غير معروفة."],
+  ["could not allocate a partner code", "تعذّر توليدُ كود شريك — أعد المحاولة."],
+  ["not_found", "الطلب غير موجود."],
+  ["not found", "الطلب غير موجود."],
+  ["not_admin", "لا صلاحية."],
+  ["admin only", "لا صلاحية."],
+  ["forbidden", "لا صلاحية."],
+];
+
+/** **والخامُ يُعرض حين لا يُعرف** — **رسالةٌ مبهمةٌ أسوأُ من رسالةٍ إنجليزيّة** (D-855). */
+export function adminErrorAr(raw: string | undefined): string | null {
+  if (!raw) return null;
+  return ADMIN_ERRORS.find(([k]) => raw.includes(k))?.[1] ?? raw;
+}
+
+/** نصوصُ النجاح — `1` هي الحالةُ العامّة في صفحات القرار. */
+export const ADMIN_OK: Record<string, string> = {
+  "1": "حُفظ القرار",
+  suspended: "أُوقف الحساب",
+  restored: "فُكّ الإيقاف",
+  admin: "حُدّثت صلاحيةُ الإدارة",
+  keep: "أُبقي المحتوى وأُغلق الصفّ",
+  remove: "أُخفي المحتوى وأُغلق الصفّ",
 };
 
 /**

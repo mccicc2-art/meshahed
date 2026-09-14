@@ -1,10 +1,11 @@
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { getAmAdmin } from "@/lib/data";
-import { REPORT_KIND_AR, getAdminReports, type AdminReportRow } from "@/lib/admin";
+import { REPORT_KIND_AR, getAdminReports, type AdminReportRow, type ReportKind } from "@/lib/admin";
 import { adminReportDecide } from "@/lib/adminReports";
 import { buttonClass } from "@/components/ui/Button";
 import { settingsCard } from "@/components/settings/SettingsGroup";
+import { AdminNotice } from "@/components/admin/AdminNotice";
 
 /**
  * 🆕 **البلاغات** (D-927، تقييمُ ٥ سبتمبر: «الإخفاءُ الوحيدُ في المنتج
@@ -28,8 +29,31 @@ const riyadh = (iso: string | null) =>
     ? new Date(iso).toLocaleString("ar-SA", { timeZone: "Asia/Riyadh", dateStyle: "short", timeStyle: "short" })
     : "—";
 
-/** حدُّ الإخفاء التلقائيّ في `hide_reported_review` — يُقال رقماً لا شعوراً. */
+/**
+ * حدُّ الإخفاء التلقائيّ — يُقال رقماً لا شعوراً.
+ *
+ * 🔴 🆕 **وستُّ دوالَّ لا اثنتان** (D-962، مراجعةُ ١٤ سبتمبر): كان النصُّ
+ * أدناه يقول «على المراجعات ومراجعات القوائم» — **وجردُ `pg_proc` يقول ستّاً**
+ * كلُّها عند عشرة: `hide_reported_review` · `hide_reported_list_review` ·
+ * `reply_reports_hide` · `title_post_reports_hide` · `list_reply_reports_hide`
+ * · `news_reply_reports_hide`. **فالمنشوراتُ وردودُ المراجعات وردودُ القوائم
+ * وردودُ الأخبار تُخفى بالآلة أيضاً.**
+ *
+ * 🔑 **والصفحةُ التي بُنيت لتكشف الأتمتةَ لا يجوز أن تُقلّلها**: مديرٌ يقرأ
+ * «مجريان» يظنّ أربعةً في مأمن — **ورقمٌ ناقصٌ في شاشةِ حكمٍ أسوأُ من لا رقم**
+ * (D-219).
+ */
 const AUTO_HIDE = 10;
+
+/** المجاري التي تُخفي بالآلة — **تُعدّ ولا تُوصف**، فالعددُ يُقرأ من الطول. */
+const AUTO_HIDE_KINDS: ReportKind[] = [
+  "review",
+  "list_review",
+  "reply",
+  "post",
+  "list_reply",
+  "news_reply",
+];
 
 async function decide(formData: FormData) {
   "use server";
@@ -172,15 +196,16 @@ export default async function AdminReportsPage({
         </span>
       </header>
 
-      {sp.err && <p className="text-14 text-[color:var(--error)]">⚠ {sp.err}</p>}
-      {sp.ok === "keep" && <p className="text-14 text-[color:var(--success)]">✓ أُبقي المحتوى وأُغلق الصفّ</p>}
-      {sp.ok === "remove" && <p className="text-14 text-[color:var(--success)]">✓ أُخفي المحتوى وأُغلق الصفّ</p>}
+      <AdminNotice err={sp.err} ok={sp.ok} />
 
       <section className={`${settingsCard} p-4 text-12 text-muted leading-relaxed`}>
         <p>
-          <b className="text-foreground">الإخفاءُ يقع تلقائيّاً عند {AUTO_HIDE} بلاغات</b> على
-          المراجعات ومراجعات القوائم — <b>بلا قرارِ إنسانٍ وبلا إخطارِ صاحبِها</b>. هذه الصفحةُ
-          هي البابُ الوحيدُ لرؤيته وإرجاعه.
+          <b className="text-foreground">
+            الإخفاءُ يقع تلقائيّاً عند {AUTO_HIDE} بلاغات في {AUTO_HIDE_KINDS.length} مجارٍ
+          </b>{" "}
+          — {AUTO_HIDE_KINDS.map((k) => REPORT_KIND_AR[k]).join(" · ")} —{" "}
+          <b>بلا قرارِ إنسانٍ وبلا إخطارِ صاحبِها</b>. هذه الصفحةُ هي البابُ الوحيدُ لرؤيته
+          وإرجاعه. <b>وبلاغُ الحساب وحدَه لا يُخفي شيئاً بالآلة.</b>
         </p>
         <p className="mt-1.5">
           <b className="text-foreground">وكلا القرارين يمسح بلاغاتِ الهدف</b>: إرجاعٌ يترك

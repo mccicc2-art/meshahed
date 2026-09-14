@@ -6,6 +6,7 @@ import { adminSetProviderLink } from "@/lib/actions";
 import { isTrustedProviderUrl } from "@/core/providerLinks";
 import { WATCH_REGIONS } from "@/core/region";
 import { buttonClass } from "@/components/ui/Button";
+import { AdminNotice } from "@/components/admin/AdminNotice";
 
 /**
  * 🆕 **لوحةُ روابط المنصّات — أصغرُ واجهةٍ داخليّةٍ ممكنة** (D-608):
@@ -180,8 +181,7 @@ export default async function AdminLinksPage({
             </div>
           </div>
 
-          {sp.err && <p className="text-14 text-[color:var(--error)]">⚠ {sp.err}</p>}
-          {sp.ok && <p className="text-14 text-[color:var(--success)]">✓ حُفظ</p>}
+          <AdminNotice err={sp.err} ok={sp.ok} okText="حُفظ الرابط" />
 
           {providers.length === 0 && (
             <p className="text-14 text-muted">
