@@ -84,10 +84,11 @@ type Tab = LibraryTab;
  * التمرير في `ScrollMemory`؛ هنا الشاشةُ تُنزع عند فتح عملٍ وتُعاد من زرّ
  * المكتبة، **فتُحفظ في متغيّرِ وحدةٍ** — عقدُ المالك: الرجوعُ لا يقفز إلى الأعلى.
  */
-const memory: { tab: Tab | null; open: LibraryStatus[]; y: number } = { tab: null, open: [], y: 0 };
+/* D-965 — موضعُ التمرير **لكلِّ تبويب**: الجارُ المسلَّح يُرسم بموضعه هو، لا بموضع النشط */
+const memory: { tab: Tab | null; open: LibraryStatus[]; y: Partial<Record<Tab, number>> } = { tab: null, open: [], y: {} };
 
 export function LibraryScreen() {
-  const { t, tokens, locale } = useApp();
+  const { t, tokens } = useApp();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { width: screenW } = useWindowDimensions();
@@ -222,44 +223,7 @@ export function LibraryScreen() {
   /* بناءُ بطاقات التبويب — الوصفةُ في `library/page.tsx`: التقدّمُ من
      `watched/aired`، والعدُّ المتبقّي حين بدأ ولم يكتمل ولم يُوقَف. */
   const hasFav = useMemo(() => (data.data?.items ?? []).some((x) => x.is_favorite === true), [data.data]);
-  /** القائمةُ بعد المصافي والترتيب — الوصفةُ في `LibraryGrid.tsx` (`items`) حرفاً */
-  const list = useMemo(() => {
-    const items = data.data?.items ?? [];
-    /* 🆕 D-946 — **الأنمي في تبويبه وحدَه**: المعلَّمُ أنمياً يخرج من
-       «مسلسلاتي» و«أفلامي»؛ وغيرُ المصنَّف (`null`) يبقى في تبويبه الأصليّ.
-       **الوصفةُ حرفاً كما في `library/page.tsx`** (B5: تكافؤٌ لا تقريب). */
-    const inTab = items.filter((x) =>
-      activeTab === "anime"
-        ? x.is_anime === true
-        : x.is_anime !== true && (activeTab === "shows" ? x.kind === "tv" : x.kind === "movie"),
-    );
-    const byFav = fav && hasFav ? inTab.filter((x) => x.is_favorite === true) : inTab;
-    const needle = normalizeSearch(q);
-    const filtered = needle ? byFav.filter((x) => normalizeSearch(x.display_title ?? x.title).includes(needle)) : byFav;
-    const rank = (st: LibraryStatus) => STATUS_ORDER.indexOf(st);
-    const rows = filtered.map((x, i) => ({ c: toCard(x), x, i }));
-    if (sort === "added") rows.sort((a, b) => b.x.added_at.localeCompare(a.x.added_at));
-    else if (sort === "title") {
-      const cmp = byTitle(locale === "en" ? "en" : "ar");
-      rows.sort((a, b) => cmp(a.c.title, b.c.title));
-    } else if (sort === "progress")
-      rows.sort((a, b) => (a.c.progress >= 100 ? 1 : 0) - (b.c.progress >= 100 ? 1 : 0) || b.c.progress - a.c.progress);
-    else rows.sort((a, b) => rank(a.x.status) - rank(b.x.status) || (a.x.status === "watching" ? b.c.progress - a.c.progress : 0) || a.i - b.i);
-    return rows;
-  }, [data.data, activeTab, fav, hasFav, q, sort, locale]);
-
-  /* التجميعُ بالحالة في الفرز «ذكيّ» بلا بحث فقط (G2/G3) — غيرُه شبكةٌ مسطّحة */
-  const grouped = sort === "smart" && !q.trim();
-  const groups = useMemo(() => {
-    if (!grouped) return [] as { status: LibraryStatus; items: CardItem[] }[];
-    const by = new Map<LibraryStatus, CardItem[]>();
-    for (const { c, x } of list) {
-      const b = by.get(x.status);
-      if (b) b.push(c);
-      else by.set(x.status, [c]);
-    }
-    return [...by].map(([status, items]) => ({ status, items }));
-  }, [grouped, list]);
+  /* القائمةُ والتجميعُ صارا في `LibraryPane` (D-965): لوحٌ لكلِّ تبويب، والجارُ يُرسم حيّاً بجانب النشط */
 
   const inner = screenW - PAGE_PAD * 2;
   const cols = Math.max(1, Math.floor((inner + GAP) / (MIN_COL + GAP)));
@@ -463,106 +427,37 @@ export function LibraryScreen() {
       </View>
       ) : null}
 
-      <TabSlide order={tabsOrder} tab={activeTab} onTab={setTab} peek={<Skeleton cols={cols} cellW={cellW} />}>
-      {activeTab === "anime" && classifying ? (
-        <Text size={12} muted style={{ textAlign: "center", paddingVertical: 8 }}>{t.animeClassifying}</Text>
-      ) : null}
-
-      {activeTab === "artists" ? (
-        <ArtistsTab onOpenWeb={openWeb} bottomPad={navH + 24} />
-      ) : activeTab === "lists" ? (
-        <ListsTab hiddenRails={hiddenRails} onOpenWeb={openWeb} say={setToast} bottomPad={navH + 24} />
-      ) : data.isLoading ? (
-        <Skeleton cols={cols} cellW={cellW} />
-      ) : data.isError ? (
-        <Empty
-          text={t.apiInternal}
-          cta={t.errorRetry}
-          onCta={() => void data.refetch()}
-        />
-      ) : list.length === 0 ? (
-        <Empty
-          text={q.trim() ? t.libSearchEmpty(q.trim()) : activeTab === "anime" ? t.libAnimeEmpty : t.libraryEmpty}
-          cta={q.trim() ? t.libSearchEmptyCta : activeTab === "anime" ? t.libAnimeEmptyCta : t.libraryEmptyCta}
-          onCta={() => {
-            if (q.trim()) {
-              setQ("");
-              return;
-            }
-            leaveTo(activeTab === "anime" ? "/news?tab=anime" : "/news");
-          }}
-        />
-      ) : (
-        <ScrollView
-          contentContainerStyle={{ paddingHorizontal: PAGE_PAD, paddingTop: 12, paddingBottom: navH + 24, gap: 28 }}
-          showsVerticalScrollIndicator={false}
-          contentOffset={{ x: 0, y: memory.y }}
-          onScroll={(e) => { memory.y = e.nativeEvent.contentOffset.y; }}
-          scrollEventThrottle={64}
-        >
-          {/* D-954 — التلميحُ في رأس القائمة كما في `LibraryGrid` (فوق الشبكة، تحت
-              الأدوات)، **ولا يُرسم إن قُرئ في الحساب** — على أيِّ جهاز */}
-          {list.length > 0 && !(data.data?.hints ?? []).includes("library-hold") ? (
-            <OneTimeHint id="library-hold" text={t.longPressHint} />
-          ) : null}
-          {!grouped ? (
-            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: GAP }}>
-              {list.map(({ c }) => (
-                <PosterCard key={c.key} item={c} width={cellW} onPress={openTitle} onHold={hold} />
-              ))}
-            </View>
-          ) : null}
-          {groups.map((g) => {
-            const isOpen = open.has(g.status);
-            const solo = g.items.length === 1;
-            const toggle = () =>
-              setOpen((prev) => {
-                const next = new Set(prev);
-                if (next.has(g.status)) next.delete(g.status);
-                else next.add(g.status);
-                return next;
-              });
-            return (
-              <View key={g.status}>
-                <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 2 }}>
-                  <Pressable onPress={toggle} hitSlop={6}>
-                    <Text size={22} weight="700">{statusLabel(g.status, t)}</Text>
-                  </Pressable>
-                  <Pressable onPress={toggle} hitSlop={8}>
-                    <Text size={12} muted style={{ fontVariant: ["tabular-nums"] }}>
-                      {isOpen ? t.closeLabel : String(g.items.length)}
-                    </Text>
-                  </Pressable>
-                </View>
-                <View style={{ height: 4 }} />
-                {isOpen ? (
-                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: GAP }}>
-                    {g.items.map((it) => (
-                      <PosterCard key={it.key} item={it} width={cellW} onPress={openTitle} onHold={hold} />
-                    ))}
-                  </View>
-                ) : solo ? (
-                  <PosterCard item={g.items[0]} width={RAIL_W} onPress={openTitle} onHold={hold} />
-                ) : (
-                  <FlatList
-                    horizontal
-                    data={g.items}
-                    keyExtractor={(it) => it.key}
-                    renderItem={({ item }) => <PosterCard item={item} width={RAIL_W} onPress={openTitle} onHold={hold} />}
-                    showsHorizontalScrollIndicator={false}
-                    /* `-mx-4 px-4`: الصفُّ يلامس حافّةَ الشاشة ويبدأ من الهامش */
-                    style={{ marginHorizontal: -PAGE_PAD }}
-                    contentContainerStyle={{ paddingHorizontal: PAGE_PAD, gap: GAP, paddingBottom: 4 }}
-                    initialNumToRender={6}
-                    windowSize={5}
-                  />
-                )}
-              </View>
-            );
-          })}
-        </ScrollView>
-      )}
-      </TabSlide>
+      {/* D-965 — لوحٌ لكلِّ تبويب: `TabSlide` يرسم النشطَ، ويسلّح الجارَ حيّاً عند قفل السحب */}
+      <TabSlide
+        order={tabsOrder}
+        tab={activeTab}
+        onTab={setTab}
+        render={(k) =>
+          k === "artists" ? (
+            <ArtistsTab onOpenWeb={openWeb} bottomPad={navH + 24} />
+          ) : k === "lists" ? (
+            <ListsTab hiddenRails={hiddenRails} onOpenWeb={openWeb} say={setToast} bottomPad={navH + 24} />
+          ) : (
+            <LibraryPane
+              tab={k}
+              data={data}
+              q={q}
+              sort={sort}
+              fav={fav && hasFav}
+              open={open}
+              setOpen={setOpen}
+              cols={cols}
+              cellW={cellW}
+              bottomPad={navH + 24}
+              classifying={k === "anime" && classifying}
+              onOpen={openTitle}
+              onHold={hold}
+              onClearSearch={() => setQ("")}
+              onLeave={leaveTo}
+            />
+          )
+        }
+      />
       {/* D-961 — الشريطُ الخماسيُّ كما في كلِّ صفحةٍ ويبيّة؛ «المكتبة» هي الخانةُ المضيئة */}
       <BottomNav
         active="library"
@@ -606,6 +501,183 @@ export function LibraryScreen() {
       ) : null}
       {toast ? <Toast text={toast} bottom={navH + 16} /> : null}
     </View>
+  );
+}
+
+/**
+ * لوحُ تبويبٍ أساسيّ (مسلسلات · أفلام · أنمي) — D-965. **كلُّ ما يخصّ تبويباً
+ * واحداً يعيش هنا** (المصافي والترتيب والتجميع وموضعُ التمرير)، فيستطيع
+ * `TabSlide` أن يرسم لوحين جنباً إلى جنب في أثناء السحب. **البياناتُ واحدةٌ**
+ * (`me:library` محمّلةٌ أصلاً) فالجارُ يُرسم فوراً بلا نداء.
+ */
+function LibraryPane({
+  tab,
+  data,
+  q,
+  sort,
+  fav,
+  open,
+  setOpen,
+  cols,
+  cellW,
+  bottomPad,
+  classifying,
+  onOpen,
+  onHold,
+  onClearSearch,
+  onLeave,
+}: {
+  tab: Tab;
+  data: { data?: LibraryPayload; isLoading: boolean; isError: boolean; refetch: () => unknown };
+  q: string;
+  sort: LibrarySort;
+  /** المصفاةُ فعّالةٌ فقط حين لصاحبها مفضّلة (`fav && hasFav` عند المنادي) */
+  fav: boolean;
+  open: Set<string>;
+  setOpen: React.Dispatch<React.SetStateAction<Set<string>>>;
+  cols: number;
+  cellW: number;
+  bottomPad: number;
+  classifying: boolean;
+  onOpen: (item: CardItem) => void;
+  onHold: (item: CardItem, anchor: CardAnchor) => void;
+  onClearSearch: () => void;
+  onLeave: (path: string) => void;
+}) {
+  const { t, locale } = useApp();
+  /** القائمةُ بعد المصافي والترتيب — الوصفةُ في `LibraryGrid.tsx` (`items`) حرفاً */
+  const list = useMemo(() => {
+    const items = data.data?.items ?? [];
+    /* 🆕 D-946 — **الأنمي في تبويبه وحدَه**: المعلَّمُ أنمياً يخرج من
+       «مسلسلاتي» و«أفلامي»؛ وغيرُ المصنَّف (`null`) يبقى في تبويبه الأصليّ.
+       **الوصفةُ حرفاً كما في `library/page.tsx`** (B5: تكافؤٌ لا تقريب). */
+    const inTab = items.filter((x) =>
+      tab === "anime"
+        ? x.is_anime === true
+        : x.is_anime !== true && (tab === "shows" ? x.kind === "tv" : x.kind === "movie"),
+    );
+    const byFav = fav ? inTab.filter((x) => x.is_favorite === true) : inTab;
+    const needle = normalizeSearch(q);
+    const filtered = needle ? byFav.filter((x) => normalizeSearch(x.display_title ?? x.title).includes(needle)) : byFav;
+    const rank = (st: LibraryStatus) => STATUS_ORDER.indexOf(st);
+    const rows = filtered.map((x, i) => ({ c: toCard(x), x, i }));
+    if (sort === "added") rows.sort((a, b) => b.x.added_at.localeCompare(a.x.added_at));
+    else if (sort === "title") {
+      const cmp = byTitle(locale === "en" ? "en" : "ar");
+      rows.sort((a, b) => cmp(a.c.title, b.c.title));
+    } else if (sort === "progress")
+      rows.sort((a, b) => (a.c.progress >= 100 ? 1 : 0) - (b.c.progress >= 100 ? 1 : 0) || b.c.progress - a.c.progress);
+    else rows.sort((a, b) => rank(a.x.status) - rank(b.x.status) || (a.x.status === "watching" ? b.c.progress - a.c.progress : 0) || a.i - b.i);
+    return rows;
+  }, [data.data, tab, fav, q, sort, locale]);
+
+  /* التجميعُ بالحالة في الفرز «ذكيّ» بلا بحث فقط (G2/G3) — غيرُه شبكةٌ مسطّحة */
+  const grouped = sort === "smart" && !q.trim();
+  const groups = useMemo(() => {
+    if (!grouped) return [] as { status: LibraryStatus; items: CardItem[] }[];
+    const by = new Map<LibraryStatus, CardItem[]>();
+    for (const { c, x } of list) {
+      const b = by.get(x.status);
+      if (b) b.push(c);
+      else by.set(x.status, [c]);
+    }
+    return [...by].map(([status, items]) => ({ status, items }));
+  }, [grouped, list]);
+
+  const note = classifying ? (
+    <Text size={12} muted style={{ textAlign: "center", paddingVertical: 8 }}>{t.animeClassifying}</Text>
+  ) : null;
+  const wrap = (body: React.ReactNode) => (
+    <View style={{ flex: 1 }}>
+      {note}
+      {body}
+    </View>
+  );
+  if (data.isLoading) return wrap(<Skeleton cols={cols} cellW={cellW} />);
+  if (data.isError) return wrap(<Empty text={t.apiInternal} cta={t.errorRetry} onCta={() => void data.refetch()} />);
+  if (list.length === 0)
+    return wrap(
+      <Empty
+        text={q.trim() ? t.libSearchEmpty(q.trim()) : tab === "anime" ? t.libAnimeEmpty : t.libraryEmpty}
+        cta={q.trim() ? t.libSearchEmptyCta : tab === "anime" ? t.libAnimeEmptyCta : t.libraryEmptyCta}
+        onCta={() => {
+          if (q.trim()) {
+            onClearSearch();
+            return;
+          }
+          onLeave(tab === "anime" ? "/news?tab=anime" : "/news");
+        }}
+      />,
+    );
+  return wrap(
+    <ScrollView
+      contentContainerStyle={{ paddingHorizontal: PAGE_PAD, paddingTop: 12, paddingBottom: bottomPad, gap: 28 }}
+      showsVerticalScrollIndicator={false}
+      contentOffset={{ x: 0, y: memory.y[tab] ?? 0 }}
+      onScroll={(e) => { memory.y[tab] = e.nativeEvent.contentOffset.y; }}
+      scrollEventThrottle={64}
+    >
+      {/* D-954 — التلميحُ في رأس القائمة كما في `LibraryGrid` (فوق الشبكة، تحت
+          الأدوات)، **ولا يُرسم إن قُرئ في الحساب** — على أيِّ جهاز */}
+      {!(data.data?.hints ?? []).includes("library-hold") ? (
+        <OneTimeHint id="library-hold" text={t.longPressHint} />
+      ) : null}
+      {!grouped ? (
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: GAP }}>
+          {list.map(({ c }) => (
+            <PosterCard key={c.key} item={c} width={cellW} onPress={onOpen} onHold={onHold} />
+          ))}
+        </View>
+      ) : null}
+      {groups.map((g) => {
+        const isOpen = open.has(g.status);
+        const solo = g.items.length === 1;
+        const toggle = () =>
+          setOpen((prev) => {
+            const next = new Set(prev);
+            if (next.has(g.status)) next.delete(g.status);
+            else next.add(g.status);
+            return next;
+          });
+        return (
+          <View key={g.status}>
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 2 }}>
+              <Pressable onPress={toggle} hitSlop={6}>
+                <Text size={22} weight="700">{statusLabel(g.status, t)}</Text>
+              </Pressable>
+              <Pressable onPress={toggle} hitSlop={8}>
+                <Text size={12} muted style={{ fontVariant: ["tabular-nums"] }}>
+                  {isOpen ? t.closeLabel : String(g.items.length)}
+                </Text>
+              </Pressable>
+            </View>
+            <View style={{ height: 4 }} />
+            {isOpen ? (
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: GAP }}>
+                {g.items.map((it) => (
+                  <PosterCard key={it.key} item={it} width={cellW} onPress={onOpen} onHold={onHold} />
+                ))}
+              </View>
+            ) : solo ? (
+              <PosterCard item={g.items[0]} width={RAIL_W} onPress={onOpen} onHold={onHold} />
+            ) : (
+              <FlatList
+                horizontal
+                data={g.items}
+                keyExtractor={(it) => it.key}
+                renderItem={({ item }) => <PosterCard item={item} width={RAIL_W} onPress={onOpen} onHold={onHold} />}
+                showsHorizontalScrollIndicator={false}
+                /* `-mx-4 px-4`: الصفُّ يلامس حافّةَ الشاشة ويبدأ من الهامش */
+                style={{ marginHorizontal: -PAGE_PAD }}
+                contentContainerStyle={{ paddingHorizontal: PAGE_PAD, gap: GAP, paddingBottom: 4 }}
+                initialNumToRender={6}
+                windowSize={5}
+              />
+            )}
+          </View>
+        );
+      })}
+    </ScrollView>,
   );
 }
 

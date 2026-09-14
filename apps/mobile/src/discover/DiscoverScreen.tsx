@@ -40,7 +40,8 @@ type Tab = "shows" | "movies" | "anime" | "lists";
 const HEADER_H = 64;
 const PAGE_PAD = 16;
 const GAP = 12;
-const memory: { tab: Tab; y: number } = { tab: "shows", y: 0 };
+/* D-965 — موضعُ التمرير لكلِّ تبويب: الجارُ المسلَّح يُرسم بموضعه هو */
+const memory: { tab: Tab; y: Partial<Record<Tab, number>> } = { tab: "shows", y: {} };
 
 /** ترتيبُ الصفوف كما في `CuratedRails` للحالة الافتراضيّة */
 const RAILS: Record<CuratedTab, CuratedRailKey[]> = {
@@ -126,15 +127,7 @@ export function DiscoverScreen() {
   const tabsOrder: Tab[] = ["shows", "movies", "anime", "lists"];
   const goTab = useCallback((next: Tab) => setTab(next), []);
 
-  /* C2 — الصفوفُ الشخصيّة في ردٍّ واحد؛ «لا صفَّ بلا شيءٍ يقوله» (D-219) */
-  const railTab: CuratedTab = tab === "lists" ? "shows" : tab;
-  const personal = useQuery({
-    queryKey: ["discover:personal", railTab] as const,
-    queryFn: async () => (await api<PersonalRailsPayload>(`/api/v1/discover/personal?tab=${railTab}`)).data,
-    staleTime: 5 * 60_000,
-    enabled: tab !== "lists",
-  });
-  const ps = personal.data;
+  /* الصفوفُ الشخصيّة والمنسَّقة صارت في `DiscoverPane` (D-965): لوحٌ لكلِّ تبويب */
 
   const tabLabel = (k: Tab) =>
     k === "shows" ? t.discoverTabShows : k === "movies" ? t.discoverTabMovies : k === "anime" ? t.discoverTabAnime : t.discoverTabLists;
@@ -171,43 +164,23 @@ export function DiscoverScreen() {
         })}
       </View>
 
-      {/* ⚖️ D-961 — اللوحُ ينزلق، وهيكلُ الجار يلوح تحت الإصبع (الفجوةُ في رأس `TabSlide`) */}
-      <TabSlide order={tabsOrder} tab={tab} onTab={goTab} peek={<RailsSkeleton pad={navH + 24} />}>
-        <ScrollView
-          contentContainerStyle={{ paddingTop: 12, paddingBottom: navH + 24, gap: 24 }}
-          showsVerticalScrollIndicator={false}
-          contentOffset={{ x: 0, y: memory.y }}
-          onScroll={(e) => { memory.y = e.nativeEvent.contentOffset.y; }}
-          scrollEventThrottle={64}
-        >
-          {tab === "lists" ? <ListsRails onOpenWeb={leaveTo} /> : null}
-          {/* رقاقاتُ الفلاتر المحفوظة — كما `SavedFiltersRow`: تفتح `/news?<q>&tab=` باباً */}
-          {tab !== "lists" && ps && ps.filters.length > 0 ? (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: PAGE_PAD, gap: 8 }}>
-              {ps.filters.map((f) => (
-                <Chip key={f.q} label={f.name} active={false} onPress={() => leaveTo(`/news?${f.q}&tab=${tab}`)} />
-              ))}
-            </ScrollView>
-          ) : null}
-          {/* D-958 — صفُّ التريلرات أوّلاً كما في الصفحة (قبل `PersonalRails`)؛ المشغّلُ بابٌ ويبيّ (C3) */}
-          {tab !== "lists" ? <TrailersRail tab={tab} onOpenWeb={leaveTo} onOpenTitle={(c) => router.push({ pathname: "/title/[kind]/[id]", params: { kind: c.kind, id: String(c.id), from: "discover" } })} onError={onError} /> : null}
-          {/* ترتيبُ `PersonalRails`: مقترحٌ لك · صفوفي · (السينما) · من فنّانيك · ثمّ الباقي */}
-          {tab !== "lists" && ps && ps.foryou.length > 0 ? (
-            <CardsRail title={t.suggestedForYou} icon="sparkle-star" items={ps.foryou} ranked={false} marks={marks} onOpen={openCard} notes />
-          ) : null}
-          {tab !== "lists" ? ps?.myrows.map((m) => (
-            <CardsRail key={`myrow-${m.key}`} title={m.title} icon="sparkle-star" items={m.items} ranked={false} marks={marks} onOpen={openCard} seeAll={m.see_all} onSeeAll={leaveTo} />
-          )) : null}
-          {tab !== "lists" ? RAILS[tab].map((key, i) => (
-            <React.Fragment key={`${tab}-${key}`}>
-              <Rail tab={tab} railKey={key} marks={marks} onOpen={openCard} onSeeAll={leaveTo} ar={ar} />
-              {i === 0 && ps && ps.artists.length > 0 ? (
-                <CardsRail title={t.artistsRail} icon="people" items={ps.artists} ranked={false} marks={marks} onOpen={openCard} seeAll={ps.artists_see_all} onSeeAll={leaveTo} />
-              ) : null}
-            </React.Fragment>
-          )) : null}
-        </ScrollView>
-      </TabSlide>
+      {/* ⚖️ D-961 → D-965 — اللوحُ ينزلق، **والجارُ يُرسم حيّاً** تحت الإصبع لحظةَ قفل السحب */}
+      <TabSlide
+        order={tabsOrder}
+        tab={tab}
+        onTab={goTab}
+        render={(k) => (
+          <DiscoverPane
+            tab={k}
+            marks={marks}
+            bottomPad={navH + 24}
+            ar={ar}
+            onOpen={openCard}
+            onLeave={leaveTo}
+            onError={onError}
+          />
+        )}
+      />
       {/* D-961 — الشريطُ الخماسيُّ كما في كلِّ صفحةٍ ويبيّة؛ «اكتشف» هي الخانةُ المضيئة */}
       <BottomNav
         active="news"
@@ -231,26 +204,76 @@ export function DiscoverScreen() {
 }
 
 /**
- * هيكلُ لوحٍ قادم — يلوح تحت الإصبع في أثناء السحب (D-961). **هو هيكلُ الصفّ
- * نفسُه المرسومُ في `Rail` عند التحميل** (سطرٌ ورفٌّ من صناديق `surface-2`) —
- * **ولا هيكلَ ثانٍ بشكلٍ ثانٍ**: ما يراه الإصبعُ في الانتقال هو ما يراه بعده
- * حتى تصل البيانات.
+ * لوحُ تبويبٍ — D-965. **كلُّ ما يخصّ تبويباً واحداً يعيش هنا** (الصفوفُ الشخصيّة
+ * والمنسَّقة وموضعُ التمرير) ليستطيع `TabSlide` رسمَ لوحين جنباً إلى جنب في أثناء
+ * السحب. **نداءاتُ الجار تُطلق لحظةَ تركيبه** (قفلُ الإيماءة — تسليحُ D-523)،
+ * وكلُّ صفٍّ يحمل هيكلَه الخاصّ (`Rail`) فيبدو اللوحُ مبنيّاً وتمتلئ صفوفُه تباعاً؛
+ * و`staleTime` يجعل الزيارةَ التالية فوريّة.
  */
-function RailsSkeleton({ pad }: { pad: number }) {
-  const { tokens } = useApp();
+function DiscoverPane({
+  tab,
+  marks,
+  bottomPad,
+  ar,
+  onOpen,
+  onLeave,
+  onError,
+}: {
+  tab: Tab;
+  marks: Map<string, LibMark>;
+  bottomPad: number;
+  ar: boolean;
+  onOpen: (c: CuratedCard) => void;
+  onLeave: (path: string) => void;
+  onError: (e: unknown) => void;
+}) {
+  const { t } = useApp();
+  const router = useRouter();
+  /* C2 — الصفوفُ الشخصيّة في ردٍّ واحد؛ «لا صفَّ بلا شيءٍ يقوله» (D-219) */
+  const railTab: CuratedTab = tab === "lists" ? "shows" : tab;
+  const personal = useQuery({
+    queryKey: ["discover:personal", railTab] as const,
+    queryFn: async () => (await api<PersonalRailsPayload>(`/api/v1/discover/personal?tab=${railTab}`)).data,
+    staleTime: 5 * 60_000,
+    enabled: tab !== "lists",
+  });
+  const ps = personal.data;
+  const lists = tab === "lists";
   return (
-    <View style={{ flex: 1, paddingTop: 12, gap: 24, paddingBottom: pad }}>
-      {Array.from({ length: 3 }, (_, r) => (
-        <View key={r}>
-          <View style={{ height: 22, marginHorizontal: PAGE_PAD, marginBottom: 10, width: 160, borderRadius: 6, backgroundColor: tokens.surface2 }} />
-          <View style={{ flexDirection: "row", gap: GAP, paddingHorizontal: PAGE_PAD }}>
-            {Array.from({ length: 4 }, (_, i) => (
-              <View key={i} style={{ width: RAIL_CARD_W, aspectRatio: 2 / 3, borderRadius: 12, backgroundColor: tokens.surface2 }} />
-            ))}
-          </View>
-        </View>
-      ))}
-    </View>
+    <ScrollView
+      contentContainerStyle={{ paddingTop: 12, paddingBottom: bottomPad, gap: 24 }}
+      showsVerticalScrollIndicator={false}
+      contentOffset={{ x: 0, y: memory.y[tab] ?? 0 }}
+      onScroll={(e) => { memory.y[tab] = e.nativeEvent.contentOffset.y; }}
+      scrollEventThrottle={64}
+    >
+      {lists ? <ListsRails onOpenWeb={onLeave} /> : null}
+      {/* رقاقاتُ الفلاتر المحفوظة — كما `SavedFiltersRow`: تفتح `/news?<q>&tab=` باباً */}
+      {!lists && ps && ps.filters.length > 0 ? (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: PAGE_PAD, gap: 8 }}>
+          {ps.filters.map((f) => (
+            <Chip key={f.q} label={f.name} active={false} onPress={() => onLeave(`/news?${f.q}&tab=${tab}`)} />
+          ))}
+        </ScrollView>
+      ) : null}
+      {/* D-958 — صفُّ التريلرات أوّلاً كما في الصفحة (قبل `PersonalRails`)؛ المشغّلُ بابٌ ويبيّ (C3) */}
+      {!lists ? <TrailersRail tab={tab} onOpenWeb={onLeave} onOpenTitle={(c) => router.push({ pathname: "/title/[kind]/[id]", params: { kind: c.kind, id: String(c.id), from: "discover" } })} onError={onError} /> : null}
+      {/* ترتيبُ `PersonalRails`: مقترحٌ لك · صفوفي · (السينما) · من فنّانيك · ثمّ الباقي */}
+      {!lists && ps && ps.foryou.length > 0 ? (
+        <CardsRail title={t.suggestedForYou} icon="sparkle-star" items={ps.foryou} ranked={false} marks={marks} onOpen={onOpen} notes />
+      ) : null}
+      {!lists ? ps?.myrows.map((m) => (
+        <CardsRail key={`myrow-${m.key}`} title={m.title} icon="sparkle-star" items={m.items} ranked={false} marks={marks} onOpen={onOpen} seeAll={m.see_all} onSeeAll={onLeave} />
+      )) : null}
+      {!lists ? RAILS[tab].map((key, i) => (
+        <React.Fragment key={`${tab}-${key}`}>
+          <Rail tab={tab} railKey={key} marks={marks} onOpen={onOpen} onSeeAll={onLeave} ar={ar} />
+          {i === 0 && ps && ps.artists.length > 0 ? (
+            <CardsRail title={t.artistsRail} icon="people" items={ps.artists} ranked={false} marks={marks} onOpen={onOpen} seeAll={ps.artists_see_all} onSeeAll={onLeave} />
+          ) : null}
+        </React.Fragment>
+      )) : null}
+    </ScrollView>
   );
 }
 

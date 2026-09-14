@@ -1,28 +1,31 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Animated, Easing, I18nManager, PanResponder, useWindowDimensions, View, type ViewStyle } from "react-native";
 
 /**
- * ====== انزلاقُ التبويبات — D-961 (١٤ سبتمبر ٢٠٢٦) ======
+ * ====== انزلاقُ التبويبات — D-961 → D-965 (١٤ سبتمبر ٢٠٢٦) ======
  *
- * **بلاغُ أحمد بتسجيل**: «اجعل الموشن في التنقّل بين الأفلام والمسلسلات… داخل
- * المكتبة واكتشف مثل التنقّل في المجتمع». **والفرقُ في التسجيل ظاهرٌ بالعين**:
- * تبويبا المجتمع (ويب) ينزلقان تحت الإصبع (`TabPager` — D-522 → D-533)،
- * **والشاشتان الأصليّتان تُبدّلان المحتوى بلا حركةٍ أصلاً** — السحبُ يعمل منذ
- * D-953 لكنّه **قفزةٌ لا انتقال**.
+ * **بلاغُ أحمد بتسجيل** (D-961): «اجعل الموشن في التنقّل بين الأفلام والمسلسلات…
+ * داخل المكتبة واكتشف مثل التنقّل في المجتمع». **ثمّ بتسجيلٍ ثانٍ** (D-965):
+ * «أنا رايح للشيء أشوف الأشياء اللي موجودة فيه قبل ما أروح فيه — انتقال سلس»:
+ * الجارُ الهيكليُّ الرماديُّ الذي رسمته D-961 تحت الإصبع ليس ما يراه في المجتمع.
+ *
+ * 🔑 **الوصفةُ وصفةُ `TabPager` الويب حرفاً** (D-522 → D-533): **ألواحٌ جنباً إلى
+ * جنب، كلُّ لوحٍ بمفتاحه الثابت في موضعه** `(idx − activeIdx) × width`، والجارُ
+ * **يُركَّب لحظةَ قفل الإيماءة** (تسليحُ D-523: لا قبل أن يسأل الإصبع) ويُنزع عند
+ * الاستقرار. **وعند القلب يبقى اللوحُ الجديد بعنصره نفسِه** — يتبدّل موضعُه من
+ * `±width` إلى `0` والمسارُ يعود إلى `0` في اللحظة نفسِها — **فلا إعادةَ تركيبٍ
+ * ولا وميضَ صور** (درسُ D-526). والضغطةُ على تبويبٍ تكسب أيضاً: القديمُ يخرج
+ * والجديدُ يدخل **معاً**، لا يختفي القديمُ فوراً كما كان.
+ *
+ * ⚖️ **الثمن معلَن**: لوحان مركّبان في أثناء السحب أو الطيران فقط؛ بعد
+ * الاستقرار لوحٌ واحد. **والقياسُ (A0) لم يُؤخذ بعد** — إن ثقُل السحب فالتراجعُ
+ * أن يرسم `render` هيكلاً لغير النشط.
  *
  * 🔑 **والأرقامُ أرقامُ `TabPager` نفسُها لا اجتهادٌ ثانٍ** (D-145): `FLY_MS`
  * ٥٢٠ · `SNAP_MS` ٣٦٠ · `cubic-bezier(.32,.72,0,1)` — **مضبوطةٌ على هاتف أحمد
  * ولا تُعاد معايرتُها من حاسوب** (تحذيرُ `06` في موضعه). وعتباتُ الالتقاط
  * (٢٠px قبل السؤال · ١٫٦ ميلاً · ٥٦px أو ٠٫٤ سرعةً للحسم) **هي عتباتُ D-953
  * حرفاً** — الآليّةُ التي أثبتت أنّها لا تسرق سحبَ الصفوف الأفقيّة.
- *
- * ⚖️ **وما يفترق فيه عن الويب، ويُكتب فجوةً لا يُدَّعى** (D-063): **الويبُ
- * يُسلّح الجارَ عند قفل الإيماءة** (D-523) فيراه الإصبعُ محتوًى كاملاً؛ **وهنا
- * الجارُ هيكلٌ** (`peek`) لأنّ محتوى التبويب الأصليَّ لا يُبنى إلّا بنداءاته —
- * **ومَن يبني لوحين كاملين في شاشةٍ واحدةٍ يدفع ثمنَ ذلك في الأداء** (Phase 11،
- * والقياسُ A0 لم يُؤخذ بعد). **فالمعروضُ تحت الإصبع بنيةُ اللوح القادم، ومحتواه
- * يحلّ محلَّها لحظةَ الاستقرار.** ومن أراد الجارَ حيّاً فذاك تقسيمُ الشاشتين إلى
- * ألواحٍ لكلِّ تبويب — جولةٌ مستقلّةٌ تُطلب.
  *
  * 🔑 **والضغطةُ على تبويبٍ تنزلق أيضاً**: التغييرُ من الخارج (`tab` تتبدّل)
  * يدخل اللوحَ الجديد من جهة اتّجاهه — **وإلّا كان السحبُ يتحرّك والضغطُ يقفز،
@@ -43,25 +46,29 @@ export function TabSlide<K extends string>({
   order,
   tab,
   onTab,
-  peek,
+  render,
   style,
-  children,
 }: {
   /** مفاتيحُ التبويبات بترتيب ظهورها — المخفيُّ لا يُذكر فلا يُزار */
   order: readonly K[];
   tab: K;
   onTab: (next: K) => void;
-  /** هيكلُ اللوح القادم يُرسم تحت الإصبع (انظر الفجوةَ في رأس الملفّ) */
-  peek?: React.ReactNode;
+  /** لوحُ تبويبٍ — يُنادى للنشط، وللجار حين يُسلَّح، وللقديم في أثناء خروجه */
+  render: (key: K) => React.ReactNode;
   style?: ViewStyle;
-  children: React.ReactNode;
 }) {
   const { width } = useWindowDimensions();
   /* الاتّجاهُ فيزيائيٌّ لا لغويّ: «التالي» في جهة النهاية — يساراً في LTR ويميناً في RTL */
   const phys = I18nManager.isRTL ? -1 : 1;
   const x = useRef(new Animated.Value(0)).current;
-  const [peeking, setPeeking] = useState<0 | 1 | -1>(0);
-  const peekRef = useRef<0 | 1 | -1>(0);
+  /** اللوحُ الثاني المركّب بجانب النشط (جارٌ مسلَّح أو قديمٌ يخرج) — واحدٌ لا أكثر */
+  const [side, setSide] = useState<K | null>(null);
+  const sideRef = useRef<K | null>(null);
+  const mount = useCallback((k: K | null) => {
+    if (sideRef.current === k) return;
+    sideRef.current = k;
+    setSide(k);
+  }, []);
   /* آلةُ حالاتٍ أمريّة: المستجيبُ يُبنى مرّةً ويقرأ الحالةَ من مرجعٍ حيّ (عُرفُ D-953) */
   const busy = useRef(false);
   const skip = useRef(false);
@@ -81,11 +88,6 @@ export function TabSlide<K extends string>({
     [x],
   );
 
-  const clearPeek = useCallback(() => {
-    peekRef.current = 0;
-    setPeeking(0);
-  }, []);
-
   const pan = useMemo(
     () =>
       PanResponder.create({
@@ -95,12 +97,10 @@ export function TabSlide<K extends string>({
           const s = st.current;
           const i = s.order.indexOf(s.tab);
           const dir: 1 | -1 = g.dx * s.phys < 0 ? 1 : -1;
-          const has = i >= 0 && !!s.order[i + dir];
-          if (has && peekRef.current !== dir) {
-            peekRef.current = dir;
-            setPeeking(dir);
-          }
-          x.setValue(has ? Math.max(-s.width, Math.min(s.width, g.dx)) : g.dx * RUBBER);
+          const next = i >= 0 ? s.order[i + dir] : undefined;
+          /* التسليحُ عند القفل (D-523): الجارُ يُركَّب حيّاً أوّلَ ما يسأل الإصبع عنه */
+          if (next) mount(next);
+          x.setValue(next ? Math.max(-s.width, Math.min(s.width, g.dx)) : g.dx * RUBBER);
         },
         onPanResponderRelease: (_, g) => {
           const s = st.current;
@@ -108,48 +108,68 @@ export function TabSlide<K extends string>({
           const dir: 1 | -1 = g.dx * s.phys < 0 ? 1 : -1;
           const next = i >= 0 ? s.order[i + dir] : undefined;
           if (next && (Math.abs(g.dx) >= COMMIT_DX || Math.abs(g.vx) >= COMMIT_VX)) {
-            /* الطيرانُ ثمّ القلب: **اللوحُ يخرج كاملاً قبل أن يتبدّل**، وإلّا رأى القارئُ
-               محتوى التبويبين في إطارٍ واحد (درسُ D-526: القلبُ على نهاية الحركة). */
+            /* الطيرانُ ثمّ القلب: **اللوحُ يخرج كاملاً قبل أن يتبدّل** (درسُ D-526).
+               القلبُ يبدّل مواضعَ الألواح ويعيد المسارَ إلى الصفر في تأثيرٍ واحد
+               قبل الرسم (انظر `useLayoutEffect` أدناه) — فلا إطارَ يُرى فيه لوحان. */
             rest(-dir * s.phys * s.width, FLY_MS, () => {
               skip.current = true;
               onTabRef.current(next);
-              x.setValue(0);
-              clearPeek();
             });
             return;
           }
-          rest(0, SNAP_MS, clearPeek);
+          rest(0, SNAP_MS, () => mount(null));
         },
-        onPanResponderTerminate: () => rest(0, SNAP_MS, clearPeek),
+        onPanResponderTerminate: () => rest(0, SNAP_MS, () => mount(null)),
       }),
-    [x, rest, clearPeek],
+    [x, rest, mount],
   );
 
-  /* الضغطةُ على تبويبٍ (أو أيُّ تبديلٍ من الخارج) تدخل اللوحَ من جهته */
+  /* تبدّلُ `tab`: من سحبٍ مكتمل ⇒ استقرارٌ صامت؛ من ضغطةٍ ⇒ القديمُ يخرج والجديدُ يدخل معاً */
   const prev = useRef(tab);
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (prev.current === tab) return;
-    const from = order.indexOf(prev.current);
-    const to = order.indexOf(tab);
+    const old = prev.current;
     prev.current = tab;
     if (skip.current) {
       skip.current = false;
+      x.setValue(0);
+      mount(null);
       return;
     }
-    if (from < 0 || to < 0) return;
-    x.setValue((to > from ? 1 : -1) * phys * width);
-    Animated.timing(x, { toValue: 0, duration: FLY_MS, easing: EASE, useNativeDriver: true }).start();
-  }, [tab, order, phys, width, x]);
+    const from = order.indexOf(old);
+    const to = order.indexOf(tab);
+    if (from < 0 || to < 0) {
+      mount(null);
+      return;
+    }
+    mount(old);
+    x.setValue((to - from > 0 ? 1 : -1) * phys * width);
+    rest(0, FLY_MS, () => mount(null));
+  }, [tab, order, phys, width, x, rest, mount]);
+
+  /* اللوحُ الجانبيُّ لا يبقى إن خرج تبويبُه من الترتيب (تبويبٌ أُخفي) */
+  useEffect(() => {
+    if (side && !order.includes(side)) mount(null);
+  }, [side, order, mount]);
+
+  const active = order.indexOf(tab);
+  const panes: K[] = side && side !== tab ? [tab, side] : [tab];
 
   return (
     <View style={[{ flex: 1, overflow: "hidden" }, style]} {...pan.panHandlers}>
       <Animated.View style={{ flex: 1, transform: [{ translateX: x }] }}>
-        {children}
-        {peeking !== 0 && peek ? (
-          <View pointerEvents="none" style={{ position: "absolute", top: 0, bottom: 0, width, left: peeking * phys * width }}>
-            {peek}
-          </View>
-        ) : null}
+        {panes.map((k) => {
+          const off = (order.indexOf(k) - active) * phys * width;
+          const on = k === tab;
+          return (
+            <View
+              key={k}
+              style={{ position: "absolute", top: 0, bottom: 0, width, left: off, pointerEvents: on ? "auto" : "none" }}
+            >
+              {render(k)}
+            </View>
+          );
+        })}
       </Animated.View>
     </View>
   );
