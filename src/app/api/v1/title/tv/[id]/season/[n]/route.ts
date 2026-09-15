@@ -52,6 +52,7 @@ export async function GET(
       };
       return ok(payload);
     },
-    { cacheControl: "private, max-age=120" },
+    /* D-986 — يحمل `watched`: لا يُخزَّن (انظر مسارَ العمل) */
+    { cacheControl: "private, no-store" },
   );
 }

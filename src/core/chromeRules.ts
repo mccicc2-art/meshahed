@@ -50,11 +50,8 @@ export function allowsPullToRefresh(pathname: string): boolean {
  */
 export function allowsAutoHideChrome(pathname: string): boolean {
   return !(
-    /* 🔴 D-985 — **صفحةُ التريلرات: الدوكُ ثابتٌ لا يتوارى** (بلاغُ أحمد بتسجيل على 1.8.6:
-       «أضغط الرئيسيّة لكن يشغّل الفيديو»): الخلاصةُ تتقدّم بنفسها إلى البطاقة التالية
-       (`TrailerPlaybackController`) وتمريرُها البرمجيُّ يهبط بالدوك تحت الحافّة — فتصل
-       الضغطةُ المقصودةُ للدوك إلى الفيديو الذي حلّ مكانه. فوق فيديو يعمل الدوكُ مخرجٌ لا زينة. */
-    pathname === "/trailers" ||
+    /* ⚖️ D-985 نُقضت في اليوم نفسِه (طلبُ أحمد: «الدوك في التريلرات يختفي بالنزول ويرجع
+       بالصعود مثل باقي الأماكن») — التريلراتُ تتبع القاعدةَ العامّة، ولا استثناءَ هنا. */
     pathname === "/profile/edit" ||
     pathname === "/login" ||
     pathname === "/welcome" ||

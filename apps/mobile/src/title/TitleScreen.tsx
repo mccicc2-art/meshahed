@@ -150,6 +150,10 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
   });
   const showWatched = useMutation({
     mutationFn: () => write<{ added?: unknown[] }>("/api/v1/track/show-watched", { showTmdbId: id } satisfies ShowRefBody),
+    /* D-986 — تفاؤلٌ هنا أيضاً: تعليمُ مسلسلٍ بمئات الحلقات يكتبها كلَّها على الخادم (ثوانٍ)،
+       والزرُّ الذي يدور بلا أثرٍ يُقرأ تعليقاً (بلاغُ أحمد: «ضغطت مشاهدة يعلق»). العدّادُ يمتلئ
+       فوراً، والحقيقةُ تصل مع `settle` — التي لم تعد تكذب بعد `no-store`. */
+    onMutate: () => patchMe((me) => (d?.kind === "tv" && "watched_count" in me ? { following: true, watched_count: d.aired_total } : { following: true }) as Partial<TitlePayload["me"]>),
     onSuccess: (r) => {
       setToast(Array.isArray(r?.added) && r.added.length ? t.watchedMarkedCount(r.added.length) : t.watchedMarked);
       settle();

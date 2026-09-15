@@ -120,6 +120,7 @@ export function TrailerPlayer({
   onExhausted,
   idle = false,
   onWake,
+  overlay = false,
 }: {
   /** بدائلُ المقطع مرتّبةً (D-743) — الأوّلُ هو المعروض، وما بعده يُجرَّب عند الرفض */
   videoKeys: readonly string[];
@@ -155,6 +156,8 @@ export function TrailerPlayer({
    */
   idle?: boolean;
   onWake?: () => void;
+  /** D-987 — المشغّلُ طبقةٌ فوق مصغّرةٍ ثابتة في البطاقة: يُوضع فوقها بلا خلفيّةٍ سوداء ولا سِترٍ من صورة */
+  overlay?: boolean;
 }) {
   const { t, tokens } = useApp();
   const ref = useRef<YoutubeIframeRef | null>(null);
@@ -302,7 +305,7 @@ export function TrailerPlayer({
   const pct = dur > 0 ? Math.max(0, Math.min(1, at / dur)) : 0;
 
   return (
-    <View style={{ width, height, backgroundColor: "#000", overflow: "hidden" }}>
+    <View style={overlay ? { position: "absolute", top: 0, left: 0, width, height, overflow: "hidden" } : { width, height, backgroundColor: "#000", overflow: "hidden" }}>
       {dead ? null : (
       <Player
         ref={ref}
@@ -380,7 +383,7 @@ export function TrailerPlayer({
       {/* السِّترُ — الصورةُ نفسُها التي كانت على البطاقة، فلا وميضَ عند التحوّل */}
       {veiled ? (
         <View style={[StyleSheet.absoluteFill, { alignItems: "center", justifyContent: "center" }]} pointerEvents="none">
-          {poster ? <Image source={{ uri: poster }} style={StyleSheet.absoluteFill} contentFit="cover" /> : null}
+          {poster && !overlay ? <Image source={{ uri: poster }} style={StyleSheet.absoluteFill} contentFit="cover" /> : null}
           <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: "rgba(0,0,0,0.6)", alignItems: "center", justifyContent: "center" }}>
             {slow && wantPlay && !idle && !dead ? <ActivityIndicator color="#fff" /> : <Icon name="play" size={24} color="#fff" />}
           </View>

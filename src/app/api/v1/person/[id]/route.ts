@@ -68,6 +68,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
       };
       return ok(payload);
     },
-    { cacheControl: "private, max-age=120" },
+    /* D-986 — يحمل `me.following`: لا يُخزَّن */
+    { cacheControl: "private, no-store" },
   );
 }

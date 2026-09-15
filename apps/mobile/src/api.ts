@@ -90,6 +90,10 @@ async function baseHeaders(auth: boolean): Promise<Record<string, string>> {
   const headers: Record<string, string> = {
     Accept: "application/json",
     "Accept-Language": currentLocale(),
+    /* D-986 — حزامٌ ثانٍ من جهة الهاتف: OkHttp يملك كاشاً قرصيّاً يحترم `max-age`، فقراءةٌ بعد
+       كتابةٍ كانت تعود قديمة (تابع ثمّ يرتدّ). `no-cache` يجبره على سؤال الخادم كلَّ مرّة؛
+       والكاشُ الحقيقيّ عندنا هو `react-query` لا HTTP. */
+    "Cache-Control": "no-cache",
   };
   if (auth) {
     /* الجسرُ أوّلاً (Phase 11 · B1)؛ وجلسةُ الدخول العابرةُ سقوطٌ لا يكاد يُبلغ */

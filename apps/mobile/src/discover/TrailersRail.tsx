@@ -169,6 +169,14 @@ export function TrailersRail({
           const isAdded = added.has(id);
           return (
             <View style={{ width: cardW, borderRadius: radius.card, overflow: "hidden", backgroundColor: tokens.surface, borderWidth: 1, borderColor: tokens.border }}>
+              {/* 🔴 D-987 — **المصغّرةُ تحت كلِّ شيءٍ دائماً** (بلاغُ أحمد بتسجيل على 1.8.7: «إذا لفّيت
+                  للإعلان الآخر فيه رمشة»): تبديلُ البطاقة بين «عاديّة» و«محمّاة» كان يفكّك صورتَها
+                  ويركّب مشغّلاً خلفيّتُه سوداء وسِترُه صورةٌ تُفكّ من جديد — إطارٌ أسودُ في كلِّ
+                  انزلاق. الصورةُ الآن طبقةٌ ثابتةٌ في البطاقة لا تُمسّ، والمشغّلُ شفّافٌ فوقها حتى
+                  يثبت رسمُه. */}
+              <View style={{ width: "100%", aspectRatio: 16 / 9, backgroundColor: tokens.surface2 }}>
+                <Image source={{ uri: thumbOf(item) }} style={StyleSheet.absoluteFill} contentFit="cover" transition={0} recyclingKey={id} />
+              </View>
               {live === id || warmId === id ? (
                 /* D-959 — المشغّلُ الأصليُّ في مكان الصورة، بالمصغّرة نفسِها سِتراً فلا وميض؛
                    D-971 — والبطاقةُ الظاهرةُ تحمله خاملاً قبل الضغط */
@@ -176,6 +184,7 @@ export function TrailersRail({
                   videoKeys={item.video_keys?.length ? item.video_keys : [item.video_key]}
                   width={cardW}
                   poster={thumbOf(item)}
+                  overlay
                   label={item.title}
                   idle={live !== id}
                   onWake={() => open(id)}
@@ -191,8 +200,7 @@ export function TrailersRail({
               ) : (
                 /* D-982 — بطاقةٌ غيرُ محمّاة: الضغطةُ تركّب مشغّلَها خاملاً (لا حيّاً) فتصل
                    اللمسةُ التالية إلى الإطار نفسِه — تشغيلٌ برمجيٌّ من هنا كان يقف عند 0:00 */
-                <Pressable onPress={() => setWarm(id)} accessibilityLabel={`${t.trailerPlay} — ${item.title}`} style={{ width: "100%", aspectRatio: 16 / 9, backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center" }}>
-                  <Image source={{ uri: thumbOf(item) }} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} recyclingKey={id} />
+                <Pressable onPress={() => setWarm(id)} accessibilityLabel={`${t.trailerPlay} — ${item.title}`} style={{ position: "absolute", top: 0, left: 0, right: 0, aspectRatio: 16 / 9, alignItems: "center", justifyContent: "center" }}>
                   {/* دائرةُ ▶ كما في `TrailerCardMedia` (`h-14 w-14 rounded-full bg-black/60`) */}
                   <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: "rgba(0,0,0,0.6)", alignItems: "center", justifyContent: "center" }}>
                     <Icon name="play" size={24} color="#fff" />
