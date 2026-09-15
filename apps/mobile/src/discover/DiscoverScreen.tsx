@@ -3,12 +3,14 @@ import { ActivityIndicator, Animated, BackHandler, FlatList, Platform, Pressable
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
-import { api, ApiError, qk } from "../api";
+import { api, ApiError, qk, write } from "../api";
 import { useApp } from "../state";
 import { shell } from "../shell";
 import { Text, Toast } from "../ui";
 import { Icon } from "../icons";
 import { RailCard, RAIL_CARD_W, type LibMark } from "./RailCard";
+import { HoldMenu, type HoldAction } from "../library/HoldMenu";
+import type { CardAnchor, CardItem } from "../library/PosterCard";
 import { Chip } from "../library/Chip";
 import { ListsRails } from "./ListsRails";
 import { TrailersRail } from "./TrailersRail";
@@ -16,7 +18,7 @@ import { TabSlide } from "../TabSlide";
 import { useChromeHide } from "../ChromeHide";
 import { BottomNav, navHeight } from "../BottomNav";
 import { regionName } from "@/core/region";
-import type { CuratedCard, CuratedRailKey, CuratedRailPayload, CuratedTab, LibraryPayload, PersonalRailsPayload } from "../contracts";
+import type { CuratedCard, CuratedRailKey, CuratedRailPayload, CuratedTab, DismissBody, FollowBody, LibraryPayload, PersonalRailsPayload, ShowRefBody, ToggleMovieBody, UnfollowBody } from "../contracts";
 
 /**
  * ====== «اكتشف» أصليّةً — Phase 11-C · C1 (D-955) ======
@@ -122,6 +124,88 @@ export function DiscoverScreen() {
     return m;
   }, [lib.data]);
 
+  /**
+   * 🆕 D-978 — **الضغطُ المطوَّل على أيّ بطاقةٍ في «اكتشف»** (بلاغُ أحمد بلقطة: «في
+   * الويب إذا ضغطت مطوّلاً تظهر خيارات، في الأصليّة لا تظهر»): `HoldMenu` المكتبةِ
+   * نفسُها بصفوف `PosterHold` الويب — للمشاهدة · شاهدته كلّه · تعليقك · غير مهتمّ.
+   * **الحالةُ تفاؤليّة**: الخيطُ يتبدّل تحت الإصبع من طبقةٍ فوق كاش المكتبة
+   * (`overrides`)، والكتابةُ تُبطل `me:library` فتحلّ الحقيقةُ محلّ التفاؤل. «غير
+   * مهتمّ» يُخفي البطاقةَ فوراً (`hidden`) ويكتب في `dismissed_titles` عبر
+   * `/api/v1/track/dismiss`، ولا يُعرض في هذه الجلسة بعدها.
+   */
+  const [held, setHeld] = useState<{ card: CuratedCard; anchor: CardAnchor } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [overrides, setOverrides] = useState<Map<string, LibMark>>(() => new Map());
+  const [hidden, setHidden] = useState<ReadonlySet<string>>(() => new Set());
+  const hold = useCallback((card: CuratedCard, anchor: CardAnchor) => setHeld({ card, anchor }), []);
+  const act = useCallback(
+    async (a: HoldAction) => {
+      const h = held;
+      if (!h) return;
+      const c = h.card;
+      const key = `${c.kind}-${c.id}`;
+      if (a === "review") {
+        setHeld(null);
+        openCard(c);
+        return;
+      }
+      setHeld(null);
+      setBusy(true);
+      const before = overrides.get(key);
+      try {
+        if (a === "towatch") {
+          const inList = !!(overrides.has(key) ? overrides.get(key) : marks.get(key));
+          setOverrides((m) => new Map(m).set(key, inList ? null : { saved: true, progress: 0, completed: false, dropped: false }));
+          if (inList) await write<unknown>("/api/v1/track/unfollow", { tmdbId: c.id, mediaType: c.kind } satisfies UnfollowBody);
+          else await write<unknown>("/api/v1/track/follow", { tmdbId: c.id, mediaType: c.kind, title: c.title, posterPath: c.poster_path } satisfies FollowBody);
+        } else if (a === "all") {
+          setOverrides((m) => new Map(m).set(key, { saved: false, progress: 100, completed: true, dropped: false }));
+          if (c.kind === "tv") await write<unknown>("/api/v1/track/show-watched", { showTmdbId: c.id } satisfies ShowRefBody);
+          else await write<unknown>("/api/v1/track/movie", { movieTmdbId: c.id, runtime: null, watched: true } satisfies ToggleMovieBody);
+        } else if (a === "dismiss") {
+          setHidden((prev) => new Set(prev).add(key));
+          setToast(t.dismissedToast);
+          await write<unknown>("/api/v1/track/dismiss", { tmdbId: c.id, mediaType: c.kind } satisfies DismissBody);
+        }
+      } catch (e) {
+        /* التراجعُ عن التفاؤل عند الفشل — والبطاقةُ المخفيّةُ تعود */
+        setOverrides((m) => {
+          const next = new Map(m);
+          if (before === undefined) next.delete(key);
+          else next.set(key, before);
+          return next;
+        });
+        if (a === "dismiss")
+          setHidden((prev) => {
+            const next = new Set(prev);
+            next.delete(key);
+            return next;
+          });
+        onError(e);
+      } finally {
+        setBusy(false);
+      }
+    },
+    [held, overrides, marks, openCard, onError, t],
+  );
+  /** بطاقةُ القائمة بشكل `CardItem` — الحقولُ التي تقرؤها `HoldMenu` وحدَها */
+  const heldItem: CardItem | null = useMemo(() => {
+    if (!held) return null;
+    const c = held.card;
+    const k = `${c.kind}-${c.id}`;
+    const m = overrides.has(k) ? overrides.get(k) : marks.get(k);
+    return { key: `${c.kind}-${c.id}`, kind: c.kind, id: c.id, title: c.title, posterPath: c.poster_path, progress: m?.progress ?? 0, completed: !!m?.completed, dropped: !!m?.dropped };
+  }, [held, overrides, marks]);
+  const effectiveMarks = useMemo(() => {
+    if (overrides.size === 0) return marks;
+    const m = new Map(marks);
+    for (const [k, v] of overrides) {
+      if (v) m.set(k, v);
+      else m.delete(k);
+    }
+    return m;
+  }, [marks, overrides]);
+
   /* D-953 → ⚖️ D-961: السحبُ صار انزلاقاً — الإيماءةُ والعتباتُ انتقلت إلى
      `TabSlide` (مصنعٌ واحدٌ تقرؤه المكتبةُ و«اكتشف»)، **والترتيبُ هنا لأنّه
      ترتيبُ هذه الشاشة.** */
@@ -162,10 +246,8 @@ export function DiscoverScreen() {
     >
     <View>
       <View style={{ height: HEADER_H, borderBottomWidth: 1, borderBottomColor: tokens.border, alignItems: "center", justifyContent: "center" }}>
+        {/* ⚖️ D-980 — بلا سهمِ رجوع (انظر `LibraryScreen`): الشريطُ السفليّ هو المخرج */}
         <Text size={15} weight="700">{t.newsTitle}</Text>
-        <Pressable onPress={back} hitSlop={12} accessibilityLabel={t.closeLabel} style={{ position: "absolute", start: PAGE_PAD, top: 0, bottom: 0, justifyContent: "center" }}>
-          <Chevron color={tokens.fg} />
-        </Pressable>
         {/* الفلاترُ بابٌ ويبيٌّ — الورقةُ بمحاورها الثمانية تعيش في الويب وحدَه، و`filters=1` يفتحها من أوّل رسمة (C3) */}
         <Pressable
           onPress={() => leaveTo(`/news?tab=${tab}&filters=1`)}
@@ -198,10 +280,14 @@ export function DiscoverScreen() {
         order={tabsOrder}
         tab={tab}
         onTab={goTab}
-        render={(k) => (
+        render={(k, active) => (
           <DiscoverPane
             tab={k}
-            marks={marks}
+            active={active}
+            marks={effectiveMarks}
+            hidden={hidden}
+            heldKey={held ? `${held.card.kind}-${held.card.id}` : null}
+            onHold={hold}
             topPad={topH}
             bottomPad={bottomPad}
             onScroll={chrome.onScroll}
@@ -227,6 +313,17 @@ export function DiscoverScreen() {
       />
       </Animated.View>
       {toast ? <Toast text={toast} bottom={navH + 16} /> : null}
+      {held && heldItem ? (
+        <HoldMenu
+          variant="discover"
+          item={heldItem}
+          anchor={held.anchor}
+          busy={busy}
+          inList={!!effectiveMarks.get(`${held.card.kind}-${held.card.id}`)}
+          onAction={(a) => void act(a)}
+          onClose={() => setHeld(null)}
+        />
+      ) : null}
       {leaving ? (
         <View pointerEvents="auto" style={{ position: "absolute", inset: 0, alignItems: "center", justifyContent: "center" }}>
           <ActivityIndicator color={tokens.accent} />
@@ -243,9 +340,16 @@ export function DiscoverScreen() {
  * وكلُّ صفٍّ يحمل هيكلَه الخاصّ (`Rail`) فيبدو اللوحُ مبنيّاً وتمتلئ صفوفُه تباعاً؛
  * و`staleTime` يجعل الزيارةَ التالية فوريّة.
  */
+/** «مقترحٌ لك»: عشرةٌ في المرّة — `PAGE` في `PickedForYou` الويب */
+const PICKED_PAGE = 10;
+
 function DiscoverPane({
   tab,
+  active,
   marks,
+  hidden,
+  heldKey,
+  onHold,
   topPad,
   bottomPad,
   onScroll,
@@ -255,7 +359,14 @@ function DiscoverPane({
   onError,
 }: {
   tab: Tab;
+  /** هل هذا اللوحُ هو النشط؟ الجارُ المسلَّح يُرسم حيّاً لكنّه لا يحمّي مشغّلاً (D-975) */
+  active: boolean;
   marks: Map<string, LibMark>;
+  /** D-978 — بطاقاتٌ أُخفيت بـ«غير مهتمّ» في هذه الجلسة */
+  hidden: ReadonlySet<string>;
+  /** البطاقةُ المضغوطةُ مطوّلاً الآن (إطارٌ ذهبيّ) */
+  heldKey: string | null;
+  onHold: (c: CuratedCard, anchor: CardAnchor) => void;
   /** ارتفاعُ الرأس المطلق فوق اللوح (D-969) */
   topPad: number;
   bottomPad: number;
@@ -278,6 +389,31 @@ function DiscoverPane({
   });
   const ps = personal.data;
   const lists = tab === "lists";
+  /**
+   * 🆕 D-979 — **«اقتراحات أخرى» كما في الويب** (طلبُ أحمد: «في الويب فيه more picks،
+   * في الأصليّة ما فيه»): الردُّ يحمل البِركةَ كلَّها مخلوطةً (`personalRails`)، والصفُّ
+   * يعرض عشراً — والزرُّ يسحب عشراً عشوائيّةً من البِركة مستبعداً المعروضَ الآن ما
+   * دامت البِركةُ تسمح (وصفةُ `PickedForYou` حرفاً، D-064). **لا نداءَ للخادم**: البِركةُ
+   * عندنا، والنداءُ الثاني كان سيعيد الوجوهَ نفسَها بترتيبٍ آخر.
+   */
+  const [picked, setPicked] = useState<ReadonlySet<string> | null>(null);
+  const foryouPool = useMemo(() => (ps?.foryou ?? []).filter((c) => !hidden.has(`${c.kind}-${c.id}`)), [ps, hidden]);
+  const foryou = useMemo(
+    () => (picked === null ? foryouPool.slice(0, PICKED_PAGE) : foryouPool.filter((c) => picked.has(`${c.kind}-${c.id}`)).slice(0, PICKED_PAGE)),
+    [foryouPool, picked],
+  );
+  const morePicks = useCallback(() => {
+    const keyOf = (c: CuratedCard) => `${c.kind}-${c.id}`;
+    const current = new Set(foryou.map(keyOf));
+    const source = foryouPool.length > PICKED_PAGE * 2 ? foryouPool.filter((c) => !current.has(keyOf(c))) : foryouPool;
+    const arr = [...source];
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    setPicked(new Set(arr.slice(0, PICKED_PAGE).map(keyOf)));
+  }, [foryou, foryouPool]);
+  const railProps = { marks, hidden, heldKey, onHold, onOpen };
   return (
     <ScrollView
       contentContainerStyle={{ paddingTop: topPad + 12, paddingBottom: bottomPad, gap: 24 }}
@@ -296,19 +432,28 @@ function DiscoverPane({
         </ScrollView>
       ) : null}
       {/* D-958 — صفُّ التريلرات أوّلاً كما في الصفحة (قبل `PersonalRails`)؛ المشغّلُ بابٌ ويبيّ (C3) */}
-      {!lists ? <TrailersRail tab={tab} onOpenWeb={onLeave} onOpenTitle={(c) => router.push({ pathname: "/title/[kind]/[id]", params: { kind: c.kind, id: String(c.id), from: "discover" } })} onError={onError} /> : null}
+      {!lists ? <TrailersRail tab={tab} active={active} onOpenWeb={onLeave} onOpenTitle={(c) => router.push({ pathname: "/title/[kind]/[id]", params: { kind: c.kind, id: String(c.id), from: "discover" } })} onError={onError} /> : null}
       {/* ترتيبُ `PersonalRails`: مقترحٌ لك · صفوفي · (السينما) · من فنّانيك · ثمّ الباقي */}
-      {!lists && ps && ps.foryou.length > 0 ? (
-        <CardsRail title={t.suggestedForYou} icon="sparkle-star" items={ps.foryou} ranked={false} marks={marks} onOpen={onOpen} notes />
+      {!lists && foryou.length > 0 ? (
+        <CardsRail
+          title={t.suggestedForYou}
+          icon="sparkle-star"
+          items={foryou}
+          ranked={false}
+          {...railProps}
+          notes
+          /* الزرُّ يظهر حين توجد صفحةٌ ثانية فقط — زرٌّ لا يغيّر شيئاً كذبة (D-979) */
+          action={foryouPool.length > PICKED_PAGE ? { label: t.pickedRefresh, aria: t.pickedRefreshAria, icon: "repeat", onPress: morePicks } : null}
+        />
       ) : null}
       {!lists ? ps?.myrows.map((m) => (
-        <CardsRail key={`myrow-${m.key}`} title={m.title} icon="sparkle-star" items={m.items} ranked={false} marks={marks} onOpen={onOpen} seeAll={m.see_all} onSeeAll={onLeave} />
+        <CardsRail key={`myrow-${m.key}`} title={m.title} icon="sparkle-star" items={m.items} ranked={false} {...railProps} seeAll={m.see_all} onSeeAll={onLeave} />
       )) : null}
       {!lists ? RAILS[tab].map((key, i) => (
         <React.Fragment key={`${tab}-${key}`}>
-          <Rail tab={tab} railKey={key} marks={marks} onOpen={onOpen} onSeeAll={onLeave} ar={ar} />
+          <Rail tab={tab} railKey={key} {...railProps} onSeeAll={onLeave} ar={ar} />
           {i === 0 && ps && ps.artists.length > 0 ? (
-            <CardsRail title={t.artistsRail} icon="people" items={ps.artists} ranked={false} marks={marks} onOpen={onOpen} seeAll={ps.artists_see_all} onSeeAll={onLeave} />
+            <CardsRail title={t.artistsRail} icon="people" items={ps.artists} ranked={false} {...railProps} seeAll={ps.artists_see_all} onSeeAll={onLeave} />
           ) : null}
         </React.Fragment>
       )) : null}
@@ -316,18 +461,23 @@ function DiscoverPane({
   );
 }
 
+type RailShared = {
+  marks: Map<string, LibMark>;
+  hidden: ReadonlySet<string>;
+  heldKey: string | null;
+  onHold: (c: CuratedCard, anchor: CardAnchor) => void;
+  onOpen: (c: CuratedCard) => void;
+};
+
 function Rail({
   tab,
   railKey,
-  marks,
-  onOpen,
   onSeeAll,
   ar,
-}: {
+  ...shared
+}: RailShared & {
   tab: CuratedTab;
   railKey: CuratedRailKey;
-  marks: Map<string, LibMark>;
-  onOpen: (c: CuratedCard) => void;
   onSeeAll: (path: string) => void;
   ar: boolean;
 }) {
@@ -378,8 +528,7 @@ function Rail({
       note={p.region ? t.inCinemasRegion(regionName(p.region, ar ? "ar" : "en")) : null}
       items={p.items}
       ranked={p.ranked}
-      marks={marks}
-      onOpen={onOpen}
+      {...shared}
       seeAll={p.see_all}
       onSeeAll={onSeeAll}
     />
@@ -394,31 +543,42 @@ function CardsRail({
   items,
   ranked,
   marks,
+  hidden,
+  heldKey,
+  onHold,
   onOpen,
   seeAll,
   onSeeAll,
   notes = false,
-}: {
+  action = null,
+}: RailShared & {
   title: string;
   icon: Parameters<typeof Icon>[0]["name"];
   note?: string | null;
   items: (CuratedCard & { note?: string | null })[];
   ranked: boolean;
-  marks: Map<string, LibMark>;
-  onOpen: (c: CuratedCard) => void;
   seeAll?: string | null;
   onSeeAll?: (path: string) => void;
   /** «مقترحٌ لك»: سطرُ السبب تحت كلِّ بطاقة */
   notes?: boolean;
+  /** فعلُ الصفّ في طرف العنوان (رقاقةٌ بحدٍّ كـ«اقتراحات أخرى» الويب) — بدل «الكلّ» */
+  action?: { label: string; aria: string; icon: Parameters<typeof Icon>[0]["name"]; onPress: () => void } | null;
 }) {
   const { t, tokens } = useApp();
-  if (items.length === 0) return null;
+  const shown = hidden.size === 0 ? items : items.filter((c) => !hidden.has(`${c.kind}-${c.id}`));
+  if (shown.length === 0) return null;
   return (
     <View>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: PAGE_PAD, marginBottom: 10 }}>
         <Icon name={icon} size={16} color={tokens.accent} />
         <Text size={17} weight="700" style={{ flex: 1 }} numberOfLines={1}>{title}</Text>
-        {seeAll && onSeeAll ? (
+        {action ? (
+          /* `rounded-full border px-2.5 py-1 text-12 font-semibold text-muted` — الرقاقةُ نفسُها (D-732) */
+          <Pressable onPress={action.onPress} hitSlop={6} accessibilityRole="button" accessibilityLabel={action.aria} style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 4, borderWidth: 1, borderColor: tokens.border, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4, opacity: pressed ? 0.7 : 1 })}>
+            <Icon name={action.icon} size={13} color={tokens.muted} />
+            <Text size={12} weight="600" muted>{action.label}</Text>
+          </Pressable>
+        ) : seeAll && onSeeAll ? (
           <Pressable onPress={() => onSeeAll(seeAll)} hitSlop={8}>
             <Text size={12} weight="600" color={tokens.accent}>{t.seeAll}</Text>
           </Pressable>
@@ -429,10 +589,19 @@ function CardsRail({
       ) : null}
       <FlatList
         horizontal
-        data={items}
+        data={shown}
         keyExtractor={(c) => `${c.kind}-${c.id}`}
+        extraData={heldKey}
         renderItem={({ item, index }) => (
-          <RailCard card={item} rank={ranked ? index + 1 : null} lib={marks.get(`${item.kind}-${item.id}`) ?? null} onPress={onOpen} note={notes ? item.note ?? null : null} />
+          <RailCard
+            card={item}
+            rank={ranked ? index + 1 : null}
+            lib={marks.get(`${item.kind}-${item.id}`) ?? null}
+            onPress={onOpen}
+            note={notes ? item.note ?? null : null}
+            onHold={onHold}
+            held={heldKey === `${item.kind}-${item.id}`}
+          />
         )}
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={{ paddingHorizontal: PAGE_PAD, gap: GAP }}
@@ -443,11 +612,3 @@ function CardsRail({
   );
 }
 
-/** سهمُ الرجوع — الخطّان نفسُهما في المكتبة (بلا أيقونةٍ ثانية) */
-function Chevron({ color }: { color: string }) {
-  return (
-    <View style={{ width: 24, height: 24, alignItems: "center", justifyContent: "center" }}>
-      <View style={{ width: 11, height: 11, borderStartWidth: 2, borderTopWidth: 2, borderColor: color, transform: [{ rotate: "-45deg" }], marginStart: 4 }} />
-    </View>
-  );
-}

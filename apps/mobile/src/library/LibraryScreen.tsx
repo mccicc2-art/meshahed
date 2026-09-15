@@ -351,15 +351,9 @@ export function LibraryScreen() {
           justifyContent: "center",
         }}
       >
+        {/* ⚖️ D-980 — بلا سهمِ رجوع: الشريطُ السفليّ (D-961) هو المخرج كما في صفحة الويب،
+            والسهمُ كان بقيّةَ زمنٍ لم يكن فيه شريط؛ زرُّ النظام للرجوع يبقى (`back`). */}
         <Text size={15} weight="700">{t.libraryTitle}</Text>
-        <Pressable
-          onPress={back}
-          hitSlop={12}
-          accessibilityLabel={t.closeLabel}
-          style={{ position: "absolute", start: PAGE_PAD, top: 0, bottom: 0, justifyContent: "center" }}
-        >
-          <Chevron color={tokens.fg} />
-        </Pressable>
       </View>
 
       {/* التبويباتُ الثلاثة — عائلةُ segmented الواحدة، وزرُّ الأدوات في طرفها (`FilterIconButton`: `h-9 w-9 rounded-full border`) */}
@@ -792,21 +786,3 @@ function Empty({ text, cta, onCta }: { text: string; cta: string; onCta: () => v
   );
 }
 
-/** سهمُ الرجوع — خطّان بلا أيقونة: الشاشةُ الوحيدةُ التي تحتاجه، ولا مجموعةَ أيقوناتٍ ثانية */
-function Chevron({ color }: { color: string }) {
-  return (
-    <View style={{ width: 24, height: 24, alignItems: "center", justifyContent: "center" }}>
-      <View
-        style={{
-          width: 11,
-          height: 11,
-          borderStartWidth: 2,
-          borderTopWidth: 2,
-          borderColor: color,
-          transform: [{ rotate: "-45deg" }],
-          marginStart: 4,
-        }}
-      />
-    </View>
-  );
-}

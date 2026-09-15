@@ -96,6 +96,14 @@ export function SessionBridge() {
     /* 🆕 Phase 11-C (D-955) — العلامةُ تحمل اسمَ الشاشة (`library` · `discover`)
        فالرجوعُ يعود إلى الشاشة التي فُتحت منها الصفحة، بالآليّة نفسِها */
     const NATIVE = new Set(["library", "discover"]);
+    /* 🔴 D-973 — **جذرُ الشاشة الأصليّة نفسِها لا ينزع سلاحَها بل يعيدها** (بلاغُ
+       أحمد بتسجيل على 1.8.5: «بعد ما أتصفّح دقايق يرجع اكتشف ويب فيو»): زرُّ الرجوع
+       في صفحة التريلرات يستبدل العنوانَ بـ`/news`، و`/news` جذرٌ — فكان السلاحُ
+       يُنزع وتُرسم «اكتشف» الويبيّةُ تحت إصبعه، ومن ذلك الباب صار كلُّ ما بعدها
+       ويبيّاً. **الذهابُ إلى جذر الشاشة المسلَّحة هو عودةٌ إليها**: `/news` وأنت
+       مسلَّحٌ بـ`discover`، و`/library` وأنت مسلَّحٌ بـ`library` ⇒ `native`. ما سواه
+       من الجذور (الرئيسيّة · المجتمع · البحث) ينزع السلاحَ كما كان. */
+    const ROOT_OF: Record<string, string> = { discover: "/news", library: "/library" };
     const toNative = () => {
       let route = "library";
       try {
@@ -105,6 +113,15 @@ export function SessionBridge() {
         /* لا شيء */
       }
       post({ type: "native", route: NATIVE.has(route) ? route : "library" });
+    };
+    /** هل هذا المسارُ جذرُ الشاشة المسلَّحة الآن؟ */
+    const isArmedRoot = (path: string): boolean => {
+      try {
+        const armedRoute = sessionStorage.getItem("loopz:armed") ?? "";
+        return NATIVE.has(armedRoute) && ROOT_OF[armedRoute] === path;
+      } catch {
+        return false;
+      }
     };
     let armed = false;
     try {
@@ -122,6 +139,9 @@ export function SessionBridge() {
     } catch {
       armed = false;
     }
+    /* D-973 — صفحةُ الوصول نفسُها قد تكون جذراً (أبوابُ `/news?filters=1` و`/library?smart=new`
+       من الشاشة الأصليّة): البقاءُ فيها ليس عودةً ولا نزعَ سلاح — يُستثنى مسارُها */
+    const arrivalPath = window.location.pathname;
     const origPush = window.history.pushState;
     const origReplace = window.history.replaceState;
     /* الوسمُ يُحفظ على كلِّ مدخلٍ غيرِ جذرٍ ما دمنا مسلَّحين — و`replaceState`
@@ -129,8 +149,10 @@ export function SessionBridge() {
     const stamp = (data: unknown, url?: string | URL | null): unknown => {
       try {
         const path = url ? new URL(String(url), window.location.href).pathname : window.location.pathname;
-        if (ROOTS.has(path)) {
-          sessionStorage.removeItem("loopz:armed");
+        if (ROOTS.has(path) && path !== arrivalPath) {
+          /* D-973 — جذرُ الشاشة المسلَّحة عودةٌ إليها؛ الصفحةُ الويبيّة تُرسم تحتها ولا تُرى */
+          if (isArmedRoot(path)) queueMicrotask(toNative);
+          else sessionStorage.removeItem("loopz:armed");
           return data;
         }
         if (NATIVE.has(sessionStorage.getItem("loopz:armed") ?? "") && data && typeof data === "object")

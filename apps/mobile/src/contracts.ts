@@ -46,6 +46,7 @@ export type {
   FollowBody,
   UnfollowBody,
   SetDroppedBody,
+  DismissBody,
   ShowRefBody,
   RateBody,
   UnrateBody,

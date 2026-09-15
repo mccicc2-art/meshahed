@@ -38,6 +38,14 @@ import { Animated, Easing, I18nManager, PanResponder, useWindowDimensions, View,
  * **والمسارُ ينزلق بينها بقيمةٍ واحدةٍ لا تُصفَّر أبداً**: اكتمالُ السحب هو وصولُ
  * الحركة إلى موضع اللوح التالي، وتبدّلُ `tab` بعدها لا يحرّك شيئاً. **ما لا
  * يُعاد ضبطُه لا يرمش.**
+ *
+ * 🔴 **D-972 — المسارُ بعرض كلِّ الألواح، لا بعرض الشاشة** (بلاغُ أحمد بتسجيل على
+ * 1.8.5: «الأنمي والأفلام والقوائم ما أقدر أتصفّح فيها، كأنّها صورة»): D-970 وضع
+ * لوحَ التبويب الثاني عند `width` والثالثَ عند `2×width` **داخل مسارٍ عرضُه عرضُ
+ * الشاشة** — فكلُّ لوحٍ غيرِ الأوّل يقع **خارج حدود أبيه**، وأندرويد لا يوصل
+ * اللمسَ إلى ابنٍ خارج حدود أبيه وإن أعادته الإزاحةُ إلى الشاشة: يُرسم ولا
+ * يُلمَس. **فالمسارُ صار بعرض `n × width`** والألواحُ كلُّها داخله من جهة
+ * البداية (`start`) — والإزاحةُ نفسُها، والاستمراريّةُ نفسُها، ولا وميض.
  */
 const FLY_MS = 520;
 const SNAP_MS = 360;
@@ -61,8 +69,9 @@ export function TabSlide<K extends string>({
   order: readonly K[];
   tab: K;
   onTab: (next: K) => void;
-  /** لوحُ تبويبٍ — يُنادى للنشط، وللجار حين يُسلَّح، وللقديم في أثناء خروجه */
-  render: (key: K) => React.ReactNode;
+  /** لوحُ تبويبٍ — يُنادى للنشط، وللجار حين يُسلَّح، وللقديم في أثناء خروجه.
+      `active` يقول إن كان هذا هو اللوحَ النشط (D-975: الجارُ لا يحمّي مشغّلاً) */
+  render: (key: K, active: boolean) => React.ReactNode;
   style?: ViewStyle;
 }) {
   const { width } = useWindowDimensions();
@@ -176,15 +185,17 @@ export function TabSlide<K extends string>({
 
   return (
     <View style={[{ flex: 1, overflow: "hidden" }, style]} {...pan.panHandlers}>
-      <Animated.View style={{ flex: 1, transform: [{ translateX: pos }] }}>
+      {/* D-972 — المسارُ يتّسع لكلِّ الألواح فتبقى داخل حدوده؛ `start` لا `left` كي
+          يعمل الاتّجاهان بالرقم نفسِه (في RTL يمتدّ المسارُ يساراً من حافّة البداية) */}
+      <Animated.View style={{ position: "absolute", top: 0, bottom: 0, start: 0, width: Math.max(1, order.length) * width, transform: [{ translateX: pos }] }}>
         {panes.map((k) => {
           const on = k === tab;
           return (
             <View
               key={k}
-              style={{ position: "absolute", top: 0, bottom: 0, width, left: Math.max(0, order.indexOf(k)) * width * phys, pointerEvents: on ? "auto" : "none" }}
+              style={{ position: "absolute", top: 0, bottom: 0, width, start: Math.max(0, order.indexOf(k)) * width, pointerEvents: on ? "auto" : "none" }}
             >
-              {render(k)}
+              {render(k, on)}
             </View>
           );
         })}

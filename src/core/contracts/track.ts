@@ -79,6 +79,9 @@ export type UnfollowBody = { tmdbId: number; mediaType: TitleKind };
 /** `POST /track/dropped` — البطاقةُ الحمراء أو رفعُها؛ يبقى في المكتبة */
 export type SetDroppedBody = { tmdbId: number; mediaType: TitleKind; dropped: boolean };
 
+/** `POST /api/v1/track/dismiss` — «غير مهتمّ» (D-978): يكتب في `dismissed_titles` كما `dismissTitle` */
+export type DismissBody = { tmdbId: number; mediaType: TitleKind };
+
 /** 🆕 D-919 — `POST /track/rate` و`/track/unrate`: تطابق `saveRating`/`deleteRating` */
 export type RateBody = {
   tmdbId: number;

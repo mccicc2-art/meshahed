@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { FlatList, Pressable, StyleSheet, useWindowDimensions, View, type ViewToken } from "react-native";
 import { Image } from "expo-image";
 import { useFocusEffect } from "expo-router";
@@ -43,11 +43,14 @@ const thumbOf = (c: TrailerCard) => c.backdrop ?? `https://i.ytimg.com/vi/${c.vi
 
 export function TrailersRail({
   tab,
+  active,
   onOpenWeb,
   onOpenTitle,
   onError,
 }: {
   tab: CuratedTab;
+  /** هل لوحُ هذا الصفّ هو النشط؟ (D-975) */
+  active: boolean;
   onOpenWeb: (path: string) => void;
   onOpenTitle: (c: { kind: "tv" | "movie"; id: number }) => void;
   onError: (e: unknown) => void;
@@ -118,9 +121,18 @@ export function TrailersRail({
     ),
   );
 
+  /* 🔴 D-975 — **مشغّلٌ واحدٌ في التطبيق كلِّه لا واحدٌ لكلِّ لوح** (بلاغُ أحمد
+     بتسجيل على 1.8.5: دوّارةٌ على البطاقة ولا تشغيل، ثمّ بابُ الويب): D-971 كانت
+     تحمّي البطاقةَ الظاهرةَ في **كلِّ** لوحٍ مركّب — والجارُ الحيُّ (D-965) لوحٌ
+     مركّب — فتعمل WebViewان أو ثلاثٌ ليوتيوب معاً فوق WebView الغلاف، ويوتيوب
+     يخنق الثانيةَ حتّى تصل الأولى. **التحميةُ للّوح النشط وحدَه**، ومغادرةُ اللوح
+     (سحبٌ أو ضغطةُ تبويب) توقف ما كان يعمل فيه كما توقفه مغادرةُ الشاشة. */
+  useEffect(() => {
+    if (!active) setLive(null);
+  }, [active]);
   const items = q.data?.items ?? [];
   const firstId = items[0] ? `${items[0].kind}-${items[0].id}` : null;
-  const warmId = warm ?? firstId;
+  const warmId = active ? (warm ?? firstId) : null;
   /* فشلُ الجلب صمتٌ لا هيكلٌ أبديّ (درسُ ١٤ سبتمبر: 500 في المسار أبقى الهيكلَ معروضاً) */
   if (q.isError) return null;
   const header = (

@@ -1,10 +1,10 @@
-import React, { memo } from "react";
+import React, { memo, useRef } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { Image } from "expo-image";
 import { useApp } from "../state";
 import { Text } from "../ui";
 import { radius } from "../theme";
-import { StatusThread } from "../library/PosterCard";
+import { StatusThread, type CardAnchor } from "../library/PosterCard";
 import { posterUrl } from "@/core/media";
 import type { CuratedCard } from "../contracts";
 
@@ -30,6 +30,8 @@ export const RailCard = memo(function RailCard({
   lib,
   onPress,
   note,
+  onHold,
+  held = false,
 }: {
   card: CuratedCard;
   /** رقمُ الترتيب (١..) — للمرتَّب وحدَه */
@@ -38,20 +40,31 @@ export const RailCard = memo(function RailCard({
   onPress: (card: CuratedCard) => void;
   /** سطرُ السبب تحت الاسم («من «X»») — «مقترحٌ لك» وحدَه (`PickedForYou`) */
   note?: string | null;
+  /** D-978 — الضغطُ المطوَّل يفتح قائمةَ `HoldMenu` مرساةً على الملصق (D-229: أيّ بوستر) */
+  onHold?: (card: CuratedCard, anchor: CardAnchor) => void;
+  /** البطاقةُ المضغوطةُ الآن — إطارٌ ذهبيٌّ كإطار `PosterHold` الويب */
+  held?: boolean;
 }) {
   const { tokens } = useApp();
   const uri = posterUrl(card.poster_path, "w342");
+  const ref = useRef<View>(null);
   return (
-    <Pressable onPress={() => onPress(card)} style={{ width: RAIL_CARD_W }}>
+    <Pressable
+      onPress={() => onPress(card)}
+      onLongPress={onHold ? () => ref.current?.measureInWindow((x, y, w, h) => onHold(card, { x, y, width: w, height: h })) : undefined}
+      delayLongPress={350}
+      style={{ width: RAIL_CARD_W }}
+    >
       <View
+        ref={ref}
         style={{
           width: RAIL_CARD_W,
           aspectRatio: 2 / 3,
           borderRadius: radius.poster,
           overflow: "hidden",
           backgroundColor: tokens.surface2,
-          borderWidth: 1,
-          borderColor: tokens.border,
+          borderWidth: held ? 2 : 1,
+          borderColor: held ? tokens.accent : tokens.border,
         }}
       >
         {uri ? <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} recyclingKey={`${card.kind}-${card.id}`} /> : null}

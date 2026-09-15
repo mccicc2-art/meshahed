@@ -1,6 +1,8 @@
 import React from "react";
 import { I18nManager, Modal, Pressable, StyleSheet, useWindowDimensions, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "../state";
+import { navHeight } from "../BottomNav";
 import { Icon, type IconName } from "../icons";
 import { Text } from "../ui";
 import { radius } from "../theme";
@@ -26,7 +28,16 @@ import type { CardItem } from "./PosterCard";
  * الويب؛ وإن لم تسع الشاشةُ تحتها تُرفع فوقها. **`Modal` شفّاف** لا عنصرٌ
  * داخل الصفّ: الصفُّ الأفقيُّ يقصّ ما يخرج عنه.
  */
-export type HoldAction = "resume" | "next" | "rewatch" | "all" | "review" | "drop";
+export type HoldAction = "resume" | "next" | "rewatch" | "all" | "review" | "drop" | "towatch" | "dismiss";
+
+/**
+ * 🆕 D-978 — **القائمةُ نفسُها لبطاقات «اكتشف»** (بلاغُ أحمد بلقطة: «في الويب إذا
+ * ضغطت مطوّلاً تظهر خيارات، في الأصليّة لا تظهر» — D-229: قاعدةٌ على أيّ بوستر
+ * في Loopz). صفوفُها صفوفُ `PosterHold` الويب الأربعة: «للمشاهدة» (بحالتيه) ·
+ * «شاهدته كلّه» · «تعليقك» · «غير مهتمّ» — **ولا «بطاقة حمراء»** (الإيقافُ فعلُ من
+ * يتابع، ومن يتابع في المكتبة). **لوحٌ واحد لا ثانٍ**: `variant` يقرّر الصفوف.
+ */
+export type HoldVariant = "library" | "discover";
 
 export type Anchor = { x: number; y: number; width: number; height: number };
 
@@ -40,18 +51,32 @@ export function HoldMenu({
   busy,
   onAction,
   onClose,
+  variant = "library",
+  inList = false,
 }: {
   item: CardItem;
   anchor: Anchor;
   busy: boolean;
   onAction: (a: HoldAction) => void;
   onClose: () => void;
+  /** D-978 — صفوفُ المكتبة (الافتراض) أم صفوفُ «اكتشف» */
+  variant?: HoldVariant;
+  /** «اكتشف» وحدَه: هل العملُ في «للمشاهدة» الآن؟ يقلب الصفَّ الأوّل */
+  inList?: boolean;
 }) {
   const { t, tokens } = useApp();
   const { width: W, height: H } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
 
   const rows: { key: HoldAction; icon: IconName; label: string; tone?: "success" | "danger" }[] =
-    item.dropped
+    variant === "discover"
+      ? [
+          { key: "towatch", icon: inList ? "check-line" : "plus", label: inList ? t.quickAddRemove : t.quickAddLabel },
+          { key: "all", icon: "check-line", label: t.markAllWatched, tone: "success" },
+          { key: "review", icon: "star", label: t.reviewSectionTitle },
+          { key: "dismiss", icon: "eye-off", label: t.notInterested },
+        ]
+      : item.dropped
       ? [{ key: "resume", icon: "play", label: t.resumeWatching }]
       : [
           ...(item.kind === "tv" && !item.completed ? [{ key: "next" as const, icon: "play" as const, label: t.markNextEp }] : []),
@@ -62,11 +87,19 @@ export function HoldMenu({
         ];
 
   const panelH = rows.length * ROW_H + 8;
-  /* محاذاةُ الطرف النهائيّ: في RTL الطرفُ النهائيُّ يسار البطاقة */
-  let left = I18nManager.isRTL ? anchor.x : anchor.x + anchor.width - PANEL_W;
-  left = Math.max(8, Math.min(left, W - PANEL_W - 8));
+  /* 🔴 D-977 — **أرضيّةُ القائمة فوق الشريط السفليّ، وعرضُها على قدر سطرها** (بلاغُ
+     أحمد بتسجيل على 1.8.5): القائمةُ كانت تهبط فوق شريط التنقّل وتكسر «الحلقة
+     التالية +1» سطرين — الشاشةُ كلُّها كانت أرضيّتَها، والعرضُ ٢٠٨ ثابتاً. الأرضيّةُ
+     الآن حافّةُ الشريط (`navHeight` نفسُه الذي يرفع التوست)، والعرضُ يبدأ من ٢٠٨
+     ويتّسع للسطر الأطول حتّى حافّتَي الشاشة — كما تفعل `min-w-52` في الويب. */
+  const floor = H - navHeight(insets.bottom) - 8;
+  /* محاذاةُ الطرف النهائيّ: في RTL الطرفُ النهائيُّ يسار البطاقة — بربط الحافّة لا
+     بحساب اليسار، فالعرضُ لم يعد ثابتاً */
+  const endEdge = I18nManager.isRTL
+    ? { left: Math.max(8, anchor.x) }
+    : { right: Math.max(8, W - (anchor.x + anchor.width)) };
   let top = anchor.y + anchor.height + GAP;
-  if (top + panelH > H - 8) top = Math.max(8, anchor.y - panelH - GAP);
+  if (top + panelH > floor) top = Math.max(8, anchor.y - panelH - GAP);
 
   return (
     <Modal transparent animationType="fade" visible onRequestClose={onClose} statusBarTranslucent>
@@ -74,9 +107,10 @@ export function HoldMenu({
       <View
         style={{
           position: "absolute",
-          left,
+          ...endEdge,
           top,
-          width: PANEL_W,
+          minWidth: PANEL_W,
+          maxWidth: W - 16,
           paddingVertical: 4,
           borderRadius: 14,
           borderWidth: 1,
@@ -110,7 +144,7 @@ export function HoldMenu({
               })}
             >
               <Icon name={r.icon} size={18} color={color} />
-              <Text size={14}>{r.label}</Text>
+              <Text size={14} numberOfLines={1}>{r.label}</Text>
             </Pressable>
           );
         })}
