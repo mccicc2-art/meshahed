@@ -116,6 +116,8 @@ export function TrailerPlayer({
   muted,
   onMuted,
   onExhausted,
+  idle = false,
+  onWake,
 }: {
   /** بدائلُ المقطع مرتّبةً (D-743) — الأوّلُ هو المعروض، وما بعده يُجرَّب عند الرفض */
   videoKeys: readonly string[];
@@ -141,6 +143,16 @@ export function TrailerPlayer({
   onMuted: (next: boolean) => void;
   /** كلُّ المفاتيح رُفضت — يُفتح المشغّلُ الويبيُّ في الغلاف كما قبل D-959 */
   onExhausted: () => void;
+  /**
+   * 🔥 D-971 — **مشغّلٌ مُحمًّى بلا تشغيل** (بلاغُ أحمد بتسجيل: «الفيديو أبغاه يشتغل
+   * أسرع — من الخارج نفسه»): الصفُّ يركّب البطاقةَ الظاهرةَ مسبقاً مكتومةً متوقّفة
+   * — فيمرّ تحميلُ WebView وواجهةِ يوتيوب وتهيئةُ المقطع قبل أن يضغط أحد، **وتصير
+   * الضغطةُ «شغِّل» لا «حمِّل»** (وصفةُ `TrailerPlaybackController` الويب: البطاقةُ
+   * الظاهرة ≥ ٦٠٪ نشطة). في الخمول: السِّترُ وحدَه، لا أدواتَ ولا زرَّ صوت، واللمسةُ
+   * تُوقظ (`onWake`) — ما يراه القارئُ هو المصغّرةُ نفسُها التي كانت.
+   */
+  idle?: boolean;
+  onWake?: () => void;
 }) {
   const { t, tokens } = useApp();
   const ref = useRef<YoutubeIframeRef | null>(null);
@@ -217,7 +229,7 @@ export function TrailerPlayer({
      ثوانٍ يُعامل كرفض (`fail`): البديلُ التالي ثمّ البابُ الويبيّ — **فلا دوّارةَ أبديّة**
      (ما رآه أحمد على 1.8.2 حين زال الرفضُ وبقي الصمت). المهلةُ من قيمة المنتظَر
      (D-580): أطولُ من أيِّ إقلاعٍ صادق، أقصرُ من صبر مشاهد. */
-  const stalled = wantPlay && active && foreground && veiled;
+  const stalled = !idle && wantPlay && active && foreground && veiled;
   const failRef = useRef<() => void>(() => {});
   useEffect(() => {
     if (!stalled) return;
@@ -283,7 +295,7 @@ export function TrailerPlayer({
         height={height}
         width={width}
         videoId={key}
-        play={wantPlay && active && foreground}
+        play={!idle && wantPlay && active && foreground}
         mute={muted || !primed}
         volume={100}
         useLocalHTML
@@ -348,7 +360,7 @@ export function TrailerPlayer({
         <View style={[StyleSheet.absoluteFill, { alignItems: "center", justifyContent: "center" }]} pointerEvents="none">
           {poster ? <Image source={{ uri: poster }} style={StyleSheet.absoluteFill} contentFit="cover" /> : null}
           <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: "rgba(0,0,0,0.6)", alignItems: "center", justifyContent: "center" }}>
-            {slow && wantPlay ? <ActivityIndicator color="#fff" /> : <Icon name="play" size={24} color="#fff" />}
+            {slow && wantPlay && !idle ? <ActivityIndicator color="#fff" /> : <Icon name="play" size={24} color="#fff" />}
           </View>
         </View>
       ) : null}
@@ -357,8 +369,10 @@ export function TrailerPlayer({
       <Pressable
         style={StyleSheet.absoluteFill}
         accessibilityLabel={`${playing ? t.trailerPause : t.trailerPlay} — ${label}`}
-        onPress={(e) => onSurface(e.nativeEvent.locationX)}
+        onPress={(e) => (idle ? onWake?.() : onSurface(e.nativeEvent.locationX))}
       />
+      {idle ? null : (
+      <>
 
       {/* 🔇 **زرُّ الصوت في رُكن السطح** (D-964، طلبُ أحمد بلقطةٍ معلَّمةٍ على الرُكن
           الأعلى): **لا يتوارى مع شريط الأدوات** (D-764) — **والكتمُ فعلٌ عاجلٌ
@@ -413,6 +427,8 @@ export function TrailerPlayer({
           </View>
         </View>
       ) : null}
+      </>
+      )}
     </View>
   );
 }

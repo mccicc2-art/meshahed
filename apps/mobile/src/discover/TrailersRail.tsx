@@ -96,10 +96,16 @@ export function TrailersRail({
     setLive(id);
     setWantPlay(true);
   }, []);
+  /* 🔥 D-971 — **البطاقةُ الظاهرة مُحمّاةٌ مسبقاً** (وصفةُ الويب): مشغّلُها مركّبٌ
+     مكتوماً متوقّفاً خلف مصغّرتها، فالضغطةُ تشغّل فوراً بدل تحميلٍ من الصفر.
+     واحدةٌ في المرّة (الرفُّ يلتقط بطاقةً واحدة) — والأولى تُحمّى من أوّل رسمة. */
+  const [warm, setWarm] = useState<string | null>(null);
   const viewCfg = useRef({ itemVisiblePercentThreshold: 60 }).current;
   const onView = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
     const seen = new Set(viewableItems.map((v) => v.key));
     setLive((cur) => (cur && !seen.has(cur) ? null : cur));
+    const first = viewableItems[0]?.key;
+    if (typeof first === "string") setWarm(first);
   }).current;
   /* مغادرةُ الشاشة توقف الصوت — والعودةُ تبدأ من الصورة لا من منتصف مقطع */
   useFocusEffect(
@@ -113,6 +119,8 @@ export function TrailersRail({
   );
 
   const items = q.data?.items ?? [];
+  const firstId = items[0] ? `${items[0].kind}-${items[0].id}` : null;
+  const warmId = warm ?? firstId;
   /* فشلُ الجلب صمتٌ لا هيكلٌ أبديّ (درسُ ١٤ سبتمبر: 500 في المسار أبقى الهيكلَ معروضاً) */
   if (q.isError) return null;
   const header = (
@@ -149,14 +157,17 @@ export function TrailersRail({
           const isAdded = added.has(id);
           return (
             <View style={{ width: cardW, borderRadius: radius.card, overflow: "hidden", backgroundColor: tokens.surface, borderWidth: 1, borderColor: tokens.border }}>
-              {live === id ? (
-                /* D-959 — المشغّلُ الأصليُّ في مكان الصورة، بالمصغّرة نفسِها سِتراً فلا وميض */
+              {live === id || warmId === id ? (
+                /* D-959 — المشغّلُ الأصليُّ في مكان الصورة، بالمصغّرة نفسِها سِتراً فلا وميض؛
+                   D-971 — والبطاقةُ الظاهرةُ تحمله خاملاً قبل الضغط */
                 <TrailerPlayer
                   videoKeys={item.video_keys?.length ? item.video_keys : [item.video_key]}
                   width={cardW}
                   poster={thumbOf(item)}
                   label={item.title}
-                  wantPlay={wantPlay}
+                  idle={live !== id}
+                  onWake={() => open(id)}
+                  wantPlay={live === id ? wantPlay : false}
                   onWantPlay={setWantPlay}
                   muted={muted}
                   onMuted={setMuted}
@@ -176,8 +187,10 @@ export function TrailersRail({
               )}
               {/* التذييلُ: `flex items-center gap-3 px-3.5 py-3` — الاسمُ وسطرُه، ثمّ «التفاصيل» و«مكتبتي» */}
               <View style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 14, paddingVertical: 12 }}>
-                {/* D-959: الاسمُ يشغّل كالسطح — لا يغادر الشاشةَ بعد اليوم */}
-                <Pressable onPress={() => open(id)} style={{ flex: 1, minWidth: 0 }}>
+                {/* ⚖️ D-971 (نقضُ نصف D-959 بلقطةٍ معلَّمة من أحمد): **الاسمُ وسطرُه بابٌ إلى
+                    صفحة التريلرات** (`href` — الصفحةُ نفسُها التي يفتحها «الكلّ»)؛ التشغيلُ في
+                    المكان من السطح وزرّ ▶ وحدَهما. */}
+                <Pressable onPress={() => onOpenWeb(item.href)} style={{ flex: 1, minWidth: 0 }}>
                   <Text size={15} weight="700" numberOfLines={1}>{item.title}</Text>
                   <Text size={12} muted numberOfLines={1} style={{ marginTop: 2 }}>{[item.year, item.genre, item.country].filter(Boolean).join(" · ")}</Text>
                 </Pressable>
