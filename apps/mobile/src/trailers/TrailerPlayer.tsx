@@ -101,6 +101,8 @@ const BADGE_MS = 700;
 const CONTROLS_IDLE_MS = 5000;
 /** D-968: مهلةُ التعثّر — تشغيلٌ مطلوبٌ بلا `playing` بعدها يُعامل كرفض */
 const STALL_MS = 10_000;
+/** D-982 — قطرُ ثقب الإيقاظ في السطح الخامل (أيقونةُ التشغيل ٥٦ وما حولها) */
+const WAKE_HOLE = 96;
 const TICK_MS = 250;
 
 const clock = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
@@ -275,14 +277,25 @@ export function TrailerPlayer({
   /* البديلُ التالي في المكان، فإن نفدت السلسلةُ فالبابُ الويبيّ (D-743).
      **والقرارُ خارجَ مُحدِّث الحالة عمداً**: مُحدِّثٌ يُنادى مرّتين في وضع
      التطوير الصارم يفتح البابَ مرّتين. */
+  /* 🔴 D-984 — **الخاملُ الذي رُفض لا يفتح باباً** (بلاغُ أحمد بتسجيل على 1.8.6: «إذا
+     دخلت اكتشف مباشرةً يدخلني على التريلرات»): D-971 تحمّي البطاقةَ الأولى بلا ضغطة،
+     فإن ردّها يوتيوب (خطأ تضمين) سقطت إلى `onExhausted` وفُتحت صفحةُ الويب **من تلقاء
+     نفسها** فوق ما كان المستخدمُ يفعله — حتى فوق ضغطته على الشريط السفليّ. البابُ فعلُ
+     مستخدمٍ لا فعلُ مشغّل: الخاملُ المرفوض يصير «ميتاً» — صورةٌ وأيقونةُ ▶ كما كان،
+     **واللمسةُ عليه هي التي تفتح الباب.** */
+  const [dead, setDead] = useState(false);
   const fail = useCallback((error?: string) => {
     /* D-967: رمزُ الرفض يُكتب في السجلّ — الجهازُ وحدَه يراه (logcat/A0)، والحاويةُ لا تصل يوتيوب */
     if (error) console.warn(`[trailer] youtube rejected ${videoKeys[idx] ?? "?"}: ${error}`);
     setPlaying(false);
     setAt(0);
     if (idx + 1 < videoKeys.length) setIdx(idx + 1);
+    else if (idle) setDead(true);
     else onExhausted();
-  }, [idx, onExhausted, videoKeys]);
+  }, [idx, idle, onExhausted, videoKeys]);
+  useEffect(() => {
+    setDead(false);
+  }, [videoKeys]);
   failRef.current = () => fail("stalled");
 
   if (!key) return null;
@@ -290,6 +303,7 @@ export function TrailerPlayer({
 
   return (
     <View style={{ width, height, backgroundColor: "#000", overflow: "hidden" }}>
+      {dead ? null : (
       <Player
         ref={ref}
         height={height}
@@ -309,8 +323,13 @@ export function TrailerPlayer({
         initialPlayerParams={{ controls: false, rel: false, iv_load_policy: 3, preventFullScreen: true }}
         webViewStyle={{ opacity: veiled ? 0 : 1, backgroundColor: "#000" }}
         webViewProps={{
-          /* الأدواتُ أدواتُنا، فلا لمسةَ تصل الإطار: التمريرُ والضغطُ للسطح فوقه */
-          pointerEvents: "none",
+          /* الأدواتُ أدواتُنا، فلا لمسةَ تصل الإطار: التمريرُ والضغطُ للسطح فوقه.
+             🔴 D-982 — **إلّا في الخمول**: أوّلُ لمسةٍ تمرّ إلى الإطار نفسِه (انظر الثقبَ في
+             السطح أدناه) فيتلقّى يوتيوب لمسةً حقيقيّةً ويشغّل بنفسه — `playVideo()`
+             البرمجيّ بلا لمسةٍ في مستنده يبقى «جاهزاً» عند 0:00 مهما تنكّرنا (D-968 لم تكفِ؛
+             بلاغُ أحمد بتسجيل على 1.8.6: المدّةُ ظهرت والدوّارُ بقي ثمّ بابُ الويب — وهناك عمل من
+             أوّل ثانية لأنّ ضغطتَه وصلت المستند). */
+          pointerEvents: idle ? "auto" : "none",
           androidLayerType: "hardware",
           setSupportMultipleWindows: false,
           /* رابطٌ خارجَ التضمين (شعارُ يوتيوب أو «شاهد على يوتيوب») يخرج للمتصفّح لا يبتلع الشاشة */
@@ -335,6 +354,8 @@ export function TrailerPlayer({
         }}
         onError={fail}
         onChangeState={(s: PlayerState) => {
+          /* D-982 — يوتيوب بدأ من لمسةٍ وصلته وهو خامل: البطاقةُ استيقظت */
+          if (idle && (s === "playing" || s === "buffering")) onWake?.();
           if (s === "playing") {
             setPlaying(true);
             /* أوّلُ `playing` يفكّ الكتمَ من نفسه — لا ضغطةَ على الصوت (D-771) */
@@ -354,23 +375,49 @@ export function TrailerPlayer({
           }
         }}
       />
+      )}
 
       {/* السِّترُ — الصورةُ نفسُها التي كانت على البطاقة، فلا وميضَ عند التحوّل */}
       {veiled ? (
         <View style={[StyleSheet.absoluteFill, { alignItems: "center", justifyContent: "center" }]} pointerEvents="none">
           {poster ? <Image source={{ uri: poster }} style={StyleSheet.absoluteFill} contentFit="cover" /> : null}
           <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: "rgba(0,0,0,0.6)", alignItems: "center", justifyContent: "center" }}>
-            {slow && wantPlay && !idle ? <ActivityIndicator color="#fff" /> : <Icon name="play" size={24} color="#fff" />}
+            {slow && wantPlay && !idle && !dead ? <ActivityIndicator color="#fff" /> : <Icon name="play" size={24} color="#fff" />}
           </View>
         </View>
       ) : null}
 
-      {/* السطحُ: يُظهر الأدواتِ ولا يوقف (D-771)، والضغطتان تقفزان (D-934) */}
-      <Pressable
-        style={StyleSheet.absoluteFill}
-        accessibilityLabel={`${playing ? t.trailerPause : t.trailerPlay} — ${label}`}
-        onPress={(e) => (idle ? onWake?.() : onSurface(e.nativeEvent.locationX))}
-      />
+      {/* السطحُ: يُظهر الأدواتِ ولا يوقف (D-771)، والضغطتان تقفزان (D-934).
+          D-982 — في الخمول للسطح **ثقبٌ** في وسطه بقدر أيقونة التشغيل وما حولها (٩٦): اللمسةُ
+          فيه تسقط إلى الإطار فيشغّل يوتيوب بلمسةٍ حقيقيّة؛ وما حول الثقب يبقى سطحَنا فلا
+          يبتلع الإطارُ تمريرَ الصفحة (تمريرٌ يبدأ فوق الإطار لا يصل إلى `ScrollView`). */}
+      {idle ? (
+        <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+          {(() => {
+            const hole = WAKE_HOLE;
+            const l = Math.max(0, (width - hole) / 2);
+            const tp = Math.max(0, (height - hole) / 2);
+            const a11y = `${t.trailerPlay} — ${label}`;
+            /* الميتُ يفتح البابَ بلمسةٍ — لا من نفسه (D-984) */
+            const wake = () => (dead ? onExhausted() : onWake?.());
+            return (
+              <>
+                <Pressable style={{ position: "absolute", left: 0, right: 0, top: 0, height: tp }} onPress={wake} accessibilityLabel={a11y} />
+                <Pressable style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: Math.max(0, height - tp - hole) }} onPress={wake} accessibilityLabel={a11y} />
+                <Pressable style={{ position: "absolute", left: 0, top: tp, width: l, height: hole }} onPress={wake} accessibilityLabel={a11y} />
+                <Pressable style={{ position: "absolute", right: 0, top: tp, width: l, height: hole }} onPress={wake} accessibilityLabel={a11y} />
+                {dead ? <Pressable style={{ position: "absolute", left: l, top: tp, width: hole, height: hole }} onPress={wake} accessibilityLabel={a11y} /> : null}
+              </>
+            );
+          })()}
+        </View>
+      ) : (
+        <Pressable
+          style={StyleSheet.absoluteFill}
+          accessibilityLabel={`${playing ? t.trailerPause : t.trailerPlay} — ${label}`}
+          onPress={(e) => onSurface(e.nativeEvent.locationX)}
+        />
+      )}
       {idle ? null : (
       <>
 

@@ -270,7 +270,9 @@ const LIBRARY_PREFIXES = ["/library", "/show/", "/movie/", "/stats", "/activity"
         } chrome-bottom md:hidden fixed bottom-0 inset-x-0 z-40 ${
           signedIn ? "grid-cols-5" : "grid-cols-4"
         } rounded-t-[22px] border-t border-[color:var(--divider)] bg-[color:var(--background)] backdrop-blur-xl pt-2.5 pb-[max(0.5rem,calc(env(safe-area-inset-bottom)*0.5))]`}
-        style={{ background: "color-mix(in srgb, var(--background) 76%, transparent)" }}
+        /* D-985 — فوق خلاصة التريلرات الدوكُ معتمٌ تماماً: شفافيّةُ ٧٦٪ فوق فيديو يعمل تجعله
+           يبدو جزءاً من المشهد لا مخرجاً منه («خلّي الدوك بارز») */
+        style={{ background: pathname === "/trailers" ? "var(--background)" : "color-mix(in srgb, var(--background) 76%, transparent)" }}
       >
         {tabs.map(({ href, key, icon, iconOn }) => {
           const active = isActive(href);

@@ -189,7 +189,9 @@ export function TrailersRail({
                   }}
                 />
               ) : (
-                <Pressable onPress={() => open(id)} accessibilityLabel={`${t.trailerPlay} — ${item.title}`} style={{ width: "100%", aspectRatio: 16 / 9, backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center" }}>
+                /* D-982 — بطاقةٌ غيرُ محمّاة: الضغطةُ تركّب مشغّلَها خاملاً (لا حيّاً) فتصل
+                   اللمسةُ التالية إلى الإطار نفسِه — تشغيلٌ برمجيٌّ من هنا كان يقف عند 0:00 */
+                <Pressable onPress={() => setWarm(id)} accessibilityLabel={`${t.trailerPlay} — ${item.title}`} style={{ width: "100%", aspectRatio: 16 / 9, backgroundColor: tokens.surface2, alignItems: "center", justifyContent: "center" }}>
                   <Image source={{ uri: thumbOf(item) }} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} recyclingKey={id} />
                   {/* دائرةُ ▶ كما في `TrailerCardMedia` (`h-14 w-14 rounded-full bg-black/60`) */}
                   <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: "rgba(0,0,0,0.6)", alignItems: "center", justifyContent: "center" }}>

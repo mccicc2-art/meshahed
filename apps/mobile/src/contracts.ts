@@ -3,6 +3,7 @@
  */
 export type { Tag, TitleKind } from "@/core/contracts/tags";
 export type { AppError, ErrorCode } from "@/core/contracts/result";
+export type { PersonPayload, PersonWork, FollowArtistBody, UnfollowArtistBody, ListFromPersonBody, ListFromPersonResult } from "@/core/contracts/person";
 export type {
   TitlePayload,
   TvTitlePayload,

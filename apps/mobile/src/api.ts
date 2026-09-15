@@ -38,6 +38,7 @@ export const qk = {
   tag: (tag: Tag) => [tag] as const,
   title: (kind: "tv" | "movie", id: number) => [`title:${kind}:${id}`] as const,
   season: (id: number, n: number) => [`title:tv:${id}`, "season", n] as const,
+  person: (id: number) => [`person:${id}`] as const,
 };
 
 export function invalidateTags(tags: Tag[]) {

@@ -353,7 +353,8 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
                     </View>
                   )
                 ) : null}
-                <CastRail x={x} onPerson={(pid) => openWeb("", `/person/${pid}`)} />
+                {/* D-983 — الممثّلُ شاشةٌ أصليّة؛ `from` يبقى شاشةَ البداية فتعود السلسلةُ كلُّها إليها */}
+                <CastRail x={x} onPerson={(pid) => router.push({ pathname: "/person/[id]", params: { id: String(pid), from } })} />
                 <RelatedRails x={x} onOpen={openTitle} />
               </>
             )}

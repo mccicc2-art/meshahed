@@ -87,6 +87,12 @@ export function Text({
   }
   const runs = runsOf(children);
   const family = (ar: boolean) => ({ fontFamily: familyOf(ar, weight), fontWeight: undefined });
+  /* 🔴 D-981 — **النصُّ الفارغ بلا مقاطع**: `runs[0].ar` على `""` كان يُسقط الشجرةَ كلَّها
+     (أوّلُ `AppCrash` في السجلّ، D-974: «Cannot read property 'ar' of undefined» في
+     `TitleScreen` — الشاشةُ السوداء عند فتح فيلم بلا شعارٍ أو وصف). الفارغُ يُرسم فارغاً. */
+  if (runs.length === 0) {
+    return <RNText {...rest} style={[base, style]}>{children}</RNText>;
+  }
   if (runs.length === 1) {
     return <RNText {...rest} style={[base, family(runs[0].ar), style]}>{children}</RNText>;
   }
