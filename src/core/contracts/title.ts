@@ -18,6 +18,9 @@ export type TitleSeason = {
   episode_count: number;
   /** ما بُثّ فعلاً — قاعدةُ D-603 للترقيم المطلق تُطبَّق في الخادم */
   aired: number;
+  /** D-988 — أوّلُ رقمِ حلقةٍ في الموسم (`firstEpisodeOf`): ١ عادةً، ونافذةُ الموسم في الترقيم المطلق —
+      كي لا يكتب «حتى هنا» عبر المواسم أرقاماً لا تطابق حلقةً (أشباحُ خالد، D-603) */
+  first_episode: number;
   poster_path: string | null;
   air_date: string | null;
 };

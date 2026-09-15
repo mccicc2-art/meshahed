@@ -148,12 +148,26 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
     },
     onError: fail,
   });
+  /**
+   * 🔴 D-989 — **«منتهٍ ✓» يُضغط فيرجع «علّمه مشاهَداً» وتُمسح المشاهدة** (طلبُ أحمد بتسجيل،
+   * ١٦ سبتمبر): كانت الضغطةُ على «منتهٍ» تفتح الصفحةَ الويبيّة. الآن الزرُّ مفتاحٌ بالاتّجاهين
+   * كما للفيلم: `show-unwatched` يمسح حلقاتِ المسلسل كلَّها (`unmarkShow` الويب)، والعدّادُ
+   * يصفّر فوراً تفاؤلاً. المتابعةُ لا تُمسّ — من أنهى ثمّ تراجع ما زال يتابع.
+   */
+  const showUnwatched = useMutation({
+    mutationFn: () => write<TrackResult>("/api/v1/track/show-unwatched", { showTmdbId: id } satisfies ShowRefBody),
+    onMutate: () => patchMe((me) => ("watched_count" in me ? { watched_count: 0, watched: [] } : {}) as Partial<TitlePayload["me"]>),
+    onSuccess: settle,
+    onError: fail,
+  });
   const showWatched = useMutation({
     mutationFn: () => write<{ added?: unknown[] }>("/api/v1/track/show-watched", { showTmdbId: id } satisfies ShowRefBody),
     /* D-986 — تفاؤلٌ هنا أيضاً: تعليمُ مسلسلٍ بمئات الحلقات يكتبها كلَّها على الخادم (ثوانٍ)،
        والزرُّ الذي يدور بلا أثرٍ يُقرأ تعليقاً (بلاغُ أحمد: «ضغطت مشاهدة يعلق»). العدّادُ يمتلئ
        فوراً، والحقيقةُ تصل مع `settle` — التي لم تعد تكذب بعد `no-store`. */
-    onMutate: () => patchMe((me) => (d?.kind === "tv" && "watched_count" in me ? { following: true, watched_count: d.aired_total } : { following: true }) as Partial<TitlePayload["me"]>),
+    /* التفاؤلُ يقول ما يفعله الخادم فقط: `markShowWatched` لا يتابع (المسلسلُ المنتهي في المكتبة
+       بمشاهدته لا بمتابعته) — فلا `following: true` هنا (كانت تُدّعى ثمّ تُنقض) */
+    onMutate: () => patchMe((me) => (d?.kind === "tv" && "watched_count" in me ? { watched_count: d.aired_total } : {}) as Partial<TitlePayload["me"]>),
     onSuccess: (r) => {
       setToast(Array.isArray(r?.added) && r.added.length ? t.watchedMarkedCount(r.added.length) : t.watchedMarked);
       settle();
@@ -258,8 +272,8 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
                 style={{ flex: 1 }}
                 label={done ? `${t.statusDone} ✓` : t.markWatchedBtn}
                 variant={done ? "ghost" : "primary"}
-                busy={movieWatched.isPending || showWatched.isPending}
-                onPress={() => (d.kind === "movie" ? movieWatched.mutate(!d.me.watched) : done ? openWeb() : showWatched.mutate())}
+                busy={movieWatched.isPending || showWatched.isPending || showUnwatched.isPending}
+                onPress={() => (d.kind === "movie" ? movieWatched.mutate(!d.me.watched) : done ? showUnwatched.mutate() : showWatched.mutate())}
               />
             </View>
             <View style={{ flexDirection: "row", gap: 8 }}>

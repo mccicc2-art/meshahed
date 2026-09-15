@@ -116,10 +116,37 @@ function SeasonBody({
     onSuccess: onSettled,
     onError,
   });
+  /**
+   * 🔴 D-988 — **التأشيرُ يعني «شاهدتُ حتى هنا» — عبر المواسم كلِّها، كالويب** (طلبُ أحمد
+   * بلقطة، ١٦ سبتمبر: «إذا ضغطت شفت حلقة، أيّ حلقة قبلها يجي عليها إني شفتها مثل الويب»):
+   * `EpisodeTracker.toggleOne` يعدّ كلَّ ما قبل الحلقة مشاهَداً — في موسمها **وفي المواسم
+   * السابقة** بعدد ما بُثّ منها (`aired`، بقاعدة D-603) — ويكتب ما لم يكن معلَّماً وحدَه. هنا
+   * كان التأشيرُ حلقةً واحدة والضغطةُ المطوّلةُ «حتى هنا» داخل الموسم فقط. **الآن الضغطةُ
+   * والمطوّلةُ سواء**، وإزالةُ العلامة وحدَها تبقى حلقةً واحدة (كالويب أيضاً).
+   */
+  const upToKeys = (n: number) => {
+    const list: { season: number; episode: number; runtime: number | null }[] = [];
+    for (const sm of show.seasons) {
+      if (sm.season_number > season) continue;
+      if (sm.season_number === 0 && season !== 0) continue;
+      if (sm.season_number === season) continue;
+      /* نافذةُ الموسم من `first_episode` لا من ١ (الترقيمُ المطلق، D-603) */
+      const count = Math.min(sm.aired, sm.episode_count);
+      const first = sm.first_episode ?? 1;
+      for (let i = 0; i < count; i++) list.push({ season: sm.season_number, episode: first + i, runtime });
+    }
+    /* حلقاتُ الموسم المفتوح بأرقامها الفعليّة (قد لا تبدأ من ١ في الترقيم المطلق) */
+    const own = airedEps.filter((e) => e.episode_number <= n).map((e) => ref(e.episode_number));
+    return [...list, ...own].filter((x) => !watched.has(episodeKey(x.season, x.episode)));
+  };
   const upTo = useMutation({
-    mutationFn: (n: number) =>
-      write<TrackResult>("/api/v1/track/watch-up-to", { showTmdbId: show.id, episodes: airedEps.filter((e) => e.episode_number <= n).map((e) => ref(e.episode_number)), title: show.name, posterPath: show.poster_path } satisfies WatchUpToBody),
-    onMutate: (n) => patch(airedEps.filter((e) => e.episode_number <= n).map((e) => episodeKey(season, e.episode_number)), true),
+    mutationFn: (n: number) => {
+      const eps = upToKeys(n);
+      return eps.length === 1
+        ? write<TrackResult>("/api/v1/track/episode", { showTmdbId: show.id, ...eps[0], watched: true, title: show.name, posterPath: show.poster_path } satisfies ToggleEpisodeBody)
+        : write<TrackResult>("/api/v1/track/watch-up-to", { showTmdbId: show.id, episodes: eps, title: show.name, posterPath: show.poster_path } satisfies WatchUpToBody);
+    },
+    onMutate: (n) => patch(upToKeys(n).map((x) => episodeKey(x.season, x.episode)), true),
     onSuccess: onSettled,
     onError,
   });
@@ -155,7 +182,8 @@ function SeasonBody({
           <Pressable
             key={e.episode_number}
             disabled={future}
-            onPress={() => toggle.mutate(e.episode_number)}
+            /* D-988 — التأشيرُ «حتى هنا»؛ الإزالةُ حلقةٌ واحدة */
+            onPress={() => (on ? toggle.mutate(e.episode_number) : upTo.mutate(e.episode_number))}
             onLongPress={() => upTo.mutate(e.episode_number)}
             delayLongPress={400}
             style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 8, opacity: future ? 0.45 : 1 }}

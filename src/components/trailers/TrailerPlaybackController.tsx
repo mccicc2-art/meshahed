@@ -1270,7 +1270,15 @@ function createEngine(
             }
             reconcile();
           },
-          { threshold: [0, STOP_RATIO, START_RATIO, 1] },
+          {
+            threshold: [0, STOP_RATIO, START_RATIO, 1],
+            /* 🔴 D-991 — **ما تحت الدوك وما تحت الترويسة ليس مرئيّاً** (بلاغُ أحمد بلقطة، ١٦
+               سبتمبر: بطاقةٌ في أسفل الشاشة صارت نشطةً وزرُّ تشغيلها يطلّ من تحت الدوك فوق
+               خانة «اكتشف»): المراقبُ كان يعدّ الشاشةَ كلَّها، فبطاقةٌ أكثرُها خلف الدوك تُحسب
+               ظاهرةً وتُشغَّل. الهوامشُ تقتطع الدوكَ (٨٤) والترويسةَ (٥٦) على الجوّال — حيث
+               الدوكُ وحدَه موجود (`md:hidden`). */
+            rootMargin: typeof window !== "undefined" && window.innerWidth < 768 ? "-56px 0px -84px 0px" : "0px",
+          },
         );
         for (const [, s] of slots) io.observe(s.area);
       }

@@ -8,7 +8,7 @@ import {
   getUserId,
   getMyRating,
 } from "@/lib/data";
-import { airedPerSeason, airedEpisodeCount } from "@/core/progress";
+import { airedPerSeason, airedEpisodeCount, firstEpisodeOf } from "@/core/progress";
 import { handle, positiveInt, limited, fail } from "@/lib/v1";
 import { ok } from "@/core/contracts/result";
 import type { MovieTitlePayload, TitlePayload, TvTitlePayload } from "@/core/contracts/title";
@@ -64,6 +64,7 @@ async function tvPayload(tvId: number, signedIn: boolean): Promise<TvTitlePayloa
     signedIn ? getMyRating(tvId, "tv") : null,
   ]);
   const aired = airedPerSeason(tv);
+  const first = firstEpisodeOf(tv);
   return {
     kind: "tv",
     id: tv.id,
@@ -92,6 +93,7 @@ async function tvPayload(tvId: number, signedIn: boolean): Promise<TvTitlePayloa
         name: s.name,
         episode_count: s.episode_count,
         aired: aired.get(s.season_number) ?? 0,
+        first_episode: first.get(s.season_number) ?? 1,
         poster_path: s.poster_path,
         air_date: s.air_date,
       })),

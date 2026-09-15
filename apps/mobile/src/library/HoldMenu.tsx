@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { I18nManager, Modal, Pressable, StyleSheet, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "../state";
@@ -93,11 +93,15 @@ export function HoldMenu({
      الآن حافّةُ الشريط (`navHeight` نفسُه الذي يرفع التوست)، والعرضُ يبدأ من ٢٠٨
      ويتّسع للسطر الأطول حتّى حافّتَي الشاشة — كما تفعل `min-w-52` في الويب. */
   const floor = H - navHeight(insets.bottom) - 8;
-  /* محاذاةُ الطرف النهائيّ: في RTL الطرفُ النهائيُّ يسار البطاقة — بربط الحافّة لا
-     بحساب اليسار، فالعرضُ لم يعد ثابتاً */
-  const endEdge = I18nManager.isRTL
-    ? { left: Math.max(8, anchor.x) }
-    : { right: Math.max(8, W - (anchor.x + anchor.width)) };
+  /* 🔴 D-990 — **القائمةُ تُقاس ثمّ تُوضع، ولا تخرج من الشاشة** (بلاغُ أحمد بلقطة، ١٦
+     سبتمبر: بطاقةٌ على الطرف والقائمةُ مقطوعةٌ من اليسار): D-977 ربطت الحافّةَ النهائيّةَ
+     بالبطاقة وتركت العرضَ يتّسع — فعلى بطاقةِ الطرف يتّسع خارجَ الشاشة. الآن العرضُ يُقاس
+     (`onLayout`) ثمّ يُحسب اليسارُ ويُقصّ إلى `[8, W − عرض − 8]`، وأوّلُ إطارٍ قبل القياس
+     غيرُ مرئيّ كي لا يقفز. */
+  const [panelW, setPanelW] = useState<number | null>(null);
+  const pw = panelW ?? PANEL_W;
+  let left = I18nManager.isRTL ? anchor.x : anchor.x + anchor.width - pw;
+  left = Math.max(8, Math.min(left, W - pw - 8));
   let top = anchor.y + anchor.height + GAP;
   if (top + panelH > floor) top = Math.max(8, anchor.y - panelH - GAP);
 
@@ -105,10 +109,15 @@ export function HoldMenu({
     <Modal transparent animationType="fade" visible onRequestClose={onClose} statusBarTranslucent>
       <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel={t.closeLabel} />
       <View
+        onLayout={(e) => {
+          const w = Math.round(e.nativeEvent.layout.width);
+          if (w !== panelW) setPanelW(w);
+        }}
         style={{
           position: "absolute",
-          ...endEdge,
+          left,
           top,
+          opacity: panelW === null ? 0 : 1,
           minWidth: PANEL_W,
           maxWidth: W - 16,
           paddingVertical: 4,
