@@ -14,12 +14,12 @@ export default function Title() {
   const router = useRouter();
   const { kind, id, from } = useLocalSearchParams<{ kind: string; id: string; from?: string }>();
   const k = kind === "movie" ? "movie" : "tv";
-  const origin = from === "discover" ? "discover" : "library";
+  const origin = from === "discover" ? "discover" : from === "web" ? "web" : "library";
   /* D-981 — البديلُ الويبيّ يجب أن يُرى: إغلاقُ صفحة العمل وحدَها يترك «اكتشف» الأصليّةَ فوقه
      (المقطعُ الثاني، ١٥ سبتمبر مساءً) — فيُطوى المكدّسُ الأصليّ كلُّه حتى `/web`، والرجوعُ
      من الصفحة الويبيّة يعيد الشاشةَ التي فُتح منها (D-949 بـ`returnTo`). */
   return (
-    <ErrorBoundary screen="title" webPath={`/${k === "tv" ? "show" : "movie"}/${Number(id)}`} returnTo={origin} onLeave={() => (router.canDismiss() ? router.dismissAll() : router.replace("/web"))}>
+    <ErrorBoundary screen="title" webPath={`/${k === "tv" ? "show" : "movie"}/${Number(id)}`} returnTo={origin === "web" ? undefined : origin} onLeave={() => (router.canDismiss() ? router.dismissAll() : router.replace("/web"))}>
       <TitleScreen kind={k} id={Number(id)} from={origin} />
     </ErrorBoundary>
   );

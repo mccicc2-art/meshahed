@@ -19,7 +19,40 @@ export function NativeLibraryFlag() {
   useEffect(() => {
     const el = document.documentElement;
     el.setAttribute(NATIVE_LIBRARY_ATTR, "1");
-    return () => el.removeAttribute(NATIVE_LIBRARY_ATTR);
+    /**
+     * 🆕 D-1000 — **كلُّ رابطِ عملٍ في الويب يفتح `TitleScreen` الأصليّة** (سؤالُ أحمد: «إذا دخلت
+     * على فلم من داخل ليست يفتح ويبيّة، ليش؟»): الصفحاتُ التي لم تُنقل بعد (القوائم · البحث ·
+     * الرئيسيّة · المجتمع) تبقى ويبيّة، لكنّ الضغطةَ على `/show/:id` أو `/movie/:id` فيها
+     * تُلتقط هنا — مرّةً على المستند، في طور الالتقاط — وتُبثّ للغلاف بدل الملاحة. الشرطُ
+     * شرطُ `openNative` نفسُه: الغلافُ يعلن `title` (≥ 1.9.1)؛ غلافٌ أقدم يبقى رابطاً (درسُ ٩
+     * سبتمبر). الروابطُ المفتوحةُ في تبويبٍ جديد أو بمُعدِّل (ctrl/⌘) تُترك.
+     */
+    const onClick = (e: MouseEvent) => {
+      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      if (!nativeLibraryOn() || window.LoopzNative?.title !== true) return;
+      const a = (e.target as Element | null)?.closest?.("a[href]") as HTMLAnchorElement | null;
+      if (!a || (a.target && a.target !== "_self")) return;
+      let url: URL;
+      try {
+        url = new URL(a.href, window.location.href);
+      } catch {
+        return;
+      }
+      if (url.origin !== window.location.origin) return;
+      const m = /^\/(show|movie)\/(\d+)(?:\/)?$/.exec(url.pathname);
+      if (!m || url.search || url.hash) return;
+      try {
+        window.ReactNativeWebView!.postMessage(JSON.stringify({ type: "native", route: "title", kind: m[1] === "show" ? "tv" : "movie", id: Number(m[2]) }));
+        e.preventDefault();
+      } catch {
+        /* الجسرُ غاب — الرابطُ يمضي */
+      }
+    };
+    document.addEventListener("click", onClick, true);
+    return () => {
+      el.removeAttribute(NATIVE_LIBRARY_ATTR);
+      document.removeEventListener("click", onClick, true);
+    };
   }, []);
   return null;
 }
@@ -27,7 +60,7 @@ export function NativeLibraryFlag() {
 declare global {
   interface Window {
     /** 🆕 يحقنه الغلافُ (≥ 1.4.1) قبل تحميل المستند: ما يستطيع فتحَه أصليّاً */
-    LoopzNative?: { library?: boolean; discover?: boolean };
+    LoopzNative?: { library?: boolean; discover?: boolean; /** D-1000 — يفتح صفحةَ العمل أصليّةً من رابط */ title?: boolean };
   }
 }
 

@@ -54,7 +54,8 @@ import type {
 const HEADER_H = 64;
 const PAGE_PAD = 16;
 
-export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movie"; id: number; from?: "library" | "discover" }) {
+/** D-1000 — `from="web"`: فُتحت من صفحةٍ ويبيّة؛ أبوابُها بلا `returnTo` والرجوعُ إلى تلك الصفحة */
+export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movie"; id: number; from?: "library" | "discover" | "web" }) {
   const { t, tokens, locale } = useApp();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -207,7 +208,7 @@ export function TitleScreen({ kind, id, from = "library" }: { kind: "tv" | "movi
   }, [d?.name, webPath]);
   /* «المزيد في الويب» — الصفحةُ نفسُها؛ الرجوعُ منها يعود إلى الشاشة الأصليّة التي سبقتنا (D-949) */
   const openWeb = useCallback(
-    (suffix = "", absolute?: string) => void shell.open(absolute ?? `${webPath}${suffix}`, { returnTo: from }).then(back),
+    (suffix = "", absolute?: string) => void shell.open(absolute ?? `${webPath}${suffix}`, from === "web" ? undefined : { returnTo: from }).then(back),
     [webPath, back, from],
   );
   const openTitle = useCallback((k: "tv" | "movie", tid: number) => router.push({ pathname: "/title/[kind]/[id]", params: { kind: k, id: String(tid), from } }), [router, from]);

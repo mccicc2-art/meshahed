@@ -1,6 +1,6 @@
 {
   "name": "loopz-mobile",
-  "version": "1.9.0",
+  "version": "1.9.1",
   "main": "index.ts",
   "dependencies": {
     "@supabase/supabase-js": "^2.115.0",

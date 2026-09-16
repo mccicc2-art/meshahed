@@ -408,7 +408,19 @@ export const SUBLISTS2: Universe[] = [
  * مجموعات الجوائز — تُبنى من قاموس `awards.ts` فلا يُكتب اسمٌ مرتين:
  * إضافة جائزةٍ هناك تُظهر بطاقتها هنا تلقائياً.
  */
-export const AWARD_SETS: Universe[] = AWARDS.map((a) => ({
+/**
+ * 🆕 D-999 — **ترتيبُ صفّ الجوائز قرارُ عرضٍ لا قاموس** (طلبُ أحمد بورقة، ١٦ سبتمبر): الأوسكار
+ * أفضل فيلم → إيمي دراما → غولدن غلوب دراما → إيمي كوميديا → الأوسكار الدوليّ، ثمّ البقيّةُ
+ * بترتيب القاموس. القاموسُ (`awards.ts`) يبقى مصدرَ الأسماء والبيانات، وجائزةٌ تُضاف هناك
+ * تظهر هنا في الذيل تلقائيّاً حتى تُرتَّب. («أوسكار فيلم قصير» طلبها أحمد ولا بياناتِ فوزٍ
+ * لها بعد — تُضاف إلى `awardsWins.ts` أوّلاً.)
+ */
+const AWARD_ORDER = ["oscar-best-picture", "emmy-drama", "globe-drama", "emmy-comedy", "oscar-international"] as const;
+const awardRank = (slug: string) => {
+  const i = (AWARD_ORDER as readonly string[]).indexOf(slug);
+  return i === -1 ? AWARD_ORDER.length : i;
+};
+export const AWARD_SETS: Universe[] = [...AWARDS].sort((a, b) => awardRank(a.slug) - awardRank(b.slug)).map((a) => ({
   slug: `award-${a.slug}`,
   ar: a.ar,
   en: a.en,

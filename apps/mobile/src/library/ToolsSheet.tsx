@@ -202,7 +202,7 @@ function Segmented({ items, value, onChange }: { items: { id: string; label: str
 }
 
 /** المفتاحُ `h-5 w-9 rounded-full` وقرصُه `h-4 w-4` بلون الخلفيّة — وصفةُ `TabsPrefs` */
-function Switch({ on }: { on: boolean }) {
+export function Switch({ on }: { on: boolean }) {
   const { tokens } = useApp();
   return (
     <View style={{ width: 36, height: 20, borderRadius: 10, backgroundColor: on ? tokens.accent : tokens.border, justifyContent: "center" }}>
@@ -212,7 +212,7 @@ function Switch({ on }: { on: boolean }) {
 }
 
 /** السهمان رأسيّان فلا ينقلبان مع الاتّجاه — «فوق» فوقٌ في اللغتين */
-function Arrow({ up, disabled, label, onPress }: { up?: boolean; disabled: boolean; label: string; onPress: () => void }) {
+export function Arrow({ up, disabled, label, onPress }: { up?: boolean; disabled: boolean; label: string; onPress: () => void }) {
   const { tokens } = useApp();
   return (
     <Pressable

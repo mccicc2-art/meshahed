@@ -17,13 +17,16 @@ import { TrailersRail } from "./TrailersRail";
 import { FilterSheet } from "./FilterSheet";
 import { NameSheet } from "./NameSheet";
 import { AllSheet } from "./AllSheet";
+import { railsHiddenFor, type RailKey } from "@/core/railPrefs";
+import type { TabPref } from "@/core/tabPrefs";
+import type { MyRow } from "@/core/myRows";
 import { sectionToRuleType } from "@/core/smartListKeys";
 import { axisValueLabel, browseActive, browseFromQuery, browseQuery, EMPTY_BROWSE, type AxisKey, type BrowseState } from "./browseState";
 import { TabSlide } from "../TabSlide";
 import { useChromeHide } from "../ChromeHide";
 import { BottomNav, navHeight } from "../BottomNav";
 import { regionName } from "@/core/region";
-import type { CuratedCard, CuratedRailKey, CuratedRailPayload, CuratedTab, DismissBody, FollowBody, LibraryPayload, PersonalRailsPayload, ShowRefBody, ToggleMovieBody, UnfollowBody, SavedFilterBody, SavedFilterResult, SmartListBody } from "../contracts";
+import type { CuratedCard, CuratedRailKey, CuratedRailPayload, CuratedTab, DismissBody, FollowBody, LibraryPayload, PersonalRailsPayload, ShowRefBody, ToggleMovieBody, UnfollowBody, SavedFilterBody, SavedFilterResult, SmartListBody, DiscoverViewPayload, MyRowsBody } from "../contracts";
 
 /**
  * ====== «اكتشف» أصليّةً — Phase 11-C · C1 (D-955) ======
@@ -62,6 +65,7 @@ const RAILS: Record<CuratedTab, CuratedRailKey[]> = {
 export function DiscoverScreen() {
   const { t, tokens, locale } = useApp();
   const router = useRouter();
+  const qc = useQueryClient();
   const insets = useSafeAreaInsets();
   const ar = locale !== "en";
   const navH = navHeight(insets.bottom);
@@ -232,7 +236,53 @@ export function DiscoverScreen() {
   /* D-953 → ⚖️ D-961: السحبُ صار انزلاقاً — الإيماءةُ والعتباتُ انتقلت إلى
      `TabSlide` (مصنعٌ واحدٌ تقرؤه المكتبةُ و«اكتشف»)، **والترتيبُ هنا لأنّه
      ترتيبُ هذه الشاشة.** */
-  const tabsOrder: Tab[] = ["shows", "movies", "anime", "lists"];
+  /**
+   * 🆕 D-997 — **تفضيلاتُ «عرض»** من `/api/v1/discover/view` (كوكيُّ الويب نفسُه): ترتيبُ
+   * التبويبات وإظهارُها يحكمان الشريطَ والانزلاق؛ الصفوفُ المخفيّة تُطوى في اللوح؛ صفوفُك
+   * تصل ضمن `personal.myrows` بعد الكتابة. الكتابةُ بالمسارات التي تكتب بها المكتبة
+   * (`me/prefs/tabs` · `hidden-rails`) + `my-rows`، وبلس حيث كان.
+   */
+  const viewQ = useQuery({
+    queryKey: ["discover:view"] as const,
+    queryFn: async () => (await api<DiscoverViewPayload>("/api/v1/discover/view")).data,
+    staleTime: 5 * 60_000,
+  });
+  const view = viewQ.data ?? null;
+  const ALL_TABS: Tab[] = ["shows", "movies", "anime", "lists"];
+  const tabsOrder: Tab[] = useMemo(() => {
+    const prefs = view?.tabs ?? [];
+    const ordered = prefs.filter((p) => !p.hidden && (ALL_TABS as string[]).includes(p.key)).map((p) => p.key as Tab);
+    return ordered.length ? ordered : ALL_TABS;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view]);
+  const hiddenRails = useMemo(() => new Set(view?.hidden_rails ?? []), [view]);
+  /* تبويبٌ أُخفي وأنت فيه: الانتقالُ إلى أوّل ظاهرٍ (كما يفعل الويب بإعادة الرسم) */
+  useEffect(() => {
+    if (!tabsOrder.includes(tab)) setTab(tabsOrder[0]);
+  }, [tabsOrder, tab]);
+  const onView = useCallback(
+    async (patch: { tabs?: TabPref[]; hidden?: string[]; rows?: MyRow[] }) => {
+      /* تفاؤلٌ محلّيّ ثمّ الكتابة — و`needsPlus` يفتح بابَ بلس كما في المكتبة */
+      qc.setQueryData<DiscoverViewPayload>(["discover:view"], (prev) => (prev ? { ...prev, ...(patch.tabs ? { tabs: patch.tabs } : {}), ...(patch.hidden ? { hidden_rails: patch.hidden } : {}), ...(patch.rows ? { my_rows: patch.rows } : {}) } : prev));
+      try {
+        let r: { ok: boolean; needsPlus?: true } = { ok: true };
+        if (patch.tabs) r = await write<{ ok: boolean; needsPlus?: true }>("/api/v1/me/prefs/tabs", { surface: "discover", prefs: patch.tabs });
+        if (patch.hidden) r = await write<{ ok: boolean; needsPlus?: true }>("/api/v1/me/prefs/hidden-rails", { keys: patch.hidden });
+        if (patch.rows) {
+          await write<{ ok: boolean }>("/api/v1/me/prefs/my-rows", { rows: patch.rows } satisfies MyRowsBody);
+          void qc.invalidateQueries({ queryKey: ["discover:personal"] });
+        }
+        if (r.needsPlus) {
+          void qc.invalidateQueries({ queryKey: ["discover:view"] });
+          leaveTo("/plus");
+        }
+      } catch (e) {
+        void qc.invalidateQueries({ queryKey: ["discover:view"] });
+        onError(e);
+      }
+    },
+    [qc, leaveTo, onError],
+  );
   const goTab = useCallback((next: Tab) => setTab(next), []);
 
   /* D-966 — الكسوةُ الذكيّة كما في المكتبة: الورقةُ (رأسٌ + ألواح) تصعد بارتفاع الرأس
@@ -272,7 +322,7 @@ export function DiscoverScreen() {
         {/* ⚖️ D-980 — بلا سهمِ رجوع (انظر `LibraryScreen`): الشريطُ السفليّ هو المخرج */}
         <Text size={15} weight="700">{t.newsTitle}</Text>
         {/* D-992 — الفلاترُ ورقةٌ أصليّة (نقضُ C3 بقرار أحمد «كلّها أصليّة»)؛ الزرُّ يضيء بفلترٍ نشط */}
-        {tab !== "lists" ? (
+        {(
           <Pressable
             onPress={() => setSheet(true)}
             hitSlop={8}
@@ -283,7 +333,7 @@ export function DiscoverScreen() {
               <Icon name="sliders" size={17} color={browseActive(browse) ? tokens.onAccent : tokens.fg} />
             </View>
           </Pressable>
-        ) : null}
+        )}
       </View>
 
       {/* شريطُ التبويبات — عائلةُ segmented نفسُها كما في المكتبة */}
@@ -312,6 +362,7 @@ export function DiscoverScreen() {
             browse={browse}
             bq={bq}
             onBrowse={setBrowse}
+            hiddenRails={hiddenRails}
             marks={effectiveMarks}
             hidden={hidden}
             heldKey={held ? `${held.card.kind}-${held.card.id}` : null}
@@ -358,10 +409,13 @@ export function DiscoverScreen() {
           onClose={() => setAll(null)}
         />
       ) : null}
-      {sheet && tab !== "lists" ? (
+      {sheet ? (
         <FilterSheet
-          tab={tab}
+          tab={tab === "lists" ? "shows" : tab}
+          viewOnly={tab === "lists"}
           value={browse}
+          view={view}
+          onView={(patch) => void onView(patch)}
           onApply={(next) => {
             setBrowse(next);
             setSheet(false);
@@ -405,6 +459,7 @@ function DiscoverPane({
   browse,
   bq,
   onBrowse,
+  hiddenRails,
   marks,
   hidden,
   heldKey,
@@ -426,6 +481,8 @@ function DiscoverPane({
   browse: BrowseState;
   bq: string;
   onBrowse: (next: BrowseState) => void;
+  /** D-997 — رموزُ الصفوف المخفيّة (`tab:key`) */
+  hiddenRails: ReadonlySet<string>;
   marks: Map<string, LibMark>;
   /** D-978 — بطاقاتٌ أُخفيت بـ«غير مهتمّ» في هذه الجلسة */
   hidden: ReadonlySet<string>;
@@ -459,6 +516,18 @@ function DiscoverPane({
   const ps = personal.data;
   const lists = tab === "lists";
   const filtering = browseActive(browse);
+  /* D-997 — الصفوفُ المخفيّة لهذا التبويب بمفاتيح `railPrefs` (top10/top50 تجمع نسختَي الصفّ) */
+  const off = tab === "lists" ? new Set<string>() : railsHiddenFor(hiddenRails, tab);
+  const railOff = (key: CuratedRailKey): boolean => {
+    const anime = tab === "anime";
+    const k: RailKey =
+      key === "top10-movie" ? (anime ? "top10a-movies" : "top10")
+      : key === "top10-tv" ? (anime ? "top10a-shows" : "top10")
+      : key === "top50-movie" ? (anime ? "top50a-movies" : "top50")
+      : key === "top50-tv" ? (anime ? "top50a-shows" : "top50")
+      : key;
+    return off.has(k);
+  };
   /**
    * 🆕 D-993 — **«احفظ الفلتر» و«قائمة ذكيّة» أصليّان** (تتمّةُ C4): الأوّل يُدرج في
    * `ui_state.filters` عبر `/api/v1/me/prefs/saved-filters` (الخادمُ يقرأ القائمةَ ويُدرج — التطبيقُ
@@ -587,9 +656,9 @@ function DiscoverPane({
         />
       ) : null}
       {/* D-958 — صفُّ التريلرات أوّلاً كما في الصفحة (قبل `PersonalRails`)؛ ويصمت بفلترٍ نشط كما في الصفحة */}
-      {!lists && !filtering ? <TrailersRail tab={tab} active={active} onOpenWeb={onLeave} onOpenTitle={(c) => router.push({ pathname: "/title/[kind]/[id]", params: { kind: c.kind, id: String(c.id), from: "discover" } })} onError={onError} /> : null}
+      {!lists && !filtering && !off.has("trailers") ? <TrailersRail tab={tab} active={active} onOpenWeb={onLeave} onOpenTitle={(c) => router.push({ pathname: "/title/[kind]/[id]", params: { kind: c.kind, id: String(c.id), from: "discover" } })} onError={onError} /> : null}
       {/* ترتيبُ `PersonalRails`: مقترحٌ لك · صفوفي · (السينما) · من فنّانيك · ثمّ الباقي */}
-      {!lists && foryou.length > 0 ? (
+      {!lists && foryou.length > 0 && !off.has("foryou") ? (
         <CardsRail
           title={t.suggestedForYou}
           icon="sparkle-star"
@@ -604,10 +673,10 @@ function DiscoverPane({
       {!lists ? ps?.myrows.map((m) => (
         <CardsRail key={`myrow-${m.key}`} title={m.title} icon="sparkle-star" items={m.items} ranked={false} {...railProps} seeAll={m.see_all} onSeeAll={seeAll} />
       )) : null}
-      {!lists ? RAILS[tab].map((key, i) => (
+      {!lists ? RAILS[tab].filter((key) => !railOff(key)).map((key, i) => (
         <React.Fragment key={`${tab}-${key}`}>
           <Rail tab={tab} railKey={key} bq={bq} {...railProps} onSeeAll={seeAll} ar={ar} />
-          {i === 0 && ps && ps.artists.length > 0 ? (
+          {i === 0 && ps && ps.artists.length > 0 && !off.has("artists") ? (
             <CardsRail title={t.artistsRail} icon="people" items={ps.artists} ranked={false} {...railProps} seeAll={ps.artists_see_all} onSeeAll={seeAll} />
           ) : null}
         </React.Fragment>

@@ -34,8 +34,18 @@ export const shell = {
    * فيُعاد فتحُ الشاشة. **`sessionStorage` لا `history.state`** لأنّ
    * `location.href` تحميلُ مستندٍ جديد والحالةُ لا تعبره.
    */
+  /**
+   * 🔴 D-998 — **الغلافُ يعرف إلى أين يعود** (بلاغُ أحمد بتسجيل على 1.9.0: «إذا سوّيت رجوع
+   * داخل وحدة من اللستات يطلع خارج التطبيق»): علامةُ `sessionStorage` تعمل حين يستطيع
+   * الـWebView الرجوعَ مستنداً (فيُقرأ الوصولُ `back_forward`)؛ أمّا حين تكون الصفحةُ
+   * الويبيّةُ أوّلَ ما في تاريخه — كما بعد جولةٍ سابقة — فـ`canGoBack` كاذب، ورجوعُ
+   * النظام يهبط على جذر المكدّس **فيخرج من التطبيق**. الغلافُ نفسُه يحفظ `returnTo`
+   * ويعيد فتحَ الشاشة الأصليّة حين لا رجوعَ في الـWebView. تُمحى عند تسليم `native`.
+   */
+  returnTo: null as "library" | "discover" | null,
   open(path: string, opts?: { returnTo?: "library" | "discover" }): Promise<void> {
     if (!inject || !path.startsWith("/")) return Promise.resolve();
+    shell.returnTo = opts?.returnTo ?? null;
     const arm = opts?.returnTo ? `try{sessionStorage.setItem("loopz:return",${JSON.stringify(opts.returnTo)})}catch(e){}` : "";
     /* 🆕 D-951 — الوعدُ يُهيَّأ **قبل** الحقن: `onNavigationStateChange` قد يصل
        في الدورة نفسِها على الأجهزة السريعة، فلا يجد من ينتظره. */

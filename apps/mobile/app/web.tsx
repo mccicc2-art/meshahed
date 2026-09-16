@@ -66,7 +66,8 @@ const HOME = CONFIG.apiBase + "/";
  * `window.LoopzNative` قبل تحميل الصفحة، والويبُ لا يبتلع الضغطةَ بدونها.
  * تُحقن في كلِّ الإطارات لكنّ الرسالةَ تُقبل من `INSIDE` وحدَه (`onMessage`).
  */
-const CAPABILITIES = "window.LoopzNative={library:true,discover:true};true;";
+/* D-1000 — `title`: الغلافُ يفتح صفحةَ العمل أصليّةً من أيّ رابط عملٍ في الويب */
+const CAPABILITIES = "window.LoopzNative={library:true,discover:true,title:true};true;";
 /**
  * 🔴 **والحقنُ مرّتين (١٤ سبتمبر — بلاغُ أحمد على 1.6.0: «المكتبة رجعت ويب»)**:
  * أوّلُ فتحٍ بعد التثبيت أعاد الصفحةَ ويبيّةً من أوّل ضغطة، وإغلاقٌ كامل أصلحها،
@@ -182,9 +183,20 @@ export default function Web() {
       }
       if (msg.type === "native") {
         /* الشاشةُ الأصليّةُ لا تُفتح لرسالةٍ من غير نطاقنا — المضيفُ شرطٌ هنا أيضاً */
+        if (hostOk) shell.returnTo = null; /* D-998 — العودةُ سُلِّمت */
         if (hostOk && msg.route === "library") router.push("/library");
         /* Phase 11-C (D-955) — «اكتشف» الأصليّة فوق الـWebView بالطريقة نفسِها */
         if (hostOk && msg.route === "discover") router.push("/discover");
+        /* 🆕 D-1000 — **رابطُ عملٍ في أيّ صفحةٍ ويبيّة يفتح `TitleScreen` الأصليّة** (سؤالُ أحمد:
+           «إذا دخلت على فلم من داخل ليست يفتح ويبيّة، ليش؟»): الصفحاتُ التي لم تُنقل بعد
+           (القوائم · البحث · الرئيسيّة · المجتمع) تبقى ويبيّة، لكنّ الأعمالَ منها أصليّة.
+           `from=web`: الرجوعُ يعود إلى الصفحة الويبيّة نفسِها، وأبوابُ الشاشة تفتح بلا `returnTo`. */
+        if (hostOk && msg.route === "title") {
+          const m = msg as { kind?: unknown; id?: unknown };
+          const kind = m.kind === "movie" ? "movie" : m.kind === "tv" ? "tv" : null;
+          const id = Number(m.id);
+          if (kind && Number.isInteger(id) && id > 0) router.push({ pathname: "/title/[kind]/[id]", params: { kind, id: String(id), from: "web" } });
+        }
         return;
       }
       /* 🆕 D-929 — لقطةُ الودجت: تُكتب ملفّاً ويقرؤها `LoopzWidget.kt` كلَّ
@@ -272,10 +284,17 @@ export default function Web() {
         ref.current?.goBack();
         return true;
       }
+      /* D-998 — لا رجوعَ في الـWebView لكنّ الصفحةَ فُتحت من شاشةٍ أصليّة: نعود إليها لا نخرج */
+      if (shell.returnTo) {
+        const route = shell.returnTo;
+        shell.returnTo = null;
+        router.push(route === "discover" ? "/discover" : "/library");
+        return true;
+      }
       return false;
     });
     return () => sub.remove();
-  }, [canGoBack]);
+  }, [canGoBack, router]);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: SHELL_BG }}>

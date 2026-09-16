@@ -103,3 +103,13 @@ export type SavedFilterResult = { ok: boolean; needsPlus?: true; filters: { id: 
 
 /** `GET /api/v1/discover/section` — شبكةُ «الكلّ» لصفٍّ (D-994) */
 export type SectionPayload = { section: string; media: "movie" | "tv" | "anime"; page: number; has_more: boolean; items: CuratedCard[] };
+
+/** `GET /api/v1/discover/view` — تفضيلاتُ «عرض» (D-997) */
+export type DiscoverViewPayload = {
+  tabs: { key: string; hidden: boolean }[];
+  /** رموزٌ بشكل `tab:key` (`railToken`) */
+  hidden_rails: string[];
+  my_rows: { genre: string; tag: string | null }[];
+};
+/** `POST /api/v1/me/prefs/my-rows` */
+export type MyRowsBody = { rows: { genre: string; tag: string | null }[] };
